@@ -2,7 +2,7 @@ package transport
 
 import (
 	"fmt"
-	"github.com/chainreactors/malice-network/proto/services"
+	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/server/rpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/test/bufconn"
@@ -28,7 +28,7 @@ func LocalListener() (*grpc.Server, *bufconn.Listener, error) {
 	}
 	options = append(options)
 	grpcServer := grpc.NewServer(options...)
-	services.RegisterMaliceRPCServer(grpcServer, rpc.NewServer())
+	clientrpc.RegisterMaliceRPCServer(grpcServer, rpc.NewServer())
 	go func() {
 		panicked := true
 		defer func() {
@@ -64,7 +64,8 @@ func StartClientListener(host string, port uint16) (*grpc.Server, net.Listener, 
 	}
 	options = append(options)
 	grpcServer := grpc.NewServer(options...)
-	services.RegisterMaliceRPCServer(grpcServer, rpc.NewServer())
+	clientrpc.RegisterMaliceRPCServer(grpcServer, rpc.NewServer())
+
 	go func() {
 		panicked := true
 		defer func() {

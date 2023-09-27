@@ -1,9 +1,12 @@
 package rpc
 
 import (
+	"context"
 	"errors"
-	"github.com/chainreactors/malice-network/proto/commonpb"
-	"github.com/chainreactors/malice-network/proto/services"
+	"github.com/chainreactors/malice-network/proto/client/commonpb"
+	"github.com/chainreactors/malice-network/proto/services/clientrpc"
+	"runtime"
+
 	"github.com/chainreactors/malice-network/server/core"
 	"github.com/chainreactors/malice-network/utils"
 	"google.golang.org/grpc/codes"
@@ -37,7 +40,7 @@ var (
 type Server struct {
 	// Magical methods to break backwards compatibility
 	// Here be dragons: https://github.com/grpc/grpc-go/issues/3794
-	services.UnimplementedMaliceRPCServer
+	clientrpc.UnimplementedMaliceRPCServer
 }
 
 // GenericRequest - Generic request interface to use with generic handlers
@@ -148,6 +151,16 @@ func (rpc *Server) asyncGenericHandler(req GenericRequest, resp GenericResponse)
 	//taskResponse.TaskID = task.ID.String()
 	//rpcLog.Debugf("Successfully tasked beacon: %#v", taskResponse)
 	return nil
+}
+
+func (rpc *Server) GetBasicInfo(ctx context.Context, _ *commonpb.Empty) (*commonpb.Basic, error) {
+	return &commonpb.Basic{
+		Major: 0,
+		Minor: 0,
+		Patch: 1,
+		OS:    runtime.GOOS,
+		Arch:  runtime.GOARCH,
+	}, nil
 }
 
 // getTimeout - Get the specified timeout from the request or the default
