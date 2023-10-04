@@ -1,4 +1,4 @@
-package listener
+package packet
 
 type Spite struct {
 	SessionID string

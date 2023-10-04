@@ -5,10 +5,10 @@ import (
 	"errors"
 	"github.com/chainreactors/malice-network/proto/client/commonpb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
+	"github.com/chainreactors/malice-network/utils/constant"
 	"runtime"
 
 	"github.com/chainreactors/malice-network/server/core"
-	"github.com/chainreactors/malice-network/utils"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/reflect/protoreflect"
@@ -167,7 +167,7 @@ func (rpc *Server) GetBasicInfo(ctx context.Context, _ *commonpb.Empty) (*common
 func (rpc *Server) getTimeout(req GenericRequest) time.Duration {
 	timeout := req.GetRequest().Timeout
 	if time.Duration(timeout) < time.Second {
-		return utils.MinTimeout
+		return constant.MinTimeout
 	}
 	return time.Duration(timeout)
 }
