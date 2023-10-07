@@ -2,8 +2,8 @@ package console
 
 import (
 	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/proto/clientpb"
-	"github.com/chainreactors/malice-network/proto/services"
+	"github.com/chainreactors/malice-network/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/desertbit/grumble"
 	"github.com/fatih/color"
 	"log"
@@ -37,7 +37,7 @@ type ActiveTarget struct {
 
 type Console struct {
 	App          *grumble.App
-	Rpc          services.MaliceRPCClient
+	Rpc          clientrpc.MaliceRPCClient
 	ActiveTarget *ActiveTarget
 	//BeaconTaskCallbacks      map[string]BeaconTaskCallback
 	BeaconTaskCallbacksMutex *sync.Mutex
@@ -49,7 +49,7 @@ type Console struct {
 type BindCmds func(console *Console)
 
 // Start - Console entrypoint
-func Start(rpc services.MaliceRPCClient, bindCmds BindCmds, extraCmds BindCmds, isServer bool) error {
+func Start(rpc clientrpc.MaliceRPCClient, bindCmds BindCmds, isServer bool) error {
 	//assets.Setup(false, false)
 	settings, _ := assets.LoadSettings()
 	con := &Console{
@@ -77,7 +77,7 @@ func Start(rpc services.MaliceRPCClient, bindCmds BindCmds, extraCmds BindCmds, 
 		//con.PrintLogo()
 	})
 	//con.App.SetPrompt(con.GetPrompt())
-	//bindCmds(con)
+	bindCmds(con)
 	//extraCmds(con)
 
 	//con.ActiveTarget.AddObserver(func(_ *clientpb.Session, _ *clientpb.Beacon) {

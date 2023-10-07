@@ -28,7 +28,7 @@ func Execute() {
 }
 
 // Start - Starts the server console
-func Start() {
+func StartGrpc() {
 	_, _, err := transport.StartClientListener("0.0.0.0", 50001)
 	if err != nil {
 		return // If we fail to bind don't setup the Job
@@ -48,7 +48,8 @@ func Start() {
 		return
 	}
 	defer conn.Close()
-	//localRPC := services.NewMaliceRPCClient(conn)
+
+	//localRPC := clientrpc.NewMaliceRPCClient(conn)
 	//if err := configs.CheckHTTPC2ConfigErrors(); err != nil {
 	//	fmt.Printf(Warn+"Error in HTTP C2 config: %s\n", err)
 	//}
