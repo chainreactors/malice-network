@@ -1,0 +1,12 @@
+
+ca: .
+opsec: true
+
+
+server:
+  grpc_port: 51004
+  grpc_host: 0.0.0.0
+  grpc_enable: true
+  mtls_port: 443
+  mtls_host: 0.0.0.0
+  mtls_enable: false
