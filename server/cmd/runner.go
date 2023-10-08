@@ -35,9 +35,14 @@ func Execute() {
 		}
 	}
 
-	if opt.Server.GRPCEnable {
-		StartGrpc(opt.Server.GRPCHost, opt.Server.GRPCPort)
+	// start grpc
+	StartGrpc(opt.Server.GRPCHost, opt.Server.GRPCPort)
+
+	// start listeners
+	if opt.Listeners != nil {
+		opt.Listeners.Start()
 	}
+
 }
 
 // Start - Starts the server console
@@ -66,7 +71,6 @@ func StartGrpc(host string, port uint16) {
 	//if err := configs.CheckHTTPC2ConfigErrors(); err != nil {
 	//	fmt.Printf(Warn+"Error in HTTP C2 config: %s\n", err)
 	//}
-	select {}
 }
 
 func Banner() string {

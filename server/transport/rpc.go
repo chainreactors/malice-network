@@ -2,6 +2,7 @@ package transport
 
 import (
 	"fmt"
+	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/server/rpc"
 	"github.com/chainreactors/malice-network/utils/constant"
@@ -11,7 +12,7 @@ import (
 
 // StartClientListener - Start a mutual TLS listener
 func StartClientListener(host string, port uint16) (*grpc.Server, net.Listener, error) {
-	//mtlsLog.Infof("Starting gRPC  listener on %s:%d", host, port)
+	logs.Log.Importantf("Starting gRPC console on %s:%d", host, port)
 
 	//tlsConfig := getOperatorServerTLSConfig("multiplayer")
 
