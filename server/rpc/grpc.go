@@ -3,9 +3,14 @@ package rpc
 import (
 	"context"
 	"errors"
-	"github.com/chainreactors/malice-network/proto/client/commonpb"
+	"fmt"
+	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
+	"github.com/chainreactors/malice-network/proto/services/listenerrpc"
 	"github.com/chainreactors/malice-network/utils/constant"
+	"google.golang.org/grpc"
+	"net"
 	"runtime"
 
 	"github.com/chainreactors/malice-network/server/core"
@@ -37,10 +42,48 @@ var (
 	//ErrInvalidBeaconTaskCancelState = status.Error(codes.InvalidArgument, fmt.Sprintf("Invalid task state, must be '%s' to cancel", models.PENDING))
 )
 
+// StartClientListener - Start a mutual TLS listener
+func StartClientListener(port uint16) (*grpc.Server, net.Listener, error) {
+	logs.Log.Importantf("Starting gRPC console on 0.0.0.0:%d", port)
+
+	//tlsConfig := getOperatorServerTLSConfig("multiplayer")
+
+	//creds := credentials.NewTLS(tlsConfig)
+	ln, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", port))
+	if err != nil {
+		//mtlsLog.Error(err)
+		return nil, nil, err
+	}
+	options := []grpc.ServerOption{
+		//grpc.Creds(creds),
+		grpc.MaxRecvMsgSize(constant.ServerMaxMessageSize),
+		grpc.MaxSendMsgSize(constant.ServerMaxMessageSize),
+	}
+	options = append(options)
+	grpcServer := grpc.NewServer(options...)
+	clientrpc.RegisterMaliceRPCServer(grpcServer, NewServer())
+	listenerrpc.RegisterImplantRPCServer(grpcServer, NewServer())
+	go func() {
+		panicked := true
+		defer func() {
+			if panicked {
+				//mtlsLog.Errorf("stacktrace from panic: %s", string(debug.Stack()))
+			}
+		}()
+		if err := grpcServer.Serve(ln); err != nil {
+			//mtlsLog.Warnf("gRPC server exited with error: %v", err)
+		} else {
+			panicked = false
+		}
+	}()
+	return grpcServer, ln, nil
+}
+
 type Server struct {
 	// Magical methods to break backwards compatibility
 	// Here be dragons: https://github.com/grpc/grpc-go/issues/3794
 	clientrpc.UnimplementedMaliceRPCServer
+	listenerrpc.UnimplementedImplantRPCServer
 }
 
 // GenericRequest - Generic request interface to use with generic handlers
@@ -50,7 +93,7 @@ type GenericRequest interface {
 	ProtoMessage()
 	ProtoReflect() protoreflect.Message
 
-	GetRequest() *commonpb.Request
+	GetRequest() *clientpb.Request
 }
 
 // GenericResponse - Generic response interface to use with generic handlers
@@ -60,7 +103,7 @@ type GenericResponse interface {
 	ProtoMessage()
 	ProtoReflect() protoreflect.Message
 
-	GetResponse() *commonpb.Response
+	GetResponse() *clientpb.Response
 }
 
 // NewServer - Create new server instance
@@ -82,14 +125,14 @@ func (rpc *Server) GenericHandler(req GenericRequest, resp GenericResponse) erro
 	}
 
 	// Sync request
-	session := core.Sessions.Get(request.SessionID)
+	session := core.Sessions.Get(request.SessionId)
 	if session == nil {
 		return ErrInvalidSessionID
 	}
 
 	// Overwrite unused implant fields before re-serializing
-	request.SessionID = ""
-	request.BeaconID = ""
+	request.SessionId = ""
+	request.BeaconId = ""
 
 	//reqData, err := proto.Marshal(req)
 	//if err != nil {
@@ -153,12 +196,12 @@ func (rpc *Server) asyncGenericHandler(req GenericRequest, resp GenericResponse)
 	return nil
 }
 
-func (rpc *Server) GetBasicInfo(ctx context.Context, _ *commonpb.Empty) (*commonpb.Basic, error) {
-	return &commonpb.Basic{
+func (rpc *Server) GetBasicInfo(ctx context.Context, _ *clientpb.Empty) (*clientpb.Basic, error) {
+	return &clientpb.Basic{
 		Major: 0,
 		Minor: 0,
 		Patch: 1,
-		OS:    runtime.GOOS,
+		Os:    runtime.GOOS,
 		Arch:  runtime.GOARCH,
 	}, nil
 }

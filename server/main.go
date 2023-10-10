@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/chainreactors/malice-network/server/cmd"
+	"github.com/chainreactors/malice-network/server/cmd/server"
 	"github.com/gookit/config/v2"
 	"github.com/gookit/config/v2/yaml"
 )
@@ -18,6 +18,6 @@ func init() {
 }
 
 func main() {
-	cmd.Execute()
+	server.Execute()
 	select {}
 }

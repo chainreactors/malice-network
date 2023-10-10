@@ -6,60 +6,88 @@ import (
 	"errors"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/proto/implant/commonpb"
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 	"io"
 	"net"
 )
 
 const (
-	SpiteStart = 0xd1
-	SpiteEnd   = 0xd2
+	StartDelimiter = 0xd1
+	EndDelimiter   = 0xd2
+	MsgType        = 5
+	MsgStart       = 0
+	HeaderLength   = 9
 )
 
-func ParseSpite(header, body []byte) (*commonpb.Spite, error) {
-	if len(header) != 5 {
+func ParseMessage(header, body []byte) (proto.Message, error) {
+	if len(header) != HeaderLength {
 		return nil, errors.New("invalid header length")
 	}
-	if header[0] != SpiteStart {
+	if header[MsgStart] != StartDelimiter {
 		return nil, errors.New("invalid header start")
 	}
-	if body[len(body)-1] != SpiteEnd {
+	if body[len(body)-1] != EndDelimiter {
 		return nil, errors.New("invalid body end")
 	}
-
-	spite := &commonpb.Spite{}
-	err := proto.Unmarshal(body[:len(body)-1], spite)
-	if err != nil {
-		return nil, err
+	var msg proto.Message
+	if header[MsgType] == 1 {
+		msg = &commonpb.Spite{}
+		err := proto.Unmarshal(body[:len(body)-1], msg)
+		if err != nil {
+			return nil, err
+		}
+	} else if header[MsgType] == 2 {
+		msg = &commonpb.Promise{}
+		err := proto.Unmarshal(body[:len(body)-1], msg)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	return spite, nil
+	return msg, nil
 }
 
-func MarshalSpite(spite *commonpb.Spite) ([]byte, error) {
+func MarshalMessage(msg proto.Message) ([]byte, error) {
 	var buf bytes.Buffer
 
-	data, err := proto.Marshal(spite)
+	data, err := proto.Marshal(msg)
 	if err != nil {
 		return nil, err
 	}
 
-	buf.WriteByte(SpiteStart)
-	binary.Write(&buf, binary.LittleEndian, len(data))
+	buf.WriteByte(StartDelimiter)
+	err = binary.Write(&buf, binary.LittleEndian, int32(len(data)))
+	if err != nil {
+		return nil, err
+	}
+
+	switch msg.(type) {
+	case *commonpb.Spite:
+		err = binary.Write(&buf, binary.LittleEndian, int8(1))
+	case *commonpb.Promise:
+		err = binary.Write(&buf, binary.LittleEndian, int8(2))
+	default:
+		err = binary.Write(&buf, binary.LittleEndian, int8(0))
+	}
+
+	buf.Write(make([]byte, 3))
+	if err != nil {
+		return nil, err
+	}
 	buf.Write(data)
-	buf.WriteByte(SpiteEnd)
+	buf.WriteByte(EndDelimiter)
 	return buf.Bytes(), nil
 }
 
-func ReadSpite(conn net.Conn) (*commonpb.Spite, error) {
-	spiteHeader := make([]byte, 5)
-	n, err := io.ReadFull(conn, spiteHeader)
-	if err != nil || n != 5 {
-		logs.Log.Errorf("Socket error (read msg-length): %v", err)
+func ReadMessage(conn net.Conn) (proto.Message, error) {
+	header := make([]byte, HeaderLength)
+	n, err := io.ReadFull(conn, header)
+	if err != nil || n != HeaderLength {
+		logs.Log.Errorf("socket error (read msg-length): %v", err)
 		return nil, err
 	}
 
-	dataLength := int(binary.LittleEndian.Uint32(spiteHeader[4:]))
+	dataLength := int(binary.LittleEndian.Uint32(header[1:5])) + 1
 	if dataLength <= 0 {
 		return nil, errors.New("zero data length")
 	}
@@ -69,15 +97,15 @@ func ReadSpite(conn net.Conn) (*commonpb.Spite, error) {
 	n, err = io.ReadFull(conn, dataBuf)
 
 	if err != nil || n != dataLength {
-		logs.Log.Errorf("Socket error (read data): %v", err)
+		logs.Log.Errorf("socket error (read data): %v", err)
 		return nil, err
 	}
 
-	return ParseSpite(spiteHeader, dataBuf)
+	return ParseMessage(header, dataBuf)
 }
 
-func WriteSpite(conn net.Conn, spite *commonpb.Spite) error {
-	bs, err := MarshalSpite(spite)
+func WriteMessage(conn net.Conn, msg proto.Message) error {
+	bs, err := MarshalMessage(msg)
 	if err != nil {
 		return err
 	}

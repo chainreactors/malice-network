@@ -2,16 +2,12 @@ package listener
 
 import (
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/server/configs"
 	"github.com/chainreactors/malice-network/server/core"
 )
 
-type Listener interface {
-	Name() string
-	Start() (*core.Job, error)
-}
-
 type Listeners struct {
-	TCPListeners []TCPListener `config:"tcp"`
+	TCPListeners []*TCPListener `config:"tcp"`
 }
 
 func (lns Listeners) Start() {
@@ -22,5 +18,6 @@ func (lns Listeners) Start() {
 			continue
 		}
 		core.Jobs.Add(job)
+		core.Forwarders.Add(core.NewForward(configs.GetServerConfig().String(), l))
 	}
 }

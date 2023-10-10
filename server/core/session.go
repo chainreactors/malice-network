@@ -2,6 +2,7 @@ package core
 
 import (
 	"errors"
+	"github.com/chainreactors/malice-network/utils/encoders"
 	"sync"
 	"time"
 )
@@ -20,21 +21,28 @@ var (
 	ErrImplantTimeout = errors.New("implant timeout")
 )
 
+func NewSession(conn *Connection) *Session {
+	return &Session{
+		ID:         encoders.UUID(),
+		Connection: conn,
+	}
+}
+
 // Session - Represents a connection to an implant
 type Session struct {
-	ID       string
-	Name     string
-	Hostname string
-	Username string
-	UUID     string
-	UID      string
-	GID      string
-	OS       string
-	Version  string
-	Arch     string
-	PID      int32
-	Filename string
-	//Connection        *ImplantConnection
+	ID                string
+	Name              string
+	Hostname          string
+	Username          string
+	UUID              string
+	UID               string
+	GID               string
+	OS                string
+	Version           string
+	Arch              string
+	PID               int32
+	Filename          string
+	Connection        *Connection
 	ActiveC2          string
 	ReconnectInterval int64
 	ProxyURL          string
@@ -87,13 +95,13 @@ func (s *sessions) Add(session *Session) *Session {
 
 // Remove - Remove a sliver from the hive (atomically)
 func (s *sessions) Remove(sessionID string) {
-	//val, ok := s.sessions.Load(sessionID)
-	//if !ok {
-	//	return
-	//}
-	//parentSession := val.(*Session)
+	val, ok := s.sessions.Load(sessionID)
+	if !ok {
+		return
+	}
+	parentSession := val.(*Session)
 	//children := findAllChildrenByPeerID(parentSession.PeerID)
-	//s.sessions.Delete(parentSession.ID)
+	s.sessions.Delete(parentSession.ID)
 	//coreLog.Debugf("Removing %d children of session %d (%v)", len(children), parentSession.ID, children)
 	//for _, child := range children {
 	//	childSession, ok := s.sessions.LoadAndDelete(child.SessionID)
@@ -106,18 +114,9 @@ func (s *sessions) Remove(sessionID string) {
 	//	}
 	//}
 
-	// Remove the parent session
+	//Remove the parent session
 	//EventBroker.Publish(Event{
 	//	EventType: consts.SessionClosedEvent,
 	//	Session:   parentSession,
 	//})
 }
-
-// NewSession - Create a new session
-//func NewSession(implantConn *ImplantConnection) *Session {
-//	implantConn.UpdateLastMessage()
-//	return &Session{
-//		ID:         nextSessionID(),
-//		Connection: implantConn,
-//	}
-//}

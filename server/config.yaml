@@ -5,11 +5,12 @@ opsec: true
 
 server:
   grpc_port: 51004
-  grpc_host: 0.0.0.0
+  grpc_host: 127.0.0.1
 
 listeners:
   tcp:
-    - port: 51001
+    - id: tcp_default
+      port: 51001
       host: 0.0.0.0
       protocol: tcp
       enable: true

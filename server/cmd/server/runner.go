@@ -1,8 +1,8 @@
-package cmd
+package server
 
 import (
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/server/transport"
+	"github.com/chainreactors/malice-network/server/rpc"
 	"github.com/gookit/config/v2"
 	"github.com/jessevdk/go-flags"
 )
@@ -33,21 +33,27 @@ func Execute() {
 			logs.Log.Error(err.Error())
 			return
 		}
+		err = config.Decode(&opt)
+		if err != nil {
+			logs.Log.Error(err.Error())
+			return
+		}
 	}
 
 	// start grpc
-	StartGrpc(opt.Server.GRPCHost, opt.Server.GRPCPort)
+	StartGrpc(opt.Server.GRPCPort)
 
 	// start listeners
 	if opt.Listeners != nil {
+		// init forwarder
 		opt.Listeners.Start()
 	}
 
 }
 
 // Start - Starts the server console
-func StartGrpc(host string, port uint16) {
-	_, _, err := transport.StartClientListener(host, port)
+func StartGrpc(port uint16) {
+	_, _, err := rpc.StartClientListener(port)
 	if err != nil {
 		return // If we fail to bind don't setup the Job
 	}
