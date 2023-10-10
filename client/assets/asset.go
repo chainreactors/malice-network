@@ -1,7 +1,7 @@
 package assets
 
 import (
-	"log"
+	"github.com/chainreactors/logs"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -17,7 +17,7 @@ func GetRootAppDir() string {
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
 		err = os.MkdirAll(dir, 0700)
 		if err != nil {
-			log.Fatal(err)
+			logs.Log.Error(err.Error())
 		}
 	}
 	return dir

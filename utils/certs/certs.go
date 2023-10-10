@@ -12,13 +12,13 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"github.com/chainreactors/malice-network/utils/db"
+	"github.com/chainreactors/malice-network/server/db"
+	"github.com/chainreactors/malice-network/server/db/models"
 	"math/big"
 	insecureRand "math/rand"
 	"net"
+	"os"
 	"time"
-
-	"github.com/chainreactors/malice-network/utils/db/models"
 )
 
 const (
@@ -30,8 +30,6 @@ const (
 )
 
 var (
-	//certsLog = log.NamedLogger("certs", "certificates")
-
 	// ErrCertDoesNotExist - Returned if a GetCertificate() is called for a cert/cn that does not exist
 	ErrCertDoesNotExist = errors.New("Certificate does not exist")
 )
@@ -43,8 +41,7 @@ func saveCertificate(caType string, keyType string, commonName string, cert []by
 		return fmt.Errorf("Invalid key type '%s'", keyType)
 	}
 
-	// TODO - log saveCertificate
-	//certsLog.Infof("Saving certificate for cn = '%s'", commonName)
+	certsLog.Infof("Saving certificate for cn = '%s'", commonName)
 
 	certModel := &models.Certificate{
 		CommonName:     commonName,
@@ -58,6 +55,22 @@ func saveCertificate(caType string, keyType string, commonName string, cert []by
 	result := dbSession.Create(&certModel)
 
 	return result.Error
+}
+
+// saveToPEMFile 将 PEM 格式数据保存到文件
+func saveToPEMFile(filename string, pemData []byte) error {
+	file, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	_, err = file.Write(pemData)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // GetECCCertificate - Get an ECC certificate
@@ -77,8 +90,7 @@ func GetCertificate(caType string, keyType string, commonName string) ([]byte, [
 		return nil, nil, fmt.Errorf("Invalid key type '%s'", keyType)
 	}
 
-	// TODO - log getCertificate
-	//certsLog.Infof("Getting certificate ca type = %s, cn = '%s'", caType, commonName)
+	certsLog.Infof("Getting certificate ca type = %s, cn = '%s'", caType, commonName)
 
 	certModel := models.Certificate{}
 	dbSession := db.Session()
@@ -120,8 +132,7 @@ func RemoveCertificate(caType string, keyType string, commonName string) error {
 // Returns two strings `cert` and `key` (PEM Encoded).
 func GenerateECCCertificate(caType string, commonName string, isCA bool, isClient bool) ([]byte, []byte) {
 
-	// TODO - log generateECCCertificate
-	//certsLog.Infof("Generating TLS certificate (ECC) for '%s' ...", commonName)
+	certsLog.Infof("Generating TLS certificate (ECC) for '%s' ...", commonName)
 
 	var privateKey interface{}
 	var err error
@@ -131,8 +142,7 @@ func GenerateECCCertificate(caType string, commonName string, isCA bool, isClien
 	curve := curves[randomInt(len(curves))]
 	privateKey, err = ecdsa.GenerateKey(curve, rand.Reader)
 	if err != nil {
-		// TODO - log generateECCCertificate
-		//certsLog.Fatalf("Failed to generate private key: %s", err)
+		certsLog.Errorf("Failed to generate private key: %v", err)
 	}
 	subject := pkix.Name{
 		CommonName: commonName,
@@ -143,17 +153,15 @@ func GenerateECCCertificate(caType string, commonName string, isCA bool, isClien
 // GenerateRSACertificate - Generates an RSA Certificate
 func GenerateRSACertificate(caType string, commonName string, isCA bool, isClient bool) ([]byte, []byte) {
 
-	// TODO - log generateRSACertificate
-	//certsLog.Debugf("Generating TLS certificate (RSA) for '%s' ...", commonName)
+	certsLog.Debugf("Generating TLS certificate (RSA) for '%s' ...", commonName)
 
 	var privateKey interface{}
 	var err error
 
 	// Generate private key
-	privateKey, err = rsa.GenerateKey(rand.Reader, rsaKeySize())
+	privateKey, err = rsa.GenerateKey(rand.Reader, RsaKeySize())
 	if err != nil {
-		// TODO - log generateRSACertificate
-		//certsLog.Fatalf("Failed to generate private key %s", err)
+		certsLog.Errorf("Failed to generate private key %v", err)
 	}
 	subject := pkix.Name{
 		CommonName: commonName,
@@ -168,37 +176,31 @@ func generateCertificate(caType string, subject pkix.Name, isCA bool, isClient b
 	days := randomInt(365) * -1 // Within -1 year
 	notBefore = notBefore.AddDate(0, 0, days)
 	notAfter := notBefore.Add(randomValidFor())
-	// TODO - log Valid
-	//certsLog.Debugf("Valid from %v to %v", notBefore, notAfter)
+	certsLog.Debugf("Valid from %v to %v", notBefore, notAfter)
 
 	// Serial number
 	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
 	serialNumber, _ := rand.Int(rand.Reader, serialNumberLimit)
-	// TODO - log Serial Number
-	//certsLog.Debugf("Serial Number: %d", serialNumber)
+	certsLog.Debugf("Serial Number: %d", serialNumber)
 
 	var keyUsage x509.KeyUsage = x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature
 	var extKeyUsage []x509.ExtKeyUsage
 
 	if isCA {
-		// TODO - log Authority certificate
-		//certsLog.Debugf("Authority certificate")
+		certsLog.Debug("Authority certificate")
 		keyUsage = x509.KeyUsageCertSign | x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature
 		extKeyUsage = []x509.ExtKeyUsage{
 			x509.ExtKeyUsageServerAuth,
 			x509.ExtKeyUsageClientAuth,
 		}
 	} else if isClient {
-		// TODO - log Client authentication certificate
-		//certsLog.Debugf("Client authentication certificate")
+		certsLog.Debug("Client authentication certificate")
 		extKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}
 	} else {
-		// TODO - log Server authentication certificate
-		//certsLog.Debugf("Server authentication certificate")
+		certsLog.Debug("Server authentication certificate")
 		extKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}
 	}
-	// TODO - log ExtKeyUsage
-	//certsLog.Debugf("ExtKeyUsage = %v", extKeyUsage)
+	certsLog.Debugf("ExtKeyUsage = %v", extKeyUsage)
 
 	// Certificate template
 	template := x509.Certificate{
@@ -214,40 +216,34 @@ func generateCertificate(caType string, subject pkix.Name, isCA bool, isClient b
 	if !isClient {
 		// Host or IP address
 		if ip := net.ParseIP(subject.CommonName); ip != nil {
-			// TODO - log Certificate authenticates IP address
-			//certsLog.Debugf("Certificate authenticates IP address: %v", ip)
+			certsLog.Debugf("Certificate authenticates IP address: %v", ip)
 			template.IPAddresses = append(template.IPAddresses, ip)
 		} else {
-			// TODO - log Certificate authenticates host
-			//certsLog.Debugf("Certificate authenticates host: %v", subject.CommonName)
+			certsLog.Debugf("Certificate authenticates host: %v", subject.CommonName)
 			template.DNSNames = append(template.DNSNames, subject.CommonName)
 		}
 	} else {
-		// TODO - log Client certificate authenticates CN
-		//certsLog.Debugf("Client certificate authenticates CN: %v", subject.CommonName)
+		certsLog.Debugf("Client certificate authenticates CN: %v", subject.CommonName)
 	}
 
 	// Sign certificate or self-sign if CA
 	var certErr error
 	var derBytes []byte
 	if isCA {
-		// TODO - log Certificate is an AUTHORITY
-		//certsLog.Debugf("Certificate is an AUTHORITY")
+		certsLog.Debugf("Certificate is an AUTHORITY")
 		template.IsCA = true
 		template.KeyUsage |= x509.KeyUsageCertSign
 		derBytes, certErr = x509.CreateCertificate(rand.Reader, &template, &template, publicKey(privateKey), privateKey)
 	} else {
 		caCert, caKey, err := GetCertificateAuthority(caType) // Sign the new certificate with our CA
 		if err != nil {
-			// TODO - log Invalid ca type
-			//certsLog.Fatalf("Invalid ca type (%s): %v", caType, err)
+			certsLog.Errorf("Invalid ca type (%s): %v", caType, err)
 		}
 		derBytes, certErr = x509.CreateCertificate(rand.Reader, &template, caCert, publicKey(privateKey), caKey)
 	}
 	if certErr != nil {
 		// We maybe don't want this to be fatal, but it should basically never happen afaik
-		// TODO - log Failed to create certificate
-		//certsLog.Fatalf("Failed to create certificate: %s", certErr)
+		certsLog.Errorf("Failed to create certificate: %v", certErr)
 	}
 
 	// Encode certificate and key
@@ -279,8 +275,7 @@ func pemBlockForKey(priv interface{}) *pem.Block {
 	case *ecdsa.PrivateKey:
 		data, err := x509.MarshalECPrivateKey(key)
 		if err != nil {
-			// TODO - log Unable to marshal ECDSA private key
-			//certsLog.Fatalf("Unable to marshal ECDSA private key: %v", err)
+			certsLog.Errorf("Unable to marshal ECDSA private key: %v", err)
 		}
 		return &pem.Block{Type: "EC PRIVATE KEY", Bytes: data}
 	default:
@@ -306,7 +301,7 @@ func randomValidFor() time.Duration {
 	return validFor
 }
 
-func rsaKeySize() int {
+func RsaKeySize() int {
 	rsaKeySizes := []int{4096, 2048}
 	return rsaKeySizes[randomInt(len(rsaKeySizes))]
 }

@@ -1,6 +1,7 @@
 package certs
 
 import (
+	"github.com/chainreactors/logs"
 	"os"
 	"path/filepath"
 
@@ -12,16 +13,15 @@ const (
 	ACMEDirName = "acme"
 )
 
-//var (
-//	acmeLog = log.NamedLogger("certs", "acme")
-//)
+var (
+	acmeLog = logs.Log
+)
 
 // GetACMEDir - Dir to store ACME certs
 func GetACMEDir() string {
 	acmePath := filepath.Join(getCertDir(), ACMEDirName)
 	if _, err := os.Stat(acmePath); os.IsNotExist(err) {
-		// TODO - log acme path info
-		//acmeLog.Infof("[mkdir] %s", acmePath)
+		acmeLog.Infof("[mkdir] %s", acmePath)
 		os.MkdirAll(acmePath, 0700)
 	}
 	return acmePath

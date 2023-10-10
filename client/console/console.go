@@ -1,12 +1,12 @@
 package console
 
 import (
+	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/desertbit/grumble"
 	"github.com/fatih/color"
-	"log"
 	"path/filepath"
 	"sync"
 )
@@ -89,7 +89,7 @@ func Start(rpc clientrpc.MaliceRPCClient, bindCmds BindCmds, isServer bool) erro
 
 	err := con.App.Run()
 	if err != nil {
-		log.Printf("Run loop returned error: %v", err)
+		logs.Log.Errorf("Run loop returned error: %v", err)
 	}
 	return err
 }

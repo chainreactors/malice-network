@@ -30,8 +30,7 @@ func getCertDir() string {
 	if _, err := os.Stat(certDir); os.IsNotExist(err) {
 		err := os.MkdirAll(certDir, 0700)
 		if err != nil {
-			// TODO - log failed to create cert dir
-			//certsLog.Fatalf("Failed to create cert dir %s", err)
+			certsLog.Errorf("Failed to create cert dir: %v", err)
 		}
 	}
 	return certDir
@@ -42,15 +41,13 @@ func GenerateCertificateAuthority(caType string, commonName string) (*x509.Certi
 	storageDir := getCertDir()
 	certFilePath := filepath.Join(storageDir, fmt.Sprintf("%s-ca-cert.pem", caType))
 	if _, err := os.Stat(certFilePath); os.IsNotExist(err) {
-		// TODO - log Generating certificate authority
-		//certsLog.Infof("Generating certificate authority for '%s'", caType)
+		certsLog.Infof("Generating certificate authority for '%s'", caType)
 		cert, key := GenerateECCCertificate(caType, commonName, true, false)
 		SaveCertificateAuthority(caType, cert, key)
 	}
 	cert, key, err := GetCertificateAuthority(caType)
 	if err != nil {
-		// TODO - log failed to load CA
-		//certsLog.Fatalf("Failed to load CA %s", err)
+		certsLog.Errorf("Failed to load CA %v", err)
 	}
 	return cert, key
 }
@@ -64,21 +61,18 @@ func GetCertificateAuthority(caType string) (*x509.Certificate, *ecdsa.PrivateKe
 
 	certBlock, _ := pem.Decode(certPEM)
 	if certBlock == nil {
-		// TODO - log failed to parse certificate PEM
-		//certsLog.Error("Failed to parse certificate PEM")
+		certsLog.Error("Failed to parse certificate PEM")
 		return nil, nil, err
 	}
 	cert, err := x509.ParseCertificate(certBlock.Bytes)
 	if err != nil {
-		// TODO - log failed to parse certificate
-		//certsLog.Error("Failed to parse certificate: " + err.Error())
+		certsLog.Errorf("Failed to parse certificate: %v", err)
 		return nil, nil, err
 	}
 
 	keyBlock, _ := pem.Decode(keyPEM)
 	if keyBlock == nil {
-		// TODO - log failed to parse certificate PEM
-		//certsLog.Error("Failed to parse certificate PEM")
+		certsLog.Error("Failed to parse certificate PEM")
 		return nil, nil, err
 	}
 	key, err := x509.ParseECPrivateKey(keyBlock.Bytes)
@@ -98,16 +92,14 @@ func GetCertificateAuthorityPEM(caType string) ([]byte, []byte, error) {
 	caKeyPath := filepath.Join(getCertDir(), fmt.Sprintf("%s-ca-key.pem", caType))
 
 	certPEM, err := ioutil.ReadFile(caCertPath)
-	// TODO - log the error of get CertificateAuthorityPEM
 	if err != nil {
-		//certsLog.Error(err)
+		certsLog.Error(err.Error())
 		return nil, nil, err
 	}
 
 	keyPEM, err := ioutil.ReadFile(caKeyPath)
 	if err != nil {
-		// TODO - log the error of get CertificateAuthorityPEM
-		//certsLog.Error(err)
+		certsLog.Error(err.Error())
 		return nil, nil, err
 	}
 	return certPEM, keyPEM, nil
@@ -130,13 +122,11 @@ func SaveCertificateAuthority(caType string, cert []byte, key []byte) {
 
 	err := ioutil.WriteFile(certFilePath, cert, 0600)
 	if err != nil {
-		// TODO - log the fatal of writing certificate
-		//certsLog.Fatalf("Failed write certificate data to: %s", certFilePath)
+		certsLog.Errorf("Failed write certificate data to: %s", certFilePath)
 	}
 
 	err = ioutil.WriteFile(keyFilePath, key, 0600)
 	if err != nil {
-		// TODO - log the fatal of writing certificate
-		//certsLog.Fatalf("Failed write certificate data to: %s", keyFilePath)
+		certsLog.Errorf("Failed write certificate data to: %s", keyFilePath)
 	}
 }

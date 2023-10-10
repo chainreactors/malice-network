@@ -5,8 +5,6 @@ import (
 	"github.com/chainreactors/malice-network/utils/configs"
 	"time"
 
-	"github.com/chainreactors/malice-network/utils/db/models"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
@@ -22,36 +20,7 @@ func newDBClient() *gorm.DB {
 		panic(fmt.Sprintf("Unknown DB Dialect: '%s'", dbConfig.Dialect))
 	}
 
-	err := dbClient.AutoMigrate(
-		&models.Beacon{},
-		&models.BeaconTask{},
-		&models.DNSCanary{},
-		&models.Crackstation{},
-		&models.Benchmark{},
-		&models.CrackTask{},
-		&models.CrackCommand{},
-		&models.CrackFile{},
-		&models.CrackFileChunk{},
-		&models.Certificate{},
-		&models.Host{},
-		&models.IOC{},
-		&models.ExtensionData{},
-		&models.ImplantBuild{},
-		&models.ImplantProfile{},
-		&models.ImplantConfig{},
-		&models.ImplantC2{},
-		&models.EncoderAsset{},
-		&models.KeyExHistory{},
-		&models.KeyValue{},
-		&models.CanaryDomain{},
-		&models.Loot{},
-		&models.Credential{},
-		&models.Operator{},
-		&models.Website{},
-		&models.WebContent{},
-		&models.WGKeys{},
-		&models.WGPeer{},
-	)
+	err := dbClient.AutoMigrate()
 	if err != nil {
 		// TODO -log client error
 		//clientLog.Error(err)
@@ -76,11 +45,13 @@ func newDBClient() *gorm.DB {
 	return dbClient
 }
 
-func sqliteClient(dbConfiug *configs.DatabaseConfig) *gorm.DB {
-	// 连接 SQLite 数据库
-	dbClient, err := gorm.Open(sqlite.Open("sliver.db"), &gorm.Config{
+func sqliteClient(dbConfig *configs.DatabaseConfig) *gorm.DB {
+	dsn, err := dbConfig.DSN()
+	if err != nil {
+		panic(err)
+	}
+	dbClient, err := gorm.Open(Open(dsn), &gorm.Config{
 		PrepareStmt: true,
-		//Logger:      getGormLogger(dbConfig),
 	})
 	if err != nil {
 		panic(err)

@@ -6,27 +6,34 @@ import (
 )
 
 const (
-	// HTTPSCA - Directory containing operator certificates
-	HTTPSCA = "https"
+	// SERVERCA - Directory containing operator certificates
+	SERVERCA = "root"
 )
 
-// HTTPSGenerateRSACertificate - Generate a server certificate signed with a given CA
-func HTTPSGenerateRSACertificate(host string) ([]byte, []byte, error) {
-	// TODO - log generating TLS certificate (RSA)
-	//certsLog.Debugf("Generating TLS certificate (RSA) for '%s' ...", host)
+// InitRSACertificate - Generate a server certificate signed with a given CA
+func InitRSACertificate(host, user string, isCA, isClient bool) error {
+	certsLog.Debugf("Generating TLS certificate (RSA) for '%s' ...", host)
 
 	var privateKey interface{}
 	var err error
 
 	// Generate private key
-	privateKey, err = rsa.GenerateKey(rand.Reader, rsaKeySize())
+	privateKey, err = rsa.GenerateKey(rand.Reader, RsaKeySize())
 	if err != nil {
-		// TODO - log failed to generate private key
-		//certsLog.Fatalf("Failed to generate private key %s", err)
-		return nil, nil, err
+		certsLog.Errorf("Failed to generate private key %v", err)
+		return err
 	}
 	subject := randomSubject(host)
-	cert, key := generateCertificate(HTTPSCA, (*subject), false, false, privateKey)
-	err = saveCertificate(HTTPSCA, RSAKey, host, cert, key)
-	return cert, key, err
+	cert, key := generateCertificate(SERVERCA, (*subject), isCA, isClient, privateKey)
+	err = saveCertificate(SERVERCA, RSAKey, host, cert, key)
+	// 保存到文件
+	if certErr := saveToPEMFile(host+user+".crt", cert); certErr != nil {
+		return certErr
+	}
+
+	if keyErr := saveToPEMFile(host+user+".key", key); keyErr != nil {
+		return keyErr
+	}
+
+	return nil
 }

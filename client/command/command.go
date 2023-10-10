@@ -1,6 +1,7 @@
 package command
 
 import (
+	"github.com/chainreactors/malice-network/client/command/cert"
 	"github.com/chainreactors/malice-network/client/command/version"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/desertbit/grumble"
@@ -20,6 +21,20 @@ func BindCommands(con *console.Console) {
 		},
 		//HelpGroup: consts.GenericHelpGroup,
 	}
-	con.App.AddCommand(verCmd)
 
+	certCmd := &grumble.Command{
+		Name: "cert",
+		Help: "Register cert from server",
+		Flags: func(f *grumble.Flags) {
+			f.String("h", "host", "", "Host to register")
+			f.String("u", "user", "test", "User to register")
+		},
+		Run: func(ctx *grumble.Context) error {
+			cert.CertCmd(ctx, con)
+			return nil
+		},
+	}
+
+	con.App.AddCommand(verCmd)
+	con.App.AddCommand(certCmd)
 }

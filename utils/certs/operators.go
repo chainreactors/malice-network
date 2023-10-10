@@ -4,9 +4,9 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-
-	"github.com/chainreactors/malice-network/utils/db"
-	"github.com/chainreactors/malice-network/utils/db/models"
+	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/server/db"
+	"github.com/chainreactors/malice-network/server/db/models"
 )
 
 const (
@@ -16,6 +16,8 @@ const (
 	clientNamespace = "client" // Operator clients
 	serverNamespace = "server" // Operator servers
 )
+
+var certsLog = logs.Log
 
 // OperatorClientGenerateCertificate - Generate a certificate signed with a given CA
 func OperatorClientGenerateCertificate(operator string) ([]byte, []byte, error) {
@@ -52,7 +54,7 @@ func OperatorClientListCertificates() []*x509.Certificate {
 	dbSession := db.Session()
 	result := dbSession.Where(&models.Certificate{CAType: OperatorCA}).Find(&operatorCerts)
 	if result.Error != nil {
-		certsLog.Error(result.Error)
+		certsLog.Error(result.Error.Error())
 		return []*x509.Certificate{}
 	}
 
