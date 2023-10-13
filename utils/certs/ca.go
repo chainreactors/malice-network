@@ -1,7 +1,7 @@
 package certs
 
 import (
-	"crypto/ecdsa"
+	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
@@ -25,7 +25,7 @@ func SetupCAs() {
 func getCertDir() string {
 	//rootDir := assets.GetRootAppDir()
 	// test
-	rootDir := filepath.Join("test", "certs")
+	rootDir := filepath.Join(".config")
 	certDir := filepath.Join(rootDir, "certs")
 	if _, err := os.Stat(certDir); os.IsNotExist(err) {
 		err := os.MkdirAll(certDir, 0700)
@@ -37,7 +37,7 @@ func getCertDir() string {
 }
 
 // GenerateCertificateAuthority - Creates a new CA cert for a given type
-func GenerateCertificateAuthority(caType string, commonName string) (*x509.Certificate, *ecdsa.PrivateKey) {
+func GenerateCertificateAuthority(caType string, commonName string) (*x509.Certificate, *rsa.PrivateKey) {
 	storageDir := getCertDir()
 	certFilePath := filepath.Join(storageDir, fmt.Sprintf("%s-ca-cert.pem", caType))
 	if _, err := os.Stat(certFilePath); os.IsNotExist(err) {
@@ -53,7 +53,7 @@ func GenerateCertificateAuthority(caType string, commonName string) (*x509.Certi
 }
 
 // GetCertificateAuthority - Get the current CA certificate
-func GetCertificateAuthority(caType string) (*x509.Certificate, *ecdsa.PrivateKey, error) {
+func GetCertificateAuthority(caType string) (*x509.Certificate, *rsa.PrivateKey, error) {
 	certPEM, keyPEM, err := GetCertificateAuthorityPEM(caType)
 	if err != nil {
 		return nil, nil, err
@@ -75,7 +75,7 @@ func GetCertificateAuthority(caType string) (*x509.Certificate, *ecdsa.PrivateKe
 		certsLog.Error("Failed to parse certificate PEM")
 		return nil, nil, err
 	}
-	key, err := x509.ParseECPrivateKey(keyBlock.Bytes)
+	key, err := x509.ParsePKCS1PrivateKey(keyBlock.Bytes)
 	if err != nil {
 		// TODO - log failed to parseECPrivateKey
 		//certsLog.Error(err)
@@ -88,8 +88,8 @@ func GetCertificateAuthority(caType string) (*x509.Certificate, *ecdsa.PrivateKe
 // GetCertificateAuthorityPEM - Get PEM encoded CA cert/key
 func GetCertificateAuthorityPEM(caType string) ([]byte, []byte, error) {
 	caType = filepath.Base(caType)
-	caCertPath := filepath.Join(getCertDir(), fmt.Sprintf("%s-ca-cert.pem", caType))
-	caKeyPath := filepath.Join(getCertDir(), fmt.Sprintf("%s-ca-key.pem", caType))
+	caCertPath := filepath.Join(getCertDir(), "localhost_root.crt")
+	caKeyPath := filepath.Join(getCertDir(), "localhost_root.key")
 
 	certPEM, err := ioutil.ReadFile(caCertPath)
 	if err != nil {

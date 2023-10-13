@@ -3,22 +3,24 @@ package generate
 import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/utils/certs"
+	"os"
 )
 
-// initRootCA - Initialize the root CA
-func initRootCA() {
-	err := certs.InitRSACertificate("localhost", "root", true, false)
+// InitRootCA - Initialize the root CA
+func InitRootCA() {
+	os.Mkdir(".config", 0744)
+	os.Mkdir(".config/certs", 0744)
+	_, _, err := certs.InitRSACertificate("localhost", "root", true, false)
 	if err != nil {
 		logs.Log.Errorf("Failed to generate server certificate: %v", err)
 	}
 }
 
 // InitClientCA - Initialize the client CA
-func InitClientCA(host, user string) error {
-	err := certs.InitRSACertificate(host, user, false, true)
+func InitClientCA(host, user string) ([]byte, []byte, error) {
+	cert, key, err := certs.InitRSACertificate(host, user, false, true)
 	if err != nil {
-		logs.Log.Errorf("Failed to generate client certificate: %v", err)
-		return err
+		return nil, nil, err
 	}
-	return nil
+	return cert, key, err
 }

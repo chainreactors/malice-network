@@ -11,8 +11,8 @@ import (
 
 const (
 	// OperatorCA - Directory containing operator certificates
-	OperatorCA = "operator"
-
+	OperatorCA      = "operator"
+	HTTPSCA         = "host"
 	clientNamespace = "client" // Operator clients
 	serverNamespace = "server" // Operator servers
 )

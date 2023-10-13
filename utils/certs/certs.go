@@ -57,8 +57,8 @@ func saveCertificate(caType string, keyType string, commonName string, cert []by
 	return result.Error
 }
 
-// saveToPEMFile 将 PEM 格式数据保存到文件
-func saveToPEMFile(filename string, pemData []byte) error {
+// SaveToPEMFile 将 PEM 格式数据保存到文件
+func SaveToPEMFile(filename string, pemData []byte) error {
 	file, err := os.Create(filename)
 	if err != nil {
 		return err

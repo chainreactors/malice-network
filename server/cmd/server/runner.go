@@ -2,6 +2,7 @@ package server
 
 import (
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/server/generate"
 	"github.com/chainreactors/malice-network/server/rpc"
 	"github.com/gookit/config/v2"
 	"github.com/jessevdk/go-flags"
@@ -49,6 +50,8 @@ func Execute() {
 		opt.Listeners.Start()
 	}
 
+	// generate certs
+	generate.InitRootCA()
 }
 
 // Start - Starts the server console
