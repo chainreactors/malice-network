@@ -166,7 +166,7 @@ func (rpc *Server) GenericHandler(ctx context.Context, req GenericRequest, resp 
 	if err != nil {
 		return err
 	}
-	resp = data.Message.(GenericResponse)
+	resp = data.GetBody().(GenericResponse)
 	return nil
 }
 
