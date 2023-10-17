@@ -16,8 +16,11 @@ func (r NMessage) Message() proto.Message {
 }
 
 const (
-	MsgKnown    NMessage = 0
-	MsgRegister NMessage = 1 + iota
+	MsgKnown NMessage = 0
+	MsgSpite NMessage = 1 + iota
+	MsgPromise
+	MsgRegister
+	MsgPing
 )
 
 var (

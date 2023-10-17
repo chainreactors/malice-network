@@ -7,7 +7,6 @@ import (
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/proto/services/listenerrpc"
 	"google.golang.org/grpc"
-	"sync"
 )
 
 type Listener interface {
@@ -15,43 +14,57 @@ type Listener interface {
 	Start() (*Job, error)
 }
 
-var Forwarders = forwarders{
-	forwarders: &sync.Map{},
-}
-
-func NewForward(rpcAddr string, listener Listener) *Forward {
+func NewForward(rpcAddr string, listener Listener) (*Forward, error) {
 	conn, err := grpc.Dial(rpcAddr, grpc.WithInsecure())
 	if err != nil {
-		logs.Log.Errorf("Failed to connect: %v", err)
+		return nil, err
 	}
 	logs.Log.Importantf("Forwarder connected to %s", rpcAddr)
 	forward := &Forward{
-		C:        make(chan *Message, 255),
-		Rpc:      listenerrpc.NewImplantRPCClient(conn),
-		Listener: listener,
-		ctx:      context.Background(),
+		implantC:    make(chan *Message, 255),
+		ImplantRpc:  listenerrpc.NewImplantRPCClient(conn),
+		ListenerRpc: listenerrpc.NewListenerRPCClient(conn),
+		Listener:    listener,
+		ctx:         context.Background(),
+	}
+	forward.stream, err = forward.ListenerRpc.SpiteStream(context.Background())
+	if err != nil {
+		return nil, err
 	}
 
 	go func() {
-		defer func() {
-			close(forward.C)
-		}()
+		// read message from implant and handler message to server
 		forward.Handler()
 	}()
-	return forward
+
+	go func() {
+		// recv message from server and send to implant
+		for {
+			msg, err := forward.stream.Recv()
+			if err != nil {
+				return
+			}
+			connect := Connections.Get(msg.SessionId)
+			connect.Sender <- msg.Spite
+		}
+	}()
+	return forward, nil
 }
 
+// Forward is a struct that handles messages from listener and server
 type Forward struct {
 	ctx   context.Context
 	count int
 	Listener
+	stream   listenerrpc.ListenerRPC_SpiteStreamClient
+	implantC chan *Message // data from implant
 
-	C   chan *Message
-	Rpc listenerrpc.ImplantRPCClient
+	ImplantRpc  listenerrpc.ImplantRPCClient
+	ListenerRpc listenerrpc.ListenerRPCClient
 }
 
 func (f *Forward) Add(msg *Message) {
-	f.C <- msg
+	f.implantC <- msg
 	f.count++
 }
 
@@ -59,55 +72,40 @@ func (f *Forward) Count() int {
 	return f.count
 }
 
+// Handler is a loop that handles messages from implant
 func (f *Forward) Handler() {
-	for msg := range f.C {
-		switch msg.Message.(type) {
-		case *commonpb.Spite:
-			f.handlerSpite(msg.Message.(*commonpb.Spite))
-		case *commonpb.Promise:
-			f.handlerPromise(msg.Message.(*commonpb.Promise))
+	for msg := range f.implantC {
+		spites := msg.Message.(*commonpb.Spites)
+		for _, spite := range spites.Spites {
+			switch spite.Body.(type) {
+			case *commonpb.Spite_Register:
+				_, err := f.ImplantRpc.Register(f.ctx, &lispb.RegisterSession{
+					ListenerId:   f.ID(),
+					RegisterData: spite.GetRegister(),
+				})
+				if err != nil {
+					return
+				}
+			default:
+				spite := spite
+				go func() {
+					err := f.stream.Send(&lispb.SpiteSession{
+						ListenerId: f.ID(),
+						SessionId:  msg.SessionID,
+						TaskId:     msg.TaskID,
+						Spite:      spite,
+					})
+					if err != nil {
+						return
+					}
+				}()
+			}
 		}
-	}
-}
-
-func (f *Forward) handlerPromise(promise *commonpb.Promise) {
-	switch promise.GetBody().(type) {
-	case *commonpb.Promise_Register:
-		_, err := f.Rpc.Register(f.ctx, &lispb.RegisterSession{
-			ListenerId:   f.ID(),
-			RegisterData: promise.GetRegister(),
-		})
-		if err != nil {
-			return
-		}
-	case *commonpb.Promise_Ping:
-
 	}
 }
 
 func (f *Forward) handlerSpite(spite *commonpb.Spite) {
 	switch spite.GetBody().(type) {
-	case *commonpb.Spite_ExecRequest:
-	case *commonpb.Spite_ExecResponse:
-
+	//case *commonpb.
 	}
-}
-
-type forwarders struct {
-	forwarders *sync.Map // map[uint32]*Session
-}
-
-func (f *forwarders) Add(forwarder *Forward) {
-	f.forwarders.Store(forwarder.ID(), forwarder)
-}
-
-func (f *forwarders) Get(listenerID string) *Forward {
-	if forwarder, ok := f.forwarders.Load(listenerID); ok {
-		return forwarder.(*Forward)
-	}
-	return nil
-}
-
-func (f *forwarders) Remove(listenerID string) {
-	f.forwarders.Delete(listenerID)
 }

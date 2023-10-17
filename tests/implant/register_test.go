@@ -9,14 +9,15 @@ import (
 
 func TestRegister(t *testing.T) {
 	client := common.NewClient(common.DefaultListenerAddr)
-	promise := &commonpb.Promise{
-		TaskId:    1,
-		SessionId: 1,
-		Body: &commonpb.Promise_Register{
-			Register: &commonpb.Register{},
+	spite := &commonpb.Spite{
+		TaskId: 1,
+	}
+	body := &commonpb.Register{
+		Os: &commonpb.Os{
+			Name: "windows",
 		},
 	}
-
-	resp := client.Request(promise)
+	client.BuildSpite(spite, body)
+	resp := client.RequestSpite(spite)
 	fmt.Println(resp)
 }

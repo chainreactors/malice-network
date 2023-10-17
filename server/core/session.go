@@ -2,7 +2,10 @@ package core
 
 import (
 	"errors"
+	"github.com/chainreactors/malice-network/proto/implant/commonpb"
 	"github.com/chainreactors/malice-network/utils/encoders"
+	"google.golang.org/grpc"
+	"google.golang.org/protobuf/proto"
 	"sync"
 	"time"
 )
@@ -17,19 +20,20 @@ var (
 	//                         example when the command is not supported on the platform
 	ErrUnknownMessageType = errors.New("unknown message type")
 
-	// ErrImplantTimeout - The implant did not respond prior to timeout deadline
-	ErrImplantTimeout = errors.New("implant timeout")
+	// ErrImplantSendTimeout - The implant did not respond prior to timeout deadline
+	ErrImplantSendTimeout = errors.New("implant timeout")
 )
 
-func NewSession(conn *Connection) *Session {
+func NewSession(listenerID string) *Session {
 	return &Session{
 		ID:         encoders.UUID(),
-		Connection: conn,
+		ListenerId: listenerID,
 	}
 }
 
 // Session - Represents a connection to an implant
 type Session struct {
+	ListenerId        string
 	ID                string
 	Name              string
 	Hostname          string
@@ -42,7 +46,6 @@ type Session struct {
 	Arch              string
 	PID               int32
 	Filename          string
-	Connection        *Connection
 	ActiveC2          string
 	ReconnectInterval int64
 	ProxyURL          string
@@ -52,12 +55,98 @@ type Session struct {
 	ConfigID          string
 	PeerID            int64
 	Locale            string
+	TaskCount         uint32
+	TaskMap           *sync.Map
 }
 
 // Request
-func (s *Session) Request(msgType uint32, timeout time.Duration, data []byte) ([]byte, error) {
-	//resp := make(chan *implantpb.Spite)
-	return nil, nil
+func (s *Session) Request(msg proto.Message, stream grpc.ServerStream, timeout time.Duration) (uint32, error) {
+	resp := make(chan *commonpb.Spite)
+	taskId := s.GenTaskId()
+	s.StoreTask(taskId, resp)
+
+	if timeout == 0 {
+		timeout = 60 * time.Second
+	}
+	var err error
+	done := make(chan struct{})
+	go func() {
+		err = stream.SendMsg(msg)
+		if err != nil {
+			return
+		}
+		close(done)
+	}()
+	select {
+	case <-done:
+		if err != nil {
+			return taskId, err
+		}
+		return taskId, nil
+	case <-time.After(timeout):
+		return taskId, ErrImplantSendTimeout
+	}
+}
+
+func (s *Session) RequestAndWait(msg proto.Message, stream grpc.ServerStream, timeout time.Duration) (*commonpb.Spite, error) {
+	taskId, err := s.Request(msg, stream, timeout)
+	if err != nil {
+		return nil, err
+	}
+	task, _ := s.GetTask(taskId)
+	defer func() {
+		close(task)
+		s.DeleteTask(taskId)
+	}()
+	resp := <-task
+	// todo @hyc save to database
+	return resp, nil
+}
+
+func (s *Session) RequestWithStream(msg proto.Message, stream grpc.ServerStream, timeout time.Duration) (chan *commonpb.Spite, error) {
+	taskId, err := s.Request(msg, stream, timeout)
+	if err != nil {
+		return nil, err
+	}
+	task, _ := s.GetTask(taskId)
+	ch := make(chan *commonpb.Spite)
+	go func() {
+		defer func() {
+			s.DeleteTask(taskId)
+			close(ch)
+		}()
+
+		for resp := range task {
+			if resp.End {
+				close(task)
+			} else {
+				// todo @hyc save to database
+				ch <- resp
+			}
+		}
+	}()
+	return ch, nil
+}
+
+func (s *Session) GenTaskId() uint32 {
+	s.TaskCount++
+	return s.TaskCount
+}
+
+func (s *Session) StoreTask(taskId uint32, msg chan *commonpb.Spite) {
+	s.TaskMap.Store(taskId, msg)
+}
+
+func (s *Session) GetTask(taskId uint32) (chan *commonpb.Spite, bool) {
+	msg, ok := s.TaskMap.Load(taskId)
+	if !ok {
+		return nil, false
+	}
+	return msg.(chan *commonpb.Spite), true
+}
+
+func (s *Session) DeleteTask(taskId uint32) {
+	s.TaskMap.Delete(taskId)
 }
 
 // sessions - Manages the slivers, provides atomic access

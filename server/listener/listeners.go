@@ -2,7 +2,6 @@ package listener
 
 import (
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/server/configs"
 	"github.com/chainreactors/malice-network/server/core"
 )
 
@@ -18,6 +17,5 @@ func (lns Listeners) Start() {
 			continue
 		}
 		core.Jobs.Add(job)
-		core.Forwarders.Add(core.NewForward(configs.GetServerConfig().String(), l))
 	}
 }
