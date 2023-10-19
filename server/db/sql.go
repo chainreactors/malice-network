@@ -2,7 +2,7 @@ package db
 
 import (
 	"fmt"
-	"github.com/chainreactors/malice-network/utils/configs"
+	"github.com/chainreactors/malice-network/server/configs"
 	"time"
 
 	"gorm.io/gorm"

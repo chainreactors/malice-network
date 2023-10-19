@@ -1,12 +1,13 @@
 package console
 
 import (
+	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/desertbit/grumble"
 	"github.com/fatih/color"
+	"google.golang.org/grpc"
 	"path/filepath"
 	"sync"
 )
@@ -23,33 +24,29 @@ type SessionOptions struct {
 type GenerateOptions struct {
 }
 
-// Observer - A function to call when the sessions changes
-type Observer func(*clientpb.Malefic, *clientpb.Malignant)
-
-//type BeaconTaskCallback func(*clientpb.BeaconTask)
-
-type ActiveTarget struct {
-	session    *clientpb.Malefic
-	beacon     *clientpb.Malignant
-	observers  map[int]Observer
-	observerID int
+type Console struct {
+	App                      *grumble.App
+	Rpc                      clientrpc.MaliceRPCClient
+	ActiveTarget             *ActiveTarget
+	BeaconTaskCallbacksMutex *sync.Mutex
+	Settings                 *assets.Settings
 }
 
-type Console struct {
-	App          *grumble.App
-	Rpc          clientrpc.MaliceRPCClient
-	ActiveTarget *ActiveTarget
-	//BeaconTaskCallbacks      map[string]BeaconTaskCallback
-	BeaconTaskCallbacksMutex *sync.Mutex
-	IsServer                 bool
-	Settings                 *assets.Settings
+func (c *Console) Login(config *assets.ClientConfig) {
+	conn, err := grpc.Dial(fmt.Sprintf("%s:%d", config.LHost, config.LPort), grpc.WithInsecure())
+
+	if err != nil {
+		logs.Log.Errorf("Failed to connect: %v", err)
+	}
+	logs.Log.Importantf("Connected to server grpc %s:%d", config.LHost, config.LPort)
+	c.Rpc = clientrpc.NewMaliceRPCClient(conn)
 }
 
 // BindCmds - Bind extra commands to the app object
 type BindCmds func(console *Console)
 
 // Start - Console entrypoint
-func Start(rpc clientrpc.MaliceRPCClient, bindCmds BindCmds, isServer bool) error {
+func Start(bindCmds BindCmds) error {
 	//assets.Setup(false, false)
 	settings, _ := assets.LoadSettings()
 	con := &Console{
@@ -63,14 +60,12 @@ func Start(rpc clientrpc.MaliceRPCClient, bindCmds BindCmds, isServer bool) erro
 			HelpSubCommands:       true,
 			//VimMode:               settings.VimMode,
 		}),
-		Rpc: rpc,
 		ActiveTarget: &ActiveTarget{
 			observers:  map[int]Observer{},
 			observerID: 0,
 		},
 		//BeaconTaskCallbacks:      map[string]BeaconTaskCallback{},
 		BeaconTaskCallbacksMutex: &sync.Mutex{},
-		IsServer:                 isServer,
 		Settings:                 settings,
 	}
 	con.App.SetPrintASCIILogo(func(_ *grumble.App) {

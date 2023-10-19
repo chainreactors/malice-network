@@ -1,9 +1,9 @@
 package common
 
 import (
+	"github.com/chainreactors/malice-network/helper/constant"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/proto/services/listenerrpc"
-	"github.com/chainreactors/malice-network/utils/constant"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
 )

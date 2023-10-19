@@ -4,9 +4,9 @@ import (
 	"encoding/binary"
 	"fmt"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/packet"
 	"github.com/chainreactors/malice-network/server/configs"
 	"github.com/chainreactors/malice-network/server/core"
-	"github.com/chainreactors/malice-network/utils/packet"
 	"google.golang.org/protobuf/proto"
 	"net"
 )

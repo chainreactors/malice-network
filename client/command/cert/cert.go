@@ -3,8 +3,8 @@ package cert
 import (
 	"context"
 	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/helper/certs"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/utils/certs"
 	"github.com/desertbit/grumble"
 )
 

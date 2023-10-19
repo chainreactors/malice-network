@@ -9,12 +9,12 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"github.com/chainreactors/malice-network/utils/cryptography/minisign"
+	"github.com/chainreactors/malice-network/helper/cryptography/minisign"
 	"io"
 	"sync"
 
 	"filippo.io/age"
-	"github.com/chainreactors/malice-network/utils/encoders"
+	"github.com/chainreactors/malice-network/helper/encoders"
 	"golang.org/x/crypto/chacha20poly1305"
 )
 

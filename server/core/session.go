@@ -2,8 +2,9 @@ package core
 
 import (
 	"errors"
+	"github.com/chainreactors/malice-network/helper/encoders"
+	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/commonpb"
-	"github.com/chainreactors/malice-network/utils/encoders"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
 	"sync"
@@ -33,30 +34,37 @@ func NewSession(listenerID string) *Session {
 
 // Session - Represents a connection to an implant
 type Session struct {
-	ListenerId        string
-	ID                string
-	Name              string
-	Hostname          string
-	Username          string
-	UUID              string
-	UID               string
-	GID               string
-	OS                string
-	Version           string
-	Arch              string
-	PID               int32
-	Filename          string
-	ActiveC2          string
-	ReconnectInterval int64
-	ProxyURL          string
-	PollTimeout       int64
-	Burned            bool
-	Extensions        []string
-	ConfigID          string
-	PeerID            int64
-	Locale            string
-	TaskCount         uint32
-	TaskMap           *sync.Map
+	ListenerId  string
+	ID          string
+	Name        string
+	RemoteAddr  string
+	Os          *commonpb.Os
+	Process     *commonpb.Process
+	Timer       *commonpb.Timer
+	Filename    string
+	ActiveC2    string
+	ProxyURL    string
+	PollTimeout int64
+	Extensions  []string
+	ConfigID    string
+	PeerID      int64
+	Locale      string
+	TaskCount   uint32
+	TaskMap     *sync.Map
+}
+
+func (s *Session) ToProtobuf() *clientpb.Session {
+	return &clientpb.Session{
+		SessionId: s.ID,
+		Name:      s.Name,
+		Os:        s.Os,
+		Process:   s.Process,
+		Timer:     s.Timer,
+	}
+}
+
+func (s *Session) UpdateLastCheckin() {
+	s.Timer.LastCheckin = uint64(time.Now().Unix())
 }
 
 // Request

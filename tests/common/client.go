@@ -1,9 +1,9 @@
 package common
 
 import (
+	"github.com/chainreactors/malice-network/helper/packet"
 	"github.com/chainreactors/malice-network/proto/implant/commonpb"
 	"github.com/chainreactors/malice-network/proto/implant/pluginpb"
-	"github.com/chainreactors/malice-network/utils/packet"
 	"google.golang.org/protobuf/proto"
 	"net"
 )

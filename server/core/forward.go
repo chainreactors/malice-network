@@ -7,7 +7,16 @@ import (
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/proto/services/listenerrpc"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/proto"
 )
+
+type Message struct {
+	proto.Message
+	End       bool
+	SessionID string
+	TaskID    uint32
+	MessageID string
+}
 
 type Listener interface {
 	ID() string

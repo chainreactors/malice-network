@@ -7,10 +7,18 @@ import (
 )
 
 var (
-	settingsFileName = "malice.config"
+	settingsFileName   = "malice.config"
+	DefaultSettings, _ = LoadSettings()
 )
 
 type Settings struct {
+	TableStyle        string `json:"tables"`
+	AutoAdult         bool   `json:"autoadult"`
+	BeaconAutoResults bool   `json:"beacon_autoresults"`
+	SmallTermWidth    int    `json:"small_term_width"`
+	AlwaysOverflow    bool   `json:"always_overflow"`
+	VimMode           bool   `json:"vim_mode"`
+	DefaultTimeout    int
 }
 
 func LoadSettings() (*Settings, error) {

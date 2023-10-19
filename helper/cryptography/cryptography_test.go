@@ -8,8 +8,8 @@ import (
 	"sync"
 	"testing"
 
-	implantCrypto "github.com/chainreactors/malice-network/utils/cryptography/implant"
-	"github.com/chainreactors/malice-network/utils/cryptography/minisign"
+	implantCrypto "github.com/chainreactors/malice-network/helper/cryptography/implant"
+	"github.com/chainreactors/malice-network/helper/cryptography/minisign"
 )
 
 var (

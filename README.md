@@ -1,4 +1,10 @@
 
+## Feature
+
+* listener与server完全解耦
+* rust编写的模块化热插拔的implant
+
+
 ## Clone
 
 `git clone --recurse-submodules https://github.com/chainreactors/malice-network`

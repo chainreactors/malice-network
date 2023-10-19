@@ -6,7 +6,7 @@ import (
 	insecureRand "math/rand"
 	"strings"
 
-	"github.com/chainreactors/malice-network/utils/codenames"
+	"github.com/chainreactors/malice-network/helper/codenames"
 )
 
 var (

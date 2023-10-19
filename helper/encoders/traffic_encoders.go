@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/utils/encoders/traffic"
+	"github.com/chainreactors/malice-network/helper/encoders/traffic"
 	"io/fs"
 	insecureRand "math/rand"
 	"os"

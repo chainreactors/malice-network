@@ -2,7 +2,7 @@ package generate
 
 import (
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/utils/certs"
+	"github.com/chainreactors/malice-network/helper/certs"
 	"os"
 )
 

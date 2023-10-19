@@ -13,7 +13,7 @@ func VersionCmd(ctx *grumble.Context, con *console.Console) {
 }
 
 func printVersion(con *console.Console) {
-	basic, err := con.Rpc.GetBasicInfo(context.Background(), &clientpb.Empty{})
+	basic, err := con.Rpc.GetBasic(context.Background(), &clientpb.Empty{})
 	if err != nil {
 		fmt.Println("Error getting version info:", err)
 		return
