@@ -8,7 +8,7 @@ import (
 )
 
 func TestRegister(t *testing.T) {
-	client := common.NewClient(common.DefaultListenerAddr)
+	client := common.NewClient(common.DefaultListenerAddr, "1234")
 	spite := &commonpb.Spite{
 		TaskId: 1,
 	}
@@ -27,6 +27,7 @@ func TestRegister(t *testing.T) {
 		},
 	}
 	client.BuildSpite(spite, body)
-	resp := client.RequestSpite(spite)
-	fmt.Println(resp)
+	client.WriteSpite(spite)
+	resp, err := client.Read()
+	fmt.Println(resp, err)
 }

@@ -4,43 +4,15 @@ import (
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
+	"github.com/chainreactors/malice-network/helper"
+	"github.com/chainreactors/malice-network/helper/constant"
+	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/desertbit/grumble"
 	"github.com/fatih/color"
 	"google.golang.org/grpc"
 	"path/filepath"
-	"sync"
 )
-
-type GRPCOptions struct {
-}
-
-type MTLSOptions struct {
-}
-
-type SessionOptions struct {
-}
-
-type GenerateOptions struct {
-}
-
-type Console struct {
-	App                      *grumble.App
-	Rpc                      clientrpc.MaliceRPCClient
-	ActiveTarget             *ActiveTarget
-	BeaconTaskCallbacksMutex *sync.Mutex
-	Settings                 *assets.Settings
-}
-
-func (c *Console) Login(config *assets.ClientConfig) {
-	conn, err := grpc.Dial(fmt.Sprintf("%s:%d", config.LHost, config.LPort), grpc.WithInsecure())
-
-	if err != nil {
-		logs.Log.Errorf("Failed to connect: %v", err)
-	}
-	logs.Log.Importantf("Connected to server grpc %s:%d", config.LHost, config.LPort)
-	c.Rpc = clientrpc.NewMaliceRPCClient(conn)
-}
 
 // BindCmds - Bind extra commands to the app object
 type BindCmds func(console *Console)
@@ -51,7 +23,7 @@ func Start(bindCmds BindCmds) error {
 	settings, _ := assets.LoadSettings()
 	con := &Console{
 		App: grumble.New(&grumble.Config{
-			Name:                  "IoM",
+			Name:                  constant.ClientPrompt,
 			Description:           "Internet of Malice",
 			HistoryFile:           filepath.Join(assets.GetRootAppDir(), "history"),
 			PromptColor:           color.New(),
@@ -65,19 +37,19 @@ func Start(bindCmds BindCmds) error {
 			observerID: 0,
 		},
 		//BeaconTaskCallbacks:      map[string]BeaconTaskCallback{},
-		BeaconTaskCallbacksMutex: &sync.Mutex{},
-		Settings:                 settings,
+		//BeaconTaskCallbacksMutex: &sync.Mutex{},
+		Settings: settings,
 	}
 	con.App.SetPrintASCIILogo(func(_ *grumble.App) {
 		//con.PrintLogo()
 	})
-	//con.App.SetPrompt(con.GetPrompt())
+	con.UpdatePrompt()
 	bindCmds(con)
 	//extraCmds(con)
 
-	//con.ActiveTarget.AddObserver(func(_ *clientpb.Session, _ *clientpb.Beacon) {
-	//	con.App.SetPrompt(con.GetPrompt())
-	//})
+	con.ActiveTarget.AddObserver(func(_ *clientpb.Session) {
+		con.UpdatePrompt()
+	})
 
 	//go con.EventLoop()
 	//go core.TunnelLoop(rpc)
@@ -87,4 +59,29 @@ func Start(bindCmds BindCmds) error {
 		logs.Log.Errorf("Run loop returned error: %v", err)
 	}
 	return err
+}
+
+type Console struct {
+	App          *grumble.App
+	Rpc          clientrpc.MaliceRPCClient
+	ActiveTarget *ActiveTarget
+	Settings     *assets.Settings
+}
+
+func (c *Console) Login(config *assets.ClientConfig) {
+	conn, err := grpc.Dial(fmt.Sprintf("%s:%d", config.LHost, config.LPort), grpc.WithInsecure())
+
+	if err != nil {
+		logs.Log.Errorf("Failed to connect: %v", err)
+	}
+	logs.Log.Importantf("Connected to server grpc %s:%d", config.LHost, config.LPort)
+	c.Rpc = clientrpc.NewMaliceRPCClient(conn)
+}
+
+func (c *Console) UpdatePrompt() {
+	if c.ActiveTarget.session != nil {
+		c.App.SetPrompt(fmt.Sprintf("%s [%s] > ", constant.ClientPrompt, helper.ShortSessionID(c.ActiveTarget.session.SessionId)))
+	} else {
+		c.App.SetPrompt(constant.ClientPrompt + " > ")
+	}
 }

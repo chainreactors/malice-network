@@ -1,6 +1,7 @@
 package core
 
 import (
+	"github.com/chainreactors/malice-network/helper/encoders/hash"
 	"google.golang.org/protobuf/proto"
 	"sync"
 	"time"
@@ -12,20 +13,24 @@ var (
 	}
 )
 
-func NewConnection(sessionId string) *Connection {
+func NewConnection(rawid string) *Connection {
 	conn := &Connection{
-		SessionID:   sessionId,
+		RawID:       rawid,
+		SessionID:   hash.Md5Hash([]byte(rawid)),
 		LastMessage: time.Now(),
 		Sender:      make(chan proto.Message, 255),
+		Alive:       true,
 	}
 	Connections.Add(conn)
 	return conn
 }
 
 type Connection struct {
+	RawID       string
 	SessionID   string
 	LastMessage time.Time
 	Sender      chan proto.Message // spite/promise
+	Alive       bool
 }
 
 type connections struct {
@@ -40,12 +45,20 @@ func (c *connections) All() []*Connection {
 	})
 	return all
 }
+
 func (c *connections) Get(sessionID string) *Connection {
 	if val, ok := c.connections.Load(sessionID); ok {
 		return val.(*Connection)
 	}
 	return nil
 }
+
+//func (c *connections) GetFromRawID(rawID string) *Connection {
+//	if val, ok := c.connections.Load(hash.Md5Hash([]byte(rawID))); ok {
+//		return val.(*Connection)
+//	}
+//	return nil
+//}
 
 // Add - Add a sliver to the hive (atomically)
 func (c *connections) Add(connect *Connection) *Connection {
@@ -55,4 +68,9 @@ func (c *connections) Add(connect *Connection) *Connection {
 	//	Session:   session,
 	//})
 	return connect
+}
+
+func (c *connections) Remove(sessionID string) {
+	conn := c.Get(sessionID)
+	conn.Alive = false
 }

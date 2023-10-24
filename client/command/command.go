@@ -3,6 +3,7 @@ package command
 import (
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/cert"
+	"github.com/chainreactors/malice-network/client/command/exec"
 	"github.com/chainreactors/malice-network/client/command/login"
 	"github.com/chainreactors/malice-network/client/command/sessions"
 	"github.com/chainreactors/malice-network/client/command/use"
@@ -66,10 +67,6 @@ func BindCommands(con *console.Console) {
 
 			f.Int("t", "timeout", assets.DefaultSettings.DefaultTimeout, "command timeout in seconds")
 		},
-		Args: func(a *grumble.Args) {
-			a.String("command", "command to execute")
-			a.StringList("arguments", "arguments to the command")
-		},
 		Run: func(ctx *grumble.Context) error {
 			sessions.SessionsCmd(ctx, con)
 			return nil
@@ -107,6 +104,14 @@ func BindCommands(con *console.Console) {
 
 			f.Int("t", "timeout", assets.DefaultSettings.DefaultTimeout, "command timeout in seconds")
 
+		},
+		Args: func(a *grumble.Args) {
+			a.String("command", "command to execute")
+			a.StringList("arguments", "arguments to the command")
+		},
+		Run: func(ctx *grumble.Context) error {
+			exec.ExecuteCmd(ctx, con)
+			return nil
 		},
 	}
 	con.App.AddCommand(verCmd)

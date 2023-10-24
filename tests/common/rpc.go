@@ -1,7 +1,7 @@
 package common
 
 import (
-	"github.com/chainreactors/malice-network/helper/constant"
+	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/proto/services/listenerrpc"
 	"google.golang.org/grpc"
@@ -9,8 +9,8 @@ import (
 )
 
 var (
-	DefaultGRPCAddr     = "127.0.0.1:51004"
-	DefaultListenerAddr = "127.0.0.1:51001"
+	DefaultGRPCAddr     = "127.0.0.1:5004"
+	DefaultListenerAddr = "127.0.0.1:5001"
 )
 
 func NewRPC(addr string) *MaliceRPC {
@@ -18,23 +18,22 @@ func NewRPC(addr string) *MaliceRPC {
 	if err != nil {
 		panic(err)
 	}
-	defer conn.Close()
-	client := clientrpc.NewMaliceRPCClient(conn)
-	implant := listenerrpc.NewImplantRPCClient(conn)
 	return &MaliceRPC{
-		conn:    conn,
-		Client:  client,
-		Implant: implant,
+		conn:     conn,
+		Client:   clientrpc.NewMaliceRPCClient(conn),
+		Implant:  listenerrpc.NewImplantRPCClient(conn),
+		Listener: listenerrpc.NewListenerRPCClient(conn),
 	}
 }
 
 type MaliceRPC struct {
-	conn    *grpc.ClientConn
-	Client  clientrpc.MaliceRPCClient
-	Implant listenerrpc.ImplantRPCClient
+	conn     *grpc.ClientConn
+	Client   clientrpc.MaliceRPCClient
+	Implant  listenerrpc.ImplantRPCClient
+	Listener listenerrpc.ListenerRPCClient
 }
 
-func (c *MaliceRPC) BuildMessage(m constant.NMessage) proto.Message {
+func (c *MaliceRPC) BuildMessage(m types.NMessage) proto.Message {
 	return m.Message()
 }
 

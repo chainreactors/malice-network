@@ -1,4 +1,4 @@
-package constant
+package types
 
 import (
 	"github.com/chainreactors/malice-network/proto/implant/commonpb"

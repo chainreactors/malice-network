@@ -2,11 +2,10 @@ package core
 
 import (
 	"errors"
-	"github.com/chainreactors/malice-network/helper/encoders"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/commonpb"
+	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"google.golang.org/grpc"
-	"google.golang.org/protobuf/proto"
 	"sync"
 	"time"
 )
@@ -25,10 +24,15 @@ var (
 	ErrImplantSendTimeout = errors.New("implant timeout")
 )
 
-func NewSession(listenerID string) *Session {
+func NewSession(req *lispb.RegisterSession) *Session {
 	return &Session{
-		ID:         encoders.UUID(),
-		ListenerId: listenerID,
+		ID:         req.SessionId,
+		ListenerId: req.ListenerId,
+		RemoteAddr: req.RemoteAddr,
+		Os:         req.RegisterData.Os,
+		Process:    req.RegisterData.Process,
+		Timer:      req.RegisterData.Timer,
+		TaskMap:    &sync.Map{},
 	}
 }
 
@@ -68,7 +72,7 @@ func (s *Session) UpdateLastCheckin() {
 }
 
 // Request
-func (s *Session) Request(msg proto.Message, stream grpc.ServerStream, timeout time.Duration) (uint32, error) {
+func (s *Session) Request(msg *lispb.SpiteSession, stream grpc.ServerStream, timeout time.Duration) (uint32, error) {
 	resp := make(chan *commonpb.Spite)
 	taskId := s.GenTaskId()
 	s.StoreTask(taskId, resp)
@@ -96,22 +100,22 @@ func (s *Session) Request(msg proto.Message, stream grpc.ServerStream, timeout t
 	}
 }
 
-func (s *Session) RequestAndWait(msg proto.Message, stream grpc.ServerStream, timeout time.Duration) (*commonpb.Spite, error) {
+func (s *Session) RequestAndWait(msg *lispb.SpiteSession, stream grpc.ServerStream, timeout time.Duration) (*commonpb.Spite, error) {
 	taskId, err := s.Request(msg, stream, timeout)
 	if err != nil {
 		return nil, err
 	}
-	task, _ := s.GetTask(taskId)
+	ch, _ := s.GetTask(taskId)
 	defer func() {
-		close(task)
+		close(ch)
 		s.DeleteTask(taskId)
 	}()
-	resp := <-task
+	resp := <-ch
 	// todo @hyc save to database
 	return resp, nil
 }
 
-func (s *Session) RequestWithStream(msg proto.Message, stream grpc.ServerStream, timeout time.Duration) (chan *commonpb.Spite, error) {
+func (s *Session) RequestWithStream(msg *lispb.SpiteSession, stream grpc.ServerStream, timeout time.Duration) (chan *commonpb.Spite, error) {
 	taskId, err := s.Request(msg, stream, timeout)
 	if err != nil {
 		return nil, err

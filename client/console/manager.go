@@ -1,8 +1,10 @@
 package console
 
 import (
+	"context"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
+	"google.golang.org/grpc/metadata"
 )
 
 // Observer - A function to call when the sessions changes
@@ -54,30 +56,19 @@ func (s *ActiveTarget) RemoveObserver(observerID int) {
 	delete(s.observers, observerID)
 }
 
-//func (s *ActiveTarget) Request(ctx *grumble.Context) *commonpb.Request {
-//	if s.session == nil && s.beacon == nil {
-//		return nil
-//	}
-//	timeout := int(time.Second) * ctx.Flags.Int("timeout")
-//	req := &commonpb.Request{}
-//	req.Timeout = int64(timeout)
-//	if s.session != nil {
-//		req.Async = false
-//		req.SessionID = s.session.ID
-//	}
-//	if s.beacon != nil {
-//		req.Async = true
-//		req.BeaconID = s.beacon.ID
-//	}
-//	return req
-//}
+func (s *ActiveTarget) Context() context.Context {
+	if s.session != nil {
+		return metadata.NewOutgoingContext(context.Background(), metadata.Pairs(
+			"session_id", s.session.SessionId),
+		)
+	} else {
+		return nil
+	}
+}
 
 // Set - Change the active session
 func (s *ActiveTarget) Set(session *clientpb.Session) {
-	if session != nil {
-		panic("cannot set both an active beacon and an active session")
-	}
-	s.session = nil
+	s.session = session
 	for _, observer := range s.observers {
 		observer(s.session)
 	}

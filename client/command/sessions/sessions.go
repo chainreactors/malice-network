@@ -5,6 +5,7 @@ import (
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/utils"
+	"github.com/chainreactors/malice-network/helper"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/desertbit/grumble"
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -76,7 +77,7 @@ func PrintSessions(sessions map[string]*clientpb.Session, con *console.Console) 
 		var rowEntries []string
 		if con.Settings.SmallTermWidth < width {
 			rowEntries = []string{
-				pterm.Sprint(ShortSessionID(session.SessionId)),
+				pterm.Sprint(helper.ShortSessionID(session.SessionId)),
 				pterm.Sprint(session.Name),
 				pterm.Sprint(session.ListenerId),
 				pterm.Sprint(session.RemoteAddr),
@@ -88,7 +89,7 @@ func PrintSessions(sessions map[string]*clientpb.Session, con *console.Console) 
 			}
 		} else {
 			rowEntries = []string{
-				pterm.Sprint(ShortSessionID(session.SessionId)),
+				pterm.Sprint(helper.ShortSessionID(session.SessionId)),
 				pterm.Sprint(session.ListenerId),
 				pterm.Sprint(session.RemoteAddr),
 				pterm.Sprint(session.Os.Hostname),
@@ -125,8 +126,4 @@ func PrintSessions(sessions map[string]*clientpb.Session, con *console.Console) 
 	}
 
 	pterm.Println("%s\n", tw.Render())
-}
-
-func ShortSessionID(id string) string {
-	return strings.Split(id, "-")[0]
 }

@@ -4,7 +4,9 @@ import (
 	"encoding/binary"
 	"fmt"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/encoders/hash"
 	"github.com/chainreactors/malice-network/helper/packet"
+	"github.com/chainreactors/malice-network/proto/implant/commonpb"
 	"github.com/chainreactors/malice-network/server/configs"
 	"github.com/chainreactors/malice-network/server/core"
 	"google.golang.org/protobuf/proto"
@@ -67,7 +69,6 @@ func (l *TCPListener) handler() (net.Listener, error) {
 	logs.Log.Infof("Starting TCP listener on %s:%d", l.Host, l.Port)
 	ln, err := net.Listen("tcp", fmt.Sprintf("%s:%d", l.Host, l.Port))
 	if err != nil {
-		logs.Log.Error(err.Error())
 		return nil, err
 	}
 	go func() {
@@ -93,34 +94,38 @@ func (l *TCPListener) handleRead(conn net.Conn) {
 	var err error
 	var connect *core.Connection
 	for {
-		var sessionId string
+		var rawID string
 		var msg proto.Message
 		if connect == nil {
-			sessionId, length, err := packet.ReadHeader(conn)
+			var length int
+			rawID, length, err = packet.ReadHeader(conn)
 			if err != nil {
 				logs.Log.Errorf("Error reading header: %v", err)
 				return
 			}
-			connect = core.Connections.Get(sessionId)
+			sid := hash.Md5Hash([]byte(rawID))
+			connect = core.Connections.Get(sid)
 			if connect == nil {
-				connect = core.NewConnection(sessionId)
+				connect = core.NewConnection(rawID)
 			}
 			go l.handleWrite(conn, connect)
 			msg, err = packet.ReadMessage(conn, length)
 			if err != nil {
+				core.Connections.Remove(sid)
 				logs.Log.Errorf("Error reading message: %v", err)
 				return
 			}
 		} else {
-			sessionId, msg, err = packet.ReadPacket(conn)
+			rawID, msg, err = packet.ReadPacket(conn)
 			if err != nil {
+				core.Connections.Remove(hash.Md5Hash([]byte(rawID)))
 				logs.Log.Errorf("Error reading packet: %v", err)
 				return
 			}
 		}
 		l.forwarder.Add(&core.Message{
 			Message:   msg,
-			SessionID: sessionId,
+			SessionID: hash.Md5Hash([]byte(rawID)),
 			//RemoteAddr: conn.RemoteAddr().String(),
 		})
 	}
@@ -128,18 +133,26 @@ func (l *TCPListener) handleRead(conn net.Conn) {
 }
 
 func (l *TCPListener) handleWrite(conn net.Conn, connect *core.Connection) {
+	msg := &commonpb.Spites{Spites: []*commonpb.Spite{}}
+
 	for {
 		select {
-		case msg := <-connect.Sender:
-			err := packet.WritePacket(conn, msg, connect.SessionID)
-			if err != nil {
-				logs.Log.Errorf("Error writing packet: %v", err)
-				return
-			}
+		case spite := <-connect.Sender:
+			msg.Spites = append(msg.Spites, spite.(*commonpb.Spite))
 		case <-l.done:
 			return
+		default:
+			if len(msg.Spites) > 0 {
+				err := packet.WritePacket(conn, msg, connect.RawID)
+				if err != nil {
+					logs.Log.Errorf("Error writing packet: %v", err)
+					return
+				}
+				msg.Spites = []*commonpb.Spite{}
+			}
 		}
 	}
+
 }
 
 func handleShellcode(conn net.Conn, data []byte) {

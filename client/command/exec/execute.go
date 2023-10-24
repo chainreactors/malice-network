@@ -1,7 +1,6 @@
 package exec
 
 import (
-	"context"
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/console"
@@ -36,7 +35,7 @@ func ExecuteCmd(ctx *grumble.Context, con *console.Console) {
 
 	ctrl := make(chan bool)
 	//con.SpinUntil(fmt.Sprintf("Executing %s %s ...", cmdPath, strings.Join(args, " ")), ctrl)
-	exec, err = con.Rpc.Execute(context.Background(), &pluginpb.ExecRequest{
+	exec, err = con.Rpc.Execute(con.ActiveTarget.Context(), &pluginpb.ExecRequest{
 		Path:   cmdPath,
 		Args:   args,
 		Output: captureOutput,

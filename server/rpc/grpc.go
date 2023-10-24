@@ -5,19 +5,20 @@ import (
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/constant"
+	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/proto/implant/commonpb"
+	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/proto/services/listenerrpc"
 	"github.com/chainreactors/malice-network/server/core"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 	"net"
 	"runtime"
-	"time"
-
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 var (
@@ -43,6 +44,8 @@ var (
 	//ErrInvalidBeaconTaskCancelState = status.Error(codes.InvalidArgument, fmt.Sprintf("Invalid task state, must be '%s' to cancel", models.PENDING))
 )
 
+var listenersCh = make(map[string]grpc.ServerStream)
+
 // StartClientListener - Start a mutual TLS listener
 func StartClientListener(port uint16) (*grpc.Server, net.Listener, error) {
 	logs.Log.Importantf("Starting gRPC console on 0.0.0.0:%d", port)
@@ -64,6 +67,7 @@ func StartClientListener(port uint16) (*grpc.Server, net.Listener, error) {
 	grpcServer := grpc.NewServer(options...)
 	clientrpc.RegisterMaliceRPCServer(grpcServer, NewServer())
 	listenerrpc.RegisterImplantRPCServer(grpcServer, NewServer())
+	listenerrpc.RegisterListenerRPCServer(grpcServer, NewServer())
 	go func() {
 		panicked := true
 		defer func() {
@@ -86,31 +90,12 @@ type Server struct {
 	clientrpc.UnimplementedMaliceRPCServer
 	listenerrpc.UnimplementedImplantRPCServer
 	listenerrpc.UnimplementedListenerRPCServer
-	listenersCh map[string]grpc.ServerStream
-}
-
-// GenericRequest - Generic request interface to use with generic handlers
-type GenericRequest interface {
-	Reset()
-	String() string
-	ProtoMessage()
-	ProtoReflect() protoreflect.Message
-}
-
-// GenericResponse - Generic response interface to use with generic handlers
-type GenericResponse interface {
-	Reset()
-	String() string
-	ProtoMessage()
-	ProtoReflect() protoreflect.Message
 }
 
 // NewServer - Create new server instance
 func NewServer() *Server {
 	// todo event
-	return &Server{
-		listenersCh: make(map[string]grpc.ServerStream),
-	}
+	return &Server{}
 }
 
 func (rpc *Server) sessionID(ctx context.Context) (string, error) {
@@ -138,7 +123,7 @@ func (rpc *Server) listenerID(ctx context.Context) (string, error) {
 }
 
 // GenericHandler - Pass the request to the Sliver/Session
-func (rpc *Server) GenericHandler(ctx context.Context, req GenericRequest, resp GenericResponse) error {
+func (rpc *Server) GenericHandler(ctx context.Context, req proto.Message) (proto.Message, error) {
 	var err error
 	//if req.Async {
 	//	err = rpc.asyncGenericHandler(req, resp)
@@ -149,25 +134,36 @@ func (rpc *Server) GenericHandler(ctx context.Context, req GenericRequest, resp 
 
 	sid, err := rpc.sessionID(ctx)
 	if err != nil {
-		return err
+		logs.Log.Errorf(err.Error())
+		return nil, err
 	}
 
 	session := core.Sessions.Get(sid)
 	if session == nil {
-		return ErrInvalidSessionID
+		return nil, ErrInvalidSessionID
 	}
 
-	//reqData, err := proto.Marshal(req)
-	//if err != nil {
-	//	return err
-	//}
-
-	data, err := session.RequestAndWait(req, rpc.listenersCh[session.ListenerId], rpc.getTimeout(req))
+	spite := &commonpb.Spite{
+		Timeout: uint64(constant.MinTimeout.Seconds()),
+	}
+	spite, err = types.BuildSpite(spite, req)
 	if err != nil {
-		return err
+		logs.Log.Errorf(err.Error())
+		return nil, err
 	}
-	resp = data.GetBody().(GenericResponse)
-	return nil
+	data, err := session.RequestAndWait(
+		&lispb.SpiteSession{SessionId: sid, Spite: spite},
+		listenersCh[session.ListenerId],
+		constant.MinTimeout)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := types.ParseSpite(data)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
 }
 
 //
@@ -228,14 +224,15 @@ func (rpc *Server) GetBasic(ctx context.Context, _ *clientpb.Empty) (*clientpb.B
 }
 
 // getTimeout - Get the specified timeout from the request or the default
-func (rpc *Server) getTimeout(req GenericRequest) time.Duration {
-	d := req.ProtoReflect().Descriptor().Fields().ByName("time")
-	timeout := req.ProtoReflect().Get(d).Int()
-	if time.Duration(timeout) < time.Second {
-		return constant.MinTimeout
-	}
-	return time.Duration(timeout)
-}
+//func (rpc *Server) getTimeout(req GenericRequest) time.Duration {
+//
+//	d := req.ProtoReflect().Descriptor().Fields().ByName("timeout")
+//	timeout := req.ProtoReflect().Get(d).Int()
+//	if time.Duration(timeout) < time.Second {
+//		return constant.MinTimeout
+//	}
+//	return time.Duration(timeout)
+//}
 
 // // getError - Check an implant's response for Err and convert it to an `error` type
 //func (rpc *Server) getError(resp GenericResponse) error {

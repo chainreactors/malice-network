@@ -58,6 +58,7 @@ func Execute() {
 func StartGrpc(port uint16) {
 	_, _, err := rpc.StartClientListener(port)
 	if err != nil {
+		logs.Log.Error(err.Error())
 		return // If we fail to bind don't setup the Job
 	}
 	//ctxDialer := grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) {

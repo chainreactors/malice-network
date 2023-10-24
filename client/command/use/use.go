@@ -10,16 +10,15 @@ import (
 )
 
 func UseSessionCmd(ctx *grumble.Context, con *console.Console) {
-
 	var session *clientpb.Session
-	var err error
-	idArg := ctx.Args.String("id")
+	core.Sessions.Update(con)
+	idArg := ctx.Args.String("sid")
 	if idArg != "" {
 		session = core.Sessions[idArg]
 	}
 
-	if session != nil {
-		logs.Log.Errorf("session not found", err)
+	if session == nil {
+		logs.Log.Errorf("session not found")
 		return
 	}
 
