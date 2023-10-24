@@ -1,7 +1,6 @@
 package use
 
 import (
-	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
@@ -18,12 +17,12 @@ func UseSessionCmd(ctx *grumble.Context, con *console.Console) {
 	}
 
 	if session == nil {
-		logs.Log.Errorf("session not found")
+		console.Log.Errorf("session not found")
 		return
 	}
 
 	con.ActiveTarget.Set(session)
-	logs.Log.Infof("Active session %s (%s)\n", session.Name, session.SessionId)
+	console.Log.Infof("Active session %s (%s)\n", session.Name, session.SessionId)
 
 }
 

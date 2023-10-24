@@ -11,7 +11,7 @@ func LoginCmd(ctx *grumble.Context, con *console.Console) {
 	// TODO : interactive choice config
 	config := &assets.ClientConfig{
 		LHost: "127.0.0.1",
-		LPort: 51004,
+		LPort: 5004,
 	}
 	con.Login(config)
 	core.Sessions.Update(con)

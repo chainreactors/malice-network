@@ -5,7 +5,7 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/helper"
-	"github.com/chainreactors/malice-network/helper/constant"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/desertbit/grumble"
@@ -13,6 +13,8 @@ import (
 	"google.golang.org/grpc"
 	"path/filepath"
 )
+
+var Log = logs.NewLogger(logs.Warn)
 
 // BindCmds - Bind extra commands to the app object
 type BindCmds func(console *Console)
@@ -23,7 +25,7 @@ func Start(bindCmds BindCmds) error {
 	settings, _ := assets.LoadSettings()
 	con := &Console{
 		App: grumble.New(&grumble.Config{
-			Name:                  constant.ClientPrompt,
+			Name:                  consts.ClientPrompt,
 			Description:           "Internet of Malice",
 			HistoryFile:           filepath.Join(assets.GetRootAppDir(), "history"),
 			PromptColor:           color.New(),
@@ -80,8 +82,8 @@ func (c *Console) Login(config *assets.ClientConfig) {
 
 func (c *Console) UpdatePrompt() {
 	if c.ActiveTarget.session != nil {
-		c.App.SetPrompt(fmt.Sprintf("%s [%s] > ", constant.ClientPrompt, helper.ShortSessionID(c.ActiveTarget.session.SessionId)))
+		c.App.SetPrompt(fmt.Sprintf("%s [%s] > ", consts.ClientPrompt, helper.ShortSessionID(c.ActiveTarget.session.SessionId)))
 	} else {
-		c.App.SetPrompt(constant.ClientPrompt + " > ")
+		c.App.SetPrompt(consts.ClientPrompt + " > ")
 	}
 }

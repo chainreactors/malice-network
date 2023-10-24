@@ -1,16 +1,16 @@
-package listener
+package pipeline
 
 import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/server/core"
 )
 
-type Listeners struct {
-	TCPListeners []*TCPListener `config:"tcp"`
+type Pipelines struct {
+	TCPPipelines []*TCPPipeline `config:"tcp"`
 }
 
-func (lns Listeners) Start() {
-	for _, l := range lns.TCPListeners {
+func (lns Pipelines) Start() {
+	for _, l := range lns.TCPPipelines {
 		job, err := l.Start()
 		if err != nil {
 			logs.Log.Error(err.Error())

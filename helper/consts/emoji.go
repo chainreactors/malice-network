@@ -1,4 +1,4 @@
-package constant
+package consts
 
 const (
 	Rocket      = "🚀"

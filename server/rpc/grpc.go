@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/constant"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/commonpb"
@@ -40,7 +40,7 @@ var (
 	// ErrInvalidName - Invalid name
 	ErrInvalidName      = status.Error(codes.InvalidArgument, "Invalid session name, alphanumerics and _-. only")
 	ErrNotFoundSession  = status.Error(codes.InvalidArgument, "Session ID not found")
-	ErrNotFoundListener = status.Error(codes.InvalidArgument, "Listener not found")
+	ErrNotFoundListener = status.Error(codes.InvalidArgument, "Pipeline not found")
 	//ErrInvalidBeaconTaskCancelState = status.Error(codes.InvalidArgument, fmt.Sprintf("Invalid task state, must be '%s' to cancel", models.PENDING))
 )
 
@@ -60,8 +60,8 @@ func StartClientListener(port uint16) (*grpc.Server, net.Listener, error) {
 	}
 	options := []grpc.ServerOption{
 		//grpc.Creds(creds),
-		grpc.MaxRecvMsgSize(constant.ServerMaxMessageSize),
-		grpc.MaxSendMsgSize(constant.ServerMaxMessageSize),
+		grpc.MaxRecvMsgSize(consts.ServerMaxMessageSize),
+		grpc.MaxSendMsgSize(consts.ServerMaxMessageSize),
 	}
 	options = append(options)
 	grpcServer := grpc.NewServer(options...)
@@ -144,7 +144,7 @@ func (rpc *Server) GenericHandler(ctx context.Context, req proto.Message) (proto
 	}
 
 	spite := &commonpb.Spite{
-		Timeout: uint64(constant.MinTimeout.Seconds()),
+		Timeout: uint64(consts.MinTimeout.Seconds()),
 	}
 	spite, err = types.BuildSpite(spite, req)
 	if err != nil {
@@ -154,7 +154,7 @@ func (rpc *Server) GenericHandler(ctx context.Context, req proto.Message) (proto
 	data, err := session.RequestAndWait(
 		&lispb.SpiteSession{SessionId: sid, Spite: spite},
 		listenersCh[session.ListenerId],
-		constant.MinTimeout)
+		consts.MinTimeout)
 	if err != nil {
 		return nil, err
 	}

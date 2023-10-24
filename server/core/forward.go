@@ -18,12 +18,12 @@ type Message struct {
 	MessageID string
 }
 
-type Listener interface {
+type Pipeline interface {
 	ID() string
 	Start() (*Job, error)
 }
 
-func NewForward(rpcAddr string, listener Listener) (*Forward, error) {
+func NewForward(rpcAddr string, listener Pipeline) (*Forward, error) {
 	conn, err := grpc.Dial(rpcAddr, grpc.WithInsecure())
 	if err != nil {
 		return nil, err
@@ -33,7 +33,7 @@ func NewForward(rpcAddr string, listener Listener) (*Forward, error) {
 		implantC:    make(chan *Message, 255),
 		ImplantRpc:  listenerrpc.NewImplantRPCClient(conn),
 		ListenerRpc: listenerrpc.NewListenerRPCClient(conn),
-		Listener:    listener,
+		Pipeline:    listener,
 		ctx:         context.Background(),
 	}
 
@@ -71,7 +71,7 @@ func NewForward(rpcAddr string, listener Listener) (*Forward, error) {
 type Forward struct {
 	ctx   context.Context
 	count int
-	Listener
+	Pipeline
 	stream   listenerrpc.ListenerRPC_SpiteStreamClient
 	implantC chan *Message // data from implant
 

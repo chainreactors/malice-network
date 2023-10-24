@@ -2,7 +2,7 @@ package server
 
 import (
 	"github.com/chainreactors/malice-network/server/configs"
-	"github.com/chainreactors/malice-network/server/listener"
+	"github.com/chainreactors/malice-network/server/pipeline"
 )
 
 type Options struct {
@@ -11,5 +11,5 @@ type Options struct {
 	Opsec     bool                 `long:"opsec" description:"Path to opsec file" config:"opsec"`
 	CA        string               `long:"ca" description:"Path to CA file" config:"ca"`
 	Server    configs.ServerConfig `config:"server"`
-	Listeners *listener.Listeners  `config:"listeners"`
+	Listeners *pipeline.Pipelines  `config:"listeners"`
 }

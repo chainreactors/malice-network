@@ -1,4 +1,4 @@
-package listener
+package pipeline
 
 import (
 	"encoding/binary"
@@ -13,7 +13,7 @@ import (
 	"net"
 )
 
-type TCPListener struct {
+type TCPPipeline struct {
 	done      chan bool
 	forwarder *core.Forward
 	Name      string `config:"id"`
@@ -23,11 +23,11 @@ type TCPListener struct {
 	Protocol  string `config:"protocol"`
 }
 
-func (l *TCPListener) ID() string {
+func (l *TCPPipeline) ID() string {
 	return fmt.Sprintf("%s_%s_%s_%d", l.Name, l.Protocol, l.Host, l.Port)
 }
 
-func (l *TCPListener) Start() (*core.Job, error) {
+func (l *TCPPipeline) Start() (*core.Job, error) {
 	if !l.Enable {
 		return nil, nil
 	}
@@ -65,7 +65,7 @@ func (l *TCPListener) Start() (*core.Job, error) {
 	return job, nil
 }
 
-func (l *TCPListener) handler() (net.Listener, error) {
+func (l *TCPPipeline) handler() (net.Listener, error) {
 	logs.Log.Infof("Starting TCP listener on %s:%d", l.Host, l.Port)
 	ln, err := net.Listen("tcp", fmt.Sprintf("%s:%d", l.Host, l.Port))
 	if err != nil {
@@ -87,7 +87,7 @@ func (l *TCPListener) handler() (net.Listener, error) {
 	return ln, nil
 }
 
-func (l *TCPListener) handleRead(conn net.Conn) {
+func (l *TCPPipeline) handleRead(conn net.Conn) {
 	defer func() {
 		l.done <- true
 	}()
@@ -132,7 +132,7 @@ func (l *TCPListener) handleRead(conn net.Conn) {
 
 }
 
-func (l *TCPListener) handleWrite(conn net.Conn, connect *core.Connection) {
+func (l *TCPPipeline) handleWrite(conn net.Conn, connect *core.Connection) {
 	msg := &commonpb.Spites{Spites: []*commonpb.Spite{}}
 
 	for {

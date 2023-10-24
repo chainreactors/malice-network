@@ -1,8 +1,6 @@
 package exec
 
 import (
-	"fmt"
-	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/proto/implant/pluginpb"
 	"github.com/desertbit/grumble"
@@ -27,7 +25,7 @@ func ExecuteCmd(ctx *grumble.Context, con *console.Console) {
 	var captureOutput bool = output || saveLoot || saveOutput
 
 	if output {
-		logs.Log.Error("Using --output in beacon mode, if the command blocks the task will never complete\n")
+		console.Log.Error("Using --output in beacon mode, if the command blocks the task will never complete\n")
 	}
 
 	var exec *pluginpb.ExecResponse
@@ -45,9 +43,12 @@ func ExecuteCmd(ctx *grumble.Context, con *console.Console) {
 	ctrl <- true
 	<-ctrl
 	if err != nil {
-		logs.Log.Errorf("%s", err.Error())
+		console.Log.Errorf("%s", err.Error())
 		return
 	}
-
-	fmt.Println(exec)
+	console.Log.Infof("pid: %d, status: %d", exec.Pid, exec.StatusCode)
+	console.Log.Console(string(exec.Stdout))
+	if exec.Stderr != nil {
+		console.Log.Error(string(exec.Stderr))
+	}
 }
