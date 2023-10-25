@@ -14,7 +14,9 @@ import (
 	"github.com/chainreactors/malice-network/server/core"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"net"
@@ -38,9 +40,10 @@ var (
 	ErrDatabaseFailure = status.Error(codes.Internal, "Database operation failed")
 
 	// ErrInvalidName - Invalid name
-	ErrInvalidName      = status.Error(codes.InvalidArgument, "Invalid session name, alphanumerics and _-. only")
-	ErrNotFoundSession  = status.Error(codes.InvalidArgument, "Session ID not found")
-	ErrNotFoundListener = status.Error(codes.InvalidArgument, "Pipeline not found")
+	ErrInvalidName        = status.Error(codes.InvalidArgument, "Invalid session name, alphanumerics and _-. only")
+	ErrNotFoundSession    = status.Error(codes.InvalidArgument, "Session ID not found")
+	ErrNotFoundListener   = status.Error(codes.InvalidArgument, "Pipeline not found")
+	ErrNotFoundClientName = status.Error(codes.InvalidArgument, "Client name not found")
 	//ErrInvalidBeaconTaskCancelState = status.Error(codes.InvalidArgument, fmt.Sprintf("Invalid task state, must be '%s' to cancel", models.PENDING))
 )
 
@@ -98,7 +101,7 @@ func NewServer() *Server {
 	return &Server{}
 }
 
-func (rpc *Server) sessionID(ctx context.Context) (string, error) {
+func (rpc *Server) getSessionID(ctx context.Context) (string, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		return "", ErrNotFoundSession
@@ -110,7 +113,7 @@ func (rpc *Server) sessionID(ctx context.Context) (string, error) {
 	}
 }
 
-func (rpc *Server) listenerID(ctx context.Context) (string, error) {
+func (rpc *Server) getListenerID(ctx context.Context) (string, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		return "", ErrNotFoundListener
@@ -119,6 +122,18 @@ func (rpc *Server) listenerID(ctx context.Context) (string, error) {
 		return sid[0], nil
 	} else {
 		return "", ErrNotFoundListener
+	}
+}
+
+func (rpc *Server) getClientName(ctx context.Context) (string, error) {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return "", ErrNotFoundClientName
+	}
+	if sid := md.Get("client_name"); len(sid) > 0 {
+		return sid[0], nil
+	} else {
+		return "", ErrNotFoundClientName
 	}
 }
 
@@ -132,7 +147,7 @@ func (rpc *Server) GenericHandler(ctx context.Context, req proto.Message) (proto
 
 	// Sync request
 
-	sid, err := rpc.sessionID(ctx)
+	sid, err := rpc.getSessionID(ctx)
 	if err != nil {
 		logs.Log.Errorf(err.Error())
 		return nil, err
@@ -243,9 +258,20 @@ func (rpc *Server) GetBasic(ctx context.Context, _ *clientpb.Empty) (*clientpb.B
 //	return nil
 //}
 
-//func (rpc *Server) handler(ctx context.Context, msg proto.Message) (proto.Message, error) {
-//	switch msg.(type) {
-//	case *pluginpb.ExecRequest:
-//		return rpc.Exec(ctx, msg.(*pluginpb.ExecRequest))
-//	}
-//}
+func (rpc *Server) getClientCommonName(ctx context.Context) string {
+	client, ok := peer.FromContext(ctx)
+	if !ok {
+		return ""
+	}
+	tlsAuth, ok := client.AuthInfo.(credentials.TLSInfo)
+	if !ok {
+		return ""
+	}
+	if len(tlsAuth.State.VerifiedChains) == 0 || len(tlsAuth.State.VerifiedChains[0]) == 0 {
+		return ""
+	}
+	if tlsAuth.State.VerifiedChains[0][0].Subject.CommonName != "" {
+		return tlsAuth.State.VerifiedChains[0][0].Subject.CommonName
+	}
+	return ""
+}

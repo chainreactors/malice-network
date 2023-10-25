@@ -10,7 +10,6 @@ var (
 	// Clients - Manages client active
 	Clients = &clients{
 		active: map[int]*Client{},
-		mutex:  &sync.Mutex{},
 	}
 
 	clientID = 0
@@ -72,6 +71,16 @@ func (cc *clients) Remove(clientID int) {
 		EventType: consts.EventLeft,
 		Client:    client,
 	})
+}
+
+func (cc *clients) ActiveClients() []*Client {
+	var cs []*Client
+	for _, c := range cc.active {
+		if c.Online {
+			cs = append(cs, c)
+		}
+	}
+	return cs
 }
 
 func getClientID() int {

@@ -7,7 +7,6 @@ import (
 	"github.com/chainreactors/malice-network/helper"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/desertbit/grumble"
 	"github.com/fatih/color"
 	"google.golang.org/grpc"
@@ -65,19 +64,26 @@ func Start(bindCmds BindCmds) error {
 
 type Console struct {
 	App          *grumble.App
-	Rpc          clientrpc.MaliceRPCClient
 	ActiveTarget *ActiveTarget
 	Settings     *assets.Settings
+	*ServerStatus
 }
 
-func (c *Console) Login(config *assets.ClientConfig) {
+func (c *Console) Login(config *assets.ClientConfig) error {
 	conn, err := grpc.Dial(fmt.Sprintf("%s:%d", config.LHost, config.LPort), grpc.WithInsecure())
 
 	if err != nil {
 		logs.Log.Errorf("Failed to connect: %v", err)
+		return err
 	}
 	logs.Log.Importantf("Connected to server grpc %s:%d", config.LHost, config.LPort)
-	c.Rpc = clientrpc.NewMaliceRPCClient(conn)
+	c.ServerStatus, err = InitServerStatus(conn)
+	if err != nil {
+		logs.Log.Errorf("init server failed : %v", err)
+		return err
+	}
+	logs.Log.Importantf("%d listeners, %d clients , %d sessions", len(c.Listeners), len(c.Clients), len(c.Sessions))
+	return nil
 }
 
 func (c *Console) UpdatePrompt() {

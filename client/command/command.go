@@ -84,7 +84,7 @@ func BindCommands(con *console.Console) {
 			return nil
 		},
 		Completer: func(prefix string, args []string) []string {
-			return use.SessionIDCompleter(prefix)
+			return use.SessionIDCompleter(con, prefix)
 		},
 	}
 

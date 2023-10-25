@@ -1,6 +1,9 @@
 package core
 
-import "sync"
+import (
+	"github.com/chainreactors/malice-network/proto/client/clientpb"
+	"sync"
+)
 
 var (
 	Jobs  = &jobs{&sync.Map{}}
@@ -52,6 +55,17 @@ type Job struct {
 	Domains      []string
 	JobCtrl      chan bool
 	PersistentID string
+}
+
+func (j *Job) ToProtobuf() *clientpb.Job {
+	return &clientpb.Job{
+		Id:          uint32(j.ID),
+		Name:        j.Name,
+		Description: j.Description,
+		Protocol:    j.Protocol,
+		Port:        uint32(j.Port),
+		Domains:     j.Domains,
+	}
 }
 
 func NextJobID() int {

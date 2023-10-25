@@ -2,7 +2,6 @@ package sessions
 
 import (
 	"github.com/chainreactors/malice-network/client/console"
-	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/utils"
 	"github.com/chainreactors/malice-network/helper"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
@@ -15,9 +14,9 @@ import (
 )
 
 func SessionsCmd(ctx *grumble.Context, con *console.Console) {
-	core.Sessions.Update(con)
-	if 0 < len(core.Sessions) {
-		PrintSessions(core.Sessions, con)
+	con.UpdateSession()
+	if 0 < len(con.Sessions) {
+		PrintSessions(con.Sessions, con)
 	} else {
 		console.Log.Info("No sessions")
 	}

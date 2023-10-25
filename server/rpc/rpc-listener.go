@@ -4,11 +4,16 @@ import (
 	"context"
 	"fmt"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/commonpb"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/proto/services/listenerrpc"
 	"github.com/chainreactors/malice-network/server/core"
 )
+
+func (rpc *Server) GetListeners(ctx context.Context, req *clientpb.Empty) (*clientpb.Listeners, error) {
+	return &clientpb.Listeners{}, nil
+}
 
 func (rpc *Server) RegisterListener(ctx context.Context, req *lispb.RegisterListener) (*commonpb.Empty, error) {
 	fmt.Println(req)
@@ -16,7 +21,7 @@ func (rpc *Server) RegisterListener(ctx context.Context, req *lispb.RegisterList
 }
 
 func (rpc *Server) SpiteStream(stream listenerrpc.ListenerRPC_SpiteStreamServer) error {
-	listenerID, err := rpc.listenerID(stream.Context())
+	listenerID, err := rpc.getListenerID(stream.Context())
 	if err != nil {
 		logs.Log.Error(err.Error())
 		return err

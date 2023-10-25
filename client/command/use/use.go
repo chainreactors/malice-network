@@ -2,7 +2,6 @@ package use
 
 import (
 	"github.com/chainreactors/malice-network/client/console"
-	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/desertbit/grumble"
 	"strings"
@@ -10,10 +9,10 @@ import (
 
 func UseSessionCmd(ctx *grumble.Context, con *console.Console) {
 	var session *clientpb.Session
-	core.Sessions.Update(con)
+	con.UpdateSession()
 	idArg := ctx.Args.String("sid")
 	if idArg != "" {
-		session = core.Sessions[idArg]
+		session = con.Sessions[idArg]
 	}
 
 	if session == nil {
@@ -26,8 +25,8 @@ func UseSessionCmd(ctx *grumble.Context, con *console.Console) {
 
 }
 
-func SessionIDCompleter(prefix string) (results []string) {
-	for _, s := range core.Sessions {
+func SessionIDCompleter(con *console.Console, prefix string) (results []string) {
+	for _, s := range con.Sessions {
 		if strings.HasPrefix(s.SessionId, prefix) {
 			results = append(results, s.SessionId)
 		}
