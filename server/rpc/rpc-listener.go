@@ -2,21 +2,30 @@ package rpc
 
 import (
 	"context"
-	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/commonpb"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/proto/services/listenerrpc"
 	"github.com/chainreactors/malice-network/server/core"
+	"google.golang.org/grpc/peer"
 )
 
 func (rpc *Server) GetListeners(ctx context.Context, req *clientpb.Empty) (*clientpb.Listeners, error) {
-	return &clientpb.Listeners{}, nil
+	return core.Listeners.ToProtobuf(), nil
 }
 
 func (rpc *Server) RegisterListener(ctx context.Context, req *lispb.RegisterListener) (*commonpb.Empty, error) {
-	fmt.Println(req)
+	core.Listeners.Add(&core.Listener{
+		Name:   req.Name,
+		Host:   req.Addr,
+		Active: true,
+	})
+	p, ok := peer.FromContext(ctx)
+	if !ok {
+		return &commonpb.Empty{}, nil
+	}
+	logs.Log.Importantf("%s register listener %s", p.Addr, req.Name)
 	return &commonpb.Empty{}, nil
 }
 

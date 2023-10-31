@@ -20,10 +20,10 @@ github.com/MarvinJWendt/testza v0.5.2/go.mod h1:xu53QFE5sCdjtMCKk8YMQ2MnymimEctc
 github.com/Netflix/go-expect v0.0.0-20180615182759-c93bf25de8e8/go.mod h1:oX5x61PbNXchhh0oikYAH+4Pcfw5LKv21+Jnpr6r6Pc=
 github.com/Netflix/go-expect v0.0.0-20190729225929-0e00d9168667/go.mod h1:oX5x61PbNXchhh0oikYAH+4Pcfw5LKv21+Jnpr6r6Pc=
 github.com/atomicgo/cursor v0.0.1/go.mod h1:cBON2QmmrysudxNBFthvMtN32r3jxVRIvzkUiF/RuIk=
-github.com/chainreactors/files v0.2.0 h1:LeN97o4VxIvK9ZACjXfdRTR+N7puXuWyQO5GarCkMLM=
-github.com/chainreactors/files v0.2.0/go.mod h1:/Xa9YXhjBlaC33JTD6ZTJFig6pcplak2IDcovf42/6A=
-github.com/chainreactors/logs v0.0.0-20231018081339-ab8c18542a5f h1:GJOUDuWHtvTQWfkqUa4ynZf+LqRl4ytqbW2XYWofLMo=
-github.com/chainreactors/logs v0.0.0-20231018081339-ab8c18542a5f/go.mod h1:Y0EtAnoF0kiASIJUnXN0pcOt420iRpHOAnOhEphzRHA=
+github.com/chainreactors/files v0.0.0-20230731174853-acee21c8c45a h1:NdYhUYzzqyfp15Qj1ONAPV+fcymCQ/XJ509Ia2iyzvk=
+github.com/chainreactors/files v0.0.0-20230731174853-acee21c8c45a/go.mod h1:/Xa9YXhjBlaC33JTD6ZTJFig6pcplak2IDcovf42/6A=
+github.com/chainreactors/logs v0.0.0-20231027080134-7a11bb413460 h1:QYmvaEZHa0e3aQ9Aui9gkm3klPO+yHo5SoPTkoltr78=
+github.com/chainreactors/logs v0.0.0-20231027080134-7a11bb413460/go.mod h1:VZFqkFDGmp7/JOMeraW+YI7kTGcgz9fgc/HArVFnrGQ=
 github.com/chzyer/logex v1.1.10 h1:Swpa1K6QvQznwJRcfTfQJmTE72DqScAa40E+fbHEXEE=
 github.com/chzyer/logex v1.1.10/go.mod h1:+Ywpsq7O8HXn0nuIou7OrIPyXbp3wmkHB+jjWRnGsAI=
 github.com/chzyer/test v0.0.0-20180213035817-a1ea475d72b1 h1:q763qf9huN11kDQavWsoZXJNW3xEE4JJyHa5Q25/sd8=

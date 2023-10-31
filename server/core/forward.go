@@ -3,12 +3,21 @@ package core
 import (
 	"context"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/types"
+	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/commonpb"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/proto/services/listenerrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/proto"
+	"sync"
+)
+
+var (
+	Forwarders = &forwarders{
+		forwarders: &sync.Map{},
+	}
 )
 
 type Message struct {
@@ -18,27 +27,54 @@ type Message struct {
 	MessageID string
 }
 
-type Pipeline interface {
-	ID() string
-	Start() (*Job, error)
+type forwarders struct {
+	forwarders *sync.Map
 }
 
-func NewForward(rpcAddr string, listener Pipeline) (*Forward, error) {
-	conn, err := grpc.Dial(rpcAddr, grpc.WithInsecure())
-	if err != nil {
-		return nil, err
+func (f *forwarders) Add(fw *Forward) {
+	f.forwarders.Store(fw.ID(), fw)
+}
+
+func (f *forwarders) Get(id string) *Forward {
+	fw, ok := f.forwarders.Load(id)
+	if !ok {
+		return nil
 	}
-	logs.Log.Importantf("Forwarder connected to %s", rpcAddr)
+	return fw.(*Forward)
+}
+
+func (f *forwarders) Remove(id string) {
+	fw := f.Get(id)
+	if fw == nil {
+		return
+	}
+	err := fw.Close()
+	if err != nil {
+		return
+	}
+	f.forwarders.Delete(id)
+}
+
+func (f *forwarders) Send(id string, msg *Message) {
+	fw := f.Get(id)
+	if fw == nil {
+		return
+	}
+	fw.Add(msg)
+}
+
+func NewForward(conn *grpc.ClientConn, pipeline Pipeline) (*Forward, error) {
+	var err error
 	forward := &Forward{
 		implantC:    make(chan *Message, 255),
 		ImplantRpc:  listenerrpc.NewImplantRPCClient(conn),
 		ListenerRpc: listenerrpc.NewListenerRPCClient(conn),
-		Pipeline:    listener,
+		Pipeline:    pipeline,
 		ctx:         context.Background(),
 	}
 
 	forward.stream, err = forward.ListenerRpc.SpiteStream(metadata.NewOutgoingContext(context.Background(), metadata.Pairs(
-		"listener_id", listener.ID()),
+		"listener_id", pipeline.ID()),
 	))
 	if err != nil {
 		return nil, err
@@ -121,8 +157,28 @@ func (f *Forward) Handler() {
 	}
 }
 
-func (f *Forward) handlerSpite(spite *commonpb.Spite) {
-	switch spite.GetBody().(type) {
-	//case *commonpb.
+type Pipeline interface {
+	ID() string
+	Start() error
+	Addr() string
+	Close() error
+	ToProtobuf() proto.Message
+}
+
+type Pipelines []Pipeline
+
+func (ps Pipelines) Add(p Pipeline) {
+	ps = append(ps, p)
+}
+
+func (ps Pipelines) ToProtobuf() []*clientpb.Pipeline {
+	var pls []*clientpb.Pipeline
+	for _, p := range ps {
+		msg := &clientpb.Pipeline{
+			Name: p.ID(),
+		}
+		types.BuildPipeline(msg, p.ToProtobuf())
+		pls = append(pls, msg)
 	}
+	return pls
 }

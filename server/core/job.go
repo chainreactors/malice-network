@@ -1,7 +1,9 @@
 package core
 
 import (
+	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
+	"google.golang.org/protobuf/proto"
 	"sync"
 )
 
@@ -47,25 +49,20 @@ func (j *jobs) Get(jobID int) *Job {
 
 type Job struct {
 	ID           int
-	Name         string
-	Description  string
-	Protocol     string
-	Host         string
-	Port         uint16
-	Domains      []string
+	Message      proto.Message
 	JobCtrl      chan bool
 	PersistentID string
 }
 
 func (j *Job) ToProtobuf() *clientpb.Job {
-	return &clientpb.Job{
-		Id:          uint32(j.ID),
-		Name:        j.Name,
-		Description: j.Description,
-		Protocol:    j.Protocol,
-		Port:        uint32(j.Port),
-		Domains:     j.Domains,
+	job := &clientpb.Job{
+		Id: uint32(j.ID),
 	}
+	_, err := types.BuildJob(job, j.Message)
+	if err != nil {
+		return nil
+	}
+	return job
 }
 
 func NextJobID() int {

@@ -4,9 +4,10 @@ go 1.21
 
 require (
 	filippo.io/age v1.1.1
-	github.com/chainreactors/logs v0.0.0-20231018081339-ab8c18542a5f
+	github.com/chainreactors/logs v0.0.0-20231027080134-7a11bb413460
 	github.com/desertbit/grumble v1.1.3
 	github.com/fatih/color v1.14.1
+	github.com/goccy/go-yaml v1.11.2
 	github.com/gofrs/uuid v4.4.0+incompatible
 	github.com/gookit/config/v2 v2.2.4
 	github.com/jedib0t/go-pretty/v6 v6.4.8
@@ -27,13 +28,12 @@ require (
 	atomicgo.dev/cursor v0.2.0 // indirect
 	atomicgo.dev/keyboard v0.2.9 // indirect
 	atomicgo.dev/schedule v0.1.0 // indirect
-	github.com/chainreactors/files v0.2.0 // indirect
+	github.com/chainreactors/files v0.0.0-20230731174853-acee21c8c45a // indirect
 	github.com/containerd/console v1.0.3 // indirect
 	github.com/desertbit/closer/v3 v3.1.2 // indirect
 	github.com/desertbit/columnize v2.1.0+incompatible // indirect
 	github.com/desertbit/go-shlex v0.1.1 // indirect
 	github.com/desertbit/readline v1.5.1 // indirect
-	github.com/goccy/go-yaml v1.11.2 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/gookit/color v1.5.4 // indirect
 	github.com/gookit/goutil v0.6.14 // indirect

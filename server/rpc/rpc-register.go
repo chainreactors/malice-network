@@ -10,7 +10,7 @@ import (
 var rpcRegLog = logs.Log
 
 func (rpc *Server) RegisterCA(ctx context.Context, req *clientpb.RegisterReq) (*clientpb.RegisterResp, error) {
-	cert, key, err := generate.InitClientCA(req.Host, req.User)
+	cert, key, err := generate.GenerateClientCA(req.Host, req.User)
 	if err != nil {
 		rpcRegLog.Errorf("Failed to generate client %s CA: %s", req.Host, err)
 		return nil, err

@@ -6,8 +6,8 @@ import (
 	"os"
 )
 
-// InitRootCA - Initialize the root CA
-func InitRootCA() {
+// GenerateRootCA - Initialize the root CA
+func GenerateRootCA() {
 	os.Mkdir(".config", 0744)
 	os.Mkdir(".config/certs", 0744)
 	_, _, err := certs.InitRSACertificate("localhost", "root", true, false)
@@ -16,8 +16,8 @@ func InitRootCA() {
 	}
 }
 
-// InitClientCA - Initialize the client CA
-func InitClientCA(host, user string) ([]byte, []byte, error) {
+// GenerateClientCA - Initialize the client CA
+func GenerateClientCA(host, user string) ([]byte, []byte, error) {
 	cert, key, err := certs.InitRSACertificate(host, user, false, true)
 	if err != nil {
 		return nil, nil, err

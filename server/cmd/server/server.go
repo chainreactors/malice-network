@@ -1,12 +1,23 @@
-package server
+package main
 
 import (
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/server/configs"
 	"github.com/chainreactors/malice-network/server/generate"
+	"github.com/chainreactors/malice-network/server/listener"
 	"github.com/chainreactors/malice-network/server/rpc"
 	"github.com/gookit/config/v2"
+	"github.com/gookit/config/v2/yaml"
 	"github.com/jessevdk/go-flags"
 )
+
+func init() {
+	config.WithOptions(func(opt *config.Options) {
+		opt.DecoderConfig.TagName = "config"
+		opt.ParseDefault = true
+	})
+	config.AddDriver(yaml.Driver)
+}
 
 func Execute() {
 	var opt Options
@@ -14,12 +25,11 @@ func Execute() {
 	parser := flags.NewParser(&opt, flags.Default)
 	parser.Usage = Banner()
 
-	err = config.Decode(&opt)
+	// load config
+	err = configs.LoadConfig(configs.ServerConfigFileName, &opt)
 	if err != nil {
-		logs.Log.Error(err.Error())
-		return
+		logs.Log.Debugf("cannot load config , %s ", err.Error())
 	}
-
 	_, err = parser.Parse()
 	if err != nil {
 		if err.(*flags.Error).Type != flags.ErrHelp {
@@ -29,16 +39,12 @@ func Execute() {
 	}
 
 	if opt.Config != "" {
-		err := config.LoadFiles(opt.Config)
+		err = configs.LoadConfig(opt.Config, &opt)
 		if err != nil {
-			logs.Log.Error(err.Error())
+			logs.Log.Errorf("cannot load config , %s ", err.Error())
 			return
 		}
-		err = config.Decode(&opt)
-		if err != nil {
-			logs.Log.Error(err.Error())
-			return
-		}
+		configs.CurrentServerConfigFilename = opt.Config
 	}
 
 	// start grpc
@@ -47,11 +53,15 @@ func Execute() {
 	// start listeners
 	if opt.Listeners != nil {
 		// init forwarder
-		opt.Listeners.Start()
+		err := listener.NewListener(opt.Listeners)
+		if err != nil {
+			logs.Log.Error(err.Error())
+			return
+		}
 	}
 
 	// generate certs
-	generate.InitRootCA()
+	generate.GenerateRootCA()
 }
 
 // Start - Starts the server console
@@ -85,4 +95,9 @@ func StartGrpc(port uint16) {
 
 func Banner() string {
 	return ""
+}
+
+func main() {
+	Execute()
+	select {}
 }

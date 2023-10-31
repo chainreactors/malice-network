@@ -2,13 +2,16 @@ package types
 
 import (
 	"errors"
+	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/commonpb"
 	"github.com/chainreactors/malice-network/proto/implant/pluginpb"
+	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"google.golang.org/protobuf/proto"
 )
 
 var (
 	ErrUnknownSpite = errors.New("unknown spite body")
+	ErrUnknownJob   = errors.New("unknown job body")
 )
 
 func BuildSpite(spite *commonpb.Spite, msg proto.Message) (*commonpb.Spite, error) {
@@ -40,4 +43,22 @@ func ParseSpite(spite *commonpb.Spite) (proto.Message, error) {
 	default:
 		return nil, ErrUnknownSpite
 	}
+}
+
+func BuildJob(job *clientpb.Job, msg proto.Message) (*clientpb.Job, error) {
+	switch msg.(type) {
+	case *clientpb.Pipeline:
+		job.Body = &clientpb.Job_Pipeline{Pipeline: msg.(*clientpb.Pipeline)}
+	}
+	return job, nil
+}
+
+func BuildPipeline(pipeline *clientpb.Pipeline, msg proto.Message) (*clientpb.Pipeline, error) {
+	switch msg.(type) {
+	case *lispb.TCPPipeline:
+		pipeline.Body = &clientpb.Pipeline_Tcp{Tcp: msg.(*lispb.TCPPipeline)}
+	default:
+		return pipeline, ErrUnknownJob
+	}
+	return pipeline, nil
 }

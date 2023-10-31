@@ -1,4 +1,4 @@
-package pipeline
+package listener
 
 import (
 	"encoding/binary"
@@ -7,62 +7,82 @@ import (
 	"github.com/chainreactors/malice-network/helper/encoders/hash"
 	"github.com/chainreactors/malice-network/helper/packet"
 	"github.com/chainreactors/malice-network/proto/implant/commonpb"
+	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/server/configs"
 	"github.com/chainreactors/malice-network/server/core"
+	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
 	"net"
 )
 
+func StartTcpPipeline(conn *grpc.ClientConn, cfg *configs.TcpPipelineConfig) (*TCPPipeline, error) {
+	pp := &TCPPipeline{
+		Name:   cfg.Name,
+		Port:   cfg.Port,
+		Host:   cfg.Host,
+		Enable: cfg.Enable,
+	}
+
+	forward, err := core.NewForward(conn, pp)
+	if err != nil {
+		return nil, err
+	}
+	ch := make(chan bool)
+	job := &core.Job{
+		ID:      core.NextJobID(),
+		Message: pp.ToProtobuf(),
+		JobCtrl: ch,
+	}
+	go func() {
+		<-ch
+		pp.Close()
+	}()
+	core.Jobs.Add(job)
+	core.Forwarders.Add(forward)
+	logs.Log.Importantf("Started TCP pipeline %s", pp.ID())
+	return pp, nil
+}
+
 type TCPPipeline struct {
-	done      chan bool
-	forwarder *core.Forward
-	Name      string `config:"id"`
-	Port      uint16 `config:"port"`
-	Host      string `config:"host"`
-	Enable    bool   `config:"enable"`
-	Protocol  string `config:"protocol"`
+	done   chan bool
+	ln     net.Listener
+	Name   string
+	Port   uint16
+	Host   string
+	Enable bool
+}
+
+func (l *TCPPipeline) ToProtobuf() proto.Message {
+	return &lispb.TCPPipeline{
+		Name: l.Name,
+		Port: uint32(l.Port),
+		Host: l.Host,
+	}
 }
 
 func (l *TCPPipeline) ID() string {
-	return fmt.Sprintf("%s_%s_%s_%d", l.Name, l.Protocol, l.Host, l.Port)
+	return fmt.Sprintf("tcp_%s_%s_%d", l.Name, l.Host, l.Port)
 }
 
-func (l *TCPPipeline) Start() (*core.Job, error) {
+func (l *TCPPipeline) Addr() string {
+	return ""
+}
+
+func (l *TCPPipeline) Close() error {
+	return nil
+}
+
+func (l *TCPPipeline) Start() error {
 	if !l.Enable {
-		return nil, nil
+		return nil
 	}
-	ln, err := l.handler()
+	var err error
+	l.ln, err = l.handler()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	job := &core.Job{
-		ID:          core.NextJobID(),
-		Name:        "TCP",
-		Description: "Raw TCP listener (stager only)",
-		Protocol:    "tcp",
-		Host:        l.Host,
-		Port:        l.Port,
-		JobCtrl:     make(chan bool),
-	}
-
-	go func() {
-		<-job.JobCtrl
-		logs.Log.Infof("Stopping TCP listener (%d) ...", job.ID)
-		ln.Close() // Kills listener GoRoutines in startMutualTLSListener() but NOT connections
-
-		core.Jobs.Remove(job)
-
-		//core.EventBroker.Publish(core.Event{
-		//	Job:       job,
-		//	EventType: consts.JobStoppedEvent,
-		//})
-	}()
-	l.forwarder, err = core.NewForward(configs.GetServerConfig().String(), l)
-	if err != nil {
-		return nil, err
-	}
-	return job, nil
+	return nil
 }
 
 func (l *TCPPipeline) handler() (net.Listener, error) {
@@ -123,7 +143,7 @@ func (l *TCPPipeline) handleRead(conn net.Conn) {
 				return
 			}
 		}
-		l.forwarder.Add(&core.Message{
+		core.Forwarders.Send(l.ID(), &core.Message{
 			Message:   msg,
 			SessionID: hash.Md5Hash([]byte(rawID)),
 			//RemoteAddr: conn.RemoteAddr().String(),
