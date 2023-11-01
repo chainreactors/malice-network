@@ -3,8 +3,6 @@ package core
 import (
 	"context"
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/types"
-	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/commonpb"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/proto/services/listenerrpc"
@@ -155,30 +153,4 @@ func (f *Forward) Handler() {
 			}
 		}
 	}
-}
-
-type Pipeline interface {
-	ID() string
-	Start() error
-	Addr() string
-	Close() error
-	ToProtobuf() proto.Message
-}
-
-type Pipelines []Pipeline
-
-func (ps Pipelines) Add(p Pipeline) {
-	ps = append(ps, p)
-}
-
-func (ps Pipelines) ToProtobuf() []*clientpb.Pipeline {
-	var pls []*clientpb.Pipeline
-	for _, p := range ps {
-		msg := &clientpb.Pipeline{
-			Name: p.ID(),
-		}
-		types.BuildPipeline(msg, p.ToProtobuf())
-		pls = append(pls, msg)
-	}
-	return pls
 }

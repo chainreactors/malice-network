@@ -19,3 +19,13 @@ const (
 	// ServerMaxMessageSize - Server-side max GRPC message size
 	ServerMaxMessageSize = 2 * GB
 )
+
+const (
+	CtrlPipelineStart = 0 + iota
+	CtrlPipelineStop
+)
+
+const (
+	CtrlStatusSuccess = 0 + iota
+	CtrlStatusFailed
+)

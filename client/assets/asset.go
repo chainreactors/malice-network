@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	MaliceDirName = ".malice"
+	MaliceDirName = ".config/malice"
 	ConfigDirName = "configs"
 )
 

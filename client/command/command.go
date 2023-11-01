@@ -4,13 +4,52 @@ import (
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/cert"
 	"github.com/chainreactors/malice-network/client/command/exec"
+	"github.com/chainreactors/malice-network/client/command/jobs"
 	"github.com/chainreactors/malice-network/client/command/login"
 	"github.com/chainreactors/malice-network/client/command/sessions"
 	"github.com/chainreactors/malice-network/client/command/use"
 	"github.com/chainreactors/malice-network/client/command/version"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/desertbit/grumble"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"strings"
 )
+
+func LocalPathCompleter(prefix string, args []string, con *console.Console) []string {
+	var parent string
+	var partial string
+	fi, err := os.Stat(prefix)
+	if os.IsNotExist(err) {
+		parent = filepath.Dir(prefix)
+		partial = filepath.Base(prefix)
+	} else {
+		if fi.IsDir() {
+			parent = prefix
+			partial = ""
+		} else {
+			parent = filepath.Dir(prefix)
+			partial = filepath.Base(prefix)
+		}
+	}
+
+	results := []string{}
+	ls, err := ioutil.ReadDir(parent)
+	if err != nil {
+		return results
+	}
+	for _, fi = range ls {
+		if 0 < len(partial) {
+			if strings.HasPrefix(fi.Name(), partial) {
+				results = append(results, filepath.Join(parent, fi.Name()))
+			}
+		} else {
+			results = append(results, filepath.Join(parent, fi.Name()))
+		}
+	}
+	return results
+}
 
 func BindCommands(con *console.Console) {
 
@@ -26,6 +65,7 @@ func BindCommands(con *console.Console) {
 		},
 		//HelpGroup: consts.GenericHelpGroup,
 	}
+	con.App.AddCommand(verCmd)
 
 	certCmd := &grumble.Command{
 		Name: "cert",
@@ -39,6 +79,7 @@ func BindCommands(con *console.Console) {
 			return nil
 		},
 	}
+	con.App.AddCommand(certCmd)
 
 	loginCmd := &grumble.Command{
 		Name: "login",
@@ -51,6 +92,7 @@ func BindCommands(con *console.Console) {
 			return nil
 		},
 	}
+	con.App.AddCommand(loginCmd)
 
 	sessionCmd := &grumble.Command{
 		Name: "sessions",
@@ -72,6 +114,7 @@ func BindCommands(con *console.Console) {
 			return nil
 		},
 	}
+	con.App.AddCommand(sessionCmd)
 
 	useCmd := &grumble.Command{
 		Name: "use",
@@ -87,6 +130,7 @@ func BindCommands(con *console.Console) {
 			return use.SessionIDCompleter(con, prefix)
 		},
 	}
+	con.App.AddCommand(useCmd)
 
 	executeCmd := &grumble.Command{
 		Name: "execute",
@@ -114,10 +158,20 @@ func BindCommands(con *console.Console) {
 			return nil
 		},
 	}
-	con.App.AddCommand(verCmd)
-	con.App.AddCommand(certCmd)
-	con.App.AddCommand(loginCmd)
-	con.App.AddCommand(sessionCmd)
 	con.App.AddCommand(executeCmd)
-	con.App.AddCommand(useCmd)
+
+	tcpCmd := &grumble.Command{
+		Name: "tcp",
+		Help: "Start a TCP pipeline",
+		Flags: func(f *grumble.Flags) {
+			f.String("l", "lhost", "0.0.0.0", "listen host")
+			f.Int("p", "lport", 0, "listen port")
+		},
+		Run: func(ctx *grumble.Context) error {
+			jobs.TcpPipelineCmd(ctx, con)
+			return nil
+		},
+	}
+	con.App.AddCommand(tcpCmd)
+
 }
