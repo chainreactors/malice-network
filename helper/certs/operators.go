@@ -38,12 +38,12 @@ func OperatorClientRemoveCertificate(operator string) error {
 
 // OperatorServerGetCertificate - Helper function to fetch a server cert
 func OperatorServerGetCertificate(hostname string) ([]byte, []byte, error) {
-	return GetECCCertificate(OperatorCA, fmt.Sprintf("%s.%s", serverNamespace, hostname))
+	return GetRSACertificate(OperatorCA, fmt.Sprintf("%s.%s", serverNamespace, hostname))
 }
 
 // OperatorServerGenerateCertificate - Generate a certificate signed with a given CA
 func OperatorServerGenerateCertificate(hostname string) ([]byte, []byte, error) {
-	cert, key := GenerateECCCertificate(OperatorCA, hostname, false, false)
+	cert, key := GenerateRSACertificate(OperatorCA, hostname, false, false)
 	err := saveCertificate(OperatorCA, ECCKey, fmt.Sprintf("%s.%s", serverNamespace, hostname), cert, key)
 	return cert, key, err
 }

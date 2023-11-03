@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/chainreactors/logs"
+	"gopkg.in/yaml.v3"
 	"io/ioutil"
 	"log"
 	"os"
@@ -95,4 +96,34 @@ func ReadConfig(confFilePath string) (*ClientConfig, error) {
 		return nil, err
 	}
 	return conf, nil
+}
+
+// NewConfig - new config and save in local file
+func NewConfig(host, user string, port int, certs, privateKey, ca []byte) error {
+	// new config
+	config := &ClientConfig{
+		Operator:      user,
+		LHost:         host,
+		LPort:         port,
+		CACertificate: string(ca),
+		PrivateKey:    string(privateKey),
+		Certificate:   string(certs),
+	}
+	// save config as yaml file
+	configDir := GetConfigDir()
+	configFile := path.Join(configDir, fmt.Sprintf("%s_%s_%d.yaml", user, host, port))
+
+	// 使用 YAML 库将 config 结构体序列化为 YAML 数据
+	yamlData, err := yaml.Marshal(config)
+	if err != nil {
+		logs.Log.Errorf("marshal config to yaml failed: %v", err)
+		return err
+	}
+	// 将 YAML 数据写入文件
+	err = ioutil.WriteFile(configFile, yamlData, 0644)
+	if err != nil {
+		logs.Log.Errorf("write config to file failed: %v", err)
+		return err
+	}
+	return nil
 }

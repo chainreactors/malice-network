@@ -8,6 +8,7 @@ import (
 	"github.com/gookit/config/v2"
 	insecureRand "math/rand"
 	"os"
+	"path/filepath"
 	"time"
 )
 
@@ -25,6 +26,23 @@ func GetServerConfig() *ServerConfig {
 		return nil
 	}
 	return s
+}
+
+func GetLogPath() string {
+	dir := filepath.Join(ServerRootPath, "logs")
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		err = os.MkdirAll(dir, 0700)
+		if err != nil {
+			logs.Log.Errorf("Failed to create logs dir %s", err)
+		}
+	}
+	return dir
+}
+
+func SetLogFilePath(stream string, level logs.Level) *logs.Logger {
+	logger := logs.NewLogger(level)
+	logger.SetFile(filepath.Join(GetLogPath(), fmt.Sprintf("%s.log", stream)))
+	return logger
 }
 
 func LoadConfig(filename string, v interface{}) error {
