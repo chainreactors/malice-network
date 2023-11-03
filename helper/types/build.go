@@ -2,7 +2,7 @@ package types
 
 import (
 	"errors"
-	"github.com/chainreactors/malice-network/proto/client/clientpb"
+	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/proto/implant/commonpb"
 	"github.com/chainreactors/malice-network/proto/implant/pluginpb"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
@@ -45,20 +45,14 @@ func ParseSpite(spite *commonpb.Spite) (proto.Message, error) {
 	}
 }
 
-func BuildJob(job *clientpb.Job, msg proto.Message) (*clientpb.Job, error) {
-	switch msg.(type) {
-	case *clientpb.Pipeline:
-		job.Body = &clientpb.Job_Pipeline{Pipeline: msg.(*clientpb.Pipeline)}
-	}
-	return job, nil
-}
-
-func BuildPipeline(pipeline *clientpb.Pipeline, msg proto.Message) (*clientpb.Pipeline, error) {
+func BuildPipeline(msg proto.Message) *lispb.Pipeline {
+	var pipeline = &lispb.Pipeline{}
 	switch msg.(type) {
 	case *lispb.TCPPipeline:
-		pipeline.Body = &clientpb.Pipeline_Tcp{Tcp: msg.(*lispb.TCPPipeline)}
+		pipeline.Body = &lispb.Pipeline_Tcp{Tcp: msg.(*lispb.TCPPipeline)}
 	default:
-		return pipeline, ErrUnknownJob
+		logs.Log.Debug(ErrUnknownJob.Error())
+		return pipeline
 	}
-	return pipeline, nil
+	return pipeline
 }

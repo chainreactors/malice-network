@@ -5,7 +5,13 @@ const (
 	UpdateStr = "update"
 	// VersionStr - "version"
 	VersionStr = "version"
+)
 
-	EventJoin = "event"
-	EventLeft = "left"
+// event
+const (
+	EventJoin          = "event"
+	EventLeft          = "left"
+	EventPipelineStart = "pipeline start"
+	EventPipelineError = "pipeline error"
+	EventPipelineStop  = "pipeline stop"
 )

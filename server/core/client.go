@@ -12,7 +12,7 @@ var (
 		active: map[int]*Client{},
 	}
 
-	clientID = 0
+	clientID int32 = 0
 )
 
 // clients - Manage active clients
@@ -25,7 +25,7 @@ type clients struct {
 func NewClient(operatorName string) *Client {
 	return &Client{
 		Client: &clientpb.Client{
-			ID:   uint32(getClientID()),
+			ID:   getClientID(),
 			Name: operatorName,
 		},
 	}
@@ -83,8 +83,7 @@ func (cc *clients) ActiveClients() []*Client {
 	return cs
 }
 
-func getClientID() int {
-	newID := clientID + 1
+func getClientID() int32 {
 	clientID++
-	return newID
+	return clientID
 }

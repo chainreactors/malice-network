@@ -1,19 +1,24 @@
 package core
 
 import (
-	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"google.golang.org/protobuf/proto"
 	"sync"
 )
 
 var (
-	Jobs  = &jobs{&sync.Map{}}
-	jobID = 0
+	Jobs = &jobs{
+		Map:  &sync.Map{},
+		Ctrl: make(chan *clientpb.JobCtrl),
+	}
+	jobID  int32 = 0
+	ctrlID int32 = 0
 )
 
 type jobs struct {
 	*sync.Map
+	Ctrl chan *clientpb.JobCtrl
 }
 
 func (j *jobs) Add(job *Job) {
@@ -36,7 +41,7 @@ func (j *jobs) Remove(job *Job) {
 }
 
 // Get - Get a Job
-func (j *jobs) Get(jobID int) *Job {
+func (j *jobs) Get(jobID int32) *Job {
 	if jobID <= 0 {
 		return nil
 	}
@@ -48,7 +53,7 @@ func (j *jobs) Get(jobID int) *Job {
 }
 
 type Job struct {
-	ID           int
+	ID           int32
 	Message      proto.Message
 	JobCtrl      chan bool
 	PersistentID string
@@ -56,17 +61,22 @@ type Job struct {
 
 func (j *Job) ToProtobuf() *clientpb.Job {
 	job := &clientpb.Job{
-		Id: uint32(j.ID),
+		Id: j.ID,
 	}
-	_, err := types.BuildJob(job, j.Message)
-	if err != nil {
-		return nil
+	switch j.Message.(type) {
+	case *lispb.Pipeline:
+		job.Pipeline = j.Message.(*lispb.Pipeline)
 	}
 	return job
 }
 
-func NextJobID() int {
+func NextJobID() int32 {
 	newID := jobID + 1
 	jobID++
 	return newID
+}
+
+func NextCtrlID() int32 {
+	ctrlID++
+	return ctrlID
 }

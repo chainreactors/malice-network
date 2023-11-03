@@ -27,20 +27,18 @@ func StartTcpPipeline(conn *grpc.ClientConn, cfg *configs.TcpPipelineConfig) (*T
 	if err != nil {
 		return nil, err
 	}
-	ch := make(chan bool)
-	job := &core.Job{
-		ID:      core.NextJobID(),
-		Message: pp.ToProtobuf(),
-		JobCtrl: ch,
-	}
-	go func() {
-		<-ch
-		pp.Close()
-	}()
-	core.Jobs.Add(job)
 	core.Forwarders.Add(forward)
 	logs.Log.Importantf("Started TCP pipeline %s", pp.ID())
 	return pp, nil
+}
+
+func ToTcpConfig(pipeline *lispb.TCPPipeline) *configs.TcpPipelineConfig {
+	return &configs.TcpPipelineConfig{
+		Name:   pipeline.Name,
+		Port:   uint16(pipeline.Port),
+		Host:   pipeline.Host,
+		Enable: true,
+	}
 }
 
 type TCPPipeline struct {
