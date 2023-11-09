@@ -4,6 +4,7 @@ go 1.21
 
 require (
 	filippo.io/age v1.1.1
+	github.com/chainreactors/files v0.0.0-20231102192550-a652458cee26
 	github.com/chainreactors/logs v0.0.0-20231027080134-7a11bb413460
 	github.com/desertbit/grumble v1.1.3
 	github.com/fatih/color v1.14.1
@@ -21,6 +22,7 @@ require (
 	golang.org/x/term v0.13.0
 	google.golang.org/grpc v1.58.1
 	google.golang.org/protobuf v1.31.0
+	gopkg.in/yaml.v3 v3.0.1
 	gorm.io/gorm v1.25.4
 )
 
@@ -28,7 +30,6 @@ require (
 	atomicgo.dev/cursor v0.2.0 // indirect
 	atomicgo.dev/keyboard v0.2.9 // indirect
 	atomicgo.dev/schedule v0.1.0 // indirect
-	github.com/chainreactors/files v0.0.0-20230731174853-acee21c8c45a // indirect
 	github.com/containerd/console v1.0.3 // indirect
 	github.com/desertbit/closer/v3 v3.1.2 // indirect
 	github.com/desertbit/columnize v2.1.0+incompatible // indirect

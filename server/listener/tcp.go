@@ -22,7 +22,10 @@ func StartTcpPipeline(conn *grpc.ClientConn, cfg *configs.TcpPipelineConfig) (*T
 		Host:   cfg.Host,
 		Enable: cfg.Enable,
 	}
-
+	err := pp.Start()
+	if err != nil {
+		return nil, err
+	}
 	forward, err := core.NewForward(conn, pp)
 	if err != nil {
 		return nil, err

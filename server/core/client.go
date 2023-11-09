@@ -12,7 +12,7 @@ var (
 		active: map[int]*Client{},
 	}
 
-	clientID int32 = 0
+	clientID uint32 = 0
 )
 
 // clients - Manage active clients
@@ -83,7 +83,7 @@ func (cc *clients) ActiveClients() []*Client {
 	return cs
 }
 
-func getClientID() int32 {
+func getClientID() uint32 {
 	clientID++
 	return clientID
 }

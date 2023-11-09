@@ -13,7 +13,7 @@ import (
 var (
 	// Sessions - Manages implant connections
 	Sessions = &sessions{
-		sessions: &sync.Map{},
+		active: &sync.Map{},
 	}
 
 	// ErrUnknownMessageType - Returned if the implant did not understand the message for
@@ -32,7 +32,8 @@ func NewSession(req *lispb.RegisterSession) *Session {
 		Os:         req.RegisterData.Os,
 		Process:    req.RegisterData.Process,
 		Timer:      req.RegisterData.Timer,
-		TaskMap:    &sync.Map{},
+		Tasks:      &tasks{active: &sync.Map{}},
+		Responses:  &sync.Map{},
 	}
 }
 
@@ -53,8 +54,8 @@ type Session struct {
 	ConfigID    string
 	PeerID      int64
 	Locale      string
-	TaskCount   uint32
-	TaskMap     *sync.Map
+	Tasks       *tasks
+	Responses   *sync.Map
 }
 
 func (s *Session) ToProtobuf() *clientpb.Session {
@@ -74,8 +75,8 @@ func (s *Session) UpdateLastCheckin() {
 // Request
 func (s *Session) Request(msg *lispb.SpiteSession, stream grpc.ServerStream, timeout time.Duration) (uint32, error) {
 	resp := make(chan *commonpb.Spite)
-	taskId := s.GenTaskId()
-	s.StoreTask(taskId, resp)
+	taskId := msg.TaskId
+	s.StoreResp(taskId, resp)
 
 	if timeout == 0 {
 		timeout = 60 * time.Second
@@ -105,14 +106,39 @@ func (s *Session) RequestAndWait(msg *lispb.SpiteSession, stream grpc.ServerStre
 	if err != nil {
 		return nil, err
 	}
-	ch, _ := s.GetTask(taskId)
+	ch, _ := s.GetResp(taskId)
 	defer func() {
 		close(ch)
-		s.DeleteTask(taskId)
+		s.DeleteResp(taskId)
 	}()
 	resp := <-ch
 	// todo @hyc save to database
 	return resp, nil
+}
+
+// RequestWithAsync - 'async' means that the response is not returned immediately, but is returned through the channel 'ch
+func (s *Session) RequestWithAsync(msg *lispb.SpiteSession, stream grpc.ServerStream, timeout time.Duration) (chan *commonpb.Spite, error) {
+	resp, err := s.RequestAndWait(msg, stream, timeout)
+	if err != nil {
+		return nil, err
+	}
+	if resp.GetAsyncStatus().Status != 0 {
+		return nil, errors.New(resp.GetAsyncStatus().Error)
+	}
+	ch := make(chan *commonpb.Spite)
+	go func() {
+		for spite := range ch {
+			resp, err := s.RequestAndWait(&lispb.SpiteSession{SessionId: msg.SessionId, Spite: spite}, stream, timeout)
+			if err != nil {
+				return
+			}
+			if !resp.GetAsyncResponse().Success {
+				// todo error parser
+				return
+			}
+		}
+	}()
+	return ch, nil
 }
 
 func (s *Session) RequestWithStream(msg *lispb.SpiteSession, stream grpc.ServerStream, timeout time.Duration) (chan *commonpb.Spite, error) {
@@ -120,11 +146,11 @@ func (s *Session) RequestWithStream(msg *lispb.SpiteSession, stream grpc.ServerS
 	if err != nil {
 		return nil, err
 	}
-	task, _ := s.GetTask(taskId)
+	task, _ := s.GetResp(taskId)
 	ch := make(chan *commonpb.Spite)
 	go func() {
 		defer func() {
-			s.DeleteTask(taskId)
+			s.DeleteResp(taskId)
 			close(ch)
 		}()
 
@@ -140,36 +166,31 @@ func (s *Session) RequestWithStream(msg *lispb.SpiteSession, stream grpc.ServerS
 	return ch, nil
 }
 
-func (s *Session) GenTaskId() uint32 {
-	s.TaskCount++
-	return s.TaskCount
+func (s *Session) StoreResp(taskId uint32, ch chan *commonpb.Spite) {
+	s.Responses.Store(taskId, ch)
 }
 
-func (s *Session) StoreTask(taskId uint32, msg chan *commonpb.Spite) {
-	s.TaskMap.Store(taskId, msg)
-}
-
-func (s *Session) GetTask(taskId uint32) (chan *commonpb.Spite, bool) {
-	msg, ok := s.TaskMap.Load(taskId)
+func (s *Session) GetResp(taskId uint32) (chan *commonpb.Spite, bool) {
+	msg, ok := s.Responses.Load(taskId)
 	if !ok {
 		return nil, false
 	}
 	return msg.(chan *commonpb.Spite), true
 }
 
-func (s *Session) DeleteTask(taskId uint32) {
-	s.TaskMap.Delete(taskId)
+func (s *Session) DeleteResp(taskId uint32) {
+	s.Responses.Delete(taskId)
 }
 
 // sessions - Manages the slivers, provides atomic access
 type sessions struct {
-	sessions *sync.Map // map[uint32]*Session
+	active *sync.Map // map[uint32]*Session
 }
 
 // All - Return a list of all sessions
 func (s *sessions) All() []*Session {
 	all := []*Session{}
-	s.sessions.Range(func(key, value interface{}) bool {
+	s.active.Range(func(key, value interface{}) bool {
 		all = append(all, value.(*Session))
 		return true
 	})
@@ -178,7 +199,7 @@ func (s *sessions) All() []*Session {
 
 // Get - Get a session by ID
 func (s *sessions) Get(sessionID string) *Session {
-	if val, ok := s.sessions.Load(sessionID); ok {
+	if val, ok := s.active.Load(sessionID); ok {
 		return val.(*Session)
 	}
 	return nil
@@ -186,7 +207,7 @@ func (s *sessions) Get(sessionID string) *Session {
 
 // Add - Add a sliver to the hive (atomically)
 func (s *sessions) Add(session *Session) *Session {
-	s.sessions.Store(session.ID, session)
+	s.active.Store(session.ID, session)
 	//EventBroker.Publish(Event{
 	//	EventType: consts.SessionOpenedEvent,
 	//	Session:   session,
@@ -196,16 +217,16 @@ func (s *sessions) Add(session *Session) *Session {
 
 // Remove - Remove a sliver from the hive (atomically)
 func (s *sessions) Remove(sessionID string) {
-	val, ok := s.sessions.Load(sessionID)
+	val, ok := s.active.Load(sessionID)
 	if !ok {
 		return
 	}
 	parentSession := val.(*Session)
 	//children := findAllChildrenByPeerID(parentSession.PeerID)
-	s.sessions.Delete(parentSession.ID)
+	s.active.Delete(parentSession.ID)
 	//coreLog.Debugf("Removing %d children of session %d (%v)", len(children), parentSession.ID, children)
 	//for _, child := range children {
-	//	childSession, ok := s.sessions.LoadAndDelete(child.SessionID)
+	//	childSession, ok := s.active.LoadAndDelete(child.SessionID)
 	//	if ok {
 	//		PivotSessions.Delete(childSession.(*Session).Connection.ID)
 	//		EventBroker.Publish(Event{

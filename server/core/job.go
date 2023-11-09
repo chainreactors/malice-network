@@ -12,8 +12,8 @@ var (
 		Map:  &sync.Map{},
 		Ctrl: make(chan *clientpb.JobCtrl),
 	}
-	jobID  int32 = 0
-	ctrlID int32 = 0
+	jobID  uint32 = 0
+	ctrlID uint32 = 0
 )
 
 type jobs struct {
@@ -41,7 +41,7 @@ func (j *jobs) Remove(job *Job) {
 }
 
 // Get - Get a Job
-func (j *jobs) Get(jobID int32) *Job {
+func (j *jobs) Get(jobID uint32) *Job {
 	if jobID <= 0 {
 		return nil
 	}
@@ -53,7 +53,7 @@ func (j *jobs) Get(jobID int32) *Job {
 }
 
 type Job struct {
-	ID           int32
+	ID           uint32
 	Message      proto.Message
 	JobCtrl      chan bool
 	PersistentID string
@@ -70,13 +70,12 @@ func (j *Job) ToProtobuf() *clientpb.Job {
 	return job
 }
 
-func NextJobID() int32 {
-	newID := jobID + 1
+func NextJobID() uint32 {
 	jobID++
-	return newID
+	return jobID
 }
 
-func NextCtrlID() int32 {
+func NextCtrlID() uint32 {
 	ctrlID++
 	return ctrlID
 }

@@ -42,7 +42,7 @@ func (rpc *Server) SpiteStream(stream listenerrpc.ListenerRPC_SpiteStreamServer)
 			return err
 		}
 		sess := core.Sessions.Get(msg.SessionId)
-		if ch, ok := sess.GetTask(msg.TaskId); ok {
+		if ch, ok := sess.GetResp(msg.TaskId); ok {
 			ch <- msg.Spite
 		}
 	}

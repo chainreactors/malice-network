@@ -24,10 +24,10 @@ func (rpc *Server) RegisterPipeline(ctx context.Context, req *lispb.Pipeline) (*
 
 func (rpc *Server) StartTcpPipeline(ctx context.Context, req *lispb.TCPPipeline) (*clientpb.Empty, error) {
 	ctrl := clientpb.JobCtrl{
-		Id:   int32(core.NextCtrlID()),
+		Id:   core.NextCtrlID(),
 		Ctrl: consts.CtrlPipelineStart,
 		Job: &clientpb.Job{
-			Id:       int32(core.NextJobID()),
+			Id:       core.NextJobID(),
 			Pipeline: types.BuildPipeline(req),
 		},
 	}

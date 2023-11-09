@@ -6,7 +6,7 @@ import (
 )
 
 func (rpc *Server) Execute(ctx context.Context, req *pluginpb.ExecRequest) (*pluginpb.ExecResponse, error) {
-	resp, err := rpc.GenericHandler(ctx, req)
+	resp, err := rpc.GenericHandler(ctx, newGenericRequest(req))
 	if err != nil {
 		return nil, err
 	}

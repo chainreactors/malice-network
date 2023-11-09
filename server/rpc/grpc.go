@@ -87,6 +87,40 @@ func StartClientListener(port uint16) (*grpc.Server, net.Listener, error) {
 	return grpcServer, ln, nil
 }
 
+func newGenericRequest(msg proto.Message) *GenericRequest {
+	return &GenericRequest{
+		Message: msg,
+	}
+}
+
+type GenericRequest struct {
+	proto.Message
+	Task  *core.Task
+	Spite *commonpb.Spite
+}
+
+func (r *GenericRequest) NewTask() *core.Task {
+	r.Task = core.NewTask(string(proto.MessageName(r.Message).Name()), 1)
+	return r.Task
+}
+
+func (r *GenericRequest) NewSpite() (*commonpb.Spite, error) {
+	if r.Task == nil {
+		r.NewTask()
+	}
+
+	r.Spite = &commonpb.Spite{
+		Timeout: uint64(consts.MinTimeout.Seconds()),
+		TaskId:  r.Task.Id,
+	}
+	var err error
+	r.Spite, err = types.BuildSpite(r.Spite, r.Message)
+	if err != nil {
+		return nil, err
+	}
+	return r.Spite, nil
+}
+
 type Server struct {
 	// Magical methods to break backwards compatibility
 	// Here be dragons: https://github.com/grpc/grpc-go/issues/3794
@@ -138,14 +172,8 @@ func (rpc *Server) getClientName(ctx context.Context) (string, error) {
 }
 
 // GenericHandler - Pass the request to the Sliver/Session
-func (rpc *Server) GenericHandler(ctx context.Context, req proto.Message) (proto.Message, error) {
+func (rpc *Server) GenericHandler(ctx context.Context, req *GenericRequest) (proto.Message, error) {
 	var err error
-	//if req.Async {
-	//	err = rpc.asyncGenericHandler(req, resp)
-	//	return err
-	//}
-
-	// Sync request
 
 	sid, err := rpc.getSessionID(ctx)
 	if err != nil {
@@ -158,14 +186,12 @@ func (rpc *Server) GenericHandler(ctx context.Context, req proto.Message) (proto
 		return nil, ErrInvalidSessionID
 	}
 
-	spite := &commonpb.Spite{
-		Timeout: uint64(consts.MinTimeout.Seconds()),
-	}
-	spite, err = types.BuildSpite(spite, req)
+	spite, err := req.NewSpite()
 	if err != nil {
 		logs.Log.Errorf(err.Error())
 		return nil, err
 	}
+
 	data, err := session.RequestAndWait(
 		&lispb.SpiteSession{SessionId: sid, Spite: spite},
 		listenersCh[session.ListenerId],
@@ -181,52 +207,36 @@ func (rpc *Server) GenericHandler(ctx context.Context, req proto.Message) (proto
 	return resp, nil
 }
 
-//
-//// asyncGenericHandler - Generic handler for async request/response's for beacon tasks
-//func (rpc *Server) asyncGenericHandler(req GenericRequest, resp GenericResponse) error {
-//	// VERY VERBOSE
-//	// rpcLog.Debugf("Async Generic Handler: %#v", req)
-//	//request := req.GetRequest()
-//	//if request == nil {
-//	//	return ErrMissingRequestField
-//	//}
-//	//
-//	//beacon, err := db.BeaconByID(request.BeaconID)
-//	//if beacon == nil || err != nil {
-//	//	rpcLog.Errorf("Invalid beacon ID in request: %s", err)
-//	//	return ErrInvalidBeaconID
-//	//}
-//	//
-//	//// Overwrite unused implant fields before re-serializing
-//	//request.SessionID = ""
-//	//request.BeaconID = ""
-//	//reqData, err := proto.Marshal(req)
-//	//if err != nil {
-//	//	return err
-//	//}
-//	//taskResponse := resp.GetResponse()
-//	//taskResponse.Async = true
-//	//taskResponse.BeaconID = beacon.ID.String()
-//	//task, err := beacon.Task(&sliverpb.Envelope{
-//	//	Type: sliverpb.MsgNumber(req),
-//	//	Data: reqData,
-//	//})
-//	//if err != nil {
-//	//	rpcLog.Errorf("Database error: %s", err)
-//	//	return ErrDatabaseFailure
-//	//}
-//	//parts := strings.Split(string(req.ProtoReflect().Descriptor().FullName().Name()), ".")
-//	//name := parts[len(parts)-1]
-//	//task.Description = name
-//	//err = db.Session().Save(task).Error
-//	//if err != nil {
-//	//	rpcLog.Errorf("Database error: %s", err)
-//	//	return ErrDatabaseFailure
-//	//}
-//	//taskResponse.TaskID = task.ID.String()
-//	//rpcLog.Debugf("Successfully tasked beacon: %#v", taskResponse)
-//	return nil
-//}
+// // asyncGenericHandler - Generic handler for async request/response's for beacon tasks
+func (rpc *Server) asyncGenericHandler(ctx context.Context, req *GenericRequest) (chan *commonpb.Spite, error) {
+	var err error
+
+	sid, err := rpc.getSessionID(ctx)
+	if err != nil {
+		logs.Log.Errorf(err.Error())
+		return nil, err
+	}
+
+	session := core.Sessions.Get(sid)
+	if session == nil {
+		return nil, ErrInvalidSessionID
+	}
+
+	spite, err := req.NewSpite()
+	if err != nil {
+		logs.Log.Errorf(err.Error())
+		return nil, err
+	}
+	ch, err := session.RequestWithAsync(
+		&lispb.SpiteSession{SessionId: sid, Spite: spite},
+		listenersCh[session.ListenerId],
+		consts.MinTimeout)
+	if err != nil {
+		return nil, err
+	}
+
+	return ch, nil
+}
 
 func (rpc *Server) GetBasic(ctx context.Context, _ *clientpb.Empty) (*clientpb.Basic, error) {
 	return &clientpb.Basic{
