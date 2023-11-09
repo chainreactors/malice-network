@@ -2,6 +2,7 @@ package core
 
 import (
 	"errors"
+	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/commonpb"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
@@ -127,11 +128,14 @@ func (s *Session) RequestWithAsync(msg *lispb.SpiteSession, stream grpc.ServerSt
 	}
 	ch := make(chan *commonpb.Spite)
 	go func() {
+		var c = 0
 		for spite := range ch {
 			resp, err := s.RequestAndWait(&lispb.SpiteSession{SessionId: msg.SessionId, Spite: spite}, stream, timeout)
 			if err != nil {
 				return
 			}
+			logs.Log.Debugf("send message %s, %d", spite.Name, c)
+			c++
 			if !resp.GetAsyncResponse().Success {
 				// todo error parser
 				return

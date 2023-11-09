@@ -16,12 +16,19 @@ var (
 
 func BuildSpite(spite *commonpb.Spite, msg proto.Message) (*commonpb.Spite, error) {
 	switch msg.(type) {
+	case *commonpb.Block:
+		spite.Name = "block"
+		spite.Body = &commonpb.Spite_Block{Block: msg.(*commonpb.Block)}
 	case *commonpb.Register:
 		spite.Body = &commonpb.Spite_Register{Register: msg.(*commonpb.Register)}
 	case *pluginpb.ExecRequest:
+		spite.Name = "exec"
 		spite.Body = &commonpb.Spite_ExecRequest{ExecRequest: msg.(*pluginpb.ExecRequest)}
 	case *pluginpb.ExecResponse:
 		spite.Body = &commonpb.Spite_ExecResponse{ExecResponse: msg.(*pluginpb.ExecResponse)}
+	case *pluginpb.UploadRequest:
+		spite.Name = "upload"
+		spite.Body = &commonpb.Spite_UploadRequest{UploadRequest: msg.(*pluginpb.UploadRequest)}
 	default:
 		return spite, ErrUnknownSpite
 	}

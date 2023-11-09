@@ -20,20 +20,7 @@ const (
 	ServerMaxMessageSize = 2 * GB
 )
 
-// ctrl type
-const (
-	CtrlPipelineStart = 0 + iota
-	CtrlPipelineStop
-)
-
-// ctrl status
-const (
-	CtrlStatusSuccess = 0 + iota
-	CtrlStatusFailed
-)
-
 // config
-
 const (
-	MaxPacketLength = "packet_length"
+	MaxPacketLength = "server.config.packet_length"
 )

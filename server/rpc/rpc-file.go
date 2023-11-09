@@ -12,6 +12,7 @@ import (
 	"github.com/chainreactors/malice-network/proto/implant/pluginpb"
 	"github.com/chainreactors/malice-network/server/configs"
 	"github.com/chainreactors/malice-network/server/core"
+	"github.com/gookit/config/v2"
 	"io/fs"
 	"os"
 	"path"
@@ -30,7 +31,7 @@ func (rpc *Server) Upload(ctx context.Context, req *pluginpb.UploadRequest) (*cl
 	}
 
 	greq := newGenericRequest(req)
-	greq.Task = core.NewTask("upload", packet.Count(req.Data, configs.GetConfig(consts.MaxPacketLength).(int)))
+	greq.Task = core.NewTask("upload", packet.Count(req.Data, config.Int(consts.MaxPacketLength)))
 	ch, err := rpc.asyncGenericHandler(ctx, greq)
 	if err != nil {
 		return nil, err

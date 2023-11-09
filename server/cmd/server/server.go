@@ -28,7 +28,7 @@ func Execute() {
 	// load config
 	err = configs.LoadConfig(configs.ServerConfigFileName, &opt)
 	if err != nil {
-		logs.Log.Debugf("cannot load config , %s ", err.Error())
+		logs.Log.Warnf("cannot load config , %s ", err.Error())
 	}
 	_, err = parser.Parse()
 	if err != nil {
@@ -45,6 +45,8 @@ func Execute() {
 			return
 		}
 		configs.CurrentServerConfigFilename = opt.Config
+	} else if opt.Server == nil {
+		logs.Log.Errorf("null server config , %s ", err.Error())
 	}
 
 	// start grpc
