@@ -181,8 +181,8 @@ func (rpc *Server) GenericHandler(ctx context.Context, req *GenericRequest) (pro
 		return nil, err
 	}
 
-	session := core.Sessions.Get(sid)
-	if session == nil {
+	session, ok := core.Sessions.Get(sid)
+	if !ok {
 		return nil, ErrInvalidSessionID
 	}
 
@@ -217,8 +217,8 @@ func (rpc *Server) asyncGenericHandler(ctx context.Context, req *GenericRequest)
 		return nil, err
 	}
 
-	session := core.Sessions.Get(sid)
-	if session == nil {
+	session, ok := core.Sessions.Get(sid)
+	if !ok {
 		return nil, ErrInvalidSessionID
 	}
 

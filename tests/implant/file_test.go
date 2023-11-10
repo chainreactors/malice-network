@@ -10,10 +10,9 @@ import (
 	"github.com/chainreactors/malice-network/tests/common"
 	"google.golang.org/grpc/metadata"
 	"testing"
-	"time"
 )
 
-func TestExec(t *testing.T) {
+func TestUpload(t *testing.T) {
 	client := common.NewImplant(common.DefaultListenerAddr, []byte{1, 2, 3, 4})
 	client.Register()
 	rpc := common.NewRPC(common.DefaultGRPCAddr)
@@ -22,13 +21,13 @@ func TestExec(t *testing.T) {
 		res, err := client.Read()
 		fmt.Printf("res %v %v\n", res, err)
 		spite := &commonpb.Spite{
-			TaskId: 0,
-			End:    true,
+			TaskId: 1,
 		}
-		resp := &pluginpb.ExecResponse{
-			Stdout:     []byte("admin"),
-			Pid:        999,
-			StatusCode: 0,
+		resp := &pluginpb.UploadRequest{
+			Name:   "test.exe",
+			Target: ".",
+			Priv:   0644,
+			Data:   make([]byte, 1000),
 		}
 		types.BuildSpite(spite, resp)
 		err = client.WriteSpite(spite)
@@ -37,11 +36,14 @@ func TestExec(t *testing.T) {
 			return
 		}
 	}()
-	time.Sleep(1 * time.Second)
-	resp, err := rpc.Client.Execute(metadata.NewOutgoingContext(context.Background(), metadata.Pairs(
-		"session_id", hash.Md5Hash(client.Sid))), &pluginpb.ExecRequest{
-		Path: "/bin/bash",
-		Args: []string{"whoami"}})
+
+	resp, err := rpc.Client.Upload(metadata.NewOutgoingContext(context.Background(), metadata.Pairs(
+		"session_id", hash.Md5Hash([]byte(client.Sid)))), &pluginpb.UploadRequest{
+		Name:   "test.exe",
+		Target: ".",
+		Priv:   0644,
+		Data:   make([]byte, 1000),
+	})
 	if err != nil {
 		fmt.Println(err.Error())
 		return

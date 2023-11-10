@@ -8,23 +8,23 @@ import (
 	"net"
 )
 
-func NewClient(addr string, sid string) *Client {
+func NewImplant(addr string, sid []byte) *Implant {
 	conn, err := net.Dial("tcp", addr)
 	if err != nil {
 		panic(err)
 	}
-	return &Client{
+	return &Implant{
 		conn: conn,
 		Sid:  sid,
 	}
 }
 
-type Client struct {
+type Implant struct {
 	conn net.Conn
-	Sid  string
+	Sid  []byte
 }
 
-func (c *Client) Register() {
+func (c *Implant) Register() {
 	spite := &commonpb.Spite{
 		TaskId: 1,
 	}
@@ -46,7 +46,7 @@ func (c *Client) Register() {
 	c.WriteSpite(spite)
 }
 
-func (c *Client) BuildSpite(spite *commonpb.Spite, msg proto.Message) {
+func (c *Implant) BuildSpite(spite *commonpb.Spite, msg proto.Message) {
 	switch msg.(type) {
 	case *commonpb.Register:
 		spite.Body = &commonpb.Spite_Register{Register: msg.(*commonpb.Register)}
@@ -57,7 +57,7 @@ func (c *Client) BuildSpite(spite *commonpb.Spite, msg proto.Message) {
 }
 
 // request spites
-func (c *Client) Write(msg proto.Message) error {
+func (c *Implant) Write(msg proto.Message) error {
 	err := packet.WritePacket(c.conn, msg, c.Sid)
 	if err != nil {
 		return err
@@ -65,7 +65,7 @@ func (c *Client) Write(msg proto.Message) error {
 	return nil
 }
 
-func (c *Client) WriteSpite(msg proto.Message) error {
+func (c *Implant) WriteSpite(msg proto.Message) error {
 	spites := &commonpb.Spites{
 		Spites: []*commonpb.Spite{msg.(*commonpb.Spite)},
 	}
@@ -73,7 +73,7 @@ func (c *Client) WriteSpite(msg proto.Message) error {
 	return c.Write(spites)
 }
 
-func (c *Client) Read() (proto.Message, error) {
+func (c *Implant) Read() (proto.Message, error) {
 	_, msg, err := packet.ReadPacket(c.conn)
 	if err != nil {
 		return nil, err

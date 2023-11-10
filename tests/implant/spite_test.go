@@ -7,7 +7,7 @@ import (
 )
 
 func TestReadSpites(t *testing.T) {
-	client := common.NewClient(common.DefaultListenerAddr, "1234")
+	client := common.NewImplant(common.DefaultListenerAddr, []byte{1, 2, 3, 4})
 	msg, err := client.Read()
 
 	fmt.Println(msg, err)

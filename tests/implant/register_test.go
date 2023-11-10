@@ -8,7 +8,7 @@ import (
 )
 
 func TestRegister(t *testing.T) {
-	client := common.NewClient(common.DefaultListenerAddr, "1234")
+	client := common.NewImplant(common.DefaultListenerAddr, []byte{1, 2, 3, 4})
 	spite := &commonpb.Spite{
 		TaskId: 1,
 	}

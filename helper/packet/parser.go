@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/proto/implant/commonpb"
 	"google.golang.org/protobuf/proto"
 	"io"
@@ -38,19 +39,19 @@ func ParseMessage(body []byte) (proto.Message, error) {
 	return msg, nil
 }
 
-func ParseHeader(header []byte) (string, int, error) {
+func ParseHeader(header []byte) ([]byte, int, error) {
 	if len(header) != HeaderLength {
-		return "", 0, ErrInvalidHeader
+		return nil, 0, ErrInvalidHeader
 	}
 	if header[MsgStart] != StartDelimiter {
-		return "", 0, ErrInvalidStart
+		return nil, 0, ErrInvalidStart
 	}
-	sessionId := string(header[MsgSessionStart:MsgSessionEnd])
+	sessionId := header[MsgSessionStart:MsgSessionEnd]
 	length := int(binary.LittleEndian.Uint32(header[MsgSessionEnd:]))
 	return sessionId, length, nil
 }
 
-func MarshalMessage(sessionId string, msg proto.Message) ([]byte, error) {
+func MarshalMessage(sessionId []byte, msg proto.Message) ([]byte, error) {
 	var buf bytes.Buffer
 
 	data, err := proto.Marshal(msg)
@@ -59,7 +60,7 @@ func MarshalMessage(sessionId string, msg proto.Message) ([]byte, error) {
 	}
 
 	buf.WriteByte(StartDelimiter)
-	buf.Write([]byte(sessionId))
+	buf.Write(sessionId)
 	err = binary.Write(&buf, binary.LittleEndian, int32(len(data)))
 	if err != nil {
 		return nil, err
@@ -70,11 +71,11 @@ func MarshalMessage(sessionId string, msg proto.Message) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func ReadHeader(conn net.Conn) (string, int, error) {
+func ReadHeader(conn net.Conn) ([]byte, int, error) {
 	header := make([]byte, HeaderLength)
 	n, err := io.ReadFull(conn, header)
 	if err != nil || n != HeaderLength {
-		return "", 0, err
+		return nil, 0, err
 	}
 	return ParseHeader(header)
 }
@@ -93,19 +94,19 @@ func ReadMessage(conn net.Conn, length int) (proto.Message, error) {
 	return ParseMessage(dataBuf[:length])
 }
 
-func ReadPacket(conn net.Conn) (string, proto.Message, error) {
+func ReadPacket(conn net.Conn) ([]byte, proto.Message, error) {
 	sessionId, length, err := ReadHeader(conn)
 	if err != nil {
-		return "", nil, err
+		return nil, nil, err
 	}
 	msg, err := ReadMessage(conn, length)
 	if err != nil {
-		return "", nil, err
+		return nil, nil, err
 	}
 	return sessionId, msg, nil
 }
 
-func WritePacket(conn net.Conn, msg proto.Message, sessionId string) error {
+func WritePacket(conn net.Conn, msg proto.Message, sessionId []byte) error {
 	bs, err := MarshalMessage(sessionId, msg)
 	if err != nil {
 		return err
@@ -114,5 +115,6 @@ func WritePacket(conn net.Conn, msg proto.Message, sessionId string) error {
 	if err != nil {
 		return err
 	}
+	logs.Log.Debugf("write packet to %s , %d bytes", conn.RemoteAddr(), len(bs))
 	return nil
 }

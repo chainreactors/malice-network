@@ -102,6 +102,7 @@ func (l *TCPPipeline) handler() (net.Listener, error) {
 				logs.Log.Errorf("Accept failed: %v", err)
 				continue
 			}
+			logs.Log.Infof("accept from %s", conn.RemoteAddr())
 			go l.handleRead(conn)
 		}
 	}()
@@ -114,35 +115,25 @@ func (l *TCPPipeline) handleRead(conn net.Conn) {
 	}()
 	var err error
 	var connect *core.Connection
+	var rawID []byte
 	for {
-		var rawID string
 		var msg proto.Message
+		var length int
+		rawID, length, err = packet.ReadHeader(conn)
+		if err != nil {
+			logs.Log.Debugf("Error reading header: %v", err)
+			return
+		}
+		sid := hash.Md5Hash(rawID)
+		connect = core.Connections.Get(sid)
 		if connect == nil {
-			var length int
-			rawID, length, err = packet.ReadHeader(conn)
-			if err != nil {
-				logs.Log.Errorf("Error reading header: %v", err)
-				return
-			}
-			sid := hash.Md5Hash([]byte(rawID))
-			connect = core.Connections.Get(sid)
-			if connect == nil {
-				connect = core.NewConnection(rawID)
-			}
-			go l.handleWrite(conn, connect)
-			msg, err = packet.ReadMessage(conn, length)
-			if err != nil {
-				core.Connections.Remove(sid)
-				logs.Log.Errorf("Error reading message: %v", err)
-				return
-			}
-		} else {
-			rawID, msg, err = packet.ReadPacket(conn)
-			if err != nil {
-				core.Connections.Remove(hash.Md5Hash([]byte(rawID)))
-				logs.Log.Errorf("Error reading packet: %v", err)
-				return
-			}
+			connect = core.NewConnection(rawID)
+		}
+		go connect.Send(conn)
+		msg, err = packet.ReadMessage(conn, length)
+		if err != nil {
+			logs.Log.Debugf("Error reading message: %v", err)
+			return
 		}
 		core.Forwarders.Send(l.ID(), &core.Message{
 			Message:   msg,
@@ -151,30 +142,70 @@ func (l *TCPPipeline) handleRead(conn net.Conn) {
 		})
 	}
 
+	//for {
+	//
+	//	//if connect == nil {
+	//	//	var length int
+	//	//	rawID, length, err = packet.ReadHeader(conn)
+	//	//	if err != nil {
+	//	//		logs.Log.Errorf("Error reading header: %v", err)
+	//	//		return
+	//	//	}
+	//	//	sid := hash.Md5Hash(rawID)
+	//	//	connect = core.Connections.Get(sid)
+	//	//	if connect == nil {
+	//	//		connect = core.NewConnection(rawID)
+	//	//	}
+	//	//	go l.handleWrite(conn, connect)
+	//	//	msg, err = packet.ReadMessage(conn, length)
+	//	//	if err != nil {
+	//	//		core.Connections.Remove(sid)
+	//	//		logs.Log.Errorf("Error reading message: %v", err)
+	//	//		return
+	//	//	}
+	//	//} else {
+	//	//	rawID, msg, err = packet.ReadPacket(conn)
+	//	//	if err != nil {
+	//	//		core.Connections.Remove(hash.Md5Hash([]byte(rawID)))
+	//	//		logs.Log.Errorf("Error reading packet: %v", err)
+	//	//		return
+	//	//	}
+	//	//}
+	//
+	//}
+
 }
-
-func (l *TCPPipeline) handleWrite(conn net.Conn, connect *core.Connection) {
-	msg := &commonpb.Spites{Spites: []*commonpb.Spite{}}
-
-	for {
-		select {
-		case spite := <-connect.Sender:
-			msg.Spites = append(msg.Spites, spite.(*commonpb.Spite))
-		case <-l.done:
-			return
-		default:
-			if len(msg.Spites) > 0 {
-				err := packet.WritePacket(conn, msg, connect.RawID)
-				if err != nil {
-					logs.Log.Errorf("Error writing packet: %v", err)
-					return
-				}
-				msg.Spites = []*commonpb.Spite{}
-			}
-		}
+func (l *TCPPipeline) handleWrite(conn net.Conn, ch chan *commonpb.Spites, rawid []byte) {
+	msg := <-ch
+	err := packet.WritePacket(conn, msg, rawid)
+	if err != nil {
+		logs.Log.Debugf(err.Error())
+		ch <- msg
 	}
-
+	return
 }
+
+//func (l *TCPPipeline) handleWrite(conn net.Conn, connect *core.Connection) {
+//	msg := &commonpb.Spites{Spites: []*commonpb.Spite{}}
+//
+//	for {
+//		select {
+//		case spite := <-connect.Sender:
+//			msg.Spites = append(msg.Spites, spite.(*commonpb.Spite))
+//		case <-l.done:
+//			return
+//		default:
+//			if len(msg.Spites) > 0 {
+//				err := packet.WritePacket(conn, msg, connect.RawID)
+//				if err != nil {
+//					logs.Log.Errorf("Error writing packet: %v", err)
+//				}
+//				return
+//			}
+//		}
+//	}
+//
+//}
 
 func handleShellcode(conn net.Conn, data []byte) {
 	logs.Log.Infof("Accepted incoming connection: %s", conn.RemoteAddr())

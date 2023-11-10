@@ -39,7 +39,7 @@ func (rpc *Server) Upload(ctx context.Context, req *pluginpb.UploadRequest) (*cl
 
 	var blockId = 0
 	go func() {
-		for block := range packet.Chunked(req.Data, configs.GetConfig(consts.MaxPacketLength).(int)) {
+		for block := range packet.Chunked(req.Data, packet.Count(req.Data, config.Int(consts.MaxPacketLength))) {
 			msg := &commonpb.Block{
 				BlockId: uint32(blockId),
 				Content: block,

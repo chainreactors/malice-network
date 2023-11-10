@@ -1,8 +1,12 @@
 package core
 
 import (
+	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/encoders/hash"
+	"github.com/chainreactors/malice-network/helper/packet"
+	"github.com/chainreactors/malice-network/proto/implant/commonpb"
 	"google.golang.org/protobuf/proto"
+	"net"
 	"sync"
 	"time"
 )
@@ -13,24 +17,78 @@ var (
 	}
 )
 
-func NewConnection(rawid string) *Connection {
+type spitesCache []*commonpb.Spite
+
+func (sc spitesCache) Build() *commonpb.Spites {
+	spites := &commonpb.Spites{Spites: []*commonpb.Spite{}}
+	for _, s := range sc {
+		spites.Spites = append(spites.Spites, s)
+	}
+	sc.Reset()
+	return spites
+}
+
+func (sc spitesCache) Reset() spitesCache {
+	return sc[:0]
+}
+
+func (sc spitesCache) Append(spite *commonpb.Spite) spitesCache {
+	return append(sc, spite)
+}
+
+func NewConnection(rawid []byte) *Connection {
 	conn := &Connection{
 		RawID:       rawid,
-		SessionID:   hash.Md5Hash([]byte(rawid)),
+		SessionID:   hash.Md5Hash(rawid),
 		LastMessage: time.Now(),
-		Sender:      make(chan proto.Message, 255),
+		C:           make(chan proto.Message, 255),
+		Sender:      make(chan *commonpb.Spites, 1),
 		Alive:       true,
 	}
 	Connections.Add(conn)
+	var spites spitesCache
+	go func() {
+		for {
+			select {
+			case spite := <-conn.C:
+				spites = spites.Append(spite.(*commonpb.Spite))
+			}
+		}
+	}()
+
+	go func() {
+		for {
+			if len(spites) == 0 {
+				time.Sleep(100 * time.Millisecond)
+				continue
+			}
+			select {
+			case conn.Sender <- spites.Build():
+			}
+		}
+	}()
 	return conn
 }
 
 type Connection struct {
-	RawID       string
+	RawID       []byte
 	SessionID   string
 	LastMessage time.Time
-	Sender      chan proto.Message // spite/promise
+	C           chan proto.Message // spite
+	Sender      chan *commonpb.Spites
 	Alive       bool
+	lock        sync.RWMutex
+}
+
+func (c *Connection) Send(conn net.Conn) {
+	msg := <-c.Sender
+	err := packet.WritePacket(conn, msg, c.RawID)
+	if err != nil {
+		// retry
+		logs.Log.Debugf("Error write packet, %s", err.Error())
+		c.Sender <- msg
+		return
+	}
 }
 
 type connections struct {

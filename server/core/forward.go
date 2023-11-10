@@ -95,7 +95,7 @@ func NewForward(conn *grpc.ClientConn, pipeline Pipeline) (*Forward, error) {
 				logs.Log.Errorf("connection %s not found", msg.SessionId)
 				continue
 			}
-			connect.Sender <- msg.Spite
+			connect.C <- msg.Spite
 		}
 	}()
 	return forward, nil
@@ -137,6 +137,8 @@ func (f *Forward) Handler() {
 				if err != nil {
 					return
 				}
+			case *commonpb.Spite_Empty:
+				continue
 			default:
 				spite := spite
 				go func() {

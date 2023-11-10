@@ -202,11 +202,11 @@ func (s *sessions) All() []*Session {
 }
 
 // Get - Get a session by ID
-func (s *sessions) Get(sessionID string) *Session {
+func (s *sessions) Get(sessionID string) (*Session, bool) {
 	if val, ok := s.active.Load(sessionID); ok {
-		return val.(*Session)
+		return val.(*Session), true
 	}
-	return nil
+	return nil, false
 }
 
 // Add - Add a sliver to the hive (atomically)
