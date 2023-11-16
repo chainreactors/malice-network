@@ -17,23 +17,30 @@ var (
 	}
 )
 
-type spitesCache []*commonpb.Spite
+type spitesCache struct {
+	cache []*commonpb.Spite
+	max   int
+}
+
+func (sc spitesCache) Len() int {
+	return len(sc.cache)
+}
 
 func (sc spitesCache) Build() *commonpb.Spites {
 	spites := &commonpb.Spites{Spites: []*commonpb.Spite{}}
-	for _, s := range sc {
+	for _, s := range sc.cache {
 		spites.Spites = append(spites.Spites, s)
 	}
-	sc.Reset()
+	spites.Reset()
 	return spites
 }
 
-func (sc spitesCache) Reset() spitesCache {
-	return sc[:0]
+func (sc spitesCache) Reset() {
+	sc.cache = []*commonpb.Spite{}
 }
 
-func (sc spitesCache) Append(spite *commonpb.Spite) spitesCache {
-	return append(sc, spite)
+func (sc spitesCache) Append(spite *commonpb.Spite) {
+	sc.cache = append(sc.cache, spite)
 }
 
 func NewConnection(rawid []byte) *Connection {
@@ -51,14 +58,14 @@ func NewConnection(rawid []byte) *Connection {
 		for {
 			select {
 			case spite := <-conn.C:
-				spites = spites.Append(spite.(*commonpb.Spite))
+				spites.Append(spite.(*commonpb.Spite))
 			}
 		}
 	}()
 
 	go func() {
 		for {
-			if len(spites) == 0 {
+			if spites.Len() == 0 {
 				time.Sleep(100 * time.Millisecond)
 				continue
 			}
