@@ -2,8 +2,11 @@ package rpc
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/certs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
@@ -12,6 +15,7 @@ import (
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/proto/services/listenerrpc"
 	"github.com/chainreactors/malice-network/server/core"
+	"github.com/chainreactors/malice-network/server/middleware"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
@@ -53,24 +57,27 @@ var listenersCh = make(map[string]grpc.ServerStream)
 func StartClientListener(port uint16) (*grpc.Server, net.Listener, error) {
 	logs.Log.Importantf("Starting gRPC console on 0.0.0.0:%d", port)
 
-	//tlsConfig := getOperatorServerTLSConfig("multiplayer")
+	tlsConfig := getOperatorServerMTLSConfig("multiplayer")
 
-	//creds := credentials.NewTLS(tlsConfig)
+	creds := credentials.NewTLS(tlsConfig)
 	ln, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", port))
 	if err != nil {
 		//mtlsLog.Error(err)
 		return nil, nil, err
 	}
 	options := []grpc.ServerOption{
-		//grpc.Creds(creds),
+		grpc.Creds(creds),
 		grpc.MaxRecvMsgSize(consts.ServerMaxMessageSize),
 		grpc.MaxSendMsgSize(consts.ServerMaxMessageSize),
 	}
-	options = append(options)
+	options = append(options, middleware.InitMiddleware(false, "grpc")...)
+	rootOptions := append(options, middleware.InitMiddleware(true, "root_grpc")...)
 	grpcServer := grpc.NewServer(options...)
+	rootGrpcServer := grpc.NewServer(rootOptions...)
 	clientrpc.RegisterMaliceRPCServer(grpcServer, NewServer())
 	listenerrpc.RegisterImplantRPCServer(grpcServer, NewServer())
 	listenerrpc.RegisterListenerRPCServer(grpcServer, NewServer())
+	clientrpc.RegisterRootRPCServer(rootGrpcServer, NewServer())
 	go func() {
 		panicked := true
 		defer func() {
@@ -127,6 +134,7 @@ type Server struct {
 	clientrpc.UnimplementedMaliceRPCServer
 	listenerrpc.UnimplementedImplantRPCServer
 	listenerrpc.UnimplementedListenerRPCServer
+	clientrpc.UnimplementedRootRPCServer
 }
 
 // NewServer - Create new server instance
@@ -284,4 +292,32 @@ func (rpc *Server) getClientCommonName(ctx context.Context) string {
 		return tlsAuth.State.VerifiedChains[0][0].Subject.CommonName
 	}
 	return ""
+}
+
+// getOperatorServerMTLSConfig - Get the TLS config for the operator server
+func getOperatorServerMTLSConfig(host string) *tls.Config {
+	caCert, _, err := certs.GetCertificateAuthority(certs.OperatorCA)
+	if err != nil {
+		logs.Log.Errorf("Failed to load CA %s", err)
+	}
+	caCertPool := x509.NewCertPool()
+	caCertPool.AddCert(caCert)
+	certPEM, keyPEM, err := certs.OperatorServerGenerateCertificate(host)
+	if err != nil {
+		logs.Log.Errorf("Failed to load certificate %s", err)
+	}
+	cert, err := tls.X509KeyPair(certPEM, keyPEM)
+	if err != nil {
+		logs.Log.Errorf("Error loading server certificate: %v", err)
+	}
+
+	tlsConfig := &tls.Config{
+		RootCAs:      caCertPool,
+		ClientAuth:   tls.RequireAndVerifyClientCert,
+		ClientCAs:    caCertPool,
+		Certificates: []tls.Certificate{cert},
+		MinVersion:   tls.VersionTLS13,
+	}
+
+	return tlsConfig
 }
