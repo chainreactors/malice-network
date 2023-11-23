@@ -36,7 +36,6 @@ func NewListener(cfg *configs.ListenerConfig) error {
 	_, err = lis.Rpc.RegisterListener(context.Background(), &lispb.RegisterListener{
 		Id: fmt.Sprintf("%s_%s", lis.Name, lis.Host),
 	})
-
 	if err != nil {
 		return err
 	}
@@ -66,6 +65,7 @@ func (lns *listener) Start() {
 			logs.Log.Errorf("Failed to start tcp pipeline %s", err)
 			continue
 		}
+		logs.Log.Importantf("Started tcp pipeline %s", pipeline.ID())
 		lns.registerPipeline(pipeline)
 	}
 }

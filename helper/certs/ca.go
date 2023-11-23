@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 )
 
@@ -25,8 +26,7 @@ func SetupCAs() {
 func getCertDir() string {
 	//rootDir := assets.GetRootAppDir()
 	// test
-	rootDir := filepath.Join(".config")
-	certDir := filepath.Join(rootDir, "certs")
+	certDir := path.Join(".malice", "certs")
 	if _, err := os.Stat(certDir); os.IsNotExist(err) {
 		err := os.MkdirAll(certDir, 0700)
 		if err != nil {
@@ -87,9 +87,9 @@ func GetCertificateAuthority(caType string) (*x509.Certificate, *rsa.PrivateKey,
 
 // GetCertificateAuthorityPEM - Get PEM encoded CA cert/key
 func GetCertificateAuthorityPEM(caType string) ([]byte, []byte, error) {
-	caType = filepath.Base(caType)
-	caCertPath := filepath.Join(getCertDir(), "localhost_root.crt")
-	caKeyPath := filepath.Join(getCertDir(), "localhost_root.key")
+	caType = path.Base(caType)
+	caCertPath := path.Join(getCertDir(), "localhost_root.crt")
+	caKeyPath := path.Join(getCertDir(), "localhost_root.key")
 
 	certPEM, err := ioutil.ReadFile(caCertPath)
 	if err != nil {

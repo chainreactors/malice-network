@@ -3,13 +3,14 @@ package generate
 import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/certs"
+	"github.com/chainreactors/malice-network/server/configs"
 	"os"
+	"path"
 )
 
 // GenerateRootCA - Initialize the root CA
 func GenerateRootCA() {
-	os.Mkdir(".config", 0744)
-	os.Mkdir(".config/certs", 0744)
+	os.MkdirAll(path.Join(configs.ServerRootPath, "certs"), 0744)
 	_, _, err := certs.InitRSACertificate("localhost", "root", true, false)
 	if err != nil {
 		logs.Log.Errorf("Failed to generate server certificate: %v", err)

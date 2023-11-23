@@ -17,6 +17,7 @@ func init() {
 		opt.ParseDefault = true
 	})
 	config.AddDriver(yaml.Driver)
+	generate.GenerateRootCA()
 }
 
 func Execute() {
@@ -62,8 +63,6 @@ func Execute() {
 		}
 	}
 
-	// generate certs
-	generate.GenerateRootCA()
 }
 
 // Start - Starts the server console

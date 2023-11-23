@@ -31,7 +31,6 @@ func StartTcpPipeline(conn *grpc.ClientConn, cfg *configs.TcpPipelineConfig) (*T
 		return nil, err
 	}
 	core.Forwarders.Add(forward)
-	logs.Log.Importantf("Started TCP pipeline %s", pp.ID())
 	return pp, nil
 }
 

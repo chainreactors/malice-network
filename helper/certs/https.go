@@ -9,7 +9,7 @@ import (
 const (
 	// SERVERCA - Directory containing operator certificates
 	SERVERCA = "root"
-	ROOTPATH = ".config/certs/"
+	ROOTPATH = ".malice/certs/"
 )
 
 // InitRSACertificate - Generate a server certificate signed with a given CA

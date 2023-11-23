@@ -14,6 +14,7 @@ import (
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/proto/services/listenerrpc"
+	"github.com/chainreactors/malice-network/server/configs"
 	"github.com/chainreactors/malice-network/server/core"
 	"github.com/chainreactors/malice-network/server/middleware"
 	"google.golang.org/grpc"
@@ -25,6 +26,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"net"
 	"runtime"
+	"runtime/debug"
 )
 
 var (
@@ -51,42 +53,56 @@ var (
 	//ErrInvalidBeaconTaskCancelState = status.Error(codes.InvalidArgument, fmt.Sprintf("Invalid task state, must be '%s' to cancel", models.PENDING))
 )
 
-var listenersCh = make(map[string]grpc.ServerStream)
+var (
+	listenersCh     = make(map[string]grpc.ServerStream)
+	authLog, rpcLog *logs.Logger
+)
+
+func InitLogs(debug bool) {
+	if debug {
+		authLog = configs.NewDebugLog("auth")
+		rpcLog = configs.NewDebugLog("rpc")
+	} else {
+		authLog = configs.NewFileLog("auth")
+		rpcLog = configs.NewFileLog("rpc")
+	}
+}
 
 // StartClientListener - Start a mutual TLS listener
 func StartClientListener(port uint16) (*grpc.Server, net.Listener, error) {
 	logs.Log.Importantf("Starting gRPC console on 0.0.0.0:%d", port)
 
-	tlsConfig := getOperatorServerMTLSConfig("multiplayer")
+	//tlsConfig := getOperatorServerMTLSConfig("multiplayer")
 
-	creds := credentials.NewTLS(tlsConfig)
+	//creds := credentials.NewTLS(tlsConfig)
 	ln, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", port))
 	if err != nil {
 		//mtlsLog.Error(err)
 		return nil, nil, err
 	}
+	InitLogs(false)
 	options := []grpc.ServerOption{
-		grpc.Creds(creds),
+		//grpc.Creds(creds),
 		grpc.MaxRecvMsgSize(consts.ServerMaxMessageSize),
 		grpc.MaxSendMsgSize(consts.ServerMaxMessageSize),
 	}
-	options = append(options, middleware.InitMiddleware(false, "grpc")...)
-	rootOptions := append(options, middleware.InitMiddleware(true, "root_grpc")...)
-	grpcServer := grpc.NewServer(options...)
+	commonOptions := append(options, middleware.CommonMiddleware(rpcLog)...)
+	rootOptions := append(options, middleware.AuthMiddleware(authLog)...)
+	grpcServer := grpc.NewServer(commonOptions...)
 	rootGrpcServer := grpc.NewServer(rootOptions...)
 	clientrpc.RegisterMaliceRPCServer(grpcServer, NewServer())
+	clientrpc.RegisterRootRPCServer(rootGrpcServer, NewServer())
 	listenerrpc.RegisterImplantRPCServer(grpcServer, NewServer())
 	listenerrpc.RegisterListenerRPCServer(grpcServer, NewServer())
-	clientrpc.RegisterRootRPCServer(rootGrpcServer, NewServer())
 	go func() {
 		panicked := true
 		defer func() {
 			if panicked {
-				//mtlsLog.Errorf("stacktrace from panic: %s", string(debug.Stack()))
+				logs.Log.Errorf("stacktrace from panic: %s", string(debug.Stack()))
 			}
 		}()
 		if err := grpcServer.Serve(ln); err != nil {
-			//mtlsLog.Warnf("gRPC server exited with error: %v", err)
+			logs.Log.Warnf("gRPC server exited with error: %v", err)
 		} else {
 			panicked = false
 		}
@@ -299,6 +315,7 @@ func getOperatorServerMTLSConfig(host string) *tls.Config {
 	caCert, _, err := certs.GetCertificateAuthority(certs.OperatorCA)
 	if err != nil {
 		logs.Log.Errorf("Failed to load CA %s", err)
+		return nil
 	}
 	caCertPool := x509.NewCertPool()
 	caCertPool.AddCert(caCert)

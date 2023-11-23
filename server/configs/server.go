@@ -43,9 +43,16 @@ func GetTempDir() string {
 	return path.Join(ServerRootPath, "temp")
 }
 
-func SetLogFilePath(stream string, level logs.Level) *logs.Logger {
-	logger := logs.NewLogger(level)
-	logger.SetFile(path.Join(GetLogPath(), fmt.Sprintf("%s.log", stream)))
+func NewFileLog(filename string) *logs.Logger {
+	logger := logs.NewLogger(logs.Info)
+	logger.SetFile(path.Join(GetLogPath(), fmt.Sprintf("%s.log", filename)))
+	logger.SetQuiet(true)
+	return logger
+}
+
+func NewDebugLog(filename string) *logs.Logger {
+	logger := logs.NewLogger(logs.Debug)
+	logger.SetFile(path.Join(GetLogPath(), fmt.Sprintf("%s.log", filename)))
 	return logger
 }
 
