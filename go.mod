@@ -5,7 +5,7 @@ go 1.21
 require (
 	filippo.io/age v1.1.1
 	github.com/chainreactors/files v0.0.0-20231102192550-a652458cee26
-	github.com/chainreactors/logs v0.0.0-20231027080134-7a11bb413460
+	github.com/chainreactors/logs v0.0.0-20231123082253-61009080f2dd
 	github.com/desertbit/grumble v1.1.3
 	github.com/fatih/color v1.14.1
 	github.com/goccy/go-yaml v1.11.2

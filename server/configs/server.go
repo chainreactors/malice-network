@@ -3,9 +3,11 @@ package configs
 import (
 	"encoding/hex"
 	"fmt"
+	"github.com/chainreactors/files"
 	"github.com/chainreactors/logs"
 	"github.com/goccy/go-yaml"
 	"github.com/gookit/config/v2"
+	"io"
 	insecureRand "math/rand"
 	"os"
 	"path"
@@ -14,7 +16,7 @@ import (
 
 var (
 	ServerConfigFileName        = "config.yaml"
-	ServerRootPath              = ".malice"
+	ServerRootPath              = files.GetExcPath() + ".malice"
 	CurrentServerConfigFilename = "config.yaml"
 )
 
@@ -46,13 +48,15 @@ func GetTempDir() string {
 func NewFileLog(filename string) *logs.Logger {
 	logger := logs.NewLogger(logs.Info)
 	logger.SetFile(path.Join(GetLogPath(), fmt.Sprintf("%s.log", filename)))
-	logger.SetQuiet(true)
+	logger.SetOutput(io.Discard)
+	logger.Init()
 	return logger
 }
 
 func NewDebugLog(filename string) *logs.Logger {
 	logger := logs.NewLogger(logs.Debug)
 	logger.SetFile(path.Join(GetLogPath(), fmt.Sprintf("%s.log", filename)))
+	logger.Init()
 	return logger
 }
 

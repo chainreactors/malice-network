@@ -25,6 +25,10 @@ github.com/chainreactors/files v0.0.0-20231102192550-a652458cee26 h1:p+RrnAjk2Es
 github.com/chainreactors/files v0.0.0-20231102192550-a652458cee26/go.mod h1:/Xa9YXhjBlaC33JTD6ZTJFig6pcplak2IDcovf42/6A=
 github.com/chainreactors/logs v0.0.0-20231027080134-7a11bb413460 h1:QYmvaEZHa0e3aQ9Aui9gkm3klPO+yHo5SoPTkoltr78=
 github.com/chainreactors/logs v0.0.0-20231027080134-7a11bb413460/go.mod h1:VZFqkFDGmp7/JOMeraW+YI7kTGcgz9fgc/HArVFnrGQ=
+github.com/chainreactors/logs v0.0.0-20231123081119-2438285ee858 h1:YDJj4zwWngdu037kIhWqcNz0QN5XA1GyciDhgaeFAd0=
+github.com/chainreactors/logs v0.0.0-20231123081119-2438285ee858/go.mod h1:VZFqkFDGmp7/JOMeraW+YI7kTGcgz9fgc/HArVFnrGQ=
+github.com/chainreactors/logs v0.0.0-20231123082253-61009080f2dd h1:KnBueBr9Cg7y0vxhb/5xIX36byk9Kzms+p1wwRUtfco=
+github.com/chainreactors/logs v0.0.0-20231123082253-61009080f2dd/go.mod h1:VZFqkFDGmp7/JOMeraW+YI7kTGcgz9fgc/HArVFnrGQ=
 github.com/chzyer/logex v1.1.10 h1:Swpa1K6QvQznwJRcfTfQJmTE72DqScAa40E+fbHEXEE=
 github.com/chzyer/logex v1.1.10/go.mod h1:+Ywpsq7O8HXn0nuIou7OrIPyXbp3wmkHB+jjWRnGsAI=
 github.com/chzyer/test v0.0.0-20180213035817-a1ea475d72b1 h1:q763qf9huN11kDQavWsoZXJNW3xEE4JJyHa5Q25/sd8=
