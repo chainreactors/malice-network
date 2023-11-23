@@ -4,6 +4,7 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/encoders/hash"
 	"github.com/chainreactors/malice-network/helper/packet"
+	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/proto/implant/commonpb"
 	"google.golang.org/protobuf/proto"
 	"net"
@@ -17,32 +18,6 @@ var (
 	}
 )
 
-type spitesCache struct {
-	cache []*commonpb.Spite
-	max   int
-}
-
-func (sc spitesCache) Len() int {
-	return len(sc.cache)
-}
-
-func (sc spitesCache) Build() *commonpb.Spites {
-	spites := &commonpb.Spites{Spites: []*commonpb.Spite{}}
-	for _, s := range sc.cache {
-		spites.Spites = append(spites.Spites, s)
-	}
-	spites.Reset()
-	return spites
-}
-
-func (sc spitesCache) Reset() {
-	sc.cache = []*commonpb.Spite{}
-}
-
-func (sc spitesCache) Append(spite *commonpb.Spite) {
-	sc.cache = append(sc.cache, spite)
-}
-
 func NewConnection(rawid []byte) *Connection {
 	conn := &Connection{
 		RawID:       rawid,
@@ -53,7 +28,7 @@ func NewConnection(rawid []byte) *Connection {
 		Alive:       true,
 	}
 	Connections.Add(conn)
-	var spites spitesCache
+	var spites types.SpitesCache
 	go func() {
 		for {
 			select {

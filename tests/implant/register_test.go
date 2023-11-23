@@ -2,6 +2,7 @@ package implant
 
 import (
 	"fmt"
+	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/proto/implant/commonpb"
 	"github.com/chainreactors/malice-network/tests/common"
 	"testing"
@@ -26,7 +27,7 @@ func TestRegister(t *testing.T) {
 			Interval: 10,
 		},
 	}
-	client.BuildSpite(spite, body)
+	types.BuildSpite(spite, body)
 	client.WriteSpite(spite)
 	resp, err := client.Read()
 	fmt.Println(resp, err)

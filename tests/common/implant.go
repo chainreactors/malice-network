@@ -1,30 +1,49 @@
 package common
 
 import (
+	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/packet"
+	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/proto/implant/commonpb"
 	"github.com/chainreactors/malice-network/proto/implant/pluginpb"
 	"google.golang.org/protobuf/proto"
 	"net"
+	"sync"
+	"time"
 )
 
 func NewImplant(addr string, sid []byte) *Implant {
-	conn, err := net.Dial("tcp", addr)
+	i := &Implant{
+		Addr:     addr,
+		Sid:      sid,
+		interval: 10 * time.Second,
+	}
+	err := i.Connect()
 	if err != nil {
 		panic(err)
 	}
-	return &Implant{
-		conn: conn,
-		Sid:  sid,
-	}
+	return i
 }
 
 type Implant struct {
-	conn net.Conn
-	Sid  []byte
+	Addr     string
+	conn     net.Conn
+	Sid      []byte
+	ch       chan *commonpb.Spites
+	cache    types.SpitesCache
+	interval time.Duration
 }
 
-func (c *Implant) Register() {
+func (implant *Implant) Connect() error {
+	conn, err := net.Dial("tcp", implant.Addr)
+	if err != nil {
+		return err
+	}
+	implant.conn = conn
+	return nil
+}
+
+func (implant *Implant) Register() {
 	spite := &commonpb.Spite{
 		TaskId: 1,
 	}
@@ -42,41 +61,115 @@ func (c *Implant) Register() {
 			Interval: 10,
 		},
 	}
-	c.BuildSpite(spite, body)
-	c.WriteSpite(spite)
-}
-
-func (c *Implant) BuildSpite(spite *commonpb.Spite, msg proto.Message) {
-	switch msg.(type) {
-	case *commonpb.Register:
-		spite.Body = &commonpb.Spite_Register{Register: msg.(*commonpb.Register)}
-	case *pluginpb.ExecRequest:
-		spite.Body = &commonpb.Spite_ExecRequest{ExecRequest: msg.(*pluginpb.ExecRequest)}
-	}
-
+	types.BuildSpite(spite, body)
+	implant.WriteSpite(spite)
 }
 
 // request spites
-func (c *Implant) Write(msg proto.Message) error {
-	err := packet.WritePacket(c.conn, msg, c.Sid)
+func (implant *Implant) Write(msg proto.Message) error {
+	err := packet.WritePacket(implant.conn, msg, implant.Sid)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (c *Implant) WriteSpite(msg proto.Message) error {
+func (implant *Implant) WriteWithTimeout(msg proto.Message) error {
+	err := packet.WritePacketWithTimeout(implant.conn, msg, implant.Sid, implant.interval)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (implant *Implant) WriteSpite(msg proto.Message) error {
 	spites := &commonpb.Spites{
 		Spites: []*commonpb.Spite{msg.(*commonpb.Spite)},
 	}
 
-	return c.Write(spites)
+	return implant.Write(spites)
 }
 
-func (c *Implant) Read() (proto.Message, error) {
-	_, msg, err := packet.ReadPacket(c.conn)
+func (implant *Implant) Read() (proto.Message, error) {
+	_, msg, err := packet.ReadPacket(implant.conn)
 	if err != nil {
 		return nil, err
 	}
 	return msg, nil
+}
+
+func (implant *Implant) ReadWithTimeout() (proto.Message, error) {
+	_, msg, err := packet.ReadPacketWithTimeout(implant.conn, implant.interval)
+	if err != nil {
+		return nil, err
+	}
+	return msg, nil
+}
+
+func (implant *Implant) Close() {
+	implant.conn.Close()
+}
+
+func (implant *Implant) Run() {
+	implant.Register()
+	for {
+		var wg sync.WaitGroup
+		wg.Add(2)
+		implant.Connect()
+		done := make(chan bool) // 创建一个缓冲通道
+		go func() {
+			defer wg.Done()
+			msg, err := implant.ReadWithTimeout()
+			if err != nil {
+				done <- true
+				logs.Log.Error(err.Error())
+				return
+			}
+			implant.Handler(msg.(*commonpb.Spites))
+			done <- true
+			return
+		}()
+
+		go func() {
+			defer wg.Done()
+			select {
+			case msg := <-implant.ch:
+				err := implant.Write(msg)
+				if err != nil {
+					logs.Log.Error(err.Error())
+					return
+				}
+				return
+			case <-done:
+				logs.Log.Error("auto close")
+				return
+			}
+		}()
+		wg.Wait()
+	}
+}
+
+func (implant *Implant) Handler(msg *commonpb.Spites) {
+	for _, spite := range msg.Spites {
+		implant.cache.Append(implant.HandlerSpite(spite))
+	}
+	implant.ch <- implant.cache.Build()
+}
+
+func (implant *Implant) HandlerSpite(msg *commonpb.Spite) *commonpb.Spite {
+	spite := &commonpb.Spite{
+		TaskId: msg.TaskId,
+		End:    true,
+	}
+	var resp proto.Message
+	switch msg.Body.(type) {
+	case *commonpb.Spite_ExecRequest:
+		resp = &pluginpb.ExecResponse{
+			Stdout:     []byte("admin"),
+			Pid:        999,
+			StatusCode: 0,
+		}
+	}
+	types.BuildSpite(spite, resp)
+	return spite
 }

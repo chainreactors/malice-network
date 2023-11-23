@@ -9,6 +9,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"io"
 	"net"
+	"time"
 )
 
 const (
@@ -80,8 +81,33 @@ func ReadHeader(conn net.Conn) ([]byte, int, error) {
 	return ParseHeader(header)
 }
 
+func ReadHeaderWithTimeout(conn net.Conn, timeout time.Duration) ([]byte, int, error) {
+	header := make([]byte, HeaderLength)
+	conn.SetReadDeadline(time.Now().Add(timeout))
+	n, err := io.ReadFull(conn, header)
+	if err != nil || n != HeaderLength {
+		return nil, 0, err
+	}
+	return ParseHeader(header)
+}
+
 func ReadMessage(conn net.Conn, length int) (proto.Message, error) {
 	dataBuf := make([]byte, length+1)
+	n, err := io.ReadFull(conn, dataBuf)
+
+	if err != nil || n != length+1 {
+		return nil, err
+	}
+
+	if dataBuf[length] != EndDelimiter {
+		return nil, ErrInvalidEnd
+	}
+	return ParseMessage(dataBuf[:length])
+}
+
+func ReadMessageWithTimeout(conn net.Conn, length int, timeout time.Duration) (proto.Message, error) {
+	dataBuf := make([]byte, length+1)
+	conn.SetReadDeadline(time.Now().Add(timeout))
 	n, err := io.ReadFull(conn, dataBuf)
 
 	if err != nil || n != length+1 {
@@ -106,11 +132,37 @@ func ReadPacket(conn net.Conn) ([]byte, proto.Message, error) {
 	return sessionId, msg, nil
 }
 
+func ReadPacketWithTimeout(conn net.Conn, timeout time.Duration) ([]byte, proto.Message, error) {
+	sessionId, length, err := ReadHeaderWithTimeout(conn, timeout)
+	if err != nil {
+		return nil, nil, err
+	}
+	msg, err := ReadMessageWithTimeout(conn, length, timeout)
+	if err != nil {
+		return nil, nil, err
+	}
+	return sessionId, msg, nil
+}
+
 func WritePacket(conn net.Conn, msg proto.Message, sessionId []byte) error {
 	bs, err := MarshalMessage(sessionId, msg)
 	if err != nil {
 		return err
 	}
+	_, err = conn.Write(bs)
+	if err != nil {
+		return err
+	}
+	logs.Log.Debugf("write packet to %s , %d bytes", conn.RemoteAddr(), len(bs))
+	return nil
+}
+
+func WritePacketWithTimeout(conn net.Conn, msg proto.Message, sessionId []byte, timeout time.Duration) error {
+	bs, err := MarshalMessage(sessionId, msg)
+	if err != nil {
+		return err
+	}
+	conn.SetWriteDeadline(time.Now().Add(timeout))
 	_, err = conn.Write(bs)
 	if err != nil {
 		return err

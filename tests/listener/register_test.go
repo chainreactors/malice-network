@@ -9,8 +9,8 @@ import (
 )
 
 func TestRegister(t *testing.T) {
-	rpc := common.NewRPC(common.DefaultGRPCAddr)
-	_, err := rpc.Listener.RegisterListener(context.Background(), &lispb.RegisterListener{ListenerId: "test"})
+	rpc := common.NewClient(common.DefaultGRPCAddr, []byte{1, 2, 3, 4})
+	_, err := rpc.Listener.RegisterListener(context.Background(), &lispb.RegisterListener{Id: "test"})
 	if err != nil {
 		fmt.Println(err)
 		return

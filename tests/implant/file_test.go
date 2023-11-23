@@ -13,9 +13,9 @@ import (
 )
 
 func TestUpload(t *testing.T) {
-	client := common.NewImplant(common.DefaultListenerAddr, []byte{1, 2, 3, 4})
+	client := common.NewImplant(common.DefaultListenerAddr, common.TestSid)
 	client.Register()
-	rpc := common.NewRPC(common.DefaultGRPCAddr)
+	rpc := common.NewClient(common.DefaultGRPCAddr, common.TestSid)
 	fmt.Println(hash.Md5Hash([]byte(client.Sid)))
 	go func() {
 		res, err := client.Read()

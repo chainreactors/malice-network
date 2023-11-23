@@ -1,10 +1,13 @@
 package consts
 
+// client
 const (
 	// UpdateStr - "update"
 	UpdateStr = "update"
 	// VersionStr - "version"
 	VersionStr = "version"
+
+	ExecutionStr = "exec"
 )
 
 // event
