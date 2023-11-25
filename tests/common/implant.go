@@ -17,33 +17,39 @@ func NewImplant(addr string, sid []byte) *Implant {
 		Addr:     addr,
 		Sid:      sid,
 		interval: 10 * time.Second,
-	}
-	err := i.Connect()
-	if err != nil {
-		panic(err)
+		ch:       make(chan *commonpb.Spites, 255),
+		cache:    types.NewSpitesCache(),
 	}
 	return i
 }
 
 type Implant struct {
 	Addr     string
-	conn     net.Conn
 	Sid      []byte
 	ch       chan *commonpb.Spites
-	cache    types.SpitesCache
+	cache    *types.SpitesCache
 	interval time.Duration
 }
 
-func (implant *Implant) Connect() error {
+func (implant *Implant) Connect() (net.Conn, error) {
 	conn, err := net.Dial("tcp", implant.Addr)
 	if err != nil {
-		return err
+		return conn, err
 	}
-	implant.conn = conn
-	return nil
+	return conn, nil
+}
+
+func (implant *Implant) MustConnect() net.Conn {
+	conn, err := net.Dial("tcp", implant.Addr)
+	if err != nil {
+		panic(err)
+	}
+	return conn
 }
 
 func (implant *Implant) Register() {
+	conn := implant.MustConnect()
+	defer conn.Close()
 	spite := &commonpb.Spite{
 		TaskId: 1,
 	}
@@ -62,95 +68,99 @@ func (implant *Implant) Register() {
 		},
 	}
 	types.BuildSpite(spite, body)
-	implant.WriteSpite(spite)
+	implant.WriteSpite(conn, spite)
 }
 
 // request spites
-func (implant *Implant) Write(msg proto.Message) error {
-	err := packet.WritePacket(implant.conn, msg, implant.Sid)
+func (implant *Implant) Write(conn net.Conn, msg proto.Message) error {
+	err := packet.WritePacket(conn, msg, implant.Sid)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (implant *Implant) WriteWithTimeout(msg proto.Message) error {
-	err := packet.WritePacketWithTimeout(implant.conn, msg, implant.Sid, implant.interval)
+func (implant *Implant) WriteWithTimeout(conn net.Conn, msg proto.Message) error {
+	err := packet.WritePacketWithTimeout(conn, msg, implant.Sid, implant.interval)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (implant *Implant) WriteSpite(msg proto.Message) error {
+func (implant *Implant) WriteSpite(conn net.Conn, msg proto.Message) error {
 	spites := &commonpb.Spites{
 		Spites: []*commonpb.Spite{msg.(*commonpb.Spite)},
 	}
 
-	return implant.Write(spites)
+	return implant.Write(conn, spites)
 }
 
-func (implant *Implant) Read() (proto.Message, error) {
-	_, msg, err := packet.ReadPacket(implant.conn)
+func (implant *Implant) Read(conn net.Conn) (proto.Message, error) {
+	_, msg, err := packet.ReadPacket(conn)
 	if err != nil {
 		return nil, err
 	}
 	return msg, nil
 }
 
-func (implant *Implant) ReadWithTimeout() (proto.Message, error) {
-	_, msg, err := packet.ReadPacketWithTimeout(implant.conn, implant.interval)
+func (implant *Implant) ReadWithTimeout(conn net.Conn) (proto.Message, error) {
+	_, msg, err := packet.ReadPacketWithTimeout(conn, implant.interval)
 	if err != nil {
 		return nil, err
 	}
 	return msg, nil
-}
-
-func (implant *Implant) Close() {
-	implant.conn.Close()
 }
 
 func (implant *Implant) Run() {
-	implant.Register()
 	for {
 		var wg sync.WaitGroup
 		wg.Add(2)
-		implant.Connect()
-		done := make(chan bool) // 创建一个缓冲通道
+		conn, err := implant.Connect()
+		if err != nil {
+			return
+		}
+
 		go func() {
 			defer wg.Done()
-			msg, err := implant.ReadWithTimeout()
+			msg, err := implant.ReadWithTimeout(conn)
 			if err != nil {
-				done <- true
 				logs.Log.Error(err.Error())
 				return
 			}
-			implant.Handler(msg.(*commonpb.Spites))
-			done <- true
+			logs.Log.Infof("%v", msg)
+			go implant.Handler(msg.(*commonpb.Spites))
 			return
 		}()
 
 		go func() {
 			defer wg.Done()
+			if implant.cache.Len() == 0 {
+				err := implant.WriteEmpty(conn)
+				if err != nil {
+					logs.Log.Debugf(err.Error())
+				}
+				return
+			}
 			select {
 			case msg := <-implant.ch:
-				err := implant.Write(msg)
+				err := implant.Write(conn, msg)
 				if err != nil {
 					logs.Log.Error(err.Error())
 					return
 				}
-				return
-			case <-done:
-				logs.Log.Error("auto close")
+				logs.Log.Debugf("send msg %v", msg)
 				return
 			}
 		}()
 		wg.Wait()
+		conn.Close()
 	}
 }
 
 func (implant *Implant) Handler(msg *commonpb.Spites) {
 	for _, spite := range msg.Spites {
+		logs.Log.Debugf("receive spite %v", spite)
 		implant.cache.Append(implant.HandlerSpite(spite))
 	}
 	implant.ch <- implant.cache.Build()
@@ -172,4 +182,13 @@ func (implant *Implant) HandlerSpite(msg *commonpb.Spite) *commonpb.Spite {
 	}
 	types.BuildSpite(spite, resp)
 	return spite
+}
+
+func (implant *Implant) WriteEmpty(conn net.Conn) error {
+	err := implant.Write(conn, types.BuildSpites([]*commonpb.Spite{&commonpb.Spite{Body: &commonpb.Spite_Empty{}}}))
+	if err != nil {
+		return err
+	}
+	return nil
+
 }

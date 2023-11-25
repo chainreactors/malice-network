@@ -1,12 +1,12 @@
 package core
 
 import (
+	"context"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/encoders/hash"
 	"github.com/chainreactors/malice-network/helper/packet"
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/proto/implant/commonpb"
-	"google.golang.org/protobuf/proto"
 	"net"
 	"sync"
 	"time"
@@ -23,29 +23,29 @@ func NewConnection(rawid []byte) *Connection {
 		RawID:       rawid,
 		SessionID:   hash.Md5Hash(rawid),
 		LastMessage: time.Now(),
-		C:           make(chan proto.Message, 255),
+		C:           make(chan *commonpb.Spite, 255),
 		Sender:      make(chan *commonpb.Spites, 1),
 		Alive:       true,
+		cache:       types.NewSpitesCache(),
 	}
 	Connections.Add(conn)
-	var spites types.SpitesCache
 	go func() {
 		for {
 			select {
 			case spite := <-conn.C:
-				spites.Append(spite.(*commonpb.Spite))
+				conn.cache.Append(spite)
 			}
 		}
 	}()
 
 	go func() {
 		for {
-			if spites.Len() == 0 {
+			if conn.cache.Len() == 0 {
 				time.Sleep(100 * time.Millisecond)
 				continue
 			}
 			select {
-			case conn.Sender <- spites.Build():
+			case conn.Sender <- conn.cache.Build():
 			}
 		}
 	}()
@@ -56,20 +56,24 @@ type Connection struct {
 	RawID       []byte
 	SessionID   string
 	LastMessage time.Time
-	C           chan proto.Message // spite
+	C           chan *commonpb.Spite // spite
 	Sender      chan *commonpb.Spites
 	Alive       bool
-	lock        sync.RWMutex
+	cache       *types.SpitesCache
 }
 
-func (c *Connection) Send(conn net.Conn) {
-	msg := <-c.Sender
-	err := packet.WritePacket(conn, msg, c.RawID)
-	if err != nil {
-		// retry
-		logs.Log.Debugf("Error write packet, %s", err.Error())
-		c.Sender <- msg
+func (c *Connection) Send(ctx context.Context, conn net.Conn) {
+	select {
+	case <-ctx.Done():
 		return
+	case msg := <-c.Sender:
+		err := packet.WritePacket(conn, msg, c.RawID)
+		if err != nil {
+			// retry
+			logs.Log.Debugf("Error write packet, %s", err.Error())
+			c.Sender <- msg
+			return
+		}
 	}
 }
 

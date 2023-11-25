@@ -2,8 +2,8 @@ package main
 
 import (
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/server/configs"
-	"github.com/chainreactors/malice-network/server/generate"
+	"github.com/chainreactors/malice-network/server/internal/configs"
+	"github.com/chainreactors/malice-network/server/internal/generate"
 	"github.com/chainreactors/malice-network/server/listener"
 	"github.com/chainreactors/malice-network/server/rpc"
 	"github.com/gookit/config/v2"
@@ -18,6 +18,7 @@ func init() {
 	})
 	config.AddDriver(yaml.Driver)
 	generate.GenerateRootCA()
+	logs.Log.SetLevel(logs.Debug)
 }
 
 func Execute() {

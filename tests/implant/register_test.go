@@ -9,7 +9,7 @@ import (
 )
 
 func TestRegister(t *testing.T) {
-	client := common.NewImplant(common.DefaultListenerAddr, []byte{1, 2, 3, 4})
+	implant := common.NewImplant(common.DefaultListenerAddr, []byte{1, 2, 3, 4})
 	spite := &commonpb.Spite{
 		TaskId: 1,
 	}
@@ -28,7 +28,8 @@ func TestRegister(t *testing.T) {
 		},
 	}
 	types.BuildSpite(spite, body)
-	client.WriteSpite(spite)
-	resp, err := client.Read()
+	conn := implant.MustConnect()
+	implant.WriteSpite(conn, spite)
+	resp, err := implant.Read(conn)
 	fmt.Println(resp, err)
 }

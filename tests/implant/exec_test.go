@@ -16,10 +16,13 @@ func TestExec(t *testing.T) {
 	sid := []byte{1, 2, 3, 4}
 	implant := common.NewImplant(common.DefaultListenerAddr, sid)
 	implant.Register()
+	time.Sleep(1 * time.Second)
 	rpc := common.NewClient(common.DefaultGRPCAddr, sid)
 	fmt.Println(hash.Md5Hash([]byte(implant.Sid)))
 	go func() {
-		res, err := implant.Read()
+		conn := implant.MustConnect()
+		implant.WriteEmpty(conn)
+		res, err := implant.Read(conn)
 		fmt.Printf("res %v %v\n", res, err)
 		spite := &commonpb.Spite{
 			TaskId: 0,
@@ -31,7 +34,7 @@ func TestExec(t *testing.T) {
 			StatusCode: 0,
 		}
 		types.BuildSpite(spite, resp)
-		err = implant.WriteSpite(spite)
+		err = implant.WriteSpite(conn, spite)
 		if err != nil {
 			fmt.Println(err)
 			return

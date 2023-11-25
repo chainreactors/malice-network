@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/server/configs"
+	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/listener"
 	"github.com/gookit/config/v2"
 	"github.com/gookit/config/v2/yaml"

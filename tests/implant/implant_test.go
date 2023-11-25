@@ -2,16 +2,21 @@ package implant
 
 import (
 	"fmt"
+	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/implant/pluginpb"
 	"github.com/chainreactors/malice-network/tests/common"
 	"testing"
+	"time"
 )
 
 func TestImplant(t *testing.T) {
-	implant := common.NewImplant(common.DefaultListenerAddr, []byte{1, 2, 3, 4})
+	logs.Log.SetLevel(logs.Debug)
+	implant := common.NewImplant(common.DefaultListenerAddr, common.TestSid)
+	implant.Register()
+	time.Sleep(5 * time.Second)
 	go implant.Run()
-	client := common.NewClient(common.DefaultGRPCAddr, []byte{1, 2, 3, 4})
+	client := common.NewClient(common.DefaultGRPCAddr, common.TestSid)
 	resp, err := client.Call(consts.ExecutionStr, &pluginpb.ExecRequest{
 		Path: "/bin/bash",
 		Args: []string{"whoami"},

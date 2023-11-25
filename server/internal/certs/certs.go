@@ -12,8 +12,8 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"github.com/chainreactors/malice-network/server/db"
-	"github.com/chainreactors/malice-network/server/db/models"
+	"github.com/chainreactors/malice-network/server/internal/db"
+	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"math/big"
 	insecureRand "math/rand"
 	"net"
@@ -64,7 +64,6 @@ func SaveToPEMFile(filename string, pemData []byte) error {
 		return err
 	}
 	defer file.Close()
-
 	_, err = file.Write(pemData)
 	if err != nil {
 		return err

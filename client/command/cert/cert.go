@@ -4,9 +4,9 @@ import (
 	"context"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/console"
-	"github.com/chainreactors/malice-network/helper/certs"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/desertbit/grumble"
+	"os"
 )
 
 func CertCmd(ctx *grumble.Context, con *console.Console) {
@@ -26,11 +26,11 @@ func registerCA(ctx *grumble.Context, con *console.Console) {
 		con.App.Println("Error registering CA:", err)
 		return
 	}
-	if certErr := certs.SaveToPEMFile(host+user+".crt", res.Certs); certErr != nil {
+	if certErr := os.WriteFile(host+user+".crt", res.Certs, 0o777); certErr != nil {
 		con.App.Println("Error saving cert:", certErr)
 		return
 	}
-	if keyErr := certs.SaveToPEMFile(host+user+".key", res.PrivateKey); keyErr != nil {
+	if keyErr := os.WriteFile(host+user+".key", res.PrivateKey, 0o777); keyErr != nil {
 		con.App.Println("Error saving cert:", keyErr)
 		return
 	}

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/chainreactors/malice-network/server/configs"
+	configs "github.com/chainreactors/malice-network/server/internal/configs"
 )
 
 type Options struct {

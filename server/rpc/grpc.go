@@ -6,7 +6,6 @@ import (
 	"crypto/x509"
 	"fmt"
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/certs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
@@ -14,8 +13,9 @@ import (
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/proto/services/listenerrpc"
-	"github.com/chainreactors/malice-network/server/configs"
 	"github.com/chainreactors/malice-network/server/core"
+	certs2 "github.com/chainreactors/malice-network/server/internal/certs"
+	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/middleware"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -312,14 +312,14 @@ func (rpc *Server) getClientCommonName(ctx context.Context) string {
 
 // getOperatorServerMTLSConfig - Get the TLS config for the operator server
 func getOperatorServerMTLSConfig(host string) *tls.Config {
-	caCert, _, err := certs.GetCertificateAuthority(certs.OperatorCA)
+	caCert, _, err := certs2.GetCertificateAuthority(certs2.OperatorCA)
 	if err != nil {
 		logs.Log.Errorf("Failed to load CA %s", err)
 		return nil
 	}
 	caCertPool := x509.NewCertPool()
 	caCertPool.AddCert(caCert)
-	certPEM, keyPEM, err := certs.OperatorServerGenerateCertificate(host)
+	certPEM, keyPEM, err := certs2.OperatorServerGenerateCertificate(host)
 	if err != nil {
 		logs.Log.Errorf("Failed to load certificate %s", err)
 	}

@@ -2,8 +2,8 @@ package generate
 
 import (
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/certs"
-	"github.com/chainreactors/malice-network/server/configs"
+	"github.com/chainreactors/malice-network/server/internal/certs"
+	"github.com/chainreactors/malice-network/server/internal/configs"
 	"os"
 	"path"
 )

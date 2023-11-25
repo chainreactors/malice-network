@@ -87,6 +87,7 @@ func (s *Session) Request(msg *lispb.SpiteSession, stream grpc.ServerStream, tim
 	go func() {
 		err = stream.SendMsg(msg)
 		if err != nil {
+			logs.Log.Debugf(err.Error())
 			return
 		}
 		close(done)

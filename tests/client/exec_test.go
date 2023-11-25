@@ -11,9 +11,9 @@ import (
 )
 
 func TestExec(t *testing.T) {
-	rpc := common.NewClient(common.DefaultGRPCAddr)
+	rpc := common.NewClient(common.DefaultGRPCAddr, common.TestSid)
 	resp, err := rpc.Client.Execute(metadata.NewOutgoingContext(context.Background(), metadata.Pairs(
-		"session_id", hash.Md5Hash([]byte{1, 2, 3, 4}))), &pluginpb.ExecRequest{
+		"session_id", hash.Md5Hash(common.TestSid))), &pluginpb.ExecRequest{
 		Path: "/bin/bash",
 		Args: []string{"whoami"}})
 	if err != nil {

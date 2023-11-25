@@ -1,6 +1,7 @@
 package listener
 
 import (
+	"context"
 	"encoding/binary"
 	"fmt"
 	"github.com/chainreactors/logs"
@@ -8,8 +9,8 @@ import (
 	"github.com/chainreactors/malice-network/helper/packet"
 	"github.com/chainreactors/malice-network/proto/implant/commonpb"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
-	"github.com/chainreactors/malice-network/server/configs"
 	"github.com/chainreactors/malice-network/server/core"
+	"github.com/chainreactors/malice-network/server/internal/configs"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
 	"net"
@@ -44,7 +45,6 @@ func ToTcpConfig(pipeline *lispb.TCPPipeline) *configs.TcpPipelineConfig {
 }
 
 type TCPPipeline struct {
-	done   chan bool
 	ln     net.Listener
 	Name   string
 	Port   uint16
@@ -109,18 +109,18 @@ func (l *TCPPipeline) handler() (net.Listener, error) {
 }
 
 func (l *TCPPipeline) handleRead(conn net.Conn) {
-	defer func() {
-		l.done <- true
-	}()
+	defer conn.Close()
 	var err error
 	var connect *core.Connection
 	var rawID []byte
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	for {
 		var msg proto.Message
 		var length int
 		rawID, length, err = packet.ReadHeader(conn)
 		if err != nil {
-			logs.Log.Debugf("Error reading header: %v", err)
+			logs.Log.Debugf("Error reading header: %s %v", conn.RemoteAddr(), err)
 			return
 		}
 		sid := hash.Md5Hash(rawID)
@@ -128,10 +128,12 @@ func (l *TCPPipeline) handleRead(conn net.Conn) {
 		if connect == nil {
 			connect = core.NewConnection(rawID)
 		}
-		go connect.Send(conn)
+
+		sctx, scancel := context.WithCancel(ctx)
+		go connect.Send(sctx, conn)
 		msg, err = packet.ReadMessage(conn, length)
 		if err != nil {
-			logs.Log.Debugf("Error reading message: %v", err)
+			logs.Log.Debugf("Error reading message:%s %v", conn.RemoteAddr(), err)
 			return
 		}
 		core.Forwarders.Send(l.ID(), &core.Message{
@@ -139,39 +141,8 @@ func (l *TCPPipeline) handleRead(conn net.Conn) {
 			SessionID: hash.Md5Hash([]byte(rawID)),
 			//RemoteAddr: conn.RemoteAddr().String(),
 		})
+		scancel()
 	}
-
-	//for {
-	//
-	//	//if connect == nil {
-	//	//	var length int
-	//	//	rawID, length, err = packet.ReadHeader(conn)
-	//	//	if err != nil {
-	//	//		logs.Log.Errorf("Error reading header: %v", err)
-	//	//		return
-	//	//	}
-	//	//	sid := hash.Md5Hash(rawID)
-	//	//	connect = core.Connections.Get(sid)
-	//	//	if connect == nil {
-	//	//		connect = core.NewConnection(rawID)
-	//	//	}
-	//	//	go l.handleWrite(conn, connect)
-	//	//	msg, err = packet.ReadMessage(conn, length)
-	//	//	if err != nil {
-	//	//		core.Connections.Remove(sid)
-	//	//		logs.Log.Errorf("Error reading message: %v", err)
-	//	//		return
-	//	//	}
-	//	//} else {
-	//	//	rawID, msg, err = packet.ReadPacket(conn)
-	//	//	if err != nil {
-	//	//		core.Connections.Remove(hash.Md5Hash([]byte(rawID)))
-	//	//		logs.Log.Errorf("Error reading packet: %v", err)
-	//	//		return
-	//	//	}
-	//	//}
-	//
-	//}
 
 }
 func (l *TCPPipeline) handleWrite(conn net.Conn, ch chan *commonpb.Spites, rawid []byte) {

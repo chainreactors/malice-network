@@ -13,12 +13,13 @@ import (
 )
 
 func TestUpload(t *testing.T) {
-	client := common.NewImplant(common.DefaultListenerAddr, common.TestSid)
-	client.Register()
+	implant := common.NewImplant(common.DefaultListenerAddr, common.TestSid)
+	implant.Register()
 	rpc := common.NewClient(common.DefaultGRPCAddr, common.TestSid)
-	fmt.Println(hash.Md5Hash([]byte(client.Sid)))
+	fmt.Println(hash.Md5Hash([]byte(implant.Sid)))
 	go func() {
-		res, err := client.Read()
+		conn := implant.MustConnect()
+		res, err := implant.Read(conn)
 		fmt.Printf("res %v %v\n", res, err)
 		spite := &commonpb.Spite{
 			TaskId: 1,
@@ -30,7 +31,7 @@ func TestUpload(t *testing.T) {
 			Data:   make([]byte, 1000),
 		}
 		types.BuildSpite(spite, resp)
-		err = client.WriteSpite(spite)
+		err = implant.WriteSpite(conn, spite)
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -38,7 +39,7 @@ func TestUpload(t *testing.T) {
 	}()
 
 	resp, err := rpc.Client.Upload(metadata.NewOutgoingContext(context.Background(), metadata.Pairs(
-		"session_id", hash.Md5Hash([]byte(client.Sid)))), &pluginpb.UploadRequest{
+		"session_id", hash.Md5Hash([]byte(implant.Sid)))), &pluginpb.UploadRequest{
 		Name:   "test.exe",
 		Target: ".",
 		Priv:   0644,

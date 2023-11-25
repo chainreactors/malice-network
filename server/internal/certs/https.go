@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"fmt"
+	"os"
 )
 
 const (
@@ -31,10 +32,10 @@ func InitRSACertificate(host, user string, isCA, isClient bool) ([]byte, []byte,
 	// 保存到文件
 	if isCA {
 		filename := fmt.Sprintf(ROOTPATH+"%s_%s", host, user)
-		if certErr := SaveToPEMFile(filename+".crt", cert); certErr != nil {
+		if certErr := os.WriteFile(filename+".crt", cert, 0o777); certErr != nil {
 			return nil, nil, certErr
 		}
-		if keyErr := SaveToPEMFile(filename+".key", key); keyErr != nil {
+		if keyErr := os.WriteFile(filename+".key", key, 0o777); keyErr != nil {
 			return nil, nil, keyErr
 		}
 	}

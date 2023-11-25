@@ -5,8 +5,8 @@ import (
 	"encoding/pem"
 	"fmt"
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/server/db"
-	"github.com/chainreactors/malice-network/server/db/models"
+	"github.com/chainreactors/malice-network/server/internal/db"
+	"github.com/chainreactors/malice-network/server/internal/db/models"
 )
 
 const (
