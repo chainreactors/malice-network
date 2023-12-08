@@ -106,3 +106,9 @@ func CopyFile(src string, dst string) error {
 	}
 	return err
 }
+
+// fileExists - Check if a file exists
+func FileExists(filePath string) bool {
+	_, err := os.Stat(filePath)
+	return err == nil
+}

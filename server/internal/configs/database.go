@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
 	"net/url"
 	"os"
@@ -33,8 +34,7 @@ var (
 func GetDatabaseConfigPath() string {
 	appDir := assets.GetRootAppDir()
 	databaseConfigPath := filepath.Join(appDir, "configs", databaseConfigFileName)
-	// TODO - log loading config
-	//databaseConfigLog.Debugf("Loading config from %s", databaseConfigPath)
+	logs.Log.Debugf("Loading config from %s", databaseConfigPath)
 	return databaseConfigPath
 }
 
@@ -60,7 +60,7 @@ type DatabaseConfig struct {
 func (c *DatabaseConfig) DSN() (string, error) {
 	switch c.Dialect {
 	case Sqlite:
-		filePath := filepath.Join(assets.GetRootAppDir(), "sliver.db")
+		filePath := filepath.Join(assets.GetRootAppDir(), "malice.db")
 		params := encodeParams(c.Params)
 		return fmt.Sprintf("file:%s?%s", filePath, params), nil
 	//case MySQL:
@@ -98,8 +98,7 @@ func (c *DatabaseConfig) Save() error {
 	configPath := GetDatabaseConfigPath()
 	configDir := path.Dir(configPath)
 	if _, err := os.Stat(configDir); os.IsNotExist(err) {
-		// TODO - log creating config dir
-		//databaseConfigLog.Debugf("Creating config dir %s", configDir)
+		logs.Log.Debugf("Creating config dir %s", configDir)
 		err := os.MkdirAll(configDir, 0700)
 		if err != nil {
 			return err
@@ -109,12 +108,10 @@ func (c *DatabaseConfig) Save() error {
 	if err != nil {
 		return err
 	}
-	// TODO - log saving config
-	//databaseConfigLog.Infof("Saving config to %s", configPath)
+	logs.Log.Infof("Saving config to %s", configPath)
 	err = os.WriteFile(configPath, data, 0600)
 	if err != nil {
-		// TODO - log failed to write config
-		//databaseConfigLog.Errorf("Failed to write config %s", err)
+		logs.Log.Errorf("Failed to write config %s", err)
 	}
 	return nil
 }
@@ -126,19 +123,16 @@ func GetDatabaseConfig() *DatabaseConfig {
 	if _, err := os.Stat(configPath); !os.IsNotExist(err) {
 		data, err := os.ReadFile(configPath)
 		if err != nil {
-			// TODO - log failed to read config
-			//databaseConfigLog.Errorf("Failed to read config file %s", err)
+			logs.Log.Errorf("Failed to read config file %s", err)
 			return config
 		}
 		err = json.Unmarshal(data, config)
 		if err != nil {
-			// TODO - log failed to parse config
-			//databaseConfigLog.Errorf("Failed to parse config file %s", err)
+			logs.Log.Errorf("Failed to parse config file %s", err)
 			return config
 		}
 	} else {
-		// TODO - log config file does not exist
-		//databaseConfigLog.Warnf("Config file does not exist, using defaults")
+		logs.Log.Warnf("Config file does not exist, using defaults")
 	}
 
 	if config.MaxIdleConns < 1 {
@@ -150,8 +144,7 @@ func GetDatabaseConfig() *DatabaseConfig {
 
 	err := config.Save() // This updates the config with any missing fields
 	if err != nil {
-		// TODO - log failed to save config
-		//databaseConfigLog.Errorf("Failed to save default config %s", err)
+		logs.Log.Errorf("Failed to save default config %s", err)
 	}
 	return config
 }

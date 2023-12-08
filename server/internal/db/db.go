@@ -15,5 +15,6 @@ var (
 func Session() *gorm.DB {
 	return Client.Session(&gorm.Session{
 		FullSaveAssociations: true,
+		PrepareStmt:          true,
 	})
 }

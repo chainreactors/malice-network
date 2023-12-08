@@ -44,7 +44,7 @@ func OperatorServerGetCertificate(hostname string) ([]byte, []byte, error) {
 // OperatorServerGenerateCertificate - Generate a certificate signed with a given CA
 func OperatorServerGenerateCertificate(hostname string) ([]byte, []byte, error) {
 	cert, key := GenerateRSACertificate(OperatorCA, hostname, false, false)
-	err := saveCertificate(OperatorCA, ECCKey, fmt.Sprintf("%s.%s", serverNamespace, hostname), cert, key)
+	err := saveCertificate(OperatorCA, RSAKey, fmt.Sprintf("%s.%s", serverNamespace, hostname), cert, key)
 	return cert, key, err
 }
 

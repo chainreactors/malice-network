@@ -31,7 +31,7 @@ const (
 
 var (
 	// ErrCertDoesNotExist - Returned if a GetCertificate() is called for a cert/cn that does not exist
-	ErrCertDoesNotExist = errors.New("Certificate does not exist")
+	ErrCertDoesNotExist = errors.New("certificate does not exist")
 )
 
 // saveCertificate - Save the certificate and the key to the filesystem

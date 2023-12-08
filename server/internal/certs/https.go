@@ -11,6 +11,8 @@ const (
 	// SERVERCA - Directory containing operator certificates
 	SERVERCA = "root"
 	ROOTPATH = ".malice/certs/"
+	// CLIENTCA - Directory containing client certificates
+	CLIENTCA = "client"
 )
 
 // InitRSACertificate - Generate a server certificate signed with a given CA
@@ -19,6 +21,7 @@ func InitRSACertificate(host, user string, isCA, isClient bool) ([]byte, []byte,
 
 	var privateKey interface{}
 	var err error
+	var caType string
 
 	// Generate private key
 	privateKey, err = rsa.GenerateKey(rand.Reader, RsaKeySize())
@@ -27,8 +30,14 @@ func InitRSACertificate(host, user string, isCA, isClient bool) ([]byte, []byte,
 		return nil, nil, err
 	}
 	subject := randomSubject(host)
-	cert, key := generateCertificate(SERVERCA, (*subject), isCA, isClient, privateKey)
-	//err = saveCertificate(SERVERCA, RSAKey, host, cert, key)
+	switch isClient {
+	case true:
+		caType = CLIENTCA
+	case false:
+		caType = SERVERCA
+	}
+	cert, key := generateCertificate(caType, (*subject), isCA, isClient, privateKey)
+	err = saveCertificate(caType, RSAKey, host, cert, key)
 	// 保存到文件
 	if isCA {
 		filename := fmt.Sprintf(ROOTPATH+"%s_%s", host, user)
