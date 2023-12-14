@@ -5,8 +5,12 @@ import (
 	"encoding/pem"
 	"fmt"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/helper"
+	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
+	"os"
+	"path"
 )
 
 const (
@@ -15,14 +19,22 @@ const (
 	HTTPSCA         = "host"
 	clientNamespace = "client" // Operator clients
 	serverNamespace = "server" // Operator servers
+	ListenerCA      = "listener"
 )
 
 var certsLog = logs.Log
 
 // OperatorClientGenerateCertificate - Generate a certificate signed with a given CA
 func OperatorClientGenerateCertificate(operator string) ([]byte, []byte, error) {
-	cert, key := GenerateECCCertificate(OperatorCA, operator, false, true)
-	err := saveCertificate(OperatorCA, ECCKey, fmt.Sprintf("%s.%s", clientNamespace, operator), cert, key)
+	cert, key := GenerateRSACertificate(OperatorCA, operator, false, true)
+	err := saveCertificate(ListenerCA, RSAKey, fmt.Sprintf("%s.%s", "root", operator), cert, key)
+	filename := fmt.Sprintf(ROOTPATH+"%s_%s", ListenerCA, SERVERCA)
+	if certErr := os.WriteFile(filename+"_crt.pem", cert, 0o777); certErr != nil {
+		return nil, nil, certErr
+	}
+	if keyErr := os.WriteFile(filename+"_key.pem", key, 0o777); keyErr != nil {
+		return nil, nil, keyErr
+	}
 	return cert, key, err
 }
 
@@ -43,8 +55,32 @@ func OperatorServerGetCertificate(hostname string) ([]byte, []byte, error) {
 
 // OperatorServerGenerateCertificate - Generate a certificate signed with a given CA
 func OperatorServerGenerateCertificate(hostname string) ([]byte, []byte, error) {
+	var serverListenerCert *models.Certificate
+	certsPath := path.Join(configs.ServerRootPath, "certs")
+	// 检查是否已存在证书
+	serverCertPath := path.Join(certsPath, "server_operator_crt.pem")
+	serverKeyPath := path.Join(certsPath, "server_operator_key.pem")
+	if helper.FileExists(serverCertPath) && helper.FileExists(serverKeyPath) {
+		logs.Log.Info("Mtls server CA certificates already exist.")
+		dbSession := db.Session()
+		result := dbSession.Where(
+			&models.Certificate{
+				CommonName: "server.operator"}).First(&serverListenerCert)
+		if result.Error != nil {
+			certsLog.Errorf("Failed to load CA %v", result.Error)
+			return nil, nil, result.Error
+		}
+		return []byte(serverListenerCert.CertificatePEM), []byte(serverListenerCert.PrivateKeyPEM), nil
+	}
 	cert, key := GenerateRSACertificate(OperatorCA, hostname, false, false)
 	err := saveCertificate(OperatorCA, RSAKey, fmt.Sprintf("%s.%s", serverNamespace, hostname), cert, key)
+	filename := fmt.Sprintf(ROOTPATH+"%s_%s", serverNamespace, OperatorCA)
+	if certErr := os.WriteFile(filename+"_crt.pem", cert, 0o777); certErr != nil {
+		return nil, nil, certErr
+	}
+	if keyErr := os.WriteFile(filename+"_key.pem", key, 0o777); keyErr != nil {
+		return nil, nil, keyErr
+	}
 	return cert, key, err
 }
 

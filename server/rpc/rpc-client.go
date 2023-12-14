@@ -2,8 +2,12 @@ package rpc
 
 import (
 	"context"
+	"fmt"
+	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/server/core"
+	"github.com/chainreactors/malice-network/server/internal/db"
+	"github.com/chainreactors/malice-network/server/internal/db/models"
 )
 
 func (rpc *Server) GetClients(ctx context.Context, req *clientpb.Empty) (*clientpb.Clients, error) {
@@ -15,22 +19,70 @@ func (rpc *Server) GetClients(ctx context.Context, req *clientpb.Empty) (*client
 }
 
 func (rpc *Server) LoginClient(ctx context.Context, req *clientpb.LoginReq) (*clientpb.LoginResp, error) {
-	//host, port := req.Host, uint16(req.Port)
-	//if host == "" || port == 0 {
-	//	logs.Log.Error("LoginClient: host or user is empty")
-	//	return &clientpb.LoginResp{
-	//		Success: false,
-	//	}, nil
-	//}
-	//_, _, err := web.StartMtlsClientListener(host, port)
-	//if err != nil {
-	//	logs.Log.Errorf("LoginClient: %s", err.Error())
-	//	return &clientpb.LoginResp{
-	//		Success: false,
-	//	}, nil
-	//}
-	//return &clientpb.LoginResp{
-	//	Success: true,
-	//}, nil
-	return nil, nil
+	host, port := req.Host, uint16(req.Port)
+	if host == "" || port == 0 {
+		logs.Log.Error("AddClient: host or user is empty")
+		return &clientpb.LoginResp{
+			Success: false,
+		}, nil
+	}
+	dbSession := db.Session()
+	cert := models.Certificate{}
+	err := dbSession.Where(&models.Certificate{
+		CommonName: fmt.Sprintf("%s.%s", req.Host, req.Name),
+	}).First(&cert).Error
+	if err != nil {
+		return &clientpb.LoginResp{
+			Success: false,
+		}, err
+	}
+
+	client := core.NewClient(req.Name)
+	core.Clients.Add(client)
+	err = dbSession.Create(&models.Operator{
+		Name: req.Name,
+	}).Error
+	if err != nil {
+		return &clientpb.LoginResp{
+			Success: false,
+		}, err
+	}
+	logs.Log.Infof("Client %s login success", req.Name)
+	return &clientpb.LoginResp{
+		Success: true,
+	}, nil
+}
+
+func (rpc *Server) AddClient(ctx context.Context, req *clientpb.LoginReq) (*clientpb.LoginResp, error) {
+	host, port := req.Host, uint16(req.Port)
+	if host == "" || port == 0 {
+		logs.Log.Error("AddClient: host or user is empty")
+		return &clientpb.LoginResp{
+			Success: false,
+		}, nil
+	}
+	dbSession := db.Session()
+	cert := models.Certificate{}
+	err := dbSession.Where(&models.Certificate{
+		CommonName: fmt.Sprintf("%s.%s", "client", req.Name),
+	}).First(&cert).Error
+	if err != nil {
+		return &clientpb.LoginResp{
+			Success: false,
+		}, err
+	}
+
+	client := core.NewClient(req.Name)
+	core.Clients.Add(client)
+	err = dbSession.Create(&models.Operator{
+		Name: req.Name,
+	}).Error
+	if err != nil {
+		return &clientpb.LoginResp{
+			Success: false,
+		}, err
+	}
+	return &clientpb.LoginResp{
+		Success: true,
+	}, nil
 }

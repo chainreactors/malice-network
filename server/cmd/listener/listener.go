@@ -59,7 +59,7 @@ func Execute() {
 	// start listeners
 	if opt.Listeners != nil {
 		// init forwarder
-		err := listener.NewListener(opt.Listeners)
+		err := listener.NewListener(opt.Listeners, false)
 		if err != nil {
 			logs.Log.Error(err.Error())
 			return

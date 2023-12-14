@@ -16,9 +16,8 @@ func init() {
 		opt.DecoderConfig.TagName = "config"
 		opt.ParseDefault = true
 	})
-	config.AddDriver(yaml.Driver)
 	generate.GenerateRootCA()
-	logs.Log.SetLevel(logs.Debug)
+	config.AddDriver(yaml.Driver)
 }
 
 func Execute() {
@@ -57,9 +56,18 @@ func Execute() {
 	// start listeners
 	if opt.Listeners != nil {
 		// init forwarder
-		err := listener.NewListener(opt.Listeners)
+		err := listener.NewListener(opt.Listeners, true)
 		if err != nil {
-			logs.Log.Error(err.Error())
+			logs.Log.Errorf("cannot start listeners , %s ", err.Error())
+			return
+		}
+	}
+
+	// init operator
+	if opt.User != "" {
+		err = generate.ServerInitUserCert(opt.User)
+		if err != nil {
+			logs.Log.Errorf("cannot init operator , %s ", err.Error())
 			return
 		}
 	}

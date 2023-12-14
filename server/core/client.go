@@ -9,6 +9,7 @@ import (
 var (
 	// Clients - Manages client active
 	Clients = &clients{
+		mutex:  &sync.Mutex{},
 		active: map[int]*Client{},
 	}
 

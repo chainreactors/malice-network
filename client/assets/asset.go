@@ -2,7 +2,6 @@ package assets
 
 import (
 	"crypto/sha256"
-	"encoding/json"
 	"fmt"
 	"github.com/chainreactors/logs"
 	"gopkg.in/yaml.v3"
@@ -90,7 +89,7 @@ func ReadConfig(confFilePath string) (*ClientConfig, error) {
 		return nil, err
 	}
 	conf := &ClientConfig{}
-	err = json.Unmarshal(data, conf)
+	err = yaml.Unmarshal(data, conf)
 	if err != nil {
 		log.Printf("Parse failed %v", err)
 		return nil, err

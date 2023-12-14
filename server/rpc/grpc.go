@@ -14,7 +14,7 @@ import (
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/proto/services/listenerrpc"
 	"github.com/chainreactors/malice-network/server/core"
-	certs2 "github.com/chainreactors/malice-network/server/internal/certs"
+	"github.com/chainreactors/malice-network/server/internal/certs"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/middleware"
 	"google.golang.org/grpc"
@@ -72,17 +72,17 @@ func InitLogs(debug bool) {
 func StartClientListener(port uint16) (*grpc.Server, net.Listener, error) {
 	logs.Log.Importantf("Starting gRPC console on 0.0.0.0:%d", port)
 
-	//tlsConfig := getOperatorServerMTLSConfig("multiplayer")
+	tlsConfig := getOperatorServerMTLSConfig("operator")
 
-	//creds := credentials.NewTLS(tlsConfig)
+	creds := credentials.NewTLS(tlsConfig)
 	ln, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", port))
 	if err != nil {
-		//mtlsLog.Error(err)
+		logs.Log.Errorf(err.Error())
 		return nil, nil, err
 	}
 	InitLogs(false)
 	options := []grpc.ServerOption{
-		//grpc.Creds(creds),
+		grpc.Creds(creds),
 		grpc.MaxRecvMsgSize(consts.ServerMaxMessageSize),
 		grpc.MaxSendMsgSize(consts.ServerMaxMessageSize),
 	}
@@ -312,14 +312,14 @@ func (rpc *Server) getClientCommonName(ctx context.Context) string {
 
 // getOperatorServerMTLSConfig - Get the TLS config for the operator server
 func getOperatorServerMTLSConfig(host string) *tls.Config {
-	caCert, _, err := certs2.GetCertificateAuthority(certs2.OperatorCA)
+	caCert, _, err := certs.GetCertificateAuthority(certs.SERVERCA)
 	if err != nil {
 		logs.Log.Errorf("Failed to load CA %s", err)
 		return nil
 	}
 	caCertPool := x509.NewCertPool()
 	caCertPool.AddCert(caCert)
-	certPEM, keyPEM, err := certs2.OperatorServerGenerateCertificate(host)
+	certPEM, keyPEM, err := certs.OperatorServerGenerateCertificate(host)
 	if err != nil {
 		logs.Log.Errorf("Failed to load certificate %s", err)
 	}

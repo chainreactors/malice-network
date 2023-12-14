@@ -39,6 +39,7 @@ type Client struct {
 	Client   clientrpc.MaliceRPCClient
 	Implant  listenerrpc.ImplantRPCClient
 	Listener listenerrpc.ListenerRPCClient
+	Root     clientrpc.RootRPCClient
 }
 
 func (c *Client) Send() {

@@ -2,6 +2,7 @@ package listener
 
 import (
 	"context"
+	"encoding/pem"
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -10,16 +11,31 @@ import (
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/proto/services/listenerrpc"
 	"github.com/chainreactors/malice-network/server/core"
+	"github.com/chainreactors/malice-network/server/internal/certs"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 var (
 	Listener *listener
 )
 
-func NewListener(cfg *configs.ListenerConfig) error {
-	conn, err := grpc.Dial(cfg.ServerAddr, grpc.WithInsecure())
+func NewListener(cfg *configs.ListenerConfig, isRoot bool) error {
+	clientCert, clientKey, err := certs.MtlsListenerGenerateRsaCertificate(cfg.Name, isRoot)
+	caCertX509, _, err := certs.GetCertificateAuthority(certs.SERVERCA)
+	caCert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: caCertX509.Raw})
+	if err != nil {
+		return err
+	}
+	tlsConfig, err := certs.GetTLSConfig(string(caCert), string(clientCert), string(clientKey))
+	transportCreds := credentials.NewTLS(tlsConfig)
+	options := []grpc.DialOption{
+		grpc.WithTransportCredentials(transportCreds),
+		grpc.WithBlock(),
+		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(consts.ClientMaxReceiveMessageSize)),
+	}
+	conn, err := grpc.Dial(cfg.ServerAddr, options...)
 	if err != nil {
 		return err
 	}

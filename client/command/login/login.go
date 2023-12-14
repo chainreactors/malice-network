@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/utils"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/desertbit/grumble"
 )
@@ -28,15 +29,18 @@ func loginServer(ctx *grumble.Context, con *console.Console) {
 		con.App.Println("Error reading config file:", err)
 		return
 	}
+	rpc, ln, err := utils.MTLSConnect(config)
 	req := &clientpb.LoginReq{
+		//User: config.Operator,
 		Host: config.LHost,
 		Port: uint32(config.LPort),
 	}
-	res, err := con.Rpc.LoginClient(context.Background(), req)
+	res, err := rpc.AddClient(context.Background(), req)
 	if err != nil {
 		con.App.Println("Error login server: ", err)
 		return
 	}
+	defer ln.Close()
 	if res.Success != true {
 		con.App.Println("Error login server")
 		return

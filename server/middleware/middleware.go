@@ -3,15 +3,22 @@ package middleware
 import (
 	"context"
 	"github.com/chainreactors/logs"
+	grpc_auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"os"
 	"path"
 )
 
+type contextKey int
+
 const (
-	configDir = ".config/certs"
-	certFile  = "local_root.cert"
-	keyFile   = "local_root.key"
+	Transport contextKey = iota
+	Operator
+	configDir = ".malice/certs"
+	certFile  = "localhost_root_crt.pem"
+	keyFile   = "localhost_root_key.pem"
 )
 
 func chainUnaryInterceptors(interceptors ...grpc.UnaryServerInterceptor) grpc.UnaryServerInterceptor {
@@ -33,11 +40,8 @@ func chainUnaryInterceptors(interceptors ...grpc.UnaryServerInterceptor) grpc.Un
 
 func AuthMiddleware(log *logs.Logger) []grpc.ServerOption {
 	var interceptors []grpc.UnaryServerInterceptor
-	interceptors = append(interceptors, authMiddleware)
 	interceptors = append(interceptors, logMiddleware(log))
-	return []grpc.ServerOption{
-		grpc.UnaryInterceptor(chainUnaryInterceptors(interceptors...)),
-	}
+	return append(authMiddleware(context.Background()), grpc.UnaryInterceptor(chainUnaryInterceptors(interceptors...)))
 }
 
 func CommonMiddleware(log *logs.Logger) []grpc.ServerOption {
@@ -59,27 +63,31 @@ func logMiddleware(log *logs.Logger) grpc.UnaryServerInterceptor {
 }
 
 // authMiddleware - Auth middleware
-func authMiddleware(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo,
-	handler grpc.UnaryHandler) (interface{}, error) {
-	if !hasPermissions(ctx) {
-		logs.Log.Errorf("Client not authorized")
-		return nil, nil
+func authMiddleware(ctx context.Context) []grpc.ServerOption {
+	return []grpc.ServerOption{
+		grpc.ChainUnaryInterceptor(
+			grpc_auth.UnaryServerInterceptor(hasPermissions),
+		),
+		grpc.ChainStreamInterceptor(
+			grpc_auth.StreamServerInterceptor(hasPermissions),
+		),
 	}
-	return handler(ctx, req)
 }
 
 // hasPermissions - Check if client has permissions`
-func hasPermissions(ctx context.Context) bool {
+func hasPermissions(ctx context.Context) (context.Context, error) {
 	certPath := path.Join(configDir, certFile)
 	keyPath := path.Join(configDir, keyFile)
-
 	if _, err := os.Stat(certPath); os.IsNotExist(err) {
 		logs.Log.Errorf("Failed to load cert %v", err)
-		return false
+		return nil, status.Error(codes.Unauthenticated, "Authentication failed")
 	}
 	if _, err := os.Stat(keyPath); os.IsNotExist(err) {
 		logs.Log.Errorf("Failed to load key %v", err)
-		return false
+		return nil, status.Error(codes.Unauthenticated, "Authentication failed")
 	}
-	return true
+	newCtx := context.WithValue(ctx, Transport, "mtls")
+	// TODO - Add operator check
+	newCtx = context.WithValue(newCtx, Operator, "test")
+	return newCtx, nil
 }

@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"github.com/chainreactors/logs"
 	"io/ioutil"
 	"os"
 	"path"
@@ -77,8 +78,7 @@ func GetCertificateAuthority(caType string) (*x509.Certificate, *rsa.PrivateKey,
 	}
 	key, err := x509.ParsePKCS1PrivateKey(keyBlock.Bytes)
 	if err != nil {
-		// TODO - log failed to parseECPrivateKey
-		//certsLog.Error(err)
+		logs.Log.Errorf("Failed to parse EC private key: %v", err)
 		return nil, nil, err
 	}
 
@@ -88,8 +88,8 @@ func GetCertificateAuthority(caType string) (*x509.Certificate, *rsa.PrivateKey,
 // GetCertificateAuthorityPEM - Get PEM encoded CA cert/key
 func GetCertificateAuthorityPEM(caType string) ([]byte, []byte, error) {
 	caType = path.Base(caType)
-	caCertPath := path.Join(getCertDir(), "localhost_root.crt")
-	caKeyPath := path.Join(getCertDir(), "localhost_root.key")
+	caCertPath := path.Join(getCertDir(), "localhost_root_crt.pem")
+	caKeyPath := path.Join(getCertDir(), "localhost_root_key.pem")
 
 	certPEM, err := ioutil.ReadFile(caCertPath)
 	if err != nil {

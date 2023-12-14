@@ -2,7 +2,6 @@ package command
 
 import (
 	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/client/command/cert"
 	"github.com/chainreactors/malice-network/client/command/exec"
 	"github.com/chainreactors/malice-network/client/command/jobs"
 	"github.com/chainreactors/malice-network/client/command/login"
@@ -67,20 +66,20 @@ func BindCommands(con *console.Console) {
 	}
 	con.App.AddCommand(verCmd)
 
-	certCmd := &grumble.Command{
-		Name: "cert",
-		Help: "Register cert from server",
-		Flags: func(f *grumble.Flags) {
-			f.String("", "host", "", "Host to register")
-			f.String("u", "user", "test", "User to register")
-			f.Int("p", "port", 40000, "Port to register")
-		},
-		Run: func(ctx *grumble.Context) error {
-			cert.CertCmd(ctx, con)
-			return nil
-		},
-	}
-	con.App.AddCommand(certCmd)
+	//certCmd := &grumble.Command{
+	//	Name: "cert",
+	//	Help: "Register cert from server",
+	//	Flags: func(f *grumble.Flags) {
+	//		f.String("", "host", "", "Host to register")
+	//		f.String("u", "user", "test", "User to register")
+	//		f.Int("p", "port", 40000, "Port to register")
+	//	},
+	//	Run: func(ctx *grumble.Context) error {
+	//		cert.CertCmd(ctx, con)
+	//		return nil
+	//	},
+	//}
+	//con.App.AddCommand(certCmd)
 
 	loginCmd := &grumble.Command{
 		Name: "login",
