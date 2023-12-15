@@ -55,7 +55,7 @@ type Session struct {
 	ConfigID    string
 	PeerID      int64
 	Locale      string
-	Tasks       *tasks
+	Tasks       *tasks // task manager
 	Responses   *sync.Map
 }
 
@@ -74,14 +74,7 @@ func (s *Session) UpdateLastCheckin() {
 }
 
 // Request
-func (s *Session) Request(msg *lispb.SpiteSession, stream grpc.ServerStream, timeout time.Duration) (uint32, error) {
-	resp := make(chan *commonpb.Spite)
-	taskId := msg.TaskId
-	s.StoreResp(taskId, resp)
-
-	if timeout == 0 {
-		timeout = 60 * time.Second
-	}
+func (s *Session) Request(msg *lispb.SpiteSession, stream grpc.ServerStream, timeout time.Duration) error {
 	var err error
 	done := make(chan struct{})
 	go func() {
@@ -95,80 +88,80 @@ func (s *Session) Request(msg *lispb.SpiteSession, stream grpc.ServerStream, tim
 	select {
 	case <-done:
 		if err != nil {
-			return taskId, err
+			return err
 		}
-		return taskId, nil
+		return nil
 	case <-time.After(timeout):
-		return taskId, ErrImplantSendTimeout
+		return ErrImplantSendTimeout
 	}
 }
 
 func (s *Session) RequestAndWait(msg *lispb.SpiteSession, stream grpc.ServerStream, timeout time.Duration) (*commonpb.Spite, error) {
-	taskId, err := s.Request(msg, stream, timeout)
+	ch := make(chan *commonpb.Spite)
+	s.StoreResp(msg.TaskId, ch)
+	err := s.Request(msg, stream, timeout)
 	if err != nil {
 		return nil, err
 	}
-	ch, _ := s.GetResp(taskId)
-	defer func() {
-		close(ch)
-		s.DeleteResp(taskId)
-	}()
 	resp := <-ch
 	// todo @hyc save to database
 	return resp, nil
 }
 
-// RequestWithAsync - 'async' means that the response is not returned immediately, but is returned through the channel 'ch
-func (s *Session) RequestWithAsync(msg *lispb.SpiteSession, stream grpc.ServerStream, timeout time.Duration) (chan *commonpb.Spite, error) {
-	resp, err := s.RequestAndWait(msg, stream, timeout)
+// RequestWithStream - 'async' means that the response is not returned immediately, but is returned through the channel 'ch
+func (s *Session) RequestWithStream(msg *lispb.SpiteSession, stream grpc.ServerStream, timeout time.Duration) (chan *commonpb.Spite, chan *commonpb.Spite, error) {
+	out := make(chan *commonpb.Spite)
+	s.StoreResp(msg.TaskId, out)
+	err := s.Request(msg, stream, timeout)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
+	resp := <-out
 	if resp.GetAsyncStatus().Status != 0 {
-		return nil, errors.New(resp.GetAsyncStatus().Error)
+		return nil, nil, errors.New(resp.GetAsyncStatus().Error)
 	}
-	ch := make(chan *commonpb.Spite)
+
+	in := make(chan *commonpb.Spite)
 	go func() {
+		defer close(out)
 		var c = 0
-		for spite := range ch {
-			resp, err := s.RequestAndWait(&lispb.SpiteSession{SessionId: msg.SessionId, Spite: spite}, stream, timeout)
+		for spite := range in {
+			err := stream.SendMsg(&lispb.SpiteSession{
+				SessionId: s.ID,
+				TaskId:    msg.TaskId,
+				Spite:     spite,
+			})
 			if err != nil {
+				logs.Log.Debugf(err.Error())
 				return
 			}
 			logs.Log.Debugf("send message %s, %d", spite.Name, c)
 			c++
-			if !resp.GetAsyncResponse().Success {
-				// todo error parser
-				return
-			}
 		}
 	}()
-	return ch, nil
+	return in, out, nil
 }
 
-func (s *Session) RequestWithStream(msg *lispb.SpiteSession, stream grpc.ServerStream, timeout time.Duration) (chan *commonpb.Spite, error) {
-	taskId, err := s.Request(msg, stream, timeout)
+func (s *Session) RequestWithAsync(msg *lispb.SpiteSession, stream grpc.ServerStream, timeout time.Duration) (*commonpb.AsyncStatus, chan *commonpb.Spite, error) {
+	respCh := make(chan *commonpb.Spite)
+	s.StoreResp(msg.TaskId, respCh)
+	err := s.Request(msg, stream, timeout)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	task, _ := s.GetResp(taskId)
+	resp := <-respCh
+	if resp.GetAsyncStatus().Status != 0 {
+		return resp.GetAsyncStatus(), nil, errors.New(resp.GetAsyncStatus().Error)
+	}
+
 	ch := make(chan *commonpb.Spite)
 	go func() {
-		defer func() {
-			s.DeleteResp(taskId)
-			close(ch)
-		}()
-
-		for resp := range task {
-			if resp.End {
-				close(task)
-			} else {
-				// todo @hyc save to database
-				ch <- resp
-			}
-		}
+		defer close(respCh)
+		defer close(ch)
+		resp := <-respCh
+		ch <- resp
 	}()
-	return ch, nil
+	return resp.GetAsyncStatus(), ch, nil
 }
 
 func (s *Session) StoreResp(taskId uint32, ch chan *commonpb.Spite) {
@@ -184,6 +177,10 @@ func (s *Session) GetResp(taskId uint32) (chan *commonpb.Spite, bool) {
 }
 
 func (s *Session) DeleteResp(taskId uint32) {
+	ch, ok := s.GetResp(taskId)
+	if ok {
+		close(ch)
+	}
 	s.Responses.Delete(taskId)
 }
 

@@ -17,9 +17,15 @@ func TestImplant(t *testing.T) {
 	time.Sleep(5 * time.Second)
 	go implant.Run()
 	client := common.NewClient(common.DefaultGRPCAddr, common.TestSid)
-	resp, err := client.Call(consts.ExecutionStr, &pluginpb.ExecRequest{
-		Path: "/bin/bash",
-		Args: []string{"whoami"},
+	//resp, err := client.Call(consts.ExecutionStr, &pluginpb.ExecRequest{
+	//	Path: "/bin/bash",
+	//	Args: []string{"whoami"},
+	//})
+	resp, err := client.Call(consts.UploadStr, &pluginpb.UploadRequest{
+		Name:   "test.txt",
+		Target: ".",
+		Priv:   0o644,
+		Data:   make([]byte, 1000),
 	})
 	if err != nil {
 		panic(err.Error())

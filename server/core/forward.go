@@ -127,6 +127,7 @@ func (f *Forward) Handler() {
 	for msg := range f.implantC {
 		spites := msg.Message.(*commonpb.Spites)
 		for _, spite := range spites.Spites {
+			logs.Log.Debugf("[listener.%s] receive spite %v", msg.SessionID, spite)
 			switch spite.Body.(type) {
 			case *commonpb.Spite_Register:
 				_, err := f.ImplantRpc.Register(f.ctx, &lispb.RegisterSession{

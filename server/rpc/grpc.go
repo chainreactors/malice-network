@@ -111,9 +111,11 @@ func StartClientListener(port uint16) (*grpc.Server, net.Listener, error) {
 }
 
 func newGenericRequest(msg proto.Message) *GenericRequest {
-	return &GenericRequest{
+	req := &GenericRequest{
 		Message: msg,
 	}
+	req.Task = req.NewTask()
+	return req
 }
 
 type GenericRequest struct {
@@ -123,15 +125,11 @@ type GenericRequest struct {
 }
 
 func (r *GenericRequest) NewTask() *core.Task {
-	r.Task = core.NewTask(string(proto.MessageName(r.Message).Name()), 1)
-	return r.Task
+	task := core.NewTask(string(proto.MessageName(r.Message).Name()), 1)
+	return task
 }
 
 func (r *GenericRequest) NewSpite() (*commonpb.Spite, error) {
-	if r.Task == nil {
-		r.NewTask()
-	}
-
 	r.Spite = &commonpb.Spite{
 		Timeout: uint64(consts.MinTimeout.Seconds()),
 		TaskId:  r.Task.Id,
@@ -195,8 +193,8 @@ func (rpc *Server) getClientName(ctx context.Context) (string, error) {
 	}
 }
 
-// GenericHandler - Pass the request to the Sliver/Session
-func (rpc *Server) GenericHandler(ctx context.Context, req *GenericRequest) (proto.Message, error) {
+// genericHandler - Pass the request to the Sliver/Session
+func (rpc *Server) genericHandler(ctx context.Context, req *GenericRequest) (proto.Message, error) {
 	var err error
 
 	sid, err := rpc.getSessionID(ctx)
@@ -209,7 +207,7 @@ func (rpc *Server) GenericHandler(ctx context.Context, req *GenericRequest) (pro
 	if !ok {
 		return nil, ErrInvalidSessionID
 	}
-
+	session.Tasks.Add(req.Task)
 	spite, err := req.NewSpite()
 	if err != nil {
 		logs.Log.Errorf(err.Error())
@@ -217,13 +215,13 @@ func (rpc *Server) GenericHandler(ctx context.Context, req *GenericRequest) (pro
 	}
 
 	data, err := session.RequestAndWait(
-		&lispb.SpiteSession{SessionId: sid, Spite: spite},
+		&lispb.SpiteSession{SessionId: sid, TaskId: req.Task.Id, Spite: spite},
 		listenersCh[session.ListenerId],
 		consts.MinTimeout)
 	if err != nil {
 		return nil, err
 	}
-
+	session.DeleteResp(req.Task.Id)
 	resp, err := types.ParseSpite(data)
 	if err != nil {
 		return nil, err
@@ -231,35 +229,63 @@ func (rpc *Server) GenericHandler(ctx context.Context, req *GenericRequest) (pro
 	return resp, nil
 }
 
-// // asyncGenericHandler - Generic handler for async request/response's for beacon tasks
-func (rpc *Server) asyncGenericHandler(ctx context.Context, req *GenericRequest) (chan *commonpb.Spite, error) {
+func (rpc *Server) asyncGenericHandler(ctx context.Context, req *GenericRequest) (*commonpb.AsyncStatus, chan *commonpb.Spite, error) {
 	var err error
-
 	sid, err := rpc.getSessionID(ctx)
 	if err != nil {
 		logs.Log.Errorf(err.Error())
-		return nil, err
+		return nil, nil, err
 	}
 
 	session, ok := core.Sessions.Get(sid)
 	if !ok {
-		return nil, ErrInvalidSessionID
+		return nil, nil, ErrInvalidSessionID
 	}
-
+	session.Tasks.Add(req.Task)
 	spite, err := req.NewSpite()
 	if err != nil {
 		logs.Log.Errorf(err.Error())
-		return nil, err
+		return nil, nil, err
 	}
-	ch, err := session.RequestWithAsync(
-		&lispb.SpiteSession{SessionId: sid, Spite: spite},
+	status, out, err := session.RequestWithAsync(
+		&lispb.SpiteSession{SessionId: sid, TaskId: req.Task.Id, Spite: spite},
 		listenersCh[session.ListenerId],
 		consts.MinTimeout)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return ch, nil
+	return status, out, nil
+}
+
+// streamGenericHandler - Generic handler for async request/response's for beacon tasks
+func (rpc *Server) streamGenericHandler(ctx context.Context, req *GenericRequest) (chan *commonpb.Spite, chan *commonpb.Spite, error) {
+	var err error
+	sid, err := rpc.getSessionID(ctx)
+	if err != nil {
+		logs.Log.Errorf(err.Error())
+		return nil, nil, err
+	}
+
+	session, ok := core.Sessions.Get(sid)
+	if !ok {
+		return nil, nil, ErrInvalidSessionID
+	}
+	session.Tasks.Add(req.Task)
+	spite, err := req.NewSpite()
+	if err != nil {
+		logs.Log.Errorf(err.Error())
+		return nil, nil, err
+	}
+	int, out, err := session.RequestWithStream(
+		&lispb.SpiteSession{SessionId: sid, TaskId: req.Task.Id, Spite: spite},
+		listenersCh[session.ListenerId],
+		consts.MinTimeout)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return int, out, nil
 }
 
 func (rpc *Server) GetBasic(ctx context.Context, _ *clientpb.Empty) (*clientpb.Basic, error) {

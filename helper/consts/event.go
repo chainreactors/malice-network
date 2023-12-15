@@ -8,6 +8,10 @@ const (
 	VersionStr = "version"
 
 	ExecutionStr = "exec"
+
+	UploadStr = "upload"
+
+	DownloadStr = "download"
 )
 
 // event

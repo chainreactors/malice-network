@@ -5,7 +5,7 @@ server:
   grpc_port: 5004
   grpc_host: 127.0.0.1
   config:
-    packet_length: 200
+    packet_length: 1048576 // 1M
 
 listeners:
   server_addr: 127.0.0.1:5004

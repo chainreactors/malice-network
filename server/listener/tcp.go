@@ -129,8 +129,7 @@ func (l *TCPPipeline) handleRead(conn net.Conn) {
 			connect = core.NewConnection(rawID)
 		}
 
-		sctx, scancel := context.WithCancel(ctx)
-		go connect.Send(sctx, conn)
+		go connect.Send(ctx, conn)
 		msg, err = packet.ReadMessage(conn, length)
 		if err != nil {
 			logs.Log.Debugf("Error reading message:%s %v", conn.RemoteAddr(), err)
@@ -141,7 +140,6 @@ func (l *TCPPipeline) handleRead(conn net.Conn) {
 			SessionID: hash.Md5Hash([]byte(rawID)),
 			//RemoteAddr: conn.RemoteAddr().String(),
 		})
-		scancel()
 	}
 
 }

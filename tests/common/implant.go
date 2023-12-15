@@ -51,7 +51,7 @@ func (implant *Implant) Register() {
 	conn := implant.MustConnect()
 	defer conn.Close()
 	spite := &commonpb.Spite{
-		TaskId: 1,
+		TaskId: 0,
 	}
 	body := &commonpb.Register{
 		Os: &commonpb.Os{
@@ -190,5 +190,17 @@ func (implant *Implant) WriteEmpty(conn net.Conn) error {
 		return err
 	}
 	return nil
+}
 
+func (implant *Implant) WriteAsync(conn net.Conn, taskId uint32) error {
+	err := implant.Write(conn, types.BuildSpites([]*commonpb.Spite{&commonpb.Spite{TaskId: taskId, Body: &commonpb.Spite_AsyncStatus{
+		AsyncStatus: &commonpb.AsyncStatus{
+			TaskId: taskId,
+			Status: 0,
+		},
+	}}}))
+	if err != nil {
+		return err
+	}
+	return nil
 }

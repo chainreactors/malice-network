@@ -18,7 +18,32 @@ var (
 	ServerConfigFileName        = "config.yaml"
 	ServerRootPath              = files.GetExcPath() + ".malice"
 	CurrentServerConfigFilename = "config.yaml"
+	LogPath                     = path.Join(ServerRootPath, "logs")
+	CertsPath                   = path.Join(ServerRootPath, "certs")
+	TempPath                    = path.Join(ServerRootPath, "temp")
 )
+
+func InitConfig() error {
+	var err error
+	perm := os.FileMode(0o700)
+	err = os.MkdirAll(ServerRootPath, perm)
+	if err != nil {
+		return err
+	}
+	err = os.MkdirAll(LogPath, perm)
+	if err != nil {
+		return err
+	}
+	err = os.MkdirAll(CertsPath, perm)
+	if err != nil {
+		return err
+	}
+	err = os.MkdirAll(TempPath, perm)
+	if err != nil {
+		return err
+	}
+	return nil
+}
 
 func GetServerConfig() *ServerConfig {
 	s := &ServerConfig{}
@@ -30,24 +55,9 @@ func GetServerConfig() *ServerConfig {
 	return s
 }
 
-func GetLogPath() string {
-	dir := path.Join(ServerRootPath, "logs")
-	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		err = os.MkdirAll(dir, 0700)
-		if err != nil {
-			logs.Log.Errorf("Failed to create logs dir %s", err)
-		}
-	}
-	return dir
-}
-
-func GetTempDir() string {
-	return path.Join(ServerRootPath, "temp")
-}
-
 func NewFileLog(filename string) *logs.Logger {
 	logger := logs.NewLogger(logs.Info)
-	logger.SetFile(path.Join(GetLogPath(), fmt.Sprintf("%s.log", filename)))
+	logger.SetFile(path.Join(LogPath, fmt.Sprintf("%s.log", filename)))
 	logger.SetOutput(io.Discard)
 	logger.Init()
 	return logger
@@ -55,7 +65,7 @@ func NewFileLog(filename string) *logs.Logger {
 
 func NewDebugLog(filename string) *logs.Logger {
 	logger := logs.NewLogger(logs.Debug)
-	logger.SetFile(path.Join(GetLogPath(), fmt.Sprintf("%s.log", filename)))
+	logger.SetFile(path.Join(LogPath, fmt.Sprintf("%s.log", filename)))
 	logger.Init()
 	return logger
 }
@@ -93,7 +103,7 @@ func (c *ServerConfig) Save() error {
 	if err != nil {
 		return err
 	}
-	err = os.WriteFile(CurrentServerConfigFilename, data, 0600)
+	err = os.WriteFile(CurrentServerConfigFilename, data, 0o600)
 	if err != nil {
 		// TODO - log failed to write config
 		logs.Log.Errorf("Failed to write config %s", err)

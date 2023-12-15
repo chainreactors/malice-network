@@ -45,6 +45,7 @@ func (rpc *Server) SpiteStream(stream listenerrpc.ListenerRPC_SpiteStreamServer)
 		if !ok {
 			return ErrNotFoundSession
 		}
+		logs.Log.Debugf("[server.%s] receive spite from %s, %v", sess.ID, msg.ListenerId, msg.Spite)
 		if ch, ok := sess.GetResp(msg.TaskId); ok {
 			ch <- msg.Spite
 		}

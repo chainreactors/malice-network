@@ -64,6 +64,8 @@ type Connection struct {
 
 func (c *Connection) Send(ctx context.Context, conn net.Conn) {
 	select {
+	case <-time.After(100 * time.Millisecond):
+		return
 	case <-ctx.Done():
 		return
 	case msg := <-c.Sender:

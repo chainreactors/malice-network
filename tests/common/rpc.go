@@ -47,15 +47,21 @@ func (c *Client) Send() {
 }
 
 func (c *Client) Call(rpcname string, msg proto.Message) (proto.Message, error) {
+	meta := metadata.NewOutgoingContext(context.Background(), metadata.Pairs("session_id", hash.Md5Hash(c.sid)))
+	var resp proto.Message
+	var err error
 	switch rpcname {
 	case consts.ExecutionStr:
-		resp, err := c.Client.Execute(metadata.NewOutgoingContext(context.Background(), metadata.Pairs(
-			"session_id", hash.Md5Hash(c.sid))), msg.(*pluginpb.ExecRequest))
-		if err != nil {
-			return nil, err
-		}
-		return resp, nil
+		resp, err = c.Client.Execute(meta, msg.(*pluginpb.ExecRequest))
+	case consts.UploadStr:
+		resp, err = c.Client.Upload(meta, msg.(*pluginpb.UploadRequest))
+	case consts.DownloadStr:
+		resp, err = c.Client.Download(meta, msg.(*pluginpb.DownloadRequest))
 	default:
 		return nil, errors.New("unknown rpc")
 	}
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
 }

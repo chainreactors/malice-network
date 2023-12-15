@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/generate"
@@ -12,6 +13,11 @@ import (
 )
 
 func init() {
+	err := configs.InitConfig()
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
 	config.WithOptions(func(opt *config.Options) {
 		opt.DecoderConfig.TagName = "config"
 		opt.ParseDefault = true

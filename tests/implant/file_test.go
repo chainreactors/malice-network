@@ -1,53 +1,54 @@
 package implant
 
 import (
-	"context"
 	"fmt"
 	"github.com/chainreactors/malice-network/helper/encoders/hash"
-	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/proto/implant/commonpb"
 	"github.com/chainreactors/malice-network/proto/implant/pluginpb"
 	"github.com/chainreactors/malice-network/tests/common"
-	"google.golang.org/grpc/metadata"
+	"net"
 	"testing"
+	"time"
 )
 
 func TestUpload(t *testing.T) {
 	implant := common.NewImplant(common.DefaultListenerAddr, common.TestSid)
 	implant.Register()
-	rpc := common.NewClient(common.DefaultGRPCAddr, common.TestSid)
+	time.Sleep(1 * time.Second)
 	fmt.Println(hash.Md5Hash([]byte(implant.Sid)))
 	go func() {
-		conn := implant.MustConnect()
-		res, err := implant.Read(conn)
-		fmt.Printf("res %v %v\n", res, err)
-		spite := &commonpb.Spite{
-			TaskId: 1,
-		}
-		resp := &pluginpb.UploadRequest{
-			Name:   "test.exe",
-			Target: ".",
-			Priv:   0644,
-			Data:   make([]byte, 1000),
-		}
-		types.BuildSpite(spite, resp)
-		err = implant.WriteSpite(conn, spite)
+		var err error
+		var conn net.Conn
+		conn = implant.MustConnect()
+		implant.WriteEmpty(conn)
+		upload, err := implant.Read(conn)
+		conn.Close()
+		fmt.Printf("res %v %v\n", upload, err)
+		time.Sleep(1 * time.Second)
+		conn = implant.MustConnect()
+		implant.WriteAsync(conn, upload.(*commonpb.Spites).Spites[0].TaskId)
+		conn.Close()
+
+		time.Sleep(1 * time.Second)
+		conn = implant.MustConnect()
+		implant.WriteEmpty(conn)
+		block, err := implant.Read(conn)
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
+		fmt.Println(block)
 	}()
-
-	resp, err := rpc.Client.Upload(metadata.NewOutgoingContext(context.Background(), metadata.Pairs(
-		"session_id", hash.Md5Hash([]byte(implant.Sid)))), &pluginpb.UploadRequest{
-		Name:   "test.exe",
+	rpc := common.NewClient(common.DefaultGRPCAddr, common.TestSid)
+	resp, err := rpc.Call("upload", &pluginpb.UploadRequest{
+		Name:   "test.txt",
 		Target: ".",
-		Priv:   0644,
+		Priv:   0o644,
 		Data:   make([]byte, 1000),
 	})
 	if err != nil {
-		fmt.Println(err.Error())
-		return
+		fmt.Println(err)
 	}
 	fmt.Printf("resp %v\n", resp)
+	select {}
 }

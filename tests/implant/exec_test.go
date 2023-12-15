@@ -13,11 +13,10 @@ import (
 )
 
 func TestExec(t *testing.T) {
-	sid := []byte{1, 2, 3, 4}
-	implant := common.NewImplant(common.DefaultListenerAddr, sid)
+	implant := common.NewImplant(common.DefaultListenerAddr, common.TestSid)
 	implant.Register()
 	time.Sleep(1 * time.Second)
-	rpc := common.NewClient(common.DefaultGRPCAddr, sid)
+	rpc := common.NewClient(common.DefaultGRPCAddr, common.TestSid)
 	fmt.Println(hash.Md5Hash([]byte(implant.Sid)))
 	go func() {
 		conn := implant.MustConnect()

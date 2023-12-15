@@ -31,3 +31,7 @@ func TestGetConfig(t *testing.T) {
 	//max = GetConfig("server")
 	fmt.Println(config.Get("server.config"))
 }
+
+func TestInitConfig(t *testing.T) {
+	InitConfig()
+}
