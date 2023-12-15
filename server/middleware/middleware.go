@@ -17,6 +17,8 @@ type contextKey int
 const (
 	Transport contextKey = iota
 	Operator
+	CertFile = "localhost_root_crt.pem"
+	KeyFile  = "localhost_root_key.pem"
 )
 
 func chainUnaryInterceptors(interceptors ...grpc.UnaryServerInterceptor) grpc.UnaryServerInterceptor {
@@ -74,8 +76,8 @@ func authMiddleware(ctx context.Context) []grpc.ServerOption {
 
 // hasPermissions - Check if client has permissions`
 func hasPermissions(ctx context.Context) (context.Context, error) {
-	certPath := path.Join(configs.CertsPath, configs.CertFile)
-	keyPath := path.Join(configs.CertsPath, configs.KeyFile)
+	certPath := path.Join(configs.CertsPath, CertFile)
+	keyPath := path.Join(configs.CertsPath, KeyFile)
 	if _, err := os.Stat(certPath); os.IsNotExist(err) {
 		logs.Log.Errorf("Failed to load cert %v", err)
 		return nil, status.Error(codes.Unauthenticated, "Authentication failed")

@@ -21,8 +21,6 @@ var (
 	LogPath                     = path.Join(ServerRootPath, "logs")
 	CertsPath                   = path.Join(ServerRootPath, "certs")
 	TempPath                    = path.Join(ServerRootPath, "temp")
-	CertFile                    = "localhost_root_crt.pem"
-	KeyFile                     = "localhost_root_key.pem"
 )
 
 func InitConfig() error {

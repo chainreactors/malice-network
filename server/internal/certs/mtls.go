@@ -40,8 +40,8 @@ func MtlsListenerGenerateRsaCertificate(name string, isRoot bool) ([]byte, []byt
 		var listenerCert *models.Certificate
 		certsPath := path.Join(configs.ServerRootPath, "certs")
 		// 检查是否已存在证书
-		listenerCertPath := path.Join(certsPath, "listener_tcp_default_crt.pem")
-		listenerKeyPath := path.Join(certsPath, "listener_tcp_default_key.pem")
+		listenerCertPath := path.Join(certsPath, "listener_default_crt.pem")
+		listenerKeyPath := path.Join(certsPath, "listener_default_key.pem")
 		if helper.FileExists(listenerCertPath) && helper.FileExists(listenerKeyPath) {
 			logs.Log.Info("Listener server CA certificates already exist.")
 			dbSession := db.Session()
@@ -57,7 +57,7 @@ func MtlsListenerGenerateRsaCertificate(name string, isRoot bool) ([]byte, []byt
 	}
 	cert, key := GenerateRSACertificate(OperatorCA, name, false, true)
 	err := saveCertificate(ListenerCA, RSAKey, fmt.Sprintf("%s", name), cert, key)
-	filename := fmt.Sprintf(configs.CertsPath+"%s_%s", ListenerCA, name)
+	filename := fmt.Sprintf(configs.CertsPath+"/%s_%s", ListenerCA, name)
 	if certErr := os.WriteFile(filename+"_crt.pem", cert, 0o777); certErr != nil {
 		return nil, nil, certErr
 	}
