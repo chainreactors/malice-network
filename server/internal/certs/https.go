@@ -4,13 +4,13 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"fmt"
+	"github.com/chainreactors/malice-network/server/internal/configs"
 	"os"
 )
 
 const (
 	// SERVERCA - Directory containing operator certificates
 	SERVERCA = "root"
-	ROOTPATH = ".malice/certs/"
 	// CLIENTCA - Directory containing client certificates
 	CLIENTCA = "client"
 )
@@ -40,7 +40,7 @@ func InitRSACertificate(host, user string, isCA, isClient bool) ([]byte, []byte,
 	err = saveCertificate(caType, RSAKey, fmt.Sprintf("%s.%s", host, user), cert, key)
 	// 保存到文件
 	if isCA {
-		filename := fmt.Sprintf(ROOTPATH+"%s_%s", host, user)
+		filename := fmt.Sprintf(configs.CertsPath+"/%s_%s", host, user)
 		if certErr := os.WriteFile(filename+"_crt.pem", cert, 0o777); certErr != nil {
 			return nil, nil, certErr
 		}

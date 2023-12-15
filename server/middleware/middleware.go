@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/server/internal/configs"
 	grpc_auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -16,9 +17,6 @@ type contextKey int
 const (
 	Transport contextKey = iota
 	Operator
-	configDir = ".malice/certs"
-	certFile  = "localhost_root_crt.pem"
-	keyFile   = "localhost_root_key.pem"
 )
 
 func chainUnaryInterceptors(interceptors ...grpc.UnaryServerInterceptor) grpc.UnaryServerInterceptor {
@@ -76,8 +74,8 @@ func authMiddleware(ctx context.Context) []grpc.ServerOption {
 
 // hasPermissions - Check if client has permissions`
 func hasPermissions(ctx context.Context) (context.Context, error) {
-	certPath := path.Join(configDir, certFile)
-	keyPath := path.Join(configDir, keyFile)
+	certPath := path.Join(configs.CertsPath, configs.CertFile)
+	keyPath := path.Join(configs.CertsPath, configs.KeyFile)
 	if _, err := os.Stat(certPath); os.IsNotExist(err) {
 		logs.Log.Errorf("Failed to load cert %v", err)
 		return nil, status.Error(codes.Unauthenticated, "Authentication failed")

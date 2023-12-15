@@ -6,6 +6,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/server/internal/configs"
 	"io/ioutil"
 	"os"
 	"path"
@@ -27,14 +28,13 @@ func SetupCAs() {
 func getCertDir() string {
 	//rootDir := assets.GetRootAppDir()
 	// test
-	certDir := path.Join(".malice", "certs")
-	if _, err := os.Stat(certDir); os.IsNotExist(err) {
-		err := os.MkdirAll(certDir, 0700)
+	if _, err := os.Stat(configs.CertsPath); os.IsNotExist(err) {
+		err := os.MkdirAll(configs.CertsPath, 0700)
 		if err != nil {
 			certsLog.Errorf("Failed to create cert dir: %v", err)
 		}
 	}
-	return certDir
+	return configs.CertsPath
 }
 
 // GenerateCertificateAuthority - Creates a new CA cert for a given type
