@@ -52,3 +52,48 @@ func TestUpload(t *testing.T) {
 	fmt.Printf("resp %v\n", resp)
 	select {}
 }
+
+func TestDownload(t *testing.T) {
+	implant := common.NewImplant(common.DefaultListenerAddr, common.TestSid)
+	implant.Register()
+	time.Sleep(1 * time.Second)
+	fmt.Println(hash.Md5Hash([]byte(implant.Sid)))
+	go func() {
+		var err error
+		var conn net.Conn
+		conn = implant.MustConnect()
+		implant.WriteEmpty(conn)
+		download, err := implant.Read(conn)
+		conn.Close()
+		fmt.Printf("res %v %v\n", download, err)
+		time.Sleep(1 * time.Second)
+		conn = implant.MustConnect()
+		err = implant.WriteAsync(conn, download.(*commonpb.Spites).Spites[0].TaskId)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		conn.Close()
+		time.Sleep(1 * time.Second)
+		conn = implant.MustConnect()
+		err = implant.Write(conn, &commonpb.Block{
+			BlockId: 0,
+			Content: make([]byte, 100),
+		})
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+	}()
+	time.Sleep(1)
+	rpc := common.NewClient(common.DefaultGRPCAddr, common.TestSid)
+	resp, err := rpc.Call("download", &pluginpb.DownloadRequest{
+		Name: "test",
+		Path: "/test.txt",
+	})
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Printf("resp %v\n", resp)
+	select {}
+}

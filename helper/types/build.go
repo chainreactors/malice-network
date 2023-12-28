@@ -29,6 +29,9 @@ func BuildSpite(spite *commonpb.Spite, msg proto.Message) (*commonpb.Spite, erro
 	case *pluginpb.UploadRequest:
 		spite.Name = "upload"
 		spite.Body = &commonpb.Spite_UploadRequest{UploadRequest: msg.(*pluginpb.UploadRequest)}
+	case *pluginpb.DownloadRequest:
+		spite.Name = "download"
+		spite.Body = &commonpb.Spite_DownloadRequest{DownloadRequest: msg.(*pluginpb.DownloadRequest)}
 	default:
 		return spite, ErrUnknownSpite
 	}

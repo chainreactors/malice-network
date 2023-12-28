@@ -109,16 +109,16 @@ func (s *Session) RequestAndWait(msg *lispb.SpiteSession, stream grpc.ServerStre
 }
 
 // RequestWithStream - 'async' means that the response is not returned immediately, but is returned through the channel 'ch
-func (s *Session) RequestWithStream(msg *lispb.SpiteSession, stream grpc.ServerStream, timeout time.Duration) (chan *commonpb.Spite, chan *commonpb.Spite, error) {
+func (s *Session) RequestWithStream(msg *lispb.SpiteSession, stream grpc.ServerStream, timeout time.Duration) (chan *commonpb.Spite, chan *commonpb.Spite, *commonpb.AsyncStatus, error) {
 	out := make(chan *commonpb.Spite)
 	s.StoreResp(msg.TaskId, out)
 	err := s.Request(msg, stream, timeout)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	resp := <-out
-	if resp.GetAsyncStatus().Status != 0 {
-		return nil, nil, errors.New(resp.GetAsyncStatus().Error)
+	status := <-out
+	if status.GetAsyncStatus().Status != 0 {
+		return nil, nil, status.GetAsyncStatus(), errors.New(status.GetAsyncStatus().Error)
 	}
 
 	in := make(chan *commonpb.Spite)
@@ -139,7 +139,7 @@ func (s *Session) RequestWithStream(msg *lispb.SpiteSession, stream grpc.ServerS
 			c++
 		}
 	}()
-	return in, out, nil
+	return in, out, status.GetAsyncStatus(), nil
 }
 
 func (s *Session) RequestWithAsync(msg *lispb.SpiteSession, stream grpc.ServerStream, timeout time.Duration) (*commonpb.AsyncStatus, chan *commonpb.Spite, error) {

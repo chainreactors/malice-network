@@ -2,13 +2,19 @@ package rpc
 
 import (
 	"context"
+	"github.com/chainreactors/files"
+	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/encoders/hash"
 	"github.com/chainreactors/malice-network/helper/packet"
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/commonpb"
 	"github.com/chainreactors/malice-network/proto/implant/pluginpb"
+	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/gookit/config/v2"
+	"os"
+	"path"
 )
 
 // Upload - Upload a file from the remote file system
@@ -28,7 +34,7 @@ func (rpc *Server) Upload(ctx context.Context, req *pluginpb.UploadRequest) (*cl
 			Priv:   req.Priv,
 			Hidden: req.Hidden,
 		})
-		in, out, err := rpc.streamGenericHandler(ctx, greq)
+		in, out, _, err := rpc.streamGenericHandler(ctx, greq)
 		if err != nil {
 			return nil, err
 		}
@@ -52,6 +58,47 @@ func (rpc *Server) Upload(ctx context.Context, req *pluginpb.UploadRequest) (*cl
 				}
 			}
 			close(in)
+		}()
+		return greq.Task.ToProtobuf(), nil
+	}
+}
+
+// Download - Download a file from implant
+func (rpc *Server) Download(ctx context.Context, req *pluginpb.DownloadRequest) (*clientpb.Task, error) {
+	greq := newGenericRequest(req)
+	in, out, status, err := rpc.streamGenericHandler(ctx, greq)
+	if err != nil {
+		logs.Log.Debugf("stream generate error: %s", err)
+		return nil, err
+	}
+	fileName := path.Join(configs.TempPath, hash.Md5Hash([]byte(status.Message)))
+	if files.IsExist(fileName) {
+		// TODO - DB SELECT TASK
+		return nil, err
+	} else {
+		downloadFile, err := os.OpenFile(fileName, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+		if err != nil {
+			return nil, err
+		}
+		defer downloadFile.Close()
+		spite := &commonpb.Spite{
+			Timeout: uint64(consts.MinTimeout.Seconds()),
+			TaskId:  greq.Task.Id,
+		}
+		spite, _ = types.BuildSpite(spite, &commonpb.AsyncStatus{
+			TaskId:  greq.Task.Id,
+			Status:  1,
+			Message: "Download staring success",
+		})
+		in <- spite
+		go func() {
+			for resp := range out {
+				blockData := resp.GetBlock()
+				_, fileErr := downloadFile.Write(blockData.Content)
+				if fileErr != nil {
+					return
+				}
+			}
 		}()
 		return greq.Task.ToProtobuf(), nil
 	}

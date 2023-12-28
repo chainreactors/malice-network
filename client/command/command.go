@@ -88,7 +88,10 @@ func BindCommands(con *console.Console) {
 			f.String("c", "config", "", "server config")
 		},
 		Run: func(ctx *grumble.Context) error {
-			login.LoginCmd(ctx, con)
+			err := login.RunInteractiveList()
+			if err != nil {
+				con.App.Println("Error login server: ", err)
+			}
 			return nil
 		},
 	}

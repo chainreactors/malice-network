@@ -259,33 +259,33 @@ func (rpc *Server) asyncGenericHandler(ctx context.Context, req *GenericRequest)
 }
 
 // streamGenericHandler - Generic handler for async request/response's for beacon tasks
-func (rpc *Server) streamGenericHandler(ctx context.Context, req *GenericRequest) (chan *commonpb.Spite, chan *commonpb.Spite, error) {
+func (rpc *Server) streamGenericHandler(ctx context.Context, req *GenericRequest) (chan *commonpb.Spite, chan *commonpb.Spite, *commonpb.AsyncStatus, error) {
 	var err error
 	sid, err := rpc.getSessionID(ctx)
 	if err != nil {
 		logs.Log.Errorf(err.Error())
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	session, ok := core.Sessions.Get(sid)
 	if !ok {
-		return nil, nil, ErrInvalidSessionID
+		return nil, nil, nil, ErrInvalidSessionID
 	}
 	session.Tasks.Add(req.Task)
 	spite, err := req.NewSpite()
 	if err != nil {
 		logs.Log.Errorf(err.Error())
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	int, out, err := session.RequestWithStream(
+	int, out, status, err := session.RequestWithStream(
 		&lispb.SpiteSession{SessionId: sid, TaskId: req.Task.Id, Spite: spite},
 		listenersCh[session.ListenerId],
 		consts.MinTimeout)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, status, err
 	}
 
-	return int, out, nil
+	return int, out, status, nil
 }
 
 func (rpc *Server) GetBasic(ctx context.Context, _ *clientpb.Empty) (*clientpb.Basic, error) {

@@ -3,6 +3,7 @@ package generate
 import (
 	"encoding/pem"
 	"fmt"
+	"github.com/chainreactors/files"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/helper/helper"
@@ -14,6 +15,10 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+)
+
+const (
+	defaultClient = "test_localhost_5004"
 )
 
 // GenerateRootCA - Initialize the root CA
@@ -47,6 +52,10 @@ func GenerateClientCA(host, user string) ([]byte, []byte, error) {
 
 // ServerInitUserCert - Initialize the client cert by server
 func ServerInitUserCert(name string) error {
+	if files.IsExist(path.Join(assets.GetConfigDir(), fmt.Sprintf("%s.yaml", defaultClient))) {
+		logs.Log.Info("Client certificate already exist.")
+		return nil
+	}
 	cert, key, err := certs.InitRSACertificate("localhost", name, false, true)
 	if err != nil {
 		return err

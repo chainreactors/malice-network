@@ -20,7 +20,8 @@ var (
 )
 
 func NewClient(addr string, sid []byte) *Client {
-	conn, err := grpc.Dial(addr, grpc.WithInsecure())
+	options := RpcOptions()
+	conn, err := grpc.Dial(addr, options...)
 	if err != nil {
 		panic(err)
 	}
