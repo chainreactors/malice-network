@@ -1,6 +1,7 @@
 package common
 
 import (
+	"errors"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/packet"
 	"github.com/chainreactors/malice-network/helper/types"
@@ -192,6 +193,7 @@ func (implant *Implant) HandlerSpite(msg *commonpb.Spite) *commonpb.Spite {
 
 func (implant *Implant) Request(req *commonpb.Spite) (proto.Message, error) {
 	conn := implant.MustConnect()
+	conn.SetReadDeadline(time.Now().Add(1 * time.Second))
 	defer conn.Close()
 	if req != nil {
 		err := implant.WriteSpite(conn, req)
@@ -216,8 +218,16 @@ func (implant *Implant) Request(req *commonpb.Spite) (proto.Message, error) {
 	}
 }
 
-func (implant *Implant) BuildSpite(msg proto.Message) (*commonpb.Spite, error) {
-	return types.BuildSpite(nil, msg)
+func (implant *Implant) Expect(req *commonpb.Spite, m Message) (proto.Message, error) {
+	resp, err := implant.Request(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if m != MessageType(resp.(*commonpb.Spites).Spites[0]) {
+		return resp, errors.New("unexpect response type ")
+	}
+	return resp, nil
 }
 
 func (implant *Implant) BuildTaskSpite(msg proto.Message, taskid uint32) (*commonpb.Spite, error) {
