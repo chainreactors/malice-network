@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
+	"github.com/chainreactors/malice-network/client/command/transport"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/helper"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/desertbit/grumble"
 	"github.com/fatih/color"
-	"google.golang.org/grpc"
 	"path/filepath"
 )
 
@@ -70,8 +70,7 @@ type Console struct {
 }
 
 func (c *Console) Login(config *assets.ClientConfig) error {
-	conn, err := grpc.Dial(fmt.Sprintf("%s:%d", config.LHost, config.LPort), grpc.WithInsecure())
-
+	conn, err := transport.MTLSConnect(config)
 	if err != nil {
 		logs.Log.Errorf("Failed to connect: %v", err)
 		return err

@@ -1,4 +1,4 @@
-package utils
+package transport
 
 import (
 	"context"
@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"log"
@@ -68,10 +67,10 @@ func getTLSConfig(caCertificate string, certificate string, privateKey string) (
 	return tlsConfig, nil
 }
 
-func MTLSConnect(config *assets.ClientConfig) (clientrpc.RootRPCClient, *grpc.ClientConn, error) {
+func MTLSConnect(config *assets.ClientConfig) (*grpc.ClientConn, error) {
 	tlsConfig, err := getTLSConfig(config.CACertificate, config.Certificate, config.PrivateKey)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	transportCreds := credentials.NewTLS(tlsConfig)
 	options := []grpc.DialOption{
@@ -83,7 +82,7 @@ func MTLSConnect(config *assets.ClientConfig) (clientrpc.RootRPCClient, *grpc.Cl
 	defer cancel()
 	connection, err := grpc.DialContext(ctx, fmt.Sprintf("%s:%d", config.LHost, config.LPort), options...)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	return clientrpc.NewRootRPCClient(connection), connection, nil
+	return connection, nil
 }
