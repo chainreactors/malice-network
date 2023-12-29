@@ -6,7 +6,6 @@ import (
 	"github.com/chainreactors/malice-network/proto/implant/commonpb"
 	"github.com/chainreactors/malice-network/proto/implant/pluginpb"
 	"github.com/chainreactors/malice-network/tests/common"
-	"net"
 	"testing"
 	"time"
 )
@@ -17,26 +16,24 @@ func TestUpload(t *testing.T) {
 	time.Sleep(1 * time.Second)
 	fmt.Println(hash.Md5Hash([]byte(implant.Sid)))
 	go func() {
-		var err error
-		var conn net.Conn
-		conn = implant.MustConnect()
-		implant.WriteEmpty(conn)
-		upload, err := implant.Read(conn)
-		conn.Close()
+
+		upload, err := implant.Request(nil)
+		if err != nil {
+			fmt.Println(err.Error())
+			return
+		}
+		taskid := upload.(*commonpb.Spites).Spites[0].TaskId
 		fmt.Printf("res %v %v\n", upload, err)
 		time.Sleep(1 * time.Second)
-		conn = implant.MustConnect()
-		implant.WriteAsync(conn, upload.(*commonpb.Spites).Spites[0].TaskId)
-		conn.Close()
 
+		implant.Request(implant.BuildCommonSpite(common.StatusSpite, taskid))
 		time.Sleep(1 * time.Second)
-		conn = implant.MustConnect()
-		implant.WriteEmpty(conn)
-		block, err := implant.Read(conn)
+		block, err := implant.Request(nil)
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
+		implant.Request(implant.BuildCommonSpite(common.AckSpite, taskid))
 		fmt.Println(block)
 	}()
 	rpc := common.NewClient(common.DefaultGRPCAddr, common.TestSid)
@@ -59,31 +56,32 @@ func TestDownload(t *testing.T) {
 	time.Sleep(1 * time.Second)
 	fmt.Println(hash.Md5Hash([]byte(implant.Sid)))
 	go func() {
-		var err error
-		var conn net.Conn
-		conn = implant.MustConnect()
-		implant.WriteEmpty(conn)
-		download, err := implant.Read(conn)
-		conn.Close()
+		download, err := implant.Request(nil)
+		if err != nil {
+			fmt.Println(err.Error())
+			return
+		}
+		taskid := download.(*commonpb.Spites).Spites[0].TaskId
 		fmt.Printf("res %v %v\n", download, err)
 		time.Sleep(1 * time.Second)
-		conn = implant.MustConnect()
-		err = implant.WriteAsync(conn, download.(*commonpb.Spites).Spites[0].TaskId)
+
+		_, err = implant.Request(implant.BuildCommonSpite(common.StatusSpite, taskid))
 		if err != nil {
-			fmt.Println(err)
+			fmt.Println(err.Error())
 			return
 		}
-		conn.Close()
 		time.Sleep(1 * time.Second)
-		conn = implant.MustConnect()
-		err = implant.Write(conn, &commonpb.Block{
+
+		block, _ := implant.BuildTaskSpite(&commonpb.Block{
 			BlockId: 0,
 			Content: make([]byte, 100),
-		})
+		}, taskid)
+		ack, err := implant.Request(block)
 		if err != nil {
-			fmt.Println(err)
+			fmt.Println(err.Error())
 			return
 		}
+		fmt.Println(ack)
 	}()
 	time.Sleep(1)
 	rpc := common.NewClient(common.DefaultGRPCAddr, common.TestSid)

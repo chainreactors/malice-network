@@ -15,6 +15,9 @@ var (
 )
 
 func BuildSpite(spite *commonpb.Spite, msg proto.Message) (*commonpb.Spite, error) {
+	if spite == nil {
+		spite = &commonpb.Spite{}
+	}
 	switch msg.(type) {
 	case *commonpb.Block:
 		spite.Name = "block"
