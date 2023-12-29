@@ -5,7 +5,6 @@ import (
 	"github.com/chainreactors/files"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/encoders/hash"
 	"github.com/chainreactors/malice-network/helper/packet"
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
@@ -71,7 +70,7 @@ func (rpc *Server) Download(ctx context.Context, req *pluginpb.DownloadRequest) 
 		logs.Log.Debugf("stream generate error: %s", err)
 		return nil, err
 	}
-	fileName := path.Join(configs.TempPath, hash.Md5Hash([]byte(status.Message)))
+	fileName := path.Join(configs.TempPath, status.GetDownloadResponse().Checksum)
 	if files.IsExist(fileName) {
 		// TODO - DB SELECT TASK
 		return nil, err
@@ -81,23 +80,15 @@ func (rpc *Server) Download(ctx context.Context, req *pluginpb.DownloadRequest) 
 			return nil, err
 		}
 		defer downloadFile.Close()
-		spite := &commonpb.Spite{
-			Timeout: uint64(consts.MinTimeout.Seconds()),
-			TaskId:  greq.Task.Id,
-		}
-		spite, _ = types.BuildSpite(spite, &commonpb.AsyncStatus{
-			TaskId:  greq.Task.Id,
-			Status:  1,
-			Message: "Download staring success",
-		})
-		in <- spite
 		go func() {
 			for resp := range out {
-				blockData := resp.GetBlock()
-				_, fileErr := downloadFile.Write(blockData.Content)
+				block := resp.GetBlock()
+				_, fileErr := downloadFile.Write(block.Content)
 				if fileErr != nil {
 					return
 				}
+				ack, _ := greq.NewSpite(&commonpb.AsyncACK{Success: true})
+				in <- ack
 			}
 		}()
 		return greq.Task.ToProtobuf(), nil

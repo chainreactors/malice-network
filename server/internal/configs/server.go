@@ -21,6 +21,7 @@ var (
 	LogPath                     = path.Join(ServerRootPath, "logs")
 	CertsPath                   = path.Join(ServerRootPath, "certs")
 	TempPath                    = path.Join(ServerRootPath, "temp")
+	PluginPath                  = path.Join(ServerRootPath, "plugins")
 )
 
 func InitConfig() error {

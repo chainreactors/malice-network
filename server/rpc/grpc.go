@@ -129,13 +129,13 @@ func (r *GenericRequest) NewTask() *core.Task {
 	return task
 }
 
-func (r *GenericRequest) NewSpite() (*commonpb.Spite, error) {
+func (r *GenericRequest) NewSpite(msg proto.Message) (*commonpb.Spite, error) {
 	r.Spite = &commonpb.Spite{
 		Timeout: uint64(consts.MinTimeout.Seconds()),
 		TaskId:  r.Task.Id,
 	}
 	var err error
-	r.Spite, err = types.BuildSpite(r.Spite, r.Message)
+	r.Spite, err = types.BuildSpite(r.Spite, msg)
 	if err != nil {
 		return nil, err
 	}
@@ -208,7 +208,7 @@ func (rpc *Server) genericHandler(ctx context.Context, req *GenericRequest) (pro
 		return nil, ErrInvalidSessionID
 	}
 	session.Tasks.Add(req.Task)
-	spite, err := req.NewSpite()
+	spite, err := req.NewSpite(req.Message)
 	if err != nil {
 		logs.Log.Errorf(err.Error())
 		return nil, err
@@ -242,7 +242,7 @@ func (rpc *Server) asyncGenericHandler(ctx context.Context, req *GenericRequest)
 		return nil, nil, ErrInvalidSessionID
 	}
 	session.Tasks.Add(req.Task)
-	spite, err := req.NewSpite()
+	spite, err := req.NewSpite(req.Message)
 	if err != nil {
 		logs.Log.Errorf(err.Error())
 		return nil, nil, err
@@ -272,7 +272,7 @@ func (rpc *Server) streamGenericHandler(ctx context.Context, req *GenericRequest
 		return nil, nil, nil, ErrInvalidSessionID
 	}
 	session.Tasks.Add(req.Task)
-	spite, err := req.NewSpite()
+	spite, err := req.NewSpite(req.Message)
 	if err != nil {
 		logs.Log.Errorf(err.Error())
 		return nil, nil, nil, err
