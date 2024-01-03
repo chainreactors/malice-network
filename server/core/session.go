@@ -117,7 +117,9 @@ func (s *Session) RequestWithStream(msg *lispb.SpiteSession, stream grpc.ServerS
 		return nil, nil, nil, err
 	}
 	status := <-out
-	if status.GetAsyncStatus().Status != 0 {
+	if status.GetAsyncStatus() == nil {
+		return nil, nil, nil, errors.New("illegal spite type")
+	} else if status.GetAsyncStatus().Status != 0 {
 		return nil, nil, status.GetAsyncStatus(), errors.New(status.GetAsyncStatus().Error)
 	}
 
