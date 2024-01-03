@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/mtls"
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
@@ -28,7 +29,7 @@ func NewListener(cfg *configs.ListenerConfig, isRoot bool) error {
 	if err != nil {
 		return err
 	}
-	tlsConfig, err := certs.GetTLSConfig(string(caCert), string(clientCert), string(clientKey))
+	tlsConfig, err := mtls.GetTLSConfig(string(caCert), string(clientCert), string(clientKey))
 	transportCreds := credentials.NewTLS(tlsConfig)
 	options := []grpc.DialOption{
 		grpc.WithTransportCredentials(transportCreds),

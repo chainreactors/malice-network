@@ -1,4 +1,8 @@
+<<<<<<<< HEAD:client/utils/mtls.go
 package utils
+========
+package mtls
+>>>>>>>> 6b39ff6 (refactor bubble cli and mtls func):helper/mtls/mtls.go
 
 import (
 	"context"
@@ -43,8 +47,8 @@ func VerifyCertificate(caCertificate string, rawCerts [][]byte) error {
 	return nil
 }
 
-// getTLSConfig - Get the TLS config for the operator server
-func getTLSConfig(caCertificate string, certificate string, privateKey string) (*tls.Config, error) {
+// GetTLSConfig - Get the TLS config for the operator server
+func GetTLSConfig(caCertificate string, certificate string, privateKey string) (*tls.Config, error) {
 
 	certPEM, err := tls.X509KeyPair([]byte(certificate), []byte(privateKey))
 	if err != nil {
@@ -68,8 +72,13 @@ func getTLSConfig(caCertificate string, certificate string, privateKey string) (
 	return tlsConfig, nil
 }
 
+<<<<<<<< HEAD:client/utils/mtls.go
 func MTLSConnect(config *assets.ClientConfig) (clientrpc.RootRPCClient, *grpc.ClientConn, error) {
 	tlsConfig, err := getTLSConfig(config.CACertificate, config.Certificate, config.PrivateKey)
+========
+func Connect(config *assets.ClientConfig) (*grpc.ClientConn, error) {
+	tlsConfig, err := GetTLSConfig(config.CACertificate, config.Certificate, config.PrivateKey)
+>>>>>>>> 6b39ff6 (refactor bubble cli and mtls func):helper/mtls/mtls.go
 	if err != nil {
 		return nil, nil, err
 	}

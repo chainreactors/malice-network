@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/console"
-	"github.com/chainreactors/malice-network/client/utils"
+	"github.com/chainreactors/malice-network/helper/cli"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/desertbit/grumble"
@@ -14,46 +14,14 @@ import (
 	"strings"
 )
 
-type model struct {
-	choices      []string
-	selectedItem int
-}
-
-type msg string
-
-const (
-	msgQuit     msg = "quit"
-	msgSelect   msg = "select"
-	msgUnselect msg = "unselect"
-)
-
-func RunInteractiveList() error {
-	files, err := getYAMLFiles(assets.GetConfigDir())
-	if err != nil {
-		return err
-	}
-
-	m := model{
-		choices: files,
-	}
-
-	p := tea.NewProgram(m)
-	if err := p.Start(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func getYAMLFiles(directory string) ([]string, error) {
 	var files []string
 
-	// 遍历指定目录下的所有文件
+	// Traverse all files in the specified directory.
 	err := filepath.Walk(directory, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
-		// 如果是文件且扩展名是 .yaml 或 .yml，则加入文件列表
 		if !info.IsDir() && (strings.HasSuffix(info.Name(), ".yaml") || strings.HasSuffix(info.Name(), ".yml")) {
 			files = append(files, info.Name())
 		}
@@ -67,90 +35,61 @@ func getYAMLFiles(directory string) ([]string, error) {
 	return files, nil
 }
 
-func (m model) Init() tea.Cmd {
+func LoginCmd(ctx *grumble.Context, con *console.Console) error {
+	files, err := getYAMLFiles(assets.GetConfigDir())
+	if err != nil {
+		con.App.Println("Error retrieving YAML files:", err)
+		return err
+	}
+
+	// Create a model for the interactive list
+	m := &cli.Model{
+		Choices: files,
+	}
+
+	// Start the interactive list
+	p := tea.NewProgram(m)
+	if err := p.Start(); err != nil {
+		con.App.Println("Error starting interactive list:", err)
+		return err
+	}
+
+	// After the interactive list is completed, check the selected item
+	if m.SelectedItem >= 0 && m.SelectedItem < len(m.Choices) {
+		err := loginServer(ctx, con, m.Choices[m.SelectedItem])
+		if err != nil {
+			fmt.Println("Error executing loginServer:", err)
+		}
+	}
 	return nil
 }
 
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch msg.String() {
-		case "q":
-			return m, tea.Quit
-		case "up":
-			m.selectedItem--
-			if m.selectedItem < 0 {
-				m.selectedItem = len(m.choices) - 1
-			}
-			return m, nil
-		case "down":
-			m.selectedItem++
-			if m.selectedItem >= len(m.choices) {
-				m.selectedItem = 0
-			}
-			return m, nil
-		case "enter":
-			if m.selectedItem >= 0 && m.selectedItem < len(m.choices) {
-				fmt.Println("You selected:", m.choices[m.selectedItem])
-				// 在这里可以处理选中文件的逻辑
-			}
-			return m, nil
-		}
-	}
-
-	return m, nil
-}
-
-func (m model) View() string {
-	var view strings.Builder
-
-	for i, choice := range m.choices {
-		if i == m.selectedItem {
-			view.WriteString("[x] ")
-		} else {
-			view.WriteString("[ ] ")
-		}
-		view.WriteString(choice)
-		view.WriteRune('\n')
-	}
-
-	return view.String()
-}
-
-func LoginCmd(ctx *grumble.Context, con *console.Console) {
-	// TODO : interactive choice config
-	//config := &assets.ClientConfig{
-	//	LHost: "127.0.0.1",
-	//	LPort: 5004,
-	//}
-	//err := con.Login(config)
-	//if err != nil {
-	//	return
-	//}
-	loginServer(ctx, con)
-}
-
-func loginServer(ctx *grumble.Context, con *console.Console) {
-	configFile := ctx.Flags.String("config")
+func loginServer(ctx *grumble.Context, con *console.Console, selectedFile string) error {
+	configFile := filepath.Join(assets.GetConfigDir(), selectedFile)
 	config, err := assets.ReadConfig(configFile)
 	if err != nil {
 		con.App.Println("Error reading config file:", err)
-		return
+		return err
 	}
-	rpc, ln, err := utils.MTLSConnect(config)
+	err = con.Login(config)
+	if err != nil {
+		con.App.Println("Error login:", err)
+		return err
+	}
 	req := &clientpb.LoginReq{
-		Name: config.Operator,
-		Host: config.LHost,
-		Port: uint32(config.LPort),
+		Name:  config.Operator,
+		Host:  config.LHost,
+		Port:  uint32(config.LPort),
+		Token: config.Token,
 	}
-	res, err := rpc.AddClient(context.Background(), req)
+	res, err := con.Rpc.LoginClient(context.Background(), req)
 	if err != nil {
 		con.App.Println("Error login server: ", err)
-		return
+		return err
 	}
-	defer ln.Close()
 	if res.Success != true {
 		con.App.Println("Error login server")
-		return
+		return err
 	}
+	return nil
 }
