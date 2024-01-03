@@ -25,7 +25,7 @@ func getCertDir() string {
 	//rootDir := assets.GetRootAppDir()
 	// test
 	if _, err := os.Stat(certsPath); os.IsNotExist(err) {
-		err := os.MkdirAll(certsPath, 0700)
+		err := os.MkdirAll(certsPath, 0o700)
 		if err != nil {
 			logs.Log.Errorf("Failed to create cert dir: %v", err)
 		}

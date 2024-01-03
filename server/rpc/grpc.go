@@ -248,7 +248,7 @@ func (rpc *Server) asyncGenericHandler(ctx context.Context, req *GenericRequest)
 		return nil, nil, err
 	}
 	spite.Async = true
-	status, out, err := session.RequestWithAsync(
+	stat, out, err := session.RequestWithAsync(
 		&lispb.SpiteSession{SessionId: sid, TaskId: req.Task.Id, Spite: spite},
 		listenersCh[session.ListenerId],
 		consts.MinTimeout)
@@ -256,7 +256,7 @@ func (rpc *Server) asyncGenericHandler(ctx context.Context, req *GenericRequest)
 		return nil, nil, err
 	}
 
-	return status, out, nil
+	return stat, out, nil
 }
 
 // streamGenericHandler - Generic handler for async request/response's for beacon tasks
@@ -279,15 +279,15 @@ func (rpc *Server) streamGenericHandler(ctx context.Context, req *GenericRequest
 		return nil, nil, nil, err
 	}
 	spite.Async = true
-	int, out, status, err := session.RequestWithStream(
+	in, out, stat, err := session.RequestWithStream(
 		&lispb.SpiteSession{SessionId: sid, TaskId: req.Task.Id, Spite: spite},
 		listenersCh[session.ListenerId],
 		consts.MinTimeout)
 	if err != nil {
-		return nil, nil, status, err
+		return nil, nil, stat, err
 	}
 
-	return int, out, status, nil
+	return in, out, stat, nil
 }
 
 func (rpc *Server) GetBasic(ctx context.Context, _ *clientpb.Empty) (*clientpb.Basic, error) {

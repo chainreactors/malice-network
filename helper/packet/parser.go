@@ -153,7 +153,7 @@ func WritePacket(conn net.Conn, msg proto.Message, sessionId []byte) error {
 	if err != nil {
 		return err
 	}
-	logs.Log.Debugf("write packet to %s , %d bytes", conn.RemoteAddr(), len(bs))
+	logs.Log.Debugf("write packet to %s , %d bytes, %v", conn.RemoteAddr(), len(bs), msg)
 	return nil
 }
 
@@ -167,6 +167,6 @@ func WritePacketWithTimeout(conn net.Conn, msg proto.Message, sessionId []byte, 
 	if err != nil {
 		return err
 	}
-	logs.Log.Debugf("write packet to %s , %d bytes", conn.RemoteAddr(), len(bs))
+	logs.Log.Debugf("write packet to %s , %d bytes, %v", conn.RemoteAddr(), len(bs), msg)
 	return nil
 }
