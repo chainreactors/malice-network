@@ -75,12 +75,10 @@ func ServerInitUserCert(name string) error {
 	configDir := assets.GetConfigDir()
 	configFile := path.Join(configDir, fmt.Sprintf("%s_%s_%d.yaml", name, client.LHost, client.LPort))
 
-	// 使用 YAML 库将 config 结构体序列化为 YAML 数据
 	yamlData, err := yaml.Marshal(client)
 	if err != nil {
 		return err
 	}
-	// 将 YAML 数据写入文件
 	err = ioutil.WriteFile(configFile, yamlData, 0644)
 	if err != nil {
 		return err

@@ -60,7 +60,7 @@ type DatabaseConfig struct {
 func (c *DatabaseConfig) DSN() (string, error) {
 	switch c.Dialect {
 	case Sqlite:
-		filePath := filepath.Join(assets.GetRootAppDir(), "malice.db")
+		filePath := filepath.Join(ServerRootPath, "malice.db")
 		params := encodeParams(c.Params)
 		return fmt.Sprintf("file:%s?%s", filePath, params), nil
 	//case MySQL:
