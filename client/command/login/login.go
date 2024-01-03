@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/helper/cli"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/desertbit/grumble"
@@ -13,20 +14,14 @@ import (
 	"strings"
 )
 
-type model struct {
-	choices      []string
-	selectedItem int
-}
-
 func getYAMLFiles(directory string) ([]string, error) {
 	var files []string
 
-	// 遍历指定目录下的所有文件
+	// Traverse all files in the specified directory.
 	err := filepath.Walk(directory, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
-		// 如果是文件且扩展名是 .yaml 或 .yml，则加入文件列表
 		if !info.IsDir() && (strings.HasSuffix(info.Name(), ".yaml") || strings.HasSuffix(info.Name(), ".yml")) {
 			files = append(files, info.Name())
 		}
@@ -40,79 +35,30 @@ func getYAMLFiles(directory string) ([]string, error) {
 	return files, nil
 }
 
-func (m *model) Init() tea.Cmd {
-	m.selectedItem = -1
-	return nil
-}
-
-func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch msg.String() {
-		case "q":
-			return m, tea.Quit
-		case "up":
-			m.selectedItem--
-			if m.selectedItem < 0 {
-				m.selectedItem = len(m.choices) - 1
-			}
-			return m, nil
-		case "down":
-			m.selectedItem++
-			if m.selectedItem >= len(m.choices) {
-				m.selectedItem = 0
-			}
-			return m, nil
-		case "enter":
-			if m.selectedItem >= 0 && m.selectedItem < len(m.choices) {
-			}
-			return m, tea.Quit
-		}
-	}
-
-	return m, nil
-}
-
-func (m *model) View() string {
-	var view strings.Builder
-
-	for i, choice := range m.choices {
-		if i == m.selectedItem {
-			view.WriteString("[x] ")
-		} else {
-			view.WriteString("[ ] ")
-		}
-		view.WriteString(choice)
-		view.WriteRune('\n')
-	}
-
-	return view.String()
-}
-
 func LoginCmd(ctx *grumble.Context, con *console.Console) error {
 	files, err := getYAMLFiles(assets.GetConfigDir())
 	if err != nil {
-		con.App.Println("获取 YAML 文件时发生错误:", err)
+		con.App.Println("Error retrieving YAML files:", err)
 		return err
 	}
 
-	// 为交互式列表创建模型
-	m := &model{
-		choices: files,
+	// Create a model for the interactive list
+	m := &cli.Model{
+		Choices: files,
 	}
 
-	// 启动交互式列表
+	// Start the interactive list
 	p := tea.NewProgram(m)
 	if err := p.Start(); err != nil {
-		con.App.Println("启动交互式列表时发生错误:", err)
+		con.App.Println("Error starting interactive list:", err)
 		return err
 	}
 
-	// 在交互式列表完成后，检查所选项目
-	if m.selectedItem >= 0 && m.selectedItem < len(m.choices) {
-		err := loginServer(ctx, con, m.choices[m.selectedItem])
+	// After the interactive list is completed, check the selected item
+	if m.SelectedItem >= 0 && m.SelectedItem < len(m.Choices) {
+		err := loginServer(ctx, con, m.Choices[m.SelectedItem])
 		if err != nil {
-			fmt.Println("执行 loginServer 时发生错误:", err)
+			fmt.Println("Error executing loginServer:", err)
 		}
 	}
 	return nil

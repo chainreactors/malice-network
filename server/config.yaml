@@ -9,6 +9,7 @@ server:
 
 listeners:
   server_addr: 127.0.0.1:5004
+  name: default
   tcp:
     - name: tcp_default
       port: 5001
