@@ -112,3 +112,12 @@ func FileExists(filePath string) bool {
 	_, err := os.Stat(filePath)
 	return err == nil
 }
+
+// RemoveFile - Remove a file from src to dst
+func RemoveFile(filePath string) error {
+	err := os.Remove(filePath)
+	if err != nil {
+		return err
+	}
+	return nil
+}

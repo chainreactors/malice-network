@@ -12,12 +12,14 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"github.com/chainreactors/malice-network/helper/helper"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"math/big"
 	insecureRand "math/rand"
 	"net"
 	"os"
+	"path"
 	"time"
 )
 
@@ -26,7 +28,10 @@ const (
 	ECCKey = "ecc"
 
 	// RSAKey - Namespace for RSA keys
-	RSAKey = "rsa"
+	RSAKey        = "rsa"
+	RootName      = "localhost.root"
+	OperatorName  = "server.operator"
+	ListentorName = "default"
 )
 
 var (
@@ -50,11 +55,24 @@ func saveCertificate(caType string, keyType string, commonName string, cert []by
 		CertificatePEM: string(cert),
 		PrivateKeyPEM:  string(key),
 	}
-
 	dbSession := db.Session()
-	result := dbSession.Create(&certModel)
+	if commonName == RootName {
+		err := removeOldCerts()
+		if err != nil {
+			return err
+		}
+	}
+	if commonName == RootName || commonName == OperatorName || commonName == ListentorName {
+		var existingCert models.Certificate
+		result := dbSession.Where("common_name = ?", commonName).First(&existingCert)
+		if result.Error == nil {
+			certsLog.Infof("Certificate with commonName '%s' already exists. Deleting existing record.", commonName)
+			dbSession.Delete(&existingCert)
+		}
+	}
+	createResult := dbSession.Create(&certModel)
 
-	return result.Error
+	return createResult.Error
 }
 
 // SaveToPEMFile 将 PEM 格式数据保存到文件
@@ -303,4 +321,24 @@ func randomValidFor() time.Duration {
 func RsaKeySize() int {
 	rsaKeySizes := []int{4096, 2048}
 	return rsaKeySizes[randomInt(len(rsaKeySizes))]
+}
+
+func removeOldCerts() error {
+	err := helper.RemoveFile(path.Join(getCertDir(), "listener_default_crt.pem"))
+	if err != nil {
+		return err
+	}
+	err = helper.RemoveFile(path.Join(getCertDir(), "listener_default_key.pem"))
+	if err != nil {
+		return err
+	}
+	err = helper.RemoveFile(path.Join(getCertDir(), "server_operator_crt.pem"))
+	if err != nil {
+		return err
+	}
+	err = helper.RemoveFile(path.Join(getCertDir(), "server_operator_key.pem"))
+	if err != nil {
+		return err
+	}
+	return nil
 }
