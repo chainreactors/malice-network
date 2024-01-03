@@ -8,7 +8,6 @@ import (
 )
 
 func (rpc *Server) Events(_ *clientpb.Empty, stream clientrpc.MaliceRPC_EventsServer) error {
-	//commonName := rpc.getClientCommonName(stream.Context())
 	clientName, err := rpc.getClientName(stream.Context())
 	if err != nil {
 		return err

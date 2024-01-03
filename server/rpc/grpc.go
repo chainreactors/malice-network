@@ -247,6 +247,7 @@ func (rpc *Server) asyncGenericHandler(ctx context.Context, req *GenericRequest)
 		logs.Log.Errorf(err.Error())
 		return nil, nil, err
 	}
+	spite.Async = true
 	status, out, err := session.RequestWithAsync(
 		&lispb.SpiteSession{SessionId: sid, TaskId: req.Task.Id, Spite: spite},
 		listenersCh[session.ListenerId],
@@ -277,6 +278,7 @@ func (rpc *Server) streamGenericHandler(ctx context.Context, req *GenericRequest
 		logs.Log.Errorf(err.Error())
 		return nil, nil, nil, err
 	}
+	spite.Async = true
 	int, out, status, err := session.RequestWithStream(
 		&lispb.SpiteSession{SessionId: sid, TaskId: req.Task.Id, Spite: spite},
 		listenersCh[session.ListenerId],

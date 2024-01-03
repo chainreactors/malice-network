@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
-	"github.com/chainreactors/files"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/helper"
@@ -18,7 +17,7 @@ import (
 )
 
 var (
-	serverRootPath = files.GetExcPath() + ".malice"
+	serverRootPath = ".malice"
 	certsPath      = path.Join(serverRootPath, "certs")
 )
 

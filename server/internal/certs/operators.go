@@ -61,7 +61,7 @@ func OperatorServerGenerateCertificate(hostname string) ([]byte, []byte, error) 
 	serverCertPath := path.Join(certsPath, "server_operator_crt.pem")
 	serverKeyPath := path.Join(certsPath, "server_operator_key.pem")
 	if helper.FileExists(serverCertPath) && helper.FileExists(serverKeyPath) {
-		logs.Log.Info("Mtls server CA certificates already exist.")
+		logs.Log.Debug("Mtls server CA certificates already exist.")
 		dbSession := db.Session()
 		result := dbSession.Where(
 			&models.Certificate{
