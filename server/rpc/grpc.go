@@ -16,6 +16,8 @@ import (
 	"github.com/chainreactors/malice-network/server/core"
 	"github.com/chainreactors/malice-network/server/internal/certs"
 	"github.com/chainreactors/malice-network/server/internal/configs"
+	"github.com/chainreactors/malice-network/server/internal/db"
+	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"github.com/chainreactors/malice-network/server/middleware"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -115,6 +117,11 @@ func newGenericRequest(msg proto.Message) *GenericRequest {
 		Message: msg,
 	}
 	req.Task = req.NewTask()
+	dbSession := db.Session()
+	err := dbSession.Create(models.ConvertToTaskDB(req.Task)).Error
+	if err != nil {
+		logs.Log.Errorf("cannot create task %s , %s in db", req.Task.Id, err.Error())
+	}
 	return req
 }
 

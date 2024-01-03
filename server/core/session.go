@@ -33,7 +33,7 @@ func NewSession(req *lispb.RegisterSession) *Session {
 		Os:         req.RegisterData.Os,
 		Process:    req.RegisterData.Process,
 		Timer:      req.RegisterData.Timer,
-		Tasks:      &tasks{active: &sync.Map{}},
+		Tasks:      &Tasks{active: &sync.Map{}},
 		Responses:  &sync.Map{},
 	}
 }
@@ -55,7 +55,7 @@ type Session struct {
 	ConfigID    string
 	PeerID      int64
 	Locale      string
-	Tasks       *tasks // task manager
+	Tasks       *Tasks // task manager
 	Responses   *sync.Map
 }
 

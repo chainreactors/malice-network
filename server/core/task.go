@@ -6,13 +6,13 @@ import (
 	"sync"
 )
 
-type tasks struct {
+type Tasks struct {
 	active     *sync.Map
 	taskNumber uint32
 }
 
 // get
-func (t *tasks) Get(taskID uint32) *Task {
+func (t *Tasks) Get(taskID uint32) *Task {
 	val, ok := t.active.Load(taskID)
 	if ok {
 		return val.(*Task)
@@ -20,18 +20,18 @@ func (t *tasks) Get(taskID uint32) *Task {
 	return nil
 }
 
-func (t *tasks) nextTaskId() uint32 {
+func (t *Tasks) nextTaskId() uint32 {
 	t.taskNumber++
 	return t.taskNumber
 }
 
-func (t *tasks) Add(task *Task) {
+func (t *Tasks) Add(task *Task) {
 	id := t.nextTaskId()
 	task.Id = id
 	t.active.Store(id, task)
 }
 
-func (t *tasks) Remove(task *Task) {
+func (t *Tasks) Remove(task *Task) {
 	t.active.Delete(task.Id)
 }
 

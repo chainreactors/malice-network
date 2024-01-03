@@ -7,11 +7,19 @@ import (
 	"github.com/chainreactors/malice-network/proto/implant/commonpb"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/server/core"
+	"github.com/chainreactors/malice-network/server/internal/db"
+	"github.com/chainreactors/malice-network/server/internal/db/models"
 )
 
 func (rpc *Server) Register(ctx context.Context, req *lispb.RegisterSession) (*commonpb.Empty, error) {
 	sess := core.NewSession(req)
 	core.Sessions.Add(sess)
+	dbSession := db.Session()
+	err := dbSession.Create(models.ConvertToSessionDB(sess)).Error
+	if err != nil {
+		logs.Log.Errorf("cannot create session %s , %s in db", sess.ID, err.Error())
+		return nil, err
+	}
 	logs.Log.Importantf("init new session %s from %s", sess.ID, sess.ListenerId)
 	return &commonpb.Empty{}, nil
 }
