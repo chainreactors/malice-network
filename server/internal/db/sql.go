@@ -21,16 +21,13 @@ func newDBClient() *gorm.DB {
 	default:
 		panic(fmt.Sprintf("Unknown DB Dialect: '%s'", dbConfig.Dialect))
 	}
-	err := dbClient.AutoMigrate(
+	_ = dbClient.AutoMigrate(
 		&models.Operator{},
 		&models.Certificate{},
 		&models.Session{},
 		&models.Task{},
 		&models.Listener{},
 	)
-	if err != nil {
-		logs.Log.Errorf("Failed to migrate database: %v", err)
-	}
 	if dbClient == nil {
 		panic("Failed to initialize database")
 	} else {

@@ -342,3 +342,35 @@ func removeOldCerts() error {
 	}
 	return nil
 }
+
+func CheckCertIsExist(certPath, keyPath, commonName string) ([]byte, []byte, error) {
+	var existingCert models.Certificate
+	certBytes, err := os.ReadFile(certPath)
+	if err != nil {
+		return nil, nil, err
+	}
+	keyBytes, err := os.ReadFile(keyPath)
+	if err != nil {
+		return nil, nil, err
+	}
+	dbSession := db.Session()
+	result := dbSession.Where("common_name = ?", commonName).First(&existingCert).Error
+	if result != nil {
+		var caType string
+		switch commonName {
+		case RootName:
+			caType = SERVERCA
+		case OperatorName:
+			caType = OperatorCA
+		case ListentorName:
+			caType = ListenerCA
+		default:
+			caType = OperatorCA
+		}
+		err := saveCertificate(caType, RSAKey, commonName, certBytes, keyBytes)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+	return certBytes, keyBytes, nil
+}

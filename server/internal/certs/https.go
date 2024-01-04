@@ -7,7 +7,6 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/helper"
 	"github.com/chainreactors/malice-network/server/internal/configs"
-	"io/ioutil"
 	"os"
 	"path"
 )
@@ -64,17 +63,10 @@ func MtlsListenerGenerateRsaCertificate(name string, isRoot bool) ([]byte, []byt
 		listenerKeyPath := path.Join(certsPath, "listener_default_key.pem")
 		if helper.FileExists(listenerCertPath) && helper.FileExists(listenerKeyPath) {
 			logs.Log.Info("Listener server CA certificates already exist.")
-			certBytes, err := ioutil.ReadFile(listenerCertPath)
+			certBytes, keyBytes, err := CheckCertIsExist(listenerCertPath, listenerKeyPath, ListentorName)
 			if err != nil {
-				logs.Log.Errorf("Error reading Listener certificate file: %s", err)
-				return nil, nil, err
+				return certBytes, keyBytes, err
 			}
-			keyBytes, err := ioutil.ReadFile(listenerKeyPath)
-			if err != nil {
-				logs.Log.Errorf("Error reading Listener key file: %s", err)
-				return nil, nil, err
-			}
-			err = saveCertificate(ListenerCA, RSAKey, fmt.Sprintf("%s", name), certBytes, keyBytes)
 			return certBytes, keyBytes, nil
 		}
 	}

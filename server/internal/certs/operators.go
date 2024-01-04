@@ -9,7 +9,6 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
-	"io/ioutil"
 	"os"
 	"path"
 )
@@ -57,25 +56,14 @@ func OperatorServerGetCertificate(hostname string) ([]byte, []byte, error) {
 // OperatorServerGenerateCertificate - Generate a certificate signed with a given CA
 func OperatorServerGenerateCertificate(hostname string) ([]byte, []byte, error) {
 	certsPath := path.Join(configs.ServerRootPath, "certs")
-	// 检查是否已存在证书
+	// check if listenerCert exist
 	serverCertPath := path.Join(certsPath, "server_operator_crt.pem")
 	serverKeyPath := path.Join(certsPath, "server_operator_key.pem")
 	if helper.FileExists(serverCertPath) && helper.FileExists(serverKeyPath) {
 		logs.Log.Info("Mtls server CA certificates already exist.")
-		certBytes, err := ioutil.ReadFile(serverCertPath)
+		certBytes, keyBytes, err := CheckCertIsExist(serverCertPath, serverKeyPath, OperatorName)
 		if err != nil {
-			logs.Log.Errorf("Error reading operator certificate file: %s", err)
-			return nil, nil, err
-		}
-		keyBytes, err := ioutil.ReadFile(serverKeyPath)
-		if err != nil {
-			logs.Log.Errorf("Error reading operator key file: %s", err)
-			return nil, nil, err
-		}
-		err = saveCertificate(OperatorCA, RSAKey, fmt.Sprintf("%s.%s", serverNamespace, hostname), certBytes,
-			keyBytes)
-		if err != nil {
-			return nil, nil, err
+			return certBytes, keyBytes, err
 		}
 		return certBytes, keyBytes, nil
 	}

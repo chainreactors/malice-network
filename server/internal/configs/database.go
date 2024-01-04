@@ -32,7 +32,7 @@ var (
 // GetDatabaseConfigPath - File path to config.json
 func GetDatabaseConfigPath() string {
 	appDir := ServerRootPath
-	databaseConfigPath := filepath.Join(appDir, "configs", databaseConfigFileName)
+	databaseConfigPath := filepath.Join(appDir, databaseConfigFileName)
 	logs.Log.Debugf("Loading config from %s", databaseConfigPath)
 	return databaseConfigPath
 }
