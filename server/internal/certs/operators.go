@@ -9,6 +9,7 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
+	"io/ioutil"
 	"os"
 	"path"
 )
@@ -55,22 +56,28 @@ func OperatorServerGetCertificate(hostname string) ([]byte, []byte, error) {
 
 // OperatorServerGenerateCertificate - Generate a certificate signed with a given CA
 func OperatorServerGenerateCertificate(hostname string) ([]byte, []byte, error) {
-	var serverListenerCert *models.Certificate
 	certsPath := path.Join(configs.ServerRootPath, "certs")
 	// 检查是否已存在证书
 	serverCertPath := path.Join(certsPath, "server_operator_crt.pem")
 	serverKeyPath := path.Join(certsPath, "server_operator_key.pem")
 	if helper.FileExists(serverCertPath) && helper.FileExists(serverKeyPath) {
-		logs.Log.Debug("Mtls server CA certificates already exist.")
-		dbSession := db.Session()
-		result := dbSession.Where(
-			&models.Certificate{
-				CommonName: "server.operator"}).First(&serverListenerCert)
-		if result.Error != nil {
-			certsLog.Errorf("Failed to load CA %v", result.Error)
-			return nil, nil, result.Error
+		logs.Log.Info("Mtls server CA certificates already exist.")
+		certBytes, err := ioutil.ReadFile(serverCertPath)
+		if err != nil {
+			logs.Log.Errorf("Error reading operator certificate file: %s", err)
+			return nil, nil, err
 		}
-		return []byte(serverListenerCert.CertificatePEM), []byte(serverListenerCert.PrivateKeyPEM), nil
+		keyBytes, err := ioutil.ReadFile(serverKeyPath)
+		if err != nil {
+			logs.Log.Errorf("Error reading operator key file: %s", err)
+			return nil, nil, err
+		}
+		err = saveCertificate(OperatorCA, RSAKey, fmt.Sprintf("%s.%s", serverNamespace, hostname), certBytes,
+			keyBytes)
+		if err != nil {
+			return nil, nil, err
+		}
+		return certBytes, keyBytes, nil
 	}
 	cert, key := GenerateRSACertificate(OperatorCA, hostname, false, false)
 	err := saveCertificate(OperatorCA, RSAKey, fmt.Sprintf("%s.%s", serverNamespace, hostname), cert, key)

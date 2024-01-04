@@ -15,6 +15,7 @@ require (
 	github.com/jessevdk/go-flags v1.5.0
 	github.com/klauspost/compress v1.17.0
 	github.com/ncruces/go-sqlite3 v0.9.0
+	github.com/pkg/errors v0.8.1
 	github.com/pterm/pterm v0.12.69
 	github.com/tetratelabs/wazero v1.5.0
 	golang.org/x/crypto v0.15.0

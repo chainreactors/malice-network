@@ -1,10 +1,10 @@
 package models
 
 import (
+	"errors"
 	"github.com/chainreactors/malice-network/proto/implant/commonpb"
 	"github.com/chainreactors/malice-network/server/core"
 	"github.com/gofrs/uuid"
-	"github.com/pkg/errors"
 	"gorm.io/gorm"
 	"time"
 )

@@ -7,8 +7,7 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/helper"
 	"github.com/chainreactors/malice-network/server/internal/configs"
-	"github.com/chainreactors/malice-network/server/internal/db"
-	"github.com/chainreactors/malice-network/server/internal/db/models"
+	"io/ioutil"
 	"os"
 	"path"
 )
@@ -59,22 +58,24 @@ func InitRSACertificate(host, user string, isCA, isClient bool) ([]byte, []byte,
 // MtlsListenerGenerateRsaCertificate -
 func MtlsListenerGenerateRsaCertificate(name string, isRoot bool) ([]byte, []byte, error) {
 	if isRoot {
-		var listenerCert *models.Certificate
 		certsPath := path.Join(configs.ServerRootPath, "certs")
-		// 检查是否已存在证书
+		// check if listenerCert exist
 		listenerCertPath := path.Join(certsPath, "listener_default_crt.pem")
 		listenerKeyPath := path.Join(certsPath, "listener_default_key.pem")
 		if helper.FileExists(listenerCertPath) && helper.FileExists(listenerKeyPath) {
 			logs.Log.Info("Listener server CA certificates already exist.")
-			dbSession := db.Session()
-			result := dbSession.Where(
-				&models.Certificate{
-					CommonName: fmt.Sprintf("%s", name)}).First(&listenerCert)
-			if result.Error != nil {
-				logs.Log.Errorf("Failed to load CA %v", result.Error)
-				return nil, nil, result.Error
+			certBytes, err := ioutil.ReadFile(listenerCertPath)
+			if err != nil {
+				logs.Log.Errorf("Error reading Listener certificate file: %s", err)
+				return nil, nil, err
 			}
-			return []byte(listenerCert.CertificatePEM), []byte(listenerCert.PrivateKeyPEM), nil
+			keyBytes, err := ioutil.ReadFile(listenerKeyPath)
+			if err != nil {
+				logs.Log.Errorf("Error reading Listener key file: %s", err)
+				return nil, nil, err
+			}
+			err = saveCertificate(ListenerCA, RSAKey, fmt.Sprintf("%s", name), certBytes, keyBytes)
+			return certBytes, keyBytes, nil
 		}
 	}
 	cert, key := GenerateRSACertificate(OperatorCA, name, false, true)

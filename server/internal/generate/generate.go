@@ -28,8 +28,16 @@ func GenerateRootCA() {
 	rootCertPath := path.Join(certsPath, "localhost_root_crt.pem")
 	rootKeyPath := path.Join(certsPath, "localhost_root_key.pem")
 	if helper.FileExists(rootCertPath) && helper.FileExists(rootKeyPath) {
-		logs.Log.Debug("Root CA certificates already exist.")
-		return
+		logs.Log.Info("Root CA certificates already exist.")
+		var existingCert models.Certificate
+		dbSession := db.Session()
+		result := dbSession.Where("common_name = ?", "root").First(&existingCert).Error
+		if result != nil {
+			_, _, err = certs.InitRSACertificate("localhost", "root", true, false)
+			if err != nil {
+				logs.Log.Errorf("Failed to generate server certificate: %v", err)
+			}
+		}
 	}
 	_, _, err = certs.InitRSACertificate("localhost", "root", true, false)
 	if err != nil {

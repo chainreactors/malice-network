@@ -14,7 +14,6 @@ import (
 // newDBClient - Initialize the db client
 func newDBClient() *gorm.DB {
 	dbConfig := configs.GetDatabaseConfig()
-
 	var dbClient *gorm.DB
 	switch dbConfig.Dialect {
 	case configs.Sqlite:
@@ -59,7 +58,7 @@ func sqliteClient(dbConfig *configs.DatabaseConfig) *gorm.DB {
 	}
 	dbClient, err := gorm.Open(Open(dsn), &gorm.Config{
 		PrepareStmt: false,
-		Logger:      logger.Default.LogMode(logger.Error),
+		Logger:      logger.Default.LogMode(logger.Silent),
 	})
 	if err != nil {
 		panic(err)

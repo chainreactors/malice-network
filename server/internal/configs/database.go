@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/client/assets"
 	"net/url"
 	"os"
 	"path"
@@ -32,7 +31,7 @@ var (
 
 // GetDatabaseConfigPath - File path to config.json
 func GetDatabaseConfigPath() string {
-	appDir := assets.GetRootAppDir()
+	appDir := ServerRootPath
 	databaseConfigPath := filepath.Join(appDir, "configs", databaseConfigFileName)
 	logs.Log.Debugf("Loading config from %s", databaseConfigPath)
 	return databaseConfigPath

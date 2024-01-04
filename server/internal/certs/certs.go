@@ -64,8 +64,8 @@ func saveCertificate(caType string, keyType string, commonName string, cert []by
 	}
 	if commonName == RootName || commonName == OperatorName || commonName == ListentorName {
 		var existingCert models.Certificate
-		result := dbSession.Where("common_name = ?", commonName).First(&existingCert)
-		if result.Error == nil {
+		result := dbSession.Where("common_name = ?", commonName).First(&existingCert).Error
+		if result == nil {
 			certsLog.Infof("Certificate with commonName '%s' already exists. Deleting existing record.", commonName)
 			dbSession.Delete(&existingCert)
 		}
