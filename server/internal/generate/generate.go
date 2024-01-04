@@ -17,10 +17,6 @@ import (
 	"path"
 )
 
-const (
-	defaultClient = "test_localhost_5004"
-)
-
 // GenerateRootCA - Initialize the root CA
 func GenerateRootCA() {
 	certsPath := path.Join(configs.ServerRootPath, "certs")
@@ -52,7 +48,7 @@ func GenerateClientCA(host, user string) ([]byte, []byte, error) {
 
 // ServerInitUserCert - Initialize the client cert by server
 func ServerInitUserCert(name string) error {
-	if files.IsExist(path.Join(assets.GetConfigDir(), fmt.Sprintf("%s.yaml", defaultClient))) {
+	if files.IsExist(path.Join(assets.GetConfigDir(), fmt.Sprintf("%s.yaml", name))) {
 		logs.Log.Info("Client certificate already exist.")
 		return nil
 	}

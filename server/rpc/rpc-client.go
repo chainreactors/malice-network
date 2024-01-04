@@ -20,6 +20,7 @@ func (rpc *Server) GetClients(ctx context.Context, req *clientpb.Empty) (*client
 
 func (rpc *Server) LoginClient(ctx context.Context, req *clientpb.LoginReq) (*clientpb.LoginResp, error) {
 	host, port := req.Host, uint16(req.Port)
+	var operator []*models.Operator
 	if host == "" || port == 0 {
 		logs.Log.Error("AddClient: host or user is empty")
 		return &clientpb.LoginResp{
@@ -39,8 +40,16 @@ func (rpc *Server) LoginClient(ctx context.Context, req *clientpb.LoginReq) (*cl
 
 	client := core.NewClient(req.Name)
 	core.Clients.Add(client)
+	dbSession.Where(&models.Operator{Token: req.Token}).Find(&operator)
+	if len(operator) != 0 {
+		logs.Log.Infof("Client %s login success", req.Name)
+		return &clientpb.LoginResp{
+			Success: true,
+		}, nil
+	}
 	err = dbSession.Create(&models.Operator{
-		Name: req.Name,
+		Name:  req.Name,
+		Token: req.Token,
 	}).Error
 	if err != nil {
 		return &clientpb.LoginResp{
