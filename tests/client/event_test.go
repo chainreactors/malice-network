@@ -3,19 +3,18 @@ package client
 import (
 	"fmt"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/proto/implant/pluginpb"
+	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/tests/common"
 	"testing"
 )
 
-func TestExec(t *testing.T) {
+func TestBroadcast(t *testing.T) {
 	rpc := common.NewClient(common.DefaultGRPCAddr, common.TestSid)
-	resp, err := rpc.Call(consts.ExecutionStr, &pluginpb.ExecRequest{
-		Path: "/bin/bash",
-		Args: []string{"whoami"}})
+	_, err := rpc.Call(consts.BroadcastStr, &clientpb.Event{
+		EventType: consts.EventBroadcast,
+		Data:      []byte("broadcast test"),
+	})
 	if err != nil {
 		fmt.Println(err.Error())
-		return
 	}
-	fmt.Println(resp)
 }

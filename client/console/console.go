@@ -13,6 +13,35 @@ import (
 	"path/filepath"
 )
 
+const (
+	// ANSI Colors
+	Normal    = "\033[0m"
+	Black     = "\033[30m"
+	Red       = "\033[31m"
+	Green     = "\033[32m"
+	Orange    = "\033[33m"
+	Blue      = "\033[34m"
+	Purple    = "\033[35m"
+	Cyan      = "\033[36m"
+	Gray      = "\033[37m"
+	Bold      = "\033[1m"
+	Clearln   = "\r\x1b[2K"
+	UpN       = "\033[%dA"
+	DownN     = "\033[%dB"
+	Underline = "\033[4m"
+
+	// Info - Display colorful information
+	Info = Bold + Cyan + "[*] " + Normal
+	// Warn - Warn a user
+	Warn = Bold + Red + "[!] " + Normal
+	// Debug - Display debug information
+	Debug = Bold + Purple + "[-] " + Normal
+	// Woot - Display success
+	Woot = Bold + Green + "[$] " + Normal
+	// Success - Diplay success
+	Success = Bold + Green + "[+] " + Normal
+)
+
 var Log = logs.NewLogger(logs.Warn)
 
 // BindCmds - Bind extra commands to the app object
@@ -52,7 +81,6 @@ func Start(bindCmds BindCmds) error {
 		con.UpdatePrompt()
 	})
 
-	//go con.EventLoop()
 	//go core.TunnelLoop(rpc)
 
 	err := con.App.Run()

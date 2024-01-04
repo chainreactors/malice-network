@@ -105,7 +105,12 @@ func (s *ServerStatus) EventHandler() {
 			Log.Infof("%s has joined the game", event.Client.Name)
 		case consts.EventLeft:
 			Log.Infof("%s left the game", event.Client.Name)
-
+		case consts.EventBroadcast:
+			Log.Console(Clearln)
+			Log.Infof("%s broadcasted: %s  %s", event.SourceName, string(event.Data), event.Err)
+		case consts.EventNotify:
+			Log.Console(Clearln)
+			Log.Importantf("%s notified: %s %s", event.SourceName, string(event.Data), event.Err)
 		}
 
 		//con.triggerReactions(event)

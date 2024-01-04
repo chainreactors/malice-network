@@ -38,11 +38,8 @@ func (rpc *Server) LoginClient(ctx context.Context, req *clientpb.LoginReq) (*cl
 		}, err
 	}
 
-	client := core.NewClient(req.Name)
-	core.Clients.Add(client)
 	dbSession.Where(&models.Operator{Token: req.Token}).Find(&operator)
 	if len(operator) != 0 {
-		logs.Log.Infof("Client %s login success", req.Name)
 		return &clientpb.LoginResp{
 			Success: true,
 		}, nil
@@ -56,7 +53,6 @@ func (rpc *Server) LoginClient(ctx context.Context, req *clientpb.LoginReq) (*cl
 			Success: false,
 		}, err
 	}
-	logs.Log.Infof("Client %s login success", req.Name)
 	return &clientpb.LoginResp{
 		Success: true,
 	}, nil
@@ -81,8 +77,6 @@ func (rpc *Server) AddClient(ctx context.Context, req *clientpb.LoginReq) (*clie
 		}, err
 	}
 
-	client := core.NewClient(req.Name)
-	core.Clients.Add(client)
 	err = dbSession.Create(&models.Operator{
 		Name: req.Name,
 	}).Error

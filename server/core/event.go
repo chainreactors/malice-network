@@ -1,5 +1,7 @@
 package core
 
+import "github.com/chainreactors/logs"
+
 const (
 	// Size is arbitrary, just want to avoid weird cases where we'd block on channel sends
 	eventBufSize = 5
@@ -10,10 +12,10 @@ type Event struct {
 	Job     *Job
 	Client  *Client
 
-	EventType string
-
-	Data []byte
-	Err  error
+	EventType  string
+	SourceName string
+	Data       []byte
+	Err        error
 }
 
 type eventBroker struct {
@@ -38,6 +40,7 @@ func (broker *eventBroker) Start() {
 		case sub := <-broker.unsubscribe:
 			delete(subscribers, sub)
 		case event := <-broker.publish:
+			logs.Log.Infof("[event] %s: %s", event.EventType, string(event.Data))
 			for sub := range subscribers {
 				sub <- event
 			}

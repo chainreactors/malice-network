@@ -33,7 +33,7 @@ func InitRSACertificate(host, user string, isCA, isClient bool) ([]byte, []byte,
 		certsLog.Errorf("Failed to generate private key %v", err)
 		return nil, nil, err
 	}
-	subject := randomSubject(host)
+	subject := randomSubject(user)
 	switch isClient {
 	case true:
 		caType = CLIENTCA

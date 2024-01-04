@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/encoders/hash"
+	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/pluginpb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/proto/services/listenerrpc"
@@ -58,6 +59,8 @@ func (c *Client) Call(rpcname string, msg proto.Message) (proto.Message, error) 
 		resp, err = c.Client.Upload(meta, msg.(*pluginpb.UploadRequest))
 	case consts.DownloadStr:
 		resp, err = c.Client.Download(meta, msg.(*pluginpb.DownloadRequest))
+	case consts.BroadcastStr:
+		resp, err = c.Client.Broadcast(meta, msg.(*clientpb.Event))
 	default:
 		return nil, errors.New("unknown rpc")
 	}

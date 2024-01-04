@@ -1,6 +1,8 @@
 package rpc
 
 import (
+	"context"
+	"errors"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
@@ -8,14 +10,10 @@ import (
 )
 
 func (rpc *Server) Events(_ *clientpb.Empty, stream clientrpc.MaliceRPC_EventsServer) error {
-	clientName, err := rpc.getClientName(stream.Context())
-	if err != nil {
-		return err
-	}
+	clientName := rpc.getClientName(stream.Context())
+	events := core.EventBroker.Subscribe()
 	client := core.NewClient(clientName)
 	core.Clients.Add(client)
-	events := core.EventBroker.Subscribe()
-
 	defer func() {
 		logs.Log.Infof("%d client disconnected", client.ID)
 		core.EventBroker.Unsubscribe(events)
@@ -52,4 +50,15 @@ func (rpc *Server) Events(_ *clientpb.Empty, stream clientrpc.MaliceRPC_EventsSe
 			}
 		}
 	}
+}
+
+func (rpc *Server) Broadcast(ctx context.Context, req *clientpb.Event) (*clientpb.Empty, error) {
+	clientName := rpc.getClientName(ctx)
+	core.EventBroker.Publish(core.Event{
+		EventType:  req.EventType,
+		Data:       req.Data,
+		SourceName: clientName,
+		Err:        errors.New(req.Err),
+	})
+	return &clientpb.Empty{}, nil
 }

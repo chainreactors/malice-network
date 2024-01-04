@@ -188,16 +188,31 @@ func (rpc *Server) getListenerID(ctx context.Context) (string, error) {
 	}
 }
 
-func (rpc *Server) getClientName(ctx context.Context) (string, error) {
-	md, ok := metadata.FromIncomingContext(ctx)
+func (rpc *Server) getClientName(ctx context.Context) string {
+	//md, ok := metadata.FromIncomingContext(ctx)
+	//if !ok {
+	//	return "", ErrNotFoundClientName
+	//}
+	//if sid := md.Get("client_name"); len(sid) > 0 {
+	//	return sid[0], nil
+	//} else {
+	//	return "", ErrNotFoundClientName
+	//}
+	client, ok := peer.FromContext(ctx)
 	if !ok {
-		return "", ErrNotFoundClientName
+		return ""
 	}
-	if sid := md.Get("client_name"); len(sid) > 0 {
-		return sid[0], nil
-	} else {
-		return "", ErrNotFoundClientName
+	tlsAuth, ok := client.AuthInfo.(credentials.TLSInfo)
+	if !ok {
+		return ""
 	}
+	if len(tlsAuth.State.VerifiedChains) == 0 || len(tlsAuth.State.VerifiedChains[0]) == 0 {
+		return ""
+	}
+	if tlsAuth.State.VerifiedChains[0][0].Subject.CommonName != "" {
+		return tlsAuth.State.VerifiedChains[0][0].Subject.CommonName
+	}
+	return ""
 }
 
 // genericHandler - Pass the request to the Sliver/Session

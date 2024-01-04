@@ -9,34 +9,11 @@ import (
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/desertbit/grumble"
-	"os"
 	"path/filepath"
-	"strings"
 )
 
-func getYAMLFiles(directory string) ([]string, error) {
-	var files []string
-
-	// Traverse all files in the specified directory.
-	err := filepath.Walk(directory, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if !info.IsDir() && (strings.HasSuffix(info.Name(), ".yaml") || strings.HasSuffix(info.Name(), ".yml")) {
-			files = append(files, info.Name())
-		}
-		return nil
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	return files, nil
-}
-
 func LoginCmd(ctx *grumble.Context, con *console.Console) error {
-	files, err := getYAMLFiles(assets.GetConfigDir())
+	files, err := assets.GetConfigs()
 	if err != nil {
 		con.App.Println("Error retrieving YAML files:", err)
 		return err
@@ -61,6 +38,7 @@ func LoginCmd(ctx *grumble.Context, con *console.Console) error {
 			fmt.Println("Error executing loginServer:", err)
 		}
 	}
+
 	return nil
 }
 
@@ -71,6 +49,7 @@ func loginServer(ctx *grumble.Context, con *console.Console, selectedFile string
 		con.App.Println("Error reading config file:", err)
 		return err
 	}
+
 	err = con.Login(config)
 	if err != nil {
 		con.App.Println("Error login:", err)
