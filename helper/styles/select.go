@@ -1,11 +1,11 @@
-package cli
+package styles
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
 	"strings"
 )
 
-type Model struct {
+type SelectModel struct {
 	Choices      []string
 	SelectedItem int
 	KeyHandler   KeyHandler
@@ -13,12 +13,12 @@ type Model struct {
 	IsQuit       bool
 }
 
-func (m *Model) Init() tea.Cmd {
+func (m *SelectModel) Init() tea.Cmd {
 	m.SelectedItem = -1
 	return nil
 }
 
-func (m *Model) View() string {
+func (m *SelectModel) View() string {
 	var view strings.Builder
 
 	for i, choice := range m.Choices {
@@ -34,9 +34,9 @@ func (m *Model) View() string {
 	return view.String()
 }
 
-type KeyHandler func(*Model, tea.Msg) (tea.Model, tea.Cmd)
+type KeyHandler func(*SelectModel, tea.Msg) (tea.Model, tea.Cmd)
 
-func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *SelectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {

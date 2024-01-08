@@ -1,4 +1,4 @@
-package utils
+package styles
 
 import (
 	"github.com/chainreactors/malice-network/client/console"

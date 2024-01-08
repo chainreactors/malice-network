@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/console"
-	"github.com/chainreactors/malice-network/helper/cli"
+	"github.com/chainreactors/malice-network/helper/styles"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/desertbit/grumble"
@@ -20,7 +20,7 @@ func LoginCmd(ctx *grumble.Context, con *console.Console) error {
 	}
 
 	// Create a model for the interactive list
-	m := &cli.Model{
+	m := &styles.SelectModel{
 		Choices: files,
 	}
 

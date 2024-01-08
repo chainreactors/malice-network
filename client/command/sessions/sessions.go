@@ -2,8 +2,8 @@ package sessions
 
 import (
 	"github.com/chainreactors/malice-network/client/console"
-	"github.com/chainreactors/malice-network/client/utils"
 	"github.com/chainreactors/malice-network/helper/helper"
+	"github.com/chainreactors/malice-network/helper/styles"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/desertbit/grumble"
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -30,7 +30,7 @@ func PrintSessions(sessions map[string]*clientpb.Session, con *console.Console) 
 
 	tw := table.NewWriter()
 	tw.SetTitle("sessions")
-	tw.SetStyle(utils.GetTableStyle(con))
+	tw.SetStyle(styles.GetTableStyle(con))
 
 	if con.Settings.SmallTermWidth < width {
 		tw.AppendHeader(table.Row{
