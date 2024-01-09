@@ -1,9 +1,9 @@
 package client
 
 import (
+	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/console"
-	"github.com/desertbit/grumble"
 )
 
 func SelectCmd(ctx *grumble.Context, con *console.Console) {

@@ -3,15 +3,33 @@ package login
 import (
 	"context"
 	"fmt"
+	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/helper/styles"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/desertbit/grumble"
 	"path/filepath"
 )
 
+func Command(con *console.Console) []*grumble.Command {
+	return []*grumble.Command{
+		&grumble.Command{
+			Name: "login",
+			Help: "Login to server",
+			Flags: func(f *grumble.Flags) {
+				f.String("c", "config", "", "server config")
+			},
+			Run: func(ctx *grumble.Context) error {
+				err := LoginCmd(ctx, con)
+				if err != nil {
+					con.App.Println("Error login server: ", err)
+				}
+				return nil
+			},
+		},
+	}
+}
 func LoginCmd(ctx *grumble.Context, con *console.Console) error {
 	files, err := assets.GetConfigs()
 	if err != nil {

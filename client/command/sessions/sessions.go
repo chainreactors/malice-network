@@ -1,11 +1,12 @@
 package sessions
 
 import (
+	"github.com/chainreactors/grumble"
+	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/helper/helper"
 	"github.com/chainreactors/malice-network/helper/styles"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
-	"github.com/desertbit/grumble"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/pterm/pterm"
 	"golang.org/x/term"
@@ -13,6 +14,30 @@ import (
 	"time"
 )
 
+func Command(con *console.Console) []*grumble.Command {
+	return []*grumble.Command{
+		&grumble.Command{
+			Name: "sessions",
+			Help: "List sessions",
+			Flags: func(f *grumble.Flags) {
+				f.String("i", "interact", "", "interact with a session")
+				f.String("k", "kill", "", "kill the designated session")
+				f.Bool("K", "kill-all", false, "kill all the sessions")
+				f.Bool("C", "clean", false, "clean out any sessions marked as [DEAD]")
+				f.Bool("F", "force", false, "force session action without waiting for results")
+
+				//f.String("f", "filter", "", "filter sessions by substring")
+				//f.String("e", "filter-re", "", "filter sessions by regular expression")
+
+				f.Int("t", "timeout", assets.DefaultSettings.DefaultTimeout, "command timeout in seconds")
+			},
+			Run: func(ctx *grumble.Context) error {
+				SessionsCmd(ctx, con)
+				return nil
+			},
+		},
+	}
+}
 func SessionsCmd(ctx *grumble.Context, con *console.Console) {
 	con.UpdateSession()
 	if 0 < len(con.Sessions) {

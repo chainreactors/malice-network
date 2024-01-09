@@ -1,180 +1,68 @@
 package command
 
 import (
-	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/client/command/exec"
-	"github.com/chainreactors/malice-network/client/command/jobs"
-	"github.com/chainreactors/malice-network/client/command/login"
-	"github.com/chainreactors/malice-network/client/command/sessions"
-	"github.com/chainreactors/malice-network/client/command/use"
-	"github.com/chainreactors/malice-network/client/command/version"
+	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/console"
-	"github.com/desertbit/grumble"
-	"io/ioutil"
-	"os"
-	"path/filepath"
-	"strings"
 )
 
-func LocalPathCompleter(prefix string, args []string, con *console.Console) []string {
-	var parent string
-	var partial string
-	fi, err := os.Stat(prefix)
-	if os.IsNotExist(err) {
-		parent = filepath.Dir(prefix)
-		partial = filepath.Base(prefix)
-	} else {
-		if fi.IsDir() {
-			parent = prefix
-			partial = ""
-		} else {
-			parent = filepath.Dir(prefix)
-			partial = filepath.Base(prefix)
-		}
-	}
+const defaultTimeout = 60
 
-	results := []string{}
-	ls, err := ioutil.ReadDir(parent)
-	if err != nil {
-		return results
-	}
-	for _, fi = range ls {
-		if 0 < len(partial) {
-			if strings.HasPrefix(fi.Name(), partial) {
-				results = append(results, filepath.Join(parent, fi.Name()))
-			}
-		} else {
-			results = append(results, filepath.Join(parent, fi.Name()))
-		}
-	}
-	return results
-}
-
-func BindCommands(con *console.Console) {
-
-	verCmd := &grumble.Command{
-		Name: "version",
-		Help: "List current aliases",
-		//LongHelp: help.GetHelpFor([]string{consts.AliasesStr}),
-		Run: func(ctx *grumble.Context) error {
-			//con.Println()
-			version.VersionCmd(ctx, con)
-			//con.Println()
-			return nil
-		},
-		//HelpGroup: consts.GenericHelpGroup,
-	}
-	con.App.AddCommand(verCmd)
-
-	//certCmd := &grumble.Command{
-	//	Name: "cert",
-	//	Help: "Register cert from server",
-	//	Flags: func(f *grumble.Flags) {
-	//		f.String("", "host", "", "Host to register")
-	//		f.String("u", "user", "test", "User to register")
-	//		f.Int("p", "port", 40000, "Port to register")
-	//	},
-	//	Run: func(ctx *grumble.Context) error {
-	//		cert.CertCmd(ctx, con)
-	//		return nil
-	//	},
+// Bind is a convenience function to bind flags to a given command.
+// name - The name of the flag set (can be empty).
+// cmd  - The command to which the flags should be bound.
+// flags - A function exposing the flag set through which flags are declared.
+func Bind(name string, persistent bool, cmd *grumble.Command, flags func(f *grumble.Flags)) {
+	//flagSet := func(f *grumble.Flags) {
+	//
+	//}              // Create the flag set.
+	//flags(flagSet) // Let the user bind any number of flags to it.
+	//
+	//if persistent {
+	//	cmd.PersistentFlags().AddFlagSet(flagSet)
+	//} else {
+	//	cmd.Flags().AddFlagSet(flagSet)
 	//}
-	//con.App.AddCommand(certCmd)
-
-	loginCmd := &grumble.Command{
-		Name: "login",
-		Help: "Login to server",
-		Flags: func(f *grumble.Flags) {
-			f.String("c", "config", "", "server config")
-		},
-		Run: func(ctx *grumble.Context) error {
-			err := login.LoginCmd(ctx, con)
-			if err != nil {
-				con.App.Println("Error login server: ", err)
-			}
-			return nil
-		},
-	}
-	con.App.AddCommand(loginCmd)
-
-	sessionCmd := &grumble.Command{
-		Name: "sessions",
-		Help: "List sessions",
-		Flags: func(f *grumble.Flags) {
-			f.String("i", "interact", "", "interact with a session")
-			f.String("k", "kill", "", "kill the designated session")
-			f.Bool("K", "kill-all", false, "kill all the sessions")
-			f.Bool("C", "clean", false, "clean out any sessions marked as [DEAD]")
-			f.Bool("F", "force", false, "force session action without waiting for results")
-
-			//f.String("f", "filter", "", "filter sessions by substring")
-			//f.String("e", "filter-re", "", "filter sessions by regular expression")
-
-			f.Int("t", "timeout", assets.DefaultSettings.DefaultTimeout, "command timeout in seconds")
-		},
-		Run: func(ctx *grumble.Context) error {
-			sessions.SessionsCmd(ctx, con)
-			return nil
-		},
-	}
-	con.App.AddCommand(sessionCmd)
-
-	useCmd := &grumble.Command{
-		Name: "use",
-		Help: "Use session",
-		Args: func(a *grumble.Args) {
-			a.String("sid", "session id")
-		},
-		Run: func(ctx *grumble.Context) error {
-			use.UseSessionCmd(ctx, con)
-			return nil
-		},
-		Completer: func(prefix string, args []string) []string {
-			return use.SessionIDCompleter(con, prefix)
-		},
-	}
-	con.App.AddCommand(useCmd)
-
-	executeCmd := &grumble.Command{
-		Name: "execute",
-		Help: "Execute command",
-		Flags: func(f *grumble.Flags) {
-			f.Bool("T", "token", false, "execute command with current token (windows only)")
-			f.Bool("o", "output", false, "capture command output")
-			f.Bool("s", "save", false, "save output to a file")
-			f.Bool("X", "loot", false, "save output as loot")
-			f.Bool("S", "ignore-stderr", false, "don't print STDERR output")
-			f.String("O", "stdout", "", "remote path to redirect STDOUT to")
-			f.String("E", "stderr", "", "remote path to redirect STDERR to")
-			f.String("n", "name", "", "name to assign loot (optional)")
-			f.Uint("P", "ppid", 0, "parent process id (optional, Windows only)")
-
-			f.Int("t", "timeout", assets.DefaultSettings.DefaultTimeout, "command timeout in seconds")
-
-		},
-		Args: func(a *grumble.Args) {
-			a.String("command", "command to execute")
-			a.StringList("arguments", "arguments to the command")
-		},
-		Run: func(ctx *grumble.Context) error {
-			exec.ExecuteCmd(ctx, con)
-			return nil
-		},
-	}
-	con.App.AddCommand(executeCmd)
-
-	tcpCmd := &grumble.Command{
-		Name: "tcp",
-		Help: "Start a TCP pipeline",
-		Flags: func(f *grumble.Flags) {
-			f.String("l", "lhost", "0.0.0.0", "listen host")
-			f.Int("p", "lport", 0, "listen port")
-		},
-		Run: func(ctx *grumble.Context) error {
-			jobs.TcpPipelineCmd(ctx, con)
-			return nil
-		},
-	}
-	con.App.AddCommand(tcpCmd)
-
 }
+
+// BindFlagCompletions is a convenience function for adding completions to a command's flags.
+// cmd - The command owning the flags to complete.
+// bind - A function exposing a map["flag-name"]carapace.Action.
+//func BindFlagCompletions(cmd *cobra.Command, bind func(comp *carapace.ActionMap)) {
+//	comps := make(carapace.ActionMap)
+//	bind(&comps)
+//
+//	carapace.Gen(cmd).FlagCompletion(comps)
+//}
+
+// makeBind returns a commandBinder helper function
+// @menu  - The command menu to which the commands should be bound (either server or implant menu).
+func makeBind(con *console.Console) func(group string, cmds ...func(con *console.Console) []*grumble.Command) {
+	return func(group string, cmds ...func(con *console.Console) []*grumble.Command) {
+		var grp *grumble.Group
+		if group != "" {
+			grp = con.App.Groups().Find(group)
+
+			if grp == nil {
+				grp = grumble.NewGroup(group)
+				con.App.AddGroup(grp)
+			}
+		}
+
+		// Bind the command to the root
+		for _, command := range cmds {
+			for _, c := range command(con) {
+				if group == "" {
+					con.App.AddCommand(c)
+				} else {
+					grp.AddCommand(c)
+				}
+			}
+		}
+	}
+}
+
+// commandBinder is a helper used to bind commands to a given menu, for a given "command help group".
+//
+// @group - Name of the group under which the command should be shown. Preferably use a string in the constants package.
+// @ cmds - A list of functions returning a list of root commands to bind. See any package's `commands.go` file and function.
+type commandBinder func(group string, cmds ...func(con *console.Console) []*grumble.Command)

@@ -6,7 +6,7 @@ import (
 )
 
 func StartConsole() error {
-	err := console.Start(command.BindCommands)
+	err := console.Start(command.BindClientsCommands, command.BindImplantCommands)
 	if err != nil {
 		return err
 	}

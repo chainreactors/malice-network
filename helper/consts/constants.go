@@ -2,12 +2,20 @@ package consts
 
 import "time"
 
+// Default config
 const (
 	MinTimeout = time.Duration(30 * time.Second)
 )
 
+// UI
 const (
 	ClientPrompt = "IoM"
+)
+
+// Group
+const (
+	GenericGroup = "generic"
+	ImplantGroup = "implant"
 )
 
 const (

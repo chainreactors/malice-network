@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/client/command"
+	"github.com/chainreactors/malice-network/client/cli"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/pterm/pterm"
@@ -26,8 +26,5 @@ func init() {
 }
 
 func main() {
-	err := console.Start(command.BindCommands)
-	if err != nil {
-		return
-	}
+	cli.StartConsole()
 }

@@ -2,13 +2,13 @@ package console
 
 import (
 	"fmt"
+	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/helper"
 	"github.com/chainreactors/malice-network/helper/mtls"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
-	"github.com/desertbit/grumble"
 	"github.com/fatih/color"
 	"path/filepath"
 )
@@ -44,11 +44,13 @@ const (
 
 var Log = logs.NewLogger(logs.Warn)
 
+type Commands func() *grumble.Command
+
 // BindCmds - Bind extra commands to the app object
 type BindCmds func(console *Console)
 
 // Start - Console entrypoint
-func Start(bindCmds BindCmds) error {
+func Start(bindCmds ...BindCmds) error {
 	//assets.Setup(false, false)
 	settings, _ := assets.LoadSettings()
 	con := &Console{
@@ -74,8 +76,9 @@ func Start(bindCmds BindCmds) error {
 		//con.PrintLogo()
 	})
 	con.UpdatePrompt()
-	bindCmds(con)
-	//extraCmds(con)
+	for _, bind := range bindCmds {
+		bind(con)
+	}
 
 	con.ActiveTarget.AddObserver(func(_ *clientpb.Session) {
 		con.UpdatePrompt()
