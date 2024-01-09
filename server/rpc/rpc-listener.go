@@ -8,6 +8,8 @@ import (
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/proto/services/listenerrpc"
 	"github.com/chainreactors/malice-network/server/core"
+	"github.com/chainreactors/malice-network/server/internal/db"
+	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"google.golang.org/grpc/peer"
 )
 
@@ -36,12 +38,26 @@ func (rpc *Server) SpiteStream(stream listenerrpc.ListenerRPC_SpiteStreamServer)
 		return err
 	}
 	listenersCh[listenerID] = stream
+	dbSession := db.Session()
+	var session models.Session
 	for {
 		msg, err := stream.Recv()
 		if err != nil {
 			return err
 		}
 		sess, ok := core.Sessions.Get(msg.SessionId)
+
+		// update session status in db
+		result := dbSession.Model(&models.Session{}).Where("session_id = ?", msg.SessionId).First(&session)
+		if result.Error != nil {
+			return result.Error
+		}
+		session.IsAlive = true
+		result = dbSession.Save(&session)
+		if result.Error != nil {
+			return result.Error
+		}
+
 		if !ok {
 			return ErrNotFoundSession
 		}

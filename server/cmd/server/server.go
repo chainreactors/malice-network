@@ -3,7 +3,10 @@ package main
 import (
 	"fmt"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/server/core"
 	"github.com/chainreactors/malice-network/server/internal/configs"
+	"github.com/chainreactors/malice-network/server/internal/db"
+	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"github.com/chainreactors/malice-network/server/internal/generate"
 	"github.com/chainreactors/malice-network/server/listener"
 	"github.com/chainreactors/malice-network/server/rpc"
@@ -78,6 +81,19 @@ func Execute() {
 		}
 	}
 
+	// start alive session
+	dbSession := db.Session()
+	sessions, err := models.FindActiveSessions(dbSession)
+	if err != nil {
+		logs.Log.Errorf("cannot find sessions in db , %s ", err.Error())
+		return
+	}
+	if len(sessions) > 0 {
+		for _, session := range sessions {
+			registerSession := core.NewSession(session.ToProtobuf())
+			core.Sessions.Add(registerSession)
+		}
+	}
 }
 
 // Start - Starts the server console

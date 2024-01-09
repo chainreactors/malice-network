@@ -3,6 +3,7 @@ package models
 import (
 	"errors"
 	"github.com/chainreactors/malice-network/proto/implant/commonpb"
+	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/server/core"
 	"github.com/gofrs/uuid"
 	"gorm.io/gorm"
@@ -16,6 +17,7 @@ type Session struct {
 	SessionId  string `gorm:"uniqueIndex"`
 	RemoteAddr string
 	ListenerId string
+	IsAlive    bool
 	Os         *Os         `gorm:"embedded"`
 	Process    *Process    `gorm:"embedded"`
 	Time       *Timer      `gorm:"embedded"`
@@ -98,4 +100,53 @@ type Timer struct {
 	Jitter      uint64 `json:"jitter"`
 	Heartbeat   uint64 `json:"heartbeat"`
 	LastCheckin uint64 `json:"last_checkin"`
+}
+
+func (s *Session) ToProtobuf() *lispb.RegisterSession {
+	return &lispb.RegisterSession{
+		SessionId:  s.SessionId,
+		ListenerId: s.ListenerId,
+		RemoteAddr: s.RemoteAddr,
+		RegisterData: &commonpb.Register{
+			Os:      s.Os.toProtobuf(),
+			Process: s.Process.toProtobuf(),
+			Timer:   s.Time.toProtobuf(),
+		},
+	}
+}
+
+func (o *Os) toProtobuf() *commonpb.Os {
+	return &commonpb.Os{
+		Name:     o.Name,
+		Version:  o.Version,
+		Arch:     o.Arch,
+		Username: o.Username,
+		Hostname: o.Name,
+		Locale:   o.Locale,
+	}
+}
+func (p *Process) toProtobuf() *commonpb.Process {
+	return &commonpb.Process{
+		Uid:  p.Uid,
+		Pid:  p.Pid,
+		Gid:  p.Gid,
+		Name: p.Name,
+		Args: p.Args,
+	}
+}
+func (t *Timer) toProtobuf() *commonpb.Timer {
+	return &commonpb.Timer{
+		Interval:    t.Interval,
+		Jitter:      t.Jitter,
+		Heartbeat:   t.Heartbeat,
+		LastCheckin: t.LastCheckin,
+	}
+}
+func FindActiveSessions(dbSession *gorm.DB) ([]Session, error) {
+	var activeSessions []Session
+	result := dbSession.Where("is_alive = ?", true).Find(&activeSessions)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return activeSessions, nil
 }

@@ -41,7 +41,7 @@ func InitRSACertificate(host, user string, isCA, isClient bool) ([]byte, []byte,
 	}
 	cert, key := generateCertificate(caType, (*subject), isCA, isClient, privateKey)
 	err = saveCertificate(caType, RSAKey, fmt.Sprintf("%s.%s", host, user), cert, key)
-	// 保存到文件
+	// save to file
 	if isCA {
 		filename := fmt.Sprintf(configs.CertsPath+"/%s_%s", host, user)
 		if certErr := os.WriteFile(filename+"_crt.pem", cert, 0o777); certErr != nil {
