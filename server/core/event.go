@@ -15,7 +15,7 @@ type Event struct {
 	EventType  string
 	SourceName string
 	Data       []byte
-	Err        error
+	Err        string
 }
 
 type eventBroker struct {
