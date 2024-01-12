@@ -1,7 +1,6 @@
 package rpc
 
 import (
-	"errors"
 	"fmt"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/services/listenerrpc"
@@ -34,7 +33,7 @@ func (rpc *Server) JobStream(stream listenerrpc.ListenerRPC_JobStreamServer) err
 		} else {
 			core.EventBroker.Publish(core.Event{
 				EventType: consts.EventPipelineError,
-				Err:       errors.New(fmt.Sprintf("%d, %s", msg.Status, msg.Error)),
+				Err:       fmt.Sprintf("%d, %s", msg.Status, msg.Error),
 			})
 		}
 		// todo stop pipeline

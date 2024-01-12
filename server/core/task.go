@@ -40,6 +40,7 @@ func NewTask(name string, total int) *Task {
 		Type:  name,
 		Total: total,
 		done:  make(chan bool),
+		end:   make(chan struct{}),
 	}
 }
 
@@ -47,9 +48,11 @@ type Task struct {
 	Id        uint32
 	Type      string
 	SessionId string
-	done      chan bool
 	Cur       int
 	Total     int
+	Callback  func()
+	done      chan bool
+	end       chan struct{}
 }
 
 func (t *Task) ToProtobuf() *clientpb.Task {
@@ -81,8 +84,18 @@ func (t *Task) Done() {
 				return
 			}
 			t.Cur++
+			if t.Cur == t.Total {
+				close(t.done)
+			}
 		}
+		t.Finish()
 	}()
+}
+
+func (t *Task) Finish() {
+	if t.Callback != nil {
+		t.Callback()
+	}
 }
 
 func (t *Task) Close() {

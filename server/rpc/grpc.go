@@ -112,11 +112,16 @@ func StartClientListener(port uint16) (*grpc.Server, net.Listener, error) {
 	return grpcServer, ln, nil
 }
 
-func newGenericRequest(msg proto.Message) *GenericRequest {
+func newGenericRequest(msg proto.Message, opts ...int) *GenericRequest {
 	req := &GenericRequest{
 		Message: msg,
 	}
-	req.Task = req.NewTask()
+	if opts == nil {
+		req.Task = req.NewTask(1)
+	} else {
+		req.Task = req.NewTask(opts[0])
+	}
+
 	dbSession := db.Session()
 	err := dbSession.Create(models.ConvertToTaskDB(req.Task)).Error
 	if err != nil {
@@ -131,8 +136,8 @@ type GenericRequest struct {
 	Spite *commonpb.Spite
 }
 
-func (r *GenericRequest) NewTask() *core.Task {
-	task := core.NewTask(string(proto.MessageName(r.Message).Name()), 1)
+func (r *GenericRequest) NewTask(total int) *core.Task {
+	task := core.NewTask(string(proto.MessageName(r.Message).Name()), total)
 	return task
 }
 
@@ -147,6 +152,14 @@ func (r *GenericRequest) NewSpite(msg proto.Message) (*commonpb.Spite, error) {
 		return nil, err
 	}
 	return r.Spite, nil
+}
+
+func (r *GenericRequest) SetTotal(total int) {
+	r.Task.Total = total
+}
+
+func (r *GenericRequest) SetCallback(callback func()) {
+	r.Task.Callback = callback
 }
 
 type Server struct {

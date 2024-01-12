@@ -33,6 +33,7 @@ func (rpc *Server) Upload(ctx context.Context, req *pluginpb.UploadRequest) (*cl
 			Priv:   req.Priv,
 			Hidden: req.Hidden,
 		})
+		greq.SetTotal(count)
 		in, out, _, err := rpc.streamGenericHandler(ctx, greq)
 		if err != nil {
 			return nil, err
@@ -52,7 +53,7 @@ func (rpc *Server) Upload(ctx context.Context, req *pluginpb.UploadRequest) (*cl
 				in <- spite
 				resp := <-out
 				if !resp.GetAsyncAck().Success {
-					// todo error parser
+					greq.Task.Done()
 					return
 				}
 			}
@@ -71,6 +72,7 @@ func (rpc *Server) Download(ctx context.Context, req *pluginpb.DownloadRequest) 
 		return nil, err
 	}
 	fileName := path.Join(configs.TempPath, status.GetDownloadResponse().Checksum)
+	greq.SetTotal(int(status.GetDownloadResponse().Size) / config.Int(consts.MaxPacketLength))
 	if files.IsExist(fileName) {
 		// TODO - DB SELECT TASK
 		return nil, err

@@ -2,7 +2,6 @@ package rpc
 
 import (
 	"context"
-	"errors"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
@@ -26,8 +25,8 @@ func (rpc *Server) Events(_ *clientpb.Empty, stream clientrpc.MaliceRPC_EventsSe
 			return nil
 		case event := <-events:
 			pbEvent := &clientpb.Event{
-				EventType: event.EventType,
-				Data:      event.Data,
+				Type: event.EventType,
+				Data: event.Data,
 			}
 
 			if event.Job != nil {
@@ -39,8 +38,8 @@ func (rpc *Server) Events(_ *clientpb.Empty, stream clientrpc.MaliceRPC_EventsSe
 			if event.Session != nil {
 				pbEvent.Session = event.Session.ToProtobuf()
 			}
-			if event.Err != nil {
-				pbEvent.Err = event.Err.Error()
+			if event.Err != "nil" {
+				pbEvent.Err = event.Err
 			}
 
 			err := stream.Send(pbEvent)
@@ -55,10 +54,10 @@ func (rpc *Server) Events(_ *clientpb.Empty, stream clientrpc.MaliceRPC_EventsSe
 func (rpc *Server) Broadcast(ctx context.Context, req *clientpb.Event) (*clientpb.Empty, error) {
 	clientName := rpc.getClientName(ctx)
 	core.EventBroker.Publish(core.Event{
-		EventType:  req.EventType,
+		EventType:  req.Type,
 		Data:       req.Data,
 		SourceName: clientName,
-		Err:        errors.New(req.Err),
+		Err:        req.Err,
 	})
 	return &clientpb.Empty{}, nil
 }
