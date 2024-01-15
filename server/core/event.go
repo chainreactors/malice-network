@@ -11,6 +11,7 @@ type Event struct {
 	Session *Session
 	Job     *Job
 	Client  *Client
+	Task    *Task
 
 	EventType  string
 	SourceName string
