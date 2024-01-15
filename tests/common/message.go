@@ -43,8 +43,8 @@ func MessageType(message *commonpb.Spite) Message {
 		return MsgUpload
 	case *commonpb.Spite_DownloadRequest:
 		return MsgDownload
-	case *commonpb.Spite_AsyncStatus:
-		return MsgAsyncStatus
+	//case *commonpb.Spite_AsyncStatus:
+	//	return MsgAsyncStatus
 	case *commonpb.Spite_AsyncAck:
 		return MsgAsyncAck
 	case *commonpb.Spite_Block:

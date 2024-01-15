@@ -10,7 +10,9 @@ import (
 	"github.com/chainreactors/malice-network/helper/mtls"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/fatih/color"
+	"google.golang.org/protobuf/proto"
 	"path/filepath"
+	"sync"
 )
 
 const (
@@ -44,7 +46,7 @@ const (
 
 var Log = logs.NewLogger(logs.Warn)
 
-type Commands func() *grumble.Command
+type TaskCallback func(resp proto.Message)
 
 // BindCmds - Bind extra commands to the app object
 type BindCmds func(console *Console)
@@ -68,8 +70,6 @@ func Start(bindCmds ...BindCmds) error {
 			observers:  map[int]Observer{},
 			observerID: 0,
 		},
-		//BeaconTaskCallbacks:      map[string]BeaconTaskCallback{},
-		//BeaconTaskCallbacksMutex: &sync.Mutex{},
 		Settings: settings,
 	}
 	con.App.SetPrintASCIILogo(func(_ *grumble.App) {
@@ -97,6 +97,7 @@ type Console struct {
 	App          *grumble.App
 	ActiveTarget *ActiveTarget
 	Settings     *assets.Settings
+	Callbacks    *sync.Map
 	*ServerStatus
 }
 
@@ -122,4 +123,9 @@ func (c *Console) UpdatePrompt() {
 	} else {
 		c.App.SetPrompt(consts.ClientPrompt + " > ")
 	}
+}
+
+func (c *Console) AddAliasCommand(cmd *grumble.Command) {
+	group := c.App.Groups().Find(consts.AliasesGroup)
+	group.AddCommand(cmd)
 }

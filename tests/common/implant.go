@@ -245,13 +245,13 @@ func (implant *Implant) BuildCommonSpite(t string, taskId uint32) *commonpb.Spit
 	switch t {
 	case EmptySpite:
 		return &commonpb.Spite{Body: &commonpb.Spite_Empty{}}
-	case StatusSpite:
-		return &commonpb.Spite{TaskId: taskId, Body: &commonpb.Spite_AsyncStatus{
-			AsyncStatus: &commonpb.AsyncStatus{
-				TaskId: taskId,
-				Status: 0,
-			},
-		}}
+	//case StatusSpite:
+	//	return &commonpb.Spite{TaskId: taskId, Body: &commonpb.Spite_AsyncStatus{
+	//		AsyncStatus: &commonpb.AsyncStatus{
+	//			TaskId: taskId,
+	//			Status: 0,
+	//		},
+	//	}}
 	case AckSpite:
 		return &commonpb.Spite{TaskId: taskId, Body: &commonpb.Spite_AsyncAck{
 			AsyncAck: &commonpb.AsyncACK{

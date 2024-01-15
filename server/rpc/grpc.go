@@ -145,6 +145,7 @@ func (r *GenericRequest) NewSpite(msg proto.Message) (*commonpb.Spite, error) {
 	r.Spite = &commonpb.Spite{
 		Timeout: uint64(consts.MinTimeout.Seconds()),
 		TaskId:  r.Task.Id,
+		Async:   true,
 	}
 	var err error
 	r.Spite, err = types.BuildSpite(r.Spite, msg)
@@ -248,7 +249,7 @@ func (rpc *Server) genericHandler(ctx context.Context, req *GenericRequest) (pro
 		logs.Log.Errorf(err.Error())
 		return nil, err
 	}
-
+	spite.End = true
 	data, err := session.RequestAndWait(
 		&lispb.SpiteSession{SessionId: sid, TaskId: req.Task.Id, Spite: spite},
 		listenersCh[session.ListenerId],
@@ -282,7 +283,7 @@ func (rpc *Server) asyncGenericHandler(ctx context.Context, req *GenericRequest)
 		logs.Log.Errorf(err.Error())
 		return nil, nil, err
 	}
-	spite.Async = true
+	spite.End = true
 	stat, out, err := session.RequestWithAsync(
 		&lispb.SpiteSession{SessionId: sid, TaskId: req.Task.Id, Spite: spite},
 		listenersCh[session.ListenerId],
@@ -313,7 +314,6 @@ func (rpc *Server) streamGenericHandler(ctx context.Context, req *GenericRequest
 		logs.Log.Errorf(err.Error())
 		return nil, nil, nil, err
 	}
-	spite.Async = true
 	in, out, stat, err := session.RequestWithStream(
 		&lispb.SpiteSession{SessionId: sid, TaskId: req.Task.Id, Spite: spite},
 		listenersCh[session.ListenerId],

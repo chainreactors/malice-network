@@ -3,6 +3,7 @@ package types
 import (
 	"errors"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/implant/commonpb"
 	"github.com/chainreactors/malice-network/proto/implant/pluginpb"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
@@ -20,21 +21,26 @@ func BuildSpite(spite *commonpb.Spite, msg proto.Message) (*commonpb.Spite, erro
 	}
 	switch msg.(type) {
 	case *commonpb.Block:
-		spite.Name = "block"
+		spite.Name = consts.PluginBlock
 		spite.Body = &commonpb.Spite_Block{Block: msg.(*commonpb.Block)}
 	case *commonpb.Register:
 		spite.Body = &commonpb.Spite_Register{Register: msg.(*commonpb.Register)}
 	case *pluginpb.ExecRequest:
-		spite.Name = "exec"
+		spite.Name = consts.PluginExec
 		spite.Body = &commonpb.Spite_ExecRequest{ExecRequest: msg.(*pluginpb.ExecRequest)}
 	case *pluginpb.ExecResponse:
 		spite.Body = &commonpb.Spite_ExecResponse{ExecResponse: msg.(*pluginpb.ExecResponse)}
 	case *pluginpb.UploadRequest:
-		spite.Name = "upload"
+		spite.Name = consts.PluginUpload
 		spite.Body = &commonpb.Spite_UploadRequest{UploadRequest: msg.(*pluginpb.UploadRequest)}
 	case *pluginpb.DownloadRequest:
-		spite.Name = "download"
+		spite.Name = consts.PluginDownload
 		spite.Body = &commonpb.Spite_DownloadRequest{DownloadRequest: msg.(*pluginpb.DownloadRequest)}
+	case *pluginpb.ExecuteLoadAssembly:
+		spite.Name = consts.PluginExecuteLoadAssembly
+		spite.Body = &commonpb.Spite_ExecuteLoadAssembly{ExecuteLoadAssembly: msg.(*pluginpb.ExecuteLoadAssembly)}
+	case *pluginpb.AssemblyResponse:
+		spite.Body = &commonpb.Spite_AssemblyResponse{AssemblyResponse: msg.(*pluginpb.AssemblyResponse)}
 	default:
 		return spite, ErrUnknownSpite
 	}
@@ -49,10 +55,10 @@ func ParseSpite(spite *commonpb.Spite) (proto.Message, error) {
 	switch spite.Body.(type) {
 	case *commonpb.Spite_Register:
 		return spite.GetRegister(), nil
-	case *commonpb.Spite_ExecRequest:
-		return spite.GetExecRequest(), nil
 	case *commonpb.Spite_ExecResponse:
 		return spite.GetExecResponse(), nil
+	case *commonpb.Spite_AssemblyResponse:
+		return spite.GetAssemblyResponse(), nil
 	default:
 		return nil, ErrUnknownSpite
 	}
