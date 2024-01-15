@@ -11,6 +11,7 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"google.golang.org/grpc/peer"
+	"google.golang.org/protobuf/proto"
 )
 
 func (rpc *Server) GetListeners(ctx context.Context, req *clientpb.Empty) (*clientpb.Listeners, error) {
@@ -61,7 +62,12 @@ func (rpc *Server) SpiteStream(stream listenerrpc.ListenerRPC_SpiteStreamServer)
 		if !ok {
 			return ErrNotFoundSession
 		}
-		logs.Log.Debugf("[server.%s] receive spite from %s, %v", sess.ID, msg.ListenerId, msg.Spite)
+		if size := proto.Size(msg.Spite); size <= 1000 {
+			logs.Log.Debugf("[server.%s] receive spite %s from %s, %v", sess.ID, msg.Spite.Name, msg.ListenerId, msg.Spite)
+		} else {
+			logs.Log.Debugf("[server.%s] receive spite %s from %s, %d bytes", sess.ID, msg.Spite.Name, msg.ListenerId, size)
+		}
+
 		if ch, ok := sess.GetResp(msg.TaskId); ok {
 			ch <- msg.Spite
 		}

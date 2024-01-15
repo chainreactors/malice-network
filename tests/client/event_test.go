@@ -11,8 +11,8 @@ import (
 func TestBroadcast(t *testing.T) {
 	rpc := common.NewClient(common.DefaultGRPCAddr, common.TestSid)
 	_, err := rpc.Call(consts.BroadcastStr, &clientpb.Event{
-		EventType: consts.EventBroadcast,
-		Data:      []byte("broadcast test"),
+		Type: consts.EventBroadcast,
+		Data: []byte("broadcast test"),
 	})
 	if err != nil {
 		fmt.Println(err.Error())

@@ -127,7 +127,11 @@ func (f *Forward) Handler() {
 	for msg := range f.implantC {
 		spites := msg.Message.(*commonpb.Spites)
 		for _, spite := range spites.Spites {
-			logs.Log.Debugf("[listener.%s] receive spite %v", msg.SessionID, spite)
+			if size := proto.Size(spite); size <= 1000 {
+				logs.Log.Debugf("[listener.%s] receive spite %s, %v", msg.SessionID, spite.Name, spite)
+			} else {
+				logs.Log.Debugf("[listener.%s] receive spite %d bytes", msg.SessionID, spite.Name, size)
+			}
 			switch spite.Body.(type) {
 			case *commonpb.Spite_Register:
 				_, err := f.ImplantRpc.Register(f.ctx, &lispb.RegisterSession{

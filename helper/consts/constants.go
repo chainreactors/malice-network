@@ -4,7 +4,16 @@ import "time"
 
 // Default config
 const (
-	MinTimeout = time.Duration(30 * time.Second)
+	MinTimeout                  = time.Duration(30 * time.Second)
+	KB                          = 1024
+	MB                          = KB * 1024
+	GB                          = MB * 1024
+	BufSize                     = 2 * MB
+	ClientMaxReceiveMessageSize = 2 * GB
+	// ServerMaxMessageSize - Server-side max GRPC message size
+	ServerMaxMessageSize = 2 * GB
+	DefaultTimeout       = 10 // second
+	DefaultDuration      = time.Duration(DefaultTimeout * time.Second)
 )
 
 // UI
@@ -14,22 +23,21 @@ const (
 
 // Group
 const (
-	GenericGroup = "generic"
-	ImplantGroup = "implant"
-)
-
-const (
-	KB                          = 1024
-	MB                          = KB * 1024
-	GB                          = MB * 1024
-	BufSize                     = 2 * MB
-	ClientMaxReceiveMessageSize = 2 * GB
-	// ServerMaxMessageSize - Server-side max GRPC message size
-	ServerMaxMessageSize = 2 * GB
-	DefaultTimeout       = time.Duration(10 * time.Second)
+	GenericGroup   = "generic"
+	ImplantGroup   = "implant"
+	AliasesGroup   = "alias"
+	ExtensionGroup = "extension"
 )
 
 // config
 const (
 	MaxPacketLength = "server.config.packet_length"
+)
+
+// plugin
+const (
+	CSharpPlugin    = "csharp"
+	SideloadPlugin  = "sideload"
+	SpawnPlugin     = "spawn"
+	ShellcodePlugin = "shellcode"
 )

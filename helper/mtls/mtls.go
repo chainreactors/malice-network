@@ -78,7 +78,7 @@ func Connect(config *assets.ClientConfig) (*grpc.ClientConn, error) {
 		grpc.WithBlock(),
 		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(consts.ClientMaxReceiveMessageSize)),
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), consts.DefaultTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), consts.DefaultDuration)
 	defer cancel()
 	connection, err := grpc.DialContext(ctx, fmt.Sprintf("%s:%d", config.LHost, config.LPort), options...)
 	if err != nil {

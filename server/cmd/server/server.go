@@ -59,6 +59,9 @@ func Execute() {
 		logs.Log.Errorf("null server config , %s ", err.Error())
 	}
 
+	if opt.Debug {
+		logs.Log.SetLevel(logs.Debug)
+	}
 	// start grpc
 	StartGrpc(opt.Server.GRPCPort)
 

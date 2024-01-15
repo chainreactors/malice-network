@@ -28,27 +28,27 @@ func ExecuteCmd(ctx *grumble.Context, con *console.Console) {
 		console.Log.Error("Using --output in beacon mode, if the command blocks the task will never complete\n")
 	}
 
-	var exec *pluginpb.ExecResponse
+	var resp *pluginpb.ExecResponse
 	var err error
 
-	ctrl := make(chan bool)
+	//ctrl := make(chan bool)
 	//con.SpinUntil(fmt.Sprintf("Executing %s %s ...", cmdPath, strings.Join(args, " ")), ctrl)
-	exec, err = con.Rpc.Execute(con.ActiveTarget.Context(), &pluginpb.ExecRequest{
+	resp, err = con.Rpc.Execute(con.ActiveTarget.Context(), &pluginpb.ExecRequest{
 		Path:   cmdPath,
 		Args:   args,
 		Output: captureOutput,
 		Stderr: stderr,
 		Stdout: stdout,
 	})
-	ctrl <- true
-	<-ctrl
+	//ctrl <- true
+	//<-ctrl
 	if err != nil {
 		console.Log.Errorf("%s", err.Error())
 		return
 	}
-	console.Log.Infof("pid: %d, status: %d", exec.Pid, exec.StatusCode)
-	console.Log.Console(string(exec.Stdout))
-	if exec.Stderr != nil {
-		console.Log.Error(string(exec.Stderr))
+	console.Log.Infof("pid: %d, status: %d", resp.Pid, resp.StatusCode)
+	console.Log.Console(string(resp.Stdout))
+	if resp.Stderr != nil {
+		console.Log.Error(string(resp.Stderr))
 	}
 }

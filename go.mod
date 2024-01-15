@@ -12,7 +12,7 @@ require (
 	github.com/gookit/config/v2 v2.2.4
 	github.com/jedib0t/go-pretty/v6 v6.4.8
 	github.com/jessevdk/go-flags v1.5.0
-	github.com/klauspost/compress v1.17.0
+	github.com/klauspost/compress v1.17.4
 	github.com/ncruces/go-sqlite3 v0.9.0
 	github.com/pkg/errors v0.8.1
 	github.com/pterm/pterm v0.12.69
@@ -31,7 +31,8 @@ require (
 	atomicgo.dev/keyboard v0.2.9 // indirect
 	atomicgo.dev/schedule v0.1.0 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
-	github.com/chainreactors/grumble v0.0.0-20240109090215-42313c156f06 // indirect
+	github.com/chainreactors/grumble v0.0.0-20240111103643-830a8bf7d70a // indirect
+	github.com/charmbracelet/bubbles v0.17.1 // indirect
 	github.com/charmbracelet/bubbletea v0.25.0 // indirect
 	github.com/containerd/console v1.0.4-0.20230313162750-1ae8d489ac81 // indirect
 	github.com/desertbit/closer/v3 v3.1.3 // indirect
