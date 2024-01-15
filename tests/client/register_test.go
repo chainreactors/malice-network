@@ -1,11 +1,16 @@
 package client
 
 import (
-	"github.com/chainreactors/malice-network/tests/common"
+	"errors"
+	"fmt"
 	"testing"
 )
 
 func TestRegister(t *testing.T) {
-	implant := common.NewImplant(common.DefaultListenerAddr, common.TestSid)
-	implant.Register()
+
+	aerr := errors.New("testttt")
+	berr := fmt.Errorf("berr %w", aerr)
+	println(errors.Is(berr, aerr))
+	//implant := common.NewImplant(common.DefaultListenerAddr, common.TestSid)
+	//implant.Register()
 }

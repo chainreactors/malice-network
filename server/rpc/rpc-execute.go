@@ -7,14 +7,30 @@ import (
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/pluginpb"
 	"github.com/chainreactors/malice-network/server/core"
+	"strings"
 )
 
-func (rpc *Server) Execute(ctx context.Context, req *pluginpb.ExecRequest) (*pluginpb.ExecResponse, error) {
-	resp, err := rpc.genericHandler(ctx, newGenericRequest(req))
+func (rpc *Server) Execute(ctx context.Context, req *pluginpb.ExecRequest) (*clientpb.Task, error) {
+	greq := newGenericRequest(req)
+	stat, ch, err := rpc.asyncGenericHandler(ctx, greq)
 	if err != nil {
 		return nil, err
 	}
-	return resp.(*pluginpb.ExecResponse), nil
+	if stat.Status == 0 {
+		return nil, fmt.Errorf("execute %s %s error, %s", req.Path, strings.Join(req.Args, " "), stat.Error)
+	}
+	go func() {
+		greq.SetCallback(func() {
+			data := <-ch
+			resp := data.GetExecResponse()
+			core.EventBroker.Publish(core.Event{
+				EventType: consts.EventTaskCallback,
+				Data:      resp.Stdout,
+				Err:       string(resp.Stderr),
+			})
+		})
+	}()
+	return greq.Task.ToProtobuf(), nil
 }
 
 func (rpc *Server) ExecuteAssembly(ctx context.Context, req *pluginpb.ExecuteLoadAssembly) (*clientpb.Task, error) {

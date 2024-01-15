@@ -12,6 +12,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/pluginpb"
+	"google.golang.org/protobuf/proto"
 	"os"
 	"path"
 	"path/filepath"
@@ -299,15 +300,15 @@ func runAliasCommand(ctx *grumble.Context, con *console.Console) {
 		console.Log.Errorf("%s\n", err)
 		return
 	}
-	var outFilePath *os.File
-	if ctx.Flags.Bool("save") {
-		outFile := filepath.Base(fmt.Sprintf("%s_%s*.log", filepath.Base(ctx.Command.Name), filepath.Base(session.Name)))
-		outFilePath, err = os.CreateTemp("", outFile)
-		if err != nil {
-			console.Log.Errorf("%s\n", err)
-			return
-		}
-	}
+	//var outFilePath *os.File
+	//if ctx.Flags.Bool("save") {
+	//	outFile := filepath.Base(fmt.Sprintf("%s_%s*.log", filepath.Base(ctx.Command.Name), filepath.Base(session.Name)))
+	//	outFilePath, err = os.CreateTemp("", outFile)
+	//	if err != nil {
+	//		console.Log.Errorf("%s\n", err)
+	//		return
+	//	}
+	//}
 
 	if aliasManifest.IsAssembly {
 
@@ -315,7 +316,7 @@ func runAliasCommand(ctx *grumble.Context, con *console.Console) {
 		//msg := fmt.Sprintf("Executing %s %s ...", ctx.Command.Name, extArgs)
 		//con.SpinUntil(msg, ctrl)
 		executeAssemblyResp, err := con.Rpc.ExecuteAssembly(context.Background(), &pluginpb.ExecuteLoadAssembly{
-			Name:   "test",
+			Name:   loadedAlias.Command.Name,
 			Bin:    binData,
 			Type:   consts.CSharpPlugin,
 			Params: args,
@@ -325,11 +326,12 @@ func runAliasCommand(ctx *grumble.Context, con *console.Console) {
 			return
 		}
 
-		con.AddCallback(executeAssemblyResp.TaskId, func(task *clientpb.Task) {
-			if task.Status == 0 {
-				PrintAssemblyOutput(ctx.Command.Name, executeAssemblyResp, outFilePath, con)
+		con.AddCallback(executeAssemblyResp.TaskId, func(msg proto.Message) {
+			resp := msg.(*pluginpb.AssemblyResponse)
+			if resp.Status == 0 {
+				console.Log.Infof("%s output:\n%s", loadedAlias.Command.Name, string(resp.Data))
 			} else {
-				console.Log.Errorf("%s %s ", ctx.Command.Name, task.Error)
+				console.Log.Errorf("%s %s ", loadedAlias.Command.Name, resp.Err)
 			}
 		})
 

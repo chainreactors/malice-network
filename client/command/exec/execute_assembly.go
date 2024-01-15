@@ -6,6 +6,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/pluginpb"
+	"google.golang.org/protobuf/proto"
 	"os"
 	"path/filepath"
 )
@@ -23,10 +24,10 @@ func ExecuteAssemblyCmd(ctx *grumble.Context, con *console.Console) {
 		console.Log.Errorf("%s\n", err)
 		return
 	}
-	var resp *clientpb.Task
+	var task *clientpb.Task
 
 	//con.SpinUntil(fmt.Sprintf("Executing %s %s ...", cmdPath, strings.Join(args, " ")), ctrl)
-	resp, err = con.Rpc.ExecuteAssembly(con.ActiveTarget.Context(), &pluginpb.ExecuteLoadAssembly{
+	task, err = con.Rpc.ExecuteAssembly(con.ActiveTarget.Context(), &pluginpb.ExecuteLoadAssembly{
 		Name:   name,
 		Bin:    binData,
 		Params: args,
@@ -37,11 +38,12 @@ func ExecuteAssemblyCmd(ctx *grumble.Context, con *console.Console) {
 		console.Log.Errorf("%s", err.Error())
 		return
 	}
-	con.AddCallback(resp.TaskId, func(task *clientpb.Task) {
-		if task.Status == 0 {
+	con.AddCallback(task.TaskId, func(msg proto.Message) {
+		resp := msg.(*pluginpb.AssemblyResponse)
+		if resp.Status == 0 {
 			console.Log.Infof("%s output:\n%s", name, string(resp.Data))
 		} else {
-			console.Log.Errorf("%s %s ", ctx.Command.Name, task.Error)
+			console.Log.Errorf("%s %s ", ctx.Command.Name, resp.Err)
 		}
 	})
 }

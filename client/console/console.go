@@ -10,6 +10,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/mtls"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/fatih/color"
+	"google.golang.org/protobuf/proto"
 	"path/filepath"
 	"sync"
 )
@@ -45,7 +46,7 @@ const (
 
 var Log = logs.NewLogger(logs.Warn)
 
-type TaskCallback func(task *clientpb.Task)
+type TaskCallback func(resp proto.Message)
 
 // BindCmds - Bind extra commands to the app object
 type BindCmds func(console *Console)
