@@ -110,22 +110,22 @@ func (s *Session) RequestAndWait(msg *lispb.SpiteSession, stream grpc.ServerStre
 
 // RequestWithStream - 'async' means that the response is not returned immediately, but is returned through the channel 'ch
 func (s *Session) RequestWithStream(msg *lispb.SpiteSession, stream grpc.ServerStream, timeout time.Duration) (chan *commonpb.Spite, chan *commonpb.Spite, *commonpb.AsyncStatus, error) {
-	out := make(chan *commonpb.Spite)
-	s.StoreResp(msg.TaskId, out)
+	respCh := make(chan *commonpb.Spite)
+	s.StoreResp(msg.TaskId, respCh)
 	err := s.Request(msg, stream, timeout)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	status := <-out
-	if status.GetAsyncStatus() == nil {
+	resp := <-respCh
+	if stat := resp.GetStatus(); stat == nil {
 		return nil, nil, nil, errors.New("illegal spite type")
-	} else if status.GetAsyncStatus().Status != 0 {
-		return nil, nil, status.GetAsyncStatus(), errors.New(status.GetAsyncStatus().Error)
+	} else if stat.Status != 0 {
+		return nil, nil, stat, errors.New(stat.Error)
 	}
 
 	in := make(chan *commonpb.Spite)
 	go func() {
-		defer close(out)
+		defer close(respCh)
 		var c = 0
 		for spite := range in {
 			err := stream.SendMsg(&lispb.SpiteSession{
@@ -141,7 +141,7 @@ func (s *Session) RequestWithStream(msg *lispb.SpiteSession, stream grpc.ServerS
 			c++
 		}
 	}()
-	return in, out, status.GetAsyncStatus(), nil
+	return in, respCh, resp.GetStatus(), nil
 }
 
 func (s *Session) RequestWithAsync(msg *lispb.SpiteSession, stream grpc.ServerStream, timeout time.Duration) (*commonpb.AsyncStatus, chan *commonpb.Spite, error) {
@@ -152,18 +152,24 @@ func (s *Session) RequestWithAsync(msg *lispb.SpiteSession, stream grpc.ServerSt
 		return nil, nil, err
 	}
 	resp := <-respCh
-	if resp.GetAsyncStatus().Status != 0 {
-		return resp.GetAsyncStatus(), nil, errors.New(resp.GetAsyncStatus().Error)
-	}
 
+	if stat := resp.GetStatus(); stat == nil {
+		return nil, nil, errors.New("illegal spite type")
+	} else if resp.GetStatus().Status != 0 {
+		return stat, nil, errors.New(stat.Error)
+	}
 	ch := make(chan *commonpb.Spite)
-	go func() {
-		defer close(respCh)
-		defer close(ch)
-		resp := <-respCh
+	if resp.GetBody() != nil {
 		ch <- resp
-	}()
-	return resp.GetAsyncStatus(), ch, nil
+	} else {
+		go func() {
+			defer close(respCh)
+			defer close(ch)
+			resp := <-respCh
+			ch <- resp
+		}()
+	}
+	return resp.GetStatus(), ch, nil
 }
 
 func (s *Session) StoreResp(taskId uint32, ch chan *commonpb.Spite) {

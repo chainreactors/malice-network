@@ -3,7 +3,10 @@ package exec
 import (
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/pluginpb"
+	"google.golang.org/protobuf/proto"
+	"strings"
 )
 
 func ExecuteCmd(ctx *grumble.Context, con *console.Console) {
@@ -28,27 +31,31 @@ func ExecuteCmd(ctx *grumble.Context, con *console.Console) {
 		console.Log.Error("Using --output in beacon mode, if the command blocks the task will never complete\n")
 	}
 
-	var exec *pluginpb.ExecResponse
+	var resp *clientpb.Task
 	var err error
 
-	ctrl := make(chan bool)
+	//ctrl := make(chan bool)
 	//con.SpinUntil(fmt.Sprintf("Executing %s %s ...", cmdPath, strings.Join(args, " ")), ctrl)
-	exec, err = con.Rpc.Execute(con.ActiveTarget.Context(), &pluginpb.ExecRequest{
+	resp, err = con.Rpc.Execute(con.ActiveTarget.Context(), &pluginpb.ExecRequest{
 		Path:   cmdPath,
 		Args:   args,
 		Output: captureOutput,
 		Stderr: stderr,
 		Stdout: stdout,
 	})
-	ctrl <- true
-	<-ctrl
+	//ctrl <- true
+	//<-ctrl
 	if err != nil {
 		console.Log.Errorf("%s", err.Error())
 		return
 	}
-	console.Log.Infof("pid: %d, status: %d", exec.Pid, exec.StatusCode)
-	console.Log.Console(string(exec.Stdout))
-	if exec.Stderr != nil {
-		console.Log.Error(string(exec.Stderr))
-	}
+	con.AddCallback(resp.TaskId, func(msg proto.Message) {
+		resp := msg.(*pluginpb.ExecResponse)
+		console.Log.Infof("pid: %d, status: %d", resp.Pid, resp.StatusCode)
+		if resp.StatusCode == 0 {
+			console.Log.Infof("%s %s output:\n%s", cmdPath, strings.Join(args, " "), string(resp.Stdout))
+		} else {
+			console.Log.Errorf("%s %s ", ctx.Command.Name, resp.Stderr)
+		}
+	})
 }
