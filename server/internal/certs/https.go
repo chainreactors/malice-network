@@ -62,7 +62,7 @@ func MtlsListenerGenerateRsaCertificate(name string, isRoot bool) ([]byte, []byt
 		listenerCertPath := path.Join(certsPath, "listener_default_crt.pem")
 		listenerKeyPath := path.Join(certsPath, "listener_default_key.pem")
 		if helper.FileExists(listenerCertPath) && helper.FileExists(listenerKeyPath) {
-			logs.Log.Info("Listener server CA certificates already exist.")
+			logs.Log.Debug("Listener server CA certificates already exist.")
 			certBytes, keyBytes, err := CheckCertIsExist(listenerCertPath, listenerKeyPath, ListentorName)
 			if err != nil {
 				return certBytes, keyBytes, err

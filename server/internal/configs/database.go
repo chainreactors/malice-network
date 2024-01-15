@@ -7,7 +7,6 @@ import (
 	"github.com/chainreactors/logs"
 	"net/url"
 	"os"
-	"path"
 	"path/filepath"
 )
 
@@ -18,24 +17,14 @@ const (
 	Postgres = "postgresql"
 	// MySQL - MySQL protocol
 	MySQL = "mysql"
-
-	databaseConfigFileName = "database.json"
 )
 
 var (
 	// ErrInvalidDialect - An invalid dialect was specified
-	ErrInvalidDialect = errors.New("invalid SQL Dialect")
-
-	//databaseConfigLog = log.NamedLogger("config", "database")
+	ErrInvalidDialect      = errors.New("invalid SQL Dialect")
+	databaseFileName       = filepath.Join(ServerRootPath, "malice.db")
+	databaseConfigFileName = filepath.Join(ServerRootPath, "database.json")
 )
-
-// GetDatabaseConfigPath - File path to config.json
-func GetDatabaseConfigPath() string {
-	appDir := ServerRootPath
-	databaseConfigPath := filepath.Join(appDir, databaseConfigFileName)
-	logs.Log.Debugf("Loading config from %s", databaseConfigPath)
-	return databaseConfigPath
-}
 
 // DatabaseConfig - Server config
 type DatabaseConfig struct {
@@ -59,7 +48,7 @@ type DatabaseConfig struct {
 func (c *DatabaseConfig) DSN() (string, error) {
 	switch c.Dialect {
 	case Sqlite:
-		filePath := filepath.Join(ServerRootPath, "malice.db")
+		filePath := databaseFileName
 		params := encodeParams(c.Params)
 		return fmt.Sprintf("file:%s?%s", filePath, params), nil
 	//case MySQL:
@@ -93,31 +82,31 @@ func encodeParams(rawParams map[string]string) string {
 }
 
 // Save - Save config file to disk
-func (c *DatabaseConfig) Save() error {
-	configPath := GetDatabaseConfigPath()
-	configDir := path.Dir(configPath)
-	if _, err := os.Stat(configDir); os.IsNotExist(err) {
-		logs.Log.Debugf("Creating config dir %s", configDir)
-		err := os.MkdirAll(configDir, 0700)
-		if err != nil {
-			return err
-		}
-	}
-	data, err := json.MarshalIndent(c, "", "    ")
-	if err != nil {
-		return err
-	}
-	logs.Log.Infof("Saving config to %s", configPath)
-	err = os.WriteFile(configPath, data, 0600)
-	if err != nil {
-		logs.Log.Errorf("Failed to write config %s", err)
-	}
-	return nil
-}
+//func (c *DatabaseConfig) Save() error {
+//	configPath := ServerRootPath
+//	configDir := path.Dir(configPath)
+//	if _, err := os.Stat(configDir); os.IsNotExist(err) {
+//		logs.Log.Debugf("Creating config dir %s", configDir)
+//		err := os.MkdirAll(configDir, 0700)
+//		if err != nil {
+//			return err
+//		}
+//	}
+//	data, err := json.MarshalIndent(c, "", "    ")
+//	if err != nil {
+//		return err
+//	}
+//	logs.Log.Infof("Saving config to %s", configPath)
+//	err = os.WriteFile(configPath, data, 0o600)
+//	if err != nil {
+//		logs.Log.Errorf("Failed to write config %s", err)
+//	}
+//	return nil
+//}
 
 // GetDatabaseConfig - Get config value
 func GetDatabaseConfig() *DatabaseConfig {
-	configPath := GetDatabaseConfigPath()
+	configPath := databaseConfigFileName
 	config := getDefaultDatabaseConfig()
 	if _, err := os.Stat(configPath); !os.IsNotExist(err) {
 		data, err := os.ReadFile(configPath)
@@ -141,10 +130,10 @@ func GetDatabaseConfig() *DatabaseConfig {
 		config.MaxOpenConns = 1
 	}
 
-	err := config.Save() // This updates the config with any missing fields
-	if err != nil {
-		logs.Log.Errorf("Failed to save default config %s", err)
-	}
+	//err := config.Save() // This updates the config with any missing fields
+	//if err != nil {
+	//	logs.Log.Errorf("Failed to save default config %s", err)
+	//}
 	return config
 }
 

@@ -27,7 +27,7 @@ func GenerateRootCA() {
 	rootCertPath := path.Join(certsPath, "localhost_root_crt.pem")
 	rootKeyPath := path.Join(certsPath, "localhost_root_key.pem")
 	if helper.FileExists(rootCertPath) && helper.FileExists(rootKeyPath) {
-		logs.Log.Info("Root CA certificates already exist.")
+		logs.Log.Debug("Root CA certificates already exist.")
 		_, _, err = certs.CheckCertIsExist(rootCertPath, rootKeyPath, certs.RootName)
 		if err != nil {
 			logs.Log.Errorf("Check root cert failed: %s", err)
