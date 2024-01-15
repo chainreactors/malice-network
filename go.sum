@@ -32,10 +32,18 @@ github.com/chainreactors/files v0.0.0-20231102192550-a652458cee26 h1:p+RrnAjk2Es
 github.com/chainreactors/files v0.0.0-20231102192550-a652458cee26/go.mod h1:/Xa9YXhjBlaC33JTD6ZTJFig6pcplak2IDcovf42/6A=
 github.com/chainreactors/grumble v0.0.0-20240109090215-42313c156f06 h1:jXb+/G1SSw7hXaU8uV5YiHBrmqEYn4PP/TrbHS6CuTE=
 github.com/chainreactors/grumble v0.0.0-20240109090215-42313c156f06/go.mod h1:eERbalJjRCcufw/wWQZXMYnQeev6GXeQQjsFCuZXNpU=
+github.com/chainreactors/grumble v1.1.3 h1:gbdgVGWsHmNraJ7Gn6Q4TiUEIHU/UHfbc1KUSbBlgYU=
+github.com/chainreactors/grumble v1.1.3/go.mod h1:r7j3ShNy5EmOsegRD2DzTutIaGiLiA3M5yBTXXeLwcs=
 github.com/chainreactors/logs v0.0.0-20231123082253-61009080f2dd h1:KnBueBr9Cg7y0vxhb/5xIX36byk9Kzms+p1wwRUtfco=
 github.com/chainreactors/logs v0.0.0-20231123082253-61009080f2dd/go.mod h1:VZFqkFDGmp7/JOMeraW+YI7kTGcgz9fgc/HArVFnrGQ=
+github.com/charmbracelet/bubbles v0.17.1 h1:0SIyjOnkrsfDo88YvPgAWvZMwXe26TP6drRvmkjyUu4=
+github.com/charmbracelet/bubbles v0.17.1/go.mod h1:9HxZWlkCqz2PRwsCbYl7a3KXvGzFaDHpYbSYMJ+nE3o=
 github.com/charmbracelet/bubbletea v0.25.0 h1:bAfwk7jRz7FKFl9RzlIULPkStffg5k6pNt5dywy4TcM=
 github.com/charmbracelet/bubbletea v0.25.0/go.mod h1:EN3QDR1T5ZdWmdfDzYcqOCAps45+QIJbLOBxmVNWNNg=
+github.com/charmbracelet/harmonica v0.2.0 h1:8NxJWRWg/bzKqqEaaeFNipOu77YR5t8aSwG4pgaUBiQ=
+github.com/charmbracelet/harmonica v0.2.0/go.mod h1:KSri/1RMQOZLbw7AHqgcBycp8pgJnQMYYT8QZRqZ1Ao=
+github.com/charmbracelet/lipgloss v0.9.1 h1:PNyd3jvaJbg4jRHKWXnCj1akQm4rh8dbEzN1p/u1KWg=
+github.com/charmbracelet/lipgloss v0.9.1/go.mod h1:1mPmG4cxScwUQALAAnacHaigiiHB9Pmr+v1VEawJl6I=
 github.com/chzyer/logex v1.1.10 h1:Swpa1K6QvQznwJRcfTfQJmTE72DqScAa40E+fbHEXEE=
 github.com/chzyer/logex v1.1.10/go.mod h1:+Ywpsq7O8HXn0nuIou7OrIPyXbp3wmkHB+jjWRnGsAI=
 github.com/chzyer/test v0.0.0-20180213035817-a1ea475d72b1 h1:q763qf9huN11kDQavWsoZXJNW3xEE4JJyHa5Q25/sd8=
@@ -60,8 +68,6 @@ github.com/desertbit/columnize v2.1.0+incompatible h1:h55rYmdrWoTj7w9aAnCkxzM3C2
 github.com/desertbit/columnize v2.1.0+incompatible/go.mod h1:5kPrzQwKbQ8E5D28nvTVPqIBJyj+8jvJzwt6HXZvXgI=
 github.com/desertbit/go-shlex v0.1.1 h1:c65HnbgX1QyC6kPL1dMzUpZ4puNUE6ai/eVucWNLNsk=
 github.com/desertbit/go-shlex v0.1.1/go.mod h1:Qbb+mJNud5AypgHZ81EL8syOGaWlwvAOTqS7XmWI4pQ=
-github.com/chainreactors/grumble v1.1.3 h1:gbdgVGWsHmNraJ7Gn6Q4TiUEIHU/UHfbc1KUSbBlgYU=
-github.com/chainreactors/grumble v1.1.3/go.mod h1:r7j3ShNy5EmOsegRD2DzTutIaGiLiA3M5yBTXXeLwcs=
 github.com/desertbit/readline v1.5.1 h1:/wOIZkWYl1s+IvJm/5bOknfUgs6MhS9svRNZpFM53Os=
 github.com/desertbit/readline v1.5.1/go.mod h1:pHQgTsCFs9Cpfh5mlSUFi9Xa5kkL4d8L1Jo4UVWzPw0=
 github.com/envoyproxy/go-control-plane v0.9.0/go.mod h1:YTl/9mNaCwkRvm6d1a2C3ymFceY/DCBVvsKhRF0iEA4=

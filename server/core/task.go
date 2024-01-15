@@ -11,6 +11,16 @@ type Tasks struct {
 	taskNumber uint32
 }
 
+// All - Return a list of all tasks
+func (t *Tasks) All() []*Task {
+	all := []*Task{}
+	t.active.Range(func(key, value interface{}) bool {
+		all = append(all, value.(*Task))
+		return true
+	})
+	return all
+}
+
 // get
 func (t *Tasks) Get(taskID uint32) *Task {
 	val, ok := t.active.Load(taskID)

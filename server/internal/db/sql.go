@@ -1,6 +1,7 @@
 package db
 
 import (
+	"errors"
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/server/internal/configs"
@@ -9,6 +10,10 @@ import (
 	"time"
 
 	"gorm.io/gorm"
+)
+
+var (
+	ERRNOEXISTS = errors.New("exists")
 )
 
 // newDBClient - Initialize the db client
