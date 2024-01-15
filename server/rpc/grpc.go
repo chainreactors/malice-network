@@ -32,10 +32,6 @@ import (
 )
 
 var (
-	// ErrInvalidBeaconID - Invalid Beacon ID in request
-	ErrInvalidBeaconID = status.Error(codes.InvalidArgument, "Invalid beacon ID")
-	// ErrInvalidBeaconTaskID - Invalid Beacon ID in request
-	ErrInvalidBeaconTaskID = status.Error(codes.InvalidArgument, "Invalid beacon task ID")
 
 	// ErrInvalidSessionID - Invalid Session ID in request
 	ErrInvalidSessionID = status.Error(codes.InvalidArgument, "Invalid session ID")
@@ -50,6 +46,7 @@ var (
 	// ErrInvalidName - Invalid name
 	ErrInvalidName        = status.Error(codes.InvalidArgument, "Invalid session name, alphanumerics and _-. only")
 	ErrNotFoundSession    = status.Error(codes.InvalidArgument, "Session ID not found")
+	ErrNotFoundTask       = status.Error(codes.InvalidArgument, "Task ID not found")
 	ErrNotFoundListener   = status.Error(codes.InvalidArgument, "Pipeline not found")
 	ErrNotFoundClientName = status.Error(codes.InvalidArgument, "Client name not found")
 	//ErrInvalidBeaconTaskCancelState = status.Error(codes.InvalidArgument, fmt.Sprintf("Invalid task state, must be '%s' to cancel", models.PENDING))

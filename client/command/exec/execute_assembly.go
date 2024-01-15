@@ -24,26 +24,27 @@ func ExecuteAssemblyCmd(ctx *grumble.Context, con *console.Console) {
 		console.Log.Errorf("%s\n", err)
 		return
 	}
-	var task *clientpb.Task
 
-	//con.SpinUntil(fmt.Sprintf("Executing %s %s ...", cmdPath, strings.Join(args, " ")), ctrl)
-	task, err = con.Rpc.ExecuteAssembly(con.ActiveTarget.Context(), &pluginpb.ExecuteLoadAssembly{
-		Name:   name,
-		Bin:    binData,
-		Params: args,
-		Type:   consts.CSharpPlugin,
-	})
+	go func() {
+		var task *clientpb.Task
+		task, err = con.Rpc.ExecuteAssembly(con.ActiveTarget.Context(), &pluginpb.ExecuteLoadAssembly{
+			Name:   name,
+			Bin:    binData,
+			Params: args,
+			Type:   consts.CSharpPlugin,
+		})
 
-	if err != nil {
-		console.Log.Errorf("%s", err.Error())
-		return
-	}
-	con.AddCallback(task.TaskId, func(msg proto.Message) {
-		resp := msg.(*pluginpb.AssemblyResponse)
-		if resp.Status == 0 {
-			console.Log.Infof("%s output:\n%s", name, string(resp.Data))
-		} else {
-			console.Log.Errorf("%s %s ", ctx.Command.Name, resp.Err)
+		if err != nil {
+			console.Log.Errorf("%s", err.Error())
+			return
 		}
-	})
+		con.AddCallback(task.TaskId, func(msg proto.Message) {
+			resp := msg.(*pluginpb.AssemblyResponse)
+			if resp.Status == 0 {
+				console.Log.Infof("%s output:\n%s", name, string(resp.Data))
+			} else {
+				console.Log.Errorf("%s %s ", ctx.Command.Name, resp.Err)
+			}
+		})
+	}()
 }

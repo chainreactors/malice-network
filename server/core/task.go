@@ -3,6 +3,7 @@ package core
 import (
 	"fmt"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/proto/implant/commonpb"
 	"sync"
 )
 
@@ -61,6 +62,7 @@ type Task struct {
 	Cur       int
 	Total     int
 	Callback  func()
+	Spite     *commonpb.Spite
 	done      chan bool
 	end       chan struct{}
 }

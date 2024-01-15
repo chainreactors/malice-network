@@ -22,11 +22,11 @@ func (rpc *Server) Execute(ctx context.Context, req *pluginpb.ExecRequest) (*cli
 	go func() {
 		greq.SetCallback(func() {
 			data := <-ch
-			resp := data.GetExecResponse()
+			greq.Task.Spite = data
+
 			core.EventBroker.Publish(core.Event{
 				EventType: consts.EventTaskCallback,
-				Data:      resp.Stdout,
-				Err:       string(resp.Stderr),
+				Task:      greq.Task,
 			})
 		})
 	}()
@@ -45,11 +45,10 @@ func (rpc *Server) ExecuteAssembly(ctx context.Context, req *pluginpb.ExecuteLoa
 	go func() {
 		greq.SetCallback(func() {
 			data := <-ch
-			resp := data.GetAssemblyResponse()
+			greq.Task.Spite = data
 			core.EventBroker.Publish(core.Event{
 				EventType: consts.EventTaskCallback,
-				Data:      resp.Data,
-				Err:       resp.Err,
+				Task:      greq.Task,
 			})
 		})
 	}()

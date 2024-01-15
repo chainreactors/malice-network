@@ -25,8 +25,9 @@ func (rpc *Server) Events(_ *clientpb.Empty, stream clientrpc.MaliceRPC_EventsSe
 			return nil
 		case event := <-events:
 			pbEvent := &clientpb.Event{
-				Type: event.EventType,
-				Data: event.Data,
+				Type:   event.EventType,
+				Source: event.SourceName,
+				Data:   event.Data,
 			}
 
 			if event.Job != nil {
@@ -38,7 +39,10 @@ func (rpc *Server) Events(_ *clientpb.Empty, stream clientrpc.MaliceRPC_EventsSe
 			if event.Session != nil {
 				pbEvent.Session = event.Session.ToProtobuf()
 			}
-			if event.Err != "nil" {
+			if event.Task != nil {
+				pbEvent.Task = event.Task.ToProtobuf()
+			}
+			if event.Err != "" {
 				pbEvent.Err = event.Err
 			}
 
