@@ -10,8 +10,6 @@ import (
 // Observer - A function to call when the sessions changes
 type Observer func(*clientpb.Session)
 
-//type BeaconTaskCallback func(*clientpb.BeaconTask)
-
 type ActiveTarget struct {
 	session    *clientpb.Session
 	observers  map[int]Observer

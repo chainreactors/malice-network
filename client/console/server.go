@@ -9,6 +9,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"io"
+	"sync"
+	"time"
 )
 
 type Listener struct {
@@ -22,9 +24,10 @@ type Client struct {
 func InitServerStatus(conn *grpc.ClientConn) (*ServerStatus, error) {
 	var err error
 	s := &ServerStatus{
-		Rpc:      clientrpc.NewMaliceRPCClient(conn),
-		Sessions: make(map[string]*clientpb.Session),
-		Alive:    true,
+		Rpc:       clientrpc.NewMaliceRPCClient(conn),
+		Sessions:  make(map[string]*clientpb.Session),
+		Alive:     true,
+		Callbacks: &sync.Map{},
 	}
 
 	s.Info, err = s.Rpc.GetBasic(context.Background(), &clientpb.Empty{})
@@ -64,6 +67,7 @@ type ServerStatus struct {
 	Clients   []*Client
 	Listeners []*Listener
 	Sessions  map[string]*clientpb.Session
+	Callbacks *sync.Map
 	Alive     bool
 }
 
@@ -86,6 +90,27 @@ func (s *ServerStatus) UpdateSession() error {
 	return nil
 }
 
+func (s *ServerStatus) AddCallback(taskId uint32, callback TaskCallback) {
+	s.Callbacks.Store(taskId, callback)
+}
+
+func (s *ServerStatus) triggerTaskCallback(event *clientpb.Event) {
+	task := event.GetTask()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if callback, ok := s.Callbacks.Load(task.TaskId); ok {
+		content, err := s.Rpc.GetTaskContent(ctx, &clientpb.Task{
+			TaskId:    task.TaskId,
+			SessionId: task.SessionId,
+		})
+		if err != nil {
+			Log.Errorf(err.Error())
+		}
+		callback.(TaskCallback)(content)
+		s.Callbacks.Delete(task.TaskId)
+	}
+}
+
 func (s *ServerStatus) EventHandler() {
 	eventStream, err := s.Rpc.Events(context.Background(), &clientpb.Empty{})
 	if err != nil {
@@ -99,7 +124,7 @@ func (s *ServerStatus) EventHandler() {
 		}
 
 		// Trigger event based on type
-		switch event.EventType {
+		switch event.Type {
 
 		case consts.EventJoin:
 			Log.Infof("%s has joined the game", event.Client.Name)
@@ -107,12 +132,12 @@ func (s *ServerStatus) EventHandler() {
 			Log.Infof("%s left the game", event.Client.Name)
 		case consts.EventBroadcast:
 			Log.Console(Clearln)
-			Log.Infof("%s broadcasted: %s  %s", event.SourceName, string(event.Data), event.Err)
+			Log.Infof("%s broadcasted: %s  %s", event.Source, string(event.Data), event.Err)
 		case consts.EventNotify:
 			Log.Console(Clearln)
-			Log.Importantf("%s notified: %s %s", event.SourceName, string(event.Data), event.Err)
+			Log.Importantf("%s notified: %s %s", event.Source, string(event.Data), event.Err)
+		case consts.EventTaskCallback:
+			s.triggerTaskCallback(event)
 		}
-
-		//con.triggerReactions(event)
 	}
 }

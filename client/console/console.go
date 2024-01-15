@@ -12,6 +12,7 @@ import (
 	"github.com/fatih/color"
 	"google.golang.org/protobuf/proto"
 	"path/filepath"
+	"sync"
 )
 
 const (
@@ -69,8 +70,6 @@ func Start(bindCmds ...BindCmds) error {
 			observers:  map[int]Observer{},
 			observerID: 0,
 		},
-		//BeaconTaskCallbacks:      map[string]BeaconTaskCallback{},
-		//BeaconTaskCallbacksMutex: &sync.Mutex{},
 		Settings: settings,
 	}
 	con.App.SetPrintASCIILogo(func(_ *grumble.App) {
@@ -98,6 +97,7 @@ type Console struct {
 	App          *grumble.App
 	ActiveTarget *ActiveTarget
 	Settings     *assets.Settings
+	Callbacks    *sync.Map
 	*ServerStatus
 }
 
@@ -123,4 +123,9 @@ func (c *Console) UpdatePrompt() {
 	} else {
 		c.App.SetPrompt(consts.ClientPrompt + " > ")
 	}
+}
+
+func (c *Console) AddAliasCommand(cmd *grumble.Command) {
+	group := c.App.Groups().Find(consts.AliasesGroup)
+	group.AddCommand(cmd)
 }

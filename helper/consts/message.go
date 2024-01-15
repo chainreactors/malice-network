@@ -3,11 +3,12 @@ package consts
 // plugin name
 
 const (
-	PluginBlock    = "block"
-	PluginRegister = "register"
-	PluginUpload   = "upload"
-	PluginDownload = "download"
-	PluginExec     = "exec"
+	PluginBlock               = "block"
+	PluginRegister            = "register"
+	PluginUpload              = "upload"
+	PluginDownload            = "download"
+	PluginExec                = "exec"
+	PluginExecuteLoadAssembly = "execute_load_assembly"
 )
 
 // ctrl type

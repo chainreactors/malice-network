@@ -137,7 +137,7 @@ func (l *TCPPipeline) handleRead(conn net.Conn) {
 		}
 		core.Forwarders.Send(l.ID(), &core.Message{
 			Message:   msg,
-			SessionID: hash.Md5Hash([]byte(rawID)),
+			SessionID: hash.Md5Hash(rawID),
 			//RemoteAddr: conn.RemoteAddr().String(),
 		})
 	}
