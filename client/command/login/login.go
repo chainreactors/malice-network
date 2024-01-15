@@ -30,6 +30,7 @@ func Command(con *console.Console) []*grumble.Command {
 		},
 	}
 }
+
 func LoginCmd(ctx *grumble.Context, con *console.Console) error {
 	files, err := assets.GetConfigs()
 	if err != nil {
