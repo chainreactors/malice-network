@@ -27,7 +27,7 @@ func ExecuteAssemblyCmd(ctx *grumble.Context, con *console.Console) {
 
 	go func() {
 		var task *clientpb.Task
-		task, err = con.Rpc.ExecuteAssembly(con.ActiveTarget.Context(), &pluginpb.ExecuteLoadAssembly{
+		task, err = con.Rpc.ExecuteAssembly(con.ActiveTarget.Context(), &pluginpb.ExecuteAssembly{
 			Name:   name,
 			Bin:    binData,
 			Params: args,

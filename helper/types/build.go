@@ -36,9 +36,21 @@ func BuildSpite(spite *commonpb.Spite, msg proto.Message) (*commonpb.Spite, erro
 	case *pluginpb.DownloadRequest:
 		spite.Name = consts.PluginDownload
 		spite.Body = &commonpb.Spite_DownloadRequest{DownloadRequest: msg.(*pluginpb.DownloadRequest)}
-	case *pluginpb.ExecuteLoadAssembly:
-		spite.Name = consts.PluginExecuteLoadAssembly
-		spite.Body = &commonpb.Spite_ExecuteLoadAssembly{ExecuteLoadAssembly: msg.(*pluginpb.ExecuteLoadAssembly)}
+	case *pluginpb.ExecuteAssembly:
+		spite.Name = consts.PluginExecuteAssembly
+		spite.Body = &commonpb.Spite_ExecuteAssembly{ExecuteAssembly: msg.(*pluginpb.ExecuteAssembly)}
+	case *pluginpb.ExecuteShellcode:
+		spite.Name = consts.PluginExecuteShellcode
+		spite.Body = &commonpb.Spite_ExecuteShellcode{ExecuteShellcode: msg.(*pluginpb.ExecuteShellcode)}
+	case *pluginpb.ExecuteSpawn:
+		spite.Name = consts.PluginExecuteSpawn
+		spite.Body = &commonpb.Spite_ExecuteSpawn{ExecuteSpawn: msg.(*pluginpb.ExecuteSpawn)}
+	case *pluginpb.ExecuteSideLoad:
+		spite.Name = consts.PluginExecuteSideload
+		spite.Body = &commonpb.Spite_ExecuteSideload{ExecuteSideload: msg.(*pluginpb.ExecuteSideLoad)}
+	case *pluginpb.ExecuteBof:
+		spite.Name = consts.PluginExecuteBof
+		spite.Body = &commonpb.Spite_ExecuteBof{ExecuteBof: msg.(*pluginpb.ExecuteBof)}
 	case *pluginpb.AssemblyResponse:
 		spite.Body = &commonpb.Spite_AssemblyResponse{AssemblyResponse: msg.(*pluginpb.AssemblyResponse)}
 	default:
