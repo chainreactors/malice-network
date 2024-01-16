@@ -33,7 +33,7 @@ func (rpc *Server) Execute(ctx context.Context, req *pluginpb.ExecRequest) (*cli
 	return greq.Task.ToProtobuf(), nil
 }
 
-func (rpc *Server) ExecuteAssembly(ctx context.Context, req *pluginpb.ExecuteLoadAssembly) (*clientpb.Task, error) {
+func (rpc *Server) ExecuteAssembly(ctx context.Context, req *pluginpb.ExecuteAssembly) (*clientpb.Task, error) {
 	greq := newGenericRequest(req)
 	stat, ch, err := rpc.asyncGenericHandler(ctx, greq)
 	if err != nil {
