@@ -32,6 +32,8 @@ github.com/chainreactors/files v0.0.0-20231102192550-a652458cee26 h1:p+RrnAjk2Es
 github.com/chainreactors/files v0.0.0-20231102192550-a652458cee26/go.mod h1:/Xa9YXhjBlaC33JTD6ZTJFig6pcplak2IDcovf42/6A=
 github.com/chainreactors/grumble v0.0.0-20240109090215-42313c156f06 h1:jXb+/G1SSw7hXaU8uV5YiHBrmqEYn4PP/TrbHS6CuTE=
 github.com/chainreactors/grumble v0.0.0-20240109090215-42313c156f06/go.mod h1:eERbalJjRCcufw/wWQZXMYnQeev6GXeQQjsFCuZXNpU=
+github.com/chainreactors/grumble v0.0.0-20240111103643-830a8bf7d70a h1:32n0NW1LVw2UW8hbalyT3WYVQ5zyFwUXug63HIJubio=
+github.com/chainreactors/grumble v0.0.0-20240111103643-830a8bf7d70a/go.mod h1:eERbalJjRCcufw/wWQZXMYnQeev6GXeQQjsFCuZXNpU=
 github.com/chainreactors/grumble v1.1.3 h1:gbdgVGWsHmNraJ7Gn6Q4TiUEIHU/UHfbc1KUSbBlgYU=
 github.com/chainreactors/grumble v1.1.3/go.mod h1:r7j3ShNy5EmOsegRD2DzTutIaGiLiA3M5yBTXXeLwcs=
 github.com/chainreactors/logs v0.0.0-20231123082253-61009080f2dd h1:KnBueBr9Cg7y0vxhb/5xIX36byk9Kzms+p1wwRUtfco=

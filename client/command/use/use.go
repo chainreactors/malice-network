@@ -23,8 +23,17 @@ func Command(con *console.Console) []*grumble.Command {
 				return SessionIDCompleter(con, prefix)
 			},
 		},
+		&grumble.Command{
+			Name: "back",
+			Help: "back to root context",
+			Run: func(ctx *grumble.Context) error {
+				con.ActiveTarget.Set(nil)
+				return nil
+			},
+		},
 	}
 }
+
 func UseSessionCmd(ctx *grumble.Context, con *console.Console) {
 	var session *clientpb.Session
 	con.UpdateSession()
@@ -34,13 +43,12 @@ func UseSessionCmd(ctx *grumble.Context, con *console.Console) {
 	}
 
 	if session == nil {
-		console.Log.Errorf("session not found")
+		console.Log.Errorf(console.ErrNotFoundSession.Error())
 		return
 	}
 
 	con.ActiveTarget.Set(session)
 	console.Log.Infof("Active session %s (%s)\n", session.Name, session.SessionId)
-
 }
 
 func SessionIDCompleter(con *console.Console, prefix string) (results []string) {
