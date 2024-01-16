@@ -18,7 +18,6 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
-	"github.com/chainreactors/malice-network/server/middleware"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
@@ -85,8 +84,8 @@ func StartClientListener(port uint16) (*grpc.Server, net.Listener, error) {
 		grpc.MaxRecvMsgSize(consts.ServerMaxMessageSize),
 		grpc.MaxSendMsgSize(consts.ServerMaxMessageSize),
 	}
-	commonOptions := append(options, middleware.CommonMiddleware(rpcLog)...)
-	rootOptions := append(options, middleware.AuthMiddleware(authLog)...)
+	commonOptions := append(options, CommonMiddleware(rpcLog)...)
+	rootOptions := append(options, AuthMiddleware(authLog)...)
 	grpcServer := grpc.NewServer(commonOptions...)
 	rootGrpcServer := grpc.NewServer(rootOptions...)
 	clientrpc.RegisterMaliceRPCServer(grpcServer, NewServer())
