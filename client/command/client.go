@@ -5,6 +5,7 @@ import (
 	"github.com/chainreactors/malice-network/client/command/alias"
 	"github.com/chainreactors/malice-network/client/command/listener"
 	"github.com/chainreactors/malice-network/client/command/login"
+	"github.com/chainreactors/malice-network/client/command/observe"
 	"github.com/chainreactors/malice-network/client/command/sessions"
 	"github.com/chainreactors/malice-network/client/command/use"
 	"github.com/chainreactors/malice-network/client/command/version"
@@ -24,6 +25,7 @@ func BindClientsCommands(con *console.Console) {
 		use.Command,
 		listener.Commands,
 		alias.Commands,
+		observe.Command,
 	)
 
 	login.LoginCmd(&grumble.Context{}, con)

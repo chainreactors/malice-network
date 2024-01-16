@@ -48,11 +48,12 @@ func ExecuteCmd(ctx *grumble.Context, con *console.Console) {
 		}
 		con.AddCallback(resp.TaskId, func(msg proto.Message) {
 			resp := msg.(*pluginpb.ExecResponse)
-			console.Log.Infof("pid: %d, status: %d", resp.Pid, resp.StatusCode)
+			sid := con.ActiveTarget.GetInteractive().SessionId
+			con.SessionLog(sid).Infof("pid: %d, status: %d", resp.Pid, resp.StatusCode)
 			if resp.StatusCode == 0 {
-				console.Log.Infof("%s %s output:\n%s", cmdPath, strings.Join(args, " "), string(resp.Stdout))
+				con.SessionLog(sid).Infof("%s %s output:\n%s", cmdPath, strings.Join(args, " "), string(resp.Stdout))
 			} else {
-				console.Log.Errorf("%s %s ", ctx.Command.Name, resp.Stderr)
+				con.SessionLog(sid).Errorf("%s %s ", ctx.Command.Name, resp.Stderr)
 			}
 		})
 	}()

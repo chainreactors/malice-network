@@ -27,6 +27,11 @@ var (
 
 func NewSession(req *lispb.RegisterSession) *Session {
 	return &Session{
+		Name:       req.RegisterData.Name,
+		ProxyURL:   req.RegisterData.Proxy,
+		Modules:    req.RegisterData.Module,
+		Extensions: req.RegisterData.Extension,
+		Filepath:   req.RegisterData.Filepath,
 		ID:         req.SessionId,
 		ListenerId: req.ListenerId,
 		RemoteAddr: req.RemoteAddr,
@@ -40,23 +45,23 @@ func NewSession(req *lispb.RegisterSession) *Session {
 
 // Session - Represents a connection to an implant
 type Session struct {
-	ListenerId  string
-	ID          string
-	Name        string
-	RemoteAddr  string
-	Os          *commonpb.Os
-	Process     *commonpb.Process
-	Timer       *commonpb.Timer
-	Filename    string
-	ActiveC2    string
-	ProxyURL    string
-	PollTimeout int64
-	Extensions  []string
-	ConfigID    string
-	PeerID      int64
-	Locale      string
-	Tasks       *Tasks // task manager
-	Responses   *sync.Map
+	ListenerId string
+	ID         string
+	Name       string
+	RemoteAddr string
+	Os         *commonpb.Os
+	Process    *commonpb.Process
+	Timer      *commonpb.Timer
+	Filepath   string
+	ActiveC2   string
+	ProxyURL   string
+	Modules    []string
+	Extensions []string
+	ConfigID   string
+	PeerID     int64
+	Locale     string
+	Tasks      *Tasks // task manager
+	Responses  *sync.Map
 }
 
 func (s *Session) ToProtobuf() *clientpb.Session {

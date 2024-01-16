@@ -328,10 +328,11 @@ func runAliasCommand(ctx *grumble.Context, con *console.Console) {
 
 		con.AddCallback(executeAssemblyResp.TaskId, func(msg proto.Message) {
 			resp := msg.(*pluginpb.AssemblyResponse)
+			sid := con.ActiveTarget.GetInteractive().SessionId
 			if resp.Status == 0 {
-				console.Log.Infof("%s output:\n%s", loadedAlias.Command.Name, string(resp.Data))
+				con.SessionLog(sid).Infof("%s output:\n%s", loadedAlias.Command.Name, string(resp.Data))
 			} else {
-				console.Log.Errorf("%s %s ", loadedAlias.Command.Name, resp.Err)
+				con.SessionLog(sid).Errorf("%s %s ", loadedAlias.Command.Name, resp.Err)
 			}
 		})
 
