@@ -33,6 +33,27 @@ protoc -I proto/ proto/services/listenerrpc/service.proto --go_out=paths=source_
 ```
 
 
+## Roadmap
+
+### v0.0.1
+
+- [ ] implant
+  - [ ] scalability
+    - [ ] pe
+    - [ ] dll/so
+    - [ ] bof
+    - [ ] clr
+  - [ ] basic function
+
+- [ ] server
+  - [ ] scalability
+    - [ ] module, IoM internal module
+    - [ ] alias, execute-assembly
+    - [ ] extension, dll pe 
+    - [ ] plugin , sdk 
+
+
+
 ## Thanks 
 
 - [sliver](https://github.com/BishopFox/sliver) 从中参考并复用了大量的代码
