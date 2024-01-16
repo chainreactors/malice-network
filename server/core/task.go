@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/commonpb"
 	"sync"
@@ -99,6 +100,10 @@ func (t *Task) Done() {
 			if t.Cur == t.Total {
 				close(t.done)
 			}
+			EventBroker.Publish(Event{
+				EventType: consts.EventTaskDone,
+				Task:      t,
+			})
 		}
 		t.Finish()
 	}()

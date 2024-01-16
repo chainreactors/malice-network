@@ -96,6 +96,9 @@ func (s *ServerStatus) AddCallback(taskId uint32, callback TaskCallback) {
 
 func (s *ServerStatus) triggerTaskCallback(event *clientpb.Event) {
 	task := event.GetTask()
+	if task == nil {
+		Log.Errorf(ErrNotFoundTask.Error())
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if callback, ok := s.Callbacks.Load(task.TaskId); ok {
@@ -108,6 +111,16 @@ func (s *ServerStatus) triggerTaskCallback(event *clientpb.Event) {
 		}
 		callback.(TaskCallback)(content)
 		s.Callbacks.Delete(task.TaskId)
+	}
+}
+
+func (s *ServerStatus) triggerTaskDone(event *clientpb.Event) {
+	task := event.GetTask()
+	if task == nil {
+		Log.Errorf(ErrNotFoundTask.Error())
+	}
+	if callback, ok := s.Callbacks.Load(task.TaskId); ok {
+		callback.(TaskCallback)(event)
 	}
 }
 
@@ -138,6 +151,8 @@ func (s *ServerStatus) EventHandler() {
 			Log.Importantf("%s notified: %s %s", event.Source, string(event.Data), event.Err)
 		case consts.EventTaskCallback:
 			s.triggerTaskCallback(event)
+		case consts.EventTaskDone:
+			Log.Console(Clearln)
 		}
 	}
 }

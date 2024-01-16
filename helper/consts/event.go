@@ -28,4 +28,5 @@ const (
 	EventPipelineError = "pipeline_error"
 	EventPipelineStop  = "pipeline_stop"
 	EventTaskCallback  = "task_callback"
+	EventTaskDone      = "task_done"
 )
