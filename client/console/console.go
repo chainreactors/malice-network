@@ -1,6 +1,7 @@
 package console
 
 import (
+	"errors"
 	"fmt"
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/logs"
@@ -42,6 +43,10 @@ const (
 	Woot = Bold + Green + "[$] " + Normal
 	// Success - Diplay success
 	Success = Bold + Green + "[+] " + Normal
+)
+
+var (
+	ErrNotFoundTask = errors.New("task not found")
 )
 
 var Log = logs.NewLogger(logs.Warn)
