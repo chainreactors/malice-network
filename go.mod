@@ -31,7 +31,7 @@ require (
 	atomicgo.dev/keyboard v0.2.9 // indirect
 	atomicgo.dev/schedule v0.1.0 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
-	github.com/chainreactors/grumble v0.0.0-20240109090215-42313c156f06 // indirect
+	github.com/chainreactors/grumble v0.0.0-20240111103643-830a8bf7d70a // indirect
 	github.com/charmbracelet/bubbles v0.17.1 // indirect
 	github.com/charmbracelet/bubbletea v0.25.0 // indirect
 	github.com/charmbracelet/harmonica v0.2.0 // indirect

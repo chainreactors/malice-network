@@ -18,8 +18,6 @@ func BindClientsCommands(con *console.Console) {
 	bind("",
 		version.Command)
 
-	bind(consts.AliasesGroup)
-	bind(consts.ExtensionGroup)
 	bind(consts.GenericGroup,
 		login.Command,
 		sessions.Command,

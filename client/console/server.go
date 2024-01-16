@@ -7,7 +7,6 @@ import (
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/metadata"
 	"io"
 	"sync"
 	"time"
@@ -72,10 +71,7 @@ type ServerStatus struct {
 }
 
 func (s *ServerStatus) UpdateSession() error {
-	ctx := metadata.NewOutgoingContext(context.Background(), metadata.Pairs(
-		"client_name", "test"),
-	)
-	sessions, err := s.Rpc.GetSessions(ctx, &clientpb.Empty{})
+	sessions, err := s.Rpc.GetSessions(context.Background(), &clientpb.Empty{})
 	if err != nil {
 		return err
 	}

@@ -10,4 +10,7 @@ func BindImplantCommands(con *console.Console) {
 	bind := makeBind(con)
 	bind(consts.ImplantGroup,
 		exec.Commands)
+
+	bind(consts.AliasesGroup)
+	bind(consts.ExtensionGroup)
 }

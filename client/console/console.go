@@ -46,10 +46,12 @@ const (
 )
 
 var (
-	ErrNotFoundTask = errors.New("task not found")
-)
+	ErrNotFoundTask    = errors.New("task not found")
+	ErrNotFoundSession = errors.New("session not found")
 
-var Log = logs.NewLogger(logs.Warn)
+	Log           = logs.NewLogger(logs.Warn)
+	implantGroups = []string{consts.ImplantGroup, consts.AliasesGroup, consts.ExtensionGroup}
+)
 
 type TaskCallback func(resp proto.Message)
 
@@ -133,4 +135,21 @@ func (c *Console) UpdatePrompt() {
 func (c *Console) AddAliasCommand(cmd *grumble.Command) {
 	group := c.App.Groups().Find(consts.AliasesGroup)
 	group.AddCommand(cmd)
+}
+
+func (c *Console) AddExtensionCommand(cmd *grumble.Command) {
+	group := c.App.Groups().Find(consts.ExtensionGroup)
+	group.AddCommand(cmd)
+}
+
+func (c *Console) EnableImplantCommands() {
+	for _, g := range implantGroups {
+		c.App.Groups().Find(g).Enable()
+	}
+}
+
+func (c *Console) DisableImplantCommands() {
+	for _, g := range implantGroups {
+		c.App.Groups().Find(g).Disable()
+	}
 }
