@@ -49,7 +49,9 @@ var (
 	ErrNotFoundTask    = errors.New("task not found")
 	ErrNotFoundSession = errors.New("session not found")
 
-	Log           = logs.NewLogger(logs.Warn)
+	LogLevel      = logs.Warn
+	Log           = logs.NewLogger(LogLevel)
+	MuteLog       = logs.NewLogger(logs.Important)
 	implantGroups = []string{consts.ImplantGroup, consts.AliasesGroup, consts.ExtensionGroup}
 )
 
@@ -73,11 +75,9 @@ func Start(bindCmds ...BindCmds) error {
 			HelpSubCommands:       true,
 			//VimMode:               settings.VimMode,
 		}),
-		ActiveTarget: &ActiveTarget{
-			observers:  map[int]Observer{},
-			observerID: 0,
-		},
-		Settings: settings,
+		ActiveTarget: &ActiveTarget{},
+		Settings:     settings,
+		Observers:    map[string]*Observer{},
 	}
 	//con.App.SetPrintASCIILogo(func(_ *grumble.App) {
 	//con.PrintLogo()
@@ -87,9 +87,9 @@ func Start(bindCmds ...BindCmds) error {
 		bind(con)
 	}
 
-	con.ActiveTarget.AddObserver(func(_ *clientpb.Session) {
+	con.ActiveTarget.callback = func(sess *clientpb.Session) {
 		con.UpdatePrompt()
-	})
+	}
 
 	//go core.TunnelLoop(rpc)
 
@@ -105,6 +105,7 @@ type Console struct {
 	ActiveTarget *ActiveTarget
 	Settings     *assets.Settings
 	Callbacks    *sync.Map
+	Observers    map[string]*Observer
 	*ServerStatus
 }
 
@@ -151,5 +152,26 @@ func (c *Console) EnableImplantCommands() {
 func (c *Console) DisableImplantCommands() {
 	for _, g := range implantGroups {
 		c.App.Groups().Find(g).Disable()
+	}
+}
+
+// AddObserver - Observers to notify when the active session changes
+func (c *Console) AddObserver(session *clientpb.Session) string {
+	Log.Infof("Add observer to %s", session.SessionId)
+	c.Observers[session.SessionId] = NewObserver(session)
+	return session.SessionId
+}
+
+func (c *Console) RemoveObserver(observerID string) {
+	delete(c.Observers, observerID)
+}
+
+func (c *Console) SessionLog(sid string) *logs.Logger {
+	if ob, ok := c.Observers[sid]; ok {
+		return ob.log
+	} else if c.ActiveTarget.GetInteractive() != nil {
+		return c.ActiveTarget.activeObserver.log
+	} else {
+		return MuteLog
 	}
 }

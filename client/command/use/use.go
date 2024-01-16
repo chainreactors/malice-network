@@ -2,9 +2,9 @@ package use
 
 import (
 	"github.com/chainreactors/grumble"
+	"github.com/chainreactors/malice-network/client/command/completer"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
-	"strings"
 )
 
 func Command(con *console.Console) []*grumble.Command {
@@ -20,14 +20,14 @@ func Command(con *console.Console) []*grumble.Command {
 				return nil
 			},
 			Completer: func(prefix string, args []string) []string {
-				return SessionIDCompleter(con, prefix)
+				return completer.SessionIDCompleter(con, prefix)
 			},
 		},
 		&grumble.Command{
-			Name: "back",
+			Name: "background",
 			Help: "back to root context",
 			Run: func(ctx *grumble.Context) error {
-				con.ActiveTarget.Set(nil)
+				con.ActiveTarget.Background()
 				return nil
 			},
 		},
@@ -49,13 +49,4 @@ func UseSessionCmd(ctx *grumble.Context, con *console.Console) {
 
 	con.ActiveTarget.Set(session)
 	console.Log.Infof("Active session %s (%s)\n", session.Name, session.SessionId)
-}
-
-func SessionIDCompleter(con *console.Console, prefix string) (results []string) {
-	for _, s := range con.Sessions {
-		if strings.HasPrefix(s.SessionId, prefix) {
-			results = append(results, s.SessionId)
-		}
-	}
-	return
 }

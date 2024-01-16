@@ -41,3 +41,12 @@ func LocalPathCompleter(prefix string, args []string, con *console.Console) []st
 	}
 	return results
 }
+
+func SessionIDCompleter(con *console.Console, prefix string) (results []string) {
+	for _, s := range con.Sessions {
+		if strings.HasPrefix(s.SessionId, prefix) {
+			results = append(results, s.SessionId)
+		}
+	}
+	return
+}

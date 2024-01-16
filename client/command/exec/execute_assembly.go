@@ -40,10 +40,11 @@ func ExecuteAssemblyCmd(ctx *grumble.Context, con *console.Console) {
 		}
 		con.AddCallback(task.TaskId, func(msg proto.Message) {
 			resp := msg.(*pluginpb.AssemblyResponse)
+			sid := con.ActiveTarget.GetInteractive().SessionId
 			if resp.Status == 0 {
-				console.Log.Infof("%s output:\n%s", name, string(resp.Data))
+				con.SessionLog(sid).Infof("%s output:\n%s", name, string(resp.Data))
 			} else {
-				console.Log.Errorf("%s %s ", ctx.Command.Name, resp.Err)
+				con.SessionLog(sid).Errorf("%s %s ", ctx.Command.Name, resp.Err)
 			}
 		})
 	}()
