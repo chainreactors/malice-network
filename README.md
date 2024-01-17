@@ -37,22 +37,43 @@ protoc -I proto/ proto/services/listenerrpc/service.proto --go_out=paths=source_
 
 ### v0.0.1
 
-- [ ] implant
-  - [ ] scalability
+- implant
+  - scalability
     - [ ] pe
     - [ ] dll/so
     - [ ] bof
     - [ ] clr
   - [ ] basic function
 
-- [ ] server
-  - [ ] scalability
+- server/client
+  - scalability
     - [ ] module, IoM internal module
     - [ ] alias, execute-assembly
-    - [ ] extension, dll pe 
-    - [ ] plugin , sdk 
+    - [ ] extension, dll pe
+    - [ ] profile, load profile
+  - transport
+    - [x] tcp
+    - [ ] http
+  - [ ] standalone listener
+  - [ ] standalone generate env
+  - [ ] implant generate profile
 
+### v0.0.2
 
+- SDK
+  - [ ] python sdk
+  - [ ] golang sdk
+- [ ] mals 插件仓库
+  - [ ] gogo 扫描
+  - [ ] rem 代理
+- anti-edr/av
+  - [ ] rasho-gate
+  - [ ] custom-inject
+  - [ ] custom-loader
+- [ ] bof
+### planning
+
+- webshell support
 
 ## Thanks 
 
