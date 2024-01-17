@@ -55,7 +55,7 @@ func PrintSessions(sessions map[string]*clientpb.Session, con *console.Console) 
 
 	tw := table.NewWriter()
 	tw.SetTitle("sessions")
-	tw.SetStyle(styles.GetTableStyle(con))
+	tw.SetStyle(styles.GetTableStyle(con.Settings.TableStyle))
 
 	if con.Settings.SmallTermWidth < width {
 		tw.AppendHeader(table.Row{
