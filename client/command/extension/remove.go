@@ -1,4 +1,4 @@
-package extensions
+package extension
 
 /*
 	Sliver Implant Framework
@@ -21,21 +21,21 @@ package extensions
 import (
 	"errors"
 	"fmt"
+	"github.com/chainreactors/grumble"
+	"github.com/chainreactors/malice-network/client/assets"
+	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/utils"
 	"os"
 	"path/filepath"
 
 	"github.com/AlecAivazis/survey/v2"
-	"github.com/bishopfox/sliver/client/assets"
-	"github.com/bishopfox/sliver/client/console"
-	"github.com/bishopfox/sliver/util"
-	"github.com/desertbit/grumble"
 )
 
 // ExtensionsRemoveCmd - Remove an extension
-func ExtensionsRemoveCmd(ctx *grumble.Context, con *console.SliverConsoleClient) {
+func ExtensionsRemoveCmd(ctx *grumble.Context, con *console.Console) {
 	name := ctx.Args.String("name")
 	if name == "" {
-		con.PrintErrorf("Extension name is required\n")
+		console.Log.Errorf("Extension name is required\n")
 		return
 	}
 	confirm := false
@@ -46,15 +46,15 @@ func ExtensionsRemoveCmd(ctx *grumble.Context, con *console.SliverConsoleClient)
 	}
 	err := RemoveExtensionByCommandName(name, con)
 	if err != nil {
-		con.PrintErrorf("Error removing extension: %s\n", err)
+		console.Log.Errorf("Error removing extension: %s\n", err)
 		return
 	} else {
-		con.PrintInfof("Extension '%s' removed\n", name)
+		console.Log.Infof("Extension '%s' removed\n", name)
 	}
 }
 
 // RemoveExtensionByCommandName - Remove an extension by command name
-func RemoveExtensionByCommandName(commandName string, con *console.SliverConsoleClient) error {
+func RemoveExtensionByCommandName(commandName string, con *console.Console) error {
 	if commandName == "" {
 		return errors.New("command name is required")
 	}
@@ -72,6 +72,6 @@ func RemoveExtensionByCommandName(commandName string, con *console.SliverConsole
 }
 
 func forceRemoveAll(rootPath string) {
-	util.ChmodR(rootPath, 0o600, 0o700)
+	utils.ChmodR(rootPath, 0o600, 0o700)
 	os.RemoveAll(rootPath)
 }

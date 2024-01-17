@@ -306,13 +306,13 @@ func PrintArmoryPackages(aliases []*alias.AliasManifest, exts []*extension.Exten
 		}
 	}
 	tw.AppendRows(rows)
-	con.Printf("%s\n", tw.Render())
+	console.Log.Infof("%s\n", tw.Render())
 }
 
 // PrintArmoryBundles - Prints the armory bundles
-func PrintArmoryBundles(bundles []*ArmoryBundle, con *console.SliverConsoleClient) {
+func PrintArmoryBundles(bundles []*ArmoryBundle, con *console.Console) {
 	tw := table.NewWriter()
-	tw.SetStyle(settings.GetTableStyle(con))
+	tw.SetStyle(styles.GetTableStyle(con.Settings.TableStyle))
 	tw.SetTitle(console.Bold + "Bundles" + console.Normal)
 	tw.AppendHeader(table.Row{
 		"Name",
@@ -344,7 +344,7 @@ func PrintArmoryBundles(bundles []*ArmoryBundle, con *console.SliverConsoleClien
 			packages,
 		})
 	}
-	con.Printf("%s\n", tw.Render())
+	console.Log.Infof("%s\n", tw.Render())
 }
 
 func parseArmoryHTTPConfig(ctx *grumble.Context) ArmoryHTTPConfig {

@@ -19,52 +19,52 @@ package armory
 */
 
 import (
+	"github.com/chainreactors/grumble"
+	"github.com/chainreactors/malice-network/client/assets"
+	"github.com/chainreactors/malice-network/client/command/alias"
+	"github.com/chainreactors/malice-network/client/command/extension"
+	"github.com/chainreactors/malice-network/client/console"
 	"io/ioutil"
 	"strings"
-
-	"github.com/bishopfox/sliver/client/assets"
-	"github.com/bishopfox/sliver/client/command/alias"
-	"github.com/bishopfox/sliver/client/console"
-	"github.com/desertbit/grumble"
 )
 
 // ArmoryUpdateCmd - Update all installed extensions/aliases
-func ArmoryUpdateCmd(ctx *grumble.Context, con *console.SliverConsoleClient) {
-	con.PrintInfof("Refreshing package cache ... ")
+func ArmoryUpdateCmd(ctx *grumble.Context, con *console.Console) {
+	console.Log.Infof("Refreshing package cache ... ")
 	clientConfig := parseArmoryHTTPConfig(ctx)
 	refresh(clientConfig)
-	con.Printf(console.Clearln + "\r")
+	console.Log.Infof(console.Clearln + "\r")
 
 	// Aliases
 	aliasUpdates := checkForAliasUpdates(clientConfig, con)
 	if 0 < len(aliasUpdates) {
-		con.PrintInfof("%d alias(es) out of date: %s\n", len(aliasUpdates), strings.Join(aliasUpdates, ", "))
+		console.Log.Infof("%d alias(es) out of date: %s\n", len(aliasUpdates), strings.Join(aliasUpdates, ", "))
 		for _, aliasName := range aliasUpdates {
 			err := installAliasPackageByName(aliasName, clientConfig, con)
 			if err != nil {
-				con.PrintErrorf("Failed to update %s: %s\n", aliasName, err)
+				console.Log.Errorf("Failed to update %s: %s\n", aliasName, err)
 			}
 		}
 	} else {
-		con.PrintInfof("All aliases up to date!\n")
+		console.Log.Infof("All aliases up to date!\n")
 	}
 
 	// Extensions
 	extUpdates := checkForExtensionUpdates(clientConfig, con)
 	if 0 < len(extUpdates) {
-		con.PrintInfof("%d extension(s) out of date: %s\n", len(extUpdates), strings.Join(extUpdates, ", "))
+		console.Log.Infof("%d extension(s) out of date: %s\n", len(extUpdates), strings.Join(extUpdates, ", "))
 		for _, extName := range extUpdates {
 			err := installExtensionPackageByName(extName, clientConfig, con)
 			if err != nil {
-				con.PrintErrorf("Failed to update %s: %s\n", extName, err)
+				console.Log.Errorf("Failed to update %s: %s\n", extName, err)
 			}
 		}
 	} else {
-		con.PrintInfof("All extensions up to date!\n")
+		console.Log.Infof("All extensions up to date!\n")
 	}
 }
 
-func checkForAliasUpdates(clientConfig ArmoryHTTPConfig, con *console.SliverConsoleClient) []string {
+func checkForAliasUpdates(clientConfig ArmoryHTTPConfig, con *console.Console) []string {
 	cachedAliases, _ := packagesInCache()
 	results := []string{}
 	for _, aliasManifestPath := range assets.GetInstalledAliasManifests() {
@@ -87,7 +87,7 @@ func checkForAliasUpdates(clientConfig ArmoryHTTPConfig, con *console.SliverCons
 	return results
 }
 
-func checkForExtensionUpdates(clientConfig ArmoryHTTPConfig, con *console.SliverConsoleClient) []string {
+func checkForExtensionUpdates(clientConfig ArmoryHTTPConfig, con *console.Console) []string {
 	_, cachedExtensions := packagesInCache()
 	results := []string{}
 	for _, extManifestPath := range assets.GetInstalledExtensionManifests() {

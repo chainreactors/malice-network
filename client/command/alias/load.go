@@ -414,7 +414,7 @@ func runAliasCommand(ctx *grumble.Context, con *console.Console) {
 }
 
 // PrintSpawnDLLOutput - Prints the output of a spawn dll command
-//func PrintSpawnDLLOutput(cmdName string, spawnDllResp *sliverpb.SpawnDll, outFilePath *os.File, con *console.SliverConsoleClient) {
+//func PrintSpawnDLLOutput(cmdName string, spawnDllResp *sliverpb.SpawnDll, outFilePath *os.File, con *console.Console) {
 //	console.Log.Infof("%s output:\n%s", cmdName, spawnDllResp.GetResult())
 //	if outFilePath != nil {
 //		outFilePath.Write([]byte(spawnDllResp.GetResult()))
@@ -423,7 +423,7 @@ func runAliasCommand(ctx *grumble.Context, con *console.Console) {
 //}
 //
 //// PrintSideloadOutput - Prints the output of a sideload command
-//func PrintSideloadOutput(cmdName string, sideloadResp *sliverpb.Sideload, outFilePath *os.File, con *console.SliverConsoleClient) {
+//func PrintSideloadOutput(cmdName string, sideloadResp *sliverpb.Sideload, outFilePath *os.File, con *console.Console) {
 //	console.Log.Infof("%s output:\n%s", cmdName, sideloadResp.GetResult())
 //	if outFilePath != nil {
 //		outFilePath.Write([]byte(sideloadResp.GetResult()))

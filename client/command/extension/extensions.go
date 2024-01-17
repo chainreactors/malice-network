@@ -1,4 +1,4 @@
-package extensions
+package extension
 
 /*
 	Sliver Implant Framework
@@ -21,30 +21,30 @@ package extensions
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/chainreactors/grumble"
+	"github.com/chainreactors/malice-network/client/assets"
+	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/helper/styles"
 	"io/ioutil"
 	"strings"
 
-	"github.com/bishopfox/sliver/client/assets"
-	"github.com/bishopfox/sliver/client/command/settings"
-	"github.com/bishopfox/sliver/client/console"
-	"github.com/desertbit/grumble"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
 )
 
 // ExtensionsCmd - List information about installed extensions
-func ExtensionsCmd(ctx *grumble.Context, con *console.SliverConsoleClient) {
+func ExtensionsCmd(ctx *grumble.Context, con *console.Console) {
 	if 0 < len(getInstalledManifests()) {
 		PrintExtensions(con)
 	} else {
-		con.PrintInfof("No extensions installed, use the 'armory' command to automatically install some\n")
+		console.Log.Infof("No extensions installed, use the 'armory' command to automatically install some\n")
 	}
 }
 
 // PrintExtensions - Print a list of loaded extensions
-func PrintExtensions(con *console.SliverConsoleClient) {
+func PrintExtensions(con *console.Console) {
 	tw := table.NewWriter()
-	tw.SetStyle(settings.GetTableStyle(con))
+	tw.SetStyle(styles.GetTableStyle(con.Settings.TableStyle))
 	tw.AppendHeader(table.Row{
 		"Name",
 		"Command Name",
@@ -79,7 +79,7 @@ func PrintExtensions(con *console.SliverConsoleClient) {
 			extension.RepoURL,
 		})
 	}
-	con.Println(tw.Render())
+	console.Log.Info(tw.Render())
 }
 
 func extensionPlatforms(extension *ExtensionManifest) []string {
@@ -113,7 +113,7 @@ func getInstalledManifests() map[string]*ExtensionManifest {
 }
 
 // ExtensionsCommandNameCompleter - Completer for installed extensions command names
-func ExtensionsCommandNameCompleter(prefix string, args []string, con *console.SliverConsoleClient) []string {
+func ExtensionsCommandNameCompleter(prefix string, args []string, con *console.Console) []string {
 	installedManifests := getInstalledManifests()
 	results := []string{}
 	for _, manifest := range installedManifests {

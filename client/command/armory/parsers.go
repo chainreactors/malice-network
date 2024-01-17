@@ -24,6 +24,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/chainreactors/malice-network/client/assets"
+	"github.com/chainreactors/malice-network/helper/cryptography/minisign"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -31,9 +33,6 @@ import (
 	"path"
 	"strings"
 	"time"
-
-	"github.com/bishopfox/sliver/client/assets"
-	"github.com/bishopfox/sliver/server/cryptography/minisign"
 )
 
 // ArmoryIndexParser - Generic interface to fetch armory indexes

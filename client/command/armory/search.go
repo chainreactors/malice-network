@@ -19,27 +19,27 @@ package armory
 */
 
 import (
+	"github.com/chainreactors/grumble"
+	"github.com/chainreactors/malice-network/client/command/alias"
+	"github.com/chainreactors/malice-network/client/command/extension"
+	"github.com/chainreactors/malice-network/client/console"
 	"regexp"
-
-	"github.com/bishopfox/sliver/client/command/alias"
-	"github.com/bishopfox/sliver/client/console"
-	"github.com/desertbit/grumble"
 )
 
 // ArmorySearchCmd - Search for packages by name
-func ArmorySearchCmd(ctx *grumble.Context, con *console.SliverConsoleClient) {
-	con.PrintInfof("Refreshing package cache ... ")
+func ArmorySearchCmd(ctx *grumble.Context, con *console.Console) {
+	console.Log.Infof("Refreshing package cache ... ")
 	clientConfig := parseArmoryHTTPConfig(ctx)
 	refresh(clientConfig)
-	con.Printf(console.Clearln + "\r")
+	console.Log.Infof(console.Clearln + "\r")
 	rawNameExpr := ctx.Args.String("name")
 	if rawNameExpr == "" {
-		con.PrintErrorf("Please specify a search term!\n")
+		console.Log.Errorf("Please specify a search term!\n")
 		return
 	}
 	nameExpr, err := regexp.Compile(rawNameExpr)
 	if err != nil {
-		con.PrintErrorf("Invalid regular expression: %s\n", err)
+		console.Log.Errorf("Invalid regular expression: %s\n", err)
 		return
 	}
 
@@ -57,7 +57,7 @@ func ArmorySearchCmd(ctx *grumble.Context, con *console.SliverConsoleClient) {
 		}
 	}
 	if len(matchedAliases) == 0 && len(matchedExts) == 0 {
-		con.PrintInfof("No packages found matching '%s'\n", rawNameExpr)
+		console.Log.Infof("No packages found matching '%s'\n", rawNameExpr)
 		return
 	}
 	PrintArmoryPackages(matchedAliases, matchedExts, con)
