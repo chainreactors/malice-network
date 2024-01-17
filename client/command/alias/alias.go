@@ -28,7 +28,7 @@ func AliasesCmd(ctx *grumble.Context, con *console.Console) error {
 // PrintAliases - Print a list of loaded aliases
 func PrintAliases(con *console.Console) {
 	tw := table.NewWriter()
-	tw.SetStyle(styles.GetTableStyle(con))
+	tw.SetStyle(styles.GetTableStyle(con.Settings.TableStyle))
 	tw.AppendHeader(table.Row{
 		"Name",
 		"Command Name",
