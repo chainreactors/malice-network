@@ -1,7 +1,6 @@
 package styles
 
 import (
-	"github.com/chainreactors/malice-network/client/console"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
 )
@@ -103,9 +102,9 @@ var (
 )
 
 // GetTableStyle - Get the current table style
-func GetTableStyle(con *console.Console) table.Style {
-	if con.Settings != nil {
-		if value, ok := tableStyles[con.Settings.TableStyle]; ok {
+func GetTableStyle(setting string) table.Style {
+	if setting != "" {
+		if value, ok := tableStyles[setting]; ok {
 			return value
 		}
 	}
@@ -113,9 +112,9 @@ func GetTableStyle(con *console.Console) table.Style {
 }
 
 // GetTableWithBordersStyle - Get the table style with borders
-func GetTableWithBordersStyle(con *console.Console) table.Style {
-	value, ok := tableStyles[con.Settings.TableStyle]
-	if !ok || con.Settings.TableStyle == SliverDefault.Name {
+func GetTableWithBordersStyle(setting string) table.Style {
+	value, ok := tableStyles[setting]
+	if !ok || setting == SliverDefault.Name {
 		return sliverBordersDefault
 	}
 	return value
