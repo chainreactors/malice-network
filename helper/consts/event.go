@@ -1,23 +1,5 @@
 package consts
 
-// client
-const (
-	// UpdateStr - "update"
-	UpdateStr = "update"
-	// VersionStr - "version"
-	VersionStr         = "version"
-	ExecutionStr       = "exec"
-	ExecuteAssemblyStr = "execute-assembly"
-	UploadStr          = "upload"
-	DownloadStr        = "download"
-	BroadcastStr       = "broadcast"
-	NotifyStr          = "notify"
-	AliasStr           = "alias"
-	AliasLoadStr       = "load"
-	AliasInstallStr    = "install"
-	AliasRemoveStr     = "remove"
-)
-
 // event
 const (
 	EventJoin          = "event"

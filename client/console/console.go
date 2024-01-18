@@ -82,7 +82,7 @@ func Start(bindCmds ...BindCmds) error {
 	//con.App.SetPrintASCIILogo(func(_ *grumble.App) {
 	//con.PrintLogo()
 	//})
-	con.UpdatePrompt()
+	//con.UpdatePrompt()
 	for _, bind := range bindCmds {
 		bind(con)
 	}

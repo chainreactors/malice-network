@@ -3,7 +3,6 @@ package types
 import (
 	"errors"
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/implant/commonpb"
 	"github.com/chainreactors/malice-network/proto/implant/pluginpb"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
@@ -16,42 +15,42 @@ var (
 )
 
 func BuildSpite(spite *commonpb.Spite, msg proto.Message) (*commonpb.Spite, error) {
-	if spite == nil {
-		spite = &commonpb.Spite{}
-	}
 	switch msg.(type) {
 	case *commonpb.Block:
-		spite.Name = consts.PluginBlock
+		spite.Name = MsgBlock.String()
 		spite.Body = &commonpb.Spite_Block{Block: msg.(*commonpb.Block)}
 	case *commonpb.Register:
+		spite.Name = MsgRegister.String()
 		spite.Body = &commonpb.Spite_Register{Register: msg.(*commonpb.Register)}
 	case *pluginpb.ExecRequest:
-		spite.Name = consts.PluginExec
+		spite.Name = MsgExec.String()
 		spite.Body = &commonpb.Spite_ExecRequest{ExecRequest: msg.(*pluginpb.ExecRequest)}
 	case *pluginpb.ExecResponse:
+		spite.Name = MsgExec.String()
 		spite.Body = &commonpb.Spite_ExecResponse{ExecResponse: msg.(*pluginpb.ExecResponse)}
 	case *pluginpb.UploadRequest:
-		spite.Name = consts.PluginUpload
+		spite.Name = MsgUpload.String()
 		spite.Body = &commonpb.Spite_UploadRequest{UploadRequest: msg.(*pluginpb.UploadRequest)}
 	case *pluginpb.DownloadRequest:
-		spite.Name = consts.PluginDownload
+		spite.Name = MsgDownload.String()
 		spite.Body = &commonpb.Spite_DownloadRequest{DownloadRequest: msg.(*pluginpb.DownloadRequest)}
 	case *pluginpb.ExecuteAssembly:
-		spite.Name = consts.PluginExecuteAssembly
+		spite.Name = MsgExecuteAssembly.String()
 		spite.Body = &commonpb.Spite_ExecuteAssembly{ExecuteAssembly: msg.(*pluginpb.ExecuteAssembly)}
 	case *pluginpb.ExecuteShellcode:
-		spite.Name = consts.PluginExecuteShellcode
+		spite.Name = MsgExecuteShellcode.String()
 		spite.Body = &commonpb.Spite_ExecuteShellcode{ExecuteShellcode: msg.(*pluginpb.ExecuteShellcode)}
 	case *pluginpb.ExecuteSpawn:
-		spite.Name = consts.PluginExecuteSpawn
+		spite.Name = MsgExecuteSpawn.String()
 		spite.Body = &commonpb.Spite_ExecuteSpawn{ExecuteSpawn: msg.(*pluginpb.ExecuteSpawn)}
 	case *pluginpb.ExecuteSideLoad:
-		spite.Name = consts.PluginExecuteSideload
+		spite.Name = MsgExecuteSideLoad.String()
 		spite.Body = &commonpb.Spite_ExecuteSideload{ExecuteSideload: msg.(*pluginpb.ExecuteSideLoad)}
 	case *pluginpb.ExecuteBof:
-		spite.Name = consts.PluginExecuteBof
+		spite.Name = MsgExecuteBof.String()
 		spite.Body = &commonpb.Spite_ExecuteBof{ExecuteBof: msg.(*pluginpb.ExecuteBof)}
 	case *pluginpb.AssemblyResponse:
+		spite.Name = MsgExecuteAssembly.String()
 		spite.Body = &commonpb.Spite_AssemblyResponse{AssemblyResponse: msg.(*pluginpb.AssemblyResponse)}
 	default:
 		return spite, ErrUnknownSpite

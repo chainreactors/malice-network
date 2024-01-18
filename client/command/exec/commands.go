@@ -10,7 +10,7 @@ import (
 func Commands(con *console.Console) []*grumble.Command {
 	return []*grumble.Command{
 		&grumble.Command{
-			Name: consts.ExecutionStr,
+			Name: consts.ModuleExecution,
 			Help: "Execute command",
 			Flags: func(f *grumble.Flags) {
 				f.Bool("T", "token", false, "execute command with current token (windows only)")
@@ -37,9 +37,9 @@ func Commands(con *console.Console) []*grumble.Command {
 		},
 
 		&grumble.Command{
-			Name: consts.ExecuteAssemblyStr,
+			Name: consts.ModuleExecuteAssembly,
 			Help: "Loads and executes a .NET assembly in a child process (Windows Only)",
-			//LongHelp: help.GetHelpFor([]string{consts.ExecuteAssemblyStr}),
+			//LongHelp: help.GetHelpFor([]string{consts.ModuleExecuteAssembly}),
 			Args: func(a *grumble.Args) {
 				a.String("path", "path the assembly file")
 				a.StringList("arguments", "arguments to pass to the assembly entrypoint", grumble.Default([]string{}))

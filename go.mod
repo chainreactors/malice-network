@@ -33,6 +33,7 @@ require (
 	github.com/Binject/debug v0.0.0-20210312092933-6277045c2fdf // indirect
 	github.com/Binject/go-donut v0.0.0-20220908180326-fcdcc35d591c // indirect
 	github.com/akamensky/argparse v1.3.0 // indirect
+	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/chainreactors/grumble v0.0.0-20240111103643-830a8bf7d70a // indirect
 	github.com/charmbracelet/bubbles v0.17.1 // indirect
@@ -44,6 +45,7 @@ require (
 	github.com/desertbit/columnize v2.1.0+incompatible // indirect
 	github.com/desertbit/go-shlex v0.1.1 // indirect
 	github.com/desertbit/readline v1.5.1 // indirect
+	github.com/evertras/bubble-table v0.15.6 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/uuid v1.3.1 // indirect
 	github.com/gookit/color v1.5.4 // indirect

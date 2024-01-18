@@ -128,6 +128,7 @@ func (implant *Implant) Run() {
 			return
 		}
 
+		// read
 		go func() {
 			defer wg.Done()
 			msg, err := implant.ReadWithTimeout(conn)
@@ -140,9 +141,10 @@ func (implant *Implant) Run() {
 			return
 		}()
 
+		// write
 		go func() {
 			defer wg.Done()
-			if implant.cache.Len() == 0 {
+			if len(implant.ch) == 0 {
 				err := implant.WriteEmpty(conn)
 				if err != nil {
 					logs.Log.Debugf(err.Error())
@@ -154,6 +156,7 @@ func (implant *Implant) Run() {
 				err := implant.Write(conn, msg)
 				if err != nil {
 					logs.Log.Error(err.Error())
+					implant.ch <- msg
 					return
 				}
 				logs.Log.Debugf("send msg %v", msg)
@@ -177,6 +180,7 @@ func (implant *Implant) HandlerSpite(msg *commonpb.Spite) *commonpb.Spite {
 	spite := &commonpb.Spite{
 		TaskId: msg.TaskId,
 		End:    true,
+		Status: &commonpb.AsyncStatus{TaskId: msg.TaskId, Status: 0},
 	}
 	var resp proto.Message
 	switch msg.Body.(type) {
@@ -218,13 +222,13 @@ func (implant *Implant) Request(req *commonpb.Spite) (proto.Message, error) {
 	}
 }
 
-func (implant *Implant) Expect(req *commonpb.Spite, m Message) (proto.Message, error) {
+func (implant *Implant) Expect(req *commonpb.Spite, m types.MsgName) (proto.Message, error) {
 	resp, err := implant.Request(req)
 	if err != nil {
 		return nil, err
 	}
 
-	if m != MessageType(resp.(*commonpb.Spites).Spites[0]) {
+	if m != types.MessageType(resp.(*commonpb.Spites).Spites[0]) {
 		return resp, errors.New("unexpect response type ")
 	}
 	return resp, nil
