@@ -5,6 +5,7 @@ import (
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/proto/implant/commonpb"
 	"github.com/chainreactors/malice-network/proto/implant/pluginpb"
 	"google.golang.org/protobuf/proto"
 	"os"
@@ -25,21 +26,23 @@ func ExecuteAssemblyCmd(ctx *grumble.Context, con *console.Console) {
 		return
 	}
 
-	go func() {
-		var task *clientpb.Task
-		task, err = con.Rpc.ExecuteAssembly(con.ActiveTarget.Context(), &pluginpb.ExecuteAssembly{
-			Name:   name,
-			Bin:    binData,
-			Params: args,
-			Type:   consts.CSharpPlugin,
-		})
+	var task *clientpb.Task
+	task, err = con.Rpc.ExecuteAssembly(con.ActiveTarget.Context(), &pluginpb.ExecuteAssembly{
+		Name:   name,
+		Bin:    binData,
+		Params: args,
+		Type:   consts.CSharpPlugin,
+	})
 
-		if err != nil {
-			console.Log.Errorf("%s", err.Error())
-			return
-		}
+	if err != nil {
+		console.Log.Errorf("%s", err.Error())
+		return
+	}
+
+	go func() {
+
 		con.AddCallback(task.TaskId, func(msg proto.Message) {
-			resp := msg.(*pluginpb.AssemblyResponse)
+			resp := msg.(*commonpb.Spite).GetAssemblyResponse()
 			sid := con.ActiveTarget.GetInteractive().SessionId
 			if resp.Status == 0 {
 				con.SessionLog(sid).Infof("%s output:\n%s", name, string(resp.Data))

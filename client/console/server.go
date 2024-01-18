@@ -105,6 +105,7 @@ func (s *ServerStatus) triggerTaskCallback(event *clientpb.Event) {
 		})
 		if err != nil {
 			Log.Errorf(err.Error())
+			return
 		}
 		callback.(TaskCallback)(content)
 		s.Callbacks.Delete(task.TaskId)

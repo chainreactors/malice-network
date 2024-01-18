@@ -5,15 +5,17 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
+	"fmt"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/helper"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"io/ioutil"
 	"log"
 	"os"
 	"path"
+	"path/filepath"
 )
 
 var (
@@ -141,30 +143,23 @@ func verifyCertificate(caCertificate string, rawCerts [][]byte) error {
 
 func RpcOptions() []grpc.DialOption {
 	var options []grpc.DialOption
-	caCertX509, _, err := GetCertificateAuthority("root")
-	caCert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: caCertX509.Raw})
+	//caCertX509, _, err := GetCertificateAuthority("root")
+	//caCert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: caCertX509.Raw})
+	//if err != nil {
+	//	panic(err)
+	//}
+	configFile := filepath.Join(assets.GetConfigDir(), "admin_localhost_5004.yaml")
+	config, err := assets.ReadConfig(configFile)
 	if err != nil {
-		panic(err)
+		fmt.Println(err.Error())
+		return nil
 	}
-	listenerCertPath := path.Join(certsPath, "listener_default_crt.pem")
-	listenerKeyPath := path.Join(certsPath, "listener_default_key.pem")
-	if helper.FileExists(listenerCertPath) && helper.FileExists(listenerKeyPath) {
-		certContent, err := ioutil.ReadFile(listenerCertPath)
-		if err != nil {
-			logs.Log.Errorf("cert file can't read %s", err)
-		}
-
-		keyContent, err := ioutil.ReadFile(listenerKeyPath)
-		if err != nil {
-			logs.Log.Errorf("key file can't read %s", err)
-		}
-		tlsConfig, err := GetTLSConfig(string(caCert), string(certContent), string(keyContent))
-		transportCreds := credentials.NewTLS(tlsConfig)
-		options = []grpc.DialOption{
-			grpc.WithTransportCredentials(transportCreds),
-			grpc.WithBlock(),
-			grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(consts.ClientMaxReceiveMessageSize)),
-		}
+	tlsConfig, err := GetTLSConfig(config.CACertificate, config.Certificate, config.PrivateKey)
+	transportCreds := credentials.NewTLS(tlsConfig)
+	options = []grpc.DialOption{
+		grpc.WithTransportCredentials(transportCreds),
+		grpc.WithBlock(),
+		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(consts.ClientMaxReceiveMessageSize)),
 	}
 	return options
 }

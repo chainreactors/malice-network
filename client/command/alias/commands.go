@@ -9,9 +9,9 @@ import (
 
 func Commands(con *console.Console) []*grumble.Command {
 	aliasCmd := &grumble.Command{
-		Name: consts.AliasStr,
+		Name: consts.CommandAlias,
 		Help: "List current aliases",
-		//LongHelp: help.GetHelpFor([]string{consts.AliasStr}),
+		//LongHelp: help.GetHelpFor([]string{consts.CommandAlias}),
 		Run: func(ctx *grumble.Context) error {
 			AliasesCmd(ctx, con)
 			return nil
@@ -19,7 +19,7 @@ func Commands(con *console.Console) []*grumble.Command {
 		HelpGroup: consts.GenericGroup,
 	}
 	aliasCmd.AddCommand(&grumble.Command{
-		Name: consts.AliasLoadStr,
+		Name: consts.CommandAliasLoad,
 		Help: "Load a command alias",
 		//LongHelp: help.GetHelpFor([]string{consts.AliasesStr, consts.LoadStr}),
 		Run: func(ctx *grumble.Context) error {
@@ -36,7 +36,7 @@ func Commands(con *console.Console) []*grumble.Command {
 	})
 
 	aliasCmd.AddCommand(&grumble.Command{
-		Name: consts.AliasInstallStr,
+		Name: consts.CommandAliasInstall,
 		Help: "Install a command alias",
 		//LongHelp: help.GetHelpFor([]string{consts.AliasesStr, consts.InstallStr}),
 		Run: func(ctx *grumble.Context) error {
@@ -53,7 +53,7 @@ func Commands(con *console.Console) []*grumble.Command {
 	})
 
 	aliasCmd.AddCommand(&grumble.Command{
-		Name: consts.AliasRemoveStr,
+		Name: consts.CommandAliasRemove,
 		Help: "Remove an alias",
 		//LongHelp: help.GetHelpFor([]string{consts.RmStr}),
 		Run: func(ctx *grumble.Context) error {

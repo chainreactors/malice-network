@@ -42,6 +42,8 @@ var (
 	// ErrDatabaseFailure - Generic database failure error (real error is logged)
 	ErrDatabaseFailure = status.Error(codes.Internal, "Database operation failed")
 
+	ErrAssertFailure = status.Error(codes.InvalidArgument, "Assert spite type failure")
+	ErrNilAssert     = status.Error(codes.InvalidArgument, "must return spite body")
 	// ErrInvalidName - Invalid name
 	ErrInvalidName        = status.Error(codes.InvalidArgument, "Invalid session name, alphanumerics and _-. only")
 	ErrNotFoundSession    = status.Error(codes.InvalidArgument, "Session ID not found")
@@ -108,10 +110,16 @@ func StartClientListener(port uint16) (*grpc.Server, net.Listener, error) {
 	return grpcServer, ln, nil
 }
 
-func newGenericRequest(msg proto.Message, opts ...int) *GenericRequest {
+func newGenericRequest(ctx context.Context, msg proto.Message, opts ...int) (*GenericRequest, error) {
 	req := &GenericRequest{
 		Message: msg,
 	}
+	if session, err := getSession(ctx); err == nil {
+		req.Session = session
+	} else {
+		return nil, err
+	}
+
 	if opts == nil {
 		req.Task = req.NewTask(1)
 	} else {
@@ -122,37 +130,33 @@ func newGenericRequest(msg proto.Message, opts ...int) *GenericRequest {
 	err := dbSession.Create(models.ConvertToTaskDB(req.Task)).Error
 	if err != nil {
 		logs.Log.Errorf("cannot create task %s , %s in db", req.Task.Id, err.Error())
+		return nil, err
 	}
-	return req
+	return req, nil
 }
 
 type GenericRequest struct {
 	proto.Message
-	Task  *core.Task
-	Spite *commonpb.Spite
+	Task    *core.Task
+	Session *core.Session
 }
 
 func (r *GenericRequest) NewTask(total int) *core.Task {
-	task := core.NewTask(string(proto.MessageName(r.Message).Name()), total)
-	return task
+	return r.Session.NewTask(string(proto.MessageName(r.Message).Name()), total)
 }
 
 func (r *GenericRequest) NewSpite(msg proto.Message) (*commonpb.Spite, error) {
-	r.Spite = &commonpb.Spite{
+	spite := &commonpb.Spite{
 		Timeout: uint64(consts.MinTimeout.Seconds()),
 		TaskId:  r.Task.Id,
 		Async:   true,
 	}
 	var err error
-	r.Spite, err = types.BuildSpite(r.Spite, msg)
+	spite, err = types.BuildSpite(spite, msg)
 	if err != nil {
 		return nil, err
 	}
-	return r.Spite, nil
-}
-
-func (r *GenericRequest) SetTotal(total int) {
-	r.Task.Total = total
+	return spite, nil
 }
 
 func (r *GenericRequest) SetCallback(callback func()) {
@@ -174,7 +178,7 @@ func NewServer() *Server {
 	return &Server{}
 }
 
-func (rpc *Server) getSessionID(ctx context.Context) (string, error) {
+func getSessionID(ctx context.Context) (string, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		return "", ErrNotFoundSession
@@ -184,6 +188,19 @@ func (rpc *Server) getSessionID(ctx context.Context) (string, error) {
 	} else {
 		return "", ErrNotFoundSession
 	}
+}
+
+func getSession(ctx context.Context) (*core.Session, error) {
+	sid, err := getSessionID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	session, ok := core.Sessions.Get(sid)
+	if !ok {
+		return nil, ErrInvalidSessionID
+	}
+	return session, nil
 }
 
 func (rpc *Server) getListenerID(ctx context.Context) (string, error) {
@@ -227,33 +244,20 @@ func (rpc *Server) getClientName(ctx context.Context) string {
 
 // genericHandler - Pass the request to the Sliver/Session
 func (rpc *Server) genericHandler(ctx context.Context, req *GenericRequest) (proto.Message, error) {
-	var err error
-
-	sid, err := rpc.getSessionID(ctx)
-	if err != nil {
-		logs.Log.Errorf(err.Error())
-		return nil, err
-	}
-
-	session, ok := core.Sessions.Get(sid)
-	if !ok {
-		return nil, ErrInvalidSessionID
-	}
-	session.Tasks.Add(req.Task)
 	spite, err := req.NewSpite(req.Message)
 	if err != nil {
 		logs.Log.Errorf(err.Error())
 		return nil, err
 	}
 	spite.End = true
-	data, err := session.RequestAndWait(
-		&lispb.SpiteSession{SessionId: sid, TaskId: req.Task.Id, Spite: spite},
-		listenersCh[session.ListenerId],
+	data, err := req.Session.RequestAndWait(
+		&lispb.SpiteSession{SessionId: req.Session.ID, TaskId: req.Task.Id, Spite: spite},
+		listenersCh[req.Session.ListenerId],
 		consts.MinTimeout)
 	if err != nil {
 		return nil, err
 	}
-	session.DeleteResp(req.Task.Id)
+	req.Session.DeleteResp(req.Task.Id)
 	resp, err := types.ParseSpite(data)
 	if err != nil {
 		return nil, err
@@ -261,64 +265,41 @@ func (rpc *Server) genericHandler(ctx context.Context, req *GenericRequest) (pro
 	return resp, nil
 }
 
-func (rpc *Server) asyncGenericHandler(ctx context.Context, req *GenericRequest) (*commonpb.AsyncStatus, chan *commonpb.Spite, error) {
-	var err error
-	sid, err := rpc.getSessionID(ctx)
-	if err != nil {
-		logs.Log.Errorf(err.Error())
-		return nil, nil, err
-	}
-
-	session, ok := core.Sessions.Get(sid)
-	if !ok {
-		return nil, nil, ErrInvalidSessionID
-	}
-	session.Tasks.Add(req.Task)
+func (rpc *Server) asyncGenericHandler(ctx context.Context, req *GenericRequest) (chan *commonpb.Spite, error) {
 	spite, err := req.NewSpite(req.Message)
 	if err != nil {
 		logs.Log.Errorf(err.Error())
-		return nil, nil, err
-	}
-	spite.End = true
-	stat, out, err := session.RequestWithAsync(
-		&lispb.SpiteSession{SessionId: sid, TaskId: req.Task.Id, Spite: spite},
-		listenersCh[session.ListenerId],
-		consts.MinTimeout)
-	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	return stat, out, nil
+	spite.End = true
+	out, err := req.Session.RequestWithAsync(
+		&lispb.SpiteSession{SessionId: req.Session.ID, TaskId: req.Task.Id, Spite: spite},
+		listenersCh[req.Session.ListenerId],
+		consts.MinTimeout)
+	if err != nil {
+		return nil, err
+	}
+
+	return out, nil
 }
 
 // streamGenericHandler - Generic handler for async request/response's for beacon tasks
-func (rpc *Server) streamGenericHandler(ctx context.Context, req *GenericRequest) (chan *commonpb.Spite, chan *commonpb.Spite, *commonpb.AsyncStatus, error) {
-	var err error
-	sid, err := rpc.getSessionID(ctx)
-	if err != nil {
-		logs.Log.Errorf(err.Error())
-		return nil, nil, nil, err
-	}
-
-	session, ok := core.Sessions.Get(sid)
-	if !ok {
-		return nil, nil, nil, ErrInvalidSessionID
-	}
-	session.Tasks.Add(req.Task)
+func (rpc *Server) streamGenericHandler(ctx context.Context, req *GenericRequest) (chan *commonpb.Spite, chan *commonpb.Spite, error) {
 	spite, err := req.NewSpite(req.Message)
 	if err != nil {
 		logs.Log.Errorf(err.Error())
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
-	in, out, stat, err := session.RequestWithStream(
-		&lispb.SpiteSession{SessionId: sid, TaskId: req.Task.Id, Spite: spite},
-		listenersCh[session.ListenerId],
+	in, out, err := req.Session.RequestWithStream(
+		&lispb.SpiteSession{SessionId: req.Session.ID, TaskId: req.Task.Id, Spite: spite},
+		listenersCh[req.Session.ListenerId],
 		consts.MinTimeout)
 	if err != nil {
-		return nil, nil, stat, err
+		return nil, nil, err
 	}
 
-	return in, out, stat, nil
+	return in, out, nil
 }
 
 func (rpc *Server) GetBasic(ctx context.Context, _ *clientpb.Empty) (*clientpb.Basic, error) {
@@ -396,4 +377,22 @@ func getOperatorServerMTLSConfig(host string) *tls.Config {
 	}
 
 	return tlsConfig
+}
+
+func AssertAsyncResponse(spite *commonpb.Spite, expect types.MsgName) error {
+	if stat := spite.GetStatus(); stat == nil {
+		return ErrMissingRequestField
+	} else if stat.Status != 0 {
+		return status.Error(codes.InvalidArgument, stat.Error)
+	}
+
+	body := spite.GetBody()
+	if body == nil && expect != types.MsgNil {
+		return ErrNilAssert
+	}
+
+	if expect != types.MessageType(spite) {
+		return ErrAssertFailure
+	}
+	return nil
 }

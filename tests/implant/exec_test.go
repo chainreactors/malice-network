@@ -12,6 +12,14 @@ import (
 	"time"
 )
 
+var (
+	execResp = &pluginpb.ExecResponse{
+		Stdout:     []byte("admin"),
+		Pid:        999,
+		StatusCode: 0,
+	}
+)
+
 func TestExec(t *testing.T) {
 	implant := common.NewImplant(common.DefaultListenerAddr, common.TestSid)
 	implant.Register()
@@ -27,12 +35,7 @@ func TestExec(t *testing.T) {
 			TaskId: 0,
 			End:    true,
 		}
-		resp := &pluginpb.ExecResponse{
-			Stdout:     []byte("admin"),
-			Pid:        999,
-			StatusCode: 0,
-		}
-		types.BuildSpite(spite, resp)
+		types.BuildSpite(spite, execResp)
 		err = implant.WriteSpite(conn, spite)
 		if err != nil {
 			fmt.Println(err)
@@ -44,7 +47,7 @@ func TestExec(t *testing.T) {
 		Path: "/bin/bash",
 		Args: []string{"whoami"},
 	}
-	resp, err := rpc.Call(consts.ExecutionStr, exec)
+	resp, err := rpc.Call(consts.ModuleExecution, exec)
 	if err != nil {
 		return
 	}

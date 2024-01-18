@@ -59,8 +59,8 @@ func (s *ActiveTarget) Context() context.Context {
 
 // Set - Change the active session
 func (s *ActiveTarget) Set(session *clientpb.Session) {
-	s.session = session
 	s.callback(session)
+	s.session = session
 	return
 }
 

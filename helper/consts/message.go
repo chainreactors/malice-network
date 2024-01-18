@@ -1,18 +1,19 @@
 package consts
 
-// plugin name
-
+// module and command
 const (
-	PluginBlock            = "block"
-	PluginRegister         = "register"
-	PluginUpload           = "upload"
-	PluginDownload         = "download"
-	PluginExec             = "exec"
-	PluginExecuteAssembly  = "execute_assembly"
-	PluginExecuteShellcode = "execute_shellcode"
-	PluginExecuteSpawn     = "execute_spawn"
-	PluginExecuteSideload  = "execute_sideload"
-	PluginExecuteBof       = "execute_bof"
+	ModuleUpdate          = "update"
+	ModuleExecution       = "exec"
+	ModuleExecuteAssembly = "execute-assembly"
+	ModuleUpload          = "upload"
+	ModuleDownload        = "download"
+	CommandBroadcast      = "broadcast"
+	CommandVersion        = "version"
+	CommandNotify         = "notify"
+	CommandAlias          = "alias"
+	CommandAliasLoad      = "load"
+	CommandAliasInstall   = "install"
+	CommandAliasRemove    = "remove"
 )
 
 // ctrl type
