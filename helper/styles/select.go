@@ -69,3 +69,11 @@ func (m *SelectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	return m, nil
 }
+
+func (m *SelectModel) Run() (tea.Model, error) {
+	model, err := tea.NewProgram(m).Run()
+	if err != nil {
+		return nil, err
+	}
+	return model, nil
+}

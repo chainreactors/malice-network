@@ -8,7 +8,6 @@ import (
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/helper/styles"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
-	tea "github.com/charmbracelet/bubbletea"
 	"path/filepath"
 )
 
@@ -43,9 +42,7 @@ func LoginCmd(ctx *grumble.Context, con *console.Console) error {
 		Choices: files,
 	}
 
-	// Start the interactive list
-	p := tea.NewProgram(m)
-	if err := p.Start(); err != nil {
+	if _, err := m.Run(); err != nil {
 		con.App.Println("Error starting interactive list:", err)
 		return err
 	}

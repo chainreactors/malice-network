@@ -10,6 +10,7 @@ import (
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/commonpb"
 	"github.com/chainreactors/malice-network/proto/implant/pluginpb"
+	"github.com/chainreactors/malice-network/server/core"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/gookit/config/v2"
 	"os"
@@ -125,9 +126,29 @@ func (rpc *Server) Download(ctx context.Context, req *pluginpb.DownloadRequest) 
 //}
 
 func (rpc *Server) Sync(ctx context.Context, req *clientpb.Sync) (*clientpb.SyncResp, error) {
-	resp, err := rpc.genericHandler(ctx, newGenericRequest(req))
+	greq := newGenericRequest(req)
+	sid, err := rpc.getSessionID(ctx)
+	if err != nil {
+		logs.Log.Errorf(err.Error())
+		return nil, err
+	}
+	session, ok := core.Sessions.Get(sid)
+	if !ok {
+		return nil, ErrInvalidSessionID
+	}
+	session.Tasks.Add(greq.Task)
+
+	if !files.IsExist(req.Target) {
+		return nil, os.ErrExist
+	}
+	data, err := os.ReadFile(req.Target)
 	if err != nil {
 		return nil, err
 	}
-	return resp.(*clientpb.SyncResp), nil
+	resp := &clientpb.SyncResp{
+		Task:    greq.Task.ToProtobuf(),
+		Target:  req.Target,
+		Content: data,
+	}
+	return resp, nil
 }

@@ -1,18 +1,16 @@
 package file
 
 import (
-	"fmt"
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/helper/styles"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/pluginpb"
 	"github.com/charmbracelet/bubbles/progress"
-	tea "github.com/charmbracelet/bubbletea"
 	"os"
 )
 
-func Command(con *console.Console) []*grumble.Command {
+func DownloadCommand(con *console.Console) []*grumble.Command {
 	return []*grumble.Command{{
 		Name: "download",
 		Help: "download file",
@@ -21,13 +19,13 @@ func Command(con *console.Console) []*grumble.Command {
 			f.String("p", "path", "", "filepath")
 		},
 		Run: func(ctx *grumble.Context) error {
-			Download(ctx, con)
+			download(ctx, con)
 			return nil
 		},
 	}}
 }
 
-func Download(ctx *grumble.Context, con *console.Console) {
+func download(ctx *grumble.Context, con *console.Console) {
 	session := con.ActiveTarget.GetInteractive()
 	if session == nil {
 		return
@@ -49,8 +47,8 @@ func Download(ctx *grumble.Context, con *console.Console) {
 			ProgressPercent: <-ctrl,
 		}
 
-		if _, err := tea.NewProgram(m).Run(); err != nil {
-			fmt.Println("Oh no!", err)
+		if _, err := m.Run(); err != nil {
+			console.Log.Errorf("console has an error: %s", err)
 			os.Exit(1)
 		}
 	}()

@@ -16,7 +16,8 @@ func (rpc *Server) Register(ctx context.Context, req *lispb.RegisterSession) (*c
 	core.Sessions.Add(sess)
 	dbSession := db.Session()
 	err := dbSession.Create(models.ConvertToSessionDB(sess)).Error
-	if err != nil && err.Error() != db.ERRNOEXISTS.Error() {
+	newErr := fmt.Errorf("%w", db.ERRNOEXISTS)
+	if err.Error() != newErr.Error() {
 		logs.Log.Errorf("cannot create session %s , %s in db", sess.ID, err.Error())
 		return nil, err
 	}
