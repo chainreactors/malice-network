@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
@@ -24,11 +25,11 @@ func (rpc *Server) Execute(ctx context.Context, req *pluginpb.ExecRequest) (*cli
 
 		err := AssertAsyncResponse(resp, types.MsgExec)
 		if err != nil {
+			logs.Log.Error(err.Error())
 			return
 		}
 		greq.SetCallback(func() {
 			greq.Task.Spite = resp
-
 			core.EventBroker.Publish(core.Event{
 				EventType: consts.EventTaskCallback,
 				Task:      greq.Task,
@@ -53,11 +54,11 @@ func (rpc *Server) ExecuteAssembly(ctx context.Context, req *pluginpb.ExecuteAss
 		resp := <-ch
 		err := AssertAsyncResponse(resp, types.MsgAssemblyResponse)
 		if err != nil {
+			logs.Log.Error(err.Error())
 			return
 		}
 		greq.SetCallback(func() {
-			data := <-ch
-			greq.Task.Spite = data
+			greq.Task.Spite = resp
 			core.EventBroker.Publish(core.Event{
 				EventType: consts.EventTaskCallback,
 				Task:      greq.Task,

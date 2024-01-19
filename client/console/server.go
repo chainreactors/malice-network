@@ -147,9 +147,10 @@ func (s *ServerStatus) EventHandler() {
 			Log.Console(Clearln)
 			Log.Importantf("%s notified: %s %s", event.Source, string(event.Data), event.Err)
 		case consts.EventTaskCallback:
+			Log.Debugf("task callback")
 			s.triggerTaskCallback(event)
 		case consts.EventTaskDone:
-			Log.Console(Clearln)
+			Log.Debugf("task done")
 		}
 	}
 }

@@ -39,16 +39,13 @@ func ExecuteAssemblyCmd(ctx *grumble.Context, con *console.Console) {
 		return
 	}
 
-	go func() {
-
-		con.AddCallback(task.TaskId, func(msg proto.Message) {
-			resp := msg.(*commonpb.Spite).GetAssemblyResponse()
-			sid := con.ActiveTarget.GetInteractive().SessionId
-			if resp.Status == 0 {
-				con.SessionLog(sid).Infof("%s output:\n%s", name, string(resp.Data))
-			} else {
-				con.SessionLog(sid).Errorf("%s %s ", ctx.Command.Name, resp.Err)
-			}
-		})
-	}()
+	con.AddCallback(task.TaskId, func(msg proto.Message) {
+		resp := msg.(*commonpb.Spite).GetAssemblyResponse()
+		sid := con.ActiveTarget.GetInteractive().SessionId
+		if resp.Status == 0 {
+			con.SessionLog(sid).Infof("%s output:\n%s", name, string(resp.Data))
+		} else {
+			con.SessionLog(sid).Errorf("%s %s ", ctx.Command.Name, resp.Err)
+		}
+	})
 }
