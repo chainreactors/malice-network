@@ -59,6 +59,7 @@ func Start(bindCmds ...BindCmds) error {
 	}
 
 	con.ActiveTarget.callback = func(sess *clientpb.Session) {
+		con.ActiveTarget.activeObserver = NewObserver(sess)
 		con.UpdatePrompt()
 	}
 

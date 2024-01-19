@@ -46,17 +46,15 @@ func ExecuteCmd(ctx *grumble.Context, con *console.Console) {
 		return
 	}
 
-	go func() {
-		con.AddCallback(resp.TaskId, func(msg proto.Message) {
-			resp := msg.(*commonpb.Spite).GetExecResponse()
-			sid := con.ActiveTarget.GetInteractive().SessionId
-			con.SessionLog(sid).Infof("pid: %d, status: %d", resp.Pid, resp.StatusCode)
-			if resp.StatusCode == 0 {
-				con.SessionLog(sid).Consolef("%s %s output:\n%s", cmdPath, strings.Join(args, " "), string(resp.Stdout))
-			} else {
-				con.SessionLog(sid).Errorf("%s %s ", ctx.Command.Name, resp.Stderr)
-			}
-		})
-	}()
+	con.AddCallback(resp.TaskId, func(msg proto.Message) {
+		resp := msg.(*commonpb.Spite).GetExecResponse()
+		sid := con.ActiveTarget.GetInteractive().SessionId
+		con.SessionLog(sid).Infof("pid: %d, status: %d", resp.Pid, resp.StatusCode)
+		if resp.StatusCode == 0 {
+			con.SessionLog(sid).Consolef("%s %s , output:\n%s", cmdPath, strings.Join(args, " "), string(resp.Stdout))
+		} else {
+			con.SessionLog(sid).Errorf("%s %s ", ctx.Command.Name, resp.Stderr)
+		}
+	})
 
 }

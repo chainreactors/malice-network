@@ -51,6 +51,23 @@ type Task struct {
 	end       chan struct{}
 }
 
+func (t *Task) Handler() {
+	for ok := range t.done {
+		if !ok {
+			return
+		}
+		t.Cur++
+		if t.Cur == t.Total {
+			close(t.done)
+		}
+		EventBroker.Publish(Event{
+			EventType: consts.EventTaskDone,
+			Task:      t,
+		})
+	}
+	t.Finish()
+}
+
 func (t *Task) ToProtobuf() *clientpb.Task {
 	task := &clientpb.Task{
 		TaskId:    t.Id,
@@ -60,22 +77,6 @@ func (t *Task) ToProtobuf() *clientpb.Task {
 		Total:     int32(t.Total),
 		Status:    0,
 	}
-	go func() {
-		for ok := range t.done {
-			if !ok {
-				return
-			}
-			t.Cur++
-			if t.Cur == t.Total {
-				close(t.done)
-			}
-			EventBroker.Publish(Event{
-				EventType: consts.EventTaskDone,
-				Task:      t,
-			})
-		}
-		t.Finish()
-	}()
 	return task
 }
 
