@@ -10,7 +10,7 @@ import (
 func Commands(con *console.Console) []*grumble.Command {
 	return []*grumble.Command{
 		&grumble.Command{
-			Name: consts.ExecutionStr,
+			Name: consts.ModuleExecution,
 			Help: "Execute command",
 			Flags: func(f *grumble.Flags) {
 				f.Bool("T", "token", false, "execute command with current token (windows only)")
@@ -37,9 +37,9 @@ func Commands(con *console.Console) []*grumble.Command {
 		},
 
 		&grumble.Command{
-			Name: consts.ExecuteAssemblyStr,
+			Name: consts.ModuleExecuteAssembly,
 			Help: "Loads and executes a .NET assembly in a child process (Windows Only)",
-			//LongHelp: help.GetHelpFor([]string{consts.ExecuteAssemblyStr}),
+			//LongHelp: help.GetHelpFor([]string{consts.ModuleExecuteAssembly}),
 			Args: func(a *grumble.Args) {
 				a.String("path", "path the assembly file")
 				a.StringList("arguments", "arguments to pass to the assembly entrypoint", grumble.Default([]string{}))
@@ -65,6 +65,31 @@ func Commands(con *console.Console) []*grumble.Command {
 			Run: func(ctx *grumble.Context) error {
 				ExecuteAssemblyCmd(ctx, con)
 				return nil
+			},
+			HelpGroup: consts.ImplantGroup,
+		},
+
+		&grumble.Command{
+			Name: consts.ModuleExecuteShellcode,
+			Help: "Executes the given shellcode in the sliver process",
+			//LongHelp: help.GetHelpFor([]string{consts.ExecuteShellcodeStr}),
+			Run: func(ctx *grumble.Context) error {
+				ExecuteShellcodeCmd(ctx, con)
+				return nil
+			},
+			Args: func(a *grumble.Args) {
+				a.String("filepath", "path the shellcode file")
+			},
+			Flags: func(f *grumble.Flags) {
+				//f.Bool("r", "rwx-pages", false, "Use RWX permissions for memory pages")
+				f.Uint("p", "pid", 0, "Pid of process to inject into (0 means injection into ourselves)")
+				f.String("n", "process", `c:\windows\system32\notepad.exe`, "Process to inject into when running in interactive mode")
+				//f.Bool("i", "interactive", false, "Inject into a new process and interact with it")
+				f.Bool("S", "shikata-ga-nai", false, "encode shellcode using shikata ga nai prior to execution")
+				f.String("A", "architecture", "amd64", "architecture of the shellcode: 386, amd64 (used with --shikata-ga-nai flag)")
+				f.Int("I", "iterations", 1, "number of encoding iterations (used with --shikata-ga-nai flag)")
+
+				f.Int("t", "timeout", consts.DefaultTimeout, "command timeout in seconds")
 			},
 			HelpGroup: consts.ImplantGroup,
 		},

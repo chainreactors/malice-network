@@ -130,7 +130,7 @@ func (f *Forward) Handler() {
 			if size := proto.Size(spite); size <= 1000 {
 				logs.Log.Debugf("[listener.%s] receive spite %s, %v", msg.SessionID, spite.Name, spite)
 			} else {
-				logs.Log.Debugf("[listener.%s] receive spite %d bytes", msg.SessionID, spite.Name, size)
+				logs.Log.Debugf("[listener.%s] receive spite %s %d bytes", msg.SessionID, spite.Name, size)
 			}
 			switch spite.Body.(type) {
 			case *commonpb.Spite_Register:

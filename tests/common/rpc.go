@@ -53,13 +53,13 @@ func (c *Client) Call(rpcname string, msg proto.Message) (proto.Message, error) 
 	var resp proto.Message
 	var err error
 	switch rpcname {
-	case consts.ExecutionStr:
+	case consts.ModuleExecution:
 		resp, err = c.Client.Execute(meta, msg.(*pluginpb.ExecRequest))
-	case consts.UploadStr:
+	case consts.ModuleUpload:
 		resp, err = c.Client.Upload(meta, msg.(*pluginpb.UploadRequest))
-	case consts.DownloadStr:
+	case consts.ModuleDownload:
 		resp, err = c.Client.Download(meta, msg.(*pluginpb.DownloadRequest))
-	case consts.BroadcastStr:
+	case consts.CommandBroadcast:
 		resp, err = c.Client.Broadcast(meta, msg.(*clientpb.Event))
 	default:
 		return nil, errors.New("unknown rpc")

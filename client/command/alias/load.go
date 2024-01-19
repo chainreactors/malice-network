@@ -1,7 +1,6 @@
 package alias
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/chainreactors/files"
@@ -11,6 +10,7 @@ import (
 	"github.com/chainreactors/malice-network/client/utils"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/proto/implant/commonpb"
 	"github.com/chainreactors/malice-network/proto/implant/pluginpb"
 	"google.golang.org/protobuf/proto"
 	"os"
@@ -315,7 +315,7 @@ func runAliasCommand(ctx *grumble.Context, con *console.Console) {
 		// Execute Assembly
 		//msg := fmt.Sprintf("Executing %s %s ...", ctx.Command.Name, extArgs)
 		//con.SpinUntil(msg, ctrl)
-		executeAssemblyResp, err := con.Rpc.ExecuteAssembly(context.Background(), &pluginpb.ExecuteAssembly{
+		executeAssemblyResp, err := con.Rpc.ExecuteAssembly(con.ActiveTarget.Context(), &pluginpb.ExecuteAssembly{
 			Name:   loadedAlias.Command.Name,
 			Bin:    binData,
 			Type:   consts.CSharpPlugin,
@@ -327,12 +327,12 @@ func runAliasCommand(ctx *grumble.Context, con *console.Console) {
 		}
 
 		con.AddCallback(executeAssemblyResp.TaskId, func(msg proto.Message) {
-			resp := msg.(*pluginpb.AssemblyResponse)
+			resp := msg.(*commonpb.Spite).GetAssemblyResponse()
 			sid := con.ActiveTarget.GetInteractive().SessionId
 			if resp.Status == 0 {
 				con.SessionLog(sid).Infof("%s output:\n%s", loadedAlias.Command.Name, string(resp.Data))
 			} else {
-				con.SessionLog(sid).Errorf("%s %s ", loadedAlias.Command.Name, resp.Err)
+				con.SessionLog(sid).Errorf("%s %s ", ctx.Command.Name, resp.Err)
 			}
 		})
 
@@ -414,7 +414,7 @@ func runAliasCommand(ctx *grumble.Context, con *console.Console) {
 }
 
 // PrintSpawnDLLOutput - Prints the output of a spawn dll command
-//func PrintSpawnDLLOutput(cmdName string, spawnDllResp *sliverpb.SpawnDll, outFilePath *os.File, con *console.SliverConsoleClient) {
+//func PrintSpawnDLLOutput(cmdName string, spawnDllResp *sliverpb.SpawnDll, outFilePath *os.File, con *console.Console) {
 //	console.Log.Infof("%s output:\n%s", cmdName, spawnDllResp.GetResult())
 //	if outFilePath != nil {
 //		outFilePath.Write([]byte(spawnDllResp.GetResult()))
@@ -423,7 +423,7 @@ func runAliasCommand(ctx *grumble.Context, con *console.Console) {
 //}
 //
 //// PrintSideloadOutput - Prints the output of a sideload command
-//func PrintSideloadOutput(cmdName string, sideloadResp *sliverpb.Sideload, outFilePath *os.File, con *console.SliverConsoleClient) {
+//func PrintSideloadOutput(cmdName string, sideloadResp *sliverpb.Sideload, outFilePath *os.File, con *console.Console) {
 //	console.Log.Infof("%s output:\n%s", cmdName, sideloadResp.GetResult())
 //	if outFilePath != nil {
 //		outFilePath.Write([]byte(sideloadResp.GetResult()))

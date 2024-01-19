@@ -3,6 +3,7 @@ package core
 import (
 	"errors"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/commonpb"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
@@ -26,6 +27,10 @@ var (
 )
 
 func NewSession(req *lispb.RegisterSession) *Session {
+	if req.RegisterData.Os.Name == "windows" {
+		req.RegisterData.Os.Arch = consts.GetWindowsArch(req.RegisterData.Os.Arch)
+	}
+
 	return &Session{
 		Name:       req.RegisterData.Name,
 		ProxyURL:   req.RegisterData.Proxy,
@@ -39,7 +44,7 @@ func NewSession(req *lispb.RegisterSession) *Session {
 		Process:    req.RegisterData.Process,
 		Timer:      req.RegisterData.Timer,
 		Tasks:      &Tasks{active: &sync.Map{}},
-		Responses:  &sync.Map{},
+		responses:  &sync.Map{},
 	}
 }
 
@@ -61,7 +66,8 @@ type Session struct {
 	PeerID     int64
 	Locale     string
 	Tasks      *Tasks // task manager
-	Responses  *sync.Map
+	taskseq    uint32
+	responses  *sync.Map
 }
 
 func (s *Session) ToProtobuf() *clientpb.Session {
@@ -72,6 +78,25 @@ func (s *Session) ToProtobuf() *clientpb.Session {
 		Process:   s.Process,
 		Timer:     s.Timer,
 	}
+}
+
+func (s *Session) nextTaskId() uint32 {
+	s.taskseq++
+	return s.taskseq
+}
+
+func (s *Session) NewTask(name string, total int) *Task {
+	task := &Task{
+		Type:      name,
+		Total:     total,
+		Id:        s.nextTaskId(),
+		SessionId: s.ID,
+		done:      make(chan bool),
+		end:       make(chan struct{}),
+	}
+	go task.Handler()
+	s.Tasks.Add(task)
+	return task
 }
 
 func (s *Session) UpdateLastCheckin() {
@@ -114,18 +139,12 @@ func (s *Session) RequestAndWait(msg *lispb.SpiteSession, stream grpc.ServerStre
 }
 
 // RequestWithStream - 'async' means that the response is not returned immediately, but is returned through the channel 'ch
-func (s *Session) RequestWithStream(msg *lispb.SpiteSession, stream grpc.ServerStream, timeout time.Duration) (chan *commonpb.Spite, chan *commonpb.Spite, *commonpb.AsyncStatus, error) {
+func (s *Session) RequestWithStream(msg *lispb.SpiteSession, stream grpc.ServerStream, timeout time.Duration) (chan *commonpb.Spite, chan *commonpb.Spite, error) {
 	respCh := make(chan *commonpb.Spite)
 	s.StoreResp(msg.TaskId, respCh)
 	err := s.Request(msg, stream, timeout)
 	if err != nil {
-		return nil, nil, nil, err
-	}
-	resp := <-respCh
-	if stat := resp.GetStatus(); stat == nil {
-		return nil, nil, nil, errors.New("illegal spite type")
-	} else if stat.Status != 0 {
-		return nil, nil, stat, errors.New(stat.Error)
+		return nil, nil, err
 	}
 
 	in := make(chan *commonpb.Spite)
@@ -146,43 +165,26 @@ func (s *Session) RequestWithStream(msg *lispb.SpiteSession, stream grpc.ServerS
 			c++
 		}
 	}()
-	return in, respCh, resp.GetStatus(), nil
+	return in, respCh, nil
 }
 
-func (s *Session) RequestWithAsync(msg *lispb.SpiteSession, stream grpc.ServerStream, timeout time.Duration) (*commonpb.AsyncStatus, chan *commonpb.Spite, error) {
+func (s *Session) RequestWithAsync(msg *lispb.SpiteSession, stream grpc.ServerStream, timeout time.Duration) (chan *commonpb.Spite, error) {
 	respCh := make(chan *commonpb.Spite)
 	s.StoreResp(msg.TaskId, respCh)
 	err := s.Request(msg, stream, timeout)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	resp := <-respCh
 
-	if stat := resp.GetStatus(); stat == nil {
-		return nil, nil, errors.New("illegal spite type")
-	} else if resp.GetStatus().Status != 0 {
-		return stat, nil, errors.New(stat.Error)
-	}
-	ch := make(chan *commonpb.Spite)
-	if resp.GetBody() != nil {
-		ch <- resp
-	} else {
-		go func() {
-			defer close(respCh)
-			defer close(ch)
-			resp := <-respCh
-			ch <- resp
-		}()
-	}
-	return resp.GetStatus(), ch, nil
+	return respCh, nil
 }
 
 func (s *Session) StoreResp(taskId uint32, ch chan *commonpb.Spite) {
-	s.Responses.Store(taskId, ch)
+	s.responses.Store(taskId, ch)
 }
 
 func (s *Session) GetResp(taskId uint32) (chan *commonpb.Spite, bool) {
-	msg, ok := s.Responses.Load(taskId)
+	msg, ok := s.responses.Load(taskId)
 	if !ok {
 		return nil, false
 	}
@@ -194,7 +196,7 @@ func (s *Session) DeleteResp(taskId uint32) {
 	if ok {
 		close(ch)
 	}
-	s.Responses.Delete(taskId)
+	s.responses.Delete(taskId)
 }
 
 // sessions - Manages the slivers, provides atomic access

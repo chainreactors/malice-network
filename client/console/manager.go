@@ -30,7 +30,7 @@ func (o *Observer) SessionId() string {
 
 type ActiveTarget struct {
 	session        *clientpb.Session
-	activeObserver Observer
+	activeObserver *Observer
 	callback       func(*clientpb.Session)
 }
 

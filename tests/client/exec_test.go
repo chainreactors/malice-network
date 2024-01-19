@@ -10,7 +10,7 @@ import (
 
 func TestExec(t *testing.T) {
 	rpc := common.NewClient(common.DefaultGRPCAddr, common.TestSid)
-	resp, err := rpc.Call(consts.ExecutionStr, &pluginpb.ExecRequest{
+	resp, err := rpc.Call(consts.ModuleExecution, &pluginpb.ExecRequest{
 		Path: "/bin/bash",
 		Args: []string{"whoami"}})
 	if err != nil {

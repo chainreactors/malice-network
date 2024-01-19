@@ -9,8 +9,7 @@ import (
 )
 
 type Tasks struct {
-	active     *sync.Map
-	taskNumber uint32
+	active *sync.Map
 }
 
 // All - Return a list of all tasks
@@ -32,28 +31,12 @@ func (t *Tasks) Get(taskID uint32) *Task {
 	return nil
 }
 
-func (t *Tasks) nextTaskId() uint32 {
-	t.taskNumber++
-	return t.taskNumber
-}
-
 func (t *Tasks) Add(task *Task) {
-	id := t.nextTaskId()
-	task.Id = id
-	t.active.Store(id, task)
+	t.active.Store(task.Id, task)
 }
 
 func (t *Tasks) Remove(task *Task) {
 	t.active.Delete(task.Id)
-}
-
-func NewTask(name string, total int) *Task {
-	return &Task{
-		Type:  name,
-		Total: total,
-		done:  make(chan bool),
-		end:   make(chan struct{}),
-	}
 }
 
 type Task struct {
@@ -68,8 +51,25 @@ type Task struct {
 	end       chan struct{}
 }
 
+func (t *Task) Handler() {
+	for ok := range t.done {
+		if !ok {
+			return
+		}
+		t.Cur++
+		if t.Cur == t.Total {
+			close(t.done)
+		}
+		EventBroker.Publish(Event{
+			EventType: consts.EventTaskDone,
+			Task:      t,
+		})
+	}
+	t.Finish()
+}
+
 func (t *Task) ToProtobuf() *clientpb.Task {
-	return &clientpb.Task{
+	task := &clientpb.Task{
 		TaskId:    t.Id,
 		SessionId: t.SessionId,
 		Type:      t.Type,
@@ -77,6 +77,7 @@ func (t *Task) ToProtobuf() *clientpb.Task {
 		Total:     int32(t.Total),
 		Status:    0,
 	}
+	return task
 }
 
 func (t *Task) Name() string {
@@ -91,22 +92,7 @@ func (t *Task) Percent() string {
 }
 
 func (t *Task) Done() {
-	go func() {
-		for ok := range t.done {
-			if !ok {
-				return
-			}
-			t.Cur++
-			if t.Cur == t.Total {
-				close(t.done)
-			}
-			EventBroker.Publish(Event{
-				EventType: consts.EventTaskDone,
-				Task:      t,
-			})
-		}
-		t.Finish()
-	}()
+	t.done <- true
 }
 
 func (t *Task) Finish() {
