@@ -3,6 +3,7 @@ package core
 import (
 	"errors"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/commonpb"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
@@ -26,6 +27,10 @@ var (
 )
 
 func NewSession(req *lispb.RegisterSession) *Session {
+	if req.RegisterData.Os.Name == "windows" {
+		req.RegisterData.Os.Arch = consts.GetWindowsArch(req.RegisterData.Os.Arch)
+	}
+
 	return &Session{
 		Name:       req.RegisterData.Name,
 		ProxyURL:   req.RegisterData.Proxy,
