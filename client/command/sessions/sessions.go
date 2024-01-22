@@ -1,13 +1,14 @@
 package sessions
 
 import (
+	"fmt"
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/helper/helper"
 	"github.com/chainreactors/malice-network/helper/styles"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
-	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/charmbracelet/bubbles/table"
 	"github.com/pterm/pterm"
 	"golang.org/x/term"
 	"strings"
@@ -49,43 +50,36 @@ func SessionsCmd(ctx *grumble.Context, con *console.Console) {
 
 func PrintSessions(sessions map[string]*clientpb.Session, con *console.Console) {
 	width, _, err := term.GetSize(0)
+	var tableModel styles.TableModel
+	var rowEntries []table.Row
+	var row table.Row
 	if err != nil {
-		width = 999
+		width = 99
 	}
-
-	tw := table.NewWriter()
-	tw.SetTitle("sessions")
-	tw.SetStyle(styles.GetTableStyle(con.Settings.TableStyle))
-
 	if con.Settings.SmallTermWidth < width {
-		tw.AppendHeader(table.Row{
-			"ID",
-			"Name",
-			"Transport",
-			"Remote Address",
-			"Hostname",
-			"Username",
-			"Operating System",
-			"Locale",
-			"Last Message",
-			"Health",
-		})
+		tableModel = styles.TableModel{Columns: []table.Column{
+			{Title: "ID", Width: 4},
+			{Title: "Name", Width: 4},
+			{Title: "Transport", Width: 10},
+			{Title: "Remote Address", Width: 15},
+			{Title: "Hostname", Width: 10},
+			{Title: "Username", Width: 10},
+			{Title: "Operating System", Width: 20},
+			{Title: "Locale", Width: 10},
+			{Title: "Last Message", Width: 15},
+			{Title: "Health", Width: 10},
+		}}
 	} else {
-		tw.AppendHeader(table.Row{
-			"ID",
-			"Transport",
-			"Remote Address",
-			"Hostname",
-			"Username",
-			"Operating System",
-			"Health",
-		})
+		tableModel = styles.TableModel{Columns: []table.Column{
+			{Title: "ID", Width: 4},
+			{Title: "Transport", Width: 10},
+			{Title: "Remote Address", Width: 15},
+			{Title: "Hostname", Width: 10},
+			{Title: "Username", Width: 10},
+			{Title: "Operating System", Width: 20},
+			{Title: "Health", Width: 10},
+		}}
 	}
-
-	tw.SortBy([]table.SortBy{
-		{Name: "ID", Mode: table.Asc},
-	})
-
 	for _, session := range sessions {
 
 		var SessionHealth string
@@ -96,57 +90,36 @@ func PrintSessions(sessions map[string]*clientpb.Session, con *console.Console) 
 		}
 
 		username := strings.TrimPrefix(session.Os.Username, session.Os.Hostname+"\\") // For non-AD Windows users
-
-		var rowEntries []string
 		if con.Settings.SmallTermWidth < width {
-			rowEntries = []string{
-				pterm.Sprint(helper.ShortSessionID(session.SessionId)),
-				pterm.Sprint(session.Name),
-				pterm.Sprint(session.ListenerId),
-				pterm.Sprint(session.RemoteAddr),
-				pterm.Sprint(session.Os.Hostname),
-				pterm.Sprint(username),
-				pterm.Sprintf("%s/%s", session.Os.Name, session.Os.Arch),
-				pterm.Sprint(time.Unix(int64(session.Timer.LastCheckin), 0).Format(time.RFC1123)),
+			row = table.Row{
+				helper.ShortSessionID(session.SessionId),
+				session.Name,
+				"",
+				session.ListenerId,
+				session.RemoteAddr,
+				session.Os.Hostname,
+				username,
+				fmt.Sprintf("%s/%s", session.Os.Name, session.Os.Arch),
+				time.Unix(int64(session.Timer.LastCheckin), 0).Format(time.RFC1123),
 				SessionHealth,
 			}
 		} else {
-			rowEntries = []string{
-				pterm.Sprint(helper.ShortSessionID(session.SessionId)),
-				pterm.Sprint(session.ListenerId),
-				pterm.Sprint(session.RemoteAddr),
-				pterm.Sprint(session.Os.Hostname),
-				pterm.Sprint(username),
-				pterm.Sprintf("%s/%s", session.Os.Name, session.Os.Arch),
+			row = table.Row{
+				helper.ShortSessionID(session.SessionId),
+				"",
+				session.ListenerId,
+				session.RemoteAddr,
+				session.Os.Hostname,
+				username,
+				fmt.Sprintf("%s/%s", session.Os.Name, session.Os.Arch),
 				SessionHealth,
 			}
 		}
-		// Build the row struct
-		row := table.Row{}
-		for _, entry := range rowEntries {
-			row = append(row, entry)
-		}
-		tw.AppendRow(row)
-		// Apply filters if any
-		//if filter == "" && filterRegex == nil {
-		//	tw.AppendRow(row)
-		//} else {
-		//	for _, rowEntry := range rowEntries {
-		//		if filter != "" {
-		//			if strings.Contains(rowEntry, filter) {
-		//				tw.AppendRow(row)
-		//				break
-		//			}
-		//		}
-		//		if filterRegex != nil {
-		//			if filterRegex.MatchString(rowEntry) {
-		//				tw.AppendRow(row)
-		//				break
-		//			}
-		//		}
-		//	}
-		//}
+		rowEntries = append(rowEntries, row)
 	}
-
-	pterm.Println("%s\n", tw.Render())
+	tableModel.Rows = rowEntries
+	err = tableModel.Run()
+	if err != nil {
+		console.Log.Errorf("Can't print sessions: %s", err)
+	}
 }

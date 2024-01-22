@@ -162,8 +162,12 @@ func (rpc *Server) Download(ctx context.Context, req *pluginpb.DownloadRequest) 
 //}
 
 func (rpc *Server) Sync(ctx context.Context, req *clientpb.Sync) (*clientpb.SyncResp, error) {
-	greq := newGenericRequest(req)
-	sid, err := rpc.getSessionID(ctx)
+	greq, err := newGenericRequest(ctx, req)
+	if err != nil {
+		logs.Log.Errorf(err.Error())
+		return nil, err
+	}
+	sid, err := getSessionID(ctx)
 	if err != nil {
 		logs.Log.Errorf(err.Error())
 		return nil, err
