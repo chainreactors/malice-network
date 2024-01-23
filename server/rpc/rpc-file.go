@@ -72,6 +72,10 @@ func (rpc *Server) Upload(ctx context.Context, req *pluginpb.UploadRequest) (*cl
 					Timeout: uint64(consts.MinTimeout.Seconds()),
 					TaskId:  greq.Task.Id,
 				}
+				_, isEND := <-packet.Chunked(req.Data, count)
+				if !isEND {
+					spite.End = true
+				}
 				spite, _ = types.BuildSpite(spite, msg)
 				in <- spite
 				resp := <-out

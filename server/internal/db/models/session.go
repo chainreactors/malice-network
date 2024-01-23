@@ -18,10 +18,10 @@ type Session struct {
 	RemoteAddr string
 	ListenerId string
 	IsAlive    bool
-	Os         *Os         `gorm:"embedded"`
-	Process    *Process    `gorm:"embedded"`
-	Time       *Timer      `gorm:"embedded"`
-	Task       *core.Tasks `gorm:"embedded"`
+	Os         *Os      `gorm:"embedded"`
+	Process    *Process `gorm:"embedded"`
+	Time       *Timer   `gorm:"embedded"`
+	Last       int
 }
 
 func (s *Session) BeforeCreate(tx *gorm.DB) (err error) {
@@ -46,7 +46,6 @@ func ConvertToSessionDB(session *core.Session) *Session {
 		Os:         convertToOsDB(session.Os),
 		Process:    convertToProcessDB(session.Process),
 		Time:       convertToTimeDB(session.Timer),
-		Task:       session.Tasks,
 	}
 }
 
