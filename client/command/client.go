@@ -4,10 +4,12 @@ import (
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/command/alias"
 	"github.com/chainreactors/malice-network/client/command/file"
+	"github.com/chainreactors/malice-network/client/command/jobs"
 	"github.com/chainreactors/malice-network/client/command/listener"
 	"github.com/chainreactors/malice-network/client/command/login"
 	"github.com/chainreactors/malice-network/client/command/observe"
 	"github.com/chainreactors/malice-network/client/command/sessions"
+	"github.com/chainreactors/malice-network/client/command/tasks"
 	"github.com/chainreactors/malice-network/client/command/use"
 	"github.com/chainreactors/malice-network/client/command/version"
 	"github.com/chainreactors/malice-network/client/console"
@@ -62,6 +64,8 @@ func BindClientsCommands(con *console.Console) {
 		login.Command,
 		sessions.Command,
 		use.Command,
+		tasks.Command,
+		jobs.Command,
 		listener.Commands,
 		alias.Commands,
 		observe.Command,

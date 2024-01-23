@@ -39,6 +39,7 @@ func Command(con *console.Console) []*grumble.Command {
 		},
 	}
 }
+
 func SessionsCmd(ctx *grumble.Context, con *console.Console) {
 	con.UpdateSession()
 	if 0 < len(con.Sessions) {
