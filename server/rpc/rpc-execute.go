@@ -97,3 +97,32 @@ func (rpc *Server) ExecuteShellcode(ctx context.Context, req *pluginpb.ExecuteSh
 	}()
 	return greq.Task.ToProtobuf(), nil
 }
+
+func (rpc *Server) ExecuteBof(ctx context.Context, req *pluginpb.ExecuteBof) (*clientpb.Task, error) {
+	greq, err := newGenericRequest(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	ch, err := rpc.asyncGenericHandler(ctx, greq)
+	if err != nil {
+		return nil, err
+	}
+	go func() {
+		resp := <-ch
+		err := AssertAsyncResponse(resp, types.MsgAssemblyResponse)
+		if err != nil {
+			logs.Log.Error(err.Error())
+			return
+		}
+		greq.SetCallback(func() {
+			greq.Task.Spite = resp
+			core.EventBroker.Publish(core.Event{
+				EventType: consts.EventTaskCallback,
+				Task:      greq.Task,
+			})
+		})
+		greq.Task.Done()
+	}()
+	return greq.Task.ToProtobuf(), nil
+}

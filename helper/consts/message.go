@@ -6,6 +6,7 @@ const (
 	ModuleExecution        = "exec"
 	ModuleExecuteAssembly  = "execute-assembly"
 	ModuleExecuteShellcode = "execute-shellcode"
+	ModuleExecuteBof       = "execute-bof"
 	ModuleUpload           = "upload"
 	ModuleDownload         = "download"
 	CommandBroadcast       = "broadcast"

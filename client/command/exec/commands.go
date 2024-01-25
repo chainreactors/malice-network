@@ -93,5 +93,24 @@ func Commands(con *console.Console) []*grumble.Command {
 			},
 			HelpGroup: consts.ImplantGroup,
 		},
+		&grumble.Command{
+			Name: consts.ModuleExecuteBof,
+			Help: "Loads and executes Bof (Windows Only)",
+			//LongHelp: help.GetHelpFor([]string{consts.ModuleExecuteAssembly}),
+			Args: func(a *grumble.Args) {
+				a.String("path", "path the assembly file")
+				a.StringList("arguments", "arguments to pass to the assembly entrypoint", grumble.Default([]string{}))
+			},
+			Flags: func(f *grumble.Flags) {
+				f.Bool("s", "save", false, "save output to file")
+				f.String("A", "process-arguments", "", "arguments to pass to the hosting process")
+				f.Int("t", "timeout", consts.DefaultTimeout, "command timeout in seconds")
+			},
+			Run: func(ctx *grumble.Context) error {
+				ExecuteAssemblyCmd(ctx, con)
+				return nil
+			},
+			HelpGroup: consts.ImplantGroup,
+		},
 	}
 }
