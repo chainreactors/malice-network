@@ -16,6 +16,9 @@ var (
 
 func BuildSpite(spite *commonpb.Spite, msg proto.Message) (*commonpb.Spite, error) {
 	switch msg.(type) {
+	case *commonpb.Request:
+		spite.Name = msg.(*commonpb.Request).Name
+		spite.Body = &commonpb.Spite_Request{Request: msg.(*commonpb.Request)}
 	case *commonpb.Block:
 		spite.Name = MsgBlock.String()
 		spite.Body = &commonpb.Spite_Block{Block: msg.(*commonpb.Block)}
@@ -52,6 +55,10 @@ func BuildSpite(spite *commonpb.Spite, msg proto.Message) (*commonpb.Spite, erro
 	case *pluginpb.AssemblyResponse:
 		spite.Name = MsgExecuteAssembly.String()
 		spite.Body = &commonpb.Spite_AssemblyResponse{AssemblyResponse: msg.(*pluginpb.AssemblyResponse)}
+	case *pluginpb.ExecuteExtension:
+		spite.Name = MsgExecuteExtension.String()
+		spite.Body = &commonpb.Spite_ExecuteExtension{ExecuteExtension: msg.(*pluginpb.ExecuteExtension)}
+
 	default:
 		return spite, ErrUnknownSpite
 	}

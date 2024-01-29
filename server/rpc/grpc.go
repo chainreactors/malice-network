@@ -374,13 +374,16 @@ func getOperatorServerMTLSConfig(host string) *tls.Config {
 	return tlsConfig
 }
 
-func AssertAsyncResponse(spite *commonpb.Spite, expect types.MsgName) error {
+func AssertStatus(spite *commonpb.Spite) error {
 	if stat := spite.GetStatus(); stat == nil {
 		return ErrMissingRequestField
 	} else if stat.Status != 0 {
 		return status.Error(codes.InvalidArgument, stat.Error)
 	}
+	return nil
+}
 
+func AssertResponse(spite *commonpb.Spite, expect types.MsgName) error {
 	body := spite.GetBody()
 	if body == nil && expect != types.MsgNil {
 		return ErrNilAssert
@@ -390,4 +393,11 @@ func AssertAsyncResponse(spite *commonpb.Spite, expect types.MsgName) error {
 		return ErrAssertFailure
 	}
 	return nil
+}
+
+func AssertStatusAndResponse(spite *commonpb.Spite, expect types.MsgName) error {
+	if err := AssertStatus(spite); err != nil {
+		return err
+	}
+	return AssertResponse(spite, expect)
 }

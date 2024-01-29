@@ -31,7 +31,7 @@ func (rpc *Server) Upload(ctx context.Context, req *pluginpb.UploadRequest) (*cl
 		}
 		go func() {
 			resp := <-ch
-			err := AssertAsyncResponse(resp, types.MsgBlock)
+			err := AssertResponse(resp, types.MsgBlock)
 			if err != nil {
 				return
 			}
@@ -59,7 +59,7 @@ func (rpc *Server) Upload(ctx context.Context, req *pluginpb.UploadRequest) (*cl
 		var blockId = 0
 		go func() {
 			stat := <-out
-			err := AssertAsyncResponse(stat, types.MsgNil)
+			err := AssertResponse(stat, types.MsgNil)
 			if err != nil {
 				return
 			}

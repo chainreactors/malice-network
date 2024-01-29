@@ -9,13 +9,19 @@ type MsgName string
 const (
 	MsgUnknown          MsgName = "unknown"
 	MsgNil              MsgName = "nil"
+	MsgRequest          MsgName = "request"
 	MsgBlock            MsgName = "block"
 	MsgRegister         MsgName = "register"
 	MsgUpload           MsgName = "upload"
 	MsgDownload         MsgName = "download"
 	MsgExec             MsgName = "exec"
 	MsgAck              MsgName = "ack"
+	MsgModules          MsgName = "modules"
+	MsgLoadModule       MsgName = "load_module"
+	MsgExtensions       MsgName = "extensions"
+	MsgLoadExtension    MsgName = "load_extension"
 	MsgAssemblyResponse MsgName = "assembly_response"
+	MsgExecuteExtension MsgName = "execute_extension"
 	MsgExecuteAssembly  MsgName = "execute_assembly"
 	MsgExecuteShellcode MsgName = "execute_shellcode"
 	MsgExecuteSpawn     MsgName = "execute_spawn"
@@ -31,6 +37,8 @@ func MessageType(message *commonpb.Spite) MsgName {
 	switch message.Body.(type) {
 	case nil:
 		return MsgNil
+	case *commonpb.Spite_Request:
+		return MsgRequest
 	case *commonpb.Spite_Register:
 		return MsgRegister
 	case *commonpb.Spite_ExecRequest, *commonpb.Spite_ExecResponse:
@@ -55,6 +63,16 @@ func MessageType(message *commonpb.Spite) MsgName {
 		return MsgExecuteSideLoad
 	case *commonpb.Spite_ExecuteBof:
 		return MsgExecuteBof
+	case *commonpb.Spite_Extensions:
+		return MsgExtensions
+	case *commonpb.Spite_LoadExtension:
+		return MsgLoadExtension
+	case *commonpb.Spite_ExecuteExtension:
+		return MsgExecuteExtension
+	case *commonpb.Spite_LoadModule:
+		return MsgLoadModule
+	case *commonpb.Spite_Modules:
+		return MsgModules
 	default:
 		return MsgUnknown
 	}
