@@ -7,7 +7,10 @@ import (
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/commonpb"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
+	"github.com/chainreactors/malice-network/server/internal/configs"
+	"github.com/gookit/config/v2"
 	"google.golang.org/grpc"
+	"path/filepath"
 	"sync"
 	"time"
 )
@@ -68,6 +71,25 @@ type Session struct {
 	Tasks      *Tasks // task manager
 	taskseq    uint32
 	responses  *sync.Map
+	log        *logs.Logger
+}
+
+func (s *Session) Logger() *logs.Logger {
+	var err error
+	if s.log == nil {
+		if auditLevel := config.Int(consts.AuditLevel); auditLevel > 0 {
+			s.log, err = logs.NewFileLogger(filepath.Join(configs.AuditPath, s.ID+".log"))
+			if err == nil {
+				s.log.SuffixFunc = func() string {
+					return time.Now().Format("2006-01-02 15:04.05")
+				}
+				if auditLevel == 2 {
+					s.log.SetLevel(logs.Debug)
+				}
+			}
+		}
+	}
+	return s.log
 }
 
 func (s *Session) ToProtobuf() *clientpb.Session {

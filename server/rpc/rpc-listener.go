@@ -33,7 +33,7 @@ func (rpc *Server) RegisterListener(ctx context.Context, req *lispb.RegisterList
 }
 
 func (rpc *Server) SpiteStream(stream listenerrpc.ListenerRPC_SpiteStreamServer) error {
-	listenerID, err := rpc.getListenerID(stream.Context())
+	listenerID, err := getListenerID(stream.Context())
 	if err != nil {
 		logs.Log.Error(err.Error())
 		return err

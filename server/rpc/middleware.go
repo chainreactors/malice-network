@@ -10,6 +10,7 @@ import (
 	"google.golang.org/grpc/status"
 	"os"
 	"path"
+	"reflect"
 )
 
 type contextKey int
@@ -21,49 +22,45 @@ const (
 	KeyFile  = "localhost_root_key.pem"
 )
 
-func chainUnaryInterceptors(interceptors ...grpc.UnaryServerInterceptor) grpc.UnaryServerInterceptor {
+func buildOptions(option []grpc.ServerOption, interceptors ...grpc.UnaryServerInterceptor) []grpc.ServerOption {
+	option = append(option, grpc.ChainUnaryInterceptor(interceptors...))
+	return option
+}
+
+// logInterceptor - Log middleware
+func logInterceptor(log *logs.Logger) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-		buildChain := func(current grpc.UnaryHandler, interceptors []grpc.UnaryServerInterceptor) grpc.UnaryHandler {
-			for i := len(interceptors) - 1; i >= 0; i-- {
-				current = func(current grpc.UnaryHandler, interceptor grpc.UnaryServerInterceptor) grpc.UnaryHandler {
-					return func(ctx context.Context, req interface{}) (interface{}, error) {
-						return interceptor(ctx, req, info, current)
-					}
-				}(current, interceptors[i])
-			}
-			return current
+		if sid, err := getSessionID(ctx); err == nil {
+			log.Infof("[implant] %s call %s with %s: %s", getClientName(ctx), info.FullMethod, sid, reflect.TypeOf(req))
+			resp, err := handler(ctx, req)
+			log.Infof("[implant] %s back %s: %s", sid, info.FullMethod, reflect.TypeOf(resp))
+			return resp, err
+		} else {
+			log.Infof("[malice] %s call %s with %s", getClientName(ctx), info.FullMethod, reflect.TypeOf(req))
+			resp, err := handler(ctx, req)
+			log.Infof("[malice] %s back %s: %s", getClientName(ctx), info.FullMethod, reflect.TypeOf(resp))
+			return resp, err
 		}
-		chain := buildChain(handler, interceptors)
-		return chain(ctx, req)
 	}
 }
 
-func AuthMiddleware(log *logs.Logger) []grpc.ServerOption {
-	var interceptors []grpc.UnaryServerInterceptor
-	interceptors = append(interceptors, logMiddleware(log))
-	return append(authMiddleware(context.Background()), grpc.UnaryInterceptor(chainUnaryInterceptors(interceptors...)))
-}
-
-func CommonMiddleware(log *logs.Logger) []grpc.ServerOption {
-	var interceptors []grpc.UnaryServerInterceptor
-	interceptors = append(interceptors, logMiddleware(log))
-	return []grpc.ServerOption{
-		grpc.UnaryInterceptor(chainUnaryInterceptors(interceptors...)),
-	}
-}
-
-// logMiddleware - Log middleware
-func logMiddleware(log *logs.Logger) grpc.UnaryServerInterceptor {
+func auditInterceptor() grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-		log.Infof("Method %s is called with request: %+v", info.FullMethod, req)
-		resp, err := handler(ctx, req)
-		log.Infof("Method %s returns response: %+v", info.FullMethod, resp)
-		return resp, err
+		sess, err := getSession(ctx)
+		if err == nil && sess.Logger() != nil {
+			sess.Logger().Consolef("[request] %s %s \n", info.FullMethod, reflect.TypeOf(req))
+			sess.Logger().Debugf("%+v", req)
+			resp, err := handler(ctx, req)
+			sess.Logger().Consolef("[response] %s %s \n", info.FullMethod, reflect.TypeOf(resp))
+			sess.Logger().Debugf("%+v", resp)
+			return resp, err
+		}
+		return handler(ctx, req)
 	}
 }
 
-// authMiddleware - Auth middleware
-func authMiddleware(ctx context.Context) []grpc.ServerOption {
+// authInterceptor - Auth middleware
+func authInterceptor() []grpc.ServerOption {
 	return []grpc.ServerOption{
 		grpc.ChainUnaryInterceptor(
 			grpc_auth.UnaryServerInterceptor(hasPermissions),
@@ -83,11 +80,11 @@ func hasPermissions(ctx context.Context) (context.Context, error) {
 		return nil, status.Error(codes.Unauthenticated, "Authentication failed")
 	}
 	if _, err := os.Stat(keyPath); os.IsNotExist(err) {
-		logs.Log.Errorf("Failed to load key %v", err)
+		logs.Log.Errorf("Failed  to load key %v", err)
 		return nil, status.Error(codes.Unauthenticated, "Authentication failed")
 	}
-	newCtx := context.WithValue(ctx, Transport, "mtls")
+	ctx = context.WithValue(ctx, Transport, "mtls")
 	// TODO - Add operator check
-	newCtx = context.WithValue(newCtx, Operator, "test")
-	return newCtx, nil
+	ctx = context.WithValue(ctx, Operator, "test")
+	return ctx, nil
 }

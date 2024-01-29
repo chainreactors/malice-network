@@ -9,7 +9,7 @@ import (
 )
 
 func (rpc *Server) Events(_ *clientpb.Empty, stream clientrpc.MaliceRPC_EventsServer) error {
-	clientName := rpc.getClientName(stream.Context())
+	clientName := getClientName(stream.Context())
 	events := core.EventBroker.Subscribe()
 	client := core.NewClient(clientName)
 	core.Clients.Add(client)
@@ -56,7 +56,7 @@ func (rpc *Server) Events(_ *clientpb.Empty, stream clientrpc.MaliceRPC_EventsSe
 }
 
 func (rpc *Server) Broadcast(ctx context.Context, req *clientpb.Event) (*clientpb.Empty, error) {
-	clientName := rpc.getClientName(ctx)
+	clientName := getClientName(ctx)
 	core.EventBroker.Publish(core.Event{
 		EventType:  req.Type,
 		Data:       req.Data,

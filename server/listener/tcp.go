@@ -153,28 +153,6 @@ func (l *TCPPipeline) handleWrite(conn net.Conn, ch chan *commonpb.Spites, rawid
 	return
 }
 
-//func (l *TCPPipeline) handleWrite(conn net.Conn, connect *core.Connection) {
-//	msg := &commonpb.Spites{Spites: []*commonpb.Spite{}}
-//
-//	for {
-//		select {
-//		case spite := <-connect.Sender:
-//			msg.Spites = append(msg.Spites, spite.(*commonpb.Spite))
-//		case <-l.done:
-//			return
-//		default:
-//			if len(msg.Spites) > 0 {
-//				err := packet.WritePacket(conn, msg, connect.RawID)
-//				if err != nil {
-//					logs.Log.Errorf("Error writing packet: %v", err)
-//				}
-//				return
-//			}
-//		}
-//	}
-//
-//}
-
 func handleShellcode(conn net.Conn, data []byte) {
 	logs.Log.Infof("Accepted incoming connection: %s", conn.RemoteAddr())
 	// Send shellcode size

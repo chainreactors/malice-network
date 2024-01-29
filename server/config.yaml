@@ -4,6 +4,7 @@ opsec: true
 server:
   grpc_port: 5004
   grpc_host: 127.0.0.1
+  audit: 1  # 0 close , 1 basic , 2 detail
   config:
     packet_length: 100 # 1M
 

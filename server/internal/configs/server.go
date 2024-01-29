@@ -22,27 +22,20 @@ var (
 	CertsPath                   = path.Join(ServerRootPath, "certs")
 	TempPath                    = path.Join(ServerRootPath, "temp")
 	PluginPath                  = path.Join(ServerRootPath, "plugins")
+	AuditPath                   = path.Join(ServerRootPath, "audit")
 )
 
 func InitConfig() error {
-	var err error
 	perm := os.FileMode(0o700)
-	err = os.MkdirAll(ServerRootPath, perm)
+	err := os.MkdirAll(ServerRootPath, perm)
 	if err != nil {
 		return err
 	}
-	err = os.MkdirAll(LogPath, perm)
-	if err != nil {
-		return err
-	}
-	err = os.MkdirAll(CertsPath, perm)
-	if err != nil {
-		return err
-	}
-	err = os.MkdirAll(TempPath, perm)
-	if err != nil {
-		return err
-	}
+	os.MkdirAll(LogPath, perm)
+	os.MkdirAll(CertsPath, perm)
+	os.MkdirAll(TempPath, perm)
+	//os.MkdirAll(PluginPath, perm)
+	os.MkdirAll(AuditPath, perm)
 	return nil
 }
 

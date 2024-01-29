@@ -133,6 +133,8 @@ func (f *Forward) Handler() {
 				logs.Log.Debugf("[listener.%s] receive spite %s %d bytes", msg.SessionID, spite.Name, size)
 			}
 			switch spite.Body.(type) {
+			case *commonpb.Spite_Empty:
+				continue
 			case *commonpb.Spite_Register:
 				_, err := f.ImplantRpc.Register(f.ctx, &lispb.RegisterSession{
 					SessionId:    msg.SessionID,
@@ -142,8 +144,6 @@ func (f *Forward) Handler() {
 				if err != nil {
 					return
 				}
-			case *commonpb.Spite_Empty:
-				continue
 			default:
 				spite := spite
 				go func() {

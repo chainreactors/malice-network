@@ -18,6 +18,7 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
+	"github.com/gookit/config/v2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
@@ -72,26 +73,29 @@ func InitLogs(debug bool) {
 func StartClientListener(port uint16) (*grpc.Server, net.Listener, error) {
 	logs.Log.Importantf("Starting gRPC console on 0.0.0.0:%d", port)
 
+	InitLogs(config.Bool("debug"))
 	tlsConfig := getOperatorServerMTLSConfig("operator")
-
 	creds := credentials.NewTLS(tlsConfig)
 	ln, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", port))
 	if err != nil {
 		logs.Log.Errorf(err.Error())
 		return nil, nil, err
 	}
-	InitLogs(false)
+
 	options := []grpc.ServerOption{
 		grpc.Creds(creds),
 		grpc.MaxRecvMsgSize(consts.ServerMaxMessageSize),
 		grpc.MaxSendMsgSize(consts.ServerMaxMessageSize),
 	}
-	commonOptions := append(options, CommonMiddleware(rpcLog)...)
-	rootOptions := append(options, AuthMiddleware(authLog)...)
-	grpcServer := grpc.NewServer(commonOptions...)
-	rootGrpcServer := grpc.NewServer(rootOptions...)
+
+	options = append(options, authInterceptor()...)
+	//rootOptions := buildOptions(options, authInterceptor()...)
+	grpcServer := grpc.NewServer(buildOptions(
+		options,
+		logInterceptor(rpcLog),
+		auditInterceptor())...)
 	clientrpc.RegisterMaliceRPCServer(grpcServer, NewServer())
-	clientrpc.RegisterRootRPCServer(rootGrpcServer, NewServer())
+	clientrpc.RegisterRootRPCServer(grpcServer, NewServer())
 	listenerrpc.RegisterImplantRPCServer(grpcServer, NewServer())
 	listenerrpc.RegisterListenerRPCServer(grpcServer, NewServer())
 	go func() {
@@ -176,70 +180,6 @@ type Server struct {
 func NewServer() *Server {
 	// todo event
 	return &Server{}
-}
-
-func getSessionID(ctx context.Context) (string, error) {
-	md, ok := metadata.FromIncomingContext(ctx)
-	if !ok {
-		return "", ErrNotFoundSession
-	}
-	if sid := md.Get("session_id"); len(sid) > 0 {
-		return sid[0], nil
-	} else {
-		return "", ErrNotFoundSession
-	}
-}
-
-func getSession(ctx context.Context) (*core.Session, error) {
-	sid, err := getSessionID(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	session, ok := core.Sessions.Get(sid)
-	if !ok {
-		return nil, ErrInvalidSessionID
-	}
-	return session, nil
-}
-
-func (rpc *Server) getListenerID(ctx context.Context) (string, error) {
-	md, ok := metadata.FromIncomingContext(ctx)
-	if !ok {
-		return "", ErrNotFoundListener
-	}
-	if sid := md.Get("listener_id"); len(sid) > 0 {
-		return sid[0], nil
-	} else {
-		return "", ErrNotFoundListener
-	}
-}
-
-func (rpc *Server) getClientName(ctx context.Context) string {
-	//md, ok := metadata.FromIncomingContext(ctx)
-	//if !ok {
-	//	return "", ErrNotFoundClientName
-	//}
-	//if sid := md.Get("client_name"); len(sid) > 0 {
-	//	return sid[0], nil
-	//} else {
-	//	return "", ErrNotFoundClientName
-	//}
-	client, ok := peer.FromContext(ctx)
-	if !ok {
-		return ""
-	}
-	tlsAuth, ok := client.AuthInfo.(credentials.TLSInfo)
-	if !ok {
-		return ""
-	}
-	if len(tlsAuth.State.VerifiedChains) == 0 || len(tlsAuth.State.VerifiedChains[0]) == 0 {
-		return ""
-	}
-	if tlsAuth.State.VerifiedChains[0][0].Subject.CommonName != "" {
-		return tlsAuth.State.VerifiedChains[0][0].Subject.CommonName
-	}
-	return ""
 }
 
 // genericHandler - Pass the request to the Sliver/Session
@@ -332,7 +272,62 @@ func (rpc *Server) GetBasic(ctx context.Context, _ *clientpb.Empty) (*clientpb.B
 //	return nil
 //}
 
-func (rpc *Server) getClientCommonName(ctx context.Context) string {
+//func (rpc *Server) getClientCommonName(ctx context.Context) string {
+//	client, ok := peer.FromContext(ctx)
+//	if !ok {
+//		return ""
+//	}
+//	tlsAuth, ok := client.AuthInfo.(credentials.TLSInfo)
+//	if !ok {
+//		return ""
+//	}
+//	if len(tlsAuth.State.VerifiedChains) == 0 || len(tlsAuth.State.VerifiedChains[0]) == 0 {
+//		return ""
+//	}
+//	if tlsAuth.State.VerifiedChains[0][0].Subject.CommonName != "" {
+//		return tlsAuth.State.VerifiedChains[0][0].Subject.CommonName
+//	}
+//	return ""
+//}
+
+func getSessionID(ctx context.Context) (string, error) {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return "", ErrNotFoundSession
+	}
+	if sid := md.Get("session_id"); len(sid) > 0 {
+		return sid[0], nil
+	} else {
+		return "", ErrNotFoundSession
+	}
+}
+
+func getSession(ctx context.Context) (*core.Session, error) {
+	sid, err := getSessionID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	session, ok := core.Sessions.Get(sid)
+	if !ok {
+		return nil, ErrInvalidSessionID
+	}
+	return session, nil
+}
+
+func getListenerID(ctx context.Context) (string, error) {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return "", ErrNotFoundListener
+	}
+	if sid := md.Get("listener_id"); len(sid) > 0 {
+		return sid[0], nil
+	} else {
+		return "", ErrNotFoundListener
+	}
+}
+
+func getClientName(ctx context.Context) string {
 	client, ok := peer.FromContext(ctx)
 	if !ok {
 		return ""
