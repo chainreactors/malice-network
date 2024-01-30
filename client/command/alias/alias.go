@@ -7,11 +7,11 @@ import (
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/helper/styles"
+	"github.com/charmbracelet/bubbles/table"
+	"golang.org/x/term"
 	"os"
+	"strconv"
 	"strings"
-
-	"github.com/jedib0t/go-pretty/v6/table"
-	"github.com/jedib0t/go-pretty/v6/text"
 )
 
 // AliasesCmd - The alias command
@@ -27,25 +27,26 @@ func AliasesCmd(ctx *grumble.Context, con *console.Console) error {
 
 // PrintAliases - Print a list of loaded aliases
 func PrintAliases(con *console.Console) {
-	tw := table.NewWriter()
-	tw.SetStyle(styles.GetTableStyle(con.Settings.TableStyle))
-	tw.AppendHeader(table.Row{
-		"Name",
-		"Command Name",
-		"Platforms",
-		"Version",
-		"Installed",
-		".NET Assembly",
-		"Reflective",
-		"Tool Author",
-		"Repository",
-	})
-	tw.SortBy([]table.SortBy{
-		{Name: "Name", Mode: table.Asc},
-	})
-	tw.SetColumnConfigs([]table.ColumnConfig{
-		{Number: 5, Align: text.AlignCenter},
-	})
+	width, _, err := term.GetSize(0)
+	var tableModel styles.TableModel
+	var rowEntries []table.Row
+	var row table.Row
+	if err != nil {
+		width = 99
+	}
+	if con.Settings.SmallTermWidth < width {
+		tableModel = styles.TableModel{Columns: []table.Column{
+			{Title: "Name", Width: 4},
+			{Title: "Command Name", Width: 15},
+			{Title: "Platforms", Width: 10},
+			{Title: "Version", Width: 10},
+			{Title: "Installed", Width: 10},
+			{Title: ".NET Assembly", Width: 15},
+			{Title: "Reflective", Width: 10},
+			{Title: "Tool Author", Width: 15},
+			{Title: "Repository", Width: 10},
+		}}
+	}
 
 	installedManifests := getInstalledManifests()
 	for _, aliasPkg := range loadedAliases {
@@ -53,19 +54,24 @@ func PrintAliases(con *console.Console) {
 		if _, ok := installedManifests[aliasPkg.Manifest.CommandName]; ok {
 			installed = "✅"
 		}
-		tw.AppendRow(table.Row{
+		row = table.Row{
 			aliasPkg.Manifest.Name,
 			aliasPkg.Manifest.CommandName,
 			strings.Join(aliasPlatforms(aliasPkg.Manifest), ",\n"),
 			aliasPkg.Manifest.Version,
 			installed,
-			aliasPkg.Manifest.IsAssembly,
-			aliasPkg.Manifest.IsReflective,
+			strconv.FormatBool(aliasPkg.Manifest.IsAssembly),
+			strconv.FormatBool(aliasPkg.Manifest.IsReflective),
 			aliasPkg.Manifest.OriginalAuthor,
 			aliasPkg.Manifest.RepoURL,
-		})
+		}
+		rowEntries = append(rowEntries, row)
 	}
-	console.Log.Console(tw.Render())
+	tableModel.Rows = rowEntries
+	err = tableModel.Run()
+	if err != nil {
+		console.Log.Errorf("Can't print aliases: %s", err)
+	}
 }
 
 // AliasCommandNameCompleter - Completer for installed extensions command names

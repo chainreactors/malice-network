@@ -19,9 +19,10 @@ const (
 	Snake   = "🐍"
 	Shark   = "🦈"
 
-	Zap      = "⚡"
-	Cloud    = "☁"
-	Fire     = "🔥"
-	Sparkles = "✨"
-	Ocean    = "🌊"
+	Zap       = "⚡"
+	Cloud     = "☁"
+	Fire      = "🔥"
+	Sparkles  = "✨"
+	Ocean     = "🌊"
+	HotSpring = "♨️"
 )

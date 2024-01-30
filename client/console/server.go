@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/styles"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"google.golang.org/grpc"
@@ -141,16 +142,19 @@ func (s *ServerStatus) EventHandler() {
 		case consts.EventLeft:
 			Log.Infof("%s left the game", event.Client.Name)
 		case consts.EventBroadcast:
-			Log.Console(Clearln)
+			styles.Clear()
 			Log.Infof("%s broadcasted: %s  %s", event.Source, string(event.Data), event.Err)
 		case consts.EventNotify:
-			Log.Console(Clearln)
+			styles.Clear()
 			Log.Importantf("%s notified: %s %s", event.Source, string(event.Data), event.Err)
 		case consts.EventTaskCallback:
 			Log.Debugf("task callback")
 			s.triggerTaskCallback(event)
 		case consts.EventTaskDone:
+			styles.Clear()
 			Log.Debugf("task done")
 		}
+
+		//con.triggerReactions(event)
 	}
 }

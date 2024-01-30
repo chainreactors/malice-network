@@ -162,9 +162,33 @@ func (rpc *Server) Download(ctx context.Context, req *pluginpb.DownloadRequest) 
 //}
 
 func (rpc *Server) Sync(ctx context.Context, req *clientpb.Sync) (*clientpb.SyncResp, error) {
-	//resp, err := rpc.genericHandler(ctx, newGenericRequest(req))
-	//if err != nil {
-	//	return nil, err
-	//}
-	return nil, nil
+	greq, err := newGenericRequest(ctx, req)
+	if err != nil {
+		logs.Log.Errorf(err.Error())
+		return nil, err
+	}
+	sid, err := getSessionID(ctx)
+	if err != nil {
+		logs.Log.Errorf(err.Error())
+		return nil, err
+	}
+	session, ok := core.Sessions.Get(sid)
+	if !ok {
+		return nil, ErrInvalidSessionID
+	}
+	session.Tasks.Add(greq.Task)
+
+	if !files.IsExist(req.Target) {
+		return nil, os.ErrExist
+	}
+	data, err := os.ReadFile(req.Target)
+	if err != nil {
+		return nil, err
+	}
+	resp := &clientpb.SyncResp{
+		Task:    greq.Task.ToProtobuf(),
+		Target:  req.Target,
+		Content: data,
+	}
+	return resp, nil
 }

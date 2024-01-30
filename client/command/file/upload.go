@@ -7,15 +7,28 @@ import (
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/pluginpb"
 	"github.com/charmbracelet/bubbles/progress"
-	tea "github.com/charmbracelet/bubbletea"
 	"os"
 )
 
-func UploadCommand() {
-
+func UploadCommand(con *console.Console) []*grumble.Command {
+	return []*grumble.Command{{
+		Name: "upload",
+		Help: "upload file",
+		Flags: func(f *grumble.Flags) {
+			f.String("n", "name", "", "filename")
+			f.String("p", "path", "", "filepath")
+			f.String("t", "target", "", "file in implant target")
+			f.Int("", "priv", 0o644, "file Privilege")
+			f.Bool("", "hidden", false, "filename")
+		},
+		Run: func(ctx *grumble.Context) error {
+			upload(ctx, con)
+			return nil
+		},
+	}}
 }
 
-func Upload(ctx *grumble.Context, con *console.Console) {
+func upload(ctx *grumble.Context, con *console.Console) {
 	session := con.ActiveTarget.GetInteractive()
 	var err error
 	if session == nil {
@@ -46,7 +59,7 @@ func Upload(ctx *grumble.Context, con *console.Console) {
 			ProgressPercent: <-ctrl,
 		}
 
-		if _, err := tea.NewProgram(m).Run(); err != nil {
+		if _, err := m.Run(); err != nil {
 			console.Log.Errorf("console has an error: %s", err)
 			os.Exit(1)
 		}
@@ -54,5 +67,4 @@ func Upload(ctx *grumble.Context, con *console.Console) {
 	if err != nil {
 		console.Log.Errorf("")
 	}
-
 }

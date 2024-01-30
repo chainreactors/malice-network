@@ -71,3 +71,11 @@ func tickCmd() tea.Cmd {
 		return tickMsg(t)
 	})
 }
+
+func (m ProcessBarModel) Run() (tea.Model, error) {
+	model, err := tea.NewProgram(m).Run()
+	if err != nil {
+		return nil, err
+	}
+	return model, nil
+}

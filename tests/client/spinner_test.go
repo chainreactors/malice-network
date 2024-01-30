@@ -1,10 +1,12 @@
-package styles
+package client
 
 import (
 	"fmt"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"os"
+	"testing"
 	"time"
 )
 
@@ -33,13 +35,12 @@ var (
 
 type SpinnerModel struct {
 	spinner  spinner.Model
-	Quitting bool
+	quitting bool
 	err      error
 	index    int
 }
 
 func (s SpinnerModel) Init() tea.Cmd {
-	s.index = 9
 	return s.spinner.Tick
 }
 
@@ -82,9 +83,6 @@ func (s *SpinnerModel) resetSpinner() {
 }
 
 func (s SpinnerModel) View() (str string) {
-	if s.Quitting {
-		return ""
-	}
 	var gap string
 	switch s.index {
 	case 1:
@@ -94,14 +92,15 @@ func (s SpinnerModel) View() (str string) {
 	}
 
 	str += fmt.Sprintf("\n %s%s%s\n\n", s.spinner.View(), gap, textStyle("Spinning..."))
-	str += helpStyle("h/l, ←/→: change spinner • q: exit\n")
 	return
 }
 
-func (s SpinnerModel) Run() (tea.Model, error) {
-	model, err := tea.NewProgram(s).Run()
-	if err != nil {
-		return nil, err
+func TestSpinner(t *testing.T) {
+	m := SpinnerModel{index: 1}
+	m.resetSpinner()
+
+	if _, err := tea.NewProgram(m).Run(); err != nil {
+		fmt.Println("could not run program:", err)
+		os.Exit(1)
 	}
-	return model, nil
 }

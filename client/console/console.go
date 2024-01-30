@@ -2,47 +2,17 @@ package console
 
 import (
 	"errors"
-	"fmt"
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/helper"
 	"github.com/chainreactors/malice-network/helper/mtls"
+	"github.com/chainreactors/malice-network/helper/styles"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/fatih/color"
 	"google.golang.org/protobuf/proto"
 	"path/filepath"
 	"sync"
-)
-
-const (
-	// ANSI Colors
-	Normal    = "\033[0m"
-	Black     = "\033[30m"
-	Red       = "\033[31m"
-	Green     = "\033[32m"
-	Orange    = "\033[33m"
-	Blue      = "\033[34m"
-	Purple    = "\033[35m"
-	Cyan      = "\033[36m"
-	Gray      = "\033[37m"
-	Bold      = "\033[1m"
-	Clearln   = "\r\x1b[2K"
-	UpN       = "\033[%dA"
-	DownN     = "\033[%dB"
-	Underline = "\033[4m"
-
-	// Info - Display colorful information
-	Info = Bold + Cyan + "[*] " + Normal
-	// Warn - Warn a user
-	Warn = Bold + Red + "[!] " + Normal
-	// Debug - Display debug information
-	Debug = Bold + Purple + "[-] " + Normal
-	// Woot - Display success
-	Woot = Bold + Green + "[$] " + Normal
-	// Success - Diplay success
-	Success = Bold + Green + "[+] " + Normal
 )
 
 var (
@@ -63,10 +33,11 @@ type BindCmds func(console *Console)
 // Start - Console entrypoint
 func Start(bindCmds ...BindCmds) error {
 	//assets.Setup(false, false)
+	styles.Reset()
 	settings, _ := assets.LoadSettings()
 	con := &Console{
 		App: grumble.New(&grumble.Config{
-			Name:                  consts.ClientPrompt,
+			Name:                  styles.ClientPrompt,
 			Description:           "Internet of Malice",
 			HistoryFile:           filepath.Join(assets.GetRootAppDir(), "history"),
 			PromptColor:           color.New(),
@@ -128,9 +99,9 @@ func (c *Console) Login(config *assets.ClientConfig) error {
 
 func (c *Console) UpdatePrompt() {
 	if c.ActiveTarget.session != nil {
-		c.App.SetPrompt(fmt.Sprintf("%s [%s] > ", consts.ClientPrompt, helper.ShortSessionID(c.ActiveTarget.session.SessionId)))
+		c.App.SetPrompt(styles.AdaptSessionColor(c.ActiveTarget.session.SessionId))
 	} else {
-		c.App.SetPrompt(consts.ClientPrompt + " > ")
+		c.App.SetPrompt(styles.ClientPrompt)
 	}
 }
 
