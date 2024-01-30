@@ -162,22 +162,6 @@ func (rpc *Server) Download(ctx context.Context, req *pluginpb.DownloadRequest) 
 //}
 
 func (rpc *Server) Sync(ctx context.Context, req *clientpb.Sync) (*clientpb.SyncResp, error) {
-	greq, err := newGenericRequest(ctx, req)
-	if err != nil {
-		logs.Log.Errorf(err.Error())
-		return nil, err
-	}
-	sid, err := getSessionID(ctx)
-	if err != nil {
-		logs.Log.Errorf(err.Error())
-		return nil, err
-	}
-	session, ok := core.Sessions.Get(sid)
-	if !ok {
-		return nil, ErrInvalidSessionID
-	}
-	session.Tasks.Add(greq.Task)
-
 	if !files.IsExist(req.Target) {
 		return nil, os.ErrExist
 	}
@@ -186,7 +170,6 @@ func (rpc *Server) Sync(ctx context.Context, req *clientpb.Sync) (*clientpb.Sync
 		return nil, err
 	}
 	resp := &clientpb.SyncResp{
-		Task:    greq.Task.ToProtobuf(),
 		Target:  req.Target,
 		Content: data,
 	}

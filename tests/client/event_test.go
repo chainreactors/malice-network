@@ -10,7 +10,7 @@ import (
 
 func TestBroadcast(t *testing.T) {
 	rpc := common.NewClient(common.DefaultGRPCAddr, common.TestSid)
-	_, err := rpc.Call(consts.BroadcastStr, &clientpb.Event{
+	_, err := rpc.Call(consts.EventBroadcast, &clientpb.Event{
 		//EventType: consts.EventBroadcast,
 		Data: []byte("broadcast test"),
 	})
