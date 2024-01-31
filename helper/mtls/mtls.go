@@ -10,7 +10,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"log"
-	"os"
 )
 
 // VerifyCertificate - Verify a certificate
@@ -19,7 +18,6 @@ func VerifyCertificate(caCertificate string, rawCerts [][]byte) error {
 	ok := roots.AppendCertsFromPEM([]byte(caCertificate))
 	if !ok {
 		log.Printf("Failed to parse root certificate")
-		os.Exit(3)
 	}
 
 	cert, err := x509.ParseCertificate(rawCerts[0])
@@ -72,6 +70,7 @@ func Connect(config *assets.ClientConfig) (*grpc.ClientConn, error) {
 	if err != nil {
 		return nil, err
 	}
+	tlsConfig.ServerName = "client"
 	transportCreds := credentials.NewTLS(tlsConfig)
 	options := []grpc.DialOption{
 		grpc.WithTransportCredentials(transportCreds),

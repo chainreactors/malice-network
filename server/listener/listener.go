@@ -30,6 +30,7 @@ func NewListener(cfg *configs.ListenerConfig, isRoot bool) error {
 		return err
 	}
 	tlsConfig, err := mtls.GetTLSConfig(string(caCert), string(clientCert), string(clientKey))
+	tlsConfig.ServerName = certs.ListenerCA
 	transportCreds := credentials.NewTLS(tlsConfig)
 	options := []grpc.DialOption{
 		grpc.WithTransportCredentials(transportCreds),
