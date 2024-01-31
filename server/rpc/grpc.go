@@ -88,12 +88,13 @@ func StartClientListener(port uint16) (*grpc.Server, net.Listener, error) {
 		grpc.MaxSendMsgSize(consts.ServerMaxMessageSize),
 	}
 
-	options = append(options, authInterceptor()...)
+	//options = append(options, authInterceptor()...)
 	//rootOptions := buildOptions(options, authInterceptor()...)
 	grpcServer := grpc.NewServer(buildOptions(
 		options,
 		logInterceptor(rpcLog),
-		auditInterceptor())...)
+		auditInterceptor(),
+		authInterceptor())...)
 	clientrpc.RegisterMaliceRPCServer(grpcServer, NewServer())
 	clientrpc.RegisterRootRPCServer(grpcServer, NewServer())
 	listenerrpc.RegisterImplantRPCServer(grpcServer, NewServer())

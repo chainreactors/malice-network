@@ -46,7 +46,6 @@ func saveCertificate(caType string, keyType string, commonName string, cert []by
 		return fmt.Errorf("Invalid key type '%s'", keyType)
 	}
 
-	// todo @Hyc if already exist , skip
 	certsLog.Debugf("Saving certificate for cn = '%s'", commonName)
 
 	certModel := &models.Certificate{

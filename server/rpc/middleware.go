@@ -2,15 +2,13 @@ package rpc
 
 import (
 	"context"
+	"errors"
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/server/internal/configs"
-	grpc_auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-	"os"
-	"path"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/peer"
 	"reflect"
+	"strings"
 )
 
 type contextKey int
@@ -60,31 +58,19 @@ func auditInterceptor() grpc.UnaryServerInterceptor {
 }
 
 // authInterceptor - Auth middleware
-func authInterceptor() []grpc.ServerOption {
-	return []grpc.ServerOption{
-		grpc.ChainUnaryInterceptor(
-			grpc_auth.UnaryServerInterceptor(hasPermissions),
-		),
-		grpc.ChainStreamInterceptor(
-			grpc_auth.StreamServerInterceptor(hasPermissions),
-		),
+func authInterceptor() grpc.UnaryServerInterceptor {
+	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+		client, ok := peer.FromContext(ctx)
+		if !ok {
+			return ctx, errors.New("failed to get peers information from context")
+		}
+		caType := client.AuthInfo.(credentials.TLSInfo).State.ServerName
+		if len(caType) == 0 {
+			return ctx, errors.New("client certificate not found")
+		}
+		if !strings.Contains(info.FullMethod, caType) {
+			return ctx, errors.New("certificate type does not match method")
+		}
+		return handler(ctx, req)
 	}
-}
-
-// hasPermissions - Check if client has permissions`
-func hasPermissions(ctx context.Context) (context.Context, error) {
-	certPath := path.Join(configs.CertsPath, CertFile)
-	keyPath := path.Join(configs.CertsPath, KeyFile)
-	if _, err := os.Stat(certPath); os.IsNotExist(err) {
-		logs.Log.Errorf("Failed to load cert %v", err)
-		return nil, status.Error(codes.Unauthenticated, "Authentication failed")
-	}
-	if _, err := os.Stat(keyPath); os.IsNotExist(err) {
-		logs.Log.Errorf("Failed  to load key %v", err)
-		return nil, status.Error(codes.Unauthenticated, "Authentication failed")
-	}
-	ctx = context.WithValue(ctx, Transport, "mtls")
-	// TODO - Add operator check
-	ctx = context.WithValue(ctx, Operator, "test")
-	return ctx, nil
 }

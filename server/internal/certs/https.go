@@ -70,7 +70,7 @@ func MtlsListenerGenerateRsaCertificate(name string, isRoot bool) ([]byte, []byt
 			return certBytes, keyBytes, nil
 		}
 	}
-	cert, key := GenerateRSACertificate(OperatorCA, name, false, true)
+	cert, key := GenerateRSACertificate(ListenerCA, name, false, true)
 	err := saveCertificate(ListenerCA, RSAKey, fmt.Sprintf("%s", name), cert, key)
 	filename := fmt.Sprintf(configs.CertsPath+"/%s_%s", ListenerCA, name)
 	if certErr := os.WriteFile(filename+"_crt.pem", cert, 0o777); certErr != nil {
