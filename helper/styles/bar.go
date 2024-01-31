@@ -1,6 +1,7 @@
 package styles
 
 import (
+	"github.com/chainreactors/logs"
 	"github.com/charmbracelet/bubbles/progress"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -72,10 +73,9 @@ func tickCmd() tea.Cmd {
 	})
 }
 
-func (m ProcessBarModel) Run() (tea.Model, error) {
-	model, err := tea.NewProgram(m).Run()
+func (m ProcessBarModel) Run() {
+	_, err := tea.NewProgram(m).Run()
 	if err != nil {
-		return nil, err
+		logs.Log.Errorf("console has an error: %s", err)
 	}
-	return model, nil
 }

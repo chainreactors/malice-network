@@ -119,8 +119,5 @@ func PrintSessions(sessions map[string]*clientpb.Session, con *console.Console) 
 		rowEntries = append(rowEntries, row)
 	}
 	tableModel.Rows = rowEntries
-	err = tableModel.Run()
-	if err != nil {
-		console.Log.Errorf("Can't print sessions: %s", err)
-	}
+	tableModel.Run()
 }

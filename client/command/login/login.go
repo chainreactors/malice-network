@@ -42,10 +42,7 @@ func LoginCmd(ctx *grumble.Context, con *console.Console) error {
 		Choices: files,
 	}
 
-	if _, err := m.Run(); err != nil {
-		con.App.Println("Error starting interactive list:", err)
-		return err
-	}
+	m.Run()
 
 	// After the interactive list is completed, check the selected item
 	if m.SelectedItem >= 0 && m.SelectedItem < len(m.Choices) {

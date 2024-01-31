@@ -3,6 +3,9 @@ package file
 import (
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/helper/styles"
+	"github.com/chainreactors/malice-network/proto/client/clientpb"
+	"os"
 )
 
 func SyncCommand(con *console.Console) []*grumble.Command {

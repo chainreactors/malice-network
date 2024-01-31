@@ -3,7 +3,6 @@ package styles
 import (
 	"fmt"
 	"github.com/erikgeiser/promptkit/confirmation"
-	"os"
 )
 
 type ConfirmModel struct {
@@ -57,7 +56,6 @@ func (c *ConfirmModel) Run() bool {
 	ready, err := c.model.RunPrompt()
 	if err != nil {
 		fmt.Printf("Confirm error: %v\n", err)
-		os.Exit(1)
 	}
 	return ready
 }

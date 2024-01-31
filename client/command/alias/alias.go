@@ -68,10 +68,7 @@ func PrintAliases(con *console.Console) {
 		rowEntries = append(rowEntries, row)
 	}
 	tableModel.Rows = rowEntries
-	err = tableModel.Run()
-	if err != nil {
-		console.Log.Errorf("Can't print aliases: %s", err)
-	}
+	tableModel.Run()
 }
 
 // AliasCommandNameCompleter - Completer for installed extensions command names
