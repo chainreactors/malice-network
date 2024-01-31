@@ -82,8 +82,5 @@ func PrintTasks(tasks []*clientpb.Task, con *console.Console) {
 		rowEntries = append(rowEntries, row)
 	}
 	tableModel.Rows = rowEntries
-	err = tableModel.Run()
-	if err != nil {
-		console.Log.Errorf("Can't print tasks: %s", err)
-	}
+	tableModel.Run()
 }

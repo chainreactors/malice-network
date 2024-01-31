@@ -58,11 +58,7 @@ func upload(ctx *grumble.Context, con *console.Console) {
 			Progress:        progress.New(progress.WithDefaultGradient()),
 			ProgressPercent: <-ctrl,
 		}
-
-		if _, err := m.Run(); err != nil {
-			console.Log.Errorf("console has an error: %s", err)
-			os.Exit(1)
-		}
+		m.Run()
 	}()
 	if err != nil {
 		console.Log.Errorf("")

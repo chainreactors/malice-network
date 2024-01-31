@@ -91,6 +91,22 @@ func (s *ServerStatus) AddCallback(taskId uint32, callback TaskCallback) {
 	s.Callbacks.Store(taskId, callback)
 }
 
+func (s *ServerStatus) UpdateTasks(session *clientpb.Session) error {
+	tasks, err := s.Rpc.GetTasks(context.Background(), session)
+	if err != nil {
+		return err
+	}
+
+	if len(tasks.GetTasks()) == 0 {
+		return nil
+	}
+
+	for _, task := range tasks.GetTasks() {
+		s.Sessions[session.SessionId].Tasks[task.TaskId] = task
+	}
+	return nil
+}
+
 func (s *ServerStatus) triggerTaskCallback(event *clientpb.Event) {
 	task := event.GetTask()
 	if task == nil {

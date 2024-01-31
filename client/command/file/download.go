@@ -7,7 +7,6 @@ import (
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/pluginpb"
 	"github.com/charmbracelet/bubbles/progress"
-	"os"
 )
 
 func DownloadCommand(con *console.Console) []*grumble.Command {
@@ -46,11 +45,7 @@ func download(ctx *grumble.Context, con *console.Console) {
 			Progress:        progress.New(progress.WithDefaultGradient()),
 			ProgressPercent: <-ctrl,
 		}
-
-		if _, err := m.Run(); err != nil {
-			console.Log.Errorf("console has an error: %s", err)
-			os.Exit(1)
-		}
+		m.Run()
 	}()
 	if err != nil {
 		console.Log.Errorf("")

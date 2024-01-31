@@ -15,8 +15,8 @@ import (
 func Command(con *console.Console) []*grumble.Command {
 	return []*grumble.Command{
 		&grumble.Command{
-			Name: "sessions",
-			Help: "List sessions",
+			Name: "jobs",
+			Help: "List jobs",
 			Flags: func(f *grumble.Flags) {
 				f.String("k", "kill", "", "kill the designated job")
 				f.Bool("K", "kill-all", false, "kill all the jobs")
@@ -69,8 +69,5 @@ func printJobs(jobs *clientpb.Jobs, con *console.Console) {
 		rowEntries = append(rowEntries, row)
 	}
 	tableModel.Rows = rowEntries
-	err = tableModel.Run()
-	if err != nil {
-		console.Log.Errorf("Can't print jobs: %s", err)
-	}
+	tableModel.Run()
 }

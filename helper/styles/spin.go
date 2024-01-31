@@ -2,6 +2,7 @@ package styles
 
 import (
 	"fmt"
+	"github.com/chainreactors/logs"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -98,10 +99,9 @@ func (s SpinnerModel) View() (str string) {
 	return
 }
 
-func (s SpinnerModel) Run() (tea.Model, error) {
-	model, err := tea.NewProgram(s).Run()
+func (s SpinnerModel) Run() {
+	_, err := tea.NewProgram(s).Run()
 	if err != nil {
-		return nil, err
+		logs.Log.Errorf("console has an error: %s", err)
 	}
-	return model, nil
 }

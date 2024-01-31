@@ -69,8 +69,6 @@ func BindClientsCommands(con *console.Console) {
 		listener.Commands,
 		alias.Commands,
 		observe.Command,
-		alias.Commands,
-		observe.Command,
 		file.UploadCommand,
 		file.SyncCommand,
 		file.DownloadCommand,

@@ -1,6 +1,7 @@
 package styles
 
 import (
+	"github.com/chainreactors/logs"
 	tea "github.com/charmbracelet/bubbletea"
 	"strings"
 )
@@ -70,10 +71,9 @@ func (m *SelectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m *SelectModel) Run() (tea.Model, error) {
-	model, err := tea.NewProgram(m).Run()
+func (m *SelectModel) Run() {
+	_, err := tea.NewProgram(m).Run()
 	if err != nil {
-		return nil, err
+		logs.Log.Errorf("Error starting interactive list:", err)
 	}
-	return model, nil
 }
