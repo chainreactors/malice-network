@@ -1,8 +1,7 @@
-package styles
+package tui
 
 import (
 	"fmt"
-	"github.com/chainreactors/logs"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -32,6 +31,10 @@ var (
 	spinnerStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("69"))
 )
 
+func NewSpinner() *SpinnerModel {
+	return &SpinnerModel{}
+}
+
 type SpinnerModel struct {
 	spinner  spinner.Model
 	Quitting bool
@@ -39,12 +42,12 @@ type SpinnerModel struct {
 	index    int
 }
 
-func (s SpinnerModel) Init() tea.Cmd {
+func (s *SpinnerModel) Init() tea.Cmd {
 	s.index = 9
 	return s.spinner.Tick
 }
 
-func (s SpinnerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (s *SpinnerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -82,7 +85,7 @@ func (s *SpinnerModel) resetSpinner() {
 	s.spinner.Spinner = spinners[s.index]
 }
 
-func (s SpinnerModel) View() (str string) {
+func (s *SpinnerModel) View() (str string) {
 	if s.Quitting {
 		return ""
 	}
@@ -95,13 +98,6 @@ func (s SpinnerModel) View() (str string) {
 	}
 
 	str += fmt.Sprintf("\n %s%s%s\n\n", s.spinner.View(), gap, textStyle("Spinning..."))
-	str += helpStyle("h/l, ←/→: change spinner • q: exit\n")
+	str += HelpStyle("h/l, ←/→: change spinner • q: exit\n")
 	return
-}
-
-func (s SpinnerModel) Run() {
-	_, err := tea.NewProgram(s).Run()
-	if err != nil {
-		logs.Log.Errorf("console has an error: %s", err)
-	}
 }

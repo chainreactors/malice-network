@@ -3,10 +3,8 @@ package file
 import (
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/console"
-	"github.com/chainreactors/malice-network/helper/styles"
-	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/pluginpb"
-	"github.com/charmbracelet/bubbles/progress"
+	"google.golang.org/protobuf/proto"
 	"os"
 )
 
@@ -30,7 +28,6 @@ func UploadCommand(con *console.Console) []*grumble.Command {
 
 func upload(ctx *grumble.Context, con *console.Console) {
 	session := con.ActiveTarget.GetInteractive()
-	var err error
 	if session == nil {
 		return
 	}
@@ -43,24 +40,17 @@ func upload(ctx *grumble.Context, con *console.Console) {
 	if err != nil {
 		console.Log.Errorf("Can't open file: %s", err)
 	}
-	var download *clientpb.Task
-	ctrl := make(chan float64)
-	download, err = con.Rpc.Upload(con.ActiveTarget.Context(), &pluginpb.UploadRequest{
+	uploadTask, err := con.Rpc.Upload(con.ActiveTarget.Context(), &pluginpb.UploadRequest{
 		Name:   name,
 		Target: target,
 		Priv:   uint32(priv),
 		Data:   data,
 		Hidden: hidden,
 	})
-	ctrl <- float64(download.Cur / download.Total)
-	go func() {
-		m := styles.ProcessBarModel{
-			Progress:        progress.New(progress.WithDefaultGradient()),
-			ProgressPercent: <-ctrl,
-		}
-		m.Run()
-	}()
 	if err != nil {
-		console.Log.Errorf("")
+		console.Log.Errorf("Download error: %v", err)
+		return
 	}
+	con.AddCallback(uploadTask.TaskId, func(msg proto.Message) {
+	})
 }

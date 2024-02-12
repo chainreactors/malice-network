@@ -3,10 +3,9 @@ package file
 import (
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/console"
-	"github.com/chainreactors/malice-network/helper/styles"
-	"github.com/chainreactors/malice-network/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/client/tui"
 	"github.com/chainreactors/malice-network/proto/implant/pluginpb"
-	"github.com/charmbracelet/bubbles/progress"
+	"google.golang.org/protobuf/proto"
 )
 
 func DownloadCommand(con *console.Console) []*grumble.Command {
@@ -29,26 +28,20 @@ func download(ctx *grumble.Context, con *console.Console) {
 	if session == nil {
 		return
 	}
+
 	name := ctx.Flags.String("name")
 	path := ctx.Flags.String("path")
-
-	var download *clientpb.Task
-	var err error
-	ctrl := make(chan float64)
-	download, err = con.Rpc.Download(con.ActiveTarget.Context(), &pluginpb.DownloadRequest{
+	bar := tui.NewProcessBar()
+	downloadTask, err := con.Rpc.Download(con.ActiveTarget.Context(), &pluginpb.DownloadRequest{
 		Name: name,
 		Path: path,
 	})
-	ctrl <- float64(download.Cur / download.Total)
-	go func() {
-		m := styles.ProcessBarModel{
-			Progress:        progress.New(progress.WithDefaultGradient()),
-			ProgressPercent: <-ctrl,
-		}
-		m.Run()
-	}()
 	if err != nil {
-		console.Log.Errorf("")
+		console.Log.Errorf("Download error: %v", err)
+		return
 	}
+	con.AddCallback(downloadTask.TaskId, func(msg proto.Message) {
+		bar.Update(float64(downloadTask.Cur / downloadTask.Total))
+	})
 
 }

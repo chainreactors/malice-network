@@ -58,17 +58,24 @@ func auditInterceptor() grpc.UnaryServerInterceptor {
 }
 
 // authInterceptor - Auth middleware
-func authInterceptor() grpc.UnaryServerInterceptor {
+func authInterceptor(log *logs.Logger) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 		client, ok := peer.FromContext(ctx)
 		if !ok {
+			log.Errorf("[auth] failed to get peers information from context")
 			return ctx, errors.New("failed to get peers information from context")
+		}
+		if client.AuthInfo == nil {
+			log.Errorf("[auth] auth info not found")
+			return ctx, errors.New("auth info not found")
 		}
 		caType := client.AuthInfo.(credentials.TLSInfo).State.ServerName
 		if len(caType) == 0 {
-			return ctx, errors.New("client certificate not found")
+			log.Errorf("[auth] certificate type not found")
+			return ctx, errors.New("certificate type not found")
 		}
-		if !strings.Contains(info.FullMethod, caType) {
+		if !strings.HasPrefix(info.FullMethod, "/"+caType) {
+			log.Errorf("[auth] certificate type does not match method")
 			return ctx, errors.New("certificate type does not match method")
 		}
 		return handler(ctx, req)

@@ -1,27 +1,33 @@
 package models
 
 import (
+	"encoding/json"
 	"github.com/chainreactors/malice-network/server/core"
-	"github.com/gofrs/uuid"
 	"gorm.io/gorm"
+	"strconv"
 	"time"
 )
 
 type Task struct {
-	ID        uuid.UUID `gorm:"primaryKey;->;<-:create;type:uuid;"`
-	CreatedAt time.Time `gorm:"->;<-:create;"`
+	ID          string    `gorm:"primaryKey;->;<-:create;type:uuid;"`
+	CreatedAt   time.Time `gorm:"->;<-:create;"`
+	Type        string
+	SessionID   string
+	Session     Session `gorm:"foreignKey:SessionID"`
+	Cur         int
+	Total       int
+	Description string
+}
 
-	TaskID    uint32
-	Type      string
-	SessionId string
-	done      chan bool
-	Cur       int
-	Total     int
+type TaskDescription struct {
+	Name    string `json:"name"`
+	Path    string `json:"path"`
+	Size    int64  `json:"size"`
+	Command string `json:"command"`
 }
 
 // BeforeCreate - GORM hook
 func (t *Task) BeforeCreate(tx *gorm.DB) (err error) {
-	t.ID, err = uuid.NewV4()
 	if err != nil {
 		return err
 	}
@@ -29,12 +35,44 @@ func (t *Task) BeforeCreate(tx *gorm.DB) (err error) {
 	return nil
 }
 
-func ConvertToTaskDB(task *core.Task) *Task {
+func (t *Task) UpdateCur(db *gorm.DB, newCur int) error {
+	return db.Model(t).Update("cur", newCur).Error
+}
+
+func ConvertToTaskDB(task *core.Task, taskType string, td *TaskDescription) *Task {
+	tdString, _ := td.toJSONString()
 	return &Task{
-		TaskID:    task.Id,
-		Type:      task.Type,
-		SessionId: task.SessionId,
-		Cur:       task.Cur,
-		Total:     task.Total,
+		ID:          task.SessionId + "-" + uint32ToString(task.Id),
+		Type:        taskType,
+		SessionID:   task.SessionId,
+		Cur:         task.Cur,
+		Total:       task.Total,
+		Description: tdString,
 	}
+}
+
+func (td *TaskDescription) toJSONString() (string, error) {
+	jsonString, err := json.Marshal(td)
+	if err != nil {
+		return "", err
+	}
+	return string(jsonString), nil
+}
+
+func uint32ToString(num uint32) string {
+	return strconv.FormatUint(uint64(num), 10) // 10 表示十进制
+}
+
+func GetTaskDescriptionByID(db *gorm.DB, taskID string) (*TaskDescription, error) {
+	var task Task
+	if err := db.Where("id = ?", taskID).First(&task).Error; err != nil {
+		return nil, err
+	}
+
+	var td TaskDescription
+	if err := json.Unmarshal([]byte(task.Description), &td); err != nil {
+		return nil, err
+	}
+
+	return &td, nil
 }

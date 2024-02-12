@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+	"fmt"
 	"github.com/chainreactors/files"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -12,6 +13,8 @@ import (
 	"github.com/chainreactors/malice-network/proto/implant/pluginpb"
 	"github.com/chainreactors/malice-network/server/core"
 	"github.com/chainreactors/malice-network/server/internal/configs"
+	"github.com/chainreactors/malice-network/server/internal/db"
+	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"github.com/gookit/config/v2"
 	"os"
 	"path"
@@ -20,6 +23,7 @@ import (
 // Upload - Upload a file from the remote file system
 func (rpc *Server) Upload(ctx context.Context, req *pluginpb.UploadRequest) (*clientpb.Task, error) {
 	count := packet.Count(req.Data, config.Int(consts.MaxPacketLength))
+	dbSession := db.Session()
 	if count == 1 {
 		greq, err := newGenericRequest(ctx, req)
 		if err != nil {
@@ -29,10 +33,25 @@ func (rpc *Server) Upload(ctx context.Context, req *pluginpb.UploadRequest) (*cl
 		if err != nil {
 			return nil, err
 		}
+		td := &models.TaskDescription{
+			Name:    req.Name,
+			Path:    req.Target,
+			Command: fmt.Sprintf("upload -%d -%t", req.Priv, req.Hidden),
+			Size:    int64(len(req.Data)),
+		}
+		taskModel := models.ConvertToTaskDB(greq.Task, "upload", td)
+		err = dbSession.Create(taskModel).Error
+		if err != nil {
+			logs.Log.Errorf("cannot create task %d, %s in db", greq.Task.Id, err.Error())
+			return nil, err
+		}
 		go func() {
 			resp := <-ch
-			err := AssertResponse(resp, types.MsgBlock)
-			if err != nil {
+
+			err := AssertStatusAndResponse(resp, types.MsgBlock)
+			event := buildErrorEvent(greq.Task, err)
+			if event != nil {
+				core.EventBroker.Publish(*event)
 				return
 			}
 			greq.SetCallback(func() {
@@ -42,8 +61,13 @@ func (rpc *Server) Upload(ctx context.Context, req *pluginpb.UploadRequest) (*cl
 					Task:      greq.Task,
 				})
 			})
-			greq.Task.Done()
 		}()
+		greq.Task.Done()
+		err = taskModel.UpdateCur(dbSession, greq.Task.Cur)
+		if err != nil {
+			logs.Log.Errorf("cannot update task %d , %s in db", greq.Task.Id, err.Error())
+			return nil, err
+		}
 		return greq.Task.ToProtobuf(), nil
 	} else {
 		greq, err := newGenericRequest(ctx, &pluginpb.UploadRequest{
@@ -56,11 +80,25 @@ func (rpc *Server) Upload(ctx context.Context, req *pluginpb.UploadRequest) (*cl
 		if err != nil {
 			return nil, err
 		}
+		td := &models.TaskDescription{
+			Name:    req.Name,
+			Path:    req.Target,
+			Command: fmt.Sprintf("upload -%d -%t", req.Priv, req.Hidden),
+			Size:    int64(len(req.Data)),
+		}
+		taskModel := models.ConvertToTaskDB(greq.Task, "upload", td)
+		err = dbSession.Create(taskModel).Error
+		if err != nil {
+			logs.Log.Errorf("cannot create task %d , %s in db", greq.Task.Id, err.Error())
+			return nil, err
+		}
 		var blockId = 0
 		go func() {
 			stat := <-out
 			err := AssertResponse(stat, types.MsgNil)
-			if err != nil {
+			event := buildErrorEvent(greq.Task, err)
+			if event != nil {
+				core.EventBroker.Publish(*event)
 				return
 			}
 			for block := range packet.Chunked(req.Data, count) {
@@ -75,8 +113,17 @@ func (rpc *Server) Upload(ctx context.Context, req *pluginpb.UploadRequest) (*cl
 				spite, _ = types.BuildSpite(spite, msg)
 				in <- spite
 				resp := <-out
-				if !resp.GetAsyncAck().Success {
+				if resp.GetAsyncAck().Success {
 					greq.Task.Done()
+					core.EventBroker.Publish(core.Event{
+						EventType: consts.EventTaskDone,
+						Task:      greq.Task,
+						Err:       stat.Status.Error,
+					})
+					err = taskModel.UpdateCur(dbSession, blockId)
+					if err != nil {
+						logs.Log.Errorf("cannot update task %d , %s in db", greq.Task.Id, err.Error())
+					}
 					return
 				}
 			}
@@ -92,7 +139,7 @@ func (rpc *Server) Download(ctx context.Context, req *pluginpb.DownloadRequest) 
 	if err != nil {
 		return nil, err
 	}
-
+	dbSession := db.Session()
 	in, out, err := rpc.streamGenericHandler(ctx, greq)
 	if err != nil {
 		logs.Log.Debugf("stream generate error: %s", err)
@@ -103,14 +150,33 @@ func (rpc *Server) Download(ctx context.Context, req *pluginpb.DownloadRequest) 
 		resp := <-out
 
 		stat := resp.GetStatus()
-		if stat.Status != 0 {
-			greq.Task.Done()
+		err := AssertStatus(resp)
+		event := buildErrorEvent(greq.Task, err)
+		if event != nil {
+			core.EventBroker.Publish(*event)
 			return
 		}
 		fileName := path.Join(configs.TempPath, stat.GetDownloadResponse().Checksum)
 		greq.Task.Total = int(stat.GetDownloadResponse().Size) / config.Int(consts.MaxPacketLength)
+		td := &models.TaskDescription{
+			Name:    req.Name,
+			Path:    req.Path,
+			Command: fmt.Sprintf("download -%s -%s", req.Name, req.Path),
+			Size:    int64(stat.GetDownloadResponse().Size),
+		}
+		taskModel := models.ConvertToTaskDB(greq.Task, "download", td)
+		err = dbSession.Create(taskModel).Error
+		if err != nil {
+			logs.Log.Errorf("cannot create task %d , %s in db", greq.Task.Id, err.Error())
+		}
 		if files.IsExist(fileName) {
-			// TODO - DB SELECT TASK
+			if err != nil {
+				logs.Log.Errorf("db store download error: %s", err)
+			}
+			err := taskModel.UpdateCur(dbSession, greq.Task.Total)
+			if err != nil {
+				logs.Log.Errorf("cannot update task %d , %s in db", greq.Task.Id, err.Error())
+			}
 			return
 		} else {
 			downloadFile, err := os.OpenFile(fileName, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
@@ -127,6 +193,11 @@ func (rpc *Server) Download(ctx context.Context, req *pluginpb.DownloadRequest) 
 					}
 					ack, _ := greq.NewSpite(&commonpb.AsyncACK{Success: true})
 					in <- ack
+					err := taskModel.UpdateCur(dbSession, int(block.BlockId))
+					if err != nil {
+						logs.Log.Errorf("cannot update task %d , %s in db", greq.Task.Id, err.Error())
+						return
+					}
 				}
 			}()
 		}
@@ -134,43 +205,22 @@ func (rpc *Server) Download(ctx context.Context, req *pluginpb.DownloadRequest) 
 	return greq.Task.ToProtobuf(), nil
 }
 
-//func (rpc *Server) Download(ctx context.Context, req *pluginpb.DownloadRequest) (*clientpb.Task, error) {
-//	filename := path.Join(configs.TempPath, hash.Md5Hash(req.))
-//	if files.IsExist(filename) {
-//
-//	} else {
-//		err := os.WriteFile(filename, req.Data, fs.FileMode(req.Priv))
-//		if err != nil {
-//			return nil, err
-//		}
-//	}
-//
-//	greq := newGenericRequest(&pluginpb.DownloadRequest{
-//		Name: req.Name,
-//		Path: req.Path,
-//	})
-//	in, out, err := rpc.streamGenericHandler(ctx, greq)
-//	if err != nil {
-//		return nil, err
-//	}
-//	go func() {
-//		for resp := range out {
-//			resp.GetBlock()
-//		}
-//	}()
-//	return resp.(*clientpb.Task), nil
-//}
-
 func (rpc *Server) Sync(ctx context.Context, req *clientpb.Sync) (*clientpb.SyncResp, error) {
-	if !files.IsExist(req.Target) {
-		return nil, os.ErrExist
+	dbSession := db.Session()
+	td, err := models.GetTaskDescriptionByID(dbSession, req.FileId)
+	if err != nil {
+		logs.Log.Errorf("cannot find task in db by fileid: %s", err)
+		return nil, err
 	}
-	data, err := os.ReadFile(req.Target)
+	//if !files.IsExist(td.Path + td.Name) {
+	//	return nil, os.ErrExist
+	//}
+	data, err := os.ReadFile(path.Join(td.Path, td.Name))
 	if err != nil {
 		return nil, err
 	}
 	resp := &clientpb.SyncResp{
-		Target:  req.Target,
+		Name:    td.Name,
 		Content: data,
 	}
 	return resp, nil

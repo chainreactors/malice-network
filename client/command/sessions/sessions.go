@@ -5,12 +5,11 @@ import (
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/tui"
 	"github.com/chainreactors/malice-network/helper/helper"
-	"github.com/chainreactors/malice-network/helper/styles"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/pterm/pterm"
-	"golang.org/x/term"
 	"strings"
 	"time"
 )
@@ -50,39 +49,24 @@ func SessionsCmd(ctx *grumble.Context, con *console.Console) {
 }
 
 func PrintSessions(sessions map[string]*clientpb.Session, con *console.Console) {
-	width, _, err := term.GetSize(0)
-	var tableModel styles.TableModel
+
 	var rowEntries []table.Row
 	var row table.Row
-	if err != nil {
-		width = 99
-	}
-	if con.Settings.SmallTermWidth < width {
-		tableModel = styles.TableModel{Columns: []table.Column{
-			{Title: "ID", Width: 4},
-			{Title: "Name", Width: 4},
-			{Title: "Transport", Width: 10},
-			{Title: "Remote Address", Width: 15},
-			{Title: "Hostname", Width: 10},
-			{Title: "Username", Width: 10},
-			{Title: "Operating System", Width: 20},
-			{Title: "Locale", Width: 10},
-			{Title: "Last Message", Width: 15},
-			{Title: "Health", Width: 10},
-		}}
-	} else {
-		tableModel = styles.TableModel{Columns: []table.Column{
-			{Title: "ID", Width: 4},
-			{Title: "Transport", Width: 10},
-			{Title: "Remote Address", Width: 15},
-			{Title: "Hostname", Width: 10},
-			{Title: "Username", Width: 10},
-			{Title: "Operating System", Width: 20},
-			{Title: "Health", Width: 10},
-		}}
-	}
-	for _, session := range sessions {
 
+	tableModel := tui.NewTable([]table.Column{
+		{Title: "ID", Width: 4},
+		{Title: "Name", Width: 4},
+		{Title: "Transport", Width: 10},
+		{Title: "Remote Address", Width: 15},
+		{Title: "Hostname", Width: 10},
+		{Title: "Username", Width: 10},
+		{Title: "Operating System", Width: 20},
+		{Title: "Locale", Width: 10},
+		{Title: "Last Message", Width: 15},
+		{Title: "Health", Width: 10},
+	})
+
+	for _, session := range sessions {
 		var SessionHealth string
 		if session.IsDead {
 			SessionHealth = pterm.FgRed.Sprint("[DEAD]")
@@ -91,33 +75,20 @@ func PrintSessions(sessions map[string]*clientpb.Session, con *console.Console) 
 		}
 
 		username := strings.TrimPrefix(session.Os.Username, session.Os.Hostname+"\\") // For non-AD Windows users
-		if con.Settings.SmallTermWidth < width {
-			row = table.Row{
-				helper.ShortSessionID(session.SessionId),
-				session.Name,
-				"",
-				session.ListenerId,
-				session.RemoteAddr,
-				session.Os.Hostname,
-				username,
-				fmt.Sprintf("%s/%s", session.Os.Name, session.Os.Arch),
-				time.Unix(int64(session.Timer.LastCheckin), 0).Format(time.RFC1123),
-				SessionHealth,
-			}
-		} else {
-			row = table.Row{
-				helper.ShortSessionID(session.SessionId),
-				"",
-				session.ListenerId,
-				session.RemoteAddr,
-				session.Os.Hostname,
-				username,
-				fmt.Sprintf("%s/%s", session.Os.Name, session.Os.Arch),
-				SessionHealth,
-			}
+		row = table.Row{
+			helper.ShortSessionID(session.SessionId),
+			session.Name,
+			"",
+			session.ListenerId,
+			session.RemoteAddr,
+			session.Os.Hostname,
+			username,
+			fmt.Sprintf("%s/%s", session.Os.Name, session.Os.Arch),
+			time.Unix(int64(session.Timer.LastCheckin), 0).Format(time.RFC1123),
+			SessionHealth,
 		}
 		rowEntries = append(rowEntries, row)
 	}
 	tableModel.Rows = rowEntries
-	tableModel.Run()
+	tui.Run(tableModel)
 }

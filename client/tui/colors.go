@@ -1,8 +1,7 @@
-package styles
+package tui
 
 import (
 	"fmt"
-	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/muesli/termenv"
 	"os"
 )
@@ -24,14 +23,6 @@ var (
 )
 
 var ClientPrompt = adaptTermColor()
-
-var DefaultLogStyle = LogStyle{
-	Debug:     termenv.String(consts.Rocket+"[+]").Bold().Background(Blue).String() + " %s ",
-	Warn:      termenv.String(consts.Zap+"[warn]").Bold().Background(Yellow).String() + " %s ",
-	Error:     termenv.String(consts.Monster+"[-]").Bold().Background(Red).String() + " %s ",
-	Important: termenv.String(consts.Fire+"[*]").Bold().Background(Purple).String() + " %s ",
-	Info:      termenv.String(consts.HotSpring+"[i]").Bold().Background(Green).String() + " %s ",
-}
 
 // adaptTermColor - Adapt term color
 // TODO: Adapt term color by term(fork grumble ColorTableFg)

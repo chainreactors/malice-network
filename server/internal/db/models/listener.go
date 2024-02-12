@@ -10,8 +10,8 @@ import (
 type Listener struct {
 	ID         uuid.UUID `gorm:"primaryKey;->;<-:create;type:uuid;"`
 	CreatedAt  time.Time `gorm:"->;<-:create;"`
-	Name       string
-	ServerAddr string
+	Name       string    `gorm:"uniqueIndex"`
+	ServerAddr string    `gorm:"uniqueIndex"`
 	TcpName    string
 	TcpHost    string
 	TcpPort    uint16

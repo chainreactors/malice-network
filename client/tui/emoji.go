@@ -1,4 +1,4 @@
-package consts
+package tui
 
 const (
 	Rocket      = "🚀"

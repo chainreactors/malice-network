@@ -1,10 +1,15 @@
-package styles
+package tui
 
 import (
-	"github.com/chainreactors/logs"
 	tea "github.com/charmbracelet/bubbletea"
 	"strings"
 )
+
+func NewSelect(choices []string) *SelectModel {
+	return &SelectModel{
+		Choices: choices,
+	}
+}
 
 type SelectModel struct {
 	Choices      []string
@@ -69,11 +74,4 @@ func (m *SelectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
-}
-
-func (m *SelectModel) Run() {
-	_, err := tea.NewProgram(m).Run()
-	if err != nil {
-		logs.Log.Errorf("Error starting interactive list:", err)
-	}
 }

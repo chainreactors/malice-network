@@ -1,13 +1,22 @@
-package styles
+package tui
 
 import (
 	"fmt"
-	"github.com/chainreactors/malice-network/client/console"
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 )
 
+func NewTable(columns []table.Column) *TableModel {
+	t := &TableModel{
+		table: table.New(
+			table.WithColumns(columns),
+			table.WithFocused(true)),
+		Style: DefaultTableStyle,
+	}
+	return t
+}
+
+// TODO tui: table 实现自适应width 并通过左右键查看无法一次性展示的属性
 type TableModel struct {
 	table       table.Model
 	Style       *table.Styles
@@ -16,28 +25,6 @@ type TableModel struct {
 	currentPage int
 	totalPages  int
 	rowsPerPage int
-}
-
-var baseStyle = lipgloss.NewStyle().
-	BorderStyle(lipgloss.RoundedBorder()).
-	BorderForeground(lipgloss.Color("240"))
-
-func (t *TableModel) SetDefaultStyle() {
-	defaultStyle := table.Styles{
-		Selected: lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("212")),
-		Header:   lipgloss.NewStyle().Bold(true).Padding(0, 1),
-		Cell:     lipgloss.NewStyle().Padding(0, 1),
-	}
-	defaultStyle.Header = defaultStyle.Header.
-		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color("240")).
-		BorderBottom(true).
-		Bold(false)
-	defaultStyle.Selected = defaultStyle.Selected.
-		Foreground(lipgloss.Color("229")).
-		Background(lipgloss.Color("57")).
-		Bold(false)
-	t.SetStyle(&defaultStyle)
 }
 
 func (t *TableModel) UpdatePagination() {
@@ -91,25 +78,10 @@ func (t *TableModel) View() string {
 
 	t.table.SetRows(t.Rows[startIndex:endIndex])
 
-	return baseStyle.Render(t.table.View()) +
+	return FootStyle.Render(t.table.View()) +
 		fmt.Sprintf("\nPage %d of %d\n", t.currentPage, t.totalPages)
 }
 
 func (t *TableModel) SetStyle(s *table.Styles) {
 	t.table.SetStyles(*s)
-}
-
-func (t *TableModel) Run() {
-	t.table = table.New(
-		table.WithColumns(t.Columns),
-		table.WithRows(t.Rows),
-		table.WithFocused(true))
-	if t.Style != nil {
-		t.SetStyle(t.Style)
-	} else {
-		t.SetDefaultStyle()
-	}
-	if _, err := tea.NewProgram(t).Run(); err != nil {
-		console.Log.Errorf("Can't print aliases: %s", err)
-	}
 }

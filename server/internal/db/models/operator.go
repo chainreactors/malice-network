@@ -14,8 +14,8 @@ import (
 type Operator struct {
 	ID        uuid.UUID `gorm:"primaryKey;->;<-:create;type:uuid;"`
 	CreatedAt time.Time `gorm:"->;<-:create;"`
-	Name      string
-	Token     string `gorm:"uniqueIndex"`
+	Name      string    `gorm:"uniqueIndex"`
+	Token     string    `gorm:"uniqueIndex"`
 }
 
 // BeforeCreate - GORM hook
