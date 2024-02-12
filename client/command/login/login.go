@@ -6,7 +6,7 @@ import (
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/console"
-	"github.com/chainreactors/malice-network/helper/styles"
+	"github.com/chainreactors/malice-network/client/tui"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"path/filepath"
 )
@@ -38,11 +38,11 @@ func LoginCmd(ctx *grumble.Context, con *console.Console) error {
 	}
 
 	// Create a model for the interactive list
-	m := &styles.SelectModel{
+	m := &tui.SelectModel{
 		Choices: files,
 	}
 
-	m.Run()
+	tui.Run(m)
 
 	// After the interactive list is completed, check the selected item
 	if m.SelectedItem >= 0 && m.SelectedItem < len(m.Choices) {

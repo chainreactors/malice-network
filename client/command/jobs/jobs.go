@@ -5,10 +5,9 @@ import (
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/console"
-	"github.com/chainreactors/malice-network/helper/styles"
+	"github.com/chainreactors/malice-network/client/tui"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/charmbracelet/bubbles/table"
-	"golang.org/x/term"
 	"strconv"
 )
 
@@ -46,21 +45,16 @@ func JobCmd(ctx *grumble.Context, con *console.Console) {
 }
 
 func printJobs(jobs *clientpb.Jobs, con *console.Console) {
-	width, _, err := term.GetSize(0)
-	var tableModel styles.TableModel
 	var rowEntries []table.Row
 	var row table.Row
-	if err != nil {
-		width = 99
-	}
-	if con.Settings.SmallTermWidth < width {
-		tableModel = styles.TableModel{Columns: []table.Column{
-			{Title: "ID", Width: 4},
-			{Title: "name", Width: 4},
-			{Title: "host", Width: 10},
-			{Title: "port", Width: 5},
-		}}
-	}
+	// TODO tui : 添加更多字段, 包括protocol, remote addr
+	tableModel := tui.NewTable([]table.Column{
+		{Title: "ID", Width: 4},
+		{Title: "name", Width: 4},
+		{Title: "host", Width: 10},
+		{Title: "port", Width: 5},
+	})
+
 	for _, job := range jobs.Job {
 		row = table.Row{strconv.Itoa(int(job.Id)),
 			job.Pipeline.GetTcp().Name,
@@ -69,5 +63,5 @@ func printJobs(jobs *clientpb.Jobs, con *console.Console) {
 		rowEntries = append(rowEntries, row)
 	}
 	tableModel.Rows = rowEntries
-	tableModel.Run()
+	tui.Run(tableModel)
 }

@@ -3,8 +3,8 @@ package console
 import (
 	"context"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/client/tui"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/styles"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"google.golang.org/grpc"
@@ -91,22 +91,6 @@ func (s *ServerStatus) AddCallback(taskId uint32, callback TaskCallback) {
 	s.Callbacks.Store(taskId, callback)
 }
 
-func (s *ServerStatus) UpdateTasks(session *clientpb.Session) error {
-	tasks, err := s.Rpc.GetTasks(context.Background(), session)
-	if err != nil {
-		return err
-	}
-
-	if len(tasks.GetTasks()) == 0 {
-		return nil
-	}
-
-	for _, task := range tasks.GetTasks() {
-		s.Sessions[session.SessionId].Tasks[task.TaskId] = task
-	}
-	return nil
-}
-
 func (s *ServerStatus) triggerTaskCallback(event *clientpb.Event) {
 	task := event.GetTask()
 	if task == nil {
@@ -158,16 +142,16 @@ func (s *ServerStatus) EventHandler() {
 		case consts.EventLeft:
 			Log.Infof("%s left the game", event.Client.Name)
 		case consts.EventBroadcast:
-			styles.Clear()
+			tui.Clear()
 			Log.Infof("%s broadcasted: %s  %s", event.Source, string(event.Data), event.Err)
 		case consts.EventNotify:
-			styles.Clear()
+			tui.Clear()
 			Log.Importantf("%s notified: %s %s", event.Source, string(event.Data), event.Err)
 		case consts.EventTaskCallback:
 			Log.Debugf("task callback")
 			s.triggerTaskCallback(event)
 		case consts.EventTaskDone:
-			styles.Clear()
+			tui.Clear()
 			Log.Debugf("task done")
 		}
 

@@ -6,9 +6,8 @@ import (
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/console"
-	"github.com/chainreactors/malice-network/helper/styles"
+	"github.com/chainreactors/malice-network/client/tui"
 	"github.com/charmbracelet/bubbles/table"
-	"golang.org/x/term"
 	"os"
 	"strconv"
 	"strings"
@@ -27,26 +26,19 @@ func AliasesCmd(ctx *grumble.Context, con *console.Console) error {
 
 // PrintAliases - Print a list of loaded aliases
 func PrintAliases(con *console.Console) {
-	width, _, err := term.GetSize(0)
-	var tableModel styles.TableModel
 	var rowEntries []table.Row
 	var row table.Row
-	if err != nil {
-		width = 99
-	}
-	if con.Settings.SmallTermWidth < width {
-		tableModel = styles.TableModel{Columns: []table.Column{
-			{Title: "Name", Width: 4},
-			{Title: "Command Name", Width: 15},
-			{Title: "Platforms", Width: 10},
-			{Title: "Version", Width: 10},
-			{Title: "Installed", Width: 10},
-			{Title: ".NET Assembly", Width: 15},
-			{Title: "Reflective", Width: 10},
-			{Title: "Tool Author", Width: 15},
-			{Title: "Repository", Width: 10},
-		}}
-	}
+	tableModel := tui.NewTable([]table.Column{
+		{Title: "Name", Width: 4},
+		{Title: "Command Name", Width: 15},
+		{Title: "Platforms", Width: 10},
+		{Title: "Version", Width: 10},
+		{Title: "Installed", Width: 10},
+		{Title: ".NET Assembly", Width: 15},
+		{Title: "Reflective", Width: 10},
+		{Title: "Tool Author", Width: 15},
+		{Title: "Repository", Width: 10},
+	})
 
 	installedManifests := getInstalledManifests()
 	for _, aliasPkg := range loadedAliases {
@@ -68,7 +60,7 @@ func PrintAliases(con *console.Console) {
 		rowEntries = append(rowEntries, row)
 	}
 	tableModel.Rows = rowEntries
-	tableModel.Run()
+	tui.Run(tableModel)
 }
 
 // AliasCommandNameCompleter - Completer for installed extensions command names

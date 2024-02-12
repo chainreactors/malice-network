@@ -1,10 +1,8 @@
-package styles
+package tui
 
 import (
-	"github.com/chainreactors/logs"
 	"github.com/charmbracelet/bubbles/progress"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"strings"
 	"time"
 )
@@ -14,12 +12,17 @@ const (
 	maxWidth = 60
 )
 
-var helpStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#626262")).Render
-
 type tickMsg time.Time
 
+func NewProcessBar() ProcessBarModel {
+	return ProcessBarModel{
+		Progress: progress.NewModel(progress.WithDefaultGradient()),
+	}
+}
+
 type ProcessBarModel struct {
-	Progress        progress.Model
+	Progress progress.Model
+	// TODO tui percent 根据total与cur展示, 如果是并且允许自定义bar的内容
 	ProgressPercent float64
 }
 
@@ -64,18 +67,11 @@ func (m ProcessBarModel) View() string {
 	pad := strings.Repeat(" ", padding)
 	return "\n" +
 		pad + m.Progress.View() + "\n\n" +
-		pad + helpStyle("Press any key to quit")
+		pad + HelpStyle("Press any key to quit")
 }
 
 func tickCmd() tea.Cmd {
 	return tea.Tick(time.Second*1, func(t time.Time) tea.Msg {
 		return tickMsg(t)
 	})
-}
-
-func (m ProcessBarModel) Run() {
-	_, err := tea.NewProgram(m).Run()
-	if err != nil {
-		logs.Log.Errorf("console has an error: %s", err)
-	}
 }

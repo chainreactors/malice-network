@@ -5,9 +5,9 @@ import (
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
+	"github.com/chainreactors/malice-network/client/tui"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/mtls"
-	"github.com/chainreactors/malice-network/helper/styles"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/fatih/color"
 	"google.golang.org/protobuf/proto"
@@ -33,11 +33,11 @@ type BindCmds func(console *Console)
 // Start - Console entrypoint
 func Start(bindCmds ...BindCmds) error {
 	//assets.Setup(false, false)
-	styles.Reset()
+	tui.Reset()
 	settings, _ := assets.LoadSettings()
 	con := &Console{
 		App: grumble.New(&grumble.Config{
-			Name:                  styles.ClientPrompt,
+			Name:                  tui.ClientPrompt,
 			Description:           "Internet of Malice",
 			HistoryFile:           filepath.Join(assets.GetRootAppDir(), "history"),
 			PromptColor:           color.New(),
@@ -99,9 +99,9 @@ func (c *Console) Login(config *assets.ClientConfig) error {
 
 func (c *Console) UpdatePrompt() {
 	if c.ActiveTarget.session != nil {
-		c.App.SetPrompt(styles.AdaptSessionColor(c.ActiveTarget.session.SessionId))
+		c.App.SetPrompt(tui.AdaptSessionColor(c.ActiveTarget.session.SessionId))
 	} else {
-		c.App.SetPrompt(styles.ClientPrompt)
+		c.App.SetPrompt(tui.ClientPrompt)
 	}
 }
 

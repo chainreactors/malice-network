@@ -5,10 +5,9 @@ import (
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/console"
-	"github.com/chainreactors/malice-network/helper/styles"
+	"github.com/chainreactors/malice-network/client/tui"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/charmbracelet/bubbles/table"
-	"golang.org/x/term"
 	"strconv"
 )
 
@@ -45,21 +44,14 @@ func TasksCmd(ctx *grumble.Context, con *console.Console) {
 }
 
 func PrintTasks(tasks []*clientpb.Task, con *console.Console) {
-	width, _, err := term.GetSize(0)
-	var tableModel styles.TableModel
 	var rowEntries []table.Row
 	var row table.Row
-	if err != nil {
-		width = 99
-	}
-	if con.Settings.SmallTermWidth < width {
-		tableModel = styles.TableModel{Columns: []table.Column{
-			{Title: "ID", Width: 4},
-			{Title: "Type", Width: 4},
-			{Title: "Status", Width: 8},
-			{Title: "Process", Width: 10},
-		}}
-	}
+	tableModel := tui.NewTable([]table.Column{
+		{Title: "ID", Width: 4},
+		{Title: "Type", Width: 4},
+		{Title: "Status", Width: 8},
+		{Title: "Process", Width: 10},
+	})
 	for _, task := range tasks {
 		var processValue string
 		var status string
@@ -82,5 +74,5 @@ func PrintTasks(tasks []*clientpb.Task, con *console.Console) {
 		rowEntries = append(rowEntries, row)
 	}
 	tableModel.Rows = rowEntries
-	tableModel.Run()
+	tui.Run(tableModel)
 }
