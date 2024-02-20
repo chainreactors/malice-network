@@ -5,16 +5,13 @@ import (
 	"github.com/chainreactors/malice-network/proto/implant/commonpb"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/server/core"
-	"github.com/gofrs/uuid"
 	"gorm.io/gorm"
 	"time"
 )
 
 type Session struct {
-	ID        uuid.UUID `gorm:"primaryKey;->;<-:create;type:uuid;"`
-	CreatedAt time.Time `gorm:"->;<-:create;"`
-
-	SessionId  string `gorm:"uniqueIndex"`
+	SessionID  string    `gorm:"primaryKey;->;<-:create;type:uuid;"`
+	CreatedAt  time.Time `gorm:"->;<-:create;"`
 	RemoteAddr string
 	ListenerId string
 	IsAlive    bool
@@ -22,17 +19,14 @@ type Session struct {
 	Process    *Process `gorm:"embedded"`
 	Time       *Timer   `gorm:"embedded"`
 	Last       int
+	Tasks      []Task `gorm:"foreignKey:SessionID"`
 }
 
 func (s *Session) BeforeCreate(tx *gorm.DB) (err error) {
 	var existingSession Session
-	result := tx.Where("session_id = ?", s.SessionId).First(&existingSession)
+	result := tx.Where("session_id = ?", s.SessionID).First(&existingSession)
 	if result.Error == nil {
 		return errors.New("exists")
-	}
-	s.ID, err = uuid.NewV4()
-	if err != nil {
-		return err
 	}
 	s.CreatedAt = time.Now()
 	return nil
@@ -40,7 +34,7 @@ func (s *Session) BeforeCreate(tx *gorm.DB) (err error) {
 
 func ConvertToSessionDB(session *core.Session) *Session {
 	return &Session{
-		SessionId:  session.ID,
+		SessionID:  session.ID,
 		RemoteAddr: session.RemoteAddr,
 		ListenerId: session.ListenerId,
 		Os:         convertToOsDB(session.Os),
@@ -103,7 +97,7 @@ type Timer struct {
 
 func (s *Session) ToProtobuf() *lispb.RegisterSession {
 	return &lispb.RegisterSession{
-		SessionId:  s.SessionId,
+		SessionId:  s.SessionID,
 		ListenerId: s.ListenerId,
 		RemoteAddr: s.RemoteAddr,
 		RegisterData: &commonpb.Register{

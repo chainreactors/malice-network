@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -16,8 +17,6 @@ import (
 	"github.com/chainreactors/malice-network/server/core"
 	"github.com/chainreactors/malice-network/server/internal/certs"
 	"github.com/chainreactors/malice-network/server/internal/configs"
-	"github.com/chainreactors/malice-network/server/internal/db"
-	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"github.com/gookit/config/v2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -42,9 +41,9 @@ var (
 	ErrAsyncNotSupported = status.Error(codes.Unavailable, "Async not supported for this command")
 	// ErrDatabaseFailure - Generic database failure error (real error is logged)
 	ErrDatabaseFailure = status.Error(codes.Internal, "Database operation failed")
-
-	ErrAssertFailure = status.Error(codes.InvalidArgument, "Assert spite type failure")
-	ErrNilAssert     = status.Error(codes.InvalidArgument, "must return spite body")
+	ErrNilStatus       = status.Error(codes.InvalidArgument, "Nil status or unknown error")
+	ErrAssertFailure   = status.Error(codes.InvalidArgument, "Assert spite type failure")
+	ErrNilResponseBody = status.Error(codes.InvalidArgument, "Must return spite body")
 	// ErrInvalidName - Invalid name
 	ErrInvalidName        = status.Error(codes.InvalidArgument, "Invalid session name, alphanumerics and _-. only")
 	ErrNotFoundSession    = status.Error(codes.InvalidArgument, "Session ID not found")
@@ -94,7 +93,7 @@ func StartClientListener(port uint16) (*grpc.Server, net.Listener, error) {
 		options,
 		logInterceptor(rpcLog),
 		auditInterceptor(),
-		authInterceptor())...)
+		authInterceptor(rpcLog))...)
 	clientrpc.RegisterMaliceRPCServer(grpcServer, NewServer())
 	clientrpc.RegisterRootRPCServer(grpcServer, NewServer())
 	listenerrpc.RegisterImplantRPCServer(grpcServer, NewServer())
@@ -129,13 +128,6 @@ func newGenericRequest(ctx context.Context, msg proto.Message, opts ...int) (*Ge
 		req.Task = req.NewTask(1)
 	} else {
 		req.Task = req.NewTask(opts[0])
-	}
-
-	dbSession := db.Session()
-	err := dbSession.Create(models.ConvertToTaskDB(req.Task)).Error
-	if err != nil {
-		logs.Log.Errorf("cannot create task %s , %s in db", req.Task.Id, err.Error())
-		return nil, err
 	}
 	return req, nil
 }
@@ -387,7 +379,7 @@ func AssertStatus(spite *commonpb.Spite) error {
 func AssertResponse(spite *commonpb.Spite, expect types.MsgName) error {
 	body := spite.GetBody()
 	if body == nil && expect != types.MsgNil {
-		return ErrNilAssert
+		return ErrNilResponseBody
 	}
 
 	if expect != types.MessageType(spite) {
@@ -401,4 +393,33 @@ func AssertStatusAndResponse(spite *commonpb.Spite, expect types.MsgName) error 
 		return err
 	}
 	return AssertResponse(spite, expect)
+}
+
+func buildErrorEvent(task *core.Task, err error) *core.Event {
+	if errors.Is(err, ErrNilStatus) {
+		return &core.Event{
+			EventType: consts.EventTaskError,
+			Task:      task,
+			Err:       ErrNilStatus.Error(),
+		}
+	} else if errors.Is(err, ErrAssertFailure) {
+		return &core.Event{
+			EventType: consts.EventTaskError,
+			Task:      task,
+			Err:       ErrAssertFailure.Error(),
+		}
+	} else if errors.Is(err, ErrNilResponseBody) {
+		return &core.Event{
+			EventType: consts.EventTaskError,
+			Task:      task,
+			Err:       ErrNilResponseBody.Error(),
+		}
+	} else if errors.Is(err, ErrMissingRequestField) {
+		return &core.Event{
+			EventType: consts.EventTaskError,
+			Task:      task,
+			Err:       ErrMissingRequestField.Error(),
+		}
+	}
+	return nil
 }

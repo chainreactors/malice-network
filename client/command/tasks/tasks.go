@@ -34,7 +34,7 @@ func Command(con *console.Console) []*grumble.Command {
 }
 
 func TasksCmd(ctx *grumble.Context, con *console.Console) {
-	con.UpdateTasks(con.ActiveTarget.GetInteractive())
+	//con.UpdateTasks(con.ActiveTarget.GetInteractive())
 	sid := con.ActiveTarget.GetInteractive().SessionId
 	if 0 < len(con.Sessions[sid].Tasks) {
 		PrintTasks(con.Sessions[sid].Tasks, con)

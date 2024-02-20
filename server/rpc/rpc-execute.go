@@ -2,7 +2,6 @@ package rpc
 
 import (
 	"context"
-	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
@@ -24,8 +23,9 @@ func (rpc *Server) Execute(ctx context.Context, req *pluginpb.ExecRequest) (*cli
 		resp := <-ch
 
 		err := AssertStatusAndResponse(resp, types.MsgExec)
-		if err != nil {
-			logs.Log.Error(err.Error())
+		event := buildErrorEvent(greq.Task, err)
+		if event != nil {
+			core.EventBroker.Publish(*event)
 			return
 		}
 		greq.SetCallback(func() {
@@ -53,8 +53,9 @@ func (rpc *Server) ExecuteAssembly(ctx context.Context, req *pluginpb.ExecuteAss
 	go func() {
 		resp := <-ch
 		err := AssertStatusAndResponse(resp, types.MsgAssemblyResponse)
-		if err != nil {
-			logs.Log.Error(err.Error())
+		event := buildErrorEvent(greq.Task, err)
+		if event != nil {
+			core.EventBroker.Publish(*event)
 			return
 		}
 		greq.SetCallback(func() {
@@ -82,8 +83,9 @@ func (rpc *Server) ExecuteShellcode(ctx context.Context, req *pluginpb.ExecuteSh
 	go func() {
 		resp := <-ch
 		err := AssertStatusAndResponse(resp, types.MsgAssemblyResponse)
-		if err != nil {
-			logs.Log.Error(err.Error())
+		event := buildErrorEvent(greq.Task, err)
+		if event != nil {
+			core.EventBroker.Publish(*event)
 			return
 		}
 		greq.SetCallback(func() {
@@ -111,8 +113,9 @@ func (rpc *Server) ExecuteBof(ctx context.Context, req *pluginpb.ExecuteBof) (*c
 	go func() {
 		resp := <-ch
 		err := AssertStatusAndResponse(resp, types.MsgAssemblyResponse)
-		if err != nil {
-			logs.Log.Error(err.Error())
+		event := buildErrorEvent(greq.Task, err)
+		if event != nil {
+			core.EventBroker.Publish(*event)
 			return
 		}
 		greq.SetCallback(func() {

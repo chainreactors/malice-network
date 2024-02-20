@@ -10,7 +10,7 @@ import (
 type Certificate struct {
 	ID             uuid.UUID `gorm:"primaryKey;->;<-:create;type:uuid;"`
 	CreatedAt      time.Time `gorm:"->;<-:create;"`
-	CommonName     string
+	CommonName     string    `gorm:"uniqueIndex"`
 	CAType         string
 	KeyType        string
 	CertificatePEM string

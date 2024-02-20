@@ -34,11 +34,3 @@ const (
 	MaxPacketLength = "server.config.packet_length"
 	AuditLevel      = "server.audit"
 )
-
-// plugin
-const (
-	CSharpPlugin    = "csharp"
-	SideloadPlugin  = "sideload"
-	SpawnPlugin     = "spawn"
-	ShellcodePlugin = "shellcode"
-)

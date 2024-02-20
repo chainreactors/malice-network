@@ -87,6 +87,10 @@ func (s *ServerStatus) UpdateSession() error {
 	return nil
 }
 
+func (s *ServerStatus) CancelCallback(taskId uint32) {
+	s.Callbacks.Delete(taskId)
+}
+
 func (s *ServerStatus) AddCallback(taskId uint32, callback TaskCallback) {
 	s.Callbacks.Store(taskId, callback)
 }
@@ -116,9 +120,6 @@ func (s *ServerStatus) triggerTaskDone(event *clientpb.Event) {
 	task := event.GetTask()
 	if task == nil {
 		Log.Errorf(ErrNotFoundTask.Error())
-	}
-	if callback, ok := s.Callbacks.Load(task.TaskId); ok {
-		callback.(TaskCallback)(event)
 	}
 }
 
@@ -151,6 +152,7 @@ func (s *ServerStatus) EventHandler() {
 			Log.Debugf("task callback")
 			s.triggerTaskCallback(event)
 		case consts.EventTaskDone:
+			s.triggerTaskDone(event)
 			tui.Clear()
 			Log.Debugf("task done")
 		}

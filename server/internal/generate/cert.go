@@ -51,8 +51,8 @@ func GenerateClientCA(host, user string) ([]byte, []byte, error) {
 
 // ServerInitUserCert - Initialize the client cert by server
 func ServerInitUserCert(name string) error {
-	if files.IsExist(path.Join(assets.GetConfigDir(), fmt.Sprintf("%s.yaml", name))) {
-		logs.Log.Info("Client certificate already exist.")
+	if files.IsExist(path.Join(assets.GetConfigDir(), fmt.Sprintf("%s_%s_%d.yaml", name, "localhost", 5004))) {
+		logs.Log.Debug("Client certificate already exist.")
 		return nil
 	}
 	cert, key, err := certs.InitRSACertificate("localhost", name, false, true)
