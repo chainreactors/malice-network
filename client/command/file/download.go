@@ -3,7 +3,6 @@ package file
 import (
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/console"
-	"github.com/chainreactors/malice-network/client/tui"
 	"github.com/chainreactors/malice-network/proto/implant/pluginpb"
 	"google.golang.org/protobuf/proto"
 )
@@ -31,7 +30,6 @@ func download(ctx *grumble.Context, con *console.Console) {
 
 	name := ctx.Flags.String("name")
 	path := ctx.Flags.String("path")
-	bar := tui.NewProcessBar()
 	downloadTask, err := con.Rpc.Download(con.ActiveTarget.Context(), &pluginpb.DownloadRequest{
 		Name: name,
 		Path: path,
@@ -41,7 +39,6 @@ func download(ctx *grumble.Context, con *console.Console) {
 		return
 	}
 	con.AddCallback(downloadTask.TaskId, func(msg proto.Message) {
-		bar.Update(float64(downloadTask.Cur / downloadTask.Total))
 	})
 
 }

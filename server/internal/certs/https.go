@@ -55,7 +55,7 @@ func InitRSACertificate(host, user string, isCA, isClient bool) ([]byte, []byte,
 }
 
 // MtlsListenerGenerateRsaCertificate -
-func MtlsListenerGenerateRsaCertificate(name string, isRoot bool) ([]byte, []byte, error) {
+func MtlsListenerGenerateRsaCertificate(name string, isRoot bool, tlsConflg *configs.TlsConfig) ([]byte, []byte, error) {
 	if isRoot {
 		certsPath := path.Join(configs.ServerRootPath, "certs")
 		// check if listenerCert exist
@@ -70,7 +70,7 @@ func MtlsListenerGenerateRsaCertificate(name string, isRoot bool) ([]byte, []byt
 			return certBytes, keyBytes, nil
 		}
 	}
-	cert, key := GenerateRSACertificate(ListenerCA, name, false, true)
+	cert, key := GenerateRSACertificate(ListenerCA, name, false, true, tlsConflg)
 	err := saveCertificate(ListenerCA, RSAKey, fmt.Sprintf("%s", name), cert, key)
 	filename := fmt.Sprintf(configs.CertsPath+"/%s_%s", ListenerCA, name)
 	if certErr := os.WriteFile(filename+"_crt.pem", cert, 0o777); certErr != nil {

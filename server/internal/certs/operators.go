@@ -26,7 +26,7 @@ var certsLog = logs.Log
 
 // OperatorClientGenerateCertificate - Generate a certificate signed with a given CA
 func OperatorClientGenerateCertificate(operator string) ([]byte, []byte, error) {
-	cert, key := GenerateRSACertificate(OperatorCA, operator, false, true)
+	cert, key := GenerateRSACertificate(OperatorCA, operator, false, true, nil)
 	err := saveCertificate(OperatorCA, RSAKey, fmt.Sprintf("%s.%s", "root", operator), cert, key)
 	filename := fmt.Sprintf(configs.CertsPath+"/%s_%s", OperatorCA, SERVERCA)
 	if certErr := os.WriteFile(filename+"_crt.pem", cert, 0o777); certErr != nil {
@@ -67,7 +67,7 @@ func OperatorServerGenerateCertificate(hostname string) ([]byte, []byte, error) 
 		}
 		return certBytes, keyBytes, nil
 	}
-	cert, key := GenerateRSACertificate(OperatorCA, hostname, false, false)
+	cert, key := GenerateRSACertificate(OperatorCA, hostname, false, false, nil)
 	err := saveCertificate(OperatorCA, RSAKey, fmt.Sprintf("%s.%s", serverNamespace, hostname), cert, key)
 	filename := fmt.Sprintf(configs.CertsPath+"/%s_%s", serverNamespace, OperatorCA)
 	if certErr := os.WriteFile(filename+"_crt.pem", cert, 0o777); certErr != nil {

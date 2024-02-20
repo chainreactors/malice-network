@@ -23,7 +23,7 @@ var (
 )
 
 func NewListener(cfg *configs.ListenerConfig, isRoot bool) error {
-	clientCert, clientKey, err := certs.MtlsListenerGenerateRsaCertificate(cfg.Name, isRoot)
+	clientCert, clientKey, err := certs.MtlsListenerGenerateRsaCertificate(cfg.Name, isRoot, cfg.TlsConfig)
 	caCertX509, _, err := certs.GetCertificateAuthority(certs.SERVERCA)
 	caCert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: caCertX509.Raw})
 	if err != nil {

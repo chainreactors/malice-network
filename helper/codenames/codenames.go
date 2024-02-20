@@ -3,19 +3,21 @@ package codenames
 import (
 	"bufio"
 	"fmt"
-	"github.com/chainreactors/malice-network/client/assets"
 	insecureRand "math/rand"
 	"os"
 	"path/filepath"
 	"strings"
 )
 
-//var (
+// var (
+//
 //	codenameLog = log.RootLogger.WithFields(logrus.Fields{
 //		"pkg":    "generate",
 //		"stream": "codenames",
 //	})
-//)
+//
+// )
+var txtDir = "/internal/generate"
 
 // readLines - Read lines of a text file into a slice
 func readLines(txtFilePath string) ([]string, error) {
@@ -44,8 +46,8 @@ func readLines(txtFilePath string) ([]string, error) {
 
 // getRandomWord - Get a random word from a file, not cryptographically secure
 func getRandomWord(txtFilePath string) (string, error) {
-	appDir := assets.GetRootAppDir()
-	words, err := readLines(filepath.Join(appDir, txtFilePath))
+	serverDir, _ := os.Getwd()
+	words, err := readLines(filepath.Join(serverDir, txtDir, txtFilePath))
 	if err != nil {
 		return "", err
 	}

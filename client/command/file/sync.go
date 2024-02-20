@@ -1,6 +1,7 @@
 package file
 
 import (
+	"github.com/chainreactors/malice-network/client/command/completer"
 	"os"
 
 	"github.com/chainreactors/grumble"
@@ -18,6 +19,9 @@ func SyncCommand(con *console.Console) []*grumble.Command {
 		Run: func(ctx *grumble.Context) error {
 			sync(ctx, con)
 			return nil
+		},
+		Completer: func(prefix string, args []string) []string {
+			return completer.AliveSessionIDCompleter(con)
 		},
 	}}
 }
@@ -42,32 +46,4 @@ func sync(ctx *grumble.Context, con *console.Console) {
 		console.Log.Errorf("Can't write file: %s", err)
 		return
 	}
-	//	syncResp, err := con.Rpc.Sync(con.ActiveTarget.Context(), &clientpb.Sync{
-	//		Name:   name,
-	//		Target: target,
-	//	})
-	//	if err != nil {
-	//		console.Log.Errorf("Can't syncResp file: %s", err)
-	//		spinner.Quitting = true
-	//		return
-	//	}
-	//	file, err := os.OpenFile(syncResp.Target, os.O_CREATE|os.O_WRONLY, 0644)
-	//	if err != nil {
-	//		console.Log.Errorf("Can't Open file: %s", err)
-	//		spinner.Quitting = true
-	//		return
-	//	}
-	//	_, err = file.Write(syncResp.Content)
-	//	if err != nil {
-	//		console.Log.Errorf("Can't write file: %s", err)
-	//		spinner.Quitting = true
-	//		return
-	//	}
-	//	spinner.Quitting = true
-	//}()
-	//_, err := spinner.Run()
-	//if err != nil {
-	//	console.Log.Errorf("Console has an error: %s", err)
-	//	os.Exit(1)
-	//}
 }

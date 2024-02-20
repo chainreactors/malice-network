@@ -13,6 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/chainreactors/malice-network/helper/helper"
+	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"math/big"
@@ -168,22 +169,29 @@ func GenerateECCCertificate(caType string, commonName string, isCA bool, isClien
 }
 
 // GenerateRSACertificate - Generates an RSA Certificate
-func GenerateRSACertificate(caType string, commonName string, isCA bool, isClient bool) ([]byte, []byte) {
-
+func GenerateRSACertificate(caType string, commonName string, isCA bool, isClient bool,
+	tlsConfig *configs.TlsConfig) ([]byte, []byte) {
 	certsLog.Debugf("Generating TLS certificate (RSA) for '%s' ...", commonName)
 
 	var privateKey interface{}
 	var err error
-
+	var subject *pkix.Name
 	// Generate private key
 	privateKey, err = rsa.GenerateKey(rand.Reader, RsaKeySize())
 	if err != nil {
 		certsLog.Errorf("Failed to generate private key %v", err)
 	}
-	subject := pkix.Name{
-		CommonName: commonName,
+
+	// Generate random listener subject if listener config is null
+	if caType == ListenerCA {
+		if tlsConfig != nil {
+			subject = tlsConfig.ToPkix()
+		} else {
+			subject = randomSubject(commonName)
+		}
 	}
-	return generateCertificate(caType, subject, isCA, isClient, privateKey)
+
+	return generateCertificate(caType, *subject, isCA, isClient, privateKey)
 }
 
 func generateCertificate(caType string, subject pkix.Name, isCA bool, isClient bool, privateKey interface{}) ([]byte, []byte) {

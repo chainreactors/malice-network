@@ -50,3 +50,9 @@ func SessionIDCompleter(con *console.Console, prefix string) (results []string) 
 	}
 	return
 }
+
+func AliveSessionIDCompleter(con *console.Console) (results []string) {
+	sid := con.ActiveTarget.GetInteractive().SessionId
+	results = append(results, sid)
+	return
+}
