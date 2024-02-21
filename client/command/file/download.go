@@ -7,21 +7,6 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func DownloadCommand(con *console.Console) []*grumble.Command {
-	return []*grumble.Command{{
-		Name: "download",
-		Help: "download file",
-		Flags: func(f *grumble.Flags) {
-			f.String("n", "name", "", "filename")
-			f.String("p", "path", "", "filepath")
-		},
-		Run: func(ctx *grumble.Context) error {
-			download(ctx, con)
-			return nil
-		},
-	}}
-}
-
 func download(ctx *grumble.Context, con *console.Console) {
 	session := con.ActiveTarget.GetInteractive()
 	if session == nil {

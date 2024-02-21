@@ -8,24 +8,6 @@ import (
 	"os"
 )
 
-func UploadCommand(con *console.Console) []*grumble.Command {
-	return []*grumble.Command{{
-		Name: "upload",
-		Help: "upload file",
-		Flags: func(f *grumble.Flags) {
-			f.String("n", "name", "", "filename")
-			f.String("p", "path", "", "filepath")
-			f.String("t", "target", "", "file in implant target")
-			f.Int("", "priv", 0o644, "file Privilege")
-			f.Bool("", "hidden", false, "filename")
-		},
-		Run: func(ctx *grumble.Context) error {
-			upload(ctx, con)
-			return nil
-		},
-	}}
-}
-
 func upload(ctx *grumble.Context, con *console.Console) {
 	session := con.ActiveTarget.GetInteractive()
 	if session == nil {

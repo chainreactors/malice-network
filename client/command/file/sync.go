@@ -1,30 +1,12 @@
 package file
 
 import (
-	"github.com/chainreactors/malice-network/client/command/completer"
 	"os"
 
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 )
-
-func SyncCommand(con *console.Console) []*grumble.Command {
-	return []*grumble.Command{{
-		Name: "sync",
-		Help: "sync file",
-		Flags: func(f *grumble.Flags) {
-			f.String("n", "name", "", "filename")
-		},
-		Run: func(ctx *grumble.Context) error {
-			sync(ctx, con)
-			return nil
-		},
-		Completer: func(prefix string, args []string) []string {
-			return completer.AliveSessionIDCompleter(con)
-		},
-	}}
-}
 
 func sync(ctx *grumble.Context, con *console.Console) {
 	name := ctx.Flags.String("name")

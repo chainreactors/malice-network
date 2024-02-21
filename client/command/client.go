@@ -69,9 +69,7 @@ func BindClientsCommands(con *console.Console) {
 		listener.Commands,
 		alias.Commands,
 		observe.Command,
-		file.UploadCommand,
-		file.SyncCommand,
-		file.DownloadCommand,
+		file.Commands,
 	)
 
 	login.LoginCmd(&grumble.Context{}, con)
