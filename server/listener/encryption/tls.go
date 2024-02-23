@@ -7,13 +7,13 @@ import (
 	"net"
 )
 
-func WrapWithTls(conn net.Conn, config *configs.TlsConfig) (net.Conn, error) {
-	cert, key := certs.GenerateRSACertificate("pipeline", "", false, false, config)
+func WrapWithTls(lsn net.Listener, config *configs.TlsConfig) (net.Listener, error) {
+	cert, key := certs.GenerateRSACertificate(0, "", false, false, config)
 	pair, err := tls.X509KeyPair(cert, key)
 	if err != nil {
 		return nil, err
 	}
 
 	tlsConfig := &tls.Config{Certificates: []tls.Certificate{pair}}
-	return tls.Server(conn, tlsConfig), nil
+	return tls.NewListener(lsn, tlsConfig), nil
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/server/core"
 	"github.com/chainreactors/malice-network/server/internal/configs"
+	"github.com/chainreactors/malice-network/server/listener/encryption"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
 	"net"
@@ -18,10 +19,11 @@ import (
 
 func StartTcpPipeline(conn *grpc.ClientConn, cfg *configs.TcpPipelineConfig) (*TCPPipeline, error) {
 	pp := &TCPPipeline{
-		Name:   cfg.Name,
-		Port:   cfg.Port,
-		Host:   cfg.Host,
-		Enable: cfg.Enable,
+		Name:      cfg.Name,
+		Port:      cfg.Port,
+		Host:      cfg.Host,
+		Enable:    cfg.Enable,
+		TlsConfig: cfg.TlsConfig,
 	}
 	err := pp.Start()
 	if err != nil {
@@ -45,11 +47,12 @@ func ToTcpConfig(pipeline *lispb.TCPPipeline) *configs.TcpPipelineConfig {
 }
 
 type TCPPipeline struct {
-	ln     net.Listener
-	Name   string
-	Port   uint16
-	Host   string
-	Enable bool
+	ln        net.Listener
+	Name      string
+	Port      uint16
+	Host      string
+	Enable    bool
+	TlsConfig *configs.TlsConfig
 }
 
 func (l *TCPPipeline) ToProtobuf() proto.Message {
@@ -90,6 +93,12 @@ func (l *TCPPipeline) handler() (net.Listener, error) {
 	ln, err := net.Listen("tcp", fmt.Sprintf("%s:%d", l.Host, l.Port))
 	if err != nil {
 		return nil, err
+	}
+	if l.TlsConfig != nil && l.TlsConfig.Enable {
+		ln, err = encryption.WrapWithTls(ln, l.TlsConfig)
+		if err != nil {
+			return nil, err
+		}
 	}
 	go func() {
 		for {

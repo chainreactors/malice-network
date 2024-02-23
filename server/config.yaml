@@ -20,11 +20,11 @@ listeners:
       protocol: tcp
       enable: true
       tls:
-          enable: true
-          CN: "test"
-          O: "Sharp Depth"
-          C: "US"
-          L: "Houston"
-          OU: "Persistent Housework, Limited"
-          ST: "State of Texas"
-          validity: "365";
+        enable: true
+        CN: "test"
+        O: "Sharp Depth"
+        C: "US"
+        L: "Houston"
+        OU: "Persistent Housework, Limited"
+        ST: "State of Texas"
+        validity: "365"
