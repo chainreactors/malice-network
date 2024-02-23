@@ -11,8 +11,8 @@ server:
     certificate_key:
 
 listeners:
-  server_addr: 127.0.0.1:5004
   name: default
+  auth: default.yaml
   tcp:
     - name: tcp_default
       port: 5001

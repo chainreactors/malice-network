@@ -16,6 +16,7 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"strconv"
 )
 
 var (
@@ -37,7 +38,12 @@ func NewListener(cfg *configs.ListenerConfig) error {
 		grpc.WithBlock(),
 		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(consts.ClientMaxReceiveMessageSize)),
 	}
-	conn, err := grpc.Dial(cfg.ServerAddr, options...)
+	listenerCfg, err := mtls.ReadConfig(cfg.Auth)
+	if err != nil {
+		return err
+	}
+	serverAddress := listenerCfg.LHost + ":" + strconv.Itoa(listenerCfg.LPort)
+	conn, err := grpc.Dial(serverAddress, options...)
 	if err != nil {
 		return err
 	}
@@ -45,7 +51,7 @@ func NewListener(cfg *configs.ListenerConfig) error {
 	lis := &listener{
 		Rpc:       listenerrpc.NewListenerRPCClient(conn),
 		Name:      cfg.Name,
-		Host:      cfg.Host,
+		Host:      serverAddress,
 		pipelines: make(core.Pipelines),
 		conn:      conn,
 		cfg:       cfg,

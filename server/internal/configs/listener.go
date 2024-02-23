@@ -19,9 +19,8 @@ func GetListenerConfig() *ListenerConfig {
 }
 
 type ListenerConfig struct {
-	Host          string                `host:"name"`
 	Name          string                `config:"name"`
-	ServerAddr    string                `config:"server_addr"`
+	Auth          string                `config:"auth"`
 	TcpPipelines  []*TcpPipelineConfig  `config:"tcp"`
 	HttpPipelines []*HttpPipelineConfig `config:"http"`
 }

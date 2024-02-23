@@ -57,7 +57,7 @@ func Execute() {
 	} else if opt.Server == nil {
 		logs.Log.Errorf("null server config , %s ", err.Error())
 	}
-	_, _, err = certs.ServerGenerateCertificate("root", true)
+	_, _, err = certs.ServerGenerateCertificate("root", true, opt.Listeners.Auth)
 	if err != nil {
 		logs.Log.Errorf("cannot init root ca , %s ", err.Error())
 		return

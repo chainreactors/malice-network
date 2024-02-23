@@ -120,7 +120,7 @@ func ServerGetCertificate(hostname string) ([]byte, []byte, error) {
 }
 
 // ServerGenerateCertificate - Generate a certificate signed with a given CA
-func ServerGenerateCertificate(name string, isCA bool) ([]byte, []byte, error) {
+func ServerGenerateCertificate(name string, isCA bool, cfgPath string) ([]byte, []byte, error) {
 	certsPath := path.Join(configs.ServerRootPath, "certs")
 	if isCA {
 		err := os.MkdirAll(certsPath, 0744)
@@ -134,7 +134,7 @@ func ServerGenerateCertificate(name string, isCA bool) ([]byte, []byte, error) {
 			return nil, nil, nil
 		} else {
 			cert, key := GenerateRSACertificate(RootCA, name, isCA, false, nil)
-			err = removeOldCerts()
+			err = removeOldCerts(cfgPath)
 			if err != nil {
 				return cert, key, err
 			}

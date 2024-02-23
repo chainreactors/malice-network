@@ -30,7 +30,7 @@ func VerifyCertificate(caCertificate string, rawCerts [][]byte) error {
 		Roots: roots,
 	}
 	if options.Roots == nil {
-		panic("no root certificate")
+		log.Printf("no root certificate")
 	}
 	if _, err := cert.Verify(options); err != nil {
 		log.Printf("Failed to verify certificate: " + err.Error())

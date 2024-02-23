@@ -347,7 +347,7 @@ func getOperatorServerMTLSConfig(host string) *tls.Config {
 	}
 	caCertPool := x509.NewCertPool()
 	caCertPool.AddCert(caCert)
-	certPEM, keyPEM, err := certs.ServerGenerateCertificate(host, false)
+	certPEM, keyPEM, err := certs.ServerGenerateCertificate(host, false, "")
 	if err != nil {
 		logs.Log.Errorf("Failed to load certificate %s", err)
 	}

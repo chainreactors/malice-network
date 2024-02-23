@@ -323,18 +323,16 @@ func RsaKeySize() int {
 }
 
 // removeOldCerts - Remove old certificates from the filesystem
-func removeOldCerts() error {
+func removeOldCerts(cfgPath string) error {
 	dbSession := db.Session()
-	var certs []models.Certificate
-	err := dbSession.Where("ca_type = ? AND NOT common_name LIKE ?", 2, "listener.%").Find(&certs).Error
-	if err != nil {
+	if _, err := os.Stat(cfgPath); err == nil {
+		if err := os.Remove(cfgPath); err != nil {
+			return err
+		}
+	} else if !os.IsNotExist(err) {
 		return err
 	}
-	yamlPath, _ := os.Getwd()
-	if err := os.Remove(path.Join(yamlPath, fmt.Sprintf("%s.yaml", certs[0].CommonName))); err != nil {
-		return err
-	}
-	err = models.DeleteAllCertificates(dbSession)
+	err := models.DeleteAllCertificates(dbSession)
 	if err != nil {
 		return err
 	}
