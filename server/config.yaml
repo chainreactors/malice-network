@@ -6,7 +6,9 @@ server:
   grpc_host: 127.0.0.1
   audit: 1  # 0 close , 1 basic , 2 detail
   config:
-    packet_length: 100 # 1M
+    packet_length: 100 # 1M:
+    certificate:
+    certificate_key:
 
 listeners:
   server_addr: 127.0.0.1:5004
@@ -17,12 +19,12 @@ listeners:
       host: 0.0.0.0
       protocol: tcp
       enable: true
-  tls:
-      enable: true
-      CN: "test"
-      O: "Sharp Depth"
-      C: "US"
-      L: "Houston"
-      OU: "Persistent Housework, Limited"
-      ST: "State of Texas"
-      validity: "365";
+      tls:
+          enable: true
+          CN: "test"
+          O: "Sharp Depth"
+          C: "US"
+          L: "Houston"
+          OU: "Persistent Housework, Limited"
+          ST: "State of Texas"
+          validity: "365";

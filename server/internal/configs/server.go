@@ -2,6 +2,7 @@ package configs
 
 import (
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"github.com/chainreactors/files"
 	"github.com/chainreactors/logs"
@@ -23,6 +24,8 @@ var (
 	TempPath                    = path.Join(ServerRootPath, "temp")
 	PluginPath                  = path.Join(ServerRootPath, "plugins")
 	AuditPath                   = path.Join(ServerRootPath, "audit")
+
+	ErrNoConfig = errors.New("no config found")
 )
 
 func InitConfig() error {
@@ -128,5 +131,22 @@ type DaemonConfig struct {
 }
 
 type MiscConfig struct {
-	PacketLength int `config:"packet_length" default:"4194304"`
+	PacketLength int    `config:"packet_length" default:"4194304"`
+	Certificate  string `config:"certificate" default:""`
+	PrivateKey   string `config:"certificate_key" default:""`
+}
+
+func LoadMiscConfig() ([]byte, []byte, error) {
+	var opt ServerConfig
+	// load config
+	err := LoadConfig(ServerConfigFileName, &opt)
+	if err != nil {
+		logs.Log.Errorf("Failed to load config: %s", err)
+		return nil, nil, err
+	}
+	if opt.MiscConfig.Certificate != "" && opt.MiscConfig.PrivateKey != "" {
+		return []byte(opt.MiscConfig.Certificate), []byte(opt.MiscConfig.PrivateKey), nil
+	} else {
+		return nil, nil, ErrNoConfig
+	}
 }

@@ -25,13 +25,13 @@ import (
 
 func TestOperatorGenerateCertificate(t *testing.T) {
 	GenerateCertificateAuthority(OperatorCA, "")
-	cert1, key1, err := OperatorClientGenerateCertificate("test3")
+	cert1, key1, err := ClientGenerateCertificate("test3")
 	if err != nil {
 		t.Errorf("Failed to store ecc certificate %v", err)
 		return
 	}
 
-	cert2, key2, err := OperatorClientGetCertificate("test3")
+	cert2, key2, err := ClientGetCertificate("test3")
 	if err != nil {
 		t.Errorf("Failed to get ecc certificate %v", err)
 		return

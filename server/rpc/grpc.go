@@ -73,7 +73,7 @@ func StartClientListener(port uint16) (*grpc.Server, net.Listener, error) {
 	logs.Log.Importantf("Starting gRPC console on 0.0.0.0:%d", port)
 
 	InitLogs(config.Bool("debug"))
-	tlsConfig := getOperatorServerMTLSConfig("operator")
+	tlsConfig := getOperatorServerMTLSConfig("server")
 	creds := credentials.NewTLS(tlsConfig)
 	ln, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", port))
 	if err != nil {
@@ -340,14 +340,14 @@ func getClientName(ctx context.Context) string {
 
 // getOperatorServerMTLSConfig - Get the TLS config for the operator server
 func getOperatorServerMTLSConfig(host string) *tls.Config {
-	caCert, _, err := certs.GetCertificateAuthority(certs.SERVERCA)
+	caCert, _, err := certs.GetCertificateAuthority()
 	if err != nil {
 		logs.Log.Errorf("Failed to load CA %s", err)
 		return nil
 	}
 	caCertPool := x509.NewCertPool()
 	caCertPool.AddCert(caCert)
-	certPEM, keyPEM, err := certs.OperatorServerGenerateCertificate(host)
+	certPEM, keyPEM, err := certs.ServerGenerateCertificate(host, false)
 	if err != nil {
 		logs.Log.Errorf("Failed to load certificate %s", err)
 	}

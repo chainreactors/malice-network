@@ -22,15 +22,15 @@ var (
 	Listener *listener
 )
 
-func NewListener(cfg *configs.ListenerConfig, isRoot bool) error {
-	clientCert, clientKey, err := certs.MtlsListenerGenerateRsaCertificate(cfg.Name, isRoot, cfg.TlsConfig)
-	caCertX509, _, err := certs.GetCertificateAuthority(certs.SERVERCA)
+func NewListener(cfg *configs.ListenerConfig) error {
+	clientCert, clientKey, err := certs.ClientGenerateCertificate("", cfg.Name, 0, certs.ListenerCA, cfg)
+	caCertX509, _, err := certs.GetCertificateAuthority()
 	caCert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: caCertX509.Raw})
 	if err != nil {
 		return err
 	}
 	tlsConfig, err := mtls.GetTLSConfig(string(caCert), string(clientCert), string(clientKey))
-	tlsConfig.ServerName = certs.ListenerCA
+	tlsConfig.ServerName = certs.ListenerNamespace
 	transportCreds := credentials.NewTLS(tlsConfig)
 	options := []grpc.DialOption{
 		grpc.WithTransportCredentials(transportCreds),

@@ -1,9 +1,0 @@
-
-listeners:
-  server_addr: 127.0.0.1:5004
-  tcp:
-    - name: tcp_default
-      port: 5001
-      host: 0.0.0.0
-      protocol: tcp
-      enable: true

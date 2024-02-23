@@ -17,14 +17,6 @@ import (
 //  CERTIFICATE AUTHORITY
 // -----------------------
 
-// SetupCAs - Creates directories for certs
-func SetupCAs() {
-	//GenerateCertificateAuthority(MtlsImplantCA, "")
-	//GenerateCertificateAuthority(MtlsServerCA, "")
-	GenerateCertificateAuthority(OperatorCA, "operators")
-	GenerateCertificateAuthority(HTTPSCA, "")
-}
-
 func getCertDir() string {
 	//rootDir := assets.GetRootAppDir()
 	// test
@@ -38,7 +30,7 @@ func getCertDir() string {
 }
 
 // GenerateCertificateAuthority - Creates a new CA cert for a given type
-func GenerateCertificateAuthority(caType string, commonName string) (*x509.Certificate, *rsa.PrivateKey) {
+func GenerateCertificateAuthority(caType int, commonName string) (*x509.Certificate, *rsa.PrivateKey) {
 	storageDir := getCertDir()
 	certFilePath := filepath.Join(storageDir, fmt.Sprintf("%s-ca-cert.pem", caType))
 	if _, err := os.Stat(certFilePath); os.IsNotExist(err) {
@@ -46,7 +38,7 @@ func GenerateCertificateAuthority(caType string, commonName string) (*x509.Certi
 		cert, key := GenerateECCCertificate(caType, commonName, true, false)
 		SaveCertificateAuthority(caType, cert, key)
 	}
-	cert, key, err := GetCertificateAuthority(caType)
+	cert, key, err := GetCertificateAuthority()
 	if err != nil {
 		certsLog.Errorf("Failed to load CA %v", err)
 	}
@@ -54,8 +46,8 @@ func GenerateCertificateAuthority(caType string, commonName string) (*x509.Certi
 }
 
 // GetCertificateAuthority - Get the current CA certificate
-func GetCertificateAuthority(caType string) (*x509.Certificate, *rsa.PrivateKey, error) {
-	certPEM, keyPEM, err := GetCertificateAuthorityPEM(caType)
+func GetCertificateAuthority() (*x509.Certificate, *rsa.PrivateKey, error) {
+	certPEM, keyPEM, err := GetCertificateAuthorityPEM()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -86,10 +78,9 @@ func GetCertificateAuthority(caType string) (*x509.Certificate, *rsa.PrivateKey,
 }
 
 // GetCertificateAuthorityPEM - Get PEM encoded CA cert/key
-func GetCertificateAuthorityPEM(caType string) ([]byte, []byte, error) {
-	caType = path.Base(caType)
-	caCertPath := path.Join(getCertDir(), "localhost_root_crt.pem")
-	caKeyPath := path.Join(getCertDir(), "localhost_root_key.pem")
+func GetCertificateAuthorityPEM() ([]byte, []byte, error) {
+	caCertPath := path.Join(getCertDir(), "root_crt.pem")
+	caKeyPath := path.Join(getCertDir(), "root_key.pem")
 
 	certPEM, err := ioutil.ReadFile(caCertPath)
 	if err != nil {
@@ -108,7 +99,7 @@ func GetCertificateAuthorityPEM(caType string) ([]byte, []byte, error) {
 // SaveCertificateAuthority - Save the certificate and the key to the filesystem
 // doesn't return an error because errors are fatal. If we can't generate CAs,
 // then we can't secure communication and we should die a horrible death.
-func SaveCertificateAuthority(caType string, cert []byte, key []byte) {
+func SaveCertificateAuthority(caType int, cert []byte, key []byte) {
 
 	storageDir := getCertDir()
 	if _, err := os.Stat(storageDir); os.IsNotExist(err) {

@@ -1,9 +1,6 @@
 package models
 
 import (
-	"crypto/rand"
-	"encoding/hex"
-	"errors"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -26,14 +23,4 @@ func (o *Operator) BeforeCreate(tx *gorm.DB) (err error) {
 	}
 	o.CreatedAt = time.Now()
 	return nil
-}
-
-// GenerateOperatorToken - Generate a new operator auth token
-func GenerateOperatorToken() string {
-	buf := make([]byte, 32)
-	n, err := rand.Read(buf)
-	if err != nil || n != len(buf) {
-		panic(errors.New("failed to read from secure rand"))
-	}
-	return hex.EncodeToString(buf)
 }

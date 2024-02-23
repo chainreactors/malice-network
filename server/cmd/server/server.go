@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/server/core"
+	"github.com/chainreactors/malice-network/server/internal/certs"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
-	"github.com/chainreactors/malice-network/server/internal/generate"
 	"github.com/chainreactors/malice-network/server/listener"
 	"github.com/chainreactors/malice-network/server/rpc"
 	"github.com/gookit/config/v2"
@@ -25,7 +25,6 @@ func init() {
 		opt.DecoderConfig.TagName = "config"
 		opt.ParseDefault = true
 	})
-	generate.GenerateRootCA()
 	config.AddDriver(yaml.Driver)
 }
 
@@ -58,7 +57,11 @@ func Execute() {
 	} else if opt.Server == nil {
 		logs.Log.Errorf("null server config , %s ", err.Error())
 	}
-
+	_, _, err = certs.ServerGenerateCertificate("root", true)
+	if err != nil {
+		logs.Log.Errorf("cannot init root ca , %s ", err.Error())
+		return
+	}
 	if opt.Debug {
 		logs.Log.SetLevel(logs.Debug)
 	}
@@ -68,7 +71,7 @@ func Execute() {
 	// start listeners
 	if opt.Listeners != nil {
 		// init forwarder
-		err := listener.NewListener(opt.Listeners, true)
+		err := listener.NewListener(opt.Listeners)
 		if err != nil {
 			logs.Log.Errorf("cannot start listeners , %s ", err.Error())
 			return
@@ -77,7 +80,7 @@ func Execute() {
 
 	// init operator
 	if opt.User != "" {
-		err = generate.ServerInitUserCert(opt.User)
+		_, _, err = certs.ClientGenerateCertificate("localhost", opt.User, 5004, certs.OperatorCA, nil)
 		if err != nil {
 			logs.Log.Errorf("cannot init operator , %s ", err.Error())
 			return

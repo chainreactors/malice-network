@@ -24,21 +24,22 @@ type ListenerConfig struct {
 	ServerAddr    string                `config:"server_addr"`
 	TcpPipelines  []*TcpPipelineConfig  `config:"tcp"`
 	HttpPipelines []*HttpPipelineConfig `config:"http"`
-	TlsConfig     *TlsConfig            `config:"tls"`
 }
 
 type TcpPipelineConfig struct {
-	Enable bool   `config:"enable"`
-	Name   string `config:"name"`
-	Host   string `config:"host"`
-	Port   uint16 `config:"port"`
+	Enable    bool       `config:"enable"`
+	Name      string     `config:"name"`
+	Host      string     `config:"host"`
+	Port      uint16     `config:"port"`
+	TlsConfig *TlsConfig `config:"tls"`
 }
 
 type HttpPipelineConfig struct {
-	Enable bool   `config:"enable"`
-	Name   string `config:"name"`
-	Host   string `config:"host"`
-	Port   uint16 `config:"port"`
+	Enable    bool       `config:"enable"`
+	Name      string     `config:"name"`
+	Host      string     `config:"host"`
+	Port      uint16     `config:"port"`
+	TlsConfig *TlsConfig `config:"tls"`
 }
 
 type TlsConfig struct {
@@ -61,4 +62,32 @@ func (t *TlsConfig) ToPkix() *pkix.Name {
 		OrganizationalUnit: []string{t.OU},
 		Province:           []string{t.ST},
 	}
+}
+
+func LoadTlsConfigs(config ListenerConfig) ([]*TlsConfig, error) {
+	err := LoadConfig(ServerConfigFileName, &config)
+	if err != nil {
+		logs.Log.Errorf("Failed to load config: %s", err)
+		return nil, err
+	}
+	tlsConfigs := getAllTlsConfigs(&config)
+	return tlsConfigs, nil
+}
+
+func getAllTlsConfigs(config *ListenerConfig) []*TlsConfig {
+	var tlsConfigs []*TlsConfig
+
+	for _, tcpPipeline := range config.TcpPipelines {
+		if tcpPipeline.TlsConfig != nil {
+			tlsConfigs = append(tlsConfigs, tcpPipeline.TlsConfig)
+		}
+	}
+
+	for _, httpPipeline := range config.HttpPipelines {
+		if httpPipeline.TlsConfig != nil {
+			tlsConfigs = append(tlsConfigs, httpPipeline.TlsConfig)
+		}
+	}
+
+	return tlsConfigs
 }

@@ -13,6 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/chainreactors/malice-network/helper/helper"
+	"github.com/chainreactors/malice-network/helper/mtls"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
@@ -30,7 +31,7 @@ const (
 
 	// RSAKey - Namespace for RSA keys
 	RSAKey        = "rsa"
-	RootName      = "localhost.root"
+	RootName      = "root"
 	OperatorName  = "server.operator"
 	ListentorName = "default"
 )
@@ -41,10 +42,10 @@ var (
 )
 
 // saveCertificate - Save the certificate and the key to the filesystem
-func saveCertificate(caType string, keyType string, commonName string, cert []byte, key []byte) error {
+func saveCertificate(caType int, keyType string, commonName string, cert []byte, key []byte) error {
 
 	if keyType != ECCKey && keyType != RSAKey {
-		return fmt.Errorf("Invalid key type '%s'", keyType)
+		return fmt.Errorf("invalid key type '%s'", keyType)
 	}
 
 	certsLog.Debugf("Saving certificate for cn = '%s'", commonName)
@@ -57,19 +58,9 @@ func saveCertificate(caType string, keyType string, commonName string, cert []by
 		PrivateKeyPEM:  string(key),
 	}
 	dbSession := db.Session()
-	if commonName == RootName {
-		err := removeOldCerts()
-		if err != nil {
-			return err
-		}
-	}
-	if commonName == RootName || commonName == OperatorName || commonName == ListentorName {
-		var existingCert models.Certificate
-		result := dbSession.Where("common_name = ?", commonName).First(&existingCert).Error
-		if result == nil {
-			certsLog.Infof("Certificate with commonName '%s' already exists. Deleting existing record.", commonName)
-			dbSession.Delete(&existingCert)
-		}
+	err := models.DeleteCertificate(dbSession, commonName)
+	if err != nil {
+		return err
 	}
 	createResult := dbSession.Create(&certModel)
 
@@ -92,17 +83,17 @@ func SaveToPEMFile(filename string, pemData []byte) error {
 }
 
 // GetECCCertificate - Get an ECC certificate
-func GetECCCertificate(caType string, commonName string) ([]byte, []byte, error) {
+func GetECCCertificate(caType int, commonName string) ([]byte, []byte, error) {
 	return GetCertificate(caType, ECCKey, commonName)
 }
 
 // GetRSACertificate - Get an RSA certificate
-func GetRSACertificate(caType string, commonName string) ([]byte, []byte, error) {
+func GetRSACertificate(caType int, commonName string) ([]byte, []byte, error) {
 	return GetCertificate(caType, RSAKey, commonName)
 }
 
 // GetCertificate - Get the PEM encoded certificate & key for a host
-func GetCertificate(caType string, keyType string, commonName string) ([]byte, []byte, error) {
+func GetCertificate(caType int, keyType string, commonName string) ([]byte, []byte, error) {
 
 	if keyType != ECCKey && keyType != RSAKey {
 		return nil, nil, fmt.Errorf("Invalid key type '%s'", keyType)
@@ -128,7 +119,7 @@ func GetCertificate(caType string, keyType string, commonName string) ([]byte, [
 }
 
 // RemoveCertificate - Remove a certificate from the cert store
-func RemoveCertificate(caType string, keyType string, commonName string) error {
+func RemoveCertificate(caType int, keyType string, commonName string) error {
 	if keyType != ECCKey && keyType != RSAKey {
 		return fmt.Errorf("Invalid key type '%s'", keyType)
 	}
@@ -148,7 +139,7 @@ func RemoveCertificate(caType string, keyType string, commonName string) error {
 // GenerateECCCertificate - Generate a TLS certificate with the given parameters
 // We choose some reasonable defaults like Curve, Key Size, ValidFor, etc.
 // Returns two strings `cert` and `key` (PEM Encoded).
-func GenerateECCCertificate(caType string, commonName string, isCA bool, isClient bool) ([]byte, []byte) {
+func GenerateECCCertificate(caType int, commonName string, isCA bool, isClient bool) ([]byte, []byte) {
 
 	certsLog.Infof("Generating TLS certificate (ECC) for '%s' ...", commonName)
 
@@ -169,7 +160,7 @@ func GenerateECCCertificate(caType string, commonName string, isCA bool, isClien
 }
 
 // GenerateRSACertificate - Generates an RSA Certificate
-func GenerateRSACertificate(caType string, commonName string, isCA bool, isClient bool,
+func GenerateRSACertificate(caType int, commonName string, isCA bool, isClient bool,
 	tlsConfig *configs.TlsConfig) ([]byte, []byte) {
 	certsLog.Debugf("Generating TLS certificate (RSA) for '%s' ...", commonName)
 
@@ -184,17 +175,17 @@ func GenerateRSACertificate(caType string, commonName string, isCA bool, isClien
 
 	// Generate random listener subject if listener config is null
 	if caType == ListenerCA {
+		subject = randomSubject(commonName)
 		if tlsConfig != nil {
 			subject = tlsConfig.ToPkix()
-		} else {
-			subject = randomSubject(commonName)
 		}
+	} else {
+		subject = randomSubject(commonName)
 	}
-
 	return generateCertificate(caType, *subject, isCA, isClient, privateKey)
 }
 
-func generateCertificate(caType string, subject pkix.Name, isCA bool, isClient bool, privateKey interface{}) ([]byte, []byte) {
+func generateCertificate(caType int, subject pkix.Name, isCA bool, isClient bool, privateKey interface{}) ([]byte, []byte) {
 
 	// Valid times, subtract random days from .Now()
 	notBefore := time.Now()
@@ -260,7 +251,7 @@ func generateCertificate(caType string, subject pkix.Name, isCA bool, isClient b
 		template.KeyUsage |= x509.KeyUsageCertSign
 		derBytes, certErr = x509.CreateCertificate(rand.Reader, &template, &template, publicKey(privateKey), privateKey)
 	} else {
-		caCert, caKey, err := GetCertificateAuthority(caType) // Sign the new certificate with our CA
+		caCert, caKey, err := GetCertificateAuthority() // Sign the new certificate with our CA
 		if err != nil {
 			certsLog.Errorf("Invalid ca type (%s): %v", caType, err)
 		}
@@ -331,50 +322,71 @@ func RsaKeySize() int {
 	return rsaKeySizes[randomInt(len(rsaKeySizes))]
 }
 
+// removeOldCerts - Remove old certificates from the filesystem
 func removeOldCerts() error {
-	err := helper.RemoveFile(path.Join(getCertDir(), "listener_default_crt.pem"))
+	dbSession := db.Session()
+	var certs []models.Certificate
+	err := dbSession.Where("ca_type = ? AND NOT common_name LIKE ?", 2, "listener.%").Find(&certs).Error
 	if err != nil {
 		return err
 	}
-	err = helper.RemoveFile(path.Join(getCertDir(), "listener_default_key.pem"))
+	yamlPath, _ := os.Getwd()
+	if err := os.Remove(path.Join(yamlPath, fmt.Sprintf("%s.yaml", certs[0].CommonName))); err != nil {
+		return err
+	}
+	err = models.DeleteAllCertificates(dbSession)
 	if err != nil {
 		return err
 	}
-	err = helper.RemoveFile(path.Join(getCertDir(), "server_operator_crt.pem"))
+	certConfigPath := configs.CertsPath
+	if _, err := os.Stat(certConfigPath); os.IsNotExist(err) {
+		return nil
+	}
+	files, err := os.ReadDir(certConfigPath)
 	if err != nil {
 		return err
 	}
-	err = helper.RemoveFile(path.Join(getCertDir(), "server_operator_key.pem"))
-	if err != nil {
-		return err
+	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
+		if !helper.FileExists(path.Join(certConfigPath, file.Name())) {
+			continue
+		}
+		if err := os.Remove(path.Join(certConfigPath, file.Name())); err != nil {
+			return err
+		}
 	}
+
 	return nil
 }
 
-func CheckCertIsExist(certPath, keyPath, commonName string) ([]byte, []byte, error) {
+func CheckCertIsExist(certPath, keyPath, commonName string, caType int) ([]byte, []byte, error) {
 	var existingCert models.Certificate
-	certBytes, err := os.ReadFile(certPath)
-	if err != nil {
-		return nil, nil, err
-	}
-	keyBytes, err := os.ReadFile(keyPath)
-	if err != nil {
-		return nil, nil, err
+	var certBytes, keyBytes []byte
+	var err error
+	if caType == ListenerCA {
+		configDir, _ := os.Getwd()
+		configPath := path.Join(configDir, fmt.Sprintf("%s.yaml", commonName))
+		listener, err := mtls.ReadConfig(configPath)
+		if err != nil {
+			return nil, nil, err
+		}
+		certBytes = []byte(listener.Certificate)
+		keyBytes = []byte(listener.PrivateKey)
+	} else if caType == OperatorCA {
+		certBytes, err = os.ReadFile(certPath)
+		if err != nil {
+			return nil, nil, err
+		}
+		keyBytes, err = os.ReadFile(keyPath)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 	dbSession := db.Session()
 	result := dbSession.Where("common_name = ?", commonName).First(&existingCert).Error
 	if result != nil {
-		var caType string
-		switch commonName {
-		case RootName:
-			caType = SERVERCA
-		case OperatorName:
-			caType = OperatorCA
-		case ListentorName:
-			caType = ListenerCA
-		default:
-			caType = OperatorCA
-		}
 		err := saveCertificate(caType, RSAKey, commonName, certBytes, keyBytes)
 		if err != nil {
 			return nil, nil, err
