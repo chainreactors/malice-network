@@ -2,7 +2,7 @@ package models
 
 import (
 	"encoding/json"
-	"github.com/chainreactors/malice-network/server/core"
+	"github.com/chainreactors/malice-network/server/internal/core"
 	"gorm.io/gorm"
 	"strconv"
 	"time"

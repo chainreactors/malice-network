@@ -74,31 +74,6 @@ func ClientGenerateCertificate(host, name string, port int, clientType int, conf
 				return certBytes, keyBytes, err
 			}
 		}
-		tlsConfig, err := configs.LoadTlsConfigs(*config)
-		if err != nil {
-			return certBytes, keyBytes, err
-		}
-		for _, tls := range tlsConfig {
-			certPath := path.Join(certsPath, fmt.Sprintf("%s_%s_crt.pem", ListenerNamespace, tls.CN))
-			certKey := path.Join(certsPath, fmt.Sprintf("%s_%s_key.pem", ListenerNamespace, tls.CN))
-			if helper.FileExists(certPath) && helper.FileExists(certKey) {
-				logs.Log.Debug("Mtls server CA certificates already exist.")
-				_, _, err = CheckCertIsExist(certPath, certKey,
-					fmt.Sprintf("%s.%s", ListenerNamespace, tls.CN), OperatorCA)
-				if err != nil {
-					continue
-				}
-			}
-			cert, key := GenerateRSACertificate(ListenerCA, name, false, true, tls)
-			err = saveCertificate(ListenerCA, RSAKey,
-				fmt.Sprintf("%s.%s", ListenerNamespace, tls.CN), cert, key)
-			if certErr := os.WriteFile(certPath, cert, 0o777); certErr != nil {
-				continue
-			}
-			if keyErr := os.WriteFile(certKey, key, 0o777); keyErr != nil {
-				continue
-			}
-		}
 		return certBytes, keyBytes, err
 	}
 	return nil, nil, nil

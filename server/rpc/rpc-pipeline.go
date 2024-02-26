@@ -7,7 +7,7 @@ import (
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/commonpb"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
-	"github.com/chainreactors/malice-network/server/core"
+	"github.com/chainreactors/malice-network/server/internal/core"
 )
 
 func (rpc *Server) RegisterPipeline(ctx context.Context, req *lispb.Pipeline) (*commonpb.Empty, error) {

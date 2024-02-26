@@ -4,7 +4,7 @@ import (
 	"errors"
 	"github.com/chainreactors/malice-network/proto/implant/commonpb"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
-	"github.com/chainreactors/malice-network/server/core"
+	"github.com/chainreactors/malice-network/server/internal/core"
 	"gorm.io/gorm"
 	"time"
 )

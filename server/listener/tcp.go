@@ -9,8 +9,8 @@ import (
 	"github.com/chainreactors/malice-network/helper/packet"
 	"github.com/chainreactors/malice-network/proto/implant/commonpb"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
-	"github.com/chainreactors/malice-network/server/core"
 	"github.com/chainreactors/malice-network/server/internal/configs"
+	core2 "github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/listener/encryption"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
@@ -29,11 +29,11 @@ func StartTcpPipeline(conn *grpc.ClientConn, cfg *configs.TcpPipelineConfig) (*T
 	if err != nil {
 		return nil, err
 	}
-	forward, err := core.NewForward(conn, pp)
+	forward, err := core2.NewForward(conn, pp)
 	if err != nil {
 		return nil, err
 	}
-	core.Forwarders.Add(forward)
+	core2.Forwarders.Add(forward)
 	return pp, nil
 }
 
@@ -120,7 +120,7 @@ func (l *TCPPipeline) handler() (net.Listener, error) {
 func (l *TCPPipeline) handleRead(conn net.Conn) {
 	defer conn.Close()
 	var err error
-	var connect *core.Connection
+	var connect *core2.Connection
 	var rawID []byte
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -133,9 +133,9 @@ func (l *TCPPipeline) handleRead(conn net.Conn) {
 			return
 		}
 		sid := hash.Md5Hash(rawID)
-		connect = core.Connections.Get(sid)
+		connect = core2.Connections.Get(sid)
 		if connect == nil {
-			connect = core.NewConnection(rawID)
+			connect = core2.NewConnection(rawID)
 		}
 
 		go connect.Send(ctx, conn)
@@ -144,7 +144,7 @@ func (l *TCPPipeline) handleRead(conn net.Conn) {
 			logs.Log.Debugf("Error reading message:%s %v", conn.RemoteAddr(), err)
 			return
 		}
-		core.Forwarders.Send(l.ID(), &core.Message{
+		core2.Forwarders.Send(l.ID(), &core2.Message{
 			Message:   msg,
 			SessionID: hash.Md5Hash(rawID),
 			//RemoteAddr: conn.RemoteAddr().String(),

@@ -6,7 +6,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/pluginpb"
-	"github.com/chainreactors/malice-network/server/core"
+	"github.com/chainreactors/malice-network/server/internal/core"
 )
 
 func (rpc *Server) Execute(ctx context.Context, req *pluginpb.ExecRequest) (*clientpb.Task, error) {
