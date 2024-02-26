@@ -10,6 +10,8 @@ import (
 
 func TestRegister(t *testing.T) {
 	implant := common.NewImplant(common.DefaultListenerAddr, []byte{1, 2, 3, 4})
+	implant.Enc = true
+	implant.Tls = true
 	spite := &commonpb.Spite{
 		TaskId: 1,
 	}

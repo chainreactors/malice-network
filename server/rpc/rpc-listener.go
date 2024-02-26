@@ -7,7 +7,7 @@ import (
 	"github.com/chainreactors/malice-network/proto/implant/commonpb"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/proto/services/listenerrpc"
-	core2 "github.com/chainreactors/malice-network/server/internal/core"
+	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"google.golang.org/grpc/peer"
@@ -15,11 +15,11 @@ import (
 )
 
 func (rpc *Server) GetListeners(ctx context.Context, req *clientpb.Empty) (*clientpb.Listeners, error) {
-	return core2.Listeners.ToProtobuf(), nil
+	return core.Listeners.ToProtobuf(), nil
 }
 
 func (rpc *Server) RegisterListener(ctx context.Context, req *lispb.RegisterListener) (*commonpb.Empty, error) {
-	core2.Listeners.Add(&core2.Listener{
+	core.Listeners.Add(&core.Listener{
 		Name:   req.Name,
 		Host:   req.Addr,
 		Active: true,
@@ -46,7 +46,7 @@ func (rpc *Server) SpiteStream(stream listenerrpc.ListenerRPC_SpiteStreamServer)
 		if err != nil {
 			return err
 		}
-		sess, ok := core2.Sessions.Get(msg.SessionId)
+		sess, ok := core.Sessions.Get(msg.SessionId)
 
 		// update session status in db
 		result := dbSession.Model(&models.Session{}).Where("session_id = ?", msg.SessionId).First(&session)

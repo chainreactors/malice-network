@@ -89,7 +89,7 @@ func (lns *listener) Start() {
 			logs.Log.Errorf("Failed to start tcp pipeline %s", err)
 			continue
 		}
-		logs.Log.Importantf("Started tcp pipeline %s", pipeline.ID())
+		logs.Log.Importantf("Started tcp pipeline %s, encryption: %t, tls: %t", pipeline.ID(), pipeline.Encryption.Enable, pipeline.TlsConfig.Enable)
 		lns.registerPipeline(pipeline)
 	}
 }

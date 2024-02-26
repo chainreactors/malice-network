@@ -16,7 +16,7 @@ import (
 	"github.com/chainreactors/malice-network/proto/services/listenerrpc"
 	"github.com/chainreactors/malice-network/server/internal/certs"
 	"github.com/chainreactors/malice-network/server/internal/configs"
-	core2 "github.com/chainreactors/malice-network/server/internal/core"
+	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/gookit/config/v2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -134,11 +134,11 @@ func newGenericRequest(ctx context.Context, msg proto.Message, opts ...int) (*Ge
 
 type GenericRequest struct {
 	proto.Message
-	Task    *core2.Task
-	Session *core2.Session
+	Task    *core.Task
+	Session *core.Session
 }
 
-func (r *GenericRequest) NewTask(total int) *core2.Task {
+func (r *GenericRequest) NewTask(total int) *core.Task {
 	return r.Session.NewTask(string(proto.MessageName(r.Message).Name()), total)
 }
 
@@ -295,13 +295,13 @@ func getSessionID(ctx context.Context) (string, error) {
 	}
 }
 
-func getSession(ctx context.Context) (*core2.Session, error) {
+func getSession(ctx context.Context) (*core.Session, error) {
 	sid, err := getSessionID(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	session, ok := core2.Sessions.Get(sid)
+	session, ok := core.Sessions.Get(sid)
 	if !ok {
 		return nil, ErrInvalidSessionID
 	}
@@ -395,27 +395,27 @@ func AssertStatusAndResponse(spite *commonpb.Spite, expect types.MsgName) error 
 	return AssertResponse(spite, expect)
 }
 
-func buildErrorEvent(task *core2.Task, err error) *core2.Event {
+func buildErrorEvent(task *core.Task, err error) *core.Event {
 	if errors.Is(err, ErrNilStatus) {
-		return &core2.Event{
+		return &core.Event{
 			EventType: consts.EventTaskError,
 			Task:      task,
 			Err:       ErrNilStatus.Error(),
 		}
 	} else if errors.Is(err, ErrAssertFailure) {
-		return &core2.Event{
+		return &core.Event{
 			EventType: consts.EventTaskError,
 			Task:      task,
 			Err:       ErrAssertFailure.Error(),
 		}
 	} else if errors.Is(err, ErrNilResponseBody) {
-		return &core2.Event{
+		return &core.Event{
 			EventType: consts.EventTaskError,
 			Task:      task,
 			Err:       ErrNilResponseBody.Error(),
 		}
 	} else if errors.Is(err, ErrMissingRequestField) {
-		return &core2.Event{
+		return &core.Event{
 			EventType: consts.EventTaskError,
 			Task:      task,
 			Err:       ErrMissingRequestField.Error(),

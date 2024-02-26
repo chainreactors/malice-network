@@ -10,7 +10,7 @@ import (
 	"github.com/chainreactors/malice-network/proto/implant/commonpb"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/server/internal/configs"
-	core2 "github.com/chainreactors/malice-network/server/internal/core"
+	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/listener/encryption"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
@@ -19,21 +19,22 @@ import (
 
 func StartTcpPipeline(conn *grpc.ClientConn, cfg *configs.TcpPipelineConfig) (*TCPPipeline, error) {
 	pp := &TCPPipeline{
-		Name:      cfg.Name,
-		Port:      cfg.Port,
-		Host:      cfg.Host,
-		Enable:    cfg.Enable,
-		TlsConfig: cfg.TlsConfig,
+		Name:       cfg.Name,
+		Port:       cfg.Port,
+		Host:       cfg.Host,
+		Enable:     cfg.Enable,
+		TlsConfig:  cfg.TlsConfig,
+		Encryption: cfg.EncryptionConfig,
 	}
 	err := pp.Start()
 	if err != nil {
 		return nil, err
 	}
-	forward, err := core2.NewForward(conn, pp)
+	forward, err := core.NewForward(conn, pp)
 	if err != nil {
 		return nil, err
 	}
-	core2.Forwarders.Add(forward)
+	core.Forwarders.Add(forward)
 	return pp, nil
 }
 
@@ -47,12 +48,13 @@ func ToTcpConfig(pipeline *lispb.TCPPipeline) *configs.TcpPipelineConfig {
 }
 
 type TCPPipeline struct {
-	ln        net.Listener
-	Name      string
-	Port      uint16
-	Host      string
-	Enable    bool
-	TlsConfig *configs.TlsConfig
+	ln         net.Listener
+	Name       string
+	Port       uint16
+	Host       string
+	Enable     bool
+	TlsConfig  *configs.TlsConfig
+	Encryption *configs.EncryptionConfig
 }
 
 func (l *TCPPipeline) ToProtobuf() proto.Message {
@@ -111,7 +113,7 @@ func (l *TCPPipeline) handler() (net.Listener, error) {
 				continue
 			}
 			logs.Log.Infof("accept from %s", conn.RemoteAddr())
-			go l.handleRead(conn)
+			go l.handleRead(l.wrapConn(conn))
 		}
 	}()
 	return ln, nil
@@ -120,7 +122,7 @@ func (l *TCPPipeline) handler() (net.Listener, error) {
 func (l *TCPPipeline) handleRead(conn net.Conn) {
 	defer conn.Close()
 	var err error
-	var connect *core2.Connection
+	var connect *core.Connection
 	var rawID []byte
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -133,9 +135,9 @@ func (l *TCPPipeline) handleRead(conn net.Conn) {
 			return
 		}
 		sid := hash.Md5Hash(rawID)
-		connect = core2.Connections.Get(sid)
+		connect = core.Connections.Get(sid)
 		if connect == nil {
-			connect = core2.NewConnection(rawID)
+			connect = core.NewConnection(rawID)
 		}
 
 		go connect.Send(ctx, conn)
@@ -144,14 +146,14 @@ func (l *TCPPipeline) handleRead(conn net.Conn) {
 			logs.Log.Debugf("Error reading message:%s %v", conn.RemoteAddr(), err)
 			return
 		}
-		core2.Forwarders.Send(l.ID(), &core2.Message{
+		core.Forwarders.Send(l.ID(), &core.Message{
 			Message:   msg,
 			SessionID: hash.Md5Hash(rawID),
 			//RemoteAddr: conn.RemoteAddr().String(),
 		})
 	}
-
 }
+
 func (l *TCPPipeline) handleWrite(conn net.Conn, ch chan *commonpb.Spites, rawid []byte) {
 	msg := <-ch
 	err := packet.WritePacket(conn, msg, rawid)
@@ -160,6 +162,17 @@ func (l *TCPPipeline) handleWrite(conn net.Conn, ch chan *commonpb.Spites, rawid
 		ch <- msg
 	}
 	return
+}
+
+func (l *TCPPipeline) wrapConn(conn net.Conn) net.Conn {
+	if l.Encryption != nil && l.Encryption.Enable {
+		eConn, err := encryption.WrapWithEncryption(conn, []byte(l.Encryption.Key))
+		if err != nil {
+			return conn
+		}
+		return eConn
+	}
+	return conn
 }
 
 func handleShellcode(conn net.Conn, data []byte) {

@@ -28,3 +28,7 @@ listeners:
         OU: "Persistent Housework, Limited"
         ST: "State of Texas"
         validity: "365"
+      encryption:
+        enable: true
+        type: aes-cfb
+        key: maliceofinternal

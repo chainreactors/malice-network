@@ -1,12 +1,14 @@
 package common
 
 import (
+	"crypto/tls"
 	"errors"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/packet"
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/proto/implant/commonpb"
 	"github.com/chainreactors/malice-network/proto/implant/pluginpb"
+	"github.com/chainreactors/malice-network/server/listener/encryption"
 	"google.golang.org/protobuf/proto"
 	"net"
 	"sync"
@@ -36,13 +38,28 @@ type Implant struct {
 	ch       chan *commonpb.Spites
 	cache    *types.SpitesCache
 	interval time.Duration
+	Enc      bool
+	Tls      bool
 }
 
 func (implant *Implant) Connect() (net.Conn, error) {
 	conn, err := net.Dial("tcp", implant.Addr)
 	if err != nil {
-		return conn, err
+		return nil, err
 	}
+
+	if implant.Tls {
+		conn = tls.Client(conn, &tls.Config{
+			InsecureSkipVerify: true,
+		})
+	}
+	if implant.Enc {
+		conn, err = encryption.WrapWithEncryption(conn, []byte("maliceofinternal"))
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return conn, nil
 }
 
@@ -51,6 +68,18 @@ func (implant *Implant) MustConnect() net.Conn {
 	if err != nil {
 		panic(err)
 	}
+	if implant.Tls {
+		conn = tls.Client(conn, &tls.Config{
+			InsecureSkipVerify: true,
+		})
+	}
+	if implant.Enc {
+		conn, err = encryption.WrapWithEncryption(conn, []byte("maliceofinternal"))
+		if err != nil {
+			panic(err)
+		}
+	}
+
 	return conn
 }
 

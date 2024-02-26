@@ -4,14 +4,14 @@ import (
 	"fmt"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/services/listenerrpc"
-	core2 "github.com/chainreactors/malice-network/server/internal/core"
+	"github.com/chainreactors/malice-network/server/internal/core"
 )
 
 func (rpc *Server) JobStream(stream listenerrpc.ListenerRPC_JobStreamServer) error {
 	go func() {
 		for {
 			select {
-			case msg := <-core2.Jobs.Ctrl:
+			case msg := <-core.Jobs.Ctrl:
 				err := stream.Send(msg)
 				if err != nil {
 					return
@@ -26,12 +26,12 @@ func (rpc *Server) JobStream(stream listenerrpc.ListenerRPC_JobStreamServer) err
 			return err
 		}
 		if msg.Status == consts.CtrlStatusSuccess {
-			core2.EventBroker.Publish(core2.Event{
-				Job:       core2.Jobs.Get(msg.Job.Id),
+			core.EventBroker.Publish(core.Event{
+				Job:       core.Jobs.Get(msg.Job.Id),
 				EventType: consts.EventPipelineStart,
 			})
 		} else {
-			core2.EventBroker.Publish(core2.Event{
+			core.EventBroker.Publish(core.Event{
 				EventType: consts.EventPipelineError,
 				Err:       fmt.Sprintf("%d, %s", msg.Status, msg.Error),
 			})
