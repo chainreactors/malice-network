@@ -76,3 +76,15 @@ func GetTaskDescriptionByID(db *gorm.DB, taskID string) (*TaskDescription, error
 
 	return &td, nil
 }
+
+func FindTasksWithNonOneCurTotal(dbSession *gorm.DB, session Session) ([]Task, error) {
+	var tasks []Task
+	result := dbSession.Where("session_id = ?", session.SessionID).Where("cur != total").Find(&tasks)
+	if result.Error != nil {
+		return tasks, result.Error
+	}
+	if len(tasks) == 0 {
+		return tasks, gorm.ErrRecordNotFound
+	}
+	return tasks, nil
+}

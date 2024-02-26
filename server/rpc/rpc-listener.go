@@ -40,7 +40,6 @@ func (rpc *Server) SpiteStream(stream listenerrpc.ListenerRPC_SpiteStreamServer)
 	}
 	listenersCh[listenerID] = stream
 	dbSession := db.Session()
-	var session models.Session
 	for {
 		msg, err := stream.Recv()
 		if err != nil {
@@ -48,17 +47,10 @@ func (rpc *Server) SpiteStream(stream listenerrpc.ListenerRPC_SpiteStreamServer)
 		}
 		sess, ok := core.Sessions.Get(msg.SessionId)
 
-		// update session status in db
-		result := dbSession.Model(&models.Session{}).Where("session_id = ?", msg.SessionId).First(&session)
-		if result.Error != nil {
-			return result.Error
+		err = models.UpdateLast(dbSession, sess.ID)
+		if err != nil {
+			logs.Log.Error(err.Error())
 		}
-		session.IsAlive = true
-		result = dbSession.Save(&session)
-		if result.Error != nil {
-			return result.Error
-		}
-
 		if !ok {
 			return ErrNotFoundSession
 		}

@@ -18,8 +18,7 @@ type Session struct {
 	Os         *Os      `gorm:"embedded"`
 	Process    *Process `gorm:"embedded"`
 	Time       *Timer   `gorm:"embedded"`
-	Last       int
-	Tasks      []Task `gorm:"foreignKey:SessionID"`
+	Last       time.Time
 }
 
 func (s *Session) BeforeCreate(tx *gorm.DB) (err error) {
@@ -33,6 +32,7 @@ func (s *Session) BeforeCreate(tx *gorm.DB) (err error) {
 }
 
 func ConvertToSessionDB(session *core.Session) *Session {
+	currentTime := time.Now()
 	return &Session{
 		SessionID:  session.ID,
 		RemoteAddr: session.RemoteAddr,
@@ -40,6 +40,7 @@ func ConvertToSessionDB(session *core.Session) *Session {
 		Os:         convertToOsDB(session.Os),
 		Process:    convertToProcessDB(session.Process),
 		Time:       convertToTimeDB(session.Timer),
+		Last:       currentTime,
 	}
 }
 
@@ -142,4 +143,19 @@ func FindActiveSessions(dbSession *gorm.DB) ([]Session, error) {
 		return nil, result.Error
 	}
 	return activeSessions, nil
+}
+
+func UpdateLast(dbSession *gorm.DB, sessionID string) error {
+	var session Session
+	result := dbSession.Where("session_id = ?", sessionID).First(&session)
+	loc := time.Now().Location()
+	if result.Error != nil {
+		return result.Error
+	}
+	session.Last = time.Now().In(loc)
+	result = dbSession.Save(&session)
+	if result.Error != nil {
+		return result.Error
+	}
+	return nil
 }

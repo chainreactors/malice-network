@@ -40,9 +40,7 @@ func VerifyCertificate(caCertificate string, rawCerts [][]byte) error {
 	return nil
 }
 
-// GetTLSConfig - Get the TLS config for the operator server
-func GetTLSConfig(caCertificate string, certificate string, privateKey string) (*tls.Config, error) {
-
+func GetGrpcOptions(caCertificate string, certificate string, privateKey string, servername string) ([]grpc.DialOption, error) {
 	certPEM, err := tls.X509KeyPair([]byte(certificate), []byte(privateKey))
 	if err != nil {
 		log.Printf("Cannot parse client certificate: %v", err)
@@ -62,20 +60,20 @@ func GetTLSConfig(caCertificate string, certificate string, privateKey string) (
 			return VerifyCertificate(caCertificate, rawCerts)
 		},
 	}
-	return tlsConfig, nil
-}
-
-func Connect(config *assets.ClientConfig) (*grpc.ClientConn, error) {
-	tlsConfig, err := GetTLSConfig(config.CACertificate, config.Certificate, config.PrivateKey)
-	if err != nil {
-		return nil, err
-	}
-	tlsConfig.ServerName = "client"
+	tlsConfig.ServerName = servername
 	transportCreds := credentials.NewTLS(tlsConfig)
 	options := []grpc.DialOption{
 		grpc.WithTransportCredentials(transportCreds),
 		grpc.WithBlock(),
 		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(consts.ClientMaxReceiveMessageSize)),
+	}
+	return options, nil
+}
+
+func Connect(config *assets.ClientConfig) (*grpc.ClientConn, error) {
+	options, err := GetGrpcOptions(config.CACertificate, config.Certificate, config.PrivateKey, "client")
+	if err != nil {
+		return nil, err
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), consts.DefaultDuration)
 	defer cancel()

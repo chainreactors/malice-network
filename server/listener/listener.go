@@ -15,7 +15,6 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 	"strconv"
 )
 
@@ -30,13 +29,9 @@ func NewListener(cfg *configs.ListenerConfig) error {
 	if err != nil {
 		return err
 	}
-	tlsConfig, err := mtls.GetTLSConfig(string(caCert), string(clientCert), string(clientKey))
-	tlsConfig.ServerName = certs.ListenerNamespace
-	transportCreds := credentials.NewTLS(tlsConfig)
-	options := []grpc.DialOption{
-		grpc.WithTransportCredentials(transportCreds),
-		grpc.WithBlock(),
-		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(consts.ClientMaxReceiveMessageSize)),
+	options, err := mtls.GetGrpcOptions(string(caCert), string(clientCert), string(clientKey), certs.ListenerNamespace)
+	if err != nil {
+		return err
 	}
 	listenerCfg, err := mtls.ReadConfig(cfg.Auth)
 	if err != nil {
