@@ -8,9 +8,11 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/helper"
 	"github.com/chainreactors/malice-network/helper/mtls"
+	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
+	"google.golang.org/grpc"
 	"os"
 	"path"
 )
@@ -34,7 +36,7 @@ const (
 var certsLog = logs.Log
 
 // ClientGenerateCertificate - Generate a certificate signed with a given CA
-func ClientGenerateCertificate(host, name string, port int, clientType int, config *configs.ListenerConfig) ([]byte, []byte, error) {
+func ClientGenerateCertificate(host, name string, port int, clientType int) ([]byte, []byte, error) {
 	dbSession := db.Session()
 	ca, _, caErr := GetCertificateAuthority()
 	caCert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: ca.Raw})
@@ -177,4 +179,25 @@ func ClientListCertificates() []*x509.Certificate {
 		certs = append(certs, cert)
 	}
 	return certs
+}
+
+func NewRootClient() (clientrpc.RootRPCClient, *grpc.ClientConn, error) {
+	ca, key, err := GetCertificateAuthority()
+	if err != nil {
+	}
+	caCert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: ca.Raw})
+	keyPEM := &pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: x509.MarshalPKCS1PrivateKey(key),
+	}
+	privateKeyPEM := pem.EncodeToMemory(keyPEM)
+	options, err := mtls.GetGrpcOptions(string(caCert), string(caCert), string(privateKeyPEM), RootName)
+	if err != nil {
+		return nil, nil, err
+	}
+	conn, err := grpc.Dial("localhost:5005", options...)
+	if err != nil {
+		return nil, nil, err
+	}
+	return clientrpc.NewRootRPCClient(conn), conn, nil
 }

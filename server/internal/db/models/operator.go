@@ -2,6 +2,7 @@ package models
 
 import (
 	"errors"
+	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -39,4 +40,24 @@ func CreateOperator(dbSession *gorm.DB, name, token string) error {
 	err := dbSession.Create(&operator).Error
 	return err
 
+}
+
+func ListOperators(dbSession *gorm.DB) (*clientpb.Clients, error) {
+	var operators []Operator
+	err := dbSession.Find(&operators).Error
+	if err != nil {
+		return nil, err
+	}
+
+	var clients []*clientpb.Client
+	for _, op := range operators {
+		client := &clientpb.Client{
+			Name: op.Name,
+		}
+		clients = append(clients, client)
+	}
+	pbClients := &clientpb.Clients{
+		Clients: clients,
+	}
+	return pbClients, nil
 }

@@ -23,7 +23,7 @@ var (
 )
 
 func NewListener(cfg *configs.ListenerConfig) error {
-	clientCert, clientKey, err := certs.ClientGenerateCertificate("", cfg.Name, 0, certs.ListenerCA, cfg)
+	clientCert, clientKey, err := certs.ClientGenerateCertificate("", cfg.Name, 0, certs.ListenerCA)
 	caCertX509, _, err := certs.GetCertificateAuthority()
 	caCert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: caCertX509.Raw})
 	if err != nil {

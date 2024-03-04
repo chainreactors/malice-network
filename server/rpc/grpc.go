@@ -81,6 +81,14 @@ func StartClientListener(port uint16) (*grpc.Server, net.Listener, error) {
 		return nil, nil, err
 	}
 
+	// Create listener for root RPC server
+	rootLn, err := net.Listen("tcp", "0.0.0.0:5005")
+	if err != nil {
+		logs.Log.Errorf(err.Error())
+		ln.Close() // Close client RPC listener if root RPC listener creation fails
+		return nil, nil, err
+	}
+
 	options := []grpc.ServerOption{
 		grpc.Creds(creds),
 		grpc.MaxRecvMsgSize(consts.ServerMaxMessageSize),
@@ -94,8 +102,12 @@ func StartClientListener(port uint16) (*grpc.Server, net.Listener, error) {
 		logInterceptor(rpcLog),
 		auditInterceptor(),
 		authInterceptor(rpcLog))...)
+	grpcRootServer := grpc.NewServer(buildOptions(
+		options,
+		logInterceptor(authLog),
+		rootInterceptor(authLog))...)
 	clientrpc.RegisterMaliceRPCServer(grpcServer, NewServer())
-	clientrpc.RegisterRootRPCServer(grpcServer, NewServer())
+	clientrpc.RegisterRootRPCServer(grpcRootServer, NewServer())
 	listenerrpc.RegisterImplantRPCServer(grpcServer, NewServer())
 	listenerrpc.RegisterListenerRPCServer(grpcServer, NewServer())
 	go func() {
@@ -111,6 +123,21 @@ func StartClientListener(port uint16) (*grpc.Server, net.Listener, error) {
 			panicked = false
 		}
 	}()
+
+	go func() {
+		panicked := true
+		defer func() {
+			if panicked {
+				logs.Log.Errorf("stacktrace from panic: %s", string(debug.Stack()))
+			}
+		}()
+		if err := grpcRootServer.Serve(rootLn); err != nil {
+			logs.Log.Warnf("gRPC root server exited with error: %v", err)
+		} else {
+			panicked = false
+		}
+	}()
+
 	return grpcServer, ln, nil
 }
 

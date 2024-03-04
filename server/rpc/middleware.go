@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/server/internal/certs"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/peer"
@@ -78,6 +79,36 @@ func authInterceptor(log *logs.Logger) grpc.UnaryServerInterceptor {
 			log.Errorf("[auth] certificate type does not match method")
 			return ctx, errors.New("certificate type does not match method")
 		}
+		return handler(ctx, req)
+	}
+}
+
+func rootInterceptor(log *logs.Logger) grpc.UnaryServerInterceptor {
+	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+		p, ok := peer.FromContext(ctx)
+		if !ok {
+			log.Errorf("[root] failed to get peer info from context")
+			return nil, errors.New("unable to get peer info from context")
+		}
+
+		tlsInfo, ok := p.AuthInfo.(credentials.TLSInfo)
+		if !ok {
+			log.Errorf("[root] failed to get TLS info from peer")
+			return nil, errors.New("unable to get TLS info from peer")
+		}
+
+		if len(tlsInfo.State.PeerCertificates) == 0 {
+			log.Errorf("[root] no peer certificates found")
+			return nil, errors.New("no peer certificates found")
+		}
+
+		rootCert := tlsInfo.State.PeerCertificates[len(tlsInfo.State.PeerCertificates)-1]
+
+		if rootCert.Subject.CommonName != certs.RootName {
+			log.Errorf("[root] unexpected root certificate common name")
+			return nil, errors.New("unexpected root certificate common name")
+		}
+
 		return handler(ctx, req)
 	}
 }

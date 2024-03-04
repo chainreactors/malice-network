@@ -3,10 +3,12 @@ package rpc
 import (
 	"context"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/mtls"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/commonpb"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/proto/services/listenerrpc"
+	"github.com/chainreactors/malice-network/server/internal/certs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
@@ -64,4 +66,35 @@ func (rpc *Server) SpiteStream(stream listenerrpc.ListenerRPC_SpiteStreamServer)
 			ch <- msg.Spite
 		}
 	}
+}
+
+func (s *Server) AddListener(ctx context.Context, req *lispb.RegisterListener) (*commonpb.Empty, error) {
+	_, _, err := certs.ClientGenerateCertificate(req.Host, req.Name, 5004, certs.ListenerCA)
+	if err != nil {
+		return &commonpb.Empty{}, err
+	}
+	return &commonpb.Empty{}, nil
+}
+
+func (s *Server) RemoveListener(ctx context.Context, req *lispb.RegisterListener) (*commonpb.Empty, error) {
+	err := mtls.RemoveConfig(req.Name, certs.ListenerCA)
+	if err != nil {
+		return &commonpb.Empty{}, err
+	}
+	return &commonpb.Empty{}, nil
+}
+
+func (s *Server) ListListeners(ctx context.Context, req *commonpb.Empty) (*clientpb.Listeners, error) {
+	files, err := mtls.GetListeners()
+	if err != nil {
+		return nil, err
+	}
+	listeners := &clientpb.Listeners{}
+	for _, file := range files {
+		listeners.Listeners = append(listeners.Listeners, &clientpb.Listener{
+			Id: file,
+		})
+	}
+
+	return listeners, nil
 }

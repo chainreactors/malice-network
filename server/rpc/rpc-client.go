@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/proto/implant/commonpb"
+	"github.com/chainreactors/malice-network/server/internal/certs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
@@ -59,27 +61,7 @@ func (rpc *Server) LoginClient(ctx context.Context, req *clientpb.LoginReq) (*cl
 }
 
 func (rpc *Server) AddClient(ctx context.Context, req *clientpb.LoginReq) (*clientpb.LoginResp, error) {
-	host, port := req.Host, uint16(req.Port)
-	if host == "" || port == 0 {
-		logs.Log.Error("AddClient: host or user is empty")
-		return &clientpb.LoginResp{
-			Success: false,
-		}, nil
-	}
-	dbSession := db.Session()
-	cert := models.Certificate{}
-	err := dbSession.Where(&models.Certificate{
-		CommonName: fmt.Sprintf("%s.%s", "client", req.Name),
-	}).First(&cert).Error
-	if err != nil {
-		return &clientpb.LoginResp{
-			Success: false,
-		}, err
-	}
-
-	err = dbSession.Create(&models.Operator{
-		Name: req.Name,
-	}).Error
+	_, _, err := certs.ClientGenerateCertificate("localhost", req.Name, 5004, certs.OperatorCA)
 	if err != nil {
 		return &clientpb.LoginResp{
 			Success: false,
@@ -88,4 +70,25 @@ func (rpc *Server) AddClient(ctx context.Context, req *clientpb.LoginReq) (*clie
 	return &clientpb.LoginResp{
 		Success: true,
 	}, nil
+}
+
+func (rpc *Server) RemoveClient(ctx context.Context, req *clientpb.LoginReq) (*clientpb.LoginResp, error) {
+	err := certs.RemoveCertificate(certs.OperatorCA, certs.RSAKey, req.Name)
+	if err != nil {
+		return &clientpb.LoginResp{
+			Success: false,
+		}, err
+	}
+	return &clientpb.LoginResp{
+		Success: true,
+	}, nil
+}
+
+func (rpc *Server) ListClients(ctx context.Context, req *commonpb.Empty) (*clientpb.Clients, error) {
+	dbSession := db.Session()
+	clients, err := models.ListOperators(dbSession)
+	if err != nil {
+		return nil, err
+	}
+	return clients, nil
 }

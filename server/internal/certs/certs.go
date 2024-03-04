@@ -120,15 +120,25 @@ func GetCertificate(caType int, keyType string, commonName string) ([]byte, []by
 
 // RemoveCertificate - Remove a certificate from the cert store
 func RemoveCertificate(caType int, keyType string, commonName string) error {
-	if keyType != ECCKey && keyType != RSAKey {
-		return fmt.Errorf("Invalid key type '%s'", keyType)
+	if keyType != RSAKey {
+		return fmt.Errorf("invalid key type '%s'", keyType)
+	}
+	err := mtls.RemoveConfig(commonName, caType)
+	if err != nil {
+		return err
 	}
 	dbSession := db.Session()
-	err := dbSession.Where(&models.Certificate{
+	err = dbSession.Where(&models.Certificate{
 		CAType:     caType,
 		KeyType:    keyType,
 		CommonName: commonName,
 	}).Delete(&models.Certificate{}).Error
+	if err != nil {
+		return err
+	}
+	err = dbSession.Where(&models.Operator{
+		Name: commonName,
+	}).Delete(&models.Operator{}).Error
 	return err
 }
 

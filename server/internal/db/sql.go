@@ -29,7 +29,7 @@ func newDBClient() *gorm.DB {
 		&models.Listener{},
 	)
 	if dbClient == nil {
-		panic("Failed to initialize database")
+		logs.Log.Errorf("Failed to initialize database")
 	} else {
 		// Get generic database object sql.DB to use its functions
 		sqlDB, err := dbClient.DB()
@@ -51,14 +51,14 @@ func newDBClient() *gorm.DB {
 func sqliteClient(dbConfig *configs.DatabaseConfig) *gorm.DB {
 	dsn, err := dbConfig.DSN()
 	if err != nil {
-		panic(err)
+		logs.Log.Errorf("Failed to get DSN: %v", err)
 	}
 	dbClient, err := gorm.Open(Open(dsn), &gorm.Config{
 		PrepareStmt: false,
 		Logger:      logger.Default.LogMode(logger.Silent),
 	})
 	if err != nil {
-		panic(err)
+		logs.Log.Errorf("Failed to open sqlite: %v", err)
 	}
 	return dbClient
 }

@@ -2,7 +2,6 @@ package mtls
 
 import (
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"github.com/chainreactors/logs"
 	"gopkg.in/yaml.v3"
@@ -17,9 +16,9 @@ import (
 )
 
 var (
-	MaliceDirName     = ".config/malice"
-	ConfigDirName     = "configs"
-	listenerNamespace = "listener"
+	MaliceDirName = ".config/malice"
+	ConfigDirName = "configs"
+	host          = "localhost"
 )
 
 type ClientConfig struct {
@@ -196,7 +195,57 @@ func generateOperatorToken() string {
 	buf := make([]byte, 32)
 	n, err := rand.Read(buf)
 	if err != nil || n != len(buf) {
-		panic(errors.New("failed to read from secure rand"))
+		logs.Log.Error("Failed to generate random token")
 	}
 	return hex.EncodeToString(buf)
+}
+
+func RemoveConfig(name string, caType int) error {
+	var configPath string
+	if caType == 2 {
+		configPath = fmt.Sprintf("%s.yaml", name)
+	} else if caType == 1 {
+		configDir := GetConfigDir()
+		configPath = path.Join(configDir, fmt.Sprintf("%s_%s.yaml", name, host))
+	}
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		logs.Log.Debug("Config file not exist")
+		return os.ErrNotExist
+	}
+	err := os.Remove(configPath)
+	if err != nil {
+		logs.Log.Errorf("remove config file failed: %v", err)
+		return err
+	}
+	return nil
+}
+
+func GetListeners() ([]string, error) {
+	var files []string
+	configPath, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+
+	err = filepath.Walk(configPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() {
+			baseName := filepath.Base(path)
+			if strings.HasSuffix(baseName, ".yaml") {
+				if !strings.HasPrefix(baseName, "config.yaml") {
+					fileName := strings.TrimSuffix(baseName, filepath.Ext(baseName))
+					files = append(files, fileName)
+				}
+			}
+		}
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+	return files, nil
+
 }
