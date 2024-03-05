@@ -2,14 +2,14 @@ package implant
 
 import (
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/proto/implant/pluginpb"
+
 	"github.com/chainreactors/malice-network/tests/common"
 	"testing"
 	"time"
 )
 
 var (
-	uploadResp = &pluginpb.UploadRequest{
+	uploadResp = &implantpb.UploadRequest{
 		Name:   "test.txt",
 		Target: ".",
 		Priv:   0o644,
@@ -25,7 +25,7 @@ func TestImplant(t *testing.T) {
 	go implant.Run()
 	select {}
 	//client := common.NewClient(common.DefaultGRPCAddr, common.TestSid)
-	//resp, err := client.Call(consts.ExecutionStr, &pluginpb.ExecRequest{
+	//resp, err := client.Call(consts.ExecutionStr, &implantpb.ExecRequest{
 	//	Path: "/bin/bash",
 	//	Args: []string{"whoami"},
 	//})

@@ -2,7 +2,7 @@ package models
 
 import (
 	"errors"
-	"github.com/chainreactors/malice-network/proto/implant/commonpb"
+	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"gorm.io/gorm"
@@ -44,7 +44,7 @@ func ConvertToSessionDB(session *core.Session) *Session {
 	}
 }
 
-func convertToOsDB(os *commonpb.Os) *Os {
+func convertToOsDB(os *implantpb.Os) *Os {
 	return &Os{
 		Name:     os.Name,
 		Version:  os.Version,
@@ -54,7 +54,7 @@ func convertToOsDB(os *commonpb.Os) *Os {
 		Locale:   os.Locale,
 	}
 }
-func convertToProcessDB(process *commonpb.Process) *Process {
+func convertToProcessDB(process *implantpb.Process) *Process {
 	return &Process{
 		Uid:  process.Uid,
 		Pid:  process.Pid,
@@ -63,7 +63,7 @@ func convertToProcessDB(process *commonpb.Process) *Process {
 		Args: process.Args,
 	}
 }
-func convertToTimeDB(timer *commonpb.Timer) *Timer {
+func convertToTimeDB(timer *implantpb.Timer) *Timer {
 	return &Timer{
 		Interval:    timer.Interval,
 		Jitter:      timer.Jitter,
@@ -101,7 +101,7 @@ func (s *Session) ToProtobuf() *lispb.RegisterSession {
 		SessionId:  s.SessionID,
 		ListenerId: s.ListenerId,
 		RemoteAddr: s.RemoteAddr,
-		RegisterData: &commonpb.Register{
+		RegisterData: &implantpb.Register{
 			Os:      s.Os.toProtobuf(),
 			Process: s.Process.toProtobuf(),
 			Timer:   s.Time.toProtobuf(),
@@ -109,8 +109,8 @@ func (s *Session) ToProtobuf() *lispb.RegisterSession {
 	}
 }
 
-func (o *Os) toProtobuf() *commonpb.Os {
-	return &commonpb.Os{
+func (o *Os) toProtobuf() *implantpb.Os {
+	return &implantpb.Os{
 		Name:     o.Name,
 		Version:  o.Version,
 		Arch:     o.Arch,
@@ -119,8 +119,8 @@ func (o *Os) toProtobuf() *commonpb.Os {
 		Locale:   o.Locale,
 	}
 }
-func (p *Process) toProtobuf() *commonpb.Process {
-	return &commonpb.Process{
+func (p *Process) toProtobuf() *implantpb.Process {
+	return &implantpb.Process{
 		Uid:  p.Uid,
 		Pid:  p.Pid,
 		Gid:  p.Gid,
@@ -128,8 +128,8 @@ func (p *Process) toProtobuf() *commonpb.Process {
 		Args: p.Args,
 	}
 }
-func (t *Timer) toProtobuf() *commonpb.Timer {
-	return &commonpb.Timer{
+func (t *Timer) toProtobuf() *implantpb.Timer {
+	return &implantpb.Timer{
 		Interval:    t.Interval,
 		Jitter:      t.Jitter,
 		Heartbeat:   t.Heartbeat,

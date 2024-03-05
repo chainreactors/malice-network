@@ -4,8 +4,8 @@ import (
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/proto/implant/commonpb"
-	"github.com/chainreactors/malice-network/proto/implant/pluginpb"
+	"github.com/chainreactors/malice-network/proto/implant/implantpb"
+
 	"google.golang.org/protobuf/proto"
 	"strings"
 )
@@ -34,7 +34,7 @@ func ExecuteCmd(ctx *grumble.Context, con *console.Console) {
 
 	var resp *clientpb.Task
 	var err error
-	resp, err = con.Rpc.Execute(con.ActiveTarget.Context(), &pluginpb.ExecRequest{
+	resp, err = con.Rpc.Execute(con.ActiveTarget.Context(), &implantpb.ExecRequest{
 		Path:   cmdPath,
 		Args:   args,
 		Output: captureOutput,
@@ -47,7 +47,7 @@ func ExecuteCmd(ctx *grumble.Context, con *console.Console) {
 	}
 
 	con.AddCallback(resp.TaskId, func(msg proto.Message) {
-		resp := msg.(*commonpb.Spite).GetExecResponse()
+		resp := msg.(*implantpb.Spite).GetExecResponse()
 		sid := con.ActiveTarget.GetInteractive().SessionId
 		con.SessionLog(sid).Infof("pid: %d, status: %d", resp.Pid, resp.StatusCode)
 		if resp.StatusCode == 0 {

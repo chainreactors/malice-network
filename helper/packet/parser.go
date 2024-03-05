@@ -5,7 +5,8 @@ import (
 	"encoding/binary"
 	"errors"
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/proto/implant/commonpb"
+	"github.com/chainreactors/malice-network/proto/implant/implantpb"
+
 	"google.golang.org/protobuf/proto"
 	"io"
 	"net"
@@ -29,7 +30,7 @@ var (
 )
 
 func ParseMessage(body []byte) (proto.Message, error) {
-	msg := &commonpb.Spites{}
+	msg := &implantpb.Spites{}
 	err := proto.Unmarshal(body, msg)
 	if err != nil {
 		return nil, err

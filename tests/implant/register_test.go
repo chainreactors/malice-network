@@ -3,7 +3,6 @@ package implant
 import (
 	"fmt"
 	"github.com/chainreactors/malice-network/helper/types"
-	"github.com/chainreactors/malice-network/proto/implant/commonpb"
 	"github.com/chainreactors/malice-network/tests/common"
 	"testing"
 )
@@ -12,20 +11,20 @@ func TestRegister(t *testing.T) {
 	implant := common.NewImplant(common.DefaultListenerAddr, []byte{1, 2, 3, 4})
 	implant.Enc = true
 	implant.Tls = true
-	spite := &commonpb.Spite{
+	spite := &implantpb.Spite{
 		TaskId: 1,
 	}
-	body := &commonpb.Register{
-		Os: &commonpb.Os{
+	body := &implantpb.Register{
+		Os: &implantpb.Os{
 			Name: "windows",
 		},
-		Process: &commonpb.Process{
+		Process: &implantpb.Process{
 			Name: "test",
 			Pid:  123,
 			Uid:  "admin",
 			Gid:  "root",
 		},
-		Timer: &commonpb.Timer{
+		Timer: &implantpb.Timer{
 			Interval: 10,
 		},
 	}

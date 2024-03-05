@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/proto/implant/commonpb"
 	"github.com/chainreactors/malice-network/server/internal/certs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
@@ -84,7 +83,7 @@ func (rpc *Server) RemoveClient(ctx context.Context, req *clientpb.LoginReq) (*c
 	}, nil
 }
 
-func (rpc *Server) ListClients(ctx context.Context, req *commonpb.Empty) (*clientpb.Clients, error) {
+func (rpc *Server) ListClients(ctx context.Context, req *clientpb.Empty) (*clientpb.Clients, error) {
 	dbSession := db.Session()
 	clients, err := models.ListOperators(dbSession)
 	if err != nil {

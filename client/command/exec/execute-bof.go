@@ -5,8 +5,8 @@ import (
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/proto/implant/commonpb"
-	"github.com/chainreactors/malice-network/proto/implant/pluginpb"
+	"github.com/chainreactors/malice-network/proto/implant/implantpb"
+
 	"google.golang.org/protobuf/proto"
 	"os"
 	"path/filepath"
@@ -27,7 +27,7 @@ func ExecuteBofCmd(ctx *grumble.Context, con *console.Console) {
 	}
 
 	var task *clientpb.Task
-	task, err = con.Rpc.ExecuteBof(con.ActiveTarget.Context(), &pluginpb.ExecuteBof{
+	task, err = con.Rpc.ExecuteBof(con.ActiveTarget.Context(), &implantpb.ExecuteBof{
 		Name:   name,
 		Bin:    binData,
 		Params: args,
@@ -40,7 +40,7 @@ func ExecuteBofCmd(ctx *grumble.Context, con *console.Console) {
 	}
 
 	con.AddCallback(task.TaskId, func(msg proto.Message) {
-		resp := msg.(*commonpb.Spite).GetAssemblyResponse()
+		resp := msg.(*implantpb.Spite).GetAssemblyResponse()
 		sid := con.ActiveTarget.GetInteractive().SessionId
 		if resp.Status == 0 {
 			con.SessionLog(sid).Infof("%s output:\n%s", name, string(resp.Data))

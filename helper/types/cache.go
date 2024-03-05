@@ -1,13 +1,13 @@
 package types
 
-import "github.com/chainreactors/malice-network/proto/implant/commonpb"
+import "github.com/chainreactors/malice-network/proto/implant/implantpb"
 
 func NewSpitesCache() *SpitesCache {
-	return &SpitesCache{cache: []*commonpb.Spite{}}
+	return &SpitesCache{cache: []*implantpb.Spite{}}
 }
 
 type SpitesCache struct {
-	cache []*commonpb.Spite
+	cache []*implantpb.Spite
 	max   int
 }
 
@@ -15,8 +15,8 @@ func (sc *SpitesCache) Len() int {
 	return len(sc.cache)
 }
 
-func (sc *SpitesCache) Build() *commonpb.Spites {
-	spites := &commonpb.Spites{Spites: []*commonpb.Spite{}}
+func (sc *SpitesCache) Build() *implantpb.Spites {
+	spites := &implantpb.Spites{Spites: []*implantpb.Spite{}}
 	for _, s := range sc.cache {
 		spites.Spites = append(spites.Spites, s)
 	}
@@ -24,10 +24,10 @@ func (sc *SpitesCache) Build() *commonpb.Spites {
 	return spites
 }
 
-func (sc *SpitesCache) BuildOrEmpty() *commonpb.Spites {
-	spites := &commonpb.Spites{Spites: []*commonpb.Spite{}}
+func (sc *SpitesCache) BuildOrEmpty() *implantpb.Spites {
+	spites := &implantpb.Spites{Spites: []*implantpb.Spite{}}
 	if len(sc.cache) == 0 {
-		spites.Spites = append(spites.Spites, &commonpb.Spite{Body: &commonpb.Spite_Empty{}})
+		spites.Spites = append(spites.Spites, &implantpb.Spite{Body: &implantpb.Spite_Empty{}})
 	} else {
 		spites.Spites = append(spites.Spites, sc.cache...)
 		spites.Reset()
@@ -36,9 +36,9 @@ func (sc *SpitesCache) BuildOrEmpty() *commonpb.Spites {
 }
 
 func (sc *SpitesCache) Reset() {
-	sc.cache = []*commonpb.Spite{}
+	sc.cache = []*implantpb.Spite{}
 }
 
-func (sc *SpitesCache) Append(spite *commonpb.Spite) {
+func (sc *SpitesCache) Append(spite *implantpb.Spite) {
 	sc.cache = append(sc.cache, spite)
 }

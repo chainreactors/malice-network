@@ -125,7 +125,7 @@ func TestConfirm(T *testing.T) {
 //			fmt.Println(err.Error())
 //			return
 //		}
-//		taskid := upload.(*commonpb.Spites).Spites[0].TaskId
+//		taskid := upload.(* implantpb.Spites).Spites[0].TaskId
 //		fmt.Printf("res %v %v\n", upload, err)
 //		time.Sleep(1 * time.Second)
 //
@@ -141,7 +141,7 @@ func TestConfirm(T *testing.T) {
 //	}()
 //	meta := metadata.NewOutgoingContext(context.Background(), metadata.Pairs("session_id", hash.Md5Hash(common.TestSid)))
 //	rpc := common.NewClient(common.DefaultGRPCAddr, common.TestSid)
-//	res, err := rpc.Client.Upload(meta, &pluginpb.UploadRequest{
+//	res, err := rpc.Client.Upload(meta, &implantpb.UploadRequest{
 //		Name:   "test.txt",
 //		Target: "C:\\Temp\\test.txt",
 //		Priv:   0o644,

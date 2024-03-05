@@ -6,7 +6,8 @@ import (
 	"github.com/chainreactors/malice-network/helper/encoders/hash"
 	"github.com/chainreactors/malice-network/helper/packet"
 	"github.com/chainreactors/malice-network/helper/types"
-	"github.com/chainreactors/malice-network/proto/implant/commonpb"
+	"github.com/chainreactors/malice-network/proto/implant/implantpb"
+
 	"net"
 	"sync"
 	"time"
@@ -23,8 +24,8 @@ func NewConnection(rawid []byte) *Connection {
 		RawID:       rawid,
 		SessionID:   hash.Md5Hash(rawid),
 		LastMessage: time.Now(),
-		C:           make(chan *commonpb.Spite, 255),
-		Sender:      make(chan *commonpb.Spites, 1),
+		C:           make(chan *implantpb.Spite, 255),
+		Sender:      make(chan *implantpb.Spites, 1),
 		Alive:       true,
 		cache:       types.NewSpitesCache(),
 	}
@@ -56,8 +57,8 @@ type Connection struct {
 	RawID       []byte
 	SessionID   string
 	LastMessage time.Time
-	C           chan *commonpb.Spite // spite
-	Sender      chan *commonpb.Spites
+	C           chan *implantpb.Spite // spite
+	Sender      chan *implantpb.Spites
 	Alive       bool
 	cache       *types.SpitesCache
 }

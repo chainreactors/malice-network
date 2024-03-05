@@ -3,7 +3,8 @@ package rpc
 import (
 	"context"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/proto/implant/commonpb"
+	"github.com/chainreactors/malice-network/proto/implant/implantpb"
+
 	"github.com/chainreactors/malice-network/server/internal/core"
 )
 
@@ -23,7 +24,7 @@ func (rpc *Server) GetTasks(ctx context.Context, session *clientpb.Session) (*cl
 	return resp, nil
 }
 
-func (rpc *Server) GetTaskContent(ctx context.Context, req *clientpb.Task) (*commonpb.Spite, error) {
+func (rpc *Server) GetTaskContent(ctx context.Context, req *clientpb.Task) (*implantpb.Spite, error) {
 	sess, ok := core.Sessions.Get(req.SessionId)
 	if !ok {
 		return nil, ErrNotFoundSession

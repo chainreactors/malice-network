@@ -5,15 +5,14 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/encoders/hash"
 	"github.com/chainreactors/malice-network/helper/types"
-	"github.com/chainreactors/malice-network/proto/implant/commonpb"
-	"github.com/chainreactors/malice-network/proto/implant/pluginpb"
+
 	"github.com/chainreactors/malice-network/tests/common"
 	"testing"
 	"time"
 )
 
 var (
-	execResp = &pluginpb.ExecResponse{
+	execResp = &implantpb.ExecResponse{
 		Stdout:     []byte("admin"),
 		Pid:        999,
 		StatusCode: 0,
@@ -31,7 +30,7 @@ func TestExec(t *testing.T) {
 		implant.WriteEmpty(conn)
 		res, err := implant.Read(conn)
 		fmt.Printf("res %v %v\n", res, err)
-		spite := &commonpb.Spite{
+		spite := &implantpb.Spite{
 			TaskId: 0,
 			End:    true,
 		}
@@ -43,7 +42,7 @@ func TestExec(t *testing.T) {
 		}
 	}()
 	time.Sleep(1 * time.Second)
-	exec := &pluginpb.ExecRequest{
+	exec := &implantpb.ExecRequest{
 		Path: "/bin/bash",
 		Args: []string{"whoami"},
 	}

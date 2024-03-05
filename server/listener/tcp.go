@@ -7,7 +7,8 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/encoders/hash"
 	"github.com/chainreactors/malice-network/helper/packet"
-	"github.com/chainreactors/malice-network/proto/implant/commonpb"
+	"github.com/chainreactors/malice-network/proto/implant/implantpb"
+
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
@@ -154,7 +155,7 @@ func (l *TCPPipeline) handleRead(conn net.Conn) {
 	}
 }
 
-func (l *TCPPipeline) handleWrite(conn net.Conn, ch chan *commonpb.Spites, rawid []byte) {
+func (l *TCPPipeline) handleWrite(conn net.Conn, ch chan *implantpb.Spites, rawid []byte) {
 	msg := <-ch
 	err := packet.WritePacket(conn, msg, rawid)
 	if err != nil {

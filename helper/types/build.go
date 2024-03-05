@@ -3,8 +3,7 @@ package types
 import (
 	"errors"
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/proto/implant/commonpb"
-	"github.com/chainreactors/malice-network/proto/implant/pluginpb"
+	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"google.golang.org/protobuf/proto"
 )
@@ -14,50 +13,50 @@ var (
 	ErrUnknownJob   = errors.New("unknown job body")
 )
 
-func BuildSpite(spite *commonpb.Spite, msg proto.Message) (*commonpb.Spite, error) {
+func BuildSpite(spite *implantpb.Spite, msg proto.Message) (*implantpb.Spite, error) {
 	switch msg.(type) {
-	case *commonpb.Request:
-		spite.Name = msg.(*commonpb.Request).Name
-		spite.Body = &commonpb.Spite_Request{Request: msg.(*commonpb.Request)}
-	case *commonpb.Block:
+	case *implantpb.Request:
+		spite.Name = msg.(*implantpb.Request).Name
+		spite.Body = &implantpb.Spite_Request{Request: msg.(*implantpb.Request)}
+	case *implantpb.Block:
 		spite.Name = MsgBlock.String()
-		spite.Body = &commonpb.Spite_Block{Block: msg.(*commonpb.Block)}
-	case *commonpb.Register:
+		spite.Body = &implantpb.Spite_Block{Block: msg.(*implantpb.Block)}
+	case *implantpb.Register:
 		spite.Name = MsgRegister.String()
-		spite.Body = &commonpb.Spite_Register{Register: msg.(*commonpb.Register)}
-	case *pluginpb.ExecRequest:
+		spite.Body = &implantpb.Spite_Register{Register: msg.(*implantpb.Register)}
+	case *implantpb.ExecRequest:
 		spite.Name = MsgExec.String()
-		spite.Body = &commonpb.Spite_ExecRequest{ExecRequest: msg.(*pluginpb.ExecRequest)}
-	case *pluginpb.ExecResponse:
+		spite.Body = &implantpb.Spite_ExecRequest{ExecRequest: msg.(*implantpb.ExecRequest)}
+	case *implantpb.ExecResponse:
 		spite.Name = MsgExec.String()
-		spite.Body = &commonpb.Spite_ExecResponse{ExecResponse: msg.(*pluginpb.ExecResponse)}
-	case *pluginpb.UploadRequest:
+		spite.Body = &implantpb.Spite_ExecResponse{ExecResponse: msg.(*implantpb.ExecResponse)}
+	case *implantpb.UploadRequest:
 		spite.Name = MsgUpload.String()
-		spite.Body = &commonpb.Spite_UploadRequest{UploadRequest: msg.(*pluginpb.UploadRequest)}
-	case *pluginpb.DownloadRequest:
+		spite.Body = &implantpb.Spite_UploadRequest{UploadRequest: msg.(*implantpb.UploadRequest)}
+	case *implantpb.DownloadRequest:
 		spite.Name = MsgDownload.String()
-		spite.Body = &commonpb.Spite_DownloadRequest{DownloadRequest: msg.(*pluginpb.DownloadRequest)}
-	case *pluginpb.ExecuteAssembly:
+		spite.Body = &implantpb.Spite_DownloadRequest{DownloadRequest: msg.(*implantpb.DownloadRequest)}
+	case *implantpb.ExecuteAssembly:
 		spite.Name = MsgExecuteAssembly.String()
-		spite.Body = &commonpb.Spite_ExecuteAssembly{ExecuteAssembly: msg.(*pluginpb.ExecuteAssembly)}
-	case *pluginpb.ExecuteShellcode:
+		spite.Body = &implantpb.Spite_ExecuteAssembly{ExecuteAssembly: msg.(*implantpb.ExecuteAssembly)}
+	case *implantpb.ExecuteShellcode:
 		spite.Name = MsgExecuteShellcode.String()
-		spite.Body = &commonpb.Spite_ExecuteShellcode{ExecuteShellcode: msg.(*pluginpb.ExecuteShellcode)}
-	case *pluginpb.ExecuteSpawn:
+		spite.Body = &implantpb.Spite_ExecuteShellcode{ExecuteShellcode: msg.(*implantpb.ExecuteShellcode)}
+	case *implantpb.ExecuteSpawn:
 		spite.Name = MsgExecuteSpawn.String()
-		spite.Body = &commonpb.Spite_ExecuteSpawn{ExecuteSpawn: msg.(*pluginpb.ExecuteSpawn)}
-	case *pluginpb.ExecuteSideLoad:
+		spite.Body = &implantpb.Spite_ExecuteSpawn{ExecuteSpawn: msg.(*implantpb.ExecuteSpawn)}
+	case *implantpb.ExecuteSideLoad:
 		spite.Name = MsgExecuteSideLoad.String()
-		spite.Body = &commonpb.Spite_ExecuteSideload{ExecuteSideload: msg.(*pluginpb.ExecuteSideLoad)}
-	case *pluginpb.ExecuteBof:
+		spite.Body = &implantpb.Spite_ExecuteSideload{ExecuteSideload: msg.(*implantpb.ExecuteSideLoad)}
+	case *implantpb.ExecuteBof:
 		spite.Name = MsgExecuteBof.String()
-		spite.Body = &commonpb.Spite_ExecuteBof{ExecuteBof: msg.(*pluginpb.ExecuteBof)}
-	case *pluginpb.AssemblyResponse:
+		spite.Body = &implantpb.Spite_ExecuteBof{ExecuteBof: msg.(*implantpb.ExecuteBof)}
+	case *implantpb.AssemblyResponse:
 		spite.Name = MsgExecuteAssembly.String()
-		spite.Body = &commonpb.Spite_AssemblyResponse{AssemblyResponse: msg.(*pluginpb.AssemblyResponse)}
-	case *pluginpb.ExecuteExtension:
+		spite.Body = &implantpb.Spite_AssemblyResponse{AssemblyResponse: msg.(*implantpb.AssemblyResponse)}
+	case *implantpb.ExecuteExtension:
 		spite.Name = MsgExecuteExtension.String()
-		spite.Body = &commonpb.Spite_ExecuteExtension{ExecuteExtension: msg.(*pluginpb.ExecuteExtension)}
+		spite.Body = &implantpb.Spite_ExecuteExtension{ExecuteExtension: msg.(*implantpb.ExecuteExtension)}
 
 	default:
 		return spite, ErrUnknownSpite
@@ -65,17 +64,17 @@ func BuildSpite(spite *commonpb.Spite, msg proto.Message) (*commonpb.Spite, erro
 	return spite, nil
 }
 
-func BuildSpites(spites []*commonpb.Spite) *commonpb.Spites {
-	return &commonpb.Spites{Spites: spites}
+func BuildSpites(spites []*implantpb.Spite) *implantpb.Spites {
+	return &implantpb.Spites{Spites: spites}
 }
 
-func ParseSpite(spite *commonpb.Spite) (proto.Message, error) {
+func ParseSpite(spite *implantpb.Spite) (proto.Message, error) {
 	switch spite.Body.(type) {
-	case *commonpb.Spite_Register:
+	case *implantpb.Spite_Register:
 		return spite.GetRegister(), nil
-	case *commonpb.Spite_ExecResponse:
+	case *implantpb.Spite_ExecResponse:
 		return spite.GetExecResponse(), nil
-	case *commonpb.Spite_AssemblyResponse:
+	case *implantpb.Spite_AssemblyResponse:
 		return spite.GetAssemblyResponse(), nil
 	default:
 		return nil, ErrUnknownSpite

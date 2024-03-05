@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/proto/implant/commonpb"
+	"github.com/chainreactors/malice-network/proto/implant/implantpb"
+
 	"sync"
 )
 
@@ -46,7 +47,7 @@ type Task struct {
 	Cur       int
 	Total     int
 	Callback  func()
-	Spite     *commonpb.Spite
+	Spite     *implantpb.Spite
 	done      chan bool
 	end       chan struct{}
 }

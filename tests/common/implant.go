@@ -6,8 +6,8 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/packet"
 	"github.com/chainreactors/malice-network/helper/types"
-	"github.com/chainreactors/malice-network/proto/implant/commonpb"
-	"github.com/chainreactors/malice-network/proto/implant/pluginpb"
+	"github.com/chainreactors/malice-network/proto/implant/implantpb"
+
 	"github.com/chainreactors/malice-network/server/listener/encryption"
 	"google.golang.org/protobuf/proto"
 	"net"
@@ -26,7 +26,7 @@ func NewImplant(addr string, sid []byte) *Implant {
 		Addr:     addr,
 		Sid:      sid,
 		interval: 10 * time.Second,
-		ch:       make(chan *commonpb.Spites, 255),
+		ch:       make(chan *implantpb.Spites, 255),
 		cache:    types.NewSpitesCache(),
 	}
 	return i
@@ -35,7 +35,7 @@ func NewImplant(addr string, sid []byte) *Implant {
 type Implant struct {
 	Addr     string
 	Sid      []byte
-	ch       chan *commonpb.Spites
+	ch       chan *implantpb.Spites
 	cache    *types.SpitesCache
 	interval time.Duration
 	Enc      bool
@@ -86,20 +86,20 @@ func (implant *Implant) MustConnect() net.Conn {
 func (implant *Implant) Register() {
 	conn := implant.MustConnect()
 	defer conn.Close()
-	spite := &commonpb.Spite{
+	spite := &implantpb.Spite{
 		TaskId: 0,
 	}
-	body := &commonpb.Register{
-		Os: &commonpb.Os{
+	body := &implantpb.Register{
+		Os: &implantpb.Os{
 			Name: "windows",
 		},
-		Process: &commonpb.Process{
+		Process: &implantpb.Process{
 			Name: "test",
 			Pid:  123,
 			Uid:  "admin",
 			Gid:  "root",
 		},
-		Timer: &commonpb.Timer{
+		Timer: &implantpb.Timer{
 			Interval: 10,
 		},
 	}
@@ -108,7 +108,7 @@ func (implant *Implant) Register() {
 }
 
 // request spites
-func (implant *Implant) Write(conn net.Conn, msg *commonpb.Spites) error {
+func (implant *Implant) Write(conn net.Conn, msg *implantpb.Spites) error {
 	err := packet.WritePacket(conn, msg, implant.Sid)
 	if err != nil {
 		return err
@@ -124,9 +124,9 @@ func (implant *Implant) WriteWithTimeout(conn net.Conn, msg proto.Message) error
 	return nil
 }
 
-func (implant *Implant) WriteSpite(conn net.Conn, msg *commonpb.Spite) error {
-	spites := &commonpb.Spites{
-		Spites: []*commonpb.Spite{msg},
+func (implant *Implant) WriteSpite(conn net.Conn, msg *implantpb.Spite) error {
+	spites := &implantpb.Spites{
+		Spites: []*implantpb.Spite{msg},
 	}
 
 	return implant.Write(conn, spites)
@@ -166,7 +166,7 @@ func (implant *Implant) Run() {
 				return
 			}
 			logs.Log.Infof("%v", msg)
-			go implant.Handler(msg.(*commonpb.Spites))
+			go implant.Handler(msg.(*implantpb.Spites))
 			return
 		}()
 
@@ -197,7 +197,7 @@ func (implant *Implant) Run() {
 	}
 }
 
-func (implant *Implant) Handler(msg *commonpb.Spites) {
+func (implant *Implant) Handler(msg *implantpb.Spites) {
 	for _, spite := range msg.Spites {
 		logs.Log.Debugf("receive spite %v", spite)
 		implant.cache.Append(implant.HandlerSpite(spite))
@@ -205,16 +205,16 @@ func (implant *Implant) Handler(msg *commonpb.Spites) {
 	implant.ch <- implant.cache.Build()
 }
 
-func (implant *Implant) HandlerSpite(msg *commonpb.Spite) *commonpb.Spite {
-	spite := &commonpb.Spite{
+func (implant *Implant) HandlerSpite(msg *implantpb.Spite) *implantpb.Spite {
+	spite := &implantpb.Spite{
 		TaskId: msg.TaskId,
 		End:    true,
-		Status: &commonpb.AsyncStatus{TaskId: msg.TaskId, Status: 0},
+		Status: &implantpb.Status{TaskId: msg.TaskId, Status: 0},
 	}
 	var resp proto.Message
 	switch msg.Body.(type) {
-	case *commonpb.Spite_ExecRequest:
-		resp = &pluginpb.ExecResponse{
+	case *implantpb.Spite_ExecRequest:
+		resp = &implantpb.ExecResponse{
 			Stdout:     []byte("admin"),
 			Pid:        999,
 			StatusCode: 0,
@@ -224,7 +224,7 @@ func (implant *Implant) HandlerSpite(msg *commonpb.Spite) *commonpb.Spite {
 	return spite
 }
 
-func (implant *Implant) Request(req *commonpb.Spite) (proto.Message, error) {
+func (implant *Implant) Request(req *implantpb.Spite) (proto.Message, error) {
 	conn := implant.MustConnect()
 	conn.SetReadDeadline(time.Now().Add(1 * time.Second))
 	defer conn.Close()
@@ -251,20 +251,20 @@ func (implant *Implant) Request(req *commonpb.Spite) (proto.Message, error) {
 	}
 }
 
-func (implant *Implant) Expect(req *commonpb.Spite, m types.MsgName) (proto.Message, error) {
+func (implant *Implant) Expect(req *implantpb.Spite, m types.MsgName) (proto.Message, error) {
 	resp, err := implant.Request(req)
 	if err != nil {
 		return nil, err
 	}
 
-	if m != types.MessageType(resp.(*commonpb.Spites).Spites[0]) {
+	if m != types.MessageType(resp.(*implantpb.Spites).Spites[0]) {
 		return resp, errors.New("unexpect response type ")
 	}
 	return resp, nil
 }
 
-func (implant *Implant) BuildTaskSpite(msg proto.Message, taskid uint32) (*commonpb.Spite, error) {
-	spite := &commonpb.Spite{
+func (implant *Implant) BuildTaskSpite(msg proto.Message, taskid uint32) (*implantpb.Spite, error) {
+	spite := &implantpb.Spite{
 		TaskId: uint32(taskid),
 	}
 	_, err := types.BuildSpite(spite, msg)
@@ -274,20 +274,20 @@ func (implant *Implant) BuildTaskSpite(msg proto.Message, taskid uint32) (*commo
 	return spite, nil
 }
 
-func (implant *Implant) BuildCommonSpite(t string, taskId uint32) *commonpb.Spite {
+func (implant *Implant) BuildCommonSpite(t string, taskId uint32) *implantpb.Spite {
 	switch t {
 	case EmptySpite:
-		return &commonpb.Spite{Body: &commonpb.Spite_Empty{}}
+		return &implantpb.Spite{Body: &implantpb.Spite_Empty{}}
 	//case StatusSpite:
-	//	return &commonpb.Spite{TaskId: taskId, Body: &commonpb.Spite_AsyncStatus{
-	//		AsyncStatus: &commonpb.AsyncStatus{
+	//	return & implantpb.Spite{TaskId: taskId, Body: & implantpb.Spite_AsyncStatus{
+	//		AsyncStatus: & implantpb.AsyncStatus{
 	//			TaskId: taskId,
 	//			Status: 0,
 	//		},
 	//	}}
 	case AckSpite:
-		return &commonpb.Spite{TaskId: taskId, Body: &commonpb.Spite_AsyncAck{
-			AsyncAck: &commonpb.AsyncACK{
+		return &implantpb.Spite{TaskId: taskId, Body: &implantpb.Spite_AsyncAck{
+			AsyncAck: &implantpb.AsyncACK{
 				Success: true,
 			},
 		}}
@@ -297,7 +297,7 @@ func (implant *Implant) BuildCommonSpite(t string, taskId uint32) *commonpb.Spit
 }
 
 func (implant *Implant) WriteEmpty(conn net.Conn) error {
-	err := implant.Write(conn, types.BuildSpites([]*commonpb.Spite{&commonpb.Spite{Body: &commonpb.Spite_Empty{}}}))
+	err := implant.Write(conn, types.BuildSpites([]*implantpb.Spite{&implantpb.Spite{Body: &implantpb.Spite_Empty{}}}))
 	if err != nil {
 		return err
 	}

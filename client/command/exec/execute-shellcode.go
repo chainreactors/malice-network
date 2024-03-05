@@ -4,8 +4,8 @@ import (
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/proto/implant/commonpb"
-	"github.com/chainreactors/malice-network/proto/implant/pluginpb"
+	"github.com/chainreactors/malice-network/proto/implant/implantpb"
+
 	"google.golang.org/protobuf/proto"
 	"os"
 )
@@ -68,7 +68,7 @@ func ExecuteShellcodeCmd(ctx *grumble.Context, con *console.Console) {
 	//	return
 	//}
 	//msg := fmt.Sprintf("Sending shellcode to %s ...", session.GetName())
-	shellcodeTask, err := con.Rpc.ExecuteShellcode(con.ActiveTarget.Context(), &pluginpb.ExecuteShellcode{
+	shellcodeTask, err := con.Rpc.ExecuteShellcode(con.ActiveTarget.Context(), &implantpb.ExecuteShellcode{
 		Bin:  shellcodeBin,
 		Pid:  uint32(pid),
 		Type: consts.ShellcodePlugin,
@@ -80,7 +80,7 @@ func ExecuteShellcodeCmd(ctx *grumble.Context, con *console.Console) {
 	}
 
 	con.AddCallback(shellcodeTask.TaskId, func(msg proto.Message) {
-		resp := msg.(*commonpb.Spite).GetAssemblyResponse()
+		resp := msg.(*implantpb.Spite).GetAssemblyResponse()
 		if resp.Err != "" {
 			console.Log.Errorf("%s\n", resp.Err)
 		} else {

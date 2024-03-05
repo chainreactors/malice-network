@@ -3,7 +3,8 @@ package file
 import (
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/console"
-	"github.com/chainreactors/malice-network/proto/implant/pluginpb"
+	"github.com/chainreactors/malice-network/proto/implant/implantpb"
+
 	"google.golang.org/protobuf/proto"
 	"os"
 )
@@ -22,7 +23,7 @@ func upload(ctx *grumble.Context, con *console.Console) {
 	if err != nil {
 		console.Log.Errorf("Can't open file: %s", err)
 	}
-	uploadTask, err := con.Rpc.Upload(con.ActiveTarget.Context(), &pluginpb.UploadRequest{
+	uploadTask, err := con.Rpc.Upload(con.ActiveTarget.Context(), &implantpb.UploadRequest{
 		Name:   name,
 		Target: target,
 		Priv:   uint32(priv),

@@ -5,7 +5,8 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/mtls"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/proto/implant/commonpb"
+	"github.com/chainreactors/malice-network/proto/implant/implantpb"
+
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/proto/services/listenerrpc"
 	"github.com/chainreactors/malice-network/server/internal/certs"
@@ -20,7 +21,7 @@ func (rpc *Server) GetListeners(ctx context.Context, req *clientpb.Empty) (*clie
 	return core.Listeners.ToProtobuf(), nil
 }
 
-func (rpc *Server) RegisterListener(ctx context.Context, req *lispb.RegisterListener) (*commonpb.Empty, error) {
+func (rpc *Server) RegisterListener(ctx context.Context, req *lispb.RegisterListener) (*implantpb.Empty, error) {
 	core.Listeners.Add(&core.Listener{
 		Name:   req.Name,
 		Host:   req.Addr,
@@ -28,10 +29,10 @@ func (rpc *Server) RegisterListener(ctx context.Context, req *lispb.RegisterList
 	})
 	p, ok := peer.FromContext(ctx)
 	if !ok {
-		return &commonpb.Empty{}, nil
+		return &implantpb.Empty{}, nil
 	}
 	logs.Log.Importantf("%s register listener %s", p.Addr, req.Name)
-	return &commonpb.Empty{}, nil
+	return &implantpb.Empty{}, nil
 }
 
 func (rpc *Server) SpiteStream(stream listenerrpc.ListenerRPC_SpiteStreamServer) error {
@@ -68,23 +69,23 @@ func (rpc *Server) SpiteStream(stream listenerrpc.ListenerRPC_SpiteStreamServer)
 	}
 }
 
-func (s *Server) AddListener(ctx context.Context, req *lispb.RegisterListener) (*commonpb.Empty, error) {
+func (s *Server) AddListener(ctx context.Context, req *lispb.RegisterListener) (*clientpb.Empty, error) {
 	_, _, err := certs.ClientGenerateCertificate(req.Host, req.Name, 5004, certs.ListenerCA)
 	if err != nil {
-		return &commonpb.Empty{}, err
+		return &clientpb.Empty{}, err
 	}
-	return &commonpb.Empty{}, nil
+	return &clientpb.Empty{}, nil
 }
 
-func (s *Server) RemoveListener(ctx context.Context, req *lispb.RegisterListener) (*commonpb.Empty, error) {
+func (s *Server) RemoveListener(ctx context.Context, req *lispb.RegisterListener) (*clientpb.Empty, error) {
 	err := mtls.RemoveConfig(req.Name, certs.ListenerCA)
 	if err != nil {
-		return &commonpb.Empty{}, err
+		return &clientpb.Empty{}, err
 	}
-	return &commonpb.Empty{}, nil
+	return &clientpb.Empty{}, nil
 }
 
-func (s *Server) ListListeners(ctx context.Context, req *commonpb.Empty) (*clientpb.Listeners, error) {
+func (s *Server) ListListeners(ctx context.Context, req *clientpb.Empty) (*clientpb.Listeners, error) {
 	files, err := mtls.GetListeners()
 	if err != nil {
 		return nil, err

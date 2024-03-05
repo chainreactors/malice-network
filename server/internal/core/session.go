@@ -5,7 +5,7 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/proto/implant/commonpb"
+	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/gookit/config/v2"
@@ -57,9 +57,9 @@ type Session struct {
 	ID         string
 	Name       string
 	RemoteAddr string
-	Os         *commonpb.Os
-	Process    *commonpb.Process
-	Timer      *commonpb.Timer
+	Os         *implantpb.Os
+	Process    *implantpb.Process
+	Timer      *implantpb.Timer
 	Filepath   string
 	ActiveC2   string
 	ProxyURL   string
@@ -148,8 +148,8 @@ func (s *Session) Request(msg *lispb.SpiteSession, stream grpc.ServerStream, tim
 	}
 }
 
-func (s *Session) RequestAndWait(msg *lispb.SpiteSession, stream grpc.ServerStream, timeout time.Duration) (*commonpb.Spite, error) {
-	ch := make(chan *commonpb.Spite)
+func (s *Session) RequestAndWait(msg *lispb.SpiteSession, stream grpc.ServerStream, timeout time.Duration) (*implantpb.Spite, error) {
+	ch := make(chan *implantpb.Spite)
 	s.StoreResp(msg.TaskId, ch)
 	err := s.Request(msg, stream, timeout)
 	if err != nil {
@@ -161,15 +161,15 @@ func (s *Session) RequestAndWait(msg *lispb.SpiteSession, stream grpc.ServerStre
 }
 
 // RequestWithStream - 'async' means that the response is not returned immediately, but is returned through the channel 'ch
-func (s *Session) RequestWithStream(msg *lispb.SpiteSession, stream grpc.ServerStream, timeout time.Duration) (chan *commonpb.Spite, chan *commonpb.Spite, error) {
-	respCh := make(chan *commonpb.Spite)
+func (s *Session) RequestWithStream(msg *lispb.SpiteSession, stream grpc.ServerStream, timeout time.Duration) (chan *implantpb.Spite, chan *implantpb.Spite, error) {
+	respCh := make(chan *implantpb.Spite)
 	s.StoreResp(msg.TaskId, respCh)
 	err := s.Request(msg, stream, timeout)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	in := make(chan *commonpb.Spite)
+	in := make(chan *implantpb.Spite)
 	go func() {
 		defer close(respCh)
 		var c = 0
@@ -190,8 +190,8 @@ func (s *Session) RequestWithStream(msg *lispb.SpiteSession, stream grpc.ServerS
 	return in, respCh, nil
 }
 
-func (s *Session) RequestWithAsync(msg *lispb.SpiteSession, stream grpc.ServerStream, timeout time.Duration) (chan *commonpb.Spite, error) {
-	respCh := make(chan *commonpb.Spite)
+func (s *Session) RequestWithAsync(msg *lispb.SpiteSession, stream grpc.ServerStream, timeout time.Duration) (chan *implantpb.Spite, error) {
+	respCh := make(chan *implantpb.Spite)
 	s.StoreResp(msg.TaskId, respCh)
 	err := s.Request(msg, stream, timeout)
 	if err != nil {
@@ -201,16 +201,16 @@ func (s *Session) RequestWithAsync(msg *lispb.SpiteSession, stream grpc.ServerSt
 	return respCh, nil
 }
 
-func (s *Session) StoreResp(taskId uint32, ch chan *commonpb.Spite) {
+func (s *Session) StoreResp(taskId uint32, ch chan *implantpb.Spite) {
 	s.responses.Store(taskId, ch)
 }
 
-func (s *Session) GetResp(taskId uint32) (chan *commonpb.Spite, bool) {
+func (s *Session) GetResp(taskId uint32) (chan *implantpb.Spite, bool) {
 	msg, ok := s.responses.Load(taskId)
 	if !ok {
 		return nil, false
 	}
-	return msg.(chan *commonpb.Spite), true
+	return msg.(chan *implantpb.Spite), true
 }
 
 func (s *Session) DeleteResp(taskId uint32) {

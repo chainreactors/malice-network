@@ -10,7 +10,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/proto/implant/commonpb"
+	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/proto/services/listenerrpc"
@@ -35,7 +35,7 @@ var (
 	// ErrInvalidSessionID - Invalid Session ID in request
 	ErrInvalidSessionID = status.Error(codes.InvalidArgument, "Invalid session ID")
 
-	// ErrMissingRequestField - Returned when a request does not contain a commonpb.Request
+	// ErrMissingRequestField - Returned when a request does not contain a  implantpb.Request
 	ErrMissingRequestField = status.Error(codes.InvalidArgument, "Missing session request field")
 	// ErrAsyncNotSupported - Unsupported mode / command type
 	ErrAsyncNotSupported = status.Error(codes.Unavailable, "Async not supported for this command")
@@ -169,8 +169,8 @@ func (r *GenericRequest) NewTask(total int) *core.Task {
 	return r.Session.NewTask(string(proto.MessageName(r.Message).Name()), total)
 }
 
-func (r *GenericRequest) NewSpite(msg proto.Message) (*commonpb.Spite, error) {
-	spite := &commonpb.Spite{
+func (r *GenericRequest) NewSpite(msg proto.Message) (*implantpb.Spite, error) {
+	spite := &implantpb.Spite{
 		Timeout: uint64(consts.MinTimeout.Seconds()),
 		TaskId:  r.Task.Id,
 		Async:   true,
@@ -225,7 +225,7 @@ func (rpc *Server) genericHandler(ctx context.Context, req *GenericRequest) (pro
 	return resp, nil
 }
 
-func (rpc *Server) asyncGenericHandler(ctx context.Context, req *GenericRequest) (chan *commonpb.Spite, error) {
+func (rpc *Server) asyncGenericHandler(ctx context.Context, req *GenericRequest) (chan *implantpb.Spite, error) {
 	spite, err := req.NewSpite(req.Message)
 	if err != nil {
 		logs.Log.Errorf(err.Error())
@@ -245,7 +245,7 @@ func (rpc *Server) asyncGenericHandler(ctx context.Context, req *GenericRequest)
 }
 
 // streamGenericHandler - Generic handler for async request/response's for beacon tasks
-func (rpc *Server) streamGenericHandler(ctx context.Context, req *GenericRequest) (chan *commonpb.Spite, chan *commonpb.Spite, error) {
+func (rpc *Server) streamGenericHandler(ctx context.Context, req *GenericRequest) (chan *implantpb.Spite, chan *implantpb.Spite, error) {
 	spite, err := req.NewSpite(req.Message)
 	if err != nil {
 		logs.Log.Errorf(err.Error())
@@ -394,7 +394,7 @@ func getOperatorServerMTLSConfig(host string) *tls.Config {
 	return tlsConfig
 }
 
-func AssertStatus(spite *commonpb.Spite) error {
+func AssertStatus(spite *implantpb.Spite) error {
 	if stat := spite.GetStatus(); stat == nil {
 		return ErrMissingRequestField
 	} else if stat.Status != 0 {
@@ -403,7 +403,7 @@ func AssertStatus(spite *commonpb.Spite) error {
 	return nil
 }
 
-func AssertResponse(spite *commonpb.Spite, expect types.MsgName) error {
+func AssertResponse(spite *implantpb.Spite, expect types.MsgName) error {
 	body := spite.GetBody()
 	if body == nil && expect != types.MsgNil {
 		return ErrNilResponseBody
@@ -415,7 +415,7 @@ func AssertResponse(spite *commonpb.Spite, expect types.MsgName) error {
 	return nil
 }
 
-func AssertStatusAndResponse(spite *commonpb.Spite, expect types.MsgName) error {
+func AssertStatusAndResponse(spite *implantpb.Spite, expect types.MsgName) error {
 	if err := AssertStatus(spite); err != nil {
 		return err
 	}

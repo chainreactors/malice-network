@@ -6,13 +6,12 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/proto/implant/commonpb"
-	"github.com/chainreactors/malice-network/proto/implant/pluginpb"
+	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/server/internal/core"
 )
 
-func (rpc *Server) ListExtensions(ctx context.Context, _ *commonpb.Empty) (*clientpb.Task, error) {
-	greq, err := newGenericRequest(ctx, &commonpb.Request{Name: types.MsgExtensions.String()})
+func (rpc *Server) ListExtensions(ctx context.Context, _ *implantpb.Empty) (*clientpb.Task, error) {
+	greq, err := newGenericRequest(ctx, &implantpb.Request{Name: types.MsgExtensions.String()})
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +40,7 @@ func (rpc *Server) ListExtensions(ctx context.Context, _ *commonpb.Empty) (*clie
 	return greq.Task.ToProtobuf(), nil
 }
 
-func (rpc *Server) LoadExtension(ctx context.Context, req *pluginpb.LoadExtension) (*clientpb.Task, error) {
+func (rpc *Server) LoadExtension(ctx context.Context, req *implantpb.LoadExtension) (*clientpb.Task, error) {
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err
@@ -71,7 +70,7 @@ func (rpc *Server) LoadExtension(ctx context.Context, req *pluginpb.LoadExtensio
 	return greq.Task.ToProtobuf(), nil
 }
 
-func (rpc *Server) ExecuteExtenison(ctx context.Context, req *pluginpb.ExecuteExtension) (*clientpb.Task, error) {
+func (rpc *Server) ExecuteExtenison(ctx context.Context, req *implantpb.ExecuteExtension) (*clientpb.Task, error) {
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err

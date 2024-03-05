@@ -3,8 +3,7 @@ package implant
 import (
 	"fmt"
 	"github.com/chainreactors/malice-network/helper/encoders/hash"
-	"github.com/chainreactors/malice-network/proto/implant/commonpb"
-	"github.com/chainreactors/malice-network/proto/implant/pluginpb"
+
 	"github.com/chainreactors/malice-network/tests/common"
 	"testing"
 	"time"
@@ -22,7 +21,7 @@ func TestUpload(t *testing.T) {
 			fmt.Println(err.Error())
 			return
 		}
-		taskid := upload.(*commonpb.Spites).Spites[0].TaskId
+		taskid := upload.(*implantpb.Spites).Spites[0].TaskId
 		fmt.Printf("res %v %v\n", upload, err)
 		time.Sleep(1 * time.Second)
 
@@ -37,7 +36,7 @@ func TestUpload(t *testing.T) {
 		fmt.Println(block)
 	}()
 	rpc := common.NewClient(common.DefaultGRPCAddr, common.TestSid)
-	resp, err := rpc.Call("upload", &pluginpb.UploadRequest{
+	resp, err := rpc.Call("upload", &implantpb.UploadRequest{
 		Name:   "test.txt",
 		Target: ".",
 		Priv:   0o644,
@@ -61,7 +60,7 @@ func TestDownload(t *testing.T) {
 			fmt.Println(err.Error())
 			return
 		}
-		taskid := download.(*commonpb.Spites).Spites[0].TaskId
+		taskid := download.(*implantpb.Spites).Spites[0].TaskId
 		fmt.Printf("res %v %v\n", download, err)
 		time.Sleep(1 * time.Second)
 
@@ -72,7 +71,7 @@ func TestDownload(t *testing.T) {
 		}
 		time.Sleep(1 * time.Second)
 
-		block, _ := implant.BuildTaskSpite(&commonpb.Block{
+		block, _ := implant.BuildTaskSpite(&implantpb.Block{
 			BlockId: 0,
 			Content: make([]byte, 100),
 		}, taskid)
@@ -85,7 +84,7 @@ func TestDownload(t *testing.T) {
 	}()
 	time.Sleep(1)
 	rpc := common.NewClient(common.DefaultGRPCAddr, common.TestSid)
-	resp, err := rpc.Call("download", &pluginpb.DownloadRequest{
+	resp, err := rpc.Call("download", &implantpb.DownloadRequest{
 		Name: "test",
 		Path: "/test.txt",
 	})

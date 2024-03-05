@@ -9,8 +9,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/packet"
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/proto/implant/commonpb"
-	"github.com/chainreactors/malice-network/proto/implant/pluginpb"
+	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
@@ -21,7 +20,7 @@ import (
 )
 
 // Upload - Upload a file from the remote file system
-func (rpc *Server) Upload(ctx context.Context, req *pluginpb.UploadRequest) (*clientpb.Task, error) {
+func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*clientpb.Task, error) {
 	count := packet.Count(req.Data, config.Int(consts.MaxPacketLength))
 	dbSession := db.Session()
 	if count == 1 {
@@ -70,7 +69,7 @@ func (rpc *Server) Upload(ctx context.Context, req *pluginpb.UploadRequest) (*cl
 		}
 		return greq.Task.ToProtobuf(), nil
 	} else {
-		greq, err := newGenericRequest(ctx, &pluginpb.UploadRequest{
+		greq, err := newGenericRequest(ctx, &implantpb.UploadRequest{
 			Name:   req.Name,
 			Target: req.Target,
 			Priv:   req.Priv,
@@ -102,11 +101,11 @@ func (rpc *Server) Upload(ctx context.Context, req *pluginpb.UploadRequest) (*cl
 				return
 			}
 			for block := range packet.Chunked(req.Data, count) {
-				msg := &commonpb.Block{
+				msg := &implantpb.Block{
 					BlockId: uint32(blockId),
 					Content: block,
 				}
-				spite := &commonpb.Spite{
+				spite := &implantpb.Spite{
 					Timeout: uint64(consts.MinTimeout.Seconds()),
 					TaskId:  greq.Task.Id,
 				}
@@ -134,7 +133,7 @@ func (rpc *Server) Upload(ctx context.Context, req *pluginpb.UploadRequest) (*cl
 }
 
 // Download - Download a file from implant
-func (rpc *Server) Download(ctx context.Context, req *pluginpb.DownloadRequest) (*clientpb.Task, error) {
+func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest) (*clientpb.Task, error) {
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err
@@ -191,7 +190,7 @@ func (rpc *Server) Download(ctx context.Context, req *pluginpb.DownloadRequest) 
 					if fileErr != nil {
 						return
 					}
-					ack, _ := greq.NewSpite(&commonpb.AsyncACK{Success: true})
+					ack, _ := greq.NewSpite(&implantpb.AsyncACK{Success: true})
 					in <- ack
 					err := taskModel.UpdateCur(dbSession, int(block.BlockId))
 					if err != nil {

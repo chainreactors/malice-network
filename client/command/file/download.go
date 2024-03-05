@@ -3,7 +3,8 @@ package file
 import (
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/console"
-	"github.com/chainreactors/malice-network/proto/implant/pluginpb"
+	"github.com/chainreactors/malice-network/proto/implant/implantpb"
+
 	"google.golang.org/protobuf/proto"
 )
 
@@ -15,7 +16,7 @@ func download(ctx *grumble.Context, con *console.Console) {
 
 	name := ctx.Flags.String("name")
 	path := ctx.Flags.String("path")
-	downloadTask, err := con.Rpc.Download(con.ActiveTarget.Context(), &pluginpb.DownloadRequest{
+	downloadTask, err := con.Rpc.Download(con.ActiveTarget.Context(), &implantpb.DownloadRequest{
 		Name: name,
 		Path: path,
 	})

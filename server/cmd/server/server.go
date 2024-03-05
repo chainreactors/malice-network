@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/proto/implant/commonpb"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/server/internal/certs"
 	"github.com/chainreactors/malice-network/server/internal/configs"
@@ -109,7 +108,7 @@ func Execute() {
 		os.Exit(0)
 	}
 	if opt.User.List.Called != false {
-		clients, err := client.ListClients(context.Background(), &commonpb.Empty{})
+		clients, err := client.ListClients(context.Background(), &clientpb.Empty{})
 		if err != nil {
 			logs.Log.Errorf("cannot list users , %s ", err.Error())
 			return
@@ -152,7 +151,7 @@ func Execute() {
 	}
 
 	if opt.Listener.List.Called != false {
-		listeners, err := client.ListListeners(context.Background(), &commonpb.Empty{})
+		listeners, err := client.ListListeners(context.Background(), &clientpb.Empty{})
 		if err != nil {
 			logs.Log.Errorf("cannot list operators , %s ", err.Error())
 			return

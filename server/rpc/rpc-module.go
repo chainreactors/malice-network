@@ -6,13 +6,12 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/proto/implant/commonpb"
-	"github.com/chainreactors/malice-network/proto/implant/pluginpb"
+	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/server/internal/core"
 )
 
-func (rpc *Server) ListModules(ctx context.Context, _ *commonpb.Empty) (*clientpb.Task, error) {
-	greq, err := newGenericRequest(ctx, &commonpb.Request{Name: types.MsgModules.String()})
+func (rpc *Server) ListModules(ctx context.Context, _ *implantpb.Empty) (*clientpb.Task, error) {
+	greq, err := newGenericRequest(ctx, &implantpb.Request{Name: types.MsgModules.String()})
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +40,7 @@ func (rpc *Server) ListModules(ctx context.Context, _ *commonpb.Empty) (*clientp
 	return greq.Task.ToProtobuf(), nil
 }
 
-func (rpc *Server) LoadModule(ctx context.Context, req *pluginpb.LoadModule) (*clientpb.Task, error) {
+func (rpc *Server) LoadModule(ctx context.Context, req *implantpb.LoadModule) (*clientpb.Task, error) {
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err

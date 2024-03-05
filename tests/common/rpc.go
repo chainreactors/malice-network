@@ -6,7 +6,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/encoders/hash"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/proto/implant/pluginpb"
+
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/proto/services/listenerrpc"
 	"google.golang.org/grpc"
@@ -54,11 +54,11 @@ func (c *Client) Call(rpcname string, msg proto.Message) (proto.Message, error) 
 	var err error
 	switch rpcname {
 	case consts.ModuleExecution:
-		resp, err = c.Client.Execute(meta, msg.(*pluginpb.ExecRequest))
+		resp, err = c.Client.Execute(meta, msg.(*implantpb.ExecRequest))
 	case consts.ModuleUpload:
-		resp, err = c.Client.Upload(meta, msg.(*pluginpb.UploadRequest))
+		resp, err = c.Client.Upload(meta, msg.(*implantpb.UploadRequest))
 	case consts.ModuleDownload:
-		resp, err = c.Client.Download(meta, msg.(*pluginpb.DownloadRequest))
+		resp, err = c.Client.Download(meta, msg.(*implantpb.DownloadRequest))
 	case consts.CommandBroadcast:
 		resp, err = c.Client.Broadcast(meta, msg.(*clientpb.Event))
 	default:

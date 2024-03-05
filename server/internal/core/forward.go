@@ -3,7 +3,8 @@ package core
 import (
 	"context"
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/proto/implant/commonpb"
+	"github.com/chainreactors/malice-network/proto/implant/implantpb"
+
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/proto/services/listenerrpc"
 	"google.golang.org/grpc"
@@ -125,7 +126,7 @@ func (f *Forward) Count() int {
 // Handler is a loop that handles messages from implant
 func (f *Forward) Handler() {
 	for msg := range f.implantC {
-		spites := msg.Message.(*commonpb.Spites)
+		spites := msg.Message.(*implantpb.Spites)
 		for _, spite := range spites.Spites {
 			if size := proto.Size(spite); size <= 1000 {
 				logs.Log.Debugf("[listener.%s] receive spite %s, %v", msg.SessionID, spite.Name, spite)
@@ -133,9 +134,9 @@ func (f *Forward) Handler() {
 				logs.Log.Debugf("[listener.%s] receive spite %s %d bytes", msg.SessionID, spite.Name, size)
 			}
 			switch spite.Body.(type) {
-			case *commonpb.Spite_Empty:
+			case *implantpb.Spite_Empty:
 				continue
-			case *commonpb.Spite_Register:
+			case *implantpb.Spite_Register:
 				_, err := f.ImplantRpc.Register(f.ctx, &lispb.RegisterSession{
 					SessionId:    msg.SessionID,
 					ListenerId:   f.ID(),
