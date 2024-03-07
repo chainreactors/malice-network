@@ -71,24 +71,36 @@ func (rpc *Server) SpiteStream(stream listenerrpc.ListenerRPC_SpiteStreamServer)
 	}
 }
 
-func (s *Server) AddListener(ctx context.Context, req *rootpb.Operator) (*clientpb.Empty, error) {
+func (s *Server) AddListener(ctx context.Context, req *rootpb.Operator) (*rootpb.Response, error) {
 	cfg := configs.GetServerConfig()
 	_, _, err := certs.ClientGenerateCertificate(cfg.GRPCHost, req.Name, int(cfg.GRPCPort), certs.ListenerCA)
 	if err != nil {
-		return &clientpb.Empty{}, err
+		return &rootpb.Response{
+			Status: 1,
+			Error:  err.Error(),
+		}, err
 	}
-	return &clientpb.Empty{}, nil
+	return &rootpb.Response{
+		Status:   0,
+		Response: "",
+	}, nil
 }
 
-func (s *Server) RemoveListener(ctx context.Context, req *rootpb.Operator) (*clientpb.Empty, error) {
+func (s *Server) RemoveListener(ctx context.Context, req *rootpb.Operator) (*rootpb.Response, error) {
 	err := mtls.RemoveConfig(req.Name, certs.ListenerCA)
 	if err != nil {
-		return &clientpb.Empty{}, err
+		return &rootpb.Response{
+			Status: 1,
+			Error:  err.Error(),
+		}, err
 	}
-	return &clientpb.Empty{}, nil
+	return &rootpb.Response{
+		Status:   0,
+		Response: "",
+	}, nil
 }
 
-func (s *Server) ListListeners(ctx context.Context, req *clientpb.Empty) (*clientpb.Listeners, error) {
+func (s *Server) ListListeners(ctx context.Context, req *rootpb.Operator) (*clientpb.Listeners, error) {
 	files, err := mtls.GetListeners()
 	if err != nil {
 		return nil, err

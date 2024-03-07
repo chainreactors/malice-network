@@ -49,12 +49,12 @@ func Execute() {
 		return
 	}
 
-	rootclient, err := root.NewRootClient(opt.Server.Address())
-	if err != nil {
-		logs.Log.Errorf("cannot init root client , %s ", err.Error())
-		return
-	}
 	if opt.Command() != nil {
+		rootclient, err := root.NewRootClient(opt.Server.Address())
+		if err != nil {
+			logs.Log.Errorf("cannot init root client , %s ", err.Error())
+			return
+		}
 		err = rootclient.Execute(opt.Command())
 		if err != nil {
 			logs.Log.Errorf("cannot execute command , %s ", err.Error())

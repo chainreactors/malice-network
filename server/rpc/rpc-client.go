@@ -61,32 +61,36 @@ func (rpc *Server) LoginClient(ctx context.Context, req *clientpb.LoginReq) (*cl
 	}, nil
 }
 
-func (rpc *Server) AddClient(ctx context.Context, req *rootpb.Operator) (*clientpb.LoginResp, error) {
+func (rpc *Server) AddClient(ctx context.Context, req *rootpb.Operator) (*rootpb.Response, error) {
 	cfg := configs.GetServerConfig()
 	_, _, err := certs.ClientGenerateCertificate(cfg.GRPCHost, req.Name, int(cfg.GRPCPort), certs.OperatorCA)
 	if err != nil {
-		return &clientpb.LoginResp{
-			Success: false,
+		return &rootpb.Response{
+			Status: 1,
+			Error:  err.Error(),
 		}, err
 	}
-	return &clientpb.LoginResp{
-		Success: true,
+	return &rootpb.Response{
+		Status:   0,
+		Response: "",
 	}, nil
 }
 
-func (rpc *Server) RemoveClient(ctx context.Context, req *rootpb.Operator) (*clientpb.LoginResp, error) {
+func (rpc *Server) RemoveClient(ctx context.Context, req *rootpb.Operator) (*rootpb.Response, error) {
 	err := certs.RemoveCertificate(certs.OperatorCA, certs.RSAKey, req.Name)
 	if err != nil {
-		return &clientpb.LoginResp{
-			Success: false,
+		return &rootpb.Response{
+			Status: 1,
+			Error:  err.Error(),
 		}, err
 	}
-	return &clientpb.LoginResp{
-		Success: true,
+	return &rootpb.Response{
+		Status:   0,
+		Response: "",
 	}, nil
 }
 
-func (rpc *Server) ListClients(ctx context.Context, req *clientpb.Empty) (*clientpb.Clients, error) {
+func (rpc *Server) ListClients(ctx context.Context, req *rootpb.Operator) (*clientpb.Clients, error) {
 	dbSession := db.Session()
 	clients, err := models.ListOperators(dbSession)
 	if err != nil {
