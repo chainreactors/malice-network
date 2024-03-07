@@ -31,7 +31,7 @@ const (
 
 	// RSAKey - Namespace for RSA keys
 	RSAKey        = "rsa"
-	RootName      = "root"
+	RootName      = "Root"
 	OperatorName  = "server.operator"
 	ListentorName = "default"
 )
