@@ -91,7 +91,7 @@ type ServerConfig struct {
 	MiscConfig   *MiscConfig   `config:"config" default:""`
 }
 
-func (c *ServerConfig) String() string {
+func (c *ServerConfig) Address() string {
 	return fmt.Sprintf("%s:%d", c.GRPCHost, c.GRPCPort)
 }
 

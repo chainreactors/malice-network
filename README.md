@@ -16,7 +16,7 @@ generate protobuf
 ```bash
 # client
 protoc -I proto/ proto/client/clientpb/client.proto  --go_out=paths=source_relative:proto/
-
+protoc -I proto/ proto/client/rootpb/root.proto  --go_out=paths=source_relative:proto/
 # implant
 protoc -I proto/ proto/implant/implantpb/implant.proto  --go_out=paths=source_relative:proto/
 ```
