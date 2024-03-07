@@ -4,12 +4,13 @@ import (
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/command/completer"
 	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/helper/consts"
 )
 
 func Commands(con *console.Console) []*grumble.Command {
 	return []*grumble.Command{
 		{
-			Name: "download",
+			Name: consts.ModuleDownload,
 			Help: "download file",
 			Flags: func(f *grumble.Flags) {
 				f.String("n", "name", "", "filename")
@@ -19,9 +20,10 @@ func Commands(con *console.Console) []*grumble.Command {
 				download(ctx, con)
 				return nil
 			},
+			HelpGroup: consts.ImplantGroup,
 		},
 		{
-			Name: "sync",
+			Name: consts.CommandSync,
 			Help: "sync file",
 			Flags: func(f *grumble.Flags) {
 				f.String("n", "name", "", "filename")
@@ -33,9 +35,10 @@ func Commands(con *console.Console) []*grumble.Command {
 			Completer: func(prefix string, args []string) []string {
 				return completer.SessionIDCompleter(con, prefix)
 			},
+			HelpGroup: consts.ImplantGroup,
 		},
 		{
-			Name: "upload",
+			Name: consts.ModuleUpload,
 			Help: "upload file",
 			Flags: func(f *grumble.Flags) {
 				f.String("n", "name", "", "filename")
@@ -48,6 +51,7 @@ func Commands(con *console.Console) []*grumble.Command {
 				upload(ctx, con)
 				return nil
 			},
+			HelpGroup: consts.ImplantGroup,
 		},
 	}
 }

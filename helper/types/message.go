@@ -1,6 +1,9 @@
 package types
 
-import "github.com/chainreactors/malice-network/proto/implant/implantpb"
+import (
+	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/proto/implant/implantpb"
+)
 
 type MsgName string
 
@@ -10,9 +13,9 @@ const (
 	MsgRequest          MsgName = "request"
 	MsgBlock            MsgName = "block"
 	MsgRegister         MsgName = "register"
-	MsgUpload           MsgName = "upload"
-	MsgDownload         MsgName = "download"
-	MsgExec             MsgName = "exec"
+	MsgUpload           MsgName = consts.ModuleUpload
+	MsgDownload         MsgName = consts.ModuleDownload
+	MsgExec             MsgName = consts.ModuleExecution
 	MsgAck              MsgName = "ack"
 	MsgModules          MsgName = "modules"
 	MsgLoadModule       MsgName = "load_module"
@@ -20,11 +23,13 @@ const (
 	MsgLoadExtension    MsgName = "load_extension"
 	MsgAssemblyResponse MsgName = "assembly_response"
 	MsgExecuteExtension MsgName = "execute_extension"
-	MsgExecuteAssembly  MsgName = "execute_assembly"
-	MsgExecuteShellcode MsgName = "execute_shellcode"
+	MsgExecuteAssembly  MsgName = consts.ModuleExecuteAssembly
+	MsgExecuteShellcode MsgName = consts.ModuleExecuteShellcode
 	MsgExecuteSpawn     MsgName = "execute_spawn"
 	MsgExecuteSideLoad  MsgName = "execute_sideload"
-	MsgExecuteBof       MsgName = "execute_bof"
+	MsgExecuteBof       MsgName = consts.ModuleExecuteBof
+	MsgPwd              MsgName = consts.ModulePwd
+	MsgLs               MsgName = consts.ModuleLs
 )
 
 func (r MsgName) String() string {

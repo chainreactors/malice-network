@@ -3,7 +3,6 @@ package command
 import (
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/command/alias"
-	"github.com/chainreactors/malice-network/client/command/file"
 	"github.com/chainreactors/malice-network/client/command/jobs"
 	"github.com/chainreactors/malice-network/client/command/listener"
 	"github.com/chainreactors/malice-network/client/command/login"
@@ -69,7 +68,6 @@ func BindClientsCommands(con *console.Console) {
 		listener.Commands,
 		alias.Commands,
 		observe.Command,
-		file.Commands,
 	)
 
 	login.LoginCmd(&grumble.Context{}, con)

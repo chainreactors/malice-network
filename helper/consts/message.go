@@ -9,13 +9,17 @@ const (
 	ModuleExecuteBof       = "execute-bof"
 	ModuleUpload           = "upload"
 	ModuleDownload         = "download"
-	CommandBroadcast       = "broadcast"
-	CommandVersion         = "version"
-	CommandNotify          = "notify"
-	CommandAlias           = "alias"
-	CommandAliasLoad       = "load"
-	CommandAliasInstall    = "install"
-	CommandAliasRemove     = "remove"
+	ModulePwd              = "pwd"
+	ModuleLs               = "ls"
+
+	CommandSync         = "sync"
+	CommandBroadcast    = "broadcast"
+	CommandVersion      = "version"
+	CommandNotify       = "notify"
+	CommandAlias        = "alias"
+	CommandAliasLoad    = "load"
+	CommandAliasInstall = "install"
+	CommandAliasRemove  = "remove"
 )
 
 // ctrl type

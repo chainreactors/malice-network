@@ -48,9 +48,8 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 			resp := <-ch
 
 			err := AssertStatusAndResponse(resp, types.MsgBlock)
-			event := buildErrorEvent(greq.Task, err)
-			if event != nil {
-				core.EventBroker.Publish(*event)
+			if err != nil {
+				core.EventBroker.Publish(buildErrorEvent(greq.Task, err))
 				return
 			}
 			greq.SetCallback(func() {
@@ -95,9 +94,8 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 		go func() {
 			stat := <-out
 			err := AssertResponse(stat, types.MsgNil)
-			event := buildErrorEvent(greq.Task, err)
-			if event != nil {
-				core.EventBroker.Publish(*event)
+			if err != nil {
+				core.EventBroker.Publish(buildErrorEvent(greq.Task, err))
 				return
 			}
 			for block := range packet.Chunked(req.Data, count) {
@@ -150,9 +148,8 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 
 		stat := resp.GetStatus()
 		err := AssertStatus(resp)
-		event := buildErrorEvent(greq.Task, err)
-		if event != nil {
-			core.EventBroker.Publish(*event)
+		if err != nil {
+			core.EventBroker.Publish(buildErrorEvent(greq.Task, err))
 			return
 		}
 		fileName := path.Join(configs.TempPath, stat.GetDownloadResponse().Checksum)

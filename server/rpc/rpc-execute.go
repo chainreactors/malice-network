@@ -24,9 +24,8 @@ func (rpc *Server) Execute(ctx context.Context, req *implantpb.ExecRequest) (*cl
 		resp := <-ch
 
 		err := AssertStatusAndResponse(resp, types.MsgExec)
-		event := buildErrorEvent(greq.Task, err)
-		if event != nil {
-			core.EventBroker.Publish(*event)
+		if err != nil {
+			core.EventBroker.Publish(buildErrorEvent(greq.Task, err))
 			return
 		}
 		greq.SetCallback(func() {
@@ -54,9 +53,8 @@ func (rpc *Server) ExecuteAssembly(ctx context.Context, req *implantpb.ExecuteAs
 	go func() {
 		resp := <-ch
 		err := AssertStatusAndResponse(resp, types.MsgAssemblyResponse)
-		event := buildErrorEvent(greq.Task, err)
-		if event != nil {
-			core.EventBroker.Publish(*event)
+		if err != nil {
+			core.EventBroker.Publish(buildErrorEvent(greq.Task, err))
 			return
 		}
 		greq.SetCallback(func() {
@@ -84,9 +82,8 @@ func (rpc *Server) ExecuteShellcode(ctx context.Context, req *implantpb.ExecuteS
 	go func() {
 		resp := <-ch
 		err := AssertStatusAndResponse(resp, types.MsgAssemblyResponse)
-		event := buildErrorEvent(greq.Task, err)
-		if event != nil {
-			core.EventBroker.Publish(*event)
+		if err != nil {
+			core.EventBroker.Publish(buildErrorEvent(greq.Task, err))
 			return
 		}
 		greq.SetCallback(func() {
@@ -114,9 +111,8 @@ func (rpc *Server) ExecuteBof(ctx context.Context, req *implantpb.ExecuteBof) (*
 	go func() {
 		resp := <-ch
 		err := AssertStatusAndResponse(resp, types.MsgAssemblyResponse)
-		event := buildErrorEvent(greq.Task, err)
-		if event != nil {
-			core.EventBroker.Publish(*event)
+		if err != nil {
+			core.EventBroker.Publish(buildErrorEvent(greq.Task, err))
 			return
 		}
 		greq.SetCallback(func() {
