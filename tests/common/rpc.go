@@ -6,6 +6,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/encoders/hash"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/proto/services/listenerrpc"
@@ -59,6 +60,9 @@ func (c *Client) Call(rpcname string, msg proto.Message) (proto.Message, error) 
 		resp, err = c.Client.Upload(meta, msg.(*implantpb.UploadRequest))
 	case consts.ModuleDownload:
 		resp, err = c.Client.Download(meta, msg.(*implantpb.DownloadRequest))
+	case consts.ModulePwd:
+		resp, err = c.Client.Pwd(meta, msg.(*implantpb.Empty))
+
 	case consts.CommandBroadcast:
 		resp, err = c.Client.Broadcast(meta, msg.(*clientpb.Event))
 	default:

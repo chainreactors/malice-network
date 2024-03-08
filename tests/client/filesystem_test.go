@@ -1,22 +1,19 @@
 package client
 
 import (
-	"fmt"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
-
 	"github.com/chainreactors/malice-network/tests/common"
 	"testing"
 )
 
-func TestExec(t *testing.T) {
+func TestPwd(t *testing.T) {
+	t.Log("Testing pwd")
 	rpc := common.NewClient(common.DefaultGRPCAddr, common.TestSid)
-	resp, err := rpc.Call(consts.ModuleExecution, &implantpb.ExecRequest{
-		Path: "/bin/bash",
-		Args: []string{"whoami"}})
+	resp, err := rpc.Call(consts.ModulePwd, &implantpb.Empty{})
 	if err != nil {
-		fmt.Println(err.Error())
+		t.Log(err.Error())
 		return
 	}
-	fmt.Println(resp)
+	t.Log(resp)
 }
