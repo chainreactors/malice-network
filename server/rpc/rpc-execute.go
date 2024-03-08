@@ -2,12 +2,9 @@ package rpc
 
 import (
 	"context"
-	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
-
-	"github.com/chainreactors/malice-network/server/internal/core"
 )
 
 func (rpc *Server) Execute(ctx context.Context, req *implantpb.ExecRequest) (*clientpb.Task, error) {
@@ -20,23 +17,7 @@ func (rpc *Server) Execute(ctx context.Context, req *implantpb.ExecRequest) (*cl
 		return nil, err
 	}
 
-	go func() {
-		resp := <-ch
-
-		err := AssertStatusAndResponse(resp, types.MsgExec)
-		if err != nil {
-			core.EventBroker.Publish(buildErrorEvent(greq.Task, err))
-			return
-		}
-		greq.SetCallback(func() {
-			greq.Task.Spite = resp
-			core.EventBroker.Publish(core.Event{
-				EventType: consts.EventTaskCallback,
-				Task:      greq.Task,
-			})
-		})
-		greq.Task.Done()
-	}()
+	go greq.HandlerAsyncResponse(ch, types.MsgExec)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -50,22 +31,7 @@ func (rpc *Server) ExecuteAssembly(ctx context.Context, req *implantpb.ExecuteAs
 	if err != nil {
 		return nil, err
 	}
-	go func() {
-		resp := <-ch
-		err := AssertStatusAndResponse(resp, types.MsgAssemblyResponse)
-		if err != nil {
-			core.EventBroker.Publish(buildErrorEvent(greq.Task, err))
-			return
-		}
-		greq.SetCallback(func() {
-			greq.Task.Spite = resp
-			core.EventBroker.Publish(core.Event{
-				EventType: consts.EventTaskCallback,
-				Task:      greq.Task,
-			})
-		})
-		greq.Task.Done()
-	}()
+	go greq.HandlerAsyncResponse(ch, types.MsgAssemblyResponse)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -79,22 +45,7 @@ func (rpc *Server) ExecuteShellcode(ctx context.Context, req *implantpb.ExecuteS
 	if err != nil {
 		return nil, err
 	}
-	go func() {
-		resp := <-ch
-		err := AssertStatusAndResponse(resp, types.MsgAssemblyResponse)
-		if err != nil {
-			core.EventBroker.Publish(buildErrorEvent(greq.Task, err))
-			return
-		}
-		greq.SetCallback(func() {
-			greq.Task.Spite = resp
-			core.EventBroker.Publish(core.Event{
-				EventType: consts.EventTaskCallback,
-				Task:      greq.Task,
-			})
-		})
-		greq.Task.Done()
-	}()
+	go greq.HandlerAsyncResponse(ch, types.MsgAssemblyResponse)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -108,21 +59,6 @@ func (rpc *Server) ExecuteBof(ctx context.Context, req *implantpb.ExecuteBof) (*
 	if err != nil {
 		return nil, err
 	}
-	go func() {
-		resp := <-ch
-		err := AssertStatusAndResponse(resp, types.MsgAssemblyResponse)
-		if err != nil {
-			core.EventBroker.Publish(buildErrorEvent(greq.Task, err))
-			return
-		}
-		greq.SetCallback(func() {
-			greq.Task.Spite = resp
-			core.EventBroker.Publish(core.Event{
-				EventType: consts.EventTaskCallback,
-				Task:      greq.Task,
-			})
-		})
-		greq.Task.Done()
-	}()
+	go greq.HandlerAsyncResponse(ch, types.MsgAssemblyResponse)
 	return greq.Task.ToProtobuf(), nil
 }

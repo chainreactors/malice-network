@@ -34,5 +34,33 @@ func (rpc *Server) GetTaskContent(ctx context.Context, req *clientpb.Task) (*imp
 		return nil, ErrNotFoundTask
 	}
 
-	return task.Spite, nil
+	if task.Cur == 0 {
+		msg, ok := task.LastMessage()
+		if ok {
+			return msg, nil
+		}
+		return nil, ErrNotFoundTask
+	} else {
+		msg, ok := task.GetMessage(uint32(task.Cur))
+		if ok {
+			return msg, nil
+		}
+		return nil, ErrNotFoundTask
+	}
+}
+
+func (rpc *Server) GetAllTaskContent(ctx context.Context, req *clientpb.Task) ([]*implantpb.Spite, error) {
+	sess, ok := core.Sessions.Get(req.SessionId)
+	if !ok {
+		return nil, ErrNotFoundSession
+	}
+	task := sess.Tasks.Get(req.TaskId)
+	if task == nil {
+		return nil, ErrNotFoundTask
+	}
+	msgs, ok := task.GetMessages()
+	if ok {
+		return msgs, nil
+	}
+	return nil, ErrNotFoundTask
 }

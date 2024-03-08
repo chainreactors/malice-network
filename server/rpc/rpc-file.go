@@ -44,23 +44,7 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 			logs.Log.Errorf("cannot create task %d, %s in db", greq.Task.Id, err.Error())
 			return nil, err
 		}
-		go func() {
-			resp := <-ch
-
-			err := AssertStatusAndResponse(resp, types.MsgBlock)
-			if err != nil {
-				core.EventBroker.Publish(buildErrorEvent(greq.Task, err))
-				return
-			}
-			greq.SetCallback(func() {
-				greq.Task.Spite = resp
-				core.EventBroker.Publish(core.Event{
-					EventType: consts.EventTaskCallback,
-					Task:      greq.Task,
-				})
-			})
-		}()
-		greq.Task.Done()
+		go greq.HandlerAsyncResponse(ch, types.MsgBlock)
 		err = taskModel.UpdateCur(dbSession, greq.Task.Cur)
 		if err != nil {
 			logs.Log.Errorf("cannot update task %d , %s in db", greq.Task.Id, err.Error())

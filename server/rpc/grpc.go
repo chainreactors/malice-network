@@ -43,11 +43,13 @@ var (
 	ErrAssertFailure   = status.Error(codes.InvalidArgument, "Assert spite type failure")
 	ErrNilResponseBody = status.Error(codes.InvalidArgument, "Must return spite body")
 	// ErrInvalidName - Invalid name
-	ErrInvalidName        = status.Error(codes.InvalidArgument, "Invalid session name, alphanumerics and _-. only")
-	ErrNotFoundSession    = status.Error(codes.InvalidArgument, "Session ID not found")
-	ErrNotFoundTask       = status.Error(codes.InvalidArgument, "Task ID not found")
-	ErrNotFoundListener   = status.Error(codes.InvalidArgument, "Pipeline not found")
-	ErrNotFoundClientName = status.Error(codes.InvalidArgument, "Client name not found")
+	ErrInvalidName     = status.Error(codes.InvalidArgument, "Invalid session name, alphanumerics and _-. only")
+	ErrNotFoundSession = status.Error(codes.NotFound, "Session ID not found")
+	ErrNotFoundTask    = status.Error(codes.NotFound, "Task ID not found")
+
+	ErrNotFoundListener    = status.Error(codes.NotFound, "Pipeline not found")
+	ErrNotFoundClientName  = status.Error(codes.NotFound, "Client name not found")
+	ErrNotFoundTaskContent = status.Error(codes.NotFound, "Task content not found")
 	//ErrInvalidBeaconTaskCancelState = status.Error(codes.InvalidArgument, fmt.Sprintf("Invalid task state, must be '%s' to cancel", models.PENDING))
 )
 
@@ -155,6 +157,24 @@ func (r *GenericRequest) NewSpite(msg proto.Message) (*implantpb.Spite, error) {
 
 func (r *GenericRequest) SetCallback(callback func()) {
 	r.Task.Callback = callback
+}
+
+func (r *GenericRequest) HandlerAsyncResponse(ch chan *implantpb.Spite, typ types.MsgName) {
+	resp := <-ch
+
+	err := AssertStatusAndResponse(resp, typ)
+	if err != nil {
+		core.EventBroker.Publish(buildErrorEvent(r.Task, err))
+		return
+	}
+	r.SetCallback(func() {
+		r.Task.AddMessage(resp)
+		core.EventBroker.Publish(core.Event{
+			EventType: consts.EventTaskCallback,
+			Task:      r.Task,
+		})
+	})
+	r.Task.Done()
 }
 
 type Server struct {

@@ -75,13 +75,12 @@ func Execute() {
 	if opt.Debug {
 		logs.Log.SetLevel(logs.Debug)
 	}
-	// start grpc
-	_, _, err = rpc.StartClientListener(opt.Server.GRPCPort)
-	if err != nil {
-		logs.Log.Error(err.Error())
-		return // If we fail to bind don't setup the Job
-	}
 
+	err = StartGrpc(opt.Server.GRPCPort)
+	if err != nil {
+		logs.Log.Errorf("cannot start grpc , %s ", err.Error())
+		return
+	}
 	// start listeners
 	if opt.Listeners != nil {
 		// init forwarder
@@ -91,12 +90,18 @@ func Execute() {
 			return
 		}
 	}
+}
+
+// Start - Starts the server console
+func StartGrpc(port uint16) error {
+	// start grpc
+
 	// start alive session
+	db.Client = db.NewDBClient()
 	dbSession := db.Session()
 	sessions, err := models.FindActiveSessions(dbSession)
 	if err != nil {
-		logs.Log.Errorf("cannot find sessions in db , %s ", err.Error())
-		return
+		return err
 	}
 	if len(sessions) > 0 {
 		for _, session := range sessions {
@@ -110,6 +115,11 @@ func Execute() {
 		}
 	}
 
+	_, _, err = rpc.StartClientListener(port)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func main() {

@@ -109,12 +109,13 @@ func (s *Session) nextTaskId() uint32 {
 
 func (s *Session) NewTask(name string, total int) *Task {
 	task := &Task{
-		Type:      name,
-		Total:     total,
-		Id:        s.nextTaskId(),
-		SessionId: s.ID,
-		done:      make(chan bool),
-		end:       make(chan struct{}),
+		Type:       name,
+		Total:      total,
+		Id:         s.nextTaskId(),
+		SessionId:  s.ID,
+		SpiteCache: NewSpiteCache(1),
+		done:       make(chan bool),
+		end:        make(chan struct{}),
 	}
 	go task.Handler()
 	s.Tasks.Add(task)

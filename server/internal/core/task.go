@@ -5,7 +5,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
-
 	"sync"
 )
 
@@ -47,9 +46,9 @@ type Task struct {
 	Cur       int
 	Total     int
 	Callback  func()
-	Spite     *implantpb.Spite
-	done      chan bool
-	end       chan struct{}
+	*SpiteCache
+	done chan bool
+	end  chan struct{}
 }
 
 func (t *Task) Handler() {
@@ -104,4 +103,85 @@ func (t *Task) Finish() {
 
 func (t *Task) Close() {
 	close(t.done)
+}
+
+func NewSpiteCache(size int) *SpiteCache {
+	return &SpiteCache{
+		messages: make(map[uint32]*implantpb.Spite),
+		size:     size,
+	}
+}
+
+type SpiteCache struct {
+	messages map[uint32]*implantpb.Spite
+	minID    uint32
+	maxID    uint32
+	size     int
+	lock     sync.Mutex
+}
+
+func (c *SpiteCache) AddMessage(message *implantpb.Spite) uint32 {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	// 自动生成ID
+	c.maxID++
+	id := c.maxID
+
+	if len(c.messages) == 0 {
+		c.minID = id
+	}
+
+	c.messages[id] = message
+
+	// 删除多余的消息
+	c.trim()
+
+	return id
+}
+
+func (c *SpiteCache) GetMessage(id uint32) (*implantpb.Spite, bool) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	msg, found := c.messages[id]
+	return msg, found
+}
+
+func (c *SpiteCache) GetMessages() ([]*implantpb.Spite, bool) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	messages := make([]*implantpb.Spite, 0, len(c.messages))
+	for _, msg := range c.messages {
+		messages = append(messages, msg)
+	}
+	return messages, true
+}
+
+func (c *SpiteCache) LastMessage() (*implantpb.Spite, bool) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	msg, found := c.messages[c.maxID]
+	return msg, found
+}
+
+func (c *SpiteCache) SetSize(newSize int) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	c.size = newSize
+	c.trim()
+}
+
+// trim 删除多余的消息直到缓存大小不超过限制
+func (c *SpiteCache) trim() {
+	for len(c.messages) > c.size {
+		delete(c.messages, c.minID)
+		c.minID++ // 增加minID直到找到下一个存在的消息
+		for _, exists := c.messages[c.minID]; !exists; _, exists = c.messages[c.minID] {
+			c.minID++
+		}
+	}
 }

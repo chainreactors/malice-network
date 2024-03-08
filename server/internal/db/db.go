@@ -8,7 +8,7 @@ import (
 var (
 	// ErrRecordNotFound - Record not found error
 	ErrRecordNotFound = gorm.ErrRecordNotFound
-	Client            = newDBClient()
+	Client            *gorm.DB
 )
 
 // Session - Database session

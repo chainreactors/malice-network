@@ -12,7 +12,7 @@ import (
 )
 
 // newDBClient - Initialize the db client
-func newDBClient() *gorm.DB {
+func NewDBClient() *gorm.DB {
 	dbConfig := configs.GetDatabaseConfig()
 	var dbClient *gorm.DB
 	switch dbConfig.Dialect {
