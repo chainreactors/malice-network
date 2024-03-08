@@ -5,6 +5,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"github.com/chainreactors/malice-network/helper/mtls"
+	"github.com/chainreactors/malice-network/proto/client/rootpb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/server/internal/certs"
 	"google.golang.org/grpc"
@@ -41,8 +42,8 @@ type RootClient struct {
 	rpc  clientrpc.RootRPCClient
 }
 
-func (client *RootClient) Execute(cmd Command) error {
-	resp, err := cmd.Execute(client.rpc)
+func (client *RootClient) Execute(cmd Command, msg *rootpb.Operator) error {
+	resp, err := cmd.Execute(client.rpc, msg)
 	if err != nil {
 		return err
 	}

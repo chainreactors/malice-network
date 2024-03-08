@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/server/internal/certs"
@@ -9,7 +10,6 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"github.com/chainreactors/malice-network/server/listener"
-	"github.com/chainreactors/malice-network/server/root"
 	"github.com/chainreactors/malice-network/server/rpc"
 	"github.com/gookit/config/v2"
 	"github.com/gookit/config/v2/yaml"
@@ -33,7 +33,6 @@ func Execute() {
 	var opt Options
 	var err error
 	parser := flags.NewParser(&opt, flags.Default)
-	parser.Usage = Banner()
 
 	// load config
 	err = configs.LoadConfig(configs.ServerConfigFileName, &opt)
@@ -41,24 +40,17 @@ func Execute() {
 		logs.Log.Warnf("cannot load config , %s ", err.Error())
 	}
 	parser.SubcommandsOptional = true
-	_, err = parser.Parse()
+	sub, err := parser.Parse()
 	if err != nil {
-		if err.(*flags.Error).Type != flags.ErrHelp {
+		if !errors.Is(err, flags.ErrHelp) {
 			logs.Log.Error(err.Error())
 		}
 		return
 	}
 
-	if opt.Command() != nil {
-		rootclient, err := root.NewRootClient(opt.Server.Address())
-		if err != nil {
-			logs.Log.Errorf("cannot init root client , %s ", err.Error())
-			return
-		}
-		err = rootclient.Execute(opt.Command())
-		if err != nil {
-			logs.Log.Errorf("cannot execute command , %s ", err.Error())
-		}
+	err = opt.Execute(sub, parser)
+	if err != nil {
+		logs.Log.Error(err)
 		return
 	}
 
@@ -82,7 +74,11 @@ func Execute() {
 		logs.Log.SetLevel(logs.Debug)
 	}
 	// start grpc
-	StartGrpc(opt.Server.GRPCPort)
+	_, _, err = rpc.StartClientListener(opt.Server.GRPCPort)
+	if err != nil {
+		logs.Log.Error(err.Error())
+		return // If we fail to bind don't setup the Job
+	}
 
 	// start listeners
 	if opt.Listeners != nil {
@@ -112,39 +108,6 @@ func Execute() {
 		}
 	}
 
-}
-
-// Start - Starts the server console
-func StartGrpc(port uint16) {
-	_, _, err := rpc.StartClientListener(port)
-	if err != nil {
-		logs.Log.Error(err.Error())
-		return // If we fail to bind don't setup the Job
-	}
-	//ctxDialer := grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) {
-	//	return ln.Dial()
-	//})
-
-	//options := []grpc.DialOption{
-	//	//ctxDialer,
-	//	grpc.WithInsecure(), // This is an in-memory listener, no need for secure transport
-	//	grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(constant.ClientMaxReceiveMessageSize)),
-	//}
-	//conn, err := grpc.DialContext(context.Background(), "bufnet", options...)
-	//if err != nil {
-	//	//fmt.Printf(Warn+"Failed to dial bufnet: %s\n", err)
-	//	return
-	//}
-	//defer conn.Close()
-
-	//localRPC := clientrpc.NewMaliceRPCClient(conn)
-	//if err := configs.CheckHTTPC2ConfigErrors(); err != nil {
-	//	fmt.Printf(Warn+"Error in HTTP C2 config: %s\n", err)
-	//}
-}
-
-func Banner() string {
-	return ""
 }
 
 func main() {

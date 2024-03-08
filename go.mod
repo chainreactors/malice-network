@@ -5,7 +5,7 @@ go 1.21
 require (
 	filippo.io/age v1.1.1
 	github.com/chainreactors/files v0.0.0-20231102192550-a652458cee26
-	github.com/chainreactors/logs v0.0.0-20240129091721-debabf144e06
+	github.com/chainreactors/logs v0.0.0-20240207121836-c946f072f81f
 	github.com/fatih/color v1.14.1
 	github.com/goccy/go-yaml v1.11.2
 	github.com/gofrs/uuid v4.4.0+incompatible
