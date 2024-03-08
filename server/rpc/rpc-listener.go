@@ -3,7 +3,7 @@ package rpc
 import (
 	"context"
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/mtls"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/client/rootpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
@@ -73,7 +73,7 @@ func (rpc *Server) SpiteStream(stream listenerrpc.ListenerRPC_SpiteStreamServer)
 
 func (s *Server) AddListener(ctx context.Context, req *rootpb.Operator) (*rootpb.Response, error) {
 	cfg := configs.GetServerConfig()
-	_, _, err := certs.ClientGenerateCertificate(cfg.GRPCHost, req.Name, int(cfg.GRPCPort), certs.ListenerCA)
+	_, _, data, err := certs.ClientGenerateCertificate(cfg.GRPCHost, req.Args[0], int(cfg.GRPCPort), certs.ListenerCA)
 	if err != nil {
 		return &rootpb.Response{
 			Status: 1,
@@ -82,12 +82,12 @@ func (s *Server) AddListener(ctx context.Context, req *rootpb.Operator) (*rootpb
 	}
 	return &rootpb.Response{
 		Status:   0,
-		Response: "",
+		Response: string(data),
 	}, nil
 }
 
 func (s *Server) RemoveListener(ctx context.Context, req *rootpb.Operator) (*rootpb.Response, error) {
-	err := mtls.RemoveConfig(req.Name, certs.ListenerCA)
+	err := certs.RemoveCertificate(certs.ListenerCA, certs.RSAKey, req.Args[0])
 	if err != nil {
 		return &rootpb.Response{
 			Status: 1,
@@ -101,16 +101,38 @@ func (s *Server) RemoveListener(ctx context.Context, req *rootpb.Operator) (*roo
 }
 
 func (s *Server) ListListeners(ctx context.Context, req *rootpb.Operator) (*clientpb.Listeners, error) {
-	files, err := mtls.GetListeners()
+	dbSession := db.Session()
+	dbListeners, err := models.ListListeners(dbSession)
 	if err != nil {
 		return nil, err
 	}
 	listeners := &clientpb.Listeners{}
-	for _, file := range files {
+	for _, listener := range dbListeners {
 		listeners.Listeners = append(listeners.Listeners, &clientpb.Listener{
-			Id: file,
+			Id: listener.Name,
 		})
 	}
 
 	return listeners, nil
+}
+
+func (s *Server) ListenerCtrl(req *lispb.CtrlStatus, stream listenerrpc.ListenerRPC_ListenerCtrlServer) error {
+	var resp lispb.CtrlPipeline
+	for {
+		if req.CtrlType == consts.CtrlPipelineStart {
+
+		} else if req.CtrlType == consts.CtrlPipelineStop {
+			err := core.Listeners.Stop(req.ListenerName)
+			if err != nil {
+				logs.Log.Error(err.Error())
+			}
+			resp = lispb.CtrlPipeline{
+				ListenerName: req.ListenerName,
+				CtrlType:     consts.CtrlPipelineStop,
+			}
+		}
+		if err := stream.Send(&resp); err != nil {
+			return err
+		}
+	}
 }

@@ -6,12 +6,14 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/binary"
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/helper"
 	"github.com/chainreactors/malice-network/helper/mtls"
 	"github.com/chainreactors/malice-network/server/internal/configs"
@@ -62,9 +64,9 @@ func saveCertificate(caType int, keyType string, commonName string, cert []byte,
 	if err != nil {
 		return err
 	}
-	createResult := dbSession.Create(&certModel)
+	createResult := models.SaveCertificate(dbSession, certModel)
 
-	return createResult.Error
+	return createResult
 }
 
 // SaveToPEMFile 将 PEM 格式数据保存到文件
@@ -120,14 +122,21 @@ func GetCertificate(caType int, keyType string, commonName string) ([]byte, []by
 
 // RemoveCertificate - Remove a certificate from the cert store
 func RemoveCertificate(caType int, keyType string, commonName string) error {
+	var err error
 	if keyType != RSAKey {
 		return fmt.Errorf("invalid key type '%s'", keyType)
 	}
-	err := mtls.RemoveConfig(commonName, caType)
-	if err != nil {
-		return err
-	}
 	dbSession := db.Session()
+	if caType == ListenerCA {
+		err = dbSession.Where(&models.Listener{
+			Name: commonName,
+		}).Delete(&models.Listener{}).Error
+		commonName = "listener." + commonName
+	} else {
+		err = dbSession.Where(&models.Operator{
+			Name: commonName,
+		}).Delete(&models.Operator{}).Error
+	}
 	err = dbSession.Where(&models.Certificate{
 		CAType:     caType,
 		KeyType:    keyType,
@@ -136,9 +145,7 @@ func RemoveCertificate(caType int, keyType string, commonName string) error {
 	if err != nil {
 		return err
 	}
-	err = dbSession.Where(&models.Operator{
-		Name: commonName,
-	}).Delete(&models.Operator{}).Error
+
 	return err
 }
 
@@ -401,4 +408,33 @@ func CheckCertIsExist(certPath, keyPath, commonName string, caType int) ([]byte,
 		}
 	}
 	return certBytes, keyBytes, nil
+}
+
+// GetOperatorServerMTLSConfig - Get the TLS config for the operator server
+func GetOperatorServerMTLSConfig(host string) *tls.Config {
+	caCert, _, err := GetCertificateAuthority()
+	if err != nil {
+		logs.Log.Errorf("Failed to load CA %s", err)
+		return nil
+	}
+	caCertPool := x509.NewCertPool()
+	caCertPool.AddCert(caCert)
+	certPEM, keyPEM, err := ServerGenerateCertificate(host, false, "")
+	if err != nil {
+		logs.Log.Errorf("Failed to load certificate %s", err)
+	}
+	cert, err := tls.X509KeyPair(certPEM, keyPEM)
+	if err != nil {
+		logs.Log.Errorf("Error loading server certificate: %v", err)
+	}
+
+	tlsConfig := &tls.Config{
+		RootCAs:      caCertPool,
+		ClientAuth:   tls.RequireAndVerifyClientCert,
+		ClientCAs:    caCertPool,
+		Certificates: []tls.Certificate{cert},
+		MinVersion:   tls.VersionTLS13,
+	}
+
+	return tlsConfig
 }

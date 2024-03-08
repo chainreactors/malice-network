@@ -47,6 +47,17 @@ func (client *RootClient) Execute(cmd Command, msg *rootpb.Operator) error {
 	if err != nil {
 		return err
 	}
+	if msg.Op == "add" {
+		err = mtls.WriteConfig(resp.(*rootpb.Response).Response, msg.Name, msg.Args[0])
+		if err != nil {
+			return err
+		}
+		fmt.Println("Client configuration written to disk")
+		return nil
+	} else if msg.Op == "del" {
+		fmt.Println("Client configuration removed from db")
+		return nil
+	}
 	fmt.Println(resp)
 	return nil
 }

@@ -14,7 +14,6 @@ type Operator struct {
 	ID        uuid.UUID `gorm:"primaryKey;->;<-:create;type:uuid;"`
 	CreatedAt time.Time `gorm:"->;<-:create;"`
 	Name      string    `gorm:"uniqueIndex"`
-	Token     string    `gorm:"uniqueIndex"`
 }
 
 // BeforeCreate - GORM hook
@@ -27,7 +26,7 @@ func (o *Operator) BeforeCreate(tx *gorm.DB) (err error) {
 	return nil
 }
 
-func CreateOperator(dbSession *gorm.DB, name, token string) error {
+func CreateOperator(dbSession *gorm.DB, name string) error {
 	var operator Operator
 	result := dbSession.Where("name = ?", name).Delete(&operator)
 	if result.Error != nil {
@@ -36,7 +35,6 @@ func CreateOperator(dbSession *gorm.DB, name, token string) error {
 		}
 	}
 	operator.Name = name
-	operator.Token = token
 	err := dbSession.Create(&operator).Error
 	return err
 

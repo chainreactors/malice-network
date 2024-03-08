@@ -19,13 +19,20 @@ var (
 	MaliceDirName = ".config/malice"
 	ConfigDirName = "configs"
 	host          = "localhost"
+	listener      = "listener"
+	client        = "user"
+)
+
+const (
+	operatorCA = iota + 1
+	listenerCA
 )
 
 type ClientConfig struct {
 	Operator      string `json:"operator"` // This value is actually ignored for the most part (cert CN is used instead)
 	LHost         string `json:"lhost"`
 	LPort         int    `json:"lport"`
-	Token         string `json:"token"`
+	Type          string `json:"type"`
 	CACertificate string `json:"ca_certificate"`
 	PrivateKey    string `json:"private_key"`
 	Certificate   string `json:"certificate"`
@@ -110,63 +117,47 @@ func CheckConfigIsExist(name string) error {
 	return nil
 }
 
-func NewListenerConfig(user string, certs, privateKey, ca []byte) error {
-	// save config as yaml file
-	configDir, _ := os.Getwd()
-	configFile := path.Join(configDir, fmt.Sprintf("%s.yaml", user))
-
-	config := &ClientConfig{
-		Operator:      user,
-		LHost:         "localhost",
-		LPort:         5004,
-		Token:         generateOperatorToken(),
-		CACertificate: string(ca),
-		PrivateKey:    string(privateKey),
-		Certificate:   string(certs),
-	}
-
-	yamlData, err := yaml.Marshal(config)
-	if err != nil {
-		logs.Log.Errorf("marshal config to yaml failed: %v", err)
-		return err
-	}
-	err = ioutil.WriteFile(configFile, yamlData, 0644)
-	if err != nil {
-		logs.Log.Errorf("write config to file failed: %v", err)
-		return err
-	}
-	return nil
-}
-
 // NewClientConfig - new config and save in local file
-func NewClientConfig(host, user string, port int, certs, privateKey, ca []byte) (string, error) {
-	token := generateOperatorToken()
+func NewClientConfig(host, user string, port, caType int, certs, privateKey, ca []byte) ([]byte, error) {
 	// new config
 	config := &ClientConfig{
 		Operator:      user,
 		LHost:         host,
 		LPort:         port,
-		Token:         token,
 		CACertificate: string(ca),
 		PrivateKey:    string(privateKey),
 		Certificate:   string(certs),
 	}
-	// save config as yaml file
-	configDir := GetConfigDir()
-	configFile := path.Join(configDir, fmt.Sprintf("%s_%s.yaml", user, host))
-
+	if caType == listenerCA {
+		config.Type = listener
+	} else {
+		config.Type = client
+	}
 	yamlData, err := yaml.Marshal(config)
 	if err != nil {
 		logs.Log.Errorf("marshal config to yaml failed: %v", err)
-		return token, err
+		return nil, err
 	}
 
-	err = ioutil.WriteFile(configFile, yamlData, 0644)
+	return yamlData, nil
+}
+
+func WriteConfig(data, clientType, name string) error {
+	// save config as yaml file
+	configDir, _ := os.Getwd()
+	var configFile string
+	if clientType == client {
+		configFile = path.Join(configDir, fmt.Sprintf("%s_%s.yaml", name, host))
+	} else {
+		configFile = path.Join(configDir, fmt.Sprintf("%s.yaml", name))
+
+	}
+	err := ioutil.WriteFile(configFile, []byte(data), 0644)
 	if err != nil {
 		logs.Log.Errorf("write config to file failed: %v", err)
-		return token, err
+		return err
 	}
-	return token, nil
+	return nil
 }
 
 func GetConfigs() ([]string, error) {

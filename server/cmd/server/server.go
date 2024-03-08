@@ -53,7 +53,9 @@ func Execute() {
 		logs.Log.Error(err)
 		return
 	}
-
+	if parser.Command.Active != nil {
+		return
+	}
 	// load config
 	if opt.Config != "" {
 		err = configs.LoadConfig(opt.Config, &opt)

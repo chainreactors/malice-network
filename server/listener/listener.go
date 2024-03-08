@@ -15,6 +15,7 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"google.golang.org/grpc"
+	"os"
 	"strconv"
 )
 
@@ -23,7 +24,14 @@ var (
 )
 
 func NewListener(cfg *configs.ListenerConfig) error {
-	clientCert, clientKey, err := certs.ClientGenerateCertificate("", cfg.Name, 0, certs.ListenerCA)
+	clientCert, clientKey, data, err := certs.ClientGenerateCertificate("127.0.0.1",
+		cfg.Name, 5004, certs.ListenerCA)
+	if err != nil {
+		return err
+	}
+	if _, err = os.Stat(cfg.Name + ".yaml"); os.IsNotExist(err) {
+		err = mtls.WriteConfig(string(data), certs.ListenerNamespace, cfg.Name)
+	}
 	caCertX509, _, err := certs.GetCertificateAuthority()
 	caCert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: caCertX509.Raw})
 	if err != nil {

@@ -34,28 +34,30 @@ const (
 var certsLog = logs.Log
 
 // ClientGenerateCertificate - Generate a certificate signed with a given CA
-func ClientGenerateCertificate(host, name string, port int, clientType int) ([]byte, []byte, error) {
+func ClientGenerateCertificate(host, name string, port int, clientType int) ([]byte, []byte, []byte, error) {
 	dbSession := db.Session()
+	var data []byte
 	ca, _, caErr := GetCertificateAuthority()
 	caCert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: ca.Raw})
 	if caErr != nil {
-		return nil, nil, caErr
+		return nil, nil, nil, caErr
 	}
 	if clientType == OperatorCA {
 		cert, key := GenerateRSACertificate(OperatorCA, name, false, true, nil)
 		err := saveCertificate(OperatorCA, RSAKey,
 			fmt.Sprintf("%s", name), cert, key)
 		if err != nil {
-			return cert, key, err
+			return cert, key, nil, err
 		}
-		token, err := mtls.NewClientConfig(host, name, port, cert, key, caCert)
+		data, err = mtls.NewClientConfig(host, name, port, clientType, cert, key, caCert)
 		if err != nil {
-			return cert, key, err
+			return cert, key, data, err
 		}
-		err = models.CreateOperator(dbSession, name, token)
+		err = models.CreateOperator(dbSession, name)
 		if err != nil {
-			return cert, key, err
+			return cert, key, data, err
 		}
+		return cert, key, data, nil
 	} else {
 		var certBytes, keyBytes []byte
 		var err error
@@ -69,14 +71,21 @@ func ClientGenerateCertificate(host, name string, port int, clientType int) ([]b
 			certBytes, keyBytes = GenerateRSACertificate(ListenerCA, name, false, true, nil)
 			err = saveCertificate(ListenerCA, RSAKey,
 				fmt.Sprintf("%s.%s", ListenerNamespace, name), certBytes, keyBytes)
-			err = mtls.NewListenerConfig(name, certBytes, keyBytes, caCert)
 			if err != nil {
-				return certBytes, keyBytes, err
+				return certBytes, keyBytes, nil, err
+			}
+			data, err = mtls.NewClientConfig(host, name, port, clientType, certBytes, keyBytes, caCert)
+			if err != nil {
+				return certBytes, keyBytes, nil, err
+			}
+			err = models.CreateListener(dbSession, name)
+			if err != nil {
+				return certBytes, keyBytes, data, err
 			}
 		}
-		return certBytes, keyBytes, err
+		return certBytes, keyBytes, data, err
 	}
-	return nil, nil, nil
+	return nil, nil, nil, nil
 }
 
 // ClientGetCertificate - Helper function to fetch a client cert

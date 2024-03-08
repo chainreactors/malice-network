@@ -2,8 +2,6 @@ package rpc
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
 	"errors"
 	"fmt"
 	"github.com/chainreactors/logs"
@@ -73,7 +71,7 @@ func StartClientListener(port uint16) (*grpc.Server, net.Listener, error) {
 	logs.Log.Importantf("Starting gRPC console on 0.0.0.0:%d", port)
 
 	InitLogs(config.Bool("debug"))
-	tlsConfig := getOperatorServerMTLSConfig("server")
+	tlsConfig := certs.GetOperatorServerMTLSConfig("server")
 	creds := credentials.NewTLS(tlsConfig)
 	ln, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", port))
 	if err != nil {
@@ -335,35 +333,6 @@ func getClientName(ctx context.Context) string {
 		return tlsAuth.State.VerifiedChains[0][0].Subject.CommonName
 	}
 	return ""
-}
-
-// getOperatorServerMTLSConfig - Get the TLS config for the operator server
-func getOperatorServerMTLSConfig(host string) *tls.Config {
-	caCert, _, err := certs.GetCertificateAuthority()
-	if err != nil {
-		logs.Log.Errorf("Failed to load CA %s", err)
-		return nil
-	}
-	caCertPool := x509.NewCertPool()
-	caCertPool.AddCert(caCert)
-	certPEM, keyPEM, err := certs.ServerGenerateCertificate(host, false, "")
-	if err != nil {
-		logs.Log.Errorf("Failed to load certificate %s", err)
-	}
-	cert, err := tls.X509KeyPair(certPEM, keyPEM)
-	if err != nil {
-		logs.Log.Errorf("Error loading server certificate: %v", err)
-	}
-
-	tlsConfig := &tls.Config{
-		RootCAs:      caCertPool,
-		ClientAuth:   tls.RequireAndVerifyClientCert,
-		ClientCAs:    caCertPool,
-		Certificates: []tls.Certificate{cert},
-		MinVersion:   tls.VersionTLS13,
-	}
-
-	return tlsConfig
 }
 
 func AssertStatus(spite *implantpb.Spite) error {

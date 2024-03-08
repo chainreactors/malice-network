@@ -41,15 +41,14 @@ func (rpc *Server) LoginClient(ctx context.Context, req *clientpb.LoginReq) (*cl
 		}, err
 	}
 
-	dbSession.Where(&models.Operator{Token: req.Token}).Find(&operator)
+	dbSession.Where(&models.Operator{}).Find(&operator)
 	if len(operator) != 0 {
 		return &clientpb.LoginResp{
 			Success: true,
 		}, nil
 	}
 	err = dbSession.Create(&models.Operator{
-		Name:  req.Name,
-		Token: req.Token,
+		Name: req.Name,
 	}).Error
 	if err != nil {
 		return &clientpb.LoginResp{
@@ -63,7 +62,7 @@ func (rpc *Server) LoginClient(ctx context.Context, req *clientpb.LoginReq) (*cl
 
 func (rpc *Server) AddClient(ctx context.Context, req *rootpb.Operator) (*rootpb.Response, error) {
 	cfg := configs.GetServerConfig()
-	_, _, err := certs.ClientGenerateCertificate(cfg.GRPCHost, req.Name, int(cfg.GRPCPort), certs.OperatorCA)
+	_, _, data, err := certs.ClientGenerateCertificate(cfg.GRPCHost, req.Args[0], int(cfg.GRPCPort), certs.OperatorCA)
 	if err != nil {
 		return &rootpb.Response{
 			Status: 1,
@@ -72,12 +71,12 @@ func (rpc *Server) AddClient(ctx context.Context, req *rootpb.Operator) (*rootpb
 	}
 	return &rootpb.Response{
 		Status:   0,
-		Response: "",
+		Response: string(data),
 	}, nil
 }
 
 func (rpc *Server) RemoveClient(ctx context.Context, req *rootpb.Operator) (*rootpb.Response, error) {
-	err := certs.RemoveCertificate(certs.OperatorCA, certs.RSAKey, req.Name)
+	err := certs.RemoveCertificate(certs.OperatorCA, certs.RSAKey, req.Args[0])
 	if err != nil {
 		return &rootpb.Response{
 			Status: 1,

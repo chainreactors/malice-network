@@ -69,10 +69,9 @@ func loginServer(ctx *grumble.Context, con *console.Console, selectedFile string
 		return err
 	}
 	req := &clientpb.LoginReq{
-		Name:  config.Operator,
-		Host:  config.LHost,
-		Port:  uint32(config.LPort),
-		Token: config.Token,
+		Name: config.Operator,
+		Host: config.LHost,
+		Port: uint32(config.LPort),
 	}
 	res, err := con.Rpc.LoginClient(context.Background(), req)
 	if err != nil {
