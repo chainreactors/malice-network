@@ -39,13 +39,13 @@ func (rpc *Server) GetTaskContent(ctx context.Context, req *clientpb.Task) (*imp
 		if ok {
 			return msg, nil
 		}
-		return nil, ErrNotFoundTask
+		return nil, ErrNotFoundTaskContent
 	} else {
 		msg, ok := task.GetMessage(uint32(task.Cur))
 		if ok {
 			return msg, nil
 		}
-		return nil, ErrNotFoundTask
+		return nil, ErrNotFoundTaskContent
 	}
 }
 

@@ -21,9 +21,9 @@ var (
 
 type Message struct {
 	proto.Message
-	End       bool
-	SessionID string
-	MessageID string
+	SessionID  string
+	MessageID  string
+	RemoteAddr string
 }
 
 type forwarders struct {
@@ -79,10 +79,7 @@ func NewForward(conn *grpc.ClientConn, pipeline Pipeline) (*Forward, error) {
 		return nil, err
 	}
 
-	go func() {
-		// read message from implant and handler message to server
-		forward.Handler()
-	}()
+	go forward.Handler()
 
 	go func() {
 		// recv message from server and send to implant
@@ -134,8 +131,6 @@ func (f *Forward) Handler() {
 				logs.Log.Debugf("[listener.%s] receive spite %s %d bytes", msg.SessionID, spite.Name, size)
 			}
 			switch spite.Body.(type) {
-			case *implantpb.Spite_Empty:
-				continue
 			case *implantpb.Spite_Register:
 				_, err := f.ImplantRpc.Register(f.ctx, &lispb.RegisterSession{
 					SessionId:    msg.SessionID,
@@ -143,7 +138,16 @@ func (f *Forward) Handler() {
 					RegisterData: spite.GetRegister(),
 				})
 				if err != nil {
-					return
+					logs.Log.Error(err)
+					continue
+				}
+			case *implantpb.Spite_Empty:
+				_, err := f.ImplantRpc.Ping(metadata.NewOutgoingContext(context.Background(), metadata.Pairs(
+					"session_id", msg.SessionID),
+				), &implantpb.Empty{})
+				if err != nil {
+					logs.Log.Error(err)
+					continue
 				}
 			default:
 				spite := spite

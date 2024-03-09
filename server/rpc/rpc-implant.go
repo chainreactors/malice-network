@@ -24,7 +24,25 @@ func (rpc *Server) Register(ctx context.Context, req *lispb.RegisterSession) (*i
 	return &implantpb.Empty{}, nil
 }
 
-func (rpc *Server) Ping(ctx context.Context, req *implantpb.Ping) (*implantpb.Empty, error) {
-	//fmt.Println(req)
+func (rpc *Server) Ping(ctx context.Context, req *implantpb.Empty) (*implantpb.Empty, error) {
+	id, err := getSessionID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if _, ok := core.Sessions.Get(id); !ok {
+		// 如果内存中不存在, 则从数据库中恢复
+		sess, err := db.FindSession(id)
+		if err != nil {
+			return nil, err
+		}
+		core.Sessions.Add(core.NewSession(sess))
+		logs.Log.Debugf("recover session %s", id)
+	}
+
+	err = db.UpdateLast(id)
+	if err != nil {
+		return nil, err
+	}
+
 	return &implantpb.Empty{}, nil
 }

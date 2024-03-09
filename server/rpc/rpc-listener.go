@@ -54,9 +54,6 @@ func (rpc *Server) SpiteStream(stream listenerrpc.ListenerRPC_SpiteStreamServer)
 			continue
 		}
 
-		if msg.GetSpite().GetEmpty() != nil {
-			continue
-		}
 		if size := proto.Size(msg.Spite); size <= 1000 {
 			logs.Log.Debugf("[server.%s] receive spite %s from %s, %v", sess.ID, msg.Spite.Name, msg.ListenerId, msg.Spite)
 		} else {

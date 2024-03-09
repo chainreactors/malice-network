@@ -1,7 +1,9 @@
 package client
 
 import (
+	"context"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/tests/common"
 	"testing"
@@ -10,9 +12,15 @@ import (
 func TestPwd(t *testing.T) {
 	t.Log("Testing pwd")
 	rpc := common.NewClient(common.DefaultGRPCAddr, common.TestSid)
-	resp, err := rpc.Call(consts.ModulePwd, &implantpb.Empty{})
+	task, err := rpc.Call(consts.ModulePwd, &implantpb.Empty{})
 	if err != nil {
 		t.Log(err.Error())
+		return
+	}
+	t.Log(task)
+	resp, err := rpc.Client.GetTaskContent(context.Background(), task.(*clientpb.Task))
+	if err != nil {
+		t.Log(err)
 		return
 	}
 	t.Log(resp)

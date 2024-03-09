@@ -117,9 +117,13 @@ func (s *Session) NewTask(name string, total int) *Task {
 		done:       make(chan bool),
 		end:        make(chan struct{}),
 	}
-	go task.Handler()
 	s.Tasks.Add(task)
+	go task.Handler()
 	return task
+}
+
+func (s *Session) AllTask() []*Task {
+	return s.Tasks.All()
 }
 
 func (s *Session) UpdateLastCheckin() {

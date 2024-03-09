@@ -7,6 +7,7 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/encoders/hash"
 	"github.com/chainreactors/malice-network/helper/packet"
+	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
@@ -122,12 +123,14 @@ func (l *TCPPipeline) handler() (net.Listener, error) {
 
 func (l *TCPPipeline) handleRead(conn net.Conn) {
 	defer conn.Close()
-	var err error
+
 	var connect *core.Connection
-	var rawID []byte
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	for {
+		var rawID []byte
+		var err error
 		var msg proto.Message
 		var length int
 		rawID, length, err = packet.ReadHeader(conn)
@@ -142,15 +145,20 @@ func (l *TCPPipeline) handleRead(conn net.Conn) {
 		}
 
 		go connect.Send(ctx, conn)
-		msg, err = packet.ReadMessage(conn, length)
-		if err != nil {
-			logs.Log.Debugf("Error reading message:%s %v", conn.RemoteAddr(), err)
-			return
+		if length != 0 {
+			msg, err = packet.ReadMessage(conn, length)
+			if err != nil {
+				logs.Log.Debugf("Error reading message:%s %v", conn.RemoteAddr(), err)
+				return
+			}
+		} else {
+			msg = types.BuildEmptySpite()
 		}
+
 		core.Forwarders.Send(l.ID(), &core.Message{
-			Message:   msg,
-			SessionID: hash.Md5Hash(rawID),
-			//RemoteAddr: conn.RemoteAddr().String(),
+			Message:    msg,
+			SessionID:  hash.Md5Hash(rawID),
+			RemoteAddr: conn.RemoteAddr().String(),
 		})
 	}
 }

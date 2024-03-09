@@ -27,15 +27,15 @@ func FindAliveSessions() ([]*lispb.RegisterSession, error) {
 	return sessions, nil
 }
 
-func FindAliveSession(sessionID string) (*lispb.RegisterSession, error) {
+func FindSession(sessionID string) (*lispb.RegisterSession, error) {
 	var session models.Session
 	result := Session().Where("session_id = ?", sessionID).First(&session)
 	if result.Error != nil {
 		return nil, result.Error
 	}
-	if session.Last.Before(time.Now().Add(-time.Second * time.Duration(session.Time.Interval*2))) {
-		return nil, errors.New("session is dead")
-	}
+	//if session.Last.Before(time.Now().Add(-time.Second * time.Duration(session.Time.Interval*2))) {
+	//	return nil, errors.New("session is dead")
+	//}
 	return session.ToProtobuf(), nil
 }
 

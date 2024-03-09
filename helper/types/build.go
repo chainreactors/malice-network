@@ -13,6 +13,12 @@ var (
 	ErrUnknownJob   = errors.New("unknown job body")
 )
 
+func BuildEmptySpite() *implantpb.Spites {
+	return BuildOneSpites(&implantpb.Spite{
+		Body: &implantpb.Spite_Empty{},
+	})
+}
+
 func BuildSpite(spite *implantpb.Spite, msg proto.Message) (*implantpb.Spite, error) {
 	switch msg.(type) {
 	case *implantpb.Request:
@@ -66,6 +72,10 @@ func BuildSpite(spite *implantpb.Spite, msg proto.Message) (*implantpb.Spite, er
 
 func BuildSpites(spites []*implantpb.Spite) *implantpb.Spites {
 	return &implantpb.Spites{Spites: spites}
+}
+
+func BuildOneSpites(spite *implantpb.Spite) *implantpb.Spites {
+	return BuildSpites([]*implantpb.Spite{spite})
 }
 
 func ParseSpite(spite *implantpb.Spite) (proto.Message, error) {
