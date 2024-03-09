@@ -1,7 +1,6 @@
 package models
 
 import (
-	"errors"
 	"github.com/gofrs/uuid"
 	"gorm.io/gorm"
 	"time"
@@ -22,23 +21,4 @@ func (l *Listener) BeforeCreate(tx *gorm.DB) (err error) {
 	}
 	l.CreatedAt = time.Now()
 	return nil
-}
-
-func CreateListener(dbSession *gorm.DB, name string) error {
-	var listener Listener
-	result := dbSession.Where("name = ?", name).Delete(&listener)
-	if result.Error != nil {
-		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return result.Error
-		}
-	}
-	listener.Name = name
-	err := dbSession.Create(&listener).Error
-	return err
-}
-
-func ListListeners(dbSession *gorm.DB) ([]Listener, error) {
-	var listeners []Listener
-	err := dbSession.Find(&listeners).Error
-	return listeners, err
 }

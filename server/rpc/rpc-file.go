@@ -186,8 +186,7 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 }
 
 func (rpc *Server) Sync(ctx context.Context, req *clientpb.Sync) (*clientpb.SyncResp, error) {
-	dbSession := db.Session()
-	td, err := models.GetTaskDescriptionByID(dbSession, req.FileId)
+	td, err := db.GetTaskDescriptionByID(req.FileId)
 	if err != nil {
 		logs.Log.Errorf("cannot find task in db by fileid: %s", err)
 		return nil, err

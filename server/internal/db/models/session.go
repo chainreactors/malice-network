@@ -136,26 +136,3 @@ func (t *Timer) toProtobuf() *implantpb.Timer {
 		LastCheckin: t.LastCheckin,
 	}
 }
-func FindActiveSessions(dbSession *gorm.DB) ([]Session, error) {
-	var activeSessions []Session
-	result := dbSession.Where("is_alive = ?", true).Find(&activeSessions)
-	if result.Error != nil {
-		return nil, result.Error
-	}
-	return activeSessions, nil
-}
-
-func UpdateLast(dbSession *gorm.DB, sessionID string) error {
-	var session Session
-	result := dbSession.Where("session_id = ?", sessionID).First(&session)
-	loc := time.Now().Location()
-	if result.Error != nil {
-		return result.Error
-	}
-	session.Last = time.Now().In(loc)
-	result = dbSession.Save(&session)
-	if result.Error != nil {
-		return result.Error
-	}
-	return nil
-}

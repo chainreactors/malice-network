@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"gorm.io/gorm"
-	"strconv"
+	"gorm.io/gorm/utils"
 	"time"
 )
 
@@ -42,7 +42,7 @@ func (t *Task) UpdateCur(db *gorm.DB, newCur int) error {
 func ConvertToTaskDB(task *core.Task, taskType string, td *TaskDescription) *Task {
 	tdString, _ := td.toJSONString()
 	return &Task{
-		ID:          task.SessionId + "-" + uint32ToString(task.Id),
+		ID:          task.SessionId + "-" + utils.ToString(task.Id),
 		Type:        taskType,
 		SessionID:   task.SessionId,
 		Cur:         task.Cur,
@@ -57,34 +57,4 @@ func (td *TaskDescription) toJSONString() (string, error) {
 		return "", err
 	}
 	return string(jsonString), nil
-}
-
-func uint32ToString(num uint32) string {
-	return strconv.FormatUint(uint64(num), 10) // 10 表示十进制
-}
-
-func GetTaskDescriptionByID(db *gorm.DB, taskID string) (*TaskDescription, error) {
-	var task Task
-	if err := db.Where("id = ?", taskID).First(&task).Error; err != nil {
-		return nil, err
-	}
-
-	var td TaskDescription
-	if err := json.Unmarshal([]byte(task.Description), &td); err != nil {
-		return nil, err
-	}
-
-	return &td, nil
-}
-
-func FindTasksWithNonOneCurTotal(dbSession *gorm.DB, session Session) ([]Task, error) {
-	var tasks []Task
-	result := dbSession.Where("session_id = ?", session.SessionID).Where("cur != total").Find(&tasks)
-	if result.Error != nil {
-		return tasks, result.Error
-	}
-	if len(tasks) == 0 {
-		return tasks, gorm.ErrRecordNotFound
-	}
-	return tasks, nil
 }

@@ -59,12 +59,11 @@ func saveCertificate(caType int, keyType string, commonName string, cert []byte,
 		CertificatePEM: string(cert),
 		PrivateKeyPEM:  string(key),
 	}
-	dbSession := db.Session()
-	err := models.DeleteCertificate(dbSession, commonName)
+	err := db.DeleteCertificate(commonName)
 	if err != nil {
 		return err
 	}
-	createResult := models.SaveCertificate(dbSession, certModel)
+	createResult := db.SaveCertificate(certModel)
 
 	return createResult
 }
@@ -341,7 +340,6 @@ func RsaKeySize() int {
 
 // removeOldCerts - Remove old certificates from the filesystem
 func removeOldCerts(cfgPath string) error {
-	dbSession := db.Session()
 	if _, err := os.Stat(cfgPath); err == nil {
 		if err := os.Remove(cfgPath); err != nil {
 			return err
@@ -349,7 +347,7 @@ func removeOldCerts(cfgPath string) error {
 	} else if !os.IsNotExist(err) {
 		return err
 	}
-	err := models.DeleteAllCertificates(dbSession)
+	err := db.DeleteAllCertificates()
 	if err != nil {
 		return err
 	}

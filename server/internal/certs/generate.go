@@ -35,7 +35,6 @@ var certsLog = logs.Log
 
 // ClientGenerateCertificate - Generate a certificate signed with a given CA
 func ClientGenerateCertificate(host, name string, port int, clientType int) ([]byte, []byte, []byte, error) {
-	dbSession := db.Session()
 	var data []byte
 	ca, _, caErr := GetCertificateAuthority()
 	caCert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: ca.Raw})
@@ -53,7 +52,7 @@ func ClientGenerateCertificate(host, name string, port int, clientType int) ([]b
 		if err != nil {
 			return cert, key, data, err
 		}
-		err = models.CreateOperator(dbSession, name)
+		err = db.CreateOperator(name)
 		if err != nil {
 			return cert, key, data, err
 		}
@@ -78,7 +77,7 @@ func ClientGenerateCertificate(host, name string, port int, clientType int) ([]b
 			if err != nil {
 				return certBytes, keyBytes, nil, err
 			}
-			err = models.CreateListener(dbSession, name)
+			err = db.CreateListener(name)
 			if err != nil {
 				return certBytes, keyBytes, data, err
 			}

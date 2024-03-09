@@ -8,7 +8,6 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
-	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"github.com/chainreactors/malice-network/server/listener"
 	"github.com/chainreactors/malice-network/server/rpc"
 	"github.com/gookit/config/v2"
@@ -67,13 +66,15 @@ func Execute() {
 	} else if opt.Server == nil {
 		logs.Log.Errorf("null server config , %s ", err.Error())
 	}
+	if opt.Debug {
+		logs.Log.SetLevel(logs.Debug)
+	}
+
+	db.Client = db.NewDBClient()
 	_, _, err = certs.ServerGenerateCertificate("root", true, opt.Listeners.Auth)
 	if err != nil {
 		logs.Log.Errorf("cannot init root ca , %s ", err.Error())
 		return
-	}
-	if opt.Debug {
-		logs.Log.SetLevel(logs.Debug)
 	}
 
 	err = StartGrpc(opt.Server.GRPCPort)
@@ -81,6 +82,7 @@ func Execute() {
 		logs.Log.Errorf("cannot start grpc , %s ", err.Error())
 		return
 	}
+
 	// start listeners
 	if opt.Listeners != nil {
 		// init forwarder
@@ -90,6 +92,7 @@ func Execute() {
 			return
 		}
 	}
+	select {}
 }
 
 // Start - Starts the server console
@@ -97,16 +100,15 @@ func StartGrpc(port uint16) error {
 	// start grpc
 
 	// start alive session
-	db.Client = db.NewDBClient()
-	dbSession := db.Session()
-	sessions, err := models.FindActiveSessions(dbSession)
+	sessions, err := db.FindAliveSessions()
 	if err != nil {
 		return err
 	}
+
 	if len(sessions) > 0 {
+		logs.Log.Debugf("recover %d sessions", len(sessions))
 		for _, session := range sessions {
-			registerSession := core.NewSession(session.ToProtobuf())
-			core.Sessions.Add(registerSession)
+			core.Sessions.Add(core.NewSession(session))
 			//tasks, err := models.FindTasksWithNonOneCurTotal(dbSession, session)
 			//if err != nil {
 			//	logs.Log.Errorf("cannot find tasks in db , %s ", err.Error())
@@ -124,5 +126,4 @@ func StartGrpc(port uint16) error {
 
 func main() {
 	Execute()
-	select {}
 }

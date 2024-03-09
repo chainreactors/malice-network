@@ -108,6 +108,7 @@ func GetTLSConfig(caCertificate string, certificate string, privateKey string) (
 		VerifyPeerCertificate: func(rawCerts [][]byte, _ [][]*x509.Certificate) error {
 			return verifyCertificate(caCertificate, rawCerts)
 		},
+		ServerName: "client",
 	}
 	return tlsConfig, nil
 }
@@ -148,7 +149,7 @@ func RpcOptions() []grpc.DialOption {
 	//if err != nil {
 	//	panic(err)
 	//}
-	configFile := filepath.Join(assets.GetConfigDir(), "admin_localhost_5004.yaml")
+	configFile := filepath.Join(assets.GetConfigDir(), "admin_localhost.yaml")
 	config, err := assets.ReadConfig(configFile)
 	if err != nil {
 		fmt.Println(err.Error())

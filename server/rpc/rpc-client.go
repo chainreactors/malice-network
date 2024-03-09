@@ -90,8 +90,7 @@ func (rpc *Server) RemoveClient(ctx context.Context, req *rootpb.Operator) (*roo
 }
 
 func (rpc *Server) ListClients(ctx context.Context, req *rootpb.Operator) (*clientpb.Clients, error) {
-	dbSession := db.Session()
-	clients, err := models.ListOperators(dbSession)
+	clients, err := db.ListOperators()
 	if err != nil {
 		return nil, err
 	}
