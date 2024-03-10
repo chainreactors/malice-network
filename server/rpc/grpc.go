@@ -164,6 +164,7 @@ func (r *GenericRequest) HandlerAsyncResponse(ch chan *implantpb.Spite, typ type
 
 	err := AssertStatusAndResponse(resp, typ)
 	if err != nil {
+		logs.Log.Debug(err)
 		core.EventBroker.Publish(buildErrorEvent(r.Task, err))
 		return
 	}

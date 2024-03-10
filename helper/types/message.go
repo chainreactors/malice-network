@@ -11,6 +11,7 @@ const (
 	MsgUnknown          MsgName = "unknown"
 	MsgNil              MsgName = "nil"
 	MsgRequest          MsgName = "request"
+	MsgResponse         MsgName = "response"
 	MsgBlock            MsgName = "block"
 	MsgRegister         MsgName = "register"
 	MsgUpload           MsgName = consts.ModuleUpload
@@ -42,6 +43,8 @@ func MessageType(message *implantpb.Spite) MsgName {
 		return MsgNil
 	case *implantpb.Spite_Request:
 		return MsgRequest
+	case *implantpb.Spite_Response:
+		return MsgResponse
 	case *implantpb.Spite_Register:
 		return MsgRegister
 	case *implantpb.Spite_ExecRequest, *implantpb.Spite_ExecResponse:

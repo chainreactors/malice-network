@@ -8,7 +8,9 @@ import (
 )
 
 func (rpc *Server) Pwd(ctx context.Context, req *implantpb.Empty) (*clientpb.Task, error) {
-	greq, err := newGenericRequest(ctx, req)
+	greq, err := newGenericRequest(ctx, &implantpb.Request{
+		Name: "pwd",
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -17,7 +19,7 @@ func (rpc *Server) Pwd(ctx context.Context, req *implantpb.Empty) (*clientpb.Tas
 		return nil, err
 	}
 
-	go greq.HandlerAsyncResponse(ch, types.MsgPwd)
+	go greq.HandlerAsyncResponse(ch, types.MsgResponse)
 	return greq.Task.ToProtobuf(), nil
 }
 

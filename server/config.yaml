@@ -20,7 +20,7 @@ listeners:
       protocol: tcp
       enable: true
       tls:
-        enable: true
+        enable: false
         CN: "test"
         O: "Sharp Depth"
         C: "US"
@@ -29,6 +29,6 @@ listeners:
         ST: "State of Texas"
         validity: "365"
       encryption:
-        enable: true
+        enable: false
         type: aes-cfb
         key: maliceofinternal

@@ -73,3 +73,12 @@ func (c *Client) Call(rpcname string, msg proto.Message) (proto.Message, error) 
 	}
 	return resp, nil
 }
+
+func (c *Client) WaitResponse(task *clientpb.Task) (*implantpb.Spite, error) {
+	meta := metadata.NewOutgoingContext(context.Background(), metadata.Pairs("session_id", hash.Md5Hash(c.sid)))
+	resp, err := c.Client.WaitTaskContent(meta, task)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}

@@ -144,7 +144,7 @@ func (f *Forward) Handler() {
 			case *implantpb.Spite_Empty:
 				_, err := f.ImplantRpc.Ping(metadata.NewOutgoingContext(context.Background(), metadata.Pairs(
 					"session_id", msg.SessionID),
-				), &implantpb.Empty{})
+				), &implantpb.Ping{})
 				if err != nil {
 					logs.Log.Error(err)
 					continue

@@ -1,7 +1,6 @@
 package client
 
 import (
-	"context"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
@@ -18,7 +17,7 @@ func TestPwd(t *testing.T) {
 		return
 	}
 	t.Log(task)
-	resp, err := rpc.Client.GetTaskContent(context.Background(), task.(*clientpb.Task))
+	resp, err := rpc.WaitResponse(task.(*clientpb.Task))
 	if err != nil {
 		t.Log(err)
 		return

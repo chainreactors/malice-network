@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
-
 	"github.com/chainreactors/malice-network/server/internal/core"
 )
 
@@ -47,6 +46,25 @@ func (rpc *Server) GetTaskContent(ctx context.Context, req *clientpb.Task) (*imp
 		}
 		return nil, ErrNotFoundTaskContent
 	}
+}
+
+func (rpc *Server) WaitTaskContent(ctx context.Context, req *clientpb.Task) (*implantpb.Spite, error) {
+	sess, ok := core.Sessions.Get(req.SessionId)
+	if !ok {
+		return nil, ErrNotFoundSession
+	}
+	task := sess.Tasks.Get(req.TaskId)
+	if task == nil {
+		return nil, ErrNotFoundTask
+	}
+	select {
+	case <-task.Ctx.Done():
+		msg, ok := task.LastMessage()
+		if ok {
+			return msg, nil
+		}
+	}
+	return nil, ErrNotFoundTaskContent
 }
 
 func (rpc *Server) GetAllTaskContent(ctx context.Context, req *clientpb.Task) ([]*implantpb.Spite, error) {

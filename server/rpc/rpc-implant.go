@@ -24,7 +24,7 @@ func (rpc *Server) Register(ctx context.Context, req *lispb.RegisterSession) (*i
 	return &implantpb.Empty{}, nil
 }
 
-func (rpc *Server) Ping(ctx context.Context, req *implantpb.Empty) (*implantpb.Empty, error) {
+func (rpc *Server) Ping(ctx context.Context, req *implantpb.Ping) (*implantpb.Empty, error) {
 	id, err := getSessionID(ctx)
 	if err != nil {
 		return nil, err

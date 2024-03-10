@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"fmt"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
@@ -46,6 +47,8 @@ type Task struct {
 	Cur       int
 	Total     int
 	Callback  func()
+	Ctx       context.Context
+	Cancel    context.CancelFunc
 	*SpiteCache
 	done chan bool
 	end  chan struct{}
@@ -96,6 +99,7 @@ func (t *Task) Done() {
 }
 
 func (t *Task) Finish() {
+	t.Cancel()
 	if t.Callback != nil {
 		t.Callback()
 	}

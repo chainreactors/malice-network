@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"errors"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -117,6 +118,7 @@ func (s *Session) NewTask(name string, total int) *Task {
 		done:       make(chan bool),
 		end:        make(chan struct{}),
 	}
+	task.Ctx, task.Cancel = context.WithCancel(context.Background())
 	s.Tasks.Add(task)
 	go task.Handler()
 	return task
