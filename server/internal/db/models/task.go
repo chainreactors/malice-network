@@ -2,9 +2,12 @@ package models
 
 import (
 	"encoding/json"
+	"errors"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"gorm.io/gorm"
 	"gorm.io/gorm/utils"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -49,6 +52,24 @@ func ConvertToTaskDB(task *core.Task, taskType string, td *TaskDescription) *Tas
 		Total:       task.Total,
 		Description: tdString,
 	}
+}
+
+func ToCoreTask(task Task) (*core.Task, error) {
+	parts := strings.Split(task.ID, "-")
+	if len(parts) != 2 {
+		return nil, errors.New("invalid task id")
+	}
+	taskID, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return nil, err
+	}
+	return &core.Task{
+		Id:        uint32(taskID),
+		Type:      task.Type,
+		SessionId: task.SessionID,
+		Cur:       task.Cur,
+		Total:     task.Total,
+	}, nil
 }
 
 func (td *TaskDescription) toJSONString() (string, error) {

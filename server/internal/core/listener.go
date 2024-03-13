@@ -1,6 +1,7 @@
 package core
 
 import (
+	"errors"
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
@@ -44,7 +45,7 @@ type Listener struct {
 	Name      string
 	Host      string
 	Active    bool
-	Pipelines []*lispb.Pipeline
+	Pipelines Pipelines
 }
 
 func (l *Listener) ToProtobuf() *clientpb.Listener {
@@ -52,7 +53,7 @@ func (l *Listener) ToProtobuf() *clientpb.Listener {
 		Id:        l.Name,
 		Addr:      l.Host,
 		Active:    l.Active,
-		Pipelines: l.Pipelines,
+		Pipelines: l.Pipelines.ToProtobuf(),
 	}
 }
 
@@ -80,8 +81,8 @@ func (l *listeners) Remove(listener *Listener) {
 }
 
 // Get - Get a Job
-func (l *listeners) Get(name int) *Listener {
-	if name <= 0 {
+func (l *listeners) Get(name string) *Listener {
+	if name == "" {
 		return nil
 	}
 	val, ok := l.Load(name)
@@ -98,4 +99,22 @@ func (l *listeners) ToProtobuf() *clientpb.Listeners {
 		return true
 	})
 	return listeners
+}
+
+// Stop - Stop a listener
+func (l *listeners) Stop(name string) error {
+	val, ok := l.Load(name)
+	if ok {
+		val.(*Listener).Active = false
+		for _, pipeline := range val.(*Listener).Pipelines {
+			err := pipeline.Close()
+			if err != nil {
+				// TODO - need or not give error if pipeline close failed
+				continue
+			}
+		}
+	} else {
+		return errors.New("listener not found")
+	}
+	return nil
 }

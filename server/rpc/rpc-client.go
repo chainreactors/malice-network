@@ -2,7 +2,6 @@ package rpc
 
 import (
 	"context"
-	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/client/rootpb"
@@ -33,7 +32,8 @@ func (rpc *Server) LoginClient(ctx context.Context, req *clientpb.LoginReq) (*cl
 	dbSession := db.Session()
 	cert := models.Certificate{}
 	err := dbSession.Where(&models.Certificate{
-		CommonName: fmt.Sprintf("%s.%s", req.Host, req.Name),
+		CommonName: req.Name,
+		CAType:     certs.OperatorCA,
 	}).First(&cert).Error
 	if err != nil {
 		return &clientpb.LoginResp{
@@ -41,7 +41,7 @@ func (rpc *Server) LoginClient(ctx context.Context, req *clientpb.LoginReq) (*cl
 		}, err
 	}
 
-	dbSession.Where(&models.Operator{}).Find(&operator)
+	dbSession.Where(&models.Operator{Name: req.Name}).Find(&operator)
 	if len(operator) != 0 {
 		return &clientpb.LoginResp{
 			Success: true,

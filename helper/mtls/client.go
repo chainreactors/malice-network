@@ -20,7 +20,7 @@ var (
 	ConfigDirName = "configs"
 	host          = "localhost"
 	listener      = "listener"
-	client        = "user"
+	client        = "client"
 )
 
 const (

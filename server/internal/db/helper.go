@@ -7,6 +7,8 @@ import (
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"gorm.io/gorm"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -37,6 +39,34 @@ func FindSession(sessionID string) (*lispb.RegisterSession, error) {
 	//	return nil, errors.New("session is dead")
 	//}
 	return session.ToProtobuf(), nil
+}
+
+func FindTaskAndMaxTasksID(sessionID string) ([]*models.Task, int, error) {
+	var maxTaskID int
+	var tasks []*models.Task
+
+	err := Session().Where("session_id = ?", sessionID).Find(&tasks).Error
+	if err != nil {
+		return tasks, 0, err
+	}
+
+	maxTemp := 0
+	for _, task := range tasks {
+		parts := strings.Split(task.ID, "-")
+		if len(parts) != 2 {
+			continue
+		}
+		taskID, err := strconv.Atoi(parts[1])
+		if err != nil {
+			continue
+		}
+		if taskID > maxTemp {
+			maxTemp = taskID
+		}
+	}
+
+	maxTaskID = maxTemp
+	return tasks, maxTaskID, nil
 }
 
 func UpdateLast(sessionID string) error {
@@ -100,6 +130,16 @@ func GetTaskDescriptionByID(taskID string) (*models.TaskDescription, error) {
 	}
 
 	return &td, nil
+}
+
+// Task
+func GetAllTasks(sessionID string) ([]models.Task, error) {
+	var tasks []models.Task
+	result := Session().Where("session_id = ?", sessionID).Find(&tasks)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return tasks, nil
 }
 
 func FindTasksWithNonOneCurTotal(session models.Session) ([]models.Task, error) {

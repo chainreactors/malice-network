@@ -8,6 +8,7 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
+	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"github.com/chainreactors/malice-network/server/listener"
 	"github.com/chainreactors/malice-network/server/rpc"
 	"github.com/gookit/config/v2"
@@ -108,7 +109,22 @@ func StartGrpc(port uint16) error {
 	if len(sessions) > 0 {
 		logs.Log.Debugf("recover %d sessions", len(sessions))
 		for _, session := range sessions {
-			core.Sessions.Add(core.NewSession(session))
+			newSession := core.NewSession(session)
+			tasks, taskID, err := db.FindTaskAndMaxTasksID(session.SessionId)
+			if err != nil {
+				logs.Log.Errorf("cannot find max task id , %s ", err.Error())
+			}
+			newSession.SetTaskId(uint32(taskID))
+			for _, task := range tasks {
+				newTask, err := models.ToCoreTask(*task)
+				if err != nil {
+					logs.Log.Errorf("cannot convert task to core task , %s ", err.Error())
+					continue
+				}
+				newSession.Tasks.Add(newTask)
+			}
+			core.Sessions.Add(newSession)
+
 			//tasks, err := models.FindTasksWithNonOneCurTotal(dbSession, session)
 			//if err != nil {
 			//	logs.Log.Errorf("cannot find tasks in db , %s ", err.Error())

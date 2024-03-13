@@ -108,6 +108,10 @@ func (s *Session) nextTaskId() uint32 {
 	return s.taskseq
 }
 
+func (s *Session) SetTaskId(id uint32) {
+	s.taskseq = id
+}
+
 func (s *Session) NewTask(name string, total int) *Task {
 	task := &Task{
 		Type:       name,
