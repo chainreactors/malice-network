@@ -13,9 +13,9 @@ var (
 	ErrUnknownJob   = errors.New("unknown job body")
 )
 
-func BuildEmptySpite() *implantpb.Spites {
+func BuildPingSpite() *implantpb.Spites {
 	return BuildOneSpites(&implantpb.Spite{
-		Body: &implantpb.Spite_Empty{},
+		Body: &implantpb.Spite_Ping{},
 	})
 }
 

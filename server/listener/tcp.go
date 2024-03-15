@@ -152,7 +152,7 @@ func (l *TCPPipeline) handleRead(conn net.Conn) {
 				return
 			}
 		} else {
-			msg = types.BuildEmptySpite()
+			msg = types.BuildPingSpite()
 		}
 
 		core.Forwarders.Send(l.ID(), &core.Message{

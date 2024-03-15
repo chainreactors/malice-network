@@ -11,6 +11,7 @@ const (
 	ModuleDownload         = "download"
 	ModulePwd              = "pwd"
 	ModuleLs               = "ls"
+	ModuleCd               = "cd"
 
 	CommandSync         = "sync"
 	CommandBroadcast    = "broadcast"

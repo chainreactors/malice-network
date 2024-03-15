@@ -201,7 +201,6 @@ func (rpc *Server) genericHandler(ctx context.Context, req *GenericRequest) (pro
 		logs.Log.Errorf(err.Error())
 		return nil, err
 	}
-	spite.End = true
 	data, err := req.Session.RequestAndWait(
 		&lispb.SpiteSession{SessionId: req.Session.ID, TaskId: req.Task.Id, Spite: spite},
 		listenersCh[req.Session.ListenerId],
@@ -224,7 +223,6 @@ func (rpc *Server) asyncGenericHandler(ctx context.Context, req *GenericRequest)
 		return nil, err
 	}
 
-	spite.End = true
 	out, err := req.Session.RequestWithAsync(
 		&lispb.SpiteSession{SessionId: req.Session.ID, TaskId: req.Task.Id, Spite: spite},
 		listenersCh[req.Session.ListenerId],

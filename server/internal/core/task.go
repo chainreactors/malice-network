@@ -59,14 +59,14 @@ func (t *Task) Handler() {
 		}
 		t.Cur++
 		if t.Cur == t.Total {
-			close(t.done)
+			t.Finish(Event{
+				EventType: consts.EventTaskDone,
+				Task:      t,
+			})
+			return
 		}
-		EventBroker.Publish(Event{
-			EventType: consts.EventTaskDone,
-			Task:      t,
-		})
 	}
-	t.Finish()
+
 }
 
 func (t *Task) ToProtobuf() *clientpb.Task {
@@ -96,14 +96,20 @@ func (t *Task) Done() {
 	t.done <- true
 }
 
-func (t *Task) Finish() {
-	t.Cancel()
+func (t *Task) Finish(event Event) {
 	if t.Callback != nil {
 		t.Callback()
 	}
+	t.Close()
+}
+
+func (t *Task) Panic(event Event) {
+	EventBroker.Publish(event)
+	t.Close()
 }
 
 func (t *Task) Close() {
+	t.Cancel()
 	close(t.done)
 }
 

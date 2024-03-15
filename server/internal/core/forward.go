@@ -141,7 +141,7 @@ func (f *Forward) Handler() {
 					logs.Log.Error(err)
 					continue
 				}
-			case *implantpb.Spite_Empty:
+			case *implantpb.Spite_Ping:
 				_, err := f.ImplantRpc.Ping(metadata.NewOutgoingContext(context.Background(), metadata.Pairs(
 					"session_id", msg.SessionID),
 				), &implantpb.Ping{})
