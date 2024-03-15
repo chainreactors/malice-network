@@ -23,18 +23,18 @@ func NewCache(maxSize int) *Cache {
 	}
 }
 
-func (c *Cache) AddCache(spite *implantpb.Spite, cur int) {
+func (c *Cache) AddMessage(spite *implantpb.Spite, cur int) {
 	cacheKey := strconv.Itoa(int(spite.TaskId)) + "_" + strconv.Itoa(cur)
 	c.cache.Set(cacheKey, spite, cache.NoExpiration)
 	c.trim()
 }
 
-func (c *Cache) GetCache(taskID, cur int) (*implantpb.Spite, bool) {
+func (c *Cache) GetMessage(taskID, cur int) (*implantpb.Spite, bool) {
 	spite, found := c.cache.Get(strconv.Itoa(taskID) + "_" + strconv.Itoa(cur))
 	return spite.(*implantpb.Spite), found
 }
 
-func (c *Cache) GetCaches(taskID int) ([]*implantpb.Spite, bool) {
+func (c *Cache) GetMessages(taskID int) ([]*implantpb.Spite, bool) {
 	spite := make([]*implantpb.Spite, 0, c.cache.ItemCount())
 	for k, v := range c.cache.Items() {
 		parts := strings.Split(k, "_")
@@ -71,8 +71,11 @@ func (c *Cache) Load(fileName string) error {
 
 func (c *Cache) GetLastMessage(taskID int) (*implantpb.Spite, bool) {
 	key := c.getMaxCurKeyForTaskID(taskID)
-	value, success := c.cache.Get(key)
-	return value.(*implantpb.Spite), success
+	value, ok := c.cache.Get(key)
+	if ok {
+		return value.(*implantpb.Spite), ok
+	}
+	return nil, false
 }
 
 func (c *Cache) SetSize(size int) {

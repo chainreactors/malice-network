@@ -5,8 +5,10 @@ import (
 	"errors"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
+	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"gorm.io/gorm"
+	"gorm.io/gorm/utils"
 	"strconv"
 	"strings"
 	"time"
@@ -118,13 +120,13 @@ func ListOperators() (*clientpb.Clients, error) {
 	return pbClients, nil
 }
 
-func GetTaskDescriptionByID(taskID string) (*models.TaskDescription, error) {
+func GetTaskDescriptionByID(taskID string) (*models.FileDescription, error) {
 	var task models.Task
 	if err := Session().Where("id = ?", taskID).First(&task).Error; err != nil {
 		return nil, err
 	}
 
-	var td models.TaskDescription
+	var td models.FileDescription
 	if err := json.Unmarshal([]byte(task.Description), &td); err != nil {
 		return nil, err
 	}
@@ -211,4 +213,46 @@ func SaveCertificate(certificate *models.Certificate) error {
 	}
 
 	return nil
+}
+
+func AddTask(typ string, task *core.Task, td *models.FileDescription) error {
+	tdString, err := td.ToJson()
+	if err != nil {
+		return err
+	}
+	taskModel := &models.Task{
+		ID:          task.SessionId + "-" + utils.ToString(task.Id),
+		Type:        typ,
+		SessionID:   task.SessionId,
+		Cur:         task.Cur,
+		Total:       task.Total,
+		Description: tdString,
+	}
+	Session().Create(taskModel)
+	return nil
+}
+
+func UpdateTask(task *core.Task, newCur int) error {
+	taskModel := &models.Task{
+		ID: task.SessionId + "-" + utils.ToString(task.Id),
+	}
+	return taskModel.UpdateCur(Session(), newCur)
+}
+
+func ToTask(task models.Task) (*core.Task, error) {
+	parts := strings.Split(task.ID, "-")
+	if len(parts) != 2 {
+		return nil, errors.New("invalid task id")
+	}
+	taskID, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return nil, err
+	}
+	return &core.Task{
+		Id:        uint32(taskID),
+		Type:      task.Type,
+		SessionId: task.SessionID,
+		Cur:       task.Cur,
+		Total:     task.Total,
+	}, nil
 }

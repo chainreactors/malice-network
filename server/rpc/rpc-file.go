@@ -22,7 +22,6 @@ import (
 // Upload - Upload a file from the remote file system
 func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*clientpb.Task, error) {
 	count := packet.Count(req.Data, config.Int(consts.MaxPacketLength))
-	dbSession := db.Session()
 	if count == 1 {
 		greq, err := newGenericRequest(ctx, req)
 		if err != nil {
@@ -32,20 +31,18 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 		if err != nil {
 			return nil, err
 		}
-		td := &models.TaskDescription{
+		err = db.AddTask("upload", greq.Task, &models.FileDescription{
 			Name:    req.Name,
 			Path:    req.Target,
 			Command: fmt.Sprintf("upload -%d -%t", req.Priv, req.Hidden),
 			Size:    int64(len(req.Data)),
-		}
-		taskModel := models.ConvertToTaskDB(greq.Task, "upload", td)
-		err = dbSession.Create(taskModel).Error
+		})
 		if err != nil {
 			logs.Log.Errorf("cannot create task %d, %s in db", greq.Task.Id, err.Error())
 			return nil, err
 		}
 		go greq.HandlerAsyncResponse(ch, types.MsgBlock)
-		err = taskModel.UpdateCur(dbSession, greq.Task.Cur)
+		err = db.UpdateTask(greq.Task, greq.Task.Cur)
 		if err != nil {
 			logs.Log.Errorf("cannot update task %d , %s in db", greq.Task.Id, err.Error())
 			return nil, err
@@ -62,14 +59,7 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 		if err != nil {
 			return nil, err
 		}
-		td := &models.TaskDescription{
-			Name:    req.Name,
-			Path:    req.Target,
-			Command: fmt.Sprintf("upload -%d -%t", req.Priv, req.Hidden),
-			Size:    int64(len(req.Data)),
-		}
-		taskModel := models.ConvertToTaskDB(greq.Task, "upload", td)
-		err = dbSession.Create(taskModel).Error
+
 		if err != nil {
 			logs.Log.Errorf("cannot create task %d , %s in db", greq.Task.Id, err.Error())
 			return nil, err
@@ -77,36 +67,40 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 		var blockId = 0
 		go func() {
 			stat := <-out
-			err := AssertResponse(stat, types.MsgNil)
+			err := AssertStatus(stat)
 			if err != nil {
-				core.EventBroker.Publish(buildErrorEvent(greq.Task, err))
+				greq.Task.Panic(buildErrorEvent(greq.Task, err), stat)
 				return
 			}
-			for block := range packet.Chunked(req.Data, count) {
+			for block := range packet.Chunked(req.Data, config.Int(consts.MaxPacketLength)) {
 				msg := &implantpb.Block{
 					BlockId: uint32(blockId),
 					Content: block,
 				}
-				spite := &implantpb.Spite{
+				if blockId == count-1 {
+					msg.End = true
+				}
+				spite, _ := types.BuildSpite(&implantpb.Spite{
 					Timeout: uint64(consts.MinTimeout.Seconds()),
 					TaskId:  greq.Task.Id,
-				}
-				spite, _ = types.BuildSpite(spite, msg)
+				}, msg)
 				in <- spite
 				resp := <-out
-				greq.Session.AddCache(resp, blockId)
+				err = AssertResponse(resp, types.MsgAck)
+				if err != nil {
+					return
+				}
+				greq.Session.AddMessage(resp, blockId)
 				if resp.GetAsyncAck().Success {
-					greq.Task.Done()
-					core.EventBroker.Publish(core.Event{
+					greq.Task.Done(core.Event{
 						EventType: consts.EventTaskDone,
 						Task:      greq.Task,
-						Err:       stat.Status.Error,
 					})
-					err = taskModel.UpdateCur(dbSession, blockId)
+					err = db.UpdateTask(greq.Task, blockId)
 					if err != nil {
 						logs.Log.Errorf("cannot update task %d , %s in db", greq.Task.Id, err.Error())
+						return
 					}
-					return
 				}
 			}
 			close(in)
@@ -121,66 +115,58 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 	if err != nil {
 		return nil, err
 	}
-	dbSession := db.Session()
 	in, out, err := rpc.streamGenericHandler(ctx, greq)
 	if err != nil {
 		logs.Log.Debugf("stream generate error: %s", err)
 		return nil, err
 	}
+
 	go func() {
 		resp := <-out
 
 		stat := resp.GetStatus()
 		err := AssertStatus(resp)
 		if err != nil {
-			core.EventBroker.Publish(buildErrorEvent(greq.Task, err))
+			greq.Task.Panic(buildErrorEvent(greq.Task, err), resp)
 			return
 		}
 		fileName := path.Join(configs.TempPath, stat.GetDownloadResponse().Checksum)
+		if files.IsExist(fileName) {
+			greq.Task.Finish(core.Event{
+				EventType: consts.EventTaskCallback,
+				Task:      greq.Task,
+			})
+			return
+		}
 		greq.Task.Total = int(stat.GetDownloadResponse().Size) / config.Int(consts.MaxPacketLength)
-		td := &models.TaskDescription{
+		td := &models.FileDescription{
 			Name:    req.Name,
 			Path:    req.Path,
-			Command: fmt.Sprintf("download -%s -%s", req.Name, req.Path),
+			Command: fmt.Sprintf("download -%s -%s ", req.Name, req.Path),
 			Size:    int64(stat.GetDownloadResponse().Size),
 		}
-		taskModel := models.ConvertToTaskDB(greq.Task, "download", td)
-		err = dbSession.Create(taskModel).Error
+		err = db.AddTask("download", greq.Task, td)
 		if err != nil {
 			logs.Log.Errorf("cannot create task %d , %s in db", greq.Task.Id, err.Error())
 		}
-		if files.IsExist(fileName) {
-			if err != nil {
-				logs.Log.Errorf("db store download error: %s", err)
-			}
-			err := taskModel.UpdateCur(dbSession, greq.Task.Total)
-			if err != nil {
-				logs.Log.Errorf("cannot update task %d , %s in db", greq.Task.Id, err.Error())
-			}
+		downloadFile, err := os.OpenFile(fileName, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+		if err != nil {
 			return
-		} else {
-			downloadFile, err := os.OpenFile(fileName, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+		}
+		defer downloadFile.Close()
+		for resp := range out {
+			block := resp.GetBlock()
+			_, err = downloadFile.Write(block.Content)
 			if err != nil {
 				return
 			}
-			defer downloadFile.Close()
-			go func() {
-				for resp := range out {
-					block := resp.GetBlock()
-					_, fileErr := downloadFile.Write(block.Content)
-					if fileErr != nil {
-						return
-					}
-					ack, _ := greq.NewSpite(&implantpb.AsyncACK{Success: true})
-					greq.Session.AddCache(resp, int(block.BlockId))
-					in <- ack
-					err := taskModel.UpdateCur(dbSession, int(block.BlockId))
-					if err != nil {
-						logs.Log.Errorf("cannot update task %d , %s in db", greq.Task.Id, err.Error())
-						return
-					}
-				}
-			}()
+			ack, _ := greq.NewSpite(&implantpb.AsyncACK{Success: true})
+			in <- ack
+			err := db.UpdateTask(greq.Task, int(block.BlockId))
+			if err != nil {
+				logs.Log.Errorf("cannot update task %d , %s in db", greq.Task.Id, err.Error())
+				return
+			}
 		}
 	}()
 	return greq.Task.ToProtobuf(), nil

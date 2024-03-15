@@ -8,7 +8,6 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
-	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"github.com/chainreactors/malice-network/server/listener"
 	"github.com/chainreactors/malice-network/server/rpc"
 	"github.com/gookit/config/v2"
@@ -120,7 +119,7 @@ func StartGrpc(port uint16) error {
 			}
 			newSession.SetLastTaskId(uint32(taskID))
 			for _, task := range tasks {
-				newTask, err := models.ToCoreTask(*task)
+				newTask, err := db.ToTask(*task)
 				if err != nil {
 					logs.Log.Errorf("cannot convert task to core task , %s ", err.Error())
 					continue

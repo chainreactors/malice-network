@@ -208,7 +208,6 @@ func (implant *Implant) Handler(msg *implantpb.Spites) {
 func (implant *Implant) HandlerSpite(msg *implantpb.Spite) *implantpb.Spite {
 	spite := &implantpb.Spite{
 		TaskId: msg.TaskId,
-		End:    true,
 		Status: &implantpb.Status{TaskId: msg.TaskId, Status: 0},
 	}
 	var resp proto.Message

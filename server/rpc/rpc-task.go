@@ -37,12 +37,16 @@ func (rpc *Server) GetTaskContent(ctx context.Context, req *clientpb.Task) (*imp
 		msg, ok := sess.GetLastMessage(int(task.Id))
 		if ok {
 			return msg, nil
+		} else if task.Status != nil {
+			return task.Status, nil
 		}
 		return nil, ErrNotFoundTaskContent
 	} else {
-		msg, ok := sess.GetCache(int(task.Id), int(task.Cur))
+		msg, ok := sess.GetMessage(int(task.Id), int(task.Cur))
 		if ok {
 			return msg, nil
+		} else if task.Status != nil {
+			return task.Status, nil
 		}
 		return nil, ErrNotFoundTaskContent
 	}
@@ -62,6 +66,8 @@ func (rpc *Server) WaitTaskContent(ctx context.Context, req *clientpb.Task) (*im
 		msg, ok := sess.GetLastMessage(int(task.Id))
 		if ok {
 			return msg, nil
+		} else if task.Status != nil {
+			return task.Status, nil
 		}
 	}
 	return nil, ErrNotFoundTaskContent
@@ -76,7 +82,7 @@ func (rpc *Server) GetAllTaskContent(ctx context.Context, req *clientpb.Task) ([
 	if task == nil {
 		return nil, ErrNotFoundTask
 	}
-	msgs, ok := sess.GetCaches(int(task.Id))
+	msgs, ok := sess.GetMessages(int(task.Id))
 	if ok {
 		return msgs, nil
 	}

@@ -36,3 +36,17 @@ func (rpc *Server) Ls(ctx context.Context, req *implantpb.Request) (*clientpb.Ta
 	go greq.HandlerAsyncResponse(ch, types.MsgLs)
 	return greq.Task.ToProtobuf(), nil
 }
+
+func (rpc *Server) Cd(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
+	greq, err := newGenericRequest(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	ch, err := rpc.asyncGenericHandler(ctx, greq)
+	if err != nil {
+		return nil, err
+	}
+
+	go greq.HandlerAsyncResponse(ch, types.MsgResponse)
+	return greq.Task.ToProtobuf(), nil
+}

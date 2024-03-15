@@ -33,7 +33,6 @@ func TestExec(t *testing.T) {
 		fmt.Printf("res %v %v\n", res, err)
 		spite := &implantpb.Spite{
 			TaskId: 0,
-			End:    true,
 		}
 		types.BuildSpite(spite, execResp)
 		err = implant.WriteSpite(conn, spite)
