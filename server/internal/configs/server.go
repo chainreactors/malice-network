@@ -24,8 +24,8 @@ var (
 	TempPath                    = path.Join(ServerRootPath, "temp")
 	PluginPath                  = path.Join(ServerRootPath, "plugins")
 	AuditPath                   = path.Join(ServerRootPath, "audit")
-
-	ErrNoConfig = errors.New("no config found")
+	CachePath                   = path.Join(AuditPath, "cache")
+	ErrNoConfig                 = errors.New("no config found")
 )
 
 func InitConfig() error {
@@ -39,6 +39,7 @@ func InitConfig() error {
 	os.MkdirAll(TempPath, perm)
 	//os.MkdirAll(PluginPath, perm)
 	os.MkdirAll(AuditPath, perm)
+	os.MkdirAll(CachePath, perm)
 	return nil
 }
 
