@@ -11,6 +11,7 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/gookit/config/v2"
 	"google.golang.org/grpc"
+	"path"
 	"path/filepath"
 	"sync"
 	"time"
@@ -48,6 +49,8 @@ func NewSession(req *lispb.RegisterSession) *Session {
 		Process:    req.RegisterData.Process,
 		Timer:      req.RegisterData.Timer,
 		Tasks:      &Tasks{active: &sync.Map{}},
+		Cache:      NewCache(10 * consts.KB),
+		CachePath:  path.Join(configs.CachePath, req.SessionId+".gob"),
 		responses:  &sync.Map{},
 	}
 }
@@ -71,8 +74,10 @@ type Session struct {
 	Locale     string
 	Tasks      *Tasks // task manager
 	taskseq    uint32
-	responses  *sync.Map
-	log        *logs.Logger
+	*Cache
+	CachePath string // sessionid+taskid
+	responses *sync.Map
+	log       *logs.Logger
 }
 
 func (s *Session) Logger() *logs.Logger {
@@ -108,19 +113,18 @@ func (s *Session) nextTaskId() uint32 {
 	return s.taskseq
 }
 
-func (s *Session) SetTaskId(id uint32) {
+func (s *Session) SetLastTaskId(id uint32) {
 	s.taskseq = id
 }
 
 func (s *Session) NewTask(name string, total int) *Task {
 	task := &Task{
-		Type:       name,
-		Total:      total,
-		Id:         s.nextTaskId(),
-		SessionId:  s.ID,
-		SpiteCache: NewSpiteCache(1),
-		done:       make(chan bool),
-		end:        make(chan struct{}),
+		Type:      name,
+		Total:     total,
+		Id:        s.nextTaskId(),
+		SessionId: s.ID,
+		done:      make(chan bool),
+		end:       make(chan struct{}),
 	}
 	task.Ctx, task.Cancel = context.WithCancel(context.Background())
 	s.Tasks.Add(task)

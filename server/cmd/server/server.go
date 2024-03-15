@@ -110,11 +110,15 @@ func StartGrpc(port uint16) error {
 		logs.Log.Debugf("recover %d sessions", len(sessions))
 		for _, session := range sessions {
 			newSession := core.NewSession(session)
+			err = newSession.Load(newSession.CachePath)
+			if err != nil {
+				logs.Log.Debugf("cannot load session , %s ", err.Error())
+			}
 			tasks, taskID, err := db.FindTaskAndMaxTasksID(session.SessionId)
 			if err != nil {
 				logs.Log.Errorf("cannot find max task id , %s ", err.Error())
 			}
-			newSession.SetTaskId(uint32(taskID))
+			newSession.SetLastTaskId(uint32(taskID))
 			for _, task := range tasks {
 				newTask, err := models.ToCoreTask(*task)
 				if err != nil {

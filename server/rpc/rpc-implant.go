@@ -12,12 +12,20 @@ import (
 )
 
 func (rpc *Server) Register(ctx context.Context, req *lispb.RegisterSession) (*implantpb.Empty, error) {
+	_, success := core.Sessions.Get(req.SessionId)
+	if success == true {
+		return &implantpb.Empty{}, nil
+	}
 	sess := core.NewSession(req)
 	core.Sessions.Add(sess)
 	dbSession := db.Session()
 	d := dbSession.Create(models.ConvertToSessionDB(sess))
 	if d.Error != nil {
 		logs.Log.Warnf("session %s re-register ", sess.ID)
+		return &implantpb.Empty{}, nil
+	}
+	err := sess.Load(sess.CachePath)
+	if err != nil {
 		return &implantpb.Empty{}, nil
 	}
 	logs.Log.Importantf("init new session %s from %s", sess.ID, sess.ListenerId)
@@ -35,7 +43,14 @@ func (rpc *Server) Ping(ctx context.Context, req *implantpb.Ping) (*implantpb.Em
 		if err != nil {
 			return nil, err
 		}
-		core.Sessions.Add(core.NewSession(sess))
+		newSess := core.NewSession(sess)
+		_, taskID, err := db.FindTaskAndMaxTasksID(id)
+		if err != nil {
+			logs.Log.Errorf("cannot find max task id , %s ", err.Error())
+		}
+		newSess.SetLastTaskId(uint32(taskID))
+		core.Sessions.Add(newSess)
+		newSess.Load(newSess.CachePath)
 		logs.Log.Debugf("recover session %s", id)
 	}
 

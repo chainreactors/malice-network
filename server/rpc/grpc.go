@@ -169,7 +169,8 @@ func (r *GenericRequest) HandlerAsyncResponse(ch chan *implantpb.Spite, typ type
 		return
 	}
 	r.SetCallback(func() {
-		r.Task.AddMessage(resp)
+		r.Session.AddCache(resp, r.Task.Cur)
+		r.Session.Save(r.Session.CachePath)
 		core.EventBroker.Publish(core.Event{
 			EventType: consts.EventTaskCallback,
 			Task:      r.Task,

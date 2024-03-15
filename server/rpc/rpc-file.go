@@ -94,6 +94,7 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 				spite, _ = types.BuildSpite(spite, msg)
 				in <- spite
 				resp := <-out
+				greq.Session.AddCache(resp, blockId)
 				if resp.GetAsyncAck().Success {
 					greq.Task.Done()
 					core.EventBroker.Publish(core.Event{
@@ -126,7 +127,6 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 		logs.Log.Debugf("stream generate error: %s", err)
 		return nil, err
 	}
-
 	go func() {
 		resp := <-out
 
@@ -172,6 +172,7 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 						return
 					}
 					ack, _ := greq.NewSpite(&implantpb.AsyncACK{Success: true})
+					greq.Session.AddCache(resp, int(block.BlockId))
 					in <- ack
 					err := taskModel.UpdateCur(dbSession, int(block.BlockId))
 					if err != nil {
