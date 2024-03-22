@@ -24,7 +24,7 @@ func (rpc *Server) Register(ctx context.Context, req *lispb.RegisterSession) (*i
 		logs.Log.Warnf("session %s re-register ", sess.ID)
 		return &implantpb.Empty{}, nil
 	}
-	err := sess.Load(sess.CachePath)
+	err := sess.Load()
 	if err != nil {
 		return &implantpb.Empty{}, nil
 	}
@@ -50,7 +50,7 @@ func (rpc *Server) Ping(ctx context.Context, req *implantpb.Ping) (*implantpb.Em
 		}
 		newSess.SetLastTaskId(uint32(taskID))
 		core.Sessions.Add(newSess)
-		newSess.Load(newSess.CachePath)
+		newSess.Load()
 		logs.Log.Debugf("recover session %s", id)
 	}
 

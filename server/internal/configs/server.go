@@ -24,7 +24,7 @@ var (
 	TempPath                    = path.Join(ServerRootPath, "temp")
 	PluginPath                  = path.Join(ServerRootPath, "plugins")
 	AuditPath                   = path.Join(ServerRootPath, "audit")
-	CachePath                   = path.Join(AuditPath, "cache")
+	CachePath                   = path.Join(TempPath, "cache")
 	ErrNoConfig                 = errors.New("no config found")
 )
 

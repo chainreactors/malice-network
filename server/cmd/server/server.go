@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"github.com/chainreactors/logs"
@@ -13,6 +14,9 @@ import (
 	"github.com/gookit/config/v2"
 	"github.com/gookit/config/v2/yaml"
 	"github.com/jessevdk/go-flags"
+	"os"
+	"os/signal"
+	"syscall"
 )
 
 func init() {
@@ -92,6 +96,24 @@ func Execute() {
 			return
 		}
 	}
+
+	_, cancel := context.WithCancel(context.Background())
+	go func() {
+		c := make(chan os.Signal, 2)
+		signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+
+		<-c
+		logs.Log.Importantf("exit signal, save stat and exit")
+
+		signal.Stop(c)
+
+		for _, session := range core.Sessions.All() {
+			session.Save()
+		}
+		core.GlobalTicker.RemoveAll()
+		cancel()
+	}()
+
 	select {}
 }
 
@@ -109,7 +131,7 @@ func StartGrpc(port uint16) error {
 		logs.Log.Debugf("recover %d sessions", len(sessions))
 		for _, session := range sessions {
 			newSession := core.NewSession(session)
-			err = newSession.Load(newSession.CachePath)
+			err = newSession.Load()
 			if err != nil {
 				logs.Log.Debugf("cannot load session , %s ", err.Error())
 			}
@@ -127,18 +149,7 @@ func StartGrpc(port uint16) error {
 				newSession.Tasks.Add(newTask)
 			}
 			core.Sessions.Add(newSession)
-
-			//tasks, err := models.FindTasksWithNonOneCurTotal(dbSession, session)
-			//if err != nil {
-			//	logs.Log.Errorf("cannot find tasks in db , %s ", err.Error())
-			//}
-			//for _, task := range tasks {
 		}
-	}
-
-	_, _, err = rpc.StartClientListener(port)
-	if err != nil {
-		return err
 	}
 	return nil
 }

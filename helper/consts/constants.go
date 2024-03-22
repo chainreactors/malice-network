@@ -34,3 +34,13 @@ const (
 	MaxPacketLength = "server.config.packet_length"
 	AuditLevel      = "server.audit"
 )
+
+// Time
+const (
+	DefaultMaxBodyLength   = 2 * 1024 * 1024 * 1024 // 2Gb
+	DefaultHTTPTimeout     = time.Minute
+	DefaultLongPollTimeout = time.Second
+	DefaultLongPollJitter  = time.Second
+	minPollTimeout         = time.Second
+	DefaultCacheJitter     = time.Hour
+)

@@ -49,8 +49,7 @@ func NewSession(req *lispb.RegisterSession) *Session {
 		Process:    req.RegisterData.Process,
 		Timer:      req.RegisterData.Timer,
 		Tasks:      &Tasks{active: &sync.Map{}},
-		Cache:      NewCache(10 * consts.KB),
-		CachePath:  path.Join(configs.CachePath, req.SessionId+".gob"),
+		Cache:      NewCache(10*consts.KB, path.Join(configs.CachePath, req.SessionId+".gob")),
 		responses:  &sync.Map{},
 	}
 }
@@ -75,7 +74,6 @@ type Session struct {
 	Tasks      *Tasks // task manager
 	taskseq    uint32
 	*Cache
-	CachePath string // sessionid+taskid
 	responses *sync.Map
 	log       *logs.Logger
 }

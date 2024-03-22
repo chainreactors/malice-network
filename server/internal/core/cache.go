@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
+	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/patrickmn/go-cache"
 	"os"
@@ -12,15 +14,24 @@ import (
 )
 
 type Cache struct {
-	cache   cache.Cache
-	maxSize int
+	cache    cache.Cache
+	savePath string
+	maxSize  int
 }
 
-func NewCache(maxSize int) *Cache {
-	return &Cache{
-		cache:   *cache.New(cache.NoExpiration, cache.NoExpiration),
-		maxSize: maxSize,
+func NewCache(maxSize int, savePath string) *Cache {
+	newCache := &Cache{
+		cache:    *cache.New(cache.NoExpiration, cache.NoExpiration),
+		savePath: savePath,
+		maxSize:  maxSize,
 	}
+	GlobalTicker.Start(int(consts.DefaultCacheJitter), func() {
+		err := newCache.Save()
+		if err != nil {
+			logs.Log.Errorf("save cache error %s", err.Error())
+		}
+	})
+	return newCache
 }
 
 func (c *Cache) AddMessage(spite *implantpb.Spite, cur int) {
@@ -49,20 +60,27 @@ func (c *Cache) GetMessages(taskID int) ([]*implantpb.Spite, bool) {
 	return spite, true
 }
 
-func (c *Cache) Save(fileName string) error {
-	err := c.cache.SaveFile(fileName)
+func (c *Cache) GetAll() {
+	for k, v := range c.cache.Items() {
+		logs.Log.Importantf(k, v)
+	}
+}
+
+func (c *Cache) Save() error {
+	err := c.cache.SaveFile(c.savePath)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (c *Cache) Load(fileName string) error {
-	_, err := os.Stat(fileName)
+func (c *Cache) Load() error {
+	gob.Register(&implantpb.Spite{})
+	_, err := os.Stat(c.savePath)
 	if os.IsNotExist(err) {
-		return fmt.Errorf("cache file %s does not exist", fileName)
+		return fmt.Errorf("cache file %s does not exist", c.savePath)
 	}
-	err = c.cache.LoadFile(fileName)
+	err = c.cache.LoadFile(c.savePath)
 	if err != nil {
 		return err
 	}
