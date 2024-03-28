@@ -31,7 +31,7 @@ func (rpc *Server) LoadExtension(ctx context.Context, req *implantpb.LoadExtensi
 		return nil, err
 	}
 
-	go greq.HandlerAsyncResponse(ch, types.MsgNil)
+	go greq.HandlerAsyncResponse(ch, types.MsgEmpty)
 	return greq.Task.ToProtobuf(), nil
 }
 

@@ -10,6 +10,7 @@ type MsgName string
 const (
 	MsgUnknown          MsgName = "unknown"
 	MsgNil              MsgName = "nil"
+	MsgEmpty            MsgName = "empty"
 	MsgRequest          MsgName = "request"
 	MsgResponse         MsgName = "response"
 	MsgBlock            MsgName = "block"
@@ -18,7 +19,7 @@ const (
 	MsgDownload         MsgName = consts.ModuleDownload
 	MsgExec             MsgName = consts.ModuleExecution
 	MsgAck              MsgName = "ack"
-	MsgModules          MsgName = "modules"
+	MsgModules          MsgName = "list_module"
 	MsgLoadModule       MsgName = "load_module"
 	MsgExtensions       MsgName = "extensions"
 	MsgLoadExtension    MsgName = "load_extension"
@@ -31,6 +32,7 @@ const (
 	MsgExecuteBof       MsgName = consts.ModuleExecuteBof
 	MsgPwd              MsgName = consts.ModulePwd
 	MsgLs               MsgName = consts.ModuleLs
+	MsgPs               MsgName = consts.ModulePs
 )
 
 func (r MsgName) String() string {
@@ -79,6 +81,10 @@ func MessageType(message *implantpb.Spite) MsgName {
 		return MsgLoadModule
 	case *implantpb.Spite_Modules:
 		return MsgModules
+	//case *implantpb.Spite_PsResponse:
+	//	return MsgPs
+	//case *implantpb.Spite_LsResponse:
+	//	return MsgLs
 	default:
 		return MsgUnknown
 	}

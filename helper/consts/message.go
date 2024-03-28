@@ -9,9 +9,19 @@ const (
 	ModuleExecuteBof       = "execute-bof"
 	ModuleUpload           = "upload"
 	ModuleDownload         = "download"
-	ModulePwd              = "pwd"
-	ModuleLs               = "ls"
-	ModuleCd               = "cd"
+	ModulePwd              = "pwd"      // TODO impl client
+	ModuleLs               = "ls"       // TODO impl client
+	ModuleCd               = "cd"       // TODO impl client
+	ModuleMv               = "mv"       // TODO impl client
+	ModuleMkdir            = "mkdir"    // TODO impl client
+	ModuleRm               = "rm"       // TODO impl client
+	ModuleCat              = "cat"      // TODO impl client
+	ModulePs               = "ps"       // TODO impl client
+	ModuleKill             = "kill"     // TODO impl client
+	ModuleWhoami           = "whoami"   // TODO impl client
+	ModuleEnv              = "env"      // TODO impl client
+	ModuleSetEnv           = "setenv"   // TODO impl client
+	ModuleUnsetEnv         = "unsetenv" // TODO impl client
 
 	CommandSync         = "sync"
 	CommandBroadcast    = "broadcast"

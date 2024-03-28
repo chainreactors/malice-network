@@ -58,11 +58,13 @@ func convertToOsDB(os *implantpb.Os) *Os {
 }
 func convertToProcessDB(process *implantpb.Process) *Process {
 	return &Process{
-		Uid:  process.Uid,
-		Pid:  process.Pid,
-		Gid:  process.Gid,
-		Name: process.Name,
-		Args: process.Args,
+		Name:  process.Name,
+		Pid:   int32(process.Pid),
+		Ppid:  int32(process.Ppid),
+		Owner: process.Owner,
+		Arch:  process.Arch,
+		Path:  process.Path,
+		Args:  process.Args,
 	}
 }
 func convertToTimeDB(timer *implantpb.Timer) *Timer {
@@ -84,11 +86,13 @@ type Os struct {
 }
 
 type Process struct {
-	Uid  string `gorm:"type:varchar(255)" json:"uid"`
-	Pid  int32  `json:"pid"`
-	Gid  string `gorm:"type:varchar(255)" json:"gid"`
-	Name string `gorm:"type:varchar(255)" json:"name"`
-	Args string `gorm:"type:varchar(255)" json:"args"`
+	Name  string `gorm:"type:varchar(255)" json:"name"`
+	Pid   int32  `json:"pid"`
+	Ppid  int32  `json:"ppid"`
+	Owner string `gorm:"type:varchar(255)" json:"owner"`
+	Arch  string `gorm:"type:varchar(255)" json:"arch"`
+	Path  string `gorm:"type:varchar(255)" json:"path"`
+	Args  string `gorm:"type:varchar(255)" json:"args"`
 }
 
 type Timer struct {
@@ -136,11 +140,13 @@ func (o *Os) toProtobuf() *implantpb.Os {
 }
 func (p *Process) toProtobuf() *implantpb.Process {
 	return &implantpb.Process{
-		Uid:  p.Uid,
-		Pid:  p.Pid,
-		Gid:  p.Gid,
-		Name: p.Name,
-		Args: p.Args,
+		Name:  p.Name,
+		Pid:   uint32(p.Pid),
+		Ppid:  uint32(p.Ppid),
+		Owner: p.Owner,
+		Arch:  p.Arch,
+		Path:  p.Path,
+		Args:  p.Args,
 	}
 }
 func (t *Timer) toProtobuf() *implantpb.Timer {

@@ -96,8 +96,6 @@ func (implant *Implant) Register() {
 		Process: &implantpb.Process{
 			Name: "test",
 			Pid:  123,
-			Uid:  "admin",
-			Gid:  "root",
 		},
 		Timer: &implantpb.Timer{
 			Interval: 10,

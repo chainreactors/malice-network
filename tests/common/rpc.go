@@ -49,8 +49,12 @@ func (c *Client) Send() {
 	c.conn.Close()
 }
 
+func (c *Client) Meta() context.Context {
+	return metadata.NewOutgoingContext(context.Background(), metadata.Pairs("session_id", hash.Md5Hash(c.sid)))
+}
+
 func (c *Client) Call(rpcname string, msg proto.Message) (proto.Message, error) {
-	meta := metadata.NewOutgoingContext(context.Background(), metadata.Pairs("session_id", hash.Md5Hash(c.sid)))
+	meta := c.Meta()
 	var resp proto.Message
 	var err error
 	switch rpcname {
@@ -66,6 +70,18 @@ func (c *Client) Call(rpcname string, msg proto.Message) (proto.Message, error) 
 		resp, err = c.Client.Cd(meta, msg.(*implantpb.Request))
 	case consts.CommandBroadcast:
 		resp, err = c.Client.Broadcast(meta, msg.(*clientpb.Event))
+	case consts.ModuleLs:
+		resp, err = c.Client.Ls(meta, msg.(*implantpb.Request))
+	case consts.ModuleMv:
+		resp, err = c.Client.Mv(meta, msg.(*implantpb.Request))
+	case consts.ModuleMkdir:
+		resp, err = c.Client.Mkdir(meta, msg.(*implantpb.Request))
+	case consts.ModuleRm:
+		resp, err = c.Client.Rm(meta, msg.(*implantpb.Request))
+	case consts.ModuleCat:
+		resp, err = c.Client.Cat(meta, msg.(*implantpb.Request))
+	case "panic":
+		resp, err = c.Client.Cd(meta, msg.(*implantpb.Request))
 	default:
 		return nil, errors.New("unknown rpc")
 	}

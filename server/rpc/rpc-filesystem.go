@@ -47,6 +47,62 @@ func (rpc *Server) Cd(ctx context.Context, req *implantpb.Request) (*clientpb.Ta
 		return nil, err
 	}
 
+	go greq.HandlerAsyncResponse(ch, types.MsgEmpty)
+	return greq.Task.ToProtobuf(), nil
+}
+
+func (rpc *Server) Mkdir(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
+	greq, err := newGenericRequest(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	ch, err := rpc.asyncGenericHandler(ctx, greq)
+	if err != nil {
+		return nil, err
+	}
+
+	go greq.HandlerAsyncResponse(ch, types.MsgEmpty)
+	return greq.Task.ToProtobuf(), nil
+}
+
+func (rpc *Server) Rm(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
+	greq, err := newGenericRequest(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	ch, err := rpc.asyncGenericHandler(ctx, greq)
+	if err != nil {
+		return nil, err
+	}
+
+	go greq.HandlerAsyncResponse(ch, types.MsgEmpty)
+	return greq.Task.ToProtobuf(), nil
+}
+
+func (rpc *Server) Cat(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
+	greq, err := newGenericRequest(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	ch, err := rpc.asyncGenericHandler(ctx, greq)
+	if err != nil {
+		return nil, err
+	}
+
 	go greq.HandlerAsyncResponse(ch, types.MsgResponse)
+	return greq.Task.ToProtobuf(), nil
+}
+
+func (rpc *Server) Mv(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
+	greq, err := newGenericRequest(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	ch, err := rpc.asyncGenericHandler(ctx, greq)
+	if err != nil {
+		return nil, err
+	}
+
+	go greq.HandlerAsyncResponse(ch, types.MsgEmpty)
 	return greq.Task.ToProtobuf(), nil
 }
