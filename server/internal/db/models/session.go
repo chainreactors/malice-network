@@ -2,6 +2,7 @@ package models
 
 import (
 	"errors"
+	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/server/internal/core"
@@ -12,6 +13,7 @@ import (
 type Session struct {
 	SessionID  string    `gorm:"primaryKey;->;<-:create;type:uuid;"`
 	CreatedAt  time.Time `gorm:"->;<-:create;"`
+	GroupName  string
 	RemoteAddr string
 	ListenerId string
 	IsAlive    bool
@@ -96,7 +98,20 @@ type Timer struct {
 	LastCheckin uint64 `json:"last_checkin"`
 }
 
-func (s *Session) ToProtobuf() *lispb.RegisterSession {
+func (s *Session) ToClientProtobuf() *clientpb.Session {
+	return &clientpb.Session{
+		SessionId:  s.SessionID,
+		ListenerId: s.ListenerId,
+		RemoteAddr: s.RemoteAddr,
+		IsDead:     s.IsAlive,
+		GroupName:  s.GroupName,
+		Os:         s.Os.toProtobuf(),
+		Process:    s.Process.toProtobuf(),
+		Timer:      s.Time.toProtobuf(),
+	}
+}
+
+func (s *Session) ToRegisterProtobuf() *lispb.RegisterSession {
 	return &lispb.RegisterSession{
 		SessionId:  s.SessionID,
 		ListenerId: s.ListenerId,

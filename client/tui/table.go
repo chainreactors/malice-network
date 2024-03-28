@@ -11,7 +11,9 @@ func NewTable(columns []table.Column) *TableModel {
 		table: table.New(
 			table.WithColumns(columns),
 			table.WithFocused(true)),
-		Style: DefaultTableStyle,
+		Style:       DefaultTableStyle,
+		Columns:     columns,
+		rowsPerPage: 10,
 	}
 	return t
 }
@@ -66,22 +68,29 @@ func (t *TableModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		t.UpdatePagination()
 	}
 	t.table, cmd = t.table.Update(msg)
-	return t, cmd
+	return t, tea.Batch(cmd)
 }
 
 func (t *TableModel) View() string {
 	startIndex := (t.currentPage - 1) * t.rowsPerPage
 	endIndex := startIndex + t.rowsPerPage
+	if startIndex < 0 {
+		startIndex = 0
+	}
 	if endIndex > len(t.Rows) {
 		endIndex = len(t.Rows)
 	}
-
 	t.table.SetRows(t.Rows[startIndex:endIndex])
 
 	return FootStyle.Render(t.table.View()) +
 		fmt.Sprintf("\nPage %d of %d\n", t.currentPage, t.totalPages)
 }
 
-func (t *TableModel) SetStyle(s *table.Styles) {
-	t.table.SetStyles(*s)
+func (t *TableModel) SetRows() {
+	t.table.SetRows(t.Rows)
+	t.totalPages = len(t.Rows) / t.rowsPerPage
+	if len(t.Rows)%t.rowsPerPage != 0 {
+		t.totalPages++
+	}
+	t.currentPage = 1
 }

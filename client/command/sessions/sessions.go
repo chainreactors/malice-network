@@ -9,6 +9,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/helper"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/charmbracelet/bubbles/table"
+	"github.com/muesli/termenv"
 	"github.com/pterm/pterm"
 	"strings"
 	"time"
@@ -49,23 +50,22 @@ func SessionsCmd(ctx *grumble.Context, con *console.Console) {
 }
 
 func PrintSessions(sessions map[string]*clientpb.Session, con *console.Console) {
-
+	var colorIndex = 1
 	var rowEntries []table.Row
 	var row table.Row
-
+	groupColors := make(map[string]termenv.ANSIColor)
 	tableModel := tui.NewTable([]table.Column{
-		{Title: "ID", Width: 4},
+		{Title: "ID", Width: 10},
+		{Title: "Group", Width: 10},
 		{Title: "Name", Width: 4},
 		{Title: "Transport", Width: 10},
 		{Title: "Remote Address", Width: 15},
 		{Title: "Hostname", Width: 10},
 		{Title: "Username", Width: 10},
 		{Title: "Operating System", Width: 20},
-		{Title: "Locale", Width: 10},
 		{Title: "Last Message", Width: 15},
 		{Title: "Health", Width: 10},
 	})
-
 	for _, session := range sessions {
 		var SessionHealth string
 		if session.IsDead {
@@ -73,13 +73,16 @@ func PrintSessions(sessions map[string]*clientpb.Session, con *console.Console) 
 		} else {
 			SessionHealth = pterm.FgGreen.Sprint("[ALIVE]")
 		}
-
+		if _, exists := groupColors[session.GroupName]; !exists {
+			groupColors[session.GroupName] = termenv.ANSIColor(colorIndex)
+			colorIndex++
+		}
 		username := strings.TrimPrefix(session.Os.Username, session.Os.Hostname+"\\") // For non-AD Windows users
 		row = table.Row{
-			helper.ShortSessionID(session.SessionId),
+			termenv.String(helper.ShortSessionID(helper.ShortSessionID(session.SessionId))).Foreground(groupColors[session.GroupName]).String(),
+			session.GroupName,
 			session.Name,
 			"",
-			session.ListenerId,
 			session.RemoteAddr,
 			session.Os.Hostname,
 			username,
@@ -90,5 +93,9 @@ func PrintSessions(sessions map[string]*clientpb.Session, con *console.Console) 
 		rowEntries = append(rowEntries, row)
 	}
 	tableModel.Rows = rowEntries
-	tui.Run(tableModel)
+	tableModel.SetRows()
+	err := tui.Run(tableModel)
+	if err != nil {
+		return
+	}
 }

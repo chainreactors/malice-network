@@ -26,7 +26,7 @@ func FindAliveSessions() ([]*lispb.RegisterSession, error) {
 	}
 	var sessions []*lispb.RegisterSession
 	for _, session := range activeSessions {
-		sessions = append(sessions, session.ToProtobuf())
+		sessions = append(sessions, session.ToRegisterProtobuf())
 	}
 	return sessions, nil
 }
@@ -40,7 +40,21 @@ func FindSession(sessionID string) (*lispb.RegisterSession, error) {
 	//if session.Last.Before(time.Now().Add(-time.Second * time.Duration(session.Time.Interval*2))) {
 	//	return nil, errors.New("session is dead")
 	//}
-	return session.ToProtobuf(), nil
+	return session.ToRegisterProtobuf(), nil
+}
+
+func FindAllSessions() (*clientpb.Sessions, error) {
+	var sessions []models.Session
+	result := Session().Order("group_name").Find(&sessions)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	var pbSessions []*clientpb.Session
+	for _, session := range sessions {
+		pbSessions = append(pbSessions, session.ToClientProtobuf())
+	}
+	return &clientpb.Sessions{Sessions: pbSessions}, nil
+
 }
 
 func FindTaskAndMaxTasksID(sessionID string) ([]*models.Task, int, error) {

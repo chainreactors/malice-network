@@ -25,12 +25,15 @@ func NewCache(maxSize int, savePath string) *Cache {
 		savePath: savePath,
 		maxSize:  maxSize,
 	}
-	GlobalTicker.Start(int(consts.DefaultCacheJitter), func() {
+	_, err := GlobalTicker.Start(consts.DefaultCacheJitter, func() {
 		err := newCache.Save()
 		if err != nil {
 			logs.Log.Errorf("save cache error %s", err.Error())
 		}
 	})
+	if err != nil {
+		return nil
+	}
 	return newCache
 }
 
