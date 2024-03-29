@@ -121,6 +121,10 @@ func Execute() {
 // Start - Starts the server console
 func StartGrpc(port uint16) error {
 	// start grpc
+	_, _, err := rpc.StartClientListener(port)
+	if err != nil {
+		return err
+	}
 
 	// start alive session
 	sessions, err := db.FindAliveSessions()
