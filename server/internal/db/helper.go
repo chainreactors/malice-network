@@ -7,8 +7,11 @@ import (
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
+	"github.com/gofrs/uuid"
 	"gorm.io/gorm"
 	"gorm.io/gorm/utils"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -269,4 +272,130 @@ func ToTask(task models.Task) (*core.Task, error) {
 		Cur:       task.Cur,
 		Total:     task.Total,
 	}, nil
+}
+
+// website
+// WebsiteByName - Get website by name
+func WebsiteByName(name string, webContentDir string) (*clientpb.Website, error) {
+	var website models.Website
+	if err := Session().Preload("WebContents").Where("name = ?", name).First(&website).Error; err != nil {
+		return nil, err
+	}
+	//err := Session().Where("name = ?", name).First(&website).Error
+	//if err != nil {
+	//	return nil, err
+	//}
+	return website.ToProtobuf(webContentDir), nil
+}
+
+// Websites - Return all websites
+func Websites(webContentDir string) ([]*clientpb.Website, error) {
+	var websites []*models.Website
+	err := Session().Where(&models.Website{}).Find(&websites).Error
+
+	var pbWebsites []*clientpb.Website
+	for _, website := range websites {
+		pbWebsites = append(pbWebsites, website.ToProtobuf(webContentDir))
+	}
+
+	return pbWebsites, err
+}
+
+// WebContent by ID and path
+func WebContentByIDAndPath(id string, path string, webContentDir string, eager bool) (*clientpb.WebContent, error) {
+	uuidFromString, _ := uuid.FromString(id)
+	content := models.WebContent{}
+	err := Session().Where(&models.WebContent{
+		WebsiteID: uuidFromString,
+		Path:      path,
+	}).First(&content).Error
+
+	if err != nil {
+		return nil, err
+	}
+	var data []byte
+	if eager {
+		data, err = os.ReadFile(filepath.Join(webContentDir, content.ID.String()))
+	} else {
+		data = []byte{}
+	}
+	return content.ToProtobuf(&data), err
+}
+
+// AddWebsite - Return website, create if it does not exist
+func AddWebSite(webSiteName string, webContentDir string) (*clientpb.Website, error) {
+	pbWebSite, err := WebsiteByName(webSiteName, webContentDir)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		err = Session().Create(&models.Website{Name: webSiteName}).Error
+		if err != nil {
+			return nil, err
+		}
+		pbWebSite, err = WebsiteByName(webSiteName, webContentDir)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return pbWebSite, nil
+}
+
+// AddContent - Add content to website
+func AddContent(pbWebContent *clientpb.WebContent, webContentDir string) (*clientpb.WebContent, error) {
+	dbWebContent, err := WebContentByIDAndPath(pbWebContent.WebsiteID, pbWebContent.Path, webContentDir, false)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		dbModelWebContent := models.WebContentFromProtobuf(pbWebContent)
+		err = Session().Create(&dbModelWebContent).Error
+		if err != nil {
+			return nil, err
+		}
+		dbWebContent, err = WebContentByIDAndPath(pbWebContent.WebsiteID, pbWebContent.Path, webContentDir, false)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		dbWebContent.ContentType = pbWebContent.ContentType
+		dbWebContent.Size = pbWebContent.Size
+
+		dbModelWebContent := models.WebContentFromProtobuf(dbWebContent)
+		err = Session().Save(&dbModelWebContent).Error
+		if err != nil {
+			return nil, err
+		}
+	}
+	return dbWebContent, nil
+}
+
+func GetWebContentIDByWebsiteID(websiteID string) ([]string, error) {
+	uuid, err := uuid.FromString(websiteID)
+	if err != nil {
+		return nil, err
+	}
+
+	var IDs []string
+
+	if err := Session().Model(&models.WebContent{}).Select("ID").Where("website_id = ?", uuid).Pluck("ID", &IDs).Error; err != nil {
+		return nil, err
+	}
+
+	return IDs, nil
+}
+
+func RemoveWebAllContent(id string) error {
+	uuid, _ := uuid.FromString(id)
+	if err := Session().Where("website_id = ?", uuid).Delete(&models.WebContent{}).Error; err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func RemoveContent(id string) error {
+	uuid, _ := uuid.FromString(id)
+	err := Session().Delete(models.WebContent{}, uuid).Error
+	return err
+}
+
+func RemoveWebSite(id string) error {
+	uuid, _ := uuid.FromString(id)
+	err := Session().Delete(models.Website{}, uuid).Error
+	return err
 }

@@ -22,6 +22,8 @@ func NewDBClient() *gorm.DB {
 		panic(fmt.Sprintf("Unknown DB Dialect: '%s'", dbConfig.Dialect))
 	}
 	_ = dbClient.AutoMigrate(
+		&models.WebContent{},
+		&models.Website{},
 		&models.Operator{},
 		&models.Certificate{},
 		&models.Session{},

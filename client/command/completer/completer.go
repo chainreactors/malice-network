@@ -48,11 +48,11 @@ func SessionIDCompleter(con *console.Console, prefix string) (results []string) 
 			results = append(results, s.SessionId)
 		}
 	}
-	return
+	return results
 }
 
 func AliveSessionIDCompleter(con *console.Console) (results []string) {
 	sid := con.ActiveTarget.GetInteractive().SessionId
 	results = append(results, sid)
-	return
+	return results
 }

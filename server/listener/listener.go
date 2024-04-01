@@ -14,6 +14,7 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/certs"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
+	"github.com/chainreactors/malice-network/server/web"
 	"google.golang.org/grpc"
 	"os"
 	"strconv"
@@ -94,6 +95,13 @@ func (lns *listener) Start() {
 		}
 		logs.Log.Importantf("Started tcp pipeline %s, encryption: %t, tls: %t", pipeline.ID(), pipeline.Encryption.Enable, pipeline.TlsConfig.Enable)
 		lns.registerPipeline(pipeline)
+	}
+	for _, website := range lns.cfg.Websites {
+		if !website.Enable {
+			continue
+		}
+		httpServer := web.NewHTTPServer(int(website.Port), website.RootPath, website.WebsiteName)
+		go httpServer.Start()
 	}
 }
 

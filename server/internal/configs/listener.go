@@ -23,6 +23,7 @@ type ListenerConfig struct {
 	Auth          string                `config:"auth"`
 	TcpPipelines  []*TcpPipelineConfig  `config:"tcp"`
 	HttpPipelines []*HttpPipelineConfig `config:"http"`
+	Websites      []*WebsiteConfig      `config:"websites"`
 }
 
 type TcpPipelineConfig struct {
@@ -40,6 +41,13 @@ type HttpPipelineConfig struct {
 	Host      string     `config:"host"`
 	Port      uint16     `config:"port"`
 	TlsConfig *TlsConfig `config:"tls"`
+}
+
+type WebsiteConfig struct {
+	Enable      bool   `config:"enable"`
+	RootPath    string `config:"rootPath"`
+	WebsiteName string `config:"websiteName"`
+	Port        uint16 `config:"port"`
 }
 
 type TlsConfig struct {

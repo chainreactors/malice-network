@@ -32,3 +32,8 @@ listeners:
         enable: false
         type: aes-cfb
         key: maliceofinternal
+  websites:
+    - websiteName: test
+      port: 10049
+      rootPath: "/"
+      enable: false
