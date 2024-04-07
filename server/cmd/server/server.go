@@ -113,8 +113,8 @@ func Execute() {
 		}
 		core.GlobalTicker.RemoveAll()
 		cancel()
+		os.Exit(0)
 	}()
-
 	select {}
 }
 
