@@ -17,6 +17,7 @@ const (
 	MsgRegister         MsgName = "register"
 	MsgUpload           MsgName = consts.ModuleUpload
 	MsgDownload         MsgName = consts.ModuleDownload
+	MsgCurl             MsgName = consts.ModuleCurl
 	MsgExec             MsgName = consts.ModuleExecution
 	MsgAck              MsgName = "ack"
 	MsgModules          MsgName = "list_module"
@@ -32,6 +33,7 @@ const (
 	MsgExecuteBof       MsgName = consts.ModuleExecuteBof
 	MsgPwd              MsgName = consts.ModulePwd
 	MsgLs               MsgName = consts.ModuleLs
+	MsgNetstat          MsgName = consts.ModuleNetstat
 	MsgPs               MsgName = consts.ModulePs
 )
 

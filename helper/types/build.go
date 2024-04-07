@@ -42,6 +42,9 @@ func BuildSpite(spite *implantpb.Spite, msg proto.Message) (*implantpb.Spite, er
 	case *implantpb.DownloadRequest:
 		spite.Name = MsgDownload.String()
 		spite.Body = &implantpb.Spite_DownloadRequest{DownloadRequest: msg.(*implantpb.DownloadRequest)}
+	case *implantpb.CurlRequest:
+		spite.Name = MsgCurl.String()
+		spite.Body = &implantpb.Spite_CurlRequest{CurlRequest: msg.(*implantpb.CurlRequest)}
 	case *implantpb.ExecuteAssembly:
 		spite.Name = MsgExecuteAssembly.String()
 		spite.Body = &implantpb.Spite_ExecuteAssembly{ExecuteAssembly: msg.(*implantpb.ExecuteAssembly)}
@@ -63,7 +66,9 @@ func BuildSpite(spite *implantpb.Spite, msg proto.Message) (*implantpb.Spite, er
 	case *implantpb.ExecuteExtension:
 		spite.Name = MsgExecuteExtension.String()
 		spite.Body = &implantpb.Spite_ExecuteExtension{ExecuteExtension: msg.(*implantpb.ExecuteExtension)}
-
+	case *implantpb.LoadModule:
+		spite.Name = MsgLoadModule.String()
+		spite.Body = &implantpb.Spite_LoadModule{LoadModule: msg.(*implantpb.LoadModule)}
 	default:
 		return spite, ErrUnknownSpite
 	}

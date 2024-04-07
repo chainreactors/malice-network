@@ -9,6 +9,7 @@ const (
 	ModuleExecuteBof       = "execute-bof"
 	ModuleUpload           = "upload"
 	ModuleDownload         = "download"
+	ModuleCurl             = "curl"
 	ModulePwd              = "pwd"      // TODO impl client
 	ModuleLs               = "ls"       // TODO impl client
 	ModuleCd               = "cd"       // TODO impl client
@@ -22,6 +23,7 @@ const (
 	ModuleEnv              = "env"      // TODO impl client
 	ModuleSetEnv           = "setenv"   // TODO impl client
 	ModuleUnsetEnv         = "unsetenv" // TODO impl client
+	ModuleNetstat          = "netstat"
 
 	CommandSync         = "sync"
 	CommandBroadcast    = "broadcast"

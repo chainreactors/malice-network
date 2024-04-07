@@ -7,21 +7,7 @@ import (
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 )
 
-func (rpc *Server) ListModules(ctx context.Context, _ *implantpb.Empty) (*clientpb.Task, error) {
-	greq, err := newGenericRequest(ctx, &implantpb.Request{Name: types.MsgModules.String()})
-	if err != nil {
-		return nil, err
-	}
-	ch, err := rpc.asyncGenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
-	}
-
-	go greq.HandlerAsyncResponse(ch, types.MsgModules)
-	return greq.Task.ToProtobuf(), nil
-}
-
-func (rpc *Server) LoadModule(ctx context.Context, req *implantpb.LoadModule) (*clientpb.Task, error) {
+func (rpc *Server) Netstat(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err
@@ -31,6 +17,20 @@ func (rpc *Server) LoadModule(ctx context.Context, req *implantpb.LoadModule) (*
 		return nil, err
 	}
 
-	go greq.HandlerAsyncResponse(ch, types.MsgEmpty)
+	go greq.HandlerAsyncResponse(ch, types.MsgNetstat)
+	return greq.Task.ToProtobuf(), nil
+}
+
+func (rpc *Server) Curl(ctx context.Context, req *implantpb.CurlRequest) (*clientpb.Task, error) {
+	greq, err := newGenericRequest(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	ch, err := rpc.asyncGenericHandler(ctx, greq)
+	if err != nil {
+		return nil, err
+	}
+
+	go greq.HandlerAsyncResponse(ch, types.MsgResponse)
 	return greq.Task.ToProtobuf(), nil
 }
