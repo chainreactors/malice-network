@@ -1,7 +1,7 @@
 go mod tidy
 
-go install google.golang.org/protobuf/cmd/protoc-gen-go
-go install google.golang.org/grpc/cmd/protoc-gen-go-grpc
+go get google.golang.org/protobuf/cmd/protoc-gen-go
+go get google.golang.org/grpc/cmd/protoc-gen-go-grpc
 
 # client
 protoc -I proto/ proto/client/clientpb/client.proto  --go_out=paths=source_relative:proto/

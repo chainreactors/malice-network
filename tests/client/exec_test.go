@@ -27,3 +27,23 @@ func TestExec(t *testing.T) {
 	t.Log(resp)
 	fmt.Println(resp)
 }
+
+func TestExecuteShellcode(t *testing.T) {
+	rpc := common.NewClient(common.DefaultGRPCAddr, common.TestSid)
+	task, err := rpc.Call(consts.ModuleExecuteShellcode, &implantpb.ExecuteShellcode{
+		Name:   "mimikatz",
+		Bin:    []byte{0x90, 0x90, 0x90, 0x90, 0x90, 0x90},
+		Params: []string{"token::list", "exit"},
+	})
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+	resp, err := rpc.WaitResponse(task.(*clientpb.Task))
+	if err != nil {
+		t.Log(err)
+		return
+	}
+	t.Log(resp)
+	fmt.Println(resp)
+}
