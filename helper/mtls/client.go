@@ -146,11 +146,10 @@ func WriteConfig(data, clientType, name string) error {
 	// save config as yaml file
 	configDir, _ := os.Getwd()
 	var configFile string
-	if clientType == client {
-		configFile = path.Join(configDir, fmt.Sprintf("%s_%s.yaml", name, host))
-	} else {
+	if clientType == listener {
 		configFile = path.Join(configDir, fmt.Sprintf("%s.yaml", name))
-
+	} else {
+		configFile = path.Join(configDir, fmt.Sprintf("%s_%s.yaml", name, host))
 	}
 	err := ioutil.WriteFile(configFile, []byte(data), 0644)
 	if err != nil {

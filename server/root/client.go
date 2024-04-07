@@ -43,6 +43,11 @@ type RootClient struct {
 }
 
 func (client *RootClient) Execute(cmd Command, msg *rootpb.Operator) error {
+	if len(msg.Args) == 0 && (msg.Op == "add" || msg.Op == "del") {
+		fmt.Println("Name is required")
+		return nil
+	}
+
 	resp, err := cmd.Execute(client.rpc, msg)
 	if err != nil {
 		return err
