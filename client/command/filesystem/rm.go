@@ -8,21 +8,23 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func PwdCmd(ctx *grumble.Context, con *console.Console) {
+func RmCmd(ctx *grumble.Context, con *console.Console) {
 	session := con.ActiveTarget.GetInteractive()
 	if session == nil {
 		return
 	}
 	sid := con.ActiveTarget.GetInteractive().SessionId
-	pwdTask, err := con.Rpc.Pwd(con.ActiveTarget.Context(), &implantpb.Request{
-		Name: consts.ModulePwd,
+	fileName := ctx.Flags.String("name")
+	rmTask, err := con.Rpc.Rm(con.ActiveTarget.Context(), &implantpb.Request{
+		Name:  consts.ModuleRm,
+		Input: fileName,
 	})
 	if err != nil {
-		con.SessionLog(sid).Errorf("Pwd error: %v", err)
+		con.SessionLog(sid).Errorf("Rm error: %v", err)
 		return
 	}
-	con.AddCallback(pwdTask.TaskId, func(msg proto.Message) {
-		resp := msg.(*implantpb.Spite).GetResponse()
-		con.SessionLog(sid).Consolef("Current working directory: %s\n", resp.GetOutput())
+	con.AddCallback(rmTask.TaskId, func(msg proto.Message) {
+		_ = msg.(*implantpb.Spite)
+		con.SessionLog(sid).Consolef("Removed file success")
 	})
 }

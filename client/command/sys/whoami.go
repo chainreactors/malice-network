@@ -1,4 +1,4 @@
-package filesystem
+package sys
 
 import (
 	"github.com/chainreactors/grumble"
@@ -8,21 +8,21 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func PwdCmd(ctx *grumble.Context, con *console.Console) {
+func WhoamiCmd(ctx *grumble.Context, con *console.Console) {
 	session := con.ActiveTarget.GetInteractive()
+	sid := con.ActiveTarget.GetInteractive().SessionId
 	if session == nil {
 		return
 	}
-	sid := con.ActiveTarget.GetInteractive().SessionId
-	pwdTask, err := con.Rpc.Pwd(con.ActiveTarget.Context(), &implantpb.Request{
-		Name: consts.ModulePwd,
+	whoamiTask, err := con.Rpc.Whoami(con.ActiveTarget.Context(), &implantpb.Request{
+		Name: consts.ModuleWhoami,
 	})
 	if err != nil {
-		con.SessionLog(sid).Errorf("Pwd error: %v", err)
+		con.SessionLog(sid).Errorf("Whoami error: %v", err)
 		return
 	}
-	con.AddCallback(pwdTask.TaskId, func(msg proto.Message) {
+	con.AddCallback(whoamiTask.TaskId, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite).GetResponse()
-		con.SessionLog(sid).Consolef("Current working directory: %s\n", resp.GetOutput())
+		con.SessionLog(sid).Consolef("Username: %v", resp.GetOutput())
 	})
 }

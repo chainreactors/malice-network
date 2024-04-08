@@ -7,10 +7,8 @@ import (
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 )
 
-func (rpc *Server) Pwd(ctx context.Context, req *implantpb.Empty) (*clientpb.Task, error) {
-	greq, err := newGenericRequest(ctx, &implantpb.Request{
-		Name: "pwd",
-	})
+func (rpc *Server) Pwd(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
+	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err
 	}
@@ -20,6 +18,7 @@ func (rpc *Server) Pwd(ctx context.Context, req *implantpb.Empty) (*clientpb.Tas
 	}
 
 	go greq.HandlerAsyncResponse(ch, types.MsgResponse)
+
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -47,7 +46,7 @@ func (rpc *Server) Cd(ctx context.Context, req *implantpb.Request) (*clientpb.Ta
 		return nil, err
 	}
 
-	go greq.HandlerAsyncResponse(ch, types.MsgEmpty)
+	go greq.HandlerAsyncResponse(ch, types.MsgResponse)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -104,5 +103,47 @@ func (rpc *Server) Mv(ctx context.Context, req *implantpb.Request) (*clientpb.Ta
 	}
 
 	go greq.HandlerAsyncResponse(ch, types.MsgEmpty)
+	return greq.Task.ToProtobuf(), nil
+}
+
+func (rpc *Server) Cp(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
+	greq, err := newGenericRequest(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	ch, err := rpc.asyncGenericHandler(ctx, greq)
+	if err != nil {
+		return nil, err
+	}
+
+	go greq.HandlerAsyncResponse(ch, types.MsgEmpty)
+	return greq.Task.ToProtobuf(), nil
+}
+
+func (rpc *Server) Chmod(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
+	greq, err := newGenericRequest(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	ch, err := rpc.asyncGenericHandler(ctx, greq)
+	if err != nil {
+		return nil, err
+	}
+
+	go greq.HandlerAsyncResponse(ch, types.MsgEmpty)
+	return greq.Task.ToProtobuf(), nil
+}
+
+func (rpc *Server) Chown(ctx context.Context, req *implantpb.ChownRequest) (*clientpb.Task, error) {
+	greq, err := newGenericRequest(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	ch, err := rpc.asyncGenericHandler(ctx, greq)
+	if err != nil {
+		return nil, err
+	}
+
+	go greq.HandlerAsyncResponse(ch, types.MsgResponse)
 	return greq.Task.ToProtobuf(), nil
 }

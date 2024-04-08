@@ -8,21 +8,23 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func PwdCmd(ctx *grumble.Context, con *console.Console) {
+func CdCmd(ctx *grumble.Context, con *console.Console) {
 	session := con.ActiveTarget.GetInteractive()
 	if session == nil {
 		return
 	}
 	sid := con.ActiveTarget.GetInteractive().SessionId
-	pwdTask, err := con.Rpc.Pwd(con.ActiveTarget.Context(), &implantpb.Request{
-		Name: consts.ModulePwd,
+	path := ctx.Flags.String("path")
+	cdTask, err := con.Rpc.Cd(con.ActiveTarget.Context(), &implantpb.Request{
+		Name:  consts.ModuleCd,
+		Input: path,
 	})
 	if err != nil {
-		con.SessionLog(sid).Errorf("Pwd error: %v", err)
+		con.SessionLog(sid).Errorf("Cd error: %v", err)
 		return
 	}
-	con.AddCallback(pwdTask.TaskId, func(msg proto.Message) {
-		resp := msg.(*implantpb.Spite).GetResponse()
-		con.SessionLog(sid).Consolef("Current working directory: %s\n", resp.GetOutput())
+	con.AddCallback(cdTask.TaskId, func(msg proto.Message) {
+		_ = msg.(*implantpb.Spite).GetResponse()
+		con.SessionLog(sid).Consolef("Changed directory to: %s", path)
 	})
 }

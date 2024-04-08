@@ -35,6 +35,19 @@ const (
 	MsgLs               MsgName = consts.ModuleLs
 	MsgNetstat          MsgName = consts.ModuleNetstat
 	MsgPs               MsgName = consts.ModulePs
+	MsgCp               MsgName = consts.ModuleCp
+	MsgMv               MsgName = consts.ModuleMv
+	MsgMkdir            MsgName = consts.ModuleMkdir
+	MsgRm               MsgName = consts.ModuleRm
+	MsgCat              MsgName = consts.ModuleCat
+	MsgCd               MsgName = consts.ModuleCd
+	MsgChmod            MsgName = consts.ModuleChmod
+	MsgChown            MsgName = consts.ModuleChown
+	MsgKill             MsgName = consts.ModuleKill
+	MsgEnv              MsgName = consts.ModuleEnv
+	MsgSetEnv           MsgName = consts.ModuleSetEnv
+	MsgUnsetEnv         MsgName = consts.ModuleUnsetEnv
+	MsgWhoami           MsgName = consts.ModuleWhoami
 )
 
 func (r MsgName) String() string {
@@ -83,10 +96,12 @@ func MessageType(message *implantpb.Spite) MsgName {
 		return MsgLoadModule
 	case *implantpb.Spite_Modules:
 		return MsgModules
-	//case *implantpb.Spite_PsResponse:
-	//	return MsgPs
-	//case *implantpb.Spite_LsResponse:
-	//	return MsgLs
+	case *implantpb.Spite_PsResponse:
+		return MsgPs
+	case *implantpb.Spite_LsResponse:
+		return MsgLs
+	case *implantpb.Spite_Empty:
+		return MsgEmpty
 	default:
 		return MsgUnknown
 	}

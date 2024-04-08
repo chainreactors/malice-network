@@ -8,21 +8,23 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func PwdCmd(ctx *grumble.Context, con *console.Console) {
+func CatCmd(ctx *grumble.Context, con *console.Console) {
 	session := con.ActiveTarget.GetInteractive()
 	if session == nil {
 		return
 	}
 	sid := con.ActiveTarget.GetInteractive().SessionId
-	pwdTask, err := con.Rpc.Pwd(con.ActiveTarget.Context(), &implantpb.Request{
-		Name: consts.ModulePwd,
+	fileName := ctx.Flags.String("name")
+	catTask, err := con.Rpc.Cat(con.ActiveTarget.Context(), &implantpb.Request{
+		Name:  consts.ModuleCat,
+		Input: fileName,
 	})
 	if err != nil {
-		con.SessionLog(sid).Errorf("Pwd error: %v", err)
+		con.SessionLog(sid).Errorf("Cat error: %v", err)
 		return
 	}
-	con.AddCallback(pwdTask.TaskId, func(msg proto.Message) {
+	con.AddCallback(catTask.TaskId, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite).GetResponse()
-		con.SessionLog(sid).Consolef("Current working directory: %s\n", resp.GetOutput())
+		con.SessionLog(sid).Consolef("File content: %s", resp.GetOutput())
 	})
 }
