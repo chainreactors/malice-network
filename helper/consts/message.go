@@ -48,3 +48,13 @@ const (
 	CtrlStatusSuccess = 0 + iota
 	CtrlStatusFailed
 )
+
+// task error
+const (
+	TaskErrorOperatorError       = 2
+	TaskErrorNotExpectBody       = 3
+	TaskErrorFieldRequired       = 4
+	TaskErrorFieldLengthMismatch = 5
+	TaskErrorFieldInvalid        = 6
+	TaskError                    = 99
+)

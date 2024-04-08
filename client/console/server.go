@@ -2,10 +2,12 @@ package console
 
 import (
 	"context"
+	"errors"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/tui"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"google.golang.org/grpc"
 	"io"
@@ -137,6 +139,23 @@ func (s *ServerStatus) triggerTaskDone(event *clientpb.Event) {
 	if task == nil {
 		Log.Errorf(ErrNotFoundTask.Error())
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if _, ok := s.Callbacks.Load(task.TaskId); ok {
+		content, err := s.Rpc.GetTaskContent(ctx, &clientpb.Task{
+			TaskId:    task.TaskId,
+			SessionId: task.SessionId,
+		})
+		err = s.handleMaleficError(content)
+		if err != nil {
+			return
+		}
+		err = s.handleTaskError(content.GetStatus())
+		if err != nil {
+			return
+		}
+	}
+
 }
 
 func (s *ServerStatus) EventHandler() {
@@ -174,5 +193,53 @@ func (s *ServerStatus) EventHandler() {
 		}
 
 		//con.triggerReactions(event)
+	}
+}
+
+func (s *ServerStatus) handleMaleficError(content *implantpb.Spite) error {
+	if content.Error == 0 {
+		return nil
+	} else {
+		switch content.Error {
+		case consts.MaleficErrorPanic:
+			Log.Errorf("Module Panic")
+		case consts.MaleficErrorUnpackError:
+			Log.Errorf("Module unpack error")
+		case consts.MaleficErrorMissbody:
+			Log.Errorf("Module miss body")
+		case consts.MaleficErrorModuleError:
+			Log.Errorf("Module error")
+		case consts.MaleficErrorModeleNotFound:
+			Log.Errorf("Module not found")
+		case consts.MaleficErrorTaskError:
+			Log.Errorf("Task error")
+		case consts.MaleficErrorTaskNotFound:
+			Log.Errorf("Task not found")
+		case consts.MaleficErrorTaskOperatorNotFound:
+			Log.Errorf("Task operator not found")
+		}
+		return errors.New("malefic error")
+	}
+}
+
+func (s *ServerStatus) handleTaskError(status *implantpb.Status) error {
+	if status.Status == 0 {
+		return nil
+	} else {
+		switch status.Status {
+		case consts.TaskErrorOperatorError:
+			Log.Errorf("Task error: %s", status.Error)
+		case consts.TaskErrorNotExpectBody:
+			Log.Errorf("Task error: %s", status.Error)
+		case consts.TaskErrorFieldRequired:
+			Log.Errorf("Task error: %s", status.Error)
+		case consts.TaskErrorFieldLengthMismatch:
+			Log.Errorf("Task error: %s", status.Error)
+		case consts.TaskErrorFieldInvalid:
+			Log.Errorf("Task error: %s", status.Error)
+		case consts.TaskError:
+			Log.Errorf("Task error: %s", status.Error)
+		}
+		return errors.New("task error")
 	}
 }

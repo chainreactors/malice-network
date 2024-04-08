@@ -112,31 +112,31 @@ func AssertStatusAndResponse(spite *implantpb.Spite, expect types.MsgName) error
 func buildErrorEvent(task *core.Task, err error) core.Event {
 	if errors.Is(err, ErrNilStatus) {
 		return core.Event{
-			EventType: consts.EventTaskError,
+			EventType: consts.EventTaskDone,
 			Task:      task,
 			Err:       ErrNilStatus.Error(),
 		}
 	} else if errors.Is(err, ErrAssertFailure) {
 		return core.Event{
-			EventType: consts.EventTaskError,
+			EventType: consts.EventTaskDone,
 			Task:      task,
 			Err:       ErrAssertFailure.Error(),
 		}
 	} else if errors.Is(err, ErrNilResponseBody) {
 		return core.Event{
-			EventType: consts.EventTaskError,
+			EventType: consts.EventTaskDone,
 			Task:      task,
 			Err:       ErrNilResponseBody.Error(),
 		}
 	} else if errors.Is(err, ErrMissingRequestField) {
 		return core.Event{
-			EventType: consts.EventTaskError,
+			EventType: consts.EventTaskDone,
 			Task:      task,
 			Err:       ErrMissingRequestField.Error(),
 		}
 	} else {
 		return core.Event{
-			EventType: consts.EventTaskError,
+			EventType: consts.EventTaskDone,
 			Task:      task,
 			Err:       err.Error(),
 		}
