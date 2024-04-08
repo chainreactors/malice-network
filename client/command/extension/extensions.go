@@ -1,34 +1,15 @@
 package extension
 
-/*
-	Sliver Implant Framework
-	Copyright (C) 2021  Bishop Fox
-
-	This program is free software: you can redistribute it and/or modify
-	it under the terms of the GNU General Public License as published by
-	the Free Software Foundation, either version 3 of the License, or
-	(at your option) any later version.
-
-	This program is distributed in the hope that it will be useful,
-	but WITHOUT ANY WARRANTY; without even the implied warranty of
-	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-	GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with this program.  If not, see <https://www.gnu.org/licenses/>.
-*/
-
 import (
 	"encoding/json"
 	"fmt"
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/tui"
+	"github.com/charmbracelet/bubbles/table"
 	"io/ioutil"
 	"strings"
-
-	"github.com/jedib0t/go-pretty/v6/table"
-	"github.com/jedib0t/go-pretty/v6/text"
 )
 
 // ExtensionsCmd - List information about installed extensions
@@ -42,23 +23,17 @@ func ExtensionsCmd(ctx *grumble.Context, con *console.Console) {
 
 // PrintExtensions - Print a list of loaded extensions
 func PrintExtensions(con *console.Console) {
-	tw := table.NewWriter()
-	tw.SetStyle(styles.GetTableStyle(con.Settings.TableStyle))
-	tw.AppendHeader(table.Row{
-		"Name",
-		"Command Name",
-		"Platforms",
-		"Version",
-		"Installed",
-		"Extension Author",
-		"Original Author",
-		"Repository",
-	})
-	tw.SortBy([]table.SortBy{
-		{Name: "Name", Mode: table.Asc},
-	})
-	tw.SetColumnConfigs([]table.ColumnConfig{
-		{Number: 5, Align: text.AlignCenter},
+	var rowEntries []table.Row
+	var row table.Row
+	tableModel := tui.NewTable([]table.Column{
+		{Title: "Name", Width: 10},
+		{Title: "Command Name", Width: 10},
+		{Title: "Platforms", Width: 7},
+		{Title: "Version", Width: 7},
+		{Title: "Installed", Width: 4},
+		{Title: "Extension Author", Width: 10},
+		{Title: "Original Author", Width: 10},
+		{Title: "Repository", Width: 20},
 	})
 
 	installedManifests := getInstalledManifests()
@@ -67,7 +42,7 @@ func PrintExtensions(con *console.Console) {
 		if _, ok := installedManifests[extension.CommandName]; ok {
 			installed = "✅"
 		}
-		tw.AppendRow(table.Row{
+		row = table.Row{
 			extension.Name,
 			extension.CommandName,
 			strings.Join(extensionPlatforms(extension), ",\n"),
@@ -76,9 +51,15 @@ func PrintExtensions(con *console.Console) {
 			extension.ExtensionAuthor,
 			extension.OriginalAuthor,
 			extension.RepoURL,
-		})
+		}
+		rowEntries = append(rowEntries, row)
 	}
-	console.Log.Info(tw.Render())
+	tableModel.Rows = rowEntries
+	tableModel.SetRows()
+	err := tui.Run(tableModel)
+	if err != nil {
+		return
+	}
 }
 
 func extensionPlatforms(extension *ExtensionManifest) []string {

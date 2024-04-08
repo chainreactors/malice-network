@@ -27,15 +27,15 @@ import (
 	"github.com/chainreactors/malice-network/client/command/alias"
 	"github.com/chainreactors/malice-network/client/command/extension"
 	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/tui"
 	"github.com/chainreactors/malice-network/helper/cryptography/minisign"
-	"github.com/chainreactors/malice-network/helper/styles"
+	"github.com/pterm/pterm"
 	"net/url"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/jedib0t/go-pretty/v6/table"
-	"golang.org/x/term"
+	"github.com/charmbracelet/bubbles/table"
 )
 
 // ArmoryIndex - Index JSON containing alias/extension/bundle information
@@ -224,35 +224,15 @@ func AliasExtensionOrBundleCompleter(prefix string, args []string, con *console.
 
 // PrintArmoryPackages - Prints the armory packages
 func PrintArmoryPackages(aliases []*alias.AliasManifest, exts []*extension.ExtensionManifest, con *console.Console) {
-	width, _, err := term.GetSize(0)
-	if err != nil {
-		width = 999
-	}
+	var rowEntries []table.Row
+	var row table.Row
 
-	tw := table.NewWriter()
-	tw.SetStyle(styles.GetTableStyle(con.Settings.TableStyle))
-	tw.SetTitle(console.Bold + "Packages" + console.Normal)
-
-	if con.Settings.SmallTermWidth < width {
-		tw.AppendHeader(table.Row{
-			"Command Name",
-			"Version",
-			"Type",
-			"Help",
-			"URL",
-		})
-	} else {
-		tw.AppendHeader(table.Row{
-			"Command Name",
-			"Version",
-			"Type",
-			"Help",
-		})
-	}
-
-	// Columns start at 1 for some dumb reason
-	tw.SortBy([]table.SortBy{
-		{Number: 1, Mode: table.Asc},
+	tableModel := tui.NewTable([]table.Column{
+		{Title: "Command Name", Width: 10},
+		{Title: "Version", Width: 10},
+		{Title: "Type", Width: 4},
+		{Title: "Help", Width: 10},
+		{Title: "URL", Width: 15},
 	})
 
 	type pkgInfo struct {
@@ -282,44 +262,42 @@ func PrintArmoryPackages(aliases []*alias.AliasManifest, exts []*extension.Exten
 		})
 	}
 
-	rows := []table.Row{}
 	for _, pkg := range entries {
-		color := console.Normal
+		var commandName string
 		if extension.CmdExists(pkg.CommandName, con.App) {
-			color = console.Green
-		}
-		if con.Settings.SmallTermWidth < width {
-			rows = append(rows, table.Row{
-				fmt.Sprintf(color+"%s"+console.Normal, pkg.CommandName),
-				fmt.Sprintf(color+"%s"+console.Normal, pkg.Version),
-				fmt.Sprintf(color+"%s"+console.Normal, pkg.Type),
-				fmt.Sprintf(color+"%s"+console.Normal, pkg.Help),
-				fmt.Sprintf(color+"%s"+console.Normal, pkg.URL),
-			})
+			commandName = pterm.FgGreen.Sprint(pkg.CommandName)
 		} else {
-			rows = append(rows, table.Row{
-				fmt.Sprintf(color+"%s"+console.Normal, pkg.CommandName),
-				fmt.Sprintf(color+"%s"+console.Normal, pkg.Version),
-				fmt.Sprintf(color+"%s"+console.Normal, pkg.Type),
-				fmt.Sprintf(color+"%s"+console.Normal, pkg.Help),
-			})
+			commandName = pkg.CommandName
 		}
+		row = table.Row{
+			commandName,
+			pkg.Version,
+			pkg.Type,
+			pkg.Help,
+			pkg.URL,
+		}
+
+		rowEntries = append(rowEntries, row)
 	}
-	tw.AppendRows(rows)
-	console.Log.Infof("%s\n", tw.Render())
+	tableModel.Rows = rowEntries
+	tableModel.SetRows()
+	err := tui.Run(tableModel)
+	if err != nil {
+		return
+	}
 }
 
 // PrintArmoryBundles - Prints the armory bundles
 func PrintArmoryBundles(bundles []*ArmoryBundle, con *console.Console) {
-	tw := table.NewWriter()
-	tw.SetStyle(styles.GetTableStyle(con.Settings.TableStyle))
-	tw.SetTitle(console.Bold + "Bundles" + console.Normal)
-	tw.AppendHeader(table.Row{
-		"Name",
-		"Contains",
-	})
-	tw.SortBy([]table.SortBy{
-		{Name: "Name", Mode: table.Asc},
+	var rowEntries []table.Row
+	var row table.Row
+
+	tableModel := tui.NewTable([]table.Column{
+		{Title: "Name", Width: 10},
+		{Title: "Contains", Width: 20},
+		{Title: "Type", Width: 4},
+		{Title: "Help", Width: 10},
+		{Title: "URL", Width: 15},
 	})
 	for _, bundle := range bundles {
 		if len(bundle.Packages) < 1 {
@@ -339,12 +317,18 @@ func PrintArmoryBundles(bundles []*ArmoryBundle, con *console.Console) {
 				}
 			}
 		}
-		tw.AppendRow(table.Row{
+		row = table.Row{
 			bundle.Name,
 			packages,
-		})
+		}
+		rowEntries = append(rowEntries, row)
 	}
-	console.Log.Infof("%s\n", tw.Render())
+	tableModel.Rows = rowEntries
+	tableModel.SetRows()
+	err := tui.Run(tableModel)
+	if err != nil {
+		return
+	}
 }
 
 func parseArmoryHTTPConfig(ctx *grumble.Context) ArmoryHTTPConfig {

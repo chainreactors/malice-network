@@ -13,7 +13,7 @@ func download(ctx *grumble.Context, con *console.Console) {
 	if session == nil {
 		return
 	}
-
+	sid := con.ActiveTarget.GetInteractive().SessionId
 	name := ctx.Flags.String("name")
 	path := ctx.Flags.String("path")
 	downloadTask, err := con.Rpc.Download(con.ActiveTarget.Context(), &implantpb.DownloadRequest{
@@ -21,7 +21,7 @@ func download(ctx *grumble.Context, con *console.Console) {
 		Path: path,
 	})
 	if err != nil {
-		console.Log.Errorf("Download error: %v", err)
+		con.SessionLog(sid).Errorf("Download error: %v", err)
 		return
 	}
 	con.AddCallback(downloadTask.TaskId, func(msg proto.Message) {

@@ -14,6 +14,7 @@ func upload(ctx *grumble.Context, con *console.Console) {
 	if session == nil {
 		return
 	}
+	sid := con.ActiveTarget.GetInteractive().SessionId
 	name := ctx.Flags.String("name")
 	path := ctx.Flags.String("path")
 	target := ctx.Flags.String("target")
@@ -21,7 +22,7 @@ func upload(ctx *grumble.Context, con *console.Console) {
 	hidden := ctx.Flags.Bool("hidden")
 	data, err := os.ReadFile(path)
 	if err != nil {
-		console.Log.Errorf("Can't open file: %s", err)
+		con.SessionLog(sid).Errorf("Can't open file: %s", err)
 	}
 	uploadTask, err := con.Rpc.Upload(con.ActiveTarget.Context(), &implantpb.UploadRequest{
 		Name:   name,
@@ -31,7 +32,7 @@ func upload(ctx *grumble.Context, con *console.Console) {
 		Hidden: hidden,
 	})
 	if err != nil {
-		console.Log.Errorf("Download error: %v", err)
+		con.SessionLog(sid).Errorf("Download error: %v", err)
 		return
 	}
 	con.AddCallback(uploadTask.TaskId, func(msg proto.Message) {
