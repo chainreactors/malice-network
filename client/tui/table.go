@@ -27,6 +27,7 @@ type TableModel struct {
 	currentPage int
 	totalPages  int
 	rowsPerPage int
+	handle      func()
 }
 
 func (t *TableModel) UpdatePagination() {
@@ -55,6 +56,7 @@ func (t *TableModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "q", "ctrl+c":
 			return t, tea.Quit
 		case "enter":
+			t.handleSelectedRow()
 			return t, tea.Quit
 		case "n": // Next page
 			if t.currentPage < t.totalPages {
@@ -93,4 +95,17 @@ func (t *TableModel) SetRows() {
 		t.totalPages++
 	}
 	t.currentPage = 1
+}
+
+func (t *TableModel) handleSelectedRow() {
+	t.handle()
+}
+
+func (t *TableModel) SetHandle(handle func()) {
+	t.handle = handle
+}
+
+func (t *TableModel) GetSelectedRow() table.Row {
+	selectedRow := t.table.SelectedRow()
+	return selectedRow
 }

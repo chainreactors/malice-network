@@ -6,11 +6,11 @@ import (
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/client/tui"
-	"github.com/chainreactors/malice-network/helper/helper"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/muesli/termenv"
 	"github.com/pterm/pterm"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -55,8 +55,8 @@ func PrintSessions(sessions map[string]*clientpb.Session, con *console.Console) 
 	var row table.Row
 	groupColors := make(map[string]termenv.ANSIColor)
 	tableModel := tui.NewTable([]table.Column{
-		{Title: "ID", Width: 10},
-		{Title: "Group", Width: 10},
+		{Title: "ID", Width: 40},
+		{Title: "Group", Width: 7},
 		{Title: "Name", Width: 4},
 		{Title: "Transport", Width: 10},
 		{Title: "Remote Address", Width: 15},
@@ -64,7 +64,7 @@ func PrintSessions(sessions map[string]*clientpb.Session, con *console.Console) 
 		{Title: "Username", Width: 10},
 		{Title: "Operating System", Width: 20},
 		{Title: "Last Message", Width: 15},
-		{Title: "Health", Width: 10},
+		{Title: "Health", Width: 15},
 	})
 	for _, session := range sessions {
 		var SessionHealth string
@@ -79,7 +79,7 @@ func PrintSessions(sessions map[string]*clientpb.Session, con *console.Console) 
 		}
 		username := strings.TrimPrefix(session.Os.Username, session.Os.Hostname+"\\") // For non-AD Windows users
 		row = table.Row{
-			termenv.String(helper.ShortSessionID(helper.ShortSessionID(session.SessionId))).Foreground(groupColors[session.GroupName]).String(),
+			termenv.String(session.SessionId).Foreground(groupColors[session.GroupName]).String(),
 			session.GroupName,
 			session.Name,
 			"",
@@ -94,8 +94,34 @@ func PrintSessions(sessions map[string]*clientpb.Session, con *console.Console) 
 	}
 	tableModel.Rows = rowEntries
 	tableModel.SetRows()
+	tableModel.SetHandle(func() {
+		SessionLogin(tableModel, con)()
+	})
 	err := tui.Run(tableModel)
 	if err != nil {
 		return
+	}
+}
+
+func SessionLogin(tableModel *tui.TableModel, con *console.Console) func() {
+	con.UpdateSession()
+	selectRow := tableModel.GetSelectedRow()
+	re := regexp.MustCompile(`\x1b\[[0-9;]*m(.*?)\x1b\[0m`)
+	matches := re.FindStringSubmatch(selectRow[0])
+
+	if len(matches) < 1 {
+		console.Log.Errorf("No match found")
+		return nil
+	}
+	session := con.Sessions[matches[1]]
+
+	if session == nil {
+		console.Log.Errorf(console.ErrNotFoundSession.Error())
+		return nil
+	}
+
+	return func() {
+		con.ActiveTarget.Set(session)
+		console.Log.Infof("Active session %s (%s)\n", session.Name, session.SessionId)
 	}
 }

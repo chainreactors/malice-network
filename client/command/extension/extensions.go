@@ -56,6 +56,7 @@ func PrintExtensions(con *console.Console) {
 	}
 	tableModel.Rows = rowEntries
 	tableModel.SetRows()
+	tableModel.SetHandle(func() {})
 	err := tui.Run(tableModel)
 	if err != nil {
 		return

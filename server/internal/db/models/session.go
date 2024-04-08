@@ -37,6 +37,7 @@ func ConvertToSessionDB(session *core.Session) *Session {
 	currentTime := time.Now()
 	return &Session{
 		SessionID:  session.ID,
+		GroupName:  "default",
 		RemoteAddr: session.RemoteAddr,
 		ListenerId: session.ListenerId,
 		Os:         convertToOsDB(session.Os),
