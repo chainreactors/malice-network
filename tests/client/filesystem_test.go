@@ -11,7 +11,7 @@ import (
 func TestPwd(t *testing.T) {
 	t.Log("Testing pwd")
 	rpc := common.NewClient(common.DefaultGRPCAddr, common.TestSid)
-	task, err := rpc.Call(consts.ModulePwd, &implantpb.Empty{})
+	task, err := rpc.Call(consts.ModulePwd, &implantpb.Request{})
 	if err != nil {
 		t.Log(err.Error())
 		return

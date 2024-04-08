@@ -65,7 +65,7 @@ func (c *Client) Call(rpcname string, msg proto.Message) (proto.Message, error) 
 	case consts.ModuleDownload:
 		resp, err = c.Client.Download(meta, msg.(*implantpb.DownloadRequest))
 	case consts.ModulePwd:
-		resp, err = c.Client.Pwd(meta, msg.(*implantpb.Empty))
+		resp, err = c.Client.Pwd(meta, msg.(*implantpb.Request))
 	case consts.ModuleCd:
 		resp, err = c.Client.Cd(meta, msg.(*implantpb.Request))
 	case consts.CommandBroadcast:
