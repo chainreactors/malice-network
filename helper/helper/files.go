@@ -3,6 +3,8 @@ package helper
 import (
 	"archive/tar"
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 
 	"fmt"
 	"io"
@@ -120,4 +122,20 @@ func RemoveFile(filePath string) error {
 		return err
 	}
 	return nil
+}
+
+func CalculateSHA256Checksum(filePath string) (string, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	hash := sha256.New()
+	if _, err := io.Copy(hash, file); err != nil {
+		return "", err
+	}
+
+	checksum := hex.EncodeToString(hash.Sum(nil))
+	return checksum, nil
 }

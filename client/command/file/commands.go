@@ -2,7 +2,6 @@ package file
 
 import (
 	"github.com/chainreactors/grumble"
-	"github.com/chainreactors/malice-network/client/command/completer"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/helper/consts"
 )
@@ -26,24 +25,19 @@ func Commands(con *console.Console) []*grumble.Command {
 			Name: consts.CommandSync,
 			Help: "sync file",
 			Flags: func(f *grumble.Flags) {
-				f.String("n", "name", "", "filename")
+				f.String("i", "taskID", "", "task ID")
 			},
 			Run: func(ctx *grumble.Context) error {
 				sync(ctx, con)
 				return nil
-			},
-			Completer: func(prefix string, args []string) []string {
-				return completer.SessionIDCompleter(con, prefix)
-			},
-			HelpGroup: consts.ImplantGroup,
+			}, HelpGroup: consts.ImplantGroup,
 		},
 		{
 			Name: consts.ModuleUpload,
 			Help: "upload file",
 			Flags: func(f *grumble.Flags) {
-				f.String("n", "name", "", "filename")
-				f.String("p", "path", "", "filepath")
-				f.String("t", "target", "", "file in implant target")
+				f.String("s", "source", "", "source path")
+				f.String("d", "destination", "", "target path")
 				f.Int("", "priv", 0o644, "file Privilege")
 				f.Bool("", "hidden", false, "filename")
 			},

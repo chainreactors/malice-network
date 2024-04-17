@@ -6,6 +6,7 @@ import (
 	"github.com/chainreactors/files"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/helper"
 	"github.com/chainreactors/malice-network/helper/packet"
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
@@ -42,7 +43,7 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 			return nil, err
 		}
 		go greq.HandlerAsyncResponse(ch, types.MsgBlock)
-		err = db.UpdateTask(greq.Task, greq.Task.Cur)
+		err = db.UpdateTask(greq.Task, greq.Task.Cur+1)
 		if err != nil {
 			logs.Log.Errorf("cannot update task %d , %s in db", greq.Task.Id, err.Error())
 			return nil, err
@@ -65,6 +66,15 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 			return nil, err
 		}
 		var blockId = 0
+		err = db.AddTask("upload", greq.Task, &models.FileDescription{
+			Name:    req.Name,
+			Path:    req.Target,
+			Command: fmt.Sprintf("upload -%d -%t", req.Priv, req.Hidden),
+			Size:    int64(len(req.Data)),
+		})
+		if err != nil {
+			logs.Log.Errorf("cannot create task %d , %s in db", greq.Task.Id, err.Error())
+		}
 		go func() {
 			stat := <-out
 			err := AssertStatus(stat)
@@ -84,24 +94,26 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 					Timeout: uint64(consts.MinTimeout.Seconds()),
 					TaskId:  greq.Task.Id,
 				}, msg)
+				spite.Name = types.MsgUpload.String()
 				in <- spite
 				resp := <-out
+				greq.Session.AddMessage(resp, blockId+1)
 				err = AssertResponse(resp, types.MsgAck)
 				if err != nil {
 					return
 				}
-				greq.Session.AddMessage(resp, blockId)
 				if resp.GetAsyncAck().Success {
 					greq.Task.Done(core.Event{
 						EventType: consts.EventTaskDone,
 						Task:      greq.Task,
 					})
-					err = db.UpdateTask(greq.Task, blockId)
+					err = db.UpdateTask(greq.Task, blockId+1)
 					if err != nil {
 						logs.Log.Errorf("cannot update task %d , %s in db", greq.Task.Id, err.Error())
 						return
 					}
 				}
+				blockId++
 			}
 			close(in)
 		}()
@@ -123,14 +135,13 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 
 	go func() {
 		resp := <-out
-
-		stat := resp.GetStatus()
 		err := AssertStatus(resp)
 		if err != nil {
 			greq.Task.Panic(buildErrorEvent(greq.Task, err), resp)
 			return
 		}
-		fileName := path.Join(configs.TempPath, stat.GetDownloadResponse().Checksum)
+		respCheckSum := resp.GetDownloadResponse().Checksum
+		fileName := path.Join(configs.TempPath, req.Name)
 		if files.IsExist(fileName) {
 			greq.Task.Finish(core.Event{
 				EventType: consts.EventTaskCallback,
@@ -138,12 +149,12 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 			})
 			return
 		}
-		greq.Task.Total = int(stat.GetDownloadResponse().Size) / config.Int(consts.MaxPacketLength)
+		greq.Task.Total = int(resp.GetDownloadResponse().Size)/config.Int(consts.MaxPacketLength) + 1
 		td := &models.FileDescription{
 			Name:    req.Name,
 			Path:    req.Path,
 			Command: fmt.Sprintf("download -%s -%s ", req.Name, req.Path),
-			Size:    int64(stat.GetDownloadResponse().Size),
+			Size:    int64(resp.GetDownloadResponse().Size),
 		}
 		err = db.AddTask("download", greq.Task, td)
 		if err != nil {
@@ -154,6 +165,17 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 			return
 		}
 		defer downloadFile.Close()
+		msg := &implantpb.AsyncACK{
+			Id:      greq.Task.Id,
+			Success: true,
+			End:     false,
+		}
+		spite, _ := types.BuildSpite(&implantpb.Spite{
+			Timeout: uint64(consts.MinTimeout.Seconds()),
+			TaskId:  greq.Task.Id,
+		}, msg)
+		spite.Name = types.MsgDownload.String()
+		in <- spite
 		for resp := range out {
 			block := resp.GetBlock()
 			_, err = downloadFile.Write(block.Content)
@@ -161,11 +183,27 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 				return
 			}
 			ack, _ := greq.NewSpite(&implantpb.AsyncACK{Success: true})
+			ack.Name = types.MsgDownload.String()
 			in <- ack
-			err := db.UpdateTask(greq.Task, int(block.BlockId))
+			err := db.UpdateTask(greq.Task, int(block.BlockId+1))
 			if err != nil {
 				logs.Log.Errorf("cannot update task %d , %s in db", greq.Task.Id, err.Error())
 				return
+			}
+			if block.End {
+				checksum, err := helper.CalculateSHA256Checksum(fileName)
+				if err != nil {
+					greq.Task.Panic(buildErrorEvent(greq.Task, err), resp)
+					return
+				}
+				if checksum != respCheckSum {
+					greq.Task.Panic(buildErrorEvent(greq.Task, fmt.Errorf("checksum error")), resp)
+					return
+				}
+				greq.Task.Done(core.Event{
+					EventType: consts.EventTaskDone,
+					Task:      greq.Task,
+				})
 			}
 		}
 	}()
@@ -181,7 +219,7 @@ func (rpc *Server) Sync(ctx context.Context, req *clientpb.Sync) (*clientpb.Sync
 	//if !files.IsExist(td.Path + td.Name) {
 	//	return nil, os.ErrExist
 	//}
-	data, err := os.ReadFile(path.Join(td.Path, td.Name))
+	data, err := os.ReadFile(path.Join(configs.TempPath, td.Name))
 	if err != nil {
 		return nil, err
 	}

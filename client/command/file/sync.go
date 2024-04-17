@@ -9,10 +9,10 @@ import (
 )
 
 func sync(ctx *grumble.Context, con *console.Console) {
-	name := ctx.Flags.String("name")
+	tid := ctx.Flags.String("taskID")
 	sid := con.ActiveTarget.GetInteractive().SessionId
 	syncTask, err := con.Rpc.Sync(con.ActiveTarget.Context(), &clientpb.Sync{
-		FileId: name,
+		FileId: sid + "-" + tid,
 	})
 	if err != nil {
 		con.SessionLog(sid).Errorf("Can't sync file: %s", err)

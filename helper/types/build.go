@@ -69,6 +69,9 @@ func BuildSpite(spite *implantpb.Spite, msg proto.Message) (*implantpb.Spite, er
 	case *implantpb.LoadModule:
 		spite.Name = MsgLoadModule.String()
 		spite.Body = &implantpb.Spite_LoadModule{LoadModule: msg.(*implantpb.LoadModule)}
+	case *implantpb.AsyncACK:
+		spite.Name = MsgAck.String()
+		spite.Body = &implantpb.Spite_AsyncAck{AsyncAck: msg.(*implantpb.AsyncACK)}
 	default:
 		return spite, ErrUnknownSpite
 	}

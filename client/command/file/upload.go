@@ -3,7 +3,9 @@ package file
 import (
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/tui"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
+	"path/filepath"
 
 	"google.golang.org/protobuf/proto"
 	"os"
@@ -15,9 +17,8 @@ func upload(ctx *grumble.Context, con *console.Console) {
 		return
 	}
 	sid := con.ActiveTarget.GetInteractive().SessionId
-	name := ctx.Flags.String("name")
-	path := ctx.Flags.String("path")
-	target := ctx.Flags.String("target")
+	path := ctx.Flags.String("source")
+	target := ctx.Flags.String("destination")
 	priv := ctx.Flags.Int("priv")
 	hidden := ctx.Flags.Bool("hidden")
 	data, err := os.ReadFile(path)
@@ -25,7 +26,7 @@ func upload(ctx *grumble.Context, con *console.Console) {
 		con.SessionLog(sid).Errorf("Can't open file: %s", err)
 	}
 	uploadTask, err := con.Rpc.Upload(con.ActiveTarget.Context(), &implantpb.UploadRequest{
-		Name:   name,
+		Name:   filepath.Base(path),
 		Target: target,
 		Priv:   uint32(priv),
 		Data:   data,
@@ -35,6 +36,15 @@ func upload(ctx *grumble.Context, con *console.Console) {
 		con.SessionLog(sid).Errorf("Download error: %v", err)
 		return
 	}
+	total := uploadTask.Total
+	cur := uploadTask.Cur
 	con.AddCallback(uploadTask.TaskId, func(msg proto.Message) {
+		cur++
+		barModel := tui.NewBar()
+		barModel.SetProgressPercent(float64(cur) / float64(total))
+		//err := tui.Run(barModel)
+		//if err != nil {
+		//	con.SessionLog(sid).Errorf("Error running bar: %v", err)
+		//}
 	})
 }
