@@ -34,7 +34,7 @@ func Command(con *console.Console) []*grumble.Command {
 }
 
 func TasksCmd(ctx *grumble.Context, con *console.Console) {
-	//con.UpdateTasks(con.ActiveTarget.GetInteractive())
+	con.UpdateTasks(con.ActiveTarget.GetInteractive())
 	sid := con.ActiveTarget.GetInteractive().SessionId
 	if 0 < len(con.Sessions[sid].Tasks) {
 		PrintTasks(con.Sessions[sid].Tasks, con)
@@ -44,26 +44,27 @@ func TasksCmd(ctx *grumble.Context, con *console.Console) {
 }
 
 func PrintTasks(tasks []*clientpb.Task, con *console.Console) {
+	sid := con.ActiveTarget.GetInteractive().SessionId
 	var rowEntries []table.Row
 	var row table.Row
 	tableModel := tui.NewTable([]table.Column{
 		{Title: "ID", Width: 4},
-		{Title: "Type", Width: 4},
+		{Title: "Type", Width: 10},
 		{Title: "Status", Width: 8},
 		{Title: "Process", Width: 10},
 	})
 	for _, task := range tasks {
 		var processValue string
 		var status string
-		if task.Status == 0 {
-			status = "Run"
-			processValue = fmt.Sprintf("%.2f%%", float64(task.Cur)/float64(task.Total)*100)
+		if task.Status != 0 {
+			status = "Error"
+			processValue = "0%"
 		} else if task.Cur/task.Total == 1 {
 			status = "Complete"
 			processValue = "100%"
 		} else {
-			status = "Error"
-			processValue = "0%"
+			status = "Run"
+			processValue = fmt.Sprintf("%.2f%%", float64(task.Cur)/float64(task.Total)*100)
 		}
 		row = table.Row{
 			strconv.Itoa(int(task.TaskId)),
@@ -74,5 +75,11 @@ func PrintTasks(tasks []*clientpb.Task, con *console.Console) {
 		rowEntries = append(rowEntries, row)
 	}
 	tableModel.Rows = rowEntries
-	tui.Run(tableModel)
+	tableModel.SetRows()
+	tableModel.SetHandle(func() {
+	})
+	err := tui.Run(tableModel)
+	if err != nil {
+		con.SessionLog(sid).Errorf("Error running table: %v", err)
+	}
 }

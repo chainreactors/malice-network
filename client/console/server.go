@@ -98,9 +98,9 @@ func (s *ServerStatus) UpdateTasks(session *clientpb.Session) error {
 	if len(tasks.GetTasks()) == 0 {
 		return nil
 	}
-
+	s.Sessions[session.SessionId].Tasks = []*clientpb.Task{}
 	for _, task := range tasks.GetTasks() {
-		s.Sessions[session.SessionId].Tasks[task.TaskId] = task
+		s.Sessions[session.SessionId].Tasks = append(s.Sessions[session.SessionId].Tasks, task)
 	}
 	return nil
 }
@@ -141,7 +141,7 @@ func (s *ServerStatus) triggerTaskDone(event *clientpb.Event) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	if _, ok := s.Callbacks.Load(task.TaskId); ok {
+	if callback, ok := s.Callbacks.Load(task.TaskId); ok {
 		content, err := s.Rpc.GetTaskContent(ctx, &clientpb.Task{
 			TaskId:    task.TaskId,
 			SessionId: task.SessionId,
@@ -151,6 +151,7 @@ func (s *ServerStatus) triggerTaskDone(event *clientpb.Event) {
 			return
 		}
 		err = s.handleTaskError(content.GetStatus())
+		callback.(TaskCallback)(content)
 		if err != nil {
 			return
 		}

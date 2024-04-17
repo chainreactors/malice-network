@@ -2,7 +2,10 @@ package models
 
 import (
 	"encoding/json"
+	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"gorm.io/gorm"
+	"regexp"
+	"strconv"
 	"time"
 )
 
@@ -43,4 +46,20 @@ func (td *FileDescription) ToJson() (string, error) {
 		return "", err
 	}
 	return string(jsonString), nil
+}
+
+func (t *Task) ToProtobuf() *clientpb.Task {
+	re := regexp.MustCompile(`-(\d+)$`)
+	match := re.FindStringSubmatch(t.ID)
+	if len(match) < 1 {
+		return &clientpb.Task{}
+	}
+	id, _ := strconv.ParseUint(match[1], 10, 32)
+	return &clientpb.Task{
+		TaskId:    uint32(id),
+		Type:      t.Type,
+		SessionId: t.SessionID,
+		Cur:       int32(t.Cur),
+		Total:     int32(t.Total),
+	}
 }

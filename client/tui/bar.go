@@ -12,18 +12,9 @@ const (
 	maxWidth = 60
 )
 
-type progressWriter struct {
-	total      int
-	completed  int
-	onProgress func(float64)
-}
-
-func NewBar(total int) *BarModel {
+func NewBar() *BarModel {
 	bar := &BarModel{
 		progress: progress.New(progress.WithDefaultGradient()),
-		pw: &progressWriter{
-			total: total,
-		},
 	}
 	return bar
 }
@@ -39,13 +30,13 @@ func finalPause() tea.Cmd {
 }
 
 type BarModel struct {
-	pw       *progressWriter
-	progress progress.Model
-	err      error
+	progress        progress.Model
+	progressPercent float64
+	err             error
 }
 
 func (m *BarModel) Init() tea.Cmd {
-	return nil
+	return setPercentMsg(m.progressPercent)
 }
 
 func (m *BarModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -65,15 +56,21 @@ func (m *BarModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 
 	case progressMsg:
-		var cmds []tea.Cmd
+		//var cmds []tea.Cmd
+		//
+		//if msg >= 1.0 {
+		//	cmds = append(cmds, tea.Sequence(finalPause(), tea.Quit))
+		//}
+		//
+		//cmds = append(cmds, m.progress.SetPercent(float64(msg)))
 
-		if msg >= 1.0 {
-			cmds = append(cmds, tea.Sequence(finalPause(), tea.Quit))
+		//return m, tea.Batch(cmds...)
+		if m.progress.Percent() == 1.0 {
+			return m, tea.Quit
 		}
-
-		cmds = append(cmds, m.progress.SetPercent(float64(msg)))
-		return m, tea.Batch(cmds...)
-
+		m.progressPercent = float64(msg)
+		cmd := m.progress.SetPercent(m.progressPercent)
+		return m, tea.Batch(setPercentMsg(m.progressPercent), cmd)
 	// FrameMsg is sent when the progress bar wants to animate itself
 	case progress.FrameMsg:
 		progressModel, cmd := m.progress.Update(msg)
@@ -92,19 +89,29 @@ func (m *BarModel) View() string {
 
 	pad := strings.Repeat(" ", padding)
 	return "\n" +
-		pad + m.progress.View() + "\n\n" +
+		pad + m.progress.ViewAs(m.progressPercent) + "\n\n" +
 		pad + HelpStyle("Press any key to quit")
 }
 
-func (m *BarModel) SetOnProgress(p *tea.Program) {
-	m.pw.onProgress = func(f float64) {
-		p.Send(progressMsg(f))
+func setPercentMsg(percent float64) tea.Cmd {
+	return func() tea.Msg {
+		return progressMsg(percent)
 	}
 }
 
-func (m *BarModel) Incr() {
-	m.pw.completed++
-	if m.pw.total > 0 && m.pw.onProgress != nil {
-		m.pw.onProgress(float64(m.pw.completed) / float64(m.pw.total))
-	}
+func (m *BarModel) SetProgressPercent(percent float64) {
+	m.progressPercent = percent
 }
+
+//func (m *BarModel) SetOnProgress(p *tea.Program) {
+//	m.pw.onProgress = func(f float64) {
+//		p.Send(progressMsg(f))
+//	}
+//}
+
+//func (m *BarModel) Incr() {
+//	m.pw.completed++
+//	if m.pw.total > 0 && m.pw.onProgress != nil {
+//		m.pw.onProgress(float64(m.pw.completed) / float64(m.pw.total))
+//	}
+//}

@@ -5,18 +5,22 @@ import (
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/server/internal/core"
+	"github.com/chainreactors/malice-network/server/internal/db"
 )
 
 func (rpc *Server) GetTasks(ctx context.Context, session *clientpb.Session) (*clientpb.Tasks, error) {
 	resp := &clientpb.Tasks{
 		Tasks: []*clientpb.Task{},
 	}
-
-	sess, ok := core.Sessions.Get(session.SessionId)
-	if !ok {
-		return nil, ErrNotFoundSession
+	tasks, err := db.GetAllTasks(session.SessionId)
+	if err != nil {
+		return nil, err
 	}
-	for _, task := range sess.Tasks.All() {
+	//sess, ok := core.Sessions.Get(session.SessionId)
+	//if !ok {
+	//	return nil, ErrNotFoundSession
+	//}
+	for _, task := range tasks {
 		resp.Tasks = append(resp.Tasks, task.ToProtobuf())
 	}
 
