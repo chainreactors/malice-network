@@ -110,19 +110,20 @@ func UpdateSessionStatus() error {
 		return err
 	}
 	currentTime := time.Now()
-	for _, session := range sessions {
-		timeDiff := currentTime.Sub(session.Last)
-		if timeDiff <= time.Duration(session.Time.Interval)*time.Second {
-			if err := Session().Model(&session).Update("IsAlive", true).Error; err != nil {
-				return err
-			}
-		} else {
-			if err := Session().Model(&session).Update("IsAlive", false).Error; err != nil {
-				return err
+	for {
+		for _, session := range sessions {
+			timeDiff := currentTime.Sub(session.Last)
+			if timeDiff <= time.Duration(session.Time.Interval)*time.Second {
+				if err := Session().Model(&session).Update("IsAlive", true).Error; err != nil {
+					return err
+				}
+			} else {
+				if err := Session().Model(&session).Update("IsAlive", false).Error; err != nil {
+					return err
+				}
 			}
 		}
 	}
-	return nil
 }
 
 func CreateOperator(name string) error {
