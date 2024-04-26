@@ -81,6 +81,14 @@ func Execute() {
 		logs.Log.Errorf("cannot init root ca , %s ", err.Error())
 		return
 	}
+	if opt.Daemon == true {
+		err = StartAliveSession()
+		if err != nil {
+			logs.Log.Errorf("cannot start alive session , %s ", err.Error())
+			return
+		}
+		rpc.DaemonStart(opt.Server.GRPCPort, opt.Listeners)
+	}
 
 	err = StartGrpc(opt.Server.GRPCPort)
 	if err != nil {
@@ -120,12 +128,20 @@ func Execute() {
 
 // Start - Starts the server console
 func StartGrpc(port uint16) error {
-	// start grpc
-	_, _, err := rpc.StartClientListener(port)
+	// start alive session
+	err := StartAliveSession()
 	if err != nil {
 		return err
 	}
 
+	_, _, err = rpc.StartClientListener(port)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func StartAliveSession() error {
 	// start alive session
 	sessions, err := db.FindAliveSessions()
 	if err != nil {

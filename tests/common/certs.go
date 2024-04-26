@@ -149,7 +149,7 @@ func RpcOptions() []grpc.DialOption {
 	//if err != nil {
 	//	panic(err)
 	//}
-	configFile := filepath.Join(assets.GetConfigDir(), "admin_localhost.yaml")
+	configFile := filepath.Join(assets.GetConfigDir(), "hezhi_localhost.yaml")
 	config, err := assets.ReadConfig(configFile)
 	if err != nil {
 		fmt.Println(err.Error())

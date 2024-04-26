@@ -2,29 +2,92 @@ package client
 
 import (
 	"fmt"
-	"github.com/erikgeiser/promptkit/confirmation"
+	"github.com/charmbracelet/bubbles/progress"
+	tea "github.com/charmbracelet/bubbletea"
 	"os"
+	"strings"
 	"testing"
 )
 
-func TestConfirm(T *testing.T) {
-	input := confirmation.New("Do you want to try out promptkit?",
-		confirmation.NewValue(true))
-	input.Template = confirmation.TemplateYN
-	input.ResultTemplate = confirmation.ResultTemplateYN
-	input.KeyMap.SelectYes = append(input.KeyMap.SelectYes, "+")
-	input.KeyMap.SelectNo = append(input.KeyMap.SelectNo, "-")
-
-	ready, err := input.RunPrompt()
-	if err != nil {
-		fmt.Printf("Error: %v\n", err)
-
-		os.Exit(1)
-	}
-
-	// do something with the result
-	fmt.Println(ready)
-}
+//func NewSelect(choices []string) *SelectModel {
+//	return &SelectModel{
+//		Choices: choices,
+//	}
+//}
+//
+//type SelectModel struct {
+//	Choices      []string
+//	SelectedItem int
+//	KeyHandler   KeyHandler
+//	NewKey       string
+//	IsQuit       bool
+//}
+//
+//func (m *SelectModel) Init() tea.Cmd {
+//	m.SelectedItem = -1
+//	return nil
+//}
+//
+//func (m *SelectModel) View() string {
+//	var view strings.Builder
+//
+//	for i, choice := range m.Choices {
+//		if i == m.SelectedItem {
+//			view.WriteString("[√] ")
+//		} else {
+//			view.WriteString("[ ] ")
+//		}
+//		view.WriteString(choice)
+//		view.WriteRune('\n')
+//	}
+//
+//	return view.String()
+//}
+//
+//type KeyHandler func(*SelectModel, tea.Msg) (tea.Model, tea.Cmd)
+//
+//func (m *SelectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+//	switch msg := msg.(type) {
+//	case tea.KeyMsg:
+//		switch msg.String() {
+//		case "q":
+//			return m, tea.Quit
+//		case "up":
+//			m.SelectedItem--
+//			if m.SelectedItem < 0 {
+//				m.SelectedItem = len(m.Choices) - 1
+//			}
+//			return m, nil
+//		case "down":
+//			m.SelectedItem++
+//			if m.SelectedItem >= len(m.Choices) {
+//				m.SelectedItem = 0
+//			}
+//			return m, nil
+//		case "enter":
+//			if m.SelectedItem >= 0 && m.SelectedItem < len(m.Choices) {
+//			}
+//			return m, tea.Quit
+//		case m.NewKey:
+//			newModel, _ := m.KeyHandler(m, msg)
+//			if m.IsQuit {
+//				return newModel, tea.Quit
+//			}
+//			return newModel, nil
+//		}
+//	}
+//
+//	return m, nil
+//}
+//
+//func TestConfirm(T *testing.T) {
+//	a := []string{"1", "2", "3"}
+//	m := NewSelect(a)
+//	if _, err := tea.NewProgram(m).Run(); err != nil {
+//		fmt.Println("could not run program:", err)
+//		os.Exit(1)
+//	}
+//}
 
 //	columns := []table.Column{
 //		{Title: "ID", Width: 4},
@@ -106,113 +169,129 @@ func TestConfirm(T *testing.T) {
 //	return baseStyle.Render(m.table.View()) + "\n"
 //}
 
-//const (
+// const (
+//
 //	padding  = 2
 //	maxWidth = 60
-//)
 //
-//var helpStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#626262")).Render
+// )
 //
-//func TestCommand(t *testing.T) {
-//	implant := common.NewImplant(common.DefaultListenerAddr, common.TestSid)
-//	implant.Register()
-//	time.Sleep(1 * time.Second)
-//	fmt.Println(hash.Md5Hash([]byte(implant.Sid)))
-//	go func() {
+// var helpStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#626262")).Render
 //
-//		upload, err := implant.Request(nil)
-//		if err != nil {
-//			fmt.Println(err.Error())
-//			return
-//		}
-//		taskid := upload.(* implantpb.Spites).Spites[0].TaskId
-//		fmt.Printf("res %v %v\n", upload, err)
+//	func TestCommand(t *testing.T) {
+//		implant := common.NewImplant(common.DefaultListenerAddr, common.TestSid)
+//		implant.Register()
 //		time.Sleep(1 * time.Second)
+//		fmt.Println(hash.Md5Hash([]byte(implant.Sid)))
+//		go func() {
 //
-//		implant.Request(implant.BuildCommonSpite(common.StatusSpite, taskid))
-//		time.Sleep(1 * time.Second)
-//		block, err := implant.Request(nil)
+//			upload, err := implant.Request(nil)
+//			if err != nil {
+//				fmt.Println(err.Error())
+//				return
+//			}
+//			taskid := upload.(* implantpb.Spites).Spites[0].TaskId
+//			fmt.Printf("res %v %v\n", upload, err)
+//			time.Sleep(1 * time.Second)
+//
+//			implant.Request(implant.BuildCommonSpite(common.StatusSpite, taskid))
+//			time.Sleep(1 * time.Second)
+//			block, err := implant.Request(nil)
+//			if err != nil {
+//				fmt.Println(err)
+//				return
+//			}
+//			implant.Request(implant.BuildCommonSpite(common.AckSpite, taskid))
+//			fmt.Println(block)
+//		}()
+//		meta := metadata.NewOutgoingContext(context.Background(), metadata.Pairs("session_id", hash.Md5Hash(common.TestSid)))
+//		rpc := common.NewClient(common.DefaultGRPCAddr, common.TestSid)
+//		res, err := rpc.Client.Upload(meta, &implantpb.UploadRequest{
+//			Name:   "test.txt",
+//			Target: "C:\\Temp\\test.txt",
+//			Priv:   0o644,
+//			Data:   make([]byte, 1000)})
 //		if err != nil {
 //			fmt.Println(err)
-//			return
 //		}
-//		implant.Request(implant.BuildCommonSpite(common.AckSpite, taskid))
-//		fmt.Println(block)
-//	}()
-//	meta := metadata.NewOutgoingContext(context.Background(), metadata.Pairs("session_id", hash.Md5Hash(common.TestSid)))
-//	rpc := common.NewClient(common.DefaultGRPCAddr, common.TestSid)
-//	res, err := rpc.Client.Upload(meta, &implantpb.UploadRequest{
-//		Name:   "test.txt",
-//		Target: "C:\\Temp\\test.txt",
-//		Priv:   0o644,
-//		Data:   make([]byte, 1000)})
-//	if err != nil {
-//		fmt.Println(err)
-//	}
-//	m := model{
-//		progress:       progress.New(progress.WithDefaultGradient()),
-//		processPercent: float64(res.Cur / res.Total),
-//	}
-//
-//	if _, err := tea.NewProgram(m).Run(); err != nil {
-//		fmt.Println("Oh no!", err)
-//		os.Exit(1)
-//	}
-//
-//}
-//
-//type tickMsg time.Time
-//
-//type model struct {
-//	progress       progress.Model
-//	processPercent float64
-//}
-//
-//func (m model) Init() tea.Cmd {
-//	return tickCmd()
-//}
-//
-//func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-//	switch msg := msg.(type) {
-//	case tea.KeyMsg:
-//		return m, tea.Quit
-//
-//	case tea.WindowSizeMsg:
-//		m.progress.Width = msg.Width - padding*2 - 4
-//		if m.progress.Width > maxWidth {
-//			m.progress.Width = maxWidth
+//		m := model{
+//			progress:       progress.New(progress.WithDefaultGradient()),
+//			processPercent: float64(res.Cur / res.Total),
 //		}
-//		return m, nil
 //
-//	case tickMsg:
-//		if m.progress.Percent() == 1.0 {
-//			return m, tea.Quit
+//		if _, err := tea.NewProgram(m).Run(); err != nil {
+//			fmt.Println("Oh no!", err)
+//			os.Exit(1)
 //		}
-//		// Note that you can also use progress.Model.SetPercent to set the
-//		// percentage value explicitly, too.
-//		cmd := m.progress.SetPercent(m.processPercent)
-//		return m, tea.Batch(tickCmd(), cmd)
 //
-//	// FrameMsg is sent when the progress bar wants to animate itself
-//	case progress.FrameMsg:
-//		progressModel, cmd := m.progress.Update(msg)
-//		m.progress = progressModel.(progress.Model)
-//		return m, cmd
-//
-//	default:
-//		return m, nil
-//	}
-//}
-//
-//func (m model) View() string {
-//	pad := strings.Repeat(" ", padding)
-//	return "\n" +
-//		pad + m.progress.View() + "\n\n" +
-//		pad + helpStyle("Press any key to quit")
-//}
-//
-//func tickCmd() tea.Cmd {
-//	return tea.Tick(time.Second*1, func(t time.Time) tea.Msg {
-//		return tickMsg(t)
-//	})
-//}
+// }
+type ProgressMsg float64
+
+const (
+	padding  = 2
+	maxWidth = 60
+)
+
+type model struct {
+	progress       progress.Model
+	processPercent float64
+}
+
+func (m model) Init() tea.Cmd {
+	return simulateProgressUpdate()
+}
+
+func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		return m, tea.Quit
+
+	case tea.WindowSizeMsg:
+		m.progress.Width = msg.Width - padding*2 - 4
+		if m.progress.Width > maxWidth {
+			m.progress.Width = maxWidth
+		}
+		return m, nil
+	// FrameMsg is sent when the progress bar wants to animate itself
+	case progress.FrameMsg:
+		progressModel, cmd := m.progress.Update(msg)
+		m.progress = progressModel.(progress.Model)
+		return m, cmd
+	case ProgressMsg:
+		if m.progress.Percent() == 1.0 {
+			return m, tea.Quit
+		}
+		m.processPercent += 0.1
+		cmd := m.progress.SetPercent(m.processPercent)
+		return m, tea.Batch(simulateProgressUpdate(), cmd)
+	default:
+		return m, nil
+	}
+}
+
+func (m model) View() string {
+	pad := strings.Repeat(" ", padding)
+	return "\n" +
+		pad + m.progress.ViewAs(m.processPercent) + "\n\n"
+}
+
+func simulateProgressUpdate() tea.Cmd {
+	return func() tea.Msg {
+		return ProgressMsg(0.5)
+	}
+}
+
+func TestConfirm(T *testing.T) {
+	m := model{
+		progress: progress.New(progress.WithDefaultGradient()),
+	}
+
+	// 创建一个bubbletea程序实例，同时设置输入输出
+	p := tea.NewProgram(m)
+
+	// 启动程序，并传入初始命令
+	if _, err := p.Run(); err != nil {
+		fmt.Println("无法运行程序:", err)
+		os.Exit(1)
+	}
+}
