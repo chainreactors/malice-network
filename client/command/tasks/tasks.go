@@ -1,6 +1,7 @@
 package tasks
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/assets"
@@ -34,16 +35,29 @@ func Command(con *console.Console) []*grumble.Command {
 }
 
 func TasksCmd(ctx *grumble.Context, con *console.Console) {
-	con.UpdateTasks(con.ActiveTarget.GetInteractive())
+	err := con.UpdateTasks(con.ActiveTarget.GetInteractive())
+	if err != nil {
+		console.Log.Errorf("Error updating tasks: %v", err)
+		return
+	}
 	sid := con.ActiveTarget.GetInteractive().SessionId
-	if 0 < len(con.Sessions[sid].Tasks) {
-		PrintTasks(con.Sessions[sid].Tasks, con)
+	Tasks, err := con.Rpc.GetTaskDescs(con.ActiveTarget.Context(), con.ActiveTarget.GetInteractive())
+	if err != nil {
+		con.SessionLog(sid).Errorf("Error getting tasks: %v", err)
+	}
+	if 0 < len(Tasks.Tasks) {
+		PrintTasks(Tasks.Tasks, con)
 	} else {
 		console.Log.Info("No sessions")
 	}
 }
 
-func PrintTasks(tasks []*clientpb.Task, con *console.Console) {
+type description struct {
+	Name string `json:"name"`
+	Path string `json:"path"`
+}
+
+func PrintTasks(tasks []*clientpb.TaskDesc, con *console.Console) {
 	sid := con.ActiveTarget.GetInteractive().SessionId
 	var rowEntries []table.Row
 	var row table.Row
@@ -52,8 +66,11 @@ func PrintTasks(tasks []*clientpb.Task, con *console.Console) {
 		{Title: "Type", Width: 10},
 		{Title: "Status", Width: 8},
 		{Title: "Process", Width: 10},
+		{Title: "FileName", Width: 15},
+		{Title: "FilePath", Width: 40},
 	})
 	for _, task := range tasks {
+		var desc description
 		var processValue string
 		var status string
 		if task.Status != 0 {
@@ -66,11 +83,18 @@ func PrintTasks(tasks []*clientpb.Task, con *console.Console) {
 			status = "Run"
 			processValue = fmt.Sprintf("%.2f%%", float64(task.Cur)/float64(task.Total)*100)
 		}
+		err := json.Unmarshal([]byte(task.Description), &desc)
+		if err != nil {
+			con.SessionLog(sid).Errorf("Error parsing JSON:", err)
+			return
+		}
 		row = table.Row{
 			strconv.Itoa(int(task.TaskId)),
 			task.Type,
 			status,
 			processValue,
+			desc.Name,
+			desc.Path,
 		}
 		rowEntries = append(rowEntries, row)
 	}

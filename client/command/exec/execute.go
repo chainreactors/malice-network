@@ -28,10 +28,6 @@ func ExecuteCmd(ctx *grumble.Context, con *console.Console) {
 	//hostName := getHostname(session, beacon)
 	var captureOutput bool = output || saveLoot || saveOutput
 
-	if output {
-		console.Log.Error("Using --output in beacon mode, if the command blocks the task will never complete\n")
-	}
-
 	var resp *clientpb.Task
 	var err error
 	resp, err = con.Rpc.Execute(con.ActiveTarget.Context(), &implantpb.ExecRequest{

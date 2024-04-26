@@ -79,17 +79,20 @@ func (s *ServerStatus) UpdateSession() error {
 		return err
 	}
 
-	if len(sessions.GetSessions()) == 0 {
-		return nil
-	}
+	newSessions := make(map[string]*clientpb.Session)
 
 	for _, session := range sessions.GetSessions() {
-		s.Sessions[session.SessionId] = session
+		newSessions[session.SessionId] = session
 	}
+
+	s.Sessions = newSessions
 	return nil
 }
 
 func (s *ServerStatus) UpdateTasks(session *clientpb.Session) error {
+	if session == nil {
+		return errors.New("session is nil")
+	}
 	tasks, err := s.Rpc.GetTasks(context.Background(), session)
 	if err != nil {
 		return err

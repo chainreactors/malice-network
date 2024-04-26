@@ -14,7 +14,7 @@ func Commands(con *console.Console) []*grumble.Command {
 			Help: "Execute command",
 			Flags: func(f *grumble.Flags) {
 				f.Bool("T", "token", false, "execute command with current token (windows only)")
-				f.Bool("o", "output", false, "capture command output")
+				f.Bool("o", "output", true, "capture command output")
 				f.Bool("s", "save", false, "save output to a file")
 				f.Bool("X", "loot", false, "save output as loot")
 				f.Bool("S", "ignore-stderr", false, "don't print STDERR output")

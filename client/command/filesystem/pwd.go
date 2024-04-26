@@ -23,6 +23,6 @@ func PwdCmd(ctx *grumble.Context, con *console.Console) {
 	}
 	con.AddCallback(pwdTask.TaskId, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite).GetResponse()
-		con.SessionLog(sid).Consolef("Current working directory: %s\n", resp.GetOutput())
+		con.SessionLog(sid).Consolef("%s\n", resp.GetOutput())
 	})
 }

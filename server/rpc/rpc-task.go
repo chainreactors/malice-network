@@ -92,3 +92,18 @@ func (rpc *Server) GetAllTaskContent(ctx context.Context, req *clientpb.Task) ([
 	}
 	return nil, ErrNotFoundTask
 }
+
+func (rpc *Server) GetTaskDescs(ctx context.Context, req *clientpb.Session) (*clientpb.TaskDescs, error) {
+	resp := &clientpb.TaskDescs{
+		Tasks: []*clientpb.TaskDesc{},
+	}
+	tasks, err := db.GetAllTasks(req.SessionId)
+	if err != nil {
+		return nil, err
+	}
+	for _, task := range tasks {
+		resp.Tasks = append(resp.Tasks, task.ToDescProtobuf())
+	}
+
+	return resp, nil
+}

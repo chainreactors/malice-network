@@ -63,3 +63,19 @@ func (t *Task) ToProtobuf() *clientpb.Task {
 		Total:     int32(t.Total),
 	}
 }
+
+func (t *Task) ToDescProtobuf() *clientpb.TaskDesc {
+	re := regexp.MustCompile(`-(\d+)$`)
+	match := re.FindStringSubmatch(t.ID)
+	if len(match) < 1 {
+		return &clientpb.TaskDesc{}
+	}
+	id, _ := strconv.ParseUint(match[1], 10, 32)
+	return &clientpb.TaskDesc{
+		TaskId:      uint32(id),
+		Type:        t.Type,
+		Cur:         int32(t.Cur),
+		Total:       int32(t.Total),
+		Description: t.Description,
+	}
+}

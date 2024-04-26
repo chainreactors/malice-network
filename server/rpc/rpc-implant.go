@@ -38,7 +38,6 @@ func (rpc *Server) Ping(ctx context.Context, req *implantpb.Ping) (*implantpb.Em
 		return nil, err
 	}
 	if _, ok := core.Sessions.Get(id); !ok {
-		// 如果内存中不存在, 则从数据库中恢复
 		sess, err := db.FindSession(id)
 		if err != nil {
 			return nil, err
