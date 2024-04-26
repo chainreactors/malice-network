@@ -61,10 +61,7 @@ func (t *Task) Handler() {
 		}
 		t.Cur++
 		if t.Cur == t.Total {
-			t.Finish(Event{
-				EventType: consts.EventTaskDone,
-				Task:      t,
-			})
+			t.Finish()
 			return
 		}
 	}
@@ -99,8 +96,11 @@ func (t *Task) Done(event Event) {
 	t.done <- true
 }
 
-func (t *Task) Finish(event Event) {
-	EventBroker.Publish(event)
+func (t *Task) Finish() {
+	EventBroker.Publish(Event{
+		Task:      t,
+		EventType: consts.EventTaskCallback,
+	})
 	if t.Callback != nil {
 		t.Callback()
 	}

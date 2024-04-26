@@ -143,10 +143,7 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 		respCheckSum := resp.GetDownloadResponse().Checksum
 		fileName := path.Join(configs.TempPath, req.Name)
 		if files.IsExist(fileName) {
-			greq.Task.Finish(core.Event{
-				EventType: consts.EventTaskCallback,
-				Task:      greq.Task,
-			})
+			greq.Task.Finish()
 			return
 		}
 		greq.Task.Total = int(resp.GetDownloadResponse().Size)/config.Int(consts.MaxPacketLength) + 1

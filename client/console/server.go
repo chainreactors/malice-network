@@ -123,8 +123,8 @@ func (s *ServerStatus) triggerTaskCallback(event *clientpb.Event) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	if callback, ok := s.Callbacks.Load(task.TaskId); ok {
-		content, err := s.Rpc.GetTaskContent(ctx, &clientpb.Task{
+	if _, ok := s.Callbacks.Load(task.TaskId); ok {
+		_, err := s.Rpc.GetTaskContent(ctx, &clientpb.Task{
 			TaskId:    task.TaskId,
 			SessionId: task.SessionId,
 		})
@@ -132,7 +132,7 @@ func (s *ServerStatus) triggerTaskCallback(event *clientpb.Event) {
 			Log.Errorf(err.Error())
 			return
 		}
-		callback.(TaskCallback)(content)
+		//callback.(TaskCallback)(content)
 		s.Callbacks.Delete(task.TaskId)
 	}
 }
