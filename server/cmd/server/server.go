@@ -156,6 +156,7 @@ func StartGrpc(port uint16) error {
 			core.Sessions.Add(newSession)
 		}
 	}
+	go db.UpdateSessionStatus()
 	return nil
 }
 

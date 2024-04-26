@@ -96,9 +96,31 @@ func UpdateLast(sessionID string) error {
 		return result.Error
 	}
 	session.Last = time.Now().In(loc)
+	session.Time.LastCheckin = uint64(session.Last.Unix())
 	result = Session().Save(&session)
 	if result.Error != nil {
 		return result.Error
+	}
+	return nil
+}
+
+func UpdateSessionStatus() error {
+	var sessions []models.Session
+	if err := Session().Find(&sessions).Error; err != nil {
+		return err
+	}
+	currentTime := time.Now()
+	for _, session := range sessions {
+		timeDiff := currentTime.Sub(session.Last)
+		if timeDiff <= time.Duration(session.Time.Interval)*time.Second {
+			if err := Session().Model(&session).Update("IsAlive", true).Error; err != nil {
+				return err
+			}
+		} else {
+			if err := Session().Model(&session).Update("IsAlive", false).Error; err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }
