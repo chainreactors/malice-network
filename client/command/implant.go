@@ -4,6 +4,7 @@ import (
 	"github.com/chainreactors/malice-network/client/command/exec"
 	"github.com/chainreactors/malice-network/client/command/file"
 	"github.com/chainreactors/malice-network/client/command/filesystem"
+	"github.com/chainreactors/malice-network/client/command/modules"
 	"github.com/chainreactors/malice-network/client/command/sys"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -17,6 +18,7 @@ func BindImplantCommands(con *console.Console) {
 		file.Commands,
 		filesystem.Commands,
 		sys.Commands,
+		modules.Commands,
 	)
 
 	bind(consts.AliasesGroup)
