@@ -78,5 +78,14 @@ func Commands(con *console.Console) []*grumble.Command {
 			},
 			HelpGroup: consts.ImplantGroup,
 		},
+		&grumble.Command{
+			Name: consts.ModuleNetstat,
+			Help: "List network connections",
+			Run: func(ctx *grumble.Context) error {
+				NetstatCmd(ctx, con)
+				return nil
+			},
+			HelpGroup: consts.ImplantGroup,
+		},
 	}
 }

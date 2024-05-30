@@ -8,44 +8,39 @@ import (
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/charmbracelet/bubbles/table"
 	"google.golang.org/protobuf/proto"
-	"strconv"
 )
 
-func PsCmd(ctx *grumble.Context, con *console.Console) {
+func NetstatCmd(ctx *grumble.Context, con *console.Console) {
 	session := con.ActiveTarget.GetInteractive()
 	sid := con.ActiveTarget.GetInteractive().SessionId
 	if session == nil {
 		return
 	}
-	psTask, err := con.Rpc.Ps(con.ActiveTarget.Context(), &implantpb.Request{
-		Name: consts.ModulePs,
+	killTask, err := con.Rpc.Netstat(con.ActiveTarget.Context(), &implantpb.Request{
+		Name: consts.ModuleNetstat,
 	})
 	if err != nil {
-		con.SessionLog(sid).Errorf("Ps error: %v", err)
+		con.SessionLog(sid).Errorf("Kill error: %v", err)
 		return
 	}
-	con.AddCallback(psTask.TaskId, func(msg proto.Message) {
-		resp := msg.(*implantpb.Spite).GetPsResponse()
+	con.AddCallback(killTask.TaskId, func(msg proto.Message) {
+		resp := msg.(*implantpb.Spite).GetNetstatResponse()
 		var rowEntries []table.Row
 		var row table.Row
 		tableModel := tui.NewTable([]table.Column{
-			{Title: "Name", Width: 10},
-			{Title: "PID", Width: 5},
-			{Title: "PPID", Width: 5},
-			{Title: "Arch", Width: 7},
-			{Title: "Owner", Width: 7},
-			{Title: "Path", Width: 15},
-			{Title: "Args", Width: 10},
+			{Title: "LocalAddr", Width: 15},
+			{Title: "RemoteAddr", Width: 15},
+			{Title: "SkState", Width: 7},
+			{Title: "Pid", Width: 7},
+			{Title: "Protocol", Width: 10},
 		})
-		for _, process := range resp.GetProcesses() {
+		for _, sock := range resp.GetSocks() {
 			row = table.Row{
-				process.Name,
-				strconv.Itoa(int(process.Pid)),
-				strconv.Itoa(int(process.Ppid)),
-				process.Arch,
-				process.Owner,
-				process.Path,
-				process.Args,
+				sock.LocalAddr,
+				sock.RemoteAddr,
+				sock.SkState,
+				sock.Pid,
+				sock.Protocol,
 			}
 			rowEntries = append(rowEntries, row)
 		}
