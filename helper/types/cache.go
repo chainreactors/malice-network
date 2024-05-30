@@ -1,6 +1,8 @@
 package types
 
-import "github.com/chainreactors/malice-network/proto/implant/implantpb"
+import (
+	"github.com/chainreactors/malice-network/proto/implant/implantpb"
+)
 
 func NewSpitesCache() *SpitesCache {
 	return &SpitesCache{cache: []*implantpb.Spite{}}

@@ -40,4 +40,5 @@ var (
 		Header:   HeaderStyle,
 		Cell:     lipgloss.NewStyle().Padding(0, 1),
 	}
+	docStyle = lipgloss.NewStyle().Margin(1, 2)
 )
