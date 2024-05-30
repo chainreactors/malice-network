@@ -105,25 +105,25 @@ func UpdateLast(sessionID string) error {
 }
 
 func UpdateSessionStatus() error {
-	var sessions []models.Session
-	if err := Session().Find(&sessions).Error; err != nil {
-		return err
-	}
-	currentTime := time.Now()
-	for {
+	ticker := time.NewTicker(10 * time.Second)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		var sessions []models.Session
+		if err := Session().Find(&sessions).Error; err != nil {
+			return err
+		}
+
+		currentTime := time.Now()
 		for _, session := range sessions {
 			timeDiff := currentTime.Sub(session.Last)
-			if timeDiff <= time.Duration(session.Time.Interval)*time.Second {
-				if err := Session().Model(&session).Update("IsAlive", true).Error; err != nil {
-					return err
-				}
-			} else {
-				if err := Session().Model(&session).Update("IsAlive", false).Error; err != nil {
-					return err
-				}
+			isAlive := timeDiff <= time.Duration(session.Time.Interval)*time.Second
+			if err := Session().Model(&session).Update("IsAlive", isAlive).Error; err != nil {
+				return err
 			}
 		}
 	}
+	return nil
 }
 
 func CreateOperator(name string) error {
