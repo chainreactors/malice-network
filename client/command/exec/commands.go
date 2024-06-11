@@ -81,15 +81,34 @@ func Commands(con *console.Console) []*grumble.Command {
 				a.String("filepath", "path the shellcode file")
 			},
 			Flags: func(f *grumble.Flags) {
+				f.String("p", "param", "", "parameter eg:'a,b,c...'")
+				f.Uint("i", "pid", 0, "pid of the process to inject into (0 means injection into ourselves)")
+				f.Bool("b", "block_dll", false, "block dll injection")
+				f.Bool("n", "is_need_sacrifice", false, "is need sacrifice process")
 				//f.Bool("r", "rwx-pages", false, "Use RWX permissions for memory pages")
-				f.Uint("p", "pid", 0, "Pid of process to inject into (0 means injection into ourselves)")
-				f.String("n", "process", `c:\windows\system32\notepad.exe`, "Process to inject into when running in interactive mode")
-				//f.Bool("i", "interactive", false, "Inject into a new process and interact with it")
-				f.Bool("S", "shikata-ga-nai", false, "encode shellcode using shikata ga nai prior to execution")
-				f.String("A", "architecture", "amd64", "architecture of the shellcode: 386, amd64 (used with --shikata-ga-nai flag)")
-				f.Int("I", "iterations", 1, "number of encoding iterations (used with --shikata-ga-nai flag)")
-
-				f.Int("t", "timeout", consts.DefaultTimeout, "command timeout in seconds")
+				//f.Uint("p", "pid", 0, "Pid of process to inject into (0 means injection into ourselves)")
+				//f.String("n", "process", `c:\windows\system32\notepad.exe`, "Process to inject into when running in interactive mode")
+				////f.Bool("i", "interactive", false, "Inject into a new process and interact with it")
+				//f.Bool("S", "shikata-ga-nai", false, "encode shellcode using shikata ga nai prior to execution")
+				//f.String("A", "architecture", "amd64", "architecture of the shellcode: 386, amd64 (used with --shikata-ga-nai flag)")
+				//f.Int("I", "iterations", 1, "number of encoding iterations (used with --shikata-ga-nai flag)")
+				//
+				//f.Int("t", "timeout", consts.DefaultTimeout, "command timeout in seconds")
+			},
+			HelpGroup: consts.ImplantGroup,
+		},
+		&grumble.Command{
+			Name: consts.ModuleExecuteShellcodeInline,
+			Help: "Executes the given inline shellcode in the IOM ",
+			Args: func(a *grumble.Args) {
+				a.String("filepath", "path the shellcode file")
+			},
+			Flags: func(f *grumble.Flags) {
+				f.String("p", "param", "", "parameter eg:'a,b,c...'")
+			},
+			Run: func(ctx *grumble.Context) error {
+				ExecuteShellcodeInlineCmd(ctx, con)
+				return nil
 			},
 			HelpGroup: consts.ImplantGroup,
 		},

