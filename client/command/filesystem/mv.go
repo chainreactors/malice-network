@@ -27,6 +27,6 @@ func MvCmd(ctx *grumble.Context, con *console.Console) {
 	}
 	con.AddCallback(mvTask.TaskId, func(msg proto.Message) {
 		_ = msg.(*implantpb.Spite)
-		con.SessionLog(sid).Consolef("Mv success")
+		con.SessionLog(sid).Consolef("Mv success\n")
 	})
 }

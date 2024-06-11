@@ -25,6 +25,6 @@ func CdCmd(ctx *grumble.Context, con *console.Console) {
 	}
 	con.AddCallback(cdTask.TaskId, func(msg proto.Message) {
 		_ = msg.(*implantpb.Spite).GetResponse()
-		con.SessionLog(sid).Consolef("Changed directory to: %s", path)
+		con.SessionLog(sid).Consolef("Changed directory to: %s\n", path)
 	})
 }

@@ -13,6 +13,7 @@ import (
 type Session struct {
 	SessionID  string    `gorm:"primaryKey;->;<-:create;type:uuid;"`
 	CreatedAt  time.Time `gorm:"->;<-:create;"`
+	Note       string
 	GroupName  string
 	RemoteAddr string
 	ListenerId string
@@ -107,6 +108,7 @@ func (s *Session) ToClientProtobuf() *clientpb.Session {
 	return &clientpb.Session{
 		SessionId:  s.SessionID,
 		ListenerId: s.ListenerId,
+		Note:       s.Note,
 		RemoteAddr: s.RemoteAddr,
 		IsDead:     s.IsAlive,
 		GroupName:  s.GroupName,

@@ -25,6 +25,6 @@ func CatCmd(ctx *grumble.Context, con *console.Console) {
 	}
 	con.AddCallback(catTask.TaskId, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite).GetResponse()
-		con.SessionLog(sid).Consolef("File content: %s", resp.GetOutput())
+		con.SessionLog(sid).Consolef("File content: %s\n", resp.GetOutput())
 	})
 }

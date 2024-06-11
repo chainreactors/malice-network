@@ -53,7 +53,7 @@ func (t *TableModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else {
 				t.table.Focus()
 			}
-		case "q", "ctrl+c":
+		case "q":
 			return t, tea.Quit
 		case "enter":
 			t.handleSelectedRow()

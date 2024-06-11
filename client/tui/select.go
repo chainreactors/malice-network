@@ -20,7 +20,7 @@ type SelectModel struct {
 }
 
 func (m *SelectModel) Init() tea.Cmd {
-	m.SelectedItem = -1
+	m.SelectedItem = 0
 	return nil
 }
 

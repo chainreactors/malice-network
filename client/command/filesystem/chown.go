@@ -29,6 +29,6 @@ func ChownCmd(ctx *grumble.Context, con *console.Console) {
 	}
 	con.AddCallback(chownTask.TaskId, func(msg proto.Message) {
 		_ = msg.(*implantpb.Response)
-		con.SessionLog(sid).Consolef("Chown success")
+		con.SessionLog(sid).Consolef("Chown success\n")
 	})
 }

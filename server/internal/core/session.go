@@ -99,7 +99,7 @@ func (s *Session) Logger() *logs.Logger {
 func (s *Session) ToProtobuf() *clientpb.Session {
 	return &clientpb.Session{
 		SessionId: s.ID,
-		Name:      s.Name,
+		Note:      s.Name,
 		Os:        s.Os,
 		Process:   s.Process,
 		Timer:     s.Timer,

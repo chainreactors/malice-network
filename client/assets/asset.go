@@ -3,6 +3,7 @@ package assets
 import (
 	"fmt"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/helper"
 	"gopkg.in/yaml.v3"
 	"io/ioutil"
 	"log"
@@ -146,4 +147,18 @@ func GetConfigs() ([]string, error) {
 	}
 
 	return files, nil
+}
+
+func MvConfig(oldPath string) error {
+	fileName := filepath.Base(oldPath)
+	newPath := filepath.Join(GetConfigDir(), fileName)
+	err := helper.CopyFile(oldPath, newPath)
+	if err != nil {
+		return err
+	}
+	err = helper.RemoveFile(oldPath)
+	if err != nil {
+		return err
+	}
+	return nil
 }

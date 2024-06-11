@@ -3,14 +3,13 @@ package command
 import (
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/command/alias"
-	"github.com/chainreactors/malice-network/client/command/file"
-	"github.com/chainreactors/malice-network/client/command/filesystem"
+	"github.com/chainreactors/malice-network/client/command/basic"
+	"github.com/chainreactors/malice-network/client/command/explorer"
 	"github.com/chainreactors/malice-network/client/command/jobs"
 	"github.com/chainreactors/malice-network/client/command/listener"
 	"github.com/chainreactors/malice-network/client/command/login"
 	"github.com/chainreactors/malice-network/client/command/observe"
 	"github.com/chainreactors/malice-network/client/command/sessions"
-	"github.com/chainreactors/malice-network/client/command/sys"
 	"github.com/chainreactors/malice-network/client/command/tasks"
 	"github.com/chainreactors/malice-network/client/command/use"
 	"github.com/chainreactors/malice-network/client/command/version"
@@ -62,6 +61,9 @@ func BindClientsCommands(con *console.Console) {
 
 	bind("",
 		version.Command)
+	bind(consts.SessionGroup,
+		basic.Commands,
+	)
 
 	bind(consts.GenericGroup,
 		login.Command,
@@ -72,11 +74,10 @@ func BindClientsCommands(con *console.Console) {
 		listener.Commands,
 		alias.Commands,
 		observe.Command,
-		file.Commands,
 		website.Commands,
-		filesystem.Commands,
-		sys.Commands,
+		explorer.Commands,
 	)
-
-	login.LoginCmd(&grumble.Context{}, con)
+	if con.ServerStatus == nil {
+		login.LoginCmd(&grumble.Context{}, con)
+	}
 }

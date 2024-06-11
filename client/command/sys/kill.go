@@ -25,6 +25,6 @@ func KillCmd(ctx *grumble.Context, con *console.Console) {
 	}
 	con.AddCallback(killTask.TaskId, func(msg proto.Message) {
 		_ = msg.(*implantpb.Spite)
-		con.SessionLog(sid).Consolef("Killed process")
+		con.SessionLog(sid).Consolef("Killed process\n")
 	})
 }

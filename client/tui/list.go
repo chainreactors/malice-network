@@ -27,7 +27,7 @@ func (m listModel) Init() tea.Cmd {
 func (m listModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		if msg.String() == "ctrl+c" {
+		if msg.String() == "q" {
 			return m, tea.Quit
 		}
 	case tea.WindowSizeMsg:

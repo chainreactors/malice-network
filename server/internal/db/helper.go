@@ -126,6 +126,28 @@ func UpdateSessionStatus() error {
 	return nil
 }
 
+// Basic Session OP
+func DeleteSession(sessionID string) error {
+	result := Session().Where("session_id = ?", sessionID).Delete(&models.Session{})
+	return result.Error
+}
+
+func UpdateSession(sessionID, note, group string) error {
+	var session models.Session
+	result := Session().Where("session_id = ?", sessionID).First(&session)
+	if result.Error != nil {
+		return result.Error
+	}
+	if group != "" {
+		session.GroupName = group
+	}
+	if note != "" {
+		session.Note = note
+	}
+	result = Session().Save(&session)
+	return result.Error
+}
+
 func CreateOperator(name string) error {
 	var operator models.Operator
 	result := Session().Where("name = ?", name).Delete(&operator)

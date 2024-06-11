@@ -38,9 +38,7 @@ func LoginCmd(ctx *grumble.Context, con *console.Console) error {
 	}
 
 	// Create a model for the interactive list
-	m := &tui.SelectModel{
-		Choices: files,
-	}
+	m := tui.NewSelect(files)
 
 	tui.Run(m)
 

@@ -48,5 +48,5 @@ func UseSessionCmd(ctx *grumble.Context, con *console.Console) {
 	}
 
 	con.ActiveTarget.Set(session)
-	console.Log.Infof("Active session %s (%s)\n", session.Name, session.SessionId)
+	console.Log.Infof("Active session %s (%s)\n", session.Note, session.SessionId)
 }

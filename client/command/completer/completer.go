@@ -51,6 +51,19 @@ func SessionIDCompleter(con *console.Console, prefix string) (results []string) 
 	return results
 }
 
+func BasicSessionIDCompleter(con *console.Console, prefix string) (results []string) {
+	if con.ActiveTarget.Get() != nil {
+		results = append(results, con.ActiveTarget.GetInteractive().SessionId)
+		return results
+	}
+	for _, s := range con.Sessions {
+		if strings.HasPrefix(s.SessionId, prefix) {
+			results = append(results, s.SessionId)
+		}
+	}
+	return results
+}
+
 func AliveSessionIDCompleter(con *console.Console) (results []string) {
 	sid := con.ActiveTarget.GetInteractive().SessionId
 	results = append(results, sid)

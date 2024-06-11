@@ -14,7 +14,7 @@ const (
 
 func NewBar() *BarModel {
 	bar := &BarModel{
-		progress: progress.New(progress.WithDefaultGradient()),
+		Model: progress.New(progress.WithDefaultGradient()),
 	}
 	return bar
 }
@@ -23,6 +23,9 @@ type progressMsg float64
 
 type progressErrMsg struct{ err error }
 
+type ViewMsg struct {
+}
+
 func finalPause() tea.Cmd {
 	return tea.Tick(time.Millisecond*750, func(_ time.Time) tea.Msg {
 		return nil
@@ -30,7 +33,7 @@ func finalPause() tea.Cmd {
 }
 
 type BarModel struct {
-	progress        progress.Model
+	Model           progress.Model
 	progressPercent float64
 	err             error
 }
@@ -45,9 +48,9 @@ func (m *BarModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 
 	case tea.WindowSizeMsg:
-		m.progress.Width = msg.Width - padding*2 - 4
-		if m.progress.Width > maxWidth {
-			m.progress.Width = maxWidth
+		m.Model.Width = msg.Width - padding*2 - 4
+		if m.Model.Width > maxWidth {
+			m.Model.Width = maxWidth
 		}
 		return m, nil
 
@@ -62,21 +65,23 @@ func (m *BarModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		//	cmds = append(cmds, tea.Sequence(finalPause(), tea.Quit))
 		//}
 		//
-		//cmds = append(cmds, m.progress.SetPercent(float64(msg)))
+		//cmds = append(cmds, m.Model.SetPercent(float64(msg)))
 
 		//return m, tea.Batch(cmds...)
-		if m.progress.Percent() == 1.0 {
+		if m.Model.Percent() == 1.0 {
 			return m, tea.Quit
 		}
 		m.progressPercent = float64(msg)
-		cmd := m.progress.SetPercent(m.progressPercent)
+		cmd := m.Model.SetPercent(m.progressPercent)
 		return m, tea.Batch(setPercentMsg(m.progressPercent), cmd)
-	// FrameMsg is sent when the progress bar wants to animate itself
+	// FrameMsg is sent when the Model bar wants to animate itself
 	case progress.FrameMsg:
-		progressModel, cmd := m.progress.Update(msg)
-		m.progress = progressModel.(progress.Model)
+		progressModel, cmd := m.Model.Update(msg)
+		m.Model = progressModel.(progress.Model)
 		return m, cmd
-
+	case ViewMsg:
+		m.View()
+		return m, nil
 	default:
 		return m, nil
 	}
@@ -89,7 +94,7 @@ func (m *BarModel) View() string {
 
 	pad := strings.Repeat(" ", padding)
 	return "\n" +
-		pad + m.progress.ViewAs(m.progressPercent) + "\n\n" +
+		pad + m.Model.ViewAs(m.progressPercent) + "\n\n" +
 		pad + HelpStyle("Press any key to quit")
 }
 

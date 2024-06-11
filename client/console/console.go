@@ -11,6 +11,7 @@ import (
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/fatih/color"
 	"google.golang.org/protobuf/proto"
+	"os"
 	"path/filepath"
 	"sync"
 )
@@ -54,6 +55,7 @@ func Start(bindCmds ...BindCmds) error {
 	//con.PrintLogo()
 	//})
 	//con.UpdatePrompt()
+	con.readConfig()
 	for _, bind := range bindCmds {
 		bind(con)
 	}
@@ -64,7 +66,7 @@ func Start(bindCmds ...BindCmds) error {
 	}
 
 	//go core.TunnelLoop(rpc)
-
+	os.Args = []string{}
 	err := con.App.Run()
 	if err != nil {
 		logs.Log.Errorf("Run loop returned error: %v", err)
@@ -145,5 +147,30 @@ func (c *Console) SessionLog(sid string) *logs.Logger {
 		return c.ActiveTarget.activeObserver.log
 	} else {
 		return MuteLog
+	}
+}
+
+// readConfig
+func (c *Console) readConfig() {
+	var yamlFile string
+
+	if len(os.Args) > 1 {
+		yamlFile = os.Args[1]
+	} else {
+		return
+	}
+	clientFile, err := assets.ReadConfig(yamlFile)
+	if err != nil {
+		logs.Log.Errorf("Error reading config file: %v", err)
+		return
+	}
+	err = c.Login(clientFile)
+	if err != nil {
+		logs.Log.Errorf("Error login: %v", err)
+		return
+	}
+	err = assets.MvConfig(yamlFile)
+	if err != nil {
+		return
 	}
 }

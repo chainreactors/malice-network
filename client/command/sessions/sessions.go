@@ -60,7 +60,7 @@ func PrintSessions(sessions map[string]*clientpb.Session, con *console.Console, 
 	tableModel := tui.NewTable([]table.Column{
 		{Title: "ID", Width: 15},
 		{Title: "Group", Width: 7},
-		{Title: "Name", Width: 4},
+		{Title: "Note", Width: 7},
 		{Title: "Transport", Width: 10},
 		{Title: "Remote Address", Width: 15},
 		{Title: "Hostname", Width: 10},
@@ -91,7 +91,7 @@ func PrintSessions(sessions map[string]*clientpb.Session, con *console.Console, 
 		row = table.Row{
 			termenv.String(helper.ShortSessionID(session.SessionId)).Foreground(groupColors[session.GroupName]).String(),
 			session.GroupName,
-			session.Name,
+			session.Note,
 			"",
 			session.RemoteAddr,
 			session.Os.Hostname,
@@ -138,6 +138,6 @@ func SessionLogin(tableModel *tui.TableModel, con *console.Console) func() {
 
 	return func() {
 		con.ActiveTarget.Set(session)
-		console.Log.Infof("Active session %s (%s)\n", session.Name, session.SessionId)
+		console.Log.Infof("Active session %s (%s)\n", session.Note, session.SessionId)
 	}
 }

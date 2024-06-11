@@ -172,7 +172,12 @@ func StartAliveSession() error {
 			core.Sessions.Add(newSession)
 		}
 	}
-	go db.UpdateSessionStatus()
+	go func() {
+		err := db.UpdateSessionStatus()
+		if err != nil {
+			logs.Log.Errorf("cannot update session status , %s ", err.Error())
+		}
+	}()
 	return nil
 }
 

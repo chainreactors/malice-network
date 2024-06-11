@@ -142,6 +142,7 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 		}
 		respCheckSum := resp.GetDownloadResponse().Checksum
 		fileName := path.Join(configs.TempPath, req.Name)
+		greq.Session.AddMessage(resp, 0)
 		if files.IsExist(fileName) {
 			greq.Task.Finish()
 			return
@@ -182,6 +183,7 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 			ack, _ := greq.NewSpite(&implantpb.AsyncACK{Success: true})
 			ack.Name = types.MsgDownload.String()
 			in <- ack
+			greq.Session.AddMessage(resp, int(block.BlockId+1))
 			err := db.UpdateTask(greq.Task, int(block.BlockId+1))
 			if err != nil {
 				logs.Log.Errorf("cannot update task %d , %s in db", greq.Task.Id, err.Error())

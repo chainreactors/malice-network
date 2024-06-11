@@ -30,7 +30,7 @@ func (m *ConfirmModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "n":
 			m.confirmed = false
 			return m, tea.Quit
-		case "q", "ctrl+c":
+		case "q":
 			return m, tea.Quit
 		}
 	}
