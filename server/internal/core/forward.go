@@ -136,6 +136,7 @@ func (f *Forward) Handler() {
 					SessionId:    msg.SessionID,
 					ListenerId:   f.ID(),
 					RegisterData: spite.GetRegister(),
+					RemoteAddr:   msg.RemoteAddr,
 				})
 				if err != nil {
 					logs.Log.Error(err)
