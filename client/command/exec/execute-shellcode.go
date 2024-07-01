@@ -55,11 +55,9 @@ func ExecuteShellcodeCmd(ctx *grumble.Context, con *console.Console) {
 	}
 
 	con.AddCallback(shellcodeTask.TaskId, func(msg proto.Message) {
-		resp := msg.(*implantpb.Spite).GetAssemblyResponse()
-		if resp.Err != "" {
-			con.SessionLog(sid).Errorf("%s\n", resp.Err)
-		} else {
-			con.SessionLog(sid).Consolef("Executed shellcode on target: %s\n", resp.GetData())
+		resp := msg.(*implantpb.Spite)
+		if !(resp.Status.Error != "") {
+			con.SessionLog(sid).Consolef("Executed shellcode on target: %s\n", resp.GetAssemblyResponse().GetData())
 		}
 	})
 }
@@ -88,11 +86,9 @@ func ExecuteShellcodeInlineCmd(ctx *grumble.Context, con *console.Console) {
 		Inline: true,
 	})
 	con.AddCallback(shellcodeTask.TaskId, func(msg proto.Message) {
-		resp := msg.(*implantpb.Spite).GetAssemblyResponse()
-		if resp.Err != "" {
-			con.SessionLog(sid).Errorf("%s\n", resp.Err)
-		} else {
-			con.SessionLog(sid).Consolef("Executed shellcode on target: %s\n", resp.GetData())
+		resp := msg.(*implantpb.Spite)
+		if !(resp.Status.Error != "") {
+			con.SessionLog(sid).Consolef("Executed shellcode on target: %s\n", resp.GetAssemblyResponse().GetData())
 		}
 	})
 }
