@@ -24,15 +24,11 @@ func ExecuteShellcodeCmd(ctx *grumble.Context, con *console.Console) {
 	//	console.Log.Errorf("Interactive shellcode can only be executed in a session\n")
 	//	return
 	//}
-	pid := ctx.Flags.Uint("pid")
-	shellcodePath := ctx.Args.String("filepath")
-	paramString := ctx.Flags.String("param")
+	ppid := ctx.Flags.Uint("ppid")
+	shellcodePath := ctx.Args.String("path")
+	paramString := ctx.Flags.String("args")
+	argue := ctx.Flags.String("argue")
 	isBlockDll := ctx.Flags.Bool("block_dll")
-	isNeedSacrifice := ctx.Flags.Bool("sacrifice")
-	var params []string
-	if paramString != "" {
-		params = strings.Split(paramString, ",")
-	}
 	shellcodeBin, err := os.ReadFile(shellcodePath)
 	if err != nil {
 		console.Log.Errorf("%s\n", err.Error())
@@ -40,13 +36,15 @@ func ExecuteShellcodeCmd(ctx *grumble.Context, con *console.Console) {
 	}
 
 	shellcodeTask, err := con.Rpc.ExecuteShellcode(con.ActiveTarget.Context(), &implantpb.ExecuteShellcode{
-		Name:            consts.ModuleExecuteShellcode,
-		Bin:             shellcodeBin,
-		Pid:             uint32(pid),
-		Inline:          false,
-		Params:          params,
-		BlockDll:        isBlockDll,
-		IsNeedSacrifice: isNeedSacrifice,
+		Name: consts.ModuleExecuteShellcode,
+		Bin:  shellcodeBin,
+		Sacrifice: &implantpb.SacrificeProcess{
+			Output:   true,
+			BlockDll: isBlockDll,
+			Ppid:     uint32(ppid),
+			Argue:    argue,
+			Params:   strings.Split(paramString, ","),
+		},
 	})
 
 	if err != nil {
@@ -69,21 +67,14 @@ func ExecuteShellcodeInlineCmd(ctx *grumble.Context, con *console.Console) {
 	}
 	sid := con.ActiveTarget.GetInteractive().SessionId
 	path := ctx.Args.String("filepath")
-	paramString := ctx.Flags.String("param")
-	var params []string
-	if paramString != "" {
-		params = strings.Split(paramString, ",")
-	}
 	data, err := os.ReadFile(path)
 	if err != nil {
 		con.SessionLog(sid).Errorf("Error reading file: %v", err)
 		return
 	}
 	shellcodeTask, err := con.Rpc.ExecuteShellcode(con.ActiveTarget.Context(), &implantpb.ExecuteShellcode{
-		Name:   consts.ModuleExecuteShellcode,
-		Bin:    data,
-		Params: params,
-		Inline: true,
+		Name: consts.ModuleExecuteShellcode,
+		Bin:  data,
 	})
 	con.AddCallback(shellcodeTask.TaskId, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite)
