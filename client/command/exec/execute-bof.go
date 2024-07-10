@@ -18,7 +18,7 @@ func ExecuteBofCmd(ctx *grumble.Context, con *console.Console) {
 		return
 	}
 	path := ctx.Args.String("path")
-	args := ctx.Args.StringList("arguments")
+	args := ctx.Args.StringList("args")
 	name := filepath.Base(path)
 	binData, err := os.ReadFile(path)
 	if err != nil {

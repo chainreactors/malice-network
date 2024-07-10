@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
@@ -22,7 +21,6 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/proto"
 	"net"
 	"os"
 	"os/signal"
@@ -154,26 +152,26 @@ func NewServer() *Server {
 }
 
 // genericHandler - Pass the request to the Sliver/Session
-func (rpc *Server) genericHandler(ctx context.Context, req *GenericRequest) (proto.Message, error) {
-	spite, err := req.NewSpite(req.Message)
-	if err != nil {
-		logs.Log.Errorf(err.Error())
-		return nil, err
-	}
-	data, err := req.Session.RequestAndWait(
-		&lispb.SpiteSession{SessionId: req.Session.ID, TaskId: req.Task.Id, Spite: spite},
-		listenersCh[req.Session.ListenerId],
-		consts.MinTimeout)
-	if err != nil {
-		return nil, err
-	}
-	req.Session.DeleteResp(req.Task.Id)
-	resp, err := types.ParseSpite(data)
-	if err != nil {
-		return nil, err
-	}
-	return resp, nil
-}
+//func (rpc *Server) genericHandler(ctx context.Context, req *GenericRequest) (proto.Message, error) {
+//	spite, err := req.NewSpite(req.Message)
+//	if err != nil {
+//		logs.Log.Errorf(err.Error())
+//		return nil, err
+//	}
+//	data, err := req.Session.RequestAndWait(
+//		&lispb.SpiteSession{SessionId: req.Session.ID, TaskId: req.Task.Id, Spite: spite},
+//		listenersCh[req.Session.ListenerId],
+//		consts.MinTimeout)
+//	if err != nil {
+//		return nil, err
+//	}
+//	req.Session.DeleteResp(req.Task.Id)
+//	resp, err := types.ParseSpite(data)
+//	if err != nil {
+//		return nil, err
+//	}
+//	return resp, nil
+//}
 
 func (rpc *Server) asyncGenericHandler(ctx context.Context, req *GenericRequest) (chan *implantpb.Spite, error) {
 	spite, err := req.NewSpite(req.Message)

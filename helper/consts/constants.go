@@ -36,6 +36,12 @@ const (
 	AuditLevel      = "server.audit"
 )
 
+const (
+	UnknownFile = iota
+	EXEFile
+	DLLFile
+)
+
 // Time
 const (
 	DefaultMaxBodyLength   = 2 * 1024 * 1024 * 1024 // 2Gb

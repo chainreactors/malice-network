@@ -23,14 +23,14 @@ const (
 
 // Malefic Error
 const (
-	MaleficErrorPanic                = 1
-	MaleficErrorUnpackError          = 2
-	MaleficErrorMissbody             = 3
-	MaleficErrorModuleError          = 4
-	MaleficErrorModeleNotFound       = 5
-	MaleficErrorTaskError            = 6
-	MaleficErrorTaskNotFound         = 7
-	MaleficErrorTaskOperatorNotFound = 8
+	MaleficErrorPanic                uint32 = 1
+	MaleficErrorUnpackError                 = 2
+	MaleficErrorMissbody                    = 3
+	MaleficErrorModuleError                 = 4
+	MaleficErrorModeleNotFound              = 5
+	MaleficErrorTaskError                   = 6
+	MaleficErrorTaskNotFound                = 7
+	MaleficErrorTaskOperatorNotFound        = 8
 )
 
 func GetWindowsVer(ver string) string {

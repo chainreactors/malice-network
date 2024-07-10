@@ -51,12 +51,9 @@ func BuildSpite(spite *implantpb.Spite, msg proto.Message) (*implantpb.Spite, er
 	case *implantpb.ExecuteShellcode:
 		spite.Name = MsgExecuteShellcode.String()
 		spite.Body = &implantpb.Spite_ExecuteShellcode{ExecuteShellcode: msg.(*implantpb.ExecuteShellcode)}
-	case *implantpb.ExecuteSpawn:
-		spite.Name = MsgExecuteSpawn.String()
-		spite.Body = &implantpb.Spite_ExecuteSpawn{ExecuteSpawn: msg.(*implantpb.ExecuteSpawn)}
-	case *implantpb.ExecuteSideLoad:
-		spite.Name = MsgExecuteSideLoad.String()
-		spite.Body = &implantpb.Spite_ExecuteSideload{ExecuteSideload: msg.(*implantpb.ExecuteSideLoad)}
+	//case *implantpb.ExecuteSpawn:
+	//	spite.Name = MsgExecuteSpawn.String()
+	//	spite.Body = &implantpb.Spite_ExecuteSpawn{ExecuteSpawn: msg.(*implantpb.ExecuteSpawn)}
 	case *implantpb.ExecuteBof:
 		spite.Name = MsgExecuteBof.String()
 		spite.Body = &implantpb.Spite_ExecuteBof{ExecuteBof: msg.(*implantpb.ExecuteBof)}
@@ -86,18 +83,18 @@ func BuildOneSpites(spite *implantpb.Spite) *implantpb.Spites {
 	return BuildSpites([]*implantpb.Spite{spite})
 }
 
-func ParseSpite(spite *implantpb.Spite) (proto.Message, error) {
-	switch spite.Body.(type) {
-	case *implantpb.Spite_Register:
-		return spite.GetRegister(), nil
-	case *implantpb.Spite_ExecResponse:
-		return spite.GetExecResponse(), nil
-	case *implantpb.Spite_AssemblyResponse:
-		return spite.GetAssemblyResponse(), nil
-	default:
-		return nil, ErrUnknownSpite
-	}
-}
+//func ParseSpite(spite *implantpb.Spite) (proto.Message, error) {
+//	switch spite.Body.(type) {
+//	case *implantpb.Spite_Register:
+//		return spite.GetRegister(), nil
+//	case *implantpb.Spite_ExecResponse:
+//		return spite.GetExecResponse(), nil
+//	case *implantpb.Spite_AssemblyResponse:
+//		return spite.GetAssemblyResponse(), nil
+//	default:
+//		return nil, ErrUnknownSpite
+//	}
+//}
 
 func BuildPipeline(msg proto.Message) *lispb.Pipeline {
 	var pipeline = &lispb.Pipeline{}

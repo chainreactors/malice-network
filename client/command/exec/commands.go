@@ -42,6 +42,7 @@ func Commands(con *console.Console) []*grumble.Command {
 			//LongHelp: help.GetHelpFor([]string{consts.ModuleExecuteAssembly}),
 			Args: func(a *grumble.Args) {
 				a.String("path", "path the assembly file")
+				a.StringList("args", "arguments to pass to the assembly entrypoint", grumble.Default([]string{}))
 			},
 			Flags: func(f *grumble.Flags) {
 				//f.String("p", "process", "notepad.exe", "hosting process to inject into")
@@ -52,14 +53,13 @@ func Commands(con *console.Console) []*grumble.Command {
 				//f.Bool("i", "in-process", false, "Run in the current sliver process")
 				//f.String("r", "runtime", "", "Runtime to use for running the assembly (only supported when used with --in-process)")
 				//f.Bool("s", "save", false, "save output to file")
-				f.Bool("", "need_output", false, "need output")
+				f.Bool("", "output", false, "need output")
 				f.String("n", "name", "", "name to assign loot (optional)")
 				f.Uint("p", "ppid", 0, "parent process id (optional)")
-				f.String("", "param", "", "arguments to pass to the hosting process")
 				//f.Bool("M", "amsi-bypass", false, "Bypass AMSI on Windows (only supported when used with --in-process)")
 				//f.Bool("E", "etw-bypass", false, "Bypass ETW on Windows (only supported when used with --in-process)")
 
-				f.Int("t", "timeout", consts.DefaultTimeout, "command timeout in seconds")
+				//f.Int("t", "timeout", consts.DefaultTimeout, "command timeout in seconds")
 			},
 			Run: func(ctx *grumble.Context) error {
 				ExecuteAssemblyCmd(ctx, con)
@@ -77,36 +77,97 @@ func Commands(con *console.Console) []*grumble.Command {
 				return nil
 			},
 			Args: func(a *grumble.Args) {
-				a.String("filepath", "path the shellcode file")
+				a.String("path", "path the shellcode file")
+				a.StringList("args", "arguments to pass to the assembly entrypoint", grumble.Default([]string{}))
+
 			},
 			Flags: func(f *grumble.Flags) {
-				f.String("", "param", "", "parameter eg:'a,b,c...'")
 				f.Uint("p", "ppid", 0, "pid of the process to inject into (0 means injection into ourselves)")
 				f.Bool("b", "block_dll", false, "block dll injection")
-				f.Bool("n", "sacrifice", false, "is need sacrifice process")
-				//f.Bool("r", "rwx-pages", false, "Use RWX permissions for memory pages")
-				//f.Uint("p", "pid", 0, "Pid of process to inject into (0 means injection into ourselves)")
-				//f.String("n", "process", `c:\windows\system32\notepad.exe`, "Process to inject into when running in interactive mode")
-				////f.Bool("i", "interactive", false, "Inject into a new process and interact with it")
-				//f.Bool("S", "shikata-ga-nai", false, "encode shellcode using shikata ga nai prior to execution")
-				//f.String("A", "architecture", "amd64", "architecture of the shellcode: 386, amd64 (used with --shikata-ga-nai flag)")
-				//f.Int("I", "iterations", 1, "number of encoding iterations (used with --shikata-ga-nai flag)")
-				//
-				//f.Int("t", "timeout", consts.DefaultTimeout, "command timeout in seconds")
+				f.Bool("s", "sacrifice", false, "is need sacrifice process")
+				f.String("a", "argue", "", "argue")
 			},
 			HelpGroup: consts.ImplantGroup,
 		},
 		&grumble.Command{
-			Name: consts.ModuleExecuteShellcodeInline,
+			Name: consts.ModuleInlineShellcode,
 			Help: "Executes the given inline shellcode in the IOM ",
 			Args: func(a *grumble.Args) {
-				a.String("filepath", "path the shellcode file")
-			},
-			Flags: func(f *grumble.Flags) {
-				f.String("", "param", "", "parameter eg:'a,b,c...'")
+				a.String("path", "path the shellcode file")
+				a.StringList("args", "arguments to pass to the assembly entrypoint", grumble.Default([]string{}))
 			},
 			Run: func(ctx *grumble.Context) error {
 				ExecuteShellcodeInlineCmd(ctx, con)
+				return nil
+			},
+			HelpGroup: consts.ImplantGroup,
+		},
+		&grumble.Command{
+			Name: consts.ModuleExecuteDll,
+			Help: "Executes the given DLL in the sacrifice process",
+			Args: func(a *grumble.Args) {
+				a.String("path", "path the shellcode file")
+				a.StringList("args", "arguments to pass to the assembly entrypoint", grumble.Default([]string{}))
+			},
+			Flags: func(f *grumble.Flags) {
+				f.Uint("p", "ppid", 0, "pid of the process to inject into (0 means injection into ourselves)")
+				f.Bool("b", "block_dll", false, "block dll injection")
+				f.Bool("s", "sacrifice", false, "is need sacrifice process")
+				f.String("a", "argue", "", "argue")
+			},
+			Run: func(c *grumble.Context) error {
+				ExecuteDLLCmd(c, con)
+				return nil
+			},
+			HelpGroup: consts.ImplantGroup,
+		},
+		&grumble.Command{
+			Name: consts.ModuleInlineDll,
+			Help: "Executes the given inline DLL in current process",
+			Args: func(a *grumble.Args) {
+				a.String("path", "path the shellcode file")
+				a.StringList("args", "arguments to pass to the assembly entrypoint", grumble.Default([]string{}))
+			},
+			Flags: func(f *grumble.Flags) {
+				f.Uint("p", "ppid", 0, "pid of the process to inject into (0 means injection into ourselves)")
+				f.Bool("b", "block_dll", false, "block dll injection")
+				f.Bool("s", "sacrifice", false, "is need sacrifice process")
+				f.String("a", "argue", "", "argue")
+			},
+			Run: func(c *grumble.Context) error {
+				ExecuteDLLCmd(c, con)
+				return nil
+			},
+			HelpGroup: consts.ImplantGroup,
+		},
+		&grumble.Command{
+			Name: consts.ModuleExecutePE,
+			Help: "Executes the given PE in the sacrifice process",
+			Args: func(a *grumble.Args) {
+				a.String("path", "path the shellcode file")
+				a.StringList("args", "arguments to pass to the assembly entrypoint", grumble.Default([]string{}))
+			},
+			Flags: func(f *grumble.Flags) {
+				f.Uint("p", "ppid", 0, "pid of the process to inject into (0 means injection into ourselves)")
+				f.Bool("b", "block_dll", false, "block dll injection")
+				f.Bool("s", "sacrifice", false, "is need sacrifice process")
+				f.String("a", "argue", "", "argue")
+			},
+			Run: func(c *grumble.Context) error {
+				ExecutePECmd(c, con)
+				return nil
+			},
+			HelpGroup: consts.ImplantGroup,
+		},
+		&grumble.Command{
+			Name: consts.ModuleInlinePE,
+			Help: "Executes the given inline PE in current process",
+			Args: func(a *grumble.Args) {
+				a.String("path", "path the shellcode file")
+				a.StringList("args", "arguments to pass to the assembly entrypoint", grumble.Default([]string{}))
+			},
+			Run: func(c *grumble.Context) error {
+				InlinePECmd(c, con)
 				return nil
 			},
 			HelpGroup: consts.ImplantGroup,
@@ -117,7 +178,7 @@ func Commands(con *console.Console) []*grumble.Command {
 			//LongHelp: help.GetHelpFor([]string{consts.ModuleExecuteAssembly}),
 			Args: func(a *grumble.Args) {
 				a.String("path", "path the assembly file")
-				a.StringList("arguments", "arguments to pass to the assembly entrypoint", grumble.Default([]string{}))
+				a.StringList("args", "arguments to pass to the assembly entrypoint", grumble.Default([]string{}))
 			},
 			Flags: func(f *grumble.Flags) {
 				f.Bool("s", "save", false, "save output to file")
@@ -125,7 +186,7 @@ func Commands(con *console.Console) []*grumble.Command {
 				f.Int("t", "timeout", consts.DefaultTimeout, "command timeout in seconds")
 			},
 			Run: func(ctx *grumble.Context) error {
-				ExecuteAssemblyCmd(ctx, con)
+				ExecuteBofCmd(ctx, con)
 				return nil
 			},
 			HelpGroup: consts.ImplantGroup,

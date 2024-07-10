@@ -28,26 +28,26 @@ const (
 	MsgExecuteExtension MsgName = "execute_extension"
 	MsgExecuteAssembly  MsgName = consts.ModuleExecuteAssembly
 	MsgExecuteShellcode MsgName = consts.ModuleExecuteShellcode
-	MsgExecuteSpawn     MsgName = "execute_spawn"
-	MsgExecuteSideLoad  MsgName = "execute_sideload"
-	MsgExecuteBof       MsgName = consts.ModuleExecuteBof
-	MsgPwd              MsgName = consts.ModulePwd
-	MsgLs               MsgName = consts.ModuleLs
-	MsgNetstat          MsgName = consts.ModuleNetstat
-	MsgPs               MsgName = consts.ModulePs
-	MsgCp               MsgName = consts.ModuleCp
-	MsgMv               MsgName = consts.ModuleMv
-	MsgMkdir            MsgName = consts.ModuleMkdir
-	MsgRm               MsgName = consts.ModuleRm
-	MsgCat              MsgName = consts.ModuleCat
-	MsgCd               MsgName = consts.ModuleCd
-	MsgChmod            MsgName = consts.ModuleChmod
-	MsgChown            MsgName = consts.ModuleChown
-	MsgKill             MsgName = consts.ModuleKill
-	MsgEnv              MsgName = consts.ModuleEnv
-	MsgSetEnv           MsgName = consts.ModuleSetEnv
-	MsgUnsetEnv         MsgName = consts.ModuleUnsetEnv
-	MsgWhoami           MsgName = consts.ModuleWhoami
+	MsgExecutePE        MsgName = consts.ModuleExecutePE
+	//MsgExecuteSpawn     MsgName = "execute_spawn"
+	MsgExecuteBof MsgName = consts.ModuleExecuteBof
+	MsgPwd        MsgName = consts.ModulePwd
+	MsgLs         MsgName = consts.ModuleLs
+	MsgNetstat    MsgName = consts.ModuleNetstat
+	MsgPs         MsgName = consts.ModulePs
+	MsgCp         MsgName = consts.ModuleCp
+	MsgMv         MsgName = consts.ModuleMv
+	MsgMkdir      MsgName = consts.ModuleMkdir
+	MsgRm         MsgName = consts.ModuleRm
+	MsgCat        MsgName = consts.ModuleCat
+	MsgCd         MsgName = consts.ModuleCd
+	MsgChmod      MsgName = consts.ModuleChmod
+	MsgChown      MsgName = consts.ModuleChown
+	MsgKill       MsgName = consts.ModuleKill
+	MsgEnv        MsgName = consts.ModuleEnv
+	MsgSetEnv     MsgName = consts.ModuleSetEnv
+	MsgUnsetEnv   MsgName = consts.ModuleUnsetEnv
+	MsgWhoami     MsgName = consts.ModuleWhoami
 )
 
 func (r MsgName) String() string {
@@ -80,10 +80,12 @@ func MessageType(message *implantpb.Spite) MsgName {
 		return MsgExecuteAssembly
 	case *implantpb.Spite_ExecuteShellcode:
 		return MsgExecuteShellcode
-	case *implantpb.Spite_ExecuteSpawn:
-		return MsgExecuteSpawn
-	case *implantpb.Spite_ExecuteSideload:
-		return MsgExecuteSideLoad
+	//case *implantpb.Spite_ExecuteSpawn:
+	//	return MsgExecuteSpawn
+	//case *implantpb.Spite_ExecuteSideload:
+	//	return MsgExecuteSideLoad
+	case *implantpb.Spite_ExecutePe:
+		return MsgExecutePE
 	case *implantpb.Spite_ExecuteBof:
 		return MsgExecuteBof
 	case *implantpb.Spite_Extensions:
