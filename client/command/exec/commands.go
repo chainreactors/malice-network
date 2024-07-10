@@ -42,23 +42,22 @@ func Commands(con *console.Console) []*grumble.Command {
 			//LongHelp: help.GetHelpFor([]string{consts.ModuleExecuteAssembly}),
 			Args: func(a *grumble.Args) {
 				a.String("path", "path the assembly file")
-				a.StringList("arguments", "arguments to pass to the assembly entrypoint", grumble.Default([]string{}))
 			},
 			Flags: func(f *grumble.Flags) {
-				f.String("p", "process", "notepad.exe", "hosting process to inject into")
-				f.String("m", "method", "", "Optional method (a method is required for a .NET DLL)")
-				f.String("c", "class", "", "Optional class name (required for .NET DLL)")
-				f.String("d", "app-domain", "", "AppDomain name to create for .NET assembly. Generated randomly if not set.")
-				f.String("a", "arch", "x84", "Assembly target architecture: x86, x64, x84 (x86+x64)")
-				f.Bool("i", "in-process", false, "Run in the current sliver process")
-				f.String("r", "runtime", "", "Runtime to use for running the assembly (only supported when used with --in-process)")
-				f.Bool("s", "save", false, "save output to file")
-				f.Bool("X", "loot", false, "save output as loot")
+				//f.String("p", "process", "notepad.exe", "hosting process to inject into")
+				//f.String("m", "method", "", "Optional method (a method is required for a .NET DLL)")
+				//f.String("c", "class", "", "Optional class name (required for .NET DLL)")
+				//f.String("d", "app-domain", "", "AppDomain name to create for .NET assembly. Generated randomly if not set.")
+				//f.String("a", "arch", "x84", "Assembly target architecture: x86, x64, x84 (x86+x64)")
+				//f.Bool("i", "in-process", false, "Run in the current sliver process")
+				//f.String("r", "runtime", "", "Runtime to use for running the assembly (only supported when used with --in-process)")
+				//f.Bool("s", "save", false, "save output to file")
+				f.Bool("", "need_output", false, "need output")
 				f.String("n", "name", "", "name to assign loot (optional)")
-				f.Uint("P", "ppid", 0, "parent process id (optional)")
-				f.String("A", "process-arguments", "", "arguments to pass to the hosting process")
-				f.Bool("M", "amsi-bypass", false, "Bypass AMSI on Windows (only supported when used with --in-process)")
-				f.Bool("E", "etw-bypass", false, "Bypass ETW on Windows (only supported when used with --in-process)")
+				f.Uint("p", "ppid", 0, "parent process id (optional)")
+				f.String("", "param", "", "arguments to pass to the hosting process")
+				//f.Bool("M", "amsi-bypass", false, "Bypass AMSI on Windows (only supported when used with --in-process)")
+				//f.Bool("E", "etw-bypass", false, "Bypass ETW on Windows (only supported when used with --in-process)")
 
 				f.Int("t", "timeout", consts.DefaultTimeout, "command timeout in seconds")
 			},
@@ -81,10 +80,10 @@ func Commands(con *console.Console) []*grumble.Command {
 				a.String("filepath", "path the shellcode file")
 			},
 			Flags: func(f *grumble.Flags) {
-				f.String("p", "param", "", "parameter eg:'a,b,c...'")
-				f.Uint("i", "pid", 0, "pid of the process to inject into (0 means injection into ourselves)")
+				f.String("", "param", "", "parameter eg:'a,b,c...'")
+				f.Uint("p", "ppid", 0, "pid of the process to inject into (0 means injection into ourselves)")
 				f.Bool("b", "block_dll", false, "block dll injection")
-				f.Bool("n", "is_need_sacrifice", false, "is need sacrifice process")
+				f.Bool("n", "sacrifice", false, "is need sacrifice process")
 				//f.Bool("r", "rwx-pages", false, "Use RWX permissions for memory pages")
 				//f.Uint("p", "pid", 0, "Pid of process to inject into (0 means injection into ourselves)")
 				//f.String("n", "process", `c:\windows\system32\notepad.exe`, "Process to inject into when running in interactive mode")
@@ -104,7 +103,7 @@ func Commands(con *console.Console) []*grumble.Command {
 				a.String("filepath", "path the shellcode file")
 			},
 			Flags: func(f *grumble.Flags) {
-				f.String("p", "param", "", "parameter eg:'a,b,c...'")
+				f.String("", "param", "", "parameter eg:'a,b,c...'")
 			},
 			Run: func(ctx *grumble.Context) error {
 				ExecuteShellcodeInlineCmd(ctx, con)

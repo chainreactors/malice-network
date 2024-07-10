@@ -6,7 +6,7 @@ const (
 	ModuleExecution              = "exec"
 	ModuleExecuteAssembly        = "execute_assembly"
 	ModuleExecuteShellcode       = "execute_shellcode"
-	ModuleExecuteShellcodeInline = "execute_shellcode_inline"
+	ModuleExecuteShellcodeInline = "inline_shellcode"
 	ModuleExecuteBof             = "execute_bof"
 	ModuleUpload                 = "upload"
 	ModuleDownload               = "download"
@@ -38,6 +38,9 @@ const (
 	CommandAliasLoad             = "load"
 	CommandAliasInstall          = "install"
 	CommandAliasRemove           = "remove"
+	CommandArmory                = "armory"
+	CommandArmoryUpdate          = "update"
+	CommandArnorySearch          = "search"
 )
 
 // ctrl type

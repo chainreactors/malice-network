@@ -28,7 +28,7 @@ func ExecuteShellcodeCmd(ctx *grumble.Context, con *console.Console) {
 	shellcodePath := ctx.Args.String("filepath")
 	paramString := ctx.Flags.String("param")
 	isBlockDll := ctx.Flags.Bool("block_dll")
-	isNeedSacrifice := ctx.Flags.Bool("is_need_sacrifice")
+	isNeedSacrifice := ctx.Flags.Bool("sacrifice")
 	var params []string
 	if paramString != "" {
 		params = strings.Split(paramString, ",")

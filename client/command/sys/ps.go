@@ -3,9 +3,9 @@ package sys
 import (
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/console"
-	"github.com/chainreactors/malice-network/client/tui"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
+	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/table"
 	"google.golang.org/protobuf/proto"
 	"strconv"
@@ -36,7 +36,7 @@ func PsCmd(ctx *grumble.Context, con *console.Console) {
 			{Title: "Owner", Width: 7},
 			{Title: "Path", Width: 15},
 			{Title: "Args", Width: 10},
-		})
+		}, true)
 		for _, process := range resp.GetProcesses() {
 			row = table.Row{
 				process.Name,
@@ -49,10 +49,9 @@ func PsCmd(ctx *grumble.Context, con *console.Console) {
 			}
 			rowEntries = append(rowEntries, row)
 		}
-		tableModel.Rows = rowEntries
-		tableModel.SetRows()
-		tableModel.SetHandle(func() {})
-		err := tui.Run(tableModel)
+		tableModel.SetRows(rowEntries)
+		newTable := tui.NewModel(tableModel, nil, false, false)
+		err = newTable.Run()
 		if err != nil {
 			con.SessionLog(sid).Errorf("Error running table: %v", err)
 		}

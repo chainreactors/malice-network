@@ -6,8 +6,8 @@ import (
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/console"
-	"github.com/chainreactors/malice-network/client/tui"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
+	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/table"
 	"strconv"
 )
@@ -68,7 +68,7 @@ func PrintTasks(tasks []*clientpb.TaskDesc, con *console.Console) {
 		{Title: "Process", Width: 10},
 		{Title: "FileName", Width: 15},
 		{Title: "FilePath", Width: 40},
-	})
+	}, true)
 	for _, task := range tasks {
 		var desc description
 		var processValue string
@@ -98,11 +98,9 @@ func PrintTasks(tasks []*clientpb.TaskDesc, con *console.Console) {
 		}
 		rowEntries = append(rowEntries, row)
 	}
-	tableModel.Rows = rowEntries
-	tableModel.SetRows()
-	tableModel.SetHandle(func() {
-	})
-	err := tui.Run(tableModel)
+	tableModel.SetRows(rowEntries)
+	newTable := tui.NewModel(tableModel, nil, false, false)
+	err := newTable.Run()
 	if err != nil {
 		con.SessionLog(sid).Errorf("Error running table: %v", err)
 	}

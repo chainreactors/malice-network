@@ -1,29 +1,12 @@
 package alias
 
-/*
-	Sliver Implant Framework
-	Copyright (C) 2021  Bishop Fox
-
-	This program is free software: you can redistribute it and/or modify
-	it under the terms of the GNU General Public License as published by
-	the Free Software Foundation, either version 3 of the License, or
-	(at your option) any later version.
-
-	This program is distributed in the hope that it will be useful,
-	but WITHOUT ANY WARRANTY; without even the implied warranty of
-	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-	GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with this program.  If not, see <https://www.gnu.org/licenses/>.
-*/
-
 import (
 	"fmt"
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/client/utils"
+	"github.com/chainreactors/tui"
 	"os"
 	"path/filepath"
 	"strings"
@@ -38,7 +21,7 @@ func AliasesInstallCmd(ctx *grumble.Context, con *console.Console) {
 		return
 	}
 	if !fi.IsDir() {
-		InstallFromFile(aliasLocalPath, false, con)
+		InstallFromFile(aliasLocalPath, "", false, con)
 	} else {
 		installFromDir(aliasLocalPath, con)
 	}
@@ -99,7 +82,7 @@ func installFromDir(aliasLocalPath string, con *console.Console) {
 }
 
 // Install an extension from a .tar.gz file
-func InstallFromFile(aliasGzFilePath string, autoOverwrite bool, con *console.Console) *string {
+func InstallFromFile(aliasGzFilePath string, aliasName string, promptToOverwrite bool, con *console.Console) *string {
 	manifestData, err := utils.ReadFileFromTarGz(aliasGzFilePath, fmt.Sprintf("./%s", ManifestFileName))
 	if err != nil {
 		console.Log.Errorf("Failed to read %s from '%s': %s\n", ManifestFileName, aliasGzFilePath, err)
@@ -107,19 +90,29 @@ func InstallFromFile(aliasGzFilePath string, autoOverwrite bool, con *console.Co
 	}
 	manifest, err := ParseAliasManifest(manifestData)
 	if err != nil {
-		console.Log.Errorf("Failed to parse %s: %s\n", ManifestFileName, err)
+		errorMsg := ""
+		if aliasName != "" {
+			errorMsg = fmt.Sprintf("Error processing manifest for alias %s - failed to parse %s: %s\n", aliasName, ManifestFileName, err)
+		} else {
+			errorMsg = fmt.Sprintf("Failed to parse %s: %s\n", ManifestFileName, err)
+		}
+		console.Log.Errorf(errorMsg)
 		return nil
 	}
 	installPath := filepath.Join(assets.GetAliasesDir(), filepath.Base(manifest.CommandName))
 	if _, err := os.Stat(installPath); !os.IsNotExist(err) {
-		if !autoOverwrite {
+		if promptToOverwrite {
 			console.Log.Infof("Alias '%s' already exists\n", manifest.CommandName)
-			//confirm := false
-			//prompt := &survey.Confirm{Message: "Overwrite current install?"}
-			//survey.AskOne(prompt, &confirm)
-			//if !confirm {
-			//	return nil
-			//}
+			confirmModel := tui.NewConfirm("Overwrite current install?")
+			newConfirm := tui.NewModel(confirmModel, nil, false, true)
+			err := newConfirm.Run()
+			if err != nil {
+				console.Log.Errorf("Failed to run confirm model: %s\n", err)
+				return nil
+			}
+			if !confirmModel.Confirmed {
+				return nil
+			}
 		}
 		forceRemoveAll(installPath)
 	}
@@ -138,7 +131,7 @@ func InstallFromFile(aliasGzFilePath string, autoOverwrite bool, con *console.Co
 	}
 	for _, aliasFile := range manifest.Files {
 		if aliasFile.Path != "" {
-			err := installArtifact(aliasGzFilePath, installPath, aliasFile.Path, con)
+			err := installArtifact(aliasGzFilePath, installPath, aliasFile.Path)
 			if err != nil {
 				console.Log.Errorf("Failed to install file: %s\n", err)
 				forceRemoveAll(installPath)
@@ -150,7 +143,7 @@ func InstallFromFile(aliasGzFilePath string, autoOverwrite bool, con *console.Co
 	return &installPath
 }
 
-func installArtifact(aliasGzFilePath string, installPath, artifactPath string, con *console.Console) error {
+func installArtifact(aliasGzFilePath string, installPath, artifactPath string) error {
 	data, err := utils.ReadFileFromTarGz(aliasGzFilePath, fmt.Sprintf("./%s", strings.TrimPrefix(artifactPath, string(os.PathSeparator))))
 	if err != nil {
 		return err

@@ -5,15 +5,13 @@ import (
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/console"
-	"github.com/chainreactors/malice-network/client/tui"
-	"github.com/chainreactors/malice-network/helper/helper"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
+	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/table"
-	"github.com/muesli/termenv"
 	"github.com/pterm/pterm"
-	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -53,10 +51,10 @@ func SessionsCmd(ctx *grumble.Context, con *console.Console) {
 }
 
 func PrintSessions(sessions map[string]*clientpb.Session, con *console.Console, isAll bool) {
-	var colorIndex = 1
+	//var colorIndex = 1
 	var rowEntries []table.Row
 	var row table.Row
-	groupColors := make(map[string]termenv.ANSIColor)
+	//groupColors := make(map[string]termenv.ANSIColor)
 	tableModel := tui.NewTable([]table.Column{
 		{Title: "ID", Width: 15},
 		{Title: "Group", Width: 7},
@@ -68,7 +66,7 @@ func PrintSessions(sessions map[string]*clientpb.Session, con *console.Console, 
 		{Title: "Operating System", Width: 20},
 		{Title: "Last Message", Width: 15},
 		{Title: "Health", Width: 15},
-	})
+	}, false)
 	for _, session := range sessions {
 		var SessionHealth string
 		if !session.IsDead {
@@ -79,17 +77,17 @@ func PrintSessions(sessions map[string]*clientpb.Session, con *console.Console, 
 		} else {
 			SessionHealth = pterm.FgGreen.Sprint("[ALIVE]")
 		}
-		if _, exists := groupColors[session.GroupName]; !exists {
-			groupColors[session.GroupName] = termenv.ANSIColor(colorIndex)
-			colorIndex++
-		}
+		//if _, exists := groupColors[session.GroupName]; !exists {
+		//	groupColors[session.GroupName] = termenv.ANSIColor(colorIndex)
+		//	colorIndex++
+		//}
 		currentTime := time.Now()
 		lastCheckinTime := time.Unix(int64(session.Timer.LastCheckin), 0)
 		timeDiff := currentTime.Sub(lastCheckinTime)
 		secondsDiff := uint64(timeDiff.Seconds())
 		username := strings.TrimPrefix(session.Os.Username, session.Os.Hostname+"\\")
 		row = table.Row{
-			termenv.String(helper.ShortSessionID(session.SessionId)).Foreground(groupColors[session.GroupName]).String(),
+			session.SessionId,
 			session.GroupName,
 			session.Note,
 			"",
@@ -102,12 +100,20 @@ func PrintSessions(sessions map[string]*clientpb.Session, con *console.Console, 
 		}
 		rowEntries = append(rowEntries, row)
 	}
-	tableModel.Rows = rowEntries
-	tableModel.SetRows()
+	var wg sync.WaitGroup
+	var err error
+	tableModel.SetRows(rowEntries)
 	tableModel.SetHandle(func() {
 		SessionLogin(tableModel, con)()
 	})
-	err := tui.Run(tableModel)
+	tableModel.Title = "Sessions"
+	newTable := tui.NewModel(tableModel, tableModel.ConsoleHandler, true, false)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		err = newTable.Run()
+	}()
+	wg.Wait()
 	if err != nil {
 		return
 	}
@@ -117,15 +123,8 @@ func SessionLogin(tableModel *tui.TableModel, con *console.Console) func() {
 	var sessionId string
 	con.UpdateSession()
 	selectRow := tableModel.GetSelectedRow()
-	re := regexp.MustCompile(`\x1b\[[0-9;]*m(.*?)\x1b\[0m`)
-	matches := re.FindStringSubmatch(selectRow[0])
-
-	if len(matches) < 1 {
-		console.Log.Errorf("No match found")
-		return nil
-	}
 	for _, s := range con.Sessions {
-		if strings.HasPrefix(s.SessionId, matches[1]) {
+		if strings.HasPrefix(s.SessionId, selectRow[0]) {
 			sessionId = s.SessionId
 		}
 	}

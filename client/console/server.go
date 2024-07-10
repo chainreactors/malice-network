@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/client/tui"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
+	"github.com/chainreactors/tui"
 	"google.golang.org/grpc"
 	"io"
 	"sync"
@@ -178,6 +178,7 @@ func (s *ServerStatus) EventHandler() {
 		switch event.Type {
 
 		case consts.EventJoin:
+			tui.Clear()
 			Log.Infof("%s has joined the game", event.Client.Name)
 		case consts.EventLeft:
 			Log.Infof("%s left the game", event.Client.Name)

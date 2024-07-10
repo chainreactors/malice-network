@@ -3,10 +3,11 @@ package modules
 import (
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/console"
-	"github.com/chainreactors/malice-network/client/tui"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
+	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/list"
 	"google.golang.org/protobuf/proto"
+	"sync"
 )
 
 func listModules(ctx *grumble.Context, con *console.Console) {
@@ -27,10 +28,19 @@ func listModules(ctx *grumble.Context, con *console.Console) {
 			modules = append(modules, tui.Item{Ititle: module, Desc: ""})
 
 		}
+		var wg sync.WaitGroup
 		listModel := tui.Newlist(modules)
-		err := tui.Run(listModel)
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			newList := tui.NewModel(listModel, nil, false, false)
+			err = newList.Run()
+		}()
+		wg.Wait()
 		if err != nil {
 			con.SessionLog(sid).Errorf("Error running list: %v", err)
+			return
 		}
+
 	})
 }

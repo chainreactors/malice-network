@@ -3,9 +3,9 @@ package explorer
 import (
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/console"
-	"github.com/chainreactors/malice-network/client/tui"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
+	tea "github.com/charmbracelet/bubbletea"
 	"google.golang.org/protobuf/proto"
 	"os"
 	"sync"
@@ -46,7 +46,6 @@ func explorerCmd(ctx *grumble.Context, con *console.Console) {
 	explorer := NewExplorer(dirEntries, con)
 	explorer.FilePicker.CurrentDirectory = "./"
 	explorer.FilePicker.Height = 50
-
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -63,10 +62,14 @@ func explorerCmd(ctx *grumble.Context, con *console.Console) {
 					explorer.Files = dirEntries
 					explorer.FilePicker.CurrentDirectory = path
 					explorer.max = max(explorer.max, explorer.FilePicker.Height-1)
-					err = tui.Run(explorer)
-					if err != nil {
+					if _, err := tea.NewProgram(explorer, tea.WithAltScreen()).Run(); err != nil {
 						con.SessionLog(sid).Errorf("Error running explorer: %v", err)
 					}
+					//newExplorer := tui.NewModel(explorer, nil, false, false)
+					//err = newExplorer.Run()
+					//if err != nil {
+					//	con.SessionLog(sid).Errorf("Error running explorer: %v", err)
+					//}
 					return
 				}
 			case <-time.After(1 * time.Second):

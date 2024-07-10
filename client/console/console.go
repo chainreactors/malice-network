@@ -5,10 +5,10 @@ import (
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/client/tui"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/mtls"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
+	"github.com/chainreactors/tui"
 	"github.com/fatih/color"
 	"google.golang.org/protobuf/proto"
 	"os"
@@ -38,7 +38,7 @@ func Start(bindCmds ...BindCmds) error {
 	settings, _ := assets.LoadSettings()
 	con := &Console{
 		App: grumble.New(&grumble.Config{
-			Name:                  tui.ClientPrompt,
+			Name:                  tui.AdaptTermColor("IOM"),
 			Description:           "Internet of Malice",
 			HistoryFile:           filepath.Join(assets.GetRootAppDir(), "history"),
 			PromptColor:           color.New(),
@@ -101,9 +101,9 @@ func (c *Console) Login(config *assets.ClientConfig) error {
 
 func (c *Console) UpdatePrompt() {
 	if c.ActiveTarget.session != nil {
-		c.App.SetPrompt(tui.AdaptSessionColor(c.ActiveTarget.session.SessionId))
+		c.App.SetPrompt(tui.AdaptSessionColor("IOM", c.ActiveTarget.session.SessionId))
 	} else {
-		c.App.SetPrompt(tui.ClientPrompt)
+		c.App.SetPrompt(tui.AdaptTermColor("IOM"))
 	}
 }
 

@@ -104,3 +104,13 @@ func CopyFile(src string, dst string) error {
 	}
 	return err
 }
+
+// From the x/exp source code - gets a slice of keys for a map
+func Keys[M ~map[K]V, K comparable, V any](m M) []K {
+	r := make([]K, 0, len(m))
+	for k := range m {
+		r = append(r, k)
+	}
+
+	return r
+}

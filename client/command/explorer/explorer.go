@@ -3,9 +3,9 @@ package explorer
 import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/console"
-	"github.com/chainreactors/malice-network/client/tui"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
+	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/filepicker"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
@@ -319,9 +319,9 @@ func downloadRequest(e *ExplorerModel) error {
 		block := msg.(*implantpb.Spite).GetBlock()
 		e.progress.SetProgressPercent(float64(block.BlockId+1) / float64(total))
 		e.progress.Update(tui.ViewMsg{})
-		if block.BlockId+1 == uint32(total) {
-			e.isProgress = false
-		}
+		//if block.BlockId+1 == uint32(total) {
+		//	e.isProgress = false
+		//}
 	})
 	return nil
 }

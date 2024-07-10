@@ -3,9 +3,9 @@ package filesystem
 import (
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/console"
-	"github.com/chainreactors/malice-network/client/tui"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
+	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/table"
 	"google.golang.org/protobuf/proto"
 	"strconv"
@@ -34,12 +34,12 @@ func LsCmd(ctx *grumble.Context, con *console.Console) {
 		var rowEntries []table.Row
 		var row table.Row
 		tableModel := tui.NewTable([]table.Column{
-			{Title: "Name", Width: 10},
+			{Title: "Name", Width: 20},
 			{Title: "IsDir", Width: 5},
 			{Title: "Size", Width: 7},
 			{Title: "ModTime", Width: 10},
 			{Title: "Link", Width: 15},
-		})
+		}, true)
 		for _, file := range resp.GetFiles() {
 			row = table.Row{
 				file.Name,
@@ -50,11 +50,9 @@ func LsCmd(ctx *grumble.Context, con *console.Console) {
 			}
 			rowEntries = append(rowEntries, row)
 		}
-		tableModel.Rows = rowEntries
-		tableModel.SetRows()
-		tableModel.SetHandle(func() {
-		})
-		err := tui.Run(tableModel)
+		tableModel.SetRows(rowEntries)
+		newTable := tui.NewModel(tableModel, nil, false, false)
+		err := newTable.Run()
 		if err != nil {
 			con.SessionLog(sid).Errorf("Error running table: %v", err)
 		}

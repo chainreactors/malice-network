@@ -3,8 +3,8 @@ package file
 import (
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/console"
-	"github.com/chainreactors/malice-network/client/tui"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
+	"github.com/chainreactors/tui"
 	"path/filepath"
 
 	"google.golang.org/protobuf/proto"

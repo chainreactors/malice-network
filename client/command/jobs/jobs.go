@@ -5,8 +5,8 @@ import (
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/console"
-	"github.com/chainreactors/malice-network/client/tui"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
+	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/table"
 	"strconv"
 )
@@ -53,7 +53,7 @@ func printJobs(jobs *clientpb.Jobs, con *console.Console) {
 		{Title: "name", Width: 4},
 		{Title: "host", Width: 10},
 		{Title: "port", Width: 5},
-	})
+	}, true)
 
 	for _, job := range jobs.Job {
 		row = table.Row{strconv.Itoa(int(job.Id)),
@@ -63,5 +63,10 @@ func printJobs(jobs *clientpb.Jobs, con *console.Console) {
 		rowEntries = append(rowEntries, row)
 	}
 	tableModel.Rows = rowEntries
-	tui.Run(tableModel)
+	newTable := tui.NewModel(tableModel, nil, false, false)
+	err := newTable.Run()
+	if err != nil {
+		console.Log.Errorf("Error running table: %v", err)
+		return
+	}
 }

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/console"
-	"github.com/chainreactors/malice-network/client/tui"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
+	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/table"
 	"strconv"
 )
@@ -47,7 +47,7 @@ func PrintWebsite(web *clientpb.Website) {
 		{Title: "Path", Width: 20},
 		{Title: "Content-type", Width: 20},
 		{Title: "Size", Width: 10},
-	})
+	}, true)
 	for _, content := range web.Contents {
 		row = table.Row{
 			content.Path,
@@ -56,9 +56,9 @@ func PrintWebsite(web *clientpb.Website) {
 		}
 		rowEntries = append(rowEntries, row)
 	}
-	tableModel.Rows = rowEntries
-	tableModel.SetRows()
-	err := tui.Run(tableModel)
+	tableModel.SetRows(rowEntries)
+	newTable := tui.NewModel(tableModel, nil, false, false)
+	err := newTable.Run()
 	if err != nil {
 		return
 	}

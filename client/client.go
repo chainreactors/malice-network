@@ -4,7 +4,7 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/cli"
 	"github.com/chainreactors/malice-network/client/console"
-	"github.com/chainreactors/malice-network/client/tui"
+	"github.com/chainreactors/tui"
 )
 
 func init() {
