@@ -19,6 +19,7 @@ package armory
 */
 
 import (
+	"crypto/sha256"
 	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
@@ -64,6 +65,18 @@ type armoryIndexResponse struct {
 type armoryPkgResponse struct {
 	Minisig  string `json:"minisig"`    // Minisig (Base64)
 	TarGzURL string `json:"tar_gz_url"` // Raw tar.gz url
+}
+
+func calculatePackageHash(pkg *ArmoryPackage) string {
+	if pkg == nil {
+		return ""
+	}
+
+	hasher := sha256.New()
+	// Hash some of the things that make the package unique
+	packageIdentifier := []byte(pkg.RepoURL + pkg.PublicKey + pkg.ArmoryName + pkg.CommandName)
+	hasher.Write(packageIdentifier)
+	return fmt.Sprintf("%x", hasher.Sum(nil))
 }
 
 //

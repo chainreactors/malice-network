@@ -3,6 +3,7 @@ package command
 import (
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/command/alias"
+	"github.com/chainreactors/malice-network/client/command/armory"
 	"github.com/chainreactors/malice-network/client/command/basic"
 	"github.com/chainreactors/malice-network/client/command/explorer"
 	"github.com/chainreactors/malice-network/client/command/jobs"
@@ -73,6 +74,7 @@ func BindClientsCommands(con *console.Console) {
 		jobs.Command,
 		listener.Commands,
 		alias.Commands,
+		armory.Commands,
 		observe.Command,
 		website.Commands,
 		explorer.Commands,

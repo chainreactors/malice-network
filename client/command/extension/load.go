@@ -9,6 +9,7 @@ import (
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/client/utils"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/tui"
 	"io/ioutil"
 	"os"
 	"path"
@@ -23,9 +24,10 @@ const (
 	ManifestFileName = "extension.json"
 )
 
-var loadedExtensions = map[string]*ExtensionManifest{}
+var loadedExtensions = map[string]*ExtCommand{}
+var loadedManifests = map[string]*ExtensionManifest{}
 
-type ExtensionManifest struct {
+type ExtensionManifest_ struct {
 	Name            string               `json:"name"`
 	CommandName     string               `json:"command_name"`
 	Version         string               `json:"version"`
@@ -43,6 +45,33 @@ type ExtensionManifest struct {
 	RootPath string `json:"-"`
 }
 
+type ExtensionManifest struct {
+	Name            string `json:"name"`
+	Version         string `json:"version"`
+	ExtensionAuthor string `json:"extension_author"`
+	OriginalAuthor  string `json:"original_author"`
+	RepoURL         string `json:"repo_url"`
+
+	ExtCommand []*ExtCommand `json:"commands"`
+
+	RootPath   string `json:"-"`
+	ArmoryName string `json:"-"`
+	ArmoryPK   string `json:"-"`
+}
+
+type ExtCommand struct {
+	CommandName string               `json:"command_name"`
+	Help        string               `json:"help"`
+	LongHelp    string               `json:"long_help"`
+	Files       []*extensionFile     `json:"files"`
+	Arguments   []*extensionArgument `json:"arguments"`
+	Entrypoint  string               `json:"entrypoint"`
+	DependsOn   string               `json:"depends_on"`
+	Init        string               `json:"init"`
+
+	Manifest *ExtensionManifest
+}
+
 type extensionFile struct {
 	OS   string `json:"os"`
 	Arch string `json:"arch"`
@@ -56,7 +85,7 @@ type extensionArgument struct {
 	Optional bool   `json:"optional"`
 }
 
-func (e *ExtensionManifest) getFileForTarget(cmdName string, targetOS string, targetArch string) (string, error) {
+func (e *ExtCommand) getFileForTarget(targetOS string, targetArch string) (string, error) {
 	filePath := ""
 	for _, extFile := range e.Files {
 		if targetOS == extFile.OS && targetArch == extFile.Arch {
@@ -78,72 +107,73 @@ func (e *ExtensionManifest) getFileForTarget(cmdName string, targetOS string, ta
 // ExtensionLoadCmd - Load extension command
 func ExtensionLoadCmd(ctx *grumble.Context, con *console.Console) {
 	dirPath := ctx.Args.String("dir-path")
-	extCmd, err := LoadExtensionManifest(filepath.Join(dirPath, ManifestFileName))
+	manifest, err := LoadExtensionManifest(filepath.Join(dirPath, ManifestFileName))
 	if err != nil {
 		return
 	}
 	// do not add if the command already exists
-	if CmdExists(extCmd.CommandName, con.App) {
-		console.Log.Errorf("%s command already exists\n", extCmd.CommandName)
-		return
+	for _, extCmd := range manifest.ExtCommand {
+		if CmdExists(extCmd.CommandName, con.App) {
+			console.Log.Errorf("%s command already exists\n", extCmd.CommandName)
+			confirmModel := tui.NewConfirm(fmt.Sprintf("%s command already exists. Overwrite?", extCmd.CommandName))
+			newConfirm := tui.NewModel(confirmModel, nil, false, true)
+			err = newConfirm.Run()
+			if err != nil {
+				console.Log.Errorf("Error running confirm model: %s\n", err)
+				return
+			}
+			if !confirmModel.Confirmed {
+				return
+			}
+		}
+		ExtensionRegisterCommand(extCmd, con)
+		console.Log.Infof("Added %s command: %s\n", extCmd.CommandName, extCmd.Help)
+
 	}
-	ExtensionRegisterCommand(extCmd, con)
-	console.Log.Infof("Added %s command: %s\n", extCmd.CommandName, extCmd.Help)
 }
 
 // LoadExtensionManifest - Parse extension files
 func LoadExtensionManifest(manifestPath string) (*ExtensionManifest, error) {
-	data, err := ioutil.ReadFile(manifestPath)
+	data, err := os.ReadFile(manifestPath)
 	if err != nil {
 		return nil, err
 	}
-	extManifest, err := ParseExtensionManifest(data)
+	manifest, err := ParseExtensionManifest(data)
 	if err != nil {
 		return nil, err
 	}
-	extManifest.RootPath = filepath.Dir(manifestPath)
-	loadedExtensions[extManifest.CommandName] = extManifest
-	return extManifest, nil
+	manifest.RootPath = filepath.Dir(manifestPath)
+	for _, extManifest := range manifest.ExtCommand {
+		loadedExtensions[extManifest.CommandName] = extManifest
+	}
+	loadedManifests[manifest.Name] = manifest
+	return manifest, nil
 }
 
 // ParseExtensionManifest - Parse extension manifest from buffer
 func ParseExtensionManifest(data []byte) (*ExtensionManifest, error) {
 	extManifest := &ExtensionManifest{}
 	err := json.Unmarshal(data, &extManifest)
-	if err != nil {
-		return nil, err
-	}
-	if extManifest.Name == "" {
-		return nil, errors.New("missing `name` field in extension manifest")
-	}
-	if extManifest.CommandName == "" {
-		return nil, errors.New("missing `command_name` field in extension manifest")
-	}
-	if len(extManifest.Files) == 0 {
-		return nil, errors.New("missing `files` field in extension manifest")
-	}
-	for _, extFiles := range extManifest.Files {
-		if extFiles.OS == "" {
-			return nil, errors.New("missing `files.os` field in extension manifest")
+	if err != nil || len(extManifest.ExtCommand) == 0 {
+		if err != nil {
+			console.Log.Errorf("extension load error: %s\n", err)
 		}
-		if extFiles.Arch == "" {
-			return nil, errors.New("missing `files.arch` field in extension manifest")
+		oldmanifest := &ExtensionManifest_{}
+		err = json.Unmarshal(data, &oldmanifest)
+		if err != nil {
+			return nil, err
 		}
-		extFiles.Path = utils.ResolvePath(extFiles.Path)
-		if extFiles.Path == "" || extFiles.Path == "/" {
-			return nil, errors.New("missing `files.path` field in extension manifest")
-		}
-		extFiles.OS = strings.ToLower(extFiles.OS)
-		extFiles.Arch = strings.ToLower(extFiles.Arch)
+		extManifest = convertOldManifest(oldmanifest)
 	}
-	if extManifest.Help == "" {
-		return nil, errors.New("missing `help` field in extension manifest")
+	for i := range extManifest.ExtCommand {
+		command := extManifest.ExtCommand[i]
+		command.Manifest = extManifest
 	}
-	return extManifest, nil
+	return extManifest, validManifest(extManifest)
 }
 
 // ExtensionRegisterCommand - Register a new extension command
-func ExtensionRegisterCommand(extCmd *ExtensionManifest, con *console.Console) {
+func ExtensionRegisterCommand(extCmd *ExtCommand, con *console.Console) {
 	loadedExtensions[extCmd.CommandName] = extCmd
 	helpMsg := extCmd.Help
 	extensionCmd := &grumble.Command{
@@ -192,9 +222,9 @@ func ExtensionRegisterCommand(extCmd *ExtensionManifest, con *console.Console) {
 	con.App.AddCommand(extensionCmd)
 }
 
-func loadExtension(goos string, goarch string, checkCache bool, ext *ExtensionManifest, ctx *grumble.Context, con *console.Console) error {
+func loadExtension(goos string, goarch string, checkCache bool, ext *ExtCommand, ctx *grumble.Context, con *console.Console) error {
 	var extensionList []string
-	binPath, err := ext.getFileForTarget(ctx.Command.Name, goos, goarch)
+	binPath, err := ext.getFileForTarget(goos, goarch)
 	if err != nil {
 		return err
 	}
@@ -243,7 +273,7 @@ func loadExtension(goos string, goarch string, checkCache bool, ext *ExtensionMa
 	return nil
 }
 
-func registerExtension(goos string, ext *ExtensionManifest, binData []byte, ctx *grumble.Context, con *console.Console) error {
+func registerExtension(goos string, ext *ExtCommand, binData []byte, ctx *grumble.Context, con *console.Console) error {
 	//registerResp, err := con.Rpc.RegisterExtension(context.Background(), &sliverpb.RegisterExtensionReq{
 	//	Name:    ext.CommandName,
 	//	Data:    binData,
@@ -263,7 +293,7 @@ func registerExtension(goos string, ext *ExtensionManifest, binData []byte, ctx 
 func loadDep(goos string, goarch string, depName string, ctx *grumble.Context, con *console.Console) error {
 	depExt, ok := loadedExtensions[depName]
 	if ok {
-		depBinPath, err := depExt.getFileForTarget(depExt.CommandName, goos, goarch)
+		depBinPath, err := depExt.getFileForTarget(goos, goarch)
 		if err != nil {
 			return err
 		}
@@ -306,7 +336,7 @@ func runExtensionCmd(ctx *grumble.Context, con *console.Console) {
 		return
 	}
 
-	binPath, err := ext.getFileForTarget(ctx.Command.Name, goos, goarch)
+	binPath, err := ext.getFileForTarget(goos, goarch)
 	if err != nil {
 		console.Log.Errorf("Failed to read extension file: %s\n", err)
 		return
@@ -467,4 +497,63 @@ func CmdExists(name string, app *grumble.App) bool {
 		}
 	}
 	return false
+}
+
+func convertOldManifest(old *ExtensionManifest_) *ExtensionManifest {
+	ret := &ExtensionManifest{
+		Name:            old.CommandName, //treating old command name as the manifest name to avoid weird chars mostly
+		Version:         old.Version,
+		ExtensionAuthor: old.ExtensionAuthor,
+		OriginalAuthor:  old.OriginalAuthor,
+		RepoURL:         old.RepoURL,
+		RootPath:        old.RootPath,
+		//only one command exists in the old manifest, so we can 'confidently' create it here
+		ExtCommand: []*ExtCommand{
+			{
+				CommandName: old.CommandName,
+				DependsOn:   old.DependsOn,
+				Help:        old.Help,
+				LongHelp:    old.LongHelp,
+				Entrypoint:  old.Entrypoint,
+				Files:       old.Files,
+				Arguments:   old.Arguments,
+			},
+		},
+	}
+
+	//Manifest ref is done in the parser that calls this
+
+	return ret
+}
+
+func validManifest(manifest *ExtensionManifest) error {
+	if manifest.Name == "" {
+		return errors.New("missing `name` field in extension manifest")
+	}
+	for _, extManifest := range manifest.ExtCommand {
+		if extManifest.CommandName == "" {
+			return errors.New("missing `command_name` field in extension manifest")
+		}
+		if len(extManifest.Files) == 0 {
+			return errors.New("missing `files` field in extension manifest")
+		}
+		for _, extFiles := range extManifest.Files {
+			if extFiles.OS == "" {
+				return errors.New("missing `files.os` field in extension manifest")
+			}
+			if extFiles.Arch == "" {
+				return errors.New("missing `files.arch` field in extension manifest")
+			}
+			extFiles.Path = utils.ResolvePath(extFiles.Path)
+			if extFiles.Path == "" || extFiles.Path == "/" {
+				return errors.New("missing `files.path` field in extension manifest")
+			}
+			extFiles.OS = strings.ToLower(extFiles.OS)
+			extFiles.Arch = strings.ToLower(extFiles.Arch)
+		}
+		if extManifest.Help == "" {
+			return errors.New("missing `help` field in extension manifest")
+		}
+	}
+	return nil
 }

@@ -1,28 +1,11 @@
 package armory
 
-/*
-	Sliver Implant Framework
-	Copyright (C) 2021  Bishop Fox
-
-	This program is free software: you can redistribute it and/or modify
-	it under the terms of the GNU General Public License as published by
-	the Free Software Foundation, either version 3 of the License, or
-	(at your option) any later version.
-
-	This program is distributed in the hope that it will be useful,
-	but WITHOUT ANY WARRANTY; without even the implied warranty of
-	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-	GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with this program.  If not, see <https://www.gnu.org/licenses/>.
-*/
-
 import (
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/command/alias"
 	"github.com/chainreactors/malice-network/client/command/extension"
 	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/tui"
 	"regexp"
 )
 
@@ -31,7 +14,7 @@ func ArmorySearchCmd(ctx *grumble.Context, con *console.Console) {
 	console.Log.Infof("Refreshing package cache ... ")
 	clientConfig := parseArmoryHTTPConfig(ctx)
 	refresh(clientConfig)
-	console.Log.Infof(console.Clearln + "\r")
+	tui.Clear()
 	rawNameExpr := ctx.Args.String("name")
 	if rawNameExpr == "" {
 		console.Log.Errorf("Please specify a search term!\n")
@@ -43,7 +26,7 @@ func ArmorySearchCmd(ctx *grumble.Context, con *console.Console) {
 		return
 	}
 
-	aliases, exts := packagesInCache()
+	aliases, exts := packageManifestsInCache()
 	matchedAliases := []*alias.AliasManifest{}
 	for _, a := range aliases {
 		if nameExpr.MatchString(a.CommandName) {
@@ -51,9 +34,11 @@ func ArmorySearchCmd(ctx *grumble.Context, con *console.Console) {
 		}
 	}
 	matchedExts := []*extension.ExtensionManifest{}
-	for _, ext := range exts {
-		if nameExpr.MatchString(ext.CommandName) {
-			matchedExts = append(matchedExts, ext)
+	for _, extm := range exts {
+		for _, ext := range extm.ExtCommand {
+			if nameExpr.MatchString(ext.CommandName) {
+				matchedExts = append(matchedExts, extm)
+			}
 		}
 	}
 	if len(matchedAliases) == 0 && len(matchedExts) == 0 {

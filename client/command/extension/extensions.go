@@ -6,7 +6,7 @@ import (
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/console"
-	"github.com/chainreactors/malice-network/client/tui"
+	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/table"
 	"io/ioutil"
 	"strings"
@@ -34,36 +34,36 @@ func PrintExtensions(con *console.Console) {
 		{Title: "Extension Author", Width: 10},
 		{Title: "Original Author", Width: 10},
 		{Title: "Repository", Width: 20},
-	})
+	}, true)
 
 	installedManifests := getInstalledManifests()
-	for _, extension := range loadedExtensions {
+	for _, ext := range loadedExtensions {
 		installed := ""
-		if _, ok := installedManifests[extension.CommandName]; ok {
+		if _, ok := installedManifests[ext.CommandName]; ok {
 			installed = "✅"
 		}
 		row = table.Row{
-			extension.Name,
-			extension.CommandName,
-			strings.Join(extensionPlatforms(extension), ",\n"),
-			extension.Version,
+			ext.Manifest.Name,
+			ext.CommandName,
+			strings.Join(extensionPlatforms(ext), ",\n"),
+			ext.Manifest.Version,
 			installed,
-			extension.ExtensionAuthor,
-			extension.OriginalAuthor,
-			extension.RepoURL,
+			ext.Manifest.ExtensionAuthor,
+			ext.Manifest.OriginalAuthor,
+			ext.Manifest.RepoURL,
 		}
 		rowEntries = append(rowEntries, row)
 	}
-	tableModel.Rows = rowEntries
-	tableModel.SetRows()
-	tableModel.SetHandle(func() {})
-	err := tui.Run(tableModel)
+	tableModel.SetRows(rowEntries)
+	newTable := tui.NewModel(tableModel, nil, false, false)
+	err := newTable.Run()
 	if err != nil {
+		console.Log.Errorf("Error running table: %s", err)
 		return
 	}
 }
 
-func extensionPlatforms(extension *ExtensionManifest) []string {
+func extensionPlatforms(extension *ExtCommand) []string {
 	platforms := map[string]string{}
 	for _, entry := range extension.Files {
 		platforms[fmt.Sprintf("%s/%s", entry.OS, entry.Arch)] = ""
@@ -88,7 +88,7 @@ func getInstalledManifests() map[string]*ExtensionManifest {
 		if err != nil {
 			continue
 		}
-		installedManifests[manifest.CommandName] = manifest
+		installedManifests[manifest.Name] = manifest
 	}
 	return installedManifests
 }
@@ -98,8 +98,8 @@ func ExtensionsCommandNameCompleter(prefix string, args []string, con *console.C
 	installedManifests := getInstalledManifests()
 	results := []string{}
 	for _, manifest := range installedManifests {
-		if strings.HasPrefix(manifest.CommandName, prefix) {
-			results = append(results, manifest.CommandName)
+		if strings.HasPrefix(manifest.Name, prefix) {
+			results = append(results, manifest.Name)
 		}
 	}
 	return results
