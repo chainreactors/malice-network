@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+	"errors"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/client/rootpb"
@@ -36,6 +37,11 @@ func (rpc *Server) LoginClient(ctx context.Context, req *clientpb.LoginReq) (*cl
 		CAType:     certs.OperatorCA,
 	}).First(&cert).Error
 	if err != nil {
+		if errors.Is(err, db.ErrRecordNotFound) {
+			return &clientpb.LoginResp{
+				Success: false,
+			}, errors.New("certificate not found")
+		}
 		return &clientpb.LoginResp{
 			Success: false,
 		}, err
