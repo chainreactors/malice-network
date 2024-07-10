@@ -11,7 +11,7 @@ func Commands(con *console.Console) []*grumble.Command {
 		Name: "listener",
 		Help: "listener manager",
 		Run: func(c *grumble.Context) error {
-			// todo list listeners
+			ListenerCmd(c, con)
 			return nil
 		},
 	}

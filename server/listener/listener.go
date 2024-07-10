@@ -61,8 +61,25 @@ func NewListener(cfg *configs.ListenerConfig) error {
 		cfg:       cfg,
 	}
 
+	l := &lispb.Pipelines{}
+	for _, tcpPipeline := range cfg.TcpPipelines {
+		pipeline := &lispb.Pipeline{
+			Body: &lispb.Pipeline_Tcp{
+				Tcp: &lispb.TCPPipeline{
+					Name: tcpPipeline.Name,
+					Host: tcpPipeline.Host,
+					Port: uint32(tcpPipeline.Port),
+				},
+			},
+		}
+		l.Pipelines = append(l.Pipelines, pipeline)
+	}
 	_, err = lis.Rpc.RegisterListener(context.Background(), &lispb.RegisterListener{
-		Id: fmt.Sprintf("%s_%s", lis.Name, lis.Host),
+		Id:        fmt.Sprintf("%s_%s", lis.Name, lis.Host),
+		Name:      lis.Name,
+		Host:      lis.Host,
+		Addr:      serverAddress,
+		Pipelines: l,
 	})
 	if err != nil {
 		return err

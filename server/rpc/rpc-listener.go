@@ -6,11 +6,10 @@ import (
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/client/rootpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/server/internal/configs"
-
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/proto/services/listenerrpc"
 	"github.com/chainreactors/malice-network/server/internal/certs"
+	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"google.golang.org/grpc/peer"
@@ -22,10 +21,20 @@ func (rpc *Server) GetListeners(ctx context.Context, req *clientpb.Empty) (*clie
 }
 
 func (rpc *Server) RegisterListener(ctx context.Context, req *lispb.RegisterListener) (*implantpb.Empty, error) {
+	var pipelines []core.DPipeline
+	for _, p := range req.Pipelines.Pipelines {
+		pipelines = append(pipelines, core.DPipeline{
+			Name: p.GetTcp().Name,
+			Host: p.GetTcp().Host,
+			Port: p.GetTcp().Port,
+			Type: "tcp",
+		})
+	}
 	core.Listeners.Add(&core.Listener{
-		Name:   req.Name,
-		Host:   req.Addr,
-		Active: true,
+		Name:       req.Name,
+		Host:       req.Addr,
+		Active:     true,
+		DPipelines: pipelines,
 	})
 	p, ok := peer.FromContext(ctx)
 	if !ok {
