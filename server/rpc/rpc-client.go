@@ -2,7 +2,6 @@ package rpc
 
 import (
 	"context"
-	"errors"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/client/rootpb"
@@ -31,21 +30,21 @@ func (rpc *Server) LoginClient(ctx context.Context, req *clientpb.LoginReq) (*cl
 		}, nil
 	}
 	dbSession := db.Session()
-	cert := models.Certificate{}
-	err := dbSession.Where(&models.Certificate{
-		CommonName: req.Name,
-		CAType:     certs.OperatorCA,
-	}).First(&cert).Error
-	if err != nil {
-		if errors.Is(err, db.ErrRecordNotFound) {
-			return &clientpb.LoginResp{
-				Success: false,
-			}, errors.New("certificate not found")
-		}
-		return &clientpb.LoginResp{
-			Success: false,
-		}, err
-	}
+	//cert := models.Certificate{}
+	//err := dbSession.Where(&models.Certificate{
+	//	CommonName: req.Name,
+	//	CAType:     certs.OperatorCA,
+	//}).First(&cert).Error
+	//if err != nil {
+	//	if errors.Is(err, db.ErrRecordNotFound) {
+	//		return &clientpb.LoginResp{
+	//			Success: false,
+	//		}, errors.New("certificate not found")
+	//	}
+	//	return &clientpb.LoginResp{
+	//		Success: false,
+	//	}, err
+	//}
 
 	dbSession.Where(&models.Operator{Name: req.Name}).Find(&operator)
 	if len(operator) != 0 {
@@ -53,7 +52,7 @@ func (rpc *Server) LoginClient(ctx context.Context, req *clientpb.LoginReq) (*cl
 			Success: true,
 		}, nil
 	}
-	err = dbSession.Create(&models.Operator{
+	err := dbSession.Create(&models.Operator{
 		Name: req.Name,
 	}).Error
 	if err != nil {

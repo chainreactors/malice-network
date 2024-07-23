@@ -2,12 +2,17 @@ package rpc
 
 import (
 	"context"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 )
 
 func (rpc *Server) Pwd(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
+	err := AssertRequestName(req, consts.ModulePwd)
+	if err != nil {
+		return nil, err
+	}
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err

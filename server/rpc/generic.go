@@ -77,6 +77,13 @@ func (r *GenericRequest) HandlerAsyncResponse(ch chan *implantpb.Spite, typ type
 	})
 }
 
+func AssertRequestName(req *implantpb.Request, expect types.MsgName) error {
+	if req.Name != string(expect) {
+		return ErrAssertFailure
+	}
+	return nil
+}
+
 func AssertStatus(spite *implantpb.Spite) error {
 	if stat := spite.GetStatus(); stat == nil {
 		return ErrMissingRequestField
