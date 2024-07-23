@@ -19,11 +19,11 @@ import (
 var (
 	ErrNotFoundTask    = errors.New("task not found")
 	ErrNotFoundSession = errors.New("session not found")
-
-	LogLevel      = logs.Warn
-	Log           = logs.NewLogger(LogLevel)
-	MuteLog       = logs.NewLogger(logs.Important)
-	implantGroups = []string{consts.ImplantGroup, consts.AliasesGroup, consts.ExtensionGroup}
+	Prompt             = "IOM"
+	LogLevel           = logs.Warn
+	Log                = logs.NewLogger(LogLevel)
+	MuteLog            = logs.NewLogger(logs.Important)
+	implantGroups      = []string{consts.ImplantGroup, consts.AliasesGroup, consts.ExtensionGroup}
 )
 
 type TaskCallback func(resp proto.Message)
@@ -38,7 +38,7 @@ func Start(bindCmds ...BindCmds) error {
 	settings, _ := assets.LoadSettings()
 	con := &Console{
 		App: grumble.New(&grumble.Config{
-			Name:                  tui.AdaptTermColor("IOM"),
+			Name:                  tui.AdaptTermColor(Prompt),
 			Description:           "Internet of Malice",
 			HistoryFile:           filepath.Join(assets.GetRootAppDir(), "history"),
 			PromptColor:           color.New(),
@@ -89,7 +89,7 @@ func (c *Console) Login(config *assets.ClientConfig) error {
 		logs.Log.Errorf("Failed to connect: %v", err)
 		return err
 	}
-	logs.Log.Importantf("Connected to server grpc %s:%d", config.LHost, config.LPort)
+	logs.Log.Importantf("Connected to server %s:%d", config.LHost, config.LPort)
 	c.ServerStatus, err = InitServerStatus(conn)
 	if err != nil {
 		logs.Log.Errorf("init server failed : %v", err)
@@ -101,9 +101,9 @@ func (c *Console) Login(config *assets.ClientConfig) error {
 
 func (c *Console) UpdatePrompt() {
 	if c.ActiveTarget.session != nil {
-		c.App.SetPrompt(tui.AdaptSessionColor("IOM", c.ActiveTarget.session.SessionId))
+		c.App.SetPrompt(tui.AdaptSessionColor(Prompt, c.ActiveTarget.session.SessionId))
 	} else {
-		c.App.SetPrompt(tui.AdaptTermColor("IOM"))
+		c.App.SetPrompt(tui.AdaptTermColor(Prompt))
 	}
 }
 

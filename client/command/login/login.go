@@ -39,7 +39,7 @@ func LoginCmd(ctx *grumble.Context, con *console.Console) error {
 
 	// Create a model for the interactive list
 	m := tui.NewSelect(files)
-	m.Title = "Select a user: "
+	m.Title = "Select Auth Config: "
 	newLogin := tui.NewModel(m, nil, false, false)
 	err = newLogin.Run()
 	if err != nil {

@@ -123,6 +123,11 @@ func SessionLogin(tableModel *tui.TableModel, con *console.Console) func() {
 	var sessionId string
 	con.UpdateSession()
 	selectRow := tableModel.GetSelectedRow()
+	if selectRow == nil {
+		return func() {
+			console.Log.Errorf("No row selected")
+		}
+	}
 	for _, s := range con.Sessions {
 		if strings.HasPrefix(s.SessionId, selectRow[0]) {
 			sessionId = s.SessionId
@@ -131,8 +136,9 @@ func SessionLogin(tableModel *tui.TableModel, con *console.Console) func() {
 	session := con.Sessions[sessionId]
 
 	if session == nil {
-		console.Log.Errorf(console.ErrNotFoundSession.Error())
-		return nil
+		return func() {
+			console.Log.Errorf(console.ErrNotFoundSession.Error())
+		}
 	}
 
 	return func() {

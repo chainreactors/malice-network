@@ -33,16 +33,22 @@ const (
 	ModuleUnsetEnv         = "unsetenv"
 	ModuleNetstat          = "netstat"
 	ModuleCurl             = "curl"
-	ModuleListModule       = "list-module"
-	ModuleLoadModule       = "load-module"
-	CommandSync            = "sync"
-	CommandBroadcast       = "broadcast"
-	CommandVersion         = "version"
-	CommandNotify          = "notify"
-	CommandAlias           = "alias"
-	CommandAliasLoad       = "load"
-	CommandAliasInstall    = "install"
-	CommandAliasRemove     = "remove"
+	ModuleListModule       = "list_module"
+	ModuleLoadModule       = "load_module"
+)
+
+const (
+	CommandSync         = "sync"
+	CommandBroadcast    = "broadcast"
+	CommandVersion      = "version"
+	CommandNotify       = "notify"
+	CommandAlias        = "alias"
+	CommandAliasLoad    = "load"
+	CommandAliasInstall = "install"
+	CommandAliasRemove  = "remove"
+	CommandArmory       = "armory"
+	CommandArmoryUpdate = "update"
+	CommandArnorySearch = "search"
 )
 
 // ctrl type

@@ -189,14 +189,12 @@ func (s *ServerStatus) EventHandler() {
 			tui.Clear()
 			Log.Importantf("%s notified: %s %s", event.Source, string(event.Data), event.Err)
 		case consts.EventTaskCallback:
-			Log.Debugf("task callback")
+			tui.Clear()
 			s.triggerTaskCallback(event)
 		case consts.EventTaskDone:
-			s.triggerTaskDone(event)
 			tui.Clear()
-			Log.Debugf("task done")
+			s.triggerTaskDone(event)
 		}
-
 		//con.triggerReactions(event)
 	}
 }
