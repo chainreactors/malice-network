@@ -16,6 +16,7 @@ import (
 	"github.com/chainreactors/malice-network/client/command/version"
 	"github.com/chainreactors/malice-network/client/command/website"
 	"github.com/chainreactors/malice-network/client/console"
+
 	"github.com/chainreactors/malice-network/helper/consts"
 )
 

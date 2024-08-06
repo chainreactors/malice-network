@@ -11,7 +11,6 @@ import (
 	"github.com/pterm/pterm"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -77,10 +76,6 @@ func PrintSessions(sessions map[string]*clientpb.Session, con *console.Console, 
 		} else {
 			SessionHealth = pterm.FgGreen.Sprint("[ALIVE]")
 		}
-		//if _, exists := groupColors[session.GroupName]; !exists {
-		//	groupColors[session.GroupName] = termenv.ANSIColor(colorIndex)
-		//	colorIndex++
-		//}
 		currentTime := time.Now()
 		lastCheckinTime := time.Unix(int64(session.Timer.LastCheckin), 0)
 		timeDiff := currentTime.Sub(lastCheckinTime)
@@ -100,7 +95,6 @@ func PrintSessions(sessions map[string]*clientpb.Session, con *console.Console, 
 		}
 		rowEntries = append(rowEntries, row)
 	}
-	var wg sync.WaitGroup
 	var err error
 	tableModel.SetRows(rowEntries)
 	tableModel.SetHandle(func() {
@@ -108,15 +102,11 @@ func PrintSessions(sessions map[string]*clientpb.Session, con *console.Console, 
 	})
 	tableModel.Title = "Sessions"
 	newTable := tui.NewModel(tableModel, tableModel.ConsoleHandler, true, false)
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		err = newTable.Run()
-	}()
-	wg.Wait()
+	err = newTable.Run()
 	if err != nil {
 		return
 	}
+	tui.Reset()
 }
 
 func SessionLogin(tableModel *tui.TableModel, con *console.Console) func() {

@@ -7,7 +7,6 @@ import (
 	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/list"
 	"google.golang.org/protobuf/proto"
-	"sync"
 )
 
 func listModules(ctx *grumble.Context, con *console.Console) {
@@ -21,26 +20,21 @@ func listModules(ctx *grumble.Context, con *console.Console) {
 		con.SessionLog(sid).Errorf("ListModules error: %v", err)
 		return
 	}
+	resultChan := make(chan *implantpb.Modules)
 	con.AddCallback(listTask.TaskId, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite).GetModules()
-		var modules = make([]list.Item, 0)
-		for _, module := range resp.GetModules() {
-			modules = append(modules, tui.Item{Ititle: module, Desc: ""})
-
-		}
-		var wg sync.WaitGroup
-		listModel := tui.Newlist(modules)
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			newList := tui.NewModel(listModel, nil, false, false)
-			err = newList.Run()
-		}()
-		wg.Wait()
-		if err != nil {
-			con.SessionLog(sid).Errorf("Error running list: %v", err)
-			return
-		}
-
+		resultChan <- resp
 	})
+	result := <-resultChan
+	var modules = make([]list.Item, 0)
+	for _, module := range result.GetModules() {
+		modules = append(modules, tui.Item{Ititle: module, Desc: ""})
+	}
+	listModel := tui.Newlist(modules)
+	newList := tui.NewModel(listModel, nil, false, false)
+	err = newList.Run()
+	if err != nil {
+		con.SessionLog(sid).Errorf("Error running list: %v", err)
+		return
+	}
 }

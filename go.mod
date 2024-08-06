@@ -9,21 +9,22 @@ require (
 	github.com/chainreactors/files v0.0.0-20231102192550-a652458cee26
 	github.com/chainreactors/grumble v0.0.0-20240111103643-830a8bf7d70a
 	github.com/chainreactors/logs v0.0.0-20240207121836-c946f072f81f
-	github.com/chainreactors/tui v0.0.0-20240706070223-def1f112c52d
+	github.com/chainreactors/tui v0.0.0-20240805094902-92a81a2651d6
 	github.com/charmbracelet/bubbles v0.18.0
 	github.com/charmbracelet/bubbletea v0.26.6
 	github.com/charmbracelet/lipgloss v0.12.1
-	github.com/fatih/color v1.17.0
+	github.com/fatih/color v1.14.1
 	github.com/gofrs/uuid v4.4.0+incompatible
 	github.com/gookit/config/v2 v2.2.4
 	github.com/jessevdk/go-flags v1.5.0
 	github.com/klauspost/compress v1.17.0
+	github.com/muesli/termenv v0.15.2
 	github.com/ncruces/go-sqlite3 v0.9.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pterm/pterm v0.12.69
 	github.com/robfig/cron/v3 v3.0.0
 	github.com/tetratelabs/wazero v1.5.0
-	golang.org/x/crypto v0.15.0
+	golang.org/x/crypto v0.23.0
 	google.golang.org/grpc v1.59.0
 	google.golang.org/protobuf v1.33.0
 	gopkg.in/yaml.v3 v3.0.1
@@ -72,21 +73,16 @@ require (
 	github.com/muesli/ansi v0.0.0-20230316100256-276c6243b2f6 // indirect
 	github.com/muesli/cancelreader v0.2.2 // indirect
 	github.com/muesli/reflow v0.3.0 // indirect
-	github.com/muesli/termenv v0.15.2 // indirect
 	github.com/ncruces/julianday v0.1.5 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/sahilm/fuzzy v0.1.1-0.20230530133925-c48e322e2a8f // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	golang.org/x/exp v0.0.0-20231127185646-65229373498e // indirect
-	golang.org/x/net v0.18.0 // indirect
+	golang.org/x/net v0.21.0 // indirect
 	golang.org/x/sync v0.7.0 // indirect
 	golang.org/x/sys v0.21.0 // indirect
-	golang.org/x/term v0.14.0 // indirect
-	golang.org/x/text v0.14.0 // indirect
+	golang.org/x/term v0.20.0 // indirect
+	golang.org/x/text v0.15.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20231106174013-bbf56f31fb17 // indirect
 )
-
-replace github.com/chainreactors/tui v0.0.0-20240706070223-def1f112c52d => ./external/tui
-
-replace github.com/chainreactors/grumble v0.0.0-20240111103643-830a8bf7d70a => ./external/grumble

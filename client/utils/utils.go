@@ -4,11 +4,30 @@ import (
 	"archive/tar"
 	"bytes"
 	"fmt"
+	"github.com/chainreactors/logs"
+	"github.com/chainreactors/tui"
 	"github.com/klauspost/compress/flate"
 	"github.com/klauspost/compress/gzip"
+	"github.com/muesli/termenv"
 	"io"
 	"os"
 	"path/filepath"
+)
+
+var (
+	Debug     logs.Level = 10
+	Warn      logs.Level = 20
+	Info      logs.Level = 30
+	Error     logs.Level = 40
+	Important logs.Level = 50
+
+	DefaultLogStyle = map[logs.Level]string{
+		Debug:     termenv.String(tui.Rocket+"[+]").Bold().Background(tui.Blue).String() + " %s ",
+		Warn:      termenv.String(tui.Zap+"[warn]").Bold().Background(tui.Yellow).String() + " %s ",
+		Important: termenv.String(tui.Fire+"[*]").Bold().Background(tui.Purple).String() + " %s ",
+		Info:      termenv.String(tui.HotSpring+"[i]").Bold().Background(tui.Green).String() + " %s ",
+		Error:     termenv.String(tui.Monster+"[-]").Bold().Background(tui.Red).String() + " %s ",
+	}
 )
 
 // DeflateBuf - Deflate a buffer using BestCompression (9)

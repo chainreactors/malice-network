@@ -8,8 +8,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"google.golang.org/protobuf/proto"
 	"os"
-	"sync"
-	"time"
 )
 
 func explorerCmd(ctx *grumble.Context, con *console.Console) {
@@ -19,7 +17,6 @@ func explorerCmd(ctx *grumble.Context, con *console.Console) {
 	}
 	sid := con.ActiveTarget.GetInteractive().SessionId
 	dirEntriesChan := make(chan []os.DirEntry, 1)
-	var wg sync.WaitGroup
 	var path = ""
 
 	lsTask, err := con.Rpc.Ls(con.ActiveTarget.Context(), &implantpb.Request{
@@ -46,37 +43,30 @@ func explorerCmd(ctx *grumble.Context, con *console.Console) {
 	explorer := NewExplorer(dirEntries, con)
 	explorer.FilePicker.CurrentDirectory = "./"
 	explorer.FilePicker.Height = 50
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		for {
-			select {
-			case newEntries := <-dirEntriesChan:
-				if len(newEntries) > 0 {
-					dirEntries = newEntries
-					err := SetFiles(&explorer.FilePicker, dirEntries)
-					if err != nil {
-						con.SessionLog(sid).Errorf("Error setting files: %v", err)
-						return
-					}
-					explorer.Files = dirEntries
-					explorer.FilePicker.CurrentDirectory = path
-					explorer.max = max(explorer.max, explorer.FilePicker.Height-1)
-					if _, err := tea.NewProgram(explorer, tea.WithAltScreen()).Run(); err != nil {
-						con.SessionLog(sid).Errorf("Error running explorer: %v", err)
-					}
-					//newExplorer := tui.NewModel(explorer, nil, false, false)
-					//err = newExplorer.Run()
-					//if err != nil {
-					//	con.SessionLog(sid).Errorf("Error running explorer: %v", err)
-					//}
+	for {
+		select {
+		case newEntries := <-dirEntriesChan:
+			if len(newEntries) > 0 {
+				dirEntries = newEntries
+				err := SetFiles(&explorer.FilePicker, dirEntries)
+				if err != nil {
+					con.SessionLog(sid).Errorf("Error setting files: %v", err)
 					return
 				}
-			case <-time.After(1 * time.Second):
-				continue
+				explorer.Files = dirEntries
+				explorer.FilePicker.CurrentDirectory = path
+				explorer.max = max(explorer.max, explorer.FilePicker.Height-1)
+				if _, err := tea.NewProgram(explorer, tea.WithAltScreen()).Run(); err != nil {
+					con.SessionLog(sid).Errorf("Error running explorer: %v", err)
+				}
+				//newExplorer := tui.NewModel(explorer, nil, false, false)
+				//err = newExplorer.Run()
+				//if err != nil {
+				//	con.SessionLog(sid).Errorf("Error running explorer: %v", err)
+				//}
+				return
 			}
-		}
-	}()
 
-	wg.Wait()
+		}
+	}
 }
