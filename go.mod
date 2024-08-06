@@ -86,3 +86,9 @@ require (
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20231106174013-bbf56f31fb17 // indirect
 )
+
+replace (
+	github.com/chainreactors/grumble => ./external/grumble
+	github.com/chainreactors/tui => ./external/tui
+	github.com/desertbit/readline => ./external/readline
+)
