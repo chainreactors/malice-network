@@ -6,9 +6,9 @@ require (
 	filippo.io/age v1.1.1
 	github.com/Binject/go-donut v0.0.0-20220908180326-fcdcc35d591c
 	github.com/chainreactors/files v0.0.0-20231102192550-a652458cee26
-	github.com/chainreactors/grumble v0.0.0-20240111103643-830a8bf7d70a
+	github.com/chainreactors/grumble v0.0.0-20240726161323-5ed71398873f
 	github.com/chainreactors/logs v0.0.0-20240207121836-c946f072f81f
-	github.com/chainreactors/tui v0.0.0-20240805094902-92a81a2651d6
+	github.com/chainreactors/tui v0.0.0-20240807101121-1fad73a7deab
 	github.com/charmbracelet/bubbles v0.18.0
 	github.com/charmbracelet/bubbletea v0.26.6
 	github.com/charmbracelet/lipgloss v0.12.1
@@ -83,5 +83,3 @@ require (
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20231106174013-bbf56f31fb17 // indirect
 )
-
-replace github.com/chainreactors/tui v0.0.0-20240805094902-92a81a2651d6 => ./external/tui

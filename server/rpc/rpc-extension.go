@@ -35,7 +35,7 @@ func (rpc *Server) LoadExtension(ctx context.Context, req *implantpb.LoadExtensi
 	return greq.Task.ToProtobuf(), nil
 }
 
-func (rpc *Server) ExecuteExtenison(ctx context.Context, req *implantpb.ExecuteExtension) (*clientpb.Task, error) {
+func (rpc *Server) ExecuteExtension(ctx context.Context, req *implantpb.ExecuteExtension) (*clientpb.Task, error) {
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err

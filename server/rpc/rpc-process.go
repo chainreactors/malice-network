@@ -90,5 +90,4 @@ func (rpc *Server) Whoami(ctx context.Context, req *implantpb.Request) (*clientp
 
 	go greq.HandlerAsyncResponse(ch, types.MsgResponse)
 	return greq.Task.ToProtobuf(), nil
-
 }

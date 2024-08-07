@@ -32,10 +32,12 @@ github.com/aymanbagabas/go-osc52/v2 v2.0.1 h1:HwpRHbFMcZLEVr42D4p7XBqjyuxQH5SMiE
 github.com/aymanbagabas/go-osc52/v2 v2.0.1/go.mod h1:uYgXzlJ7ZpABp8OJ+exZzJJhRNQ2ASbcXHWsFqH8hp8=
 github.com/chainreactors/files v0.0.0-20231102192550-a652458cee26 h1:p+RrnAjk2EsjTDLJ46Gwy4P1qRPX3VWHIBAgBrEwz8E=
 github.com/chainreactors/files v0.0.0-20231102192550-a652458cee26/go.mod h1:/Xa9YXhjBlaC33JTD6ZTJFig6pcplak2IDcovf42/6A=
-github.com/chainreactors/grumble v0.0.0-20240111103643-830a8bf7d70a h1:32n0NW1LVw2UW8hbalyT3WYVQ5zyFwUXug63HIJubio=
-github.com/chainreactors/grumble v0.0.0-20240111103643-830a8bf7d70a/go.mod h1:eERbalJjRCcufw/wWQZXMYnQeev6GXeQQjsFCuZXNpU=
+github.com/chainreactors/grumble v0.0.0-20240726161323-5ed71398873f h1:lB/EONAHSU0p+PFd1qe5YQVJCPoDMkbjXwmE6DewFQE=
+github.com/chainreactors/grumble v0.0.0-20240726161323-5ed71398873f/go.mod h1:eERbalJjRCcufw/wWQZXMYnQeev6GXeQQjsFCuZXNpU=
 github.com/chainreactors/logs v0.0.0-20240207121836-c946f072f81f h1:tcfp+CEdgiMvjyUzWab5edJtxUwRMSMEIkLybupIx0k=
 github.com/chainreactors/logs v0.0.0-20240207121836-c946f072f81f/go.mod h1:6Mv6W70JrtL6VClulZhmMRZnoYpcTahcDTKLMNEjK0o=
+github.com/chainreactors/tui v0.0.0-20240807101121-1fad73a7deab h1:rwSglpYi76rdQxP9YUn3kBxjso72duVcA7y/eB/ta/c=
+github.com/chainreactors/tui v0.0.0-20240807101121-1fad73a7deab/go.mod h1:PGljG4yiAGUZvGzue6zTAapxQgVMxbezmCsr9l0xzKc=
 github.com/charmbracelet/bubbles v0.18.0 h1:PYv1A036luoBGroX6VWjQIE9Syf2Wby2oOl/39KLfy0=
 github.com/charmbracelet/bubbles v0.18.0/go.mod h1:08qhZhtIwzgrtBjAcJnij1t1H0ZRjwHyGsy6AL11PSw=
 github.com/charmbracelet/bubbletea v0.26.6 h1:zTCWSuST+3yZYZnVSvbXwKOPRSNZceVeqpzOLN2zq1s=
