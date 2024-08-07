@@ -25,6 +25,6 @@ func MkdirCmd(ctx *grumble.Context, con *console.Console) {
 	}
 	con.AddCallback(mkdirTask.TaskId, func(msg proto.Message) {
 		_ = msg.(*implantpb.Spite)
-		con.SessionLog(sid).Consolef("Created directory\n")
+		console.Log.Consolef("Created directory\n")
 	})
 }

@@ -25,6 +25,6 @@ func RmCmd(ctx *grumble.Context, con *console.Console) {
 	}
 	con.AddCallback(rmTask.TaskId, func(msg proto.Message) {
 		_ = msg.(*implantpb.Spite)
-		con.SessionLog(sid).Consolef("Removed file success\n")
+		console.Log.Consolef("Removed file success\n")
 	})
 }

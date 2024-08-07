@@ -27,6 +27,6 @@ func CpCmd(ctx *grumble.Context, con *console.Console) {
 	}
 	con.AddCallback(mvTask.TaskId, func(msg proto.Message) {
 		_ = msg.(*implantpb.Spite)
-		con.SessionLog(sid).Consolef("Cp success\n")
+		console.Log.Consolef("Cp success\n")
 	})
 }

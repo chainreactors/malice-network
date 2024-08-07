@@ -20,7 +20,7 @@ func EnvCmd(ctx *grumble.Context, con *console.Console) {
 	con.AddCallback(envTask.TaskId, func(msg proto.Message) {
 		env := msg.(*implantpb.Spite).GetResponse().GetKv()
 		for k, v := range env {
-			con.SessionLog(sid).Consolef("export %s = %s\n", k, v)
+			console.Log.Consolef("export %s = %s\n", k, v)
 		}
 	})
 }
@@ -40,7 +40,7 @@ func SetEnvCmd(ctx *grumble.Context, con *console.Console) {
 	}
 	con.AddCallback(setEnvTask.TaskId, func(msg proto.Message) {
 		_ = msg.(*implantpb.Spite)
-		con.SessionLog(sid).Consolef("Set environment variable success\n")
+		console.Log.Consolef("Set environment variable success\n")
 	})
 }
 
@@ -57,6 +57,6 @@ func UnsetEnvCmd(ctx *grumble.Context, con *console.Console) {
 	}
 	con.AddCallback(unsetEnvTask.TaskId, func(msg proto.Message) {
 		_ = msg.(*implantpb.Spite)
-		con.SessionLog(sid).Consolef("Unset environment variable success\n")
+		console.Log.Consolef("Unset environment variable success\n")
 	})
 }

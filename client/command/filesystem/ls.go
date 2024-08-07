@@ -1,6 +1,7 @@
 package filesystem
 
 import (
+	"fmt"
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -8,6 +9,7 @@ import (
 	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/table"
 	"google.golang.org/protobuf/proto"
+	"os"
 	"strconv"
 )
 
@@ -55,9 +57,10 @@ func LsCmd(ctx *grumble.Context, con *console.Console) {
 		rowEntries = append(rowEntries, row)
 	}
 	tableModel.SetRows(rowEntries)
-	newTable := tui.NewModel(tableModel, nil, false, false)
-	err = newTable.Run()
-	if err != nil {
-		con.SessionLog(sid).Errorf("Error running table: %v", err)
-	}
+	fmt.Printf(tableModel.View(), os.Stdout)
+	//newTable := tui.NewModel(tableModel, nil, false, false)
+	//err = newTable.Run()
+	//if err != nil {
+	//	con.SessionLog(sid).Errorf("Error running table: %v", err)
+	//}
 }

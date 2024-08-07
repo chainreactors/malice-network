@@ -7,10 +7,9 @@ import (
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/client/utils"
+	"github.com/chainreactors/tui"
 	"os"
 	"path/filepath"
-
-	"github.com/AlecAivazis/survey/v2"
 )
 
 // ExtensionsRemoveCmd - Remove an extension
@@ -20,13 +19,17 @@ func ExtensionsRemoveCmd(ctx *grumble.Context, con *console.Console) {
 		console.Log.Errorf("Extension name is required\n")
 		return
 	}
-	confirm := false
-	prompt := &survey.Confirm{Message: fmt.Sprintf("Remove '%s' extension?", name)}
-	survey.AskOne(prompt, &confirm)
-	if !confirm {
+	confirmModel := tui.NewConfirm(fmt.Sprintf("Remove '%s' extension?", name))
+	newConfirm := tui.NewModel(confirmModel, nil, false, true)
+	err := newConfirm.Run()
+	if err != nil {
+		console.Log.Errorf("Error running confirm model: %s", err)
 		return
 	}
-	err := RemoveExtensionByCommandName(name, con)
+	if !confirmModel.Confirmed {
+		return
+	}
+	err = RemoveExtensionByCommandName(name, con)
 	if err != nil {
 		console.Log.Errorf("Error removing extension: %s\n", err)
 		return

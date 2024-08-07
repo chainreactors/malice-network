@@ -3,10 +3,10 @@ package website
 import (
 	"context"
 	"errors"
-	"github.com/AlecAivazis/survey/v2"
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
+	"github.com/chainreactors/tui"
 	"io"
 	"net/http"
 	"os"
@@ -133,8 +133,12 @@ func sniffContentType(out *os.File) string {
 }
 
 func confirmAddDirectory() bool {
-	confirm := false
-	prompt := &survey.Confirm{Message: "Recursively add entire directory?"}
-	survey.AskOne(prompt, &confirm, nil)
-	return confirm
+	confirmModel := tui.NewConfirm("Recursively add entire directory?")
+	newConfirm := tui.NewModel(confirmModel, nil, false, true)
+	err := newConfirm.Run()
+	if err != nil {
+		console.Log.Errorf("Error running confirm model: %s", err)
+		return false
+	}
+	return confirmModel.Confirmed
 }

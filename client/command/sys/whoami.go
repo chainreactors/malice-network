@@ -23,6 +23,6 @@ func WhoamiCmd(ctx *grumble.Context, con *console.Console) {
 	}
 	con.AddCallback(whoamiTask.TaskId, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite).GetResponse()
-		con.SessionLog(sid).Consolef("Username: %v\n", resp.GetOutput())
+		console.Log.Consolef("Username: %v\n", resp.GetOutput())
 	})
 }

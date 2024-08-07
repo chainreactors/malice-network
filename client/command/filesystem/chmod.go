@@ -26,6 +26,6 @@ func ChmodCmd(ctx *grumble.Context, con *console.Console) {
 	}
 	con.AddCallback(chmodTask.TaskId, func(msg proto.Message) {
 		_ = msg.(*implantpb.Spite)
-		con.SessionLog(sid).Consolef("Chmod success\n")
+		console.Log.Consolef("Chmod success\n")
 	})
 }
