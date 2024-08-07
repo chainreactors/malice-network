@@ -11,8 +11,8 @@ func ShortSessionID(id string) string {
 }
 
 const (
-	IMAGE_FILE_DLL              = 0x2000
-	IMAGE_FILE_EXECUTABLE_IMAGE = 0x0002
+	IMAGE_FILE_DLL              uint16 = 0x2000
+	IMAGE_FILE_EXECUTABLE_IMAGE uint16 = 0x0002
 )
 
 func CheckPEType(content []byte) int {

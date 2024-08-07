@@ -5,8 +5,6 @@ import (
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
-	"strings"
-
 	"google.golang.org/protobuf/proto"
 	"os"
 )
@@ -26,7 +24,7 @@ func ExecuteShellcodeCmd(ctx *grumble.Context, con *console.Console) {
 	//}
 	ppid := ctx.Flags.Uint("ppid")
 	shellcodePath := ctx.Args.String("path")
-	paramString := ctx.Flags.String("args")
+	paramString := ctx.Flags.StringSlice("args")
 	argue := ctx.Flags.String("argue")
 	isBlockDll := ctx.Flags.Bool("block_dll")
 	shellcodeBin, err := os.ReadFile(shellcodePath)
@@ -43,7 +41,7 @@ func ExecuteShellcodeCmd(ctx *grumble.Context, con *console.Console) {
 			BlockDll: isBlockDll,
 			Ppid:     uint32(ppid),
 			Argue:    argue,
-			Params:   strings.Split(paramString, ","),
+			Params:   paramString,
 		},
 	})
 
@@ -54,9 +52,7 @@ func ExecuteShellcodeCmd(ctx *grumble.Context, con *console.Console) {
 
 	con.AddCallback(shellcodeTask.TaskId, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite)
-		if !(resp.Status.Error != "") {
-			console.Log.Consolef("Executed shellcode on target: %s\n", resp.GetAssemblyResponse().GetData())
-		}
+		console.Log.Consolef("Executed shellcode on target: %s\n", resp.GetAssemblyResponse().GetData())
 	})
 }
 
@@ -78,8 +74,6 @@ func ExecuteShellcodeInlineCmd(ctx *grumble.Context, con *console.Console) {
 	})
 	con.AddCallback(shellcodeTask.TaskId, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite)
-		if !(resp.Status.Error != "") {
-			console.Log.Consolef("Executed shellcode on target: %s\n", resp.GetAssemblyResponse().GetData())
-		}
+		console.Log.Consolef("Executed shellcode on target: %s\n", resp.GetAssemblyResponse().GetData())
 	})
 }

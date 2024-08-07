@@ -8,7 +8,6 @@ import (
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"google.golang.org/protobuf/proto"
 	"os"
-	"strings"
 )
 
 func ExecuteDLLCmd(ctx *grumble.Context, con *console.Console) {
@@ -19,7 +18,7 @@ func ExecuteDLLCmd(ctx *grumble.Context, con *console.Console) {
 	sid := con.ActiveTarget.GetInteractive().SessionId
 	ppid := ctx.Flags.Uint("ppid")
 	pePath := ctx.Args.String("path")
-	paramString := ctx.Flags.String("args")
+	paramString := ctx.Flags.StringSlice("args")
 	argue := ctx.Flags.String("argue")
 	isBlockDll := ctx.Flags.Bool("block_dll")
 	dllBin, err := os.ReadFile(pePath)
@@ -39,7 +38,7 @@ func ExecuteDLLCmd(ctx *grumble.Context, con *console.Console) {
 			BlockDll: isBlockDll,
 			Ppid:     uint32(ppid),
 			Argue:    argue,
-			Params:   strings.Split(paramString, ","),
+			Params:   paramString,
 		},
 	})
 
@@ -50,9 +49,7 @@ func ExecuteDLLCmd(ctx *grumble.Context, con *console.Console) {
 
 	con.AddCallback(shellcodeTask.TaskId, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite)
-		if !(resp.Status.Error != "") {
-			console.Log.Consolef("Executed PE on target: %s\n", resp.GetAssemblyResponse().GetData())
-		}
+		console.Log.Consolef("Executed PE on target: %s\n", resp.GetAssemblyResponse().GetData())
 	})
 }
 
@@ -84,8 +81,6 @@ func InlineDLLCmd(ctx *grumble.Context, con *console.Console) {
 
 	con.AddCallback(shellcodeTask.TaskId, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite)
-		if !(resp.Status.Error != "") {
-			console.Log.Consolef("Executed PE on target: %s\n", resp.GetAssemblyResponse().GetData())
-		}
+		console.Log.Consolef("Executed PE on target: %s\n", resp.GetAssemblyResponse().GetData())
 	})
 }

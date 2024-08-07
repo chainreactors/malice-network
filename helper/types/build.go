@@ -42,15 +42,21 @@ func BuildSpite(spite *implantpb.Spite, msg proto.Message) (*implantpb.Spite, er
 	case *implantpb.DownloadRequest:
 		spite.Name = MsgDownload.String()
 		spite.Body = &implantpb.Spite_DownloadRequest{DownloadRequest: msg.(*implantpb.DownloadRequest)}
-	case *implantpb.CurlRequest:
-		spite.Name = MsgCurl.String()
-		spite.Body = &implantpb.Spite_CurlRequest{CurlRequest: msg.(*implantpb.CurlRequest)}
+	//case *implantpb.CurlRequest:
+	//	spite.Name = MsgCurl.String()
+	//	spite.Body = &implantpb.Spite_CurlRequest{CurlRequest: msg.(*implantpb.CurlRequest)}
 	case *implantpb.ExecuteAssembly:
 		spite.Name = MsgExecuteAssembly.String()
 		spite.Body = &implantpb.Spite_ExecuteAssembly{ExecuteAssembly: msg.(*implantpb.ExecuteAssembly)}
 	case *implantpb.ExecuteShellcode:
 		spite.Name = MsgExecuteShellcode.String()
 		spite.Body = &implantpb.Spite_ExecuteShellcode{ExecuteShellcode: msg.(*implantpb.ExecuteShellcode)}
+	case *implantpb.ExecutePE:
+		spite.Name = MsgExecutePE.String()
+		spite.Body = &implantpb.Spite_ExecutePe{ExecutePe: msg.(*implantpb.ExecutePE)}
+	case *implantpb.ExecutePowershell:
+		spite.Name = MsgPowershell.String()
+		spite.Body = &implantpb.Spite_ExecutePowershell{ExecutePowershell: msg.(*implantpb.ExecutePowershell)}
 	//case *implantpb.ExecuteSpawn:
 	//	spite.Name = MsgExecuteSpawn.String()
 	//	spite.Body = &implantpb.Spite_ExecuteSpawn{ExecuteSpawn: msg.(*implantpb.ExecuteSpawn)}

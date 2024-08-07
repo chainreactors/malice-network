@@ -8,7 +8,6 @@ import (
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"google.golang.org/protobuf/proto"
 	"os"
-	"strings"
 )
 
 // ExecutePECmd - Execute PE on sacrifice process
@@ -20,7 +19,7 @@ func ExecutePECmd(ctx *grumble.Context, con *console.Console) {
 	sid := con.ActiveTarget.GetInteractive().SessionId
 	ppid := ctx.Flags.Uint("ppid")
 	pePath := ctx.Args.String("path")
-	paramString := ctx.Flags.String("args")
+	paramString := ctx.Args.StringList("args")
 	argue := ctx.Flags.String("argue")
 	isBlockDll := ctx.Flags.Bool("block_dll")
 	peBin, err := os.ReadFile(pePath)
@@ -28,7 +27,7 @@ func ExecutePECmd(ctx *grumble.Context, con *console.Console) {
 		console.Log.Errorf("%s\n", err.Error())
 		return
 	}
-	if helper.CheckPEType(peBin) == consts.EXEFile {
+	if helper.CheckPEType(peBin) != consts.EXEFile {
 		console.Log.Errorf("The file is not a PE file\n")
 		return
 	}
@@ -41,10 +40,9 @@ func ExecutePECmd(ctx *grumble.Context, con *console.Console) {
 			BlockDll: isBlockDll,
 			Ppid:     uint32(ppid),
 			Argue:    argue,
-			Params:   strings.Split(paramString, ","),
+			Params:   paramString,
 		},
 	})
-
 	if err != nil {
 		con.SessionLog(sid).Errorf("%s\n", err)
 		return
@@ -52,9 +50,7 @@ func ExecutePECmd(ctx *grumble.Context, con *console.Console) {
 
 	con.AddCallback(shellcodeTask.TaskId, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite)
-		if !(resp.Status.Error != "") {
-			console.Log.Consolef("Executed PE on target: %s\n", resp.GetAssemblyResponse().GetData())
-		}
+		console.Log.Consolef("Executed PE on target: %s\n", resp.GetAssemblyResponse().GetData())
 	})
 }
 
@@ -71,7 +67,7 @@ func InlinePECmd(ctx *grumble.Context, con *console.Console) {
 		console.Log.Errorf("%s\n", err.Error())
 		return
 	}
-	if helper.CheckPEType(peBin) == consts.EXEFile {
+	if helper.CheckPEType(peBin) != consts.EXEFile {
 		console.Log.Errorf("The file is not a PE file\n")
 		return
 	}

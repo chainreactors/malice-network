@@ -42,10 +42,6 @@ func ExecuteBofCmd(ctx *grumble.Context, con *console.Console) {
 	con.AddCallback(task.TaskId, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite).GetAssemblyResponse()
 		sid := con.ActiveTarget.GetInteractive().SessionId
-		if resp.Status == 0 {
-			con.SessionLog(sid).Infof("%s output:\n%s", name, string(resp.Data))
-		} else {
-			con.SessionLog(sid).Errorf("%s %s ", ctx.Command.Name, resp.Err)
-		}
+		con.SessionLog(sid).Infof("%s output:\n%s", name, string(resp.Data))
 	})
 }

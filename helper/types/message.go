@@ -31,6 +31,7 @@ const (
 	MsgExecutePE        MsgName = consts.ModuleExecutePE
 	//MsgExecuteSpawn     MsgName = "execute_spawn"
 	MsgExecuteBof MsgName = consts.ModuleExecuteBof
+	MsgPowershell MsgName = consts.ModulePowershell
 	MsgPwd        MsgName = consts.ModulePwd
 	MsgLs         MsgName = consts.ModuleLs
 	MsgNetstat    MsgName = consts.ModuleNetstat

@@ -5,9 +5,9 @@ import (
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
+	"strings"
 
 	"google.golang.org/protobuf/proto"
-	"strings"
 )
 
 func ExecuteCmd(ctx *grumble.Context, con *console.Console) {
@@ -46,11 +46,7 @@ func ExecuteCmd(ctx *grumble.Context, con *console.Console) {
 		resp := msg.(*implantpb.Spite).GetExecResponse()
 		sid := con.ActiveTarget.GetInteractive().SessionId
 		con.SessionLog(sid).Infof("pid: %d, status: %d", resp.Pid, resp.StatusCode)
-		if resp.StatusCode == 0 {
-			console.Log.Consolef("%s %s , output:\n%s", cmdPath, strings.Join(args, " "), string(resp.Stdout))
-		} else {
-			console.Log.Errorf("%s %s ", ctx.Command.Name, resp.Stderr)
-		}
+		console.Log.Consolef("%s %s , output:\n%s", cmdPath, strings.Join(args, " "), string(resp.Stdout))
 	})
 
 }
