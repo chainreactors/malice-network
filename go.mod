@@ -4,7 +4,6 @@ go 1.21.4
 
 require (
 	filippo.io/age v1.1.1
-	github.com/AlecAivazis/survey/v2 v2.0.5
 	github.com/Binject/go-donut v0.0.0-20220908180326-fcdcc35d591c
 	github.com/chainreactors/files v0.0.0-20231102192550-a652458cee26
 	github.com/chainreactors/grumble v0.0.0-20240111103643-830a8bf7d70a
@@ -60,7 +59,6 @@ require (
 	github.com/imdario/mergo v0.3.15 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
-	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/lithammer/fuzzysearch v1.1.8 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
@@ -68,7 +66,6 @@ require (
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-localereader v0.0.1 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
-	github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/muesli/ansi v0.0.0-20230316100256-276c6243b2f6 // indirect
 	github.com/muesli/cancelreader v0.2.2 // indirect
@@ -86,3 +83,5 @@ require (
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20231106174013-bbf56f31fb17 // indirect
 )
+
+replace github.com/chainreactors/tui v0.0.0-20240805094902-92a81a2651d6 => ./external/tui

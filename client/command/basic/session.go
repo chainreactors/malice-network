@@ -24,4 +24,6 @@ func sessionCmd(ctx *grumble.Context, con *console.Console) {
 		return
 	}
 	con.UpdateSession()
+	session := con.Sessions[id]
+	con.ActiveTarget.Set(session)
 }

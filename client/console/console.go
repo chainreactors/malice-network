@@ -101,7 +101,13 @@ func (c *Console) Login(config *assets.ClientConfig) error {
 
 func (c *Console) UpdatePrompt() {
 	if c.ActiveTarget.session != nil {
-		c.App.SetPrompt(tui.AdaptSessionColor(Prompt, c.ActiveTarget.session.SessionId))
+		if c.ActiveTarget.session.Note != "" {
+			c.App.SetPrompt(tui.AdaptSessionColor(c.ActiveTarget.session.GroupName, c.ActiveTarget.session.Note))
+		} else {
+			sessionID := c.ActiveTarget.session.SessionId
+			c.App.SetPrompt(tui.AdaptSessionColor(c.ActiveTarget.session.GroupName, sessionID[:8]))
+		}
+
 	} else {
 		c.App.SetPrompt(tui.AdaptTermColor(Prompt))
 	}
