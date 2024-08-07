@@ -149,17 +149,21 @@ func (s *ServerStatus) triggerTaskDone(event *clientpb.Event) {
 			TaskId:    task.TaskId,
 			SessionId: task.SessionId,
 		})
-		err = s.handleMaleficError(content)
+		Log.Console("\n")
 		if err != nil {
+			Log.Errorf(err.Error())
+		}
+		if content.GetError() != 0 {
+			s.handleMaleficError(content)
 			return
 		}
-		err = s.handleTaskError(content.GetStatus())
-		callback.(TaskCallback)(content)
-		if err != nil {
-			return
-		}
-	}
 
+		if content.GetStatus().Status != 0 {
+			s.handleTaskError(content.GetStatus())
+			return
+		}
+		callback.(TaskCallback)(content)
+	}
 }
 
 func (s *ServerStatus) EventHandler() {
@@ -192,57 +196,51 @@ func (s *ServerStatus) EventHandler() {
 			tui.Clear()
 			s.triggerTaskCallback(event)
 		case consts.EventTaskDone:
-			tui.Clear()
 			s.triggerTaskDone(event)
+			tui.Clear()
 		}
 		//con.triggerReactions(event)
 	}
 }
 
-func (s *ServerStatus) handleMaleficError(content *implantpb.Spite) error {
-	if content.Error == 0 {
-		return nil
-	} else {
-		switch content.Error {
-		case consts.MaleficErrorPanic:
-			Log.Errorf("Module Panic")
-		case consts.MaleficErrorUnpackError:
-			Log.Errorf("Module unpack error")
-		case consts.MaleficErrorMissbody:
-			Log.Errorf("Module miss body")
-		case consts.MaleficErrorModuleError:
-			Log.Errorf("Module error")
-		case consts.MaleficErrorModeleNotFound:
-			Log.Errorf("Module not found")
-		case consts.MaleficErrorTaskError:
-			Log.Errorf("Task error")
-		case consts.MaleficErrorTaskNotFound:
-			Log.Errorf("Task not found")
-		case consts.MaleficErrorTaskOperatorNotFound:
-			Log.Errorf("Task operator not found")
-		}
-		return errors.New("malefic error")
+func (s *ServerStatus) handleMaleficError(content *implantpb.Spite) {
+	switch content.Error {
+	case consts.MaleficErrorPanic:
+		Log.Errorf("Module Panic")
+	case consts.MaleficErrorUnpackError:
+		Log.Errorf("Module unpack error")
+	case consts.MaleficErrorMissbody:
+		Log.Errorf("Module miss body")
+	case consts.MaleficErrorModuleError:
+		Log.Errorf("Module error")
+	case consts.MaleficErrorModuleNotFound:
+		Log.Errorf("Module not found")
+	case consts.MaleficErrorTaskError:
+		Log.Errorf("Task error")
+	case consts.MaleficErrorTaskNotFound:
+		Log.Errorf("Task not found")
+	case consts.MaleficErrorTaskOperatorNotFound:
+		Log.Errorf("Task operator not found")
+	default:
+		Log.Errorf("unknown Malefic error, %d", content.Error)
 	}
 }
 
-func (s *ServerStatus) handleTaskError(status *implantpb.Status) error {
-	if status.Status == 0 {
-		return nil
-	} else {
-		switch status.Status {
-		case consts.TaskErrorOperatorError:
-			Log.Errorf("Task error: %s", status.Error)
-		case consts.TaskErrorNotExpectBody:
-			Log.Errorf("Task error: %s", status.Error)
-		case consts.TaskErrorFieldRequired:
-			Log.Errorf("Task error: %s", status.Error)
-		case consts.TaskErrorFieldLengthMismatch:
-			Log.Errorf("Task error: %s", status.Error)
-		case consts.TaskErrorFieldInvalid:
-			Log.Errorf("Task error: %s", status.Error)
-		case consts.TaskError:
-			Log.Errorf("Task error: %s", status.Error)
-		}
-		return errors.New("task error")
+func (s *ServerStatus) handleTaskError(status *implantpb.Status) {
+	switch status.Status {
+	case consts.TaskErrorOperatorError:
+		Log.Errorf("Task error: %s", status.Error)
+	case consts.TaskErrorNotExpectBody:
+		Log.Errorf("Task error: %s", status.Error)
+	case consts.TaskErrorFieldRequired:
+		Log.Errorf("Task error: %s", status.Error)
+	case consts.TaskErrorFieldLengthMismatch:
+		Log.Errorf("Task error: %s", status.Error)
+	case consts.TaskErrorFieldInvalid:
+		Log.Errorf("Task error: %s", status.Error)
+	case consts.TaskError:
+		Log.Errorf("Task error: %s", status.Error)
+	default:
+		Log.Errorf("unknown error, %v", status)
 	}
 }

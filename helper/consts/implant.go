@@ -27,7 +27,7 @@ const (
 	MaleficErrorUnpackError                 = 2
 	MaleficErrorMissbody                    = 3
 	MaleficErrorModuleError                 = 4
-	MaleficErrorModeleNotFound              = 5
+	MaleficErrorModuleNotFound              = 5
 	MaleficErrorTaskError                   = 6
 	MaleficErrorTaskNotFound                = 7
 	MaleficErrorTaskOperatorNotFound        = 8
