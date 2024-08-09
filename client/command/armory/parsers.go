@@ -448,6 +448,9 @@ func downloadRequest(clientConfig ArmoryHTTPConfig, reqURL string, armoryConfig 
 		"Accept": {"application/octet-stream"},
 	}
 	resp, body, err := httpRequest(clientConfig, reqURL, armoryConfig, downloadHdr)
+	if resp == nil {
+		return nil, err
+	}
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusFound {
 		return nil, fmt.Errorf("Error downloading asset: http %d", resp.StatusCode)
 	}

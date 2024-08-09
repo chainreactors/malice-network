@@ -33,6 +33,7 @@ func Commands(con *console.Console) []*grumble.Command {
 			f.String("a", "armory", "", "name of the armory to install from")
 			f.Bool("f", "force", false,
 				"force installation of package, overwriting the package if it exists")
+			f.String("p", "proxy", "", "proxy URL")
 		},
 		Run: func(ctx *grumble.Context) error {
 			ArmoryInstallCmd(ctx, con)

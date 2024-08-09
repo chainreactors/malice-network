@@ -45,5 +45,5 @@ func ArmorySearchCmd(ctx *grumble.Context, con *console.Console) {
 		console.Log.Infof("No packages found matching '%s'\n", rawNameExpr)
 		return
 	}
-	PrintArmoryPackages(matchedAliases, matchedExts, con)
+	PrintArmoryPackages(matchedAliases, matchedExts, con, clientConfig)
 }

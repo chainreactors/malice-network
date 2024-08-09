@@ -148,9 +148,9 @@ func ArmoryCmd(ctx *grumble.Context, con *console.Console) {
 				pkgCache.Delete(value)
 				return true
 			}
-			if cacheEntry.ArmoryConfig.PublicKey != index.ArmoryConfig.PublicKey {
-				return true
-			}
+			//if cacheEntry.ArmoryConfig.PublicKey != index.ArmoryConfig.PublicKey {
+			//	return true
+			//}
 			if cacheEntry.LastErr != nil {
 				errorCount++
 				if errorCount == 0 {
@@ -161,7 +161,7 @@ func ArmoryCmd(ctx *grumble.Context, con *console.Console) {
 				if cacheEntry.Pkg.IsAlias {
 					aliases = append(aliases, cacheEntry.Alias)
 				} else {
-					//exts = append(exts, cacheEntry.Extension)
+					exts = append(exts, cacheEntry.Extension)
 				}
 			}
 			return true
@@ -170,7 +170,7 @@ func ArmoryCmd(ctx *grumble.Context, con *console.Console) {
 			console.Log.Infof("done!\n")
 		}
 		if 0 < len(aliases) || 0 < len(exts) {
-			PrintArmoryPackages(aliases, nil, con)
+			PrintArmoryPackages(aliases, exts, con, clientConfig)
 		} else {
 			console.Log.Infof("No packages found")
 		}
@@ -297,9 +297,9 @@ func packageHashLookupByArmory(armoryPublicKey string) []string {
 			// Keep going
 			return true
 		}
-		if cacheEntry.ArmoryConfig.PublicKey == armoryPublicKey {
-			result = append(result, cacheEntry.ID)
-		}
+		//if cacheEntry.ArmoryConfig.PublicKey == armoryPublicKey {
+		result = append(result, cacheEntry.ID)
+
 		return true
 	})
 
@@ -364,18 +364,19 @@ func AliasExtensionOrBundleCompleter(prefix string, args []string, con *console.
 }
 
 // PrintArmoryPackages - Prints the armory packages
-func PrintArmoryPackages(aliases []*alias.AliasManifest, exts []*extension.ExtensionManifest, con *console.Console) {
+func PrintArmoryPackages(aliases []*alias.AliasManifest, exts []*extension.ExtensionManifest, con *console.Console,
+	clientConfig ArmoryHTTPConfig) {
 	var rowEntries []table.Row
 	var row table.Row
 
 	tableModel := tui.NewTable([]table.Column{
-		{Title: "Armory,", Width: 20},
-		{Title: "Command Name", Width: 10},
+		{Title: "Armory", Width: 10},
+		{Title: "Command Name", Width: 15},
 		{Title: "Version", Width: 10},
-		{Title: "Type", Width: 4},
-		{Title: "Help", Width: 10},
-		{Title: "URL", Width: 15},
-	}, true)
+		{Title: "Type", Width: 7},
+		{Title: "Help", Width: 25},
+		{Title: "URL", Width: 25},
+	}, false)
 
 	type pkgInfo struct {
 		Armory      string
@@ -417,6 +418,7 @@ func PrintArmoryPackages(aliases []*alias.AliasManifest, exts []*extension.Exten
 			commandName = pkg.CommandName
 		}
 		row = table.Row{
+			pkg.Armory,
 			commandName,
 			pkg.Version,
 			pkg.Type,
@@ -427,7 +429,26 @@ func PrintArmoryPackages(aliases []*alias.AliasManifest, exts []*extension.Exten
 		rowEntries = append(rowEntries, row)
 	}
 	tableModel.SetRows(rowEntries)
-	newTable := tui.NewModel(tableModel, nil, false, false)
+	tableModel.SetHandle(func() {
+		selected := tableModel.GetSelectedRow()
+		armoryPK := getArmoryPublicKey(selected[0])
+		err := installPackageByName(selected[1], armoryPK, false, true, clientConfig, con)
+		if err == nil {
+			return
+		}
+		if errors.Is(err, ErrPackageNotFound) {
+			if armoryPK == "" {
+				console.Log.Errorf("No package named '%s' was found", selected[1])
+			} else {
+				console.Log.Errorf("No package named '%s' was found for armory '%s'", selected[1], selected[0])
+			}
+		} else if errors.Is(err, ErrPackageAlreadyInstalled) {
+			console.Log.Errorf("Package %q is already installed - use the force option to overwrite it\n", selected[1])
+		} else {
+			console.Log.Errorf("Could not install package: %s\n", err)
+		}
+	})
+	newTable := tui.NewModel(tableModel, nil, false, true)
 	err := newTable.Run()
 	if err != nil {
 		console.Log.Errorf("Failed to run table model: %s\n", err)
@@ -574,6 +595,20 @@ func fetchIndex(armoryConfig *assets.ArmoryConfig, requestChannel chan struct{},
 	}
 	if index != nil {
 		armoryResult.Index = *index
+	} else {
+		armoryResult.LastErr = fmt.Errorf("failed to parse armory index: %s", err)
+		return
+	}
+	if len(index.Aliases) == 0 && len(index.Extensions) == 0 {
+		armoryResult.LastErr = fmt.Errorf("no packages found in index")
+	}
+
+	for _, pkg := range index.Aliases {
+		pkg.ID = calculatePackageHash(pkg)
+	}
+
+	for _, pkg := range index.Extensions {
+		pkg.ID = calculatePackageHash(pkg)
 	}
 	if err != nil {
 		armoryResult.LastErr = fmt.Errorf("failed to parse armory index: %s", err)
@@ -588,17 +623,18 @@ func fetchPackageSignatures(index ArmoryIndex, clientConfig ArmoryHTTPConfig) {
 	for _, armoryPkg := range index.Extensions {
 		wg.Add(1)
 		currentRequests <- struct{}{}
-		armoryPkg.IsAlias = false
+		pkg := armoryPkg
+		pkg.IsAlias = false
 		go fetchPackageSignature(wg, currentRequests, index.ArmoryConfig, armoryPkg, clientConfig)
 	}
 	for _, armoryPkg := range index.Aliases {
 		wg.Add(1)
 		currentRequests <- struct{}{}
-		armoryPkg.IsAlias = true
+		pkg := armoryPkg
+		pkg.IsAlias = true
 		go fetchPackageSignature(wg, currentRequests, index.ArmoryConfig, armoryPkg, clientConfig)
 	}
 	wg.Wait()
-
 	// If packages were deleted from the index, make sure the cache is consistent
 	makePackageCacheConsistent(index)
 }
@@ -718,7 +754,6 @@ func fetchPackageSignature(wg *sync.WaitGroup, requestChannel chan struct{}, arm
 	if err != nil {
 		pkgCacheEntry.LastErr = fmt.Errorf("failed to parse trusted manifest in pkg signature: %s", err)
 	}
-
 }
 
 func getArmoryPublicKey(armoryName string) string {

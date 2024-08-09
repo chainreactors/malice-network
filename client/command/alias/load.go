@@ -117,12 +117,17 @@ func AliasesLoadCmd(ctx *grumble.Context, con *console.Console) {
 func LoadAlias(manifestPath string, con *console.Console) (*AliasManifest, error) {
 	// retrieve alias manifest
 	var err error
-	manifestPath = path.Join(assets.GetAliasesDir(), manifestPath)
+	if !strings.HasPrefix(manifestPath, assets.GetAliasesDir()) {
+		manifestPath = path.Join(assets.GetAliasesDir(), manifestPath)
+	}
 	if !files.IsExist(manifestPath) {
 		return nil, fmt.Errorf("alias %s maybe not installed", manifestPath)
 	}
 	// parse it
-	data, err := os.ReadFile(path.Join(manifestPath, "alias.json"))
+	if !strings.HasSuffix(manifestPath, "alias.json") {
+		manifestPath = path.Join(manifestPath, "alias.json")
+	}
+	data, err := os.ReadFile(manifestPath)
 	if err != nil {
 		return nil, err
 	}

@@ -89,6 +89,7 @@ func ReadFileFromTarGz(tarGzFile string, tarPath string) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
+		tarPath = filepath.ToSlash(tarPath)
 		if header.Name == tarPath {
 			switch header.Typeflag {
 			case tar.TypeDir: // = directory
