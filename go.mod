@@ -8,7 +8,7 @@ require (
 	github.com/chainreactors/files v0.0.0-20231102192550-a652458cee26
 	github.com/chainreactors/grumble v0.0.0-20240726161323-5ed71398873f
 	github.com/chainreactors/logs v0.0.0-20240207121836-c946f072f81f
-	github.com/chainreactors/tui v0.0.0-20240807101121-1fad73a7deab
+	github.com/chainreactors/tui v0.0.0-20240809160245-5b8aa98ae074
 	github.com/charmbracelet/bubbles v0.18.0
 	github.com/charmbracelet/bubbletea v0.26.6
 	github.com/charmbracelet/lipgloss v0.12.1

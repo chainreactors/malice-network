@@ -8,16 +8,20 @@ import (
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 )
 
-func sessionCmd(ctx *grumble.Context, con *console.Console) {
-	note := ctx.Flags.String("note")
-	group := ctx.Flags.String("group")
-	id := ctx.Args.String("id")
-	isDelete := ctx.Flags.Bool("delete")
+func noteCmd(ctx *grumble.Context, con *console.Console) {
+	name := ctx.Args.String("name")
+	var id string
+	if con.ActiveTarget.GetInteractive().SessionId != "" {
+		id = con.ActiveTarget.GetInteractive().SessionId
+	} else if ctx.Flags.String("id") != "" {
+		id = ctx.Flags.String("id")
+	} else {
+		console.Log.Errorf("Require session id")
+		return
+	}
 	_, err := con.Rpc.BasicSessionOP(context.Background(), &clientpb.BasicUpdateSession{
 		SessionId: id,
-		Note:      note,
-		GroupName: group,
-		IsDelete:  isDelete,
+		Note:      name,
 	})
 	if err != nil {
 		logs.Log.Errorf("Session error: %v", err)

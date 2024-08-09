@@ -36,8 +36,8 @@ github.com/chainreactors/grumble v0.0.0-20240726161323-5ed71398873f h1:lB/EONAHS
 github.com/chainreactors/grumble v0.0.0-20240726161323-5ed71398873f/go.mod h1:eERbalJjRCcufw/wWQZXMYnQeev6GXeQQjsFCuZXNpU=
 github.com/chainreactors/logs v0.0.0-20240207121836-c946f072f81f h1:tcfp+CEdgiMvjyUzWab5edJtxUwRMSMEIkLybupIx0k=
 github.com/chainreactors/logs v0.0.0-20240207121836-c946f072f81f/go.mod h1:6Mv6W70JrtL6VClulZhmMRZnoYpcTahcDTKLMNEjK0o=
-github.com/chainreactors/tui v0.0.0-20240807101121-1fad73a7deab h1:rwSglpYi76rdQxP9YUn3kBxjso72duVcA7y/eB/ta/c=
-github.com/chainreactors/tui v0.0.0-20240807101121-1fad73a7deab/go.mod h1:PGljG4yiAGUZvGzue6zTAapxQgVMxbezmCsr9l0xzKc=
+github.com/chainreactors/tui v0.0.0-20240809160245-5b8aa98ae074 h1:NfHn3opio6+5tQCwpMaTqCV5xei/rygYfcclE+FG89o=
+github.com/chainreactors/tui v0.0.0-20240809160245-5b8aa98ae074/go.mod h1:PGljG4yiAGUZvGzue6zTAapxQgVMxbezmCsr9l0xzKc=
 github.com/charmbracelet/bubbles v0.18.0 h1:PYv1A036luoBGroX6VWjQIE9Syf2Wby2oOl/39KLfy0=
 github.com/charmbracelet/bubbles v0.18.0/go.mod h1:08qhZhtIwzgrtBjAcJnij1t1H0ZRjwHyGsy6AL11PSw=
 github.com/charmbracelet/bubbletea v0.26.6 h1:zTCWSuST+3yZYZnVSvbXwKOPRSNZceVeqpzOLN2zq1s=

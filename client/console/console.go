@@ -100,12 +100,14 @@ func (c *Console) Login(config *assets.ClientConfig) error {
 }
 
 func (c *Console) UpdatePrompt() {
+	c.App.Config().NoColor = true
 	if c.ActiveTarget.session != nil {
+		groupName := c.ActiveTarget.session.GroupName
 		if c.ActiveTarget.session.Note != "" {
-			c.App.SetPrompt(tui.AdaptSessionColor(c.ActiveTarget.session.GroupName, c.ActiveTarget.session.Note))
+			c.App.SetPrompt(tui.AdaptSessionColor(groupName, c.ActiveTarget.session.Note))
 		} else {
 			sessionID := c.ActiveTarget.session.SessionId
-			c.App.SetPrompt(tui.AdaptSessionColor(c.ActiveTarget.session.GroupName, sessionID[:8]))
+			c.App.SetPrompt(tui.AdaptSessionColor(groupName, sessionID[:8]))
 		}
 
 	} else {
