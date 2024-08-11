@@ -6,6 +6,7 @@ import (
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/helper/mtls"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/tui"
 	"path/filepath"
@@ -60,7 +61,7 @@ func LoginCmd(ctx *grumble.Context, con *console.Console) error {
 
 func loginServer(ctx *grumble.Context, con *console.Console, selectedFile string) error {
 	configFile := filepath.Join(assets.GetConfigDir(), selectedFile)
-	config, err := assets.ReadConfig(configFile)
+	config, err := mtls.ReadConfig(configFile)
 	if err != nil {
 		con.App.Println("Error reading config file:", err)
 		return err

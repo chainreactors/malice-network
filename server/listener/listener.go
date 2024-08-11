@@ -2,7 +2,6 @@ package listener
 
 import (
 	"context"
-	"encoding/pem"
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -16,6 +15,7 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/web"
 	"google.golang.org/grpc"
+	"net"
 	"os"
 	"strconv"
 )
@@ -24,21 +24,30 @@ var (
 	Listener *listener
 )
 
-func NewListener(cfg *configs.ListenerConfig) error {
-	clientCert, clientKey, data, err := certs.ClientGenerateCertificate("127.0.0.1",
-		cfg.Name, 5004, certs.ListenerCA)
+func GenerateClientConfig(server *configs.ServerConfig, cfg *configs.ListenerConfig) (*mtls.ClientConfig, error) {
+	var err error
+	if _, err = os.Stat(cfg.Name + ".yaml"); os.IsExist(err) {
+		config, err := mtls.ReadConfig(cfg.Name + ".yaml")
+		if err != nil {
+			return nil, err
+		}
+		return config, nil
+	}
+	clientConfig, err := certs.ClientGenerateCertificate(server.GRPCHost,
+		cfg.Name, int(server.GRPCPort), certs.ListenerCA)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	if _, err = os.Stat(cfg.Name + ".yaml"); os.IsNotExist(err) {
-		err = mtls.WriteConfig(string(data), certs.ListenerNamespace, cfg.Name)
-	}
-	caCertX509, _, err := certs.GetCertificateAuthority()
-	caCert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: caCertX509.Raw})
+
+	err = mtls.WriteConfig(clientConfig, certs.ListenerNamespace, cfg.Name)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	options, err := mtls.GetGrpcOptions(string(caCert), string(clientCert), string(clientKey), certs.ListenerNamespace)
+	return clientConfig, nil
+}
+
+func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) error {
+	options, err := mtls.GetGrpcOptions([]byte(clientConf.CACertificate), []byte(clientConf.Certificate), []byte(clientConf.PrivateKey), certs.ListenerNamespace)
 	if err != nil {
 		return err
 	}
@@ -46,7 +55,7 @@ func NewListener(cfg *configs.ListenerConfig) error {
 	if err != nil {
 		return err
 	}
-	serverAddress := listenerCfg.LHost + ":" + strconv.Itoa(listenerCfg.LPort)
+	serverAddress := net.JoinHostPort(listenerCfg.LHost, strconv.Itoa(listenerCfg.LPort))
 	conn, err := grpc.Dial(serverAddress, options...)
 	if err != nil {
 		return err

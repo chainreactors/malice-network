@@ -10,6 +10,7 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
+	"gopkg.in/yaml.v3"
 )
 
 func (rpc *Server) GetClients(ctx context.Context, req *clientpb.Empty) (*clientpb.Clients, error) {
@@ -67,7 +68,14 @@ func (rpc *Server) LoginClient(ctx context.Context, req *clientpb.LoginReq) (*cl
 
 func (rpc *Server) AddClient(ctx context.Context, req *rootpb.Operator) (*rootpb.Response, error) {
 	cfg := configs.GetServerConfig()
-	_, _, data, err := certs.ClientGenerateCertificate(cfg.GRPCHost, req.Args[0], int(cfg.GRPCPort), certs.OperatorCA)
+	clientConf, err := certs.ClientGenerateCertificate(cfg.GRPCHost, req.Args[0], int(cfg.GRPCPort), certs.OperatorCA)
+	if err != nil {
+		return &rootpb.Response{
+			Status: 1,
+			Error:  err.Error(),
+		}, err
+	}
+	data, err := yaml.Marshal(clientConf)
 	if err != nil {
 		return &rootpb.Response{
 			Status: 1,

@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/mtls"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/listener"
 	"github.com/gookit/config/v2"
@@ -59,7 +60,12 @@ func Execute() {
 	// start listeners
 	if opt.Listeners != nil {
 		// init forwarder
-		err := listener.NewListener(opt.Listeners)
+		clientConf, err := mtls.ReadConfig(opt.Listeners.Name + ".yaml")
+		if err != nil {
+			logs.Log.Error(err.Error())
+			return
+		}
+		err = listener.NewListener(clientConf, opt.Listeners)
 		if err != nil {
 			logs.Log.Error(err.Error())
 			return

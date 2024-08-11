@@ -83,7 +83,7 @@ type Console struct {
 	*ServerStatus
 }
 
-func (c *Console) Login(config *assets.ClientConfig) error {
+func (c *Console) Login(config *mtls.ClientConfig) error {
 	conn, err := mtls.Connect(config)
 	if err != nil {
 		logs.Log.Errorf("Failed to connect: %v", err)
@@ -167,7 +167,7 @@ func (c *Console) readConfig() {
 	} else {
 		return
 	}
-	clientFile, err := assets.ReadConfig(yamlFile)
+	clientFile, err := mtls.ReadConfig(yamlFile)
 	if err != nil {
 		logs.Log.Errorf("Error reading config file: %v", err)
 		return

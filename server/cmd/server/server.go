@@ -81,14 +81,14 @@ func Execute() {
 		logs.Log.Errorf("cannot init root ca , %s ", err.Error())
 		return
 	}
-	if opt.Daemon == true {
-		err = StartAliveSession()
-		if err != nil {
-			logs.Log.Errorf("cannot start alive session , %s ", err.Error())
-			return
-		}
-		rpc.DaemonStart(opt.Server.GRPCPort, opt.Listeners)
-	}
+	//if opt.Daemon == true {
+	//	err = StartAliveSession()
+	//	if err != nil {
+	//		logs.Log.Errorf("cannot start alive session , %s ", err.Error())
+	//		return
+	//	}
+	//	rpc.DaemonStart(opt.Server, opt.Listeners)
+	//}
 
 	err = StartGrpc(opt.Server.GRPCPort)
 	if err != nil {
@@ -99,7 +99,12 @@ func Execute() {
 	// start listeners
 	if opt.Listeners != nil {
 		// init forwarder
-		err := listener.NewListener(opt.Listeners)
+		clientConf, err := listener.GenerateClientConfig(opt.Server, opt.Listeners)
+		if err != nil {
+			logs.Log.Errorf("init client failed, %s", err.Error())
+			return
+		}
+		err = listener.NewListener(clientConf, opt.Listeners)
 		if err != nil {
 			logs.Log.Errorf("cannot start listeners , %s ", err.Error())
 			return

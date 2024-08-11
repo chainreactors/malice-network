@@ -9,6 +9,7 @@ import (
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/server/internal/certs"
 	"google.golang.org/grpc"
+	"gopkg.in/yaml.v3"
 )
 
 func NewRootClient(addr string) (*RootClient, error) {
@@ -22,7 +23,7 @@ func NewRootClient(addr string) (*RootClient, error) {
 		Bytes: x509.MarshalPKCS1PrivateKey(key),
 	}
 	privateKeyPEM := pem.EncodeToMemory(keyPEM)
-	options, err := mtls.GetGrpcOptions(string(caCert), string(caCert), string(privateKeyPEM), certs.RootName)
+	options, err := mtls.GetGrpcOptions(caCert, caCert, privateKeyPEM, certs.RootName)
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +54,12 @@ func (client *RootClient) Execute(cmd Command, msg *rootpb.Operator) error {
 		return err
 	}
 	if msg.Op == "add" {
-		err = mtls.WriteConfig(resp.(*rootpb.Response).Response, msg.Name, msg.Args[0])
+		var conf *mtls.ClientConfig
+		err := yaml.Unmarshal([]byte(resp.(*rootpb.Response).Response), &conf)
+		if err != nil {
+			return err
+		}
+		err = mtls.WriteConfig(conf, msg.Name, msg.Args[0])
 		if err != nil {
 			return err
 		}

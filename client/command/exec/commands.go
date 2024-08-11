@@ -145,7 +145,7 @@ func Commands(con *console.Console) []*grumble.Command {
 			Help: "Executes the given PE in the sacrifice process",
 			Args: func(a *grumble.Args) {
 				a.String("path", "path the shellcode file")
-				a.StringList("args", "arguments to pass to the assembly entrypoint", grumble.Default([]string{}))
+				a.StringList("args", "arguments to pass to the assembly entrypoint", grumble.Default([]string{"notepad.exe"}))
 			},
 			Flags: func(f *grumble.Flags) {
 				f.Uint("p", "ppid", 0, "pid of the process to inject into (0 means injection into ourselves)")

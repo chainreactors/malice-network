@@ -32,10 +32,10 @@ const (
 	ECCKey = "ecc"
 
 	// RSAKey - Namespace for RSA keys
-	RSAKey        = "rsa"
-	RootName      = "Root"
-	OperatorName  = "server.operator"
-	ListentorName = "default"
+	RSAKey       = "rsa"
+	RootName     = "Root"
+	OperatorName = "server.operator"
+	ListenerName = "default"
 )
 
 var (
@@ -169,7 +169,7 @@ func GenerateECCCertificate(caType int, commonName string, isCA bool, isClient b
 	if err != nil {
 		certsLog.Errorf("Failed to generate private key: %v", err)
 	}
-	subject := pkix.Name{
+	subject := &pkix.Name{
 		CommonName: commonName,
 	}
 	return generateCertificate(caType, subject, isCA, isClient, privateKey)
@@ -198,10 +198,10 @@ func GenerateRSACertificate(caType int, commonName string, isCA bool, isClient b
 	} else {
 		subject = randomSubject(commonName)
 	}
-	return generateCertificate(caType, *subject, isCA, isClient, privateKey)
+	return generateCertificate(caType, subject, isCA, isClient, privateKey)
 }
 
-func generateCertificate(caType int, subject pkix.Name, isCA bool, isClient bool, privateKey interface{}) ([]byte, []byte) {
+func generateCertificate(caType int, subject *pkix.Name, isCA bool, isClient bool, privateKey interface{}) ([]byte, []byte) {
 
 	// Valid times, subtract random days from .Now()
 	notBefore := time.Now()
@@ -237,7 +237,7 @@ func generateCertificate(caType int, subject pkix.Name, isCA bool, isClient bool
 	// Certificate template
 	template := x509.Certificate{
 		SerialNumber:          serialNumber,
-		Subject:               subject,
+		Subject:               *subject,
 		NotBefore:             notBefore,
 		NotAfter:              notAfter,
 		KeyUsage:              keyUsage,

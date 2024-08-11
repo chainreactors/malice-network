@@ -14,6 +14,7 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"google.golang.org/grpc/peer"
 	"google.golang.org/protobuf/proto"
+	"gopkg.in/yaml.v3"
 )
 
 func (rpc *Server) GetListeners(ctx context.Context, req *clientpb.Empty) (*clientpb.Listeners, error) {
@@ -77,7 +78,14 @@ func (rpc *Server) SpiteStream(stream listenerrpc.ListenerRPC_SpiteStreamServer)
 
 func (s *Server) AddListener(ctx context.Context, req *rootpb.Operator) (*rootpb.Response, error) {
 	cfg := configs.GetServerConfig()
-	_, _, data, err := certs.ClientGenerateCertificate(cfg.GRPCHost, req.Args[0], int(cfg.GRPCPort), certs.ListenerCA)
+	clientConf, err := certs.ClientGenerateCertificate(cfg.GRPCHost, req.Args[0], int(cfg.GRPCPort), certs.ListenerCA)
+	if err != nil {
+		return &rootpb.Response{
+			Status: 1,
+			Error:  err.Error(),
+		}, err
+	}
+	data, err := yaml.Marshal(clientConf)
 	if err != nil {
 		return &rootpb.Response{
 			Status: 1,

@@ -134,8 +134,8 @@ func ArmoryCmd(ctx *grumble.Context, con *console.Console) {
 		console.Log.Infof("No indexes found\n")
 		return
 	}
-	aliases := []*alias.AliasManifest{}
-	exts := []*extension.ExtensionManifest{}
+	var aliases []*alias.AliasManifest
+	var exts []*extension.ExtensionManifest
 
 	for _, index := range indexes {
 		errorCount := 0
@@ -193,8 +193,8 @@ func refresh(clientConfig ArmoryHTTPConfig) {
 }
 
 func packageManifestsInCache() ([]*alias.AliasManifest, []*extension.ExtensionManifest) {
-	aliases := []*alias.AliasManifest{}
-	exts := []*extension.ExtensionManifest{}
+	var aliases []*alias.AliasManifest
+	var exts []*extension.ExtensionManifest
 	pkgCache.Range(func(key, value interface{}) bool {
 		cacheEntry := value.(pkgCacheEntry)
 		if cacheEntry.LastErr == nil {

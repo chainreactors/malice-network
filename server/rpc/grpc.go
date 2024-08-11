@@ -13,7 +13,6 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/certs"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
-	"github.com/chainreactors/malice-network/server/listener"
 	"github.com/gookit/config/v2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -22,11 +21,8 @@ import (
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
 	"net"
-	"os"
-	"os/signal"
 	"runtime"
 	"runtime/debug"
-	"syscall"
 )
 
 var (
@@ -114,27 +110,29 @@ func StartClientListener(port uint16) (*grpc.Server, net.Listener, error) {
 	return grpcServer, ln, nil
 }
 
-func DaemonStart(port uint16, cfg *configs.ListenerConfig) {
-	_, ln, err := StartClientListener(port)
-	if err != nil {
-		logs.Log.Errorf("cannot start gRPC server, %s", err.Error())
-	}
-	err = listener.NewListener(cfg)
-	if err != nil {
-		logs.Log.Errorf("cannot start listeners , %s ", err.Error())
-		return
-	}
-	done := make(chan bool)
-	signals := make(chan os.Signal, 1)
-	signal.Notify(signals, syscall.SIGTERM)
-	go func() {
-		<-signals
-		logs.Log.Infof("Received SIGTERM, exiting ...")
-		ln.Close()
-		done <- true
-	}()
-	<-done
-}
+//
+//func DaemonStart(server *configs.ServerConfig, cfg *configs.ListenerConfig) {
+//	_, ln, err := StartClientListener(server.GRPCPort)
+//	if err != nil {
+//		logs.Log.Errorf("cannot start gRPC server, %s", err.Error())
+//		return
+//	}
+//	err = listener.NewListener(server, cfg)
+//	if err != nil {
+//		logs.Log.Errorf("cannot start listeners , %s ", err.Error())
+//		return
+//	}
+//	done := make(chan bool)
+//	signals := make(chan os.Signal, 1)
+//	signal.Notify(signals, syscall.SIGTERM)
+//	go func() {
+//		<-signals
+//		logs.Log.Infof("Received SIGTERM, exiting ...")
+//		ln.Close()
+//		done <- true
+//	}()
+//	<-done
+//}
 
 type Server struct {
 	// Magical methods to break backwards compatibility

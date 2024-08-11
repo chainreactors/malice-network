@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -13,9 +12,9 @@ import (
 )
 
 // VerifyCertificate - Verify a certificate
-func VerifyCertificate(caCertificate string, rawCerts [][]byte) error {
+func VerifyCertificate(caCertificate []byte, rawCerts [][]byte) error {
 	roots := x509.NewCertPool()
-	ok := roots.AppendCertsFromPEM([]byte(caCertificate))
+	ok := roots.AppendCertsFromPEM(caCertificate)
 	if !ok {
 		log.Printf("Failed to parse root certificate")
 	}
@@ -40,8 +39,8 @@ func VerifyCertificate(caCertificate string, rawCerts [][]byte) error {
 	return nil
 }
 
-func GetGrpcOptions(caCertificate string, certificate string, privateKey string, servername string) ([]grpc.DialOption, error) {
-	certPEM, err := tls.X509KeyPair([]byte(certificate), []byte(privateKey))
+func GetGrpcOptions(caCertificate []byte, certificate []byte, privateKey []byte, servername string) ([]grpc.DialOption, error) {
+	certPEM, err := tls.X509KeyPair(certificate, privateKey)
 	if err != nil {
 		log.Printf("Cannot parse client certificate: %v", err)
 		return nil, err
@@ -49,7 +48,7 @@ func GetGrpcOptions(caCertificate string, certificate string, privateKey string,
 
 	// Load CA cert
 	caCertPool := x509.NewCertPool()
-	caCertPool.AppendCertsFromPEM([]byte(caCertificate))
+	caCertPool.AppendCertsFromPEM(caCertificate)
 
 	// Setup config with custom certificate validation routine
 	tlsConfig := &tls.Config{
@@ -70,8 +69,8 @@ func GetGrpcOptions(caCertificate string, certificate string, privateKey string,
 	return options, nil
 }
 
-func Connect(config *assets.ClientConfig) (*grpc.ClientConn, error) {
-	options, err := GetGrpcOptions(config.CACertificate, config.Certificate, config.PrivateKey, "client")
+func Connect(config *ClientConfig) (*grpc.ClientConn, error) {
+	options, err := GetGrpcOptions([]byte(config.CACertificate), []byte(config.Certificate), []byte(config.PrivateKey), "client")
 	if err != nil {
 		return nil, err
 	}

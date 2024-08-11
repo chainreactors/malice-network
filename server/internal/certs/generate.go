@@ -5,6 +5,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"github.com/chainreactors/files"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/helper"
 	"github.com/chainreactors/malice-network/helper/mtls"
@@ -13,6 +14,7 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"os"
 	"path"
+	"path/filepath"
 )
 
 const (
@@ -34,57 +36,55 @@ const (
 var certsLog = logs.Log
 
 // ClientGenerateCertificate - Generate a certificate signed with a given CA
-func ClientGenerateCertificate(host, name string, port int, clientType int) ([]byte, []byte, []byte, error) {
-	var data []byte
+func ClientGenerateCertificate(host, name string, port int, clientType int) (*mtls.ClientConfig, error) {
 	ca, _, caErr := GetCertificateAuthority()
 	caCert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: ca.Raw})
 	if caErr != nil {
-		return nil, nil, nil, caErr
+		return nil, caErr
 	}
 	if clientType == OperatorCA {
 		cert, key := GenerateRSACertificate(OperatorCA, name, false, true, nil)
 		err := saveCertificate(OperatorCA, RSAKey,
 			fmt.Sprintf("%s", name), cert, key)
 		if err != nil {
-			return cert, key, nil, err
+			return nil, err
 		}
-		data, err = mtls.NewClientConfig(host, name, port, clientType, cert, key, caCert)
-		if err != nil {
-			return cert, key, data, err
-		}
+		clientConfig := mtls.NewClientConfig(host, name, port, clientType, cert, key, caCert)
 		err = db.CreateOperator(name)
 		if err != nil {
-			return cert, key, data, err
+			return nil, err
 		}
-		return cert, key, data, nil
+		return clientConfig, nil
 	} else {
 		var certBytes, keyBytes []byte
 		var err error
 		certsPath := path.Join(configs.ServerRootPath, "certs")
 		// check if listenerCert exist
-		err = mtls.CheckConfigIsExist(name)
-		if !errors.Is(err, os.ErrNotExist) {
+		cwd, _ := os.Getwd()
+		if files.IsExist(filepath.Join(cwd, name+".yaml")) {
 			logs.Log.Debug("Listener server CA certificates already exist.")
 			certBytes, keyBytes, err = CheckCertIsExist(certsPath, "", name, ListenerCA)
+			if err != nil {
+				return nil, err
+			}
 		} else {
 			certBytes, keyBytes = GenerateRSACertificate(ListenerCA, name, false, true, nil)
 			err = saveCertificate(ListenerCA, RSAKey,
 				fmt.Sprintf("%s.%s", ListenerNamespace, name), certBytes, keyBytes)
 			if err != nil {
-				return certBytes, keyBytes, nil, err
-			}
-			data, err = mtls.NewClientConfig(host, name, port, clientType, certBytes, keyBytes, caCert)
-			if err != nil {
-				return certBytes, keyBytes, nil, err
+				return nil, err
 			}
 			err = db.CreateListener(name)
 			if err != nil {
-				return certBytes, keyBytes, data, err
+				return nil, err
 			}
 		}
-		return certBytes, keyBytes, data, err
+		clientConfig := mtls.NewClientConfig(host, name, port, clientType, certBytes, keyBytes, caCert)
+		if err != nil {
+			return nil, err
+		}
+		return clientConfig, err
 	}
-	return nil, nil, nil, nil
 }
 
 // ClientGetCertificate - Helper function to fetch a client cert
