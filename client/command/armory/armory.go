@@ -448,7 +448,7 @@ func PrintArmoryPackages(aliases []*alias.AliasManifest, exts []*extension.Exten
 			console.Log.Errorf("Could not install package: %s\n", err)
 		}
 	})
-	newTable := tui.NewModel(tableModel, nil, false, true)
+	newTable := tui.NewModel(tableModel, tableModel.ConsoleHandler, true, false)
 	err := newTable.Run()
 	if err != nil {
 		console.Log.Errorf("Failed to run table model: %s\n", err)
