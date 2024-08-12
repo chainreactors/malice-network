@@ -15,6 +15,7 @@ type Event struct {
 
 	EventType  string
 	SourceName string
+	Message    string
 	Data       []byte
 	Err        string
 }

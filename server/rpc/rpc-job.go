@@ -28,11 +28,12 @@ func (rpc *Server) JobStream(stream listenerrpc.ListenerRPC_JobStreamServer) err
 		if msg.Status == consts.CtrlStatusSuccess {
 			core.EventBroker.Publish(core.Event{
 				Job:       core.Jobs.Get(msg.Job.Id),
-				EventType: consts.EventPipelineStart,
+				EventType: consts.EventPipeline,
+				Message:   "pipeline start",
 			})
 		} else {
 			core.EventBroker.Publish(core.Event{
-				EventType: consts.EventPipelineError,
+				EventType: consts.EventPipeline,
 				Err:       fmt.Sprintf("%d, %s", msg.Status, msg.Error),
 			})
 		}

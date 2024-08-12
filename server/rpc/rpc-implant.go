@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
@@ -12,24 +13,32 @@ import (
 )
 
 func (rpc *Server) Register(ctx context.Context, req *lispb.RegisterSession) (*implantpb.Empty, error) {
-	_, success := core.Sessions.Get(req.SessionId)
-	if success == true {
+	sess, success := core.Sessions.Get(req.SessionId)
+	if success {
 		return &implantpb.Empty{}, nil
 	}
-	sess := core.NewSession(req)
+
+	sess = core.NewSession(req)
 	core.Sessions.Add(sess)
 	dbSession := db.Session()
 	d := dbSession.Create(models.ConvertToSessionDB(sess))
 	if d.Error != nil {
 		logs.Log.Warnf("session %s re-register ", sess.ID)
+		core.EventBroker.Publish(core.Event{
+			EventType: consts.EventSession,
+			Session:   sess,
+			Message:   "re-register",
+		})
+		return &implantpb.Empty{}, nil
+	} else {
+		core.EventBroker.Publish(core.Event{
+			EventType: consts.EventSession,
+			Session:   sess,
+			Message:   "register",
+		})
+		logs.Log.Importantf("init new session %s from %s", sess.ID, sess.ListenerId)
 		return &implantpb.Empty{}, nil
 	}
-	err := sess.Load()
-	if err != nil {
-		return &implantpb.Empty{}, nil
-	}
-	logs.Log.Importantf("init new session %s from %s", sess.ID, sess.ListenerId)
-	return &implantpb.Empty{}, nil
 }
 
 func (rpc *Server) SysInfo(ctx context.Context, req *implantpb.SysInfo) (*implantpb.Empty, error) {

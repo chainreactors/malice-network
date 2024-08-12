@@ -185,10 +185,14 @@ func (s *ServerStatus) EventHandler() {
 			tui.Clear()
 			Log.Infof("%s has joined the game", event.Client.Name)
 		case consts.EventLeft:
+			tui.Clear()
 			Log.Infof("%s left the game", event.Client.Name)
 		case consts.EventBroadcast:
 			tui.Clear()
 			Log.Infof("%s broadcasted: %s  %s", event.Source, string(event.Data), event.Err)
+		case consts.EventSession:
+			tui.Clear()
+			Log.Importantf("%s session: %s ", event.Session.SessionId, event.Message)
 		case consts.EventNotify:
 			tui.Clear()
 			Log.Importantf("%s notified: %s %s", event.Source, string(event.Data), event.Err)
