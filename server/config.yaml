@@ -21,6 +21,7 @@ listeners:
       enable: true
       tls:
         enable: false
+        name: default
         CN: "test"
         O: "Sharp Depth"
         C: "US"
@@ -28,6 +29,8 @@ listeners:
         OU: "Persistent Housework, Limited"
         ST: "State of Texas"
         validity: "365"
+        cert: ""
+        key: ""
       encryption:
         enable: false
         type: aes-cfb

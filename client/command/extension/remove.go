@@ -57,6 +57,6 @@ func RemoveExtensionByCommandName(commandName string, con *console.Console) erro
 }
 
 func forceRemoveAll(rootPath string) {
-	utils.ChmodR(rootPath, 0o600, 0o700)
+	utils.ChmodR(rootPath, 0600, 0700)
 	os.RemoveAll(rootPath)
 }

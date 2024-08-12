@@ -14,7 +14,6 @@ import (
 )
 
 var (
-	host     = "localhost"
 	listener = "listener"
 	client   = "client"
 )
@@ -102,7 +101,7 @@ func WriteConfig(clientConfig *ClientConfig, clientType, name string) error {
 	if clientType == listener {
 		configFile = path.Join(configDir, fmt.Sprintf("%s.yaml", name))
 	} else {
-		configFile = path.Join(configDir, fmt.Sprintf("%s_%s.yaml", name, host))
+		configFile = path.Join(configDir, fmt.Sprintf("%s_%s.yaml", name, clientConfig.LHost))
 	}
 	data, err := yaml.Marshal(clientConfig)
 	if err != nil {

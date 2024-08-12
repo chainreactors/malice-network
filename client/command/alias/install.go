@@ -53,7 +53,7 @@ func installFromDir(aliasLocalPath string, con *console.Console) {
 	}
 
 	console.Log.Infof("Installing alias '%s' (%s) ... ", manifest.Name, manifest.Version)
-	err = os.MkdirAll(installPath, 0o700)
+	err = os.MkdirAll(installPath, 0700)
 	if err != nil {
 		console.Log.Errorf("Error creating alias directory: %s\n", err)
 		return
@@ -118,7 +118,7 @@ func InstallFromFile(aliasGzFilePath string, aliasName string, promptToOverwrite
 	}
 
 	console.Log.Infof("Installing alias '%s' (%s) ... ", manifest.Name, manifest.Version)
-	err = os.MkdirAll(installPath, 0o700)
+	err = os.MkdirAll(installPath, 0700)
 	if err != nil {
 		console.Log.Errorf("Failed to create alias directory: %s\n", err)
 		return nil
@@ -154,9 +154,9 @@ func installArtifact(aliasGzFilePath string, installPath, artifactPath string) e
 	localArtifactPath := filepath.Join(installPath, utils.ResolvePath(artifactPath))
 	artifactDir := filepath.Dir(localArtifactPath)
 	if _, err := os.Stat(artifactDir); os.IsNotExist(err) {
-		os.MkdirAll(artifactDir, 0o700)
+		os.MkdirAll(artifactDir, 0700)
 	}
-	err = os.WriteFile(localArtifactPath, data, 0o600)
+	err = os.WriteFile(localArtifactPath, data, 0700)
 	if err != nil {
 		return err
 	}
@@ -164,6 +164,6 @@ func installArtifact(aliasGzFilePath string, installPath, artifactPath string) e
 }
 
 func forceRemoveAll(rootPath string) {
-	utils.ChmodR(rootPath, 0o600, 0o700)
+	utils.ChmodR(rootPath, 0600, 0700)
 	os.RemoveAll(rootPath)
 }

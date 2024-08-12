@@ -21,6 +21,7 @@ var (
 	CurrentServerConfigFilename = "config.yaml"
 	LogPath                     = path.Join(ServerRootPath, "logs")
 	CertsPath                   = path.Join(ServerRootPath, "certs")
+	ListenerPath                = path.Join(ServerRootPath, "listener")
 	TempPath                    = path.Join(ServerRootPath, "temp")
 	PluginPath                  = path.Join(ServerRootPath, "plugins")
 	AuditPath                   = path.Join(ServerRootPath, "audit")
@@ -30,7 +31,7 @@ var (
 )
 
 func InitConfig() error {
-	perm := os.FileMode(0o700)
+	perm := os.FileMode(0700)
 	err := os.MkdirAll(ServerRootPath, perm)
 	if err != nil {
 		return err
@@ -42,6 +43,7 @@ func InitConfig() error {
 	os.MkdirAll(AuditPath, perm)
 	os.MkdirAll(CachePath, perm)
 	os.MkdirAll(WebsitePath, perm)
+	os.MkdirAll(ListenerPath, perm)
 	return nil
 }
 
@@ -103,7 +105,7 @@ func (c *ServerConfig) Save() error {
 	if err != nil {
 		return err
 	}
-	err = os.WriteFile(CurrentServerConfigFilename, data, 0o600)
+	err = os.WriteFile(CurrentServerConfigFilename, data, 0600)
 	if err != nil {
 		// TODO - log failed to write config
 		logs.Log.Errorf("Failed to write config %s", err)

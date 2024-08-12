@@ -8,7 +8,10 @@ import (
 )
 
 func WrapWithTls(lsn net.Listener, config *configs.TlsConfig) (net.Listener, error) {
-	cert, key := certs.GenerateRSACertificate(0, "", false, false, config)
+	cert, key, err := certs.GenerateListenerCertificate(config)
+	if err != nil {
+		return nil, err
+	}
 	pair, err := tls.X509KeyPair(cert, key)
 	if err != nil {
 		return nil, err

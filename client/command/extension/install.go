@@ -64,7 +64,7 @@ func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *console.Co
 	}
 
 	console.Log.Infof("Installing extension '%s' (%s) ... ", manifest.Name, manifest.Version)
-	err = os.MkdirAll(installPath, 0o700)
+	err = os.MkdirAll(installPath, 0700)
 	if err != nil {
 		console.Log.Errorf("\nError creating extension directory: %s\n", err)
 		return
@@ -84,7 +84,7 @@ func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *console.Co
 				} else {
 					src := filepath.Join(extLocalPath, utils.ResolvePath(manifestFile.Path))
 					dst := filepath.Join(newInstallPath, utils.ResolvePath(manifestFile.Path))
-					err = os.MkdirAll(filepath.Dir(dst), 0o700) //required for extensions with multiple dirs between the .o file and the manifest
+					err = os.MkdirAll(filepath.Dir(dst), 0700) //required for extensions with multiple dirs between the .o file and the manifest
 					if err != nil {
 						console.Log.Errorf("\nError creating extension directory: %s\n", err)
 						forceRemoveAll(newInstallPath)
@@ -188,12 +188,12 @@ func installArtifact(extGzFilePath string, installPath string, artifactPath stri
 	localArtifactPath := filepath.Join(installPath, utils.ResolvePath(artifactPath))
 	artifactDir := filepath.Dir(localArtifactPath)
 	if _, err := os.Stat(artifactDir); os.IsNotExist(err) {
-		err := os.MkdirAll(artifactDir, 0o700)
+		err := os.MkdirAll(artifactDir, 0700)
 		if err != nil {
 			return err
 		}
 	}
-	err = ioutil.WriteFile(localArtifactPath, data, 0o600)
+	err = ioutil.WriteFile(localArtifactPath, data, 0600)
 	if err != nil {
 		return err
 	}

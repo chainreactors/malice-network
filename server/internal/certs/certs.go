@@ -13,6 +13,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"github.com/chainreactors/files"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/helper"
 	"github.com/chainreactors/malice-network/helper/mtls"
@@ -175,26 +176,44 @@ func GenerateECCCertificate(caType int, commonName string, isCA bool, isClient b
 	return generateCertificate(caType, subject, isCA, isClient, privateKey)
 }
 
+func GenerateListenerCertificate(config *configs.TlsConfig) ([]byte, []byte, error) {
+	if files.IsExist(config.CertFile) && files.IsExist(config.KeyFile) {
+		cert, err := os.ReadFile(config.CertFile)
+		if err != nil {
+			return nil, nil, err
+		}
+		key, err := os.ReadFile(config.KeyFile)
+		if err != nil {
+			return nil, nil, err
+		}
+		return cert, key, nil
+	} else {
+		cert, key := GenerateRSACertificate(ImplantCA, "", true, false, config.ToPkix())
+		err := os.WriteFile(path.Join(configs.ListenerPath, config.Name+"_crt.pem"), cert, 0644)
+		if err != nil {
+			return nil, nil, err
+		}
+		err = os.WriteFile(path.Join(configs.ListenerPath, config.Name+"_key.pem"), key, 0644)
+		if err != nil {
+			return nil, nil, err
+		}
+		logs.Log.Importantf("generate implant ca , save crt to %s", path.Join(configs.ListenerPath, config.Name+"_crt.pem"))
+		return cert, key, nil
+	}
+}
+
 // GenerateRSACertificate - Generates an RSA Certificate
 func GenerateRSACertificate(caType int, commonName string, isCA bool, isClient bool,
-	tlsConfig *configs.TlsConfig) ([]byte, []byte) {
+	subject *pkix.Name) ([]byte, []byte) {
 	certsLog.Debugf("Generating TLS certificate (RSA) for '%s' ...", commonName)
 
-	var privateKey interface{}
-	var err error
-	var subject *pkix.Name
+	//var subject *pkix.Name
 	// Generate private key
-	privateKey, err = rsa.GenerateKey(rand.Reader, RsaKeySize())
-	if err != nil {
-		certsLog.Errorf("Failed to generate private key %v", err)
-	}
+	privateKey, _ := rsa.GenerateKey(rand.Reader, RsaKeySize())
 
 	// Generate random listener subject if listener config is null
-	if caType == ListenerCA {
+	if caType == ListenerCA && subject == nil {
 		subject = randomSubject(commonName)
-		if tlsConfig != nil {
-			subject = tlsConfig.ToPkix()
-		}
 	} else {
 		subject = randomSubject(commonName)
 	}
@@ -202,7 +221,6 @@ func GenerateRSACertificate(caType int, commonName string, isCA bool, isClient b
 }
 
 func generateCertificate(caType int, subject *pkix.Name, isCA bool, isClient bool, privateKey interface{}) ([]byte, []byte) {
-
 	// Valid times, subtract random days from .Now()
 	notBefore := time.Now()
 	days := randomInt(365) * -1 // Within -1 year
@@ -269,7 +287,7 @@ func generateCertificate(caType int, subject *pkix.Name, isCA bool, isClient boo
 	} else {
 		caCert, caKey, err := GetCertificateAuthority() // Sign the new certificate with our CA
 		if err != nil {
-			certsLog.Errorf("Invalid ca type (%s): %v", caType, err)
+			certsLog.Errorf("Invalid ca type (%d): %v", caType, err)
 		}
 		derBytes, certErr = x509.CreateCertificate(rand.Reader, &template, caCert, publicKey(privateKey), caKey)
 	}

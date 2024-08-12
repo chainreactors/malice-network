@@ -13,7 +13,7 @@ var (
 	uploadResp = &implantpb.UploadRequest{
 		Name:   "test.txt",
 		Target: ".",
-		Priv:   0o644,
+		Priv:   0644,
 		Data:   make([]byte, 1000),
 	}
 )

@@ -52,6 +52,7 @@ type WebsiteConfig struct {
 
 type TlsConfig struct {
 	Enable   bool   `config:"enable"`
+	Name     string `config:"name"`
 	CN       string `config:"CN"`
 	O        string `config:"O"`
 	C        string `config:"C"`

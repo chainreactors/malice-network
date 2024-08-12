@@ -20,6 +20,7 @@ import (
 const (
 	OperatorCA = iota + 1
 	ListenerCA
+	ImplantCA
 	RootCA
 )
 
@@ -27,8 +28,10 @@ const (
 	clientNamespace   = "client"   // Operator clients
 	serverNamespace   = "server"   // Operator servers
 	ListenerNamespace = "listener" // Listener servers
-	rootCert          = "root_crt.pem"
+	rootCert          = "root_ca.pem"
 	rootKey           = "root_key.pem"
+	implantCa         = "implant_ca.pem"
+	implantKey        = "implant_key.pem"
 	serverCert        = "server_crt.pem"
 	serverKey         = "server_key.pem"
 )
@@ -104,34 +107,29 @@ func ServerGetCertificate(hostname string) ([]byte, []byte, error) {
 
 // ServerGenerateCertificate - Generate a certificate signed with a given CA
 func ServerGenerateCertificate(name string, isCA bool, cfgPath string) ([]byte, []byte, error) {
-	certsPath := path.Join(configs.ServerRootPath, "certs")
 	if isCA {
-		err := os.MkdirAll(certsPath, 0744)
-		certPath := path.Join(certsPath, rootCert)
-		certKey := path.Join(certsPath, rootKey)
-		if err != nil {
-			logs.Log.Errorf("Failed to generate file paths: %v", err)
-		}
+		certPath := path.Join(configs.CertsPath, rootCert)
+		certKey := path.Join(configs.CertsPath, rootKey)
 		if helper.FileExists(certPath) && helper.FileExists(certKey) {
 			logs.Log.Debug("Root CA certificates already exist.")
 			return nil, nil, nil
 		} else {
 			cert, key := GenerateRSACertificate(RootCA, name, isCA, false, nil)
-			err = removeOldCerts(cfgPath)
+			err := removeOldCerts(cfgPath)
 			if err != nil {
 				return cert, key, err
 			}
-			if certErr := os.WriteFile(certPath, cert, 0o777); certErr != nil {
+			if certErr := os.WriteFile(certPath, cert, 0777); certErr != nil {
 				return nil, nil, certErr
 			}
-			if keyErr := os.WriteFile(certKey, key, 0o777); keyErr != nil {
+			if keyErr := os.WriteFile(certKey, key, 0777); keyErr != nil {
 				return nil, nil, keyErr
 			}
 			return cert, key, err
 		}
 	} else {
-		certPath := path.Join(certsPath, serverCert)
-		certKey := path.Join(certsPath, serverKey)
+		certPath := path.Join(configs.CertsPath, serverCert)
+		certKey := path.Join(configs.CertsPath, serverKey)
 		if helper.FileExists(certPath) && helper.FileExists(certKey) {
 			logs.Log.Debug("Mtls server CA certificates already exist.")
 			certBytes, keyBytes, err := CheckCertIsExist(certPath, certKey, name, OperatorCA)

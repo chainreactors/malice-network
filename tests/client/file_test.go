@@ -14,7 +14,7 @@ func Test_Upload(t *testing.T) {
 	task, err := rpc.Call(consts.ModuleUpload, &implantpb.UploadRequest{
 		Name:   "test.txt",
 		Target: "test.txt",
-		Priv:   0o644,
+		Priv:   0644,
 		Data:   make([]byte, 1000),
 	})
 	if err != nil {
