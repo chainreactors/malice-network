@@ -219,7 +219,7 @@ func ExtensionRegisterCommand(extCmd *ExtCommand, con *console.Console) {
 		},
 		HelpGroup: consts.ExtensionGroup,
 	}
-	con.App.AddCommand(extensionCmd)
+	con.AddExtensionCommand(extensionCmd)
 }
 
 func loadExtension(goos string, goarch string, checkCache bool, ext *ExtCommand, ctx *grumble.Context, con *console.Console) error {

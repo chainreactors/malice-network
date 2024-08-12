@@ -27,7 +27,6 @@ const (
 	ImplantGroup   = "implant"
 	AliasesGroup   = "alias"
 	ExtensionGroup = "extension"
-	SessionGroup   = "session"
 )
 
 // config

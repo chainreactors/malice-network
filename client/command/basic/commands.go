@@ -10,7 +10,7 @@ func Commands(con *console.Console) []*grumble.Command {
 	return []*grumble.Command{
 		{
 			Name: "note",
-			Help: "note session",
+			Help: "add note to session",
 			Args: func(a *grumble.Args) {
 				a.String("name", "session name")
 			},

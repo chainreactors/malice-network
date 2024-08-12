@@ -2,10 +2,12 @@ package command
 
 import (
 	"github.com/chainreactors/grumble"
+	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/alias"
 	"github.com/chainreactors/malice-network/client/command/armory"
 	"github.com/chainreactors/malice-network/client/command/basic"
 	"github.com/chainreactors/malice-network/client/command/explorer"
+	"github.com/chainreactors/malice-network/client/command/extension"
 	"github.com/chainreactors/malice-network/client/command/jobs"
 	"github.com/chainreactors/malice-network/client/command/listener"
 	"github.com/chainreactors/malice-network/client/command/login"
@@ -25,9 +27,6 @@ func BindClientsCommands(con *console.Console) {
 
 	bind("",
 		version.Command)
-	bind(consts.SessionGroup,
-		basic.Commands,
-	)
 
 	bind(consts.GenericGroup,
 		login.Command,
@@ -37,11 +36,46 @@ func BindClientsCommands(con *console.Console) {
 		jobs.Command,
 		listener.Commands,
 		alias.Commands,
+		extension.Commands,
 		armory.Commands,
 		observe.Command,
 		website.Commands,
 		explorer.Commands,
+		basic.Commands,
 	)
+
+	bind(consts.AliasesGroup)
+
+	// [ Extensions ]
+	bind(consts.ExtensionGroup)
+
+	// Load Aliases
+	aliasManifests := assets.GetInstalledAliasManifests()
+	for _, manifest := range aliasManifests {
+		_, err := alias.LoadAlias(manifest, con)
+		if err != nil {
+			console.Log.Errorf("Failed to load alias: %s", err)
+			continue
+		}
+	}
+
+	// Load Extensions
+	extensionManifests := assets.GetInstalledExtensionManifests()
+	for _, manifest := range extensionManifests {
+		mext, err := extension.LoadExtensionManifest(manifest)
+		// Absorb error in case there's no extensions manifest
+		if err != nil {
+			//con doesn't appear to be initialised here?
+			//con.PrintErrorf("Failed to load extension: %s", err)
+			console.Log.Errorf("Failed to load extension: %s\n", err)
+			continue
+		}
+
+		for _, ext := range mext.ExtCommand {
+			extension.ExtensionRegisterCommand(ext, con)
+		}
+	}
+
 	if con.ServerStatus == nil {
 		login.LoginCmd(&grumble.Context{}, con)
 	}

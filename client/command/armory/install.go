@@ -50,7 +50,7 @@ func ArmoryInstallCmd(ctx *grumble.Context, con *console.Console) {
 	armoryPK := getArmoryPublicKey(armoryName)
 	if armoryPK == "" {
 		console.Log.Warnf("Armory '%s' not found", armoryName)
-		return
+		//return
 	}
 
 	clientConfig := parseArmoryHTTPConfig(ctx)

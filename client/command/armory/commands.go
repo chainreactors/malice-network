@@ -30,7 +30,7 @@ func Commands(con *console.Console) []*grumble.Command {
 			a.String("name", "package or bundle name to install")
 		},
 		Flags: func(f *grumble.Flags) {
-			f.String("a", "armory", "", "name of the armory to install from")
+			f.String("a", "armory", "Default", "name of the armory to install from")
 			f.Bool("f", "force", false,
 				"force installation of package, overwriting the package if it exists")
 			f.String("p", "proxy", "", "proxy URL")

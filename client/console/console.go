@@ -59,7 +59,7 @@ func Start(bindCmds ...BindCmds) error {
 	for _, bind := range bindCmds {
 		bind(con)
 	}
-
+	con.DisableImplantCommands()
 	con.ActiveTarget.callback = func(sess *clientpb.Session) {
 		con.ActiveTarget.activeObserver = NewObserver(sess)
 		con.UpdatePrompt()
