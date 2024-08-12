@@ -15,7 +15,6 @@ func explorerCmd(ctx *grumble.Context, con *console.Console) {
 	if session == nil {
 		return
 	}
-	sid := con.ActiveTarget.GetInteractive().SessionId
 	dirEntriesChan := make(chan []os.DirEntry, 1)
 	var path = ""
 
@@ -24,7 +23,7 @@ func explorerCmd(ctx *grumble.Context, con *console.Console) {
 		Input: "./",
 	})
 	if err != nil {
-		con.SessionLog(sid).Errorf("load directory error: %v", err)
+		console.Log.Errorf("load directory error: %v", err)
 		return
 	}
 
@@ -50,14 +49,14 @@ func explorerCmd(ctx *grumble.Context, con *console.Console) {
 				dirEntries = newEntries
 				err := SetFiles(&explorer.FilePicker, dirEntries)
 				if err != nil {
-					con.SessionLog(sid).Errorf("Error setting files: %v", err)
+					console.Log.Errorf("Error setting files: %v", err)
 					return
 				}
 				explorer.Files = dirEntries
 				explorer.FilePicker.CurrentDirectory = path
 				explorer.max = max(explorer.max, explorer.FilePicker.Height-1)
 				if _, err := tea.NewProgram(explorer, tea.WithAltScreen()).Run(); err != nil {
-					con.SessionLog(sid).Errorf("Error running explorer: %v", err)
+					console.Log.Errorf("Error running explorer: %v", err)
 				}
 				//newExplorer := tui.NewModel(explorer, nil, false, false)
 				//err = newExplorer.Run()

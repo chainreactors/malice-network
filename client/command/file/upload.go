@@ -33,7 +33,7 @@ func upload(ctx *grumble.Context, con *console.Console) {
 		Hidden: hidden,
 	})
 	if err != nil {
-		con.SessionLog(sid).Errorf("Download error: %v", err)
+		console.Log.Errorf("Download error: %v", err)
 		return
 	}
 	total := uploadTask.Total

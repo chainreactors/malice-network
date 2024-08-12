@@ -24,11 +24,11 @@ func ChownCmd(ctx *grumble.Context, con *console.Console) {
 		Recursive: recursive,
 	})
 	if err != nil {
-		con.SessionLog(sid).Errorf("Chown error: %v", err)
+		console.Log.Errorf("Chown error: %v", err)
 		return
 	}
 	con.AddCallback(chownTask.TaskId, func(msg proto.Message) {
 		_ = msg.(*implantpb.Response)
-		console.Log.Consolef("Chown success\n")
+		con.SessionLog(sid).Consolef("Chown success\n")
 	})
 }

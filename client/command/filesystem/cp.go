@@ -22,11 +22,11 @@ func CpCmd(ctx *grumble.Context, con *console.Console) {
 		Args: args,
 	})
 	if err != nil {
-		con.SessionLog(sid).Errorf("Cp error: %v", err)
+		console.Log.Errorf("Cp error: %v", err)
 		return
 	}
 	con.AddCallback(mvTask.TaskId, func(msg proto.Message) {
 		_ = msg.(*implantpb.Spite)
-		console.Log.Consolef("Cp success\n")
+		con.SessionLog(sid).Consolef("Cp success\n")
 	})
 }

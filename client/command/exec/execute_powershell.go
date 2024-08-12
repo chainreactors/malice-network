@@ -36,12 +36,12 @@ func ExecutePowershellCmd(ctx *grumble.Context, con *console.Console) {
 		Script: psBin.String(),
 	})
 	if err != nil {
-		con.SessionLog(sid).Errorf("%s\n", err)
+		console.Log.Errorf("%s\n", err)
 		return
 	}
 
 	con.AddCallback(task.TaskId, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite)
-		console.Log.Consolef("Executed Powershell on target: %s\n", resp.GetAssemblyResponse().GetData())
+		con.SessionLog(sid).Consolef("Executed Powershell on target: %s\n", resp.GetAssemblyResponse().GetData())
 	})
 }

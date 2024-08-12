@@ -20,11 +20,11 @@ func CatCmd(ctx *grumble.Context, con *console.Console) {
 		Input: fileName,
 	})
 	if err != nil {
-		con.SessionLog(sid).Errorf("Cat error: %v", err)
+		console.Log.Errorf("Cat error: %v", err)
 		return
 	}
 	con.AddCallback(catTask.TaskId, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite).GetResponse()
-		console.Log.Consolef("File content: %s\n", resp.GetOutput())
+		con.SessionLog(sid).Consolef("File content: %s\n", resp.GetOutput())
 	})
 }

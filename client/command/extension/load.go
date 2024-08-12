@@ -219,6 +219,7 @@ func ExtensionRegisterCommand(extCmd *ExtCommand, con *console.Console) {
 		},
 		HelpGroup: consts.ExtensionGroup,
 	}
+
 	con.AddExtensionCommand(extensionCmd)
 }
 
@@ -373,6 +374,15 @@ func runExtensionCmd(ctx *grumble.Context, con *console.Console) {
 	//	Request: con.ActiveTarget.Request(ctx),
 	//})
 
+	//con.AddCallback(executeAssemblyResp.TaskId, func(msg proto.Message) {
+	//	resp := msg.(*implantpb.Spite).GetAssemblyResponse()
+	//	sid := con.ActiveTarget.GetInteractive().SessionId
+	//	if resp.Status == 0 {
+	//		con.SessionLog(sid).Infof("%s output:\n%s", loadedAlias.Command.Name, string(resp.Data))
+	//	} else {
+	//		con.SessionLog(sid).Errorf("%s %s ", ctx.Command.Name, resp.Err)
+	//	}
+	//})
 	if err != nil {
 		console.Log.Errorf("Call extension error: %s\n", err.Error())
 		return

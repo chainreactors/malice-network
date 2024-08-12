@@ -21,10 +21,10 @@ func download(ctx *grumble.Context, con *console.Console) {
 		Path: path,
 	})
 	if err != nil {
-		con.SessionLog(sid).Errorf("Download error: %v", err)
+		console.Log.Errorf("Download error: %v", err)
 		return
 	}
 	con.AddCallback(downloadTask.TaskId, func(msg proto.Message) {
+		con.SessionLog(sid).Importantf("Downloaded file %s from %s", name, path)
 	})
-
 }

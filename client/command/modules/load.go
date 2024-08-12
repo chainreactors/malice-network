@@ -18,7 +18,7 @@ func loadModule(ctx *grumble.Context, con *console.Console) {
 	path := ctx.Args.String("path")
 	data, err := os.ReadFile(path)
 	if err != nil {
-		con.SessionLog(sid).Errorf("Error reading file: %v", err)
+		console.Log.Errorf("Error reading file: %v", err)
 		return
 	}
 	loadTask, err := con.Rpc.LoadModule(con.ActiveTarget.Context(), &implantpb.LoadModule{
@@ -26,11 +26,11 @@ func loadModule(ctx *grumble.Context, con *console.Console) {
 		Bin:    data,
 	})
 	if err != nil {
-		con.SessionLog(sid).Errorf("LoadModule error: %v", err)
+		console.Log.Errorf("LoadModule error: %v", err)
 		return
 	}
 	con.AddCallback(loadTask.TaskId, func(msg proto.Message) {
-		_ = msg.(*implantpb.Spite).GetLoadModule()
-		//con.SessionLog(sid).Infof("LoadModule: %v", resp.GetStatus())
+		//modules := msg.(*implantpb.Spite).GetModules()
+		con.SessionLog(sid).Infof("LoadModule: success")
 	})
 }

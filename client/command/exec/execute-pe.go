@@ -44,13 +44,13 @@ func ExecutePECmd(ctx *grumble.Context, con *console.Console) {
 		},
 	})
 	if err != nil {
-		con.SessionLog(sid).Errorf("%s\n", err)
+		console.Log.Errorf("%s\n", err)
 		return
 	}
 
 	con.AddCallback(shellcodeTask.TaskId, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite)
-		console.Log.Consolef("Executed PE on target: %s\n", resp.GetAssemblyResponse().GetData())
+		con.SessionLog(sid).Consolef("Executed PE on target: %s\n", resp.GetAssemblyResponse().GetData())
 	})
 }
 
@@ -77,14 +77,14 @@ func InlinePECmd(ctx *grumble.Context, con *console.Console) {
 	})
 
 	if err != nil {
-		con.SessionLog(sid).Errorf("%s\n", err)
+		console.Log.Errorf("%s\n", err)
 		return
 	}
 
 	con.AddCallback(shellcodeTask.TaskId, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite)
 		if !(resp.Status.Error != "") {
-			console.Log.Consolef("Executed PE on target: %s\n", resp.GetAssemblyResponse().GetData())
+			con.SessionLog(sid).Consolef("Executed PE on target: %s\n", resp.GetAssemblyResponse().GetData())
 		}
 	})
 }

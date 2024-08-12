@@ -15,12 +15,12 @@ func sync(ctx *grumble.Context, con *console.Console) {
 		FileId: sid + "-" + tid,
 	})
 	if err != nil {
-		con.SessionLog(sid).Errorf("Can't sync file: %s", err)
+		console.Log.Errorf("Can't sync file: %s", err)
 		return
 	}
 	file, err := os.OpenFile(syncTask.Name, os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		con.SessionLog(sid).Errorf("Can't Open file: %s", err)
+		console.Log.Errorf("Can't Open file: %s", err)
 		return
 	}
 	defer file.Close()

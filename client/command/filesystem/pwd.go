@@ -18,11 +18,11 @@ func PwdCmd(ctx *grumble.Context, con *console.Console) {
 		Name: consts.ModulePwd,
 	})
 	if err != nil {
-		con.SessionLog(sid).Errorf("Pwd error: %v", err)
+		console.Log.Errorf("Pwd error: %v", err)
 		return
 	}
 	con.AddCallback(pwdTask.TaskId, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite).GetResponse()
-		console.Log.Consolef("%s\n", resp.GetOutput())
+		con.SessionLog(sid).Consolef("%s\n", resp.GetOutput())
 	})
 }

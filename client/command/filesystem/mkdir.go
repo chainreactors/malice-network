@@ -20,11 +20,11 @@ func MkdirCmd(ctx *grumble.Context, con *console.Console) {
 		Input: path,
 	})
 	if err != nil {
-		con.SessionLog(sid).Errorf("Mkdir error: %v", err)
+		console.Log.Errorf("Mkdir error: %v", err)
 		return
 	}
 	con.AddCallback(mkdirTask.TaskId, func(msg proto.Message) {
 		_ = msg.(*implantpb.Spite)
-		console.Log.Consolef("Created directory\n")
+		con.SessionLog(sid).Consolef("Created directory\n")
 	})
 }

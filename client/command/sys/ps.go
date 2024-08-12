@@ -15,7 +15,6 @@ import (
 
 func PsCmd(ctx *grumble.Context, con *console.Console) {
 	session := con.ActiveTarget.GetInteractive()
-	sid := con.ActiveTarget.GetInteractive().SessionId
 	if session == nil {
 		return
 	}
@@ -23,7 +22,7 @@ func PsCmd(ctx *grumble.Context, con *console.Console) {
 		Name: consts.ModulePs,
 	})
 	if err != nil {
-		con.SessionLog(sid).Errorf("Ps error: %v", err)
+		console.Log.Errorf("Ps error: %v", err)
 		return
 	}
 	resultChan := make(chan *implantpb.PsResponse)

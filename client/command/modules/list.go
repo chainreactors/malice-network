@@ -17,7 +17,7 @@ func listModules(ctx *grumble.Context, con *console.Console) {
 	sid := con.ActiveTarget.GetInteractive().SessionId
 	listTask, err := con.Rpc.ListModules(con.ActiveTarget.Context(), &implantpb.Empty{})
 	if err != nil {
-		con.SessionLog(sid).Errorf("ListModules error: %v", err)
+		console.Log.Errorf("ListModules error: %v", err)
 		return
 	}
 	resultChan := make(chan *implantpb.Modules)

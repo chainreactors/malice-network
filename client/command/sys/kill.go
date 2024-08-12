@@ -20,11 +20,11 @@ func KillCmd(ctx *grumble.Context, con *console.Console) {
 		Input: pid,
 	})
 	if err != nil {
-		con.SessionLog(sid).Errorf("Kill error: %v", err)
+		console.Log.Errorf("Kill error: %v", err)
 		return
 	}
 	con.AddCallback(killTask.TaskId, func(msg proto.Message) {
 		_ = msg.(*implantpb.Spite)
-		console.Log.Consolef("Killed process\n")
+		con.SessionLog(sid).Consolef("Killed process\n")
 	})
 }

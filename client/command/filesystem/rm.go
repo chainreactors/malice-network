@@ -20,11 +20,11 @@ func RmCmd(ctx *grumble.Context, con *console.Console) {
 		Input: fileName,
 	})
 	if err != nil {
-		con.SessionLog(sid).Errorf("Rm error: %v", err)
+		console.Log.Errorf("Rm error: %v", err)
 		return
 	}
 	con.AddCallback(rmTask.TaskId, func(msg proto.Message) {
 		_ = msg.(*implantpb.Spite)
-		console.Log.Consolef("Removed file success\n")
+		con.SessionLog(sid).Consolef("Removed file success\n")
 	})
 }

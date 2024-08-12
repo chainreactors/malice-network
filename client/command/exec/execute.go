@@ -46,7 +46,7 @@ func ExecuteCmd(ctx *grumble.Context, con *console.Console) {
 		resp := msg.(*implantpb.Spite).GetExecResponse()
 		sid := con.ActiveTarget.GetInteractive().SessionId
 		con.SessionLog(sid).Infof("pid: %d, status: %d", resp.Pid, resp.StatusCode)
-		console.Log.Consolef("%s %s , output:\n%s", cmdPath, strings.Join(args, " "), string(resp.Stdout))
+		con.SessionLog(sid).Consolef("%s %s , output:\n%s", cmdPath, strings.Join(args, " "), string(resp.Stdout))
 	})
 
 }

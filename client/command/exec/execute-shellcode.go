@@ -46,13 +46,13 @@ func ExecuteShellcodeCmd(ctx *grumble.Context, con *console.Console) {
 	})
 
 	if err != nil {
-		con.SessionLog(sid).Errorf("%s\n", err)
+		console.Log.Errorf("%s\n", err)
 		return
 	}
 
 	con.AddCallback(shellcodeTask.TaskId, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite)
-		console.Log.Consolef("Executed shellcode on target: %s\n", resp.GetAssemblyResponse().GetData())
+		con.SessionLog(sid).Consolef("Executed shellcode on target: %s\n", resp.GetAssemblyResponse().GetData())
 	})
 }
 
@@ -65,7 +65,7 @@ func ExecuteShellcodeInlineCmd(ctx *grumble.Context, con *console.Console) {
 	path := ctx.Args.String("path")
 	data, err := os.ReadFile(path)
 	if err != nil {
-		con.SessionLog(sid).Errorf("Error reading file: %v", err)
+		console.Log.Errorf("Error reading file: %v", err)
 		return
 	}
 	shellcodeTask, err := con.Rpc.ExecuteShellcode(con.ActiveTarget.Context(), &implantpb.ExecuteShellcode{
@@ -74,6 +74,6 @@ func ExecuteShellcodeInlineCmd(ctx *grumble.Context, con *console.Console) {
 	})
 	con.AddCallback(shellcodeTask.TaskId, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite)
-		console.Log.Consolef("Executed shellcode on target: %s\n", resp.GetAssemblyResponse().GetData())
+		con.SessionLog(sid).Consolef("Executed shellcode on target: %s\n", resp.GetAssemblyResponse().GetData())
 	})
 }

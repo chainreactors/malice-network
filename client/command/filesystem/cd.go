@@ -20,11 +20,11 @@ func CdCmd(ctx *grumble.Context, con *console.Console) {
 		Input: path,
 	})
 	if err != nil {
-		con.SessionLog(sid).Errorf("Cd error: %v", err)
+		console.Log.Errorf("Cd error: %v", err)
 		return
 	}
 	con.AddCallback(cdTask.TaskId, func(msg proto.Message) {
 		_ = msg.(*implantpb.Spite).GetResponse()
-		console.Log.Consolef("Changed directory to: %s\n", path)
+		con.SessionLog(sid).Consolef("Changed directory to: %s\n", path)
 	})
 }

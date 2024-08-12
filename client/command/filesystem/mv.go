@@ -22,11 +22,11 @@ func MvCmd(ctx *grumble.Context, con *console.Console) {
 		Args: args,
 	})
 	if err != nil {
-		con.SessionLog(sid).Errorf("Mv error: %v", err)
+		console.Log.Errorf("Mv error: %v", err)
 		return
 	}
 	con.AddCallback(mvTask.TaskId, func(msg proto.Message) {
 		_ = msg.(*implantpb.Spite)
-		console.Log.Consolef("Mv success\n")
+		con.SessionLog(sid).Consolef("Mv success\n")
 	})
 }

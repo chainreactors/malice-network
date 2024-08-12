@@ -271,13 +271,13 @@ func sendLsRequest(e *ExplorerModel) error {
 	done := make(chan error, 1)
 
 	ctx := e.con.ActiveTarget.Context()
-	sid := e.con.ActiveTarget.GetInteractive().SessionId
+	//sid := e.con.ActiveTarget.GetInteractive().SessionId
 	lsTask, err := e.con.Rpc.Ls(ctx, &implantpb.Request{
 		Name:  consts.ModuleLs,
 		Input: e.FilePicker.CurrentDirectory,
 	})
 	if err != nil {
-		e.con.SessionLog(sid).Errorf("load directory error: %v", err)
+		console.Log.Errorf("load directory error: %v", err)
 		return err
 	}
 	e.con.AddCallback(lsTask.TaskId, func(msg proto.Message) {
@@ -303,7 +303,7 @@ func sendLsRequest(e *ExplorerModel) error {
 func downloadRequest(e *ExplorerModel) error {
 	e.progress = tui.NewBar()
 	ctx := e.con.ActiveTarget.Context()
-	sid := e.con.ActiveTarget.GetInteractive().SessionId
+	//sid := e.con.ActiveTarget.GetInteractive().SessionId
 	f := e.Files[e.selected]
 	path := filepath.Join(e.FilePicker.CurrentDirectory, f.Name())
 	downloadTask, err := e.con.Rpc.Download(ctx, &implantpb.DownloadRequest{
@@ -311,7 +311,7 @@ func downloadRequest(e *ExplorerModel) error {
 		Path: path,
 	})
 	if err != nil {
-		e.con.SessionLog(sid).Errorf("download error: %v", err)
+		console.Log.Errorf("download error: %v", err)
 		return err
 	}
 	total := downloadTask.Total
@@ -322,6 +322,7 @@ func downloadRequest(e *ExplorerModel) error {
 		//if block.BlockId+1 == uint32(total) {
 		//	e.isProgress = false
 		//}
+
 	})
 	return nil
 }

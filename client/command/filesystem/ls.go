@@ -18,7 +18,6 @@ func LsCmd(ctx *grumble.Context, con *console.Console) {
 	if session == nil {
 		return
 	}
-	sid := con.ActiveTarget.GetInteractive().SessionId
 	path := ctx.Flags.String("path")
 	if path == "" {
 		path = "./"
@@ -29,7 +28,7 @@ func LsCmd(ctx *grumble.Context, con *console.Console) {
 		Input: path,
 	})
 	if err != nil {
-		con.SessionLog(sid).Errorf("Ls error: %v", err)
+		console.Log.Errorf("Ls error: %v", err)
 		return
 	}
 	con.AddCallback(lsTask.TaskId, func(msg proto.Message) {
