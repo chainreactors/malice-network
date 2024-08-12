@@ -133,6 +133,7 @@ func SessionLogin(tableModel *tui.TableModel, con *console.Console) func() {
 
 	return func() {
 		con.ActiveTarget.Set(session)
+		con.EnableImplantCommands()
 		console.Log.Infof("Active session %s (%s)\n", session.Note, session.SessionId)
 	}
 }

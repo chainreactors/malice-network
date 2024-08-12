@@ -18,11 +18,11 @@ func WhoamiCmd(ctx *grumble.Context, con *console.Console) {
 		Name: consts.ModuleWhoami,
 	})
 	if err != nil {
-		con.SessionLog(sid).Errorf("Whoami error: %v", err)
+		console.Log.Errorf("Whoami error: %v", err)
 		return
 	}
 	con.AddCallback(whoamiTask.TaskId, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite).GetResponse()
-		console.Log.Consolef("Username: %v\n", resp.GetOutput())
+		con.SessionLog(sid).Consolef("Username: %v\n", resp.GetOutput())
 	})
 }

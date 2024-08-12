@@ -14,13 +14,13 @@ func EnvCmd(ctx *grumble.Context, con *console.Console) {
 		Name: consts.ModuleEnv,
 	})
 	if err != nil {
-		con.SessionLog(sid).Errorf("Env error: %v", err)
+		console.Log.Errorf("Env error: %v", err)
 		return
 	}
 	con.AddCallback(envTask.TaskId, func(msg proto.Message) {
 		env := msg.(*implantpb.Spite).GetResponse().GetKv()
 		for k, v := range env {
-			console.Log.Consolef("export %s = %s\n", k, v)
+			con.SessionLog(sid).Consolef("export %s = %s\n", k, v)
 		}
 	})
 }
@@ -35,12 +35,11 @@ func SetEnvCmd(ctx *grumble.Context, con *console.Console) {
 		Args: args,
 	})
 	if err != nil {
-		con.SessionLog(sid).Errorf("SetEnv error: %v", err)
+		console.Log.Errorf("SetEnv error: %v", err)
 		return
 	}
 	con.AddCallback(setEnvTask.TaskId, func(msg proto.Message) {
-		_ = msg.(*implantpb.Spite)
-		console.Log.Consolef("Set environment variable success\n")
+		con.SessionLog(sid).Consolef("Set environment variable success\n")
 	})
 }
 
@@ -52,11 +51,10 @@ func UnsetEnvCmd(ctx *grumble.Context, con *console.Console) {
 		Input: env,
 	})
 	if err != nil {
-		con.SessionLog(sid).Errorf("UnsetEnv error: %v", err)
+		console.Log.Errorf("UnsetEnv error: %v", err)
 		return
 	}
 	con.AddCallback(unsetEnvTask.TaskId, func(msg proto.Message) {
-		_ = msg.(*implantpb.Spite)
-		console.Log.Consolef("Unset environment variable success\n")
+		con.SessionLog(sid).Consolef("Unset environment variable success\n")
 	})
 }

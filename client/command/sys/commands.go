@@ -87,5 +87,14 @@ func Commands(con *console.Console) []*grumble.Command {
 			},
 			HelpGroup: consts.ImplantGroup,
 		},
+		&grumble.Command{
+			Name: consts.ModuleInfo,
+			Help: "get basic sys info",
+			Run: func(ctx *grumble.Context) error {
+				InfoCmd(ctx, con)
+				return nil
+			},
+			HelpGroup: consts.ImplantGroup,
+		},
 	}
 }

@@ -49,6 +49,7 @@ const (
 	MsgSetEnv     MsgName = consts.ModuleSetEnv
 	MsgUnsetEnv   MsgName = consts.ModuleUnsetEnv
 	MsgWhoami     MsgName = consts.ModuleWhoami
+	MsgSysInfo    MsgName = "sysinfo"
 )
 
 func (r MsgName) String() string {
@@ -65,6 +66,8 @@ func MessageType(message *implantpb.Spite) MsgName {
 		return MsgResponse
 	case *implantpb.Spite_Register:
 		return MsgRegister
+	case *implantpb.Spite_Sysinfo:
+		return MsgSysInfo
 	case *implantpb.Spite_ExecRequest, *implantpb.Spite_ExecResponse:
 		return MsgExec
 	case *implantpb.Spite_UploadRequest:

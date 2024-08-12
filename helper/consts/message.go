@@ -32,6 +32,7 @@ const (
 	ModuleEnv        = "env"
 	ModuleSetEnv     = "setenv"
 	ModuleUnsetEnv   = "unsetenv"
+	ModuleInfo       = "info"
 	ModuleNetstat    = "netstat"
 	ModuleCurl       = "curl"
 	ModuleListModule = "list_module"
