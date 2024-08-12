@@ -63,6 +63,7 @@ type Session struct {
 	Process    *implantpb.Process
 	Timer      *implantpb.Timer
 	Filepath   string
+	WordDir    string
 	ActiveC2   string
 	ProxyURL   string
 	Modules    []string
@@ -110,6 +111,7 @@ func (s *Session) UpdateSysInfo(info *implantpb.SysInfo) {
 		info.Os.Arch = consts.GetWindowsArch(info.Os.Arch)
 	}
 	s.Filepath = info.Filepath
+	s.WordDir = info.Workdir
 	s.Os = info.Os
 	s.Process = info.Process
 }
