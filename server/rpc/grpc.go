@@ -26,7 +26,6 @@ import (
 )
 
 var (
-
 	// ErrInvalidSessionID - Invalid Session ID in request
 	ErrInvalidSessionID = status.Error(codes.InvalidArgument, "Invalid session ID")
 

@@ -32,26 +32,25 @@ var (
 )
 
 func NewSession(req *lispb.RegisterSession) *Session {
-	if req.RegisterData.Os.Name == "windows" {
-		req.RegisterData.Os.Arch = consts.GetWindowsArch(req.RegisterData.Os.Arch)
-	}
-
-	return &Session{
+	sess := &Session{
 		Name:       req.RegisterData.Name,
 		ProxyURL:   req.RegisterData.Proxy,
 		Modules:    req.RegisterData.Module,
 		Extensions: req.RegisterData.Extension,
-		Filepath:   req.RegisterData.Filepath,
 		ID:         req.SessionId,
 		ListenerId: req.ListenerId,
 		RemoteAddr: req.RemoteAddr,
-		Os:         req.RegisterData.Os,
-		Process:    req.RegisterData.Process,
 		Timer:      req.RegisterData.Timer,
 		Tasks:      &Tasks{active: &sync.Map{}},
 		Cache:      NewCache(10*consts.KB, path.Join(configs.CachePath, req.SessionId+".gob")),
 		responses:  &sync.Map{},
 	}
+
+	if req.RegisterData.Sysinfo != nil {
+		sess.UpdateSysInfo(req.RegisterData.Sysinfo)
+	}
+
+	return sess
 }
 
 // Session - Represents a connection to an implant
@@ -104,6 +103,15 @@ func (s *Session) ToProtobuf() *clientpb.Session {
 		Process:   s.Process,
 		Timer:     s.Timer,
 	}
+}
+
+func (s *Session) UpdateSysInfo(info *implantpb.SysInfo) {
+	if info.Os.Name == "windows" {
+		info.Os.Arch = consts.GetWindowsArch(info.Os.Arch)
+	}
+	s.Filepath = info.Filepath
+	s.Os = info.Os
+	s.Process = info.Process
 }
 
 func (s *Session) nextTaskId() uint32 {
