@@ -3,6 +3,7 @@ package exec
 import (
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/assets"
+	"github.com/chainreactors/malice-network/client/command/completer"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/helper/consts"
 )
@@ -66,6 +67,12 @@ func Commands(con *console.Console) []*grumble.Command {
 				return nil
 			},
 			HelpGroup: consts.ImplantGroup,
+			Completer: func(prefix string, args []string) []string {
+				if len(args) < 2 {
+					return completer.LocalPathCompleter(prefix, args, con)
+				}
+				return nil
+			},
 		},
 
 		&grumble.Command{
@@ -88,6 +95,12 @@ func Commands(con *console.Console) []*grumble.Command {
 				f.String("a", "argue", "", "argue")
 			},
 			HelpGroup: consts.ImplantGroup,
+			Completer: func(prefix string, args []string) []string {
+				if len(args) < 2 {
+					return completer.LocalPathCompleter(prefix, args, con)
+				}
+				return nil
+			},
 		},
 		&grumble.Command{
 			Name: consts.ModuleInlineShellcode,
@@ -101,6 +114,12 @@ func Commands(con *console.Console) []*grumble.Command {
 				return nil
 			},
 			HelpGroup: consts.ImplantGroup,
+			Completer: func(prefix string, args []string) []string {
+				if len(args) < 2 {
+					return completer.LocalPathCompleter(prefix, args, con)
+				}
+				return nil
+			},
 		},
 		&grumble.Command{
 			Name: consts.ModuleExecuteDll,
@@ -120,6 +139,12 @@ func Commands(con *console.Console) []*grumble.Command {
 				return nil
 			},
 			HelpGroup: consts.ImplantGroup,
+			Completer: func(prefix string, args []string) []string {
+				if len(args) < 2 {
+					return completer.LocalPathCompleter(prefix, args, con)
+				}
+				return nil
+			},
 		},
 		&grumble.Command{
 			Name: consts.ModuleInlineDll,
@@ -139,6 +164,12 @@ func Commands(con *console.Console) []*grumble.Command {
 				return nil
 			},
 			HelpGroup: consts.ImplantGroup,
+			Completer: func(prefix string, args []string) []string {
+				if len(args) < 2 {
+					return completer.LocalPathCompleter(prefix, args, con)
+				}
+				return nil
+			},
 		},
 		&grumble.Command{
 			Name: consts.ModuleExecutePE,
@@ -158,6 +189,12 @@ func Commands(con *console.Console) []*grumble.Command {
 				return nil
 			},
 			HelpGroup: consts.ImplantGroup,
+			Completer: func(prefix string, args []string) []string {
+				if len(args) < 2 {
+					return completer.LocalPathCompleter(prefix, args, con)
+				}
+				return nil
+			},
 		},
 		&grumble.Command{
 			Name: consts.ModuleInlinePE,
@@ -171,6 +208,12 @@ func Commands(con *console.Console) []*grumble.Command {
 				return nil
 			},
 			HelpGroup: consts.ImplantGroup,
+			Completer: func(prefix string, args []string) []string {
+				if len(args) < 2 {
+					return completer.LocalPathCompleter(prefix, args, con)
+				}
+				return nil
+			},
 		},
 		&grumble.Command{
 			Name: consts.ModuleExecuteBof,
@@ -190,6 +233,12 @@ func Commands(con *console.Console) []*grumble.Command {
 				return nil
 			},
 			HelpGroup: consts.ImplantGroup,
+			Completer: func(prefix string, args []string) []string {
+				if len(args) < 2 {
+					return completer.LocalPathCompleter(prefix, args, con)
+				}
+				return nil
+			},
 		},
 	}
 }

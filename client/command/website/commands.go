@@ -2,6 +2,7 @@ package website
 
 import (
 	"github.com/chainreactors/grumble"
+	"github.com/chainreactors/malice-network/client/command/completer"
 	"github.com/chainreactors/malice-network/client/console"
 )
 
@@ -24,10 +25,12 @@ func Commands(con *console.Console) []*grumble.Command {
 	webCmd.AddCommand(&grumble.Command{
 		Name: "add-content",
 		Help: "Add content to a website",
+		Args: func(a *grumble.Args) {
+			a.String("web-path", "path to the website")
+			a.String("content-path", "path to the content file")
+		},
 		Flags: func(f *grumble.Flags) {
 			f.String("n", "name", "", "name of the website")
-			f.String("", "web-path", "", "path to the website")
-			f.String("", "content-path", "", "path to the content file")
 			f.String("", "content-type", "", "content type")
 			f.Bool("", "recursive", false, "add content recursively")
 		},
@@ -35,7 +38,11 @@ func Commands(con *console.Console) []*grumble.Command {
 			websiteAddCmd(c, con)
 			return nil
 		},
-	})
+		Completer: func(prefix string, args []string) []string {
+			return completer.LocalPathCompleter(prefix, args, con)
+		},
+	},
+	)
 
 	// rm-content
 	webCmd.AddCommand(&grumble.Command{

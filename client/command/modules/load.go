@@ -15,7 +15,7 @@ func loadModule(ctx *grumble.Context, con *console.Console) {
 	}
 	sid := con.ActiveTarget.GetInteractive().SessionId
 	bundle := ctx.Flags.String("name")
-	path := ctx.Flags.String("path")
+	path := ctx.Args.String("path")
 	data, err := os.ReadFile(path)
 	if err != nil {
 		con.SessionLog(sid).Errorf("Error reading file: %v", err)

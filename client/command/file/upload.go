@@ -17,8 +17,8 @@ func upload(ctx *grumble.Context, con *console.Console) {
 		return
 	}
 	sid := con.ActiveTarget.GetInteractive().SessionId
-	path := ctx.Flags.String("source")
-	target := ctx.Flags.String("destination")
+	path := ctx.Args.String("source")
+	target := ctx.Args.String("destination")
 	priv := ctx.Flags.Int("priv")
 	hidden := ctx.Flags.Bool("hidden")
 	data, err := os.ReadFile(path)

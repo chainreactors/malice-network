@@ -2,6 +2,7 @@ package file
 
 import (
 	"github.com/chainreactors/grumble"
+	"github.com/chainreactors/malice-network/client/command/completer"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/helper/consts"
 )
@@ -35,9 +36,11 @@ func Commands(con *console.Console) []*grumble.Command {
 		{
 			Name: consts.ModuleUpload,
 			Help: "upload file",
+			Args: func(a *grumble.Args) {
+				a.String("source", "file source path")
+				a.String("destination", "target path")
+			},
 			Flags: func(f *grumble.Flags) {
-				f.String("s", "source", "", "source path")
-				f.String("d", "destination", "", "target path")
 				f.Int("", "priv", 0o644, "file Privilege")
 				f.Bool("", "hidden", false, "filename")
 			},
@@ -46,6 +49,11 @@ func Commands(con *console.Console) []*grumble.Command {
 				return nil
 			},
 			HelpGroup: consts.ImplantGroup,
-		},
+			Completer: func(prefix string, args []string) []string {
+				if len(args) < 2 {
+					return completer.LocalPathCompleter(prefix, args, con)
+				}
+				return nil
+			}},
 	}
 }

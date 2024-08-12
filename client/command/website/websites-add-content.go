@@ -15,8 +15,8 @@ import (
 )
 
 func websiteAddCmd(c *grumble.Context, con *console.Console) {
-	cPath := c.Flags.String("content-path")
-	webPath := c.Flags.String("web-path")
+	cPath := c.Args.String("content-path")
+	webPath := c.Args.String("web-path")
 	name := c.Flags.String("name")
 	contentType := c.Flags.String("content-type")
 	recursive := c.Flags.Bool("recursive")
