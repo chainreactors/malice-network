@@ -7,6 +7,7 @@ import (
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"google.golang.org/protobuf/proto"
 	"os"
+	"path/filepath"
 )
 
 // ExecuteShellcodeCmd - Execute shellcode in-memory
@@ -33,9 +34,10 @@ func ExecuteShellcodeCmd(ctx *grumble.Context, con *console.Console) {
 		return
 	}
 
-	shellcodeTask, err := con.Rpc.ExecuteShellcode(con.ActiveTarget.Context(), &implantpb.ExecuteShellcode{
-		Name: consts.ModuleExecuteShellcode,
+	shellcodeTask, err := con.Rpc.ExecuteShellcode(con.ActiveTarget.Context(), &implantpb.ExecuteBinary{
+		Name: filepath.Base(shellcodePath),
 		Bin:  shellcodeBin,
+		Type: consts.ModuleExecuteShellcode,
 		Sacrifice: &implantpb.SacrificeProcess{
 			Output:   true,
 			BlockDll: isBlockDll,
@@ -68,9 +70,10 @@ func ExecuteShellcodeInlineCmd(ctx *grumble.Context, con *console.Console) {
 		console.Log.Errorf("Error reading file: %v", err)
 		return
 	}
-	shellcodeTask, err := con.Rpc.ExecuteShellcode(con.ActiveTarget.Context(), &implantpb.ExecuteShellcode{
-		Name: consts.ModuleExecuteShellcode,
+	shellcodeTask, err := con.Rpc.ExecuteShellcode(con.ActiveTarget.Context(), &implantpb.ExecuteBinary{
+		Name: filepath.Base(path),
 		Bin:  data,
+		Type: consts.ModuleExecuteShellcode,
 	})
 	con.AddCallback(shellcodeTask.TaskId, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite)

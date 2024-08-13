@@ -27,11 +27,11 @@ func ExecuteAssemblyCmd(ctx *grumble.Context, con *console.Console) {
 	}
 
 	var task *clientpb.Task
-	task, err = con.Rpc.ExecuteAssembly(con.ActiveTarget.Context(), &implantpb.ExecuteAssembly{
+	task, err = con.Rpc.ExecuteAssembly(con.ActiveTarget.Context(), &implantpb.ExecuteBinary{
 		Name:   name,
 		Bin:    binData,
 		Params: args,
-		Type:   consts.CSharpPlugin,
+		Type:   consts.ModuleExecuteAssembly,
 	})
 
 	if err != nil {

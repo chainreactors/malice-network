@@ -8,17 +8,7 @@ import (
 )
 
 func (rpc *Server) ListExtensions(ctx context.Context, _ *implantpb.Empty) (*clientpb.Task, error) {
-	greq, err := newGenericRequest(ctx, &implantpb.Request{Name: types.MsgExtensions.String()})
-	if err != nil {
-		return nil, err
-	}
-	ch, err := rpc.asyncGenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
-	}
-
-	go greq.HandlerAsyncResponse(ch, types.MsgExtensions)
-	return greq.Task.ToProtobuf(), nil
+	return nil, nil
 }
 
 func (rpc *Server) LoadExtension(ctx context.Context, req *implantpb.LoadExtension) (*clientpb.Task, error) {
@@ -35,7 +25,7 @@ func (rpc *Server) LoadExtension(ctx context.Context, req *implantpb.LoadExtensi
 	return greq.Task.ToProtobuf(), nil
 }
 
-func (rpc *Server) ExecuteExtension(ctx context.Context, req *implantpb.ExecuteExtension) (*clientpb.Task, error) {
+func (rpc *Server) ExecuteExtension(ctx context.Context, req *implantpb.ExecuteBinary) (*clientpb.Task, error) {
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err

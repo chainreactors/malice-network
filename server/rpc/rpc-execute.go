@@ -21,7 +21,7 @@ func (rpc *Server) Execute(ctx context.Context, req *implantpb.ExecRequest) (*cl
 	return greq.Task.ToProtobuf(), nil
 }
 
-func (rpc *Server) ExecuteAssembly(ctx context.Context, req *implantpb.ExecuteAssembly) (*clientpb.Task, error) {
+func (rpc *Server) ExecuteAssembly(ctx context.Context, req *implantpb.ExecuteBinary) (*clientpb.Task, error) {
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err
@@ -35,7 +35,7 @@ func (rpc *Server) ExecuteAssembly(ctx context.Context, req *implantpb.ExecuteAs
 	return greq.Task.ToProtobuf(), nil
 }
 
-func (rpc *Server) ExecuteShellcode(ctx context.Context, req *implantpb.ExecuteShellcode) (*clientpb.Task, error) {
+func (rpc *Server) ExecuteShellcode(ctx context.Context, req *implantpb.ExecuteBinary) (*clientpb.Task, error) {
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err
@@ -49,7 +49,7 @@ func (rpc *Server) ExecuteShellcode(ctx context.Context, req *implantpb.ExecuteS
 	return greq.Task.ToProtobuf(), nil
 }
 
-func (rpc *Server) ExecuteBof(ctx context.Context, req *implantpb.ExecuteBof) (*clientpb.Task, error) {
+func (rpc *Server) ExecuteBof(ctx context.Context, req *implantpb.ExecuteBinary) (*clientpb.Task, error) {
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err
@@ -63,7 +63,7 @@ func (rpc *Server) ExecuteBof(ctx context.Context, req *implantpb.ExecuteBof) (*
 	return greq.Task.ToProtobuf(), nil
 }
 
-func (rpc *Server) ExecutePE(ctx context.Context, req *implantpb.ExecutePE) (*clientpb.Task, error) {
+func (rpc *Server) ExecutePE(ctx context.Context, req *implantpb.ExecuteBinary) (*clientpb.Task, error) {
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err
@@ -77,7 +77,7 @@ func (rpc *Server) ExecutePE(ctx context.Context, req *implantpb.ExecutePE) (*cl
 	return greq.Task.ToProtobuf(), nil
 }
 
-func (rpc *Server) ExecuteDll(ctx context.Context, req *implantpb.ExecutePE) (*clientpb.Task, error) {
+func (rpc *Server) ExecuteDll(ctx context.Context, req *implantpb.ExecuteBinary) (*clientpb.Task, error) {
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err
@@ -91,7 +91,7 @@ func (rpc *Server) ExecuteDll(ctx context.Context, req *implantpb.ExecutePE) (*c
 	return greq.Task.ToProtobuf(), nil
 }
 
-func (rpc *Server) ExecutePowershell(ctx context.Context, req *implantpb.ExecutePowershell) (*clientpb.Task, error) {
+func (rpc *Server) ExecutePowershell(ctx context.Context, req *implantpb.ExecuteBinary) (*clientpb.Task, error) {
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err

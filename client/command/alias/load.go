@@ -322,10 +322,10 @@ func runAliasCommand(ctx *grumble.Context, con *console.Console) {
 		// Execute Assembly
 		//msg := fmt.Sprintf("Executing %s %s ...", ctx.Command.Name, extArgs)
 		//con.SpinUntil(msg, ctrl)
-		executeAssemblyResp, err := con.Rpc.ExecuteAssembly(con.ActiveTarget.Context(), &implantpb.ExecuteAssembly{
+		executeAssemblyResp, err := con.Rpc.ExecuteAssembly(con.ActiveTarget.Context(), &implantpb.ExecuteBinary{
 			Name:   loadedAlias.Command.Name,
 			Bin:    binData,
-			Type:   consts.CSharpPlugin,
+			Type:   consts.ModuleExecuteAssembly,
 			Params: args,
 		})
 		if err != nil {

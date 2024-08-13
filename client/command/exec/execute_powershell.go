@@ -1,12 +1,14 @@
 package exec
 
 import (
+	"bytes"
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"google.golang.org/protobuf/proto"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -18,7 +20,7 @@ func ExecutePowershellCmd(ctx *grumble.Context, con *console.Console) {
 	sid := con.ActiveTarget.GetInteractive().SessionId
 	psPath := ctx.Flags.String("path")
 	var err error
-	var psBin strings.Builder
+	var psBin bytes.Buffer
 	if psPath != "" {
 		content, err := os.ReadFile(psPath)
 		if err != nil {
@@ -31,9 +33,10 @@ func ExecutePowershellCmd(ctx *grumble.Context, con *console.Console) {
 	paramString := ctx.Args.StringList("args")
 	psBin.WriteString(strings.Join(paramString, " "))
 
-	task, err := con.Rpc.ExecutePowershell(con.ActiveTarget.Context(), &implantpb.ExecutePowershell{
-		Name:   consts.ModuleExecutePE,
-		Script: psBin.String(),
+	task, err := con.Rpc.ExecutePowershell(con.ActiveTarget.Context(), &implantpb.ExecuteBinary{
+		Name: filepath.Base(psPath),
+		Bin:  psBin.Bytes(),
+		Type: consts.ModulePowershell,
 	})
 	if err != nil {
 		console.Log.Errorf("%s\n", err)

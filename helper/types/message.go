@@ -80,24 +80,24 @@ func MessageType(message *implantpb.Spite) MsgName {
 		return MsgBlock
 	case *implantpb.Spite_AssemblyResponse:
 		return MsgAssemblyResponse
-	case *implantpb.Spite_ExecuteAssembly:
-		return MsgExecuteAssembly
-	case *implantpb.Spite_ExecuteShellcode:
-		return MsgExecuteShellcode
+	//case *implantpb.Spite_ExecuteAssembly:
+	//	return MsgExecuteAssembly
+	//case *implantpb.Spite_ExecuteShellcode:
+	//	return MsgExecuteShellcode
 	//case *implantpb.Spite_ExecuteSpawn:
 	//	return MsgExecuteSpawn
 	//case *implantpb.Spite_ExecuteSideload:
 	//	return MsgExecuteSideLoad
-	case *implantpb.Spite_ExecutePe:
-		return MsgExecutePE
-	case *implantpb.Spite_ExecuteBof:
-		return MsgExecuteBof
-	case *implantpb.Spite_Extensions:
-		return MsgExtensions
+	//case *implantpb.Spite_ExecutePe:
+	//	return MsgExecutePE
+	//case *implantpb.Spite_ExecuteBof:
+	//	return MsgExecuteBof
+	//case *implantpb.Spite_Extensions:
+	//	return MsgExtensions
 	case *implantpb.Spite_LoadExtension:
 		return MsgLoadExtension
-	case *implantpb.Spite_ExecuteExtension:
-		return MsgExecuteExtension
+	//case *implantpb.Spite_ExecuteExtension:
+	//	return MsgExecuteExtension
 	case *implantpb.Spite_LoadModule:
 		return MsgLoadModule
 	case *implantpb.Spite_Modules:
@@ -108,6 +108,8 @@ func MessageType(message *implantpb.Spite) MsgName {
 		return MsgLs
 	case *implantpb.Spite_Empty:
 		return MsgEmpty
+	case *implantpb.Spite_ExecuteBinary:
+		return MsgName(message.GetExecuteBinary().Type)
 	default:
 		return MsgUnknown
 	}

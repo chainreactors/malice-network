@@ -8,6 +8,7 @@ import (
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"google.golang.org/protobuf/proto"
 	"os"
+	"path/filepath"
 )
 
 func ExecuteDLLCmd(ctx *grumble.Context, con *console.Console) {
@@ -30,9 +31,10 @@ func ExecuteDLLCmd(ctx *grumble.Context, con *console.Console) {
 		console.Log.Errorf("The file is not a DLL file\n")
 		return
 	}
-	shellcodeTask, err := con.Rpc.ExecutePE(con.ActiveTarget.Context(), &implantpb.ExecutePE{
-		Name: consts.ModuleExecutePE,
+	shellcodeTask, err := con.Rpc.ExecutePE(con.ActiveTarget.Context(), &implantpb.ExecuteBinary{
+		Name: filepath.Base(pePath),
 		Bin:  dllBin,
+		Type: consts.ModuleExecutePE,
 		Sacrifice: &implantpb.SacrificeProcess{
 			Output:   true,
 			BlockDll: isBlockDll,
@@ -69,9 +71,10 @@ func InlineDLLCmd(ctx *grumble.Context, con *console.Console) {
 		console.Log.Errorf("The file is not a DLL file\n")
 		return
 	}
-	shellcodeTask, err := con.Rpc.ExecutePE(con.ActiveTarget.Context(), &implantpb.ExecutePE{
-		Name: consts.ModuleExecutePE,
+	shellcodeTask, err := con.Rpc.ExecutePE(con.ActiveTarget.Context(), &implantpb.ExecuteBinary{
+		Name: filepath.Base(pePath),
 		Bin:  dllBin,
+		Type: consts.ModuleExecutePE,
 	})
 
 	if err != nil {

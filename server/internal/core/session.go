@@ -22,7 +22,7 @@ var (
 	Sessions = &sessions{
 		active: &sync.Map{},
 	}
-
+	ExtensionModules = []string{consts.ModuleExecuteBof, consts.ModuleExecuteDll}
 	// ErrUnknownMessageType - Returned if the implant did not understand the message for
 	//                         example when the command is not supported on the platform
 	ErrUnknownMessageType = errors.New("unknown message type")

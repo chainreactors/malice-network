@@ -1,14 +1,5 @@
 package consts
 
-// plugin
-const (
-	CSharpPlugin    = "csharp"
-	SideloadPlugin  = "sideload"
-	SpawnPlugin     = "spawn"
-	ShellcodePlugin = "shellcode"
-	BofPlugin       = "bof"
-)
-
 // release type
 type ReleaseType int
 

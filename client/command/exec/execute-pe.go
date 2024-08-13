@@ -8,6 +8,7 @@ import (
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"google.golang.org/protobuf/proto"
 	"os"
+	"path/filepath"
 )
 
 // ExecutePECmd - Execute PE on sacrifice process
@@ -32,9 +33,10 @@ func ExecutePECmd(ctx *grumble.Context, con *console.Console) {
 		return
 	}
 
-	shellcodeTask, err := con.Rpc.ExecutePE(con.ActiveTarget.Context(), &implantpb.ExecutePE{
-		Name: consts.ModuleExecutePE,
+	shellcodeTask, err := con.Rpc.ExecutePE(con.ActiveTarget.Context(), &implantpb.ExecuteBinary{
+		Name: filepath.Base(pePath),
 		Bin:  peBin,
+		Type: consts.ModuleExecutePE,
 		Sacrifice: &implantpb.SacrificeProcess{
 			Output:   true,
 			BlockDll: isBlockDll,
@@ -71,9 +73,10 @@ func InlinePECmd(ctx *grumble.Context, con *console.Console) {
 		console.Log.Errorf("The file is not a PE file\n")
 		return
 	}
-	shellcodeTask, err := con.Rpc.ExecutePE(con.ActiveTarget.Context(), &implantpb.ExecutePE{
-		Name: consts.ModuleExecutePE,
+	shellcodeTask, err := con.Rpc.ExecutePE(con.ActiveTarget.Context(), &implantpb.ExecuteBinary{
+		Name: filepath.Base(pePath),
 		Bin:  peBin,
+		Type: consts.ModuleExecutePE,
 	})
 
 	if err != nil {
