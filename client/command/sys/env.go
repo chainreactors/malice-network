@@ -9,7 +9,7 @@ import (
 )
 
 func EnvCmd(ctx *grumble.Context, con *console.Console) {
-	sid := con.ActiveTarget.GetInteractive().SessionId
+	sid := con.GetInteractive().SessionId
 	envTask, err := con.Rpc.Env(con.ActiveTarget.Context(), &implantpb.Request{
 		Name: consts.ModuleEnv,
 	})
@@ -26,7 +26,7 @@ func EnvCmd(ctx *grumble.Context, con *console.Console) {
 }
 
 func SetEnvCmd(ctx *grumble.Context, con *console.Console) {
-	sid := con.ActiveTarget.GetInteractive().SessionId
+	sid := con.GetInteractive().SessionId
 	env := ctx.Flags.String("env")
 	value := ctx.Flags.String("value")
 	args := []string{env, value}
@@ -44,7 +44,7 @@ func SetEnvCmd(ctx *grumble.Context, con *console.Console) {
 }
 
 func UnsetEnvCmd(ctx *grumble.Context, con *console.Console) {
-	sid := con.ActiveTarget.GetInteractive().SessionId
+	sid := con.GetInteractive().SessionId
 	env := ctx.Flags.String("env")
 	unsetEnvTask, err := con.Rpc.UnsetEnv(con.ActiveTarget.Context(), &implantpb.Request{
 		Name:  consts.ModuleUnsetEnv,

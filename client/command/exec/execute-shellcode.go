@@ -12,11 +12,11 @@ import (
 
 // ExecuteShellcodeCmd - Execute shellcode in-memory
 func ExecuteShellcodeCmd(ctx *grumble.Context, con *console.Console) {
-	session := con.ActiveTarget.GetInteractive()
+	session := con.GetInteractive()
 	if session == nil {
 		return
 	}
-	sid := con.ActiveTarget.GetInteractive().SessionId
+	sid := con.GetInteractive().SessionId
 	//rwxPages := ctx.Flags.Bool("rwx-pages")
 	//interactive := ctx.Flags.Bool("interactive")
 	//if interactive {
@@ -59,11 +59,11 @@ func ExecuteShellcodeCmd(ctx *grumble.Context, con *console.Console) {
 }
 
 func ExecuteShellcodeInlineCmd(ctx *grumble.Context, con *console.Console) {
-	session := con.ActiveTarget.GetInteractive()
+	session := con.GetInteractive()
 	if session == nil {
 		return
 	}
-	sid := con.ActiveTarget.GetInteractive().SessionId
+	sid := con.GetInteractive().SessionId
 	path := ctx.Args.String("path")
 	data, err := os.ReadFile(path)
 	if err != nil {

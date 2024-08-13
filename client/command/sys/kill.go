@@ -9,8 +9,8 @@ import (
 )
 
 func KillCmd(ctx *grumble.Context, con *console.Console) {
-	session := con.ActiveTarget.GetInteractive()
-	sid := con.ActiveTarget.GetInteractive().SessionId
+	session := con.GetInteractive()
+	sid := con.GetInteractive().SessionId
 	if session == nil {
 		return
 	}

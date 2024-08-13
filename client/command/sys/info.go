@@ -9,7 +9,7 @@ import (
 )
 
 func InfoCmd(ctx *grumble.Context, con *console.Console) {
-	session := con.ActiveTarget.GetInteractive()
+	session := con.GetInteractive()
 	if session == nil {
 		return
 	}

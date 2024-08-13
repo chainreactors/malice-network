@@ -227,7 +227,7 @@ func ParseAliasManifest(data []byte) (*AliasManifest, error) {
 }
 
 func runAliasCommand(ctx *grumble.Context, con *console.Console) {
-	session := con.ActiveTarget.GetInteractive()
+	session := con.GetInteractive()
 	if session == nil {
 		return
 	}
@@ -335,7 +335,7 @@ func runAliasCommand(ctx *grumble.Context, con *console.Console) {
 
 		con.AddCallback(executeAssemblyResp.TaskId, func(msg proto.Message) {
 			resp := msg.(*implantpb.Spite).GetAssemblyResponse()
-			sid := con.ActiveTarget.GetInteractive().SessionId
+			sid := con.GetInteractive().SessionId
 			if resp.Status == 0 {
 				con.SessionLog(sid).Infof("%s output:\n%s", loadedAlias.Command.Name, string(resp.Data))
 			} else {

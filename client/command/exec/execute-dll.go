@@ -12,11 +12,11 @@ import (
 )
 
 func ExecuteDLLCmd(ctx *grumble.Context, con *console.Console) {
-	session := con.ActiveTarget.GetInteractive()
+	session := con.GetInteractive()
 	if session == nil {
 		return
 	}
-	sid := con.ActiveTarget.GetInteractive().SessionId
+	sid := con.GetInteractive().SessionId
 	ppid := ctx.Flags.Uint("ppid")
 	pePath := ctx.Args.String("path")
 	paramString := ctx.Flags.StringSlice("args")
@@ -56,11 +56,11 @@ func ExecuteDLLCmd(ctx *grumble.Context, con *console.Console) {
 }
 
 func InlineDLLCmd(ctx *grumble.Context, con *console.Console) {
-	session := con.ActiveTarget.GetInteractive()
+	session := con.GetInteractive()
 	if session == nil {
 		return
 	}
-	sid := con.ActiveTarget.GetInteractive().SessionId
+	sid := con.GetInteractive().SessionId
 	pePath := ctx.Args.String("path")
 	dllBin, err := os.ReadFile(pePath)
 	if err != nil {

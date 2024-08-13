@@ -53,7 +53,7 @@ func SessionIDCompleter(con *console.Console, prefix string) (results []string) 
 
 func BasicSessionIDCompleter(con *console.Console, prefix string) (results []string) {
 	if con.ActiveTarget.Get() != nil {
-		results = append(results, con.ActiveTarget.GetInteractive().SessionId)
+		results = append(results, con.GetInteractive().SessionId)
 		return results
 	}
 	for _, s := range con.Sessions {
@@ -65,7 +65,7 @@ func BasicSessionIDCompleter(con *console.Console, prefix string) (results []str
 }
 
 func AliveSessionIDCompleter(con *console.Console) (results []string) {
-	sid := con.ActiveTarget.GetInteractive().SessionId
+	sid := con.GetInteractive().SessionId
 	results = append(results, sid)
 	return results
 }

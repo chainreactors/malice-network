@@ -13,7 +13,7 @@ import (
 )
 
 func ExecuteBofCmd(ctx *grumble.Context, con *console.Console) {
-	session := con.ActiveTarget.GetInteractive()
+	session := con.GetInteractive()
 	if session == nil {
 		return
 	}
@@ -41,7 +41,7 @@ func ExecuteBofCmd(ctx *grumble.Context, con *console.Console) {
 
 	con.AddCallback(task.TaskId, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite).GetAssemblyResponse()
-		sid := con.ActiveTarget.GetInteractive().SessionId
+		sid := con.GetInteractive().SessionId
 		con.SessionLog(sid).Infof("%s output:\n%s", name, string(resp.Data))
 	})
 }

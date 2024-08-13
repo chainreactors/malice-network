@@ -11,7 +11,7 @@ import (
 )
 
 func ExecuteCmd(ctx *grumble.Context, con *console.Console) {
-	session := con.ActiveTarget.GetInteractive()
+	session := con.GetInteractive()
 	if session == nil {
 		return
 	}
@@ -44,7 +44,7 @@ func ExecuteCmd(ctx *grumble.Context, con *console.Console) {
 
 	con.AddCallback(resp.TaskId, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite).GetExecResponse()
-		sid := con.ActiveTarget.GetInteractive().SessionId
+		sid := con.GetInteractive().SessionId
 		con.SessionLog(sid).Infof("pid: %d, status: %d", resp.Pid, resp.StatusCode)
 		con.SessionLog(sid).Consolef("%s %s , output:\n%s", cmdPath, strings.Join(args, " "), string(resp.Stdout))
 	})

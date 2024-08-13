@@ -9,11 +9,11 @@ import (
 )
 
 func CpCmd(ctx *grumble.Context, con *console.Console) {
-	session := con.ActiveTarget.GetInteractive()
+	session := con.GetInteractive()
 	if session == nil {
 		return
 	}
-	sid := con.ActiveTarget.GetInteractive().SessionId
+	sid := con.GetInteractive().SessionId
 	originPath := ctx.Flags.String("source")
 	targetPath := ctx.Flags.String("target")
 	args := []string{originPath, targetPath}

@@ -9,11 +9,11 @@ import (
 )
 
 func PwdCmd(ctx *grumble.Context, con *console.Console) {
-	session := con.ActiveTarget.GetInteractive()
+	session := con.GetInteractive()
 	if session == nil {
 		return
 	}
-	sid := con.ActiveTarget.GetInteractive().SessionId
+	sid := con.GetInteractive().SessionId
 	pwdTask, err := con.Rpc.Pwd(con.ActiveTarget.Context(), &implantpb.Request{
 		Name: consts.ModulePwd,
 	})

@@ -11,8 +11,8 @@ import (
 func groupCmd(ctx *grumble.Context, con *console.Console) {
 	group := ctx.Args.String("group")
 	var id string
-	if con.ActiveTarget.GetInteractive().SessionId != "" {
-		id = con.ActiveTarget.GetInteractive().SessionId
+	if con.GetInteractive().SessionId != "" {
+		id = con.GetInteractive().SessionId
 	} else if ctx.Flags.String("id") != "" {
 		id = ctx.Flags.String("id")
 	} else {

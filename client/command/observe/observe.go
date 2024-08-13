@@ -41,8 +41,8 @@ func ObserveCmd(ctx *grumble.Context, con *console.Console) {
 
 	idArg := ctx.Args.StringList("sid")
 	if idArg == nil {
-		if con.ActiveTarget.GetInteractive() != nil {
-			idArg = []string{con.ActiveTarget.GetInteractive().SessionId}
+		if con.GetInteractive() != nil {
+			idArg = []string{con.GetInteractive().SessionId}
 		} else {
 			for i, ob := range con.Observers {
 				console.Log.Infof("%d: %s", i, ob.SessionId())

@@ -9,11 +9,11 @@ import (
 )
 
 func download(ctx *grumble.Context, con *console.Console) {
-	session := con.ActiveTarget.GetInteractive()
+	session := con.GetInteractive()
 	if session == nil {
 		return
 	}
-	sid := con.ActiveTarget.GetInteractive().SessionId
+	sid := con.GetInteractive().SessionId
 	name := ctx.Flags.String("name")
 	path := ctx.Flags.String("path")
 	downloadTask, err := con.Rpc.Download(con.ActiveTarget.Context(), &implantpb.DownloadRequest{

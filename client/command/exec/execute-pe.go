@@ -13,11 +13,11 @@ import (
 
 // ExecutePECmd - Execute PE on sacrifice process
 func ExecutePECmd(ctx *grumble.Context, con *console.Console) {
-	session := con.ActiveTarget.GetInteractive()
+	session := con.GetInteractive()
 	if session == nil {
 		return
 	}
-	sid := con.ActiveTarget.GetInteractive().SessionId
+	sid := con.GetInteractive().SessionId
 	ppid := ctx.Flags.Uint("ppid")
 	pePath := ctx.Args.String("path")
 	paramString := ctx.Args.StringList("args")
@@ -58,11 +58,11 @@ func ExecutePECmd(ctx *grumble.Context, con *console.Console) {
 
 // InlinePECmd - Execute PE in current process
 func InlinePECmd(ctx *grumble.Context, con *console.Console) {
-	session := con.ActiveTarget.GetInteractive()
+	session := con.GetInteractive()
 	if session == nil {
 		return
 	}
-	sid := con.ActiveTarget.GetInteractive().SessionId
+	sid := con.GetInteractive().SessionId
 	pePath := ctx.Args.String("path")
 	peBin, err := os.ReadFile(pePath)
 	if err != nil {

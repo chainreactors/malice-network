@@ -9,11 +9,11 @@ import (
 )
 
 func ChmodCmd(ctx *grumble.Context, con *console.Console) {
-	session := con.ActiveTarget.GetInteractive()
+	session := con.GetInteractive()
 	if session == nil {
 		return
 	}
-	sid := con.ActiveTarget.GetInteractive().SessionId
+	sid := con.GetInteractive().SessionId
 	path := ctx.Flags.String("path")
 	mode := ctx.Flags.String("mode")
 	chmodTask, err := con.Rpc.Chmod(con.ActiveTarget.Context(), &implantpb.Request{

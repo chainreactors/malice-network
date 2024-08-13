@@ -11,8 +11,8 @@ import (
 func noteCmd(ctx *grumble.Context, con *console.Console) {
 	name := ctx.Args.String("name")
 	var id string
-	if con.ActiveTarget.GetInteractive().SessionId != "" {
-		id = con.ActiveTarget.GetInteractive().SessionId
+	if con.GetInteractive().SessionId != "" {
+		id = con.GetInteractive().SessionId
 	} else if ctx.Flags.String("id") != "" {
 		id = ctx.Flags.String("id")
 	} else {

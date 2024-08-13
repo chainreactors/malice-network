@@ -35,13 +35,13 @@ func Command(con *console.Console) []*grumble.Command {
 }
 
 func TasksCmd(ctx *grumble.Context, con *console.Console) {
-	err := con.UpdateTasks(con.ActiveTarget.GetInteractive())
+	err := con.UpdateTasks(con.GetInteractive())
 	if err != nil {
 		console.Log.Errorf("Error updating tasks: %v", err)
 		return
 	}
-	sid := con.ActiveTarget.GetInteractive().SessionId
-	Tasks, err := con.Rpc.GetTaskDescs(con.ActiveTarget.Context(), con.ActiveTarget.GetInteractive())
+	sid := con.GetInteractive().SessionId
+	Tasks, err := con.Rpc.GetTaskDescs(con.ActiveTarget.Context(), con.GetInteractive())
 	if err != nil {
 		con.SessionLog(sid).Errorf("Error getting tasks: %v", err)
 	}
@@ -58,7 +58,7 @@ type description struct {
 }
 
 func PrintTasks(tasks []*clientpb.TaskDesc, con *console.Console) {
-	sid := con.ActiveTarget.GetInteractive().SessionId
+	sid := con.GetInteractive().SessionId
 	var rowEntries []table.Row
 	var row table.Row
 	tableModel := tui.NewTable([]table.Column{

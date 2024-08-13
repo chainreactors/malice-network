@@ -13,11 +13,11 @@ import (
 )
 
 func ExecutePowershellCmd(ctx *grumble.Context, con *console.Console) {
-	session := con.ActiveTarget.GetInteractive()
+	session := con.GetInteractive()
 	if session == nil {
 		return
 	}
-	sid := con.ActiveTarget.GetInteractive().SessionId
+	sid := con.GetInteractive().SessionId
 	psPath := ctx.Flags.String("path")
 	var err error
 	var psBin bytes.Buffer

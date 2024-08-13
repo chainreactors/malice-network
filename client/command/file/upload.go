@@ -12,11 +12,11 @@ import (
 )
 
 func upload(ctx *grumble.Context, con *console.Console) {
-	session := con.ActiveTarget.GetInteractive()
+	session := con.GetInteractive()
 	if session == nil {
 		return
 	}
-	sid := con.ActiveTarget.GetInteractive().SessionId
+	sid := con.GetInteractive().SessionId
 	path := ctx.Args.String("source")
 	target := ctx.Args.String("destination")
 	priv := ctx.Flags.Int("priv")

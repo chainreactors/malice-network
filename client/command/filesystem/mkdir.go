@@ -9,11 +9,11 @@ import (
 )
 
 func MkdirCmd(ctx *grumble.Context, con *console.Console) {
-	session := con.ActiveTarget.GetInteractive()
+	session := con.GetInteractive()
 	if session == nil {
 		return
 	}
-	sid := con.ActiveTarget.GetInteractive().SessionId
+	sid := con.GetInteractive().SessionId
 	path := ctx.Flags.String("path")
 	mkdirTask, err := con.Rpc.Mkdir(con.ActiveTarget.Context(), &implantpb.Request{
 		Name:  consts.ModuleMkdir,

@@ -10,7 +10,7 @@ import (
 
 func sync(ctx *grumble.Context, con *console.Console) {
 	tid := ctx.Flags.String("taskID")
-	sid := con.ActiveTarget.GetInteractive().SessionId
+	sid := con.GetInteractive().SessionId
 	syncTask, err := con.Rpc.Sync(con.ActiveTarget.Context(), &clientpb.Sync{
 		FileId: sid + "-" + tid,
 	})
