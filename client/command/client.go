@@ -5,7 +5,6 @@ import (
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/alias"
 	"github.com/chainreactors/malice-network/client/command/armory"
-	"github.com/chainreactors/malice-network/client/command/basic"
 	"github.com/chainreactors/malice-network/client/command/explorer"
 	"github.com/chainreactors/malice-network/client/command/extension"
 	"github.com/chainreactors/malice-network/client/command/jobs"
@@ -30,7 +29,7 @@ func BindClientsCommands(con *console.Console) {
 
 	bind(consts.GenericGroup,
 		login.Command,
-		sessions.Command,
+		sessions.Commands,
 		use.Command,
 		tasks.Command,
 		jobs.Command,
@@ -41,7 +40,6 @@ func BindClientsCommands(con *console.Console) {
 		observe.Command,
 		website.Commands,
 		explorer.Commands,
-		basic.Commands,
 	)
 
 	bind(consts.AliasesGroup)
