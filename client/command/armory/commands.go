@@ -54,7 +54,7 @@ func Commands(con *console.Console) []*grumble.Command {
 		HelpGroup: consts.GenericGroup,
 	})
 	armoryCmd.AddCommand(&grumble.Command{
-		Name: consts.CommandArnorySearch,
+		Name: consts.CommandArmorySearch,
 		Help: "Search for armory packages",
 		Args: func(a *grumble.Args) {
 			a.String("name", "name of the package to search for")

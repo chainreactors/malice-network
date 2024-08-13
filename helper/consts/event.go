@@ -2,7 +2,7 @@ package consts
 
 // event
 const (
-	EventJoin         = "event"
+	EventJoin         = "join"
 	EventLeft         = "left"
 	EventBroadcast    = "broadcast"
 	EventNotify       = "notify"
@@ -12,7 +12,5 @@ const (
 	EventTaskCallback = "task_callback"
 	EventTaskDone     = "task_done"
 	EventTaskError    = "task_error"
-
-	// WebsiteEvent - Fires whenever there's a change to websites
-	EventWebsite = "website"
+	EventWebsite      = "website"
 )

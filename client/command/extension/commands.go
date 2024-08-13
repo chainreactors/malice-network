@@ -3,6 +3,7 @@ package extension
 import (
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/helper/consts"
 )
 
 func Commands(con *console.Console) []*grumble.Command {
@@ -14,10 +15,10 @@ func Commands(con *console.Console) []*grumble.Command {
 			ExtensionsCmd(ctx, con)
 			return nil
 		},
-		HelpGroup: "Extension",
+		HelpGroup: consts.GenericGroup,
 	}
 	extensionCmd.AddCommand(&grumble.Command{
-		Name: "list",
+		Name: consts.CommandExtensionList,
 		Help: "List all extensions",
 		//LongHelp: help.GetHelpFor([]string{consts.CommandAlias}),
 		Run: func(ctx *grumble.Context) error {
@@ -25,6 +26,15 @@ func Commands(con *console.Console) []*grumble.Command {
 			return nil
 		},
 		HelpGroup: "Extension",
+	})
+	extensionCmd.AddCommand(&grumble.Command{
+		Name: consts.CommandExtensionLoad,
+		Help: "Load an extension",
+		//LongHelp: help.GetHelpFor([]string{consts.CommandAlias}),
+		Run: func(ctx *grumble.Context) error {
+			ExtensionLoadCmd(ctx, con)
+			return nil
+		},
 	})
 	extensionCmd.AddCommand(&grumble.Command{
 		Name: "install",
@@ -37,7 +47,6 @@ func Commands(con *console.Console) []*grumble.Command {
 		Args: func(a *grumble.Args) {
 			a.String("path", "path to the extension directory or tar.gz file")
 		},
-		HelpGroup: "Extension",
 	})
 	extensionCmd.AddCommand(&grumble.Command{
 		Name: "remove",
@@ -50,7 +59,6 @@ func Commands(con *console.Console) []*grumble.Command {
 		Args: func(a *grumble.Args) {
 			a.String("name", "name of the extension to remove")
 		},
-		HelpGroup: "Extension",
 	})
 	return []*grumble.Command{extensionCmd}
 }

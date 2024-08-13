@@ -40,17 +40,23 @@ const (
 )
 
 const (
-	CommandSync         = "sync"
-	CommandBroadcast    = "broadcast"
-	CommandVersion      = "version"
-	CommandNotify       = "notify"
-	CommandAlias        = "alias"
-	CommandAliasLoad    = "load"
-	CommandAliasInstall = "install"
-	CommandAliasRemove  = "remove"
-	CommandArmory       = "armory"
-	CommandArmoryUpdate = "update"
-	CommandArnorySearch = "search"
+	CommandSync             = "sync"
+	CommandBroadcast        = "broadcast"
+	CommandVersion          = "version"
+	CommandNotify           = "notify"
+	CommandAlias            = "alias"
+	CommandAliasLoad        = "load"
+	CommandAliasInstall     = "install"
+	CommandAliasRemove      = "remove"
+	CommandArmory           = "armory"
+	CommandArmoryUpdate     = "update"
+	CommandArmorySearch     = "search"
+	CommandArmoryLoad       = "load"
+	CommandExtension        = "extension"
+	CommandExtensionList    = "list"
+	CommandExtensionLoad    = "load"
+	CommandExtensionInstall = "install"
+	CommandExtensionRemove  = "remove"
 )
 
 // ctrl type
