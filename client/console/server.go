@@ -115,13 +115,7 @@ func (s *ServerStatus) UpdateTasks(session *clientpb.Session) error {
 		return err
 	}
 
-	if len(tasks.GetTasks()) == 0 {
-		return nil
-	}
-	s.Sessions[session.SessionId].Tasks = []*clientpb.Task{}
-	for _, task := range tasks.GetTasks() {
-		s.Sessions[session.SessionId].Tasks = append(s.Sessions[session.SessionId].Tasks, task)
-	}
+	session.Tasks = &clientpb.Tasks{Tasks: tasks.Tasks}
 	return nil
 }
 
