@@ -148,6 +148,19 @@ func (c *Console) RemoveObserver(observerID string) {
 	delete(c.Observers, observerID)
 }
 
+func (c *Console) GetInteractive() *clientpb.Session {
+	if c.ActiveTarget != nil {
+		return c.ActiveTarget.GetInteractive()
+	}
+	return nil
+}
+
+func (c *Console) RefreshActiveSession() {
+	if c.ActiveTarget != nil {
+		c.UpdateSession(c.ActiveTarget.session.SessionId)
+	}
+}
+
 func (c *Console) SessionLog(sid string) *logs.Logger {
 	if ob, ok := c.Observers[sid]; ok {
 		return ob.log

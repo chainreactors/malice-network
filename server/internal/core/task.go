@@ -23,6 +23,16 @@ func (t *Tasks) All() []*Task {
 	return all
 }
 
+func (t *Tasks) ToProtobuf() *clientpb.Tasks {
+	tasks := &clientpb.Tasks{
+		Tasks: []*clientpb.Task{},
+	}
+	for _, task := range t.All() {
+		tasks.Tasks = append(tasks.Tasks, task.ToProtobuf())
+	}
+	return tasks
+}
+
 // get
 func (t *Tasks) Get(taskID uint32) *Task {
 	val, ok := t.active.Load(taskID)

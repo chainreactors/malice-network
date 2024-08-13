@@ -37,7 +37,7 @@ func NewSession(req *lispb.RegisterSession) *Session {
 		Name:       req.RegisterData.Name,
 		ProxyURL:   req.RegisterData.Proxy,
 		Modules:    req.RegisterData.Module,
-		Extensions: req.RegisterData.Extension,
+		Extensions: req.RegisterData.Extension.Extensions,
 		ID:         req.SessionId,
 		ListenerId: req.ListenerId,
 		RemoteAddr: req.RemoteAddr,
@@ -59,18 +59,16 @@ type Session struct {
 	ListenerId string
 	ID         string
 	Name       string
+	Group      string
 	RemoteAddr string
 	Os         *implantpb.Os
 	Process    *implantpb.Process
 	Timer      *implantpb.Timer
 	Filepath   string
 	WordDir    string
-	ActiveC2   string
 	ProxyURL   string
 	Modules    []string
-	Extensions []string
-	ConfigID   string
-	PeerID     int64
+	Extensions []*implantpb.Extension
 	Locale     string
 	Tasks      *Tasks // task manager
 	taskseq    uint32
@@ -99,11 +97,17 @@ func (s *Session) Logger() *logs.Logger {
 
 func (s *Session) ToProtobuf() *clientpb.Session {
 	return &clientpb.Session{
-		SessionId: s.ID,
-		Note:      s.Name,
-		Os:        s.Os,
-		Process:   s.Process,
-		Timer:     s.Timer,
+		SessionId:  s.ID,
+		Note:       s.Name,
+		GroupName:  s.Group,
+		RemoteAddr: s.RemoteAddr,
+		ListenerId: s.ListenerId,
+		Os:         s.Os,
+		Process:    s.Process,
+		Timer:      s.Timer,
+		Tasks:      s.Tasks.ToProtobuf(),
+		Modules:    s.Modules,
+		Extensions: &implantpb.Extensions{Extensions: s.Extensions},
 	}
 }
 

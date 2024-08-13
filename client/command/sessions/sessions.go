@@ -40,7 +40,7 @@ func Command(con *console.Console) []*grumble.Command {
 }
 
 func SessionsCmd(ctx *grumble.Context, con *console.Console) {
-	con.UpdateSession()
+	con.UpdateSessions(true)
 	isAll := ctx.Flags.Bool("all")
 	if 0 < len(con.Sessions) {
 		PrintSessions(con.Sessions, con, isAll)
@@ -111,7 +111,6 @@ func PrintSessions(sessions map[string]*clientpb.Session, con *console.Console, 
 
 func SessionLogin(tableModel *tui.TableModel, con *console.Console) func() {
 	var sessionId string
-	con.UpdateSession()
 	selectRow := tableModel.GetSelectedRow()
 	if selectRow == nil {
 		return func() {

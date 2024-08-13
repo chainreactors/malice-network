@@ -9,22 +9,12 @@ import (
 )
 
 func (rpc *Server) GetTasks(ctx context.Context, session *clientpb.Session) (*clientpb.Tasks, error) {
-	resp := &clientpb.Tasks{
-		Tasks: []*clientpb.Task{},
-	}
-	tasks, err := db.GetAllTasks(session.SessionId)
-	if err != nil {
-		return nil, err
-	}
-	//sess, ok := core.Sessions.Get(session.SessionId)
-	//if !ok {
-	//	return nil, ErrNotFoundSession
-	//}
-	for _, task := range tasks {
-		resp.Tasks = append(resp.Tasks, task.ToProtobuf())
+	sess, ok := core.Sessions.Get(session.SessionId)
+	if !ok {
+		return nil, ErrNotFoundSession
 	}
 
-	return resp, nil
+	return sess.Tasks.ToProtobuf(), nil
 }
 
 func (rpc *Server) GetTaskContent(ctx context.Context, req *clientpb.Task) (*implantpb.Spite, error) {

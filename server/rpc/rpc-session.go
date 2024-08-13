@@ -5,6 +5,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
+	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 )
 
@@ -14,6 +15,22 @@ func (rpc *Server) GetSessions(ctx context.Context, _ *clientpb.Empty) (*clientp
 		return nil, err
 	}
 	return sessions, nil
+}
+
+func (rpc *Server) GetAlivedSessions(ctx context.Context, _ *clientpb.Empty) (*clientpb.Sessions, error) {
+	var sessions []*clientpb.Session
+	for _, session := range core.Sessions.All() {
+		sessions = append(sessions, session.ToProtobuf())
+	}
+	return &clientpb.Sessions{Sessions: sessions}, nil
+}
+
+func (rpc *Server) GetSession(ctx context.Context, req *clientpb.SessionRequest) (*clientpb.Session, error) {
+	session, ok := core.Sessions.Get(req.SessionId)
+	if ok {
+		return nil, ErrNotFoundSession
+	}
+	return session.ToProtobuf(), nil
 }
 
 func (rpc *Server) BasicSessionOP(ctx context.Context, req *clientpb.BasicUpdateSession) (*clientpb.Empty, error) {

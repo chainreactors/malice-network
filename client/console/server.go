@@ -53,7 +53,7 @@ func InitServerStatus(conn *grpc.ClientConn) (*ServerStatus, error) {
 		s.Listeners = append(s.Listeners, &Listener{listener})
 	}
 
-	err = s.UpdateSession()
+	err = s.UpdateSessions(true)
 	if err != nil {
 		return nil, err
 	}
@@ -73,8 +73,14 @@ type ServerStatus struct {
 	Alive     bool
 }
 
-func (s *ServerStatus) UpdateSession() error {
-	sessions, err := s.Rpc.GetSessions(context.Background(), &clientpb.Empty{})
+func (s *ServerStatus) UpdateSessions(all bool) error {
+	var sessions *clientpb.Sessions
+	var err error
+	if all {
+		sessions, err = s.Rpc.GetSessions(context.Background(), &clientpb.Empty{})
+	} else {
+		sessions, err = s.Rpc.GetAlivedSessions(context.Background(), &clientpb.Empty{})
+	}
 	if err != nil {
 		return err
 	}
@@ -87,6 +93,17 @@ func (s *ServerStatus) UpdateSession() error {
 
 	s.Sessions = newSessions
 	return nil
+}
+
+func (s *ServerStatus) UpdateSession(sid string) error {
+	session, err := s.Rpc.GetSession(context.Background(), &clientpb.SessionRequest{SessionId: sid})
+	if err != nil {
+		return err
+	}
+
+	s.Sessions[session.SessionId] = session
+	return nil
+
 }
 
 func (s *ServerStatus) UpdateTasks(session *clientpb.Session) error {
