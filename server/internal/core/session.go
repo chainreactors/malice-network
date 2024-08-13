@@ -13,6 +13,7 @@ import (
 	"google.golang.org/grpc"
 	"path"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 )
@@ -107,6 +108,7 @@ func (s *Session) ToProtobuf() *clientpb.Session {
 }
 
 func (s *Session) UpdateSysInfo(info *implantpb.SysInfo) {
+	info.Os.Name = strings.ToLower(info.Os.Name)
 	if info.Os.Name == "windows" {
 		info.Os.Arch = consts.GetWindowsArch(info.Os.Arch)
 	}

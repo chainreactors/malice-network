@@ -63,13 +63,15 @@ var (
 	}
 
 	WindowsArch = map[string]string{
-		"9":  "amd64",
-		"5":  "arm",
-		"12": "aarch64",
-		"0":  "386",
+		"x64": "amd64",
+		"x86": "386",
 	}
 )
 
 func GetWindowsArch(arch string) string {
-	return WindowsArch[arch]
+	if v, found := WindowsArch[arch]; found {
+		return v
+	} else {
+		return arch
+	}
 }
