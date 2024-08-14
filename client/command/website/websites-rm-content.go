@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/console"
-	"github.com/chainreactors/malice-network/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"strings"
 )
 
@@ -21,7 +21,7 @@ func webRmContentCmd(c *grumble.Context, con *console.Console) {
 		return
 	}
 
-	website, err := con.Rpc.Website(context.Background(), &clientpb.Website{
+	website, err := con.Rpc.Website(context.Background(), &lispb.Website{
 		Name: name,
 	})
 	if err != nil {
@@ -29,7 +29,7 @@ func webRmContentCmd(c *grumble.Context, con *console.Console) {
 		return
 	}
 
-	rmWebContent := &clientpb.WebsiteRemoveContent{
+	rmWebContent := &lispb.WebsiteRemoveContent{
 		Name:  name,
 		Paths: []string{},
 	}

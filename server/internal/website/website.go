@@ -1,7 +1,7 @@
 package website
 
 import (
-	"github.com/chainreactors/malice-network/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"net/url"
@@ -22,7 +22,7 @@ func getWebContentDir() (string, error) {
 }
 
 // GetContent - Get static content for a given path
-func GetContent(name string, path string) (*clientpb.WebContent, error) {
+func GetContent(name string, path string) (*lispb.WebContent, error) {
 	webContentDir, err := getWebContentDir()
 	if err != nil {
 		return nil, err
@@ -48,7 +48,7 @@ func GetContent(name string, path string) (*clientpb.WebContent, error) {
 }
 
 // AddContent - Add website content for a path
-func AddContent(name string, pbWebContent *clientpb.WebContent) error {
+func AddContent(name string, pbWebContent *lispb.WebContent) error {
 	// websiteName string, path string, contentType string, content []byte
 
 	webContentDir, err := getWebContentDir()
@@ -145,7 +145,7 @@ func Names() ([]string, error) {
 }
 
 // MapContent - List the content of a specific site, returns map of path->json(content-type/size)
-func MapContent(name string, eager bool) (*clientpb.Website, error) {
+func MapContent(name string, eager bool) (*lispb.Website, error) {
 	webContentDir, err := getWebContentDir()
 	if err != nil {
 		return nil, err
@@ -157,7 +157,7 @@ func MapContent(name string, eager bool) (*clientpb.Website, error) {
 	}
 
 	if eager {
-		eagerContents := map[string]*clientpb.WebContent{}
+		eagerContents := map[string]*lispb.WebContent{}
 		for _, content := range website.Contents {
 			eagerContent, err := db.WebContentByIDAndPath(website.ID, content.Path, webContentDir, true)
 			if err != nil {
@@ -171,7 +171,7 @@ func MapContent(name string, eager bool) (*clientpb.Website, error) {
 	return website, nil
 }
 
-func AddWebsite(name string) (*clientpb.Website, error) {
+func AddWebsite(name string) (*lispb.Website, error) {
 	webContentDir, err := getWebContentDir()
 	if err != nil {
 		return nil, err
@@ -183,7 +183,7 @@ func AddWebsite(name string) (*clientpb.Website, error) {
 	return website, nil
 }
 
-func WebsiteByName(name string) (*clientpb.Website, error) {
+func WebsiteByName(name string) (*lispb.Website, error) {
 	webContentDir, err := getWebContentDir()
 	if err != nil {
 		return nil, err

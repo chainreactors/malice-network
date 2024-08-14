@@ -45,7 +45,9 @@ func (rpc *Server) Events(_ *clientpb.Empty, stream clientrpc.MaliceRPC_EventsSe
 			if event.Err != "" {
 				pbEvent.Err = event.Err
 			}
-
+			if event.Message != "" {
+				pbEvent.Message = event.Message
+			}
 			err := stream.Send(pbEvent)
 			if err != nil {
 				logs.Log.Warnf(err.Error())

@@ -63,6 +63,8 @@ const (
 const (
 	CtrlPipelineStart = 0 + iota
 	CtrlPipelineStop
+	CtrlWebsiteStart = 0 + iota
+	CtrlWebsiteStop
 )
 
 // ctrl status

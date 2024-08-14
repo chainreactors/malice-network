@@ -44,10 +44,11 @@ type HttpPipelineConfig struct {
 }
 
 type WebsiteConfig struct {
-	Enable      bool   `config:"enable"`
-	RootPath    string `config:"rootPath"`
-	WebsiteName string `config:"websiteName"`
-	Port        uint16 `config:"port"`
+	Enable      bool       `config:"enable"`
+	RootPath    string     `config:"rootPath"`
+	WebsiteName string     `config:"websiteName"`
+	Port        uint16     `config:"port"`
+	TlsConfig   *TlsConfig `config:"tls"`
 }
 
 type TlsConfig struct {

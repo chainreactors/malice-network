@@ -2,6 +2,7 @@ package listener
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -13,10 +14,13 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/certs"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
+	"github.com/chainreactors/malice-network/server/internal/website"
 	"github.com/chainreactors/malice-network/server/web"
 	"google.golang.org/grpc"
+	"mime"
 	"net"
 	"os"
+	"path/filepath"
 	"strconv"
 )
 
@@ -68,6 +72,7 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 		pipelines: make(core.Pipelines),
 		conn:      conn,
 		cfg:       cfg,
+		websites:  make(core.Websites),
 	}
 
 	l := &lispb.Pipelines{}
@@ -105,6 +110,7 @@ type listener struct {
 	pipelines core.Pipelines
 	conn      *grpc.ClientConn
 	cfg       *configs.ListenerConfig
+	websites  core.Websites
 }
 
 func (lns *listener) ID() string {
@@ -133,8 +139,7 @@ func (lns *listener) Start() {
 
 func (lns *listener) ToProtobuf() *clientpb.Listener {
 	return &clientpb.Listener{
-		Id:        lns.ID(),
-		Pipelines: lns.pipelines.ToProtobuf(),
+		Id: lns.ID(),
 	}
 }
 
@@ -155,6 +160,10 @@ func (lns *listener) Handler() {
 			resp = lns.startHandler(msg.Job)
 		case consts.CtrlPipelineStop:
 			resp = lns.stopHandler(msg.Job)
+		case consts.CtrlWebsiteStart:
+			resp = lns.startWebsite(msg.Job)
+		case consts.CtrlWebsiteStop:
+			resp = lns.stopWebsite(msg.Job)
 		}
 		err = stream.Send(resp)
 		if err != nil {
@@ -165,7 +174,7 @@ func (lns *listener) Handler() {
 
 func (lns *listener) registerPipeline(pipeline core.Pipeline) {
 	lns.pipelines.Add(pipeline)
-	lns.Rpc.RegisterPipeline(context.Background(), types.BuildPipeline(pipeline.ToProtobuf()))
+	lns.Rpc.RegisterPipeline(context.Background(), types.BuildPipeline(pipeline.ToProtobuf(), pipeline.ToTLSProtobuf()))
 }
 
 func (lns *listener) startHandler(job *clientpb.Job) *clientpb.JobStatus {
@@ -175,30 +184,35 @@ func (lns *listener) startHandler(job *clientpb.Job) *clientpb.JobStatus {
 	case *lispb.Pipeline_Tcp:
 		p := lns.pipelines.Get(pipeline.GetTcp().Name)
 		if p == nil {
-			tcpPipeline, err := StartTcpPipeline(lns.conn, ToTcpConfig(pipeline.GetTcp()))
+			tcpPipeline, err := StartTcpPipeline(lns.conn, ToTcpConfig(pipeline.GetTcp(), pipeline.GetTls()))
 			if err != nil {
-				break
+				return &clientpb.JobStatus{
+					ListenerId: lns.ID(),
+					Ctrl:       consts.CtrlPipelineStart,
+					Status:     consts.CtrlStatusFailed,
+					Error:      err.Error(),
+					Job:        job,
+				}
 			}
 			lns.registerPipeline(tcpPipeline)
 		} else {
 			err = p.Start()
 			if err != nil {
-				break
+				return &clientpb.JobStatus{
+					ListenerId: lns.ID(),
+					Ctrl:       consts.CtrlPipelineStart,
+					Status:     consts.CtrlStatusFailed,
+					Error:      err.Error(),
+					Job:        job,
+				}
 			}
-		}
-	}
-	if err != nil {
-		return &clientpb.JobStatus{
-			ListenerId: lns.ID(),
-			Ctrl:       consts.CtrlPipelineStart,
-			Status:     consts.CtrlStatusFailed,
-			Error:      err.Error(),
 		}
 	}
 	return &clientpb.JobStatus{
 		ListenerId: lns.ID(),
 		Ctrl:       consts.CtrlPipelineStart,
 		Status:     consts.CtrlStatusSuccess,
+		Job:        job,
 	}
 }
 
@@ -208,6 +222,15 @@ func (lns *listener) stopHandler(job *clientpb.Job) *clientpb.JobStatus {
 	switch pipeline.Body.(type) {
 	case *lispb.Pipeline_Tcp:
 		p := lns.pipelines.Get(pipeline.GetTcp().Name)
+		if p == nil {
+			return &clientpb.JobStatus{
+				ListenerId: lns.ID(),
+				Ctrl:       consts.CtrlPipelineStop,
+				Status:     consts.CtrlStatusFailed,
+				Error:      errors.New("pipeline not found").Error(),
+				Job:        job,
+			}
+		}
 		err = p.Close()
 		if err != nil {
 			break
@@ -220,11 +243,119 @@ func (lns *listener) stopHandler(job *clientpb.Job) *clientpb.JobStatus {
 			Ctrl:       consts.CtrlPipelineStop,
 			Status:     consts.CtrlStatusFailed,
 			Error:      err.Error(),
+			Job:        job,
 		}
 	}
 	return &clientpb.JobStatus{
 		ListenerId: lns.ID(),
 		Ctrl:       consts.CtrlPipelineStop,
 		Status:     consts.CtrlStatusSuccess,
+		Job:        job,
+	}
+}
+
+func (lns *listener) startWebsite(job *clientpb.Job) *clientpb.JobStatus {
+	var err error
+	getWeb := job.GetPipeline().GetWeb()
+	w := lns.websites.Get(getWeb.Name)
+	if w == nil {
+		if 0 < len(getWeb.Contents) {
+			for _, content := range getWeb.Contents {
+				if content.ContentType == "" {
+					content.ContentType = mime.TypeByExtension(filepath.Ext(content.Path))
+					if content.ContentType == "" {
+						content.ContentType = "text/html; charset=utf-8" // Default mime
+					}
+				}
+				content.Size = uint64(len(content.Content))
+				err = website.AddContent(getWeb.Name, content)
+				if err != nil {
+					return &clientpb.JobStatus{
+						ListenerId: lns.ID(),
+						Ctrl:       consts.CtrlWebsiteStart,
+						Status:     consts.CtrlStatusFailed,
+						Error:      err.Error(),
+						Job:        job,
+					}
+				}
+			}
+		} else {
+			_, err = website.AddWebsite(getWeb.Name)
+			if err != nil {
+				return &clientpb.JobStatus{
+					ListenerId: lns.ID(),
+					Ctrl:       consts.CtrlWebsiteStart,
+					Status:     consts.CtrlStatusFailed,
+					Error:      err.Error(),
+					Job:        job,
+				}
+			}
+		}
+		starResult, err := StartWebsite(ToWebsiteConfig(getWeb, job.GetPipeline().GetTls()))
+		if err != nil {
+			return &clientpb.JobStatus{
+				ListenerId: lns.ID(),
+				Ctrl:       consts.CtrlWebsiteStart,
+				Status:     consts.CtrlStatusFailed,
+				Error:      err.Error(),
+				Job:        job,
+			}
+		}
+		lns.registerWebsite(starResult, getWeb.ListenerId)
+	} else {
+		err = w.Start()
+		if err != nil {
+			return &clientpb.JobStatus{
+				ListenerId: lns.ID(),
+				Ctrl:       consts.CtrlWebsiteStart,
+				Status:     consts.CtrlStatusFailed,
+				Error:      err.Error(),
+				Job:        job,
+			}
+		}
+	}
+	return &clientpb.JobStatus{
+		ListenerId: lns.ID(),
+		Ctrl:       consts.CtrlWebsiteStart,
+		Status:     consts.CtrlStatusSuccess,
+		Job:        job,
+	}
+}
+
+func (lns *listener) registerWebsite(w core.Website, listenerID string) {
+	lns.websites.Add(w)
+	result := w.ToProtobuf().(*lispb.Website)
+	result.ListenerId = listenerID
+	lns.Rpc.RegisterWebsite(context.Background(), result)
+}
+
+func (lns *listener) stopWebsite(job *clientpb.Job) *clientpb.JobStatus {
+	var err error
+	getWeb := job.GetPipeline().GetWeb()
+	w := lns.websites.Get(getWeb.Name)
+	if w == nil {
+		return &clientpb.JobStatus{
+			ListenerId: lns.ID(),
+			Ctrl:       consts.CtrlWebsiteStop,
+			Status:     consts.CtrlStatusFailed,
+			Error:      errors.New("website not found").Error(),
+			Job:        job,
+		}
+	}
+	err = w.Close()
+	if err != nil {
+		return &clientpb.JobStatus{
+			ListenerId: lns.ID(),
+			Ctrl:       consts.CtrlWebsiteStop,
+			Status:     consts.CtrlStatusFailed,
+			Error:      err.Error(),
+			Job:        job,
+		}
+	}
+	return &clientpb.JobStatus{
+		ListenerId: lns.ID(),
+		Ctrl:       consts.CtrlWebsiteStop,
+		Status:     consts.CtrlStatusSuccess,
+		Job:        job,
 	}
 }

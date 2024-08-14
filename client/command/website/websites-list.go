@@ -6,6 +6,7 @@ import (
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/table"
 	"strconv"
@@ -24,7 +25,7 @@ func listWebsitesCmd(c *grumble.Context, con *console.Console) {
 		}
 		return
 	} else {
-		website, err := con.Rpc.Website(context.Background(), &clientpb.Website{
+		website, err := con.Rpc.Website(context.Background(), &lispb.Website{
 			Name: name,
 		})
 		if err != nil {
@@ -40,7 +41,7 @@ func listWebsitesCmd(c *grumble.Context, con *console.Console) {
 	return
 }
 
-func PrintWebsite(web *clientpb.Website) {
+func PrintWebsite(web *lispb.Website) {
 	var rowEntries []table.Row
 	var row table.Row
 	tableModel := tui.NewTable([]table.Column{

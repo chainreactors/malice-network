@@ -4,6 +4,8 @@ import (
 	"context"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/proto/implant/implantpb"
+	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/website"
@@ -11,12 +13,12 @@ import (
 	"path/filepath"
 )
 
-func (rpc *Server) Websites(ctx context.Context, _ *clientpb.Empty) (*clientpb.Websites, error) {
+func (rpc *Server) Websites(ctx context.Context, _ *clientpb.Empty) (*lispb.Websites, error) {
 	websiteNames, err := website.Names()
 	if err != nil {
 		return nil, err
 	}
-	websites := &clientpb.Websites{Websites: []*clientpb.Website{}}
+	websites := &lispb.Websites{Websites: []*lispb.Website{}}
 	for _, name := range websiteNames {
 		siteContent, err := website.MapContent(name, false)
 		if err != nil {
@@ -27,7 +29,7 @@ func (rpc *Server) Websites(ctx context.Context, _ *clientpb.Empty) (*clientpb.W
 	return websites, nil
 }
 
-func (rpc *Server) WebsiteRemove(ctx context.Context, req *clientpb.Website) (*clientpb.Empty, error) {
+func (rpc *Server) WebsiteRemove(ctx context.Context, req *lispb.Website) (*clientpb.Empty, error) {
 	web, err := website.MapContent(req.Name, false)
 	if err != nil {
 		return nil, err
@@ -55,12 +57,12 @@ func (rpc *Server) WebsiteRemove(ctx context.Context, req *clientpb.Website) (*c
 }
 
 // Website - Get one website
-func (rpc *Server) Website(ctx context.Context, req *clientpb.Website) (*clientpb.Website, error) {
+func (rpc *Server) Website(ctx context.Context, req *lispb.Website) (*lispb.Website, error) {
 	return website.MapContent(req.Name, true)
 }
 
 // WebsiteAddContent - Add content to a website, the website is created if `name` does not exist
-func (rpc *Server) WebsiteAddContent(ctx context.Context, req *clientpb.WebsiteAddContent) (*clientpb.Website, error) {
+func (rpc *Server) WebsiteAddContent(ctx context.Context, req *lispb.WebsiteAddContent) (*lispb.Website, error) {
 
 	if 0 < len(req.Contents) {
 		for _, content := range req.Contents {
@@ -95,7 +97,7 @@ func (rpc *Server) WebsiteAddContent(ctx context.Context, req *clientpb.WebsiteA
 }
 
 // WebsiteUpdateContent - Update specific content from a website, currently you can only the update Content-type field
-func (rpc *Server) WebsiteUpdateContent(ctx context.Context, req *clientpb.WebsiteAddContent) (*clientpb.Website, error) {
+func (rpc *Server) WebsiteUpdateContent(ctx context.Context, req *lispb.WebsiteAddContent) (*lispb.Website, error) {
 	dbWebsite, err := website.WebsiteByName(req.Name)
 	if err != nil {
 		return nil, err
@@ -113,7 +115,7 @@ func (rpc *Server) WebsiteUpdateContent(ctx context.Context, req *clientpb.Websi
 }
 
 // WebsiteRemoveContent - Remove specific content from a website
-func (rpc *Server) WebsiteRemoveContent(ctx context.Context, req *clientpb.WebsiteRemoveContent) (*clientpb.Website, error) {
+func (rpc *Server) WebsiteRemoveContent(ctx context.Context, req *lispb.WebsiteRemoveContent) (*lispb.Website, error) {
 	for _, path := range req.Paths {
 		err := website.RemoveContent(req.Name, path)
 		if err != nil {
@@ -127,4 +129,60 @@ func (rpc *Server) WebsiteRemoveContent(ctx context.Context, req *clientpb.Websi
 	})
 
 	return website.MapContent(req.Name, false)
+}
+
+func (rpc *Server) StartWebsite(ctx context.Context, req *lispb.Pipeline) (*clientpb.Empty, error) {
+	ctrl := clientpb.JobCtrl{
+		Id:   core.NextCtrlID(),
+		Ctrl: consts.CtrlWebsiteStart,
+		Job: &clientpb.Job{
+			Id:       core.NextJobID(),
+			Pipeline: req,
+		},
+	}
+	core.Jobs.Ctrl <- &ctrl
+	return &clientpb.Empty{}, nil
+}
+
+func (rpc *Server) StopWebsite(ctx context.Context, req *lispb.Website) (*clientpb.Empty, error) {
+	ctrl := clientpb.JobCtrl{
+		Id:   core.NextCtrlID(),
+		Ctrl: consts.CtrlWebsiteStop,
+		Job: &clientpb.Job{
+			Id: core.NextJobID(),
+			Pipeline: &lispb.Pipeline{
+				Body: &lispb.Pipeline_Web{
+					Web: req,
+				},
+			},
+		},
+	}
+	core.Jobs.Ctrl <- &ctrl
+	return &clientpb.Empty{}, nil
+
+}
+
+func (rpc *Server) RegisterWebsite(ctx context.Context, req *lispb.Website) (*implantpb.Empty, error) {
+	ch := make(chan bool)
+	job := &core.Job{
+		ID:      core.CurrentJobID(),
+		Message: req,
+		JobCtrl: ch,
+	}
+	core.Jobs.Add(job)
+	return &implantpb.Empty{}, nil
+}
+
+func (rpc *Server) ListWebsites(ctx context.Context, req *lispb.ListenerName) (*lispb.Websites, error) {
+	var websites []*lispb.Website
+	for _, job := range core.Jobs.All() {
+		web, ok := job.Message.(*lispb.Website)
+		if !ok {
+			continue
+		}
+		if web != nil && web.ListenerId == req.Name {
+			websites = append(websites, web)
+		}
+	}
+	return &lispb.Websites{Websites: websites}, nil
 }

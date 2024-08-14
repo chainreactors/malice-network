@@ -321,7 +321,7 @@ func ToTask(task models.Task) (*core.Task, error) {
 
 // website
 // WebsiteByName - Get website by name
-func WebsiteByName(name string, webContentDir string) (*clientpb.Website, error) {
+func WebsiteByName(name string, webContentDir string) (*lispb.Website, error) {
 	var website models.Website
 	if err := Session().Preload("WebContents").Where("name = ?", name).First(&website).Error; err != nil {
 		return nil, err
@@ -334,11 +334,11 @@ func WebsiteByName(name string, webContentDir string) (*clientpb.Website, error)
 }
 
 // Websites - Return all websites
-func Websites(webContentDir string) ([]*clientpb.Website, error) {
+func Websites(webContentDir string) ([]*lispb.Website, error) {
 	var websites []*models.Website
 	err := Session().Where(&models.Website{}).Find(&websites).Error
 
-	var pbWebsites []*clientpb.Website
+	var pbWebsites []*lispb.Website
 	for _, website := range websites {
 		pbWebsites = append(pbWebsites, website.ToProtobuf(webContentDir))
 	}
@@ -347,7 +347,7 @@ func Websites(webContentDir string) ([]*clientpb.Website, error) {
 }
 
 // WebContent by ID and path
-func WebContentByIDAndPath(id string, path string, webContentDir string, eager bool) (*clientpb.WebContent, error) {
+func WebContentByIDAndPath(id string, path string, webContentDir string, eager bool) (*lispb.WebContent, error) {
 	uuidFromString, _ := uuid.FromString(id)
 	content := models.WebContent{}
 	err := Session().Where(&models.WebContent{
@@ -368,7 +368,7 @@ func WebContentByIDAndPath(id string, path string, webContentDir string, eager b
 }
 
 // AddWebsite - Return website, create if it does not exist
-func AddWebSite(webSiteName string, webContentDir string) (*clientpb.Website, error) {
+func AddWebSite(webSiteName string, webContentDir string) (*lispb.Website, error) {
 	pbWebSite, err := WebsiteByName(webSiteName, webContentDir)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		err = Session().Create(&models.Website{Name: webSiteName}).Error
@@ -384,7 +384,7 @@ func AddWebSite(webSiteName string, webContentDir string) (*clientpb.Website, er
 }
 
 // AddContent - Add content to website
-func AddContent(pbWebContent *clientpb.WebContent, webContentDir string) (*clientpb.WebContent, error) {
+func AddContent(pbWebContent *lispb.WebContent, webContentDir string) (*lispb.WebContent, error) {
 	dbWebContent, err := WebContentByIDAndPath(pbWebContent.WebsiteID, pbWebContent.Path, webContentDir, false)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		dbModelWebContent := models.WebContentFromProtobuf(pbWebContent)

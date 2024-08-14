@@ -21,6 +21,7 @@ type Pipeline interface {
 	Addr() string
 	Close() error
 	ToProtobuf() proto.Message
+	ToTLSProtobuf() proto.Message
 }
 
 type Pipelines map[string]Pipeline
@@ -36,50 +37,23 @@ func (ps Pipelines) Get(id string) Pipeline {
 func (ps Pipelines) ToProtobuf() *lispb.Pipelines {
 	var pls *lispb.Pipelines
 	for _, p := range ps {
-		pls.Pipelines = append(pls.Pipelines, types.BuildPipeline(p.ToProtobuf()))
-	}
-	return pls
-}
-
-type DPipeline struct {
-	Name string
-	Host string
-	Port uint32
-	Type string
-}
-
-func (dp DPipeline) ToProtobuf() *lispb.TCPPipeline {
-	pls := &lispb.TCPPipeline{
-		Name: dp.Name,
-		Host: dp.Host,
-		Port: dp.Port,
+		pls.Pipelines = append(pls.Pipelines, types.BuildPipeline(p.ToProtobuf(), p.ToTLSProtobuf()))
 	}
 	return pls
 }
 
 type Listener struct {
-	Name       string
-	Host       string
-	Active     bool
-	Pipelines  Pipelines
-	DPipelines []DPipeline
+	Name      string
+	Host      string
+	Active    bool
+	Pipelines Pipelines
 }
 
 func (l *Listener) ToProtobuf() *clientpb.Listener {
-	dpls := &lispb.Pipelines{}
-	for _, dp := range l.DPipelines {
-		dpls.Pipelines = append(dpls.Pipelines,
-			&lispb.Pipeline{
-				Body: &lispb.Pipeline_Tcp{
-					Tcp: dp.ToProtobuf(),
-				},
-			})
-	}
 	return &clientpb.Listener{
-		Id:        l.Name,
-		Addr:      l.Host,
-		Active:    l.Active,
-		Pipelines: dpls,
+		Id:     l.Name,
+		Addr:   l.Host,
+		Active: l.Active,
 	}
 }
 

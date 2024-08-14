@@ -5,7 +5,7 @@ import (
 	"errors"
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/console"
-	"github.com/chainreactors/malice-network/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/tui"
 	"io"
 	"net/http"
@@ -16,7 +16,7 @@ import (
 
 func websiteAddCmd(c *grumble.Context, con *console.Console) {
 	cPath := c.Args.String("content-path")
-	webPath := c.Args.String("web-path")
+	webPath := c.Flags.String("web-path")
 	name := c.Flags.String("name")
 	contentType := c.Flags.String("content-type")
 	recursive := c.Flags.Bool("recursive")
@@ -39,18 +39,18 @@ func websiteAddCmd(c *grumble.Context, con *console.Console) {
 		console.Log.Errorf("Error adding content %s\n", err)
 		return
 	}
-	addWeb := &clientpb.WebsiteAddContent{
+	addWeb := &lispb.WebsiteAddContent{
 		Name:     name,
-		Contents: map[string]*clientpb.WebContent{},
+		Contents: map[string]*lispb.WebContent{},
 	}
 
 	if fileIfo.IsDir() {
-		if !recursive && !confirmAddDirectory() {
+		if !recursive && !ConfirmAddDirectory() {
 			return
 		}
-		webAddDirectory(addWeb, webPath, cPath)
+		WebAddDirectory(addWeb, webPath, cPath)
 	} else {
-		webAddFile(addWeb, webPath, contentType, cPath)
+		WebAddFile(addWeb, webPath, contentType, cPath)
 	}
 	_, err = con.Rpc.WebsiteAddContent(context.Background(), addWeb)
 	if err != nil {
@@ -62,7 +62,7 @@ func websiteAddCmd(c *grumble.Context, con *console.Console) {
 	return
 }
 
-func webAddDirectory(web *clientpb.WebsiteAddContent, webpath string, contentPath string) {
+func WebAddDirectory(web *lispb.WebsiteAddContent, webpath string, contentPath string) {
 	fullLocalPath, _ := filepath.Abs(contentPath)
 	filepath.Walk(contentPath, func(localPath string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -72,13 +72,13 @@ func webAddDirectory(web *clientpb.WebsiteAddContent, webpath string, contentPat
 
 			// localPath is the full absolute path to the file, so we cut it down
 			fullWebpath := path.Join(webpath, filepath.ToSlash(localPath[len(fullLocalPath):]))
-			webAddFile(web, fullWebpath, "", localPath)
+			WebAddFile(web, fullWebpath, "", localPath)
 		}
 		return nil
 	})
 }
 
-func webAddFile(web *clientpb.WebsiteAddContent, webpath string, contentType string, contentPath string) error {
+func WebAddFile(web *lispb.WebsiteAddContent, webpath string, contentType string, contentPath string) error {
 	fileInfo, err := os.Stat(contentPath)
 	if os.IsNotExist(err) {
 		return err // contentPath does not exist
@@ -101,7 +101,7 @@ func webAddFile(web *clientpb.WebsiteAddContent, webpath string, contentType str
 		contentType = sniffContentType(file)
 	}
 
-	web.Contents[webpath] = &clientpb.WebContent{
+	web.Contents[webpath] = &lispb.WebContent{
 		Path:        webpath,
 		ContentType: contentType,
 		Content:     data,
@@ -132,7 +132,7 @@ func sniffContentType(out *os.File) string {
 	return contentType
 }
 
-func confirmAddDirectory() bool {
+func ConfirmAddDirectory() bool {
 	confirmModel := tui.NewConfirm("Recursively add entire directory?")
 	newConfirm := tui.NewModel(confirmModel, nil, false, true)
 	err := newConfirm.Run()

@@ -105,8 +105,9 @@ func BuildOneSpites(spite *implantpb.Spite) *implantpb.Spites {
 //	}
 //}
 
-func BuildPipeline(msg proto.Message) *lispb.Pipeline {
+func BuildPipeline(msg proto.Message, tls proto.Message) *lispb.Pipeline {
 	var pipeline = &lispb.Pipeline{}
+	pipeline.Tls = tls.(*lispb.TLS)
 	switch msg.(type) {
 	case *lispb.TCPPipeline:
 		pipeline.Body = &lispb.Pipeline_Tcp{Tcp: msg.(*lispb.TCPPipeline)}

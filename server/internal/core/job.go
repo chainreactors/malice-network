@@ -52,6 +52,15 @@ func (j *jobs) Get(jobID uint32) *Job {
 	return nil
 }
 
+func (j *jobs) All() []*Job {
+	jobs := []*Job{}
+	j.Range(func(key, value interface{}) bool {
+		jobs = append(jobs, value.(*Job))
+		return true
+	})
+	return jobs
+}
+
 type Job struct {
 	ID           uint32
 	Message      proto.Message
@@ -68,6 +77,10 @@ func (j *Job) ToProtobuf() *clientpb.Job {
 		job.Pipeline = j.Message.(*lispb.Pipeline)
 	}
 	return job
+}
+
+func CurrentJobID() uint32 {
+	return jobID
 }
 
 func NextJobID() uint32 {

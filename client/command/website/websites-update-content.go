@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/console"
-	"github.com/chainreactors/malice-network/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/proto/listener/lispb"
 )
 
 func websiteUpdateContentCmd(c *grumble.Context, con *console.Console) {
@@ -24,11 +24,11 @@ func websiteUpdateContentCmd(c *grumble.Context, con *console.Console) {
 		return
 	}
 
-	updateWeb := &clientpb.WebsiteAddContent{
+	updateWeb := &lispb.WebsiteAddContent{
 		Name:     name,
-		Contents: map[string]*clientpb.WebContent{},
+		Contents: map[string]*lispb.WebContent{},
 	}
-	updateWeb.Contents[webPath] = &clientpb.WebContent{
+	updateWeb.Contents[webPath] = &lispb.WebContent{
 		ContentType: contentType,
 	}
 	_, err := con.Rpc.WebsiteUpdateContent(context.Background(), updateWeb)

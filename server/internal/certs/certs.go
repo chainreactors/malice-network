@@ -177,28 +177,52 @@ func GenerateECCCertificate(caType int, commonName string, isCA bool, isClient b
 }
 
 func GenerateListenerCertificate(config *configs.TlsConfig) ([]byte, []byte, error) {
-	if files.IsExist(config.CertFile) && files.IsExist(config.KeyFile) {
-		cert, err := os.ReadFile(config.CertFile)
+	certPath := path.Join(configs.ListenerPath, config.Name+"_crt.pem")
+	keyPath := path.Join(configs.ListenerPath, config.Name+"_key.pem")
+	if files.IsExist(certPath) && files.IsExist(keyPath) {
+		cert, err := os.ReadFile(certPath)
 		if err != nil {
 			return nil, nil, err
 		}
-		key, err := os.ReadFile(config.KeyFile)
+		key, err := os.ReadFile(keyPath)
 		if err != nil {
 			return nil, nil, err
 		}
 		return cert, key, nil
 	} else {
-		cert, key := GenerateRSACertificate(ImplantCA, "", true, false, config.ToPkix())
-		err := os.WriteFile(path.Join(configs.ListenerPath, config.Name+"_crt.pem"), cert, 0644)
-		if err != nil {
-			return nil, nil, err
+		if config.CertFile != "" && config.KeyFile != "" {
+			cert := []byte(config.CertFile)
+			key := []byte(config.KeyFile)
+			err := os.WriteFile(certPath, cert, 0644)
+			if err != nil {
+				return nil, nil, err
+			}
+			err = os.WriteFile(keyPath, key, 0644)
+			if err != nil {
+				return nil, nil, err
+			}
+			err = saveCertificate(ImplantCA, RSAKey, config.Name, cert, key)
+			if err != nil {
+				return nil, nil, err
+			}
+			return cert, key, nil
+		} else {
+			cert, key := GenerateRSACertificate(ImplantCA, "", true, false, config.ToPkix())
+			err := os.WriteFile(certPath, cert, 0644)
+			if err != nil {
+				return nil, nil, err
+			}
+			err = os.WriteFile(keyPath, key, 0644)
+			if err != nil {
+				return nil, nil, err
+			}
+			logs.Log.Importantf("generate implant ca , save crt to %s", path.Join(configs.ListenerPath, config.Name+"_crt.pem"))
+			err = saveCertificate(ImplantCA, RSAKey, config.Name, cert, key)
+			if err != nil {
+				return nil, nil, err
+			}
+			return cert, key, nil
 		}
-		err = os.WriteFile(path.Join(configs.ListenerPath, config.Name+"_key.pem"), key, 0644)
-		if err != nil {
-			return nil, nil, err
-		}
-		logs.Log.Importantf("generate implant ca , save crt to %s", path.Join(configs.ListenerPath, config.Name+"_crt.pem"))
-		return cert, key, nil
 	}
 }
 
@@ -406,6 +430,15 @@ func CheckCertIsExist(certPath, keyPath, commonName string, caType int) ([]byte,
 		certBytes = []byte(listener.Certificate)
 		keyBytes = []byte(listener.PrivateKey)
 	} else if caType == OperatorCA {
+		certBytes, err = os.ReadFile(certPath)
+		if err != nil {
+			return nil, nil, err
+		}
+		keyBytes, err = os.ReadFile(keyPath)
+		if err != nil {
+			return nil, nil, err
+		}
+	} else if caType == ImplantCA {
 		certBytes, err = os.ReadFile(certPath)
 		if err != nil {
 			return nil, nil, err

@@ -40,12 +40,18 @@ func StartTcpPipeline(conn *grpc.ClientConn, cfg *configs.TcpPipelineConfig) (*T
 	return pp, nil
 }
 
-func ToTcpConfig(pipeline *lispb.TCPPipeline) *configs.TcpPipelineConfig {
+func ToTcpConfig(pipeline *lispb.TCPPipeline, tls *lispb.TLS) *configs.TcpPipelineConfig {
 	return &configs.TcpPipelineConfig{
 		Name:   pipeline.Name,
 		Port:   uint16(pipeline.Port),
 		Host:   pipeline.Host,
 		Enable: true,
+		TlsConfig: &configs.TlsConfig{
+			Name:     fmt.Sprintf("%s_%v", pipeline.Name, uint16(pipeline.Port)),
+			Enable:   true,
+			CertFile: tls.Cert,
+			KeyFile:  tls.Key,
+		},
 	}
 }
 
@@ -67,8 +73,14 @@ func (l *TCPPipeline) ToProtobuf() proto.Message {
 	}
 }
 
+func (l *TCPPipeline) ToTLSProtobuf() proto.Message {
+	return &lispb.TLS{
+		Cert: l.TlsConfig.CertFile,
+		Key:  l.TlsConfig.KeyFile,
+	}
+}
 func (l *TCPPipeline) ID() string {
-	return fmt.Sprintf("tcp_%s_%s_%d", l.Name, l.Host, l.Port)
+	return fmt.Sprintf(l.Name)
 }
 
 func (l *TCPPipeline) Addr() string {
@@ -76,6 +88,10 @@ func (l *TCPPipeline) Addr() string {
 }
 
 func (l *TCPPipeline) Close() error {
+	err := l.ln.Close()
+	if err != nil {
+		return err
+	}
 	return nil
 }
 

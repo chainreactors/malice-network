@@ -202,6 +202,20 @@ func (s *ServerStatus) EventHandler() {
 		case consts.EventTaskDone:
 			s.triggerTaskDone(event)
 			tui.Clear()
+		case consts.EventPipeline:
+			tui.Clear()
+			if event.GetErr() != "" {
+				Log.Errorf("Pipeline error: %s", event.GetErr())
+				return
+			}
+			Log.Importantf("Pipeline: %s", event.Message)
+		case consts.EventWebsite:
+			tui.Clear()
+			if event.GetErr() != "" {
+				Log.Errorf("Website error: %s", event.GetErr())
+				return
+			}
+			Log.Importantf("Website: %s", event.Message)
 		}
 		//con.triggerReactions(event)
 	}

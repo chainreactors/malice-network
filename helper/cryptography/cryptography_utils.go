@@ -5,8 +5,12 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"crypto/rc4"
+	"crypto/x509"
+	"encoding/pem"
 	"errors"
+	"fmt"
 	"io"
+	"os"
 )
 
 // RC4 encryption - Cryptographically insecure!
@@ -79,4 +83,52 @@ func unpad(padded []byte, size int) ([]byte, error) {
 	buf := make([]byte, bufLen)
 	copy(buf, padded[:bufLen])
 	return buf, nil
+}
+
+func ProcessPEM(filepath string) (string, error) {
+	pemData, err := os.ReadFile(filepath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read PEM file: %v", err)
+	}
+	block, _ := pem.Decode(pemData)
+	if block == nil {
+		return "", fmt.Errorf("failed to parse PEM file")
+	}
+
+	var pemString string
+
+	switch block.Type {
+	case "CERTIFICATE":
+		cert, err := x509.ParseCertificate(block.Bytes)
+		if err != nil {
+			return "", fmt.Errorf("failed to parse certificate: %v", err)
+		}
+		pemString = string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw}))
+	case "RSA PRIVATE KEY":
+		key, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+		if err != nil {
+			return "", fmt.Errorf("failed to parse RSA private key: %v", err)
+		}
+		pemString = string(pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(key)}))
+	case "EC PRIVATE KEY":
+		key, err := x509.ParseECPrivateKey(block.Bytes)
+		if err != nil {
+			return "", fmt.Errorf("failed to parse EC private key: %v", err)
+		}
+		ecBytes, err := x509.MarshalECPrivateKey(key)
+		if err != nil {
+			return "", fmt.Errorf("failed to marshal EC private key: %v", err)
+		}
+		pemString = string(pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: ecBytes}))
+	case "PRIVATE KEY":
+		_, err = x509.ParsePKCS8PrivateKey(block.Bytes)
+		if err != nil {
+			return "", fmt.Errorf("failed to parse private key: %v", err)
+		}
+		pemString = string(pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: block.Bytes}))
+	default:
+		return "", fmt.Errorf("unknown PEM type: %s", block.Type)
+	}
+
+	return pemString, nil
 }

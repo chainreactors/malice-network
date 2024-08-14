@@ -1,0 +1,173 @@
+package listener
+
+import (
+	"context"
+	"fmt"
+	"github.com/chainreactors/grumble"
+	"github.com/chainreactors/malice-network/client/command/website"
+	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/helper/cryptography"
+	"github.com/chainreactors/malice-network/proto/listener/lispb"
+	"github.com/chainreactors/tui"
+	"github.com/charmbracelet/bubbles/table"
+	"os"
+	"path/filepath"
+	"strconv"
+)
+
+func WebsiteCmd(con *console.Console) *grumble.Command {
+	websiteCmd := &grumble.Command{
+		Name: "website",
+		Help: "list websites in listener",
+		Args: func(f *grumble.Args) {
+			f.String("listener_id", "listener id")
+		},
+		Run: func(ctx *grumble.Context) error {
+			listWebsitesCmd(ctx, con)
+			return nil
+		},
+	}
+
+	websiteCmd.AddCommand(&grumble.Command{
+		Name: "start",
+		Help: "Start a website pipeline",
+		Flags: func(f *grumble.Flags) {
+			f.StringL("web-path", "", "path to the website")
+			f.String("", "content-type", "", "content type")
+			f.IntL("port", 0, "website pipeline port")
+			f.StringL("name", "", "website name")
+			f.StringL("content-path", "", "path to the content file")
+			f.StringL("listener_id", "", "listener id")
+			f.StringL("cert_path", "", "tcp pipeline cert path")
+			f.StringL("key_path", "", "tcp pipeline key path")
+			f.Bool("", "recursive", false, "add content recursively")
+		},
+		Run: func(ctx *grumble.Context) error {
+			startWebsiteCmd(ctx, con)
+			return nil
+		},
+	})
+
+	websiteCmd.AddCommand(&grumble.Command{
+		Name: "stop",
+		Help: "Stop a website pipeline",
+		Args: func(a *grumble.Args) {
+			a.String("name", "website pipeline name")
+			a.String("listener_id", "listener id")
+		},
+		Run: func(ctx *grumble.Context) error {
+			stopWebsitePipelineCmd(ctx, con)
+			return nil
+		},
+	})
+
+	return websiteCmd
+}
+
+func startWebsiteCmd(ctx *grumble.Context, con *console.Console) {
+	certPath := ctx.Flags.String("cert_path")
+	keyPath := ctx.Flags.String("key_path")
+	webPath := ctx.Flags.String("web-path")
+	port := uint32(ctx.Flags.Int("port"))
+	name := ctx.Flags.String("name")
+	listenerID := ctx.Flags.String("listener_id")
+	cPath := ctx.Flags.String("content-path")
+	contentType := ctx.Flags.String("content-type")
+	var cert, key string
+	var err error
+	if certPath != "" && keyPath != "" {
+		cert, err = cryptography.ProcessPEM(certPath)
+		if err != nil {
+			console.Log.Error(err.Error())
+			return
+		}
+		key, err = cryptography.ProcessPEM(keyPath)
+		if err != nil {
+			console.Log.Error(err.Error())
+			return
+		}
+	}
+	cPath, _ = filepath.Abs(cPath)
+
+	fileIfo, err := os.Stat(cPath)
+	if err != nil {
+		console.Log.Errorf("Error adding content %s\n", err)
+		return
+	}
+	addWeb := &lispb.WebsiteAddContent{
+		Name:     name,
+		Contents: map[string]*lispb.WebContent{},
+	}
+	if fileIfo.IsDir() {
+		website.WebAddDirectory(addWeb, webPath, cPath)
+	} else {
+		website.WebAddFile(addWeb, webPath, contentType, cPath)
+	}
+	_, err = con.Rpc.StartWebsite(context.Background(), &lispb.Pipeline{
+		Tls: &lispb.TLS{
+			Cert: cert,
+			Key:  key,
+		},
+		Body: &lispb.Pipeline_Web{
+			Web: &lispb.Website{
+				RootPath:   webPath,
+				Port:       port,
+				Name:       name,
+				ListenerId: listenerID,
+				Contents:   addWeb.Contents,
+			},
+		},
+	})
+
+	if err != nil {
+		console.Log.Error(err.Error())
+	}
+}
+
+func stopWebsitePipelineCmd(ctx *grumble.Context, con *console.Console) {
+	name := ctx.Args.String("name")
+	listenerID := ctx.Args.String("listener_id")
+	_, err := con.Rpc.StopWebsite(context.Background(), &lispb.Website{
+		Name:       name,
+		ListenerId: listenerID,
+	})
+	if err != nil {
+		console.Log.Error(err.Error())
+	}
+}
+
+func listWebsitesCmd(ctx *grumble.Context, con *console.Console) {
+	listenerID := ctx.Args.String("listener_id")
+	if listenerID == "" {
+		console.Log.Error("listener_id is required")
+		return
+	}
+	websites, err := con.Rpc.ListWebsites(context.Background(), &lispb.ListenerName{
+		Name: listenerID,
+	})
+	if err != nil {
+		console.Log.Error(err.Error())
+		return
+	}
+	var rowEntries []table.Row
+	var row table.Row
+	tableModel := tui.NewTable([]table.Column{
+		{Title: "Name", Width: 10},
+		{Title: "Port", Width: 7},
+		{Title: "RootPath", Width: 15},
+	}, true)
+	if len(websites.Websites) == 0 {
+		console.Log.Importantf("No websites found")
+		return
+	}
+	for _, w := range websites.Websites {
+		row = table.Row{
+			w.Name,
+			strconv.Itoa(int(w.Port)),
+			w.RootPath,
+		}
+		rowEntries = append(rowEntries, row)
+	}
+	tableModel.SetRows(rowEntries)
+	fmt.Printf(tableModel.View(), os.Stdout)
+}
