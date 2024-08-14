@@ -124,11 +124,14 @@ func (s *Session) ToRegisterProtobuf() *lispb.RegisterSession {
 		ListenerId: s.ListenerId,
 		RemoteAddr: s.RemoteAddr,
 		RegisterData: &implantpb.Register{
+			Name:  s.Note,
 			Timer: s.Time.toProtobuf(),
 			Sysinfo: &implantpb.SysInfo{
 				Os:      s.Os.toProtobuf(),
 				Process: s.Process.toProtobuf(),
 			},
+			Module:    []string{},
+			Extension: &implantpb.Extensions{},
 		},
 	}
 }
