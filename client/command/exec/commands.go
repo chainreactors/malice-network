@@ -85,7 +85,7 @@ func Commands(con *console.Console) []*grumble.Command {
 			},
 			Args: func(a *grumble.Args) {
 				a.String("path", "path the shellcode file")
-				a.StringList("args", "arguments to pass to the assembly entrypoint", grumble.Default([]string{}))
+				a.StringList("args", "arguments to pass to the assembly entrypoint", grumble.Default([]string{"notepad.exe"}))
 
 			},
 			Flags: func(f *grumble.Flags) {
@@ -107,7 +107,7 @@ func Commands(con *console.Console) []*grumble.Command {
 			Help: "Executes the given inline shellcode in the IOM ",
 			Args: func(a *grumble.Args) {
 				a.String("path", "path the shellcode file")
-				a.StringList("args", "arguments to pass to the assembly entrypoint", grumble.Default([]string{}))
+				a.StringList("args", "arguments to pass to the assembly entrypoint")
 			},
 			Run: func(ctx *grumble.Context) error {
 				ExecuteShellcodeInlineCmd(ctx, con)
@@ -126,12 +126,13 @@ func Commands(con *console.Console) []*grumble.Command {
 			Help: "Executes the given DLL in the sacrifice process",
 			Args: func(a *grumble.Args) {
 				a.String("path", "path the shellcode file")
-				a.StringList("args", "arguments to pass to the assembly entrypoint", grumble.Default([]string{}))
+				a.StringList("args", "arguments to pass to the assembly entrypoint", grumble.Default([]string{"notepad.exe"}))
 			},
 			Flags: func(f *grumble.Flags) {
 				f.Uint("p", "ppid", 0, "pid of the process to inject into (0 means injection into ourselves)")
 				f.Bool("b", "block_dll", false, "block dll injection")
 				f.Bool("s", "sacrifice", false, "is need sacrifice process")
+				f.String("e", "entrypoint", "entrypoint", "entrypoint")
 				f.String("a", "argue", "", "argue")
 			},
 			Run: func(c *grumble.Context) error {
@@ -160,7 +161,7 @@ func Commands(con *console.Console) []*grumble.Command {
 				f.String("a", "argue", "", "argue")
 			},
 			Run: func(c *grumble.Context) error {
-				ExecuteDLLCmd(c, con)
+				InlineDLLCmd(c, con)
 				return nil
 			},
 			HelpGroup: consts.ImplantGroup,

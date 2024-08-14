@@ -12,7 +12,7 @@ const (
 	ModuleInlinePE         = "inline_pe"
 	ModuleExecuteDll       = "execute_dll"
 	ModuleInlineDll        = "inline_dll"
-	ModuleExecuteBof       = "bof"
+	ModuleExecuteBof       = "execute_bof"
 	ModulePowershell       = "powershell"
 	ModuleUpload           = "upload"
 	ModuleDownload         = "download"
@@ -37,6 +37,9 @@ const (
 	ModuleCurl             = "curl"
 	ModuleListModule       = "list_module"
 	ModuleLoadModule       = "load_module"
+	ModuleListExtension    = "list_extension"
+	ModuleLoadExtension    = "load_extension"
+	ModuleExecuteExtension = "execute_extension"
 )
 
 const (

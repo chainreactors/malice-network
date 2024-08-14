@@ -14,14 +14,16 @@ const (
 
 // Malefic Error
 const (
-	MaleficErrorPanic                uint32 = 1
-	MaleficErrorUnpackError                 = 2
-	MaleficErrorMissbody                    = 3
-	MaleficErrorModuleError                 = 4
-	MaleficErrorModuleNotFound              = 5
-	MaleficErrorTaskError                   = 6
-	MaleficErrorTaskNotFound                = 7
-	MaleficErrorTaskOperatorNotFound        = 8
+	MaleficErrorPanic uint32 = 1 + iota
+	MaleficErrorUnpackError
+	MaleficErrorMissbody
+	MaleficErrorModuleError
+	MaleficErrorModuleNotFound
+	MaleficErrorTaskError
+	MaleficErrorTaskNotFound
+	MaleficErrorTaskOperatorNotFound
+	MaleficErrorExtensionNotFound
+	MaleficErrorUnexceptBody
 )
 
 func GetWindowsVer(ver string) string {
@@ -63,8 +65,8 @@ var (
 	}
 
 	WindowsArch = map[string]string{
-		"x64": "amd64",
-		"x86": "386",
+		"x86_64": "amd64",
+		"x86":    "386",
 	}
 )
 

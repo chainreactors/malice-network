@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/table"
@@ -12,11 +13,11 @@ import (
 )
 
 func listModules(ctx *grumble.Context, con *console.Console) {
-	session := con.ActiveTarget.GetInteractive()
+	session := con.GetInteractive()
 	if session == nil {
 		return
 	}
-	listTask, err := con.Rpc.ListModules(con.ActiveTarget.Context(), &implantpb.Empty{})
+	listTask, err := con.Rpc.ListModules(con.ActiveTarget.Context(), &implantpb.Request{Name: consts.ModuleListModule})
 	if err != nil {
 		console.Log.Errorf("ListModules error: %v", err)
 		return

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"path/filepath"
 )
 
 func ShortSessionID(id string) string {
@@ -50,4 +51,17 @@ func CheckPEType(content []byte) int {
 	default:
 		return consts.UnknownFile
 	}
+}
+
+func CheckExtModule(filename string) string {
+	ext := filepath.Ext(filename)
+	switch ext {
+	case "o":
+		return consts.ModuleExecuteBof
+	case "dll":
+		return consts.ModuleExecutePE
+	case "exe":
+		return consts.ModuleExecutePE
+	}
+	return ""
 }

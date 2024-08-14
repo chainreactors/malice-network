@@ -59,7 +59,7 @@ func (r *GenericRequest) SetCallback(callback func()) {
 	r.Task.Callback = callback
 }
 
-func (r *GenericRequest) HandlerAsyncResponse(ch chan *implantpb.Spite, typ types.MsgName) {
+func (r *GenericRequest) HandlerAsyncResponse(ch chan *implantpb.Spite, typ types.MsgName, callbacks ...func(spite *implantpb.Spite)) {
 	resp := <-ch
 
 	err := AssertStatusAndResponse(resp, typ)
@@ -70,6 +70,11 @@ func (r *GenericRequest) HandlerAsyncResponse(ch chan *implantpb.Spite, typ type
 	}
 	r.SetCallback(func() {
 		r.Session.AddMessage(resp, r.Task.Cur)
+		if callbacks != nil {
+			for _, callback := range callbacks {
+				callback(resp)
+			}
+		}
 	})
 	r.Task.Done(core.Event{
 		EventType: consts.EventTaskDone,

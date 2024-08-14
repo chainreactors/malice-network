@@ -69,12 +69,15 @@ func BuildSpite(spite *implantpb.Spite, msg proto.Message) (*implantpb.Spite, er
 	case *implantpb.AssemblyResponse:
 		spite.Name = MsgExecuteAssembly.String()
 		spite.Body = &implantpb.Spite_AssemblyResponse{AssemblyResponse: msg.(*implantpb.AssemblyResponse)}
-	//case *implantpb.ExecuteExtension:
-	//	spite.Name = MsgExecuteExtension.String()
-	//	spite.Body = &implantpb.Spite_ExecuteExtension{ExecuteExtension: msg.(*implantpb.ExecuteExtension)}
+	case *implantpb.ExecuteExtension:
+		spite.Name = MsgExecuteExtension.String()
+		spite.Body = &implantpb.Spite_ExecuteExtension{ExecuteExtension: msg.(*implantpb.ExecuteExtension)}
 	case *implantpb.LoadModule:
 		spite.Name = MsgLoadModule.String()
 		spite.Body = &implantpb.Spite_LoadModule{LoadModule: msg.(*implantpb.LoadModule)}
+	case *implantpb.LoadExtension:
+		spite.Name = MsgLoadExtension.String()
+		spite.Body = &implantpb.Spite_LoadExtension{LoadExtension: msg.(*implantpb.LoadExtension)}
 	case *implantpb.AsyncACK:
 		spite.Name = MsgAck.String()
 		spite.Body = &implantpb.Spite_AsyncAck{AsyncAck: msg.(*implantpb.AsyncACK)}

@@ -9,11 +9,11 @@ import (
 )
 
 func loadModule(ctx *grumble.Context, con *console.Console) {
-	session := con.ActiveTarget.GetInteractive()
+	session := con.GetInteractive()
 	if session == nil {
 		return
 	}
-	sid := con.ActiveTarget.GetInteractive().SessionId
+	sid := con.GetInteractive().SessionId
 	bundle := ctx.Flags.String("name")
 	path := ctx.Args.String("path")
 	data, err := os.ReadFile(path)

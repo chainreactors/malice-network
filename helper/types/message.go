@@ -20,12 +20,12 @@ const (
 	MsgCurl             MsgName = consts.ModuleCurl
 	MsgExec             MsgName = consts.ModuleExecution
 	MsgAck              MsgName = "ack"
-	MsgModules          MsgName = "list_module"
-	MsgLoadModule       MsgName = "load_module"
-	MsgExtensions       MsgName = "extensions"
-	MsgLoadExtension    MsgName = "load_extension"
+	MsgListModule       MsgName = consts.ModuleListModule
+	MsgLoadModule       MsgName = consts.ModuleLoadModule
+	MsgListExtension    MsgName = consts.ModuleListExtension
+	MsgLoadExtension    MsgName = consts.ModuleLoadExtension
 	MsgAssemblyResponse MsgName = "assembly_response"
-	MsgExecuteExtension MsgName = "execute_extension"
+	MsgExecuteExtension MsgName = consts.ModuleExecuteExtension
 	MsgExecuteAssembly  MsgName = consts.ModuleExecuteAssembly
 	MsgExecuteShellcode MsgName = consts.ModuleExecuteShellcode
 	MsgExecutePE        MsgName = consts.ModuleExecutePE
@@ -101,7 +101,7 @@ func MessageType(message *implantpb.Spite) MsgName {
 	case *implantpb.Spite_LoadModule:
 		return MsgLoadModule
 	case *implantpb.Spite_Modules:
-		return MsgModules
+		return MsgListModule
 	case *implantpb.Spite_PsResponse:
 		return MsgPs
 	case *implantpb.Spite_LsResponse:

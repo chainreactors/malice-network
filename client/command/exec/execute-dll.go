@@ -19,7 +19,7 @@ func ExecuteDLLCmd(ctx *grumble.Context, con *console.Console) {
 	sid := con.GetInteractive().SessionId
 	ppid := ctx.Flags.Uint("ppid")
 	pePath := ctx.Args.String("path")
-	paramString := ctx.Flags.StringSlice("args")
+	paramString := ctx.Args.StringList("args")
 	argue := ctx.Flags.String("argue")
 	isBlockDll := ctx.Flags.Bool("block_dll")
 	dllBin, err := os.ReadFile(pePath)
@@ -27,14 +27,15 @@ func ExecuteDLLCmd(ctx *grumble.Context, con *console.Console) {
 		console.Log.Errorf("%s\n", err.Error())
 		return
 	}
-	if helper.CheckPEType(dllBin) == consts.DLLFile {
+	if helper.CheckPEType(dllBin) != consts.DLLFile {
 		console.Log.Errorf("The file is not a DLL file\n")
 		return
 	}
 	shellcodeTask, err := con.Rpc.ExecutePE(con.ActiveTarget.Context(), &implantpb.ExecuteBinary{
-		Name: filepath.Base(pePath),
-		Bin:  dllBin,
-		Type: consts.ModuleExecutePE,
+		Name:       filepath.Base(pePath),
+		Bin:        dllBin,
+		Type:       consts.ModuleExecutePE,
+		EntryPoint: ctx.Flags.String("entrypoint"),
 		Sacrifice: &implantpb.SacrificeProcess{
 			Output:   true,
 			BlockDll: isBlockDll,
@@ -67,14 +68,15 @@ func InlineDLLCmd(ctx *grumble.Context, con *console.Console) {
 		console.Log.Errorf("%s\n", err.Error())
 		return
 	}
-	if helper.CheckPEType(dllBin) == consts.DLLFile {
+	if helper.CheckPEType(dllBin) != consts.DLLFile {
 		console.Log.Errorf("The file is not a DLL file\n")
 		return
 	}
 	shellcodeTask, err := con.Rpc.ExecutePE(con.ActiveTarget.Context(), &implantpb.ExecuteBinary{
-		Name: filepath.Base(pePath),
-		Bin:  dllBin,
-		Type: consts.ModuleExecutePE,
+		Name:       filepath.Base(pePath),
+		Bin:        dllBin,
+		EntryPoint: ctx.Flags.String("entrypoint"),
+		Type:       consts.ModuleExecutePE,
 	})
 
 	if err != nil {
