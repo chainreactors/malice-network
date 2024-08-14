@@ -126,7 +126,7 @@ func Commands(con *console.Console) []*grumble.Command {
 			Help: "Executes the given DLL in the sacrifice process",
 			Args: func(a *grumble.Args) {
 				a.String("path", "path the shellcode file")
-				a.StringList("args", "arguments to pass to the assembly entrypoint", grumble.Default([]string{"notepad.exe"}))
+				a.StringList("args", "arguments to pass to the assembly entrypoint", grumble.Default([]string{"C:\\Windows\\System32\\cmd.exe\x00"}))
 			},
 			Flags: func(f *grumble.Flags) {
 				f.Uint("p", "ppid", 0, "pid of the process to inject into (0 means injection into ourselves)")
@@ -225,7 +225,7 @@ func Commands(con *console.Console) []*grumble.Command {
 				a.StringList("args", "arguments to pass to the assembly entrypoint", grumble.Default([]string{}))
 			},
 			Flags: func(f *grumble.Flags) {
-				f.Bool("s", "save", false, "save output to file")
+				//f.Bool("s", "save", false, "save output to file")
 				f.String("A", "process-arguments", "", "arguments to pass to the hosting process")
 				f.Int("t", "timeout", consts.DefaultTimeout, "command timeout in seconds")
 			},
@@ -240,6 +240,25 @@ func Commands(con *console.Console) []*grumble.Command {
 				}
 				return nil
 			},
+		},
+		&grumble.Command{
+			Name: consts.ModulePowershell,
+			Help: "Loads and executes powershell (Windows Only)",
+			//LongHelp: help.GetHelpFor([]string{consts.ModuleExecuteAssembly}),
+			Args: func(a *grumble.Args) {
+				a.StringList("args", "arguments to pass to the assembly entrypoint", grumble.Default([]string{}))
+			},
+			Flags: func(f *grumble.Flags) {
+				//f.Bool("s", "save", false, "save output to file")
+				f.String("p", "path", "", "path to the powershell script")
+				//f.String("A", "process-arguments", "", "arguments to pass to the hosting process")
+				f.Int("t", "timeout", consts.DefaultTimeout, "command timeout in seconds")
+			},
+			Run: func(ctx *grumble.Context) error {
+				ExecutePowershellCmd(ctx, con)
+				return nil
+			},
+			HelpGroup: consts.ImplantGroup,
 		},
 	}
 }
