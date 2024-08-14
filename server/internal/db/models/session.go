@@ -1,12 +1,14 @@
 package models
 
 import (
+	"encoding/json"
 	"errors"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"gorm.io/gorm"
+	"strings"
 	"time"
 )
 
@@ -18,6 +20,8 @@ type Session struct {
 	RemoteAddr string
 	ListenerId string
 	IsAlive    bool
+	Modules    string
+	Extensions string
 	Os         *Os      `gorm:"embedded"`
 	Process    *Process `gorm:"embedded"`
 	Time       *Timer   `gorm:"embedded"`
@@ -41,11 +45,34 @@ func ConvertToSessionDB(session *core.Session) *Session {
 		GroupName:  "default",
 		RemoteAddr: session.RemoteAddr,
 		ListenerId: session.ListenerId,
+		Modules:    convertToModuleDB(session.Modules),
+		Extensions: convertToExtensionDB(session.Extensions),
 		Os:         convertToOsDB(session.Os),
 		Process:    convertToProcessDB(session.Process),
 		Time:       convertToTimeDB(session.Timer),
 		Last:       currentTime,
 	}
+}
+
+func convertToModuleDB(modules []string) string {
+	return strings.Join(modules, ",")
+}
+
+func recoverFromExtension(extension string) *implantpb.Extensions {
+	var ext implantpb.Extensions
+	err := json.Unmarshal([]byte(extension), &ext)
+	if err != nil {
+		return nil
+	}
+	return &ext
+}
+
+func convertToExtensionDB(extension *implantpb.Extensions) string {
+	content, err := json.Marshal(extension)
+	if err != nil {
+		return ""
+	}
+	return string(content)
 }
 
 func convertToOsDB(os *implantpb.Os) *Os {
@@ -130,8 +157,8 @@ func (s *Session) ToRegisterProtobuf() *lispb.RegisterSession {
 				Os:      s.Os.toProtobuf(),
 				Process: s.Process.toProtobuf(),
 			},
-			Module:    []string{},
-			Extension: &implantpb.Extensions{},
+			Module:    strings.Split(s.Modules, ","),
+			Extension: recoverFromExtension(s.Extensions),
 		},
 	}
 }

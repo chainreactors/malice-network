@@ -15,6 +15,7 @@ import (
 func (rpc *Server) Register(ctx context.Context, req *lispb.RegisterSession) (*implantpb.Empty, error) {
 	sess, success := core.Sessions.Get(req.SessionId)
 	if success {
+		sess.Update(req)
 		return &implantpb.Empty{}, nil
 	}
 
@@ -23,6 +24,7 @@ func (rpc *Server) Register(ctx context.Context, req *lispb.RegisterSession) (*i
 	dbSession := db.Session()
 	d := dbSession.Create(models.ConvertToSessionDB(sess))
 	if d.Error != nil {
+		sess.Update(req)
 		logs.Log.Warnf("session %s re-register ", sess.ID)
 		core.EventBroker.Publish(core.Event{
 			EventType: consts.EventSession,

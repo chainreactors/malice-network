@@ -246,10 +246,15 @@ func (s *ServerStatus) handleMaleficError(content *implantpb.Spite) {
 		Log.Errorf("Module not found")
 	case consts.MaleficErrorTaskError:
 		Log.Errorf("Task error")
+		s.handleTaskError(content.Status)
 	case consts.MaleficErrorTaskNotFound:
 		Log.Errorf("Task not found")
 	case consts.MaleficErrorTaskOperatorNotFound:
 		Log.Errorf("Task operator not found")
+	case consts.MaleficErrorExtensionNotFound:
+		Log.Errorf("Extension not found")
+	case consts.MaleficErrorUnexceptBody:
+		Log.Errorf("Unexcept body")
 	default:
 		Log.Errorf("unknown Malefic error, %d", content.Error)
 	}
