@@ -16,6 +16,10 @@ func (rpc *Server) Register(ctx context.Context, req *lispb.RegisterSession) (*i
 	sess, success := core.Sessions.Get(req.SessionId)
 	if success {
 		sess.Update(req)
+		err := db.UpdateSessionInfo(sess)
+		if err != nil {
+			logs.Log.Errorf("update session %s info failed in db, %s", sess.ID, err.Error())
+		}
 		return &implantpb.Empty{}, nil
 	}
 

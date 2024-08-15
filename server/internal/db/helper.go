@@ -126,6 +126,16 @@ func UpdateSessionStatus() error {
 	return nil
 }
 
+func UpdateSessionInfo(coreSession *core.Session) error {
+	updateSession := models.ConvertToSessionDB(coreSession)
+	result := Session().Save(updateSession)
+
+	if result.Error != nil {
+		return result.Error
+	}
+	return nil
+}
+
 // Basic Session OP
 func DeleteSession(sessionID string) error {
 	result := Session().Where("session_id = ?", sessionID).Delete(&models.Session{})
