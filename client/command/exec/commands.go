@@ -14,18 +14,8 @@ func Commands(con *console.Console) []*grumble.Command {
 			Name: consts.ModuleExecution,
 			Help: "Execute command",
 			Flags: func(f *grumble.Flags) {
-				f.Bool("T", "token", false, "execute command with current token (windows only)")
 				f.Bool("o", "output", true, "capture command output")
-				f.Bool("s", "save", false, "save output to a file")
-				f.Bool("X", "loot", false, "save output as loot")
-				f.Bool("S", "ignore-stderr", false, "don't print STDERR output")
-				f.String("O", "stdout", "", "remote path to redirect STDOUT to")
-				f.String("E", "stderr", "", "remote path to redirect STDERR to")
-				f.String("n", "name", "", "name to assign loot (optional)")
-				f.Uint("P", "ppid", 0, "parent process id (optional, Windows only)")
-
 				f.Int("t", "timeout", assets.DefaultSettings.DefaultTimeout, "command timeout in seconds")
-
 			},
 			Args: func(a *grumble.Args) {
 				a.String("command", "command to execute")
@@ -149,25 +139,25 @@ func Commands(con *console.Console) []*grumble.Command {
 				return nil
 			},
 		},
-		&grumble.Command{
-			Name: consts.ModuleInlineDll,
-			Help: "Executes the given inline DLL in current process",
-			Args: func(a *grumble.Args) {
-				a.String("path", "path the shellcode file")
-				a.StringList("args", "arguments to pass to the assembly entrypoint", grumble.Default([]string{}))
-			},
-			Run: func(c *grumble.Context) error {
-				InlineDLLCmd(c, con)
-				return nil
-			},
-			HelpGroup: consts.ImplantGroup,
-			Completer: func(prefix string, args []string) []string {
-				if len(args) < 2 {
-					return completer.LocalPathCompleter(prefix, args, con)
-				}
-				return nil
-			},
-		},
+		//&grumble.Command{
+		//	Name: consts.ModuleInlineDll,
+		//	Help: "Executes the given inline DLL in current process",
+		//	Args: func(a *grumble.Args) {
+		//		a.String("path", "path the shellcode file")
+		//		a.StringList("args", "arguments to pass to the assembly entrypoint", grumble.Default([]string{}))
+		//	},
+		//	Run: func(c *grumble.Context) error {
+		//		InlineDLLCmd(c, con)
+		//		return nil
+		//	},
+		//	HelpGroup: consts.ImplantGroup,
+		//	Completer: func(prefix string, args []string) []string {
+		//		if len(args) < 2 {
+		//			return completer.LocalPathCompleter(prefix, args, con)
+		//		}
+		//		return nil
+		//	},
+		//},
 		&grumble.Command{
 			Name: consts.ModuleExecutePE,
 			Help: "Executes the given PE in the sacrifice process",
@@ -194,36 +184,34 @@ func Commands(con *console.Console) []*grumble.Command {
 				return nil
 			},
 		},
-		&grumble.Command{
-			Name: consts.ModuleInlinePE,
-			Help: "Executes the given inline PE in current process",
-			Args: func(a *grumble.Args) {
-				a.String("path", "path the shellcode file")
-				a.StringList("args", "arguments to pass to the assembly entrypoint", grumble.Default([]string{}))
-			},
-			Run: func(c *grumble.Context) error {
-				InlinePECmd(c, con)
-				return nil
-			},
-			HelpGroup: consts.ImplantGroup,
-			Completer: func(prefix string, args []string) []string {
-				if len(args) < 2 {
-					return completer.LocalPathCompleter(prefix, args, con)
-				}
-				return nil
-			},
-		},
+		//&grumble.Command{
+		//	Name: consts.ModuleInlinePE,
+		//	Help: "Executes the given inline PE in current process",
+		//	Args: func(a *grumble.Args) {
+		//		a.String("path", "path the shellcode file")
+		//		a.StringList("args", "arguments to pass to the assembly entrypoint", grumble.Default([]string{}))
+		//	},
+		//	Run: func(c *grumble.Context) error {
+		//		InlinePECmd(c, con)
+		//		return nil
+		//	},
+		//	HelpGroup: consts.ImplantGroup,
+		//	Completer: func(prefix string, args []string) []string {
+		//		if len(args) < 2 {
+		//			return completer.LocalPathCompleter(prefix, args, con)
+		//		}
+		//		return nil
+		//	},
+		//},
 		&grumble.Command{
 			Name: consts.ModuleExecuteBof,
 			Help: "Loads and executes Bof (Windows Only)",
 			//LongHelp: help.GetHelpFor([]string{consts.ModuleExecuteAssembly}),
 			Args: func(a *grumble.Args) {
 				a.String("path", "path the assembly file")
-				a.StringList("args", "arguments to pass to the assembly entrypoint", grumble.Default([]string{}))
+				a.StringList("args", "arguments to pass to the assembly entrypoint")
 			},
 			Flags: func(f *grumble.Flags) {
-				//f.Bool("s", "save", false, "save output to file")
-				f.String("A", "process-arguments", "", "arguments to pass to the hosting process")
 				f.Int("t", "timeout", consts.DefaultTimeout, "command timeout in seconds")
 			},
 			Run: func(ctx *grumble.Context) error {

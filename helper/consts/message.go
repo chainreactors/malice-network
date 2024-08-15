@@ -12,7 +12,7 @@ const (
 	ModuleInlinePE         = "inline_pe"
 	ModuleExecuteDll       = "execute_dll"
 	ModuleInlineDll        = "inline_dll"
-	ModuleExecuteBof       = "execute_bof"
+	ModuleExecuteBof       = "bof"
 	ModulePowershell       = "powershell"
 	ModuleUpload           = "upload"
 	ModuleDownload         = "download"
