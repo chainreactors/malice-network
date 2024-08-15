@@ -43,14 +43,15 @@ var (
 	ErrNotFoundSession = status.Error(codes.NotFound, "Session ID not found")
 	ErrNotFoundTask    = status.Error(codes.NotFound, "Task ID not found")
 
-	ErrNotFoundListener    = status.Error(codes.NotFound, "Pipeline not found")
+	ErrNotFoundListener    = status.Error(codes.NotFound, "Listener not found")
+	ErrNotFoundPipeline    = status.Error(codes.NotFound, "Pipeline not found")
 	ErrNotFoundClientName  = status.Error(codes.NotFound, "Client name not found")
 	ErrNotFoundTaskContent = status.Error(codes.NotFound, "Task content not found")
 	//ErrInvalidBeaconTaskCancelState = status.Error(codes.InvalidArgument, fmt.Sprintf("Invalid task state, must be '%s' to cancel", models.PENDING))
 )
 
 var (
-	listenersCh     = make(map[string]grpc.ServerStream)
+	pipelinesCh     = make(map[string]grpc.ServerStream)
 	authLog, rpcLog *logs.Logger
 )
 
@@ -157,7 +158,7 @@ func NewServer() *Server {
 //	}
 //	data, err := req.Session.RequestAndWait(
 //		&lispb.SpiteSession{SessionId: req.Session.ID, TaskId: req.Task.Id, Spite: spite},
-//		listenersCh[req.Session.ListenerId],
+//		pipelinesCh[req.Session.PipelineID],
 //		consts.MinTimeout)
 //	if err != nil {
 //		return nil, err
@@ -179,7 +180,7 @@ func (rpc *Server) asyncGenericHandler(ctx context.Context, req *GenericRequest)
 
 	out, err := req.Session.RequestWithAsync(
 		&lispb.SpiteSession{SessionId: req.Session.ID, TaskId: req.Task.Id, Spite: spite},
-		listenersCh[req.Session.ListenerId],
+		pipelinesCh[req.Session.PipelineID],
 		consts.MinTimeout)
 	if err != nil {
 		return nil, err
@@ -197,7 +198,7 @@ func (rpc *Server) streamGenericHandler(ctx context.Context, req *GenericRequest
 	}
 	in, out, err := req.Session.RequestWithStream(
 		&lispb.SpiteSession{SessionId: req.Session.ID, TaskId: req.Task.Id, Spite: spite},
-		listenersCh[req.Session.ListenerId],
+		pipelinesCh[req.Session.PipelineID],
 		consts.MinTimeout)
 	if err != nil {
 		return nil, nil, err
@@ -288,6 +289,18 @@ func getListenerID(ctx context.Context) (string, error) {
 		return sid[0], nil
 	} else {
 		return "", ErrNotFoundListener
+	}
+}
+
+func getPipelineID(ctx context.Context) (string, error) {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return "", ErrNotFoundPipeline
+	}
+	if sid := md.Get("pipeline_id"); len(sid) > 0 {
+		return sid[0], nil
+	} else {
+		return "", ErrNotFoundPipeline
 	}
 }
 

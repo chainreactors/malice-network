@@ -44,7 +44,7 @@ func ConvertToSessionDB(session *core.Session) *Session {
 		SessionID:  session.ID,
 		GroupName:  "default",
 		RemoteAddr: session.RemoteAddr,
-		ListenerId: session.ListenerId,
+		ListenerId: session.PipelineID,
 		Modules:    convertToModuleDB(session.Modules),
 		Extensions: convertToExtensionDB(session.Extensions),
 		Os:         convertToOsDB(session.Os),

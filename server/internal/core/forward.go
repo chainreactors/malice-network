@@ -73,7 +73,7 @@ func NewForward(conn *grpc.ClientConn, pipeline Pipeline) (*Forward, error) {
 	}
 
 	forward.stream, err = forward.ListenerRpc.SpiteStream(metadata.NewOutgoingContext(context.Background(), metadata.Pairs(
-		"listener_id", pipeline.ID()),
+		"pipeline_id", pipeline.ID()),
 	))
 	if err != nil {
 		return nil, err

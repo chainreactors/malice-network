@@ -36,12 +36,12 @@ func (rpc *Server) RegisterListener(ctx context.Context, req *lispb.RegisterList
 }
 
 func (rpc *Server) SpiteStream(stream listenerrpc.ListenerRPC_SpiteStreamServer) error {
-	listenerID, err := getListenerID(stream.Context())
+	listenerID, err := getPipelineID(stream.Context())
 	if err != nil {
 		logs.Log.Error(err.Error())
 		return err
 	}
-	listenersCh[listenerID] = stream
+	pipelinesCh[listenerID] = stream
 	for {
 		msg, err := stream.Recv()
 		if err != nil {

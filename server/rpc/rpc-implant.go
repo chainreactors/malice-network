@@ -42,7 +42,7 @@ func (rpc *Server) Register(ctx context.Context, req *lispb.RegisterSession) (*i
 			Session:   sess,
 			Message:   "register",
 		})
-		logs.Log.Importantf("init new session %s from %s", sess.ID, sess.ListenerId)
+		logs.Log.Importantf("init new session %s from %s", sess.ID, sess.PipelineID)
 		return &implantpb.Empty{}, nil
 	}
 }

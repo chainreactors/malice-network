@@ -39,7 +39,7 @@ func NewSession(req *lispb.RegisterSession) *Session {
 		Modules:    req.RegisterData.Module,
 		Extensions: req.RegisterData.Extension,
 		ID:         req.SessionId,
-		ListenerId: req.ListenerId,
+		PipelineID: req.ListenerId,
 		RemoteAddr: req.RemoteAddr,
 		Timer:      req.RegisterData.Timer,
 		Tasks:      &Tasks{active: &sync.Map{}},
@@ -56,7 +56,7 @@ func NewSession(req *lispb.RegisterSession) *Session {
 
 // Session - Represents a connection to an implant
 type Session struct {
-	ListenerId string
+	PipelineID string
 	ID         string
 	Name       string
 	Group      string
@@ -101,7 +101,7 @@ func (s *Session) ToProtobuf() *clientpb.Session {
 		Note:       s.Name,
 		GroupName:  s.Group,
 		RemoteAddr: s.RemoteAddr,
-		ListenerId: s.ListenerId,
+		ListenerId: s.PipelineID,
 		Os:         s.Os,
 		Process:    s.Process,
 		Timer:      s.Timer,
@@ -196,7 +196,7 @@ func (s *Session) RequestAndWait(msg *lispb.SpiteSession, stream grpc.ServerStre
 		return nil, err
 	}
 	resp := <-ch
-	// todo @hyc save to database
+	// todo save to database
 	return resp, nil
 }
 
