@@ -17,14 +17,9 @@ func ExecuteShellcodeCmd(ctx *grumble.Context, con *console.Console) {
 		return
 	}
 	sid := con.GetInteractive().SessionId
-	//rwxPages := ctx.Flags.Bool("rwx-pages")
-	//interactive := ctx.Flags.Bool("interactive")
-	//if interactive {
-	//	console.Log.Errorf("Interactive shellcode can only be executed in a session\n")
-	//	return
-	//}
 	ppid := ctx.Flags.Uint("ppid")
 	shellcodePath := ctx.Args.String("path")
+	processname := ctx.Flags.String("process")
 	paramString := ctx.Flags.StringSlice("args")
 	argue := ctx.Flags.String("argue")
 	isBlockDll := ctx.Flags.Bool("block_dll")
@@ -35,15 +30,16 @@ func ExecuteShellcodeCmd(ctx *grumble.Context, con *console.Console) {
 	}
 
 	shellcodeTask, err := con.Rpc.ExecuteShellcode(con.ActiveTarget.Context(), &implantpb.ExecuteBinary{
-		Name: filepath.Base(shellcodePath),
-		Bin:  shellcodeBin,
-		Type: consts.ModuleExecuteShellcode,
+		Name:   filepath.Base(shellcodePath),
+		Bin:    shellcodeBin,
+		Type:   consts.ModuleExecuteShellcode,
+		Output: true,
 		Sacrifice: &implantpb.SacrificeProcess{
 			Output:   true,
 			BlockDll: isBlockDll,
 			Ppid:     uint32(ppid),
 			Argue:    argue,
-			Params:   paramString,
+			Params:   append([]string{processname}, paramString...),
 		},
 	})
 
@@ -58,7 +54,7 @@ func ExecuteShellcodeCmd(ctx *grumble.Context, con *console.Console) {
 	})
 }
 
-func ExecuteShellcodeInlineCmd(ctx *grumble.Context, con *console.Console) {
+func InlineShellcodeCmd(ctx *grumble.Context, con *console.Console) {
 	session := con.GetInteractive()
 	if session == nil {
 		return
@@ -71,9 +67,10 @@ func ExecuteShellcodeInlineCmd(ctx *grumble.Context, con *console.Console) {
 		return
 	}
 	shellcodeTask, err := con.Rpc.ExecuteShellcode(con.ActiveTarget.Context(), &implantpb.ExecuteBinary{
-		Name: filepath.Base(path),
-		Bin:  data,
-		Type: consts.ModuleExecuteShellcode,
+		Name:   filepath.Base(path),
+		Bin:    data,
+		Type:   consts.ModuleExecuteShellcode,
+		Output: true,
 	})
 	con.AddCallback(shellcodeTask.TaskId, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite)

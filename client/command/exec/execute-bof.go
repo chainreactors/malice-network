@@ -31,6 +31,7 @@ func ExecuteBofCmd(ctx *grumble.Context, con *console.Console) {
 		Name:   name,
 		Bin:    binData,
 		Params: args,
+		Output: true,
 		Type:   consts.ModuleExecuteBof,
 	})
 

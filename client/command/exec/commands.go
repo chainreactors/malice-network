@@ -54,8 +54,8 @@ func Commands(con *console.Console) []*grumble.Command {
 				//f.Bool("i", "in-process", false, "Run in the current sliver process")
 				//f.String("r", "runtime", "", "Runtime to use for running the assembly (only supported when used with --in-process)")
 				//f.Bool("s", "save", false, "save output to file")
-				f.Bool("", "output", false, "need output")
-				f.String("n", "name", "", "name to assign loot (optional)")
+				f.Bool("o", "output", false, "need output")
+				f.String("n", "process", "C:\\Windows\\System32\\notepad.exe", "custom process path")
 				f.Uint("p", "ppid", 0, "parent process id (optional)")
 				//f.Bool("M", "amsi-bypass", false, "Bypass AMSI on Windows (only supported when used with --in-process)")
 				//f.Bool("E", "etw-bypass", false, "Bypass ETW on Windows (only supported when used with --in-process)")
@@ -85,12 +85,13 @@ func Commands(con *console.Console) []*grumble.Command {
 			},
 			Args: func(a *grumble.Args) {
 				a.String("path", "path the shellcode file")
-				a.StringList("args", "arguments to pass to the assembly entrypoint", grumble.Default([]string{"notepad.exe"}))
+				a.StringList("args", "arguments to pass to the assembly entrypoint", grumble.Default([]string{}))
 
 			},
 			Flags: func(f *grumble.Flags) {
 				f.Uint("p", "ppid", 0, "pid of the process to inject into (0 means injection into ourselves)")
 				f.Bool("b", "block_dll", false, "block dll injection")
+				f.String("n", "process", "C:\\Windows\\System32\\notepad.exe", "custom process path")
 				f.Bool("s", "sacrifice", false, "is need sacrifice process")
 				f.String("a", "argue", "", "argue")
 			},
@@ -110,7 +111,7 @@ func Commands(con *console.Console) []*grumble.Command {
 				a.StringList("args", "arguments to pass to the assembly entrypoint")
 			},
 			Run: func(ctx *grumble.Context) error {
-				ExecuteShellcodeInlineCmd(ctx, con)
+				InlineShellcodeCmd(ctx, con)
 				return nil
 			},
 			HelpGroup: consts.ImplantGroup,
@@ -131,6 +132,7 @@ func Commands(con *console.Console) []*grumble.Command {
 			Flags: func(f *grumble.Flags) {
 				f.Uint("p", "ppid", 0, "pid of the process to inject into (0 means injection into ourselves)")
 				f.Bool("b", "block_dll", false, "block dll injection")
+				f.String("n", "process", "C:\\Windows\\System32\\notepad.exe", "custom process path")
 				f.Bool("s", "sacrifice", false, "is need sacrifice process")
 				f.String("e", "entrypoint", "entrypoint", "entrypoint")
 				f.String("a", "argue", "", "argue")
@@ -154,12 +156,6 @@ func Commands(con *console.Console) []*grumble.Command {
 				a.String("path", "path the shellcode file")
 				a.StringList("args", "arguments to pass to the assembly entrypoint", grumble.Default([]string{}))
 			},
-			Flags: func(f *grumble.Flags) {
-				f.Uint("p", "ppid", 0, "pid of the process to inject into (0 means injection into ourselves)")
-				f.Bool("b", "block_dll", false, "block dll injection")
-				f.Bool("s", "sacrifice", false, "is need sacrifice process")
-				f.String("a", "argue", "", "argue")
-			},
 			Run: func(c *grumble.Context) error {
 				InlineDLLCmd(c, con)
 				return nil
@@ -177,11 +173,12 @@ func Commands(con *console.Console) []*grumble.Command {
 			Help: "Executes the given PE in the sacrifice process",
 			Args: func(a *grumble.Args) {
 				a.String("path", "path the shellcode file")
-				a.StringList("args", "arguments to pass to the assembly entrypoint", grumble.Default([]string{"notepad.exe"}))
+				a.StringList("args", "arguments to pass to the assembly entrypoint", grumble.Default([]string{}))
 			},
 			Flags: func(f *grumble.Flags) {
 				f.Uint("p", "ppid", 0, "pid of the process to inject into (0 means injection into ourselves)")
 				f.Bool("b", "block_dll", false, "block dll injection")
+				f.String("n", "process", "C:\\Windows\\System32\\notepad.exe", "custom process path")
 				f.Bool("s", "sacrifice", false, "is need sacrifice process")
 				f.String("a", "argue", "", "argue")
 			},
