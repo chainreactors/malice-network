@@ -33,13 +33,16 @@ func BindClientsCommands(con *console.Console) {
 		use.Command,
 		tasks.Command,
 		jobs.Command,
-		listener.Commands,
 		alias.Commands,
 		extension.Commands,
 		armory.Commands,
 		observe.Command,
 		website.Commands,
 		explorer.Commands,
+	)
+
+	bind(consts.ListenerGroup,
+		listener.Commands,
 	)
 
 	bind(consts.AliasesGroup)

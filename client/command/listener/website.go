@@ -15,55 +15,6 @@ import (
 	"strconv"
 )
 
-func WebsiteCmd(con *console.Console) *grumble.Command {
-	websiteCmd := &grumble.Command{
-		Name: "website",
-		Help: "list websites in listener",
-		Args: func(f *grumble.Args) {
-			f.String("listener_id", "listener id")
-		},
-		Run: func(ctx *grumble.Context) error {
-			listWebsitesCmd(ctx, con)
-			return nil
-		},
-	}
-
-	websiteCmd.AddCommand(&grumble.Command{
-		Name: "start",
-		Help: "Start a website pipeline",
-		Flags: func(f *grumble.Flags) {
-			f.StringL("web-path", "", "path to the website")
-			f.String("", "content-type", "", "content type")
-			f.IntL("port", 0, "website pipeline port")
-			f.StringL("name", "", "website name")
-			f.StringL("content-path", "", "path to the content file")
-			f.StringL("listener_id", "", "listener id")
-			f.StringL("cert_path", "", "tcp pipeline cert path")
-			f.StringL("key_path", "", "tcp pipeline key path")
-			f.Bool("", "recursive", false, "add content recursively")
-		},
-		Run: func(ctx *grumble.Context) error {
-			startWebsiteCmd(ctx, con)
-			return nil
-		},
-	})
-
-	websiteCmd.AddCommand(&grumble.Command{
-		Name: "stop",
-		Help: "Stop a website pipeline",
-		Args: func(a *grumble.Args) {
-			a.String("name", "website pipeline name")
-			a.String("listener_id", "listener id")
-		},
-		Run: func(ctx *grumble.Context) error {
-			stopWebsitePipelineCmd(ctx, con)
-			return nil
-		},
-	})
-
-	return websiteCmd
-}
-
 func startWebsiteCmd(ctx *grumble.Context, con *console.Console) {
 	certPath := ctx.Flags.String("cert_path")
 	keyPath := ctx.Flags.String("key_path")

@@ -13,51 +13,6 @@ import (
 	"strconv"
 )
 
-func TcpCmd(con *console.Console) *grumble.Command {
-	tcpCmd := &grumble.Command{
-		Name: "tcp",
-		Help: "Start a TCP pipeline",
-		Args: func(a *grumble.Args) {
-			a.String("listener_id", "listener id")
-		},
-		Run: func(ctx *grumble.Context) error {
-			listTcpPipelines(ctx, con)
-			return nil
-		},
-	}
-
-	tcpCmd.AddCommand(&grumble.Command{
-		Name: "start",
-		Help: "Start a TCP pipeline",
-		Flags: func(f *grumble.Flags) {
-			f.StringL("host", "", "tcp pipeline host")
-			f.IntL("port", 0, "tcp pipeline port")
-			f.StringL("name", "", "tcp pipeline name")
-			f.StringL("listener_id", "", "listener id")
-			f.StringL("cert_path", "", "tcp pipeline cert path")
-			f.StringL("key_path", "", "tcp pipeline key path")
-		},
-		Run: func(ctx *grumble.Context) error {
-			startTcpPipelineCmd(ctx, con)
-			return nil
-		},
-	})
-
-	tcpCmd.AddCommand(&grumble.Command{
-		Name: "stop",
-		Help: "Stop a TCP pipeline",
-		Args: func(a *grumble.Args) {
-			a.String("name", "tcp pipeline name")
-			a.String("listener_id", "listener id")
-		},
-		Run: func(ctx *grumble.Context) error {
-			stopTcpPipelineCmd(ctx, con)
-			return nil
-		},
-	})
-	return tcpCmd
-}
-
 func startTcpPipelineCmd(ctx *grumble.Context, con *console.Console) {
 	certPath := ctx.Flags.String("cert_path")
 	keyPath := ctx.Flags.String("key_path")
