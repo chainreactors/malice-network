@@ -3,12 +3,12 @@ listeners:
   auth: default.yaml
   tcp:
     - name: tcp_default
-      port: 5001
+      port: 5002
       host: 0.0.0.0
       protocol: tcp
       enable: true
       tls:
-        enable: true
+        enable: false
         name: default
         CN: "test"
         O: "Sharp Depth"

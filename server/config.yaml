@@ -6,7 +6,7 @@ server:
   grpc_host: 127.0.0.1
   audit: 1  # 0 close , 1 basic , 2 detail
   config:
-    packet_length: 100 # 1M:
+    packet_length: 1048576 # 1M:
     certificate:
     certificate_key:
 
@@ -15,12 +15,12 @@ listeners:
   auth: default.yaml
   tcp:
     - name: tcp_default
-      port: 5002
+      port: 5001
       host: 0.0.0.0
       protocol: tcp
       enable: true
       tls:
-        enable: true
+        enable: false
         name: default
         CN: "test"
         O: "Sharp Depth"
