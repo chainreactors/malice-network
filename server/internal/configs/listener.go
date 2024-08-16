@@ -67,7 +67,6 @@ type TlsConfig struct {
 
 func (t *TlsConfig) ToPkix() *pkix.Name {
 	return &pkix.Name{
-		CommonName:         t.CN,
 		Organization:       []string{t.O},
 		Country:            []string{t.C},
 		Locality:           []string{t.L},

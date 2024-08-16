@@ -45,14 +45,9 @@ func GenerateCertificateAuthority(caType int, commonName string) (*x509.Certific
 	return cert, key
 }
 
-// GetCertificateAuthority - Get the current CA certificate
-func GetCertificateAuthority() (*x509.Certificate, *rsa.PrivateKey, error) {
-	certPEM, keyPEM, err := GetCertificateAuthorityPEM(path.Join(getCertDir(), rootCert), path.Join(getCertDir(), rootKey))
-	if err != nil {
-		return nil, nil, err
-	}
-
+func ParseCertificateAuthority(certPEM, keyPEM []byte) (*x509.Certificate, *rsa.PrivateKey, error) {
 	certBlock, _ := pem.Decode(certPEM)
+	var err error
 	if certBlock == nil {
 		certsLog.Error("Failed to parse certificate PEM")
 		return nil, nil, err
@@ -75,6 +70,15 @@ func GetCertificateAuthority() (*x509.Certificate, *rsa.PrivateKey, error) {
 	}
 
 	return cert, key, nil
+}
+
+// GetCertificateAuthority - Get the current CA certificate
+func GetCertificateAuthority() (*x509.Certificate, *rsa.PrivateKey, error) {
+	certPEM, keyPEM, err := GetCertificateAuthorityPEM(path.Join(getCertDir(), rootCert), path.Join(getCertDir(), rootKey))
+	if err != nil {
+		return nil, nil, err
+	}
+	return ParseCertificateAuthority(certPEM, keyPEM)
 }
 
 // GetCertificateAuthorityPEM - Get PEM encoded CA cert/key

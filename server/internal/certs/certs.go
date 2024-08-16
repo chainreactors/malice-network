@@ -177,6 +177,7 @@ func GenerateECCCertificate(caType int, commonName string, isCA bool, isClient b
 }
 
 func GenerateListenerCertificate(config *configs.TlsConfig) ([]byte, []byte, error) {
+	caCertPath := path.Join(configs.ListenerPath, config.Name+"_ca_cert.pem")
 	certPath := path.Join(configs.ListenerPath, config.Name+"_crt.pem")
 	keyPath := path.Join(configs.ListenerPath, config.Name+"_key.pem")
 	if files.IsExist(certPath) && files.IsExist(keyPath) {
@@ -201,13 +202,27 @@ func GenerateListenerCertificate(config *configs.TlsConfig) ([]byte, []byte, err
 			if err != nil {
 				return nil, nil, err
 			}
+			err = saveCertificate(ImplantCA, RSAKey, config.Name, cert, key)
 			if err != nil {
 				return nil, nil, err
 			}
 			return cert, key, nil
 		} else {
-			cert, key := GenerateRSACertificate(ImplantCA, "", true, false, config.ToPkix())
-			err := os.WriteFile(certPath, cert, 0644)
+			cacert, key := GenerateRSACertificate(ImplantCA, "localhost", false, false, config.ToPkix())
+			authority, caKey, err := ParseCertificateAuthority(cacert, key)
+			if err != nil {
+				return nil, nil, err
+			}
+			privateKey, _ := rsa.GenerateKey(rand.Reader, RsaKeySize())
+			cert, err := x509.CreateCertificate(rand.Reader, authority, authority, publicKey(privateKey), caKey)
+			if err != nil {
+				return nil, nil, err
+			}
+			err = os.WriteFile(caCertPath, cacert, 0644)
+			if err != nil {
+				return nil, nil, err
+			}
+			err = os.WriteFile(certPath, cert, 0644)
 			if err != nil {
 				return nil, nil, err
 			}
