@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/chainreactors/grumble"
-	"github.com/chainreactors/malice-network/client/assets"
+	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/tui"
@@ -15,16 +15,17 @@ import (
 func Command(con *console.Console) []*grumble.Command {
 	return []*grumble.Command{
 		&grumble.Command{
-			Name: "tasks",
-			Help: "List tasks",
+			Name:     "tasks",
+			Help:     "List tasks",
+			LongHelp: help.GetHelpFor("tasks"),
 			Flags: func(f *grumble.Flags) {
-				f.String("k", "kill", "", "kill the designated task")
-				f.Bool("K", "kill-all", false, "kill all the tasks")
-				f.Bool("C", "clean", false, "clean out any tasks marked as error")
-				//f.String("f", "filter", "", "filter sessions by substring")
-				//f.String("e", "filter-re", "", "filter sessions by regular expression")
-
-				f.Int("t", "timeout", assets.DefaultSettings.DefaultTimeout, "command timeout in seconds")
+				//f.String("k", "kill", "", "kill the designated task")
+				//f.Bool("K", "kill-all", false, "kill all the tasks")
+				//f.Bool("C", "clean", false, "clean out any tasks marked as error")
+				////f.String("f", "filter", "", "filter sessions by substring")
+				////f.String("e", "filter-re", "", "filter sessions by regular expression")
+				//
+				//f.Int("t", "timeout", assets.DefaultSettings.DefaultTimeout, "command timeout in seconds")
 			},
 			Run: func(ctx *grumble.Context) error {
 				TasksCmd(ctx, con)

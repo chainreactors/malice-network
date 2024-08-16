@@ -2,6 +2,7 @@ package filesystem
 
 import (
 	"github.com/chainreactors/grumble"
+	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/helper/consts"
 )
@@ -9,9 +10,9 @@ import (
 func Commands(con *console.Console) []*grumble.Command {
 	return []*grumble.Command{
 		&grumble.Command{
-			Name: consts.ModulePwd,
-			Help: "Print working directory",
-			//LongHelp: help.GetHelpFor([]string{consts.PwdStr}),
+			Name:     consts.ModulePwd,
+			Help:     "Print working directory",
+			LongHelp: help.GetHelpFor(consts.ModulePwd),
 			Run: func(ctx *grumble.Context) error {
 				PwdCmd(ctx, con)
 				return nil
@@ -24,7 +25,7 @@ func Commands(con *console.Console) []*grumble.Command {
 			Flags: func(f *grumble.Flags) {
 				f.String("n", "name", "", "File name")
 			},
-			//LongHelp: help.GetHelpFor([]string{consts.CatStr}),
+			LongHelp: help.GetHelpFor(consts.ModuleCat),
 			Run: func(ctx *grumble.Context) error {
 				CatCmd(ctx, con)
 				return nil
@@ -37,7 +38,7 @@ func Commands(con *console.Console) []*grumble.Command {
 			Flags: func(f *grumble.Flags) {
 				f.String("p", "path", "", "Directory path")
 			},
-			//LongHelp: help.GetHelpFor([]string{consts.CdStr}),
+			LongHelp: help.GetHelpFor(consts.ModuleCd),
 			Run: func(ctx *grumble.Context) error {
 				CdCmd(ctx, con)
 				return nil
@@ -51,7 +52,7 @@ func Commands(con *console.Console) []*grumble.Command {
 				f.String("p", "path", "", "File path")
 				f.String("m", "mode", "", "File mode")
 			},
-			//LongHelp: help.GetHelpFor([]string{consts.ChmodStr}),
+			LongHelp: help.GetHelpFor(consts.ModuleChmod),
 			Run: func(ctx *grumble.Context) error {
 				ChmodCmd(ctx, con)
 				return nil
@@ -67,7 +68,7 @@ func Commands(con *console.Console) []*grumble.Command {
 				f.String("g", "gid", "", "Group id")
 				f.Bool("r", "recursive", false, "Recursive")
 			},
-			//LongHelp: help.GetHelpFor([]string{consts.ChownStr}),
+			LongHelp: help.GetHelpFor(consts.ModuleChown),
 			Run: func(ctx *grumble.Context) error {
 				ChownCmd(ctx, con)
 				return nil
@@ -81,7 +82,7 @@ func Commands(con *console.Console) []*grumble.Command {
 				f.String("s", "source", "", "Source file")
 				f.String("t", "target", "", "Target file")
 			},
-			//LongHelp: help.GetHelpFor([]string{consts.CpStr}),
+			LongHelp: help.GetHelpFor(consts.ModuleCp),
 			Run: func(ctx *grumble.Context) error {
 				CpCmd(ctx, con)
 				return nil
@@ -94,7 +95,7 @@ func Commands(con *console.Console) []*grumble.Command {
 			Flags: func(f *grumble.Flags) {
 				f.String("p", "path", "", "Directory path")
 			},
-			//LongHelp: help.GetHelpFor([]string{consts.LsStr}),
+			LongHelp: help.GetHelpFor(consts.ModuleLs),
 			Run: func(ctx *grumble.Context) error {
 				LsCmd(ctx, con)
 				return nil
@@ -107,7 +108,7 @@ func Commands(con *console.Console) []*grumble.Command {
 			Flags: func(f *grumble.Flags) {
 				f.String("p", "path", "", "Directory path")
 			},
-			//LongHelp: help.GetHelpFor([]string{consts.MkdirStr}),
+			LongHelp: help.GetHelpFor(consts.ModuleMkdir),
 			Run: func(ctx *grumble.Context) error {
 				MkdirCmd(ctx, con)
 				return nil
@@ -121,7 +122,7 @@ func Commands(con *console.Console) []*grumble.Command {
 				f.String("s", "source", "", "Source file")
 				f.String("t", "target", "", "Target file")
 			},
-			//LongHelp: help.GetHelpFor([]string{consts.MvStr}),
+			LongHelp: help.GetHelpFor(consts.ModuleMv),
 			Run: func(ctx *grumble.Context) error {
 				MvCmd(ctx, con)
 				return nil
@@ -134,7 +135,7 @@ func Commands(con *console.Console) []*grumble.Command {
 			Flags: func(f *grumble.Flags) {
 				f.String("n", "name", "", "File name")
 			},
-			//LongHelp: help.GetHelpFor([]string{consts.RmStr}),
+			LongHelp: help.GetHelpFor(consts.ModuleRm),
 			Run: func(ctx *grumble.Context) error {
 				RmCmd(ctx, con)
 				return nil

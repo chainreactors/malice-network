@@ -2,6 +2,7 @@ package armory
 
 import (
 	"github.com/chainreactors/grumble"
+	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/helper/consts"
 )
@@ -9,8 +10,9 @@ import (
 // Commands - The main armory command
 func Commands(con *console.Console) []*grumble.Command {
 	armoryCmd := &grumble.Command{
-		Name: consts.CommandArmory,
-		Help: "List available armory packages",
+		Name:     consts.CommandArmory,
+		Help:     "List available armory packages",
+		LongHelp: help.GetHelpFor("armory"),
 		Flags: func(f *grumble.Flags) {
 			f.String("p", "proxy", "", "proxy URL")
 			f.String("t", "timeout", "", "timeout")
@@ -24,8 +26,9 @@ func Commands(con *console.Console) []*grumble.Command {
 		HelpGroup: consts.GenericGroup,
 	}
 	armoryCmd.AddCommand(&grumble.Command{
-		Name: consts.CommandAliasInstall,
-		Help: "Install a command armory",
+		Name:     consts.CommandAliasInstall,
+		Help:     "Install a command armory",
+		LongHelp: help.GetHelpFor(consts.CommandArmory + " " + consts.CommandAliasInstall),
 		Args: func(a *grumble.Args) {
 			a.String("name", "package or bundle name to install")
 		},
@@ -42,8 +45,9 @@ func Commands(con *console.Console) []*grumble.Command {
 		HelpGroup: consts.GenericGroup,
 	})
 	armoryCmd.AddCommand(&grumble.Command{
-		Name: consts.CommandArmoryUpdate,
-		Help: "Update installed armory packages",
+		Name:     consts.CommandArmoryUpdate,
+		Help:     "Update installed armory packages",
+		LongHelp: help.GetHelpFor(consts.CommandArmory + " " + consts.CommandArmoryUpdate),
 		Flags: func(f *grumble.Flags) {
 			f.String("a", "armory", "", "name of the armory to update")
 		},
@@ -54,8 +58,9 @@ func Commands(con *console.Console) []*grumble.Command {
 		HelpGroup: consts.GenericGroup,
 	})
 	armoryCmd.AddCommand(&grumble.Command{
-		Name: consts.CommandArmorySearch,
-		Help: "Search for armory packages",
+		Name:     consts.CommandArmorySearch,
+		Help:     "Search for armory packages",
+		LongHelp: help.GetHelpFor(consts.CommandArmory + " " + consts.CommandArmorySearch),
 		Args: func(a *grumble.Args) {
 			a.String("name", "name of the package to search for")
 		},

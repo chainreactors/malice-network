@@ -3,6 +3,7 @@ package use
 import (
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/command/completer"
+	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 )
@@ -10,8 +11,9 @@ import (
 func Command(con *console.Console) []*grumble.Command {
 	return []*grumble.Command{
 		&grumble.Command{
-			Name: "use",
-			Help: "Use session",
+			Name:     "use",
+			Help:     "Use session",
+			LongHelp: help.GetHelpFor("use"),
 			Args: func(a *grumble.Args) {
 				a.String("sid", "session id")
 			},
@@ -24,8 +26,9 @@ func Command(con *console.Console) []*grumble.Command {
 			},
 		},
 		&grumble.Command{
-			Name: "background",
-			Help: "back to root context",
+			Name:     "background",
+			LongHelp: help.GetHelpFor("background"),
+			Help:     "back to root context",
 			Run: func(ctx *grumble.Context) error {
 				con.ActiveTarget.Background()
 				return nil

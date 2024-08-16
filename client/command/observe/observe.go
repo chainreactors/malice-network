@@ -3,6 +3,7 @@ package observe
 import (
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/command/completer"
+	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 )
@@ -10,8 +11,9 @@ import (
 func Command(con *console.Console) []*grumble.Command {
 	return []*grumble.Command{
 		&grumble.Command{
-			Name: "observe",
-			Help: "observe session",
+			Name:     "observe",
+			Help:     "observe session",
+			LongHelp: help.GetHelpFor("observe"),
 			Args: func(a *grumble.Args) {
 				a.StringList("sid", "session id")
 			},

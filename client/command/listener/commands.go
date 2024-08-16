@@ -2,60 +2,72 @@ package listener
 
 import (
 	"github.com/chainreactors/grumble"
+	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/helper/consts"
 )
 
 func Commands(con *console.Console) []*grumble.Command {
-	websiteCmd := &grumble.Command{
-		Name: "website",
-		Help: "Listener website ctrl manager",
-		Args: func(f *grumble.Args) {
-			f.String("listener_id", "listener id")
-		},
+	//websiteCmd := &grumble.Command{
+	//	Name: "website",
+	//	Help: "Listener website ctrl manager",
+	//	Args: func(f *grumble.Args) {
+	//		f.String("listener_id", "listener id")
+	//	},
+	//	Run: func(ctx *grumble.Context) error {
+	//		listWebsitesCmd(ctx, con)
+	//		return nil
+	//	},
+	//	HelpGroup: consts.ListenerGroup,
+	//}
+	//
+	//websiteCmd.AddCommand(&grumble.Command{
+	//	Name: "start",
+	//	Help: "Start a website pipeline",
+	//	Flags: func(f *grumble.Flags) {
+	//		f.StringL("web-path", "", "path to the website")
+	//		f.String("", "content-type", "", "content type")
+	//		f.IntL("port", 0, "website pipeline port")
+	//		f.StringL("name", "", "website name")
+	//		f.StringL("content-path", "", "path to the content file")
+	//		f.StringL("listener_id", "", "listener id")
+	//		f.StringL("cert_path", "", "website tls cert path")
+	//		f.StringL("key_path", "", "website tls key path")
+	//		f.Bool("", "recursive", false, "add content recursively")
+	//	},
+	//	Run: func(ctx *grumble.Context) error {
+	//		startWebsiteCmd(ctx, con)
+	//		return nil
+	//	},
+	//})
+	//
+	//websiteCmd.AddCommand(&grumble.Command{
+	//	Name: "stop",
+	//	Help: "Stop a website pipeline",
+	//	Args: func(a *grumble.Args) {
+	//		a.String("name", "website pipeline name")
+	//		a.String("listener_id", "listener id")
+	//	},
+	//	Run: func(ctx *grumble.Context) error {
+	//		stopWebsitePipelineCmd(ctx, con)
+	//		return nil
+	//	},
+	//})
+	listenerCmd := &grumble.Command{
+		Name:     "listener",
+		Help:     "List listeners in server",
+		LongHelp: help.GetHelpFor("listener"),
 		Run: func(ctx *grumble.Context) error {
-			listWebsitesCmd(ctx, con)
+			ListenerCmd(ctx, con)
 			return nil
 		},
 		HelpGroup: consts.ListenerGroup,
 	}
 
-	websiteCmd.AddCommand(&grumble.Command{
-		Name: "start",
-		Help: "Start a website pipeline",
-		Flags: func(f *grumble.Flags) {
-			f.StringL("web-path", "", "path to the website")
-			f.String("", "content-type", "", "content type")
-			f.IntL("port", 0, "website pipeline port")
-			f.StringL("name", "", "website name")
-			f.StringL("content-path", "", "path to the content file")
-			f.StringL("listener_id", "", "listener id")
-			f.StringL("cert_path", "", "website tls cert path")
-			f.StringL("key_path", "", "website tls key path")
-			f.Bool("", "recursive", false, "add content recursively")
-		},
-		Run: func(ctx *grumble.Context) error {
-			startWebsiteCmd(ctx, con)
-			return nil
-		},
-	})
-
-	websiteCmd.AddCommand(&grumble.Command{
-		Name: "stop",
-		Help: "Stop a website pipeline",
-		Args: func(a *grumble.Args) {
-			a.String("name", "website pipeline name")
-			a.String("listener_id", "listener id")
-		},
-		Run: func(ctx *grumble.Context) error {
-			stopWebsitePipelineCmd(ctx, con)
-			return nil
-		},
-	})
-
 	tcpCmd := &grumble.Command{
-		Name: "tcp",
-		Help: "Listener tcp pipeline ctrl manager",
+		Name:     "tcp",
+		Help:     "Listener tcp pipeline ctrl manager",
+		LongHelp: help.GetHelpFor("tcp"),
 		Args: func(a *grumble.Args) {
 			a.String("listener_id", "listener id")
 		},
@@ -67,8 +79,9 @@ func Commands(con *console.Console) []*grumble.Command {
 	}
 
 	tcpCmd.AddCommand(&grumble.Command{
-		Name: "start",
-		Help: "Start a TCP pipeline",
+		Name:     "start",
+		Help:     "Start a TCP pipeline",
+		LongHelp: help.GetHelpFor("tcp start"),
 		Flags: func(f *grumble.Flags) {
 			f.StringL("host", "", "tcp pipeline host")
 			f.IntL("port", 0, "tcp pipeline port")
@@ -84,8 +97,9 @@ func Commands(con *console.Console) []*grumble.Command {
 	})
 
 	tcpCmd.AddCommand(&grumble.Command{
-		Name: "stop",
-		Help: "Stop a TCP pipeline",
+		Name:     "stop",
+		Help:     "Stop a TCP pipeline",
+		LongHelp: help.GetHelpFor("tcp stop"),
 		Args: func(a *grumble.Args) {
 			a.String("name", "tcp pipeline name")
 			a.String("listener_id", "listener id")
@@ -95,7 +109,7 @@ func Commands(con *console.Console) []*grumble.Command {
 			return nil
 		},
 	})
-	return []*grumble.Command{websiteCmd, tcpCmd}
+	return []*grumble.Command{listenerCmd, tcpCmd}
 }
 
 //	tcpCmd := &grumble.Command{

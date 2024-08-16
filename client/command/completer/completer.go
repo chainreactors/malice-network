@@ -11,6 +11,13 @@ import (
 func LocalPathCompleter(prefix string, args []string, con *console.Console) []string {
 	var parent string
 	var partial string
+	//var sep string
+	//
+	//if runtime.GOOS == "windows" {
+	//	sep = "\\"
+	//} else {
+	//	sep = "/"
+	//}
 	fi, err := os.Stat(prefix)
 	if os.IsNotExist(err) {
 		parent = filepath.Dir(prefix)
@@ -24,7 +31,6 @@ func LocalPathCompleter(prefix string, args []string, con *console.Console) []st
 			partial = filepath.Base(prefix)
 		}
 	}
-
 	results := []string{}
 	ls, err := ioutil.ReadDir(parent)
 	if err != nil {

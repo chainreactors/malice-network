@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/assets"
+	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/helper/mtls"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
@@ -15,11 +16,9 @@ import (
 func Command(con *console.Console) []*grumble.Command {
 	return []*grumble.Command{
 		&grumble.Command{
-			Name: "login",
-			Help: "Login to server",
-			Flags: func(f *grumble.Flags) {
-				f.String("c", "config", "", "server config")
-			},
+			Name:     "login",
+			Help:     "Login to server",
+			LongHelp: help.GetHelpFor("login"),
 			Run: func(ctx *grumble.Context) error {
 				err := LoginCmd(ctx, con)
 				if err != nil {

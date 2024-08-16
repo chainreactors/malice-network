@@ -4,6 +4,7 @@ import (
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/completer"
+	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/helper/consts"
 )
@@ -11,8 +12,9 @@ import (
 func Commands(con *console.Console) []*grumble.Command {
 	return []*grumble.Command{
 		&grumble.Command{
-			Name: consts.ModuleExecution,
-			Help: "Execute command",
+			Name:     consts.ModuleExecution,
+			Help:     "Execute command",
+			LongHelp: help.GetHelpFor("exec"),
 			Flags: func(f *grumble.Flags) {
 				f.Bool("o", "output", true, "capture command output")
 				f.Int("t", "timeout", assets.DefaultSettings.DefaultTimeout, "command timeout in seconds")
@@ -28,9 +30,9 @@ func Commands(con *console.Console) []*grumble.Command {
 		},
 
 		&grumble.Command{
-			Name: consts.ModuleExecuteAssembly,
-			Help: "Loads and executes a .NET assembly in a child process (Windows Only)",
-			//LongHelp: help.GetHelpFor([]string{consts.ModuleExecuteAssembly}),
+			Name:     consts.ModuleExecuteAssembly,
+			Help:     "Loads and executes a .NET assembly in a child process (Windows Only)",
+			LongHelp: help.GetHelpFor(consts.ModuleExecuteAssembly),
 			Args: func(a *grumble.Args) {
 				a.String("path", "path the assembly file")
 				a.StringList("args", "arguments to pass to the assembly entrypoint", grumble.Default([]string{}))
@@ -66,9 +68,9 @@ func Commands(con *console.Console) []*grumble.Command {
 		},
 
 		&grumble.Command{
-			Name: consts.ModuleExecuteShellcode,
-			Help: "Executes the given shellcode in the sliver process",
-			//LongHelp: help.GetHelpFor([]string{consts.ExecuteShellcodeStr}),
+			Name:     consts.ModuleExecuteShellcode,
+			Help:     "Executes the given shellcode in the sliver process",
+			LongHelp: help.GetHelpFor(consts.ModuleExecuteShellcode),
 			Run: func(ctx *grumble.Context) error {
 				ExecuteShellcodeCmd(ctx, con)
 				return nil
@@ -94,8 +96,9 @@ func Commands(con *console.Console) []*grumble.Command {
 			},
 		},
 		&grumble.Command{
-			Name: consts.ModuleInlineShellcode,
-			Help: "Executes the given inline shellcode in the IOM ",
+			Name:     consts.ModuleInlineShellcode,
+			Help:     "Executes the given inline shellcode in the IOM ",
+			LongHelp: help.GetHelpFor(consts.ModuleInlineShellcode),
 			Args: func(a *grumble.Args) {
 				a.String("path", "path the shellcode file")
 				a.StringList("args", "arguments to pass to the assembly entrypoint")
@@ -113,8 +116,9 @@ func Commands(con *console.Console) []*grumble.Command {
 			},
 		},
 		&grumble.Command{
-			Name: consts.ModuleExecuteDll,
-			Help: "Executes the given DLL in the sacrifice process",
+			Name:     consts.ModuleExecuteDll,
+			Help:     "Executes the given DLL in the sacrifice process",
+			LongHelp: help.GetHelpFor(consts.ModuleExecuteDll),
 			Args: func(a *grumble.Args) {
 				a.String("path", "path the shellcode file")
 				a.StringList("args", "arguments to pass to the assembly entrypoint", grumble.Default([]string{"C:\\Windows\\System32\\cmd.exe\x00"}))
@@ -159,8 +163,9 @@ func Commands(con *console.Console) []*grumble.Command {
 		//	},
 		//},
 		&grumble.Command{
-			Name: consts.ModuleExecutePE,
-			Help: "Executes the given PE in the sacrifice process",
+			Name:     consts.ModuleExecutePE,
+			Help:     "Executes the given PE in the sacrifice process",
+			LongHelp: help.GetHelpFor(consts.ModuleExecutePE),
 			Args: func(a *grumble.Args) {
 				a.String("path", "path the shellcode file")
 				a.StringList("args", "arguments to pass to the assembly entrypoint", grumble.Default([]string{}))
@@ -204,9 +209,9 @@ func Commands(con *console.Console) []*grumble.Command {
 		//	},
 		//},
 		&grumble.Command{
-			Name: consts.ModuleExecuteBof,
-			Help: "Loads and executes Bof (Windows Only)",
-			//LongHelp: help.GetHelpFor([]string{consts.ModuleExecuteAssembly}),
+			Name:     consts.ModuleExecuteBof,
+			Help:     "Loads and executes Bof (Windows Only)",
+			LongHelp: help.GetHelpFor(consts.ModuleExecuteBof),
 			Args: func(a *grumble.Args) {
 				a.String("path", "path the assembly file")
 				a.StringList("args", "arguments to pass to the assembly entrypoint")
@@ -227,9 +232,9 @@ func Commands(con *console.Console) []*grumble.Command {
 			},
 		},
 		&grumble.Command{
-			Name: consts.ModulePowershell,
-			Help: "Loads and executes powershell (Windows Only)",
-			//LongHelp: help.GetHelpFor([]string{consts.ModuleExecuteAssembly}),
+			Name:     consts.ModulePowershell,
+			Help:     "Loads and executes powershell (Windows Only)",
+			LongHelp: help.GetHelpFor(consts.ModulePowershell),
 			Args: func(a *grumble.Args) {
 				a.StringList("args", "arguments to pass to the assembly entrypoint", grumble.Default([]string{}))
 			},
