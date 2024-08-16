@@ -201,7 +201,6 @@ func GenerateListenerCertificate(config *configs.TlsConfig) ([]byte, []byte, err
 			if err != nil {
 				return nil, nil, err
 			}
-			err = saveCertificate(ImplantCA, RSAKey, config.Name, cert, key)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -217,7 +216,6 @@ func GenerateListenerCertificate(config *configs.TlsConfig) ([]byte, []byte, err
 				return nil, nil, err
 			}
 			logs.Log.Importantf("generate implant ca , save crt to %s", path.Join(configs.ListenerPath, config.Name+"_crt.pem"))
-			err = saveCertificate(ImplantCA, RSAKey, config.Name, cert, key)
 			if err != nil {
 				return nil, nil, err
 			}

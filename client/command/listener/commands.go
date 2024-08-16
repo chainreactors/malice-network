@@ -9,7 +9,7 @@ import (
 func Commands(con *console.Console) []*grumble.Command {
 	websiteCmd := &grumble.Command{
 		Name: "website",
-		Help: "list websites in listener",
+		Help: "Listener website ctrl manager",
 		Args: func(f *grumble.Args) {
 			f.String("listener_id", "listener id")
 		},
@@ -30,8 +30,8 @@ func Commands(con *console.Console) []*grumble.Command {
 			f.StringL("name", "", "website name")
 			f.StringL("content-path", "", "path to the content file")
 			f.StringL("listener_id", "", "listener id")
-			f.StringL("cert_path", "", "tcp pipeline cert path")
-			f.StringL("key_path", "", "tcp pipeline key path")
+			f.StringL("cert_path", "", "website tls cert path")
+			f.StringL("key_path", "", "website tls key path")
 			f.Bool("", "recursive", false, "add content recursively")
 		},
 		Run: func(ctx *grumble.Context) error {
@@ -55,7 +55,7 @@ func Commands(con *console.Console) []*grumble.Command {
 
 	tcpCmd := &grumble.Command{
 		Name: "tcp",
-		Help: "Start a TCP pipeline",
+		Help: "Listener tcp pipeline ctrl manager",
 		Args: func(a *grumble.Args) {
 			a.String("listener_id", "listener id")
 		},
@@ -74,8 +74,8 @@ func Commands(con *console.Console) []*grumble.Command {
 			f.IntL("port", 0, "tcp pipeline port")
 			f.StringL("name", "", "tcp pipeline name")
 			f.StringL("listener_id", "", "listener id")
-			f.StringL("cert_path", "", "tcp pipeline cert path")
-			f.StringL("key_path", "", "tcp pipeline key path")
+			f.StringL("cert_path", "", "tcp pipeline tls cert path")
+			f.StringL("key_path", "", "tcp pipeline tls key path")
 		},
 		Run: func(ctx *grumble.Context) error {
 			startTcpPipelineCmd(ctx, con)

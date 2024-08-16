@@ -15,7 +15,6 @@ import (
 	"github.com/chainreactors/malice-network/client/command/tasks"
 	"github.com/chainreactors/malice-network/client/command/use"
 	"github.com/chainreactors/malice-network/client/command/version"
-	"github.com/chainreactors/malice-network/client/command/website"
 	"github.com/chainreactors/malice-network/client/console"
 
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -37,7 +36,6 @@ func BindClientsCommands(con *console.Console) {
 		extension.Commands,
 		armory.Commands,
 		observe.Command,
-		website.Commands,
 		explorer.Commands,
 	)
 
