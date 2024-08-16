@@ -22,15 +22,15 @@ func (rpc *Server) GetListeners(ctx context.Context, req *clientpb.Empty) (*clie
 }
 
 func (rpc *Server) RegisterListener(ctx context.Context, req *lispb.RegisterListener) (*implantpb.Empty, error) {
-	core.Listeners.Add(&core.Listener{
-		Name:   req.Name,
-		Host:   req.Addr,
-		Active: true,
-	})
 	p, ok := peer.FromContext(ctx)
 	if !ok {
 		return &implantpb.Empty{}, nil
 	}
+	core.Listeners.Add(&core.Listener{
+		Name:   req.Name,
+		Host:   p.Addr.String(),
+		Active: true,
+	})
 	logs.Log.Importantf("%s register listener %s", p.Addr, req.Name)
 	return &implantpb.Empty{}, nil
 }

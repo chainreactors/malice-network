@@ -18,14 +18,16 @@ type Website struct {
 	rootPath    string
 	websiteName string
 	TlsConfig   *configs.TlsConfig
+	Content     *lispb.WebContent
 }
 
-func StartWebsite(cfg *configs.WebsiteConfig) (*Website, error) {
+func StartWebsite(cfg *configs.WebsiteConfig, content *lispb.WebContent) (*Website, error) {
 	web := &Website{
 		port:        int(cfg.Port),
 		rootPath:    cfg.RootPath,
 		websiteName: cfg.WebsiteName,
 		TlsConfig:   cfg.TlsConfig,
+		Content:     content,
 	}
 	err := web.Start()
 	if err != nil {
@@ -124,5 +126,5 @@ func (w *Website) websiteContentHandler(resp http.ResponseWriter, req *http.Requ
 	}
 	resp.Header().Set("Content-Type", content.ContentType)
 	resp.Header().Add("Cache-Control", "no-store, no-cache, must-revalidate")
-	resp.Write(content.Content)
+	resp.Write(w.Content.Content)
 }

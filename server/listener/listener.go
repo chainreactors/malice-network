@@ -14,13 +14,10 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/certs"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
-	"github.com/chainreactors/malice-network/server/internal/website"
 	"github.com/chainreactors/malice-network/server/web"
 	"google.golang.org/grpc"
-	"mime"
 	"net"
 	"os"
-	"path/filepath"
 	"strconv"
 )
 
@@ -91,7 +88,7 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 	_, err = lis.Rpc.RegisterListener(context.Background(), &lispb.RegisterListener{
 		Id:        fmt.Sprintf("%s_%s", lis.Name, lis.Host),
 		Name:      lis.Name,
-		Host:      lis.Host,
+		Host:      conn.Target(),
 		Addr:      serverAddress,
 		Pipelines: l,
 	})
@@ -259,39 +256,7 @@ func (lns *listener) startWebsite(job *clientpb.Job) *clientpb.JobStatus {
 	getWeb := job.GetPipeline().GetWeb()
 	w := lns.websites.Get(getWeb.Name)
 	if w == nil {
-		if 0 < len(getWeb.Contents) {
-			for _, content := range getWeb.Contents {
-				if content.ContentType == "" {
-					content.ContentType = mime.TypeByExtension(filepath.Ext(content.Path))
-					if content.ContentType == "" {
-						content.ContentType = "text/html; charset=utf-8" // Default mime
-					}
-				}
-				content.Size = uint64(len(content.Content))
-				err = website.AddContent(getWeb.Name, content)
-				if err != nil {
-					return &clientpb.JobStatus{
-						ListenerId: lns.ID(),
-						Ctrl:       consts.CtrlWebsiteStart,
-						Status:     consts.CtrlStatusFailed,
-						Error:      err.Error(),
-						Job:        job,
-					}
-				}
-			}
-		} else {
-			_, err = website.AddWebsite(getWeb.Name)
-			if err != nil {
-				return &clientpb.JobStatus{
-					ListenerId: lns.ID(),
-					Ctrl:       consts.CtrlWebsiteStart,
-					Status:     consts.CtrlStatusFailed,
-					Error:      err.Error(),
-					Job:        job,
-				}
-			}
-		}
-		starResult, err := StartWebsite(ToWebsiteConfig(getWeb, job.GetPipeline().GetTls()))
+		starResult, err := StartWebsite(ToWebsiteConfig(getWeb, job.GetPipeline().GetTls()), getWeb.Contents["0"])
 		if err != nil {
 			return &clientpb.JobStatus{
 				ListenerId: lns.ID(),
