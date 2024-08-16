@@ -42,7 +42,7 @@ func PrintSessions(sessions map[string]*clientpb.Session, con *console.Console, 
 	}, false)
 	for _, session := range sessions {
 		var SessionHealth string
-		if session.IsDead {
+		if !session.IsDead {
 			if !isAll {
 				continue
 			}
