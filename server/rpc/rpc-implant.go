@@ -65,7 +65,7 @@ func (rpc *Server) Ping(ctx context.Context, req *implantpb.Ping) (*implantpb.Em
 	if err != nil {
 		return nil, err
 	}
-	if _, ok := core.Sessions.Get(id); !ok {
+	if s, ok := core.Sessions.Get(id); !ok {
 		sess, err := db.FindSession(id)
 		if err != nil {
 			return nil, err
@@ -79,6 +79,8 @@ func (rpc *Server) Ping(ctx context.Context, req *implantpb.Ping) (*implantpb.Em
 		core.Sessions.Add(newSess)
 		newSess.Load()
 		logs.Log.Debugf("recover session %s", id)
+	} else {
+		s.UpdateLastCheckin()
 	}
 
 	err = db.UpdateLast(id)

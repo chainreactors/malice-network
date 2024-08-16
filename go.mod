@@ -8,7 +8,7 @@ require (
 	github.com/chainreactors/files v0.0.0-20231102192550-a652458cee26
 	github.com/chainreactors/grumble v0.0.0-20240726161323-5ed71398873f
 	github.com/chainreactors/logs v0.0.0-20240207121836-c946f072f81f
-	github.com/chainreactors/tui v0.0.0-20240812202906-a0f0fb4d58c2
+	github.com/chainreactors/tui v0.0.0-20240816090155-8607a6cda433
 	github.com/charmbracelet/bubbles v0.18.0
 	github.com/charmbracelet/bubbletea v0.26.6
 	github.com/charmbracelet/lipgloss v0.12.1
@@ -24,6 +24,7 @@ require (
 	github.com/robfig/cron/v3 v3.0.0
 	github.com/tetratelabs/wazero v1.5.0
 	golang.org/x/crypto v0.23.0
+	golang.org/x/text v0.15.0
 	google.golang.org/grpc v1.59.0
 	google.golang.org/protobuf v1.33.0
 	gopkg.in/yaml.v3 v3.0.1
@@ -79,7 +80,6 @@ require (
 	golang.org/x/sync v0.7.0 // indirect
 	golang.org/x/sys v0.21.0 // indirect
 	golang.org/x/term v0.20.0 // indirect
-	golang.org/x/text v0.15.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20231106174013-bbf56f31fb17 // indirect
 )
