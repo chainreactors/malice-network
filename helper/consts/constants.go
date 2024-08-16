@@ -9,7 +9,7 @@ const (
 	MB                          = KB * 1024
 	GB                          = MB * 1024
 	BufSize                     = 2 * MB
-	ClientMaxReceiveMessageSize = 2 * GB
+	ClientMaxReceiveMessageSize = 256 * MB
 	// ServerMaxMessageSize - Server-side max GRPC message size
 	ServerMaxMessageSize = 2 * GB
 	DefaultTimeout       = 10 // second
