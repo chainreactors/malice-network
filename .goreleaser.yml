@@ -80,6 +80,7 @@ upx:
 
 archives:
   -
+    name_template: "{{ .Binary }}"
     format: binary
 
 checksum:
