@@ -25,33 +25,31 @@ func NetstatCmd(ctx *grumble.Context, con *console.Console) {
 		con.SessionLog(sid).Errorf("Kill error: %v", err)
 		return
 	}
-	resultChan := make(chan *implantpb.NetstatResponse)
 	con.AddCallback(killTask.TaskId, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite).GetNetstatResponse()
-		resultChan <- resp
-	})
-	result := <-resultChan
-	var rowEntries []table.Row
-	var row table.Row
-	tableModel := tui.NewTable([]table.Column{
-		{Title: "LocalAddr", Width: 15},
-		{Title: "RemoteAddr", Width: 15},
-		{Title: "SkState", Width: 7},
-		{Title: "Pid", Width: 7},
-		{Title: "Protocol", Width: 10},
-	}, true)
-	for _, sock := range result.GetSocks() {
-		row = table.Row{
-			sock.LocalAddr,
-			sock.RemoteAddr,
-			sock.SkState,
-			sock.Pid,
-			sock.Protocol,
+		var rowEntries []table.Row
+		var row table.Row
+		tableModel := tui.NewTable([]table.Column{
+			{Title: "LocalAddr", Width: 15},
+			{Title: "RemoteAddr", Width: 15},
+			{Title: "SkState", Width: 7},
+			{Title: "Pid", Width: 7},
+			{Title: "Protocol", Width: 10},
+		}, true)
+		for _, sock := range resp.GetSocks() {
+			row = table.Row{
+				sock.LocalAddr,
+				sock.RemoteAddr,
+				sock.SkState,
+				sock.Pid,
+				sock.Protocol,
+			}
+			rowEntries = append(rowEntries, row)
 		}
-		rowEntries = append(rowEntries, row)
-	}
-	tableModel.SetRows(rowEntries)
-	fmt.Printf(tableModel.View(), os.Stdout)
+		tableModel.SetRows(rowEntries)
+		fmt.Printf(tableModel.View(), os.Stdout)
+	})
+
 	//newTable := tui.NewModel(tableModel, nil, false, false)
 	//err = newTable.Run()
 	//if err != nil {

@@ -113,9 +113,8 @@ func UpdateSessionStatus() error {
 		if err := Session().Find(&sessions).Error; err != nil {
 			return err
 		}
-
-		currentTime := time.Now()
 		for _, session := range sessions {
+			currentTime := time.Now()
 			timeDiff := currentTime.Sub(session.Last)
 			isAlive := timeDiff <= time.Duration(session.Time.Interval)*time.Second
 			if err := Session().Model(&session).Update("IsAlive", isAlive).Error; err != nil {

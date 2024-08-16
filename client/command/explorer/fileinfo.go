@@ -3,7 +3,6 @@ package explorer
 import (
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"os"
-	"syscall"
 	"time"
 )
 
@@ -41,5 +40,5 @@ func (p ProtobufDirEntry) ModTime() time.Time {
 }
 
 func (p ProtobufDirEntry) Sys() interface{} {
-	return &syscall.Win32FileAttributeData{}
+	return nil
 }

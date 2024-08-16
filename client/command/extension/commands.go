@@ -30,6 +30,9 @@ func Commands(con *console.Console) []*grumble.Command {
 	extensionCmd.AddCommand(&grumble.Command{
 		Name: consts.CommandExtensionLoad,
 		Help: "Load an extension",
+		Args: func(a *grumble.Args) {
+			a.String("dir-path", "path to the extension directory")
+		},
 		//LongHelp: help.GetHelpFor([]string{consts.CommandAlias}),
 		Run: func(ctx *grumble.Context) error {
 			ExtensionLoadCmd(ctx, con)
