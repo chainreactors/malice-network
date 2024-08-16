@@ -11,9 +11,11 @@ import (
 )
 
 type Options struct {
-	Config    string                  `long:"config" description:"Path to config file"`
-	Daemon    bool                    `long:"daemon" description:"Run as a daemon" config:"daemon"`
-	CA        string                  `long:"ca" description:"Path to CA file" config:"ca" default:"ca.pem"`
+	Config string `long:"config" description:"Path to config file"`
+	Daemon bool   `long:"daemon" description:"Run as a daemon" config:"daemon"`
+	CA     string `long:"ca" description:"Path to CA file" config:"ca" default:"ca.pem"`
+	Debug  bool   `long:"debug" description:"Debug mode" config:"debug"`
+
 	Listeners *configs.ListenerConfig `config:"listeners"`
 }
 
@@ -39,6 +41,7 @@ func Execute() {
 	err = configs.LoadConfig(configs.ListenerConfigFileName, &opt)
 	if err != nil {
 		logs.Log.Debugf("cannot load config , %s ", err.Error())
+		return
 	}
 
 	_, err = parser.Parse()
@@ -48,7 +51,9 @@ func Execute() {
 		}
 		return
 	}
-
+	if opt.Debug {
+		logs.Log.SetLevel(logs.Debug)
+	}
 	if opt.Config != "" {
 		err = configs.LoadConfig(opt.Config, &opt)
 		if err != nil {

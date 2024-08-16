@@ -4,6 +4,7 @@ import (
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/command/completer"
 	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/helper/consts"
 )
 
 const (
@@ -19,6 +20,7 @@ func Commands(con *console.Console) []*grumble.Command {
 			// todo list listeners
 			return nil
 		},
+		HelpGroup: consts.ListenerGroup,
 	}
 
 	// add-content

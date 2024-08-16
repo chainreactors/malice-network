@@ -1,21 +1,9 @@
-ca: .
-opsec: true
-
-server:
-  grpc_port: 5004
-  grpc_host: 127.0.0.1
-  audit: 1  # 0 close , 1 basic , 2 detail
-  config:
-    packet_length: 100 # 1M:
-    certificate:
-    certificate_key:
-
 listeners:
   name: default
   auth: default.yaml
   tcp:
     - name: tcp_default
-      port: 5002
+      port: 5001
       host: 0.0.0.0
       protocol: tcp
       enable: true
@@ -35,3 +23,8 @@ listeners:
         enable: false
         type: aes-cfb
         key: maliceofinternal
+  websites:
+    - websiteName: test
+      port: 10049
+      rootPath: "/"
+      enable: false

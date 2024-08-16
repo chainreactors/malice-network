@@ -97,7 +97,7 @@ func Execute() {
 	}
 
 	// start listeners
-	if opt.Listeners != nil {
+	if opt.Listeners.Auth != "" {
 		// init forwarder
 		clientConf, err := listener.GenerateClientConfig(opt.Server, opt.Listeners)
 		if err != nil {
