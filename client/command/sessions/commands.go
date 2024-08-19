@@ -19,7 +19,7 @@ func Commands(con *console.Console) []*grumble.Command {
 				//f.Bool("K", "kill-all", false, "kill all the sessions")
 				//f.Bool("C", "clean", false, "clean out any sessions marked as [DEAD]")
 				//f.Bool("F", "force", false, "force session action without waiting for results")
-				//f.Bool("a", "all", false, "show all sessions")
+				f.Bool("a", "all", false, "show all sessions")
 				//f.String("f", "filter", "", "filter sessions by substring")
 				//f.String("e", "filter-re", "", "filter sessions by regular expression")
 				//f.Int("t", "timeout", assets.DefaultSettings.DefaultTimeout, "command timeout in seconds")
