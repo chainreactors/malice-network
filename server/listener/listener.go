@@ -48,7 +48,7 @@ func GenerateClientConfig(server *configs.ServerConfig, cfg *configs.ListenerCon
 }
 
 func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) error {
-	options, err := mtls.GetGrpcOptions([]byte(clientConf.CACertificate), []byte(clientConf.Certificate), []byte(clientConf.PrivateKey), certs.ListenerNamespace)
+	options, err := mtls.GetGrpcOptions([]byte(clientConf.CACertificate), []byte(clientConf.Certificate), []byte(clientConf.PrivateKey), clientConf.Type)
 	if err != nil {
 		return err
 	}

@@ -70,7 +70,7 @@ func GetGrpcOptions(caCertificate []byte, certificate []byte, privateKey []byte,
 }
 
 func Connect(config *ClientConfig) (*grpc.ClientConn, error) {
-	options, err := GetGrpcOptions([]byte(config.CACertificate), []byte(config.Certificate), []byte(config.PrivateKey), "client")
+	options, err := GetGrpcOptions([]byte(config.CACertificate), []byte(config.Certificate), []byte(config.PrivateKey), config.Type)
 	if err != nil {
 		return nil, err
 	}
