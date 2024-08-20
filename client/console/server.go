@@ -76,6 +76,9 @@ type ServerStatus struct {
 func (s *ServerStatus) UpdateSessions(all bool) error {
 	var sessions *clientpb.Sessions
 	var err error
+	if s == nil {
+		return errors.New("You need login first")
+	}
 	if all {
 		sessions, err = s.Rpc.GetSessions(context.Background(), &clientpb.Empty{})
 	} else {

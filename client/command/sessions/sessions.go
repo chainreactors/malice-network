@@ -14,7 +14,11 @@ import (
 )
 
 func SessionsCmd(ctx *grumble.Context, con *console.Console) {
-	con.UpdateSessions(true)
+	err := con.UpdateSessions(true)
+	if err != nil {
+		console.Log.Errorf("%s", err)
+		return
+	}
 	isAll := ctx.Flags.Bool("all")
 	if 0 < len(con.Sessions) {
 		PrintSessions(con.Sessions, con, isAll)
@@ -42,7 +46,7 @@ func PrintSessions(sessions map[string]*clientpb.Session, con *console.Console, 
 	}, false)
 	for _, session := range sessions {
 		var SessionHealth string
-		if !session.IsDead {
+		if !session.IsAlive {
 			if !isAll {
 				continue
 			}

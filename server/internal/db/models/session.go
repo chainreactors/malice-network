@@ -137,7 +137,7 @@ func (s *Session) ToClientProtobuf() *clientpb.Session {
 		ListenerId: s.ListenerId,
 		Note:       s.Note,
 		RemoteAddr: s.RemoteAddr,
-		IsDead:     s.IsAlive,
+		IsAlive:    s.IsAlive,
 		GroupName:  s.GroupName,
 		Os:         s.Os.toProtobuf(),
 		Process:    s.Process.toProtobuf(),

@@ -97,13 +97,13 @@ func (s *Session) Logger() *logs.Logger {
 
 func (s *Session) ToProtobuf() *clientpb.Session {
 	currentTime := time.Now()
-	timeDiff := s.Timer.LastCheckin - uint64(currentTime.Unix())
-	isAlive := timeDiff <= s.Timer.Interval*2
+	timeDiff := currentTime.Unix() - int64(s.Timer.LastCheckin)
+	isAlive := uint64(timeDiff) <= s.Timer.Interval*2
 	return &clientpb.Session{
 		SessionId:  s.ID,
 		Note:       s.Name,
 		GroupName:  s.Group,
-		IsDead:     !isAlive,
+		IsAlive:    isAlive,
 		RemoteAddr: s.RemoteAddr,
 		ListenerId: s.PipelineID,
 		Os:         s.Os,

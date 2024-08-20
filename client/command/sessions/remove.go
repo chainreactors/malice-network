@@ -26,7 +26,11 @@ func removeCmd(ctx *grumble.Context, con *console.Console) {
 		logs.Log.Errorf("Session error: %v", err)
 		return
 	}
-	con.UpdateSessions(false)
+	err = con.UpdateSessions(false)
+	if err != nil {
+		console.Log.Errorf("%s", err)
+		return
+	}
 	session := con.Sessions[id]
 	con.ActiveTarget.Set(session)
 }

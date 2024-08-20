@@ -39,7 +39,11 @@ func Command(con *console.Console) []*grumble.Command {
 
 func UseSessionCmd(ctx *grumble.Context, con *console.Console) {
 	var session *clientpb.Session
-	con.UpdateSessions(false)
+	err := con.UpdateSessions(false)
+	if err != nil {
+		console.Log.Errorf("%s", err)
+		return
+	}
 	idArg := ctx.Args.String("sid")
 	if idArg != "" {
 		session = con.Sessions[idArg]

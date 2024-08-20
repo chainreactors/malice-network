@@ -21,7 +21,7 @@ func (rpc *Server) GetAlivedSessions(ctx context.Context, _ *clientpb.Empty) (*c
 	var sessions []*clientpb.Session
 	for _, session := range core.Sessions.All() {
 		sessionProto := session.ToProtobuf()
-		if !sessionProto.IsDead {
+		if sessionProto.IsAlive {
 			sessions = append(sessions, session.ToProtobuf())
 		}
 	}
@@ -38,11 +38,22 @@ func (rpc *Server) GetSession(ctx context.Context, req *clientpb.SessionRequest)
 
 func (rpc *Server) BasicSessionOP(ctx context.Context, req *clientpb.BasicUpdateSession) (*clientpb.Empty, error) {
 	if req.IsDelete {
+		core.Sessions.Remove(req.SessionId)
 		err := db.DeleteSession(req.SessionId)
 		if err != nil {
 			return nil, err
 		}
 	} else {
+		session, ok := core.Sessions.Get(req.SessionId)
+		if !ok {
+			return nil, ErrNotFoundSession
+		}
+		if req.Note != "" {
+			session.Name = req.Note
+		}
+		if req.GroupName != "" {
+			session.Group = req.GroupName
+		}
 		err := db.UpdateSession(req.SessionId, req.Note, req.GroupName)
 		if err != nil {
 			return nil, err

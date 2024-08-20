@@ -27,6 +27,11 @@ func noteCmd(ctx *grumble.Context, con *console.Console) {
 		logs.Log.Errorf("Session error: %v", err)
 		return
 	}
+	err = con.UpdateSessions(false)
+	if err != nil {
+		console.Log.Errorf("update sessions failed: %s", err)
+		return
+	}
 	session := con.Sessions[id]
 	con.ActiveTarget.Set(session)
 }
