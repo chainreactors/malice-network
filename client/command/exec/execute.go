@@ -22,18 +22,17 @@ func ExecuteCmd(ctx *grumble.Context, con *console.Console) {
 	output := ctx.Flags.Bool("output")
 	stdout := ctx.Flags.String("stdout")
 	stderr := ctx.Flags.String("stderr")
-	saveLoot := ctx.Flags.Bool("loot")
-	saveOutput := ctx.Flags.Bool("save")
+	//saveLoot := ctx.Flags.Bool("loot")
+	//saveOutput := ctx.Flags.Bool("save")
 	//ppid := ctx.Flags.Uint("ppid")
 	//hostName := getHostname(session, beacon)
-	var captureOutput bool = output || saveLoot || saveOutput
 
 	var resp *clientpb.Task
 	var err error
 	resp, err = con.Rpc.Execute(con.ActiveTarget.Context(), &implantpb.ExecRequest{
 		Path:   cmdPath,
 		Args:   args,
-		Output: captureOutput,
+		Output: output,
 		Stderr: stderr,
 		Stdout: stdout,
 	})

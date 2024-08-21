@@ -18,6 +18,8 @@ func Commands(con *console.Console) []*grumble.Command {
 			Flags: func(f *grumble.Flags) {
 				f.Bool("o", "output", true, "capture command output")
 				f.Int("t", "timeout", assets.DefaultSettings.DefaultTimeout, "command timeout in seconds")
+				f.String("O", "stdout", "", "stdout file")
+				f.String("E", "stderr", "", "stderr file")
 			},
 			Args: func(a *grumble.Args) {
 				a.String("command", "command to execute")
