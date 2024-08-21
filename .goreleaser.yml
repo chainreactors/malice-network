@@ -1,0 +1,101 @@
+project_name: malice
+version: 2
+
+before:
+  hooks:
+    - go generate ./client
+    - go mod tidy
+
+builds:
+  -
+    main: ./client
+    id: client
+    binary: "client_{{ .Os }}_{{ .Arch }}"
+    goos:
+      - windows
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+    ldflags: "-s -w"
+    asmflags:
+      - all=-trimpath={{.Env.GOPATH}}
+    gcflags:
+      - all=-trimpath={{.Env.GOPATH}}
+    no_unique_dist_dir: true
+
+  -
+    main: ./server/cmd/listener/
+    id: listener
+    binary: "listener_{{ .Os }}_{{ .Arch }}"
+    goos:
+      - windows
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+    ldflags: "-s -w"
+    asmflags:
+      - all=-trimpath={{.Env.GOPATH}}
+    gcflags:
+      - all=-trimpath={{.Env.GOPATH}}
+    no_unique_dist_dir: true
+
+  -
+    main: ./server/cmd/server/
+    id: server
+    binary: "server_{{ .Os }}_{{ .Arch }}"
+    goos:
+      - windows
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+    ldflags: "-s -w"
+    asmflags:
+      - all=-trimpath={{.Env.GOPATH}}
+    gcflags:
+      - all=-trimpath={{.Env.GOPATH}}
+    no_unique_dist_dir: true
+
+upx:
+  -
+    enabled: true
+    goos: [linux, windows]
+    goarch:
+      - amd64
+      - "386"
+
+archives:
+  -
+    name_template: "{{ .Binary }}"
+    format: binary
+
+checksum:
+  name_template: "{{ .ProjectName }}_checksums.txt"
+
+changelog:
+  sort: desc
+  filters:
+    exclude:
+      - '^MERGE'
+      - "{{ .Tag }}"
+      - "^docs"
+
+release:
+  github:
+    owner: chainreactors
+    name: malice-network
+  draft: true
