@@ -68,7 +68,7 @@ func (rpc *Server) SpiteStream(stream listenerrpc.ListenerRPC_SpiteStreamServer)
 
 func (s *Server) AddListener(ctx context.Context, req *rootpb.Operator) (*rootpb.Response, error) {
 	cfg := configs.GetServerConfig()
-	clientConf, err := certs.ClientGenerateCertificate(cfg.GRPCHost, req.Args[0], int(cfg.GRPCPort), certs.ListenerCA)
+	clientConf, err := certs.GenerateListenerCert(cfg.GRPCHost, req.Args[0], int(cfg.GRPCPort))
 	if err != nil {
 		return &rootpb.Response{
 			Status: 1,
