@@ -8,7 +8,7 @@ import (
 )
 
 func WrapWithTls(lsn net.Listener, config *configs.TlsConfig) (net.Listener, error) {
-	cert, key, err := certs.GenerateListenerCertificate(config)
+	cert, key, err := certs.GeneratePipelineCert(config)
 	if err != nil {
 		return nil, err
 	}
@@ -22,7 +22,7 @@ func WrapWithTls(lsn net.Listener, config *configs.TlsConfig) (net.Listener, err
 }
 
 func WrapToTlsConfig(config *configs.TlsConfig) (*tls.Config, error) {
-	cert, key, err := certs.GenerateListenerCertificate(config)
+	cert, key, err := certs.GeneratePipelineCert(config)
 	if err != nil {
 		return nil, err
 	}
