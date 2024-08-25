@@ -215,6 +215,14 @@ func GenerateServerCert(name string) ([]byte, []byte, error) {
 	if err != nil {
 		return nil, nil, err
 	}
+	err = certs.SaveToPEMFile(certPath, cert)
+	if err != nil {
+		return nil, nil, err
+	}
+	err = certs.SaveToPEMFile(certKeyPath, key)
+	if err != nil {
+		return nil, nil, err
+	}
 	err = db.AddCertificate(OperatorCA, RSAKey, name, cert, key)
 	if err != nil {
 		return nil, nil, err
