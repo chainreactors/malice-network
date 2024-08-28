@@ -137,8 +137,8 @@ func (s *ServerStatus) triggerTaskCallback(event *clientpb.Event) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	if _, ok := s.Callbacks.Load(task.TaskId); ok {
-		_, err := s.Rpc.GetTaskContent(ctx, &clientpb.Task{
+	if callback, ok := s.Callbacks.Load(task.TaskId); ok {
+		spite, err := s.Rpc.GetTaskContent(ctx, &clientpb.Task{
 			TaskId:    task.TaskId,
 			SessionId: task.SessionId,
 		})
@@ -146,8 +146,7 @@ func (s *ServerStatus) triggerTaskCallback(event *clientpb.Event) {
 			Log.Errorf(err.Error())
 			return
 		}
-		//callback.(TaskCallback)(content)
-		s.Callbacks.Delete(task.TaskId)
+		callback.(TaskCallback)(spite)
 	}
 }
 
@@ -167,16 +166,17 @@ func (s *ServerStatus) triggerTaskDone(event *clientpb.Event) {
 		if err != nil {
 			Log.Errorf(err.Error())
 		}
-		if content.GetError() != 0 {
-			s.handleMaleficError(content)
+		if content.Spite.GetError() != 0 {
+			s.handleMaleficError(content.Spite)
 			return
 		}
 
-		if content.GetStatus().Status != 0 {
-			s.handleTaskError(content.GetStatus())
+		if content.Spite.GetStatus().Status != 0 {
+			s.handleTaskError(content.Spite.GetStatus())
 			return
 		}
 		callback.(TaskCallback)(content)
+		s.Callbacks.Delete(task.TaskId)
 	}
 }
 

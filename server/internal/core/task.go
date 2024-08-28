@@ -59,13 +59,12 @@ type Task struct {
 	Callback  func()
 	Ctx       context.Context
 	Cancel    context.CancelFunc
-	Status    *implantpb.Spite //
-	done      chan bool
-	end       chan struct{}
+	//Status    *implantpb.Spite
+	DoneCh chan bool
 }
 
 func (t *Task) Handler() {
-	for ok := range t.done {
+	for ok := range t.DoneCh {
 		if !ok {
 			return
 		}
@@ -75,7 +74,6 @@ func (t *Task) Handler() {
 			return
 		}
 	}
-
 }
 
 func (t *Task) ToProtobuf() *clientpb.Task {
@@ -103,7 +101,7 @@ func (t *Task) Percent() string {
 
 func (t *Task) Done(event Event) {
 	EventBroker.Publish(event)
-	t.done <- true
+	t.DoneCh <- true
 }
 
 func (t *Task) Finish() {
@@ -118,12 +116,12 @@ func (t *Task) Finish() {
 }
 
 func (t *Task) Panic(event Event, status *implantpb.Spite) {
-	t.Status = status
+	//t.Status = status
 	EventBroker.Publish(event)
 	t.Close()
 }
 
 func (t *Task) Close() {
 	t.Cancel()
-	close(t.done)
+	close(t.DoneCh)
 }
