@@ -17,7 +17,7 @@ func (rpc *Server) GetTasks(ctx context.Context, session *clientpb.Session) (*cl
 	return sess.Tasks.ToProtobuf(), nil
 }
 
-func (rpc *Server) GetTaskContent(ctx context.Context, req *clientpb.Task) (*implantpb.Spite, error) {
+func (rpc *Server) GetTaskContent(ctx context.Context, req *clientpb.Task) (*clientpb.TaskContext, error) {
 	sess, ok := core.Sessions.Get(req.SessionId)
 	if !ok {
 		return nil, ErrNotFoundSession
@@ -27,26 +27,58 @@ func (rpc *Server) GetTaskContent(ctx context.Context, req *clientpb.Task) (*imp
 		return nil, ErrNotFoundTask
 	}
 
-	if task.Cur == 0 {
-		msg, ok := sess.GetLastMessage(int(task.Id))
-		if ok {
-			return msg, nil
-		} else if task.Status != nil {
-			return task.Status, nil
-		}
-		return nil, ErrNotFoundTaskContent
+	var msg *implantpb.Spite
+	if req.Need == -1 {
+		msg, ok = sess.GetLastMessage(int(task.Id))
 	} else {
-		msg, ok := sess.GetMessage(int(task.Id), int(task.Cur))
-		if ok {
-			return msg, nil
-		} else if task.Status != nil {
-			return task.Status, nil
-		}
-		return nil, ErrNotFoundTaskContent
+		msg, ok = sess.GetMessage(int(task.Id), int(req.Need))
 	}
+
+	if ok {
+		return &clientpb.TaskContext{
+			Task:    task.ToProtobuf(),
+			Session: sess.ToProtobuf(),
+			Spite:   msg,
+		}, nil
+	}
+	return nil, ErrNotFoundTaskContent
 }
 
-func (rpc *Server) WaitTaskContent(ctx context.Context, req *clientpb.Task) (*implantpb.Spite, error) {
+func (rpc *Server) WaitTaskContent(ctx context.Context, req *clientpb.Task) (*clientpb.TaskContext, error) {
+	sess, ok := core.Sessions.Get(req.SessionId)
+	if !ok {
+		return nil, ErrNotFoundSession
+	}
+	task := sess.Tasks.Get(req.TaskId)
+	if task == nil {
+		return nil, ErrNotFoundTask
+	}
+	for {
+		select {
+		case _, ok := <-task.DoneCh:
+			if !ok {
+				return nil, ErrNotFoundTaskContent
+			}
+			var msg *implantpb.Spite
+			if req.Need == -1 {
+				msg, ok = sess.GetLastMessage(int(task.Id))
+			} else {
+				msg, ok = sess.GetMessage(int(task.Id), int(req.Need))
+			}
+			if ok {
+				return &clientpb.TaskContext{
+					Task:    task.ToProtobuf(),
+					Session: sess.ToProtobuf(),
+					Spite:   msg,
+				}, nil
+			}
+		}
+	}
+
+	return nil, ErrNotFoundTaskContent
+}
+
+func (rpc *Server) WaitTaskFinish(ctx context.Context, req *clientpb.Task) (*clientpb.TaskContext, error) {
 	sess, ok := core.Sessions.Get(req.SessionId)
 	if !ok {
 		return nil, ErrNotFoundSession
@@ -59,15 +91,17 @@ func (rpc *Server) WaitTaskContent(ctx context.Context, req *clientpb.Task) (*im
 	case <-task.Ctx.Done():
 		msg, ok := sess.GetLastMessage(int(task.Id))
 		if ok {
-			return msg, nil
-		} else if task.Status != nil {
-			return task.Status, nil
+			return &clientpb.TaskContext{
+				Task:    task.ToProtobuf(),
+				Session: sess.ToProtobuf(),
+				Spite:   msg,
+			}, nil
 		}
 	}
 	return nil, ErrNotFoundTaskContent
 }
 
-func (rpc *Server) GetAllTaskContent(ctx context.Context, req *clientpb.Task) ([]*implantpb.Spite, error) {
+func (rpc *Server) GetAllTaskContent(ctx context.Context, req *clientpb.Task) (*clientpb.TaskContexts, error) {
 	sess, ok := core.Sessions.Get(req.SessionId)
 	if !ok {
 		return nil, ErrNotFoundSession
@@ -78,7 +112,11 @@ func (rpc *Server) GetAllTaskContent(ctx context.Context, req *clientpb.Task) ([
 	}
 	msgs, ok := sess.GetMessages(int(task.Id))
 	if ok {
-		return msgs, nil
+		return &clientpb.TaskContexts{
+			Task:    task.ToProtobuf(),
+			Session: sess.ToProtobuf(),
+			Spites:  msgs,
+		}, nil
 	}
 	return nil, ErrNotFoundTask
 }
