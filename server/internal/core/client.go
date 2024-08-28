@@ -26,8 +26,9 @@ type clients struct {
 func NewClient(operatorName string) *Client {
 	return &Client{
 		Client: &clientpb.Client{
-			ID:   getClientID(),
-			Name: operatorName,
+			ID:     getClientID(),
+			Name:   operatorName,
+			Online: true,
 		},
 	}
 }

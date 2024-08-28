@@ -47,6 +47,7 @@ var (
 	ErrNotFoundPipeline    = status.Error(codes.NotFound, "Pipeline not found")
 	ErrNotFoundClientName  = status.Error(codes.NotFound, "Client name not found")
 	ErrNotFoundTaskContent = status.Error(codes.NotFound, "Task content not found")
+	ErrTaskIndexExceed     = status.Error(codes.NotFound, "task index id exceed total")
 	//ErrInvalidBeaconTaskCancelState = status.Error(codes.InvalidArgument, fmt.Sprintf("Invalid task state, must be '%s' to cancel", models.PENDING))
 )
 
