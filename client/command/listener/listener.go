@@ -2,15 +2,15 @@ package listener
 
 import (
 	"context"
-	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/table"
+	"github.com/spf13/cobra"
 	"strconv"
 )
 
-func ListenerCmd(ctx *grumble.Context, con *console.Console) {
+func ListenerCmd(cmd *cobra.Command, con *console.Console) {
 	listeners, err := con.Rpc.GetListeners(context.Background(), &clientpb.Empty{})
 	if err != nil {
 		console.Log.Errorf("Failed to list listeners: %s", err)

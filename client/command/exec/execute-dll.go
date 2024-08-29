@@ -6,24 +6,24 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/helper"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
+	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/proto"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
-func ExecuteDLLCmd(ctx *grumble.Context, con *console.Console) {
-	session := con.GetInteractive()
-	if session == nil {
-		return
-	}
-	sid := con.GetInteractive().SessionId
-	ppid := ctx.Flags.Uint("ppid")
-	pePath := ctx.Args.String("path")
-	processname := ctx.Flags.String("process")
-	paramString := ctx.Args.StringList("args")
-	argue := ctx.Flags.String("argue")
-	isBlockDll := ctx.Flags.Bool("block_dll")
+func ExecuteDLLCmd(cmd *cobra.Command, con *console.Console) {
+	pePath := cmd.Flags().Arg(0)
+	argsString := cmd.Flags().Arg(1)
+	paramString := strings.Split(argsString, ",")
+	ppid, _ := cmd.Flags().GetUint("ppid")
+	processname, _ := cmd.Flags().GetString("process")
+	argue, _ := cmd.Flags().GetString("argue")
+	isBlockDll, _ := cmd.Flags().GetBool("block_dll")
+	entrypoint, _ := cmd.Flags().GetString("entrypoint")
 	dllBin, err := os.ReadFile(pePath)
+
 	if err != nil {
 		console.Log.Errorf("%s\n", err.Error())
 		return
@@ -32,11 +32,21 @@ func ExecuteDLLCmd(ctx *grumble.Context, con *console.Console) {
 		console.Log.Errorf("The file is not a DLL file\n")
 		return
 	}
+	execDLL(pePath, dllBin, paramString, int(ppid), processname, argue, entrypoint, isBlockDll, con)
+}
+
+func execDLL(pePath string, dllBin []byte, paramString []string, ppid int, processname, argue, entrypoint string,
+	isBlockDll bool, con *console.Console) {
+	session := con.GetInteractive()
+	if session == nil {
+		return
+	}
+	sid := con.GetInteractive().SessionId
 	task, err := con.Rpc.ExecutePE(con.ActiveTarget.Context(), &implantpb.ExecuteBinary{
 		Name:       filepath.Base(pePath),
 		Bin:        dllBin,
 		Type:       consts.ModuleExecutePE,
-		EntryPoint: ctx.Flags.String("entrypoint"),
+		EntryPoint: entrypoint,
 		Output:     true,
 		Sacrifice: &implantpb.SacrificeProcess{
 			Output:   true,

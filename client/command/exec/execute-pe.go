@@ -6,24 +6,22 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/helper"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
+	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/proto"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // ExecutePECmd - Execute PE on sacrifice process
-func ExecutePECmd(ctx *grumble.Context, con *console.Console) {
-	session := con.GetInteractive()
-	if session == nil {
-		return
-	}
-	sid := con.GetInteractive().SessionId
-	ppid := ctx.Flags.Uint("ppid")
-	pePath := ctx.Args.String("path")
-	processname := ctx.Flags.String("process")
-	paramString := ctx.Args.StringList("args")
-	argue := ctx.Flags.String("argue")
-	isBlockDll := ctx.Flags.Bool("block_dll")
+func ExecutePECmd(cmd *cobra.Command, con *console.Console) {
+	pePath := cmd.Flags().Arg(0)
+	argsString := cmd.Flags().Arg(1)
+	paramString := strings.Split(argsString, ",")
+	ppid, _ := cmd.Flags().GetUint("ppid")
+	processname, _ := cmd.Flags().GetString("process")
+	argue, _ := cmd.Flags().GetString("argue")
+	isBlockDll, _ := cmd.Flags().GetBool("block_dll")
 	peBin, err := os.ReadFile(pePath)
 	if err != nil {
 		console.Log.Errorf("%s\n", err.Error())
@@ -33,7 +31,16 @@ func ExecutePECmd(ctx *grumble.Context, con *console.Console) {
 		console.Log.Errorf("The file is not a PE file\n")
 		return
 	}
+	execPe(pePath, peBin, paramString, int(ppid), processname, argue, isBlockDll, con)
+}
 
+func execPe(pePath string, peBin []byte, paramString []string, ppid int, processname, argue string,
+	isBlockDll bool, con *console.Console) {
+	session := con.GetInteractive()
+	if session == nil {
+		return
+	}
+	sid := con.GetInteractive().SessionId
 	task, err := con.Rpc.ExecutePE(con.ActiveTarget.Context(), &implantpb.ExecuteBinary{
 		Name:   filepath.Base(pePath),
 		Bin:    peBin,
@@ -47,6 +54,7 @@ func ExecutePECmd(ctx *grumble.Context, con *console.Console) {
 			Params:   append([]string{processname}, paramString...),
 		},
 	})
+
 	if err != nil {
 		console.Log.Errorf("%s\n", err)
 		return
@@ -54,7 +62,7 @@ func ExecutePECmd(ctx *grumble.Context, con *console.Console) {
 
 	con.AddCallback(task.TaskId, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite)
-		con.SessionLog(sid).Consolef("Executed PE on target: \n %s\n", resp.GetAssemblyResponse().GetData())
+		con.SessionLog(sid).Consolef("Executed PE on target: %s\n", resp.GetAssemblyResponse().GetData())
 	})
 }
 

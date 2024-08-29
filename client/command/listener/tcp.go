@@ -3,25 +3,30 @@ package listener
 import (
 	"context"
 	"fmt"
-	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/table"
+	"github.com/spf13/cobra"
+	"log"
 	"os"
 	"strconv"
 )
 
-func startTcpPipelineCmd(ctx *grumble.Context, con *console.Console) {
-	certPath := ctx.Flags.String("cert_path")
-	keyPath := ctx.Flags.String("key_path")
-	host := ctx.Flags.String("host")
-	port := uint32(ctx.Flags.Int("port"))
-	name := ctx.Flags.String("name")
-	listenerID := ctx.Flags.String("listener_id")
+func startTcpPipelineCmd(cmd *cobra.Command, con *console.Console) {
+	certPath, _ := cmd.Flags().GetString("cert_path")
+	keyPath, _ := cmd.Flags().GetString("key_path")
+	name := cmd.Flags().Arg(0)
+	listenerID := cmd.Flags().Arg(1)
+	host := cmd.Flags().Arg(2)
+	portStr := cmd.Flags().Arg(3)
+	portUint, err := strconv.ParseUint(portStr, 10, 16)
+	if err != nil {
+		log.Fatalf("Invalid port number: %v", err)
+	}
+	port := uint32(portUint)
 	var cert, key string
-	var err error
 	if certPath != "" && keyPath != "" {
 		cert, err = cryptography.ProcessPEM(certPath)
 		if err != nil {
@@ -54,9 +59,9 @@ func startTcpPipelineCmd(ctx *grumble.Context, con *console.Console) {
 	}
 }
 
-func stopTcpPipelineCmd(ctx *grumble.Context, con *console.Console) {
-	name := ctx.Args.String("name")
-	listenerID := ctx.Args.String("listener_id")
+func stopTcpPipelineCmd(cmd *cobra.Command, con *console.Console) {
+	name := cmd.Flags().Arg(0)
+	listenerID := cmd.Flags().Arg(1)
 	_, err := con.Rpc.StopTcpPipeline(context.Background(), &lispb.TCPPipeline{
 		Name:       name,
 		ListenerId: listenerID,
@@ -66,8 +71,8 @@ func stopTcpPipelineCmd(ctx *grumble.Context, con *console.Console) {
 	}
 }
 
-func listTcpPipelines(ctx *grumble.Context, con *console.Console) {
-	listenerID := ctx.Args.String("listener_id")
+func listTcpPipelines(cmd *cobra.Command, con *console.Console) {
+	listenerID := cmd.Flags().Arg(0)
 	if listenerID == "" {
 		console.Log.Error("listener_id is required")
 		return

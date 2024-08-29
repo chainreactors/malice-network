@@ -1,20 +1,28 @@
 package sys
 
 import (
-	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
+	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/proto"
 )
 
-func KillCmd(ctx *grumble.Context, con *console.Console) {
+func KillCmd(cmd *cobra.Command, con *console.Console) {
+	pid := cmd.Flags().Arg(0)
+	if pid == "" {
+		console.Log.Errorf("required arguments missing")
+		return
+	}
+	kill(pid, con)
+}
+
+func kill(pid string, con *console.Console) {
 	session := con.GetInteractive()
 	sid := con.GetInteractive().SessionId
 	if session == nil {
 		return
 	}
-	pid := ctx.Flags.String("pid")
 	killTask, err := con.Rpc.Kill(con.ActiveTarget.Context(), &implantpb.Request{
 		Name:  consts.ModuleKill,
 		Input: pid,

@@ -23,6 +23,7 @@ const (
 
 // Group
 const (
+	ClientGroup    = "client"
 	GenericGroup   = "generic"
 	ImplantGroup   = "implant"
 	AliasesGroup   = "alias"

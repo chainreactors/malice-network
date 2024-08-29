@@ -8,11 +8,16 @@ import (
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
+	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/client/utils"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/tui"
+	app "github.com/reeflective/console"
+	"github.com/rsteube/carapace"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"google.golang.org/protobuf/proto"
 	"io/ioutil"
 	"os"
@@ -117,15 +122,16 @@ func (e *ExtCommand) getFileForTarget(targetOS string, targetArch string) (strin
 }
 
 // ExtensionLoadCmd - Load extension command
-func ExtensionLoadCmd(ctx *grumble.Context, con *console.Console) {
-	dirPath := ctx.Args.String("dir-path")
+func ExtensionLoadCmd(cmd *cobra.Command, con *console.Console) {
+	dirPath := cmd.Flags().Arg(0)
 	manifest, err := LoadExtensionManifest(filepath.Join(dirPath, ManifestFileName))
 	if err != nil {
 		return
 	}
 	// do not add if the command already exists
+	implantMenu := con.App.Menu(consts.ImplantGroup)
 	for _, extCmd := range manifest.ExtCommand {
-		if CmdExists(extCmd.CommandName, con.App) {
+		if CmdExists(extCmd.CommandName, implantMenu.Command) {
 			console.Log.Errorf("%s command already exists\n", extCmd.CommandName)
 			confirmModel := tui.NewConfirm(fmt.Sprintf("%s command already exists. Overwrite?", extCmd.CommandName))
 			newConfirm := tui.NewModel(confirmModel, nil, false, true)
@@ -138,7 +144,7 @@ func ExtensionLoadCmd(ctx *grumble.Context, con *console.Console) {
 				return
 			}
 		}
-		ExtensionRegisterCommand(extCmd, con)
+		ExtensionRegisterCommand(extCmd, cmd.Root(), con)
 		console.Log.Infof("Added %s command: %s\n", extCmd.CommandName, extCmd.Help)
 
 	}
@@ -185,54 +191,82 @@ func ParseExtensionManifest(data []byte) (*ExtensionManifest, error) {
 }
 
 // ExtensionRegisterCommand - Register a new extension command
-func ExtensionRegisterCommand(extCmd *ExtCommand, con *console.Console) {
-	loadedExtensions[extCmd.CommandName] = extCmd
-	helpMsg := extCmd.Help
-	extensionCmd := &grumble.Command{
-		Name: extCmd.CommandName,
-		Help: helpMsg,
-		//LongHelp: help.FormatHelpTmpl(extCmd.LongHelp),
-		Run: func(extCtx *grumble.Context) error {
-			runExtensionCmd(extCtx, con)
-			return nil
-		},
-		Flags: func(f *grumble.Flags) {
-			// f.Bool("s", "save", false, "Save output to disk")
-			f.Int("t", "timeout", defaultTimeout, "command timeout in seconds")
-		},
-		Args: func(a *grumble.Args) {
-			if 0 < len(extCmd.Arguments) {
-				// BOF specific
-				for _, arg := range extCmd.Arguments {
-					var (
-						argFunc      func(string, string, ...grumble.ArgOption)
-						defaultValue grumble.ArgOption
-					)
-					switch arg.Type {
-					case "int", "integer", "short":
-						argFunc = a.Int
-						defaultValue = grumble.Default(0)
-					case "string", "wstring", "file":
-						argFunc = a.String
-						defaultValue = grumble.Default("")
-					default:
-						console.Log.Errorf("Invalid argument type: %s\n", arg.Type)
-						return
-					}
-					if arg.Optional {
-						argFunc(arg.Name, arg.Desc, defaultValue)
-					} else {
-						argFunc(arg.Name, arg.Desc)
-					}
-				}
-			} else {
-				a.StringList("arguments", "arguments", grumble.Default([]string{}))
-			}
-		},
-		HelpGroup: consts.ExtensionGroup,
+func ExtensionRegisterCommand(extCmd *ExtCommand, cmd *cobra.Command, con *console.Console) {
+	if errInvalidArgs := checkExtensionArgs(extCmd); errInvalidArgs != nil {
+		console.Log.Error(errInvalidArgs.Error())
+		return
 	}
 
-	con.AddExtensionCommand(extensionCmd)
+	loadedExtensions[extCmd.CommandName] = extCmd
+	usage := strings.Builder{}
+	usage.WriteString(extCmd.CommandName)
+
+	for _, arg := range extCmd.Arguments {
+		usage.WriteString(" ")
+		if arg.Optional {
+			usage.WriteString("[")
+		}
+		usage.WriteString(strings.ToUpper(arg.Name))
+		if arg.Optional {
+			usage.WriteString("]")
+		}
+	}
+
+	longHelp := strings.Builder{}
+	//prepend the help value, because otherwise I don't see where it is meant to be shown
+	//build the command ref
+	longHelp.WriteString("[[.Bold]]Command:[[.Normal]]")
+	longHelp.WriteString(usage.String())
+	longHelp.WriteString("\n")
+	if len(extCmd.Help) > 0 || len(extCmd.LongHelp) > 0 {
+		longHelp.WriteString("[[.Bold]]About:[[.Normal]]")
+		if len(extCmd.Help) > 0 {
+			longHelp.WriteString(extCmd.Help)
+			longHelp.WriteString("\n")
+		}
+		if len(extCmd.LongHelp) > 0 {
+			longHelp.WriteString(extCmd.LongHelp)
+			longHelp.WriteString("\n")
+		}
+	}
+	if len(extCmd.Arguments) > 0 {
+		longHelp.WriteString("[[.Bold]]Arguments:[[.Normal]]")
+	}
+	//if more than 0 args specified, describe each arg at the bottom of the long help text (incase the manifest doesn't include it)
+	for _, arg := range extCmd.Arguments {
+		longHelp.WriteString("\n\t")
+		optStr := ""
+		if arg.Optional {
+			optStr = "[OPTIONAL]"
+		}
+		aType := arg.Type
+		if aType == "wstring" {
+			aType = "string" //avoid confusion, as this is mostly for telling operator what to shove into the args
+		}
+		//idk how to make this look nice, tabs don't work especially good - maybe should use the table stuff other things do? Pls help.
+		longHelp.WriteString(fmt.Sprintf("%s (%s):\t%s%s", strings.ToUpper(arg.Name), aType, optStr, arg.Desc))
+	}
+	extensionCmd := &cobra.Command{
+		Use: usage.String(), //extCmd.CommandName,
+		//Short: helpMsg.String(), doesn't appear to be used?
+		Long: help.FormatHelpTmpl(longHelp.String()),
+		Run: func(cmd *cobra.Command, args []string) {
+			runExtensionCmd(cmd, con)
+		},
+		GroupID:     consts.ExtensionGroup,
+		Annotations: makeCommandPlatformFilters(extCmd),
+	}
+
+	f := pflag.NewFlagSet(extCmd.CommandName, pflag.ContinueOnError)
+	f.BoolP("save", "s", false, "Save output to disk")
+	f.IntP("timeout", "t", defaultTimeout, "command timeout in seconds")
+	extensionCmd.Flags().AddFlagSet(f)
+	extensionCmd.Flags().ParseErrorsWhitelist.UnknownFlags = true
+
+	comps := carapace.Gen(extensionCmd)
+	makeExtensionArgCompleter(extCmd, cmd, comps)
+
+	cmd.AddCommand(extensionCmd)
 }
 
 func loadExtension(goos string, goarch string, extcmd *ExtCommand, con *console.Console) error {
@@ -295,7 +329,7 @@ func registerExtension(ext *ExtCommand, binData []byte, con *console.Console) er
 //	return fmt.Errorf("missing dependency %s", depName)
 //}
 
-func runExtensionCmd(ctx *grumble.Context, con *console.Console) {
+func runExtensionCmd(cmd *cobra.Command, con *console.Console) {
 	var (
 		err error
 		//extensionArgs []byte
@@ -303,7 +337,7 @@ func runExtensionCmd(ctx *grumble.Context, con *console.Console) {
 		entryPoint string
 	)
 	session := con.GetInteractive()
-	args := ctx.Args.StringList("arguments")
+	args := cmd.Flags().Args()
 	if session == nil {
 		return
 	}
@@ -314,9 +348,9 @@ func runExtensionCmd(ctx *grumble.Context, con *console.Console) {
 		goarch = session.Os.Arch
 	}
 
-	ext, ok := loadedExtensions[ctx.Command.Name]
+	ext, ok := loadedExtensions[cmd.Name()]
 	if !ok {
-		console.Log.Errorf("No extension command found for `%s` command\n", ctx.Command.Name)
+		console.Log.Errorf("No extension command found for `%s` command\n", cmd.Name())
 		return
 	}
 
@@ -517,9 +551,9 @@ func getBOFArgs(ctx *grumble.Context, args []string, binPath string, ext *ExtCom
 }
 
 // CmdExists - checks if a command exists
-func CmdExists(name string, app *grumble.App) bool {
-	for _, c := range app.Commands().All() {
-		if name == c.Name {
+func CmdExists(name string, cmd *cobra.Command) bool {
+	for _, c := range cmd.Commands() {
+		if name == c.Name() {
 			return true
 		}
 	}
@@ -589,4 +623,79 @@ func validManifest(manifest *ExtensionManifest) error {
 		}
 	}
 	return nil
+}
+
+// makeExtensionArgParser builds the valid positional arguments cobra handler for the extension.
+func checkExtensionArgs(extCmd *ExtCommand) error {
+	if 0 < len(extCmd.Arguments) {
+		for _, arg := range extCmd.Arguments {
+			switch arg.Type {
+			case "int", "integer", "short":
+			case "string", "wstring", "file":
+			default:
+				return fmt.Errorf("invalid argument type: %s", arg.Type)
+			}
+		}
+	}
+
+	return nil
+}
+
+func makeCommandPlatformFilters(extCmd *ExtCommand) map[string]string {
+	filtersOS := make(map[string]bool)
+	filtersArch := make(map[string]bool)
+
+	var all []string
+
+	// Only add filters for architectures when there OS matters.
+	for _, file := range extCmd.Files {
+		filtersOS[file.OS] = true
+
+		if filtersOS[file.OS] {
+			filtersArch[file.Arch] = true
+		}
+	}
+
+	for os, enabled := range filtersOS {
+		if enabled {
+			all = append(all, os)
+		}
+	}
+
+	for arch, enabled := range filtersArch {
+		if enabled {
+			all = append(all, arch)
+		}
+	}
+
+	if len(all) == 0 {
+		return map[string]string{}
+	}
+
+	return map[string]string{
+		app.CommandFilterKey: strings.Join(all, ","),
+	}
+}
+
+// makeExtensionArgCompleter builds the positional arguments completer for the extension.
+func makeExtensionArgCompleter(extCmd *ExtCommand, _ *cobra.Command, comps *carapace.Carapace) {
+	var actions []carapace.Action
+
+	for _, arg := range extCmd.Arguments {
+		var action carapace.Action
+
+		switch arg.Type {
+		case "file":
+			action = carapace.ActionFiles().Tag("extension data")
+		}
+
+		usage := fmt.Sprintf("(%s) %s", arg.Type, arg.Desc)
+		if arg.Optional {
+			usage += " (optional)"
+		}
+
+		actions = append(actions, action.Usage(usage))
+	}
+
+	comps.PositionalCompletion(actions...)
 }

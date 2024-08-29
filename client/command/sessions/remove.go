@@ -2,19 +2,17 @@ package sessions
 
 import (
 	"context"
-	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
+	"github.com/spf13/cobra"
 )
 
-func removeCmd(ctx *grumble.Context, con *console.Console) {
-	var id string
+func removeCmd(cmd *cobra.Command, con *console.Console) {
+	id := cmd.Flags().Arg(0)
 	if con.GetInteractive().SessionId != "" {
 		id = con.GetInteractive().SessionId
-	} else if ctx.Flags.String("id") != "" {
-		id = ctx.Flags.String("id")
-	} else {
+	} else if id == "" {
 		console.Log.Errorf("Require session id")
 		return
 	}

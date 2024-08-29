@@ -2,25 +2,30 @@ package filesystem
 
 import (
 	"fmt"
-	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/table"
+	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/proto"
 	"os"
 	"strconv"
 )
 
-func LsCmd(ctx *grumble.Context, con *console.Console) {
+func LsCmd(cmd *cobra.Command, con *console.Console) {
+	path := cmd.Flags().Arg(0)
+	if path == "" {
+		path = "./"
+	}
+
+	ls(path, con)
+}
+
+func ls(path string, con *console.Console) {
 	session := con.GetInteractive()
 	if session == nil {
 		return
-	}
-	path := ctx.Flags.String("path")
-	if path == "" {
-		path = "./"
 	}
 	lsTask, err := con.Rpc.Ls(con.ActiveTarget.Context(), &implantpb.Request{
 		Name:  consts.ModuleLs,
@@ -54,10 +59,4 @@ func LsCmd(ctx *grumble.Context, con *console.Console) {
 		tableModel.SetRows(rowEntries)
 		fmt.Printf(tableModel.View(), os.Stdout)
 	})
-
-	//newTable := tui.NewModel(tableModel, nil, false, false)
-	//err = newTable.Run()
-	//if err != nil {
-	//	con.SessionLog(sid).Errorf("Error running table: %v", err)
-	//}
 }

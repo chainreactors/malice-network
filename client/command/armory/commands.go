@@ -1,74 +1,82 @@
 package armory
 
 import (
-	"github.com/chainreactors/grumble"
+	"github.com/chainreactors/malice-network/client/command/flags"
 	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/rsteube/carapace"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
-// Commands - The main armory command
-func Commands(con *console.Console) []*grumble.Command {
-	armoryCmd := &grumble.Command{
-		Name:     consts.CommandArmory,
-		Help:     "List available armory packages",
-		LongHelp: help.GetHelpFor("armory"),
-		Flags: func(f *grumble.Flags) {
-			f.String("p", "proxy", "", "proxy URL")
-			f.String("t", "timeout", "", "timeout")
-			f.Bool("i", "insecure", false, "disable TLS validation")
-			f.Bool("", "ignore-cache", false, "ignore cache")
+func Commands(con *console.Console) []*cobra.Command {
+	armoryCmd := &cobra.Command{
+		Use:   consts.CommandArmory,
+		Short: "List available armory packages",
+		Long:  help.GetHelpFor("armory"),
+		Run: func(cmd *cobra.Command, args []string) {
+			ArmoryCmd(cmd, con)
 		},
-		Run: func(ctx *grumble.Context) error {
-			ArmoryCmd(ctx, con)
-			return nil
-		},
-		HelpGroup: consts.GenericGroup,
+		GroupID: consts.GenericGroup,
 	}
-	armoryCmd.AddCommand(&grumble.Command{
-		Name:     consts.CommandAliasInstall,
-		Help:     "Install a command armory",
-		LongHelp: help.GetHelpFor(consts.CommandArmory + " " + consts.CommandAliasInstall),
-		Args: func(a *grumble.Args) {
-			a.String("name", "package or bundle name to install")
-		},
-		Flags: func(f *grumble.Flags) {
-			f.String("a", "armory", "Default", "name of the armory to install from")
-			f.Bool("f", "force", false,
-				"force installation of package, overwriting the package if it exists")
-			f.String("p", "proxy", "", "proxy URL")
-		},
-		Run: func(ctx *grumble.Context) error {
-			ArmoryInstallCmd(ctx, con)
-			return nil
-		},
-		HelpGroup: consts.GenericGroup,
+	flags.Bind("connection", true, armoryCmd, func(f *pflag.FlagSet) {
+		f.BoolP("insecure", "I", false, "skip tls certificate validation")
+		f.StringP("proxy", "p", "", "specify a proxy url (e.g. http://localhost:8080)")
+		f.BoolP("ignore-cache", "c", false, "ignore metadata cache, force refresh")
+		f.StringP("timeout", "t", "", "download timeout")
 	})
-	armoryCmd.AddCommand(&grumble.Command{
-		Name:     consts.CommandArmoryUpdate,
-		Help:     "Update installed armory packages",
-		LongHelp: help.GetHelpFor(consts.CommandArmory + " " + consts.CommandArmoryUpdate),
-		Flags: func(f *grumble.Flags) {
-			f.String("a", "armory", "", "name of the armory to update")
-		},
-		Run: func(ctx *grumble.Context) error {
-			ArmoryUpdateCmd(ctx, con)
-			return nil
-		},
-		HelpGroup: consts.GenericGroup,
+	flags.Bind("type", false, armoryCmd, func(f *pflag.FlagSet) {
+		f.BoolP("bundle", "r", false, "install bundle")
 	})
-	armoryCmd.AddCommand(&grumble.Command{
-		Name:     consts.CommandArmorySearch,
-		Help:     "Search for armory packages",
-		LongHelp: help.GetHelpFor(consts.CommandArmory + " " + consts.CommandArmorySearch),
-		Args: func(a *grumble.Args) {
-			a.String("name", "name of the package to search for")
+
+	armoryInstallCmd := &cobra.Command{
+		Use:   consts.CommandAliasInstall,
+		Short: "Install a command armory",
+		Long:  help.GetHelpFor(consts.CommandArmory + " " + consts.CommandAliasInstall),
+		Args:  cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			ArmoryInstallCmd(cmd, con)
 		},
-		Run: func(ctx *grumble.Context) error {
-			ArmorySearchCmd(ctx, con)
-			return nil
-		},
-		HelpGroup: consts.GenericGroup,
+	}
+	flags.Bind("connection", false, armoryInstallCmd, func(f *pflag.FlagSet) {
+		f.BoolP("force", "f", false, "force installation of package, overwriting the package if it exists")
+		f.StringP("armory", "a", "", "name of armory to install package from")
 	})
-	return []*grumble.Command{armoryCmd}
+	flags.Bind("name", true, armoryInstallCmd, func(f *pflag.FlagSet) {
+		f.StringP("armory", "a", "Default", "name of the armory to install from")
+	})
+
+	armoryUpdateCmd := &cobra.Command{
+		Use:   consts.CommandArmoryUpdate,
+		Short: "Update installed armory packages",
+		Long:  help.GetHelpFor(consts.CommandArmory + " " + consts.CommandArmoryUpdate),
+		Run: func(cmd *cobra.Command, args []string) {
+			ArmoryUpdateCmd(cmd, con)
+		},
+	}
+	flags.Bind("connection", false, armoryUpdateCmd, func(f *pflag.FlagSet) {
+		f.StringP("armory", "a", "", "name of armory to install package from")
+	})
+	flags.Bind("name", true, armoryUpdateCmd, func(f *pflag.FlagSet) {
+		f.StringP("armory", "a", "Default", "name of the armory to install from")
+	})
+
+	armorySearchCmd := &cobra.Command{
+		Use:   consts.CommandArmorySearch + " [name]",
+		Short: "Search for armory packages",
+		Long:  help.GetHelpFor(consts.CommandArmory + " " + consts.CommandArmorySearch),
+		Args:  cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			ArmorySearchCmd(cmd, con)
+		},
+	}
+	carapace.Gen(armorySearchCmd).PositionalCompletion(carapace.ActionValues().Usage("a name regular expression"))
+
+	// Adding subcommands to the main command
+	armoryCmd.AddCommand(armoryInstallCmd)
+	armoryCmd.AddCommand(armoryUpdateCmd)
+	armoryCmd.AddCommand(armorySearchCmd)
+
+	return []*cobra.Command{armoryCmd}
 }

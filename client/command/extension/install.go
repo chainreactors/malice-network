@@ -2,11 +2,11 @@ package extension
 
 import (
 	"fmt"
-	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/client/utils"
 	"github.com/chainreactors/tui"
+	"github.com/spf13/cobra"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -14,8 +14,8 @@ import (
 )
 
 // ExtensionsInstallCmd - Install an extension
-func ExtensionsInstallCmd(ctx *grumble.Context, con *console.Console) {
-	extLocalPath := ctx.Args.String("path")
+func ExtensionsInstallCmd(cmd *cobra.Command, con *console.Console) {
+	extLocalPath := cmd.Flags().Arg(0)
 	_, err := os.Stat(extLocalPath)
 	if os.IsNotExist(err) {
 		console.Log.Errorf("Extension path '%s' does not exist", extLocalPath)

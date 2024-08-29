@@ -2,24 +2,29 @@ package sessions
 
 import (
 	"fmt"
-	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/pterm/pterm"
+	"github.com/spf13/cobra"
 	"strconv"
 	"strings"
 	"time"
 )
 
-func SessionsCmd(ctx *grumble.Context, con *console.Console) {
+func SessionsCmd(cmd *cobra.Command, con *console.Console) {
 	err := con.UpdateSessions(true)
 	if err != nil {
 		console.Log.Errorf("%s", err)
 		return
 	}
-	isAll := ctx.Flags.Bool("all")
+	isAll, err := cmd.Flags().GetBool("all")
+	if err != nil {
+		console.Log.Errorf("%s", err)
+		return
+	}
 	if 0 < len(con.Sessions) {
 		PrintSessions(con.Sessions, con, isAll)
 	} else {
@@ -110,7 +115,7 @@ func SessionLogin(tableModel *tui.TableModel, con *console.Console) func() {
 
 	return func() {
 		con.ActiveTarget.Set(session)
-		con.EnableImplantCommands()
+		con.App.SwitchMenu(consts.ImplantGroup)
 		console.Log.Infof("Active session %s (%s)\n", session.Note, session.SessionId)
 	}
 }

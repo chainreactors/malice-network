@@ -1,256 +1,253 @@
 package exec
 
 import (
-	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/client/command/completer"
+	"github.com/chainreactors/malice-network/client/command/flags"
 	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/rsteube/carapace"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
-func Commands(con *console.Console) []*grumble.Command {
-	return []*grumble.Command{
-		&grumble.Command{
-			Name:     consts.ModuleExecution,
-			Help:     "Execute command",
-			LongHelp: help.GetHelpFor("exec"),
-			Flags: func(f *grumble.Flags) {
-				f.Bool("o", "output", true, "capture command output")
-				f.Int("t", "timeout", assets.DefaultSettings.DefaultTimeout, "command timeout in seconds")
-				f.String("O", "stdout", "", "stdout file")
-				f.String("E", "stderr", "", "stderr file")
-			},
-			Args: func(a *grumble.Args) {
-				a.String("command", "command to execute")
-				a.StringList("arguments", "arguments to the command")
-			},
-			Run: func(ctx *grumble.Context) error {
-				ExecuteCmd(ctx, con)
-				return nil
-			},
+func Commands(con *console.Console) []*cobra.Command {
+	execCmd := &cobra.Command{
+		Use:   consts.ModuleExecution,
+		Short: "Execute commands",
+		Long:  help.GetHelpFor(consts.ModuleExecution),
+		Args:  cobra.ExactArgs(2),
+		Run: func(cmd *cobra.Command, args []string) {
+			ExecuteCmd(cmd, con)
+			return
 		},
+		GroupID: consts.ImplantGroup,
+	}
+	carapace.Gen(execCmd).PositionalCompletion(
+		carapace.ActionValues().Usage("command to execute"),
+		carapace.ActionValues().Usage("arguments to the command eg: 'arg1,arg2,arg3'"),
+	)
 
-		&grumble.Command{
-			Name:     consts.ModuleExecuteAssembly,
-			Help:     "Loads and executes a .NET assembly in a child process (Windows Only)",
-			LongHelp: help.GetHelpFor(consts.ModuleExecuteAssembly),
-			Args: func(a *grumble.Args) {
-				a.String("path", "path the assembly file")
-				a.StringList("args", "arguments to pass to the assembly entrypoint", grumble.Default([]string{}))
-			},
-			Flags: func(f *grumble.Flags) {
-				//f.String("p", "process", "notepad.exe", "hosting process to inject into")
-				//f.String("m", "method", "", "Optional method (a method is required for a .NET DLL)")
-				//f.String("c", "class", "", "Optional class name (required for .NET DLL)")
-				//f.String("d", "app-domain", "", "AppDomain name to create for .NET assembly. Generated randomly if not set.")
-				//f.String("a", "arch", "x84", "Assembly target architecture: x86, x64, x84 (x86+x64)")
-				//f.Bool("i", "in-process", false, "Run in the current sliver process")
-				//f.String("r", "runtime", "", "Runtime to use for running the assembly (only supported when used with --in-process)")
-				//f.Bool("s", "save", false, "save output to file")
-				f.Bool("o", "output", false, "need output")
-				f.String("n", "process", "C:\\Windows\\System32\\notepad.exe", "custom process path")
-				f.Uint("p", "ppid", 0, "parent process id (optional)")
-				//f.Bool("M", "amsi-bypass", false, "Bypass AMSI on Windows (only supported when used with --in-process)")
-				//f.Bool("E", "etw-bypass", false, "Bypass ETW on Windows (only supported when used with --in-process)")
+	flags.Bind(consts.ModuleExecution, false, execCmd, func(f *pflag.FlagSet) {
+		f.BoolP("output", "o", true, "capture command output")
+		f.IntP("timeout", "t", assets.DefaultSettings.DefaultTimeout, "command timeout in seconds")
+		f.StringP("stdout", "O", "", "stdout file")
+		f.StringP("stderr", "E", "", "stderr file")
+	})
 
-				//f.Int("t", "timeout", consts.DefaultTimeout, "command timeout in seconds")
-			},
-			Run: func(ctx *grumble.Context) error {
-				ExecuteAssemblyCmd(ctx, con)
-				return nil
-			},
-			HelpGroup: consts.ImplantGroup,
-			Completer: func(prefix string, args []string) []string {
-				if len(args) < 2 {
-					return completer.LocalPathCompleter(prefix, args, con)
-				}
-				return nil
-			},
+	execAssemblyCmd := &cobra.Command{
+		Use:   consts.ModuleExecuteAssembly,
+		Short: "Loads and executes a .NET assembly in a child process (Windows Only)",
+		Long:  help.GetHelpFor(consts.ModuleExecuteAssembly),
+		Args:  cobra.ExactArgs(2),
+		Run: func(cmd *cobra.Command, args []string) {
+			ExecuteAssemblyCmd(cmd, con)
+			return
 		},
+		GroupID: consts.ImplantGroup,
+	}
+	carapace.Gen(execAssemblyCmd).PositionalCompletion(
+		carapace.ActionFiles().Usage("path the assembly file"),
+		carapace.ActionValues().Usage("arguments to pass to the assembly entrypoint, eg: 'arg1,arg2,arg3'"),
+	)
 
-		&grumble.Command{
-			Name:     consts.ModuleExecuteShellcode,
-			Help:     "Executes the given shellcode in the sliver process",
-			LongHelp: help.GetHelpFor(consts.ModuleExecuteShellcode),
-			Run: func(ctx *grumble.Context) error {
-				ExecuteShellcodeCmd(ctx, con)
-				return nil
-			},
-			Args: func(a *grumble.Args) {
-				a.String("path", "path the shellcode file")
-				a.StringList("args", "arguments to pass to the assembly entrypoint", grumble.Default([]string{}))
+	flags.Bind(consts.ModuleExecuteAssembly, false, execAssemblyCmd, func(f *pflag.FlagSet) {
+		f.BoolP("output", "o", false, "need output")
+		//f.StringP("process", "n", "C:\\Windows\\System32\\notepad.exe", "custom process path")
+		//f.UintP("ppid", "p", 0, "parent process id (optional)")
+	})
 
-			},
-			Flags: func(f *grumble.Flags) {
-				f.Uint("p", "ppid", 0, "pid of the process to inject into (0 means injection into ourselves)")
-				f.Bool("b", "block_dll", false, "block dll injection")
-				f.String("n", "process", "C:\\Windows\\System32\\notepad.exe", "custom process path")
-				f.Bool("s", "sacrifice", false, "is need sacrifice process")
-				f.String("a", "argue", "", "argue")
-			},
-			HelpGroup: consts.ImplantGroup,
-			Completer: func(prefix string, args []string) []string {
-				if len(args) < 2 {
-					return completer.LocalPathCompleter(prefix, args, con)
-				}
-				return nil
-			},
+	execShellcodeCmd := &cobra.Command{
+		Use:   consts.ModuleExecuteShellcode,
+		Short: "Executes the given shellcode in the malefic process",
+		Long:  help.GetHelpFor(consts.ModuleExecuteShellcode),
+		Args:  cobra.ExactArgs(2),
+		Run: func(cmd *cobra.Command, args []string) {
+			ExecuteShellcodeCmd(cmd, con)
+			return
+
 		},
-		&grumble.Command{
-			Name:     consts.ModuleInlineShellcode,
-			Help:     "Executes the given inline shellcode in the IOM ",
-			LongHelp: help.GetHelpFor(consts.ModuleInlineShellcode),
-			Args: func(a *grumble.Args) {
-				a.String("path", "path the shellcode file")
-				a.StringList("args", "arguments to pass to the assembly entrypoint")
-			},
-			Run: func(ctx *grumble.Context) error {
-				InlineShellcodeCmd(ctx, con)
-				return nil
-			},
-			HelpGroup: consts.ImplantGroup,
-			Completer: func(prefix string, args []string) []string {
-				if len(args) < 2 {
-					return completer.LocalPathCompleter(prefix, args, con)
-				}
-				return nil
-			},
+		GroupID: consts.ImplantGroup,
+	}
+
+	carapace.Gen(execShellcodeCmd).PositionalCompletion(
+		carapace.ActionFiles().Usage("path the shellcode file"),
+		carapace.ActionValues().Usage("arguments to pass to the assembly entrypoint, eg: 'arg1,arg2,arg3'"),
+	)
+
+	flags.Bind(consts.ModuleExecuteShellcode, true, execShellcodeCmd, func(f *pflag.FlagSet) {
+		f.BoolP("sacrifice", "s", false, "is need sacrifice process")
+	})
+
+	flags.Bind(consts.ModuleExecuteShellcode, false, execShellcodeCmd, func(f *pflag.FlagSet) {
+		f.UintP("ppid", "p", 0, "pid of the process to inject into (0 means injection into ourselves)")
+		f.BoolP("block_dll", "b", false, "block dll injection")
+		f.StringP("process", "n", "C:\\Windows\\System32\\notepad.exe", "custom process path")
+		f.StringP("argue", "a", "", "argue")
+	})
+
+	inlineShellcodeCmd := &cobra.Command{
+		Use:   consts.ModuleInlineShellcode,
+		Short: "Executes the given inline shellcode in the IOM ",
+		Long:  help.GetHelpFor(consts.ModuleInlineShellcode),
+		Args:  cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			InlineShellcodeCmd(cmd, con)
+			return
 		},
-		&grumble.Command{
-			Name:     consts.ModuleExecuteDll,
-			Help:     "Executes the given DLL in the sacrifice process",
-			LongHelp: help.GetHelpFor(consts.ModuleExecuteDll),
-			Args: func(a *grumble.Args) {
-				a.String("path", "path the shellcode file")
-				a.StringList("args", "arguments to pass to the assembly entrypoint", grumble.Default([]string{"C:\\Windows\\System32\\cmd.exe\x00"}))
-			},
-			Flags: func(f *grumble.Flags) {
-				f.Uint("p", "ppid", 0, "pid of the process to inject into (0 means injection into ourselves)")
-				f.Bool("b", "block_dll", false, "block dll injection")
-				f.String("n", "process", "C:\\Windows\\System32\\notepad.exe", "custom process path")
-				f.Bool("s", "sacrifice", false, "is need sacrifice process")
-				f.String("e", "entrypoint", "entrypoint", "entrypoint")
-				f.String("a", "argue", "", "argue")
-			},
-			Run: func(c *grumble.Context) error {
-				ExecuteDLLCmd(c, con)
-				return nil
-			},
-			HelpGroup: consts.ImplantGroup,
-			Completer: func(prefix string, args []string) []string {
-				if len(args) < 2 {
-					return completer.LocalPathCompleter(prefix, args, con)
-				}
-				return nil
-			},
+		GroupID: consts.ImplantGroup,
+	}
+
+	carapace.Gen(inlineShellcodeCmd).PositionalCompletion(
+		carapace.ActionFiles().Usage("path the shellcode file"),
+	)
+
+	execDLLCmd := &cobra.Command{
+		Use:   consts.ModuleExecuteDll,
+		Short: "Executes the given DLL in the sacrifice process",
+		Long:  help.GetHelpFor(consts.ModuleExecuteDll),
+		Args:  cobra.ExactArgs(2),
+		Run: func(cmd *cobra.Command, args []string) {
+			ExecuteDLLCmd(cmd, con)
+			return
 		},
-		//&grumble.Command{
-		//	Name: consts.ModuleInlineDll,
-		//	Help: "Executes the given inline DLL in current process",
-		//	Args: func(a *grumble.Args) {
-		//		a.String("path", "path the shellcode file")
-		//		a.StringList("args", "arguments to pass to the assembly entrypoint", grumble.Default([]string{}))
-		//	},
-		//	Run: func(c *grumble.Context) error {
-		//		InlineDLLCmd(c, con)
-		//		return nil
-		//	},
-		//	HelpGroup: consts.ImplantGroup,
-		//	Completer: func(prefix string, args []string) []string {
-		//		if len(args) < 2 {
-		//			return completer.LocalPathCompleter(prefix, args, con)
-		//		}
-		//		return nil
-		//	},
-		//},
-		&grumble.Command{
-			Name:     consts.ModuleExecutePE,
-			Help:     "Executes the given PE in the sacrifice process",
-			LongHelp: help.GetHelpFor(consts.ModuleExecutePE),
-			Args: func(a *grumble.Args) {
-				a.String("path", "path the shellcode file")
-				a.StringList("args", "arguments to pass to the assembly entrypoint", grumble.Default([]string{}))
-			},
-			Flags: func(f *grumble.Flags) {
-				f.Uint("p", "ppid", 0, "pid of the process to inject into (0 means injection into ourselves)")
-				f.Bool("b", "block_dll", false, "block dll injection")
-				f.String("n", "process", "C:\\Windows\\System32\\notepad.exe", "custom process path")
-				f.Bool("s", "sacrifice", false, "is need sacrifice process")
-				f.String("a", "argue", "", "argue")
-			},
-			Run: func(c *grumble.Context) error {
-				ExecutePECmd(c, con)
-				return nil
-			},
-			HelpGroup: consts.ImplantGroup,
-			Completer: func(prefix string, args []string) []string {
-				if len(args) < 2 {
-					return completer.LocalPathCompleter(prefix, args, con)
-				}
-				return nil
-			},
+		GroupID: consts.ImplantGroup,
+	}
+
+	carapace.Gen(execDLLCmd).PositionalCompletion(
+		carapace.ActionFiles().Usage("path the DLL file"),
+		carapace.ActionValues().Usage("arguments to pass to the assembly entrypoint"),
+	)
+
+	flags.Bind(consts.ModuleExecuteDll, true, execDLLCmd, func(f *pflag.FlagSet) {
+		f.BoolP("sacrifice", "s", false, "is need sacrifice process")
+	})
+
+	flags.Bind(consts.ModuleExecuteDll, false, execDLLCmd, func(f *pflag.FlagSet) {
+		f.UintP("ppid", "p", 0, "pid of the process to inject into (0 means injection into ourselves)")
+		f.BoolP("block_dll", "b", false, "block dll injection")
+		f.StringP("process", "n", "C:\\Windows\\System32\\notepad.exe", "custom process path")
+		f.StringP("entrypoint", "e", "entrypoint", "entrypoint")
+		f.StringP("argue", "a", "", "argue")
+	})
+
+	execPECmd := &cobra.Command{
+		Use:   consts.ModuleExecutePE,
+		Short: "Executes the given PE in the sacrifice process",
+		Long:  help.GetHelpFor(consts.ModuleExecutePE),
+		Args:  cobra.ExactArgs(2),
+		Run: func(cmd *cobra.Command, args []string) {
+			ExecutePECmd(cmd, con)
+			return
 		},
-		//&grumble.Command{
-		//	Name: consts.ModuleInlinePE,
-		//	Help: "Executes the given inline PE in current process",
-		//	Args: func(a *grumble.Args) {
-		//		a.String("path", "path the shellcode file")
-		//		a.StringList("args", "arguments to pass to the assembly entrypoint", grumble.Default([]string{}))
-		//	},
-		//	Run: func(c *grumble.Context) error {
-		//		InlinePECmd(c, con)
-		//		return nil
-		//	},
-		//	HelpGroup: consts.ImplantGroup,
-		//	Completer: func(prefix string, args []string) []string {
-		//		if len(args) < 2 {
-		//			return completer.LocalPathCompleter(prefix, args, con)
-		//		}
-		//		return nil
-		//	},
-		//},
-		&grumble.Command{
-			Name:     consts.ModuleExecuteBof,
-			Help:     "Loads and executes Bof (Windows Only)",
-			LongHelp: help.GetHelpFor(consts.ModuleExecuteBof),
-			Args: func(a *grumble.Args) {
-				a.String("path", "path the assembly file")
-				a.StringList("args", "arguments to pass to the assembly entrypoint")
-			},
-			Flags: func(f *grumble.Flags) {
-				f.Int("t", "timeout", consts.DefaultTimeout, "command timeout in seconds")
-			},
-			Run: func(ctx *grumble.Context) error {
-				ExecuteBofCmd(ctx, con)
-				return nil
-			},
-			HelpGroup: consts.ImplantGroup,
-			Completer: func(prefix string, args []string) []string {
-				if len(args) < 2 {
-					return completer.LocalPathCompleter(prefix, args, con)
-				}
-				return nil
-			},
+		GroupID: consts.ImplantGroup,
+	}
+
+	carapace.Gen(execPECmd).PositionalCompletion(
+		carapace.ActionFiles().Usage("path the PE file"),
+		carapace.ActionValues().Usage("arguments to pass to the assembly entrypoint"),
+	)
+
+	flags.Bind(consts.ModuleExecutePE, true, execPECmd, func(f *pflag.FlagSet) {
+		f.BoolP("sacrifice", "s", false, "is need sacrifice process")
+	})
+
+	flags.Bind(consts.ModuleExecutePE, false, execPECmd, func(f *pflag.FlagSet) {
+		f.UintP("ppid", "p", 0, "pid of the process to inject into (0 means injection into ourselves)")
+		f.BoolP("block_dll", "b", false, "block dll injection")
+		f.StringP("process", "n", "C:\\Windows\\System32\\notepad.exe", "custom process path")
+		f.StringP("argue", "a", "", "argue")
+	})
+
+	execBofCmd := &cobra.Command{
+		Use:   consts.ModuleExecuteBof,
+		Short: "Loads and executes Bof (Windows Only)",
+		Long:  help.GetHelpFor(consts.ModuleExecuteBof),
+		Args:  cobra.ExactArgs(2),
+		Run: func(cmd *cobra.Command, args []string) {
+			ExecuteBofCmd(cmd, con)
+			return
 		},
-		&grumble.Command{
-			Name:     consts.ModulePowershell,
-			Help:     "Loads and executes powershell (Windows Only)",
-			LongHelp: help.GetHelpFor(consts.ModulePowershell),
-			Args: func(a *grumble.Args) {
-				a.StringList("args", "arguments to pass to the assembly entrypoint", grumble.Default([]string{}))
-			},
-			Flags: func(f *grumble.Flags) {
-				//f.Bool("s", "save", false, "save output to file")
-				f.String("p", "path", "", "path to the powershell script")
-				//f.String("A", "process-arguments", "", "arguments to pass to the hosting process")
-				f.Int("t", "timeout", consts.DefaultTimeout, "command timeout in seconds")
-			},
-			Run: func(ctx *grumble.Context) error {
-				ExecutePowershellCmd(ctx, con)
-				return nil
-			},
-			HelpGroup: consts.ImplantGroup,
+		GroupID: consts.ImplantGroup,
+	}
+
+	carapace.Gen(execBofCmd).PositionalCompletion(
+		carapace.ActionFiles().Usage("path the BOF file"),
+		carapace.ActionValues().Usage("arguments to pass to the assembly entrypoint"),
+	)
+
+	flags.Bind(consts.ModuleExecuteBof, false, execBofCmd, func(f *pflag.FlagSet) {
+		f.IntP("timeout", "t", consts.DefaultTimeout, "command timeout in seconds")
+	})
+
+	execPowershellCmd := &cobra.Command{
+		Use:   consts.ModulePowershell,
+		Short: "Loads and executes powershell (Windows Only)",
+		Long:  help.GetHelpFor(consts.ModulePowershell),
+		Args:  cobra.ExactArgs(2),
+		Run: func(cmd *cobra.Command, args []string) {
+			ExecutePowershellCmd(cmd, con)
+			return
 		},
+		GroupID: consts.ImplantGroup,
+	}
+
+	carapace.Gen(execPowershellCmd).PositionalCompletion(
+		carapace.ActionFiles().Usage("path the powershell script"),
+		carapace.ActionValues().Usage("arguments to pass to the assembly entrypoint"),
+	)
+
+	flags.Bind(consts.ModulePowershell, false, execPowershellCmd, func(f *pflag.FlagSet) {
+		f.IntP("timeout", "t", consts.DefaultTimeout, "command timeout in seconds")
+	})
+
+	//&grumble.Command{
+	//	Name: consts.ModuleInlineDll,
+	//	Help: "Executes the given inline DLL in current process",
+	//	Args: func(a *grumble.Args) {
+	//		a.String("path", "path the shellcode file")
+	//		a.StringList("args", "arguments to pass to the assembly entrypoint", grumble.Default([]string{}))
+	//	},
+	//	Run: func(c *grumble.Context) error {
+	//		InlineDLLCmd(c, con)
+	//		return nil
+	//	},
+	//	HelpGroup: consts.ImplantGroup,
+	//	Completer: func(prefix string, args []string) []string {
+	//		if len(args) < 2 {
+	//			return completer.LocalPathCompleter(prefix, args, con)
+	//		}
+	//		return nil
+	//	},
+	//},
+
+	//&grumble.Command{
+	//	Name: consts.ModuleInlinePE,
+	//	Help: "Executes the given inline PE in current process",
+	//	Args: func(a *grumble.Args) {
+	//		a.String("path", "path the shellcode file")
+	//		a.StringList("args", "arguments to pass to the assembly entrypoint", grumble.Default([]string{}))
+	//	},
+	//	Run: func(c *grumble.Context) error {
+	//		InlinePECmd(c, con)
+	//		return nil
+	//	},
+	//	HelpGroup: consts.ImplantGroup,
+	//	Completer: func(prefix string, args []string) []string {
+	//		if len(args) < 2 {
+	//			return completer.LocalPathCompleter(prefix, args, con)
+	//		}
+	//		return nil
+	//	},
+	//},
+	return []*cobra.Command{
+		execCmd,
+		execAssemblyCmd,
+		execShellcodeCmd,
+		inlineShellcodeCmd,
+		execDLLCmd,
+		execPECmd,
+		execBofCmd,
+		execPowershellCmd,
 	}
 }
