@@ -1,15 +1,15 @@
 package file
 
 import (
+	"github.com/spf13/cobra"
 	"os"
 
-	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 )
 
-func sync(ctx *grumble.Context, con *console.Console) {
-	tid := ctx.Flags.String("taskID")
+func SyncCmd(cmd *cobra.Command, con *console.Console) {
+	tid := cmd.Flags().Arg(0)
 	sid := con.GetInteractive().SessionId
 	syncTask, err := con.Rpc.Sync(con.ActiveTarget.Context(), &clientpb.Sync{
 		FileId: sid + "-" + tid,

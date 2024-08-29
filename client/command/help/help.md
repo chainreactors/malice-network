@@ -51,7 +51,7 @@ observe <session id>
 login
 ```
 
-![image-20240816200452857](../assets/image-20240816200452857.png)
+![login](../assets/login.gif)
 
 **About:** 上下选择对应的用户文件，按下回车登录到服务器
 
@@ -108,10 +108,14 @@ use <sid>
 **Command**
 
 ```
-note <session name>
+note <name>
 ```
 
 **About:** 添加注释到会话
+
+**Arguments:**
+
+- `name`: 会话的新标记名。
 
 **Flags:**
 
@@ -128,6 +132,10 @@ group <group name>
 ```
 
 **About:** 分组会话
+
+**Arguments:**
+
+- `group name`: 会话的新组名。
 
  **Flags:**
 
@@ -199,17 +207,20 @@ tcp <listener_id>
 **Command**
 
 ```
-tcp start <listener_id>
+tcp start <name> <listener_id> <host> <port>
 ```
 
 **About:** 启动 TCP  pipeline
 
+**Arguments:**
+
+- `name`: TCP  pipeline名称。
+- `listener_id`: listener id。
+- `host`: TCP  pipeline主机。
+- `port`: TCP  pipeline端口。
+
 **Flags**
 
-- `--host`: TCP  pipeline主机。
-- `--port`: TCP  pipeline端口。
-- `--name`: TCP  pipeline名称。
-- `--listener_id`: listener id。
 - `--cert_path`: TCP  pipeline tls证书路径。
 - `--key_path`: TCP  pipeline tls密钥路径。
 
@@ -260,19 +271,22 @@ website <listener_id>
 **Command**
 
 ```
-website start <listener_id>
+website start <name> <listener_id> <port> <web-path> <content-path> <content-type>
 ```
 
 **About:** 启动网站
 
+**Arguments:**
+
+- `name`: 网站名称。
+- `listener_id`: listener id。
+- `port`: 网站端口。
+- `web-path`: 网站url根路径。
+- `content-path`: 网站静态内容文件的路径。
+- `content-type`: 网站内容类型。
+
 **Flags**
 
-- `--web-path`: 网站url根路径。
-- `--content-type`: 网站内容类型。
-- `--port`: 网站端口。
-- `--name`: 网站名称。
-- `--content-path`: 网站静态内容文件的路径。
-- `--listener_id`: listener id。
 - `--cert_path`: website tls证书路径。
 - `--key_path`: website tls密钥路径。
 
@@ -283,7 +297,7 @@ website start <listener_id>
 **Command**
 
 ```
-website stop <listener_id>
+website stop <name> <listener_id>
 ```
 **About:** 停止网站
 
@@ -313,18 +327,16 @@ list_module
 **Command**
 
 ```
-load_module <path>
+load_module <name> <path>
 ```
 
 **About:** 加载模块
 
 **Arguments:**
 
+- `name`: 要加载的模块名称。
+
 - `path`: 模块文件的路径。
-
-**Flags:**
-
-- `--name`, `-n`: 要加载的模块名称。
 
 ---
 
@@ -353,7 +365,7 @@ alias load <dir-path>
 
 **Arguments:**
 
-- `<dir-path>`: 别名目录的路径。
+- `dir-path`: 别名目录的路径。
 
 ---
 
@@ -369,7 +381,7 @@ alias install <path>
 
 **Arguments:**
 
-- `<path>`: 别名目录或 tar.gz 文件的路径。
+- `path`: 别名目录或 tar.gz 文件的路径。
 
 ---
 
@@ -385,7 +397,7 @@ alias remove <name>
 
 **Arguments:**
 
-- `<name>`: 要删除的别名名称。
+- `name`: 要删除的别名名称。
 
 ---
 
@@ -399,7 +411,7 @@ armory
 
 **About:** 列出可用的武器库包
 
-![image-20240816191305748](../assets/image-20240816191305748.png)
+![armory](../assets/armory.gif)
 
 **Flags:**
 
@@ -428,7 +440,7 @@ armory install <name>
 
 **Arguments:**
 
-- `<name>`: 要安装的包或捆绑包名称。
+- `name`: 要安装的包或捆绑包名称。
 
 ---
 
@@ -445,6 +457,7 @@ armory update
 **Flags:**
 
 - `-a, --armory <armory>`: 要更新的武器库名称。
+- `-p, --proxy <proxy>`: 代理 URL。
 
 ---
 
@@ -460,7 +473,7 @@ armory search <name>
 
 **Arguments:**
 
-- `<name>`: 要搜索的包名称。
+- `name`: 要搜索的包名称。
 
 ---
 
@@ -500,7 +513,7 @@ extension load
 
 **Arguments:**
 
-- `<dir-path>`: 扩展目录的路径。
+- `dir-path`: 扩展目录的路径。
 
 ---
 
@@ -516,7 +529,7 @@ extension install <path>
 
 **Arguments:**
 
-- `<path>`: 扩展目录或 tar.gz 文件的路径。
+- `path`: 扩展目录或 tar.gz 文件的路径。
 
 ---
 
@@ -555,14 +568,14 @@ pwd
 **Command**
 
 ```
-cat --name <file_name>
+cat <name>
 ```
 
 **About:** 打印远程文件内容
 
-**Flags:**
+**Arguments:**
 
-- `--name`, `-n`: 要打印的文件名。
+- `name` `: 要打印的文件名。
 
 ---
 
@@ -570,13 +583,15 @@ cat --name <file_name>
 
 **Command**
 
-cd --path <directory_path>
+```
+cd <path>
+```
 
 **About:** 切换远程目录
 
-**Flags:**
+**Arguments:**
 
-- `--path`, `-p`: 要切换的目录路径。
+- `path`: 要切换的目录路径。
 
 ---
 
@@ -585,15 +600,16 @@ cd --path <directory_path>
 **Command**
 
 ```
-chmod --path <file_path> --mode <file_mode>
+chmod <mode> <path>
 ```
 
 **About:** 更改远程文件模式
 
-**Flags:**
+**Arguments:**
 
-- `--path`, `-p`: 要更改模式的文件路径。
-- `--mode`, `-m`: 新的文件模式。
+- `mode`: 新的文件模式。
+
+- `path`: 要更改模式的文件路径。
 
 ---
 
@@ -602,15 +618,18 @@ chmod --path <file_path> --mode <file_mode>
 **Command**
 
 ```
-chown --path <file_path> --uid <user_id> --gid <group_id> --recursive
+chown <uid> <path>
 ```
 
 **About:** 更改远程文件所有者
 
+**Arguments:**
+
+- `uid`: 用户ID
+- `path`: 要更改所有者的文件路径。
+
 **Flags:**
 
-- `--path`, `-p`: 要更改所有者的文件路径。
-- `--uid`, `-u`: 新的用户ID。
 - `--gid`, `-g`: 新的组ID。
 - `--recursive`, `-r`: 递归应用更改。
 
@@ -621,15 +640,15 @@ chown --path <file_path> --uid <user_id> --gid <group_id> --recursive
 **Command**
 
 ```
-cp --source <source_file> --target <target_file>
+cp <source_file> <target_file>
 ```
 
 **About:** 复制远程文件
 
-**Flags:**
+**Arguments:**
 
-- `--source`, `-s`: 要复制的源文件。
-- `--target`, `-t`: 复制后的目标文件。
+- `source`: 要复制的源文件。
+- `target`: 复制后的目标文件。
 
 ---
 
@@ -638,14 +657,14 @@ cp --source <source_file> --target <target_file>
 **Command**
 
 ```
-ls --path <directory_path>
+ls <path>
 ```
 
 **About:** 列出远程目录内容
 
-**Flags:**
+**Arguments:**
 
-- `--path`, `-p`: 要列出的目录路径。
+- `path`: 要列出的目录路径。
 
 ---
 
@@ -654,14 +673,14 @@ ls --path <directory_path>
 **Command**
 
 ```
-mkdir --path <directory_path>
+mkdir <path>
 ```
 
 **About:** 创建远程目录
 
-**Flags:**
+**Arguments:**
 
-- `--path`, `-p`: 要创建新目录的路径。
+- `path`: 要创建新目录的路径。
 
 ---
 
@@ -670,15 +689,15 @@ mkdir --path <directory_path>
 **Command**
 
 ```
-mv --source <source_file> --target <target_file>
+mv <source_file> <target_file>
 ```
 
 **About:** 移动远程文件
 
-**Flags:**
+**Arguments:**
 
-- `--source`, `-s`: 要移动的源文件。
-- `--target`, `-t`: 移动后的目标文件。
+- `source_file`: 要移动的源文件。
+- `target_file`: 移动后的目标文件。
 
 ---
 
@@ -686,13 +705,15 @@ mv --source <source_file> --target <target_file>
 
 **Command**
 
-rm --name <file_name>
+```
+rm <name>
+```
 
 **About:** 删除远程文件
 
-**Flags:**
+**Arguments:**
 
-- `--name`, `-n`: 要删除的文件名。
+- `name`: 要删除的文件名。
 
 ---
 
@@ -700,7 +721,9 @@ rm --name <file_name>
 
 **Command**
 
+```
 whoami
+```
 
 **About:** 打印当前用户
 
@@ -710,13 +733,15 @@ whoami
 
 **Command**
 
-kill --pid <process_id>
+```
+kill <pid>
+```
 
 **About:** 杀死远程进程
 
-**Flags:**
+**Arguments:**
 
-- `--pid`, `-p`: 要杀死的进程ID。
+- `pid`：要杀死的进程ID。
 
 ---
 
@@ -724,7 +749,9 @@ kill --pid <process_id>
 
 **Command**
 
+```
 ps
+```
 
 **About:** 列出远程进程
 
@@ -734,7 +761,9 @@ ps
 
 **Command**
 
+```
 env
+```
 
 **About:** 列出远程环境变量
 
@@ -745,15 +774,15 @@ env
 **Command**
 
 ```
-setenv --env <environment_variable> --value <value>
+setenv <env> <value>
 ```
 
 **About:** 设置远程环境变量
 
-**Flags:**
+**Arguments:**
 
-- `--env`, `-e`: 要设置的环境变量。
-- `--value`, `-v`: 要分配给环境变量的值。
+- `env`: 要设置的环境变量。
+- `value`: 要分配给环境变量的值。
 
 ---
 
@@ -762,14 +791,14 @@ setenv --env <environment_variable> --value <value>
 **Command**
 
 ```
-unsetenv --env <environment_variable>
+unsetenv <env>
 ```
 
 **About:** 取消设置远程环境变量
 
-**Flags:**
+**Arguments:**
 
-- `--env`, `-e`: 要取消设置的环境变量。
+- `env`: 要取消设置的环境变量。
 
 ---
 
@@ -801,15 +830,15 @@ info
 **Command**
 
 ```
-download --name <filename> --path <filepath>
+download <name> <path>
 ```
 
 **About:** 下载文件
 
-**Flags:**
+**Arguments:**
 
-- `--name`, `-n`: 要下载的文件名。
-- `--path`, `-p`: 要下载到的路径。
+- `name`: 下载到本地的文件名。
+- `path`: 要下载的文件的路径。
 
 ---
 
@@ -818,14 +847,14 @@ download --name <filename> --path <filepath>
 **Command**
 
 ```
-sync --taskID <task_id>
+sync <task_id>
 ```
 
 **About:** 同步文件
 
-**Flags:**
+Arguments:
 
-- `--taskID`, `-i`: 同步操作的任务ID。
+- `taskID`: 同步操作的任务ID。
 
 ---
 
@@ -892,8 +921,6 @@ execute_assembly <path>
 **Flags**
 
 - `-o`,`--output`: 需要输出。
-- `-n`, `--process`:进程名称（可选）。
-- `-p`, `--ppid`: 父进程 ID（可选）。
 
 ---
 
@@ -934,9 +961,6 @@ inline_shellcode <path>
 **Arguments:**
 
 - `path`: shellcode 文件的路径。
-- `args`: 传递给入口点的参数。
-
-**Flags:** None
 
 ---
 
@@ -1047,7 +1071,6 @@ bof <path>
 
 **Flags**
 
-- `-A`, `--process-arguments`: 传递给托管进程的参数。
 - `-t`, `--timeout`: 命令超时时间，以秒为单位。
 
 ---
@@ -1057,18 +1080,19 @@ bof <path>
 **Command**
 
 ```
-powershell
+powershell <path>
 ```
 
 **About:** 加载并执行 powershell（仅限Windows）
 
 **Arguments:**
 
+- `path`: powershell文件的路径。
+
 - `args`: 传递给入口点的参数。
 
 **Flags**
 
-- `-p`, `--path`: powershell 脚本的路径。
 - `-t`, `--timeout`: 命令超时时间，以秒为单位。
 
 ---

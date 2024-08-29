@@ -1,11 +1,15 @@
 package help
 
 import (
+	"bytes"
 	_ "embed"
 	"fmt"
+	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/muesli/termenv"
 	"regexp"
 	"strings"
+	"text/template"
 )
 
 //go:embed help.md
@@ -92,4 +96,36 @@ func replaceMarkdownInlineCode(content, pattern, delimiter string) string {
 func removeImages(markdownContent string) string {
 	re := regexp.MustCompile(`!\[.*?\]\(.*?\)`)
 	return re.ReplaceAllString(markdownContent, "")
+}
+
+// FormatHelpTmpl - Applies format template to help string
+func FormatHelpTmpl(helpStr string) string {
+	outputBuf := bytes.NewBufferString("")
+	tmpl, _ := template.New("help").Delims("[[", "]]").Parse(helpStr)
+	tmpl.Execute(outputBuf, struct {
+		Normal    string
+		Bold      string
+		Underline string
+		Black     string
+		Red       string
+		Green     string
+		Orange    string
+		Blue      string
+		Purple    string
+		Cyan      string
+		Gray      string
+	}{
+		Normal:    tui.Normal,
+		Bold:      tui.Bold,
+		Underline: tui.Underline,
+		Black:     termenv.String("").Foreground(tui.Black).String(),
+		Red:       termenv.String("").Foreground(tui.Red).String(),
+		Green:     termenv.String("").Foreground(tui.Green).String(),
+		Orange:    termenv.String("").Foreground(tui.Orange).String(),
+		Blue:      termenv.String("").Foreground(tui.Blue).String(),
+		Purple:    termenv.String("").Foreground(tui.Purple).String(),
+		Cyan:      termenv.String("").Foreground(tui.Cyan).String(),
+		Gray:      termenv.String("").Foreground(tui.Gray).String(),
+	})
+	return outputBuf.String()
 }

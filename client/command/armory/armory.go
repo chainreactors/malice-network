@@ -4,14 +4,15 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/alias"
 	"github.com/chainreactors/malice-network/client/command/extension"
 	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/cryptography/minisign"
 	"github.com/chainreactors/tui"
 	"github.com/pterm/pterm"
+	"github.com/spf13/cobra"
 	"net/url"
 	"slices"
 	"strings"
@@ -108,14 +109,14 @@ var (
 	defaultArmoryRemoved = false
 )
 
-func ArmoryCmd(ctx *grumble.Context, con *console.Console) {
+func ArmoryCmd(cmd *cobra.Command, con *console.Console) {
 	armoriesConfig := getCurrentArmoryConfiguration()
 	if len(armoriesConfig) == 1 {
 		console.Log.Infof("Reading armory index ... ")
 	} else {
 		console.Log.Infof("Reading %d armory indexes ... ", len(armoriesConfig))
 	}
-	clientConfig := parseArmoryHTTPConfig(ctx)
+	clientConfig := parseArmoryHTTPConfig(cmd)
 	indexes := fetchIndexes(clientConfig)
 	if len(indexes) != len(armoriesConfig) {
 		console.Log.Infof("errors!\n")
@@ -136,6 +137,8 @@ func ArmoryCmd(ctx *grumble.Context, con *console.Console) {
 	}
 	var aliases []*alias.AliasManifest
 	var exts []*extension.ExtensionManifest
+
+	isBundle, _ := cmd.Flags().GetBool("bundle")
 
 	for _, index := range indexes {
 		errorCount := 0
@@ -169,18 +172,21 @@ func ArmoryCmd(ctx *grumble.Context, con *console.Console) {
 		if errorCount == 0 {
 			console.Log.Infof("done!\n")
 		}
-		if 0 < len(aliases) || 0 < len(exts) {
-			PrintArmoryPackages(aliases, exts, con, clientConfig)
+		if isBundle {
+			bundles := bundlesInCache()
+			if 0 < len(bundles) {
+				PrintArmoryBundles(bundles, con)
+			} else {
+				console.Log.Infof("No bundles found\n")
+			}
 		} else {
-			console.Log.Infof("No packages found")
+			if 0 < len(aliases) || 0 < len(exts) {
+				PrintArmoryPackages(aliases, exts, con, clientConfig)
+			} else {
+				console.Log.Infof("No packages found")
+			}
 		}
 
-		bundles := bundlesInCache()
-		if 0 < len(bundles) {
-			PrintArmoryBundles(bundles, con)
-		} else {
-			console.Log.Infof("No bundles found\n")
-		}
 	}
 }
 
@@ -409,10 +415,10 @@ func PrintArmoryPackages(aliases []*alias.AliasManifest, exts []*extension.Exten
 			})
 		}
 	}
-
+	implantMenu := con.App.Menu(consts.ImplantGroup)
 	for _, pkg := range entries {
 		var commandName string
-		if extension.CmdExists(pkg.CommandName, con.App) {
+		if extension.CmdExists(pkg.CommandName, implantMenu.Command) {
 			commandName = pterm.FgGreen.Sprint(pkg.CommandName)
 		} else {
 			commandName = pkg.CommandName
@@ -500,15 +506,15 @@ func PrintArmoryBundles(bundles []*ArmoryBundle, con *console.Console) {
 	}
 }
 
-func parseArmoryHTTPConfig(ctx *grumble.Context) ArmoryHTTPConfig {
+func parseArmoryHTTPConfig(cmd *cobra.Command) ArmoryHTTPConfig {
 	var proxyURL *url.URL
-	rawProxyURL := ctx.Flags.String("proxy")
+	rawProxyURL, _ := cmd.Flags().GetString("proxy")
 	if rawProxyURL != "" {
 		proxyURL, _ = url.Parse(rawProxyURL)
 	}
 
 	timeout := defaultTimeout
-	rawTimeout := ctx.Flags.String("timeout")
+	rawTimeout, _ := cmd.Flags().GetString("timeout")
 	if rawTimeout != "" {
 		var err error
 		timeout, err = time.ParseDuration(rawTimeout)
@@ -516,12 +522,13 @@ func parseArmoryHTTPConfig(ctx *grumble.Context) ArmoryHTTPConfig {
 			timeout = defaultTimeout
 		}
 	}
-
+	ignoreCache, _ := cmd.Flags().GetBool("ignore-cache")
+	insecure, _ := cmd.Flags().GetBool("insecure")
 	return ArmoryHTTPConfig{
-		IgnoreCache:          ctx.Flags.Bool("ignore-cache"),
+		IgnoreCache:          ignoreCache,
 		ProxyURL:             proxyURL,
 		Timeout:              timeout,
-		DisableTLSValidation: ctx.Flags.Bool("insecure"),
+		DisableTLSValidation: insecure,
 	}
 }
 

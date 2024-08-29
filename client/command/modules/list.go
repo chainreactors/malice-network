@@ -2,17 +2,21 @@ package modules
 
 import (
 	"fmt"
-	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/table"
+	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/proto"
 	"os"
 )
 
-func listModules(ctx *grumble.Context, con *console.Console) {
+func ListModulesCmd(cmd *cobra.Command, con *console.Console) {
+	listModules(con)
+}
+
+func listModules(con *console.Console) {
 	session := con.GetInteractive()
 	if session == nil {
 		return
@@ -40,5 +44,4 @@ func listModules(ctx *grumble.Context, con *console.Console) {
 		tableModel.SetRows(rowEntries)
 		fmt.Printf(tableModel.View(), os.Stdout)
 	})
-
 }

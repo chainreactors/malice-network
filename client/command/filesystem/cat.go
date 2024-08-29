@@ -1,20 +1,28 @@
 package filesystem
 
 import (
-	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
+	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/proto"
 )
 
-func CatCmd(ctx *grumble.Context, con *console.Console) {
+func CatCmd(cmd *cobra.Command, con *console.Console) {
+	fileName := cmd.Flags().Arg(0)
+	if fileName == "" {
+		console.Log.Errorf("required arguments missing")
+		return
+	}
+	cat(fileName, con)
+}
+
+func cat(fileName string, con *console.Console) {
 	session := con.GetInteractive()
 	if session == nil {
 		return
 	}
 	sid := con.GetInteractive().SessionId
-	fileName := ctx.Flags.String("name")
 	catTask, err := con.Rpc.Cat(con.ActiveTarget.Context(), &implantpb.Request{
 		Name:  consts.ModuleCat,
 		Input: fileName,

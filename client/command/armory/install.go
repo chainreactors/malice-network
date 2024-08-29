@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/alias"
 	"github.com/chainreactors/malice-network/client/command/extension"
@@ -12,6 +11,7 @@ import (
 	"github.com/chainreactors/malice-network/client/utils"
 	"github.com/chainreactors/malice-network/helper/cryptography/minisign"
 	"github.com/chainreactors/tui"
+	"github.com/spf13/cobra"
 	"io/ioutil"
 	"net/url"
 	"os"
@@ -31,21 +31,21 @@ const (
 )
 
 // ArmoryInstallCmd - The armory install command
-func ArmoryInstallCmd(ctx *grumble.Context, con *console.Console) {
+func ArmoryInstallCmd(cmd *cobra.Command, con *console.Console) {
 	var promptToOverwrite bool
-	name := ctx.Args.String("name")
+	name := cmd.Flags().Arg(0)
 	if name == "" {
 		console.Log.Errorf("A package or bundle name is required")
 		return
 	}
-	forceInstallation := ctx.Flags.Bool("force")
+	forceInstallation, _ := cmd.Flags().GetBool("force")
 	if forceInstallation {
 		promptToOverwrite = false
 	} else {
 		promptToOverwrite = true
 	}
 
-	armoryName := ctx.Flags.String("armory")
+	armoryName, _ := cmd.Flags().GetString("armory")
 	// Find PK for the armory name
 	armoryPK := getArmoryPublicKey(armoryName)
 	if armoryPK == "" {
@@ -53,7 +53,7 @@ func ArmoryInstallCmd(ctx *grumble.Context, con *console.Console) {
 		//return
 	}
 
-	clientConfig := parseArmoryHTTPConfig(ctx)
+	clientConfig := parseArmoryHTTPConfig(cmd)
 	refresh(clientConfig)
 	if name == "all" {
 		aliases, extensions := packageManifestsInCache()

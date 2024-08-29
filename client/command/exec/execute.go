@@ -1,36 +1,41 @@
 package exec
 
 import (
-	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
+	"github.com/spf13/cobra"
 	"strings"
 
 	"google.golang.org/protobuf/proto"
 )
 
-func ExecuteCmd(ctx *grumble.Context, con *console.Console) {
-	session := con.GetInteractive()
-	if session == nil {
-		return
-	}
-
-	cmdPath := ctx.Args.String("command")
-	args := ctx.Args.StringList("arguments")
+func ExecuteCmd(cmd *cobra.Command, con *console.Console) {
+	cmdPath := cmd.Flags().Arg(0)
+	argsString := cmd.Flags().Arg(1)
+	args := strings.Split(argsString, ",")
 	//token := ctx.Flags.Bool("token")
-	output := ctx.Flags.Bool("output")
-	stdout := ctx.Flags.String("stdout")
-	stderr := ctx.Flags.String("stderr")
+	output, _ := cmd.Flags().GetBool("output")
+	//timeout := ctx.Flags.Int("timeout")
+	stdout, _ := cmd.Flags().GetString("stdout")
+	stderr, _ := cmd.Flags().GetString("stderr")
 	//saveLoot := ctx.Flags.Bool("loot")
 	//saveOutput := ctx.Flags.Bool("save")
 	//ppid := ctx.Flags.Uint("ppid")
 	//hostName := getHostname(session, beacon)
+	execute(cmdPath, args, output, stdout, stderr, con)
+}
 
+func execute(cmd string, args []string, output bool, stdout, stderr string, con *console.Console) {
+	session := con.GetInteractive()
+	if session == nil {
+		return
+	}
+	sid := con.GetInteractive().SessionId
 	var resp *clientpb.Task
 	var err error
 	resp, err = con.Rpc.Execute(con.ActiveTarget.Context(), &implantpb.ExecRequest{
-		Path:   cmdPath,
+		Path:   cmd,
 		Args:   args,
 		Output: output,
 		Stderr: stderr,
@@ -43,9 +48,7 @@ func ExecuteCmd(ctx *grumble.Context, con *console.Console) {
 
 	con.AddCallback(resp.TaskId, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite).GetExecResponse()
-		sid := con.GetInteractive().SessionId
 		con.SessionLog(sid).Infof("pid: %d, status: %d", resp.Pid, resp.StatusCode)
-		con.SessionLog(sid).Consolef("%s %s , output:\n%s", cmdPath, strings.Join(args, " "), string(resp.Stdout))
+		con.SessionLog(sid).Consolef("%s %s , output:\n%s", cmd, strings.Join(args, " "), string(resp.Stdout))
 	})
-
 }
