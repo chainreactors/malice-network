@@ -9,7 +9,6 @@ import (
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/client/utils"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	app "github.com/reeflective/console"
 	"github.com/spf13/cobra"
@@ -430,14 +429,14 @@ func runAliasCommand(cmd *cobra.Command, con *console.Console) {
 //	}
 //}
 
-// PrintAssemblyOutput - Prints the output of an execute-assembly command
-func PrintAssemblyOutput(cmdName string, resp *clientpb.Task, outFilePath *os.File, con *console.Console) {
-	console.Log.Infof("%s output:\n%s", cmdName, string(resp.Data))
-	if outFilePath != nil {
-		outFilePath.Write(resp.Data)
-		console.Log.Infof("Output saved to %s\n", outFilePath.Name())
-	}
-}
+//// PrintAssemblyOutput - Prints the output of an execute-assembly command
+//func PrintAssemblyOutput(cmdName string, resp *clientpb.Task, outFilePath *os.File, con *console.Console) {
+//	console.Log.Infof("%s output:\n%s", cmdName, string(resp.Need))
+//	if outFilePath != nil {
+//		outFilePath.Write(resp.Need)
+//		console.Log.Infof("Output saved to %s\n", outFilePath.Name())
+//	}
+//}
 
 func cmdExists(name string, cmd *cobra.Command) bool {
 	for _, c := range cmd.Commands() {

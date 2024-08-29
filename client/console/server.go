@@ -146,7 +146,7 @@ func (s *ServerStatus) triggerTaskCallback(event *clientpb.Event) {
 			Log.Errorf(err.Error())
 			return
 		}
-		callback.(TaskCallback)(spite)
+		callback.(TaskCallback)(spite.Spite)
 	}
 }
 
@@ -175,7 +175,7 @@ func (s *ServerStatus) triggerTaskDone(event *clientpb.Event) {
 			s.handleTaskError(content.Spite.GetStatus())
 			return
 		}
-		callback.(TaskCallback)(content)
+		callback.(TaskCallback)(content.Spite)
 		s.Callbacks.Delete(task.TaskId)
 	}
 }

@@ -128,5 +128,5 @@ func listWebsitesCmd(cmd *cobra.Command, con *console.Console) {
 		rowEntries = append(rowEntries, row)
 	}
 	tableModel.SetRows(rowEntries)
-	fmt.Printf(tableModel.View(), os.Stdout)
+	fmt.Printf(tableModel.View())
 }

@@ -10,7 +10,6 @@ import (
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/spf13/cobra"
 	"log"
-	"os"
 	"strconv"
 )
 
@@ -101,5 +100,5 @@ func listTcpPipelines(cmd *cobra.Command, con *console.Console) {
 		rowEntries = append(rowEntries, row)
 	}
 	tableModel.SetRows(rowEntries)
-	fmt.Printf(tableModel.View(), os.Stdout)
+	fmt.Printf(tableModel.View())
 }

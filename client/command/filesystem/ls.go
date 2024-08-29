@@ -9,7 +9,6 @@ import (
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/proto"
-	"os"
 	"strconv"
 )
 
@@ -57,6 +56,6 @@ func ls(path string, con *console.Console) {
 			rowEntries = append(rowEntries, row)
 		}
 		tableModel.SetRows(rowEntries)
-		fmt.Printf(tableModel.View(), os.Stdout)
+		fmt.Printf(tableModel.View())
 	})
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/chainreactors/malice-network/client/command/login"
 	"github.com/chainreactors/malice-network/client/command/observe"
 	"github.com/chainreactors/malice-network/client/command/sessions"
+	"github.com/chainreactors/malice-network/client/command/tasks"
 	"github.com/chainreactors/malice-network/client/command/use"
 	"github.com/chainreactors/malice-network/client/command/version"
 	cc "github.com/chainreactors/malice-network/client/console"
@@ -34,7 +35,7 @@ func BindClientsCommands(con *cc.Console) console.Commands {
 			login.Command,
 			sessions.Commands,
 			use.Command,
-			//tasks.Command,
+			tasks.Command,
 			alias.Commands,
 			extension.Commands,
 			armory.Commands,
