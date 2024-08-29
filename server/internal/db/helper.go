@@ -297,7 +297,7 @@ func SaveCertificate(certificate *models.Certificate) error {
 }
 
 func AddTask(typ string, task *core.Task, td *models.FileDescription) error {
-	tdString, err := td.ToJson()
+	tdString, err := td.ToJsonString()
 	if err != nil {
 		return err
 	}

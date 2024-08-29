@@ -67,10 +67,11 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 		}
 		var blockId = 0
 		err = db.AddTask("upload", greq.Task, &models.FileDescription{
-			Name:    req.Name,
-			Path:    req.Target,
-			Command: fmt.Sprintf("upload -%d -%t", req.Priv, req.Hidden),
-			Size:    int64(len(req.Data)),
+			Name:     req.Name,
+			NickName: "",
+			Path:     req.Target,
+			Command:  fmt.Sprintf("upload -%d -%t", req.Priv, req.Hidden),
+			Size:     int64(len(req.Data)),
 		})
 		if err != nil {
 			logs.Log.Errorf("cannot create task %d , %s in db", greq.Task.Id, err.Error())
@@ -141,7 +142,8 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 			return
 		}
 		respCheckSum := resp.GetDownloadResponse().Checksum
-		fileName := path.Join(configs.TempPath, req.Name)
+		nickName := helper.RandStringBytes(10)
+		fileName := path.Join(configs.TempPath, nickName)
 		greq.Session.AddMessage(resp, 0)
 		if files.IsExist(fileName) {
 			greq.Task.Finish()
@@ -149,10 +151,11 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 		}
 		greq.Task.Total = int(resp.GetDownloadResponse().Size)/config.Int(consts.MaxPacketLength) + 1
 		td := &models.FileDescription{
-			Name:    req.Name,
-			Path:    req.Path,
-			Command: fmt.Sprintf("download -%s -%s ", req.Name, req.Path),
-			Size:    int64(resp.GetDownloadResponse().Size),
+			Name:     req.Name,
+			NickName: nickName,
+			Path:     req.Path,
+			Command:  fmt.Sprintf("download -%s -%s ", req.Name, req.Path),
+			Size:     int64(resp.GetDownloadResponse().Size),
 		}
 		err = db.AddTask("download", greq.Task, td)
 		if err != nil {
@@ -218,7 +221,7 @@ func (rpc *Server) Sync(ctx context.Context, req *clientpb.Sync) (*clientpb.Sync
 	//if !files.IsExist(td.Path + td.Name) {
 	//	return nil, os.ErrExist
 	//}
-	data, err := os.ReadFile(path.Join(configs.TempPath, td.Name))
+	data, err := os.ReadFile(path.Join(configs.TempPath, td.NickName))
 	if err != nil {
 		return nil, err
 	}
