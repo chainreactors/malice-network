@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/console"
-	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/pterm/pterm"
@@ -21,13 +20,13 @@ func SessionsCmd(ctx *grumble.Context, con *console.Console) {
 	}
 	isAll := ctx.Flags.Bool("all")
 	if 0 < len(con.Sessions) {
-		PrintSessions(con.Sessions, con, isAll)
+		PrintSessions(con, isAll)
 	} else {
 		console.Log.Info("No sessions")
 	}
 }
 
-func PrintSessions(sessions map[string]*clientpb.Session, con *console.Console, isAll bool) {
+func PrintSessions(con *console.Console, isAll bool) {
 	//var colorIndex = 1
 	var rowEntries []table.Row
 	var row table.Row
@@ -44,7 +43,7 @@ func PrintSessions(sessions map[string]*clientpb.Session, con *console.Console, 
 		{Title: "Last Message", Width: 15},
 		{Title: "Health", Width: 15},
 	}, false)
-	for _, session := range sessions {
+	for _, session := range con.Sessions {
 		var SessionHealth string
 		if !session.IsAlive {
 			if !isAll {

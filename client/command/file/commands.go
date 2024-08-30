@@ -5,10 +5,13 @@ import (
 	"github.com/chainreactors/malice-network/client/command/completer"
 	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/helper/consts"
 )
 
 func Commands(con *console.Console) []*grumble.Command {
+	intermediate.InternalFunctions["bupload"] = console.WrapImplantFunc(con, upload, nil)
+
 	return []*grumble.Command{
 		{
 			Name:     consts.ModuleDownload,
@@ -49,7 +52,7 @@ func Commands(con *console.Console) []*grumble.Command {
 				f.Bool("", "hidden", false, "filename")
 			},
 			Run: func(ctx *grumble.Context) error {
-				upload(ctx, con)
+				uploadCmd(ctx, con)
 				return nil
 			},
 			HelpGroup: consts.ImplantGroup,

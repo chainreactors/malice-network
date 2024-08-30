@@ -16,6 +16,7 @@ import (
 	"github.com/chainreactors/malice-network/client/command/use"
 	"github.com/chainreactors/malice-network/client/command/version"
 	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/mal"
 
 	"github.com/chainreactors/malice-network/helper/consts"
 )
@@ -37,6 +38,7 @@ func BindClientsCommands(con *console.Console) {
 		armory.Commands,
 		observe.Command,
 		explorer.Commands,
+		mal.Commands,
 	)
 
 	bind(consts.ListenerGroup,

@@ -13,7 +13,6 @@ func CatCmd(ctx *grumble.Context, con *console.Console) {
 	if session == nil {
 		return
 	}
-	sid := con.GetInteractive().SessionId
 	fileName := ctx.Flags.String("name")
 	catTask, err := con.Rpc.Cat(con.ActiveTarget.Context(), &implantpb.Request{
 		Name:  consts.ModuleCat,
@@ -25,6 +24,6 @@ func CatCmd(ctx *grumble.Context, con *console.Console) {
 	}
 	con.AddCallback(catTask.TaskId, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite).GetResponse()
-		con.SessionLog(sid).Consolef("File content: %s\n", resp.GetOutput())
+		con.SessionLog(session.SessionId).Consolef("File content: %s\n", resp.GetOutput())
 	})
 }
