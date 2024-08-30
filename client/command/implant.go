@@ -1,6 +1,7 @@
 package command
 
 import (
+	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/alias"
 	"github.com/chainreactors/malice-network/client/command/armory"
 	"github.com/chainreactors/malice-network/client/command/exec"
@@ -63,6 +64,34 @@ func BindImplantCommands(con *cc.Console) console.Commands {
 
 		bind(consts.AliasesGroup)
 		bind(consts.ExtensionGroup)
+
+		// Load Aliases
+		aliasManifests := assets.GetInstalledAliasManifests()
+		for _, manifest := range aliasManifests {
+			_, err := alias.LoadAlias(manifest, con)
+			if err != nil {
+				cc.Log.Errorf("Failed to load alias: %s", err)
+				continue
+			}
+		}
+
+		// Load Extensions
+		extensionManifests := assets.GetInstalledExtensionManifests()
+		for _, manifest := range extensionManifests {
+			mext, err := extension.LoadExtensionManifest(manifest)
+			// Absorb error in case there's no extensions manifest
+			if err != nil {
+				//con doesn't appear to be initialised here?
+				//con.PrintErrorf("Failed to load extension: %s", err)
+				cc.Log.Errorf("Failed to load extension: %s\n", err)
+				continue
+			}
+
+			for _, ext := range mext.ExtCommand {
+				extension.ExtensionRegisterCommand(ext, implant, con)
+			}
+		}
+
 		return implant
 	}
 	return implantCommands

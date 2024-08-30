@@ -139,11 +139,11 @@ func LoadAlias(manifestPath string, con *console.Console) (*AliasManifest, error
 	}
 	aliasManifest.RootPath = filepath.Dir(manifestPath)
 	// for each alias command, add a new app command
-	implantMenu := con.App.Menu(consts.ImplantGroup)
+	//implantMenu := con.App.Menu(consts.ImplantGroup)
 	// do not add if the command already exists
-	if cmdExists(aliasManifest.CommandName, implantMenu.Command) {
-		return nil, fmt.Errorf("'%s' command already exists", aliasManifest.CommandName)
-	}
+	//if cmdExists(aliasManifest.CommandName, implantMenu.Command) {
+	//	return nil, fmt.Errorf("'%s' command already exists", aliasManifest.CommandName)
+	//}
 
 	helpMsg := fmt.Sprintf("[%s] %s", aliasManifest.Name, aliasManifest.Help)
 	longHelpMsg := help.FormatHelpTmpl(aliasManifest.LongHelp)
