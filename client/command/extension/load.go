@@ -379,7 +379,7 @@ func runExtensionCmd(cmd *cobra.Command, con *console.Console) {
 			console.Log.Errorf("BOF args error: %s\n", err)
 			return
 		}
-		//extName = ext.DependsOn
+		extName = ext.CommandName
 		entryPoint = loadedExtensions[extName].Entrypoint // should exist at this point
 	} else {
 		// Regular DLL

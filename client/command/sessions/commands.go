@@ -21,7 +21,7 @@ func Commands(con *console.Console) []*cobra.Command {
 		},
 	}
 	flags.Bind("sessions", true, sessionsCmd, func(f *pflag.FlagSet) {
-		f.Bool("all", false, "show all sessions")
+		f.BoolP("all", "a", false, "show all sessions")
 	})
 
 	noteCommand := &cobra.Command{
