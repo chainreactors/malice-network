@@ -56,6 +56,8 @@ func (rpc *Server) LoginClient(ctx context.Context, req *clientpb.LoginReq) (*cl
 	err := dbSession.Create(&models.Operator{
 		Name: req.Name,
 	}).Error
+
+	core.Clients.Add(core.NewClient(req.Name))
 	if err != nil {
 		return &clientpb.LoginResp{
 			Success: false,
