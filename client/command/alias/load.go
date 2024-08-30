@@ -9,7 +9,6 @@ import (
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/client/utils"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 
 	"google.golang.org/protobuf/proto"
@@ -139,7 +138,7 @@ func LoadAlias(manifestPath string, con *console.Console) (*AliasManifest, error
 	// for each alias command, add a new app command
 
 	// do not add if the command already exists
-	if cmdExists(aliasManifest.CommandName, con.App) {
+	if console.CmdExists(aliasManifest.CommandName, con.App) {
 		return nil, fmt.Errorf("'%s' command already exists", aliasManifest.CommandName)
 	}
 
@@ -439,19 +438,10 @@ func runAliasCommand(ctx *grumble.Context, con *console.Console) {
 //}
 
 // PrintAssemblyOutput - Prints the output of an execute-assembly command
-func PrintAssemblyOutput(cmdName string, resp *clientpb.Task, outFilePath *os.File, con *console.Console) {
-	console.Log.Infof("%s output:\n%s", cmdName, string(resp.Data))
-	if outFilePath != nil {
-		outFilePath.Write(resp.Data)
-		console.Log.Infof("Output saved to %s\n", outFilePath.Name())
-	}
-}
-
-func cmdExists(name string, app *grumble.App) bool {
-	for _, c := range app.Commands().All() {
-		if name == c.Name {
-			return true
-		}
-	}
-	return false
-}
+//func PrintAssemblyOutput(cmdName string, resp *clientpb.Task, outFilePath *os.File, con *console.Console) {
+//	console.Log.Infof("%s output:\n%s", cmdName, string(resp.Data))
+//	if outFilePath != nil {
+//		outFilePath.Write(resp.Data)
+//		console.Log.Infof("Output saved to %s\n", outFilePath.Name())
+//	}
+//}

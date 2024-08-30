@@ -52,11 +52,6 @@ func RemoveExtensionByCommandName(commandName string, con *console.Console) erro
 	if _, err := os.Stat(extPath); os.IsNotExist(err) {
 		return nil
 	}
-	forceRemoveAll(extPath)
+	utils.ForceRemoveAll(extPath)
 	return nil
-}
-
-func forceRemoveAll(rootPath string) {
-	utils.ChmodR(rootPath, 0600, 0700)
-	os.RemoveAll(rootPath)
 }
