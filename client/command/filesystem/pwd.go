@@ -1,14 +1,18 @@
 package filesystem
 
 import (
-	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
+	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/proto"
 )
 
-func PwdCmd(ctx *grumble.Context, con *console.Console) {
+func PwdCmd(cmd *cobra.Command, con *console.Console) {
+	pwd(con)
+}
+
+func pwd(con *console.Console) {
 	session := con.GetInteractive()
 	if session == nil {
 		return

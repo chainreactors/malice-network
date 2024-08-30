@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/chainreactors/files"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/mtls"
@@ -17,7 +18,6 @@ import (
 	"github.com/chainreactors/malice-network/server/web"
 	"google.golang.org/grpc"
 	"net"
-	"os"
 	"strconv"
 )
 
@@ -25,17 +25,17 @@ var (
 	Listener *listener
 )
 
-func GenerateClientConfig(server *configs.ServerConfig, cfg *configs.ListenerConfig) (*mtls.ClientConfig, error) {
+func GenerateConfig(server *configs.ServerConfig, cfg *configs.ListenerConfig) (*mtls.ClientConfig, error) {
 	var err error
-	if _, err = os.Stat(cfg.Name + ".yaml"); os.IsExist(err) {
+	if files.IsExist(cfg.Name + ".yaml") {
 		config, err := mtls.ReadConfig(cfg.Name + ".yaml")
 		if err != nil {
 			return nil, err
 		}
 		return config, nil
 	}
-	clientConfig, err := certs.ClientGenerateCertificate(server.GRPCHost,
-		cfg.Name, int(server.GRPCPort), certs.ListenerCA)
+	clientConfig, err := certs.GenerateListenerCert(server.GRPCHost,
+		cfg.Name, int(server.GRPCPort))
 	if err != nil {
 		return nil, err
 	}

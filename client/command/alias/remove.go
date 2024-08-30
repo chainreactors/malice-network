@@ -20,17 +20,17 @@ package alias
 
 import (
 	"errors"
-	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/console"
+	"github.com/spf13/cobra"
 	"os"
 	"path/filepath"
 )
 
 // AliasesRemoveCmd - Locally load a alias into the Sliver shell.
-func AliasesRemoveCmd(ctx *grumble.Context, con *console.Console) {
+func AliasesRemoveCmd(cmd *cobra.Command, con *console.Console) {
 	//name := ctx.Args
-	name := ctx.Args.String("name")
+	name := cmd.Flags().Arg(0)
 	if name == "" {
 		console.Log.Errorf("Extension name is required\n")
 		return

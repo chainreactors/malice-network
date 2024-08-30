@@ -3,29 +3,37 @@ package listener
 import (
 	"context"
 	"fmt"
-	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/command/website"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/table"
+	"github.com/spf13/cobra"
+	"log"
 	"os"
 	"path/filepath"
 	"strconv"
 )
 
-func startWebsiteCmd(ctx *grumble.Context, con *console.Console) {
-	certPath := ctx.Flags.String("cert_path")
-	keyPath := ctx.Flags.String("key_path")
-	webPath := ctx.Flags.String("web-path")
-	port := uint32(ctx.Flags.Int("port"))
-	name := ctx.Flags.String("name")
-	listenerID := ctx.Flags.String("listener_id")
-	cPath := ctx.Flags.String("content-path")
-	contentType := ctx.Flags.String("content-type")
+func startWebsiteCmd(cmd *cobra.Command, con *console.Console) {
+	certPath, _ := cmd.Flags().GetString("cert_path")
+	keyPath, _ := cmd.Flags().GetString("key_path")
+
+	name := cmd.Flags().Arg(0)
+	listenerID := cmd.Flags().Arg(1)
+	portStr := cmd.Flags().Arg(2)
+	webPath := cmd.Flags().Arg(3)
+	cPath := cmd.Flags().Arg(4)
+	contentType := cmd.Flags().Arg(5)
+
+	portUint, err := strconv.ParseUint(portStr, 10, 16)
+	if err != nil {
+		log.Fatalf("Invalid port number: %v", err)
+	}
+	port := uint32(portUint)
 	var cert, key string
-	var err error
+
 	if certPath != "" && keyPath != "" {
 		cert, err = cryptography.ProcessPEM(certPath)
 		if err != nil {
@@ -75,9 +83,9 @@ func startWebsiteCmd(ctx *grumble.Context, con *console.Console) {
 	}
 }
 
-func stopWebsitePipelineCmd(ctx *grumble.Context, con *console.Console) {
-	name := ctx.Args.String("name")
-	listenerID := ctx.Args.String("listener_id")
+func stopWebsitePipelineCmd(cmd *cobra.Command, con *console.Console) {
+	name := cmd.Flags().Arg(0)
+	listenerID := cmd.Flags().Arg(1)
 	_, err := con.Rpc.StopWebsite(context.Background(), &lispb.Website{
 		Name:       name,
 		ListenerId: listenerID,
@@ -87,8 +95,8 @@ func stopWebsitePipelineCmd(ctx *grumble.Context, con *console.Console) {
 	}
 }
 
-func listWebsitesCmd(ctx *grumble.Context, con *console.Console) {
-	listenerID := ctx.Args.String("listener_id")
+func listWebsitesCmd(cmd *cobra.Command, con *console.Console) {
+	listenerID := cmd.Flags().Arg(0)
 	if listenerID == "" {
 		console.Log.Error("listener_id is required")
 		return
@@ -120,5 +128,5 @@ func listWebsitesCmd(ctx *grumble.Context, con *console.Console) {
 		rowEntries = append(rowEntries, row)
 	}
 	tableModel.SetRows(rowEntries)
-	fmt.Printf(tableModel.View(), os.Stdout)
+	fmt.Printf(tableModel.View())
 }

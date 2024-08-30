@@ -2,18 +2,18 @@ package alias
 
 import (
 	"fmt"
-	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/client/utils"
 	"github.com/chainreactors/tui"
+	"github.com/spf13/cobra"
 	"os"
 	"path/filepath"
 )
 
 // AliasesInstallCmd - Install an alias
-func AliasesInstallCmd(ctx *grumble.Context, con *console.Console) {
-	aliasLocalPath := ctx.Args.String("path")
+func AliasesInstallCmd(cmd *cobra.Command, con *console.Console) {
+	aliasLocalPath := cmd.Flags().Arg(0)
 	fi, err := os.Stat(aliasLocalPath)
 	if os.IsNotExist(err) {
 		console.Log.Errorf("alias path '%s' does not exist", aliasLocalPath)

@@ -1,26 +1,30 @@
 package modules
 
 import (
-	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
+	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/proto"
 	"os"
 )
 
-func loadModule(ctx *grumble.Context, con *console.Console) {
-	session := con.GetInteractive()
-	if session == nil {
-		return
-	}
-	sid := con.GetInteractive().SessionId
-	bundle := ctx.Flags.String("name")
-	path := ctx.Args.String("path")
+func LoadModuleCmd(cmd *cobra.Command, con *console.Console) {
+	bundle := cmd.Flags().Arg(0)
+	path := cmd.Flags().Arg(1)
 	data, err := os.ReadFile(path)
 	if err != nil {
 		console.Log.Errorf("Error reading file: %v", err)
 		return
 	}
+	loadModule(bundle, data, con)
+}
+
+func loadModule(bundle string, data []byte, con *console.Console) {
+	session := con.GetInteractive()
+	if session == nil {
+		return
+	}
+	sid := con.GetInteractive().SessionId
 	loadTask, err := con.Rpc.LoadModule(con.ActiveTarget.Context(), &implantpb.LoadModule{
 		Bundle: bundle,
 		Bin:    data,

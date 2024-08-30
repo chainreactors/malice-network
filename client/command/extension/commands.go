@@ -1,68 +1,70 @@
 package extension
 
 import (
-	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/rsteube/carapace"
+	"github.com/spf13/cobra"
 )
 
-func Commands(con *console.Console) []*grumble.Command {
-	extensionCmd := &grumble.Command{
-		Name:     "extension",
-		Help:     "Extension commands",
-		LongHelp: help.GetHelpFor(consts.CommandExtension),
-		Run: func(ctx *grumble.Context) error {
-			ExtensionsCmd(ctx, con)
-			return nil
+func Commands(con *console.Console) []*cobra.Command {
+	extensionCmd := &cobra.Command{
+		Use:   "extension",
+		Short: "Extension commands",
+		Long:  help.GetHelpFor(consts.CommandExtension),
+		Run: func(cmd *cobra.Command, args []string) {
+			ExtensionsCmd(cmd, con)
 		},
-		HelpGroup: consts.GenericGroup,
+		GroupID: consts.GenericGroup,
 	}
-	extensionCmd.AddCommand(&grumble.Command{
-		Name:     consts.CommandExtensionList,
-		Help:     "List all extensions",
-		LongHelp: help.GetHelpFor(consts.CommandExtension + " " + consts.CommandExtensionList),
-		Run: func(ctx *grumble.Context) error {
-			ExtensionsListCmd(ctx, con)
-			return nil
+
+	extensionListCmd := &cobra.Command{
+		Use:   consts.CommandExtensionList,
+		Short: "List all extensions",
+		Long:  help.GetHelpFor(consts.CommandExtension + " " + consts.CommandExtensionList),
+		Run: func(cmd *cobra.Command, args []string) {
+			ExtensionsListCmd(cmd, con)
 		},
-		HelpGroup: "Extension",
-	})
-	extensionCmd.AddCommand(&grumble.Command{
-		Name: consts.CommandExtensionLoad,
-		Help: "Load an extension",
-		Args: func(a *grumble.Args) {
-			a.String("dir-path", "path to the extension directory")
+	}
+
+	extensionLoadCmd := &cobra.Command{
+		Use:   consts.CommandExtensionLoad,
+		Short: "Load an extension",
+		Long:  help.GetHelpFor(consts.CommandExtension + " " + consts.CommandExtensionLoad),
+		Args:  cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			ExtensionLoadCmd(cmd, con)
 		},
-		LongHelp: help.GetHelpFor(consts.CommandExtension + " " + consts.CommandExtensionLoad),
-		Run: func(ctx *grumble.Context) error {
-			ExtensionLoadCmd(ctx, con)
-			return nil
+	}
+	carapace.Gen(extensionLoadCmd).PositionalCompletion(
+		carapace.ActionFiles().Usage("path to the extension directory"),
+	)
+
+	extensionInstallCmd := &cobra.Command{
+		Use:   consts.CommandExtensionInstall,
+		Short: "Install an extension",
+		Long:  help.GetHelpFor(consts.CommandExtension + " " + consts.CommandExtensionInstall),
+		Args:  cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			ExtensionsInstallCmd(cmd, con)
 		},
-	})
-	extensionCmd.AddCommand(&grumble.Command{
-		Name:     "install",
-		Help:     "Install an extension",
-		LongHelp: help.GetHelpFor(consts.CommandExtension + " " + consts.CommandExtensionInstall),
-		Run: func(ctx *grumble.Context) error {
-			ExtensionsInstallCmd(ctx, con)
-			return nil
+	}
+	carapace.Gen(extensionInstallCmd).PositionalCompletion(
+		carapace.ActionFiles().Usage("path to the extension directory or tar.gz file"),
+	)
+
+	extensionRemoveCmd := &cobra.Command{
+		Use:   consts.CommandExtensionRemove,
+		Short: "Remove an extension",
+		Long:  help.GetHelpFor(consts.CommandExtension + " " + consts.CommandExtensionRemove),
+		Args:  cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			ExtensionsRemoveCmd(cmd, con)
 		},
-		Args: func(a *grumble.Args) {
-			a.String("path", "path to the extension directory or tar.gz file")
-		},
-	})
-	extensionCmd.AddCommand(&grumble.Command{
-		Name:     "remove",
-		Help:     "Remove an extension",
-		LongHelp: help.GetHelpFor(consts.CommandExtension + " " + consts.CommandExtensionRemove),
-		Run: func(ctx *grumble.Context) error {
-			ExtensionsRemoveCmd(ctx, con)
-			return nil
-		},
-		Args: func(a *grumble.Args) {
-			a.String("name", "name of the extension to remove")
-		},
-	})
-	return []*grumble.Command{extensionCmd}
+	}
+	carapace.Gen(extensionRemoveCmd).PositionalCompletion(ExtensionsCommandNameCompleter(con).Usage("the command name of the extension to remove"))
+
+	extensionCmd.AddCommand(extensionListCmd, extensionLoadCmd, extensionInstallCmd, extensionRemoveCmd)
+	return []*cobra.Command{extensionCmd}
 }

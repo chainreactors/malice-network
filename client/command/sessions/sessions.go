@@ -2,31 +2,37 @@ package sessions
 
 import (
 	"fmt"
-	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/pterm/pterm"
+	"github.com/spf13/cobra"
 	"strconv"
 	"strings"
 	"time"
 )
 
-func SessionsCmd(ctx *grumble.Context, con *console.Console) {
+func SessionsCmd(cmd *cobra.Command, con *console.Console) {
 	err := con.UpdateSessions(true)
 	if err != nil {
 		console.Log.Errorf("%s", err)
 		return
 	}
-	isAll := ctx.Flags.Bool("all")
+	isAll, err := cmd.Flags().GetBool("all")
+	if err != nil {
+		console.Log.Errorf("%s", err)
+		return
+	}
 	if 0 < len(con.Sessions) {
-		PrintSessions(con, isAll)
+		PrintSessions(con.Sessions, con, isAll)
 	} else {
 		console.Log.Info("No sessions")
 	}
 }
 
-func PrintSessions(con *console.Console, isAll bool) {
+func PrintSessions(sessions map[string]*clientpb.Session, con *console.Console, isAll bool) {
 	//var colorIndex = 1
 	var rowEntries []table.Row
 	var row table.Row
@@ -43,7 +49,7 @@ func PrintSessions(con *console.Console, isAll bool) {
 		{Title: "Last Message", Width: 15},
 		{Title: "Health", Width: 15},
 	}, false)
-	for _, session := range con.Sessions {
+	for _, session := range sessions {
 		var SessionHealth string
 		if !session.IsAlive {
 			if !isAll {
@@ -109,7 +115,7 @@ func SessionLogin(tableModel *tui.TableModel, con *console.Console) func() {
 
 	return func() {
 		con.ActiveTarget.Set(session)
-		con.EnableImplantCommands()
+		con.App.SwitchMenu(consts.ImplantGroup)
 		console.Log.Infof("Active session %s (%s)\n", session.Note, session.SessionId)
 	}
 }

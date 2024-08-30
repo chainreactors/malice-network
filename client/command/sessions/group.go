@@ -2,24 +2,22 @@ package sessions
 
 import (
 	"context"
-	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
+	"github.com/spf13/cobra"
 )
 
-func groupCmd(ctx *grumble.Context, con *console.Console) {
-	group := ctx.Args.String("group")
-	var id string
+func groupCmd(cmd *cobra.Command, con *console.Console) {
+	group := cmd.Flags().Arg(0)
+	id, err := cmd.Flags().GetString("id")
 	if con.GetInteractive().SessionId != "" {
 		id = con.GetInteractive().SessionId
-	} else if ctx.Flags.String("id") != "" {
-		id = ctx.Flags.String("id")
-	} else {
+	} else if id == "" {
 		console.Log.Errorf("Require session id")
 		return
 	}
-	_, err := con.Rpc.BasicSessionOP(context.Background(), &clientpb.BasicUpdateSession{
+	_, err = con.Rpc.BasicSessionOP(context.Background(), &clientpb.BasicUpdateSession{
 		SessionId: id,
 		GroupName: group,
 	})

@@ -1,73 +1,68 @@
 package alias
 
 import (
-	"github.com/chainreactors/grumble"
-	completer "github.com/chainreactors/malice-network/client/command/completer"
 	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/rsteube/carapace"
+	"github.com/spf13/cobra"
 )
 
-func Commands(con *console.Console) []*grumble.Command {
-	aliasCmd := &grumble.Command{
-		Name:     consts.CommandAlias,
-		Help:     "List current aliases",
-		LongHelp: help.GetHelpFor(consts.CommandAlias),
-		Run: func(ctx *grumble.Context) error {
-			AliasesCmd(ctx, con)
-			return nil
+func Commands(con *console.Console) []*cobra.Command {
+	aliasCmd := &cobra.Command{
+		Use:   consts.CommandAlias,
+		Short: "List current aliases",
+		Long:  help.GetHelpFor(consts.CommandAlias),
+		Run: func(cmd *cobra.Command, args []string) {
+			AliasesCmd(cmd, con)
+			return
 		},
-		HelpGroup: consts.GenericGroup,
+		GroupID: consts.GenericGroup,
 	}
-	aliasCmd.AddCommand(&grumble.Command{
-		Name:     consts.CommandAliasLoad,
-		Help:     "Load a command alias",
-		LongHelp: help.GetHelpFor(consts.CommandAlias + " " + consts.CommandAliasLoad),
-		Run: func(ctx *grumble.Context) error {
-			AliasesLoadCmd(ctx, con)
-			return nil
-		},
-		Args: func(a *grumble.Args) {
-			a.String("dir-path", "path to the alias directory")
-		},
-		Completer: func(prefix string, args []string) []string {
-			return completer.LocalPathCompleter(prefix, args, con)
-		},
-		HelpGroup: consts.GenericGroup,
-	})
 
-	aliasCmd.AddCommand(&grumble.Command{
-		Name:     consts.CommandAliasInstall,
-		Help:     "Install a command alias",
-		LongHelp: help.GetHelpFor(consts.CommandAlias + " " + consts.CommandAliasInstall),
-		Run: func(ctx *grumble.Context) error {
-			AliasesInstallCmd(ctx, con)
-			return nil
+	aliasLoadCmd := &cobra.Command{
+		Use:   consts.CommandAliasLoad,
+		Short: "Load a command alias",
+		Long:  help.GetHelpFor(consts.CommandAlias + " " + consts.CommandAliasLoad),
+		Args:  cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			AliasesLoadCmd(cmd, con)
+			return
 		},
-		Args: func(a *grumble.Args) {
-			a.String("path", "path to the alias directory or tar.gz file")
-		},
-		Completer: func(prefix string, args []string) []string {
-			return completer.LocalPathCompleter(prefix, args, con)
-		},
-		HelpGroup: consts.GenericGroup,
-	})
+	}
+	carapace.Gen(aliasLoadCmd).PositionalCompletion(
+		carapace.ActionFiles().Usage("local path where the downloaded file will be saved (optional)"),
+	)
 
-	aliasCmd.AddCommand(&grumble.Command{
-		Name:     consts.CommandAliasRemove,
-		Help:     "Remove an alias",
-		LongHelp: help.GetHelpFor(consts.CommandAlias + " " + consts.CommandAliasRemove),
-		Run: func(ctx *grumble.Context) error {
-			AliasesRemoveCmd(ctx, con)
-			return nil
+	aliasInstallCmd := &cobra.Command{
+		Use:   consts.CommandAliasInstall,
+		Short: "Install a command alias",
+		Long:  help.GetHelpFor(consts.CommandAlias + " " + consts.CommandAliasInstall),
+		Args:  cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			AliasesInstallCmd(cmd, con)
+			return
 		},
-		Args: func(a *grumble.Args) {
-			a.String("name", "name of the alias to remove")
+	}
+	carapace.Gen(aliasInstallCmd).PositionalCompletion(
+		carapace.ActionFiles().Usage("local path where the downloaded file will be saved (optional)"),
+	)
+
+	aliasRemoveCmd := &cobra.Command{
+		Use:   consts.CommandAliasRemove,
+		Short: "Remove an alias",
+		Long:  help.GetHelpFor(consts.CommandAlias + " " + consts.CommandAliasRemove),
+		Args:  cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			AliasesRemoveCmd(cmd, con)
+			return
 		},
-		Completer: func(prefix string, args []string) []string {
-			return AliasCommandNameCompleter(prefix, args, con)
-		},
-		HelpGroup: consts.GenericGroup,
-	})
-	return []*grumble.Command{aliasCmd}
+	}
+	carapace.Gen(aliasRemoveCmd).PositionalCompletion(
+		AliasCompleter(),
+	)
+
+	aliasCmd.AddCommand(aliasLoadCmd, aliasInstallCmd, aliasRemoveCmd)
+	return []*cobra.Command{aliasCmd}
+
 }

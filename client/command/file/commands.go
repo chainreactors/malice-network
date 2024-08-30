@@ -1,66 +1,74 @@
 package file
 
 import (
-	"github.com/chainreactors/grumble"
-	"github.com/chainreactors/malice-network/client/command/completer"
+	"github.com/chainreactors/malice-network/client/command/flags"
 	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/console"
-	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/rsteube/carapace"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
-func Commands(con *console.Console) []*grumble.Command {
-	intermediate.InternalFunctions["bupload"] = console.WrapImplantFunc(con, upload, nil)
+func Commands(con *console.Console) []*cobra.Command {
+	downloadCmd := &cobra.Command{
+		Use:   consts.ModuleDownload,
+		Short: "Download file",
+		Long:  help.GetHelpFor(consts.ModuleDownload),
+		Args:  cobra.ExactArgs(2),
+		Run: func(cmd *cobra.Command, args []string) {
+			DownloadCmd(cmd, con)
+			return
+		},
+		GroupID: consts.ImplantGroup,
+	}
 
-	return []*grumble.Command{
-		{
-			Name:     consts.ModuleDownload,
-			Help:     "download file",
-			LongHelp: help.GetHelpFor(consts.ModuleDownload),
-			Flags: func(f *grumble.Flags) {
-				f.String("n", "name", "", "filename")
-				f.String("p", "path", "", "filepath")
-			},
-			Run: func(ctx *grumble.Context) error {
-				download(ctx, con)
-				return nil
-			},
-			HelpGroup: consts.ImplantGroup,
+	carapace.Gen(downloadCmd).PositionalCompletion(
+		carapace.ActionValues().Usage("file name"),
+		carapace.ActionValues().Usage("download file source path"),
+	)
+
+	uploadCmd := &cobra.Command{
+		Use:   consts.ModuleUpload,
+		Short: "Upload file",
+		Long:  help.GetHelpFor(consts.ModuleUpload),
+		Args:  cobra.ExactArgs(2),
+		Run: func(cmd *cobra.Command, args []string) {
+			UploadCmd(cmd, con)
+			return
 		},
-		{
-			Name:     consts.CommandSync,
-			Help:     "sync file",
-			LongHelp: help.GetHelpFor(consts.CommandSync),
-			Flags: func(f *grumble.Flags) {
-				f.String("i", "taskID", "", "task ID")
-			},
-			Run: func(ctx *grumble.Context) error {
-				sync(ctx, con)
-				return nil
-			}, HelpGroup: consts.ImplantGroup,
+		GroupID: consts.ImplantGroup,
+	}
+
+	carapace.Gen(uploadCmd).PositionalCompletion(
+		carapace.ActionFiles().Usage("file source path"),
+		carapace.ActionValues().Usage("file target path"),
+	)
+
+	flags.Bind(consts.ModuleUpload, false, uploadCmd, func(f *pflag.FlagSet) {
+		f.IntP("priv", "", 0o644, "file privilege")
+		f.BoolP("hidden", "", false, "hidden file")
+	})
+
+	syncCmd := &cobra.Command{
+		Use:   consts.CommandSync,
+		Short: "Sync file",
+		Long:  help.GetHelpFor(consts.CommandSync),
+		Args:  cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			SyncCmd(cmd, con)
+			return
 		},
-		{
-			Name:     consts.ModuleUpload,
-			Help:     "upload file",
-			LongHelp: help.GetHelpFor(consts.ModuleUpload),
-			Args: func(a *grumble.Args) {
-				a.String("source", "file source path")
-				a.String("destination", "target path")
-			},
-			Flags: func(f *grumble.Flags) {
-				f.Int("", "priv", 0o644, "file Privilege")
-				f.Bool("", "hidden", false, "filename")
-			},
-			Run: func(ctx *grumble.Context) error {
-				uploadCmd(ctx, con)
-				return nil
-			},
-			HelpGroup: consts.ImplantGroup,
-			Completer: func(prefix string, args []string) []string {
-				if len(args) < 2 {
-					return completer.LocalPathCompleter(prefix, args, con)
-				}
-				return nil
-			}},
+		GroupID: consts.ImplantGroup,
+	}
+
+	carapace.Gen(syncCmd).PositionalCompletion(
+		carapace.ActionValues().Usage("task ID"),
+	)
+
+	return []*cobra.Command{
+		downloadCmd,
+		uploadCmd,
+		syncCmd,
 	}
 }

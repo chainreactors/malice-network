@@ -1,16 +1,16 @@
 package explorer
 
 import (
-	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/proto"
 	"os"
 )
 
-func explorerCmd(ctx *grumble.Context, con *console.Console) {
+func explorerCmd(cmd *cobra.Command, con *console.Console) {
 	session := con.GetInteractive()
 	if session == nil {
 		return

@@ -29,22 +29,6 @@ func getCertDir() string {
 	return configs.CertsPath
 }
 
-// GenerateCertificateAuthority - Creates a new CA cert for a given type
-func GenerateCertificateAuthority(caType int, commonName string) (*x509.Certificate, *rsa.PrivateKey) {
-	storageDir := getCertDir()
-	certFilePath := filepath.Join(storageDir, fmt.Sprintf("%d-ca-cert.pem", caType))
-	if _, err := os.Stat(certFilePath); os.IsNotExist(err) {
-		certsLog.Infof("Generating certificate authority for '%d'", caType)
-		cert, key := GenerateECCCertificate(caType, commonName, true, false)
-		SaveCertificateAuthority(caType, cert, key)
-	}
-	cert, key, err := GetCertificateAuthority()
-	if err != nil {
-		certsLog.Errorf("Failed to load CA %v", err)
-	}
-	return cert, key
-}
-
 func ParseCertificateAuthority(certPEM, keyPEM []byte) (*x509.Certificate, *rsa.PrivateKey, error) {
 	certBlock, _ := pem.Decode(certPEM)
 	var err error

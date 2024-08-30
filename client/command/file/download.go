@@ -1,21 +1,27 @@
 package file
 
 import (
-	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
+	"github.com/spf13/cobra"
 
 	"google.golang.org/protobuf/proto"
 )
 
-func download(ctx *grumble.Context, con *console.Console) {
+func DownloadCmd(cmd *cobra.Command, con *console.Console) {
+
+	name := cmd.Flags().Arg(0)
+	path := cmd.Flags().Arg(1)
+
+	download(name, path, con)
+}
+
+func download(name string, path string, con *console.Console) {
 	session := con.GetInteractive()
 	if session == nil {
 		return
 	}
 	sid := con.GetInteractive().SessionId
-	name := ctx.Flags.String("name")
-	path := ctx.Flags.String("path")
 	downloadTask, err := con.Rpc.Download(con.ActiveTarget.Context(), &implantpb.DownloadRequest{
 		Name: name,
 		Path: path,

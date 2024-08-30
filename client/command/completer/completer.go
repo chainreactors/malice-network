@@ -2,6 +2,7 @@ package completer
 
 import (
 	"github.com/chainreactors/malice-network/client/console"
+	"github.com/rsteube/carapace"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -57,17 +58,21 @@ func SessionIDCompleter(con *console.Console, prefix string) (results []string) 
 	return results
 }
 
-func BasicSessionIDCompleter(con *console.Console, prefix string) (results []string) {
-	if con.ActiveTarget.Get() != nil {
-		results = append(results, con.GetInteractive().SessionId)
-		return results
-	}
-	for _, s := range con.Sessions {
-		if strings.HasPrefix(s.SessionId, prefix) {
-			results = append(results, s.SessionId)
+func BasicSessionIDCompleter(con *console.Console) carapace.Action {
+	callback := func(_ carapace.Context) carapace.Action {
+		results := make([]string, 0)
+
+		if con.ActiveTarget.Get() != nil {
+			results = append(results, con.GetInteractive().SessionId, "Session ID")
+			return carapace.ActionValuesDescribed(results...).Tag("id")
 		}
+		for _, s := range con.Sessions {
+			results = append(results, s.SessionId, "Session ID")
+		}
+		return carapace.ActionValuesDescribed(results...).Tag("id")
 	}
-	return results
+	return carapace.ActionCallback(callback)
+
 }
 
 func AliveSessionIDCompleter(con *console.Console) (results []string) {

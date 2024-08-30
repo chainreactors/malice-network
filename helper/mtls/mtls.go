@@ -26,7 +26,8 @@ func VerifyCertificate(caCertificate []byte, rawCerts [][]byte) error {
 	}
 
 	options := x509.VerifyOptions{
-		Roots: roots,
+		Roots:     roots,
+		KeyUsages: cert.ExtKeyUsage,
 	}
 	if options.Roots == nil {
 		log.Printf("no root certificate")
