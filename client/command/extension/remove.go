@@ -3,18 +3,19 @@ package extension
 import (
 	"errors"
 	"fmt"
-	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/client/utils"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/tui"
+	"github.com/spf13/cobra"
 	"os"
 	"path/filepath"
 )
 
 // ExtensionsRemoveCmd - Remove an extension
-func ExtensionsRemoveCmd(ctx *grumble.Context, con *console.Console) {
-	name := ctx.Args.String("name")
+func ExtensionsRemoveCmd(cmd *cobra.Command, con *console.Console) {
+	name := cmd.Flags().Arg(0)
 	if name == "" {
 		console.Log.Errorf("Extension name is required\n")
 		return
@@ -47,7 +48,12 @@ func RemoveExtensionByCommandName(commandName string, con *console.Console) erro
 		return errors.New("extension not loaded")
 	}
 	delete(loadedExtensions, commandName)
-	con.App.Commands().Remove(commandName)
+	implantMenu := con.App.Menu(consts.ImplantGroup)
+	for _, cmd := range implantMenu.Commands() {
+		if cmd.Name() == commandName {
+			implantMenu.RemoveCommand(cmd)
+		}
+	}
 	extPath := filepath.Join(assets.GetExtensionsDir(), filepath.Base(commandName))
 	if _, err := os.Stat(extPath); os.IsNotExist(err) {
 		return nil

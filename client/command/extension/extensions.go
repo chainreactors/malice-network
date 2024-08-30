@@ -3,17 +3,18 @@ package extension
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/table"
+	"github.com/rsteube/carapace"
+	"github.com/spf13/cobra"
 	"io/ioutil"
 	"strings"
 )
 
 // ExtensionsCmd - List information about installed extensions
-func ExtensionsCmd(ctx *grumble.Context, con *console.Console) {
+func ExtensionsCmd(cmd *cobra.Command, con *console.Console) {
 	if 0 < len(getInstalledManifests()) {
 		PrintExtensions(con)
 	} else {
@@ -94,14 +95,15 @@ func getInstalledManifests() map[string]*ExtensionManifest {
 	return installedManifests
 }
 
-// ExtensionsCommandNameCompleter - Completer for installed extensions command names
-func ExtensionsCommandNameCompleter(prefix string, args []string, con *console.Console) []string {
-	installedManifests := getInstalledManifests()
-	results := []string{}
-	for _, manifest := range installedManifests {
-		if strings.HasPrefix(manifest.Name, prefix) {
-			results = append(results, manifest.Name)
+// ExtensionsCommandNameCompleter - Completer for installed extensions command names.
+func ExtensionsCommandNameCompleter(con *console.Console) carapace.Action {
+	return carapace.ActionCallback(func(c carapace.Context) carapace.Action {
+		results := []string{}
+		for _, manifest := range loadedExtensions {
+			results = append(results, manifest.CommandName)
+			results = append(results, manifest.Help)
 		}
-	}
-	return results
+
+		return carapace.ActionValuesDescribed(results...).Tag("extension commands")
+	})
 }

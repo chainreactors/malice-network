@@ -76,7 +76,7 @@ func Execute() {
 	}
 
 	db.Client = db.NewDBClient()
-	_, _, err = certs.ServerGenerateCertificate("root", true, opt.Listeners.Auth)
+	err = certs.GenerateRootCert()
 	if err != nil {
 		logs.Log.Errorf("cannot init root ca , %s ", err.Error())
 		return
@@ -99,7 +99,7 @@ func Execute() {
 	// start listeners
 	if opt.Listeners.Auth != "" {
 		// init forwarder
-		clientConf, err := listener.GenerateClientConfig(opt.Server, opt.Listeners)
+		clientConf, err := listener.GenerateConfig(opt.Server, opt.Listeners)
 		if err != nil {
 			logs.Log.Errorf("init client failed, %s", err.Error())
 			return

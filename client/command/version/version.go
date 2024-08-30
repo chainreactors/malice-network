@@ -2,27 +2,27 @@ package version
 
 import (
 	"context"
-	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
+	"github.com/spf13/cobra"
 )
 
-func Command(con *console.Console) []*grumble.Command {
-	return []*grumble.Command{
-		&grumble.Command{
-			Name:     "version",
-			Help:     "show server version",
-			LongHelp: help.GetHelpFor("version"),
-			Run: func(ctx *grumble.Context) error {
-				VersionCmd(ctx, con)
-				return nil
+func Command(con *console.Console) []*cobra.Command {
+	return []*cobra.Command{
+		&cobra.Command{
+			Use:   "version",
+			Short: "show server version",
+			Long:  help.GetHelpFor("version"),
+			Run: func(cmd *cobra.Command, args []string) {
+				VersionCmd(cmd, con)
+				return
 			},
 		},
 	}
 }
 
-func VersionCmd(ctx *grumble.Context, con *console.Console) {
+func VersionCmd(cmd *cobra.Command, con *console.Console) {
 	printVersion(con)
 }
 

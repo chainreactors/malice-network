@@ -1,35 +1,44 @@
 package exec
 
 import (
-	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
+	"github.com/spf13/cobra"
+	"strings"
 
 	"google.golang.org/protobuf/proto"
 	"os"
 	"path/filepath"
 )
 
-func ExecuteAssemblyCmd(ctx *grumble.Context, con *console.Console) {
-	session := con.GetInteractive()
-	if session == nil {
-		return
-	}
-	path := ctx.Args.String("path")
-	args := ctx.Args.StringList("args")
+func ExecuteAssemblyCmd(cmd *cobra.Command, con *console.Console) {
+	path := cmd.Flags().Arg(0)
+	argsString := cmd.Flags().Arg(1)
+	args := strings.Split(argsString, ",")
+	output, _ := cmd.Flags().GetBool("output")
 	name := filepath.Base(path)
 	binData, err := os.ReadFile(path)
 	if err != nil {
 		console.Log.Errorf("%s\n", err)
 		return
 	}
+	execAssembly(name, binData, args, output, con)
 
+}
+
+func execAssembly(name string, binData []byte, args []string, output bool, con *console.Console) {
+	session := con.GetInteractive()
+	if session == nil {
+		return
+	}
+	sid := con.GetInteractive().SessionId
 	var task *clientpb.Task
-	task, err = con.Rpc.ExecuteAssembly(con.ActiveTarget.Context(), &implantpb.ExecuteBinary{
+	task, err := con.Rpc.ExecuteAssembly(con.ActiveTarget.Context(), &implantpb.ExecuteBinary{
 		Name:   name,
 		Bin:    binData,
+		Output: output,
 		Params: args,
 		Type:   consts.ModuleExecuteAssembly,
 	})
@@ -41,7 +50,6 @@ func ExecuteAssemblyCmd(ctx *grumble.Context, con *console.Console) {
 
 	con.AddCallback(task.TaskId, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite).GetAssemblyResponse()
-		sid := con.GetInteractive().SessionId
 		con.SessionLog(sid).Infof("%s output:\n%s", name, string(resp.Data))
 	})
 }

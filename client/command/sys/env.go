@@ -1,15 +1,23 @@
 package sys
 
 import (
-	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
+	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/proto"
 )
 
-func EnvCmd(ctx *grumble.Context, con *console.Console) {
-	sid := con.GetInteractive().SessionId
+func EnvCmd(cmd *cobra.Command, con *console.Console) {
+	env(con)
+}
+
+func env(con *console.Console) {
+	session := con.GetInteractive()
+	if session == nil {
+		return
+	}
+	sid := session.SessionId
 	envTask, err := con.Rpc.Env(con.ActiveTarget.Context(), &implantpb.Request{
 		Name: consts.ModuleEnv,
 	})
@@ -18,18 +26,30 @@ func EnvCmd(ctx *grumble.Context, con *console.Console) {
 		return
 	}
 	con.AddCallback(envTask.TaskId, func(msg proto.Message) {
-		env := msg.(*implantpb.Spite).GetResponse().GetKv()
-		for k, v := range env {
+		envSet := msg.(*implantpb.Spite).GetResponse().GetKv()
+		for k, v := range envSet {
 			con.SessionLog(sid).Consolef("export %s = %s\n", k, v)
 		}
 	})
 }
 
-func SetEnvCmd(ctx *grumble.Context, con *console.Console) {
-	sid := con.GetInteractive().SessionId
-	env := ctx.Flags.String("env")
-	value := ctx.Flags.String("value")
-	args := []string{env, value}
+func SetEnvCmd(cmd *cobra.Command, con *console.Console) {
+	envName := cmd.Flags().Arg(0)
+	value := cmd.Flags().Arg(1)
+	if envName == "" || value == "" {
+		console.Log.Errorf("required arguments missing")
+		return
+	}
+	args := []string{envName, value}
+	setEnv(args, con)
+}
+
+func setEnv(args []string, con *console.Console) {
+	session := con.GetInteractive()
+	if session == nil {
+		return
+	}
+	sid := session.SessionId
 	setEnvTask, err := con.Rpc.SetEnv(con.ActiveTarget.Context(), &implantpb.Request{
 		Name: consts.ModuleSetEnv,
 		Args: args,
@@ -43,9 +63,21 @@ func SetEnvCmd(ctx *grumble.Context, con *console.Console) {
 	})
 }
 
-func UnsetEnvCmd(ctx *grumble.Context, con *console.Console) {
-	sid := con.GetInteractive().SessionId
-	env := ctx.Flags.String("env")
+func UnsetEnvCmd(cmd *cobra.Command, con *console.Console) {
+	envName := cmd.Flags().Arg(0)
+	if envName == "" {
+		console.Log.Errorf("required arguments missing")
+		return
+	}
+	unSetEnv(envName, con)
+}
+
+func unSetEnv(env string, con *console.Console) {
+	session := con.GetInteractive()
+	if session == nil {
+		return
+	}
+	sid := session.SessionId
 	unsetEnvTask, err := con.Rpc.UnsetEnv(con.ActiveTarget.Context(), &implantpb.Request{
 		Name:  consts.ModuleUnsetEnv,
 		Input: env,

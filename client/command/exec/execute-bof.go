@@ -1,24 +1,22 @@
 package exec
 
 import (
-	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
+	"github.com/spf13/cobra"
+	"strings"
 
 	"google.golang.org/protobuf/proto"
 	"os"
 	"path/filepath"
 )
 
-func ExecuteBofCmd(ctx *grumble.Context, con *console.Console) {
-	session := con.GetInteractive()
-	if session == nil {
-		return
-	}
-	path := ctx.Args.String("path")
-	args := ctx.Args.StringList("args")
+func ExecuteBofCmd(cmd *cobra.Command, con *console.Console) {
+	path := cmd.Flags().Arg(0)
+	argsString := cmd.Flags().Arg(1)
+	args := strings.Split(argsString, ",")
 	name := filepath.Base(path)
 	binData, err := os.ReadFile(path)
 	if err != nil {
@@ -26,8 +24,17 @@ func ExecuteBofCmd(ctx *grumble.Context, con *console.Console) {
 		return
 	}
 
+	execBof(name, binData, args, con)
+}
+
+func execBof(name string, binData []byte, args []string, con *console.Console) {
+	session := con.GetInteractive()
+	if session == nil {
+		return
+	}
+	sid := con.GetInteractive().SessionId
 	var task *clientpb.Task
-	task, err = con.Rpc.ExecuteBof(con.ActiveTarget.Context(), &implantpb.ExecuteBinary{
+	task, err := con.Rpc.ExecuteBof(con.ActiveTarget.Context(), &implantpb.ExecuteBinary{
 		Name:   name,
 		Bin:    binData,
 		Params: args,
@@ -42,7 +49,6 @@ func ExecuteBofCmd(ctx *grumble.Context, con *console.Console) {
 
 	con.AddCallback(task.TaskId, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite).GetAssemblyResponse()
-
-		con.SessionLog(con.GetInteractive().SessionId).Infof("%s output:\n%s", name, string(resp.Data))
+		con.SessionLog(sid).Infof("%s output:\n%s", name, string(resp.Data))
 	})
 }

@@ -4,12 +4,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/chainreactors/files"
-	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/assets"
+	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/client/utils"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
+	app "github.com/reeflective/console"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
 	"google.golang.org/protobuf/proto"
 	"os"
@@ -42,7 +45,7 @@ var (
 // Ties the manifest struct to the command struct
 type loadedAlias struct {
 	Manifest *AliasManifest
-	Command  *grumble.Command
+	Command  *cobra.Command
 }
 
 // AliasFile - An OS/Arch specific file
@@ -102,8 +105,8 @@ func (a *AliasManifest) getFileForTarget(cmdName string, targetOS string, target
 }
 
 // AliasesLoadCmd - Locally load a alias into the Sliver shell.
-func AliasesLoadCmd(ctx *grumble.Context, con *console.Console) {
-	dirPath := ctx.Args.String("dir-path")
+func AliasesLoadCmd(cmd *cobra.Command, con *console.Console) {
+	dirPath := cmd.Flags().Arg(0)
 	alias, err := LoadAlias(dirPath, con)
 	if err != nil {
 		console.Log.Errorf("Failed to load alias: %s\n", err)
@@ -136,47 +139,49 @@ func LoadAlias(manifestPath string, con *console.Console) (*AliasManifest, error
 	}
 	aliasManifest.RootPath = filepath.Dir(manifestPath)
 	// for each alias command, add a new app command
-
+	implantMenu := con.App.Menu(consts.ImplantGroup)
 	// do not add if the command already exists
-	if console.CmdExists(aliasManifest.CommandName, con.App) {
+	if cmdExists(aliasManifest.CommandName, implantMenu.Command) {
 		return nil, fmt.Errorf("'%s' command already exists", aliasManifest.CommandName)
 	}
 
 	helpMsg := fmt.Sprintf("[%s] %s", aliasManifest.Name, aliasManifest.Help)
-	//longHelpMsg := help.FormatHelpTmpl(aliasManifest.LongHelp)
-	//longHelpMsg += "\n\n⚠️  If you're having issues passing arguments to the alias please read:\n"
-	//longHelpMsg += "https://github.com/BishopFox/sliver/wiki/Aliases-&-Extensions#aliases-command-parsing"
-	addAliasCmd := &grumble.Command{
-		Name:     aliasManifest.CommandName,
-		Help:     helpMsg,
-		LongHelp: aliasManifest.LongHelp,
-		Run: func(extCtx *grumble.Context) error {
-			runAliasCommand(extCtx, con)
-			return nil
+	longHelpMsg := help.FormatHelpTmpl(aliasManifest.LongHelp)
+	longHelpMsg += "\n\n⚠️  If you're having issues passing arguments to the alias please read:\n"
+	longHelpMsg += "https://github.com/BishopFox/sliver/wiki/Aliases-&-Extensions#aliases-command-parsing"
+	addAliasCmd := &cobra.Command{
+		Use:   aliasManifest.CommandName,
+		Short: helpMsg,
+		Long:  longHelpMsg,
+		Run: func(cmd *cobra.Command, args []string) {
+			runAliasCommand(cmd, con)
 		},
-		Flags: func(f *grumble.Flags) {
-			if aliasManifest.IsAssembly {
-				f.String("m", "method", "", "Optional method (a method is required for a .NET DLL)")
-				f.String("c", "class", "", "Optional class name (required for .NET DLL)")
-				f.String("d", "app-domain", "", "AppDomain name to create for .NET assembly. Generated randomly if not set.")
-				f.String("a", "arch", "x84", "Assembly target architecture: x86, x64, x84 (x86+x64)")
-				f.Bool("i", "in-process", false, "Run in the current sliver process")
-				f.String("r", "runtime", "", "Runtime to use for running the assembly (only supported when used with --in-process)")
-				f.Bool("M", "amsi-bypass", false, "Bypass AMSI on Windows (only supported when used with --in-process)")
-				f.Bool("E", "etw-bypass", false, "Bypass ETW on Windows (only supported when used with --in-process)")
-
-			}
-			f.String("p", "process", "", "Path to process to host the shared object")
-			f.String("A", "process-arguments", "", "arguments to pass to the hosting process")
-			f.Uint("P", "ppid", 0, "parent process ID to use when creating the hosting process (Windows only)")
-			f.Bool("s", "save", false, "Save output to disk")
-
-			f.Int("t", "timeout", defaultTimeout, "command timeout in seconds")
-		},
-		Args: func(a *grumble.Args) {
-			a.StringList("arguments", "arguments", grumble.Default([]string{}))
-		},
+		Args:        cobra.ArbitraryArgs, // 	a.StringList("arguments", "arguments", grumble.Default([]string{}))
+		GroupID:     consts.AliasesGroup,
+		Annotations: makeAliasPlatformFilters(aliasManifest),
 	}
+
+	if aliasManifest.IsAssembly {
+		f := pflag.NewFlagSet("assembly", pflag.ContinueOnError)
+		f.StringP("method", "m", "", "Optional method (a method is required for a .NET DLL)")
+		f.StringP("class", "c", "", "Optional class name (required for .NET DLL)")
+		f.StringP("app-domain", "d", "", "AppDomain name to create for .NET assembly. Generated randomly if not set.")
+		f.StringP("arch", "a", "x84", "Assembly target architecture: x86, x64, x84 (x86+x64)")
+		f.BoolP("in-process", "i", false, "Run in the current sliver process")
+		f.StringP("runtime", "r", "", "Runtime to use for running the assembly (only supported when used with --in-process)")
+		f.BoolP("amsi-bypass", "M", false, "Bypass AMSI on Windows (only supported when used with --in-process)")
+		f.BoolP("etw-bypass", "E", false, "Bypass ETW on Windows (only supported when used with --in-process)")
+		addAliasCmd.Flags().AddFlagSet(f)
+	}
+
+	f := pflag.NewFlagSet(aliasManifest.Name, pflag.ContinueOnError)
+	f.StringP("process", "p", "", "Path to process to host the shared object")
+	f.StringP("process-arguments", "A", "", "arguments to pass to the hosting process")
+	f.Uint32P("ppid", "P", 0, "parent process ID to use when creating the hosting process (Windows only)")
+	f.BoolP("save", "s", false, "Save output to disk")
+	f.IntP("timeout", "t", defaultTimeout, "command timeout in seconds")
+	addAliasCmd.Flags().AddFlagSet(f)
+
 	con.AddAliasCommand(addAliasCmd)
 
 	// Have to use a global map here, as passing the aliasCmd
@@ -225,7 +230,7 @@ func ParseAliasManifest(data []byte) (*AliasManifest, error) {
 	return alias, nil
 }
 
-func runAliasCommand(ctx *grumble.Context, con *console.Console) {
+func runAliasCommand(cmd *cobra.Command, con *console.Console) {
 	session := con.GetInteractive()
 	if session == nil {
 		return
@@ -235,18 +240,18 @@ func runAliasCommand(ctx *grumble.Context, con *console.Console) {
 	goos = session.Os.Name
 	goarch = session.Os.Arch
 
-	loadedAlias, ok := loadedAliases[ctx.Command.Name]
+	loadedAlias, ok := loadedAliases[cmd.Name()]
 	if !ok {
-		console.Log.Errorf("No alias found for `%s` command\n", ctx.Command.Name)
+		console.Log.Errorf("No alias found for `%s` command\n", cmd.Name())
 		return
 	}
 	aliasManifest := loadedAlias.Manifest
-	binPath, err := aliasManifest.getFileForTarget(ctx.Command.Name, goos, goarch)
+	binPath, err := aliasManifest.getFileForTarget(cmd.Name(), goos, goarch)
 	if err != nil {
 		console.Log.Errorf("Fail to find alias file: %s\n", err)
 		return
 	}
-	args := ctx.Args.StringList("arguments")
+	args := cmd.Flags().Args()
 	var extArgs string
 	if len(aliasManifest.DefaultArgs) != 0 && len(args) == 0 {
 		extArgs = aliasManifest.DefaultArgs
@@ -266,10 +271,10 @@ func runAliasCommand(ctx *grumble.Context, con *console.Console) {
 		// Groupping the two conditions together could crash the client since ctx.Flags.Type panics
 		// if the flag is not registered.
 		if aliasManifest.IsAssembly {
-			inProcess := ctx.Flags.Bool("in-process")
-			runtime := ctx.Flags.String("runtime")
-			amsiBypass := ctx.Flags.Bool("amsi-bypass")
-			etwBypass := ctx.Flags.Bool("etw-bypass")
+			inProcess, _ := cmd.Flags().GetBool("in-process")
+			runtime, _ := cmd.Flags().GetString("runtime")
+			amsiBypass, _ := cmd.Flags().GetBool("amsi-bypass")
+			etwBypass, _ := cmd.Flags().GetBool("etw-bypass")
 			if !inProcess {
 				msgStr = " Arguments are limited to 256 characters when using the default fork/exec model for .NET assemblies.\nConsider using the --in-process flag to execute .NET assemblies in-process and work around this limitation.\n"
 			}
@@ -289,7 +294,7 @@ func runAliasCommand(ctx *grumble.Context, con *console.Console) {
 		//}
 	}
 	//processArgs := strings.Split(processArgsStr, " ")
-	processName := ctx.Flags.String("process")
+	processName, _ := cmd.Flags().GetString("process")
 	if processName == "" {
 		processName, err = aliasManifest.getDefaultProcess(goos)
 		if err != nil {
@@ -306,23 +311,10 @@ func runAliasCommand(ctx *grumble.Context, con *console.Console) {
 		console.Log.Errorf("%s\n", err)
 		return
 	}
-	//var outFilePath *os.File
-	//if ctx.Flags.Bool("save") {
-	//	outFile := filepath.Base(fmt.Sprintf("%s_%s*.log", filepath.Base(ctx.Command.Name), filepath.Base(session.Name)))
-	//	outFilePath, err = os.CreateTemp("", outFile)
-	//	if err != nil {
-	//		console.Log.Errorf("%s\n", err)
-	//		return
-	//	}
-	//}
 
 	if aliasManifest.IsAssembly {
-
-		// Execute Assembly
-		//msg := fmt.Sprintf("Executing %s %s ...", ctx.Command.Name, extArgs)
-		//con.SpinUntil(msg, ctrl)
 		executeAssemblyResp, err := con.Rpc.ExecuteAssembly(con.ActiveTarget.Context(), &implantpb.ExecuteBinary{
-			Name:   loadedAlias.Command.Name,
+			Name:   loadedAlias.Command.Name(),
 			Bin:    binData,
 			Type:   consts.ModuleExecuteAssembly,
 			Params: args,
@@ -338,7 +330,7 @@ func runAliasCommand(ctx *grumble.Context, con *console.Console) {
 			if resp.Status == 0 {
 				con.SessionLog(sid).Infof("%s output:\n%s", loadedAlias.Command.Name, string(resp.Data))
 			} else {
-				con.SessionLog(sid).Errorf("%s %s ", ctx.Command.Name, resp.Err)
+				con.SessionLog(sid).Errorf("%s %s ", cmd.Name(), resp.Err)
 			}
 		})
 
@@ -437,11 +429,56 @@ func runAliasCommand(ctx *grumble.Context, con *console.Console) {
 //	}
 //}
 
-// PrintAssemblyOutput - Prints the output of an execute-assembly command
+//// PrintAssemblyOutput - Prints the output of an execute-assembly command
 //func PrintAssemblyOutput(cmdName string, resp *clientpb.Task, outFilePath *os.File, con *console.Console) {
-//	console.Log.Infof("%s output:\n%s", cmdName, string(resp.Data))
+//	console.Log.Infof("%s output:\n%s", cmdName, string(resp.Need))
 //	if outFilePath != nil {
-//		outFilePath.Write(resp.Data)
+//		outFilePath.Write(resp.Need)
 //		console.Log.Infof("Output saved to %s\n", outFilePath.Name())
 //	}
 //}
+
+func cmdExists(name string, cmd *cobra.Command) bool {
+	for _, c := range cmd.Commands() {
+		if name == c.Name() {
+			return true
+		}
+	}
+	return false
+}
+
+func makeAliasPlatformFilters(alias *AliasManifest) map[string]string {
+	filtersOS := make(map[string]bool)
+	filtersArch := make(map[string]bool)
+
+	var all []string
+
+	// Only add filters for architectures when there OS matters.
+	for _, file := range alias.Files {
+		filtersOS[file.OS] = true
+
+		if filtersOS[file.OS] {
+			filtersArch[file.Arch] = true
+		}
+	}
+
+	for os, enabled := range filtersOS {
+		if enabled {
+			all = append(all, os)
+		}
+	}
+
+	for arch, enabled := range filtersArch {
+		if enabled {
+			all = append(all, arch)
+		}
+	}
+
+	if len(all) == 0 {
+		return map[string]string{}
+	}
+
+	return map[string]string{
+		app.CommandFilterKey: strings.Join(all, ","),
+	}
+}

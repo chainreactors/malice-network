@@ -159,14 +159,8 @@ func UpdateSession(sessionID, note, group string) error {
 
 func CreateOperator(name string) error {
 	var operator models.Operator
-	result := Session().Where("name = ?", name).Delete(&operator)
-	if result.Error != nil {
-		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return result.Error
-		}
-	}
 	operator.Name = name
-	err := Session().Create(&operator).Error
+	err := Session().Save(&operator).Error
 	return err
 
 }
@@ -246,6 +240,22 @@ func ListListeners() ([]models.Listener, error) {
 	return listeners, err
 }
 
+// AddCertificate add a certificate to the database
+func AddCertificate(caType int, keyType string, commonName string, cert []byte, key []byte) error {
+	certModel := &models.Certificate{
+		CommonName:     commonName,
+		CAType:         caType,
+		KeyType:        keyType,
+		CertificatePEM: string(cert),
+		PrivateKeyPEM:  string(key),
+	}
+	err := Session().Save(certModel).Error
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // DeleteAllCertificates
 func DeleteAllCertificates() error {
 	result := Session().Exec("DELETE FROM certificates")
@@ -287,7 +297,7 @@ func SaveCertificate(certificate *models.Certificate) error {
 }
 
 func AddTask(typ string, task *core.Task, td *models.FileDescription) error {
-	tdString, err := td.ToJson()
+	tdString, err := td.ToJsonString()
 	if err != nil {
 		return err
 	}

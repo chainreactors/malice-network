@@ -1,20 +1,28 @@
 package filesystem
 
 import (
-	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
+	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/proto"
 )
 
-func CdCmd(ctx *grumble.Context, con *console.Console) {
+func CdCmd(cmd *cobra.Command, con *console.Console) {
+	path := cmd.Flags().Arg(0)
+	if path == "" {
+		console.Log.Errorf("required arguments missing")
+		return
+	}
+	cd(path, con)
+}
+
+func cd(path string, con *console.Console) {
 	session := con.GetInteractive()
 	if session == nil {
 		return
 	}
 	sid := con.GetInteractive().SessionId
-	path := ctx.Flags.String("path")
 	cdTask, err := con.Rpc.Cd(con.ActiveTarget.Context(), &implantpb.Request{
 		Name:  consts.ModuleCd,
 		Input: path,

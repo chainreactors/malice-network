@@ -31,7 +31,7 @@ func (rpc *Server) GetTaskContent(ctx context.Context, req *clientpb.Task) (*cli
 	if req.Need == -1 {
 		msg, ok = sess.GetLastMessage(int(task.Id))
 	} else {
-		msg, ok = sess.GetMessage(int(task.Id), int(req.Need))
+		msg, ok = sess.GetMessage(int(task.Id), int(req.Need)+1)
 	}
 
 	if ok {
@@ -63,7 +63,7 @@ func (rpc *Server) WaitTaskContent(ctx context.Context, req *clientpb.Task) (*cl
 			if req.Need == -1 {
 				msg, ok = sess.GetLastMessage(int(task.Id))
 			} else {
-				msg, ok = sess.GetMessage(int(task.Id), int(req.Need))
+				msg, ok = sess.GetMessage(int(task.Id), int(req.Need)+1)
 			}
 			if ok {
 				return &clientpb.TaskContext{
@@ -121,16 +121,16 @@ func (rpc *Server) GetAllTaskContent(ctx context.Context, req *clientpb.Task) (*
 	return nil, ErrNotFoundTask
 }
 
-func (rpc *Server) GetTaskDescs(ctx context.Context, req *clientpb.Session) (*clientpb.TaskDescs, error) {
-	resp := &clientpb.TaskDescs{
-		Tasks: []*clientpb.TaskDesc{},
+func (rpc *Server) GetTaskFiles(ctx context.Context, req *clientpb.Session) (*clientpb.Files, error) {
+	resp := &clientpb.Files{
+		Files: []*clientpb.File{},
 	}
 	tasks, err := db.GetAllTasks(req.SessionId)
 	if err != nil {
 		return nil, err
 	}
 	for _, task := range tasks {
-		resp.Tasks = append(resp.Tasks, task.ToDescProtobuf())
+		resp.Files = append(resp.Files, task.ToFileProtobuf())
 	}
 
 	return resp, nil

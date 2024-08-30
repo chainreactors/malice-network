@@ -2,7 +2,6 @@ package armory
 
 import (
 	"fmt"
-	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/alias"
 	"github.com/chainreactors/malice-network/client/command/extension"
@@ -10,6 +9,7 @@ import (
 	"github.com/chainreactors/malice-network/client/utils"
 	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/table"
+	"github.com/spf13/cobra"
 	"os"
 	"sort"
 	"strconv"
@@ -35,16 +35,16 @@ type UpdateIdentifier struct {
 }
 
 // ArmoryUpdateCmd - Update all installed extensions/aliases
-func ArmoryUpdateCmd(ctx *grumble.Context, con *console.Console) {
+func ArmoryUpdateCmd(cmd *cobra.Command, con *console.Console) {
 	var selectedUpdates []UpdateIdentifier
 	var err error
 
 	console.Log.Infof("Refreshing package cache ... ")
-	clientConfig := parseArmoryHTTPConfig(ctx)
+	clientConfig := parseArmoryHTTPConfig(cmd)
 	refresh(clientConfig)
 	tui.Clear()
 
-	armoryName := ctx.Flags.String("armory")
+	armoryName, _ := cmd.Flags().GetString("armory")
 
 	// Find PK for the armory name
 	armoryPK := getArmoryPublicKey(armoryName)

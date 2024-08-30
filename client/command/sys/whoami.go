@@ -1,14 +1,18 @@
 package sys
 
 import (
-	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
+	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/proto"
 )
 
-func WhoamiCmd(ctx *grumble.Context, con *console.Console) {
+func WhoamiCmd(cmd *cobra.Command, con *console.Console) {
+	whoami(con)
+}
+
+func whoami(con *console.Console) {
 	session := con.GetInteractive()
 	sid := con.GetInteractive().SessionId
 	if session == nil {

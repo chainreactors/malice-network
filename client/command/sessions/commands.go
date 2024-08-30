@@ -1,93 +1,97 @@
 package sessions
 
 import (
-	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/command/completer"
+	"github.com/chainreactors/malice-network/client/command/flags"
 	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/rsteube/carapace"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
-func Commands(con *console.Console) []*grumble.Command {
-	return []*grumble.Command{
-		&grumble.Command{
-			Name:     "sessions",
-			Help:     "List sessions",
-			LongHelp: help.GetHelpFor("sessions"),
-			Flags: func(f *grumble.Flags) {
-				//f.String("i", "interact", "", "interact with a session")
-				//f.String("k", "kill", "", "kill the designated session")
-				//f.Bool("K", "kill-all", false, "kill all the sessions")
-				//f.Bool("C", "clean", false, "clean out any sessions marked as [DEAD]")
-				//f.Bool("F", "force", false, "force session action without waiting for results")
-				f.Bool("a", "all", false, "show all sessions")
-				//f.String("f", "filter", "", "filter sessions by substring")
-				//f.String("e", "filter-re", "", "filter sessions by regular expression")
-				//f.Int("t", "timeout", assets.DefaultSettings.DefaultTimeout, "command timeout in seconds")
-			},
-			Run: func(ctx *grumble.Context) error {
-				SessionsCmd(ctx, con)
-				return nil
-			},
+func Commands(con *console.Console) []*cobra.Command {
+	sessionsCmd := &cobra.Command{
+		Use:   "sessions",
+		Short: "List sessions",
+		Long:  help.GetHelpFor("sessions"),
+		Run: func(cmd *cobra.Command, args []string) {
+			SessionsCmd(cmd, con)
 		},
-		{
-			Name:     "note",
-			Help:     "add note to session",
-			LongHelp: help.GetHelpFor("note"),
-			Args: func(a *grumble.Args) {
-				a.String("name", "session name")
-			},
-			Flags: func(f *grumble.Flags) {
-				f.StringL("id", "", "session id")
-			},
-			Run: func(ctx *grumble.Context) error {
-				noteCmd(ctx, con)
-				return nil
-			},
-			Completer: func(prefix string, args []string) []string {
-				if len(args) == 0 {
-					return completer.BasicSessionIDCompleter(con, prefix)
-				}
-				return nil
-			},
+		GroupID: consts.GenericGroup,
+	}
+	flags.Bind("sessions", true, sessionsCmd, func(f *pflag.FlagSet) {
+		f.Bool("all", false, "show all sessions")
+	})
+
+	noteCommand := &cobra.Command{
+		Use:   "note",
+		Short: "add note to session",
+		Long:  help.GetHelpFor("note"),
+		Args:  cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			noteCmd(cmd, con)
+			return
 		},
-		{
-			Name:     "group",
-			Help:     "group session",
-			LongHelp: help.GetHelpFor("group"),
-			Args: func(a *grumble.Args) {
-				a.String("group", "group name")
-			},
-			Flags: func(f *grumble.Flags) {
-				f.StringL("id", "", "session id")
-			},
-			Run: func(ctx *grumble.Context) error {
-				groupCmd(ctx, con)
-				return nil
-			},
-			Completer: func(prefix string, args []string) []string {
-				if len(args) == 0 {
-					return completer.BasicSessionIDCompleter(con, prefix)
-				}
-				return nil
-			},
+		GroupID: consts.GenericGroup,
+	}
+
+	carapace.Gen(noteCommand).PositionalCompletion(
+		carapace.ActionValues().Usage("session note name"),
+	)
+
+	flags.Bind("note", false, noteCommand, func(f *pflag.FlagSet) {
+		f.String("id", "", "session id")
+	})
+
+	flags.BindFlagCompletions(noteCommand, func(comp *carapace.ActionMap) {
+		(*comp)["id"] = completer.BasicSessionIDCompleter(con)
+	})
+
+	groupCommand := &cobra.Command{
+		Use:   "group",
+		Short: "group session",
+		Long:  help.GetHelpFor("group"),
+		Args:  cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			groupCmd(cmd, con)
+			return
 		},
-		{
-			Name:     "remove",
-			Help:     "remove session",
-			LongHelp: help.GetHelpFor("remove"),
-			Flags: func(f *grumble.Flags) {
-				f.StringL("id", "", "session id")
-			},
-			Run: func(ctx *grumble.Context) error {
-				removeCmd(ctx, con)
-				return nil
-			},
-			Completer: func(prefix string, args []string) []string {
-				if len(args) == 0 {
-					return completer.BasicSessionIDCompleter(con, prefix)
-				}
-				return nil
-			},
+		GroupID: consts.GenericGroup,
+	}
+
+	carapace.Gen(groupCommand).PositionalCompletion(
+		carapace.ActionValues().Usage("session group name"),
+	)
+
+	flags.Bind("group", false, groupCommand, func(f *pflag.FlagSet) {
+		f.String("id", "", "session id")
+	})
+
+	flags.BindFlagCompletions(groupCommand, func(comp *carapace.ActionMap) {
+		(*comp)["id"] = completer.BasicSessionIDCompleter(con)
+	})
+
+	removeCommand := &cobra.Command{
+		Use:   "remove",
+		Short: "remove session",
+		Long:  help.GetHelpFor("remove"),
+		Args:  cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			removeCmd(cmd, con)
 		},
+		GroupID: consts.GenericGroup,
+	}
+
+	carapace.Gen(removeCommand).PositionalCompletion(
+		completer.BasicSessionIDCompleter(con),
+	)
+
+	return []*cobra.Command{
+		sessionsCmd,
+		noteCommand,
+		groupCommand,
+		removeCommand,
 	}
 }

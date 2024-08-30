@@ -3,6 +3,7 @@ package command
 import (
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/console"
+	"github.com/spf13/cobra"
 )
 
 const defaultTimeout = 60
@@ -36,27 +37,55 @@ func Bind(name string, persistent bool, cmd *grumble.Command, flags func(f *grum
 
 // makeBind returns a commandBinder helper function
 // @menu  - The command menu to which the commands should be bound (either server or implant menu).
-func makeBind(con *console.Console) func(group string, cmds ...func(con *console.Console) []*grumble.Command) {
-	return func(group string, cmds ...func(con *console.Console) []*grumble.Command) {
-		var grp *grumble.Group
-		if group != "" {
-			grp = con.App.Groups().Find(group)
+//func makeBind(con *console.Console) func(group string, cmds ...func(con *console.Console) []*grumble.Command) {
+//	return func(group string, cmds ...func(con *console.Console) []*grumble.Command) {
+//		var grp *grumble.Group
+//		if group != "" {
+//			grp = con.App.Groups().Find(group)
+//
+//			if grp == nil {
+//				grp = grumble.NewGroup(group)
+//				con.App.AddGroup(grp)
+//			}
+//		}
+//
+//		// Bind the command to the root
+//		for _, command := range cmds {
+//			for _, c := range command(con) {
+//				if group == "" {
+//					con.App.AddCommand(c)
+//				} else {
+//					grp.AddCommand(c)
+//				}
+//			}
+//		}
+//	}
+//}
 
-			if grp == nil {
-				grp = grumble.NewGroup(group)
-				con.App.AddGroup(grp)
+func makeBind(cmd *cobra.Command, con *console.Console) func(group string, cmds ...func(con *console.Console) []*cobra.Command) {
+	return func(group string, cmds ...func(con *console.Console) []*cobra.Command) {
+		found := false
+
+		// Ensure the given command group is available in the menu.
+		if group != "" {
+			for _, grp := range cmd.Groups() {
+				if grp.Title == group {
+					found = true
+					break
+				}
+			}
+
+			if !found {
+				cmd.AddGroup(&cobra.Group{
+					ID:    group,
+					Title: group,
+				})
 			}
 		}
 
 		// Bind the command to the root
 		for _, command := range cmds {
-			for _, c := range command(con) {
-				if group == "" {
-					con.App.AddCommand(c)
-				} else {
-					grp.AddCommand(c)
-				}
-			}
+			cmd.AddCommand(command(con)...)
 		}
 	}
 }

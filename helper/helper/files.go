@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
+	"math/rand"
 
 	"fmt"
 	"io"
@@ -14,6 +15,8 @@ import (
 	"github.com/klauspost/compress/flate"
 	"github.com/klauspost/compress/gzip"
 )
+
+const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 // DeflateBuf - Deflate a buffer using BestCompression (9)
 func DeflateBuf(data []byte) []byte {
@@ -138,4 +141,12 @@ func CalculateSHA256Checksum(filePath string) (string, error) {
 
 	checksum := hex.EncodeToString(hash.Sum(nil))
 	return checksum, nil
+}
+
+func RandStringBytes(n int) string {
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = letterBytes[rand.Intn(len(letterBytes))]
+	}
+	return string(b)
 }

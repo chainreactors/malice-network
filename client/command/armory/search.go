@@ -1,21 +1,21 @@
 package armory
 
 import (
-	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/command/alias"
 	"github.com/chainreactors/malice-network/client/command/extension"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/tui"
+	"github.com/spf13/cobra"
 	"regexp"
 )
 
 // ArmorySearchCmd - Search for packages by name
-func ArmorySearchCmd(ctx *grumble.Context, con *console.Console) {
+func ArmorySearchCmd(cmd *cobra.Command, con *console.Console) {
 	console.Log.Infof("Refreshing package cache ... ")
-	clientConfig := parseArmoryHTTPConfig(ctx)
+	clientConfig := parseArmoryHTTPConfig(cmd)
 	refresh(clientConfig)
 	tui.Clear()
-	rawNameExpr := ctx.Args.String("name")
+	rawNameExpr := cmd.Flags().Arg(0)
 	if rawNameExpr == "" {
 		console.Log.Errorf("Please specify a search term!\n")
 		return

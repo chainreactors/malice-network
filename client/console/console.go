@@ -1,18 +1,23 @@
 package console
 
 import (
+	"bufio"
 	"errors"
-	"github.com/chainreactors/grumble"
+	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/mtls"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/tui"
-	"github.com/fatih/color"
+	"github.com/reeflective/console"
+	"github.com/reeflective/readline"
+	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/proto"
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 )
 
@@ -29,45 +34,51 @@ var (
 type TaskCallback func(resp proto.Message)
 
 // BindCmds - Bind extra commands to the app object
-type BindCmds func(console *Console)
+type BindCmds func(console *Console) console.Commands
 
 // Start - Console entrypoint
 func Start(bindCmds ...BindCmds) error {
 	//assets.Setup(false, false)
-	var err error
 	tui.Reset()
 	settings, _ := assets.LoadSettings()
 	con := &Console{
-		App: grumble.New(&grumble.Config{
-			Name:                  tui.AdaptTermColor(Prompt),
-			Description:           "Internet of Malice",
-			HistoryFile:           filepath.Join(assets.GetRootAppDir(), "history"),
-			PromptColor:           color.New(),
-			HelpHeadlineColor:     color.New(),
-			HelpHeadlineUnderline: true,
-			HelpSubCommands:       true,
-			//VimMode:               settings.VimMode,
-		}),
+		App:          console.New("IoM"),
 		ActiveTarget: &ActiveTarget{},
 		Settings:     settings,
 		Observers:    map[string]*Observer{},
 	}
-
 	//con.App.SetPrintASCIILogo(func(_ *grumble.App) {
 	//con.PrintLogo()
 	//})
 	//con.UpdatePrompt()
+	con.App.NewlineBefore = true
+	con.App.NewlineAfter = true
+	client := con.App.NewMenu(consts.ClientGroup)
+	client.Short = "client commands"
+	client.Prompt().Primary = con.GetPrompt
+	client.AddInterrupt(readline.ErrInterrupt, con.exitConsole)
+	client.AddHistorySourceFile("history", filepath.Join(assets.GetRootAppDir(), "history"))
+
+	implant := con.App.NewMenu(consts.ImplantGroup)
+	implant.Short = "Implant commands"
+	implant.Prompt().Primary = con.GetPrompt
+	implant.AddInterrupt(io.EOF, con.exitImplantMenu) // Ctrl-D
+	implant.AddHistorySourceFile("history", filepath.Join(assets.GetRootAppDir(), "implant_history"))
 	con.readConfig()
-	for _, bind := range bindCmds {
-		bind(con)
+
+	client.SetCommands(bindCmds[0](con))
+	for _, bindCmd := range bindCmds {
+		implant.SetCommands(bindCmd(con))
 	}
-	con.DisableImplantCommands()
+
 	con.ActiveTarget.callback = func(sess *clientpb.Session) {
 		con.ActiveTarget.activeObserver = NewObserver(sess)
-		con.UpdatePrompt()
 	}
-	con.Plugins = NewPlugins()
-	err = con.App.Run()
+
+	//go core.TunnelLoop(rpc)
+	os.Args = []string{}
+	con.App.SwitchMenu(consts.ClientGroup)
+	err := con.App.Start()
 	if err != nil {
 		logs.Log.Errorf("Run loop returned error: %v", err)
 	}
@@ -75,13 +86,12 @@ func Start(bindCmds ...BindCmds) error {
 }
 
 type Console struct {
-	App          *grumble.App
+	App          *console.Console
 	ActiveTarget *ActiveTarget
 	Settings     *assets.Settings
 	Callbacks    *sync.Map
 	Observers    map[string]*Observer
 	*ServerStatus
-	*Plugins
 }
 
 func (c *Console) Login(config *mtls.ClientConfig) error {
@@ -100,42 +110,102 @@ func (c *Console) Login(config *mtls.ClientConfig) error {
 	return nil
 }
 
-func (c *Console) UpdatePrompt() {
-	c.App.Config().NoColor = true
-	if c.ActiveTarget.session != nil {
-		groupName := c.ActiveTarget.session.GroupName
-		if c.ActiveTarget.session.Note != "" {
-			c.App.SetPrompt(tui.AdaptSessionColor(groupName, c.ActiveTarget.session.Note))
+//func (c *Console) UpdatePrompt() {
+//	c.App.Config().NoColor = true
+//	if c.ActiveTarget.session != nil {
+//		groupName := c.ActiveTarget.session.GroupName
+//		if c.ActiveTarget.session.Note != "" {
+//			c.App.SetPrompt(tui.AdaptSessionColor(groupName, c.ActiveTarget.session.Note))
+//		} else {
+//			sessionID := c.ActiveTarget.session.SessionId
+//			c.App.SetPrompt(tui.AdaptSessionColor(groupName, sessionID[:8]))
+//		}
+//
+//	} else {
+//		c.App.SetPrompt(tui.AdaptTermColor(Prompt))
+//	}
+//}
+
+func (c *Console) GetPrompt() string {
+	session := c.ActiveTarget.Get()
+	if session != nil {
+		groupName := session.GroupName
+		if session.Note != "" {
+			return tui.NewSessionColor(groupName, session.Note)
 		} else {
-			sessionID := c.ActiveTarget.session.SessionId
-			c.App.SetPrompt(tui.AdaptSessionColor(groupName, sessionID[:8]))
+			sessionID := session.SessionId
+			return tui.NewSessionColor(groupName, sessionID[:8])
 		}
 
 	} else {
-		c.App.SetPrompt(tui.AdaptTermColor(Prompt))
+		return tui.AdaptTermColor("IOM")
 	}
 }
 
-func (c *Console) AddAliasCommand(cmd *grumble.Command) {
-	group := c.App.Groups().Find(consts.AliasesGroup)
-	group.AddCommand(cmd)
-}
+func (c *Console) AddAliasCommand(cmd *cobra.Command) {
+	found := false
+	for _, grp := range c.App.ActiveMenu().Groups() {
+		if grp.Title == consts.AliasesGroup {
+			found = true
+			break
+		}
 
-func (c *Console) AddExtensionCommand(cmd *grumble.Command) {
-	group := c.App.Groups().Find(consts.ExtensionGroup)
-	group.AddCommand(cmd)
-}
-
-func (c *Console) EnableImplantCommands() {
-	for _, g := range implantGroups {
-		c.App.Groups().Find(g).Enable()
+		if !found {
+			c.App.ActiveMenu().AddGroup(&cobra.Group{
+				ID:    consts.AliasesGroup,
+				Title: consts.AliasesGroup,
+			})
+		}
 	}
+	found = false
+	for _, grp := range c.App.Menu(consts.ImplantGroup).Groups() {
+		if grp.Title == consts.AliasesGroup {
+			found = true
+			break
+		}
+
+		if !found {
+			c.App.Menu(consts.ImplantGroup).AddGroup(&cobra.Group{
+				ID:    consts.AliasesGroup,
+				Title: consts.AliasesGroup,
+			})
+		}
+	}
+	c.App.ActiveMenu().AddCommand(cmd)
+	c.App.Menu(consts.ImplantGroup).AddCommand(cmd)
 }
 
-func (c *Console) DisableImplantCommands() {
-	for _, g := range implantGroups {
-		c.App.Groups().Find(g).Disable()
+func (c *Console) AddExtensionCommand(cmd *cobra.Command) {
+	found := false
+	for _, grp := range c.App.ActiveMenu().Groups() {
+		if grp.Title == consts.ExtensionGroup {
+			found = true
+			break
+		}
+
+		if !found {
+			c.App.ActiveMenu().AddGroup(&cobra.Group{
+				ID:    consts.ExtensionGroup,
+				Title: consts.ExtensionGroup,
+			})
+		}
 	}
+	found = false
+	for _, grp := range c.App.Menu(consts.ImplantGroup).Groups() {
+		if grp.Title == consts.ExtensionGroup {
+			found = true
+			break
+		}
+
+		if !found {
+			c.App.Menu(consts.ImplantGroup).AddGroup(&cobra.Group{
+				ID:    consts.ExtensionGroup,
+				Title: consts.ExtensionGroup,
+			})
+		}
+	}
+	c.App.ActiveMenu().AddCommand(cmd)
+	c.App.Menu(consts.ImplantGroup).AddCommand(cmd)
 }
 
 // AddObserver - Observers to notify when the active session changes
@@ -197,12 +267,20 @@ func (c *Console) readConfig() {
 	}
 }
 
-// CmdExists - checks if a command exists
-func CmdExists(name string, app *grumble.App) bool {
-	for _, c := range app.Commands().All() {
-		if name == c.Name {
-			return true
-		}
+func (c *Console) exitConsole(_ *console.Console) {
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Print("Confirm exit (Y/y): ")
+	text, _ := reader.ReadString('\n')
+	answer := strings.TrimSpace(text)
+
+	if (answer == "Y") || (answer == "y") {
+		os.Exit(0)
 	}
-	return false
+}
+
+// exitImplantMenu uses the background command to detach from the implant menu.
+func (c *Console) exitImplantMenu(_ *console.Console) {
+	root := c.App.Menu(consts.ImplantGroup).Command
+	root.SetArgs([]string{"background"})
+	root.Execute()
 }
