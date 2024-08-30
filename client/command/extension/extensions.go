@@ -25,6 +25,7 @@ func ExtensionsCmd(ctx *grumble.Context, con *console.Console) {
 func PrintExtensions(con *console.Console) {
 	var rowEntries []table.Row
 	var row table.Row
+
 	tableModel := tui.NewTable([]table.Column{
 		{Title: "Name", Width: 10},
 		{Title: "Command Name", Width: 10},

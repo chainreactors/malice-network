@@ -119,13 +119,13 @@ func (e *ExtCommand) getFileForTarget(targetOS string, targetArch string) (strin
 // ExtensionLoadCmd - Load extension command
 func ExtensionLoadCmd(ctx *grumble.Context, con *console.Console) {
 	dirPath := ctx.Args.String("dir-path")
-	manifest, err := LoadExtensionManifest(filepath.Join(dirPath, ManifestFileName))
+	manifest, err := LoadExtensionManifest(filepath.Join(assets.GetExtensionsDir(), dirPath, ManifestFileName))
 	if err != nil {
 		return
 	}
 	// do not add if the command already exists
 	for _, extCmd := range manifest.ExtCommand {
-		if CmdExists(extCmd.CommandName, con.App) {
+		if console.CmdExists(extCmd.CommandName, con.App) {
 			console.Log.Errorf("%s command already exists\n", extCmd.CommandName)
 			confirmModel := tui.NewConfirm(fmt.Sprintf("%s command already exists. Overwrite?", extCmd.CommandName))
 			newConfirm := tui.NewModel(confirmModel, nil, false, true)
@@ -140,7 +140,6 @@ func ExtensionLoadCmd(ctx *grumble.Context, con *console.Console) {
 		}
 		ExtensionRegisterCommand(extCmd, con)
 		console.Log.Infof("Added %s command: %s\n", extCmd.CommandName, extCmd.Help)
-
 	}
 }
 
@@ -514,16 +513,6 @@ func getBOFArgs(ctx *grumble.Context, args []string, binPath string, ext *ExtCom
 		return nil, err
 	}
 	return extensionArgs, nil
-}
-
-// CmdExists - checks if a command exists
-func CmdExists(name string, app *grumble.App) bool {
-	for _, c := range app.Commands().All() {
-		if name == c.Name {
-			return true
-		}
-	}
-	return false
 }
 
 func convertOldManifest(old *ExtensionManifest_) *ExtensionManifest {
