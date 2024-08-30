@@ -27,6 +27,7 @@ const (
 	ImplantGroup   = "implant"
 	AliasesGroup   = "alias"
 	ExtensionGroup = "extension"
+	MalGroup       = "mal"
 	ListenerGroup  = "listener"
 )
 

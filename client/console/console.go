@@ -34,6 +34,7 @@ type BindCmds func(console *Console)
 // Start - Console entrypoint
 func Start(bindCmds ...BindCmds) error {
 	//assets.Setup(false, false)
+	var err error
 	tui.Reset()
 	settings, _ := assets.LoadSettings()
 	con := &Console{
@@ -51,6 +52,7 @@ func Start(bindCmds ...BindCmds) error {
 		Settings:     settings,
 		Observers:    map[string]*Observer{},
 	}
+
 	//con.App.SetPrintASCIILogo(func(_ *grumble.App) {
 	//con.PrintLogo()
 	//})
@@ -64,10 +66,8 @@ func Start(bindCmds ...BindCmds) error {
 		con.ActiveTarget.activeObserver = NewObserver(sess)
 		con.UpdatePrompt()
 	}
-
-	//go core.TunnelLoop(rpc)
-	os.Args = []string{}
-	err := con.App.Run()
+	con.Plugins = NewPlugins()
+	err = con.App.Run()
 	if err != nil {
 		logs.Log.Errorf("Run loop returned error: %v", err)
 	}
@@ -81,6 +81,7 @@ type Console struct {
 	Callbacks    *sync.Map
 	Observers    map[string]*Observer
 	*ServerStatus
+	*Plugins
 }
 
 func (c *Console) Login(config *mtls.ClientConfig) error {
@@ -194,4 +195,14 @@ func (c *Console) readConfig() {
 	if err != nil {
 		return
 	}
+}
+
+// CmdExists - checks if a command exists
+func CmdExists(name string, app *grumble.App) bool {
+	for _, c := range app.Commands().All() {
+		if name == c.Name {
+			return true
+		}
+	}
+	return false
 }

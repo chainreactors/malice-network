@@ -1,6 +1,8 @@
 module github.com/chainreactors/malice-network
 
-go 1.21.4
+go 1.22
+
+toolchain go1.22.3
 
 require (
 	filippo.io/age v1.1.1
@@ -23,6 +25,7 @@ require (
 	github.com/pterm/pterm v0.12.69
 	github.com/robfig/cron/v3 v3.0.0
 	github.com/tetratelabs/wazero v1.5.0
+	github.com/yuin/gopher-lua v1.1.1
 	golang.org/x/crypto v0.24.0
 	golang.org/x/text v0.16.0
 	google.golang.org/grpc v1.65.0
@@ -84,4 +87,5 @@ require (
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240604185151-ef581f913117 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
+	layeh.com/gopher-luar v1.0.11 // indirect
 )
