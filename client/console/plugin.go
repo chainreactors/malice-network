@@ -9,6 +9,7 @@ import (
 	"github.com/chainreactors/malice-network/client/core/plugin"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
+	"github.com/reeflective/console"
 	"github.com/spf13/cobra"
 	lua "github.com/yuin/gopher-lua"
 	"google.golang.org/protobuf/proto"
@@ -208,7 +209,7 @@ func NewPlugin(manifest *plugin.MalManiFest, con *Console) (*Plugin, error) {
 		return nil, fmt.Errorf("failed to load Lua script: %w", err)
 	}
 
-	err = plug.ReverseRegisterLuaFunctions(con.App.Menu(consts.ImplantGroup).Command)
+	err = plug.ReverseRegisterLuaFunctions(con.App.Menu(consts.ClientGroup))
 	if err != nil {
 		return nil, err
 	}
@@ -243,7 +244,7 @@ func (plugin *Plugin) RegisterLuaBuiltInFunctions(con *Console) error {
 	return nil
 }
 
-func (plugin *Plugin) ReverseRegisterLuaFunctions(app *cobra.Command) error {
+func (plugin *Plugin) ReverseRegisterLuaFunctions(app *console.Menu) error {
 	vm := plugin.LuaVM
 	globals := vm.Get(lua.GlobalsIndex).(*lua.LTable)
 	globals.ForEach(func(key lua.LValue, value lua.LValue) {
@@ -283,7 +284,7 @@ func (plugin *Plugin) ReverseRegisterLuaFunctions(app *cobra.Command) error {
 
 	globals.ForEach(func(key lua.LValue, value lua.LValue) {
 		funcName := key.String()
-		if CmdExists(funcName, app) {
+		if CmdExists(funcName, app.Command) {
 			fmt.Printf("%s already exists, skipped\n", funcName)
 			return
 		}
@@ -315,6 +316,7 @@ func (plugin *Plugin) ReverseRegisterLuaFunctions(app *cobra.Command) error {
 
 					return nil
 				},
+				GroupID: consts.GenericGroup,
 			}
 
 			app.AddCommand(cmd)
