@@ -16,6 +16,7 @@ require (
 	github.com/gookit/config/v2 v2.2.4
 	github.com/jessevdk/go-flags v1.5.0
 	github.com/klauspost/compress v1.17.0
+	github.com/mattn/go-tty v0.0.7
 	github.com/muesli/termenv v0.15.2
 	github.com/ncruces/go-sqlite3 v0.9.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible

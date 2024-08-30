@@ -1,7 +1,6 @@
 package console
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
 	"github.com/chainreactors/logs"
@@ -10,6 +9,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/mtls"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/tui"
+	"github.com/mattn/go-tty"
 	"github.com/reeflective/console"
 	"github.com/reeflective/readline"
 	"github.com/spf13/cobra"
@@ -17,7 +17,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 )
 
@@ -42,33 +41,17 @@ func Start(bindCmds ...BindCmds) error {
 	tui.Reset()
 	settings, _ := assets.LoadSettings()
 	con := &Console{
-		App:          console.New("IoM"),
 		ActiveTarget: &ActiveTarget{},
 		Settings:     settings,
 		Observers:    map[string]*Observer{},
 	}
+	con.NewConsole(bindCmds...)
 	//con.App.SetPrintASCIILogo(func(_ *grumble.App) {
 	//con.PrintLogo()
 	//})
 	//con.UpdatePrompt()
-	con.App.NewlineBefore = true
-	con.App.NewlineAfter = true
-	client := con.App.NewMenu(consts.ClientGroup)
-	client.Short = "client commands"
-	client.Prompt().Primary = con.GetPrompt
-	client.AddInterrupt(readline.ErrInterrupt, con.exitConsole)
-	client.AddHistorySourceFile("history", filepath.Join(assets.GetRootAppDir(), "history"))
 
-	implant := con.App.NewMenu(consts.ImplantGroup)
-	implant.Short = "Implant commands"
-	implant.Prompt().Primary = con.GetPrompt
-	implant.AddInterrupt(io.EOF, con.exitImplantMenu) // Ctrl-D
-	implant.AddHistorySourceFile("history", filepath.Join(assets.GetRootAppDir(), "implant_history"))
 	con.readConfig()
-	client.SetCommands(bindCmds[0](con))
-	for _, bindCmd := range bindCmds {
-		implant.SetCommands(bindCmd(con))
-	}
 
 	con.ActiveTarget.callback = func(sess *clientpb.Session) {
 		con.ActiveTarget.activeObserver = NewObserver(sess)
@@ -267,13 +250,26 @@ func (c *Console) readConfig() {
 }
 
 func (c *Console) exitConsole(_ *console.Console) {
-	reader := bufio.NewReader(os.Stdin)
-	fmt.Print("Confirm exit (Y/y): ")
-	text, _ := reader.ReadString('\n')
-	answer := strings.TrimSpace(text)
+	open, err := tty.Open()
+	if err != nil {
+		panic(err)
+	}
+	defer open.Close()
 
-	if (answer == "Y") || (answer == "y") {
-		os.Exit(0)
+	fmt.Print("Press 'Y/y'  or 'Ctrl+C' to confirm exit: ")
+
+	for {
+		readRune, err := open.ReadRune()
+		if err != nil {
+			panic(err)
+		}
+
+		switch readRune {
+		case 'Y', 'y':
+			os.Exit(0)
+		case 3: // ASCII code for Ctrl+C
+			os.Exit(0)
+		}
 	}
 }
 
@@ -282,4 +278,25 @@ func (c *Console) exitImplantMenu(_ *console.Console) {
 	root := c.App.Menu(consts.ImplantGroup).Command
 	root.SetArgs([]string{"background"})
 	root.Execute()
+}
+
+func (c *Console) NewConsole(bindCmds ...BindCmds) {
+	iom := console.New("IoM")
+	iom.NewlineBefore = true
+	iom.NewlineAfter = true
+	c.App = iom
+
+	client := iom.NewMenu(consts.ClientGroup)
+	client.Short = "client commands"
+	client.Prompt().Primary = c.GetPrompt
+	client.AddInterrupt(readline.ErrInterrupt, c.exitConsole)
+	client.AddHistorySourceFile("history", filepath.Join(assets.GetRootAppDir(), "history"))
+	client.Command = bindCmds[0](c)()
+
+	implant := iom.NewMenu(consts.ImplantGroup)
+	implant.Short = "Implant commands"
+	implant.Prompt().Primary = c.GetPrompt
+	implant.AddInterrupt(io.EOF, c.exitImplantMenu) // Ctrl-D
+	implant.AddHistorySourceFile("history", filepath.Join(assets.GetRootAppDir(), "implant_history"))
+	implant.Command = bindCmds[1](c)()
 }
