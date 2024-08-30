@@ -141,7 +141,7 @@ func LoadAlias(manifestPath string, con *console.Console) (*AliasManifest, error
 	// for each alias command, add a new app command
 	implantMenu := con.App.Menu(consts.ImplantGroup)
 	// do not add if the command already exists
-	if cmdExists(aliasManifest.CommandName, implantMenu.Command) {
+	if console.CmdExists(aliasManifest.CommandName, implantMenu.Command) {
 		return nil, fmt.Errorf("'%s' command already exists", aliasManifest.CommandName)
 	}
 
@@ -437,15 +437,6 @@ func runAliasCommand(cmd *cobra.Command, con *console.Console) {
 //		console.Log.Infof("Output saved to %s\n", outFilePath.Name())
 //	}
 //}
-
-func cmdExists(name string, cmd *cobra.Command) bool {
-	for _, c := range cmd.Commands() {
-		if name == c.Name() {
-			return true
-		}
-	}
-	return false
-}
 
 func makeAliasPlatformFilters(alias *AliasManifest) map[string]string {
 	filtersOS := make(map[string]bool)

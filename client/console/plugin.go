@@ -4,12 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/client/core/plugin"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
+	"github.com/spf13/cobra"
 	lua "github.com/yuin/gopher-lua"
 	"google.golang.org/protobuf/proto"
 	"os"
@@ -208,7 +208,7 @@ func NewPlugin(manifest *plugin.MalManiFest, con *Console) (*Plugin, error) {
 		return nil, fmt.Errorf("failed to load Lua script: %w", err)
 	}
 
-	err = plug.ReverseRegisterLuaFunctions(con.App)
+	err = plug.ReverseRegisterLuaFunctions(con.App.Menu(consts.ImplantGroup).Command)
 	if err != nil {
 		return nil, err
 	}
@@ -223,6 +223,15 @@ type Plugin struct {
 	LuaVM   *lua.LState
 }
 
+func CmdExists(name string, cmd *cobra.Command) bool {
+	for _, c := range cmd.Commands() {
+		if name == c.Name() {
+			return true
+		}
+	}
+	return false
+}
+
 func (plugin *Plugin) RegisterLuaBuiltInFunctions(con *Console) error {
 	vm := plugin.LuaVM
 
@@ -234,7 +243,7 @@ func (plugin *Plugin) RegisterLuaBuiltInFunctions(con *Console) error {
 	return nil
 }
 
-func (plugin *Plugin) ReverseRegisterLuaFunctions(app *grumble.App) error {
+func (plugin *Plugin) ReverseRegisterLuaFunctions(app *cobra.Command) error {
 	vm := plugin.LuaVM
 	globals := vm.Get(lua.GlobalsIndex).(*lua.LTable)
 	globals.ForEach(func(key lua.LValue, value lua.LValue) {
@@ -275,24 +284,21 @@ func (plugin *Plugin) ReverseRegisterLuaFunctions(app *grumble.App) error {
 	globals.ForEach(func(key lua.LValue, value lua.LValue) {
 		funcName := key.String()
 		if CmdExists(funcName, app) {
-			Log.Errorf("%s already exists, skipped", funcName)
+			fmt.Printf("%s already exists, skipped\n", funcName)
+			return
 		}
 
 		if fn, ok := value.(*lua.LFunction); ok {
 			if !strings.HasPrefix(funcName, "command_") {
 				return
 			}
-			app.AddCommand(&grumble.Command{
-				Name: strings.TrimPrefix(funcName, "command_"),
-				Help: fmt.Sprintf("Lua function %s", funcName),
-				Args: func(a *grumble.Args) {
-					a.StringList("args", "arguments to pass to Lua function", grumble.Default([]string{}))
-				},
-				Run: func(c *grumble.Context) error {
+			cmd := &cobra.Command{
+				Use:   strings.TrimPrefix(funcName, "command_"),
+				Short: fmt.Sprintf("Lua function %s", funcName),
+				RunE: func(cmd *cobra.Command, args []string) error {
 					vm.Push(fn) // 将函数推入栈
 
 					// 将所有参数推入栈
-					args := c.Args.StringList("args")
 					for _, arg := range args {
 						vm.Push(lua.LString(arg))
 					}
@@ -309,9 +315,9 @@ func (plugin *Plugin) ReverseRegisterLuaFunctions(app *grumble.App) error {
 
 					return nil
 				},
-				HelpGroup: consts.MalGroup,
-			})
+			}
 
+			app.AddCommand(cmd)
 			fmt.Printf("Registered Lua function: %s\n", funcName)
 		}
 	})

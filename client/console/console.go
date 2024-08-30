@@ -74,9 +74,8 @@ func Start(bindCmds ...BindCmds) error {
 	con.ActiveTarget.callback = func(sess *clientpb.Session) {
 		con.ActiveTarget.activeObserver = NewObserver(sess)
 	}
+	con.Plugins = NewPlugins()
 
-	//go core.TunnelLoop(rpc)
-	os.Args = []string{}
 	con.App.SwitchMenu(consts.ClientGroup)
 	err := con.App.Start()
 	if err != nil {
@@ -92,6 +91,7 @@ type Console struct {
 	Callbacks    *sync.Map
 	Observers    map[string]*Observer
 	*ServerStatus
+	*Plugins
 }
 
 func (c *Console) Login(config *mtls.ClientConfig) error {

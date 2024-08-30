@@ -1,26 +1,24 @@
 package mal
 
 import (
-	"github.com/chainreactors/grumble"
+	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/spf13/cobra"
 )
 
-func Commands(con *console.Console) []*grumble.Command {
+func Commands(con *console.Console) []*cobra.Command {
 
-	return []*grumble.Command{
+	return []*cobra.Command{
 		{
-			Name: "mal",
-			Help: "load mal plugin",
-			//LongHelp: help.GetHelpFor(consts.ModuleListModule),
-			Args: func(a *grumble.Args) {
-				a.String("dir-path", "lua script")
+			Use:   "mal",
+			Short: "mal commands",
+			Long:  help.GetHelpFor(consts.CommandExtension),
+			Run: func(cmd *cobra.Command, args []string) {
+				MalLoadCmd(cmd, con)
 			},
-			Run: func(ctx *grumble.Context) error {
-				MalLoadCmd(ctx, con)
-				return nil
-			},
-			HelpGroup: consts.GenericGroup,
+			GroupID: consts.GenericGroup,
 		},
 	}
+
 }

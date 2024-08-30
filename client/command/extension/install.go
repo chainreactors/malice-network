@@ -60,7 +60,7 @@ func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *console.Co
 				return
 			}
 		}
-		forceRemoveAll(installPath)
+		utils.ForceRemoveAll(installPath)
 	}
 
 	console.Log.Infof("Installing extension '%s' (%s) ... ", manifest.Name, manifest.Version)
@@ -72,7 +72,7 @@ func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *console.Co
 	err = os.WriteFile(filepath.Join(installPath, ManifestFileName), manifestData, 0o600)
 	if err != nil {
 		console.Log.Errorf("\nFailed to write %s: %s\n", ManifestFileName, err)
-		forceRemoveAll(installPath)
+		utils.ForceRemoveAll(installPath)
 		return
 	}
 	for _, manifestCmd := range manifest.ExtCommand {
@@ -87,7 +87,7 @@ func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *console.Co
 					err = os.MkdirAll(filepath.Dir(dst), 0700) //required for extensions with multiple dirs between the .o file and the manifest
 					if err != nil {
 						console.Log.Errorf("\nError creating extension directory: %s\n", err)
-						forceRemoveAll(newInstallPath)
+						utils.ForceRemoveAll(newInstallPath)
 						return
 					}
 					err = utils.CopyFile(src, dst)
@@ -97,7 +97,7 @@ func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *console.Co
 				}
 				if err != nil {
 					console.Log.Errorf("Error installing command: %s\n", err)
-					forceRemoveAll(newInstallPath)
+					utils.ForceRemoveAll(newInstallPath)
 					return
 				}
 			}
