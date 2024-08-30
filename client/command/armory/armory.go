@@ -418,7 +418,7 @@ func PrintArmoryPackages(aliases []*alias.AliasManifest, exts []*extension.Exten
 	implantMenu := con.App.Menu(consts.ImplantGroup)
 	for _, pkg := range entries {
 		var commandName string
-		if extension.CmdExists(pkg.CommandName, implantMenu.Command) {
+		if console.CmdExists(pkg.CommandName, implantMenu.Command) {
 			commandName = pterm.FgGreen.Sprint(pkg.CommandName)
 		} else {
 			commandName = pkg.CommandName

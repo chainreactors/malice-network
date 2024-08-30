@@ -131,7 +131,7 @@ func ExtensionLoadCmd(cmd *cobra.Command, con *console.Console) {
 	// do not add if the command already exists
 	implantMenu := con.App.Menu(consts.ImplantGroup)
 	for _, extCmd := range manifest.ExtCommand {
-		if CmdExists(extCmd.CommandName, implantMenu.Command) {
+		if console.CmdExists(extCmd.CommandName, implantMenu.Command) {
 			console.Log.Errorf("%s command already exists\n", extCmd.CommandName)
 			confirmModel := tui.NewConfirm(fmt.Sprintf("%s command already exists. Overwrite?", extCmd.CommandName))
 			newConfirm := tui.NewModel(confirmModel, nil, false, true)
@@ -548,16 +548,6 @@ func getBOFArgs(ctx *grumble.Context, args []string, binPath string, ext *ExtCom
 		return nil, err
 	}
 	return extensionArgs, nil
-}
-
-// CmdExists - checks if a command exists
-func CmdExists(name string, cmd *cobra.Command) bool {
-	for _, c := range cmd.Commands() {
-		if name == c.Name() {
-			return true
-		}
-	}
-	return false
 }
 
 func convertOldManifest(old *ExtensionManifest_) *ExtensionManifest {
