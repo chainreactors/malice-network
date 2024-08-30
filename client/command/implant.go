@@ -19,6 +19,7 @@ import (
 	"github.com/chainreactors/malice-network/client/command/use"
 	"github.com/chainreactors/malice-network/client/command/version"
 	cc "github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/mal"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/reeflective/console"
 	"github.com/spf13/cobra"
@@ -92,6 +93,16 @@ func BindImplantCommands(con *cc.Console) console.Commands {
 			}
 		}
 
+		for _, manifest := range assets.GetInstalledMalManifests() {
+			_, err := mal.LoadMalManiFest(con, manifest)
+			// Absorb error in case there's no extensions manifest
+			if err != nil {
+				//con doesn't appear to be initialised here?
+				//con.PrintErrorf("Failed to load extension: %s", err)
+				cc.Log.Errorf("Failed to load extension: %s\n", err)
+				continue
+			}
+		}
 		return implant
 	}
 	return implantCommands

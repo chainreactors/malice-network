@@ -65,7 +65,6 @@ func Start(bindCmds ...BindCmds) error {
 	implant.AddInterrupt(io.EOF, con.exitImplantMenu) // Ctrl-D
 	implant.AddHistorySourceFile("history", filepath.Join(assets.GetRootAppDir(), "implant_history"))
 	con.readConfig()
-
 	client.SetCommands(bindCmds[0](con))
 	for _, bindCmd := range bindCmds {
 		implant.SetCommands(bindCmd(con))

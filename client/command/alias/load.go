@@ -438,15 +438,6 @@ func runAliasCommand(cmd *cobra.Command, con *console.Console) {
 //	}
 //}
 
-func cmdExists(name string, cmd *cobra.Command) bool {
-	for _, c := range cmd.Commands() {
-		if name == c.Name() {
-			return true
-		}
-	}
-	return false
-}
-
 func makeAliasPlatformFilters(alias *AliasManifest) map[string]string {
 	filtersOS := make(map[string]bool)
 	filtersArch := make(map[string]bool)
