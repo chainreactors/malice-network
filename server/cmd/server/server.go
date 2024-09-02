@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/mtls"
@@ -40,10 +39,10 @@ func Execute() {
 	core.NewTicker()
 	parser := flags.NewParser(&opt, flags.Default)
 	parser.SubcommandsOptional = true
-	sub, err := parser.Parse()
+	args, err := parser.Parse()
 	if err != nil {
-		if !errors.Is(err, flags.ErrHelp) {
-			logs.Log.Error(err.Error())
+		if err.(*flags.Error).Type != flags.ErrHelp {
+			fmt.Println(err.Error())
 		}
 		return
 	}
@@ -52,14 +51,15 @@ func Execute() {
 	err = configs.LoadConfig(opt.Config, &opt)
 	if err != nil {
 		logs.Log.Warnf("cannot load config , %s ", err.Error())
+		return
 	}
 
-	if len(sub) != 0 {
-		err = opt.Execute(sub, parser)
+	if parser.Active != nil {
+		err = opt.Execute(args, parser)
 		if err != nil {
 			logs.Log.Error(err)
-			return
 		}
+		return
 	}
 	configs.CurrentServerConfigFilename = opt.Config
 	// load config
