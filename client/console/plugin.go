@@ -9,6 +9,7 @@ import (
 	"github.com/chainreactors/malice-network/client/core/plugin"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/reeflective/console"
 	"github.com/spf13/cobra"
 	lua "github.com/yuin/gopher-lua"
@@ -233,14 +234,40 @@ func CmdExists(name string, cmd *cobra.Command) bool {
 	return false
 }
 
-func (plugin *Plugin) RegisterLuaBuiltInFunctions(con *Console) error {
-	vm := plugin.LuaVM
+func (plugin *Plugin) registerLuaFunction(name string, fn intermediate.InternalFunc, expectedArgs []reflect.Type) {
+	plugin.LuaVM.SetGlobal(name, plugin.LuaVM.NewFunction(intermediate.WrapFuncForLua(fn, expectedArgs)))
+}
 
-	vm.SetGlobal("resource_file", vm.NewFunction(intermediate.WrapFuncForLua(func(args ...interface{}) (interface{}, error) {
+func (plugin *Plugin) RegisterLuaBuiltInFunctions(con *Console) error {
+	// get resource filename
+	plugin.registerLuaFunction("resource_file", func(args ...interface{}) (interface{}, error) {
+		filename := args[0].(string)
+		return intermediate.GetResourceFile(plugin.Name, filename)
+	}, []reflect.Type{reflect.TypeOf("")})
+
+	// read resource file content
+	plugin.registerLuaFunction("read_resource", func(args ...interface{}) (interface{}, error) {
 		filename := args[0].(string)
 		return intermediate.ReadResourceFile(plugin.Name, filename)
-	}, []reflect.Type{reflect.TypeOf("")})))
+	}, []reflect.Type{reflect.TypeOf("")})
 
+	// build binary message
+	plugin.registerLuaFunction("new_binary", func(args ...interface{}) (interface{}, error) {
+		module := args[0].(string)
+		filename := args[1].(string)
+		argsStr := args[2].(string)
+		sacrifice := args[3].(*implantpb.SacrificeProcess)
+		return intermediate.NewBinaryMessage(plugin.Name, module, filename, argsStr, sacrifice)
+	}, []reflect.Type{reflect.TypeOf(""), reflect.TypeOf(""), reflect.TypeOf(""), reflect.TypeOf(&implantpb.SacrificeProcess{})})
+
+	// build sacrifice process message
+	plugin.registerLuaFunction("new_sacrifice", func(args ...interface{}) (interface{}, error) {
+		ppid := args[0].(int64)
+		blockDll := args[1].(bool)
+		argue := args[2].(string)
+		argsStr := args[3].(string)
+		return intermediate.NewSacrificeProcessMessage(ppid, blockDll, argue, argsStr)
+	}, []reflect.Type{reflect.TypeOf(int64(0)), reflect.TypeOf(true), reflect.TypeOf(""), reflect.TypeOf("")})
 	return nil
 }
 
