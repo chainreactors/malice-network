@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/chainreactors/files"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/mtls"
@@ -12,7 +11,6 @@ import (
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/proto/services/listenerrpc"
-	"github.com/chainreactors/malice-network/server/internal/certs"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/web"
@@ -25,28 +23,6 @@ var (
 	Listener *listener
 )
 
-func GenerateConfig(server *configs.ServerConfig, cfg *configs.ListenerConfig) (*mtls.ClientConfig, error) {
-	var err error
-	if files.IsExist(cfg.Name + ".yaml") {
-		config, err := mtls.ReadConfig(cfg.Name + ".yaml")
-		if err != nil {
-			return nil, err
-		}
-		return config, nil
-	}
-	clientConfig, err := certs.GenerateListenerCert(server.GRPCHost,
-		cfg.Name, int(server.GRPCPort))
-	if err != nil {
-		return nil, err
-	}
-
-	err = mtls.WriteConfig(clientConfig, certs.ListenerNamespace, cfg.Name)
-	if err != nil {
-		return nil, err
-	}
-	return clientConfig, nil
-}
-
 func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) error {
 	options, err := mtls.GetGrpcOptions([]byte(clientConf.CACertificate), []byte(clientConf.Certificate), []byte(clientConf.PrivateKey), clientConf.Type)
 	if err != nil {
@@ -57,7 +33,7 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 		return err
 	}
 	serverAddress := net.JoinHostPort(listenerCfg.LHost, strconv.Itoa(listenerCfg.LPort))
-	conn, err := grpc.Dial(serverAddress, options...)
+	conn, err := grpc.NewClient(serverAddress, options...)
 	if err != nil {
 		return err
 	}
