@@ -85,7 +85,10 @@ func makeBind(cmd *cobra.Command, con *console.Console) func(group string, cmds 
 
 		// Bind the command to the root
 		for _, command := range cmds {
-			cmd.AddCommand(command(con)...)
+			for _, c := range command(con) {
+				c.GroupID = group
+				cmd.AddCommand(c)
+			}
 		}
 	}
 }

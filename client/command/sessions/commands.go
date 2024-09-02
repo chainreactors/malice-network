@@ -19,7 +19,6 @@ func Commands(con *console.Console) []*cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			SessionsCmd(cmd, con)
 		},
-		GroupID: consts.GenericGroup,
 	}
 	flags.Bind("sessions", true, sessionsCmd, func(f *pflag.FlagSet) {
 		f.Bool("all", false, "show all sessions")
@@ -58,7 +57,6 @@ func Commands(con *console.Console) []*cobra.Command {
 			groupCmd(cmd, con)
 			return
 		},
-		GroupID: consts.GenericGroup,
 	}
 
 	carapace.Gen(groupCommand).PositionalCompletion(

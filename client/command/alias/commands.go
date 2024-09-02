@@ -14,10 +14,9 @@ func Commands(con *console.Console) []*cobra.Command {
 		Short: "List current aliases",
 		Long:  help.GetHelpFor(consts.CommandAlias),
 		Run: func(cmd *cobra.Command, args []string) {
-			AliasesCmd(cmd, con)
+			cmd.Help()
 			return
 		},
-		GroupID: consts.GenericGroup,
 	}
 
 	aliasLoadCmd := &cobra.Command{

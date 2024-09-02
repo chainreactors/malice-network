@@ -17,7 +17,6 @@ func Commands(con *console.Console) []*cobra.Command {
 			ListModulesCmd(cmd, con)
 			return
 		},
-		GroupID: consts.ImplantGroup,
 	}
 
 	loadModuleCmd := &cobra.Command{

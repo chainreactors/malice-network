@@ -14,7 +14,6 @@ func Commands(con *console.Console) []*cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			cmd.Help()
 		},
-		GroupID: consts.GenericGroup,
 	}
 
 	cmd.AddCommand(&cobra.Command{

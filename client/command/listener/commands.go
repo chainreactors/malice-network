@@ -19,7 +19,6 @@ func Commands(con *console.Console) []*cobra.Command {
 			ListenerCmd(cmd, con)
 			return
 		},
-		GroupID: consts.ListenerGroup,
 	}
 
 	tcpCmd := &cobra.Command{
@@ -89,7 +88,6 @@ func Commands(con *console.Console) []*cobra.Command {
 			listWebsitesCmd(cmd, con)
 			return
 		},
-		GroupID: consts.ListenerGroup,
 	}
 	carapace.Gen(websiteCmd).PositionalCompletion(carapace.ActionValues().Usage("listener id"))
 
