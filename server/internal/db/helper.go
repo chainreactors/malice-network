@@ -17,17 +17,16 @@ import (
 	"time"
 )
 
-func IsInit() (bool, error) {
+func HasOperator(typ string) (bool, error) {
 	var count int64
-	err := Session().Model(&models.Operator{}).Count(&count).Error
+	err := Session().Model(&models.Operator{}).Where("type = ?", typ).Count(&count).Error
 	if err != nil {
 		return false, err
 	}
 	if count == 0 {
-		return true, nil
-	} else {
 		return false, nil
 	}
+	return true, nil
 }
 
 func FindAliveSessions() ([]*lispb.RegisterSession, error) {
@@ -170,9 +169,11 @@ func UpdateSession(sessionID, note, group string) error {
 	return result.Error
 }
 
-func CreateOperator(name string) error {
+func CreateOperator(name string, typ string, remoteAddr string) error {
 	var operator models.Operator
 	operator.Name = name
+	operator.Type = typ
+	operator.Remote = remoteAddr
 	err := Session().Save(&operator).Error
 	return err
 

@@ -2,35 +2,28 @@ package mtls
 
 import (
 	"encoding/hex"
-	"fmt"
 	"github.com/chainreactors/logs"
 	"gopkg.in/yaml.v3"
 	"io/ioutil"
 	"math/rand"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 )
 
 var (
-	listener = "listener"
-	client   = "client"
-)
-
-const (
-	operatorCA = iota + 1
-	listenerCA
+	Listener = "listener"
+	Client   = "client"
 )
 
 type ClientConfig struct {
-	Operator      string `json:"operator"` // This value is actually ignored for the most part (cert CN is used instead)
-	LHost         string `json:"lhost"`
-	LPort         int    `json:"lport"`
-	Type          string `json:"type"`
-	CACertificate string `json:"ca_certificate"`
-	PrivateKey    string `json:"private_key"`
-	Certificate   string `json:"certificate"`
+	Operator      string `json:"operator" yaml:"operator"` // This value is actually ignored for the most part (cert CN is used instead)
+	LHost         string `json:"host" yaml:"host"`
+	LPort         int    `json:"port" yaml:"port"`
+	Type          string `json:"type" yaml:"type"`
+	CACertificate string `json:"ca" yaml:"ca"`
+	PrivateKey    string `json:"private_key" yaml:"private_key"`
+	Certificate   string `json:"certificate" yaml:"certificate"`
 }
 
 //func GetConfigs() map[string]*ClientConfig {
@@ -76,44 +69,41 @@ func ReadConfig(confFilePath string) (*ClientConfig, error) {
 }
 
 // NewClientConfig - new config and save in local file
-func NewClientConfig(host, user string, port, caType int, certs, privateKey, ca []byte) *ClientConfig {
-	// new config
-	config := &ClientConfig{
-		Operator:      user,
-		LHost:         host,
-		LPort:         port,
-		CACertificate: string(ca),
-		PrivateKey:    string(privateKey),
-		Certificate:   string(certs),
-	}
-	if caType == listenerCA {
-		config.Type = listener
-	} else {
-		config.Type = client
-	}
-	return config
-}
+//func NewClientConfig(host, user string, port int, caType string, certs, privateKey, ca []byte) *ClientConfig {
+//	// new config
+//	config := &ClientConfig{
+//		Operator:      user,
+//		LHost:         host,
+//		LPort:         port,
+//		Type:          caType,
+//		CACertificate: string(ca),
+//		PrivateKey:    string(privateKey),
+//		Certificate:   string(certs),
+//	}
+//
+//	return config
+//}
 
 // save config as yaml file
-func WriteConfig(clientConfig *ClientConfig, clientType, name string) error {
-	configDir, _ := os.Getwd()
-	var configFile string
-	if clientType == listener {
-		configFile = path.Join(configDir, fmt.Sprintf("%s.yaml", name))
-	} else {
-		configFile = path.Join(configDir, fmt.Sprintf("%s_%s.yaml", name, clientConfig.LHost))
-	}
-	data, err := yaml.Marshal(clientConfig)
-	if err != nil {
-		return err
-	}
-	err = os.WriteFile(configFile, data, 0644)
-	if err != nil {
-		logs.Log.Errorf("write config to file failed: %v", err)
-		return err
-	}
-	return nil
-}
+//func WriteConfig(clientConfig *ClientConfig, clientType, name string) error {
+//	configDir, _ := os.Getwd()
+//	var configFile string
+//	if clientType == listener {
+//		configFile = path.Join(configDir, fmt.Sprintf("%s.yaml", name))
+//	} else {
+//		configFile = path.Join(configDir, fmt.Sprintf("%s_%s.yaml", name, clientConfig.LHost))
+//	}
+//	data, err := yaml.Marshal(clientConfig)
+//	if err != nil {
+//		return err
+//	}
+//	err = os.WriteFile(configFile, data, 0644)
+//	if err != nil {
+//		logs.Log.Errorf("write config to file failed: %v", err)
+//		return err
+//	}
+//	return nil
+//}
 
 // generateOperatorToken - Generate a new operator auth token
 func generateOperatorToken() string {

@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/mtls"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/client/rootpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
@@ -66,14 +67,18 @@ func (rpc *Server) SpiteStream(stream listenerrpc.ListenerRPC_SpiteStreamServer)
 	}
 }
 
-func (s *Server) AddListener(ctx context.Context, req *rootpb.Operator) (*rootpb.Response, error) {
+func (rpc *Server) AddListener(ctx context.Context, req *rootpb.Operator) (*rootpb.Response, error) {
 	cfg := configs.GetServerConfig()
-	clientConf, err := certs.GenerateListenerCert(cfg.GRPCHost, req.Args[0], int(cfg.GRPCPort))
+	clientConf, err := certs.GenerateListenerCert(cfg.IP, req.Args[0], int(cfg.GRPCPort))
 	if err != nil {
 		return &rootpb.Response{
 			Status: 1,
 			Error:  err.Error(),
 		}, err
+	}
+	err = db.CreateOperator(req.Args[0], mtls.Listener, getRemoteAddr(ctx))
+	if err != nil {
+		return nil, err
 	}
 	data, err := yaml.Marshal(clientConf)
 	if err != nil {
@@ -88,7 +93,7 @@ func (s *Server) AddListener(ctx context.Context, req *rootpb.Operator) (*rootpb
 	}, nil
 }
 
-func (s *Server) RemoveListener(ctx context.Context, req *rootpb.Operator) (*rootpb.Response, error) {
+func (rpc *Server) RemoveListener(ctx context.Context, req *rootpb.Operator) (*rootpb.Response, error) {
 	err := certs.RemoveCertificate(certs.ListenerCA, certs.RSAKey, req.Args[0])
 	if err != nil {
 		return &rootpb.Response{
@@ -102,7 +107,7 @@ func (s *Server) RemoveListener(ctx context.Context, req *rootpb.Operator) (*roo
 	}, nil
 }
 
-func (s *Server) ListListeners(ctx context.Context, req *rootpb.Operator) (*clientpb.Listeners, error) {
+func (rpc *Server) ListListeners(ctx context.Context, req *rootpb.Operator) (*clientpb.Listeners, error) {
 	dbListeners, err := db.ListListeners()
 	if err != nil {
 		return nil, err

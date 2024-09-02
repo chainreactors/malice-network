@@ -91,13 +91,14 @@ func LoadConfig(filename string, v interface{}) error {
 type ServerConfig struct {
 	GRPCPort     uint16        `config:"grpc_port" default:"5004"`
 	GRPCHost     string        `config:"grpc_host" default:"0.0.0.0"`
+	IP           string        `config:"ip" default:""`
 	DaemonConfig *DaemonConfig `config:"daemon"`
 	LogConfig    *LogConfig    `config:"log" default:""`
 	MiscConfig   *MiscConfig   `config:"config" default:""`
 }
 
 func (c *ServerConfig) Address() string {
-	return fmt.Sprintf("%s:%d", c.GRPCHost, c.GRPCPort)
+	return fmt.Sprintf("%s:%d", c.IP, c.GRPCPort)
 }
 
 func (c *ServerConfig) Save() error {
@@ -123,10 +124,10 @@ func getRandomID() string {
 
 // LogConfig - Server logging config
 type LogConfig struct {
-	Level              int  `json:"level" default:"20"`
-	GRPCUnaryPayloads  bool `json:"grpc_unary_payloads"`
-	GRPCStreamPayloads bool `json:"grpc_stream_payloads"`
-	TLSKeyLogger       bool `json:"tls_key_logger"`
+	Level int `json:"level" default:"20"`
+	//GRPCUnaryPayloads  bool `json:"grpc_unary_payloads"`
+	//GRPCStreamPayloads bool `json:"grpc_stream_payloads"`
+	//TLSKeyLogger       bool `json:"tls_key_logger"`
 }
 
 // DaemonConfig - Configure daemon mode

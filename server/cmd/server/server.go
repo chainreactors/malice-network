@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/mtls"
 	"github.com/chainreactors/malice-network/server/internal/certs"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
@@ -30,6 +31,7 @@ func init() {
 		opt.ParseDefault = true
 	})
 	config.AddDriver(yaml.Driver)
+	db.Client = db.NewDBClient()
 }
 
 func Execute() {
@@ -75,7 +77,11 @@ func Execute() {
 		logs.Log.SetLevel(logs.Debug)
 	}
 
-	db.Client = db.NewDBClient()
+	if opt.IP != "" {
+		logs.Log.Infof("manually specified IP: %s will override %s config: %s", opt.IP, opt.Config, opt.Server.IP)
+		opt.Server.IP = opt.IP
+	}
+
 	err = certs.GenerateRootCert()
 	if err != nil {
 		logs.Log.Errorf("cannot init root ca , %s ", err.Error())
@@ -90,43 +96,34 @@ func Execute() {
 	//	rpc.DaemonStart(opt.Server, opt.Listeners)
 	//}
 
-	err = StartGrpc(opt.Server.GRPCPort)
+	err = StartGrpc(fmt.Sprintf("%s:%d", opt.Server.GRPCHost, opt.Server.GRPCPort))
 	if err != nil {
 		logs.Log.Errorf("cannot start grpc , %s ", err.Error())
 		return
 	}
-	isNoClient, err := db.IsInit()
+
+	err = opt.InitUser()
 	if err != nil {
-		logs.Log.Errorf("cannot find client , %s ", err.Error())
+		logs.Log.Errorf(err.Error())
 		return
 	}
-	if isNoClient {
-		err := opt.InitUser()
-		if err != nil {
-			logs.Log.Errorf("cannot init user , %s ", err.Error())
-			return
-		}
-	}
 
-	if opt.Listeners.Name == "" {
-		err := opt.InitListener()
-		if err != nil {
-			logs.Log.Errorf("cannot init listener , %s ", err.Error())
-			return
-		}
+	err = opt.InitListener()
+	if err != nil {
+		logs.Log.Errorf(err.Error())
+		return
 	}
 	// start listeners
 	if opt.Listeners.Auth != "" {
-		// init forwarder
-		clientConf, err := listener.GenerateConfig(opt.Server, opt.Listeners)
-		if err != nil {
-			logs.Log.Errorf("init client failed, %s", err.Error())
+		if listenerConf, err := mtls.ReadConfig(opt.Listeners.Auth); err != nil {
+			logs.Log.Errorf("cannot read listener config , %s ", err.Error())
 			return
-		}
-		err = listener.NewListener(clientConf, opt.Listeners)
-		if err != nil {
-			logs.Log.Errorf("cannot start listeners , %s ", err.Error())
-			return
+		} else {
+			err = listener.NewListener(listenerConf, opt.Listeners)
+			if err != nil {
+				logs.Log.Errorf("cannot start listeners , %s ", err.Error())
+				return
+			}
 		}
 	}
 
@@ -151,14 +148,14 @@ func Execute() {
 }
 
 // Start - Starts the server console
-func StartGrpc(port uint16) error {
+func StartGrpc(address string) error {
 	// start alive session
 	err := StartAliveSession()
 	if err != nil {
 		return err
 	}
 
-	_, _, err = rpc.StartClientListener(port)
+	_, _, err = rpc.StartClientListener(address)
 	if err != nil {
 		return err
 	}

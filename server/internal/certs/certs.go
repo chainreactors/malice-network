@@ -15,7 +15,6 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"os"
 	"path"
-	"path/filepath"
 )
 
 const (
@@ -227,7 +226,7 @@ func GenerateServerCert(name string) ([]byte, []byte, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	err = db.CreateOperator(name)
+	//err = db.CreateOperator(name)
 	return cert, key, nil
 }
 
@@ -245,9 +244,15 @@ func GenerateClientCert(host, name string, port int) (*mtls.ClientConfig, error)
 	if err != nil {
 		return nil, err
 	}
-	err = db.CreateOperator(name)
-	clientConfig := mtls.NewClientConfig(host, name, port, OperatorCA, cert, key, caCert)
-	return clientConfig, nil
+	return &mtls.ClientConfig{
+		Operator:      name,
+		LHost:         host,
+		LPort:         port,
+		Type:          mtls.Client,
+		CACertificate: string(caCert),
+		PrivateKey:    string(key),
+		Certificate:   string(cert),
+	}, nil
 }
 
 func GenerateListenerCert(host, name string, port int) (*mtls.ClientConfig, error) {
@@ -257,26 +262,21 @@ func GenerateListenerCert(host, name string, port int) (*mtls.ClientConfig, erro
 	if err != nil {
 		return nil, err
 	}
-	cwd, _ := os.Getwd()
-	if files.IsExist(filepath.Join(cwd, name+".yaml")) {
-		configPath := path.Join(cwd, fmt.Sprintf("%s.yaml", name))
-		listener, err := mtls.ReadConfig(configPath)
-		if err != nil {
-			return nil, err
-		}
-		cert = []byte(listener.Certificate)
-		key = []byte(listener.PrivateKey)
-	} else {
-		cert, key, err = certs.GenerateChildCert(host, true, ca, caKey)
-		if err != nil {
-			return nil, err
-		}
+	cert, key, err = certs.GenerateChildCert(host, true, ca, caKey)
+	if err != nil {
+		return nil, err
 	}
 	err = db.AddCertificate(ListenerCA, RSAKey, name, cert, key)
 	if err != nil {
 		return nil, err
 	}
-	clientConfig := mtls.NewClientConfig(host, name, port, ListenerCA, cert, key, caCert)
-
-	return clientConfig, nil
+	return &mtls.ClientConfig{
+		Operator:      name,
+		LHost:         host,
+		LPort:         port,
+		Type:          mtls.Listener,
+		CACertificate: string(caCert),
+		PrivateKey:    string(key),
+		Certificate:   string(cert),
+	}, nil
 }

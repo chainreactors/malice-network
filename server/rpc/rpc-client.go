@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/mtls"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/client/rootpb"
 	"github.com/chainreactors/malice-network/server/internal/certs"
@@ -70,12 +71,16 @@ func (rpc *Server) LoginClient(ctx context.Context, req *clientpb.LoginReq) (*cl
 
 func (rpc *Server) AddClient(ctx context.Context, req *rootpb.Operator) (*rootpb.Response, error) {
 	cfg := configs.GetServerConfig()
-	clientConf, err := certs.GenerateClientCert(cfg.GRPCHost, req.Args[0], int(cfg.GRPCPort))
+	clientConf, err := certs.GenerateClientCert(cfg.IP, req.Args[0], int(cfg.GRPCPort))
 	if err != nil {
 		return &rootpb.Response{
 			Status: 1,
 			Error:  err.Error(),
 		}, err
+	}
+	err = db.CreateOperator(req.Args[0], mtls.Client, getRemoteAddr(ctx))
+	if err != nil {
+		return nil, err
 	}
 	data, err := yaml.Marshal(clientConf)
 	if err != nil {
