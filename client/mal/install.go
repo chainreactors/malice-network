@@ -8,14 +8,27 @@ import (
 	"github.com/chainreactors/malice-network/client/core/plugin"
 	"github.com/chainreactors/malice-network/client/utils"
 	"github.com/chainreactors/tui"
+	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 var (
 	ManifestFileName = "mal.yaml"
 )
+
+// ExtensionsInstallCmd - Install an extension
+func MalInstallCmd(cmd *cobra.Command, con *console.Console) {
+	localPath := cmd.Flags().Arg(0)
+	_, err := os.Stat(localPath)
+	if os.IsNotExist(err) {
+		console.Log.Errorf("Mal path '%s' does not exist", localPath)
+		return
+	}
+	InstallFromDir(localPath, true, con, strings.HasSuffix(localPath, ".tar.gz"))
+}
 
 func ParseMalManifest(data []byte) (*plugin.MalManiFest, error) {
 	extManifest := &plugin.MalManiFest{}

@@ -223,6 +223,7 @@ type Plugin struct {
 	Content []byte
 	Path    string
 	LuaVM   *lua.LState
+	CMDs    []*cobra.Command
 }
 
 func CmdExists(name string, cmd *cobra.Command) bool {
@@ -274,40 +275,40 @@ func (plugin *Plugin) RegisterLuaBuiltInFunctions(con *Console) error {
 func (plugin *Plugin) ReverseRegisterLuaFunctions(app *console.Menu) error {
 	vm := plugin.LuaVM
 	globals := vm.Get(lua.GlobalsIndex).(*lua.LTable)
-	globals.ForEach(func(key lua.LValue, value lua.LValue) {
-		if fn, ok := value.(*lua.LFunction); ok {
-			funcName := key.String()
-			if strings.HasPrefix(funcName, "command_") {
-				// 注册到 RPCFunctions 中
-				intermediate.InternalFunctions[funcName] = func(req ...interface{}) (interface{}, error) {
-					vm.Push(fn) // 将函数推入栈
-
-					// 将所有参数推入栈
-					for _, arg := range req {
-						vm.Push(lua.LString(fmt.Sprintf("%v", arg)))
-					}
-
-					// 调用函数
-					if err := vm.PCall(len(req), lua.MultRet, nil); err != nil {
-						return nil, fmt.Errorf("error calling Lua function %s: %w", funcName, err)
-					}
-
-					// 获取返回值
-					results := make([]interface{}, 0, vm.GetTop())
-					for i := 1; i <= vm.GetTop(); i++ {
-						results = append(results, vm.Get(i))
-					}
-
-					// 如果有返回值，返回第一个值，否则返回nil
-					if len(results) > 0 {
-						return results[0], nil
-					}
-					return nil, nil
-				}
-				fmt.Printf("Registered Lua function to RPCFunctions: %s\n", funcName)
-			}
-		}
-	})
+	//globals.ForEach(func(key lua.LValue, value lua.LValue) {
+	//	if fn, ok := value.(*lua.LFunction); ok {
+	//		funcName := key.String()
+	//		if strings.HasPrefix(funcName, "command_") {
+	//			// 注册到 RPCFunctions 中
+	//			intermediate.InternalFunctions[funcName] = func(req ...interface{}) (interface{}, error) {
+	//				vm.Push(fn) // 将函数推入栈
+	//
+	//				// 将所有参数推入栈
+	//				for _, arg := range req {
+	//					vm.Push(lua.LString(fmt.Sprintf("%v", arg)))
+	//				}
+	//
+	//				// 调用函数
+	//				if err := vm.PCall(len(req), lua.MultRet, nil); err != nil {
+	//					return nil, fmt.Errorf("error calling Lua function %s: %w", funcName, err)
+	//				}
+	//
+	//				// 获取返回值
+	//				results := make([]interface{}, 0, vm.GetTop())
+	//				for i := 1; i <= vm.GetTop(); i++ {
+	//					results = append(results, vm.Get(i))
+	//				}
+	//
+	//				// 如果有返回值，返回第一个值，否则返回nil
+	//				if len(results) > 0 {
+	//					return results[0], nil
+	//				}
+	//				return nil, nil
+	//			}
+	//			fmt.Printf("Registered Lua function to RPCFunctions: %s\n", funcName)
+	//		}
+	//	}
+	//})
 
 	globals.ForEach(func(key lua.LValue, value lua.LValue) {
 		funcName := key.String()
@@ -345,7 +346,7 @@ func (plugin *Plugin) ReverseRegisterLuaFunctions(app *console.Menu) error {
 				},
 				GroupID: consts.GenericGroup,
 			}
-
+			plugin.CMDs = append(plugin.CMDs, cmd)
 			app.AddCommand(cmd)
 			fmt.Printf("Registered Lua function: %s\n", funcName)
 		}

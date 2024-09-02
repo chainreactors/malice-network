@@ -3,6 +3,7 @@ package consts
 // client module and command
 const (
 	ModuleUpdate           = "update"
+	ModuleExplore          = "explorer"
 	ModuleExecution        = "exec"
 	ModuleExecuteAssembly  = "execute_assembly"
 	ModuleInlineAssembly   = "inline_assembly"
@@ -60,6 +61,11 @@ const (
 	CommandExtensionLoad    = "load"
 	CommandExtensionInstall = "install"
 	CommandExtensionRemove  = "remove"
+	CommandMal              = "mal"
+	CommandMalLoad          = "load"
+	CommandMalList          = "list"
+	CommandMalInstall       = "install"
+	CommandMalRemove        = "remove"
 )
 
 // ctrl type
