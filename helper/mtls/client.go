@@ -2,6 +2,7 @@ package mtls
 
 import (
 	"encoding/hex"
+	"fmt"
 	"github.com/chainreactors/logs"
 	"gopkg.in/yaml.v3"
 	"io/ioutil"
@@ -24,6 +25,10 @@ type ClientConfig struct {
 	CACertificate string `json:"ca" yaml:"ca"`
 	PrivateKey    string `json:"private_key" yaml:"private_key"`
 	Certificate   string `json:"certificate" yaml:"certificate"`
+}
+
+func (c *ClientConfig) Address() string {
+	return fmt.Sprintf("%s:%d", c.LHost, c.LPort)
 }
 
 //func GetConfigs() map[string]*ClientConfig {

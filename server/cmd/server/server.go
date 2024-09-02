@@ -39,12 +39,6 @@ func Execute() {
 	var err error
 	core.NewTicker()
 	parser := flags.NewParser(&opt, flags.Default)
-
-	// load config
-	err = configs.LoadConfig(configs.ServerConfigFileName, &opt)
-	if err != nil {
-		logs.Log.Warnf("cannot load config , %s ", err.Error())
-	}
 	parser.SubcommandsOptional = true
 	sub, err := parser.Parse()
 	if err != nil {
@@ -54,25 +48,21 @@ func Execute() {
 		return
 	}
 
-	err = opt.Execute(sub, parser)
-	if err != nil {
-		logs.Log.Error(err)
-		return
-	}
-	if parser.Command.Active != nil {
-		return
-	}
 	// load config
-	if opt.Config != "" {
-		err = configs.LoadConfig(opt.Config, &opt)
+	err = configs.LoadConfig(opt.Config, &opt)
+	if err != nil {
+		logs.Log.Warnf("cannot load config , %s ", err.Error())
+	}
+
+	if len(sub) != 0 {
+		err = opt.Execute(sub, parser)
 		if err != nil {
-			logs.Log.Errorf("cannot load config , %s ", err.Error())
+			logs.Log.Error(err)
 			return
 		}
-		configs.CurrentServerConfigFilename = opt.Config
-	} else if opt.Server == nil {
-		logs.Log.Errorf("null server config , %s ", err.Error())
 	}
+	configs.CurrentServerConfigFilename = opt.Config
+	// load config
 	if opt.Debug {
 		logs.Log.SetLevel(logs.Debug)
 	}
@@ -82,48 +72,44 @@ func Execute() {
 		opt.Server.IP = opt.IP
 	}
 
-	err = certs.GenerateRootCert()
-	if err != nil {
-		logs.Log.Errorf("cannot init root ca , %s ", err.Error())
-		return
-	}
-	//if opt.Daemon == true {
-	//	err = StartAliveSession()
-	//	if err != nil {
-	//		logs.Log.Errorf("cannot start alive session , %s ", err.Error())
-	//		return
-	//	}
-	//	rpc.DaemonStart(opt.Server, opt.Listeners)
-	//}
-
-	err = StartGrpc(fmt.Sprintf("%s:%d", opt.Server.GRPCHost, opt.Server.GRPCPort))
-	if err != nil {
-		logs.Log.Errorf("cannot start grpc , %s ", err.Error())
-		return
-	}
-
-	err = opt.InitUser()
-	if err != nil {
-		logs.Log.Errorf(err.Error())
-		return
-	}
-
-	err = opt.InitListener()
-	if err != nil {
-		logs.Log.Errorf(err.Error())
-		return
-	}
-	// start listeners
-	if opt.Listeners.Auth != "" {
-		if listenerConf, err := mtls.ReadConfig(opt.Listeners.Auth); err != nil {
-			logs.Log.Errorf("cannot read listener config , %s ", err.Error())
+	if opt.Server.Enable {
+		err = certs.GenerateRootCert()
+		if err != nil {
+			logs.Log.Errorf("cannot init root ca , %s ", err.Error())
 			return
-		} else {
-			err = listener.NewListener(listenerConf, opt.Listeners)
-			if err != nil {
-				logs.Log.Errorf("cannot start listeners , %s ", err.Error())
-				return
-			}
+		}
+		//if opt.Daemon == true {
+		//	err = RecoverAliveSession()
+		//	if err != nil {
+		//		logs.Log.Errorf("cannot start alive session , %s ", err.Error())
+		//		return
+		//	}
+		//	rpc.DaemonStart(opt.Server, opt.Listeners)
+		//}
+
+		err = StartGrpc(fmt.Sprintf("%s:%d", opt.Server.GRPCHost, opt.Server.GRPCPort))
+		if err != nil {
+			logs.Log.Errorf("cannot start grpc , %s ", err.Error())
+			return
+		}
+
+		err = opt.InitUser()
+		if err != nil {
+			logs.Log.Errorf(err.Error())
+			return
+		}
+		err = opt.InitListener()
+		if err != nil {
+			logs.Log.Errorf(err.Error())
+			return
+		}
+	}
+
+	if opt.Listeners.Enable {
+		logs.Log.Importantf("listener config enabled, Starting listeners")
+		err := StartListener(opt.Listeners)
+		if err != nil {
+			return
 		}
 	}
 
@@ -150,7 +136,7 @@ func Execute() {
 // Start - Starts the server console
 func StartGrpc(address string) error {
 	// start alive session
-	err := StartAliveSession()
+	err := RecoverAliveSession()
 	if err != nil {
 		return err
 	}
@@ -162,7 +148,7 @@ func StartGrpc(address string) error {
 	return nil
 }
 
-func StartAliveSession() error {
+func RecoverAliveSession() error {
 	// start alive session
 	sessions, err := db.FindAliveSessions()
 	if err != nil {
@@ -199,6 +185,18 @@ func StartAliveSession() error {
 			logs.Log.Errorf("cannot update session status , %s ", err.Error())
 		}
 	}()
+	return nil
+}
+
+func StartListener(opt *configs.ListenerConfig) error {
+	if listenerConf, err := mtls.ReadConfig(opt.Auth); err != nil {
+		return err
+	} else {
+		err = listener.NewListener(listenerConf, opt)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

@@ -95,6 +95,7 @@ type ServerConfig struct {
 	DaemonConfig *DaemonConfig `config:"daemon"`
 	LogConfig    *LogConfig    `config:"log" default:""`
 	MiscConfig   *MiscConfig   `config:"config" default:""`
+	Enable       bool          `config:"enable" default:"false"`
 }
 
 func (c *ServerConfig) Address() string {

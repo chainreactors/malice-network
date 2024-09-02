@@ -6,6 +6,7 @@ server:
   grpc_host: 0.0.0.0
   ip: 127.0.0.1
   audit: 1  # 0 close , 1 basic , 2 detail
+  enable: true
   config:
     packet_length: 1048576 # 1M:
     certificate:
@@ -14,6 +15,7 @@ server:
 listeners:
   name: listener
   auth: listener.auth
+  enable: true
   tcp:
     - name: tcp_default
       port: 5001
