@@ -14,9 +14,8 @@ func Commands(con *console.Console) []*cobra.Command {
 		Short: "Extension commands",
 		Long:  help.GetHelpFor(consts.CommandExtension),
 		Run: func(cmd *cobra.Command, args []string) {
-			ExtensionsCmd(cmd, con)
+			cmd.Help()
 		},
-		GroupID: consts.GenericGroup,
 	}
 
 	extensionListCmd := &cobra.Command{

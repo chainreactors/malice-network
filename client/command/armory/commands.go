@@ -18,7 +18,6 @@ func Commands(con *console.Console) []*cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			ArmoryCmd(cmd, con)
 		},
-		GroupID: consts.GenericGroup,
 	}
 	flags.Bind("connection", true, armoryCmd, func(f *pflag.FlagSet) {
 		f.BoolP("insecure", "I", false, "skip tls certificate validation")

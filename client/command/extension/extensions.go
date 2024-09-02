@@ -25,7 +25,6 @@ func ExtensionsCmd(cmd *cobra.Command, con *console.Console) {
 // PrintExtensions - Print a list of loaded extensions
 func PrintExtensions(con *console.Console) {
 	var rowEntries []table.Row
-	var row table.Row
 
 	tableModel := tui.NewTable([]table.Column{
 		{Title: "Name", Width: 10},
@@ -44,7 +43,7 @@ func PrintExtensions(con *console.Console) {
 		if _, ok := installedManifests[ext.CommandName]; ok {
 			installed = "✅"
 		}
-		row = table.Row{
+		row := table.Row{
 			ext.Manifest.Name,
 			ext.CommandName,
 			strings.Join(extensionPlatforms(ext), ",\n"),

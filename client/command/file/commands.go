@@ -20,7 +20,6 @@ func Commands(con *console.Console) []*cobra.Command {
 			DownloadCmd(cmd, con)
 			return
 		},
-		GroupID: consts.ImplantGroup,
 	}
 
 	carapace.Gen(downloadCmd).PositionalCompletion(
@@ -59,7 +58,6 @@ func Commands(con *console.Console) []*cobra.Command {
 			SyncCmd(cmd, con)
 			return
 		},
-		GroupID: consts.ImplantGroup,
 	}
 
 	carapace.Gen(syncCmd).PositionalCompletion(

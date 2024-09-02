@@ -3,7 +3,6 @@ package command
 import (
 	"github.com/chainreactors/malice-network/client/command/alias"
 	"github.com/chainreactors/malice-network/client/command/armory"
-	"github.com/chainreactors/malice-network/client/command/explorer"
 	"github.com/chainreactors/malice-network/client/command/extension"
 	"github.com/chainreactors/malice-network/client/command/listener"
 	"github.com/chainreactors/malice-network/client/command/login"
@@ -41,7 +40,6 @@ func BindClientsCommands(con *cc.Console) console.Commands {
 			extension.Commands,
 			armory.Commands,
 			observe.Command,
-			explorer.Commands,
 			mal.Commands,
 		)
 

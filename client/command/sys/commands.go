@@ -17,7 +17,6 @@ func Commands(con *console.Console) []*cobra.Command {
 			WhoamiCmd(cmd, con)
 			return
 		},
-		GroupID: consts.ImplantGroup,
 	}
 
 	killCmd := &cobra.Command{
@@ -44,7 +43,6 @@ func Commands(con *console.Console) []*cobra.Command {
 			PsCmd(cmd, con)
 			return
 		},
-		GroupID: consts.ImplantGroup,
 	}
 
 	envCmd := &cobra.Command{
@@ -67,7 +65,6 @@ func Commands(con *console.Console) []*cobra.Command {
 			SetEnvCmd(cmd, con)
 			return
 		},
-		GroupID: consts.ImplantGroup,
 	}
 
 	carapace.Gen(setEnvCmd).PositionalCompletion(
@@ -99,7 +96,6 @@ func Commands(con *console.Console) []*cobra.Command {
 			NetstatCmd(cmd, con)
 			return
 		},
-		GroupID: consts.ImplantGroup,
 	}
 
 	infoCmd := &cobra.Command{

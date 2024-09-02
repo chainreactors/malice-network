@@ -61,6 +61,7 @@ func BindImplantCommands(con *cc.Console) console.Commands {
 			filesystem.Commands,
 			sys.Commands,
 			modules.Commands,
+			explorer.Commands,
 		)
 
 		bind(consts.AliasesGroup)

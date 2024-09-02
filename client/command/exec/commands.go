@@ -21,7 +21,6 @@ func Commands(con *console.Console) []*cobra.Command {
 			ExecuteCmd(cmd, con)
 			return
 		},
-		GroupID: consts.ImplantGroup,
 	}
 	carapace.Gen(execCmd).PositionalCompletion(
 		carapace.ActionValues().Usage("command to execute"),
@@ -67,7 +66,6 @@ func Commands(con *console.Console) []*cobra.Command {
 			return
 
 		},
-		GroupID: consts.ImplantGroup,
 	}
 
 	carapace.Gen(execShellcodeCmd).PositionalCompletion(
@@ -111,7 +109,6 @@ func Commands(con *console.Console) []*cobra.Command {
 			ExecuteDLLCmd(cmd, con)
 			return
 		},
-		GroupID: consts.ImplantGroup,
 	}
 
 	carapace.Gen(execDLLCmd).PositionalCompletion(
@@ -168,7 +165,6 @@ func Commands(con *console.Console) []*cobra.Command {
 			ExecuteBofCmd(cmd, con)
 			return
 		},
-		GroupID: consts.ImplantGroup,
 	}
 
 	carapace.Gen(execBofCmd).PositionalCompletion(
@@ -212,7 +208,8 @@ func Commands(con *console.Console) []*cobra.Command {
 	//		InlineDLLCmd(c, con)
 	//		return nil
 	//	},
-	//	HelpGroup: consts.ImplantGroup,
+	//	Help
+	//	Group: consts.ImplantGroup,
 	//	Completer: func(prefix string, args []string) []string {
 	//		if len(args) < 2 {
 	//			return completer.LocalPathCompleter(prefix, args, con)
