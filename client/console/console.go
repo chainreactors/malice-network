@@ -44,6 +44,7 @@ func Start(bindCmds ...BindCmds) error {
 		ActiveTarget: &ActiveTarget{},
 		Settings:     settings,
 		Observers:    map[string]*Observer{},
+		Plugins:      NewPlugins(),
 	}
 	con.NewConsole(bindCmds...)
 	//con.App.SetPrintASCIILogo(func(_ *grumble.App) {
@@ -56,7 +57,6 @@ func Start(bindCmds ...BindCmds) error {
 	con.ActiveTarget.callback = func(sess *clientpb.Session) {
 		con.ActiveTarget.activeObserver = NewObserver(sess)
 	}
-	con.Plugins = NewPlugins()
 
 	con.App.SwitchMenu(consts.ClientGroup)
 	err := con.App.Start()

@@ -13,14 +13,14 @@ import (
 
 func MalLoadCmd(ctx *cobra.Command, con *console.Console) {
 	dirPath := ctx.Flags().Arg(0)
-	_, err := LoadMalManiFest(con, dirPath)
+	_, err := LoadMalManiFest(con, filepath.Join(assets.GetMalsDir(), dirPath, ManifestFileName))
 	if err != nil {
 		console.Log.Error(err)
 	}
 }
 
 func LoadMalManiFest(con *console.Console, filename string) (*plugin.MalManiFest, error) {
-	content, err := os.ReadFile(filepath.Join(assets.GetMalsDir(), filename, ManifestFileName))
+	content, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}
