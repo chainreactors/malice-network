@@ -100,7 +100,7 @@ func BindImplantCommands(con *cc.Console) console.Commands {
 			if err != nil {
 				//con doesn't appear to be initialised here?
 				//con.PrintErrorf("Failed to load extension: %s", err)
-				cc.Log.Errorf("Failed to load extension: %s\n", err)
+				cc.Log.Errorf("Failed to load mal: %s\n", err)
 				continue
 			}
 		}
