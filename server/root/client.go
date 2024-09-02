@@ -4,12 +4,15 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/mtls"
 	"github.com/chainreactors/malice-network/proto/client/rootpb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/server/internal/certs"
 	"google.golang.org/grpc"
 	"gopkg.in/yaml.v3"
+	"os"
+	"path/filepath"
 )
 
 func NewRootClient(addr string) (*RootClient, error) {
@@ -27,7 +30,7 @@ func NewRootClient(addr string) (*RootClient, error) {
 	if err != nil {
 		return nil, err
 	}
-	conn, err := grpc.Dial(addr, options...)
+	conn, err := grpc.NewClient(addr, options...)
 	if err != nil {
 		return nil, err
 	}
@@ -54,6 +57,7 @@ func (client *RootClient) Execute(cmd Command, msg *rootpb.Operator) error {
 		return err
 	}
 	if msg.Op == "add" {
+		configDir, _ := os.Getwd()
 		var conf *mtls.ClientConfig
 		err := yaml.Unmarshal([]byte(resp.(*rootpb.Response).Response), &conf)
 		if err != nil {
@@ -63,10 +67,11 @@ func (client *RootClient) Execute(cmd Command, msg *rootpb.Operator) error {
 		if err != nil {
 			return err
 		}
-		fmt.Println("Client configuration written to disk")
+		yamlPath := filepath.Join(configDir, fmt.Sprintf("%s_%s.yaml", msg.Args[0], conf.LHost))
+		logs.Log.Importantf("yaml file written to %s", yamlPath)
 		return nil
 	} else if msg.Op == "del" {
-		fmt.Println("Client configuration removed from db")
+		logs.Log.Importantf("Client configuration removed from db")
 		return nil
 	}
 	fmt.Println(resp)

@@ -95,7 +95,26 @@ func Execute() {
 		logs.Log.Errorf("cannot start grpc , %s ", err.Error())
 		return
 	}
+	isNoClient, err := db.IsInit()
+	if err != nil {
+		logs.Log.Errorf("cannot find client , %s ", err.Error())
+		return
+	}
+	if isNoClient {
+		err := opt.InitUser()
+		if err != nil {
+			logs.Log.Errorf("cannot init user , %s ", err.Error())
+			return
+		}
+	}
 
+	if opt.Listeners.Name == "" {
+		err := opt.InitListener()
+		if err != nil {
+			logs.Log.Errorf("cannot init listener , %s ", err.Error())
+			return
+		}
+	}
 	// start listeners
 	if opt.Listeners.Auth != "" {
 		// init forwarder

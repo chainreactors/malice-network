@@ -17,6 +17,19 @@ import (
 	"time"
 )
 
+func IsInit() (bool, error) {
+	var count int64
+	err := Session().Model(&models.Operator{}).Count(&count).Error
+	if err != nil {
+		return false, err
+	}
+	if count == 0 {
+		return true, nil
+	} else {
+		return false, nil
+	}
+}
+
 func FindAliveSessions() ([]*lispb.RegisterSession, error) {
 	var activeSessions []models.Session
 	result := Session().Raw(`

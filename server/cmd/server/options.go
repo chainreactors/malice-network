@@ -61,3 +61,36 @@ func (opt *Options) Execute(args []string, parser *flags.Parser) error {
 	}
 	return ErrUnknownCommand
 }
+
+func (opt *Options) InitUser() error {
+	client, err := root.NewRootClient(opt.Server.Address())
+	if err != nil {
+		return err
+	}
+	if err != nil {
+		return err
+	}
+	err = client.Execute(&opt.UserCmd, &rootpb.Operator{
+		Name: "user",
+		Op:   "add",
+		Args: []string{"user"},
+	})
+	return nil
+}
+
+func (opt *Options) InitListener() error {
+
+	client, err := root.NewRootClient(opt.Server.Address())
+	if err != nil {
+		return err
+	}
+	if err != nil {
+		return err
+	}
+	err = client.Execute(&opt.ListenerCmd, &rootpb.Operator{
+		Name: "listener",
+		Op:   "add",
+		Args: []string{"default"},
+	})
+	return nil
+}

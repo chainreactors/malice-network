@@ -115,7 +115,7 @@ func AliasesLoadCmd(cmd *cobra.Command, con *console.Console) {
 	}
 }
 
-// LoadAlias - Load an alias into the Sliver shell from a given directory
+// LoadAlias - Load an alias into the Malice-Network shell from a given directory
 func LoadAlias(manifestPath string, con *console.Console) (*AliasManifest, error) {
 	// retrieve alias manifest
 	var err error

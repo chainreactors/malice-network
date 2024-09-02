@@ -107,7 +107,7 @@ func WriteConfig(clientConfig *ClientConfig, clientType, name string) error {
 	if err != nil {
 		return err
 	}
-	err = ioutil.WriteFile(configFile, []byte(data), 0644)
+	err = os.WriteFile(configFile, data, 0644)
 	if err != nil {
 		logs.Log.Errorf("write config to file failed: %v", err)
 		return err
