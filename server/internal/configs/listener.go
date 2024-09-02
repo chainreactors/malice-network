@@ -20,6 +20,7 @@ func GetListenerConfig() *ListenerConfig {
 
 type ListenerConfig struct {
 	Name          string                `config:"name"`
+	Enable        bool                  `config:"enable"`
 	Auth          string                `config:"auth"`
 	TcpPipelines  []*TcpPipelineConfig  `config:"tcp"`
 	HttpPipelines []*HttpPipelineConfig `config:"http"`

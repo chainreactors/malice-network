@@ -16,7 +16,7 @@ var (
 )
 
 type Options struct {
-	Config      string               `long:"config" description:"Path to config file"`
+	Config      string               `short:"c" long:"config" default:"config.yaml" description:"Path to config file"`
 	IP          string               `short:"i" long:"ip" description:"external ip address, -i 123.123.123.123"`
 	Daemon      bool                 `long:"daemon" description:"Run as a daemon" config:"daemon"`
 	Opsec       bool                 `long:"opsec" description:"Path to opsec file" config:"opsec"`

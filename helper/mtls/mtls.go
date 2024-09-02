@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"fmt"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -77,7 +76,7 @@ func Connect(config *ClientConfig) (*grpc.ClientConn, error) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), consts.DefaultDuration)
 	defer cancel()
-	connection, err := grpc.DialContext(ctx, fmt.Sprintf("%s:%d", config.LHost, config.LPort), options...)
+	connection, err := grpc.DialContext(ctx, config.Address(), options...)
 	if err != nil {
 		return nil, err
 	}

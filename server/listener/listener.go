@@ -15,8 +15,6 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/web"
 	"google.golang.org/grpc"
-	"net"
-	"strconv"
 )
 
 var (
@@ -32,7 +30,7 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 	if err != nil {
 		return err
 	}
-	serverAddress := net.JoinHostPort(listenerCfg.LHost, strconv.Itoa(listenerCfg.LPort))
+	serverAddress := listenerCfg.Address()
 	conn, err := grpc.NewClient(serverAddress, options...)
 	if err != nil {
 		return err

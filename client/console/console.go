@@ -82,7 +82,7 @@ func (c *Console) Login(config *mtls.ClientConfig) error {
 		logs.Log.Errorf("Failed to connect: %v", err)
 		return err
 	}
-	logs.Log.Importantf("Connected to server %s:%d", config.LHost, config.LPort)
+	logs.Log.Importantf("Connected to server %s", config.Address())
 	c.ServerStatus, err = InitServerStatus(conn)
 	if err != nil {
 		logs.Log.Errorf("init server failed : %v", err)

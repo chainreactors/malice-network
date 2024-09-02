@@ -1,6 +1,7 @@
 listeners:
   name: default
   auth: listener.auth
+  enable: true
   tcp:
     - name: tcp_default
       port: 5002
