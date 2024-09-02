@@ -109,10 +109,19 @@ func (rpc *Server) RemoveClient(ctx context.Context, req *rootpb.Operator) (*roo
 	}, nil
 }
 
-func (rpc *Server) ListClients(ctx context.Context, req *rootpb.Operator) (*clientpb.Clients, error) {
-	clients, err := db.ListOperators()
+func (rpc *Server) ListClientsAuth(ctx context.Context, req *rootpb.Operator) (*clientpb.Clients, error) {
+	operators, err := db.ListClients()
 	if err != nil {
 		return nil, err
 	}
-	return clients, nil
+	var clients []*clientpb.Client
+	for _, op := range operators {
+		client := &clientpb.Client{
+			Name: op.Name,
+		}
+		clients = append(clients, client)
+	}
+	return &clientpb.Clients{
+		Clients: clients,
+	}, nil
 }

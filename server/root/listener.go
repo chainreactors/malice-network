@@ -47,7 +47,14 @@ func (ln *ListenerCommand) Execute(rpc clientrpc.RootRPCClient, msg *rootpb.Oper
 	} else if msg.Op == "del" {
 		return rpc.RemoveListener(context.Background(), msg)
 	} else if msg.Op == "list" {
-		return rpc.ListListeners(context.Background(), msg)
+		listeners, err := rpc.ListListeners(context.Background(), msg)
+		if err != nil {
+			return nil, err
+		}
+		for _, listener := range listeners.Listeners {
+			logs.Log.Consolef("%s\t%s\n", listener.Id, listener.Addr)
+		}
+		return nil, nil
 	}
 	return nil, ErrInvalidOperator
 }
