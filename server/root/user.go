@@ -46,7 +46,15 @@ func (user *UserCommand) Execute(rpc clientrpc.RootRPCClient, msg *rootpb.Operat
 	} else if msg.Op == "del" {
 		return rpc.RemoveClient(context.Background(), msg)
 	} else if msg.Op == "list" {
-		return rpc.ListClients(context.Background(), msg)
+		clients, err := rpc.ListClients(context.Background(), msg)
+		if err != nil {
+			return nil, err
+		}
+		for _, client := range clients.Clients {
+			logs.Log.Console(client.Name + "\n")
+		}
+
+		return nil, nil
 	}
 	return nil, ErrInvalidOperator
 }

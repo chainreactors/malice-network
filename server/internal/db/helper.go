@@ -3,6 +3,7 @@ package db
 import (
 	"encoding/json"
 	"errors"
+	"github.com/chainreactors/malice-network/helper/mtls"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/server/internal/core"
@@ -179,24 +180,14 @@ func CreateOperator(name string, typ string, remoteAddr string) error {
 
 }
 
-func ListOperators() (*clientpb.Clients, error) {
+func ListClients() ([]models.Operator, error) {
 	var operators []models.Operator
-	err := Session().Find(&operators).Error
+	err := Session().Find(&operators).Where("type = ?", mtls.Client).Error
 	if err != nil {
 		return nil, err
 	}
 
-	var clients []*clientpb.Client
-	for _, op := range operators {
-		client := &clientpb.Client{
-			Name: op.Name,
-		}
-		clients = append(clients, client)
-	}
-	pbClients := &clientpb.Clients{
-		Clients: clients,
-	}
-	return pbClients, nil
+	return operators, nil
 }
 
 func GetTaskDescriptionByID(taskID string) (*models.FileDescription, error) {
@@ -248,9 +239,9 @@ func CreateListener(name string) error {
 	return err
 }
 
-func ListListeners() ([]models.Listener, error) {
-	var listeners []models.Listener
-	err := Session().Find(&listeners).Error
+func ListListeners() ([]models.Operator, error) {
+	var listeners []models.Operator
+	err := Session().Find(&listeners).Where("type = ?", mtls.Listener).Error
 	return listeners, err
 }
 
