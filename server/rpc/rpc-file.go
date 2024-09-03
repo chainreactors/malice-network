@@ -81,7 +81,7 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 			stat := <-out
 			err := handler.HandleMaleficError(stat)
 			if err != nil {
-				greq.Task.Panic(buildErrorEvent(greq.Task, err), stat)
+				greq.Task.Panic(buildErrorEvent(greq.Task, err))
 				return
 			}
 			for block := range packet.Chunked(req.Data, config.Int(consts.MaxPacketLength)) {
@@ -106,7 +106,7 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 				}
 				if resp.GetAsyncAck().Success {
 					greq.Task.Done(core.Event{
-						EventType: consts.EventTaskDone,
+						EventType: consts.EventTaskFinish,
 						Task:      greq.Task,
 					})
 					err = db.UpdateTask(greq.Task, blockId+1)
@@ -139,7 +139,7 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 		resp := <-out
 		err := handler.HandleMaleficError(resp)
 		if err != nil {
-			greq.Task.Panic(buildErrorEvent(greq.Task, err), resp)
+			greq.Task.Panic(buildErrorEvent(greq.Task, err))
 			return
 		}
 		respCheckSum := resp.GetDownloadResponse().Checksum
@@ -196,15 +196,15 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 			if block.End {
 				checksum, err := helper.CalculateSHA256Checksum(fileName)
 				if err != nil {
-					greq.Task.Panic(buildErrorEvent(greq.Task, err), resp)
+					greq.Task.Panic(buildErrorEvent(greq.Task, err))
 					return
 				}
 				if checksum != respCheckSum {
-					greq.Task.Panic(buildErrorEvent(greq.Task, fmt.Errorf("checksum error")), resp)
+					greq.Task.Panic(buildErrorEvent(greq.Task, fmt.Errorf("checksum error")))
 					return
 				}
 				greq.Task.Done(core.Event{
-					EventType: consts.EventTaskDone,
+					EventType: consts.EventTaskFinish,
 					Task:      greq.Task,
 				})
 			}

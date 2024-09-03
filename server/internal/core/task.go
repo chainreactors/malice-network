@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"sync"
 )
 
@@ -115,7 +114,7 @@ func (t *Task) Finish() {
 	t.Close()
 }
 
-func (t *Task) Panic(event Event, status *implantpb.Spite) {
+func (t *Task) Panic(event Event) {
 	//t.Status = status
 	EventBroker.Publish(event)
 	t.Close()

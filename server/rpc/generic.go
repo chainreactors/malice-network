@@ -66,15 +66,14 @@ func (r *GenericRequest) SetCallback(callback func()) {
 
 func (r *GenericRequest) HandlerAsyncResponse(ch chan *implantpb.Spite, typ types.MsgName, callbacks ...func(spite *implantpb.Spite)) {
 	resp := <-ch
-
+	r.Session.AddMessage(resp, r.Task.Cur)
 	err := handler.AssertStatusAndResponse(resp, typ)
 	if err != nil {
 		logs.Log.Debug(err)
-		r.Task.Panic(buildErrorEvent(r.Task, err), resp)
+		r.Task.Panic(buildErrorEvent(r.Task, err))
 		return
 	}
 	r.SetCallback(func() {
-		r.Session.AddMessage(resp, r.Task.Cur)
 		if callbacks != nil {
 			for _, callback := range callbacks {
 				callback(resp)
@@ -82,7 +81,7 @@ func (r *GenericRequest) HandlerAsyncResponse(ch chan *implantpb.Spite, typ type
 		}
 	})
 	r.Task.Done(core.Event{
-		EventType: consts.EventTaskDone,
+		EventType: consts.EventTaskFinish,
 		Task:      r.Task,
 	})
 }
@@ -90,31 +89,31 @@ func (r *GenericRequest) HandlerAsyncResponse(ch chan *implantpb.Spite, typ type
 func buildErrorEvent(task *core.Task, err error) core.Event {
 	if errors.Is(err, handler.ErrNilStatus) {
 		return core.Event{
-			EventType: consts.EventTaskDone,
+			EventType: consts.EventTaskFinish,
 			Task:      task,
 			Err:       handler.ErrNilStatus.Error(),
 		}
 	} else if errors.Is(err, handler.ErrAssertFailure) {
 		return core.Event{
-			EventType: consts.EventTaskDone,
+			EventType: consts.EventTaskFinish,
 			Task:      task,
 			Err:       handler.ErrAssertFailure.Error(),
 		}
 	} else if errors.Is(err, handler.ErrNilResponseBody) {
 		return core.Event{
-			EventType: consts.EventTaskDone,
+			EventType: consts.EventTaskFinish,
 			Task:      task,
 			Err:       handler.ErrNilResponseBody.Error(),
 		}
 	} else if errors.Is(err, ErrMissingRequestField) {
 		return core.Event{
-			EventType: consts.EventTaskDone,
+			EventType: consts.EventTaskFinish,
 			Task:      task,
 			Err:       ErrMissingRequestField.Error(),
 		}
 	} else {
 		return core.Event{
-			EventType: consts.EventTaskDone,
+			EventType: consts.EventTaskFinish,
 			Task:      task,
 			Err:       err.Error(),
 		}
