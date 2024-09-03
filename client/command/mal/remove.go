@@ -42,7 +42,7 @@ func RemoveMal(name string, con *console.Console) error {
 	if plug, ok := con.Plugins.Plugins[name]; !ok {
 		return errors.New("extension not loaded")
 	} else {
-		implantMenu := con.App.Menu(consts.ImplantGroup)
+		implantMenu := con.App.Menu(consts.ImplantMenu)
 		for _, cmd := range plug.CMDs {
 			implantMenu.RemoveCommand(cmd)
 		}

@@ -5,7 +5,6 @@ import (
 	"github.com/chainreactors/malice-network/client/command/flags"
 	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/console"
-	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -33,7 +32,6 @@ func Commands(con *console.Console) []*cobra.Command {
 			noteCmd(cmd, con)
 			return
 		},
-		GroupID: consts.GenericGroup,
 	}
 
 	carapace.Gen(noteCommand).PositionalCompletion(
@@ -79,7 +77,6 @@ func Commands(con *console.Console) []*cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			removeCmd(cmd, con)
 		},
-		GroupID: consts.GenericGroup,
 	}
 
 	carapace.Gen(removeCommand).PositionalCompletion(

@@ -13,7 +13,6 @@ import (
 	app "github.com/reeflective/console"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-
 	"google.golang.org/protobuf/proto"
 	"os"
 	"path"
@@ -113,6 +112,7 @@ func AliasesLoadCmd(cmd *cobra.Command, con *console.Console) {
 	} else {
 		console.Log.Infof("%s alias has been loaded\n", alias.Name)
 	}
+	AliasRegisterCommand(alias, con.App.Menu(consts.ImplantMenu).Command, con)
 }
 
 // LoadAlias - Load an alias into the Malice-Network shell from a given directory
@@ -145,6 +145,10 @@ func LoadAlias(manifestPath string, con *console.Console) (*AliasManifest, error
 	//	return nil, fmt.Errorf("'%s' command already exists", aliasManifest.CommandName)
 	//}
 
+	return aliasManifest, nil
+}
+
+func AliasRegisterCommand(aliasManifest *AliasManifest, cmd *cobra.Command, con *console.Console) {
 	helpMsg := fmt.Sprintf("[%s] %s", aliasManifest.Name, aliasManifest.Help)
 	longHelpMsg := help.FormatHelpTmpl(aliasManifest.LongHelp)
 	longHelpMsg += "\n\n⚠️  If you're having issues passing arguments to the alias please read:\n"
@@ -163,35 +167,30 @@ func LoadAlias(manifestPath string, con *console.Console) (*AliasManifest, error
 
 	if aliasManifest.IsAssembly {
 		f := pflag.NewFlagSet("assembly", pflag.ContinueOnError)
-		f.StringP("method", "m", "", "Optional method (a method is required for a .NET DLL)")
-		f.StringP("class", "c", "", "Optional class name (required for .NET DLL)")
-		f.StringP("app-domain", "d", "", "AppDomain name to create for .NET assembly. Generated randomly if not set.")
-		f.StringP("arch", "a", "x84", "Assembly target architecture: x86, x64, x84 (x86+x64)")
-		f.BoolP("in-process", "i", false, "Run in the current sliver process")
-		f.StringP("runtime", "r", "", "Runtime to use for running the assembly (only supported when used with --in-process)")
-		f.BoolP("amsi-bypass", "M", false, "Bypass AMSI on Windows (only supported when used with --in-process)")
-		f.BoolP("etw-bypass", "E", false, "Bypass ETW on Windows (only supported when used with --in-process)")
+		//f.StringP("method", "m", "", "Optional method (a method is required for a .NET DLL)")
+		//f.StringP("class", "c", "", "Optional class name (required for .NET DLL)")
+		//f.StringP("app-domain", "d", "", "AppDomain name to create for .NET assembly. Generated randomly if not set.")
+		//f.StringP("arch", "a", "x84", "Assembly target architecture: x86, x64, x84 (x86+x64)")
+		//f.BoolP("in-process", "i", false, "Run in the current sliver process")
+		//f.StringP("runtime", "r", "", "Runtime to use for running the assembly (only supported when used with --in-process)")
+		//f.BoolP("amsi-bypass", "M", false, "Bypass AMSI on Windows (only supported when used with --in-process)")
+		//f.BoolP("etw-bypass", "E", false, "Bypass ETW on Windows (only supported when used with --in-process)")
 		addAliasCmd.Flags().AddFlagSet(f)
 	}
 
 	f := pflag.NewFlagSet(aliasManifest.Name, pflag.ContinueOnError)
 	f.StringP("process", "p", "", "Path to process to host the shared object")
-	f.StringP("process-arguments", "A", "", "arguments to pass to the hosting process")
+	//f.StringP("process-arguments", "A", "", "arguments to pass to the hosting process")
 	f.Uint32P("ppid", "P", 0, "parent process ID to use when creating the hosting process (Windows only)")
 	f.BoolP("save", "s", false, "Save output to disk")
 	f.IntP("timeout", "t", defaultTimeout, "command timeout in seconds")
 	addAliasCmd.Flags().AddFlagSet(f)
 
-	con.AddAliasCommand(addAliasCmd)
-
-	// Have to use a global map here, as passing the aliasCmd
-	// either by value or by ref fucks things up
 	loadedAliases[aliasManifest.CommandName] = &loadedAlias{
 		Manifest: aliasManifest,
 		Command:  addAliasCmd,
 	}
-
-	return aliasManifest, nil
+	cmd.AddCommand(addAliasCmd)
 }
 
 // ParseAliasManifest - Parse an alias manifest

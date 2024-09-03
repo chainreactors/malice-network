@@ -21,9 +21,13 @@ const (
 	ClientPrompt = "IoM"
 )
 
+const (
+	ClientMenu  = "client"
+	ImplantMenu = "implant"
+)
+
 // Group
 const (
-	ClientGroup    = "client"
 	GenericGroup   = "generic"
 	ImplantGroup   = "implant"
 	AliasesGroup   = "alias"

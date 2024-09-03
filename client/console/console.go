@@ -12,7 +12,6 @@ import (
 	"github.com/mattn/go-tty"
 	"github.com/reeflective/console"
 	"github.com/reeflective/readline"
-	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/proto"
 	"io"
 	"os"
@@ -57,7 +56,7 @@ func Start(bindCmds ...BindCmds) error {
 		con.ActiveTarget.activeObserver = NewObserver(sess)
 	}
 
-	con.App.SwitchMenu(consts.ClientGroup)
+	con.App.SwitchMenu(consts.ClientMenu)
 	err := con.App.Start()
 	if err != nil {
 		logs.Log.Errorf("Run loop returned error: %v", err)
@@ -121,72 +120,6 @@ func (c *Console) GetPrompt() string {
 	} else {
 		return tui.AdaptTermColor("IOM")
 	}
-}
-
-func (c *Console) AddAliasCommand(cmd *cobra.Command) {
-	found := false
-	for _, grp := range c.App.ActiveMenu().Groups() {
-		if grp.Title == consts.AliasesGroup {
-			found = true
-			break
-		}
-
-		if !found {
-			c.App.ActiveMenu().AddGroup(&cobra.Group{
-				ID:    consts.AliasesGroup,
-				Title: consts.AliasesGroup,
-			})
-		}
-	}
-	found = false
-	for _, grp := range c.App.Menu(consts.ImplantGroup).Groups() {
-		if grp.Title == consts.AliasesGroup {
-			found = true
-			break
-		}
-
-		if !found {
-			c.App.Menu(consts.ImplantGroup).AddGroup(&cobra.Group{
-				ID:    consts.AliasesGroup,
-				Title: consts.AliasesGroup,
-			})
-		}
-	}
-	c.App.ActiveMenu().AddCommand(cmd)
-	c.App.Menu(consts.ImplantGroup).AddCommand(cmd)
-}
-
-func (c *Console) AddExtensionCommand(cmd *cobra.Command) {
-	found := false
-	for _, grp := range c.App.ActiveMenu().Groups() {
-		if grp.Title == consts.ExtensionGroup {
-			found = true
-			break
-		}
-
-		if !found {
-			c.App.ActiveMenu().AddGroup(&cobra.Group{
-				ID:    consts.ExtensionGroup,
-				Title: consts.ExtensionGroup,
-			})
-		}
-	}
-	found = false
-	for _, grp := range c.App.Menu(consts.ImplantGroup).Groups() {
-		if grp.Title == consts.ExtensionGroup {
-			found = true
-			break
-		}
-
-		if !found {
-			c.App.Menu(consts.ImplantGroup).AddGroup(&cobra.Group{
-				ID:    consts.ExtensionGroup,
-				Title: consts.ExtensionGroup,
-			})
-		}
-	}
-	c.App.ActiveMenu().AddCommand(cmd)
-	c.App.Menu(consts.ImplantGroup).AddCommand(cmd)
 }
 
 // AddObserver - Observers to notify when the active session changes
@@ -274,7 +207,7 @@ func (c *Console) exitConsole(_ *console.Console) {
 
 // exitImplantMenu uses the background command to detach from the implant menu.
 func (c *Console) exitImplantMenu(_ *console.Console) {
-	root := c.App.Menu(consts.ImplantGroup).Command
+	root := c.App.Menu(consts.ImplantMenu).Command
 	root.SetArgs([]string{"background"})
 	root.Execute()
 }
@@ -285,14 +218,14 @@ func (c *Console) NewConsole(bindCmds ...BindCmds) {
 	iom.NewlineAfter = true
 	c.App = iom
 
-	client := iom.NewMenu(consts.ClientGroup)
+	client := iom.NewMenu(consts.ClientMenu)
 	client.Short = "client commands"
 	client.Prompt().Primary = c.GetPrompt
 	client.AddInterrupt(readline.ErrInterrupt, c.exitConsole)
 	client.AddHistorySourceFile("history", filepath.Join(assets.GetRootAppDir(), "history"))
 	client.Command = bindCmds[0](c)()
 
-	implant := iom.NewMenu(consts.ImplantGroup)
+	implant := iom.NewMenu(consts.ImplantMenu)
 	implant.Short = "Implant commands"
 	implant.Prompt().Primary = c.GetPrompt
 	implant.AddInterrupt(io.EOF, c.exitImplantMenu) // Ctrl-D

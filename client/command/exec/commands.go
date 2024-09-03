@@ -43,7 +43,6 @@ func Commands(con *console.Console) []*cobra.Command {
 			ExecuteAssemblyCmd(cmd, con)
 			return
 		},
-		GroupID: consts.ImplantGroup,
 	}
 	carapace.Gen(execAssemblyCmd).PositionalCompletion(
 		carapace.ActionFiles().Usage("path the assembly file"),
@@ -93,7 +92,6 @@ func Commands(con *console.Console) []*cobra.Command {
 			InlineShellcodeCmd(cmd, con)
 			return
 		},
-		GroupID: consts.ImplantGroup,
 	}
 
 	carapace.Gen(inlineShellcodeCmd).PositionalCompletion(
@@ -137,7 +135,6 @@ func Commands(con *console.Console) []*cobra.Command {
 			ExecutePECmd(cmd, con)
 			return
 		},
-		GroupID: consts.ImplantGroup,
 	}
 
 	carapace.Gen(execPECmd).PositionalCompletion(
@@ -185,7 +182,6 @@ func Commands(con *console.Console) []*cobra.Command {
 			ExecutePowershellCmd(cmd, con)
 			return
 		},
-		GroupID: consts.ImplantGroup,
 	}
 
 	carapace.Gen(execPowershellCmd).PositionalCompletion(

@@ -13,7 +13,7 @@ const (
 	armoryConfigFileName = "armories.json"
 	DefaultArmoryName    = "Default"
 	malConfigFileName    = "mals.yaml"
-	DefaultMalName       = "Defualt"
+	DefaultMalName       = "Default"
 )
 
 var (

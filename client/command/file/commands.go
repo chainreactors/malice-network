@@ -36,7 +36,6 @@ func Commands(con *console.Console) []*cobra.Command {
 			UploadCmd(cmd, con)
 			return
 		},
-		GroupID: consts.ImplantGroup,
 	}
 
 	carapace.Gen(uploadCmd).PositionalCompletion(
