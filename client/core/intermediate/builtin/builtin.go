@@ -1,4 +1,4 @@
-package intermediate
+package builtin
 
 import (
 	"context"
@@ -55,7 +55,7 @@ func NewSacrificeProcessMessage(processName string, ppid int64, block_dll bool, 
 		BlockDll: block_dll,
 		Argue:    argue,
 		Params:   params,
-	}, err
+	}, nil
 }
 
 func WaitResult(rpc clientrpc.MaliceRPCClient, task *clientpb.Task) (*clientpb.TaskContext, error) {
