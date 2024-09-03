@@ -138,10 +138,7 @@ func (s *ServerStatus) triggerTaskCallback(event *clientpb.Event) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if callback, ok := s.Callbacks.Load(task.TaskId); ok {
-		spite, err := s.Rpc.GetTaskContent(ctx, &clientpb.Task{
-			TaskId:    task.TaskId,
-			SessionId: task.SessionId,
-		})
+		spite, err := s.Rpc.GetTaskContent(ctx, event.Task)
 		if err != nil {
 			Log.Errorf(err.Error())
 			return
@@ -150,7 +147,7 @@ func (s *ServerStatus) triggerTaskCallback(event *clientpb.Event) {
 	}
 }
 
-func (s *ServerStatus) triggerTaskDone(event *clientpb.Event) {
+func (s *ServerStatus) triggerTaskFinish(event *clientpb.Event) {
 	task := event.GetTask()
 	if task == nil {
 		Log.Errorf(ErrNotFoundTask.Error())
@@ -161,11 +158,14 @@ func (s *ServerStatus) triggerTaskDone(event *clientpb.Event) {
 		content, err := s.Rpc.GetTaskContent(ctx, &clientpb.Task{
 			TaskId:    task.TaskId,
 			SessionId: task.SessionId,
+			Need:      -1,
 		})
 		Log.Console("\n")
 		if err != nil {
 			Log.Errorf(err.Error())
+			return
 		}
+
 		err = handler.HandleMaleficError(content.Spite)
 		if err != nil {
 			Log.Errorf(err.Error())
@@ -209,10 +209,12 @@ func (s *ServerStatus) EventHandler() {
 			Log.Importantf("%s notified: %s %s", event.Source, string(event.Data), event.Err)
 		case consts.EventTaskCallback:
 			tui.Clear()
+			Log.Infof("Task callback: %s", event.Message)
 			s.triggerTaskCallback(event)
-		case consts.EventTaskDone:
-			s.triggerTaskDone(event)
+		case consts.EventTaskFinish:
 			tui.Clear()
+			Log.Infof("Task finish: %s", event.Message)
+			s.triggerTaskFinish(event)
 		case consts.EventPipeline:
 			tui.Clear()
 			if event.GetErr() != "" {

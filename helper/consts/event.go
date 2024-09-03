@@ -10,7 +10,7 @@ const (
 	EventSession      = "session"
 	EventListener     = "listener"
 	EventTaskCallback = "task_callback"
-	EventTaskDone     = "task_done"
+	EventTaskFinish   = "task_done"
 	EventTaskError    = "task_error"
 	EventWebsite      = "website"
 )
