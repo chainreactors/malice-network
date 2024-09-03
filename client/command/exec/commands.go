@@ -16,7 +16,7 @@ func Commands(con *console.Console) []*cobra.Command {
 		Use:   consts.ModuleExecution,
 		Short: "Execute commands",
 		Long:  help.GetHelpFor(consts.ModuleExecution),
-		Args:  cobra.ExactArgs(2),
+		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			ExecuteCmd(cmd, con)
 			return
@@ -38,7 +38,7 @@ func Commands(con *console.Console) []*cobra.Command {
 		Use:   consts.ModuleExecuteAssembly,
 		Short: "Loads and executes a .NET assembly in a child process (Windows Only)",
 		Long:  help.GetHelpFor(consts.ModuleExecuteAssembly),
-		Args:  cobra.ExactArgs(2),
+		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			ExecuteAssemblyCmd(cmd, con)
 			return
@@ -59,7 +59,7 @@ func Commands(con *console.Console) []*cobra.Command {
 		Use:   consts.ModuleExecuteShellcode,
 		Short: "Executes the given shellcode in the malefic process",
 		Long:  help.GetHelpFor(consts.ModuleExecuteShellcode),
-		Args:  cobra.ExactArgs(2),
+		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			ExecuteShellcodeCmd(cmd, con)
 			return
@@ -69,9 +69,8 @@ func Commands(con *console.Console) []*cobra.Command {
 
 	carapace.Gen(execShellcodeCmd).PositionalCompletion(
 		carapace.ActionFiles().Usage("path the shellcode file"),
-		carapace.ActionValues().Usage("arguments to pass to the assembly entrypoint, eg: 'arg1,arg2,arg3'"),
+		carapace.ActionValues().Usage("arguments to pass to the assembly entrypoint"),
 	)
-
 	flags.Bind(consts.ModuleExecuteShellcode, true, execShellcodeCmd, func(f *pflag.FlagSet) {
 		f.BoolP("sacrifice", "s", false, "is need sacrifice process")
 	})
@@ -87,7 +86,7 @@ func Commands(con *console.Console) []*cobra.Command {
 		Use:   consts.ModuleInlineShellcode,
 		Short: "Executes the given inline shellcode in the IOM ",
 		Long:  help.GetHelpFor(consts.ModuleInlineShellcode),
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			InlineShellcodeCmd(cmd, con)
 			return
@@ -102,7 +101,7 @@ func Commands(con *console.Console) []*cobra.Command {
 		Use:   consts.ModuleExecuteDll,
 		Short: "Executes the given DLL in the sacrifice process",
 		Long:  help.GetHelpFor(consts.ModuleExecuteDll),
-		Args:  cobra.ExactArgs(2),
+		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			ExecuteDLLCmd(cmd, con)
 			return
@@ -130,7 +129,7 @@ func Commands(con *console.Console) []*cobra.Command {
 		Use:   consts.ModuleExecutePE,
 		Short: "Executes the given PE in the sacrifice process",
 		Long:  help.GetHelpFor(consts.ModuleExecutePE),
-		Args:  cobra.ExactArgs(2),
+		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			ExecutePECmd(cmd, con)
 			return
@@ -157,7 +156,7 @@ func Commands(con *console.Console) []*cobra.Command {
 		Use:   consts.ModuleExecuteBof,
 		Short: "Loads and executes Bof (Windows Only)",
 		Long:  help.GetHelpFor(consts.ModuleExecuteBof),
-		Args:  cobra.ExactArgs(2),
+		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			ExecuteBofCmd(cmd, con)
 			return
@@ -177,7 +176,7 @@ func Commands(con *console.Console) []*cobra.Command {
 		Use:   consts.ModulePowershell,
 		Short: "Loads and executes powershell (Windows Only)",
 		Long:  help.GetHelpFor(consts.ModulePowershell),
-		Args:  cobra.ExactArgs(2),
+		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			ExecutePowershellCmd(cmd, con)
 			return

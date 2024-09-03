@@ -6,8 +6,6 @@ import (
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/spf13/cobra"
-	"strings"
-
 	"google.golang.org/protobuf/proto"
 	"os"
 	"path/filepath"
@@ -15,8 +13,7 @@ import (
 
 func ExecuteAssemblyCmd(cmd *cobra.Command, con *console.Console) {
 	path := cmd.Flags().Arg(0)
-	argsString := cmd.Flags().Arg(1)
-	args := strings.Split(argsString, ",")
+	params := cmd.Flags().Args()[1:]
 	output, _ := cmd.Flags().GetBool("output")
 	name := filepath.Base(path)
 	binData, err := os.ReadFile(path)
@@ -24,8 +21,7 @@ func ExecuteAssemblyCmd(cmd *cobra.Command, con *console.Console) {
 		console.Log.Errorf("%s\n", err)
 		return
 	}
-	execAssembly(name, binData, args, output, con)
-
+	execAssembly(name, binData, params, output, con)
 }
 
 func execAssembly(name string, binData []byte, args []string, output bool, con *console.Console) {

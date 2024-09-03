@@ -10,19 +10,17 @@ import (
 	"google.golang.org/protobuf/proto"
 	"os"
 	"path/filepath"
-	"strings"
 )
 
 // ExecutePECmd - Execute PE on sacrifice process
 func ExecutePECmd(cmd *cobra.Command, con *console.Console) {
-	pePath := cmd.Flags().Arg(0)
-	argsString := cmd.Flags().Arg(1)
-	paramString := strings.Split(argsString, ",")
+	path := cmd.Flags().Arg(0)
+	params := cmd.Flags().Args()[1:]
 	ppid, _ := cmd.Flags().GetUint("ppid")
 	processname, _ := cmd.Flags().GetString("process")
 	argue, _ := cmd.Flags().GetString("argue")
 	isBlockDll, _ := cmd.Flags().GetBool("block_dll")
-	peBin, err := os.ReadFile(pePath)
+	peBin, err := os.ReadFile(path)
 	if err != nil {
 		console.Log.Errorf("%s\n", err.Error())
 		return
@@ -31,7 +29,7 @@ func ExecutePECmd(cmd *cobra.Command, con *console.Console) {
 		console.Log.Errorf("The file is not a PE file\n")
 		return
 	}
-	execPe(pePath, peBin, paramString, int(ppid), processname, argue, isBlockDll, con)
+	execPe(path, peBin, params, int(ppid), processname, argue, isBlockDll, con)
 }
 
 func execPe(pePath string, peBin []byte, paramString []string, ppid int, processname, argue string,

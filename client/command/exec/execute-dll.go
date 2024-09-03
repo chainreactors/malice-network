@@ -10,19 +10,17 @@ import (
 	"google.golang.org/protobuf/proto"
 	"os"
 	"path/filepath"
-	"strings"
 )
 
 func ExecuteDLLCmd(cmd *cobra.Command, con *console.Console) {
-	pePath := cmd.Flags().Arg(0)
-	argsString := cmd.Flags().Arg(1)
-	paramString := strings.Split(argsString, ",")
+	path := cmd.Flags().Arg(0)
+	params := cmd.Flags().Args()[1:]
 	ppid, _ := cmd.Flags().GetUint("ppid")
 	processname, _ := cmd.Flags().GetString("process")
 	argue, _ := cmd.Flags().GetString("argue")
 	isBlockDll, _ := cmd.Flags().GetBool("block_dll")
 	entrypoint, _ := cmd.Flags().GetString("entrypoint")
-	dllBin, err := os.ReadFile(pePath)
+	dllBin, err := os.ReadFile(path)
 
 	if err != nil {
 		console.Log.Errorf("%s\n", err.Error())
@@ -32,7 +30,7 @@ func ExecuteDLLCmd(cmd *cobra.Command, con *console.Console) {
 		console.Log.Errorf("The file is not a DLL file\n")
 		return
 	}
-	execDLL(pePath, dllBin, paramString, int(ppid), processname, argue, entrypoint, isBlockDll, con)
+	execDLL(path, dllBin, params, int(ppid), processname, argue, entrypoint, isBlockDll, con)
 }
 
 func execDLL(pePath string, dllBin []byte, paramString []string, ppid int, processname, argue, entrypoint string,

@@ -11,9 +11,8 @@ import (
 )
 
 func ExecuteCmd(cmd *cobra.Command, con *console.Console) {
-	cmdPath := cmd.Flags().Arg(0)
-	argsString := cmd.Flags().Arg(1)
-	args := strings.Split(argsString, ",")
+	path := cmd.Flags().Arg(0)
+	params := cmd.Flags().Args()[1:]
 	//token := ctx.Flags.Bool("token")
 	output, _ := cmd.Flags().GetBool("output")
 	//timeout := ctx.Flags.Int("timeout")
@@ -23,7 +22,7 @@ func ExecuteCmd(cmd *cobra.Command, con *console.Console) {
 	//saveOutput := ctx.Flags.Bool("save")
 	//ppid := ctx.Flags.Uint("ppid")
 	//hostName := getHostname(session, beacon)
-	execute(cmdPath, args, output, stdout, stderr, con)
+	execute(path, params, output, stdout, stderr, con)
 }
 
 func execute(cmd string, args []string, output bool, stdout, stderr string, con *console.Console) {
