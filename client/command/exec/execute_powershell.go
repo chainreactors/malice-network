@@ -13,12 +13,11 @@ import (
 )
 
 func ExecutePowershellCmd(cmd *cobra.Command, con *console.Console) {
-	psPath := cmd.Flags().Arg(0)
-	argsString := cmd.Flags().Arg(1)
-	paramString := strings.Split(argsString, ",")
+	path := cmd.Flags().Arg(0)
+	params := cmd.Flags().Args()[1:]
 	var psBin bytes.Buffer
-	if psPath != "" {
-		content, err := os.ReadFile(psPath)
+	if path != "" {
+		content, err := os.ReadFile(path)
 		if err != nil {
 			console.Log.Errorf("%s\n", err.Error())
 			return
@@ -26,9 +25,9 @@ func ExecutePowershellCmd(cmd *cobra.Command, con *console.Console) {
 		psBin.Write(content)
 		psBin.WriteString("\n")
 	}
-	psBin.WriteString(strings.Join(paramString, " "))
+	psBin.WriteString(strings.Join(params, " "))
 
-	execPowershell(psPath, psBin.Bytes(), con)
+	execPowershell(path, psBin.Bytes(), con)
 }
 
 func execPowershell(psPath string, psBin []byte, con *console.Console) {

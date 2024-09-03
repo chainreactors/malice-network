@@ -8,24 +8,22 @@ import (
 	"google.golang.org/protobuf/proto"
 	"os"
 	"path/filepath"
-	"strings"
 )
 
 // ExecuteShellcodeCmd - Execute shellcode in-memory
 func ExecuteShellcodeCmd(cmd *cobra.Command, con *console.Console) {
-	shellcodePath := cmd.Flags().Arg(0)
-	argsString := cmd.Flags().Arg(1)
-	paramString := strings.Split(argsString, ",")
+	path := cmd.Flags().Arg(0)
+	params := cmd.Flags().Args()[1:]
 	ppid, _ := cmd.Flags().GetUint("ppid")
 	processname, _ := cmd.Flags().GetString("process")
 	argue, _ := cmd.Flags().GetString("argue")
 	isBlockDll, _ := cmd.Flags().GetBool("block_dll")
-	shellcodeBin, err := os.ReadFile(shellcodePath)
+	shellcodeBin, err := os.ReadFile(path)
 	if err != nil {
 		console.Log.Errorf("%s\n", err.Error())
 		return
 	}
-	execShellcode(shellcodePath, shellcodeBin, paramString, int(ppid), processname, argue, isBlockDll, con)
+	execShellcode(path, shellcodeBin, params, int(ppid), processname, argue, isBlockDll, con)
 }
 
 func execShellcode(shellcodePath string, shellcodeBin []byte, paramString []string, ppid int, processname string,

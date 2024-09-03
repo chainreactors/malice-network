@@ -6,8 +6,6 @@ import (
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/spf13/cobra"
-	"strings"
-
 	"google.golang.org/protobuf/proto"
 	"os"
 	"path/filepath"
@@ -15,8 +13,7 @@ import (
 
 func ExecuteBofCmd(cmd *cobra.Command, con *console.Console) {
 	path := cmd.Flags().Arg(0)
-	argsString := cmd.Flags().Arg(1)
-	args := strings.Split(argsString, ",")
+	params := cmd.Flags().Args()[1:]
 	name := filepath.Base(path)
 	binData, err := os.ReadFile(path)
 	if err != nil {
@@ -24,7 +21,7 @@ func ExecuteBofCmd(cmd *cobra.Command, con *console.Console) {
 		return
 	}
 
-	execBof(name, binData, args, con)
+	execBof(name, binData, params, con)
 }
 
 func execBof(name string, binData []byte, args []string, con *console.Console) {
