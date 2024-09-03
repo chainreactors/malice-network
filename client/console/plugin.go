@@ -6,12 +6,14 @@ import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/core/intermediate"
+	"github.com/chainreactors/malice-network/client/core/intermediate/builtin"
 	"github.com/chainreactors/malice-network/client/core/plugin"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/handler"
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
+	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/spf13/cobra"
 	lua "github.com/yuin/gopher-lua"
 	"google.golang.org/protobuf/proto"
@@ -27,7 +29,7 @@ const (
 	CNAScript = "cna"
 )
 
-type implantRpcFunc func(*Console, ...interface{}) (*clientpb.Task, error)
+type ImplantRpcFunc func(clientrpc.MaliceRPCClient, *clientpb.Session, ...interface{}) (*clientpb.Task, error)
 type implantCallback func(*clientpb.TaskContext) (interface{}, error)
 type serverRpcFunc func(*Console, ...interface{}) (interface{}, error)
 
@@ -35,26 +37,19 @@ var (
 	ErrorAlreadyScriptName = errors.New("already exist script name")
 )
 
-func NewPlugins() *Plugins {
-	plugins := &Plugins{
-		Plugins: map[string]*Plugin{},
-	}
+func WrapImplantFunc(rpc clientrpc.MaliceRPCClient, fun interface{}, callback implantCallback) intermediate.InternalFunc {
+	// 使用反射将传入的函数适配为 ImplantRpcFunc
+	wrappedFunc := WrapFunc(fun)
 
-	return plugins
-}
-
-type Plugins struct {
-	Plugins map[string]*Plugin
-}
-
-func WrapImplantFunc(con *Console, fun implantRpcFunc, callback implantCallback) intermediate.InternalFunc {
 	return func(args ...interface{}) (interface{}, error) {
-		task, err := fun(con, args...)
+		// 调用适配后的 ImplantRpcFunc
+		sess := args[0].(*clientpb.Session)
+		task, err := wrappedFunc(rpc, sess, args...)
 		if err != nil {
 			return nil, err
 		}
 
-		taskContext, err := con.Rpc.WaitTaskFinish(context.Background(), task)
+		taskContext, err := rpc.WaitTaskFinish(context.Background(), task)
 		if err != nil {
 			return nil, err
 		}
@@ -67,6 +62,42 @@ func WrapImplantFunc(con *Console, fun implantRpcFunc, callback implantCallback)
 	}
 }
 
+// WrapFunc 通过反射将任意符合参数签名的函数转换为 ImplantRpcFunc
+func WrapFunc(funcToWrap interface{}) ImplantRpcFunc {
+	return func(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, params ...interface{}) (*clientpb.Task, error) {
+		funcValue := reflect.ValueOf(funcToWrap)
+		funcType := funcValue.Type()
+
+		// 检查函数的参数数量是否匹配
+		if funcType.NumIn() != len(params)+2 {
+			return nil, fmt.Errorf("expected %d arguments, got %d", funcType.NumIn()-1, len(params))
+		}
+
+		// 构建参数切片
+		in := make([]reflect.Value, len(params)+1)
+		in[0] = reflect.ValueOf(rpc)
+		in[1] = reflect.ValueOf(sess)
+		for i, param := range params {
+			if reflect.TypeOf(param) != funcType.In(i+1) {
+				return nil, fmt.Errorf("argument %d should be %v, got %v", i+1, funcType.In(i+1), reflect.TypeOf(param))
+			}
+			in[i+2] = reflect.ValueOf(param)
+		}
+
+		// 调用函数并返回结果
+		results := funcValue.Call(in)
+
+		// 处理返回值并转换为 (*clientpb.Task, error)
+		task, _ := results[0].Interface().(*clientpb.Task)
+		var err error
+		if results[1].Interface() != nil {
+			err = results[1].Interface().(error)
+		}
+
+		return task, err
+	}
+}
+
 func WrapServerFunc(con *Console, fun serverRpcFunc) intermediate.InternalFunc {
 	return func(req ...interface{}) (interface{}, error) {
 		resp, err := fun(con, req...)
@@ -75,6 +106,18 @@ func WrapServerFunc(con *Console, fun serverRpcFunc) intermediate.InternalFunc {
 		}
 		return resp, nil
 	}
+}
+
+func NewPlugins() *Plugins {
+	plugins := &Plugins{
+		Plugins: map[string]*Plugin{},
+	}
+
+	return plugins
+}
+
+type Plugins struct {
+	Plugins map[string]*Plugin
 }
 
 func (plguins *Plugins) LoadPlugin(manifest *plugin.MalManiFest, con *Console) (*Plugin, error) {
@@ -242,13 +285,13 @@ func (plugin *Plugin) RegisterLuaBuiltInFunctions(con *Console) error {
 	// get resource filename
 	plugin.registerLuaFunction("resource_file", func(args ...interface{}) (interface{}, error) {
 		filename := args[0].(string)
-		return intermediate.GetResourceFile(plugin.Name, filename)
+		return builtin.GetResourceFile(plugin.Name, filename)
 	}, []reflect.Type{reflect.TypeOf("")})
 
 	// read resource file content
 	plugin.registerLuaFunction("read_resource", func(args ...interface{}) (interface{}, error) {
 		filename := args[0].(string)
-		return intermediate.ReadResourceFile(plugin.Name, filename)
+		return builtin.ReadResourceFile(plugin.Name, filename)
 	}, []reflect.Type{reflect.TypeOf("")})
 
 	// build binary message
@@ -257,7 +300,7 @@ func (plugin *Plugin) RegisterLuaBuiltInFunctions(con *Console) error {
 		filename := args[1].(string)
 		argsStr := args[2].(string)
 		sacrifice := args[3].(*implantpb.SacrificeProcess)
-		return intermediate.NewBinaryMessage(plugin.Name, module, filename, argsStr, sacrifice)
+		return builtin.NewBinaryMessage(plugin.Name, module, filename, argsStr, sacrifice)
 	}, []reflect.Type{reflect.TypeOf(""), reflect.TypeOf(""), reflect.TypeOf(""), reflect.TypeOf(&implantpb.SacrificeProcess{})})
 
 	// build sacrifice process message
@@ -267,23 +310,23 @@ func (plugin *Plugin) RegisterLuaBuiltInFunctions(con *Console) error {
 		blockDll := args[2].(bool)
 		argue := args[3].(string)
 		argsStr := args[4].(string)
-		return intermediate.NewSacrificeProcessMessage(processName, ppid, blockDll, argue, argsStr)
+		return builtin.NewSacrificeProcessMessage(processName, ppid, blockDll, argue, argsStr)
 	}, []reflect.Type{reflect.TypeOf(""), reflect.TypeOf(int64(0)), reflect.TypeOf(true), reflect.TypeOf(""), reflect.TypeOf("")})
 
 	plugin.registerLuaFunction("wait", func(args ...interface{}) (interface{}, error) {
 		task := args[0].(*clientpb.Task)
-		return intermediate.WaitResult(con.Rpc, task)
+		return builtin.WaitResult(con.Rpc, task)
 	}, []reflect.Type{reflect.TypeOf(&clientpb.Task{})})
 
 	plugin.registerLuaFunction("get", func(args ...interface{}) (interface{}, error) {
 		task := args[0].(*clientpb.Task)
 		index := args[1].(int32)
-		return intermediate.GetResult(con.Rpc, task, index)
+		return builtin.GetResult(con.Rpc, task, index)
 	}, []reflect.Type{reflect.TypeOf(&clientpb.Task{}), reflect.TypeOf(int32(0))})
 
 	plugin.registerLuaFunction("taskprint", func(args ...interface{}) (interface{}, error) {
 		task := args[0].(*clientpb.TaskContext)
-		return intermediate.PrintTask(task)
+		return builtin.PrintTask(task)
 	}, []reflect.Type{reflect.TypeOf(&clientpb.TaskContext{})})
 
 	plugin.registerLuaFunction("assemblyprint", func(args ...interface{}) (interface{}, error) {
@@ -292,7 +335,7 @@ func (plugin *Plugin) RegisterLuaBuiltInFunctions(con *Console) error {
 		if err != nil {
 			return nil, err
 		}
-		return intermediate.PrintAssembly(task.Spite.GetAssemblyResponse())
+		return builtin.PrintAssembly(task.Spite.GetAssemblyResponse())
 	}, []reflect.Type{reflect.TypeOf(&clientpb.TaskContext{})})
 	return nil
 }
@@ -337,17 +380,18 @@ func (plugin *Plugin) ReverseRegisterLuaFunctions(cmd *cobra.Command) error {
 
 	globals.ForEach(func(key lua.LValue, value lua.LValue) {
 		funcName := key.String()
-		if CmdExists(funcName, cmd) {
-			Log.Warnf("%s already exists, skipped\n", funcName)
-			return
-		}
 
 		if fn, ok := value.(*lua.LFunction); ok {
 			if !strings.HasPrefix(funcName, "command_") {
 				return
 			}
+			cmdName := strings.TrimPrefix(funcName, "command_")
+			if CmdExists(cmdName, cmd) {
+				Log.Warnf("%s already exists, skipped\n", funcName)
+				return
+			}
 			malCmd := &cobra.Command{
-				Use:   strings.TrimPrefix(funcName, "command_"),
+				Use:   cmdName,
 				Short: fmt.Sprintf("Lua function %s", funcName),
 				RunE: func(cmd *cobra.Command, args []string) error {
 					vm.Push(fn) // 将函数推入栈

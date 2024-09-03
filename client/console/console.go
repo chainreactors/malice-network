@@ -1,10 +1,12 @@
 package console
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
+	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/mtls"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
@@ -12,6 +14,7 @@ import (
 	"github.com/mattn/go-tty"
 	"github.com/reeflective/console"
 	"github.com/reeflective/readline"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/proto"
 	"io"
 	"os"
@@ -62,14 +65,33 @@ func Start(bindCmds ...BindCmds) error {
 }
 
 type Console struct {
+	*ActiveTarget
+	*ServerStatus
+	*Plugins
 	App          *console.Console
-	ActiveTarget *ActiveTarget
 	Settings     *assets.Settings
 	ClientConfig *mtls.ClientConfig
 	Callbacks    *sync.Map
 	Observers    map[string]*Observer
-	*ServerStatus
-	*Plugins
+}
+
+func (c *Console) NewConsole(bindCmds ...BindCmds) {
+	iom := console.New("IoM")
+	c.App = iom
+
+	client := iom.NewMenu(consts.ClientMenu)
+	client.Short = "client commands"
+	client.Prompt().Primary = c.GetPrompt
+	client.AddInterrupt(readline.ErrInterrupt, exitConsole)
+	client.AddHistorySourceFile("history", filepath.Join(assets.GetRootAppDir(), "history"))
+	client.Command = bindCmds[0](c)()
+
+	implant := iom.NewMenu(consts.ImplantMenu)
+	implant.Short = "Implant commands"
+	implant.Prompt().Primary = c.GetPrompt
+	implant.AddInterrupt(io.EOF, exitImplantMenu) // Ctrl-D
+	implant.AddHistorySourceFile("history", filepath.Join(assets.GetRootAppDir(), "implant_history"))
+	implant.Command = bindCmds[1](c)()
 }
 
 func (c *Console) Login(config *mtls.ClientConfig) error {
@@ -87,6 +109,23 @@ func (c *Console) Login(config *mtls.ClientConfig) error {
 	c.ClientConfig = config
 	logs.Log.Importantf("%d listeners, %d clients , %d sessions", len(c.Listeners), len(c.Clients), len(c.Sessions))
 	return nil
+}
+
+func (c *Console) newConfigLogin(yamlFile string) {
+	config, err := mtls.ReadConfig(yamlFile)
+	if err != nil {
+		logs.Log.Errorf("Error reading config file: %v", err)
+		return
+	}
+	err = c.Login(config)
+	if err != nil {
+		logs.Log.Errorf("Error login: %v", err)
+		return
+	}
+	err = assets.MvConfig(yamlFile)
+	if err != nil {
+		return
+	}
 }
 
 func (c *Console) GetPrompt() string {
@@ -116,13 +155,6 @@ func (c *Console) RemoveObserver(observerID string) {
 	delete(c.Observers, observerID)
 }
 
-func (c *Console) GetInteractive() *clientpb.Session {
-	if c.ActiveTarget != nil {
-		return c.ActiveTarget.GetInteractive()
-	}
-	return nil
-}
-
 func (c *Console) RefreshActiveSession() {
 	if c.ActiveTarget != nil {
 		c.UpdateSession(c.ActiveTarget.session.SessionId)
@@ -139,24 +171,11 @@ func (c *Console) SessionLog(sid string) *logs.Logger {
 	}
 }
 
-func (c *Console) newConfigLogin(yamlFile string) {
-	config, err := mtls.ReadConfig(yamlFile)
-	if err != nil {
-		logs.Log.Errorf("Error reading config file: %v", err)
-		return
-	}
-	err = c.Login(config)
-	if err != nil {
-		logs.Log.Errorf("Error login: %v", err)
-		return
-	}
-	err = assets.MvConfig(yamlFile)
-	if err != nil {
-		return
-	}
+func (c *Console) RegisterInternalFunc(name string, fn interface{}, callback implantCallback) error {
+	return intermediate.RegisterInternalFunc(name, WrapImplantFunc(c.Rpc, fn, callback))
 }
 
-func (c *Console) exitConsole(_ *console.Console) {
+func exitConsole(c *console.Console) {
 	open, err := tty.Open()
 	if err != nil {
 		panic(err)
@@ -181,27 +200,14 @@ func (c *Console) exitConsole(_ *console.Console) {
 }
 
 // exitImplantMenu uses the background command to detach from the implant menu.
-func (c *Console) exitImplantMenu(_ *console.Console) {
-	root := c.App.Menu(consts.ImplantMenu).Command
+func exitImplantMenu(c *console.Console) {
+	root := c.Menu(consts.ImplantMenu).Command
 	root.SetArgs([]string{"background"})
 	root.Execute()
 }
 
-func (c *Console) NewConsole(bindCmds ...BindCmds) {
-	iom := console.New("IoM")
-	c.App = iom
-
-	client := iom.NewMenu(consts.ClientMenu)
-	client.Short = "client commands"
-	client.Prompt().Primary = c.GetPrompt
-	client.AddInterrupt(readline.ErrInterrupt, c.exitConsole)
-	client.AddHistorySourceFile("history", filepath.Join(assets.GetRootAppDir(), "history"))
-	client.Command = bindCmds[0](c)()
-
-	implant := iom.NewMenu(consts.ImplantMenu)
-	implant.Short = "Implant commands"
-	implant.Prompt().Primary = c.GetPrompt
-	implant.AddInterrupt(io.EOF, c.exitImplantMenu) // Ctrl-D
-	implant.AddHistorySourceFile("history", filepath.Join(assets.GetRootAppDir(), "implant_history"))
-	implant.Command = bindCmds[1](c)()
+func Context(s *clientpb.Session) context.Context {
+	return metadata.NewOutgoingContext(context.Background(), metadata.Pairs(
+		"session_id", s.SessionId),
+	)
 }

@@ -11,10 +11,6 @@ import (
 	"reflect"
 )
 
-var InternalFunctions = make(map[string]InternalFunc)
-
-type InternalFunc func(...interface{}) (interface{}, error)
-
 func WrapFuncForLua(fn InternalFunc, expectedArgs []reflect.Type) lua.LGFunction {
 	return func(L *lua.LState) int {
 		var args []interface{}
