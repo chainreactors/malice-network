@@ -45,12 +45,10 @@ func Start(bindCmds ...BindCmds) error {
 		Plugins:      NewPlugins(),
 	}
 	con.NewConsole(bindCmds...)
-	//con.App.SetPrintASCIILogo(func(_ *grumble.App) {
-	//con.PrintLogo()
-	//})
-	//con.UpdatePrompt()
 
-	con.readConfig()
+	if len(os.Args) > 1 {
+		con.newConfigLogin(os.Args[1])
+	}
 
 	con.ActiveTarget.callback = func(sess *clientpb.Session) {
 		con.ActiveTarget.activeObserver = NewObserver(sess)
@@ -67,6 +65,7 @@ type Console struct {
 	App          *console.Console
 	ActiveTarget *ActiveTarget
 	Settings     *assets.Settings
+	ClientConfig *mtls.ClientConfig
 	Callbacks    *sync.Map
 	Observers    map[string]*Observer
 	*ServerStatus
@@ -85,25 +84,10 @@ func (c *Console) Login(config *mtls.ClientConfig) error {
 		logs.Log.Errorf("init server failed : %v", err)
 		return err
 	}
+	c.ClientConfig = config
 	logs.Log.Importantf("%d listeners, %d clients , %d sessions", len(c.Listeners), len(c.Clients), len(c.Sessions))
 	return nil
 }
-
-//func (c *Console) UpdatePrompt() {
-//	c.App.Config().NoColor = true
-//	if c.ActiveTarget.session != nil {
-//		groupName := c.ActiveTarget.session.GroupName
-//		if c.ActiveTarget.session.Note != "" {
-//			c.App.SetPrompt(tui.AdaptSessionColor(groupName, c.ActiveTarget.session.Note))
-//		} else {
-//			sessionID := c.ActiveTarget.session.SessionId
-//			c.App.SetPrompt(tui.AdaptSessionColor(groupName, sessionID[:8]))
-//		}
-//
-//	} else {
-//		c.App.SetPrompt(tui.AdaptTermColor(Prompt))
-//	}
-//}
 
 func (c *Console) GetPrompt() string {
 	session := c.ActiveTarget.Get()
@@ -155,21 +139,13 @@ func (c *Console) SessionLog(sid string) *logs.Logger {
 	}
 }
 
-// readConfig
-func (c *Console) readConfig() {
-	var yamlFile string
-
-	if len(os.Args) > 1 {
-		yamlFile = os.Args[1]
-	} else {
-		return
-	}
-	clientFile, err := mtls.ReadConfig(yamlFile)
+func (c *Console) newConfigLogin(yamlFile string) {
+	config, err := mtls.ReadConfig(yamlFile)
 	if err != nil {
 		logs.Log.Errorf("Error reading config file: %v", err)
 		return
 	}
-	err = c.Login(clientFile)
+	err = c.Login(config)
 	if err != nil {
 		logs.Log.Errorf("Error login: %v", err)
 		return
