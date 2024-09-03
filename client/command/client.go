@@ -18,6 +18,27 @@ import (
 	"github.com/spf13/cobra"
 )
 
+func bindCommonCommands(bind bindFunc) {
+	bind("",
+		version.Command)
+
+	bind(consts.GenericGroup,
+		login.Command,
+		sessions.Commands,
+		use.Command,
+		tasks.Command,
+		alias.Commands,
+		extension.Commands,
+		armory.Commands,
+		observe.Command,
+		mal.Commands,
+	)
+
+	bind(consts.ListenerGroup,
+		listener.Commands,
+	)
+}
+
 func BindClientsCommands(con *cc.Console) console.Commands {
 	clientCommands := func() *cobra.Command {
 		client := &cobra.Command{
@@ -28,24 +49,7 @@ func BindClientsCommands(con *cc.Console) console.Commands {
 		}
 		bind := makeBind(client, con)
 
-		bind("",
-			version.Command)
-
-		bind(consts.GenericGroup,
-			login.Command,
-			sessions.Commands,
-			use.Command,
-			tasks.Command,
-			alias.Commands,
-			extension.Commands,
-			armory.Commands,
-			observe.Command,
-			mal.Commands,
-		)
-
-		bind(consts.ListenerGroup,
-			listener.Commands,
-		)
+		bindCommonCommands(bind)
 
 		if con.ServerStatus == nil {
 			err := login.LoginCmd(&cobra.Command{}, con)

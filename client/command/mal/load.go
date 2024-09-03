@@ -4,6 +4,7 @@ import (
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/client/core/plugin"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/spf13/cobra"
@@ -13,9 +14,10 @@ import (
 
 func MalLoadCmd(ctx *cobra.Command, con *console.Console) {
 	dirPath := ctx.Flags().Arg(0)
-	_, err := LoadMalManiFest(con, filepath.Join(assets.GetMalsDir(), dirPath, ManifestFileName))
+	_, err := LoadMal(con, filepath.Join(assets.GetMalsDir(), dirPath, ManifestFileName))
 	if err != nil {
 		console.Log.Error(err)
+		return
 	}
 }
 
@@ -29,10 +31,25 @@ func LoadMalManiFest(con *console.Console, filename string) (*plugin.MalManiFest
 		return nil, err
 	}
 
-	err = con.Plugins.LoadPlugin(manifest, con)
+	return manifest, nil
+}
+
+func LoadMal(con *console.Console, filename string) (*plugin.MalManiFest, error) {
+	manifest, err := LoadMalManiFest(con, filename)
+	plug, err := con.Plugins.LoadPlugin(manifest, con)
 	if err != nil {
 		return nil, err
 	}
+
+	err = plug.ReverseRegisterLuaFunctions(con.App.Menu(consts.ImplantMenu).Command)
+	if err != nil {
+		return nil, err
+	}
+	var cmds []string
+	for _, cmd := range plug.CMDs {
+		cmds = append(cmds, cmd.Name())
+	}
+	console.Log.Importantf("load mal: %s successfully, register %v", filename, cmds)
 	return manifest, nil
 }
 
