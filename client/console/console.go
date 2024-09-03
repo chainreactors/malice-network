@@ -55,7 +55,6 @@ func Start(bindCmds ...BindCmds) error {
 	con.ActiveTarget.callback = func(sess *clientpb.Session) {
 		con.ActiveTarget.activeObserver = NewObserver(sess)
 	}
-
 	con.App.SwitchMenu(consts.ClientMenu)
 	err := con.App.Start()
 	if err != nil {

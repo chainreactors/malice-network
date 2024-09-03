@@ -75,29 +75,31 @@ func WrapServerFunc(con *Console, fun serverRpcFunc) intermediate.InternalFunc {
 	}
 }
 
-func (plguins *Plugins) LoadPlugin(manifest *plugin.MalManiFest, con *Console) error {
+func (plguins *Plugins) LoadPlugin(manifest *plugin.MalManiFest, con *Console) (*Plugin, error) {
 	switch manifest.Type {
 	case LuaScript:
 		return plguins.LoadLuaScript(manifest, con)
 	case TCLScript:
 		// TODO
+		return nil, fmt.Errorf("not impl")
+	default:
+		return nil, fmt.Errorf("not found valid script type: %s", manifest.Type)
 	}
-	return nil
 }
 
-func (plugins *Plugins) LoadLuaScript(manifest *plugin.MalManiFest, con *Console) error {
+func (plguins *Plugins) LoadLuaScript(manifest *plugin.MalManiFest, con *Console) (*Plugin, error) {
 	// 检查脚本名称是否已存在
-	if _, ok := plugins.Plugins[manifest.Name]; ok {
-		return ErrorAlreadyScriptName
+	if _, ok := plguins.Plugins[manifest.Name]; ok {
+		return nil, ErrorAlreadyScriptName
 	}
 
 	// 创建并存储新的插件
 	plug, err := NewPlugin(manifest, con)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	plugins.Plugins[manifest.Name] = plug
+	plguins.Plugins[manifest.Name] = plug
 
 	// 将脚本添加到预加载模块中
 	//L.PreloadModule(manifest.Name, func(L *lua.LState) int {
@@ -108,7 +110,7 @@ func (plugins *Plugins) LoadLuaScript(manifest *plugin.MalManiFest, con *Console
 	//	return 1
 	//})
 
-	return nil
+	return plug, nil
 }
 
 func NewLuaVM(con *Console) *lua.LState {

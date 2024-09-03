@@ -3,22 +3,14 @@ package command
 import (
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/alias"
-	"github.com/chainreactors/malice-network/client/command/armory"
 	"github.com/chainreactors/malice-network/client/command/exec"
 	"github.com/chainreactors/malice-network/client/command/explorer"
 	"github.com/chainreactors/malice-network/client/command/extension"
 	"github.com/chainreactors/malice-network/client/command/file"
 	"github.com/chainreactors/malice-network/client/command/filesystem"
-	"github.com/chainreactors/malice-network/client/command/listener"
-	"github.com/chainreactors/malice-network/client/command/login"
 	"github.com/chainreactors/malice-network/client/command/mal"
 	"github.com/chainreactors/malice-network/client/command/modules"
-	"github.com/chainreactors/malice-network/client/command/observe"
-	"github.com/chainreactors/malice-network/client/command/sessions"
 	"github.com/chainreactors/malice-network/client/command/sys"
-	"github.com/chainreactors/malice-network/client/command/tasks"
-	"github.com/chainreactors/malice-network/client/command/use"
-	"github.com/chainreactors/malice-network/client/command/version"
 	cc "github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/reeflective/console"
@@ -35,25 +27,7 @@ func BindImplantCommands(con *cc.Console) console.Commands {
 			GroupID: consts.ImplantMenu,
 		}
 		bind := makeBind(implant, con)
-
-		bind("",
-			version.Command)
-
-		bind(consts.GenericGroup,
-			login.Command,
-			sessions.Commands,
-			use.Command,
-			tasks.Command,
-			alias.Commands,
-			extension.Commands,
-			armory.Commands,
-			observe.Command,
-		)
-
-		bind(consts.ListenerGroup,
-			listener.Commands,
-		)
-
+		bindCommonCommands(bind)
 		bind(consts.ImplantGroup,
 			exec.Commands,
 			file.Commands,
@@ -104,12 +78,15 @@ func BindImplantCommands(con *cc.Console) console.Commands {
 				continue
 			}
 
-			if plug, ok := con.Plugins.Plugins[manifest.Name]; ok {
+			if plug, err := con.Plugins.LoadPlugin(manifest, con); err == nil {
 				err := plug.ReverseRegisterLuaFunctions(implant)
 				if err != nil {
 					cc.Log.Errorf("Failed to register mal command: %s\n", err)
 					continue
 				}
+			} else {
+				cc.Log.Errorf("Failed to load mal: %s\n", err)
+				continue
 			}
 		}
 		return implant
