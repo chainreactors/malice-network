@@ -26,9 +26,7 @@ var (
 	ErrAsyncNotSupported = status.Error(codes.Unavailable, "Async not supported for this command")
 	// ErrDatabaseFailure - Generic database failure error (real error is logged)
 	ErrDatabaseFailure = status.Error(codes.Internal, "Database operation failed")
-	ErrNilStatus       = status.Error(codes.InvalidArgument, "Nil status or unknown error")
-	ErrAssertFailure   = status.Error(codes.InvalidArgument, "Assert spite type failure")
-	ErrNilResponseBody = status.Error(codes.InvalidArgument, "Must return spite body")
+
 	// ErrInvalidName - Invalid name
 	ErrInvalidName     = status.Error(codes.InvalidArgument, "Invalid session name, alphanumerics and _-. only")
 	ErrNotFoundSession = status.Error(codes.NotFound, "Session ID not found")

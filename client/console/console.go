@@ -213,8 +213,6 @@ func (c *Console) exitImplantMenu(_ *console.Console) {
 
 func (c *Console) NewConsole(bindCmds ...BindCmds) {
 	iom := console.New("IoM")
-	iom.NewlineBefore = true
-	iom.NewlineAfter = true
 	c.App = iom
 
 	client := iom.NewMenu(consts.ClientMenu)

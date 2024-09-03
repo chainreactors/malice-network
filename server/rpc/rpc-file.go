@@ -6,6 +6,7 @@ import (
 	"github.com/chainreactors/files"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/handler"
 	"github.com/chainreactors/malice-network/helper/helper"
 	"github.com/chainreactors/malice-network/helper/packet"
 	"github.com/chainreactors/malice-network/helper/types"
@@ -78,7 +79,7 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 		}
 		go func() {
 			stat := <-out
-			err := AssertStatus(stat)
+			err := handler.HandleMaleficError(stat)
 			if err != nil {
 				greq.Task.Panic(buildErrorEvent(greq.Task, err), stat)
 				return
@@ -99,7 +100,7 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 				in <- spite
 				resp := <-out
 				greq.Session.AddMessage(resp, blockId+1)
-				err = AssertResponse(resp, types.MsgAck)
+				err = handler.AssertResponse(resp, types.MsgAck)
 				if err != nil {
 					return
 				}
@@ -136,7 +137,7 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 
 	go func() {
 		resp := <-out
-		err := AssertStatus(resp)
+		err := handler.HandleMaleficError(resp)
 		if err != nil {
 			greq.Task.Panic(buildErrorEvent(greq.Task, err), resp)
 			return

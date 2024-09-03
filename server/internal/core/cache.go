@@ -44,7 +44,7 @@ func (c *Cache) AddMessage(spite *implantpb.Spite, index int) {
 }
 
 func (c *Cache) GetMessage(taskID, index int) (*implantpb.Spite, bool) {
-	spite, found := c.cache.Get(strconv.Itoa(taskID) + "_" + strconv.Itoa(index))
+	spite, found := c.cache.Get(fmt.Sprintf("%d_%d", taskID, index))
 	if found {
 		return spite.(*implantpb.Spite), found
 	} else {

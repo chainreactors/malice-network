@@ -5,8 +5,8 @@ import (
 	"errors"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/handler"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/chainreactors/tui"
 	"google.golang.org/grpc"
@@ -166,15 +166,12 @@ func (s *ServerStatus) triggerTaskDone(event *clientpb.Event) {
 		if err != nil {
 			Log.Errorf(err.Error())
 		}
-		if content.Spite.GetError() != 0 {
-			s.handleMaleficError(content.Spite)
+		err = handler.HandleMaleficError(content.Spite)
+		if err != nil {
+			Log.Errorf(err.Error())
 			return
 		}
 
-		if content.Spite.GetStatus().Status != 0 {
-			s.handleTaskError(content.Spite.GetStatus())
-			return
-		}
 		callback.(TaskCallback)(content.Spite)
 		s.Callbacks.Delete(task.TaskId)
 	}
@@ -232,52 +229,5 @@ func (s *ServerStatus) EventHandler() {
 			Log.Importantf("Website: %s", event.Message)
 		}
 		//con.triggerReactions(event)
-	}
-}
-
-func (s *ServerStatus) handleMaleficError(content *implantpb.Spite) {
-	switch content.Error {
-	case consts.MaleficErrorPanic:
-		Log.Errorf("Module Panic")
-	case consts.MaleficErrorUnpackError:
-		Log.Errorf("Module unpack error")
-	case consts.MaleficErrorMissbody:
-		Log.Errorf("Module miss body")
-	case consts.MaleficErrorModuleError:
-		Log.Errorf("Module error")
-	case consts.MaleficErrorModuleNotFound:
-		Log.Errorf("Module not found")
-	case consts.MaleficErrorTaskError:
-		Log.Errorf("Task error")
-		s.handleTaskError(content.Status)
-	case consts.MaleficErrorTaskNotFound:
-		Log.Errorf("Task not found")
-	case consts.MaleficErrorTaskOperatorNotFound:
-		Log.Errorf("Task operator not found")
-	case consts.MaleficErrorExtensionNotFound:
-		Log.Errorf("Extension not found")
-	case consts.MaleficErrorUnexceptBody:
-		Log.Errorf("Unexcept body")
-	default:
-		Log.Errorf("unknown Malefic error, %d", content.Error)
-	}
-}
-
-func (s *ServerStatus) handleTaskError(status *implantpb.Status) {
-	switch status.Status {
-	case consts.TaskErrorOperatorError:
-		Log.Errorf("Task error: %s", status.Error)
-	case consts.TaskErrorNotExpectBody:
-		Log.Errorf("Task error: %s", status.Error)
-	case consts.TaskErrorFieldRequired:
-		Log.Errorf("Task error: %s", status.Error)
-	case consts.TaskErrorFieldLengthMismatch:
-		Log.Errorf("Task error: %s", status.Error)
-	case consts.TaskErrorFieldInvalid:
-		Log.Errorf("Task error: %s", status.Error)
-	case consts.TaskError:
-		Log.Errorf("Task error: %s", status.Error)
-	default:
-		Log.Errorf("unknown error, %v", status)
 	}
 }

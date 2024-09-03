@@ -8,6 +8,25 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/db"
 )
 
+func getTaskContext(sess *core.Session, task *core.Task, index int32) (*clientpb.TaskContext, error) {
+	var msg *implantpb.Spite
+	var ok bool
+	if index == -1 {
+		msg, ok = sess.GetLastMessage(int(task.Id))
+	} else {
+		msg, ok = sess.GetMessage(int(task.Id), int(index))
+	}
+
+	if ok {
+		return &clientpb.TaskContext{
+			Task:    task.ToProtobuf(),
+			Session: sess.ToProtobuf(),
+			Spite:   msg,
+		}, nil
+	}
+	return nil, ErrNotFoundTaskContent
+}
+
 func (rpc *Server) GetTasks(ctx context.Context, session *clientpb.Session) (*clientpb.Tasks, error) {
 	sess, ok := core.Sessions.Get(session.SessionId)
 	if !ok {
@@ -27,21 +46,7 @@ func (rpc *Server) GetTaskContent(ctx context.Context, req *clientpb.Task) (*cli
 		return nil, ErrNotFoundTask
 	}
 
-	var msg *implantpb.Spite
-	if req.Need == -1 {
-		msg, ok = sess.GetLastMessage(int(task.Id))
-	} else {
-		msg, ok = sess.GetMessage(int(task.Id), int(req.Need)+1)
-	}
-
-	if ok {
-		return &clientpb.TaskContext{
-			Task:    task.ToProtobuf(),
-			Session: sess.ToProtobuf(),
-			Spite:   msg,
-		}, nil
-	}
-	return nil, ErrNotFoundTaskContent
+	return getTaskContext(sess, task, req.Need)
 }
 
 func (rpc *Server) WaitTaskContent(ctx context.Context, req *clientpb.Task) (*clientpb.TaskContext, error) {
@@ -53,29 +58,29 @@ func (rpc *Server) WaitTaskContent(ctx context.Context, req *clientpb.Task) (*cl
 	if task == nil {
 		return nil, ErrNotFoundTask
 	}
+
+	if int(req.Need) > task.Total {
+		return nil, ErrTaskIndexExceed
+	}
+
+	content, err := getTaskContext(sess, task, req.Need)
+	if err == nil {
+		return content, nil
+	}
+
 	for {
 		select {
 		case _, ok := <-task.DoneCh:
 			if !ok {
 				return nil, ErrNotFoundTaskContent
 			}
-			var msg *implantpb.Spite
-			if req.Need == -1 {
-				msg, ok = sess.GetLastMessage(int(task.Id))
-			} else {
-				msg, ok = sess.GetMessage(int(task.Id), int(req.Need)+1)
+			content, err = getTaskContext(sess, task, req.Need)
+			if err != nil {
+				continue
 			}
-			if ok {
-				return &clientpb.TaskContext{
-					Task:    task.ToProtobuf(),
-					Session: sess.ToProtobuf(),
-					Spite:   msg,
-				}, nil
-			}
+			return content, nil
 		}
 	}
-
-	return nil, ErrNotFoundTaskContent
 }
 
 func (rpc *Server) WaitTaskFinish(ctx context.Context, req *clientpb.Task) (*clientpb.TaskContext, error) {
@@ -87,6 +92,7 @@ func (rpc *Server) WaitTaskFinish(ctx context.Context, req *clientpb.Task) (*cli
 	if task == nil {
 		return nil, ErrNotFoundTask
 	}
+
 	select {
 	case <-task.Ctx.Done():
 		msg, ok := sess.GetLastMessage(int(task.Id))
