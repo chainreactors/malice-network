@@ -31,7 +31,6 @@ func Commands(con *console.Console) []*cobra.Command {
 			CatCmd(cmd, con)
 			return
 		},
-		GroupID: consts.ImplantGroup,
 	}
 
 	carapace.Gen(catCmd).PositionalCompletion(
@@ -62,7 +61,6 @@ func Commands(con *console.Console) []*cobra.Command {
 			ChmodCmd(cmd, con)
 			return
 		},
-		GroupID: consts.ImplantGroup,
 	}
 
 	carapace.Gen(chmodCmd).PositionalCompletion(
@@ -100,7 +98,6 @@ func Commands(con *console.Console) []*cobra.Command {
 			CpCmd(cmd, con)
 			return
 		},
-		GroupID: consts.ImplantGroup,
 	}
 
 	carapace.Gen(cpCmd).PositionalCompletion(
@@ -132,7 +129,6 @@ func Commands(con *console.Console) []*cobra.Command {
 			MkdirCmd(cmd, con)
 			return
 		},
-		GroupID: consts.ImplantGroup,
 	}
 
 	carapace.Gen(mkdirCmd).PositionalCompletion(
@@ -164,7 +160,6 @@ func Commands(con *console.Console) []*cobra.Command {
 			RmCmd(cmd, con)
 			return
 		},
-		GroupID: consts.ImplantGroup,
 	}
 
 	carapace.Gen(rmCmd).PositionalCompletion(

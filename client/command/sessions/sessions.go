@@ -115,7 +115,7 @@ func SessionLogin(tableModel *tui.TableModel, con *console.Console) func() {
 
 	return func() {
 		con.ActiveTarget.Set(session)
-		con.App.SwitchMenu(consts.ImplantGroup)
+		con.App.SwitchMenu(consts.ImplantMenu)
 		console.Log.Infof("Active session %s (%s)\n", session.Note, session.SessionId)
 	}
 }

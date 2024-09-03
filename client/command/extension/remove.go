@@ -48,7 +48,7 @@ func RemoveExtensionByCommandName(commandName string, con *console.Console) erro
 		return errors.New("extension not loaded")
 	}
 	delete(loadedExtensions, commandName)
-	implantMenu := con.App.Menu(consts.ImplantGroup)
+	implantMenu := con.App.Menu(consts.ImplantMenu)
 	for _, cmd := range implantMenu.Commands() {
 		if cmd.Name() == commandName {
 			implantMenu.RemoveCommand(cmd)

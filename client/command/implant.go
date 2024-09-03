@@ -32,7 +32,7 @@ func BindImplantCommands(con *cc.Console) console.Commands {
 			CompletionOptions: cobra.CompletionOptions{
 				HiddenDefaultCmd: true,
 			},
-			GroupID: consts.ImplantGroup,
+			GroupID: consts.ImplantMenu,
 		}
 		bind := makeBind(implant, con)
 
@@ -48,7 +48,6 @@ func BindImplantCommands(con *cc.Console) console.Commands {
 			extension.Commands,
 			armory.Commands,
 			observe.Command,
-			explorer.Commands,
 		)
 
 		bind(consts.ListenerGroup,
@@ -70,11 +69,12 @@ func BindImplantCommands(con *cc.Console) console.Commands {
 		// Load Aliases
 		aliasManifests := assets.GetInstalledAliasManifests()
 		for _, manifest := range aliasManifests {
-			_, err := alias.LoadAlias(manifest, con)
+			manifest, err := alias.LoadAlias(manifest, con)
 			if err != nil {
 				cc.Log.Errorf("Failed to load alias: %s", err)
 				continue
 			}
+			alias.AliasRegisterCommand(manifest, implant, con)
 		}
 
 		// Load Extensions
@@ -94,14 +94,22 @@ func BindImplantCommands(con *cc.Console) console.Commands {
 			}
 		}
 
-		for _, manifest := range assets.GetInstalledMalManifests() {
-			_, err := mal.LoadMalManiFest(con, manifest)
+		for _, malName := range assets.GetInstalledMalManifests() {
+			manifest, err := mal.LoadMalManiFest(con, malName)
 			// Absorb error in case there's no extensions manifest
 			if err != nil {
 				//con doesn't appear to be initialised here?
 				//con.PrintErrorf("Failed to load extension: %s", err)
 				cc.Log.Errorf("Failed to load mal: %s\n", err)
 				continue
+			}
+
+			if plug, ok := con.Plugins.Plugins[manifest.Name]; ok {
+				err := plug.ReverseRegisterLuaFunctions(implant)
+				if err != nil {
+					cc.Log.Errorf("Failed to register mal command: %s\n", err)
+					continue
+				}
 			}
 		}
 		return implant

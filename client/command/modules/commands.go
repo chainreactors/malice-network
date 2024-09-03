@@ -28,7 +28,6 @@ func Commands(con *console.Console) []*cobra.Command {
 			LoadModuleCmd(cmd, con)
 			return
 		},
-		GroupID: consts.ImplantGroup,
 	}
 
 	carapace.Gen(loadModuleCmd).PositionalCompletion(

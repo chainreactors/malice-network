@@ -129,7 +129,7 @@ func ExtensionLoadCmd(cmd *cobra.Command, con *console.Console) {
 		return
 	}
 	// do not add if the command already exists
-	implantMenu := con.App.Menu(consts.ImplantGroup)
+	implantMenu := con.App.Menu(consts.ImplantMenu)
 	for _, extCmd := range manifest.ExtCommand {
 		if console.CmdExists(extCmd.CommandName, implantMenu.Command) {
 			console.Log.Errorf("%s command already exists\n", extCmd.CommandName)

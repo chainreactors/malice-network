@@ -415,7 +415,7 @@ func PrintArmoryPackages(aliases []*alias.AliasManifest, exts []*extension.Exten
 			})
 		}
 	}
-	implantMenu := con.App.Menu(consts.ImplantGroup)
+	implantMenu := con.App.Menu(consts.ImplantMenu)
 	for _, pkg := range entries {
 		var commandName string
 		if console.CmdExists(pkg.CommandName, implantMenu.Command) {

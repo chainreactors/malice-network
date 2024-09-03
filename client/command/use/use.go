@@ -32,7 +32,7 @@ func Command(con *console.Console) []*cobra.Command {
 		Long:  help.GetHelpFor("background"),
 		Run: func(cmd *cobra.Command, args []string) {
 			con.ActiveTarget.Background()
-			con.App.SwitchMenu(consts.ClientGroup)
+			con.App.SwitchMenu(consts.ClientMenu)
 			return
 		},
 	}
@@ -60,6 +60,6 @@ func UseSessionCmd(cmd *cobra.Command, con *console.Console) {
 	}
 
 	con.ActiveTarget.Set(session)
-	con.App.SwitchMenu(consts.ImplantGroup)
+	con.App.SwitchMenu(consts.ImplantMenu)
 	console.Log.Infof("Active session %s (%s)\n", session.Note, session.SessionId)
 }

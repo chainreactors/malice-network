@@ -9,6 +9,7 @@ import (
 	"github.com/chainreactors/malice-network/client/command/extension"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/client/utils"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/cryptography/minisign"
 	"github.com/chainreactors/tui"
 	"github.com/spf13/cobra"
@@ -475,10 +476,11 @@ func installAliasPackage(entry *pkgCacheEntry, promptToOverwrite bool, clientCon
 	if installPath == nil {
 		return errors.New("failed to install alias")
 	}
-	_, err = alias.LoadAlias(filepath.Join(*installPath, alias.ManifestFileName), con)
+	manifest, err := alias.LoadAlias(filepath.Join(*installPath, alias.ManifestFileName), con)
 	if err != nil {
 		return err
 	}
+	alias.AliasRegisterCommand(manifest, con.App.Menu(consts.ImplantMenu).Command, con)
 	return nil
 }
 

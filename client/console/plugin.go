@@ -10,7 +10,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
-	"github.com/reeflective/console"
 	"github.com/spf13/cobra"
 	lua "github.com/yuin/gopher-lua"
 	"google.golang.org/protobuf/proto"
@@ -210,10 +209,6 @@ func NewPlugin(manifest *plugin.MalManiFest, con *Console) (*Plugin, error) {
 		return nil, fmt.Errorf("failed to load Lua script: %w", err)
 	}
 
-	err = plug.ReverseRegisterLuaFunctions(con.App.Menu(consts.ClientGroup))
-	if err != nil {
-		return nil, err
-	}
 	return plug, nil
 }
 
@@ -272,7 +267,7 @@ func (plugin *Plugin) RegisterLuaBuiltInFunctions(con *Console) error {
 	return nil
 }
 
-func (plugin *Plugin) ReverseRegisterLuaFunctions(app *console.Menu) error {
+func (plugin *Plugin) ReverseRegisterLuaFunctions(cmd *cobra.Command) error {
 	vm := plugin.LuaVM
 	globals := vm.Get(lua.GlobalsIndex).(*lua.LTable)
 	//globals.ForEach(func(key lua.LValue, value lua.LValue) {
@@ -312,8 +307,8 @@ func (plugin *Plugin) ReverseRegisterLuaFunctions(app *console.Menu) error {
 
 	globals.ForEach(func(key lua.LValue, value lua.LValue) {
 		funcName := key.String()
-		if CmdExists(funcName, app.Command) {
-			fmt.Printf("%s already exists, skipped\n", funcName)
+		if CmdExists(funcName, cmd) {
+			Log.Warnf("%s already exists, skipped\n", funcName)
 			return
 		}
 
@@ -321,7 +316,7 @@ func (plugin *Plugin) ReverseRegisterLuaFunctions(app *console.Menu) error {
 			if !strings.HasPrefix(funcName, "command_") {
 				return
 			}
-			cmd := &cobra.Command{
+			malCmd := &cobra.Command{
 				Use:   strings.TrimPrefix(funcName, "command_"),
 				Short: fmt.Sprintf("Lua function %s", funcName),
 				RunE: func(cmd *cobra.Command, args []string) error {
@@ -344,11 +339,11 @@ func (plugin *Plugin) ReverseRegisterLuaFunctions(app *console.Menu) error {
 
 					return nil
 				},
-				GroupID: consts.GenericGroup,
+				GroupID: consts.MalGroup,
 			}
-			plugin.CMDs = append(plugin.CMDs, cmd)
-			app.AddCommand(cmd)
-			fmt.Printf("Registered Lua function: %s\n", funcName)
+			plugin.CMDs = append(plugin.CMDs, malCmd)
+			cmd.AddCommand(malCmd)
+			Log.Debugf("Registered Command: %s\n", funcName)
 		}
 	})
 	return nil
