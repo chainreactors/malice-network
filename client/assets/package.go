@@ -12,6 +12,8 @@ import (
 const (
 	armoryConfigFileName = "armories.json"
 	DefaultArmoryName    = "Default"
+	malConfigFileName    = "mals.yaml"
+	DefaultMalName       = "Defualt"
 )
 
 var (
@@ -26,7 +28,47 @@ var (
 		Name:      DefaultArmoryName,
 		Enabled:   true,
 	}
+
+	DefaultMalRepoURL = "https://api.github.com/repos/chainreactors/mals/releases"
+
+	DefaultMalConfig = &MalConfig{
+		//PublicKey: DefaultArmoryPublicKey,
+		RepoURL: DefaultMalRepoURL,
+		Name:    DefaultMalName,
+		Enabled: true,
+	}
 )
+
+type MalConfig struct {
+	//PublicKey        string `json:"public_key"`
+	RepoURL          string `json:"repo_url"`
+	Authorization    string `json:"authorization"`
+	AuthorizationCmd string `json:"authorization_cmd"`
+	Name             string `json:"name"`
+	Enabled          bool   `json:"enabled"`
+}
+
+func GetMalsConfig() []*MalConfig {
+	malConfigPath := filepath.Join(GetRootAppDir(), malConfigFileName)
+	if _, err := os.Stat(malConfigPath); os.IsNotExist(err) {
+		return []*MalConfig{DefaultMalConfig}
+	}
+	data, err := ioutil.ReadFile(malConfigPath)
+	if err != nil {
+		return []*MalConfig{DefaultMalConfig}
+	}
+	var malConfigs []*MalConfig
+	err = json.Unmarshal(data, &malConfigs)
+	if err != nil {
+		return []*MalConfig{DefaultMalConfig}
+	}
+	for _, malConfig := range malConfigs {
+		if malConfig.AuthorizationCmd != "" {
+			malConfig.Authorization = ExecuteAuthorizationCmd(malConfig.AuthorizationCmd)
+		}
+	}
+	return append(malConfigs, DefaultMalConfig)
+}
 
 // ArmoryConfig - The armory config file
 type ArmoryConfig struct {
@@ -55,28 +97,20 @@ func GetArmoriesConfig() []*ArmoryConfig {
 	}
 	for _, armoryConfig := range armoryConfigs {
 		if armoryConfig.AuthorizationCmd != "" {
-			armoryConfig.Authorization = executeAuthorizationCmd(armoryConfig)
+			armoryConfig.Authorization = ExecuteAuthorizationCmd(armoryConfig.AuthorizationCmd)
 		}
 	}
 	return append(armoryConfigs, DefaultArmoryConfig)
 }
 
-func executeAuthorizationCmd(armoryConfig *ArmoryConfig) string {
-	if armoryConfig.AuthorizationCmd == "" {
+func ExecuteAuthorizationCmd(cmd string) string {
+	if cmd == "" {
 		return ""
 	}
-	out, err := exec.Command(armoryConfig.AuthorizationCmd).CombinedOutput()
+	out, err := exec.Command(cmd).CombinedOutput()
 	if err != nil {
-		log.Printf("Failed to execute authorization_cmd '%s': %v", armoryConfig.AuthorizationCmd, err)
+		log.Printf("Failed to execute authorization_cmd '%s': %v", cmd, err)
 		return ""
 	}
 	return string(out)
-}
-
-func RefreshArmoryAuthorization(armories []*ArmoryConfig) {
-	for _, armoryConfig := range armories {
-		if armoryConfig.AuthorizationCmd != "" {
-			armoryConfig.Authorization = executeAuthorizationCmd(armoryConfig)
-		}
-	}
 }

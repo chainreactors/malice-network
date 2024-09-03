@@ -27,7 +27,6 @@ var (
 	LogLevel           = logs.Warn
 	Log                = logs.NewLogger(LogLevel)
 	MuteLog            = logs.NewLogger(logs.Important)
-	implantGroups      = []string{consts.ImplantGroup, consts.AliasesGroup, consts.ExtensionGroup}
 )
 
 type TaskCallback func(resp proto.Message)

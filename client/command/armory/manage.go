@@ -56,6 +56,11 @@ func getCurrentArmoryConfiguration() []*assets.ArmoryConfig {
 			configs = append(configs, assets.DefaultArmoryConfig)
 		}
 	}
-	assets.RefreshArmoryAuthorization(configs)
+
+	for _, armoryConfig := range configs {
+		if armoryConfig.AuthorizationCmd != "" {
+			armoryConfig.Authorization = assets.ExecuteAuthorizationCmd(armoryConfig.AuthorizationCmd)
+		}
+	}
 	return configs
 }
