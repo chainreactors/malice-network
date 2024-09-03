@@ -8,6 +8,8 @@ import (
 	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/client/core/plugin"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/handler"
+	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/spf13/cobra"
@@ -260,12 +262,38 @@ func (plugin *Plugin) RegisterLuaBuiltInFunctions(con *Console) error {
 
 	// build sacrifice process message
 	plugin.registerLuaFunction("new_sacrifice", func(args ...interface{}) (interface{}, error) {
-		ppid := args[0].(int64)
-		blockDll := args[1].(bool)
-		argue := args[2].(string)
-		argsStr := args[3].(string)
-		return intermediate.NewSacrificeProcessMessage(ppid, blockDll, argue, argsStr)
-	}, []reflect.Type{reflect.TypeOf(int64(0)), reflect.TypeOf(true), reflect.TypeOf(""), reflect.TypeOf("")})
+		processName := args[0].(string)
+		ppid := args[1].(int64)
+		blockDll := args[2].(bool)
+		argue := args[3].(string)
+		argsStr := args[4].(string)
+		return intermediate.NewSacrificeProcessMessage(processName, ppid, blockDll, argue, argsStr)
+	}, []reflect.Type{reflect.TypeOf(""), reflect.TypeOf(int64(0)), reflect.TypeOf(true), reflect.TypeOf(""), reflect.TypeOf("")})
+
+	plugin.registerLuaFunction("wait", func(args ...interface{}) (interface{}, error) {
+		task := args[0].(*clientpb.Task)
+		return intermediate.WaitResult(con.Rpc, task)
+	}, []reflect.Type{reflect.TypeOf(&clientpb.Task{})})
+
+	plugin.registerLuaFunction("get", func(args ...interface{}) (interface{}, error) {
+		task := args[0].(*clientpb.Task)
+		index := args[1].(int32)
+		return intermediate.GetResult(con.Rpc, task, index)
+	}, []reflect.Type{reflect.TypeOf(&clientpb.Task{}), reflect.TypeOf(int32(0))})
+
+	plugin.registerLuaFunction("taskprint", func(args ...interface{}) (interface{}, error) {
+		task := args[0].(*clientpb.TaskContext)
+		return intermediate.PrintTask(task)
+	}, []reflect.Type{reflect.TypeOf(&clientpb.TaskContext{})})
+
+	plugin.registerLuaFunction("assemblyprint", func(args ...interface{}) (interface{}, error) {
+		task := args[0].(*clientpb.TaskContext)
+		err := handler.AssertStatusAndResponse(task.GetSpite(), types.MsgAssemblyResponse)
+		if err != nil {
+			return nil, err
+		}
+		return intermediate.PrintAssembly(task.Spite.GetAssemblyResponse())
+	}, []reflect.Type{reflect.TypeOf(&clientpb.TaskContext{})})
 	return nil
 }
 

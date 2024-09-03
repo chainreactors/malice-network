@@ -5,16 +5,15 @@ import (
 	"errors"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/handler"
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/server/internal/core"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"runtime"
 )
@@ -68,7 +67,7 @@ func (r *GenericRequest) SetCallback(callback func()) {
 func (r *GenericRequest) HandlerAsyncResponse(ch chan *implantpb.Spite, typ types.MsgName, callbacks ...func(spite *implantpb.Spite)) {
 	resp := <-ch
 
-	err := AssertStatusAndResponse(resp, typ)
+	err := handler.AssertStatusAndResponse(resp, typ)
 	if err != nil {
 		logs.Log.Debug(err)
 		r.Task.Panic(buildErrorEvent(r.Task, err), resp)
@@ -88,59 +87,24 @@ func (r *GenericRequest) HandlerAsyncResponse(ch chan *implantpb.Spite, typ type
 	})
 }
 
-func AssertRequestName(req *implantpb.Request, expect types.MsgName) error {
-	if req.Name != string(expect) {
-		return ErrAssertFailure
-	}
-	return nil
-}
-
-func AssertStatus(spite *implantpb.Spite) error {
-	if stat := spite.GetStatus(); stat == nil {
-		return ErrMissingRequestField
-	} else if stat.Status != 0 {
-		return status.Error(codes.InvalidArgument, stat.Error)
-	}
-	return nil
-}
-
-func AssertResponse(spite *implantpb.Spite, expect types.MsgName) error {
-	body := spite.GetBody()
-	if body == nil && expect != types.MsgNil {
-		return ErrNilResponseBody
-	}
-
-	if expect != types.MessageType(spite) {
-		return ErrAssertFailure
-	}
-	return nil
-}
-
-func AssertStatusAndResponse(spite *implantpb.Spite, expect types.MsgName) error {
-	if err := AssertStatus(spite); err != nil {
-		return err
-	}
-	return AssertResponse(spite, expect)
-}
-
 func buildErrorEvent(task *core.Task, err error) core.Event {
-	if errors.Is(err, ErrNilStatus) {
+	if errors.Is(err, handler.ErrNilStatus) {
 		return core.Event{
 			EventType: consts.EventTaskDone,
 			Task:      task,
-			Err:       ErrNilStatus.Error(),
+			Err:       handler.ErrNilStatus.Error(),
 		}
-	} else if errors.Is(err, ErrAssertFailure) {
+	} else if errors.Is(err, handler.ErrAssertFailure) {
 		return core.Event{
 			EventType: consts.EventTaskDone,
 			Task:      task,
-			Err:       ErrAssertFailure.Error(),
+			Err:       handler.ErrAssertFailure.Error(),
 		}
-	} else if errors.Is(err, ErrNilResponseBody) {
+	} else if errors.Is(err, handler.ErrNilResponseBody) {
 		return core.Event{
 			EventType: consts.EventTaskDone,
 			Task:      task,
-			Err:       ErrNilResponseBody.Error(),
+			Err:       handler.ErrNilResponseBody.Error(),
 		}
 	} else if errors.Is(err, ErrMissingRequestField) {
 		return core.Event{
