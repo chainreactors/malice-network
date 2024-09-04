@@ -15,17 +15,10 @@ func ExecuteCmd(cmd *cobra.Command, con *console.Console) {
 	params := cmd.Flags().Args()[1:]
 	//token := ctx.Flags.Bool("token")
 	output, _ := cmd.Flags().GetBool("output")
-	//timeout := ctx.Flags.Int("timeout")
-	stdout, _ := cmd.Flags().GetString("stdout")
-	stderr, _ := cmd.Flags().GetString("stderr")
-	//saveLoot := ctx.Flags.Bool("loot")
-	//saveOutput := ctx.Flags.Bool("save")
-	//ppid := ctx.Flags.Uint("ppid")
-	//hostName := getHostname(session, beacon)
-	execute(path, params, output, stdout, stderr, con)
+	execute(path, params, output, con)
 }
 
-func execute(cmd string, args []string, output bool, stdout, stderr string, con *console.Console) {
+func execute(cmd string, args []string, output bool, con *console.Console) {
 	session := con.GetInteractive()
 	if session == nil {
 		return
@@ -37,8 +30,6 @@ func execute(cmd string, args []string, output bool, stdout, stderr string, con 
 		Path:   cmd,
 		Args:   args,
 		Output: output,
-		Stderr: stderr,
-		Stdout: stdout,
 	})
 	if err != nil {
 		console.Log.Errorf("%s", err.Error())

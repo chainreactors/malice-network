@@ -13,7 +13,6 @@ import (
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
-	app "github.com/reeflective/console"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"google.golang.org/protobuf/proto"
@@ -339,37 +338,20 @@ func ExecuteAlias(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, aliasNa
 }
 
 func makeAliasPlatformFilters(alias *AliasManifest) map[string]string {
-	filtersOS := make(map[string]bool)
-	filtersArch := make(map[string]bool)
-
-	var all []string
+	all := make(map[string]string)
 
 	// Only add filters for architectures when there OS matters.
+	var arch []string
 	for _, file := range alias.Files {
-		filtersOS[file.OS] = true
-
-		if filtersOS[file.OS] {
-			filtersArch[file.Arch] = true
-		}
+		all["os"] = file.OS
+		arch = append(arch, file.Arch)
 	}
+	all["arch"] = strings.Join(arch, ",")
 
-	for os, enabled := range filtersOS {
-		if enabled {
-			all = append(all, os)
-		}
+	if alias.IsAssembly {
+		all["depend"] = consts.ModuleExecuteAssembly
+	} else if alias.IsReflective {
+		all["depend"] = consts.ModuleExecuteDll
 	}
-
-	for arch, enabled := range filtersArch {
-		if enabled {
-			all = append(all, arch)
-		}
-	}
-
-	if len(all) == 0 {
-		return map[string]string{}
-	}
-
-	return map[string]string{
-		app.CommandFilterKey: strings.Join(all, ","),
-	}
+	return all
 }

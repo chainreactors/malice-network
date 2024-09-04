@@ -1,7 +1,7 @@
 package listener
 
 import (
-	"github.com/chainreactors/malice-network/client/command/flags"
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -65,12 +65,12 @@ func Commands(con *console.Console) []*cobra.Command {
 		carapace.ActionValues().Usage("tcp pipeline port"),
 	)
 
-	flags.Bind("cert", false, tcpRegisterCmd, func(f *pflag.FlagSet) {
+	common.Bind("cert", false, tcpRegisterCmd, func(f *pflag.FlagSet) {
 		f.String("cert_path", "", "tcp pipeline tls cert path")
 		f.String("key_path", "", "tcp pipeline tls key path")
 	})
 
-	flags.BindFlagCompletions(tcpRegisterCmd, func(comp *carapace.ActionMap) {
+	common.BindFlagCompletions(tcpRegisterCmd, func(comp *carapace.ActionMap) {
 		(*comp)["cert_path"] = carapace.ActionFiles().Usage("path to the cert file")
 		(*comp)["key_path"] = carapace.ActionFiles().Usage("path to the key file")
 	})
@@ -139,12 +139,12 @@ func Commands(con *console.Console) []*cobra.Command {
 		carapace.ActionValues().Usage("website content type"),
 	)
 
-	flags.Bind("cert", false, websiteRegisterCmd, func(f *pflag.FlagSet) {
+	common.Bind("cert", false, websiteRegisterCmd, func(f *pflag.FlagSet) {
 		f.String("cert_path", "", "website tls cert path")
 		f.String("key_path", "", "website tls key path")
 	})
 
-	flags.BindFlagCompletions(websiteRegisterCmd, func(comp *carapace.ActionMap) {
+	common.BindFlagCompletions(websiteRegisterCmd, func(comp *carapace.ActionMap) {
 		(*comp)["cert_path"] = carapace.ActionFiles().Usage("path to the cert file")
 		(*comp)["key_path"] = carapace.ActionFiles().Usage("path to the key file")
 	})

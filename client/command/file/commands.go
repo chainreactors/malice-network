@@ -1,7 +1,7 @@
 package file
 
 import (
-	"github.com/chainreactors/malice-network/client/command/flags"
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -23,8 +23,10 @@ func Commands(con *console.Console) []*cobra.Command {
 			DownloadCmd(cmd, con)
 			return
 		},
+		Annotations: map[string]string{
+			"depend": consts.ModuleDownload,
+		},
 	}
-
 	carapace.Gen(downloadCmd).PositionalCompletion(
 		carapace.ActionValues().Usage("file name"),
 		carapace.ActionValues().Usage("download file source path"),
@@ -39,14 +41,15 @@ func Commands(con *console.Console) []*cobra.Command {
 			UploadCmd(cmd, con)
 			return
 		},
+		Annotations: map[string]string{
+			"depend": consts.ModuleUpload,
+		},
 	}
-
 	carapace.Gen(uploadCmd).PositionalCompletion(
 		carapace.ActionFiles().Usage("file source path"),
 		carapace.ActionValues().Usage("file target path"),
 	)
-
-	flags.Bind(consts.ModuleUpload, false, uploadCmd, func(f *pflag.FlagSet) {
+	common.BindFlag(uploadCmd, func(f *pflag.FlagSet) {
 		f.IntP("priv", "", 0o644, "file privilege")
 		f.BoolP("hidden", "", false, "hidden file")
 	})

@@ -17,6 +17,9 @@ func Commands(con *console.Console) []*cobra.Command {
 			WhoamiCmd(cmd, con)
 			return
 		},
+		Annotations: map[string]string{
+			"depend": consts.ModuleWhoami,
+		},
 	}
 
 	killCmd := &cobra.Command{
@@ -27,6 +30,9 @@ func Commands(con *console.Console) []*cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			KillCmd(cmd, con)
 			return
+		},
+		Annotations: map[string]string{
+			"depend": consts.ModuleKill,
 		},
 	}
 
@@ -42,6 +48,9 @@ func Commands(con *console.Console) []*cobra.Command {
 			PsCmd(cmd, con)
 			return
 		},
+		Annotations: map[string]string{
+			"depend": consts.ModulePs,
+		},
 	}
 
 	envCmd := &cobra.Command{
@@ -51,6 +60,9 @@ func Commands(con *console.Console) []*cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			EnvCmd(cmd, con)
 			return
+		},
+		Annotations: map[string]string{
+			"depend": consts.ModuleEnv,
 		},
 	}
 
@@ -62,6 +74,9 @@ func Commands(con *console.Console) []*cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			SetEnvCmd(cmd, con)
 			return
+		},
+		Annotations: map[string]string{
+			"depend": consts.ModuleSetEnv,
 		},
 	}
 
@@ -79,6 +94,9 @@ func Commands(con *console.Console) []*cobra.Command {
 			UnsetEnvCmd(cmd, con)
 			return
 		},
+		Annotations: map[string]string{
+			"depend": consts.ModuleUnsetEnv,
+		},
 	}
 
 	carapace.Gen(unSetEnvCmd).PositionalCompletion(
@@ -93,6 +111,9 @@ func Commands(con *console.Console) []*cobra.Command {
 			NetstatCmd(cmd, con)
 			return
 		},
+		Annotations: map[string]string{
+			"depend": consts.ModuleNetstat,
+		},
 	}
 
 	infoCmd := &cobra.Command{
@@ -102,6 +123,9 @@ func Commands(con *console.Console) []*cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			InfoCmd(cmd, con)
 			return
+		},
+		Annotations: map[string]string{
+			"depend": consts.ModuleInfo,
 		},
 	}
 

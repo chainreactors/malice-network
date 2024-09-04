@@ -1,7 +1,7 @@
 package armory
 
 import (
-	"github.com/chainreactors/malice-network/client/command/flags"
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -19,13 +19,13 @@ func Commands(con *console.Console) []*cobra.Command {
 			ArmoryCmd(cmd, con)
 		},
 	}
-	flags.Bind("connection", true, armoryCmd, func(f *pflag.FlagSet) {
+	common.Bind("connection", true, armoryCmd, func(f *pflag.FlagSet) {
 		f.BoolP("insecure", "I", false, "skip tls certificate validation")
 		f.StringP("proxy", "p", "", "specify a proxy url (e.g. http://localhost:8080)")
 		f.BoolP("ignore-cache", "c", false, "ignore metadata cache, force refresh")
 		f.StringP("timeout", "t", "", "download timeout")
 	})
-	flags.Bind("type", false, armoryCmd, func(f *pflag.FlagSet) {
+	common.Bind("type", false, armoryCmd, func(f *pflag.FlagSet) {
 		f.BoolP("bundle", "r", false, "install bundle")
 	})
 
@@ -38,11 +38,11 @@ func Commands(con *console.Console) []*cobra.Command {
 			ArmoryInstallCmd(cmd, con)
 		},
 	}
-	flags.Bind("connection", false, armoryInstallCmd, func(f *pflag.FlagSet) {
+	common.Bind("connection", false, armoryInstallCmd, func(f *pflag.FlagSet) {
 		f.BoolP("force", "f", false, "force installation of package, overwriting the package if it exists")
 		f.StringP("armory", "a", "", "name of armory to install package from")
 	})
-	flags.Bind("name", true, armoryInstallCmd, func(f *pflag.FlagSet) {
+	common.Bind("name", true, armoryInstallCmd, func(f *pflag.FlagSet) {
 		f.StringP("armory", "a", "Default", "name of the armory to install from")
 	})
 
@@ -54,10 +54,10 @@ func Commands(con *console.Console) []*cobra.Command {
 			ArmoryUpdateCmd(cmd, con)
 		},
 	}
-	flags.Bind("connection", false, armoryUpdateCmd, func(f *pflag.FlagSet) {
+	common.Bind("connection", false, armoryUpdateCmd, func(f *pflag.FlagSet) {
 		f.StringP("armory", "a", "", "name of armory to install package from")
 	})
-	flags.Bind("name", true, armoryUpdateCmd, func(f *pflag.FlagSet) {
+	common.Bind("name", true, armoryUpdateCmd, func(f *pflag.FlagSet) {
 		f.StringP("armory", "a", "Default", "name of the armory to install from")
 	})
 

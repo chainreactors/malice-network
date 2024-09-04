@@ -12,7 +12,7 @@ const (
 	ClientMaxReceiveMessageSize = 256 * MB
 	// ServerMaxMessageSize - Server-side max GRPC message size
 	ServerMaxMessageSize = 2 * GB
-	DefaultTimeout       = 10 // second
+	DefaultTimeout       = -1 // second
 	DefaultDuration      = time.Duration(DefaultTimeout * time.Second)
 )
 

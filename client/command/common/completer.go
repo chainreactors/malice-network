@@ -1,4 +1,4 @@
-package completer
+package common
 
 import (
 	"github.com/chainreactors/malice-network/client/console"

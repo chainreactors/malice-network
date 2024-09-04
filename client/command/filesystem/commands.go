@@ -20,6 +20,9 @@ func Commands(con *console.Console) []*cobra.Command {
 			PwdCmd(cmd, con)
 			return
 		},
+		Annotations: map[string]string{
+			"depend": consts.ModuleCat,
+		},
 	}
 
 	catCmd := &cobra.Command{
@@ -30,6 +33,9 @@ func Commands(con *console.Console) []*cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			CatCmd(cmd, con)
 			return
+		},
+		Annotations: map[string]string{
+			"depend": consts.ModuleCat,
 		},
 	}
 
@@ -46,6 +52,9 @@ func Commands(con *console.Console) []*cobra.Command {
 			CdCmd(cmd, con)
 			return
 		},
+		Annotations: map[string]string{
+			"depend": consts.ModuleLs,
+		},
 	}
 
 	carapace.Gen(cdCmd).PositionalCompletion(
@@ -60,6 +69,10 @@ func Commands(con *console.Console) []*cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			ChmodCmd(cmd, con)
 			return
+		},
+		Annotations: map[string]string{
+			"os":     "linux,mac",
+			"depend": consts.ModuleChmod,
 		},
 	}
 
@@ -77,6 +90,10 @@ func Commands(con *console.Console) []*cobra.Command {
 			ChownCmd(cmd, con)
 			return
 		},
+		Annotations: map[string]string{
+			"os":     "linux,mac",
+			"depend": consts.ModuleChown,
+		},
 	}
 
 	carapace.Gen(chownCmd).PositionalCompletion(
@@ -84,7 +101,7 @@ func Commands(con *console.Console) []*cobra.Command {
 		carapace.ActionValues().Usage("chown file path"),
 	)
 
-	flags.Bind(consts.ModuleChown, false, chownCmd, func(f *pflag.FlagSet) {
+	common.BindFlag(chownCmd, func(f *pflag.FlagSet) {
 		f.BoolP("recursive", "r", false, "recursive")
 		f.StringP("gid", "g", "", "Group id")
 	})
@@ -97,6 +114,9 @@ func Commands(con *console.Console) []*cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			CpCmd(cmd, con)
 			return
+		},
+		Annotations: map[string]string{
+			"depend": consts.ModuleCp,
 		},
 	}
 
@@ -114,6 +134,9 @@ func Commands(con *console.Console) []*cobra.Command {
 			LsCmd(cmd, con)
 			return
 		},
+		Annotations: map[string]string{
+			"depend": consts.ModuleLs,
+		},
 	}
 
 	carapace.Gen(lsCmd).PositionalCompletion(
@@ -128,6 +151,9 @@ func Commands(con *console.Console) []*cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			MkdirCmd(cmd, con)
 			return
+		},
+		Annotations: map[string]string{
+			"depend": consts.ModuleMkdir,
 		},
 	}
 
@@ -144,6 +170,9 @@ func Commands(con *console.Console) []*cobra.Command {
 			MvCmd(cmd, con)
 			return
 		},
+		Annotations: map[string]string{
+			"depend": consts.ModuleMv,
+		},
 	}
 
 	carapace.Gen(mvCmd).PositionalCompletion(
@@ -159,6 +188,9 @@ func Commands(con *console.Console) []*cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			RmCmd(cmd, con)
 			return
+		},
+		Annotations: map[string]string{
+			"depend": consts.ModuleRm,
 		},
 	}
 

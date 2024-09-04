@@ -389,9 +389,6 @@ func runExtensionCmd(cmd *cobra.Command, con *console.Console) {
 		entryPoint = ext.Entrypoint
 	}
 
-	go func() {
-
-	}()
 	task, err := con.Rpc.ExecuteExtension(con.ActiveTarget.Context(), &implantpb.ExecuteExtension{
 		Extension: ext.CommandName,
 		ExecuteBinary: &implantpb.ExecuteBinary{

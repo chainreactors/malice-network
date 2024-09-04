@@ -19,6 +19,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 	"sync"
 )
 
@@ -167,6 +169,28 @@ func (c *Console) SessionLog(sid string) *logs.Logger {
 		return c.ActiveTarget.activeObserver.log
 	} else {
 		return MuteLog
+	}
+}
+
+func (c *Console) SwitchImplant(sess *clientpb.Session) {
+	c.ActiveTarget.Set(sess)
+	c.App.SwitchMenu(consts.ImplantMenu)
+
+	for _, cmd := range c.App.ActiveMenu().Command.Commands() {
+		cmd.Hidden = false
+		if o, ok := cmd.Annotations["os"]; ok && !strings.Contains(o, sess.Os.Name) {
+			cmd.Hidden = true
+		}
+		if arch, ok := cmd.Annotations["arch"]; ok && !strings.Contains(arch, sess.Os.Arch) {
+			cmd.Hidden = true
+		}
+		if depend, ok := cmd.Annotations["depend"]; ok {
+			for _, dep := range strings.Split(depend, ",") {
+				if !slices.Contains(sess.Modules, dep) {
+					cmd.Hidden = true
+				}
+			}
+		}
 	}
 }
 

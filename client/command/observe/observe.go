@@ -1,8 +1,7 @@
 package observe
 
 import (
-	"github.com/chainreactors/malice-network/client/command/completer"
-	"github.com/chainreactors/malice-network/client/command/flags"
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
@@ -21,13 +20,13 @@ func Command(con *console.Console) []*cobra.Command {
 			ObserveCmd(cmd, con)
 		},
 	}
-	flags.Bind("observe", true, observeCmd, func(f *pflag.FlagSet) {
+	common.Bind("observe", true, observeCmd, func(f *pflag.FlagSet) {
 		f.BoolP("list", "l", false, "list all observers")
 		f.BoolP("remove", "r", false, "remove observer")
 	})
 
 	carapace.Gen(observeCmd).PositionalCompletion(
-		completer.BasicSessionIDCompleter(con),
+		common.BasicSessionIDCompleter(con),
 	)
 	return []*cobra.Command{}
 }

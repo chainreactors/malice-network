@@ -1,4 +1,4 @@
-package flags
+package common
 
 import (
 	"strings"
@@ -7,10 +7,6 @@ import (
 	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-)
-
-const (
-	DefaultTimeout = 60
 )
 
 // Bind is a convenience function to bind flags to a command, through newly created
