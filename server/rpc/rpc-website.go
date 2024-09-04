@@ -8,6 +8,7 @@ import (
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
+	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"github.com/chainreactors/malice-network/server/internal/website"
 	"mime"
 	"path/filepath"
@@ -131,7 +132,11 @@ func (rpc *Server) WebsiteRemoveContent(ctx context.Context, req *lispb.WebsiteR
 	return website.MapContent(req.Name, false)
 }
 
-func (rpc *Server) StartWebsite(ctx context.Context, req *lispb.Pipeline) (*clientpb.Empty, error) {
+func (rpc *Server) RegisterWebsite(ctx context.Context, req *lispb.Pipeline) (*implantpb.Empty, error) {
+	err := db.CreatePipeline(req)
+	if err != nil {
+		return &implantpb.Empty{}, err
+	}
 	getWeb := req.GetWeb()
 	if 0 < len(getWeb.Contents) {
 		for _, content := range getWeb.Contents {
@@ -153,45 +158,51 @@ func (rpc *Server) StartWebsite(ctx context.Context, req *lispb.Pipeline) (*clie
 			return nil, err
 		}
 	}
+	return &implantpb.Empty{}, nil
+}
+
+func (rpc *Server) StartWebsite(ctx context.Context, req *lispb.CtrlPipeline) (*clientpb.Empty, error) {
+	pipelineDB, err := db.FindPipeline(req.Name, req.ListenerId)
+	if err != nil {
+		return &clientpb.Empty{}, err
+	}
+	pipeline := models.ToProtobuf(&pipelineDB)
+	ch := make(chan bool)
+	job := &core.Job{
+		ID:      core.CurrentJobID(),
+		Message: pipeline,
+		JobCtrl: ch,
+	}
+	core.Jobs.Add(job)
 	ctrl := clientpb.JobCtrl{
 		Id:   core.NextCtrlID(),
 		Ctrl: consts.CtrlWebsiteStart,
 		Job: &clientpb.Job{
 			Id:       core.NextJobID(),
-			Pipeline: req,
+			Pipeline: pipeline,
 		},
 	}
 	core.Jobs.Ctrl <- &ctrl
 	return &clientpb.Empty{}, nil
 }
 
-func (rpc *Server) StopWebsite(ctx context.Context, req *lispb.Website) (*clientpb.Empty, error) {
+func (rpc *Server) StopWebsite(ctx context.Context, req *lispb.CtrlPipeline) (*clientpb.Empty, error) {
+	pipelineDB, err := db.FindPipeline(req.Name, req.ListenerId)
+	if err != nil {
+		return &clientpb.Empty{}, err
+	}
+	pipeline := models.ToProtobuf(&pipelineDB)
 	ctrl := clientpb.JobCtrl{
 		Id:   core.NextCtrlID(),
 		Ctrl: consts.CtrlWebsiteStop,
 		Job: &clientpb.Job{
-			Id: core.NextJobID(),
-			Pipeline: &lispb.Pipeline{
-				Body: &lispb.Pipeline_Web{
-					Web: req,
-				},
-			},
+			Id:       core.NextJobID(),
+			Pipeline: pipeline,
 		},
 	}
 	core.Jobs.Ctrl <- &ctrl
 	return &clientpb.Empty{}, nil
 
-}
-
-func (rpc *Server) RegisterWebsite(ctx context.Context, req *lispb.Website) (*implantpb.Empty, error) {
-	ch := make(chan bool)
-	job := &core.Job{
-		ID:      core.CurrentJobID(),
-		Message: req,
-		JobCtrl: ch,
-	}
-	core.Jobs.Add(job)
-	return &implantpb.Empty{}, nil
 }
 
 func (rpc *Server) ListWebsites(ctx context.Context, req *lispb.ListenerName) (*lispb.Websites, error) {

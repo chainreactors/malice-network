@@ -56,6 +56,7 @@ func (rpc *Server) LoginClient(ctx context.Context, req *clientpb.LoginReq) (*cl
 	}
 	err := dbSession.Create(&models.Operator{
 		Name: req.Name,
+		Type: mtls.Client,
 	}).Error
 
 	core.Clients.Add(core.NewClient(req.Name))

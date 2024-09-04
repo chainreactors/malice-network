@@ -226,17 +226,35 @@ func FindTasksWithNonOneCurTotal(session models.Session) ([]models.Task, error) 
 	return tasks, nil
 }
 
-func CreateListener(name string) error {
-	var listener models.Listener
-	result := Session().Where("name = ?", name).Delete(&listener)
+func FindPipeline(name, listenerID string) (models.Pipeline, error) {
+	var pipeline models.Pipeline
+	result := Session().Where("name = ? AND listener_id = ?", name, listenerID).First(&pipeline)
 	if result.Error != nil {
-		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return result.Error
-		}
+		return pipeline, result.Error
 	}
-	listener.Name = name
-	err := Session().Create(&listener).Error
-	return err
+	return pipeline, nil
+
+}
+
+func CreatePipeline(ppProto *lispb.Pipeline) error {
+	pipeline := models.ProtoBufToDB(ppProto)
+	newPipeline := models.Pipeline{}
+	result := Session().Where("name = ? AND listener_id =  = ?", pipeline.Name, pipeline.ListenerID).First(&newPipeline)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			err := Session().Create(&pipeline).Error
+			if err != nil {
+				return err
+			}
+			return nil
+		}
+		return result.Error
+	}
+	err := Session().Save(&pipeline).Error
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func ListListeners() ([]models.Operator, error) {

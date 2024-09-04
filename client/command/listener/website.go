@@ -16,7 +16,7 @@ import (
 	"strconv"
 )
 
-func startWebsiteCmd(cmd *cobra.Command, con *console.Console) {
+func newWebsiteCmd(cmd *cobra.Command, con *console.Console) {
 	certPath, _ := cmd.Flags().GetString("cert_path")
 	keyPath, _ := cmd.Flags().GetString("key_path")
 
@@ -62,7 +62,7 @@ func startWebsiteCmd(cmd *cobra.Command, con *console.Console) {
 	} else {
 		website.WebAddFile(addWeb, webPath, contentType, cPath)
 	}
-	_, err = con.Rpc.StartWebsite(context.Background(), &lispb.Pipeline{
+	_, err = con.Rpc.RegisterWebsite(context.Background(), &lispb.Pipeline{
 		Tls: &lispb.TLS{
 			Cert: cert,
 			Key:  key,
@@ -83,10 +83,23 @@ func startWebsiteCmd(cmd *cobra.Command, con *console.Console) {
 	}
 }
 
+func startWebsitePipelineCmd(cmd *cobra.Command, con *console.Console) {
+	name := cmd.Flags().Arg(0)
+	listenerID := cmd.Flags().Arg(1)
+	_, err := con.Rpc.StartWebsite(context.Background(), &lispb.CtrlPipeline{
+		Name:       name,
+		ListenerId: listenerID,
+	})
+	if err != nil {
+		console.Log.Error(err.Error())
+	}
+
+}
+
 func stopWebsitePipelineCmd(cmd *cobra.Command, con *console.Console) {
 	name := cmd.Flags().Arg(0)
 	listenerID := cmd.Flags().Arg(1)
-	_, err := con.Rpc.StopWebsite(context.Background(), &lispb.Website{
+	_, err := con.Rpc.StopWebsite(context.Background(), &lispb.CtrlPipeline{
 		Name:       name,
 		ListenerId: listenerID,
 	})

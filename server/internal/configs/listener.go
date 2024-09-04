@@ -3,6 +3,7 @@ package configs
 import (
 	"crypto/x509/pkix"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/gookit/config/v2"
 )
 
@@ -73,6 +74,13 @@ func (t *TlsConfig) ToPkix() *pkix.Name {
 		Locality:           []string{t.L},
 		OrganizationalUnit: []string{t.OU},
 		Province:           []string{t.ST},
+	}
+}
+
+func (t *TlsConfig) ToProtobuf() *lispb.TLS {
+	return &lispb.TLS{
+		Cert: t.CertFile,
+		Key:  t.KeyFile,
 	}
 }
 
