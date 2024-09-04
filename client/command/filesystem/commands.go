@@ -109,7 +109,7 @@ func Commands(con *console.Console) []*cobra.Command {
 		Use:   consts.ModuleLs,
 		Short: "List directory",
 		Long:  help.GetHelpFor(consts.ModuleLs),
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.MaximumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			LsCmd(cmd, con)
 			return
