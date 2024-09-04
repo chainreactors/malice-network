@@ -83,9 +83,9 @@ func Commands(con *console.Console) []*cobra.Command {
 	})
 
 	inlineShellcodeCmd := &cobra.Command{
-		Use:   consts.ModuleInlineShellcode,
+		Use:   consts.ModuleExecuteShellcode,
 		Short: "Executes the given inline shellcode in the IOM ",
-		Long:  help.GetHelpFor(consts.ModuleInlineShellcode),
+		Long:  help.GetHelpFor(consts.ModuleExecuteShellcode),
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			InlineShellcodeCmd(cmd, con)

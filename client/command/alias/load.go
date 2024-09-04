@@ -7,9 +7,12 @@ import (
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/core/intermediate/builtin"
 	"github.com/chainreactors/malice-network/client/utils"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
+	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	app "github.com/reeflective/console"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -112,7 +115,11 @@ func AliasesLoadCmd(cmd *cobra.Command, con *console.Console) {
 	} else {
 		console.Log.Infof("%s alias has been loaded\n", alias.Name)
 	}
-	AliasRegisterCommand(alias, con.App.Menu(consts.ImplantMenu).Command, con)
+	err = RegisterAlias(alias, con.App.Menu(consts.ImplantMenu).Command, con)
+	if err != nil {
+		console.Log.Errorf(err.Error())
+		return
+	}
 }
 
 // LoadAlias - Load an alias into the Malice-Network shell from a given directory
@@ -126,8 +133,8 @@ func LoadAlias(manifestPath string, con *console.Console) (*AliasManifest, error
 		return nil, fmt.Errorf("alias %s maybe not installed", manifestPath)
 	}
 	// parse it
-	if !strings.HasSuffix(manifestPath, "alias.json") {
-		manifestPath = path.Join(manifestPath, "alias.json")
+	if !strings.HasSuffix(manifestPath, ManifestFileName) {
+		manifestPath = path.Join(manifestPath, ManifestFileName)
 	}
 	data, err := os.ReadFile(manifestPath)
 	if err != nil {
@@ -148,7 +155,7 @@ func LoadAlias(manifestPath string, con *console.Console) (*AliasManifest, error
 	return aliasManifest, nil
 }
 
-func AliasRegisterCommand(aliasManifest *AliasManifest, cmd *cobra.Command, con *console.Console) {
+func RegisterAlias(aliasManifest *AliasManifest, cmd *cobra.Command, con *console.Console) error {
 	helpMsg := fmt.Sprintf("[%s] %s", aliasManifest.Name, aliasManifest.Help)
 	longHelpMsg := help.FormatHelpTmpl(aliasManifest.LongHelp)
 	longHelpMsg += "\n\n⚠️  If you're having issues passing arguments to the alias please read:\n"
@@ -180,8 +187,9 @@ func AliasRegisterCommand(aliasManifest *AliasManifest, cmd *cobra.Command, con 
 
 	f := pflag.NewFlagSet(aliasManifest.Name, pflag.ContinueOnError)
 	f.StringP("process", "p", "", "Path to process to host the shared object")
-	//f.StringP("process-arguments", "A", "", "arguments to pass to the hosting process")
+	f.BoolP("block_dll", "B", false, "block non-microsoft dll")
 	f.Uint32P("ppid", "P", 0, "parent process ID to use when creating the hosting process (Windows only)")
+	f.StringP("argue", "a", "", "argue")
 	f.BoolP("save", "s", false, "Save output to disk")
 	f.IntP("timeout", "t", defaultTimeout, "command timeout in seconds")
 	addAliasCmd.Flags().AddFlagSet(f)
@@ -191,6 +199,18 @@ func AliasRegisterCommand(aliasManifest *AliasManifest, cmd *cobra.Command, con 
 		Command:  addAliasCmd,
 	}
 	cmd.AddCommand(addAliasCmd)
+	err := con.RegisterInternalFunc(
+		aliasManifest.CommandName,
+		func(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, args string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
+			return ExecuteAlias(rpc, sess, aliasManifest.CommandName, args, sac)
+		},
+		func(ctx *clientpb.TaskContext) (interface{}, error) {
+			return builtin.ParseAssembly(ctx.Spite)
+		})
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // ParseAliasManifest - Parse an alias manifest
@@ -234,22 +254,13 @@ func runAliasCommand(cmd *cobra.Command, con *console.Console) {
 	if session == nil {
 		return
 	}
-	var goos string
-	var goarch string
-	goos = session.Os.Name
-	goarch = session.Os.Arch
-
+	sid := session.SessionId
 	loadedAlias, ok := loadedAliases[cmd.Name()]
 	if !ok {
 		console.Log.Errorf("No alias found for `%s` command\n", cmd.Name())
 		return
 	}
 	aliasManifest := loadedAlias.Manifest
-	binPath, err := aliasManifest.getFileForTarget(cmd.Name(), goos, goarch)
-	if err != nil {
-		console.Log.Errorf("Fail to find alias file: %s\n", err)
-		return
-	}
 	args := cmd.Flags().Args()
 	var extArgs string
 	if len(aliasManifest.DefaultArgs) != 0 && len(args) == 0 {
@@ -259,183 +270,73 @@ func runAliasCommand(cmd *cobra.Command, con *console.Console) {
 	}
 
 	extArgs = strings.TrimSpace(extArgs)
-	//entryPoint := aliasManifest.Entrypoint
-	//processArgsStr := ctx.Flags.String("process-arguments")
-	// Special case for payloa ds with pass to Donut (.NET assemblies and sideloaded payloads):
-	// The Donut loader has a hard limit of 256 characters for the command line arguments, so
-	// we're alerting the user that the arguments will be truncated.
-	if len(extArgs) > 256 && (aliasManifest.IsAssembly || !aliasManifest.IsReflective) {
-		msgStr := ""
-		// The --in-process flag only exists for .NET assemblies (aliasManifest.IsAssembly == true).
-		// Groupping the two conditions together could crash the client since ctx.Flags.Type panics
-		// if the flag is not registered.
-		if aliasManifest.IsAssembly {
-			inProcess, _ := cmd.Flags().GetBool("in-process")
-			runtime, _ := cmd.Flags().GetString("runtime")
-			amsiBypass, _ := cmd.Flags().GetBool("amsi-bypass")
-			etwBypass, _ := cmd.Flags().GetBool("etw-bypass")
-			if !inProcess {
-				msgStr = " Arguments are limited to 256 characters when using the default fork/exec model for .NET assemblies.\nConsider using the --in-process flag to execute .NET assemblies in-process and work around this limitation.\n"
-			}
-			if !inProcess && (runtime != "" || etwBypass || amsiBypass) {
-				console.Log.Errorf("The --runtime, --etw-bypass, and --amsi-bypass flags can only be used with the --in-process flag\n")
+	var task *clientpb.Task
+	var err error
+	isInline, _ := cmd.Flags().GetBool("in-process")
+	if isInline {
+		task, err = ExecuteAlias(con.Rpc, session, cmd.Name(), extArgs, nil)
+	} else {
+		processName, _ := cmd.Flags().GetString("process")
+		if processName == "" {
+			processName, err = aliasManifest.getDefaultProcess(con.GetInteractive().Os.Name)
+			if err != nil {
+				console.Log.Errorf("%s\n", err)
 				return
 			}
-		} else if !aliasManifest.IsReflective {
-			msgStr = " Arguments are limited to 256 characters when using the default fork/exec model for non-reflective PE payloads.\n"
 		}
-		console.Log.Warn(msgStr)
-		//confirm := false
-		//prompt := &survey.Confirm{Message: "Do you want to continue?"}
-		//survey.AskOne(prompt, &confirm, nil)
-		//if !confirm {
-		//	return
-		//}
-	}
-	//processArgs := strings.Split(processArgsStr, " ")
-	processName, _ := cmd.Flags().GetString("process")
-	if processName == "" {
-		processName, err = aliasManifest.getDefaultProcess(goos)
-		if err != nil {
-			console.Log.Errorf("%s\n", err)
-			return
-		}
-	}
-	//isDLL := false
-	//if strings.ToLower(filepath.Ext(binPath)) == ".dll" {
-	//	isDLL = true
-	//}
-	binData, err := os.ReadFile(binPath)
-	if err != nil {
-		console.Log.Errorf("%s\n", err)
-		return
+		ppid, _ := cmd.Flags().GetUint32("ppid")
+		block_dll, _ := cmd.Flags().GetBool("block-dll")
+		argue, _ := cmd.Flags().GetString("argue")
+		sac, _ := builtin.NewSacrificeProcessMessage(processName, int64(ppid), block_dll, argue, extArgs)
+		task, err = ExecuteAlias(con.Rpc, session, cmd.Name(), extArgs, sac)
 	}
 
-	if aliasManifest.IsAssembly {
-		executeAssemblyResp, err := con.Rpc.ExecuteAssembly(con.ActiveTarget.Context(), &implantpb.ExecuteBinary{
-			Name:   loadedAlias.Command.Name(),
-			Bin:    binData,
-			Type:   consts.ModuleExecuteAssembly,
-			Params: args,
-		})
-		if err != nil {
-			console.Log.Errorf("%s\n", err)
-			return
+	con.AddCallback(task.TaskId, func(msg proto.Message) {
+		resp := msg.(*implantpb.Spite).GetAssemblyResponse()
+		if resp.Status == 0 {
+			con.SessionLog(sid).Infof("%s output:\n%s", loadedAlias.Command.Name(), string(resp.Data))
+		} else {
+			con.SessionLog(sid).Errorf("%s %s ", cmd.Name(), resp.Err)
 		}
-
-		con.AddCallback(executeAssemblyResp.TaskId, func(msg proto.Message) {
-			resp := msg.(*implantpb.Spite).GetAssemblyResponse()
-			sid := con.GetInteractive().SessionId
-			if resp.Status == 0 {
-				con.SessionLog(sid).Infof("%s output:\n%s", loadedAlias.Command.Name, string(resp.Data))
-			} else {
-				con.SessionLog(sid).Errorf("%s %s ", cmd.Name(), resp.Err)
-			}
-		})
-
-		//} else if aliasManifest.IsReflective {
-		//
-		//	// Spawn DLL
-		//	ctrl := make(chan bool)
-		//	msg := fmt.Sprintf("Executing %s %s ...", ctx.Command.Name, extArgs)
-		//	con.SpinUntil(msg, ctrl)
-		//	spawnDllResp, err := con.Rpc.SpawnDll(context.Background(), &sliverpb.InvokeSpawnDllReq{
-		//		Request:     con.ActiveTarget.Request(ctx),
-		//		Args:        strings.Trim(extArgs, " "),
-		//		Data:        binData,
-		//		ProcessName: processName,
-		//		EntryPoint:  aliasManifest.Entrypoint,
-		//		Kill:        true,
-		//		ProcessArgs: processArgs,
-		//		PPid:        uint32(ctx.Flags.Uint("ppid")),
-		//	})
-		//	ctrl <- true
-		//	<-ctrl
-		//	if err != nil {
-		//		console.Log.Errorf("%s\n", err)
-		//		return
-		//	}
-		//
-		//	if spawnDllResp.Response != nil && spawnDllResp.Response.Async {
-		//		con.AddBeaconCallback(spawnDllResp.Response.TaskID, func(task *clientpb.BeaconTask) {
-		//			err = proto.Unmarshal(task.Response, spawnDllResp)
-		//			if err != nil {
-		//				console.Log.Errorf("Failed to decode call ext response %s\n", err)
-		//				return
-		//			}
-		//			PrintSpawnDLLOutput(ctx.Command.Name, spawnDllResp, outFilePath, con)
-		//		})
-		//		con.PrintAsyncResponse(spawnDllResp.Response)
-		//	} else {
-		//		PrintSpawnDLLOutput(ctx.Command.Name, spawnDllResp, outFilePath, con)
-		//	}
-		//
-		//} else {
-		//
-		//	// Sideload
-		//	ctrl := make(chan bool)
-		//	msg := fmt.Sprintf("Executing %s %s ...", ctx.Command.Name, extArgs)
-		//	con.SpinUntil(msg, ctrl)
-		//	sideloadResp, err := con.Rpc.Sideload(context.Background(), &sliverpb.SideloadReq{
-		//		Request:     con.ActiveTarget.Request(ctx),
-		//		Args:        extArgs,
-		//		Data:        binData,
-		//		EntryPoint:  entryPoint,
-		//		ProcessName: processName,
-		//		Kill:        true,
-		//		IsDLL:       isDLL,
-		//		ProcessArgs: processArgs,
-		//		PPid:        uint32(ctx.Flags.Uint("ppid")),
-		//	})
-		//	ctrl <- true
-		//	<-ctrl
-		//	if err != nil {
-		//		console.Log.Errorf("%s\n", err)
-		//		return
-		//	}
-		//
-		//	if sideloadResp.Response != nil && sideloadResp.Response.Async {
-		//		con.AddBeaconCallback(sideloadResp.Response.TaskID, func(task *clientpb.BeaconTask) {
-		//			err = proto.Unmarshal(task.Response, sideloadResp)
-		//			if err != nil {
-		//				console.Log.Errorf("Failed to decode call ext response %s\n", err)
-		//				return
-		//			}
-		//			PrintSideloadOutput(ctx.Command.Name, sideloadResp, outFilePath, con)
-		//		})
-		//		con.PrintAsyncResponse(sideloadResp.Response)
-		//	} else {
-		//		PrintSideloadOutput(ctx.Command.Name, sideloadResp, outFilePath, con)
-		//	}
-	}
+	})
 }
 
-// PrintSpawnDLLOutput - Prints the output of a spawn dll command
-//func PrintSpawnDLLOutput(cmdName string, spawnDllResp *sliverpb.SpawnDll, outFilePath *os.File, con *console.Console) {
-//	console.Log.Infof("%s output:\n%s", cmdName, spawnDllResp.GetResult())
-//	if outFilePath != nil {
-//		outFilePath.Write([]byte(spawnDllResp.GetResult()))
-//		console.Log.Infof("Output saved to %s\n", outFilePath.Name())
-//	}
-//}
-//
-//// PrintSideloadOutput - Prints the output of a sideload command
-//func PrintSideloadOutput(cmdName string, sideloadResp *sliverpb.Sideload, outFilePath *os.File, con *console.Console) {
-//	console.Log.Infof("%s output:\n%s", cmdName, sideloadResp.GetResult())
-//	if outFilePath != nil {
-//		outFilePath.Write([]byte(sideloadResp.GetResult()))
-//		console.Log.Infof("Output saved to %s\n", outFilePath.Name())
-//	}
-//}
+func ExecuteAlias(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, aliasName string, args string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
+	loadedAlias, ok := loadedAliases[aliasName]
+	if !ok {
+		return nil, fmt.Errorf("No alias found for `%s` command\n", aliasName)
+	}
+	aliasManifest := loadedAlias.Manifest
+	binPath, err := aliasManifest.getFileForTarget(aliasName, sess.Os.Name, sess.Os.Arch)
+	if err != nil {
+		return nil, fmt.Errorf("Fail to find alias file: %w\n", err)
+	}
 
-//// PrintAssemblyOutput - Prints the output of an execute-assembly command
-//func PrintAssemblyOutput(cmdName string, resp *clientpb.Task, outFilePath *os.File, con *console.Console) {
-//	console.Log.Infof("%s output:\n%s", cmdName, string(resp.Need))
-//	if outFilePath != nil {
-//		outFilePath.Write(resp.Need)
-//		console.Log.Infof("Output saved to %s\n", outFilePath.Name())
-//	}
-//}
+	binData, err := os.ReadFile(binPath)
+	if err != nil {
+		return nil, err
+	}
+	var task *clientpb.Task
+	if aliasManifest.IsAssembly {
+		task, err = rpc.ExecuteAssembly(console.Context(sess), &implantpb.ExecuteBinary{
+			Name: loadedAlias.Command.Name(),
+			Bin:  binData,
+			Type: consts.ModuleExecuteAssembly,
+		})
+	} else {
+		task, err = rpc.ExecuteDLL(console.Context(sess), &implantpb.ExecuteBinary{
+			Name:       loadedAlias.Command.Name(),
+			Bin:        binData,
+			EntryPoint: aliasManifest.Entrypoint,
+			Type:       consts.ModuleExecuteDll,
+			Sacrifice:  sac,
+		})
+	}
+	if err != nil {
+		return nil, err
+	}
+	return task, nil
+}
 
 func makeAliasPlatformFilters(alias *AliasManifest) map[string]string {
 	filtersOS := make(map[string]bool)

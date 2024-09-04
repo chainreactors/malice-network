@@ -5,6 +5,7 @@ go 1.21.4
 require (
 	filippo.io/age v1.1.1
 	github.com/Binject/go-donut v0.0.0-20220908180326-fcdcc35d591c
+	github.com/alecthomas/chroma/v2 v2.14.0
 	github.com/chainreactors/files v0.0.0-20231102192550-a652458cee26
 	github.com/chainreactors/grumble v0.0.0-20240726161323-5ed71398873f
 	github.com/chainreactors/logs v0.0.0-20240207121836-c946f072f81f
@@ -15,6 +16,7 @@ require (
 	github.com/gofrs/uuid v4.4.0+incompatible
 	github.com/gookit/config/v2 v2.2.4
 	github.com/jessevdk/go-flags v1.5.0
+	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 	github.com/klauspost/compress v1.17.0
 	github.com/mattn/go-tty v0.0.7
 	github.com/muesli/termenv v0.15.2
@@ -28,12 +30,14 @@ require (
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/pflag v1.0.5
 	github.com/tetratelabs/wazero v1.5.0
+	github.com/yuin/gopher-lua v1.1.1
 	golang.org/x/crypto v0.24.0
 	golang.org/x/text v0.16.0
 	google.golang.org/grpc v1.65.0
 	google.golang.org/protobuf v1.34.2
 	gopkg.in/yaml.v3 v3.0.1
 	gorm.io/gorm v1.25.4
+	layeh.com/gopher-luar v1.0.11
 )
 
 require (
@@ -54,6 +58,7 @@ require (
 	github.com/desertbit/columnize v2.1.0+incompatible // indirect
 	github.com/desertbit/go-shlex v0.1.1 // indirect
 	github.com/desertbit/readline v1.5.1 // indirect
+	github.com/dlclark/regexp2 v1.11.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
 	github.com/fatih/color v1.14.1 // indirect
@@ -67,7 +72,6 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
-	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.5 // indirect
 	github.com/lithammer/fuzzysearch v1.1.8 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
@@ -84,7 +88,6 @@ require (
 	github.com/rsteube/carapace-shlex v0.1.1 // indirect
 	github.com/sahilm/fuzzy v0.1.1-0.20230530133925-c48e322e2a8f // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
-	github.com/yuin/gopher-lua v1.1.1 // indirect
 	golang.org/x/exp v0.0.0-20240808152545-0cdaa3abc0fa // indirect
 	golang.org/x/net v0.26.0 // indirect
 	golang.org/x/sync v0.8.0 // indirect
@@ -92,6 +95,5 @@ require (
 	golang.org/x/term v0.23.0 // indirect
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240604185151-ef581f913117 // indirect
-	layeh.com/gopher-luar v1.0.11 // indirect
 	mvdan.cc/sh/v3 v3.7.0 // indirect
 )

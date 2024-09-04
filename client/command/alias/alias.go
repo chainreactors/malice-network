@@ -108,14 +108,3 @@ func getInstalledManifests() map[string]*AliasManifest {
 	}
 	return installedManifests
 }
-
-// AliasCommandNameCompleter - Completer for installed extensions command names
-//func AliasCompleter() carapace.Action {
-//	return carapace.ActionCallback(func(c carapace.Context) carapace.Action {
-//		results := []string{}
-//		for name := range loadedAliases {
-//			results = append(results, name)
-//		}
-//		return carapace.ActionValues(results...).Tag("aliases")
-//	})
-//}

@@ -480,7 +480,10 @@ func installAliasPackage(entry *pkgCacheEntry, promptToOverwrite bool, clientCon
 	if err != nil {
 		return err
 	}
-	alias.AliasRegisterCommand(manifest, con.App.Menu(consts.ImplantMenu).Command, con)
+	err = alias.RegisterAlias(manifest, con.App.Menu(consts.ImplantMenu).Command, con)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
