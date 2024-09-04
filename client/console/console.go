@@ -14,7 +14,6 @@ import (
 	"github.com/chainreactors/tui"
 	"github.com/mattn/go-tty"
 	"github.com/reeflective/console"
-	"github.com/reeflective/readline"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/proto"
 	"io"
@@ -48,11 +47,10 @@ func Start(bindCmds ...BindCmds) error {
 		Observers:    map[string]*Observer{},
 		Plugins:      NewPlugins(),
 	}
-	con.NewConsole(bindCmds...)
-
 	if len(os.Args) > 1 {
 		con.newConfigLogin(os.Args[1])
 	}
+	con.NewConsole(bindCmds...)
 
 	con.ActiveTarget.callback = func(sess *clientpb.Session) {
 		con.ActiveTarget.activeObserver = NewObserver(sess)
@@ -83,7 +81,7 @@ func (c *Console) NewConsole(bindCmds ...BindCmds) {
 	client := iom.NewMenu(consts.ClientMenu)
 	client.Short = "client commands"
 	client.Prompt().Primary = c.GetPrompt
-	client.AddInterrupt(readline.ErrInterrupt, exitConsole)
+	client.AddInterrupt(io.EOF, exitConsole)
 	client.AddHistorySourceFile("history", filepath.Join(assets.GetRootAppDir(), "history"))
 	client.Command = bindCmds[0](c)()
 
@@ -183,7 +181,7 @@ func exitConsole(c *console.Console) {
 	}
 	defer open.Close()
 
-	fmt.Print("Press 'Y/y'  or 'Ctrl+C' to confirm exit: ")
+	fmt.Print("Press 'Y/y'  or 'Ctrl+D' to confirm exit: ")
 
 	for {
 		readRune, err := open.ReadRune()
@@ -194,7 +192,7 @@ func exitConsole(c *console.Console) {
 		switch readRune {
 		case 'Y', 'y':
 			os.Exit(0)
-		case 3: // ASCII code for Ctrl+C
+		case 4: // ASCII code for Ctrl+C
 			os.Exit(0)
 		}
 	}

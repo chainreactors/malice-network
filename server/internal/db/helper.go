@@ -232,6 +232,11 @@ func FindPipeline(name, listenerID string) (models.Pipeline, error) {
 	if result.Error != nil {
 		return pipeline, result.Error
 	}
+	pipeline.Enable = true
+	result = Session().Save(&pipeline)
+	if result.Error != nil {
+		return pipeline, result.Error
+	}
 	return pipeline, nil
 
 }
@@ -256,6 +261,12 @@ func CreatePipeline(ppProto *lispb.Pipeline) error {
 		return err
 	}
 	return nil
+}
+
+func ListPipelines(listenerID string, pipelineType string) ([]models.Pipeline, error) {
+	var pipelines []models.Pipeline
+	err := Session().Where("listener_id = ? AND type = ?", listenerID, pipelineType).Find(&pipelines).Error
+	return pipelines, err
 }
 
 func ListListeners() ([]models.Operator, error) {

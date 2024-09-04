@@ -83,7 +83,7 @@ func RsaKeySize() int {
 }
 
 func GenerateCACert(commonName string) ([]byte, []byte, error) {
-	subject := randomSubject(commonName)
+	subject := RandomSubject(commonName)
 	privateKey, _ := rsa.GenerateKey(rand.Reader, RsaKeySize())
 	notBefore := time.Now()
 	days := randomInt(365) * -1
@@ -121,7 +121,7 @@ func GenerateCACert(commonName string) ([]byte, []byte, error) {
 func GenerateChildCert(commonName string, isClient bool, caCert *x509.Certificate, caKey *rsa.PrivateKey) ([]byte, []byte, error) {
 	var template x509.Certificate
 	privateKey, _ := rsa.GenerateKey(rand.Reader, RsaKeySize())
-	subject := randomSubject(commonName)
+	subject := RandomSubject(commonName)
 	notBefore := time.Now()
 	days := randomInt(365) * -1
 	notBefore = notBefore.AddDate(0, 0, days)

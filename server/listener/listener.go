@@ -11,6 +11,7 @@ import (
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/proto/services/listenerrpc"
+	"github.com/chainreactors/malice-network/server/internal/certs"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/web"
@@ -48,6 +49,14 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 
 	l := &lispb.Pipelines{}
 	for _, tcpPipeline := range cfg.TcpPipelines {
+		if tcpPipeline.TlsConfig.CertFile == "" || tcpPipeline.TlsConfig.KeyFile == "" {
+			cert, key, err := certs.GeneratePipelineCert(tcpPipeline.TlsConfig)
+			if err != nil {
+				return err
+			}
+			tcpPipeline.TlsConfig.CertFile = string(cert)
+			tcpPipeline.TlsConfig.KeyFile = string(key)
+		}
 		pipeline := &lispb.Pipeline{
 			Body: &lispb.Pipeline_Tcp{
 				Tcp: &lispb.TCPPipeline{
@@ -66,6 +75,14 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 		l.Pipelines = append(l.Pipelines, pipeline)
 	}
 	for _, website := range cfg.Websites {
+		if website.TlsConfig.CertFile == "" || website.TlsConfig.KeyFile == "" {
+			cert, key, err := certs.GeneratePipelineCert(website.TlsConfig)
+			if err != nil {
+				return err
+			}
+			website.TlsConfig.CertFile = string(cert)
+			website.TlsConfig.KeyFile = string(key)
+		}
 		webProtobuf := &lispb.Pipeline{
 			Body: &lispb.Pipeline_Web{
 				Web: &lispb.Website{
@@ -112,6 +129,9 @@ func (lns *listener) ID() string {
 func (lns *listener) Start() {
 	go lns.Handler()
 	for _, tcp := range lns.cfg.TcpPipelines {
+		if !tcp.Enable {
+			continue
+		}
 		pipeline, err := StartTcpPipeline(lns.conn, tcp)
 		if err != nil {
 			logs.Log.Errorf("Failed to start tcp pipeline %s", err)
@@ -226,7 +246,10 @@ func (lns *listener) stopHandler(job *clientpb.Job) *clientpb.JobStatus {
 		if err != nil {
 			break
 		}
-
+		coreJob := core.Jobs.Get(pipeline.GetTcp().Name)
+		if coreJob != nil {
+			core.Jobs.Remove(coreJob)
+		}
 	}
 	if err != nil {
 		return &clientpb.JobStatus{
@@ -303,6 +326,10 @@ func (lns *listener) stopWebsite(job *clientpb.Job) *clientpb.JobStatus {
 			Error:      err.Error(),
 			Job:        job,
 		}
+	}
+	coreJob := core.Jobs.Get(getWeb.Name)
+	if coreJob != nil {
+		core.Jobs.Remove(coreJob)
 	}
 	return &clientpb.JobStatus{
 		ListenerId: lns.ID(),

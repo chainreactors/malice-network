@@ -41,13 +41,14 @@ func (j *jobs) Remove(job *Job) {
 }
 
 // Get - Get a Job
-func (j *jobs) Get(jobID uint32) *Job {
-	if jobID <= 0 {
+func (j *jobs) Get(jobName string) *Job {
+	if jobName == "" {
 		return nil
 	}
-	val, ok := j.Load(jobID)
-	if ok {
-		return val.(*Job)
+	for _, job := range j.All() {
+		if job.Name == jobName {
+			return job
+		}
 	}
 	return nil
 }
@@ -63,6 +64,7 @@ func (j *jobs) All() []*Job {
 
 type Job struct {
 	ID           uint32
+	Name         string
 	Message      proto.Message
 	JobCtrl      chan bool
 	PersistentID string
@@ -70,7 +72,8 @@ type Job struct {
 
 func (j *Job) ToProtobuf() *clientpb.Job {
 	job := &clientpb.Job{
-		Id: j.ID,
+		Id:   j.ID,
+		Name: j.Name,
 	}
 	switch j.Message.(type) {
 	case *lispb.Pipeline:

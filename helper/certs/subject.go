@@ -171,7 +171,7 @@ var (
 	}
 )
 
-func randomSubject(commonName string) *pkix.Name {
+func RandomSubject(commonName string) *pkix.Name {
 	country, province, locale, street := randomProvinceLocalityStreetAddress()
 	return &pkix.Name{
 		Organization:       randomOrganization(),

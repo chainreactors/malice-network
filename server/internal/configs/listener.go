@@ -3,6 +3,8 @@ package configs
 import (
 	"crypto/x509/pkix"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/certs"
+	"github.com/chainreactors/malice-network/helper/helper"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/gookit/config/v2"
 )
@@ -79,8 +81,22 @@ func (t *TlsConfig) ToPkix() *pkix.Name {
 
 func (t *TlsConfig) ToProtobuf() *lispb.TLS {
 	return &lispb.TLS{
-		Cert: t.CertFile,
-		Key:  t.KeyFile,
+		Cert:   t.CertFile,
+		Key:    t.KeyFile,
+		Enable: t.Enable,
+	}
+}
+
+func GenerateTlsConfig(name string) TlsConfig {
+	subject := certs.RandomSubject(name)
+	return TlsConfig{
+		Name: name,
+		CN:   subject.CommonName,
+		O:    helper.JoinStringSlice(subject.Organization),
+		C:    helper.JoinStringSlice(subject.Country),
+		L:    helper.JoinStringSlice(subject.Locality),
+		OU:   helper.JoinStringSlice(subject.OrganizationalUnit),
+		ST:   helper.JoinStringSlice(subject.Province),
 	}
 }
 

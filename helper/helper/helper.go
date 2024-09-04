@@ -65,3 +65,11 @@ func CheckExtModule(filename string) string {
 	}
 	return ""
 }
+
+// JoinStringSlice Helper function to join string slices
+func JoinStringSlice(slice []string) string {
+	if len(slice) > 0 {
+		return slice[0] // Just return the first element for simplicity
+	}
+	return ""
+}

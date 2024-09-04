@@ -21,13 +21,26 @@ func Commands(con *console.Console) []*cobra.Command {
 		},
 	}
 
+	jobCmd := &cobra.Command{
+		Use:   "job",
+		Short: "List jobs in server",
+		Args:  cobra.ExactArgs(1),
+		Long:  help.GetHelpFor("job"),
+		Run: func(cmd *cobra.Command, args []string) {
+			listJobsCmd(cmd, con)
+			return
+		},
+	}
+
+	carapace.Gen(jobCmd).PositionalCompletion(carapace.ActionValues().Usage("listener id"))
+
 	tcpCmd := &cobra.Command{
 		Use:   "tcp",
 		Short: "Listener tcp pipeline ctrl manager",
 		Long:  help.GetHelpFor("tcp"),
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			listTcpPipelines(cmd, con)
+			listTcpCmd(cmd, con)
 			return
 		},
 		GroupID: consts.ListenerGroup,
@@ -65,7 +78,7 @@ func Commands(con *console.Console) []*cobra.Command {
 	tcpStartCmd := &cobra.Command{
 		Use:   "start",
 		Short: "Start a TCP pipeline",
-		Args:  cobra.ExactArgs(4),
+		Args:  cobra.ExactArgs(2),
 		Long:  help.GetHelpFor("tcp start"),
 		Run: func(cmd *cobra.Command, args []string) {
 			startTcpPipelineCmd(cmd, con)
@@ -169,6 +182,6 @@ func Commands(con *console.Console) []*cobra.Command {
 
 	websiteCmd.AddCommand(websiteRegisterCmd, websiteStartCmd, websiteStopCmd)
 
-	return []*cobra.Command{listenerCmd, tcpCmd, websiteCmd}
+	return []*cobra.Command{listenerCmd, jobCmd, tcpCmd, websiteCmd}
 
 }
