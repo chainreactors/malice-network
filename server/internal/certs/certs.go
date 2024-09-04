@@ -45,13 +45,15 @@ func RemoveCertificate(caType int, keyType string, commonName string) error {
 	}
 	dbSession := db.Session()
 	if caType == ListenerCA {
-		err = dbSession.Where(&models.Listener{
+		err = dbSession.Where(&models.Operator{
 			Name: commonName,
-		}).Delete(&models.Listener{}).Error
+			Type: mtls.Listener,
+		}).Delete(&models.Operator{}).Error
 		commonName = "listener." + commonName
 	} else {
 		err = dbSession.Where(&models.Operator{
 			Name: commonName,
+			Type: mtls.Client,
 		}).Delete(&models.Operator{}).Error
 	}
 	err = dbSession.Where(&models.Certificate{

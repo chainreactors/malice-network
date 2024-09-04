@@ -13,7 +13,7 @@ import (
 	"strconv"
 )
 
-func startTcpPipelineCmd(cmd *cobra.Command, con *console.Console) {
+func newTcpPipelineCmd(cmd *cobra.Command, con *console.Console) {
 	certPath, _ := cmd.Flags().GetString("cert_path")
 	keyPath, _ := cmd.Flags().GetString("key_path")
 	name := cmd.Flags().Arg(0)
@@ -38,7 +38,7 @@ func startTcpPipelineCmd(cmd *cobra.Command, con *console.Console) {
 			return
 		}
 	}
-	_, err = con.Rpc.StartTcpPipeline(context.Background(), &lispb.Pipeline{
+	_, err = con.Rpc.RegisterPipeline(context.Background(), &lispb.Pipeline{
 		Tls: &lispb.TLS{
 			Cert: cert,
 			Key:  key,
@@ -52,6 +52,18 @@ func startTcpPipelineCmd(cmd *cobra.Command, con *console.Console) {
 			},
 		},
 	})
+	if err != nil {
+		console.Log.Error(err.Error())
+	}
+}
+
+func startTcpPipelineCmd(cmd *cobra.Command, con *console.Console) {
+	name := cmd.Flags().Arg(0)
+	listenerID := cmd.Flags().Arg(1)
+	_, err := con.Rpc.StartTcpPipeline(context.Background(), &lispb.CtrlPipeline{
+		Name:       name,
+		ListenerId: listenerID,
+	})
 
 	if err != nil {
 		console.Log.Error(err.Error())
@@ -61,7 +73,7 @@ func startTcpPipelineCmd(cmd *cobra.Command, con *console.Console) {
 func stopTcpPipelineCmd(cmd *cobra.Command, con *console.Console) {
 	name := cmd.Flags().Arg(0)
 	listenerID := cmd.Flags().Arg(1)
-	_, err := con.Rpc.StopTcpPipeline(context.Background(), &lispb.TCPPipeline{
+	_, err := con.Rpc.StopTcpPipeline(context.Background(), &lispb.CtrlPipeline{
 		Name:       name,
 		ListenerId: listenerID,
 	})

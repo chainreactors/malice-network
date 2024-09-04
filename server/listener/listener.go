@@ -51,11 +51,17 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 		pipeline := &lispb.Pipeline{
 			Body: &lispb.Pipeline_Tcp{
 				Tcp: &lispb.TCPPipeline{
-					Name: tcpPipeline.Name,
-					Host: tcpPipeline.Host,
-					Port: uint32(tcpPipeline.Port),
+					Name:       tcpPipeline.Name,
+					Host:       tcpPipeline.Host,
+					Port:       uint32(tcpPipeline.Port),
+					ListenerId: lis.Name,
 				},
 			},
+			Tls: tcpPipeline.TlsConfig.ToProtobuf(),
+		}
+		_, err = lis.Rpc.RegisterPipeline(context.Background(), pipeline)
+		if err != nil {
+			return err
 		}
 		l.Pipelines = append(l.Pipelines, pipeline)
 	}
@@ -97,7 +103,6 @@ func (lns *listener) Start() {
 			continue
 		}
 		logs.Log.Importantf("Started tcp pipeline %s, encryption: %t, tls: %t", pipeline.ID(), pipeline.Encryption.Enable, pipeline.TlsConfig.Enable)
-		lns.registerPipeline(pipeline)
 	}
 	for _, website := range lns.cfg.Websites {
 		if !website.Enable {
@@ -165,7 +170,7 @@ func (lns *listener) startHandler(job *clientpb.Job) *clientpb.JobStatus {
 					Job:        job,
 				}
 			}
-			lns.registerPipeline(tcpPipeline)
+			lns.pipelines.Add(tcpPipeline)
 		} else {
 			err = p.Start()
 			if err != nil {
