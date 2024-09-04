@@ -12,7 +12,7 @@ type Pipeline struct {
 	ID         uuid.UUID        `gorm:"primaryKey;->;<-:create;type:uuid;"`
 	CreatedAt  time.Time        `gorm:"->;<-:create;"`
 	ListenerID string           `gorm:"type:string;"`
-	Name       string           `gorm:"uniqueIndex"`
+	Name       string           `gorm:"type:string"`
 	WebPath    string           `gorm:"type:string;default:''"`
 	Host       string           `config:"host"`
 	Port       uint16           `config:"port"`
