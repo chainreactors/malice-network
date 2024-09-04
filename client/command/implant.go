@@ -48,7 +48,11 @@ func BindImplantCommands(con *cc.Console) console.Commands {
 				cc.Log.Errorf("Failed to load alias: %s", err)
 				continue
 			}
-			alias.AliasRegisterCommand(manifest, implant, con)
+			err = alias.RegisterAlias(manifest, implant, con)
+			if err != nil {
+				cc.Log.Errorf("Failed to register alias: %s", err)
+				continue
+			}
 		}
 
 		// Load Extensions

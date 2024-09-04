@@ -27,6 +27,6 @@ func whoami(con *console.Console) {
 	}
 	con.AddCallback(whoamiTask.TaskId, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite).GetResponse()
-		con.SessionLog(sid).Consolef("Username: %v\n", resp.GetOutput())
+		con.SessionLog(sid).Consolef("%v\n", resp.GetOutput())
 	})
 }

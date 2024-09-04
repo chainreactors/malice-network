@@ -78,18 +78,25 @@ func GetResult(rpc clientrpc.MaliceRPCClient, task *clientpb.Task, index int32) 
 
 func PrintTask(task *clientpb.TaskContext) (*implantpb.Spite, error) {
 	logs.Log.Consolef("Session: %s, Task: %d, Index:%d \n", task.Task.SessionId, task.Task.TaskId, task.Task.Need)
-	if task.Spite == nil {
-		handler.HandleMaleficError(task.Spite)
-		return nil, nil
+	err := handler.HandleMaleficError(task.Spite)
+	if err != nil {
+		return nil, err
 	}
 	logs.Log.Consolef("%v", task.Spite.GetBody())
 	return task.Spite, nil
 }
 
-func PrintAssembly(response *implantpb.AssemblyResponse) (string, error) {
-	if response.GetErr() != "" {
-		return "", fmt.Errorf("exit status: %d, %s", response.Status, response.Err)
+func ParseAssembly(spite *implantpb.Spite) (string, error) {
+	err := handler.HandleMaleficError(spite)
+	if err != nil {
+		return "", err
 	}
-	logs.Log.Console(string(response.GetData()))
+	response := spite.GetAssemblyResponse()
+	if response == nil {
+		return "", fmt.Errorf("assembly response is nil")
+	}
+	if response.GetErr() != "" {
+		return fmt.Sprintf("exit status: %d, %s", response.Status, response.Err), nil
+	}
 	return string(response.GetData()), nil
 }

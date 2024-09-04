@@ -21,7 +21,7 @@ func GetHelpFor(commandName string) string {
 
 	helpText := extractCommandHelp(content, commandName)
 	if helpText != "" {
-		return formatForTerminal(helpText)
+		return renderMarkdown(helpText)
 	}
 
 	return "Help not found."
@@ -45,8 +45,8 @@ func extractCommandHelp(htmlContent, commandName string) string {
 	return strings.TrimSpace(htmlContent[startIndex:endIndex])
 }
 
-// formatForTerminal
-func formatForTerminal(markdownContent string) string {
+// renderMarkdown
+func renderMarkdown(markdownContent string) string {
 	h3Style := lipgloss.NewStyle().Bold(true).MarginBottom(1).MarginTop(1)
 	h4Style := lipgloss.NewStyle().Bold(true).MarginBottom(0).MarginTop(1)
 	strongStyle := lipgloss.NewStyle().Bold(true)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/client/core/intermediate/builtin"
@@ -335,7 +336,9 @@ func (plugin *Plugin) RegisterLuaBuiltInFunctions(con *Console) error {
 		if err != nil {
 			return nil, err
 		}
-		return builtin.PrintAssembly(task.Spite.GetAssemblyResponse())
+		s, _ := builtin.ParseAssembly(task.Spite)
+		logs.Log.Console(s)
+		return s, nil
 	}, []reflect.Type{reflect.TypeOf(&clientpb.TaskContext{})})
 	return nil
 }
