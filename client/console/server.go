@@ -3,6 +3,8 @@ package console
 import (
 	"context"
 	"errors"
+	"fmt"
+	"github.com/alecthomas/chroma/v2/quick"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/handler"
@@ -11,6 +13,7 @@ import (
 	"github.com/chainreactors/tui"
 	"google.golang.org/grpc"
 	"io"
+	"os"
 	"sync"
 	"time"
 )
@@ -160,11 +163,11 @@ func (s *ServerStatus) triggerTaskFinish(event *clientpb.Event) {
 			SessionId: task.SessionId,
 			Need:      -1,
 		})
-		Log.Console("\n")
 		if err != nil {
 			Log.Errorf(err.Error())
 			return
 		}
+		quick.Highlight(os.Stdout, fmt.Sprintf("session: %s task: %d index: %d\n", task.SessionId, task.TaskId, task.Cur), "go", "terminal", "monokai")
 
 		err = handler.HandleMaleficError(content.Spite)
 		if err != nil {
@@ -209,11 +212,9 @@ func (s *ServerStatus) EventHandler() {
 			Log.Importantf("%s notified: %s %s", event.Source, string(event.Data), event.Err)
 		case consts.EventTaskCallback:
 			tui.Clear()
-			Log.Infof("Task callback: %s", event.Message)
 			s.triggerTaskCallback(event)
 		case consts.EventTaskFinish:
 			tui.Clear()
-			Log.Infof("Task finish: %s", event.Message)
 			s.triggerTaskFinish(event)
 		case consts.EventPipeline:
 			tui.Clear()

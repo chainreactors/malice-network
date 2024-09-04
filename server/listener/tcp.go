@@ -151,7 +151,7 @@ func (l *TCPPipeline) handleRead(conn net.Conn) {
 		var length int
 		rawID, length, err = packet.ReadHeader(conn)
 		if err != nil {
-			logs.Log.Debugf("Error reading header: %s %v", conn.RemoteAddr(), err)
+			//logs.Log.Debugf("Error reading header: %s %v", conn.RemoteAddr(), err)
 			return
 		}
 		sid := hash.Md5Hash(rawID)
