@@ -5,6 +5,8 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
+	"github.com/chainreactors/malice-network/server/internal/certs"
+	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 
@@ -13,6 +15,20 @@ import (
 )
 
 func (rpc *Server) RegisterPipeline(ctx context.Context, req *lispb.Pipeline) (*implantpb.Empty, error) {
+	var name string
+	if req.GetTls().Key == "" || req.GetTls().Cert == "" {
+		switch req.Body.(type) {
+		case *lispb.Pipeline_Tcp:
+			name = req.GetTcp().Name
+		}
+		tlsConfig := configs.GenerateTlsConfig(name)
+		cert, key, err := certs.GeneratePipelineCert(&tlsConfig)
+		if err != nil {
+			return &implantpb.Empty{}, err
+		}
+		req.Tls.Cert = string(cert)
+		req.Tls.Key = string(key)
+	}
 	err := db.CreatePipeline(req)
 	if err != nil {
 		return &implantpb.Empty{}, err
@@ -28,6 +44,28 @@ func (rpc *Server) NewPipeline(ctx context.Context, req *lispb.Pipeline) (*clien
 	return &clientpb.Empty{}, nil
 }
 
+func (rpc *Server) ListTcpPipelines(ctx context.Context, req *lispb.ListenerName) (*lispb.Pipelines, error) {
+	var result []*lispb.Pipeline
+	pipelines, err := db.ListPipelines(req.Name, "tcp")
+	if err != nil {
+		return &lispb.Pipelines{}, err
+	}
+	for _, pipeline := range pipelines {
+		tcp := lispb.TCPPipeline{
+			Name:   pipeline.Name,
+			Host:   pipeline.Host,
+			Port:   uint32(pipeline.Port),
+			Enable: pipeline.Enable,
+		}
+		result = append(result, &lispb.Pipeline{
+			Body: &lispb.Pipeline_Tcp{
+				Tcp: &tcp,
+			},
+		})
+	}
+	return &lispb.Pipelines{Pipelines: result}, nil
+}
+
 func (rpc *Server) StartTcpPipeline(ctx context.Context, req *lispb.CtrlPipeline) (*clientpb.Empty, error) {
 	pipelineDB, err := db.FindPipeline(req.Name, req.ListenerId)
 	if err != nil {
@@ -39,6 +77,7 @@ func (rpc *Server) StartTcpPipeline(ctx context.Context, req *lispb.CtrlPipeline
 		ID:      core.CurrentJobID(),
 		Message: pipeline,
 		JobCtrl: ch,
+		Name:    pipeline.GetTcp().Name,
 	}
 	core.Jobs.Add(job)
 	ctrl := clientpb.JobCtrl{
@@ -71,7 +110,7 @@ func (rpc *Server) StopTcpPipeline(ctx context.Context, req *lispb.CtrlPipeline)
 	return &clientpb.Empty{}, nil
 }
 
-func (rpc *Server) ListPipelines(ctx context.Context, req *lispb.ListenerName) (*lispb.Pipelines, error) {
+func (rpc *Server) ListJobs(ctx context.Context, req *lispb.ListenerName) (*lispb.Pipelines, error) {
 	var pipelines []*lispb.Pipeline
 	for _, job := range core.Jobs.All() {
 		pipeline, ok := job.Message.(*lispb.Pipeline)

@@ -33,7 +33,7 @@ func newWebsiteCmd(cmd *cobra.Command, con *console.Console) {
 	}
 	port := uint32(portUint)
 	var cert, key string
-
+	var tleEnable = false
 	if certPath != "" && keyPath != "" {
 		cert, err = cryptography.ProcessPEM(certPath)
 		if err != nil {
@@ -41,6 +41,7 @@ func newWebsiteCmd(cmd *cobra.Command, con *console.Console) {
 			return
 		}
 		key, err = cryptography.ProcessPEM(keyPath)
+		tleEnable = true
 		if err != nil {
 			console.Log.Error(err.Error())
 			return
@@ -64,8 +65,9 @@ func newWebsiteCmd(cmd *cobra.Command, con *console.Console) {
 	}
 	_, err = con.Rpc.NewWebsite(context.Background(), &lispb.Pipeline{
 		Tls: &lispb.TLS{
-			Cert: cert,
-			Key:  key,
+			Cert:   cert,
+			Key:    key,
+			Enable: tleEnable,
 		},
 		Body: &lispb.Pipeline_Web{
 			Web: &lispb.Website{
@@ -74,6 +76,7 @@ func newWebsiteCmd(cmd *cobra.Command, con *console.Console) {
 				Name:       name,
 				ListenerId: listenerID,
 				Contents:   addWeb.Contents,
+				Enable:     false,
 			},
 		},
 	})
@@ -124,9 +127,10 @@ func listWebsitesCmd(cmd *cobra.Command, con *console.Console) {
 	var rowEntries []table.Row
 	var row table.Row
 	tableModel := tui.NewTable([]table.Column{
-		{Title: "Name", Width: 10},
+		{Title: "Name", Width: 20},
 		{Title: "Port", Width: 7},
 		{Title: "RootPath", Width: 15},
+		{Title: "Enable", Width: 7},
 	}, true)
 	if len(websites.Websites) == 0 {
 		console.Log.Importantf("No websites found")
@@ -137,6 +141,7 @@ func listWebsitesCmd(cmd *cobra.Command, con *console.Console) {
 			w.Name,
 			strconv.Itoa(int(w.Port)),
 			w.RootPath,
+			strconv.FormatBool(w.Enable),
 		}
 		rowEntries = append(rowEntries, row)
 	}

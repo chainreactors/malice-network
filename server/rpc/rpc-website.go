@@ -6,6 +6,8 @@ import (
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
+	"github.com/chainreactors/malice-network/server/internal/certs"
+	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
@@ -133,6 +135,15 @@ func (rpc *Server) WebsiteRemoveContent(ctx context.Context, req *lispb.WebsiteR
 }
 
 func (rpc *Server) RegisterWebsite(ctx context.Context, req *lispb.Pipeline) (*implantpb.Empty, error) {
+	if req.GetTls().Key == "" || req.GetTls().Cert == "" {
+		tlsConfig := configs.GenerateTlsConfig(req.GetWeb().Name)
+		cert, key, err := certs.GeneratePipelineCert(&tlsConfig)
+		if err != nil {
+			return &implantpb.Empty{}, err
+		}
+		req.Tls.Cert = string(cert)
+		req.Tls.Key = string(key)
+	}
 	err := db.CreatePipeline(req)
 	if err != nil {
 		return &implantpb.Empty{}, err
@@ -201,6 +212,7 @@ func (rpc *Server) StartWebsite(ctx context.Context, req *lispb.CtrlPipeline) (*
 		ID:      core.CurrentJobID(),
 		Message: pipeline,
 		JobCtrl: ch,
+		Name:    pipeline.GetWeb().Name,
 	}
 	core.Jobs.Add(job)
 	ctrl := clientpb.JobCtrl{
@@ -236,14 +248,19 @@ func (rpc *Server) StopWebsite(ctx context.Context, req *lispb.CtrlPipeline) (*c
 
 func (rpc *Server) ListWebsites(ctx context.Context, req *lispb.ListenerName) (*lispb.Websites, error) {
 	var websites []*lispb.Website
-	for _, job := range core.Jobs.All() {
-		web, ok := job.Message.(*lispb.Website)
-		if !ok {
-			continue
+	pipelines, err := db.ListPipelines(req.Name, "web")
+	if err != nil {
+		return nil, err
+	}
+	for _, pipeline := range pipelines {
+		webProtoBuf := &lispb.Website{
+			Name:     pipeline.Name,
+			RootPath: pipeline.WebPath,
+			Port:     uint32(pipeline.Port),
+			Enable:   pipeline.Enable,
 		}
-		if web != nil && web.ListenerId == req.Name {
-			websites = append(websites, web)
-		}
+
+		websites = append(websites, webProtoBuf)
 	}
 	return &lispb.Websites{Websites: websites}, nil
 }

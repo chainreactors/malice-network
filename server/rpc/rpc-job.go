@@ -28,7 +28,6 @@ func (rpc *Server) JobStream(stream listenerrpc.ListenerRPC_JobStreamServer) err
 		if msg.Status == consts.CtrlStatusSuccess {
 			if msg.Ctrl == consts.CtrlPipelineStart {
 				core.EventBroker.Publish(core.Event{
-					Job:       core.Jobs.Get(msg.Job.Id),
 					EventType: consts.EventPipeline,
 					Message:   fmt.Sprintf("%s start", msg.Job.GetPipeline().GetTcp().GetName()),
 				})

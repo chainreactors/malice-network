@@ -17,22 +17,15 @@ type Pipeline struct {
 	Host       string           `config:"host"`
 	Port       uint16           `config:"port"`
 	Type       string           `gorm:"type:string;"`
+	Enable     bool             `gorm:"type:boolean;"`
 	Tls        TlsConfig        `gorm:"embedded;embeddedPrefix:tls_"`
 	Encryption EncryptionConfig `gorm:"embedded;embeddedPrefix:encryption_"`
 }
 
 type TlsConfig struct {
-	Enable   bool   `gorm:"column:enable"`
-	Name     string `gorm:"column:name"`
-	CN       string `gorm:"column:cn"`
-	O        string `gorm:"column:o"`
-	C        string `gorm:"column:c"`
-	L        string `gorm:"column:l"`
-	OU       string `gorm:"column:ou"`
-	ST       string `gorm:"column:st"`
-	Validity string `gorm:"column:validity"`
-	Cert     string `gorm:"column:cert"`
-	Key      string `gorm:"column:key"`
+	Enable bool   `gorm:"column:enable"`
+	Cert   string `gorm:"column:cert"`
+	Key    string `gorm:"column:key"`
 }
 
 type EncryptionConfig struct {
@@ -61,6 +54,7 @@ func ProtoBufToDB(pipeline *lispb.Pipeline) Pipeline {
 			Port:       uint16(body.Tcp.Port),
 			Type:       "tcp",
 			Tls:        ToTlsDB(pipeline.Tls),
+			Enable:     body.Tcp.Enable,
 		}
 	case *lispb.Pipeline_Web:
 		return Pipeline{
@@ -70,6 +64,7 @@ func ProtoBufToDB(pipeline *lispb.Pipeline) Pipeline {
 			Port:       uint16(body.Web.Port),
 			Type:       "web",
 			Tls:        ToTlsDB(pipeline.Tls),
+			Enable:     body.Web.Enable,
 		}
 	default:
 		return Pipeline{}
