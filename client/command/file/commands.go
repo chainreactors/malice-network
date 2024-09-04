@@ -5,9 +5,12 @@ import (
 	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"path/filepath"
 )
 
 func Commands(con *console.Console) []*cobra.Command {
@@ -62,6 +65,13 @@ func Commands(con *console.Console) []*cobra.Command {
 	carapace.Gen(syncCmd).PositionalCompletion(
 		carapace.ActionValues().Usage("task ID"),
 	)
+
+	con.RegisterInternalFunc(
+		"bupload",
+		func(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, path string) (*clientpb.Task, error) {
+			return Upload(rpc, sess, path, filepath.Base(path), 0744, false)
+		},
+		nil)
 
 	return []*cobra.Command{
 		downloadCmd,
