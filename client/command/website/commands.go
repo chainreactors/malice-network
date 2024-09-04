@@ -2,7 +2,7 @@ package website
 
 import (
 	"github.com/chainreactors/grumble"
-	"github.com/chainreactors/malice-network/client/command/completer"
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/helper/consts"
 )
@@ -41,7 +41,7 @@ func Commands(con *console.Console) []*grumble.Command {
 			return nil
 		},
 		Completer: func(prefix string, args []string) []string {
-			return completer.LocalPathCompleter(prefix, args, con)
+			return common.LocalPathCompleter(prefix, args, con)
 		},
 	},
 	)

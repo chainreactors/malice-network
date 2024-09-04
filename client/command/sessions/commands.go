@@ -1,10 +1,10 @@
 package sessions
 
 import (
-	"github.com/chainreactors/malice-network/client/command/completer"
-	"github.com/chainreactors/malice-network/client/command/flags"
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -19,7 +19,7 @@ func Commands(con *console.Console) []*cobra.Command {
 			SessionsCmd(cmd, con)
 		},
 	}
-	flags.Bind("sessions", true, sessionsCmd, func(f *pflag.FlagSet) {
+	common.Bind("sessions", true, sessionsCmd, func(f *pflag.FlagSet) {
 		f.BoolP("all", "a", false, "show all sessions")
 	})
 
@@ -38,12 +38,12 @@ func Commands(con *console.Console) []*cobra.Command {
 		carapace.ActionValues().Usage("session note name"),
 	)
 
-	flags.Bind("note", false, noteCommand, func(f *pflag.FlagSet) {
+	common.Bind("note", false, noteCommand, func(f *pflag.FlagSet) {
 		f.String("id", "", "session id")
 	})
 
-	flags.BindFlagCompletions(noteCommand, func(comp *carapace.ActionMap) {
-		(*comp)["id"] = completer.BasicSessionIDCompleter(con)
+	common.BindFlagCompletions(noteCommand, func(comp *carapace.ActionMap) {
+		(*comp)["id"] = common.BasicSessionIDCompleter(con)
 	})
 
 	groupCommand := &cobra.Command{
@@ -61,12 +61,12 @@ func Commands(con *console.Console) []*cobra.Command {
 		carapace.ActionValues().Usage("session group name"),
 	)
 
-	flags.Bind("group", false, groupCommand, func(f *pflag.FlagSet) {
+	common.Bind("group", false, groupCommand, func(f *pflag.FlagSet) {
 		f.String("id", "", "session id")
 	})
 
-	flags.BindFlagCompletions(groupCommand, func(comp *carapace.ActionMap) {
-		(*comp)["id"] = completer.BasicSessionIDCompleter(con)
+	common.BindFlagCompletions(groupCommand, func(comp *carapace.ActionMap) {
+		(*comp)["id"] = common.BasicSessionIDCompleter(con)
 	})
 
 	removeCommand := &cobra.Command{
@@ -80,13 +80,41 @@ func Commands(con *console.Console) []*cobra.Command {
 	}
 
 	carapace.Gen(removeCommand).PositionalCompletion(
-		completer.BasicSessionIDCompleter(con),
+		common.BasicSessionIDCompleter(con),
 	)
+
+	useCommand := &cobra.Command{
+		Use:   "use",
+		Short: "Use session",
+		Long:  help.GetHelpFor("use"),
+		Args:  cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			UseSessionCmd(cmd, con)
+			return
+		},
+	}
+
+	carapace.Gen(useCommand).PositionalCompletion(
+		common.BasicSessionIDCompleter(con),
+	)
+
+	backCommand := &cobra.Command{
+		Use:   "background",
+		Short: "back to root context",
+		Long:  help.GetHelpFor("background"),
+		Run: func(cmd *cobra.Command, args []string) {
+			con.ActiveTarget.Background()
+			con.App.SwitchMenu(consts.ClientMenu)
+			return
+		},
+	}
 
 	return []*cobra.Command{
 		sessionsCmd,
 		noteCommand,
 		groupCommand,
 		removeCommand,
+		backCommand,
+		useCommand,
 	}
 }

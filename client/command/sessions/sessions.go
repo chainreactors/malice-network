@@ -3,7 +3,6 @@ package sessions
 import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/console"
-	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/table"
@@ -114,8 +113,7 @@ func SessionLogin(tableModel *tui.TableModel, con *console.Console) func() {
 	}
 
 	return func() {
-		con.ActiveTarget.Set(session)
-		con.App.SwitchMenu(consts.ImplantMenu)
+		con.SwitchImplant(session)
 		console.Log.Infof("Active session %s (%s)\n", session.Note, session.SessionId)
 	}
 }

@@ -3,6 +3,7 @@ package command
 import (
 	"github.com/chainreactors/malice-network/client/command/alias"
 	"github.com/chainreactors/malice-network/client/command/armory"
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/extension"
 	"github.com/chainreactors/malice-network/client/command/listener"
 	"github.com/chainreactors/malice-network/client/command/login"
@@ -10,12 +11,12 @@ import (
 	"github.com/chainreactors/malice-network/client/command/observe"
 	"github.com/chainreactors/malice-network/client/command/sessions"
 	"github.com/chainreactors/malice-network/client/command/tasks"
-	"github.com/chainreactors/malice-network/client/command/use"
 	"github.com/chainreactors/malice-network/client/command/version"
 	cc "github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/reeflective/console"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 func bindCommonCommands(bind bindFunc) {
@@ -25,7 +26,6 @@ func bindCommonCommands(bind bindFunc) {
 	bind(consts.GenericGroup,
 		login.Command,
 		sessions.Commands,
-		use.Command,
 		tasks.Command,
 		alias.Commands,
 		extension.Commands,
@@ -47,6 +47,10 @@ func BindClientsCommands(con *cc.Console) console.Commands {
 				HiddenDefaultCmd: true,
 			},
 		}
+		common.Bind("common flag", true, client, func(f *pflag.FlagSet) {
+			f.IntP("timeout", "t", consts.DefaultTimeout, "command timeout in seconds")
+		})
+
 		bind := makeBind(client, con)
 
 		bindCommonCommands(bind)

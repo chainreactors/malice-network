@@ -1,8 +1,7 @@
 package exec
 
 import (
-	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/client/command/flags"
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -21,18 +20,16 @@ func Commands(con *console.Console) []*cobra.Command {
 			ExecuteCmd(cmd, con)
 			return
 		},
+		Annotations: map[string]string{
+			"depend": consts.ModuleExecution,
+		},
 	}
 	carapace.Gen(execCmd).PositionalCompletion(
 		carapace.ActionValues().Usage("command to execute"),
-		carapace.ActionValues().Usage("arguments to the command eg: 'arg1,arg2,arg3'"),
+		carapace.ActionValues().Usage("arguments to the command eg: 'arg1 arg2 arg3'"),
 	)
 
-	flags.Bind(consts.ModuleExecution, false, execCmd, func(f *pflag.FlagSet) {
-		f.BoolP("output", "o", true, "capture command output")
-		f.IntP("timeout", "t", assets.DefaultSettings.DefaultTimeout, "command timeout in seconds")
-		f.StringP("stdout", "O", "", "stdout file")
-		f.StringP("stderr", "E", "", "stderr file")
-	})
+	common.BindFlag(execCmd, common.ExecuteFlagSet)
 
 	execAssemblyCmd := &cobra.Command{
 		Use:   consts.ModuleExecuteAssembly,
@@ -43,17 +40,16 @@ func Commands(con *console.Console) []*cobra.Command {
 			ExecuteAssemblyCmd(cmd, con)
 			return
 		},
+		Annotations: map[string]string{
+			"depend": consts.ModuleExecuteAssembly,
+		},
 	}
 	carapace.Gen(execAssemblyCmd).PositionalCompletion(
 		carapace.ActionFiles().Usage("path the assembly file"),
 		carapace.ActionValues().Usage("arguments to pass to the assembly entrypoint, eg: 'arg1,arg2,arg3'"),
 	)
 
-	flags.Bind(consts.ModuleExecuteAssembly, false, execAssemblyCmd, func(f *pflag.FlagSet) {
-		f.BoolP("output", "o", false, "need output")
-		//f.StringP("process", "n", "C:\\Windows\\System32\\notepad.exe", "custom process path")
-		//f.UintP("ppid", "p", 0, "parent process id (optional)")
-	})
+	common.BindFlag(execAssemblyCmd, common.ExecuteFlagSet)
 
 	execShellcodeCmd := &cobra.Command{
 		Use:   consts.ModuleExecuteShellcode,
@@ -63,7 +59,9 @@ func Commands(con *console.Console) []*cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			ExecuteShellcodeCmd(cmd, con)
 			return
-
+		},
+		Annotations: map[string]string{
+			"depend": consts.ModuleExecuteShellcode,
 		},
 	}
 
@@ -71,25 +69,20 @@ func Commands(con *console.Console) []*cobra.Command {
 		carapace.ActionFiles().Usage("path the shellcode file"),
 		carapace.ActionValues().Usage("arguments to pass to the assembly entrypoint"),
 	)
-	flags.Bind(consts.ModuleExecuteShellcode, true, execShellcodeCmd, func(f *pflag.FlagSet) {
-		f.BoolP("sacrifice", "s", false, "is need sacrifice process")
-	})
 
-	flags.Bind(consts.ModuleExecuteShellcode, false, execShellcodeCmd, func(f *pflag.FlagSet) {
-		f.UintP("ppid", "p", 0, "pid of the process to inject into (0 means injection into ourselves)")
-		f.BoolP("block_dll", "b", false, "block dll injection")
-		f.StringP("process", "n", "C:\\Windows\\System32\\notepad.exe", "custom process path")
-		f.StringP("argue", "a", "", "argue")
-	})
+	common.BindFlag(execShellcodeCmd, common.ExecuteFlagSet, common.SacrificeFlagSet)
 
 	inlineShellcodeCmd := &cobra.Command{
-		Use:   consts.ModuleExecuteShellcode,
+		Use:   consts.ModuleAliasInlineShellcode,
 		Short: "Executes the given inline shellcode in the IOM ",
 		Long:  help.GetHelpFor(consts.ModuleExecuteShellcode),
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			InlineShellcodeCmd(cmd, con)
 			return
+		},
+		Annotations: map[string]string{
+			"depend": consts.ModuleAliasInlineShellcode,
 		},
 	}
 
@@ -106,6 +99,9 @@ func Commands(con *console.Console) []*cobra.Command {
 			ExecuteDLLCmd(cmd, con)
 			return
 		},
+		Annotations: map[string]string{
+			"depend": consts.ModuleExecuteDll,
+		},
 	}
 
 	carapace.Gen(execDLLCmd).PositionalCompletion(
@@ -113,16 +109,8 @@ func Commands(con *console.Console) []*cobra.Command {
 		carapace.ActionValues().Usage("arguments to pass to the assembly entrypoint"),
 	)
 
-	flags.Bind(consts.ModuleExecuteDll, true, execDLLCmd, func(f *pflag.FlagSet) {
-		f.BoolP("sacrifice", "s", false, "is need sacrifice process")
-	})
-
-	flags.Bind(consts.ModuleExecuteDll, false, execDLLCmd, func(f *pflag.FlagSet) {
-		f.UintP("ppid", "p", 0, "pid of the process to inject into (0 means injection into ourselves)")
-		f.BoolP("block_dll", "b", false, "block dll injection")
-		f.StringP("process", "n", "C:\\Windows\\System32\\notepad.exe", "custom process path")
+	common.BindFlag(execDLLCmd, common.ExecuteFlagSet, common.SacrificeFlagSet, func(f *pflag.FlagSet) {
 		f.StringP("entrypoint", "e", "entrypoint", "entrypoint")
-		f.StringP("argue", "a", "", "argue")
 	})
 
 	execPECmd := &cobra.Command{
@@ -134,23 +122,16 @@ func Commands(con *console.Console) []*cobra.Command {
 			ExecutePECmd(cmd, con)
 			return
 		},
+		Annotations: map[string]string{
+			"depend": consts.ModuleExecutePE,
+		},
 	}
 
 	carapace.Gen(execPECmd).PositionalCompletion(
 		carapace.ActionFiles().Usage("path the PE file"),
 		carapace.ActionValues().Usage("arguments to pass to the assembly entrypoint"),
 	)
-
-	flags.Bind(consts.ModuleExecutePE, true, execPECmd, func(f *pflag.FlagSet) {
-		f.BoolP("sacrifice", "s", false, "is need sacrifice process")
-	})
-
-	flags.Bind(consts.ModuleExecutePE, false, execPECmd, func(f *pflag.FlagSet) {
-		f.UintP("ppid", "p", 0, "pid of the process to inject into (0 means injection into ourselves)")
-		f.BoolP("block_dll", "b", false, "block dll injection")
-		f.StringP("process", "n", "C:\\Windows\\System32\\notepad.exe", "custom process path")
-		f.StringP("argue", "a", "", "argue")
-	})
+	common.BindFlag(execPECmd, common.ExecuteFlagSet, common.SacrificeFlagSet)
 
 	execBofCmd := &cobra.Command{
 		Use:   consts.ModuleExecuteBof,
@@ -167,10 +148,7 @@ func Commands(con *console.Console) []*cobra.Command {
 		carapace.ActionFiles().Usage("path the BOF file"),
 		carapace.ActionValues().Usage("arguments to pass to the assembly entrypoint"),
 	)
-
-	flags.Bind(consts.ModuleExecuteBof, false, execBofCmd, func(f *pflag.FlagSet) {
-		f.IntP("timeout", "t", consts.DefaultTimeout, "command timeout in seconds")
-	})
+	common.BindFlag(execBofCmd)
 
 	execPowershellCmd := &cobra.Command{
 		Use:   consts.ModulePowershell,
@@ -187,13 +165,10 @@ func Commands(con *console.Console) []*cobra.Command {
 		carapace.ActionFiles().Usage("path the powershell script"),
 		carapace.ActionValues().Usage("arguments to pass to the assembly entrypoint"),
 	)
-
-	flags.Bind(consts.ModulePowershell, false, execPowershellCmd, func(f *pflag.FlagSet) {
-		f.IntP("timeout", "t", consts.DefaultTimeout, "command timeout in seconds")
-	})
+	common.BindFlag(execPowershellCmd)
 
 	//&grumble.Command{
-	//	Name: consts.ModuleInlineDll,
+	//	Name: consts.ModuleAliasInlineDll,
 	//	Help: "Executes the given inline DLL in current process",
 	//	Args: func(a *grumble.Args) {
 	//		a.String("path", "path the shellcode file")
@@ -214,7 +189,7 @@ func Commands(con *console.Console) []*cobra.Command {
 	//},
 
 	//&grumble.Command{
-	//	Name: consts.ModuleInlinePE,
+	//	Name: consts.ModuleAliasInlinePE,
 	//	Help: "Executes the given inline PE in current process",
 	//	Args: func(a *grumble.Args) {
 	//		a.String("path", "path the shellcode file")
