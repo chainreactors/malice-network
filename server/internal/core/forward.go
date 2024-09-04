@@ -125,11 +125,6 @@ func (f *Forward) Handler() {
 	for msg := range f.implantC {
 		spites := msg.Message.(*implantpb.Spites)
 		for _, spite := range spites.Spites {
-			if size := proto.Size(spite); size <= 1000 {
-				logs.Log.Debugf("[listener.%s] receive spite %s, %v", msg.SessionID, spite.Name, spite)
-			} else {
-				logs.Log.Debugf("[listener.%s] receive spite %s %d bytes", msg.SessionID, spite.Name, size)
-			}
 			switch spite.Body.(type) {
 			case *implantpb.Spite_Register:
 				_, err := f.ImplantRpc.Register(f.ctx, &lispb.RegisterSession{
@@ -151,6 +146,11 @@ func (f *Forward) Handler() {
 					continue
 				}
 			default:
+				if size := proto.Size(spite); size <= 1000 {
+					logs.Log.Debugf("[listener.%s] receive spite %s, %v", msg.SessionID, spite.Name, spite)
+				} else {
+					logs.Log.Debugf("[listener.%s] receive spite %s %d bytes", msg.SessionID, spite.Name, size)
+				}
 				spite := spite
 				go func() {
 					err := f.stream.Send(&lispb.SpiteSession{

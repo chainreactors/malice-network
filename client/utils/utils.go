@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/tui"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/klauspost/compress/flate"
 	"github.com/muesli/termenv"
 )
@@ -15,13 +16,14 @@ var (
 )
 
 var (
-	Debug     logs.Level = 10
-	Warn      logs.Level = 20
-	Info      logs.Level = 30
-	Error     logs.Level = 40
-	Important logs.Level = 50
-
-	DefaultLogStyle = map[logs.Level]string{
+	Debug           logs.Level = 10
+	Warn            logs.Level = 20
+	Info            logs.Level = 30
+	Error           logs.Level = 40
+	Important       logs.Level = 50
+	GroupStyle                 = lipgloss.NewStyle().Foreground(lipgloss.Color("#8BE9FD"))
+	NameStyle                  = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF79C6"))
+	DefaultLogStyle            = map[logs.Level]string{
 		Debug:     termenv.String(tui.Rocket+"[+]").Bold().Background(tui.Blue).String() + " %s ",
 		Warn:      termenv.String(tui.Zap+"[warn]").Bold().Background(tui.Yellow).String() + " %s ",
 		Important: termenv.String(tui.Fire+"[*]").Bold().Background(tui.Purple).String() + " %s ",
@@ -29,6 +31,28 @@ var (
 		Error:     termenv.String(tui.Monster+"[-]").Bold().Background(tui.Red).String() + " %s ",
 	}
 )
+
+func AdaptSessionColor(prePrompt, sId string) string {
+	var sessionPrompt string
+	runes := []rune(sId)
+	if termenv.HasDarkBackground() {
+		sessionPrompt = fmt.Sprintf("\033[37m%s [%s]> \033[0m", prePrompt, string(runes))
+	} else {
+		sessionPrompt = fmt.Sprintf("\033[30m%s [%s]> \033[0m", prePrompt, string(runes))
+	}
+	return sessionPrompt
+}
+
+func NewSessionColor(prePrompt, sId string) string {
+	var sessionPrompt string
+	runes := []rune(sId)
+	if termenv.HasDarkBackground() {
+		sessionPrompt = fmt.Sprintf("%s [%s]> ", GroupStyle.Render(prePrompt), NameStyle.Render(string(runes)))
+	} else {
+		sessionPrompt = fmt.Sprintf("%s [%s]> ", GroupStyle.Render(prePrompt), NameStyle.Render(string(runes)))
+	}
+	return sessionPrompt
+}
 
 // DeflateBuf - Deflate a buffer using BestCompression (9)
 func DeflateBuf(data []byte) []byte {
