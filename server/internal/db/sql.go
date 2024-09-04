@@ -22,13 +22,13 @@ func NewDBClient() *gorm.DB {
 		panic(fmt.Sprintf("Unknown DB Dialect: '%s'", dbConfig.Dialect))
 	}
 	_ = dbClient.AutoMigrate(
+		&models.Pipeline{},
 		&models.WebContent{},
 		&models.Website{},
 		&models.Operator{},
 		&models.Certificate{},
 		&models.Session{},
 		&models.Task{},
-		&models.Pipeline{},
 	)
 	if dbClient == nil {
 		logs.Log.Errorf("Failed to initialize database")

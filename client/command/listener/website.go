@@ -62,7 +62,7 @@ func newWebsiteCmd(cmd *cobra.Command, con *console.Console) {
 	} else {
 		website.WebAddFile(addWeb, webPath, contentType, cPath)
 	}
-	_, err = con.Rpc.RegisterWebsite(context.Background(), &lispb.Pipeline{
+	_, err = con.Rpc.NewWebsite(context.Background(), &lispb.Pipeline{
 		Tls: &lispb.TLS{
 			Cert: cert,
 			Key:  key,

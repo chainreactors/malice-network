@@ -65,6 +65,21 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 		}
 		l.Pipelines = append(l.Pipelines, pipeline)
 	}
+	for _, website := range cfg.Websites {
+		webProtobuf := &lispb.Pipeline{
+			Body: &lispb.Pipeline_Web{
+				Web: &lispb.Website{
+					RootPath:   website.RootPath,
+					Port:       uint32(website.Port),
+					Name:       website.WebsiteName,
+					ListenerId: lis.Name,
+				},
+			},
+			Tls: website.TlsConfig.ToProtobuf(),
+		}
+		_, err = lis.Rpc.RegisterWebsite(context.Background(), webProtobuf)
+
+	}
 	_, err = lis.Rpc.RegisterListener(context.Background(), &lispb.RegisterListener{
 		Id:        fmt.Sprintf("%s_%s", lis.Name, lis.Host),
 		Name:      lis.Name,
@@ -245,7 +260,7 @@ func (lns *listener) startWebsite(job *clientpb.Job) *clientpb.JobStatus {
 				Job:        job,
 			}
 		}
-		lns.registerWebsite(starResult, getWeb.ListenerId)
+		lns.websites.Add(starResult)
 	} else {
 		err = w.Start()
 		if err != nil {
@@ -264,13 +279,6 @@ func (lns *listener) startWebsite(job *clientpb.Job) *clientpb.JobStatus {
 		Status:     consts.CtrlStatusSuccess,
 		Job:        job,
 	}
-}
-
-func (lns *listener) registerWebsite(w core.Website, listenerID string) {
-	lns.websites.Add(w)
-	result := w.ToProtobuf().(*lispb.Website)
-	result.ListenerId = listenerID
-	lns.Rpc.RegisterWebsite(context.Background(), result)
 }
 
 func (lns *listener) stopWebsite(job *clientpb.Job) *clientpb.JobStatus {
