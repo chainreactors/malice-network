@@ -52,11 +52,12 @@ func Start(bindCmds ...BindCmds) error {
 	if len(os.Args) > 1 {
 		con.newConfigLogin(os.Args[1])
 	}
-	con.NewConsole(bindCmds...)
 
 	con.ActiveTarget.callback = func(sess *clientpb.Session) {
 		con.ActiveTarget.activeObserver = NewObserver(sess)
 	}
+
+	con.NewConsole(bindCmds...)
 	con.App.SwitchMenu(consts.ClientMenu)
 	err := con.App.Start()
 	if err != nil {

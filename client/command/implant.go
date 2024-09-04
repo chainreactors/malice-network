@@ -37,7 +37,7 @@ func BindImplantCommands(con *cc.Console) console.Commands {
 			explorer.Commands,
 		)
 
-		bind(consts.AliasesGroup)
+		bind(consts.ArmoryGroup)
 		bind(consts.ExtensionGroup)
 		bind(consts.MalGroup)
 		// Load Aliases

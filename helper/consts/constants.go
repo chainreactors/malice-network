@@ -12,7 +12,7 @@ const (
 	ClientMaxReceiveMessageSize = 256 * MB
 	// ServerMaxMessageSize - Server-side max GRPC message size
 	ServerMaxMessageSize = 2 * GB
-	DefaultTimeout       = -1 // second
+	DefaultTimeout       = 10 // second
 	DefaultDuration      = time.Duration(DefaultTimeout * time.Second)
 )
 
@@ -30,7 +30,7 @@ const (
 const (
 	GenericGroup   = "generic"
 	ImplantGroup   = "implant"
-	AliasesGroup   = "alias"
+	ArmoryGroup    = "armory"
 	ExtensionGroup = "extension"
 	MalGroup       = "mal"
 	ListenerGroup  = "listener"

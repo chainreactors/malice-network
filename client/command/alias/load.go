@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/chainreactors/files"
 	"github.com/chainreactors/malice-network/client/assets"
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/client/core/intermediate/builtin"
@@ -13,6 +14,7 @@ import (
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
+	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"google.golang.org/protobuf/proto"
@@ -23,8 +25,6 @@ import (
 )
 
 const (
-	defaultTimeout = 60
-
 	ManifestFileName = "alias.json"
 
 	windowsDefaultHostProc = `c:\windows\system32\notepad.exe`
@@ -167,7 +167,7 @@ func RegisterAlias(aliasManifest *AliasManifest, cmd *cobra.Command, con *consol
 			runAliasCommand(cmd, con)
 		},
 		Args:        cobra.ArbitraryArgs, // 	a.StringList("arguments", "arguments", grumble.Default([]string{}))
-		GroupID:     consts.AliasesGroup,
+		GroupID:     consts.ArmoryGroup,
 		Annotations: makeAliasPlatformFilters(aliasManifest),
 	}
 
@@ -184,14 +184,7 @@ func RegisterAlias(aliasManifest *AliasManifest, cmd *cobra.Command, con *consol
 		addAliasCmd.Flags().AddFlagSet(f)
 	}
 
-	f := pflag.NewFlagSet(aliasManifest.Name, pflag.ContinueOnError)
-	f.StringP("process", "p", "", "Path to process to host the shared object")
-	f.BoolP("block_dll", "B", false, "block non-microsoft dll")
-	f.Uint32P("ppid", "P", 0, "parent process ID to use when creating the hosting process (Windows only)")
-	f.StringP("argue", "a", "", "argue")
-	f.BoolP("save", "s", false, "Save output to disk")
-	f.IntP("timeout", "t", defaultTimeout, "command timeout in seconds")
-	addAliasCmd.Flags().AddFlagSet(f)
+	common.BindFlag(addAliasCmd, common.SacrificeFlagSet)
 
 	loadedAliases[aliasManifest.CommandName] = &loadedAlias{
 		Manifest: aliasManifest,
@@ -317,10 +310,15 @@ func ExecuteAlias(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, aliasNa
 	}
 	var task *clientpb.Task
 	if aliasManifest.IsAssembly {
+		params, err := shellquote.Split(args)
+		if err != nil {
+			return nil, err
+		}
 		task, err = rpc.ExecuteAssembly(console.Context(sess), &implantpb.ExecuteBinary{
-			Name: loadedAlias.Command.Name(),
-			Bin:  binData,
-			Type: consts.ModuleExecuteAssembly,
+			Name:   loadedAlias.Command.Name(),
+			Bin:    binData,
+			Type:   consts.ModuleExecuteAssembly,
+			Params: params,
 		})
 	} else {
 		task, err = rpc.ExecuteDLL(console.Context(sess), &implantpb.ExecuteBinary{

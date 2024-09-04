@@ -5,15 +5,18 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/core/intermediate/builtin"
 	"github.com/chainreactors/malice-network/client/utils"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
+	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/chainreactors/tui"
+	"github.com/kballard/go-shellquote"
 	app "github.com/reeflective/console"
 	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
@@ -28,7 +31,6 @@ import (
 )
 
 const (
-	defaultTimeout = 60
 
 	// ManifestFileName - Extension manifest file name
 	ManifestFileName = "extension.json"
@@ -253,13 +255,11 @@ func ExtensionRegisterCommand(extCmd *ExtCommand, cmd *cobra.Command, con *conso
 		Run: func(cmd *cobra.Command, args []string) {
 			runExtensionCmd(cmd, con)
 		},
-		GroupID:     consts.ExtensionGroup,
+		GroupID:     consts.ArmoryGroup,
 		Annotations: makeCommandPlatformFilters(extCmd),
 	}
 
 	f := pflag.NewFlagSet(extCmd.CommandName, pflag.ContinueOnError)
-	f.BoolP("save", "s", false, "Save output to disk")
-	f.IntP("timeout", "t", defaultTimeout, "command timeout in seconds")
 	extensionCmd.Flags().AddFlagSet(f)
 	extensionCmd.Flags().ParseErrorsWhitelist.UnknownFlags = true
 
@@ -267,6 +267,17 @@ func ExtensionRegisterCommand(extCmd *ExtCommand, cmd *cobra.Command, con *conso
 	makeExtensionArgCompleter(extCmd, cmd, comps)
 
 	cmd.AddCommand(extensionCmd)
+	err := con.RegisterInternalFunc(
+		extensionCmd.Name(),
+		func(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, args string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
+			return ExecuteExtension(rpc, sess, extensionCmd.Name(), args)
+		},
+		func(ctx *clientpb.TaskContext) (interface{}, error) {
+			return builtin.ParseAssembly(ctx.Spite)
+		})
+	if err != nil {
+		console.Log.Errorf("Error registering internal function: %s\n", err)
+	}
 }
 
 func loadExtension(goos string, goarch string, extcmd *ExtCommand, con *console.Console) error {
@@ -330,77 +341,12 @@ func registerExtension(ext *ExtCommand, binData []byte, con *console.Console) er
 //}
 
 func runExtensionCmd(cmd *cobra.Command, con *console.Console) {
-	var (
-		err error
-		//extensionArgs []byte
-		extName    string
-		entryPoint string
-	)
 	session := con.GetInteractive()
 	args := cmd.Flags().Args()
-	if session == nil {
-		return
-	}
-	var goos string
-	var goarch string
-	if session != nil {
-		goos = session.Os.Name
-		goarch = session.Os.Arch
-	}
 
-	ext, ok := loadedExtensions[cmd.Name()]
-	if !ok {
-		console.Log.Errorf("No extension command found for `%s` command\n", cmd.Name())
-		return
-	}
-
-	if err = loadExtension(goos, goarch, ext, con); err != nil {
-		console.Log.Errorf("Could not load extension: %s\n", err)
-		return
-	}
-
-	binPath, err := ext.getFileForTarget(goos, goarch)
+	task, err := ExecuteExtension(con.Rpc, session, cmd.Name(), strings.Join(args, " "))
 	if err != nil {
-		console.Log.Errorf("Failed to read extension file: %s\n", err)
-		return
-	}
-
-	isBOF := filepath.Ext(binPath) == ".o"
-
-	// BOFs (Beacon Object Files) are a specific kind of extensions
-	// that require another extension (a COFF loader) to be present.
-	// BOFs also have strongly typed arguments that need to be parsed in the proper way.
-	// This block will pack both the BOF data and its arguments into a single buffer that
-	// the loader will extract and load.
-	if isBOF {
-		// Beacon Object File -- requires a COFF loader
-		//extensionArgs, err = getBOFArgs(ctx, args, binPath, ext)
-		if err != nil {
-			console.Log.Errorf("BOF args error: %s\n", err)
-			return
-		}
-		extName = ext.CommandName
-		entryPoint = loadedExtensions[extName].Entrypoint // should exist at this point
-	} else {
-		// Regular DLL
-		//extArgs := strings.Join(args, " ")
-		//extensionArgs = []byte(extArgs)
-		//extName = ext.CommandName
-		entryPoint = ext.Entrypoint
-	}
-
-	task, err := con.Rpc.ExecuteExtension(con.ActiveTarget.Context(), &implantpb.ExecuteExtension{
-		Extension: ext.CommandName,
-		ExecuteBinary: &implantpb.ExecuteBinary{
-			Name:       ext.CommandName,
-			EntryPoint: entryPoint,
-			Params:     args,
-			Type:       ext.DependsOn,
-			Output:     true,
-		},
-	})
-	if err != nil {
-		console.Log.Errorf("Call extension error: %s\n", err.Error())
+		console.Log.Errorf("Error executing extension: %s\n", err.Error())
 		return
 	}
 	con.AddCallback(task.TaskId, func(msg proto.Message) {
@@ -409,23 +355,60 @@ func runExtensionCmd(cmd *cobra.Command, con *console.Console) {
 	})
 }
 
-// PrintExtOutput - Print the ext execution output
-//func PrintExtOutput(extName string, commandName string, callExtension *sliverpb.CallExtension, con *console.SliverConsoleClient) {
-//	if extName == commandName {
-//		con.PrintInfof("Successfully executed %s\n", extName)
-//	} else {
-//		con.PrintInfof("Successfully executed %s (%s)\n", commandName, extName)
-//	}
-//	if 0 < len(string(callExtension.Output)) {
-//		con.PrintInfof("Got output:\n%s\n", callExtension.Output)
-//	}
-//	if callExtension.Response != nil && callExtension.Response.Err != "" {
-//		con.PrintErrorf("%s\n", callExtension.Response.Err)
-//		return
-//	}
-//}
+func ExecuteExtension(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, extName string, args string) (*clientpb.Task, error) {
+	ext, ok := loadedExtensions[extName]
+	if !ok {
+		return nil, fmt.Errorf("no extension command found for `%s` command", extName)
+	}
+	//if err := loadExtension(sess.Os.Name, sess.Os.Arch, ext, con); err != nil {
+	//	return nil, fmt.Errorf("could not load extension: %w", err)
+	//}
 
-func getExtArgs(ctx *grumble.Context, args []string, _ string, ext *ExtCommand) ([]byte, error) {
+	binPath, err := ext.getFileForTarget(sess.Os.Name, sess.Os.Arch)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read extension file: %w", err)
+	}
+
+	isBOF := filepath.Ext(binPath) == ".o"
+	var entryPoint string
+	//var extensionArgs []byte
+	// BOFs (Beacon Object Files) are a specific kind of extensions
+	// that require another extension (a COFF loader) to be present.
+	// BOFs also have strongly typed arguments that need to be parsed in the proper way.
+	// This block will pack both the BOF data and its arguments into a single buffer that
+	// the loader will extract and load.
+
+	var task *clientpb.Task
+	if isBOF {
+		// Beacon Object File -- requires a COFF loader
+		//extensionArgs, err = getBOFArgs(args, binPath, ext)
+		//if err != nil {
+		//	return nil, fmt.Errorf("BOF args error: %w", err)
+		//}
+		params, err := shellquote.Split(args)
+		if err != nil {
+			return nil, err
+		}
+		entryPoint = loadedExtensions[ext.CommandName].Entrypoint // should exist at this point
+		task, err = rpc.ExecuteBof(console.Context(sess), &implantpb.ExecuteBinary{
+			Name:       ext.CommandName,
+			EntryPoint: entryPoint,
+			Params:     params,
+			Type:       ext.DependsOn,
+			Output:     true,
+		})
+	} else {
+		// Regular DLL
+		//extArgs := strings.Join(args, " ")
+		//extensionArgs = []byte(extArgs)
+		//extName = ext.CommandName
+		//entryPoint = ext.Entrypoint
+	}
+
+	return task, err
+}
+
+func getExtArgs(args []string, _ string, ext *ExtCommand) ([]byte, error) {
 	var err error
 	argsBuffer := utils.BOFArgsBuffer{
 		Buffer: new(bytes.Buffer),
@@ -513,7 +496,7 @@ func getExtArgs(ctx *grumble.Context, args []string, _ string, ext *ExtCommand) 
 	return parsedArgs, nil
 }
 
-func getBOFArgs(ctx *grumble.Context, args []string, binPath string, ext *ExtCommand) ([]byte, error) {
+func getBOFArgs(args []string, binPath string, ext *ExtCommand) ([]byte, error) {
 	var extensionArgs []byte
 	binData, err := os.ReadFile(binPath)
 	if err != nil {
@@ -532,7 +515,7 @@ func getBOFArgs(ctx *grumble.Context, args []string, binPath string, ext *ExtCom
 	if err != nil {
 		return nil, err
 	}
-	parsedArgs, err := getExtArgs(ctx, args, binPath, ext)
+	parsedArgs, err := getExtArgs(args, binPath, ext)
 	if err != nil {
 		return nil, err
 	}
