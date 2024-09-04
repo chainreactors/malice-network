@@ -38,7 +38,7 @@ func newTcpPipelineCmd(cmd *cobra.Command, con *console.Console) {
 			return
 		}
 	}
-	_, err = con.Rpc.RegisterPipeline(context.Background(), &lispb.Pipeline{
+	_, err = con.Rpc.NewPipeline(context.Background(), &lispb.Pipeline{
 		Tls: &lispb.TLS{
 			Cert: cert,
 			Key:  key,

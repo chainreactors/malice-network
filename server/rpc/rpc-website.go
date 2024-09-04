@@ -161,6 +161,35 @@ func (rpc *Server) RegisterWebsite(ctx context.Context, req *lispb.Pipeline) (*i
 	return &implantpb.Empty{}, nil
 }
 
+func (rpc *Server) NewWebsite(ctx context.Context, req *lispb.Pipeline) (*clientpb.Empty, error) {
+	err := db.CreatePipeline(req)
+	if err != nil {
+		return &clientpb.Empty{}, err
+	}
+	getWeb := req.GetWeb()
+	if 0 < len(getWeb.Contents) {
+		for _, content := range getWeb.Contents {
+			if content.ContentType == "" {
+				content.ContentType = mime.TypeByExtension(filepath.Ext(content.Path))
+				if content.ContentType == "" {
+					content.ContentType = "text/html; charset=utf-8" // Default mime
+				}
+			}
+			content.Size = uint64(len(content.Content))
+			err := website.AddContent(getWeb.Name, content)
+			if err != nil {
+				return nil, err
+			}
+		}
+	} else {
+		_, err := website.AddWebsite(getWeb.Name)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return &clientpb.Empty{}, nil
+}
+
 func (rpc *Server) StartWebsite(ctx context.Context, req *lispb.CtrlPipeline) (*clientpb.Empty, error) {
 	pipelineDB, err := db.FindPipeline(req.Name, req.ListenerId)
 	if err != nil {

@@ -20,6 +20,14 @@ func (rpc *Server) RegisterPipeline(ctx context.Context, req *lispb.Pipeline) (*
 	return &implantpb.Empty{}, nil
 }
 
+func (rpc *Server) NewPipeline(ctx context.Context, req *lispb.Pipeline) (*clientpb.Empty, error) {
+	err := db.CreatePipeline(req)
+	if err != nil {
+		return &clientpb.Empty{}, err
+	}
+	return &clientpb.Empty{}, nil
+}
+
 func (rpc *Server) StartTcpPipeline(ctx context.Context, req *lispb.CtrlPipeline) (*clientpb.Empty, error) {
 	pipelineDB, err := db.FindPipeline(req.Name, req.ListenerId)
 	if err != nil {

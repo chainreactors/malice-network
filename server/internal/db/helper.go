@@ -239,7 +239,7 @@ func FindPipeline(name, listenerID string) (models.Pipeline, error) {
 func CreatePipeline(ppProto *lispb.Pipeline) error {
 	pipeline := models.ProtoBufToDB(ppProto)
 	newPipeline := models.Pipeline{}
-	result := Session().Where("name = ? AND listener_id =  = ?", pipeline.Name, pipeline.ListenerID).First(&newPipeline)
+	result := Session().Where("name = ? AND listener_id  = ?", pipeline.Name, pipeline.ListenerID).First(&newPipeline)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			err := Session().Create(&pipeline).Error
