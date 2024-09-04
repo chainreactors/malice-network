@@ -250,6 +250,7 @@ func CreatePipeline(ppProto *lispb.Pipeline) error {
 		}
 		return result.Error
 	}
+	pipeline.ID = newPipeline.ID
 	err := Session().Save(&pipeline).Error
 	if err != nil {
 		return err
