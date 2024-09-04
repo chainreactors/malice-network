@@ -54,7 +54,6 @@ func BindClientsCommands(con *cc.Console) console.Commands {
 		bind := makeBind(client, con)
 
 		bindCommonCommands(bind)
-
 		if con.ServerStatus == nil {
 			err := login.LoginCmd(&cobra.Command{}, con)
 			if err != nil {
