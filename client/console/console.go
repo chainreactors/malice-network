@@ -205,7 +205,7 @@ func exitConsole(c *console.Console) {
 		panic(err)
 	}
 	defer open.Close()
-
+	var isExit = false
 	fmt.Print("Press 'Y/y'  or 'Ctrl+D' to confirm exit: ")
 
 	for {
@@ -213,12 +213,19 @@ func exitConsole(c *console.Console) {
 		if err != nil {
 			panic(err)
 		}
-
+		if readRune == 0 {
+			continue
+		}
 		switch readRune {
 		case 'Y', 'y':
 			os.Exit(0)
 		case 4: // ASCII code for Ctrl+C
 			os.Exit(0)
+		default:
+			isExit = true
+		}
+		if isExit {
+			break
 		}
 	}
 }
