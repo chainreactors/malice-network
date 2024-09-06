@@ -8,12 +8,6 @@ import (
 
 func UseSessionCmd(cmd *cobra.Command, con *console.Console) {
 	var session *clientpb.Session
-	err := con.UpdateSessions(false)
-	if err != nil {
-		console.Log.Errorf("%s", err)
-		return
-	}
-
 	if session = con.Sessions[cmd.Flags().Arg(0)]; session == nil {
 		console.Log.Errorf(console.ErrNotFoundSession.Error())
 		return

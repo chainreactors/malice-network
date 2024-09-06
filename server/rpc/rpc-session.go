@@ -37,28 +37,35 @@ func (rpc *Server) GetSession(ctx context.Context, req *clientpb.SessionRequest)
 }
 
 func (rpc *Server) BasicSessionOP(ctx context.Context, req *clientpb.BasicUpdateSession) (*clientpb.Empty, error) {
-	if req.IsDelete {
+	switch req.Op {
+	case "delete":
 		core.Sessions.Remove(req.SessionId)
 		err := db.DeleteSession(req.SessionId)
 		if err != nil {
 			return nil, err
 		}
-	} else {
+	case "note":
 		session, ok := core.Sessions.Get(req.SessionId)
 		if !ok {
 			return nil, ErrNotFoundSession
 		}
-		if req.Note != "" {
-			session.Name = req.Note
+		session.Name = req.Arg
+		err := db.UpdateSession(req.SessionId, req.Arg, "")
+		if err != nil {
+			return nil, err
 		}
-		if req.GroupName != "" {
-			session.Group = req.GroupName
+	case "group":
+		session, ok := core.Sessions.Get(req.SessionId)
+		if !ok {
+			return nil, ErrNotFoundSession
 		}
-		err := db.UpdateSession(req.SessionId, req.Note, req.GroupName)
+		session.Group = req.Arg
+		err := db.UpdateSession(req.SessionId, "", req.Arg)
 		if err != nil {
 			return nil, err
 		}
 	}
+
 	return &clientpb.Empty{}, nil
 }
 
