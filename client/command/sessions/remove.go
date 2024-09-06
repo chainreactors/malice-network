@@ -10,25 +10,14 @@ import (
 
 func removeCmd(cmd *cobra.Command, con *console.Console) {
 	id := cmd.Flags().Arg(0)
-	if con.GetInteractive().SessionId != "" {
-		id = con.GetInteractive().SessionId
-	} else if id == "" {
-		console.Log.Errorf("Require session id")
-		return
-	}
 	_, err := con.Rpc.BasicSessionOP(context.Background(), &clientpb.BasicUpdateSession{
 		SessionId: id,
-		IsDelete:  true,
+		Op:        "delete",
 	})
 	if err != nil {
 		logs.Log.Errorf("Session error: %v", err)
 		return
 	}
-	err = con.UpdateSessions(false)
-	if err != nil {
-		console.Log.Errorf("%s", err)
-		return
-	}
-	session := con.Sessions[id]
-	con.ActiveTarget.Set(session)
+	delete(con.Sessions, id)
+	console.Log.Infof("delete session %s", id)
 }

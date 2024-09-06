@@ -26,6 +26,13 @@ func Bind(desc string, persistent bool, cmd *cobra.Command, flags func(f *pflag.
 	}
 }
 
+func BindFlag(cmd *cobra.Command, customSet ...func(f *pflag.FlagSet)) {
+	//flags.Bind(cmd.Use, false, cmd, CommonFlagSet)
+	for _, set := range customSet {
+		Bind(cmd.Use, false, cmd, set)
+	}
+}
+
 // RestrictTargets generates a cobra annotation map with a single console.CommandHiddenFilter key
 // to a comma-separated list of filters to use in order to expose/hide commands based on requirements.
 // Ex: cmd.Annotations = RestrictTargets("windows") will only show the command if the target is Windows.
@@ -68,4 +75,11 @@ func BindFlagCompletions(cmd *cobra.Command, bind func(comp *carapace.ActionMap)
 	bind(&comps)
 
 	carapace.Gen(cmd).FlagCompletion(comps)
+}
+
+func BindArgCompletions(cmd *cobra.Command, anyAction *carapace.Action, actions ...carapace.Action) {
+	if anyAction != nil {
+		carapace.Gen(cmd).PositionalAnyCompletion(*anyAction)
+	}
+	carapace.Gen(cmd).PositionalCompletion(actions...)
 }

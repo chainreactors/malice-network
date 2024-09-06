@@ -13,12 +13,8 @@ func UseSessionCmd(cmd *cobra.Command, con *console.Console) {
 		console.Log.Errorf("%s", err)
 		return
 	}
-	idArg := cmd.Flags().Arg(0)
-	if idArg != "" {
-		session = con.Sessions[idArg]
-	}
 
-	if session == nil {
+	if session = con.Sessions[cmd.Flags().Arg(0)]; session == nil {
 		console.Log.Errorf(console.ErrNotFoundSession.Error())
 		return
 	}
