@@ -3,8 +3,8 @@ package exec
 import (
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/help"
-	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/client/core/intermediate/builtin"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/handler"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
@@ -15,7 +15,7 @@ import (
 	"github.com/spf13/pflag"
 )
 
-func Commands(con *console.Console) []*cobra.Command {
+func Commands(con *repl.Console) []*cobra.Command {
 	execCmd := &cobra.Command{
 		Use:   consts.ModuleExecution,
 		Short: "Execute commands",
@@ -217,7 +217,7 @@ func Commands(con *console.Console) []*cobra.Command {
 
 	con.RegisterInternalFunc(
 		"bshell",
-		func(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, cmd string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, cmd string) (*clientpb.Task, error) {
 			return Execute(rpc, sess, cmd)
 		},
 		func(ctx *clientpb.TaskContext) (interface{}, error) {
@@ -232,7 +232,7 @@ func Commands(con *console.Console) []*cobra.Command {
 
 	con.RegisterInternalFunc(
 		"bexecute_assembly",
-		func(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, path, args string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path, args string) (*clientpb.Task, error) {
 			return ExecAssembly(rpc, sess, path, args)
 		},
 		func(ctx *clientpb.TaskContext) (interface{}, error) {
@@ -241,7 +241,7 @@ func Commands(con *console.Console) []*cobra.Command {
 
 	con.RegisterInternalFunc(
 		"bshinject",
-		func(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, ppid int, arch, path string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, ppid int, arch, path string) (*clientpb.Task, error) {
 			sac, _ := builtin.NewSacrificeProcessMessage("", int64(ppid), false, "", "")
 			return ExecShellcode(rpc, sess, path, sac)
 		},
@@ -251,7 +251,7 @@ func Commands(con *console.Console) []*cobra.Command {
 
 	con.RegisterInternalFunc(
 		"inline_shellcode",
-		func(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, path string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string) (*clientpb.Task, error) {
 			return InlineShellcode(rpc, sess, path)
 		},
 		func(ctx *clientpb.TaskContext) (interface{}, error) {
@@ -260,7 +260,7 @@ func Commands(con *console.Console) []*cobra.Command {
 
 	con.RegisterInternalFunc(
 		"bdllinject",
-		func(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, ppid int, path string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, ppid int, path string) (*clientpb.Task, error) {
 			sac, _ := builtin.NewSacrificeProcessMessage("", int64(ppid), false, "", "")
 			return ExecDLL(rpc, sess, path, "", sac)
 		},
@@ -270,7 +270,7 @@ func Commands(con *console.Console) []*cobra.Command {
 
 	con.RegisterInternalFunc(
 		"inline_dll",
-		func(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, path, entryPoint string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path, entryPoint string) (*clientpb.Task, error) {
 			return InlineDLL(rpc, sess, path, entryPoint)
 		},
 		func(ctx *clientpb.TaskContext) (interface{}, error) {
@@ -279,7 +279,7 @@ func Commands(con *console.Console) []*cobra.Command {
 
 	con.RegisterInternalFunc(
 		"execute_pe",
-		func(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, path string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 			return ExecPE(rpc, sess, path, sac)
 		},
 		func(ctx *clientpb.TaskContext) (interface{}, error) {
@@ -288,7 +288,7 @@ func Commands(con *console.Console) []*cobra.Command {
 
 	con.RegisterInternalFunc(
 		"inline_pe",
-		func(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, path string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string) (*clientpb.Task, error) {
 			return InlinePE(rpc, sess, path)
 		},
 		func(ctx *clientpb.TaskContext) (interface{}, error) {
@@ -297,7 +297,7 @@ func Commands(con *console.Console) []*cobra.Command {
 
 	con.RegisterInternalFunc(
 		"binline_execute",
-		func(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, path string, args string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string, args string) (*clientpb.Task, error) {
 			return ExecBof(rpc, sess, path, args)
 		},
 		func(ctx *clientpb.TaskContext) (interface{}, error) {
@@ -306,7 +306,7 @@ func Commands(con *console.Console) []*cobra.Command {
 
 	con.RegisterInternalFunc(
 		"bpowershell",
-		func(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, path string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string) (*clientpb.Task, error) {
 			return ExecPowershell(rpc, sess, path)
 		},
 		func(ctx *clientpb.TaskContext) (interface{}, error) {

@@ -2,11 +2,11 @@ package cli
 
 import (
 	"github.com/chainreactors/malice-network/client/command"
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 )
 
 func StartConsole() error {
-	err := console.Start(command.BindClientsCommands, command.BindImplantCommands)
+	err := repl.Start(command.BindClientsCommands, command.BindImplantCommands)
 	if err != nil {
 		return err
 	}

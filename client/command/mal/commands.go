@@ -1,12 +1,12 @@
 package mal
 
 import (
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/spf13/cobra"
 )
 
-func Commands(con *console.Console) []*cobra.Command {
+func Commands(con *repl.Console) []*cobra.Command {
 	cmd := &cobra.Command{
 		Use:   consts.CommandMal,
 		Short: "mal commands",

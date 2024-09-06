@@ -2,7 +2,7 @@ package sys
 
 import (
 	"fmt"
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
@@ -14,14 +14,14 @@ import (
 	"strconv"
 )
 
-func PsCmd(cmd *cobra.Command, con *console.Console) {
+func PsCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
 	if session == nil {
 		return
 	}
 	task, err := Ps(con.Rpc, session)
 	if err != nil {
-		console.Log.Errorf("Ps error: %v", err)
+		repl.Log.Errorf("Ps error: %v", err)
 		return
 	}
 	con.AddCallback(task.TaskId, func(msg proto.Message) {
@@ -54,8 +54,8 @@ func PsCmd(cmd *cobra.Command, con *console.Console) {
 	})
 }
 
-func Ps(rpc clientrpc.MaliceRPCClient, session *clientpb.Session) (*clientpb.Task, error) {
-	task, err := rpc.Ps(console.Context(session), &implantpb.Request{
+func Ps(rpc clientrpc.MaliceRPCClient, session *repl.Session) (*clientpb.Task, error) {
+	task, err := rpc.Ps(repl.Context(session), &implantpb.Request{
 		Name: consts.ModulePs,
 	})
 	if err != nil {

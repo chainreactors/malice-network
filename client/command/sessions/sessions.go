@@ -2,8 +2,7 @@ package sessions
 
 import (
 	"fmt"
-	"github.com/chainreactors/malice-network/client/console"
-	"github.com/chainreactors/malice-network/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/pterm/pterm"
@@ -13,25 +12,25 @@ import (
 	"time"
 )
 
-func SessionsCmd(cmd *cobra.Command, con *console.Console) {
+func SessionsCmd(cmd *cobra.Command, con *repl.Console) {
 	err := con.UpdateSessions(true)
 	if err != nil {
-		console.Log.Errorf("%s", err)
+		repl.Log.Errorf("%s", err)
 		return
 	}
 	isAll, err := cmd.Flags().GetBool("all")
 	if err != nil {
-		console.Log.Errorf("%s", err)
+		repl.Log.Errorf("%s", err)
 		return
 	}
 	if 0 < len(con.Sessions) {
 		PrintSessions(con.Sessions, con, isAll)
 	} else {
-		console.Log.Info("No sessions")
+		repl.Log.Info("No sessions")
 	}
 }
 
-func PrintSessions(sessions map[string]*clientpb.Session, con *console.Console, isAll bool) {
+func PrintSessions(sessions map[string]*repl.Session, con *repl.Console, isAll bool) {
 	//var colorIndex = 1
 	var rowEntries []table.Row
 	var row table.Row
@@ -91,12 +90,12 @@ func PrintSessions(sessions map[string]*clientpb.Session, con *console.Console, 
 	tui.Reset()
 }
 
-func SessionLogin(tableModel *tui.TableModel, con *console.Console) func() {
+func SessionLogin(tableModel *tui.TableModel, con *repl.Console) func() {
 	var sessionId string
 	selectRow := tableModel.GetSelectedRow()
 	if selectRow == nil {
 		return func() {
-			console.Log.Errorf("No row selected")
+			repl.Log.Errorf("No row selected")
 		}
 	}
 	for _, s := range con.Sessions {
@@ -108,12 +107,12 @@ func SessionLogin(tableModel *tui.TableModel, con *console.Console) func() {
 
 	if session == nil {
 		return func() {
-			console.Log.Errorf(console.ErrNotFoundSession.Error())
+			repl.Log.Errorf(repl.ErrNotFoundSession.Error())
 		}
 	}
 
 	return func() {
 		con.SwitchImplant(session)
-		console.Log.Infof("Active session %s (%s)\n", session.Note, session.SessionId)
+		repl.Log.Infof("Active session %s (%s)\n", session.Note, session.SessionId)
 	}
 }

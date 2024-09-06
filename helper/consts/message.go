@@ -2,11 +2,10 @@ package consts
 
 // client module and command
 const (
-	ModuleUpdate          = "update"
-	ModuleExplore         = "explorer"
-	ModuleExecution       = "exec"
-	ModuleExecuteAssembly = "execute_assembly"
-	//ModuleInlineAssembly   = "inline_assembly"
+	ModuleUpdate               = "update"
+	ModuleExplore              = "explorer"
+	ModuleExecution            = "exec"
+	ModuleExecuteAssembly      = "execute_assembly"
 	ModuleExecuteShellcode     = "execute_shellcode"
 	ModuleAliasInlineShellcode = "inline_shellcode"
 	ModuleExecutePE            = "execute_pe"
@@ -77,6 +76,12 @@ const (
 	CommandMalInstall       = "install"
 	CommandMalRemove        = "remove"
 )
+
+var ModuleAliases = map[string]string{
+	ModuleAliasInlineShellcode: ModuleExecuteShellcode,
+	ModuleAliasInlinePE:        ModuleExecutePE,
+	ModuleAliasInlineDll:       ModuleExecuteDll,
+}
 
 // ctrl type
 const (

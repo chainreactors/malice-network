@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/chainreactors/malice-network/client/command/website"
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/tui"
@@ -16,7 +16,7 @@ import (
 	"strconv"
 )
 
-func newWebsiteCmd(cmd *cobra.Command, con *console.Console) {
+func newWebsiteCmd(cmd *cobra.Command, con *repl.Console) {
 	certPath, _ := cmd.Flags().GetString("cert_path")
 	keyPath, _ := cmd.Flags().GetString("key_path")
 
@@ -37,13 +37,13 @@ func newWebsiteCmd(cmd *cobra.Command, con *console.Console) {
 	if certPath != "" && keyPath != "" {
 		cert, err = cryptography.ProcessPEM(certPath)
 		if err != nil {
-			console.Log.Error(err.Error())
+			repl.Log.Error(err.Error())
 			return
 		}
 		key, err = cryptography.ProcessPEM(keyPath)
 		tleEnable = true
 		if err != nil {
-			console.Log.Error(err.Error())
+			repl.Log.Error(err.Error())
 			return
 		}
 	}
@@ -51,7 +51,7 @@ func newWebsiteCmd(cmd *cobra.Command, con *console.Console) {
 
 	fileIfo, err := os.Stat(cPath)
 	if err != nil {
-		console.Log.Errorf("Error adding content %s\n", err)
+		repl.Log.Errorf("Error adding content %s\n", err)
 		return
 	}
 	addWeb := &lispb.WebsiteAddContent{
@@ -82,11 +82,11 @@ func newWebsiteCmd(cmd *cobra.Command, con *console.Console) {
 	})
 
 	if err != nil {
-		console.Log.Error(err.Error())
+		repl.Log.Error(err.Error())
 	}
 }
 
-func startWebsitePipelineCmd(cmd *cobra.Command, con *console.Console) {
+func startWebsitePipelineCmd(cmd *cobra.Command, con *repl.Console) {
 	name := cmd.Flags().Arg(0)
 	listenerID := cmd.Flags().Arg(1)
 	_, err := con.Rpc.StartWebsite(context.Background(), &lispb.CtrlPipeline{
@@ -94,12 +94,12 @@ func startWebsitePipelineCmd(cmd *cobra.Command, con *console.Console) {
 		ListenerId: listenerID,
 	})
 	if err != nil {
-		console.Log.Error(err.Error())
+		repl.Log.Error(err.Error())
 	}
 
 }
 
-func stopWebsitePipelineCmd(cmd *cobra.Command, con *console.Console) {
+func stopWebsitePipelineCmd(cmd *cobra.Command, con *repl.Console) {
 	name := cmd.Flags().Arg(0)
 	listenerID := cmd.Flags().Arg(1)
 	_, err := con.Rpc.StopWebsite(context.Background(), &lispb.CtrlPipeline{
@@ -107,21 +107,21 @@ func stopWebsitePipelineCmd(cmd *cobra.Command, con *console.Console) {
 		ListenerId: listenerID,
 	})
 	if err != nil {
-		console.Log.Error(err.Error())
+		repl.Log.Error(err.Error())
 	}
 }
 
-func listWebsitesCmd(cmd *cobra.Command, con *console.Console) {
+func listWebsitesCmd(cmd *cobra.Command, con *repl.Console) {
 	listenerID := cmd.Flags().Arg(0)
 	if listenerID == "" {
-		console.Log.Error("listener_id is required")
+		repl.Log.Error("listener_id is required")
 		return
 	}
 	websites, err := con.Rpc.ListWebsites(context.Background(), &lispb.ListenerName{
 		Name: listenerID,
 	})
 	if err != nil {
-		console.Log.Error(err.Error())
+		repl.Log.Error(err.Error())
 		return
 	}
 	var rowEntries []table.Row
@@ -133,7 +133,7 @@ func listWebsitesCmd(cmd *cobra.Command, con *console.Console) {
 		{Title: "Enable", Width: 7},
 	}, true)
 	if len(websites.Websites) == 0 {
-		console.Log.Importantf("No websites found")
+		repl.Log.Importantf("No websites found")
 		return
 	}
 	for _, w := range websites.Websites {

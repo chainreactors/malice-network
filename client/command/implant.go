@@ -11,13 +11,13 @@ import (
 	"github.com/chainreactors/malice-network/client/command/mal"
 	"github.com/chainreactors/malice-network/client/command/modules"
 	"github.com/chainreactors/malice-network/client/command/sys"
-	cc "github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/reeflective/console"
 	"github.com/spf13/cobra"
 )
 
-func BindImplantCommands(con *cc.Console) console.Commands {
+func BindImplantCommands(con *repl.Console) console.Commands {
 	implantCommands := func() *cobra.Command {
 		implant := &cobra.Command{
 			Short: "implant commands",
@@ -45,12 +45,12 @@ func BindImplantCommands(con *cc.Console) console.Commands {
 		for _, manifest := range aliasManifests {
 			manifest, err := alias.LoadAlias(manifest, con)
 			if err != nil {
-				cc.Log.Errorf("Failed to load alias: %s", err)
+				repl.Log.Errorf("Failed to load alias: %s", err)
 				continue
 			}
 			err = alias.RegisterAlias(manifest, implant, con)
 			if err != nil {
-				cc.Log.Errorf("Failed to register alias: %s", err)
+				repl.Log.Errorf("Failed to register alias: %s", err)
 				continue
 			}
 		}
@@ -63,7 +63,7 @@ func BindImplantCommands(con *cc.Console) console.Commands {
 			if err != nil {
 				//con doesn't appear to be initialised here?
 				//con.PrintErrorf("Failed to load extension: %s", err)
-				cc.Log.Errorf("Failed to load extension: %s\n", err)
+				repl.Log.Errorf("Failed to load extension: %s\n", err)
 				continue
 			}
 
@@ -78,18 +78,18 @@ func BindImplantCommands(con *cc.Console) console.Commands {
 			if err != nil {
 				//con doesn't appear to be initialised here?
 				//con.PrintErrorf("Failed to load extension: %s", err)
-				cc.Log.Errorf("Failed to load mal: %s\n", err)
+				repl.Log.Errorf("Failed to load mal: %s\n", err)
 				continue
 			}
 
 			if plug, err := con.Plugins.LoadPlugin(manifest, con); err == nil {
 				err := plug.ReverseRegisterLuaFunctions(implant)
 				if err != nil {
-					cc.Log.Errorf("Failed to register mal command: %s\n", err)
+					repl.Log.Errorf("Failed to register mal command: %s\n", err)
 					continue
 				}
 			} else {
-				cc.Log.Errorf("Failed to load mal: %s\n", err)
+				repl.Log.Errorf("Failed to load mal: %s\n", err)
 				continue
 			}
 		}

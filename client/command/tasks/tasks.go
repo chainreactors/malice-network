@@ -3,7 +3,7 @@ package tasks
 import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/command/help"
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/table"
@@ -11,7 +11,7 @@ import (
 	"strconv"
 )
 
-func Command(con *console.Console) []*cobra.Command {
+func Command(con *repl.Console) []*cobra.Command {
 	taskCmd := &cobra.Command{
 		Use:   "tasks",
 		Short: "List tasks",
@@ -26,22 +26,22 @@ func Command(con *console.Console) []*cobra.Command {
 	}
 }
 
-func listTasks(cmd *cobra.Command, con *console.Console) {
+func listTasks(cmd *cobra.Command, con *repl.Console) {
 	err := con.UpdateTasks(con.GetInteractive())
 	if err != nil {
-		console.Log.Errorf("Error updating tasks: %v", err)
+		repl.Log.Errorf("Error updating tasks: %v", err)
 		return
 	}
 	tasks := con.GetInteractive().Tasks.GetTasks()
 	if 0 < len(tasks) {
 		printTasks(tasks, con)
 	} else {
-		console.Log.Info("No sessions")
+		repl.Log.Info("No sessions")
 	}
 
 }
 
-func printTasks(tasks []*clientpb.Task, con *console.Console) {
+func printTasks(tasks []*clientpb.Task, con *repl.Console) {
 	var rowEntries []table.Row
 	var row table.Row
 	tableModel := tui.NewTable([]table.Column{

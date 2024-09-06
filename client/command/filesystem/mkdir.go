@@ -1,7 +1,7 @@
 package filesystem
 
 import (
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
@@ -10,10 +10,10 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func MkdirCmd(cmd *cobra.Command, con *console.Console) {
+func MkdirCmd(cmd *cobra.Command, con *repl.Console) {
 	path := cmd.Flags().Arg(0)
 	if path == "" {
-		console.Log.Errorf("required arguments missing")
+		repl.Log.Errorf("required arguments missing")
 		return
 	}
 	session := con.GetInteractive()
@@ -23,7 +23,7 @@ func MkdirCmd(cmd *cobra.Command, con *console.Console) {
 	sid := con.GetInteractive().SessionId
 	task, err := Mkdir(con.Rpc, session, path)
 	if err != nil {
-		console.Log.Errorf("Mkdir error: %v", err)
+		repl.Log.Errorf("Mkdir error: %v", err)
 		return
 	}
 	con.AddCallback(task.TaskId, func(msg proto.Message) {
@@ -32,8 +32,8 @@ func MkdirCmd(cmd *cobra.Command, con *console.Console) {
 	})
 }
 
-func Mkdir(rpc clientrpc.MaliceRPCClient, session *clientpb.Session, path string) (*clientpb.Task, error) {
-	task, err := rpc.Mkdir(console.Context(session), &implantpb.Request{
+func Mkdir(rpc clientrpc.MaliceRPCClient, session *repl.Session, path string) (*clientpb.Task, error) {
+	task, err := rpc.Mkdir(repl.Context(session), &implantpb.Request{
 		Name:  consts.ModuleMkdir,
 		Input: path,
 	})

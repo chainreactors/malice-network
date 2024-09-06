@@ -3,12 +3,12 @@ package sessions
 import (
 	"context"
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/spf13/cobra"
 )
 
-func groupCmd(cmd *cobra.Command, con *console.Console) {
+func groupCmd(cmd *cobra.Command, con *repl.Console) {
 	sid := cmd.Flags().Arg(0)
 	group := cmd.Flags().Arg(1)
 	_, err := con.Rpc.BasicSessionOP(context.Background(), &clientpb.BasicUpdateSession{
@@ -21,5 +21,5 @@ func groupCmd(cmd *cobra.Command, con *console.Console) {
 		return
 	}
 	con.UpdateSession(sid)
-	console.Log.Infof("update %s group to %s", sid, group)
+	repl.Log.Infof("update %s group to %s", sid, group)
 }

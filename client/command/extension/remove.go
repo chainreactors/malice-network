@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/client/utils"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/tui"
@@ -14,17 +14,17 @@ import (
 )
 
 // ExtensionsRemoveCmd - Remove an extension
-func ExtensionsRemoveCmd(cmd *cobra.Command, con *console.Console) {
+func ExtensionsRemoveCmd(cmd *cobra.Command, con *repl.Console) {
 	name := cmd.Flags().Arg(0)
 	if name == "" {
-		console.Log.Errorf("Extension name is required\n")
+		repl.Log.Errorf("Extension name is required\n")
 		return
 	}
 	confirmModel := tui.NewConfirm(fmt.Sprintf("Remove '%s' extension?", name))
 	newConfirm := tui.NewModel(confirmModel, nil, false, true)
 	err := newConfirm.Run()
 	if err != nil {
-		console.Log.Errorf("Error running confirm model: %s", err)
+		repl.Log.Errorf("Error running confirm model: %s", err)
 		return
 	}
 	if !confirmModel.Confirmed {
@@ -32,15 +32,15 @@ func ExtensionsRemoveCmd(cmd *cobra.Command, con *console.Console) {
 	}
 	err = RemoveExtensionByCommandName(name, con)
 	if err != nil {
-		console.Log.Errorf("Error removing extension: %s\n", err)
+		repl.Log.Errorf("Error removing extension: %s\n", err)
 		return
 	} else {
-		console.Log.Infof("Extension '%s' removed\n", name)
+		repl.Log.Infof("Extension '%s' removed\n", name)
 	}
 }
 
 // RemoveExtensionByCommandName - Remove an extension by command name
-func RemoveExtensionByCommandName(commandName string, con *console.Console) error {
+func RemoveExtensionByCommandName(commandName string, con *repl.Console) error {
 	if commandName == "" {
 		return errors.New("command name is required")
 	}

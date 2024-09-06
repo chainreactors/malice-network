@@ -2,7 +2,7 @@ package command
 
 import (
 	"github.com/chainreactors/grumble"
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/spf13/cobra"
 )
 
@@ -12,7 +12,7 @@ const defaultTimeout = 60
 // name - The name of the flag set (can be empty).
 // cmd  - The command to which the flags should be bound.
 
-type bindFunc func(group string, cmds ...func(con *console.Console) []*cobra.Command)
+type bindFunc func(group string, cmds ...func(con *repl.Console) []*cobra.Command)
 
 // BindFlagCompletions is a convenience function for adding completions to a command's flags.
 // cmd - The command owning the flags to complete.
@@ -24,8 +24,8 @@ type bindFunc func(group string, cmds ...func(con *console.Console) []*cobra.Com
 //	carapace.Gen(cmd).FlagCompletion(comps)
 //}
 
-func makeBind(cmd *cobra.Command, con *console.Console) bindFunc {
-	return func(group string, cmds ...func(con *console.Console) []*cobra.Command) {
+func makeBind(cmd *cobra.Command, con *repl.Console) bindFunc {
+	return func(group string, cmds ...func(con *repl.Console) []*cobra.Command) {
 		found := false
 
 		// Ensure the given command group is available in the menu.
@@ -59,4 +59,4 @@ func makeBind(cmd *cobra.Command, con *console.Console) bindFunc {
 //
 // @group - Name of the group under which the command should be shown. Preferably use a string in the constants package.
 // @ cmds - A list of functions returning a list of root commands to bind. See any package's `commands.go` file and function.
-type commandBinder func(group string, cmds ...func(con *console.Console) []*grumble.Command)
+type commandBinder func(group string, cmds ...func(con *repl.Console) []*grumble.Command)

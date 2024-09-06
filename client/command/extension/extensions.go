@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/rsteube/carapace"
@@ -14,16 +14,16 @@ import (
 )
 
 // ExtensionsCmd - List information about installed extensions
-func ExtensionsCmd(cmd *cobra.Command, con *console.Console) {
+func ExtensionsCmd(cmd *cobra.Command, con *repl.Console) {
 	if 0 < len(getInstalledManifests()) {
 		PrintExtensions(con)
 	} else {
-		console.Log.Infof("No extensions installed, use the 'armory' command to automatically install some\n")
+		repl.Log.Infof("No extensions installed, use the 'armory' command to automatically install some\n")
 	}
 }
 
 // PrintExtensions - Print a list of loaded extensions
-func PrintExtensions(con *console.Console) {
+func PrintExtensions(con *repl.Console) {
 	var rowEntries []table.Row
 
 	tableModel := tui.NewTable([]table.Column{
@@ -59,7 +59,7 @@ func PrintExtensions(con *console.Console) {
 	newTable := tui.NewModel(tableModel, nil, false, false)
 	err := newTable.Run()
 	if err != nil {
-		console.Log.Errorf("Error running table: %s", err)
+		repl.Log.Errorf("Error running table: %s", err)
 		return
 	}
 }
@@ -95,7 +95,7 @@ func getInstalledManifests() map[string]*ExtensionManifest {
 }
 
 // ExtensionsCommandNameCompleter - Completer for installed extensions command names.
-func ExtensionsCommandNameCompleter(con *console.Console) carapace.Action {
+func ExtensionsCommandNameCompleter(con *repl.Console) carapace.Action {
 	return carapace.ActionCallback(func(c carapace.Context) carapace.Action {
 		results := []string{}
 		for _, manifest := range loadedExtensions {

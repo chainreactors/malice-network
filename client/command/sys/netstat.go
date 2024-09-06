@@ -2,7 +2,7 @@ package sys
 
 import (
 	"fmt"
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
@@ -13,10 +13,10 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func NetstatCmd(cmd *cobra.Command, con *console.Console) {
+func NetstatCmd(cmd *cobra.Command, con *repl.Console) {
 	task, err := Netstat(con.Rpc, con.GetInteractive())
 	if err != nil {
-		console.Log.Errorf("Kill error: %v", err)
+		repl.Log.Errorf("Kill error: %v", err)
 		return
 	}
 	con.AddCallback(task.TaskId, func(msg proto.Message) {
@@ -45,8 +45,8 @@ func NetstatCmd(cmd *cobra.Command, con *console.Console) {
 	})
 }
 
-func Netstat(rpc clientrpc.MaliceRPCClient, session *clientpb.Session) (*clientpb.Task, error) {
-	task, err := rpc.Netstat(console.Context(session), &implantpb.Request{
+func Netstat(rpc clientrpc.MaliceRPCClient, session *repl.Session) (*clientpb.Task, error) {
+	task, err := rpc.Netstat(repl.Context(session), &implantpb.Request{
 		Name: consts.ModuleNetstat,
 	})
 	if err != nil {

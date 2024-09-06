@@ -1,4 +1,4 @@
-package console
+package repl
 
 import (
 	"context"
@@ -30,7 +30,7 @@ const (
 	CNAScript = "cna"
 )
 
-type ImplantRpcFunc func(clientrpc.MaliceRPCClient, *clientpb.Session, ...interface{}) (*clientpb.Task, error)
+type ImplantRpcFunc func(clientrpc.MaliceRPCClient, *Session, ...interface{}) (*clientpb.Task, error)
 type implantCallback func(*clientpb.TaskContext) (interface{}, error)
 type serverRpcFunc func(*Console, ...interface{}) (interface{}, error)
 
@@ -44,7 +44,7 @@ func WrapImplantFunc(rpc clientrpc.MaliceRPCClient, fun interface{}, callback im
 
 	return func(args ...interface{}) (interface{}, error) {
 		// 调用适配后的 ImplantRpcFunc
-		sess := args[0].(*clientpb.Session)
+		sess := args[0].(*Session)
 		task, err := wrappedFunc(rpc, sess, args...)
 		if err != nil {
 			return nil, err
@@ -65,7 +65,7 @@ func WrapImplantFunc(rpc clientrpc.MaliceRPCClient, fun interface{}, callback im
 
 // WrapFunc 通过反射将任意符合参数签名的函数转换为 ImplantRpcFunc
 func WrapFunc(funcToWrap interface{}) ImplantRpcFunc {
-	return func(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, params ...interface{}) (*clientpb.Task, error) {
+	return func(rpc clientrpc.MaliceRPCClient, sess *Session, params ...interface{}) (*clientpb.Task, error) {
 		funcValue := reflect.ValueOf(funcToWrap)
 		funcType := funcValue.Type()
 

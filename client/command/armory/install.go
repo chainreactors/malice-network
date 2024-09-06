@@ -7,7 +7,7 @@ import (
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/alias"
 	"github.com/chainreactors/malice-network/client/command/extension"
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/client/utils"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/cryptography/minisign"
@@ -32,11 +32,11 @@ const (
 )
 
 // ArmoryInstallCmd - The armory install command
-func ArmoryInstallCmd(cmd *cobra.Command, con *console.Console) {
+func ArmoryInstallCmd(cmd *cobra.Command, con *repl.Console) {
 	var promptToOverwrite bool
 	name := cmd.Flags().Arg(0)
 	if name == "" {
-		console.Log.Errorf("A package or bundle name is required")
+		repl.Log.Errorf("A package or bundle name is required")
 		return
 	}
 	forceInstallation, _ := cmd.Flags().GetBool("force")
@@ -50,7 +50,7 @@ func ArmoryInstallCmd(cmd *cobra.Command, con *console.Console) {
 	// Find PK for the armory name
 	armoryPK := getArmoryPublicKey(armoryName)
 	if armoryPK == "" {
-		console.Log.Warnf("Armory '%s' not found", armoryName)
+		repl.Log.Warnf("Armory '%s' not found", armoryName)
 		//return
 	}
 
@@ -73,7 +73,7 @@ func ArmoryInstallCmd(cmd *cobra.Command, con *console.Console) {
 		newconfirm := tui.NewModel(confirmModel, nil, false, true)
 		err := newconfirm.Run()
 		if err != nil {
-			console.Log.Errorf("Error running confirm model: %s", err)
+			repl.Log.Errorf("Error running confirm model: %s", err)
 			return
 		}
 		if !confirmModel.Confirmed {
@@ -94,19 +94,19 @@ func ArmoryInstallCmd(cmd *cobra.Command, con *console.Console) {
 			}
 		}
 		if armoryPK == "" {
-			console.Log.Errorf("No package or bundle named '%s' was found", name)
+			repl.Log.Errorf("No package or bundle named '%s' was found", name)
 		} else {
-			console.Log.Errorf("No package or bundle named '%s' was found for armory '%s'", name, armoryName)
+			repl.Log.Errorf("No package or bundle named '%s' was found for armory '%s'", name, armoryName)
 		}
 	} else if errors.Is(err, ErrPackageAlreadyInstalled) {
-		console.Log.Errorf("Package %q is already installed - use the force option to overwrite it\n", name)
+		repl.Log.Errorf("Package %q is already installed - use the force option to overwrite it\n", name)
 	} else {
-		console.Log.Errorf("Could not install package: %s\n", err)
+		repl.Log.Errorf("Could not install package: %s\n", err)
 	}
 }
 
 func installBundle(bundle *ArmoryBundle, armoryPK string, forceInstallation bool, clientConfig ArmoryHTTPConfig,
-	con *console.Console) {
+	con *repl.Console) {
 	installList := []string{}
 	pendingPackages := make(map[string]string)
 
@@ -114,10 +114,10 @@ func installBundle(bundle *ArmoryBundle, armoryPK string, forceInstallation bool
 		packageInstallList, err := buildInstallList(bundlePkgName, armoryPK, forceInstallation, pendingPackages)
 		if err != nil {
 			if errors.Is(err, ErrPackageAlreadyInstalled) {
-				console.Log.Infof("Package %s is already installed. Skipping...\n", bundlePkgName)
+				repl.Log.Infof("Package %s is already installed. Skipping...\n", bundlePkgName)
 				continue
 			} else {
-				console.Log.Errorf("Failed to install package %s: %s\n", bundlePkgName, err)
+				repl.Log.Errorf("Failed to install package %s: %s\n", bundlePkgName, err)
 			}
 		}
 		for _, pkgID := range packageInstallList {
@@ -130,19 +130,19 @@ func installBundle(bundle *ArmoryBundle, armoryPK string, forceInstallation bool
 	for _, packageID := range installList {
 		packageEntry := packageCacheLookupByID(packageID)
 		if packageEntry == nil {
-			console.Log.Errorf("The package cache is out of date. Please run armory refresh and try again.\n")
+			repl.Log.Errorf("The package cache is out of date. Please run armory refresh and try again.\n")
 			return
 		}
 		if packageEntry.Pkg.IsAlias {
 			err := installAliasPackage(packageEntry, false, clientConfig, con)
 			if err != nil {
-				console.Log.Errorf("Failed to install alias '%s': %s\n", packageEntry.Alias.CommandName, err)
+				repl.Log.Errorf("Failed to install alias '%s': %s\n", packageEntry.Alias.CommandName, err)
 				return
 			}
 		} else {
 			err := installExtensionPackage(packageEntry, false, clientConfig, con)
 			if err != nil {
-				console.Log.Errorf("Failed to install extension '%s': %s\n", packageEntry.Extension.Name, err)
+				repl.Log.Errorf("Failed to install extension '%s': %s\n", packageEntry.Extension.Name, err)
 				return
 			}
 		}
@@ -150,7 +150,7 @@ func installBundle(bundle *ArmoryBundle, armoryPK string, forceInstallation bool
 }
 
 func installPackageByName(name, armoryPK string, forceInstallation, promptToOverwrite bool,
-	clientConfig ArmoryHTTPConfig, con *console.Console) error {
+	clientConfig ArmoryHTTPConfig, con *repl.Console) error {
 	pendingPackages := make(map[string]string)
 	packageInstallList, err := buildInstallList(name, armoryPK, forceInstallation, pendingPackages)
 	if err != nil {
@@ -178,7 +178,7 @@ func installPackageByName(name, armoryPK string, forceInstallation, promptToOver
 		return ErrPackageNotFound
 	}
 	if name == "all" {
-		console.Log.Infof("\nOperation complete\n")
+		repl.Log.Infof("\nOperation complete\n")
 	}
 	return nil
 }
@@ -307,7 +307,7 @@ func getPackageIDFromUser(name string, options map[string]string) string {
 	newSelect := tui.NewModel(selectModel, nil, false, false)
 	err := newSelect.Run()
 	if err != nil {
-		console.Log.Errorf("Failed to run select model: %s\n", err)
+		repl.Log.Errorf("Failed to run select model: %s\n", err)
 		return ""
 	}
 	if selectModel.SelectedItem >= 0 && selectModel.SelectedItem < len(selectModel.Choices) {
@@ -427,7 +427,7 @@ func buildInstallList(name, armoryPK string, forceInstallation bool, pendingPack
 }
 
 func installAliasPackage(entry *pkgCacheEntry, promptToOverwrite bool, clientConfig ArmoryHTTPConfig,
-	con *console.Console) error {
+	con *repl.Console) error {
 	if entry == nil {
 		return errors.New("package not found")
 	}
@@ -439,7 +439,7 @@ func installAliasPackage(entry *pkgCacheEntry, promptToOverwrite bool, clientCon
 		return err
 	}
 
-	console.Log.Infof("Downloading alias ...")
+	repl.Log.Infof("Downloading alias ...")
 
 	var sig *minisign.Signature
 	var tarGz []byte
@@ -523,7 +523,7 @@ func resolveExtensionPackageDependencies(pkg *pkgCacheEntry, deps map[string]*pk
 	return nil
 }
 
-func installExtensionPackage(entry *pkgCacheEntry, promptToOverwrite bool, clientConfig ArmoryHTTPConfig, con *console.Console) error {
+func installExtensionPackage(entry *pkgCacheEntry, promptToOverwrite bool, clientConfig ArmoryHTTPConfig, con *repl.Console) error {
 	if entry == nil {
 		return errors.New("package not found")
 	}
@@ -532,7 +532,7 @@ func installExtensionPackage(entry *pkgCacheEntry, promptToOverwrite bool, clien
 		return err
 	}
 
-	console.Log.Infof("Downloading extension ...")
+	repl.Log.Infof("Downloading extension ...")
 
 	var sig *minisign.Signature
 	var tarGz []byte

@@ -2,7 +2,7 @@ package exec
 
 import (
 	"bytes"
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
@@ -15,7 +15,7 @@ import (
 	"strings"
 )
 
-func ExecutePowershellCmd(cmd *cobra.Command, con *console.Console) {
+func ExecutePowershellCmd(cmd *cobra.Command, con *repl.Console) {
 	psList := cmd.Flags().Args()
 	ps := shellquote.Join(psList...)
 	session := con.GetInteractive()
@@ -25,7 +25,7 @@ func ExecutePowershellCmd(cmd *cobra.Command, con *console.Console) {
 	sid := con.GetInteractive().SessionId
 	task, err := ExecPowershell(con.Rpc, session, ps)
 	if err != nil {
-		console.Log.Errorf("Execute Powershell error: %v", err)
+		repl.Log.Errorf("Execute Powershell error: %v", err)
 		return
 	}
 	con.AddCallback(task.TaskId, func(msg proto.Message) {
@@ -35,7 +35,7 @@ func ExecutePowershellCmd(cmd *cobra.Command, con *console.Console) {
 	})
 }
 
-func ExecPowershell(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, ps string) (*clientpb.Task, error) {
+func ExecPowershell(rpc clientrpc.MaliceRPCClient, sess *repl.Session, ps string) (*clientpb.Task, error) {
 	psCmd, _ := shellquote.Split(ps)
 	var psBin bytes.Buffer
 	if psCmd[0] != "" {
@@ -47,7 +47,7 @@ func ExecPowershell(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, ps st
 		psBin.WriteString("\n")
 	}
 	psBin.WriteString(strings.Join(psCmd[1:], " "))
-	task, err := rpc.ExecutePowershell(console.Context(sess), &implantpb.ExecuteBinary{
+	task, err := rpc.ExecutePowershell(repl.Context(sess), &implantpb.ExecuteBinary{
 		Name:   filepath.Base(psCmd[0]),
 		Bin:    psBin.Bytes(),
 		Type:   consts.ModulePowershell,

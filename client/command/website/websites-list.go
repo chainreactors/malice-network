@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/chainreactors/grumble"
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/tui"
@@ -12,12 +12,12 @@ import (
 	"strconv"
 )
 
-func listWebsitesCmd(c *grumble.Context, con *console.Console) {
+func listWebsitesCmd(c *grumble.Context, con *repl.Console) {
 	name := c.Flags.String("name")
 	if name == "" {
 		websites, err := con.Rpc.Websites(context.Background(), &clientpb.Empty{})
 		if err != nil {
-			console.Log.Errorf("Failed to list websites %s", err)
+			repl.Log.Errorf("Failed to list websites %s", err)
 			return
 		}
 		for _, website := range websites.Websites {

@@ -2,8 +2,8 @@ package mal
 
 import (
 	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/client/core/plugin"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/table"
@@ -12,16 +12,16 @@ import (
 	"path/filepath"
 )
 
-func MalLoadCmd(ctx *cobra.Command, con *console.Console) {
+func MalLoadCmd(ctx *cobra.Command, con *repl.Console) {
 	dirPath := ctx.Flags().Arg(0)
 	_, err := LoadMal(con, filepath.Join(assets.GetMalsDir(), dirPath, ManifestFileName))
 	if err != nil {
-		console.Log.Error(err)
+		repl.Log.Error(err)
 		return
 	}
 }
 
-func LoadMalManiFest(con *console.Console, filename string) (*plugin.MalManiFest, error) {
+func LoadMalManiFest(con *repl.Console, filename string) (*plugin.MalManiFest, error) {
 	content, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, err
@@ -34,7 +34,7 @@ func LoadMalManiFest(con *console.Console, filename string) (*plugin.MalManiFest
 	return manifest, nil
 }
 
-func LoadMal(con *console.Console, filename string) (*plugin.MalManiFest, error) {
+func LoadMal(con *repl.Console, filename string) (*plugin.MalManiFest, error) {
 	manifest, err := LoadMalManiFest(con, filename)
 	plug, err := con.Plugins.LoadPlugin(manifest, con)
 	if err != nil {
@@ -49,11 +49,11 @@ func LoadMal(con *console.Console, filename string) (*plugin.MalManiFest, error)
 	for _, cmd := range plug.CMDs {
 		cmds = append(cmds, cmd.Name())
 	}
-	console.Log.Importantf("load mal: %s successfully, register %v", filename, cmds)
+	repl.Log.Importantf("load mal: %s successfully, register %v", filename, cmds)
 	return manifest, nil
 }
 
-func ListMalManiFest(con *console.Console) {
+func ListMalManiFest(con *repl.Console) {
 	rows := []table.Row{}
 	tableModel := tui.NewTable([]table.Column{
 		{Title: "Name", Width: 10},
@@ -75,7 +75,7 @@ func ListMalManiFest(con *console.Console) {
 	newTable := tui.NewModel(tableModel, nil, false, false)
 	err := newTable.Run()
 	if err != nil {
-		console.Log.Errorf("Error running table: %s", err)
+		repl.Log.Errorf("Error running table: %s", err)
 		return
 	}
 }

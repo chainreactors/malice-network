@@ -5,7 +5,7 @@ import (
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/alias"
 	"github.com/chainreactors/malice-network/client/command/extension"
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/client/utils"
 	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/table"
@@ -35,11 +35,11 @@ type UpdateIdentifier struct {
 }
 
 // ArmoryUpdateCmd - Update all installed extensions/aliases
-func ArmoryUpdateCmd(cmd *cobra.Command, con *console.Console) {
+func ArmoryUpdateCmd(cmd *cobra.Command, con *repl.Console) {
 	var selectedUpdates []UpdateIdentifier
 	var err error
 
-	console.Log.Infof("Refreshing package cache ... ")
+	repl.Log.Infof("Refreshing package cache ... ")
 	clientConfig := parseArmoryHTTPConfig(cmd)
 	refresh(clientConfig)
 	tui.Clear()
@@ -51,7 +51,7 @@ func ArmoryUpdateCmd(cmd *cobra.Command, con *console.Console) {
 
 	// Check for updates
 	if armoryName == "" {
-		console.Log.Warnf("Could not find a configured armory named %q - searching all configured armories\n\n",
+		repl.Log.Warnf("Could not find a configured armory named %q - searching all configured armories\n\n",
 			armoryName)
 	}
 
@@ -65,14 +65,14 @@ func ArmoryUpdateCmd(cmd *cobra.Command, con *console.Console) {
 		displayAvailableUpdates(updateKeys, aliasUpdates, extUpdates)
 		selectedUpdates, err = getUpdatesFromUser(updateKeys)
 		if err != nil {
-			console.Log.Errorf(err.Error() + "\n")
+			repl.Log.Errorf(err.Error() + "\n")
 			return
 		}
 		if len(selectedUpdates) == 0 {
 			return
 		}
 	} else {
-		console.Log.Infof("All packages are up to date")
+		repl.Log.Infof("All packages are up to date")
 		return
 	}
 
@@ -85,12 +85,12 @@ func ArmoryUpdateCmd(cmd *cobra.Command, con *console.Console) {
 			}
 			updatePackage, err := getPackageForCommand(update.Name, armoryPK, aliasVersionInfo.NewVersion)
 			if err != nil {
-				console.Log.Errorf("Could not get update package for alias %s: %s\n", update.Name, err)
+				repl.Log.Errorf("Could not get update package for alias %s: %s\n", update.Name, err)
 				continue
 			}
 			err = installAliasPackage(updatePackage, false, clientConfig, con)
 			if err != nil {
-				console.Log.Errorf("Failed to update %s: %s\n", update.Name, err)
+				repl.Log.Errorf("Failed to update %s: %s\n", update.Name, err)
 			}
 		case ExtensionPackage:
 			extVersionInfo, ok := extUpdates[update.Name]
@@ -99,12 +99,12 @@ func ArmoryUpdateCmd(cmd *cobra.Command, con *console.Console) {
 			}
 			updatedPackage, err := getPackageForCommand(update.Name, armoryPK, extVersionInfo.NewVersion)
 			if err != nil {
-				console.Log.Errorf("Could not get update package for extension %s: %s\n", update.Name, err)
+				repl.Log.Errorf("Could not get update package for extension %s: %s\n", update.Name, err)
 				continue
 			}
 			err = installExtensionPackage(updatedPackage, false, clientConfig, con)
 			if err != nil {
-				console.Log.Errorf("Failed to update %s: %s\n", update.Name, err)
+				repl.Log.Errorf("Failed to update %s: %s\n", update.Name, err)
 			}
 		default:
 			continue
@@ -276,7 +276,7 @@ func getUpdatesFromUser(updateKeys []UpdateIdentifier) (chosenUpdates []UpdateId
 	newInput := tui.NewModel(inputModel, nil, false, true)
 	err := newInput.Run()
 	if err != nil {
-		console.Log.Errorf("failed to get user input: %s", err)
+		repl.Log.Errorf("failed to get user input: %s", err)
 		return
 	}
 	updateResponse = strings.ToLower(updateResponse)

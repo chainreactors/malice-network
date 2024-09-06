@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/help"
-	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/client/core/intermediate/builtin"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
@@ -14,7 +14,7 @@ import (
 	"strings"
 )
 
-func Commands(con *console.Console) []*cobra.Command {
+func Commands(con *repl.Console) []*cobra.Command {
 	whoamiCmd := &cobra.Command{
 		Use:   consts.ModuleWhoami,
 		Short: "Print current user",
@@ -134,7 +134,7 @@ func Commands(con *console.Console) []*cobra.Command {
 
 	con.RegisterInternalFunc(
 		"env",
-		func(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session) (*clientpb.Task, error) {
 			return Env(rpc, sess)
 		},
 		func(ctx *clientpb.TaskContext) (interface{}, error) {
@@ -148,7 +148,7 @@ func Commands(con *console.Console) []*cobra.Command {
 
 	con.RegisterInternalFunc(
 		"bsetenv",
-		func(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, envName, value string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, envName, value string) (*clientpb.Task, error) {
 			return SetEnv(rpc, sess, envName, value)
 		},
 		func(ctx *clientpb.TaskContext) (interface{}, error) {
@@ -158,7 +158,7 @@ func Commands(con *console.Console) []*cobra.Command {
 
 	con.RegisterInternalFunc(
 		"unsetenv",
-		func(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, envName string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, envName string) (*clientpb.Task, error) {
 			return UnSetEnv(rpc, sess, envName)
 		},
 		func(ctx *clientpb.TaskContext) (interface{}, error) {
@@ -167,7 +167,7 @@ func Commands(con *console.Console) []*cobra.Command {
 
 	con.RegisterInternalFunc(
 		"info",
-		func(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session) (*clientpb.Task, error) {
 			return Info(rpc, sess)
 		},
 		func(ctx *clientpb.TaskContext) (interface{}, error) {
@@ -176,7 +176,7 @@ func Commands(con *console.Console) []*cobra.Command {
 
 	con.RegisterInternalFunc(
 		"bkill",
-		func(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, pid string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, pid string) (*clientpb.Task, error) {
 			return Kill(rpc, sess, pid)
 		},
 		func(ctx *clientpb.TaskContext) (interface{}, error) {
@@ -185,7 +185,7 @@ func Commands(con *console.Console) []*cobra.Command {
 
 	con.RegisterInternalFunc(
 		"netstat",
-		func(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session) (*clientpb.Task, error) {
 			return Netstat(rpc, sess)
 		},
 		func(ctx *clientpb.TaskContext) (interface{}, error) {
@@ -204,7 +204,7 @@ func Commands(con *console.Console) []*cobra.Command {
 
 	con.RegisterInternalFunc(
 		"bps",
-		func(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session) (*clientpb.Task, error) {
 			return Ps(rpc, sess)
 		},
 		func(ctx *clientpb.TaskContext) (interface{}, error) {
@@ -225,7 +225,7 @@ func Commands(con *console.Console) []*cobra.Command {
 
 	con.RegisterInternalFunc(
 		"whoami",
-		func(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session) (*clientpb.Task, error) {
 			return Whoami(rpc, sess)
 		},
 		func(ctx *clientpb.TaskContext) (interface{}, error) {

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/help"
-	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/client/core/intermediate/builtin"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/handler"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
@@ -15,7 +15,7 @@ import (
 	"strings"
 )
 
-func Commands(con *console.Console) []*cobra.Command {
+func Commands(con *repl.Console) []*cobra.Command {
 	listModuleCmd := &cobra.Command{
 		Use:   consts.ModuleListModule,
 		Short: "List modules",
@@ -41,9 +41,29 @@ func Commands(con *console.Console) []*cobra.Command {
 		carapace.ActionValues().Usage("module name"),
 		carapace.ActionFiles().Usage("path to the module file"))
 
+	refreshModuleCmd := &cobra.Command{
+		Use:   consts.ModuleRefreshModule,
+		Short: "Refresh module",
+		Long:  help.GetHelpFor(consts.ModuleRefreshModule),
+		Run: func(cmd *cobra.Command, args []string) {
+			RefreshModuleCmd(cmd, con)
+			return
+		},
+	}
+
+	clearCmd := &cobra.Command{
+		Use:   consts.ModuleClear,
+		Short: "Clear modules",
+		Long:  help.GetHelpFor(consts.ModuleClear),
+		Run: func(cmd *cobra.Command, args []string) {
+			ClearCmd(cmd, con)
+			return
+		},
+	}
+
 	con.RegisterInternalFunc(
 		"list_module",
-		func(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, fileName string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, fileName string) (*clientpb.Task, error) {
 			return ListModules(rpc, sess)
 		},
 		func(ctx *clientpb.TaskContext) (interface{}, error) {
@@ -61,7 +81,7 @@ func Commands(con *console.Console) []*cobra.Command {
 
 	con.RegisterInternalFunc(
 		"load_module",
-		func(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, bundle string, path string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, bundle string, path string) (*clientpb.Task, error) {
 			return LoadModule(rpc, sess, bundle, path)
 		},
 		func(ctx *clientpb.TaskContext) (interface{}, error) {
@@ -71,5 +91,7 @@ func Commands(con *console.Console) []*cobra.Command {
 	return []*cobra.Command{
 		listModuleCmd,
 		loadModuleCmd,
+		refreshModuleCmd,
+		clearCmd,
 	}
 }

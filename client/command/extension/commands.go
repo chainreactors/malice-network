@@ -3,13 +3,13 @@ package extension
 import (
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/help"
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
 )
 
-func Commands(con *console.Console) []*cobra.Command {
+func Commands(con *repl.Console) []*cobra.Command {
 	extensionCmd := &cobra.Command{
 		Use:   "extension",
 		Short: "Extension commands",

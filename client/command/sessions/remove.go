@@ -3,12 +3,12 @@ package sessions
 import (
 	"context"
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/spf13/cobra"
 )
 
-func removeCmd(cmd *cobra.Command, con *console.Console) {
+func removeCmd(cmd *cobra.Command, con *repl.Console) {
 	id := cmd.Flags().Arg(0)
 	_, err := con.Rpc.BasicSessionOP(context.Background(), &clientpb.BasicUpdateSession{
 		SessionId: id,
@@ -19,5 +19,5 @@ func removeCmd(cmd *cobra.Command, con *console.Console) {
 		return
 	}
 	delete(con.Sessions, id)
-	console.Log.Infof("delete session %s", id)
+	repl.Log.Infof("delete session %s", id)
 }

@@ -11,7 +11,7 @@ import (
 	"github.com/chainreactors/malice-network/client/command/sessions"
 	"github.com/chainreactors/malice-network/client/command/tasks"
 	"github.com/chainreactors/malice-network/client/command/version"
-	cc "github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/reeflective/console"
 	"github.com/spf13/cobra"
@@ -37,7 +37,7 @@ func bindCommonCommands(bind bindFunc) {
 	)
 }
 
-func BindClientsCommands(con *cc.Console) console.Commands {
+func BindClientsCommands(con *repl.Console) console.Commands {
 	clientCommands := func() *cobra.Command {
 		client := &cobra.Command{
 			Short: "client commands",
@@ -55,7 +55,7 @@ func BindClientsCommands(con *cc.Console) console.Commands {
 		if con.ServerStatus == nil {
 			err := login.LoginCmd(&cobra.Command{}, con)
 			if err != nil {
-				cc.Log.Errorf("Failed to login: %s", err)
+				repl.Log.Errorf("Failed to login: %s", err)
 				return nil
 			}
 		}

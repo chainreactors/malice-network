@@ -1,7 +1,7 @@
 package filesystem
 
 import (
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
@@ -10,10 +10,10 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func RmCmd(cmd *cobra.Command, con *console.Console) {
+func RmCmd(cmd *cobra.Command, con *repl.Console) {
 	fileName := cmd.Flags().Arg(0)
 	if fileName == "" {
-		console.Log.Errorf("required arguments missing")
+		repl.Log.Errorf("required arguments missing")
 		return
 	}
 	session := con.GetInteractive()
@@ -23,7 +23,7 @@ func RmCmd(cmd *cobra.Command, con *console.Console) {
 	sid := con.GetInteractive().SessionId
 	task, err := Rm(con.Rpc, session, fileName)
 	if err != nil {
-		console.Log.Errorf("Rm error: %v", err)
+		repl.Log.Errorf("Rm error: %v", err)
 		return
 	}
 	con.AddCallback(task.TaskId, func(msg proto.Message) {
@@ -32,8 +32,8 @@ func RmCmd(cmd *cobra.Command, con *console.Console) {
 	})
 }
 
-func Rm(rpc clientrpc.MaliceRPCClient, session *clientpb.Session, fileName string) (*clientpb.Task, error) {
-	task, err := rpc.Rm(console.Context(session), &implantpb.Request{
+func Rm(rpc clientrpc.MaliceRPCClient, session *repl.Session, fileName string) (*clientpb.Task, error) {
+	task, err := rpc.Rm(repl.Context(session), &implantpb.Request{
 		Name:  consts.ModuleRm,
 		Input: fileName,
 	})

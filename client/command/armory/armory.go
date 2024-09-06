@@ -7,7 +7,7 @@ import (
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/alias"
 	"github.com/chainreactors/malice-network/client/command/extension"
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/cryptography/minisign"
 	"github.com/chainreactors/tui"
@@ -109,30 +109,30 @@ var (
 	defaultArmoryRemoved = false
 )
 
-func ArmoryCmd(cmd *cobra.Command, con *console.Console) {
+func ArmoryCmd(cmd *cobra.Command, con *repl.Console) {
 	armoriesConfig := getCurrentArmoryConfiguration()
 	if len(armoriesConfig) == 1 {
-		console.Log.Infof("Reading armory index ... ")
+		repl.Log.Infof("Reading armory index ... ")
 	} else {
-		console.Log.Infof("Reading %d armory indexes ... ", len(armoriesConfig))
+		repl.Log.Infof("Reading %d armory indexes ... ", len(armoriesConfig))
 	}
 	clientConfig := parseArmoryHTTPConfig(cmd)
 	indexes := fetchIndexes(clientConfig)
 	if len(indexes) != len(armoriesConfig) {
-		console.Log.Infof("errors!\n")
+		repl.Log.Infof("errors!\n")
 		indexCache.Range(func(key, value interface{}) bool {
 			cacheEntry := value.(indexCacheEntry)
 			if cacheEntry.LastErr != nil {
-				console.Log.Errorf("%s - %s\n", cacheEntry.RepoURL, cacheEntry.LastErr)
+				repl.Log.Errorf("%s - %s\n", cacheEntry.RepoURL, cacheEntry.LastErr)
 			}
 			return true
 		})
 	} else {
-		console.Log.Infof("done!\n")
+		repl.Log.Infof("done!\n")
 	}
 	armoriesInitialized = true
 	if len(indexes) == 0 {
-		console.Log.Infof("No indexes found\n")
+		repl.Log.Infof("No indexes found\n")
 		return
 	}
 	var aliases []*alias.AliasManifest
@@ -142,7 +142,7 @@ func ArmoryCmd(cmd *cobra.Command, con *console.Console) {
 
 	for _, index := range indexes {
 		errorCount := 0
-		console.Log.Infof("Fetching package information ... ")
+		repl.Log.Infof("Fetching package information ... ")
 		fetchPackageSignatures(index, clientConfig)
 		pkgCache.Range(func(key, value interface{}) bool {
 			cacheEntry, ok := value.(pkgCacheEntry)
@@ -157,9 +157,9 @@ func ArmoryCmd(cmd *cobra.Command, con *console.Console) {
 			if cacheEntry.LastErr != nil {
 				errorCount++
 				if errorCount == 0 {
-					console.Log.Infof("errors!\n")
+					repl.Log.Infof("errors!\n")
 				}
-				console.Log.Errorf("%s - %s\n", cacheEntry.RepoURL, cacheEntry.LastErr)
+				repl.Log.Errorf("%s - %s\n", cacheEntry.RepoURL, cacheEntry.LastErr)
 			} else {
 				if cacheEntry.Pkg.IsAlias {
 					aliases = append(aliases, cacheEntry.Alias)
@@ -170,20 +170,20 @@ func ArmoryCmd(cmd *cobra.Command, con *console.Console) {
 			return true
 		})
 		if errorCount == 0 {
-			console.Log.Infof("done!\n")
+			repl.Log.Infof("done!\n")
 		}
 		if isBundle {
 			bundles := bundlesInCache()
 			if 0 < len(bundles) {
 				PrintArmoryBundles(bundles, con)
 			} else {
-				console.Log.Infof("No bundles found\n")
+				repl.Log.Infof("No bundles found\n")
 			}
 		} else {
 			if 0 < len(aliases) || 0 < len(exts) {
 				PrintArmoryPackages(aliases, exts, con, clientConfig)
 			} else {
-				console.Log.Infof("No packages found")
+				repl.Log.Infof("No packages found")
 			}
 		}
 
@@ -345,7 +345,7 @@ func bundlesInCache() []*ArmoryBundle {
 }
 
 // AliasExtensionOrBundleCompleter - Completer for alias, extension, and bundle names
-func AliasExtensionOrBundleCompleter(prefix string, args []string, con *console.Console) []string {
+func AliasExtensionOrBundleCompleter(prefix string, args []string, con *repl.Console) []string {
 	results := []string{}
 	aliases, exts := packageManifestsInCache()
 	bundles := bundlesInCache()
@@ -370,7 +370,7 @@ func AliasExtensionOrBundleCompleter(prefix string, args []string, con *console.
 }
 
 // PrintArmoryPackages - Prints the armory packages
-func PrintArmoryPackages(aliases []*alias.AliasManifest, exts []*extension.ExtensionManifest, con *console.Console,
+func PrintArmoryPackages(aliases []*alias.AliasManifest, exts []*extension.ExtensionManifest, con *repl.Console,
 	clientConfig ArmoryHTTPConfig) {
 	var rowEntries []table.Row
 	var row table.Row
@@ -418,7 +418,7 @@ func PrintArmoryPackages(aliases []*alias.AliasManifest, exts []*extension.Exten
 	implantMenu := con.App.Menu(consts.ImplantMenu)
 	for _, pkg := range entries {
 		var commandName string
-		if console.CmdExists(pkg.CommandName, implantMenu.Command) {
+		if repl.CmdExists(pkg.CommandName, implantMenu.Command) {
 			commandName = pterm.FgGreen.Sprint(pkg.CommandName)
 		} else {
 			commandName = pkg.CommandName
@@ -444,26 +444,26 @@ func PrintArmoryPackages(aliases []*alias.AliasManifest, exts []*extension.Exten
 		}
 		if errors.Is(err, ErrPackageNotFound) {
 			if armoryPK == "" {
-				console.Log.Errorf("No package named '%s' was found", selected[1])
+				repl.Log.Errorf("No package named '%s' was found", selected[1])
 			} else {
-				console.Log.Errorf("No package named '%s' was found for armory '%s'", selected[1], selected[0])
+				repl.Log.Errorf("No package named '%s' was found for armory '%s'", selected[1], selected[0])
 			}
 		} else if errors.Is(err, ErrPackageAlreadyInstalled) {
-			console.Log.Errorf("Package %q is already installed - use the force option to overwrite it\n", selected[1])
+			repl.Log.Errorf("Package %q is already installed - use the force option to overwrite it\n", selected[1])
 		} else {
-			console.Log.Errorf("Could not install package: %s\n", err)
+			repl.Log.Errorf("Could not install package: %s\n", err)
 		}
 	})
 	newTable := tui.NewModel(tableModel, tableModel.ConsoleHandler, true, false)
 	err := newTable.Run()
 	if err != nil {
-		console.Log.Errorf("Failed to run table model: %s\n", err)
+		repl.Log.Errorf("Failed to run table model: %s\n", err)
 		return
 	}
 }
 
 // PrintArmoryBundles - Prints the armory bundles
-func PrintArmoryBundles(bundles []*ArmoryBundle, con *console.Console) {
+func PrintArmoryBundles(bundles []*ArmoryBundle, con *repl.Console) {
 	var rowEntries []table.Row
 	var row table.Row
 

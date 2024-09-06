@@ -1,7 +1,7 @@
 package sys
 
 import (
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
@@ -10,7 +10,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func WhoamiCmd(cmd *cobra.Command, con *console.Console) {
+func WhoamiCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
 	if session == nil {
 		return
@@ -18,7 +18,7 @@ func WhoamiCmd(cmd *cobra.Command, con *console.Console) {
 	sid := con.GetInteractive().SessionId
 	task, err := Whoami(con.Rpc, session)
 	if err != nil {
-		console.Log.Errorf("Whoami error: %v", err)
+		repl.Log.Errorf("Whoami error: %v", err)
 		return
 	}
 	con.AddCallback(task.TaskId, func(msg proto.Message) {
@@ -27,8 +27,8 @@ func WhoamiCmd(cmd *cobra.Command, con *console.Console) {
 	})
 }
 
-func Whoami(rpc clientrpc.MaliceRPCClient, session *clientpb.Session) (*clientpb.Task, error) {
-	task, err := rpc.Whoami(console.Context(session), &implantpb.Request{
+func Whoami(rpc clientrpc.MaliceRPCClient, session *repl.Session) (*clientpb.Task, error) {
+	task, err := rpc.Whoami(repl.Context(session), &implantpb.Request{
 		Name: consts.ModuleWhoami,
 	})
 	if err != nil {

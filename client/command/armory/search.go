@@ -3,26 +3,26 @@ package armory
 import (
 	"github.com/chainreactors/malice-network/client/command/alias"
 	"github.com/chainreactors/malice-network/client/command/extension"
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/tui"
 	"github.com/spf13/cobra"
 	"regexp"
 )
 
 // ArmorySearchCmd - Search for packages by name
-func ArmorySearchCmd(cmd *cobra.Command, con *console.Console) {
-	console.Log.Infof("Refreshing package cache ... ")
+func ArmorySearchCmd(cmd *cobra.Command, con *repl.Console) {
+	repl.Log.Infof("Refreshing package cache ... ")
 	clientConfig := parseArmoryHTTPConfig(cmd)
 	refresh(clientConfig)
 	tui.Clear()
 	rawNameExpr := cmd.Flags().Arg(0)
 	if rawNameExpr == "" {
-		console.Log.Errorf("Please specify a search term!\n")
+		repl.Log.Errorf("Please specify a search term!\n")
 		return
 	}
 	nameExpr, err := regexp.Compile(rawNameExpr)
 	if err != nil {
-		console.Log.Errorf("Invalid regular expression: %s\n", err)
+		repl.Log.Errorf("Invalid regular expression: %s\n", err)
 		return
 	}
 
@@ -42,7 +42,7 @@ func ArmorySearchCmd(cmd *cobra.Command, con *console.Console) {
 		}
 	}
 	if len(matchedAliases) == 0 && len(matchedExts) == 0 {
-		console.Log.Infof("No packages found matching '%s'\n", rawNameExpr)
+		repl.Log.Infof("No packages found matching '%s'\n", rawNameExpr)
 		return
 	}
 	PrintArmoryPackages(matchedAliases, matchedExts, con, clientConfig)

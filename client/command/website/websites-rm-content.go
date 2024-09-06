@@ -3,21 +3,21 @@ package website
 import (
 	"context"
 	"github.com/chainreactors/grumble"
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"strings"
 )
 
-func webRmContentCmd(c *grumble.Context, con *console.Console) {
+func webRmContentCmd(c *grumble.Context, con *repl.Console) {
 	name := c.Flags.String("name")
 	webPath := c.Flags.String("web-path")
 	recursive := c.Flags.Bool("recursive")
 	if name == "" {
-		console.Log.Errorf("Must specify a website name via --name, see --help")
+		repl.Log.Errorf("Must specify a website name via --name, see --help")
 		return
 	}
 	if webPath == "" {
-		console.Log.Errorf("Must specify a web path via --path, see --help")
+		repl.Log.Errorf("Must specify a web path via --path, see --help")
 		return
 	}
 
@@ -25,7 +25,7 @@ func webRmContentCmd(c *grumble.Context, con *console.Console) {
 		Name: name,
 	})
 	if err != nil {
-		console.Log.Errorf("%s", err)
+		repl.Log.Errorf("%s", err)
 		return
 	}
 
@@ -44,7 +44,7 @@ func webRmContentCmd(c *grumble.Context, con *console.Console) {
 	}
 	_, err = con.Rpc.WebsiteRemoveContent(context.Background(), rmWebContent)
 	if err != nil {
-		console.Log.Errorf("Failed to remove content %s", err)
+		repl.Log.Errorf("Failed to remove content %s", err)
 		return
 	}
 	// TODO - PrintWebsite(web, con)

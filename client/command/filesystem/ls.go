@@ -2,7 +2,7 @@ package filesystem
 
 import (
 	"fmt"
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
@@ -14,7 +14,7 @@ import (
 	"strconv"
 )
 
-func LsCmd(cmd *cobra.Command, con *console.Console) {
+func LsCmd(cmd *cobra.Command, con *repl.Console) {
 	path := cmd.Flags().Arg(0)
 	if path == "" {
 		path = "./"
@@ -25,7 +25,7 @@ func LsCmd(cmd *cobra.Command, con *console.Console) {
 	}
 	task, err := Ls(con.Rpc, session, path)
 	if err != nil {
-		console.Log.Errorf("Ls error: %v", err)
+		repl.Log.Errorf("Ls error: %v", err)
 		return
 	}
 	con.AddCallback(task.TaskId, func(msg proto.Message) {
@@ -54,8 +54,8 @@ func LsCmd(cmd *cobra.Command, con *console.Console) {
 	})
 }
 
-func Ls(rpc clientrpc.MaliceRPCClient, session *clientpb.Session, path string) (*clientpb.Task, error) {
-	task, err := rpc.Ls(console.Context(session), &implantpb.Request{
+func Ls(rpc clientrpc.MaliceRPCClient, session *repl.Session, path string) (*clientpb.Task, error) {
+	task, err := rpc.Ls(repl.Context(session), &implantpb.Request{
 		Name:  consts.ModuleLs,
 		Input: path,
 	})

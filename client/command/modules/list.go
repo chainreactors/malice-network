@@ -2,7 +2,7 @@ package modules
 
 import (
 	"fmt"
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
@@ -13,14 +13,14 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func ListModulesCmd(cmd *cobra.Command, con *console.Console) {
+func ListModulesCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
 	if session == nil {
 		return
 	}
 	task, err := ListModules(con.Rpc, session)
 	if err != nil {
-		console.Log.Errorf("ListModules error: %v", err)
+		repl.Log.Errorf("ListModules error: %v", err)
 		return
 	}
 	con.AddCallback(task.TaskId, func(msg proto.Message) {
@@ -43,8 +43,8 @@ func ListModulesCmd(cmd *cobra.Command, con *console.Console) {
 	})
 }
 
-func ListModules(rpc clientrpc.MaliceRPCClient, session *clientpb.Session) (*clientpb.Task, error) {
-	listTask, err := rpc.ListModules(console.Context(session), &implantpb.Request{Name: consts.ModuleListModule})
+func ListModules(rpc clientrpc.MaliceRPCClient, session *repl.Session) (*clientpb.Task, error) {
+	listTask, err := rpc.ListModule(repl.Context(session), &implantpb.Request{Name: consts.ModuleListModule})
 	if err != nil {
 		return nil, err
 	}

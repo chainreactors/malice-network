@@ -4,23 +4,23 @@ import (
 	"github.com/spf13/cobra"
 	"os"
 
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 )
 
-func SyncCmd(cmd *cobra.Command, con *console.Console) {
+func SyncCmd(cmd *cobra.Command, con *repl.Console) {
 	tid := cmd.Flags().Arg(0)
 	sid := con.GetInteractive().SessionId
 	syncTask, err := con.Rpc.Sync(con.ActiveTarget.Context(), &clientpb.Sync{
 		FileId: sid + "-" + tid,
 	})
 	if err != nil {
-		console.Log.Errorf("Can't sync file: %s", err)
+		repl.Log.Errorf("Can't sync file: %s", err)
 		return
 	}
 	file, err := os.OpenFile(syncTask.Name, os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		console.Log.Errorf("Can't Open file: %s", err)
+		repl.Log.Errorf("Can't Open file: %s", err)
 		return
 	}
 	defer file.Close()

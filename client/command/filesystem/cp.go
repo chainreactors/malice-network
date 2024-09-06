@@ -1,7 +1,7 @@
 package filesystem
 
 import (
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
@@ -10,11 +10,11 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func CpCmd(cmd *cobra.Command, con *console.Console) {
+func CpCmd(cmd *cobra.Command, con *repl.Console) {
 	originPath := cmd.Flags().Arg(0)
 	targetPath := cmd.Flags().Arg(1)
 	if originPath == "" || targetPath == "" {
-		console.Log.Errorf("required arguments missing")
+		repl.Log.Errorf("required arguments missing")
 		return
 	}
 
@@ -25,7 +25,7 @@ func CpCmd(cmd *cobra.Command, con *console.Console) {
 	sid := con.GetInteractive().SessionId
 	task, err := Cp(con.Rpc, con.GetInteractive(), originPath, targetPath)
 	if err != nil {
-		console.Log.Errorf("Cp error: %v", err)
+		repl.Log.Errorf("Cp error: %v", err)
 		return
 	}
 	con.AddCallback(task.TaskId, func(msg proto.Message) {
@@ -34,8 +34,8 @@ func CpCmd(cmd *cobra.Command, con *console.Console) {
 	})
 }
 
-func Cp(rpc clientrpc.MaliceRPCClient, session *clientpb.Session, originPath, targetPath string) (*clientpb.Task, error) {
-	task, err := rpc.Cp(console.Context(session), &implantpb.Request{
+func Cp(rpc clientrpc.MaliceRPCClient, session *repl.Session, originPath, targetPath string) (*clientpb.Task, error) {
+	task, err := rpc.Cp(repl.Context(session), &implantpb.Request{
 		Name: consts.ModuleCp,
 		Args: []string{originPath, targetPath},
 	})

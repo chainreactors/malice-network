@@ -1,4 +1,4 @@
-package sys
+package modules
 
 import (
 	"github.com/chainreactors/malice-network/client/repl"
@@ -10,28 +10,22 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func InfoCmd(cmd *cobra.Command, con *repl.Console) {
-	session := con.GetInteractive()
-	if session == nil {
-		return
-	}
-	sid := session.SessionId
-	task, err := Info(con.Rpc, session)
+func RefreshModuleCmd(cmd *cobra.Command, con *repl.Console) {
+	task, err := refreshModule(con.Rpc, con.GetInteractive())
 	if err != nil {
-		repl.Log.Errorf("Info error: %v", err)
+		repl.Log.Errorf(err.Error())
 		return
 	}
+
 	con.AddCallback(task.TaskId, func(msg proto.Message) {
-		con.SessionLog(sid).Consolef("Info: %v\n", msg.(*implantpb.Spite).Body)
+		repl.Log.Infof("Module refreshed")
 	})
 }
 
-func Info(rpc clientrpc.MaliceRPCClient, session *repl.Session) (*clientpb.Task, error) {
-	task, err := rpc.Info(repl.Context(session), &implantpb.Request{
-		Name: consts.ModuleInfo,
-	})
+func refreshModule(rpc clientrpc.MaliceRPCClient, session *repl.Session) (*clientpb.Task, error) {
+	task, err := rpc.RefreshModule(repl.Context(session), &implantpb.Request{Name: consts.ModuleRefreshModule})
 	if err != nil {
 		return nil, err
 	}
-	return task, err
+	return task, nil
 }

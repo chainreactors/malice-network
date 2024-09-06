@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/rsteube/carapace"
@@ -15,16 +15,16 @@ import (
 )
 
 // AliasesCmd - The alias command
-func AliasesCmd(cmd *cobra.Command, con *console.Console) {
+func AliasesCmd(cmd *cobra.Command, con *repl.Console) {
 	if 0 < len(loadedAliases) {
 		PrintAliases(con)
 	} else {
-		console.Log.Infof("No aliases installed, use the 'armory' command to automatically install some")
+		repl.Log.Infof("No aliases installed, use the 'armory' command to automatically install some")
 	}
 }
 
 // PrintAliases - Print a list of loaded aliases
-func PrintAliases(con *console.Console) {
+func PrintAliases(con *repl.Console) {
 	var rowEntries []table.Row
 	var row table.Row
 	tableModel := tui.NewTable([]table.Column{

@@ -59,9 +59,13 @@ func CheckExtModule(filename string) string {
 	case "o":
 		return consts.ModuleExecuteBof
 	case "dll":
-		return consts.ModuleExecutePE
+		return consts.ModuleExecuteDll
 	case "exe":
 		return consts.ModuleExecutePE
+	case "ps1", "ps":
+		return consts.ModuleExecuteBof
+	case "bin":
+		return consts.ModuleExecuteShellcode
 	}
 	return ""
 }
