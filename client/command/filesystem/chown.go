@@ -28,7 +28,7 @@ func ChownCmd(cmd *cobra.Command, con *repl.Console) {
 		repl.Log.Errorf("Chown error: %v", err)
 		return
 	}
-	con.AddCallback(task.TaskId, func(msg proto.Message) {
+	con.AddCallback(task, func(msg proto.Message) {
 		_ = msg.(*clientpb.Task)
 		con.SessionLog(sid).Consolef("Chown success\n")
 	})

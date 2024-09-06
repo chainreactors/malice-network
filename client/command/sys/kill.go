@@ -26,7 +26,7 @@ func KillCmd(cmd *cobra.Command, con *repl.Console) {
 		repl.Log.Errorf("Kill error: %v", err)
 		return
 	}
-	con.AddCallback(task.TaskId, func(msg proto.Message) {
+	con.AddCallback(task, func(msg proto.Message) {
 		_ = msg.(*implantpb.Spite)
 		con.SessionLog(sid).Consolef("Killed process\n")
 	})

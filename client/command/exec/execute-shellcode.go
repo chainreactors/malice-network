@@ -35,7 +35,7 @@ func ExecuteShellcodeCmd(cmd *cobra.Command, con *repl.Console) {
 		repl.Log.Errorf("Execute shellcode error: %v", err)
 		return
 	}
-	con.AddCallback(task.TaskId, func(msg proto.Message) {
+	con.AddCallback(task, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite)
 		con.SessionLog(sid).Consolef("Executed shellcode on target: %s\n", resp.GetAssemblyResponse().GetData())
 	})
@@ -74,7 +74,7 @@ func InlineShellcodeCmd(cmd *cobra.Command, con *repl.Console) {
 		repl.Log.Errorf("Execute inline shellcode error: %v", err)
 		return
 	}
-	con.AddCallback(task.TaskId, func(msg proto.Message) {
+	con.AddCallback(task, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite)
 		con.SessionLog(sid).Consolef("Executed inline shellcode on target: %s\n", resp.GetAssemblyResponse().GetData())
 	})

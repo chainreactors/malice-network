@@ -28,7 +28,7 @@ func ExecutePowershellCmd(cmd *cobra.Command, con *repl.Console) {
 		repl.Log.Errorf("Execute Powershell error: %v", err)
 		return
 	}
-	con.AddCallback(task.TaskId, func(msg proto.Message) {
+	con.AddCallback(task, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite)
 		con.SessionLog(sid).Consolef("Executed Powershell on target: %s\n", resp.GetAssemblyResponse().GetData())
 

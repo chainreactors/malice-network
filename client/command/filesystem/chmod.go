@@ -27,7 +27,7 @@ func ChmodCmd(cmd *cobra.Command, con *repl.Console) {
 		repl.Log.Errorf("Chmod error: %v", err)
 		return
 	}
-	con.AddCallback(task.TaskId, func(msg proto.Message) {
+	con.AddCallback(task, func(msg proto.Message) {
 		_ = msg.(*clientpb.Task)
 		con.SessionLog(sid).Consolef("Chmod success\n")
 	})

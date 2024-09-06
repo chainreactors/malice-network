@@ -23,7 +23,7 @@ func DownloadCmd(cmd *cobra.Command, con *repl.Console) {
 		repl.Log.Errorf("Download error: %v", err)
 		return
 	}
-	con.AddCallback(task.TaskId, func(msg proto.Message) {
+	con.AddCallback(task, func(msg proto.Message) {
 		con.SessionLog(sid).Importantf("Downloaded file %s ", path)
 	})
 }

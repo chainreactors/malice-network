@@ -35,7 +35,7 @@ func ExecuteDLLCmd(cmd *cobra.Command, con *repl.Console) {
 		repl.Log.Errorf("Execute DLL error: %v", err)
 		return
 	}
-	con.AddCallback(task.TaskId, func(msg proto.Message) {
+	con.AddCallback(task, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite)
 		con.SessionLog(sid).Consolef("Executed DLL on target: %s\n", resp.GetAssemblyResponse().GetData())
 	})
@@ -77,7 +77,7 @@ func InlineDLLCmd(cmd *cobra.Command, con *repl.Console) {
 		return
 	}
 
-	con.AddCallback(task.TaskId, func(msg proto.Message) {
+	con.AddCallback(task, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite)
 		con.SessionLog(sid).Consolef("Execute Inline DLL error on target: %s\n", resp.GetAssemblyResponse().GetData())
 	})

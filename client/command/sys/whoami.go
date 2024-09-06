@@ -21,7 +21,7 @@ func WhoamiCmd(cmd *cobra.Command, con *repl.Console) {
 		repl.Log.Errorf("Whoami error: %v", err)
 		return
 	}
-	con.AddCallback(task.TaskId, func(msg proto.Message) {
+	con.AddCallback(task, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite).GetResponse()
 		con.SessionLog(sid).Consolef("%v\n", resp.GetOutput())
 	})

@@ -26,7 +26,7 @@ func MkdirCmd(cmd *cobra.Command, con *repl.Console) {
 		repl.Log.Errorf("Mkdir error: %v", err)
 		return
 	}
-	con.AddCallback(task.TaskId, func(msg proto.Message) {
+	con.AddCallback(task, func(msg proto.Message) {
 		_ = msg.(*implantpb.Spite)
 		con.SessionLog(sid).Consolef("Created directory\n")
 	})

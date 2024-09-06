@@ -24,7 +24,7 @@ func UploadCmd(cmd *cobra.Command, con *repl.Console) {
 		return
 	}
 
-	con.AddCallback(task.TaskId, func(msg proto.Message) {
+	con.AddCallback(task, func(msg proto.Message) {
 		con.SessionLog(sid).Consolef("Upload status %v", msg.(*clientpb.Task).GetStatus())
 	})
 }

@@ -133,12 +133,12 @@ func (s *ServerStatus) UpdateTasks(session *Session) error {
 	return nil
 }
 
-func (s *ServerStatus) CancelCallback(taskId uint32) {
-	s.Callbacks.Delete(taskId)
+func (s *ServerStatus) CancelCallback(task *clientpb.Task) {
+	s.Callbacks.Delete(fmt.Sprintf("%s_%d", task.SessionId, task.TaskId))
 }
 
-func (s *ServerStatus) AddCallback(taskId uint32, callback TaskCallback) {
-	s.Callbacks.Store(taskId, callback)
+func (s *ServerStatus) AddCallback(task *clientpb.Task, callback TaskCallback) {
+	s.Callbacks.Store(fmt.Sprintf("%s_%d", task.SessionId, task.TaskId), callback)
 }
 
 func (s *ServerStatus) triggerTaskCallback(event *clientpb.Event) {
@@ -148,7 +148,7 @@ func (s *ServerStatus) triggerTaskCallback(event *clientpb.Event) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	if callback, ok := s.Callbacks.Load(task.TaskId); ok {
+	if callback, ok := s.Callbacks.Load(fmt.Sprintf("%s_%d", task.SessionId, task.TaskId)); ok {
 		spite, err := s.Rpc.GetTaskContent(ctx, event.Task)
 		if err != nil {
 			Log.Errorf(err.Error())
@@ -165,7 +165,7 @@ func (s *ServerStatus) triggerTaskFinish(event *clientpb.Event) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	if callback, ok := s.Callbacks.Load(task.TaskId); ok {
+	if callback, ok := s.Callbacks.Load(fmt.Sprintf("%s_%d", task.SessionId, task.TaskId)); ok {
 		content, err := s.Rpc.GetTaskContent(ctx, &clientpb.Task{
 			TaskId:    task.TaskId,
 			SessionId: task.SessionId,
@@ -184,7 +184,7 @@ func (s *ServerStatus) triggerTaskFinish(event *clientpb.Event) {
 		}
 
 		callback.(TaskCallback)(content.Spite)
-		s.Callbacks.Delete(task.TaskId)
+		s.Callbacks.Delete(fmt.Sprintf("%s_%d", task.SessionId, task.TaskId))
 	}
 }
 
