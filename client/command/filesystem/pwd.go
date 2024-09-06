@@ -1,7 +1,7 @@
 package filesystem
 
 import (
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
@@ -10,7 +10,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func PwdCmd(cmd *cobra.Command, con *console.Console) {
+func PwdCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
 	if session == nil {
 		return
@@ -18,7 +18,7 @@ func PwdCmd(cmd *cobra.Command, con *console.Console) {
 	sid := con.GetInteractive().SessionId
 	pwdTask, err := Pwd(con.Rpc, session)
 	if err != nil {
-		console.Log.Errorf("Pwd error: %v", err)
+		repl.Log.Errorf("Pwd error: %v", err)
 		return
 	}
 	con.AddCallback(pwdTask.TaskId, func(msg proto.Message) {
@@ -27,8 +27,8 @@ func PwdCmd(cmd *cobra.Command, con *console.Console) {
 	})
 }
 
-func Pwd(rpc clientrpc.MaliceRPCClient, session *clientpb.Session) (*clientpb.Task, error) {
-	task, err := rpc.Pwd(console.Context(session), &implantpb.Request{
+func Pwd(rpc clientrpc.MaliceRPCClient, session *repl.Session) (*clientpb.Task, error) {
+	task, err := rpc.Pwd(repl.Context(session), &implantpb.Request{
 		Name: consts.ModulePwd,
 	})
 	if err != nil {

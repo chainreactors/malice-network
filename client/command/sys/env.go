@@ -1,7 +1,7 @@
 package sys
 
 import (
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
@@ -10,7 +10,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func EnvCmd(cmd *cobra.Command, con *console.Console) {
+func EnvCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
 	if session == nil {
 		return
@@ -18,7 +18,7 @@ func EnvCmd(cmd *cobra.Command, con *console.Console) {
 	sid := session.SessionId
 	task, err := Env(con.Rpc, session)
 	if err != nil {
-		console.Log.Errorf("Env error: %v", err)
+		repl.Log.Errorf("Env error: %v", err)
 		return
 	}
 	con.AddCallback(task.TaskId, func(msg proto.Message) {
@@ -29,8 +29,8 @@ func EnvCmd(cmd *cobra.Command, con *console.Console) {
 	})
 }
 
-func Env(rpc clientrpc.MaliceRPCClient, session *clientpb.Session) (*clientpb.Task, error) {
-	task, err := rpc.Env(console.Context(session), &implantpb.Request{
+func Env(rpc clientrpc.MaliceRPCClient, session *repl.Session) (*clientpb.Task, error) {
+	task, err := rpc.Env(repl.Context(session), &implantpb.Request{
 		Name: consts.ModuleEnv,
 	})
 	if err != nil {
@@ -39,11 +39,11 @@ func Env(rpc clientrpc.MaliceRPCClient, session *clientpb.Session) (*clientpb.Ta
 	return task, err
 }
 
-func SetEnvCmd(cmd *cobra.Command, con *console.Console) {
+func SetEnvCmd(cmd *cobra.Command, con *repl.Console) {
 	envName := cmd.Flags().Arg(0)
 	value := cmd.Flags().Arg(1)
 	if envName == "" || value == "" {
-		console.Log.Errorf("required arguments missing")
+		repl.Log.Errorf("required arguments missing")
 		return
 	}
 	session := con.GetInteractive()
@@ -60,8 +60,8 @@ func SetEnvCmd(cmd *cobra.Command, con *console.Console) {
 	})
 }
 
-func SetEnv(rpc clientrpc.MaliceRPCClient, session *clientpb.Session, envName, value string) (*clientpb.Task, error) {
-	task, err := rpc.SetEnv(console.Context(session), &implantpb.Request{
+func SetEnv(rpc clientrpc.MaliceRPCClient, session *repl.Session, envName, value string) (*clientpb.Task, error) {
+	task, err := rpc.SetEnv(repl.Context(session), &implantpb.Request{
 		Name: consts.ModuleSetEnv,
 		Args: []string{envName, value},
 	})
@@ -71,10 +71,10 @@ func SetEnv(rpc clientrpc.MaliceRPCClient, session *clientpb.Session, envName, v
 	return task, err
 }
 
-func UnsetEnvCmd(cmd *cobra.Command, con *console.Console) {
+func UnsetEnvCmd(cmd *cobra.Command, con *repl.Console) {
 	envName := cmd.Flags().Arg(0)
 	if envName == "" {
-		console.Log.Errorf("required arguments missing")
+		repl.Log.Errorf("required arguments missing")
 		return
 	}
 	session := con.GetInteractive()
@@ -84,7 +84,7 @@ func UnsetEnvCmd(cmd *cobra.Command, con *console.Console) {
 	sid := session.SessionId
 	task, err := UnSetEnv(con.Rpc, session, envName)
 	if err != nil {
-		console.Log.Errorf("UnsetEnv error: %v", err)
+		repl.Log.Errorf("UnsetEnv error: %v", err)
 		return
 	}
 	con.AddCallback(task.TaskId, func(msg proto.Message) {
@@ -92,8 +92,8 @@ func UnsetEnvCmd(cmd *cobra.Command, con *console.Console) {
 	})
 }
 
-func UnSetEnv(rpc clientrpc.MaliceRPCClient, session *clientpb.Session, envName string) (*clientpb.Task, error) {
-	task, err := rpc.UnsetEnv(console.Context(session), &implantpb.Request{
+func UnSetEnv(rpc clientrpc.MaliceRPCClient, session *repl.Session, envName string) (*clientpb.Task, error) {
+	task, err := rpc.UnsetEnv(repl.Context(session), &implantpb.Request{
 		Name:  consts.ModuleUnsetEnv,
 		Input: envName,
 	})

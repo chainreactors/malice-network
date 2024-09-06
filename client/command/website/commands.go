@@ -3,7 +3,7 @@ package website
 import (
 	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 )
 
@@ -12,7 +12,7 @@ const (
 	defaultMimeType = "application/octet-stream"
 )
 
-func Commands(con *console.Console) []*grumble.Command {
+func Commands(con *repl.Console) []*grumble.Command {
 	webCmd := &grumble.Command{
 		Name: "website",
 		Help: "website manager",

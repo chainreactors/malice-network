@@ -1,7 +1,7 @@
 package filesystem
 
 import (
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
@@ -10,11 +10,11 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func MvCmd(cmd *cobra.Command, con *console.Console) {
+func MvCmd(cmd *cobra.Command, con *repl.Console) {
 	sourcePath := cmd.Flags().Arg(0)
 	targetPath := cmd.Flags().Arg(1)
 	if sourcePath == "" || targetPath == "" {
-		console.Log.Errorf("required arguments missing")
+		repl.Log.Errorf("required arguments missing")
 		return
 	}
 
@@ -25,7 +25,7 @@ func MvCmd(cmd *cobra.Command, con *console.Console) {
 	sid := con.GetInteractive().SessionId
 	task, err := Mv(con.Rpc, session, sourcePath, targetPath)
 	if err != nil {
-		console.Log.Errorf("Mv error: %v", err)
+		repl.Log.Errorf("Mv error: %v", err)
 		return
 	}
 	con.AddCallback(task.TaskId, func(msg proto.Message) {
@@ -34,8 +34,8 @@ func MvCmd(cmd *cobra.Command, con *console.Console) {
 	})
 }
 
-func Mv(rpc clientrpc.MaliceRPCClient, session *clientpb.Session, sourcePath string, targetPath string) (*clientpb.Task, error) {
-	task, err := rpc.Mv(console.Context(session), &implantpb.Request{
+func Mv(rpc clientrpc.MaliceRPCClient, session *repl.Session, sourcePath string, targetPath string) (*clientpb.Task, error) {
+	task, err := rpc.Mv(repl.Context(session), &implantpb.Request{
 		Name: consts.ModuleMv,
 		Args: []string{sourcePath, targetPath},
 	})

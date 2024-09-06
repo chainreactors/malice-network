@@ -7,8 +7,8 @@ import (
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/help"
-	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/client/core/intermediate/builtin"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/client/utils"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
@@ -106,23 +106,23 @@ func (a *AliasManifest) getFileForTarget(cmdName string, targetOS string, target
 }
 
 // AliasesLoadCmd - Locally load a alias into the Sliver shell.
-func AliasesLoadCmd(cmd *cobra.Command, con *console.Console) {
+func AliasesLoadCmd(cmd *cobra.Command, con *repl.Console) {
 	dirPath := cmd.Flags().Arg(0)
 	alias, err := LoadAlias(dirPath, con)
 	if err != nil {
-		console.Log.Errorf("Failed to load alias: %s\n", err)
+		repl.Log.Errorf("Failed to load alias: %s\n", err)
 	} else {
-		console.Log.Infof("%s alias has been loaded\n", alias.Name)
+		repl.Log.Infof("%s alias has been loaded\n", alias.Name)
 	}
 	err = RegisterAlias(alias, con.App.Menu(consts.ImplantMenu).Command, con)
 	if err != nil {
-		console.Log.Errorf(err.Error())
+		repl.Log.Errorf(err.Error())
 		return
 	}
 }
 
 // LoadAlias - Load an alias into the Malice-Network shell from a given directory
-func LoadAlias(manifestPath string, con *console.Console) (*AliasManifest, error) {
+func LoadAlias(manifestPath string, con *repl.Console) (*AliasManifest, error) {
 	// retrieve alias manifest
 	var err error
 	if !strings.HasPrefix(manifestPath, assets.GetAliasesDir()) {
@@ -154,7 +154,7 @@ func LoadAlias(manifestPath string, con *console.Console) (*AliasManifest, error
 	return aliasManifest, nil
 }
 
-func RegisterAlias(aliasManifest *AliasManifest, cmd *cobra.Command, con *console.Console) error {
+func RegisterAlias(aliasManifest *AliasManifest, cmd *cobra.Command, con *repl.Console) error {
 	helpMsg := fmt.Sprintf("[%s] %s", aliasManifest.Name, aliasManifest.Help)
 	longHelpMsg := help.FormatHelpTmpl(aliasManifest.LongHelp)
 	longHelpMsg += "\n\n⚠️  If you're having issues passing arguments to the alias please read:\n"
@@ -193,7 +193,7 @@ func RegisterAlias(aliasManifest *AliasManifest, cmd *cobra.Command, con *consol
 	cmd.AddCommand(addAliasCmd)
 	err := con.RegisterInternalFunc(
 		aliasManifest.CommandName,
-		func(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, args string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, args string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 			return ExecuteAlias(rpc, sess, aliasManifest.CommandName, args, sac)
 		},
 		func(ctx *clientpb.TaskContext) (interface{}, error) {
@@ -241,7 +241,7 @@ func ParseAliasManifest(data []byte) (*AliasManifest, error) {
 	return alias, nil
 }
 
-func runAliasCommand(cmd *cobra.Command, con *console.Console) {
+func runAliasCommand(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
 	if session == nil {
 		return
@@ -249,7 +249,7 @@ func runAliasCommand(cmd *cobra.Command, con *console.Console) {
 	sid := session.SessionId
 	loadedAlias, ok := loadedAliases[cmd.Name()]
 	if !ok {
-		console.Log.Errorf("No alias found for `%s` command\n", cmd.Name())
+		repl.Log.Errorf("No alias found for `%s` command\n", cmd.Name())
 		return
 	}
 	aliasManifest := loadedAlias.Manifest
@@ -272,7 +272,7 @@ func runAliasCommand(cmd *cobra.Command, con *console.Console) {
 		if processName == "" {
 			processName, err = aliasManifest.getDefaultProcess(con.GetInteractive().Os.Name)
 			if err != nil {
-				console.Log.Errorf("%s\n", err)
+				repl.Log.Errorf("%s\n", err)
 				return
 			}
 		}
@@ -293,7 +293,7 @@ func runAliasCommand(cmd *cobra.Command, con *console.Console) {
 	})
 }
 
-func ExecuteAlias(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, aliasName string, args string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
+func ExecuteAlias(rpc clientrpc.MaliceRPCClient, sess *repl.Session, aliasName string, args string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 	loadedAlias, ok := loadedAliases[aliasName]
 	if !ok {
 		return nil, fmt.Errorf("No alias found for `%s` command\n", aliasName)
@@ -314,14 +314,14 @@ func ExecuteAlias(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, aliasNa
 		if err != nil {
 			return nil, err
 		}
-		task, err = rpc.ExecuteAssembly(console.Context(sess), &implantpb.ExecuteBinary{
+		task, err = rpc.ExecuteAssembly(repl.Context(sess), &implantpb.ExecuteBinary{
 			Name:   loadedAlias.Command.Name(),
 			Bin:    binData,
 			Type:   consts.ModuleExecuteAssembly,
 			Params: params,
 		})
 	} else {
-		task, err = rpc.ExecuteDLL(console.Context(sess), &implantpb.ExecuteBinary{
+		task, err = rpc.ExecuteDLL(repl.Context(sess), &implantpb.ExecuteBinary{
 			Name:       loadedAlias.Command.Name(),
 			Bin:        binData,
 			EntryPoint: aliasManifest.Entrypoint,

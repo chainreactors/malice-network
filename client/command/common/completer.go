@@ -2,7 +2,7 @@ package common
 
 import (
 	"fmt"
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/rsteube/carapace"
 	"io/ioutil"
 	"os"
@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-func LocalPathCompleter(prefix string, args []string, con *console.Console) []string {
+func LocalPathCompleter(prefix string, args []string, con *repl.Console) []string {
 	var parent string
 	var partial string
 	//var sep string
@@ -50,7 +50,7 @@ func LocalPathCompleter(prefix string, args []string, con *console.Console) []st
 	return results
 }
 
-func SessionIDCompleter(con *console.Console) carapace.Action {
+func SessionIDCompleter(con *repl.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
 

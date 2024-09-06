@@ -3,7 +3,7 @@ package listener
 import (
 	"context"
 	"fmt"
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/tui"
@@ -13,17 +13,17 @@ import (
 	"strconv"
 )
 
-func listTcpCmd(cmd *cobra.Command, con *console.Console) {
+func listTcpCmd(cmd *cobra.Command, con *repl.Console) {
 	listenerID := cmd.Flags().Arg(0)
 	if listenerID == "" {
-		console.Log.Error("listener_id is required")
+		repl.Log.Error("listener_id is required")
 		return
 	}
 	Pipelines, err := con.Rpc.ListTcpPipelines(context.Background(), &lispb.ListenerName{
 		Name: listenerID,
 	})
 	if err != nil {
-		console.Log.Error(err.Error())
+		repl.Log.Error(err.Error())
 		return
 	}
 	var rowEntries []table.Row
@@ -48,7 +48,7 @@ func listTcpCmd(cmd *cobra.Command, con *console.Console) {
 	fmt.Printf(tableModel.View())
 }
 
-func newTcpPipelineCmd(cmd *cobra.Command, con *console.Console) {
+func newTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) {
 	certPath, _ := cmd.Flags().GetString("cert_path")
 	keyPath, _ := cmd.Flags().GetString("key_path")
 	name := cmd.Flags().Arg(0)
@@ -65,13 +65,13 @@ func newTcpPipelineCmd(cmd *cobra.Command, con *console.Console) {
 	if certPath != "" && keyPath != "" {
 		cert, err = cryptography.ProcessPEM(certPath)
 		if err != nil {
-			console.Log.Error(err.Error())
+			repl.Log.Error(err.Error())
 			return
 		}
 		key, err = cryptography.ProcessPEM(keyPath)
 		tlsEnable = true
 		if err != nil {
-			console.Log.Error(err.Error())
+			repl.Log.Error(err.Error())
 			return
 		}
 	}
@@ -92,11 +92,11 @@ func newTcpPipelineCmd(cmd *cobra.Command, con *console.Console) {
 		},
 	})
 	if err != nil {
-		console.Log.Error(err.Error())
+		repl.Log.Error(err.Error())
 	}
 }
 
-func startTcpPipelineCmd(cmd *cobra.Command, con *console.Console) {
+func startTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) {
 	name := cmd.Flags().Arg(0)
 	listenerID := cmd.Flags().Arg(1)
 	_, err := con.Rpc.StartTcpPipeline(context.Background(), &lispb.CtrlPipeline{
@@ -105,11 +105,11 @@ func startTcpPipelineCmd(cmd *cobra.Command, con *console.Console) {
 	})
 
 	if err != nil {
-		console.Log.Error(err.Error())
+		repl.Log.Error(err.Error())
 	}
 }
 
-func stopTcpPipelineCmd(cmd *cobra.Command, con *console.Console) {
+func stopTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) {
 	name := cmd.Flags().Arg(0)
 	listenerID := cmd.Flags().Arg(1)
 	_, err := con.Rpc.StopTcpPipeline(context.Background(), &lispb.CtrlPipeline{
@@ -117,6 +117,6 @@ func stopTcpPipelineCmd(cmd *cobra.Command, con *console.Console) {
 		ListenerId: listenerID,
 	})
 	if err != nil {
-		console.Log.Error(err.Error())
+		repl.Log.Error(err.Error())
 	}
 }

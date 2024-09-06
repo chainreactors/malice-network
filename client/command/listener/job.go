@@ -3,7 +3,7 @@ package listener
 import (
 	"context"
 	"fmt"
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/table"
@@ -11,21 +11,21 @@ import (
 	"strconv"
 )
 
-func listJobsCmd(cmd *cobra.Command, con *console.Console) {
+func listJobsCmd(cmd *cobra.Command, con *repl.Console) {
 	listenerID := cmd.Flags().Arg(0)
 	if listenerID == "" {
-		console.Log.Error("listener_id is required")
+		repl.Log.Error("listener_id is required")
 		return
 	}
 	Pipelines, err := con.Rpc.ListJobs(context.Background(), &lispb.ListenerName{
 		Name: listenerID,
 	})
 	if err != nil {
-		console.Log.Error(err.Error())
+		repl.Log.Error(err.Error())
 		return
 	}
 	if len(Pipelines.GetPipelines()) == 0 {
-		console.Log.Importantf("No jobs found")
+		repl.Log.Importantf("No jobs found")
 		return
 	}
 	var rowEntries []table.Row

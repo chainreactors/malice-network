@@ -2,8 +2,8 @@ package exec
 
 import (
 	"errors"
-	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/client/core/intermediate/builtin"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/helper"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
@@ -16,7 +16,7 @@ import (
 	"path/filepath"
 )
 
-func ExecuteDLLCmd(cmd *cobra.Command, con *console.Console) {
+func ExecuteDLLCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
 	if session == nil {
 		return
@@ -32,7 +32,7 @@ func ExecuteDLLCmd(cmd *cobra.Command, con *console.Console) {
 	sac, _ := builtin.NewSacrificeProcessMessage(processName, int64(ppid), isBlockDll, argue, shellquote.Join(params...))
 	task, err := ExecDLL(con.Rpc, session, path, entrypoint, sac)
 	if err != nil {
-		console.Log.Errorf("Execute DLL error: %v", err)
+		repl.Log.Errorf("Execute DLL error: %v", err)
 		return
 	}
 	con.AddCallback(task.TaskId, func(msg proto.Message) {
@@ -41,7 +41,7 @@ func ExecuteDLLCmd(cmd *cobra.Command, con *console.Console) {
 	})
 }
 
-func ExecDLL(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, pePath, entrypoint string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
+func ExecDLL(rpc clientrpc.MaliceRPCClient, sess *repl.Session, pePath, entrypoint string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 	dllBin, err := os.ReadFile(pePath)
 	if err != nil {
 		return nil, err
@@ -49,7 +49,7 @@ func ExecDLL(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, pePath, entr
 	if helper.CheckPEType(dllBin) != consts.DLLFile {
 		return nil, errors.New("the file is not a DLL file")
 	}
-	task, err := rpc.ExecutePE(console.Context(sess), &implantpb.ExecuteBinary{
+	task, err := rpc.ExecutePE(repl.Context(sess), &implantpb.ExecuteBinary{
 		Name:       filepath.Base(pePath),
 		Bin:        dllBin,
 		Type:       consts.ModuleExecutePE,
@@ -63,7 +63,7 @@ func ExecDLL(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, pePath, entr
 	return task, err
 }
 
-func InlineDLLCmd(cmd *cobra.Command, con *console.Console) {
+func InlineDLLCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
 	if session == nil {
 		return
@@ -73,7 +73,7 @@ func InlineDLLCmd(cmd *cobra.Command, con *console.Console) {
 	entryPoint, _ := cmd.Flags().GetString("entrypoint")
 	task, err := InlineDLL(con.Rpc, session, pePath, entryPoint)
 	if err != nil {
-		console.Log.Errorf("Execute Inline DLL error: %s", err)
+		repl.Log.Errorf("Execute Inline DLL error: %s", err)
 		return
 	}
 
@@ -83,7 +83,7 @@ func InlineDLLCmd(cmd *cobra.Command, con *console.Console) {
 	})
 }
 
-func InlineDLL(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, path, entryPoint string) (*clientpb.Task, error) {
+func InlineDLL(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path, entryPoint string) (*clientpb.Task, error) {
 	dllBin, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -91,7 +91,7 @@ func InlineDLL(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, path, entr
 	if helper.CheckPEType(dllBin) != consts.DLLFile {
 		return nil, errors.New("the file is not a DLL file")
 	}
-	task, err := rpc.ExecutePE(console.Context(sess), &implantpb.ExecuteBinary{
+	task, err := rpc.ExecutePE(repl.Context(sess), &implantpb.ExecuteBinary{
 		Name:       filepath.Base(path),
 		Bin:        dllBin,
 		Type:       consts.ModuleExecutePE,

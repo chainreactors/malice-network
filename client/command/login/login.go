@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/help"
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/mtls"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/tui"
@@ -13,7 +13,7 @@ import (
 	"path/filepath"
 )
 
-func Command(con *console.Console) []*cobra.Command {
+func Command(con *repl.Console) []*cobra.Command {
 	loginCmd := &cobra.Command{
 		Use:   "login",
 		Short: "Login to server",
@@ -30,7 +30,7 @@ func Command(con *console.Console) []*cobra.Command {
 	}
 }
 
-func LoginCmd(cmd *cobra.Command, con *console.Console) error {
+func LoginCmd(cmd *cobra.Command, con *repl.Console) error {
 	files, err := assets.GetConfigs()
 	if err != nil {
 		con.App.Printf("Error retrieving YAML files: %s", err)
@@ -58,7 +58,7 @@ func LoginCmd(cmd *cobra.Command, con *console.Console) error {
 	return nil
 }
 
-func loginServer(con *console.Console, selectedFile string) error {
+func loginServer(con *repl.Console, selectedFile string) error {
 	configFile := filepath.Join(assets.GetConfigDir(), selectedFile)
 	config, err := mtls.ReadConfig(configFile)
 	if err != nil {

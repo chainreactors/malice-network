@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/client/core/plugin"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/client/utils"
 	"github.com/chainreactors/tui"
 	"github.com/spf13/cobra"
@@ -20,11 +20,11 @@ var (
 )
 
 // ExtensionsInstallCmd - Install an extension
-func MalInstallCmd(cmd *cobra.Command, con *console.Console) {
+func MalInstallCmd(cmd *cobra.Command, con *repl.Console) {
 	localPath := cmd.Flags().Arg(0)
 	_, err := os.Stat(localPath)
 	if os.IsNotExist(err) {
-		console.Log.Errorf("Mal path '%s' does not exist", localPath)
+		repl.Log.Errorf("Mal path '%s' does not exist", localPath)
 		return
 	}
 	InstallFromDir(localPath, true, con, strings.HasSuffix(localPath, ".tar.gz"))
@@ -46,7 +46,7 @@ func validManifest(manifest *plugin.MalManiFest) error {
 	return nil
 }
 
-func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *console.Console, isGz bool) {
+func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *repl.Console, isGz bool) {
 	var manifestData []byte
 	var err error
 
@@ -56,25 +56,25 @@ func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *console.Co
 		manifestData, err = os.ReadFile(filepath.Join(extLocalPath, ManifestFileName))
 	}
 	if err != nil {
-		console.Log.Errorf("Error reading %s: %s", ManifestFileName, err)
+		repl.Log.Errorf("Error reading %s: %s", ManifestFileName, err)
 		return
 	}
 
 	manifest, err := ParseMalManifest(manifestData)
 	if err != nil {
-		console.Log.Errorf("Error parsing %s: %s", ManifestFileName, err)
+		repl.Log.Errorf("Error parsing %s: %s", ManifestFileName, err)
 		return
 	}
 
 	installPath := filepath.Join(assets.GetMalsDir(), filepath.Base(manifest.Name))
 	if _, err := os.Stat(installPath); !os.IsNotExist(err) {
 		if promptToOverwrite {
-			console.Log.Infof("Mal '%s' already exists", manifest.Name)
+			repl.Log.Infof("Mal '%s' already exists", manifest.Name)
 			confirmModel := tui.NewConfirm("Overwrite current install?")
 			newConfirm := tui.NewModel(confirmModel, nil, false, true)
 			err = newConfirm.Run()
 			if err != nil {
-				console.Log.Errorf("Error running confirm model: %s", err)
+				repl.Log.Errorf("Error running confirm model: %s", err)
 				return
 			}
 			if !confirmModel.Confirmed {
@@ -84,15 +84,15 @@ func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *console.Co
 		utils.ForceRemoveAll(installPath)
 	}
 
-	console.Log.Infof("Installing Mal '%s' (%s) ... ", manifest.Name, manifest.Version)
+	repl.Log.Infof("Installing Mal '%s' (%s) ... ", manifest.Name, manifest.Version)
 	err = os.MkdirAll(installPath, 0700)
 	if err != nil {
-		console.Log.Errorf("\nError creating mal directory: %s\n", err)
+		repl.Log.Errorf("\nError creating mal directory: %s\n", err)
 		return
 	}
 	err = os.WriteFile(filepath.Join(installPath, ManifestFileName), manifestData, 0o600)
 	if err != nil {
-		console.Log.Errorf("\nFailed to write %s: %s\n", ManifestFileName, err)
+		repl.Log.Errorf("\nFailed to write %s: %s\n", ManifestFileName, err)
 		utils.ForceRemoveAll(installPath)
 		return
 	}

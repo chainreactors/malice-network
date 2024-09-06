@@ -1,7 +1,7 @@
 package exec
 
 import (
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
@@ -13,7 +13,7 @@ import (
 	"path/filepath"
 )
 
-func ExecuteAssemblyCmd(cmd *cobra.Command, con *console.Console) {
+func ExecuteAssemblyCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
 	if session == nil {
 		return
@@ -24,7 +24,7 @@ func ExecuteAssemblyCmd(cmd *cobra.Command, con *console.Console) {
 	//output, _ := cmd.Flags().GetBool("output")
 	task, err := ExecAssembly(con.Rpc, session, path, sheshellquote.Join(params...))
 	if err != nil {
-		console.Log.Errorf("Execute error: %v", err)
+		repl.Log.Errorf("Execute error: %v", err)
 		return
 	}
 	con.AddCallback(task.TaskId, func(msg proto.Message) {
@@ -33,7 +33,7 @@ func ExecuteAssemblyCmd(cmd *cobra.Command, con *console.Console) {
 	})
 }
 
-func ExecAssembly(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, path, args string) (*clientpb.Task, error) {
+func ExecAssembly(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path, args string) (*clientpb.Task, error) {
 	binData, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -42,7 +42,7 @@ func ExecAssembly(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, path, a
 	if err != nil {
 		return nil, err
 	}
-	task, err := rpc.ExecuteAssembly(console.Context(sess), &implantpb.ExecuteBinary{
+	task, err := rpc.ExecuteAssembly(repl.Context(sess), &implantpb.ExecuteBinary{
 		Name:   filepath.Base(path),
 		Bin:    binData,
 		Params: argsList,

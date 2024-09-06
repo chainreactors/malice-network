@@ -2,7 +2,7 @@ package listener
 
 import (
 	"context"
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/table"
@@ -10,10 +10,10 @@ import (
 	"strconv"
 )
 
-func ListenerCmd(cmd *cobra.Command, con *console.Console) {
+func ListenerCmd(cmd *cobra.Command, con *repl.Console) {
 	listeners, err := con.Rpc.GetListeners(context.Background(), &clientpb.Empty{})
 	if err != nil {
-		console.Log.Errorf("Failed to list listeners: %s", err)
+		repl.Log.Errorf("Failed to list listeners: %s", err)
 		return
 	}
 	printListeners(listeners)
@@ -39,7 +39,7 @@ func printListeners(listeners *clientpb.Listeners) {
 	newTable := tui.NewModel(tableModel, nil, false, false)
 	err := newTable.Run()
 	if err != nil {
-		console.Log.Errorf("Failed to run table: %s", err)
+		repl.Log.Errorf("Failed to run table: %s", err)
 		return
 	}
 }

@@ -1,7 +1,7 @@
 package explorer
 
 import (
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	tea "github.com/charmbracelet/bubbletea"
@@ -10,7 +10,7 @@ import (
 	"os"
 )
 
-func explorerCmd(cmd *cobra.Command, con *console.Console) {
+func explorerCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
 	if session == nil {
 		return
@@ -23,7 +23,7 @@ func explorerCmd(cmd *cobra.Command, con *console.Console) {
 		Input: "./",
 	})
 	if err != nil {
-		console.Log.Errorf("load directory error: %v", err)
+		repl.Log.Errorf("load directory error: %v", err)
 		return
 	}
 
@@ -49,14 +49,14 @@ func explorerCmd(cmd *cobra.Command, con *console.Console) {
 				dirEntries = newEntries
 				err := SetFiles(&explorer.FilePicker, dirEntries)
 				if err != nil {
-					console.Log.Errorf("Error setting files: %v", err)
+					repl.Log.Errorf("Error setting files: %v", err)
 					return
 				}
 				explorer.Files = dirEntries
 				explorer.FilePicker.CurrentDirectory = path
 				explorer.max = max(explorer.max, explorer.FilePicker.Height-1)
 				if _, err := tea.NewProgram(explorer, tea.WithAltScreen()).Run(); err != nil {
-					console.Log.Errorf("Error running explorer: %v", err)
+					repl.Log.Errorf("Error running explorer: %v", err)
 				}
 				//newExplorer := tui.NewModel(explorer, nil, false, false)
 				//err = newExplorer.Run()

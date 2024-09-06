@@ -3,12 +3,12 @@ package version
 import (
 	"context"
 	"github.com/chainreactors/malice-network/client/command/help"
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/spf13/cobra"
 )
 
-func Command(con *console.Console) []*cobra.Command {
+func Command(con *repl.Console) []*cobra.Command {
 	return []*cobra.Command{
 		&cobra.Command{
 			Use:   "version",
@@ -22,15 +22,15 @@ func Command(con *console.Console) []*cobra.Command {
 	}
 }
 
-func VersionCmd(cmd *cobra.Command, con *console.Console) {
+func VersionCmd(cmd *cobra.Command, con *repl.Console) {
 	printVersion(con)
 }
 
-func printVersion(con *console.Console) {
+func printVersion(con *repl.Console) {
 	basic, err := con.Rpc.GetBasic(context.Background(), &clientpb.Empty{})
 	if err != nil {
-		console.Log.Errorf("Error getting version info: %v", err)
+		repl.Log.Errorf("Error getting version info: %v", err)
 		return
 	}
-	console.Log.Importantf("%d.%d.%d on %s %s\n", basic.Major, basic.Minor, basic.Patch, basic.Os, basic.Arch)
+	repl.Log.Importantf("%d.%d.%d on %s %s\n", basic.Major, basic.Minor, basic.Patch, basic.Os, basic.Arch)
 }

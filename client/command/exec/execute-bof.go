@@ -1,7 +1,7 @@
 package exec
 
 import (
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
@@ -13,12 +13,12 @@ import (
 	"path/filepath"
 )
 
-func ExecuteBofCmd(cmd *cobra.Command, con *console.Console) {
+func ExecuteBofCmd(cmd *cobra.Command, con *repl.Console) {
 	path := cmd.Flags().Arg(0)
 	params := cmd.Flags().Args()[1:]
 	task, err := ExecBof(con.Rpc, con.GetInteractive(), path, shellquote.Join(params...))
 	if err != nil {
-		console.Log.Errorf("Execute BOF error: %v", err)
+		repl.Log.Errorf("Execute BOF error: %v", err)
 		return
 	}
 	con.AddCallback(task.TaskId, func(msg proto.Message) {
@@ -27,13 +27,13 @@ func ExecuteBofCmd(cmd *cobra.Command, con *console.Console) {
 	})
 }
 
-func ExecBof(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, bofPath string, paramString string) (*clientpb.Task, error) {
+func ExecBof(rpc clientrpc.MaliceRPCClient, sess *repl.Session, bofPath string, paramString string) (*clientpb.Task, error) {
 	bofBin, err := os.ReadFile(bofPath)
 	if err != nil {
 		return nil, err
 	}
 	param, _ := shellquote.Split(paramString)
-	task, err := rpc.ExecuteBof(console.Context(sess), &implantpb.ExecuteBinary{
+	task, err := rpc.ExecuteBof(repl.Context(sess), &implantpb.ExecuteBinary{
 		Name:   filepath.Base(bofPath),
 		Bin:    bofBin,
 		Type:   consts.ModuleExecuteBof,

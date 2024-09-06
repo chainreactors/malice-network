@@ -1,8 +1,8 @@
 package exec
 
 import (
-	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/client/core/intermediate/builtin"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
@@ -15,7 +15,7 @@ import (
 )
 
 // ExecuteShellcodeCmd - Execute shellcode in-memory
-func ExecuteShellcodeCmd(cmd *cobra.Command, con *console.Console) {
+func ExecuteShellcodeCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
 	if session == nil {
 		return
@@ -32,7 +32,7 @@ func ExecuteShellcodeCmd(cmd *cobra.Command, con *console.Console) {
 	sac, _ := builtin.NewSacrificeProcessMessage(processName, int64(ppid), isBlockDll, argue, shellquote.Join(params...))
 	task, err := ExecShellcode(con.Rpc, session, path, sac)
 	if err != nil {
-		console.Log.Errorf("Execute shellcode error: %v", err)
+		repl.Log.Errorf("Execute shellcode error: %v", err)
 		return
 	}
 	con.AddCallback(task.TaskId, func(msg proto.Message) {
@@ -42,14 +42,14 @@ func ExecuteShellcodeCmd(cmd *cobra.Command, con *console.Console) {
 
 }
 
-func ExecShellcode(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, shellcodePath string,
+func ExecShellcode(rpc clientrpc.MaliceRPCClient, sess *repl.Session, shellcodePath string,
 	sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 	shellcodeBin, err := os.ReadFile(shellcodePath)
 	if err != nil {
 		return nil, err
 	}
 
-	task, err := rpc.ExecuteShellcode(console.Context(sess), &implantpb.ExecuteBinary{
+	task, err := rpc.ExecuteShellcode(repl.Context(sess), &implantpb.ExecuteBinary{
 		Name:      filepath.Base(shellcodePath),
 		Bin:       shellcodeBin,
 		Type:      consts.ModuleExecuteShellcode,
@@ -62,7 +62,7 @@ func ExecShellcode(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, shellc
 	return task, err
 }
 
-func InlineShellcodeCmd(cmd *cobra.Command, con *console.Console) {
+func InlineShellcodeCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
 	if session == nil {
 		return
@@ -71,7 +71,7 @@ func InlineShellcodeCmd(cmd *cobra.Command, con *console.Console) {
 	path := cmd.Flags().Arg(0)
 	task, err := InlineShellcode(con.Rpc, session, path)
 	if err != nil {
-		console.Log.Errorf("Execute inline shellcode error: %v", err)
+		repl.Log.Errorf("Execute inline shellcode error: %v", err)
 		return
 	}
 	con.AddCallback(task.TaskId, func(msg proto.Message) {
@@ -81,12 +81,12 @@ func InlineShellcodeCmd(cmd *cobra.Command, con *console.Console) {
 
 }
 
-func InlineShellcode(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, path string) (*clientpb.Task, error) {
+func InlineShellcode(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string) (*clientpb.Task, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
-	shellcodeTask, err := rpc.ExecuteShellcode(console.Context(sess), &implantpb.ExecuteBinary{
+	shellcodeTask, err := rpc.ExecuteShellcode(repl.Context(sess), &implantpb.ExecuteBinary{
 		Name:   filepath.Base(path),
 		Bin:    data,
 		Type:   consts.ModuleExecuteShellcode,

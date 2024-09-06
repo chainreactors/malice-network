@@ -2,7 +2,7 @@ package explorer
 
 import (
 	"fmt"
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/tui"
@@ -49,7 +49,7 @@ func (e *ExplorerModel) popView() (int, int, int) {
 	return e.selectedStack.Pop(), e.minStack.Pop(), e.maxStack.Pop()
 }
 
-func NewExplorer(files []os.DirEntry, con *console.Console) *ExplorerModel {
+func NewExplorer(files []os.DirEntry, con *repl.Console) *ExplorerModel {
 	fp := &ExplorerModel{
 		FilePicker:    filepicker.New(),
 		Files:         files,
@@ -84,7 +84,7 @@ type ExplorerModel struct {
 	progress   *tui.BarModel
 	isProgress bool
 
-	con *console.Console
+	con *repl.Console
 }
 
 func (e *ExplorerModel) Init() tea.Cmd {
@@ -277,7 +277,7 @@ func sendLsRequest(e *ExplorerModel) error {
 		Input: e.FilePicker.CurrentDirectory,
 	})
 	if err != nil {
-		console.Log.Errorf("load directory error: %v", err)
+		repl.Log.Errorf("load directory error: %v", err)
 		return err
 	}
 	e.con.AddCallback(lsTask.TaskId, func(msg proto.Message) {
@@ -311,7 +311,7 @@ func downloadRequest(e *ExplorerModel) error {
 		Path: path,
 	})
 	if err != nil {
-		console.Log.Errorf("download error: %v", err)
+		repl.Log.Errorf("download error: %v", err)
 		return err
 	}
 	total := downloadTask.Total

@@ -1,4 +1,4 @@
-package console
+package repl
 
 import (
 	"context"
@@ -10,7 +10,6 @@ import (
 	"github.com/chainreactors/malice-network/client/utils"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/mtls"
-	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/tui"
 	"github.com/mattn/go-tty"
 	"github.com/reeflective/console"
@@ -54,7 +53,7 @@ func Start(bindCmds ...BindCmds) error {
 		con.newConfigLogin(os.Args[1])
 	}
 
-	con.ActiveTarget.callback = func(sess *clientpb.Session) {
+	con.ActiveTarget.callback = func(sess *Session) {
 		con.ActiveTarget.activeObserver = NewObserver(sess)
 	}
 
@@ -154,9 +153,9 @@ func (c *Console) GetPrompt() string {
 }
 
 // AddObserver - Observers to notify when the active session changes
-func (c *Console) AddObserver(session *clientpb.Session) string {
+func (c *Console) AddObserver(session *Session) string {
 	Log.Infof("Add observer to %s", session.SessionId)
-	c.Observers[session.SessionId] = NewObserver(session)
+	c.Observers[session.SessionId] = &Observer{session}
 	return session.SessionId
 }
 
@@ -172,15 +171,15 @@ func (c *Console) RefreshActiveSession() {
 
 func (c *Console) SessionLog(sid string) *logs.Logger {
 	if ob, ok := c.Observers[sid]; ok {
-		return ob.log
+		return ob.Log
 	} else if c.ActiveTarget.GetInteractive() != nil {
-		return c.ActiveTarget.activeObserver.log
+		return c.ActiveTarget.activeObserver.Log
 	} else {
 		return MuteLog
 	}
 }
 
-func (c *Console) SwitchImplant(sess *clientpb.Session) {
+func (c *Console) SwitchImplant(sess *Session) {
 	c.ActiveTarget.Set(sess)
 	c.App.SwitchMenu(consts.ImplantMenu)
 
@@ -244,7 +243,7 @@ func exitImplantMenu(c *console.Console) {
 	root.Execute()
 }
 
-func Context(s *clientpb.Session) context.Context {
+func Context(s *Session) context.Context {
 	return metadata.NewOutgoingContext(context.Background(), metadata.Pairs(
 		"session_id", s.SessionId),
 	)

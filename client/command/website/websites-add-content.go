@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/chainreactors/grumble"
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/tui"
 	"io"
@@ -14,29 +14,29 @@ import (
 	"path/filepath"
 )
 
-func websiteAddCmd(c *grumble.Context, con *console.Console) {
+func websiteAddCmd(c *grumble.Context, con *repl.Console) {
 	cPath := c.Args.String("content-path")
 	webPath := c.Flags.String("web-path")
 	name := c.Flags.String("name")
 	contentType := c.Flags.String("content-type")
 	recursive := c.Flags.Bool("recursive")
 	if name == "" {
-		console.Log.Errorf("Must specify a website name via --name, see --help")
+		repl.Log.Errorf("Must specify a website name via --name, see --help")
 		return
 	}
 	if webPath == "" {
-		console.Log.Errorf("Must specify a web path via --path, see --help")
+		repl.Log.Errorf("Must specify a web path via --path, see --help")
 		return
 	}
 	if cPath == "" {
-		console.Log.Errorf("Must specify some --content-path\n")
+		repl.Log.Errorf("Must specify some --content-path\n")
 		return
 	}
 	cPath, _ = filepath.Abs(cPath)
 
 	fileIfo, err := os.Stat(cPath)
 	if err != nil {
-		console.Log.Errorf("Error adding content %s\n", err)
+		repl.Log.Errorf("Error adding content %s\n", err)
 		return
 	}
 	addWeb := &lispb.WebsiteAddContent{
@@ -54,10 +54,10 @@ func websiteAddCmd(c *grumble.Context, con *console.Console) {
 	}
 	_, err = con.Rpc.WebsiteAddContent(context.Background(), addWeb)
 	if err != nil {
-		console.Log.Errorf("%s", err)
+		repl.Log.Errorf("%s", err)
 		return
 	}
-	console.Log.Importantf("Content added to website %s", name)
+	repl.Log.Importantf("Content added to website %s", name)
 	// TODO - PrintWebsite(web, con)
 	return
 }
@@ -137,7 +137,7 @@ func ConfirmAddDirectory() bool {
 	newConfirm := tui.NewModel(confirmModel, nil, false, true)
 	err := newConfirm.Run()
 	if err != nil {
-		console.Log.Errorf("Error running confirm model: %s", err)
+		repl.Log.Errorf("Error running confirm model: %s", err)
 		return false
 	}
 	return confirmModel.Confirmed

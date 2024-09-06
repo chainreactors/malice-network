@@ -1,7 +1,7 @@
 package exec
 
 import (
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
@@ -10,7 +10,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func ExecuteCmd(cmd *cobra.Command, con *console.Console) {
+func ExecuteCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
 	if session == nil {
 		return
@@ -21,7 +21,7 @@ func ExecuteCmd(cmd *cobra.Command, con *console.Console) {
 	cmdStr := shellquote.Join(cmd.Flags().Args()...)
 	task, err := Execute(con.Rpc, session, cmdStr)
 	if err != nil {
-		console.Log.Errorf("Execute error: %v", err)
+		repl.Log.Errorf("Execute error: %v", err)
 		return
 	}
 	con.AddCallback(task.TaskId, func(msg proto.Message) {
@@ -32,12 +32,12 @@ func ExecuteCmd(cmd *cobra.Command, con *console.Console) {
 
 }
 
-func Execute(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, cmd string) (*clientpb.Task, error) {
+func Execute(rpc clientrpc.MaliceRPCClient, sess *repl.Session, cmd string) (*clientpb.Task, error) {
 	cmdStrList, err := shellquote.Split(cmd)
 	if err != nil {
 		return nil, err
 	}
-	task, err := rpc.Execute(console.Context(sess), &implantpb.ExecRequest{
+	task, err := rpc.Execute(repl.Context(sess), &implantpb.ExecRequest{
 		Path:   cmdStrList[0],
 		Args:   cmdStrList[1:],
 		Output: true,

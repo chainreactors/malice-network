@@ -3,12 +3,12 @@ package sessions
 import (
 	"context"
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/spf13/cobra"
 )
 
-func noteCmd(cmd *cobra.Command, con *console.Console) {
+func noteCmd(cmd *cobra.Command, con *repl.Console) {
 	sid := cmd.Flags().Arg(0)
 	name := cmd.Flags().Arg(1)
 
@@ -23,5 +23,5 @@ func noteCmd(cmd *cobra.Command, con *console.Console) {
 		return
 	}
 	con.UpdateSession(sid)
-	console.Log.Infof("update %s note to %s", sid, name)
+	repl.Log.Infof("update %s note to %s", sid, name)
 }

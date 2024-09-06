@@ -1,7 +1,7 @@
 package filesystem
 
 import (
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
@@ -10,11 +10,11 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func ChmodCmd(cmd *cobra.Command, con *console.Console) {
+func ChmodCmd(cmd *cobra.Command, con *repl.Console) {
 	mode := cmd.Flags().Arg(0)
 	path := cmd.Flags().Arg(1)
 	if mode == "" || path == "" {
-		console.Log.Errorf("required arguments missing")
+		repl.Log.Errorf("required arguments missing")
 		return
 	}
 	session := con.GetInteractive()
@@ -24,7 +24,7 @@ func ChmodCmd(cmd *cobra.Command, con *console.Console) {
 	sid := con.GetInteractive().SessionId
 	task, err := Chmod(con.Rpc, con.GetInteractive(), path, mode)
 	if err != nil {
-		console.Log.Errorf("Chmod error: %v", err)
+		repl.Log.Errorf("Chmod error: %v", err)
 		return
 	}
 	con.AddCallback(task.TaskId, func(msg proto.Message) {
@@ -33,8 +33,8 @@ func ChmodCmd(cmd *cobra.Command, con *console.Console) {
 	})
 }
 
-func Chmod(rpc clientrpc.MaliceRPCClient, session *clientpb.Session, path, mode string) (*clientpb.Task, error) {
-	task, err := rpc.Chmod(console.Context(session), &implantpb.Request{
+func Chmod(rpc clientrpc.MaliceRPCClient, session *repl.Session, path, mode string) (*clientpb.Task, error) {
+	task, err := rpc.Chmod(repl.Context(session), &implantpb.Request{
 		Name: consts.ModuleChmod,
 		Args: []string{path, mode},
 	})

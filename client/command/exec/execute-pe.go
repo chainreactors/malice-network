@@ -2,8 +2,8 @@ package exec
 
 import (
 	"errors"
-	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/client/core/intermediate/builtin"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/helper"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
@@ -17,7 +17,7 @@ import (
 )
 
 // ExecutePECmd - Execute PE on sacrifice process
-func ExecutePECmd(cmd *cobra.Command, con *console.Console) {
+func ExecutePECmd(cmd *cobra.Command, con *repl.Console) {
 	path := cmd.Flags().Arg(0)
 	params := cmd.Flags().Args()[1:]
 	ppid, _ := cmd.Flags().GetUint("ppid")
@@ -27,7 +27,7 @@ func ExecutePECmd(cmd *cobra.Command, con *console.Console) {
 	sac, _ := builtin.NewSacrificeProcessMessage(processname, int64(ppid), isBlockDll, argue, shellquote.Join(params...))
 	task, err := ExecPE(con.Rpc, con.GetInteractive(), path, sac)
 	if err != nil {
-		console.Log.Errorf("Execute PE error: %v", err)
+		repl.Log.Errorf("Execute PE error: %v", err)
 		return
 	}
 	con.AddCallback(task.TaskId, func(msg proto.Message) {
@@ -36,7 +36,7 @@ func ExecutePECmd(cmd *cobra.Command, con *console.Console) {
 	})
 }
 
-func ExecPE(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, pePath string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
+func ExecPE(rpc clientrpc.MaliceRPCClient, sess *repl.Session, pePath string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 	peBin, err := os.ReadFile(pePath)
 	if err != nil {
 		return nil, err
@@ -44,7 +44,7 @@ func ExecPE(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, pePath string
 	if helper.CheckPEType(peBin) != consts.EXEFile {
 		return nil, errors.New("the file is not a PE file")
 	}
-	task, err := rpc.ExecutePE(console.Context(sess), &implantpb.ExecuteBinary{
+	task, err := rpc.ExecutePE(repl.Context(sess), &implantpb.ExecuteBinary{
 		Name:      filepath.Base(pePath),
 		Bin:       peBin,
 		Type:      consts.ModuleExecutePE,
@@ -58,7 +58,7 @@ func ExecPE(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, pePath string
 }
 
 // InlinePECmd - Execute PE in current process
-func InlinePECmd(cmd *cobra.Command, con *console.Console) {
+func InlinePECmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
 	if session == nil {
 		return
@@ -67,7 +67,7 @@ func InlinePECmd(cmd *cobra.Command, con *console.Console) {
 	pePath := cmd.Flags().Arg(0)
 	task, err := InlinePE(con.Rpc, session, pePath)
 	if err != nil {
-		console.Log.Errorf("Execute PE error: %v", err)
+		repl.Log.Errorf("Execute PE error: %v", err)
 		return
 	}
 	con.AddCallback(task.TaskId, func(msg proto.Message) {
@@ -78,7 +78,7 @@ func InlinePECmd(cmd *cobra.Command, con *console.Console) {
 	})
 }
 
-func InlinePE(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, path string) (*clientpb.Task, error) {
+func InlinePE(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string) (*clientpb.Task, error) {
 	peBin, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -87,7 +87,7 @@ func InlinePE(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, path string
 		return nil, errors.New("the file is not a PE file")
 
 	}
-	task, err := rpc.ExecutePE(console.Context(sess), &implantpb.ExecuteBinary{
+	task, err := rpc.ExecutePE(repl.Context(sess), &implantpb.ExecuteBinary{
 		Name:   filepath.Base(path),
 		Bin:    peBin,
 		Type:   consts.ModuleExecutePE,

@@ -1,4 +1,4 @@
-package console
+package repl
 
 import (
 	"context"
@@ -22,7 +22,7 @@ func InitServerStatus(conn *grpc.ClientConn) (*ServerStatus, error) {
 	var err error
 	s := &ServerStatus{
 		Rpc:       clientrpc.NewMaliceRPCClient(conn),
-		Sessions:  make(map[string]*clientpb.Session),
+		Sessions:  make(map[string]*Session),
 		Alive:     true,
 		Callbacks: &sync.Map{},
 	}
@@ -63,7 +63,7 @@ type ServerStatus struct {
 	Info      *clientpb.Basic
 	Clients   []*clientpb.Client
 	Listeners []*clientpb.Listener
-	Sessions  map[string]*clientpb.Session
+	Sessions  map[string]*Session
 	sessions  []*clientpb.Session
 	Callbacks *sync.Map
 	Alive     bool
@@ -84,12 +84,12 @@ func (s *ServerStatus) UpdateSessions(all bool) error {
 		return err
 	}
 	s.sessions = sessions.Sessions
-	newSessions := make(map[string]*clientpb.Session)
+	newSessions := make(map[string]*Session)
 
 	for _, session := range sessions.GetSessions() {
-		newSessions[session.SessionId] = session
+		newSessions[session.SessionId] = NewSession(session)
 		if session.Note != "" {
-			newSessions[session.Note] = session
+			newSessions[session.Note] = NewSession(session)
 		}
 	}
 
@@ -103,9 +103,9 @@ func (s *ServerStatus) UpdateSession(sid string) (*clientpb.Session, error) {
 		return nil, err
 	}
 
-	s.Sessions[session.SessionId] = session
+	s.Sessions[session.SessionId] = NewSession(session)
 	if session.Note != "" {
-		s.Sessions[session.Note] = session
+		s.Sessions[session.Note] = NewSession(session)
 	}
 	return nil, nil
 }
@@ -120,11 +120,11 @@ func (s *ServerStatus) AlivedSessions() []*clientpb.Session {
 	return alivedSessions
 }
 
-func (s *ServerStatus) UpdateTasks(session *clientpb.Session) error {
+func (s *ServerStatus) UpdateTasks(session *Session) error {
 	if session == nil {
 		return errors.New("session is nil")
 	}
-	tasks, err := s.Rpc.GetTasks(context.Background(), session)
+	tasks, err := s.Rpc.GetTasks(context.Background(), session.Session)
 	if err != nil {
 		return err
 	}

@@ -1,7 +1,7 @@
 package filesystem
 
 import (
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
@@ -10,10 +10,10 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func CdCmd(cmd *cobra.Command, con *console.Console) {
+func CdCmd(cmd *cobra.Command, con *repl.Console) {
 	path := cmd.Flags().Arg(0)
 	if path == "" {
-		console.Log.Errorf("required arguments missing")
+		repl.Log.Errorf("required arguments missing")
 		return
 	}
 	session := con.GetInteractive()
@@ -23,7 +23,7 @@ func CdCmd(cmd *cobra.Command, con *console.Console) {
 	sid := con.GetInteractive().SessionId
 	cdTask, err := Cd(con.Rpc, con.GetInteractive(), path)
 	if err != nil {
-		console.Log.Errorf("Cd error: %v", err)
+		repl.Log.Errorf("Cd error: %v", err)
 		return
 	}
 	con.AddCallback(cdTask.TaskId, func(msg proto.Message) {
@@ -33,8 +33,8 @@ func CdCmd(cmd *cobra.Command, con *console.Console) {
 
 }
 
-func Cd(rpc clientrpc.MaliceRPCClient, session *clientpb.Session, path string) (*clientpb.Task, error) {
-	task, err := rpc.Cd(console.Context(session), &implantpb.Request{
+func Cd(rpc clientrpc.MaliceRPCClient, session *repl.Session, path string) (*clientpb.Task, error) {
+	task, err := rpc.Cd(repl.Context(session), &implantpb.Request{
 		Name:  consts.ModuleCd,
 		Input: path,
 	})

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/help"
-	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/client/core/intermediate/builtin"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/handler"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
@@ -17,7 +17,7 @@ import (
 	"strings"
 )
 
-func Commands(con *console.Console) []*cobra.Command {
+func Commands(con *repl.Console) []*cobra.Command {
 
 	pwdCmd := &cobra.Command{
 		Use:   consts.ModulePwd,
@@ -197,7 +197,7 @@ func Commands(con *console.Console) []*cobra.Command {
 
 	con.RegisterInternalFunc(
 		"bcd",
-		func(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, path string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string) (*clientpb.Task, error) {
 			return Cd(rpc, sess, path)
 		},
 		func(ctx *clientpb.TaskContext) (interface{}, error) {
@@ -206,7 +206,7 @@ func Commands(con *console.Console) []*cobra.Command {
 
 	con.RegisterInternalFunc(
 		"cat",
-		func(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, fileName string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, fileName string) (*clientpb.Task, error) {
 			return Cat(rpc, sess, fileName)
 		},
 		func(ctx *clientpb.TaskContext) (interface{}, error) {
@@ -220,7 +220,7 @@ func Commands(con *console.Console) []*cobra.Command {
 
 	con.RegisterInternalFunc(
 		"chmod",
-		func(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, path, mode string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path, mode string) (*clientpb.Task, error) {
 			return Chmod(rpc, sess, path, mode)
 		},
 		func(ctx *clientpb.TaskContext) (interface{}, error) {
@@ -229,7 +229,7 @@ func Commands(con *console.Console) []*cobra.Command {
 
 	con.RegisterInternalFunc(
 		"chown",
-		func(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, path, uid string, gid string, recursive bool) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path, uid string, gid string, recursive bool) (*clientpb.Task, error) {
 			return Chown(rpc, sess, path, uid, gid, recursive)
 		},
 		func(ctx *clientpb.TaskContext) (interface{}, error) {
@@ -238,7 +238,7 @@ func Commands(con *console.Console) []*cobra.Command {
 
 	con.RegisterInternalFunc(
 		"bcp",
-		func(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, src, dst string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, src, dst string) (*clientpb.Task, error) {
 			return Cp(rpc, sess, src, dst)
 		},
 		func(ctx *clientpb.TaskContext) (interface{}, error) {
@@ -247,7 +247,7 @@ func Commands(con *console.Console) []*cobra.Command {
 
 	con.RegisterInternalFunc(
 		"bls",
-		func(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, path string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string) (*clientpb.Task, error) {
 			return Ls(rpc, sess, path)
 		},
 		func(ctx *clientpb.TaskContext) (interface{}, error) {
@@ -272,7 +272,7 @@ func Commands(con *console.Console) []*cobra.Command {
 
 	con.RegisterInternalFunc(
 		"bmkdir",
-		func(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, path string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string) (*clientpb.Task, error) {
 			return Mkdir(rpc, sess, path)
 		},
 		func(ctx *clientpb.TaskContext) (interface{}, error) {
@@ -281,7 +281,7 @@ func Commands(con *console.Console) []*cobra.Command {
 
 	con.RegisterInternalFunc(
 		"bmv",
-		func(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, src, dst string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, src, dst string) (*clientpb.Task, error) {
 			return Mv(rpc, sess, src, dst)
 		},
 		func(ctx *clientpb.TaskContext) (interface{}, error) {
@@ -290,7 +290,7 @@ func Commands(con *console.Console) []*cobra.Command {
 
 	con.RegisterInternalFunc(
 		"bpwd",
-		func(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session) (*clientpb.Task, error) {
 			return Pwd(rpc, sess)
 		},
 		func(ctx *clientpb.TaskContext) (interface{}, error) {
@@ -304,7 +304,7 @@ func Commands(con *console.Console) []*cobra.Command {
 
 	con.RegisterInternalFunc(
 		"brm",
-		func(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, fileName string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, fileName string) (*clientpb.Task, error) {
 			return Rm(rpc, sess, fileName)
 		},
 		func(ctx *clientpb.TaskContext) (interface{}, error) {

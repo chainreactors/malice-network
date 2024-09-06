@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/help"
-	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/client/core/intermediate/builtin"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/client/utils"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
@@ -121,7 +121,7 @@ func (e *ExtCommand) getFileForTarget(targetOS string, targetArch string) (strin
 }
 
 // ExtensionLoadCmd - Load extension command
-func ExtensionLoadCmd(cmd *cobra.Command, con *console.Console) {
+func ExtensionLoadCmd(cmd *cobra.Command, con *repl.Console) {
 	dirPath := cmd.Flags().Arg(0)
 	manifest, err := LoadExtensionManifest(filepath.Join(dirPath, ManifestFileName))
 	if err != nil {
@@ -130,13 +130,13 @@ func ExtensionLoadCmd(cmd *cobra.Command, con *console.Console) {
 	// do not add if the command already exists
 	implantMenu := con.App.Menu(consts.ImplantMenu)
 	for _, extCmd := range manifest.ExtCommand {
-		if console.CmdExists(extCmd.CommandName, implantMenu.Command) {
-			console.Log.Errorf("%s command already exists\n", extCmd.CommandName)
+		if repl.CmdExists(extCmd.CommandName, implantMenu.Command) {
+			repl.Log.Errorf("%s command already exists\n", extCmd.CommandName)
 			confirmModel := tui.NewConfirm(fmt.Sprintf("%s command already exists. Overwrite?", extCmd.CommandName))
 			newConfirm := tui.NewModel(confirmModel, nil, false, true)
 			err = newConfirm.Run()
 			if err != nil {
-				console.Log.Errorf("Error running confirm model: %s\n", err)
+				repl.Log.Errorf("Error running confirm model: %s\n", err)
 				return
 			}
 			if !confirmModel.Confirmed {
@@ -144,7 +144,7 @@ func ExtensionLoadCmd(cmd *cobra.Command, con *console.Console) {
 			}
 		}
 		ExtensionRegisterCommand(extCmd, cmd.Root(), con)
-		console.Log.Infof("Added %s command: %s\n", extCmd.CommandName, extCmd.Help)
+		repl.Log.Infof("Added %s command: %s\n", extCmd.CommandName, extCmd.Help)
 
 	}
 }
@@ -173,7 +173,7 @@ func ParseExtensionManifest(data []byte) (*ExtensionManifest, error) {
 	err := json.Unmarshal(data, &extManifest)
 	if err != nil || len(extManifest.ExtCommand) == 0 {
 		if err != nil {
-			console.Log.Errorf("extension load error: %s\n", err)
+			repl.Log.Errorf("extension load error: %s\n", err)
 		}
 		oldmanifest := &ExtensionManifest_{}
 		err = json.Unmarshal(data, &oldmanifest)
@@ -190,9 +190,9 @@ func ParseExtensionManifest(data []byte) (*ExtensionManifest, error) {
 }
 
 // ExtensionRegisterCommand - Register a new extension command
-func ExtensionRegisterCommand(extCmd *ExtCommand, cmd *cobra.Command, con *console.Console) {
+func ExtensionRegisterCommand(extCmd *ExtCommand, cmd *cobra.Command, con *repl.Console) {
 	if errInvalidArgs := checkExtensionArgs(extCmd); errInvalidArgs != nil {
-		console.Log.Error(errInvalidArgs.Error())
+		repl.Log.Error(errInvalidArgs.Error())
 		return
 	}
 
@@ -266,14 +266,14 @@ func ExtensionRegisterCommand(extCmd *ExtCommand, cmd *cobra.Command, con *conso
 	cmd.AddCommand(extensionCmd)
 	err := con.RegisterInternalFunc(
 		extensionCmd.Name(),
-		func(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, args string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, args string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 			return ExecuteExtension(rpc, sess, extensionCmd.Name(), args)
 		},
 		func(ctx *clientpb.TaskContext) (interface{}, error) {
 			return builtin.ParseAssembly(ctx.Spite)
 		})
 	if err != nil {
-		console.Log.Errorf("Error registering internal function: %s\n", err)
+		repl.Log.Errorf("Error registering internal function: %s\n", err)
 	}
 }
 
@@ -337,13 +337,13 @@ func ExtensionRegisterCommand(extCmd *ExtCommand, cmd *cobra.Command, con *conso
 //	return fmt.Errorf("missing dependency %s", depName)
 //}
 
-func runExtensionCmd(cmd *cobra.Command, con *console.Console) {
+func runExtensionCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
 	args := cmd.Flags().Args()
 
 	task, err := ExecuteExtension(con.Rpc, session, cmd.Name(), strings.Join(args, " "))
 	if err != nil {
-		console.Log.Errorf("Error executing extension: %s\n", err.Error())
+		repl.Log.Errorf("Error executing extension: %s\n", err.Error())
 		return
 	}
 	con.AddCallback(task.TaskId, func(msg proto.Message) {
@@ -352,7 +352,7 @@ func runExtensionCmd(cmd *cobra.Command, con *console.Console) {
 	})
 }
 
-func ExecuteExtension(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, extName string, args string) (*clientpb.Task, error) {
+func ExecuteExtension(rpc clientrpc.MaliceRPCClient, sess *repl.Session, extName string, args string) (*clientpb.Task, error) {
 	ext, ok := loadedExtensions[extName]
 	if !ok {
 		return nil, fmt.Errorf("no extension command found for `%s` command", extName)
@@ -387,7 +387,7 @@ func ExecuteExtension(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, ext
 			return nil, err
 		}
 		entryPoint = loadedExtensions[ext.CommandName].Entrypoint // should exist at this point
-		task, err = rpc.ExecuteBof(console.Context(sess), &implantpb.ExecuteBinary{
+		task, err = rpc.ExecuteBof(repl.Context(sess), &implantpb.ExecuteBinary{
 			Name:       ext.CommandName,
 			EntryPoint: entryPoint,
 			Params:     params,

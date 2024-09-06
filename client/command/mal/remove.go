@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/client/utils"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/tui"
@@ -13,17 +13,17 @@ import (
 	"path/filepath"
 )
 
-func RemoveMalCmd(cmd *cobra.Command, con *console.Console) {
+func RemoveMalCmd(cmd *cobra.Command, con *repl.Console) {
 	name := cmd.Flags().Arg(0)
 	if name == "" {
-		console.Log.Errorf("Extension name is required\n")
+		repl.Log.Errorf("Extension name is required\n")
 		return
 	}
 	confirmModel := tui.NewConfirm(fmt.Sprintf("Remove '%s' extension?", name))
 	newConfirm := tui.NewModel(confirmModel, nil, false, true)
 	err := newConfirm.Run()
 	if err != nil {
-		console.Log.Errorf("Error running confirm model: %s", err)
+		repl.Log.Errorf("Error running confirm model: %s", err)
 		return
 	}
 	if !confirmModel.Confirmed {
@@ -31,11 +31,11 @@ func RemoveMalCmd(cmd *cobra.Command, con *console.Console) {
 	}
 	err = RemoveMal(name, con)
 	if err != nil {
-		console.Log.Errorf(err.Error())
+		repl.Log.Errorf(err.Error())
 	}
 }
 
-func RemoveMal(name string, con *console.Console) error {
+func RemoveMal(name string, con *repl.Console) error {
 	if name == "" {
 		return errors.New("command name is required")
 	}

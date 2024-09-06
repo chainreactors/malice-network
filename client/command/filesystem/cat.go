@@ -1,7 +1,7 @@
 package filesystem
 
 import (
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
@@ -10,15 +10,15 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func CatCmd(cmd *cobra.Command, con *console.Console) {
+func CatCmd(cmd *cobra.Command, con *repl.Console) {
 	fileName := cmd.Flags().Arg(0)
 	if fileName == "" {
-		console.Log.Errorf("required arguments missing")
+		repl.Log.Errorf("required arguments missing")
 		return
 	}
 	task, err := Cat(con.Rpc, con.GetInteractive(), fileName)
 	if err != nil {
-		console.Log.Errorf("Cat error: %v", err)
+		repl.Log.Errorf("Cat error: %v", err)
 	}
 	session := con.GetInteractive()
 	if session == nil {
@@ -31,8 +31,8 @@ func CatCmd(cmd *cobra.Command, con *console.Console) {
 	})
 }
 
-func Cat(rpc clientrpc.MaliceRPCClient, session *clientpb.Session, fileName string) (*clientpb.Task, error) {
-	task, err := rpc.Cat(console.Context(session), &implantpb.Request{
+func Cat(rpc clientrpc.MaliceRPCClient, session *repl.Session, fileName string) (*clientpb.Task, error) {
+	task, err := rpc.Cat(repl.Context(session), &implantpb.Request{
 		Name:  consts.ModuleCat,
 		Input: fileName,
 	})

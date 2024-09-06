@@ -3,7 +3,7 @@ package file
 import (
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/help"
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
@@ -13,7 +13,7 @@ import (
 	"path/filepath"
 )
 
-func Commands(con *console.Console) []*cobra.Command {
+func Commands(con *repl.Console) []*cobra.Command {
 	downloadCmd := &cobra.Command{
 		Use:   consts.ModuleDownload,
 		Short: "Download file",
@@ -71,14 +71,14 @@ func Commands(con *console.Console) []*cobra.Command {
 
 	con.RegisterInternalFunc(
 		"bdownload",
-		func(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, path string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string) (*clientpb.Task, error) {
 			return Download(rpc, sess, path)
 		},
 		nil)
 
 	con.RegisterInternalFunc(
 		"bupload",
-		func(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, path string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string) (*clientpb.Task, error) {
 			return Upload(rpc, sess, path, filepath.Base(path), 0744, false)
 		},
 		nil)

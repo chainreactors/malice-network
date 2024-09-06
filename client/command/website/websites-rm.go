@@ -3,14 +3,14 @@ package website
 import (
 	"context"
 	"github.com/chainreactors/grumble"
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 )
 
-func websitesRmCmd(c *grumble.Context, con *console.Console) {
+func websitesRmCmd(c *grumble.Context, con *repl.Console) {
 	name := c.Flags.String("name")
 	if name == "" {
-		console.Log.Errorf("Must specify a website name via --name, see --help")
+		repl.Log.Errorf("Must specify a website name via --name, see --help")
 		return
 	}
 
@@ -18,7 +18,7 @@ func websitesRmCmd(c *grumble.Context, con *console.Console) {
 		Name: name,
 	})
 	if err != nil {
-		console.Log.Errorf("%s", err)
+		repl.Log.Errorf("%s", err)
 		return
 	}
 }
