@@ -64,3 +64,26 @@ func SessionIDCompleter(con *repl.Console) carapace.Action {
 	}
 	return carapace.ActionCallback(callback)
 }
+
+func SessionModuleComplete(con *repl.Console) carapace.Action {
+	callback := func(c carapace.Context) carapace.Action {
+		results := make([]string, 0)
+
+		for _, s := range con.GetInteractive().Modules {
+			results = append(results, s, "")
+		}
+		return carapace.ActionValuesDescribed(results...).Tag("session modules")
+	}
+	return carapace.ActionCallback(callback)
+}
+
+func SessionAddonComplete(con *repl.Console) carapace.Action {
+	callback := func(c carapace.Context) carapace.Action {
+		results := make([]string, 0)
+		for _, s := range con.GetInteractive().Addons.Addons {
+			results = append(results, s.Name, "")
+		}
+		return carapace.ActionValuesDescribed(results...).Tag("session addons")
+	}
+	return carapace.ActionCallback(callback)
+}
