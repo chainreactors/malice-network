@@ -18,14 +18,6 @@ import (
 	"time"
 )
 
-type Listener struct {
-	*clientpb.Listener
-}
-
-type Client struct {
-	*clientpb.Client
-}
-
 func InitServerStatus(conn *grpc.ClientConn) (*ServerStatus, error) {
 	var err error
 	s := &ServerStatus{
@@ -45,7 +37,7 @@ func InitServerStatus(conn *grpc.ClientConn) (*ServerStatus, error) {
 		return nil, err
 	}
 	for _, client := range clients.GetClients() {
-		s.Clients = append(s.Clients, &Client{client})
+		s.Clients = append(s.Clients, client)
 	}
 
 	listeners, err := s.Rpc.GetListeners(context.Background(), &clientpb.Empty{})
@@ -53,7 +45,7 @@ func InitServerStatus(conn *grpc.ClientConn) (*ServerStatus, error) {
 		return nil, err
 	}
 	for _, listener := range listeners.GetListeners() {
-		s.Listeners = append(s.Listeners, &Listener{listener})
+		s.Listeners = append(s.Listeners, listener)
 	}
 
 	err = s.UpdateSessions(true)
@@ -69,9 +61,10 @@ func InitServerStatus(conn *grpc.ClientConn) (*ServerStatus, error) {
 type ServerStatus struct {
 	Rpc       clientrpc.MaliceRPCClient
 	Info      *clientpb.Basic
-	Clients   []*Client
-	Listeners []*Listener
+	Clients   []*clientpb.Client
+	Listeners []*clientpb.Listener
 	Sessions  map[string]*clientpb.Session
+	sessions  []*clientpb.Session
 	Callbacks *sync.Map
 	Alive     bool
 }
@@ -90,11 +83,14 @@ func (s *ServerStatus) UpdateSessions(all bool) error {
 	if err != nil {
 		return err
 	}
-
+	s.sessions = sessions.Sessions
 	newSessions := make(map[string]*clientpb.Session)
 
 	for _, session := range sessions.GetSessions() {
 		newSessions[session.SessionId] = session
+		if session.Note != "" {
+			newSessions[session.Note] = session
+		}
 	}
 
 	s.Sessions = newSessions
@@ -108,8 +104,20 @@ func (s *ServerStatus) UpdateSession(sid string) (*clientpb.Session, error) {
 	}
 
 	s.Sessions[session.SessionId] = session
+	if session.Note != "" {
+		s.Sessions[session.Note] = session
+	}
 	return nil, nil
+}
 
+func (s *ServerStatus) AlivedSessions() []*clientpb.Session {
+	var alivedSessions []*clientpb.Session
+	for _, session := range s.sessions {
+		if session.IsAlive {
+			alivedSessions = append(alivedSessions, session)
+		}
+	}
+	return alivedSessions
 }
 
 func (s *ServerStatus) UpdateTasks(session *clientpb.Session) error {
