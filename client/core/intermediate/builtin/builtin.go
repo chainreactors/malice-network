@@ -100,3 +100,13 @@ func ParseAssembly(spite *implantpb.Spite) (string, error) {
 	}
 	return string(response.GetData()), nil
 }
+
+func ParseStatus(spite *implantpb.Spite) (bool, error) {
+	if spite.Error == 6 {
+		return false, nil
+	} else if spite.Error == 0 {
+		return true, nil
+	} else {
+		return false, handler.HandleMaleficError(spite)
+	}
+}

@@ -70,6 +70,13 @@ func Commands(con *console.Console) []*cobra.Command {
 	)
 
 	con.RegisterInternalFunc(
+		"bdownload",
+		func(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, path string) (*clientpb.Task, error) {
+			return Download(rpc, sess, path)
+		},
+		nil)
+
+	con.RegisterInternalFunc(
 		"bupload",
 		func(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, path string) (*clientpb.Task, error) {
 			return Upload(rpc, sess, path, filepath.Base(path), 0744, false)

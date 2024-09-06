@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
+	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/spf13/cobra"
@@ -12,20 +14,16 @@ import (
 )
 
 func ListModulesCmd(cmd *cobra.Command, con *console.Console) {
-	listModules(con)
-}
-
-func listModules(con *console.Console) {
 	session := con.GetInteractive()
 	if session == nil {
 		return
 	}
-	listTask, err := con.Rpc.ListModule(con.ActiveTarget.Context(), &implantpb.Request{Name: consts.ModuleListModule})
+	task, err := ListModules(con.Rpc, session)
 	if err != nil {
 		console.Log.Errorf("ListModules error: %v", err)
 		return
 	}
-	con.AddCallback(listTask.TaskId, func(msg proto.Message) {
+	con.AddCallback(task.TaskId, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite).GetModules()
 		var rowEntries []table.Row
 		var row table.Row
@@ -43,4 +41,12 @@ func listModules(con *console.Console) {
 		tableModel.SetRows(rowEntries)
 		fmt.Printf(tableModel.View())
 	})
+}
+
+func ListModules(rpc clientrpc.MaliceRPCClient, session *clientpb.Session) (*clientpb.Task, error) {
+	listTask, err := rpc.ListModules(console.Context(session), &implantpb.Request{Name: consts.ModuleListModule})
+	if err != nil {
+		return nil, err
+	}
+	return listTask, nil
 }
