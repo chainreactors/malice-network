@@ -37,7 +37,7 @@ func NewSession(req *lispb.RegisterSession) *Session {
 		Name:       req.RegisterData.Name,
 		ProxyURL:   req.RegisterData.Proxy,
 		Modules:    req.RegisterData.Module,
-		Extensions: req.RegisterData.Extension,
+		Addons:     req.RegisterData.Addon,
 		ID:         req.SessionId,
 		PipelineID: req.ListenerId,
 		RemoteAddr: req.RemoteAddr,
@@ -68,7 +68,7 @@ type Session struct {
 	WordDir    string
 	ProxyURL   string
 	Modules    []string
-	Extensions *implantpb.Extensions
+	Addons     *implantpb.Addons
 	Locale     string
 	Tasks      *Tasks // task manager
 	taskseq    uint32
@@ -111,7 +111,7 @@ func (s *Session) ToProtobuf() *clientpb.Session {
 		Timer:      s.Timer,
 		Tasks:      s.Tasks.ToProtobuf(),
 		Modules:    s.Modules,
-		Extensions: s.Extensions,
+		Addons:     s.Addons,
 	}
 }
 
@@ -119,7 +119,7 @@ func (s *Session) Update(req *lispb.RegisterSession) {
 	s.Name = req.RegisterData.Name
 	s.ProxyURL = req.RegisterData.Proxy
 	s.Modules = req.RegisterData.Module
-	s.Extensions = req.RegisterData.Extension
+	s.Addons = req.RegisterData.Addon
 	s.Timer = req.RegisterData.Timer
 	if req.RegisterData.Sysinfo != nil {
 		s.UpdateSysInfo(req.RegisterData.Sysinfo)

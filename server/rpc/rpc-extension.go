@@ -7,7 +7,7 @@ import (
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 )
 
-func (rpc *Server) ListExtensions(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
+func (rpc *Server) ListAddon(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err
@@ -17,16 +17,16 @@ func (rpc *Server) ListExtensions(ctx context.Context, req *implantpb.Request) (
 		return nil, err
 	}
 
-	go greq.HandlerAsyncResponse(ch, types.MsgListExtension, func(spite *implantpb.Spite) {
-		if exts := spite.GetExtensions(); exts != nil {
+	go greq.HandlerAsyncResponse(ch, types.MsgListAddon, func(spite *implantpb.Spite) {
+		if exts := spite.GetAddons(); exts != nil {
 			sess, _ := getSession(ctx)
-			sess.Extensions = exts
+			sess.Addons = exts
 		}
 	})
 	return greq.Task.ToProtobuf(), nil
 }
 
-func (rpc *Server) LoadExtension(ctx context.Context, req *implantpb.LoadExtension) (*clientpb.Task, error) {
+func (rpc *Server) LoadExtension(ctx context.Context, req *implantpb.LoadAddon) (*clientpb.Task, error) {
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err
@@ -38,7 +38,7 @@ func (rpc *Server) LoadExtension(ctx context.Context, req *implantpb.LoadExtensi
 
 	go greq.HandlerAsyncResponse(ch, types.MsgEmpty, func(spite *implantpb.Spite) {
 		sess, _ := getSession(ctx)
-		sess.Extensions.Extensions = append(sess.Extensions.Extensions, &implantpb.Extension{
+		sess.Addons.Addons = append(sess.Addons.Addons, &implantpb.Addon{
 			Name:   req.Name,
 			Depend: req.Depend,
 			Type:   req.Type,
@@ -47,7 +47,7 @@ func (rpc *Server) LoadExtension(ctx context.Context, req *implantpb.LoadExtensi
 	return greq.Task.ToProtobuf(), nil
 }
 
-func (rpc *Server) ExecuteExtension(ctx context.Context, req *implantpb.ExecuteExtension) (*clientpb.Task, error) {
+func (rpc *Server) ExecuteExtension(ctx context.Context, req *implantpb.ExecuteAddon) (*clientpb.Task, error) {
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err

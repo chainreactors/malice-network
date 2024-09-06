@@ -15,14 +15,12 @@ import (
 )
 
 // AliasesCmd - The alias command
-func AliasesCmd(cmd *cobra.Command, con *console.Console) error {
+func AliasesCmd(cmd *cobra.Command, con *console.Console) {
 	if 0 < len(loadedAliases) {
 		PrintAliases(con)
 	} else {
 		console.Log.Infof("No aliases installed, use the 'armory' command to automatically install some")
 	}
-
-	return nil
 }
 
 // PrintAliases - Print a list of loaded aliases
