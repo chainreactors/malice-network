@@ -28,12 +28,12 @@ const (
 
 // Group
 const (
-	GenericGroup   = "generic"
-	ImplantGroup   = "implant"
-	ArmoryGroup    = "armory"
-	ExtensionGroup = "extension"
-	MalGroup       = "mal"
-	ListenerGroup  = "listener"
+	GenericGroup  = "generic"
+	ImplantGroup  = "implant"
+	ArmoryGroup   = "armory"
+	AddonGroup    = "addon"
+	MalGroup      = "mal"
+	ListenerGroup = "listener"
 )
 
 // config

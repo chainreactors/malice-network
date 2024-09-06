@@ -305,7 +305,7 @@ func ExtensionRegisterCommand(extCmd *ExtCommand, cmd *cobra.Command, con *repl.
 //}
 
 //func registerExtension(ext *ExtCommand, binData []byte, con *console.Console) error {
-//	task, err := con.Rpc.LoadExtension(con.ActiveTarget.Context(), &implantpb.LoadExtension{
+//	task, err := con.Rpc.LoadAddon(con.ActiveTarget.Context(), &implantpb.LoadAddon{
 //		Name:   ext.CommandName,
 //		Bin:    binData,
 //		Depend: ext.DependsOn,

@@ -2,6 +2,7 @@ package command
 
 import (
 	"github.com/chainreactors/malice-network/client/assets"
+	"github.com/chainreactors/malice-network/client/command/addon"
 	"github.com/chainreactors/malice-network/client/command/alias"
 	"github.com/chainreactors/malice-network/client/command/exec"
 	"github.com/chainreactors/malice-network/client/command/explorer"
@@ -35,10 +36,11 @@ func BindImplantCommands(con *repl.Console) console.Commands {
 			sys.Commands,
 			modules.Commands,
 			explorer.Commands,
+			addon.Commands,
 		)
 
 		bind(consts.ArmoryGroup)
-		bind(consts.ExtensionGroup)
+		bind(consts.AddonGroup)
 		bind(consts.MalGroup)
 		// Load Aliases
 		aliasManifests := assets.GetInstalledAliasManifests()

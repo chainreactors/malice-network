@@ -70,9 +70,9 @@ func Commands(con *repl.Console) []*cobra.Command {
 		f.String("key_path", "", "tcp pipeline tls key path")
 	})
 
-	common.BindFlagCompletions(tcpRegisterCmd, func(comp *carapace.ActionMap) {
-		(*comp)["cert_path"] = carapace.ActionFiles().Usage("path to the cert file")
-		(*comp)["key_path"] = carapace.ActionFiles().Usage("path to the key file")
+	common.BindFlagCompletions(tcpRegisterCmd, func(comp carapace.ActionMap) {
+		comp["cert_path"] = carapace.ActionFiles().Usage("path to the cert file")
+		comp["key_path"] = carapace.ActionFiles().Usage("path to the key file")
 	})
 
 	tcpStartCmd := &cobra.Command{
@@ -144,9 +144,9 @@ func Commands(con *repl.Console) []*cobra.Command {
 		f.String("key_path", "", "website tls key path")
 	})
 
-	common.BindFlagCompletions(websiteRegisterCmd, func(comp *carapace.ActionMap) {
-		(*comp)["cert_path"] = carapace.ActionFiles().Usage("path to the cert file")
-		(*comp)["key_path"] = carapace.ActionFiles().Usage("path to the key file")
+	common.BindFlagCompletions(websiteRegisterCmd, func(comp carapace.ActionMap) {
+		comp["cert_path"] = carapace.ActionFiles().Usage("path to the cert file")
+		comp["key_path"] = carapace.ActionFiles().Usage("path to the key file")
 	})
 
 	websiteStartCmd := &cobra.Command{
