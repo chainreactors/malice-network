@@ -29,9 +29,9 @@ func Commands(con *console.Console) []*cobra.Command {
 			"depend": consts.ModuleExecution,
 		},
 	}
-	carapace.Gen(execCmd).PositionalCompletion(
+	common.BindArgCompletions(execCmd, nil,
 		carapace.ActionValues().Usage("command to execute"),
-		carapace.ActionValues().Usage("arguments to the command eg: 'arg1 arg2 arg3'"),
+		carapace.ActionValues().Usage("arguments to the command"),
 	)
 
 	common.BindFlag(execCmd, common.ExecuteFlagSet)
@@ -49,10 +49,10 @@ func Commands(con *console.Console) []*cobra.Command {
 			"depend": consts.ModuleExecuteAssembly,
 		},
 	}
-	carapace.Gen(execAssemblyCmd).PositionalCompletion(
+
+	common.BindArgCompletions(execAssemblyCmd, nil,
 		carapace.ActionFiles().Usage("path the assembly file"),
-		carapace.ActionValues().Usage("arguments to pass to the assembly entrypoint, eg: 'arg1,arg2,arg3'"),
-	)
+		carapace.ActionValues().Usage("arguments to pass to the assembly entrypoint"))
 
 	common.BindFlag(execAssemblyCmd, common.ExecuteFlagSet)
 
@@ -70,10 +70,9 @@ func Commands(con *console.Console) []*cobra.Command {
 		},
 	}
 
-	carapace.Gen(execShellcodeCmd).PositionalCompletion(
+	common.BindArgCompletions(execShellcodeCmd, nil,
 		carapace.ActionFiles().Usage("path the shellcode file"),
-		carapace.ActionValues().Usage("arguments to pass to the assembly entrypoint"),
-	)
+		carapace.ActionValues().Usage("arguments to pass to the assembly entrypoint"))
 
 	common.BindFlag(execShellcodeCmd, common.ExecuteFlagSet, common.SacrificeFlagSet, func(f *pflag.FlagSet) {
 		f.String("arch", "x86", "architecture of the shellcode (x86 or x64)")
@@ -93,9 +92,8 @@ func Commands(con *console.Console) []*cobra.Command {
 		},
 	}
 
-	carapace.Gen(inlineShellcodeCmd).PositionalCompletion(
-		carapace.ActionFiles().Usage("path the shellcode file"),
-	)
+	common.BindArgCompletions(inlineShellcodeCmd, nil,
+		carapace.ActionFiles().Usage("path the shellcode file"))
 
 	execDLLCmd := &cobra.Command{
 		Use:   consts.ModuleExecuteDll,
@@ -111,10 +109,9 @@ func Commands(con *console.Console) []*cobra.Command {
 		},
 	}
 
-	carapace.Gen(execDLLCmd).PositionalCompletion(
+	common.BindArgCompletions(execDLLCmd, nil,
 		carapace.ActionFiles().Usage("path the DLL file"),
-		carapace.ActionValues().Usage("arguments to pass to the assembly entrypoint"),
-	)
+		carapace.ActionValues().Usage("arguments to pass to the assembly entrypoint"))
 
 	common.BindFlag(execDLLCmd, common.ExecuteFlagSet, common.SacrificeFlagSet, func(f *pflag.FlagSet) {
 		f.StringP("entrypoint", "e", "entrypoint", "entrypoint")
@@ -134,9 +131,8 @@ func Commands(con *console.Console) []*cobra.Command {
 		},
 	}
 
-	carapace.Gen(inlineDLLCmd).PositionalCompletion(
-		carapace.ActionFiles().Usage("path the DLL file"),
-	)
+	common.BindArgCompletions(inlineDLLCmd, nil,
+		carapace.ActionFiles().Usage("path the DLL file"))
 
 	common.BindFlag(inlineDLLCmd, func(f *pflag.FlagSet) {
 		f.StringP("entrypoint", "e", "entrypoint", "entrypoint")
@@ -156,10 +152,10 @@ func Commands(con *console.Console) []*cobra.Command {
 		},
 	}
 
-	carapace.Gen(execPECmd).PositionalCompletion(
+	common.BindArgCompletions(execPECmd, nil,
 		carapace.ActionFiles().Usage("path the PE file"),
-		carapace.ActionValues().Usage("arguments to pass to the assembly entrypoint"),
-	)
+		carapace.ActionValues().Usage("arguments to pass to the assembly entrypoint"))
+
 	common.BindFlag(execPECmd, common.ExecuteFlagSet, common.SacrificeFlagSet)
 
 	inlinePECmd := &cobra.Command{
@@ -176,9 +172,8 @@ func Commands(con *console.Console) []*cobra.Command {
 		},
 	}
 
-	carapace.Gen(inlinePECmd).PositionalCompletion(
-		carapace.ActionFiles().Usage("path the PE file"),
-	)
+	common.BindArgCompletions(inlinePECmd, nil,
+		carapace.ActionFiles().Usage("path the PE file"))
 
 	execBofCmd := &cobra.Command{
 		Use:   consts.ModuleExecuteBof,
@@ -189,12 +184,15 @@ func Commands(con *console.Console) []*cobra.Command {
 			ExecuteBofCmd(cmd, con)
 			return
 		},
+		Annotations: map[string]string{
+			"depend": consts.ModuleExecuteBof,
+		},
 	}
 
-	carapace.Gen(execBofCmd).PositionalCompletion(
+	common.BindArgCompletions(execBofCmd, nil,
 		carapace.ActionFiles().Usage("path the BOF file"),
-		carapace.ActionValues().Usage("arguments to pass to the assembly entrypoint"),
-	)
+		carapace.ActionValues().Usage("arguments to pass to the assembly entrypoint"))
+
 	common.BindFlag(execBofCmd)
 
 	execPowershellCmd := &cobra.Command{
@@ -206,12 +204,15 @@ func Commands(con *console.Console) []*cobra.Command {
 			ExecutePowershellCmd(cmd, con)
 			return
 		},
+		Annotations: map[string]string{
+			"depend": consts.ModulePowershell,
+		},
 	}
 
-	carapace.Gen(execPowershellCmd).PositionalCompletion(
+	common.BindArgCompletions(execPowershellCmd, nil,
 		carapace.ActionFiles().Usage("path the powershell script"),
-		carapace.ActionValues().Usage("arguments to pass to the assembly entrypoint"),
-	)
+		carapace.ActionValues().Usage("arguments to pass to the assembly entrypoint"))
+
 	common.BindFlag(execPowershellCmd)
 
 	con.RegisterInternalFunc(

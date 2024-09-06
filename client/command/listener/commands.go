@@ -32,7 +32,7 @@ func Commands(con *console.Console) []*cobra.Command {
 		},
 	}
 
-	carapace.Gen(jobCmd).PositionalCompletion(carapace.ActionValues().Usage("listener id"))
+	common.BindArgCompletions(jobCmd, nil, carapace.ActionValues().Usage("listener id"))
 
 	tcpCmd := &cobra.Command{
 		Use:   "tcp",
@@ -45,7 +45,8 @@ func Commands(con *console.Console) []*cobra.Command {
 		},
 		GroupID: consts.ListenerGroup,
 	}
-	carapace.Gen(tcpCmd).PositionalCompletion(carapace.ActionValues().Usage("listener id"))
+
+	common.BindArgCompletions(tcpCmd, nil, carapace.ActionValues().Usage("listener id"))
 
 	tcpRegisterCmd := &cobra.Command{
 		Use:   "register",
@@ -58,12 +59,11 @@ func Commands(con *console.Console) []*cobra.Command {
 		},
 	}
 
-	carapace.Gen(tcpRegisterCmd).PositionalCompletion(
+	common.BindArgCompletions(tcpRegisterCmd, nil,
 		carapace.ActionValues().Usage("tcp pipeline name"),
 		carapace.ActionValues().Usage("listener id"),
 		carapace.ActionValues().Usage("tcp pipeline host"),
-		carapace.ActionValues().Usage("tcp pipeline port"),
-	)
+		carapace.ActionValues().Usage("tcp pipeline port"))
 
 	common.Bind("cert", false, tcpRegisterCmd, func(f *pflag.FlagSet) {
 		f.String("cert_path", "", "tcp pipeline tls cert path")
@@ -86,10 +86,9 @@ func Commands(con *console.Console) []*cobra.Command {
 		},
 	}
 
-	carapace.Gen(tcpStartCmd).PositionalCompletion(
+	common.BindArgCompletions(tcpStartCmd, nil,
 		carapace.ActionValues().Usage("tcp pipeline name"),
-		carapace.ActionValues().Usage("listener id"),
-	)
+		carapace.ActionValues().Usage("listener id"))
 
 	tcpStopCmd := &cobra.Command{
 		Use:   "stop",
@@ -101,10 +100,10 @@ func Commands(con *console.Console) []*cobra.Command {
 			return
 		},
 	}
-	carapace.Gen(tcpStopCmd).PositionalCompletion(
+
+	common.BindArgCompletions(tcpStopCmd, nil,
 		carapace.ActionValues().Usage("tcp pipeline name"),
-		carapace.ActionValues().Usage("listener id"),
-	)
+		carapace.ActionValues().Usage("listener id"))
 
 	tcpCmd.AddCommand(tcpRegisterCmd, tcpStartCmd, tcpStopCmd)
 
@@ -118,7 +117,8 @@ func Commands(con *console.Console) []*cobra.Command {
 			return
 		},
 	}
-	carapace.Gen(websiteCmd).PositionalCompletion(carapace.ActionValues().Usage("listener id"))
+
+	common.BindArgCompletions(websiteCmd, nil, carapace.ActionValues().Usage("listener id"))
 
 	websiteRegisterCmd := &cobra.Command{
 		Use:   "register",
@@ -130,14 +130,14 @@ func Commands(con *console.Console) []*cobra.Command {
 			return
 		},
 	}
-	carapace.Gen(websiteRegisterCmd).PositionalCompletion(
+
+	common.BindArgCompletions(websiteRegisterCmd, nil,
 		carapace.ActionValues().Usage("website name"),
 		carapace.ActionValues().Usage("listener id"),
 		carapace.ActionValues().Usage("website port"),
 		carapace.ActionValues().Usage("website router root path"),
 		carapace.ActionValues().Usage("website content path"),
-		carapace.ActionValues().Usage("website content type"),
-	)
+		carapace.ActionValues().Usage("website content type"))
 
 	common.Bind("cert", false, websiteRegisterCmd, func(f *pflag.FlagSet) {
 		f.String("cert_path", "", "website tls cert path")
@@ -160,10 +160,9 @@ func Commands(con *console.Console) []*cobra.Command {
 		},
 	}
 
-	carapace.Gen(websiteStartCmd).PositionalCompletion(
+	common.BindArgCompletions(websiteStartCmd, nil,
 		carapace.ActionValues().Usage("website name"),
-		carapace.ActionValues().Usage("listener id"),
-	)
+		carapace.ActionValues().Usage("listener id"))
 
 	websiteStopCmd := &cobra.Command{
 		Use:   "stop",
@@ -175,10 +174,10 @@ func Commands(con *console.Console) []*cobra.Command {
 			return
 		},
 	}
-	carapace.Gen(websiteStopCmd).PositionalCompletion(
+
+	common.BindArgCompletions(websiteStopCmd, nil,
 		carapace.ActionValues().Usage("website name"),
-		carapace.ActionValues().Usage("listener id"),
-	)
+		carapace.ActionValues().Usage("listener id"))
 
 	websiteCmd.AddCommand(websiteRegisterCmd, websiteStartCmd, websiteStopCmd)
 

@@ -2,6 +2,7 @@ package modules
 
 import (
 	"fmt"
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/client/core/intermediate/builtin"
@@ -36,10 +37,9 @@ func Commands(con *console.Console) []*cobra.Command {
 		},
 	}
 
-	carapace.Gen(loadModuleCmd).PositionalCompletion(
+	common.BindArgCompletions(loadModuleCmd, nil,
 		carapace.ActionValues().Usage("module name"),
-		carapace.ActionFiles().Usage("path to the module file"),
-	)
+		carapace.ActionFiles().Usage("path to the module file"))
 
 	con.RegisterInternalFunc(
 		"list_module",

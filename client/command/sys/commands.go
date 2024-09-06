@@ -2,6 +2,7 @@ package sys
 
 import (
 	"fmt"
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/client/core/intermediate/builtin"
@@ -41,9 +42,8 @@ func Commands(con *console.Console) []*cobra.Command {
 		},
 	}
 
-	carapace.Gen(killCmd).PositionalCompletion(
-		carapace.ActionValues().Usage("process pid"),
-	)
+	common.BindArgCompletions(killCmd, nil,
+		carapace.ActionValues().Usage("process pid"))
 
 	psCmd := &cobra.Command{
 		Use:   consts.ModulePs,
@@ -85,10 +85,9 @@ func Commands(con *console.Console) []*cobra.Command {
 		},
 	}
 
-	carapace.Gen(setEnvCmd).PositionalCompletion(
+	common.BindArgCompletions(setEnvCmd, nil,
 		carapace.ActionValues().Usage("environment variable"),
-		carapace.ActionValues().Usage("value"),
-	)
+		carapace.ActionValues().Usage("value"))
 
 	unSetEnvCmd := &cobra.Command{
 		Use:   consts.ModuleUnsetEnv,
@@ -104,9 +103,8 @@ func Commands(con *console.Console) []*cobra.Command {
 		},
 	}
 
-	carapace.Gen(unSetEnvCmd).PositionalCompletion(
-		carapace.ActionValues().Usage("environment variable"),
-	)
+	common.BindArgCompletions(unSetEnvCmd, nil,
+		carapace.ActionValues().Usage("environment variable"))
 
 	netstatCmd := &cobra.Command{
 		Use:   consts.ModuleNetstat,
