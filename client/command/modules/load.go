@@ -23,7 +23,7 @@ func LoadModuleCmd(cmd *cobra.Command, con *repl.Console) {
 		repl.Log.Errorf("LoadModule error: %v", err)
 		return
 	}
-	con.AddCallback(task.TaskId, func(msg proto.Message) {
+	con.AddCallback(task, func(msg proto.Message) {
 		//modules := msg.(*implantpb.Spite).GetModules()
 		con.SessionLog(sid).Infof("LoadModule: %s success", bundle)
 	})

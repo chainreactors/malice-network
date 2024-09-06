@@ -19,7 +19,7 @@ func NetstatCmd(cmd *cobra.Command, con *repl.Console) {
 		repl.Log.Errorf("Kill error: %v", err)
 		return
 	}
-	con.AddCallback(task.TaskId, func(msg proto.Message) {
+	con.AddCallback(task, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite).GetNetstatResponse()
 		var rowEntries []table.Row
 		var row table.Row

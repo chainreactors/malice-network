@@ -283,7 +283,7 @@ func runAliasCommand(cmd *cobra.Command, con *repl.Console) {
 		task, err = ExecuteAlias(con.Rpc, session, cmd.Name(), extArgs, sac)
 	}
 
-	con.AddCallback(task.TaskId, func(msg proto.Message) {
+	con.AddCallback(task, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite).GetAssemblyResponse()
 		if resp.Status == 0 {
 			con.SessionLog(sid).Infof("%s output:\n%s", loadedAlias.Command.Name(), string(resp.Data))

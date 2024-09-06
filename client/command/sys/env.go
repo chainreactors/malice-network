@@ -21,7 +21,7 @@ func EnvCmd(cmd *cobra.Command, con *repl.Console) {
 		repl.Log.Errorf("Env error: %v", err)
 		return
 	}
-	con.AddCallback(task.TaskId, func(msg proto.Message) {
+	con.AddCallback(task, func(msg proto.Message) {
 		envSet := msg.(*implantpb.Spite).GetResponse().GetKv()
 		for k, v := range envSet {
 			con.SessionLog(sid).Consolef("export %s = %s\n", k, v)
@@ -55,7 +55,7 @@ func SetEnvCmd(cmd *cobra.Command, con *repl.Console) {
 	if err != nil {
 		return
 	}
-	con.AddCallback(task.TaskId, func(msg proto.Message) {
+	con.AddCallback(task, func(msg proto.Message) {
 		con.SessionLog(sid).Consolef("Set environment variable success\n")
 	})
 }
@@ -87,7 +87,7 @@ func UnsetEnvCmd(cmd *cobra.Command, con *repl.Console) {
 		repl.Log.Errorf("UnsetEnv error: %v", err)
 		return
 	}
-	con.AddCallback(task.TaskId, func(msg proto.Message) {
+	con.AddCallback(task, func(msg proto.Message) {
 		con.SessionLog(sid).Consolef("Unset environment variable success\n")
 	})
 }

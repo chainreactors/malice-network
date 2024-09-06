@@ -315,7 +315,7 @@ func ExtensionRegisterCommand(extCmd *ExtCommand, cmd *cobra.Command, con *repl.
 //		return err
 //	}
 //
-//	con.AddCallback(task.TaskId, func(msg proto.Message) {
+//	con.AddCallback(task, func(msg proto.Message) {
 //		con.SessionLog(con.GetInteractive().SessionId).Infof("Loaded extension %s", ext.CommandName)
 //	})
 //	return nil
@@ -346,7 +346,7 @@ func runExtensionCmd(cmd *cobra.Command, con *repl.Console) {
 		repl.Log.Errorf("Error executing extension: %s\n", err.Error())
 		return
 	}
-	con.AddCallback(task.TaskId, func(msg proto.Message) {
+	con.AddCallback(task, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite).GetAssemblyResponse()
 		con.SessionLog(session.SessionId).Console(string(resp.Data))
 	})

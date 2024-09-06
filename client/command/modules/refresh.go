@@ -17,7 +17,7 @@ func RefreshModuleCmd(cmd *cobra.Command, con *repl.Console) {
 		return
 	}
 
-	con.AddCallback(task.TaskId, func(msg proto.Message) {
+	con.AddCallback(task, func(msg proto.Message) {
 		repl.Log.Infof("Module refreshed")
 	})
 }

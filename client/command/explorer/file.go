@@ -18,7 +18,7 @@ func explorerCmd(cmd *cobra.Command, con *repl.Console) {
 	dirEntriesChan := make(chan []os.DirEntry, 1)
 	var path = ""
 
-	lsTask, err := con.Rpc.Ls(con.ActiveTarget.Context(), &implantpb.Request{
+	task, err := con.Rpc.Ls(con.ActiveTarget.Context(), &implantpb.Request{
 		Name:  consts.ModuleLs,
 		Input: "./",
 	})
@@ -27,7 +27,7 @@ func explorerCmd(cmd *cobra.Command, con *repl.Console) {
 		return
 	}
 
-	con.AddCallback(lsTask.TaskId, func(msg proto.Message) {
+	con.AddCallback(task, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite).GetLsResponse()
 		var dirEntries []os.DirEntry
 		for _, protoFile := range resp.GetFiles() {

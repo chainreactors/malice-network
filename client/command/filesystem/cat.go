@@ -25,7 +25,7 @@ func CatCmd(cmd *cobra.Command, con *repl.Console) {
 		return
 	}
 	sid := con.GetInteractive().SessionId
-	con.AddCallback(task.TaskId, func(msg proto.Message) {
+	con.AddCallback(task, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite).GetResponse()
 		con.SessionLog(sid).Infof("File content: %s", resp.GetOutput())
 	})

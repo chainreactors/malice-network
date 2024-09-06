@@ -16,12 +16,12 @@ func PwdCmd(cmd *cobra.Command, con *repl.Console) {
 		return
 	}
 	sid := con.GetInteractive().SessionId
-	pwdTask, err := Pwd(con.Rpc, session)
+	task, err := Pwd(con.Rpc, session)
 	if err != nil {
 		repl.Log.Errorf("Pwd error: %v", err)
 		return
 	}
-	con.AddCallback(pwdTask.TaskId, func(msg proto.Message) {
+	con.AddCallback(task, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite).GetResponse()
 		con.SessionLog(sid).Consolef("%s\n", resp.GetOutput())
 	})

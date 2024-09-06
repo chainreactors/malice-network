@@ -28,7 +28,7 @@ func CpCmd(cmd *cobra.Command, con *repl.Console) {
 		repl.Log.Errorf("Cp error: %v", err)
 		return
 	}
-	con.AddCallback(task.TaskId, func(msg proto.Message) {
+	con.AddCallback(task, func(msg proto.Message) {
 		_ = msg.(*clientpb.Task)
 		con.SessionLog(sid).Consolef("Cp success\n")
 	})

@@ -24,7 +24,7 @@ func ExecuteCmd(cmd *cobra.Command, con *repl.Console) {
 		repl.Log.Errorf("Execute error: %v", err)
 		return
 	}
-	con.AddCallback(task.TaskId, func(msg proto.Message) {
+	con.AddCallback(task, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite).GetExecResponse()
 		con.SessionLog(sid).Infof("pid: %d, status: %d", resp.Pid, resp.StatusCode)
 		con.SessionLog(sid).Consolef("%s, output:\n%s", cmdStr, string(resp.Stdout))
