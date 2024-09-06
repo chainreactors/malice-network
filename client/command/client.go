@@ -8,7 +8,6 @@ import (
 	"github.com/chainreactors/malice-network/client/command/listener"
 	"github.com/chainreactors/malice-network/client/command/login"
 	"github.com/chainreactors/malice-network/client/command/mal"
-	"github.com/chainreactors/malice-network/client/command/observe"
 	"github.com/chainreactors/malice-network/client/command/sessions"
 	"github.com/chainreactors/malice-network/client/command/tasks"
 	"github.com/chainreactors/malice-network/client/command/version"
@@ -30,7 +29,6 @@ func bindCommonCommands(bind bindFunc) {
 		alias.Commands,
 		extension.Commands,
 		armory.Commands,
-		observe.Command,
 		mal.Commands,
 	)
 
