@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
+	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/spf13/cobra"
@@ -17,24 +19,16 @@ func LsCmd(cmd *cobra.Command, con *console.Console) {
 	if path == "" {
 		path = "./"
 	}
-
-	ls(path, con)
-}
-
-func ls(path string, con *console.Console) {
 	session := con.GetInteractive()
 	if session == nil {
 		return
 	}
-	lsTask, err := con.Rpc.Ls(con.ActiveTarget.Context(), &implantpb.Request{
-		Name:  consts.ModuleLs,
-		Input: path,
-	})
+	task, err := Ls(con.Rpc, session, path)
 	if err != nil {
 		console.Log.Errorf("Ls error: %v", err)
 		return
 	}
-	con.AddCallback(lsTask.TaskId, func(msg proto.Message) {
+	con.AddCallback(task.TaskId, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite).GetLsResponse()
 		var rowEntries []table.Row
 		var row table.Row
@@ -58,4 +52,15 @@ func ls(path string, con *console.Console) {
 		tableModel.SetRows(rowEntries)
 		fmt.Printf(tableModel.View())
 	})
+}
+
+func Ls(rpc clientrpc.MaliceRPCClient, session *clientpb.Session, path string) (*clientpb.Task, error) {
+	task, err := rpc.Ls(console.Context(session), &implantpb.Request{
+		Name:  consts.ModuleLs,
+		Input: path,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return task, err
 }

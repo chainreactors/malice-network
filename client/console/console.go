@@ -82,11 +82,15 @@ func (c *Console) NewConsole(bindCmds ...BindCmds) {
 	iom := console.New("IoM")
 	c.App = iom
 
+	x.ClearStorage = func() {
+
+	}
 	client := iom.NewMenu(consts.ClientMenu)
 	client.Short = "client commands"
 	client.Prompt().Primary = c.GetPrompt
 	client.AddInterrupt(io.EOF, exitConsole)
 	client.AddHistorySourceFile("history", filepath.Join(assets.GetRootAppDir(), "history"))
+	//client.SetCommands(bindCmds[0](c))
 	client.Command = bindCmds[0](c)()
 	c.App.SwitchMenu(consts.ClientMenu)
 
@@ -95,6 +99,7 @@ func (c *Console) NewConsole(bindCmds ...BindCmds) {
 	implant.Prompt().Primary = c.GetPrompt
 	implant.AddInterrupt(io.EOF, exitImplantMenu) // Ctrl-D
 	implant.AddHistorySourceFile("history", filepath.Join(assets.GetRootAppDir(), "implant_history"))
+	//implant.SetCommands(bindCmds[1](c))
 	implant.Command = bindCmds[1](c)()
 }
 

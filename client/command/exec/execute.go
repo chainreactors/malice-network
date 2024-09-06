@@ -4,41 +4,46 @@ import (
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
+	"github.com/chainreactors/malice-network/proto/services/clientrpc"
+	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
-	"strings"
-
 	"google.golang.org/protobuf/proto"
 )
 
 func ExecuteCmd(cmd *cobra.Command, con *console.Console) {
-	path := cmd.Flags().Arg(0)
-	params := cmd.Flags().Args()[1:]
-	//token := ctx.Flags.Bool("token")
-	output, _ := cmd.Flags().GetBool("output")
-	execute(path, params, output, con)
-}
-
-func execute(cmd string, args []string, output bool, con *console.Console) {
 	session := con.GetInteractive()
 	if session == nil {
 		return
 	}
 	sid := con.GetInteractive().SessionId
-	var resp *clientpb.Task
-	var err error
-	resp, err = con.Rpc.Execute(con.ActiveTarget.Context(), &implantpb.ExecRequest{
-		Path:   cmd,
-		Args:   args,
-		Output: output,
-	})
+	//token := ctx.Flags.Bool("token")
+	//output, _ := cmd.Flags().GetBool("output")
+	cmdStr := shellquote.Join(cmd.Flags().Args()...)
+	task, err := Execute(con.Rpc, session, cmdStr)
 	if err != nil {
-		console.Log.Errorf("%s", err.Error())
+		console.Log.Errorf("Execute error: %v", err)
 		return
 	}
-
-	con.AddCallback(resp.TaskId, func(msg proto.Message) {
+	con.AddCallback(task.TaskId, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite).GetExecResponse()
 		con.SessionLog(sid).Infof("pid: %d, status: %d", resp.Pid, resp.StatusCode)
-		con.SessionLog(sid).Consolef("%s %s , output:\n%s", cmd, strings.Join(args, " "), string(resp.Stdout))
+		con.SessionLog(sid).Consolef("%s, output:\n%s", cmdStr, string(resp.Stdout))
 	})
+
+}
+
+func Execute(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, cmd string) (*clientpb.Task, error) {
+	cmdStrList, err := shellquote.Split(cmd)
+	if err != nil {
+		return nil, err
+	}
+	task, err := rpc.Execute(console.Context(sess), &implantpb.ExecRequest{
+		Path:   cmdStrList[0],
+		Args:   cmdStrList[1:],
+		Output: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return task, nil
 }

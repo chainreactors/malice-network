@@ -1,13 +1,20 @@
 package filesystem
 
 import (
+	"fmt"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/core/intermediate/builtin"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/handler"
+	"github.com/chainreactors/malice-network/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"strconv"
+	"strings"
 )
 
 func Commands(con *console.Console) []*cobra.Command {
@@ -197,6 +204,122 @@ func Commands(con *console.Console) []*cobra.Command {
 	carapace.Gen(rmCmd).PositionalCompletion(
 		carapace.ActionValues().Usage("rm file name"),
 	)
+
+	con.RegisterInternalFunc(
+		"bcd",
+		func(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, path string) (*clientpb.Task, error) {
+			return Cd(rpc, sess, path)
+		},
+		func(ctx *clientpb.TaskContext) (interface{}, error) {
+			return builtin.ParseStatus(ctx.Spite)
+		})
+
+	con.RegisterInternalFunc(
+		"cat",
+		func(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, fileName string) (*clientpb.Task, error) {
+			return Cat(rpc, sess, fileName)
+		},
+		func(ctx *clientpb.TaskContext) (interface{}, error) {
+			err := handler.HandleMaleficError(ctx.GetSpite())
+			if err != nil {
+				return "", err
+			}
+			resp := ctx.GetSpite().GetResponse()
+			return resp.GetOutput(), nil
+		})
+
+	con.RegisterInternalFunc(
+		"chmod",
+		func(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, path, mode string) (*clientpb.Task, error) {
+			return Chmod(rpc, sess, path, mode)
+		},
+		func(ctx *clientpb.TaskContext) (interface{}, error) {
+			return builtin.ParseStatus(ctx.Spite)
+		})
+
+	con.RegisterInternalFunc(
+		"chown",
+		func(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, path, uid string, gid string, recursive bool) (*clientpb.Task, error) {
+			return Chown(rpc, sess, path, uid, gid, recursive)
+		},
+		func(ctx *clientpb.TaskContext) (interface{}, error) {
+			return builtin.ParseStatus(ctx.Spite)
+		})
+
+	con.RegisterInternalFunc(
+		"bcp",
+		func(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, src, dst string) (*clientpb.Task, error) {
+			return Cp(rpc, sess, src, dst)
+		},
+		func(ctx *clientpb.TaskContext) (interface{}, error) {
+			return builtin.ParseStatus(ctx.Spite)
+		})
+
+	con.RegisterInternalFunc(
+		"bls",
+		func(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, path string) (*clientpb.Task, error) {
+			return Ls(rpc, sess, path)
+		},
+		func(ctx *clientpb.TaskContext) (interface{}, error) {
+			err := handler.HandleMaleficError(ctx.Spite)
+			if err != nil {
+				return "", err
+			}
+			resp := ctx.Spite.GetLsResponse()
+			var fileDetails []string
+			for _, file := range resp.GetFiles() {
+				fileStr := fmt.Sprintf("%s|%s|%s|%s|%s",
+					file.Name,
+					strconv.FormatBool(file.IsDir),
+					strconv.FormatUint(file.Size, 10),
+					strconv.FormatInt(file.ModTime, 10),
+					file.Link,
+				)
+				fileDetails = append(fileDetails, fileStr)
+			}
+			return strings.Join(fileDetails, ","), nil
+		})
+
+	con.RegisterInternalFunc(
+		"bmkdir",
+		func(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, path string) (*clientpb.Task, error) {
+			return Mkdir(rpc, sess, path)
+		},
+		func(ctx *clientpb.TaskContext) (interface{}, error) {
+			return builtin.ParseStatus(ctx.Spite)
+		})
+
+	con.RegisterInternalFunc(
+		"bmv",
+		func(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, src, dst string) (*clientpb.Task, error) {
+			return Mv(rpc, sess, src, dst)
+		},
+		func(ctx *clientpb.TaskContext) (interface{}, error) {
+			return builtin.ParseStatus(ctx.Spite)
+		})
+
+	con.RegisterInternalFunc(
+		"bpwd",
+		func(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session) (*clientpb.Task, error) {
+			return Pwd(rpc, sess)
+		},
+		func(ctx *clientpb.TaskContext) (interface{}, error) {
+			err := handler.HandleMaleficError(ctx.Spite)
+			if err != nil {
+				return "", err
+			}
+			resp := ctx.Spite.GetResponse()
+			return resp.GetOutput(), nil
+		})
+
+	con.RegisterInternalFunc(
+		"brm",
+		func(rpc clientrpc.MaliceRPCClient, sess *clientpb.Session, fileName string) (*clientpb.Task, error) {
+			return Rm(rpc, sess, fileName)
+		},
+		func(ctx *clientpb.TaskContext) (interface{}, error) {
+			return builtin.ParseStatus(ctx.Spite)
+		})
 
 	return []*cobra.Command{
 		pwdCmd,

@@ -340,6 +340,14 @@ func (plugin *Plugin) RegisterLuaBuiltInFunctions(con *Console) error {
 		logs.Log.Console(s)
 		return s, nil
 	}, []reflect.Type{reflect.TypeOf(&clientpb.TaskContext{})})
+
+	// lua:
+	// ok(spite) -> bool
+	plugin.registerLuaFunction("ok", func(args ...interface{}) (interface{}, error) {
+		task := args[0].(*clientpb.TaskContext)
+		s, _ := builtin.ParseStatus(task.Spite)
+		return s, nil
+	}, []reflect.Type{reflect.TypeOf(&clientpb.TaskContext{})})
 	return nil
 }
 
