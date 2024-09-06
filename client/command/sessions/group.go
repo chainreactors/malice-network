@@ -9,22 +9,17 @@ import (
 )
 
 func groupCmd(cmd *cobra.Command, con *console.Console) {
-	group := cmd.Flags().Arg(0)
-	id, err := cmd.Flags().GetString("id")
-	if con.GetInteractive().SessionId != "" {
-		id = con.GetInteractive().SessionId
-	} else if id == "" {
-		console.Log.Errorf("Require session id")
-		return
-	}
-	_, err = con.Rpc.BasicSessionOP(context.Background(), &clientpb.BasicUpdateSession{
-		SessionId: id,
-		GroupName: group,
+	sid := cmd.Flags().Arg(0)
+	group := cmd.Flags().Arg(1)
+	_, err := con.Rpc.BasicSessionOP(context.Background(), &clientpb.BasicUpdateSession{
+		SessionId: sid,
+		Op:        "group",
+		Arg:       group,
 	})
 	if err != nil {
 		logs.Log.Errorf("Session error: %v", err)
 		return
 	}
-	session := con.Sessions[id]
-	con.ActiveTarget.Set(session)
+	con.UpdateSession(sid)
+	console.Log.Infof("update %s group to %s", sid, group)
 }

@@ -101,14 +101,14 @@ func (s *ServerStatus) UpdateSessions(all bool) error {
 	return nil
 }
 
-func (s *ServerStatus) UpdateSession(sid string) error {
+func (s *ServerStatus) UpdateSession(sid string) (*clientpb.Session, error) {
 	session, err := s.Rpc.GetSession(context.Background(), &clientpb.SessionRequest{SessionId: sid})
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	s.Sessions[session.SessionId] = session
-	return nil
+	return nil, nil
 
 }
 

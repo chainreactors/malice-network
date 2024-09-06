@@ -9,27 +9,19 @@ import (
 )
 
 func noteCmd(cmd *cobra.Command, con *console.Console) {
-	name := cmd.Flags().Arg(0)
-	id, err := cmd.Flags().GetString("id")
-	if con.GetInteractive().SessionId != "" {
-		id = con.GetInteractive().SessionId
-	} else if id == "" {
-		console.Log.Errorf("Require session id")
-		return
-	}
+	sid := cmd.Flags().Arg(0)
+	name := cmd.Flags().Arg(1)
+
+	var err error
 	_, err = con.Rpc.BasicSessionOP(context.Background(), &clientpb.BasicUpdateSession{
-		SessionId: id,
-		Note:      name,
+		SessionId: sid,
+		Op:        "note",
+		Arg:       name,
 	})
 	if err != nil {
 		logs.Log.Errorf("Session error: %v", err)
 		return
 	}
-	err = con.UpdateSessions(false)
-	if err != nil {
-		console.Log.Errorf("update sessions failed: %s", err)
-		return
-	}
-	session := con.Sessions[id]
-	con.ActiveTarget.Set(session)
+	con.UpdateSession(sid)
+	console.Log.Infof("update %s note to %s", sid, name)
 }

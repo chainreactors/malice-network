@@ -49,34 +49,17 @@ func LocalPathCompleter(prefix string, args []string, con *console.Console) []st
 	return results
 }
 
-func SessionIDCompleter(con *console.Console, prefix string) (results []string) {
-	for _, s := range con.Sessions {
-		if strings.HasPrefix(s.SessionId, prefix) {
-			results = append(results, s.SessionId)
-		}
-	}
-	return results
-}
-
-func BasicSessionIDCompleter(con *console.Console) carapace.Action {
-	callback := func(_ carapace.Context) carapace.Action {
+func SessionIDCompleter(con *console.Console) carapace.Action {
+	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
 
-		if con.ActiveTarget.Get() != nil {
-			results = append(results, con.GetInteractive().SessionId, "Session ID")
-			return carapace.ActionValuesDescribed(results...).Tag("id")
-		}
 		for _, s := range con.Sessions {
 			results = append(results, s.SessionId, "Session ID")
+			if s.Note != "" {
+				results = append(results, s.Note, "Session Alias")
+			}
 		}
 		return carapace.ActionValuesDescribed(results...).Tag("id")
 	}
 	return carapace.ActionCallback(callback)
-
-}
-
-func AliveSessionIDCompleter(con *console.Console) (results []string) {
-	sid := con.GetInteractive().SessionId
-	results = append(results, sid)
-	return results
 }

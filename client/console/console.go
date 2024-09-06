@@ -14,6 +14,7 @@ import (
 	"github.com/chainreactors/tui"
 	"github.com/mattn/go-tty"
 	"github.com/reeflective/console"
+	"github.com/rsteube/carapace/pkg/x"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/proto"
 	"io"
@@ -58,7 +59,6 @@ func Start(bindCmds ...BindCmds) error {
 	}
 
 	con.NewConsole(bindCmds...)
-	con.App.SwitchMenu(consts.ClientMenu)
 	err := con.App.Start()
 	if err != nil {
 		logs.Log.Errorf("Run loop returned error: %v", err)
@@ -78,6 +78,7 @@ type Console struct {
 }
 
 func (c *Console) NewConsole(bindCmds ...BindCmds) {
+	x.ClearStorage = func() {}
 	iom := console.New("IoM")
 	c.App = iom
 
@@ -87,6 +88,7 @@ func (c *Console) NewConsole(bindCmds ...BindCmds) {
 	client.AddInterrupt(io.EOF, exitConsole)
 	client.AddHistorySourceFile("history", filepath.Join(assets.GetRootAppDir(), "history"))
 	client.Command = bindCmds[0](c)()
+	c.App.SwitchMenu(consts.ClientMenu)
 
 	implant := iom.NewMenu(consts.ImplantMenu)
 	implant.Short = "Implant commands"
