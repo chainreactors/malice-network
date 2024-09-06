@@ -12,7 +12,7 @@ import (
 
 func Commands(con *console.Console) []*cobra.Command {
 	sessionsCmd := &cobra.Command{
-		Use:   "sessions",
+		Use:   consts.CommandSessions,
 		Short: "List sessions",
 		Long:  help.GetHelpFor("sessions"),
 		Run: func(cmd *cobra.Command, args []string) {
@@ -24,7 +24,7 @@ func Commands(con *console.Console) []*cobra.Command {
 	})
 
 	noteCommand := &cobra.Command{
-		Use:   "note",
+		Use:   consts.CommandNote,
 		Short: "add note to session",
 		Long:  help.GetHelpFor("note"),
 		Args:  cobra.MinimumNArgs(2),
@@ -41,7 +41,7 @@ func Commands(con *console.Console) []*cobra.Command {
 	)
 
 	groupCommand := &cobra.Command{
-		Use:   "group",
+		Use:   consts.CommandGroup,
 		Short: "group session",
 		Long:  help.GetHelpFor("group"),
 		Args:  cobra.MinimumNArgs(2),
@@ -58,8 +58,8 @@ func Commands(con *console.Console) []*cobra.Command {
 	)
 
 	removeCommand := &cobra.Command{
-		Use:   "remove",
-		Short: "remove session",
+		Use:   consts.CommandDelSession,
+		Short: "del session",
 		Long:  help.GetHelpFor("remove"),
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
@@ -70,7 +70,7 @@ func Commands(con *console.Console) []*cobra.Command {
 	common.BindArgCompletions(removeCommand, nil, common.SessionIDCompleter(con))
 
 	useCommand := &cobra.Command{
-		Use:   "use",
+		Use:   consts.CommandUse,
 		Short: "Use session",
 		Long:  help.GetHelpFor("use"),
 		Args:  cobra.MinimumNArgs(1),
@@ -83,7 +83,7 @@ func Commands(con *console.Console) []*cobra.Command {
 	common.BindArgCompletions(useCommand, nil, common.SessionIDCompleter(con))
 
 	backCommand := &cobra.Command{
-		Use:   "background",
+		Use:   consts.CommandBackgroup,
 		Short: "back to root context",
 		Long:  help.GetHelpFor("background"),
 		Run: func(cmd *cobra.Command, args []string) {
@@ -93,6 +93,23 @@ func Commands(con *console.Console) []*cobra.Command {
 		},
 	}
 
+	observeCmd := &cobra.Command{
+		Use:   consts.CommandObverse,
+		Short: "observe session",
+		Long:  help.GetHelpFor("observe"),
+		Args:  cobra.MinimumNArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			ObserveCmd(cmd, con)
+		},
+	}
+
+	common.BindFlag(observeCmd, func(f *pflag.FlagSet) {
+		f.BoolP("list", "l", false, "list all observers")
+		f.BoolP("remove", "r", false, "remove observer")
+	})
+
+	common.BindArgCompletions(observeCmd, nil, common.SessionIDCompleter(con))
+
 	return []*cobra.Command{
 		sessionsCmd,
 		noteCommand,
@@ -100,5 +117,6 @@ func Commands(con *console.Console) []*cobra.Command {
 		removeCommand,
 		backCommand,
 		useCommand,
+		observeCmd,
 	}
 }

@@ -1,6 +1,7 @@
 package common
 
 import (
+	"fmt"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/rsteube/carapace"
 	"io/ioutil"
@@ -53,13 +54,13 @@ func SessionIDCompleter(con *console.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
 
-		for _, s := range con.Sessions {
-			results = append(results, s.SessionId, "Session ID")
+		for _, s := range con.AlivedSessions() {
+			results = append(results, s.SessionId, fmt.Sprintf("SessionID, %s", s.RemoteAddr))
 			if s.Note != "" {
-				results = append(results, s.Note, "Session Alias")
+				results = append(results, s.Note, fmt.Sprintf("SessionAlias, %s", s.RemoteAddr))
 			}
 		}
-		return carapace.ActionValuesDescribed(results...).Tag("id")
+		return carapace.ActionValuesDescribed(results...).Tag("session id")
 	}
 	return carapace.ActionCallback(callback)
 }

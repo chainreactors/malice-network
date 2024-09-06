@@ -44,6 +44,13 @@ const (
 )
 
 const (
+	CommandSessions         = "sessions"
+	CommandNote             = "note"
+	CommandGroup            = "group"
+	CommandObverse          = "obverse"
+	CommandDelSession       = "del"
+	CommandUse              = "use"
+	CommandBackgroup        = "backgroup"
 	CommandSync             = "sync"
 	CommandBroadcast        = "broadcast"
 	CommandVersion          = "version"

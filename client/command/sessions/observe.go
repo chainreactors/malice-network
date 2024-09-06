@@ -1,35 +1,10 @@
-package observe
+package sessions
 
 import (
-	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
-	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 )
-
-func Command(con *console.Console) []*cobra.Command {
-	observeCmd := &cobra.Command{
-		Use:   "observe",
-		Short: "observe session",
-		Long:  help.GetHelpFor("observe"),
-		Args:  cobra.MinimumNArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			ObserveCmd(cmd, con)
-		},
-	}
-	common.Bind("observe", true, observeCmd, func(f *pflag.FlagSet) {
-		f.BoolP("list", "l", false, "list all observers")
-		f.BoolP("remove", "r", false, "remove observer")
-	})
-
-	carapace.Gen(observeCmd).PositionalCompletion(
-		common.BasicSessionIDCompleter(con),
-	)
-	return []*cobra.Command{}
-}
 
 func ObserveCmd(cmd *cobra.Command, con *console.Console) {
 	var session *clientpb.Session
