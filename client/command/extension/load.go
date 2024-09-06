@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/console"
@@ -22,10 +21,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"google.golang.org/protobuf/proto"
-	"io/ioutil"
 	"os"
 	"path/filepath"
-	"slices"
 	"strconv"
 	"strings"
 )
@@ -280,49 +277,49 @@ func ExtensionRegisterCommand(extCmd *ExtCommand, cmd *cobra.Command, con *conso
 	}
 }
 
-func loadExtension(goos string, goarch string, extcmd *ExtCommand, con *console.Console) error {
-	binPath, err := extcmd.getFileForTarget(goos, goarch)
-	if err != nil {
-		return err
-	}
-	con.RefreshActiveSession()
+//func loadExtension(goos string, goarch string, extcmd *ExtCommand, con *console.Console) error {
+//	binPath, err := extcmd.getFileForTarget(goos, goarch)
+//	if err != nil {
+//		return err
+//	}
+//	con.RefreshActiveSession()
+//
+//	if !slices.Contains(con.GetInteractive().Modules, extcmd.DependsOn) {
+//		return ErrExtensionDependModuleNotFound
+//	}
+//
+//	for _, ext := range con.GetInteractive().Extensions.Extensions {
+//		if ext.Name == extcmd.CommandName {
+//			return nil
+//		}
+//	}
+//	binData, err := ioutil.ReadFile(binPath)
+//	if err != nil {
+//		return err
+//	}
+//	logs.Log.Infof("%s extension: %s not load, loading...", extcmd.CommandName, binPath)
+//	if errRegister := registerExtension(extcmd, binData, con); errRegister != nil {
+//		return errRegister
+//	}
+//	return nil
+//}
 
-	if !slices.Contains(con.GetInteractive().Modules, extcmd.DependsOn) {
-		return ErrExtensionDependModuleNotFound
-	}
-
-	for _, ext := range con.GetInteractive().Extensions.Extensions {
-		if ext.Name == extcmd.CommandName {
-			return nil
-		}
-	}
-	binData, err := ioutil.ReadFile(binPath)
-	if err != nil {
-		return err
-	}
-	logs.Log.Infof("%s extension: %s not load, loading...", extcmd.CommandName, binPath)
-	if errRegister := registerExtension(extcmd, binData, con); errRegister != nil {
-		return errRegister
-	}
-	return nil
-}
-
-func registerExtension(ext *ExtCommand, binData []byte, con *console.Console) error {
-	task, err := con.Rpc.LoadExtension(con.ActiveTarget.Context(), &implantpb.LoadExtension{
-		Name:   ext.CommandName,
-		Bin:    binData,
-		Depend: ext.DependsOn,
-		Type:   "",
-	})
-	if err != nil {
-		return err
-	}
-
-	con.AddCallback(task.TaskId, func(msg proto.Message) {
-		con.SessionLog(con.GetInteractive().SessionId).Infof("Loaded extension %s", ext.CommandName)
-	})
-	return nil
-}
+//func registerExtension(ext *ExtCommand, binData []byte, con *console.Console) error {
+//	task, err := con.Rpc.LoadExtension(con.ActiveTarget.Context(), &implantpb.LoadExtension{
+//		Name:   ext.CommandName,
+//		Bin:    binData,
+//		Depend: ext.DependsOn,
+//		Type:   "",
+//	})
+//	if err != nil {
+//		return err
+//	}
+//
+//	con.AddCallback(task.TaskId, func(msg proto.Message) {
+//		con.SessionLog(con.GetInteractive().SessionId).Infof("Loaded extension %s", ext.CommandName)
+//	})
+//	return nil
+//}
 
 //func loadDep(goos string, goarch string, depName string, ctx *grumble.Context, con *console.Console) error {
 //	depExt, ok := loadedExtensions[depName]

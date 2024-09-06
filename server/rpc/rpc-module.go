@@ -7,7 +7,7 @@ import (
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 )
 
-func (rpc *Server) ListModules(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
+func (rpc *Server) ListModule(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err
@@ -27,6 +27,20 @@ func (rpc *Server) ListModules(ctx context.Context, req *implantpb.Request) (*cl
 }
 
 func (rpc *Server) LoadModule(ctx context.Context, req *implantpb.LoadModule) (*clientpb.Task, error) {
+	greq, err := newGenericRequest(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	ch, err := rpc.asyncGenericHandler(ctx, greq)
+	if err != nil {
+		return nil, err
+	}
+
+	go greq.HandlerAsyncResponse(ch, types.MsgEmpty)
+	return greq.Task.ToProtobuf(), nil
+}
+
+func (rpc *Server) RefreshModule(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err

@@ -23,7 +23,7 @@ func Commands(con *console.Console) []*cobra.Command {
 		Short: "List all extensions",
 		Long:  help.GetHelpFor(consts.CommandExtension + " " + consts.CommandExtensionList),
 		Run: func(cmd *cobra.Command, args []string) {
-			ExtensionsListCmd(cmd, con)
+			ExtensionsCmd(cmd, con)
 		},
 	}
 

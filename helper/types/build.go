@@ -69,15 +69,15 @@ func BuildSpite(spite *implantpb.Spite, msg proto.Message) (*implantpb.Spite, er
 	case *implantpb.AssemblyResponse:
 		spite.Name = MsgExecuteAssembly.String()
 		spite.Body = &implantpb.Spite_AssemblyResponse{AssemblyResponse: msg.(*implantpb.AssemblyResponse)}
-	case *implantpb.ExecuteExtension:
-		spite.Name = MsgExecuteExtension.String()
-		spite.Body = &implantpb.Spite_ExecuteExtension{ExecuteExtension: msg.(*implantpb.ExecuteExtension)}
+	case *implantpb.ExecuteAddon:
+		spite.Name = MsgExecuteAddon.String()
+		spite.Body = &implantpb.Spite_ExecuteAddon{ExecuteAddon: msg.(*implantpb.ExecuteAddon)}
 	case *implantpb.LoadModule:
 		spite.Name = MsgLoadModule.String()
 		spite.Body = &implantpb.Spite_LoadModule{LoadModule: msg.(*implantpb.LoadModule)}
-	case *implantpb.LoadExtension:
-		spite.Name = MsgLoadExtension.String()
-		spite.Body = &implantpb.Spite_LoadExtension{LoadExtension: msg.(*implantpb.LoadExtension)}
+	case *implantpb.LoadAddon:
+		spite.Name = MsgLoadAddon.String()
+		spite.Body = &implantpb.Spite_LoadAddon{LoadAddon: msg.(*implantpb.LoadAddon)}
 	case *implantpb.AsyncACK:
 		spite.Name = MsgAck.String()
 		spite.Body = &implantpb.Spite_AsyncAck{AsyncAck: msg.(*implantpb.AsyncACK)}

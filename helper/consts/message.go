@@ -38,9 +38,11 @@ const (
 	ModuleCurl                 = "curl"
 	ModuleListModule           = "list_module"
 	ModuleLoadModule           = "load_module"
-	ModuleListExtension        = "list_extension"
-	ModuleLoadExtension        = "load_extension"
-	ModuleExecuteExtension     = "execute_extension"
+	ModuleRefreshModule        = "refresh_module"
+	ModuleListAddon            = "list_addon"
+	ModuleLoadAddon            = "load_addon"
+	ModuleExecuteAddon         = "execute_addon"
+	ModuleClear                = "clear"
 )
 
 const (
@@ -57,6 +59,7 @@ const (
 	CommandNotify           = "notify"
 	CommandAlias            = "alias"
 	CommandAliasLoad        = "load"
+	CommandAliasList        = "list"
 	CommandAliasInstall     = "install"
 	CommandAliasRemove      = "remove"
 	CommandArmory           = "armory"

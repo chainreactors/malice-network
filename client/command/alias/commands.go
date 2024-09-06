@@ -11,10 +11,20 @@ import (
 func Commands(con *console.Console) []*cobra.Command {
 	aliasCmd := &cobra.Command{
 		Use:   consts.CommandAlias,
-		Short: "List current aliases",
+		Short: "manage aliases",
 		Long:  help.GetHelpFor(consts.CommandAlias),
 		Run: func(cmd *cobra.Command, args []string) {
 			cmd.Help()
+			return
+		},
+	}
+
+	aliasListCmd := &cobra.Command{
+		Use:   consts.CommandAliasList,
+		Short: "List all aliases",
+		Long:  help.GetHelpFor(consts.CommandAlias + " " + consts.CommandAliasList),
+		Run: func(cmd *cobra.Command, args []string) {
+			AliasesCmd(cmd, con)
 			return
 		},
 	}
@@ -61,7 +71,7 @@ func Commands(con *console.Console) []*cobra.Command {
 		AliasCompleter(),
 	)
 
-	aliasCmd.AddCommand(aliasLoadCmd, aliasInstallCmd, aliasRemoveCmd)
+	aliasCmd.AddCommand(aliasListCmd, aliasLoadCmd, aliasInstallCmd, aliasRemoveCmd)
 	return []*cobra.Command{aliasCmd}
 
 }

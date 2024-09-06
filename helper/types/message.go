@@ -22,10 +22,10 @@ const (
 	MsgAck              MsgName = "ack"
 	MsgListModule       MsgName = consts.ModuleListModule
 	MsgLoadModule       MsgName = consts.ModuleLoadModule
-	MsgListExtension    MsgName = consts.ModuleListExtension
-	MsgLoadExtension    MsgName = consts.ModuleLoadExtension
+	MsgListAddon        MsgName = consts.ModuleListAddon
+	MsgLoadAddon        MsgName = consts.ModuleLoadAddon
 	MsgAssemblyResponse MsgName = "assembly_response"
-	MsgExecuteExtension MsgName = consts.ModuleExecuteExtension
+	MsgExecuteAddon     MsgName = consts.ModuleExecuteAddon
 	MsgExecuteAssembly  MsgName = consts.ModuleExecuteAssembly
 	MsgExecuteShellcode MsgName = consts.ModuleExecuteShellcode
 	MsgExecutePE        MsgName = consts.ModuleExecutePE
@@ -94,10 +94,10 @@ func MessageType(message *implantpb.Spite) MsgName {
 	//	return MsgExecuteBof
 	//case *implantpb.Spite_Extensions:
 	//	return MsgExtensions
-	case *implantpb.Spite_LoadExtension:
-		return MsgLoadExtension
+	case *implantpb.Spite_LoadAddon:
+		return MsgLoadAddon
 	//case *implantpb.Spite_ExecuteExtension:
-	//	return MsgExecuteExtension
+	//	return MsgExecuteAddon
 	case *implantpb.Spite_LoadModule:
 		return MsgLoadModule
 	case *implantpb.Spite_Modules:

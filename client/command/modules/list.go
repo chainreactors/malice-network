@@ -20,7 +20,7 @@ func listModules(con *console.Console) {
 	if session == nil {
 		return
 	}
-	listTask, err := con.Rpc.ListModules(con.ActiveTarget.Context(), &implantpb.Request{Name: consts.ModuleListModule})
+	listTask, err := con.Rpc.ListModule(con.ActiveTarget.Context(), &implantpb.Request{Name: consts.ModuleListModule})
 	if err != nil {
 		console.Log.Errorf("ListModules error: %v", err)
 		return
