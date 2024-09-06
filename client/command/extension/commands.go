@@ -1,6 +1,7 @@
 package extension
 
 import (
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -36,9 +37,9 @@ func Commands(con *console.Console) []*cobra.Command {
 			ExtensionLoadCmd(cmd, con)
 		},
 	}
-	carapace.Gen(extensionLoadCmd).PositionalCompletion(
-		carapace.ActionFiles().Usage("path to the extension directory"),
-	)
+
+	common.BindArgCompletions(extensionLoadCmd, nil,
+		carapace.ActionFiles().Usage("path to the extension directory"))
 
 	extensionInstallCmd := &cobra.Command{
 		Use:   consts.CommandExtensionInstall,
@@ -49,9 +50,8 @@ func Commands(con *console.Console) []*cobra.Command {
 			ExtensionsInstallCmd(cmd, con)
 		},
 	}
-	carapace.Gen(extensionInstallCmd).PositionalCompletion(
-		carapace.ActionFiles().Usage("path to the extension directory or tar.gz file"),
-	)
+	common.BindArgCompletions(extensionInstallCmd, nil,
+		carapace.ActionFiles().Usage("path to the extension directory or tar.gz file"))
 
 	extensionRemoveCmd := &cobra.Command{
 		Use:   consts.CommandExtensionRemove,
@@ -62,7 +62,9 @@ func Commands(con *console.Console) []*cobra.Command {
 			ExtensionsRemoveCmd(cmd, con)
 		},
 	}
-	carapace.Gen(extensionRemoveCmd).PositionalCompletion(ExtensionsCommandNameCompleter(con).Usage("the command name of the extension to remove"))
+
+	common.BindArgCompletions(extensionRemoveCmd, nil,
+		ExtensionsCommandNameCompleter(con).Usage("the command name of the extension to remove"))
 
 	extensionCmd.AddCommand(extensionListCmd, extensionLoadCmd, extensionInstallCmd, extensionRemoveCmd)
 	return []*cobra.Command{extensionCmd}

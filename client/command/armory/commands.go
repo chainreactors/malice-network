@@ -70,6 +70,9 @@ func Commands(con *console.Console) []*cobra.Command {
 			ArmorySearchCmd(cmd, con)
 		},
 	}
+
+	common.BindArgCompletions(armorySearchCmd, nil, carapace.ActionValues().Usage("a name regular expression"))
+
 	carapace.Gen(armorySearchCmd).PositionalCompletion(carapace.ActionValues().Usage("a name regular expression"))
 
 	// Adding subcommands to the main command

@@ -46,9 +46,8 @@ func Commands(con *console.Console) []*cobra.Command {
 		},
 	}
 
-	carapace.Gen(catCmd).PositionalCompletion(
-		carapace.ActionValues().Usage("cat file name"),
-	)
+	common.BindArgCompletions(catCmd, nil,
+		carapace.ActionValues().Usage("cat file name"))
 
 	cdCmd := &cobra.Command{
 		Use:   consts.ModuleCd,
@@ -63,10 +62,8 @@ func Commands(con *console.Console) []*cobra.Command {
 			"depend": consts.ModuleLs,
 		},
 	}
-
-	carapace.Gen(cdCmd).PositionalCompletion(
-		carapace.ActionValues().Usage("cd path"),
-	)
+	common.BindArgCompletions(cdCmd, nil,
+		carapace.ActionValues().Usage("cd path"))
 
 	chmodCmd := &cobra.Command{
 		Use:   consts.ModuleChmod,
@@ -83,10 +80,9 @@ func Commands(con *console.Console) []*cobra.Command {
 		},
 	}
 
-	carapace.Gen(chmodCmd).PositionalCompletion(
+	common.BindArgCompletions(chmodCmd, nil,
 		carapace.ActionValues().Usage("chmod file mode"),
-		carapace.ActionValues().Usage("chmod file path"),
-	)
+		carapace.ActionValues().Usage("chmod file path"))
 
 	chownCmd := &cobra.Command{
 		Use:   consts.ModuleChown,
@@ -103,10 +99,9 @@ func Commands(con *console.Console) []*cobra.Command {
 		},
 	}
 
-	carapace.Gen(chownCmd).PositionalCompletion(
+	common.BindArgCompletions(chownCmd, nil,
 		carapace.ActionValues().Usage("chown user"),
-		carapace.ActionValues().Usage("chown file path"),
-	)
+		carapace.ActionValues().Usage("chown file path"))
 
 	common.BindFlag(chownCmd, func(f *pflag.FlagSet) {
 		f.BoolP("recursive", "r", false, "recursive")
@@ -127,10 +122,9 @@ func Commands(con *console.Console) []*cobra.Command {
 		},
 	}
 
-	carapace.Gen(cpCmd).PositionalCompletion(
+	common.BindArgCompletions(cpCmd, nil,
 		carapace.ActionValues().Usage("source file"),
-		carapace.ActionValues().Usage("target file"),
-	)
+		carapace.ActionValues().Usage("target file"))
 
 	lsCmd := &cobra.Command{
 		Use:   consts.ModuleLs,
@@ -146,9 +140,8 @@ func Commands(con *console.Console) []*cobra.Command {
 		},
 	}
 
-	carapace.Gen(lsCmd).PositionalCompletion(
-		carapace.ActionValues().Usage("ls path"),
-	)
+	common.BindArgCompletions(lsCmd, nil,
+		carapace.ActionValues().Usage("ls path"))
 
 	mkdirCmd := &cobra.Command{
 		Use:   consts.ModuleMkdir,
@@ -164,9 +157,8 @@ func Commands(con *console.Console) []*cobra.Command {
 		},
 	}
 
-	carapace.Gen(mkdirCmd).PositionalCompletion(
-		carapace.ActionValues().Usage("mkdir path"),
-	)
+	common.BindArgCompletions(mkdirCmd, nil,
+		carapace.ActionValues().Usage("mkdir path"))
 
 	mvCmd := &cobra.Command{
 		Use:   consts.ModuleMv,
@@ -182,10 +174,9 @@ func Commands(con *console.Console) []*cobra.Command {
 		},
 	}
 
-	carapace.Gen(mvCmd).PositionalCompletion(
+	common.BindArgCompletions(mvCmd, nil,
 		carapace.ActionValues().Usage("source file"),
-		carapace.ActionValues().Usage("target file"),
-	)
+		carapace.ActionValues().Usage("target file"))
 
 	rmCmd := &cobra.Command{
 		Use:   consts.ModuleRm,
@@ -201,9 +192,8 @@ func Commands(con *console.Console) []*cobra.Command {
 		},
 	}
 
-	carapace.Gen(rmCmd).PositionalCompletion(
-		carapace.ActionValues().Usage("rm file name"),
-	)
+	common.BindArgCompletions(rmCmd, nil,
+		carapace.ActionValues().Usage("rm file name"))
 
 	con.RegisterInternalFunc(
 		"bcd",

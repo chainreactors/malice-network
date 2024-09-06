@@ -1,6 +1,7 @@
 package alias
 
 import (
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/console"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -39,7 +40,9 @@ func Commands(con *console.Console) []*cobra.Command {
 			return
 		},
 	}
-	carapace.Gen(aliasLoadCmd).PositionalCompletion(
+	common.BindArgCompletions(
+		aliasLoadCmd,
+		nil,
 		carapace.ActionFiles().Usage("local path where the downloaded file will be saved (optional)"),
 	)
 
@@ -53,7 +56,9 @@ func Commands(con *console.Console) []*cobra.Command {
 			return
 		},
 	}
-	carapace.Gen(aliasInstallCmd).PositionalCompletion(
+
+	common.BindArgCompletions(aliasInstallCmd,
+		nil,
 		carapace.ActionFiles().Usage("local path where the downloaded file will be saved (optional)"),
 	)
 
@@ -67,9 +72,11 @@ func Commands(con *console.Console) []*cobra.Command {
 			return
 		},
 	}
-	carapace.Gen(aliasRemoveCmd).PositionalCompletion(
-		AliasCompleter(),
-	)
+
+	common.BindArgCompletions(
+		aliasRemoveCmd,
+		nil,
+		AliasCompleter())
 
 	aliasCmd.AddCommand(aliasListCmd, aliasLoadCmd, aliasInstallCmd, aliasRemoveCmd)
 	return []*cobra.Command{aliasCmd}

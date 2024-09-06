@@ -27,10 +27,10 @@ func Commands(con *console.Console) []*cobra.Command {
 			"depend": consts.ModuleDownload,
 		},
 	}
-	carapace.Gen(downloadCmd).PositionalCompletion(
+
+	common.BindArgCompletions(downloadCmd, nil,
 		carapace.ActionValues().Usage("file name"),
-		carapace.ActionValues().Usage("download file source path"),
-	)
+		carapace.ActionValues().Usage("download file source path"))
 
 	uploadCmd := &cobra.Command{
 		Use:   consts.ModuleUpload,
@@ -45,10 +45,11 @@ func Commands(con *console.Console) []*cobra.Command {
 			"depend": consts.ModuleUpload,
 		},
 	}
-	carapace.Gen(uploadCmd).PositionalCompletion(
+
+	common.BindArgCompletions(uploadCmd, nil,
 		carapace.ActionFiles().Usage("file source path"),
-		carapace.ActionValues().Usage("file target path"),
-	)
+		carapace.ActionValues().Usage("file target path"))
+
 	common.BindFlag(uploadCmd, func(f *pflag.FlagSet) {
 		f.IntP("priv", "", 0o644, "file privilege")
 		f.BoolP("hidden", "", false, "hidden file")
@@ -65,9 +66,8 @@ func Commands(con *console.Console) []*cobra.Command {
 		},
 	}
 
-	carapace.Gen(syncCmd).PositionalCompletion(
-		carapace.ActionValues().Usage("task ID"),
-	)
+	common.BindArgCompletions(syncCmd, nil,
+		carapace.ActionValues().Usage("task ID"))
 
 	con.RegisterInternalFunc(
 		"bdownload",
