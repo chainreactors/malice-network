@@ -70,9 +70,9 @@ func NewCompletions(cmd *cobra.Command) *carapace.Carapace {
 // bind  - A function using a map "flag-name":carapace.Action for you to bind completions to the flag.
 //
 //	See https://rsteube.github.io/carapace/ for a complete documentation of carapace completions.
-func BindFlagCompletions(cmd *cobra.Command, bind func(comp *carapace.ActionMap)) {
+func BindFlagCompletions(cmd *cobra.Command, bind func(comp carapace.ActionMap)) {
 	comps := make(carapace.ActionMap)
-	bind(&comps)
+	bind(comps)
 
 	carapace.Gen(cmd).FlagCompletion(comps)
 }

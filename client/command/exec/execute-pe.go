@@ -2,14 +2,13 @@ package exec
 
 import (
 	"errors"
-	"github.com/chainreactors/malice-network/client/core/intermediate/builtin"
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/helper"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
-	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/proto"
 	"os"
@@ -19,12 +18,7 @@ import (
 // ExecutePECmd - Execute PE on sacrifice process
 func ExecutePECmd(cmd *cobra.Command, con *repl.Console) {
 	path := cmd.Flags().Arg(0)
-	params := cmd.Flags().Args()[1:]
-	ppid, _ := cmd.Flags().GetUint("ppid")
-	processname, _ := cmd.Flags().GetString("process")
-	argue, _ := cmd.Flags().GetString("argue")
-	isBlockDll, _ := cmd.Flags().GetBool("block_dll")
-	sac, _ := builtin.NewSacrificeProcessMessage(processname, int64(ppid), isBlockDll, argue, shellquote.Join(params...))
+	sac, _ := common.ParseSacrifice(cmd)
 	task, err := ExecPE(con.Rpc, con.GetInteractive(), path, sac)
 	if err != nil {
 		repl.Log.Errorf("Execute PE error: %v", err)
