@@ -177,7 +177,7 @@ func RegisterAlias(aliasManifest *AliasManifest, cmd *cobra.Command, con *repl.C
 		//f.StringP("class", "c", "", "Optional class name (required for .NET DLL)")
 		//f.StringP("app-domain", "d", "", "AppDomain name to create for .NET assembly. Generated randomly if not set.")
 		//f.StringP("arch", "a", "x84", "Assembly target architecture: x86, x64, x84 (x86+x64)")
-		//f.BoolP("in-process", "i", false, "Run in the current sliver process")
+		f.BoolP("inline", "i", false, "Run in the current sliver process")
 		//f.StringP("runtime", "r", "", "Runtime to use for running the assembly (only supported when used with --in-process)")
 		//f.BoolP("amsi-bypass", "M", false, "Bypass AMSI on Windows (only supported when used with --in-process)")
 		//f.BoolP("etw-bypass", "E", false, "Bypass ETW on Windows (only supported when used with --in-process)")
@@ -264,7 +264,7 @@ func runAliasCommand(cmd *cobra.Command, con *repl.Console) {
 	extArgs = strings.TrimSpace(extArgs)
 	var task *clientpb.Task
 	var err error
-	isInline, _ := cmd.Flags().GetBool("in-process")
+	isInline, _ := cmd.Flags().GetBool("inline")
 	if isInline {
 		task, err = ExecuteAlias(con.Rpc, session, cmd.Name(), extArgs, nil)
 	} else {

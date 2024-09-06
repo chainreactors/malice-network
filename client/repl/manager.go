@@ -5,6 +5,7 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"google.golang.org/grpc/metadata"
 	"slices"
 )
@@ -29,6 +30,24 @@ func (s *Session) HasDepend(module string) bool {
 		return true
 	}
 	return false
+}
+
+func (s *Session) HasAddon(addon string) bool {
+	for _, a := range s.Addons.Addons {
+		if a.Name == addon {
+			return s.HasDepend(a.Depend)
+		}
+	}
+	return false
+}
+
+func (s *Session) GetAddon(name string) *implantpb.Addon {
+	for _, a := range s.Addons.Addons {
+		if a.Name == name {
+			return a
+		}
+	}
+	return nil
 }
 
 func (s *Session) Context() context.Context {

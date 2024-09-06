@@ -26,7 +26,7 @@ func (rpc *Server) ListAddon(ctx context.Context, req *implantpb.Request) (*clie
 	return greq.Task.ToProtobuf(), nil
 }
 
-func (rpc *Server) LoadExtension(ctx context.Context, req *implantpb.LoadAddon) (*clientpb.Task, error) {
+func (rpc *Server) LoadAddon(ctx context.Context, req *implantpb.LoadAddon) (*clientpb.Task, error) {
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err
@@ -47,7 +47,7 @@ func (rpc *Server) LoadExtension(ctx context.Context, req *implantpb.LoadAddon) 
 	return greq.Task.ToProtobuf(), nil
 }
 
-func (rpc *Server) ExecuteExtension(ctx context.Context, req *implantpb.ExecuteAddon) (*clientpb.Task, error) {
+func (rpc *Server) ExecuteAddon(ctx context.Context, req *implantpb.ExecuteAddon) (*clientpb.Task, error) {
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err

@@ -1,5 +1,24 @@
 package consts
 
+var (
+	ModuleAliases = map[string]string{
+		ModuleAliasInlineShellcode: ModuleExecuteShellcode,
+		ModuleAliasInlinePE:        ModuleExecutePE,
+		ModuleAliasInlineDll:       ModuleExecuteDll,
+	}
+	ExecuteModules = []string{
+		ModuleExecuteBof, ModuleExecuteDll, ModuleExecuteShellcode,
+		ModuleExecutePE, ModulePowershell, ModuleExecuteAssembly,
+		ModuleAliasInlinePE, ModuleAliasInlineDll, ModuleAliasInlineShellcode,
+	}
+	InlineModules = []string{
+		ModuleAliasInlinePE, ModuleAliasInlineDll, ModuleAliasInlineShellcode,
+	}
+	SacrificeModules = []string{
+		ModuleExecutePE, ModuleExecuteDll, ModuleExecuteShellcode,
+	}
+)
+
 // client module and command
 const (
 	ModuleUpdate               = "update"
@@ -76,12 +95,6 @@ const (
 	CommandMalInstall       = "install"
 	CommandMalRemove        = "remove"
 )
-
-var ModuleAliases = map[string]string{
-	ModuleAliasInlineShellcode: ModuleExecuteShellcode,
-	ModuleAliasInlinePE:        ModuleExecutePE,
-	ModuleAliasInlineDll:       ModuleExecuteDll,
-}
 
 // ctrl type
 const (
