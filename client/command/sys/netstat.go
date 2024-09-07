@@ -16,7 +16,7 @@ import (
 func NetstatCmd(cmd *cobra.Command, con *repl.Console) {
 	task, err := Netstat(con.Rpc, con.GetInteractive())
 	if err != nil {
-		repl.Log.Errorf("Kill error: %v", err)
+		con.Log.Errorf("Kill error: %v", err)
 		return
 	}
 	con.AddCallback(task, func(msg proto.Message) {

@@ -22,7 +22,7 @@ func ExecuteDLLCmd(cmd *cobra.Command, con *repl.Console) {
 	entrypoint, _ := cmd.Flags().GetString("entrypoint")
 	task, err := ExecDLL(con.Rpc, session, path, entrypoint, sac)
 	if err != nil {
-		repl.Log.Errorf("Execute DLL error: %v", err)
+		con.Log.Errorf("Execute DLL error: %v", err)
 		return
 	}
 	con.AddCallback(task, func(msg proto.Message) {
@@ -59,7 +59,7 @@ func InlineDLLCmd(cmd *cobra.Command, con *repl.Console) {
 	entryPoint, _ := cmd.Flags().GetString("entrypoint")
 	task, err := InlineDLL(con.Rpc, session, pePath, entryPoint)
 	if err != nil {
-		repl.Log.Errorf("Execute Inline DLL error: %s", err)
+		con.Log.Errorf("Execute Inline DLL error: %s", err)
 		return
 	}
 

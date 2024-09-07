@@ -21,7 +21,7 @@ func ExecutePECmd(cmd *cobra.Command, con *repl.Console) {
 	sac, _ := common.ParseSacrifice(cmd)
 	task, err := ExecPE(con.Rpc, con.GetInteractive(), path, sac)
 	if err != nil {
-		repl.Log.Errorf("Execute PE error: %v", err)
+		con.Log.Errorf("Execute PE error: %v", err)
 		return
 	}
 	session := con.GetInteractive()
@@ -58,7 +58,7 @@ func InlinePECmd(cmd *cobra.Command, con *repl.Console) {
 	pePath := cmd.Flags().Arg(0)
 	task, err := InlinePE(con.Rpc, session, pePath)
 	if err != nil {
-		repl.Log.Errorf("Execute PE error: %v", err)
+		con.Log.Errorf("Execute PE error: %v", err)
 		return
 	}
 	con.AddCallback(task, func(msg proto.Message) {

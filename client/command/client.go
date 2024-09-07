@@ -53,7 +53,7 @@ func BindClientsCommands(con *repl.Console) console.Commands {
 		if con.ServerStatus == nil {
 			err := generic.LoginCmd(&cobra.Command{}, con)
 			if err != nil {
-				repl.Log.Errorf("Failed to login: %s", err)
+				con.Log.Errorf("Failed to login: %s", err)
 				return nil
 			}
 		}

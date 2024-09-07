@@ -17,7 +17,7 @@ func ExecuteCmd(cmd *cobra.Command, con *repl.Console) {
 	cmdStr := shellquote.Join(cmd.Flags().Args()...)
 	task, err := Execute(con.Rpc, session, cmdStr)
 	if err != nil {
-		repl.Log.Errorf("Execute error: %v", err)
+		con.Log.Errorf("Execute error: %v", err)
 		return
 	}
 	con.AddCallback(task, func(msg proto.Message) {

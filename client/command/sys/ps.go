@@ -18,7 +18,7 @@ func PsCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
 	task, err := Ps(con.Rpc, session)
 	if err != nil {
-		repl.Log.Errorf("Ps error: %v", err)
+		con.Log.Errorf("Ps error: %v", err)
 		return
 	}
 	con.AddCallback(task, func(msg proto.Message) {

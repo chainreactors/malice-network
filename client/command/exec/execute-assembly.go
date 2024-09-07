@@ -20,7 +20,7 @@ func ExecuteAssemblyCmd(cmd *cobra.Command, con *repl.Console) {
 	//output, _ := cmd.Flags().GetBool("output")
 	task, err := ExecAssembly(con.Rpc, session, path, sheshellquote.Join(params...))
 	if err != nil {
-		repl.Log.Errorf("Execute error: %v", err)
+		con.Log.Errorf("Execute error: %v", err)
 		return
 	}
 	con.AddCallback(task, func(msg proto.Message) {

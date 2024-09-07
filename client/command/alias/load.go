@@ -110,13 +110,13 @@ func AliasesLoadCmd(cmd *cobra.Command, con *repl.Console) {
 	dirPath := cmd.Flags().Arg(0)
 	alias, err := LoadAlias(dirPath, con)
 	if err != nil {
-		repl.Log.Errorf("Failed to load alias: %s\n", err)
+		con.Log.Errorf("Failed to load alias: %s\n", err)
 	} else {
-		repl.Log.Infof("%s alias has been loaded\n", alias.Name)
+		con.Log.Infof("%s alias has been loaded\n", alias.Name)
 	}
 	err = RegisterAlias(alias, con.ImplantMenu(), con)
 	if err != nil {
-		repl.Log.Errorf(err.Error())
+		con.Log.Errorf(err.Error())
 		return
 	}
 }
@@ -245,7 +245,7 @@ func runAliasCommand(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
 	loadedAlias, ok := loadedAliases[cmd.Name()]
 	if !ok {
-		repl.Log.Errorf("No alias found for `%s` command\n", cmd.Name())
+		con.Log.Errorf("No alias found for `%s` command\n", cmd.Name())
 		return
 	}
 	aliasManifest := loadedAlias.Manifest
@@ -268,7 +268,7 @@ func runAliasCommand(cmd *cobra.Command, con *repl.Console) {
 		if processName == "" {
 			processName, err = aliasManifest.getDefaultProcess(con.GetInteractive().Os.Name)
 			if err != nil {
-				repl.Log.Errorf("%s\n", err)
+				con.Log.Errorf("%s\n", err)
 				return
 			}
 		}

@@ -49,6 +49,7 @@ func Start(bindCmds ...BindCmds) error {
 		Settings:     settings,
 		Observers:    map[string]*Observer{},
 		Plugins:      NewPlugins(),
+		Log:          Log,
 	}
 	if len(os.Args) > 1 {
 		con.newConfigLogin(os.Args[1])
@@ -70,6 +71,7 @@ type Console struct {
 	*ActiveTarget
 	*ServerStatus
 	*Plugins
+	Log          *logs.Logger
 	App          *console.Console
 	Settings     *assets.Settings
 	ClientConfig *mtls.ClientConfig

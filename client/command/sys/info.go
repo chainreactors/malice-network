@@ -14,7 +14,7 @@ func InfoCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
 	task, err := Info(con.Rpc, session)
 	if err != nil {
-		repl.Log.Errorf("Info error: %v", err)
+		con.Log.Errorf("Info error: %v", err)
 		return
 	}
 	con.AddCallback(task, func(msg proto.Message) {

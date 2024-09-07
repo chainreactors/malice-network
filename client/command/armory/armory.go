@@ -111,27 +111,27 @@ var (
 func ArmoryCmd(cmd *cobra.Command, con *repl.Console) {
 	armoriesConfig := getCurrentArmoryConfiguration()
 	if len(armoriesConfig) == 1 {
-		repl.Log.Infof("Reading armory index ... ")
+		con.Log.Infof("Reading armory index ... ")
 	} else {
-		repl.Log.Infof("Reading %d armory indexes ... ", len(armoriesConfig))
+		con.Log.Infof("Reading %d armory indexes ... ", len(armoriesConfig))
 	}
 	clientConfig := parseArmoryHTTPConfig(cmd)
 	indexes := fetchIndexes(clientConfig)
 	if len(indexes) != len(armoriesConfig) {
-		repl.Log.Infof("errors!\n")
+		con.Log.Infof("errors!\n")
 		indexCache.Range(func(key, value interface{}) bool {
 			cacheEntry := value.(indexCacheEntry)
 			if cacheEntry.LastErr != nil {
-				repl.Log.Errorf("%s - %s\n", cacheEntry.RepoURL, cacheEntry.LastErr)
+				con.Log.Errorf("%s - %s\n", cacheEntry.RepoURL, cacheEntry.LastErr)
 			}
 			return true
 		})
 	} else {
-		repl.Log.Infof("done!\n")
+		con.Log.Infof("done!\n")
 	}
 	armoriesInitialized = true
 	if len(indexes) == 0 {
-		repl.Log.Infof("No indexes found\n")
+		con.Log.Infof("No indexes found\n")
 		return
 	}
 	var aliases []*alias.AliasManifest
@@ -141,7 +141,7 @@ func ArmoryCmd(cmd *cobra.Command, con *repl.Console) {
 
 	for _, index := range indexes {
 		errorCount := 0
-		repl.Log.Infof("Fetching package information ... ")
+		con.Log.Infof("Fetching package information ... ")
 		fetchPackageSignatures(index, clientConfig)
 		pkgCache.Range(func(key, value interface{}) bool {
 			cacheEntry, ok := value.(pkgCacheEntry)
@@ -156,9 +156,9 @@ func ArmoryCmd(cmd *cobra.Command, con *repl.Console) {
 			if cacheEntry.LastErr != nil {
 				errorCount++
 				if errorCount == 0 {
-					repl.Log.Infof("errors!\n")
+					con.Log.Infof("errors!\n")
 				}
-				repl.Log.Errorf("%s - %s\n", cacheEntry.RepoURL, cacheEntry.LastErr)
+				con.Log.Errorf("%s - %s\n", cacheEntry.RepoURL, cacheEntry.LastErr)
 			} else {
 				if cacheEntry.Pkg.IsAlias {
 					aliases = append(aliases, cacheEntry.Alias)
@@ -169,20 +169,20 @@ func ArmoryCmd(cmd *cobra.Command, con *repl.Console) {
 			return true
 		})
 		if errorCount == 0 {
-			repl.Log.Infof("done!\n")
+			con.Log.Infof("done!\n")
 		}
 		if isBundle {
 			bundles := bundlesInCache()
 			if 0 < len(bundles) {
 				PrintArmoryBundles(bundles, con)
 			} else {
-				repl.Log.Infof("No bundles found\n")
+				con.Log.Infof("No bundles found\n")
 			}
 		} else {
 			if 0 < len(aliases) || 0 < len(exts) {
 				PrintArmoryPackages(aliases, exts, con, clientConfig)
 			} else {
-				repl.Log.Infof("No packages found")
+				con.Log.Infof("No packages found")
 			}
 		}
 
@@ -442,9 +442,9 @@ func PrintArmoryPackages(aliases []*alias.AliasManifest, exts []*extension.Exten
 		}
 		if errors.Is(err, ErrPackageNotFound) {
 			if armoryPK == "" {
-				repl.Log.Errorf("No package named '%s' was found", selected[1])
+				con.Log.Errorf("No package named '%s' was found", selected[1])
 			} else {
-				repl.Log.Errorf("No package named '%s' was found for armory '%s'", selected[1], selected[0])
+				con.Log.Errorf("No package named '%s' was found for armory '%s'", selected[1], selected[0])
 			}
 		} else if errors.Is(err, ErrPackageAlreadyInstalled) {
 			repl.Log.Errorf("Package %q is already installed - use the force option to overwrite it\n", selected[1])

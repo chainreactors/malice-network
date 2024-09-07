@@ -16,7 +16,7 @@ func AliasesInstallCmd(cmd *cobra.Command, con *repl.Console) {
 	aliasLocalPath := cmd.Flags().Arg(0)
 	fi, err := os.Stat(aliasLocalPath)
 	if os.IsNotExist(err) {
-		repl.Log.Errorf("alias path '%s' does not exist", aliasLocalPath)
+		con.Log.Errorf("alias path '%s' does not exist", aliasLocalPath)
 		return
 	}
 	if !fi.IsDir() {
@@ -30,17 +30,17 @@ func AliasesInstallCmd(cmd *cobra.Command, con *repl.Console) {
 func installFromDir(aliasLocalPath string, con *repl.Console) {
 	manifestData, err := os.ReadFile(filepath.Join(aliasLocalPath, ManifestFileName))
 	if err != nil {
-		repl.Log.Errorf("Error reading %s: %s", ManifestFileName, err)
+		con.Log.Errorf("Error reading %s: %s", ManifestFileName, err)
 		return
 	}
 	manifest, err := ParseAliasManifest(manifestData)
 	if err != nil {
-		repl.Log.Errorf("Error parsing %s: %s", ManifestFileName, err)
+		con.Log.Errorf("Error parsing %s: %s", ManifestFileName, err)
 		return
 	}
 	installPath := filepath.Join(assets.GetAliasesDir(), filepath.Base(manifest.CommandName))
 	if _, err := os.Stat(installPath); !os.IsNotExist(err) {
-		repl.Log.Infof("Alias '%s' already exists", manifest.CommandName)
+		con.Log.Infof("Alias '%s' already exists", manifest.CommandName)
 		//confirm := false
 		// todo rewrite to tea
 		//prompt := &survey.Confirm{Message: "Overwrite current install?"}
@@ -51,15 +51,15 @@ func installFromDir(aliasLocalPath string, con *repl.Console) {
 		utils.ForceRemoveAll(installPath)
 	}
 
-	repl.Log.Infof("Installing alias '%s' (%s) ... ", manifest.Name, manifest.Version)
+	con.Log.Infof("Installing alias '%s' (%s) ... ", manifest.Name, manifest.Version)
 	err = os.MkdirAll(installPath, 0700)
 	if err != nil {
-		repl.Log.Errorf("Error creating alias directory: %s\n", err)
+		con.Log.Errorf("Error creating alias directory: %s\n", err)
 		return
 	}
 	err = os.WriteFile(filepath.Join(installPath, ManifestFileName), manifestData, 0o600)
 	if err != nil {
-		repl.Log.Errorf("Failed to write %s: %s\n", ManifestFileName, err)
+		con.Log.Errorf("Failed to write %s: %s\n", ManifestFileName, err)
 		utils.ForceRemoveAll(installPath)
 		return
 	}
@@ -70,21 +70,21 @@ func installFromDir(aliasLocalPath string, con *repl.Console) {
 			dst := filepath.Join(installPath, utils.ResolvePath(cmdFile.Path))
 			err := utils.CopyFile(src, dst)
 			if err != nil {
-				repl.Log.Errorf("Error copying file '%s' -> '%s': %s\n", src, dst, err)
+				con.Log.Errorf("Error copying file '%s' -> '%s': %s\n", src, dst, err)
 				utils.ForceRemoveAll(installPath)
 				return
 			}
 		}
 	}
 
-	repl.Log.Infof("done!\n")
+	con.Log.Infof("done!\n")
 }
 
 // Install an extension from a .tar.gz file
 func InstallFromFile(aliasGzFilePath string, aliasName string, promptToOverwrite bool, con *repl.Console) *string {
 	manifestData, err := utils.ReadFileFromTarGz(aliasGzFilePath, fmt.Sprintf("./%s", ManifestFileName))
 	if err != nil {
-		repl.Log.Errorf("Failed to read %s from '%s': %s\n", ManifestFileName, aliasGzFilePath, err)
+		con.Log.Errorf("Failed to read %s from '%s': %s\n", ManifestFileName, aliasGzFilePath, err)
 		return nil
 	}
 	manifest, err := ParseAliasManifest(manifestData)
@@ -95,18 +95,18 @@ func InstallFromFile(aliasGzFilePath string, aliasName string, promptToOverwrite
 		} else {
 			errorMsg = fmt.Sprintf("Failed to parse %s: %s\n", ManifestFileName, err)
 		}
-		repl.Log.Errorf(errorMsg)
+		con.Log.Errorf(errorMsg)
 		return nil
 	}
 	installPath := filepath.Join(assets.GetAliasesDir(), filepath.Base(manifest.CommandName))
 	if _, err := os.Stat(installPath); !os.IsNotExist(err) {
 		if promptToOverwrite {
-			repl.Log.Infof("Alias '%s' already exists\n", manifest.CommandName)
+			con.Log.Infof("Alias '%s' already exists\n", manifest.CommandName)
 			confirmModel := tui.NewConfirm("Overwrite current install?")
 			newConfirm := tui.NewModel(confirmModel, nil, false, true)
 			err := newConfirm.Run()
 			if err != nil {
-				repl.Log.Errorf("Failed to run confirm model: %s\n", err)
+				con.Log.Errorf("Failed to run confirm model: %s\n", err)
 				return nil
 			}
 			if !confirmModel.Confirmed {
@@ -116,15 +116,15 @@ func InstallFromFile(aliasGzFilePath string, aliasName string, promptToOverwrite
 		utils.ForceRemoveAll(installPath)
 	}
 
-	repl.Log.Infof("Installing alias '%s' (%s) ... ", manifest.Name, manifest.Version)
+	con.Log.Infof("Installing alias '%s' (%s) ... ", manifest.Name, manifest.Version)
 	err = os.MkdirAll(installPath, 0700)
 	if err != nil {
-		repl.Log.Errorf("Failed to create alias directory: %s\n", err)
+		con.Log.Errorf("Failed to create alias directory: %s\n", err)
 		return nil
 	}
 	err = os.WriteFile(filepath.Join(installPath, ManifestFileName), manifestData, 0o600)
 	if err != nil {
-		repl.Log.Errorf("Failed to write %s: %s\n", ManifestFileName, err)
+		con.Log.Errorf("Failed to write %s: %s\n", ManifestFileName, err)
 		utils.ForceRemoveAll(installPath)
 		return nil
 	}
@@ -132,12 +132,12 @@ func InstallFromFile(aliasGzFilePath string, aliasName string, promptToOverwrite
 		if aliasFile.Path != "" {
 			err := utils.InstallArtifact(aliasGzFilePath, installPath, aliasFile.Path)
 			if err != nil {
-				repl.Log.Errorf("Failed to install file: %s\n", err)
+				con.Log.Errorf("Failed to install file: %s\n", err)
 				utils.ForceRemoveAll(installPath)
 				return nil
 			}
 		}
 	}
-	repl.Log.Console("done!\n")
+	con.Log.Console("done!\n")
 	return &installPath
 }

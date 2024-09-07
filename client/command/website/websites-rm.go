@@ -10,7 +10,7 @@ import (
 func websitesRmCmd(c *grumble.Context, con *repl.Console) {
 	name := c.Flags.String("name")
 	if name == "" {
-		repl.Log.Errorf("Must specify a website name via --name, see --help")
+		con.Log.Errorf("Must specify a website name via --name, see --help")
 		return
 	}
 
@@ -18,7 +18,7 @@ func websitesRmCmd(c *grumble.Context, con *repl.Console) {
 		Name: name,
 	})
 	if err != nil {
-		repl.Log.Errorf("%s", err)
+		con.Log.Errorf("%s", err)
 		return
 	}
 }

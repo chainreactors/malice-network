@@ -39,7 +39,7 @@ func ArmoryUpdateCmd(cmd *cobra.Command, con *repl.Console) {
 	var selectedUpdates []UpdateIdentifier
 	var err error
 
-	repl.Log.Infof("Refreshing package cache ... ")
+	con.Log.Infof("Refreshing package cache ... ")
 	clientConfig := parseArmoryHTTPConfig(cmd)
 	refresh(clientConfig)
 	tui.Clear()
@@ -51,7 +51,7 @@ func ArmoryUpdateCmd(cmd *cobra.Command, con *repl.Console) {
 
 	// Check for updates
 	if armoryName == "" {
-		repl.Log.Warnf("Could not find a configured armory named %q - searching all configured armories\n\n",
+		con.Log.Warnf("Could not find a configured armory named %q - searching all configured armories\n\n",
 			armoryName)
 	}
 
@@ -65,14 +65,14 @@ func ArmoryUpdateCmd(cmd *cobra.Command, con *repl.Console) {
 		displayAvailableUpdates(updateKeys, aliasUpdates, extUpdates)
 		selectedUpdates, err = getUpdatesFromUser(updateKeys)
 		if err != nil {
-			repl.Log.Errorf(err.Error() + "\n")
+			con.Log.Errorf(err.Error() + "\n")
 			return
 		}
 		if len(selectedUpdates) == 0 {
 			return
 		}
 	} else {
-		repl.Log.Infof("All packages are up to date")
+		con.Log.Infof("All packages are up to date")
 		return
 	}
 
@@ -85,12 +85,12 @@ func ArmoryUpdateCmd(cmd *cobra.Command, con *repl.Console) {
 			}
 			updatePackage, err := getPackageForCommand(update.Name, armoryPK, aliasVersionInfo.NewVersion)
 			if err != nil {
-				repl.Log.Errorf("Could not get update package for alias %s: %s\n", update.Name, err)
+				con.Log.Errorf("Could not get update package for alias %s: %s\n", update.Name, err)
 				continue
 			}
 			err = installAliasPackage(updatePackage, false, clientConfig, con)
 			if err != nil {
-				repl.Log.Errorf("Failed to update %s: %s\n", update.Name, err)
+				con.Log.Errorf("Failed to update %s: %s\n", update.Name, err)
 			}
 		case ExtensionPackage:
 			extVersionInfo, ok := extUpdates[update.Name]
@@ -99,12 +99,12 @@ func ArmoryUpdateCmd(cmd *cobra.Command, con *repl.Console) {
 			}
 			updatedPackage, err := getPackageForCommand(update.Name, armoryPK, extVersionInfo.NewVersion)
 			if err != nil {
-				repl.Log.Errorf("Could not get update package for extension %s: %s\n", update.Name, err)
+				con.Log.Errorf("Could not get update package for extension %s: %s\n", update.Name, err)
 				continue
 			}
 			err = installExtensionPackage(updatedPackage, false, clientConfig, con)
 			if err != nil {
-				repl.Log.Errorf("Failed to update %s: %s\n", update.Name, err)
+				con.Log.Errorf("Failed to update %s: %s\n", update.Name, err)
 			}
 		default:
 			continue
