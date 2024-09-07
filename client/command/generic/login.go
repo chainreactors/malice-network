@@ -1,10 +1,9 @@
-package login
+package generic
 
 import (
 	"context"
 	"fmt"
 	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/mtls"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
@@ -12,23 +11,6 @@ import (
 	"github.com/spf13/cobra"
 	"path/filepath"
 )
-
-func Command(con *repl.Console) []*cobra.Command {
-	loginCmd := &cobra.Command{
-		Use:   "login",
-		Short: "Login to server",
-		Long:  help.GetHelpFor("login"),
-		Run: func(cmd *cobra.Command, args []string) {
-			err := LoginCmd(cmd, con)
-			if err != nil {
-				con.App.Printf("Error login server: %s", err)
-			}
-		},
-	}
-	return []*cobra.Command{
-		loginCmd,
-	}
-}
 
 func LoginCmd(cmd *cobra.Command, con *repl.Console) error {
 	files, err := assets.GetConfigs()

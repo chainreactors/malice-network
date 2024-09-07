@@ -21,7 +21,6 @@ var (
 
 // client module and command
 const (
-	ModuleUpdate               = "update"
 	ModuleExplore              = "explorer"
 	ModuleExecution            = "exec"
 	ModuleExecuteAssembly      = "execute_assembly"
@@ -64,6 +63,8 @@ const (
 )
 
 const (
+	CommandLogin            = "login"
+	CommandExit             = "exit"
 	CommandSessions         = "sessions"
 	CommandNote             = "note"
 	CommandGroup            = "group"
