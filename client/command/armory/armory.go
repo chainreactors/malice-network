@@ -8,7 +8,6 @@ import (
 	"github.com/chainreactors/malice-network/client/command/alias"
 	"github.com/chainreactors/malice-network/client/command/extension"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/cryptography/minisign"
 	"github.com/chainreactors/tui"
 	"github.com/pterm/pterm"
@@ -415,10 +414,9 @@ func PrintArmoryPackages(aliases []*alias.AliasManifest, exts []*extension.Exten
 			})
 		}
 	}
-	implantMenu := con.App.Menu(consts.ImplantMenu)
 	for _, pkg := range entries {
 		var commandName string
-		if repl.CmdExists(pkg.CommandName, implantMenu.Command) {
+		if repl.CmdExists(pkg.CommandName, con.ImplantMenu()) {
 			commandName = pterm.FgGreen.Sprint(pkg.CommandName)
 		} else {
 			commandName = pkg.CommandName

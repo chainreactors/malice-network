@@ -24,9 +24,10 @@ func ExecutePECmd(cmd *cobra.Command, con *repl.Console) {
 		repl.Log.Errorf("Execute PE error: %v", err)
 		return
 	}
+	session := con.GetInteractive()
 	con.AddCallback(task, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite)
-		con.SessionLog(con.GetInteractive().SessionId).Consolef("Executed PE on target: %s\n", resp.GetAssemblyResponse().GetData())
+		session.Log.Consolef("Executed PE on target: %s\n", resp.GetAssemblyResponse().GetData())
 	})
 }
 
@@ -54,10 +55,6 @@ func ExecPE(rpc clientrpc.MaliceRPCClient, sess *repl.Session, pePath string, sa
 // InlinePECmd - Execute PE in current process
 func InlinePECmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
-	if session == nil {
-		return
-	}
-	sid := con.GetInteractive().SessionId
 	pePath := cmd.Flags().Arg(0)
 	task, err := InlinePE(con.Rpc, session, pePath)
 	if err != nil {
@@ -67,7 +64,7 @@ func InlinePECmd(cmd *cobra.Command, con *repl.Console) {
 	con.AddCallback(task, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite)
 		if !(resp.Status.Error != "") {
-			con.SessionLog(sid).Consolef("Executed PE on target: %s\n", resp.GetAssemblyResponse().GetData())
+			session.Log.Consolef("Executed PE on target: %s\n", resp.GetAssemblyResponse().GetData())
 		}
 	})
 }

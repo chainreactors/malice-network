@@ -14,10 +14,6 @@ func LoadModuleCmd(cmd *cobra.Command, con *repl.Console) {
 	bundle := cmd.Flags().Arg(0)
 	path := cmd.Flags().Arg(1)
 	session := con.GetInteractive()
-	if session == nil {
-		return
-	}
-	sid := con.GetInteractive().SessionId
 	task, err := LoadModule(con.Rpc, session, bundle, path)
 	if err != nil {
 		repl.Log.Errorf("LoadModule error: %v", err)
@@ -25,7 +21,7 @@ func LoadModuleCmd(cmd *cobra.Command, con *repl.Console) {
 	}
 	con.AddCallback(task, func(msg proto.Message) {
 		//modules := msg.(*implantpb.Spite).GetModules()
-		con.SessionLog(sid).Infof("LoadModule: %s success", bundle)
+		session.Log.Infof("LoadModule: %s success", bundle)
 	})
 }
 

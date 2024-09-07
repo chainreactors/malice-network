@@ -6,7 +6,6 @@ import (
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/client/utils"
-	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/tui"
 	"github.com/spf13/cobra"
 	"os"
@@ -48,7 +47,7 @@ func RemoveExtensionByCommandName(commandName string, con *repl.Console) error {
 		return errors.New("extension not loaded")
 	}
 	delete(loadedExtensions, commandName)
-	implantMenu := con.App.Menu(consts.ImplantMenu)
+	implantMenu := con.ImplantMenu()
 	for _, cmd := range implantMenu.Commands() {
 		if cmd.Name() == commandName {
 			implantMenu.RemoveCommand(cmd)

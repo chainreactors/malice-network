@@ -12,10 +12,6 @@ import (
 
 func ExecuteCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
-	if session == nil {
-		return
-	}
-	sid := con.GetInteractive().SessionId
 	//token := ctx.Flags.Bool("token")
 	//output, _ := cmd.Flags().GetBool("output")
 	cmdStr := shellquote.Join(cmd.Flags().Args()...)
@@ -26,8 +22,8 @@ func ExecuteCmd(cmd *cobra.Command, con *repl.Console) {
 	}
 	con.AddCallback(task, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite).GetExecResponse()
-		con.SessionLog(sid).Infof("pid: %d, status: %d", resp.Pid, resp.StatusCode)
-		con.SessionLog(sid).Consolef("%s, output:\n%s", cmdStr, string(resp.Stdout))
+		session.Log.Infof("pid: %d, status: %d", resp.Pid, resp.StatusCode)
+		session.Log.Consolef("%s, output:\n%s", cmdStr, string(resp.Stdout))
 	})
 
 }

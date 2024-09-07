@@ -15,10 +15,6 @@ import (
 
 func ExecuteAssemblyCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
-	if session == nil {
-		return
-	}
-	sid := con.GetInteractive().SessionId
 	path := cmd.Flags().Arg(0)
 	params := cmd.Flags().Args()[1:]
 	//output, _ := cmd.Flags().GetBool("output")
@@ -29,7 +25,7 @@ func ExecuteAssemblyCmd(cmd *cobra.Command, con *repl.Console) {
 	}
 	con.AddCallback(task, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite).GetAssemblyResponse()
-		con.SessionLog(sid).Infof("%s output:\n%s", filepath.Base(path), string(resp.Data))
+		session.Log.Infof("%s output:\n%s", filepath.Base(path), string(resp.Data))
 	})
 }
 

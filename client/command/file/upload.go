@@ -18,14 +18,14 @@ func UploadCmd(cmd *cobra.Command, con *repl.Console) {
 	priv, _ := cmd.Flags().GetInt("priv")
 	hidden, _ := cmd.Flags().GetBool("hidden")
 
-	sid := con.GetInteractive().SessionId
+	session := con.GetInteractive()
 	task, err := Upload(con.Rpc, con.GetInteractive(), path, target, priv, hidden)
 	if err != nil {
 		return
 	}
 
 	con.AddCallback(task, func(msg proto.Message) {
-		con.SessionLog(sid).Consolef("Upload status %v", msg.(*clientpb.Task).GetStatus())
+		session.Log.Consolef("Upload status %v", msg.(*clientpb.Task).GetStatus())
 	})
 }
 

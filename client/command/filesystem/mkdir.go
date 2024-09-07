@@ -17,18 +17,13 @@ func MkdirCmd(cmd *cobra.Command, con *repl.Console) {
 		return
 	}
 	session := con.GetInteractive()
-	if session == nil {
-		return
-	}
-	sid := con.GetInteractive().SessionId
 	task, err := Mkdir(con.Rpc, session, path)
 	if err != nil {
 		repl.Log.Errorf("Mkdir error: %v", err)
 		return
 	}
 	con.AddCallback(task, func(msg proto.Message) {
-		_ = msg.(*implantpb.Spite)
-		con.SessionLog(sid).Consolef("Created directory\n")
+		session.Log.Consolef("Created directory\n")
 	})
 }
 

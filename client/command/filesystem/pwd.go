@@ -12,10 +12,6 @@ import (
 
 func PwdCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
-	if session == nil {
-		return
-	}
-	sid := con.GetInteractive().SessionId
 	task, err := Pwd(con.Rpc, session)
 	if err != nil {
 		repl.Log.Errorf("Pwd error: %v", err)
@@ -23,7 +19,7 @@ func PwdCmd(cmd *cobra.Command, con *repl.Console) {
 	}
 	con.AddCallback(task, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite).GetResponse()
-		con.SessionLog(sid).Consolef("%s\n", resp.GetOutput())
+		session.Log.Consolef("%s\n", resp.GetOutput())
 	})
 }
 

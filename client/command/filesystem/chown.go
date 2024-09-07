@@ -19,18 +19,13 @@ func ChownCmd(cmd *cobra.Command, con *repl.Console) {
 	gid, _ := cmd.Flags().GetString("gid")
 	recursive, _ := cmd.Flags().GetBool("recursive")
 	session := con.GetInteractive()
-	if session == nil {
-		return
-	}
-	sid := con.GetInteractive().SessionId
-	task, err := Chown(con.Rpc, con.GetInteractive(), path, uid, gid, recursive)
+	task, err := Chown(con.Rpc, session, path, uid, gid, recursive)
 	if err != nil {
 		repl.Log.Errorf("Chown error: %v", err)
 		return
 	}
 	con.AddCallback(task, func(msg proto.Message) {
-		_ = msg.(*clientpb.Task)
-		con.SessionLog(sid).Consolef("Chown success\n")
+		session.Log.Consolef("Chown success\n")
 	})
 }
 

@@ -17,18 +17,13 @@ func RmCmd(cmd *cobra.Command, con *repl.Console) {
 		return
 	}
 	session := con.GetInteractive()
-	if session == nil {
-		return
-	}
-	sid := con.GetInteractive().SessionId
 	task, err := Rm(con.Rpc, session, fileName)
 	if err != nil {
 		repl.Log.Errorf("Rm error: %v", err)
 		return
 	}
 	con.AddCallback(task, func(msg proto.Message) {
-		_ = msg.(*implantpb.Spite)
-		con.SessionLog(sid).Consolef("Removed file success\n")
+		session.Log.Consolef("Removed file success\n")
 	})
 }
 

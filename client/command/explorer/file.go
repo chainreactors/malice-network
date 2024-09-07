@@ -12,13 +12,10 @@ import (
 
 func explorerCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
-	if session == nil {
-		return
-	}
 	dirEntriesChan := make(chan []os.DirEntry, 1)
 	var path = ""
 
-	task, err := con.Rpc.Ls(con.ActiveTarget.Context(), &implantpb.Request{
+	task, err := con.Rpc.Ls(session.Context(), &implantpb.Request{
 		Name:  consts.ModuleLs,
 		Input: "./",
 	})

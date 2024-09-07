@@ -114,7 +114,7 @@ func AliasesLoadCmd(cmd *cobra.Command, con *repl.Console) {
 	} else {
 		repl.Log.Infof("%s alias has been loaded\n", alias.Name)
 	}
-	err = RegisterAlias(alias, con.App.Menu(consts.ImplantMenu).Command, con)
+	err = RegisterAlias(alias, con.ImplantMenu(), con)
 	if err != nil {
 		repl.Log.Errorf(err.Error())
 		return
@@ -243,10 +243,6 @@ func ParseAliasManifest(data []byte) (*AliasManifest, error) {
 
 func runAliasCommand(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
-	if session == nil {
-		return
-	}
-	sid := session.SessionId
 	loadedAlias, ok := loadedAliases[cmd.Name()]
 	if !ok {
 		repl.Log.Errorf("No alias found for `%s` command\n", cmd.Name())
@@ -286,9 +282,9 @@ func runAliasCommand(cmd *cobra.Command, con *repl.Console) {
 	con.AddCallback(task, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite).GetAssemblyResponse()
 		if resp.Status == 0 {
-			con.SessionLog(sid).Infof("%s output:\n%s", loadedAlias.Command.Name(), string(resp.Data))
+			session.Log.Infof("%s output:\n%s", loadedAlias.Command.Name(), string(resp.Data))
 		} else {
-			con.SessionLog(sid).Errorf("%s %s ", cmd.Name(), resp.Err)
+			session.Log.Errorf("%s %s ", cmd.Name(), resp.Err)
 		}
 	})
 }

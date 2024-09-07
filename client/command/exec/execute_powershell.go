@@ -19,10 +19,6 @@ func ExecutePowershellCmd(cmd *cobra.Command, con *repl.Console) {
 	psList := cmd.Flags().Args()
 	ps := shellquote.Join(psList...)
 	session := con.GetInteractive()
-	if session == nil {
-		return
-	}
-	sid := con.GetInteractive().SessionId
 	task, err := ExecPowershell(con.Rpc, session, ps)
 	if err != nil {
 		repl.Log.Errorf("Execute Powershell error: %v", err)
@@ -30,8 +26,7 @@ func ExecutePowershellCmd(cmd *cobra.Command, con *repl.Console) {
 	}
 	con.AddCallback(task, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite)
-		con.SessionLog(sid).Consolef("Executed Powershell on target: %s\n", resp.GetAssemblyResponse().GetData())
-
+		session.Log.Consolef("Executed Powershell on target: %s\n", resp.GetAssemblyResponse().GetData())
 	})
 }
 

@@ -128,9 +128,8 @@ func ExtensionLoadCmd(cmd *cobra.Command, con *repl.Console) {
 		return
 	}
 	// do not add if the command already exists
-	implantMenu := con.App.Menu(consts.ImplantMenu)
 	for _, extCmd := range manifest.ExtCommand {
-		if repl.CmdExists(extCmd.CommandName, implantMenu.Command) {
+		if repl.CmdExists(extCmd.CommandName, con.ImplantMenu()) {
 			repl.Log.Errorf("%s command already exists\n", extCmd.CommandName)
 			confirmModel := tui.NewConfirm(fmt.Sprintf("%s command already exists. Overwrite?", extCmd.CommandName))
 			newConfirm := tui.NewModel(confirmModel, nil, false, true)
@@ -348,7 +347,7 @@ func runExtensionCmd(cmd *cobra.Command, con *repl.Console) {
 	}
 	con.AddCallback(task, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite).GetAssemblyResponse()
-		con.SessionLog(session.SessionId).Console(string(resp.Data))
+		session.Log.Console(string(resp.Data))
 	})
 }
 

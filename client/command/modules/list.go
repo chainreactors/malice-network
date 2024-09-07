@@ -15,9 +15,6 @@ import (
 
 func ListModulesCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
-	if session == nil {
-		return
-	}
 	task, err := ListModules(con.Rpc, session)
 	if err != nil {
 		repl.Log.Errorf("ListModules error: %v", err)

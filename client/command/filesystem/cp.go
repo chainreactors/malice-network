@@ -19,18 +19,13 @@ func CpCmd(cmd *cobra.Command, con *repl.Console) {
 	}
 
 	session := con.GetInteractive()
-	if session == nil {
-		return
-	}
-	sid := con.GetInteractive().SessionId
-	task, err := Cp(con.Rpc, con.GetInteractive(), originPath, targetPath)
+	task, err := Cp(con.Rpc, session, originPath, targetPath)
 	if err != nil {
 		repl.Log.Errorf("Cp error: %v", err)
 		return
 	}
 	con.AddCallback(task, func(msg proto.Message) {
-		_ = msg.(*clientpb.Task)
-		con.SessionLog(sid).Consolef("Cp success\n")
+		session.Log.Consolef("Cp success\n")
 	})
 }
 

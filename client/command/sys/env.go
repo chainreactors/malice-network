@@ -12,10 +12,6 @@ import (
 
 func EnvCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
-	if session == nil {
-		return
-	}
-	sid := session.SessionId
 	task, err := Env(con.Rpc, session)
 	if err != nil {
 		repl.Log.Errorf("Env error: %v", err)
@@ -24,7 +20,7 @@ func EnvCmd(cmd *cobra.Command, con *repl.Console) {
 	con.AddCallback(task, func(msg proto.Message) {
 		envSet := msg.(*implantpb.Spite).GetResponse().GetKv()
 		for k, v := range envSet {
-			con.SessionLog(sid).Consolef("export %s = %s\n", k, v)
+			session.Log.Consolef("export %s = %s\n", k, v)
 		}
 	})
 }
@@ -47,16 +43,12 @@ func SetEnvCmd(cmd *cobra.Command, con *repl.Console) {
 		return
 	}
 	session := con.GetInteractive()
-	if session == nil {
-		return
-	}
-	sid := session.SessionId
 	task, err := SetEnv(con.Rpc, session, envName, value)
 	if err != nil {
 		return
 	}
 	con.AddCallback(task, func(msg proto.Message) {
-		con.SessionLog(sid).Consolef("Set environment variable success\n")
+		session.Log.Consolef("Set environment variable success\n")
 	})
 }
 
@@ -78,17 +70,13 @@ func UnsetEnvCmd(cmd *cobra.Command, con *repl.Console) {
 		return
 	}
 	session := con.GetInteractive()
-	if session == nil {
-		return
-	}
-	sid := session.SessionId
 	task, err := UnSetEnv(con.Rpc, session, envName)
 	if err != nil {
 		repl.Log.Errorf("UnsetEnv error: %v", err)
 		return
 	}
 	con.AddCallback(task, func(msg proto.Message) {
-		con.SessionLog(sid).Consolef("Unset environment variable success\n")
+		session.Log.Consolef("Unset environment variable success\n")
 	})
 }
 

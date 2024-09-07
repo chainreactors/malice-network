@@ -18,18 +18,13 @@ func ChmodCmd(cmd *cobra.Command, con *repl.Console) {
 		return
 	}
 	session := con.GetInteractive()
-	if session == nil {
-		return
-	}
-	sid := con.GetInteractive().SessionId
 	task, err := Chmod(con.Rpc, con.GetInteractive(), path, mode)
 	if err != nil {
 		repl.Log.Errorf("Chmod error: %v", err)
 		return
 	}
 	con.AddCallback(task, func(msg proto.Message) {
-		_ = msg.(*clientpb.Task)
-		con.SessionLog(sid).Consolef("Chmod success\n")
+		session.Log.Consolef("Chmod success\n")
 	})
 }
 
