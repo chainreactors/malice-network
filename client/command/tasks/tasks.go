@@ -2,7 +2,6 @@ package tasks
 
 import (
 	"fmt"
-	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/tui"
@@ -10,21 +9,6 @@ import (
 	"github.com/spf13/cobra"
 	"strconv"
 )
-
-func Command(con *repl.Console) []*cobra.Command {
-	taskCmd := &cobra.Command{
-		Use:   "tasks",
-		Short: "List tasks",
-		Long:  help.GetHelpFor("tasks"),
-		Run: func(cmd *cobra.Command, args []string) {
-			listTasks(cmd, con)
-			return
-		},
-	}
-	return []*cobra.Command{
-		taskCmd,
-	}
-}
 
 func listTasks(cmd *cobra.Command, con *repl.Console) {
 	err := con.UpdateTasks(con.GetInteractive())

@@ -12,6 +12,7 @@ import (
 	"github.com/chainreactors/malice-network/client/command/mal"
 	"github.com/chainreactors/malice-network/client/command/modules"
 	"github.com/chainreactors/malice-network/client/command/sys"
+	"github.com/chainreactors/malice-network/client/command/tasks"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/reeflective/console"
@@ -30,6 +31,7 @@ func BindImplantCommands(con *repl.Console) console.Commands {
 		bind := makeBind(implant, con)
 		bindCommonCommands(bind)
 		bind(consts.ImplantGroup,
+			tasks.Command,
 			exec.Commands,
 			file.Commands,
 			filesystem.Commands,
