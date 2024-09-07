@@ -14,6 +14,7 @@ type Event struct {
 	Task    *Task
 
 	EventType  string
+	Op         string
 	SourceName string
 	Message    string
 	Data       []byte
@@ -42,7 +43,7 @@ func (broker *eventBroker) Start() {
 		case sub := <-broker.unsubscribe:
 			delete(subscribers, sub)
 		case event := <-broker.publish:
-			logs.Log.Infof("[event] %s: %s", event.EventType, string(event.Data))
+			logs.Log.Infof("[event] %s: %s", event.Op, string(event.Data))
 			for sub := range subscribers {
 				sub <- event
 			}

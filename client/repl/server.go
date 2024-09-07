@@ -222,16 +222,14 @@ func (s *ServerStatus) EventHandler() {
 			Log.Importantf("%s session: %s ", event.Session.SessionId, event.Message)
 		case consts.EventNotify:
 			Log.Importantf("%s notified: %s %s", event.Source, string(event.Data), event.Err)
-		case consts.EventTaskCallback:
-			s.triggerTaskCallback(event)
-		case consts.EventTaskFinish:
-			s.triggerTaskFinish(event)
 		case consts.EventPipeline:
 			if event.GetErr() != "" {
 				Log.Errorf("Pipeline error: %s", event.GetErr())
 				return
 			}
 			Log.Importantf("Pipeline: %s", event.Message)
+		case consts.EventTask:
+			s.handlerTaskCtrl(event)
 		case consts.EventWebsite:
 			if event.GetErr() != "" {
 				Log.Errorf("Website error: %s", event.GetErr())
@@ -240,5 +238,18 @@ func (s *ServerStatus) EventHandler() {
 			Log.Importantf("Website: %s", event.Message)
 		}
 		//con.triggerReactions(event)
+	}
+}
+
+func (s *ServerStatus) handlerTaskCtrl(event *clientpb.Event) {
+	switch event.Op {
+	case consts.CtrlTaskCallback:
+		s.triggerTaskCallback(event)
+	case consts.CtrlTaskFinish:
+		s.triggerTaskFinish(event)
+	case consts.CtrlTaskCancel:
+		Log.Importantf("%s task: %d canceled", event.Session.SessionId, event.Task.TaskId)
+	case consts.CtrlTaskError:
+		Log.Errorf("%s task: %d error: %s", event.Session.SessionId, event.Task.TaskId, event.Err)
 	}
 }
