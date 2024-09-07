@@ -25,12 +25,13 @@ func LoadAddonCmd(cmd *cobra.Command, con *repl.Console) {
 		module = helper.CheckExtModule(path)
 	}
 
-	task, err := LoadAddon(con.Rpc, con.GetInteractive(), name, path, module)
+	session := con.GetInteractive()
+	task, err := LoadAddon(con.Rpc, session, name, path, module)
 	if err != nil {
 		repl.Log.Errorf("%s", err)
 		return
 	}
-	session := con.GetInteractive()
+
 	err = RegisterAddon(&implantpb.Addon{Name: name, Depend: module}, con, con.ImplantMenu())
 	if err != nil {
 		repl.Log.Errorf("%s", err)
