@@ -60,6 +60,7 @@ const (
 	ModuleLoadAddon            = "load_addon"
 	ModuleExecuteAddon         = "execute_addon"
 	ModuleClear                = "clear"
+	ModuleCancelTask           = "cancel_task"
 )
 
 const (
@@ -95,20 +96,6 @@ const (
 	CommandMalList          = "list"
 	CommandMalInstall       = "install"
 	CommandMalRemove        = "remove"
-)
-
-// ctrl type
-const (
-	CtrlPipelineStart = 0 + iota
-	CtrlPipelineStop
-	CtrlWebsiteStart = 0 + iota
-	CtrlWebsiteStop
-)
-
-// ctrl status
-const (
-	CtrlStatusSuccess = 0 + iota
-	CtrlStatusFailed
 )
 
 // task error

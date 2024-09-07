@@ -81,7 +81,8 @@ func (r *GenericRequest) HandlerAsyncResponse(ch chan *implantpb.Spite, typ type
 		}
 	})
 	r.Task.Done(core.Event{
-		EventType: consts.EventTaskFinish,
+		EventType: consts.EventTask,
+		Op:        consts.CtrlTaskError,
 		Task:      r.Task,
 	})
 }
@@ -89,31 +90,36 @@ func (r *GenericRequest) HandlerAsyncResponse(ch chan *implantpb.Spite, typ type
 func buildErrorEvent(task *core.Task, err error) core.Event {
 	if errors.Is(err, handler.ErrNilStatus) {
 		return core.Event{
-			EventType: consts.EventTaskFinish,
+			EventType: consts.EventTask,
+			Op:        consts.CtrlTaskError,
 			Task:      task,
 			Err:       handler.ErrNilStatus.Error(),
 		}
 	} else if errors.Is(err, handler.ErrAssertFailure) {
 		return core.Event{
-			EventType: consts.EventTaskFinish,
+			EventType: consts.EventTask,
+			Op:        consts.CtrlTaskError,
 			Task:      task,
 			Err:       handler.ErrAssertFailure.Error(),
 		}
 	} else if errors.Is(err, handler.ErrNilResponseBody) {
 		return core.Event{
-			EventType: consts.EventTaskFinish,
+			EventType: consts.EventTask,
+			Op:        consts.CtrlTaskError,
 			Task:      task,
 			Err:       handler.ErrNilResponseBody.Error(),
 		}
 	} else if errors.Is(err, ErrMissingRequestField) {
 		return core.Event{
-			EventType: consts.EventTaskFinish,
+			EventType: consts.EventTask,
+			Op:        consts.CtrlTaskError,
 			Task:      task,
 			Err:       ErrMissingRequestField.Error(),
 		}
 	} else {
 		return core.Event{
-			EventType: consts.EventTaskFinish,
+			EventType: consts.EventTask,
+			Op:        consts.CtrlTaskError,
 			Task:      task,
 			Err:       err.Error(),
 		}

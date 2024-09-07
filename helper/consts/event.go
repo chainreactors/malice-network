@@ -1,16 +1,35 @@
 package consts
 
+const (
+	CtrlTaskCallback = "task_callback"
+	CtrlTaskFinish   = "task_finish"
+	CtrlTaskCancel   = "task_cancel"
+	CtrlTaskError    = "task_error"
+)
+
+// ctrl type
+const (
+	CtrlPipelineStart = 0 + iota
+	CtrlPipelineStop
+	CtrlWebsiteStart = 0 + iota
+	CtrlWebsiteStop
+)
+
+// ctrl status
+const (
+	CtrlStatusSuccess = 0 + iota
+	CtrlStatusFailed
+)
+
 // event
 const (
-	EventJoin         = "join"
-	EventLeft         = "left"
-	EventBroadcast    = "broadcast"
-	EventNotify       = "notify"
-	EventPipeline     = "pipeline"
-	EventSession      = "session"
-	EventListener     = "listener"
-	EventTaskCallback = "task_callback"
-	EventTaskFinish   = "task_done"
-	EventTaskError    = "task_error"
-	EventWebsite      = "website"
+	EventJoin      = "join"
+	EventLeft      = "left"
+	EventBroadcast = "broadcast"
+	EventNotify    = "notify"
+	EventPipeline  = "pipeline"
+	EventSession   = "session"
+	EventListener  = "listener"
+	EventTask      = "task"
+	EventWebsite   = "website"
 )

@@ -26,6 +26,7 @@ func (rpc *Server) Events(_ *clientpb.Empty, stream clientrpc.MaliceRPC_EventsSe
 		case event := <-events:
 			pbEvent := &clientpb.Event{
 				Type:   event.EventType,
+				Op:     event.Op,
 				Source: event.SourceName,
 				Data:   event.Data,
 			}

@@ -106,7 +106,8 @@ func (t *Task) Done(event Event) {
 func (t *Task) Finish() {
 	EventBroker.Publish(Event{
 		Task:      t,
-		EventType: consts.EventTaskCallback,
+		EventType: consts.EventTask,
+		Op:        consts.CtrlTaskFinish,
 	})
 	if t.Callback != nil {
 		t.Callback()
