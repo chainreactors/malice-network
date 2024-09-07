@@ -87,3 +87,14 @@ func SessionAddonComplete(con *repl.Console) carapace.Action {
 	}
 	return carapace.ActionCallback(callback)
 }
+
+func SessionTaskComplete(con *repl.Console) carapace.Action {
+	callback := func(c carapace.Context) carapace.Action {
+		results := make([]string, 0)
+		for _, s := range con.GetInteractive().Tasks.Tasks {
+			results = append(results, fmt.Sprintf("%d", s.TaskId), "")
+		}
+		return carapace.ActionValuesDescribed(results...).Tag("session tasks")
+	}
+	return carapace.ActionCallback(callback)
+}

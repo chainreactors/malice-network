@@ -22,6 +22,12 @@ type Session struct {
 	Log *logs.Logger
 }
 
+func (s *Session) Context() context.Context {
+	return metadata.NewOutgoingContext(context.Background(), metadata.Pairs(
+		"session_id", s.SessionId),
+	)
+}
+
 func (s *Session) HasDepend(module string) bool {
 	if alias, ok := consts.ModuleAliases[module]; ok {
 		module = alias
@@ -50,10 +56,13 @@ func (s *Session) GetAddon(name string) *implantpb.Addon {
 	return nil
 }
 
-func (s *Session) Context() context.Context {
-	return metadata.NewOutgoingContext(context.Background(), metadata.Pairs(
-		"session_id", s.SessionId),
-	)
+func (s *Session) HasTask(taskId uint32) bool {
+	for _, task := range s.Tasks.Tasks {
+		if task.TaskId == taskId {
+			return true
+		}
+	}
+	return false
 }
 
 func NewObserver(session *Session) *Observer {

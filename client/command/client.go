@@ -9,7 +9,6 @@ import (
 	"github.com/chainreactors/malice-network/client/command/listener"
 	"github.com/chainreactors/malice-network/client/command/mal"
 	"github.com/chainreactors/malice-network/client/command/sessions"
-	"github.com/chainreactors/malice-network/client/command/tasks"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/reeflective/console"
@@ -23,7 +22,6 @@ func bindCommonCommands(bind bindFunc) {
 
 	bind(consts.GenericGroup,
 		sessions.Commands,
-		tasks.Command,
 		alias.Commands,
 		extension.Commands,
 		armory.Commands,
