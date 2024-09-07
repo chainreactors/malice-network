@@ -88,6 +88,24 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return builtin.ParseStatus(ctx.Spite)
 		})
 
+	con.RegisterInternalFunc(
+		"refresh_module",
+		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session) (*clientpb.Task, error) {
+			return refreshModule(rpc, sess)
+		},
+		func(ctx *clientpb.TaskContext) (interface{}, error) {
+			return builtin.ParseStatus(ctx.Spite)
+		})
+
+	//clear
+	con.RegisterInternalFunc(
+		"clear",
+		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session) (*clientpb.Task, error) {
+			return clearAll(rpc, sess)
+		},
+		func(context *clientpb.TaskContext) (interface{}, error) {
+			return builtin.ParseStatus(context.Spite)
+		})
 	return []*cobra.Command{
 		listModuleCmd,
 		loadModuleCmd,

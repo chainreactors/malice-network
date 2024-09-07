@@ -16,14 +16,15 @@ func CatCmd(cmd *cobra.Command, con *repl.Console) {
 		repl.Log.Errorf("required arguments missing")
 		return
 	}
-	task, err := Cat(con.Rpc, con.GetInteractive(), fileName)
+	session := con.GetInteractive()
+	task, err := Cat(con.Rpc, session, fileName)
 	if err != nil {
 		repl.Log.Errorf("Cat error: %v", err)
 	}
-	session := con.GetInteractive()
+
 	con.AddCallback(task, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite).GetResponse()
-		session.Log.Infof("File content: %s", resp.GetOutput())
+		session.Log.Infof(resp.GetOutput())
 	})
 }
 
