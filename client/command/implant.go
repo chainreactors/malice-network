@@ -47,12 +47,12 @@ func BindImplantCommands(con *repl.Console) console.Commands {
 		for _, manifest := range aliasManifests {
 			manifest, err := alias.LoadAlias(manifest, con)
 			if err != nil {
-				repl.Log.Errorf("Failed to load alias: %s", err)
+				con.Log.Errorf("Failed to load alias: %s", err)
 				continue
 			}
 			err = alias.RegisterAlias(manifest, implant, con)
 			if err != nil {
-				repl.Log.Errorf("Failed to register alias: %s", err)
+				con.Log.Errorf("Failed to register alias: %s", err)
 				continue
 			}
 		}
@@ -65,7 +65,7 @@ func BindImplantCommands(con *repl.Console) console.Commands {
 			if err != nil {
 				//con doesn't appear to be initialised here?
 				//con.PrintErrorf("Failed to load extension: %s", err)
-				repl.Log.Errorf("Failed to load extension: %s\n", err)
+				con.Log.Errorf("Failed to load extension: %s\n", err)
 				continue
 			}
 
@@ -80,18 +80,18 @@ func BindImplantCommands(con *repl.Console) console.Commands {
 			if err != nil {
 				//con doesn't appear to be initialised here?
 				//con.PrintErrorf("Failed to load extension: %s", err)
-				repl.Log.Errorf("Failed to load mal: %s\n", err)
+				con.Log.Errorf("Failed to load mal: %s\n", err)
 				continue
 			}
 
 			if plug, err := con.Plugins.LoadPlugin(manifest, con); err == nil {
 				err := plug.ReverseRegisterLuaFunctions(implant)
 				if err != nil {
-					repl.Log.Errorf("Failed to register mal command: %s\n", err)
+					con.Log.Errorf("Failed to register mal command: %s\n", err)
 					continue
 				}
 			} else {
-				repl.Log.Errorf("Failed to load mal: %s\n", err)
+				con.Log.Errorf("Failed to load mal: %s\n", err)
 				continue
 			}
 		}

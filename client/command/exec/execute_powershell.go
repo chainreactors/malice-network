@@ -21,7 +21,7 @@ func ExecutePowershellCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
 	task, err := ExecPowershell(con.Rpc, session, ps)
 	if err != nil {
-		repl.Log.Errorf("Execute Powershell error: %v", err)
+		con.Log.Errorf("Execute Powershell error: %v", err)
 		return
 	}
 	con.AddCallback(task, func(msg proto.Message) {

@@ -13,7 +13,7 @@ func webRmContentCmd(c *grumble.Context, con *repl.Console) {
 	webPath := c.Flags.String("web-path")
 	recursive := c.Flags.Bool("recursive")
 	if name == "" {
-		repl.Log.Errorf("Must specify a website name via --name, see --help")
+		con.Log.Errorf("Must specify a website name via --name, see --help")
 		return
 	}
 	if webPath == "" {

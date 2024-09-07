@@ -14,7 +14,7 @@ func EnvCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
 	task, err := Env(con.Rpc, session)
 	if err != nil {
-		repl.Log.Errorf("Env error: %v", err)
+		con.Log.Errorf("Env error: %v", err)
 		return
 	}
 	con.AddCallback(task, func(msg proto.Message) {
@@ -39,7 +39,7 @@ func SetEnvCmd(cmd *cobra.Command, con *repl.Console) {
 	envName := cmd.Flags().Arg(0)
 	value := cmd.Flags().Arg(1)
 	if envName == "" || value == "" {
-		repl.Log.Errorf("required arguments missing")
+		con.Log.Errorf("required arguments missing")
 		return
 	}
 	session := con.GetInteractive()
@@ -66,13 +66,13 @@ func SetEnv(rpc clientrpc.MaliceRPCClient, session *repl.Session, envName, value
 func UnsetEnvCmd(cmd *cobra.Command, con *repl.Console) {
 	envName := cmd.Flags().Arg(0)
 	if envName == "" {
-		repl.Log.Errorf("required arguments missing")
+		con.Log.Errorf("required arguments missing")
 		return
 	}
 	session := con.GetInteractive()
 	task, err := UnSetEnv(con.Rpc, session, envName)
 	if err != nil {
-		repl.Log.Errorf("UnsetEnv error: %v", err)
+		con.Log.Errorf("UnsetEnv error: %v", err)
 		return
 	}
 	con.AddCallback(task, func(msg proto.Message) {

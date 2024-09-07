@@ -10,7 +10,7 @@ func ObserveCmd(cmd *cobra.Command, con *repl.Console) {
 	isList, _ := cmd.Flags().GetBool("list")
 	if isList {
 		for i, ob := range con.Observers {
-			repl.Log.Infof("%s: %s", i, ob.SessionId())
+			con.Log.Infof("%s: %s", i, ob.SessionId())
 		}
 		return
 	}
@@ -21,7 +21,7 @@ func ObserveCmd(cmd *cobra.Command, con *repl.Console) {
 			idArg = []string{con.GetInteractive().SessionId}
 		} else {
 			for i, ob := range con.Observers {
-				repl.Log.Infof("%d: %s", i, ob.SessionId())
+				con.Log.Infof("%d: %s", i, ob.SessionId())
 			}
 			return
 		}

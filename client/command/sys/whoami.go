@@ -14,7 +14,7 @@ func WhoamiCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
 	task, err := Whoami(con.Rpc, session)
 	if err != nil {
-		repl.Log.Errorf("Whoami error: %v", err)
+		con.Log.Errorf("Whoami error: %v", err)
 		return
 	}
 	con.AddCallback(task, func(msg proto.Message) {

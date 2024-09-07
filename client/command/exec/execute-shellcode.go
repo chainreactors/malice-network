@@ -22,7 +22,7 @@ func ExecuteShellcodeCmd(cmd *cobra.Command, con *repl.Console) {
 	sac, _ := common.ParseSacrifice(cmd)
 	task, err := ExecShellcode(con.Rpc, session, path, sac)
 	if err != nil {
-		repl.Log.Errorf("Execute shellcode error: %v", err)
+		con.Log.Errorf("Execute shellcode error: %v", err)
 		return
 	}
 	con.AddCallback(task, func(msg proto.Message) {
@@ -57,7 +57,7 @@ func InlineShellcodeCmd(cmd *cobra.Command, con *repl.Console) {
 	path := cmd.Flags().Arg(0)
 	task, err := InlineShellcode(con.Rpc, session, path)
 	if err != nil {
-		repl.Log.Errorf("Execute inline shellcode error: %v", err)
+		con.Log.Errorf("Execute inline shellcode error: %v", err)
 		return
 	}
 	con.AddCallback(task, func(msg proto.Message) {

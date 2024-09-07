@@ -18,7 +18,7 @@ func ExecuteBofCmd(cmd *cobra.Command, con *repl.Console) {
 	params := cmd.Flags().Args()[1:]
 	task, err := ExecBof(con.Rpc, con.GetInteractive(), path, shellquote.Join(params...))
 	if err != nil {
-		repl.Log.Errorf("Execute BOF error: %v", err)
+		con.Log.Errorf("Execute BOF error: %v", err)
 		return
 	}
 	session := con.GetInteractive()

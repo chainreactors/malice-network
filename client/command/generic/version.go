@@ -14,8 +14,8 @@ func VersionCmd(cmd *cobra.Command, con *repl.Console) {
 func printVersion(con *repl.Console) {
 	basic, err := con.Rpc.GetBasic(context.Background(), &clientpb.Empty{})
 	if err != nil {
-		repl.Log.Errorf("Error getting version info: %v", err)
+		con.Log.Errorf("Error getting version info: %v", err)
 		return
 	}
-	repl.Log.Importantf("%d.%d.%d on %s %s\n", basic.Major, basic.Minor, basic.Patch, basic.Os, basic.Arch)
+	con.Log.Importantf("%d.%d.%d on %s %s\n", basic.Major, basic.Minor, basic.Patch, basic.Os, basic.Arch)
 }

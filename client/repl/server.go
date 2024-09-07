@@ -209,40 +209,30 @@ func (s *ServerStatus) EventHandler() {
 		if err == io.EOF || event == nil {
 			return
 		}
-
+		tui.Down(0)
 		// Trigger event based on type
 		switch event.Type {
-
 		case consts.EventJoin:
-			tui.Clear()
 			Log.Infof("%s has joined the game", event.Client.Name)
 		case consts.EventLeft:
-			tui.Clear()
 			Log.Infof("%s left the game", event.Client.Name)
 		case consts.EventBroadcast:
-			tui.Clear()
-			Log.Infof("%s broadcasted: %s  %s", event.Source, string(event.Data), event.Err)
+			Log.Infof("%s : %s  %s", event.Source, string(event.Data), event.Err)
 		case consts.EventSession:
-			tui.Clear()
 			Log.Importantf("%s session: %s ", event.Session.SessionId, event.Message)
 		case consts.EventNotify:
-			tui.Clear()
 			Log.Importantf("%s notified: %s %s", event.Source, string(event.Data), event.Err)
 		case consts.EventTaskCallback:
-			tui.Clear()
 			s.triggerTaskCallback(event)
 		case consts.EventTaskFinish:
-			tui.Clear()
 			s.triggerTaskFinish(event)
 		case consts.EventPipeline:
-			tui.Clear()
 			if event.GetErr() != "" {
 				Log.Errorf("Pipeline error: %s", event.GetErr())
 				return
 			}
 			Log.Importantf("Pipeline: %s", event.Message)
 		case consts.EventWebsite:
-			tui.Clear()
 			if event.GetErr() != "" {
 				Log.Errorf("Website error: %s", event.GetErr())
 				return

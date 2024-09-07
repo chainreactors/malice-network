@@ -35,7 +35,7 @@ func ArmoryInstallCmd(cmd *cobra.Command, con *repl.Console) {
 	var promptToOverwrite bool
 	name := cmd.Flags().Arg(0)
 	if name == "" {
-		repl.Log.Errorf("A package or bundle name is required")
+		con.Log.Errorf("A package or bundle name is required")
 		return
 	}
 	forceInstallation, _ := cmd.Flags().GetBool("force")
@@ -49,7 +49,7 @@ func ArmoryInstallCmd(cmd *cobra.Command, con *repl.Console) {
 	// Find PK for the armory name
 	armoryPK := getArmoryPublicKey(armoryName)
 	if armoryPK == "" {
-		repl.Log.Warnf("Armory '%s' not found", armoryName)
+		con.Log.Warnf("Armory '%s' not found", armoryName)
 		//return
 	}
 
@@ -72,7 +72,7 @@ func ArmoryInstallCmd(cmd *cobra.Command, con *repl.Console) {
 		newconfirm := tui.NewModel(confirmModel, nil, false, true)
 		err := newconfirm.Run()
 		if err != nil {
-			repl.Log.Errorf("Error running confirm model: %s", err)
+			con.Log.Errorf("Error running confirm model: %s", err)
 			return
 		}
 		if !confirmModel.Confirmed {
@@ -93,14 +93,14 @@ func ArmoryInstallCmd(cmd *cobra.Command, con *repl.Console) {
 			}
 		}
 		if armoryPK == "" {
-			repl.Log.Errorf("No package or bundle named '%s' was found", name)
+			con.Log.Errorf("No package or bundle named '%s' was found", name)
 		} else {
-			repl.Log.Errorf("No package or bundle named '%s' was found for armory '%s'", name, armoryName)
+			con.Log.Errorf("No package or bundle named '%s' was found for armory '%s'", name, armoryName)
 		}
 	} else if errors.Is(err, ErrPackageAlreadyInstalled) {
-		repl.Log.Errorf("Package %q is already installed - use the force option to overwrite it\n", name)
+		con.Log.Errorf("Package %q is already installed - use the force option to overwrite it\n", name)
 	} else {
-		repl.Log.Errorf("Could not install package: %s\n", err)
+		con.Log.Errorf("Could not install package: %s\n", err)
 	}
 }
 
@@ -113,10 +113,10 @@ func installBundle(bundle *ArmoryBundle, armoryPK string, forceInstallation bool
 		packageInstallList, err := buildInstallList(bundlePkgName, armoryPK, forceInstallation, pendingPackages)
 		if err != nil {
 			if errors.Is(err, ErrPackageAlreadyInstalled) {
-				repl.Log.Infof("Package %s is already installed. Skipping...\n", bundlePkgName)
+				con.Log.Infof("Package %s is already installed. Skipping...\n", bundlePkgName)
 				continue
 			} else {
-				repl.Log.Errorf("Failed to install package %s: %s\n", bundlePkgName, err)
+				con.Log.Errorf("Failed to install package %s: %s\n", bundlePkgName, err)
 			}
 		}
 		for _, pkgID := range packageInstallList {

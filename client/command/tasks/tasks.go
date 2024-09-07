@@ -29,14 +29,14 @@ func Command(con *repl.Console) []*cobra.Command {
 func listTasks(cmd *cobra.Command, con *repl.Console) {
 	err := con.UpdateTasks(con.GetInteractive())
 	if err != nil {
-		repl.Log.Errorf("Error updating tasks: %v", err)
+		con.Log.Errorf("Error updating tasks: %v", err)
 		return
 	}
 	tasks := con.GetInteractive().Tasks.GetTasks()
 	if 0 < len(tasks) {
 		printTasks(tasks, con)
 	} else {
-		repl.Log.Info("No sessions")
+		con.Log.Info("No sessions")
 	}
 
 }
