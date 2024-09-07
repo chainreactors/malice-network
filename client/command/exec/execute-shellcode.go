@@ -16,10 +16,6 @@ import (
 // ExecuteShellcodeCmd - Execute shellcode in-memory
 func ExecuteShellcodeCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
-	if session == nil {
-		return
-	}
-	sid := con.GetInteractive().SessionId
 	path := cmd.Flags().Arg(0)
 	// TODO arch judgment
 	//arch, _ := cmd.Flags().GetString("arch")
@@ -31,7 +27,7 @@ func ExecuteShellcodeCmd(cmd *cobra.Command, con *repl.Console) {
 	}
 	con.AddCallback(task, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite)
-		con.SessionLog(sid).Consolef("Executed shellcode on target: %s\n", resp.GetAssemblyResponse().GetData())
+		session.Log.Consolef("Executed shellcode on target: %s\n", resp.GetAssemblyResponse().GetData())
 	})
 
 }
@@ -58,10 +54,6 @@ func ExecShellcode(rpc clientrpc.MaliceRPCClient, sess *repl.Session, shellcodeP
 
 func InlineShellcodeCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
-	if session == nil {
-		return
-	}
-	sid := con.GetInteractive().SessionId
 	path := cmd.Flags().Arg(0)
 	task, err := InlineShellcode(con.Rpc, session, path)
 	if err != nil {
@@ -70,7 +62,7 @@ func InlineShellcodeCmd(cmd *cobra.Command, con *repl.Console) {
 	}
 	con.AddCallback(task, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite)
-		con.SessionLog(sid).Consolef("Executed inline shellcode on target: %s\n", resp.GetAssemblyResponse().GetData())
+		session.Log.Consolef("Executed inline shellcode on target: %s\n", resp.GetAssemblyResponse().GetData())
 	})
 
 }

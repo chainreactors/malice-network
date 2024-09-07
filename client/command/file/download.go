@@ -14,17 +14,13 @@ import (
 func DownloadCmd(cmd *cobra.Command, con *repl.Console) {
 	path := cmd.Flags().Arg(1)
 	session := con.GetInteractive()
-	if session == nil {
-		return
-	}
-	sid := con.GetInteractive().SessionId
 	task, err := Download(con.Rpc, session, path)
 	if err != nil {
 		repl.Log.Errorf("Download error: %v", err)
 		return
 	}
 	con.AddCallback(task, func(msg proto.Message) {
-		con.SessionLog(sid).Importantf("Downloaded file %s ", path)
+		session.Log.Importantf("Downloaded file %s ", path)
 	})
 }
 

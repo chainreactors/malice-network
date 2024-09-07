@@ -17,18 +17,13 @@ func KillCmd(cmd *cobra.Command, con *repl.Console) {
 		return
 	}
 	session := con.GetInteractive()
-	sid := con.GetInteractive().SessionId
-	if session == nil {
-		return
-	}
 	task, err := Kill(con.Rpc, session, pid)
 	if err != nil {
 		repl.Log.Errorf("Kill error: %v", err)
 		return
 	}
 	con.AddCallback(task, func(msg proto.Message) {
-		_ = msg.(*implantpb.Spite)
-		con.SessionLog(sid).Consolef("Killed process\n")
+		session.Log.Consolef("Killed process\n")
 	})
 }
 

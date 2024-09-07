@@ -10,9 +10,9 @@ import (
 
 func SyncCmd(cmd *cobra.Command, con *repl.Console) {
 	tid := cmd.Flags().Arg(0)
-	sid := con.GetInteractive().SessionId
+	session := con.GetInteractive()
 	syncTask, err := con.Rpc.Sync(con.ActiveTarget.Context(), &clientpb.Sync{
-		FileId: sid + "-" + tid,
+		FileId: session.SessionId + "-" + tid,
 	})
 	if err != nil {
 		repl.Log.Errorf("Can't sync file: %s", err)
@@ -26,7 +26,7 @@ func SyncCmd(cmd *cobra.Command, con *repl.Console) {
 	defer file.Close()
 	_, err = file.Write(syncTask.Content)
 	if err != nil {
-		con.SessionLog(sid).Errorf("Can't write file: %s", err)
+		session.Log.Errorf("Can't write file: %s", err)
 		return
 	}
 }

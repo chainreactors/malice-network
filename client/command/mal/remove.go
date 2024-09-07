@@ -6,7 +6,6 @@ import (
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/client/utils"
-	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/tui"
 	"github.com/spf13/cobra"
 	"os"
@@ -42,7 +41,7 @@ func RemoveMal(name string, con *repl.Console) error {
 	if plug, ok := con.Plugins.Plugins[name]; !ok {
 		return errors.New("extension not loaded")
 	} else {
-		implantMenu := con.App.Menu(consts.ImplantMenu)
+		implantMenu := con.ImplantMenu()
 		for _, cmd := range plug.CMDs {
 			implantMenu.RemoveCommand(cmd)
 		}

@@ -12,17 +12,13 @@ import (
 
 func InfoCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
-	if session == nil {
-		return
-	}
-	sid := session.SessionId
 	task, err := Info(con.Rpc, session)
 	if err != nil {
 		repl.Log.Errorf("Info error: %v", err)
 		return
 	}
 	con.AddCallback(task, func(msg proto.Message) {
-		con.SessionLog(sid).Consolef("Info: %v\n", msg.(*implantpb.Spite).Body)
+		session.Log.Consolef("Info: %v\n", msg.(*implantpb.Spite).Body)
 	})
 }
 

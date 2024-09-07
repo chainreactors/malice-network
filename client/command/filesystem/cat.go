@@ -21,13 +21,9 @@ func CatCmd(cmd *cobra.Command, con *repl.Console) {
 		repl.Log.Errorf("Cat error: %v", err)
 	}
 	session := con.GetInteractive()
-	if session == nil {
-		return
-	}
-	sid := con.GetInteractive().SessionId
 	con.AddCallback(task, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite).GetResponse()
-		con.SessionLog(sid).Infof("File content: %s", resp.GetOutput())
+		session.Log.Infof("File content: %s", resp.GetOutput())
 	})
 }
 

@@ -19,18 +19,13 @@ func MvCmd(cmd *cobra.Command, con *repl.Console) {
 	}
 
 	session := con.GetInteractive()
-	if session == nil {
-		return
-	}
-	sid := con.GetInteractive().SessionId
 	task, err := Mv(con.Rpc, session, sourcePath, targetPath)
 	if err != nil {
 		repl.Log.Errorf("Mv error: %v", err)
 		return
 	}
 	con.AddCallback(task, func(msg proto.Message) {
-		_ = msg.(*implantpb.Spite)
-		con.SessionLog(sid).Consolef("Mv success\n")
+		session.Log.Consolef("Mv success\n")
 	})
 }
 

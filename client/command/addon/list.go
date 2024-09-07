@@ -12,10 +12,6 @@ import (
 
 func AddonListCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
-	if session == nil {
-		return
-	}
-
 	task, err := ListAddon(con.Rpc, session)
 	if err != nil {
 		repl.Log.Errorf("%s", err)
@@ -25,7 +21,7 @@ func AddonListCmd(cmd *cobra.Command, con *repl.Console) {
 	con.AddCallback(task, func(msg proto.Message) {
 		exts := msg.(*implantpb.Spite).GetAddons()
 		for _, ext := range exts.Addons {
-			con.SessionLog(session.SessionId).Consolef("%s\t%s\t%s", ext.Name, ext.Type, ext.Depend)
+			session.Log.Consolef("%s\t%s\t%s", ext.Name, ext.Type, ext.Depend)
 		}
 	})
 }

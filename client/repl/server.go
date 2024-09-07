@@ -69,6 +69,16 @@ type ServerStatus struct {
 	Alive     bool
 }
 
+func (c *Console) SessionLog(sid string) *logs.Logger {
+	if ob, ok := c.Observers[sid]; ok {
+		return ob.Log
+	} else if c.ActiveTarget.GetInteractive() != nil {
+		return c.ActiveTarget.activeObserver.Log
+	} else {
+		return MuteLog
+	}
+}
+
 func (s *ServerStatus) UpdateSessions(all bool) error {
 	var sessions *clientpb.Sessions
 	var err error

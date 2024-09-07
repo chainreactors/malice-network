@@ -4,7 +4,6 @@ import (
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/core/plugin"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/spf13/cobra"
@@ -41,7 +40,7 @@ func LoadMal(con *repl.Console, filename string) (*plugin.MalManiFest, error) {
 		return nil, err
 	}
 
-	err = plug.ReverseRegisterLuaFunctions(con.App.Menu(consts.ImplantMenu).Command)
+	err = plug.ReverseRegisterLuaFunctions(con.ImplantMenu())
 	if err != nil {
 		return nil, err
 	}

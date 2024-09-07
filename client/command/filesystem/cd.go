@@ -17,18 +17,13 @@ func CdCmd(cmd *cobra.Command, con *repl.Console) {
 		return
 	}
 	session := con.GetInteractive()
-	if session == nil {
-		return
-	}
-	sid := con.GetInteractive().SessionId
 	task, err := Cd(con.Rpc, con.GetInteractive(), path)
 	if err != nil {
 		repl.Log.Errorf("Cd error: %v", err)
 		return
 	}
 	con.AddCallback(task, func(msg proto.Message) {
-		_ = msg.(*implantpb.Spite).GetResponse()
-		con.SessionLog(sid).Consolef("Changed directory to: %s\n", path)
+		session.Log.Consolef("Changed directory to: %s\n", path)
 	})
 
 }

@@ -21,9 +21,10 @@ func ExecuteBofCmd(cmd *cobra.Command, con *repl.Console) {
 		repl.Log.Errorf("Execute BOF error: %v", err)
 		return
 	}
+	session := con.GetInteractive()
 	con.AddCallback(task, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite)
-		con.SessionLog(con.GetInteractive().SessionId).Consolef("Executed BOF on target: %s\n", resp.GetAssemblyResponse().GetData())
+		session.Log.Consolef("Executed BOF on target: %s\n", resp.GetAssemblyResponse().GetData())
 	})
 }
 

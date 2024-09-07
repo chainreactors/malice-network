@@ -14,6 +14,7 @@ import (
 	"github.com/mattn/go-tty"
 	"github.com/reeflective/console"
 	"github.com/rsteube/carapace/pkg/x"
+	"github.com/spf13/cobra"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/proto"
 	"io"
@@ -169,21 +170,15 @@ func (c *Console) RefreshActiveSession() {
 	}
 }
 
-func (c *Console) SessionLog(sid string) *logs.Logger {
-	if ob, ok := c.Observers[sid]; ok {
-		return ob.Log
-	} else if c.ActiveTarget.GetInteractive() != nil {
-		return c.ActiveTarget.activeObserver.Log
-	} else {
-		return MuteLog
-	}
+func (c *Console) ImplantMenu() *cobra.Command {
+	return c.App.Menu(consts.ImplantMenu).Command
 }
 
 func (c *Console) SwitchImplant(sess *Session) {
 	c.ActiveTarget.Set(sess)
 	c.App.SwitchMenu(consts.ImplantMenu)
 
-	for _, cmd := range c.App.ActiveMenu().Command.Commands() {
+	for _, cmd := range c.ImplantMenu().Commands() {
 		cmd.Hidden = false
 		if o, ok := cmd.Annotations["os"]; ok && !strings.Contains(o, sess.Os.Name) {
 			cmd.Hidden = true

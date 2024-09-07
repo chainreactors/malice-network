@@ -17,10 +17,6 @@ import (
 
 func ExecuteDLLCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
-	if session == nil {
-		return
-	}
-	sid := con.GetInteractive().SessionId
 	path := cmd.Flags().Arg(0)
 	sac, _ := common.ParseSacrifice(cmd)
 	entrypoint, _ := cmd.Flags().GetString("entrypoint")
@@ -31,7 +27,7 @@ func ExecuteDLLCmd(cmd *cobra.Command, con *repl.Console) {
 	}
 	con.AddCallback(task, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite)
-		con.SessionLog(sid).Consolef("Executed DLL on target: %s\n", resp.GetAssemblyResponse().GetData())
+		session.Log.Consolef("Executed DLL on target: %s\n", resp.GetAssemblyResponse().GetData())
 	})
 }
 
@@ -59,10 +55,6 @@ func ExecDLL(rpc clientrpc.MaliceRPCClient, sess *repl.Session, pePath, entrypoi
 
 func InlineDLLCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
-	if session == nil {
-		return
-	}
-	sid := con.GetInteractive().SessionId
 	pePath := cmd.Flags().Arg(0)
 	entryPoint, _ := cmd.Flags().GetString("entrypoint")
 	task, err := InlineDLL(con.Rpc, session, pePath, entryPoint)
@@ -73,7 +65,7 @@ func InlineDLLCmd(cmd *cobra.Command, con *repl.Console) {
 
 	con.AddCallback(task, func(msg proto.Message) {
 		resp := msg.(*implantpb.Spite)
-		con.SessionLog(sid).Consolef("Execute Inline DLL error on target: %s\n", resp.GetAssemblyResponse().GetData())
+		session.Log.Consolef("Execute Inline DLL error on target: %s\n", resp.GetAssemblyResponse().GetData())
 	})
 }
 

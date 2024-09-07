@@ -20,9 +20,6 @@ func LsCmd(cmd *cobra.Command, con *repl.Console) {
 		path = "./"
 	}
 	session := con.GetInteractive()
-	if session == nil {
-		return
-	}
 	task, err := Ls(con.Rpc, session, path)
 	if err != nil {
 		repl.Log.Errorf("Ls error: %v", err)
