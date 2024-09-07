@@ -5,12 +5,11 @@ import (
 	"github.com/chainreactors/malice-network/client/command/armory"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/extension"
+	"github.com/chainreactors/malice-network/client/command/generic"
 	"github.com/chainreactors/malice-network/client/command/listener"
-	"github.com/chainreactors/malice-network/client/command/login"
 	"github.com/chainreactors/malice-network/client/command/mal"
 	"github.com/chainreactors/malice-network/client/command/sessions"
 	"github.com/chainreactors/malice-network/client/command/tasks"
-	"github.com/chainreactors/malice-network/client/command/version"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/reeflective/console"
@@ -20,10 +19,9 @@ import (
 
 func bindCommonCommands(bind bindFunc) {
 	bind("",
-		version.Command)
+		generic.Commands)
 
 	bind(consts.GenericGroup,
-		login.Command,
 		sessions.Commands,
 		tasks.Command,
 		alias.Commands,
@@ -53,7 +51,7 @@ func BindClientsCommands(con *repl.Console) console.Commands {
 
 		bindCommonCommands(bind)
 		if con.ServerStatus == nil {
-			err := login.LoginCmd(&cobra.Command{}, con)
+			err := generic.LoginCmd(&cobra.Command{}, con)
 			if err != nil {
 				repl.Log.Errorf("Failed to login: %s", err)
 				return nil

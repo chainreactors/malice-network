@@ -85,7 +85,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	backCommand := &cobra.Command{
 		Use:   consts.CommandBackgroup,
 		Short: "back to root context",
-		Long:  help.GetHelpFor("background"),
+		Long:  help.GetHelpFor(consts.CommandBackgroup),
 		Run: func(cmd *cobra.Command, args []string) {
 			con.ActiveTarget.Background()
 			con.App.SwitchMenu(consts.ClientMenu)
