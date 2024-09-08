@@ -42,7 +42,7 @@ func ExecDLL(rpc clientrpc.MaliceRPCClient, sess *repl.Session, pePath, entrypoi
 	task, err := rpc.ExecutePE(repl.Context(sess), &implantpb.ExecuteBinary{
 		Name:       filepath.Base(pePath),
 		Bin:        dllBin,
-		Type:       consts.ModuleExecutePE,
+		Type:       consts.ModuleExecuteExe,
 		EntryPoint: entrypoint,
 		Output:     true,
 		Sacrifice:  sac,
@@ -56,8 +56,9 @@ func ExecDLL(rpc clientrpc.MaliceRPCClient, sess *repl.Session, pePath, entrypoi
 func InlineDLLCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
 	pePath := cmd.Flags().Arg(0)
+	args := cmd.Flags().Args()
 	entryPoint, _ := cmd.Flags().GetString("entrypoint")
-	task, err := InlineDLL(con.Rpc, session, pePath, entryPoint)
+	task, err := InlineDLL(con.Rpc, session, pePath, entryPoint, args)
 	if err != nil {
 		con.Log.Errorf("Execute Inline DLL error: %s", err)
 		return
@@ -69,7 +70,7 @@ func InlineDLLCmd(cmd *cobra.Command, con *repl.Console) {
 	})
 }
 
-func InlineDLL(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path, entryPoint string) (*clientpb.Task, error) {
+func InlineDLL(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path, entryPoint string, args []string) (*clientpb.Task, error) {
 	dllBin, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -80,7 +81,8 @@ func InlineDLL(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path, entryPoi
 	task, err := rpc.ExecutePE(repl.Context(sess), &implantpb.ExecuteBinary{
 		Name:       filepath.Base(path),
 		Bin:        dllBin,
-		Type:       consts.ModuleExecutePE,
+		Type:       consts.ModuleExecuteExe,
+		Params:     args,
 		EntryPoint: entryPoint,
 	})
 	if err != nil {

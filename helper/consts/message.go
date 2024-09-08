@@ -3,19 +3,19 @@ package consts
 var (
 	ModuleAliases = map[string]string{
 		ModuleAliasInlineShellcode: ModuleExecuteShellcode,
-		ModuleAliasInlinePE:        ModuleExecutePE,
+		ModuleAliasInlineExe:       ModuleExecuteExe,
 		ModuleAliasInlineDll:       ModuleExecuteDll,
 	}
 	ExecuteModules = []string{
 		ModuleExecuteBof, ModuleExecuteDll, ModuleExecuteShellcode,
-		ModuleExecutePE, ModulePowershell, ModuleExecuteAssembly,
-		ModuleAliasInlinePE, ModuleAliasInlineDll, ModuleAliasInlineShellcode,
+		ModuleExecuteExe, ModulePowershell, ModuleExecuteAssembly,
+		ModuleAliasInlineExe, ModuleAliasInlineDll, ModuleAliasInlineShellcode,
 	}
 	InlineModules = []string{
-		ModuleAliasInlinePE, ModuleAliasInlineDll, ModuleAliasInlineShellcode,
+		ModuleAliasInlineExe, ModuleAliasInlineDll, ModuleAliasInlineShellcode,
 	}
 	SacrificeModules = []string{
-		ModuleExecutePE, ModuleExecuteDll, ModuleExecuteShellcode,
+		ModuleExecuteExe, ModuleExecuteDll, ModuleExecuteShellcode,
 	}
 )
 
@@ -26,8 +26,8 @@ const (
 	ModuleExecuteAssembly      = "execute_assembly"
 	ModuleExecuteShellcode     = "execute_shellcode"
 	ModuleAliasInlineShellcode = "inline_shellcode"
-	ModuleExecutePE            = "execute_pe"
-	ModuleAliasInlinePE        = "inline_pe"
+	ModuleExecuteExe           = "execute_exe"
+	ModuleAliasInlineExe       = "inline_exe"
 	ModuleExecuteDll           = "execute_dll"
 	ModuleAliasInlineDll       = "inline_dll"
 	ModuleExecuteBof           = "bof"
