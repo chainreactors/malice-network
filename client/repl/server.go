@@ -97,9 +97,11 @@ func (s *ServerStatus) UpdateSessions(all bool) error {
 	newSessions := make(map[string]*Session)
 
 	for _, session := range sessions.GetSessions() {
-		newSessions[session.SessionId] = NewSession(session)
-		if session.Note != "" {
-			newSessions[session.Note] = NewSession(session)
+		if rawSess, ok := s.Sessions[session.SessionId]; ok {
+			rawSess.Session = session
+			newSessions[session.SessionId] = rawSess
+		} else {
+			newSessions[session.SessionId] = NewSession(session)
 		}
 	}
 
@@ -112,11 +114,12 @@ func (s *ServerStatus) UpdateSession(sid string) (*clientpb.Session, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	s.Sessions[session.SessionId] = NewSession(session)
-	if session.Note != "" {
-		s.Sessions[session.Note] = NewSession(session)
+	if rawSess, ok := s.Sessions[session.SessionId]; ok {
+		rawSess.Session = session
+	} else {
+		s.Sessions[session.SessionId] = NewSession(session)
 	}
+
 	return nil, nil
 }
 
