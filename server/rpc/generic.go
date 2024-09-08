@@ -82,7 +82,7 @@ func (r *GenericRequest) HandlerAsyncResponse(ch chan *implantpb.Spite, typ type
 	})
 	r.Task.Done(core.Event{
 		EventType: consts.EventTask,
-		Op:        consts.CtrlTaskError,
+		Op:        consts.CtrlTaskCallback,
 		Task:      r.Task,
 	})
 }

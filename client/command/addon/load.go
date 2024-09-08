@@ -1,6 +1,7 @@
 package addon
 
 import (
+	"fmt"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/helper"
@@ -58,7 +59,7 @@ func LoadAddon(rpc clientrpc.MaliceRPCClient, sess *repl.Session, name, path, de
 func RegisterAddon(addon *implantpb.Addon, con *repl.Console, cmd *cobra.Command) error {
 	addonCmd := &cobra.Command{
 		Use:   addon.Name,
-		Short: "Execute " + addon.Name,
+		Short: fmt.Sprintf("%s %s", addon.Depend, addon.Name),
 		Run: func(cmd *cobra.Command, args []string) {
 			ExecuteAddonCmd(cmd, con)
 		},

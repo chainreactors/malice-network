@@ -49,6 +49,8 @@ func MessageType(message *implantpb.Spite) MsgName {
 		return MsgResponse
 	case *implantpb.Spite_Register:
 		return MsgRegister
+	case *implantpb.Spite_Empty:
+		return MsgEmpty
 	case *implantpb.Spite_Sysinfo:
 		return MsgSysInfo
 	case *implantpb.Spite_ExecRequest, *implantpb.Spite_ExecResponse:
@@ -73,8 +75,8 @@ func MessageType(message *implantpb.Spite) MsgName {
 		return MsgPs
 	case *implantpb.Spite_LsResponse:
 		return MsgLs
-	case *implantpb.Spite_Empty:
-		return MsgEmpty
+	case *implantpb.Spite_Addons:
+		return MsgListAddon
 	case *implantpb.Spite_ExecuteBinary:
 		return MsgName(message.GetExecuteBinary().Type)
 	default:
