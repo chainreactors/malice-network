@@ -63,7 +63,7 @@ func (rpc *Server) ExecuteBof(ctx context.Context, req *implantpb.ExecuteBinary)
 	return greq.Task.ToProtobuf(), nil
 }
 
-func (rpc *Server) ExecutePE(ctx context.Context, req *implantpb.ExecuteBinary) (*clientpb.Task, error) {
+func (rpc *Server) ExecuteEXE(ctx context.Context, req *implantpb.ExecuteBinary) (*clientpb.Task, error) {
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err
@@ -73,6 +73,7 @@ func (rpc *Server) ExecutePE(ctx context.Context, req *implantpb.ExecuteBinary) 
 	if err != nil {
 		return nil, err
 	}
+
 	go greq.HandlerAsyncResponse(ch, types.MsgAssemblyResponse)
 	return greq.Task.ToProtobuf(), nil
 }

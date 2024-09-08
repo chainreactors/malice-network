@@ -39,7 +39,7 @@ func ExecDLL(rpc clientrpc.MaliceRPCClient, sess *repl.Session, pePath, entrypoi
 	if helper.CheckPEType(dllBin) != consts.DLLFile {
 		return nil, errors.New("the file is not a DLL file")
 	}
-	task, err := rpc.ExecutePE(repl.Context(sess), &implantpb.ExecuteBinary{
+	task, err := rpc.ExecuteEXE(repl.Context(sess), &implantpb.ExecuteBinary{
 		Name:       filepath.Base(pePath),
 		Bin:        dllBin,
 		Type:       consts.ModuleExecuteExe,
@@ -78,7 +78,7 @@ func InlineDLL(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path, entryPoi
 	if helper.CheckPEType(dllBin) != consts.DLLFile {
 		return nil, errors.New("the file is not a DLL file")
 	}
-	task, err := rpc.ExecutePE(repl.Context(sess), &implantpb.ExecuteBinary{
+	task, err := rpc.ExecuteEXE(repl.Context(sess), &implantpb.ExecuteBinary{
 		Name:       filepath.Base(path),
 		Bin:        dllBin,
 		Type:       consts.ModuleExecuteExe,
