@@ -280,12 +280,8 @@ func runAliasCommand(cmd *cobra.Command, con *repl.Console) {
 	}
 
 	con.AddCallback(task, func(msg proto.Message) {
-		resp := msg.(*implantpb.Spite).GetAssemblyResponse()
-		if resp.Status == 0 {
-			session.Log.Infof("%s output:\n%s", loadedAlias.Command.Name(), string(resp.Data))
-		} else {
-			session.Log.Errorf("%s %s ", cmd.Name(), resp.Err)
-		}
+		resp, _ := builtin.ParseAssembly(msg.(*implantpb.Spite))
+		session.Log.Console(resp)
 	})
 }
 

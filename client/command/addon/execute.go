@@ -1,7 +1,6 @@
 package addon
 
 import (
-	"fmt"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core/intermediate/builtin"
 	"github.com/chainreactors/malice-network/client/repl"
@@ -43,9 +42,6 @@ func ExecuteAddonCmd(cmd *cobra.Command, con *repl.Console) {
 }
 
 func ExecuteAddon(rpc clientrpc.MaliceRPCClient, sess *repl.Session, name string, sac *implantpb.SacrificeProcess, args []string) (*clientpb.Task, error) {
-	if !sess.HasAddon(name) {
-		return nil, fmt.Errorf("addon %s not found in %s", name, sess.SessionId)
-	}
 	return rpc.ExecuteAddon(repl.Context(sess), &implantpb.ExecuteAddon{
 		Addon: name,
 		ExecuteBinary: &implantpb.ExecuteBinary{

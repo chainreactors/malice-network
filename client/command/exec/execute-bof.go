@@ -1,6 +1,7 @@
 package exec
 
 import (
+	"github.com/chainreactors/malice-network/client/core/intermediate/builtin"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
@@ -23,8 +24,8 @@ func ExecuteBofCmd(cmd *cobra.Command, con *repl.Console) {
 	}
 	session := con.GetInteractive()
 	con.AddCallback(task, func(msg proto.Message) {
-		resp := msg.(*implantpb.Spite)
-		session.Log.Consolef("Executed BOF on target: %s\n", resp.GetAssemblyResponse().GetData())
+		resp, _ := builtin.ParseAssembly(msg.(*implantpb.Spite))
+		session.Log.Console(resp)
 	})
 }
 

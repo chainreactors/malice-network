@@ -346,8 +346,8 @@ func runExtensionCmd(cmd *cobra.Command, con *repl.Console) {
 		return
 	}
 	con.AddCallback(task, func(msg proto.Message) {
-		resp := msg.(*implantpb.Spite).GetAssemblyResponse()
-		session.Log.Console(string(resp.Data))
+		resp, _ := builtin.ParseAssembly(msg.(*implantpb.Spite))
+		session.Log.Console(resp)
 	})
 }
 
