@@ -24,6 +24,7 @@ func AddonListCmd(cmd *cobra.Command, con *repl.Console) {
 			session.Log.Warn("No addon found.")
 			return
 		}
+		session.Addons = exts
 		for _, ext := range exts.Addons {
 			session.Log.Consolef("%s\t%s\t%s", ext.Name, ext.Type, ext.Depend)
 		}

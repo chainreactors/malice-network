@@ -33,13 +33,14 @@ func LoadAddonCmd(cmd *cobra.Command, con *repl.Console) {
 		return
 	}
 
-	err = RegisterAddon(&implantpb.Addon{Name: name, Depend: module}, con, con.ImplantMenu())
-	if err != nil {
-		repl.Log.Errorf("%s", err)
-		return
-	}
 	con.AddCallback(task, func(msg proto.Message) {
 		session.Log.Infof("addon %s loaded", name)
+		err = RegisterAddon(&implantpb.Addon{Name: name, Depend: module}, con, con.ImplantMenu())
+		if err != nil {
+			session.Log.Errorf("%s", err)
+			return
+		}
+		con.UpdateSession(session.SessionId)
 	})
 }
 

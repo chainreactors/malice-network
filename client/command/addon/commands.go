@@ -52,7 +52,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return
 		},
 	}
-
+	common.BindFlag(execAddonCmd, common.SacrificeFlagSet)
 	common.BindArgCompletions(execAddonCmd, nil, common.SessionAddonComplete(con))
 
 	return []*cobra.Command{listaddonCmd, loadaddonCmd, execAddonCmd}

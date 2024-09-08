@@ -3,6 +3,7 @@ package addon
 import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/command/common"
+	"github.com/chainreactors/malice-network/client/core/intermediate/builtin"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
@@ -16,7 +17,7 @@ import (
 func ExecuteAddonCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
 	name := cmd.Flags().Arg(0)
-	args := cmd.Flags().Args()[1:]
+	args := cmd.Flags().Args()
 
 	if !session.HasAddon(name) {
 		repl.Log.Errorf("addon %s not found in %s", name, session.SessionId)
@@ -25,9 +26,8 @@ func ExecuteAddonCmd(cmd *cobra.Command, con *repl.Console) {
 
 	addon := session.GetAddon(name)
 	var sac *implantpb.SacrificeProcess
-	if !slices.Contains(consts.SacrificeModules, addon.Depend) {
+	if slices.Contains(consts.SacrificeModules, addon.Depend) {
 		sac, _ = common.ParseSacrifice(cmd)
-		return
 	}
 
 	task, err := ExecuteAddon(con.Rpc, session, name, sac, args)
@@ -37,10 +37,8 @@ func ExecuteAddonCmd(cmd *cobra.Command, con *repl.Console) {
 	}
 
 	con.AddCallback(task, func(msg proto.Message) {
-		exts := msg.(*implantpb.Spite).GetAddons()
-		for _, ext := range exts.Addons {
-			session.Log.Consolef("%s\t%s\t%s", ext.Name, ext.Type, ext.Depend)
-		}
+		resp, _ := builtin.ParseAssembly(msg.(*implantpb.Spite))
+		session.Log.Console(resp)
 	})
 }
 
