@@ -32,6 +32,13 @@ type Options struct {
 	localRpc *root.RootClient
 }
 
+func (opt *Options) Validate() error {
+	if !opt.Server.Enable && !opt.Listeners.Enable {
+		return errors.New("must enable one of server/listener ")
+	}
+	return nil
+}
+
 func (opt *Options) Execute(args []string, parser *flags.Parser) error {
 	if parser.Active == nil {
 		return nil
