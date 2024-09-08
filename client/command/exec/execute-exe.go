@@ -3,6 +3,7 @@ package exec
 import (
 	"errors"
 	"github.com/chainreactors/malice-network/client/command/common"
+	"github.com/chainreactors/malice-network/client/core/intermediate/builtin"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/helper"
@@ -26,8 +27,8 @@ func ExecuteExeCmd(cmd *cobra.Command, con *repl.Console) {
 	}
 	session := con.GetInteractive()
 	con.AddCallback(task, func(msg proto.Message) {
-		resp := msg.(*implantpb.Spite)
-		session.Log.Consolef("Executed PE on target: %s\n", resp.GetAssemblyResponse().GetData())
+		resp, _ := builtin.ParseAssembly(msg.(*implantpb.Spite))
+		session.Log.Console(resp)
 	})
 }
 
@@ -64,10 +65,8 @@ func InlineExeCmd(cmd *cobra.Command, con *repl.Console) {
 		return
 	}
 	con.AddCallback(task, func(msg proto.Message) {
-		resp := msg.(*implantpb.Spite)
-		if !(resp.Status.Error != "") {
-			session.Log.Consolef("Executed PE on target: %s\n", resp.GetAssemblyResponse().GetData())
-		}
+		resp, _ := builtin.ParseAssembly(msg.(*implantpb.Spite))
+		session.Log.Console(resp)
 	})
 }
 

@@ -1,6 +1,7 @@
 package exec
 
 import (
+	"github.com/chainreactors/malice-network/client/core/intermediate/builtin"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
@@ -24,8 +25,8 @@ func ExecuteAssemblyCmd(cmd *cobra.Command, con *repl.Console) {
 		return
 	}
 	con.AddCallback(task, func(msg proto.Message) {
-		resp := msg.(*implantpb.Spite).GetAssemblyResponse()
-		session.Log.Infof("%s output:\n%s", filepath.Base(path), string(resp.Data))
+		resp, _ := builtin.ParseAssembly(msg.(*implantpb.Spite))
+		session.Log.Console(resp)
 	})
 }
 
