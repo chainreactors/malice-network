@@ -4,7 +4,7 @@ import (
 	"errors"
 	"github.com/chainreactors/malice-network/helper/mtls"
 	"github.com/chainreactors/malice-network/proto/client/rootpb"
-	configs "github.com/chainreactors/malice-network/server/internal/configs"
+	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/root"
 	"github.com/jessevdk/go-flags"
@@ -16,11 +16,11 @@ var (
 )
 
 type Options struct {
-	Config      string               `short:"c" long:"config" default:"config.yaml" description:"Path to config file"`
-	IP          string               `short:"i" long:"ip" description:"external ip address, -i 123.123.123.123"`
-	Daemon      bool                 `long:"daemon" description:"Run as a daemon" config:"daemon"`
-	Opsec       bool                 `long:"opsec" description:"Path to opsec file" config:"opsec"`
-	CA          string               `long:"ca" description:"Path to CA file" config:"ca"`
+	Config string `short:"c" long:"config" default:"config.yaml" description:"Path to config file"`
+	IP     string `short:"i" long:"ip" description:"external ip address, -i 123.123.123.123"`
+	Daemon bool   `long:"daemon" description:"Run as a daemon"`
+	Opsec  bool   `long:"opsec" description:"Path to opsec file"`
+	//CA          string               `long:"ca" description:"Path to CA file" config:"ca"`
 	Debug       bool                 `long:"debug" description:"Debug mode" config:"debug"`
 	UserCmd     root.UserCommand     `command:"user" description:"User commands" `
 	ListenerCmd root.ListenerCommand `command:"listener" description:"Listener commands" `
