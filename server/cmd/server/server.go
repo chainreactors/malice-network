@@ -66,6 +66,11 @@ func Execute() {
 	if opt.Debug {
 		logs.Log.SetLevel(logs.Debug)
 	}
+	err = opt.Validate()
+	if err != nil {
+		logs.Log.Errorf(err.Error())
+		return
+	}
 
 	if opt.IP != "" {
 		logs.Log.Infof("manually specified IP: %s will override %s config: %s", opt.IP, opt.Config, opt.Server.IP)
