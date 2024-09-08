@@ -4,6 +4,7 @@ import (
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/addon"
 	"github.com/chainreactors/malice-network/client/command/alias"
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/exec"
 	"github.com/chainreactors/malice-network/client/command/explorer"
 	"github.com/chainreactors/malice-network/client/command/extension"
@@ -17,6 +18,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/reeflective/console"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 func BindImplantCommands(con *repl.Console) console.Commands {
@@ -28,6 +30,9 @@ func BindImplantCommands(con *repl.Console) console.Commands {
 			},
 			GroupID: consts.ImplantMenu,
 		}
+		common.Bind("common flag", true, implant, func(f *pflag.FlagSet) {
+			f.IntP("timeout", "t", consts.DefaultTimeout, "command timeout in seconds")
+		})
 		bind := makeBind(implant, con)
 		bindCommonCommands(bind)
 		bind(consts.ImplantGroup,

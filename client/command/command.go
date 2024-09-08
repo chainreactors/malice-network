@@ -1,7 +1,6 @@
 package command
 
 import (
-	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/spf13/cobra"
 )
@@ -54,9 +53,3 @@ func makeBind(cmd *cobra.Command, con *repl.Console) bindFunc {
 		}
 	}
 }
-
-// commandBinder is a helper used to bind commands to a given menu, for a given "command help group".
-//
-// @group - Name of the group under which the command should be shown. Preferably use a string in the constants package.
-// @ cmds - A list of functions returning a list of root commands to bind. See any package's `commands.go` file and function.
-type commandBinder func(group string, cmds ...func(con *repl.Console) []*grumble.Command)

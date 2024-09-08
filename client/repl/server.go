@@ -248,8 +248,8 @@ func (s *ServerStatus) handlerTaskCtrl(event *clientpb.Event) {
 	case consts.CtrlTaskFinish:
 		s.triggerTaskFinish(event)
 	case consts.CtrlTaskCancel:
-		Log.Importantf("%s task: %d canceled", event.Session.SessionId, event.Task.TaskId)
+		Log.Importantf("%s task: %d canceled", event.Task.SessionId, event.Task.TaskId)
 	case consts.CtrlTaskError:
-		Log.Errorf("%s task: %d error: %s", event.Session.SessionId, event.Task.TaskId, event.Err)
+		Log.Errorf("%s task: %d error: %s", event.Task.SessionId, event.Task.TaskId, event.Err)
 	}
 }
