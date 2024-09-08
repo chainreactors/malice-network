@@ -43,7 +43,7 @@ func (broker *eventBroker) Start() {
 		case sub := <-broker.unsubscribe:
 			delete(subscribers, sub)
 		case event := <-broker.publish:
-			logs.Log.Infof("[event] %s: %s", event.Op, string(event.Data))
+			logs.Log.Infof("[event.%s] %s: %s", event.EventType, event.Op, string(event.Data))
 			for sub := range subscribers {
 				sub <- event
 			}
