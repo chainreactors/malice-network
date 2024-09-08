@@ -55,7 +55,7 @@ func BuildSpite(spite *implantpb.Spite, msg proto.Message) (*implantpb.Spite, er
 	//	spite.Name = MsgExecuteShellcode.String()
 	//	spite.Body = &implantpb.Spite_ExecuteShellcode{ExecuteShellcode: msg.(*implantpb.ExecuteShellcode)}
 	//case *implantpb.ExecutePE:
-	//	spite.Name = MsgExecutePE.String()
+	//	spite.Name = MsgExecuteExe.String()
 	//	spite.Body = &implantpb.Spite_ExecutePe{ExecutePe: msg.(*implantpb.ExecutePE)}
 	//case *implantpb.ExecutePowershell:
 	//	spite.Name = MsgPowershell.String()
@@ -66,9 +66,9 @@ func BuildSpite(spite *implantpb.Spite, msg proto.Message) (*implantpb.Spite, er
 	//case *implantpb.ExecuteBof:
 	//	spite.Name = MsgExecuteBof.String()
 	//	spite.Body = &implantpb.Spite_ExecuteBof{ExecuteBof: msg.(*implantpb.ExecuteBof)}
-	case *implantpb.AssemblyResponse:
-		spite.Name = MsgExecuteAssembly.String()
-		spite.Body = &implantpb.Spite_AssemblyResponse{AssemblyResponse: msg.(*implantpb.AssemblyResponse)}
+	//case *implantpb.AssemblyResponse:
+	//	spite.Name = MsgExecuteAssembly.String()
+	//	spite.Body = &implantpb.Spite_AssemblyResponse{AssemblyResponse: msg.(*implantpb.AssemblyResponse)}
 	case *implantpb.ExecuteAddon:
 		spite.Name = MsgExecuteAddon.String()
 		spite.Body = &implantpb.Spite_ExecuteAddon{ExecuteAddon: msg.(*implantpb.ExecuteAddon)}

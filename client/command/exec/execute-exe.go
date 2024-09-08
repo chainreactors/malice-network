@@ -15,11 +15,11 @@ import (
 	"path/filepath"
 )
 
-// ExecutePECmd - Execute PE on sacrifice process
-func ExecutePECmd(cmd *cobra.Command, con *repl.Console) {
+// ExecuteExeCmd - Execute PE on sacrifice process
+func ExecuteExeCmd(cmd *cobra.Command, con *repl.Console) {
 	path := cmd.Flags().Arg(0)
 	sac, _ := common.ParseSacrifice(cmd)
-	task, err := ExecPE(con.Rpc, con.GetInteractive(), path, sac)
+	task, err := ExecExe(con.Rpc, con.GetInteractive(), path, sac)
 	if err != nil {
 		con.Log.Errorf("Execute PE error: %v", err)
 		return
@@ -31,7 +31,7 @@ func ExecutePECmd(cmd *cobra.Command, con *repl.Console) {
 	})
 }
 
-func ExecPE(rpc clientrpc.MaliceRPCClient, sess *repl.Session, pePath string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
+func ExecExe(rpc clientrpc.MaliceRPCClient, sess *repl.Session, pePath string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 	peBin, err := os.ReadFile(pePath)
 	if err != nil {
 		return nil, err
@@ -42,7 +42,7 @@ func ExecPE(rpc clientrpc.MaliceRPCClient, sess *repl.Session, pePath string, sa
 	task, err := rpc.ExecutePE(repl.Context(sess), &implantpb.ExecuteBinary{
 		Name:      filepath.Base(pePath),
 		Bin:       peBin,
-		Type:      consts.ModuleExecutePE,
+		Type:      consts.ModuleExecuteExe,
 		Output:    true,
 		Sacrifice: sac,
 	})
@@ -52,11 +52,13 @@ func ExecPE(rpc clientrpc.MaliceRPCClient, sess *repl.Session, pePath string, sa
 	return task, nil
 }
 
-// InlinePECmd - Execute PE in current process
-func InlinePECmd(cmd *cobra.Command, con *repl.Console) {
+// InlineExeCmd - Execute PE in current process
+func InlineExeCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
+
 	pePath := cmd.Flags().Arg(0)
-	task, err := InlinePE(con.Rpc, session, pePath)
+	args := cmd.Flags().Args()
+	task, err := InlineExe(con.Rpc, session, pePath, args)
 	if err != nil {
 		con.Log.Errorf("Execute PE error: %v", err)
 		return
@@ -69,7 +71,7 @@ func InlinePECmd(cmd *cobra.Command, con *repl.Console) {
 	})
 }
 
-func InlinePE(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string) (*clientpb.Task, error) {
+func InlineExe(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string, args []string) (*clientpb.Task, error) {
 	peBin, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -81,8 +83,9 @@ func InlinePE(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string) (*
 	task, err := rpc.ExecutePE(repl.Context(sess), &implantpb.ExecuteBinary{
 		Name:   filepath.Base(path),
 		Bin:    peBin,
-		Type:   consts.ModuleExecutePE,
+		Type:   consts.ModuleExecuteExe,
 		Output: true,
+		Params: args,
 	})
 	if err != nil {
 		return nil, err

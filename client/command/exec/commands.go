@@ -10,6 +10,7 @@ import (
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
+	"github.com/kballard/go-shellquote"
 	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -127,7 +128,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return
 		},
 		Annotations: map[string]string{
-			"depend": consts.ModuleAliasInlineDll,
+			"depend": consts.ModuleExecuteDll,
 		},
 	}
 
@@ -139,16 +140,16 @@ func Commands(con *repl.Console) []*cobra.Command {
 	})
 
 	execPECmd := &cobra.Command{
-		Use:   consts.ModuleExecutePE,
+		Use:   consts.ModuleExecuteExe,
 		Short: "Executes the given PE in the sacrifice process",
-		Long:  help.GetHelpFor(consts.ModuleExecutePE),
+		Long:  help.GetHelpFor(consts.ModuleExecuteExe),
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			ExecutePECmd(cmd, con)
+			ExecuteExeCmd(cmd, con)
 			return
 		},
 		Annotations: map[string]string{
-			"depend": consts.ModuleExecutePE,
+			"depend": consts.ModuleExecuteExe,
 		},
 	}
 
@@ -159,19 +160,18 @@ func Commands(con *repl.Console) []*cobra.Command {
 	common.BindFlag(execPECmd, common.ExecuteFlagSet, common.SacrificeFlagSet)
 
 	inlinePECmd := &cobra.Command{
-		Use:   consts.ModuleAliasInlinePE,
-		Short: "Executes the given inline PE in current process",
-		Long:  help.GetHelpFor(consts.ModuleAliasInlinePE),
+		Use:   consts.ModuleAliasInlineExe,
+		Short: "Executes the given inline EXE in current process",
+		Long:  help.GetHelpFor(consts.ModuleAliasInlineExe),
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			InlinePECmd(cmd, con)
+			InlineExeCmd(cmd, con)
 			return
 		},
 		Annotations: map[string]string{
-			"depend": consts.ModuleAliasInlinePE,
+			"depend": consts.ModuleExecuteExe,
 		},
 	}
-
 	common.BindArgCompletions(inlinePECmd, nil,
 		carapace.ActionFiles().Usage("path the PE file"))
 
@@ -250,7 +250,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		})
 
 	con.RegisterInternalFunc(
-		"inline_shellcode",
+		"binline_shellcode",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string) (*clientpb.Task, error) {
 			return InlineShellcode(rpc, sess, path)
 		},
@@ -269,18 +269,22 @@ func Commands(con *repl.Console) []*cobra.Command {
 		})
 
 	con.RegisterInternalFunc(
-		"inline_dll",
-		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path, entryPoint string) (*clientpb.Task, error) {
-			return InlineDLL(rpc, sess, path, entryPoint)
+		"binline_dll",
+		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path, entryPoint string, args string) (*clientpb.Task, error) {
+			param, err := shellquote.Split(args)
+			if err != nil {
+				return nil, err
+			}
+			return InlineDLL(rpc, sess, path, entryPoint, param)
 		},
 		func(ctx *clientpb.TaskContext) (interface{}, error) {
 			return builtin.ParseAssembly(ctx.Spite)
 		})
 
 	con.RegisterInternalFunc(
-		"execute_pe",
+		"bexecute_exe",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
-			return ExecPE(rpc, sess, path, sac)
+			return ExecExe(rpc, sess, path, sac)
 		},
 		func(ctx *clientpb.TaskContext) (interface{}, error) {
 			return builtin.ParseAssembly(ctx.Spite)
@@ -288,8 +292,12 @@ func Commands(con *repl.Console) []*cobra.Command {
 
 	con.RegisterInternalFunc(
 		"inline_pe",
-		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string) (*clientpb.Task, error) {
-			return InlinePE(rpc, sess, path)
+		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string, args string) (*clientpb.Task, error) {
+			param, err := shellquote.Split(args)
+			if err != nil {
+				return nil, err
+			}
+			return InlineExe(rpc, sess, path, param)
 		},
 		func(ctx *clientpb.TaskContext) (interface{}, error) {
 			return builtin.ParseAssembly(ctx.Spite)

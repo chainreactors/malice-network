@@ -552,7 +552,7 @@ func convertOldManifest(old *ExtensionManifest_) *ExtensionManifest {
 		if dep, ok := DependOnMap[ext.DependsOn]; ok {
 			ext.DependsOn = dep
 		} else {
-			ext.DependsOn = consts.ModuleExecutePE
+			ext.DependsOn = consts.ModuleExecuteExe
 		}
 	}
 

@@ -26,30 +26,13 @@ const (
 	MsgLoadAddon        MsgName = consts.ModuleLoadAddon
 	MsgAssemblyResponse MsgName = "assembly_response"
 	MsgExecuteAddon     MsgName = consts.ModuleExecuteAddon
-	MsgExecuteAssembly  MsgName = consts.ModuleExecuteAssembly
-	MsgExecuteShellcode MsgName = consts.ModuleExecuteShellcode
-	MsgExecutePE        MsgName = consts.ModuleExecutePE
+	MsgExecuteBinary            = "execute_binary"
 	//MsgExecuteSpawn     MsgName = "execute_spawn"
-	MsgExecuteBof MsgName = consts.ModuleExecuteBof
-	MsgPowershell MsgName = consts.ModulePowershell
-	MsgPwd        MsgName = consts.ModulePwd
-	MsgLs         MsgName = consts.ModuleLs
-	MsgNetstat    MsgName = consts.ModuleNetstat
-	MsgPs         MsgName = consts.ModulePs
-	MsgCp         MsgName = consts.ModuleCp
-	MsgMv         MsgName = consts.ModuleMv
-	MsgMkdir      MsgName = consts.ModuleMkdir
-	MsgRm         MsgName = consts.ModuleRm
-	MsgCat        MsgName = consts.ModuleCat
-	MsgCd         MsgName = consts.ModuleCd
-	MsgChmod      MsgName = consts.ModuleChmod
-	MsgChown      MsgName = consts.ModuleChown
-	MsgKill       MsgName = consts.ModuleKill
-	MsgEnv        MsgName = consts.ModuleEnv
-	MsgSetEnv     MsgName = consts.ModuleSetEnv
-	MsgUnsetEnv   MsgName = consts.ModuleUnsetEnv
-	MsgWhoami     MsgName = consts.ModuleWhoami
-	MsgSysInfo    MsgName = "sysinfo"
+	MsgLs      MsgName = consts.ModuleLs
+	MsgNetstat MsgName = consts.ModuleNetstat
+	MsgPs      MsgName = consts.ModulePs
+	MsgKill    MsgName = consts.ModuleKill
+	MsgSysInfo MsgName = "sysinfo"
 )
 
 func (r MsgName) String() string {
@@ -61,7 +44,7 @@ func MessageType(message *implantpb.Spite) MsgName {
 	case nil:
 		return MsgNil
 	case *implantpb.Spite_Request:
-		return MsgRequest
+		return MsgName(message.Name)
 	case *implantpb.Spite_Response:
 		return MsgResponse
 	case *implantpb.Spite_Register:
@@ -80,24 +63,8 @@ func MessageType(message *implantpb.Spite) MsgName {
 		return MsgBlock
 	case *implantpb.Spite_AssemblyResponse:
 		return MsgAssemblyResponse
-	//case *implantpb.Spite_ExecuteAssembly:
-	//	return MsgExecuteAssembly
-	//case *implantpb.Spite_ExecuteShellcode:
-	//	return MsgExecuteShellcode
-	//case *implantpb.Spite_ExecuteSpawn:
-	//	return MsgExecuteSpawn
-	//case *implantpb.Spite_ExecuteSideload:
-	//	return MsgExecuteSideLoad
-	//case *implantpb.Spite_ExecutePe:
-	//	return MsgExecutePE
-	//case *implantpb.Spite_ExecuteBof:
-	//	return MsgExecuteBof
-	//case *implantpb.Spite_Extensions:
-	//	return MsgExtensions
 	case *implantpb.Spite_LoadAddon:
 		return MsgLoadAddon
-	//case *implantpb.Spite_ExecuteExtension:
-	//	return MsgExecuteAddon
 	case *implantpb.Spite_LoadModule:
 		return MsgLoadModule
 	case *implantpb.Spite_Modules:
