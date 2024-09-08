@@ -20,6 +20,10 @@ func AddonListCmd(cmd *cobra.Command, con *repl.Console) {
 
 	con.AddCallback(task, func(msg proto.Message) {
 		exts := msg.(*implantpb.Spite).GetAddons()
+		if len(exts.Addons) == 0 {
+			session.Log.Warn("No addon found.")
+			return
+		}
 		for _, ext := range exts.Addons {
 			session.Log.Consolef("%s\t%s\t%s", ext.Name, ext.Type, ext.Depend)
 		}

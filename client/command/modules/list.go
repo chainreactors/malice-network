@@ -21,14 +21,19 @@ func ListModulesCmd(cmd *cobra.Command, con *repl.Console) {
 		return
 	}
 	con.AddCallback(task, func(msg proto.Message) {
-		resp := msg.(*implantpb.Spite).GetModules()
+		modules := msg.(*implantpb.Spite).GetModules()
+		if len(modules.Modules) == 0 {
+			session.Log.Warn("No modules found.")
+			return
+		}
+
 		var rowEntries []table.Row
 		var row table.Row
 		tableModel := tui.NewTable([]table.Column{
 			{Title: "Name", Width: 15},
 			{Title: "Help", Width: 30},
 		}, true)
-		for _, module := range resp.GetModules() {
+		for _, module := range modules.GetModules() {
 			row = table.Row{
 				module,
 				"",
