@@ -2,57 +2,45 @@ package configs
 
 import (
 	"crypto/x509/pkix"
-	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/certs"
 	"github.com/chainreactors/malice-network/helper/helper"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
-	"github.com/gookit/config/v2"
 )
 
 var ListenerConfigFileName = "listener.yaml"
 
-func GetListenerConfig() *ListenerConfig {
-	l := &ListenerConfig{}
-	err := config.MapStruct("listeners", l)
-	if err != nil {
-		logs.Log.Errorf("Failed to map listener config %s", err)
-		return nil
-	}
-	return l
-}
-
 type ListenerConfig struct {
-	Name          string                `config:"name"`
-	Enable        bool                  `config:"enable"`
-	Auth          string                `config:"auth"`
-	TcpPipelines  []*TcpPipelineConfig  `config:"tcp"`
-	HttpPipelines []*HttpPipelineConfig `config:"http"`
-	Websites      []*WebsiteConfig      `config:"websites"`
+	Enable       bool                 `config:"enable" default:"true"`
+	Name         string               `config:"name" default:"listener"`
+	Auth         string               `config:"auth" default:"listener.auth"`
+	TcpPipelines []*TcpPipelineConfig `config:"tcp" default:""`
+	//HttpPipelines []*HttpPipelineConfig `config:"http" default:""`
+	Websites []*WebsiteConfig `config:"websites" default:""`
 }
 
 type TcpPipelineConfig struct {
-	Enable           bool              `config:"enable"`
-	Name             string            `config:"name"`
-	Host             string            `config:"host"`
-	Port             uint16            `config:"port"`
-	TlsConfig        *TlsConfig        `config:"tls"`
-	EncryptionConfig *EncryptionConfig `config:"encryption"`
+	Enable           bool              `config:"enable" default:"false"`
+	Name             string            `config:"name" default:"tcp"`
+	Host             string            `config:"host" default:"0.0.0.0"`
+	Port             uint16            `config:"port" default:"5001"`
+	TlsConfig        *TlsConfig        `config:"tls" default:""`
+	EncryptionConfig *EncryptionConfig `config:"encryption" default:""`
 }
 
 type HttpPipelineConfig struct {
-	Enable    bool       `config:"enable"`
-	Name      string     `config:"name"`
-	Host      string     `config:"host"`
-	Port      uint16     `config:"port"`
-	TlsConfig *TlsConfig `config:"tls"`
+	Enable    bool       `config:"enable" default:"false"`
+	Name      string     `config:"name" default:"http"`
+	Host      string     `config:"host" default:"0.0.0.0"`
+	Port      uint16     `config:"port" default:"8443"`
+	TlsConfig *TlsConfig `config:"tls" default:""`
 }
 
 type WebsiteConfig struct {
-	Enable      bool       `config:"enable"`
-	RootPath    string     `config:"rootPath"`
-	WebsiteName string     `config:"websiteName"`
-	Port        uint16     `config:"port"`
-	TlsConfig   *TlsConfig `config:"tls"`
+	Enable      bool       `config:"enable" default:"false"`
+	RootPath    string     `config:"root" default:"."`
+	WebsiteName string     `config:"name" default:"web"`
+	Port        uint16     `config:"port" default:"443"`
+	TlsConfig   *TlsConfig `config:"tls" default:""`
 }
 
 type TlsConfig struct {

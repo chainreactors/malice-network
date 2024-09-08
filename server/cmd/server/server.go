@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/chainreactors/files"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/mtls"
 	"github.com/chainreactors/malice-network/server/internal/certs"
@@ -46,14 +47,21 @@ func Execute() {
 		}
 		return
 	}
-
+	if !files.IsExist(opt.Config) {
+		confStr := configs.InitDefaultConfig(&opt, 0)
+		err := os.WriteFile(opt.Config, []byte(confStr), 0644)
+		if err != nil {
+			logs.Log.Errorf("cannot write default config , %s ", err.Error())
+			return
+		}
+		logs.Log.Warnf("config file not found, created default config %s", opt.Config)
+	}
 	// load config
 	err = configs.LoadConfig(opt.Config, &opt)
 	if err != nil {
 		logs.Log.Warnf("cannot load config , %s ", err.Error())
 		return
 	}
-
 	if parser.Active != nil {
 		err = opt.Execute(args, parser)
 		if err != nil {

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/chainreactors/files"
 	"github.com/chainreactors/logs"
-	"github.com/gookit/config/v2"
 	"gopkg.in/yaml.v3"
 	"io"
 	insecureRand "math/rand"
@@ -30,33 +29,6 @@ var (
 	WebsitePath                 = path.Join(ServerRootPath, "web")
 )
 
-func InitConfig() error {
-	perm := os.FileMode(0700)
-	err := os.MkdirAll(ServerRootPath, perm)
-	if err != nil {
-		return err
-	}
-	os.MkdirAll(LogPath, perm)
-	os.MkdirAll(CertsPath, perm)
-	os.MkdirAll(TempPath, perm)
-	//os.MkdirAll(PluginPath, perm)
-	os.MkdirAll(AuditPath, perm)
-	os.MkdirAll(CachePath, perm)
-	os.MkdirAll(WebsitePath, perm)
-	os.MkdirAll(ListenerPath, perm)
-	return nil
-}
-
-func GetServerConfig() *ServerConfig {
-	s := &ServerConfig{}
-	err := config.MapStruct("server", s)
-	if err != nil {
-		logs.Log.Errorf("Failed to map server config %s", err)
-		return nil
-	}
-	return s
-}
-
 func NewFileLog(filename string) *logs.Logger {
 	logger := logs.NewLogger(logs.Info)
 	logger.SetFile(path.Join(LogPath, fmt.Sprintf("%s.log", filename)))
@@ -72,30 +44,14 @@ func NewDebugLog(filename string) *logs.Logger {
 	return logger
 }
 
-func GetConfig(key string) any {
-	return config.Get("server.config." + key)
-}
-
-func LoadConfig(filename string, v interface{}) error {
-	err := config.LoadFiles(filename)
-	if err != nil {
-		return err
-	}
-	err = config.Decode(v)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 type ServerConfig struct {
-	GRPCPort     uint16        `config:"grpc_port" default:"5004"`
-	GRPCHost     string        `config:"grpc_host" default:"0.0.0.0"`
-	IP           string        `config:"ip" default:""`
-	DaemonConfig *DaemonConfig `config:"daemon"`
-	LogConfig    *LogConfig    `config:"log" default:""`
-	MiscConfig   *MiscConfig   `config:"config" default:""`
-	Enable       bool          `config:"enable" default:"false"`
+	Enable       bool        `config:"enable" default:"true"`
+	GRPCPort     uint16      `config:"grpc_port" default:"5004"`
+	GRPCHost     string      `config:"grpc_host" default:"0.0.0.0"`
+	IP           string      `config:"ip" default:""`
+	DaemonConfig bool        `config:"daemon" default:"false"`
+	LogConfig    *LogConfig  `config:"log" default:""`
+	MiscConfig   *MiscConfig `config:"config" default:""`
 }
 
 func (c *ServerConfig) Address() string {
@@ -125,22 +81,16 @@ func getRandomID() string {
 
 // LogConfig - Server logging config
 type LogConfig struct {
-	Level int `json:"level" default:"20"`
+	Level int `json:"level" default:"20" config:"level"`
 	//GRPCUnaryPayloads  bool `json:"grpc_unary_payloads"`
 	//GRPCStreamPayloads bool `json:"grpc_stream_payloads"`
 	//TLSKeyLogger       bool `json:"tls_key_logger"`
 }
 
-// DaemonConfig - Configure daemon mode
-type DaemonConfig struct {
-	Host string `json:"host" default:"0.0.0.0"`
-	Port int    `json:"port" default:"5001"`
-}
-
 type MiscConfig struct {
 	PacketLength int    `config:"packet_length" default:"4194304"`
-	Certificate  string `config:"certificate" default:""`
-	PrivateKey   string `config:"certificate_key" default:""`
+	Certificate  string `config:"cert" default:""`
+	PrivateKey   string `config:"key" default:""`
 }
 
 func LoadMiscConfig() ([]byte, []byte, error) {
