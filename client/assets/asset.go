@@ -3,7 +3,6 @@ package assets
 import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/helper"
-	"log"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -21,7 +20,7 @@ func GetConfigDir() string {
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
 		err = os.MkdirAll(dir, 0700)
 		if err != nil {
-			log.Fatal(err)
+			logs.Log.Errorf(err.Error())
 		}
 	}
 	return dir

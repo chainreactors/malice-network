@@ -2,6 +2,7 @@ package listener
 
 import (
 	"context"
+	"fmt"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/tui"
@@ -36,10 +37,5 @@ func printListeners(listeners *clientpb.Listeners) {
 	}
 	tableModel.SetRows(rowEntries)
 	tableModel.Title = "listeners"
-	newTable := tui.NewModel(tableModel, nil, false, false)
-	err := newTable.Run()
-	if err != nil {
-		repl.Log.Errorf("Failed to run table: %s", err)
-		return
-	}
+	fmt.Printf(tableModel.View())
 }

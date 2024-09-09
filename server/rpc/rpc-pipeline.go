@@ -110,7 +110,7 @@ func (rpc *Server) StopTcpPipeline(ctx context.Context, req *lispb.CtrlPipeline)
 	return &clientpb.Empty{}, nil
 }
 
-func (rpc *Server) ListJobs(ctx context.Context, req *lispb.ListenerName) (*lispb.Pipelines, error) {
+func (rpc *Server) ListJobs(ctx context.Context, req *clientpb.Empty) (*lispb.Pipelines, error) {
 	var pipelines []*lispb.Pipeline
 	for _, job := range core.Jobs.All() {
 		pipeline, ok := job.Message.(*lispb.Pipeline)
