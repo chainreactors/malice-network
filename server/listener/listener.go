@@ -274,6 +274,7 @@ func (lns *listener) startHandler(job *clientpb.Job) *clientpb.JobStatus {
 		p := lns.pipelines.Get(pipeline.GetTcp().Name)
 		if p == nil {
 			tcpPipeline, err := StartTcpPipeline(lns.conn, ToTcpConfig(pipeline.GetTcp(), pipeline.GetTls()))
+			job.Name = tcpPipeline.Name
 			if err != nil {
 				return &clientpb.JobStatus{
 					ListenerId: lns.ID(),
@@ -286,6 +287,7 @@ func (lns *listener) startHandler(job *clientpb.Job) *clientpb.JobStatus {
 			lns.pipelines.Add(tcpPipeline)
 		} else {
 			err = p.Start()
+			job.Name = p.ID()
 			if err != nil {
 				return &clientpb.JobStatus{
 					ListenerId: lns.ID(),
@@ -311,6 +313,7 @@ func (lns *listener) stopHandler(job *clientpb.Job) *clientpb.JobStatus {
 	switch pipeline.Body.(type) {
 	case *lispb.Pipeline_Tcp:
 		p := lns.pipelines.Get(pipeline.GetTcp().Name)
+		job.Name = p.ID()
 		if p == nil {
 			return &clientpb.JobStatus{
 				ListenerId: lns.ID(),
@@ -349,6 +352,7 @@ func (lns *listener) stopHandler(job *clientpb.Job) *clientpb.JobStatus {
 func (lns *listener) startWebsite(job *clientpb.Job) *clientpb.JobStatus {
 	var err error
 	getWeb := job.GetPipeline().GetWeb()
+	job.Name = getWeb.Name
 	w := lns.websites.Get(getWeb.Name)
 	if w == nil {
 		starResult, err := StartWebsite(ToWebsiteConfig(getWeb, job.GetPipeline().GetTls()), getWeb.Contents)
@@ -385,6 +389,7 @@ func (lns *listener) startWebsite(job *clientpb.Job) *clientpb.JobStatus {
 func (lns *listener) stopWebsite(job *clientpb.Job) *clientpb.JobStatus {
 	var err error
 	getWeb := job.GetPipeline().GetWeb()
+	job.Name = getWeb.Name
 	w := lns.websites.Get(getWeb.Name)
 	if w == nil {
 		return &clientpb.JobStatus{

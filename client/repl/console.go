@@ -259,6 +259,6 @@ func exitConsole(c *console.Console) {
 // exitImplantMenu uses the background command to detach from the implant menu.
 func exitImplantMenu(c *console.Console) {
 	root := c.Menu(consts.ImplantMenu).Command
-	root.SetArgs([]string{"background"})
+	root.SetArgs([]string{consts.CommandBackground})
 	root.Execute()
 }
