@@ -57,7 +57,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	}
 
 	common.BindArgCompletions(tcpRegisterCmd, nil,
-		carapace.ActionValues().Usage("listener id"))
+		common.ListenerIDCompleter(con))
 
 	common.BindFlag(tcpRegisterCmd, common.TlsCertFlagSet, common.PipelineFlagSet)
 
@@ -82,7 +82,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 
 	common.BindArgCompletions(tcpStartCmd, nil,
 		carapace.ActionValues().Usage("tcp pipeline name"),
-		carapace.ActionValues().Usage("listener id"))
+		common.ListenerIDCompleter(con))
 
 	tcpStopCmd := &cobra.Command{
 		Use:   consts.CommandPipelineStop,
@@ -97,7 +97,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 
 	common.BindArgCompletions(tcpStopCmd, nil,
 		carapace.ActionValues().Usage("tcp pipeline name"),
-		carapace.ActionValues().Usage("listener id"))
+		common.ListenerIDCompleter(con))
 
 	tcpCmd.AddCommand(tcpRegisterCmd, tcpStartCmd, tcpStopCmd)
 
@@ -112,7 +112,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		},
 	}
 
-	common.BindArgCompletions(websiteCmd, nil, carapace.ActionValues().Usage("listener id"))
+	common.BindArgCompletions(websiteCmd, nil, common.ListenerIDCompleter(con))
 
 	websiteRegisterCmd := &cobra.Command{
 		Use:   consts.CommandRegister,
@@ -126,7 +126,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	}
 
 	common.BindArgCompletions(websiteRegisterCmd, nil,
-		carapace.ActionValues().Usage("listener id"),
+		common.ListenerIDCompleter(con),
 		carapace.ActionValues().Usage("website router root path"),
 		carapace.ActionFiles().Usage("website content path"))
 
@@ -155,7 +155,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 
 	common.BindArgCompletions(websiteStartCmd, nil,
 		carapace.ActionValues().Usage("website name"),
-		carapace.ActionValues().Usage("listener id"))
+		common.ListenerIDCompleter(con))
 
 	websiteStopCmd := &cobra.Command{
 		Use:   consts.CommandPipelineStop,
@@ -170,7 +170,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 
 	common.BindArgCompletions(websiteStopCmd, nil,
 		carapace.ActionValues().Usage("website name"),
-		carapace.ActionValues().Usage("listener id"))
+		common.ListenerIDCompleter(con))
 
 	websiteCmd.AddCommand(websiteRegisterCmd, websiteStartCmd, websiteStopCmd)
 
