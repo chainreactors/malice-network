@@ -40,6 +40,7 @@ type WebsiteConfig struct {
 	RootPath    string     `config:"root" default:"."`
 	WebsiteName string     `config:"name" default:"web"`
 	Port        uint16     `config:"port" default:"443"`
+	ContentPath string     `config:"content_path" default:""`
 	TlsConfig   *TlsConfig `config:"tls" default:""`
 }
 
