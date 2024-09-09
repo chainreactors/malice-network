@@ -206,8 +206,19 @@ func (c *Console) SwitchImplant(sess *Session) {
 	}
 }
 
-func (c *Console) RegisterImplantFunc(name string, fn interface{}, callback ImplantCallback) error {
-	return intermediate.RegisterInternalFunc(name, WrapImplantFunc(c, fn, callback))
+func (c *Console) RegisterImplantFunc(name string, fn interface{}, bname string, bfn interface{}, callback ImplantCallback) {
+	if fn != nil {
+		err := intermediate.RegisterInternalFunc(name, WrapActiveFunc(c, fn, callback))
+		if err != nil {
+			Log.Error(err)
+		}
+	}
+	if bfn != nil {
+		err := intermediate.RegisterInternalFunc(bname, WrapImplantFunc(c, bfn, callback))
+		if err != nil {
+			Log.Error(err)
+		}
+	}
 }
 
 func (c *Console) RegisterServerFunc(name string, fn interface{}) error {

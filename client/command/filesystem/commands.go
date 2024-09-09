@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/help"
-	"github.com/chainreactors/malice-network/client/core/intermediate/builtin"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/handler"
@@ -196,56 +195,53 @@ func Commands(con *repl.Console) []*cobra.Command {
 		carapace.ActionValues().Usage("rm file name"))
 
 	con.RegisterImplantFunc(
+		consts.ModuleCd,
+		Cd,
 		"bcd",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string) (*clientpb.Task, error) {
 			return Cd(rpc, sess, path)
 		},
-		func(ctx *clientpb.TaskContext) (interface{}, error) {
-			return builtin.ParseStatus(ctx.Spite)
-		})
+		common.ParseStatus)
 
 	con.RegisterImplantFunc(
+		consts.ModuleCat,
+		Cat,
 		"bcat",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, fileName string) (*clientpb.Task, error) {
 			return Cat(rpc, sess, fileName)
 		},
-		func(ctx *clientpb.TaskContext) (interface{}, error) {
-			err := handler.HandleMaleficError(ctx.GetSpite())
-			if err != nil {
-				return "", err
-			}
-			resp := ctx.GetSpite().GetResponse()
-			return resp.GetOutput(), nil
-		})
+		common.ParseResponse)
 
 	con.RegisterImplantFunc(
+		consts.ModuleChmod,
+		Chmod,
 		"bchmod",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path, mode string) (*clientpb.Task, error) {
 			return Chmod(rpc, sess, path, mode)
 		},
-		func(ctx *clientpb.TaskContext) (interface{}, error) {
-			return builtin.ParseStatus(ctx.Spite)
-		})
+		common.ParseStatus)
 
 	con.RegisterImplantFunc(
+		consts.ModuleChown,
+		Chown,
 		"bchown",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path, uid string, gid string, recursive bool) (*clientpb.Task, error) {
 			return Chown(rpc, sess, path, uid, gid, recursive)
 		},
-		func(ctx *clientpb.TaskContext) (interface{}, error) {
-			return builtin.ParseStatus(ctx.Spite)
-		})
+		common.ParseStatus)
 
 	con.RegisterImplantFunc(
+		consts.ModuleCp,
+		Cp,
 		"bcp",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, src, dst string) (*clientpb.Task, error) {
 			return Cp(rpc, sess, src, dst)
 		},
-		func(ctx *clientpb.TaskContext) (interface{}, error) {
-			return builtin.ParseStatus(ctx.Spite)
-		})
+		common.ParseStatus)
 
 	con.RegisterImplantFunc(
+		consts.ModuleLs,
+		Ls,
 		"bls",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string) (*clientpb.Task, error) {
 			return Ls(rpc, sess, path)
@@ -271,45 +267,41 @@ func Commands(con *repl.Console) []*cobra.Command {
 		})
 
 	con.RegisterImplantFunc(
+		consts.ModuleMkdir,
+		Mkdir,
 		"bmkdir",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string) (*clientpb.Task, error) {
 			return Mkdir(rpc, sess, path)
 		},
-		func(ctx *clientpb.TaskContext) (interface{}, error) {
-			return builtin.ParseStatus(ctx.Spite)
-		})
+		common.ParseStatus)
 
 	con.RegisterImplantFunc(
+		consts.ModuleMv,
+		Mv,
 		"bmv",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, src, dst string) (*clientpb.Task, error) {
 			return Mv(rpc, sess, src, dst)
 		},
-		func(ctx *clientpb.TaskContext) (interface{}, error) {
-			return builtin.ParseStatus(ctx.Spite)
-		})
+		common.ParseStatus)
 
 	con.RegisterImplantFunc(
+		consts.ModulePwd,
+		Pwd,
 		"bpwd",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session) (*clientpb.Task, error) {
 			return Pwd(rpc, sess)
 		},
-		func(ctx *clientpb.TaskContext) (interface{}, error) {
-			err := handler.HandleMaleficError(ctx.Spite)
-			if err != nil {
-				return "", err
-			}
-			resp := ctx.Spite.GetResponse()
-			return resp.GetOutput(), nil
-		})
+		common.ParseResponse,
+	)
 
 	con.RegisterImplantFunc(
+		consts.ModuleRm,
+		Rm,
 		"brm",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, fileName string) (*clientpb.Task, error) {
 			return Rm(rpc, sess, fileName)
 		},
-		func(ctx *clientpb.TaskContext) (interface{}, error) {
-			return builtin.ParseStatus(ctx.Spite)
-		})
+		common.ParseStatus)
 
 	return []*cobra.Command{
 		pwdCmd,

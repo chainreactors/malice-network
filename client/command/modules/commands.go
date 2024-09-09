@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/help"
-	"github.com/chainreactors/malice-network/client/core/intermediate/builtin"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/handler"
@@ -62,6 +61,8 @@ func Commands(con *repl.Console) []*cobra.Command {
 	}
 
 	con.RegisterImplantFunc(
+		consts.ModuleListModule,
+		ListModules,
 		"blist_module",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, fileName string) (*clientpb.Task, error) {
 			return ListModules(rpc, sess)
@@ -80,32 +81,32 @@ func Commands(con *repl.Console) []*cobra.Command {
 		})
 
 	con.RegisterImplantFunc(
+		consts.ModuleLoadModule,
+		LoadModule,
 		"bload_module",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, bundle string, path string) (*clientpb.Task, error) {
 			return LoadModule(rpc, sess, bundle, path)
 		},
-		func(ctx *clientpb.TaskContext) (interface{}, error) {
-			return builtin.ParseStatus(ctx.Spite)
-		})
+		common.ParseStatus)
 
 	con.RegisterImplantFunc(
+		consts.ModuleRefreshModule,
+		refreshModule,
 		"brefresh_module",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session) (*clientpb.Task, error) {
 			return refreshModule(rpc, sess)
 		},
-		func(ctx *clientpb.TaskContext) (interface{}, error) {
-			return builtin.ParseStatus(ctx.Spite)
-		})
+		common.ParseStatus)
 
 	//clear
 	con.RegisterImplantFunc(
+		consts.ModuleClear,
+		clearAll,
 		"bclear",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session) (*clientpb.Task, error) {
 			return clearAll(rpc, sess)
 		},
-		func(context *clientpb.TaskContext) (interface{}, error) {
-			return builtin.ParseStatus(context.Spite)
-		})
+		common.ParseStatus)
 	return []*cobra.Command{
 		listModuleCmd,
 		loadModuleCmd,
