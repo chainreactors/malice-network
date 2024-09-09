@@ -29,7 +29,7 @@ func ChmodCmd(cmd *cobra.Command, con *repl.Console) {
 }
 
 func Chmod(rpc clientrpc.MaliceRPCClient, session *repl.Session, path, mode string) (*clientpb.Task, error) {
-	task, err := rpc.Chmod(repl.Context(session), &implantpb.Request{
+	task, err := rpc.Chmod(session.Context(), &implantpb.Request{
 		Name: consts.ModuleChmod,
 		Args: []string{path, mode},
 	})

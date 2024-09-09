@@ -28,7 +28,7 @@ func RmCmd(cmd *cobra.Command, con *repl.Console) {
 }
 
 func Rm(rpc clientrpc.MaliceRPCClient, session *repl.Session, fileName string) (*clientpb.Task, error) {
-	task, err := rpc.Rm(repl.Context(session), &implantpb.Request{
+	task, err := rpc.Rm(session.Context(), &implantpb.Request{
 		Name:  consts.ModuleRm,
 		Input: fileName,
 	})

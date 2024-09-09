@@ -23,7 +23,7 @@ func InfoCmd(cmd *cobra.Command, con *repl.Console) {
 }
 
 func Info(rpc clientrpc.MaliceRPCClient, session *repl.Session) (*clientpb.Task, error) {
-	task, err := rpc.Info(repl.Context(session), &implantpb.Request{
+	task, err := rpc.Info(session.Context(), &implantpb.Request{
 		Name: consts.ModuleInfo,
 	})
 	if err != nil {

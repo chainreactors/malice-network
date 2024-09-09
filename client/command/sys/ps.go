@@ -52,7 +52,7 @@ func PsCmd(cmd *cobra.Command, con *repl.Console) {
 }
 
 func Ps(rpc clientrpc.MaliceRPCClient, session *repl.Session) (*clientpb.Task, error) {
-	task, err := rpc.Ps(repl.Context(session), &implantpb.Request{
+	task, err := rpc.Ps(session.Context(), &implantpb.Request{
 		Name: consts.ModulePs,
 	})
 	if err != nil {

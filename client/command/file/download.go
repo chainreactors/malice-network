@@ -25,7 +25,7 @@ func DownloadCmd(cmd *cobra.Command, con *repl.Console) {
 }
 
 func Download(rpc clientrpc.MaliceRPCClient, session *repl.Session, path string) (*clientpb.Task, error) {
-	task, err := rpc.Download(repl.Context(session), &implantpb.DownloadRequest{
+	task, err := rpc.Download(session.Context(), &implantpb.DownloadRequest{
 		Name: filepath.Base(path),
 		Path: path,
 	})

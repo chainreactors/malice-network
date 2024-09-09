@@ -32,7 +32,7 @@ func AddonListCmd(cmd *cobra.Command, con *repl.Console) {
 }
 
 func ListAddon(rpc clientrpc.MaliceRPCClient, sess *repl.Session) (*clientpb.Task, error) {
-	return rpc.ListAddon(repl.Context(sess), &implantpb.Request{
+	return rpc.ListAddon(sess.Context(), &implantpb.Request{
 		Name: consts.ModuleListAddon,
 	})
 }

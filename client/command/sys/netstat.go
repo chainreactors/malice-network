@@ -46,7 +46,7 @@ func NetstatCmd(cmd *cobra.Command, con *repl.Console) {
 }
 
 func Netstat(rpc clientrpc.MaliceRPCClient, session *repl.Session) (*clientpb.Task, error) {
-	task, err := rpc.Netstat(repl.Context(session), &implantpb.Request{
+	task, err := rpc.Netstat(session.Context(), &implantpb.Request{
 		Name: consts.ModuleNetstat,
 	})
 	if err != nil {

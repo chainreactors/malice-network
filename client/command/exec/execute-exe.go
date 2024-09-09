@@ -40,7 +40,7 @@ func ExecExe(rpc clientrpc.MaliceRPCClient, sess *repl.Session, pePath string, s
 	if helper.CheckPEType(peBin) != consts.EXEFile {
 		return nil, errors.New("the file is not a PE file")
 	}
-	task, err := rpc.ExecuteEXE(repl.Context(sess), &implantpb.ExecuteBinary{
+	task, err := rpc.ExecuteEXE(sess.Context(), &implantpb.ExecuteBinary{
 		Name:      filepath.Base(pePath),
 		Bin:       peBin,
 		Type:      consts.ModuleExecuteExe,
@@ -79,7 +79,7 @@ func InlineExe(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string, a
 		return nil, errors.New("the file is not a PE file")
 
 	}
-	task, err := rpc.ExecuteEXE(repl.Context(sess), &implantpb.ExecuteBinary{
+	task, err := rpc.ExecuteEXE(sess.Context(), &implantpb.ExecuteBinary{
 		Name:   filepath.Base(path),
 		Bin:    peBin,
 		Type:   consts.ModuleExecuteExe,

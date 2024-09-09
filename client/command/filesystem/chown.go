@@ -30,7 +30,7 @@ func ChownCmd(cmd *cobra.Command, con *repl.Console) {
 }
 
 func Chown(rpc clientrpc.MaliceRPCClient, session *repl.Session, path, uid, gid string, recursive bool) (*clientpb.Task, error) {
-	task, err := rpc.Chown(repl.Context(session), &implantpb.ChownRequest{
+	task, err := rpc.Chown(session.Context(), &implantpb.ChownRequest{
 		Path:      path,
 		Uid:       uid,
 		Gid:       gid,

@@ -24,7 +24,7 @@ func WhoamiCmd(cmd *cobra.Command, con *repl.Console) {
 }
 
 func Whoami(rpc clientrpc.MaliceRPCClient, session *repl.Session) (*clientpb.Task, error) {
-	task, err := rpc.Whoami(repl.Context(session), &implantpb.Request{
+	task, err := rpc.Whoami(session.Context(), &implantpb.Request{
 		Name: consts.ModuleWhoami,
 	})
 	if err != nil {

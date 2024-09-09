@@ -30,7 +30,7 @@ func CpCmd(cmd *cobra.Command, con *repl.Console) {
 }
 
 func Cp(rpc clientrpc.MaliceRPCClient, session *repl.Session, originPath, targetPath string) (*clientpb.Task, error) {
-	task, err := rpc.Cp(repl.Context(session), &implantpb.Request{
+	task, err := rpc.Cp(session.Context(), &implantpb.Request{
 		Name: consts.ModuleCp,
 		Args: []string{originPath, targetPath},
 	})

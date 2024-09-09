@@ -105,6 +105,14 @@ func (c *Console) NewConsole(bindCmds ...BindCmds) {
 	implant.Command = bindCmds[1](c)()
 }
 
+func (c *Console) Context() context.Context {
+	ctx, _ := context.WithTimeout(context.Background(), consts.DefaultTimeout)
+
+	return metadata.NewOutgoingContext(ctx, metadata.Pairs(
+		"client_id", c.ClientConfig.Operator),
+	)
+}
+
 func (c *Console) Login(config *mtls.ClientConfig) error {
 	conn, err := mtls.Connect(config)
 	if err != nil {
@@ -238,10 +246,4 @@ func exitImplantMenu(c *console.Console) {
 	root := c.Menu(consts.ImplantMenu).Command
 	root.SetArgs([]string{"background"})
 	root.Execute()
-}
-
-func Context(s *Session) context.Context {
-	return metadata.NewOutgoingContext(context.Background(), metadata.Pairs(
-		"session_id", s.SessionId),
-	)
 }

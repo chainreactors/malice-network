@@ -30,7 +30,7 @@ func LoadModule(rpc clientrpc.MaliceRPCClient, session *repl.Session, bundle str
 	if err != nil {
 		return nil, err
 	}
-	task, err := rpc.LoadModule(repl.Context(session), &implantpb.LoadModule{
+	task, err := rpc.LoadModule(session.Context(), &implantpb.LoadModule{
 		Bundle: bundle,
 		Bin:    data,
 	})

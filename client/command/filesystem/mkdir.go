@@ -28,7 +28,7 @@ func MkdirCmd(cmd *cobra.Command, con *repl.Console) {
 }
 
 func Mkdir(rpc clientrpc.MaliceRPCClient, session *repl.Session, path string) (*clientpb.Task, error) {
-	task, err := rpc.Mkdir(repl.Context(session), &implantpb.Request{
+	task, err := rpc.Mkdir(session.Context(), &implantpb.Request{
 		Name:  consts.ModuleMkdir,
 		Input: path,
 	})

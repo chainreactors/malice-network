@@ -11,7 +11,7 @@ import (
 
 func Commands(con *repl.Console) []*cobra.Command {
 	extensionCmd := &cobra.Command{
-		Use:   "extension",
+		Use:   consts.CommandExtension,
 		Short: "Extension commands",
 		Long:  help.GetHelpFor(consts.CommandExtension),
 		Run: func(cmd *cobra.Command, args []string) {

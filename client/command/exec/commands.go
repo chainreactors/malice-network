@@ -291,7 +291,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		})
 
 	con.RegisterInternalFunc(
-		"inline_pe",
+		"binline_pe",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string, args string) (*clientpb.Task, error) {
 			param, err := shellquote.Split(args)
 			if err != nil {

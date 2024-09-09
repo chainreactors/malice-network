@@ -35,7 +35,7 @@ func Upload(rpc clientrpc.MaliceRPCClient, session *repl.Session, path string, t
 		repl.Log.Errorf("Can't open file: %s", err)
 	}
 
-	task, err := rpc.Upload(repl.Context(session), &implantpb.UploadRequest{
+	task, err := rpc.Upload(session.Context(), &implantpb.UploadRequest{
 		Name:   filepath.Base(path),
 		Target: target,
 		Priv:   uint32(priv),
