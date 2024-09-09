@@ -31,14 +31,15 @@ const (
 	CNAScript = "cna"
 )
 
+type implantFunc func(rpc clientrpc.MaliceRPCClient, sess *Session, params ...interface{}) (*clientpb.Task, error)
 type ImplantCallback func(*clientpb.TaskContext) (interface{}, error)
 
 var (
 	ErrorAlreadyScriptName = errors.New("already exist script name")
 )
 
-func WrapImplantFunc(con *Console, fun interface{}, callback ImplantCallback) intermediate.InternalFunc {
-	wrappedFunc := func(rpc clientrpc.MaliceRPCClient, sess *Session, params ...interface{}) (*clientpb.Task, error) {
+func wrapImplantFunc(fun interface{}) implantFunc {
+	return func(rpc clientrpc.MaliceRPCClient, sess *Session, params ...interface{}) (*clientpb.Task, error) {
 		funcValue := reflect.ValueOf(fun)
 		funcType := funcValue.Type()
 
@@ -70,6 +71,32 @@ func WrapImplantFunc(con *Console, fun interface{}, callback ImplantCallback) in
 
 		return task, err
 	}
+}
+
+func WrapImplantFunc(con *Console, fun interface{}, callback ImplantCallback) intermediate.InternalFunc {
+	wrappedFunc := wrapImplantFunc(fun)
+
+	return func(args ...interface{}) (interface{}, error) {
+		task, err := wrappedFunc(con.Rpc, con.GetInteractive(), args...)
+		if err != nil {
+			return nil, err
+		}
+
+		taskContext, err := con.Rpc.WaitTaskFinish(context.Background(), task)
+		if err != nil {
+			return nil, err
+		}
+
+		if callback != nil {
+			return callback(taskContext)
+		} else {
+			return taskContext, nil
+		}
+	}
+}
+
+func WrapActiveFunc(con *Console, fun interface{}, callback ImplantCallback) intermediate.InternalFunc {
+	wrappedFunc := wrapImplantFunc(fun)
 
 	return func(args ...interface{}) (interface{}, error) {
 		var sess *Session

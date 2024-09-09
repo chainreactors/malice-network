@@ -70,6 +70,8 @@ func Commands(con *repl.Console) []*cobra.Command {
 		carapace.ActionValues().Usage("task ID"))
 
 	con.RegisterImplantFunc(
+		consts.ModuleDownload,
+		Download,
 		"bdownload",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string) (*clientpb.Task, error) {
 			return Download(rpc, sess, path)
@@ -77,6 +79,8 @@ func Commands(con *repl.Console) []*cobra.Command {
 		nil)
 
 	con.RegisterImplantFunc(
+		consts.ModuleUpload,
+		Upload,
 		"bupload",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string) (*clientpb.Task, error) {
 			return Upload(rpc, sess, path, filepath.Base(path), 0744, false)

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/chainreactors/malice-network/client/assets"
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/core/intermediate/builtin"
 	"github.com/chainreactors/malice-network/client/repl"
@@ -263,17 +264,14 @@ func ExtensionRegisterCommand(extCmd *ExtCommand, cmd *cobra.Command, con *repl.
 	makeExtensionArgCompleter(extCmd, cmd, comps)
 
 	cmd.AddCommand(extensionCmd)
-	err := con.RegisterImplantFunc(
+	con.RegisterImplantFunc(
 		extensionCmd.Name(),
+		ExecuteExtension,
+		"b"+extensionCmd.Name(),
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, args string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 			return ExecuteExtension(rpc, sess, extensionCmd.Name(), args)
 		},
-		func(ctx *clientpb.TaskContext) (interface{}, error) {
-			return builtin.ParseAssembly(ctx.Spite)
-		})
-	if err != nil {
-		repl.Log.Errorf("Error registering internal function: %s\n", err)
-	}
+		common.ParseAssembly)
 }
 
 //func loadExtension(goos string, goarch string, extcmd *ExtCommand, con *console.Console) error {
