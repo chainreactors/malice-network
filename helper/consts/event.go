@@ -5,6 +5,7 @@ const (
 	CtrlTaskFinish   = "task_finish"
 	CtrlTaskCancel   = "task_cancel"
 	CtrlTaskError    = "task_error"
+	CtrlWebUpload    = "web_upload"
 )
 
 // ctrl type
@@ -13,6 +14,7 @@ const (
 	CtrlPipelineStop
 	CtrlWebsiteStart = 0 + iota
 	CtrlWebsiteStop
+	RegisterWebsite
 )
 
 // ctrl status

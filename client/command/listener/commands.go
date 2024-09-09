@@ -12,9 +12,9 @@ import (
 
 func Commands(con *repl.Console) []*cobra.Command {
 	listenerCmd := &cobra.Command{
-		Use:   "listener",
+		Use:   consts.CommandListener,
 		Short: "List listeners in server",
-		Long:  help.GetHelpFor("listener"),
+		Long:  help.GetHelpFor(consts.CommandListener),
 		Run: func(cmd *cobra.Command, args []string) {
 			ListenerCmd(cmd, con)
 			return
@@ -22,22 +22,19 @@ func Commands(con *repl.Console) []*cobra.Command {
 	}
 
 	jobCmd := &cobra.Command{
-		Use:   "job",
+		Use:   consts.CommandJob,
 		Short: "List jobs in server",
-		Args:  cobra.ExactArgs(1),
-		Long:  help.GetHelpFor("job"),
+		Long:  help.GetHelpFor(consts.CommandJob),
 		Run: func(cmd *cobra.Command, args []string) {
 			listJobsCmd(cmd, con)
 			return
 		},
 	}
 
-	common.BindArgCompletions(jobCmd, nil, carapace.ActionValues().Usage("listener id"))
-
 	tcpCmd := &cobra.Command{
-		Use:   "tcp",
+		Use:   consts.CommandTcp,
 		Short: "Listener tcp pipeline ctrl manager",
-		Long:  help.GetHelpFor("tcp"),
+		Long:  help.GetHelpFor(consts.CommandTcp),
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			listTcpCmd(cmd, con)
@@ -49,9 +46,9 @@ func Commands(con *repl.Console) []*cobra.Command {
 	common.BindArgCompletions(tcpCmd, nil, carapace.ActionValues().Usage("listener id"))
 
 	tcpRegisterCmd := &cobra.Command{
-		Use:   "register",
+		Use:   consts.CommandRegister,
 		Short: "Register a new TCP pipeline",
-		Args:  cobra.ExactArgs(4),
+		Args:  cobra.ExactArgs(1),
 		Long:  help.GetHelpFor("tcp register"),
 		Run: func(cmd *cobra.Command, args []string) {
 			newTcpPipelineCmd(cmd, con)
@@ -60,23 +57,20 @@ func Commands(con *repl.Console) []*cobra.Command {
 	}
 
 	common.BindArgCompletions(tcpRegisterCmd, nil,
-		carapace.ActionValues().Usage("tcp pipeline name"),
-		carapace.ActionValues().Usage("listener id"),
-		carapace.ActionValues().Usage("tcp pipeline host"),
-		carapace.ActionValues().Usage("tcp pipeline port"))
+		carapace.ActionValues().Usage("listener id"))
 
-	common.Bind("cert", false, tcpRegisterCmd, func(f *pflag.FlagSet) {
-		f.String("cert_path", "", "tcp pipeline tls cert path")
-		f.String("key_path", "", "tcp pipeline tls key path")
-	})
+	common.BindFlag(tcpRegisterCmd, common.TlsCertFlagSet, common.PipelineFlagSet)
 
 	common.BindFlagCompletions(tcpRegisterCmd, func(comp carapace.ActionMap) {
+		comp["name"] = carapace.ActionValues().Usage("tcp name")
+		comp["host"] = carapace.ActionValues().Usage("tcp host")
+		comp["port"] = carapace.ActionValues().Usage("tcp port")
 		comp["cert_path"] = carapace.ActionFiles().Usage("path to the cert file")
 		comp["key_path"] = carapace.ActionFiles().Usage("path to the key file")
 	})
 
 	tcpStartCmd := &cobra.Command{
-		Use:   "start",
+		Use:   consts.CommandPipelineStart,
 		Short: "Start a TCP pipeline",
 		Args:  cobra.ExactArgs(2),
 		Long:  help.GetHelpFor("tcp start"),
@@ -91,7 +85,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		carapace.ActionValues().Usage("listener id"))
 
 	tcpStopCmd := &cobra.Command{
-		Use:   "stop",
+		Use:   consts.CommandPipelineStop,
 		Short: "Stop a TCP pipeline",
 		Args:  cobra.ExactArgs(2),
 		Long:  help.GetHelpFor("tcp stop"),
@@ -108,9 +102,9 @@ func Commands(con *repl.Console) []*cobra.Command {
 	tcpCmd.AddCommand(tcpRegisterCmd, tcpStartCmd, tcpStopCmd)
 
 	websiteCmd := &cobra.Command{
-		Use:   "website",
+		Use:   consts.CommandWebsite,
 		Short: "Listener website ctrl manager",
-		Long:  help.GetHelpFor("website"),
+		Long:  help.GetHelpFor(consts.CommandWebsite),
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			listWebsitesCmd(cmd, con)
@@ -121,9 +115,9 @@ func Commands(con *repl.Console) []*cobra.Command {
 	common.BindArgCompletions(websiteCmd, nil, carapace.ActionValues().Usage("listener id"))
 
 	websiteRegisterCmd := &cobra.Command{
-		Use:   "register",
+		Use:   consts.CommandRegister,
 		Short: "register a website",
-		Args:  cobra.ExactArgs(6),
+		Args:  cobra.ExactArgs(3),
 		Long:  help.GetHelpFor("website Register"),
 		Run: func(cmd *cobra.Command, args []string) {
 			newWebsiteCmd(cmd, con)
@@ -132,25 +126,24 @@ func Commands(con *repl.Console) []*cobra.Command {
 	}
 
 	common.BindArgCompletions(websiteRegisterCmd, nil,
-		carapace.ActionValues().Usage("website name"),
 		carapace.ActionValues().Usage("listener id"),
-		carapace.ActionValues().Usage("website port"),
 		carapace.ActionValues().Usage("website router root path"),
-		carapace.ActionValues().Usage("website content path"),
-		carapace.ActionValues().Usage("website content type"))
+		carapace.ActionFiles().Usage("website content path"))
 
-	common.Bind("cert", false, websiteRegisterCmd, func(f *pflag.FlagSet) {
-		f.String("cert_path", "", "website tls cert path")
-		f.String("key_path", "", "website tls key path")
+	common.BindFlag(websiteRegisterCmd, common.TlsCertFlagSet, common.PipelineFlagSet, func(f *pflag.FlagSet) {
+		f.String("content_type", "", "website content type")
 	})
 
 	common.BindFlagCompletions(websiteRegisterCmd, func(comp carapace.ActionMap) {
+		comp["name"] = carapace.ActionValues().Usage("website name")
+		comp["port"] = carapace.ActionValues().Usage("website port")
+		comp["content_type"] = carapace.ActionFiles().Tag("website content type")
 		comp["cert_path"] = carapace.ActionFiles().Usage("path to the cert file")
 		comp["key_path"] = carapace.ActionFiles().Usage("path to the key file")
 	})
 
 	websiteStartCmd := &cobra.Command{
-		Use:   "start",
+		Use:   consts.CommandPipelineStart,
 		Short: "Start a website",
 		Args:  cobra.ExactArgs(2),
 		Long:  help.GetHelpFor("website start"),
@@ -165,7 +158,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		carapace.ActionValues().Usage("listener id"))
 
 	websiteStopCmd := &cobra.Command{
-		Use:   "stop",
+		Use:   consts.CommandPipelineStop,
 		Short: "Stop a website",
 		Args:  cobra.ExactArgs(2),
 		Long:  help.GetHelpFor("website stop"),

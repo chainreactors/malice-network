@@ -46,6 +46,12 @@ func (rpc *Server) JobStream(stream listenerrpc.ListenerRPC_JobStreamServer) err
 					EventType: consts.EventWebsite,
 					Message:   fmt.Sprintf("%s stop", msg.Job.GetPipeline().GetWeb().GetName()),
 				})
+			} else if msg.Ctrl == consts.RegisterWebsite {
+				core.EventBroker.Publish(core.Event{
+					EventType: consts.EventWebsite,
+					Op:        consts.CtrlWebUpload,
+					Message:   fmt.Sprintf("website register"),
+				})
 			}
 		} else {
 			if msg.Ctrl == consts.CtrlWebsiteStart || msg.Ctrl == consts.CtrlWebsiteStop {
