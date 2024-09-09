@@ -215,7 +215,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 
 	common.BindFlag(execPowershellCmd)
 
-	con.RegisterInternalFunc(
+	con.RegisterImplantFunc(
 		"bshell",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, cmd string) (*clientpb.Task, error) {
 			return Execute(rpc, sess, cmd)
@@ -230,7 +230,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		},
 	)
 
-	con.RegisterInternalFunc(
+	con.RegisterImplantFunc(
 		"bexecute_assembly",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path, args string) (*clientpb.Task, error) {
 			return ExecAssembly(rpc, sess, path, args)
@@ -239,7 +239,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return builtin.ParseAssembly(ctx.Spite)
 		})
 
-	con.RegisterInternalFunc(
+	con.RegisterImplantFunc(
 		"bshinject",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, ppid int, arch, path string) (*clientpb.Task, error) {
 			sac, _ := builtin.NewSacrificeProcessMessage("", int64(ppid), false, "", "")
@@ -249,7 +249,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return builtin.ParseAssembly(ctx.Spite)
 		})
 
-	con.RegisterInternalFunc(
+	con.RegisterImplantFunc(
 		"binline_shellcode",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string) (*clientpb.Task, error) {
 			return InlineShellcode(rpc, sess, path)
@@ -258,7 +258,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return builtin.ParseAssembly(ctx.Spite)
 		})
 
-	con.RegisterInternalFunc(
+	con.RegisterImplantFunc(
 		"bdllinject",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, ppid int, path string) (*clientpb.Task, error) {
 			sac, _ := builtin.NewSacrificeProcessMessage("", int64(ppid), false, "", "")
@@ -268,7 +268,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return builtin.ParseAssembly(ctx.Spite)
 		})
 
-	con.RegisterInternalFunc(
+	con.RegisterImplantFunc(
 		"binline_dll",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path, entryPoint string, args string) (*clientpb.Task, error) {
 			param, err := shellquote.Split(args)
@@ -281,7 +281,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return builtin.ParseAssembly(ctx.Spite)
 		})
 
-	con.RegisterInternalFunc(
+	con.RegisterImplantFunc(
 		"bexecute_exe",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 			return ExecExe(rpc, sess, path, sac)
@@ -290,7 +290,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return builtin.ParseAssembly(ctx.Spite)
 		})
 
-	con.RegisterInternalFunc(
+	con.RegisterImplantFunc(
 		"binline_pe",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string, args string) (*clientpb.Task, error) {
 			param, err := shellquote.Split(args)
@@ -303,7 +303,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return builtin.ParseAssembly(ctx.Spite)
 		})
 
-	con.RegisterInternalFunc(
+	con.RegisterImplantFunc(
 		"binline_execute",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string, args string) (*clientpb.Task, error) {
 			return ExecBof(rpc, sess, path, args)
@@ -312,7 +312,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return builtin.ParseAssembly(ctx.Spite)
 		})
 
-	con.RegisterInternalFunc(
+	con.RegisterImplantFunc(
 		"bpowershell",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string) (*clientpb.Task, error) {
 			return ExecPowershell(rpc, sess, path)

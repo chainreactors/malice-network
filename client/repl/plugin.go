@@ -30,43 +30,15 @@ const (
 	CNAScript = "cna"
 )
 
-type ImplantRpcFunc func(clientrpc.MaliceRPCClient, *Session, ...interface{}) (*clientpb.Task, error)
-type implantCallback func(*clientpb.TaskContext) (interface{}, error)
-type serverRpcFunc func(*Console, ...interface{}) (interface{}, error)
+type ImplantCallback func(*clientpb.TaskContext) (interface{}, error)
 
 var (
 	ErrorAlreadyScriptName = errors.New("already exist script name")
 )
 
-func WrapImplantFunc(rpc clientrpc.MaliceRPCClient, fun interface{}, callback implantCallback) intermediate.InternalFunc {
-	// 使用反射将传入的函数适配为 ImplantRpcFunc
-	wrappedFunc := WrapFunc(fun)
-
-	return func(args ...interface{}) (interface{}, error) {
-		// 调用适配后的 ImplantRpcFunc
-		sess := args[0].(*Session)
-		task, err := wrappedFunc(rpc, sess, args...)
-		if err != nil {
-			return nil, err
-		}
-
-		taskContext, err := rpc.WaitTaskFinish(context.Background(), task)
-		if err != nil {
-			return nil, err
-		}
-
-		if callback != nil {
-			return callback(taskContext)
-		} else {
-			return taskContext, nil
-		}
-	}
-}
-
-// WrapFunc 通过反射将任意符合参数签名的函数转换为 ImplantRpcFunc
-func WrapFunc(funcToWrap interface{}) ImplantRpcFunc {
-	return func(rpc clientrpc.MaliceRPCClient, sess *Session, params ...interface{}) (*clientpb.Task, error) {
-		funcValue := reflect.ValueOf(funcToWrap)
+func WrapImplantFunc(con *Console, fun interface{}, callback ImplantCallback) intermediate.InternalFunc {
+	wrappedFunc := func(rpc clientrpc.MaliceRPCClient, sess *Session, params ...interface{}) (*clientpb.Task, error) {
+		funcValue := reflect.ValueOf(fun)
 		funcType := funcValue.Type()
 
 		// 检查函数的参数数量是否匹配
@@ -75,11 +47,11 @@ func WrapFunc(funcToWrap interface{}) ImplantRpcFunc {
 		}
 
 		// 构建参数切片
-		in := make([]reflect.Value, len(params)+1)
+		in := make([]reflect.Value, len(params)+2)
 		in[0] = reflect.ValueOf(rpc)
 		in[1] = reflect.ValueOf(sess)
 		for i, param := range params {
-			if reflect.TypeOf(param) != funcType.In(i+1) {
+			if reflect.TypeOf(param) != funcType.In(i+2) {
 				return nil, fmt.Errorf("argument %d should be %v, got %v", i+1, funcType.In(i+1), reflect.TypeOf(param))
 			}
 			in[i+2] = reflect.ValueOf(param)
@@ -97,15 +69,72 @@ func WrapFunc(funcToWrap interface{}) ImplantRpcFunc {
 
 		return task, err
 	}
-}
 
-func WrapServerFunc(con *Console, fun serverRpcFunc) intermediate.InternalFunc {
-	return func(req ...interface{}) (interface{}, error) {
-		resp, err := fun(con, req...)
+	return func(args ...interface{}) (interface{}, error) {
+		var sess *Session
+		if len(args) == 0 {
+			return nil, fmt.Errorf("implant func first args must be session")
+		} else {
+			var ok bool
+			sess, ok = args[0].(*Session)
+			if !ok {
+				return nil, fmt.Errorf("implant func first args must be session")
+			}
+			args = args[1:]
+		}
+
+		task, err := wrappedFunc(con.Rpc, sess, args...)
 		if err != nil {
 			return nil, err
 		}
-		return resp, nil
+
+		taskContext, err := con.Rpc.WaitTaskFinish(context.Background(), task)
+		if err != nil {
+			return nil, err
+		}
+
+		if callback != nil {
+			return callback(taskContext)
+		} else {
+			return taskContext, nil
+		}
+	}
+}
+
+func WrapServerFunc(con *Console, fun interface{}) intermediate.InternalFunc {
+	wrappedFunc := func(con *Console, params ...interface{}) (interface{}, error) {
+		funcValue := reflect.ValueOf(fun)
+		funcType := funcValue.Type()
+
+		// 检查函数的参数数量是否匹配
+		if funcType.NumIn() != len(params)+1 {
+			return nil, fmt.Errorf("expected %d arguments, got %d", funcType.NumIn()-1, len(params))
+		}
+
+		// 构建参数切片
+		in := make([]reflect.Value, len(params)+1)
+		in[0] = reflect.ValueOf(con)
+		for i, param := range params {
+			if reflect.TypeOf(param) != funcType.In(i+1) {
+				return nil, fmt.Errorf("argument %d should be %v, got %v", i+1, funcType.In(i+1), reflect.TypeOf(param))
+			}
+			in[i+1] = reflect.ValueOf(param)
+		}
+
+		// 调用函数并返回结果
+		results := funcValue.Call(in)
+
+		// 假设函数有两个返回值，第一个是返回值，第二个是错误
+		var err error
+		if len(results) == 2 && results[1].Interface() != nil {
+			err = results[1].Interface().(error)
+		}
+
+		return results[0].Interface(), err
+	}
+
+	return func(args ...interface{}) (interface{}, error) {
+		return wrappedFunc(con, args...)
 	}
 }
 
@@ -283,6 +312,10 @@ func (plugin *Plugin) registerLuaFunction(name string, fn intermediate.InternalF
 }
 
 func (plugin *Plugin) RegisterLuaBuiltInFunctions(con *Console) error {
+	plugin.registerLuaFunction("active", func(args ...interface{}) (interface{}, error) {
+		return con.GetInteractive(), nil
+	}, []reflect.Type{})
+
 	// get resource filename
 	plugin.registerLuaFunction("resource_file", func(args ...interface{}) (interface{}, error) {
 		filename := args[0].(string)

@@ -191,7 +191,7 @@ func RegisterAlias(aliasManifest *AliasManifest, cmd *cobra.Command, con *repl.C
 		Command:  addAliasCmd,
 	}
 	cmd.AddCommand(addAliasCmd)
-	err := con.RegisterInternalFunc(
+	err := con.RegisterImplantFunc(
 		aliasManifest.CommandName,
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, args string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 			return ExecuteAlias(rpc, sess, aliasManifest.CommandName, args, sac)

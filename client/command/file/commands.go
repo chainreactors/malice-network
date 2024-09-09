@@ -69,14 +69,14 @@ func Commands(con *repl.Console) []*cobra.Command {
 	common.BindArgCompletions(syncCmd, nil,
 		carapace.ActionValues().Usage("task ID"))
 
-	con.RegisterInternalFunc(
+	con.RegisterImplantFunc(
 		"bdownload",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string) (*clientpb.Task, error) {
 			return Download(rpc, sess, path)
 		},
 		nil)
 
-	con.RegisterInternalFunc(
+	con.RegisterImplantFunc(
 		"bupload",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string) (*clientpb.Task, error) {
 			return Upload(rpc, sess, path, filepath.Base(path), 0744, false)

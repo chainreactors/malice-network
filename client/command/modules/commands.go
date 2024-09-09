@@ -61,7 +61,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		},
 	}
 
-	con.RegisterInternalFunc(
+	con.RegisterImplantFunc(
 		"blist_module",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, fileName string) (*clientpb.Task, error) {
 			return ListModules(rpc, sess)
@@ -79,7 +79,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return strings.Join(modules, ","), nil
 		})
 
-	con.RegisterInternalFunc(
+	con.RegisterImplantFunc(
 		"bload_module",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, bundle string, path string) (*clientpb.Task, error) {
 			return LoadModule(rpc, sess, bundle, path)
@@ -88,7 +88,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return builtin.ParseStatus(ctx.Spite)
 		})
 
-	con.RegisterInternalFunc(
+	con.RegisterImplantFunc(
 		"brefresh_module",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session) (*clientpb.Task, error) {
 			return refreshModule(rpc, sess)
@@ -98,7 +98,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		})
 
 	//clear
-	con.RegisterInternalFunc(
+	con.RegisterImplantFunc(
 		"bclear",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session) (*clientpb.Task, error) {
 			return clearAll(rpc, sess)

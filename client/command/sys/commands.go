@@ -132,7 +132,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		},
 	}
 
-	con.RegisterInternalFunc(
+	con.RegisterImplantFunc(
 		"benv",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session) (*clientpb.Task, error) {
 			return Env(rpc, sess)
@@ -146,7 +146,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return strings.Join(envs, ","), nil
 		})
 
-	con.RegisterInternalFunc(
+	con.RegisterImplantFunc(
 		"bsetenv",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, envName, value string) (*clientpb.Task, error) {
 			return SetEnv(rpc, sess, envName, value)
@@ -156,7 +156,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		},
 	)
 
-	con.RegisterInternalFunc(
+	con.RegisterImplantFunc(
 		"unsetenv",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, envName string) (*clientpb.Task, error) {
 			return UnSetEnv(rpc, sess, envName)
@@ -165,7 +165,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return builtin.ParseStatus(ctx.Spite)
 		})
 
-	con.RegisterInternalFunc(
+	con.RegisterImplantFunc(
 		"binfo",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session) (*clientpb.Task, error) {
 			return Info(rpc, sess)
@@ -174,7 +174,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return ctx.Spite.GetBody(), nil
 		})
 
-	con.RegisterInternalFunc(
+	con.RegisterImplantFunc(
 		"bkill",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, pid string) (*clientpb.Task, error) {
 			return Kill(rpc, sess, pid)
@@ -183,7 +183,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return builtin.ParseStatus(ctx.Spite)
 		})
 
-	con.RegisterInternalFunc(
+	con.RegisterImplantFunc(
 		"bnetstat",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session) (*clientpb.Task, error) {
 			return Netstat(rpc, sess)
@@ -202,7 +202,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return strings.Join(socks, ","), nil
 		})
 
-	con.RegisterInternalFunc(
+	con.RegisterImplantFunc(
 		"bps",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session) (*clientpb.Task, error) {
 			return Ps(rpc, sess)
@@ -223,7 +223,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return strings.Join(ps, ","), nil
 		})
 
-	con.RegisterInternalFunc(
+	con.RegisterImplantFunc(
 		"bwhoami",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session) (*clientpb.Task, error) {
 			return Whoami(rpc, sess)

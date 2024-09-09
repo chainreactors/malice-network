@@ -263,7 +263,7 @@ func ExtensionRegisterCommand(extCmd *ExtCommand, cmd *cobra.Command, con *repl.
 	makeExtensionArgCompleter(extCmd, cmd, comps)
 
 	cmd.AddCommand(extensionCmd)
-	err := con.RegisterInternalFunc(
+	err := con.RegisterImplantFunc(
 		extensionCmd.Name(),
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, args string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 			return ExecuteExtension(rpc, sess, extensionCmd.Name(), args)
