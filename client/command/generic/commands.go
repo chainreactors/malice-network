@@ -51,5 +51,9 @@ func Commands(con *repl.Console) []*cobra.Command {
 			BroadcastCmd(cmd, con)
 		},
 	}
+
+	con.RegisterServerFunc(consts.CommandBroadcast, func(con *repl.Console, msg string) (bool, error) {
+		return Broadcast(con, msg)
+	})
 	return []*cobra.Command{loginCmd, versionCmd, exitCmd, broadcastCmd}
 }

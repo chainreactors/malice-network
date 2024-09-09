@@ -195,7 +195,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	common.BindArgCompletions(rmCmd, nil,
 		carapace.ActionValues().Usage("rm file name"))
 
-	con.RegisterInternalFunc(
+	con.RegisterImplantFunc(
 		"bcd",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string) (*clientpb.Task, error) {
 			return Cd(rpc, sess, path)
@@ -204,7 +204,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return builtin.ParseStatus(ctx.Spite)
 		})
 
-	con.RegisterInternalFunc(
+	con.RegisterImplantFunc(
 		"bcat",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, fileName string) (*clientpb.Task, error) {
 			return Cat(rpc, sess, fileName)
@@ -218,7 +218,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return resp.GetOutput(), nil
 		})
 
-	con.RegisterInternalFunc(
+	con.RegisterImplantFunc(
 		"bchmod",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path, mode string) (*clientpb.Task, error) {
 			return Chmod(rpc, sess, path, mode)
@@ -227,7 +227,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return builtin.ParseStatus(ctx.Spite)
 		})
 
-	con.RegisterInternalFunc(
+	con.RegisterImplantFunc(
 		"bchown",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path, uid string, gid string, recursive bool) (*clientpb.Task, error) {
 			return Chown(rpc, sess, path, uid, gid, recursive)
@@ -236,7 +236,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return builtin.ParseStatus(ctx.Spite)
 		})
 
-	con.RegisterInternalFunc(
+	con.RegisterImplantFunc(
 		"bcp",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, src, dst string) (*clientpb.Task, error) {
 			return Cp(rpc, sess, src, dst)
@@ -245,7 +245,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return builtin.ParseStatus(ctx.Spite)
 		})
 
-	con.RegisterInternalFunc(
+	con.RegisterImplantFunc(
 		"bls",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string) (*clientpb.Task, error) {
 			return Ls(rpc, sess, path)
@@ -270,7 +270,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return strings.Join(fileDetails, ","), nil
 		})
 
-	con.RegisterInternalFunc(
+	con.RegisterImplantFunc(
 		"bmkdir",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string) (*clientpb.Task, error) {
 			return Mkdir(rpc, sess, path)
@@ -279,7 +279,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return builtin.ParseStatus(ctx.Spite)
 		})
 
-	con.RegisterInternalFunc(
+	con.RegisterImplantFunc(
 		"bmv",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, src, dst string) (*clientpb.Task, error) {
 			return Mv(rpc, sess, src, dst)
@@ -288,7 +288,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return builtin.ParseStatus(ctx.Spite)
 		})
 
-	con.RegisterInternalFunc(
+	con.RegisterImplantFunc(
 		"bpwd",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session) (*clientpb.Task, error) {
 			return Pwd(rpc, sess)
@@ -302,7 +302,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return resp.GetOutput(), nil
 		})
 
-	con.RegisterInternalFunc(
+	con.RegisterImplantFunc(
 		"brm",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, fileName string) (*clientpb.Task, error) {
 			return Rm(rpc, sess, fileName)

@@ -206,8 +206,12 @@ func (c *Console) SwitchImplant(sess *Session) {
 	}
 }
 
-func (c *Console) RegisterInternalFunc(name string, fn interface{}, callback implantCallback) error {
-	return intermediate.RegisterInternalFunc(name, WrapImplantFunc(c.Rpc, fn, callback))
+func (c *Console) RegisterImplantFunc(name string, fn interface{}, callback ImplantCallback) error {
+	return intermediate.RegisterInternalFunc(name, WrapImplantFunc(c, fn, callback))
+}
+
+func (c *Console) RegisterServerFunc(name string, fn interface{}) error {
+	return intermediate.RegisterInternalFunc(name, WrapServerFunc(c, fn))
 }
 
 func exitConsole(c *console.Console) {
