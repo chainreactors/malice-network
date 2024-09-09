@@ -97,6 +97,13 @@ const (
 	CommandMalList          = "list"
 	CommandMalInstall       = "install"
 	CommandMalRemove        = "remove"
+	CommandTcp              = "tcp"
+	CommandWebsite          = "website"
+	CommandListener         = "listener"
+	CommandJob              = "job"
+	CommandRegister         = "register"
+	CommandPipelineStart    = "start"
+	CommandPipelineStop     = "stop"
 )
 
 // task error

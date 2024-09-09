@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/table"
@@ -12,14 +13,7 @@ import (
 )
 
 func listJobsCmd(cmd *cobra.Command, con *repl.Console) {
-	listenerID := cmd.Flags().Arg(0)
-	if listenerID == "" {
-		repl.Log.Error("listener_id is required")
-		return
-	}
-	Pipelines, err := con.Rpc.ListJobs(context.Background(), &lispb.ListenerName{
-		Name: listenerID,
-	})
+	Pipelines, err := con.Rpc.ListJobs(context.Background(), &clientpb.Empty{})
 	if err != nil {
 		repl.Log.Error(err.Error())
 		return
@@ -32,6 +26,7 @@ func listJobsCmd(cmd *cobra.Command, con *repl.Console) {
 	var row table.Row
 	tableModel := tui.NewTable([]table.Column{
 		{Title: "Name", Width: 20},
+		{Title: "Listener_id", Width: 15},
 		{Title: "Host", Width: 10},
 		{Title: "Port", Width: 7},
 		{Title: "Type", Width: 7},
@@ -42,6 +37,7 @@ func listJobsCmd(cmd *cobra.Command, con *repl.Console) {
 			tcp := Pipeline.GetTcp()
 			row = table.Row{
 				tcp.Name,
+				tcp.ListenerId,
 				tcp.Host,
 				strconv.Itoa(int(tcp.Port)),
 				"TCP",
@@ -50,6 +46,7 @@ func listJobsCmd(cmd *cobra.Command, con *repl.Console) {
 			website := Pipeline.GetWeb()
 			row = table.Row{
 				website.Name,
+				website.ListenerId,
 				"",
 				strconv.Itoa(int(website.Port)),
 				"Web",

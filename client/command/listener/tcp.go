@@ -4,13 +4,15 @@ import (
 	"context"
 	"fmt"
 	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/helper/codenames"
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/spf13/cobra"
-	"log"
+	"math/rand"
 	"strconv"
+	"time"
 )
 
 func listTcpCmd(cmd *cobra.Command, con *repl.Console) {
@@ -51,17 +53,25 @@ func listTcpCmd(cmd *cobra.Command, con *repl.Console) {
 func newTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) {
 	certPath, _ := cmd.Flags().GetString("cert_path")
 	keyPath, _ := cmd.Flags().GetString("key_path")
-	name := cmd.Flags().Arg(0)
-	listenerID := cmd.Flags().Arg(1)
-	host := cmd.Flags().Arg(2)
-	portStr := cmd.Flags().Arg(3)
-	portUint, err := strconv.ParseUint(portStr, 10, 16)
-	if err != nil {
-		log.Fatalf("Invalid port number: %v", err)
+	name, _ := cmd.Flags().GetString("name")
+	listenerID := cmd.Flags().Arg(0)
+	host, _ := cmd.Flags().GetString("host")
+	portUint, _ := cmd.Flags().GetUint("port")
+	var cert, key string
+	var err error
+	var tlsEnable = false
+	if name == "" {
+		name, err = codenames.RandomAdjective()
+		if err != nil {
+			repl.Log.Error(err.Error())
+			return
+		}
+	}
+	if portUint == 0 {
+		rand.Seed(time.Now().UnixNano())
+		portUint = uint(10000 + rand.Int31n(5001))
 	}
 	port := uint32(portUint)
-	var cert, key string
-	var tlsEnable = false
 	if certPath != "" && keyPath != "" {
 		cert, err = cryptography.ProcessPEM(certPath)
 		if err != nil {
