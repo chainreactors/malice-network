@@ -40,7 +40,7 @@ func LoadMal(con *repl.Console, filename string) (*plugin.MalManiFest, error) {
 		return nil, err
 	}
 
-	err = plug.ReverseRegisterLuaFunctions(con.ImplantMenu())
+	err = plug.ReverseRegisterLuaFunctions(con, con.ImplantMenu())
 	if err != nil {
 		return nil, err
 	}

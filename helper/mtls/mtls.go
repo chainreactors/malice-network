@@ -74,7 +74,7 @@ func Connect(config *ClientConfig) (*grpc.ClientConn, error) {
 	if err != nil {
 		return nil, err
 	}
-	ctx, _ := context.WithTimeout(context.Background(), consts.DefaultDuration)
+	ctx, _ := context.WithTimeout(context.Background(), consts.DefaultTimeout)
 	connection, err := grpc.DialContext(ctx, config.Address(), options...)
 	if err != nil {
 		return nil, err

@@ -14,6 +14,7 @@ import (
 	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"path/filepath"
 )
 
 func Commands(con *repl.Console) []*cobra.Command {
@@ -291,9 +292,9 @@ func Commands(con *repl.Console) []*cobra.Command {
 		})
 
 	con.RegisterImplantFunc(
-		"binline_pe",
+		"binline_exe",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string, args string) (*clientpb.Task, error) {
-			param, err := shellquote.Split(args)
+			param, err := shellquote.Split(filepath.Base(path) + " " + args)
 			if err != nil {
 				return nil, err
 			}

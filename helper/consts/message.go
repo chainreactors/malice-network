@@ -67,7 +67,6 @@ const (
 	CommandLogin            = "login"
 	CommandExit             = "exit"
 	CommandSessions         = "sessions"
-	CommandListener         = "listener"
 	CommandTasks            = "tasks"
 	CommandNote             = "note"
 	CommandGroup            = "group"
