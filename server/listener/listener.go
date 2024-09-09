@@ -7,15 +7,17 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/mtls"
-	"github.com/chainreactors/malice-network/helper/types"
+	"github.com/chainreactors/malice-network/helper/website"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/proto/services/listenerrpc"
 	"github.com/chainreactors/malice-network/server/internal/certs"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
-	"github.com/chainreactors/malice-network/server/web"
 	"google.golang.org/grpc"
+	"os"
+	"path"
+	"path/filepath"
 )
 
 var (
@@ -74,28 +76,52 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 		}
 		l.Pipelines = append(l.Pipelines, pipeline)
 	}
-	for _, website := range cfg.Websites {
-		if website.TlsConfig.CertFile == "" || website.TlsConfig.KeyFile == "" {
-			cert, key, err := certs.GeneratePipelineCert(website.TlsConfig)
+	for _, newWebsite := range cfg.Websites {
+		if newWebsite.TlsConfig.CertFile == "" || newWebsite.TlsConfig.KeyFile == "" {
+			cert, key, err := certs.GeneratePipelineCert(newWebsite.TlsConfig)
 			if err != nil {
 				return err
 			}
-			website.TlsConfig.CertFile = string(cert)
-			website.TlsConfig.KeyFile = string(key)
+			newWebsite.TlsConfig.CertFile = string(cert)
+			newWebsite.TlsConfig.KeyFile = string(key)
+		}
+		addWeb := &lispb.WebsiteAddContent{
+			Name:     newWebsite.WebsiteName,
+			Contents: map[string]*lispb.WebContent{},
+		}
+		cPath, _ := filepath.Abs(newWebsite.ContentPath)
+
+		fileIfo, err := os.Stat(cPath)
+
+		if fileIfo.IsDir() {
+			_ = website.WebAddDirectory(addWeb, newWebsite.RootPath, cPath)
+		} else {
+			file, err := os.Open(cPath)
+			website.WebAddFile(addWeb, newWebsite.RootPath, website.SniffContentType(file), cPath)
+			if err != nil {
+				return err
+			}
+			err = file.Close()
+			if err != nil {
+				return err
+			}
 		}
 		webProtobuf := &lispb.Pipeline{
 			Body: &lispb.Pipeline_Web{
 				Web: &lispb.Website{
-					RootPath:   website.RootPath,
-					Port:       uint32(website.Port),
-					Name:       website.WebsiteName,
+					RootPath:   newWebsite.RootPath,
+					Port:       uint32(newWebsite.Port),
+					Name:       newWebsite.WebsiteName,
 					ListenerId: lis.Name,
+					Contents:   addWeb.Contents,
 				},
 			},
-			Tls: website.TlsConfig.ToProtobuf(),
+			Tls: newWebsite.TlsConfig.ToProtobuf(),
 		}
 		_, err = lis.Rpc.RegisterWebsite(context.Background(), webProtobuf)
-
+		if err != nil {
+			return err
+		}
 	}
 	_, err = lis.Rpc.RegisterListener(context.Background(), &lispb.RegisterListener{
 		Id:        fmt.Sprintf("%s_%s", lis.Name, lis.Host),
@@ -139,11 +165,38 @@ func (lns *listener) Start() {
 		}
 		logs.Log.Importantf("Started tcp pipeline %s, encryption: %t, tls: %t", pipeline.ID(), pipeline.Encryption.Enable, pipeline.TlsConfig.Enable)
 	}
-	for _, website := range lns.cfg.Websites {
-		if !website.Enable {
+	for _, newWebsite := range lns.cfg.Websites {
+		if !newWebsite.Enable {
 			continue
 		}
-		httpServer := web.NewHTTPServer(int(website.Port), website.RootPath, website.WebsiteName)
+		addWeb := &lispb.WebsiteAddContent{
+			Name:     newWebsite.WebsiteName,
+			Contents: map[string]*lispb.WebContent{},
+		}
+		cPath, _ := filepath.Abs(newWebsite.ContentPath)
+
+		fileIfo, err := os.Stat(cPath)
+
+		if fileIfo.IsDir() {
+			_ = website.WebAddDirectory(addWeb, newWebsite.RootPath, cPath)
+		} else {
+			file, err := os.Open(cPath)
+			website.WebAddFile(addWeb, newWebsite.RootPath, website.SniffContentType(file), cPath)
+			if err != nil {
+				logs.Log.Error(err)
+				continue
+			}
+			err = file.Close()
+			if err != nil {
+				logs.Log.Error(err)
+				continue
+			}
+		}
+		httpServer, err := StartWebsite(newWebsite, addWeb.Contents)
+		if err != nil {
+			logs.Log.Errorf("Failed to start website %s", err)
+			continue
+		}
 		go httpServer.Start()
 	}
 }
@@ -175,17 +228,14 @@ func (lns *listener) Handler() {
 			resp = lns.startWebsite(msg.Job)
 		case consts.CtrlWebsiteStop:
 			resp = lns.stopWebsite(msg.Job)
+		case consts.RegisterWebsite:
+			resp = lns.registerWebsite(msg.Job)
 		}
 		err = stream.Send(resp)
 		if err != nil {
 			return
 		}
 	}
-}
-
-func (lns *listener) registerPipeline(pipeline core.Pipeline) {
-	lns.pipelines.Add(pipeline)
-	lns.Rpc.RegisterPipeline(context.Background(), types.BuildPipeline(pipeline.ToProtobuf(), pipeline.ToTLSProtobuf()))
 }
 
 func (lns *listener) startHandler(job *clientpb.Job) *clientpb.JobStatus {
@@ -273,7 +323,7 @@ func (lns *listener) startWebsite(job *clientpb.Job) *clientpb.JobStatus {
 	getWeb := job.GetPipeline().GetWeb()
 	w := lns.websites.Get(getWeb.Name)
 	if w == nil {
-		starResult, err := StartWebsite(ToWebsiteConfig(getWeb, job.GetPipeline().GetTls()), getWeb.Contents["0"])
+		starResult, err := StartWebsite(ToWebsiteConfig(getWeb, job.GetPipeline().GetTls()), getWeb.Contents)
 		if err != nil {
 			return &clientpb.JobStatus{
 				ListenerId: lns.ID(),
@@ -336,5 +386,47 @@ func (lns *listener) stopWebsite(job *clientpb.Job) *clientpb.JobStatus {
 		Ctrl:       consts.CtrlWebsiteStop,
 		Status:     consts.CtrlStatusSuccess,
 		Job:        job,
+	}
+}
+
+func (lns *listener) registerWebsite(job *clientpb.Job) *clientpb.JobStatus {
+	webAssets := job.GetWebsiteAssets().GetAssets()
+	folderPath := filepath.Join(configs.WebsitePath, webAssets[0].WebName)
+	err := os.MkdirAll(folderPath, 0755)
+	if err != nil {
+		return &clientpb.JobStatus{
+			ListenerId: lns.ID(),
+			Ctrl:       consts.RegisterWebsite,
+			Status:     consts.CtrlStatusFailed,
+			Error:      err.Error(),
+			Job:        job,
+		}
+	}
+	for _, asset := range webAssets {
+		filePath := filepath.Join(folderPath, asset.FileName)
+		fullWebpath := path.Join(folderPath, filepath.ToSlash(filePath[len(folderPath):]))
+		err := os.MkdirAll(filepath.Dir(fullWebpath), os.ModePerm)
+		if err != nil {
+			return &clientpb.JobStatus{
+				ListenerId: lns.ID(),
+				Ctrl:       consts.RegisterWebsite,
+				Status:     consts.CtrlStatusFailed,
+				Error:      err.Error(),
+			}
+		}
+		err = os.WriteFile(filePath, asset.Content, os.ModePerm)
+		if err != nil {
+			return &clientpb.JobStatus{
+				ListenerId: lns.ID(),
+				Ctrl:       consts.RegisterWebsite,
+				Status:     consts.CtrlStatusFailed,
+				Error:      err.Error(),
+			}
+		}
+	}
+	return &clientpb.JobStatus{
+		ListenerId: lns.ID(),
+		Ctrl:       consts.RegisterWebsite,
+		Status:     consts.CtrlStatusSuccess,
 	}
 }

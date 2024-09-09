@@ -6,10 +6,10 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/server/internal/configs"
-	"github.com/chainreactors/malice-network/server/internal/website"
 	"github.com/chainreactors/malice-network/server/listener/encryption"
 	"google.golang.org/protobuf/proto"
 	"net/http"
+	"net/url"
 )
 
 type Website struct {
@@ -18,10 +18,10 @@ type Website struct {
 	rootPath    string
 	websiteName string
 	TlsConfig   *configs.TlsConfig
-	Content     *lispb.WebContent
+	Content     map[string]*lispb.WebContent
 }
 
-func StartWebsite(cfg *configs.WebsiteConfig, content *lispb.WebContent) (*Website, error) {
+func StartWebsite(cfg *configs.WebsiteConfig, content map[string]*lispb.WebContent) (*Website, error) {
 	web := &Website{
 		port:        int(cfg.Port),
 		rootPath:    cfg.RootPath,
@@ -119,12 +119,17 @@ func (w *Website) DeleteFileRoute(routePath string) {
 }
 
 func (w *Website) websiteContentHandler(resp http.ResponseWriter, req *http.Request) {
-	content, err := website.GetContent(w.websiteName, req.URL.Path)
+	u, err := url.Parse(req.URL.Path)
 	if err != nil {
-		logs.Log.Errorf("Failed to get content %s", err)
+		logs.Log.Errorf("Failed to parse URL: %v", err)
+		return
+	}
+	content, ok := w.Content[u.Path]
+	if !ok {
+		logs.Log.Errorf("Failed to get content ")
 		return
 	}
 	resp.Header().Set("Content-Type", content.ContentType)
 	resp.Header().Add("Cache-Control", "no-store, no-cache, must-revalidate")
-	resp.Write(w.Content.Content)
+	resp.Write(content.Content)
 }

@@ -14,3 +14,14 @@ func SacrificeFlagSet(f *pflag.FlagSet) {
 func ExecuteFlagSet(f *pflag.FlagSet) {
 	f.BoolP("output", "o", true, "capture command output")
 }
+
+func TlsCertFlagSet(f *pflag.FlagSet) {
+	f.String("cert_path", "", "tcp pipeline tls cert path")
+	f.String("key_path", "", "tcp pipeline tls key path")
+}
+
+func PipelineFlagSet(f *pflag.FlagSet) {
+	f.String("name", "", "pipeline name")
+	f.String("host", "", "pipeline host")
+	f.Uint("port", 0, "pipeline port")
+}

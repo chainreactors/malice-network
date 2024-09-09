@@ -207,6 +207,11 @@ func (rpc *Server) StartWebsite(ctx context.Context, req *lispb.CtrlPipeline) (*
 		return &clientpb.Empty{}, err
 	}
 	pipeline := models.ToProtobuf(&pipelineDB)
+	contents, err := website.MapContent(req.Name, true)
+	if err != nil {
+		return &clientpb.Empty{}, err
+	}
+	pipeline.GetWeb().Contents = contents.Contents
 	ch := make(chan bool)
 	job := &core.Job{
 		ID:      core.CurrentJobID(),
@@ -244,6 +249,19 @@ func (rpc *Server) StopWebsite(ctx context.Context, req *lispb.CtrlPipeline) (*c
 	core.Jobs.Ctrl <- &ctrl
 	return &clientpb.Empty{}, nil
 
+}
+
+func (rpc *Server) UploadWebsite(ctx context.Context, req *lispb.WebsiteAssets) (*clientpb.Empty, error) {
+	ctrl := clientpb.JobCtrl{
+		Id:   core.NextCtrlID(),
+		Ctrl: consts.RegisterWebsite,
+		Job: &clientpb.Job{
+			Id:            core.NextJobID(),
+			WebsiteAssets: req,
+		},
+	}
+	core.Jobs.Ctrl <- &ctrl
+	return &clientpb.Empty{}, nil
 }
 
 func (rpc *Server) ListWebsites(ctx context.Context, req *lispb.ListenerName) (*lispb.Websites, error) {

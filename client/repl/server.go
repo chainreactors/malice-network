@@ -250,6 +250,10 @@ func (s *ServerStatus) EventHandler() {
 				Log.Errorf("Website error: %s", event.GetErr())
 				return
 			}
+			if event.GetOp() == consts.CtrlWebUpload {
+				Log.Importantf("Website upload success")
+				return
+			}
 			Log.Importantf("Website: %s", event.Message)
 		}
 		//con.triggerReactions(event)
