@@ -15,6 +15,7 @@ import (
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
+	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
 	lua "github.com/yuin/gopher-lua"
 	"google.golang.org/protobuf/proto"
@@ -212,8 +213,10 @@ func NewLuaVM(con *Console) *lua.LState {
 		// 将方法包装为 InternalFunc
 		internalFunc := func(args ...interface{}) (interface{}, error) {
 			var ctx context.Context
-			if ctx = con.ActiveTarget.Context(); ctx == nil {
+			if sess := con.GetInteractive(); sess == nil {
 				ctx = context.Background()
+			} else {
+				ctx = sess.Context()
 			}
 
 			// 准备 proto.Message 参数
@@ -317,7 +320,7 @@ func (plugin *Plugin) RegisterLuaBuiltInFunctions(con *Console) error {
 	}, []reflect.Type{})
 
 	// get resource filename
-	plugin.registerLuaFunction("resource_file", func(args ...interface{}) (interface{}, error) {
+	plugin.registerLuaFunction("script_resource", func(args ...interface{}) (interface{}, error) {
 		filename := args[0].(string)
 		return builtin.GetResourceFile(plugin.Name, filename)
 	}, []reflect.Type{reflect.TypeOf("")})
@@ -384,7 +387,7 @@ func (plugin *Plugin) RegisterLuaBuiltInFunctions(con *Console) error {
 	return nil
 }
 
-func (plugin *Plugin) ReverseRegisterLuaFunctions(cmd *cobra.Command) error {
+func (plugin *Plugin) ReverseRegisterLuaFunctions(con *Console, cmd *cobra.Command) error {
 	vm := plugin.LuaVM
 	globals := vm.Get(lua.GlobalsIndex).(*lua.LTable)
 	//globals.ForEach(func(key lua.LValue, value lua.LValue) {
@@ -434,31 +437,61 @@ func (plugin *Plugin) ReverseRegisterLuaFunctions(cmd *cobra.Command) error {
 				Log.Warnf("%s already exists, skipped\n", funcName)
 				return
 			}
+
+			var paramNames []string
+			for _, param := range fn.Proto.DbgLocals {
+				paramNames = append(paramNames, param.Name)
+			}
+
+			// 创建新的 Cobra 命令
 			malCmd := &cobra.Command{
 				Use:   cmdName,
 				Short: fmt.Sprintf("Lua function %s", funcName),
 				RunE: func(cmd *cobra.Command, args []string) error {
 					vm.Push(fn) // 将函数推入栈
 
-					// 将所有参数推入栈
-					for _, arg := range args {
-						vm.Push(lua.LString(arg))
+					for _, paramName := range paramNames {
+						if paramName == "args" {
+							// 特殊处理 "args" 参数
+							vm.Push(lua.LString(shellquote.Join(args...)))
+						} else {
+							// 获取 flag 的值并推入 Lua
+							val, err := cmd.Flags().GetString(paramName)
+							if err != nil {
+								return fmt.Errorf("error getting flag %s: %w", paramName, err)
+							}
+							vm.Push(lua.LString(val))
+						}
 					}
 
-					// 调用函数
-					if err := vm.PCall(len(args), lua.MultRet, nil); err != nil {
-						return fmt.Errorf("error calling Lua function %s: %w", funcName, err)
-					}
+					session := con.GetInteractive()
+					go func() {
+						if err := vm.PCall(len(args), lua.MultRet, nil); err != nil {
+							session.Log.Errorf("error calling Lua function %s: %s", funcName, err.Error())
+							return
+						}
 
-					// 处理返回值
-					for i := 1; i <= vm.GetTop(); i++ {
-						fmt.Println(vm.Get(i))
-					}
+						resultCount := vm.GetTop()
+						for i := 1; i <= resultCount; i++ {
+							// 从栈顶依次弹出返回值
+							result := vm.Get(-resultCount + i - 1)
+							session.Log.Consolef("%v\n", result)
+						}
+						vm.Pop(resultCount)
+					}()
 
 					return nil
 				},
 				GroupID: consts.MalGroup,
 			}
+
+			for _, paramName := range paramNames {
+				if paramName == "args" {
+					continue
+				}
+				malCmd.Flags().String(paramName, "", fmt.Sprintf("parameter %s for %s", paramName, funcName))
+			}
+
 			plugin.CMDs = append(plugin.CMDs, malCmd)
 			cmd.AddCommand(malCmd)
 			Log.Debugf("Registered Command: %s\n", funcName)

@@ -22,7 +22,7 @@ func ExecuteExeCmd(cmd *cobra.Command, con *repl.Console) {
 	sac, _ := common.ParseSacrifice(cmd)
 	task, err := ExecExe(con.Rpc, con.GetInteractive(), path, sac)
 	if err != nil {
-		con.Log.Errorf("Execute PE error: %v", err)
+		con.Log.Errorf("Execute EXE error: %v", err)
 		return
 	}
 	session := con.GetInteractive()
@@ -38,7 +38,7 @@ func ExecExe(rpc clientrpc.MaliceRPCClient, sess *repl.Session, pePath string, s
 		return nil, err
 	}
 	if helper.CheckPEType(peBin) != consts.EXEFile {
-		return nil, errors.New("the file is not a PE file")
+		return nil, errors.New("the file is not a EXE file")
 	}
 	task, err := rpc.ExecuteEXE(sess.Context(), &implantpb.ExecuteBinary{
 		Name:      filepath.Base(pePath),
@@ -61,7 +61,7 @@ func InlineExeCmd(cmd *cobra.Command, con *repl.Console) {
 	args := cmd.Flags().Args()
 	task, err := InlineExe(con.Rpc, session, pePath, args)
 	if err != nil {
-		con.Log.Errorf("Execute PE error: %v", err)
+		con.Log.Errorf("Execute ESE error: %v", err)
 		return
 	}
 	con.AddCallback(task, func(msg proto.Message) {

@@ -87,7 +87,7 @@ func BindImplantCommands(con *repl.Console) console.Commands {
 			}
 
 			if plug, err := con.Plugins.LoadPlugin(manifest, con); err == nil {
-				err := plug.ReverseRegisterLuaFunctions(implant)
+				err := plug.ReverseRegisterLuaFunctions(con, implant)
 				if err != nil {
 					con.Log.Errorf("Failed to register mal command: %s\n", err)
 					continue
