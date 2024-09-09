@@ -205,7 +205,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		})
 
 	con.RegisterInternalFunc(
-		"cat",
+		"bcat",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, fileName string) (*clientpb.Task, error) {
 			return Cat(rpc, sess, fileName)
 		},
@@ -219,7 +219,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		})
 
 	con.RegisterInternalFunc(
-		"chmod",
+		"bchmod",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path, mode string) (*clientpb.Task, error) {
 			return Chmod(rpc, sess, path, mode)
 		},
@@ -228,7 +228,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		})
 
 	con.RegisterInternalFunc(
-		"chown",
+		"bchown",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path, uid string, gid string, recursive bool) (*clientpb.Task, error) {
 			return Chown(rpc, sess, path, uid, gid, recursive)
 		},

@@ -35,7 +35,7 @@ func ExecBof(rpc clientrpc.MaliceRPCClient, sess *repl.Session, bofPath string, 
 		return nil, err
 	}
 	param, _ := shellquote.Split(paramString)
-	task, err := rpc.ExecuteBof(repl.Context(sess), &implantpb.ExecuteBinary{
+	task, err := rpc.ExecuteBof(sess.Context(), &implantpb.ExecuteBinary{
 		Name:   filepath.Base(bofPath),
 		Bin:    bofBin,
 		Type:   consts.ModuleExecuteBof,

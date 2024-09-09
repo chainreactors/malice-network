@@ -29,7 +29,7 @@ func CatCmd(cmd *cobra.Command, con *repl.Console) {
 }
 
 func Cat(rpc clientrpc.MaliceRPCClient, session *repl.Session, fileName string) (*clientpb.Task, error) {
-	task, err := rpc.Cat(repl.Context(session), &implantpb.Request{
+	task, err := rpc.Cat(session.Context(), &implantpb.Request{
 		Name:  consts.ModuleCat,
 		Input: fileName,
 	})

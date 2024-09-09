@@ -40,7 +40,7 @@ func ExecShellcode(rpc clientrpc.MaliceRPCClient, sess *repl.Session, shellcodeP
 		return nil, err
 	}
 
-	task, err := rpc.ExecuteShellcode(repl.Context(sess), &implantpb.ExecuteBinary{
+	task, err := rpc.ExecuteShellcode(sess.Context(), &implantpb.ExecuteBinary{
 		Name:      filepath.Base(shellcodePath),
 		Bin:       shellcodeBin,
 		Type:      consts.ModuleExecuteShellcode,
@@ -73,7 +73,7 @@ func InlineShellcode(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path str
 	if err != nil {
 		return nil, err
 	}
-	shellcodeTask, err := rpc.ExecuteShellcode(repl.Context(sess), &implantpb.ExecuteBinary{
+	shellcodeTask, err := rpc.ExecuteShellcode(sess.Context(), &implantpb.ExecuteBinary{
 		Name:   filepath.Base(path),
 		Bin:    data,
 		Type:   consts.ModuleExecuteShellcode,

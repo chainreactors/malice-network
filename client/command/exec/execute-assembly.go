@@ -39,7 +39,7 @@ func ExecAssembly(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path, args 
 	if err != nil {
 		return nil, err
 	}
-	task, err := rpc.ExecuteAssembly(repl.Context(sess), &implantpb.ExecuteBinary{
+	task, err := rpc.ExecuteAssembly(sess.Context(), &implantpb.ExecuteBinary{
 		Name:   filepath.Base(path),
 		Bin:    binData,
 		Params: argsList,

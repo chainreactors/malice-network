@@ -43,7 +43,7 @@ func ExecPowershell(rpc clientrpc.MaliceRPCClient, sess *repl.Session, ps string
 		psBin.WriteString("\n")
 	}
 	psBin.WriteString(strings.Join(psCmd[1:], " "))
-	task, err := rpc.ExecutePowershell(repl.Context(sess), &implantpb.ExecuteBinary{
+	task, err := rpc.ExecutePowershell(sess.Context(), &implantpb.ExecuteBinary{
 		Name:   filepath.Base(psCmd[0]),
 		Bin:    psBin.Bytes(),
 		Type:   consts.ModulePowershell,

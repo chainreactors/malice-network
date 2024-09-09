@@ -33,7 +33,7 @@ func Execute(rpc clientrpc.MaliceRPCClient, sess *repl.Session, cmd string) (*cl
 	if err != nil {
 		return nil, err
 	}
-	task, err := rpc.Execute(repl.Context(sess), &implantpb.ExecRequest{
+	task, err := rpc.Execute(sess.Context(), &implantpb.ExecRequest{
 		Path:   cmdStrList[0],
 		Args:   cmdStrList[1:],
 		Output: true,

@@ -386,7 +386,7 @@ func ExecuteExtension(rpc clientrpc.MaliceRPCClient, sess *repl.Session, extName
 			return nil, err
 		}
 		entryPoint = loadedExtensions[ext.CommandName].Entrypoint // should exist at this point
-		task, err = rpc.ExecuteBof(repl.Context(sess), &implantpb.ExecuteBinary{
+		task, err = rpc.ExecuteBof(sess.Context(), &implantpb.ExecuteBinary{
 			Name:       ext.CommandName,
 			EntryPoint: entryPoint,
 			Params:     params,

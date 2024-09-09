@@ -26,7 +26,7 @@ func EnvCmd(cmd *cobra.Command, con *repl.Console) {
 }
 
 func Env(rpc clientrpc.MaliceRPCClient, session *repl.Session) (*clientpb.Task, error) {
-	task, err := rpc.Env(repl.Context(session), &implantpb.Request{
+	task, err := rpc.Env(session.Context(), &implantpb.Request{
 		Name: consts.ModuleEnv,
 	})
 	if err != nil {
@@ -53,7 +53,7 @@ func SetEnvCmd(cmd *cobra.Command, con *repl.Console) {
 }
 
 func SetEnv(rpc clientrpc.MaliceRPCClient, session *repl.Session, envName, value string) (*clientpb.Task, error) {
-	task, err := rpc.SetEnv(repl.Context(session), &implantpb.Request{
+	task, err := rpc.SetEnv(session.Context(), &implantpb.Request{
 		Name: consts.ModuleSetEnv,
 		Args: []string{envName, value},
 	})
@@ -81,7 +81,7 @@ func UnsetEnvCmd(cmd *cobra.Command, con *repl.Console) {
 }
 
 func UnSetEnv(rpc clientrpc.MaliceRPCClient, session *repl.Session, envName string) (*clientpb.Task, error) {
-	task, err := rpc.UnsetEnv(repl.Context(session), &implantpb.Request{
+	task, err := rpc.UnsetEnv(session.Context(), &implantpb.Request{
 		Name:  consts.ModuleUnsetEnv,
 		Input: envName,
 	})

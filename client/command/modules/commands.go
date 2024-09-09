@@ -62,7 +62,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	}
 
 	con.RegisterInternalFunc(
-		"list_module",
+		"blist_module",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, fileName string) (*clientpb.Task, error) {
 			return ListModules(rpc, sess)
 		},
@@ -80,7 +80,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		})
 
 	con.RegisterInternalFunc(
-		"load_module",
+		"bload_module",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, bundle string, path string) (*clientpb.Task, error) {
 			return LoadModule(rpc, sess, bundle, path)
 		},
@@ -89,7 +89,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		})
 
 	con.RegisterInternalFunc(
-		"refresh_module",
+		"brefresh_module",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session) (*clientpb.Task, error) {
 			return refreshModule(rpc, sess)
 		},
@@ -99,7 +99,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 
 	//clear
 	con.RegisterInternalFunc(
-		"clear",
+		"bclear",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session) (*clientpb.Task, error) {
 			return clearAll(rpc, sess)
 		},

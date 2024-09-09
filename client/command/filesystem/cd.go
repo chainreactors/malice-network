@@ -29,7 +29,7 @@ func CdCmd(cmd *cobra.Command, con *repl.Console) {
 }
 
 func Cd(rpc clientrpc.MaliceRPCClient, session *repl.Session, path string) (*clientpb.Task, error) {
-	task, err := rpc.Cd(repl.Context(session), &implantpb.Request{
+	task, err := rpc.Cd(session.Context(), &implantpb.Request{
 		Name:  consts.ModuleCd,
 		Input: path,
 	})

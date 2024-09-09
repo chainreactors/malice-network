@@ -133,7 +133,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	}
 
 	con.RegisterInternalFunc(
-		"env",
+		"benv",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session) (*clientpb.Task, error) {
 			return Env(rpc, sess)
 		},
@@ -166,7 +166,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		})
 
 	con.RegisterInternalFunc(
-		"info",
+		"binfo",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session) (*clientpb.Task, error) {
 			return Info(rpc, sess)
 		},
@@ -184,7 +184,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		})
 
 	con.RegisterInternalFunc(
-		"netstat",
+		"bnetstat",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session) (*clientpb.Task, error) {
 			return Netstat(rpc, sess)
 		},
@@ -224,7 +224,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		})
 
 	con.RegisterInternalFunc(
-		"whoami",
+		"bwhoami",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session) (*clientpb.Task, error) {
 			return Whoami(rpc, sess)
 		},

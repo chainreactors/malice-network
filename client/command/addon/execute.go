@@ -42,7 +42,7 @@ func ExecuteAddonCmd(cmd *cobra.Command, con *repl.Console) {
 }
 
 func ExecuteAddon(rpc clientrpc.MaliceRPCClient, sess *repl.Session, name string, sac *implantpb.SacrificeProcess, args []string) (*clientpb.Task, error) {
-	return rpc.ExecuteAddon(repl.Context(sess), &implantpb.ExecuteAddon{
+	return rpc.ExecuteAddon(sess.Context(), &implantpb.ExecuteAddon{
 		Addon: name,
 		ExecuteBinary: &implantpb.ExecuteBinary{
 			Name:      name,

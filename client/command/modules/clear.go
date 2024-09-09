@@ -23,7 +23,7 @@ func ClearCmd(cmd *cobra.Command, con *repl.Console) {
 }
 
 func clearAll(rpc clientrpc.MaliceRPCClient, sess *repl.Session) (*clientpb.Task, error) {
-	task, err := rpc.Clear(repl.Context(sess), &implantpb.Request{Name: consts.ModuleClear})
+	task, err := rpc.Clear(sess.Context(), &implantpb.Request{Name: consts.ModuleClear})
 	if err != nil {
 		return nil, err
 	}

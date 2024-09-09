@@ -28,7 +28,7 @@ func KillCmd(cmd *cobra.Command, con *repl.Console) {
 }
 
 func Kill(rpc clientrpc.MaliceRPCClient, session *repl.Session, pid string) (*clientpb.Task, error) {
-	task, err := rpc.Kill(repl.Context(session), &implantpb.Request{
+	task, err := rpc.Kill(session.Context(), &implantpb.Request{
 		Name:  consts.ModuleKill,
 		Input: pid,
 	})

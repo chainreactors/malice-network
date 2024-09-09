@@ -3,7 +3,6 @@ package command
 import (
 	"github.com/chainreactors/malice-network/client/command/alias"
 	"github.com/chainreactors/malice-network/client/command/armory"
-	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/extension"
 	"github.com/chainreactors/malice-network/client/command/generic"
 	"github.com/chainreactors/malice-network/client/command/listener"
@@ -13,7 +12,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/reeflective/console"
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 )
 
 func bindCommonCommands(bind bindFunc) {
@@ -41,9 +39,6 @@ func BindClientsCommands(con *repl.Console) console.Commands {
 				HiddenDefaultCmd: true,
 			},
 		}
-		common.Bind("common flag", true, client, func(f *pflag.FlagSet) {
-			f.IntP("timeout", "t", consts.DefaultTimeout, "command timeout in seconds")
-		})
 
 		bind := makeBind(client, con)
 

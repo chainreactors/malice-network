@@ -52,7 +52,7 @@ func LsCmd(cmd *cobra.Command, con *repl.Console) {
 }
 
 func Ls(rpc clientrpc.MaliceRPCClient, session *repl.Session, path string) (*clientpb.Task, error) {
-	task, err := rpc.Ls(repl.Context(session), &implantpb.Request{
+	task, err := rpc.Ls(session.Context(), &implantpb.Request{
 		Name:  consts.ModuleLs,
 		Input: path,
 	})

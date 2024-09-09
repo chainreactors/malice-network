@@ -46,7 +46,7 @@ func ListModulesCmd(cmd *cobra.Command, con *repl.Console) {
 }
 
 func ListModules(rpc clientrpc.MaliceRPCClient, session *repl.Session) (*clientpb.Task, error) {
-	listTask, err := rpc.ListModule(repl.Context(session), &implantpb.Request{Name: consts.ModuleListModule})
+	listTask, err := rpc.ListModule(session.Context(), &implantpb.Request{Name: consts.ModuleListModule})
 	if err != nil {
 		return nil, err
 	}

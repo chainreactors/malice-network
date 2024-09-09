@@ -306,14 +306,14 @@ func ExecuteAlias(rpc clientrpc.MaliceRPCClient, sess *repl.Session, aliasName s
 		if err != nil {
 			return nil, err
 		}
-		task, err = rpc.ExecuteAssembly(repl.Context(sess), &implantpb.ExecuteBinary{
+		task, err = rpc.ExecuteAssembly(sess.Context(), &implantpb.ExecuteBinary{
 			Name:   loadedAlias.Command.Name(),
 			Bin:    binData,
 			Type:   consts.ModuleExecuteAssembly,
 			Params: params,
 		})
 	} else {
-		task, err = rpc.ExecuteDLL(repl.Context(sess), &implantpb.ExecuteBinary{
+		task, err = rpc.ExecuteDLL(sess.Context(), &implantpb.ExecuteBinary{
 			Name:       loadedAlias.Command.Name(),
 			Bin:        binData,
 			EntryPoint: aliasManifest.Entrypoint,

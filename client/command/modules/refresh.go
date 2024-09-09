@@ -23,7 +23,7 @@ func RefreshModuleCmd(cmd *cobra.Command, con *repl.Console) {
 }
 
 func refreshModule(rpc clientrpc.MaliceRPCClient, session *repl.Session) (*clientpb.Task, error) {
-	task, err := rpc.RefreshModule(repl.Context(session), &implantpb.Request{Name: consts.ModuleRefreshModule})
+	task, err := rpc.RefreshModule(session.Context(), &implantpb.Request{Name: consts.ModuleRefreshModule})
 	if err != nil {
 		return nil, err
 	}

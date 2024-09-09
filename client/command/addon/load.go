@@ -50,7 +50,7 @@ func LoadAddon(rpc clientrpc.MaliceRPCClient, sess *repl.Session, name, path, de
 		return nil, err
 	}
 
-	return rpc.LoadAddon(repl.Context(sess), &implantpb.LoadAddon{
+	return rpc.LoadAddon(sess.Context(), &implantpb.LoadAddon{
 		Name:   name,
 		Depend: depend,
 		Bin:    content,

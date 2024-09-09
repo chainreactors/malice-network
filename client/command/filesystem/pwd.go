@@ -24,7 +24,7 @@ func PwdCmd(cmd *cobra.Command, con *repl.Console) {
 }
 
 func Pwd(rpc clientrpc.MaliceRPCClient, session *repl.Session) (*clientpb.Task, error) {
-	task, err := rpc.Pwd(repl.Context(session), &implantpb.Request{
+	task, err := rpc.Pwd(session.Context(), &implantpb.Request{
 		Name: consts.ModulePwd,
 	})
 	if err != nil {
