@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/chainreactors/files"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/codenames"
 	"github.com/chainreactors/malice-network/helper/mtls"
 	"github.com/chainreactors/malice-network/server/internal/certs"
 	"github.com/chainreactors/malice-network/server/internal/configs"
@@ -32,6 +33,7 @@ func init() {
 	})
 	config.AddDriver(yaml.Driver)
 	db.Client = db.NewDBClient()
+	codenames.SetupCodenames(configs.ServerRootPath)
 }
 
 func Execute() {

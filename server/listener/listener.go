@@ -164,6 +164,20 @@ func (lns *listener) Start() {
 			continue
 		}
 		logs.Log.Importantf("Started tcp pipeline %s, encryption: %t, tls: %t", pipeline.ID(), pipeline.Encryption.Enable, pipeline.TlsConfig.Enable)
+		ch := make(chan bool)
+		tcpPipeline := pipeline.ToProtobuf().(*lispb.TCPPipeline)
+		tcpPipeline.ListenerId = lns.Name
+		job := &core.Job{
+			ID: core.CurrentJobID(),
+			Message: &lispb.Pipeline{
+				Body: &lispb.Pipeline_Tcp{
+					Tcp: tcpPipeline,
+				},
+			},
+			JobCtrl: ch,
+			Name:    pipeline.Name,
+		}
+		core.Jobs.Add(job)
 	}
 	for _, newWebsite := range lns.cfg.Websites {
 		if !newWebsite.Enable {
@@ -192,12 +206,26 @@ func (lns *listener) Start() {
 				continue
 			}
 		}
-		httpServer, err := StartWebsite(newWebsite, addWeb.Contents)
+		startWebsite, err := StartWebsite(newWebsite, addWeb.Contents)
 		if err != nil {
 			logs.Log.Errorf("Failed to start website %s", err)
 			continue
 		}
-		go httpServer.Start()
+		ch := make(chan bool)
+		websitePipeline := startWebsite.ToProtobuf().(*lispb.Website)
+		websitePipeline.ListenerId = lns.Name
+		job := &core.Job{
+			ID: core.CurrentJobID(),
+			Message: &lispb.Pipeline{
+				Body: &lispb.Pipeline_Web{
+					Web: websitePipeline,
+				},
+			},
+			JobCtrl: ch,
+			Name:    startWebsite.websiteName,
+		}
+		core.Jobs.Add(job)
+		go startWebsite.Start()
 	}
 }
 
@@ -249,7 +277,7 @@ func (lns *listener) startHandler(job *clientpb.Job) *clientpb.JobStatus {
 			if err != nil {
 				return &clientpb.JobStatus{
 					ListenerId: lns.ID(),
-					Ctrl:       consts.CtrlPipelineStart,
+					Ctrl:       consts.CtrlJobStart,
 					Status:     consts.CtrlStatusFailed,
 					Error:      err.Error(),
 					Job:        job,
@@ -261,7 +289,7 @@ func (lns *listener) startHandler(job *clientpb.Job) *clientpb.JobStatus {
 			if err != nil {
 				return &clientpb.JobStatus{
 					ListenerId: lns.ID(),
-					Ctrl:       consts.CtrlPipelineStart,
+					Ctrl:       consts.CtrlJobStart,
 					Status:     consts.CtrlStatusFailed,
 					Error:      err.Error(),
 					Job:        job,
@@ -271,7 +299,7 @@ func (lns *listener) startHandler(job *clientpb.Job) *clientpb.JobStatus {
 	}
 	return &clientpb.JobStatus{
 		ListenerId: lns.ID(),
-		Ctrl:       consts.CtrlPipelineStart,
+		Ctrl:       consts.CtrlJobStart,
 		Status:     consts.CtrlStatusSuccess,
 		Job:        job,
 	}
@@ -286,7 +314,7 @@ func (lns *listener) stopHandler(job *clientpb.Job) *clientpb.JobStatus {
 		if p == nil {
 			return &clientpb.JobStatus{
 				ListenerId: lns.ID(),
-				Ctrl:       consts.CtrlPipelineStop,
+				Ctrl:       consts.CtrlJobStop,
 				Status:     consts.CtrlStatusFailed,
 				Error:      errors.New("pipeline not found").Error(),
 				Job:        job,
@@ -304,7 +332,7 @@ func (lns *listener) stopHandler(job *clientpb.Job) *clientpb.JobStatus {
 	if err != nil {
 		return &clientpb.JobStatus{
 			ListenerId: lns.ID(),
-			Ctrl:       consts.CtrlPipelineStop,
+			Ctrl:       consts.CtrlJobStop,
 			Status:     consts.CtrlStatusFailed,
 			Error:      err.Error(),
 			Job:        job,
@@ -312,7 +340,7 @@ func (lns *listener) stopHandler(job *clientpb.Job) *clientpb.JobStatus {
 	}
 	return &clientpb.JobStatus{
 		ListenerId: lns.ID(),
-		Ctrl:       consts.CtrlPipelineStop,
+		Ctrl:       consts.CtrlJobStop,
 		Status:     consts.CtrlStatusSuccess,
 		Job:        job,
 	}
@@ -327,7 +355,7 @@ func (lns *listener) startWebsite(job *clientpb.Job) *clientpb.JobStatus {
 		if err != nil {
 			return &clientpb.JobStatus{
 				ListenerId: lns.ID(),
-				Ctrl:       consts.CtrlWebsiteStart,
+				Ctrl:       consts.CtrlJobStart,
 				Status:     consts.CtrlStatusFailed,
 				Error:      err.Error(),
 				Job:        job,
@@ -339,7 +367,7 @@ func (lns *listener) startWebsite(job *clientpb.Job) *clientpb.JobStatus {
 		if err != nil {
 			return &clientpb.JobStatus{
 				ListenerId: lns.ID(),
-				Ctrl:       consts.CtrlWebsiteStart,
+				Ctrl:       consts.CtrlJobStart,
 				Status:     consts.CtrlStatusFailed,
 				Error:      err.Error(),
 				Job:        job,
@@ -348,7 +376,7 @@ func (lns *listener) startWebsite(job *clientpb.Job) *clientpb.JobStatus {
 	}
 	return &clientpb.JobStatus{
 		ListenerId: lns.ID(),
-		Ctrl:       consts.CtrlWebsiteStart,
+		Ctrl:       consts.CtrlJobStart,
 		Status:     consts.CtrlStatusSuccess,
 		Job:        job,
 	}
@@ -361,7 +389,7 @@ func (lns *listener) stopWebsite(job *clientpb.Job) *clientpb.JobStatus {
 	if w == nil {
 		return &clientpb.JobStatus{
 			ListenerId: lns.ID(),
-			Ctrl:       consts.CtrlWebsiteStop,
+			Ctrl:       consts.CtrlJobStop,
 			Status:     consts.CtrlStatusFailed,
 			Error:      errors.New("website not found").Error(),
 			Job:        job,
@@ -371,7 +399,7 @@ func (lns *listener) stopWebsite(job *clientpb.Job) *clientpb.JobStatus {
 	if err != nil {
 		return &clientpb.JobStatus{
 			ListenerId: lns.ID(),
-			Ctrl:       consts.CtrlWebsiteStop,
+			Ctrl:       consts.CtrlJobStop,
 			Status:     consts.CtrlStatusFailed,
 			Error:      err.Error(),
 			Job:        job,
@@ -383,7 +411,7 @@ func (lns *listener) stopWebsite(job *clientpb.Job) *clientpb.JobStatus {
 	}
 	return &clientpb.JobStatus{
 		ListenerId: lns.ID(),
-		Ctrl:       consts.CtrlWebsiteStop,
+		Ctrl:       consts.CtrlJobStop,
 		Status:     consts.CtrlStatusSuccess,
 		Job:        job,
 	}
@@ -396,7 +424,6 @@ func (lns *listener) registerWebsite(job *clientpb.Job) *clientpb.JobStatus {
 	if err != nil {
 		return &clientpb.JobStatus{
 			ListenerId: lns.ID(),
-			Ctrl:       consts.RegisterWebsite,
 			Status:     consts.CtrlStatusFailed,
 			Error:      err.Error(),
 			Job:        job,
@@ -409,8 +436,8 @@ func (lns *listener) registerWebsite(job *clientpb.Job) *clientpb.JobStatus {
 		if err != nil {
 			return &clientpb.JobStatus{
 				ListenerId: lns.ID(),
-				Ctrl:       consts.RegisterWebsite,
 				Status:     consts.CtrlStatusFailed,
+				Ctrl:       consts.CtrlWebUpload,
 				Error:      err.Error(),
 			}
 		}
@@ -418,15 +445,15 @@ func (lns *listener) registerWebsite(job *clientpb.Job) *clientpb.JobStatus {
 		if err != nil {
 			return &clientpb.JobStatus{
 				ListenerId: lns.ID(),
-				Ctrl:       consts.RegisterWebsite,
 				Status:     consts.CtrlStatusFailed,
+				Ctrl:       consts.CtrlWebUpload,
 				Error:      err.Error(),
 			}
 		}
 	}
 	return &clientpb.JobStatus{
 		ListenerId: lns.ID(),
-		Ctrl:       consts.RegisterWebsite,
 		Status:     consts.CtrlStatusSuccess,
+		Ctrl:       consts.CtrlWebUpload,
 	}
 }

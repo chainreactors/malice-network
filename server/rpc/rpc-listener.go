@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/mtls"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/client/rootpb"
@@ -31,6 +32,11 @@ func (rpc *Server) RegisterListener(ctx context.Context, req *lispb.RegisterList
 		Name:   req.Name,
 		Host:   p.Addr.String(),
 		Active: true,
+	})
+	core.EventBroker.Publish(core.Event{
+		EventType: consts.EventListener,
+		Op:        consts.CtrlListenerStart,
+		Message:   req.Name,
 	})
 	logs.Log.Importantf("%s register listener %s", p.Addr, req.Name)
 	return &implantpb.Empty{}, nil

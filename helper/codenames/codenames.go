@@ -2,22 +2,47 @@ package codenames
 
 import (
 	"bufio"
+	"embed"
 	"fmt"
+	"github.com/chainreactors/files"
+	"github.com/chainreactors/logs"
 	insecureRand "math/rand"
 	"os"
 	"path/filepath"
 	"strings"
 )
 
-// var (
-//
-//	codenameLog = log.RootLogger.WithFields(logrus.Fields{
-//		"pkg":    "generate",
-//		"stream": "codenames",
-//	})
-//
-// )
-var txtDir = "/internal/generate"
+var (
+	//go:embed  *.txt
+	assetsFs embed.FS
+)
+
+func SetupCodenames(appDir string) error {
+	nouns, err := assetsFs.ReadFile("nouns.txt")
+	if err != nil {
+		logs.Log.Errorf("nouns.txt asset not found")
+		return err
+	}
+
+	adjectives, err := assetsFs.ReadFile("adjectives.txt")
+	if err != nil {
+		logs.Log.Errorf("adjectives.txt asset not found")
+		return err
+	}
+
+	err = os.WriteFile(filepath.Join(appDir, "nouns.txt"), nouns, 0600)
+	if err != nil {
+		logs.Log.Errorf("Failed to write noun data to: %s", appDir)
+		return err
+	}
+
+	err = os.WriteFile(filepath.Join(appDir, "adjectives.txt"), adjectives, 0600)
+	if err != nil {
+		logs.Log.Errorf("Failed to write adjective data to: %s", appDir)
+		return err
+	}
+	return nil
+}
 
 // readLines - Read lines of a text file into a slice
 func readLines(txtFilePath string) ([]string, error) {
@@ -46,8 +71,9 @@ func readLines(txtFilePath string) ([]string, error) {
 
 // getRandomWord - Get a random word from a file, not cryptographically secure
 func getRandomWord(txtFilePath string) (string, error) {
-	serverDir, _ := os.Getwd()
-	words, err := readLines(filepath.Join(serverDir, txtDir, txtFilePath))
+	txtDir := files.GetExcPath()
+	txtPath := filepath.Join(txtDir, ".malice", txtFilePath)
+	words, err := readLines(txtPath)
 	if err != nil {
 		return "", err
 	}
