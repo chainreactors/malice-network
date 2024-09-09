@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+	"github.com/chainreactors/malice-network/helper/codenames"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
@@ -37,6 +38,13 @@ func (rpc *Server) RegisterPipeline(ctx context.Context, req *lispb.Pipeline) (*
 }
 
 func (rpc *Server) NewPipeline(ctx context.Context, req *lispb.Pipeline) (*clientpb.Empty, error) {
+	if req.GetTcp().Name == "" {
+		randomName, err := codenames.RandomAdjective()
+		if err != nil {
+			return nil, err
+		}
+		req.GetTcp().Name = randomName
+	}
 	err := db.CreatePipeline(req)
 	if err != nil {
 		return &clientpb.Empty{}, err

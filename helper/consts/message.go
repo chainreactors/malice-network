@@ -73,7 +73,7 @@ const (
 	CommandObverse          = "obverse"
 	CommandDelSession       = "del"
 	CommandUse              = "use"
-	CommandBackgroup        = "backgroup"
+	CommandBackground       = "background"
 	CommandSync             = "sync"
 	CommandBroadcast        = "broadcast"
 	CommandVersion          = "version"

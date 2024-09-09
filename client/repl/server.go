@@ -237,12 +237,21 @@ func (s *ServerStatus) EventHandler() {
 			Log.Importantf("%s session: %s ", event.Session.SessionId, event.Message)
 		case consts.EventNotify:
 			Log.Importantf("%s notified: %s %s", event.Source, string(event.Data), event.Err)
-		case consts.EventPipeline:
+		case consts.EventJob:
 			if event.GetErr() != "" {
-				Log.Errorf("Pipeline error: %s", event.GetErr())
+				Log.Errorf("job error: %s", event.GetErr())
 				return
 			}
-			Log.Importantf("Pipeline: %s", event.Message)
+			Log.Importantf("%s %s", event.Message, event.Op)
+		case consts.EventListener:
+			if event.GetErr() != "" {
+				Log.Errorf("Listener error: %s", event.GetErr())
+				return
+			}
+			if event.GetOp() == consts.CtrlListenerStart {
+				Log.Importantf(" %s %s", event.Message, event.Op)
+				return
+			}
 		case consts.EventTask:
 			s.handlerTaskCtrl(event)
 		case consts.EventWebsite:
@@ -250,11 +259,6 @@ func (s *ServerStatus) EventHandler() {
 				Log.Errorf("Website error: %s", event.GetErr())
 				return
 			}
-			if event.GetOp() == consts.CtrlWebUpload {
-				Log.Importantf("Website upload success")
-				return
-			}
-			Log.Importantf("Website: %s", event.Message)
 		}
 		//con.triggerReactions(event)
 	}

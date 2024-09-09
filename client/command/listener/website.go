@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/codenames"
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/website"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
@@ -32,13 +31,6 @@ func newWebsiteCmd(cmd *cobra.Command, con *repl.Console) {
 	var err error
 	var tleEnable = false
 	var webAsserts *lispb.WebsiteAssets
-	if name == "" {
-		name, err = codenames.RandomAdjective()
-		if err != nil {
-			repl.Log.Error(err.Error())
-			return
-		}
-	}
 	if portUint == 0 {
 		rand.Seed(time.Now().UnixNano())
 		portUint = uint(10000 + rand.Int31n(5001))
@@ -110,6 +102,7 @@ func newWebsiteCmd(cmd *cobra.Command, con *repl.Console) {
 	if err != nil {
 		repl.Log.Error(err.Error())
 	}
+	repl.Log.Importantf("Website %s added\n", name)
 }
 
 func startWebsitePipelineCmd(cmd *cobra.Command, con *repl.Console) {

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/codenames"
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/tui"
@@ -60,13 +59,6 @@ func newTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) {
 	var cert, key string
 	var err error
 	var tlsEnable = false
-	if name == "" {
-		name, err = codenames.RandomAdjective()
-		if err != nil {
-			repl.Log.Error(err.Error())
-			return
-		}
-	}
 	if portUint == 0 {
 		rand.Seed(time.Now().UnixNano())
 		portUint = uint(10000 + rand.Int31n(5001))

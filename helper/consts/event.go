@@ -1,11 +1,14 @@
 package consts
 
 const (
-	CtrlTaskCallback = "task_callback"
-	CtrlTaskFinish   = "task_finish"
-	CtrlTaskCancel   = "task_cancel"
-	CtrlTaskError    = "task_error"
-	CtrlWebUpload    = "web_upload"
+	CtrlTaskCallback  = "task_callback"
+	CtrlTaskFinish    = "task_finish"
+	CtrlTaskCancel    = "task_cancel"
+	CtrlTaskError     = "task_error"
+	CtrlWebUpload     = "web_upload"
+	CtrlListenerStart = "listener_start"
+	CtrlJobStart      = "job_start"
+	CtrlJobStop       = "job_stop"
 )
 
 // ctrl type
@@ -29,9 +32,9 @@ const (
 	EventLeft      = "left"
 	EventBroadcast = "broadcast"
 	EventNotify    = "notify"
-	EventPipeline  = "pipeline"
 	EventSession   = "session"
 	EventListener  = "listener"
 	EventTask      = "task"
 	EventWebsite   = "website"
+	EventJob       = "job"
 )
