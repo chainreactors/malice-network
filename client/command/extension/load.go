@@ -387,7 +387,7 @@ func ExecuteExtension(rpc clientrpc.MaliceRPCClient, sess *repl.Session, extName
 		task, err = rpc.ExecuteBof(sess.Context(), &implantpb.ExecuteBinary{
 			Name:       ext.CommandName,
 			EntryPoint: entryPoint,
-			Params:     params,
+			Args:       params,
 			Type:       ext.DependsOn,
 			Output:     true,
 		})

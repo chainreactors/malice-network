@@ -10,18 +10,14 @@ import (
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/proto"
-	"os"
-	"path/filepath"
 )
 
 // ExecuteShellcodeCmd - Execute shellcode in-memory
 func ExecuteShellcodeCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
-	path := cmd.Flags().Arg(0)
-	// TODO arch judgment
-	//arch, _ := cmd.Flags().GetString("arch")
+	path, args, output, timeout, arch, process := common.ParseFullBinaryParams(cmd)
 	sac, _ := common.ParseSacrifice(cmd)
-	task, err := ExecShellcode(con.Rpc, session, path, sac)
+	task, err := ExecShellcode(con.Rpc, session, path, args, output, timeout, arch, process, sac)
 	if err != nil {
 		con.Log.Errorf("Execute shellcode error: %v", err)
 		return
@@ -34,19 +30,13 @@ func ExecuteShellcodeCmd(cmd *cobra.Command, con *repl.Console) {
 }
 
 func ExecShellcode(rpc clientrpc.MaliceRPCClient, sess *repl.Session, shellcodePath string,
+	args []string, output bool, timeout int, arch string, process string,
 	sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
-	shellcodeBin, err := os.ReadFile(shellcodePath)
-	if err != nil {
-		return nil, err
+	if arch == "" {
+		arch = sess.Os.Arch
 	}
-
-	task, err := rpc.ExecuteShellcode(sess.Context(), &implantpb.ExecuteBinary{
-		Name:      filepath.Base(shellcodePath),
-		Bin:       shellcodeBin,
-		Type:      consts.ModuleExecuteShellcode,
-		Output:    true,
-		Sacrifice: sac,
-	})
+	shellcodeBin, err := common.NewBinary(consts.ModuleExecuteShellcode, shellcodePath, args, output, timeout, arch, process, sac)
+	task, err := rpc.ExecuteShellcode(sess.Context(), shellcodeBin)
 	if err != nil {
 		return nil, err
 	}
@@ -55,8 +45,8 @@ func ExecShellcode(rpc clientrpc.MaliceRPCClient, sess *repl.Session, shellcodeP
 
 func InlineShellcodeCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
-	path := cmd.Flags().Arg(0)
-	task, err := InlineShellcode(con.Rpc, session, path)
+	path, args, output, timeout, arch, process := common.ParseFullBinaryParams(cmd)
+	task, err := InlineShellcode(con.Rpc, session, path, args, output, timeout, arch, process)
 	if err != nil {
 		con.Log.Errorf("Execute inline shellcode error: %v", err)
 		return
@@ -68,17 +58,16 @@ func InlineShellcodeCmd(cmd *cobra.Command, con *repl.Console) {
 
 }
 
-func InlineShellcode(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string) (*clientpb.Task, error) {
-	data, err := os.ReadFile(path)
+func InlineShellcode(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string, args []string,
+	output bool, timeout int, arch string, process string) (*clientpb.Task, error) {
+	if arch == "" {
+		arch = sess.Os.Arch
+	}
+	binary, err := common.NewBinary(consts.ModuleExecuteShellcode, path, args, output, timeout, arch, process, nil)
 	if err != nil {
 		return nil, err
 	}
-	shellcodeTask, err := rpc.ExecuteShellcode(sess.Context(), &implantpb.ExecuteBinary{
-		Name:   filepath.Base(path),
-		Bin:    data,
-		Type:   consts.ModuleExecuteShellcode,
-		Output: true,
-	})
+	shellcodeTask, err := rpc.ExecuteShellcode(sess.Context(), binary)
 	if err != nil {
 		return nil, err
 	}
