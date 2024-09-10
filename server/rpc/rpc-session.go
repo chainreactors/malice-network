@@ -74,11 +74,11 @@ func (rpc *Server) Info(ctx context.Context, req *implantpb.Request) (*clientpb.
 	if err != nil {
 		return nil, err
 	}
-	ch, err := rpc.asyncGenericHandler(ctx, greq)
+	ch, err := rpc.GenericHandler(ctx, greq)
 	if err != nil {
 		return nil, err
 	}
 
-	go greq.HandlerAsyncResponse(ch, types.MsgSysInfo)
+	go greq.HandlerResponse(ch, types.MsgSysInfo)
 	return greq.Task.ToProtobuf(), nil
 }

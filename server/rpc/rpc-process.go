@@ -12,12 +12,12 @@ func (rpc *Server) Kill(ctx context.Context, req *implantpb.Request) (*clientpb.
 	if err != nil {
 		return nil, err
 	}
-	ch, err := rpc.asyncGenericHandler(ctx, greq)
+	ch, err := rpc.GenericHandler(ctx, greq)
 	if err != nil {
 		return nil, err
 	}
 
-	go greq.HandlerAsyncResponse(ch, types.MsgKill)
+	go greq.HandlerResponse(ch, types.MsgKill)
 
 	return greq.Task.ToProtobuf(), nil
 }
@@ -27,12 +27,12 @@ func (rpc *Server) Ps(ctx context.Context, req *implantpb.Request) (*clientpb.Ta
 	if err != nil {
 		return nil, err
 	}
-	ch, err := rpc.asyncGenericHandler(ctx, greq)
+	ch, err := rpc.GenericHandler(ctx, greq)
 	if err != nil {
 		return nil, err
 	}
 
-	go greq.HandlerAsyncResponse(ch, types.MsgPs)
+	go greq.HandlerResponse(ch, types.MsgPs)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -41,12 +41,12 @@ func (rpc *Server) Env(ctx context.Context, req *implantpb.Request) (*clientpb.T
 	if err != nil {
 		return nil, err
 	}
-	ch, err := rpc.asyncGenericHandler(ctx, greq)
+	ch, err := rpc.GenericHandler(ctx, greq)
 	if err != nil {
 		return nil, err
 	}
 
-	go greq.HandlerAsyncResponse(ch, types.MsgResponse)
+	go greq.HandlerResponse(ch, types.MsgResponse)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -55,12 +55,12 @@ func (rpc *Server) Setenv(ctx context.Context, req *implantpb.Request) (*clientp
 	if err != nil {
 		return nil, err
 	}
-	ch, err := rpc.asyncGenericHandler(ctx, greq)
+	ch, err := rpc.GenericHandler(ctx, greq)
 	if err != nil {
 		return nil, err
 	}
 
-	go greq.HandlerAsyncResponse(ch, types.MsgEmpty)
+	go greq.HandlerResponse(ch, types.MsgEmpty)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -69,12 +69,12 @@ func (rpc *Server) Unsetenv(ctx context.Context, req *implantpb.Request) (*clien
 	if err != nil {
 		return nil, err
 	}
-	ch, err := rpc.asyncGenericHandler(ctx, greq)
+	ch, err := rpc.GenericHandler(ctx, greq)
 	if err != nil {
 		return nil, err
 	}
 
-	go greq.HandlerAsyncResponse(ch, types.MsgEmpty)
+	go greq.HandlerResponse(ch, types.MsgEmpty)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -83,11 +83,11 @@ func (rpc *Server) Whoami(ctx context.Context, req *implantpb.Request) (*clientp
 	if err != nil {
 		return nil, err
 	}
-	ch, err := rpc.asyncGenericHandler(ctx, greq)
+	ch, err := rpc.GenericHandler(ctx, greq)
 	if err != nil {
 		return nil, err
 	}
 
-	go greq.HandlerAsyncResponse(ch, types.MsgResponse)
+	go greq.HandlerResponse(ch, types.MsgResponse)
 	return greq.Task.ToProtobuf(), nil
 }

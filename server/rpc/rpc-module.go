@@ -12,12 +12,12 @@ func (rpc *Server) ListModule(ctx context.Context, req *implantpb.Request) (*cli
 	if err != nil {
 		return nil, err
 	}
-	ch, err := rpc.asyncGenericHandler(ctx, greq)
+	ch, err := rpc.GenericHandler(ctx, greq)
 	if err != nil {
 		return nil, err
 	}
 
-	go greq.HandlerAsyncResponse(ch, types.MsgListModule, func(spite *implantpb.Spite) {
+	go greq.HandlerResponse(ch, types.MsgListModule, func(spite *implantpb.Spite) {
 		if modules := spite.GetModules(); modules != nil {
 			sess, _ := getSession(ctx)
 			sess.Modules = modules.Modules
@@ -31,12 +31,12 @@ func (rpc *Server) LoadModule(ctx context.Context, req *implantpb.LoadModule) (*
 	if err != nil {
 		return nil, err
 	}
-	ch, err := rpc.asyncGenericHandler(ctx, greq)
+	ch, err := rpc.GenericHandler(ctx, greq)
 	if err != nil {
 		return nil, err
 	}
 
-	go greq.HandlerAsyncResponse(ch, types.MsgEmpty)
+	go greq.HandlerResponse(ch, types.MsgEmpty)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -45,12 +45,12 @@ func (rpc *Server) RefreshModule(ctx context.Context, req *implantpb.Request) (*
 	if err != nil {
 		return nil, err
 	}
-	ch, err := rpc.asyncGenericHandler(ctx, greq)
+	ch, err := rpc.GenericHandler(ctx, greq)
 	if err != nil {
 		return nil, err
 	}
 
-	go greq.HandlerAsyncResponse(ch, types.MsgEmpty)
+	go greq.HandlerResponse(ch, types.MsgEmpty)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -59,11 +59,11 @@ func (rpc *Server) Clear(ctx context.Context, req *implantpb.Request) (*clientpb
 	if err != nil {
 		return nil, err
 	}
-	ch, err := rpc.asyncGenericHandler(ctx, greq)
+	ch, err := rpc.GenericHandler(ctx, greq)
 	if err != nil {
 		return nil, err
 	}
 
-	go greq.HandlerAsyncResponse(ch, types.MsgEmpty)
+	go greq.HandlerResponse(ch, types.MsgEmpty)
 	return greq.Task.ToProtobuf(), nil
 }

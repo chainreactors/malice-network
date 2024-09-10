@@ -12,12 +12,12 @@ func (rpc *Server) Netstat(ctx context.Context, req *implantpb.Request) (*client
 	if err != nil {
 		return nil, err
 	}
-	ch, err := rpc.asyncGenericHandler(ctx, greq)
+	ch, err := rpc.GenericHandler(ctx, greq)
 	if err != nil {
 		return nil, err
 	}
 
-	go greq.HandlerAsyncResponse(ch, types.MsgNetstat)
+	go greq.HandlerResponse(ch, types.MsgNetstat)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -26,11 +26,11 @@ func (rpc *Server) Curl(ctx context.Context, req *implantpb.CurlRequest) (*clien
 	if err != nil {
 		return nil, err
 	}
-	ch, err := rpc.asyncGenericHandler(ctx, greq)
+	ch, err := rpc.GenericHandler(ctx, greq)
 	if err != nil {
 		return nil, err
 	}
 
-	go greq.HandlerAsyncResponse(ch, types.MsgResponse)
+	go greq.HandlerResponse(ch, types.MsgResponse)
 	return greq.Task.ToProtobuf(), nil
 }
