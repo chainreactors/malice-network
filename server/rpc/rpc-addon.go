@@ -13,12 +13,12 @@ func (rpc *Server) ListAddon(ctx context.Context, req *implantpb.Request) (*clie
 	if err != nil {
 		return nil, err
 	}
-	ch, err := rpc.asyncGenericHandler(ctx, greq)
+	ch, err := rpc.GenericHandler(ctx, greq)
 	if err != nil {
 		return nil, err
 	}
 
-	go greq.HandlerAsyncResponse(ch, types.MsgListAddon, func(spite *implantpb.Spite) {
+	go greq.HandlerResponse(ch, types.MsgListAddon, func(spite *implantpb.Spite) {
 		if exts := spite.GetAddons(); exts != nil {
 			sess, _ := getSession(ctx)
 			sess.Addons = exts
@@ -32,12 +32,12 @@ func (rpc *Server) LoadAddon(ctx context.Context, req *implantpb.LoadAddon) (*cl
 	if err != nil {
 		return nil, err
 	}
-	ch, err := rpc.asyncGenericHandler(ctx, greq)
+	ch, err := rpc.GenericHandler(ctx, greq)
 	if err != nil {
 		return nil, err
 	}
 
-	go greq.HandlerAsyncResponse(ch, types.MsgEmpty, func(spite *implantpb.Spite) {
+	go greq.HandlerResponse(ch, types.MsgEmpty, func(spite *implantpb.Spite) {
 		sess, _ := getSession(ctx)
 		sess.Addons.Addons = append(sess.Addons.Addons, &implantpb.Addon{
 			Name:   req.Name,
@@ -66,10 +66,10 @@ func (rpc *Server) ExecuteAddon(ctx context.Context, req *implantpb.ExecuteAddon
 		return nil, err
 	}
 
-	ch, err := rpc.asyncGenericHandler(ctx, greq)
+	ch, err := rpc.GenericHandler(ctx, greq)
 	if err != nil {
 		return nil, err
 	}
-	go greq.HandlerAsyncResponse(ch, types.MsgAssemblyResponse)
+	go greq.HandlerResponse(ch, types.MsgAssemblyResponse)
 	return greq.Task.ToProtobuf(), nil
 }

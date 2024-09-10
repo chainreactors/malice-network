@@ -29,7 +29,7 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 		if err != nil {
 			return nil, err
 		}
-		ch, err := rpc.asyncGenericHandler(ctx, greq)
+		ch, err := rpc.GenericHandler(ctx, greq)
 		if err != nil {
 			return nil, err
 		}
@@ -43,7 +43,7 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 			logs.Log.Errorf("cannot create task %d, %s in db", greq.Task.Id, err.Error())
 			return nil, err
 		}
-		go greq.HandlerAsyncResponse(ch, types.MsgBlock)
+		go greq.HandlerResponse(ch, types.MsgBlock)
 		err = db.UpdateTask(greq.Task, greq.Task.Cur+1)
 		if err != nil {
 			logs.Log.Errorf("cannot update task %d , %s in db", greq.Task.Id, err.Error())

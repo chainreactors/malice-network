@@ -64,7 +64,7 @@ func (r *GenericRequest) SetCallback(callback func()) {
 	r.Task.Callback = callback
 }
 
-func (r *GenericRequest) HandlerAsyncResponse(ch chan *implantpb.Spite, typ types.MsgName, callbacks ...func(spite *implantpb.Spite)) {
+func (r *GenericRequest) HandlerResponse(ch chan *implantpb.Spite, typ types.MsgName, callbacks ...func(spite *implantpb.Spite)) {
 	resp := <-ch
 	r.Session.AddMessage(resp, r.Task.Cur)
 	err := handler.AssertStatusAndResponse(resp, typ)
@@ -126,7 +126,7 @@ func buildErrorEvent(task *core.Task, err error) core.Event {
 	}
 }
 
-func (rpc *Server) asyncGenericHandler(ctx context.Context, req *GenericRequest) (chan *implantpb.Spite, error) {
+func (rpc *Server) GenericHandler(ctx context.Context, req *GenericRequest) (chan *implantpb.Spite, error) {
 	spite, err := req.NewSpite(req.Message)
 	if err != nil {
 		logs.Log.Errorf(err.Error())

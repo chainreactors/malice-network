@@ -168,12 +168,12 @@ func (rpc *Server) CancelTask(ctx context.Context, req *implantpb.Request) (*cli
 	if err != nil {
 		return nil, err
 	}
-	ch, err := rpc.asyncGenericHandler(ctx, greq)
+	ch, err := rpc.GenericHandler(ctx, greq)
 	if err != nil {
 		return nil, err
 	}
 
-	go greq.HandlerAsyncResponse(ch, types.MsgEmpty, func(spite *implantpb.Spite) {
+	go greq.HandlerResponse(ch, types.MsgEmpty, func(spite *implantpb.Spite) {
 		core.EventBroker.Publish(core.Event{
 			EventType: consts.EventTask,
 			Op:        consts.CtrlTaskCancel,
