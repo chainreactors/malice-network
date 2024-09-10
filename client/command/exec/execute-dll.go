@@ -12,16 +12,14 @@ import (
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/proto"
-	"os"
-	"path/filepath"
 )
 
 func ExecuteDLLCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
-	path := cmd.Flags().Arg(0)
 	sac, _ := common.ParseSacrifice(cmd)
 	entrypoint, _ := cmd.Flags().GetString("entrypoint")
-	task, err := ExecDLL(con.Rpc, session, path, entrypoint, sac)
+	path, args, output, timeout, arch, process := common.ParseFullBinaryParams(cmd)
+	task, err := ExecDLL(con.Rpc, session, path, entrypoint, args, output, timeout, arch, process, sac)
 	if err != nil {
 		con.Log.Errorf("Execute DLL error: %v", err)
 		return
@@ -32,22 +30,19 @@ func ExecuteDLLCmd(cmd *cobra.Command, con *repl.Console) {
 	})
 }
 
-func ExecDLL(rpc clientrpc.MaliceRPCClient, sess *repl.Session, pePath, entrypoint string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
-	dllBin, err := os.ReadFile(pePath)
+func ExecDLL(rpc clientrpc.MaliceRPCClient, sess *repl.Session, pePath string, entrypoint string, args []string, output bool, timeout int, arch string, process string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
+	binary, err := common.NewBinary(consts.ModuleExecuteDll, pePath, args, output, timeout, arch, process, sac)
 	if err != nil {
 		return nil, err
 	}
-	if helper.CheckPEType(dllBin) != consts.DLLFile {
+	if arch == "" {
+		arch = sess.Os.Arch
+	}
+	binary.EntryPoint = entrypoint
+	if helper.CheckPEType(binary.Bin) != consts.DLLFile {
 		return nil, errors.New("the file is not a DLL file")
 	}
-	task, err := rpc.ExecuteEXE(sess.Context(), &implantpb.ExecuteBinary{
-		Name:       filepath.Base(pePath),
-		Bin:        dllBin,
-		Type:       consts.ModuleExecuteExe,
-		EntryPoint: entrypoint,
-		Output:     true,
-		Sacrifice:  sac,
-	})
+	task, err := rpc.ExecuteEXE(sess.Context(), binary)
 	if err != nil {
 		return nil, err
 	}
@@ -56,10 +51,9 @@ func ExecDLL(rpc clientrpc.MaliceRPCClient, sess *repl.Session, pePath, entrypoi
 
 func InlineDLLCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
-	pePath := cmd.Flags().Arg(0)
-	args := cmd.Flags().Args()
+	path, args, output, timeout, arch, process := common.ParseFullBinaryParams(cmd)
 	entryPoint, _ := cmd.Flags().GetString("entrypoint")
-	task, err := InlineDLL(con.Rpc, session, pePath, entryPoint, args)
+	task, err := InlineDLL(con.Rpc, session, path, entryPoint, args, output, timeout, arch, process)
 	if err != nil {
 		con.Log.Errorf("Execute Inline DLL error: %s", err)
 		return
@@ -71,21 +65,20 @@ func InlineDLLCmd(cmd *cobra.Command, con *repl.Console) {
 	})
 }
 
-func InlineDLL(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path, entryPoint string, args []string) (*clientpb.Task, error) {
-	dllBin, err := os.ReadFile(path)
+func InlineDLL(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path, entryPoint string, args []string,
+	output bool, timeout int, arch string, process string) (*clientpb.Task, error) {
+	if arch == "" {
+		arch = sess.Os.Arch
+	}
+	binary, err := common.NewBinary(consts.ModuleAliasInlineDll, path, args, output, timeout, arch, process, nil)
 	if err != nil {
 		return nil, err
 	}
-	if helper.CheckPEType(dllBin) != consts.DLLFile {
+	binary.EntryPoint = entryPoint
+	if helper.CheckPEType(binary.Bin) != consts.DLLFile {
 		return nil, errors.New("the file is not a DLL file")
 	}
-	task, err := rpc.ExecuteEXE(sess.Context(), &implantpb.ExecuteBinary{
-		Name:       filepath.Base(path),
-		Bin:        dllBin,
-		Type:       consts.ModuleExecuteExe,
-		Params:     args,
-		EntryPoint: entryPoint,
-	})
+	task, err := rpc.ExecuteEXE(sess.Context(), binary)
 	if err != nil {
 		return nil, err
 	}

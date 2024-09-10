@@ -15,21 +15,23 @@ import (
 
 func ExecuteAddonCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
-	name := cmd.Flags().Arg(0)
 	args := cmd.Flags().Args()
-
-	if !session.HasAddon(name) {
-		repl.Log.Errorf("addon %s not found in %s", name, session.SessionId)
+	timeout, _ := cmd.Flags().GetInt("timeout")
+	quiet, _ := cmd.Flags().GetBool("quiet")
+	arch, _ := cmd.Flags().GetString("arch")
+	process, _ := cmd.Flags().GetString("process")
+	if !session.HasAddon(cmd.Name()) {
+		repl.Log.Errorf("addon %s not found in %s", cmd.Name(), session.SessionId)
 		return
 	}
 
-	addon := session.GetAddon(name)
+	addon := session.GetAddon(cmd.Name())
 	var sac *implantpb.SacrificeProcess
 	if slices.Contains(consts.SacrificeModules, addon.Depend) {
 		sac, _ = common.ParseSacrifice(cmd)
 	}
 
-	task, err := ExecuteAddon(con.Rpc, session, name, sac, args)
+	task, err := ExecuteAddon(con.Rpc, session, cmd.Name(), args, !quiet, timeout, arch, process, sac)
 	if err != nil {
 		repl.Log.Errorf("%s", err)
 		return
@@ -41,14 +43,19 @@ func ExecuteAddonCmd(cmd *cobra.Command, con *repl.Console) {
 	})
 }
 
-func ExecuteAddon(rpc clientrpc.MaliceRPCClient, sess *repl.Session, name string, sac *implantpb.SacrificeProcess, args []string) (*clientpb.Task, error) {
+func ExecuteAddon(rpc clientrpc.MaliceRPCClient, sess *repl.Session, name string, args []string,
+	output bool, timeout int, arch string, process string,
+	sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 	return rpc.ExecuteAddon(sess.Context(), &implantpb.ExecuteAddon{
 		Addon: name,
 		ExecuteBinary: &implantpb.ExecuteBinary{
-			Name:      name,
-			Params:    args,
-			Sacrifice: sac,
-			Output:    true,
+			Name:        name,
+			Args:        args,
+			Sacrifice:   sac,
+			Output:      output,
+			Timeout:     uint32(timeout),
+			Arch:        consts.ArchMap[arch],
+			ProcessName: process,
 		},
 	})
 }

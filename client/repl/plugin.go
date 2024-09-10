@@ -359,22 +359,51 @@ func (plugin *Plugin) RegisterLuaBuiltInFunctions(con *Console) error {
 	}, []reflect.Type{reflect.TypeOf("")})
 
 	// build binary message
-	plugin.registerLuaFunction("new_binary", func(args ...interface{}) (interface{}, error) {
+	plugin.registerLuaFunction("new_86_executable", func(args ...interface{}) (interface{}, error) {
 		module := args[0].(string)
 		filename := args[1].(string)
 		argsStr := args[2].(string)
 		sacrifice := args[3].(*implantpb.SacrificeProcess)
-		return builtin.NewBinaryMessage(plugin.Name, module, filename, argsStr, sacrifice)
+
+		cmdline, err := shellquote.Split(argsStr)
+		if err != nil {
+			return nil, err
+		}
+		return builtin.NewExecutable(module, filename, cmdline, "x86", sacrifice)
 	}, []reflect.Type{reflect.TypeOf(""), reflect.TypeOf(""), reflect.TypeOf(""), reflect.TypeOf(&implantpb.SacrificeProcess{})})
+
+	plugin.registerLuaFunction("new_64_executable", func(i ...interface{}) (interface{}, error) {
+		module := i[0].(string)
+		filename := i[1].(string)
+		argsStr := i[2].(string)
+		sac := i[3].(*implantpb.SacrificeProcess)
+		cmdline, err := shellquote.Split(argsStr)
+		if err != nil {
+			return nil, err
+		}
+		return builtin.NewExecutable(module, filename, cmdline, "amd64", sac)
+	}, []reflect.Type{reflect.TypeOf(""), reflect.TypeOf(""), reflect.TypeOf(""), reflect.TypeOf(&implantpb.SacrificeProcess{})})
+
+	plugin.registerLuaFunction("new_binary", func(i ...interface{}) (interface{}, error) {
+		module := i[0].(string)
+		filename := i[1].(string)
+		args := i[2].([]string)
+		output := i[3].(bool)
+		timeout := i[4].(int)
+		arch := i[5].(string)
+		process := i[6].(string)
+		sac := i[7].(*implantpb.SacrificeProcess)
+		return builtin.NewBinary(module, filename, args, output, timeout, arch, process, sac)
+	}, []reflect.Type{reflect.TypeOf(""), reflect.TypeOf(""), reflect.TypeOf([]string{}), reflect.TypeOf(true), reflect.TypeOf(0), reflect.TypeOf(""), reflect.TypeOf(""), reflect.TypeOf(&implantpb.SacrificeProcess{})})
 
 	// build sacrifice process message
 	plugin.registerLuaFunction("new_sacrifice", func(args ...interface{}) (interface{}, error) {
-		processName := args[0].(string)
-		ppid := args[1].(int64)
+		ppid := args[0].(int64)
+		hidden := args[1].(bool)
 		blockDll := args[2].(bool)
+		disableETW := args[3].(bool)
 		argue := args[3].(string)
-		argsStr := args[4].(string)
-		return builtin.NewSacrificeProcessMessage(processName, ppid, blockDll, argue, argsStr)
+		return builtin.NewSacrificeProcessMessage(ppid, hidden, blockDll, disableETW, argue)
 	}, []reflect.Type{reflect.TypeOf(""), reflect.TypeOf(int64(0)), reflect.TypeOf(true), reflect.TypeOf(""), reflect.TypeOf("")})
 
 	plugin.registerLuaFunction("wait", func(args ...interface{}) (interface{}, error) {

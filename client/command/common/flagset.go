@@ -7,12 +7,15 @@ import (
 func SacrificeFlagSet(f *pflag.FlagSet) {
 	f.UintP("ppid", "p", 0, "pid of the process to inject into (0 means injection into ourselves)")
 	f.BoolP("block_dll", "b", false, "block dll injection")
-	f.StringP("process", "n", "C:\\\\Windows\\\\System32\\\\notepad.exe", "custom process path")
-	f.StringP("argue", "a", "", "argue")
+	f.StringP("argue", "a", "", "fake argue")
+	f.Bool("etw", false, "disable ETW")
 }
 
 func ExecuteFlagSet(f *pflag.FlagSet) {
-	f.BoolP("output", "o", true, "capture command output")
+	f.StringP("process", "n", `C:\\Windows\\System32\\notepad.exe`, "custom process path")
+	f.BoolP("quit", "q", false, "disable output")
+	f.IntP("timeout", "t", -1, "timeout")
+	f.String("arch", "", "architecture")
 }
 
 func TlsCertFlagSet(f *pflag.FlagSet) {

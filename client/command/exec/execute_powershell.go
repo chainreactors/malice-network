@@ -8,19 +8,17 @@ import (
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
-	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/proto"
 	"os"
-	"path/filepath"
 	"strings"
 )
 
 func ExecutePowershellCmd(cmd *cobra.Command, con *repl.Console) {
-	psList := cmd.Flags().Args()
-	ps := shellquote.Join(psList...)
+	script, _ := cmd.Flags().GetString("script")
+	cmdline := cmd.Flags().Args()
 	session := con.GetInteractive()
-	task, err := ExecPowershell(con.Rpc, session, ps)
+	task, err := ExecPowershell(con.Rpc, session, script, cmdline)
 	if err != nil {
 		con.Log.Errorf("Execute Powershell error: %v", err)
 		return
@@ -31,20 +29,21 @@ func ExecutePowershellCmd(cmd *cobra.Command, con *repl.Console) {
 	})
 }
 
-func ExecPowershell(rpc clientrpc.MaliceRPCClient, sess *repl.Session, ps string) (*clientpb.Task, error) {
-	psCmd, _ := shellquote.Split(ps)
+func ExecPowershell(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string, ps []string) (*clientpb.Task, error) {
 	var psBin bytes.Buffer
-	if psCmd[0] != "" {
-		content, err := os.ReadFile(psCmd[0])
+	if path != "" {
+		content, err := os.ReadFile(path)
 		if err != nil {
 			return nil, err
 		}
 		psBin.Write(content)
 		psBin.WriteString("\n")
 	}
-	psBin.WriteString(strings.Join(psCmd[1:], " "))
+
+	psBin.WriteString(strings.Join(ps, " "))
+
 	task, err := rpc.ExecutePowershell(sess.Context(), &implantpb.ExecuteBinary{
-		Name:   filepath.Base(psCmd[0]),
+		Name:   "ps",
 		Bin:    psBin.Bytes(),
 		Type:   consts.ModulePowershell,
 		Output: true,

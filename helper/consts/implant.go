@@ -1,5 +1,7 @@
 package consts
 
+import "github.com/chainreactors/malice-network/proto/implant/implantpb"
+
 // release type
 type ReleaseType int
 
@@ -68,9 +70,25 @@ var (
 		"x86_64": "amd64",
 		"x86":    "386",
 	}
+
+	//ArchMap = map[implantpb.Arch]string{
+	//	implantpb.Arch_x86_64: "amd64",
+	//	implantpb.Arch_i686:    "386",
+	//	implantpb.Arch_arm:     "arm",
+	//	implantpb.Arch_aarch64:   "arm64",
+	//	implantpb.Arch_mips:    "mips",
+	//}
+
+	ArchMap = map[string]implantpb.Arch{
+		"amd64": implantpb.Arch_x86_64,
+		"386":   implantpb.Arch_i686,
+		"arm":   implantpb.Arch_arm,
+		"arm64": implantpb.Arch_aarch64,
+		"mips":  implantpb.Arch_mips,
+	}
 )
 
-func GetWindowsArch(arch string) string {
+func FormatWindowsArch(arch string) string {
 	if v, found := WindowsArch[arch]; found {
 		return v
 	} else {

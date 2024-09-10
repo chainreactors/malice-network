@@ -269,10 +269,7 @@ func runAliasCommand(cmd *cobra.Command, con *repl.Console) {
 				return
 			}
 		}
-		ppid, _ := cmd.Flags().GetUint32("ppid")
-		block_dll, _ := cmd.Flags().GetBool("block-dll")
-		argue, _ := cmd.Flags().GetString("argue")
-		sac, _ := builtin.NewSacrificeProcessMessage(processName, int64(ppid), block_dll, argue, extArgs)
+		sac, _ := common.ParseSacrifice(cmd)
 		task, err = ExecuteAlias(con.Rpc, session, cmd.Name(), extArgs, sac)
 	}
 
@@ -307,7 +304,8 @@ func ExecuteAlias(rpc clientrpc.MaliceRPCClient, sess *repl.Session, aliasName s
 			Name:   loadedAlias.Command.Name(),
 			Bin:    binData,
 			Type:   consts.ModuleExecuteAssembly,
-			Params: params,
+			Args:   params,
+			Output: true,
 		})
 	} else {
 		task, err = rpc.ExecuteDLL(sess.Context(), &implantpb.ExecuteBinary{

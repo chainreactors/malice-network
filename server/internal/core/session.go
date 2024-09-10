@@ -129,7 +129,7 @@ func (s *Session) Update(req *lispb.RegisterSession) {
 func (s *Session) UpdateSysInfo(info *implantpb.SysInfo) {
 	info.Os.Name = strings.ToLower(info.Os.Name)
 	if info.Os.Name == "windows" {
-		info.Os.Arch = consts.GetWindowsArch(info.Os.Arch)
+		info.Os.Arch = consts.FormatWindowsArch(info.Os.Arch)
 	}
 	s.Filepath = info.Filepath
 	s.WordDir = info.Workdir

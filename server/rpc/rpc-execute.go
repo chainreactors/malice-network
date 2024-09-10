@@ -7,6 +7,17 @@ import (
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 )
 
+var (
+	argueMap = map[string]string{}
+)
+
+func handleCmdline(binary *implantpb.ExecuteBinary) *implantpb.ExecuteBinary {
+	if binary.ProcessName == "" {
+		binary.ProcessName = `C:\Windows\System32\notepad.exe`
+	}
+	return binary
+}
+
 func (rpc *Server) Execute(ctx context.Context, req *implantpb.ExecRequest) (*clientpb.Task, error) {
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
@@ -36,6 +47,7 @@ func (rpc *Server) ExecuteAssembly(ctx context.Context, req *implantpb.ExecuteBi
 }
 
 func (rpc *Server) ExecuteShellcode(ctx context.Context, req *implantpb.ExecuteBinary) (*clientpb.Task, error) {
+	req = handleCmdline(req)
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err
@@ -64,6 +76,7 @@ func (rpc *Server) ExecuteBof(ctx context.Context, req *implantpb.ExecuteBinary)
 }
 
 func (rpc *Server) ExecuteEXE(ctx context.Context, req *implantpb.ExecuteBinary) (*clientpb.Task, error) {
+	req = handleCmdline(req)
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err
@@ -79,6 +92,7 @@ func (rpc *Server) ExecuteEXE(ctx context.Context, req *implantpb.ExecuteBinary)
 }
 
 func (rpc *Server) ExecuteDll(ctx context.Context, req *implantpb.ExecuteBinary) (*clientpb.Task, error) {
+	req = handleCmdline(req)
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err
