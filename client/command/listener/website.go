@@ -22,8 +22,8 @@ func newWebsiteCmd(cmd *cobra.Command, con *repl.Console) {
 	keyPath, _ := cmd.Flags().GetString("key_path")
 	contentType, _ := cmd.Flags().GetString("content_type")
 
-	name, _ := cmd.Flags().GetString("name")
-	listenerID := cmd.Flags().Arg(0)
+	listenerID, _ := cmd.Flags().GetString("listener_id")
+	name := cmd.Flags().Arg(0)
 	portUint, _ := cmd.Flags().GetUint("port")
 	webPath := cmd.Flags().Arg(1)
 	cPath := cmd.Flags().Arg(2)

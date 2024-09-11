@@ -52,8 +52,8 @@ func listTcpCmd(cmd *cobra.Command, con *repl.Console) {
 func newTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) {
 	certPath, _ := cmd.Flags().GetString("cert_path")
 	keyPath, _ := cmd.Flags().GetString("key_path")
-	name, _ := cmd.Flags().GetString("name")
-	listenerID := cmd.Flags().Arg(0)
+	listenerID, _ := cmd.Flags().GetString("listener_id")
+	name := cmd.Flags().Arg(0)
 	host, _ := cmd.Flags().GetString("host")
 	portUint, _ := cmd.Flags().GetUint("port")
 	var cert, key string
