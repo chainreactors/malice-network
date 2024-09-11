@@ -3,7 +3,6 @@ package repl
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/core/intermediate"
@@ -11,7 +10,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/mtls"
 	"github.com/chainreactors/tui"
-	"github.com/mattn/go-tty"
 	"github.com/reeflective/console"
 	"github.com/rsteube/carapace/pkg/x"
 	"github.com/spf13/cobra"
@@ -208,13 +206,15 @@ func (c *Console) SwitchImplant(sess *Session) {
 
 func (c *Console) RegisterImplantFunc(name string, fn interface{}, bname string, bfn interface{}, callback ImplantCallback) {
 	if fn != nil {
-		err := intermediate.RegisterInternalFunc(name, WrapActiveFunc(c, fn, callback))
+		ifunc, isig := WrapActiveFunc(c, fn, callback)
+		err := intermediate.RegisterInternalFunc(name, ifunc, isig)
 		if err != nil {
 			Log.Error(err)
 		}
 	}
 	if bfn != nil {
-		err := intermediate.RegisterInternalFunc(bname, WrapImplantFunc(c, bfn, callback))
+		ifunc, isig := WrapImplantFunc(c, fn, callback)
+		err := intermediate.RegisterInternalFunc(bname, ifunc, isig)
 		if err != nil {
 			Log.Error(err)
 		}
@@ -222,43 +222,6 @@ func (c *Console) RegisterImplantFunc(name string, fn interface{}, bname string,
 }
 
 func (c *Console) RegisterServerFunc(name string, fn interface{}) error {
-	return intermediate.RegisterInternalFunc(name, WrapServerFunc(c, fn))
-}
-
-func exitConsole(c *console.Console) {
-	open, err := tty.Open()
-	if err != nil {
-		panic(err)
-	}
-	defer open.Close()
-	var isExit = false
-	fmt.Print("Press 'Y/y'  or 'Ctrl+D' to confirm exit: ")
-
-	for {
-		readRune, err := open.ReadRune()
-		if err != nil {
-			panic(err)
-		}
-		if readRune == 0 {
-			continue
-		}
-		switch readRune {
-		case 'Y', 'y':
-			os.Exit(0)
-		case 4: // ASCII code for Ctrl+C
-			os.Exit(0)
-		default:
-			isExit = true
-		}
-		if isExit {
-			break
-		}
-	}
-}
-
-// exitImplantMenu uses the background command to detach from the implant menu.
-func exitImplantMenu(c *console.Console) {
-	root := c.Menu(consts.ImplantMenu).Command
-	root.SetArgs([]string{consts.CommandBackground})
-	root.Execute()
+	ifunc, isig := WrapServerFunc(c, fn)
+	return intermediate.RegisterInternalFunc(name, ifunc, isig)
 }
