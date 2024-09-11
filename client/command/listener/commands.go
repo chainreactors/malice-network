@@ -57,12 +57,12 @@ func Commands(con *repl.Console) []*cobra.Command {
 	}
 
 	common.BindArgCompletions(tcpRegisterCmd, nil,
-		common.ListenerIDCompleter(con))
+		carapace.ActionValues().Usage("tcp pipeline name"))
 
 	common.BindFlag(tcpRegisterCmd, common.TlsCertFlagSet, common.PipelineFlagSet)
 
 	common.BindFlagCompletions(tcpRegisterCmd, func(comp carapace.ActionMap) {
-		comp["name"] = carapace.ActionValues().Usage("tcp name")
+		comp["listener_id"] = common.ListenerIDCompleter(con)
 		comp["host"] = carapace.ActionValues().Usage("tcp host")
 		comp["port"] = carapace.ActionValues().Usage("tcp port")
 		comp["cert_path"] = carapace.ActionFiles().Usage("path to the cert file")
@@ -126,7 +126,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	}
 
 	common.BindArgCompletions(websiteRegisterCmd, nil,
-		common.ListenerIDCompleter(con),
+		carapace.ActionValues().Usage("website name"),
 		carapace.ActionValues().Usage("website router root path"),
 		carapace.ActionFiles().Usage("website content path"))
 
@@ -135,7 +135,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	})
 
 	common.BindFlagCompletions(websiteRegisterCmd, func(comp carapace.ActionMap) {
-		comp["name"] = carapace.ActionValues().Usage("website name")
+		comp["listener_id"] = common.ListenerIDCompleter(con)
 		comp["port"] = carapace.ActionValues().Usage("website port")
 		comp["content_type"] = carapace.ActionFiles().Tag("website content type")
 		comp["cert_path"] = carapace.ActionFiles().Usage("path to the cert file")
