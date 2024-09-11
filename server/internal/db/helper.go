@@ -42,6 +42,9 @@ func FindAliveSessions() ([]*lispb.RegisterSession, error) {
 	}
 	var sessions []*lispb.RegisterSession
 	for _, session := range activeSessions {
+		if session.IsRemoved {
+			continue
+		}
 		sessions = append(sessions, session.ToRegisterProtobuf())
 	}
 	return sessions, nil
@@ -49,7 +52,7 @@ func FindAliveSessions() ([]*lispb.RegisterSession, error) {
 
 func FindSession(sessionID string) (*lispb.RegisterSession, error) {
 	var session models.Session
-	result := Session().Where("session_id = ?", sessionID).First(&session)
+	result := Session().Where("session_id = ? AND is_removed = ?", sessionID, false).First(&session)
 	if result.Error != nil {
 		return nil, result.Error
 	}
@@ -150,7 +153,7 @@ func UpdateSessionInfo(coreSession *core.Session) error {
 
 // Basic Session OP
 func DeleteSession(sessionID string) error {
-	result := Session().Where("session_id = ?", sessionID).Delete(&models.Session{})
+	result := Session().Where("session_id = ?", sessionID).Update("is_removed", true)
 	return result.Error
 }
 
