@@ -14,7 +14,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
 	lua "github.com/yuin/gopher-lua"
@@ -29,142 +28,12 @@ const (
 	LuaScript = "lua"
 	TCLScript = "tcl"
 	CNAScript = "cna"
+	GoPlugin  = "go"
 )
-
-type implantFunc func(rpc clientrpc.MaliceRPCClient, sess *Session, params ...interface{}) (*clientpb.Task, error)
-type ImplantCallback func(*clientpb.TaskContext) (interface{}, error)
 
 var (
 	ErrorAlreadyScriptName = errors.New("already exist script name")
 )
-
-func wrapImplantFunc(fun interface{}) implantFunc {
-	return func(rpc clientrpc.MaliceRPCClient, sess *Session, params ...interface{}) (*clientpb.Task, error) {
-		funcValue := reflect.ValueOf(fun)
-		funcType := funcValue.Type()
-
-		// 检查函数的参数数量是否匹配
-		if funcType.NumIn() != len(params)+2 {
-			return nil, fmt.Errorf("expected %d arguments, got %d", funcType.NumIn()-1, len(params))
-		}
-
-		// 构建参数切片
-		in := make([]reflect.Value, len(params)+2)
-		in[0] = reflect.ValueOf(rpc)
-		in[1] = reflect.ValueOf(sess)
-		for i, param := range params {
-			if reflect.TypeOf(param) != funcType.In(i+2) {
-				return nil, fmt.Errorf("argument %d should be %v, got %v", i+1, funcType.In(i+1), reflect.TypeOf(param))
-			}
-			in[i+2] = reflect.ValueOf(param)
-		}
-
-		// 调用函数并返回结果
-		results := funcValue.Call(in)
-
-		// 处理返回值并转换为 (*clientpb.Task, error)
-		task, _ := results[0].Interface().(*clientpb.Task)
-		var err error
-		if results[1].Interface() != nil {
-			err = results[1].Interface().(error)
-		}
-
-		return task, err
-	}
-}
-
-func WrapImplantFunc(con *Console, fun interface{}, callback ImplantCallback) intermediate.InternalFunc {
-	wrappedFunc := wrapImplantFunc(fun)
-
-	return func(args ...interface{}) (interface{}, error) {
-		task, err := wrappedFunc(con.Rpc, con.GetInteractive(), args...)
-		if err != nil {
-			return nil, err
-		}
-
-		taskContext, err := con.Rpc.WaitTaskFinish(context.Background(), task)
-		if err != nil {
-			return nil, err
-		}
-
-		if callback != nil {
-			return callback(taskContext)
-		} else {
-			return taskContext, nil
-		}
-	}
-}
-
-func WrapActiveFunc(con *Console, fun interface{}, callback ImplantCallback) intermediate.InternalFunc {
-	wrappedFunc := wrapImplantFunc(fun)
-
-	return func(args ...interface{}) (interface{}, error) {
-		var sess *Session
-		if len(args) == 0 {
-			return nil, fmt.Errorf("implant func first args must be session")
-		} else {
-			var ok bool
-			sess, ok = args[0].(*Session)
-			if !ok {
-				return nil, fmt.Errorf("implant func first args must be session")
-			}
-			args = args[1:]
-		}
-
-		task, err := wrappedFunc(con.Rpc, sess, args...)
-		if err != nil {
-			return nil, err
-		}
-
-		taskContext, err := con.Rpc.WaitTaskFinish(context.Background(), task)
-		if err != nil {
-			return nil, err
-		}
-
-		if callback != nil {
-			return callback(taskContext)
-		} else {
-			return taskContext, nil
-		}
-	}
-}
-
-func WrapServerFunc(con *Console, fun interface{}) intermediate.InternalFunc {
-	wrappedFunc := func(con *Console, params ...interface{}) (interface{}, error) {
-		funcValue := reflect.ValueOf(fun)
-		funcType := funcValue.Type()
-
-		// 检查函数的参数数量是否匹配
-		if funcType.NumIn() != len(params)+1 {
-			return nil, fmt.Errorf("expected %d arguments, got %d", funcType.NumIn()-1, len(params))
-		}
-
-		// 构建参数切片
-		in := make([]reflect.Value, len(params)+1)
-		in[0] = reflect.ValueOf(con)
-		for i, param := range params {
-			if reflect.TypeOf(param) != funcType.In(i+1) {
-				return nil, fmt.Errorf("argument %d should be %v, got %v", i+1, funcType.In(i+1), reflect.TypeOf(param))
-			}
-			in[i+1] = reflect.ValueOf(param)
-		}
-
-		// 调用函数并返回结果
-		results := funcValue.Call(in)
-
-		// 假设函数有两个返回值，第一个是返回值，第二个是错误
-		var err error
-		if len(results) == 2 && results[1].Interface() != nil {
-			err = results[1].Interface().(error)
-		}
-
-		return results[0].Interface(), err
-	}
-
-	return func(args ...interface{}) (interface{}, error) {
-		return wrappedFunc(con, args...)
-	}
-}
 
 func NewPlugins() *Plugins {
 	plugins := &Plugins{
@@ -183,6 +52,9 @@ func (plguins *Plugins) LoadPlugin(manifest *plugin.MalManiFest, con *Console) (
 	case LuaScript:
 		return plguins.LoadLuaScript(manifest, con)
 	case TCLScript:
+		// TODO
+		return nil, fmt.Errorf("not impl")
+	case GoPlugin:
 		// TODO
 		return nil, fmt.Errorf("not impl")
 	default:
@@ -279,12 +151,12 @@ func NewLuaVM(con *Console) *lua.LState {
 			return results[0].Interface(), nil
 		}
 
-		luaFunc := intermediate.WrapDynamicFuncForLua(internalFunc)
-
-		// 在 Lua 中注册该方法
-		vm.SetGlobal(methodName, vm.NewFunction(luaFunc))
+		sig := intermediate.GetInternalFuncSignature(method.Func)
+		sig.ArgTypes = sig.ArgTypes[2:3]
+		intermediate.RegisterInternalFunc(methodName, internalFunc, sig)
 	}
 
+	// 将InternalFunctions中的函数注册到lua
 	for name, fn := range intermediate.InternalFunctions {
 		vm.SetGlobal(name, vm.NewFunction(intermediate.WrapDynamicFuncForLua(fn)))
 	}
@@ -305,12 +177,13 @@ func NewPlugin(manifest *plugin.MalManiFest, con *Console) (*Plugin, error) {
 		Content:     content,
 		Path:        path,
 	}
-	plug.LuaVM = NewLuaVM(con)
 
 	err = plug.RegisterLuaBuiltInFunctions(con)
 	if err != nil {
 		return nil, err
 	}
+
+	plug.LuaVM = NewLuaVM(con)
 
 	if err = plug.LuaVM.DoString(string(plug.Content)); err != nil {
 		return nil, fmt.Errorf("failed to load Lua script: %w", err)
@@ -337,109 +210,88 @@ func CmdExists(name string, cmd *cobra.Command) bool {
 	return false
 }
 
-func (plugin *Plugin) registerLuaFunction(name string, fn intermediate.InternalFunc, expectedArgs []reflect.Type) {
-	plugin.LuaVM.SetGlobal(name, plugin.LuaVM.NewFunction(intermediate.WrapFuncForLua(fn, expectedArgs)))
+func (plugin *Plugin) registerLuaFunction(name string, fn interface{}) {
+	wrappedFunc, sig := WrapInternalFunc(fn)
+	intermediate.RegisterInternalFunc(name, wrappedFunc, sig)
 }
 
 func (plugin *Plugin) RegisterLuaBuiltInFunctions(con *Console) error {
-	plugin.registerLuaFunction("active", func(args ...interface{}) (interface{}, error) {
-		return con.GetInteractive(), nil
-	}, []reflect.Type{})
+	plugin.registerLuaFunction("active", func() (*clientpb.Session, error) {
+		return con.GetInteractive().Session, nil
+	})
 
-	// get resource filename
-	plugin.registerLuaFunction("script_resource", func(args ...interface{}) (interface{}, error) {
-		filename := args[0].(string)
+	// 获取资源文件名
+	plugin.registerLuaFunction("script_resource", func(filename string) (string, error) {
 		return builtin.GetResourceFile(plugin.Name, filename)
-	}, []reflect.Type{reflect.TypeOf("")})
+	})
 
-	// read resource file content
-	plugin.registerLuaFunction("read_resource", func(args ...interface{}) (interface{}, error) {
-		filename := args[0].(string)
+	// 读取资源文件内容
+	plugin.registerLuaFunction("read_resource", func(filename string) (string, error) {
 		return builtin.ReadResourceFile(plugin.Name, filename)
-	}, []reflect.Type{reflect.TypeOf("")})
+	})
 
-	// build binary message
-	plugin.registerLuaFunction("new_86_executable", func(args ...interface{}) (interface{}, error) {
-		module := args[0].(string)
-		filename := args[1].(string)
-		argsStr := args[2].(string)
-		sacrifice := args[3].(*implantpb.SacrificeProcess)
-
+	// 构建 x86 二进制消息
+	plugin.registerLuaFunction("new_86_executable", func(module, filename, argsStr string, sacrifice *implantpb.SacrificeProcess) (*implantpb.ExecuteBinary, error) {
 		cmdline, err := shellquote.Split(argsStr)
 		if err != nil {
 			return nil, err
 		}
 		return builtin.NewExecutable(module, filename, cmdline, "x86", sacrifice)
-	}, []reflect.Type{reflect.TypeOf(""), reflect.TypeOf(""), reflect.TypeOf(""), reflect.TypeOf(&implantpb.SacrificeProcess{})})
+	})
 
-	plugin.registerLuaFunction("new_64_executable", func(i ...interface{}) (interface{}, error) {
-		module := i[0].(string)
-		filename := i[1].(string)
-		argsStr := i[2].(string)
-		sac := i[3].(*implantpb.SacrificeProcess)
+	// 构建 64 位二进制消息
+	plugin.registerLuaFunction("new_64_executable", func(module, filename, argsStr string, sacrifice *implantpb.SacrificeProcess) (*implantpb.ExecuteBinary, error) {
 		cmdline, err := shellquote.Split(argsStr)
 		if err != nil {
 			return nil, err
 		}
-		return builtin.NewExecutable(module, filename, cmdline, "amd64", sac)
-	}, []reflect.Type{reflect.TypeOf(""), reflect.TypeOf(""), reflect.TypeOf(""), reflect.TypeOf(&implantpb.SacrificeProcess{})})
+		return builtin.NewExecutable(module, filename, cmdline, "amd64", sacrifice)
+	})
 
-	plugin.registerLuaFunction("new_binary", func(i ...interface{}) (interface{}, error) {
-		module := i[0].(string)
-		filename := i[1].(string)
-		args := i[2].([]string)
-		output := i[3].(bool)
-		timeout := i[4].(int)
-		arch := i[5].(string)
-		process := i[6].(string)
-		sac := i[7].(*implantpb.SacrificeProcess)
-		return builtin.NewBinary(module, filename, args, output, timeout, arch, process, sac)
-	}, []reflect.Type{reflect.TypeOf(""), reflect.TypeOf(""), reflect.TypeOf([]string{}), reflect.TypeOf(true), reflect.TypeOf(0), reflect.TypeOf(""), reflect.TypeOf(""), reflect.TypeOf(&implantpb.SacrificeProcess{})})
+	// 构建新的二进制消息
+	plugin.registerLuaFunction("new_binary", func(module, filename string, args []string,
+		output bool, timeout int, arch, process string,
+		sacrifice *implantpb.SacrificeProcess) (*implantpb.ExecuteBinary, error) {
+		return builtin.NewBinary(module, filename, args, output, timeout, arch, process, sacrifice)
+	})
 
-	// build sacrifice process message
-	plugin.registerLuaFunction("new_sacrifice", func(args ...interface{}) (interface{}, error) {
-		ppid := args[0].(int64)
-		hidden := args[1].(bool)
-		blockDll := args[2].(bool)
-		disableETW := args[3].(bool)
-		argue := args[3].(string)
+	// 构建 sacrifice 进程消息
+	plugin.registerLuaFunction("new_sacrifice", func(ppid int64, hidden, blockDll, disableETW bool, argue string) (*implantpb.SacrificeProcess, error) {
 		return builtin.NewSacrificeProcessMessage(ppid, hidden, blockDll, disableETW, argue)
-	}, []reflect.Type{reflect.TypeOf(""), reflect.TypeOf(int64(0)), reflect.TypeOf(true), reflect.TypeOf(""), reflect.TypeOf("")})
+	})
 
-	plugin.registerLuaFunction("wait", func(args ...interface{}) (interface{}, error) {
-		task := args[0].(*clientpb.Task)
+	// 等待任务结果
+	plugin.registerLuaFunction("wait", func(task *clientpb.Task) (*clientpb.TaskContext, error) {
 		return builtin.WaitResult(con.Rpc, task)
-	}, []reflect.Type{reflect.TypeOf(&clientpb.Task{})})
+	})
 
-	plugin.registerLuaFunction("get", func(args ...interface{}) (interface{}, error) {
-		task := args[0].(*clientpb.Task)
-		index := args[1].(int32)
+	// 获取任务结果
+	plugin.registerLuaFunction("get", func(task *clientpb.Task, index int32) (*clientpb.TaskContext, error) {
 		return builtin.GetResult(con.Rpc, task, index)
-	}, []reflect.Type{reflect.TypeOf(&clientpb.Task{}), reflect.TypeOf(int32(0))})
+	})
 
-	plugin.registerLuaFunction("taskprint", func(args ...interface{}) (interface{}, error) {
-		task := args[0].(*clientpb.TaskContext)
+	// 打印任务
+	plugin.registerLuaFunction("taskprint", func(task *clientpb.TaskContext) (*implantpb.Spite, error) {
 		return builtin.PrintTask(task)
-	}, []reflect.Type{reflect.TypeOf(&clientpb.TaskContext{})})
+	})
 
-	plugin.registerLuaFunction("assemblyprint", func(args ...interface{}) (interface{}, error) {
-		task := args[0].(*clientpb.TaskContext)
+	// 打印 assembly
+	plugin.registerLuaFunction("assemblyprint", func(task *clientpb.TaskContext) (string, error) {
 		err := handler.AssertStatusAndResponse(task.GetSpite(), types.MsgAssemblyResponse)
 		if err != nil {
-			return nil, err
+			return "", err
 		}
 		s, _ := builtin.ParseAssembly(task.Spite)
 		logs.Log.Console(s)
 		return s, nil
-	}, []reflect.Type{reflect.TypeOf(&clientpb.TaskContext{})})
+	})
 
-	// lua:
-	// ok(spite) -> bool
-	plugin.registerLuaFunction("ok", func(args ...interface{}) (interface{}, error) {
-		task := args[0].(*clientpb.TaskContext)
+	// 校验 spite
+	plugin.registerLuaFunction("ok", func(task *clientpb.TaskContext) (bool, error) {
 		s, _ := builtin.ParseStatus(task.Spite)
 		return s, nil
-	}, []reflect.Type{reflect.TypeOf(&clientpb.TaskContext{})})
+	})
+
 	return nil
 }
 
