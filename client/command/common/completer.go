@@ -55,9 +55,10 @@ func SessionIDCompleter(con *repl.Console) carapace.Action {
 		results := make([]string, 0)
 
 		for _, s := range con.AlivedSessions() {
-			results = append(results, s.SessionId, fmt.Sprintf("SessionID, %s", s.RemoteAddr))
 			if s.Note != "" {
-				results = append(results, s.Note, fmt.Sprintf("SessionAlias, %s", s.RemoteAddr))
+				results = append(results, s.SessionId, fmt.Sprintf("SessionAlias, %s，%s", s.Note, s.RemoteAddr))
+			} else {
+				results = append(results, s.SessionId, fmt.Sprintf("SessionID, %s", s.RemoteAddr))
 			}
 		}
 		return carapace.ActionValuesDescribed(results...).Tag("session id")

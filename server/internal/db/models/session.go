@@ -22,6 +22,7 @@ type Session struct {
 	IsAlive    bool
 	Modules    string
 	Extensions string
+	IsRemoved  bool     `gorm:"default:false"`
 	Os         *Os      `gorm:"embedded"`
 	Process    *Process `gorm:"embedded"`
 	Time       *Timer   `gorm:"embedded"`
