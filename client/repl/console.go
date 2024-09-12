@@ -124,7 +124,18 @@ func (c *Console) Login(config *mtls.ClientConfig) error {
 		return err
 	}
 	c.ClientConfig = config
-	logs.Log.Importantf("%d listeners, %d clients , %d sessions", len(c.Listeners), len(c.Clients), len(c.Sessions))
+	var pipelineCount = 0
+	for _, i := range c.Listeners {
+		pipelineCount = pipelineCount + len(i.Pipelines.Pipelines)
+	}
+	var alive = 0
+	for _, i := range c.Sessions {
+		if i.IsAlive {
+			alive++
+		}
+	}
+	logs.Log.Importantf("%d listeners, %d pipelines, %d clients, %d sessions (%d alive)",
+		len(c.Listeners), pipelineCount, len(c.Clients), len(c.Sessions), alive)
 	return nil
 }
 

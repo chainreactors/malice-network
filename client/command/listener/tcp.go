@@ -59,11 +59,18 @@ func newTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) {
 	var cert, key string
 	var err error
 	var tlsEnable = false
+	if listenerID == "" {
+		repl.Log.Error("listener_id is required")
+		return
+	}
 	if portUint == 0 {
 		rand.Seed(time.Now().UnixNano())
 		portUint = uint(10000 + rand.Int31n(5001))
 	}
 	port := uint32(portUint)
+	if host == "" {
+		host = "127.0.0.1"
+	}
 	if certPath != "" && keyPath != "" {
 		cert, err = cryptography.ProcessPEM(certPath)
 		if err != nil {

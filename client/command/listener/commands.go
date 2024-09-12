@@ -43,7 +43,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		GroupID: consts.ListenerGroup,
 	}
 
-	common.BindArgCompletions(tcpCmd, nil, carapace.ActionValues().Usage("listener id"))
+	common.BindArgCompletions(tcpCmd, nil, common.ListenerIDCompleter(con))
 
 	tcpRegisterCmd := &cobra.Command{
 		Use:   consts.CommandRegister,

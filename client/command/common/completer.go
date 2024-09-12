@@ -2,6 +2,7 @@ package common
 
 import (
 	"fmt"
+	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/rsteube/carapace"
 	"io/ioutil"
@@ -109,6 +110,30 @@ func SessionTaskComplete(con *repl.Console) carapace.Action {
 			results = append(results, fmt.Sprintf("%d", s.TaskId), "")
 		}
 		return carapace.ActionValuesDescribed(results...).Tag("session tasks")
+	}
+	return carapace.ActionCallback(callback)
+}
+
+func ResourceCompelete(con *repl.Console) carapace.Action {
+	callback := func(c carapace.Context) carapace.Action {
+		results := make([]string, 0)
+		err := filepath.WalkDir(assets.GetConfigDir(), func(path string, d os.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+
+			if !d.IsDir() && strings.HasSuffix(d.Name(), ".auth") {
+				fileName := d.Name()
+				prefix := strings.TrimSuffix(fileName, ".auth")
+				results = append(results, prefix, "client auth file")
+			}
+			return nil
+		})
+		if err != nil {
+			fmt.Printf("Error walking the directory: %v\n", err)
+			return carapace.Action{}
+		}
+		return carapace.ActionValuesDescribed(results...).Tag("session resources")
 	}
 	return carapace.ActionCallback(callback)
 }
