@@ -31,6 +31,10 @@ func newWebsiteCmd(cmd *cobra.Command, con *repl.Console) {
 	var err error
 	var tleEnable = false
 	var webAsserts *lispb.WebsiteAssets
+	if listenerID == "" {
+		repl.Log.Error("listener_id is required")
+		return
+	}
 	if portUint == 0 {
 		rand.Seed(time.Now().UnixNano())
 		portUint = uint(10000 + rand.Int31n(5001))
@@ -70,6 +74,7 @@ func newWebsiteCmd(cmd *cobra.Command, con *repl.Console) {
 			repl.Log.Error(err.Error())
 			return
 		}
+		webAsserts = &lispb.WebsiteAssets{}
 		webAsserts.Assets = append(webAsserts.Assets, &lispb.WebsiteAsset{
 			WebName:  name,
 			Content:  content,

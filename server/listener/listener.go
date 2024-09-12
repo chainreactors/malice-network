@@ -178,6 +178,8 @@ func (lns *listener) Start() {
 			Name:    pipeline.Name,
 		}
 		core.Jobs.Add(job)
+		l := core.Listeners.Get(lns.Name)
+		l.Pipelines.Add(pipeline)
 	}
 	for _, newWebsite := range lns.cfg.Websites {
 		if !newWebsite.Enable {
@@ -225,6 +227,8 @@ func (lns *listener) Start() {
 			Name:    startWebsite.websiteName,
 		}
 		core.Jobs.Add(job)
+		l := core.Listeners.Get(lns.Name)
+		l.Pipelines.Add(startWebsite)
 		go startWebsite.Start()
 	}
 }

@@ -35,7 +35,9 @@ func (ps Pipelines) Get(id string) Pipeline {
 }
 
 func (ps Pipelines) ToProtobuf() *lispb.Pipelines {
-	var pls *lispb.Pipelines
+	var pls = &lispb.Pipelines{
+		Pipelines: make([]*lispb.Pipeline, 0),
+	}
 	for _, p := range ps {
 		pls.Pipelines = append(pls.Pipelines, types.BuildPipeline(p.ToProtobuf(), p.ToTLSProtobuf()))
 	}
@@ -51,9 +53,10 @@ type Listener struct {
 
 func (l *Listener) ToProtobuf() *clientpb.Listener {
 	return &clientpb.Listener{
-		Id:     l.Name,
-		Addr:   l.Host,
-		Active: l.Active,
+		Id:        l.Name,
+		Addr:      l.Host,
+		Active:    l.Active,
+		Pipelines: l.Pipelines.ToProtobuf(),
 	}
 }
 

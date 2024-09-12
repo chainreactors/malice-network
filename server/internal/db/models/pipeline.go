@@ -91,9 +91,10 @@ func ToProtobuf(pipeline *Pipeline) *lispb.Pipeline {
 		return &lispb.Pipeline{
 			Body: &lispb.Pipeline_Tcp{
 				Tcp: &lispb.TCPPipeline{
-					Name: pipeline.Name,
-					Host: pipeline.Host,
-					Port: uint32(pipeline.Port),
+					Name:       pipeline.Name,
+					Host:       pipeline.Host,
+					ListenerId: pipeline.ListenerID,
+					Port:       uint32(pipeline.Port),
 				},
 			},
 			Tls: ToTlsProtobuf(&pipeline.Tls),
@@ -102,9 +103,10 @@ func ToProtobuf(pipeline *Pipeline) *lispb.Pipeline {
 		return &lispb.Pipeline{
 			Body: &lispb.Pipeline_Web{
 				Web: &lispb.Website{
-					Name:     pipeline.Name,
-					RootPath: pipeline.WebPath,
-					Port:     uint32(pipeline.Port),
+					Name:       pipeline.Name,
+					RootPath:   pipeline.WebPath,
+					ListenerId: pipeline.ListenerID,
+					Port:       uint32(pipeline.Port),
 				},
 			},
 			Tls: ToTlsProtobuf(&pipeline.Tls),
