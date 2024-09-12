@@ -83,6 +83,12 @@ func Execute() {
 		return
 	}
 
+	err = core.Notifier.InitService(opt.Server.NotifyConfig)
+	if err != nil {
+		logs.Log.Errorf("cannot init notifier , %s ", err.Error())
+		return
+	}
+
 	if opt.IP != "" {
 		logs.Log.Infof("manually specified IP: %s will override %s config: %s", opt.IP, opt.Config, opt.Server.IP)
 		opt.Server.IP = opt.IP
@@ -146,6 +152,7 @@ func Execute() {
 		cancel()
 		os.Exit(0)
 	}()
+
 	select {}
 }
 

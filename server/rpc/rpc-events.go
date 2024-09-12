@@ -68,3 +68,13 @@ func (rpc *Server) Broadcast(ctx context.Context, req *clientpb.Event) (*clientp
 	})
 	return &clientpb.Empty{}, nil
 }
+
+func (rpc *Server) Notify(ctx context.Context, req *clientpb.Event) (*clientpb.Empty, error) {
+	err := core.Notifier.Send(&core.Event{
+		Message: string(req.Data),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &clientpb.Empty{}, nil
+}
