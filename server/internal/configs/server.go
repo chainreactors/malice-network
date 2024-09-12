@@ -45,13 +45,14 @@ func NewDebugLog(filename string) *logs.Logger {
 }
 
 type ServerConfig struct {
-	Enable       bool        `config:"enable" default:"true"`
-	GRPCPort     uint16      `config:"grpc_port" default:"5004"`
-	GRPCHost     string      `config:"grpc_host" default:"0.0.0.0"`
-	IP           string      `config:"ip" default:""`
-	DaemonConfig bool        `config:"daemon" default:"false"`
-	LogConfig    *LogConfig  `config:"log" default:""`
-	MiscConfig   *MiscConfig `config:"config" default:""`
+	Enable       bool          `config:"enable" default:"true"`
+	GRPCPort     uint16        `config:"grpc_port" default:"5004"`
+	GRPCHost     string        `config:"grpc_host" default:"0.0.0.0"`
+	IP           string        `config:"ip" default:""`
+	DaemonConfig bool          `config:"daemon" default:"false"`
+	LogConfig    *LogConfig    `config:"log" default:""`
+	MiscConfig   *MiscConfig   `config:"config" default:""`
+	NotifyConfig *NotifyConfig `config:"notify" default:""`
 }
 
 func (c *ServerConfig) Address() string {
@@ -106,4 +107,30 @@ func LoadMiscConfig() ([]byte, []byte, error) {
 	} else {
 		return nil, nil, ErrNoConfig
 	}
+}
+
+type NotifyConfig struct {
+	Enable   bool `config:"enable" default:"true"`
+	Telegram struct {
+		Enable bool   `config:"enable" default:"false"`
+		APIKey string `config:"api_key"`
+		ChatID int64  `config:"chat_id"`
+	} `config:"telegram"`
+	DingTalk struct {
+		Enable bool   `config:"enable" default:"false"`
+		Secret string `config:"secret"`
+		Token  string `config:"token"`
+	} `config:"dingtalk"`
+	Lark struct {
+		Enable     bool   `config:"enable" default:"false"`
+		WebHookUrl string `config:"webhook_url"`
+	} `config:"lark"`
+	ServerChan struct {
+		Enable       bool                `config:"enable" default:"false"`
+		URL          string              `config:"url"`
+		Method       string              `config:"method"`
+		Headers      map[string][]string `config:"headers"`
+		ContentType  string              `config:"content_type"`
+		BodyTemplate string              `config:"bodyTemplate"`
+	} `config:"serverchan"`
 }

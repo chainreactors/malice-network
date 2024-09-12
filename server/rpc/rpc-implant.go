@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
@@ -25,6 +26,14 @@ func (rpc *Server) Register(ctx context.Context, req *lispb.RegisterSession) (*i
 
 	sess = core.NewSession(req)
 	core.Sessions.Add(sess)
+	err := core.Notifier.Send(&core.Event{
+		EventType: consts.EventSession,
+		Op:        consts.CtrlSessionStart,
+		Message:   fmt.Sprintf("session %s from %s start at %s", sess.ID, sess.PipelineID, sess.RemoteAddr),
+	})
+	if err != nil {
+		logs.Log.Errorf("send event failed %s", err.Error())
+	}
 	dbSession := db.Session()
 	d := dbSession.Create(models.ConvertToSessionDB(sess))
 	if d.Error != nil {

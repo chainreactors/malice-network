@@ -3,6 +3,8 @@ package db
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/mtls"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
@@ -135,6 +137,22 @@ func UpdateSessionStatus() error {
 			isAlive := timeDiff <= time.Duration(session.Time.Interval)*time.Second
 			if err := Session().Model(&session).Update("IsAlive", isAlive).Error; err != nil {
 				return err
+			}
+		}
+		for _, session := range core.Sessions.All() {
+			currentTime := time.Now()
+			timeDiff := currentTime.Sub(time.Unix(int64(session.Timer.LastCheckin), 0))
+			isAlive := timeDiff <= time.Duration(session.Timer.Interval)*time.Second
+			if !isAlive {
+				err := core.Notifier.Send(&core.Event{
+					EventType: consts.EventSession,
+					Op:        consts.CtrlSessionStop,
+					Message: fmt.Sprintf("session %s from %s at %s stop",
+						session.ID, session.PipelineID, session.RemoteAddr),
+				})
+				if err != nil {
+					return err
+				}
 			}
 		}
 	}

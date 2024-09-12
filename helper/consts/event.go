@@ -7,6 +7,9 @@ const (
 	CtrlTaskError     = "task_error"
 	CtrlWebUpload     = "web_upload"
 	CtrlListenerStart = "listener_start"
+	CtrlListenerStop  = "listener_stop"
+	CtrlSessionStart  = "session_start"
+	CtrlSessionStop   = "session_stop"
 	CtrlJobStart      = "job_start"
 	CtrlJobStop       = "job_stop"
 )
@@ -28,13 +31,14 @@ const (
 
 // event
 const (
-	EventJoin      = "join"
-	EventLeft      = "left"
-	EventBroadcast = "broadcast"
-	EventNotify    = "notify"
-	EventSession   = "session"
-	EventListener  = "listener"
-	EventTask      = "task"
-	EventWebsite   = "website"
-	EventJob       = "job"
+	EventJoin        = "join"
+	EventLeft        = "left"
+	EventBroadcast   = "broadcast"
+	EventNotify      = "notify"
+	EventSession     = "session"
+	EventListener    = "listener"
+	EventTask        = "task"
+	EventWebsite     = "website"
+	EventTcpPipeline = "tcp"
+	EventJob         = "job"
 )

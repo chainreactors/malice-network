@@ -2,10 +2,12 @@ package generic
 
 import (
 	"fmt"
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"os"
 )
 
@@ -52,8 +54,17 @@ func Commands(con *repl.Console) []*cobra.Command {
 		},
 	}
 
+	common.BindFlag(broadcastCmd, func(f *pflag.FlagSet) {
+		f.BoolP("notify", "n", false, "notify the message to third-party services")
+	})
+
 	con.RegisterServerFunc(consts.CommandBroadcast, func(con *repl.Console, msg string) (bool, error) {
 		return Broadcast(con, msg)
 	})
+
+	con.RegisterServerFunc(consts.CommandNotify, func(con *repl.Console, msg string) (bool, error) {
+		return Notify(con, msg)
+	})
+
 	return []*cobra.Command{loginCmd, versionCmd, exitCmd, broadcastCmd}
 }
