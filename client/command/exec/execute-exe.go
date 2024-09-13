@@ -68,7 +68,7 @@ func InlineExe(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string, a
 	if arch == "" {
 		arch = sess.Os.Arch
 	}
-	binary, err := common.NewBinary(consts.ModuleAliasInlineExe, path, args, output, timeout, arch, process, nil)
+	binary, err := common.NewBinary(consts.ModuleExecuteExe, path, args, output, timeout, arch, process, nil)
 	if err != nil {
 		return nil, err
 	}
