@@ -30,7 +30,7 @@ func ExecuteExeCmd(cmd *cobra.Command, con *repl.Console) {
 	})
 }
 
-func ExecExe(rpc clientrpc.MaliceRPCClient, sess *repl.Session, pePath string, args []string, output bool, timeout int, arch string, process string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
+func ExecExe(rpc clientrpc.MaliceRPCClient, sess *repl.Session, pePath string, args []string, output bool, timeout uint32, arch string, process string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 	if arch == "" {
 		arch = sess.Os.Arch
 	}
@@ -54,7 +54,7 @@ func InlineExeCmd(cmd *cobra.Command, con *repl.Console) {
 	path, args, output, timeout, arch, process := common.ParseFullBinaryParams(cmd)
 	task, err := InlineExe(con.Rpc, session, path, args, output, timeout, arch, process)
 	if err != nil {
-		con.Log.Errorf("Execute ESE error: %v", err)
+		con.Log.Errorf("Execute EXE error: %v", err)
 		return
 	}
 	con.AddCallback(task, func(msg proto.Message) {
@@ -64,7 +64,7 @@ func InlineExeCmd(cmd *cobra.Command, con *repl.Console) {
 }
 
 func InlineExe(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string, args []string,
-	output bool, timeout int, arch string, process string) (*clientpb.Task, error) {
+	output bool, timeout uint32, arch string, process string) (*clientpb.Task, error) {
 	if arch == "" {
 		arch = sess.Os.Arch
 	}

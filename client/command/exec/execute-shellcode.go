@@ -30,7 +30,7 @@ func ExecuteShellcodeCmd(cmd *cobra.Command, con *repl.Console) {
 }
 
 func ExecShellcode(rpc clientrpc.MaliceRPCClient, sess *repl.Session, shellcodePath string,
-	args []string, output bool, timeout int, arch string, process string,
+	args []string, output bool, timeout uint32, arch string, process string,
 	sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 	if arch == "" {
 		arch = sess.Os.Arch
@@ -59,7 +59,7 @@ func InlineShellcodeCmd(cmd *cobra.Command, con *repl.Console) {
 }
 
 func InlineShellcode(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string, args []string,
-	output bool, timeout int, arch string, process string) (*clientpb.Task, error) {
+	output bool, timeout uint32, arch string, process string) (*clientpb.Task, error) {
 	if arch == "" {
 		arch = sess.Os.Arch
 	}
