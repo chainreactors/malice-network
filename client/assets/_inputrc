@@ -1,0 +1,6 @@
+app: powershell
+####----####
+# /etc/inputrc - global inputrc for libreadline
+# See readline(3readline) and `info rluserman' for more information.
+set editing-mode vi
+"\C-v": paste-from-clipboard
