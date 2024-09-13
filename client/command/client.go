@@ -46,12 +46,17 @@ func ConsoleCmd(con *repl.Console) *cobra.Command {
 func ConsoleRunnerCmd(con *repl.Console, run bool) (pre, post func(cmd *cobra.Command, args []string) error) {
 	var ln *grpc.ClientConn
 
-	pre = func(_ *cobra.Command, _ []string) error {
-		err := generic.LoginCmd(&cobra.Command{}, con)
-		if err != nil {
-			con.Log.Errorf("Failed to login: %s", err)
-			return nil
+	pre = func(_ *cobra.Command, args []string) error {
+		if len(args) > 0 {
+			repl.NewConfigLogin(con, args[0])
+		} else {
+			err := generic.LoginCmd(nil, con)
+			if err != nil {
+				con.Log.Errorf("Failed to login: %s", err)
+				return nil
+			}
 		}
+
 		for _, malName := range assets.GetInstalledMalManifests() {
 			manifest, err := mal.LoadMalManiFest(con, malName)
 			// Absorb error in case there's no extensions manifest

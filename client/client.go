@@ -20,5 +20,9 @@ func init() {
 }
 
 func main() {
-	cli.StartConsole()
+	err := cli.StartConsole()
+	if err != nil {
+		logs.Log.Errorf(err.Error())
+		return
+	}
 }

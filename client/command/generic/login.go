@@ -48,7 +48,7 @@ func loginServer(con *repl.Console, selectedFile string) error {
 		return err
 	}
 
-	err = con.Login(config)
+	err = repl.Login(con, config)
 	if err != nil {
 		con.App.Printf("Error login: %s", err)
 		return err
