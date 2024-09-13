@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/nikoksr/notify"
 	"github.com/nikoksr/notify/service/dingding"
@@ -175,12 +174,8 @@ func (n *Notifier) Send(event *Event) error {
 	if !n.enable {
 		return nil
 	}
-	var title string
-	if event.Op == consts.CtrlJobStart || event.Op == consts.CtrlJobStop {
-		title = fmt.Sprintf("%s %s", event.EventType, event.Op)
-	} else {
-		title = fmt.Sprintf("%s", event.Op)
-	}
+	title := fmt.Sprintf("[%s] %s", event.EventType, event.Op)
+
 	err := n.notify.Send(context.Background(), title, event.Message)
 	if err != nil {
 		return err
