@@ -5,16 +5,21 @@ import (
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
+	"math"
 )
 
 var (
 	argueMap = map[string]string{}
 )
 
-func handleCmdline(binary *implantpb.ExecuteBinary) *implantpb.ExecuteBinary {
+func handleBinary(binary *implantpb.ExecuteBinary) *implantpb.ExecuteBinary {
 	if binary.ProcessName == "" {
 		binary.ProcessName = `C:\\Windows\\System32\\notepad.exe`
 	}
+	if binary.Timeout == 0 {
+		binary.Timeout = math.MaxUint32
+	}
+	binary.Timeout = binary.Timeout * 1000
 	return binary
 }
 
@@ -47,7 +52,7 @@ func (rpc *Server) ExecuteAssembly(ctx context.Context, req *implantpb.ExecuteBi
 }
 
 func (rpc *Server) ExecuteShellcode(ctx context.Context, req *implantpb.ExecuteBinary) (*clientpb.Task, error) {
-	req = handleCmdline(req)
+	req = handleBinary(req)
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err
@@ -76,7 +81,7 @@ func (rpc *Server) ExecuteBof(ctx context.Context, req *implantpb.ExecuteBinary)
 }
 
 func (rpc *Server) ExecuteEXE(ctx context.Context, req *implantpb.ExecuteBinary) (*clientpb.Task, error) {
-	req = handleCmdline(req)
+	req = handleBinary(req)
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err
@@ -92,7 +97,7 @@ func (rpc *Server) ExecuteEXE(ctx context.Context, req *implantpb.ExecuteBinary)
 }
 
 func (rpc *Server) ExecuteDll(ctx context.Context, req *implantpb.ExecuteBinary) (*clientpb.Task, error) {
-	req = handleCmdline(req)
+	req = handleBinary(req)
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err

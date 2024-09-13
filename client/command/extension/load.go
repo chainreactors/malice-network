@@ -8,6 +8,7 @@ import (
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/help"
+	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/client/core/intermediate/builtin"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/client/utils"
@@ -41,7 +42,7 @@ var (
 	}
 )
 
-var loadedExtensions = map[string]*ExtCommand{}
+var loadedExtensions = map[string]*loadedExt{}
 var loadedManifests = map[string]*ExtensionManifest{}
 
 type ExtensionManifest_ struct {
@@ -76,6 +77,11 @@ type ExtensionManifest struct {
 	ArmoryPK   string `json:"-"`
 }
 
+type loadedExt struct {
+	Manifest *ExtCommand
+	Command  *cobra.Command
+	Func     *intermediate.InternalFunc
+}
 type ExtCommand struct {
 	CommandName string               `json:"command_name"`
 	Help        string               `json:"help"`
@@ -160,9 +166,9 @@ func LoadExtensionManifest(manifestPath string) (*ExtensionManifest, error) {
 		return nil, err
 	}
 	manifest.RootPath = filepath.Dir(manifestPath)
-	for _, extManifest := range manifest.ExtCommand {
-		loadedExtensions[extManifest.CommandName] = extManifest
-	}
+	//for _, extManifest := range manifest.ExtCommand {
+	//	loadedExtensions[extManifest.CommandName] = extManifest
+	//}
 	loadedManifests[manifest.Name] = manifest
 	return manifest, nil
 }
@@ -189,14 +195,13 @@ func ParseExtensionManifest(data []byte) (*ExtensionManifest, error) {
 	return extManifest, validManifest(extManifest)
 }
 
-// ExtensionRegisterCommand - Register a new extension command
+// ExtensionRegisterCommand
 func ExtensionRegisterCommand(extCmd *ExtCommand, cmd *cobra.Command, con *repl.Console) {
 	if errInvalidArgs := checkExtensionArgs(extCmd); errInvalidArgs != nil {
 		repl.Log.Error(errInvalidArgs.Error())
 		return
 	}
 
-	loadedExtensions[extCmd.CommandName] = extCmd
 	usage := strings.Builder{}
 	usage.WriteString(extCmd.CommandName)
 
@@ -262,16 +267,14 @@ func ExtensionRegisterCommand(extCmd *ExtCommand, cmd *cobra.Command, con *repl.
 
 	comps := carapace.Gen(extensionCmd)
 	makeExtensionArgCompleter(extCmd, cmd, comps)
-
-	cmd.AddCommand(extensionCmd)
-	con.RegisterImplantFunc(
-		extensionCmd.Name(),
-		ExecuteExtension,
-		"b"+extensionCmd.Name(),
-		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, args string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
+	loadedExtensions[extCmd.CommandName] = &loadedExt{
+		Manifest: extCmd,
+		Command:  cmd,
+		Func: repl.WrapImplantFunc(con, func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, args string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 			return ExecuteExtension(rpc, sess, extensionCmd.Name(), args)
-		},
-		common.ParseAssembly)
+		}, common.ParseAssembly),
+	}
+	cmd.AddCommand(extensionCmd)
 }
 
 //func loadExtension(goos string, goarch string, extcmd *ExtCommand, con *console.Console) error {
@@ -351,6 +354,7 @@ func runExtensionCmd(cmd *cobra.Command, con *repl.Console) {
 
 func ExecuteExtension(rpc clientrpc.MaliceRPCClient, sess *repl.Session, extName string, args string) (*clientpb.Task, error) {
 	ext, ok := loadedExtensions[extName]
+	cmd := ext.Manifest
 	if !ok {
 		return nil, fmt.Errorf("no extension command found for `%s` command", extName)
 	}
@@ -358,7 +362,7 @@ func ExecuteExtension(rpc clientrpc.MaliceRPCClient, sess *repl.Session, extName
 	//	return nil, fmt.Errorf("could not load extension: %w", err)
 	//}
 
-	binPath, err := ext.getFileForTarget(sess.Os.Name, sess.Os.Arch)
+	binPath, err := cmd.getFileForTarget(sess.Os.Name, sess.Os.Arch)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read extension file: %w", err)
 	}
@@ -383,12 +387,12 @@ func ExecuteExtension(rpc clientrpc.MaliceRPCClient, sess *repl.Session, extName
 		if err != nil {
 			return nil, err
 		}
-		entryPoint = loadedExtensions[ext.CommandName].Entrypoint // should exist at this point
+		entryPoint = loadedExtensions[cmd.CommandName].Manifest.Entrypoint // should exist at this point
 		task, err = rpc.ExecuteBof(sess.Context(), &implantpb.ExecuteBinary{
-			Name:       ext.CommandName,
+			Name:       cmd.CommandName,
 			EntryPoint: entryPoint,
 			Args:       params,
-			Type:       ext.DependsOn,
+			Type:       cmd.DependsOn,
 			Output:     true,
 		})
 	} else {

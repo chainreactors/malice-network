@@ -131,6 +131,19 @@ func Commands(con *repl.Console) []*cobra.Command {
 		},
 	}
 
+	return []*cobra.Command{
+		whoamiCmd,
+		killCmd,
+		psCmd,
+		envCmd,
+		setEnvCmd,
+		unSetEnvCmd,
+		netstatCmd,
+		infoCmd,
+	}
+}
+
+func Register(con *repl.Console) {
 	con.RegisterImplantFunc(
 		consts.ModuleEnv,
 		Env,
@@ -238,15 +251,4 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return Whoami(rpc, sess)
 		},
 		common.ParseResponse)
-
-	return []*cobra.Command{
-		whoamiCmd,
-		killCmd,
-		psCmd,
-		envCmd,
-		setEnvCmd,
-		unSetEnvCmd,
-		netstatCmd,
-		infoCmd,
-	}
 }

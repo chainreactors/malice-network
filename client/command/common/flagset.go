@@ -15,7 +15,7 @@ func SacrificeFlagSet(f *pflag.FlagSet) {
 func ExecuteFlagSet(f *pflag.FlagSet) {
 	f.StringP("process", "n", `C:\\Windows\\System32\\notepad.exe`, "custom process path")
 	f.BoolP("quit", "q", false, "disable output")
-	f.Uint32P("timeout", "t", math.MaxUint32, "timeout")
+	f.Uint32P("timeout", "t", math.MaxUint32, "timeout, in seconds")
 	f.String("arch", "", "architecture")
 }
 

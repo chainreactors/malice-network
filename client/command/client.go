@@ -1,6 +1,7 @@
 package command
 
 import (
+	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/alias"
 	"github.com/chainreactors/malice-network/client/command/armory"
 	"github.com/chainreactors/malice-network/client/command/extension"
@@ -12,6 +13,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/reeflective/console"
 	"github.com/spf13/cobra"
+	"google.golang.org/grpc"
 )
 
 func bindCommonCommands(bind bindFunc) {
@@ -31,6 +33,58 @@ func bindCommonCommands(bind bindFunc) {
 	)
 }
 
+func ConsoleCmd(con *repl.Console) *cobra.Command {
+	consoleCmd := &cobra.Command{
+		Use:   "console",
+		Short: "Start the client console",
+	}
+
+	consoleCmd.RunE, consoleCmd.PersistentPostRunE = ConsoleRunnerCmd(con, true)
+	return consoleCmd
+}
+
+func ConsoleRunnerCmd(con *repl.Console, run bool) (pre, post func(cmd *cobra.Command, args []string) error) {
+	var ln *grpc.ClientConn
+
+	pre = func(_ *cobra.Command, _ []string) error {
+		err := generic.LoginCmd(&cobra.Command{}, con)
+		if err != nil {
+			con.Log.Errorf("Failed to login: %s", err)
+			return nil
+		}
+		for _, malName := range assets.GetInstalledMalManifests() {
+			manifest, err := mal.LoadMalManiFest(con, malName)
+			// Absorb error in case there's no extensions manifest
+			if err != nil {
+				//con doesn't appear to be initialised here?
+				//con.PrintErrorf("Failed to load extension: %s", err)
+				repl.Log.Errorf("Failed to load mal: %s\n", err)
+				continue
+			}
+
+			if _, err := con.Plugins.LoadPlugin(manifest, con); err == nil {
+				//plugin.GenerateLuaDefinitionFile(plug.LuaVM, "lua.lua")
+			} else {
+				repl.Log.Errorf("Failed to load mal: %s\n", err)
+				continue
+			}
+		}
+		RegisterImplantFunc(con)
+		return con.Start(BindClientsCommands, BindImplantCommands)
+	}
+
+	// Close the RPC connection once exiting
+	post = func(_ *cobra.Command, _ []string) error {
+		if ln != nil {
+			return ln.Close()
+		}
+
+		return nil
+	}
+
+	return pre, post
+}
+
 func BindClientsCommands(con *repl.Console) console.Commands {
 	clientCommands := func() *cobra.Command {
 		client := &cobra.Command{
@@ -43,13 +97,6 @@ func BindClientsCommands(con *repl.Console) console.Commands {
 		bind := makeBind(client, con)
 
 		bindCommonCommands(bind)
-		if con.ServerStatus == nil {
-			err := generic.LoginCmd(&cobra.Command{}, con)
-			if err != nil {
-				con.Log.Errorf("Failed to login: %s", err)
-				return nil
-			}
-		}
 		return client
 	}
 	return clientCommands

@@ -3,6 +3,7 @@ package extension
 import (
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/help"
+	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/rsteube/carapace"
@@ -68,4 +69,10 @@ func Commands(con *repl.Console) []*cobra.Command {
 
 	extensionCmd.AddCommand(extensionListCmd, extensionLoadCmd, extensionInstallCmd, extensionRemoveCmd)
 	return []*cobra.Command{extensionCmd}
+}
+
+func Register(con *repl.Console) {
+	for name, ext := range loadedExtensions {
+		intermediate.RegisterInternalFunc(name, ext.Func)
+	}
 }

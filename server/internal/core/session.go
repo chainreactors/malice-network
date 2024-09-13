@@ -264,7 +264,6 @@ func (s *Session) DeleteResp(taskId uint32) {
 	s.responses.Delete(taskId)
 }
 
-// sessions - Manages the slivers, provides atomic access
 type sessions struct {
 	active *sync.Map // map[uint32]*Session
 }
@@ -287,7 +286,6 @@ func (s *sessions) Get(sessionID string) (*Session, bool) {
 	return nil, false
 }
 
-// Add - Add a sliver to the hive (atomically)
 func (s *sessions) Add(session *Session) *Session {
 	s.active.Store(session.ID, session)
 	//EventBroker.Publish(Event{
@@ -297,7 +295,6 @@ func (s *sessions) Add(session *Session) *Session {
 	return session
 }
 
-// Remove - Remove a sliver from the hive (atomically)
 func (s *sessions) Remove(sessionID string) {
 	val, ok := s.active.Load(sessionID)
 	if !ok {

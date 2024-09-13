@@ -194,6 +194,21 @@ func Commands(con *repl.Console) []*cobra.Command {
 	common.BindArgCompletions(rmCmd, nil,
 		carapace.ActionValues().Usage("rm file name"))
 
+	return []*cobra.Command{
+		pwdCmd,
+		catCmd,
+		cdCmd,
+		chmodCmd,
+		chownCmd,
+		cpCmd,
+		lsCmd,
+		mkdirCmd,
+		mvCmd,
+		rmCmd,
+	}
+}
+
+func Register(con *repl.Console) {
 	con.RegisterImplantFunc(
 		consts.ModuleCd,
 		Cd,
@@ -302,17 +317,4 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return Rm(rpc, sess, fileName)
 		},
 		common.ParseStatus)
-
-	return []*cobra.Command{
-		pwdCmd,
-		catCmd,
-		cdCmd,
-		chmodCmd,
-		chownCmd,
-		cpCmd,
-		lsCmd,
-		mkdirCmd,
-		mvCmd,
-		rmCmd,
-	}
 }

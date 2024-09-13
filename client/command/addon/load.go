@@ -2,17 +2,28 @@ package addon
 
 import (
 	"fmt"
+	"github.com/chainreactors/malice-network/client/command/common"
+	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/helper"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
+	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/proto"
+	"math"
 	"os"
 	"path/filepath"
 )
+
+var loadedAddons = make(map[string]*loadedAddon)
+
+type loadedAddon struct {
+	Command *cobra.Command
+	Func    *intermediate.InternalFunc
+}
 
 func LoadAddonCmd(cmd *cobra.Command, con *repl.Console) {
 	path := cmd.Flags().Arg(0)
@@ -66,7 +77,16 @@ func RegisterAddon(addon *implantpb.Addon, con *repl.Console, cmd *cobra.Command
 		},
 		GroupID: consts.AddonGroup,
 	}
-
+	loadedAddons[addon.Name] = &loadedAddon{
+		Command: addonCmd,
+		Func: repl.WrapImplantFunc(con, func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, args string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
+			cmdline, err := shellquote.Split(args)
+			if err != nil {
+				return nil, err
+			}
+			return ExecuteAddon(rpc, sess, addon.Name, cmdline, true, math.MaxUint32, sess.Os.Arch, "", sac)
+		}, common.ParseAssembly),
+	}
 	cmd.AddCommand(addonCmd)
 	return nil
 }

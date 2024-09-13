@@ -60,6 +60,15 @@ func Commands(con *repl.Console) []*cobra.Command {
 		},
 	}
 
+	return []*cobra.Command{
+		listModuleCmd,
+		loadModuleCmd,
+		refreshModuleCmd,
+		clearCmd,
+	}
+}
+
+func Register(con *repl.Console) {
 	con.RegisterImplantFunc(
 		consts.ModuleListModule,
 		ListModules,
@@ -107,10 +116,4 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return clearAll(rpc, sess)
 		},
 		common.ParseStatus)
-	return []*cobra.Command{
-		listModuleCmd,
-		loadModuleCmd,
-		refreshModuleCmd,
-		clearCmd,
-	}
 }

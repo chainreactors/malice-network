@@ -218,6 +218,21 @@ func Commands(con *repl.Console) []*cobra.Command {
 		comp["script"] = carapace.ActionFiles()
 	})
 
+	return []*cobra.Command{
+		execCmd,
+		execAssemblyCmd,
+		execShellcodeCmd,
+		inlineShellcodeCmd,
+		execDLLCmd,
+		inlineDLLCmd,
+		execPECmd,
+		inlinePECmd,
+		execBofCmd,
+		execPowershellCmd,
+	}
+}
+
+func Register(con *repl.Console) {
 	con.RegisterImplantFunc(
 		consts.ModuleExecution,
 		Execute,
@@ -332,17 +347,4 @@ func Commands(con *repl.Console) []*cobra.Command {
 			}
 			return ExecPowershell(rpc, sess, script, cmdline)
 		}, common.ParseAssembly)
-
-	return []*cobra.Command{
-		execCmd,
-		execAssemblyCmd,
-		execShellcodeCmd,
-		inlineShellcodeCmd,
-		execDLLCmd,
-		inlineDLLCmd,
-		execPECmd,
-		inlinePECmd,
-		execBofCmd,
-		execPowershellCmd,
-	}
 }
