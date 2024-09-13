@@ -241,27 +241,13 @@ func (s *ServerStatus) EventHandler() {
 		case consts.EventNotify:
 			Log.Importantf("%s notified: %s %s", event.Source, string(event.Data), event.Err)
 		case consts.EventJob:
-			if event.GetErr() != "" {
-				Log.Errorf("job error: %s", event.GetErr())
-				return
-			}
-			Log.Importantf("%s %s", event.Message, event.Op)
+			Log.Importantf("[%s] %s: %s %s", event.Type, event.Op, event.Message, event.Err)
 		case consts.EventListener:
-			if event.GetErr() != "" {
-				Log.Errorf("Listener error: %s", event.GetErr())
-				return
-			}
-			if event.GetOp() == consts.CtrlListenerStart {
-				Log.Importantf(" %s %s", event.Message, event.Op)
-				return
-			}
+			Log.Importantf("[%s] %s: %s %s", event.Type, event.Op, event.Message, event.Err)
 		case consts.EventTask:
 			s.handlerTaskCtrl(event)
 		case consts.EventWebsite:
-			if event.GetErr() != "" {
-				Log.Errorf("Website error: %s", event.GetErr())
-				return
-			}
+			Log.Importantf("[%s] %s: %s %s", event.Type, event.Op, event.Message, event.Err)
 		}
 		//con.triggerReactions(event)
 	}
