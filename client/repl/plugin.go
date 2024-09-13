@@ -30,10 +30,10 @@ type Plugins struct {
 	Plugins map[string]*Plugin
 }
 
-func (plguins *Plugins) LoadPlugin(manifest *plugin.MalManiFest, con *Console) (*Plugin, error) {
+func (plugins *Plugins) LoadPlugin(manifest *plugin.MalManiFest, con *Console) (*Plugin, error) {
 	switch manifest.Type {
 	case plugin.LuaScript:
-		return plguins.LoadLuaScript(manifest, con)
+		return plugins.LoadLuaScript(manifest, con)
 	case plugin.TCLScript:
 		// TODO
 		return nil, fmt.Errorf("not impl")
@@ -45,9 +45,9 @@ func (plguins *Plugins) LoadPlugin(manifest *plugin.MalManiFest, con *Console) (
 	}
 }
 
-func (plguins *Plugins) LoadLuaScript(manifest *plugin.MalManiFest, con *Console) (*Plugin, error) {
+func (plugins *Plugins) LoadLuaScript(manifest *plugin.MalManiFest, con *Console) (*Plugin, error) {
 	// 检查脚本名称是否已存在
-	if _, ok := plguins.Plugins[manifest.Name]; ok {
+	if _, ok := plugins.Plugins[manifest.Name]; ok {
 		return nil, ErrorAlreadyScriptName
 	}
 
@@ -58,7 +58,7 @@ func (plguins *Plugins) LoadLuaScript(manifest *plugin.MalManiFest, con *Console
 	}
 
 	plug.InitLua(con)
-	plguins.Plugins[manifest.Name] = plug
+	plugins.Plugins[manifest.Name] = plug
 	// 全局模块
 	//L.PreloadModule(manifest.Name, func(L *lua.LState) int {
 	//	if err := L.DoString(string(content)); err != nil {

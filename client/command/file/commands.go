@@ -69,6 +69,14 @@ func Commands(con *repl.Console) []*cobra.Command {
 	common.BindArgCompletions(syncCmd, nil,
 		carapace.ActionValues().Usage("task ID"))
 
+	return []*cobra.Command{
+		downloadCmd,
+		uploadCmd,
+		syncCmd,
+	}
+}
+
+func Register(con *repl.Console) {
 	con.RegisterImplantFunc(
 		consts.ModuleDownload,
 		Download,
@@ -86,10 +94,4 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return Upload(rpc, sess, path, filepath.Base(path), 0744, false)
 		},
 		nil)
-
-	return []*cobra.Command{
-		downloadCmd,
-		uploadCmd,
-		syncCmd,
-	}
 }

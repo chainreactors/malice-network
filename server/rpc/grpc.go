@@ -139,7 +139,6 @@ func NewServer() *Server {
 	return &Server{}
 }
 
-// genericHandler - Pass the request to the Sliver/Session
 //func (rpc *Server) genericHandler(ctx context.Context, req *GenericRequest) (proto.Message, error) {
 //	spite, err := req.NewSpite(req.Message)
 //	if err != nil {

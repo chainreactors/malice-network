@@ -40,18 +40,18 @@ func PrintExtensions(con *repl.Console) {
 	installedManifests := getInstalledManifests()
 	for _, ext := range loadedExtensions {
 		installed := ""
-		if _, ok := installedManifests[ext.CommandName]; ok {
+		if _, ok := installedManifests[ext.Manifest.CommandName]; ok {
 			installed = "✅"
 		}
 		row := table.Row{
-			ext.Manifest.Name,
-			ext.CommandName,
-			strings.Join(extensionPlatforms(ext), ",\n"),
-			ext.Manifest.Version,
+			ext.Manifest.Manifest.Name,
+			ext.Manifest.CommandName,
+			strings.Join(extensionPlatforms(ext.Manifest), ",\n"),
+			ext.Manifest.Manifest.Version,
 			installed,
-			ext.Manifest.ExtensionAuthor,
-			ext.Manifest.OriginalAuthor,
-			ext.Manifest.RepoURL,
+			ext.Manifest.Manifest.ExtensionAuthor,
+			ext.Manifest.Manifest.OriginalAuthor,
+			ext.Manifest.Manifest.RepoURL,
 		}
 		rowEntries = append(rowEntries, row)
 	}
@@ -99,8 +99,8 @@ func ExtensionsCommandNameCompleter(con *repl.Console) carapace.Action {
 	return carapace.ActionCallback(func(c carapace.Context) carapace.Action {
 		results := []string{}
 		for _, manifest := range loadedExtensions {
-			results = append(results, manifest.CommandName)
-			results = append(results, manifest.Help)
+			results = append(results, manifest.Manifest.CommandName)
+			results = append(results, manifest.Manifest.Help)
 		}
 
 		return carapace.ActionValuesDescribed(results...).Tag("extension commands")

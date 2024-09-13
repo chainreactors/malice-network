@@ -2,6 +2,7 @@ package addon
 
 import (
 	"github.com/chainreactors/malice-network/client/command/common"
+	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/rsteube/carapace"
@@ -56,4 +57,10 @@ func Commands(con *repl.Console) []*cobra.Command {
 	common.BindArgCompletions(execAddonCmd, nil, common.SessionAddonComplete(con))
 
 	return []*cobra.Command{listaddonCmd, loadaddonCmd, execAddonCmd}
+}
+
+func Register(con *repl.Console) {
+	for name, addon := range loadedAddons {
+		intermediate.RegisterInternalFunc(name, addon.Func)
+	}
 }

@@ -3,6 +3,7 @@ package alias
 import (
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/help"
+	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/rsteube/carapace"
@@ -81,4 +82,10 @@ func Commands(con *repl.Console) []*cobra.Command {
 	aliasCmd.AddCommand(aliasListCmd, aliasLoadCmd, aliasInstallCmd, aliasRemoveCmd)
 	return []*cobra.Command{aliasCmd}
 
+}
+
+func Register(con *repl.Console) {
+	for name, aliasPkg := range loadedAliases {
+		intermediate.RegisterInternalFunc(name, aliasPkg.Func)
+	}
 }

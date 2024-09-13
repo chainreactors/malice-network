@@ -7,7 +7,7 @@ import (
 
 func UseSessionCmd(cmd *cobra.Command, con *repl.Console) {
 	var session *repl.Session
-	if session = con.Sessions[cmd.Flags().Arg(0)]; session == nil {
+	if session = con.GetSession(cmd.Flags().Arg(0)); session == nil {
 		repl.Log.Errorf(repl.ErrNotFoundSession.Error())
 		return
 	}

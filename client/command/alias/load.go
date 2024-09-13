@@ -7,6 +7,7 @@ import (
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/help"
+	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/client/core/intermediate/builtin"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/client/utils"
@@ -47,6 +48,7 @@ var (
 type loadedAlias struct {
 	Manifest *AliasManifest
 	Command  *cobra.Command
+	Func     *intermediate.InternalFunc
 }
 
 // AliasFile - An OS/Arch specific file
@@ -189,16 +191,12 @@ func RegisterAlias(aliasManifest *AliasManifest, cmd *cobra.Command, con *repl.C
 	loadedAliases[aliasManifest.CommandName] = &loadedAlias{
 		Manifest: aliasManifest,
 		Command:  addAliasCmd,
+		Func: repl.WrapImplantFunc(con, func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, args string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
+			return ExecuteAlias(rpc, sess, aliasManifest.CommandName, args, sac)
+		}, common.ParseAssembly),
 	}
 	cmd.AddCommand(addAliasCmd)
-	con.RegisterImplantFunc(
-		aliasManifest.CommandName,
-		ExecuteAlias,
-		"b"+aliasManifest.CommandName,
-		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, args string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
-			return ExecuteAlias(rpc, sess, aliasManifest.CommandName, args, sac)
-		},
-		common.ParseAssembly)
+
 	return nil
 }
 

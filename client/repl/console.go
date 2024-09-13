@@ -16,7 +16,6 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/proto"
 	"io"
-	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -38,32 +37,24 @@ type TaskCallback func(resp proto.Message)
 type BindCmds func(console *Console) console.Commands
 
 // Start - Console entrypoint
-func Start(bindCmds ...BindCmds) error {
+func NewConsole() (*Console, error) {
 	//assets.Setup(false, false)
 	tui.Reset()
-	settings, _ := assets.LoadSettings()
+	//settings, _ := assets.LoadSettings()
 	con := &Console{
 		ActiveTarget: &ActiveTarget{},
-		Settings:     settings,
-		Observers:    map[string]*Observer{},
-		Log:          Log,
-		Plugins:      NewPlugins(),
-	}
-	if len(os.Args) > 1 {
-		con.newConfigLogin(os.Args[1])
+		//Settings:     settings,
+		Observers: map[string]*Observer{},
+		Log:       Log,
+		Plugins:   NewPlugins(),
 	}
 
 	con.ActiveTarget.callback = func(sess *Session) {
 		con.ActiveTarget.activeObserver = NewObserver(sess)
 	}
 
-	con.NewConsole(bindCmds...)
-
-	err := con.App.Start()
-	if err != nil {
-		logs.Log.Errorf("Run loop returned error: %v", err)
-	}
-	return err
+	con.NewConsole()
+	return con, nil
 }
 
 type Console struct {
@@ -78,7 +69,7 @@ type Console struct {
 	Observers    map[string]*Observer
 }
 
-func (c *Console) NewConsole(bindCmds ...BindCmds) {
+func (c *Console) NewConsole() {
 	x.ClearStorage = func() {}
 	iom := console.New("IoM")
 	c.App = iom
@@ -88,17 +79,24 @@ func (c *Console) NewConsole(bindCmds ...BindCmds) {
 	client.Prompt().Primary = c.GetPrompt
 	client.AddInterrupt(io.EOF, exitConsole)
 	client.AddHistorySourceFile("history", filepath.Join(assets.GetRootAppDir(), "history"))
-	//client.SetCommands(bindCmds[0](c))
-	client.Command = bindCmds[0](c)()
-	c.App.SwitchMenu(consts.ClientMenu)
 
 	implant := iom.NewMenu(consts.ImplantMenu)
 	implant.Short = "Implant commands"
 	implant.Prompt().Primary = c.GetPrompt
 	implant.AddInterrupt(io.EOF, exitImplantMenu) // Ctrl-D
 	implant.AddHistorySourceFile("history", filepath.Join(assets.GetRootAppDir(), "implant_history"))
-	//implant.SetCommands(bindCmds[1](c))
-	implant.Command = bindCmds[1](c)()
+}
+
+func (c *Console) Start(bindCmds ...BindCmds) error {
+	c.App.Menu(consts.ClientMenu).Command = bindCmds[0](c)()
+	c.App.SwitchMenu(consts.ClientMenu)
+	c.App.Menu(consts.ImplantMenu).Command = bindCmds[1](c)()
+
+	err := c.App.Start()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (c *Console) Context() context.Context {
@@ -107,6 +105,13 @@ func (c *Console) Context() context.Context {
 	return metadata.NewOutgoingContext(ctx, metadata.Pairs(
 		"client_id", c.ClientConfig.Operator),
 	)
+}
+
+func (c *Console) GetSession(sessionID string) *Session {
+	if sess, ok := c.Sessions[sessionID]; ok {
+		return sess
+	}
+	return nil
 }
 
 func (c *Console) Login(config *mtls.ClientConfig) error {
@@ -215,16 +220,10 @@ func (c *Console) SwitchImplant(sess *Session) {
 
 func (c *Console) RegisterImplantFunc(name string, fn interface{}, bname string, bfn interface{}, callback ImplantCallback) {
 	if fn != nil {
-		err := intermediate.RegisterInternalFunc(name, WrapActiveFunc(c, fn, callback))
-		if err != nil {
-			Log.Error(err)
-		}
+		intermediate.RegisterInternalFunc(name, WrapActiveFunc(c, fn, callback))
 	}
 	if bfn != nil {
-		err := intermediate.RegisterInternalFunc(bname, WrapImplantFunc(c, fn, callback))
-		if err != nil {
-			Log.Error(err)
-		}
+		intermediate.RegisterInternalFunc(bname, WrapImplantFunc(c, fn, callback))
 	}
 }
 
