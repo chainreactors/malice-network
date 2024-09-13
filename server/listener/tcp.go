@@ -24,7 +24,7 @@ func StartTcpPipeline(conn *grpc.ClientConn, cfg *configs.TcpPipelineConfig) (*T
 		Name:       cfg.Name,
 		Port:       cfg.Port,
 		Host:       cfg.Host,
-		Enable:     cfg.Enable,
+		Enable:     true,
 		TlsConfig:  cfg.TlsConfig,
 		Encryption: cfg.EncryptionConfig,
 	}

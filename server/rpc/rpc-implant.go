@@ -26,14 +26,6 @@ func (rpc *Server) Register(ctx context.Context, req *lispb.RegisterSession) (*i
 
 	sess = core.NewSession(req)
 	core.Sessions.Add(sess)
-	err := core.Notifier.Send(&core.Event{
-		EventType: consts.EventSession,
-		Op:        consts.CtrlSessionStart,
-		Message:   fmt.Sprintf("session %s from %s start at %s", sess.ID, sess.PipelineID, sess.RemoteAddr),
-	})
-	if err != nil {
-		logs.Log.Errorf("send event failed %s", err.Error())
-	}
 	dbSession := db.Session()
 	d := dbSession.Create(models.ConvertToSessionDB(sess))
 	if d.Error != nil {
@@ -42,14 +34,16 @@ func (rpc *Server) Register(ctx context.Context, req *lispb.RegisterSession) (*i
 		core.EventBroker.Publish(core.Event{
 			EventType: consts.EventSession,
 			Session:   sess,
-			Message:   "re-register",
+			IsNotify:  true,
+			Message:   fmt.Sprintf("session %s from %s re-register at %s", sess.ID, sess.RemoteAddr, sess.PipelineID),
 		})
 		return &implantpb.Empty{}, nil
 	} else {
 		core.EventBroker.Publish(core.Event{
 			EventType: consts.EventSession,
 			Session:   sess,
-			Message:   "register",
+			IsNotify:  true,
+			Message:   fmt.Sprintf("session %s from %s start at %s", sess.ID, sess.RemoteAddr, sess.PipelineID),
 		})
 		logs.Log.Importantf("init new session %s from %s", sess.ID, sess.PipelineID)
 		return &implantpb.Empty{}, nil

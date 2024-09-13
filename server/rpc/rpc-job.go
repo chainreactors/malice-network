@@ -32,20 +32,13 @@ func (rpc *Server) JobStream(stream listenerrpc.ListenerRPC_JobStreamServer) err
 			if msg.Ctrl == consts.CtrlWebUpload {
 				continue
 			}
-			core.EventBroker.Publish(core.Event{
-				EventType: consts.EventJob,
-				Op:        msg.Ctrl,
-				Message:   fmt.Sprintf("%s", msg.Job.Name),
-			})
 			var nMsg string
-			var eventType string
 			switch msg.Job.Pipeline.Body.(type) {
 			case *lispb.Pipeline_Tcp:
 				marshal, err := yaml.Marshal(msg.Job.Pipeline.GetTcp())
 				if err != nil {
 					return err
 				}
-				eventType = consts.EventTcpPipeline
 				nMsg = string(marshal)
 			case *lispb.Pipeline_Web:
 				getWeb := msg.Job.Pipeline.GetWeb()
@@ -54,13 +47,13 @@ func (rpc *Server) JobStream(stream listenerrpc.ListenerRPC_JobStreamServer) err
 				if err != nil {
 					return err
 				}
-				eventType = consts.EventWebsite
 				nMsg = string(marshal)
 			}
-			err := core.Notifier.Send(&core.Event{
-				EventType: eventType,
+			core.EventBroker.Publish(core.Event{
+				EventType: consts.EventJob,
 				Op:        msg.Ctrl,
 				Message:   nMsg,
+				IsNotify:  true,
 			})
 			if err != nil {
 				return err

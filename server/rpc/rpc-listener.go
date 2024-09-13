@@ -35,7 +35,7 @@ func (rpc *Server) RegisterListener(ctx context.Context, req *lispb.RegisterList
 		Active:    true,
 		Pipelines: make(core.Pipelines),
 	})
-	err := core.Notifier.Send(&core.Event{
+	err := core.EventBroker.Notify(core.Event{
 		EventType: consts.EventListener,
 		Op:        consts.CtrlListenerStart,
 		Message:   fmt.Sprintf("Listener %s started at %s", req.Name, p.Addr.String()),

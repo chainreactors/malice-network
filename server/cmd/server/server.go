@@ -83,7 +83,7 @@ func Execute() {
 		return
 	}
 
-	err = core.Notifier.InitService(opt.Server.NotifyConfig)
+	err = core.EventBroker.InitService(opt.Server.NotifyConfig)
 	if err != nil {
 		logs.Log.Errorf("cannot init notifier , %s ", err.Error())
 		return

@@ -216,6 +216,7 @@ func (lns *listener) Start() {
 		ch := make(chan bool)
 		websitePipeline := startWebsite.ToProtobuf().(*lispb.Website)
 		websitePipeline.ListenerId = lns.Name
+		websitePipeline.Enable = true
 		job := &core.Job{
 			ID: core.CurrentJobID(),
 			Message: &lispb.Pipeline{
@@ -382,6 +383,7 @@ func (lns *listener) startWebsite(job *clientpb.Job) *clientpb.JobStatus {
 			}
 		}
 	}
+	job.GetPipeline().GetWeb().Enable = true
 	return &clientpb.JobStatus{
 		ListenerId: lns.ID(),
 		Ctrl:       consts.CtrlJobStart,
