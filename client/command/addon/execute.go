@@ -16,7 +16,7 @@ import (
 func ExecuteAddonCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
 	args := cmd.Flags().Args()
-	timeout, _ := cmd.Flags().GetInt("timeout")
+	timeout, _ := cmd.Flags().GetUint32("timeout")
 	quiet, _ := cmd.Flags().GetBool("quiet")
 	arch, _ := cmd.Flags().GetString("arch")
 	process, _ := cmd.Flags().GetString("process")
@@ -44,7 +44,7 @@ func ExecuteAddonCmd(cmd *cobra.Command, con *repl.Console) {
 }
 
 func ExecuteAddon(rpc clientrpc.MaliceRPCClient, sess *repl.Session, name string, args []string,
-	output bool, timeout int, arch string, process string,
+	output bool, timeout uint32, arch string, process string,
 	sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 	return rpc.ExecuteAddon(sess.Context(), &implantpb.ExecuteAddon{
 		Addon: name,
@@ -53,7 +53,7 @@ func ExecuteAddon(rpc clientrpc.MaliceRPCClient, sess *repl.Session, name string
 			Args:        args,
 			Sacrifice:   sac,
 			Output:      output,
-			Timeout:     uint32(timeout),
+			Timeout:     timeout,
 			Arch:        consts.ArchMap[arch],
 			ProcessName: process,
 		},

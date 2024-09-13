@@ -14,6 +14,7 @@ import (
 	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"math"
 )
 
 func Commands(con *repl.Console) []*cobra.Command {
@@ -75,9 +76,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		carapace.ActionFiles().Usage("path the shellcode file"),
 		carapace.ActionValues().Usage("arguments to pass to the assembly entrypoint"))
 
-	common.BindFlag(execShellcodeCmd, common.ExecuteFlagSet, common.SacrificeFlagSet, func(f *pflag.FlagSet) {
-		f.String("arch", "x86", "architecture of the shellcode (x86 or x64)")
-	})
+	common.BindFlag(execShellcodeCmd, common.ExecuteFlagSet, common.SacrificeFlagSet)
 
 	inlineShellcodeCmd := &cobra.Command{
 		Use:   consts.ModuleAliasInlineShellcode,
@@ -89,12 +88,13 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return
 		},
 		Annotations: map[string]string{
-			"depend": consts.ModuleAliasInlineShellcode,
+			"depend": consts.ModuleExecuteShellcode,
 		},
 	}
 
 	common.BindArgCompletions(inlineShellcodeCmd, nil,
 		carapace.ActionFiles().Usage("path the shellcode file"))
+	common.BindFlag(inlineShellcodeCmd, common.ExecuteFlagSet)
 
 	execDLLCmd := &cobra.Command{
 		Use:   consts.ModuleExecuteDll,
@@ -172,6 +172,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 			"depend": consts.ModuleExecuteExe,
 		},
 	}
+	common.BindFlag(inlinePECmd, common.ExecuteFlagSet)
 	common.BindArgCompletions(inlinePECmd, nil,
 		carapace.ActionFiles().Usage("path the PE file"))
 
@@ -193,8 +194,6 @@ func Commands(con *repl.Console) []*cobra.Command {
 		carapace.ActionFiles().Usage("path the BOF file"),
 		carapace.ActionValues().Usage("arguments to pass to the assembly entrypoint"))
 
-	common.BindFlag(execBofCmd)
-
 	execPowershellCmd := &cobra.Command{
 		Use:   consts.ModulePowershell,
 		Short: "Loads and executes powershell (Windows Only)",
@@ -208,11 +207,15 @@ func Commands(con *repl.Console) []*cobra.Command {
 		},
 	}
 
+	common.BindFlag(execPowershellCmd, func(f *pflag.FlagSet) {
+		f.StringP("script", "s", "", "powershell script")
+	})
+
 	common.BindArgCompletions(execPowershellCmd, nil,
 		carapace.ActionValues().Usage("powershell"))
 
-	common.BindFlag(execPowershellCmd, func(f *pflag.FlagSet) {
-		f.StringP("script", "s", "", "powershell script")
+	common.BindFlagCompletions(execPowershellCmd, func(comp carapace.ActionMap) {
+		comp["script"] = carapace.ActionFiles()
 	})
 
 	con.RegisterImplantFunc(
@@ -250,7 +253,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		"bshinject",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, ppid int, arch, path string) (*clientpb.Task, error) {
 			sac, _ := builtin.NewSacrificeProcessMessage(int64(ppid), false, true, true, "")
-			return ExecShellcode(rpc, sess, path, nil, true, -1, sess.Os.Arch, "", sac)
+			return ExecShellcode(rpc, sess, path, nil, true, math.MaxUint32, sess.Os.Arch, "", sac)
 		}, common.ParseAssembly)
 
 	con.RegisterImplantFunc(
@@ -258,7 +261,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		InlineShellcode,
 		"binline_shellcode",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string) (*clientpb.Task, error) {
-			return InlineShellcode(rpc, sess, path, nil, true, -1, sess.Os.Arch, "")
+			return InlineShellcode(rpc, sess, path, nil, true, math.MaxUint32, sess.Os.Arch, "")
 		}, common.ParseAssembly)
 
 	con.RegisterImplantFunc(
@@ -267,7 +270,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		"bdllinject",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, ppid int, path string) (*clientpb.Task, error) {
 			sac, _ := builtin.NewSacrificeProcessMessage(int64(ppid), false, true, true, "")
-			return ExecDLL(rpc, sess, path, "DLLMain", nil, true, -1, sess.Os.Arch, "", sac)
+			return ExecDLL(rpc, sess, path, "DLLMain", nil, true, math.MaxUint32, sess.Os.Arch, "", sac)
 		}, common.ParseAssembly)
 
 	con.RegisterImplantFunc(
@@ -279,7 +282,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 			if err != nil {
 				return nil, err
 			}
-			return InlineDLL(rpc, sess, path, entryPoint, param, true, -1, sess.Os.Arch, process)
+			return InlineDLL(rpc, sess, path, entryPoint, param, true, math.MaxUint32, sess.Os.Arch, process)
 		}, common.ParseAssembly)
 
 	con.RegisterImplantFunc(
@@ -291,7 +294,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 			if err != nil {
 				return nil, err
 			}
-			return ExecExe(rpc, sess, path, cmdline, true, -1, sess.Os.Arch, process, sac)
+			return ExecExe(rpc, sess, path, cmdline, true, math.MaxUint32, sess.Os.Arch, process, sac)
 		}, common.ParseAssembly)
 
 	con.RegisterImplantFunc(
@@ -303,7 +306,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 			if err != nil {
 				return nil, err
 			}
-			return InlineExe(rpc, sess, path, param, true, -1, sess.Os.Arch, "")
+			return InlineExe(rpc, sess, path, param, true, math.MaxUint32, sess.Os.Arch, "")
 		}, common.ParseAssembly)
 
 	con.RegisterImplantFunc(

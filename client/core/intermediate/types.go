@@ -143,7 +143,7 @@ func RegisterBuiltinFunc(rpc clientrpc.MaliceRPCClient) {
 
 	// 构建新的二进制消息
 	RegisterFunction("new_binary", func(module, filename string, args []string,
-		output bool, timeout int, arch, process string,
+		output bool, timeout uint32, arch, process string,
 		sacrifice *implantpb.SacrificeProcess) (*implantpb.ExecuteBinary, error) {
 		return builtin.NewBinary(module, filename, args, output, timeout, arch, process, sacrifice)
 	})

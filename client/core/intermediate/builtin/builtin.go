@@ -39,7 +39,7 @@ func NewSacrificeProcessMessage(ppid int64, hidden, block_dll, disable_etw bool,
 	}, nil
 }
 
-func NewBinary(module string, path string, args []string, output bool, timeout int, arch string, process string, sac *implantpb.SacrificeProcess) (*implantpb.ExecuteBinary, error) {
+func NewBinary(module string, path string, args []string, output bool, timeout uint32, arch string, process string, sac *implantpb.SacrificeProcess) (*implantpb.ExecuteBinary, error) {
 	bin, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -47,13 +47,14 @@ func NewBinary(module string, path string, args []string, output bool, timeout i
 	if process == "" {
 		process = filepath.Base(path)
 	}
+
 	return &implantpb.ExecuteBinary{
 		Name:        filepath.Base(path),
 		Bin:         bin,
 		Type:        module,
 		Args:        args,
 		Output:      output,
-		Timeout:     uint32(timeout),
+		Timeout:     timeout,
 		Arch:        consts.ArchMap[arch],
 		ProcessName: process,
 		Sacrifice:   sac,

@@ -3,9 +3,11 @@ package common
 import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/core/intermediate/builtin"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/spf13/cobra"
+	"math"
 )
 
 func ParseSacrifice(cmd *cobra.Command) (*implantpb.SacrificeProcess, error) {
@@ -17,15 +19,15 @@ func ParseSacrifice(cmd *cobra.Command) (*implantpb.SacrificeProcess, error) {
 	return builtin.NewSacrificeProcessMessage(int64(ppid), hidden, isBlockDll, disableEtw, argue)
 }
 
-func ParseBinaryParams(cmd *cobra.Command) (string, []string, bool, int) {
+func ParseBinaryParams(cmd *cobra.Command) (string, []string, bool, uint32) {
 	path := cmd.Flags().Arg(0)
 	args := cmd.Flags().Args()[1:]
-	timeout, _ := cmd.Flags().GetInt("timeout")
+	timeout, _ := cmd.Flags().GetUint32("timeout")
 	quiet, _ := cmd.Flags().GetBool("quiet")
 	return path, args, !quiet, timeout
 }
 
-func ParseFullBinaryParams(cmd *cobra.Command) (string, []string, bool, int, string, string) {
+func ParseFullBinaryParams(cmd *cobra.Command) (string, []string, bool, uint32, string, string) {
 	path, args, output, timeout := ParseBinaryParams(cmd)
 	arch, _ := cmd.Flags().GetString("arch")
 	process, _ := cmd.Flags().GetString("process")
@@ -37,7 +39,7 @@ func ParseAssembly(ctx *clientpb.TaskContext) (interface{}, error) {
 }
 
 func NewExecutable(module string, path string, args []string, arch string, output bool, sac *implantpb.SacrificeProcess) (*implantpb.ExecuteBinary, error) {
-	binary, err := builtin.NewBinary(module, path, args, output, -1, arch, "", sac)
+	binary, err := builtin.NewBinary(module, path, args, output, math.MaxUint32, arch, "", sac)
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +47,11 @@ func NewExecutable(module string, path string, args []string, arch string, outpu
 	return binary, nil
 }
 
-func NewBinary(module string, path string, args []string, output bool, timeout int, arch string, process string, sac *implantpb.SacrificeProcess) (*implantpb.ExecuteBinary, error) {
+func NewBinary(module string, path string, args []string, output bool, timeout uint32, arch string, process string, sac *implantpb.SacrificeProcess) (*implantpb.ExecuteBinary, error) {
+	if name, ok := consts.ModuleAliases[module]; ok {
+		module = name
+	}
+
 	return builtin.NewBinary(module, path, args, output, timeout, arch, process, sac)
 }
 
