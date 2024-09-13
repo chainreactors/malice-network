@@ -70,7 +70,7 @@ func InlineDLL(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path, entryPoi
 	if arch == "" {
 		arch = sess.Os.Arch
 	}
-	binary, err := common.NewBinary(consts.ModuleAliasInlineDll, path, args, output, timeout, arch, process, nil)
+	binary, err := common.NewBinary(consts.ModuleExecuteDll, path, args, output, timeout, arch, process, nil)
 	if err != nil {
 		return nil, err
 	}
