@@ -3,8 +3,11 @@ package repl
 import (
 	"context"
 	"fmt"
+	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/mtls"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/mattn/go-tty"
@@ -197,4 +200,49 @@ func CmdExists(name string, cmd *cobra.Command) bool {
 		}
 	}
 	return false
+}
+
+func Login(con *Console, config *mtls.ClientConfig) error {
+	conn, err := mtls.Connect(config)
+	if err != nil {
+		logs.Log.Errorf("Failed to connect: %v", err)
+		return err
+	}
+	logs.Log.Importantf("Connected to server %s", config.Address())
+	con.ServerStatus, err = InitServerStatus(conn)
+	if err != nil {
+		logs.Log.Errorf("init server failed : %v", err)
+		return err
+	}
+	con.ClientConfig = config
+	var pipelineCount = 0
+	for _, i := range con.Listeners {
+		pipelineCount = pipelineCount + len(i.Pipelines.Pipelines)
+	}
+	var alive = 0
+	for _, i := range con.Sessions {
+		if i.IsAlive {
+			alive++
+		}
+	}
+	logs.Log.Importantf("%d listeners, %d pipelines, %d clients, %d sessions (%d alive)",
+		len(con.Listeners), pipelineCount, len(con.Clients), len(con.Sessions), alive)
+	return nil
+}
+
+func NewConfigLogin(con *Console, yamlFile string) {
+	config, err := mtls.ReadConfig(yamlFile)
+	if err != nil {
+		logs.Log.Errorf("Error reading config file: %v", err)
+		return
+	}
+	err = Login(con, config)
+	if err != nil {
+		logs.Log.Errorf("Error login: %v", err)
+		return
+	}
+	err = assets.MvConfig(yamlFile)
+	if err != nil {
+		return
+	}
 }

@@ -114,51 +114,6 @@ func (c *Console) GetSession(sessionID string) *Session {
 	return nil
 }
 
-func (c *Console) Login(config *mtls.ClientConfig) error {
-	conn, err := mtls.Connect(config)
-	if err != nil {
-		logs.Log.Errorf("Failed to connect: %v", err)
-		return err
-	}
-	logs.Log.Importantf("Connected to server %s", config.Address())
-	c.ServerStatus, err = InitServerStatus(conn)
-	if err != nil {
-		logs.Log.Errorf("init server failed : %v", err)
-		return err
-	}
-	c.ClientConfig = config
-	var pipelineCount = 0
-	for _, i := range c.Listeners {
-		pipelineCount = pipelineCount + len(i.Pipelines.Pipelines)
-	}
-	var alive = 0
-	for _, i := range c.Sessions {
-		if i.IsAlive {
-			alive++
-		}
-	}
-	logs.Log.Importantf("%d listeners, %d pipelines, %d clients, %d sessions (%d alive)",
-		len(c.Listeners), pipelineCount, len(c.Clients), len(c.Sessions), alive)
-	return nil
-}
-
-func (c *Console) newConfigLogin(yamlFile string) {
-	config, err := mtls.ReadConfig(yamlFile)
-	if err != nil {
-		logs.Log.Errorf("Error reading config file: %v", err)
-		return
-	}
-	err = c.Login(config)
-	if err != nil {
-		logs.Log.Errorf("Error login: %v", err)
-		return
-	}
-	err = assets.MvConfig(yamlFile)
-	if err != nil {
-		return
-	}
-}
-
 func (c *Console) GetPrompt() string {
 	session := c.ActiveTarget.Get()
 	if session != nil {
