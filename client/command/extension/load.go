@@ -18,7 +18,6 @@ import (
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/chainreactors/tui"
 	"github.com/kballard/go-shellquote"
-	app "github.com/reeflective/console"
 	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -258,7 +257,7 @@ func ExtensionRegisterCommand(extCmd *ExtCommand, cmd *cobra.Command, con *repl.
 			runExtensionCmd(cmd, con)
 		},
 		GroupID:     consts.ArmoryGroup,
-		Annotations: makeCommandPlatformFilters(extCmd),
+		Annotations: makeExtPlatformFilters(extCmd),
 	}
 
 	f := pflag.NewFlagSet(extCmd.CommandName, pflag.ContinueOnError)
@@ -609,40 +608,18 @@ func checkExtensionArgs(extCmd *ExtCommand) error {
 	return nil
 }
 
-func makeCommandPlatformFilters(extCmd *ExtCommand) map[string]string {
-	filtersOS := make(map[string]bool)
-	filtersArch := make(map[string]bool)
-
-	var all []string
+func makeExtPlatformFilters(ext *ExtCommand) map[string]string {
+	all := make(map[string]string)
 
 	// Only add filters for architectures when there OS matters.
-	for _, file := range extCmd.Files {
-		filtersOS[file.OS] = true
-
-		if filtersOS[file.OS] {
-			filtersArch[file.Arch] = true
-		}
+	var arch []string
+	for _, file := range ext.Files {
+		all["os"] = file.OS
+		arch = append(arch, file.Arch)
 	}
-
-	for os, enabled := range filtersOS {
-		if enabled {
-			all = append(all, os)
-		}
-	}
-
-	for arch, enabled := range filtersArch {
-		if enabled {
-			all = append(all, arch)
-		}
-	}
-
-	if len(all) == 0 {
-		return map[string]string{}
-	}
-
-	return map[string]string{
-		app.CommandFilterKey: strings.Join(all, ","),
-	}
+	all["arch"] = strings.Join(arch, ",")
+	all["depend"] = ext.DependsOn
+	return all
 }
 
 // makeExtensionArgCompleter builds the positional arguments completer for the extension.
