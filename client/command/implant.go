@@ -86,17 +86,15 @@ func BindImplantCommands(con *repl.Console) console.Commands {
 				continue
 			}
 
-			if plug, err := con.Plugins.LoadPlugin(manifest, con); err == nil {
-				err := plug.ReverseRegisterLuaFunctions(con, implant)
-				if err != nil {
-					con.Log.Errorf("Failed to register mal command: %s\n", err)
-					continue
-				}
+			if _, err := con.Plugins.LoadPlugin(manifest, con); err == nil {
+				//plugin.GenerateLuaDefinitionFile(plug.LuaVM, "lua.lua")
 			} else {
 				con.Log.Errorf("Failed to load mal: %s\n", err)
 				continue
 			}
+
 		}
+
 		return implant
 	}
 	return implantCommands

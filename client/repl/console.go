@@ -46,8 +46,8 @@ func Start(bindCmds ...BindCmds) error {
 		ActiveTarget: &ActiveTarget{},
 		Settings:     settings,
 		Observers:    map[string]*Observer{},
-		Plugins:      NewPlugins(),
 		Log:          Log,
+		Plugins:      NewPlugins(),
 	}
 	if len(os.Args) > 1 {
 		con.newConfigLogin(os.Args[1])
@@ -58,6 +58,7 @@ func Start(bindCmds ...BindCmds) error {
 	}
 
 	con.NewConsole(bindCmds...)
+
 	err := con.App.Start()
 	if err != nil {
 		logs.Log.Errorf("Run loop returned error: %v", err)
@@ -82,9 +83,6 @@ func (c *Console) NewConsole(bindCmds ...BindCmds) {
 	iom := console.New("IoM")
 	c.App = iom
 
-	x.ClearStorage = func() {
-
-	}
 	client := iom.NewMenu(consts.ClientMenu)
 	client.Short = "client commands"
 	client.Prompt().Primary = c.GetPrompt
@@ -217,15 +215,13 @@ func (c *Console) SwitchImplant(sess *Session) {
 
 func (c *Console) RegisterImplantFunc(name string, fn interface{}, bname string, bfn interface{}, callback ImplantCallback) {
 	if fn != nil {
-		ifunc, isig := WrapActiveFunc(c, fn, callback)
-		err := intermediate.RegisterInternalFunc(name, ifunc, isig)
+		err := intermediate.RegisterInternalFunc(name, WrapActiveFunc(c, fn, callback))
 		if err != nil {
 			Log.Error(err)
 		}
 	}
 	if bfn != nil {
-		ifunc, isig := WrapImplantFunc(c, fn, callback)
-		err := intermediate.RegisterInternalFunc(bname, ifunc, isig)
+		err := intermediate.RegisterInternalFunc(bname, WrapImplantFunc(c, fn, callback))
 		if err != nil {
 			Log.Error(err)
 		}
@@ -233,6 +229,5 @@ func (c *Console) RegisterImplantFunc(name string, fn interface{}, bname string,
 }
 
 func (c *Console) RegisterServerFunc(name string, fn interface{}) error {
-	ifunc, isig := WrapServerFunc(c, fn)
-	return intermediate.RegisterInternalFunc(name, ifunc, isig)
+	return intermediate.RegisterInternalFunc(name, WrapServerFunc(c, fn))
 }

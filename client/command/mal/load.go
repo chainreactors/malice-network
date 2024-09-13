@@ -40,10 +40,6 @@ func LoadMal(con *repl.Console, filename string) (*plugin.MalManiFest, error) {
 		return nil, err
 	}
 
-	err = plug.ReverseRegisterLuaFunctions(con, con.ImplantMenu())
-	if err != nil {
-		return nil, err
-	}
 	var cmds []string
 	for _, cmd := range plug.CMDs {
 		cmds = append(cmds, cmd.Name())
