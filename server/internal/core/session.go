@@ -57,6 +57,7 @@ func NewSession(req *lispb.RegisterSession) *Session {
 // Session - Represents a connection to an implant
 type Session struct {
 	PipelineID string
+	ListenerID string
 	ID         string
 	Name       string
 	Group      string

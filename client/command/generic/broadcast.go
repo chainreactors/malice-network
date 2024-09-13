@@ -37,8 +37,9 @@ func Broadcast(con *repl.Console, msg string) (bool, error) {
 
 func Notify(con *repl.Console, msg string) (bool, error) {
 	_, err := con.Rpc.Notify(con.Context(), &clientpb.Event{
-		Type: consts.EventNotify,
-		Data: []byte(msg),
+		Type:    consts.EventNotify,
+		Op:      con.ClientConfig.Operator,
+		Message: msg,
 	})
 
 	return true, err

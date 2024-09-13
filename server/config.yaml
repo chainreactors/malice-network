@@ -8,6 +8,27 @@ server:
     packet_length: 1048576 # 1M:
     certificate:
     certificate_key:
+  notify:
+    enable: false
+    telegram:
+        enable: false
+        api_key:
+        chat_id:
+    dingtalk:
+        enable: false
+        secret:
+        token:
+    lark:
+      enable: false
+      webhook_url:
+    serverchan:
+        enable: false
+        url:
+        method:
+        headers:
+        content_type:
+        bodyTemplate:
+
 
 listeners:
   name: listener
