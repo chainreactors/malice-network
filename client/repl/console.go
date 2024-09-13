@@ -41,6 +41,7 @@ func NewConsole() (*Console, error) {
 	//assets.Setup(false, false)
 	tui.Reset()
 	//settings, _ := assets.LoadSettings()
+	//assets.SetInputrc()
 	con := &Console{
 		ActiveTarget: &ActiveTarget{},
 		//Settings:     settings,
