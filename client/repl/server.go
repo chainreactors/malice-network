@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/handler"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
@@ -25,6 +26,8 @@ func InitServerStatus(conn *grpc.ClientConn) (*ServerStatus, error) {
 		finishCallbacks: &sync.Map{},
 		doneCallbacks:   &sync.Map{},
 	}
+
+	intermediate.Register(s.Rpc)
 
 	s.Info, err = s.Rpc.GetBasic(context.Background(), &clientpb.Empty{})
 	if err != nil {

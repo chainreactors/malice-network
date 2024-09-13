@@ -3,259 +3,31 @@ package intermediate
 import (
 	"fmt"
 	lua "github.com/yuin/gopher-lua"
-	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/reflect/protoreflect"
-	"google.golang.org/protobuf/reflect/protoregistry"
 	luar "layeh.com/gopher-luar"
 	"reflect"
 )
 
-func WrapFuncForLua(fn InternalFunc, expectedArgs []reflect.Type) lua.LGFunction {
-	return func(L *lua.LState) int {
-		var args []interface{}
-		top := L.GetTop()
-
-		// 检查参数数量
-		if len(expectedArgs) != top {
-			L.Push(lua.LString(fmt.Sprintf("Error: expected %d arguments, got %d", len(expectedArgs), top)))
-			return 1
-		}
-
-		// 将 Lua 参数转换为 Go 参数并检查类型
-		for i := 1; i <= top; i++ {
-			arg := convertLuaValueToGo(L, L.Get(i))
-			expectedType := expectedArgs[i-1]
-
-			if arg == nil {
-				// 如果参数是 nil，生成预期类型的零值
-				if expectedType.Kind() == reflect.Ptr {
-					// 为指针类型创建新的零值结构体实例
-					newInstance := reflect.New(expectedType.Elem()).Interface()
-					args = append(args, newInstance)
-				} else {
-					// 为非指针类型使用其零值
-					args = append(args, reflect.Zero(expectedType).Interface())
-				}
-			} else if reflect.TypeOf(arg) != expectedType {
-				L.Push(lua.LString(fmt.Sprintf("Error: argument %d expected type %v, got %v", i, expectedType, reflect.TypeOf(arg))))
-				return 1
-			} else {
-				args = append(args, arg)
-			}
-		}
-
-		// 调用 Go 函数
-		result, err := fn(args...)
-		if err != nil {
-			L.Push(lua.LString(fmt.Sprintf("Error: %v", err)))
-			return 1
-		}
-
-		// 将结果推回 Lua
-		L.Push(convertGoValueToLua(L, result))
-
-		return 1
-	}
-}
-
-func WrapDynamicFuncForLua(fn InternalFunc) lua.LGFunction {
+func WrapFuncForLua(fn *InternalFunc) lua.LGFunction {
 	return func(L *lua.LState) int {
 		var args []interface{}
 
 		// 将 Lua 参数转换为 Go 参数
 		for i := 1; i <= L.GetTop(); i++ {
-			args = append(args, convertLuaValueToGo(L, L.Get(i)))
+			args = append(args, ConvertLuaValueToGo(L, L.Get(i)))
 		}
 
 		// 调用 Go 函数
-		result, err := fn(args...)
+		result, err := fn.Func(args...)
 		if err != nil {
 			L.Push(lua.LString(fmt.Sprintf("Error: %v", err)))
 			return 1
 		}
 
 		// 将结果推回 Lua
-		L.Push(convertGoValueToLua(L, result))
+		L.Push(ConvertGoValueToLua(L, result))
 
 		return 1
-	}
-}
-
-// 注册 Protobuf Message 的类型和方法
-func RegisterProtobufMessageType(L *lua.LState) {
-	mt := L.NewTypeMetatable("ProtobufMessage")
-	L.SetGlobal("ProtobufMessage", mt)
-
-	// 注册 __index 和 __newindex 元方法
-	L.SetField(mt, "__index", L.NewFunction(protoIndex))
-	L.SetField(mt, "__newindex", L.NewFunction(protoNewIndex))
-
-	// 注册 __tostring 元方法
-	L.SetField(mt, "__tostring", L.NewFunction(protoToString))
-
-	L.SetField(mt, "New", L.NewFunction(protoNew))
-}
-
-// __tostring 元方法：将 Protobuf 消息转换为字符串
-func protoToString(L *lua.LState) int {
-	ud := L.CheckUserData(1)
-	if msg, ok := ud.Value.(proto.Message); ok {
-		// 使用反射遍历并处理 Protobuf 消息的字段
-		truncatedMsg := truncateMessageFields(msg)
-
-		// 使用 protojson 将处理后的 Protobuf 消息转换为 JSON 字符串
-		marshaler := protojson.MarshalOptions{
-			Indent: "  ",
-		}
-		jsonStr, err := marshaler.Marshal(truncatedMsg)
-		if err != nil {
-			L.Push(lua.LString(fmt.Sprintf("Error: %v", err)))
-		} else {
-			L.Push(lua.LString(fmt.Sprintf("<ProtobufMessage: %s> %s", proto.MessageName(msg), string(jsonStr))))
-		}
-		return 1
-	}
-	L.Push(lua.LString("<invalid ProtobufMessage>"))
-	return 1
-}
-
-// truncateLongFields 递归处理 map 中的字符串字段，截断长度超过 1024 的字符串
-func truncateMessageFields(msg proto.Message) proto.Message {
-	// 创建消息的深拷贝，以避免修改原始消息
-	copyMsg := proto.Clone(msg)
-
-	msgValue := reflect.ValueOf(copyMsg).Elem()
-	msgType := msgValue.Type()
-
-	for i := 0; i < msgType.NumField(); i++ {
-		fieldValue := msgValue.Field(i)
-
-		// 处理字符串类型字段
-		if fieldValue.Kind() == reflect.String && fieldValue.Len() > 1024 {
-			truncatedStr := fieldValue.String()[:1024] + "......"
-			fieldValue.SetString(truncatedStr)
-		}
-
-		// 处理字节数组（[]byte）类型字段
-		if fieldValue.Kind() == reflect.Slice && fieldValue.Type().Elem().Kind() == reflect.Uint8 {
-			// 如果字节数组长度大于 1024，则截断
-			if fieldValue.Len() > 1024 {
-				truncatedBytes := append(fieldValue.Slice(0, 1024).Bytes(), []byte("......")...)
-				fieldValue.SetBytes(truncatedBytes)
-			}
-		}
-
-		// 处理嵌套的消息类型字段
-		if fieldValue.Kind() == reflect.Ptr && !fieldValue.IsNil() && fieldValue.Elem().Kind() == reflect.Struct {
-			nestedMsg, ok := fieldValue.Interface().(proto.Message)
-			if ok {
-				truncateMessageFields(nestedMsg)
-			}
-		}
-
-		// 处理 repeated 字段（slice 类型）
-		if fieldValue.Kind() == reflect.Slice && fieldValue.Type().Elem().Kind() == reflect.Ptr {
-			for j := 0; j < fieldValue.Len(); j++ {
-				item := fieldValue.Index(j)
-				if item.Kind() == reflect.Ptr && item.Elem().Kind() == reflect.Struct {
-					nestedMsg, ok := item.Interface().(proto.Message)
-					if ok {
-						truncateMessageFields(nestedMsg)
-					}
-				}
-			}
-		}
-	}
-
-	return copyMsg
-}
-
-func protoNew(L *lua.LState) int {
-	// 获取消息类型名称
-	msgTypeName := L.CheckString(2) // 这里确保第一个参数是字符串类型
-
-	// 查找消息类型
-	msgType, err := protoregistry.GlobalTypes.FindMessageByName(protoreflect.FullName(msgTypeName))
-	if err != nil {
-		L.Push(lua.LNil)
-		L.Push(lua.LString("invalid message type: " + msgTypeName))
-		return 2
-	}
-
-	// 创建消息实例
-	msg := msgType.New().Interface()
-
-	// 初始化字段
-	if L.GetTop() > 1 {
-		initTable := L.CheckTable(3)
-		initTable.ForEach(func(key lua.LValue, value lua.LValue) {
-			fieldName := key.String()
-			fieldValue := convertLuaValueToGo(L, value)
-			setFieldByName(msg, fieldName, fieldValue)
-		})
-	}
-
-	// 将消息实例返回给 Lua
-	ud := L.NewUserData()
-	ud.Value = msg
-	L.SetMetatable(ud, L.GetTypeMetatable("ProtobufMessage"))
-	L.Push(ud)
-	return 1
-}
-
-// __index 元方法：获取 Protobuf 消息的字段值
-func protoIndex(L *lua.LState) int {
-	ud := L.CheckUserData(1)
-	fieldName := L.CheckString(2)
-
-	if msg, ok := ud.Value.(proto.Message); ok {
-		val := getFieldByName(msg, fieldName)
-		L.Push(convertGoValueToLua(L, val))
-		return 1
-	}
-	return 0
-}
-
-// __newindex 元方法：设置 Protobuf 消息的字段值
-func protoNewIndex(L *lua.LState) int {
-	ud := L.CheckUserData(1)
-	fieldName := L.CheckString(2)
-	newValue := convertLuaValueToGo(L, L.Get(3))
-
-	if msg, ok := ud.Value.(proto.Message); ok {
-		setFieldByName(msg, fieldName, newValue)
-	}
-	return 0
-}
-
-// 使用反射获取字段值
-func getFieldByName(msg proto.Message, fieldName string) interface{} {
-	val := reflect.ValueOf(msg).Elem().FieldByName(fieldName)
-	if val.IsValid() {
-		return val.Interface()
-	}
-	return nil
-}
-
-// 使用反射设置字段值
-func setFieldByName(msg proto.Message, fieldName string, newValue interface{}) {
-	val := reflect.ValueOf(msg).Elem().FieldByName(fieldName)
-	if val.IsValid() && val.CanSet() {
-		// 将 Lua 值转换为 Go 值并直接设置
-		newVal := reflect.ValueOf(newValue)
-
-		// 特别处理 []byte 类型
-		if val.Kind() == reflect.Slice && val.Type().Elem().Kind() == reflect.Uint8 {
-			if str, ok := newValue.(string); ok {
-				newVal = reflect.ValueOf([]byte(str))
-			}
-		}
-
-		// 检查是否可以直接设置值
-		if newVal.Type().ConvertibleTo(val.Type()) {
-			val.Set(newVal.Convert(val.Type()))
-		}
 	}
 }
 
@@ -265,7 +37,7 @@ func luaTableToMap(L *lua.LState, tbl *lua.LTable) map[string]interface{} {
 	tbl.ForEach(func(key, value lua.LValue) {
 		switch keyStr := key.(type) {
 		case lua.LString:
-			result[string(keyStr)] = convertLuaValueToGo(L, value)
+			result[string(keyStr)] = ConvertLuaValueToGo(L, value)
 		}
 	})
 	return result
@@ -296,7 +68,7 @@ func luaTableToStringSlice(L *lua.LState, tbl *lua.LTable) []string {
 	return result
 }
 
-func convertLuaValueToGo(L *lua.LState, value lua.LValue) interface{} {
+func ConvertLuaValueToGo(L *lua.LState, value lua.LValue) interface{} {
 	switch v := value.(type) {
 	case lua.LString:
 		return string(v)
@@ -325,7 +97,7 @@ func convertLuaValueToGo(L *lua.LState, value lua.LValue) interface{} {
 }
 
 // 将 Lua 的 lua.LValue 转换为 Go 的 interface{}
-func convertGoValueToLua(L *lua.LState, value interface{}) lua.LValue {
+func ConvertGoValueToLua(L *lua.LState, value interface{}) lua.LValue {
 	switch v := value.(type) {
 	case proto.Message:
 		// 如果是 proto.Message 类型，将其封装为 LUserData 并设置元表
@@ -334,7 +106,36 @@ func convertGoValueToLua(L *lua.LState, value interface{}) lua.LValue {
 		L.SetMetatable(ud, L.GetTypeMetatable("ProtobufMessage"))
 		return ud
 	default:
-		// 对于其他类型，使用 luar.New 进行处理
 		return luar.New(L, value)
+	}
+}
+
+func ConvertGoValueToLuaType(L *lua.LState, t reflect.Type) string {
+	// 判断是否是 Protobuf 消息类型
+	if t.Implements(reflect.TypeOf((*proto.Message)(nil)).Elem()) {
+		// 返回具体的 Protobuf 类型名
+		return t.Elem().Name()
+	}
+
+	// 处理其他类型
+	switch t.Kind() {
+	case reflect.Int, reflect.Int32, reflect.Int64, reflect.Float32, reflect.Float64:
+		return "number"
+	case reflect.Bool:
+		return "boolean"
+	case reflect.String:
+		return "string"
+	case reflect.Slice:
+		if t.Elem().Kind() == reflect.String {
+			return "table<string>"
+		}
+		return "table"
+	case reflect.Ptr:
+		if t.Elem().Kind() == reflect.Struct {
+			return "table"
+		}
+		return ConvertGoValueToLuaType(L, t.Elem()) // 递归处理指针类型
+	default:
+		return "any"
 	}
 }

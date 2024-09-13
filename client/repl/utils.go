@@ -9,6 +9,7 @@ import (
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/mattn/go-tty"
 	"github.com/reeflective/console"
+	"github.com/spf13/cobra"
 	"os"
 	"reflect"
 )
@@ -51,55 +52,11 @@ func wrapImplantFunc(fun interface{}) implantFunc {
 	}
 }
 
-func WrapInternalFunc(fun interface{}) (intermediate.InternalFunc, *intermediate.FunctionSignature) {
-	sig := intermediate.GetInternalFuncSignature(reflect.ValueOf(fun))
-
-	return func(params ...interface{}) (interface{}, error) {
-		funcValue := reflect.ValueOf(fun)
-		funcType := funcValue.Type()
-
-		// 检查函数的参数数量是否匹配
-		if funcType.NumIn() != len(params) {
-			return nil, fmt.Errorf("expected %d arguments, got %d", funcType.NumIn(), len(params))
-		}
-
-		// 构建参数切片并检查参数类型
-		in := make([]reflect.Value, len(params))
-		for i, param := range params {
-			expectedType := funcType.In(i)
-			if reflect.TypeOf(param) != expectedType {
-				return nil, fmt.Errorf("argument %d should be %v, got %v", i+1, expectedType, reflect.TypeOf(param))
-			}
-			in[i] = reflect.ValueOf(param)
-		}
-
-		// 调用原始函数并获取返回值
-		results := funcValue.Call(in)
-
-		// 处理返回值
-		var result interface{}
-		if len(results) > 0 {
-			result = results[0].Interface()
-		}
-
-		var err error
-		// 如果函数返回了多个值，最后一个值通常是 error
-		if len(results) > 1 {
-			if e, ok := results[len(results)-1].Interface().(error); ok {
-				err = e
-			}
-		}
-
-		return result, err
-	}, sig
-}
-
-func WrapImplantFunc(con *Console, fun interface{}, callback ImplantCallback) (intermediate.InternalFunc, *intermediate.FunctionSignature) {
+func WrapImplantFunc(con *Console, fun interface{}, callback ImplantCallback) *intermediate.InternalFunc {
 	wrappedFunc := wrapImplantFunc(fun)
-	sig := intermediate.GetInternalFuncSignature(reflect.ValueOf(fun))
-	sig.ArgTypes = sig.ArgTypes[1:]
-
-	return func(args ...interface{}) (interface{}, error) {
+	interFunc := intermediate.GetInternalFuncSignature(fun)
+	interFunc.ArgTypes = interFunc.ArgTypes[1:]
+	interFunc.Func = func(args ...interface{}) (interface{}, error) {
 		task, err := wrappedFunc(con.Rpc, con.GetInteractive(), args...)
 		if err != nil {
 			return nil, err
@@ -115,14 +72,15 @@ func WrapImplantFunc(con *Console, fun interface{}, callback ImplantCallback) (i
 		} else {
 			return taskContext, nil
 		}
-	}, sig
+	}
+	return interFunc
 }
 
-func WrapActiveFunc(con *Console, fun interface{}, callback ImplantCallback) (intermediate.InternalFunc, *intermediate.FunctionSignature) {
+func WrapActiveFunc(con *Console, fun interface{}, callback ImplantCallback) *intermediate.InternalFunc {
 	wrappedFunc := wrapImplantFunc(fun)
-	sig := intermediate.GetInternalFuncSignature(reflect.ValueOf(fun))
-	sig.ArgTypes = sig.ArgTypes[2:]
-	return func(args ...interface{}) (interface{}, error) {
+	internalFunc := intermediate.GetInternalFuncSignature(fun)
+	internalFunc.ArgTypes = internalFunc.ArgTypes[2:]
+	internalFunc.Func = func(args ...interface{}) (interface{}, error) {
 		var sess *Session
 		if len(args) == 0 {
 			return nil, fmt.Errorf("implant func first args must be session")
@@ -150,10 +108,11 @@ func WrapActiveFunc(con *Console, fun interface{}, callback ImplantCallback) (in
 		} else {
 			return taskContext, nil
 		}
-	}, sig
+	}
+	return internalFunc
 }
 
-func WrapServerFunc(con *Console, fun interface{}) (intermediate.InternalFunc, *intermediate.FunctionSignature) {
+func WrapServerFunc(con *Console, fun interface{}) *intermediate.InternalFunc {
 	wrappedFunc := func(con *Console, params ...interface{}) (interface{}, error) {
 		funcValue := reflect.ValueOf(fun)
 		funcType := funcValue.Type()
@@ -184,11 +143,13 @@ func WrapServerFunc(con *Console, fun interface{}) (intermediate.InternalFunc, *
 
 		return results[0].Interface(), err
 	}
-	sig := intermediate.GetInternalFuncSignature(reflect.ValueOf(fun))
-	sig.ArgTypes = sig.ArgTypes[1:]
-	return func(args ...interface{}) (interface{}, error) {
+	internalFunc := intermediate.GetInternalFuncSignature(fun)
+	internalFunc.ArgTypes = internalFunc.ArgTypes[1:]
+	internalFunc.Func = func(args ...interface{}) (interface{}, error) {
 		return wrappedFunc(con, args...)
-	}, sig
+	}
+
+	return internalFunc
 }
 
 func exitConsole(c *console.Console) {
@@ -227,4 +188,13 @@ func exitImplantMenu(c *console.Console) {
 	root := c.Menu(consts.ImplantMenu).Command
 	root.SetArgs([]string{consts.CommandBackground})
 	root.Execute()
+}
+
+func CmdExists(name string, cmd *cobra.Command) bool {
+	for _, c := range cmd.Commands() {
+		if name == c.Name() {
+			return true
+		}
+	}
+	return false
 }
