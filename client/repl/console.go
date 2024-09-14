@@ -176,7 +176,7 @@ func (c *Console) SwitchImplant(sess *Session) {
 
 func (c *Console) RegisterImplantFunc(name string, fn interface{}, bname string, bfn interface{}, callback ImplantCallback) {
 	if fn != nil {
-		intermediate.RegisterInternalFunc(name, WrapActiveFunc(c, fn, callback))
+		intermediate.RegisterInternalFunc(name, WrapImplantFunc(c, fn, callback))
 	}
 	if bfn != nil {
 		intermediate.RegisterInternalFunc(bname, WrapImplantFunc(c, fn, callback))

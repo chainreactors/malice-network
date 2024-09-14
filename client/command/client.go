@@ -1,7 +1,6 @@
 package command
 
 import (
-	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/alias"
 	"github.com/chainreactors/malice-network/client/command/armory"
 	"github.com/chainreactors/malice-network/client/command/extension"
@@ -57,24 +56,6 @@ func ConsoleRunnerCmd(con *repl.Console, run bool) (pre, post func(cmd *cobra.Co
 			}
 		}
 
-		for _, malName := range assets.GetInstalledMalManifests() {
-			manifest, err := mal.LoadMalManiFest(con, malName)
-			// Absorb error in case there's no extensions manifest
-			if err != nil {
-				//con doesn't appear to be initialised here?
-				//con.PrintErrorf("Failed to load extension: %s", err)
-				repl.Log.Errorf("Failed to load mal: %s\n", err)
-				continue
-			}
-
-			if _, err := con.Plugins.LoadPlugin(manifest, con); err == nil {
-				//plugin.GenerateLuaDefinitionFile(plug.LuaVM, "lua.lua")
-			} else {
-				repl.Log.Errorf("Failed to load mal: %s\n", err)
-				continue
-			}
-		}
-		RegisterImplantFunc(con)
 		return con.Start(BindClientsCommands, BindImplantCommands)
 	}
 

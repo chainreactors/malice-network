@@ -2,6 +2,7 @@ package command
 
 import (
 	"errors"
+	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/addon"
 	"github.com/chainreactors/malice-network/client/command/alias"
@@ -11,6 +12,7 @@ import (
 	"github.com/chainreactors/malice-network/client/command/extension"
 	"github.com/chainreactors/malice-network/client/command/file"
 	"github.com/chainreactors/malice-network/client/command/filesystem"
+	"github.com/chainreactors/malice-network/client/command/mal"
 	"github.com/chainreactors/malice-network/client/command/modules"
 	"github.com/chainreactors/malice-network/client/command/sys"
 	"github.com/chainreactors/malice-network/client/command/tasks"
@@ -121,10 +123,7 @@ func BindImplantCommands(con *repl.Console) console.Commands {
 		extensionManifests := assets.GetInstalledExtensionManifests()
 		for _, manifest := range extensionManifests {
 			mext, err := extension.LoadExtensionManifest(manifest)
-			// Absorb error in case there's no extensions manifest
 			if err != nil {
-				//con doesn't appear to be initialised here?
-				//con.PrintErrorf("Failed to load extension: %s", err)
 				con.Log.Errorf("Failed to load extension: %s\n", err)
 				continue
 			}
@@ -134,6 +133,22 @@ func BindImplantCommands(con *repl.Console) console.Commands {
 			}
 		}
 
+		if con.App.Menu(consts.ClientMenu).Commands() == nil {
+			return implant
+		}
+
+		RegisterImplantFunc(con)
+		for _, malName := range assets.GetInstalledMalManifests() {
+			plug, err := mal.LoadMal(con, malName)
+			if err != nil {
+				repl.Log.Errorf("Failed to load mal: %s\n", err)
+				continue
+			}
+			for _, cmd := range plug.CMDs {
+				implant.AddCommand(cmd)
+				logs.Log.Debugf("add command: %s", cmd.Name())
+			}
+		}
 		return implant
 	}
 	return implantCommands

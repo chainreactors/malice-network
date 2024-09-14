@@ -15,6 +15,7 @@ import (
 	"github.com/spf13/cobra"
 	"os"
 	"reflect"
+	"runtime"
 )
 
 type implantFunc func(rpc clientrpc.MaliceRPCClient, sess *Session, params ...interface{}) (*clientpb.Task, error)
@@ -25,9 +26,14 @@ func wrapImplantFunc(fun interface{}) implantFunc {
 		funcValue := reflect.ValueOf(fun)
 		funcType := funcValue.Type()
 
-		// 检查函数的参数数量是否匹配
+		// 检查函数的参数数量是否匹配, rpc与session是强制要求的默认值, 自动+2
 		if funcType.NumIn() != len(params)+2 {
-			return nil, fmt.Errorf("expected %d arguments, got %d", funcType.NumIn()-1, len(params))
+			return nil, fmt.Errorf("expected %d arguments, got %d", funcType.NumIn(), len(params))
+		}
+
+		fmt.Println(runtime.FuncForPC(reflect.ValueOf(fun).Pointer()).Name())
+		for i := 0; i < funcType.NumIn(); i++ {
+			fmt.Println(funcType.In(i).String())
 		}
 
 		// 构建参数切片
@@ -35,8 +41,13 @@ func wrapImplantFunc(fun interface{}) implantFunc {
 		in[0] = reflect.ValueOf(rpc)
 		in[1] = reflect.ValueOf(sess)
 		for i, param := range params {
-			if reflect.TypeOf(param) != funcType.In(i+2) {
-				return nil, fmt.Errorf("argument %d should be %v, got %v", i+1, funcType.In(i+1), reflect.TypeOf(param))
+			expectedType := funcType.In(i + 2)
+			paramType := reflect.TypeOf(param)
+			if paramType.Kind() == reflect.Int64 {
+				param = intermediate.ConvertNumericType(param.(int64), expectedType.Kind())
+			}
+			if reflect.TypeOf(param) != expectedType {
+				return nil, fmt.Errorf("argument %d should be %v, got %v", i+1, funcType.In(i+3), reflect.TypeOf(param))
 			}
 			in[i+2] = reflect.ValueOf(param)
 		}
@@ -57,33 +68,10 @@ func wrapImplantFunc(fun interface{}) implantFunc {
 
 func WrapImplantFunc(con *Console, fun interface{}, callback ImplantCallback) *intermediate.InternalFunc {
 	wrappedFunc := wrapImplantFunc(fun)
+
 	interFunc := intermediate.GetInternalFuncSignature(fun)
-	interFunc.ArgTypes = interFunc.ArgTypes[1:]
+	interFunc.ArgTypes = interFunc.ArgTypes[2:]
 	interFunc.Func = func(args ...interface{}) (interface{}, error) {
-		task, err := wrappedFunc(con.Rpc, con.GetInteractive(), args...)
-		if err != nil {
-			return nil, err
-		}
-
-		taskContext, err := con.Rpc.WaitTaskFinish(context.Background(), task)
-		if err != nil {
-			return nil, err
-		}
-
-		if callback != nil {
-			return callback(taskContext)
-		} else {
-			return taskContext, nil
-		}
-	}
-	return interFunc
-}
-
-func WrapActiveFunc(con *Console, fun interface{}, callback ImplantCallback) *intermediate.InternalFunc {
-	wrappedFunc := wrapImplantFunc(fun)
-	internalFunc := intermediate.GetInternalFuncSignature(fun)
-	internalFunc.ArgTypes = internalFunc.ArgTypes[2:]
-	internalFunc.Func = func(args ...interface{}) (interface{}, error) {
 		var sess *Session
 		if len(args) == 0 {
 			return nil, fmt.Errorf("implant func first args must be session")
@@ -112,7 +100,7 @@ func WrapActiveFunc(con *Console, fun interface{}, callback ImplantCallback) *in
 			return taskContext, nil
 		}
 	}
-	return internalFunc
+	return interFunc
 }
 
 func WrapServerFunc(con *Console, fun interface{}) *intermediate.InternalFunc {

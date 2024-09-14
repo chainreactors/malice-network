@@ -30,7 +30,9 @@ func ExecuteExeCmd(cmd *cobra.Command, con *repl.Console) {
 	})
 }
 
-func ExecExe(rpc clientrpc.MaliceRPCClient, sess *repl.Session, pePath string, args []string, output bool, timeout uint32, arch string, process string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
+func ExecExe(rpc clientrpc.MaliceRPCClient, sess *repl.Session, pePath string,
+	args []string, output bool, timeout uint32, arch string,
+	process string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 	if arch == "" {
 		arch = sess.Os.Arch
 	}
