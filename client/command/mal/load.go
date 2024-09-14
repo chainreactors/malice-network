@@ -1,6 +1,7 @@
 package mal
 
 import (
+	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/core/plugin"
 	"github.com/chainreactors/malice-network/client/repl"
@@ -11,12 +12,24 @@ import (
 	"path/filepath"
 )
 
+var loadedMals = make(map[string]*LoadedMal)
+
+type LoadedMal struct {
+	Manifest *plugin.MalManiFest
+	CMDs     []*cobra.Command
+	Plugin   *plugin.Plugin
+}
+
 func MalLoadCmd(ctx *cobra.Command, con *repl.Console) {
 	dirPath := ctx.Flags().Arg(0)
-	_, err := LoadMal(con, filepath.Join(assets.GetMalsDir(), dirPath, ManifestFileName))
+	mal, err := LoadMal(con, filepath.Join(assets.GetMalsDir(), dirPath, ManifestFileName))
 	if err != nil {
 		repl.Log.Error(err)
 		return
+	}
+	for _, cmd := range mal.CMDs {
+		con.ImplantMenu().AddCommand(cmd)
+		logs.Log.Debugf("add command: %s", cmd.Name())
 	}
 }
 
@@ -33,7 +46,7 @@ func LoadMalManiFest(con *repl.Console, filename string) (*plugin.MalManiFest, e
 	return manifest, nil
 }
 
-func LoadMal(con *repl.Console, filename string) (*plugin.MalManiFest, error) {
+func LoadMal(con *repl.Console, filename string) (*LoadedMal, error) {
 	manifest, err := LoadMalManiFest(con, filename)
 	plug, err := con.Plugins.LoadPlugin(manifest, con)
 	if err != nil {
@@ -44,8 +57,14 @@ func LoadMal(con *repl.Console, filename string) (*plugin.MalManiFest, error) {
 	for _, cmd := range plug.CMDs {
 		cmds = append(cmds, cmd.Name())
 	}
+	mal := &LoadedMal{
+		Manifest: manifest,
+		CMDs:     plug.CMDs,
+		Plugin:   plug.Plugin,
+	}
+	loadedMals[manifest.Name] = mal
 	repl.Log.Importantf("load mal: %s successfully, register %v", filename, cmds)
-	return manifest, nil
+	return mal, nil
 }
 
 func ListMalManiFest(con *repl.Console) {
@@ -57,7 +76,8 @@ func ListMalManiFest(con *repl.Console) {
 		{Title: "Author", Width: 4},
 	}, true)
 
-	for _, plug := range con.Plugins.Plugins {
+	for _, m := range loadedMals {
+		plug := m.Plugin
 		row := table.Row{
 			plug.Name,
 			plug.Type,

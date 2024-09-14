@@ -225,7 +225,7 @@ func (s *ServerStatus) EventHandler() {
 	for {
 		event, err := eventStream.Recv()
 		if err == io.EOF || event == nil {
-			return
+			continue
 		}
 		tui.Down(0)
 		// Trigger event based on type

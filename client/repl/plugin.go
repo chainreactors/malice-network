@@ -7,7 +7,6 @@ import (
 	"github.com/chainreactors/malice-network/client/core/intermediate/builtin"
 	"github.com/chainreactors/malice-network/client/core/plugin"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
 	lua "github.com/yuin/gopher-lua"
@@ -57,7 +56,10 @@ func (plugins *Plugins) LoadLuaScript(manifest *plugin.MalManiFest, con *Console
 		return nil, err
 	}
 
-	plug.InitLua(con)
+	err = plug.InitLua(con)
+	if err != nil {
+		return nil, err
+	}
 	plugins.Plugins[manifest.Name] = plug
 	// 全局模块
 	//L.PreloadModule(manifest.Name, func(L *lua.LState) int {
@@ -93,8 +95,8 @@ func (plug *Plugin) InitLua(con *Console) error {
 	plug.LuaVM = vm
 	cmd := con.ImplantMenu()
 
-	plug.registerLuaFunction("active", func() (*clientpb.Session, error) {
-		return con.GetInteractive().Session, nil
+	plug.registerLuaFunction("active", func() (*Session, error) {
+		return con.GetInteractive(), nil
 	})
 
 	//// 获取资源文件名
@@ -108,6 +110,7 @@ func (plug *Plugin) InitLua(con *Console) error {
 	})
 
 	for name, fn := range intermediate.InternalFunctions {
+		//fmt.Printf("Registering internal function: %s %v\n", name, fn.ArgTypes)
 		vm.SetGlobal(name, vm.NewFunction(intermediate.WrapFuncForLua(fn)))
 	}
 
@@ -177,11 +180,12 @@ func (plug *Plugin) InitLua(con *Console) error {
 					vm.Push(fn) // 将函数推入栈
 
 					for _, paramName := range paramNames {
-						if paramName == "args" {
-							// 特殊处理 "args" 参数
+						switch paramName {
+						case "cmdline":
 							vm.Push(lua.LString(shellquote.Join(args...)))
-						} else {
-							// 获取 flag 的值并推入 Lua
+						case "args":
+							vm.Push(intermediate.ConvertGoValueToLua(vm, args))
+						default:
 							val, err := cmd.Flags().GetString(paramName)
 							if err != nil {
 								return fmt.Errorf("error getting flag %s: %w", paramName, err)
@@ -192,7 +196,7 @@ func (plug *Plugin) InitLua(con *Console) error {
 
 					session := con.GetInteractive()
 					go func() {
-						if err := vm.PCall(len(args), lua.MultRet, nil); err != nil {
+						if err := vm.PCall(len(paramNames), lua.MultRet, nil); err != nil {
 							session.Log.Errorf("error calling Lua function %s: %s", funcName, err.Error())
 							return
 						}
@@ -219,7 +223,6 @@ func (plug *Plugin) InitLua(con *Console) error {
 			}
 
 			plug.CMDs = append(plug.CMDs, malCmd)
-			cmd.AddCommand(malCmd)
 			Log.Debugf("Registered Command: %s\n", funcName)
 		}
 	})

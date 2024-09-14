@@ -280,7 +280,7 @@ func Register(con *repl.Console) {
 		}, common.ParseAssembly)
 
 	con.RegisterImplantFunc(
-		consts.ModuleExecuteExe,
+		consts.ModuleExecuteDll,
 		ExecDLL,
 		"bdllinject",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, ppid int, path string) (*clientpb.Task, error) {
@@ -301,7 +301,7 @@ func Register(con *repl.Console) {
 		}, common.ParseAssembly)
 
 	con.RegisterImplantFunc(
-		consts.ModuleExecuteDll,
+		consts.ModuleExecuteExe,
 		ExecExe,
 		"bexecute_exe",
 		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string, args string, process string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {

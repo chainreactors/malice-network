@@ -139,3 +139,34 @@ func ConvertGoValueToLuaType(L *lua.LState, t reflect.Type) string {
 		return "any"
 	}
 }
+
+func ConvertNumericType(value int64, kind reflect.Kind) interface{} {
+	switch kind {
+	case reflect.Int:
+		return int(value)
+	case reflect.Int8:
+		return int8(value)
+	case reflect.Int16:
+		return int16(value)
+	case reflect.Int32:
+		return int32(value)
+	case reflect.Int64:
+		return int64(value)
+	case reflect.Uint:
+		return uint(value)
+	case reflect.Uint8:
+		return uint8(value)
+	case reflect.Uint16:
+		return uint16(value)
+	case reflect.Uint32:
+		return uint32(value)
+	case reflect.Uint64:
+		return uint64(value)
+	case reflect.Float32:
+		return float32(value)
+	case reflect.Float64:
+		return value
+	default:
+		return value // 其他类型，保持不变
+	}
+}
