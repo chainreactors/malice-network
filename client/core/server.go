@@ -236,6 +236,7 @@ func (s *ServerStatus) triggerTaskFinish(event *clientpb.Event) {
 }
 
 func (s *ServerStatus) EventHandler() {
+	defer Log.Warnf("event stream broken")
 	eventStream, err := s.Rpc.Events(context.Background(), &clientpb.Empty{})
 	if err != nil {
 		logs.Log.Warnf("Error getting event stream: %v", err)

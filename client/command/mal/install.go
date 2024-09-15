@@ -2,7 +2,6 @@ package mal
 
 import (
 	"errors"
-	"fmt"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/core/plugin"
 	"github.com/chainreactors/malice-network/client/repl"
@@ -12,7 +11,6 @@ import (
 	"gopkg.in/yaml.v3"
 	"os"
 	"path/filepath"
-	"strings"
 )
 
 var (
@@ -27,7 +25,7 @@ func MalInstallCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf("Mal path '%s' does not exist", localPath)
 		return
 	}
-	InstallFromDir(localPath, true, con, strings.HasSuffix(localPath, ".tar.gz"))
+	InstallFromDir(localPath, true, con)
 }
 
 func ParseMalManifest(data []byte) (*plugin.MalManiFest, error) {
@@ -46,15 +44,11 @@ func validManifest(manifest *plugin.MalManiFest) error {
 	return nil
 }
 
-func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *repl.Console, isGz bool) {
+func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *repl.Console) {
 	var manifestData []byte
 	var err error
 
-	if isGz {
-		manifestData, err = utils.ReadFileFromTarGz(extLocalPath, fmt.Sprintf("./%s", ManifestFileName))
-	} else {
-		manifestData, err = os.ReadFile(filepath.Join(extLocalPath, ManifestFileName))
-	}
+	manifestData, err = utils.ReadFileFromTarGz(extLocalPath, ManifestFileName)
 	if err != nil {
 		con.Log.Errorf("Error reading %s: %s", ManifestFileName, err)
 		return
@@ -90,9 +84,9 @@ func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *repl.Conso
 		con.Log.Errorf("\nError creating mal directory: %s\n", err)
 		return
 	}
-	err = os.WriteFile(filepath.Join(installPath, ManifestFileName), manifestData, 0o600)
+	err = utils.ExtractTarGz(extLocalPath, installPath)
 	if err != nil {
-		con.Log.Errorf("\nFailed to write %s: %s\n", ManifestFileName, err)
+		con.Log.Errorf("\nFailed to extract tar.gz to %s: %s\n", installPath, err)
 		utils.ForceRemoveAll(installPath)
 		return
 	}

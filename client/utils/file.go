@@ -64,6 +64,54 @@ func ReadFileFromTarGz(tarGzFile string, tarPath string) ([]byte, error) {
 	return nil, nil
 }
 
+// ExtractTarGz extracts a .tar.gz file to the specified destination directory
+func ExtractTarGz(gzipPath string, dest string) error {
+	file, err := os.Open(gzipPath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	gz, err := gzip.NewReader(file)
+	if err != nil {
+		return err
+	}
+	defer gz.Close()
+
+	tarReader := tar.NewReader(gz)
+
+	for {
+		header, err := tarReader.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		target := filepath.Join(dest, header.Name)
+
+		switch header.Typeflag {
+		case tar.TypeDir:
+			if err := os.MkdirAll(target, 0755); err != nil {
+				return err
+			}
+		case tar.TypeReg:
+			outFile, err := os.Create(target)
+			if err != nil {
+				return err
+			}
+			if _, err := io.Copy(outFile, tarReader); err != nil {
+				outFile.Close()
+				return err
+			}
+			outFile.Close()
+		}
+	}
+
+	return nil
+}
+
 // CopyFile - Copy a file from src to dst
 func CopyFile(src string, dst string) error {
 	in, err := os.Open(src)
