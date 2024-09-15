@@ -179,7 +179,7 @@ func (c *Console) RegisterImplantFunc(name string, fn interface{}, bname string,
 		intermediate.RegisterInternalFunc(name, WrapImplantFunc(c, fn, callback))
 	}
 	if bfn != nil {
-		intermediate.RegisterInternalFunc(bname, WrapImplantFunc(c, fn, callback))
+		intermediate.RegisterInternalFunc(bname, WrapImplantFunc(c, bfn, callback))
 	}
 }
 
