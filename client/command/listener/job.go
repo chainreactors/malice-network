@@ -15,11 +15,11 @@ import (
 func listJobsCmd(cmd *cobra.Command, con *repl.Console) {
 	Pipelines, err := con.Rpc.ListJobs(context.Background(), &clientpb.Empty{})
 	if err != nil {
-		repl.Log.Error(err.Error())
+		con.Log.Error(err.Error())
 		return
 	}
 	if len(Pipelines.GetPipelines()) == 0 {
-		repl.Log.Importantf("No jobs found")
+		con.Log.Importantf("No jobs found")
 		return
 	}
 	var rowEntries []table.Row

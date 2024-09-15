@@ -11,18 +11,18 @@ import (
 
 // ArmorySearchCmd - Search for packages by name
 func ArmorySearchCmd(cmd *cobra.Command, con *repl.Console) {
-	repl.Log.Infof("Refreshing package cache ... ")
+	con.Log.Infof("Refreshing package cache ... ")
 	clientConfig := parseArmoryHTTPConfig(cmd)
 	refresh(clientConfig)
 	tui.Clear()
 	rawNameExpr := cmd.Flags().Arg(0)
 	if rawNameExpr == "" {
-		repl.Log.Errorf("Please specify a search term!\n")
+		con.Log.Errorf("Please specify a search term!\n")
 		return
 	}
 	nameExpr, err := regexp.Compile(rawNameExpr)
 	if err != nil {
-		repl.Log.Errorf("Invalid regular expression: %s\n", err)
+		con.Log.Errorf("Invalid regular expression: %s\n", err)
 		return
 	}
 
@@ -42,7 +42,7 @@ func ArmorySearchCmd(cmd *cobra.Command, con *repl.Console) {
 		}
 	}
 	if len(matchedAliases) == 0 && len(matchedExts) == 0 {
-		repl.Log.Infof("No packages found matching '%s'\n", rawNameExpr)
+		con.Log.Infof("No packages found matching '%s'\n", rawNameExpr)
 		return
 	}
 	PrintArmoryPackages(matchedAliases, matchedExts, con, clientConfig)

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/help"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/handler"
@@ -213,7 +214,7 @@ func Register(con *repl.Console) {
 		consts.ModuleCd,
 		Cd,
 		"bcd",
-		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string) (*clientpb.Task, error) {
 			return Cd(rpc, sess, path)
 		},
 		common.ParseStatus)
@@ -222,7 +223,7 @@ func Register(con *repl.Console) {
 		consts.ModuleCat,
 		Cat,
 		"bcat",
-		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, fileName string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, fileName string) (*clientpb.Task, error) {
 			return Cat(rpc, sess, fileName)
 		},
 		common.ParseResponse)
@@ -231,7 +232,7 @@ func Register(con *repl.Console) {
 		consts.ModuleChmod,
 		Chmod,
 		"bchmod",
-		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path, mode string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, path, mode string) (*clientpb.Task, error) {
 			return Chmod(rpc, sess, path, mode)
 		},
 		common.ParseStatus)
@@ -240,7 +241,7 @@ func Register(con *repl.Console) {
 		consts.ModuleChown,
 		Chown,
 		"bchown",
-		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path, uid string, gid string, recursive bool) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, path, uid string, gid string, recursive bool) (*clientpb.Task, error) {
 			return Chown(rpc, sess, path, uid, gid, recursive)
 		},
 		common.ParseStatus)
@@ -249,7 +250,7 @@ func Register(con *repl.Console) {
 		consts.ModuleCp,
 		Cp,
 		"bcp",
-		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, src, dst string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, src, dst string) (*clientpb.Task, error) {
 			return Cp(rpc, sess, src, dst)
 		},
 		common.ParseStatus)
@@ -258,7 +259,7 @@ func Register(con *repl.Console) {
 		consts.ModuleLs,
 		Ls,
 		"bls",
-		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string) (*clientpb.Task, error) {
 			return Ls(rpc, sess, path)
 		},
 		func(ctx *clientpb.TaskContext) (interface{}, error) {
@@ -285,7 +286,7 @@ func Register(con *repl.Console) {
 		consts.ModuleMkdir,
 		Mkdir,
 		"bmkdir",
-		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string) (*clientpb.Task, error) {
 			return Mkdir(rpc, sess, path)
 		},
 		common.ParseStatus)
@@ -294,7 +295,7 @@ func Register(con *repl.Console) {
 		consts.ModuleMv,
 		Mv,
 		"bmv",
-		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, src, dst string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, src, dst string) (*clientpb.Task, error) {
 			return Mv(rpc, sess, src, dst)
 		},
 		common.ParseStatus)
@@ -303,7 +304,7 @@ func Register(con *repl.Console) {
 		consts.ModulePwd,
 		Pwd,
 		"bpwd",
-		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *core.Session) (*clientpb.Task, error) {
 			return Pwd(rpc, sess)
 		},
 		common.ParseResponse,
@@ -313,7 +314,7 @@ func Register(con *repl.Console) {
 		consts.ModuleRm,
 		Rm,
 		"brm",
-		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, fileName string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, fileName string) (*clientpb.Task, error) {
 			return Rm(rpc, sess, fileName)
 		},
 		common.ParseStatus)

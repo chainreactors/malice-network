@@ -3,6 +3,7 @@ package exec
 import (
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/help"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/core/intermediate/builtin"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -237,7 +238,7 @@ func Register(con *repl.Console) {
 		consts.ModuleExecution,
 		Execute,
 		"bshell",
-		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, cmd string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, cmd string) (*clientpb.Task, error) {
 			return Execute(rpc, sess, cmd)
 		},
 		func(ctx *clientpb.TaskContext) (interface{}, error) {
@@ -254,7 +255,7 @@ func Register(con *repl.Console) {
 		consts.ModuleExecuteAssembly,
 		ExecAssembly,
 		"bexecute_assembly",
-		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path, args string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, path, args string) (*clientpb.Task, error) {
 			cmdline, err := shellquote.Split(args)
 			if err != nil {
 				return nil, err
@@ -266,7 +267,7 @@ func Register(con *repl.Console) {
 		consts.ModuleExecuteShellcode,
 		ExecShellcode,
 		"bshinject",
-		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, ppid int, arch, path string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, ppid int, arch, path string) (*clientpb.Task, error) {
 			sac, _ := builtin.NewSacrificeProcessMessage(int64(ppid), false, true, true, "")
 			return ExecShellcode(rpc, sess, path, nil, true, math.MaxUint32, sess.Os.Arch, "", sac)
 		}, common.ParseAssembly)
@@ -275,7 +276,7 @@ func Register(con *repl.Console) {
 		consts.ModuleAliasInlineShellcode,
 		InlineShellcode,
 		"binline_shellcode",
-		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string) (*clientpb.Task, error) {
 			return InlineShellcode(rpc, sess, path, nil, true, math.MaxUint32, sess.Os.Arch, "")
 		}, common.ParseAssembly)
 
@@ -283,7 +284,7 @@ func Register(con *repl.Console) {
 		consts.ModuleExecuteDll,
 		ExecDLL,
 		"bdllinject",
-		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, ppid int, path string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, ppid int, path string) (*clientpb.Task, error) {
 			sac, _ := builtin.NewSacrificeProcessMessage(int64(ppid), false, true, true, "")
 			return ExecDLL(rpc, sess, path, "DLLMain", nil, true, math.MaxUint32, sess.Os.Arch, "", sac)
 		}, common.ParseAssembly)
@@ -292,7 +293,7 @@ func Register(con *repl.Console) {
 		consts.ModuleAliasInlineDll,
 		InlineDLL,
 		"binline_dll",
-		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path, entryPoint string, args string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, path, entryPoint string, args string) (*clientpb.Task, error) {
 			param, err := shellquote.Split(args)
 			if err != nil {
 				return nil, err
@@ -304,7 +305,7 @@ func Register(con *repl.Console) {
 		consts.ModuleExecuteExe,
 		ExecExe,
 		"bexecute_exe",
-		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string, args string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, args string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 			cmdline, err := shellquote.Split(args)
 			if err != nil {
 				return nil, err
@@ -316,7 +317,7 @@ func Register(con *repl.Console) {
 		consts.ModuleAliasInlineExe,
 		InlineExe,
 		"binline_exe",
-		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string, args string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, args string) (*clientpb.Task, error) {
 			param, err := shellquote.Split(args)
 			if err != nil {
 				return nil, err
@@ -328,7 +329,7 @@ func Register(con *repl.Console) {
 		consts.ModuleExecuteBof,
 		ExecBof,
 		"binline_execute",
-		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string, args string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, args string) (*clientpb.Task, error) {
 			cmdline, err := shellquote.Split(args)
 			if err != nil {
 				return nil, err
@@ -340,7 +341,7 @@ func Register(con *repl.Console) {
 		consts.ModulePowershell,
 		ExecPowershell,
 		"bpowershell",
-		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, script string, ps string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, script string, ps string) (*clientpb.Task, error) {
 			cmdline, err := shellquote.Split(ps)
 			if err != nil {
 				return nil, err

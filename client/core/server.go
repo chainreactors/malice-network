@@ -1,4 +1,4 @@
-package repl
+package core
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/handler"
 	"github.com/chainreactors/malice-network/helper/mtls"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/chainreactors/tui"
 	"google.golang.org/grpc"
@@ -17,11 +18,15 @@ import (
 	"time"
 )
 
+type TaskCallback func(resp *implantpb.Spite) (string, error)
+
 func InitServerStatus(conn *grpc.ClientConn, config *mtls.ClientConfig) (*ServerStatus, error) {
 	var err error
 	s := &ServerStatus{
 		Rpc:             clientrpc.NewMaliceRPCClient(conn),
+		ActiveTarget:    &ActiveTarget{},
 		Sessions:        make(map[string]*Session),
+		Observers:       map[string]*Observer{},
 		finishCallbacks: &sync.Map{},
 		doneCallbacks:   &sync.Map{},
 	}
@@ -66,25 +71,17 @@ func InitServerStatus(conn *grpc.ClientConn, config *mtls.ClientConfig) (*Server
 }
 
 type ServerStatus struct {
-	Rpc             clientrpc.MaliceRPCClient
-	Info            *clientpb.Basic
-	Client          *clientpb.Client
+	Rpc    clientrpc.MaliceRPCClient
+	Info   *clientpb.Basic
+	Client *clientpb.Client
+	*ActiveTarget
 	Clients         []*clientpb.Client
 	Listeners       []*clientpb.Listener
 	Sessions        map[string]*Session
+	Observers       map[string]*Observer
 	sessions        []*clientpb.Session
 	finishCallbacks *sync.Map
 	doneCallbacks   *sync.Map
-}
-
-func (c *Console) SessionLog(sid string) *logs.Logger {
-	if ob, ok := c.Observers[sid]; ok {
-		return ob.Log
-	} else if c.ActiveTarget.GetInteractive() != nil {
-		return c.ActiveTarget.activeObserver.Log
-	} else {
-		return MuteLog
-	}
 }
 
 func (s *ServerStatus) UpdateSessions(all bool) error {
@@ -109,7 +106,7 @@ func (s *ServerStatus) UpdateSessions(all bool) error {
 			rawSess.Session = session
 			newSessions[session.SessionId] = rawSess
 		} else {
-			newSessions[session.SessionId] = NewSession(session)
+			newSessions[session.SessionId] = NewSession(session, s)
 		}
 	}
 
@@ -125,7 +122,7 @@ func (s *ServerStatus) UpdateSession(sid string) (*clientpb.Session, error) {
 	if rawSess, ok := s.Sessions[session.SessionId]; ok {
 		rawSess.Session = session
 	} else {
-		s.Sessions[session.SessionId] = NewSession(session)
+		s.Sessions[session.SessionId] = NewSession(session, s)
 	}
 
 	return nil, nil
@@ -181,14 +178,20 @@ func (s *ServerStatus) triggerTaskDone(event *clientpb.Event) {
 		}
 		tui.Down(0)
 		Log.Importantf(logs.GreenBold(fmt.Sprintf("session: %s task: %d index: %d\n", task.SessionId, task.TaskId, task.Cur)))
-
+		session := s.Sessions[task.SessionId]
 		err = handler.HandleMaleficError(content.Spite)
 		if err != nil {
 			Log.Errorf(err.Error())
+			session.Error(task, err)
 			return
 		}
 
-		callback.(TaskCallback)(content.Spite)
+		resp, err := callback.(TaskCallback)(content.Spite)
+		if err != nil {
+			session.Error(task, err)
+		} else {
+			session.Console(task, resp)
+		}
 	}
 }
 
@@ -211,22 +214,25 @@ func (s *ServerStatus) triggerTaskFinish(event *clientpb.Event) {
 			return
 		}
 
+		session := s.Sessions[task.SessionId]
 		tui.Down(0)
-		Log.Importantf(logs.GreenBold(fmt.Sprintf("session: %s task: %d index: %d\n", task.SessionId, task.TaskId, task.Cur)))
+		//Log.Importantf(logs.GreenBold(fmt.Sprintf("session: %s task: %d index: %d\n", task.SessionId, task.TaskId, task.Cur)))
 		err = handler.HandleMaleficError(content.Spite)
 		if err != nil {
-			Log.Errorf(err.Error())
+			//Log.Errorf(err.Error())
+			session.Error(task, err)
 			return
 		}
 
-		callback.(TaskCallback)(content.Spite)
+		resp, err := callback.(TaskCallback)(content.Spite)
+		if err != nil {
+			session.Error(task, err)
+		} else {
+			session.Console(task, resp)
+		}
 		s.finishCallbacks.Delete(callbackId)
 		s.doneCallbacks.Delete(callbackId)
 	}
-}
-
-func (s *ServerStatus) CallbackBroadcast(event *clientpb.Event) {
-	//generic.Broadcast(event)
 }
 
 func (s *ServerStatus) EventHandler() {
@@ -251,13 +257,13 @@ func (s *ServerStatus) EventHandler() {
 			Log.Infof("%s left the game", event.Client.Name)
 		case consts.EventBroadcast:
 			tui.Down(0)
-			Log.Infof("%s : %s  %s", event.Source, string(event.Data), event.Err)
+			Log.Infof("%s : %s  %s", event.Client.Name, event.Message, event.Err)
 		case consts.EventSession:
 			tui.Down(0)
-			Log.Importantf("%s session: %s ", event.Session.SessionId, event.Message)
+			s.handlerSession(event)
 		case consts.EventNotify:
 			tui.Down(0)
-			Log.Importantf("%s notified: %s %s", event.Source, string(event.Data), event.Err)
+			Log.Importantf("%s notified: %s %s", event.Client.Name, event.Message, event.Err)
 		case consts.EventJob:
 			tui.Down(0)
 			Log.Importantf("[%s] %s: %s %s", event.Type, event.Op, event.Message, event.Err)
@@ -284,5 +290,40 @@ func (s *ServerStatus) handlerTaskCtrl(event *clientpb.Event) {
 		Log.Importantf("%s task: %d canceled", event.Task.SessionId, event.Task.TaskId)
 	case consts.CtrlTaskError:
 		Log.Errorf("%s task: %d error: %s", event.Task.SessionId, event.Task.TaskId, event.Err)
+	}
+}
+
+func (s *ServerStatus) AddObserver(session *Session) string {
+	Log.Infof("Add observer to %s", session.SessionId)
+	s.Observers[session.SessionId] = &Observer{session, Log}
+	return session.SessionId
+}
+
+func (s *ServerStatus) RemoveObserver(observerID string) {
+	delete(s.Observers, observerID)
+}
+
+func (s *ServerStatus) ObserverLog(sessionId string) *Logger {
+	if s.Session != nil && s.Session.SessionId == sessionId {
+		return s.Observer.Log
+	}
+
+	if observer, ok := s.Observers[sessionId]; ok {
+		return observer.Log
+	}
+	return MuteLog
+}
+
+func (s *ServerStatus) handlerSession(event *clientpb.Event) {
+	switch event.Op {
+	case consts.CtrlSessionRegister:
+		Log.Importantf("%s session: %s ", event.Session.SessionId, event.Message)
+	case consts.CtrlSessionConsole:
+		log := s.ObserverLog(event.Task.SessionId)
+		log.Importantf(logs.GreenBold(fmt.Sprintf("session: %s task: %d index: %d", event.Task.SessionId, event.Task.TaskId, event.Task.Cur)))
+		log.Console(event.Message + "\n")
+	case consts.CtrlSessionError:
+		log := s.ObserverLog(event.Task.SessionId)
+		log.Errorf(logs.GreenBold(fmt.Sprintf("session: %s task: %d error: %s\n", event.Task.SessionId, event.Task.TaskId, event.Err)))
 	}
 }

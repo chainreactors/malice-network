@@ -447,15 +447,15 @@ func PrintArmoryPackages(aliases []*alias.AliasManifest, exts []*extension.Exten
 				con.Log.Errorf("No package named '%s' was found for armory '%s'", selected[1], selected[0])
 			}
 		} else if errors.Is(err, ErrPackageAlreadyInstalled) {
-			repl.Log.Errorf("Package %q is already installed - use the force option to overwrite it\n", selected[1])
+			con.Log.Errorf("Package %q is already installed - use the force option to overwrite it\n", selected[1])
 		} else {
-			repl.Log.Errorf("Could not install package: %s\n", err)
+			con.Log.Errorf("Could not install package: %s\n", err)
 		}
 	})
 	newTable := tui.NewModel(tableModel, tableModel.ConsoleHandler, true, false)
 	err := newTable.Run()
 	if err != nil {
-		repl.Log.Errorf("Failed to run table model: %s\n", err)
+		con.Log.Errorf("Failed to run table model: %s\n", err)
 		return
 	}
 }

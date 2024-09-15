@@ -1,17 +1,18 @@
 package sessions
 
 import (
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/spf13/cobra"
 )
 
 func UseSessionCmd(cmd *cobra.Command, con *repl.Console) {
-	var session *repl.Session
+	var session *core.Session
 	if session = con.GetSession(cmd.Flags().Arg(0)); session == nil {
-		repl.Log.Errorf(repl.ErrNotFoundSession.Error())
+		con.Log.Errorf(repl.ErrNotFoundSession.Error())
 		return
 	}
 
 	con.SwitchImplant(session)
-	repl.Log.Infof("Active session %s (%s)\n", session.Note, session.SessionId)
+	con.Log.Infof("Active session %s (%s)\n", session.Note, session.SessionId)
 }

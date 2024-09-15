@@ -3,6 +3,7 @@ package addon
 import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/command/common"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -12,7 +13,6 @@ import (
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
-	"google.golang.org/protobuf/proto"
 	"math"
 	"os"
 	"path/filepath"
@@ -40,22 +40,21 @@ func LoadAddonCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
 	task, err := LoadAddon(con.Rpc, session, name, path, module)
 	if err != nil {
-		repl.Log.Errorf("%s", err)
+		con.Log.Errorf("%s", err)
 		return
 	}
 
-	con.AddCallback(task, func(msg proto.Message) {
-		session.Log.Infof("addon %s loaded", name)
+	con.AddCallback(task, func(msg *implantpb.Spite) (string, error) {
 		err = RegisterAddon(&implantpb.Addon{Name: name, Depend: module}, con, con.ImplantMenu())
 		if err != nil {
-			session.Log.Errorf("%s", err)
-			return
+			return "", err
 		}
 		con.UpdateSession(session.SessionId)
+		return fmt.Sprintf("addon %s loaded", name), nil
 	})
 }
 
-func LoadAddon(rpc clientrpc.MaliceRPCClient, sess *repl.Session, name, path, depend string) (*clientpb.Task, error) {
+func LoadAddon(rpc clientrpc.MaliceRPCClient, sess *core.Session, name, path, depend string) (*clientpb.Task, error) {
 	content, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -79,7 +78,7 @@ func RegisterAddon(addon *implantpb.Addon, con *repl.Console, cmd *cobra.Command
 	}
 	loadedAddons[addon.Name] = &loadedAddon{
 		Command: addonCmd,
-		Func: repl.WrapImplantFunc(con, func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, args string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
+		Func: repl.WrapImplantFunc(con, func(rpc clientrpc.MaliceRPCClient, sess *core.Session, args string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 			cmdline, err := shellquote.Split(args)
 			if err != nil {
 				return nil, err

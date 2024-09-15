@@ -2,6 +2,7 @@ package sessions
 
 import (
 	"fmt"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/table"
@@ -15,22 +16,22 @@ import (
 func SessionsCmd(cmd *cobra.Command, con *repl.Console) {
 	err := con.UpdateSessions(true)
 	if err != nil {
-		repl.Log.Errorf("%s", err)
+		con.Log.Errorf("%s", err)
 		return
 	}
 	isAll, err := cmd.Flags().GetBool("all")
 	if err != nil {
-		repl.Log.Errorf("%s", err)
+		con.Log.Errorf("%s", err)
 		return
 	}
 	if 0 < len(con.Sessions) {
 		PrintSessions(con.Sessions, con, isAll)
 	} else {
-		repl.Log.Info("No sessions")
+		con.Log.Info("No sessions")
 	}
 }
 
-func PrintSessions(sessions map[string]*repl.Session, con *repl.Console, isAll bool) {
+func PrintSessions(sessions map[string]*core.Session, con *repl.Console, isAll bool) {
 	//var colorIndex = 1
 	var rowEntries []table.Row
 	var row table.Row
@@ -95,7 +96,7 @@ func SessionLogin(tableModel *tui.TableModel, con *repl.Console) func() {
 	selectRow := tableModel.GetSelectedRow()
 	if selectRow == nil {
 		return func() {
-			repl.Log.Errorf("No row selected")
+			con.Log.Errorf("No row selected")
 		}
 	}
 	for _, s := range con.Sessions {
@@ -107,12 +108,12 @@ func SessionLogin(tableModel *tui.TableModel, con *repl.Console) func() {
 
 	if session == nil {
 		return func() {
-			repl.Log.Errorf(repl.ErrNotFoundSession.Error())
+			con.Log.Errorf(repl.ErrNotFoundSession.Error())
 		}
 	}
 
 	return func() {
 		con.SwitchImplant(session)
-		repl.Log.Infof("Active session %s (%s)\n", session.Note, session.SessionId)
+		con.Log.Infof("Active session %s (%s)\n", session.Note, session.SessionId)
 	}
 }

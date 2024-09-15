@@ -1,7 +1,7 @@
 package modules
 
 import (
-	"fmt"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
@@ -10,21 +10,19 @@ import (
 	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/spf13/cobra"
-	"google.golang.org/protobuf/proto"
 )
 
 func ListModulesCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
 	task, err := ListModules(con.Rpc, session)
 	if err != nil {
-		repl.Log.Errorf("ListModules error: %v", err)
+		con.Log.Errorf("ListModules error: %v", err)
 		return
 	}
-	con.AddCallback(task, func(msg proto.Message) {
-		modules := msg.(*implantpb.Spite).GetModules()
+	con.AddCallback(task, func(msg *implantpb.Spite) (string, error) {
+		modules := msg.GetModules()
 		if len(modules.Modules) == 0 {
-			session.Log.Warn("No modules found.")
-			return
+			return "No modules found.", nil
 		}
 
 		var rowEntries []table.Row
@@ -41,11 +39,11 @@ func ListModulesCmd(cmd *cobra.Command, con *repl.Console) {
 			rowEntries = append(rowEntries, row)
 		}
 		tableModel.SetRows(rowEntries)
-		fmt.Printf(tableModel.View())
+		return tableModel.View(), nil
 	})
 }
 
-func ListModules(rpc clientrpc.MaliceRPCClient, session *repl.Session) (*clientpb.Task, error) {
+func ListModules(rpc clientrpc.MaliceRPCClient, session *core.Session) (*clientpb.Task, error) {
 	listTask, err := rpc.ListModule(session.Context(), &implantpb.Request{Name: consts.ModuleListModule})
 	if err != nil {
 		return nil, err

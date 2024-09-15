@@ -3,8 +3,9 @@ package repl
 import (
 	"context"
 	"errors"
-	"github.com/chainreactors/logs"
+	"fmt"
 	"github.com/chainreactors/malice-network/client/assets"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/client/utils"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -13,24 +14,16 @@ import (
 	"github.com/rsteube/carapace/pkg/x"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/metadata"
-	"google.golang.org/protobuf/proto"
 	"io"
 	"path/filepath"
 	"slices"
 	"strings"
-	"sync"
 )
 
 var (
-	ErrNotFoundTask    = errors.New("task not found")
 	ErrNotFoundSession = errors.New("session not found")
 	Prompt             = "IOM"
-	LogLevel           = logs.Warn
-	Log                = logs.NewLogger(LogLevel)
-	MuteLog            = logs.NewLogger(logs.Important)
 )
-
-type TaskCallback func(resp proto.Message)
 
 // BindCmds - Bind extra commands to the app object
 type BindCmds func(console *Console) console.Commands
@@ -42,15 +35,10 @@ func NewConsole() (*Console, error) {
 	//settings, _ := assets.LoadSettings()
 	//assets.SetInputrc()
 	con := &Console{
-		ActiveTarget: &ActiveTarget{},
+		//ActiveTarget: &core.ActiveTarget{},
 		//Settings:     settings,
-		Observers: map[string]*Observer{},
-		Log:       Log,
-		Plugins:   NewPlugins(),
-	}
-
-	con.ActiveTarget.callback = func(sess *Session) {
-		con.ActiveTarget.activeObserver = NewObserver(sess)
+		Log:     core.Log,
+		Plugins: NewPlugins(),
 	}
 
 	con.NewConsole()
@@ -58,14 +46,12 @@ func NewConsole() (*Console, error) {
 }
 
 type Console struct {
-	*ActiveTarget
-	*ServerStatus
+	//*core.ActiveTarget
+	*core.ServerStatus
 	*Plugins
-	Log       *logs.Logger
-	App       *console.Console
-	Settings  *assets.Settings
-	Callbacks *sync.Map
-	Observers map[string]*Observer
+	Log      *core.Logger
+	App      *console.Console
+	Settings *assets.Settings
 }
 
 func (c *Console) NewConsole() {
@@ -104,11 +90,11 @@ func (c *Console) Context() context.Context {
 	ctx, _ := context.WithTimeout(context.Background(), consts.DefaultTimeout)
 
 	return metadata.NewOutgoingContext(ctx, metadata.Pairs(
-		"client_id", c.Client.Name),
+		"client_id", fmt.Sprintf("%s_%d", c.Client.Name, c.Client.ID)),
 	)
 }
 
-func (c *Console) GetSession(sessionID string) *Session {
+func (c *Console) GetSession(sessionID string) *core.Session {
 	if sess, ok := c.Sessions[sessionID]; ok {
 		return sess
 	}
@@ -131,20 +117,9 @@ func (c *Console) GetPrompt() string {
 	}
 }
 
-// AddObserver - Observers to notify when the active session changes
-func (c *Console) AddObserver(session *Session) string {
-	Log.Infof("Add observer to %s", session.SessionId)
-	c.Observers[session.SessionId] = &Observer{session}
-	return session.SessionId
-}
-
-func (c *Console) RemoveObserver(observerID string) {
-	delete(c.Observers, observerID)
-}
-
 func (c *Console) RefreshActiveSession() {
 	if c.ActiveTarget != nil {
-		c.UpdateSession(c.ActiveTarget.session.SessionId)
+		c.UpdateSession(c.ActiveTarget.Session.SessionId)
 	}
 }
 
@@ -152,7 +127,7 @@ func (c *Console) ImplantMenu() *cobra.Command {
 	return c.App.Menu(consts.ImplantMenu).Command
 }
 
-func (c *Console) SwitchImplant(sess *Session) {
+func (c *Console) SwitchImplant(sess *core.Session) {
 	c.ActiveTarget.Set(sess)
 	c.App.SwitchMenu(consts.ImplantMenu)
 

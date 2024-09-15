@@ -19,5 +19,5 @@ func removeCmd(cmd *cobra.Command, con *repl.Console) {
 		return
 	}
 	delete(con.Sessions, id)
-	repl.Log.Infof("delete session %s", id)
+	con.Log.Infof("delete session %s", id)
 }

@@ -17,14 +17,14 @@ import (
 func listTcpCmd(cmd *cobra.Command, con *repl.Console) {
 	listenerID := cmd.Flags().Arg(0)
 	if listenerID == "" {
-		repl.Log.Error("listener_id is required")
+		con.Log.Error("listener_id is required")
 		return
 	}
 	Pipelines, err := con.Rpc.ListTcpPipelines(context.Background(), &lispb.ListenerName{
 		Name: listenerID,
 	})
 	if err != nil {
-		repl.Log.Error(err.Error())
+		con.Log.Error(err.Error())
 		return
 	}
 	var rowEntries []table.Row
@@ -60,7 +60,7 @@ func newTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) {
 	var err error
 	var tlsEnable = false
 	if listenerID == "" {
-		repl.Log.Error("listener_id is required")
+		con.Log.Error("listener_id is required")
 		return
 	}
 	if portUint == 0 {
@@ -74,13 +74,13 @@ func newTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) {
 	if certPath != "" && keyPath != "" {
 		cert, err = cryptography.ProcessPEM(certPath)
 		if err != nil {
-			repl.Log.Error(err.Error())
+			con.Log.Error(err.Error())
 			return
 		}
 		key, err = cryptography.ProcessPEM(keyPath)
 		tlsEnable = true
 		if err != nil {
-			repl.Log.Error(err.Error())
+			con.Log.Error(err.Error())
 			return
 		}
 	}
@@ -101,7 +101,7 @@ func newTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) {
 		},
 	})
 	if err != nil {
-		repl.Log.Error(err.Error())
+		con.Log.Error(err.Error())
 	}
 }
 
@@ -114,7 +114,7 @@ func startTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) {
 	})
 
 	if err != nil {
-		repl.Log.Error(err.Error())
+		con.Log.Error(err.Error())
 	}
 }
 
@@ -126,6 +126,6 @@ func stopTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) {
 		ListenerId: listenerID,
 	})
 	if err != nil {
-		repl.Log.Error(err.Error())
+		con.Log.Error(err.Error())
 	}
 }

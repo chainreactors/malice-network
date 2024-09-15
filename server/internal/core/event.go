@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/nikoksr/notify"
 	"github.com/nikoksr/notify/service/dingding"
@@ -18,18 +19,16 @@ const (
 )
 
 type Event struct {
-	Session *Session
-	Job     *Job
-	Client  *Client
-	Task    *Task
+	Session *clientpb.Session
+	Job     *clientpb.Job
+	Client  *clientpb.Client
+	Task    *clientpb.Task
 
-	EventType  string
-	Op         string
-	SourceName string
-	Message    string
-	Data       []byte
-	Err        string
-	IsNotify   bool
+	EventType string
+	Op        string
+	Message   string
+	Err       string
+	IsNotify  bool
 }
 
 type eventBroker struct {
@@ -55,7 +54,7 @@ func (broker *eventBroker) Start() {
 		case sub := <-broker.unsubscribe:
 			delete(subscribers, sub)
 		case event := <-broker.publish:
-			logs.Log.Infof("[event.%s] %s: %s", event.EventType, event.Op, string(event.Data))
+			logs.Log.Infof("[event.%s] %s: %s", event.EventType, event.Op, event.Message)
 			for sub := range subscribers {
 				sub <- event
 			}
@@ -85,10 +84,9 @@ func (broker *eventBroker) Unsubscribe(events chan Event) {
 func (broker *eventBroker) Publish(event Event) {
 	broker.publish <- event
 	if event.IsNotify {
-		err := broker.notifier.Send(&event)
+		err := broker.Notify(event)
 		if err != nil {
-			logs.Log.Errorf("Failed to send notification: %s", err)
-			return
+			logs.Log.Errorf("notify error: %s", err)
 		}
 	}
 }

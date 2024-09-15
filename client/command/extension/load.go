@@ -8,6 +8,7 @@ import (
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/help"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/client/core/intermediate/builtin"
 	"github.com/chainreactors/malice-network/client/repl"
@@ -21,7 +22,6 @@ import (
 	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"google.golang.org/protobuf/proto"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -136,12 +136,12 @@ func ExtensionLoadCmd(cmd *cobra.Command, con *repl.Console) {
 	// do not add if the command already exists
 	for _, extCmd := range manifest.ExtCommand {
 		if repl.CmdExists(extCmd.CommandName, con.ImplantMenu()) {
-			repl.Log.Errorf("%s command already exists\n", extCmd.CommandName)
+			con.Log.Errorf("%s command already exists\n", extCmd.CommandName)
 			confirmModel := tui.NewConfirm(fmt.Sprintf("%s command already exists. Overwrite?", extCmd.CommandName))
 			newConfirm := tui.NewModel(confirmModel, nil, false, true)
 			err = newConfirm.Run()
 			if err != nil {
-				repl.Log.Errorf("Error running confirm model: %s\n", err)
+				con.Log.Errorf("Error running confirm model: %s\n", err)
 				return
 			}
 			if !confirmModel.Confirmed {
@@ -149,7 +149,7 @@ func ExtensionLoadCmd(cmd *cobra.Command, con *repl.Console) {
 			}
 		}
 		ExtensionRegisterCommand(extCmd, cmd.Root(), con)
-		repl.Log.Infof("Added %s command: %s\n", extCmd.CommandName, extCmd.Help)
+		con.Log.Infof("Added %s command: %s\n", extCmd.CommandName, extCmd.Help)
 
 	}
 }
@@ -178,7 +178,7 @@ func ParseExtensionManifest(data []byte) (*ExtensionManifest, error) {
 	err := json.Unmarshal(data, &extManifest)
 	if err != nil || len(extManifest.ExtCommand) == 0 {
 		if err != nil {
-			repl.Log.Errorf("extension load error: %s\n", err)
+			core.Log.Errorf("extension load error: %s\n", err)
 		}
 		oldmanifest := &ExtensionManifest_{}
 		err = json.Unmarshal(data, &oldmanifest)
@@ -197,7 +197,7 @@ func ParseExtensionManifest(data []byte) (*ExtensionManifest, error) {
 // ExtensionRegisterCommand
 func ExtensionRegisterCommand(extCmd *ExtCommand, cmd *cobra.Command, con *repl.Console) {
 	if errInvalidArgs := checkExtensionArgs(extCmd); errInvalidArgs != nil {
-		repl.Log.Error(errInvalidArgs.Error())
+		con.Log.Error(errInvalidArgs.Error())
 		return
 	}
 
@@ -269,7 +269,7 @@ func ExtensionRegisterCommand(extCmd *ExtCommand, cmd *cobra.Command, con *repl.
 	loadedExtensions[extCmd.CommandName] = &loadedExt{
 		Manifest: extCmd,
 		Command:  cmd,
-		Func: repl.WrapImplantFunc(con, func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, args string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
+		Func: repl.WrapImplantFunc(con, func(rpc clientrpc.MaliceRPCClient, sess *core.Session, args string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 			return ExecuteExtension(rpc, sess, extensionCmd.Name(), args)
 		}, common.ParseAssembly),
 	}
@@ -314,7 +314,7 @@ func ExtensionRegisterCommand(extCmd *ExtCommand, cmd *cobra.Command, con *repl.
 //		return err
 //	}
 //
-//	con.AddCallback(task, func(msg proto.Message) {
+//	con.AddCallback(task, func(msg *implantpb.Spite) (string, error) {
 //		con.SessionLog(con.GetInteractive().SessionId).Infof("Loaded extension %s", ext.CommandName)
 //	})
 //	return nil
@@ -342,16 +342,16 @@ func runExtensionCmd(cmd *cobra.Command, con *repl.Console) {
 
 	task, err := ExecuteExtension(con.Rpc, session, cmd.Name(), strings.Join(args, " "))
 	if err != nil {
-		repl.Log.Errorf("Error executing extension: %s\n", err.Error())
+		con.Log.Errorf("Error executing extension: %s\n", err.Error())
 		return
 	}
-	con.AddCallback(task, func(msg proto.Message) {
-		resp, _ := builtin.ParseAssembly(msg.(*implantpb.Spite))
-		session.Log.Console(resp)
+	con.AddCallback(task, func(msg *implantpb.Spite) (string, error) {
+		resp, _ := builtin.ParseAssembly(msg)
+		return resp, nil
 	})
 }
 
-func ExecuteExtension(rpc clientrpc.MaliceRPCClient, sess *repl.Session, extName string, args string) (*clientpb.Task, error) {
+func ExecuteExtension(rpc clientrpc.MaliceRPCClient, sess *core.Session, extName string, args string) (*clientpb.Task, error) {
 	ext, ok := loadedExtensions[extName]
 	cmd := ext.Manifest
 	if !ok {

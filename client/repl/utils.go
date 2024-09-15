@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/handler"
@@ -19,11 +20,11 @@ import (
 	"reflect"
 )
 
-type implantFunc func(rpc clientrpc.MaliceRPCClient, sess *Session, params ...interface{}) (*clientpb.Task, error)
+type implantFunc func(rpc clientrpc.MaliceRPCClient, sess *core.Session, params ...interface{}) (*clientpb.Task, error)
 type ImplantCallback func(*clientpb.TaskContext) (interface{}, error)
 
 func wrapImplantFunc(fun interface{}) implantFunc {
-	return func(rpc clientrpc.MaliceRPCClient, sess *Session, params ...interface{}) (*clientpb.Task, error) {
+	return func(rpc clientrpc.MaliceRPCClient, sess *core.Session, params ...interface{}) (*clientpb.Task, error) {
 		funcValue := reflect.ValueOf(fun)
 		funcType := funcValue.Type()
 
@@ -74,12 +75,12 @@ func WrapImplantFunc(con *Console, fun interface{}, callback ImplantCallback) *i
 	interFunc := intermediate.GetInternalFuncSignature(fun)
 	interFunc.ArgTypes = interFunc.ArgTypes[2:]
 	interFunc.Func = func(args ...interface{}) (interface{}, error) {
-		var sess *Session
+		var sess *core.Session
 		if len(args) == 0 {
 			return nil, fmt.Errorf("implant func first args must be session")
 		} else {
 			var ok bool
-			sess, ok = args[0].(*Session)
+			sess, ok = args[0].(*core.Session)
 			if !ok {
 				return nil, fmt.Errorf("implant func first args must be session")
 			}
@@ -97,10 +98,10 @@ func WrapImplantFunc(con *Console, fun interface{}, callback ImplantCallback) *i
 		}
 
 		tui.Down(0)
-		Log.Importantf(logs.GreenBold(fmt.Sprintf("session: %s task: %d index: %d\n", task.SessionId, task.TaskId, task.Cur)))
+		con.Log.Importantf(logs.GreenBold(fmt.Sprintf("session: %s task: %d index: %d\n", task.SessionId, task.TaskId, task.Cur)))
 		err = handler.HandleMaleficError(content.Spite)
 		if err != nil {
-			Log.Errorf(err.Error())
+			con.Log.Errorf(err.Error())
 			return nil, err
 		}
 
@@ -207,7 +208,7 @@ func Login(con *Console, config *mtls.ClientConfig) error {
 		return err
 	}
 	logs.Log.Importantf("Connected to server %s", config.Address())
-	con.ServerStatus, err = InitServerStatus(conn, config)
+	con.ServerStatus, err = core.InitServerStatus(conn, config)
 	if err != nil {
 		logs.Log.Errorf("init server failed : %v", err)
 		return err

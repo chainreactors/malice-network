@@ -18,7 +18,7 @@ func ExtensionsInstallCmd(cmd *cobra.Command, con *repl.Console) {
 	extLocalPath := cmd.Flags().Arg(0)
 	_, err := os.Stat(extLocalPath)
 	if os.IsNotExist(err) {
-		repl.Log.Errorf("Extension path '%s' does not exist", extLocalPath)
+		con.Log.Errorf("Extension path '%s' does not exist", extLocalPath)
 		return
 	}
 	InstallFromDir(extLocalPath, true, con, strings.HasSuffix(extLocalPath, ".tar.gz"))
@@ -35,25 +35,25 @@ func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *repl.Conso
 		manifestData, err = os.ReadFile(filepath.Join(extLocalPath, ManifestFileName))
 	}
 	if err != nil {
-		repl.Log.Errorf("Error reading %s: %s", ManifestFileName, err)
+		con.Log.Errorf("Error reading %s: %s", ManifestFileName, err)
 		return
 	}
 
 	manifest, err := ParseExtensionManifest(manifestData)
 	if err != nil {
-		repl.Log.Errorf("Error parsing %s: %s", ManifestFileName, err)
+		con.Log.Errorf("Error parsing %s: %s", ManifestFileName, err)
 		return
 	}
 
 	installPath := filepath.Join(assets.GetExtensionsDir(), filepath.Base(manifest.Name))
 	if _, err := os.Stat(installPath); !os.IsNotExist(err) {
 		if promptToOverwrite {
-			repl.Log.Infof("Extension '%s' already exists", manifest.Name)
+			con.Log.Infof("Extension '%s' already exists", manifest.Name)
 			confirmModel := tui.NewConfirm("Overwrite current install?")
 			newConfirm := tui.NewModel(confirmModel, nil, false, true)
 			err = newConfirm.Run()
 			if err != nil {
-				repl.Log.Errorf("Error running confirm model: %s", err)
+				con.Log.Errorf("Error running confirm model: %s", err)
 				return
 			}
 			if !confirmModel.Confirmed {
@@ -63,15 +63,15 @@ func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *repl.Conso
 		utils.ForceRemoveAll(installPath)
 	}
 
-	repl.Log.Infof("Installing extension '%s' (%s) ... ", manifest.Name, manifest.Version)
+	con.Log.Infof("Installing extension '%s' (%s) ... ", manifest.Name, manifest.Version)
 	err = os.MkdirAll(installPath, 0700)
 	if err != nil {
-		repl.Log.Errorf("\nError creating extension directory: %s\n", err)
+		con.Log.Errorf("\nError creating extension directory: %s\n", err)
 		return
 	}
 	err = os.WriteFile(filepath.Join(installPath, ManifestFileName), manifestData, 0o600)
 	if err != nil {
-		repl.Log.Errorf("\nFailed to write %s: %s\n", ManifestFileName, err)
+		con.Log.Errorf("\nFailed to write %s: %s\n", ManifestFileName, err)
 		utils.ForceRemoveAll(installPath)
 		return
 	}
@@ -86,7 +86,7 @@ func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *repl.Conso
 					dst := filepath.Join(newInstallPath, utils.ResolvePath(manifestFile.Path))
 					err = os.MkdirAll(filepath.Dir(dst), 0700) //required for extensions with multiple dirs between the .o file and the manifest
 					if err != nil {
-						repl.Log.Errorf("\nError creating extension directory: %s\n", err)
+						con.Log.Errorf("\nError creating extension directory: %s\n", err)
 						utils.ForceRemoveAll(newInstallPath)
 						return
 					}
@@ -96,7 +96,7 @@ func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *repl.Conso
 					}
 				}
 				if err != nil {
-					repl.Log.Errorf("Error installing command: %s\n", err)
+					con.Log.Errorf("Error installing command: %s\n", err)
 					utils.ForceRemoveAll(newInstallPath)
 					return
 				}

@@ -26,7 +26,7 @@ func SyncCmd(cmd *cobra.Command, con *repl.Console) {
 	defer file.Close()
 	_, err = file.Write(syncTask.Content)
 	if err != nil {
-		session.Log.Errorf("Can't write file: %s", err)
+		con.Log.Errorf("Can't write file: %s", err)
 		return
 	}
 }

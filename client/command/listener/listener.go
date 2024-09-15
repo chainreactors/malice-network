@@ -14,7 +14,7 @@ import (
 func ListenerCmd(cmd *cobra.Command, con *repl.Console) {
 	listeners, err := con.Rpc.GetListeners(context.Background(), &clientpb.Empty{})
 	if err != nil {
-		repl.Log.Errorf("Failed to list listeners: %s", err)
+		con.Log.Errorf("Failed to list listeners: %s", err)
 		return
 	}
 	printListeners(listeners)

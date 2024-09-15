@@ -1,14 +1,13 @@
 package file
 
 import (
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/spf13/cobra"
 	"path/filepath"
-
-	"google.golang.org/protobuf/proto"
 )
 
 func DownloadCmd(cmd *cobra.Command, con *repl.Console) {
@@ -19,12 +18,12 @@ func DownloadCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf("Download error: %v", err)
 		return
 	}
-	con.AddCallback(task, func(msg proto.Message) {
-		session.Log.Importantf("Downloaded file %s ", path)
+	con.AddCallback(task, func(msg *implantpb.Spite) (string, error) {
+		return "Downloaded file " + path, nil
 	})
 }
 
-func Download(rpc clientrpc.MaliceRPCClient, session *repl.Session, path string) (*clientpb.Task, error) {
+func Download(rpc clientrpc.MaliceRPCClient, session *core.Session, path string) (*clientpb.Task, error) {
 	task, err := rpc.Download(session.Context(), &implantpb.DownloadRequest{
 		Name: filepath.Base(path),
 		Path: path,

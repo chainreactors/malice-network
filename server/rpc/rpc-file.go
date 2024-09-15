@@ -108,7 +108,7 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 					greq.Task.Done(core.Event{
 						EventType: consts.EventTask,
 						Op:        consts.CtrlTaskCallback,
-						Task:      greq.Task,
+						Task:      greq.Task.ToProtobuf(),
 					})
 					err = db.UpdateTask(greq.Task, blockId+1)
 					if err != nil {
@@ -207,7 +207,7 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 				greq.Task.Done(core.Event{
 					EventType: consts.EventTask,
 					Op:        consts.CtrlTaskFinish,
-					Task:      greq.Task,
+					Task:      greq.Task.ToProtobuf(),
 				})
 			}
 		}

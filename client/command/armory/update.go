@@ -5,6 +5,7 @@ import (
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/alias"
 	"github.com/chainreactors/malice-network/client/command/extension"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/client/utils"
 	"github.com/chainreactors/tui"
@@ -276,7 +277,7 @@ func getUpdatesFromUser(updateKeys []UpdateIdentifier) (chosenUpdates []UpdateId
 	newInput := tui.NewModel(inputModel, nil, false, true)
 	err := newInput.Run()
 	if err != nil {
-		repl.Log.Errorf("failed to get user input: %s", err)
+		core.Log.Errorf("failed to get user input: %s", err)
 		return
 	}
 	updateResponse = strings.ToLower(updateResponse)

@@ -1,7 +1,7 @@
 package sys
 
 import (
-	"fmt"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
@@ -10,7 +10,6 @@ import (
 	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/spf13/cobra"
-	"google.golang.org/protobuf/proto"
 )
 
 func NetstatCmd(cmd *cobra.Command, con *repl.Console) {
@@ -19,8 +18,8 @@ func NetstatCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf("Kill error: %v", err)
 		return
 	}
-	con.AddCallback(task, func(msg proto.Message) {
-		resp := msg.(*implantpb.Spite).GetNetstatResponse()
+	con.AddCallback(task, func(msg *implantpb.Spite) (string, error) {
+		resp := msg.GetNetstatResponse()
 		var rowEntries []table.Row
 		var row table.Row
 		tableModel := tui.NewTable([]table.Column{
@@ -41,11 +40,11 @@ func NetstatCmd(cmd *cobra.Command, con *repl.Console) {
 			rowEntries = append(rowEntries, row)
 		}
 		tableModel.SetRows(rowEntries)
-		fmt.Printf(tableModel.View())
+		return tableModel.View(), nil
 	})
 }
 
-func Netstat(rpc clientrpc.MaliceRPCClient, session *repl.Session) (*clientpb.Task, error) {
+func Netstat(rpc clientrpc.MaliceRPCClient, session *core.Session) (*clientpb.Task, error) {
 	task, err := rpc.Netstat(session.Context(), &implantpb.Request{
 		Name: consts.ModuleNetstat,
 	})

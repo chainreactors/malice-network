@@ -1,13 +1,14 @@
 package sys
 
 import (
+	"fmt"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/spf13/cobra"
-	"google.golang.org/protobuf/proto"
 )
 
 func InfoCmd(cmd *cobra.Command, con *repl.Console) {
@@ -17,12 +18,12 @@ func InfoCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf("Info error: %v", err)
 		return
 	}
-	con.AddCallback(task, func(msg proto.Message) {
-		session.Log.Consolef("Info: %v\n", msg.(*implantpb.Spite).Body)
+	con.AddCallback(task, func(msg *implantpb.Spite) (string, error) {
+		return fmt.Sprintf("%v", msg.GetSysinfo()), nil
 	})
 }
 
-func Info(rpc clientrpc.MaliceRPCClient, session *repl.Session) (*clientpb.Task, error) {
+func Info(rpc clientrpc.MaliceRPCClient, session *core.Session) (*clientpb.Task, error) {
 	task, err := rpc.Info(session.Context(), &implantpb.Request{
 		Name: consts.ModuleInfo,
 	})

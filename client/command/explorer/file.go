@@ -1,12 +1,12 @@
 package explorer
 
 import (
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
-	"google.golang.org/protobuf/proto"
 	"os"
 )
 
@@ -20,12 +20,12 @@ func explorerCmd(cmd *cobra.Command, con *repl.Console) {
 		Input: "./",
 	})
 	if err != nil {
-		repl.Log.Errorf("load directory error: %v", err)
+		con.Log.Errorf("load directory error: %v", err)
 		return
 	}
 
-	con.AddCallback(task, func(msg proto.Message) {
-		resp := msg.(*implantpb.Spite).GetLsResponse()
+	con.AddCallback(task, func(msg *implantpb.Spite) (string, error) {
+		resp := msg.GetLsResponse()
 		var dirEntries []os.DirEntry
 		for _, protoFile := range resp.GetFiles() {
 			dirEntries = append(dirEntries, ProtobufDirEntry{FileInfo: protoFile})
@@ -33,6 +33,7 @@ func explorerCmd(cmd *cobra.Command, con *repl.Console) {
 		path = resp.GetPath()
 		path = path[4:]
 		dirEntriesChan <- dirEntries
+		return "", core.ErrDisableOutput
 	})
 
 	var dirEntries []os.DirEntry
@@ -46,14 +47,14 @@ func explorerCmd(cmd *cobra.Command, con *repl.Console) {
 				dirEntries = newEntries
 				err := SetFiles(&explorer.FilePicker, dirEntries)
 				if err != nil {
-					repl.Log.Errorf("Error setting files: %v", err)
+					con.Log.Errorf("Error setting files: %v", err)
 					return
 				}
 				explorer.Files = dirEntries
 				explorer.FilePicker.CurrentDirectory = path
 				explorer.max = max(explorer.max, explorer.FilePicker.Height-1)
 				if _, err := tea.NewProgram(explorer, tea.WithAltScreen()).Run(); err != nil {
-					repl.Log.Errorf("Error running explorer: %v", err)
+					con.Log.Errorf("Error running explorer: %v", err)
 				}
 				//newExplorer := tui.NewModel(explorer, nil, false, false)
 				//err = newExplorer.Run()

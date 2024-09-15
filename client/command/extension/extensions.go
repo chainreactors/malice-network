@@ -18,7 +18,7 @@ func ExtensionsCmd(cmd *cobra.Command, con *repl.Console) {
 	if 0 < len(getInstalledManifests()) {
 		PrintExtensions(con)
 	} else {
-		repl.Log.Infof("No extensions installed, use the 'armory' command to automatically install some\n")
+		con.Log.Infof("No extensions installed, use the 'armory' command to automatically install some\n")
 	}
 }
 
@@ -59,7 +59,7 @@ func PrintExtensions(con *repl.Console) {
 	newTable := tui.NewModel(tableModel, nil, false, false)
 	err := newTable.Run()
 	if err != nil {
-		repl.Log.Errorf("Error running table: %s", err)
+		con.Log.Errorf("Error running table: %s", err)
 		return
 	}
 }

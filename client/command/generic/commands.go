@@ -62,13 +62,17 @@ func Commands(con *repl.Console) []*cobra.Command {
 	con.RegisterServerFunc(consts.CommandBroadcast, func(con *repl.Console, msg string) (bool, error) {
 		return Broadcast(con, &clientpb.Event{
 			Type:    consts.EventBroadcast,
-			Source:  con.Client.Name,
+			Client:  con.Client,
 			Message: msg,
 		})
 	})
 
 	con.RegisterServerFunc(consts.CommandNotify, func(con *repl.Console, msg string) (bool, error) {
-		return Notify(con, msg)
+		return Notify(con, &clientpb.Event{
+			Type:    consts.EventNotify,
+			Client:  con.Client,
+			Message: msg,
+		})
 	})
 
 	return []*cobra.Command{loginCmd, versionCmd, exitCmd, broadcastCmd}
