@@ -1,12 +1,9 @@
 package generic
 
 import (
-	"context"
-	"fmt"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/mtls"
-	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/tui"
 	"github.com/spf13/cobra"
 	"path/filepath"
@@ -15,7 +12,7 @@ import (
 func LoginCmd(cmd *cobra.Command, con *repl.Console) error {
 	files, err := assets.GetConfigs()
 	if err != nil {
-		con.App.Printf("Error retrieving YAML files: %s", err)
+		con.Log.Errorf("Error retrieving YAML files: %s", err)
 		return err
 	}
 
@@ -25,47 +22,23 @@ func LoginCmd(cmd *cobra.Command, con *repl.Console) error {
 	newLogin := tui.NewModel(m, nil, false, false)
 	err = newLogin.Run()
 	if err != nil {
-		con.App.Printf("Error running interactive list: %s", err)
+		con.Log.Errorf("Error running interactive list: %s", err)
 		return err
 	}
 
 	// After the interactive list is completed, check the selected item
 	if m.SelectedItem >= 0 && m.SelectedItem < len(m.Choices) {
-		err := loginServer(con, m.Choices[m.SelectedItem])
+		configFile := filepath.Join(assets.GetConfigDir(), m.Choices[m.SelectedItem])
+		config, err := mtls.ReadConfig(configFile)
 		if err != nil {
-			fmt.Println("Error executing loginServer:", err)
+			con.Log.Errorf("Error reading config file: %s", err)
+			return err
+		}
+		err = repl.Login(con, config)
+		if err != nil {
+			con.Log.Errorf("Error executing loginServer: %s", err)
 		}
 	}
 
-	return nil
-}
-
-func loginServer(con *repl.Console, selectedFile string) error {
-	configFile := filepath.Join(assets.GetConfigDir(), selectedFile)
-	config, err := mtls.ReadConfig(configFile)
-	if err != nil {
-		con.App.Printf("Error reading config file: %s", err)
-		return err
-	}
-
-	err = repl.Login(con, config)
-	if err != nil {
-		con.App.Printf("Error login: %s", err)
-		return err
-	}
-	req := &clientpb.LoginReq{
-		Name: config.Operator,
-		Host: config.LHost,
-		Port: uint32(config.LPort),
-	}
-	res, err := con.Rpc.LoginClient(context.Background(), req)
-	if err != nil {
-		con.App.Printf("Error login server: %s", err)
-		return err
-	}
-	if res.Success != true {
-		con.App.Printf("Error login server")
-		return err
-	}
 	return nil
 }

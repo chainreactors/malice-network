@@ -19,26 +19,26 @@ func BroadcastCmd(cmd *cobra.Command, con *repl.Console) {
 		}
 		return
 	}
-	_, err := Broadcast(con, strings.Join(msg, " "))
+	_, err := Broadcast(con, &clientpb.Event{
+		Type:    consts.EventBroadcast,
+		Source:  con.Client.Name,
+		Message: strings.Join(msg, " "),
+	})
 	if err != nil {
 		con.Log.Errorf("broadcast error: %s", err)
 		return
 	}
 }
 
-func Broadcast(con *repl.Console, msg string) (bool, error) {
-	_, err := con.Rpc.Broadcast(con.Context(), &clientpb.Event{
-		Type: consts.EventBroadcast,
-		Data: []byte(msg),
-	})
-
+func Broadcast(con *repl.Console, event *clientpb.Event) (bool, error) {
+	_, err := con.Rpc.Broadcast(con.Context(), event)
 	return true, err
 }
 
 func Notify(con *repl.Console, msg string) (bool, error) {
 	_, err := con.Rpc.Notify(con.Context(), &clientpb.Event{
 		Type:    consts.EventNotify,
-		Op:      con.ClientConfig.Operator,
+		Op:      con.Client.Name,
 		Message: msg,
 	})
 
