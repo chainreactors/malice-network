@@ -21,5 +21,5 @@ func groupCmd(cmd *cobra.Command, con *repl.Console) {
 		return
 	}
 	con.UpdateSession(sid)
-	repl.Log.Infof("update %s group to %s", sid, group)
+	con.Log.Infof("update %s group to %s", sid, group)
 }

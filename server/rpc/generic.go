@@ -83,46 +83,31 @@ func (r *GenericRequest) HandlerResponse(ch chan *implantpb.Spite, typ types.Msg
 	r.Task.Done(core.Event{
 		EventType: consts.EventTask,
 		Op:        consts.CtrlTaskCallback,
-		Task:      r.Task,
+		Task:      r.Task.ToProtobuf(),
 	})
 }
 
 func buildErrorEvent(task *core.Task, err error) core.Event {
-	if errors.Is(err, handler.ErrNilStatus) {
-		return core.Event{
-			EventType: consts.EventTask,
-			Op:        consts.CtrlTaskError,
-			Task:      task,
-			Err:       handler.ErrNilStatus.Error(),
-		}
-	} else if errors.Is(err, handler.ErrAssertFailure) {
-		return core.Event{
-			EventType: consts.EventTask,
-			Op:        consts.CtrlTaskError,
-			Task:      task,
-			Err:       handler.ErrAssertFailure.Error(),
-		}
-	} else if errors.Is(err, handler.ErrNilResponseBody) {
-		return core.Event{
-			EventType: consts.EventTask,
-			Op:        consts.CtrlTaskError,
-			Task:      task,
-			Err:       handler.ErrNilResponseBody.Error(),
-		}
-	} else if errors.Is(err, ErrMissingRequestField) {
-		return core.Event{
-			EventType: consts.EventTask,
-			Op:        consts.CtrlTaskError,
-			Task:      task,
-			Err:       ErrMissingRequestField.Error(),
-		}
-	} else {
-		return core.Event{
-			EventType: consts.EventTask,
-			Op:        consts.CtrlTaskError,
-			Task:      task,
-			Err:       err.Error(),
-		}
+	var eventErr string
+
+	switch {
+	case errors.Is(err, handler.ErrNilStatus):
+		eventErr = handler.ErrNilStatus.Error()
+	case errors.Is(err, handler.ErrAssertFailure):
+		eventErr = handler.ErrAssertFailure.Error()
+	case errors.Is(err, handler.ErrNilResponseBody):
+		eventErr = handler.ErrNilResponseBody.Error()
+	case errors.Is(err, ErrMissingRequestField):
+		eventErr = ErrMissingRequestField.Error()
+	default:
+		eventErr = err.Error()
+	}
+
+	return core.Event{
+		EventType: consts.EventTask,
+		Op:        consts.CtrlTaskError,
+		Task:      task.ToProtobuf(),
+		Err:       eventErr,
 	}
 }
 

@@ -261,7 +261,7 @@ func (lns *listener) Handler() {
 			resp = lns.startWebsite(msg.Job)
 		case consts.CtrlWebsiteStop:
 			resp = lns.stopWebsite(msg.Job)
-		case consts.RegisterWebsite:
+		case consts.CtrlWebsiteRegister:
 			resp = lns.registerWebsite(msg.Job)
 		}
 		err = stream.Send(resp)

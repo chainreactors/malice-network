@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/help"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
@@ -148,7 +149,7 @@ func Register(con *repl.Console) {
 		consts.ModuleEnv,
 		Env,
 		"benv",
-		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *core.Session) (*clientpb.Task, error) {
 			return Env(rpc, sess)
 		},
 		func(ctx *clientpb.TaskContext) (interface{}, error) {
@@ -164,7 +165,7 @@ func Register(con *repl.Console) {
 		consts.ModuleSetEnv,
 		SetEnv,
 		"bsetenv",
-		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, envName, value string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, envName, value string) (*clientpb.Task, error) {
 			return SetEnv(rpc, sess, envName, value)
 		},
 		common.ParseStatus,
@@ -174,7 +175,7 @@ func Register(con *repl.Console) {
 		consts.ModuleUnsetEnv,
 		UnSetEnv,
 		"bunsetenv",
-		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, envName string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, envName string) (*clientpb.Task, error) {
 			return UnSetEnv(rpc, sess, envName)
 		},
 		common.ParseStatus)
@@ -183,7 +184,7 @@ func Register(con *repl.Console) {
 		consts.ModuleInfo,
 		Info,
 		"binfo",
-		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *core.Session) (*clientpb.Task, error) {
 			return Info(rpc, sess)
 		},
 		func(ctx *clientpb.TaskContext) (interface{}, error) {
@@ -194,7 +195,7 @@ func Register(con *repl.Console) {
 		consts.ModuleKill,
 		Kill,
 		"bkill",
-		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, pid string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, pid string) (*clientpb.Task, error) {
 			return Kill(rpc, sess, pid)
 		},
 		common.ParseStatus)
@@ -203,7 +204,7 @@ func Register(con *repl.Console) {
 		consts.ModuleNetstat,
 		Netstat,
 		"bnetstat",
-		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *core.Session) (*clientpb.Task, error) {
 			return Netstat(rpc, sess)
 		},
 		func(ctx *clientpb.TaskContext) (interface{}, error) {
@@ -224,7 +225,7 @@ func Register(con *repl.Console) {
 		consts.ModulePs,
 		Ps,
 		"bps",
-		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *core.Session) (*clientpb.Task, error) {
 			return Ps(rpc, sess)
 		},
 		func(ctx *clientpb.TaskContext) (interface{}, error) {
@@ -247,7 +248,7 @@ func Register(con *repl.Console) {
 		consts.ModuleWhoami,
 		Whoami,
 		"bwhoami",
-		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *core.Session) (*clientpb.Task, error) {
 			return Whoami(rpc, sess)
 		},
 		common.ParseResponse)

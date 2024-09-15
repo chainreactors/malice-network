@@ -3,6 +3,7 @@ package repl
 import (
 	"errors"
 	"fmt"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/client/core/intermediate/builtin"
 	"github.com/chainreactors/malice-network/client/core/plugin"
@@ -95,7 +96,7 @@ func (plug *Plugin) InitLua(con *Console) error {
 	plug.LuaVM = vm
 	cmd := con.ImplantMenu()
 
-	plug.registerLuaFunction("active", func() (*Session, error) {
+	plug.registerLuaFunction("active", func() (*core.Session, error) {
 		return con.GetInteractive(), nil
 	})
 
@@ -163,7 +164,7 @@ func (plug *Plugin) InitLua(con *Console) error {
 			}
 			cmdName := strings.TrimPrefix(funcName, "command_")
 			if CmdExists(cmdName, cmd) {
-				Log.Warnf("%s already exists, skipped\n", funcName)
+				con.Log.Warnf("%s already exists, skipped\n", funcName)
 				return
 			}
 
@@ -194,10 +195,9 @@ func (plug *Plugin) InitLua(con *Console) error {
 						}
 					}
 
-					session := con.GetInteractive()
 					go func() {
 						if err := vm.PCall(len(paramNames), lua.MultRet, nil); err != nil {
-							session.Log.Errorf("error calling Lua function %s: %s", funcName, err.Error())
+							con.Log.Errorf("error calling Lua function %s: %s", funcName, err.Error())
 							return
 						}
 
@@ -205,7 +205,7 @@ func (plug *Plugin) InitLua(con *Console) error {
 						for i := 1; i <= resultCount; i++ {
 							// 从栈顶依次弹出返回值
 							result := vm.Get(-resultCount + i - 1)
-							session.Log.Consolef("%v\n", result)
+							con.Log.Consolef("%v\n", result)
 						}
 						vm.Pop(resultCount)
 					}()
@@ -223,7 +223,7 @@ func (plug *Plugin) InitLua(con *Console) error {
 			}
 
 			plug.CMDs = append(plug.CMDs, malCmd)
-			Log.Debugf("Registered Command: %s\n", funcName)
+			con.Log.Debugf("Registered Command: %s\n", funcName)
 		}
 	})
 	return nil

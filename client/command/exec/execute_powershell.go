@@ -2,6 +2,7 @@ package exec
 
 import (
 	"bytes"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/core/intermediate/builtin"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -9,7 +10,6 @@ import (
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/spf13/cobra"
-	"google.golang.org/protobuf/proto"
 	"os"
 	"strings"
 )
@@ -23,13 +23,13 @@ func ExecutePowershellCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf("Execute Powershell error: %v", err)
 		return
 	}
-	con.AddCallback(task, func(msg proto.Message) {
-		resp, _ := builtin.ParseAssembly(msg.(*implantpb.Spite))
-		session.Log.Console(resp)
+	con.AddCallback(task, func(msg *implantpb.Spite) (string, error) {
+		resp, _ := builtin.ParseAssembly(msg)
+		return resp, nil
 	})
 }
 
-func ExecPowershell(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string, ps []string) (*clientpb.Task, error) {
+func ExecPowershell(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, ps []string) (*clientpb.Task, error) {
 	var psBin bytes.Buffer
 	if path != "" {
 		content, err := os.ReadFile(path)

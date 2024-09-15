@@ -2,6 +2,7 @@ package tasks
 
 import (
 	"fmt"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
@@ -25,7 +26,7 @@ func CancelTaskCmd(cmd *cobra.Command, con *repl.Console) {
 	}
 }
 
-func CancelTask(rpc clientrpc.MaliceRPCClient, session *repl.Session, taskId uint32) (*clientpb.Task, error) {
+func CancelTask(rpc clientrpc.MaliceRPCClient, session *core.Session, taskId uint32) (*clientpb.Task, error) {
 	if session.HasTask(taskId) {
 		return nil, fmt.Errorf("task %d not found in %s", taskId, session.SessionId)
 	}

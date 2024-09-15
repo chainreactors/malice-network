@@ -7,6 +7,7 @@ import (
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/help"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/client/core/intermediate/builtin"
 	"github.com/chainreactors/malice-network/client/repl"
@@ -18,7 +19,6 @@ import (
 	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"google.golang.org/protobuf/proto"
 	"os"
 	"path"
 	"path/filepath"
@@ -191,7 +191,7 @@ func RegisterAlias(aliasManifest *AliasManifest, cmd *cobra.Command, con *repl.C
 	loadedAliases[aliasManifest.CommandName] = &loadedAlias{
 		Manifest: aliasManifest,
 		Command:  addAliasCmd,
-		Func: repl.WrapImplantFunc(con, func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, args string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
+		Func: repl.WrapImplantFunc(con, func(rpc clientrpc.MaliceRPCClient, sess *core.Session, args string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 			return ExecuteAlias(rpc, sess, aliasManifest.CommandName, args, sac)
 		}, common.ParseAssembly),
 	}
@@ -271,13 +271,13 @@ func runAliasCommand(cmd *cobra.Command, con *repl.Console) {
 		task, err = ExecuteAlias(con.Rpc, session, cmd.Name(), extArgs, sac)
 	}
 
-	con.AddCallback(task, func(msg proto.Message) {
-		resp, _ := builtin.ParseAssembly(msg.(*implantpb.Spite))
-		session.Log.Console(resp)
+	con.AddCallback(task, func(msg *implantpb.Spite) (string, error) {
+		resp, _ := builtin.ParseAssembly(msg)
+		return resp, nil
 	})
 }
 
-func ExecuteAlias(rpc clientrpc.MaliceRPCClient, sess *repl.Session, aliasName string, args string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
+func ExecuteAlias(rpc clientrpc.MaliceRPCClient, sess *core.Session, aliasName string, args string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 	loadedAlias, ok := loadedAliases[aliasName]
 	if !ok {
 		return nil, fmt.Errorf("No alias found for `%s` command\n", aliasName)

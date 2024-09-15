@@ -3,6 +3,7 @@ package file
 import (
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/help"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
@@ -81,7 +82,7 @@ func Register(con *repl.Console) {
 		consts.ModuleDownload,
 		Download,
 		"bdownload",
-		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string) (*clientpb.Task, error) {
 			return Download(rpc, sess, path)
 		},
 		nil)
@@ -90,7 +91,7 @@ func Register(con *repl.Console) {
 		consts.ModuleUpload,
 		Upload,
 		"bupload",
-		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string) (*clientpb.Task, error) {
 			return Upload(rpc, sess, path, filepath.Base(path), 0744, false)
 		},
 		nil)

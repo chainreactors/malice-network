@@ -24,7 +24,7 @@ func MalLoadCmd(ctx *cobra.Command, con *repl.Console) {
 	dirPath := ctx.Flags().Arg(0)
 	mal, err := LoadMal(con, filepath.Join(assets.GetMalsDir(), dirPath, ManifestFileName))
 	if err != nil {
-		repl.Log.Error(err)
+		con.Log.Error(err)
 		return
 	}
 	for _, cmd := range mal.CMDs {
@@ -63,7 +63,7 @@ func LoadMal(con *repl.Console, filename string) (*LoadedMal, error) {
 		Plugin:   plug.Plugin,
 	}
 	loadedMals[manifest.Name] = mal
-	repl.Log.Importantf("load mal: %s successfully, register %v", filename, cmds)
+	con.Log.Importantf("load mal: %s successfully, register %v", filename, cmds)
 	return mal, nil
 }
 
@@ -90,7 +90,7 @@ func ListMalManiFest(con *repl.Console) {
 	newTable := tui.NewModel(tableModel, nil, false, false)
 	err := newTable.Run()
 	if err != nil {
-		repl.Log.Errorf("Error running table: %s", err)
+		con.Log.Errorf("Error running table: %s", err)
 		return
 	}
 }

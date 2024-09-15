@@ -7,6 +7,7 @@ import (
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/alias"
 	"github.com/chainreactors/malice-network/client/command/extension"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/client/utils"
 	"github.com/chainreactors/malice-network/helper/cryptography/minisign"
@@ -129,19 +130,19 @@ func installBundle(bundle *ArmoryBundle, armoryPK string, forceInstallation bool
 	for _, packageID := range installList {
 		packageEntry := packageCacheLookupByID(packageID)
 		if packageEntry == nil {
-			repl.Log.Errorf("The package cache is out of date. Please run armory refresh and try again.\n")
+			con.Log.Errorf("The package cache is out of date. Please run armory refresh and try again.\n")
 			return
 		}
 		if packageEntry.Pkg.IsAlias {
 			err := installAliasPackage(packageEntry, false, clientConfig, con)
 			if err != nil {
-				repl.Log.Errorf("Failed to install alias '%s': %s\n", packageEntry.Alias.CommandName, err)
+				con.Log.Errorf("Failed to install alias '%s': %s\n", packageEntry.Alias.CommandName, err)
 				return
 			}
 		} else {
 			err := installExtensionPackage(packageEntry, false, clientConfig, con)
 			if err != nil {
-				repl.Log.Errorf("Failed to install extension '%s': %s\n", packageEntry.Extension.Name, err)
+				con.Log.Errorf("Failed to install extension '%s': %s\n", packageEntry.Extension.Name, err)
 				return
 			}
 		}
@@ -177,7 +178,7 @@ func installPackageByName(name, armoryPK string, forceInstallation, promptToOver
 		return ErrPackageNotFound
 	}
 	if name == "all" {
-		repl.Log.Infof("\nOperation complete\n")
+		con.Log.Infof("\nOperation complete\n")
 	}
 	return nil
 }
@@ -306,7 +307,7 @@ func getPackageIDFromUser(name string, options map[string]string) string {
 	newSelect := tui.NewModel(selectModel, nil, false, false)
 	err := newSelect.Run()
 	if err != nil {
-		repl.Log.Errorf("Failed to run select model: %s\n", err)
+		core.Log.Errorf("Failed to run select model: %s\n", err)
 		return ""
 	}
 	if selectModel.SelectedItem >= 0 && selectModel.SelectedItem < len(selectModel.Choices) {
@@ -438,7 +439,7 @@ func installAliasPackage(entry *pkgCacheEntry, promptToOverwrite bool, clientCon
 		return err
 	}
 
-	repl.Log.Infof("Downloading alias ...")
+	con.Log.Infof("Downloading alias ...")
 
 	var sig *minisign.Signature
 	var tarGz []byte
@@ -531,7 +532,7 @@ func installExtensionPackage(entry *pkgCacheEntry, promptToOverwrite bool, clien
 		return err
 	}
 
-	repl.Log.Infof("Downloading extension ...")
+	con.Log.Infof("Downloading extension ...")
 
 	var sig *minisign.Signature
 	var tarGz []byte

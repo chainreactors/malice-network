@@ -1,12 +1,13 @@
 package sessions
 
 import (
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/spf13/cobra"
 )
 
 func ObserveCmd(cmd *cobra.Command, con *repl.Console) {
-	var session *repl.Session
+	var session *core.Session
 	isList, _ := cmd.Flags().GetBool("list")
 	if isList {
 		for i, ob := range con.Observers {
@@ -20,8 +21,10 @@ func ObserveCmd(cmd *cobra.Command, con *repl.Console) {
 		if con.GetInteractive() != nil {
 			idArg = []string{con.GetInteractive().SessionId}
 		} else {
-			for i, ob := range con.Observers {
+			var i int
+			for _, ob := range con.Observers {
 				con.Log.Infof("%d: %s", i, ob.SessionId())
+				i++
 			}
 			return
 		}
@@ -30,7 +33,8 @@ func ObserveCmd(cmd *cobra.Command, con *repl.Console) {
 		session = con.Sessions[sid]
 
 		if session == nil {
-			repl.Log.Warn(repl.ErrNotFoundSession.Error())
+			con.Log.Warn(repl.ErrNotFoundSession.Error())
+			return
 		}
 		isRemove, _ := cmd.Flags().GetBool("remove")
 		if isRemove {

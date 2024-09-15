@@ -1,26 +1,23 @@
 package consts
 
 const (
-	CtrlTaskCallback  = "task_callback"
-	CtrlTaskFinish    = "task_finish"
-	CtrlTaskCancel    = "task_cancel"
-	CtrlTaskError     = "task_error"
-	CtrlWebUpload     = "web_upload"
-	CtrlListenerStart = "listener_start"
-	CtrlListenerStop  = "listener_stop"
-	CtrlSessionStart  = "session_start"
-	CtrlSessionStop   = "session_stop"
-	CtrlJobStart      = "job_start"
-	CtrlJobStop       = "job_stop"
-)
-
-// ctrl type
-const (
-	CtrlPipelineStart = 0 + iota
-	CtrlPipelineStop
-	CtrlWebsiteStart = 0 + iota
-	CtrlWebsiteStop
-	RegisterWebsite
+	CtrlTaskCallback    = "task_callback"
+	CtrlTaskFinish      = "task_finish"
+	CtrlTaskCancel      = "task_cancel"
+	CtrlTaskError       = "task_error"
+	CtrlWebUpload       = "web_upload"
+	CtrlListenerStart   = "listener_start"
+	CtrlListenerStop    = "listener_stop"
+	CtrlPipelineStart   = "pipeline_start"
+	CtrlPipelineStop    = "pipeline_stop"
+	CtrlWebsiteStart    = "website_start"
+	CtrlWebsiteStop     = "website_stop"
+	CtrlWebsiteRegister = "website_register"
+	CtrlJobStart        = "job_start"
+	CtrlJobStop         = "job_stop"
+	CtrlSessionRegister = "session_register"
+	CtrlSessionConsole  = "session_console"
+	CtrlSessionError    = "session_error"
 )
 
 // ctrl status

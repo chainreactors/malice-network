@@ -15,14 +15,14 @@ import (
 func RemoveMalCmd(cmd *cobra.Command, con *repl.Console) {
 	name := cmd.Flags().Arg(0)
 	if name == "" {
-		repl.Log.Errorf("Extension name is required\n")
+		con.Log.Errorf("Extension name is required\n")
 		return
 	}
 	confirmModel := tui.NewConfirm(fmt.Sprintf("Remove '%s' extension?", name))
 	newConfirm := tui.NewModel(confirmModel, nil, false, true)
 	err := newConfirm.Run()
 	if err != nil {
-		repl.Log.Errorf("Error running confirm model: %s", err)
+		con.Log.Errorf("Error running confirm model: %s", err)
 		return
 	}
 	if !confirmModel.Confirmed {
@@ -30,7 +30,7 @@ func RemoveMalCmd(cmd *cobra.Command, con *repl.Console) {
 	}
 	err = RemoveMal(name, con)
 	if err != nil {
-		repl.Log.Errorf(err.Error())
+		con.Log.Errorf(err.Error())
 	}
 }
 

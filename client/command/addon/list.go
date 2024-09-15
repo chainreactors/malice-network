@@ -1,37 +1,40 @@
 package addon
 
 import (
+	"fmt"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/spf13/cobra"
-	"google.golang.org/protobuf/proto"
+	"strings"
 )
 
 func AddonListCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
 	task, err := ListAddon(con.Rpc, session)
 	if err != nil {
-		repl.Log.Errorf("%s", err)
+		con.Log.Errorf("%s", err)
 		return
 	}
 
-	con.AddCallback(task, func(msg proto.Message) {
-		exts := msg.(*implantpb.Spite).GetAddons()
+	con.AddCallback(task, func(msg *implantpb.Spite) (string, error) {
+		exts := msg.GetAddons()
 		if len(exts.Addons) == 0 {
-			session.Log.Warn("No addon found.")
-			return
+			return "", fmt.Errorf("No addon found.")
 		}
 		session.Addons = exts
+		var s strings.Builder
 		for _, ext := range exts.Addons {
-			session.Log.Consolef("%s\t%s\t%s", ext.Name, ext.Type, ext.Depend)
+			s.WriteString(fmt.Sprintf("%s\t%s\t%s\n", ext.Name, ext.Type, ext.Depend))
 		}
+		return s.String(), nil
 	})
 }
 
-func ListAddon(rpc clientrpc.MaliceRPCClient, sess *repl.Session) (*clientpb.Task, error) {
+func ListAddon(rpc clientrpc.MaliceRPCClient, sess *core.Session) (*clientpb.Task, error) {
 	return rpc.ListAddon(sess.Context(), &implantpb.Request{
 		Name: consts.ModuleListAddon,
 	})

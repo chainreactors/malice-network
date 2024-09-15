@@ -141,7 +141,7 @@ func BindImplantCommands(con *repl.Console) console.Commands {
 		for _, malName := range assets.GetInstalledMalManifests() {
 			plug, err := mal.LoadMal(con, malName)
 			if err != nil {
-				repl.Log.Errorf("Failed to load mal: %s\n", err)
+				con.Log.Errorf("Failed to load mal: %s\n", err)
 				continue
 			}
 			for _, cmd := range plug.CMDs {

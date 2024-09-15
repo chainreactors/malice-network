@@ -1,7 +1,7 @@
 package sys
 
 import (
-	"fmt"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
@@ -10,7 +10,6 @@ import (
 	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/spf13/cobra"
-	"google.golang.org/protobuf/proto"
 	"strconv"
 )
 
@@ -21,8 +20,8 @@ func PsCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf("Ps error: %v", err)
 		return
 	}
-	con.AddCallback(task, func(msg proto.Message) {
-		resp := msg.(*implantpb.Spite).GetPsResponse()
+	con.AddCallback(task, func(msg *implantpb.Spite) (string, error) {
+		resp := msg.GetPsResponse()
 		var rowEntries []table.Row
 		var row table.Row
 		tableModel := tui.NewTable([]table.Column{
@@ -47,11 +46,11 @@ func PsCmd(cmd *cobra.Command, con *repl.Console) {
 			rowEntries = append(rowEntries, row)
 		}
 		tableModel.SetRows(rowEntries)
-		fmt.Printf(tableModel.View())
+		return tableModel.View(), nil
 	})
 }
 
-func Ps(rpc clientrpc.MaliceRPCClient, session *repl.Session) (*clientpb.Task, error) {
+func Ps(rpc clientrpc.MaliceRPCClient, session *core.Session) (*clientpb.Task, error) {
 	task, err := rpc.Ps(session.Context(), &implantpb.Request{
 		Name: consts.ModulePs,
 	})

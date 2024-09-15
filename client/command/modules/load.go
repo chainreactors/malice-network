@@ -1,12 +1,13 @@
 package modules
 
 import (
+	"fmt"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/spf13/cobra"
-	"google.golang.org/protobuf/proto"
 	"os"
 )
 
@@ -16,16 +17,15 @@ func LoadModuleCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
 	task, err := LoadModule(con.Rpc, session, bundle, path)
 	if err != nil {
-		repl.Log.Errorf("LoadModule error: %v", err)
+		con.Log.Errorf("LoadModule error: %v", err)
 		return
 	}
-	con.AddCallback(task, func(msg proto.Message) {
-		//modules := msg.(*implantpb.Spite).GetModules()
-		session.Log.Infof("LoadModule: %s success", bundle)
+	con.AddCallback(task, func(msg *implantpb.Spite) (string, error) {
+		return fmt.Sprintf("LoadModule: %s success", bundle), nil
 	})
 }
 
-func LoadModule(rpc clientrpc.MaliceRPCClient, session *repl.Session, bundle string, path string) (*clientpb.Task, error) {
+func LoadModule(rpc clientrpc.MaliceRPCClient, session *core.Session, bundle string, path string) (*clientpb.Task, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err

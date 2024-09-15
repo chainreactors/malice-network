@@ -3,6 +3,7 @@ package exec
 import (
 	"errors"
 	"github.com/chainreactors/malice-network/client/command/common"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/core/intermediate/builtin"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -11,7 +12,6 @@ import (
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/spf13/cobra"
-	"google.golang.org/protobuf/proto"
 )
 
 // ExecuteExeCmd - Execute PE on sacrifice process
@@ -23,14 +23,13 @@ func ExecuteExeCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf("Execute EXE error: %v", err)
 		return
 	}
-	session := con.GetInteractive()
-	con.AddCallback(task, func(msg proto.Message) {
-		resp, _ := builtin.ParseAssembly(msg.(*implantpb.Spite))
-		session.Log.Console(resp)
+	con.AddCallback(task, func(msg *implantpb.Spite) (string, error) {
+		resp, _ := builtin.ParseAssembly(msg)
+		return resp, nil
 	})
 }
 
-func ExecExe(rpc clientrpc.MaliceRPCClient, sess *repl.Session, pePath string,
+func ExecExe(rpc clientrpc.MaliceRPCClient, sess *core.Session, pePath string,
 	args []string, output bool, timeout uint32, arch string,
 	process string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 	if arch == "" {
@@ -59,13 +58,13 @@ func InlineExeCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf("Execute EXE error: %v", err)
 		return
 	}
-	con.AddCallback(task, func(msg proto.Message) {
-		resp, _ := builtin.ParseAssembly(msg.(*implantpb.Spite))
-		session.Log.Console(resp)
+	con.AddCallback(task, func(msg *implantpb.Spite) (string, error) {
+		resp, _ := builtin.ParseAssembly(msg)
+		return resp, nil
 	})
 }
 
-func InlineExe(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string, args []string,
+func InlineExe(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, args []string,
 	output bool, timeout uint32, arch string, process string) (*clientpb.Task, error) {
 	if arch == "" {
 		arch = sess.Os.Arch

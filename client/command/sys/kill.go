@@ -1,13 +1,13 @@
 package sys
 
 import (
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/spf13/cobra"
-	"google.golang.org/protobuf/proto"
 )
 
 func KillCmd(cmd *cobra.Command, con *repl.Console) {
@@ -22,12 +22,12 @@ func KillCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf("Kill error: %v", err)
 		return
 	}
-	con.AddCallback(task, func(msg proto.Message) {
-		session.Log.Consolef("Killed process\n")
+	con.AddCallback(task, func(msg *implantpb.Spite) (string, error) {
+		return "Killed process", nil
 	})
 }
 
-func Kill(rpc clientrpc.MaliceRPCClient, session *repl.Session, pid string) (*clientpb.Task, error) {
+func Kill(rpc clientrpc.MaliceRPCClient, session *core.Session, pid string) (*clientpb.Task, error) {
 	task, err := rpc.Kill(session.Context(), &implantpb.Request{
 		Name:  consts.ModuleKill,
 		Input: pid,

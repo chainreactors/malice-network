@@ -2,6 +2,7 @@ package explorer
 
 import (
 	"fmt"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
@@ -9,7 +10,6 @@ import (
 	"github.com/charmbracelet/bubbles/filepicker"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
-	"google.golang.org/protobuf/proto"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -277,11 +277,11 @@ func sendLsRequest(e *ExplorerModel) error {
 		Input: e.FilePicker.CurrentDirectory,
 	})
 	if err != nil {
-		repl.Log.Errorf("load directory error: %v", err)
+		core.Log.Errorf("load directory error: %v", err)
 		return err
 	}
-	e.con.AddCallback(task, func(msg proto.Message) {
-		resp := msg.(*implantpb.Spite).GetLsResponse()
+	e.con.AddCallback(task, func(msg *implantpb.Spite) (string, error) {
+		resp := msg.GetLsResponse()
 		var dirEntries []os.DirEntry
 		for _, protoFile := range resp.GetFiles() {
 			dirEntries = append(dirEntries, ProtobufDirEntry{FileInfo: protoFile})
@@ -291,10 +291,11 @@ func sendLsRequest(e *ExplorerModel) error {
 		if err != nil {
 			e.err = err
 			done <- err
-			return
+			return "", err
 		}
 		e.Files = dirEntries
 		done <- nil
+		return "", core.ErrDisableOutput
 	})
 
 	return <-done
@@ -311,18 +312,18 @@ func downloadRequest(e *ExplorerModel) error {
 		Path: path,
 	})
 	if err != nil {
-		repl.Log.Errorf("download error: %v", err)
+		core.Log.Errorf("download error: %v", err)
 		return err
 	}
 	total := task.Total
-	e.con.AddCallback(task, func(msg proto.Message) {
-		block := msg.(*implantpb.Spite).GetBlock()
+	e.con.AddCallback(task, func(msg *implantpb.Spite) (string, error) {
+		block := msg.GetBlock()
 		e.progress.SetProgressPercent(float64(block.BlockId+1) / float64(total))
 		e.progress.Update(tui.ViewMsg{})
 		//if block.BlockId+1 == uint32(total) {
 		//	e.isProgress = false
 		//}
-
+		return "", core.ErrDisableOutput
 	})
 	return nil
 }

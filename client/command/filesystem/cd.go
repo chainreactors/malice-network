@@ -1,34 +1,33 @@
 package filesystem
 
 import (
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/spf13/cobra"
-	"google.golang.org/protobuf/proto"
 )
 
 func CdCmd(cmd *cobra.Command, con *repl.Console) {
 	path := cmd.Flags().Arg(0)
 	if path == "" {
-		repl.Log.Errorf("required arguments missing")
+		con.Log.Errorf("required arguments missing")
 		return
 	}
-	session := con.GetInteractive()
 	task, err := Cd(con.Rpc, con.GetInteractive(), path)
 	if err != nil {
-		repl.Log.Errorf("Cd error: %v", err)
+		con.Log.Errorf("Cd error: %v", err)
 		return
 	}
-	con.AddCallback(task, func(msg proto.Message) {
-		session.Log.Consolef("Changed directory to: %s\n", path)
+	con.AddCallback(task, func(msg *implantpb.Spite) (string, error) {
+		return "Changed directory to: " + path, nil
 	})
 
 }
 
-func Cd(rpc clientrpc.MaliceRPCClient, session *repl.Session, path string) (*clientpb.Task, error) {
+func Cd(rpc clientrpc.MaliceRPCClient, session *core.Session, path string) (*clientpb.Task, error) {
 	task, err := rpc.Cd(session.Context(), &implantpb.Request{
 		Name:  consts.ModuleCd,
 		Input: path,

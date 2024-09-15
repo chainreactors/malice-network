@@ -23,5 +23,5 @@ func noteCmd(cmd *cobra.Command, con *repl.Console) {
 		return
 	}
 	con.UpdateSession(sid)
-	repl.Log.Infof("update %s note to %s", sid, name)
+	con.Log.Infof("update %s note to %s", sid, name)
 }

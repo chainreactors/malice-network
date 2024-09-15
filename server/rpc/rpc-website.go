@@ -53,7 +53,7 @@ func (rpc *Server) WebsiteRemove(ctx context.Context, req *lispb.Website) (*clie
 	}
 	core.EventBroker.Publish(core.Event{
 		EventType: consts.EventWebsite,
-		Data:      []byte(req.Name),
+		Message:   req.Name,
 	})
 
 	return &clientpb.Empty{}, nil
@@ -93,7 +93,7 @@ func (rpc *Server) WebsiteAddContent(ctx context.Context, req *lispb.WebsiteAddC
 
 	core.EventBroker.Publish(core.Event{
 		EventType: consts.EventWebsite,
-		Data:      []byte(req.Name),
+		Message:   req.Name,
 	})
 
 	return website.MapContent(req.Name, true)
@@ -111,7 +111,7 @@ func (rpc *Server) WebsiteUpdateContent(ctx context.Context, req *lispb.WebsiteA
 
 	core.EventBroker.Publish(core.Event{
 		EventType: consts.EventWebsite,
-		Data:      []byte(req.Name),
+		Message:   req.Name,
 	})
 
 	return website.MapContent(req.Name, false)
@@ -128,7 +128,7 @@ func (rpc *Server) WebsiteRemoveContent(ctx context.Context, req *lispb.WebsiteR
 
 	core.EventBroker.Publish(core.Event{
 		EventType: consts.EventWebsite,
-		Data:      []byte(req.Name),
+		Message:   req.Name,
 	})
 
 	return website.MapContent(req.Name, false)
@@ -254,7 +254,7 @@ func (rpc *Server) StopWebsite(ctx context.Context, req *lispb.CtrlPipeline) (*c
 func (rpc *Server) UploadWebsite(ctx context.Context, req *lispb.WebsiteAssets) (*clientpb.Empty, error) {
 	ctrl := clientpb.JobCtrl{
 		Id:   core.NextCtrlID(),
-		Ctrl: consts.RegisterWebsite,
+		Ctrl: consts.CtrlWebsiteRegister,
 		Job: &clientpb.Job{
 			Id:            core.NextJobID(),
 			WebsiteAssets: req,

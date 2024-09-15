@@ -97,7 +97,6 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Use:   consts.CommandObverse,
 		Short: "observe session",
 		Long:  help.GetHelpFor("observe"),
-		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			ObserveCmd(cmd, con)
 		},

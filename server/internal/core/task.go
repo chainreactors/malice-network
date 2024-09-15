@@ -105,7 +105,7 @@ func (t *Task) Done(event Event) {
 
 func (t *Task) Finish() {
 	EventBroker.Publish(Event{
-		Task:      t,
+		Task:      t.ToProtobuf(),
 		EventType: consts.EventTask,
 		Op:        consts.CtrlTaskFinish,
 	})
