@@ -2,7 +2,6 @@ package rpc
 
 import (
 	"context"
-	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/mtls"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/client/rootpb"
@@ -10,7 +9,6 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
-	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"gopkg.in/yaml.v3"
 )
 
@@ -22,52 +20,10 @@ func (rpc *Server) GetClients(ctx context.Context, req *clientpb.Empty) (*client
 	return clients, nil
 }
 
-func (rpc *Server) LoginClient(ctx context.Context, req *clientpb.LoginReq) (*clientpb.LoginResp, error) {
-	host, port := req.Host, uint16(req.Port)
-	var operator []*models.Operator
-	if host == "" || port == 0 {
-		logs.Log.Error("AddClient: host or user is empty")
-		return &clientpb.LoginResp{
-			Success: false,
-		}, nil
-	}
-	dbSession := db.Session()
-	//cert := models.Certificate{}
-	//err := dbSession.Where(&models.Certificate{
-	//	CommonName: req.Name,
-	//	CAType:     certs.OperatorCA,
-	//}).First(&cert).Error
-	//if err != nil {
-	//	if errors.Is(err, db.ErrRecordNotFound) {
-	//		return &clientpb.LoginResp{
-	//			Success: false,
-	//		}, errors.New("certificate not found")
-	//	}
-	//	return &clientpb.LoginResp{
-	//		Success: false,
-	//	}, err
-	//}
-
-	dbSession.Where(&models.Operator{Name: req.Name}).Find(&operator)
-	if len(operator) != 0 {
-		return &clientpb.LoginResp{
-			Success: true,
-		}, nil
-	}
-	err := dbSession.Create(&models.Operator{
-		Name: req.Name,
-		Type: mtls.Client,
-	}).Error
-
-	core.Clients.Add(core.NewClient(req.Name))
-	if err != nil {
-		return &clientpb.LoginResp{
-			Success: false,
-		}, err
-	}
-	return &clientpb.LoginResp{
-		Success: true,
-	}, nil
+func (rpc *Server) LoginClient(ctx context.Context, req *clientpb.LoginReq) (*clientpb.Client, error) {
+	client := core.NewClient(req.Name)
+	core.Clients.Add(client)
+	return client.ToProtobuf(), nil
 }
 
 func (rpc *Server) AddClient(ctx context.Context, req *rootpb.Operator) (*rootpb.Response, error) {

@@ -6,6 +6,7 @@ import (
 	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"os"
@@ -59,7 +60,11 @@ func Commands(con *repl.Console) []*cobra.Command {
 	})
 
 	con.RegisterServerFunc(consts.CommandBroadcast, func(con *repl.Console, msg string) (bool, error) {
-		return Broadcast(con, msg)
+		return Broadcast(con, &clientpb.Event{
+			Type:    consts.EventBroadcast,
+			Source:  con.Client.Name,
+			Message: msg,
+		})
 	})
 
 	con.RegisterServerFunc(consts.CommandNotify, func(con *repl.Console, msg string) (bool, error) {

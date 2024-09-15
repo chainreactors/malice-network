@@ -19,6 +19,9 @@ func handleBinary(binary *implantpb.ExecuteBinary) *implantpb.ExecuteBinary {
 	if binary.Timeout == 0 {
 		binary.Timeout = math.MaxUint32
 	}
+	if len(binary.Args) == 0 {
+		binary.Args = []string{""}
+	}
 	binary.Timeout = binary.Timeout * 1000
 	return binary
 }

@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/handler"
+	"github.com/chainreactors/malice-network/helper/mtls"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/chainreactors/tui"
@@ -17,18 +17,23 @@ import (
 	"time"
 )
 
-func InitServerStatus(conn *grpc.ClientConn) (*ServerStatus, error) {
+func InitServerStatus(conn *grpc.ClientConn, config *mtls.ClientConfig) (*ServerStatus, error) {
 	var err error
 	s := &ServerStatus{
 		Rpc:             clientrpc.NewMaliceRPCClient(conn),
 		Sessions:        make(map[string]*Session),
-		Alive:           true,
 		finishCallbacks: &sync.Map{},
 		doneCallbacks:   &sync.Map{},
 	}
-
-	intermediate.Register(s.Rpc)
-
+	client, err := s.Rpc.LoginClient(context.Background(), &clientpb.LoginReq{
+		Name: config.Operator,
+		Host: config.LHost,
+		Port: uint32(config.LPort),
+	})
+	if err != nil {
+		return nil, err
+	}
+	s.Client = client
 	s.Info, err = s.Rpc.GetBasic(context.Background(), &clientpb.Empty{})
 	if err != nil {
 		return nil, err
@@ -63,13 +68,13 @@ func InitServerStatus(conn *grpc.ClientConn) (*ServerStatus, error) {
 type ServerStatus struct {
 	Rpc             clientrpc.MaliceRPCClient
 	Info            *clientpb.Basic
+	Client          *clientpb.Client
 	Clients         []*clientpb.Client
 	Listeners       []*clientpb.Listener
 	Sessions        map[string]*Session
 	sessions        []*clientpb.Session
 	finishCallbacks *sync.Map
 	doneCallbacks   *sync.Map
-	Alive           bool
 }
 
 func (c *Console) SessionLog(sid string) *logs.Logger {
@@ -161,6 +166,7 @@ func (s *ServerStatus) triggerTaskDone(event *clientpb.Event) {
 	task := event.GetTask()
 	if task == nil {
 		Log.Errorf(ErrNotFoundTask.Error())
+		return
 	}
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 	if callback, ok := s.doneCallbacks.Load(fmt.Sprintf("%s_%d", task.SessionId, task.TaskId)); ok {
@@ -173,6 +179,7 @@ func (s *ServerStatus) triggerTaskDone(event *clientpb.Event) {
 			Log.Errorf(err.Error())
 			return
 		}
+		tui.Down(0)
 		Log.Importantf(logs.GreenBold(fmt.Sprintf("session: %s task: %d index: %d\n", task.SessionId, task.TaskId, task.Cur)))
 
 		err = handler.HandleMaleficError(content.Spite)
@@ -189,6 +196,7 @@ func (s *ServerStatus) triggerTaskFinish(event *clientpb.Event) {
 	task := event.GetTask()
 	if task == nil {
 		Log.Errorf(ErrNotFoundTask.Error())
+		return
 	}
 	callbackId := fmt.Sprintf("%s_%d", task.SessionId, task.TaskId)
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
@@ -202,8 +210,9 @@ func (s *ServerStatus) triggerTaskFinish(event *clientpb.Event) {
 			Log.Errorf(err.Error())
 			return
 		}
-		Log.Importantf(logs.GreenBold(fmt.Sprintf("session: %s task: %d index: %d\n", task.SessionId, task.TaskId, task.Cur)))
 
+		tui.Down(0)
+		Log.Importantf(logs.GreenBold(fmt.Sprintf("session: %s task: %d index: %d\n", task.SessionId, task.TaskId, task.Cur)))
 		err = handler.HandleMaleficError(content.Spite)
 		if err != nil {
 			Log.Errorf(err.Error())
@@ -214,6 +223,10 @@ func (s *ServerStatus) triggerTaskFinish(event *clientpb.Event) {
 		s.finishCallbacks.Delete(callbackId)
 		s.doneCallbacks.Delete(callbackId)
 	}
+}
+
+func (s *ServerStatus) CallbackBroadcast(event *clientpb.Event) {
+	//generic.Broadcast(event)
 }
 
 func (s *ServerStatus) EventHandler() {
@@ -227,26 +240,34 @@ func (s *ServerStatus) EventHandler() {
 		if err == io.EOF || event == nil {
 			continue
 		}
-		tui.Down(0)
+
 		// Trigger event based on type
 		switch event.Type {
 		case consts.EventJoin:
+			tui.Down(0)
 			Log.Infof("%s has joined the game", event.Client.Name)
 		case consts.EventLeft:
+			tui.Down(0)
 			Log.Infof("%s left the game", event.Client.Name)
 		case consts.EventBroadcast:
+			tui.Down(0)
 			Log.Infof("%s : %s  %s", event.Source, string(event.Data), event.Err)
 		case consts.EventSession:
+			tui.Down(0)
 			Log.Importantf("%s session: %s ", event.Session.SessionId, event.Message)
 		case consts.EventNotify:
+			tui.Down(0)
 			Log.Importantf("%s notified: %s %s", event.Source, string(event.Data), event.Err)
 		case consts.EventJob:
+			tui.Down(0)
 			Log.Importantf("[%s] %s: %s %s", event.Type, event.Op, event.Message, event.Err)
 		case consts.EventListener:
+			tui.Down(0)
 			Log.Importantf("[%s] %s: %s %s", event.Type, event.Op, event.Message, event.Err)
 		case consts.EventTask:
 			s.handlerTaskCtrl(event)
 		case consts.EventWebsite:
+			tui.Down(0)
 			Log.Importantf("[%s] %s: %s %s", event.Type, event.Op, event.Message, event.Err)
 		}
 		//con.triggerReactions(event)

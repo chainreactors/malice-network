@@ -8,7 +8,6 @@ import (
 	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/client/utils"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/mtls"
 	"github.com/chainreactors/tui"
 	"github.com/reeflective/console"
 	"github.com/rsteube/carapace/pkg/x"
@@ -62,12 +61,11 @@ type Console struct {
 	*ActiveTarget
 	*ServerStatus
 	*Plugins
-	Log          *logs.Logger
-	App          *console.Console
-	Settings     *assets.Settings
-	ClientConfig *mtls.ClientConfig
-	Callbacks    *sync.Map
-	Observers    map[string]*Observer
+	Log       *logs.Logger
+	App       *console.Console
+	Settings  *assets.Settings
+	Callbacks *sync.Map
+	Observers map[string]*Observer
 }
 
 func (c *Console) NewConsole() {
@@ -89,6 +87,8 @@ func (c *Console) NewConsole() {
 }
 
 func (c *Console) Start(bindCmds ...BindCmds) error {
+	intermediate.Register(c.Rpc)
+
 	c.App.Menu(consts.ClientMenu).Command = bindCmds[0](c)()
 	c.App.SwitchMenu(consts.ClientMenu)
 	c.App.Menu(consts.ImplantMenu).Command = bindCmds[1](c)()
@@ -104,7 +104,7 @@ func (c *Console) Context() context.Context {
 	ctx, _ := context.WithTimeout(context.Background(), consts.DefaultTimeout)
 
 	return metadata.NewOutgoingContext(ctx, metadata.Pairs(
-		"client_id", c.ClientConfig.Operator),
+		"client_id", c.Client.Name),
 	)
 }
 
