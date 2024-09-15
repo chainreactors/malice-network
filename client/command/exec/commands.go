@@ -292,24 +292,24 @@ func Register(con *repl.Console) {
 		consts.ModuleAliasInlineDll,
 		InlineDLL,
 		"binline_dll",
-		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path, entryPoint string, args string, process string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path, entryPoint string, args string) (*clientpb.Task, error) {
 			param, err := shellquote.Split(args)
 			if err != nil {
 				return nil, err
 			}
-			return InlineDLL(rpc, sess, path, entryPoint, param, true, math.MaxUint32, sess.Os.Arch, process)
+			return InlineDLL(rpc, sess, path, entryPoint, param, true, math.MaxUint32, sess.Os.Arch, "")
 		}, common.ParseAssembly)
 
 	con.RegisterImplantFunc(
 		consts.ModuleExecuteExe,
 		ExecExe,
 		"bexecute_exe",
-		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string, args string, process string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *repl.Session, path string, args string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 			cmdline, err := shellquote.Split(args)
 			if err != nil {
 				return nil, err
 			}
-			return ExecExe(rpc, sess, path, cmdline, true, math.MaxUint32, sess.Os.Arch, process, sac)
+			return ExecExe(rpc, sess, path, cmdline, true, math.MaxUint32, sess.Os.Arch, "", sac)
 		}, common.ParseAssembly)
 
 	con.RegisterImplantFunc(

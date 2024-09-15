@@ -26,17 +26,18 @@ func wrapImplantFunc(fun interface{}) implantFunc {
 		funcValue := reflect.ValueOf(fun)
 		funcType := funcValue.Type()
 
+		// debug
+		fmt.Println(runtime.FuncForPC(reflect.ValueOf(fun).Pointer()).Name())
+		for i := 0; i < funcType.NumIn(); i++ {
+			fmt.Println(funcType.In(i).String())
+		}
+		fmt.Printf("%v\n", params)
+
 		// 检查函数的参数数量是否匹配, rpc与session是强制要求的默认值, 自动+2
 		if funcType.NumIn() != len(params)+2 {
 			return nil, fmt.Errorf("expected %d arguments, got %d", funcType.NumIn(), len(params))
 		}
 
-		fmt.Println(runtime.FuncForPC(reflect.ValueOf(fun).Pointer()).Name())
-		for i := 0; i < funcType.NumIn(); i++ {
-			fmt.Println(funcType.In(i).String())
-		}
-
-		// 构建参数切片
 		in := make([]reflect.Value, len(params)+2)
 		in[0] = reflect.ValueOf(rpc)
 		in[1] = reflect.ValueOf(sess)

@@ -44,9 +44,6 @@ func NewBinary(module string, path string, args []string, output bool, timeout u
 	if err != nil {
 		return nil, err
 	}
-	if process == "" {
-		process = filepath.Base(path)
-	}
 
 	return &implantpb.ExecuteBinary{
 		Name:        filepath.Base(path),
