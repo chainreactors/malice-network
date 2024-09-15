@@ -9,7 +9,6 @@ import (
 	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/core/intermediate"
-	"github.com/chainreactors/malice-network/client/core/intermediate/builtin"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/client/utils"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -253,11 +252,10 @@ func runAliasCommand(cmd *cobra.Command, con *repl.Console) {
 	}
 
 	extArgs = strings.TrimSpace(extArgs)
-	var task *clientpb.Task
 	var err error
 	isInline, _ := cmd.Flags().GetBool("inline")
 	if isInline {
-		task, err = ExecuteAlias(con.Rpc, session, cmd.Name(), extArgs, nil)
+		_, err = ExecuteAlias(con.Rpc, session, cmd.Name(), extArgs, nil)
 	} else {
 		processName, _ := cmd.Flags().GetString("process")
 		if processName == "" {
@@ -268,13 +266,14 @@ func runAliasCommand(cmd *cobra.Command, con *repl.Console) {
 			}
 		}
 		sac, _ := common.ParseSacrifice(cmd)
-		task, err = ExecuteAlias(con.Rpc, session, cmd.Name(), extArgs, sac)
+		task, err := ExecuteAlias(con.Rpc, session, cmd.Name(), extArgs, sac)
+		if err != nil {
+			con.Log.Errorf("Execute error: %v", err)
+			return
+		}
+		session.Console(task, "execute alias: "+cmd.Name())
 	}
 
-	con.AddCallback(task, func(msg *implantpb.Spite) (string, error) {
-		resp, _ := builtin.ParseAssembly(msg)
-		return resp, nil
-	})
 }
 
 func ExecuteAlias(rpc clientrpc.MaliceRPCClient, sess *core.Session, aliasName string, args string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {

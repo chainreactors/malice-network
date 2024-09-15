@@ -7,10 +7,7 @@ import (
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
-	"github.com/chainreactors/tui"
-	"github.com/charmbracelet/bubbles/table"
 	"github.com/spf13/cobra"
-	"strconv"
 )
 
 func PsCmd(cmd *cobra.Command, con *repl.Console) {
@@ -20,34 +17,7 @@ func PsCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf("Ps error: %v", err)
 		return
 	}
-	con.AddCallback(task, func(msg *implantpb.Spite) (string, error) {
-		resp := msg.GetPsResponse()
-		var rowEntries []table.Row
-		var row table.Row
-		tableModel := tui.NewTable([]table.Column{
-			{Title: "Name", Width: 10},
-			{Title: "PID", Width: 5},
-			{Title: "PPID", Width: 5},
-			{Title: "Arch", Width: 7},
-			{Title: "Owner", Width: 7},
-			{Title: "Path", Width: 15},
-			{Title: "Args", Width: 10},
-		}, true)
-		for _, process := range resp.GetProcesses() {
-			row = table.Row{
-				process.Name,
-				strconv.Itoa(int(process.Pid)),
-				strconv.Itoa(int(process.Ppid)),
-				process.Arch,
-				process.Owner,
-				process.Path,
-				process.Args,
-			}
-			rowEntries = append(rowEntries, row)
-		}
-		tableModel.SetRows(rowEntries)
-		return tableModel.View(), nil
-	})
+	session.Console(task, "ps")
 }
 
 func Ps(rpc clientrpc.MaliceRPCClient, session *core.Session) (*clientpb.Task, error) {

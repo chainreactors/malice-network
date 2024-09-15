@@ -1,7 +1,6 @@
 package extension
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,7 +9,6 @@ import (
 	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/core/intermediate"
-	"github.com/chainreactors/malice-network/client/core/intermediate/builtin"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/client/utils"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -24,7 +22,6 @@ import (
 	"github.com/spf13/pflag"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 )
 
@@ -345,10 +342,7 @@ func runExtensionCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf("Error executing extension: %s\n", err.Error())
 		return
 	}
-	con.AddCallback(task, func(msg *implantpb.Spite) (string, error) {
-		resp, _ := builtin.ParseAssembly(msg)
-		return resp, nil
-	})
+	session.Console(task, "execute extension: "+cmd.Name())
 }
 
 func ExecuteExtension(rpc clientrpc.MaliceRPCClient, sess *core.Session, extName string, args string) (*clientpb.Task, error) {
@@ -403,128 +397,6 @@ func ExecuteExtension(rpc clientrpc.MaliceRPCClient, sess *core.Session, extName
 	}
 
 	return task, err
-}
-
-func getExtArgs(args []string, _ string, ext *ExtCommand) ([]byte, error) {
-	var err error
-	argsBuffer := utils.BOFArgsBuffer{
-		Buffer: new(bytes.Buffer),
-	}
-
-	// Parse BOF arguments from grumble
-	missingRequiredArgs := make([]string, 0)
-
-	// If we have an extension that expects a single string, but more than one has been parsed, combine them
-	if len(ext.Arguments) == 1 && strings.Contains(ext.Arguments[0].Type, "string") && len(args) > 0 {
-		// The loop below will only read the first element of args because ext.Arguments is 1
-		args[0] = strings.Join(args, " ")
-	}
-
-	for _, arg := range ext.Arguments {
-		// If we don't have any positional words left to consume,
-		// add the remaining required extension arguments in the
-		// error message.
-		if len(args) == 0 {
-			if !arg.Optional {
-				missingRequiredArgs = append(missingRequiredArgs, "`"+arg.Name+"`")
-			}
-			continue
-		}
-
-		// Else pop a word from the list
-		word := args[0]
-		args = args[1:]
-
-		switch arg.Type {
-		case "integer":
-			fallthrough
-		case "int":
-			val, err := strconv.Atoi(word)
-			if err != nil {
-				return nil, err
-			}
-			err = argsBuffer.AddInt(uint32(val))
-			if err != nil {
-				return nil, err
-			}
-		case "short":
-			val, err := strconv.Atoi(word)
-			if err != nil {
-				return nil, err
-			}
-			err = argsBuffer.AddShort(uint16(val))
-			if err != nil {
-				return nil, err
-			}
-		case "string":
-			err = argsBuffer.AddString(word)
-			if err != nil {
-				return nil, err
-			}
-		case "wstring":
-			err = argsBuffer.AddWString(word)
-			if err != nil {
-				return nil, err
-			}
-		// Adding support for filepaths so we can
-		// send binary data like shellcodes to BOFs
-		case "file":
-			data, err := os.ReadFile(word)
-			if err != nil {
-				return nil, err
-			}
-			err = argsBuffer.AddData(data)
-			if err != nil {
-				return nil, err
-			}
-		}
-	}
-
-	// Return if we have missing required arguments
-	if len(missingRequiredArgs) > 0 {
-		return nil, fmt.Errorf("required arguments %s were not provided", strings.Join(missingRequiredArgs, ", "))
-	}
-
-	parsedArgs, err := argsBuffer.GetBuffer()
-	if err != nil {
-		return nil, err
-	}
-
-	return parsedArgs, nil
-}
-
-func getBOFArgs(args []string, binPath string, ext *ExtCommand) ([]byte, error) {
-	var extensionArgs []byte
-	binData, err := os.ReadFile(binPath)
-	if err != nil {
-		return nil, err
-	}
-
-	// Now build the extension's argument buffer
-	extensionArgsBuffer := utils.BOFArgsBuffer{
-		Buffer: new(bytes.Buffer),
-	}
-	err = extensionArgsBuffer.AddString(ext.Entrypoint)
-	if err != nil {
-		return nil, err
-	}
-	err = extensionArgsBuffer.AddData(binData)
-	if err != nil {
-		return nil, err
-	}
-	parsedArgs, err := getExtArgs(args, binPath, ext)
-	if err != nil {
-		return nil, err
-	}
-	err = extensionArgsBuffer.AddData(parsedArgs)
-	if err != nil {
-		return nil, err
-	}
-	extensionArgs, err = extensionArgsBuffer.GetBuffer()
-	if err != nil {
-		return nil, err
-	}
-	return extensionArgs, nil
 }
 
 func convertOldManifest(old *ExtensionManifest_) *ExtensionManifest {

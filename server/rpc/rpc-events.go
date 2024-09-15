@@ -29,20 +29,13 @@ func (rpc *Server) Events(_ *clientpb.Empty, stream clientrpc.MaliceRPC_EventsSe
 				Op:      event.Op,
 				Err:     event.Err,
 				Message: event.Message,
+				Job:     event.Job,
+				Client:  event.Client,
+				Session: event.Session,
+				Task:    event.Task,
+				Spite:   event.Spite,
 			}
 
-			if event.Job != nil {
-				pbEvent.Job = event.Job
-			}
-			if event.Client != nil {
-				pbEvent.Client = event.Client
-			}
-			if event.Session != nil {
-				pbEvent.Session = event.Session
-			}
-			if event.Task != nil {
-				pbEvent.Task = event.Task
-			}
 			err := stream.Send(pbEvent)
 			if err != nil {
 				logs.Log.Warnf(err.Error())

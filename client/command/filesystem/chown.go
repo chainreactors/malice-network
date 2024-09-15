@@ -24,9 +24,8 @@ func ChownCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf("Chown error: %v", err)
 		return
 	}
-	con.AddCallback(task, func(msg *implantpb.Spite) (string, error) {
-		return "Chown success", nil
-	})
+
+	session.Console(task, "chown "+path+" "+uid)
 }
 
 func Chown(rpc clientrpc.MaliceRPCClient, session *core.Session, path, uid, gid string, recursive bool) (*clientpb.Task, error) {

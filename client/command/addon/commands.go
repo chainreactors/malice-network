@@ -1,13 +1,16 @@
 package addon
 
 import (
+	"fmt"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"strings"
 )
 
 func Commands(con *repl.Console) []*cobra.Command {
@@ -60,7 +63,35 @@ func Commands(con *repl.Console) []*cobra.Command {
 }
 
 func Register(con *repl.Console) {
+	con.RegisterImplantFunc(consts.ModuleListAddon,
+		ListAddon,
+		"",
+		nil,
+		func(content *clientpb.TaskContext) (interface{}, error) {
+			exts := content.Spite.GetAddons()
+			if len(exts.Addons) == 0 {
+				return "", fmt.Errorf("No addon found.")
+			}
+			con.UpdateSession(content.Session.SessionId)
+			var s strings.Builder
+			for _, ext := range exts.Addons {
+				s.WriteString(fmt.Sprintf("%s\t%s\t%s\n", ext.Name, ext.Type, ext.Depend))
+			}
+			return s.String(), nil
+		}, nil)
+
+	con.RegisterImplantFunc(consts.ModuleLoadAddon,
+		LoadAddon,
+		"",
+		nil,
+		func(content *clientpb.TaskContext) (interface{}, error) {
+			con.UpdateSession(content.Session.SessionId)
+			return "addon loaded", nil
+		}, nil)
+
+	con.RegisterImplantFunc(consts.ModuleExecuteAddon, ExecuteAddon, "", nil, common.ParseAssembly, nil)
+
 	for name, addon := range loadedAddons {
-		intermediate.RegisterInternalFunc(name, addon.Func)
+		intermediate.RegisterInternalFunc(name, addon.Func, repl.WrapImplantCallback(common.ParseAssembly))
 	}
 }

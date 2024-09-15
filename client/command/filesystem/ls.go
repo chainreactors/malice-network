@@ -7,10 +7,7 @@ import (
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
-	"github.com/chainreactors/tui"
-	"github.com/charmbracelet/bubbles/table"
 	"github.com/spf13/cobra"
-	"strconv"
 )
 
 func LsCmd(cmd *cobra.Command, con *repl.Console) {
@@ -19,35 +16,11 @@ func LsCmd(cmd *cobra.Command, con *repl.Console) {
 		path = "./"
 	}
 	session := con.GetInteractive()
-	task, err := Ls(con.Rpc, session, path)
+	_, err := Ls(con.Rpc, session, path)
 	if err != nil {
 		con.Log.Errorf("Ls error: %v", err)
 		return
 	}
-	con.AddCallback(task, func(msg *implantpb.Spite) (string, error) {
-		resp := msg.GetLsResponse()
-		var rowEntries []table.Row
-		var row table.Row
-		tableModel := tui.NewTable([]table.Column{
-			{Title: "Name", Width: 20},
-			{Title: "IsDir", Width: 5},
-			{Title: "Size", Width: 7},
-			{Title: "ModTime", Width: 10},
-			{Title: "Link", Width: 15},
-		}, true)
-		for _, file := range resp.GetFiles() {
-			row = table.Row{
-				file.Name,
-				strconv.FormatBool(file.IsDir),
-				strconv.FormatUint(file.Size, 10),
-				strconv.FormatInt(file.ModTime, 10),
-				file.Link,
-			}
-			rowEntries = append(rowEntries, row)
-		}
-		tableModel.SetRows(rowEntries)
-		return tableModel.View(), nil
-	})
 }
 
 func Ls(rpc clientrpc.MaliceRPCClient, session *core.Session, path string) (*clientpb.Task, error) {

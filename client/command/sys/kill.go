@@ -22,9 +22,7 @@ func KillCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf("Kill error: %v", err)
 		return
 	}
-	con.AddCallback(task, func(msg *implantpb.Spite) (string, error) {
-		return "Killed process", nil
-	})
+	session.Console(task, "kill "+pid)
 }
 
 func Kill(rpc clientrpc.MaliceRPCClient, session *core.Session, pid string) (*clientpb.Task, error) {

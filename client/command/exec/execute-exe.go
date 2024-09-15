@@ -4,7 +4,6 @@ import (
 	"errors"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/core/intermediate/builtin"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/helper"
@@ -23,10 +22,7 @@ func ExecuteExeCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf("Execute EXE error: %v", err)
 		return
 	}
-	con.AddCallback(task, func(msg *implantpb.Spite) (string, error) {
-		resp, _ := builtin.ParseAssembly(msg)
-		return resp, nil
-	})
+	con.GetInteractive().Console(task, "execute EXE: "+path)
 }
 
 func ExecExe(rpc clientrpc.MaliceRPCClient, sess *core.Session, pePath string,
@@ -58,10 +54,7 @@ func InlineExeCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf("Execute EXE error: %v", err)
 		return
 	}
-	con.AddCallback(task, func(msg *implantpb.Spite) (string, error) {
-		resp, _ := builtin.ParseAssembly(msg)
-		return resp, nil
-	})
+	session.Console(task, "inline execute EXE: "+path)
 }
 
 func InlineExe(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, args []string,

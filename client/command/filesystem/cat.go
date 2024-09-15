@@ -22,10 +22,7 @@ func CatCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf("Cat error: %v", err)
 	}
 
-	con.AddCallback(task, func(msg *implantpb.Spite) (string, error) {
-		resp := msg.GetResponse()
-		return resp.GetOutput(), nil
-	})
+	session.Console(task, "cat "+fileName)
 }
 
 func Cat(rpc clientrpc.MaliceRPCClient, session *core.Session, fileName string) (*clientpb.Task, error) {

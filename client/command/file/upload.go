@@ -1,6 +1,7 @@
 package file
 
 import (
+	"fmt"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
@@ -23,9 +24,7 @@ func UploadCmd(cmd *cobra.Command, con *repl.Console) {
 		return
 	}
 
-	con.AddCallback(task, func(msg *implantpb.Spite) (string, error) {
-		return "Upload status success", nil
-	})
+	con.GetInteractive().Console(task, fmt.Sprintf("Upload %s", path))
 }
 
 func Upload(rpc clientrpc.MaliceRPCClient, session *core.Session, path string, target string, priv int, hidden bool) (*clientpb.Task, error) {

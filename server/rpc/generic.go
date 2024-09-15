@@ -29,9 +29,9 @@ func newGenericRequest(ctx context.Context, msg proto.Message, opts ...int) (*Ge
 	}
 
 	if opts == nil {
-		req.Task = req.NewTask(1)
+		req.Count = 1
 	} else {
-		req.Task = req.NewTask(opts[0])
+		req.Count = opts[0]
 	}
 	return req, nil
 }
@@ -39,17 +39,28 @@ func newGenericRequest(ctx context.Context, msg proto.Message, opts ...int) (*Ge
 type GenericRequest struct {
 	proto.Message
 	Task    *core.Task
+	Count   int
 	Session *core.Session
 }
 
-func (r *GenericRequest) NewTask(total int) *core.Task {
-	return r.Session.NewTask(string(proto.MessageName(r.Message).Name()), total)
+func (r *GenericRequest) InitSpite() (*implantpb.Spite, error) {
+	spite := &implantpb.Spite{
+		Timeout: uint64(consts.MinTimeout.Seconds()),
+		Async:   true,
+	}
+	var err error
+	spite, err = types.BuildSpite(spite, r.Message)
+	if err != nil {
+		return nil, err
+	}
+	r.Task = r.Session.NewTask(spite.Name, r.Count)
+	spite.TaskId = r.Task.Id
+	r.Message = nil
+	return spite, nil
 }
-
 func (r *GenericRequest) NewSpite(msg proto.Message) (*implantpb.Spite, error) {
 	spite := &implantpb.Spite{
 		Timeout: uint64(consts.MinTimeout.Seconds()),
-		TaskId:  r.Task.Id,
 		Async:   true,
 	}
 	var err error
@@ -73,16 +84,18 @@ func (r *GenericRequest) HandlerResponse(ch chan *implantpb.Spite, typ types.Msg
 		r.Task.Panic(buildErrorEvent(r.Task, err))
 		return
 	}
-	r.SetCallback(func() {
-		if callbacks != nil {
+	if callbacks != nil {
+		r.SetCallback(func() {
 			for _, callback := range callbacks {
 				callback(resp)
 			}
-		}
-	})
+		})
+	}
 	r.Task.Done(core.Event{
 		EventType: consts.EventTask,
 		Op:        consts.CtrlTaskCallback,
+		Spite:     resp,
+		Session:   r.Session.ToProtobuf(),
 		Task:      r.Task.ToProtobuf(),
 	})
 }
@@ -112,12 +125,11 @@ func buildErrorEvent(task *core.Task, err error) core.Event {
 }
 
 func (rpc *Server) GenericHandler(ctx context.Context, req *GenericRequest) (chan *implantpb.Spite, error) {
-	spite, err := req.NewSpite(req.Message)
+	spite, err := req.InitSpite()
 	if err != nil {
 		logs.Log.Errorf(err.Error())
 		return nil, err
 	}
-
 	out, err := req.Session.RequestWithAsync(
 		&lispb.SpiteSession{SessionId: req.Session.ID, TaskId: req.Task.Id, Spite: spite},
 		pipelinesCh[req.Session.PipelineID],
@@ -129,13 +141,15 @@ func (rpc *Server) GenericHandler(ctx context.Context, req *GenericRequest) (cha
 	return out, nil
 }
 
-// streamGenericHandler - Generic handler for async request/response's for beacon tasks
-func (rpc *Server) streamGenericHandler(ctx context.Context, req *GenericRequest) (chan *implantpb.Spite, chan *implantpb.Spite, error) {
-	spite, err := req.NewSpite(req.Message)
+// StreamGenericHandler - Generic handler for async request/response's for beacon tasks
+func (rpc *Server) StreamGenericHandler(ctx context.Context, req *GenericRequest) (chan *implantpb.Spite, chan *implantpb.Spite, error) {
+	spite, err := req.InitSpite()
 	if err != nil {
 		logs.Log.Errorf(err.Error())
 		return nil, nil, err
 	}
+	req.Task = req.Session.NewTask(spite.Name, req.Count)
+	spite.TaskId = req.Task.Id
 	in, out, err := req.Session.RequestWithStream(
 		&lispb.SpiteSession{SessionId: req.Session.ID, TaskId: req.Task.Id, Spite: spite},
 		pipelinesCh[req.Session.PipelineID],

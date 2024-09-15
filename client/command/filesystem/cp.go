@@ -24,9 +24,8 @@ func CpCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf("Cp error: %v", err)
 		return
 	}
-	con.AddCallback(task, func(msg *implantpb.Spite) (string, error) {
-		return "Cp success", nil
-	})
+
+	session.Console(task, "cp "+originPath+" "+targetPath)
 }
 
 func Cp(rpc clientrpc.MaliceRPCClient, session *core.Session, originPath, targetPath string) (*clientpb.Task, error) {

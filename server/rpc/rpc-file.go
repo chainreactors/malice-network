@@ -57,7 +57,7 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 			Priv:   req.Priv,
 			Hidden: req.Hidden,
 		}, count)
-		in, out, err := rpc.streamGenericHandler(ctx, greq)
+		in, out, err := rpc.StreamGenericHandler(ctx, greq)
 		if err != nil {
 			return nil, err
 		}
@@ -130,7 +130,7 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 	if err != nil {
 		return nil, err
 	}
-	in, out, err := rpc.streamGenericHandler(ctx, greq)
+	in, out, err := rpc.StreamGenericHandler(ctx, greq)
 	if err != nil {
 		logs.Log.Debugf("stream generate error: %s", err)
 		return nil, err
@@ -186,6 +186,7 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 				return
 			}
 			ack, _ := greq.NewSpite(&implantpb.AsyncACK{Success: true})
+			ack.TaskId = greq.Task.Id
 			ack.Name = types.MsgDownload.String()
 			in <- ack
 			greq.Session.AddMessage(resp, int(block.BlockId+1))

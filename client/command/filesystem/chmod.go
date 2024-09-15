@@ -22,9 +22,8 @@ func ChmodCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf("Chmod error: %v", err)
 		return
 	}
-	con.AddCallback(task, func(msg *implantpb.Spite) (string, error) {
-		return "Chmod success", nil
-	})
+
+	con.GetInteractive().Console(task, "chmod "+path+" "+mode)
 }
 
 func Chmod(rpc clientrpc.MaliceRPCClient, session *core.Session, path, mode string) (*clientpb.Task, error) {

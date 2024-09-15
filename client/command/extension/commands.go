@@ -73,6 +73,6 @@ func Commands(con *repl.Console) []*cobra.Command {
 
 func Register(con *repl.Console) {
 	for name, ext := range loadedExtensions {
-		intermediate.RegisterInternalFunc(name, ext.Func)
+		intermediate.RegisterInternalFunc(name, ext.Func, repl.WrapImplantCallback(common.ParseAssembly))
 	}
 }

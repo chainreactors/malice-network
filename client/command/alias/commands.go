@@ -86,6 +86,6 @@ func Commands(con *repl.Console) []*cobra.Command {
 
 func Register(con *repl.Console) {
 	for name, aliasPkg := range loadedAliases {
-		intermediate.RegisterInternalFunc(name, aliasPkg.Func)
+		intermediate.RegisterInternalFunc(name, aliasPkg.Func, repl.WrapImplantCallback(common.ParseAssembly))
 	}
 }

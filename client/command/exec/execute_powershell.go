@@ -2,8 +2,8 @@ package exec
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/core/intermediate/builtin"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
@@ -23,10 +23,7 @@ func ExecutePowershellCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf("Execute Powershell error: %v", err)
 		return
 	}
-	con.AddCallback(task, func(msg *implantpb.Spite) (string, error) {
-		resp, _ := builtin.ParseAssembly(msg)
-		return resp, nil
-	})
+	con.GetInteractive().Console(task, fmt.Sprintf("Execute Powershell %s, args: %v", script, cmdline))
 }
 
 func ExecPowershell(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, ps []string) (*clientpb.Task, error) {

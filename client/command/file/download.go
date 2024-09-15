@@ -18,9 +18,8 @@ func DownloadCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf("Download error: %v", err)
 		return
 	}
-	con.AddCallback(task, func(msg *implantpb.Spite) (string, error) {
-		return "Downloaded file " + path, nil
-	})
+
+	con.GetInteractive().Console(task, "Downloaded file "+path)
 }
 
 func Download(rpc clientrpc.MaliceRPCClient, session *core.Session, path string) (*clientpb.Task, error) {

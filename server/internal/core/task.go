@@ -58,8 +58,8 @@ type Task struct {
 	Callback  func()
 	Ctx       context.Context
 	Cancel    context.CancelFunc
-	//Status    *implantpb.Spite
-	DoneCh chan bool
+	Session   *Session
+	DoneCh    chan bool
 }
 
 func (t *Task) Handler() {
@@ -104,10 +104,13 @@ func (t *Task) Done(event Event) {
 }
 
 func (t *Task) Finish() {
+	spite, _ := t.Session.GetLastMessage(int(t.Id))
 	EventBroker.Publish(Event{
-		Task:      t.ToProtobuf(),
 		EventType: consts.EventTask,
 		Op:        consts.CtrlTaskFinish,
+		Task:      t.ToProtobuf(),
+		Session:   t.Session.ToProtobuf(),
+		Spite:     spite,
 	})
 	if t.Callback != nil {
 		t.Callback()

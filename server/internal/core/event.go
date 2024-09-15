@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/nikoksr/notify"
 	"github.com/nikoksr/notify/service/dingding"
@@ -23,6 +24,7 @@ type Event struct {
 	Job     *clientpb.Job
 	Client  *clientpb.Client
 	Task    *clientpb.Task
+	Spite   *implantpb.Spite
 
 	EventType string
 	Op        string

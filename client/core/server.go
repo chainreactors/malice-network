@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/handler"
 	"github.com/chainreactors/malice-network/helper/mtls"
@@ -15,10 +16,9 @@ import (
 	"google.golang.org/grpc"
 	"io"
 	"sync"
-	"time"
 )
 
-type TaskCallback func(resp *implantpb.Spite) (string, error)
+type TaskCallback func(resp *implantpb.Spite)
 
 func InitServerStatus(conn *grpc.ClientConn, config *mtls.ClientConfig) (*ServerStatus, error) {
 	var err error
@@ -165,33 +165,16 @@ func (s *ServerStatus) triggerTaskDone(event *clientpb.Event) {
 		Log.Errorf(ErrNotFoundTask.Error())
 		return
 	}
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-	if callback, ok := s.doneCallbacks.Load(fmt.Sprintf("%s_%d", task.SessionId, task.TaskId)); ok {
-		content, err := s.Rpc.GetTaskContent(ctx, event.Task)
-		if err != nil {
-			Log.Errorf(err.Error())
-			return
-		}
-		if err != nil {
-			Log.Errorf(err.Error())
-			return
-		}
-		tui.Down(0)
-		Log.Importantf(logs.GreenBold(fmt.Sprintf("session: %s task: %d index: %d\n", task.SessionId, task.TaskId, task.Cur)))
-		session := s.Sessions[task.SessionId]
-		err = handler.HandleMaleficError(content.Spite)
-		if err != nil {
-			Log.Errorf(err.Error())
-			session.Error(task, err)
-			return
-		}
-
-		resp, err := callback.(TaskCallback)(content.Spite)
-		if err != nil {
-			session.Error(task, err)
-		} else {
-			session.Console(task, resp)
-		}
+	tui.Down(0)
+	log := s.ObserverLog(event.Task.SessionId)
+	err := handler.HandleMaleficError(event.Spite)
+	if err != nil {
+		log.Errorf(err.Error())
+		return
+	}
+	s.CallbackOutput(event, false)
+	if callback, ok := s.finishCallbacks.Load(fmt.Sprintf("%s_%d", task.SessionId, task.TaskId)); ok {
+		callback.(TaskCallback)(event.Spite)
 	}
 }
 
@@ -201,35 +184,18 @@ func (s *ServerStatus) triggerTaskFinish(event *clientpb.Event) {
 		Log.Errorf(ErrNotFoundTask.Error())
 		return
 	}
+	tui.Down(0)
+	log := s.ObserverLog(event.Task.SessionId)
+	err := handler.HandleMaleficError(event.Spite)
+	if err != nil {
+		log.Errorf(err.Error())
+		return
+	}
+	s.CallbackOutput(event, true)
+
 	callbackId := fmt.Sprintf("%s_%d", task.SessionId, task.TaskId)
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 	if callback, ok := s.finishCallbacks.Load(callbackId); ok {
-		content, err := s.Rpc.GetTaskContent(ctx, &clientpb.Task{
-			TaskId:    task.TaskId,
-			SessionId: task.SessionId,
-			Need:      -1,
-		})
-		if err != nil {
-			Log.Errorf(err.Error())
-			return
-		}
-
-		session := s.Sessions[task.SessionId]
-		tui.Down(0)
-		//Log.Importantf(logs.GreenBold(fmt.Sprintf("session: %s task: %d index: %d\n", task.SessionId, task.TaskId, task.Cur)))
-		err = handler.HandleMaleficError(content.Spite)
-		if err != nil {
-			//Log.Errorf(err.Error())
-			session.Error(task, err)
-			return
-		}
-
-		resp, err := callback.(TaskCallback)(content.Spite)
-		if err != nil {
-			session.Error(task, err)
-		} else {
-			session.Console(task, resp)
-		}
+		callback.(TaskCallback)(event.Spite)
 		s.finishCallbacks.Delete(callbackId)
 		s.doneCallbacks.Delete(callbackId)
 	}
@@ -288,9 +254,9 @@ func (s *ServerStatus) handlerTaskCtrl(event *clientpb.Event) {
 	case consts.CtrlTaskFinish:
 		s.triggerTaskFinish(event)
 	case consts.CtrlTaskCancel:
-		Log.Importantf("%s task: %d canceled", event.Task.SessionId, event.Task.TaskId)
+		Log.Importantf("[%s.%d] task canceled", event.Task.SessionId, event.Task.TaskId)
 	case consts.CtrlTaskError:
-		Log.Errorf("%s task: %d error: %s", event.Task.SessionId, event.Task.TaskId, event.Err)
+		Log.Errorf("[%s.%d] task error: %s", event.Task.SessionId, event.Task.TaskId, event.Err)
 	}
 }
 
@@ -321,10 +287,52 @@ func (s *ServerStatus) handlerSession(event *clientpb.Event) {
 		Log.Importantf("%s session: %s ", event.Session.SessionId, event.Message)
 	case consts.CtrlSessionConsole:
 		log := s.ObserverLog(event.Task.SessionId)
-		log.Importantf(logs.GreenBold(fmt.Sprintf("session: %s task: %d index: %d", event.Task.SessionId, event.Task.TaskId, event.Task.Cur)))
-		log.Console(event.Message + "\n")
+		log.Importantf(logs.GreenBold(fmt.Sprintf("[%s.%d] run task %s: %s", event.Task.SessionId, event.Task.TaskId, event.Task.Type, event.Message)))
 	case consts.CtrlSessionError:
 		log := s.ObserverLog(event.Task.SessionId)
-		log.Errorf(logs.GreenBold(fmt.Sprintf("session: %s task: %d error: %s\n", event.Task.SessionId, event.Task.TaskId, event.Err)))
+		log.Errorf(logs.GreenBold(fmt.Sprintf("[%s] task: %d error: %s\n", event.Task.SessionId, event.Task.TaskId, event.Err)))
+	}
+}
+
+func (s *ServerStatus) CallbackOutput(event *clientpb.Event, finish bool) {
+	log := s.ObserverLog(event.Task.SessionId)
+	if fn, ok := intermediate.InternalFunctions[event.Task.Type]; ok {
+		var resp string
+		var err error
+		if finish {
+			if fn.FinishCallback == nil {
+				Log.Debugf("No finish callback for %s", event.Task.Type)
+				return
+			}
+			log.Importantf(logs.GreenBold(fmt.Sprintf("[%s.%d] task finish (%d/%d)",
+				event.Task.SessionId, event.Task.TaskId,
+				event.Task.Cur, event.Task.Total)))
+			resp, err = fn.FinishCallback(&clientpb.TaskContext{
+				Task:    event.Task,
+				Session: event.Session,
+				Spite:   event.Spite,
+			})
+		} else {
+			if fn.DoneCallback == nil {
+				Log.Debugf("No done callback for %s", event.Task.Type)
+				return
+			}
+			log.Importantf(logs.GreenBold(fmt.Sprintf("[%s.%d] task done (%d/%d)",
+				event.Task.SessionId, event.Task.TaskId,
+				event.Task.Cur, event.Task.Total)))
+			resp, err = fn.DoneCallback(&clientpb.TaskContext{
+				Task:    event.Task,
+				Session: event.Session,
+				Spite:   event.Spite,
+			})
+		}
+
+		if err != nil {
+			log.Errorf(err.Error())
+			return
+		}
+		log.Console(resp)
+	} else {
+		log.Consolef("%v", event.Spite)
 	}
 }

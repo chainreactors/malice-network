@@ -16,8 +16,8 @@ const (
 	CtrlJobStart        = "job_start"
 	CtrlJobStop         = "job_stop"
 	CtrlSessionRegister = "session_register"
-	CtrlSessionConsole  = "session_console"
-	CtrlSessionError    = "session_error"
+	CtrlSessionConsole  = "session_done"
+	CtrlSessionError    = "session_finish"
 )
 
 // ctrl status

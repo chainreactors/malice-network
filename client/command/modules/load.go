@@ -20,9 +20,8 @@ func LoadModuleCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf("LoadModule error: %v", err)
 		return
 	}
-	con.AddCallback(task, func(msg *implantpb.Spite) (string, error) {
-		return fmt.Sprintf("LoadModule: %s success", bundle), nil
-	})
+
+	session.Console(task, fmt.Sprintf("load %s %s", bundle, path))
 }
 
 func LoadModule(rpc clientrpc.MaliceRPCClient, session *core.Session, bundle string, path string) (*clientpb.Task, error) {
