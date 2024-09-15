@@ -280,7 +280,7 @@ func sendLsRequest(e *ExplorerModel) error {
 		core.Log.Errorf("load directory error: %v", err)
 		return err
 	}
-	e.con.AddCallback(task, func(msg *implantpb.Spite) (string, error) {
+	e.con.AddCallback(task, func(msg *implantpb.Spite) {
 		resp := msg.GetLsResponse()
 		var dirEntries []os.DirEntry
 		for _, protoFile := range resp.GetFiles() {
@@ -291,11 +291,9 @@ func sendLsRequest(e *ExplorerModel) error {
 		if err != nil {
 			e.err = err
 			done <- err
-			return "", err
 		}
 		e.Files = dirEntries
 		done <- nil
-		return "", core.ErrDisableOutput
 	})
 
 	return <-done
@@ -316,14 +314,13 @@ func downloadRequest(e *ExplorerModel) error {
 		return err
 	}
 	total := task.Total
-	e.con.AddCallback(task, func(msg *implantpb.Spite) (string, error) {
+	e.con.AddCallback(task, func(msg *implantpb.Spite) {
 		block := msg.GetBlock()
 		e.progress.SetProgressPercent(float64(block.BlockId+1) / float64(total))
 		e.progress.Update(tui.ViewMsg{})
 		//if block.BlockId+1 == uint32(total) {
 		//	e.isProgress = false
 		//}
-		return "", core.ErrDisableOutput
 	})
 	return nil
 }

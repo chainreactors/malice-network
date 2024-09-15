@@ -17,9 +17,7 @@ func ClearCmd(cmd *cobra.Command, con *repl.Console) {
 		return
 	}
 
-	con.AddCallback(task, func(msg *implantpb.Spite) (string, error) {
-		return "clear all custom modules and exts", nil
-	})
+	con.GetInteractive().Console(task, "clear all custom modules and exts")
 }
 
 func clearAll(rpc clientrpc.MaliceRPCClient, sess *core.Session) (*clientpb.Task, error) {

@@ -3,7 +3,6 @@ package exec
 import (
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/core/intermediate/builtin"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
@@ -22,11 +21,7 @@ func ExecuteShellcodeCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf("Execute shellcode error: %v", err)
 		return
 	}
-	con.AddCallback(task, func(msg *implantpb.Spite) (string, error) {
-		resp, _ := builtin.ParseAssembly(msg)
-		return resp, nil
-	})
-
+	session.Console(task, "execute shellcode: "+path)
 }
 
 func ExecShellcode(rpc clientrpc.MaliceRPCClient, sess *core.Session, shellcodePath string,
@@ -51,11 +46,7 @@ func InlineShellcodeCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf("Execute inline shellcode error: %v", err)
 		return
 	}
-	con.AddCallback(task, func(msg *implantpb.Spite) (string, error) {
-		resp, _ := builtin.ParseAssembly(msg)
-		return resp, nil
-	})
-
+	con.GetInteractive().Console(task, "inline execute shellcode: "+path)
 }
 
 func InlineShellcode(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, args []string,

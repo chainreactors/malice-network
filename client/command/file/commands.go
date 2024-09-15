@@ -82,9 +82,8 @@ func Register(con *repl.Console) {
 		consts.ModuleDownload,
 		Download,
 		"bdownload",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string) (*clientpb.Task, error) {
-			return Download(rpc, sess, path)
-		},
+		Download,
+		common.ParseStatus,
 		nil)
 
 	con.RegisterImplantFunc(
@@ -94,5 +93,6 @@ func Register(con *repl.Console) {
 		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string) (*clientpb.Task, error) {
 			return Upload(rpc, sess, path, filepath.Base(path), 0744, false)
 		},
+		common.ParseStatus,
 		nil)
 }

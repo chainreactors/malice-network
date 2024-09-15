@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/help"
-	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/handler"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/proto/services/clientrpc"
+	"github.com/chainreactors/tui"
+	"github.com/charmbracelet/bubbles/table"
 	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -214,54 +214,47 @@ func Register(con *repl.Console) {
 		consts.ModuleCd,
 		Cd,
 		"bcd",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string) (*clientpb.Task, error) {
-			return Cd(rpc, sess, path)
-		},
-		common.ParseStatus)
+		Cd,
+		common.ParseStatus,
+		nil)
 
 	con.RegisterImplantFunc(
 		consts.ModuleCat,
 		Cat,
 		"bcat",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, fileName string) (*clientpb.Task, error) {
-			return Cat(rpc, sess, fileName)
-		},
-		common.ParseResponse)
+		Cat,
+		common.ParseResponse,
+		nil)
 
 	con.RegisterImplantFunc(
 		consts.ModuleChmod,
 		Chmod,
-		"bchmod",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, path, mode string) (*clientpb.Task, error) {
-			return Chmod(rpc, sess, path, mode)
-		},
-		common.ParseStatus)
+		"",
+		nil,
+		common.ParseStatus,
+		nil)
 
 	con.RegisterImplantFunc(
 		consts.ModuleChown,
 		Chown,
-		"bchown",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, path, uid string, gid string, recursive bool) (*clientpb.Task, error) {
-			return Chown(rpc, sess, path, uid, gid, recursive)
-		},
-		common.ParseStatus)
+		"",
+		nil,
+		common.ParseStatus,
+		nil)
 
 	con.RegisterImplantFunc(
 		consts.ModuleCp,
 		Cp,
 		"bcp",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, src, dst string) (*clientpb.Task, error) {
-			return Cp(rpc, sess, src, dst)
-		},
-		common.ParseStatus)
+		Cp,
+		common.ParseStatus,
+		nil)
 
 	con.RegisterImplantFunc(
 		consts.ModuleLs,
 		Ls,
 		"bls",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string) (*clientpb.Task, error) {
-			return Ls(rpc, sess, path)
-		},
+		Ls,
 		func(ctx *clientpb.TaskContext) (interface{}, error) {
 			err := handler.HandleMaleficError(ctx.Spite)
 			if err != nil {
@@ -280,42 +273,63 @@ func Register(con *repl.Console) {
 				fileDetails = append(fileDetails, fileStr)
 			}
 			return strings.Join(fileDetails, ","), nil
+		},
+		func(content *clientpb.TaskContext) (string, error) {
+			msg := content.Spite
+			resp := msg.GetLsResponse()
+			var rowEntries []table.Row
+			var row table.Row
+			tableModel := tui.NewTable([]table.Column{
+				{Title: "Name", Width: 20},
+				{Title: "IsDir", Width: 5},
+				{Title: "Size", Width: 7},
+				{Title: "ModTime", Width: 10},
+				{Title: "Link", Width: 15},
+			}, true)
+			for _, file := range resp.GetFiles() {
+				row = table.Row{
+					file.Name,
+					strconv.FormatBool(file.IsDir),
+					strconv.FormatUint(file.Size, 10),
+					strconv.FormatInt(file.ModTime, 10),
+					file.Link,
+				}
+				rowEntries = append(rowEntries, row)
+			}
+			tableModel.SetRows(rowEntries)
+			return tableModel.View(), nil
 		})
 
 	con.RegisterImplantFunc(
 		consts.ModuleMkdir,
 		Mkdir,
 		"bmkdir",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string) (*clientpb.Task, error) {
-			return Mkdir(rpc, sess, path)
-		},
-		common.ParseStatus)
+		Mkdir,
+		common.ParseStatus,
+		nil)
 
 	con.RegisterImplantFunc(
 		consts.ModuleMv,
 		Mv,
 		"bmv",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, src, dst string) (*clientpb.Task, error) {
-			return Mv(rpc, sess, src, dst)
-		},
-		common.ParseStatus)
+		Mv,
+		common.ParseStatus,
+		nil)
 
 	con.RegisterImplantFunc(
 		consts.ModulePwd,
 		Pwd,
 		"bpwd",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session) (*clientpb.Task, error) {
-			return Pwd(rpc, sess)
-		},
+		Pwd,
 		common.ParseResponse,
+		nil,
 	)
 
 	con.RegisterImplantFunc(
 		consts.ModuleRm,
 		Rm,
 		"brm",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, fileName string) (*clientpb.Task, error) {
-			return Rm(rpc, sess, fileName)
-		},
-		common.ParseStatus)
+		Rm,
+		common.ParseStatus,
+		nil)
 }

@@ -4,7 +4,6 @@ import (
 	"errors"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/core/intermediate/builtin"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/helper"
@@ -24,10 +23,7 @@ func ExecuteDLLCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf("Execute DLL error: %v", err)
 		return
 	}
-	con.AddCallback(task, func(msg *implantpb.Spite) (string, error) {
-		resp, _ := builtin.ParseAssembly(msg)
-		return resp, nil
-	})
+	session.Console(task, "execute DLL: "+path)
 }
 
 func ExecDLL(rpc clientrpc.MaliceRPCClient, sess *core.Session, pePath string, entrypoint string, args []string, output bool, timeout uint32, arch string, process string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
@@ -58,11 +54,7 @@ func InlineDLLCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf("Execute Inline DLL error: %s", err)
 		return
 	}
-
-	con.AddCallback(task, func(msg *implantpb.Spite) (string, error) {
-		resp, _ := builtin.ParseAssembly(msg)
-		return resp, nil
-	})
+	session.Console(task, "inline execute DLL: "+path)
 }
 
 func InlineDLL(rpc clientrpc.MaliceRPCClient, sess *core.Session, path, entryPoint string, args []string,

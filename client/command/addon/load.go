@@ -44,13 +44,12 @@ func LoadAddonCmd(cmd *cobra.Command, con *repl.Console) {
 		return
 	}
 
-	con.AddCallback(task, func(msg *implantpb.Spite) (string, error) {
-		err = RegisterAddon(&implantpb.Addon{Name: name, Depend: module}, con, con.ImplantMenu())
+	session.Console(task, fmt.Sprintf("Load addon %s", name))
+	con.AddCallback(task, func(msg *implantpb.Spite) {
+		err = RegisterAddon(&implantpb.Addon{Name: name, Depend: module}, con)
 		if err != nil {
-			return "", err
+			con.Log.Errorf("%s", err)
 		}
-		con.UpdateSession(session.SessionId)
-		return fmt.Sprintf("addon %s loaded", name), nil
 	})
 }
 
@@ -67,7 +66,8 @@ func LoadAddon(rpc clientrpc.MaliceRPCClient, sess *core.Session, name, path, de
 	})
 }
 
-func RegisterAddon(addon *implantpb.Addon, con *repl.Console, cmd *cobra.Command) error {
+func RegisterAddon(addon *implantpb.Addon, con *repl.Console) error {
+	cmd := con.ImplantMenu()
 	addonCmd := &cobra.Command{
 		Use:   addon.Name,
 		Short: fmt.Sprintf("%s %s", addon.Depend, addon.Name),

@@ -17,12 +17,16 @@ import (
 )
 
 type InternalFunc struct {
-	Name        string
-	Raw         interface{}
-	Func        func(...interface{}) (interface{}, error)
-	ArgTypes    []reflect.Type
-	ReturnTypes []reflect.Type
+	Name           string
+	Raw            interface{}
+	Func           func(...interface{}) (interface{}, error)
+	FinishCallback ImplantCallback // implant callback
+	DoneCallback   ImplantCallback
+	ArgTypes       []reflect.Type
+	ReturnTypes    []reflect.Type
 }
+
+type ImplantCallback func(content *clientpb.TaskContext) (string, error)
 
 var InternalFunctions = make(map[string]*InternalFunc)
 
@@ -32,8 +36,11 @@ func Register(rpc clientrpc.MaliceRPCClient) {
 }
 
 // RegisterInternalFunc 注册并生成 Lua 定义文件
-func RegisterInternalFunc(name string, fn *InternalFunc) error {
+func RegisterInternalFunc(name string, fn *InternalFunc, callback ImplantCallback) error {
 	name = strings.ReplaceAll(name, "-", "_")
+	if callback != nil {
+		fn.FinishCallback = callback
+	}
 	if _, ok := InternalFunctions[name]; ok {
 		return fmt.Errorf("function %s already registered", name)
 	}
@@ -72,7 +79,7 @@ func GetInternalFuncSignature(fn interface{}) *InternalFunc {
 
 func RegisterFunction(name string, fn interface{}) {
 	wrappedFunc := WrapInternalFunc(fn)
-	err := RegisterInternalFunc(name, wrappedFunc)
+	err := RegisterInternalFunc(name, wrappedFunc, nil)
 	if err != nil {
 		return
 	}
@@ -245,6 +252,6 @@ func RegisterGRPCFunc(rpc clientrpc.MaliceRPCClient) {
 		internalFunc.ArgTypes = internalFunc.ArgTypes[1:3]
 
 		// 注册函数
-		RegisterInternalFunc(methodName, internalFunc)
+		RegisterInternalFunc(methodName, internalFunc, nil)
 	}
 }

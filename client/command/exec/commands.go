@@ -7,7 +7,6 @@ import (
 	"github.com/chainreactors/malice-network/client/core/intermediate/builtin"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/handler"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
@@ -242,13 +241,10 @@ func Register(con *repl.Console) {
 			return Execute(rpc, sess, cmd)
 		},
 		func(ctx *clientpb.TaskContext) (interface{}, error) {
-			err := handler.HandleMaleficError(ctx.Spite)
-			if err != nil {
-				return "", err
-			}
 			resp := ctx.Spite.GetExecResponse()
 			return string(resp.Stdout), nil
 		},
+		nil,
 	)
 
 	con.RegisterImplantFunc(
@@ -261,7 +257,9 @@ func Register(con *repl.Console) {
 				return nil, err
 			}
 			return ExecAssembly(rpc, sess, path, cmdline, true)
-		}, common.ParseAssembly)
+		},
+		common.ParseAssembly,
+		nil)
 
 	con.RegisterImplantFunc(
 		consts.ModuleExecuteShellcode,
@@ -270,7 +268,9 @@ func Register(con *repl.Console) {
 		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, ppid int, arch, path string) (*clientpb.Task, error) {
 			sac, _ := builtin.NewSacrificeProcessMessage(int64(ppid), false, true, true, "")
 			return ExecShellcode(rpc, sess, path, nil, true, math.MaxUint32, sess.Os.Arch, "", sac)
-		}, common.ParseAssembly)
+		},
+		common.ParseAssembly,
+		nil)
 
 	con.RegisterImplantFunc(
 		consts.ModuleAliasInlineShellcode,
@@ -278,7 +278,9 @@ func Register(con *repl.Console) {
 		"binline_shellcode",
 		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string) (*clientpb.Task, error) {
 			return InlineShellcode(rpc, sess, path, nil, true, math.MaxUint32, sess.Os.Arch, "")
-		}, common.ParseAssembly)
+		},
+		common.ParseAssembly,
+		nil)
 
 	con.RegisterImplantFunc(
 		consts.ModuleExecuteDll,
@@ -287,7 +289,9 @@ func Register(con *repl.Console) {
 		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, ppid int, path string) (*clientpb.Task, error) {
 			sac, _ := builtin.NewSacrificeProcessMessage(int64(ppid), false, true, true, "")
 			return ExecDLL(rpc, sess, path, "DLLMain", nil, true, math.MaxUint32, sess.Os.Arch, "", sac)
-		}, common.ParseAssembly)
+		},
+		common.ParseAssembly,
+		nil)
 
 	con.RegisterImplantFunc(
 		consts.ModuleAliasInlineDll,
@@ -299,7 +303,9 @@ func Register(con *repl.Console) {
 				return nil, err
 			}
 			return InlineDLL(rpc, sess, path, entryPoint, param, true, math.MaxUint32, sess.Os.Arch, "")
-		}, common.ParseAssembly)
+		},
+		common.ParseAssembly,
+		nil)
 
 	con.RegisterImplantFunc(
 		consts.ModuleExecuteExe,
@@ -311,7 +317,9 @@ func Register(con *repl.Console) {
 				return nil, err
 			}
 			return ExecExe(rpc, sess, path, cmdline, true, math.MaxUint32, sess.Os.Arch, "", sac)
-		}, common.ParseAssembly)
+		},
+		common.ParseAssembly,
+		nil)
 
 	con.RegisterImplantFunc(
 		consts.ModuleAliasInlineExe,
@@ -323,7 +331,9 @@ func Register(con *repl.Console) {
 				return nil, err
 			}
 			return InlineExe(rpc, sess, path, param, true, math.MaxUint32, sess.Os.Arch, "")
-		}, common.ParseAssembly)
+		},
+		common.ParseAssembly,
+		nil)
 
 	con.RegisterImplantFunc(
 		consts.ModuleExecuteBof,
@@ -335,7 +345,9 @@ func Register(con *repl.Console) {
 				return nil, err
 			}
 			return ExecBof(rpc, sess, path, cmdline, true)
-		}, common.ParseAssembly)
+		},
+		common.ParseAssembly,
+		nil)
 
 	con.RegisterImplantFunc(
 		consts.ModulePowershell,
@@ -347,5 +359,7 @@ func Register(con *repl.Console) {
 				return nil, err
 			}
 			return ExecPowershell(rpc, sess, script, cmdline)
-		}, common.ParseAssembly)
+		},
+		common.ParseAssembly,
+		nil)
 }

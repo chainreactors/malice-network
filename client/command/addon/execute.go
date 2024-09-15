@@ -3,7 +3,6 @@ package addon
 import (
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/core/intermediate/builtin"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
@@ -31,16 +30,11 @@ func ExecuteAddonCmd(cmd *cobra.Command, con *repl.Console) {
 		sac, _ = common.ParseSacrifice(cmd)
 	}
 
-	task, err := ExecuteAddon(con.Rpc, session, cmd.Name(), args, !quiet, timeout, arch, process, sac)
+	_, err := ExecuteAddon(con.Rpc, session, cmd.Name(), args, !quiet, timeout, arch, process, sac)
 	if err != nil {
 		con.Log.Errorf("%s", err)
 		return
 	}
-
-	con.AddCallback(task, func(msg *implantpb.Spite) (string, error) {
-		resp, _ := builtin.ParseAssembly(msg)
-		return resp, nil
-	})
 }
 
 func ExecuteAddon(rpc clientrpc.MaliceRPCClient, sess *core.Session, name string, args []string,

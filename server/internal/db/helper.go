@@ -159,6 +159,7 @@ func UpdateSessionStatus() error {
 
 func UpdateSessionInfo(coreSession *core.Session) error {
 	updateSession := models.ConvertToSessionDB(coreSession)
+	updateSession.IsAlive = true
 	result := Session().Save(updateSession)
 
 	if result.Error != nil {

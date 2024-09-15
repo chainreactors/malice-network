@@ -1,7 +1,6 @@
 package sys
 
 import (
-	"fmt"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -9,7 +8,6 @@ import (
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/spf13/cobra"
-	"strings"
 )
 
 func EnvCmd(cmd *cobra.Command, con *repl.Console) {
@@ -19,14 +17,7 @@ func EnvCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf("Env error: %v", err)
 		return
 	}
-	con.AddCallback(task, func(msg *implantpb.Spite) (string, error) {
-		envSet := msg.GetResponse().GetKv()
-		var s strings.Builder
-		for k, v := range envSet {
-			s.WriteString(fmt.Sprintf("export %s = %s\n", k, v))
-		}
-		return s.String(), nil
-	})
+	session.Console(task, "env")
 }
 
 func Env(rpc clientrpc.MaliceRPCClient, session *core.Session) (*clientpb.Task, error) {
@@ -51,9 +42,8 @@ func SetEnvCmd(cmd *cobra.Command, con *repl.Console) {
 	if err != nil {
 		return
 	}
-	con.AddCallback(task, func(msg *implantpb.Spite) (string, error) {
-		return "Set environment variable success", nil
-	})
+
+	session.Console(task, "setenv "+envName+" "+value)
 }
 
 func SetEnv(rpc clientrpc.MaliceRPCClient, session *core.Session, envName, value string) (*clientpb.Task, error) {
@@ -79,9 +69,7 @@ func UnsetEnvCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf("UnsetEnv error: %v", err)
 		return
 	}
-	con.AddCallback(task, func(msg *implantpb.Spite) (string, error) {
-		return "Unset environment variable success", nil
-	})
+	session.Console(task, "unsetenv "+envName)
 }
 
 func UnSetEnv(rpc clientrpc.MaliceRPCClient, session *core.Session, envName string) (*clientpb.Task, error) {

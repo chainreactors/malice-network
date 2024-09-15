@@ -1,7 +1,6 @@
 package sys
 
 import (
-	"fmt"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -18,9 +17,7 @@ func InfoCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf("Info error: %v", err)
 		return
 	}
-	con.AddCallback(task, func(msg *implantpb.Spite) (string, error) {
-		return fmt.Sprintf("%v", msg.GetSysinfo()), nil
-	})
+	session.Console(task, "info")
 }
 
 func Info(rpc clientrpc.MaliceRPCClient, session *core.Session) (*clientpb.Task, error) {

@@ -21,7 +21,17 @@ import (
 )
 
 type implantFunc func(rpc clientrpc.MaliceRPCClient, sess *core.Session, params ...interface{}) (*clientpb.Task, error)
-type ImplantCallback func(*clientpb.TaskContext) (interface{}, error)
+type ImplantPluginCallback func(content *clientpb.TaskContext) (interface{}, error)
+
+func WrapImplantCallback(callback ImplantPluginCallback) intermediate.ImplantCallback {
+	return func(content *clientpb.TaskContext) (string, error) {
+		res, err := callback(content)
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("%v", res), nil
+	}
+}
 
 func wrapImplantFunc(fun interface{}) implantFunc {
 	return func(rpc clientrpc.MaliceRPCClient, sess *core.Session, params ...interface{}) (*clientpb.Task, error) {
@@ -69,7 +79,7 @@ func wrapImplantFunc(fun interface{}) implantFunc {
 	}
 }
 
-func WrapImplantFunc(con *Console, fun interface{}, callback ImplantCallback) *intermediate.InternalFunc {
+func WrapImplantFunc(con *Console, fun interface{}, callback ImplantPluginCallback) *intermediate.InternalFunc {
 	wrappedFunc := wrapImplantFunc(fun)
 
 	interFunc := intermediate.GetInternalFuncSignature(fun)

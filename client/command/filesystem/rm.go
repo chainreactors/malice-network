@@ -22,9 +22,8 @@ func RmCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf("Rm error: %v", err)
 		return
 	}
-	con.AddCallback(task, func(msg *implantpb.Spite) (string, error) {
-		return "Rm success", nil
-	})
+
+	session.Console(task, "rm "+fileName)
 }
 
 func Rm(rpc clientrpc.MaliceRPCClient, session *core.Session, fileName string) (*clientpb.Task, error) {

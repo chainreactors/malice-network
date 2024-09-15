@@ -17,9 +17,8 @@ func PwdCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf("Pwd error: %v", err)
 		return
 	}
-	con.AddCallback(task, func(msg *implantpb.Spite) (string, error) {
-		return msg.GetResponse().GetOutput(), nil
-	})
+
+	session.Console(task, "pwd")
 }
 
 func Pwd(rpc clientrpc.MaliceRPCClient, session *core.Session) (*clientpb.Task, error) {

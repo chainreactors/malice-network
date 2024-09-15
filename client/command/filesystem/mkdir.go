@@ -22,9 +22,8 @@ func MkdirCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf("Mkdir error: %v", err)
 		return
 	}
-	con.AddCallback(task, func(msg *implantpb.Spite) (string, error) {
-		return "Mkdir success", nil
-	})
+
+	session.Console(task, "mkdir "+path)
 }
 
 func Mkdir(rpc clientrpc.MaliceRPCClient, session *core.Session, path string) (*clientpb.Task, error) {

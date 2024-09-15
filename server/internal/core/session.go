@@ -122,6 +122,7 @@ func (s *Session) Update(req *lispb.RegisterSession) {
 	s.Modules = req.RegisterData.Module
 	s.Addons = req.RegisterData.Addon
 	s.Timer = req.RegisterData.Timer
+
 	if req.RegisterData.Sysinfo != nil {
 		s.UpdateSysInfo(req.RegisterData.Sysinfo)
 	}
@@ -153,6 +154,7 @@ func (s *Session) NewTask(name string, total int) *Task {
 		Total:     total,
 		Id:        s.nextTaskId(),
 		SessionId: s.ID,
+		Session:   s,
 		DoneCh:    make(chan bool, total),
 	}
 	task.Ctx, task.Cancel = context.WithCancel(context.Background())

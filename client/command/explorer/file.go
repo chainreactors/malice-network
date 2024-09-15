@@ -1,7 +1,6 @@
 package explorer
 
 import (
-	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
@@ -24,7 +23,7 @@ func explorerCmd(cmd *cobra.Command, con *repl.Console) {
 		return
 	}
 
-	con.AddCallback(task, func(msg *implantpb.Spite) (string, error) {
+	con.AddCallback(task, func(msg *implantpb.Spite) {
 		resp := msg.GetLsResponse()
 		var dirEntries []os.DirEntry
 		for _, protoFile := range resp.GetFiles() {
@@ -33,7 +32,6 @@ func explorerCmd(cmd *cobra.Command, con *repl.Console) {
 		path = resp.GetPath()
 		path = path[4:]
 		dirEntriesChan <- dirEntries
-		return "", core.ErrDisableOutput
 	})
 
 	var dirEntries []os.DirEntry

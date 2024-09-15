@@ -17,9 +17,7 @@ func RefreshModuleCmd(cmd *cobra.Command, con *repl.Console) {
 		return
 	}
 
-	con.AddCallback(task, func(msg *implantpb.Spite) (string, error) {
-		return "Module refreshed", nil
-	})
+	con.GetInteractive().Console(task, "refresh module")
 }
 
 func refreshModule(rpc clientrpc.MaliceRPCClient, session *core.Session) (*clientpb.Task, error) {

@@ -24,9 +24,8 @@ func MvCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf("Mv error: %v", err)
 		return
 	}
-	con.AddCallback(task, func(msg *implantpb.Spite) (string, error) {
-		return "Mv success", nil
-	})
+
+	session.Console(task, "mv "+sourcePath+" "+targetPath)
 }
 
 func Mv(rpc clientrpc.MaliceRPCClient, session *core.Session, sourcePath string, targetPath string) (*clientpb.Task, error) {

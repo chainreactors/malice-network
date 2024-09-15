@@ -4,12 +4,11 @@ import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/help"
-	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/handler"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/proto/services/clientrpc"
+	"github.com/chainreactors/tui"
+	"github.com/charmbracelet/bubbles/table"
 	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
 	"strings"
@@ -73,48 +72,61 @@ func Register(con *repl.Console) {
 	con.RegisterImplantFunc(
 		consts.ModuleListModule,
 		ListModules,
-		"blist_module",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, fileName string) (*clientpb.Task, error) {
-			return ListModules(rpc, sess)
-		},
+		"",
+		nil,
 		func(ctx *clientpb.TaskContext) (interface{}, error) {
-			err := handler.HandleMaleficError(ctx.Spite)
-			if err != nil {
-				return "", err
-			}
 			resp := ctx.Spite.GetModules()
 			var modules []string
 			for module := range resp.GetModules() {
 				modules = append(modules, fmt.Sprintf("%s", module))
 			}
 			return strings.Join(modules, ","), nil
+		},
+		func(content *clientpb.TaskContext) (string, error) {
+			modules := content.Spite.GetModules()
+			if len(modules.Modules) == 0 {
+				return "No modules found.", nil
+			}
+
+			var rowEntries []table.Row
+			var row table.Row
+			tableModel := tui.NewTable([]table.Column{
+				{Title: "Name", Width: 15},
+				{Title: "Help", Width: 30},
+			}, true)
+			for _, module := range modules.GetModules() {
+				row = table.Row{
+					module,
+					"",
+				}
+				rowEntries = append(rowEntries, row)
+			}
+			tableModel.SetRows(rowEntries)
+			return tableModel.View(), nil
 		})
 
 	con.RegisterImplantFunc(
 		consts.ModuleLoadModule,
 		LoadModule,
-		"bload_module",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, bundle string, path string) (*clientpb.Task, error) {
-			return LoadModule(rpc, sess, bundle, path)
-		},
-		common.ParseStatus)
+		"",
+		nil,
+		common.ParseStatus,
+		nil)
 
 	con.RegisterImplantFunc(
 		consts.ModuleRefreshModule,
 		refreshModule,
-		"brefresh_module",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session) (*clientpb.Task, error) {
-			return refreshModule(rpc, sess)
-		},
-		common.ParseStatus)
+		"",
+		nil,
+		common.ParseStatus,
+		nil)
 
 	//clear
 	con.RegisterImplantFunc(
 		consts.ModuleClear,
 		clearAll,
-		"bclear",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session) (*clientpb.Task, error) {
-			return clearAll(rpc, sess)
-		},
-		common.ParseStatus)
+		"",
+		nil,
+		common.ParseStatus,
+		nil)
 }

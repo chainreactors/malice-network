@@ -9,8 +9,11 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
+	"github.com/chainreactors/tui"
+	"github.com/charmbracelet/bubbles/table"
 	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
+	"strconv"
 	"strings"
 )
 
@@ -159,7 +162,8 @@ func Register(con *repl.Console) {
 				envs = append(envs, fmt.Sprintf("%s:%s", k, v))
 			}
 			return strings.Join(envs, ","), nil
-		})
+		},
+		nil)
 
 	con.RegisterImplantFunc(
 		consts.ModuleSetEnv,
@@ -169,6 +173,7 @@ func Register(con *repl.Console) {
 			return SetEnv(rpc, sess, envName, value)
 		},
 		common.ParseStatus,
+		nil,
 	)
 
 	con.RegisterImplantFunc(
@@ -178,7 +183,8 @@ func Register(con *repl.Console) {
 		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, envName string) (*clientpb.Task, error) {
 			return UnSetEnv(rpc, sess, envName)
 		},
-		common.ParseStatus)
+		common.ParseStatus,
+		nil)
 
 	con.RegisterImplantFunc(
 		consts.ModuleInfo,
@@ -189,6 +195,9 @@ func Register(con *repl.Console) {
 		},
 		func(ctx *clientpb.TaskContext) (interface{}, error) {
 			return ctx.Spite.GetBody(), nil
+		},
+		func(content *clientpb.TaskContext) (string, error) {
+			return fmt.Sprintf("%v", content.Spite.GetSysinfo()), nil
 		})
 
 	con.RegisterImplantFunc(
@@ -198,7 +207,8 @@ func Register(con *repl.Console) {
 		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, pid string) (*clientpb.Task, error) {
 			return Kill(rpc, sess, pid)
 		},
-		common.ParseStatus)
+		common.ParseStatus,
+		nil)
 
 	con.RegisterImplantFunc(
 		consts.ModuleNetstat,
@@ -219,6 +229,30 @@ func Register(con *repl.Console) {
 					sock.Protocol))
 			}
 			return strings.Join(socks, ","), nil
+		},
+		func(content *clientpb.TaskContext) (string, error) {
+			resp := content.Spite.GetNetstatResponse()
+			var rowEntries []table.Row
+			var row table.Row
+			tableModel := tui.NewTable([]table.Column{
+				{Title: "LocalAddr", Width: 30},
+				{Title: "RemoteAddr", Width: 30},
+				{Title: "SkState", Width: 20},
+				{Title: "Pid", Width: 7},
+				{Title: "Protocol", Width: 10},
+			}, true)
+			for _, sock := range resp.GetSocks() {
+				row = table.Row{
+					sock.LocalAddr,
+					sock.RemoteAddr,
+					sock.SkState,
+					sock.Pid,
+					sock.Protocol,
+				}
+				rowEntries = append(rowEntries, row)
+			}
+			tableModel.SetRows(rowEntries)
+			return tableModel.View(), nil
 		})
 
 	con.RegisterImplantFunc(
@@ -242,6 +276,34 @@ func Register(con *repl.Console) {
 					p.Args))
 			}
 			return strings.Join(ps, ","), nil
+		},
+		func(content *clientpb.TaskContext) (string, error) {
+			resp := content.Spite.GetPsResponse()
+			var rowEntries []table.Row
+			var row table.Row
+			tableModel := tui.NewTable([]table.Column{
+				{Title: "Name", Width: 10},
+				{Title: "PID", Width: 5},
+				{Title: "PPID", Width: 5},
+				{Title: "Arch", Width: 7},
+				{Title: "Owner", Width: 7},
+				{Title: "Path", Width: 15},
+				{Title: "Args", Width: 10},
+			}, true)
+			for _, process := range resp.GetProcesses() {
+				row = table.Row{
+					process.Name,
+					strconv.Itoa(int(process.Pid)),
+					strconv.Itoa(int(process.Ppid)),
+					process.Arch,
+					process.Owner,
+					process.Path,
+					process.Args,
+				}
+				rowEntries = append(rowEntries, row)
+			}
+			tableModel.SetRows(rowEntries)
+			return tableModel.View(), nil
 		})
 
 	con.RegisterImplantFunc(
@@ -251,5 +313,6 @@ func Register(con *repl.Console) {
 		func(rpc clientrpc.MaliceRPCClient, sess *core.Session) (*clientpb.Task, error) {
 			return Whoami(rpc, sess)
 		},
-		common.ParseResponse)
+		common.ParseResponse,
+		nil)
 }

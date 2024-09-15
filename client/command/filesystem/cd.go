@@ -21,10 +21,8 @@ func CdCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf("Cd error: %v", err)
 		return
 	}
-	con.AddCallback(task, func(msg *implantpb.Spite) (string, error) {
-		return "Changed directory to: " + path, nil
-	})
 
+	con.GetInteractive().Console(task, "cd "+path)
 }
 
 func Cd(rpc clientrpc.MaliceRPCClient, session *core.Session, path string) (*clientpb.Task, error) {
