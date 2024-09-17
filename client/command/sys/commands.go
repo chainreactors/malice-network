@@ -13,6 +13,7 @@ import (
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"strconv"
 	"strings"
 )
@@ -135,6 +136,24 @@ func Commands(con *repl.Console) []*cobra.Command {
 		},
 	}
 
+	bypassCmd := &cobra.Command{
+		Use:   consts.ModuleBypass,
+		Short: "Bypass AMSI and ETW",
+		Long:  help.GetHelpFor(consts.ModuleBypass),
+		Run: func(cmd *cobra.Command, args []string) {
+			BypassCmd(cmd, con)
+			return
+		},
+		Annotations: map[string]string{
+			"depend": consts.ModuleBypass,
+		},
+	}
+
+	common.BindFlag(bypassCmd, func(f *pflag.FlagSet) {
+		f.Bool("amsi", false, "Bypass AMSI")
+		f.Bool("etw", false, "Bypass ETW")
+	})
+
 	return []*cobra.Command{
 		whoamiCmd,
 		killCmd,
@@ -144,6 +163,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		unSetEnvCmd,
 		netstatCmd,
 		infoCmd,
+		bypassCmd,
 	}
 }
 
@@ -315,4 +335,13 @@ func Register(con *repl.Console) {
 		},
 		common.ParseResponse,
 		nil)
+
+	con.RegisterImplantFunc(
+		consts.ModuleBypass,
+		Bypass,
+		"",
+		nil,
+		common.ParseStatus,
+		nil,
+	)
 }

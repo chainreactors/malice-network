@@ -91,3 +91,17 @@ func (rpc *Server) Whoami(ctx context.Context, req *implantpb.Request) (*clientp
 	go greq.HandlerResponse(ch, types.MsgResponse)
 	return greq.Task.ToProtobuf(), nil
 }
+
+func (rpc *Server) Bypass(ctx context.Context, req *implantpb.BypassRequest) (*clientpb.Task, error) {
+	greq, err := newGenericRequest(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	ch, err := rpc.GenericHandler(ctx, greq)
+	if err != nil {
+		return nil, err
+	}
+
+	go greq.HandlerResponse(ch, types.MsgEmpty)
+	return greq.Task.ToProtobuf(), nil
+}
