@@ -104,7 +104,7 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 				if err != nil {
 					return
 				}
-				if resp.GetAsyncAck().Success {
+				if resp.GetAck().Success {
 					greq.Task.Done(core.Event{
 						EventType: consts.EventTask,
 						Op:        consts.CtrlTaskCallback,
@@ -168,7 +168,7 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 			return
 		}
 		defer downloadFile.Close()
-		msg := &implantpb.AsyncACK{
+		msg := &implantpb.ACK{
 			Id:      greq.Task.Id,
 			Success: true,
 			End:     false,
@@ -185,7 +185,7 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 			if err != nil {
 				return
 			}
-			ack, _ := greq.NewSpite(&implantpb.AsyncACK{Success: true})
+			ack, _ := greq.NewSpite(&implantpb.ACK{Success: true})
 			ack.TaskId = greq.Task.Id
 			ack.Name = types.MsgDownload.String()
 			in <- ack

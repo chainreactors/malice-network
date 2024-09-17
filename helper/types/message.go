@@ -26,12 +26,12 @@ const (
 	MsgLoadAddon        MsgName = consts.ModuleLoadAddon
 	MsgAssemblyResponse MsgName = "assembly_response"
 	MsgExecuteAddon     MsgName = consts.ModuleExecuteAddon
-	MsgExecuteBinary            = "execute_binary"
 	//MsgExecuteSpawn     MsgName = "execute_spawn"
 	MsgLs      MsgName = consts.ModuleLs
 	MsgNetstat MsgName = consts.ModuleNetstat
 	MsgPs      MsgName = consts.ModulePs
 	MsgKill    MsgName = consts.ModuleKill
+	MsgBypass  MsgName = consts.ModuleBypass
 	MsgSysInfo MsgName = "sysinfo"
 )
 
@@ -45,6 +45,8 @@ func MessageType(message *implantpb.Spite) MsgName {
 		return MsgNil
 	case *implantpb.Spite_Request:
 		return MsgName(message.Name)
+	case *implantpb.Spite_ExecuteBinary:
+		return MsgName(message.GetExecuteBinary().Type)
 	case *implantpb.Spite_Response:
 		return MsgResponse
 	case *implantpb.Spite_Register:
@@ -59,7 +61,7 @@ func MessageType(message *implantpb.Spite) MsgName {
 		return MsgUpload
 	case *implantpb.Spite_DownloadRequest:
 		return MsgDownload
-	case *implantpb.Spite_AsyncAck:
+	case *implantpb.Spite_Ack:
 		return MsgAck
 	case *implantpb.Spite_Block:
 		return MsgBlock
@@ -77,8 +79,8 @@ func MessageType(message *implantpb.Spite) MsgName {
 		return MsgLs
 	case *implantpb.Spite_Addons:
 		return MsgListAddon
-	case *implantpb.Spite_ExecuteBinary:
-		return MsgName(message.GetExecuteBinary().Type)
+	case *implantpb.Spite_BypassRequest:
+		return MsgBypass
 	default:
 		return MsgUnknown
 	}
