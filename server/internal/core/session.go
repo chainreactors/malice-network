@@ -99,7 +99,7 @@ func (s *Session) Logger() *logs.Logger {
 func (s *Session) ToProtobuf() *clientpb.Session {
 	currentTime := time.Now()
 	timeDiff := currentTime.Unix() - int64(s.Timer.LastCheckin)
-	isAlive := uint64(timeDiff) <= s.Timer.Interval*2
+	isAlive := uint64(timeDiff*1000) <= s.Timer.Interval*2
 	return &clientpb.Session{
 		SessionId:  s.ID,
 		Note:       s.Name,
