@@ -1,6 +1,7 @@
 package extension
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,12 +17,12 @@ import (
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/chainreactors/tui"
-	"github.com/kballard/go-shellquote"
 	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -247,9 +248,9 @@ func ExtensionRegisterCommand(extCmd *ExtCommand, cmd *cobra.Command, con *repl.
 		longHelp.WriteString(fmt.Sprintf("%s (%s):\t%s%s", strings.ToUpper(arg.Name), aType, optStr, arg.Desc))
 	}
 	extensionCmd := &cobra.Command{
-		Use: usage.String(), //extCmd.CommandName,
-		//Short: helpMsg.String(), doesn't appear to be used?
-		Long: help.FormatHelpTmpl(longHelp.String()),
+		Use:   extCmd.CommandName,
+		Short: usage.String(),
+		Long:  help.FormatHelpTmpl(longHelp.String()),
 		Run: func(cmd *cobra.Command, args []string) {
 			runExtensionCmd(cmd, con)
 		},
@@ -266,7 +267,7 @@ func ExtensionRegisterCommand(extCmd *ExtCommand, cmd *cobra.Command, con *repl.
 	loadedExtensions[extCmd.CommandName] = &loadedExt{
 		Manifest: extCmd,
 		Command:  cmd,
-		Func: repl.WrapImplantFunc(con, func(rpc clientrpc.MaliceRPCClient, sess *core.Session, args string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
+		Func: repl.WrapImplantFunc(con, func(rpc clientrpc.MaliceRPCClient, sess *core.Session, args []string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 			return ExecuteExtension(rpc, sess, extensionCmd.Name(), args)
 		}, common.ParseAssembly),
 	}
@@ -337,7 +338,7 @@ func runExtensionCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
 	args := cmd.Flags().Args()
 
-	task, err := ExecuteExtension(con.Rpc, session, cmd.Name(), strings.Join(args, " "))
+	task, err := ExecuteExtension(con.Rpc, session, cmd.Name(), args)
 	if err != nil {
 		con.Log.Errorf("Error executing extension: %s\n", err.Error())
 		return
@@ -345,9 +346,8 @@ func runExtensionCmd(cmd *cobra.Command, con *repl.Console) {
 	session.Console(task, "execute extension: "+cmd.Name())
 }
 
-func ExecuteExtension(rpc clientrpc.MaliceRPCClient, sess *core.Session, extName string, args string) (*clientpb.Task, error) {
+func ExecuteExtension(rpc clientrpc.MaliceRPCClient, sess *core.Session, extName string, args []string) (*clientpb.Task, error) {
 	ext, ok := loadedExtensions[extName]
-	cmd := ext.Manifest
 	if !ok {
 		return nil, fmt.Errorf("no extension command found for `%s` command", extName)
 	}
@@ -355,7 +355,7 @@ func ExecuteExtension(rpc clientrpc.MaliceRPCClient, sess *core.Session, extName
 	//	return nil, fmt.Errorf("could not load extension: %w", err)
 	//}
 
-	binPath, err := cmd.getFileForTarget(sess.Os.Name, sess.Os.Arch)
+	binPath, err := ext.Manifest.getFileForTarget(sess.Os.Name, sess.Os.Arch)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read extension file: %w", err)
 	}
@@ -368,7 +368,6 @@ func ExecuteExtension(rpc clientrpc.MaliceRPCClient, sess *core.Session, extName
 	// BOFs also have strongly typed arguments that need to be parsed in the proper way.
 	// This block will pack both the BOF data and its arguments into a single buffer that
 	// the loader will extract and load.
-
 	var task *clientpb.Task
 	if isBOF {
 		// Beacon Object File -- requires a COFF loader
@@ -376,24 +375,34 @@ func ExecuteExtension(rpc clientrpc.MaliceRPCClient, sess *core.Session, extName
 		//if err != nil {
 		//	return nil, fmt.Errorf("BOF args error: %w", err)
 		//}
-		params, err := shellquote.Split(args)
+		extensionArgs, err := getBOFArgs(ext.Command, args, binPath, ext.Manifest)
 		if err != nil {
 			return nil, err
 		}
-		entryPoint = loadedExtensions[cmd.CommandName].Manifest.Entrypoint // should exist at this point
+		entryPoint = ext.Manifest.Entrypoint // should exist at this point
 		task, err = rpc.ExecuteBof(sess.Context(), &implantpb.ExecuteBinary{
-			Name:       cmd.CommandName,
+			Name:       ext.Command.Name(),
 			EntryPoint: entryPoint,
-			Args:       params,
-			Type:       cmd.DependsOn,
+			Args:       extensionArgs,
+			Type:       ext.Manifest.DependsOn,
 			Output:     true,
 		})
 	} else {
 		// Regular DLL
-		//extArgs := strings.Join(args, " ")
-		//extensionArgs = []byte(extArgs)
-		//extName = ext.CommandName
-		//entryPoint = ext.Entrypoint
+		extName = ext.Manifest.CommandName
+		entryPoint = ext.Manifest.Entrypoint
+		extensionArgs, err := getExtArgs(ext.Command, args, binPath, ext.Manifest)
+		if err != nil {
+			return nil, err
+		}
+		task, err = rpc.ExecuteArmory(sess.Context(), &implantpb.ExecuteBinary{
+			Name:       extName,
+			EntryPoint: entryPoint,
+			Args:       []string{string(extensionArgs)},
+			Type:       consts.ModuleExecuteDll,
+			Output:     true,
+			Sacrifice:  nil,
+		})
 	}
 
 	return task, err
@@ -515,4 +524,119 @@ func makeExtensionArgCompleter(extCmd *ExtCommand, _ *cobra.Command, comps *cara
 	}
 
 	comps.PositionalCompletion(actions...)
+}
+
+func getExtArgs(_ *cobra.Command, args []string, _ string, ext *ExtCommand) ([]byte, error) {
+	var err error
+	argsBuffer := utils.BOFArgsBuffer{
+		Buffer: new(bytes.Buffer),
+	}
+
+	// Parse BOF arguments from grumble
+	missingRequiredArgs := make([]string, 0)
+
+	// If we have an extension that expects a single string, but more than one has been parsed, combine them
+	if len(ext.Arguments) == 1 && strings.Contains(ext.Arguments[0].Type, "string") && len(args) > 0 {
+		// The loop below will only read the first element of args because ext.Arguments is 1
+		args[0] = strings.Join(args, " ")
+	}
+
+	for _, arg := range ext.Arguments {
+		// If we don't have any positional words left to consume,
+		// add the remaining required extension arguments in the
+		// error message.
+		if len(args) == 0 {
+			if !arg.Optional {
+				missingRequiredArgs = append(missingRequiredArgs, "`"+arg.Name+"`")
+			}
+			continue
+		}
+
+		// Else pop a word from the list
+		word := args[0]
+		args = args[1:]
+
+		switch arg.Type {
+		case "integer":
+			fallthrough
+		case "int":
+			val, err := strconv.Atoi(word)
+			if err != nil {
+				return nil, err
+			}
+			err = argsBuffer.AddInt(uint32(val))
+			if err != nil {
+				return nil, err
+			}
+		case "short":
+			val, err := strconv.Atoi(word)
+			if err != nil {
+				return nil, err
+			}
+			err = argsBuffer.AddShort(uint16(val))
+			if err != nil {
+				return nil, err
+			}
+		case "string":
+			err = argsBuffer.AddString(word)
+			if err != nil {
+				return nil, err
+			}
+		case "wstring":
+			err = argsBuffer.AddWString(word)
+			if err != nil {
+				return nil, err
+			}
+		// Adding support for filepaths so we can
+		// send binary data like shellcodes to BOFs
+		case "file":
+			data, err := os.ReadFile(word)
+			if err != nil {
+				return nil, err
+			}
+			err = argsBuffer.AddData(data)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	// Return if we have missing required arguments
+	if len(missingRequiredArgs) > 0 {
+		return nil, fmt.Errorf("required arguments %s were not provided", strings.Join(missingRequiredArgs, ", "))
+	}
+
+	parsedArgs, err := argsBuffer.GetBuffer()
+	if err != nil {
+		return nil, err
+	}
+
+	return parsedArgs, nil
+}
+
+func getBOFArgs(cmd *cobra.Command, args []string, binPath string, ext *ExtCommand) ([]string, error) {
+	binData, err := os.ReadFile(binPath)
+	if err != nil {
+		return nil, err
+	}
+
+	// Now build the extension's argument buffer
+	extensionArgsBuffer := utils.IoMBOFArgsBuffer{}
+	err = extensionArgsBuffer.AddString(ext.Entrypoint)
+	if err != nil {
+		return nil, err
+	}
+	err = extensionArgsBuffer.AddData(binData)
+	if err != nil {
+		return nil, err
+	}
+	parsedArgs, err := getExtArgs(cmd, args, binPath, ext)
+	if err != nil {
+		return nil, err
+	}
+	err = extensionArgsBuffer.AddData(parsedArgs)
+	if err != nil {
+		return nil, err
+	}
+	return extensionArgsBuffer.GetArgs(), nil
 }
