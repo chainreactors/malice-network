@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"sync"
 )
 
@@ -98,8 +99,14 @@ func (t *Task) Percent() string {
 	return fmt.Sprintf("%f/100%", t.Cur/t.Total*100)
 }
 
-func (t *Task) Done(event Event) {
-	EventBroker.Publish(event)
+func (t *Task) Done(spite *implantpb.Spite) {
+	EventBroker.Publish(Event{
+		EventType: consts.EventTask,
+		Op:        consts.CtrlTaskCallback,
+		Spite:     spite,
+		Session:   t.Session.ToProtobuf(),
+		Task:      t.ToProtobuf(),
+	})
 	t.DoneCh <- true
 }
 

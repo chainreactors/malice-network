@@ -82,4 +82,7 @@ func BindArgCompletions(cmd *cobra.Command, anyAction *carapace.Action, actions 
 		carapace.Gen(cmd).PositionalAnyCompletion(*anyAction)
 	}
 	carapace.Gen(cmd).PositionalCompletion(actions...)
+	//cmd.PostRun = func(cmd *cobra.Command, args []string) {
+	//	carapace.Gen(cmd).PositionalCompletion(actions...)
+	//}
 }

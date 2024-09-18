@@ -13,7 +13,6 @@ import (
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/server/internal/configs"
-	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"github.com/gookit/config/v2"
@@ -61,11 +60,6 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 		if err != nil {
 			return nil, err
 		}
-
-		if err != nil {
-			logs.Log.Errorf("cannot create task %d , %s in db", greq.Task.Id, err.Error())
-			return nil, err
-		}
 		var blockId = 0
 		err = db.AddTask("upload", greq.Task, &models.FileDescription{
 			Name:     req.Name,
@@ -105,11 +99,7 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 					return
 				}
 				if resp.GetAck().Success {
-					greq.Task.Done(core.Event{
-						EventType: consts.EventTask,
-						Op:        consts.CtrlTaskCallback,
-						Task:      greq.Task.ToProtobuf(),
-					})
+					greq.Task.Done(resp)
 					err = db.UpdateTask(greq.Task, blockId+1)
 					if err != nil {
 						logs.Log.Errorf("cannot update task %d , %s in db", greq.Task.Id, err.Error())
@@ -205,11 +195,7 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 					greq.Task.Panic(buildErrorEvent(greq.Task, fmt.Errorf("checksum error")))
 					return
 				}
-				greq.Task.Done(core.Event{
-					EventType: consts.EventTask,
-					Op:        consts.CtrlTaskFinish,
-					Task:      greq.Task.ToProtobuf(),
-				})
+				greq.Task.Done(ack)
 			}
 		}
 	}()

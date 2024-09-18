@@ -16,10 +16,10 @@ import (
 )
 
 func bindCommonCommands(bind bindFunc) {
-	bind("",
+	bind(consts.GenericGroup,
 		generic.Commands)
 
-	bind(consts.GenericGroup,
+	bind(consts.ManageGroup,
 		sessions.Commands,
 		alias.Commands,
 		extension.Commands,
@@ -85,6 +85,9 @@ func BindClientsCommands(con *repl.Console) console.Commands {
 		bind := makeBind(client, con)
 
 		bindCommonCommands(bind)
+
+		client.InitDefaultHelpCmd()
+		client.SetHelpCommandGroupID(consts.GenericGroup)
 		return client
 	}
 	return clientCommands

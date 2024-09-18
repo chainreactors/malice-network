@@ -28,6 +28,7 @@ const (
 // Group
 const (
 	GenericGroup  = "generic"
+	ManageGroup   = "manage"
 	ImplantGroup  = "implant"
 	ArmoryGroup   = "armory"
 	AddonGroup    = "addon"

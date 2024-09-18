@@ -21,7 +21,7 @@ func ExecuteShellcodeCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf("Execute shellcode error: %v", err)
 		return
 	}
-	session.Console(task, "execute shellcode: "+path)
+	session.Console(task, path)
 }
 
 func ExecShellcode(rpc clientrpc.MaliceRPCClient, sess *core.Session, shellcodePath string,
@@ -46,7 +46,7 @@ func InlineShellcodeCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf("Execute inline shellcode error: %v", err)
 		return
 	}
-	con.GetInteractive().Console(task, "inline execute shellcode: "+path)
+	con.GetInteractive().Console(task, path)
 }
 
 func InlineShellcode(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, args []string,

@@ -23,7 +23,7 @@ func ExecutePowershellCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf("Execute Powershell error: %v", err)
 		return
 	}
-	con.GetInteractive().Console(task, fmt.Sprintf("Execute Powershell %s, args: %v", script, cmdline))
+	con.GetInteractive().Console(task, fmt.Sprintf("%s, args: %v", script, cmdline))
 }
 
 func ExecPowershell(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, ps []string) (*clientpb.Task, error) {

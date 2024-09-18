@@ -19,7 +19,7 @@ func ExecuteAssemblyCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf("Execute error: %v", err)
 		return
 	}
-	con.GetInteractive().Console(task, "execute assembly: "+path)
+	con.GetInteractive().Console(task, path)
 }
 
 func ExecAssembly(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, args []string, output bool) (*clientpb.Task, error) {

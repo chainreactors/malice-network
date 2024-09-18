@@ -17,7 +17,7 @@ func ExecuteBofCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf("Execute BOF error: %v", err)
 		return
 	}
-	con.GetInteractive().Console(task, "execute BOF: "+path)
+	con.GetInteractive().Console(task, path)
 }
 
 func ExecBof(rpc clientrpc.MaliceRPCClient, sess *core.Session, bofPath string, args []string, output bool) (*clientpb.Task, error) {
