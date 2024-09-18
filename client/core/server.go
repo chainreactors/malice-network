@@ -161,11 +161,6 @@ func (s *ServerStatus) AddCallback(task *clientpb.Task, callback TaskCallback) {
 
 func (s *ServerStatus) triggerTaskDone(event *clientpb.Event) {
 	task := event.GetTask()
-	if task == nil {
-		Log.Errorf(ErrNotFoundTask.Error())
-		return
-	}
-	tui.Down(0)
 	log := s.ObserverLog(event.Task.SessionId)
 	err := handler.HandleMaleficError(event.Spite)
 	if err != nil {
@@ -180,11 +175,6 @@ func (s *ServerStatus) triggerTaskDone(event *clientpb.Event) {
 
 func (s *ServerStatus) triggerTaskFinish(event *clientpb.Event) {
 	task := event.GetTask()
-	if task == nil {
-		Log.Errorf(ErrNotFoundTask.Error())
-		return
-	}
-	tui.Down(0)
 	log := s.ObserverLog(event.Task.SessionId)
 	err := handler.HandleMaleficError(event.Spite)
 	if err != nil {
@@ -248,6 +238,7 @@ func (s *ServerStatus) EventHandler() {
 }
 
 func (s *ServerStatus) handlerTaskCtrl(event *clientpb.Event) {
+	tui.Down(0)
 	switch event.Op {
 	case consts.CtrlTaskCallback:
 		s.triggerTaskDone(event)
@@ -256,7 +247,7 @@ func (s *ServerStatus) handlerTaskCtrl(event *clientpb.Event) {
 	case consts.CtrlTaskCancel:
 		Log.Importantf("[%s.%d] task canceled", event.Task.SessionId, event.Task.TaskId)
 	case consts.CtrlTaskError:
-		Log.Errorf("[%s.%d] task error: %s", event.Task.SessionId, event.Task.TaskId, event.Err)
+		Log.Errorf("[%s.%d] %s", event.Task.SessionId, event.Task.TaskId, event.Err)
 	}
 }
 
@@ -312,26 +303,25 @@ func (s *ServerStatus) CallbackOutput(event *clientpb.Event, finish bool) {
 				Session: event.Session,
 				Spite:   event.Spite,
 			})
+			log.Console(resp + "\n")
 		} else {
 			if fn.DoneCallback == nil {
 				Log.Debugf("No done callback for %s", event.Task.Type)
 				return
 			}
-			log.Importantf(logs.GreenBold(fmt.Sprintf("[%s.%d] task done (%d/%d)",
-				event.Task.SessionId, event.Task.TaskId,
-				event.Task.Cur, event.Task.Total)))
 			resp, err = fn.DoneCallback(&clientpb.TaskContext{
 				Task:    event.Task,
 				Session: event.Session,
 				Spite:   event.Spite,
 			})
+			log.Importantf(logs.GreenBold(fmt.Sprintf("[%s.%d] task done (%d/%d): %s",
+				event.Task.SessionId, event.Task.TaskId,
+				event.Task.Cur, event.Task.Total, resp)))
 		}
-
 		if err != nil {
 			log.Errorf(err.Error())
 			return
 		}
-		log.Console(resp + "\n")
 	} else {
 		log.Consolef("%v\n", event.Spite)
 	}

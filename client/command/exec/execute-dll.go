@@ -23,7 +23,7 @@ func ExecuteDLLCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf("Execute DLL error: %v", err)
 		return
 	}
-	session.Console(task, "execute DLL: "+path)
+	session.Console(task, path)
 }
 
 func ExecDLL(rpc clientrpc.MaliceRPCClient, sess *core.Session, pePath string, entrypoint string, args []string, output bool, timeout uint32, arch string, process string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
@@ -54,7 +54,7 @@ func InlineDLLCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf("Execute Inline DLL error: %s", err)
 		return
 	}
-	session.Console(task, "inline execute DLL: "+path)
+	session.Console(task, path)
 }
 
 func InlineDLL(rpc clientrpc.MaliceRPCClient, sess *core.Session, path, entryPoint string, args []string,

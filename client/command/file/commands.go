@@ -1,9 +1,11 @@
 package file
 
 import (
+	"fmt"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
@@ -86,6 +88,10 @@ func Register(con *repl.Console) {
 		common.ParseStatus,
 		nil)
 
+	intermediate.RegisterInternalDoneCallback(consts.ModuleDownload, func(content *clientpb.TaskContext) (string, error) {
+		return fmt.Sprintf("download block %d/%d success", content.Task.Cur, content.Task.Total), nil
+	})
+
 	con.RegisterImplantFunc(
 		consts.ModuleUpload,
 		Upload,
@@ -95,4 +101,8 @@ func Register(con *repl.Console) {
 		},
 		common.ParseStatus,
 		nil)
+
+	intermediate.RegisterInternalDoneCallback(consts.ModuleUpload, func(content *clientpb.TaskContext) (string, error) {
+		return fmt.Sprintf("upload block %d/%d success", content.Task.Cur, content.Task.Total), nil
+	})
 }

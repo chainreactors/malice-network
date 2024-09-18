@@ -70,15 +70,16 @@ func (c *Console) NewConsole() {
 	implant.Prompt().Primary = c.GetPrompt
 	implant.AddInterrupt(io.EOF, exitImplantMenu) // Ctrl-D
 	implant.AddHistorySourceFile("history", filepath.Join(assets.GetRootAppDir(), "implant_history"))
+
 }
 
 func (c *Console) Start(bindCmds ...BindCmds) error {
 	intermediate.Register(c.Rpc)
-
+	//c.App.Menu(consts.ClientMenu).SetCommands(bindCmds[0](c))
+	//c.App.Menu(consts.ImplantMenu).SetCommands(bindCmds[1](c))
 	c.App.Menu(consts.ClientMenu).Command = bindCmds[0](c)()
-	c.App.SwitchMenu(consts.ClientMenu)
 	c.App.Menu(consts.ImplantMenu).Command = bindCmds[1](c)()
-
+	c.App.SwitchMenu(consts.ClientMenu)
 	err := c.App.Start()
 	if err != nil {
 		return err

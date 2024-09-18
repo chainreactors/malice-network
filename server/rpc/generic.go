@@ -91,13 +91,7 @@ func (r *GenericRequest) HandlerResponse(ch chan *implantpb.Spite, typ types.Msg
 			}
 		})
 	}
-	r.Task.Done(core.Event{
-		EventType: consts.EventTask,
-		Op:        consts.CtrlTaskCallback,
-		Spite:     resp,
-		Session:   r.Session.ToProtobuf(),
-		Task:      r.Task.ToProtobuf(),
-	})
+	r.Task.Done(resp)
 }
 
 func buildErrorEvent(task *core.Task, err error) core.Event {

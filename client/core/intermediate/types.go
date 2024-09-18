@@ -49,6 +49,15 @@ func RegisterInternalFunc(name string, fn *InternalFunc, callback ImplantCallbac
 	return nil
 }
 
+func RegisterInternalDoneCallback(name string, callback ImplantCallback) error {
+	name = strings.ReplaceAll(name, "-", "_")
+	if _, ok := InternalFunctions[name]; !ok {
+		return fmt.Errorf("function %s not found", name)
+	}
+	InternalFunctions[name].DoneCallback = callback
+	return nil
+}
+
 // 获取函数的参数和返回值类型
 func GetInternalFuncSignature(fn interface{}) *InternalFunc {
 	fnType := reflect.TypeOf(fn)

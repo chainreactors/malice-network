@@ -19,7 +19,6 @@ import (
 )
 
 func Commands(con *repl.Console) []*cobra.Command {
-
 	pwdCmd := &cobra.Command{
 		Use:   consts.ModulePwd,
 		Short: "Print working directory",

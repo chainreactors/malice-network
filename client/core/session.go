@@ -29,7 +29,6 @@ func (s *Session) Context() context.Context {
 }
 
 func (s *Session) Console(task *clientpb.Task, msg string) {
-	Log.Console(msg)
 	_, err := s.Server.Rpc.SessionEvent(s.Context(), &clientpb.Event{
 		Type:    consts.EventSession,
 		Op:      consts.CtrlSessionConsole,

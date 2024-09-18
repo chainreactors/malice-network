@@ -105,6 +105,9 @@ func BindImplantCommands(con *repl.Console) console.Commands {
 		bind(consts.ArmoryGroup)
 		bind(consts.AddonGroup)
 		bind(consts.MalGroup)
+
+		implant.InitDefaultHelpCmd()
+		implant.SetHelpCommandGroupID(consts.GenericGroup)
 		// Load Aliases
 		aliasManifests := assets.GetInstalledAliasManifests()
 		for _, manifest := range aliasManifests {

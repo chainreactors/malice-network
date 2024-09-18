@@ -22,7 +22,7 @@ func ExecuteExeCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf("Execute EXE error: %v", err)
 		return
 	}
-	con.GetInteractive().Console(task, "execute EXE: "+path)
+	con.GetInteractive().Console(task, path)
 }
 
 func ExecExe(rpc clientrpc.MaliceRPCClient, sess *core.Session, pePath string,
@@ -54,7 +54,7 @@ func InlineExeCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf("Execute EXE error: %v", err)
 		return
 	}
-	session.Console(task, "inline execute EXE: "+path)
+	session.Console(task, path)
 }
 
 func InlineExe(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, args []string,
