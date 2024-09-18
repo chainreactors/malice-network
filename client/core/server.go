@@ -331,8 +331,8 @@ func (s *ServerStatus) CallbackOutput(event *clientpb.Event, finish bool) {
 			log.Errorf(err.Error())
 			return
 		}
-		log.Console(resp)
+		log.Console(resp + "\n")
 	} else {
-		log.Consolef("%v", event.Spite)
+		log.Consolef("%v\n", event.Spite)
 	}
 }

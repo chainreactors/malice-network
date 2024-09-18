@@ -17,7 +17,7 @@ func WhoamiCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf("Whoami error: %v", err)
 		return
 	}
-	session.Console(task, "whoami")
+	session.Console(task, "")
 }
 
 func Whoami(rpc clientrpc.MaliceRPCClient, session *core.Session) (*clientpb.Task, error) {

@@ -7,6 +7,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/peer"
+	"net"
 	"reflect"
 	"strings"
 )
@@ -79,12 +80,13 @@ func authInterceptor(log *logs.Logger) grpc.UnaryServerInterceptor {
 				log.Errorf("[auth] certificate type does not match method")
 				return ctx, errors.New("certificate type does not match method")
 			}
-			parts := strings.Split(client.Addr.String(), ":")
-			if len(parts) != 2 {
+			host, _, err := net.SplitHostPort(client.Addr.String())
+			if err != nil {
 				log.Errorf("[auth] invalid remote address format")
 				return ctx, errors.New("invalid remote address format")
 			}
-			if parts[0] != rootAddr {
+
+			if host != rootAddr {
 				log.Errorf("[auth] invalid remote address")
 				return ctx, errors.New("invalid remote address")
 			}

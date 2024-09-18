@@ -15,6 +15,7 @@ require (
 	github.com/charmbracelet/lipgloss v0.13.0
 	github.com/gofrs/uuid v4.4.0+incompatible
 	github.com/gookit/config/v2 v2.2.4
+	github.com/gookit/goutil v0.6.14
 	github.com/jessevdk/go-flags v1.5.0
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 	github.com/klauspost/compress v1.17.0
@@ -63,7 +64,6 @@ require (
 	github.com/goccy/go-yaml v1.12.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gookit/color v1.5.4 // indirect
-	github.com/gookit/goutil v0.6.14 // indirect
 	github.com/imdario/mergo v0.3.15 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
