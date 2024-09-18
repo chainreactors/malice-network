@@ -11,7 +11,7 @@ import (
 )
 
 func DownloadCmd(cmd *cobra.Command, con *repl.Console) {
-	path := cmd.Flags().Arg(1)
+	path := cmd.Flags().Arg(0)
 	session := con.GetInteractive()
 	task, err := Download(con.Rpc, session, path)
 	if err != nil {

@@ -3,7 +3,6 @@ package rpc
 import (
 	"context"
 	"fmt"
-	"github.com/chainreactors/files"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/handler"
@@ -128,23 +127,18 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 
 	go func() {
 		resp := <-out
-		err := handler.HandleMaleficError(resp)
+		err := handler.AssertStatusAndResponse(resp, types.MsgDownload)
 		if err != nil {
 			greq.Task.Panic(buildErrorEvent(greq.Task, err))
 			return
 		}
 		respCheckSum := resp.GetDownloadResponse().Checksum
-		nickName := helper.RandStringBytes(10)
-		fileName := path.Join(configs.TempPath, nickName)
+		fileName := path.Join(configs.TempPath, respCheckSum)
 		greq.Session.AddMessage(resp, 0)
-		if files.IsExist(fileName) {
-			greq.Task.Finish()
-			return
-		}
 		greq.Task.Total = int(resp.GetDownloadResponse().Size)/config.Int(consts.MaxPacketLength) + 1
 		td := &models.FileDescription{
 			Name:     req.Name,
-			NickName: nickName,
+			NickName: respCheckSum,
 			Path:     req.Path,
 			Command:  fmt.Sprintf("download -%s -%s ", req.Name, req.Path),
 			Size:     int64(resp.GetDownloadResponse().Size),
@@ -153,48 +147,51 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 		if err != nil {
 			logs.Log.Errorf("cannot create task %d , %s in db", greq.Task.Id, err.Error())
 		}
-		downloadFile, err := os.OpenFile(fileName, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+		downloadFile, err := os.OpenFile(fileName, os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
+			logs.Log.Errorf("cannot create file %s, %s", fileName, err.Error())
 			return
 		}
 		defer downloadFile.Close()
-		msg := &implantpb.ACK{
-			Id:      greq.Task.Id,
-			Success: true,
-			End:     false,
-		}
-		spite, _ := types.BuildSpite(&implantpb.Spite{
+		ack, _ := types.BuildSpite(&implantpb.Spite{
 			Timeout: uint64(consts.MinTimeout.Seconds()),
 			TaskId:  greq.Task.Id,
-		}, msg)
-		spite.Name = types.MsgDownload.String()
-		in <- spite
+		}, &implantpb.ACK{
+			Success: true,
+			End:     false,
+		})
+		ack.Name = types.MsgDownload.String()
+		in <- ack
 		for resp := range out {
+			err := handler.AssertStatusAndResponse(resp, types.MsgBlock)
+			if err != nil {
+				logs.Log.Errorf(err.Error())
+				return
+			}
 			block := resp.GetBlock()
 			_, err = downloadFile.Write(block.Content)
 			if err != nil {
+				logs.Log.Errorf(err.Error())
 				return
 			}
 			ack, _ := greq.NewSpite(&implantpb.ACK{Success: true})
 			ack.TaskId = greq.Task.Id
-			ack.Name = types.MsgDownload.String()
 			in <- ack
+			ack.Name = types.MsgDownload.String()
 			greq.Session.AddMessage(resp, int(block.BlockId+1))
-			err := db.UpdateTask(greq.Task, int(block.BlockId+1))
+			err = db.UpdateTask(greq.Task, int(block.BlockId+1))
 			if err != nil {
 				logs.Log.Errorf("cannot update task %d , %s in db", greq.Task.Id, err.Error())
 				return
 			}
 			if block.End {
-				checksum, err := helper.CalculateSHA256Checksum(fileName)
-				if err != nil {
-					greq.Task.Panic(buildErrorEvent(greq.Task, err))
-					return
-				}
+				checksum, _ := helper.CalculateSHA256Checksum(fileName)
 				if checksum != respCheckSum {
 					greq.Task.Panic(buildErrorEvent(greq.Task, fmt.Errorf("checksum error")))
 					return
 				}
+				greq.Task.Finish(fmt.Sprintf("sync id: %s", checksum))
+			} else {
 				greq.Task.Done(ack)
 			}
 		}

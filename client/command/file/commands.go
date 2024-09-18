@@ -21,7 +21,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Use:   consts.ModuleDownload,
 		Short: "Download file",
 		Long:  help.GetHelpFor(consts.ModuleDownload),
-		Args:  cobra.ExactArgs(2),
+		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			DownloadCmd(cmd, con)
 			return
