@@ -5,7 +5,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/proto/services/listenerrpc"
-	"github.com/chainreactors/malice-network/server/internal/certs"
+	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/gookit/config/v2"
 	"google.golang.org/grpc"
@@ -60,7 +60,7 @@ func StartClientListener(address string) (*grpc.Server, net.Listener, error) {
 	logs.Log.Importantf("Starting gRPC console on %s", address)
 
 	InitLogs(config.Bool("debug"))
-	tlsConfig := certs.GetOperatorServerMTLSConfig("server")
+	tlsConfig := certutils.GetOperatorServerMTLSConfig("server")
 	creds := credentials.NewTLS(tlsConfig)
 	ln, err := net.Listen("tcp", address)
 	if err != nil {

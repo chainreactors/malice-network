@@ -5,7 +5,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/mtls"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/client/rootpb"
-	"github.com/chainreactors/malice-network/server/internal/certs"
+	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
@@ -28,7 +28,7 @@ func (rpc *Server) LoginClient(ctx context.Context, req *clientpb.LoginReq) (*cl
 
 func (rpc *Server) AddClient(ctx context.Context, req *rootpb.Operator) (*rootpb.Response, error) {
 	cfg := configs.GetServerConfig()
-	clientConf, err := certs.GenerateClientCert(cfg.IP, req.Args[0], int(cfg.GRPCPort))
+	clientConf, err := certutils.GenerateClientCert(cfg.IP, req.Args[0], int(cfg.GRPCPort))
 	if err != nil {
 		return &rootpb.Response{
 			Status: 1,
@@ -53,7 +53,7 @@ func (rpc *Server) AddClient(ctx context.Context, req *rootpb.Operator) (*rootpb
 }
 
 func (rpc *Server) RemoveClient(ctx context.Context, req *rootpb.Operator) (*rootpb.Response, error) {
-	err := certs.RemoveCertificate(certs.OperatorCA, certs.RSAKey, req.Args[0])
+	err := certutils.RemoveCertificate(certutils.OperatorCA, certutils.RSAKey, req.Args[0])
 	if err != nil {
 		return &rootpb.Response{
 			Status: 1,

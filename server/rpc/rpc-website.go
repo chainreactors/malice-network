@@ -6,8 +6,7 @@ import (
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
-	"github.com/chainreactors/malice-network/server/internal/certs"
-	"github.com/chainreactors/malice-network/server/internal/configs"
+	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
@@ -135,14 +134,13 @@ func (rpc *Server) WebsiteRemoveContent(ctx context.Context, req *lispb.WebsiteR
 }
 
 func (rpc *Server) RegisterWebsite(ctx context.Context, req *lispb.Pipeline) (*implantpb.Empty, error) {
-	if req.GetTls().Key == "" || req.GetTls().Cert == "" {
-		tlsConfig := configs.GenerateTlsConfig(req.GetWeb().Name)
-		cert, key, err := certs.GeneratePipelineCert(&tlsConfig)
+	if req.GetTls().Enable && req.GetTls().Cert == "" && req.GetTls().Key == "" {
+		cert, key, err := certutils.GenerateTlsCert(req.GetWeb().Name)
 		if err != nil {
 			return &implantpb.Empty{}, err
 		}
-		req.Tls.Cert = string(cert)
-		req.Tls.Key = string(key)
+		req.GetTls().Cert = cert
+		req.GetTls().Key = key
 	}
 	err := db.CreatePipeline(req)
 	if err != nil {
@@ -172,35 +170,6 @@ func (rpc *Server) RegisterWebsite(ctx context.Context, req *lispb.Pipeline) (*i
 	return &implantpb.Empty{}, nil
 }
 
-func (rpc *Server) NewWebsite(ctx context.Context, req *lispb.Pipeline) (*clientpb.Empty, error) {
-	err := db.CreatePipeline(req)
-	if err != nil {
-		return &clientpb.Empty{}, err
-	}
-	getWeb := req.GetWeb()
-	if 0 < len(getWeb.Contents) {
-		for _, content := range getWeb.Contents {
-			if content.ContentType == "" {
-				content.ContentType = mime.TypeByExtension(filepath.Ext(content.Path))
-				if content.ContentType == "" {
-					content.ContentType = "text/html; charset=utf-8" // Default mime
-				}
-			}
-			content.Size = uint64(len(content.Content))
-			err := website.AddContent(getWeb.Name, content)
-			if err != nil {
-				return nil, err
-			}
-		}
-	} else {
-		_, err := website.AddWebsite(getWeb.Name)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return &clientpb.Empty{}, nil
-}
-
 func (rpc *Server) StartWebsite(ctx context.Context, req *lispb.CtrlPipeline) (*clientpb.Empty, error) {
 	pipelineDB, err := db.FindPipeline(req.Name, req.ListenerId)
 	if err != nil {
@@ -212,11 +181,10 @@ func (rpc *Server) StartWebsite(ctx context.Context, req *lispb.CtrlPipeline) (*
 		return &clientpb.Empty{}, err
 	}
 	pipeline.GetWeb().Contents = contents.Contents
-	ch := make(chan bool)
+	pipeline.GetWeb().Enable = true
 	job := &core.Job{
 		ID:      core.CurrentJobID(),
 		Message: pipeline,
-		JobCtrl: ch,
 		Name:    pipeline.GetWeb().Name,
 	}
 	core.Jobs.Add(job)

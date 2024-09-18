@@ -1,4 +1,4 @@
-package certs
+package certutils
 
 import (
 	"crypto/tls"
@@ -126,74 +126,6 @@ func GenerateRootCert() error {
 	return nil
 }
 
-func GeneratePipelineCert(config *configs.TlsConfig) ([]byte, []byte, error) {
-	pipelineCAPath := path.Join(configs.CertsPath, fmt.Sprintf("%s_ca_cert.pem", config.Name))
-	pipelineCertPath := path.Join(configs.ListenerPath, fmt.Sprintf("%s_crt.pem", config.Name))
-	pipelineKeyPath := path.Join(configs.ListenerPath, fmt.Sprintf("%s_key.pem", config.Name))
-	var cert, key []byte
-	var caCertByte, caKeyByte []byte
-	var err error
-	if helper.FileExists(pipelineCAPath) && helper.FileExists(pipelineCertPath) && helper.FileExists(pipelineKeyPath) {
-		cert, err = os.ReadFile(pipelineCertPath)
-		if err != nil {
-			return nil, nil, err
-		}
-		key, err = os.ReadFile(pipelineKeyPath)
-		if err != nil {
-			return nil, nil, err
-		}
-		return cert, key, nil
-	}
-	if config.CertFile != "" && config.KeyFile != "" {
-		cert = []byte(config.CertFile)
-		key = []byte(config.KeyFile)
-		err = os.WriteFile(pipelineCertPath, cert, 0644)
-		if err != nil {
-			return nil, nil, err
-		}
-		err = os.WriteFile(pipelineKeyPath, key, 0644)
-		if err != nil {
-			return nil, nil, err
-		}
-		err = db.AddCertificate(ImplantCA, RSAKey, config.Name, cert, key)
-		if err != nil {
-			return nil, nil, err
-		}
-		return cert, key, nil
-	} else {
-		caCertByte, caKeyByte, err = certs.GenerateCACert(config.Name)
-		if err != nil {
-			return nil, nil, err
-		}
-		caCert, caKey, err := ParseCertificateAuthority(caCertByte, caKeyByte)
-		if err != nil {
-			return nil, nil, err
-		}
-		cert, key, err = certs.GenerateChildCert(config.Name, true, caCert, caKey)
-		err = certs.SaveToPEMFile(pipelineCertPath, caCertByte)
-		if err != nil {
-			return nil, nil, err
-		}
-		err = certs.SaveToPEMFile(pipelineCertPath, cert)
-		if err != nil {
-			return nil, nil, err
-		}
-		err = certs.SaveToPEMFile(pipelineKeyPath, key)
-		if err != nil {
-			return nil, nil, err
-		}
-	}
-	err = db.AddCertificate(RootCA, RSAKey, config.Name, caCertByte, caKeyByte)
-	if err != nil {
-		return nil, nil, err
-	}
-	err = db.AddCertificate(ImplantCA, RSAKey, config.Name, cert, key)
-	if err != nil {
-		return nil, nil, err
-	}
-	return cert, key, nil
-}
-
 func GenerateServerCert(name string) ([]byte, []byte, error) {
 	certPath := path.Join(configs.CertsPath, serverCert)
 	certKeyPath := path.Join(configs.CertsPath, serverKey)
@@ -281,4 +213,42 @@ func GenerateListenerCert(host, name string, port int) (*mtls.ClientConfig, erro
 		PrivateKey:    string(key),
 		Certificate:   string(cert),
 	}, nil
+}
+
+func GenerateTlsConfig(tlsConfig *configs.TlsConfig) (*configs.CertConfig, error) {
+	if !tlsConfig.Enable {
+		return &configs.CertConfig{Enable: false}, nil
+	}
+	tlsCert, err := tlsConfig.ReadCert()
+	if err == nil {
+		return tlsCert, err
+	}
+	caCertByte, caKeyByte, err := certs.GenerateCACert(tlsConfig.Name)
+	if err != nil {
+		return nil, err
+	}
+	caCert, caKey, err := ParseCertificateAuthority(caCertByte, caKeyByte)
+	if err != nil {
+		return nil, err
+	}
+	cert, key, err := certs.GenerateChildCert(tlsConfig.Name, true, caCert, caKey)
+	return &configs.CertConfig{
+		Cert:   string(cert),
+		CA:     string(caCertByte),
+		Key:    string(key),
+		Enable: true,
+	}, nil
+}
+
+func GenerateTlsCert(name string) (string, string, error) {
+	caCertByte, caKeyByte, err := certs.GenerateCACert(name)
+	if err != nil {
+		return "", "", err
+	}
+	caCert, caKey, err := ParseCertificateAuthority(caCertByte, caKeyByte)
+	if err != nil {
+		return "", "", err
+	}
+	cert, key, err := certs.GenerateChildCert(name, true, caCert, caKey)
+	return string(cert), string(key), nil
 }
