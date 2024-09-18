@@ -29,7 +29,7 @@ func WrapImplantCallback(callback ImplantPluginCallback) intermediate.ImplantCal
 		if err != nil {
 			return "", err
 		}
-		return fmt.Sprintf("%v", res), nil
+		return fmt.Sprintf("%s %v", content.Task.Type, res), nil
 	}
 }
 

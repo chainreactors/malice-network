@@ -164,10 +164,26 @@ func (s *ServerStatus) triggerTaskDone(event *clientpb.Event) {
 	log := s.ObserverLog(event.Task.SessionId)
 	err := handler.HandleMaleficError(event.Spite)
 	if err != nil {
-		log.Errorf(err.Error())
+		log.Errorf(logs.RedBold(err.Error()))
 		return
 	}
-	s.CallbackOutput(event, false)
+	if fn, ok := intermediate.InternalFunctions[event.Task.Type]; ok {
+		resp, err := fn.DoneCallback(&clientpb.TaskContext{
+			Task:    event.Task,
+			Session: event.Session,
+			Spite:   event.Spite,
+		})
+		if err != nil {
+			log.Errorf(logs.RedBold(err.Error()))
+		} else {
+			log.Importantf(logs.GreenBold(fmt.Sprintf("[%s.%d] task done (%d/%d): %s",
+				event.Task.SessionId, event.Task.TaskId,
+				event.Task.Cur, event.Task.Total, resp)))
+		}
+	} else {
+		log.Consolef("%v\n", event.Spite)
+	}
+
 	if callback, ok := s.finishCallbacks.Load(fmt.Sprintf("%s_%d", task.SessionId, task.TaskId)); ok {
 		callback.(TaskCallback)(event.Spite)
 	}
@@ -178,10 +194,30 @@ func (s *ServerStatus) triggerTaskFinish(event *clientpb.Event) {
 	log := s.ObserverLog(event.Task.SessionId)
 	err := handler.HandleMaleficError(event.Spite)
 	if err != nil {
-		log.Errorf(err.Error())
+		log.Errorf(logs.RedBold(err.Error()))
 		return
 	}
-	s.CallbackOutput(event, true)
+	if fn, ok := intermediate.InternalFunctions[event.Task.Type]; !ok {
+		if fn.FinishCallback == nil {
+			Log.Debugf("No finish callback for %s", event.Task.Type)
+			return
+		}
+		log.Importantf(logs.GreenBold(fmt.Sprintf("[%s.%d] task finish (%d/%d)",
+			event.Task.SessionId, event.Task.TaskId,
+			event.Task.Cur, event.Task.Total)))
+		resp, err := fn.FinishCallback(&clientpb.TaskContext{
+			Task:    event.Task,
+			Session: event.Session,
+			Spite:   event.Spite,
+		})
+		if err != nil {
+			log.Errorf(logs.RedBold(err.Error()))
+		} else {
+			log.Console(resp + "\n")
+		}
+	} else {
+		log.Consolef("%v\n", event.Spite.GetBody())
+	}
 
 	callbackId := fmt.Sprintf("%s_%d", task.SessionId, task.TaskId)
 	if callback, ok := s.finishCallbacks.Load(callbackId); ok {
@@ -228,7 +264,7 @@ func (s *ServerStatus) EventHandler() {
 			tui.Down(0)
 			Log.Importantf("[%s] %s: %s %s", event.Type, event.Op, event.Message, event.Err)
 		case consts.EventTask:
-			s.handlerTaskCtrl(event)
+			s.handlerTask(event)
 		case consts.EventWebsite:
 			tui.Down(0)
 			Log.Importantf("[%s] %s: %s %s", event.Type, event.Op, event.Message, event.Err)
@@ -237,7 +273,7 @@ func (s *ServerStatus) EventHandler() {
 	}
 }
 
-func (s *ServerStatus) handlerTaskCtrl(event *clientpb.Event) {
+func (s *ServerStatus) handlerTask(event *clientpb.Event) {
 	tui.Down(0)
 	switch event.Op {
 	case consts.CtrlTaskCallback:
@@ -282,47 +318,5 @@ func (s *ServerStatus) handlerSession(event *clientpb.Event) {
 	case consts.CtrlSessionError:
 		log := s.ObserverLog(event.Task.SessionId)
 		log.Errorf(logs.GreenBold(fmt.Sprintf("[%s] task: %d error: %s\n", event.Task.SessionId, event.Task.TaskId, event.Err)))
-	}
-}
-
-func (s *ServerStatus) CallbackOutput(event *clientpb.Event, finish bool) {
-	log := s.ObserverLog(event.Task.SessionId)
-	if fn, ok := intermediate.InternalFunctions[event.Task.Type]; ok {
-		var resp string
-		var err error
-		if finish {
-			if fn.FinishCallback == nil {
-				Log.Debugf("No finish callback for %s", event.Task.Type)
-				return
-			}
-			log.Importantf(logs.GreenBold(fmt.Sprintf("[%s.%d] task finish (%d/%d)",
-				event.Task.SessionId, event.Task.TaskId,
-				event.Task.Cur, event.Task.Total)))
-			resp, err = fn.FinishCallback(&clientpb.TaskContext{
-				Task:    event.Task,
-				Session: event.Session,
-				Spite:   event.Spite,
-			})
-			log.Console(resp + "\n")
-		} else {
-			if fn.DoneCallback == nil {
-				Log.Debugf("No done callback for %s", event.Task.Type)
-				return
-			}
-			resp, err = fn.DoneCallback(&clientpb.TaskContext{
-				Task:    event.Task,
-				Session: event.Session,
-				Spite:   event.Spite,
-			})
-			log.Importantf(logs.GreenBold(fmt.Sprintf("[%s.%d] task done (%d/%d): %s",
-				event.Task.SessionId, event.Task.TaskId,
-				event.Task.Cur, event.Task.Total, resp)))
-		}
-		if err != nil {
-			log.Errorf(err.Error())
-			return
-		}
-	} else {
-		log.Consolef("%v\n", event.Spite)
 	}
 }

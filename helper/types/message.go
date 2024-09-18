@@ -59,7 +59,7 @@ func MessageType(message *implantpb.Spite) MsgName {
 		return MsgExec
 	case *implantpb.Spite_UploadRequest:
 		return MsgUpload
-	case *implantpb.Spite_DownloadRequest:
+	case *implantpb.Spite_DownloadRequest, *implantpb.Spite_DownloadResponse:
 		return MsgDownload
 	case *implantpb.Spite_Ack:
 		return MsgAck
