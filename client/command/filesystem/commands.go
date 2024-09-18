@@ -15,6 +15,7 @@ import (
 	"github.com/spf13/pflag"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func Commands(con *repl.Console) []*cobra.Command {
@@ -291,7 +292,7 @@ func Register(con *repl.Console) {
 					file.Name,
 					strconv.FormatBool(file.IsDir),
 					strconv.FormatUint(file.Size, 10),
-					strconv.FormatInt(file.ModTime, 10),
+					time.Unix(file.ModTime, 0).Format("2006-01-02 15:04:05"),
 					file.Link,
 				}
 				rowEntries = append(rowEntries, row)
