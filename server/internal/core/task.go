@@ -70,7 +70,7 @@ func (t *Task) Handler() {
 		}
 		t.Cur++
 		if t.Cur == t.Total {
-			t.Finish()
+			t.Finish("")
 			return
 		}
 	}
@@ -110,7 +110,7 @@ func (t *Task) Done(spite *implantpb.Spite) {
 	t.DoneCh <- true
 }
 
-func (t *Task) Finish() {
+func (t *Task) Finish(msg string) {
 	spite, _ := t.Session.GetLastMessage(int(t.Id))
 	EventBroker.Publish(Event{
 		EventType: consts.EventTask,
@@ -118,6 +118,7 @@ func (t *Task) Finish() {
 		Task:      t.ToProtobuf(),
 		Session:   t.Session.ToProtobuf(),
 		Spite:     spite,
+		Message:   msg,
 	})
 	if t.Callback != nil {
 		t.Callback()
