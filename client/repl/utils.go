@@ -239,19 +239,18 @@ func Login(con *Console, config *mtls.ClientConfig) error {
 	return nil
 }
 
-func NewConfigLogin(con *Console, yamlFile string) {
+func NewConfigLogin(con *Console, yamlFile string) error {
 	config, err := mtls.ReadConfig(yamlFile)
 	if err != nil {
-		logs.Log.Errorf("Error reading config file: %v", err)
-		return
+		return err
 	}
 	err = Login(con, config)
 	if err != nil {
-		logs.Log.Errorf("Error login: %v", err)
-		return
+		return err
 	}
 	err = assets.MvConfig(yamlFile)
 	if err != nil {
-		return
+		return err
 	}
+	return nil
 }

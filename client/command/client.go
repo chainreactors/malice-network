@@ -47,11 +47,13 @@ func ConsoleRunnerCmd(con *repl.Console, run bool) (pre, post func(cmd *cobra.Co
 
 	pre = func(_ *cobra.Command, args []string) error {
 		if len(args) > 0 {
-			repl.NewConfigLogin(con, args[0])
+			err := repl.NewConfigLogin(con, args[0])
+			if err != nil {
+				return nil
+			}
 		} else {
 			err := generic.LoginCmd(nil, con)
 			if err != nil {
-				con.Log.Errorf("Failed to login: %s", err)
 				return nil
 			}
 		}
