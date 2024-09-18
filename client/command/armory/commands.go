@@ -26,7 +26,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		f.StringP("timeout", "t", "", "download timeout")
 	})
 	common.Bind("type", false, armoryCmd, func(f *pflag.FlagSet) {
-		f.BoolP("bundle", "r", false, "install bundle")
+		f.BoolP("bundle", "", false, "install bundle")
 	})
 
 	armoryInstallCmd := &cobra.Command{

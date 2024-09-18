@@ -2,17 +2,12 @@ package encryption
 
 import (
 	"crypto/tls"
-	"github.com/chainreactors/malice-network/server/internal/certs"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"net"
 )
 
-func WrapWithTls(lsn net.Listener, config *configs.TlsConfig) (net.Listener, error) {
-	cert, key, err := certs.GeneratePipelineCert(config)
-	if err != nil {
-		return nil, err
-	}
-	pair, err := tls.X509KeyPair(cert, key)
+func WrapWithTls(lsn net.Listener, config *configs.CertConfig) (net.Listener, error) {
+	pair, err := tls.X509KeyPair([]byte(config.Cert), []byte(config.Key))
 	if err != nil {
 		return nil, err
 	}
@@ -21,12 +16,8 @@ func WrapWithTls(lsn net.Listener, config *configs.TlsConfig) (net.Listener, err
 	return tls.NewListener(lsn, tlsConfig), nil
 }
 
-func WrapToTlsConfig(config *configs.TlsConfig) (*tls.Config, error) {
-	cert, key, err := certs.GeneratePipelineCert(config)
-	if err != nil {
-		return nil, err
-	}
-	pair, err := tls.X509KeyPair(cert, key)
+func WrapToTlsConfig(config *configs.CertConfig) (*tls.Config, error) {
+	pair, err := tls.X509KeyPair([]byte(config.Cert), []byte(config.Key))
 	if err != nil {
 		return nil, err
 	}

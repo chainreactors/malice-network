@@ -7,12 +7,12 @@ import (
 	"github.com/chainreactors/malice-network/helper/mtls"
 	"github.com/chainreactors/malice-network/proto/client/rootpb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
-	"github.com/chainreactors/malice-network/server/internal/certs"
+	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"google.golang.org/grpc"
 )
 
 func NewRootClient(addr string) (*RootClient, error) {
-	ca, key, err := certs.GetCertificateAuthority()
+	ca, key, err := certutils.GetCertificateAuthority()
 	if err != nil {
 		return nil, err
 	}
@@ -22,7 +22,7 @@ func NewRootClient(addr string) (*RootClient, error) {
 		Bytes: x509.MarshalPKCS1PrivateKey(key),
 	}
 	privateKeyPEM := pem.EncodeToMemory(keyPEM)
-	options, err := mtls.GetGrpcOptions(caCert, caCert, privateKeyPEM, certs.RootName)
+	options, err := mtls.GetGrpcOptions(caCert, caCert, privateKeyPEM, certutils.RootName)
 	if err != nil {
 		return nil, err
 	}

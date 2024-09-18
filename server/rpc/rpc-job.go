@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"fmt"
+	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/proto/services/listenerrpc"
@@ -17,6 +18,7 @@ func (rpc *Server) JobStream(stream listenerrpc.ListenerRPC_JobStreamServer) err
 			case msg := <-core.Jobs.Ctrl:
 				err := stream.Send(msg)
 				if err != nil {
+					logs.Log.Errorf("send job ctrl faild %v", err)
 					return
 				}
 			}

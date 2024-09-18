@@ -8,6 +8,7 @@ import (
 	"github.com/chainreactors/malice-network/client/command/listener"
 	"github.com/chainreactors/malice-network/client/command/mal"
 	"github.com/chainreactors/malice-network/client/command/sessions"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/reeflective/console"
@@ -49,6 +50,7 @@ func ConsoleRunnerCmd(con *repl.Console, run bool) (pre, post func(cmd *cobra.Co
 		if len(args) > 0 {
 			err := repl.NewConfigLogin(con, args[0])
 			if err != nil {
+				core.Log.Errorf("Error logging in: %s", err)
 				return nil
 			}
 		} else {

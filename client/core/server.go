@@ -12,6 +12,7 @@ import (
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
+	"github.com/chainreactors/malice-network/proto/services/listenerrpc"
 	"github.com/chainreactors/tui"
 	"google.golang.org/grpc"
 	"io"
@@ -24,6 +25,7 @@ func InitServerStatus(conn *grpc.ClientConn, config *mtls.ClientConfig) (*Server
 	var err error
 	s := &ServerStatus{
 		Rpc:             clientrpc.NewMaliceRPCClient(conn),
+		LisRpc:          listenerrpc.NewListenerRPCClient(conn),
 		ActiveTarget:    &ActiveTarget{},
 		Sessions:        make(map[string]*Session),
 		Observers:       map[string]*Observer{},
@@ -72,6 +74,7 @@ func InitServerStatus(conn *grpc.ClientConn, config *mtls.ClientConfig) (*Server
 
 type ServerStatus struct {
 	Rpc    clientrpc.MaliceRPCClient
+	LisRpc listenerrpc.ListenerRPCClient
 	Info   *clientpb.Basic
 	Client *clientpb.Client
 	*ActiveTarget

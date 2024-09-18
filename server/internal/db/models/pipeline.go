@@ -54,6 +54,7 @@ func ProtoBufToDB(pipeline *lispb.Pipeline) Pipeline {
 			Port:       uint16(body.Tcp.Port),
 			Type:       "tcp",
 			Tls:        ToTlsDB(pipeline.Tls),
+			Encryption: ToEncryptionDB(pipeline.Encryption),
 			Enable:     body.Tcp.Enable,
 		}
 	case *lispb.Pipeline_Web:
@@ -64,6 +65,7 @@ func ProtoBufToDB(pipeline *lispb.Pipeline) Pipeline {
 			Port:       uint16(body.Web.Port),
 			Type:       "web",
 			Tls:        ToTlsDB(pipeline.Tls),
+			Encryption: ToEncryptionDB(pipeline.Encryption),
 			Enable:     body.Web.Enable,
 		}
 	default:
@@ -78,12 +80,12 @@ func ToTlsDB(tls *lispb.TLS) TlsConfig {
 	}
 }
 
-//func ToEncryptionDB(encryption *lispb.Encryption) EncryptionConfig {
-//	return EncryptionConfig{
-//		Type: encryption.Type,
-//		Key:  encryption.Key,
-//	}
-//}
+func ToEncryptionDB(encryption *lispb.Encryption) EncryptionConfig {
+	return EncryptionConfig{
+		Type: encryption.Type,
+		Key:  encryption.Key,
+	}
+}
 
 func ToProtobuf(pipeline *Pipeline) *lispb.Pipeline {
 	switch pipeline.Type {
@@ -97,7 +99,8 @@ func ToProtobuf(pipeline *Pipeline) *lispb.Pipeline {
 					Port:       uint32(pipeline.Port),
 				},
 			},
-			Tls: ToTlsProtobuf(&pipeline.Tls),
+			Tls:        ToTlsProtobuf(&pipeline.Tls),
+			Encryption: ToEncryptionProtobuf(&pipeline.Encryption),
 		}
 	case "web":
 		return &lispb.Pipeline{
@@ -109,7 +112,8 @@ func ToProtobuf(pipeline *Pipeline) *lispb.Pipeline {
 					Port:       uint32(pipeline.Port),
 				},
 			},
-			Tls: ToTlsProtobuf(&pipeline.Tls),
+			Tls:        ToTlsProtobuf(&pipeline.Tls),
+			Encryption: ToEncryptionProtobuf(&pipeline.Encryption),
 		}
 	default:
 		return nil
@@ -121,4 +125,12 @@ func ToTlsProtobuf(tls *TlsConfig) *lispb.TLS {
 		Cert: tls.Cert,
 		Key:  tls.Key,
 	}
+}
+
+func ToEncryptionProtobuf(encryption *EncryptionConfig) *lispb.Encryption {
+	return &lispb.Encryption{
+		Type: encryption.Type,
+		Key:  encryption.Key,
+	}
+
 }

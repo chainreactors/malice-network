@@ -1,4 +1,4 @@
-package certs
+package certutils
 
 import (
 	"crypto/rsa"

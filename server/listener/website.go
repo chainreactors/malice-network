@@ -17,17 +17,28 @@ type Website struct {
 	server      *http.Server
 	rootPath    string
 	websiteName string
-	TlsConfig   *configs.TlsConfig
+	TlsConfig   *configs.CertConfig
+	Encryption  *configs.EncryptionConfig
 	Content     map[string]*lispb.WebContent
 }
 
-func StartWebsite(cfg *configs.WebsiteConfig, content map[string]*lispb.WebContent) (*Website, error) {
+func StartWebsite(pipeline *lispb.Pipeline, content map[string]*lispb.WebContent) (*Website, error) {
+	wehsitePp := pipeline.GetWeb()
 	web := &Website{
-		port:        int(cfg.Port),
-		rootPath:    cfg.RootPath,
-		websiteName: cfg.WebsiteName,
-		TlsConfig:   cfg.TlsConfig,
-		Content:     content,
+		port:        int(wehsitePp.Port),
+		rootPath:    wehsitePp.RootPath,
+		websiteName: wehsitePp.Name,
+		TlsConfig: &configs.CertConfig{
+			Cert:   pipeline.GetTls().Cert,
+			Key:    pipeline.GetTls().Key,
+			Enable: pipeline.GetTls().Enable,
+		},
+		Encryption: &configs.EncryptionConfig{
+			Enable: pipeline.GetEncryption().Enable,
+			Type:   pipeline.GetEncryption().Type,
+			Key:    pipeline.GetEncryption().Key,
+		},
+		Content: content,
 	}
 	err := web.Start()
 	if err != nil {
@@ -90,8 +101,8 @@ func (w *Website) ToProtobuf() proto.Message {
 
 func (w *Website) ToTLSProtobuf() proto.Message {
 	return &lispb.TLS{
-		Cert: w.TlsConfig.CertFile,
-		Key:  w.TlsConfig.KeyFile,
+		Cert: w.TlsConfig.Cert,
+		Key:  w.TlsConfig.Key,
 	}
 }
 

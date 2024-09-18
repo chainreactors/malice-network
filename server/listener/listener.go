@@ -11,7 +11,7 @@ import (
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/proto/services/listenerrpc"
-	"github.com/chainreactors/malice-network/server/internal/certs"
+	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"google.golang.org/grpc"
@@ -49,15 +49,22 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 		websites:  make(core.Websites),
 	}
 
-	l := &lispb.Pipelines{}
+	_, err = lis.Rpc.RegisterListener(context.Background(), &lispb.RegisterListener{
+		Id:   fmt.Sprintf("%s_%s", lis.Name, lis.Host),
+		Name: lis.Name,
+		Host: conn.Target(),
+		Addr: serverAddress,
+	})
+	if err != nil {
+		return err
+	}
+	go lis.Handler()
+	Listener = lis
+
 	for _, tcpPipeline := range cfg.TcpPipelines {
-		if tcpPipeline.TlsConfig.CertFile == "" || tcpPipeline.TlsConfig.KeyFile == "" {
-			cert, key, err := certs.GeneratePipelineCert(tcpPipeline.TlsConfig)
-			if err != nil {
-				return err
-			}
-			tcpPipeline.TlsConfig.CertFile = string(cert)
-			tcpPipeline.TlsConfig.KeyFile = string(key)
+		tls, err := certutils.GenerateTlsConfig(tcpPipeline.TlsConfig)
+		if err != nil {
+			return err
 		}
 		pipeline := &lispb.Pipeline{
 			Body: &lispb.Pipeline_Tcp{
@@ -68,29 +75,35 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 					ListenerId: lis.Name,
 				},
 			},
-			Tls: tcpPipeline.TlsConfig.ToProtobuf(),
+			Tls: tls.ToProtobuf(),
+			Encryption: &lispb.Encryption{
+				Type:   tcpPipeline.EncryptionConfig.Type,
+				Key:    tcpPipeline.EncryptionConfig.Key,
+				Enable: tcpPipeline.EncryptionConfig.Enable,
+			},
 		}
 		_, err = lis.Rpc.RegisterPipeline(context.Background(), pipeline)
 		if err != nil {
 			return err
 		}
-		l.Pipelines = append(l.Pipelines, pipeline)
+		_, err = lis.Rpc.StartTcpPipeline(context.Background(), &lispb.CtrlPipeline{
+			Name:       tcpPipeline.Name,
+			ListenerId: lis.Name,
+		})
+		if err != nil {
+			return err
+		}
 	}
 	for _, newWebsite := range cfg.Websites {
-		if newWebsite.TlsConfig.CertFile == "" || newWebsite.TlsConfig.KeyFile == "" {
-			cert, key, err := certs.GeneratePipelineCert(newWebsite.TlsConfig)
-			if err != nil {
-				return err
-			}
-			newWebsite.TlsConfig.CertFile = string(cert)
-			newWebsite.TlsConfig.KeyFile = string(key)
+		tls, err := certutils.GenerateTlsConfig(newWebsite.TlsConfig)
+		if err != nil {
+			return err
 		}
 		addWeb := &lispb.WebsiteAddContent{
 			Name:     newWebsite.WebsiteName,
 			Contents: map[string]*lispb.WebContent{},
 		}
 		cPath, _ := filepath.Abs(newWebsite.ContentPath)
-
 		fileIfo, err := os.Stat(cPath)
 
 		if fileIfo.IsDir() {
@@ -116,25 +129,21 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 					Contents:   addWeb.Contents,
 				},
 			},
-			Tls: newWebsite.TlsConfig.ToProtobuf(),
+			Tls: tls.ToProtobuf(),
 		}
 		_, err = lis.Rpc.RegisterWebsite(context.Background(), webProtobuf)
 		if err != nil {
 			return err
 		}
+		_, err = lis.Rpc.StartWebsite(context.Background(), &lispb.CtrlPipeline{
+			Name:       newWebsite.WebsiteName,
+			ListenerId: lis.Name,
+		})
+		if err != nil {
+			return err
+		}
 	}
-	_, err = lis.Rpc.RegisterListener(context.Background(), &lispb.RegisterListener{
-		Id:        fmt.Sprintf("%s_%s", lis.Name, lis.Host),
-		Name:      lis.Name,
-		Host:      conn.Target(),
-		Addr:      serverAddress,
-		Pipelines: l,
-	})
-	if err != nil {
-		return err
-	}
-	lis.Start()
-	Listener = lis
+
 	return nil
 }
 
@@ -152,88 +161,6 @@ func (lns *listener) ID() string {
 	return fmt.Sprintf("%s_%s", lns.Name, lns.Host)
 }
 
-func (lns *listener) Start() {
-	go lns.Handler()
-	for _, tcp := range lns.cfg.TcpPipelines {
-		if !tcp.Enable {
-			continue
-		}
-		pipeline, err := StartTcpPipeline(lns.conn, tcp)
-		if err != nil {
-			logs.Log.Errorf("Failed to start tcp pipeline %s", err)
-			continue
-		}
-		logs.Log.Importantf("Started tcp pipeline %s, encryption: %t, tls: %t", pipeline.ID(), pipeline.Encryption.Enable, pipeline.TlsConfig.Enable)
-		ch := make(chan bool)
-		tcpPipeline := pipeline.ToProtobuf().(*lispb.TCPPipeline)
-		tcpPipeline.ListenerId = lns.Name
-		job := &core.Job{
-			ID: core.CurrentJobID(),
-			Message: &lispb.Pipeline{
-				Body: &lispb.Pipeline_Tcp{
-					Tcp: tcpPipeline,
-				},
-			},
-			JobCtrl: ch,
-			Name:    pipeline.Name,
-		}
-		core.Jobs.Add(job)
-		l := core.Listeners.Get(lns.Name)
-		l.Pipelines.Add(pipeline)
-	}
-	for _, newWebsite := range lns.cfg.Websites {
-		if !newWebsite.Enable {
-			continue
-		}
-		addWeb := &lispb.WebsiteAddContent{
-			Name:     newWebsite.WebsiteName,
-			Contents: map[string]*lispb.WebContent{},
-		}
-		cPath, _ := filepath.Abs(newWebsite.ContentPath)
-
-		fileIfo, err := os.Stat(cPath)
-
-		if fileIfo.IsDir() {
-			_ = website.WebAddDirectory(addWeb, newWebsite.RootPath, cPath)
-		} else {
-			file, err := os.Open(cPath)
-			website.WebAddFile(addWeb, newWebsite.RootPath, website.SniffContentType(file), cPath)
-			if err != nil {
-				logs.Log.Error(err)
-				continue
-			}
-			err = file.Close()
-			if err != nil {
-				logs.Log.Error(err)
-				continue
-			}
-		}
-		startWebsite, err := StartWebsite(newWebsite, addWeb.Contents)
-		if err != nil {
-			logs.Log.Errorf("Failed to start website %s", err)
-			continue
-		}
-		ch := make(chan bool)
-		websitePipeline := startWebsite.ToProtobuf().(*lispb.Website)
-		websitePipeline.ListenerId = lns.Name
-		websitePipeline.Enable = true
-		job := &core.Job{
-			ID: core.CurrentJobID(),
-			Message: &lispb.Pipeline{
-				Body: &lispb.Pipeline_Web{
-					Web: websitePipeline,
-				},
-			},
-			JobCtrl: ch,
-			Name:    startWebsite.websiteName,
-		}
-		core.Jobs.Add(job)
-		l := core.Listeners.Get(lns.Name)
-		l.Pipelines.Add(startWebsite)
-		go startWebsite.Start()
-	}
-}
-
 func (lns *listener) ToProtobuf() *clientpb.Listener {
 	return &clientpb.Listener{
 		Id: lns.ID(),
@@ -249,7 +176,8 @@ func (lns *listener) Handler() {
 	for {
 		msg, err := stream.Recv()
 		if err != nil {
-			return
+			logs.Log.Errorf(err.Error())
+			continue
 		}
 		var resp *clientpb.JobStatus
 		switch msg.Ctrl {
@@ -266,7 +194,8 @@ func (lns *listener) Handler() {
 		}
 		err = stream.Send(resp)
 		if err != nil {
-			return
+			logs.Log.Errorf(err.Error())
+			continue
 		}
 	}
 }
@@ -278,8 +207,7 @@ func (lns *listener) startHandler(job *clientpb.Job) *clientpb.JobStatus {
 	case *lispb.Pipeline_Tcp:
 		p := lns.pipelines.Get(pipeline.GetTcp().Name)
 		if p == nil {
-			tcpPipeline, err := StartTcpPipeline(lns.conn, ToTcpConfig(pipeline.GetTcp(), pipeline.GetTls()))
-			job.Name = tcpPipeline.Name
+			tcpPipeline, err := StartTcpPipeline(lns.conn, pipeline)
 			if err != nil {
 				return &clientpb.JobStatus{
 					ListenerId: lns.ID(),
@@ -289,6 +217,7 @@ func (lns *listener) startHandler(job *clientpb.Job) *clientpb.JobStatus {
 					Job:        job,
 				}
 			}
+			job.Name = tcpPipeline.Name
 			lns.pipelines.Add(tcpPipeline)
 		} else {
 			err = p.Start()
@@ -360,7 +289,7 @@ func (lns *listener) startWebsite(job *clientpb.Job) *clientpb.JobStatus {
 	job.Name = getWeb.Name
 	w := lns.websites.Get(getWeb.Name)
 	if w == nil {
-		starResult, err := StartWebsite(ToWebsiteConfig(getWeb, job.GetPipeline().GetTls()), getWeb.Contents)
+		starResult, err := StartWebsite(job.GetPipeline(), getWeb.Contents)
 		if err != nil {
 			return &clientpb.JobStatus{
 				ListenerId: lns.ID(),

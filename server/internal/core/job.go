@@ -66,7 +66,6 @@ type Job struct {
 	ID           uint32
 	Name         string
 	Message      proto.Message
-	JobCtrl      chan bool
 	PersistentID string
 }
 

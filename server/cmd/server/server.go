@@ -7,7 +7,7 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/codenames"
 	"github.com/chainreactors/malice-network/helper/mtls"
-	"github.com/chainreactors/malice-network/server/internal/certs"
+	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
@@ -95,7 +95,7 @@ func Execute() {
 	}
 
 	if opt.Server.Enable {
-		err = certs.GenerateRootCert()
+		err = certutils.GenerateRootCert()
 		if err != nil {
 			logs.Log.Errorf("cannot init root ca , %s ", err.Error())
 			return

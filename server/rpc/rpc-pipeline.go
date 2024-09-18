@@ -5,8 +5,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/server/internal/certs"
-	"github.com/chainreactors/malice-network/server/internal/configs"
+	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 
@@ -15,33 +14,19 @@ import (
 )
 
 func (rpc *Server) RegisterPipeline(ctx context.Context, req *lispb.Pipeline) (*implantpb.Empty, error) {
-	var name string
-	if req.GetTls().Key == "" || req.GetTls().Cert == "" {
-		switch req.Body.(type) {
-		case *lispb.Pipeline_Tcp:
-			name = req.GetTcp().Name
-		}
-		tlsConfig := configs.GenerateTlsConfig(name)
-		cert, key, err := certs.GeneratePipelineCert(&tlsConfig)
+	if req.GetTls().Enable && req.GetTls().Cert == "" && req.GetTls().Key == "" {
+		cert, key, err := certutils.GenerateTlsCert(req.GetTcp().Name)
 		if err != nil {
 			return &implantpb.Empty{}, err
 		}
-		req.Tls.Cert = string(cert)
-		req.Tls.Key = string(key)
+		req.GetTls().Cert = cert
+		req.GetTls().Key = key
 	}
 	err := db.CreatePipeline(req)
 	if err != nil {
 		return &implantpb.Empty{}, err
 	}
 	return &implantpb.Empty{}, nil
-}
-
-func (rpc *Server) NewPipeline(ctx context.Context, req *lispb.Pipeline) (*clientpb.Empty, error) {
-	err := db.CreatePipeline(req)
-	if err != nil {
-		return &clientpb.Empty{}, err
-	}
-	return &clientpb.Empty{}, nil
 }
 
 func (rpc *Server) ListTcpPipelines(ctx context.Context, req *lispb.ListenerName) (*lispb.Pipelines, error) {
@@ -72,11 +57,10 @@ func (rpc *Server) StartTcpPipeline(ctx context.Context, req *lispb.CtrlPipeline
 		return &clientpb.Empty{}, err
 	}
 	pipeline := models.ToProtobuf(&pipelineDB)
-	ch := make(chan bool)
+	pipeline.GetTcp().Enable = true
 	job := &core.Job{
 		ID:      core.CurrentJobID(),
 		Message: pipeline,
-		JobCtrl: ch,
 		Name:    pipeline.GetTcp().Name,
 	}
 	core.Jobs.Add(job)

@@ -11,7 +11,7 @@ import (
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/proto/services/listenerrpc"
-	"github.com/chainreactors/malice-network/server/internal/certs"
+	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
@@ -80,7 +80,7 @@ func (rpc *Server) SpiteStream(stream listenerrpc.ListenerRPC_SpiteStreamServer)
 
 func (rpc *Server) AddListener(ctx context.Context, req *rootpb.Operator) (*rootpb.Response, error) {
 	cfg := configs.GetServerConfig()
-	clientConf, err := certs.GenerateListenerCert(cfg.IP, req.Args[0], int(cfg.GRPCPort))
+	clientConf, err := certutils.GenerateListenerCert(cfg.IP, req.Args[0], int(cfg.GRPCPort))
 	if err != nil {
 		return &rootpb.Response{
 			Status: 1,
@@ -105,7 +105,7 @@ func (rpc *Server) AddListener(ctx context.Context, req *rootpb.Operator) (*root
 }
 
 func (rpc *Server) RemoveListener(ctx context.Context, req *rootpb.Operator) (*rootpb.Response, error) {
-	err := certs.RemoveCertificate(certs.ListenerCA, certs.RSAKey, req.Args[0])
+	err := certutils.RemoveCertificate(certutils.ListenerCA, certutils.RSAKey, req.Args[0])
 	if err != nil {
 		return &rootpb.Response{
 			Status: 1,

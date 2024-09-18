@@ -5,6 +5,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/certs"
 	"github.com/chainreactors/malice-network/helper/helper"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
+	"os"
 )
 
 var ListenerConfigFileName = "listener.yaml"
@@ -44,6 +45,21 @@ type WebsiteConfig struct {
 	TlsConfig   *TlsConfig `config:"tls" default:""`
 }
 
+type CertConfig struct {
+	Cert   string `yaml:"cert"`
+	CA     string `yaml:"ca"`
+	Key    string `yaml:"key"`
+	Enable bool   `yaml:"enable"`
+}
+
+func (t *CertConfig) ToProtobuf() *lispb.TLS {
+	return &lispb.TLS{
+		Cert:   t.Cert,
+		Key:    t.Key,
+		Enable: t.Enable,
+	}
+}
+
 type TlsConfig struct {
 	Enable   bool   `config:"enable"`
 	Name     string `config:"name"`
@@ -54,8 +70,31 @@ type TlsConfig struct {
 	OU       string `config:"OU"`
 	ST       string `config:"ST"`
 	Validity string `config:"validity"`
-	CertFile string `config:"cert"`
-	KeyFile  string `config:"key"`
+	CertFile string `config:"cert_file"`
+	KeyFile  string `config:"key_file"`
+	CAFile   string `config:"ca_file"`
+}
+
+func (t *TlsConfig) ReadCert() (*CertConfig, error) {
+	var err error
+	cert, err := os.ReadFile(t.CertFile)
+	if err != nil {
+		return nil, err
+	}
+	key, err := os.ReadFile(t.KeyFile)
+	if err != nil {
+		return nil, err
+	}
+	ca, err := os.ReadFile(t.CAFile)
+	if err != nil {
+		return nil, err
+	}
+	return &CertConfig{
+		Cert:   string(cert),
+		Key:    string(key),
+		CA:     string(ca),
+		Enable: true,
+	}, nil
 }
 
 func (t *TlsConfig) ToPkix() *pkix.Name {
@@ -65,14 +104,6 @@ func (t *TlsConfig) ToPkix() *pkix.Name {
 		Locality:           []string{t.L},
 		OrganizationalUnit: []string{t.OU},
 		Province:           []string{t.ST},
-	}
-}
-
-func (t *TlsConfig) ToProtobuf() *lispb.TLS {
-	return &lispb.TLS{
-		Cert:   t.CertFile,
-		Key:    t.KeyFile,
-		Enable: t.Enable,
 	}
 }
 

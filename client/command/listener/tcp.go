@@ -20,7 +20,7 @@ func listTcpCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Error("listener_id is required")
 		return
 	}
-	Pipelines, err := con.Rpc.ListTcpPipelines(context.Background(), &lispb.ListenerName{
+	Pipelines, err := con.LisRpc.ListTcpPipelines(context.Background(), &lispb.ListenerName{
 		Name: listenerID,
 	})
 	if err != nil {
@@ -56,9 +56,9 @@ func newTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) {
 	name := cmd.Flags().Arg(0)
 	host, _ := cmd.Flags().GetString("host")
 	portUint, _ := cmd.Flags().GetUint("port")
+	tlsEnable, _ := cmd.Flags().GetBool("tls")
 	var cert, key string
 	var err error
-	var tlsEnable = false
 	if listenerID == "" {
 		con.Log.Error("listener_id is required")
 		return
@@ -69,7 +69,7 @@ func newTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) {
 	}
 	port := uint32(portUint)
 	if host == "" {
-		host = "127.0.0.1"
+		host = "0.0.0.0"
 	}
 	if certPath != "" && keyPath != "" {
 		cert, err = cryptography.ProcessPEM(certPath)
@@ -84,7 +84,12 @@ func newTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) {
 			return
 		}
 	}
-	_, err = con.Rpc.NewPipeline(context.Background(), &lispb.Pipeline{
+	_, err = con.LisRpc.RegisterPipeline(context.Background(), &lispb.Pipeline{
+		Encryption: &lispb.Encryption{
+			Enable: false,
+			Type:   "",
+			Key:    "",
+		},
 		Tls: &lispb.TLS{
 			Cert:   cert,
 			Key:    key,
@@ -108,7 +113,7 @@ func newTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) {
 func startTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) {
 	name := cmd.Flags().Arg(0)
 	listenerID := cmd.Flags().Arg(1)
-	_, err := con.Rpc.StartTcpPipeline(context.Background(), &lispb.CtrlPipeline{
+	_, err := con.LisRpc.StartTcpPipeline(context.Background(), &lispb.CtrlPipeline{
 		Name:       name,
 		ListenerId: listenerID,
 	})
@@ -121,7 +126,7 @@ func startTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) {
 func stopTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) {
 	name := cmd.Flags().Arg(0)
 	listenerID := cmd.Flags().Arg(1)
-	_, err := con.Rpc.StopTcpPipeline(context.Background(), &lispb.CtrlPipeline{
+	_, err := con.LisRpc.StopTcpPipeline(context.Background(), &lispb.CtrlPipeline{
 		Name:       name,
 		ListenerId: listenerID,
 	})
