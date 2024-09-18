@@ -36,7 +36,7 @@ func LoginCmd(cmd *cobra.Command, con *repl.Console) error {
 		}
 		err = repl.Login(con, config)
 		if err != nil {
-			con.Log.Errorf("Error executing loginServer: %s", err)
+			return err
 		}
 	}
 
