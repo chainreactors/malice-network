@@ -202,9 +202,10 @@ func (s *ServerStatus) triggerTaskFinish(event *clientpb.Event) {
 			Log.Debugf("No finish callback for %s", event.Task.Type)
 			return
 		}
-		log.Importantf(logs.GreenBold(fmt.Sprintf("[%s.%d] task finish (%d/%d)",
+		log.Importantf(logs.GreenBold(fmt.Sprintf("[%s.%d] task finish (%d/%d), %s",
 			event.Task.SessionId, event.Task.TaskId,
-			event.Task.Cur, event.Task.Total)))
+			event.Task.Cur, event.Task.Total,
+			event.Message)))
 		resp, err := fn.FinishCallback(&clientpb.TaskContext{
 			Task:    event.Task,
 			Session: event.Session,
