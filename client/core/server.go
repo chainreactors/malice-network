@@ -184,7 +184,7 @@ func (s *ServerStatus) triggerTaskDone(event *clientpb.Event) {
 				event.Task.Cur, event.Task.Total, resp)))
 		}
 	} else {
-		log.Consolef("%v\n", event.Spite)
+		log.Debugf("%v\n", event.Spite)
 	}
 
 	if callback, ok := s.finishCallbacks.Load(fmt.Sprintf("%s_%d", task.SessionId, task.TaskId)); ok {
