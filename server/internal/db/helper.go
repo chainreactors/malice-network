@@ -393,28 +393,23 @@ func ToTask(task models.Task) (*core.Task, error) {
 	}, nil
 }
 
-// website
 // WebsiteByName - Get website by name
 func WebsiteByName(name string, webContentDir string) (*lispb.Website, error) {
-	var website models.Website
-	if err := Session().Preload("WebContents").Where("name = ?", name).First(&website).Error; err != nil {
+	var websiteContent models.WebsiteContent
+	if err := Session().Where("name = ?", name).First(&websiteContent).Error; err != nil {
 		return nil, err
 	}
-	//err := Session().Where("name = ?", name).First(&website).Error
-	//if err != nil {
-	//	return nil, err
-	//}
-	return website.ToProtobuf(webContentDir), nil
+	return websiteContent.ToProtobuf(webContentDir), nil
 }
 
 // Websites - Return all websites
 func Websites(webContentDir string) ([]*lispb.Website, error) {
-	var websites []*models.Website
-	err := Session().Where(&models.Website{}).Find(&websites).Error
+	var websiteContents []*models.WebsiteContent
+	err := Session().Find(&websiteContents).Error
 
 	var pbWebsites []*lispb.Website
-	for _, website := range websites {
-		pbWebsites = append(pbWebsites, website.ToProtobuf(webContentDir))
+	for _, websiteContent := range websiteContents {
+		pbWebsites = append(pbWebsites, websiteContent.ToProtobuf(webContentDir))
 	}
 
 	return pbWebsites, err
@@ -423,10 +418,10 @@ func Websites(webContentDir string) ([]*lispb.Website, error) {
 // WebContent by ID and path
 func WebContentByIDAndPath(id string, path string, webContentDir string, eager bool) (*lispb.WebContent, error) {
 	uuidFromString, _ := uuid.FromString(id)
-	content := models.WebContent{}
-	err := Session().Where(&models.WebContent{
-		WebsiteID: uuidFromString,
-		Path:      path,
+	content := models.WebsiteContent{}
+	err := Session().Where(&models.WebsiteContent{
+		ID:   uuidFromString,
+		Name: path,
 	}).First(&content).Error
 
 	if err != nil {
@@ -438,14 +433,16 @@ func WebContentByIDAndPath(id string, path string, webContentDir string, eager b
 	} else {
 		data = []byte{}
 	}
-	return content.ToProtobuf(&data), err
+	result := content.ToProtobuf(webContentDir).Contents[content.ID.String()]
+	result.Content = data
+	return result, err
 }
 
 // AddWebsite - Return website, create if it does not exist
-func AddWebSite(webSiteName string, webContentDir string) (*lispb.Website, error) {
+func AddWebsite(webSiteName string, webContentDir string) (*lispb.Website, error) {
 	pbWebSite, err := WebsiteByName(webSiteName, webContentDir)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		err = Session().Create(&models.Website{Name: webSiteName}).Error
+		err = Session().Create(&models.WebsiteContent{Name: webSiteName}).Error
 		if err != nil {
 			return nil, err
 		}
@@ -459,62 +456,34 @@ func AddWebSite(webSiteName string, webContentDir string) (*lispb.Website, error
 
 // AddContent - Add content to website
 func AddContent(pbWebContent *lispb.WebContent, webContentDir string) (*lispb.WebContent, error) {
-	dbWebContent, err := WebContentByIDAndPath(pbWebContent.WebsiteID, pbWebContent.Path, webContentDir, false)
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		dbModelWebContent := models.WebContentFromProtobuf(pbWebContent)
-		err = Session().Create(&dbModelWebContent).Error
-		if err != nil {
-			return nil, err
-		}
-		dbWebContent, err = WebContentByIDAndPath(pbWebContent.WebsiteID, pbWebContent.Path, webContentDir, false)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		dbWebContent.ContentType = pbWebContent.ContentType
-		dbWebContent.Size = pbWebContent.Size
-
-		dbModelWebContent := models.WebContentFromProtobuf(dbWebContent)
-		err = Session().Save(&dbModelWebContent).Error
-		if err != nil {
-			return nil, err
-		}
-	}
-	return dbWebContent, nil
-}
-
-func GetWebContentIDByWebsiteID(websiteID string) ([]string, error) {
-	uuid, err := uuid.FromString(websiteID)
+	dbModelWebContent := models.WebsiteContentFromProtobuf(pbWebContent)
+	err := Session().Save(&dbModelWebContent).Error
 	if err != nil {
 		return nil, err
 	}
-
-	var IDs []string
-
-	if err := Session().Model(&models.WebContent{}).Select("ID").Where("website_id = ?", uuid).Pluck("ID", &IDs).Error; err != nil {
-		return nil, err
-	}
-
-	return IDs, nil
+	pbWebContent.ID = dbModelWebContent.ID.String()
+	return pbWebContent, nil
 }
 
-func RemoveWebAllContent(id string) error {
+// RemoveWebsiteContent - Remove all content of a website by ID
+func RemoveWebsiteContent(id string) error {
 	uuid, _ := uuid.FromString(id)
-	if err := Session().Where("website_id = ?", uuid).Delete(&models.WebContent{}).Error; err != nil {
+	if err := Session().Where("id = ?", uuid).Delete(&models.WebsiteContent{}).Error; err != nil {
 		return err
 	}
-
 	return nil
 }
 
+// RemoveContent - Remove content by ID
 func RemoveContent(id string) error {
 	uuid, _ := uuid.FromString(id)
-	err := Session().Delete(models.WebContent{}, uuid).Error
+	err := Session().Delete(&models.WebsiteContent{}, uuid).Error
 	return err
 }
 
-func RemoveWebSite(id string) error {
+// RemoveWebsite - Remove website by ID
+func RemoveWebsite(id string) error {
 	uuid, _ := uuid.FromString(id)
-	err := Session().Delete(models.Website{}, uuid).Error
+	err := Session().Delete(&models.WebsiteContent{}, uuid).Error
 	return err
 }

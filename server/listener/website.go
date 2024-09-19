@@ -23,11 +23,11 @@ type Website struct {
 }
 
 func StartWebsite(pipeline *lispb.Pipeline, content map[string]*lispb.WebContent) (*Website, error) {
-	wehsitePp := pipeline.GetWeb()
+	websitePp := pipeline.GetWeb()
 	web := &Website{
-		port:        int(wehsitePp.Port),
-		rootPath:    wehsitePp.RootPath,
-		websiteName: wehsitePp.Name,
+		port:        int(websitePp.Port),
+		rootPath:    websitePp.RootPath,
+		websiteName: websitePp.Name,
 		TlsConfig: &configs.CertConfig{
 			Cert:   pipeline.GetTls().Cert,
 			Key:    pipeline.GetTls().Key,

@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/core"
@@ -32,21 +31,12 @@ func (rpc *Server) Websites(ctx context.Context, _ *clientpb.Empty) (*lispb.Webs
 }
 
 func (rpc *Server) WebsiteRemove(ctx context.Context, req *lispb.Website) (*clientpb.Empty, error) {
-	web, err := website.MapContent(req.Name, false)
-	if err != nil {
-		return nil, err
-	}
-	err = website.RemoveWebAllContent(web.ID)
-	if err != nil {
-		return nil, err
-	}
-
 	dbWebsite, err := website.WebsiteByName(req.Name)
 	if err != nil {
 		return nil, err
 	}
 
-	err = db.RemoveWebSite(dbWebsite.ID)
+	err = db.RemoveWebsite(dbWebsite.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +68,7 @@ func (rpc *Server) WebsiteAddContent(ctx context.Context, req *lispb.WebsiteAddC
 
 			content.Size = uint64(len(content.Content))
 			rpcLog.Infof("Add website content (%s) %s -> %s", req.Name, content.Path, content.ContentType)
-			err := website.AddContent(req.Name, content)
+			_, err := website.AddContent(req.Name, content)
 			if err != nil {
 				return nil, err
 			}
@@ -105,7 +95,7 @@ func (rpc *Server) WebsiteUpdateContent(ctx context.Context, req *lispb.WebsiteA
 		return nil, err
 	}
 	for _, content := range req.Contents {
-		website.AddContent(dbWebsite.Name, content)
+		_, _ = website.AddContent(dbWebsite.Name, content)
 	}
 
 	core.EventBroker.Publish(core.Event{
@@ -133,18 +123,19 @@ func (rpc *Server) WebsiteRemoveContent(ctx context.Context, req *lispb.WebsiteR
 	return website.MapContent(req.Name, false)
 }
 
-func (rpc *Server) RegisterWebsite(ctx context.Context, req *lispb.Pipeline) (*implantpb.Empty, error) {
+func (rpc *Server) RegisterWebsite(ctx context.Context, req *lispb.Pipeline) (*lispb.WebsiteResponse, error) {
 	if req.GetTls().Enable && req.GetTls().Cert == "" && req.GetTls().Key == "" {
 		cert, key, err := certutils.GenerateTlsCert(req.GetWeb().Name)
 		if err != nil {
-			return &implantpb.Empty{}, err
+			return &lispb.WebsiteResponse{}, err
 		}
 		req.GetTls().Cert = cert
 		req.GetTls().Key = key
 	}
 	err := db.CreatePipeline(req)
+	var id = ""
 	if err != nil {
-		return &implantpb.Empty{}, err
+		return &lispb.WebsiteResponse{}, err
 	}
 	getWeb := req.GetWeb()
 	if 0 < len(getWeb.Contents) {
@@ -156,18 +147,13 @@ func (rpc *Server) RegisterWebsite(ctx context.Context, req *lispb.Pipeline) (*i
 				}
 			}
 			content.Size = uint64(len(content.Content))
-			err := website.AddContent(getWeb.Name, content)
+			id, err = website.AddContent(getWeb.Name, content)
 			if err != nil {
 				return nil, err
 			}
 		}
-	} else {
-		_, err := website.AddWebsite(getWeb.Name)
-		if err != nil {
-			return nil, err
-		}
 	}
-	return &implantpb.Empty{}, nil
+	return &lispb.WebsiteResponse{ID: id}, nil
 }
 
 func (rpc *Server) StartWebsite(ctx context.Context, req *lispb.CtrlPipeline) (*clientpb.Empty, error) {
@@ -220,6 +206,7 @@ func (rpc *Server) StopWebsite(ctx context.Context, req *lispb.CtrlPipeline) (*c
 }
 
 func (rpc *Server) UploadWebsite(ctx context.Context, req *lispb.WebsiteAssets) (*clientpb.Empty, error) {
+	db.WebsiteByName(req.Assets[0].WebName, "")
 	ctrl := clientpb.JobCtrl{
 		Id:   core.NextCtrlID(),
 		Ctrl: consts.CtrlWebsiteRegister,

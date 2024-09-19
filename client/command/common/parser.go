@@ -38,6 +38,16 @@ func ParseAssembly(ctx *clientpb.TaskContext) (interface{}, error) {
 	return builtin.ParseAssembly(ctx.Spite)
 }
 
+func ParsePipelineSet(cmd *cobra.Command) (string, string, uint, string, string, bool) {
+	listenerID, _ := cmd.Flags().GetString("listener_id")
+	host, _ := cmd.Flags().GetString("host")
+	portUint, _ := cmd.Flags().GetUint("port")
+	certPath, _ := cmd.Flags().GetString("cert_path")
+	keyPath, _ := cmd.Flags().GetString("key_path")
+	tlsEnable, _ := cmd.Flags().GetBool("tls")
+	return listenerID, host, portUint, certPath, keyPath, tlsEnable
+}
+
 func NewExecutable(module string, path string, args []string, arch string, output bool, sac *implantpb.SacrificeProcess) (*implantpb.ExecuteBinary, error) {
 	binary, err := builtin.NewBinary(module, path, args, output, math.MaxUint32, arch, "", sac)
 	if err != nil {

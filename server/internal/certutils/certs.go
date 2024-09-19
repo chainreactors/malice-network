@@ -219,24 +219,7 @@ func GenerateTlsConfig(tlsConfig *configs.TlsConfig) (*configs.CertConfig, error
 		return &configs.CertConfig{Enable: false}, nil
 	}
 	tlsCert, err := tlsConfig.ReadCert()
-	if err == nil {
-		return tlsCert, err
-	}
-	caCertByte, caKeyByte, err := certs.GenerateCACert(tlsConfig.Name)
-	if err != nil {
-		return nil, err
-	}
-	caCert, caKey, err := ParseCertificateAuthority(caCertByte, caKeyByte)
-	if err != nil {
-		return nil, err
-	}
-	cert, key, err := certs.GenerateChildCert(tlsConfig.Name, true, caCert, caKey)
-	return &configs.CertConfig{
-		Cert:   string(cert),
-		CA:     string(caCertByte),
-		Key:    string(key),
-		Enable: true,
-	}, nil
+	return tlsCert, err
 }
 
 func GenerateTlsCert(name string) (string, string, error) {

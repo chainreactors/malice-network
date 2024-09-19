@@ -67,6 +67,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		comp["port"] = carapace.ActionValues().Usage("tcp port")
 		comp["cert_path"] = carapace.ActionFiles().Usage("path to the cert file")
 		comp["key_path"] = carapace.ActionFiles().Usage("path to the key file")
+		comp["tls"] = carapace.ActionValues().Usage("enable tls")
 	})
 
 	tcpStartCmd := &cobra.Command{
@@ -140,6 +141,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		comp["content_type"] = carapace.ActionFiles().Tag("website content type")
 		comp["cert_path"] = carapace.ActionFiles().Usage("path to the cert file")
 		comp["key_path"] = carapace.ActionFiles().Usage("path to the key file")
+		comp["tls"] = carapace.ActionValues().Usage("enable tls")
 	})
 
 	websiteStartCmd := &cobra.Command{

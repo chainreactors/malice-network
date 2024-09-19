@@ -22,11 +22,11 @@ func ExecuteFlagSet(f *pflag.FlagSet) {
 func TlsCertFlagSet(f *pflag.FlagSet) {
 	f.String("cert_path", "", "tcp pipeline tls cert path")
 	f.String("key_path", "", "tcp pipeline tls key path")
+	f.BoolP("tls", "t", false, "enable tls")
 }
 
 func PipelineFlagSet(f *pflag.FlagSet) {
 	f.StringP("listener_id", "l", "", "listener id")
 	f.String("host", "", "pipeline host")
-	f.Uint("port", 0, "pipeline port")
-	f.BoolP("tls", "t", false, "enable tls")
+	f.UintP("port", "p", 0, "pipeline port")
 }

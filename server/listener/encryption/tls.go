@@ -17,6 +17,9 @@ func WrapWithTls(lsn net.Listener, config *configs.CertConfig) (net.Listener, er
 }
 
 func WrapToTlsConfig(config *configs.CertConfig) (*tls.Config, error) {
+	if !config.Enable {
+		return nil, nil
+	}
 	pair, err := tls.X509KeyPair([]byte(config.Cert), []byte(config.Key))
 	if err != nil {
 		return nil, err

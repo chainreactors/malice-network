@@ -16,7 +16,6 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"google.golang.org/grpc"
 	"os"
-	"path"
 	"path/filepath"
 )
 
@@ -359,29 +358,9 @@ func (lns *listener) stopWebsite(job *clientpb.Job) *clientpb.JobStatus {
 
 func (lns *listener) registerWebsite(job *clientpb.Job) *clientpb.JobStatus {
 	webAssets := job.GetWebsiteAssets().GetAssets()
-	folderPath := filepath.Join(configs.WebsitePath, webAssets[0].WebName)
-	err := os.MkdirAll(folderPath, 0755)
-	if err != nil {
-		return &clientpb.JobStatus{
-			ListenerId: lns.ID(),
-			Status:     consts.CtrlStatusFailed,
-			Error:      err.Error(),
-			Job:        job,
-		}
-	}
 	for _, asset := range webAssets {
-		filePath := filepath.Join(folderPath, asset.FileName)
-		fullWebpath := path.Join(folderPath, filepath.ToSlash(filePath[len(folderPath):]))
-		err := os.MkdirAll(filepath.Dir(fullWebpath), os.ModePerm)
-		if err != nil {
-			return &clientpb.JobStatus{
-				ListenerId: lns.ID(),
-				Status:     consts.CtrlStatusFailed,
-				Ctrl:       consts.CtrlWebUpload,
-				Error:      err.Error(),
-			}
-		}
-		err = os.WriteFile(filePath, asset.Content, os.ModePerm)
+		filePath := filepath.Join(configs.WebsitePath, asset.FileName)
+		err := os.WriteFile(filePath, asset.Content, os.ModePerm)
 		if err != nil {
 			return &clientpb.JobStatus{
 				ListenerId: lns.ID(),
