@@ -24,7 +24,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	})
 
 	noteCommand := &cobra.Command{
-		Use:   consts.CommandNote,
+		Use:   consts.CommandNote + " [session] [note]",
 		Short: "add note to session",
 		Long:  help.GetHelpFor("note"),
 		Args:  cobra.MinimumNArgs(2),
@@ -41,7 +41,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	)
 
 	groupCommand := &cobra.Command{
-		Use:   consts.CommandGroup,
+		Use:   consts.CommandGroup + " [session] [group]",
 		Short: "group session",
 		Long:  help.GetHelpFor("group"),
 		Args:  cobra.MinimumNArgs(2),
@@ -58,7 +58,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	)
 
 	removeCommand := &cobra.Command{
-		Use:   consts.CommandDelSession,
+		Use:   consts.CommandDelSession + " [session]",
 		Short: "del session",
 		Long:  help.GetHelpFor("remove"),
 		Args:  cobra.MinimumNArgs(1),
@@ -70,7 +70,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	common.BindArgCompletions(removeCommand, nil, common.SessionIDCompleter(con))
 
 	useCommand := &cobra.Command{
-		Use:   consts.CommandUse,
+		Use:   consts.CommandUse + " [session]",
 		Short: "Use session",
 		Long:  help.GetHelpFor("use"),
 		Args:  cobra.MinimumNArgs(1),

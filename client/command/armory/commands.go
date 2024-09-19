@@ -30,7 +30,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	})
 
 	armoryInstallCmd := &cobra.Command{
-		Use:   consts.CommandAliasInstall,
+		Use:   consts.CommandArmoryInstall + " [armory]",
 		Short: "Install a command armory",
 		Long:  help.GetHelpFor(consts.CommandArmory + " " + consts.CommandAliasInstall),
 		Args:  cobra.ExactArgs(1),
@@ -62,7 +62,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	})
 
 	armorySearchCmd := &cobra.Command{
-		Use:   consts.CommandArmorySearch + " [name]",
+		Use:   consts.CommandArmorySearch + " [armory]",
 		Short: "Search for armory packages",
 		Long:  help.GetHelpFor(consts.CommandArmory + " " + consts.CommandArmorySearch),
 		Args:  cobra.ExactArgs(1),

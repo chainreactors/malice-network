@@ -19,7 +19,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	}
 
 	installCmd := &cobra.Command{
-		Use:   consts.CommandMalInstall,
+		Use:   consts.CommandMalInstall + " [mal_file]",
 		Short: "Install a mal manifest",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
@@ -34,7 +34,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	cmd.AddCommand(installCmd)
 
 	cmd.AddCommand(&cobra.Command{
-		Use:   consts.CommandMalLoad,
+		Use:   consts.CommandMalLoad + " [mal]",
 		Short: "Load a mal manifest",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
@@ -51,7 +51,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	})
 
 	cmd.AddCommand(&cobra.Command{
-		Use:   consts.CommandMalRemove,
+		Use:   consts.CommandMalRemove + " [mal]",
 		Short: "Remove a mal manifest",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {

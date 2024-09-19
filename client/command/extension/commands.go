@@ -30,7 +30,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	}
 
 	extensionLoadCmd := &cobra.Command{
-		Use:   consts.CommandExtensionLoad,
+		Use:   consts.CommandExtensionLoad + " [extension]",
 		Short: "Load an extension",
 		Long:  help.GetHelpFor(consts.CommandExtension + " " + consts.CommandExtensionLoad),
 		Args:  cobra.ExactArgs(1),
@@ -43,7 +43,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		carapace.ActionFiles().Usage("path to the extension directory"))
 
 	extensionInstallCmd := &cobra.Command{
-		Use:   consts.CommandExtensionInstall,
+		Use:   consts.CommandExtensionInstall + " [extension_file]",
 		Short: "Install an extension",
 		Long:  help.GetHelpFor(consts.CommandExtension + " " + consts.CommandExtensionInstall),
 		Args:  cobra.ExactArgs(1),
@@ -55,7 +55,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		carapace.ActionFiles().Usage("path to the extension directory or tar.gz file"))
 
 	extensionRemoveCmd := &cobra.Command{
-		Use:   consts.CommandExtensionRemove,
+		Use:   consts.CommandExtensionRemove + " [extension]",
 		Short: "Remove an extension",
 		Long:  help.GetHelpFor(consts.CommandExtension + " " + consts.CommandExtensionRemove),
 		Args:  cobra.ExactArgs(1),

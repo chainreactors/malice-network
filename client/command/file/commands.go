@@ -18,7 +18,7 @@ import (
 
 func Commands(con *repl.Console) []*cobra.Command {
 	downloadCmd := &cobra.Command{
-		Use:   consts.ModuleDownload,
+		Use:   consts.ModuleDownload + " [implant_file]",
 		Short: "Download file",
 		Long:  help.GetHelpFor(consts.ModuleDownload),
 		Args:  cobra.ExactArgs(1),
@@ -36,7 +36,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		carapace.ActionValues().Usage("download file source path"))
 
 	uploadCmd := &cobra.Command{
-		Use:   consts.ModuleUpload,
+		Use:   consts.ModuleUpload + " [local] [remote]",
 		Short: "Upload file",
 		Long:  help.GetHelpFor(consts.ModuleUpload),
 		Args:  cobra.ExactArgs(2),
@@ -59,7 +59,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	})
 
 	syncCmd := &cobra.Command{
-		Use:   consts.CommandSync,
+		Use:   consts.CommandSync + " [file_id]",
 		Short: "Sync file",
 		Long:  help.GetHelpFor(consts.CommandSync),
 		Args:  cobra.ExactArgs(1),

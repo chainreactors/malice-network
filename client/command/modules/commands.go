@@ -26,7 +26,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	}
 
 	loadModuleCmd := &cobra.Command{
-		Use:   consts.ModuleLoadModule,
+		Use:   consts.ModuleLoadModule + " [module_file]",
 		Short: "Load module",
 		Long:  help.GetHelpFor(consts.ModuleLoadModule),
 		Args:  cobra.ExactArgs(2),

@@ -32,7 +32,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	}
 
 	aliasLoadCmd := &cobra.Command{
-		Use:   consts.CommandAliasLoad,
+		Use:   consts.CommandAliasLoad + " [alias]",
 		Short: "Load a command alias",
 		Long:  help.GetHelpFor(consts.CommandAlias + " " + consts.CommandAliasLoad),
 		Args:  cobra.ExactArgs(1),
@@ -48,7 +48,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	)
 
 	aliasInstallCmd := &cobra.Command{
-		Use:   consts.CommandAliasInstall,
+		Use:   consts.CommandAliasInstall + " [alias_file]",
 		Short: "Install a command alias",
 		Long:  help.GetHelpFor(consts.CommandAlias + " " + consts.CommandAliasInstall),
 		Args:  cobra.ExactArgs(1),
@@ -64,7 +64,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	)
 
 	aliasRemoveCmd := &cobra.Command{
-		Use:   consts.CommandAliasRemove,
+		Use:   consts.CommandAliasRemove + " [alias]",
 		Short: "Remove an alias",
 		Long:  help.GetHelpFor(consts.CommandAlias + " " + consts.CommandAliasRemove),
 		Args:  cobra.ExactArgs(1),
