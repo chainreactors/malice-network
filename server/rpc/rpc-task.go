@@ -4,12 +4,10 @@ import (
 	"context"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/types"
-	"github.com/chainreactors/malice-network/helper/utils/handler"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
-	"strconv"
 )
 
 func getTaskContext(sess *core.Session, task *core.Task, index int32) (*clientpb.TaskContext, error) {
@@ -146,24 +144,16 @@ func (rpc *Server) GetTaskFiles(ctx context.Context, req *clientpb.Session) (*cl
 	return resp, nil
 }
 
-func (rpc *Server) CancelTask(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
+func (rpc *Server) CancelTask(ctx context.Context, req *implantpb.ImplantTask) (*clientpb.Task, error) {
 	sess, err := getSession(ctx)
 	if err != nil {
 		return nil, err
 	}
-	taskId, err := strconv.Atoi(req.Input)
-	if err != nil {
-		return nil, err
-	}
-	task := sess.Tasks.Get(uint32(taskId))
+	task := sess.Tasks.Get(req.TaskId)
 	if task == nil {
 		return nil, ErrNotFoundTask
 	}
 
-	err = handler.AssertRequestName(req, consts.ModuleCancelTask)
-	if err != nil {
-		return nil, err
-	}
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err

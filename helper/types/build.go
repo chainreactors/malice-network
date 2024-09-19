@@ -24,6 +24,9 @@ func BuildSpite(spite *implantpb.Spite, msg proto.Message) (*implantpb.Spite, er
 	case *implantpb.Request:
 		spite.Name = msg.(*implantpb.Request).Name
 		spite.Body = &implantpb.Spite_Request{Request: msg.(*implantpb.Request)}
+	case *implantpb.ImplantTask:
+		spite.Name = msg.(*implantpb.ImplantTask).Op
+		spite.Body = &implantpb.Spite_Task{Task: msg.(*implantpb.ImplantTask)}
 	case *implantpb.Block:
 		spite.Name = MsgBlock.String()
 		spite.Body = &implantpb.Spite_Block{Block: msg.(*implantpb.Block)}

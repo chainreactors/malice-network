@@ -33,3 +33,13 @@ func Command(con *repl.Console) []*cobra.Command {
 	common.BindArgCompletions(cancelTaskCmd, nil, common.SessionTaskComplete(con))
 	return []*cobra.Command{taskCmd, cancelTaskCmd}
 }
+
+func Register(con *repl.Console) {
+	con.RegisterImplantFunc(
+		consts.ModuleCancelTask,
+		CancelTaskCmd,
+		"",
+		nil,
+		common.ParseStatus,
+		nil)
+}
