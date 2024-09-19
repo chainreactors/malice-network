@@ -46,8 +46,8 @@ func (t *Tasks) Add(task *Task) {
 	t.active.Store(task.Id, task)
 }
 
-func (t *Tasks) Remove(task *Task) {
-	t.active.Delete(task.Id)
+func (t *Tasks) Remove(taskId uint32) {
+	t.active.Delete(taskId)
 }
 
 type Task struct {
@@ -61,6 +61,7 @@ type Task struct {
 	Cancel    context.CancelFunc
 	Session   *Session
 	DoneCh    chan bool
+	Closed    bool
 }
 
 func (t *Task) Handler() {
@@ -127,7 +128,6 @@ func (t *Task) Finish(msg string) {
 }
 
 func (t *Task) Panic(event Event) {
-	//t.Status = status
 	EventBroker.Publish(event)
 	t.Close()
 }
@@ -135,4 +135,5 @@ func (t *Task) Panic(event Event) {
 func (t *Task) Close() {
 	t.Cancel()
 	close(t.DoneCh)
+	t.Closed = true
 }

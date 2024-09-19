@@ -35,6 +35,8 @@ github.com/chainreactors/logs v0.0.0-20240207121836-c946f072f81f h1:tcfp+CEdgiMv
 github.com/chainreactors/logs v0.0.0-20240207121836-c946f072f81f/go.mod h1:6Mv6W70JrtL6VClulZhmMRZnoYpcTahcDTKLMNEjK0o=
 github.com/chainreactors/tui v0.0.0-20240829140057-9515a6db790e h1:ZO78DagaejrjYvL0LUfUaYzUSksVDtIQgDMgFD9zrAg=
 github.com/chainreactors/tui v0.0.0-20240829140057-9515a6db790e/go.mod h1:PGljG4yiAGUZvGzue6zTAapxQgVMxbezmCsr9l0xzKc=
+github.com/chainreactors/tui v0.0.0-20240829140511-34f8093d5bdd h1:0HJCUB7vTpqDwRpexJehP3hLk1CfJouWkn9tp3FNOPs=
+github.com/chainreactors/tui v0.0.0-20240829140511-34f8093d5bdd/go.mod h1:PGljG4yiAGUZvGzue6zTAapxQgVMxbezmCsr9l0xzKc=
 github.com/charmbracelet/bubbles v0.18.0 h1:PYv1A036luoBGroX6VWjQIE9Syf2Wby2oOl/39KLfy0=
 github.com/charmbracelet/bubbles v0.18.0/go.mod h1:08qhZhtIwzgrtBjAcJnij1t1H0ZRjwHyGsy6AL11PSw=
 github.com/charmbracelet/bubbletea v0.27.1 h1:/yhaJKX52pxG4jZVKCNWj/oq0QouPdXycriDRA6m6r8=

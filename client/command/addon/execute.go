@@ -37,7 +37,6 @@ func ExecuteAddonCmd(cmd *cobra.Command, con *repl.Console) {
 		return
 	}
 }
-
 func ExecuteAddon(rpc clientrpc.MaliceRPCClient, sess *core.Session, name string, args []string,
 	output bool, timeout uint32, arch string, process string,
 	sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {

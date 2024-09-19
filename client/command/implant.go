@@ -158,6 +158,7 @@ func BindImplantCommands(con *repl.Console) console.Commands {
 }
 
 func RegisterImplantFunc(con *repl.Console) {
+	tasks.Register(con)
 	sys.Register(con)
 	file.Register(con)
 	filesystem.Register(con)

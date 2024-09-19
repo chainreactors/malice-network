@@ -58,6 +58,7 @@ func (r *GenericRequest) InitSpite() (*implantpb.Spite, error) {
 	r.Message = nil
 	return spite, nil
 }
+
 func (r *GenericRequest) NewSpite(msg proto.Message) (*implantpb.Spite, error) {
 	spite := &implantpb.Spite{
 		Timeout: uint64(consts.MinTimeout.Seconds()),
@@ -142,8 +143,6 @@ func (rpc *Server) StreamGenericHandler(ctx context.Context, req *GenericRequest
 		logs.Log.Errorf(err.Error())
 		return nil, nil, err
 	}
-	req.Task = req.Session.NewTask(spite.Name, req.Count)
-	spite.TaskId = req.Task.Id
 	in, out, err := req.Session.RequestWithStream(
 		&lispb.SpiteSession{SessionId: req.Session.ID, TaskId: req.Task.Id, Spite: spite},
 		pipelinesCh[req.Session.PipelineID],
