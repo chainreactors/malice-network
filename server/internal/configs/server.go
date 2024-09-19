@@ -50,9 +50,9 @@ type ServerConfig struct {
 	GRPCHost     string        `config:"grpc_host" default:"0.0.0.0"`
 	IP           string        `config:"ip" default:""`
 	DaemonConfig bool          `config:"daemon" default:"false"`
-	LogConfig    *LogConfig    `config:"log" default:""`
-	MiscConfig   *MiscConfig   `config:"config" default:""`
-	NotifyConfig *NotifyConfig `config:"notify" default:""`
+	LogConfig    *LogConfig    `config:"log"`
+	MiscConfig   *MiscConfig   `config:"config"`
+	NotifyConfig *NotifyConfig `config:"notify"`
 }
 
 func (c *ServerConfig) Address() string {

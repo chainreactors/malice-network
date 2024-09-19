@@ -16,18 +16,17 @@ var (
 )
 
 type Options struct {
-	Config string `short:"c" long:"config" default:"config.yaml" description:"Path to config file"`
-	IP     string `short:"i" long:"ip" description:"external ip address, -i 123.123.123.123"`
-	Daemon bool   `long:"daemon" description:"Run as a daemon"`
-	Opsec  bool   `long:"opsec" description:"Path to opsec file"`
-	//CA          string               `long:"ca" description:"Path to CA file" config:"ca"`
+	Config      string               `short:"c" long:"config" default:"config.yaml" description:"Path to config file"`
+	IP          string               `short:"i" long:"ip" description:"external ip address, -i 123.123.123.123"`
+	Daemon      bool                 `long:"daemon" description:"Run as a daemon"`
+	Opsec       bool                 `long:"opsec" description:"Path to opsec file"`
 	Debug       bool                 `long:"debug" description:"Debug mode" config:"debug"`
 	UserCmd     root.UserCommand     `command:"user" description:"User commands" `
 	ListenerCmd root.ListenerCommand `command:"listener" description:"Listener commands" `
 
 	// configs
-	Server    *configs.ServerConfig   `config:"server" default:""`
-	Listeners *configs.ListenerConfig `config:"listeners" default:""`
+	Server    *configs.ServerConfig   `config:"server" `
+	Listeners *configs.ListenerConfig `config:"listeners" `
 
 	localRpc *root.RootClient
 }
