@@ -13,9 +13,9 @@ import (
 func ExecuteCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
 	//token := ctx.Flags.Bool("token")
-	//output, _ := cmd.Flags().GetBool("output")
+	quiet, _ := cmd.Flags().GetBool("quiet")
 	cmdStr := shellquote.Join(cmd.Flags().Args()...)
-	task, err := Execute(con.Rpc, session, cmdStr)
+	task, err := Execute(con.Rpc, session, cmdStr, !quiet)
 	if err != nil {
 		con.Log.Errorf("Execute error: %v", err)
 		return
@@ -23,7 +23,7 @@ func ExecuteCmd(cmd *cobra.Command, con *repl.Console) {
 	con.GetInteractive().Console(task, "exec: "+cmdStr)
 }
 
-func Execute(rpc clientrpc.MaliceRPCClient, sess *core.Session, cmd string) (*clientpb.Task, error) {
+func Execute(rpc clientrpc.MaliceRPCClient, sess *core.Session, cmd string, output bool) (*clientpb.Task, error) {
 	cmdStrList, err := shellquote.Split(cmd)
 	if err != nil {
 		return nil, err
@@ -31,7 +31,7 @@ func Execute(rpc clientrpc.MaliceRPCClient, sess *core.Session, cmd string) (*cl
 	task, err := rpc.Execute(sess.Context(), &implantpb.ExecRequest{
 		Path:   cmdStrList[0],
 		Args:   cmdStrList[1:],
-		Output: true,
+		Output: output,
 	})
 	if err != nil {
 		return nil, err
