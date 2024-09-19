@@ -6,7 +6,9 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/core/intermediate/builtin"
 	"github.com/chainreactors/malice-network/helper/types"
+	"github.com/chainreactors/malice-network/helper/utils/file"
 	"github.com/chainreactors/malice-network/helper/utils/handler"
+	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
@@ -177,6 +179,23 @@ func RegisterBuiltinFunc(rpc clientrpc.MaliceRPCClient) {
 	// 获取任务结果
 	RegisterFunction("get", func(task *clientpb.Task, index int32) (*clientpb.TaskContext, error) {
 		return builtin.GetResult(rpc, task, index)
+	})
+
+	// bof 参数格式化
+	// script_resource("dir.x64.o"), pack_bof_args("ZZ", {"aa", "bb"})
+	RegisterFunction("pack_bof_args", func(format string, args []string) ([]string, error) {
+		if len(format) != len(args) {
+			return nil, fmt.Errorf("format and args length mismatch")
+		}
+		var packedArgs []string
+		for i, arg := range args {
+			packedArgs = append(packedArgs, format[i:i+1]+arg)
+		}
+		return pe.PackArgs(packedArgs)
+	})
+
+	RegisterFunction("format_path", func(s string) (string, error) {
+		return file.FormatWindowPath(s), nil
 	})
 
 	// 打印任务

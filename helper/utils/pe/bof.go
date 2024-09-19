@@ -156,11 +156,11 @@ func PackArgs(data []string) ([]string, error) {
 }
 
 func PackBinary(data string) string {
-	return fmt.Sprintf("bin:" + encodes.B64Encode(data))
+	return fmt.Sprintf(`bin:%s`, encodes.B64Encode(data))
 }
 
 func PackInt(i uint32) (string, error) {
-	return fmt.Sprintf("int:%d", i), nil
+	return fmt.Sprintf(`int:%d`, i), nil
 }
 
 func PackIntString(s string) (string, error) {
@@ -172,7 +172,7 @@ func PackIntString(s string) (string, error) {
 }
 
 func PackShort(i uint16) (string, error) {
-	return fmt.Sprintf("short:%d", i), nil
+	return fmt.Sprintf(`short:%d`, i), nil
 }
 
 func PackShortString(s string) (string, error) {
@@ -184,9 +184,9 @@ func PackShortString(s string) (string, error) {
 }
 
 func PackString(s string) string {
-	return fmt.Sprintf(`str:"%s"`, s)
+	return fmt.Sprintf(`str:%s`, s)
 }
 
 func PackWideString(s string) string {
-	return fmt.Sprintf(`wstr:"%s"`, s)
+	return fmt.Sprintf(`wstr:%s`, s)
 }

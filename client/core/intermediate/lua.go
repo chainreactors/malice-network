@@ -105,6 +105,13 @@ func ConvertGoValueToLua(L *lua.LState, value interface{}) lua.LValue {
 		ud.Value = v
 		L.SetMetatable(ud, L.GetTypeMetatable("ProtobufMessage"))
 		return ud
+	case []string:
+		// 如果是 []string 类型，将其转换为 Lua 表
+		luaTable := L.NewTable()
+		for _, str := range v {
+			luaTable.Append(lua.LString(str)) // 将每个 string 添加到表中
+		}
+		return luaTable
 	default:
 		return luar.New(L, value)
 	}
