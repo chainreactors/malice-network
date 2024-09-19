@@ -67,8 +67,6 @@ func InitServerStatus(conn *grpc.ClientConn, config *mtls.ClientConfig) (*Server
 		return nil, err
 	}
 
-	go s.EventHandler()
-
 	return s, nil
 }
 
@@ -85,6 +83,14 @@ type ServerStatus struct {
 	sessions        []*clientpb.Session
 	finishCallbacks *sync.Map
 	doneCallbacks   *sync.Map
+}
+
+func (s *ServerStatus) AddSession(sess *clientpb.Session) {
+	if origin, ok := s.Sessions[sess.SessionId]; ok {
+		origin.Session = sess
+	} else {
+		s.Sessions[sess.SessionId] = NewSession(sess, s)
+	}
 }
 
 func (s *ServerStatus) UpdateSessions(all bool) error {
@@ -117,18 +123,19 @@ func (s *ServerStatus) UpdateSessions(all bool) error {
 	return nil
 }
 
-func (s *ServerStatus) UpdateSession(sid string) (*clientpb.Session, error) {
+func (s *ServerStatus) UpdateSession(sid string) (*Session, error) {
 	session, err := s.Rpc.GetSession(context.Background(), &clientpb.SessionRequest{SessionId: sid})
 	if err != nil {
 		return nil, err
 	}
 	if rawSess, ok := s.Sessions[session.SessionId]; ok {
 		rawSess.Session = session
+		return rawSess, nil
 	} else {
-		s.Sessions[session.SessionId] = NewSession(session, s)
+		newSess := NewSession(session, s)
+		s.Sessions[session.SessionId] = newSess
+		return newSess, nil
 	}
-
-	return nil, nil
 }
 
 func (s *ServerStatus) AlivedSessions() []*clientpb.Session {
@@ -229,6 +236,7 @@ func (s *ServerStatus) triggerTaskFinish(event *clientpb.Event) {
 
 func (s *ServerStatus) EventHandler() {
 	defer Log.Warnf("event stream broken")
+	Log.Importantf("starting event loop")
 	eventStream, err := s.Rpc.Events(context.Background(), &clientpb.Empty{})
 	if err != nil {
 		logs.Log.Warnf("Error getting event stream: %v", err)
@@ -311,7 +319,8 @@ func (s *ServerStatus) ObserverLog(sessionId string) *Logger {
 func (s *ServerStatus) handlerSession(event *clientpb.Event) {
 	switch event.Op {
 	case consts.CtrlSessionRegister:
-		Log.Importantf("%s session: %s ", event.Session.SessionId, event.Message)
+		s.AddSession(event.Session)
+		Log.Importantf("register session: %s ", event.Message)
 	case consts.CtrlSessionConsole:
 		log := s.ObserverLog(event.Task.SessionId)
 		log.Importantf(logs.GreenBold(fmt.Sprintf("[%s.%d] run task %s: %s", event.Task.SessionId, event.Task.TaskId, event.Task.Type, event.Message)))

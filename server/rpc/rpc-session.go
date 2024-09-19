@@ -30,7 +30,7 @@ func (rpc *Server) GetAlivedSessions(ctx context.Context, _ *clientpb.Empty) (*c
 
 func (rpc *Server) GetSession(ctx context.Context, req *clientpb.SessionRequest) (*clientpb.Session, error) {
 	session, ok := core.Sessions.Get(req.SessionId)
-	if ok {
+	if !ok {
 		return nil, ErrNotFoundSession
 	}
 	return session.ToProtobuf(), nil
