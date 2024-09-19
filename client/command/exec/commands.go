@@ -36,7 +36,9 @@ func Commands(con *repl.Console) []*cobra.Command {
 		carapace.ActionValues().Usage("arguments to the command"),
 	)
 
-	common.BindFlag(execCmd, common.ExecuteFlagSet)
+	common.BindFlag(execCmd, func(f *pflag.FlagSet) {
+		f.BoolP("quiet", "q", false, "disable output")
+	})
 
 	execAssemblyCmd := &cobra.Command{
 		Use:   consts.ModuleExecuteAssembly,
@@ -139,7 +141,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		f.StringP("entrypoint", "e", "entrypoint", "entrypoint")
 	})
 
-	execPECmd := &cobra.Command{
+	execExeCmd := &cobra.Command{
 		Use:   consts.ModuleExecuteExe,
 		Short: "Executes the given PE in the sacrifice process",
 		Long:  help.GetHelpFor(consts.ModuleExecuteExe),
@@ -153,11 +155,11 @@ func Commands(con *repl.Console) []*cobra.Command {
 		},
 	}
 
-	common.BindArgCompletions(execPECmd, nil,
+	common.BindArgCompletions(execExeCmd, nil,
 		carapace.ActionFiles().Usage("path the PE file"),
 		carapace.ActionValues().Usage("arguments to pass to the assembly entrypoint"))
 
-	common.BindFlag(execPECmd, common.ExecuteFlagSet, common.SacrificeFlagSet)
+	common.BindFlag(execExeCmd, common.ExecuteFlagSet, common.SacrificeFlagSet)
 
 	inlinePECmd := &cobra.Command{
 		Use:   consts.ModuleAliasInlineExe,
@@ -225,7 +227,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		inlineShellcodeCmd,
 		execDLLCmd,
 		inlineDLLCmd,
-		execPECmd,
+		execExeCmd,
 		inlinePECmd,
 		execBofCmd,
 		execPowershellCmd,
@@ -238,7 +240,7 @@ func Register(con *repl.Console) {
 		Execute,
 		"bshell",
 		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, cmd string) (*clientpb.Task, error) {
-			return Execute(rpc, sess, cmd)
+			return Execute(rpc, sess, cmd, true)
 		},
 		func(ctx *clientpb.TaskContext) (interface{}, error) {
 			resp := ctx.Spite.GetExecResponse()
