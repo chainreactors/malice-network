@@ -3,6 +3,7 @@ package listener
 import (
 	"context"
 	"fmt"
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/types"
@@ -18,14 +19,9 @@ import (
 )
 
 func newWebsiteCmd(cmd *cobra.Command, con *repl.Console) {
-	certPath, _ := cmd.Flags().GetString("cert_path")
-	keyPath, _ := cmd.Flags().GetString("key_path")
+	listenerID, _, portUint, certPath, keyPath, tlsEnable := common.ParsePipelineSet(cmd)
 	contentType, _ := cmd.Flags().GetString("content_type")
-
-	listenerID, _ := cmd.Flags().GetString("listener_id")
 	name := cmd.Flags().Arg(0)
-	portUint, _ := cmd.Flags().GetUint("port")
-	tlsEnable, _ := cmd.Flags().GetBool("tls")
 	webPath := cmd.Flags().Arg(1)
 	cPath := cmd.Flags().Arg(2)
 	var cert, key string
@@ -61,27 +57,27 @@ func newWebsiteCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf("Error adding content %s\n", err)
 		return
 	}
+	if fileIfo.IsDir() {
+		con.Log.Errorf("Error adding content %s\n", "file is a directory")
+		return
+	}
 	addWeb := &lispb.WebsiteAddContent{
 		Name:     name,
 		Contents: map[string]*lispb.WebContent{},
 	}
-	if fileIfo.IsDir() {
-		webAsserts = types.WebAddDirectory(addWeb, webPath, cPath)
-	} else {
-		types.WebAddFile(addWeb, webPath, contentType, cPath)
-		content, err := os.ReadFile(cPath)
-		if err != nil {
-			con.Log.Error(err.Error())
-			return
-		}
-		webAsserts = &lispb.WebsiteAssets{}
-		webAsserts.Assets = append(webAsserts.Assets, &lispb.WebsiteAsset{
-			WebName:  name,
-			Content:  content,
-			FileName: filepath.Base(cPath),
-		})
+
+	types.WebAddFile(addWeb, webPath, contentType, cPath)
+	content, err := os.ReadFile(cPath)
+	if err != nil {
+		con.Log.Error(err.Error())
+		return
 	}
-	_, err = con.LisRpc.RegisterWebsite(context.Background(), &lispb.Pipeline{
+	webAsserts = &lispb.WebsiteAssets{}
+	webAsserts.Assets = append(webAsserts.Assets, &lispb.WebsiteAsset{
+		WebName: name,
+		Content: content,
+	})
+	resp, err := con.LisRpc.RegisterWebsite(context.Background(), &lispb.Pipeline{
 		Encryption: &lispb.Encryption{
 			Enable: false,
 			Type:   "",
@@ -107,7 +103,7 @@ func newWebsiteCmd(cmd *cobra.Command, con *repl.Console) {
 	if err != nil {
 		con.Log.Error(err.Error())
 	}
-
+	webAsserts.GetAssets()[0].FileName = resp.ID
 	_, err = con.LisRpc.UploadWebsite(context.Background(), webAsserts)
 	if err != nil {
 		con.Log.Error(err.Error())

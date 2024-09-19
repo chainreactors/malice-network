@@ -3,6 +3,7 @@ package listener
 import (
 	"context"
 	"fmt"
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
@@ -50,13 +51,8 @@ func listTcpCmd(cmd *cobra.Command, con *repl.Console) {
 }
 
 func newTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) {
-	certPath, _ := cmd.Flags().GetString("cert_path")
-	keyPath, _ := cmd.Flags().GetString("key_path")
-	listenerID, _ := cmd.Flags().GetString("listener_id")
+	listenerID, host, portUint, certPath, keyPath, tlsEnable := common.ParsePipelineSet(cmd)
 	name := cmd.Flags().Arg(0)
-	host, _ := cmd.Flags().GetString("host")
-	portUint, _ := cmd.Flags().GetUint("port")
-	tlsEnable, _ := cmd.Flags().GetBool("tls")
 	var cert, key string
 	var err error
 	if listenerID == "" {
@@ -108,6 +104,7 @@ func newTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) {
 	if err != nil {
 		con.Log.Error(err.Error())
 	}
+	con.Log.Importantf("TCP Pipeline %s added\n", name)
 }
 
 func startTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) {

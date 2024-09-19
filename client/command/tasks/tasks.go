@@ -20,7 +20,7 @@ func listTasks(cmd *cobra.Command, con *repl.Console) {
 	if 0 < len(tasks) {
 		printTasks(tasks, con)
 	} else {
-		con.Log.Info("No sessions")
+		con.Log.Info("No tasks")
 	}
 
 }

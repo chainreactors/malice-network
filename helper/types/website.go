@@ -67,6 +67,7 @@ func WebAddFile(web *lispb.WebsiteAddContent, webpath string, contentType string
 	}
 
 	web.Contents[webpath] = &lispb.WebContent{
+		Name:        web.Name,
 		Path:        webpath,
 		ContentType: contentType,
 		Content:     data,
