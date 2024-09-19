@@ -167,6 +167,7 @@ func (rpc *Server) CancelTask(ctx context.Context, req *implantpb.ImplantTask) (
 		core.EventBroker.Publish(core.Event{
 			EventType: consts.EventTask,
 			Op:        consts.CtrlTaskCancel,
+			Task:      task.ToProtobuf(),
 		})
 		task.Cancel()
 	})
