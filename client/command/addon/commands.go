@@ -74,6 +74,7 @@ func Register(con *repl.Console) {
 			}
 			con.UpdateSession(content.Session.SessionId)
 			var s strings.Builder
+			s.WriteString("\n")
 			for _, ext := range exts.Addons {
 				s.WriteString(fmt.Sprintf("%s\t%s\t%s\n", ext.Name, ext.Type, ext.Depend))
 			}
