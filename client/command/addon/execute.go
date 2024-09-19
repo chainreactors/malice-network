@@ -14,23 +14,24 @@ import (
 
 func ExecuteAddonCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
-	args := cmd.Flags().Args()
+	addonName := cmd.Flags().Arg(0)
+	args := cmd.Flags().Args()[1:]
 	timeout, _ := cmd.Flags().GetUint32("timeout")
 	quiet, _ := cmd.Flags().GetBool("quiet")
 	arch, _ := cmd.Flags().GetString("arch")
 	process, _ := cmd.Flags().GetString("process")
 	if !session.HasAddon(cmd.Name()) {
-		con.Log.Errorf("addon %s not found in %s", cmd.Name(), session.SessionId)
+		con.Log.Errorf("addon %s not found in %s", addonName, session.SessionId)
 		return
 	}
 
-	addon := session.GetAddon(cmd.Name())
+	addon := session.GetAddon(addonName)
 	var sac *implantpb.SacrificeProcess
 	if slices.Contains(consts.SacrificeModules, addon.Depend) {
 		sac, _ = common.ParseSacrifice(cmd)
 	}
 
-	_, err := ExecuteAddon(con.Rpc, session, cmd.Name(), args, !quiet, timeout, arch, process, sac)
+	_, err := ExecuteAddon(con.Rpc, session, addonName, args, !quiet, timeout, arch, process, sac)
 	if err != nil {
 		con.Log.Errorf("%s", err)
 		return
