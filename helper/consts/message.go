@@ -69,6 +69,7 @@ const (
 	CommandExit             = "exit"
 	CommandSessions         = "sessions"
 	CommandTasks            = "tasks"
+	CommandFiles            = "files"
 	CommandNote             = "note"
 	CommandGroup            = "group"
 	CommandObverse          = "obverse"

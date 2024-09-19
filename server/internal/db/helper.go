@@ -211,7 +211,7 @@ func ListClients() ([]models.Operator, error) {
 }
 
 func GetTaskDescriptionByID(taskID string) (*models.FileDescription, error) {
-	var task models.Task
+	var task models.File
 	if err := Session().Where("id = ?", taskID).First(&task).Error; err != nil {
 		return nil, err
 	}
@@ -224,26 +224,26 @@ func GetTaskDescriptionByID(taskID string) (*models.FileDescription, error) {
 	return &td, nil
 }
 
-// Task
-func GetAllTasks(sessionID string) ([]models.Task, error) {
-	var tasks []models.Task
-	result := Session().Where("session_id = ?", sessionID).Find(&tasks)
+// File
+func GetAllFiles(sessionID string) ([]models.File, error) {
+	var files []models.File
+	result := Session().Where("session_id = ?", sessionID).Find(&files)
 	if result.Error != nil {
 		return nil, result.Error
 	}
-	return tasks, nil
+	return files, nil
 }
 
-func FindTasksWithNonOneCurTotal(session models.Session) ([]models.Task, error) {
-	var tasks []models.Task
-	result := Session().Where("session_id = ?", session.SessionID).Where("cur != total").Find(&tasks)
+func FindFilesWithNonOneCurTotal(session models.Session) ([]models.File, error) {
+	var files []models.File
+	result := Session().Where("session_id = ?", session.SessionID).Where("cur != total").Find(&files)
 	if result.Error != nil {
-		return tasks, result.Error
+		return files, result.Error
 	}
-	if len(tasks) == 0 {
-		return tasks, gorm.ErrRecordNotFound
+	if len(files) == 0 {
+		return files, gorm.ErrRecordNotFound
 	}
-	return tasks, nil
+	return files, nil
 }
 
 func FindPipeline(name, listenerID string) (models.Pipeline, error) {
@@ -287,6 +287,18 @@ func ListPipelines(listenerID string, pipelineType string) ([]models.Pipeline, e
 	var pipelines []models.Pipeline
 	err := Session().Where("listener_id = ? AND type = ?", listenerID, pipelineType).Find(&pipelines).Error
 	return pipelines, err
+}
+
+func EnablePipeline(pipeline models.Pipeline) error {
+	pipeline.Enable = true
+	result := Session().Save(&pipeline)
+	return result.Error
+}
+
+func UnEnablePipeline(pipeline models.Pipeline) error {
+	pipeline.Enable = false
+	result := Session().Save(&pipeline)
+	return result.Error
 }
 
 func ListListeners() ([]models.Operator, error) {
@@ -351,12 +363,12 @@ func SaveCertificate(certificate *models.Certificate) error {
 	return nil
 }
 
-func AddTask(typ string, task *core.Task, td *models.FileDescription) error {
+func AddFile(typ string, task *core.Task, td *models.FileDescription) error {
 	tdString, err := td.ToJsonString()
 	if err != nil {
 		return err
 	}
-	taskModel := &models.Task{
+	fileModel := &models.File{
 		ID:          task.SessionId + "-" + utils.ToString(task.Id),
 		Type:        typ,
 		SessionID:   task.SessionId,
@@ -364,15 +376,15 @@ func AddTask(typ string, task *core.Task, td *models.FileDescription) error {
 		Total:       task.Total,
 		Description: tdString,
 	}
-	Session().Create(taskModel)
+	Session().Create(fileModel)
 	return nil
 }
 
-func UpdateTask(task *core.Task, newCur int) error {
-	taskModel := &models.Task{
+func UpdateFile(task *core.Task, newCur int) error {
+	fileModel := &models.File{
 		ID: task.SessionId + "-" + utils.ToString(task.Id),
 	}
-	return taskModel.UpdateCur(Session(), newCur)
+	return fileModel.UpdateCur(Session(), newCur)
 }
 
 func ToTask(task models.Task) (*core.Task, error) {
@@ -391,6 +403,24 @@ func ToTask(task models.Task) (*core.Task, error) {
 		Cur:       task.Cur,
 		Total:     task.Total,
 	}, nil
+}
+
+func AddTask(task *core.Task) error {
+	taskModel := &models.Task{
+		ID:        task.SessionId + "-" + utils.ToString(task.Id),
+		Type:      task.Type,
+		SessionID: task.SessionId,
+		Cur:       task.Cur,
+		Total:     task.Total,
+	}
+	return Session().Create(taskModel).Error
+}
+
+func UpdateTask(task *core.Task, newCur int) error {
+	taskModel := &models.Task{
+		ID: task.SessionId + "-" + utils.ToString(task.Id),
+	}
+	return taskModel.UpdateCur(Session(), newCur)
 }
 
 // WebsiteByName - Get website by name

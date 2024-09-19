@@ -126,7 +126,6 @@ func Execute() {
 			return
 		}
 	}
-
 	if opt.Listeners.Enable {
 		logs.Log.Importantf("listener config enabled, Starting listeners")
 		err := StartListener(opt.Listeners)
