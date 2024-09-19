@@ -81,6 +81,8 @@ func MessageType(message *implantpb.Spite) MsgName {
 		return MsgListAddon
 	case *implantpb.Spite_BypassRequest:
 		return MsgBypass
+	case *implantpb.Spite_NetstatResponse:
+		return MsgNetstat
 	default:
 		return MsgUnknown
 	}
