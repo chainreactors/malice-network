@@ -13,18 +13,18 @@ type ListenerConfig struct {
 	Enable       bool                 `config:"enable" default:"true"`
 	Name         string               `config:"name" default:"listener"`
 	Auth         string               `config:"auth" default:"listener.auth"`
-	TcpPipelines []*TcpPipelineConfig `config:"tcp" default:""`
+	TcpPipelines []*TcpPipelineConfig `config:"tcp" `
 	//HttpPipelines []*HttpPipelineConfig `config:"http" default:""`
-	Websites []*WebsiteConfig `config:"websites" default:""`
+	Websites []*WebsiteConfig `config:"websites"`
 }
 
 type TcpPipelineConfig struct {
-	Enable           bool              `config:"enable" default:"false"`
+	Enable           bool              `config:"enable" default:"true"`
 	Name             string            `config:"name" default:"tcp"`
 	Host             string            `config:"host" default:"0.0.0.0"`
 	Port             uint16            `config:"port" default:"5001"`
-	TlsConfig        *TlsConfig        `config:"tls" default:""`
-	EncryptionConfig *EncryptionConfig `config:"encryption" default:""`
+	TlsConfig        *TlsConfig        `config:"tls"`
+	EncryptionConfig *EncryptionConfig `config:"encryption"`
 }
 
 type HttpPipelineConfig struct {
@@ -32,7 +32,7 @@ type HttpPipelineConfig struct {
 	Name      string     `config:"name" default:"http"`
 	Host      string     `config:"host" default:"0.0.0.0"`
 	Port      uint16     `config:"port" default:"8443"`
-	TlsConfig *TlsConfig `config:"tls" default:""`
+	TlsConfig *TlsConfig `config:"tls"`
 }
 
 type WebsiteConfig struct {
@@ -41,7 +41,7 @@ type WebsiteConfig struct {
 	WebsiteName string     `config:"name" default:"web"`
 	Port        uint16     `config:"port" default:"443"`
 	ContentPath string     `config:"content_path" default:""`
-	TlsConfig   *TlsConfig `config:"tls" default:""`
+	TlsConfig   *TlsConfig `config:"tls" `
 }
 
 type CertConfig struct {

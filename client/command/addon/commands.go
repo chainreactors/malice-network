@@ -70,7 +70,7 @@ func Register(con *repl.Console) {
 		func(content *clientpb.TaskContext) (interface{}, error) {
 			exts := content.Spite.GetAddons()
 			if len(exts.Addons) == 0 {
-				return "", fmt.Errorf("No addon found.")
+				return "", fmt.Errorf("no addon found")
 			}
 			con.UpdateSession(content.Session.SessionId)
 			var s strings.Builder
