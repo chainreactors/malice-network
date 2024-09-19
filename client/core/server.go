@@ -167,7 +167,7 @@ func (s *ServerStatus) triggerTaskDone(event *clientpb.Event) {
 		log.Errorf(logs.RedBold(err.Error()))
 		return
 	}
-	if fn, ok := intermediate.InternalFunctions[event.Task.Type]; ok {
+	if fn, ok := intermediate.InternalFunctions[event.Task.Type]; ok && fn.DoneCallback != nil {
 		resp, err := fn.DoneCallback(&clientpb.TaskContext{
 			Task:    event.Task,
 			Session: event.Session,
@@ -197,11 +197,7 @@ func (s *ServerStatus) triggerTaskFinish(event *clientpb.Event) {
 		log.Errorf(logs.RedBold(err.Error()))
 		return
 	}
-	if fn, ok := intermediate.InternalFunctions[event.Task.Type]; !ok {
-		if fn.FinishCallback == nil {
-			Log.Debugf("No finish callback for %s", event.Task.Type)
-			return
-		}
+	if fn, ok := intermediate.InternalFunctions[event.Task.Type]; ok && fn.FinishCallback != nil {
 		log.Importantf(logs.GreenBold(fmt.Sprintf("[%s.%d] task finish (%d/%d), %s",
 			event.Task.SessionId, event.Task.TaskId,
 			event.Task.Cur, event.Task.Total,
