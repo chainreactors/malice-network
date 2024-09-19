@@ -3,10 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/chainreactors/files"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/codenames"
-	"github.com/chainreactors/malice-network/helper/mtls"
+	"github.com/chainreactors/malice-network/helper/utils/file"
+	"github.com/chainreactors/malice-network/helper/utils/mtls"
 	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
@@ -49,7 +49,7 @@ func Execute() {
 		}
 		return
 	}
-	if !files.IsExist(opt.Config) {
+	if !file.Exist(opt.Config) {
 		confStr := configs.InitDefaultConfig(&opt, 0)
 		err := os.WriteFile(opt.Config, []byte(confStr), 0644)
 		if err != nil {

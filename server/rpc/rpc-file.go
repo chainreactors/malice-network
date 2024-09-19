@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/handler"
-	"github.com/chainreactors/malice-network/helper/helper"
 	"github.com/chainreactors/malice-network/helper/packet"
 	"github.com/chainreactors/malice-network/helper/types"
+	"github.com/chainreactors/malice-network/helper/utils/file"
+	"github.com/chainreactors/malice-network/helper/utils/handler"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/server/internal/configs"
@@ -185,7 +185,7 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 				return
 			}
 			if block.End {
-				checksum, _ := helper.CalculateSHA256Checksum(fileName)
+				checksum, _ := file.CalculateSHA256Checksum(fileName)
 				if checksum != respCheckSum {
 					greq.Task.Panic(buildErrorEvent(greq.Task, fmt.Errorf("checksum error")))
 					return
@@ -205,7 +205,7 @@ func (rpc *Server) Sync(ctx context.Context, req *clientpb.Sync) (*clientpb.Sync
 		logs.Log.Errorf("cannot find task in db by fileid: %s", err)
 		return nil, err
 	}
-	//if !files.IsExist(td.Path + td.Name) {
+	//if !file.Exist(td.Path + td.Name) {
 	//	return nil, os.ErrExist
 	//}
 	data, err := os.ReadFile(path.Join(configs.TempPath, td.NickName))

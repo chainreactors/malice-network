@@ -7,7 +7,6 @@ import (
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/core/intermediate"
-	"github.com/chainreactors/malice-network/client/utils"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/tui"
 	"github.com/reeflective/console"
@@ -107,10 +106,10 @@ func (c *Console) GetPrompt() string {
 	if session != nil {
 		groupName := session.GroupName
 		if session.Note != "" {
-			return utils.NewSessionColor(groupName, session.Note)
+			return NewSessionColor(groupName, session.Note)
 		} else {
 			sessionID := session.SessionId
-			return utils.NewSessionColor(groupName, sessionID[:8])
+			return NewSessionColor(groupName, sessionID[:8])
 		}
 
 	} else {

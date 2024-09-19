@@ -6,7 +6,7 @@ import (
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/helper"
+	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
@@ -35,7 +35,7 @@ func ExecDLL(rpc clientrpc.MaliceRPCClient, sess *core.Session, pePath string, e
 		arch = sess.Os.Arch
 	}
 	binary.EntryPoint = entrypoint
-	if helper.CheckPEType(binary.Bin) != consts.DLLFile {
+	if pe.CheckPEType(binary.Bin) != consts.DLLFile {
 		return nil, errors.New("the file is not a DLL file")
 	}
 	task, err := rpc.ExecuteEXE(sess.Context(), binary)
@@ -67,7 +67,7 @@ func InlineDLL(rpc clientrpc.MaliceRPCClient, sess *core.Session, path, entryPoi
 		return nil, err
 	}
 	binary.EntryPoint = entryPoint
-	if helper.CheckPEType(binary.Bin) != consts.DLLFile {
+	if pe.CheckPEType(binary.Bin) != consts.DLLFile {
 		return nil, errors.New("the file is not a DLL file")
 	}
 	task, err := rpc.ExecuteEXE(sess.Context(), binary)

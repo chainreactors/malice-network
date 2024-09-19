@@ -3,7 +3,7 @@ package assets
 import (
 	_ "embed"
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/helper"
+	"github.com/chainreactors/malice-network/helper/utils/file"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -67,11 +67,11 @@ func GetConfigs() ([]string, error) {
 func MvConfig(oldPath string) error {
 	fileName := filepath.Base(oldPath)
 	newPath := filepath.Join(GetConfigDir(), fileName)
-	err := helper.CopyFile(oldPath, newPath)
+	err := file.CopyFile(oldPath, newPath)
 	if err != nil {
 		return err
 	}
-	err = helper.RemoveFile(oldPath)
+	err = file.RemoveFile(oldPath)
 	if err != nil {
 		return err
 	}

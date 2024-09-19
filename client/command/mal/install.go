@@ -5,7 +5,7 @@ import (
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/core/plugin"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/client/utils"
+	"github.com/chainreactors/malice-network/helper/utils/file"
 	"github.com/chainreactors/tui"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -48,7 +48,7 @@ func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *repl.Conso
 	var manifestData []byte
 	var err error
 
-	manifestData, err = utils.ReadFileFromTarGz(extLocalPath, ManifestFileName)
+	manifestData, err = file.ReadFileFromTarGz(extLocalPath, ManifestFileName)
 	if err != nil {
 		con.Log.Errorf("Error reading %s: %s", ManifestFileName, err)
 		return
@@ -75,7 +75,7 @@ func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *repl.Conso
 				return
 			}
 		}
-		utils.ForceRemoveAll(installPath)
+		file.ForceRemoveAll(installPath)
 	}
 
 	con.Log.Infof("Installing Mal '%s' (%s) ... ", manifest.Name, manifest.Version)
@@ -84,10 +84,10 @@ func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *repl.Conso
 		con.Log.Errorf("\nError creating mal directory: %s\n", err)
 		return
 	}
-	err = utils.ExtractTarGz(extLocalPath, installPath)
+	err = file.ExtractTarGz(extLocalPath, installPath)
 	if err != nil {
 		con.Log.Errorf("\nFailed to extract tar.gz to %s: %s\n", installPath, err)
-		utils.ForceRemoveAll(installPath)
+		file.ForceRemoveAll(installPath)
 		return
 	}
 }

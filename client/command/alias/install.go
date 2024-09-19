@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/client/utils"
+	"github.com/chainreactors/malice-network/helper/utils/file"
 	"github.com/chainreactors/tui"
 	"github.com/spf13/cobra"
 	"os"
@@ -48,7 +48,7 @@ func installFromDir(aliasLocalPath string, con *repl.Console) {
 		//if !confirm {
 		//	return
 		//}
-		utils.ForceRemoveAll(installPath)
+		file.ForceRemoveAll(installPath)
 	}
 
 	con.Log.Infof("Installing alias '%s' (%s) ... ", manifest.Name, manifest.Version)
@@ -60,18 +60,18 @@ func installFromDir(aliasLocalPath string, con *repl.Console) {
 	err = os.WriteFile(filepath.Join(installPath, ManifestFileName), manifestData, 0o600)
 	if err != nil {
 		con.Log.Errorf("Failed to write %s: %s\n", ManifestFileName, err)
-		utils.ForceRemoveAll(installPath)
+		file.ForceRemoveAll(installPath)
 		return
 	}
 
 	for _, cmdFile := range manifest.Files {
 		if cmdFile.Path != "" {
-			src := filepath.Join(aliasLocalPath, utils.ResolvePath(cmdFile.Path))
-			dst := filepath.Join(installPath, utils.ResolvePath(cmdFile.Path))
-			err := utils.CopyFile(src, dst)
+			src := filepath.Join(aliasLocalPath, file.ResolvePath(cmdFile.Path))
+			dst := filepath.Join(installPath, file.ResolvePath(cmdFile.Path))
+			err := file.CopyFile(src, dst)
 			if err != nil {
 				con.Log.Errorf("Error copying file '%s' -> '%s': %s\n", src, dst, err)
-				utils.ForceRemoveAll(installPath)
+				file.ForceRemoveAll(installPath)
 				return
 			}
 		}
@@ -82,7 +82,7 @@ func installFromDir(aliasLocalPath string, con *repl.Console) {
 
 // Install an extension from a .tar.gz file
 func InstallFromFile(aliasGzFilePath string, aliasName string, promptToOverwrite bool, con *repl.Console) *string {
-	manifestData, err := utils.ReadFileFromTarGz(aliasGzFilePath, fmt.Sprintf("./%s", ManifestFileName))
+	manifestData, err := file.ReadFileFromTarGz(aliasGzFilePath, fmt.Sprintf("./%s", ManifestFileName))
 	if err != nil {
 		con.Log.Errorf("Failed to read %s from '%s': %s\n", ManifestFileName, aliasGzFilePath, err)
 		return nil
@@ -113,7 +113,7 @@ func InstallFromFile(aliasGzFilePath string, aliasName string, promptToOverwrite
 				return nil
 			}
 		}
-		utils.ForceRemoveAll(installPath)
+		file.ForceRemoveAll(installPath)
 	}
 
 	con.Log.Infof("Installing alias '%s' (%s) ... ", manifest.Name, manifest.Version)
@@ -125,15 +125,15 @@ func InstallFromFile(aliasGzFilePath string, aliasName string, promptToOverwrite
 	err = os.WriteFile(filepath.Join(installPath, ManifestFileName), manifestData, 0o600)
 	if err != nil {
 		con.Log.Errorf("Failed to write %s: %s\n", ManifestFileName, err)
-		utils.ForceRemoveAll(installPath)
+		file.ForceRemoveAll(installPath)
 		return nil
 	}
 	for _, aliasFile := range manifest.Files {
 		if aliasFile.Path != "" {
-			err := utils.InstallArtifact(aliasGzFilePath, installPath, aliasFile.Path)
+			err := file.InstallArtifact(aliasGzFilePath, installPath, aliasFile.Path)
 			if err != nil {
 				con.Log.Errorf("Failed to install file: %s\n", err)
-				utils.ForceRemoveAll(installPath)
+				file.ForceRemoveAll(installPath)
 				return nil
 			}
 		}

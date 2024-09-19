@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/cryptography"
-	"github.com/chainreactors/malice-network/helper/website"
+	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/table"
@@ -66,9 +66,9 @@ func newWebsiteCmd(cmd *cobra.Command, con *repl.Console) {
 		Contents: map[string]*lispb.WebContent{},
 	}
 	if fileIfo.IsDir() {
-		webAsserts = website.WebAddDirectory(addWeb, webPath, cPath)
+		webAsserts = types.WebAddDirectory(addWeb, webPath, cPath)
 	} else {
-		website.WebAddFile(addWeb, webPath, contentType, cPath)
+		types.WebAddFile(addWeb, webPath, contentType, cPath)
 		content, err := os.ReadFile(cPath)
 		if err != nil {
 			con.Log.Error(err.Error())
