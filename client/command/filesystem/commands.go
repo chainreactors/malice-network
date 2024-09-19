@@ -6,6 +6,7 @@ import (
 	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/utils/file"
 	"github.com/chainreactors/malice-network/helper/utils/handler"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/tui"
@@ -280,19 +281,23 @@ func Register(con *repl.Console) {
 			var rowEntries []table.Row
 			var row table.Row
 			tableModel := tui.NewTable([]table.Column{
-				{Title: "Name", Width: 20},
-				{Title: "IsDir", Width: 5},
-				{Title: "Size", Width: 7},
-				{Title: "ModTime", Width: 10},
-				{Title: "Link", Width: 15},
+				{Title: "name", Width: 25},
+				{Title: "size", Width: 10},
+				{Title: "mod", Width: 16},
+				{Title: "link", Width: 15},
 			}, true)
-			for _, file := range resp.GetFiles() {
+			for _, f := range resp.GetFiles() {
+				var size string
+				if f.IsDir {
+					size = "dir"
+				} else {
+					size = file.Bytes(f.Size)
+				}
 				row = table.Row{
-					file.Name,
-					strconv.FormatBool(file.IsDir),
-					strconv.FormatUint(file.Size, 10),
-					time.Unix(file.ModTime, 0).Format("2006-01-02 15:04:05"),
-					file.Link,
+					f.Name,
+					size,
+					time.Unix(f.ModTime, 0).Format("2006-01-02 15:04"),
+					f.Link,
 				}
 				rowEntries = append(rowEntries, row)
 			}
