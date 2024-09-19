@@ -8,16 +8,35 @@ import (
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/handler"
-	"github.com/chainreactors/malice-network/helper/mtls"
+	"github.com/chainreactors/malice-network/helper/utils/handler"
+	mtls2 "github.com/chainreactors/malice-network/helper/utils/mtls"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/chainreactors/tui"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/mattn/go-tty"
+	"github.com/muesli/termenv"
 	"github.com/reeflective/console"
 	"github.com/spf13/cobra"
 	"os"
 	"reflect"
+)
+
+var (
+	Debug           logs.Level = 10
+	Warn            logs.Level = 20
+	Info            logs.Level = 30
+	Error           logs.Level = 40
+	Important       logs.Level = 50
+	GroupStyle                 = lipgloss.NewStyle().Foreground(lipgloss.Color("#8BE9FD"))
+	NameStyle                  = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF79C6"))
+	DefaultLogStyle            = map[logs.Level]string{
+		Debug:     termenv.String(tui.Rocket+"[+]").Bold().Background(tui.Blue).String() + " %s ",
+		Warn:      termenv.String(tui.Zap+"[warn]").Bold().Background(tui.Yellow).String() + " %s ",
+		Important: termenv.String(tui.Fire+"[*]").Bold().Background(tui.Purple).String() + " %s ",
+		Info:      termenv.String(tui.HotSpring+"[i]").Bold().Background(tui.Green).String() + " %s ",
+		Error:     termenv.String(tui.Monster+"[-]").Bold().Background(tui.Red).String() + " %s ",
+	}
 )
 
 type implantFunc func(rpc clientrpc.MaliceRPCClient, sess *core.Session, params ...interface{}) (*clientpb.Task, error)
@@ -211,8 +230,8 @@ func CmdExists(name string, cmd *cobra.Command) bool {
 	return false
 }
 
-func Login(con *Console, config *mtls.ClientConfig) error {
-	conn, err := mtls.Connect(config)
+func Login(con *Console, config *mtls2.ClientConfig) error {
+	conn, err := mtls2.Connect(config)
 	if err != nil {
 		logs.Log.Errorf("Failed to connect: %v", err)
 		return err
@@ -240,7 +259,7 @@ func Login(con *Console, config *mtls.ClientConfig) error {
 }
 
 func NewConfigLogin(con *Console, yamlFile string) error {
-	config, err := mtls.ReadConfig(yamlFile)
+	config, err := mtls2.ReadConfig(yamlFile)
 	if err != nil {
 		return err
 	}
@@ -253,4 +272,36 @@ func NewConfigLogin(con *Console, yamlFile string) error {
 		return err
 	}
 	return nil
+}
+
+func AdaptSessionColor(prePrompt, sId string) string {
+	var sessionPrompt string
+	runes := []rune(sId)
+	if termenv.HasDarkBackground() {
+		sessionPrompt = fmt.Sprintf("\033[37m%s [%s]> \033[0m", prePrompt, string(runes))
+	} else {
+		sessionPrompt = fmt.Sprintf("\033[30m%s [%s]> \033[0m", prePrompt, string(runes))
+	}
+	return sessionPrompt
+}
+
+func NewSessionColor(prePrompt, sId string) string {
+	var sessionPrompt string
+	runes := []rune(sId)
+	if termenv.HasDarkBackground() {
+		sessionPrompt = fmt.Sprintf("%s [%s]> ", GroupStyle.Render(prePrompt), NameStyle.Render(string(runes)))
+	} else {
+		sessionPrompt = fmt.Sprintf("%s [%s]> ", GroupStyle.Render(prePrompt), NameStyle.Render(string(runes)))
+	}
+	return sessionPrompt
+}
+
+// From the x/exp source code - gets a slice of keys for a map
+func Keys[M ~map[K]V, K comparable, V any](m M) []K {
+	r := make([]K, 0, len(m))
+	for k := range m {
+		r = append(r, k)
+	}
+
+	return r
 }

@@ -7,7 +7,7 @@ import (
 	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/helper"
+	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
@@ -34,7 +34,7 @@ func LoadAddonCmd(cmd *cobra.Command, con *repl.Console) {
 		name = filepath.Base(path)
 	}
 	if module == "" {
-		module = helper.CheckExtModule(path)
+		module = pe.CheckExtModule(path)
 	}
 
 	session := con.GetInteractive()

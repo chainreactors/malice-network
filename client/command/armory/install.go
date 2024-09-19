@@ -9,7 +9,6 @@ import (
 	"github.com/chainreactors/malice-network/client/command/extension"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/client/utils"
 	"github.com/chainreactors/malice-network/helper/cryptography/minisign"
 	"github.com/chainreactors/tui"
 	"github.com/spf13/cobra"
@@ -297,7 +296,7 @@ func getPackagesWithCommandName(name, armoryPK, minimumVersion string) []*pkgCac
 }
 
 func getPackageIDFromUser(name string, options map[string]string) string {
-	optionKeys := utils.Keys(options)
+	optionKeys := repl.Keys(options)
 	slices.Sort(optionKeys)
 	// Add a cancel option
 	optionKeys = append(optionKeys, doNotInstallOption)

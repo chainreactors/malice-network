@@ -1,4 +1,4 @@
-package helper
+package pe
 
 import (
 	"bytes"
@@ -66,14 +66,6 @@ func CheckExtModule(filename string) string {
 		return consts.ModuleExecuteBof
 	case "bin":
 		return consts.ModuleExecuteShellcode
-	}
-	return ""
-}
-
-// JoinStringSlice Helper function to join string slices
-func JoinStringSlice(slice []string) string {
-	if len(slice) > 0 {
-		return slice[0] // Just return the first element for simplicity
 	}
 	return ""
 }

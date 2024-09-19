@@ -2,7 +2,7 @@ package main
 
 import (
 	"errors"
-	"github.com/chainreactors/malice-network/helper/mtls"
+	"github.com/chainreactors/malice-network/helper/utils/mtls"
 	"github.com/chainreactors/malice-network/proto/client/rootpb"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db"

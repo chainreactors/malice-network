@@ -11,12 +11,12 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/cli"
 	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/utils"
+	"github.com/chainreactors/malice-network/client/repl"
 )
 
 func init() {
-	logs.Log.SetFormatter(utils.DefaultLogStyle)
-	core.Log.SetFormatter(utils.DefaultLogStyle)
+	logs.Log.SetFormatter(repl.DefaultLogStyle)
+	core.Log.SetFormatter(repl.DefaultLogStyle)
 }
 
 func main() {

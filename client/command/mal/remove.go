@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/client/utils"
+	"github.com/chainreactors/malice-network/helper/utils/file"
 	"github.com/chainreactors/tui"
 	"github.com/spf13/cobra"
 	"os"
@@ -52,6 +52,6 @@ func RemoveMal(name string, con *repl.Console) error {
 		return nil
 	}
 	delete(loadedMals, name)
-	utils.ForceRemoveAll(extPath)
+	file.ForceRemoveAll(extPath)
 	return nil
 }

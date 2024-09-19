@@ -7,7 +7,6 @@ import (
 	"github.com/chainreactors/malice-network/client/command/extension"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/client/utils"
 	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/spf13/cobra"
@@ -177,8 +176,8 @@ func sortUpdateIdentifiers(aliasUpdates, extensionUpdates map[string]VersionInfo
 
 	result := []UpdateIdentifier{}
 
-	aliasNames := utils.Keys(aliasUpdates)
-	extensionNames := utils.Keys(extensionUpdates)
+	aliasNames := repl.Keys(aliasUpdates)
+	extensionNames := repl.Keys(extensionUpdates)
 	for _, name := range aliasNames {
 		result = append(result, UpdateIdentifier{
 			Type: AliasPackage,

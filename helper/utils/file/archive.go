@@ -1,4 +1,4 @@
-package utils
+package file
 
 import (
 	"archive/tar"
@@ -9,25 +9,6 @@ import (
 	"path/filepath"
 	"strings"
 )
-
-// ChmodR - Recursively chmod
-func ChmodR(path string, filePerm, dirPerm os.FileMode) error {
-	return filepath.Walk(path, func(name string, info os.FileInfo, err error) error {
-		if err == nil {
-			if info.IsDir() {
-				err = os.Chmod(name, dirPerm)
-			} else {
-				err = os.Chmod(name, filePerm)
-			}
-		}
-		return err
-	})
-}
-
-func ForceRemoveAll(rootPath string) {
-	ChmodR(rootPath, 0600, 0700)
-	os.RemoveAll(rootPath)
-}
 
 // ReadFileFromTarGz - Read a file from a tar.gz file in-memory
 func ReadFileFromTarGz(tarGzFile string, tarPath string) ([]byte, error) {
@@ -110,29 +91,6 @@ func ExtractTarGz(gzipPath string, dest string) error {
 	}
 
 	return nil
-}
-
-// CopyFile - Copy a file from src to dst
-func CopyFile(src string, dst string) error {
-	in, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer in.Close()
-	out, err := os.Create(dst)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-	_, err = io.Copy(out, in)
-	if err != nil {
-		return err
-	}
-	err = out.Close()
-	if err != nil {
-		return err
-	}
-	return err
 }
 
 func InstallArtifact(aliasGzFilePath string, installPath, artifactPath string) error {

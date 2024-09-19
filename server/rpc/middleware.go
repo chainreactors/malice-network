@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/mtls"
+	"github.com/chainreactors/malice-network/helper/utils/mtls"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/peer"

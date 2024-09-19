@@ -6,7 +6,7 @@ import (
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/helper"
+	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
@@ -35,7 +35,7 @@ func ExecExe(rpc clientrpc.MaliceRPCClient, sess *core.Session, pePath string,
 	if err != nil {
 		return nil, err
 	}
-	if helper.CheckPEType(binary.Bin) != consts.EXEFile {
+	if pe.CheckPEType(binary.Bin) != consts.EXEFile {
 		return nil, errors.New("the file is not a EXE file")
 	}
 	task, err := rpc.ExecuteEXE(sess.Context(), binary)
@@ -66,7 +66,7 @@ func InlineExe(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, a
 	if err != nil {
 		return nil, err
 	}
-	if helper.CheckPEType(binary.Bin) != consts.EXEFile {
+	if pe.CheckPEType(binary.Bin) != consts.EXEFile {
 		return nil, errors.New("the file is not a PE file")
 
 	}

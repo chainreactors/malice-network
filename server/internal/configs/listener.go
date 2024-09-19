@@ -3,7 +3,6 @@ package configs
 import (
 	"crypto/x509/pkix"
 	"github.com/chainreactors/malice-network/helper/certs"
-	"github.com/chainreactors/malice-network/helper/helper"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"os"
 )
@@ -112,11 +111,11 @@ func GenerateTlsConfig(name string) TlsConfig {
 	return TlsConfig{
 		Name: name,
 		CN:   subject.CommonName,
-		O:    helper.JoinStringSlice(subject.Organization),
-		C:    helper.JoinStringSlice(subject.Country),
-		L:    helper.JoinStringSlice(subject.Locality),
-		OU:   helper.JoinStringSlice(subject.OrganizationalUnit),
-		ST:   helper.JoinStringSlice(subject.Province),
+		O:    JoinStringSlice(subject.Organization),
+		C:    JoinStringSlice(subject.Country),
+		L:    JoinStringSlice(subject.Locality),
+		OU:   JoinStringSlice(subject.OrganizationalUnit),
+		ST:   JoinStringSlice(subject.Province),
 	}
 }
 
@@ -124,4 +123,12 @@ type EncryptionConfig struct {
 	Enable bool   `config:"enable"`
 	Type   string `config:"type"`
 	Key    string `config:"key"`
+}
+
+// JoinStringSlice Helper function to join string slices
+func JoinStringSlice(slice []string) string {
+	if len(slice) > 0 {
+		return slice[0] // Just return the first element for simplicity
+	}
+	return ""
 }

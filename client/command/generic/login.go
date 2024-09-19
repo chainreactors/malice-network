@@ -3,7 +3,7 @@ package generic
 import (
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/mtls"
+	"github.com/chainreactors/malice-network/helper/utils/mtls"
 	"github.com/chainreactors/tui"
 	"github.com/spf13/cobra"
 	"path/filepath"

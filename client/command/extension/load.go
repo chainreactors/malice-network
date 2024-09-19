@@ -11,8 +11,9 @@ import (
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/client/utils"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/utils/file"
+	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
@@ -459,7 +460,7 @@ func validManifest(manifest *ExtensionManifest) error {
 			if extFiles.Arch == "" {
 				return errors.New("missing `files.arch` field in extension manifest")
 			}
-			extFiles.Path = utils.ResolvePath(extFiles.Path)
+			extFiles.Path = file.ResolvePath(extFiles.Path)
 			if extFiles.Path == "" || extFiles.Path == "/" {
 				return errors.New("missing `files.path` field in extension manifest")
 			}
@@ -528,7 +529,7 @@ func makeExtensionArgCompleter(extCmd *ExtCommand, _ *cobra.Command, comps *cara
 
 func getExtArgs(_ *cobra.Command, args []string, _ string, ext *ExtCommand) ([]byte, error) {
 	var err error
-	argsBuffer := utils.BOFArgsBuffer{
+	argsBuffer := pe.BOFArgsBuffer{
 		Buffer: new(bytes.Buffer),
 	}
 
@@ -621,7 +622,7 @@ func getBOFArgs(cmd *cobra.Command, args []string, binPath string, ext *ExtComma
 	}
 
 	// Now build the extension's argument buffer
-	extensionArgsBuffer := utils.IoMBOFArgsBuffer{}
+	extensionArgsBuffer := pe.IoMBOFArgsBuffer{}
 	err = extensionArgsBuffer.AddString(ext.Entrypoint)
 	if err != nil {
 		return nil, err
