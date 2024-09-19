@@ -33,6 +33,7 @@ func (rpc *Server) Register(ctx context.Context, req *lispb.RegisterSession) (*i
 		logs.Log.Warnf("session %s re-register ", sess.ID)
 		core.EventBroker.Publish(core.Event{
 			EventType: consts.EventSession,
+			Op:        consts.CtrlSessionRegister,
 			Session:   sess.ToProtobuf(),
 			IsNotify:  true,
 			Message:   fmt.Sprintf("session %s from %s re-register at %s", sess.ID, sess.RemoteAddr, sess.PipelineID),
@@ -41,6 +42,7 @@ func (rpc *Server) Register(ctx context.Context, req *lispb.RegisterSession) (*i
 	} else {
 		core.EventBroker.Publish(core.Event{
 			EventType: consts.EventSession,
+			Op:        consts.CtrlSessionRegister,
 			Session:   sess.ToProtobuf(),
 			IsNotify:  true,
 			Message:   fmt.Sprintf("session %s from %s start at %s", sess.ID, sess.RemoteAddr, sess.PipelineID),

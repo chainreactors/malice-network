@@ -12,6 +12,10 @@ func UseSessionCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf(repl.ErrNotFoundSession.Error())
 		return
 	}
+	session, err := con.UpdateSession(session.SessionId)
+	if err != nil {
+		con.Log.Errorf(err.Error())
+	}
 
 	con.SwitchImplant(session)
 	con.Log.Infof("Active session %s (%s)\n", session.Note, session.SessionId)
