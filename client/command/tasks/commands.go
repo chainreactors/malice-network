@@ -19,6 +19,16 @@ func Command(con *repl.Console) []*cobra.Command {
 		},
 	}
 
+	fileCmd := &cobra.Command{
+		Use:   consts.CommandFiles,
+		Short: "List files",
+		Long:  help.GetHelpFor(consts.CommandFiles),
+		Run: func(cmd *cobra.Command, args []string) {
+			listFiles(cmd, con)
+			return
+		},
+	}
+
 	cancelTaskCmd := &cobra.Command{
 		Use:   consts.ModuleCancelTask + " [task_id]",
 		Short: "Cancel a task",
@@ -31,7 +41,7 @@ func Command(con *repl.Console) []*cobra.Command {
 	}
 
 	common.BindArgCompletions(cancelTaskCmd, nil, common.SessionTaskComplete(con))
-	return []*cobra.Command{taskCmd, cancelTaskCmd}
+	return []*cobra.Command{taskCmd, fileCmd, cancelTaskCmd}
 }
 
 func Register(con *repl.Console) {

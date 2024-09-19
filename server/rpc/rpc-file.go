@@ -31,7 +31,7 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 		if err != nil {
 			return nil, err
 		}
-		err = db.AddTask("upload", greq.Task, &models.FileDescription{
+		err = db.AddFile("upload", greq.Task, &models.FileDescription{
 			Name:    req.Name,
 			Path:    req.Target,
 			Command: fmt.Sprintf("upload -%d -%t", req.Priv, req.Hidden),
@@ -42,7 +42,7 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 			return nil, err
 		}
 		go greq.HandlerResponse(ch, types.MsgBlock)
-		err = db.UpdateTask(greq.Task, greq.Task.Cur+1)
+		err = db.UpdateFile(greq.Task, greq.Task.Cur+1)
 		if err != nil {
 			logs.Log.Errorf("cannot update task %d , %s in db", greq.Task.Id, err.Error())
 			return nil, err
@@ -60,7 +60,7 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 			return nil, err
 		}
 		var blockId = 0
-		err = db.AddTask("upload", greq.Task, &models.FileDescription{
+		err = db.AddFile("upload", greq.Task, &models.FileDescription{
 			Name:     req.Name,
 			NickName: "",
 			Path:     req.Target,
@@ -99,7 +99,7 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 				}
 				if resp.GetAck().Success {
 					greq.Task.Done(resp)
-					err = db.UpdateTask(greq.Task, blockId+1)
+					err = db.UpdateFile(greq.Task, blockId+1)
 					if err != nil {
 						logs.Log.Errorf("cannot update task %d , %s in db", greq.Task.Id, err.Error())
 						return
@@ -143,7 +143,7 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 			Command:  fmt.Sprintf("download -%s -%s ", req.Name, req.Path),
 			Size:     int64(resp.GetDownloadResponse().Size),
 		}
-		err = db.AddTask("download", greq.Task, td)
+		err = db.AddFile("download", greq.Task, td)
 		if err != nil {
 			logs.Log.Errorf("cannot create task %d , %s in db", greq.Task.Id, err.Error())
 		}
@@ -179,7 +179,7 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 			in <- ack
 			ack.Name = types.MsgDownload.String()
 			greq.Session.AddMessage(resp, int(block.BlockId+1))
-			err = db.UpdateTask(greq.Task, int(block.BlockId+1))
+			err = db.UpdateFile(greq.Task, int(block.BlockId+1))
 			if err != nil {
 				logs.Log.Errorf("cannot update task %d , %s in db", greq.Task.Id, err.Error())
 				return

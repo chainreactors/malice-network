@@ -11,6 +11,7 @@ import (
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/server/internal/core"
+	"github.com/chainreactors/malice-network/server/internal/db"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
@@ -54,8 +55,13 @@ func (r *GenericRequest) InitSpite() (*implantpb.Spite, error) {
 		return nil, err
 	}
 	r.Task = r.Session.NewTask(spite.Name, r.Count)
+
 	spite.TaskId = r.Task.Id
 	r.Message = nil
+	err = db.AddTask(r.Task)
+	if err != nil {
+		return nil, err
+	}
 	return spite, nil
 }
 
@@ -125,6 +131,9 @@ func (rpc *Server) GenericHandler(ctx context.Context, req *GenericRequest) (cha
 		logs.Log.Errorf(err.Error())
 		return nil, err
 	}
+	if pipelinesCh[req.Session.PipelineID] == nil {
+		return nil, ErrNotFoundPipeline
+	}
 	out, err := req.Session.RequestWithAsync(
 		&lispb.SpiteSession{SessionId: req.Session.ID, TaskId: req.Task.Id, Spite: spite},
 		pipelinesCh[req.Session.PipelineID],
@@ -142,6 +151,9 @@ func (rpc *Server) StreamGenericHandler(ctx context.Context, req *GenericRequest
 	if err != nil {
 		logs.Log.Errorf(err.Error())
 		return nil, nil, err
+	}
+	if pipelinesCh[req.Session.PipelineID] == nil {
+		return nil, nil, ErrNotFoundPipeline
 	}
 	in, out, err := req.Session.RequestWithStream(
 		&lispb.SpiteSession{SessionId: req.Session.ID, TaskId: req.Task.Id, Spite: spite},

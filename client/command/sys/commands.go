@@ -177,13 +177,23 @@ func Register(con *repl.Console) {
 		},
 		func(ctx *clientpb.TaskContext) (interface{}, error) {
 			envSet := ctx.Spite.GetResponse().GetKv()
-			var envs []string
+			var rowEntries []table.Row
+			var row table.Row
+			tableModel := tui.NewTable([]table.Column{
+				{Title: "Key", Width: 20},
+				{Title: "Value", Width: 70},
+			}, true)
 			for k, v := range envSet {
-				envs = append(envs, fmt.Sprintf("%s:%s", k, v))
+				row = table.Row{
+					k,
+					v,
+				}
+				rowEntries = append(rowEntries, row)
 			}
-			return strings.Join(envs, ","), nil
-		},
-		nil)
+			tableModel.SetRows(rowEntries)
+			tableModel.Title = consts.ModuleEnv
+			return tableModel.View(), nil
+		}, nil)
 
 	con.RegisterImplantFunc(
 		consts.ModuleSetEnv,
@@ -302,13 +312,13 @@ func Register(con *repl.Console) {
 			var rowEntries []table.Row
 			var row table.Row
 			tableModel := tui.NewTable([]table.Column{
-				{Title: "Name", Width: 10},
+				{Title: "Name", Width: 20},
 				{Title: "PID", Width: 5},
 				{Title: "PPID", Width: 5},
 				{Title: "Arch", Width: 7},
 				{Title: "Owner", Width: 7},
-				{Title: "Path", Width: 15},
-				{Title: "Args", Width: 10},
+				{Title: "Path", Width: 50},
+				{Title: "Args", Width: 50},
 			}, true)
 			for _, process := range resp.GetProcesses() {
 				row = table.Row{
