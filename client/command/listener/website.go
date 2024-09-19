@@ -19,24 +19,22 @@ import (
 )
 
 func newWebsiteCmd(cmd *cobra.Command, con *repl.Console) {
-	listenerID, _, portUint, certPath, keyPath, tlsEnable := common.ParsePipelineSet(cmd)
+	name, _, portUint, certPath, keyPath, tlsEnable := common.ParsePipelineSet(cmd)
 	contentType, _ := cmd.Flags().GetString("content_type")
-	name := cmd.Flags().Arg(0)
+	listenerID := cmd.Flags().Arg(0)
 	webPath := cmd.Flags().Arg(1)
 	cPath := cmd.Flags().Arg(2)
 	var cert, key string
 	var err error
 	var webAsserts *lispb.WebsiteAssets
-	if listenerID == "" {
-		con.Log.Error("listener_id is required")
-		return
-	}
 	if portUint == 0 {
 		rand.Seed(time.Now().UnixNano())
 		portUint = uint(10000 + rand.Int31n(5001))
 	}
 	port := uint32(portUint)
-
+	if name == "" {
+		name = fmt.Sprintf("%s-web-%d", listenerID, port)
+	}
 	if certPath != "" && keyPath != "" {
 		cert, err = cryptography.ProcessPEM(certPath)
 		if err != nil {
@@ -105,6 +103,13 @@ func newWebsiteCmd(cmd *cobra.Command, con *repl.Console) {
 	}
 	webAsserts.GetAssets()[0].FileName = resp.ID
 	_, err = con.LisRpc.UploadWebsite(context.Background(), webAsserts)
+	if err != nil {
+		con.Log.Error(err.Error())
+	}
+	_, err = con.LisRpc.StartWebsite(context.Background(), &lispb.CtrlPipeline{
+		Name:       name,
+		ListenerId: listenerID,
+	})
 	if err != nil {
 		con.Log.Error(err.Error())
 	}

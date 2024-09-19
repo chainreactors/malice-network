@@ -51,14 +51,10 @@ func listTcpCmd(cmd *cobra.Command, con *repl.Console) {
 }
 
 func newTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) {
-	listenerID, host, portUint, certPath, keyPath, tlsEnable := common.ParsePipelineSet(cmd)
-	name := cmd.Flags().Arg(0)
+	name, host, portUint, certPath, keyPath, tlsEnable := common.ParsePipelineSet(cmd)
+	listenerID := cmd.Flags().Arg(0)
 	var cert, key string
 	var err error
-	if listenerID == "" {
-		con.Log.Error("listener_id is required")
-		return
-	}
 	if portUint == 0 {
 		rand.Seed(time.Now().UnixNano())
 		portUint = uint(10000 + rand.Int31n(5001))
@@ -66,6 +62,9 @@ func newTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) {
 	port := uint32(portUint)
 	if host == "" {
 		host = "0.0.0.0"
+	}
+	if name == "" {
+		name = fmt.Sprintf("%s-tcp-%d", listenerID, port)
 	}
 	if certPath != "" && keyPath != "" {
 		cert, err = cryptography.ProcessPEM(certPath)
@@ -100,6 +99,14 @@ func newTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) {
 				Enable:     false,
 			},
 		},
+	})
+	if err != nil {
+		con.Log.Error(err.Error())
+	}
+
+	_, err = con.LisRpc.StartTcpPipeline(context.Background(), &lispb.CtrlPipeline{
+		Name:       name,
+		ListenerId: listenerID,
 	})
 	if err != nil {
 		con.Log.Error(err.Error())
