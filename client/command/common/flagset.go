@@ -26,7 +26,7 @@ func TlsCertFlagSet(f *pflag.FlagSet) {
 }
 
 func PipelineFlagSet(f *pflag.FlagSet) {
-	f.StringP("listener_id", "l", "", "listener id")
+	f.StringP("name", "n", "", "pipeline name")
 	f.String("host", "", "pipeline host")
 	f.UintP("port", "p", 0, "pipeline port")
 }

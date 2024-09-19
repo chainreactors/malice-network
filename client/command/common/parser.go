@@ -39,13 +39,13 @@ func ParseAssembly(ctx *clientpb.TaskContext) (interface{}, error) {
 }
 
 func ParsePipelineSet(cmd *cobra.Command) (string, string, uint, string, string, bool) {
-	listenerID, _ := cmd.Flags().GetString("listener_id")
+	name, _ := cmd.Flags().GetString("name")
 	host, _ := cmd.Flags().GetString("host")
 	portUint, _ := cmd.Flags().GetUint("port")
 	certPath, _ := cmd.Flags().GetString("cert_path")
 	keyPath, _ := cmd.Flags().GetString("key_path")
 	tlsEnable, _ := cmd.Flags().GetBool("tls")
-	return listenerID, host, portUint, certPath, keyPath, tlsEnable
+	return name, host, portUint, certPath, keyPath, tlsEnable
 }
 
 func NewExecutable(module string, path string, args []string, arch string, output bool, sac *implantpb.SacrificeProcess) (*implantpb.ExecuteBinary, error) {

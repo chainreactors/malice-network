@@ -183,6 +183,10 @@ func (rpc *Server) StartWebsite(ctx context.Context, req *lispb.CtrlPipeline) (*
 		},
 	}
 	core.Jobs.Ctrl <- &ctrl
+	err = db.EnablePipeline(pipelineDB)
+	if err != nil {
+		return nil, err
+	}
 	return &clientpb.Empty{}, nil
 }
 
@@ -201,12 +205,15 @@ func (rpc *Server) StopWebsite(ctx context.Context, req *lispb.CtrlPipeline) (*c
 		},
 	}
 	core.Jobs.Ctrl <- &ctrl
+	err = db.UnEnablePipeline(pipelineDB)
+	if err != nil {
+		return nil, err
+	}
 	return &clientpb.Empty{}, nil
 
 }
 
 func (rpc *Server) UploadWebsite(ctx context.Context, req *lispb.WebsiteAssets) (*clientpb.Empty, error) {
-	db.WebsiteByName(req.Assets[0].WebName, "")
 	ctrl := clientpb.JobCtrl{
 		Id:   core.NextCtrlID(),
 		Ctrl: consts.CtrlWebsiteRegister,

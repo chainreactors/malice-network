@@ -46,7 +46,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	common.BindArgCompletions(tcpCmd, nil, common.ListenerIDCompleter(con))
 
 	tcpRegisterCmd := &cobra.Command{
-		Use:   consts.CommandRegister,
+		Use:   consts.CommandRegister + " [listener_id] ",
 		Short: "Register a new TCP pipeline",
 		Args:  cobra.ExactArgs(1),
 		Long:  help.GetHelpFor("tcp register"),
@@ -57,12 +57,12 @@ func Commands(con *repl.Console) []*cobra.Command {
 	}
 
 	common.BindArgCompletions(tcpRegisterCmd, nil,
-		carapace.ActionValues().Usage("tcp pipeline name"))
+		common.ListenerIDCompleter(con))
 
 	common.BindFlag(tcpRegisterCmd, common.TlsCertFlagSet, common.PipelineFlagSet)
 
 	common.BindFlagCompletions(tcpRegisterCmd, func(comp carapace.ActionMap) {
-		comp["listener_id"] = common.ListenerIDCompleter(con)
+		comp["name"] = carapace.ActionValues().Usage("tcp name")
 		comp["host"] = carapace.ActionValues().Usage("tcp host")
 		comp["port"] = carapace.ActionValues().Usage("tcp port")
 		comp["cert_path"] = carapace.ActionFiles().Usage("path to the cert file")
@@ -116,7 +116,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	common.BindArgCompletions(websiteCmd, nil, common.ListenerIDCompleter(con))
 
 	websiteRegisterCmd := &cobra.Command{
-		Use:   consts.CommandRegister,
+		Use:   consts.CommandRegister + " [listener_id] [route_path] [content_path]",
 		Short: "register a website",
 		Args:  cobra.ExactArgs(3),
 		Long:  help.GetHelpFor("website Register"),
@@ -127,7 +127,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	}
 
 	common.BindArgCompletions(websiteRegisterCmd, nil,
-		carapace.ActionValues().Usage("website name"),
+		common.ListenerIDCompleter(con),
 		carapace.ActionValues().Usage("website router root path"),
 		carapace.ActionFiles().Usage("website content path"))
 
@@ -136,7 +136,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	})
 
 	common.BindFlagCompletions(websiteRegisterCmd, func(comp carapace.ActionMap) {
-		comp["listener_id"] = common.ListenerIDCompleter(con)
+		comp["name"] = carapace.ActionValues().Usage("website name")
 		comp["port"] = carapace.ActionValues().Usage("website port")
 		comp["content_type"] = carapace.ActionFiles().Tag("website content type")
 		comp["cert_path"] = carapace.ActionFiles().Usage("path to the cert file")
