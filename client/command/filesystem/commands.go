@@ -34,7 +34,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	}
 
 	catCmd := &cobra.Command{
-		Use:   consts.ModuleCat,
+		Use:   consts.ModuleCat + " [implant_file]",
 		Short: "Print file content",
 		Long:  help.GetHelpFor(consts.ModuleCat),
 		Args:  cobra.ExactArgs(1),
@@ -67,7 +67,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		carapace.ActionValues().Usage("cd path"))
 
 	chmodCmd := &cobra.Command{
-		Use:   consts.ModuleChmod,
+		Use:   consts.ModuleChmod + " [file] [mode]",
 		Short: "Change file mode",
 		Long:  help.GetHelpFor(consts.ModuleChmod),
 		Args:  cobra.ExactArgs(2),
@@ -86,7 +86,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		carapace.ActionValues().Usage("chmod file path"))
 
 	chownCmd := &cobra.Command{
-		Use:   consts.ModuleChown,
+		Use:   consts.ModuleChown + " [file] [user]",
 		Short: "Change file owner",
 		Long:  help.GetHelpFor(consts.ModuleChown),
 		Args:  cobra.ExactArgs(2),
@@ -110,7 +110,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	})
 
 	cpCmd := &cobra.Command{
-		Use:   consts.ModuleCp,
+		Use:   consts.ModuleCp + " [source] [target]",
 		Short: "Copy file",
 		Long:  help.GetHelpFor(consts.ModuleCp),
 		Args:  cobra.ExactArgs(2),
@@ -128,7 +128,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		carapace.ActionValues().Usage("target file"))
 
 	lsCmd := &cobra.Command{
-		Use:   consts.ModuleLs,
+		Use:   consts.ModuleLs + " [path]",
 		Short: "List directory",
 		Long:  help.GetHelpFor(consts.ModuleLs),
 		Args:  cobra.MaximumNArgs(1),
@@ -145,7 +145,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		carapace.ActionValues().Usage("ls path"))
 
 	mkdirCmd := &cobra.Command{
-		Use:   consts.ModuleMkdir,
+		Use:   consts.ModuleMkdir + " [path]",
 		Short: "Make directory",
 		Long:  help.GetHelpFor(consts.ModuleMkdir),
 		Args:  cobra.ExactArgs(1),
@@ -162,7 +162,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		carapace.ActionValues().Usage("mkdir path"))
 
 	mvCmd := &cobra.Command{
-		Use:   consts.ModuleMv,
+		Use:   consts.ModuleMv + " [source] [target]",
 		Short: "Move file",
 		Long:  help.GetHelpFor(consts.ModuleMv),
 		Args:  cobra.ExactArgs(2),
@@ -180,7 +180,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		carapace.ActionValues().Usage("target file"))
 
 	rmCmd := &cobra.Command{
-		Use:   consts.ModuleRm,
+		Use:   consts.ModuleRm + " [file]",
 		Short: "Remove file",
 		Long:  help.GetHelpFor(consts.ModuleRm),
 		Args:  cobra.ExactArgs(1),

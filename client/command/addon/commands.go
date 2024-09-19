@@ -15,7 +15,7 @@ import (
 
 func Commands(con *repl.Console) []*cobra.Command {
 	listaddonCmd := &cobra.Command{
-		Use:   consts.ModuleListAddon,
+		Use:   consts.ModuleListAddon + " [addon]",
 		Short: "List all addons",
 		Run: func(cmd *cobra.Command, args []string) {
 			AddonListCmd(cmd, con)

@@ -20,7 +20,7 @@ func Command(con *repl.Console) []*cobra.Command {
 	}
 
 	cancelTaskCmd := &cobra.Command{
-		Use:   consts.ModuleCancelTask,
+		Use:   consts.ModuleCancelTask + " [task_id]",
 		Short: "Cancel a task",
 		Long:  help.GetHelpFor(consts.ModuleCancelTask),
 		Args:  cobra.MinimumNArgs(1),

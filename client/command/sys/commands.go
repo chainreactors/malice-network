@@ -33,7 +33,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	}
 
 	killCmd := &cobra.Command{
-		Use:   consts.ModuleKill,
+		Use:   consts.ModuleKill + " [pid]",
 		Short: "Kill the process",
 		Long:  help.GetHelpFor(consts.ModuleKill),
 		Args:  cobra.ExactArgs(1),
@@ -76,7 +76,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	}
 
 	setEnvCmd := &cobra.Command{
-		Use:   consts.ModuleSetEnv,
+		Use:   consts.ModuleSetEnv + " [env] [value]",
 		Short: "Set environment variable",
 		Long:  help.GetHelpFor(consts.ModuleSetEnv),
 		Args:  cobra.ExactArgs(2),
@@ -94,7 +94,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		carapace.ActionValues().Usage("value"))
 
 	unSetEnvCmd := &cobra.Command{
-		Use:   consts.ModuleUnsetEnv,
+		Use:   consts.ModuleUnsetEnv + " [env]",
 		Short: "Unset environment variable",
 		Long:  help.GetHelpFor(consts.ModuleUnsetEnv),
 		Args:  cobra.ExactArgs(1),

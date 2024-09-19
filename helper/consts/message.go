@@ -88,6 +88,7 @@ const (
 	CommandArmoryUpdate     = "update"
 	CommandArmorySearch     = "search"
 	CommandArmoryLoad       = "load"
+	CommandArmoryInstall    = "install"
 	CommandExtension        = "extension"
 	CommandExtensionList    = "list"
 	CommandExtensionLoad    = "load"

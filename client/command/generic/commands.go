@@ -46,7 +46,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	}
 
 	broadcastCmd := &cobra.Command{
-		Use:   consts.CommandBroadcast,
+		Use:   consts.CommandBroadcast + " [message]",
 		Short: "Broadcast a message to all clients",
 		Long:  help.GetHelpFor(consts.CommandBroadcast),
 		Args:  cobra.MinimumNArgs(1),
