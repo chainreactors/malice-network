@@ -6,7 +6,7 @@ import (
 	"os"
 )
 
-func StartConsole() error {
+func Start() error {
 	con, err := repl.NewConsole()
 	if err != nil {
 		return err
@@ -19,5 +19,6 @@ func StartConsole() error {
 		fmt.Printf("root command: %s\n", err)
 		os.Exit(1)
 	}
+
 	return nil
 }

@@ -215,7 +215,7 @@ func GenerateListenerCert(host, name string, port int) (*mtls.ClientConfig, erro
 }
 
 func GenerateTlsConfig(tlsConfig *configs.TlsConfig) (*configs.CertConfig, error) {
-	if !tlsConfig.Enable {
+	if tlsConfig == nil || !tlsConfig.Enable {
 		return &configs.CertConfig{Enable: false}, nil
 	}
 	tlsCert, err := tlsConfig.ReadCert()

@@ -7,7 +7,7 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/types"
-	mtls2 "github.com/chainreactors/malice-network/helper/utils/mtls"
+	"github.com/chainreactors/malice-network/helper/utils/mtls"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/proto/services/listenerrpc"
@@ -23,12 +23,12 @@ var (
 	Listener *listener
 )
 
-func NewListener(clientConf *mtls2.ClientConfig, cfg *configs.ListenerConfig) error {
-	options, err := mtls2.GetGrpcOptions([]byte(clientConf.CACertificate), []byte(clientConf.Certificate), []byte(clientConf.PrivateKey), clientConf.Type)
+func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) error {
+	options, err := mtls.GetGrpcOptions([]byte(clientConf.CACertificate), []byte(clientConf.Certificate), []byte(clientConf.PrivateKey), clientConf.Type)
 	if err != nil {
 		return err
 	}
-	listenerCfg, err := mtls2.ReadConfig(cfg.Auth)
+	listenerCfg, err := mtls.ReadConfig(cfg.Auth)
 	if err != nil {
 		return err
 	}
