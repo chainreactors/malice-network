@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"os"
+	"os/exec"
 )
 
 func Commands(con *repl.Console) []*cobra.Command {
@@ -55,6 +56,24 @@ func Commands(con *repl.Console) []*cobra.Command {
 		f.BoolP("notify", "n", false, "notify the message to third-party services")
 	})
 
+	cmdCmd := &cobra.Command{
+		Use:   "! [command]",
+		Short: "Run a command",
+		Args:  cobra.MinimumNArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			// os exec
+
+			out, err := exec.Command(args[0], args[1:]...).Output()
+			if err != nil {
+				fmt.Println("Error:", err)
+				return
+			}
+
+			// 打印标准输出
+			fmt.Println(string(out))
+		},
+	}
+
 	con.RegisterServerFunc(consts.CommandBroadcast, func(con *repl.Console, msg string) (bool, error) {
 		return Broadcast(con, &clientpb.Event{
 			Type:    consts.EventBroadcast,
@@ -71,5 +90,5 @@ func Commands(con *repl.Console) []*cobra.Command {
 		})
 	})
 
-	return []*cobra.Command{loginCmd, versionCmd, exitCmd, broadcastCmd}
+	return []*cobra.Command{loginCmd, versionCmd, exitCmd, broadcastCmd, cmdCmd}
 }
