@@ -75,8 +75,9 @@ func ProtoBufToDB(pipeline *lispb.Pipeline) Pipeline {
 
 func ToTlsDB(tls *lispb.TLS) TlsConfig {
 	return TlsConfig{
-		Cert: tls.Cert,
-		Key:  tls.Key,
+		Cert:   tls.Cert,
+		Key:    tls.Key,
+		Enable: tls.Enable,
 	}
 }
 

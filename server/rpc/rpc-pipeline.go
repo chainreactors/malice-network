@@ -15,7 +15,7 @@ import (
 
 func (rpc *Server) RegisterPipeline(ctx context.Context, req *lispb.Pipeline) (*implantpb.Empty, error) {
 	if req.GetTls().Enable && req.GetTls().Cert == "" && req.GetTls().Key == "" {
-		cert, key, err := certutils.GenerateTlsCert(req.GetTcp().Name)
+		cert, key, err := certutils.GenerateTlsCert(req.GetTcp().Name, req.GetTcp().ListenerId)
 		if err != nil {
 			return &implantpb.Empty{}, err
 		}
