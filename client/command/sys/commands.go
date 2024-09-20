@@ -219,15 +219,19 @@ func Register(con *repl.Console) {
 	con.RegisterImplantFunc(
 		consts.ModuleInfo,
 		Info,
-		"binfo",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session) (*clientpb.Task, error) {
-			return Info(rpc, sess)
-		},
+		"",
+		nil,
 		func(ctx *clientpb.TaskContext) (interface{}, error) {
 			return ctx.Spite.GetBody(), nil
 		},
 		func(content *clientpb.TaskContext) (string, error) {
-			return fmt.Sprintf("%v", content.Spite.GetSysinfo()), nil
+			info := content.Spite.GetSysinfo()
+			var s strings.Builder
+			s.WriteString("System Info:\n")
+			s.WriteString(fmt.Sprintf("file: %s workdir: %s\n", info.Filepath, info.Workdir))
+			s.WriteString(fmt.Sprintf("os: %s arch: %s, hostname: %s, username: %s\n", info.Os.Name, info.Os.Arch, info.Os.Hostname, info.Os.Username))
+			s.WriteString(fmt.Sprintf("process: %s, pid: %d, ppid %d, args: %s\n", info.Process.Name, info.Process.Pid, info.Process.Ppid, info.Process.Args))
+			return s.String(), nil
 		})
 
 	con.RegisterImplantFunc(

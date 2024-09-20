@@ -17,7 +17,7 @@ func InfoCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf("Info error: %v", err)
 		return
 	}
-	session.Console(task, "info")
+	session.Console(task, "sysinfo")
 }
 
 func Info(rpc clientrpc.MaliceRPCClient, session *core.Session) (*clientpb.Task, error) {
