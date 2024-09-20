@@ -25,15 +25,23 @@ const (
 	ImplantMenu = "implant"
 )
 
-// Group
+// client Groups
 const (
 	GenericGroup  = "generic"
 	ManageGroup   = "manage"
-	ImplantGroup  = "implant"
-	ArmoryGroup   = "armory"
-	AddonGroup    = "addon"
-	MalGroup      = "mal"
 	ListenerGroup = "listener"
+)
+
+// implant Groups
+const (
+	ImplantGroup = "implant"
+	ExecuteGroup = "execute"
+	SysGroup     = "sys"
+	FileGroup    = "file"
+
+	ArmoryGroup = "armory"
+	AddonGroup  = "addon"
+	MalGroup    = "mal"
 )
 
 // config

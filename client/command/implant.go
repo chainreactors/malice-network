@@ -93,14 +93,20 @@ func BindImplantCommands(con *repl.Console) console.Commands {
 		bindCommonCommands(bind)
 		bind(consts.ImplantGroup,
 			tasks.Commands,
-			exec.Commands,
-			file.Commands,
-			filesystem.Commands,
-			sys.Commands,
 			modules.Commands,
 			explorer.Commands,
 			addon.Commands,
 		)
+
+		bind(consts.ExecuteGroup,
+			exec.Commands)
+
+		bind(consts.SysGroup,
+			sys.Commands)
+
+		bind(consts.FileGroup,
+			file.Commands,
+			filesystem.Commands)
 
 		bind(consts.ArmoryGroup)
 		bind(consts.AddonGroup)
