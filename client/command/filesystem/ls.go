@@ -16,11 +16,12 @@ func LsCmd(cmd *cobra.Command, con *repl.Console) {
 		path = "./"
 	}
 	session := con.GetInteractive()
-	_, err := Ls(con.Rpc, session, path)
+	task, err := Ls(con.Rpc, session, path)
 	if err != nil {
 		con.Log.Errorf("Ls error: %v", err)
 		return
 	}
+	session.Console(task, path)
 }
 
 func Ls(rpc clientrpc.MaliceRPCClient, session *core.Session, path string) (*clientpb.Task, error) {

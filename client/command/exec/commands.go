@@ -41,6 +41,51 @@ func Commands(con *repl.Console) []*cobra.Command {
 		f.BoolP("quiet", "q", false, "disable output")
 	})
 
+	shellCmd := &cobra.Command{
+		Use:   consts.ModuleAliasShell + " [cmdline]",
+		Short: "execute cmd",
+		Long:  help.FormatLongHelp(`equal: exec cmd /c "[cmdline]"`),
+		Args:  cobra.MinimumNArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			ShellCmd(cmd, con)
+		},
+		Annotations: map[string]string{
+			"depend": consts.ModuleExecution,
+			"os":     "windows",
+		},
+	}
+
+	common.BindArgCompletions(shellCmd, nil,
+		carapace.ActionValues().Usage("cmd to execute"),
+		carapace.ActionValues().Usage("arguments to the command"),
+	)
+
+	common.BindFlag(shellCmd, func(f *pflag.FlagSet) {
+		f.BoolP("quiet", "q", false, "disable output")
+	})
+
+	powershellCmd := &cobra.Command{
+		Use:   consts.ModuleAliasPowershell + " [cmdline]",
+		Short: "execute cmd",
+		Long:  help.FormatLongHelp(`equal: powershell.exe -ExecutionPolicy Bypass -w hidden -nop "[cmdline]"`),
+		Args:  cobra.MinimumNArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			PowershellCmd(cmd, con)
+		},
+		Annotations: map[string]string{
+			"depend": consts.ModuleExecution,
+			"os":     "windows",
+		},
+	}
+	common.BindArgCompletions(powershellCmd, nil,
+		carapace.ActionValues().Usage("powershell to execute"),
+		carapace.ActionValues().Usage("arguments to the command"),
+	)
+
+	common.BindFlag(powershellCmd, func(f *pflag.FlagSet) {
+		f.BoolP("quiet", "q", false, "disable output")
+	})
+
 	execAssemblyCmd := &cobra.Command{
 		Use:   consts.ModuleExecuteAssembly + " [file]",
 		Short: "Loads and executes a .NET assembly in a child process (Windows Only)",
@@ -197,32 +242,34 @@ func Commands(con *repl.Console) []*cobra.Command {
 		carapace.ActionFiles().Usage("path the BOF file"),
 		carapace.ActionValues().Usage("arguments to pass to the assembly entrypoint"))
 
-	execPowershellCmd := &cobra.Command{
-		Use:   consts.ModulePowershell + " [args]",
+	powerpickCmd := &cobra.Command{
+		Use:   consts.ModulePowerpick + " [args]",
 		Short: "Loads and executes powershell (Windows Only)",
-		Long:  help.FormatLongHelp(consts.ModulePowershell),
+		Long:  help.FormatLongHelp(consts.ModulePowerpick),
 		Run: func(cmd *cobra.Command, args []string) {
 			ExecutePowershellCmd(cmd, con)
 			return
 		},
 		Annotations: map[string]string{
-			"depend": consts.ModulePowershell,
+			"depend": consts.ModulePowerpick,
 		},
 	}
 
-	common.BindFlag(execPowershellCmd, func(f *pflag.FlagSet) {
+	common.BindFlag(powerpickCmd, func(f *pflag.FlagSet) {
 		f.StringP("script", "s", "", "powershell script")
 	})
 
-	common.BindArgCompletions(execPowershellCmd, nil,
+	common.BindArgCompletions(powerpickCmd, nil,
 		carapace.ActionValues().Usage("powershell"))
 
-	common.BindFlagCompletions(execPowershellCmd, func(comp carapace.ActionMap) {
+	common.BindFlagCompletions(powerpickCmd, func(comp carapace.ActionMap) {
 		comp["script"] = carapace.ActionFiles()
 	})
 
 	return []*cobra.Command{
 		execCmd,
+		shellCmd,
+		powershellCmd,
 		execAssemblyCmd,
 		execShellcodeCmd,
 		inlineShellcodeCmd,
@@ -231,22 +278,41 @@ func Commands(con *repl.Console) []*cobra.Command {
 		execExeCmd,
 		inlinePECmd,
 		execBofCmd,
-		execPowershellCmd,
+		powerpickCmd,
 	}
 }
 
 func Register(con *repl.Console) {
 	con.RegisterImplantFunc(
-		consts.ModuleExecution,
-		Execute,
+		consts.ModuleAliasShell,
+		Shell,
 		"bshell",
 		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, cmd string) (*clientpb.Task, error) {
-			return Execute(rpc, sess, cmd, true)
+			return Shell(rpc, sess, cmd, true)
 		},
-		func(ctx *clientpb.TaskContext) (interface{}, error) {
-			resp := ctx.Spite.GetExecResponse()
-			return string(resp.Stdout), nil
+		common.ParseExecResponse,
+		nil,
+	)
+
+	con.RegisterImplantFunc(
+		consts.ModuleExecution,
+		Execute,
+		"bexecute",
+		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string) (*clientpb.Task, error) {
+			return Execute(rpc, sess, path, true)
 		},
+		common.ParseExecResponse,
+		nil,
+	)
+
+	con.RegisterImplantFunc(
+		consts.ModuleAliasPowershell,
+		Powershell,
+		"bpowershell",
+		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, cmdline string) (*clientpb.Task, error) {
+			return Powershell(rpc, sess, cmdline, true)
+		},
+		common.ParseExecResponse,
 		nil,
 	)
 
@@ -353,15 +419,15 @@ func Register(con *repl.Console) {
 		nil)
 
 	con.RegisterImplantFunc(
-		consts.ModulePowershell,
-		ExecPowershell,
-		"bpowershell",
+		consts.ModulePowerpick,
+		PowerPick,
+		"bpowerpick",
 		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, script string, ps string) (*clientpb.Task, error) {
 			cmdline, err := shellquote.Split(ps)
 			if err != nil {
 				return nil, err
 			}
-			return ExecPowershell(rpc, sess, script, cmdline)
+			return PowerPick(rpc, sess, script, cmdline)
 		},
 		common.ParseAssembly,
 		nil)
