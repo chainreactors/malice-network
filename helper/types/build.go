@@ -53,6 +53,7 @@ func BuildSpite(spite *implantpb.Spite, msg proto.Message) (*implantpb.Spite, er
 	//	spite.Body = &implantpb.Spite_CurlRequest{CurlRequest: msg.(*implantpb.CurlRequest)}
 	case *implantpb.BypassRequest:
 		spite.Name = MsgBypass.String()
+		spite.Body = &implantpb.Spite_BypassRequest{BypassRequest: msg.(*implantpb.BypassRequest)}
 	case *implantpb.ExecuteAddon:
 		spite.Name = MsgExecuteAddon.String()
 		spite.Body = &implantpb.Spite_ExecuteAddon{ExecuteAddon: msg.(*implantpb.ExecuteAddon)}
