@@ -5,10 +5,12 @@ var (
 		ModuleAliasInlineShellcode: ModuleExecuteShellcode,
 		ModuleAliasInlineExe:       ModuleExecuteExe,
 		ModuleAliasInlineDll:       ModuleExecuteDll,
+		ModuleAliasShell:           ModuleExecution,
+		ModuleAliasPowershell:      ModuleExecution,
 	}
 	ExecuteModules = []string{
 		ModuleExecuteBof, ModuleExecuteDll, ModuleExecuteShellcode,
-		ModuleExecuteExe, ModulePowershell, ModuleExecuteAssembly,
+		ModuleExecuteExe, ModulePowerpick, ModuleExecuteAssembly,
 		ModuleAliasInlineExe, ModuleAliasInlineDll, ModuleAliasInlineShellcode,
 	}
 	InlineModules = []string{
@@ -22,6 +24,8 @@ var (
 // client module and command
 const (
 	ModuleExplore              = "explorer"
+	ModuleAliasShell           = "shell"
+	ModuleAliasPowershell      = "powershell"
 	ModuleExecution            = "exec"
 	ModuleExecuteAssembly      = "execute_assembly"
 	ModuleExecuteShellcode     = "execute_shellcode"
@@ -31,7 +35,7 @@ const (
 	ModuleExecuteDll           = "execute_dll"
 	ModuleAliasInlineDll       = "inline_dll"
 	ModuleExecuteBof           = "bof"
-	ModulePowershell           = "powershell"
+	ModulePowerpick            = "powerpick"
 	ModuleUpload               = "upload"
 	ModuleDownload             = "download"
 	ModulePwd                  = "pwd"

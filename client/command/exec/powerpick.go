@@ -18,7 +18,7 @@ func ExecutePowershellCmd(cmd *cobra.Command, con *repl.Console) {
 	script, _ := cmd.Flags().GetString("script")
 	cmdline := cmd.Flags().Args()
 	session := con.GetInteractive()
-	task, err := ExecPowershell(con.Rpc, session, script, cmdline)
+	task, err := PowerPick(con.Rpc, session, script, cmdline)
 	if err != nil {
 		con.Log.Errorf("Execute Powershell error: %v", err)
 		return
@@ -26,7 +26,7 @@ func ExecutePowershellCmd(cmd *cobra.Command, con *repl.Console) {
 	con.GetInteractive().Console(task, fmt.Sprintf("%s, args: %v", script, cmdline))
 }
 
-func ExecPowershell(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, ps []string) (*clientpb.Task, error) {
+func PowerPick(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, ps []string) (*clientpb.Task, error) {
 	var psBin bytes.Buffer
 	if path != "" {
 		content, err := os.ReadFile(path)
@@ -40,9 +40,9 @@ func ExecPowershell(rpc clientrpc.MaliceRPCClient, sess *core.Session, path stri
 	psBin.WriteString(strings.Join(ps, " "))
 
 	task, err := rpc.ExecutePowershell(sess.Context(), &implantpb.ExecuteBinary{
-		Name:   "ps",
+		Name:   "",
 		Bin:    psBin.Bytes(),
-		Type:   consts.ModulePowershell,
+		Type:   consts.ModulePowerpick,
 		Output: true,
 	})
 	if err != nil {
