@@ -9,8 +9,15 @@ import (
 )
 
 func noteCmd(cmd *cobra.Command, con *repl.Console) {
-	sid := cmd.Flags().Arg(0)
-	name := cmd.Flags().Arg(1)
+	sid := cmd.Flags().Arg(1)
+	name := cmd.Flags().Arg(0)
+
+	if con.GetInteractive() == nil && sid == "" {
+		con.Log.Errorf("No session selected")
+		return
+	} else if sid == "" && con.GetInteractive() != nil {
+		sid = con.GetInteractive().Session.GetSessionId()
+	}
 
 	var err error
 	_, err = con.Rpc.BasicSessionOP(context.Background(), &clientpb.BasicUpdateSession{

@@ -102,6 +102,7 @@ func newTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) {
 	})
 	if err != nil {
 		con.Log.Error(err.Error())
+		return
 	}
 
 	_, err = con.LisRpc.StartTcpPipeline(context.Background(), &lispb.CtrlPipeline{
@@ -110,6 +111,7 @@ func newTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) {
 	})
 	if err != nil {
 		con.Log.Error(err.Error())
+		return
 	}
 	con.Log.Importantf("TCP Pipeline %s added\n", name)
 }

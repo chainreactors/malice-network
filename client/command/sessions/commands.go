@@ -14,7 +14,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	sessionsCmd := &cobra.Command{
 		Use:   consts.CommandSessions,
 		Short: "List sessions",
-		Long:  help.FormatLongHelp("sessions"),
+		Long:  help.FormatLongHelp("List sessions in server, "),
 		Run: func(cmd *cobra.Command, args []string) {
 			SessionsCmd(cmd, con)
 		},
@@ -24,10 +24,10 @@ func Commands(con *repl.Console) []*cobra.Command {
 	})
 
 	noteCommand := &cobra.Command{
-		Use:   consts.CommandNote + " [session] [note]",
+		Use:   consts.CommandNote + " [note] [session]",
 		Short: "add note to session",
 		Long:  help.FormatLongHelp("note"),
-		Args:  cobra.MinimumNArgs(2),
+		Args:  cobra.MaximumNArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 			noteCmd(cmd, con)
 			return
@@ -41,10 +41,10 @@ func Commands(con *repl.Console) []*cobra.Command {
 	)
 
 	groupCommand := &cobra.Command{
-		Use:   consts.CommandGroup + " [session] [group]",
+		Use:   consts.CommandGroup + " [group] [session]",
 		Short: "group session",
 		Long:  help.FormatLongHelp("group"),
-		Args:  cobra.MinimumNArgs(2),
+		Args:  cobra.MaximumNArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 			groupCmd(cmd, con)
 			return

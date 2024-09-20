@@ -100,11 +100,13 @@ func newWebsiteCmd(cmd *cobra.Command, con *repl.Console) {
 
 	if err != nil {
 		con.Log.Error(err.Error())
+		return
 	}
 	webAsserts.GetAssets()[0].FileName = resp.ID
 	_, err = con.LisRpc.UploadWebsite(context.Background(), webAsserts)
 	if err != nil {
 		con.Log.Error(err.Error())
+		return
 	}
 	_, err = con.LisRpc.StartWebsite(context.Background(), &lispb.CtrlPipeline{
 		Name:       name,
@@ -112,6 +114,7 @@ func newWebsiteCmd(cmd *cobra.Command, con *repl.Console) {
 	})
 	if err != nil {
 		con.Log.Error(err.Error())
+		return
 	}
 	con.Log.Importantf("Website %s added\n", name)
 }
