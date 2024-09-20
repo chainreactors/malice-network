@@ -19,7 +19,7 @@ import (
 
 func Commands(con *repl.Console) []*cobra.Command {
 	execCmd := &cobra.Command{
-		Use:   consts.ModuleExecution + " [args]",
+		Use:   "execute [args]",
 		Short: "Execute commands",
 		Long:  help.FormatLongHelp(`exec implant local executable file`),
 		Args:  cobra.MinimumNArgs(1),
@@ -39,6 +39,28 @@ func Commands(con *repl.Console) []*cobra.Command {
 
 	common.BindFlag(execCmd, func(f *pflag.FlagSet) {
 		f.BoolP("quiet", "q", false, "disable output")
+	})
+	execLocalCmd := &cobra.Command{
+		Use:   consts.ModuleExecuteLocal + " [local_exe]",
+		Short: "Execute local PE on sacrifice process",
+		Long: help.FormatLongHelp(`
+Execute local PE on sacrifice process, support spoofing process arguments, spoofing ppid, block-dll, disable etw
+		`),
+		Run: func(cmd *cobra.Command, args []string) {
+			ExecuteLocalCmd(cmd, con)
+		},
+		Args: cobra.MinimumNArgs(1),
+		Annotations: map[string]string{
+			"depend": consts.ModuleExecuteLocal,
+			"os":     "windows",
+		},
+		Example: help.FormatLongHelp(`
+exec local_exe --ppid 1234 --block_dll --etw --argue "argue"
+`),
+	}
+	common.BindFlag(execLocalCmd, common.SacrificeFlagSet, func(f *pflag.FlagSet) {
+		f.StringP("process", "n", "", "custom process path")
+		f.BoolP("quit", "q", false, "disable output")
 	})
 
 	shellCmd := &cobra.Command{
@@ -268,6 +290,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 
 	return []*cobra.Command{
 		execCmd,
+		execLocalCmd,
 		shellCmd,
 		powershellCmd,
 		execAssemblyCmd,
@@ -297,10 +320,8 @@ func Register(con *repl.Console) {
 	con.RegisterImplantFunc(
 		consts.ModuleExecution,
 		Execute,
-		"bexecute",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string) (*clientpb.Task, error) {
-			return Execute(rpc, sess, path, true)
-		},
+		"",
+		nil,
 		common.ParseExecResponse,
 		nil,
 	)
@@ -431,4 +452,25 @@ func Register(con *repl.Console) {
 		},
 		common.ParseAssembly,
 		nil)
+
+	con.RegisterImplantFunc(
+		consts.ModuleExecuteLocal,
+		ExecLocal,
+		"bexecute",
+		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, cmdline string) (*clientpb.Task, error) {
+			args, err := shellquote.Split(cmdline)
+			if err != nil {
+				return nil, err
+			}
+			return ExecLocal(rpc, sess, args, true, "", &implantpb.SacrificeProcess{
+				Hidden:   false,
+				BlockDll: false,
+				Etw:      false,
+				Ppid:     0,
+				Argue:    "",
+			})
+		},
+		common.ParseExecResponse,
+		nil,
+	)
 }

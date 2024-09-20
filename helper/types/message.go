@@ -26,6 +26,7 @@ const (
 	MsgLoadAddon        MsgName = consts.ModuleLoadAddon
 	MsgAssemblyResponse MsgName = "assembly_response"
 	MsgExecuteAddon     MsgName = consts.ModuleExecuteAddon
+	MsgExecuteLocal     MsgName = consts.ModuleExecuteLocal
 	//MsgExecuteSpawn     MsgName = "execute_spawn"
 	MsgLs      MsgName = consts.ModuleLs
 	MsgNetstat MsgName = consts.ModuleNetstat
