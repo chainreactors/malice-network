@@ -6,6 +6,7 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/utils/file"
 	"github.com/chainreactors/malice-network/helper/utils/handler"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
@@ -40,7 +41,7 @@ func NewSacrificeProcessMessage(ppid int64, hidden, block_dll, disable_etw bool,
 }
 
 func NewBinary(module string, path string, args []string, output bool, timeout uint32, arch string, process string, sac *implantpb.SacrificeProcess) (*implantpb.ExecuteBinary, error) {
-	bin, err := os.ReadFile(path)
+	bin, err := os.ReadFile(file.FormatWindowPath(path))
 	if err != nil {
 		return nil, err
 	}
