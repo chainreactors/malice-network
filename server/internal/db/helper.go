@@ -301,6 +301,15 @@ func UnEnablePipeline(pipeline models.Pipeline) error {
 	return result.Error
 }
 
+func FindPipelineCert(pipelineName, listenerID string) (string, string, error) {
+	var pipeline models.Pipeline
+	result := Session().Where("name = ? AND listener_id = ?", pipelineName, listenerID).First(&pipeline)
+	if result.Error != nil {
+		return "", "", result.Error
+	}
+	return pipeline.Tls.Cert, pipeline.Tls.Key, nil
+}
+
 func ListListeners() ([]models.Operator, error) {
 	var listeners []models.Operator
 	err := Session().Find(&listeners).Where("type = ?", mtls.Listener).Error

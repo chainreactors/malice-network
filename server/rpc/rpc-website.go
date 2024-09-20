@@ -125,7 +125,7 @@ func (rpc *Server) WebsiteRemoveContent(ctx context.Context, req *lispb.WebsiteR
 
 func (rpc *Server) RegisterWebsite(ctx context.Context, req *lispb.Pipeline) (*lispb.WebsiteResponse, error) {
 	if req.GetTls().Enable && req.GetTls().Cert == "" && req.GetTls().Key == "" {
-		cert, key, err := certutils.GenerateTlsCert(req.GetWeb().Name)
+		cert, key, err := certutils.GenerateTlsCert(req.GetWeb().Name, req.GetTcp().ListenerId)
 		if err != nil {
 			return &lispb.WebsiteResponse{}, err
 		}

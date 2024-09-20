@@ -76,6 +76,14 @@ type TlsConfig struct {
 
 func (t *TlsConfig) ReadCert() (*CertConfig, error) {
 	var err error
+	if t.CertFile == "" || t.KeyFile == "" || t.CAFile == "" {
+		return &CertConfig{
+			Cert:   "",
+			Key:    "",
+			CA:     "",
+			Enable: true,
+		}, nil
+	}
 	cert, err := os.ReadFile(t.CertFile)
 	if err != nil {
 		return nil, err
