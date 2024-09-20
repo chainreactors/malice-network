@@ -7,6 +7,7 @@ import (
 	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/spf13/cobra"
+	"sort"
 	"strconv"
 )
 
@@ -52,6 +53,9 @@ func printTasks(tasks []*clientpb.Task, con *repl.Console) {
 		}
 		rowEntries = append(rowEntries, row)
 	}
+	sort.Slice(rowEntries, func(i, j int) bool {
+		return rowEntries[i][0] < rowEntries[j][0]
+	})
 	tableModel.SetRows(rowEntries)
 	fmt.Printf(tableModel.View())
 	//newTable := tui.NewModel(tableModel, nil, false, false)
