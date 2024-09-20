@@ -3,7 +3,6 @@ package addon
 import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
@@ -56,7 +55,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return
 		},
 	}
-	common.BindFlag(execAddonCmd, common.SacrificeFlagSet)
+	common.BindFlag(execAddonCmd, common.ExecuteFlagSet, common.SacrificeFlagSet)
 	common.BindArgCompletions(execAddonCmd, nil, common.SessionAddonComplete(con))
 
 	return []*cobra.Command{listaddonCmd, loadaddonCmd, execAddonCmd}
@@ -91,8 +90,4 @@ func Register(con *repl.Console) {
 		}, nil)
 
 	con.RegisterImplantFunc(consts.ModuleExecuteAddon, ExecuteAddon, "", nil, common.ParseAssembly, nil)
-
-	for name, addon := range loadedAddons {
-		intermediate.RegisterInternalFunc(name, addon.Func, repl.WrapImplantCallback(common.ParseAssembly))
-	}
 }
