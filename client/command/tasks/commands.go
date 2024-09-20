@@ -8,11 +8,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func Command(con *repl.Console) []*cobra.Command {
+func Commands(con *repl.Console) []*cobra.Command {
 	taskCmd := &cobra.Command{
 		Use:   consts.CommandTasks,
 		Short: "List tasks",
-		Long:  help.GetHelpFor(consts.CommandTasks),
+		Long:  help.FormatLongHelp(consts.CommandTasks),
 		Run: func(cmd *cobra.Command, args []string) {
 			listTasks(cmd, con)
 			return
@@ -22,7 +22,7 @@ func Command(con *repl.Console) []*cobra.Command {
 	fileCmd := &cobra.Command{
 		Use:   consts.CommandFiles,
 		Short: "List files",
-		Long:  help.GetHelpFor(consts.CommandFiles),
+		Long:  help.FormatLongHelp(consts.CommandFiles),
 		Run: func(cmd *cobra.Command, args []string) {
 			listFiles(cmd, con)
 			return
@@ -32,7 +32,7 @@ func Command(con *repl.Console) []*cobra.Command {
 	cancelTaskCmd := &cobra.Command{
 		Use:   consts.ModuleCancelTask + " [task_id]",
 		Short: "Cancel a task",
-		Long:  help.GetHelpFor(consts.ModuleCancelTask),
+		Long:  help.FormatLongHelp(consts.ModuleCancelTask),
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			CancelTaskCmd(cmd, con)

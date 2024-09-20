@@ -14,7 +14,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	aliasCmd := &cobra.Command{
 		Use:   consts.CommandAlias,
 		Short: "manage aliases",
-		Long:  help.GetHelpFor(consts.CommandAlias),
+		Long:  help.FormatLongHelp(consts.CommandAlias),
 		Run: func(cmd *cobra.Command, args []string) {
 			cmd.Help()
 			return
@@ -24,7 +24,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	aliasListCmd := &cobra.Command{
 		Use:   consts.CommandAliasList,
 		Short: "List all aliases",
-		Long:  help.GetHelpFor(consts.CommandAlias + " " + consts.CommandAliasList),
+		Long:  help.FormatLongHelp(consts.CommandAlias + " " + consts.CommandAliasList),
 		Run: func(cmd *cobra.Command, args []string) {
 			AliasesCmd(cmd, con)
 			return
@@ -34,7 +34,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	aliasLoadCmd := &cobra.Command{
 		Use:   consts.CommandAliasLoad + " [alias]",
 		Short: "Load a command alias",
-		Long:  help.GetHelpFor(consts.CommandAlias + " " + consts.CommandAliasLoad),
+		Long:  help.FormatLongHelp(consts.CommandAlias + " " + consts.CommandAliasLoad),
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			AliasesLoadCmd(cmd, con)
@@ -50,7 +50,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	aliasInstallCmd := &cobra.Command{
 		Use:   consts.CommandAliasInstall + " [alias_file]",
 		Short: "Install a command alias",
-		Long:  help.GetHelpFor(consts.CommandAlias + " " + consts.CommandAliasInstall),
+		Long:  help.FormatLongHelp(consts.CommandAlias + " " + consts.CommandAliasInstall),
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			AliasesInstallCmd(cmd, con)
@@ -66,7 +66,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	aliasRemoveCmd := &cobra.Command{
 		Use:   consts.CommandAliasRemove + " [alias]",
 		Short: "Remove an alias",
-		Long:  help.GetHelpFor(consts.CommandAlias + " " + consts.CommandAliasRemove),
+		Long:  help.FormatLongHelp(consts.CommandAlias + " " + consts.CommandAliasRemove),
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			AliasesRemoveCmd(cmd, con)

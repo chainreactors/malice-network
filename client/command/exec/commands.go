@@ -21,7 +21,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	execCmd := &cobra.Command{
 		Use:   consts.ModuleExecution + " [args]",
 		Short: "Execute commands",
-		Long:  help.GetHelpFor(consts.ModuleExecution),
+		Long:  help.FormatLongHelp(`exec implant local executable file`),
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			ExecuteCmd(cmd, con)
@@ -30,6 +30,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Annotations: map[string]string{
 			"depend": consts.ModuleExecution,
 		},
+		Example: "exec whoami -- -a",
 	}
 	common.BindArgCompletions(execCmd, nil,
 		carapace.ActionValues().Usage("command to execute"),
@@ -43,7 +44,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	execAssemblyCmd := &cobra.Command{
 		Use:   consts.ModuleExecuteAssembly + " [file]",
 		Short: "Loads and executes a .NET assembly in a child process (Windows Only)",
-		Long:  help.GetHelpFor(consts.ModuleExecuteAssembly),
+		Long:  help.FormatLongHelp(consts.ModuleExecuteAssembly),
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			ExecuteAssemblyCmd(cmd, con)
@@ -63,7 +64,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	execShellcodeCmd := &cobra.Command{
 		Use:   consts.ModuleExecuteShellcode + " [shellcode_file]",
 		Short: "Executes the given shellcode in the malefic process",
-		Long:  help.GetHelpFor(consts.ModuleExecuteShellcode),
+		Long:  help.FormatLongHelp(consts.ModuleExecuteShellcode),
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			ExecuteShellcodeCmd(cmd, con)
@@ -83,7 +84,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	inlineShellcodeCmd := &cobra.Command{
 		Use:   consts.ModuleAliasInlineShellcode + " [shellcode_file]",
 		Short: "Executes the given inline shellcode in the IOM ",
-		Long:  help.GetHelpFor(consts.ModuleExecuteShellcode),
+		Long:  help.FormatLongHelp(consts.ModuleExecuteShellcode),
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			InlineShellcodeCmd(cmd, con)
@@ -101,7 +102,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	execDLLCmd := &cobra.Command{
 		Use:   consts.ModuleExecuteDll + " [dll]",
 		Short: "Executes the given DLL in the sacrifice process",
-		Long:  help.GetHelpFor(consts.ModuleExecuteDll),
+		Long:  help.FormatLongHelp(consts.ModuleExecuteDll),
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			ExecuteDLLCmd(cmd, con)
@@ -123,8 +124,8 @@ func Commands(con *repl.Console) []*cobra.Command {
 	inlineDLLCmd := &cobra.Command{
 		Use:   consts.ModuleAliasInlineDll + " [dll]",
 		Short: "Executes the given inline DLL in the current process",
-		Long:  help.GetHelpFor(consts.ModuleAliasInlineDll),
-		Args:  cobra.MaximumNArgs(1),
+		Long:  help.FormatLongHelp(consts.ModuleAliasInlineDll),
+		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			InlineDLLCmd(cmd, con)
 			return
@@ -144,7 +145,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	execExeCmd := &cobra.Command{
 		Use:   consts.ModuleExecuteExe + " [exe]",
 		Short: "Executes the given PE in the sacrifice process",
-		Long:  help.GetHelpFor(consts.ModuleExecuteExe),
+		Long:  help.FormatLongHelp(consts.ModuleExecuteExe),
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			ExecuteExeCmd(cmd, con)
@@ -164,7 +165,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	inlinePECmd := &cobra.Command{
 		Use:   consts.ModuleAliasInlineExe + " [exe]",
 		Short: "Executes the given inline EXE in current process",
-		Long:  help.GetHelpFor(consts.ModuleAliasInlineExe),
+		Long:  help.FormatLongHelp(consts.ModuleAliasInlineExe),
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			InlineExeCmd(cmd, con)
@@ -181,7 +182,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	execBofCmd := &cobra.Command{
 		Use:   consts.ModuleExecuteBof + " [bof]",
 		Short: "Loads and executes Bof (Windows Only)",
-		Long:  help.GetHelpFor(consts.ModuleExecuteBof),
+		Long:  help.FormatLongHelp(consts.ModuleExecuteBof),
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			ExecuteBofCmd(cmd, con)
@@ -199,7 +200,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	execPowershellCmd := &cobra.Command{
 		Use:   consts.ModulePowershell + " [args]",
 		Short: "Loads and executes powershell (Windows Only)",
-		Long:  help.GetHelpFor(consts.ModulePowershell),
+		Long:  help.FormatLongHelp(consts.ModulePowershell),
 		Run: func(cmd *cobra.Command, args []string) {
 			ExecutePowershellCmd(cmd, con)
 			return

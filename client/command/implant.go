@@ -92,7 +92,7 @@ func BindImplantCommands(con *repl.Console) console.Commands {
 		bind := makeBind(implant, con)
 		bindCommonCommands(bind)
 		bind(consts.ImplantGroup,
-			tasks.Command,
+			tasks.Commands,
 			exec.Commands,
 			file.Commands,
 			filesystem.Commands,

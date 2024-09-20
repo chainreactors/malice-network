@@ -14,7 +14,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	sessionsCmd := &cobra.Command{
 		Use:   consts.CommandSessions,
 		Short: "List sessions",
-		Long:  help.GetHelpFor("sessions"),
+		Long:  help.FormatLongHelp("sessions"),
 		Run: func(cmd *cobra.Command, args []string) {
 			SessionsCmd(cmd, con)
 		},
@@ -26,7 +26,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	noteCommand := &cobra.Command{
 		Use:   consts.CommandNote + " [session] [note]",
 		Short: "add note to session",
-		Long:  help.GetHelpFor("note"),
+		Long:  help.FormatLongHelp("note"),
 		Args:  cobra.MinimumNArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 			noteCmd(cmd, con)
@@ -43,7 +43,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	groupCommand := &cobra.Command{
 		Use:   consts.CommandGroup + " [session] [group]",
 		Short: "group session",
-		Long:  help.GetHelpFor("group"),
+		Long:  help.FormatLongHelp("group"),
 		Args:  cobra.MinimumNArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 			groupCmd(cmd, con)
@@ -60,7 +60,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	removeCommand := &cobra.Command{
 		Use:   consts.CommandDelSession + " [session]",
 		Short: "del session",
-		Long:  help.GetHelpFor("remove"),
+		Long:  help.FormatLongHelp("remove"),
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			removeCmd(cmd, con)
@@ -72,7 +72,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	useCommand := &cobra.Command{
 		Use:   consts.CommandUse + " [session]",
 		Short: "Use session",
-		Long:  help.GetHelpFor("use"),
+		Long:  help.FormatLongHelp("use"),
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			UseSessionCmd(cmd, con)
@@ -85,7 +85,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	backCommand := &cobra.Command{
 		Use:   consts.CommandBackground,
 		Short: "back to root context",
-		Long:  help.GetHelpFor(consts.CommandBackground),
+		Long:  help.FormatLongHelp(consts.CommandBackground),
 		Run: func(cmd *cobra.Command, args []string) {
 			con.ActiveTarget.Background()
 			con.App.SwitchMenu(consts.ClientMenu)
@@ -96,7 +96,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	observeCmd := &cobra.Command{
 		Use:   consts.CommandObverse,
 		Short: "observe session",
-		Long:  help.GetHelpFor("observe"),
+		Long:  help.FormatLongHelp("observe"),
 		Run: func(cmd *cobra.Command, args []string) {
 			ObserveCmd(cmd, con)
 		},

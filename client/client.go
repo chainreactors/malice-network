@@ -9,7 +9,7 @@ package main
 
 import (
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/client/cli"
+	"github.com/chainreactors/malice-network/client/cmd/cli"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 )
