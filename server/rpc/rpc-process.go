@@ -17,7 +17,7 @@ func (rpc *Server) Kill(ctx context.Context, req *implantpb.Request) (*clientpb.
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgKill)
+	go greq.HandlerResponse(ch, types.MsgEmpty)
 
 	return greq.Task.ToProtobuf(), nil
 }
