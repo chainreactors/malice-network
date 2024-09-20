@@ -89,6 +89,7 @@ func BindClientsCommands(con *repl.Console) console.Commands {
 		bindCommonCommands(bind)
 
 		client.InitDefaultHelpCmd()
+		client.InitDefaultHelpFlag()
 		client.SetHelpCommandGroupID(consts.GenericGroup)
 		return client
 	}

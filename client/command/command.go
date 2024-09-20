@@ -1,6 +1,7 @@
 package command
 
 import (
+	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/spf13/cobra"
 )
@@ -48,6 +49,8 @@ func makeBind(cmd *cobra.Command, con *repl.Console) bindFunc {
 		for _, command := range cmds {
 			for _, c := range command(con) {
 				c.GroupID = group
+				c.SetHelpFunc(help.HelpFunc)
+				c.SetUsageFunc(help.UsageFunc)
 				cmd.AddCommand(c)
 			}
 		}

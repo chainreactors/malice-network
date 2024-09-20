@@ -21,7 +21,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	execCmd := &cobra.Command{
 		Use:   "execute [args]",
 		Short: "Execute commands",
-		Long:  help.FormatLongHelp(`exec implant local executable file`),
+		Long:  `exec implant local executable file`,
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			ExecuteCmd(cmd, con)
@@ -43,9 +43,9 @@ func Commands(con *repl.Console) []*cobra.Command {
 	execLocalCmd := &cobra.Command{
 		Use:   consts.ModuleExecuteLocal + " [local_exe]",
 		Short: "Execute local PE on sacrifice process",
-		Long: help.FormatLongHelp(`
+		Long: `
 Execute local PE on sacrifice process, support spoofing process arguments, spoofing ppid, block-dll, disable etw
-		`),
+		`,
 		Run: func(cmd *cobra.Command, args []string) {
 			ExecuteLocalCmd(cmd, con)
 		},
@@ -54,9 +54,11 @@ Execute local PE on sacrifice process, support spoofing process arguments, spoof
 			"depend": consts.ModuleExecuteLocal,
 			"os":     "windows",
 		},
-		Example: help.FormatLongHelp(`
+		Example: `
+~~~
 exec local_exe --ppid 1234 --block_dll --etw --argue "argue"
-`),
+~~~
+`,
 	}
 	common.BindFlag(execLocalCmd, common.SacrificeFlagSet, func(f *pflag.FlagSet) {
 		f.StringP("process", "n", "", "custom process path")
