@@ -29,7 +29,9 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Annotations: map[string]string{
 			"depend": consts.ModuleDownload,
 		},
-		Example: "download ./file.txt",
+		Example: `~~~
+download ./file.txt
+			~~~`,
 	}
 
 	common.BindArgCompletions(downloadCmd, nil,
@@ -48,8 +50,9 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Annotations: map[string]string{
 			"depend": consts.ModuleUpload,
 		},
-		Example: "upload ./file.txt /tmp/file.txt",
-	}
+		Example: help.FormatLongHelp(`~~~
+upload ./file.txt /tmp/file.txt
+			~~~`)}
 
 	common.BindArgCompletions(uploadCmd, nil,
 		carapace.ActionFiles().Usage("file source path"),
@@ -69,7 +72,9 @@ func Commands(con *repl.Console) []*cobra.Command {
 			SyncCmd(cmd, con)
 			return
 		},
-		Example: "sync 1",
+		Example: `~~~
+sync 1
+			~~~`,
 	}
 
 	common.BindArgCompletions(syncCmd, nil,

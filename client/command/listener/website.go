@@ -29,7 +29,7 @@ func newWebsiteCmd(cmd *cobra.Command, con *repl.Console) {
 	var webAsserts *lispb.WebsiteAssets
 	if portUint == 0 {
 		rand.Seed(time.Now().UnixNano())
-		portUint = uint(10000 + rand.Int31n(5001))
+		portUint = uint(15001 + rand.Int31n(5001))
 	}
 	port := uint32(portUint)
 	if name == "" {

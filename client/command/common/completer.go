@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/rsteube/carapace"
 	"io/ioutil"
 	"os"
@@ -137,6 +138,28 @@ func ResourceCompelete(con *repl.Console) carapace.Action {
 			return carapace.Action{}
 		}
 		return carapace.ActionValuesDescribed(results...).Tag("session resources")
+	}
+	return carapace.ActionCallback(callback)
+}
+
+func JobsCompelete(con *repl.Console) carapace.Action {
+	callback := func(c carapace.Context) carapace.Action {
+		results := make([]string, 0)
+		err := con.UpdateListener()
+		if err != nil {
+			return carapace.Action{}
+		}
+		for _, l := range con.Listeners {
+			for _, pipeline := range l.GetPipelines().Pipelines {
+				switch pipeline.Body.(type) {
+				case *lispb.Pipeline_Tcp:
+					results = append(results, pipeline.GetTcp().Name, "tcp job")
+				case *lispb.Pipeline_Web:
+					results = append(results, pipeline.GetWeb().Name, "web job")
+				}
+			}
+		}
+		return carapace.ActionValuesDescribed(results...).Tag("session jobs")
 	}
 	return carapace.ActionCallback(callback)
 }

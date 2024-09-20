@@ -162,6 +162,15 @@ func (s *ServerStatus) UpdateTasks(session *Session) error {
 	return nil
 }
 
+func (s *ServerStatus) UpdateListener() error {
+	listeners, err := s.Rpc.GetListeners(context.Background(), &clientpb.Empty{})
+	if err != nil {
+		return err
+	}
+	s.Listeners = listeners.GetListeners()
+	return nil
+}
+
 func (s *ServerStatus) AddDoneCallback(task *clientpb.Task, callback TaskCallback) {
 	s.doneCallbacks.Store(fmt.Sprintf("%s_%d", task.SessionId, task.TaskId), callback)
 }
