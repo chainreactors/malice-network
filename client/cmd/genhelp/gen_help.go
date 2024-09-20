@@ -12,6 +12,7 @@ import (
 	"github.com/chainreactors/malice-network/client/command/sys"
 	"github.com/chainreactors/malice-network/client/command/tasks"
 	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/spf13/cobra"
 	"io"
 	"os"
@@ -69,7 +70,7 @@ func GenMarkdownCustom(cmd *cobra.Command, w io.Writer, linkHandler func(string)
 	buf.WriteString("### " + name + "\n\n")
 	buf.WriteString(cmd.Short + "\n\n")
 	if len(cmd.Long) > 0 {
-		buf.WriteString("**Synopsis**\n\n")
+		buf.WriteString("**Description**\n\n")
 		buf.WriteString(cmd.Long + "\n\n")
 	}
 
@@ -79,7 +80,7 @@ func GenMarkdownCustom(cmd *cobra.Command, w io.Writer, linkHandler func(string)
 
 	if len(cmd.Example) > 0 {
 		buf.WriteString("**Examples**\n\n")
-		buf.WriteString(fmt.Sprintf("```\n%s\n```\n\n", cmd.Example))
+		buf.WriteString(cmd.Example + "\n\n")
 	}
 
 	if err := printOptions(buf, cmd, name); err != nil {
@@ -134,29 +135,41 @@ func GenMarkdownTreeCustom(cmd *cobra.Command, writer io.Writer, linkHandler fun
 	return nil
 }
 
+func GenGroupHelp(writer io.Writer, con *repl.Console, groupId string, binds ...func(con *repl.Console) []*cobra.Command) {
+	writer.Write([]byte(fmt.Sprintf("## %s\n", groupId)))
+	for _, b := range binds {
+		for _, c := range b(con) {
+			c.SetHelpCommand(nil)
+			_ = GenMarkdownTreeCustom(c, writer, func(s string) string {
+				return ""
+			})
+		}
+	}
+}
+
 func main() {
 	con, err := repl.NewConsole()
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	implantbinds := []func(con *repl.Console) []*cobra.Command{
-		tasks.Commands,
-		exec.Commands,
-		file.Commands,
-		filesystem.Commands,
-		sys.Commands,
-		modules.Commands,
-		explorer.Commands,
-		addon.Commands}
 
 	implantMd, err := os.Create("implant.md")
-	for _, b := range implantbinds {
-		for _, c := range b(con) {
-			c.SetHelpCommand(nil)
-			err = GenMarkdownTreeCustom(c, implantMd, func(s string) string {
-				return ""
-			})
-		}
-	}
+
+	GenGroupHelp(implantMd, con, consts.ImplantGroup,
+		tasks.Commands,
+		modules.Commands,
+		explorer.Commands,
+		addon.Commands,
+	)
+
+	GenGroupHelp(implantMd, con, consts.ExecuteGroup,
+		exec.Commands)
+
+	GenGroupHelp(implantMd, con, consts.SysGroup,
+		sys.Commands)
+
+	GenGroupHelp(implantMd, con, consts.FileGroup,
+		file.Commands,
+		filesystem.Commands)
 }
