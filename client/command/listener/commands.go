@@ -14,7 +14,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	listenerCmd := &cobra.Command{
 		Use:   consts.CommandListener,
 		Short: "List listeners in server",
-		Long:  help.GetHelpFor(consts.CommandListener),
+		Long:  help.FormatLongHelp(consts.CommandListener),
 		Run: func(cmd *cobra.Command, args []string) {
 			ListenerCmd(cmd, con)
 			return
@@ -24,7 +24,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	jobCmd := &cobra.Command{
 		Use:   consts.CommandJob,
 		Short: "List jobs in server",
-		Long:  help.GetHelpFor(consts.CommandJob),
+		Long:  help.FormatLongHelp(consts.CommandJob),
 		Run: func(cmd *cobra.Command, args []string) {
 			listJobsCmd(cmd, con)
 			return
@@ -34,7 +34,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	tcpCmd := &cobra.Command{
 		Use:   consts.CommandTcp,
 		Short: "Listener tcp pipeline ctrl manager",
-		Long:  help.GetHelpFor(consts.CommandTcp),
+		Long:  help.FormatLongHelp(consts.CommandTcp),
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			listTcpCmd(cmd, con)
@@ -49,7 +49,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Use:   consts.CommandRegister + " [listener_id] ",
 		Short: "Register a new TCP pipeline",
 		Args:  cobra.ExactArgs(1),
-		Long:  help.GetHelpFor("tcp register"),
+		Long:  help.FormatLongHelp("tcp register"),
 		Run: func(cmd *cobra.Command, args []string) {
 			newTcpPipelineCmd(cmd, con)
 			return
@@ -74,7 +74,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Use:   consts.CommandPipelineStart,
 		Short: "Start a TCP pipeline",
 		Args:  cobra.ExactArgs(2),
-		Long:  help.GetHelpFor("tcp start"),
+		Long:  help.FormatLongHelp("tcp start"),
 		Run: func(cmd *cobra.Command, args []string) {
 			startTcpPipelineCmd(cmd, con)
 			return
@@ -89,7 +89,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Use:   consts.CommandPipelineStop,
 		Short: "Stop a TCP pipeline",
 		Args:  cobra.ExactArgs(2),
-		Long:  help.GetHelpFor("tcp stop"),
+		Long:  help.FormatLongHelp("tcp stop"),
 		Run: func(cmd *cobra.Command, args []string) {
 			stopTcpPipelineCmd(cmd, con)
 			return
@@ -105,7 +105,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	websiteCmd := &cobra.Command{
 		Use:   consts.CommandWebsite,
 		Short: "Listener website ctrl manager",
-		Long:  help.GetHelpFor(consts.CommandWebsite),
+		Long:  help.FormatLongHelp(consts.CommandWebsite),
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			listWebsitesCmd(cmd, con)
@@ -119,7 +119,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Use:   consts.CommandRegister + " [listener_id] [route_path] [content_path]",
 		Short: "register a website",
 		Args:  cobra.ExactArgs(3),
-		Long:  help.GetHelpFor("website Register"),
+		Long:  help.FormatLongHelp("website Register"),
 		Run: func(cmd *cobra.Command, args []string) {
 			newWebsiteCmd(cmd, con)
 			return
@@ -148,7 +148,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Use:   consts.CommandPipelineStart,
 		Short: "Start a website",
 		Args:  cobra.ExactArgs(2),
-		Long:  help.GetHelpFor("website start"),
+		Long:  help.FormatLongHelp("website start"),
 		Run: func(cmd *cobra.Command, args []string) {
 			startWebsitePipelineCmd(cmd, con)
 			return
@@ -163,7 +163,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Use:   consts.CommandPipelineStop,
 		Short: "Stop a website",
 		Args:  cobra.ExactArgs(2),
-		Long:  help.GetHelpFor("website stop"),
+		Long:  help.FormatLongHelp("website stop"),
 		Run: func(cmd *cobra.Command, args []string) {
 			stopWebsitePipelineCmd(cmd, con)
 			return

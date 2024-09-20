@@ -3,7 +3,6 @@ package help
 import (
 	"bytes"
 	_ "embed"
-	"fmt"
 	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/termenv"
@@ -12,37 +11,11 @@ import (
 	"text/template"
 )
 
-//go:embed help.md
-var helpMarkdown string
+// FormatLongHelp
+func FormatLongHelp(long string) string {
+	content := removeImages(long)
 
-// GetHelpFor
-func GetHelpFor(commandName string) string {
-	content := removeImages(helpMarkdown)
-
-	helpText := extractCommandHelp(content, commandName)
-	if helpText != "" {
-		return renderMarkdown(helpText)
-	}
-
-	return "Help not found."
-}
-
-// extractCommandHelp
-func extractCommandHelp(htmlContent, commandName string) string {
-	commandSectionStart := fmt.Sprintf(`### %s`, commandName)
-	startIndex := strings.Index(htmlContent, commandSectionStart)
-	if startIndex == -1 {
-		return ""
-	}
-
-	endIndex := strings.Index(htmlContent[startIndex:], "---")
-	if endIndex == -1 {
-		endIndex = len(htmlContent)
-	} else {
-		endIndex += startIndex
-	}
-
-	return strings.TrimSpace(htmlContent[startIndex:endIndex])
+	return renderMarkdown(content)
 }
 
 // renderMarkdown

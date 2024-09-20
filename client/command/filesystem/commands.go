@@ -23,7 +23,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	pwdCmd := &cobra.Command{
 		Use:   consts.ModulePwd,
 		Short: "Print working directory",
-		Long:  help.GetHelpFor(consts.ModulePwd),
+		Long:  help.FormatLongHelp(consts.ModulePwd),
 		Run: func(cmd *cobra.Command, args []string) {
 			PwdCmd(cmd, con)
 			return
@@ -36,7 +36,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	catCmd := &cobra.Command{
 		Use:   consts.ModuleCat + " [implant_file]",
 		Short: "Print file content",
-		Long:  help.GetHelpFor(consts.ModuleCat),
+		Long:  help.FormatLongHelp(consts.ModuleCat),
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			CatCmd(cmd, con)
@@ -53,7 +53,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	cdCmd := &cobra.Command{
 		Use:   consts.ModuleCd,
 		Short: "Change directory",
-		Long:  help.GetHelpFor(consts.ModuleCd),
+		Long:  help.FormatLongHelp(consts.ModuleCd),
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			CdCmd(cmd, con)
@@ -69,7 +69,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	chmodCmd := &cobra.Command{
 		Use:   consts.ModuleChmod + " [file] [mode]",
 		Short: "Change file mode",
-		Long:  help.GetHelpFor(consts.ModuleChmod),
+		Long:  help.FormatLongHelp(consts.ModuleChmod),
 		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 			ChmodCmd(cmd, con)
@@ -88,7 +88,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	chownCmd := &cobra.Command{
 		Use:   consts.ModuleChown + " [file] [user]",
 		Short: "Change file owner",
-		Long:  help.GetHelpFor(consts.ModuleChown),
+		Long:  help.FormatLongHelp(consts.ModuleChown),
 		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 			ChownCmd(cmd, con)
@@ -112,7 +112,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	cpCmd := &cobra.Command{
 		Use:   consts.ModuleCp + " [source] [target]",
 		Short: "Copy file",
-		Long:  help.GetHelpFor(consts.ModuleCp),
+		Long:  help.FormatLongHelp(consts.ModuleCp),
 		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 			CpCmd(cmd, con)
@@ -130,7 +130,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	lsCmd := &cobra.Command{
 		Use:   consts.ModuleLs + " [path]",
 		Short: "List directory",
-		Long:  help.GetHelpFor(consts.ModuleLs),
+		Long:  help.FormatLongHelp(consts.ModuleLs),
 		Args:  cobra.MaximumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			LsCmd(cmd, con)
@@ -147,7 +147,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	mkdirCmd := &cobra.Command{
 		Use:   consts.ModuleMkdir + " [path]",
 		Short: "Make directory",
-		Long:  help.GetHelpFor(consts.ModuleMkdir),
+		Long:  help.FormatLongHelp(consts.ModuleMkdir),
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			MkdirCmd(cmd, con)
@@ -164,7 +164,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	mvCmd := &cobra.Command{
 		Use:   consts.ModuleMv + " [source] [target]",
 		Short: "Move file",
-		Long:  help.GetHelpFor(consts.ModuleMv),
+		Long:  help.FormatLongHelp(consts.ModuleMv),
 		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 			MvCmd(cmd, con)
@@ -182,7 +182,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	rmCmd := &cobra.Command{
 		Use:   consts.ModuleRm + " [file]",
 		Short: "Remove file",
-		Long:  help.GetHelpFor(consts.ModuleRm),
+		Long:  help.FormatLongHelp(consts.ModuleRm),
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			RmCmd(cmd, con)

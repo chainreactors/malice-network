@@ -22,7 +22,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	whoamiCmd := &cobra.Command{
 		Use:   consts.ModuleWhoami,
 		Short: "Print current user",
-		Long:  help.GetHelpFor(consts.ModuleWhoami),
+		Long:  help.FormatLongHelp(consts.ModuleWhoami),
 		Run: func(cmd *cobra.Command, args []string) {
 			WhoamiCmd(cmd, con)
 			return
@@ -35,7 +35,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	killCmd := &cobra.Command{
 		Use:   consts.ModuleKill + " [pid]",
 		Short: "Kill the process",
-		Long:  help.GetHelpFor(consts.ModuleKill),
+		Long:  help.FormatLongHelp(consts.ModuleKill),
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			KillCmd(cmd, con)
@@ -52,7 +52,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	psCmd := &cobra.Command{
 		Use:   consts.ModulePs,
 		Short: "List processes",
-		Long:  help.GetHelpFor(consts.ModulePs),
+		Long:  help.FormatLongHelp(consts.ModulePs),
 		Run: func(cmd *cobra.Command, args []string) {
 			PsCmd(cmd, con)
 			return
@@ -65,7 +65,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	envCmd := &cobra.Command{
 		Use:   consts.ModuleEnv,
 		Short: "List environment variables",
-		Long:  help.GetHelpFor(consts.ModuleEnv),
+		Long:  help.FormatLongHelp(consts.ModuleEnv),
 		Run: func(cmd *cobra.Command, args []string) {
 			EnvCmd(cmd, con)
 			return
@@ -78,7 +78,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	setEnvCmd := &cobra.Command{
 		Use:   consts.ModuleSetEnv + " [env] [value]",
 		Short: "Set environment variable",
-		Long:  help.GetHelpFor(consts.ModuleSetEnv),
+		Long:  help.FormatLongHelp(consts.ModuleSetEnv),
 		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 			SetEnvCmd(cmd, con)
@@ -96,7 +96,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	unSetEnvCmd := &cobra.Command{
 		Use:   consts.ModuleUnsetEnv + " [env]",
 		Short: "Unset environment variable",
-		Long:  help.GetHelpFor(consts.ModuleUnsetEnv),
+		Long:  help.FormatLongHelp(consts.ModuleUnsetEnv),
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			UnsetEnvCmd(cmd, con)
@@ -113,7 +113,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	netstatCmd := &cobra.Command{
 		Use:   consts.ModuleNetstat,
 		Short: "List network connections",
-		Long:  help.GetHelpFor(consts.ModuleNetstat),
+		Long:  help.FormatLongHelp(consts.ModuleNetstat),
 		Run: func(cmd *cobra.Command, args []string) {
 			NetstatCmd(cmd, con)
 			return
@@ -126,7 +126,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	infoCmd := &cobra.Command{
 		Use:   consts.ModuleInfo,
 		Short: "get basic sys info",
-		Long:  help.GetHelpFor(consts.ModuleInfo),
+		Long:  help.FormatLongHelp(consts.ModuleInfo),
 		Run: func(cmd *cobra.Command, args []string) {
 			InfoCmd(cmd, con)
 			return
@@ -139,7 +139,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	bypassCmd := &cobra.Command{
 		Use:   consts.ModuleBypass,
 		Short: "Bypass AMSI and ETW",
-		Long:  help.GetHelpFor(consts.ModuleBypass),
+		Long:  help.FormatLongHelp(consts.ModuleBypass),
 		Run: func(cmd *cobra.Command, args []string) {
 			BypassCmd(cmd, con)
 			return

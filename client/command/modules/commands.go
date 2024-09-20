@@ -18,7 +18,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	listModuleCmd := &cobra.Command{
 		Use:   consts.ModuleListModule,
 		Short: "List modules",
-		Long:  help.GetHelpFor(consts.ModuleListModule),
+		Long:  help.FormatLongHelp(consts.ModuleListModule),
 		Run: func(cmd *cobra.Command, args []string) {
 			ListModulesCmd(cmd, con)
 			return
@@ -28,7 +28,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	loadModuleCmd := &cobra.Command{
 		Use:   consts.ModuleLoadModule + " [module_file]",
 		Short: "Load module",
-		Long:  help.GetHelpFor(consts.ModuleLoadModule),
+		Long:  help.FormatLongHelp(consts.ModuleLoadModule),
 		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 			LoadModuleCmd(cmd, con)
@@ -43,7 +43,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	refreshModuleCmd := &cobra.Command{
 		Use:   consts.ModuleRefreshModule,
 		Short: "Refresh module",
-		Long:  help.GetHelpFor(consts.ModuleRefreshModule),
+		Long:  help.FormatLongHelp(consts.ModuleRefreshModule),
 		Run: func(cmd *cobra.Command, args []string) {
 			RefreshModuleCmd(cmd, con)
 			return
@@ -53,7 +53,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	clearCmd := &cobra.Command{
 		Use:   consts.ModuleClear,
 		Short: "Clear modules",
-		Long:  help.GetHelpFor(consts.ModuleClear),
+		Long:  help.FormatLongHelp(consts.ModuleClear),
 		Run: func(cmd *cobra.Command, args []string) {
 			ClearCmd(cmd, con)
 			return

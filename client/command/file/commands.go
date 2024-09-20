@@ -20,7 +20,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	downloadCmd := &cobra.Command{
 		Use:   consts.ModuleDownload + " [implant_file]",
 		Short: "Download file",
-		Long:  help.GetHelpFor(consts.ModuleDownload),
+		Long:  help.FormatLongHelp(consts.ModuleDownload),
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			DownloadCmd(cmd, con)
@@ -38,7 +38,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	uploadCmd := &cobra.Command{
 		Use:   consts.ModuleUpload + " [local] [remote]",
 		Short: "Upload file",
-		Long:  help.GetHelpFor(consts.ModuleUpload),
+		Long:  help.FormatLongHelp(consts.ModuleUpload),
 		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 			UploadCmd(cmd, con)
@@ -61,7 +61,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	syncCmd := &cobra.Command{
 		Use:   consts.CommandSync + " [file_id]",
 		Short: "Sync file",
-		Long:  help.GetHelpFor(consts.CommandSync),
+		Long:  help.FormatLongHelp(consts.CommandSync),
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			SyncCmd(cmd, con)

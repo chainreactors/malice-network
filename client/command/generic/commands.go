@@ -16,7 +16,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	loginCmd := &cobra.Command{
 		Use:   consts.CommandLogin,
 		Short: "Login to server",
-		Long:  help.GetHelpFor(consts.CommandLogin),
+		Long:  help.FormatLongHelp(consts.CommandLogin),
 		Run: func(cmd *cobra.Command, args []string) {
 			err := LoginCmd(cmd, con)
 			if err != nil {
@@ -28,7 +28,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	versionCmd := &cobra.Command{
 		Use:   consts.CommandVersion,
 		Short: "show server version",
-		Long:  help.GetHelpFor("version"),
+		Long:  help.FormatLongHelp("version"),
 		Run: func(cmd *cobra.Command, args []string) {
 			VersionCmd(cmd, con)
 			return
@@ -48,7 +48,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	broadcastCmd := &cobra.Command{
 		Use:   consts.CommandBroadcast + " [message]",
 		Short: "Broadcast a message to all clients",
-		Long:  help.GetHelpFor(consts.CommandBroadcast),
+		Long:  help.FormatLongHelp(consts.CommandBroadcast),
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			BroadcastCmd(cmd, con)
