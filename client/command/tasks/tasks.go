@@ -54,8 +54,11 @@ func printTasks(tasks []*clientpb.Task, con *repl.Console) {
 		rowEntries = append(rowEntries, row)
 	}
 	sort.Slice(rowEntries, func(i, j int) bool {
-		return rowEntries[i][0] < rowEntries[j][0]
+		id1, _ := strconv.Atoi(rowEntries[i][0])
+		id2, _ := strconv.Atoi(rowEntries[j][0])
+		return id1 < id2
 	})
+
 	tableModel.SetRows(rowEntries)
 	fmt.Printf(tableModel.View())
 	//newTable := tui.NewModel(tableModel, nil, false, false)
