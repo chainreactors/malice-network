@@ -9,8 +9,16 @@ import (
 )
 
 func groupCmd(cmd *cobra.Command, con *repl.Console) {
-	sid := cmd.Flags().Arg(0)
-	group := cmd.Flags().Arg(1)
+	sid := cmd.Flags().Arg(1)
+	group := cmd.Flags().Arg(0)
+
+	if con.GetInteractive() == nil && sid == "" {
+		con.Log.Errorf("No session selected")
+		return
+	} else if sid == "" && con.GetInteractive() != nil {
+		sid = con.GetInteractive().Session.GetSessionId()
+	}
+
 	_, err := con.Rpc.BasicSessionOP(context.Background(), &clientpb.BasicUpdateSession{
 		SessionId: sid,
 		Op:        "group",

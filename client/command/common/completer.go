@@ -54,7 +54,10 @@ func LocalPathCompleter(prefix string, args []string, con *repl.Console) []strin
 func SessionIDCompleter(con *repl.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
-
+		err := con.UpdateSessions(true)
+		if err != nil {
+			return carapace.Action{}
+		}
 		for _, s := range con.AlivedSessions() {
 			if s.Note != "" {
 				results = append(results, s.SessionId, fmt.Sprintf("SessionAlias, %s，%s", s.Note, s.RemoteAddr))
