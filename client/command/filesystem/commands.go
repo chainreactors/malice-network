@@ -23,7 +23,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	pwdCmd := &cobra.Command{
 		Use:   consts.ModulePwd,
 		Short: "Print working directory",
-		Long:  help.FormatLongHelp(consts.ModulePwd),
+		Long:  help.FormatLongHelp("print working directory in implant"),
 		Run: func(cmd *cobra.Command, args []string) {
 			PwdCmd(cmd, con)
 			return
@@ -36,7 +36,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	catCmd := &cobra.Command{
 		Use:   consts.ModuleCat + " [implant_file]",
 		Short: "Print file content",
-		Long:  help.FormatLongHelp(consts.ModuleCat),
+		Long:  help.FormatLongHelp("concatenate and display the contents of file in implant"),
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			CatCmd(cmd, con)
@@ -45,6 +45,9 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Annotations: map[string]string{
 			"depend": consts.ModuleCat,
 		},
+		Example: help.FormatLongHelp(`~~~
+cat ./file.txt			
+			~~~`),
 	}
 
 	common.BindArgCompletions(catCmd, nil,
@@ -53,7 +56,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	cdCmd := &cobra.Command{
 		Use:   consts.ModuleCd,
 		Short: "Change directory",
-		Long:  help.FormatLongHelp(consts.ModuleCd),
+		Long:  help.FormatLongHelp("change the shell's current working directory in implant"),
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			CdCmd(cmd, con)
@@ -69,7 +72,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	chmodCmd := &cobra.Command{
 		Use:   consts.ModuleChmod + " [file] [mode]",
 		Short: "Change file mode",
-		Long:  help.FormatLongHelp(consts.ModuleChmod),
+		Long:  help.FormatLongHelp("change the permissions of files and directories in implant"),
 		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 			ChmodCmd(cmd, con)
@@ -79,6 +82,9 @@ func Commands(con *repl.Console) []*cobra.Command {
 			"os":     "linux,mac",
 			"depend": consts.ModuleChmod,
 		},
+		Example: help.FormatLongHelp(`~~~
+chmod ./file.txt 644
+			~~~`),
 	}
 
 	common.BindArgCompletions(chmodCmd, nil,
@@ -88,7 +94,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	chownCmd := &cobra.Command{
 		Use:   consts.ModuleChown + " [file] [user]",
 		Short: "Change file owner",
-		Long:  help.FormatLongHelp(consts.ModuleChown),
+		Long:  help.FormatLongHelp("change the ownership of a file or directory in implant"),
 		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 			ChownCmd(cmd, con)
@@ -98,6 +104,9 @@ func Commands(con *repl.Console) []*cobra.Command {
 			"os":     "linux,mac",
 			"depend": consts.ModuleChown,
 		},
+		Example: help.FormatLongHelp(`~~~
+chown user ./file.txt 
+			~~~`),
 	}
 
 	common.BindArgCompletions(chownCmd, nil,
@@ -112,7 +121,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	cpCmd := &cobra.Command{
 		Use:   consts.ModuleCp + " [source] [target]",
 		Short: "Copy file",
-		Long:  help.FormatLongHelp(consts.ModuleCp),
+		Long:  help.FormatLongHelp("copy files and directories in implant"),
 		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 			CpCmd(cmd, con)
@@ -121,6 +130,9 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Annotations: map[string]string{
 			"depend": consts.ModuleCp,
 		},
+		Example: help.FormatLongHelp(`~~~
+cp /tmp/file.txt /tmp/file2.txt 
+			~~~`),
 	}
 
 	common.BindArgCompletions(cpCmd, nil,
@@ -130,7 +142,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	lsCmd := &cobra.Command{
 		Use:   consts.ModuleLs + " [path]",
 		Short: "List directory",
-		Long:  help.FormatLongHelp(consts.ModuleLs),
+		Long:  help.FormatLongHelp("list directory contents in implant"),
 		Args:  cobra.MaximumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			LsCmd(cmd, con)
@@ -139,6 +151,9 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Annotations: map[string]string{
 			"depend": consts.ModuleLs,
 		},
+		Example: help.FormatLongHelp(`~~~
+ls /tmp	
+			~~~`),
 	}
 
 	common.BindArgCompletions(lsCmd, nil,
@@ -147,7 +162,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	mkdirCmd := &cobra.Command{
 		Use:   consts.ModuleMkdir + " [path]",
 		Short: "Make directory",
-		Long:  help.FormatLongHelp(consts.ModuleMkdir),
+		Long:  help.FormatLongHelp("make directories in implant"),
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			MkdirCmd(cmd, con)
@@ -156,6 +171,9 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Annotations: map[string]string{
 			"depend": consts.ModuleMkdir,
 		},
+		Example: help.FormatLongHelp(`~~~
+mkdir /tmp
+			~~~`),
 	}
 
 	common.BindArgCompletions(mkdirCmd, nil,
@@ -164,7 +182,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	mvCmd := &cobra.Command{
 		Use:   consts.ModuleMv + " [source] [target]",
 		Short: "Move file",
-		Long:  help.FormatLongHelp(consts.ModuleMv),
+		Long:  help.FormatLongHelp("move files and directories in implant"),
 		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 			MvCmd(cmd, con)
@@ -173,6 +191,9 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Annotations: map[string]string{
 			"depend": consts.ModuleMv,
 		},
+		Example: help.FormatLongHelp(`~~~
+mv /tmp/file.txt /tmp/file2.txt
+			~~~`),
 	}
 
 	common.BindArgCompletions(mvCmd, nil,
@@ -182,7 +203,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	rmCmd := &cobra.Command{
 		Use:   consts.ModuleRm + " [file]",
 		Short: "Remove file",
-		Long:  help.FormatLongHelp(consts.ModuleRm),
+		Long:  help.FormatLongHelp("remove files and directories in implant"),
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			RmCmd(cmd, con)
@@ -191,6 +212,9 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Annotations: map[string]string{
 			"depend": consts.ModuleRm,
 		},
+		Example: help.FormatLongHelp(`~~~
+rm /tmp/file.txt
+			~~~`),
 	}
 
 	common.BindArgCompletions(rmCmd, nil,

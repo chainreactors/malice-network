@@ -3,7 +3,6 @@ package generic
 import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
@@ -16,7 +15,6 @@ func Commands(con *repl.Console) []*cobra.Command {
 	loginCmd := &cobra.Command{
 		Use:   consts.CommandLogin,
 		Short: "Login to server",
-		Long:  help.FormatLongHelp(consts.CommandLogin),
 		Run: func(cmd *cobra.Command, args []string) {
 			err := LoginCmd(cmd, con)
 			if err != nil {
@@ -28,7 +26,6 @@ func Commands(con *repl.Console) []*cobra.Command {
 	versionCmd := &cobra.Command{
 		Use:   consts.CommandVersion,
 		Short: "show server version",
-		Long:  help.FormatLongHelp("version"),
 		Run: func(cmd *cobra.Command, args []string) {
 			VersionCmd(cmd, con)
 			return
@@ -48,7 +45,6 @@ func Commands(con *repl.Console) []*cobra.Command {
 	broadcastCmd := &cobra.Command{
 		Use:   consts.CommandBroadcast + " [message]",
 		Short: "Broadcast a message to all clients",
-		Long:  help.FormatLongHelp(consts.CommandBroadcast),
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			BroadcastCmd(cmd, con)
