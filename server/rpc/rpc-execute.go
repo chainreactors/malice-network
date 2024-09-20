@@ -142,3 +142,17 @@ func (rpc *Server) ExecuteArmory(ctx context.Context, req *implantpb.ExecuteBina
 	go greq.HandlerResponse(ch, types.MsgAssemblyResponse)
 	return greq.Task.ToProtobuf(), nil
 }
+
+func (rpc *Server) ExecuteLocal(ctx context.Context, req *implantpb.ExecSacrificeRequest) (*clientpb.Task, error) {
+	greq, err := newGenericRequest(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	ch, err := rpc.GenericHandler(ctx, greq)
+	if err != nil {
+		return nil, err
+	}
+	go greq.HandlerResponse(ch, types.MsgExec)
+	return greq.Task.ToProtobuf(), nil
+}

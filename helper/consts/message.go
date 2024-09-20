@@ -27,6 +27,7 @@ const (
 	ModuleAliasShell           = "shell"
 	ModuleAliasPowershell      = "powershell"
 	ModuleExecution            = "exec"
+	ModuleExecuteLocal         = "execute_local"
 	ModuleExecuteAssembly      = "execute_assembly"
 	ModuleExecuteShellcode     = "execute_shellcode"
 	ModuleAliasInlineShellcode = "inline_shellcode"

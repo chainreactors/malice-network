@@ -27,6 +27,9 @@ func BuildSpite(spite *implantpb.Spite, msg proto.Message) (*implantpb.Spite, er
 	case *implantpb.ImplantTask:
 		spite.Name = msg.(*implantpb.ImplantTask).Op
 		spite.Body = &implantpb.Spite_Task{Task: msg.(*implantpb.ImplantTask)}
+	case *implantpb.ACK:
+		spite.Name = MsgAck.String()
+		spite.Body = &implantpb.Spite_Ack{Ack: msg.(*implantpb.ACK)}
 	case *implantpb.Block:
 		spite.Name = MsgBlock.String()
 		spite.Body = &implantpb.Spite_Block{Block: msg.(*implantpb.Block)}
@@ -63,9 +66,9 @@ func BuildSpite(spite *implantpb.Spite, msg proto.Message) (*implantpb.Spite, er
 	case *implantpb.LoadAddon:
 		spite.Name = MsgLoadAddon.String()
 		spite.Body = &implantpb.Spite_LoadAddon{LoadAddon: msg.(*implantpb.LoadAddon)}
-	case *implantpb.ACK:
-		spite.Name = MsgAck.String()
-		spite.Body = &implantpb.Spite_Ack{Ack: msg.(*implantpb.ACK)}
+	case *implantpb.ExecSacrificeRequest:
+		spite.Name = MsgExecuteLocal.String()
+		spite.Body = &implantpb.Spite_ExecuteSacrificeRequest{ExecuteSacrificeRequest: msg.(*implantpb.ExecSacrificeRequest)}
 	default:
 		return spite, ErrUnknownSpite
 	}

@@ -79,7 +79,7 @@ func ParseResponse(ctx *clientpb.TaskContext) (interface{}, error) {
 
 func ParseExecResponse(ctx *clientpb.TaskContext) (interface{}, error) {
 	resp := ctx.Spite.GetExecResponse()
-	if resp != nil {
+	if resp.Stdout != nil {
 		return fmt.Sprintf("pid: %d\n%s", resp.Pid, resp.Stdout), nil
 	}
 	return nil, fmt.Errorf("no response")
