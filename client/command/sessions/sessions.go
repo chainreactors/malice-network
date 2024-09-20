@@ -113,7 +113,7 @@ func SessionLogin(tableModel *tui.TableModel, con *repl.Console) func() {
 	}
 
 	return func() {
-		con.SwitchImplant(session)
+		Use(con, session)
 		con.Log.Infof("Active session %s (%s)\n", session.Note, session.SessionId)
 	}
 }

@@ -1,6 +1,7 @@
 package sessions
 
 import (
+	"github.com/chainreactors/malice-network/client/command/addon"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/spf13/cobra"
@@ -17,6 +18,15 @@ func UseSessionCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf(err.Error())
 	}
 
-	con.SwitchImplant(session)
+	Use(con, session)
 	con.Log.Infof("Active session %s (%s)\n", session.Note, session.SessionId)
+}
+
+func Use(con *repl.Console, sess *core.Session) {
+	err := addon.RefreshAddonCommand(sess.Addons.Addons, con)
+	if err != nil {
+		core.Log.Errorf(err.Error())
+		return
+	}
+	con.SwitchImplant(sess)
 }

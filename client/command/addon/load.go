@@ -18,8 +18,6 @@ import (
 	"path/filepath"
 )
 
-var loadedAddons = make(map[string]*loadedAddon)
-
 type loadedAddon struct {
 	Command *cobra.Command
 	Func    *intermediate.InternalFunc
@@ -46,10 +44,11 @@ func LoadAddonCmd(cmd *cobra.Command, con *repl.Console) {
 
 	session.Console(task, fmt.Sprintf("Load addon %s", name))
 	con.AddCallback(task, func(msg *implantpb.Spite) {
-		err = RegisterAddon(&implantpb.Addon{Name: name, Depend: module}, con)
+		loaded, err := RegisterAddon(&implantpb.Addon{Name: name, Depend: module}, con)
 		if err != nil {
 			con.Log.Errorf("%s", err)
 		}
+		con.ImplantMenu().AddCommand(loaded.Command)
 	})
 }
 
@@ -66,8 +65,7 @@ func LoadAddon(rpc clientrpc.MaliceRPCClient, sess *core.Session, name, path, de
 	})
 }
 
-func RegisterAddon(addon *implantpb.Addon, con *repl.Console) error {
-	cmd := con.ImplantMenu()
+func RegisterAddon(addon *implantpb.Addon, con *repl.Console) (*loadedAddon, error) {
 	addonCmd := &cobra.Command{
 		Use:   addon.Name,
 		Short: fmt.Sprintf("%s %s", addon.Depend, addon.Name),
@@ -76,7 +74,9 @@ func RegisterAddon(addon *implantpb.Addon, con *repl.Console) error {
 		},
 		GroupID: consts.AddonGroup,
 	}
-	loadedAddons[addon.Name] = &loadedAddon{
+
+	common.BindFlag(addonCmd, common.ExecuteFlagSet, common.SacrificeFlagSet)
+	return &loadedAddon{
 		Command: addonCmd,
 		Func: repl.WrapImplantFunc(con, func(rpc clientrpc.MaliceRPCClient, sess *core.Session, args string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 			cmdline, err := shellquote.Split(args)
@@ -85,7 +85,23 @@ func RegisterAddon(addon *implantpb.Addon, con *repl.Console) error {
 			}
 			return ExecuteAddon(rpc, sess, addon.Name, cmdline, true, math.MaxUint32, sess.Os.Arch, "", sac)
 		}, common.ParseAssembly),
+	}, nil
+}
+
+func RefreshAddonCommand(addons []*implantpb.Addon, con *repl.Console) error {
+	implantCmd := con.ImplantMenu()
+	for _, c := range implantCmd.Commands() {
+		if c.GroupID == consts.AddonGroup {
+			implantCmd.RemoveCommand(c)
+		}
 	}
-	cmd.AddCommand(addonCmd)
+
+	for _, addon := range addons {
+		loaded, err := RegisterAddon(addon, con)
+		if err != nil {
+			return err
+		}
+		implantCmd.AddCommand(loaded.Command)
+	}
 	return nil
 }
