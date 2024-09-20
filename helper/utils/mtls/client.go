@@ -23,8 +23,8 @@ type ClientConfig struct {
 	LPort         int    `json:"port" yaml:"port"`
 	Type          string `json:"type" yaml:"type"`
 	CACertificate string `json:"ca" yaml:"ca"`
-	PrivateKey    string `json:"private_key" yaml:"private_key"`
-	Certificate   string `json:"certificate" yaml:"certificate"`
+	PrivateKey    string `json:"key" yaml:"key"`
+	Certificate   string `json:"cert" yaml:"cert"`
 }
 
 func (c *ClientConfig) Address() string {
