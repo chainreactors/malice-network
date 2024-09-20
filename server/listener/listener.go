@@ -11,7 +11,6 @@ import (
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/proto/services/listenerrpc"
-	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"google.golang.org/grpc"
@@ -61,26 +60,7 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 	Listener = lis
 
 	for _, tcpPipeline := range cfg.TcpPipelines {
-		tls, err := certutils.GenerateTlsConfig(tcpPipeline.TlsConfig)
-		if err != nil {
-			return err
-		}
-		pipeline := &lispb.Pipeline{
-			Body: &lispb.Pipeline_Tcp{
-				Tcp: &lispb.TCPPipeline{
-					Name:       tcpPipeline.Name,
-					Host:       tcpPipeline.Host,
-					Port:       uint32(tcpPipeline.Port),
-					ListenerId: lis.Name,
-				},
-			},
-			Tls: tls.ToProtobuf(),
-			Encryption: &lispb.Encryption{
-				Type:   tcpPipeline.EncryptionConfig.Type,
-				Key:    tcpPipeline.EncryptionConfig.Key,
-				Enable: tcpPipeline.EncryptionConfig.Enable,
-			},
-		}
+		pipeline := tcpPipeline.ToProtobuf(lis.Name)
 		_, err = lis.Rpc.RegisterPipeline(context.Background(), pipeline)
 		if err != nil {
 			return err
@@ -93,8 +73,9 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 			return err
 		}
 	}
+
 	for _, newWebsite := range cfg.Websites {
-		tls, err := certutils.GenerateTlsConfig(newWebsite.TlsConfig)
+		tls, err := newWebsite.TlsConfig.ReadCert()
 		if err != nil {
 			return err
 		}

@@ -27,6 +27,18 @@ func InitConfig() error {
 	return nil
 }
 
+func GetCertDir() string {
+	//rootDir := assets.GetRootAppDir()
+	// test
+	if _, err := os.Stat(CertsPath); os.IsNotExist(err) {
+		err := os.MkdirAll(CertsPath, 0700)
+		if err != nil {
+			logs.Log.Errorf("Failed to create cert dir: %v", err)
+		}
+	}
+	return CertsPath
+}
+
 func GetServerConfig() *ServerConfig {
 	s := &ServerConfig{}
 	err := config.MapStruct("server", s)

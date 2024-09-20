@@ -27,6 +27,25 @@ type TcpPipelineConfig struct {
 	EncryptionConfig *EncryptionConfig `config:"encryption"`
 }
 
+func (tcpPipeline *TcpPipelineConfig) ToProtobuf(lisId string) *lispb.Pipeline {
+	tls, err := tcpPipeline.TlsConfig.ReadCert()
+	if err != nil {
+		panic(err.Error())
+	}
+	return &lispb.Pipeline{
+		Body: &lispb.Pipeline_Tcp{
+			Tcp: &lispb.TCPPipeline{
+				Name:       tcpPipeline.Name,
+				Host:       tcpPipeline.Host,
+				Port:       uint32(tcpPipeline.Port),
+				ListenerId: lisId,
+			},
+		},
+		Tls:        tls.ToProtobuf(),
+		Encryption: tcpPipeline.EncryptionConfig.ToProtobuf(),
+	}
+}
+
 type HttpPipelineConfig struct {
 	Enable    bool       `config:"enable" default:"false"`
 	Name      string     `config:"name" default:"http"`
@@ -75,6 +94,9 @@ type TlsConfig struct {
 }
 
 func (t *TlsConfig) ReadCert() (*CertConfig, error) {
+	if t == nil {
+		return &CertConfig{Enable: false}, nil
+	}
 	var err error
 	if t.CertFile == "" || t.KeyFile == "" || t.CAFile == "" {
 		return &CertConfig{
@@ -131,6 +153,19 @@ type EncryptionConfig struct {
 	Enable bool   `config:"enable"`
 	Type   string `config:"type"`
 	Key    string `config:"key"`
+}
+
+func (e *EncryptionConfig) ToProtobuf() *lispb.Encryption {
+	if e == nil {
+		return &lispb.Encryption{
+			Enable: false,
+		}
+	}
+	return &lispb.Encryption{
+		Type:   e.Type,
+		Key:    e.Key,
+		Enable: e.Enable,
+	}
 }
 
 // JoinStringSlice Helper function to join string slices
