@@ -1,4 +1,3 @@
-debug: false
 server:
   grpc_port: 5004
   grpc_host: 0.0.0.0

@@ -13,22 +13,6 @@ import (
 	"path/filepath"
 )
 
-// -----------------------
-//  CERTIFICATE AUTHORITY
-// -----------------------
-
-func getCertDir() string {
-	//rootDir := assets.GetRootAppDir()
-	// test
-	if _, err := os.Stat(configs.CertsPath); os.IsNotExist(err) {
-		err := os.MkdirAll(configs.CertsPath, 0700)
-		if err != nil {
-			certsLog.Errorf("Failed to create cert dir: %v", err)
-		}
-	}
-	return configs.CertsPath
-}
-
 func ParseCertificateAuthority(certPEM, keyPEM []byte) (*x509.Certificate, *rsa.PrivateKey, error) {
 	certBlock, _ := pem.Decode(certPEM)
 	var err error
@@ -58,7 +42,7 @@ func ParseCertificateAuthority(certPEM, keyPEM []byte) (*x509.Certificate, *rsa.
 
 // GetCertificateAuthority - Get the current CA certificate
 func GetCertificateAuthority() (*x509.Certificate, *rsa.PrivateKey, error) {
-	certPEM, keyPEM, err := GetCertificateAuthorityPEM(path.Join(getCertDir(), rootCert), path.Join(getCertDir(), rootKey))
+	certPEM, keyPEM, err := GetCertificateAuthorityPEM(path.Join(configs.GetCertDir(), rootCert), path.Join(configs.GetCertDir(), rootKey))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -86,7 +70,7 @@ func GetCertificateAuthorityPEM(caCertPath, caKeyPath string) ([]byte, []byte, e
 // then we can't secure communication and we should die a horrible death.
 func SaveCertificateAuthority(caType int, cert []byte, key []byte) {
 
-	storageDir := getCertDir()
+	storageDir := configs.GetCertDir()
 	if _, err := os.Stat(storageDir); os.IsNotExist(err) {
 		os.MkdirAll(storageDir, 0700)
 	}
