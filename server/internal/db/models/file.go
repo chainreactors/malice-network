@@ -87,6 +87,7 @@ func (f *File) ToFileProtobuf() *clientpb.File {
 		return &clientpb.File{}
 	}
 	return &clientpb.File{
+		TaskId: match[1],
 		Name:   file.Name,
 		Local:  file.Name,
 		TempId: file.NickName,

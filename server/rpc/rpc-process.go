@@ -64,7 +64,7 @@ func (rpc *Server) Setenv(ctx context.Context, req *implantpb.Request) (*clientp
 	return greq.Task.ToProtobuf(), nil
 }
 
-func (rpc *Server) Unsetenv(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
+func (rpc *Server) UnsetEnv(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err

@@ -20,7 +20,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	downloadCmd := &cobra.Command{
 		Use:   consts.ModuleDownload + " [implant_file]",
 		Short: "Download file",
-		Long:  help.FormatLongHelp(consts.ModuleDownload),
+		Long:  help.FormatLongHelp("download file in implant"),
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			DownloadCmd(cmd, con)
@@ -29,6 +29,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Annotations: map[string]string{
 			"depend": consts.ModuleDownload,
 		},
+		Example: "download ./file.txt",
 	}
 
 	common.BindArgCompletions(downloadCmd, nil,
@@ -38,7 +39,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	uploadCmd := &cobra.Command{
 		Use:   consts.ModuleUpload + " [local] [remote]",
 		Short: "Upload file",
-		Long:  help.FormatLongHelp(consts.ModuleUpload),
+		Long:  help.FormatLongHelp("upload local file to remote implant"),
 		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 			UploadCmd(cmd, con)
@@ -47,6 +48,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Annotations: map[string]string{
 			"depend": consts.ModuleUpload,
 		},
+		Example: "upload ./file.txt /tmp/file.txt",
 	}
 
 	common.BindArgCompletions(uploadCmd, nil,
@@ -61,16 +63,17 @@ func Commands(con *repl.Console) []*cobra.Command {
 	syncCmd := &cobra.Command{
 		Use:   consts.CommandSync + " [file_id]",
 		Short: "Sync file",
-		Long:  help.FormatLongHelp(consts.CommandSync),
+		Long:  help.FormatLongHelp("sync download file in server"),
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			SyncCmd(cmd, con)
 			return
 		},
+		Example: "sync 1",
 	}
 
 	common.BindArgCompletions(syncCmd, nil,
-		carapace.ActionValues().Usage("task ID"))
+		carapace.ActionValues().Usage("file ID"))
 
 	return []*cobra.Command{
 		downloadCmd,
