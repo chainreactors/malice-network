@@ -14,16 +14,6 @@ const defaultTimeout = 60
 
 type bindFunc func(group string, cmds ...func(con *repl.Console) []*cobra.Command)
 
-// BindFlagCompletions is a convenience function for adding completions to a command's flags.
-// cmd - The command owning the flags to complete.
-// bind - A function exposing a map["flag-name"]carapace.Action.
-//func BindFlagCompletions(cmd *cobra.Command, bind func(comp *carapace.ActionMap)) {
-//	comps := make(carapace.ActionMap)
-//	bind(&comps)
-//
-//	carapace.Gen(cmd).FlagCompletion(comps)
-//}
-
 func makeBind(cmd *cobra.Command, con *repl.Console) bindFunc {
 	return func(group string, cmds ...func(con *repl.Console) []*cobra.Command) {
 		found := false
