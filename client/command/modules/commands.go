@@ -34,7 +34,20 @@ func Commands(con *repl.Console) []*cobra.Command {
 			LoadModuleCmd(cmd, con)
 			return
 		},
-	}
+		Example: `load module from malefic-modules
+before loading, you can list the current modules: 
+~~~
+execute_addon、clear ...
+~~~
+then you can load module
+~~~
+load_module <module_file.dll>
+~~~
+you can see more modules loaded by list_module
+~~~
+execute_addon、clear 、ps、powerpic...
+~~~
+`}
 
 	common.BindFlag(loadModuleCmd, func(f *pflag.FlagSet) {
 		f.StringP("bundle", "b", "", "bundle name")
