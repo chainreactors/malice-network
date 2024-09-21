@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"strings"
 )
 
@@ -28,15 +29,17 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Use:   consts.ModuleLoadModule + " [module_file]",
 		Short: "Load module",
 		// Long:  help.FormatLongHelp(consts.ModuleLoadModule),
-		Args: cobra.ExactArgs(2),
+		Args: cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			LoadModuleCmd(cmd, con)
 			return
 		},
 	}
 
+	common.BindFlag(loadModuleCmd, func(f *pflag.FlagSet) {
+		f.StringP("bundle", "b", "", "bundle name")
+	})
 	common.BindArgCompletions(loadModuleCmd, nil,
-		carapace.ActionValues().Usage("module name"),
 		carapace.ActionFiles().Usage("path to the module file"))
 
 	refreshModuleCmd := &cobra.Command{

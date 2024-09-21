@@ -9,11 +9,15 @@ import (
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/spf13/cobra"
 	"os"
+	"path/filepath"
 )
 
 func LoadModuleCmd(cmd *cobra.Command, con *repl.Console) {
-	bundle := cmd.Flags().Arg(0)
-	path := cmd.Flags().Arg(1)
+	path := cmd.Flags().Arg(0)
+	bundle, _ := cmd.Flags().GetString("bundle")
+	if bundle == "" {
+		bundle = filepath.Base(path)
+	}
 	session := con.GetInteractive()
 	task, err := LoadModule(con.Rpc, session, bundle, path)
 	if err != nil {
