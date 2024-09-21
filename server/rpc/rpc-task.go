@@ -169,7 +169,6 @@ func (rpc *Server) CancelTask(ctx context.Context, req *implantpb.ImplantTask) (
 			Op:        consts.CtrlTaskCancel,
 			Task:      task.ToProtobuf(),
 		})
-		task.Cancel()
 	})
 
 	return greq.Task.ToProtobuf(), nil
