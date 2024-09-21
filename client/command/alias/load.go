@@ -171,12 +171,11 @@ func RegisterAlias(aliasManifest *AliasManifest, cmd *cobra.Command, con *repl.C
 		Annotations: makeAliasPlatformFilters(aliasManifest),
 	}
 
-	if !aliasManifest.IsAssembly {
-		f := pflag.NewFlagSet("assembly", pflag.ContinueOnError)
-		addAliasCmd.Flags().AddFlagSet(f)
+	if aliasManifest.IsReflective {
+		common.BindFlag(addAliasCmd, common.ExecuteFlagSet, common.SacrificeFlagSet, func(f *pflag.FlagSet) {
+			f.BoolP("inline", "i", false, "enable execute_dll")
+		})
 	}
-
-	common.BindFlag(addAliasCmd, common.ExecuteFlagSet, common.SacrificeFlagSet)
 
 	loadedAliases[aliasManifest.CommandName] = &loadedAlias{
 		Manifest: aliasManifest,
