@@ -56,15 +56,15 @@ func CheckPEType(content []byte) int {
 func CheckExtModule(filename string) string {
 	ext := filepath.Ext(filename)
 	switch ext {
-	case "o":
+	case ".o":
 		return consts.ModuleExecuteBof
-	case "dll":
+	case ".dll":
 		return consts.ModuleExecuteDll
-	case "exe":
+	case ".exe":
 		return consts.ModuleExecuteExe
-	case "ps1", "ps":
+	case ".ps1", ".ps":
 		return consts.ModuleExecuteBof
-	case "bin":
+	case ".bin":
 		return consts.ModuleExecuteShellcode
 	}
 	return ""

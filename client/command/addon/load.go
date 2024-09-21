@@ -36,6 +36,13 @@ func LoadAddonCmd(cmd *cobra.Command, con *repl.Console) {
 	}
 
 	session := con.GetInteractive()
+
+	if repl.CmdExists(name, con.ImplantMenu()) {
+		con.Log.Warnf("%s alread exist, please use -n/--name to specify a ne"+
+			"w name", name)
+		return
+	}
+
 	task, err := LoadAddon(con.Rpc, session, name, path, module)
 	if err != nil {
 		con.Log.Errorf("%s", err)
@@ -44,15 +51,12 @@ func LoadAddonCmd(cmd *cobra.Command, con *repl.Console) {
 
 	session.Console(task, fmt.Sprintf("Load addon %s", name))
 	con.AddCallback(task, func(msg *implantpb.Spite) {
-		loaded, err := RegisterAddon(&implantpb.Addon{Name: name, Depend: module}, con)
-		if err != nil {
-			con.Log.Errorf("%s", err)
-		}
-		con.ImplantMenu().AddCommand(loaded.Command)
+		RefreshAddonCommand(session.Addons.Addons, con)
 	})
 }
 
 func LoadAddon(rpc clientrpc.MaliceRPCClient, sess *core.Session, name, path, depend string) (*clientpb.Task, error) {
+
 	content, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
