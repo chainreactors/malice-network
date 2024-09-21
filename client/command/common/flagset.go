@@ -2,7 +2,6 @@ package common
 
 import (
 	"github.com/spf13/pflag"
-	"math"
 )
 
 func SacrificeFlagSet(f *pflag.FlagSet) {
@@ -15,7 +14,7 @@ func SacrificeFlagSet(f *pflag.FlagSet) {
 func ExecuteFlagSet(f *pflag.FlagSet) {
 	f.StringP("process", "n", `C:\\Windows\\System32\\notepad.exe`, "custom process path")
 	f.BoolP("quit", "q", false, "disable output")
-	f.Uint32P("timeout", "t", math.MaxUint32, "timeout, in seconds")
+	f.Uint32P("timeout", "t", 60, "timeout, in seconds")
 	f.String("arch", "", "architecture amd64,x86")
 }
 
