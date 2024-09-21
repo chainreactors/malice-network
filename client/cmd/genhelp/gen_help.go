@@ -73,8 +73,11 @@ func GenMarkdownCustom(cmd *cobra.Command, w io.Writer, linkHandler func(string)
 
 	buf := new(bytes.Buffer)
 	name := cmd.CommandPath()
-
-	buf.WriteString("### " + name + "\n\n")
+	if cmd.HasParent() {
+		buf.WriteString("#### " + name + "\n\n")
+	} else {
+		buf.WriteString("### " + name + "\n\n")
+	}
 	buf.WriteString(cmd.Short + "\n\n")
 	if len(cmd.Long) > 0 {
 		buf.WriteString("**Description**\n\n")
@@ -98,8 +101,7 @@ func GenMarkdownCustom(cmd *cobra.Command, w io.Writer, linkHandler func(string)
 		if cmd.HasParent() {
 			parent := cmd.Parent()
 			pname := parent.CommandPath()
-			link := pname + markdownExtension
-			link = strings.ReplaceAll(link, " ", "_")
+			link := strings.ReplaceAll(pname, " ", "_")
 			buf.WriteString(fmt.Sprintf("* [%s](%s)\t - %s\n", pname, linkHandler(link), parent.Short))
 			cmd.VisitParents(func(c *cobra.Command) {
 				if c.DisableAutoGenTag {
@@ -123,18 +125,26 @@ func GenMarkdownCustom(cmd *cobra.Command, w io.Writer, linkHandler func(string)
 		buf.WriteString("\n")
 	}
 	_, err := buf.WriteTo(w)
+	if cmd.HasSubCommands() {
+		for _, sub := range cmd.Commands() {
+			if !sub.IsAvailableCommand() || sub.IsAdditionalHelpTopicCommand() {
+				continue
+			}
+			GenMarkdownCustom(sub, w, linkHandler)
+		}
+	}
 	return err
 }
 
 func GenMarkdownTreeCustom(cmd *cobra.Command, writer io.Writer, linkHandler func(string) string) error {
-	for _, c := range cmd.Commands() {
-		if !c.IsAvailableCommand() || c.IsAdditionalHelpTopicCommand() {
-			continue
-		}
-		if err := GenMarkdownTreeCustom(c, writer, linkHandler); err != nil {
-			return err
-		}
-	}
+	//for _, c := range cmd.Commands() {
+	//	if !c.IsAvailableCommand() || c.IsAdditionalHelpTopicCommand() {
+	//		continue
+	//	}
+	//	if err := GenMarkdownTreeCustom(c, writer, linkHandler); err != nil {
+	//		return err
+	//	}
+	//}
 
 	if err := GenMarkdownCustom(cmd, writer, linkHandler); err != nil {
 		return err
@@ -148,7 +158,7 @@ func GenGroupHelp(writer io.Writer, con *repl.Console, groupId string, binds ...
 		for _, c := range b(con) {
 			c.SetHelpCommand(nil)
 			_ = GenMarkdownTreeCustom(c, writer, func(s string) string {
-				return ""
+				return "#" + s
 			})
 		}
 	}
