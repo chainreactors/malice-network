@@ -171,20 +171,12 @@ func RegisterAlias(aliasManifest *AliasManifest, cmd *cobra.Command, con *repl.C
 		Annotations: makeAliasPlatformFilters(aliasManifest),
 	}
 
-	if aliasManifest.IsAssembly {
+	if !aliasManifest.IsAssembly {
 		f := pflag.NewFlagSet("assembly", pflag.ContinueOnError)
-		//f.StringP("method", "m", "", "Optional method (a method is required for a .NET DLL)")
-		//f.StringP("class", "c", "", "Optional class name (required for .NET DLL)")
-		//f.StringP("app-domain", "d", "", "AppDomain name to create for .NET assembly. Generated randomly if not set.")
-		//f.StringP("arch", "a", "x84", "Assembly target architecture: x86, x64, x84 (x86+x64)")
-		f.BoolP("inline", "i", false, "Run in the current sliver process")
-		//f.StringP("runtime", "r", "", "Runtime to use for running the assembly (only supported when used with --in-process)")
-		//f.BoolP("amsi-bypass", "M", false, "Bypass AMSI on Windows (only supported when used with --in-process)")
-		//f.BoolP("etw-bypass", "E", false, "Bypass ETW on Windows (only supported when used with --in-process)")
 		addAliasCmd.Flags().AddFlagSet(f)
 	}
 
-	common.BindFlag(addAliasCmd, common.SacrificeFlagSet)
+	common.BindFlag(addAliasCmd, common.ExecuteFlagSet, common.SacrificeFlagSet)
 
 	loadedAliases[aliasManifest.CommandName] = &loadedAlias{
 		Manifest: aliasManifest,
@@ -270,7 +262,7 @@ func runAliasCommand(cmd *cobra.Command, con *repl.Console) {
 			con.Log.Errorf("Execute error: %v", err)
 			return
 		}
-		session.Console(task, "execute alias: "+cmd.Name())
+		session.Console(task, fmt.Sprintf("%s alias: %s", aliasModule(aliasManifest), cmd.Name()))
 	}
 
 }
@@ -329,10 +321,15 @@ func makeAliasPlatformFilters(alias *AliasManifest) map[string]string {
 	}
 	all["arch"] = strings.Join(arch, ",")
 
-	if alias.IsAssembly {
-		all["depend"] = consts.ModuleExecuteAssembly
-	} else if alias.IsReflective {
-		all["depend"] = consts.ModuleExecuteDll
-	}
+	all["depend"] = aliasModule(alias)
 	return all
+}
+
+func aliasModule(manifest *AliasManifest) string {
+	if manifest.IsAssembly {
+		return consts.ModuleExecuteAssembly
+	} else if manifest.IsReflective {
+		return consts.ModuleExecuteDll
+	}
+	return ""
 }
