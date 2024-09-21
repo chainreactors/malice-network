@@ -63,7 +63,7 @@ Execute local PE on sacrifice process, support spoofing process arguments, spoof
 		},
 		Example: `
 ~~~
-exec local_exe --ppid 1234 --block_dll --etw --argue "argue"
+execute_local local_exe --ppid 1234 --block_dll --etw --argue "argue"
 ~~~
 `,
 	}
@@ -214,6 +214,14 @@ execute-assembly potato.exe -- -cmd "cmd /c whoami"
 		Annotations: map[string]string{
 			"depend": consts.ModuleExecuteDll,
 		},
+		Example: `execute an inline DLL with the default entry point
+~~~
+inline_dll example.dll
+~~~
+specify the entrypoint
+~~~
+inline_dll example.dll -e RunFunction
+~~~`,
 	}
 
 	common.BindArgCompletions(inlineDLLCmd, nil,
