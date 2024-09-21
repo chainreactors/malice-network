@@ -113,7 +113,7 @@ exec local_exe --ppid 1234 --block_dll --etw --argue "argue"
 	execAssemblyCmd := &cobra.Command{
 		Use:   consts.ModuleExecuteAssembly + " [file]",
 		Short: "Loads and executes a .NET assembly in a child process (Windows Only)",
-		Long:  help.FormatLongHelp(consts.ModuleExecuteAssembly),
+		Long:  consts.ModuleExecuteAssembly,
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			ExecuteAssemblyCmd(cmd, con)
@@ -207,7 +207,7 @@ exec local_exe --ppid 1234 --block_dll --etw --argue "argue"
 	common.BindArgCompletions(inlineDLLCmd, nil,
 		carapace.ActionFiles().Usage("path the DLL file"))
 
-	common.BindFlag(inlineDLLCmd, func(f *pflag.FlagSet) {
+	common.BindFlag(inlineDLLCmd, common.ExecuteFlagSet, func(f *pflag.FlagSet) {
 		f.StringP("entrypoint", "e", "entrypoint", "entrypoint")
 	})
 
