@@ -174,6 +174,7 @@ func RegisterAlias(aliasManifest *AliasManifest, cmd *cobra.Command, con *repl.C
 	if aliasManifest.IsReflective {
 		common.BindFlag(addAliasCmd, common.ExecuteFlagSet, common.SacrificeFlagSet, func(f *pflag.FlagSet) {
 			f.BoolP("inline", "i", false, "enable execute_dll")
+			f.StringP("entrypoint", "e", aliasManifest.Entrypoint, "entrypoint")
 		})
 	}
 
