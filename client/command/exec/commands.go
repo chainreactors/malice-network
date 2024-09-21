@@ -200,7 +200,7 @@ execute-assembly potato.exe -- -cmd "cmd /c whoami"
 		carapace.ActionValues().Usage("arguments to pass to the assembly entrypoint"))
 
 	common.BindFlag(execDLLCmd, common.ExecuteFlagSet, common.SacrificeFlagSet, func(f *pflag.FlagSet) {
-		f.StringP("entrypoint", "e", "entrypoint", "entrypoint")
+		f.StringP("entrypoint", "e", "", "custom entrypoint")
 	})
 
 	inlineDLLCmd := &cobra.Command{
@@ -220,7 +220,7 @@ execute-assembly potato.exe -- -cmd "cmd /c whoami"
 		carapace.ActionFiles().Usage("path the DLL file"))
 
 	common.BindFlag(inlineDLLCmd, common.ExecuteFlagSet, func(f *pflag.FlagSet) {
-		f.StringP("entrypoint", "e", "entrypoint", "entrypoint")
+		f.StringP("entrypoint", "e", "", "entrypoint")
 	})
 
 	execExeCmd := &cobra.Command{
@@ -268,7 +268,7 @@ inline_exe gogo.exe -- -i 127.0.0.1
 		Use:   consts.ModuleExecuteBof + " [bof]",
 		Short: "COFF Loader,  executes Bof (Windows Only)",
 		Long: `
-fork from https://github.com/hakaioffsec/coffee ,fix a bundle bugs
+refactor from https://github.com/hakaioffsec/coffee ,fix a bundle bugs
 
 Arguments for the BOF can be passed after the -- delimiter. Each argument must be prefixed with the type of the argument followed by a colon (:). The following types are supported:
 
