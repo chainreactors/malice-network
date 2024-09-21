@@ -4,11 +4,18 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/chainreactors/malice-network/client/command/addon"
+	"github.com/chainreactors/malice-network/client/command/alias"
+	"github.com/chainreactors/malice-network/client/command/armory"
 	"github.com/chainreactors/malice-network/client/command/exec"
 	"github.com/chainreactors/malice-network/client/command/explorer"
+	"github.com/chainreactors/malice-network/client/command/extension"
 	"github.com/chainreactors/malice-network/client/command/file"
 	"github.com/chainreactors/malice-network/client/command/filesystem"
+	"github.com/chainreactors/malice-network/client/command/generic"
+	"github.com/chainreactors/malice-network/client/command/listener"
+	"github.com/chainreactors/malice-network/client/command/mal"
 	"github.com/chainreactors/malice-network/client/command/modules"
+	"github.com/chainreactors/malice-network/client/command/sessions"
 	"github.com/chainreactors/malice-network/client/command/sys"
 	"github.com/chainreactors/malice-network/client/command/tasks"
 	"github.com/chainreactors/malice-network/client/repl"
@@ -147,15 +154,11 @@ func GenGroupHelp(writer io.Writer, con *repl.Console, groupId string, binds ...
 	}
 }
 
-func main() {
-	con, err := repl.NewConsole()
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
+func GenImplantHelp(con *repl.Console) {
 	implantMd, err := os.Create("implant.md")
-
+	if err != nil {
+		panic(err)
+	}
 	GenGroupHelp(implantMd, con, consts.ImplantGroup,
 		tasks.Commands,
 		modules.Commands,
@@ -172,4 +175,36 @@ func main() {
 	GenGroupHelp(implantMd, con, consts.FileGroup,
 		file.Commands,
 		filesystem.Commands)
+}
+
+func GenClientHelp(con *repl.Console) {
+	clientMd, err := os.Create("client.md")
+	if err != nil {
+		panic(err)
+	}
+	GenGroupHelp(clientMd, con, consts.GenericGroup,
+		generic.Commands)
+
+	GenGroupHelp(clientMd, con, consts.ManageGroup,
+		sessions.Commands,
+		alias.Commands,
+		extension.Commands,
+		armory.Commands,
+		mal.Commands,
+	)
+
+	GenGroupHelp(clientMd, con, consts.ListenerGroup,
+		listener.Commands,
+	)
+}
+
+func main() {
+	con, err := repl.NewConsole()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	GenClientHelp(con)
+	GenImplantHelp(con)
 }

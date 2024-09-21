@@ -3,7 +3,6 @@ package sys
 import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -141,7 +140,7 @@ unsetenv key1
 	bypassCmd := &cobra.Command{
 		Use:   consts.ModuleBypass,
 		Short: "Bypass AMSI and ETW",
-		Long:  help.FormatLongHelp(consts.ModuleBypass),
+		Long:  ``,
 		Run: func(cmd *cobra.Command, args []string) {
 			BypassCmd(cmd, con)
 			return

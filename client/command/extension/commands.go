@@ -2,7 +2,6 @@ package extension
 
 import (
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -14,7 +13,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	extensionCmd := &cobra.Command{
 		Use:   consts.CommandExtension,
 		Short: "Extension commands",
-		Long:  help.FormatLongHelp(consts.CommandExtension),
+		// Long:  help.FormatLongHelp(consts.CommandExtension),
 		Run: func(cmd *cobra.Command, args []string) {
 			cmd.Help()
 		},
@@ -23,7 +22,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	extensionListCmd := &cobra.Command{
 		Use:   consts.CommandExtensionList,
 		Short: "List all extensions",
-		Long:  help.FormatLongHelp(consts.CommandExtension + " " + consts.CommandExtensionList),
+		// Long:  help.FormatLongHelp(consts.CommandExtension + " " + consts.CommandExtensionList),
 		Run: func(cmd *cobra.Command, args []string) {
 			ExtensionsCmd(cmd, con)
 		},
@@ -32,8 +31,8 @@ func Commands(con *repl.Console) []*cobra.Command {
 	extensionLoadCmd := &cobra.Command{
 		Use:   consts.CommandExtensionLoad + " [extension]",
 		Short: "Load an extension",
-		Long:  help.FormatLongHelp(consts.CommandExtension + " " + consts.CommandExtensionLoad),
-		Args:  cobra.ExactArgs(1),
+		// Long:  help.FormatLongHelp(consts.CommandExtension + " " + consts.CommandExtensionLoad),
+		Args: cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			ExtensionLoadCmd(cmd, con)
 		},
@@ -45,8 +44,8 @@ func Commands(con *repl.Console) []*cobra.Command {
 	extensionInstallCmd := &cobra.Command{
 		Use:   consts.CommandExtensionInstall + " [extension_file]",
 		Short: "Install an extension",
-		Long:  help.FormatLongHelp(consts.CommandExtension + " " + consts.CommandExtensionInstall),
-		Args:  cobra.ExactArgs(1),
+		// Long:  help.FormatLongHelp(consts.CommandExtension + " " + consts.CommandExtensionInstall),
+		Args: cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			ExtensionsInstallCmd(cmd, con)
 		},
@@ -57,8 +56,8 @@ func Commands(con *repl.Console) []*cobra.Command {
 	extensionRemoveCmd := &cobra.Command{
 		Use:   consts.CommandExtensionRemove + " [extension]",
 		Short: "Remove an extension",
-		Long:  help.FormatLongHelp(consts.CommandExtension + " " + consts.CommandExtensionRemove),
-		Args:  cobra.ExactArgs(1),
+		// Long:  help.FormatLongHelp(consts.CommandExtension + " " + consts.CommandExtensionRemove),
+		Args: cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			ExtensionsRemoveCmd(cmd, con)
 		},

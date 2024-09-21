@@ -2,7 +2,6 @@ package armory
 
 import (
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/rsteube/carapace"
@@ -14,7 +13,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	armoryCmd := &cobra.Command{
 		Use:   consts.CommandArmory,
 		Short: "List available armory packages",
-		Long:  help.FormatLongHelp("armory"),
+		// Long:  help.FormatLongHelp("armory"),
 		Run: func(cmd *cobra.Command, args []string) {
 			ArmoryCmd(cmd, con)
 		},
@@ -32,8 +31,8 @@ func Commands(con *repl.Console) []*cobra.Command {
 	armoryInstallCmd := &cobra.Command{
 		Use:   consts.CommandArmoryInstall + " [armory]",
 		Short: "Install a command armory",
-		Long:  help.FormatLongHelp(consts.CommandArmory + " " + consts.CommandAliasInstall),
-		Args:  cobra.ExactArgs(1),
+		// Long:  help.FormatLongHelp(consts.CommandArmory + " " + consts.CommandAliasInstall),
+		Args: cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			ArmoryInstallCmd(cmd, con)
 		},
@@ -49,7 +48,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	armoryUpdateCmd := &cobra.Command{
 		Use:   consts.CommandArmoryUpdate,
 		Short: "Update installed armory packages",
-		Long:  help.FormatLongHelp(consts.CommandArmory + " " + consts.CommandArmoryUpdate),
+		// Long:  help.FormatLongHelp(consts.CommandArmory + " " + consts.CommandArmoryUpdate),
 		Run: func(cmd *cobra.Command, args []string) {
 			ArmoryUpdateCmd(cmd, con)
 		},
@@ -64,8 +63,8 @@ func Commands(con *repl.Console) []*cobra.Command {
 	armorySearchCmd := &cobra.Command{
 		Use:   consts.CommandArmorySearch + " [armory]",
 		Short: "Search for armory packages",
-		Long:  help.FormatLongHelp(consts.CommandArmory + " " + consts.CommandArmorySearch),
-		Args:  cobra.ExactArgs(1),
+		// Long:  help.FormatLongHelp(consts.CommandArmory + " " + consts.CommandArmorySearch),
+		Args: cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			ArmorySearchCmd(cmd, con)
 		},
