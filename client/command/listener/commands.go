@@ -76,7 +76,7 @@ tcp register listener --name tcp_test --host 192.168.0.43 --port 5003
 
 // Register a TCP pipeline with TLS enabled and specify certificate and key paths
 tcp register listener --tls --cert_path /path/to/cert --key_path /path/to/key
-			~~~`,
+~~~`,
 	}
 
 	common.BindArgCompletions(tcpRegisterCmd, nil,
@@ -104,7 +104,7 @@ tcp register listener --tls --cert_path /path/to/cert --key_path /path/to/key
 		},
 		Example: `~~~
 tcp start tcp_test listener
-			~~~`,
+~~~`,
 	}
 
 	common.BindArgCompletions(tcpStartCmd, nil,
@@ -203,7 +203,7 @@ website register listener /webtest /path/to/file --tls --cert_path /path/to/cert
 		},
 		Example: `~~~
 website start web_test listener
-			~~~`,
+~~~`,
 	}
 
 	common.BindArgCompletions(websiteStartCmd, nil,
