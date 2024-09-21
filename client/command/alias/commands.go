@@ -13,21 +13,26 @@ func Commands(con *repl.Console) []*cobra.Command {
 	aliasCmd := &cobra.Command{
 		Use:   consts.CommandAlias,
 		Short: "manage aliases",
-		Long: `Command: load-macro <directory path> 
-About: Load a Sliver macro to add new commands. 
+		Long: `
 Macros are using the sideload or spawndll commands under the hood, depending on the use case. 
+
 For Linux and Mac OS, the sideload command will be used. On Windows, it will depend on whether the macro file is a reflective DLL or not. 
+
 Load a macro: 
 ~~~
 load /tmp/chrome-dump 
 ~~~
+
 Sliver macros have the following structure (example for the chrome-dump macro): 
+
 chrome-dump 
 * chrome-dump.dll 
 * chrome-dump.so 
 * manifest.json
 
 It is a directory containing any number of files, with a mandatory manifest.json, that has the following structure: 
+
+~~~
 { 
 	"macroName":"chrome-dump", // name of the macro, can be anything
 	"macroCommands":[ 
@@ -62,7 +67,10 @@ It is a directory containing any number of files, with a mandatory manifest.json
 		} 
 	] 
 } 
+~~~
+
 Each command will have the --process flag defined, which allows you to specify the process to inject into. The following default values are set:
+	
 	- Windows: c:\windows\system32\notepad.exe 
 	- Linux: /bin/bash 
 	- Mac OS X: /Applications/Safari.app/Contents/MacOS/SafariForWebKitDevelopment

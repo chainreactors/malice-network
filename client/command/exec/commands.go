@@ -147,8 +147,10 @@ execute-assembly potato.exe -- -cmd "cmd /c whoami"
 
 	execShellcodeCmd := &cobra.Command{
 		Use:   consts.ModuleExecuteShellcode + " [shellcode_file]",
-		Short: "Executes the given shellcode in the malefic process",
-		// Long:  help.FormatLongHelp(consts.ModuleExecuteShellcode),
+		Short: "Executes the given shellcode in the sacrifice process",
+		Long: `The current shellcode injection method uses APC.
+
+In the future, configurable shellcode injection settings will be provided, along with Donut, SGN, SRDI, etc.`,
 		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			ExecuteShellcodeCmd(cmd, con)
@@ -157,6 +159,11 @@ execute-assembly potato.exe -- -cmd "cmd /c whoami"
 		Annotations: map[string]string{
 			"depend": consts.ModuleExecuteShellcode,
 		},
+		Example: `
+~~~
+execute_shellcode example.bin
+~~~
+`,
 	}
 
 	common.BindArgCompletions(execShellcodeCmd, nil,
@@ -167,8 +174,11 @@ execute-assembly potato.exe -- -cmd "cmd /c whoami"
 
 	inlineShellcodeCmd := &cobra.Command{
 		Use:   consts.ModuleAliasInlineShellcode + " [shellcode_file]",
-		Short: "Executes the given inline shellcode in the IOM ",
-		Args:  cobra.MinimumNArgs(1),
+		Short: "Executes the given inline shellcode in the implant process",
+		Long: `
+The current shellcode injection method uses APC.
+`,
+		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			InlineShellcodeCmd(cmd, con)
 			return
@@ -176,6 +186,11 @@ execute-assembly potato.exe -- -cmd "cmd /c whoami"
 		Annotations: map[string]string{
 			"depend": consts.ModuleExecuteShellcode,
 		},
+		Example: `
+~~~
+inline_shellcode example.bin
+~~~
+`,
 	}
 
 	common.BindArgCompletions(inlineShellcodeCmd, nil,
@@ -185,7 +200,10 @@ execute-assembly potato.exe -- -cmd "cmd /c whoami"
 	execDLLCmd := &cobra.Command{
 		Use:   consts.ModuleExecuteDll + " [dll]",
 		Short: "Executes the given DLL in the sacrifice process",
-		Args:  cobra.MinimumNArgs(1),
+		Long: `
+use a custom Headless PE loader to load DLL in the sacrificed process.
+`,
+		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			ExecuteDLLCmd(cmd, con)
 			return
@@ -193,6 +211,17 @@ execute-assembly potato.exe -- -cmd "cmd /c whoami"
 		Annotations: map[string]string{
 			"depend": consts.ModuleExecuteDll,
 		},
+		Example: `
+~~~
+execute_dll example.dll 
+~~~
+
+if entrypoint not default, you can specify the entrypoint
+
+~~~
+execute_dll example.dll -e entrypoint -- arg1 arg2
+~~~
+`,
 	}
 
 	common.BindArgCompletions(execDLLCmd, nil,
@@ -206,6 +235,7 @@ execute-assembly potato.exe -- -cmd "cmd /c whoami"
 	inlineDLLCmd := &cobra.Command{
 		Use:   consts.ModuleAliasInlineDll + " [dll]",
 		Short: "Executes the given inline DLL in the current process",
+		Long:  `use a custom Headless PE loader to load DLL in the current process.`,
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			InlineDLLCmd(cmd, con)
@@ -220,7 +250,7 @@ inline_dll example.dll
 ~~~
 specify the entrypoint
 ~~~
-inline_dll example.dll -e RunFunction
+inline_dll example.dll -e RunFunction -- arg1 arg2
 ~~~`,
 	}
 
@@ -234,6 +264,7 @@ inline_dll example.dll -e RunFunction
 	execExeCmd := &cobra.Command{
 		Use:   consts.ModuleExecuteExe + " [exe]",
 		Short: "Executes the given PE in the sacrifice process",
+		Long:  `use a custom Headless PE loader to load EXE in the sacrificed process.`,
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			ExecuteExeCmd(cmd, con)
@@ -242,6 +273,11 @@ inline_dll example.dll -e RunFunction
 		Annotations: map[string]string{
 			"depend": consts.ModuleExecuteExe,
 		},
+		Example: `
+~~~
+execute_exe gogo.exe -- -i 123.123.123.123 -p top2
+~~~
+`,
 	}
 
 	common.BindArgCompletions(execExeCmd, nil,
@@ -253,8 +289,8 @@ inline_dll example.dll -e RunFunction
 	inlinePECmd := &cobra.Command{
 		Use:   consts.ModuleAliasInlineExe + " [exe]",
 		Short: "Executes the given inline EXE in current process",
-		// Long:  help.FormatLongHelp(consts.ModuleAliasInlineExe),
-		Args: cobra.MinimumNArgs(1),
+		Long:  `use a custom Headless PE loader to load EXE in the current process.`,
+		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			InlineExeCmd(cmd, con)
 			return
@@ -264,7 +300,7 @@ inline_dll example.dll -e RunFunction
 		},
 		Example: `execute the inline PE file
 ~~~
-inline_exe gogo.exe -- -i 127.0.0.1
+inline_exe hackbrowserdata.exe -- -h
 ~~~
 `,
 	}
@@ -306,8 +342,7 @@ bof dir.x64.o -- wstr:"C:\\Windows\\System32"
 
 	powerpickCmd := &cobra.Command{
 		Use:   consts.ModulePowerpick + " [args]",
-		Short: "Loads and executes powershell (Windows Only)",
-		// Long:  help.FormatLongHelp(consts.ModulePowerpick),
+		Short: "unmanaged powershell on implant process (Windows Only)",
 		Run: func(cmd *cobra.Command, args []string) {
 			ExecutePowershellCmd(cmd, con)
 			return
@@ -315,6 +350,11 @@ bof dir.x64.o -- wstr:"C:\\Windows\\System32"
 		Annotations: map[string]string{
 			"depend": consts.ModulePowerpick,
 		},
+		Example: `
+~~~
+powerpick -s powerview.ps1 -- Get-NetUser
+~~~
+`,
 	}
 
 	common.BindFlag(powerpickCmd, func(f *pflag.FlagSet) {
@@ -322,7 +362,7 @@ bof dir.x64.o -- wstr:"C:\\Windows\\System32"
 	})
 
 	common.BindArgCompletions(powerpickCmd, nil,
-		carapace.ActionValues().Usage("powershell"))
+		carapace.ActionValues().Usage("powershell script path"))
 
 	common.BindFlagCompletions(powerpickCmd, func(comp carapace.ActionMap) {
 		comp["script"] = carapace.ActionFiles()

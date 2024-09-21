@@ -118,9 +118,7 @@ func GenMarkdownCustom(cmd *cobra.Command, w io.Writer, linkHandler func(string)
 				continue
 			}
 			cname := name + " " + child.Name()
-			link := cname + markdownExtension
-			link = strings.ReplaceAll(link, " ", "_")
-			buf.WriteString(fmt.Sprintf("* [%s](%s)\t - %s\n", cname, linkHandler(link), child.Short))
+			buf.WriteString(fmt.Sprintf("* [%s](%s)\t - %s\n", cname, linkHandler(cname), child.Short))
 		}
 		buf.WriteString("\n")
 	}
@@ -158,7 +156,7 @@ func GenGroupHelp(writer io.Writer, con *repl.Console, groupId string, binds ...
 		for _, c := range b(con) {
 			c.SetHelpCommand(nil)
 			_ = GenMarkdownTreeCustom(c, writer, func(s string) string {
-				return "#" + s
+				return "#" + strings.ReplaceAll(s, " ", "-")
 			})
 		}
 	}
