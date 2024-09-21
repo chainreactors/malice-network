@@ -140,7 +140,6 @@ unsetenv key1
 	bypassCmd := &cobra.Command{
 		Use:   consts.ModuleBypass,
 		Short: "Bypass AMSI and ETW",
-		Long:  ``,
 		Run: func(cmd *cobra.Command, args []string) {
 			BypassCmd(cmd, con)
 			return
@@ -148,6 +147,10 @@ unsetenv key1
 		Annotations: map[string]string{
 			"depend": consts.ModuleBypass,
 		},
+		Example: `
+~~~
+bypass --amsi --etw
+~~~`,
 	}
 
 	common.BindFlag(bypassCmd, func(f *pflag.FlagSet) {

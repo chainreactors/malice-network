@@ -266,8 +266,18 @@ inline_exe gogo.exe -- -i 127.0.0.1
 
 	execBofCmd := &cobra.Command{
 		Use:   consts.ModuleExecuteBof + " [bof]",
-		Short: "Loads and executes Bof (Windows Only)",
-		// Long:  help.FormatLongHelp(consts.ModuleExecuteBof),
+		Short: "COFF Loader,  executes Bof (Windows Only)",
+		Long: `
+fork from https://github.com/hakaioffsec/coffee ,fix a bundle bugs
+
+Arguments for the BOF can be passed after the -- delimiter. Each argument must be prefixed with the type of the argument followed by a colon (:). The following types are supported:
+
+* str - A null-terminated string
+* wstr - A wide null-terminated string
+* int - A signed 32-bit integer
+* short - A signed 16-bit integer
+* bin - A base64-encoded binary blob
+`,
 		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			ExecuteBofCmd(cmd, con)
@@ -276,6 +286,10 @@ inline_exe gogo.exe -- -i 127.0.0.1
 		Annotations: map[string]string{
 			"depend": consts.ModuleExecuteBof,
 		},
+		Example: `
+~~~
+bof dir.x64.o -- wstr:"C:\\Windows\\System32"
+~~~`,
 	}
 
 	common.BindArgCompletions(execBofCmd, nil,
