@@ -3,7 +3,6 @@ package filesystem
 import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/utils/file"
@@ -23,7 +22,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	pwdCmd := &cobra.Command{
 		Use:   consts.ModulePwd,
 		Short: "Print working directory",
-		Long:  help.FormatLongHelp("print working directory in implant"),
+		Long:  "print working directory in implant",
 		Run: func(cmd *cobra.Command, args []string) {
 			PwdCmd(cmd, con)
 			return
@@ -36,7 +35,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	catCmd := &cobra.Command{
 		Use:   consts.ModuleCat + " [implant_file]",
 		Short: "Print file content",
-		Long:  help.FormatLongHelp("concatenate and display the contents of file in implant"),
+		Long:  "concatenate and display the contents of file in implant",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			CatCmd(cmd, con)
@@ -45,9 +44,9 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Annotations: map[string]string{
 			"depend": consts.ModuleCat,
 		},
-		Example: help.FormatLongHelp(`~~~
-cat ./file.txt			
-			~~~`),
+		Example: `~~~
+cat file.txt			
+~~~`,
 	}
 
 	common.BindArgCompletions(catCmd, nil,
@@ -56,7 +55,7 @@ cat ./file.txt
 	cdCmd := &cobra.Command{
 		Use:   consts.ModuleCd,
 		Short: "Change directory",
-		Long:  help.FormatLongHelp("change the shell's current working directory in implant"),
+		Long:  "change the shell's current working directory in implant",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			CdCmd(cmd, con)
@@ -72,7 +71,7 @@ cat ./file.txt
 	chmodCmd := &cobra.Command{
 		Use:   consts.ModuleChmod + " [file] [mode]",
 		Short: "Change file mode",
-		Long:  help.FormatLongHelp("change the permissions of files and directories in implant"),
+		Long:  "change the permissions of files and directories in implant",
 		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 			ChmodCmd(cmd, con)
@@ -82,9 +81,9 @@ cat ./file.txt
 			"os":     "linux,mac",
 			"depend": consts.ModuleChmod,
 		},
-		Example: help.FormatLongHelp(`~~~
+		Example: `~~~
 chmod ./file.txt 644
-			~~~`),
+~~~`,
 	}
 
 	common.BindArgCompletions(chmodCmd, nil,
@@ -94,7 +93,7 @@ chmod ./file.txt 644
 	chownCmd := &cobra.Command{
 		Use:   consts.ModuleChown + " [file] [user]",
 		Short: "Change file owner",
-		Long:  help.FormatLongHelp("change the ownership of a file or directory in implant"),
+		Long:  "change the ownership of a file or directory in implant",
 		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 			ChownCmd(cmd, con)
@@ -104,9 +103,9 @@ chmod ./file.txt 644
 			"os":     "linux,mac",
 			"depend": consts.ModuleChown,
 		},
-		Example: help.FormatLongHelp(`~~~
+		Example: `~~~
 chown user ./file.txt 
-			~~~`),
+~~~`,
 	}
 
 	common.BindArgCompletions(chownCmd, nil,
@@ -121,7 +120,7 @@ chown user ./file.txt
 	cpCmd := &cobra.Command{
 		Use:   consts.ModuleCp + " [source] [target]",
 		Short: "Copy file",
-		Long:  help.FormatLongHelp("copy files and directories in implant"),
+		Long:  "copy files and directories in implant",
 		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 			CpCmd(cmd, con)
@@ -130,9 +129,9 @@ chown user ./file.txt
 		Annotations: map[string]string{
 			"depend": consts.ModuleCp,
 		},
-		Example: help.FormatLongHelp(`~~~
+		Example: `~~~
 cp /tmp/file.txt /tmp/file2.txt 
-			~~~`),
+~~~`,
 	}
 
 	common.BindArgCompletions(cpCmd, nil,
@@ -142,7 +141,7 @@ cp /tmp/file.txt /tmp/file2.txt
 	lsCmd := &cobra.Command{
 		Use:   consts.ModuleLs + " [path]",
 		Short: "List directory",
-		Long:  help.FormatLongHelp("list directory contents in implant"),
+		Long:  "list directory contents in implant",
 		Args:  cobra.MaximumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			LsCmd(cmd, con)
@@ -151,9 +150,9 @@ cp /tmp/file.txt /tmp/file2.txt
 		Annotations: map[string]string{
 			"depend": consts.ModuleLs,
 		},
-		Example: help.FormatLongHelp(`~~~
+		Example: `~~~
 ls /tmp	
-			~~~`),
+~~~`,
 	}
 
 	common.BindArgCompletions(lsCmd, nil,
@@ -162,7 +161,7 @@ ls /tmp
 	mkdirCmd := &cobra.Command{
 		Use:   consts.ModuleMkdir + " [path]",
 		Short: "Make directory",
-		Long:  help.FormatLongHelp("make directories in implant"),
+		Long:  "make directories in implant",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			MkdirCmd(cmd, con)
@@ -171,9 +170,9 @@ ls /tmp
 		Annotations: map[string]string{
 			"depend": consts.ModuleMkdir,
 		},
-		Example: help.FormatLongHelp(`~~~
+		Example: `~~~
 mkdir /tmp
-			~~~`),
+~~~`,
 	}
 
 	common.BindArgCompletions(mkdirCmd, nil,
@@ -182,7 +181,7 @@ mkdir /tmp
 	mvCmd := &cobra.Command{
 		Use:   consts.ModuleMv + " [source] [target]",
 		Short: "Move file",
-		Long:  help.FormatLongHelp("move files and directories in implant"),
+		Long:  "move files and directories in implant",
 		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 			MvCmd(cmd, con)
@@ -191,9 +190,9 @@ mkdir /tmp
 		Annotations: map[string]string{
 			"depend": consts.ModuleMv,
 		},
-		Example: help.FormatLongHelp(`~~~
+		Example: `~~~
 mv /tmp/file.txt /tmp/file2.txt
-			~~~`),
+~~~`,
 	}
 
 	common.BindArgCompletions(mvCmd, nil,
@@ -203,7 +202,7 @@ mv /tmp/file.txt /tmp/file2.txt
 	rmCmd := &cobra.Command{
 		Use:   consts.ModuleRm + " [file]",
 		Short: "Remove file",
-		Long:  help.FormatLongHelp("remove files and directories in implant"),
+		Long:  "remove files and directories in implant",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			RmCmd(cmd, con)
@@ -212,9 +211,9 @@ mv /tmp/file.txt /tmp/file2.txt
 		Annotations: map[string]string{
 			"depend": consts.ModuleRm,
 		},
-		Example: help.FormatLongHelp(`~~~
+		Example: `~~~
 rm /tmp/file.txt
-			~~~`),
+~~~`,
 	}
 
 	common.BindArgCompletions(rmCmd, nil,
