@@ -57,7 +57,11 @@ func WrapImplantCallback(callback ImplantPluginCallback) intermediate.ImplantCal
 				return output, nil
 			}
 		case bool:
-			return fmt.Sprintf("%s %v", content.Task.Type, res), nil
+			if res.(bool) {
+				return fmt.Sprintf("%s ok", content.Task.Type), nil
+			} else {
+				return fmt.Sprintf("%s failed", content.Task.Type), nil
+			}
 		default:
 			return fmt.Sprintf("%v", res), nil
 		}
