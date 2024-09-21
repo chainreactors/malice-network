@@ -27,7 +27,7 @@ sessions
 
 // List all sessions, including those that have been disconnected
 sessions -a
-			~~~`,
+~~~`,
 	}
 
 	common.Bind("sessions", true, sessionsCmd, func(f *pflag.FlagSet) {
@@ -50,7 +50,7 @@ note newNote 08d6c05a21512a79a1dfeb9d2a8f262f
 
 // Add a note when using an active session
 note newNote
-			~~~`,
+~~~`,
 	}
 
 	common.BindArgCompletions(noteCommand,
@@ -75,7 +75,7 @@ group newGroup 08d6c05a21512a79a1dfeb9d2a8f262f
 
 // Add a session to a group when using an active session
 group newGroup
-			~~~`,
+~~~`,
 	}
 
 	common.BindArgCompletions(groupCommand,
@@ -95,7 +95,7 @@ group newGroup
 		Example: `~~~
 // Delete a specified session
 del 08d6c05a21512a79a1dfeb9d2a8f262f
-			~~~`,
+~~~`,
 	}
 
 	common.BindArgCompletions(removeCommand, nil, common.SessionIDCompleter(con))
@@ -137,7 +137,7 @@ observe -l
 
 // Remove observer
 observe -r
-			~~~`,
+~~~`,
 	}
 
 	common.BindFlag(observeCmd, func(f *pflag.FlagSet) {
