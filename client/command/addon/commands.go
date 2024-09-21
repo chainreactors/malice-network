@@ -25,11 +25,21 @@ func Commands(con *repl.Console) []*cobra.Command {
 	loadaddonCmd := &cobra.Command{
 		Use:   consts.ModuleLoadAddon,
 		Short: "Load an addon",
+		Long:  `Load an executable into the implant's memory for reuse`,
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			LoadAddonCmd(cmd, con)
 			return
 		},
+		Example: `addon default name is filename, default module is selected based on the file extension
+~~~	
+load_addon gogo.exe
+~~~
+assigns an alias name gogo to the addon, and the specified module is execute_exe
+~~~
+load_addon gogo.exe -n gogo -m execute_exe
+~~~
+`,
 	}
 
 	common.BindFlag(loadaddonCmd, func(f *pflag.FlagSet) {
@@ -48,12 +58,25 @@ func Commands(con *repl.Console) []*cobra.Command {
 
 	execAddonCmd := &cobra.Command{
 		Use:   consts.ModuleExecuteAddon,
-		Short: "Execute an addon",
+		Short: "Execute the loaded addon",
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			ExecuteAddonCmd(cmd, con)
 			return
 		},
+		Example: `Execute the addon without "-" arguments
+~~~
+execute_addon httpx 1.1.1.1
+~~~
+execute the addon file with "-" arguments, you need add "--" before the arguments
+~~~
+execute_addon gogo.exe -- -i 127.0.0.1 -p http
+~~~
+if you specify the addon name, you need to use the alias name
+~~~
+execute_addon gogo -- -i 127.0.0.1 -p http
+~~~
+`,
 	}
 	common.BindFlag(execAddonCmd, common.ExecuteFlagSet, common.SacrificeFlagSet)
 	common.BindArgCompletions(execAddonCmd, nil, common.SessionAddonComplete(con))

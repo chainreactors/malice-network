@@ -19,9 +19,9 @@ import (
 
 func Commands(con *repl.Console) []*cobra.Command {
 	execCmd := &cobra.Command{
-		Use:   "execute [args]",
+		Use:   consts.ModuleExecution + " [cmdline]",
 		Short: "Execute commands",
-		Long:  `exec implant local executable file`,
+		Long:  `Exec implant local executable file`,
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			ExecuteCmd(cmd, con)
@@ -30,7 +30,15 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Annotations: map[string]string{
 			"depend": consts.ModuleExecution,
 		},
-		Example: "exec whoami -- -a",
+		Example: `Execute the executable file without any '-' arguments.
+~~~
+exec whoami
+~~~
+Execute the executable file with '-' arguments, you need add "--" before the arguments
+~~~
+exec gogo.exe -- -i 127.0.0.1 -p http
+~~~
+`,
 	}
 	common.BindArgCompletions(execCmd, nil,
 		carapace.ActionValues().Usage("command to execute"),
@@ -67,8 +75,8 @@ exec local_exe --ppid 1234 --block_dll --etw --argue "argue"
 
 	shellCmd := &cobra.Command{
 		Use:   consts.ModuleAliasShell + " [cmdline]",
-		Short: "execute cmd",
-		Long:  help.FormatLongHelp(`equal: exec cmd /c "[cmdline]"`),
+		Short: "Execute cmd",
+		Long:  `equal: exec cmd /c "[cmdline]"`,
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			ShellCmd(cmd, con)
@@ -90,8 +98,8 @@ exec local_exe --ppid 1234 --block_dll --etw --argue "argue"
 
 	powershellCmd := &cobra.Command{
 		Use:   consts.ModuleAliasPowershell + " [cmdline]",
-		Short: "execute cmd",
-		Long:  help.FormatLongHelp(`equal: powershell.exe -ExecutionPolicy Bypass -w hidden -nop "[cmdline]"`),
+		Short: "Execute cmd with powershell",
+		Long:  `equal: powershell.exe -ExecutionPolicy Bypass -w hidden -nop "[cmdline]"`,
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			PowershellCmd(cmd, con)
@@ -113,7 +121,6 @@ exec local_exe --ppid 1234 --block_dll --etw --argue "argue"
 	execAssemblyCmd := &cobra.Command{
 		Use:   consts.ModuleExecuteAssembly + " [file]",
 		Short: "Loads and executes a .NET assembly in a child process (Windows Only)",
-		Long:  consts.ModuleExecuteAssembly,
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			ExecuteAssemblyCmd(cmd, con)
@@ -122,6 +129,15 @@ exec local_exe --ppid 1234 --block_dll --etw --argue "argue"
 		Annotations: map[string]string{
 			"depend": consts.ModuleExecuteAssembly,
 		},
+		Example: `Execute a .NET assembly without "-" arguments
+~~~
+execute-assembly potato.exe "whoami"
+~~~
+Execute a .NET assembly with "-" arguments, you need add "--" before the arguments
+~~~
+execute-assembly potato.exe -- -cmd "cmd /c whoami"
+~~~
+`,
 	}
 
 	common.BindArgCompletions(execAssemblyCmd, nil,
@@ -153,7 +169,6 @@ exec local_exe --ppid 1234 --block_dll --etw --argue "argue"
 	inlineShellcodeCmd := &cobra.Command{
 		Use:   consts.ModuleAliasInlineShellcode + " [shellcode_file]",
 		Short: "Executes the given inline shellcode in the IOM ",
-		Long:  help.FormatLongHelp(consts.ModuleExecuteShellcode),
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			InlineShellcodeCmd(cmd, con)
@@ -171,7 +186,6 @@ exec local_exe --ppid 1234 --block_dll --etw --argue "argue"
 	execDLLCmd := &cobra.Command{
 		Use:   consts.ModuleExecuteDll + " [dll]",
 		Short: "Executes the given DLL in the sacrifice process",
-		Long:  help.FormatLongHelp(consts.ModuleExecuteDll),
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			ExecuteDLLCmd(cmd, con)
@@ -193,7 +207,6 @@ exec local_exe --ppid 1234 --block_dll --etw --argue "argue"
 	inlineDLLCmd := &cobra.Command{
 		Use:   consts.ModuleAliasInlineDll + " [dll]",
 		Short: "Executes the given inline DLL in the current process",
-		Long:  help.FormatLongHelp(consts.ModuleAliasInlineDll),
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			InlineDLLCmd(cmd, con)
@@ -214,7 +227,6 @@ exec local_exe --ppid 1234 --block_dll --etw --argue "argue"
 	execExeCmd := &cobra.Command{
 		Use:   consts.ModuleExecuteExe + " [exe]",
 		Short: "Executes the given PE in the sacrifice process",
-		Long:  help.FormatLongHelp(consts.ModuleExecuteExe),
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			ExecuteExeCmd(cmd, con)
@@ -243,6 +255,11 @@ exec local_exe --ppid 1234 --block_dll --etw --argue "argue"
 		Annotations: map[string]string{
 			"depend": consts.ModuleExecuteExe,
 		},
+		Example: `execute the inline PE file
+~~~
+inline_exe gogo.exe -- -i 127.0.0.1
+~~~
+`,
 	}
 	common.BindFlag(inlinePECmd, common.ExecuteFlagSet)
 	common.BindArgCompletions(inlinePECmd, nil,
