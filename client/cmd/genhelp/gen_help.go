@@ -101,7 +101,7 @@ func GenMarkdownCustom(cmd *cobra.Command, w io.Writer, linkHandler func(string)
 		if cmd.HasParent() {
 			parent := cmd.Parent()
 			pname := parent.CommandPath()
-			link := strings.ReplaceAll(pname, " ", "_")
+			link := strings.ReplaceAll(pname, " ", "-")
 			buf.WriteString(fmt.Sprintf("* [%s](%s)\t - %s\n", pname, linkHandler(link), parent.Short))
 			cmd.VisitParents(func(c *cobra.Command) {
 				if c.DisableAutoGenTag {
@@ -165,7 +165,7 @@ func GenGroupHelp(writer io.Writer, con *repl.Console, groupId string, binds ...
 }
 
 func GenImplantHelp(con *repl.Console) {
-	implantMd, err := os.Create("implant.md")
+	implantMd, err := os.Create("implant_template.md")
 	if err != nil {
 		panic(err)
 	}
@@ -188,7 +188,7 @@ func GenImplantHelp(con *repl.Console) {
 }
 
 func GenClientHelp(con *repl.Console) {
-	clientMd, err := os.Create("client.md")
+	clientMd, err := os.Create("client_template.md")
 	if err != nil {
 		panic(err)
 	}
