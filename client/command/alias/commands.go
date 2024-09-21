@@ -13,7 +13,60 @@ func Commands(con *repl.Console) []*cobra.Command {
 	aliasCmd := &cobra.Command{
 		Use:   consts.CommandAlias,
 		Short: "manage aliases",
-		// Long:  help.FormatLongHelp(consts.CommandAlias),
+		Long: `Command: load-macro <directory path> 
+About: Load a Sliver macro to add new commands. 
+Macros are using the sideload or spawndll commands under the hood, depending on the use case. 
+For Linux and Mac OS, the sideload command will be used. On Windows, it will depend on whether the macro file is a reflective DLL or not. 
+Load a macro: 
+~~~
+load /tmp/chrome-dump 
+~~~
+Sliver macros have the following structure (example for the chrome-dump macro): 
+chrome-dump 
+* chrome-dump.dll 
+* chrome-dump.so 
+* manifest.json
+
+It is a directory containing any number of files, with a mandatory manifest.json, that has the following structure: 
+{ 
+	"macroName":"chrome-dump", // name of the macro, can be anything
+	"macroCommands":[ 
+		{ 
+			"name":"chrome-dump", // name of the command available in the sliver client (no space)
+			"entrypoint":"ChromeDump", // entrypoint of the shared library to execute
+			"help":"Dump Google Chrome cookies", // short help message
+			"allowArgs":false, // make it true if the commands require arguments
+			"defaultArgs": "test", // if you need to pass a default argument
+			"extFiles":[ // list of files, groupped per target OS
+				{ 
+					"os":"windows", // Target OS for the following files. Values can be "windows", "linux" or "darwin" 
+					"files":{ 
+						"x64":"chrome-dump.dll", 
+						"x86":"chrome-dump.x86.dll" // only x86 and x64 arch are supported, path is relative to the macro directory
+					} 
+				}, 
+				{
+					"os":"linux", 
+					"files":{
+						"x64":"chrome-dump.so" 
+					} 
+				}, 
+				{
+					"os":"darwin", 
+					"files":{ 
+						"x64":"chrome-dump.dylib"
+						} 
+					} 
+				], 
+			"isReflective":false // only set to true when using a reflective DLL
+		} 
+	] 
+} 
+Each command will have the --process flag defined, which allows you to specify the process to inject into. The following default values are set:
+	- Windows: c:\windows\system32\notepad.exe 
+	- Linux: /bin/bash 
+	- Mac OS X: /Applications/Safari.app/Contents/MacOS/SafariForWebKitDevelopment
+`,
 		Run: func(cmd *cobra.Command, args []string) {
 			cmd.Help()
 			return
@@ -23,7 +76,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	aliasListCmd := &cobra.Command{
 		Use:   consts.CommandAliasList,
 		Short: "List all aliases",
-		// Long:  help.FormatLongHelp(consts.CommandAlias + " " + consts.CommandAliasList),
+		Long:  "See Docs at https://sliver.sh/docs?name=Aliases%20and%20Extensions",
 		Run: func(cmd *cobra.Command, args []string) {
 			AliasesCmd(cmd, con)
 			return
@@ -33,12 +86,17 @@ func Commands(con *repl.Console) []*cobra.Command {
 	aliasLoadCmd := &cobra.Command{
 		Use:   consts.CommandAliasLoad + " [alias]",
 		Short: "Load a command alias",
-		// Long:  help.FormatLongHelp(consts.CommandAlias + " " + consts.CommandAliasLoad),
-		Args: cobra.ExactArgs(1),
+		Long:  "See Docs at https://sliver.sh/docs?name=Aliases%20and%20Extensions",
+		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			AliasesLoadCmd(cmd, con)
 			return
 		},
+		Example: `
+~~~
+// Load a command alias
+alias load /tmp/chrome-dump
+~~~`,
 	}
 	common.BindArgCompletions(
 		aliasLoadCmd,
@@ -49,12 +107,17 @@ func Commands(con *repl.Console) []*cobra.Command {
 	aliasInstallCmd := &cobra.Command{
 		Use:   consts.CommandAliasInstall + " [alias_file]",
 		Short: "Install a command alias",
-		// Long:  help.FormatLongHelp(consts.CommandAlias + " " + consts.CommandAliasInstall),
-		Args: cobra.ExactArgs(1),
+		Long:  "See Docs at https://sliver.sh/docs?name=Aliases%20and%20Extensions",
+		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			AliasesInstallCmd(cmd, con)
 			return
 		},
+		Example: `
+~~~
+// Install a command alias
+alias install ./rubeus.exe
+~~~`,
 	}
 
 	common.BindArgCompletions(aliasInstallCmd,
@@ -65,12 +128,17 @@ func Commands(con *repl.Console) []*cobra.Command {
 	aliasRemoveCmd := &cobra.Command{
 		Use:   consts.CommandAliasRemove + " [alias]",
 		Short: "Remove an alias",
-		// Long:  help.FormatLongHelp(consts.CommandAlias + " " + consts.CommandAliasRemove),
-		Args: cobra.ExactArgs(1),
+		Long:  "See Docs at https://sliver.sh/docs?name=Aliases%20and%20Extensions",
+		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			AliasesRemoveCmd(cmd, con)
 			return
 		},
+		Example: `
+~~~
+// Remove an alias
+alias remove rubeus
+~~~`,
 	}
 
 	common.BindArgCompletions(

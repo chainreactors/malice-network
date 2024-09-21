@@ -12,8 +12,8 @@ import (
 func Commands(con *repl.Console) []*cobra.Command {
 	armoryCmd := &cobra.Command{
 		Use:   consts.CommandArmory,
-		Short: "List available armory packages",
-		// Long:  help.FormatLongHelp("armory"),
+		Short: "Automatically download and install extensions/aliases",
+		Long:  "See Docs at https://sliver.sh/docs?name=Armory",
 		Run: func(cmd *cobra.Command, args []string) {
 			ArmoryCmd(cmd, con)
 		},
@@ -31,15 +31,19 @@ func Commands(con *repl.Console) []*cobra.Command {
 	armoryInstallCmd := &cobra.Command{
 		Use:   consts.CommandArmoryInstall + " [armory]",
 		Short: "Install a command armory",
-		// Long:  help.FormatLongHelp(consts.CommandArmory + " " + consts.CommandAliasInstall),
-		Args: cobra.ExactArgs(1),
+		Long:  "See Docs at https://sliver.sh/docs?name=Armory",
+		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			ArmoryInstallCmd(cmd, con)
 		},
+		Example: `
+~~~
+// Install a command armory
+armory install rubeus 
+~~~`,
 	}
 	common.Bind("connection", false, armoryInstallCmd, func(f *pflag.FlagSet) {
 		f.BoolP("force", "f", false, "force installation of package, overwriting the package if it exists")
-		f.StringP("armory", "a", "", "name of armory to install package from")
 	})
 	common.Bind("name", true, armoryInstallCmd, func(f *pflag.FlagSet) {
 		f.StringP("armory", "a", "Default", "name of the armory to install from")
@@ -48,23 +52,20 @@ func Commands(con *repl.Console) []*cobra.Command {
 	armoryUpdateCmd := &cobra.Command{
 		Use:   consts.CommandArmoryUpdate,
 		Short: "Update installed armory packages",
-		// Long:  help.FormatLongHelp(consts.CommandArmory + " " + consts.CommandArmoryUpdate),
+		Long:  "See Docs at https://sliver.sh/docs?name=Armory",
 		Run: func(cmd *cobra.Command, args []string) {
 			ArmoryUpdateCmd(cmd, con)
 		},
 	}
-	common.Bind("connection", false, armoryUpdateCmd, func(f *pflag.FlagSet) {
-		f.StringP("armory", "a", "", "name of armory to install package from")
-	})
-	common.Bind("name", true, armoryUpdateCmd, func(f *pflag.FlagSet) {
-		f.StringP("armory", "a", "Default", "name of the armory to install from")
+	common.Bind("name", false, armoryUpdateCmd, func(f *pflag.FlagSet) {
+		f.StringP("armory", "a", "Default", "name of armory to install package from")
 	})
 
 	armorySearchCmd := &cobra.Command{
 		Use:   consts.CommandArmorySearch + " [armory]",
 		Short: "Search for armory packages",
-		// Long:  help.FormatLongHelp(consts.CommandArmory + " " + consts.CommandArmorySearch),
-		Args: cobra.ExactArgs(1),
+		Long:  "See Docs at https://sliver.sh/docs?name=Armory",
+		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			ArmorySearchCmd(cmd, con)
 		},

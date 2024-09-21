@@ -13,7 +13,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	extensionCmd := &cobra.Command{
 		Use:   consts.CommandExtension,
 		Short: "Extension commands",
-		// Long:  help.FormatLongHelp(consts.CommandExtension),
+		Long:  "See Docs at https://sliver.sh/docs?name=Aliases%20and%20Extensions",
 		Run: func(cmd *cobra.Command, args []string) {
 			cmd.Help()
 		},
@@ -22,7 +22,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	extensionListCmd := &cobra.Command{
 		Use:   consts.CommandExtensionList,
 		Short: "List all extensions",
-		// Long:  help.FormatLongHelp(consts.CommandExtension + " " + consts.CommandExtensionList),
+		Long:  "See Docs at https://sliver.sh/docs?name=Aliases%20and%20Extensions",
 		Run: func(cmd *cobra.Command, args []string) {
 			ExtensionsCmd(cmd, con)
 		},
@@ -31,11 +31,17 @@ func Commands(con *repl.Console) []*cobra.Command {
 	extensionLoadCmd := &cobra.Command{
 		Use:   consts.CommandExtensionLoad + " [extension]",
 		Short: "Load an extension",
-		// Long:  help.FormatLongHelp(consts.CommandExtension + " " + consts.CommandExtensionLoad),
-		Args: cobra.ExactArgs(1),
+		Long:  "See Docs at https://sliver.sh/docs?name=Aliases%20and%20Extensions",
+		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			ExtensionLoadCmd(cmd, con)
 		},
+		Example: `
+~~~
+// Load an extension
+extension load ./credman/
+~~~
+`,
 	}
 
 	common.BindArgCompletions(extensionLoadCmd, nil,
@@ -44,11 +50,17 @@ func Commands(con *repl.Console) []*cobra.Command {
 	extensionInstallCmd := &cobra.Command{
 		Use:   consts.CommandExtensionInstall + " [extension_file]",
 		Short: "Install an extension",
-		// Long:  help.FormatLongHelp(consts.CommandExtension + " " + consts.CommandExtensionInstall),
-		Args: cobra.ExactArgs(1),
+		Long:  "See Docs at https://sliver.sh/docs?name=Aliases%20and%20Extensions",
+		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			ExtensionsInstallCmd(cmd, con)
 		},
+		Example: `
+~~~
+// Install an extension
+extension install ./credman.tar.gz
+~~~
+`,
 	}
 	common.BindArgCompletions(extensionInstallCmd, nil,
 		carapace.ActionFiles().Usage("path to the extension directory or tar.gz file"))
@@ -56,11 +68,17 @@ func Commands(con *repl.Console) []*cobra.Command {
 	extensionRemoveCmd := &cobra.Command{
 		Use:   consts.CommandExtensionRemove + " [extension]",
 		Short: "Remove an extension",
-		// Long:  help.FormatLongHelp(consts.CommandExtension + " " + consts.CommandExtensionRemove),
-		Args: cobra.ExactArgs(1),
+		Long:  "See Docs at https://sliver.sh/docs?name=Aliases%20and%20Extensions",
+		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			ExtensionsRemoveCmd(cmd, con)
 		},
+		Example: `
+~~~
+// Remove an extension
+extension remove credman
+~~~
+`,
 	}
 
 	common.BindArgCompletions(extensionRemoveCmd, nil,
