@@ -26,7 +26,7 @@ import (
 const (
 	ManifestFileName = "alias.json"
 
-	windowsDefaultHostProc = `c:\windows\system32\notepad.exe`
+	windowsDefaultHostProc = `c:\\windows\\system32\\notepad.exe`
 	linuxDefaultHostProc   = "/bin/bash"
 	macosDefaultHostProc   = "/Applications/Safari.app/Contents/MacOS/SafariForWebKitDevelopment"
 )

@@ -2,7 +2,6 @@ package exec
 
 import (
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/core/intermediate/builtin"
 	"github.com/chainreactors/malice-network/client/repl"
@@ -149,8 +148,8 @@ execute-assembly potato.exe -- -cmd "cmd /c whoami"
 	execShellcodeCmd := &cobra.Command{
 		Use:   consts.ModuleExecuteShellcode + " [shellcode_file]",
 		Short: "Executes the given shellcode in the malefic process",
-		Long:  help.FormatLongHelp(consts.ModuleExecuteShellcode),
-		Args:  cobra.MinimumNArgs(1),
+		// Long:  help.FormatLongHelp(consts.ModuleExecuteShellcode),
+		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			ExecuteShellcodeCmd(cmd, con)
 			return
@@ -246,8 +245,8 @@ execute-assembly potato.exe -- -cmd "cmd /c whoami"
 	inlinePECmd := &cobra.Command{
 		Use:   consts.ModuleAliasInlineExe + " [exe]",
 		Short: "Executes the given inline EXE in current process",
-		Long:  help.FormatLongHelp(consts.ModuleAliasInlineExe),
-		Args:  cobra.MinimumNArgs(1),
+		// Long:  help.FormatLongHelp(consts.ModuleAliasInlineExe),
+		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			InlineExeCmd(cmd, con)
 			return
@@ -268,8 +267,8 @@ inline_exe gogo.exe -- -i 127.0.0.1
 	execBofCmd := &cobra.Command{
 		Use:   consts.ModuleExecuteBof + " [bof]",
 		Short: "Loads and executes Bof (Windows Only)",
-		Long:  help.FormatLongHelp(consts.ModuleExecuteBof),
-		Args:  cobra.MinimumNArgs(1),
+		// Long:  help.FormatLongHelp(consts.ModuleExecuteBof),
+		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			ExecuteBofCmd(cmd, con)
 			return
@@ -286,7 +285,7 @@ inline_exe gogo.exe -- -i 127.0.0.1
 	powerpickCmd := &cobra.Command{
 		Use:   consts.ModulePowerpick + " [args]",
 		Short: "Loads and executes powershell (Windows Only)",
-		Long:  help.FormatLongHelp(consts.ModulePowerpick),
+		// Long:  help.FormatLongHelp(consts.ModulePowerpick),
 		Run: func(cmd *cobra.Command, args []string) {
 			ExecutePowershellCmd(cmd, con)
 			return
