@@ -14,6 +14,7 @@ func listFiles(cmd *cobra.Command, con *repl.Console) {
 		&clientpb.Session{SessionId: con.GetInteractive().SessionId})
 	if err != nil {
 		con.Log.Errorf("Error getting tasks: %v", err)
+		return
 	}
 	if 0 < len(resp.Files) {
 		printFiles(resp, con)
