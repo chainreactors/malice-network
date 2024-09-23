@@ -99,6 +99,7 @@ func (r *GenericRequest) HandlerResponse(ch chan *implantpb.Spite, typ types.Msg
 		})
 	}
 	r.Task.Done(resp)
+	r.Task.Finish("")
 }
 
 func buildErrorEvent(task *core.Task, err error) core.Event {
@@ -175,44 +176,6 @@ func (rpc *Server) GetBasic(ctx context.Context, _ *clientpb.Empty) (*clientpb.B
 		Arch:  runtime.GOARCH,
 	}, nil
 }
-
-// getTimeout - Get the specified timeout from the request or the default
-//func (rpc *Server) getTimeout(req GenericRequest) time.Duration {
-//
-//	d := req.ProtoReflect().Descriptor().Fields().ByName("timeout")
-//	timeout := req.ProtoReflect().Get(d).Int()
-//	if time.Duration(timeout) < time.Second {
-//		return constant.MinTimeout
-//	}
-//	return time.Duration(timeout)
-//}
-
-// // getError - Check an implant's response for Err and convert it to an `error` type
-//func (rpc *Server) getError(resp GenericResponse) error {
-//	respHeader := resp.GetResponse()
-//	if respHeader != nil && respHeader.Err != "" {
-//		return errors.New(respHeader.Err)
-//	}
-//	return nil
-//}
-
-//func (rpc *Server) getClientCommonName(ctx context.Context) string {
-//	client, ok := peer.FromContext(ctx)
-//	if !ok {
-//		return ""
-//	}
-//	tlsAuth, ok := client.AuthInfo.(credentials.TLSInfo)
-//	if !ok {
-//		return ""
-//	}
-//	if len(tlsAuth.State.VerifiedChains) == 0 || len(tlsAuth.State.VerifiedChains[0]) == 0 {
-//		return ""
-//	}
-//	if tlsAuth.State.VerifiedChains[0][0].Subject.CommonName != "" {
-//		return tlsAuth.State.VerifiedChains[0][0].Subject.CommonName
-//	}
-//	return ""
-//}
 
 func getSessionID(ctx context.Context) (string, error) {
 	md, ok := metadata.FromIncomingContext(ctx)

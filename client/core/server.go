@@ -171,6 +171,27 @@ func (s *ServerStatus) UpdateListener() error {
 	return nil
 }
 
+func (s *ServerStatus) AddObserver(session *Session) string {
+	Log.Infof("Add observer to %s", session.SessionId)
+	s.Observers[session.SessionId] = &Observer{session, Log}
+	return session.SessionId
+}
+
+func (s *ServerStatus) RemoveObserver(observerID string) {
+	delete(s.Observers, observerID)
+}
+
+func (s *ServerStatus) ObserverLog(sessionId string) *Logger {
+	if s.Session != nil && s.Session.SessionId == sessionId {
+		return s.Observer.Log
+	}
+
+	if observer, ok := s.Observers[sessionId]; ok {
+		return observer.Log
+	}
+	return MuteLog
+}
+
 func (s *ServerStatus) AddDoneCallback(task *clientpb.Task, callback TaskCallback) {
 	s.doneCallbacks.Store(fmt.Sprintf("%s_%d", task.SessionId, task.TaskId), callback)
 }
@@ -312,27 +333,6 @@ func (s *ServerStatus) handlerTask(event *clientpb.Event) {
 	case consts.CtrlTaskError:
 		Log.Errorf("[%s.%d] %s", event.Task.SessionId, event.Task.TaskId, event.Err)
 	}
-}
-
-func (s *ServerStatus) AddObserver(session *Session) string {
-	Log.Infof("Add observer to %s", session.SessionId)
-	s.Observers[session.SessionId] = &Observer{session, Log}
-	return session.SessionId
-}
-
-func (s *ServerStatus) RemoveObserver(observerID string) {
-	delete(s.Observers, observerID)
-}
-
-func (s *ServerStatus) ObserverLog(sessionId string) *Logger {
-	if s.Session != nil && s.Session.SessionId == sessionId {
-		return s.Observer.Log
-	}
-
-	if observer, ok := s.Observers[sessionId]; ok {
-		return observer.Log
-	}
-	return MuteLog
 }
 
 func (s *ServerStatus) handlerSession(event *clientpb.Event) {
