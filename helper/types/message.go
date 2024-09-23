@@ -40,6 +40,7 @@ func (r MsgName) String() string {
 	return string(r)
 }
 
+// MessageType , parse response message
 func MessageType(message *implantpb.Spite) MsgName {
 	switch message.Body.(type) {
 	case nil:
