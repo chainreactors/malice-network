@@ -19,6 +19,7 @@ func BuildPingSpite() *implantpb.Spites {
 	})
 }
 
+// BuildSpite build spite request
 func BuildSpite(spite *implantpb.Spite, msg proto.Message) (*implantpb.Spite, error) {
 	switch msg.(type) {
 	case *implantpb.Request:
@@ -69,6 +70,9 @@ func BuildSpite(spite *implantpb.Spite, msg proto.Message) (*implantpb.Spite, er
 	case *implantpb.ExecSacrificeRequest:
 		spite.Name = MsgExecuteLocal.String()
 		spite.Body = &implantpb.Spite_ExecuteSacrificeRequest{ExecuteSacrificeRequest: msg.(*implantpb.ExecSacrificeRequest)}
+	case *implantpb.ExecuteClr:
+		spite.Name = msg.(*implantpb.ExecuteClr).ExecuteBinary.Type
+		spite.Body = &implantpb.Spite_ExecuteClr{ExecuteClr: msg.(*implantpb.ExecuteClr)}
 	default:
 		return spite, ErrUnknownSpite
 	}
