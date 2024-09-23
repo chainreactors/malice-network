@@ -19,7 +19,7 @@ import (
 )
 
 func newWebsiteCmd(cmd *cobra.Command, con *repl.Console) {
-	name, _, portUint, certPath, keyPath, tlsEnable := common.ParsePipelineSet(cmd)
+	name, _, portUint, certPath, keyPath, tlsEnable := common.ParsePipelineFlags(cmd)
 	contentType, _ := cmd.Flags().GetString("content_type")
 	listenerID := cmd.Flags().Arg(0)
 	webPath := cmd.Flags().Arg(1)

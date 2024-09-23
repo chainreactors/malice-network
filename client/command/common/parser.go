@@ -6,46 +6,11 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
-	"github.com/spf13/cobra"
 	"math"
 )
 
-func ParseSacrifice(cmd *cobra.Command) (*implantpb.SacrificeProcess, error) {
-	ppid, _ := cmd.Flags().GetUint("ppid")
-	argue, _ := cmd.Flags().GetString("argue")
-	isBlockDll, _ := cmd.Flags().GetBool("block_dll")
-	hidden, _ := cmd.Flags().GetBool("hidden")
-	disableEtw, _ := cmd.Flags().GetBool("etw")
-	return builtin.NewSacrificeProcessMessage(int64(ppid), hidden, isBlockDll, disableEtw, argue)
-}
-
-func ParseBinaryParams(cmd *cobra.Command) (string, []string, bool, uint32) {
-	path := cmd.Flags().Arg(0)
-	args := cmd.Flags().Args()[1:]
-	timeout, _ := cmd.Flags().GetUint32("timeout")
-	quiet, _ := cmd.Flags().GetBool("quiet")
-	return path, args, !quiet, timeout
-}
-
-func ParseFullBinaryParams(cmd *cobra.Command) (string, []string, bool, uint32, string, string) {
-	path, args, output, timeout := ParseBinaryParams(cmd)
-	arch, _ := cmd.Flags().GetString("arch")
-	process, _ := cmd.Flags().GetString("process")
-	return path, args, output, timeout, arch, process
-}
-
 func ParseAssembly(ctx *clientpb.TaskContext) (interface{}, error) {
 	return builtin.ParseAssembly(ctx.Spite)
-}
-
-func ParsePipelineSet(cmd *cobra.Command) (string, string, uint, string, string, bool) {
-	name, _ := cmd.Flags().GetString("name")
-	host, _ := cmd.Flags().GetString("host")
-	portUint, _ := cmd.Flags().GetUint("port")
-	certPath, _ := cmd.Flags().GetString("cert_path")
-	keyPath, _ := cmd.Flags().GetString("key_path")
-	tlsEnable, _ := cmd.Flags().GetBool("tls")
-	return name, host, portUint, certPath, keyPath, tlsEnable
 }
 
 func NewExecutable(module string, path string, args []string, arch string, output bool, sac *implantpb.SacrificeProcess) (*implantpb.ExecuteBinary, error) {

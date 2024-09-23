@@ -31,7 +31,7 @@ func ExecuteAddonCmd(cmd *cobra.Command, con *repl.Console) {
 	addon := session.GetAddon(cmd.Name())
 	var sac *implantpb.SacrificeProcess
 	if slices.Contains(consts.SacrificeModules, addon.Depend) {
-		sac, _ = common.ParseSacrifice(cmd)
+		sac, _ = common.ParseSacrificeFlags(cmd)
 	}
 
 	_, err := ExecuteAddon(con.Rpc, session, cmd.Name(), args, !quiet, timeout, arch, process, sac)

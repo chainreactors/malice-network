@@ -143,7 +143,7 @@ execute-assembly potato.exe -- -cmd "cmd /c whoami"
 		carapace.ActionFiles().Usage("path the assembly file"),
 		carapace.ActionValues().Usage("arguments to pass to the assembly entrypoint"))
 
-	common.BindFlag(execAssemblyCmd, common.ExecuteFlagSet)
+	common.BindFlag(execAssemblyCmd, common.CLRFlagSet)
 
 	execShellcodeCmd := &cobra.Command{
 		Use:   consts.ModuleExecuteShellcode + " [shellcode_file]",
@@ -357,7 +357,7 @@ powerpick -s powerview.ps1 -- Get-NetUser
 `,
 	}
 
-	common.BindFlag(powerpickCmd, func(f *pflag.FlagSet) {
+	common.BindFlag(powerpickCmd, common.CLRFlagSet, func(f *pflag.FlagSet) {
 		f.StringP("script", "s", "", "powershell script")
 	})
 
@@ -426,7 +426,7 @@ func Register(con *repl.Console) {
 			if err != nil {
 				return nil, err
 			}
-			return ExecAssembly(rpc, sess, path, cmdline, true)
+			return ExecAssembly(rpc, sess, path, cmdline, true, true, true)
 		},
 		common.ParseAssembly,
 		nil)
@@ -528,7 +528,7 @@ func Register(con *repl.Console) {
 			if err != nil {
 				return nil, err
 			}
-			return PowerPick(rpc, sess, script, cmdline)
+			return PowerPick(rpc, sess, script, cmdline, true, true)
 		},
 		common.ParseAssembly,
 		nil)

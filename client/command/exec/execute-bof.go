@@ -11,7 +11,7 @@ import (
 )
 
 func ExecuteBofCmd(cmd *cobra.Command, con *repl.Console) {
-	path, args, output, _ := common.ParseBinaryParams(cmd)
+	path, args, output, _ := common.ParseBinaryFlags(cmd)
 	task, err := ExecBof(con.Rpc, con.GetInteractive(), path, args, output)
 	if err != nil {
 		con.Log.Errorf("Execute BOF error: %v", err)

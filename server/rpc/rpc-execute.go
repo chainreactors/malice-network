@@ -40,7 +40,7 @@ func (rpc *Server) Execute(ctx context.Context, req *implantpb.ExecRequest) (*cl
 	return greq.Task.ToProtobuf(), nil
 }
 
-func (rpc *Server) ExecuteAssembly(ctx context.Context, req *implantpb.ExecuteBinary) (*clientpb.Task, error) {
+func (rpc *Server) ExecuteAssembly(ctx context.Context, req *implantpb.ExecuteClr) (*clientpb.Task, error) {
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err
@@ -114,7 +114,7 @@ func (rpc *Server) ExecuteDll(ctx context.Context, req *implantpb.ExecuteBinary)
 	return greq.Task.ToProtobuf(), nil
 }
 
-func (rpc *Server) ExecutePowershell(ctx context.Context, req *implantpb.ExecuteBinary) (*clientpb.Task, error) {
+func (rpc *Server) ExecutePowerpick(ctx context.Context, req *implantpb.ExecuteClr) (*clientpb.Task, error) {
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err

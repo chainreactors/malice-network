@@ -51,7 +51,7 @@ func listTcpCmd(cmd *cobra.Command, con *repl.Console) {
 }
 
 func newTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) {
-	name, host, portUint, certPath, keyPath, tlsEnable := common.ParsePipelineSet(cmd)
+	name, host, portUint, certPath, keyPath, tlsEnable := common.ParsePipelineFlags(cmd)
 	listenerID := cmd.Flags().Arg(0)
 	var cert, key string
 	var err error

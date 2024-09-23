@@ -176,13 +176,17 @@ func RegisterAlias(aliasManifest *AliasManifest, cmd *cobra.Command, con *repl.C
 			f.BoolP("inline", "i", false, "enable execute_dll")
 			f.StringP("entrypoint", "e", aliasManifest.Entrypoint, "entrypoint")
 		})
+	} else {
+		common.BindFlag(addAliasCmd, common.CLRFlagSet)
 	}
 
 	loadedAliases[aliasManifest.CommandName] = &loadedAlias{
 		Manifest: aliasManifest,
 		Command:  addAliasCmd,
-		Func: repl.WrapImplantFunc(con, func(rpc clientrpc.MaliceRPCClient, sess *core.Session, args string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
-			return ExecuteAlias(rpc, sess, aliasManifest.CommandName, args, sac)
+		Func: repl.WrapImplantFunc(con, func(rpc clientrpc.MaliceRPCClient, sess *core.Session, args string,
+			amsi, etw bool,
+			sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
+			return ExecuteAlias(rpc, sess, aliasManifest.CommandName, args, amsi, etw, sac)
 		}, common.ParseAssembly),
 	}
 	cmd.AddCommand(addAliasCmd)
@@ -245,8 +249,9 @@ func runAliasCommand(cmd *cobra.Command, con *repl.Console) {
 	extArgs = strings.TrimSpace(extArgs)
 	var err error
 	isInline, _ := cmd.Flags().GetBool("inline")
+	amsi, etw := common.ParseCLRFlags(cmd)
 	if isInline {
-		_, err = ExecuteAlias(con.Rpc, session, cmd.Name(), extArgs, nil)
+		_, err = ExecuteAlias(con.Rpc, session, cmd.Name(), extArgs, amsi, etw, nil)
 	} else {
 		processName, _ := cmd.Flags().GetString("process")
 		if processName == "" {
@@ -256,8 +261,8 @@ func runAliasCommand(cmd *cobra.Command, con *repl.Console) {
 				return
 			}
 		}
-		sac, _ := common.ParseSacrifice(cmd)
-		task, err := ExecuteAlias(con.Rpc, session, cmd.Name(), extArgs, sac)
+		sac, _ := common.ParseSacrificeFlags(cmd)
+		task, err := ExecuteAlias(con.Rpc, session, cmd.Name(), extArgs, amsi, etw, sac)
 		if err != nil {
 			con.Log.Errorf("Execute error: %v", err)
 			return
@@ -267,7 +272,9 @@ func runAliasCommand(cmd *cobra.Command, con *repl.Console) {
 
 }
 
-func ExecuteAlias(rpc clientrpc.MaliceRPCClient, sess *core.Session, aliasName string, args string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
+func ExecuteAlias(rpc clientrpc.MaliceRPCClient, sess *core.Session, aliasName string, args string,
+	amsi, etw bool,
+	sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 	loadedAlias, ok := loadedAliases[aliasName]
 	if !ok {
 		return nil, fmt.Errorf("No alias found for `%s` command\n", aliasName)
@@ -288,12 +295,16 @@ func ExecuteAlias(rpc clientrpc.MaliceRPCClient, sess *core.Session, aliasName s
 		if err != nil {
 			return nil, err
 		}
-		task, err = rpc.ExecuteAssembly(sess.Context(), &implantpb.ExecuteBinary{
-			Name:   loadedAlias.Command.Name(),
-			Bin:    binData,
-			Type:   consts.ModuleExecuteAssembly,
-			Args:   params,
-			Output: true,
+		task, err = rpc.ExecuteAssembly(sess.Context(), &implantpb.ExecuteClr{
+			EtwBypass:  etw,
+			AmsiBypass: amsi,
+			ExecuteBinary: &implantpb.ExecuteBinary{
+				Name:   loadedAlias.Command.Name(),
+				Bin:    binData,
+				Type:   consts.ModuleExecuteAssembly,
+				Args:   params,
+				Output: true,
+			},
 		})
 	} else {
 		task, err = rpc.ExecuteDLL(sess.Context(), &implantpb.ExecuteBinary{
