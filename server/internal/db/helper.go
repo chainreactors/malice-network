@@ -77,7 +77,6 @@ func FindAllSessions() (*clientpb.Sessions, error) {
 }
 
 func FindTaskAndMaxTasksID(sessionID string) ([]*models.Task, int, error) {
-	var maxTaskID int
 	var tasks []*models.Task
 
 	err := Session().Where("session_id = ?", sessionID).Find(&tasks).Error
@@ -88,20 +87,14 @@ func FindTaskAndMaxTasksID(sessionID string) ([]*models.Task, int, error) {
 	maxTemp := 0
 	for _, task := range tasks {
 		parts := strings.Split(task.ID, "-")
-		if len(parts) != 2 {
-			continue
-		}
 		taskID, err := strconv.Atoi(parts[1])
 		if err != nil {
 			continue
 		}
-		if taskID > maxTemp {
-			maxTemp = taskID
-		}
+		maxTemp = taskID
 	}
 
-	maxTaskID = maxTemp
-	return tasks, maxTaskID, nil
+	return tasks, maxTemp + 1, nil
 }
 
 func UpdateLast(sessionID string) error {

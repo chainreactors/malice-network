@@ -70,10 +70,6 @@ func (t *Task) Handler() {
 			return
 		}
 		t.Cur++
-		if t.Cur == t.Total {
-			t.Finish("")
-			return
-		}
 	}
 }
 

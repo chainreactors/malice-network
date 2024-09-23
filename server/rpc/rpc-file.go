@@ -82,7 +82,8 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 					BlockId: uint32(blockId),
 					Content: block,
 				}
-				if blockId == count-1 {
+				blockId++
+				if blockId == count {
 					msg.End = true
 				}
 				spite, _ := types.BuildSpite(&implantpb.Spite{
@@ -92,20 +93,22 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 				spite.Name = types.MsgUpload.String()
 				in <- spite
 				resp := <-out
-				greq.Session.AddMessage(resp, blockId+1)
 				err = handler.AssertResponse(resp, types.MsgAck)
 				if err != nil {
 					return
 				}
+				greq.Session.AddMessage(resp, blockId)
 				if resp.GetAck().Success {
 					greq.Task.Done(resp)
-					err = db.UpdateFile(greq.Task, blockId+1)
+					err = db.UpdateFile(greq.Task, blockId)
 					if err != nil {
 						logs.Log.Errorf("cannot update task %d , %s in db", greq.Task.Id, err.Error())
 						return
 					}
+					if msg.End {
+						greq.Task.Finish("")
+					}
 				}
-				blockId++
 			}
 			close(in)
 		}()
@@ -184,15 +187,14 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 				logs.Log.Errorf("cannot update task %d , %s in db", greq.Task.Id, err.Error())
 				return
 			}
+			greq.Task.Done(ack)
 			if block.End {
 				checksum, _ := file.CalculateSHA256Checksum(fileName)
 				if checksum != respCheckSum {
 					greq.Task.Panic(buildErrorEvent(greq.Task, fmt.Errorf("checksum error")))
 					return
 				}
-				greq.Task.Finish(fmt.Sprintf("sync id: %s", checksum))
-			} else {
-				greq.Task.Done(ack)
+				greq.Task.Finish("sync id " + checksum)
 			}
 		}
 	}()

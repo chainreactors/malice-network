@@ -166,7 +166,7 @@ func RegisterAlias(aliasManifest *AliasManifest, cmd *cobra.Command, con *repl.C
 		Run: func(cmd *cobra.Command, args []string) {
 			runAliasCommand(cmd, con)
 		},
-		Args:        cobra.ArbitraryArgs, // 	a.StringList("arguments", "arguments", grumble.Default([]string{}))
+		Args:        cobra.ArbitraryArgs,
 		GroupID:     consts.ArmoryGroup,
 		Annotations: makeAliasPlatformFilters(aliasManifest),
 	}
