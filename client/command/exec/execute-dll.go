@@ -15,9 +15,9 @@ import (
 
 func ExecuteDLLCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
-	sac, _ := common.ParseSacrifice(cmd)
+	sac, _ := common.ParseSacrificeFlags(cmd)
 	entrypoint, _ := cmd.Flags().GetString("entrypoint")
-	path, args, output, timeout, arch, process := common.ParseFullBinaryParams(cmd)
+	path, args, output, timeout, arch, process := common.ParseFullBinaryFlags(cmd)
 	task, err := ExecDLL(con.Rpc, session, path, entrypoint, args, output, timeout, arch, process, sac)
 	if err != nil {
 		con.Log.Errorf("Execute DLL error: %v", err)
@@ -47,7 +47,7 @@ func ExecDLL(rpc clientrpc.MaliceRPCClient, sess *core.Session, pePath string, e
 
 func InlineDLLCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
-	path, args, output, timeout, arch, process := common.ParseFullBinaryParams(cmd)
+	path, args, output, timeout, arch, process := common.ParseFullBinaryFlags(cmd)
 	entryPoint, _ := cmd.Flags().GetString("entrypoint")
 	task, err := InlineDLL(con.Rpc, session, path, entryPoint, args, output, timeout, arch, process)
 	if err != nil {

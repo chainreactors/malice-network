@@ -14,8 +14,8 @@ import (
 // ExecuteShellcodeCmd - Execute shellcode in-memory
 func ExecuteShellcodeCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
-	path, args, output, timeout, arch, process := common.ParseFullBinaryParams(cmd)
-	sac, _ := common.ParseSacrifice(cmd)
+	path, args, output, timeout, arch, process := common.ParseFullBinaryFlags(cmd)
+	sac, _ := common.ParseSacrificeFlags(cmd)
 	task, err := ExecShellcode(con.Rpc, session, path, args, output, timeout, arch, process, sac)
 	if err != nil {
 		con.Log.Errorf("Execute shellcode error: %v", err)
@@ -40,7 +40,7 @@ func ExecShellcode(rpc clientrpc.MaliceRPCClient, sess *core.Session, shellcodeP
 
 func InlineShellcodeCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
-	path, args, output, timeout, arch, process := common.ParseFullBinaryParams(cmd)
+	path, args, output, timeout, arch, process := common.ParseFullBinaryFlags(cmd)
 	task, err := InlineShellcode(con.Rpc, session, path, args, output, timeout, arch, process)
 	if err != nil {
 		con.Log.Errorf("Execute inline shellcode error: %v", err)

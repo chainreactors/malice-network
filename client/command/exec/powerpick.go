@@ -3,6 +3,7 @@ package exec
 import (
 	"bytes"
 	"fmt"
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -18,7 +19,8 @@ func ExecutePowershellCmd(cmd *cobra.Command, con *repl.Console) {
 	script, _ := cmd.Flags().GetString("script")
 	cmdline := cmd.Flags().Args()
 	session := con.GetInteractive()
-	task, err := PowerPick(con.Rpc, session, script, cmdline)
+	amsi, etw := common.ParseCLRFlags(cmd)
+	task, err := PowerPick(con.Rpc, session, script, cmdline, amsi, etw)
 	if err != nil {
 		con.Log.Errorf("Execute Powershell error: %v", err)
 		return
@@ -26,7 +28,7 @@ func ExecutePowershellCmd(cmd *cobra.Command, con *repl.Console) {
 	con.GetInteractive().Console(task, fmt.Sprintf("%s, args: %v", script, cmdline))
 }
 
-func PowerPick(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, ps []string) (*clientpb.Task, error) {
+func PowerPick(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, ps []string, amsi, etw bool) (*clientpb.Task, error) {
 	var psBin bytes.Buffer
 	if path != "" {
 		content, err := os.ReadFile(path)
@@ -38,13 +40,16 @@ func PowerPick(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, p
 	}
 
 	psBin.WriteString(strings.Join(ps, " "))
-
-	task, err := rpc.ExecutePowershell(sess.Context(), &implantpb.ExecuteBinary{
-		Name:   "",
-		Bin:    psBin.Bytes(),
-		Type:   consts.ModulePowerpick,
-		Output: true,
-	})
+	clr := &implantpb.ExecuteClr{
+		AmsiBypass: amsi,
+		EtwBypass:  etw,
+		ExecuteBinary: &implantpb.ExecuteBinary{
+			Bin:    psBin.Bytes(),
+			Type:   consts.ModulePowerpick,
+			Output: true,
+		},
+	}
+	task, err := rpc.ExecutePowerpick(sess.Context(), clr)
 	if err != nil {
 		return nil, err
 	}

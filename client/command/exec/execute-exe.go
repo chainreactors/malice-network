@@ -15,8 +15,8 @@ import (
 
 // ExecuteExeCmd - Execute PE on sacrifice process
 func ExecuteExeCmd(cmd *cobra.Command, con *repl.Console) {
-	path, args, output, timeout, arch, process := common.ParseFullBinaryParams(cmd)
-	sac, _ := common.ParseSacrifice(cmd)
+	path, args, output, timeout, arch, process := common.ParseFullBinaryFlags(cmd)
+	sac, _ := common.ParseSacrificeFlags(cmd)
 	task, err := ExecExe(con.Rpc, con.GetInteractive(), path, args, output, timeout, arch, process, sac)
 	if err != nil {
 		con.Log.Errorf("Execute EXE error: %v", err)
@@ -48,7 +48,7 @@ func ExecExe(rpc clientrpc.MaliceRPCClient, sess *core.Session, pePath string,
 // InlineExeCmd - Execute PE in current process
 func InlineExeCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
-	path, args, output, timeout, arch, process := common.ParseFullBinaryParams(cmd)
+	path, args, output, timeout, arch, process := common.ParseFullBinaryFlags(cmd)
 	task, err := InlineExe(con.Rpc, session, path, args, output, timeout, arch, process)
 	if err != nil {
 		con.Log.Errorf("Execute EXE error: %v", err)
