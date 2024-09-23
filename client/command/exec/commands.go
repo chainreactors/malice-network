@@ -119,8 +119,13 @@ execute_local local_exe --ppid 1234 --block_dll --etw --argue "argue"
 
 	execAssemblyCmd := &cobra.Command{
 		Use:   consts.ModuleExecuteAssembly + " [file]",
-		Short: "Loads and executes a .NET assembly in a child process (Windows Only)",
-		Args:  cobra.MinimumNArgs(1),
+		Short: "Loads and executes a .NET assembly in implant process (Windows Only)",
+		Long: `
+Load CLR assembly in implant process(will not create new process)
+
+if return 0x80004005, please use --amsi bypass.
+`,
+		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			ExecuteAssemblyCmd(cmd, con)
 			return
@@ -130,11 +135,11 @@ execute_local local_exe --ppid 1234 --block_dll --etw --argue "argue"
 		},
 		Example: `Execute a .NET assembly without "-" arguments
 ~~~
-execute-assembly potato.exe "whoami"
+execute-assembly --amsi potato.exe "whoami" 
 ~~~
 Execute a .NET assembly with "-" arguments, you need add "--" before the arguments
 ~~~
-execute-assembly potato.exe -- -cmd "cmd /c whoami"
+execute-assembly --amsi potato.exe -- -cmd "cmd /c whoami"
 ~~~
 `,
 	}
@@ -177,6 +182,9 @@ execute_shellcode example.bin
 		Short: "Executes the given inline shellcode in the implant process",
 		Long: `
 The current shellcode injection method uses APC.
+
+!!! important ""instability warning!!!"
+	inline execute shellcode may cause the implant to crash, please use with caution.
 `,
 		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
@@ -235,8 +243,13 @@ execute_dll example.dll -e entrypoint -- arg1 arg2
 	inlineDLLCmd := &cobra.Command{
 		Use:   consts.ModuleAliasInlineDll + " [dll]",
 		Short: "Executes the given inline DLL in the current process",
-		Long:  `use a custom Headless PE loader to load DLL in the current process.`,
-		Args:  cobra.MinimumNArgs(1),
+		Long: `
+use a custom Headless PE loader to load DLL in the current process.
+
+!!! important ""instability warning!!!"
+	inline execute dll may cause the implant to crash, please use with caution.
+`,
+		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			InlineDLLCmd(cmd, con)
 			return
@@ -289,8 +302,15 @@ execute_exe gogo.exe -- -i 123.123.123.123 -p top2
 	inlinePECmd := &cobra.Command{
 		Use:   consts.ModuleAliasInlineExe + " [exe]",
 		Short: "Executes the given inline EXE in current process",
-		Long:  `use a custom Headless PE loader to load EXE in the current process.`,
-		Args:  cobra.MinimumNArgs(1),
+		Long: `
+use a custom Headless PE loader to load EXE in the current process.
+
+!!! important ""instability warning!!!"
+	inline execute exe may cause the implant to crash, please use with caution.
+	
+	if double run same exe, More likely to crash
+`,
+		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			InlineExeCmd(cmd, con)
 			return
