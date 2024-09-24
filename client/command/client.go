@@ -89,6 +89,7 @@ func ConsoleRunnerCmd(con *repl.Console, run bool) (pre, post func(cmd *cobra.Co
 func BindClientsCommands(con *repl.Console) console.Commands {
 	clientCommands := func() *cobra.Command {
 		client := &cobra.Command{
+			Use:   "client",
 			Short: "client commands",
 			CompletionOptions: cobra.CompletionOptions{
 				HiddenDefaultCmd: true,

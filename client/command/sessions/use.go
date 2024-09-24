@@ -19,7 +19,6 @@ func UseSessionCmd(cmd *cobra.Command, con *repl.Console) {
 	}
 
 	Use(con, session)
-	con.Log.Infof("Active session %s (%s)\n", session.Note, session.SessionId)
 }
 
 func Use(con *repl.Console, sess *core.Session) {

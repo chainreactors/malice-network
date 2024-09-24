@@ -126,6 +126,7 @@ func (c *Console) SwitchImplant(sess *core.Session) {
 	c.ActiveTarget.Set(sess)
 	c.App.SwitchMenu(consts.ImplantMenu)
 
+	var count int
 	for _, cmd := range c.ImplantMenu().Commands() {
 		cmd.Hidden = false
 		if o, ok := cmd.Annotations["os"]; ok && !strings.Contains(o, sess.Os.Name) {
@@ -141,7 +142,13 @@ func (c *Console) SwitchImplant(sess *core.Session) {
 				}
 			}
 		}
+		if cmd.Annotations["menu"] == consts.ImplantMenu && cmd.Hidden == false {
+			count++
+		}
 	}
+	c.Log.Importantf("os: %s, arch: %s, process: %d %s, pipeline: %s", sess.Os.Name, sess.Os.Arch, sess.Process.Ppid, sess.Process.Name, sess.ListenerId)
+	c.Log.Importantf("%d modules, %d available cmds, %d addons", len(sess.Modules), count, len(sess.Addons.Addons))
+	c.Log.Infof("Active session %s (%s), group: %s\n", sess.Note, sess.SessionId, sess.GroupName)
 }
 
 func (c *Console) RegisterImplantFunc(name string, fn interface{},
