@@ -68,6 +68,10 @@ func LoadMal(con *repl.Console, filename string) (*LoadedMal, error) {
 }
 
 func ListMalManiFest(con *repl.Console) {
+	if len(loadedMals) == 0 {
+		con.Log.Infof("No mal loaded")
+		return
+	}
 	rows := []table.Row{}
 	tableModel := tui.NewTable([]table.Column{
 		{Title: "Name", Width: 10},
@@ -75,7 +79,6 @@ func ListMalManiFest(con *repl.Console) {
 		{Title: "Version", Width: 7},
 		{Title: "Author", Width: 4},
 	}, true)
-
 	for _, m := range loadedMals {
 		plug := m.Plugin
 		row := table.Row{
