@@ -171,7 +171,7 @@ func (rpc *Server) GetBasic(ctx context.Context, _ *clientpb.Empty) (*clientpb.B
 	return &clientpb.Basic{
 		Major: 0,
 		Minor: 0,
-		Patch: 1,
+		Patch: 2,
 		Os:    runtime.GOOS,
 		Arch:  runtime.GOARCH,
 	}, nil
