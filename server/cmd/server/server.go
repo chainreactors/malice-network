@@ -87,6 +87,7 @@ func Execute() {
 		if opt.IP != "" {
 			logs.Log.Infof("manually specified IP: %s will override %s config: %s", opt.IP, opt.Config, opt.Server.IP)
 			opt.Server.IP = opt.IP
+			config.Set("server.ip", opt.IP)
 		}
 
 		if opt.Server.IP == "" {
