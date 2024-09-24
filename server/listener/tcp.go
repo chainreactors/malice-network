@@ -139,7 +139,7 @@ func (l *TCPPipeline) handler() (net.Listener, error) {
 				logs.Log.Errorf("Accept failed: %v", err)
 				continue
 			}
-			logs.Log.Infof("accept from %s", conn.RemoteAddr())
+			logs.Log.Debugf("accept from %s", conn.RemoteAddr())
 			go l.handleRead(l.wrapConn(conn))
 		}
 	}()
