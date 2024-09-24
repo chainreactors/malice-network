@@ -12,10 +12,11 @@ protocol: https://github.com/chainreactors/proto
 https://chainreactors.github.io/wiki/IoM/roadmap/
 
 ## Showcases
-
+<details>
 <summary>console</summary>
 <img src="https://github.com/chainreactors/wiki/tree/master/docs/IoM/assets/completion.gif"/>
-
+<details/>
+  
 <summary>login</summary>
 <img src="https://github.com/chainreactors/wiki/tree/master/docs/IoM/assets/login.gif"/>
 
