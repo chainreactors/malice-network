@@ -118,7 +118,7 @@ func (rpc *Server) RemoveListener(ctx context.Context, req *rootpb.Operator) (*r
 	}, nil
 }
 
-func (rpc *Server) ListListenersAuth(ctx context.Context, req *rootpb.Operator) (*clientpb.Listeners, error) {
+func (rpc *Server) ListListeners(ctx context.Context, req *rootpb.Operator) (*clientpb.Listeners, error) {
 	dbListeners, err := db.ListListeners()
 	if err != nil {
 		return nil, err

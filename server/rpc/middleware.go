@@ -19,7 +19,6 @@ const (
 	Transport contextKey = iota
 	Operator
 	rootName = "Root"
-	rootAddr = "127.0.0.1"
 )
 
 func buildOptions(option []grpc.ServerOption, interceptors ...grpc.UnaryServerInterceptor) []grpc.ServerOption {
@@ -87,7 +86,8 @@ func authInterceptor(log *logs.Logger) grpc.UnaryServerInterceptor {
 				return ctx, errors.New("invalid remote address format")
 			}
 
-			if host != rootAddr {
+			parsed := net.ParseIP(host)
+			if !(parsed != nil && parsed.IsLoopback()) {
 				log.Errorf("[auth] invalid remote address")
 				return ctx, errors.New("invalid remote address")
 			}

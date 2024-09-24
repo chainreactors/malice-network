@@ -66,7 +66,7 @@ func (rpc *Server) RemoveClient(ctx context.Context, req *rootpb.Operator) (*roo
 	}, nil
 }
 
-func (rpc *Server) ListClientsAuth(ctx context.Context, req *rootpb.Operator) (*clientpb.Clients, error) {
+func (rpc *Server) ListClients(ctx context.Context, req *rootpb.Operator) (*clientpb.Clients, error) {
 	operators, err := db.ListClients()
 	if err != nil {
 		return nil, err
