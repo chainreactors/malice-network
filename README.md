@@ -14,7 +14,7 @@ https://chainreactors.github.io/wiki/IoM/roadmap/
 ## Showcases
 <details>
 <summary>console</summary>
-<img src="https://github.com/chainreactors/wiki/master/docs/IoM/assets/completion.gif"/>
+<img src="https://github.com/chainreactors/wiki/blob/master/docs/IoM/assets/completion.gif"/>
 </details>
 
 <details>
