@@ -35,6 +35,7 @@ var (
 func NewSession(req *lispb.RegisterSession) *Session {
 	sess := &Session{
 		Name:       req.RegisterData.Name,
+		Group:      "default",
 		ProxyURL:   req.RegisterData.Proxy,
 		Modules:    req.RegisterData.Module,
 		Addons:     req.RegisterData.Addon,

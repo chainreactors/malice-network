@@ -105,13 +105,8 @@ func (c *Console) GetPrompt() string {
 	session := c.ActiveTarget.Get()
 	if session != nil {
 		groupName := session.GroupName
-		if session.Note != "" {
-			return NewSessionColor(groupName, session.Note)
-		} else {
-			sessionID := session.SessionId
-			return NewSessionColor(groupName, sessionID[:8])
-		}
-
+		sessionID := session.SessionId
+		return NewSessionColor(groupName, sessionID[:8])
 	} else {
 		return tui.AdaptTermColor("IOM")
 	}
