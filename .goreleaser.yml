@@ -59,10 +59,7 @@ upx:
 
 archives:
   -
-<<<<<<< HEAD
     name_template: "{{ .Binary }}"
-=======
->>>>>>> 68822df (add auto build config)
     format: binary
 
 checksum:
@@ -77,16 +74,7 @@ changelog:
       - "^docs"
 
 release:
-<<<<<<< HEAD
   github:
     owner: chainreactors
     name: malice-network
   draft: true
-=======
-  disable: true
-  skip_upload: true
-  github:
-    owner: chainreactors
-    name: malice-network
-  draft: true
->>>>>>> 68822df (add auto build config)
