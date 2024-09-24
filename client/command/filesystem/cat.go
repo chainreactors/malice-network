@@ -1,30 +1,37 @@
 package filesystem
 
 import (
-	"github.com/chainreactors/grumble"
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
-	"google.golang.org/protobuf/proto"
+	"github.com/chainreactors/malice-network/proto/services/clientrpc"
+	"github.com/spf13/cobra"
 )
 
-func CatCmd(ctx *grumble.Context, con *console.Console) {
-	session := con.GetInteractive()
-	if session == nil {
+func CatCmd(cmd *cobra.Command, con *repl.Console) {
+	fileName := cmd.Flags().Arg(0)
+	if fileName == "" {
+		con.Log.Errorf("required arguments missing")
 		return
 	}
-	sid := con.GetInteractive().SessionId
-	fileName := ctx.Flags.String("name")
-	catTask, err := con.Rpc.Cat(con.ActiveTarget.Context(), &implantpb.Request{
+	session := con.GetInteractive()
+	task, err := Cat(con.Rpc, session, fileName)
+	if err != nil {
+		con.Log.Errorf("Cat error: %v", err)
+	}
+
+	session.Console(task, "cat "+fileName)
+}
+
+func Cat(rpc clientrpc.MaliceRPCClient, session *core.Session, fileName string) (*clientpb.Task, error) {
+	task, err := rpc.Cat(session.Context(), &implantpb.Request{
 		Name:  consts.ModuleCat,
 		Input: fileName,
 	})
 	if err != nil {
-		console.Log.Errorf("Cat error: %v", err)
-		return
+		return nil, err
 	}
-	con.AddCallback(catTask.TaskId, func(msg proto.Message) {
-		resp := msg.(*implantpb.Spite).GetResponse()
-		con.SessionLog(sid).Consolef("File content: %s\n", resp.GetOutput())
-	})
+	return task, err
 }

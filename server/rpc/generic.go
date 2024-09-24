@@ -6,11 +6,17 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/types"
+	"github.com/chainreactors/malice-network/helper/utils/handler"
+	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
+	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/server/internal/core"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
+	"github.com/chainreactors/malice-network/server/internal/db"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/peer"
 	"google.golang.org/protobuf/proto"
+	"runtime"
 )
 
 func newGenericRequest(ctx context.Context, msg proto.Message, opts ...int) (*GenericRequest, error) {
@@ -24,9 +30,9 @@ func newGenericRequest(ctx context.Context, msg proto.Message, opts ...int) (*Ge
 	}
 
 	if opts == nil {
-		req.Task = req.NewTask(1)
+		req.Count = 1
 	} else {
-		req.Task = req.NewTask(opts[0])
+		req.Count = opts[0]
 	}
 	return req, nil
 }
@@ -34,17 +40,34 @@ func newGenericRequest(ctx context.Context, msg proto.Message, opts ...int) (*Ge
 type GenericRequest struct {
 	proto.Message
 	Task    *core.Task
+	Count   int
 	Session *core.Session
 }
 
-func (r *GenericRequest) NewTask(total int) *core.Task {
-	return r.Session.NewTask(string(proto.MessageName(r.Message).Name()), total)
+func (r *GenericRequest) InitSpite() (*implantpb.Spite, error) {
+	spite := &implantpb.Spite{
+		Timeout: uint64(consts.MinTimeout.Seconds()),
+		Async:   true,
+	}
+	var err error
+	spite, err = types.BuildSpite(spite, r.Message)
+	if err != nil {
+		return nil, err
+	}
+	r.Task = r.Session.NewTask(spite.Name, r.Count)
+
+	spite.TaskId = r.Task.Id
+	r.Message = nil
+	err = db.AddTask(r.Task)
+	if err != nil {
+		return nil, err
+	}
+	return spite, nil
 }
 
 func (r *GenericRequest) NewSpite(msg proto.Message) (*implantpb.Spite, error) {
 	spite := &implantpb.Spite{
 		Timeout: uint64(consts.MinTimeout.Seconds()),
-		TaskId:  r.Task.Id,
 		Async:   true,
 	}
 	var err error
@@ -59,94 +82,180 @@ func (r *GenericRequest) SetCallback(callback func()) {
 	r.Task.Callback = callback
 }
 
-func (r *GenericRequest) HandlerAsyncResponse(ch chan *implantpb.Spite, typ types.MsgName, callbacks ...func(spite *implantpb.Spite)) {
+func (r *GenericRequest) HandlerResponse(ch chan *implantpb.Spite, typ types.MsgName, callbacks ...func(spite *implantpb.Spite)) {
 	resp := <-ch
-
-	err := AssertStatusAndResponse(resp, typ)
+	r.Session.AddMessage(resp, r.Task.Cur)
+	err := handler.AssertStatusAndResponse(resp, typ)
 	if err != nil {
 		logs.Log.Debug(err)
-		r.Task.Panic(buildErrorEvent(r.Task, err), resp)
+		r.Task.Panic(buildErrorEvent(r.Task, err))
 		return
 	}
-	r.SetCallback(func() {
-		r.Session.AddMessage(resp, r.Task.Cur)
-		if callbacks != nil {
+	if callbacks != nil {
+		r.SetCallback(func() {
 			for _, callback := range callbacks {
 				callback(resp)
 			}
-		}
-	})
-	r.Task.Done(core.Event{
-		EventType: consts.EventTaskDone,
-		Task:      r.Task,
-	})
-}
-
-func AssertRequestName(req *implantpb.Request, expect types.MsgName) error {
-	if req.Name != string(expect) {
-		return ErrAssertFailure
+		})
 	}
-	return nil
-}
-
-func AssertStatus(spite *implantpb.Spite) error {
-	if stat := spite.GetStatus(); stat == nil {
-		return ErrMissingRequestField
-	} else if stat.Status != 0 {
-		return status.Error(codes.InvalidArgument, stat.Error)
-	}
-	return nil
-}
-
-func AssertResponse(spite *implantpb.Spite, expect types.MsgName) error {
-	body := spite.GetBody()
-	if body == nil && expect != types.MsgNil {
-		return ErrNilResponseBody
-	}
-
-	if expect != types.MessageType(spite) {
-		return ErrAssertFailure
-	}
-	return nil
-}
-
-func AssertStatusAndResponse(spite *implantpb.Spite, expect types.MsgName) error {
-	if err := AssertStatus(spite); err != nil {
-		return err
-	}
-	return AssertResponse(spite, expect)
+	r.Task.Done(resp)
+	r.Task.Finish("")
 }
 
 func buildErrorEvent(task *core.Task, err error) core.Event {
-	if errors.Is(err, ErrNilStatus) {
-		return core.Event{
-			EventType: consts.EventTaskDone,
-			Task:      task,
-			Err:       ErrNilStatus.Error(),
-		}
-	} else if errors.Is(err, ErrAssertFailure) {
-		return core.Event{
-			EventType: consts.EventTaskDone,
-			Task:      task,
-			Err:       ErrAssertFailure.Error(),
-		}
-	} else if errors.Is(err, ErrNilResponseBody) {
-		return core.Event{
-			EventType: consts.EventTaskDone,
-			Task:      task,
-			Err:       ErrNilResponseBody.Error(),
-		}
-	} else if errors.Is(err, ErrMissingRequestField) {
-		return core.Event{
-			EventType: consts.EventTaskDone,
-			Task:      task,
-			Err:       ErrMissingRequestField.Error(),
-		}
-	} else {
-		return core.Event{
-			EventType: consts.EventTaskDone,
-			Task:      task,
-			Err:       err.Error(),
-		}
+	var eventErr string
+
+	switch {
+	case errors.Is(err, handler.ErrNilStatus):
+		eventErr = handler.ErrNilStatus.Error()
+	case errors.Is(err, handler.ErrAssertFailure):
+		eventErr = handler.ErrAssertFailure.Error()
+	case errors.Is(err, handler.ErrNilResponseBody):
+		eventErr = handler.ErrNilResponseBody.Error()
+	case errors.Is(err, ErrMissingRequestField):
+		eventErr = ErrMissingRequestField.Error()
+	default:
+		eventErr = err.Error()
 	}
+
+	return core.Event{
+		EventType: consts.EventTask,
+		Op:        consts.CtrlTaskError,
+		Task:      task.ToProtobuf(),
+		Err:       eventErr,
+	}
+}
+
+func (rpc *Server) GenericHandler(ctx context.Context, req *GenericRequest) (chan *implantpb.Spite, error) {
+	spite, err := req.InitSpite()
+	if err != nil {
+		logs.Log.Errorf(err.Error())
+		return nil, err
+	}
+	if pipelinesCh[req.Session.PipelineID] == nil {
+		return nil, ErrNotFoundPipeline
+	}
+	out, err := req.Session.RequestWithAsync(
+		&lispb.SpiteSession{SessionId: req.Session.ID, TaskId: req.Task.Id, Spite: spite},
+		pipelinesCh[req.Session.PipelineID],
+		consts.MinTimeout)
+	if err != nil {
+		return nil, err
+	}
+
+	return out, nil
+}
+
+// StreamGenericHandler - Generic handler for async request/response's for beacon tasks
+func (rpc *Server) StreamGenericHandler(ctx context.Context, req *GenericRequest) (chan *implantpb.Spite, chan *implantpb.Spite, error) {
+	spite, err := req.InitSpite()
+	if err != nil {
+		logs.Log.Errorf(err.Error())
+		return nil, nil, err
+	}
+	if pipelinesCh[req.Session.PipelineID] == nil {
+		return nil, nil, ErrNotFoundPipeline
+	}
+	in, out, err := req.Session.RequestWithStream(
+		&lispb.SpiteSession{SessionId: req.Session.ID, TaskId: req.Task.Id, Spite: spite},
+		pipelinesCh[req.Session.PipelineID],
+		consts.MinTimeout)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return in, out, nil
+}
+
+func (rpc *Server) GetBasic(ctx context.Context, _ *clientpb.Empty) (*clientpb.Basic, error) {
+	return &clientpb.Basic{
+		Major: 0,
+		Minor: 0,
+		Patch: 2,
+		Os:    runtime.GOOS,
+		Arch:  runtime.GOARCH,
+	}, nil
+}
+
+func getSessionID(ctx context.Context) (string, error) {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return "", ErrNotFoundSession
+	}
+	if sid := md.Get("session_id"); len(sid) > 0 {
+		return sid[0], nil
+	} else {
+		return "", ErrNotFoundSession
+	}
+}
+
+func getSession(ctx context.Context) (*core.Session, error) {
+	sid, err := getSessionID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	session, ok := core.Sessions.Get(sid)
+	if !ok {
+		return nil, ErrInvalidSessionID
+	}
+	return session, nil
+}
+
+func getListenerID(ctx context.Context) (string, error) {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return "", ErrNotFoundListener
+	}
+	if sid := md.Get("listener_id"); len(sid) > 0 {
+		return sid[0], nil
+	} else {
+		return "", ErrNotFoundListener
+	}
+}
+
+func getRemoteAddr(ctx context.Context) string {
+	// Extract peer information from context
+	p, ok := peer.FromContext(ctx)
+	if !ok {
+		return ""
+	}
+
+	// Check if the peer address is a net.Addr
+	if p.Addr == nil {
+		return ""
+	}
+
+	// Return the remote address as a string
+	return p.Addr.String()
+}
+
+func getPipelineID(ctx context.Context) (string, error) {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return "", ErrNotFoundPipeline
+	}
+	if sid := md.Get("pipeline_id"); len(sid) > 0 {
+		return sid[0], nil
+	} else {
+		return "", ErrNotFoundPipeline
+	}
+}
+
+func getClientName(ctx context.Context) string {
+	client, ok := peer.FromContext(ctx)
+	if !ok {
+		return ""
+	}
+	tlsAuth, ok := client.AuthInfo.(credentials.TLSInfo)
+	if !ok {
+		return ""
+	}
+	if len(tlsAuth.State.VerifiedChains) == 0 || len(tlsAuth.State.VerifiedChains[0]) == 0 {
+		return ""
+	}
+	if tlsAuth.State.VerifiedChains[0][0].Subject.CommonName != "" {
+		return tlsAuth.State.VerifiedChains[0][0].Subject.CommonName
+	}
+	return ""
 }

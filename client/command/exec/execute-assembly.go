@@ -1,47 +1,42 @@
 package exec
 
 import (
-	"github.com/chainreactors/grumble"
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/command/common"
+	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
-
-	"google.golang.org/protobuf/proto"
-	"os"
-	"path/filepath"
+	"github.com/chainreactors/malice-network/proto/services/clientrpc"
+	"github.com/spf13/cobra"
 )
 
-func ExecuteAssemblyCmd(ctx *grumble.Context, con *console.Console) {
+func ExecuteAssemblyCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
-	if session == nil {
-		return
-	}
-	path := ctx.Args.String("path")
-	args := ctx.Args.StringList("args")
-	name := filepath.Base(path)
-	binData, err := os.ReadFile(path)
+	path, args, output, _ := common.ParseBinaryFlags(cmd)
+	//output, _ := cmd.Flags().GetBool("output")
+	amsi, etw := common.ParseCLRFlags(cmd)
+	task, err := ExecAssembly(con.Rpc, session, path, args, output, amsi, etw)
 	if err != nil {
-		console.Log.Errorf("%s\n", err)
+		con.Log.Errorf("Execute error: %v", err)
 		return
 	}
+	con.GetInteractive().Console(task, path)
+}
 
-	var task *clientpb.Task
-	task, err = con.Rpc.ExecuteAssembly(con.ActiveTarget.Context(), &implantpb.ExecuteBinary{
-		Name:   name,
-		Bin:    binData,
-		Params: args,
-		Type:   consts.ModuleExecuteAssembly,
-	})
-
+func ExecAssembly(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, args []string, output, amsi, etw bool) (*clientpb.Task, error) {
+	binary, err := common.NewExecutable(consts.ModuleExecuteAssembly, path, args, sess.Os.Arch, output, nil)
 	if err != nil {
-		console.Log.Errorf("%s", err.Error())
-		return
+		return nil, err
 	}
-
-	con.AddCallback(task.TaskId, func(msg proto.Message) {
-		resp := msg.(*implantpb.Spite).GetAssemblyResponse()
-		sid := con.GetInteractive().SessionId
-		con.SessionLog(sid).Infof("%s output:\n%s", name, string(resp.Data))
-	})
+	clr := &implantpb.ExecuteClr{
+		AmsiBypass:    amsi,
+		EtwBypass:     etw,
+		ExecuteBinary: binary,
+	}
+	task, err := rpc.ExecuteAssembly(sess.Context(), clr)
+	if err != nil {
+		return nil, err
+	}
+	return task, nil
 }

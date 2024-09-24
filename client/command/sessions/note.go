@@ -2,31 +2,33 @@ package sessions
 
 import (
 	"context"
-	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
+	"github.com/spf13/cobra"
 )
 
-func noteCmd(ctx *grumble.Context, con *console.Console) {
-	name := ctx.Args.String("name")
-	var id string
-	if con.GetInteractive().SessionId != "" {
-		id = con.GetInteractive().SessionId
-	} else if ctx.Flags.String("id") != "" {
-		id = ctx.Flags.String("id")
-	} else {
-		console.Log.Errorf("Require session id")
+func noteCmd(cmd *cobra.Command, con *repl.Console) {
+	sid := cmd.Flags().Arg(1)
+	name := cmd.Flags().Arg(0)
+
+	if con.GetInteractive() == nil && sid == "" {
+		con.Log.Errorf("No session selected")
 		return
+	} else if sid == "" && con.GetInteractive() != nil {
+		sid = con.GetInteractive().Session.GetSessionId()
 	}
-	_, err := con.Rpc.BasicSessionOP(context.Background(), &clientpb.BasicUpdateSession{
-		SessionId: id,
-		Note:      name,
+
+	var err error
+	_, err = con.Rpc.BasicSessionOP(context.Background(), &clientpb.BasicUpdateSession{
+		SessionId: sid,
+		Op:        "note",
+		Arg:       name,
 	})
 	if err != nil {
 		logs.Log.Errorf("Session error: %v", err)
 		return
 	}
-	session := con.Sessions[id]
-	con.ActiveTarget.Set(session)
+	con.UpdateSession(sid)
+	con.Log.Infof("update %s note to %s", sid, name)
 }

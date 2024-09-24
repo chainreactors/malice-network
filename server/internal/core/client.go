@@ -26,8 +26,9 @@ type clients struct {
 func NewClient(operatorName string) *Client {
 	return &Client{
 		Client: &clientpb.Client{
-			ID:   getClientID(),
-			Name: operatorName,
+			ID:     getClientID(),
+			Name:   operatorName,
+			Online: true,
 		},
 	}
 }
@@ -47,7 +48,7 @@ func (cc *clients) Add(client *Client) {
 	cc.active[int(client.ID)] = client
 	EventBroker.Publish(Event{
 		EventType: consts.EventJoin,
-		Client:    client,
+		Client:    client.Client,
 	})
 }
 
@@ -70,7 +71,7 @@ func (cc *clients) Remove(clientID int) {
 	delete(cc.active, clientID)
 	EventBroker.Publish(Event{
 		EventType: consts.EventLeft,
-		Client:    client,
+		Client:    client.Client,
 	})
 }
 

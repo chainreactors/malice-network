@@ -1,30 +1,34 @@
 package file
 
 import (
-	"github.com/chainreactors/grumble"
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
-
-	"google.golang.org/protobuf/proto"
+	"github.com/chainreactors/malice-network/proto/services/clientrpc"
+	"github.com/spf13/cobra"
+	"path/filepath"
 )
 
-func download(ctx *grumble.Context, con *console.Console) {
+func DownloadCmd(cmd *cobra.Command, con *repl.Console) {
+	path := cmd.Flags().Arg(0)
 	session := con.GetInteractive()
-	if session == nil {
+	task, err := Download(con.Rpc, session, path)
+	if err != nil {
+		con.Log.Errorf("Download error: %v", err)
 		return
 	}
-	sid := con.GetInteractive().SessionId
-	name := ctx.Flags.String("name")
-	path := ctx.Flags.String("path")
-	downloadTask, err := con.Rpc.Download(con.ActiveTarget.Context(), &implantpb.DownloadRequest{
-		Name: name,
+
+	con.GetInteractive().Console(task, "Downloaded file "+path)
+}
+
+func Download(rpc clientrpc.MaliceRPCClient, session *core.Session, path string) (*clientpb.Task, error) {
+	task, err := rpc.Download(session.Context(), &implantpb.DownloadRequest{
+		Name: filepath.Base(path),
 		Path: path,
 	})
 	if err != nil {
-		console.Log.Errorf("Download error: %v", err)
-		return
+		return nil, err
 	}
-	con.AddCallback(downloadTask.TaskId, func(msg proto.Message) {
-		con.SessionLog(sid).Importantf("Downloaded file %s from %s", name, path)
-	})
+	return task, err
 }

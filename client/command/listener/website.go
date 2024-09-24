@@ -3,38 +3,48 @@ package listener
 import (
 	"context"
 	"fmt"
-	"github.com/chainreactors/grumble"
-	"github.com/chainreactors/malice-network/client/command/website"
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/command/common"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/cryptography"
+	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/table"
+	"github.com/spf13/cobra"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"strconv"
+	"time"
 )
 
-func startWebsiteCmd(ctx *grumble.Context, con *console.Console) {
-	certPath := ctx.Flags.String("cert_path")
-	keyPath := ctx.Flags.String("key_path")
-	webPath := ctx.Flags.String("web-path")
-	port := uint32(ctx.Flags.Int("port"))
-	name := ctx.Flags.String("name")
-	listenerID := ctx.Flags.String("listener_id")
-	cPath := ctx.Flags.String("content-path")
-	contentType := ctx.Flags.String("content-type")
+func newWebsiteCmd(cmd *cobra.Command, con *repl.Console) {
+	name, _, portUint, certPath, keyPath, tlsEnable := common.ParsePipelineFlags(cmd)
+	contentType, _ := cmd.Flags().GetString("content_type")
+	listenerID := cmd.Flags().Arg(0)
+	webPath := cmd.Flags().Arg(1)
+	cPath := cmd.Flags().Arg(2)
 	var cert, key string
 	var err error
+	var webAsserts *lispb.WebsiteAssets
+	if portUint == 0 {
+		rand.Seed(time.Now().UnixNano())
+		portUint = uint(15001 + rand.Int31n(5001))
+	}
+	port := uint32(portUint)
+	if name == "" {
+		name = fmt.Sprintf("%s-web-%d", listenerID, port)
+	}
 	if certPath != "" && keyPath != "" {
 		cert, err = cryptography.ProcessPEM(certPath)
 		if err != nil {
-			console.Log.Error(err.Error())
+			con.Log.Error(err.Error())
 			return
 		}
 		key, err = cryptography.ProcessPEM(keyPath)
+		tlsEnable = true
 		if err != nil {
-			console.Log.Error(err.Error())
+			con.Log.Error(err.Error())
 			return
 		}
 	}
@@ -42,22 +52,39 @@ func startWebsiteCmd(ctx *grumble.Context, con *console.Console) {
 
 	fileIfo, err := os.Stat(cPath)
 	if err != nil {
-		console.Log.Errorf("Error adding content %s\n", err)
+		con.Log.Errorf("Error adding content %s\n", err)
+		return
+	}
+	if fileIfo.IsDir() {
+		con.Log.Errorf("Error adding content %s\n", "file is a directory")
 		return
 	}
 	addWeb := &lispb.WebsiteAddContent{
 		Name:     name,
 		Contents: map[string]*lispb.WebContent{},
 	}
-	if fileIfo.IsDir() {
-		website.WebAddDirectory(addWeb, webPath, cPath)
-	} else {
-		website.WebAddFile(addWeb, webPath, contentType, cPath)
+
+	types.WebAddFile(addWeb, webPath, contentType, cPath)
+	content, err := os.ReadFile(cPath)
+	if err != nil {
+		con.Log.Error(err.Error())
+		return
 	}
-	_, err = con.Rpc.StartWebsite(context.Background(), &lispb.Pipeline{
+	webAsserts = &lispb.WebsiteAssets{}
+	webAsserts.Assets = append(webAsserts.Assets, &lispb.WebsiteAsset{
+		WebName: name,
+		Content: content,
+	})
+	resp, err := con.LisRpc.RegisterWebsite(context.Background(), &lispb.Pipeline{
+		Encryption: &lispb.Encryption{
+			Enable: false,
+			Type:   "",
+			Key:    "",
+		},
 		Tls: &lispb.TLS{
-			Cert: cert,
-			Key:  key,
+			Cert:   cert,
+			Key:    key,
+			Enable: tlsEnable,
 		},
 		Body: &lispb.Pipeline_Web{
 			Web: &lispb.Website{
@@ -66,49 +93,80 @@ func startWebsiteCmd(ctx *grumble.Context, con *console.Console) {
 				Name:       name,
 				ListenerId: listenerID,
 				Contents:   addWeb.Contents,
+				Enable:     false,
 			},
 		},
 	})
 
 	if err != nil {
-		console.Log.Error(err.Error())
+		con.Log.Error(err.Error())
+		return
 	}
-}
-
-func stopWebsitePipelineCmd(ctx *grumble.Context, con *console.Console) {
-	name := ctx.Args.String("name")
-	listenerID := ctx.Args.String("listener_id")
-	_, err := con.Rpc.StopWebsite(context.Background(), &lispb.Website{
+	webAsserts.GetAssets()[0].FileName = resp.ID
+	_, err = con.LisRpc.UploadWebsite(context.Background(), webAsserts)
+	if err != nil {
+		con.Log.Error(err.Error())
+		return
+	}
+	_, err = con.LisRpc.StartWebsite(context.Background(), &lispb.CtrlPipeline{
 		Name:       name,
 		ListenerId: listenerID,
 	})
 	if err != nil {
-		console.Log.Error(err.Error())
+		con.Log.Error(err.Error())
+		return
+	}
+	con.Log.Importantf("Website %s added\n", name)
+}
+
+func startWebsitePipelineCmd(cmd *cobra.Command, con *repl.Console) {
+	name := cmd.Flags().Arg(0)
+	listenerID := cmd.Flags().Arg(1)
+	_, err := con.LisRpc.StartWebsite(context.Background(), &lispb.CtrlPipeline{
+		Name:       name,
+		ListenerId: listenerID,
+	})
+	if err != nil {
+		con.Log.Error(err.Error())
+	}
+
+}
+
+func stopWebsitePipelineCmd(cmd *cobra.Command, con *repl.Console) {
+	name := cmd.Flags().Arg(0)
+	listenerID := cmd.Flags().Arg(1)
+	_, err := con.LisRpc.StopWebsite(context.Background(), &lispb.CtrlPipeline{
+		Name:       name,
+		ListenerId: listenerID,
+	})
+	if err != nil {
+		con.Log.Error(err.Error())
 	}
 }
 
-func listWebsitesCmd(ctx *grumble.Context, con *console.Console) {
-	listenerID := ctx.Args.String("listener_id")
+func listWebsitesCmd(cmd *cobra.Command, con *repl.Console) {
+	listenerID := cmd.Flags().Arg(0)
 	if listenerID == "" {
-		console.Log.Error("listener_id is required")
+		con.Log.Error("listener_id is required")
 		return
 	}
-	websites, err := con.Rpc.ListWebsites(context.Background(), &lispb.ListenerName{
+	websites, err := con.LisRpc.ListWebsites(context.Background(), &lispb.ListenerName{
 		Name: listenerID,
 	})
 	if err != nil {
-		console.Log.Error(err.Error())
+		con.Log.Error(err.Error())
 		return
 	}
 	var rowEntries []table.Row
 	var row table.Row
 	tableModel := tui.NewTable([]table.Column{
-		{Title: "Name", Width: 10},
+		{Title: "Name", Width: 20},
 		{Title: "Port", Width: 7},
 		{Title: "RootPath", Width: 15},
+		{Title: "Enable", Width: 7},
 	}, true)
 	if len(websites.Websites) == 0 {
-		console.Log.Importantf("No websites found")
+		con.Log.Importantf("No websites found")
 		return
 	}
 	for _, w := range websites.Websites {
@@ -116,9 +174,10 @@ func listWebsitesCmd(ctx *grumble.Context, con *console.Console) {
 			w.Name,
 			strconv.Itoa(int(w.Port)),
 			w.RootPath,
+			strconv.FormatBool(w.Enable),
 		}
 		rowEntries = append(rowEntries, row)
 	}
 	tableModel.SetRows(rowEntries)
-	fmt.Printf(tableModel.View(), os.Stdout)
+	fmt.Printf(tableModel.View())
 }

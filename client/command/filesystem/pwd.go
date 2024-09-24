@@ -1,28 +1,32 @@
 package filesystem
 
 import (
-	"github.com/chainreactors/grumble"
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
-	"google.golang.org/protobuf/proto"
+	"github.com/chainreactors/malice-network/proto/services/clientrpc"
+	"github.com/spf13/cobra"
 )
 
-func PwdCmd(ctx *grumble.Context, con *console.Console) {
+func PwdCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
-	if session == nil {
+	task, err := Pwd(con.Rpc, session)
+	if err != nil {
+		con.Log.Errorf("Pwd error: %v", err)
 		return
 	}
-	sid := con.GetInteractive().SessionId
-	pwdTask, err := con.Rpc.Pwd(con.ActiveTarget.Context(), &implantpb.Request{
+
+	session.Console(task, "pwd")
+}
+
+func Pwd(rpc clientrpc.MaliceRPCClient, session *core.Session) (*clientpb.Task, error) {
+	task, err := rpc.Pwd(session.Context(), &implantpb.Request{
 		Name: consts.ModulePwd,
 	})
 	if err != nil {
-		console.Log.Errorf("Pwd error: %v", err)
-		return
+		return nil, err
 	}
-	con.AddCallback(pwdTask.TaskId, func(msg proto.Message) {
-		resp := msg.(*implantpb.Spite).GetResponse()
-		con.SessionLog(sid).Consolef("%s\n", resp.GetOutput())
-	})
+	return task, err
 }

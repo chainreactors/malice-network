@@ -2,10 +2,12 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/server/internal/certs"
+	"github.com/chainreactors/malice-network/helper/codenames"
+	"github.com/chainreactors/malice-network/helper/utils/file"
+	"github.com/chainreactors/malice-network/helper/utils/mtls"
+	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
@@ -37,6 +39,8 @@ func init() {
 		opt.ParseDefault = true
 	})
 	config.AddDriver(yaml.Driver)
+	db.Client = db.NewDBClient()
+	codenames.SetupCodenames(configs.ServerRootPath)
 }
 
 func Execute() {
@@ -44,76 +48,100 @@ func Execute() {
 	var err error
 	core.NewTicker()
 	parser := flags.NewParser(&opt, flags.Default)
-
-	// load config
-	err = configs.LoadConfig(configs.ServerConfigFileName, &opt)
-	if err != nil {
-		logs.Log.Warnf("cannot load config , %s ", err.Error())
-	}
 	parser.SubcommandsOptional = true
-	sub, err := parser.Parse()
+	args, err := parser.Parse()
 	if err != nil {
-		if !errors.Is(err, flags.ErrHelp) {
-			logs.Log.Error(err.Error())
+		if err.(*flags.Error).Type != flags.ErrHelp {
+			fmt.Println(err.Error())
 		}
 		return
 	}
-
-	err = opt.Execute(sub, parser)
-	if err != nil {
-		logs.Log.Error(err)
-		return
-	}
-	if parser.Command.Active != nil {
-		return
-	}
-	// load config
-	if opt.Config != "" {
-		err = configs.LoadConfig(opt.Config, &opt)
+	if !file.Exist(opt.Config) {
+		confStr := configs.InitDefaultConfig(&opt, 0)
+		err := os.WriteFile(opt.Config, []byte(confStr), 0644)
 		if err != nil {
-			logs.Log.Errorf("cannot load config , %s ", err.Error())
+			logs.Log.Errorf("cannot write default config , %s ", err.Error())
 			return
 		}
-		configs.CurrentServerConfigFilename = opt.Config
-	} else if opt.Server == nil {
-		logs.Log.Errorf("null server config , %s ", err.Error())
+		logs.Log.Warnf("config file not found, created default config %s", opt.Config)
 	}
+	// load config
+
+	err = configs.LoadConfig(opt.Config, &opt)
+	if err != nil {
+		logs.Log.Warnf("cannot load config , %s ", err.Error())
+		return
+	}
+	if parser.Active != nil {
+		err = opt.Execute(args, parser)
+		if err != nil {
+			logs.Log.Error(err)
+		}
+		return
+	}
+	configs.CurrentServerConfigFilename = opt.Config
+	// load config
 	if opt.Debug {
 		logs.Log.SetLevel(logs.Debug)
 	}
-
-	db.Client = db.NewDBClient()
-	_, _, err = certs.ServerGenerateCertificate("root", true, opt.Listeners.Auth)
+	err = opt.Validate()
 	if err != nil {
-		logs.Log.Errorf("cannot init root ca , %s ", err.Error())
-		return
-	}
-	//if opt.Daemon == true {
-	//	err = StartAliveSession()
-	//	if err != nil {
-	//		logs.Log.Errorf("cannot start alive session , %s ", err.Error())
-	//		return
-	//	}
-	//	rpc.DaemonStart(opt.Server, opt.Listeners)
-	//}
-
-	err = StartGrpc(opt.Server.GRPCPort)
-	if err != nil {
-		logs.Log.Errorf("cannot start grpc , %s ", err.Error())
+		logs.Log.Errorf(err.Error())
 		return
 	}
 
-	// start listeners
-	if opt.Listeners.Auth != "" {
-		// init forwarder
-		clientConf, err := listener.GenerateClientConfig(opt.Server, opt.Listeners)
-		if err != nil {
-			logs.Log.Errorf("init client failed, %s", err.Error())
+	if opt.Server.Enable {
+		if opt.IP != "" {
+			logs.Log.Infof("manually specified IP: %s will override %s config: %s", opt.IP, opt.Config, opt.Server.IP)
+			opt.Server.IP = opt.IP
+			config.Set("server.ip", opt.IP)
+		}
+
+		if opt.Server.IP == "" {
+			logs.Log.Errorf("IP address not set, please set config.yaml `ip: [server_ip]` or `./malice_network -i [server_ip]`")
 			return
 		}
-		err = listener.NewListener(clientConf, opt.Listeners)
+
+		err = core.EventBroker.InitService(opt.Server.NotifyConfig)
 		if err != nil {
-			logs.Log.Errorf("cannot start listeners , %s ", err.Error())
+			logs.Log.Errorf("cannot init notifier , %s ", err.Error())
+			return
+		}
+		err = certutils.GenerateRootCert()
+		if err != nil {
+			logs.Log.Errorf("cannot init root ca , %s ", err.Error())
+			return
+		}
+		//if opt.Daemon == true {
+		//	err = RecoverAliveSession()
+		//	if err != nil {
+		//		logs.Log.Errorf("cannot start alive session , %s ", err.Error())
+		//		return
+		//	}
+		//	rpc.DaemonStart(opt.Server, opt.Listeners)
+		//}
+
+		err = StartGrpc(fmt.Sprintf("%s:%d", opt.Server.GRPCHost, opt.Server.GRPCPort))
+		if err != nil {
+			logs.Log.Errorf("cannot start grpc , %s ", err.Error())
+			return
+		}
+
+		err = opt.InitUser()
+		if err != nil {
+			logs.Log.Errorf(err.Error())
+			return
+		}
+		err = opt.InitListener()
+		if err != nil {
+			logs.Log.Errorf(err.Error())
+			return
+		}
+	}
+	if opt.Listeners.Enable {
+		logs.Log.Importantf("listener config enabled, Starting listeners")
+		err := StartListener(opt.Listeners)
+		if err != nil {
 			return
 		}
 	}
@@ -135,25 +163,26 @@ func Execute() {
 		cancel()
 		os.Exit(0)
 	}()
+
 	select {}
 }
 
 // Start - Starts the server console
-func StartGrpc(port uint16) error {
+func StartGrpc(address string) error {
 	// start alive session
-	err := StartAliveSession()
+	err := RecoverAliveSession()
 	if err != nil {
 		return err
 	}
 
-	_, _, err = rpc.StartClientListener(port)
+	_, _, err = rpc.StartClientListener(address)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func StartAliveSession() error {
+func RecoverAliveSession() error {
 	// start alive session
 	sessions, err := db.FindAliveSessions()
 	if err != nil {
@@ -190,6 +219,18 @@ func StartAliveSession() error {
 			logs.Log.Errorf("cannot update session status , %s ", err.Error())
 		}
 	}()
+	return nil
+}
+
+func StartListener(opt *configs.ListenerConfig) error {
+	if listenerConf, err := mtls.ReadConfig(opt.Auth); err != nil {
+		return err
+	} else {
+		err = listener.NewListener(listenerConf, opt)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

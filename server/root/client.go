@@ -4,16 +4,15 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"github.com/chainreactors/malice-network/helper/mtls"
+	"github.com/chainreactors/malice-network/helper/utils/mtls"
 	"github.com/chainreactors/malice-network/proto/client/rootpb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
-	"github.com/chainreactors/malice-network/server/internal/certs"
+	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"google.golang.org/grpc"
-	"gopkg.in/yaml.v3"
 )
 
 func NewRootClient(addr string) (*RootClient, error) {
-	ca, key, err := certs.GetCertificateAuthority()
+	ca, key, err := certutils.GetCertificateAuthority()
 	if err != nil {
 		return nil, err
 	}
@@ -23,11 +22,11 @@ func NewRootClient(addr string) (*RootClient, error) {
 		Bytes: x509.MarshalPKCS1PrivateKey(key),
 	}
 	privateKeyPEM := pem.EncodeToMemory(keyPEM)
-	options, err := mtls.GetGrpcOptions(caCert, caCert, privateKeyPEM, certs.RootName)
+	options, err := mtls.GetGrpcOptions(caCert, caCert, privateKeyPEM, certutils.RootName)
 	if err != nil {
 		return nil, err
 	}
-	conn, err := grpc.Dial(addr, options...)
+	conn, err := grpc.NewClient(addr, options...)
 	if err != nil {
 		return nil, err
 	}
@@ -49,26 +48,9 @@ func (client *RootClient) Execute(cmd Command, msg *rootpb.Operator) error {
 		return nil
 	}
 
-	resp, err := cmd.Execute(client.rpc, msg)
+	_, err := cmd.Execute(client.rpc, msg)
 	if err != nil {
 		return err
 	}
-	if msg.Op == "add" {
-		var conf *mtls.ClientConfig
-		err := yaml.Unmarshal([]byte(resp.(*rootpb.Response).Response), &conf)
-		if err != nil {
-			return err
-		}
-		err = mtls.WriteConfig(conf, msg.Name, msg.Args[0])
-		if err != nil {
-			return err
-		}
-		fmt.Println("Client configuration written to disk")
-		return nil
-	} else if msg.Op == "del" {
-		fmt.Println("Client configuration removed from db")
-		return nil
-	}
-	fmt.Println(resp)
 	return nil
 }

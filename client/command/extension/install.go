@@ -2,11 +2,11 @@ package extension
 
 import (
 	"fmt"
-	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/client/console"
-	"github.com/chainreactors/malice-network/client/utils"
+	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/helper/utils/file"
 	"github.com/chainreactors/tui"
+	"github.com/spf13/cobra"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -14,65 +14,65 @@ import (
 )
 
 // ExtensionsInstallCmd - Install an extension
-func ExtensionsInstallCmd(ctx *grumble.Context, con *console.Console) {
-	extLocalPath := ctx.Args.String("path")
+func ExtensionsInstallCmd(cmd *cobra.Command, con *repl.Console) {
+	extLocalPath := cmd.Flags().Arg(0)
 	_, err := os.Stat(extLocalPath)
 	if os.IsNotExist(err) {
-		console.Log.Errorf("Extension path '%s' does not exist", extLocalPath)
+		con.Log.Errorf("Extension path '%s' does not exist", extLocalPath)
 		return
 	}
 	InstallFromDir(extLocalPath, true, con, strings.HasSuffix(extLocalPath, ".tar.gz"))
 }
 
 // Install an extension from a directory
-func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *console.Console, isGz bool) {
+func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *repl.Console, isGz bool) {
 	var manifestData []byte
 	var err error
 
 	if isGz {
-		manifestData, err = utils.ReadFileFromTarGz(extLocalPath, fmt.Sprintf("./%s", ManifestFileName))
+		manifestData, err = file.ReadFileFromTarGz(extLocalPath, fmt.Sprintf("./%s", ManifestFileName))
 	} else {
 		manifestData, err = os.ReadFile(filepath.Join(extLocalPath, ManifestFileName))
 	}
 	if err != nil {
-		console.Log.Errorf("Error reading %s: %s", ManifestFileName, err)
+		con.Log.Errorf("Error reading %s: %s", ManifestFileName, err)
 		return
 	}
 
 	manifest, err := ParseExtensionManifest(manifestData)
 	if err != nil {
-		console.Log.Errorf("Error parsing %s: %s", ManifestFileName, err)
+		con.Log.Errorf("Error parsing %s: %s", ManifestFileName, err)
 		return
 	}
 
 	installPath := filepath.Join(assets.GetExtensionsDir(), filepath.Base(manifest.Name))
 	if _, err := os.Stat(installPath); !os.IsNotExist(err) {
 		if promptToOverwrite {
-			console.Log.Infof("Extension '%s' already exists", manifest.Name)
+			con.Log.Infof("Extension '%s' already exists", manifest.Name)
 			confirmModel := tui.NewConfirm("Overwrite current install?")
 			newConfirm := tui.NewModel(confirmModel, nil, false, true)
 			err = newConfirm.Run()
 			if err != nil {
-				console.Log.Errorf("Error running confirm model: %s", err)
+				con.Log.Errorf("Error running confirm model: %s", err)
 				return
 			}
 			if !confirmModel.Confirmed {
 				return
 			}
 		}
-		forceRemoveAll(installPath)
+		file.ForceRemoveAll(installPath)
 	}
 
-	console.Log.Infof("Installing extension '%s' (%s) ... ", manifest.Name, manifest.Version)
+	con.Log.Infof("Installing extension '%s' (%s) ... ", manifest.Name, manifest.Version)
 	err = os.MkdirAll(installPath, 0700)
 	if err != nil {
-		console.Log.Errorf("\nError creating extension directory: %s\n", err)
+		con.Log.Errorf("\nError creating extension directory: %s\n", err)
 		return
 	}
 	err = os.WriteFile(filepath.Join(installPath, ManifestFileName), manifestData, 0o600)
 	if err != nil {
-		console.Log.Errorf("\nFailed to write %s: %s\n", ManifestFileName, err)
-		forceRemoveAll(installPath)
+		con.Log.Errorf("\nFailed to write %s: %s\n", ManifestFileName, err)
+		file.ForceRemoveAll(installPath)
 		return
 	}
 	for _, manifestCmd := range manifest.ExtCommand {
@@ -82,22 +82,22 @@ func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *console.Co
 				if isGz {
 					err = installArtifact(extLocalPath, newInstallPath, manifestFile.Path)
 				} else {
-					src := filepath.Join(extLocalPath, utils.ResolvePath(manifestFile.Path))
-					dst := filepath.Join(newInstallPath, utils.ResolvePath(manifestFile.Path))
+					src := filepath.Join(extLocalPath, file.ResolvePath(manifestFile.Path))
+					dst := filepath.Join(newInstallPath, file.ResolvePath(manifestFile.Path))
 					err = os.MkdirAll(filepath.Dir(dst), 0700) //required for extensions with multiple dirs between the .o file and the manifest
 					if err != nil {
-						console.Log.Errorf("\nError creating extension directory: %s\n", err)
-						forceRemoveAll(newInstallPath)
+						con.Log.Errorf("\nError creating extension directory: %s\n", err)
+						file.ForceRemoveAll(newInstallPath)
 						return
 					}
-					err = utils.CopyFile(src, dst)
+					err = file.CopyFile(src, dst)
 					if err != nil {
 						err = fmt.Errorf("error copying file '%s' -> '%s': %s", src, dst, err)
 					}
 				}
 				if err != nil {
-					console.Log.Errorf("Error installing command: %s\n", err)
-					forceRemoveAll(newInstallPath)
+					con.Log.Errorf("Error installing command: %s\n", err)
+					file.ForceRemoveAll(newInstallPath)
 					return
 				}
 			}
@@ -178,14 +178,14 @@ func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *console.Co
 //}
 
 func installArtifact(extGzFilePath string, installPath string, artifactPath string) error {
-	data, err := utils.ReadFileFromTarGz(extGzFilePath, "."+artifactPath)
+	data, err := file.ReadFileFromTarGz(extGzFilePath, "."+artifactPath)
 	if err != nil {
 		return err
 	}
 	if len(data) == 0 {
 		return fmt.Errorf("archive path '%s' is empty", "."+artifactPath)
 	}
-	localArtifactPath := filepath.Join(installPath, utils.ResolvePath(artifactPath))
+	localArtifactPath := filepath.Join(installPath, file.ResolvePath(artifactPath))
 	artifactDir := filepath.Dir(localArtifactPath)
 	if _, err := os.Stat(artifactDir); os.IsNotExist(err) {
 		err := os.MkdirAll(artifactDir, 0700)

@@ -22,6 +22,7 @@ type Session struct {
 	IsAlive    bool
 	Modules    string
 	Extensions string
+	IsRemoved  bool     `gorm:"default:false"`
 	Os         *Os      `gorm:"embedded"`
 	Process    *Process `gorm:"embedded"`
 	Time       *Timer   `gorm:"embedded"`
@@ -46,7 +47,7 @@ func ConvertToSessionDB(session *core.Session) *Session {
 		RemoteAddr: session.RemoteAddr,
 		ListenerId: session.PipelineID,
 		Modules:    convertToModuleDB(session.Modules),
-		Extensions: convertToExtensionDB(session.Extensions),
+		Extensions: convertToExtensionDB(session.Addons),
 		Os:         convertToOsDB(session.Os),
 		Process:    convertToProcessDB(session.Process),
 		Time:       convertToTimeDB(session.Timer),
@@ -58,17 +59,17 @@ func convertToModuleDB(modules []string) string {
 	return strings.Join(modules, ",")
 }
 
-func recoverFromExtension(extension string) *implantpb.Extensions {
-	var ext implantpb.Extensions
-	err := json.Unmarshal([]byte(extension), &ext)
+func recoverFromExtension(addon string) *implantpb.Addons {
+	var ext implantpb.Addons
+	err := json.Unmarshal([]byte(addon), &ext)
 	if err != nil {
 		return nil
 	}
 	return &ext
 }
 
-func convertToExtensionDB(extension *implantpb.Extensions) string {
-	content, err := json.Marshal(extension)
+func convertToExtensionDB(addon *implantpb.Addons) string {
+	content, err := json.Marshal(addon)
 	if err != nil {
 		return ""
 	}
@@ -137,7 +138,7 @@ func (s *Session) ToClientProtobuf() *clientpb.Session {
 		ListenerId: s.ListenerId,
 		Note:       s.Note,
 		RemoteAddr: s.RemoteAddr,
-		IsDead:     s.IsAlive,
+		IsAlive:    s.IsAlive,
 		GroupName:  s.GroupName,
 		Os:         s.Os.toProtobuf(),
 		Process:    s.Process.toProtobuf(),
@@ -157,8 +158,8 @@ func (s *Session) ToRegisterProtobuf() *lispb.RegisterSession {
 				Os:      s.Os.toProtobuf(),
 				Process: s.Process.toProtobuf(),
 			},
-			Module:    strings.Split(s.Modules, ","),
-			Extension: recoverFromExtension(s.Extensions),
+			Module: strings.Split(s.Modules, ","),
+			Addon:  recoverFromExtension(s.Extensions),
 		},
 	}
 }

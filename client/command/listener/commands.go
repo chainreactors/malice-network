@@ -1,126 +1,235 @@
 package listener
 
 import (
-	"github.com/chainreactors/grumble"
-	"github.com/chainreactors/malice-network/client/command/help"
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/command/common"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/rsteube/carapace"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
-func Commands(con *console.Console) []*grumble.Command {
-	//websiteCmd := &grumble.Command{
-	//	Name: "website",
-	//	Help: "Listener website ctrl manager",
-	//	Args: func(f *grumble.Args) {
-	//		f.String("listener_id", "listener id")
-	//	},
-	//	Run: func(ctx *grumble.Context) error {
-	//		listWebsitesCmd(ctx, con)
-	//		return nil
-	//	},
-	//	HelpGroup: consts.ListenerGroup,
-	//}
-	//
-	//websiteCmd.AddCommand(&grumble.Command{
-	//	Name: "start",
-	//	Help: "Start a website pipeline",
-	//	Flags: func(f *grumble.Flags) {
-	//		f.StringL("web-path", "", "path to the website")
-	//		f.String("", "content-type", "", "content type")
-	//		f.IntL("port", 0, "website pipeline port")
-	//		f.StringL("name", "", "website name")
-	//		f.StringL("content-path", "", "path to the content file")
-	//		f.StringL("listener_id", "", "listener id")
-	//		f.StringL("cert_path", "", "website tls cert path")
-	//		f.StringL("key_path", "", "website tls key path")
-	//		f.Bool("", "recursive", false, "add content recursively")
-	//	},
-	//	Run: func(ctx *grumble.Context) error {
-	//		startWebsiteCmd(ctx, con)
-	//		return nil
-	//	},
-	//})
-	//
-	//websiteCmd.AddCommand(&grumble.Command{
-	//	Name: "stop",
-	//	Help: "Stop a website pipeline",
-	//	Args: func(a *grumble.Args) {
-	//		a.String("name", "website pipeline name")
-	//		a.String("listener_id", "listener id")
-	//	},
-	//	Run: func(ctx *grumble.Context) error {
-	//		stopWebsitePipelineCmd(ctx, con)
-	//		return nil
-	//	},
-	//})
-	listenerCmd := &grumble.Command{
-		Name:     "listener",
-		Help:     "List listeners in server",
-		LongHelp: help.GetHelpFor("listener"),
-		Run: func(ctx *grumble.Context) error {
-			ListenerCmd(ctx, con)
-			return nil
+func Commands(con *repl.Console) []*cobra.Command {
+	listenerCmd := &cobra.Command{
+		Use:   consts.CommandListener,
+		Short: "List listeners in server",
+		Long:  "Use a table to list listeners on the server",
+		Run: func(cmd *cobra.Command, args []string) {
+			ListenerCmd(cmd, con)
+			return
 		},
-		HelpGroup: consts.ListenerGroup,
+		Example: `~~~
+listener
+~~~`,
 	}
 
-	tcpCmd := &grumble.Command{
-		Name:     "tcp",
-		Help:     "Listener tcp pipeline ctrl manager",
-		LongHelp: help.GetHelpFor("tcp"),
-		Args: func(a *grumble.Args) {
-			a.String("listener_id", "listener id")
+	jobCmd := &cobra.Command{
+		Use:   consts.CommandJob,
+		Short: "List jobs in server",
+		Long:  "Use a table to list jobs on the server",
+		Run: func(cmd *cobra.Command, args []string) {
+			listJobsCmd(cmd, con)
+			return
 		},
-		Run: func(ctx *grumble.Context) error {
-			listTcpPipelines(ctx, con)
-			return nil
-		},
-		HelpGroup: consts.ListenerGroup,
+		Example: `~~~
+job
+~~~`,
 	}
 
-	tcpCmd.AddCommand(&grumble.Command{
-		Name:     "start",
-		Help:     "Start a TCP pipeline",
-		LongHelp: help.GetHelpFor("tcp start"),
-		Flags: func(f *grumble.Flags) {
-			f.StringL("host", "", "tcp pipeline host")
-			f.IntL("port", 0, "tcp pipeline port")
-			f.StringL("name", "", "tcp pipeline name")
-			f.StringL("listener_id", "", "listener id")
-			f.StringL("cert_path", "", "tcp pipeline tls cert path")
-			f.StringL("key_path", "", "tcp pipeline tls key path")
+	tcpCmd := &cobra.Command{
+		Use:   consts.CommandTcp,
+		Short: "List tcp pipelines in listener",
+		Long:  "Use a table to list TCP pipelines along with their corresponding listeners",
+		Args:  cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			listTcpCmd(cmd, con)
+			return
 		},
-		Run: func(ctx *grumble.Context) error {
-			startTcpPipelineCmd(ctx, con)
-			return nil
+		GroupID: consts.ListenerGroup,
+		Example: `~~~
+tcp listener
+~~~`,
+	}
+
+	common.BindArgCompletions(tcpCmd, nil, common.ListenerIDCompleter(con))
+
+	tcpRegisterCmd := &cobra.Command{
+		Use:   consts.CommandRegister + " [listener_id] ",
+		Short: "Register a new TCP pipeline and start it",
+		Args:  cobra.ExactArgs(1),
+		Long: `Register a new TCP pipeline with the specified listener.
+- If **name** is not provided, it will be generated in the format **listenerID_tcp_port**.
+- If **host** is not specified, the default value will be **0.0.0.0**.
+- If **port** is not specified, a random port will be selected from the range **10000-15000**.
+- If TLS is enabled, you can provide file paths for the certificate and key.
+- If no certificate or key paths are provided, the server will automatically generate a TLS certificate and key.`,
+		Run: func(cmd *cobra.Command, args []string) {
+			newTcpPipelineCmd(cmd, con)
+			return
 		},
+		Example: `~~~
+// Register a TCP pipeline with the default settings
+tcp register listener
+
+// Register a TCP pipeline with a custom name, host, and port
+tcp register listener --name tcp_test --host 192.168.0.43 --port 5003
+
+// Register a TCP pipeline with TLS enabled and specify certificate and key paths
+tcp register listener --tls --cert_path /path/to/cert --key_path /path/to/key
+~~~`,
+	}
+
+	common.BindArgCompletions(tcpRegisterCmd, nil,
+		common.ListenerIDCompleter(con))
+
+	common.BindFlag(tcpRegisterCmd, common.TlsCertFlagSet, common.PipelineFlagSet)
+
+	common.BindFlagCompletions(tcpRegisterCmd, func(comp carapace.ActionMap) {
+		comp["name"] = carapace.ActionValues().Usage("tcp name")
+		comp["host"] = carapace.ActionValues().Usage("tcp host")
+		comp["port"] = carapace.ActionValues().Usage("tcp port")
+		comp["cert_path"] = carapace.ActionFiles().Usage("path to the cert file")
+		comp["key_path"] = carapace.ActionFiles().Usage("path to the key file")
+		comp["tls"] = carapace.ActionValues().Usage("enable tls")
 	})
 
-	tcpCmd.AddCommand(&grumble.Command{
-		Name:     "stop",
-		Help:     "Stop a TCP pipeline",
-		LongHelp: help.GetHelpFor("tcp stop"),
-		Args: func(a *grumble.Args) {
-			a.String("name", "tcp pipeline name")
-			a.String("listener_id", "listener id")
+	tcpStartCmd := &cobra.Command{
+		Use:   consts.CommandPipelineStart,
+		Short: "Start a TCP pipeline",
+		Args:  cobra.ExactArgs(2),
+		Long:  "Start a TCP pipeline with the specified name and listener ID",
+		Run: func(cmd *cobra.Command, args []string) {
+			startTcpPipelineCmd(cmd, con)
+			return
 		},
-		Run: func(ctx *grumble.Context) error {
-			stopTcpPipelineCmd(ctx, con)
-			return nil
+		Example: `~~~
+tcp start tcp_test listener
+~~~`,
+	}
+
+	common.BindArgCompletions(tcpStartCmd, nil,
+		carapace.ActionValues().Usage("tcp pipeline name"),
+		common.ListenerIDCompleter(con))
+
+	tcpStopCmd := &cobra.Command{
+		Use:   consts.CommandPipelineStop,
+		Short: "Stop a TCP pipeline",
+		Args:  cobra.ExactArgs(2),
+		Long:  "Stop a TCP pipeline with the specified name and listener ID",
+		Run: func(cmd *cobra.Command, args []string) {
+			stopTcpPipelineCmd(cmd, con)
+			return
 		},
+		Example: `~~~
+tcp stop tcp_test listener
+~~~`,
+	}
+
+	common.BindArgCompletions(tcpStopCmd, nil,
+		carapace.ActionValues().Usage("tcp pipeline name"),
+		common.ListenerIDCompleter(con))
+
+	tcpCmd.AddCommand(tcpRegisterCmd, tcpStartCmd, tcpStopCmd)
+
+	websiteCmd := &cobra.Command{
+		Use:   consts.CommandWebsite,
+		Short: "List website in listener",
+		Long:  "Use a table to list websites along with their corresponding listeners",
+		Args:  cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			listWebsitesCmd(cmd, con)
+			return
+		},
+		Example: `~~~
+website listener
+~~~`,
+	}
+
+	common.BindArgCompletions(websiteCmd, nil, common.ListenerIDCompleter(con))
+
+	websiteRegisterCmd := &cobra.Command{
+		Use:   consts.CommandRegister + " [listener_id] [route_path] [content_path]",
+		Short: "Register a new website and start it",
+		Args:  cobra.ExactArgs(3),
+		Long: `Register a new website with the specified listener.
+- You must provide a web route path and the static file path. Currently, only one file can be registered.
+- If **name** is not provided, it will be generated in the format **listenerID_web_port**.
+- If **port** is not specified, a random port will be selected from the range **15001-20000**.
+- If **content_type** is not specified, the default value will be **text/html**.
+- If TLS is enabled, you can provide file paths for the certificate and key.
+- If no certificate or key paths are provided, the server will automatically generate a TLS certificate and key.`,
+		Run: func(cmd *cobra.Command, args []string) {
+			newWebsiteCmd(cmd, con)
+			return
+		},
+		Example: `~~~
+// Register a website with the default settings
+website register listener /webtest /path/to/file
+
+// Register a website with a custom name, port, and content type
+website register listener /webtest /path/to/file --name web_test --port 5003 --content_type text/html
+			
+// Register a website with TLS enabled and specify certificate and key paths
+website register listener /webtest /path/to/file --tls --cert_path /path/to/cert --key_path /path/to/key
+~~~`,
+	}
+
+	common.BindArgCompletions(websiteRegisterCmd, nil,
+		common.ListenerIDCompleter(con),
+		carapace.ActionValues().Usage("website router root path"),
+		carapace.ActionFiles().Usage("website content path"))
+
+	common.BindFlag(websiteRegisterCmd, common.TlsCertFlagSet, common.PipelineFlagSet, func(f *pflag.FlagSet) {
+		f.String("content_type", "", "website content type")
 	})
-	return []*grumble.Command{listenerCmd, tcpCmd}
+
+	common.BindFlagCompletions(websiteRegisterCmd, func(comp carapace.ActionMap) {
+		comp["name"] = carapace.ActionValues().Usage("website name")
+		comp["port"] = carapace.ActionValues().Usage("website port")
+		comp["content_type"] = carapace.ActionFiles().Tag("website content type")
+		comp["cert_path"] = carapace.ActionFiles().Usage("path to the cert file")
+		comp["key_path"] = carapace.ActionFiles().Usage("path to the key file")
+		comp["tls"] = carapace.ActionValues().Usage("enable tls")
+	})
+
+	websiteStartCmd := &cobra.Command{
+		Use:   consts.CommandPipelineStart,
+		Short: "Start a website",
+		Args:  cobra.ExactArgs(2),
+		Long:  "Start a website with the specified name and listener ID",
+		Run: func(cmd *cobra.Command, args []string) {
+			startWebsitePipelineCmd(cmd, con)
+			return
+		},
+		Example: `~~~
+website start web_test listener
+~~~`,
+	}
+
+	common.BindArgCompletions(websiteStartCmd, nil,
+		carapace.ActionValues().Usage("website name"),
+		common.ListenerIDCompleter(con))
+
+	websiteStopCmd := &cobra.Command{
+		Use:   consts.CommandPipelineStop,
+		Short: "Stop a website",
+		Args:  cobra.ExactArgs(2),
+		Long:  "Stop a website with the specified name and listener ID",
+		Run: func(cmd *cobra.Command, args []string) {
+			stopWebsitePipelineCmd(cmd, con)
+			return
+		},
+		Example: `~~~
+website stop web_test listener
+~~~`,
+	}
+
+	common.BindArgCompletions(websiteStopCmd, nil,
+		carapace.ActionValues().Usage("website name"),
+		common.ListenerIDCompleter(con))
+
+	websiteCmd.AddCommand(websiteRegisterCmd, websiteStartCmd, websiteStopCmd)
+
+	return []*cobra.Command{listenerCmd, jobCmd, tcpCmd, websiteCmd}
+
 }
-
-//	tcpCmd := &grumble.Command{
-//		Name: "tcp",
-//		Help: "Start a TCP pipeline",
-//		Flags: func(f *grumble.Flags) {
-//			f.String("l", "lhost", "0.0.0.0", "listen host")
-//			f.Int("p", "lport", 0, "listen port")
-//		},
-//		Run: func(ctx *grumble.Context) error {
-//			jobs.TcpPipelineCmd(ctx, con)
-//			return nil
-//		},
-//	}

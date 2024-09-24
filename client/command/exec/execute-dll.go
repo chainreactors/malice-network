@@ -1,93 +1,78 @@
 package exec
 
 import (
-	"github.com/chainreactors/grumble"
-	"github.com/chainreactors/malice-network/client/console"
+	"errors"
+	"github.com/chainreactors/malice-network/client/command/common"
+	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/helper"
+	"github.com/chainreactors/malice-network/helper/utils/pe"
+	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
-	"google.golang.org/protobuf/proto"
-	"os"
-	"path/filepath"
+	"github.com/chainreactors/malice-network/proto/services/clientrpc"
+	"github.com/spf13/cobra"
 )
 
-func ExecuteDLLCmd(ctx *grumble.Context, con *console.Console) {
+func ExecuteDLLCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
-	if session == nil {
-		return
-	}
-	sid := con.GetInteractive().SessionId
-	ppid := ctx.Flags.Uint("ppid")
-	pePath := ctx.Args.String("path")
-	processname := ctx.Flags.String("process")
-	paramString := ctx.Args.StringList("args")
-	argue := ctx.Flags.String("argue")
-	isBlockDll := ctx.Flags.Bool("block_dll")
-	dllBin, err := os.ReadFile(pePath)
+	sac, _ := common.ParseSacrificeFlags(cmd)
+	entrypoint, _ := cmd.Flags().GetString("entrypoint")
+	path, args, output, timeout, arch, process := common.ParseFullBinaryFlags(cmd)
+	task, err := ExecDLL(con.Rpc, session, path, entrypoint, args, output, timeout, arch, process, sac)
 	if err != nil {
-		console.Log.Errorf("%s\n", err.Error())
+		con.Log.Errorf("Execute DLL error: %v", err)
 		return
 	}
-	if helper.CheckPEType(dllBin) != consts.DLLFile {
-		console.Log.Errorf("The file is not a DLL file\n")
-		return
-	}
-	task, err := con.Rpc.ExecutePE(con.ActiveTarget.Context(), &implantpb.ExecuteBinary{
-		Name:       filepath.Base(pePath),
-		Bin:        dllBin,
-		Type:       consts.ModuleExecutePE,
-		EntryPoint: ctx.Flags.String("entrypoint"),
-		Output:     true,
-		Sacrifice: &implantpb.SacrificeProcess{
-			Output:   true,
-			BlockDll: isBlockDll,
-			Ppid:     uint32(ppid),
-			Argue:    argue,
-			Params:   append([]string{processname}, paramString...),
-		},
-	})
-
-	if err != nil {
-		console.Log.Errorf("%s\n", err)
-		return
-	}
-
-	con.AddCallback(task.TaskId, func(msg proto.Message) {
-		resp := msg.(*implantpb.Spite)
-		con.SessionLog(sid).Consolef("Executed PE on target: %s\n", resp.GetAssemblyResponse().GetData())
-	})
+	session.Console(task, path)
 }
 
-func InlineDLLCmd(ctx *grumble.Context, con *console.Console) {
+func ExecDLL(rpc clientrpc.MaliceRPCClient, sess *core.Session, pePath string, entrypoint string, args []string, output bool, timeout uint32, arch string, process string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
+	binary, err := common.NewBinary(consts.ModuleExecuteDll, pePath, args, output, timeout, arch, process, sac)
+	if err != nil {
+		return nil, err
+	}
+	if arch == "" {
+		arch = sess.Os.Arch
+	}
+	binary.EntryPoint = entrypoint
+	if pe.CheckPEType(binary.Bin) != consts.DLLFile {
+		return nil, errors.New("the file is not a DLL file")
+	}
+	task, err := rpc.ExecuteEXE(sess.Context(), binary)
+	if err != nil {
+		return nil, err
+	}
+	return task, err
+}
+
+func InlineDLLCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
-	if session == nil {
-		return
-	}
-	sid := con.GetInteractive().SessionId
-	pePath := ctx.Args.String("path")
-	dllBin, err := os.ReadFile(pePath)
+	path, args, output, timeout, arch, process := common.ParseFullBinaryFlags(cmd)
+	entryPoint, _ := cmd.Flags().GetString("entrypoint")
+	task, err := InlineDLL(con.Rpc, session, path, entryPoint, args, output, timeout, arch, process)
 	if err != nil {
-		console.Log.Errorf("%s\n", err.Error())
+		con.Log.Errorf("Execute Inline DLL error: %s", err)
 		return
 	}
-	if helper.CheckPEType(dllBin) != consts.DLLFile {
-		console.Log.Errorf("The file is not a DLL file\n")
-		return
-	}
-	shellcodeTask, err := con.Rpc.ExecutePE(con.ActiveTarget.Context(), &implantpb.ExecuteBinary{
-		Name:       filepath.Base(pePath),
-		Bin:        dllBin,
-		EntryPoint: ctx.Flags.String("entrypoint"),
-		Type:       consts.ModuleExecutePE,
-	})
+	session.Console(task, path)
+}
 
+func InlineDLL(rpc clientrpc.MaliceRPCClient, sess *core.Session, path, entryPoint string, args []string,
+	output bool, timeout uint32, arch string, process string) (*clientpb.Task, error) {
+	if arch == "" {
+		arch = sess.Os.Arch
+	}
+	binary, err := common.NewBinary(consts.ModuleExecuteDll, path, args, output, timeout, arch, process, nil)
 	if err != nil {
-		console.Log.Errorf("%s\n", err)
-		return
+		return nil, err
 	}
-
-	con.AddCallback(shellcodeTask.TaskId, func(msg proto.Message) {
-		resp := msg.(*implantpb.Spite)
-		con.SessionLog(sid).Consolef("Executed PE on target: %s\n", resp.GetAssemblyResponse().GetData())
-	})
+	binary.EntryPoint = entryPoint
+	if pe.CheckPEType(binary.Bin) != consts.DLLFile {
+		return nil, errors.New("the file is not a DLL file")
+	}
+	task, err := rpc.ExecuteEXE(sess.Context(), binary)
+	if err != nil {
+		return nil, err
+	}
+	return task, err
 }

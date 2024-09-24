@@ -12,6 +12,8 @@ type Operator struct {
 	ID        uuid.UUID `gorm:"primaryKey;->;<-:create;type:uuid;"`
 	CreatedAt time.Time `gorm:"->;<-:create;"`
 	Name      string    `gorm:"uniqueIndex"`
+	Remote    string    `gorm:"type:string;"`
+	Type      string    `gorm:"type:string;"`
 }
 
 // BeforeCreate - GORM hook

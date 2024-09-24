@@ -1,30 +1,38 @@
 package filesystem
 
 import (
-	"github.com/chainreactors/grumble"
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
-	"google.golang.org/protobuf/proto"
+	"github.com/chainreactors/malice-network/proto/services/clientrpc"
+	"github.com/spf13/cobra"
 )
 
-func RmCmd(ctx *grumble.Context, con *console.Console) {
-	session := con.GetInteractive()
-	if session == nil {
+func RmCmd(cmd *cobra.Command, con *repl.Console) {
+	fileName := cmd.Flags().Arg(0)
+	if fileName == "" {
+		con.Log.Errorf("required arguments missing")
 		return
 	}
-	sid := con.GetInteractive().SessionId
-	fileName := ctx.Flags.String("name")
-	rmTask, err := con.Rpc.Rm(con.ActiveTarget.Context(), &implantpb.Request{
+	session := con.GetInteractive()
+	task, err := Rm(con.Rpc, session, fileName)
+	if err != nil {
+		con.Log.Errorf("Rm error: %v", err)
+		return
+	}
+
+	session.Console(task, "rm "+fileName)
+}
+
+func Rm(rpc clientrpc.MaliceRPCClient, session *core.Session, fileName string) (*clientpb.Task, error) {
+	task, err := rpc.Rm(session.Context(), &implantpb.Request{
 		Name:  consts.ModuleRm,
 		Input: fileName,
 	})
 	if err != nil {
-		console.Log.Errorf("Rm error: %v", err)
-		return
+		return nil, err
 	}
-	con.AddCallback(rmTask.TaskId, func(msg proto.Message) {
-		_ = msg.(*implantpb.Spite)
-		con.SessionLog(sid).Consolef("Removed file success\n")
-	})
+	return task, err
 }

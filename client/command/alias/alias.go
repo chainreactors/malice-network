@@ -3,29 +3,28 @@ package alias
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/table"
+	"github.com/rsteube/carapace"
+	"github.com/spf13/cobra"
 	"os"
 	"strconv"
 	"strings"
 )
 
 // AliasesCmd - The alias command
-func AliasesCmd(ctx *grumble.Context, con *console.Console) error {
+func AliasesCmd(cmd *cobra.Command, con *repl.Console) {
 	if 0 < len(loadedAliases) {
 		PrintAliases(con)
 	} else {
-		console.Log.Infof("No aliases installed, use the 'armory' command to automatically install some")
+		con.Log.Infof("No aliases installed, use the 'armory' command to automatically install some")
 	}
-
-	return nil
 }
 
 // PrintAliases - Print a list of loaded aliases
-func PrintAliases(con *console.Console) {
+func PrintAliases(con *repl.Console) {
 	var rowEntries []table.Row
 	var row table.Row
 	tableModel := tui.NewTable([]table.Column{
@@ -67,15 +66,15 @@ func PrintAliases(con *console.Console) {
 	}
 }
 
-// AliasCommandNameCompleter - Completer for installed extensions command names
-func AliasCommandNameCompleter(prefix string, args []string, con *console.Console) []string {
-	results := []string{}
-	for name := range loadedAliases {
-		if strings.HasPrefix(name, prefix) {
+// AliasCommandNameCompleter - Completer for installed extensions command names.
+func AliasCompleter() carapace.Action {
+	return carapace.ActionCallback(func(c carapace.Context) carapace.Action {
+		var results []string
+		for name := range loadedAliases {
 			results = append(results, name)
 		}
-	}
-	return results
+		return carapace.ActionValues(results...).Tag("aliases")
+	})
 }
 
 func aliasPlatforms(aliasPkg *AliasManifest) []string {
@@ -107,14 +106,3 @@ func getInstalledManifests() map[string]*AliasManifest {
 	}
 	return installedManifests
 }
-
-// AliasCommandNameCompleter - Completer for installed extensions command names
-//func AliasCompleter() carapace.Action {
-//	return carapace.ActionCallback(func(c carapace.Context) carapace.Action {
-//		results := []string{}
-//		for name := range loadedAliases {
-//			results = append(results, name)
-//		}
-//		return carapace.ActionValues(results...).Tag("aliases")
-//	})
-//}

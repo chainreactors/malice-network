@@ -46,8 +46,8 @@ func (t *Tasks) Add(task *Task) {
 	t.active.Store(task.Id, task)
 }
 
-func (t *Tasks) Remove(task *Task) {
-	t.active.Delete(task.Id)
+func (t *Tasks) Remove(taskId uint32) {
+	t.active.Delete(taskId)
 }
 
 type Task struct {
@@ -59,23 +59,18 @@ type Task struct {
 	Callback  func()
 	Ctx       context.Context
 	Cancel    context.CancelFunc
-	Status    *implantpb.Spite //
-	done      chan bool
-	end       chan struct{}
+	Session   *Session
+	DoneCh    chan bool
+	Closed    bool
 }
 
 func (t *Task) Handler() {
-	for ok := range t.done {
+	for ok := range t.DoneCh {
 		if !ok {
 			return
 		}
 		t.Cur++
-		if t.Cur == t.Total {
-			t.Finish()
-			return
-		}
 	}
-
 }
 
 func (t *Task) ToProtobuf() *clientpb.Task {
@@ -101,15 +96,26 @@ func (t *Task) Percent() string {
 	return fmt.Sprintf("%f/100%", t.Cur/t.Total*100)
 }
 
-func (t *Task) Done(event Event) {
-	EventBroker.Publish(event)
-	t.done <- true
+func (t *Task) Done(spite *implantpb.Spite) {
+	EventBroker.Publish(Event{
+		EventType: consts.EventTask,
+		Op:        consts.CtrlTaskCallback,
+		Spite:     spite,
+		Session:   t.Session.ToProtobuf(),
+		Task:      t.ToProtobuf(),
+	})
+	t.DoneCh <- true
 }
 
-func (t *Task) Finish() {
+func (t *Task) Finish(msg string) {
+	spite, _ := t.Session.GetLastMessage(int(t.Id))
 	EventBroker.Publish(Event{
-		Task:      t,
-		EventType: consts.EventTaskCallback,
+		EventType: consts.EventTask,
+		Op:        consts.CtrlTaskFinish,
+		Task:      t.ToProtobuf(),
+		Session:   t.Session.ToProtobuf(),
+		Spite:     spite,
+		Message:   msg,
 	})
 	if t.Callback != nil {
 		t.Callback()
@@ -117,13 +123,13 @@ func (t *Task) Finish() {
 	t.Close()
 }
 
-func (t *Task) Panic(event Event, status *implantpb.Spite) {
-	t.Status = status
+func (t *Task) Panic(event Event) {
 	EventBroker.Publish(event)
 	t.Close()
 }
 
 func (t *Task) Close() {
 	t.Cancel()
-	close(t.done)
+	close(t.DoneCh)
+	t.Closed = true
 }

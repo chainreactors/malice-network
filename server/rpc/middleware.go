@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/utils/mtls"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/peer"
+	"net"
 	"reflect"
 	"strings"
 )
@@ -17,7 +19,6 @@ const (
 	Transport contextKey = iota
 	Operator
 	rootName = "Root"
-	rootAddr = "127.0.0.1"
 )
 
 func buildOptions(option []grpc.ServerOption, interceptors ...grpc.UnaryServerInterceptor) []grpc.ServerOption {
@@ -79,17 +80,19 @@ func authInterceptor(log *logs.Logger) grpc.UnaryServerInterceptor {
 				log.Errorf("[auth] certificate type does not match method")
 				return ctx, errors.New("certificate type does not match method")
 			}
-			parts := strings.Split(client.Addr.String(), ":")
-			if len(parts) != 2 {
+			host, _, err := net.SplitHostPort(client.Addr.String())
+			if err != nil {
 				log.Errorf("[auth] invalid remote address format")
 				return ctx, errors.New("invalid remote address format")
 			}
-			if parts[0] != rootAddr {
+
+			parsed := net.ParseIP(host)
+			if !(parsed != nil && parsed.IsLoopback()) {
 				log.Errorf("[auth] invalid remote address")
 				return ctx, errors.New("invalid remote address")
 			}
 		} else {
-			if !strings.HasPrefix(info.FullMethod, "/"+caType) {
+			if !strings.HasPrefix(info.FullMethod, "/"+caType) && caType == mtls.Listener {
 				log.Errorf("[auth] certificate type does not match method")
 				return ctx, errors.New("certificate type does not match method")
 			}

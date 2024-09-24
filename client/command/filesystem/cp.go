@@ -1,32 +1,40 @@
 package filesystem
 
 import (
-	"github.com/chainreactors/grumble"
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
-	"google.golang.org/protobuf/proto"
+	"github.com/chainreactors/malice-network/proto/services/clientrpc"
+	"github.com/spf13/cobra"
 )
 
-func CpCmd(ctx *grumble.Context, con *console.Console) {
-	session := con.GetInteractive()
-	if session == nil {
+func CpCmd(cmd *cobra.Command, con *repl.Console) {
+	originPath := cmd.Flags().Arg(0)
+	targetPath := cmd.Flags().Arg(1)
+	if originPath == "" || targetPath == "" {
+		con.Log.Errorf("required arguments missing")
 		return
 	}
-	sid := con.GetInteractive().SessionId
-	originPath := ctx.Flags.String("source")
-	targetPath := ctx.Flags.String("target")
-	args := []string{originPath, targetPath}
-	mvTask, err := con.Rpc.Cp(con.ActiveTarget.Context(), &implantpb.Request{
+
+	session := con.GetInteractive()
+	task, err := Cp(con.Rpc, session, originPath, targetPath)
+	if err != nil {
+		con.Log.Errorf("Cp error: %v", err)
+		return
+	}
+
+	session.Console(task, "cp "+originPath+" "+targetPath)
+}
+
+func Cp(rpc clientrpc.MaliceRPCClient, session *core.Session, originPath, targetPath string) (*clientpb.Task, error) {
+	task, err := rpc.Cp(session.Context(), &implantpb.Request{
 		Name: consts.ModuleCp,
-		Args: args,
+		Args: []string{originPath, targetPath},
 	})
 	if err != nil {
-		console.Log.Errorf("Cp error: %v", err)
-		return
+		return nil, err
 	}
-	con.AddCallback(mvTask.TaskId, func(msg proto.Message) {
-		_ = msg.(*implantpb.Spite)
-		con.SessionLog(sid).Consolef("Cp success\n")
-	})
+	return task, err
 }

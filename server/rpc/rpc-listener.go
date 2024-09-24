@@ -2,13 +2,16 @@ package rpc
 
 import (
 	"context"
+	"fmt"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/utils/mtls"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/client/rootpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/proto/services/listenerrpc"
-	"github.com/chainreactors/malice-network/server/internal/certs"
+	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
@@ -27,10 +30,19 @@ func (rpc *Server) RegisterListener(ctx context.Context, req *lispb.RegisterList
 		return &implantpb.Empty{}, nil
 	}
 	core.Listeners.Add(&core.Listener{
-		Name:   req.Name,
-		Host:   p.Addr.String(),
-		Active: true,
+		Name:      req.Name,
+		Host:      p.Addr.String(),
+		Active:    true,
+		Pipelines: make(core.Pipelines),
 	})
+	err := core.EventBroker.Notify(core.Event{
+		EventType: consts.EventListener,
+		Op:        consts.CtrlListenerStart,
+		Message:   fmt.Sprintf("Listener %s started at %s", req.Name, p.Addr.String()),
+	})
+	if err != nil {
+		return &implantpb.Empty{}, nil
+	}
 	logs.Log.Importantf("%s register listener %s", p.Addr, req.Name)
 	return &implantpb.Empty{}, nil
 }
@@ -66,14 +78,18 @@ func (rpc *Server) SpiteStream(stream listenerrpc.ListenerRPC_SpiteStreamServer)
 	}
 }
 
-func (s *Server) AddListener(ctx context.Context, req *rootpb.Operator) (*rootpb.Response, error) {
+func (rpc *Server) AddListener(ctx context.Context, req *rootpb.Operator) (*rootpb.Response, error) {
 	cfg := configs.GetServerConfig()
-	clientConf, err := certs.ClientGenerateCertificate(cfg.GRPCHost, req.Args[0], int(cfg.GRPCPort), certs.ListenerCA)
+	clientConf, err := certutils.GenerateListenerCert(cfg.IP, req.Args[0], int(cfg.GRPCPort))
 	if err != nil {
 		return &rootpb.Response{
 			Status: 1,
 			Error:  err.Error(),
 		}, err
+	}
+	err = db.CreateOperator(req.Args[0], mtls.Listener, getRemoteAddr(ctx))
+	if err != nil {
+		return nil, err
 	}
 	data, err := yaml.Marshal(clientConf)
 	if err != nil {
@@ -88,8 +104,8 @@ func (s *Server) AddListener(ctx context.Context, req *rootpb.Operator) (*rootpb
 	}, nil
 }
 
-func (s *Server) RemoveListener(ctx context.Context, req *rootpb.Operator) (*rootpb.Response, error) {
-	err := certs.RemoveCertificate(certs.ListenerCA, certs.RSAKey, req.Args[0])
+func (rpc *Server) RemoveListener(ctx context.Context, req *rootpb.Operator) (*rootpb.Response, error) {
+	err := certutils.RemoveCertificate(certutils.ListenerCA, certutils.RSAKey, req.Args[0])
 	if err != nil {
 		return &rootpb.Response{
 			Status: 1,
@@ -102,7 +118,7 @@ func (s *Server) RemoveListener(ctx context.Context, req *rootpb.Operator) (*roo
 	}, nil
 }
 
-func (s *Server) ListListeners(ctx context.Context, req *rootpb.Operator) (*clientpb.Listeners, error) {
+func (rpc *Server) ListListeners(ctx context.Context, req *rootpb.Operator) (*clientpb.Listeners, error) {
 	dbListeners, err := db.ListListeners()
 	if err != nil {
 		return nil, err
@@ -110,7 +126,8 @@ func (s *Server) ListListeners(ctx context.Context, req *rootpb.Operator) (*clie
 	listeners := &clientpb.Listeners{}
 	for _, listener := range dbListeners {
 		listeners.Listeners = append(listeners.Listeners, &clientpb.Listener{
-			Id: listener.Name,
+			Id:   listener.Name,
+			Addr: listener.Remote,
 		})
 	}
 

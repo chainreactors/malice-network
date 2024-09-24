@@ -2,31 +2,32 @@ package sessions
 
 import (
 	"context"
-	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
+	"github.com/spf13/cobra"
 )
 
-func groupCmd(ctx *grumble.Context, con *console.Console) {
-	group := ctx.Args.String("group")
-	var id string
-	if con.GetInteractive().SessionId != "" {
-		id = con.GetInteractive().SessionId
-	} else if ctx.Flags.String("id") != "" {
-		id = ctx.Flags.String("id")
-	} else {
-		console.Log.Errorf("Require session id")
+func groupCmd(cmd *cobra.Command, con *repl.Console) {
+	sid := cmd.Flags().Arg(1)
+	group := cmd.Flags().Arg(0)
+
+	if con.GetInteractive() == nil && sid == "" {
+		con.Log.Errorf("No session selected")
 		return
+	} else if sid == "" && con.GetInteractive() != nil {
+		sid = con.GetInteractive().Session.GetSessionId()
 	}
+
 	_, err := con.Rpc.BasicSessionOP(context.Background(), &clientpb.BasicUpdateSession{
-		SessionId: id,
-		GroupName: group,
+		SessionId: sid,
+		Op:        "group",
+		Arg:       group,
 	})
 	if err != nil {
 		logs.Log.Errorf("Session error: %v", err)
 		return
 	}
-	session := con.Sessions[id]
-	con.ActiveTarget.Set(session)
+	con.UpdateSession(sid)
+	con.Log.Infof("update %s group to %s", sid, group)
 }

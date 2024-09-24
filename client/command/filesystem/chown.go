@@ -1,34 +1,42 @@
 package filesystem
 
 import (
-	"github.com/chainreactors/grumble"
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
-	"google.golang.org/protobuf/proto"
+	"github.com/chainreactors/malice-network/proto/services/clientrpc"
+	"github.com/spf13/cobra"
 )
 
-func ChownCmd(ctx *grumble.Context, con *console.Console) {
-	session := con.GetInteractive()
-	if session == nil {
+func ChownCmd(cmd *cobra.Command, con *repl.Console) {
+	uid := cmd.Flags().Arg(0)
+	path := cmd.Flags().Arg(1)
+	if uid == "" || path == "" {
+		con.Log.Errorf("required arguments missing")
 		return
 	}
-	sid := con.GetInteractive().SessionId
-	path := ctx.Flags.String("path")
-	uid := ctx.Flags.String("uid")
-	gid := ctx.Flags.String("gid")
-	recursive := ctx.Flags.Bool("recursive")
-	chownTask, err := con.Rpc.Chown(con.ActiveTarget.Context(), &implantpb.ChownRequest{
+	gid, _ := cmd.Flags().GetString("gid")
+	recursive, _ := cmd.Flags().GetBool("recursive")
+	session := con.GetInteractive()
+	task, err := Chown(con.Rpc, session, path, uid, gid, recursive)
+	if err != nil {
+		con.Log.Errorf("Chown error: %v", err)
+		return
+	}
+
+	session.Console(task, "chown "+path+" "+uid)
+}
+
+func Chown(rpc clientrpc.MaliceRPCClient, session *core.Session, path, uid, gid string, recursive bool) (*clientpb.Task, error) {
+	task, err := rpc.Chown(session.Context(), &implantpb.ChownRequest{
 		Path:      path,
 		Uid:       uid,
 		Gid:       gid,
 		Recursive: recursive,
 	})
 	if err != nil {
-		console.Log.Errorf("Chown error: %v", err)
-		return
+		return nil, err
 	}
-	con.AddCallback(chownTask.TaskId, func(msg proto.Message) {
-		_ = msg.(*implantpb.Response)
-		con.SessionLog(sid).Consolef("Chown success\n")
-	})
+	return task, nil
 }

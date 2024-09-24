@@ -9,16 +9,20 @@ package main
 
 import (
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/client/cli"
-	"github.com/chainreactors/malice-network/client/console"
-	"github.com/chainreactors/malice-network/client/utils"
+	"github.com/chainreactors/malice-network/client/cmd/cli"
+	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/malice-network/client/repl"
 )
 
 func init() {
-	logs.Log.SetFormatter(utils.DefaultLogStyle)
-	console.Log.SetFormatter(utils.DefaultLogStyle)
+	logs.Log.SetFormatter(repl.DefaultLogStyle)
+	core.Log.SetFormatter(repl.DefaultLogStyle)
 }
 
 func main() {
-	cli.StartConsole()
+	err := cli.Start()
+	if err != nil {
+		logs.Log.Errorf(err.Error())
+		return
+	}
 }

@@ -1,10 +1,10 @@
 package configs
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/chainreactors/logs"
+	"gopkg.in/yaml.v3"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -23,7 +23,7 @@ var (
 	// ErrInvalidDialect - An invalid dialect was specified
 	ErrInvalidDialect      = errors.New("invalid SQL Dialect")
 	databaseFileName       = filepath.Join(ServerRootPath, "malice.db")
-	databaseConfigFileName = filepath.Join(ServerRootPath, "database.json")
+	databaseConfigFileName = filepath.Join(ServerRootPath, "database.yaml")
 )
 
 // DatabaseConfig - Server config
@@ -82,27 +82,17 @@ func encodeParams(rawParams map[string]string) string {
 }
 
 // Save - Save config file to disk
-//func (c *DatabaseConfig) Save() error {
-//	configPath := ServerRootPath
-//	configDir := path.Dir(configPath)
-//	if _, err := os.Stat(configDir); os.IsNotExist(err) {
-//		logs.Log.Debugf("Creating config dir %s", configDir)
-//		err := os.MkdirAll(configDir, 0700)
-//		if err != nil {
-//			return err
-//		}
-//	}
-//	data, err := json.MarshalIndent(c, "", "    ")
-//	if err != nil {
-//		return err
-//	}
-//	logs.Log.Infof("Saving config to %s", configPath)
-//	err = os.WriteFile(configPath, data, 0o600)
-//	if err != nil {
-//		logs.Log.Errorf("Failed to write config %s", err)
-//	}
-//	return nil
-//}
+func (c *DatabaseConfig) Save() error {
+	data, err := yaml.Marshal(c)
+	if err != nil {
+		return err
+	}
+	err = os.WriteFile(databaseConfigFileName, data, 0o600)
+	if err != nil {
+		return err
+	}
+	return nil
+}
 
 // GetDatabaseConfig - Get config value
 func GetDatabaseConfig() *DatabaseConfig {
@@ -114,13 +104,13 @@ func GetDatabaseConfig() *DatabaseConfig {
 			logs.Log.Errorf("Failed to read config file %s", err)
 			return config
 		}
-		err = json.Unmarshal(data, config)
+		err = yaml.Unmarshal(data, config)
 		if err != nil {
 			logs.Log.Errorf("Failed to parse config file %s", err)
 			return config
 		}
 	} else {
-		logs.Log.Warnf("Config file does not exist, using defaults")
+		logs.Log.Debugf("Config file does not exist, using defaults")
 	}
 
 	if config.MaxIdleConns < 1 {
@@ -130,10 +120,10 @@ func GetDatabaseConfig() *DatabaseConfig {
 		config.MaxOpenConns = 1
 	}
 
-	//err := config.Save() // This updates the config with any missing fields
-	//if err != nil {
-	//	logs.Log.Errorf("Failed to save default config %s", err)
-	//}
+	err := config.Save() // This updates the config with any missing fields
+	if err != nil {
+		logs.Log.Errorf("Failed to save default config %s", err)
+	}
 	return config
 }
 

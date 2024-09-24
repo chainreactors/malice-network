@@ -9,7 +9,8 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/mtls"
+	"github.com/chainreactors/malice-network/helper/utils/mtls"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"io/ioutil"

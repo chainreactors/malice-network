@@ -1,14 +1,18 @@
 package assets
 
 import (
+	_ "embed"
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/helper"
-	"log"
+	"github.com/chainreactors/malice-network/helper/utils/file"
 	"os"
 	"os/user"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
+
+//go:embed _inputrc
+var inputrc string
 
 var (
 	MaliceDirName = ".config/malice"
@@ -21,7 +25,7 @@ func GetConfigDir() string {
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
 		err = os.MkdirAll(dir, 0700)
 		if err != nil {
-			log.Fatal(err)
+			logs.Log.Errorf(err.Error())
 		}
 	}
 	return dir
@@ -47,7 +51,7 @@ func GetConfigs() ([]string, error) {
 		if err != nil {
 			return err
 		}
-		if !info.IsDir() && (strings.HasSuffix(info.Name(), ".yaml") || strings.HasSuffix(info.Name(), ".yml")) {
+		if !info.IsDir() && strings.HasSuffix(info.Name(), ".auth") {
 			files = append(files, info.Name())
 		}
 		return nil
@@ -63,13 +67,26 @@ func GetConfigs() ([]string, error) {
 func MvConfig(oldPath string) error {
 	fileName := filepath.Base(oldPath)
 	newPath := filepath.Join(GetConfigDir(), fileName)
-	err := helper.CopyFile(oldPath, newPath)
+	err := file.CopyFile(oldPath, newPath)
 	if err != nil {
 		return err
 	}
-	err = helper.RemoveFile(oldPath)
+	err = file.RemoveFile(oldPath)
 	if err != nil {
 		return err
 	}
 	return nil
+}
+
+func SetInputrc() {
+	home, _ := os.UserHomeDir()
+	inputrcPath := filepath.Join(home, "_inputrc")
+	if runtime.GOOS == "windows" {
+		if _, err := os.Stat(inputrcPath); os.IsNotExist(err) {
+			err = os.WriteFile(inputrcPath, []byte(inputrc), 0644)
+			if err != nil {
+				logs.Log.Errorf(err.Error())
+			}
+		}
+	}
 }

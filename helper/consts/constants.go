@@ -12,8 +12,7 @@ const (
 	ClientMaxReceiveMessageSize = 256 * MB
 	// ServerMaxMessageSize - Server-side max GRPC message size
 	ServerMaxMessageSize = 2 * GB
-	DefaultTimeout       = 10 // second
-	DefaultDuration      = time.Duration(DefaultTimeout * time.Second)
+	DefaultTimeout       = 10 * time.Second // second
 )
 
 // UI
@@ -21,13 +20,28 @@ const (
 	ClientPrompt = "IoM"
 )
 
-// Group
 const (
-	GenericGroup   = "generic"
-	ImplantGroup   = "implant"
-	AliasesGroup   = "alias"
-	ExtensionGroup = "extension"
-	ListenerGroup  = "listener"
+	ClientMenu  = "client"
+	ImplantMenu = "implant"
+)
+
+// client Groups
+const (
+	GenericGroup  = "generic"
+	ManageGroup   = "manage"
+	ListenerGroup = "listener"
+)
+
+// implant Groups
+const (
+	ImplantGroup = "implant"
+	ExecuteGroup = "execute"
+	SysGroup     = "sys"
+	FileGroup    = "file"
+
+	ArmoryGroup = "armory"
+	AddonGroup  = "addon"
+	MalGroup    = "mal"
 )
 
 // config

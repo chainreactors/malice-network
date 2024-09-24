@@ -35,9 +35,10 @@ var (
 func NewSession(req *lispb.RegisterSession) *Session {
 	sess := &Session{
 		Name:       req.RegisterData.Name,
+		Group:      "default",
 		ProxyURL:   req.RegisterData.Proxy,
 		Modules:    req.RegisterData.Module,
-		Extensions: req.RegisterData.Extension,
+		Addons:     req.RegisterData.Addon,
 		ID:         req.SessionId,
 		PipelineID: req.ListenerId,
 		RemoteAddr: req.RemoteAddr,
@@ -57,6 +58,7 @@ func NewSession(req *lispb.RegisterSession) *Session {
 // Session - Represents a connection to an implant
 type Session struct {
 	PipelineID string
+	ListenerID string
 	ID         string
 	Name       string
 	Group      string
@@ -68,7 +70,7 @@ type Session struct {
 	WordDir    string
 	ProxyURL   string
 	Modules    []string
-	Extensions *implantpb.Extensions
+	Addons     *implantpb.Addons
 	Locale     string
 	Tasks      *Tasks // task manager
 	taskseq    uint32
@@ -97,13 +99,13 @@ func (s *Session) Logger() *logs.Logger {
 
 func (s *Session) ToProtobuf() *clientpb.Session {
 	currentTime := time.Now()
-	timeDiff := s.Timer.LastCheckin - uint64(currentTime.Unix())
-	isAlive := timeDiff <= s.Timer.Interval*2
+	timeDiff := currentTime.Unix() - int64(s.Timer.LastCheckin)
+	isAlive := uint64(timeDiff*1000) <= s.Timer.Interval*10
 	return &clientpb.Session{
 		SessionId:  s.ID,
 		Note:       s.Name,
 		GroupName:  s.Group,
-		IsDead:     !isAlive,
+		IsAlive:    isAlive,
 		RemoteAddr: s.RemoteAddr,
 		ListenerId: s.PipelineID,
 		Os:         s.Os,
@@ -111,7 +113,7 @@ func (s *Session) ToProtobuf() *clientpb.Session {
 		Timer:      s.Timer,
 		Tasks:      s.Tasks.ToProtobuf(),
 		Modules:    s.Modules,
-		Extensions: s.Extensions,
+		Addons:     s.Addons,
 	}
 }
 
@@ -119,8 +121,9 @@ func (s *Session) Update(req *lispb.RegisterSession) {
 	s.Name = req.RegisterData.Name
 	s.ProxyURL = req.RegisterData.Proxy
 	s.Modules = req.RegisterData.Module
-	s.Extensions = req.RegisterData.Extension
+	s.Addons = req.RegisterData.Addon
 	s.Timer = req.RegisterData.Timer
+
 	if req.RegisterData.Sysinfo != nil {
 		s.UpdateSysInfo(req.RegisterData.Sysinfo)
 	}
@@ -129,7 +132,7 @@ func (s *Session) Update(req *lispb.RegisterSession) {
 func (s *Session) UpdateSysInfo(info *implantpb.SysInfo) {
 	info.Os.Name = strings.ToLower(info.Os.Name)
 	if info.Os.Name == "windows" {
-		info.Os.Arch = consts.GetWindowsArch(info.Os.Arch)
+		info.Os.Arch = consts.FormatWindowsArch(info.Os.Arch)
 	}
 	s.Filepath = info.Filepath
 	s.WordDir = info.Workdir
@@ -152,8 +155,8 @@ func (s *Session) NewTask(name string, total int) *Task {
 		Total:     total,
 		Id:        s.nextTaskId(),
 		SessionId: s.ID,
-		done:      make(chan bool),
-		end:       make(chan struct{}),
+		Session:   s,
+		DoneCh:    make(chan bool, total),
 	}
 	task.Ctx, task.Cancel = context.WithCancel(context.Background())
 	s.Tasks.Add(task)
@@ -265,7 +268,6 @@ func (s *Session) DeleteResp(taskId uint32) {
 	s.responses.Delete(taskId)
 }
 
-// sessions - Manages the slivers, provides atomic access
 type sessions struct {
 	active *sync.Map // map[uint32]*Session
 }
@@ -288,7 +290,6 @@ func (s *sessions) Get(sessionID string) (*Session, bool) {
 	return nil, false
 }
 
-// Add - Add a sliver to the hive (atomically)
 func (s *sessions) Add(session *Session) *Session {
 	s.active.Store(session.ID, session)
 	//EventBroker.Publish(Event{
@@ -298,7 +299,6 @@ func (s *sessions) Add(session *Session) *Session {
 	return session
 }
 
-// Remove - Remove a sliver from the hive (atomically)
 func (s *sessions) Remove(sessionID string) {
 	val, ok := s.active.Load(sessionID)
 	if !ok {

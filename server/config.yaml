@@ -1,18 +1,38 @@
-ca: .
-opsec: true
-
 server:
   grpc_port: 5004
-  grpc_host: 127.0.0.1
+  grpc_host: 0.0.0.0
+  ip: 127.0.0.1
   audit: 1  # 0 close , 1 basic , 2 detail
+  enable: true
   config:
     packet_length: 1048576 # 1M:
     certificate:
     certificate_key:
+  notify:
+    enable: false
+    telegram:
+        enable: false
+        api_key:
+        chat_id:
+    dingtalk:
+        enable: false
+        secret:
+        token:
+    lark:
+      enable: false
+      webhook_url:
+    serverchan:
+        enable: false
+        url:
+        method:
+        headers:
+        content_type:
+        bodyTemplate:
 
 listeners:
-  name: default
-  auth: default.yaml
+  name: listener
+  auth: listener.auth
+  enable: true
   tcp:
     - name: tcp_default
       port: 5001
@@ -29,8 +49,9 @@ listeners:
         OU: "Persistent Housework, Limited"
         ST: "State of Texas"
         validity: "365"
-        cert: ""
-        key: ""
+        cert_file: ""
+        key_file: ""
+        ca_file: ""
       encryption:
         enable: false
         type: aes-cfb

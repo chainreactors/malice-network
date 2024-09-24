@@ -25,29 +25,17 @@ func (rpc *Server) Events(_ *clientpb.Empty, stream clientrpc.MaliceRPC_EventsSe
 			return nil
 		case event := <-events:
 			pbEvent := &clientpb.Event{
-				Type:   event.EventType,
-				Source: event.SourceName,
-				Data:   event.Data,
+				Type:    event.EventType,
+				Op:      event.Op,
+				Err:     event.Err,
+				Message: event.Message,
+				Job:     event.Job,
+				Client:  event.Client,
+				Session: event.Session,
+				Task:    event.Task,
+				Spite:   event.Spite,
 			}
 
-			if event.Job != nil {
-				pbEvent.Job = event.Job.ToProtobuf()
-			}
-			if event.Client != nil {
-				pbEvent.Client = event.Client.ToProtobuf()
-			}
-			if event.Session != nil {
-				pbEvent.Session = event.Session.ToProtobuf()
-			}
-			if event.Task != nil {
-				pbEvent.Task = event.Task.ToProtobuf()
-			}
-			if event.Err != "" {
-				pbEvent.Err = event.Err
-			}
-			if event.Message != "" {
-				pbEvent.Message = event.Message
-			}
 			err := stream.Send(pbEvent)
 			if err != nil {
 				logs.Log.Warnf(err.Error())
@@ -58,12 +46,40 @@ func (rpc *Server) Events(_ *clientpb.Empty, stream clientrpc.MaliceRPC_EventsSe
 }
 
 func (rpc *Server) Broadcast(ctx context.Context, req *clientpb.Event) (*clientpb.Empty, error) {
-	clientName := getClientName(ctx)
 	core.EventBroker.Publish(core.Event{
-		EventType:  req.Type,
-		Data:       req.Data,
-		SourceName: clientName,
-		Err:        req.Err,
+		EventType: req.Type,
+		Op:        req.Op,
+		Client:    req.Client,
+		Err:       req.Err,
+		Message:   req.Message,
+	})
+	return &clientpb.Empty{}, nil
+}
+
+func (rpc *Server) Notify(ctx context.Context, req *clientpb.Event) (*clientpb.Empty, error) {
+	err := core.EventBroker.Notify(core.Event{
+		EventType: req.Type,
+		Op:        req.Op,
+		Message:   req.Message,
+		Client:    req.Client,
+		IsNotify:  true,
+		Err:       req.Err,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &clientpb.Empty{}, nil
+}
+
+func (rpc *Server) SessionEvent(ctx context.Context, req *clientpb.Event) (*clientpb.Empty, error) {
+	core.EventBroker.Publish(core.Event{
+		Session:   req.Session,
+		Task:      req.Task,
+		Client:    req.Client,
+		EventType: req.Type,
+		Op:        req.Op,
+		Err:       req.Err,
+		Message:   req.Message,
 	})
 	return &clientpb.Empty{}, nil
 }

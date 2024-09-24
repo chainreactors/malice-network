@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
@@ -32,15 +33,19 @@ func (rpc *Server) Register(ctx context.Context, req *lispb.RegisterSession) (*i
 		logs.Log.Warnf("session %s re-register ", sess.ID)
 		core.EventBroker.Publish(core.Event{
 			EventType: consts.EventSession,
-			Session:   sess,
-			Message:   "re-register",
+			Op:        consts.CtrlSessionRegister,
+			Session:   sess.ToProtobuf(),
+			IsNotify:  true,
+			Message:   fmt.Sprintf("session %s from %s re-register at %s", sess.ID, sess.RemoteAddr, sess.PipelineID),
 		})
 		return &implantpb.Empty{}, nil
 	} else {
 		core.EventBroker.Publish(core.Event{
 			EventType: consts.EventSession,
-			Session:   sess,
-			Message:   "register",
+			Op:        consts.CtrlSessionRegister,
+			Session:   sess.ToProtobuf(),
+			IsNotify:  true,
+			Message:   fmt.Sprintf("session %s from %s start at %s", sess.ID, sess.RemoteAddr, sess.PipelineID),
 		})
 		logs.Log.Importantf("init new session %s from %s", sess.ID, sess.PipelineID)
 		return &implantpb.Empty{}, nil

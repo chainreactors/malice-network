@@ -3,28 +3,29 @@ package extension
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/table"
+	"github.com/rsteube/carapace"
+	"github.com/spf13/cobra"
 	"io/ioutil"
 	"strings"
 )
 
 // ExtensionsCmd - List information about installed extensions
-func ExtensionsCmd(ctx *grumble.Context, con *console.Console) {
+func ExtensionsCmd(cmd *cobra.Command, con *repl.Console) {
 	if 0 < len(getInstalledManifests()) {
 		PrintExtensions(con)
 	} else {
-		console.Log.Infof("No extensions installed, use the 'armory' command to automatically install some\n")
+		con.Log.Infof("No extensions installed, use the 'armory' command to automatically install some\n")
 	}
 }
 
 // PrintExtensions - Print a list of loaded extensions
-func PrintExtensions(con *console.Console) {
+func PrintExtensions(con *repl.Console) {
 	var rowEntries []table.Row
-	var row table.Row
+
 	tableModel := tui.NewTable([]table.Column{
 		{Title: "Name", Width: 10},
 		{Title: "Command Name", Width: 10},
@@ -39,18 +40,18 @@ func PrintExtensions(con *console.Console) {
 	installedManifests := getInstalledManifests()
 	for _, ext := range loadedExtensions {
 		installed := ""
-		if _, ok := installedManifests[ext.CommandName]; ok {
+		if _, ok := installedManifests[ext.Manifest.CommandName]; ok {
 			installed = "✅"
 		}
-		row = table.Row{
-			ext.Manifest.Name,
-			ext.CommandName,
-			strings.Join(extensionPlatforms(ext), ",\n"),
-			ext.Manifest.Version,
+		row := table.Row{
+			ext.Manifest.Manifest.Name,
+			ext.Manifest.CommandName,
+			strings.Join(extensionPlatforms(ext.Manifest), ",\n"),
+			ext.Manifest.Manifest.Version,
 			installed,
-			ext.Manifest.ExtensionAuthor,
-			ext.Manifest.OriginalAuthor,
-			ext.Manifest.RepoURL,
+			ext.Manifest.Manifest.ExtensionAuthor,
+			ext.Manifest.Manifest.OriginalAuthor,
+			ext.Manifest.Manifest.RepoURL,
 		}
 		rowEntries = append(rowEntries, row)
 	}
@@ -58,7 +59,7 @@ func PrintExtensions(con *console.Console) {
 	newTable := tui.NewModel(tableModel, nil, false, false)
 	err := newTable.Run()
 	if err != nil {
-		console.Log.Errorf("Error running table: %s", err)
+		con.Log.Errorf("Error running table: %s", err)
 		return
 	}
 }
@@ -93,14 +94,15 @@ func getInstalledManifests() map[string]*ExtensionManifest {
 	return installedManifests
 }
 
-// ExtensionsCommandNameCompleter - Completer for installed extensions command names
-func ExtensionsCommandNameCompleter(prefix string, args []string, con *console.Console) []string {
-	installedManifests := getInstalledManifests()
-	results := []string{}
-	for _, manifest := range installedManifests {
-		if strings.HasPrefix(manifest.Name, prefix) {
-			results = append(results, manifest.Name)
+// ExtensionsCommandNameCompleter - Completer for installed extensions command names.
+func ExtensionsCommandNameCompleter(con *repl.Console) carapace.Action {
+	return carapace.ActionCallback(func(c carapace.Context) carapace.Action {
+		results := []string{}
+		for _, manifest := range loadedExtensions {
+			results = append(results, manifest.Manifest.CommandName)
+			results = append(results, manifest.Manifest.Help)
 		}
-	}
-	return results
+
+		return carapace.ActionValuesDescribed(results...).Tag("extension commands")
+	})
 }

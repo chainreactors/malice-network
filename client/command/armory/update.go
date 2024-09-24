@@ -2,14 +2,14 @@ package armory
 
 import (
 	"fmt"
-	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/alias"
 	"github.com/chainreactors/malice-network/client/command/extension"
-	"github.com/chainreactors/malice-network/client/console"
-	"github.com/chainreactors/malice-network/client/utils"
+	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/table"
+	"github.com/spf13/cobra"
 	"os"
 	"sort"
 	"strconv"
@@ -35,23 +35,23 @@ type UpdateIdentifier struct {
 }
 
 // ArmoryUpdateCmd - Update all installed extensions/aliases
-func ArmoryUpdateCmd(ctx *grumble.Context, con *console.Console) {
+func ArmoryUpdateCmd(cmd *cobra.Command, con *repl.Console) {
 	var selectedUpdates []UpdateIdentifier
 	var err error
 
-	console.Log.Infof("Refreshing package cache ... ")
-	clientConfig := parseArmoryHTTPConfig(ctx)
+	con.Log.Infof("Refreshing package cache ... ")
+	clientConfig := parseArmoryHTTPConfig(cmd)
 	refresh(clientConfig)
 	tui.Clear()
 
-	armoryName := ctx.Flags.String("armory")
+	armoryName, _ := cmd.Flags().GetString("armory")
 
 	// Find PK for the armory name
 	armoryPK := getArmoryPublicKey(armoryName)
 
 	// Check for updates
 	if armoryName == "" {
-		console.Log.Warnf("Could not find a configured armory named %q - searching all configured armories\n\n",
+		con.Log.Warnf("Could not find a configured armory named %q - searching all configured armories\n\n",
 			armoryName)
 	}
 
@@ -65,14 +65,14 @@ func ArmoryUpdateCmd(ctx *grumble.Context, con *console.Console) {
 		displayAvailableUpdates(updateKeys, aliasUpdates, extUpdates)
 		selectedUpdates, err = getUpdatesFromUser(updateKeys)
 		if err != nil {
-			console.Log.Errorf(err.Error() + "\n")
+			con.Log.Errorf(err.Error() + "\n")
 			return
 		}
 		if len(selectedUpdates) == 0 {
 			return
 		}
 	} else {
-		console.Log.Infof("All packages are up to date")
+		con.Log.Infof("All packages are up to date")
 		return
 	}
 
@@ -85,12 +85,12 @@ func ArmoryUpdateCmd(ctx *grumble.Context, con *console.Console) {
 			}
 			updatePackage, err := getPackageForCommand(update.Name, armoryPK, aliasVersionInfo.NewVersion)
 			if err != nil {
-				console.Log.Errorf("Could not get update package for alias %s: %s\n", update.Name, err)
+				con.Log.Errorf("Could not get update package for alias %s: %s\n", update.Name, err)
 				continue
 			}
 			err = installAliasPackage(updatePackage, false, clientConfig, con)
 			if err != nil {
-				console.Log.Errorf("Failed to update %s: %s\n", update.Name, err)
+				con.Log.Errorf("Failed to update %s: %s\n", update.Name, err)
 			}
 		case ExtensionPackage:
 			extVersionInfo, ok := extUpdates[update.Name]
@@ -99,12 +99,12 @@ func ArmoryUpdateCmd(ctx *grumble.Context, con *console.Console) {
 			}
 			updatedPackage, err := getPackageForCommand(update.Name, armoryPK, extVersionInfo.NewVersion)
 			if err != nil {
-				console.Log.Errorf("Could not get update package for extension %s: %s\n", update.Name, err)
+				con.Log.Errorf("Could not get update package for extension %s: %s\n", update.Name, err)
 				continue
 			}
 			err = installExtensionPackage(updatedPackage, false, clientConfig, con)
 			if err != nil {
-				console.Log.Errorf("Failed to update %s: %s\n", update.Name, err)
+				con.Log.Errorf("Failed to update %s: %s\n", update.Name, err)
 			}
 		default:
 			continue
@@ -176,8 +176,8 @@ func sortUpdateIdentifiers(aliasUpdates, extensionUpdates map[string]VersionInfo
 
 	result := []UpdateIdentifier{}
 
-	aliasNames := utils.Keys(aliasUpdates)
-	extensionNames := utils.Keys(extensionUpdates)
+	aliasNames := repl.Keys(aliasUpdates)
+	extensionNames := repl.Keys(extensionUpdates)
 	for _, name := range aliasNames {
 		result = append(result, UpdateIdentifier{
 			Type: AliasPackage,
@@ -276,7 +276,7 @@ func getUpdatesFromUser(updateKeys []UpdateIdentifier) (chosenUpdates []UpdateId
 	newInput := tui.NewModel(inputModel, nil, false, true)
 	err := newInput.Run()
 	if err != nil {
-		console.Log.Errorf("failed to get user input: %s", err)
+		core.Log.Errorf("failed to get user input: %s", err)
 		return
 	}
 	updateResponse = strings.ToLower(updateResponse)

@@ -2,53 +2,80 @@ package configs
 
 import (
 	"crypto/x509/pkix"
-	"github.com/chainreactors/logs"
-	"github.com/gookit/config/v2"
+	"github.com/chainreactors/malice-network/helper/certs"
+	"github.com/chainreactors/malice-network/proto/listener/lispb"
+	"os"
 )
 
 var ListenerConfigFileName = "listener.yaml"
 
-func GetListenerConfig() *ListenerConfig {
-	l := &ListenerConfig{}
-	err := config.MapStruct("listeners", l)
-	if err != nil {
-		logs.Log.Errorf("Failed to map listener config %s", err)
-		return nil
-	}
-	return l
-}
-
 type ListenerConfig struct {
-	Name          string                `config:"name"`
-	Auth          string                `config:"auth"`
-	TcpPipelines  []*TcpPipelineConfig  `config:"tcp"`
-	HttpPipelines []*HttpPipelineConfig `config:"http"`
-	Websites      []*WebsiteConfig      `config:"websites"`
+	Enable       bool                 `config:"enable" default:"true"`
+	Name         string               `config:"name" default:"listener"`
+	Auth         string               `config:"auth" default:"listener.auth"`
+	TcpPipelines []*TcpPipelineConfig `config:"tcp" `
+	//HttpPipelines []*HttpPipelineConfig `config:"http" default:""`
+	Websites []*WebsiteConfig `config:"websites"`
 }
 
 type TcpPipelineConfig struct {
-	Enable           bool              `config:"enable"`
-	Name             string            `config:"name"`
-	Host             string            `config:"host"`
-	Port             uint16            `config:"port"`
+	Enable           bool              `config:"enable" default:"true"`
+	Name             string            `config:"name" default:"tcp"`
+	Host             string            `config:"host" default:"0.0.0.0"`
+	Port             uint16            `config:"port" default:"5001"`
 	TlsConfig        *TlsConfig        `config:"tls"`
 	EncryptionConfig *EncryptionConfig `config:"encryption"`
 }
 
+func (tcpPipeline *TcpPipelineConfig) ToProtobuf(lisId string) *lispb.Pipeline {
+	tls, err := tcpPipeline.TlsConfig.ReadCert()
+	if err != nil {
+		panic(err.Error())
+	}
+	return &lispb.Pipeline{
+		Body: &lispb.Pipeline_Tcp{
+			Tcp: &lispb.TCPPipeline{
+				Name:       tcpPipeline.Name,
+				Host:       tcpPipeline.Host,
+				Port:       uint32(tcpPipeline.Port),
+				ListenerId: lisId,
+			},
+		},
+		Tls:        tls.ToProtobuf(),
+		Encryption: tcpPipeline.EncryptionConfig.ToProtobuf(),
+	}
+}
+
 type HttpPipelineConfig struct {
-	Enable    bool       `config:"enable"`
-	Name      string     `config:"name"`
-	Host      string     `config:"host"`
-	Port      uint16     `config:"port"`
+	Enable    bool       `config:"enable" default:"false"`
+	Name      string     `config:"name" default:"http"`
+	Host      string     `config:"host" default:"0.0.0.0"`
+	Port      uint16     `config:"port" default:"8443"`
 	TlsConfig *TlsConfig `config:"tls"`
 }
 
 type WebsiteConfig struct {
-	Enable      bool       `config:"enable"`
-	RootPath    string     `config:"rootPath"`
-	WebsiteName string     `config:"websiteName"`
-	Port        uint16     `config:"port"`
-	TlsConfig   *TlsConfig `config:"tls"`
+	Enable      bool       `config:"enable" default:"false"`
+	RootPath    string     `config:"root" default:"."`
+	WebsiteName string     `config:"name" default:"web"`
+	Port        uint16     `config:"port" default:"443"`
+	ContentPath string     `config:"content_path" default:""`
+	TlsConfig   *TlsConfig `config:"tls" `
+}
+
+type CertConfig struct {
+	Cert   string `yaml:"cert"`
+	CA     string `yaml:"ca"`
+	Key    string `yaml:"key"`
+	Enable bool   `yaml:"enable"`
+}
+
+func (t *CertConfig) ToProtobuf() *lispb.TLS {
+	return &lispb.TLS{
+		Cert:   t.Cert,
+		Key:    t.Key,
+		Enable: t.Enable,
+	}
 }
 
 type TlsConfig struct {
@@ -61,8 +88,42 @@ type TlsConfig struct {
 	OU       string `config:"OU"`
 	ST       string `config:"ST"`
 	Validity string `config:"validity"`
-	CertFile string `config:"cert"`
-	KeyFile  string `config:"key"`
+	CertFile string `config:"cert_file"`
+	KeyFile  string `config:"key_file"`
+	CAFile   string `config:"ca_file"`
+}
+
+func (t *TlsConfig) ReadCert() (*CertConfig, error) {
+	if t == nil {
+		return &CertConfig{Enable: false}, nil
+	}
+	var err error
+	if t.CertFile == "" || t.KeyFile == "" || t.CAFile == "" {
+		return &CertConfig{
+			Cert:   "",
+			Key:    "",
+			CA:     "",
+			Enable: true,
+		}, nil
+	}
+	cert, err := os.ReadFile(t.CertFile)
+	if err != nil {
+		return nil, err
+	}
+	key, err := os.ReadFile(t.KeyFile)
+	if err != nil {
+		return nil, err
+	}
+	ca, err := os.ReadFile(t.CAFile)
+	if err != nil {
+		return nil, err
+	}
+	return &CertConfig{
+		Cert:   string(cert),
+		Key:    string(key),
+		CA:     string(ca),
+		Enable: true,
+	}, nil
 }
 
 func (t *TlsConfig) ToPkix() *pkix.Name {
@@ -75,8 +136,42 @@ func (t *TlsConfig) ToPkix() *pkix.Name {
 	}
 }
 
+func GenerateTlsConfig(name string) TlsConfig {
+	subject := certs.RandomSubject(name)
+	return TlsConfig{
+		Name: name,
+		CN:   subject.CommonName,
+		O:    JoinStringSlice(subject.Organization),
+		C:    JoinStringSlice(subject.Country),
+		L:    JoinStringSlice(subject.Locality),
+		OU:   JoinStringSlice(subject.OrganizationalUnit),
+		ST:   JoinStringSlice(subject.Province),
+	}
+}
+
 type EncryptionConfig struct {
 	Enable bool   `config:"enable"`
 	Type   string `config:"type"`
 	Key    string `config:"key"`
+}
+
+func (e *EncryptionConfig) ToProtobuf() *lispb.Encryption {
+	if e == nil {
+		return &lispb.Encryption{
+			Enable: false,
+		}
+	}
+	return &lispb.Encryption{
+		Type:   e.Type,
+		Key:    e.Key,
+		Enable: e.Enable,
+	}
+}
+
+// JoinStringSlice Helper function to join string slices
+func JoinStringSlice(slice []string) string {
+	if len(slice) > 0 {
+		return slice[0] // Just return the first element for simplicity
+	}
+	return ""
 }

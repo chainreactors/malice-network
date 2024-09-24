@@ -37,15 +37,19 @@ func NewCache(maxSize int, savePath string) *Cache {
 	return newCache
 }
 
-func (c *Cache) AddMessage(spite *implantpb.Spite, cur int) {
-	cacheKey := strconv.Itoa(int(spite.TaskId)) + "_" + strconv.Itoa(cur)
+func (c *Cache) AddMessage(spite *implantpb.Spite, index int) {
+	cacheKey := strconv.Itoa(int(spite.TaskId)) + "_" + strconv.Itoa(index)
 	c.cache.Set(cacheKey, spite, cache.NoExpiration)
 	c.trim()
 }
 
-func (c *Cache) GetMessage(taskID, cur int) (*implantpb.Spite, bool) {
-	spite, found := c.cache.Get(strconv.Itoa(taskID) + "_" + strconv.Itoa(cur))
-	return spite.(*implantpb.Spite), found
+func (c *Cache) GetMessage(taskID, index int) (*implantpb.Spite, bool) {
+	spite, found := c.cache.Get(fmt.Sprintf("%d_%d", taskID, index))
+	if found {
+		return spite.(*implantpb.Spite), found
+	} else {
+		return nil, false
+	}
 }
 
 func (c *Cache) GetMessages(taskID int) ([]*implantpb.Spite, bool) {
@@ -63,11 +67,11 @@ func (c *Cache) GetMessages(taskID int) ([]*implantpb.Spite, bool) {
 	return spite, true
 }
 
-func (c *Cache) GetAll() {
-	for k, v := range c.cache.Items() {
-		logs.Log.Importantf(k, v)
-	}
-}
+//func (c *Cache) GetAll()  {
+//	for k, v := range c.cache.Items() {
+//		logs.Log.Importantf(k, v)
+//	}
+//}
 
 func (c *Cache) Save() error {
 	err := c.cache.SaveFile(c.savePath)

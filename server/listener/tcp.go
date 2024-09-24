@@ -19,14 +19,23 @@ import (
 	"net"
 )
 
-func StartTcpPipeline(conn *grpc.ClientConn, cfg *configs.TcpPipelineConfig) (*TCPPipeline, error) {
+func StartTcpPipeline(conn *grpc.ClientConn, pipeline *lispb.Pipeline) (*TCPPipeline, error) {
+	tcp := pipeline.GetTcp()
 	pp := &TCPPipeline{
-		Name:       cfg.Name,
-		Port:       cfg.Port,
-		Host:       cfg.Host,
-		Enable:     cfg.Enable,
-		TlsConfig:  cfg.TlsConfig,
-		Encryption: cfg.EncryptionConfig,
+		Name:   tcp.Name,
+		Port:   uint16(tcp.Port),
+		Host:   tcp.Host,
+		Enable: true,
+		TlsConfig: &configs.CertConfig{
+			Cert:   pipeline.GetTls().Cert,
+			Key:    pipeline.GetTls().Key,
+			Enable: pipeline.GetTls().Enable,
+		},
+		Encryption: &configs.EncryptionConfig{
+			Enable: pipeline.GetEncryption().Enable,
+			Type:   pipeline.GetEncryption().Type,
+			Key:    pipeline.GetEncryption().Key,
+		},
 	}
 	err := pp.Start()
 	if err != nil {
@@ -61,7 +70,7 @@ type TCPPipeline struct {
 	Port       uint16
 	Host       string
 	Enable     bool
-	TlsConfig  *configs.TlsConfig
+	TlsConfig  *configs.CertConfig
 	Encryption *configs.EncryptionConfig
 }
 
@@ -75,8 +84,8 @@ func (l *TCPPipeline) ToProtobuf() proto.Message {
 
 func (l *TCPPipeline) ToTLSProtobuf() proto.Message {
 	return &lispb.TLS{
-		Cert: l.TlsConfig.CertFile,
-		Key:  l.TlsConfig.KeyFile,
+		Cert: l.TlsConfig.Cert,
+		Key:  l.TlsConfig.Key,
 	}
 }
 func (l *TCPPipeline) ID() string {
@@ -130,7 +139,7 @@ func (l *TCPPipeline) handler() (net.Listener, error) {
 				logs.Log.Errorf("Accept failed: %v", err)
 				continue
 			}
-			logs.Log.Infof("accept from %s", conn.RemoteAddr())
+			logs.Log.Debugf("accept from %s", conn.RemoteAddr())
 			go l.handleRead(l.wrapConn(conn))
 		}
 	}()
@@ -151,7 +160,7 @@ func (l *TCPPipeline) handleRead(conn net.Conn) {
 		var length int
 		rawID, length, err = packet.ReadHeader(conn)
 		if err != nil {
-			logs.Log.Debugf("Error reading header: %s %v", conn.RemoteAddr(), err)
+			//logs.Log.Debugf("Error reading header: %s %v", conn.RemoteAddr(), err)
 			return
 		}
 		sid := hash.Md5Hash(rawID)

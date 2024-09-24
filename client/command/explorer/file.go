@@ -1,34 +1,30 @@
 package explorer
 
 import (
-	"github.com/chainreactors/grumble"
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	tea "github.com/charmbracelet/bubbletea"
-	"google.golang.org/protobuf/proto"
+	"github.com/spf13/cobra"
 	"os"
 )
 
-func explorerCmd(ctx *grumble.Context, con *console.Console) {
+func explorerCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
-	if session == nil {
-		return
-	}
 	dirEntriesChan := make(chan []os.DirEntry, 1)
 	var path = ""
 
-	lsTask, err := con.Rpc.Ls(con.ActiveTarget.Context(), &implantpb.Request{
+	task, err := con.Rpc.Ls(session.Context(), &implantpb.Request{
 		Name:  consts.ModuleLs,
 		Input: "./",
 	})
 	if err != nil {
-		console.Log.Errorf("load directory error: %v", err)
+		con.Log.Errorf("load directory error: %v", err)
 		return
 	}
 
-	con.AddCallback(lsTask.TaskId, func(msg proto.Message) {
-		resp := msg.(*implantpb.Spite).GetLsResponse()
+	con.AddCallback(task, func(msg *implantpb.Spite) {
+		resp := msg.GetLsResponse()
 		var dirEntries []os.DirEntry
 		for _, protoFile := range resp.GetFiles() {
 			dirEntries = append(dirEntries, ProtobufDirEntry{FileInfo: protoFile})
@@ -49,14 +45,14 @@ func explorerCmd(ctx *grumble.Context, con *console.Console) {
 				dirEntries = newEntries
 				err := SetFiles(&explorer.FilePicker, dirEntries)
 				if err != nil {
-					console.Log.Errorf("Error setting files: %v", err)
+					con.Log.Errorf("Error setting files: %v", err)
 					return
 				}
 				explorer.Files = dirEntries
 				explorer.FilePicker.CurrentDirectory = path
 				explorer.max = max(explorer.max, explorer.FilePicker.Height-1)
 				if _, err := tea.NewProgram(explorer, tea.WithAltScreen()).Run(); err != nil {
-					console.Log.Errorf("Error running explorer: %v", err)
+					con.Log.Errorf("Error running explorer: %v", err)
 				}
 				//newExplorer := tui.NewModel(explorer, nil, false, false)
 				//err = newExplorer.Run()

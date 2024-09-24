@@ -1,30 +1,37 @@
 package sys
 
 import (
-	"github.com/chainreactors/grumble"
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
-	"google.golang.org/protobuf/proto"
+	"github.com/chainreactors/malice-network/proto/services/clientrpc"
+	"github.com/spf13/cobra"
 )
 
-func KillCmd(ctx *grumble.Context, con *console.Console) {
-	session := con.GetInteractive()
-	sid := con.GetInteractive().SessionId
-	if session == nil {
+func KillCmd(cmd *cobra.Command, con *repl.Console) {
+	pid := cmd.Flags().Arg(0)
+	if pid == "" {
+		con.Log.Errorf("required arguments missing")
 		return
 	}
-	pid := ctx.Flags.String("pid")
-	killTask, err := con.Rpc.Kill(con.ActiveTarget.Context(), &implantpb.Request{
+	session := con.GetInteractive()
+	task, err := Kill(con.Rpc, session, pid)
+	if err != nil {
+		con.Log.Errorf("Kill error: %v", err)
+		return
+	}
+	session.Console(task, "kill "+pid)
+}
+
+func Kill(rpc clientrpc.MaliceRPCClient, session *core.Session, pid string) (*clientpb.Task, error) {
+	task, err := rpc.Kill(session.Context(), &implantpb.Request{
 		Name:  consts.ModuleKill,
 		Input: pid,
 	})
 	if err != nil {
-		console.Log.Errorf("Kill error: %v", err)
-		return
+		return nil, err
 	}
-	con.AddCallback(killTask.TaskId, func(msg proto.Message) {
-		_ = msg.(*implantpb.Spite)
-		con.SessionLog(sid).Consolef("Killed process\n")
-	})
+	return task, err
 }

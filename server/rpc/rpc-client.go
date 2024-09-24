@@ -2,14 +2,13 @@ package rpc
 
 import (
 	"context"
-	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/utils/mtls"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/client/rootpb"
-	"github.com/chainreactors/malice-network/server/internal/certs"
+	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
-	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"gopkg.in/yaml.v3"
 )
 
@@ -21,59 +20,24 @@ func (rpc *Server) GetClients(ctx context.Context, req *clientpb.Empty) (*client
 	return clients, nil
 }
 
-func (rpc *Server) LoginClient(ctx context.Context, req *clientpb.LoginReq) (*clientpb.LoginResp, error) {
-	host, port := req.Host, uint16(req.Port)
-	var operator []*models.Operator
-	if host == "" || port == 0 {
-		logs.Log.Error("AddClient: host or user is empty")
-		return &clientpb.LoginResp{
-			Success: false,
-		}, nil
-	}
-	dbSession := db.Session()
-	//cert := models.Certificate{}
-	//err := dbSession.Where(&models.Certificate{
-	//	CommonName: req.Name,
-	//	CAType:     certs.OperatorCA,
-	//}).First(&cert).Error
-	//if err != nil {
-	//	if errors.Is(err, db.ErrRecordNotFound) {
-	//		return &clientpb.LoginResp{
-	//			Success: false,
-	//		}, errors.New("certificate not found")
-	//	}
-	//	return &clientpb.LoginResp{
-	//		Success: false,
-	//	}, err
-	//}
-
-	dbSession.Where(&models.Operator{Name: req.Name}).Find(&operator)
-	if len(operator) != 0 {
-		return &clientpb.LoginResp{
-			Success: true,
-		}, nil
-	}
-	err := dbSession.Create(&models.Operator{
-		Name: req.Name,
-	}).Error
-	if err != nil {
-		return &clientpb.LoginResp{
-			Success: false,
-		}, err
-	}
-	return &clientpb.LoginResp{
-		Success: true,
-	}, nil
+func (rpc *Server) LoginClient(ctx context.Context, req *clientpb.LoginReq) (*clientpb.Client, error) {
+	client := core.NewClient(req.Name)
+	core.Clients.Add(client)
+	return client.ToProtobuf(), nil
 }
 
 func (rpc *Server) AddClient(ctx context.Context, req *rootpb.Operator) (*rootpb.Response, error) {
 	cfg := configs.GetServerConfig()
-	clientConf, err := certs.ClientGenerateCertificate(cfg.GRPCHost, req.Args[0], int(cfg.GRPCPort), certs.OperatorCA)
+	clientConf, err := certutils.GenerateClientCert(cfg.IP, req.Args[0], int(cfg.GRPCPort))
 	if err != nil {
 		return &rootpb.Response{
 			Status: 1,
 			Error:  err.Error(),
 		}, err
+	}
+	err = db.CreateOperator(req.Args[0], mtls.Client, getRemoteAddr(ctx))
+	if err != nil {
+		return nil, err
 	}
 	data, err := yaml.Marshal(clientConf)
 	if err != nil {
@@ -89,7 +53,7 @@ func (rpc *Server) AddClient(ctx context.Context, req *rootpb.Operator) (*rootpb
 }
 
 func (rpc *Server) RemoveClient(ctx context.Context, req *rootpb.Operator) (*rootpb.Response, error) {
-	err := certs.RemoveCertificate(certs.OperatorCA, certs.RSAKey, req.Args[0])
+	err := certutils.RemoveCertificate(certutils.OperatorCA, certutils.RSAKey, req.Args[0])
 	if err != nil {
 		return &rootpb.Response{
 			Status: 1,
@@ -103,9 +67,18 @@ func (rpc *Server) RemoveClient(ctx context.Context, req *rootpb.Operator) (*roo
 }
 
 func (rpc *Server) ListClients(ctx context.Context, req *rootpb.Operator) (*clientpb.Clients, error) {
-	clients, err := db.ListOperators()
+	operators, err := db.ListClients()
 	if err != nil {
 		return nil, err
 	}
-	return clients, nil
+	var clients []*clientpb.Client
+	for _, op := range operators {
+		client := &clientpb.Client{
+			Name: op.Name,
+		}
+		clients = append(clients, client)
+	}
+	return &clientpb.Clients{
+		Clients: clients,
+	}, nil
 }

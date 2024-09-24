@@ -5,25 +5,29 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/chainreactors/grumble"
-	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/client/console"
-	"github.com/chainreactors/malice-network/client/utils"
+	"github.com/chainreactors/malice-network/client/command/common"
+	"github.com/chainreactors/malice-network/client/command/help"
+	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/malice-network/client/core/intermediate"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/utils/file"
+	"github.com/chainreactors/malice-network/helper/utils/pe"
+	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
+	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/chainreactors/tui"
-	"google.golang.org/protobuf/proto"
-	"io/ioutil"
+	"github.com/rsteube/carapace"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"os"
 	"path/filepath"
-	"slices"
 	"strconv"
 	"strings"
 )
 
 const (
-	defaultTimeout = 60
 
 	// ManifestFileName - Extension manifest file name
 	ManifestFileName = "extension.json"
@@ -36,7 +40,7 @@ var (
 	}
 )
 
-var loadedExtensions = map[string]*ExtCommand{}
+var loadedExtensions = map[string]*loadedExt{}
 var loadedManifests = map[string]*ExtensionManifest{}
 
 type ExtensionManifest_ struct {
@@ -71,6 +75,11 @@ type ExtensionManifest struct {
 	ArmoryPK   string `json:"-"`
 }
 
+type loadedExt struct {
+	Manifest *ExtCommand
+	Command  *cobra.Command
+	Func     *intermediate.InternalFunc
+}
 type ExtCommand struct {
 	CommandName string               `json:"command_name"`
 	Help        string               `json:"help"`
@@ -117,29 +126,29 @@ func (e *ExtCommand) getFileForTarget(targetOS string, targetArch string) (strin
 }
 
 // ExtensionLoadCmd - Load extension command
-func ExtensionLoadCmd(ctx *grumble.Context, con *console.Console) {
-	dirPath := ctx.Args.String("dir-path")
+func ExtensionLoadCmd(cmd *cobra.Command, con *repl.Console) {
+	dirPath := cmd.Flags().Arg(0)
 	manifest, err := LoadExtensionManifest(filepath.Join(dirPath, ManifestFileName))
 	if err != nil {
 		return
 	}
 	// do not add if the command already exists
 	for _, extCmd := range manifest.ExtCommand {
-		if CmdExists(extCmd.CommandName, con.App) {
-			console.Log.Errorf("%s command already exists\n", extCmd.CommandName)
+		if repl.CmdExists(extCmd.CommandName, con.ImplantMenu()) {
+			con.Log.Errorf("%s command already exists\n", extCmd.CommandName)
 			confirmModel := tui.NewConfirm(fmt.Sprintf("%s command already exists. Overwrite?", extCmd.CommandName))
 			newConfirm := tui.NewModel(confirmModel, nil, false, true)
 			err = newConfirm.Run()
 			if err != nil {
-				console.Log.Errorf("Error running confirm model: %s\n", err)
+				con.Log.Errorf("Error running confirm model: %s\n", err)
 				return
 			}
 			if !confirmModel.Confirmed {
 				return
 			}
 		}
-		ExtensionRegisterCommand(extCmd, con)
-		console.Log.Infof("Added %s command: %s\n", extCmd.CommandName, extCmd.Help)
+		ExtensionRegisterCommand(extCmd, cmd.Root(), con)
+		con.Log.Infof("Added %s command: %s\n", extCmd.CommandName, extCmd.Help)
 
 	}
 }
@@ -155,9 +164,9 @@ func LoadExtensionManifest(manifestPath string) (*ExtensionManifest, error) {
 		return nil, err
 	}
 	manifest.RootPath = filepath.Dir(manifestPath)
-	for _, extManifest := range manifest.ExtCommand {
-		loadedExtensions[extManifest.CommandName] = extManifest
-	}
+	//for _, extManifest := range manifest.ExtCommand {
+	//	loadedExtensions[extManifest.CommandName] = extManifest
+	//}
 	loadedManifests[manifest.Name] = manifest
 	return manifest, nil
 }
@@ -168,7 +177,7 @@ func ParseExtensionManifest(data []byte) (*ExtensionManifest, error) {
 	err := json.Unmarshal(data, &extManifest)
 	if err != nil || len(extManifest.ExtCommand) == 0 {
 		if err != nil {
-			console.Log.Errorf("extension load error: %s\n", err)
+			core.Log.Errorf("extension load error: %s\n", err)
 		}
 		oldmanifest := &ExtensionManifest_{}
 		err = json.Unmarshal(data, &oldmanifest)
@@ -184,100 +193,131 @@ func ParseExtensionManifest(data []byte) (*ExtensionManifest, error) {
 	return extManifest, validManifest(extManifest)
 }
 
-// ExtensionRegisterCommand - Register a new extension command
-func ExtensionRegisterCommand(extCmd *ExtCommand, con *console.Console) {
-	loadedExtensions[extCmd.CommandName] = extCmd
-	helpMsg := extCmd.Help
-	extensionCmd := &grumble.Command{
-		Name: extCmd.CommandName,
-		Help: helpMsg,
-		//LongHelp: help.FormatHelpTmpl(extCmd.LongHelp),
-		Run: func(extCtx *grumble.Context) error {
-			runExtensionCmd(extCtx, con)
-			return nil
-		},
-		Flags: func(f *grumble.Flags) {
-			// f.Bool("s", "save", false, "Save output to disk")
-			f.Int("t", "timeout", defaultTimeout, "command timeout in seconds")
-		},
-		Args: func(a *grumble.Args) {
-			if 0 < len(extCmd.Arguments) {
-				// BOF specific
-				for _, arg := range extCmd.Arguments {
-					var (
-						argFunc      func(string, string, ...grumble.ArgOption)
-						defaultValue grumble.ArgOption
-					)
-					switch arg.Type {
-					case "int", "integer", "short":
-						argFunc = a.Int
-						defaultValue = grumble.Default(0)
-					case "string", "wstring", "file":
-						argFunc = a.String
-						defaultValue = grumble.Default("")
-					default:
-						console.Log.Errorf("Invalid argument type: %s\n", arg.Type)
-						return
-					}
-					if arg.Optional {
-						argFunc(arg.Name, arg.Desc, defaultValue)
-					} else {
-						argFunc(arg.Name, arg.Desc)
-					}
-				}
-			} else {
-				a.StringList("arguments", "arguments", grumble.Default([]string{}))
-			}
-		},
-		HelpGroup: consts.ExtensionGroup,
+// ExtensionRegisterCommand
+func ExtensionRegisterCommand(extCmd *ExtCommand, cmd *cobra.Command, con *repl.Console) {
+	if errInvalidArgs := checkExtensionArgs(extCmd); errInvalidArgs != nil {
+		con.Log.Error(errInvalidArgs.Error())
+		return
 	}
 
-	con.AddExtensionCommand(extensionCmd)
-}
+	usage := strings.Builder{}
+	usage.WriteString(extCmd.CommandName)
 
-func loadExtension(goos string, goarch string, extcmd *ExtCommand, con *console.Console) error {
-	binPath, err := extcmd.getFileForTarget(goos, goarch)
-	if err != nil {
-		return err
-	}
-	con.RefreshActiveSession()
-
-	if !slices.Contains(con.GetInteractive().Modules, extcmd.DependsOn) {
-		return ErrExtensionDependModuleNotFound
-	}
-
-	for _, ext := range con.GetInteractive().Extensions.Extensions {
-		if ext.Name == extcmd.CommandName {
-			return nil
+	for _, arg := range extCmd.Arguments {
+		usage.WriteString(" ")
+		if arg.Optional {
+			usage.WriteString("[")
+		}
+		usage.WriteString(strings.ToUpper(arg.Name))
+		if arg.Optional {
+			usage.WriteString("]")
 		}
 	}
-	binData, err := ioutil.ReadFile(binPath)
-	if err != nil {
-		return err
+
+	longHelp := strings.Builder{}
+	//prepend the help value, because otherwise I don't see where it is meant to be shown
+	//build the command ref
+	longHelp.WriteString("[[.Bold]]Command:[[.Normal]]")
+	longHelp.WriteString(usage.String())
+	longHelp.WriteString("\n")
+	if len(extCmd.Help) > 0 || len(extCmd.LongHelp) > 0 {
+		longHelp.WriteString("[[.Bold]]About:[[.Normal]]")
+		if len(extCmd.Help) > 0 {
+			longHelp.WriteString(extCmd.Help)
+			longHelp.WriteString("\n")
+		}
+		if len(extCmd.LongHelp) > 0 {
+			longHelp.WriteString(extCmd.LongHelp)
+			longHelp.WriteString("\n")
+		}
 	}
-	logs.Log.Infof("%s extension: %s not load, loading...", extcmd.CommandName, binPath)
-	if errRegister := registerExtension(extcmd, binData, con); errRegister != nil {
-		return errRegister
+	if len(extCmd.Arguments) > 0 {
+		longHelp.WriteString("[[.Bold]]Arguments:[[.Normal]]")
 	}
-	return nil
+	//if more than 0 args specified, describe each arg at the bottom of the long help text (incase the manifest doesn't include it)
+	for _, arg := range extCmd.Arguments {
+		longHelp.WriteString("\n\t")
+		optStr := ""
+		if arg.Optional {
+			optStr = "[OPTIONAL]"
+		}
+		aType := arg.Type
+		if aType == "wstring" {
+			aType = "string" //avoid confusion, as this is mostly for telling operator what to shove into the args
+		}
+		//idk how to make this look nice, tabs don't work especially good - maybe should use the table stuff other things do? Pls help.
+		longHelp.WriteString(fmt.Sprintf("%s (%s):\t%s%s", strings.ToUpper(arg.Name), aType, optStr, arg.Desc))
+	}
+	extensionCmd := &cobra.Command{
+		Use:   extCmd.CommandName,
+		Short: usage.String(),
+		Long:  help.FormatHelpTmpl(longHelp.String()),
+		Run: func(cmd *cobra.Command, args []string) {
+			runExtensionCmd(cmd, con)
+		},
+		GroupID:     consts.ArmoryGroup,
+		Annotations: makeExtPlatformFilters(extCmd),
+	}
+
+	f := pflag.NewFlagSet(extCmd.CommandName, pflag.ContinueOnError)
+	extensionCmd.Flags().AddFlagSet(f)
+	extensionCmd.Flags().ParseErrorsWhitelist.UnknownFlags = true
+
+	comps := carapace.Gen(extensionCmd)
+	makeExtensionArgCompleter(extCmd, cmd, comps)
+	loadedExtensions[extCmd.CommandName] = &loadedExt{
+		Manifest: extCmd,
+		Command:  cmd,
+		Func: repl.WrapImplantFunc(con, func(rpc clientrpc.MaliceRPCClient, sess *core.Session, args []string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
+			return ExecuteExtension(rpc, sess, extensionCmd.Name(), args)
+		}, common.ParseAssembly),
+	}
+	cmd.AddCommand(extensionCmd)
 }
 
-func registerExtension(ext *ExtCommand, binData []byte, con *console.Console) error {
-	task, err := con.Rpc.LoadExtension(con.ActiveTarget.Context(), &implantpb.LoadExtension{
-		Name:   ext.CommandName,
-		Bin:    binData,
-		Depend: ext.DependsOn,
-		Type:   "",
-	})
-	if err != nil {
-		return err
-	}
+//func loadExtension(goos string, goarch string, extcmd *ExtCommand, con *console.Console) error {
+//	binPath, err := extcmd.getFileForTarget(goos, goarch)
+//	if err != nil {
+//		return err
+//	}
+//	con.RefreshActiveSession()
+//
+//	if !slices.Contains(con.GetInteractive().Modules, extcmd.DependsOn) {
+//		return ErrExtensionDependModuleNotFound
+//	}
+//
+//	for _, ext := range con.GetInteractive().Extensions.Extensions {
+//		if ext.Name == extcmd.CommandName {
+//			return nil
+//		}
+//	}
+//	binData, err := ioutil.ReadFile(binPath)
+//	if err != nil {
+//		return err
+//	}
+//	logs.Log.Infof("%s extension: %s not load, loading...", extcmd.CommandName, binPath)
+//	if errRegister := registerExtension(extcmd, binData, con); errRegister != nil {
+//		return errRegister
+//	}
+//	return nil
+//}
 
-	con.AddCallback(task.TaskId, func(msg proto.Message) {
-		con.SessionLog(con.GetInteractive().SessionId).Infof("Loaded extension %s", ext.CommandName)
-	})
-	return nil
-}
+//func registerExtension(ext *ExtCommand, binData []byte, con *console.Console) error {
+//	task, err := con.Rpc.LoadAddon(con.ActiveTarget.Context(), &implantpb.LoadAddon{
+//		Name:   ext.CommandName,
+//		Bin:    binData,
+//		Depend: ext.DependsOn,
+//		Type:   "",
+//	})
+//	if err != nil {
+//		return err
+//	}
+//
+//	con.AddCallback(task, func(msg *implantpb.Spite) (string, error) {
+//		con.SessionLog(con.GetInteractive().SessionId).Infof("Loaded extension %s", ext.CommandName)
+//	})
+//	return nil
+//}
 
 //func loadDep(goos string, goarch string, depName string, ctx *grumble.Context, con *console.Console) error {
 //	depExt, ok := loadedExtensions[depName]
@@ -295,108 +335,201 @@ func registerExtension(ext *ExtCommand, binData []byte, con *console.Console) er
 //	return fmt.Errorf("missing dependency %s", depName)
 //}
 
-func runExtensionCmd(ctx *grumble.Context, con *console.Console) {
-	var (
-		err error
-		//extensionArgs []byte
-		extName    string
-		entryPoint string
-	)
+func runExtensionCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
-	args := ctx.Args.StringList("arguments")
-	if session == nil {
-		return
-	}
-	var goos string
-	var goarch string
-	if session != nil {
-		goos = session.Os.Name
-		goarch = session.Os.Arch
-	}
+	args := cmd.Flags().Args()
 
-	ext, ok := loadedExtensions[ctx.Command.Name]
-	if !ok {
-		console.Log.Errorf("No extension command found for `%s` command\n", ctx.Command.Name)
-		return
-	}
-
-	if err = loadExtension(goos, goarch, ext, con); err != nil {
-		console.Log.Errorf("Could not load extension: %s\n", err)
-		return
-	}
-
-	binPath, err := ext.getFileForTarget(goos, goarch)
+	task, err := ExecuteExtension(con.Rpc, session, cmd.Name(), args)
 	if err != nil {
-		console.Log.Errorf("Failed to read extension file: %s\n", err)
+		con.Log.Errorf("Error executing extension: %s\n", err.Error())
 		return
+	}
+	session.Console(task, "execute extension: "+cmd.Name())
+}
+
+func ExecuteExtension(rpc clientrpc.MaliceRPCClient, sess *core.Session, extName string, args []string) (*clientpb.Task, error) {
+	ext, ok := loadedExtensions[extName]
+	if !ok {
+		return nil, fmt.Errorf("no extension command found for `%s` command", extName)
+	}
+	//if err := loadExtension(sess.Os.Name, sess.Os.Arch, ext, con); err != nil {
+	//	return nil, fmt.Errorf("could not load extension: %w", err)
+	//}
+
+	binPath, err := ext.Manifest.getFileForTarget(sess.Os.Name, sess.Os.Arch)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read extension file: %w", err)
 	}
 
 	isBOF := filepath.Ext(binPath) == ".o"
-
+	var entryPoint string
+	//var extensionArgs []byte
 	// BOFs (Beacon Object Files) are a specific kind of extensions
 	// that require another extension (a COFF loader) to be present.
 	// BOFs also have strongly typed arguments that need to be parsed in the proper way.
 	// This block will pack both the BOF data and its arguments into a single buffer that
 	// the loader will extract and load.
+	var task *clientpb.Task
 	if isBOF {
 		// Beacon Object File -- requires a COFF loader
-		//extensionArgs, err = getBOFArgs(ctx, args, binPath, ext)
+		//extensionArgs, err = getBOFArgs(args, binPath, ext)
+		//if err != nil {
+		//	return nil, fmt.Errorf("BOF args error: %w", err)
+		//}
+		extensionArgs, err := getBOFArgs(ext.Command, args, binPath, ext.Manifest)
 		if err != nil {
-			console.Log.Errorf("BOF args error: %s\n", err)
-			return
+			return nil, err
 		}
-		//extName = ext.DependsOn
-		entryPoint = loadedExtensions[extName].Entrypoint // should exist at this point
+		entryPoint = ext.Manifest.Entrypoint // should exist at this point
+		task, err = rpc.ExecuteBof(sess.Context(), &implantpb.ExecuteBinary{
+			Name:       ext.Command.Name(),
+			EntryPoint: entryPoint,
+			Args:       extensionArgs,
+			Type:       ext.Manifest.DependsOn,
+			Output:     true,
+		})
 	} else {
 		// Regular DLL
-		//extArgs := strings.Join(args, " ")
-		//extensionArgs = []byte(extArgs)
-		//extName = ext.CommandName
-		entryPoint = ext.Entrypoint
-	}
-
-	go func() {
-
-	}()
-	task, err := con.Rpc.ExecuteExtension(con.ActiveTarget.Context(), &implantpb.ExecuteExtension{
-		Extension: ext.CommandName,
-		ExecuteBinary: &implantpb.ExecuteBinary{
-			Name:       ext.CommandName,
+		extName = ext.Manifest.CommandName
+		entryPoint = ext.Manifest.Entrypoint
+		extensionArgs, err := getExtArgs(ext.Command, args, binPath, ext.Manifest)
+		if err != nil {
+			return nil, err
+		}
+		task, err = rpc.ExecuteArmory(sess.Context(), &implantpb.ExecuteBinary{
+			Name:       extName,
 			EntryPoint: entryPoint,
-			Params:     args,
-			Type:       ext.DependsOn,
+			Args:       []string{string(extensionArgs)},
+			Type:       consts.ModuleExecuteDll,
 			Output:     true,
-		},
-	})
-	if err != nil {
-		console.Log.Errorf("Call extension error: %s\n", err.Error())
-		return
+			Sacrifice:  nil,
+		})
 	}
-	con.AddCallback(task.TaskId, func(msg proto.Message) {
-		resp := msg.(*implantpb.Spite).GetAssemblyResponse()
-		con.SessionLog(session.SessionId).Console(string(resp.Data))
-	})
+
+	return task, err
 }
 
-// PrintExtOutput - Print the ext execution output
-//func PrintExtOutput(extName string, commandName string, callExtension *sliverpb.CallExtension, con *console.SliverConsoleClient) {
-//	if extName == commandName {
-//		con.PrintInfof("Successfully executed %s\n", extName)
-//	} else {
-//		con.PrintInfof("Successfully executed %s (%s)\n", commandName, extName)
-//	}
-//	if 0 < len(string(callExtension.Output)) {
-//		con.PrintInfof("Got output:\n%s\n", callExtension.Output)
-//	}
-//	if callExtension.Response != nil && callExtension.Response.Err != "" {
-//		con.PrintErrorf("%s\n", callExtension.Response.Err)
-//		return
-//	}
-//}
+func convertOldManifest(old *ExtensionManifest_) *ExtensionManifest {
+	ret := &ExtensionManifest{
+		Name:            old.CommandName, //treating old command name as the manifest name to avoid weird chars mostly
+		Version:         old.Version,
+		ExtensionAuthor: old.ExtensionAuthor,
+		OriginalAuthor:  old.OriginalAuthor,
+		RepoURL:         old.RepoURL,
+		RootPath:        old.RootPath,
+		//only one command exists in the old manifest, so we can 'confidently' create it here
+		ExtCommand: []*ExtCommand{
+			{
+				CommandName: old.CommandName,
+				DependsOn:   old.DependsOn,
+				Help:        old.Help,
+				LongHelp:    old.LongHelp,
+				Entrypoint:  old.Entrypoint,
+				Files:       old.Files,
+				Arguments:   old.Arguments,
+			},
+		},
+	}
 
-func getExtArgs(ctx *grumble.Context, args []string, _ string, ext *ExtCommand) ([]byte, error) {
+	for _, ext := range ret.ExtCommand {
+		if dep, ok := DependOnMap[ext.DependsOn]; ok {
+			ext.DependsOn = dep
+		} else {
+			ext.DependsOn = consts.ModuleExecuteExe
+		}
+	}
+
+	return ret
+}
+
+func validManifest(manifest *ExtensionManifest) error {
+	if manifest.Name == "" {
+		return errors.New("missing `name` field in extension manifest")
+	}
+	for _, extManifest := range manifest.ExtCommand {
+		if extManifest.CommandName == "" {
+			return errors.New("missing `command_name` field in extension manifest")
+		}
+		if len(extManifest.Files) == 0 {
+			return errors.New("missing `files` field in extension manifest")
+		}
+		for _, extFiles := range extManifest.Files {
+			if extFiles.OS == "" {
+				return errors.New("missing `files.os` field in extension manifest")
+			}
+			if extFiles.Arch == "" {
+				return errors.New("missing `files.arch` field in extension manifest")
+			}
+			extFiles.Path = file.ResolvePath(extFiles.Path)
+			if extFiles.Path == "" || extFiles.Path == "/" {
+				return errors.New("missing `files.path` field in extension manifest")
+			}
+			extFiles.OS = strings.ToLower(extFiles.OS)
+			extFiles.Arch = strings.ToLower(extFiles.Arch)
+		}
+		if extManifest.Help == "" {
+			return errors.New("missing `help` field in extension manifest")
+		}
+	}
+	return nil
+}
+
+// makeExtensionArgParser builds the valid positional arguments cobra handler for the extension.
+func checkExtensionArgs(extCmd *ExtCommand) error {
+	if 0 < len(extCmd.Arguments) {
+		for _, arg := range extCmd.Arguments {
+			switch arg.Type {
+			case "int", "integer", "short":
+			case "string", "wstring", "file":
+			default:
+				return fmt.Errorf("invalid argument type: %s", arg.Type)
+			}
+		}
+	}
+
+	return nil
+}
+
+func makeExtPlatformFilters(ext *ExtCommand) map[string]string {
+	all := make(map[string]string)
+
+	// Only add filters for architectures when there OS matters.
+	var arch []string
+	for _, file := range ext.Files {
+		all["os"] = file.OS
+		arch = append(arch, file.Arch)
+	}
+	all["arch"] = strings.Join(arch, ",")
+	all["depend"] = ext.DependsOn
+	return all
+}
+
+// makeExtensionArgCompleter builds the positional arguments completer for the extension.
+func makeExtensionArgCompleter(extCmd *ExtCommand, _ *cobra.Command, comps *carapace.Carapace) {
+	var actions []carapace.Action
+
+	for _, arg := range extCmd.Arguments {
+		var action carapace.Action
+
+		switch arg.Type {
+		case "file":
+			action = carapace.ActionFiles().Tag("extension data")
+		}
+
+		usage := fmt.Sprintf("(%s) %s", arg.Type, arg.Desc)
+		if arg.Optional {
+			usage += " (optional)"
+		}
+
+		actions = append(actions, action.Usage(usage))
+	}
+
+	comps.PositionalCompletion(actions...)
+}
+
+func getExtArgs(_ *cobra.Command, args []string, _ string, ext *ExtCommand) ([]byte, error) {
 	var err error
-	argsBuffer := utils.BOFArgsBuffer{
+	argsBuffer := pe.BOFArgsBuffer{
 		Buffer: new(bytes.Buffer),
 	}
 
@@ -482,17 +615,14 @@ func getExtArgs(ctx *grumble.Context, args []string, _ string, ext *ExtCommand) 
 	return parsedArgs, nil
 }
 
-func getBOFArgs(ctx *grumble.Context, args []string, binPath string, ext *ExtCommand) ([]byte, error) {
-	var extensionArgs []byte
+func getBOFArgs(cmd *cobra.Command, args []string, binPath string, ext *ExtCommand) ([]string, error) {
 	binData, err := os.ReadFile(binPath)
 	if err != nil {
 		return nil, err
 	}
 
 	// Now build the extension's argument buffer
-	extensionArgsBuffer := utils.BOFArgsBuffer{
-		Buffer: new(bytes.Buffer),
-	}
+	extensionArgsBuffer := pe.IoMBOFArgsBuffer{}
 	err = extensionArgsBuffer.AddString(ext.Entrypoint)
 	if err != nil {
 		return nil, err
@@ -501,7 +631,7 @@ func getBOFArgs(ctx *grumble.Context, args []string, binPath string, ext *ExtCom
 	if err != nil {
 		return nil, err
 	}
-	parsedArgs, err := getExtArgs(ctx, args, binPath, ext)
+	parsedArgs, err := getExtArgs(cmd, args, binPath, ext)
 	if err != nil {
 		return nil, err
 	}
@@ -509,84 +639,5 @@ func getBOFArgs(ctx *grumble.Context, args []string, binPath string, ext *ExtCom
 	if err != nil {
 		return nil, err
 	}
-	extensionArgs, err = extensionArgsBuffer.GetBuffer()
-	if err != nil {
-		return nil, err
-	}
-	return extensionArgs, nil
-}
-
-// CmdExists - checks if a command exists
-func CmdExists(name string, app *grumble.App) bool {
-	for _, c := range app.Commands().All() {
-		if name == c.Name {
-			return true
-		}
-	}
-	return false
-}
-
-func convertOldManifest(old *ExtensionManifest_) *ExtensionManifest {
-	ret := &ExtensionManifest{
-		Name:            old.CommandName, //treating old command name as the manifest name to avoid weird chars mostly
-		Version:         old.Version,
-		ExtensionAuthor: old.ExtensionAuthor,
-		OriginalAuthor:  old.OriginalAuthor,
-		RepoURL:         old.RepoURL,
-		RootPath:        old.RootPath,
-		//only one command exists in the old manifest, so we can 'confidently' create it here
-		ExtCommand: []*ExtCommand{
-			{
-				CommandName: old.CommandName,
-				DependsOn:   old.DependsOn,
-				Help:        old.Help,
-				LongHelp:    old.LongHelp,
-				Entrypoint:  old.Entrypoint,
-				Files:       old.Files,
-				Arguments:   old.Arguments,
-			},
-		},
-	}
-
-	for _, ext := range ret.ExtCommand {
-		if dep, ok := DependOnMap[ext.DependsOn]; ok {
-			ext.DependsOn = dep
-		} else {
-			ext.DependsOn = consts.ModuleExecutePE
-		}
-	}
-
-	return ret
-}
-
-func validManifest(manifest *ExtensionManifest) error {
-	if manifest.Name == "" {
-		return errors.New("missing `name` field in extension manifest")
-	}
-	for _, extManifest := range manifest.ExtCommand {
-		if extManifest.CommandName == "" {
-			return errors.New("missing `command_name` field in extension manifest")
-		}
-		if len(extManifest.Files) == 0 {
-			return errors.New("missing `files` field in extension manifest")
-		}
-		for _, extFiles := range extManifest.Files {
-			if extFiles.OS == "" {
-				return errors.New("missing `files.os` field in extension manifest")
-			}
-			if extFiles.Arch == "" {
-				return errors.New("missing `files.arch` field in extension manifest")
-			}
-			extFiles.Path = utils.ResolvePath(extFiles.Path)
-			if extFiles.Path == "" || extFiles.Path == "/" {
-				return errors.New("missing `files.path` field in extension manifest")
-			}
-			extFiles.OS = strings.ToLower(extFiles.OS)
-			extFiles.Arch = strings.ToLower(extFiles.Arch)
-		}
-		if extManifest.Help == "" {
-			return errors.New("missing `help` field in extension manifest")
-		}
-	}
-	return nil
+	return extensionArgsBuffer.GetArgs(), nil
 }

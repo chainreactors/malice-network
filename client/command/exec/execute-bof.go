@@ -1,48 +1,33 @@
 package exec
 
 import (
-	"github.com/chainreactors/grumble"
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/command/common"
+	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/proto/implant/implantpb"
-
-	"google.golang.org/protobuf/proto"
-	"os"
-	"path/filepath"
+	"github.com/chainreactors/malice-network/proto/services/clientrpc"
+	"github.com/spf13/cobra"
 )
 
-func ExecuteBofCmd(ctx *grumble.Context, con *console.Console) {
-	session := con.GetInteractive()
-	if session == nil {
-		return
-	}
-	path := ctx.Args.String("path")
-	args := ctx.Args.StringList("args")
-	name := filepath.Base(path)
-	binData, err := os.ReadFile(path)
+func ExecuteBofCmd(cmd *cobra.Command, con *repl.Console) {
+	path, args, output, _ := common.ParseBinaryFlags(cmd)
+	task, err := ExecBof(con.Rpc, con.GetInteractive(), path, args, output)
 	if err != nil {
-		console.Log.Errorf("%s\n", err)
+		con.Log.Errorf("Execute BOF error: %v", err)
 		return
 	}
+	con.GetInteractive().Console(task, path)
+}
 
-	var task *clientpb.Task
-	task, err = con.Rpc.ExecuteBof(con.ActiveTarget.Context(), &implantpb.ExecuteBinary{
-		Name:   name,
-		Bin:    binData,
-		Params: args,
-		Output: true,
-		Type:   consts.ModuleExecuteBof,
-	})
-
+func ExecBof(rpc clientrpc.MaliceRPCClient, sess *core.Session, bofPath string, args []string, output bool) (*clientpb.Task, error) {
+	binary, err := common.NewExecutable(consts.ModuleExecuteBof, bofPath, args, sess.Os.Arch, output, nil)
 	if err != nil {
-		console.Log.Errorf("%s", err.Error())
-		return
+		return nil, err
 	}
-
-	con.AddCallback(task.TaskId, func(msg proto.Message) {
-		resp := msg.(*implantpb.Spite).GetAssemblyResponse()
-
-		con.SessionLog(con.GetInteractive().SessionId).Infof("%s output:\n%s", name, string(resp.Data))
-	})
+	task, err := rpc.ExecuteBof(sess.Context(), binary)
+	if err != nil {
+		return nil, err
+	}
+	return task, nil
 }

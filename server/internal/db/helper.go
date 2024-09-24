@@ -3,6 +3,7 @@ package db
 import (
 	"encoding/json"
 	"errors"
+	"github.com/chainreactors/malice-network/helper/utils/mtls"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/server/internal/core"
@@ -17,6 +18,18 @@ import (
 	"time"
 )
 
+func HasOperator(typ string) (bool, error) {
+	var count int64
+	err := Session().Model(&models.Operator{}).Where("type = ?", typ).Count(&count).Error
+	if err != nil {
+		return false, err
+	}
+	if count == 0 {
+		return false, nil
+	}
+	return true, nil
+}
+
 func FindAliveSessions() ([]*lispb.RegisterSession, error) {
 	var activeSessions []models.Session
 	result := Session().Raw(`
@@ -29,6 +42,9 @@ func FindAliveSessions() ([]*lispb.RegisterSession, error) {
 	}
 	var sessions []*lispb.RegisterSession
 	for _, session := range activeSessions {
+		if session.IsRemoved {
+			continue
+		}
 		sessions = append(sessions, session.ToRegisterProtobuf())
 	}
 	return sessions, nil
@@ -36,7 +52,7 @@ func FindAliveSessions() ([]*lispb.RegisterSession, error) {
 
 func FindSession(sessionID string) (*lispb.RegisterSession, error) {
 	var session models.Session
-	result := Session().Where("session_id = ?", sessionID).First(&session)
+	result := Session().Where("session_id = ? AND is_removed = ?", sessionID, false).First(&session)
 	if result.Error != nil {
 		return nil, result.Error
 	}
@@ -61,7 +77,6 @@ func FindAllSessions() (*clientpb.Sessions, error) {
 }
 
 func FindTaskAndMaxTasksID(sessionID string) ([]*models.Task, int, error) {
-	var maxTaskID int
 	var tasks []*models.Task
 
 	err := Session().Where("session_id = ?", sessionID).Find(&tasks).Error
@@ -72,20 +87,14 @@ func FindTaskAndMaxTasksID(sessionID string) ([]*models.Task, int, error) {
 	maxTemp := 0
 	for _, task := range tasks {
 		parts := strings.Split(task.ID, "-")
-		if len(parts) != 2 {
-			continue
-		}
 		taskID, err := strconv.Atoi(parts[1])
 		if err != nil {
 			continue
 		}
-		if taskID > maxTemp {
-			maxTemp = taskID
-		}
+		maxTemp = taskID
 	}
 
-	maxTaskID = maxTemp
-	return tasks, maxTaskID, nil
+	return tasks, maxTemp + 1, nil
 }
 
 func UpdateLast(sessionID string) error {
@@ -121,12 +130,29 @@ func UpdateSessionStatus() error {
 				return err
 			}
 		}
+		//for _, session := range core.Sessions.All() {
+		//	currentTime := time.Now()
+		//	timeDiff := currentTime.Sub(time.Unix(int64(session.Timer.LastCheckin), 0))
+		//	isAlive := timeDiff <= time.Duration(session.Timer.Interval)*time.Second
+		//	if !isAlive {
+		//		err := core.Notifier.Send(&core.Event{
+		//			EventType: consts.EventSession,
+		//			Op:        consts.CtrlSessionStop,
+		//			Message: fmt.Sprintf("session %s from %s at %s stop",
+		//				session.ID, session.PipelineID, session.RemoteAddr),
+		//		})
+		//		if err != nil {
+		//			return err
+		//		}
+		//	}
+		//}
 	}
 	return nil
 }
 
 func UpdateSessionInfo(coreSession *core.Session) error {
 	updateSession := models.ConvertToSessionDB(coreSession)
+	updateSession.IsAlive = true
 	result := Session().Save(updateSession)
 
 	if result.Error != nil {
@@ -137,7 +163,7 @@ func UpdateSessionInfo(coreSession *core.Session) error {
 
 // Basic Session OP
 func DeleteSession(sessionID string) error {
-	result := Session().Where("session_id = ?", sessionID).Delete(&models.Session{})
+	result := Session().Where("session_id = ?", sessionID).Update("is_removed", true)
 	return result.Error
 }
 
@@ -157,42 +183,28 @@ func UpdateSession(sessionID, note, group string) error {
 	return result.Error
 }
 
-func CreateOperator(name string) error {
+func CreateOperator(name string, typ string, remoteAddr string) error {
 	var operator models.Operator
-	result := Session().Where("name = ?", name).Delete(&operator)
-	if result.Error != nil {
-		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return result.Error
-		}
-	}
 	operator.Name = name
-	err := Session().Create(&operator).Error
+	operator.Type = typ
+	operator.Remote = remoteAddr
+	err := Session().Save(&operator).Error
 	return err
 
 }
 
-func ListOperators() (*clientpb.Clients, error) {
+func ListClients() ([]models.Operator, error) {
 	var operators []models.Operator
-	err := Session().Find(&operators).Error
+	err := Session().Find(&operators).Where("type = ?", mtls.Client).Error
 	if err != nil {
 		return nil, err
 	}
 
-	var clients []*clientpb.Client
-	for _, op := range operators {
-		client := &clientpb.Client{
-			Name: op.Name,
-		}
-		clients = append(clients, client)
-	}
-	pbClients := &clientpb.Clients{
-		Clients: clients,
-	}
-	return pbClients, nil
+	return operators, nil
 }
 
 func GetTaskDescriptionByID(taskID string) (*models.FileDescription, error) {
-	var task models.Task
+	var task models.File
 	if err := Session().Where("id = ?", taskID).First(&task).Error; err != nil {
 		return nil, err
 	}
@@ -205,45 +217,112 @@ func GetTaskDescriptionByID(taskID string) (*models.FileDescription, error) {
 	return &td, nil
 }
 
-// Task
-func GetAllTasks(sessionID string) ([]models.Task, error) {
-	var tasks []models.Task
-	result := Session().Where("session_id = ?", sessionID).Find(&tasks)
+// File
+func GetAllFiles(sessionID string) ([]models.File, error) {
+	var files []models.File
+	result := Session().Where("session_id = ?", sessionID).Find(&files)
 	if result.Error != nil {
 		return nil, result.Error
 	}
-	return tasks, nil
+	return files, nil
 }
 
-func FindTasksWithNonOneCurTotal(session models.Session) ([]models.Task, error) {
-	var tasks []models.Task
-	result := Session().Where("session_id = ?", session.SessionID).Where("cur != total").Find(&tasks)
+func FindFilesWithNonOneCurTotal(session models.Session) ([]models.File, error) {
+	var files []models.File
+	result := Session().Where("session_id = ?", session.SessionID).Where("cur != total").Find(&files)
 	if result.Error != nil {
-		return tasks, result.Error
+		return files, result.Error
 	}
-	if len(tasks) == 0 {
-		return tasks, gorm.ErrRecordNotFound
+	if len(files) == 0 {
+		return files, gorm.ErrRecordNotFound
 	}
-	return tasks, nil
+	return files, nil
 }
 
-func CreateListener(name string) error {
-	var listener models.Listener
-	result := Session().Where("name = ?", name).Delete(&listener)
+func FindPipeline(name, listenerID string) (models.Pipeline, error) {
+	var pipeline models.Pipeline
+	result := Session().Where("name = ? AND listener_id = ?", name, listenerID).First(&pipeline)
 	if result.Error != nil {
-		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return result.Error
+		return pipeline, result.Error
+	}
+	pipeline.Enable = true
+	result = Session().Save(&pipeline)
+	if result.Error != nil {
+		return pipeline, result.Error
+	}
+	return pipeline, nil
+
+}
+
+func CreatePipeline(ppProto *lispb.Pipeline) error {
+	pipeline := models.ProtoBufToDB(ppProto)
+	newPipeline := models.Pipeline{}
+	result := Session().Where("name = ? AND listener_id  = ?", pipeline.Name, pipeline.ListenerID).First(&newPipeline)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			err := Session().Create(&pipeline).Error
+			if err != nil {
+				return err
+			}
+			return nil
 		}
+		return result.Error
 	}
-	listener.Name = name
-	err := Session().Create(&listener).Error
-	return err
+	pipeline.ID = newPipeline.ID
+	err := Session().Save(&pipeline).Error
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func ListListeners() ([]models.Listener, error) {
-	var listeners []models.Listener
-	err := Session().Find(&listeners).Error
+func ListPipelines(listenerID string, pipelineType string) ([]models.Pipeline, error) {
+	var pipelines []models.Pipeline
+	err := Session().Where("listener_id = ? AND type = ?", listenerID, pipelineType).Find(&pipelines).Error
+	return pipelines, err
+}
+
+func EnablePipeline(pipeline models.Pipeline) error {
+	pipeline.Enable = true
+	result := Session().Save(&pipeline)
+	return result.Error
+}
+
+func UnEnablePipeline(pipeline models.Pipeline) error {
+	pipeline.Enable = false
+	result := Session().Save(&pipeline)
+	return result.Error
+}
+
+func FindPipelineCert(pipelineName, listenerID string) (string, string, error) {
+	var pipeline models.Pipeline
+	result := Session().Where("name = ? AND listener_id = ?", pipelineName, listenerID).First(&pipeline)
+	if result.Error != nil {
+		return "", "", result.Error
+	}
+	return pipeline.Tls.Cert, pipeline.Tls.Key, nil
+}
+
+func ListListeners() ([]models.Operator, error) {
+	var listeners []models.Operator
+	err := Session().Find(&listeners).Where("type = ?", mtls.Listener).Error
 	return listeners, err
+}
+
+// AddCertificate add a certificate to the database
+func AddCertificate(caType int, keyType string, commonName string, cert []byte, key []byte) error {
+	certModel := &models.Certificate{
+		CommonName:     commonName,
+		CAType:         caType,
+		KeyType:        keyType,
+		CertificatePEM: string(cert),
+		PrivateKeyPEM:  string(key),
+	}
+	err := Session().Save(certModel).Error
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // DeleteAllCertificates
@@ -286,12 +365,12 @@ func SaveCertificate(certificate *models.Certificate) error {
 	return nil
 }
 
-func AddTask(typ string, task *core.Task, td *models.FileDescription) error {
-	tdString, err := td.ToJson()
+func AddFile(typ string, task *core.Task, td *models.FileDescription) error {
+	tdString, err := td.ToJsonString()
 	if err != nil {
 		return err
 	}
-	taskModel := &models.Task{
+	fileModel := &models.File{
 		ID:          task.SessionId + "-" + utils.ToString(task.Id),
 		Type:        typ,
 		SessionID:   task.SessionId,
@@ -299,15 +378,15 @@ func AddTask(typ string, task *core.Task, td *models.FileDescription) error {
 		Total:       task.Total,
 		Description: tdString,
 	}
-	Session().Create(taskModel)
+	Session().Create(fileModel)
 	return nil
 }
 
-func UpdateTask(task *core.Task, newCur int) error {
-	taskModel := &models.Task{
+func UpdateFile(task *core.Task, newCur int) error {
+	fileModel := &models.File{
 		ID: task.SessionId + "-" + utils.ToString(task.Id),
 	}
-	return taskModel.UpdateCur(Session(), newCur)
+	return fileModel.UpdateCur(Session(), newCur)
 }
 
 func ToTask(task models.Task) (*core.Task, error) {
@@ -328,28 +407,41 @@ func ToTask(task models.Task) (*core.Task, error) {
 	}, nil
 }
 
-// website
+func AddTask(task *core.Task) error {
+	taskModel := &models.Task{
+		ID:        task.SessionId + "-" + utils.ToString(task.Id),
+		Type:      task.Type,
+		SessionID: task.SessionId,
+		Cur:       task.Cur,
+		Total:     task.Total,
+	}
+	return Session().Create(taskModel).Error
+}
+
+func UpdateTask(task *core.Task, newCur int) error {
+	taskModel := &models.Task{
+		ID: task.SessionId + "-" + utils.ToString(task.Id),
+	}
+	return taskModel.UpdateCur(Session(), newCur)
+}
+
 // WebsiteByName - Get website by name
 func WebsiteByName(name string, webContentDir string) (*lispb.Website, error) {
-	var website models.Website
-	if err := Session().Preload("WebContents").Where("name = ?", name).First(&website).Error; err != nil {
+	var websiteContent models.WebsiteContent
+	if err := Session().Where("name = ?", name).First(&websiteContent).Error; err != nil {
 		return nil, err
 	}
-	//err := Session().Where("name = ?", name).First(&website).Error
-	//if err != nil {
-	//	return nil, err
-	//}
-	return website.ToProtobuf(webContentDir), nil
+	return websiteContent.ToProtobuf(webContentDir), nil
 }
 
 // Websites - Return all websites
 func Websites(webContentDir string) ([]*lispb.Website, error) {
-	var websites []*models.Website
-	err := Session().Where(&models.Website{}).Find(&websites).Error
+	var websiteContents []*models.WebsiteContent
+	err := Session().Find(&websiteContents).Error
 
 	var pbWebsites []*lispb.Website
-	for _, website := range websites {
-		pbWebsites = append(pbWebsites, website.ToProtobuf(webContentDir))
+	for _, websiteContent := range websiteContents {
+		pbWebsites = append(pbWebsites, websiteContent.ToProtobuf(webContentDir))
 	}
 
 	return pbWebsites, err
@@ -358,10 +450,10 @@ func Websites(webContentDir string) ([]*lispb.Website, error) {
 // WebContent by ID and path
 func WebContentByIDAndPath(id string, path string, webContentDir string, eager bool) (*lispb.WebContent, error) {
 	uuidFromString, _ := uuid.FromString(id)
-	content := models.WebContent{}
-	err := Session().Where(&models.WebContent{
-		WebsiteID: uuidFromString,
-		Path:      path,
+	content := models.WebsiteContent{}
+	err := Session().Where(&models.WebsiteContent{
+		ID:   uuidFromString,
+		Name: path,
 	}).First(&content).Error
 
 	if err != nil {
@@ -373,14 +465,16 @@ func WebContentByIDAndPath(id string, path string, webContentDir string, eager b
 	} else {
 		data = []byte{}
 	}
-	return content.ToProtobuf(&data), err
+	result := content.ToProtobuf(webContentDir).Contents[content.ID.String()]
+	result.Content = data
+	return result, err
 }
 
 // AddWebsite - Return website, create if it does not exist
-func AddWebSite(webSiteName string, webContentDir string) (*lispb.Website, error) {
+func AddWebsite(webSiteName string, webContentDir string) (*lispb.Website, error) {
 	pbWebSite, err := WebsiteByName(webSiteName, webContentDir)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		err = Session().Create(&models.Website{Name: webSiteName}).Error
+		err = Session().Create(&models.WebsiteContent{Name: webSiteName}).Error
 		if err != nil {
 			return nil, err
 		}
@@ -394,62 +488,34 @@ func AddWebSite(webSiteName string, webContentDir string) (*lispb.Website, error
 
 // AddContent - Add content to website
 func AddContent(pbWebContent *lispb.WebContent, webContentDir string) (*lispb.WebContent, error) {
-	dbWebContent, err := WebContentByIDAndPath(pbWebContent.WebsiteID, pbWebContent.Path, webContentDir, false)
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		dbModelWebContent := models.WebContentFromProtobuf(pbWebContent)
-		err = Session().Create(&dbModelWebContent).Error
-		if err != nil {
-			return nil, err
-		}
-		dbWebContent, err = WebContentByIDAndPath(pbWebContent.WebsiteID, pbWebContent.Path, webContentDir, false)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		dbWebContent.ContentType = pbWebContent.ContentType
-		dbWebContent.Size = pbWebContent.Size
-
-		dbModelWebContent := models.WebContentFromProtobuf(dbWebContent)
-		err = Session().Save(&dbModelWebContent).Error
-		if err != nil {
-			return nil, err
-		}
-	}
-	return dbWebContent, nil
-}
-
-func GetWebContentIDByWebsiteID(websiteID string) ([]string, error) {
-	uuid, err := uuid.FromString(websiteID)
+	dbModelWebContent := models.WebsiteContentFromProtobuf(pbWebContent)
+	err := Session().Save(&dbModelWebContent).Error
 	if err != nil {
 		return nil, err
 	}
-
-	var IDs []string
-
-	if err := Session().Model(&models.WebContent{}).Select("ID").Where("website_id = ?", uuid).Pluck("ID", &IDs).Error; err != nil {
-		return nil, err
-	}
-
-	return IDs, nil
+	pbWebContent.ID = dbModelWebContent.ID.String()
+	return pbWebContent, nil
 }
 
-func RemoveWebAllContent(id string) error {
+// RemoveWebsiteContent - Remove all content of a website by ID
+func RemoveWebsiteContent(id string) error {
 	uuid, _ := uuid.FromString(id)
-	if err := Session().Where("website_id = ?", uuid).Delete(&models.WebContent{}).Error; err != nil {
+	if err := Session().Where("id = ?", uuid).Delete(&models.WebsiteContent{}).Error; err != nil {
 		return err
 	}
-
 	return nil
 }
 
+// RemoveContent - Remove content by ID
 func RemoveContent(id string) error {
 	uuid, _ := uuid.FromString(id)
-	err := Session().Delete(models.WebContent{}, uuid).Error
+	err := Session().Delete(&models.WebsiteContent{}, uuid).Error
 	return err
 }
 
-func RemoveWebSite(id string) error {
+// RemoveWebsite - Remove website by ID
+func RemoveWebsite(id string) error {
 	uuid, _ := uuid.FromString(id)
-	err := Session().Delete(models.Website{}, uuid).Error
+	err := Session().Delete(&models.WebsiteContent{}, uuid).Error
 	return err
 }

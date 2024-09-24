@@ -1,31 +1,39 @@
 package file
 
 import (
-	"github.com/chainreactors/grumble"
-	"github.com/chainreactors/malice-network/client/console"
+	"fmt"
+	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
-	"github.com/chainreactors/tui"
+	"github.com/chainreactors/malice-network/proto/services/clientrpc"
+	"github.com/spf13/cobra"
 	"path/filepath"
 
-	"google.golang.org/protobuf/proto"
 	"os"
 )
 
-func upload(ctx *grumble.Context, con *console.Console) {
-	session := con.GetInteractive()
-	if session == nil {
+func UploadCmd(cmd *cobra.Command, con *repl.Console) {
+	path := cmd.Flags().Arg(0)
+	target := cmd.Flags().Arg(1)
+	priv, _ := cmd.Flags().GetInt("priv")
+	hidden, _ := cmd.Flags().GetBool("hidden")
+
+	task, err := Upload(con.Rpc, con.GetInteractive(), path, target, priv, hidden)
+	if err != nil {
 		return
 	}
-	sid := con.GetInteractive().SessionId
-	path := ctx.Args.String("source")
-	target := ctx.Args.String("destination")
-	priv := ctx.Flags.Int("priv")
-	hidden := ctx.Flags.Bool("hidden")
+
+	con.GetInteractive().Console(task, fmt.Sprintf("Upload %s", path))
+}
+
+func Upload(rpc clientrpc.MaliceRPCClient, session *core.Session, path string, target string, priv int, hidden bool) (*clientpb.Task, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		con.SessionLog(sid).Errorf("Can't open file: %s", err)
+		core.Log.Errorf("Can't open file: %s", err)
 	}
-	uploadTask, err := con.Rpc.Upload(con.ActiveTarget.Context(), &implantpb.UploadRequest{
+
+	task, err := rpc.Upload(session.Context(), &implantpb.UploadRequest{
 		Name:   filepath.Base(path),
 		Target: target,
 		Priv:   uint32(priv),
@@ -33,18 +41,7 @@ func upload(ctx *grumble.Context, con *console.Console) {
 		Hidden: hidden,
 	})
 	if err != nil {
-		console.Log.Errorf("Download error: %v", err)
-		return
+		return nil, err
 	}
-	total := uploadTask.Total
-	cur := uploadTask.Cur
-	con.AddCallback(uploadTask.TaskId, func(msg proto.Message) {
-		cur++
-		barModel := tui.NewBar()
-		barModel.SetProgressPercent(float64(cur) / float64(total))
-		//err := tui.Run(barModel)
-		//if err != nil {
-		//	con.SessionLog(sid).Errorf("Error running bar: %v", err)
-		//}
-	})
+	return task, err
 }

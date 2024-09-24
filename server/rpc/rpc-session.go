@@ -21,7 +21,7 @@ func (rpc *Server) GetAlivedSessions(ctx context.Context, _ *clientpb.Empty) (*c
 	var sessions []*clientpb.Session
 	for _, session := range core.Sessions.All() {
 		sessionProto := session.ToProtobuf()
-		if !sessionProto.IsDead {
+		if sessionProto.IsAlive {
 			sessions = append(sessions, session.ToProtobuf())
 		}
 	}
@@ -30,24 +30,42 @@ func (rpc *Server) GetAlivedSessions(ctx context.Context, _ *clientpb.Empty) (*c
 
 func (rpc *Server) GetSession(ctx context.Context, req *clientpb.SessionRequest) (*clientpb.Session, error) {
 	session, ok := core.Sessions.Get(req.SessionId)
-	if ok {
+	if !ok {
 		return nil, ErrNotFoundSession
 	}
 	return session.ToProtobuf(), nil
 }
 
 func (rpc *Server) BasicSessionOP(ctx context.Context, req *clientpb.BasicUpdateSession) (*clientpb.Empty, error) {
-	if req.IsDelete {
+	switch req.Op {
+	case "delete":
+		core.Sessions.Remove(req.SessionId)
 		err := db.DeleteSession(req.SessionId)
 		if err != nil {
 			return nil, err
 		}
-	} else {
-		err := db.UpdateSession(req.SessionId, req.Note, req.GroupName)
+	case "note":
+		session, ok := core.Sessions.Get(req.SessionId)
+		if !ok {
+			return nil, ErrNotFoundSession
+		}
+		session.Name = req.Arg
+		err := db.UpdateSession(req.SessionId, req.Arg, "")
+		if err != nil {
+			return nil, err
+		}
+	case "group":
+		session, ok := core.Sessions.Get(req.SessionId)
+		if !ok {
+			return nil, ErrNotFoundSession
+		}
+		session.Group = req.Arg
+		err := db.UpdateSession(req.SessionId, "", req.Arg)
 		if err != nil {
 			return nil, err
 		}
 	}
+
 	return &clientpb.Empty{}, nil
 }
 
@@ -56,11 +74,11 @@ func (rpc *Server) Info(ctx context.Context, req *implantpb.Request) (*clientpb.
 	if err != nil {
 		return nil, err
 	}
-	ch, err := rpc.asyncGenericHandler(ctx, greq)
+	ch, err := rpc.GenericHandler(ctx, greq)
 	if err != nil {
 		return nil, err
 	}
 
-	go greq.HandlerAsyncResponse(ch, types.MsgSysInfo)
+	go greq.HandlerResponse(ch, types.MsgSysInfo)
 	return greq.Task.ToProtobuf(), nil
 }

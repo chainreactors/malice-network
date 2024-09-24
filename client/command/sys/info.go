@@ -1,26 +1,31 @@
 package sys
 
 import (
-	"github.com/chainreactors/grumble"
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
-	"google.golang.org/protobuf/proto"
+	"github.com/chainreactors/malice-network/proto/services/clientrpc"
+	"github.com/spf13/cobra"
 )
 
-func InfoCmd(ctx *grumble.Context, con *console.Console) {
+func InfoCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
-	if session == nil {
+	task, err := Info(con.Rpc, session)
+	if err != nil {
+		con.Log.Errorf("Info error: %v", err)
 		return
 	}
-	infoTask, err := con.Rpc.Info(con.ActiveTarget.Context(), &implantpb.Request{
+	session.Console(task, "sysinfo")
+}
+
+func Info(rpc clientrpc.MaliceRPCClient, session *core.Session) (*clientpb.Task, error) {
+	task, err := rpc.Info(session.Context(), &implantpb.Request{
 		Name: consts.ModuleInfo,
 	})
 	if err != nil {
-		console.Log.Errorf("Info error: %v", err)
-		return
+		return nil, err
 	}
-	con.AddCallback(infoTask.TaskId, func(msg proto.Message) {
-		con.SessionLog(session.SessionId).Consolef("Info: %v\n", msg.(*implantpb.Spite).Body)
-	})
+	return task, err
 }

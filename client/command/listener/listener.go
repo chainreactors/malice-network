@@ -2,18 +2,19 @@ package listener
 
 import (
 	"context"
-	"github.com/chainreactors/grumble"
-	"github.com/chainreactors/malice-network/client/console"
+	"fmt"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/table"
+	"github.com/spf13/cobra"
 	"strconv"
 )
 
-func ListenerCmd(ctx *grumble.Context, con *console.Console) {
+func ListenerCmd(cmd *cobra.Command, con *repl.Console) {
 	listeners, err := con.Rpc.GetListeners(context.Background(), &clientpb.Empty{})
 	if err != nil {
-		console.Log.Errorf("Failed to list listeners: %s", err)
+		con.Log.Errorf("Failed to list listeners: %s", err)
 		return
 	}
 	printListeners(listeners)
@@ -36,10 +37,5 @@ func printListeners(listeners *clientpb.Listeners) {
 	}
 	tableModel.SetRows(rowEntries)
 	tableModel.Title = "listeners"
-	newTable := tui.NewModel(tableModel, nil, false, false)
-	err := newTable.Run()
-	if err != nil {
-		console.Log.Errorf("Failed to run table: %s", err)
-		return
-	}
+	fmt.Printf(tableModel.View())
 }

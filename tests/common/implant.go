@@ -283,8 +283,8 @@ func (implant *Implant) BuildCommonSpite(t string, taskId uint32) *implantpb.Spi
 	//		},
 	//	}}
 	case AckSpite:
-		return &implantpb.Spite{TaskId: taskId, Body: &implantpb.Spite_AsyncAck{
-			AsyncAck: &implantpb.AsyncACK{
+		return &implantpb.Spite{TaskId: taskId, Body: &implantpb.Spite_Ack{
+			Ack: &implantpb.ACK{
 				Success: true,
 			},
 		}}

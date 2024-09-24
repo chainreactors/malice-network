@@ -19,11 +19,18 @@ func BuildPingSpite() *implantpb.Spites {
 	})
 }
 
+// BuildSpite build spite request
 func BuildSpite(spite *implantpb.Spite, msg proto.Message) (*implantpb.Spite, error) {
 	switch msg.(type) {
 	case *implantpb.Request:
 		spite.Name = msg.(*implantpb.Request).Name
 		spite.Body = &implantpb.Spite_Request{Request: msg.(*implantpb.Request)}
+	case *implantpb.ImplantTask:
+		spite.Name = msg.(*implantpb.ImplantTask).Op
+		spite.Body = &implantpb.Spite_Task{Task: msg.(*implantpb.ImplantTask)}
+	case *implantpb.ACK:
+		spite.Name = MsgAck.String()
+		spite.Body = &implantpb.Spite_Ack{Ack: msg.(*implantpb.ACK)}
 	case *implantpb.Block:
 		spite.Name = MsgBlock.String()
 		spite.Body = &implantpb.Spite_Block{Block: msg.(*implantpb.Block)}
@@ -48,39 +55,24 @@ func BuildSpite(spite *implantpb.Spite, msg proto.Message) (*implantpb.Spite, er
 	//case *implantpb.CurlRequest:
 	//	spite.Name = MsgCurl.String()
 	//	spite.Body = &implantpb.Spite_CurlRequest{CurlRequest: msg.(*implantpb.CurlRequest)}
-	//case *implantpb.ExecuteAssembly:
-	//	spite.Name = MsgExecuteAssembly.String()
-	//	spite.Body = &implantpb.Spite_ExecuteAssembly{ExecuteAssembly: msg.(*implantpb.ExecuteAssembly)}
-	//case *implantpb.ExecuteShellcode:
-	//	spite.Name = MsgExecuteShellcode.String()
-	//	spite.Body = &implantpb.Spite_ExecuteShellcode{ExecuteShellcode: msg.(*implantpb.ExecuteShellcode)}
-	//case *implantpb.ExecutePE:
-	//	spite.Name = MsgExecutePE.String()
-	//	spite.Body = &implantpb.Spite_ExecutePe{ExecutePe: msg.(*implantpb.ExecutePE)}
-	//case *implantpb.ExecutePowershell:
-	//	spite.Name = MsgPowershell.String()
-	//	spite.Body = &implantpb.Spite_ExecutePowershell{ExecutePowershell: msg.(*implantpb.ExecutePowershell)}
-	//case *implantpb.ExecuteSpawn:
-	//	spite.Name = MsgExecuteSpawn.String()
-	//	spite.Body = &implantpb.Spite_ExecuteSpawn{ExecuteSpawn: msg.(*implantpb.ExecuteSpawn)}
-	//case *implantpb.ExecuteBof:
-	//	spite.Name = MsgExecuteBof.String()
-	//	spite.Body = &implantpb.Spite_ExecuteBof{ExecuteBof: msg.(*implantpb.ExecuteBof)}
-	case *implantpb.AssemblyResponse:
-		spite.Name = MsgExecuteAssembly.String()
-		spite.Body = &implantpb.Spite_AssemblyResponse{AssemblyResponse: msg.(*implantpb.AssemblyResponse)}
-	case *implantpb.ExecuteExtension:
-		spite.Name = MsgExecuteExtension.String()
-		spite.Body = &implantpb.Spite_ExecuteExtension{ExecuteExtension: msg.(*implantpb.ExecuteExtension)}
+	case *implantpb.BypassRequest:
+		spite.Name = MsgBypass.String()
+		spite.Body = &implantpb.Spite_BypassRequest{BypassRequest: msg.(*implantpb.BypassRequest)}
+	case *implantpb.ExecuteAddon:
+		spite.Name = MsgExecuteAddon.String()
+		spite.Body = &implantpb.Spite_ExecuteAddon{ExecuteAddon: msg.(*implantpb.ExecuteAddon)}
 	case *implantpb.LoadModule:
 		spite.Name = MsgLoadModule.String()
 		spite.Body = &implantpb.Spite_LoadModule{LoadModule: msg.(*implantpb.LoadModule)}
-	case *implantpb.LoadExtension:
-		spite.Name = MsgLoadExtension.String()
-		spite.Body = &implantpb.Spite_LoadExtension{LoadExtension: msg.(*implantpb.LoadExtension)}
-	case *implantpb.AsyncACK:
-		spite.Name = MsgAck.String()
-		spite.Body = &implantpb.Spite_AsyncAck{AsyncAck: msg.(*implantpb.AsyncACK)}
+	case *implantpb.LoadAddon:
+		spite.Name = MsgLoadAddon.String()
+		spite.Body = &implantpb.Spite_LoadAddon{LoadAddon: msg.(*implantpb.LoadAddon)}
+	case *implantpb.ExecSacrificeRequest:
+		spite.Name = MsgExecuteLocal.String()
+		spite.Body = &implantpb.Spite_ExecuteSacrificeRequest{ExecuteSacrificeRequest: msg.(*implantpb.ExecSacrificeRequest)}
+	case *implantpb.ExecuteClr:
+		spite.Name = msg.(*implantpb.ExecuteClr).ExecuteBinary.Type
+		spite.Body = &implantpb.Spite_ExecuteClr{ExecuteClr: msg.(*implantpb.ExecuteClr)}
 	default:
 		return spite, ErrUnknownSpite
 	}

@@ -20,19 +20,19 @@ package alias
 
 import (
 	"errors"
-	"github.com/chainreactors/grumble"
 	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/spf13/cobra"
 	"os"
 	"path/filepath"
 )
 
 // AliasesRemoveCmd - Locally load a alias into the Sliver shell.
-func AliasesRemoveCmd(ctx *grumble.Context, con *console.Console) {
+func AliasesRemoveCmd(cmd *cobra.Command, con *repl.Console) {
 	//name := ctx.Args
-	name := ctx.Args.String("name")
+	name := cmd.Flags().Arg(0)
 	if name == "" {
-		console.Log.Errorf("Extension name is required\n")
+		con.Log.Errorf("Extension name is required\n")
 		return
 	}
 	//confirm := false
@@ -43,15 +43,15 @@ func AliasesRemoveCmd(ctx *grumble.Context, con *console.Console) {
 	//}
 	err := RemoveAliasByCommandName(name, con)
 	if err != nil {
-		console.Log.Errorf("Error removing alias: %s\n", err)
+		con.Log.Errorf("Error removing alias: %s\n", err)
 		return
 	} else {
-		console.Log.Infof("Alias '%s' removed\n", name)
+		con.Log.Infof("Alias '%s' removed\n", name)
 	}
 }
 
 // RemoveAliasByCommandName - Remove an alias by command name
-func RemoveAliasByCommandName(commandName string, con *console.Console) error {
+func RemoveAliasByCommandName(commandName string, con *repl.Console) error {
 	if commandName == "" {
 		return errors.New("command name is required")
 	}

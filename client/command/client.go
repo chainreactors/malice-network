@@ -1,81 +1,109 @@
 package command
 
 import (
-	"github.com/chainreactors/grumble"
-	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/alias"
 	"github.com/chainreactors/malice-network/client/command/armory"
-	"github.com/chainreactors/malice-network/client/command/explorer"
 	"github.com/chainreactors/malice-network/client/command/extension"
-	"github.com/chainreactors/malice-network/client/command/jobs"
+	"github.com/chainreactors/malice-network/client/command/generic"
 	"github.com/chainreactors/malice-network/client/command/listener"
-	"github.com/chainreactors/malice-network/client/command/login"
-	"github.com/chainreactors/malice-network/client/command/observe"
+	"github.com/chainreactors/malice-network/client/command/mal"
 	"github.com/chainreactors/malice-network/client/command/sessions"
-	"github.com/chainreactors/malice-network/client/command/tasks"
-	"github.com/chainreactors/malice-network/client/command/use"
-	"github.com/chainreactors/malice-network/client/command/version"
-	"github.com/chainreactors/malice-network/client/console"
-
+	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/utils/file"
+	"github.com/reeflective/console"
+	"github.com/spf13/cobra"
+	"google.golang.org/grpc"
 )
 
-func BindClientsCommands(con *console.Console) {
-	bind := makeBind(con)
-
-	bind("",
-		version.Command)
-
+func bindCommonCommands(bind bindFunc) {
 	bind(consts.GenericGroup,
-		login.Command,
+		generic.Commands)
+
+	bind(consts.ManageGroup,
 		sessions.Commands,
-		use.Command,
-		tasks.Command,
-		jobs.Command,
 		alias.Commands,
 		extension.Commands,
 		armory.Commands,
-		observe.Command,
-		explorer.Commands,
+		mal.Commands,
 	)
 
 	bind(consts.ListenerGroup,
 		listener.Commands,
 	)
+}
 
-	bind(consts.AliasesGroup)
-
-	// [ Extensions ]
-	bind(consts.ExtensionGroup)
-
-	// Load Aliases
-	aliasManifests := assets.GetInstalledAliasManifests()
-	for _, manifest := range aliasManifests {
-		_, err := alias.LoadAlias(manifest, con)
-		if err != nil {
-			console.Log.Errorf("Failed to load alias: %s", err)
-			continue
-		}
+func ConsoleCmd(con *repl.Console) *cobra.Command {
+	consoleCmd := &cobra.Command{
+		Use:   "console",
+		Short: "Start the client console",
 	}
 
-	// Load Extensions
-	extensionManifests := assets.GetInstalledExtensionManifests()
-	for _, manifest := range extensionManifests {
-		mext, err := extension.LoadExtensionManifest(manifest)
-		// Absorb error in case there's no extensions manifest
-		if err != nil {
-			//con doesn't appear to be initialised here?
-			//con.PrintErrorf("Failed to load extension: %s", err)
-			console.Log.Errorf("Failed to load extension: %s\n", err)
-			continue
+	consoleCmd.RunE, consoleCmd.PersistentPostRunE = ConsoleRunnerCmd(con, true)
+	return consoleCmd
+}
+
+func ConsoleRunnerCmd(con *repl.Console, run bool) (pre, post func(cmd *cobra.Command, args []string) error) {
+	var ln *grpc.ClientConn
+
+	pre = func(_ *cobra.Command, args []string) error {
+		if len(args) > 0 {
+			filename := args[0]
+			if !file.Exist(filename) {
+				con.Log.Warnf("not found file, maybe %s already move to config path", filename)
+				err := generic.LoginCmd(nil, con)
+				if err != nil {
+					return nil
+				}
+			} else {
+				err := repl.NewConfigLogin(con, filename)
+				if err != nil {
+					core.Log.Errorf("Error logging in: %s", err)
+					return nil
+				}
+			}
+
+		} else {
+			err := generic.LoginCmd(nil, con)
+			if err != nil {
+				return nil
+			}
 		}
 
-		for _, ext := range mext.ExtCommand {
-			extension.ExtensionRegisterCommand(ext, con)
-		}
+		return con.Start(BindClientsCommands, BindImplantCommands)
 	}
 
-	if con.ServerStatus == nil {
-		login.LoginCmd(&grumble.Context{}, con)
+	// Close the RPC connection once exiting
+	post = func(_ *cobra.Command, _ []string) error {
+		if ln != nil {
+			return ln.Close()
+		}
+
+		return nil
 	}
+
+	return pre, post
+}
+
+func BindClientsCommands(con *repl.Console) console.Commands {
+	clientCommands := func() *cobra.Command {
+		client := &cobra.Command{
+			Use:   "client",
+			Short: "client commands",
+			CompletionOptions: cobra.CompletionOptions{
+				HiddenDefaultCmd: true,
+			},
+		}
+
+		bind := makeBind(client, con)
+
+		bindCommonCommands(bind)
+
+		client.InitDefaultHelpCmd()
+		client.InitDefaultHelpFlag()
+		client.SetHelpCommandGroupID(consts.GenericGroup)
+		return client
+	}
+	return clientCommands
 }

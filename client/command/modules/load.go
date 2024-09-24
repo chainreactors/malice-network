@@ -1,36 +1,45 @@
 package modules
 
 import (
-	"github.com/chainreactors/grumble"
-	"github.com/chainreactors/malice-network/client/console"
+	"fmt"
+	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
-	"google.golang.org/protobuf/proto"
+	"github.com/chainreactors/malice-network/proto/services/clientrpc"
+	"github.com/spf13/cobra"
 	"os"
+	"path/filepath"
 )
 
-func loadModule(ctx *grumble.Context, con *console.Console) {
+func LoadModuleCmd(cmd *cobra.Command, con *repl.Console) {
+	path := cmd.Flags().Arg(0)
+	bundle, _ := cmd.Flags().GetString("bundle")
+	if bundle == "" {
+		bundle = filepath.Base(path)
+	}
 	session := con.GetInteractive()
-	if session == nil {
+	task, err := LoadModule(con.Rpc, session, bundle, path)
+	if err != nil {
+		con.Log.Errorf("LoadModule error: %v", err)
 		return
 	}
-	sid := con.GetInteractive().SessionId
-	bundle := ctx.Flags.String("name")
-	path := ctx.Args.String("path")
+
+	session.Console(task, fmt.Sprintf("load %s %s", bundle, path))
+}
+
+func LoadModule(rpc clientrpc.MaliceRPCClient, session *core.Session, bundle string, path string) (*clientpb.Task, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		console.Log.Errorf("Error reading file: %v", err)
-		return
+		return nil, err
 	}
-	loadTask, err := con.Rpc.LoadModule(con.ActiveTarget.Context(), &implantpb.LoadModule{
+	task, err := rpc.LoadModule(session.Context(), &implantpb.LoadModule{
 		Bundle: bundle,
 		Bin:    data,
 	})
+
 	if err != nil {
-		console.Log.Errorf("LoadModule error: %v", err)
-		return
+		return nil, err
 	}
-	con.AddCallback(loadTask.TaskId, func(msg proto.Message) {
-		//modules := msg.(*implantpb.Spite).GetModules()
-		con.SessionLog(sid).Infof("LoadModule: success")
-	})
+	return task, nil
 }

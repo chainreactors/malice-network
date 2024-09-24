@@ -107,7 +107,6 @@ func (c *connections) Get(sessionID string) *Connection {
 //	return nil
 //}
 
-// Add - Add a sliver to the hive (atomically)
 func (c *connections) Add(connect *Connection) *Connection {
 	c.connections.Store(connect.SessionID, connect)
 	//EventBroker.Publish(Event{

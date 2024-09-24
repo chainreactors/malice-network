@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/chainreactors/files"
 	"github.com/chainreactors/logs"
-	"github.com/gookit/config/v2"
 	"gopkg.in/yaml.v3"
 	"io"
 	insecureRand "math/rand"
@@ -30,33 +29,6 @@ var (
 	WebsitePath                 = path.Join(ServerRootPath, "web")
 )
 
-func InitConfig() error {
-	perm := os.FileMode(0700)
-	err := os.MkdirAll(ServerRootPath, perm)
-	if err != nil {
-		return err
-	}
-	os.MkdirAll(LogPath, perm)
-	os.MkdirAll(CertsPath, perm)
-	os.MkdirAll(TempPath, perm)
-	//os.MkdirAll(PluginPath, perm)
-	os.MkdirAll(AuditPath, perm)
-	os.MkdirAll(CachePath, perm)
-	os.MkdirAll(WebsitePath, perm)
-	os.MkdirAll(ListenerPath, perm)
-	return nil
-}
-
-func GetServerConfig() *ServerConfig {
-	s := &ServerConfig{}
-	err := config.MapStruct("server", s)
-	if err != nil {
-		logs.Log.Errorf("Failed to map server config %s", err)
-		return nil
-	}
-	return s
-}
-
 func NewFileLog(filename string) *logs.Logger {
 	logger := logs.NewLogger(logs.Info)
 	logger.SetFile(path.Join(LogPath, fmt.Sprintf("%s.log", filename)))
@@ -72,32 +44,19 @@ func NewDebugLog(filename string) *logs.Logger {
 	return logger
 }
 
-func GetConfig(key string) any {
-	return config.Get("server.config." + key)
-}
-
-func LoadConfig(filename string, v interface{}) error {
-	err := config.LoadFiles(filename)
-	if err != nil {
-		return err
-	}
-	err = config.Decode(v)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 type ServerConfig struct {
+	Enable       bool          `config:"enable" default:"true"`
 	GRPCPort     uint16        `config:"grpc_port" default:"5004"`
 	GRPCHost     string        `config:"grpc_host" default:"0.0.0.0"`
-	DaemonConfig *DaemonConfig `config:"daemon"`
-	LogConfig    *LogConfig    `config:"log" default:""`
-	MiscConfig   *MiscConfig   `config:"config" default:""`
+	IP           string        `config:"ip" default:""`
+	DaemonConfig bool          `config:"daemon" default:"false"`
+	LogConfig    *LogConfig    `config:"log"`
+	MiscConfig   *MiscConfig   `config:"config"`
+	NotifyConfig *NotifyConfig `config:"notify"`
 }
 
 func (c *ServerConfig) Address() string {
-	return fmt.Sprintf("%s:%d", c.GRPCHost, c.GRPCPort)
+	return fmt.Sprintf("%s:%d", c.IP, c.GRPCPort)
 }
 
 func (c *ServerConfig) Save() error {
@@ -123,22 +82,16 @@ func getRandomID() string {
 
 // LogConfig - Server logging config
 type LogConfig struct {
-	Level              int  `json:"level" default:"20"`
-	GRPCUnaryPayloads  bool `json:"grpc_unary_payloads"`
-	GRPCStreamPayloads bool `json:"grpc_stream_payloads"`
-	TLSKeyLogger       bool `json:"tls_key_logger"`
-}
-
-// DaemonConfig - Configure daemon mode
-type DaemonConfig struct {
-	Host string `json:"host" default:"0.0.0.0"`
-	Port int    `json:"port" default:"5001"`
+	Level int `json:"level" default:"20" config:"level"`
+	//GRPCUnaryPayloads  bool `json:"grpc_unary_payloads"`
+	//GRPCStreamPayloads bool `json:"grpc_stream_payloads"`
+	//TLSKeyLogger       bool `json:"tls_key_logger"`
 }
 
 type MiscConfig struct {
 	PacketLength int    `config:"packet_length" default:"4194304"`
-	Certificate  string `config:"certificate" default:""`
-	PrivateKey   string `config:"certificate_key" default:""`
+	Certificate  string `config:"cert" default:""`
+	PrivateKey   string `config:"key" default:""`
 }
 
 func LoadMiscConfig() ([]byte, []byte, error) {
@@ -154,4 +107,30 @@ func LoadMiscConfig() ([]byte, []byte, error) {
 	} else {
 		return nil, nil, ErrNoConfig
 	}
+}
+
+type NotifyConfig struct {
+	Enable   bool `config:"enable" default:"true"`
+	Telegram struct {
+		Enable bool   `config:"enable" default:"false"`
+		APIKey string `config:"api_key"`
+		ChatID int64  `config:"chat_id"`
+	} `config:"telegram"`
+	DingTalk struct {
+		Enable bool   `config:"enable" default:"false"`
+		Secret string `config:"secret"`
+		Token  string `config:"token"`
+	} `config:"dingtalk"`
+	Lark struct {
+		Enable     bool   `config:"enable" default:"false"`
+		WebHookUrl string `config:"webhook_url"`
+	} `config:"lark"`
+	ServerChan struct {
+		Enable       bool                `config:"enable" default:"false"`
+		URL          string              `config:"url"`
+		Method       string              `config:"method"`
+		Headers      map[string][]string `config:"headers"`
+		ContentType  string              `config:"content_type"`
+		BodyTemplate string              `config:"bodyTemplate"`
+	} `config:"serverchan"`
 }

@@ -1,28 +1,31 @@
 package sys
 
 import (
-	"github.com/chainreactors/grumble"
-	"github.com/chainreactors/malice-network/client/console"
+	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
-	"google.golang.org/protobuf/proto"
+	"github.com/chainreactors/malice-network/proto/services/clientrpc"
+	"github.com/spf13/cobra"
 )
 
-func WhoamiCmd(ctx *grumble.Context, con *console.Console) {
+func WhoamiCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
-	sid := con.GetInteractive().SessionId
-	if session == nil {
+	task, err := Whoami(con.Rpc, session)
+	if err != nil {
+		con.Log.Errorf("Whoami error: %v", err)
 		return
 	}
-	whoamiTask, err := con.Rpc.Whoami(con.ActiveTarget.Context(), &implantpb.Request{
+	session.Console(task, "")
+}
+
+func Whoami(rpc clientrpc.MaliceRPCClient, session *core.Session) (*clientpb.Task, error) {
+	task, err := rpc.Whoami(session.Context(), &implantpb.Request{
 		Name: consts.ModuleWhoami,
 	})
 	if err != nil {
-		console.Log.Errorf("Whoami error: %v", err)
-		return
+		return nil, err
 	}
-	con.AddCallback(whoamiTask.TaskId, func(msg proto.Message) {
-		resp := msg.(*implantpb.Spite).GetResponse()
-		con.SessionLog(sid).Consolef("Username: %v\n", resp.GetOutput())
-	})
+	return task, err
 }
