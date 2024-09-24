@@ -16,6 +16,10 @@ func LoginCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
+	if len(files) == 0 {
+		con.Log.Error("No auth config found, maybe use `iom [authfile.auth]` auto import")
+		return nil
+	}
 	// Create a model for the interactive list
 	m := tui.NewSelect(files)
 	m.Title = "Select User: "
