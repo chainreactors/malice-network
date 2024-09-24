@@ -20,7 +20,7 @@ https://chainreactors.github.io/wiki/IoM/roadmap/
 <details>
   <summary>- Completion </summary>
  <dd><em>Classic mode & incremental search mode</em></dd>
-<img src="https://github.com/reeflective/readline/blob/assets/completion.gif"/>
+<img src="https://github.com/chainreactors/wiki/blob/master/docs/IoM/assets/completion.gif"/>
  <dd><em>Suffix-autoremoval </em></dd>
 <img src="https://github.com/reeflective/readline/blob/assets/suffix-autoremoval.gif"/>
 </details>
