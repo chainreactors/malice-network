@@ -83,6 +83,7 @@ func makeCompleters(cmd *cobra.Command, con *repl.Console) {
 func BindImplantCommands(con *repl.Console) console.Commands {
 	implantCommands := func() *cobra.Command {
 		implant := &cobra.Command{
+			Use:   "implant",
 			Short: "implant commands",
 			CompletionOptions: cobra.CompletionOptions{
 				HiddenDefaultCmd: true,
