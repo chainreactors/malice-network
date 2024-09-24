@@ -83,18 +83,22 @@ func Execute() {
 		return
 	}
 
-	err = core.EventBroker.InitService(opt.Server.NotifyConfig)
-	if err != nil {
-		logs.Log.Errorf("cannot init notifier , %s ", err.Error())
-		return
-	}
-
-	if opt.IP != "" {
-		logs.Log.Infof("manually specified IP: %s will override %s config: %s", opt.IP, opt.Config, opt.Server.IP)
-		opt.Server.IP = opt.IP
-	}
-
 	if opt.Server.Enable {
+		if opt.IP != "" {
+			logs.Log.Infof("manually specified IP: %s will override %s config: %s", opt.IP, opt.Config, opt.Server.IP)
+			opt.Server.IP = opt.IP
+		}
+
+		if opt.Server.IP == "" {
+			logs.Log.Errorf("IP address not set, please set config.yaml `ip: [server_ip]` or `./malice_network -i [server_ip]`")
+			return
+		}
+
+		err = core.EventBroker.InitService(opt.Server.NotifyConfig)
+		if err != nil {
+			logs.Log.Errorf("cannot init notifier , %s ", err.Error())
+			return
+		}
 		err = certutils.GenerateRootCert()
 		if err != nil {
 			logs.Log.Errorf("cannot init root ca , %s ", err.Error())

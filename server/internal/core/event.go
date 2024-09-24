@@ -127,7 +127,7 @@ type Notifier struct {
 }
 
 func (broker *eventBroker) InitService(config *configs.NotifyConfig) error {
-	if !config.Enable {
+	if config == nil || !config.Enable {
 		return nil
 	}
 	broker.notifier.enable = true
