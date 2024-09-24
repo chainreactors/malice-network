@@ -51,18 +51,19 @@ func ConsoleRunnerCmd(con *repl.Console, run bool) (pre, post func(cmd *cobra.Co
 		if len(args) > 0 {
 			filename := args[0]
 			if !file.Exist(filename) {
-				con.Log.Warnf("maybe %s already move to config path", filename)
+				con.Log.Warnf("not found file, maybe %s already move to config path", filename)
 				err := generic.LoginCmd(nil, con)
 				if err != nil {
 					return nil
 				}
+			} else {
+				err := repl.NewConfigLogin(con, filename)
+				if err != nil {
+					core.Log.Errorf("Error logging in: %s", err)
+					return nil
+				}
 			}
 
-			err := repl.NewConfigLogin(con, filename)
-			if err != nil {
-				core.Log.Errorf("Error logging in: %s", err)
-				return nil
-			}
 		} else {
 			err := generic.LoginCmd(nil, con)
 			if err != nil {
