@@ -3,6 +3,7 @@ package repl
 import (
 	"errors"
 	"fmt"
+	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/client/core/plugin"
@@ -11,6 +12,7 @@ import (
 	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
 	lua "github.com/yuin/gopher-lua"
+	"path/filepath"
 	"strings"
 )
 
@@ -93,6 +95,10 @@ type Plugin struct {
 
 func (plug *Plugin) registerBuiltin(con *Console) error {
 	// 获取当前session
+	plug.LuaVM.SetGlobal("plugin_dir", lua.LString(filepath.Join(assets.GetMalsDir(), plug.Name)))
+	plug.LuaVM.SetGlobal("plugin_resource_dir", lua.LString(filepath.Join(assets.GetMalsDir(), plug.Name, "resources")))
+	plug.LuaVM.SetGlobal("plugin_name", lua.LString(plug.Name))
+
 	plug.registerLuaFunction("active", func() (*core.Session, error) {
 		return con.GetInteractive(), nil
 	})
