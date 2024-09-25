@@ -11,7 +11,7 @@ func ExecuteFlagSet(f *pflag.FlagSet) {
 	f.StringP("process", "n", `C:\\Windows\\System32\\notepad.exe`, "custom process path")
 	f.BoolP("quit", "q", false, "disable output")
 	f.Uint32P("timeout", "t", 60, "timeout, in seconds")
-	f.String("arch", "", "architecture amd64,x86")
+	f.String("arch", "", "architecture x64,x86")
 }
 
 func ParseBinaryFlags(cmd *cobra.Command) (string, []string, bool, uint32) {
