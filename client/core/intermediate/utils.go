@@ -22,7 +22,7 @@ func GetResourceFile(pluginName, filename string) (string, error) {
 }
 
 func FindResourceFile(pluginName, filename, arch, ext string) (string, error) {
-	return GetResourceFile(pluginName, fmt.Sprintf("%s.%s.%s", filename, arch, ext))
+	return GetResourceFile(pluginName, fmt.Sprintf("%s.%s.%s", filename, FormatArch(arch), ext))
 }
 
 func ReadResourceFile(pluginName, filename string) (string, error) {
@@ -57,7 +57,7 @@ func NewBinary(module string, path string, args []string, output bool, timeout u
 		Args:        args,
 		Output:      output,
 		Timeout:     timeout,
-		Arch:        consts.ArchMap[arch],
+		Arch:        MapArch(arch),
 		ProcessName: process,
 		Sacrifice:   sac,
 	}, nil
@@ -76,7 +76,7 @@ func NewExecutable(module string, path string, args []string, arch string, sac *
 		Args:        args,
 		Output:      true,
 		Timeout:     math.MaxUint32,
-		Arch:        consts.ArchMap[arch],
+		Arch:        MapArch(arch),
 		ProcessName: process,
 		Sacrifice:   sac,
 	}, nil
@@ -132,5 +132,22 @@ func ParseStatus(spite *implantpb.Spite) (bool, error) {
 		return true, nil
 	} else {
 		return false, handler.HandleMaleficError(spite)
+	}
+}
+
+func FormatArch(arch string) string {
+	if v, found := consts.ArchAlias[arch]; found {
+		return v
+	} else {
+		return arch
+	}
+}
+
+func MapArch(arch string) implantpb.Arch {
+	arch = FormatArch(arch)
+	if v, found := consts.ArchMap[arch]; found {
+		return v
+	} else {
+		return 0
 	}
 }

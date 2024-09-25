@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
@@ -132,7 +133,7 @@ func (s *Session) Update(req *lispb.RegisterSession) {
 func (s *Session) UpdateSysInfo(info *implantpb.SysInfo) {
 	info.Os.Name = strings.ToLower(info.Os.Name)
 	if info.Os.Name == "windows" {
-		info.Os.Arch = consts.FormatWindowsArch(info.Os.Arch)
+		info.Os.Arch = intermediate.FormatArch(info.Os.Arch)
 	}
 	s.Filepath = info.Filepath
 	s.WordDir = info.Workdir
