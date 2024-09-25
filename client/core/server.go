@@ -346,5 +346,8 @@ func (s *ServerStatus) handlerSession(event *clientpb.Event) {
 	case consts.CtrlSessionError:
 		log := s.ObserverLog(event.Task.SessionId)
 		log.Errorf(logs.GreenBold(fmt.Sprintf("[%s] task: %d error: %s\n", event.Task.SessionId, event.Task.TaskId, event.Err)))
+	case consts.CtrlSessionLog:
+		log := s.ObserverLog(event.Task.SessionId)
+		log.Errorf("[%s] log: \n%s\n", event.Task.SessionId, event.Message)
 	}
 }

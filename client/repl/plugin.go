@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/core/intermediate"
-	"github.com/chainreactors/malice-network/client/core/intermediate/builtin"
 	"github.com/chainreactors/malice-network/client/core/plugin"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
 	lua "github.com/yuin/gopher-lua"
@@ -91,24 +91,51 @@ type Plugin struct {
 	CMDs  []*cobra.Command
 }
 
+func (plug *Plugin) registerBuiltin(con *Console) error {
+	// 获取当前session
+	plug.registerLuaFunction("active", func() (*core.Session, error) {
+		return con.GetInteractive(), nil
+	})
+
+	plug.registerLuaFunction("blog", func(sess *core.Session, message string) (bool, error) {
+		_, err := con.Rpc.SessionEvent(sess.Context(), &clientpb.Event{
+			Type:    consts.EventSession,
+			Op:      consts.CtrlSessionConsole,
+			Session: sess.Session,
+			Client:  con.Client,
+			Message: message,
+		})
+		if err != nil {
+			return false, err
+		}
+		return true, nil
+	})
+
+	// 读取resource文件
+	plug.registerLuaFunction("script_resource", func(filename string) (string, error) {
+		return intermediate.GetResourceFile(plug.Name, filename)
+	})
+
+	plug.registerLuaFunction("find_resource", func(base string, ext string) (string, error) {
+		return intermediate.FindResourceFile(plug.Name, base, con.GetInteractive().Os.Arch, ext)
+	})
+
+	// 读取资源文件内容
+	plug.registerLuaFunction("read_resource", func(filename string) (string, error) {
+		return intermediate.ReadResourceFile(plug.Name, filename)
+	})
+	return nil
+}
+
 func (plug *Plugin) InitLua(con *Console) error {
 	vm := plugin.NewLuaVM()
 	plug.LuaVM = vm
 	cmd := con.ImplantMenu()
 
-	plug.registerLuaFunction("active", func() (*core.Session, error) {
-		return con.GetInteractive(), nil
-	})
-
-	//// 获取资源文件名
-	plug.registerLuaFunction("script_resource", func(filename string) (string, error) {
-		return builtin.GetResourceFile(plug.Name, filename)
-	})
-
-	// 读取资源文件内容
-	plug.registerLuaFunction("read_resource", func(filename string) (string, error) {
-		return builtin.ReadResourceFile(plug.Name, filename)
-	})
+	err := plug.registerBuiltin(con)
+	if err != nil {
+		return err
+	}
 
 	for name, fn := range intermediate.InternalFunctions {
 		//fmt.Printf("Registering internal function: %s %v\n", name, fn.ArgTypes)

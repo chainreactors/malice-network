@@ -73,7 +73,7 @@ func (c *Console) NewConsole() {
 }
 
 func (c *Console) Start(bindCmds ...BindCmds) error {
-	intermediate.Register(c.Rpc)
+	intermediate.RegisterBuiltin(c.Rpc)
 	//c.App.Menu(consts.ClientMenu).SetCommands(bindCmds[0](c))
 	//c.App.Menu(consts.ImplantMenu).SetCommands(bindCmds[1](c))
 	c.App.Menu(consts.ClientMenu).Command = bindCmds[0](c)()
