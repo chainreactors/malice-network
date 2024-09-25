@@ -142,6 +142,7 @@ func Execute() {
 		logs.Log.Importantf("listener config enabled, Starting listeners")
 		err := StartListener(opt.Listeners)
 		if err != nil {
+			logs.Log.Errorf(err.Error())
 			return
 		}
 	}
