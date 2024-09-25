@@ -109,48 +109,51 @@ func (b *IoMBOFArgsBuffer) GetArgs() []string {
 	return b.Args
 }
 
+func PackArg(format byte, arg string) (string, error) {
+	switch format {
+	case 'b':
+		return PackBinary(arg), nil
+	case 'i':
+		return PackIntString(arg)
+	case 's':
+		return PackShortString(arg)
+	case 'z':
+		var packedData string
+		// Handler for packing empty strings
+		if len(arg) == 0 {
+			packedData = PackString("")
+		} else {
+			packedData = PackString(arg)
+		}
+		return packedData, nil
+	case 'Z':
+		var packedData string
+		if len(arg) == 0 {
+			packedData = PackWideString("")
+		} else {
+			packedData = PackWideString(arg[1:])
+		}
+		return packedData, nil
+	default:
+		return "", fmt.Errorf("Data must be prefixed with 'b', 'i', 's','z', or 'Z'\n")
+	}
+}
 func PackArgs(data []string) ([]string, error) {
 	if len(data) == 0 {
 		return nil, nil
 	}
 
 	var args []string
+	var err error
 	for _, arg := range data {
-		switch arg[0] {
-		case 'b':
-			args = append(args, PackBinary(arg[1:]))
-		case 'i':
-			data, err := PackIntString(arg[1:])
-			if err != nil {
-				return nil, fmt.Errorf("Int packing error:\n INPUT: '%s'\n ERROR:%s\n", arg[1:], err)
-			}
-			args = append(args, data)
-		case 's':
-			data, err := PackShortString(arg[1:])
-			if err != nil {
-				return nil, fmt.Errorf("Short packing error:\n INPUT: '%s'\n ERROR:%s\n", arg[1:], err)
-			}
-			args = append(args, data)
-		case 'z':
-			var packedData string
-			// Handler for packing empty strings
-			if len(arg) < 2 {
-				packedData = PackString("")
-			} else {
-				packedData = PackString(arg[1:])
-			}
-			args = append(args, packedData)
-		case 'Z':
-			var packedData string
-			if len(arg) < 2 {
-				packedData = PackWideString("")
-			} else {
-				packedData = PackWideString(arg[1:])
-			}
-			args = append(args, packedData)
-		default:
-			return nil, fmt.Errorf("Data must be prefixed with 'b', 'i', 's','z', or 'Z'\n")
+		if len(arg) < 2 {
+			return nil, fmt.Errorf("'%' have not enough arguments", args)
 		}
+		arg, err = PackArg(arg[0], arg[1:])
+		if err != nil {
+			return nil, err
+		}
+		args = append(args, arg)
 	}
 	return args, nil
 }

@@ -63,7 +63,15 @@ func RegisterCustomBuiltin(rpc clientrpc.MaliceRPCClient) {
 	})
 
 	// bof 参数格式化
-	// script_resource("dir.x64.o"), pack_bof_args("ZZ", {"aa", "bb"})
+	// single arg, pack_bof("Z", "aa")
+	RegisterFunction("pack_bof", func(format string, arg string) (string, error) {
+		if len(format) != 1 {
+			return "", fmt.Errorf("format length must be 1")
+		}
+		return pe.PackArg(format[0], arg)
+	})
+
+	// args, pack_bof_args("ZZ", {"aa", "bb"})
 	RegisterFunction("pack_bof_args", func(format string, args []string) ([]string, error) {
 		if len(format) != len(args) {
 			return nil, fmt.Errorf("format and args length mismatch")
