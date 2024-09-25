@@ -2,7 +2,7 @@ package common
 
 import (
 	"fmt"
-	"github.com/chainreactors/malice-network/client/core/intermediate/builtin"
+	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/implant/implantpb"
@@ -10,11 +10,11 @@ import (
 )
 
 func ParseAssembly(ctx *clientpb.TaskContext) (interface{}, error) {
-	return builtin.ParseAssembly(ctx.Spite)
+	return intermediate.ParseAssembly(ctx.Spite)
 }
 
 func NewExecutable(module string, path string, args []string, arch string, output bool, sac *implantpb.SacrificeProcess) (*implantpb.ExecuteBinary, error) {
-	binary, err := builtin.NewBinary(module, path, args, output, math.MaxUint32, arch, "", sac)
+	binary, err := intermediate.NewBinary(module, path, args, output, math.MaxUint32, arch, "", sac)
 	if err != nil {
 		return nil, err
 	}
@@ -27,11 +27,11 @@ func NewBinary(module string, path string, args []string, output bool, timeout u
 		module = name
 	}
 
-	return builtin.NewBinary(module, path, args, output, timeout, arch, process, sac)
+	return intermediate.NewBinary(module, path, args, output, timeout, arch, process, sac)
 }
 
 func ParseStatus(ctx *clientpb.TaskContext) (interface{}, error) {
-	return builtin.ParseStatus(ctx.Spite)
+	return intermediate.ParseStatus(ctx.Spite)
 }
 
 func ParseResponse(ctx *clientpb.TaskContext) (interface{}, error) {

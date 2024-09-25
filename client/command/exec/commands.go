@@ -3,7 +3,7 @@ package exec
 import (
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/core/intermediate/builtin"
+	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
@@ -456,7 +456,7 @@ func Register(con *repl.Console) {
 		ExecShellcode,
 		"bshinject",
 		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, ppid int, arch, path string) (*clientpb.Task, error) {
-			sac, _ := builtin.NewSacrificeProcessMessage(int64(ppid), false, true, true, "")
+			sac, _ := intermediate.NewSacrificeProcessMessage(int64(ppid), false, true, true, "")
 			return ExecShellcode(rpc, sess, path, nil, true, math.MaxUint32, sess.Os.Arch, "", sac)
 		},
 		common.ParseAssembly,
@@ -477,7 +477,7 @@ func Register(con *repl.Console) {
 		ExecDLL,
 		"bdllinject",
 		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, ppid int, path string) (*clientpb.Task, error) {
-			sac, _ := builtin.NewSacrificeProcessMessage(int64(ppid), false, true, true, "")
+			sac, _ := intermediate.NewSacrificeProcessMessage(int64(ppid), false, true, true, "")
 			return ExecDLL(rpc, sess, path, "DLLMain", nil, true, math.MaxUint32, sess.Os.Arch, "", sac)
 		},
 		common.ParseAssembly,

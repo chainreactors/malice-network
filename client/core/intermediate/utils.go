@@ -1,4 +1,4 @@
-package builtin
+package intermediate
 
 import (
 	"context"
@@ -19,6 +19,10 @@ import (
 func GetResourceFile(pluginName, filename string) (string, error) {
 	resourcePath := filepath.Join(assets.GetMalsDir(), pluginName, "resources", filename)
 	return resourcePath, nil
+}
+
+func FindResourceFile(pluginName, filename, arch, ext string) (string, error) {
+	return GetResourceFile(pluginName, fmt.Sprintf("%s.%s.%s", filename, arch, ext))
 }
 
 func ReadResourceFile(pluginName, filename string) (string, error) {
