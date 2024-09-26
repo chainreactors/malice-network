@@ -3,16 +3,12 @@ package repl
 import (
 	"errors"
 	"fmt"
-	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/client/core/plugin"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
 	lua "github.com/yuin/gopher-lua"
-	"path/filepath"
 	"strings"
 )
 
@@ -93,52 +89,12 @@ type Plugin struct {
 	CMDs  []*cobra.Command
 }
 
-func (plug *Plugin) registerBuiltin(con *Console) error {
-	// 获取当前session
-	plug.LuaVM.SetGlobal("plugin_dir", lua.LString(filepath.Join(assets.GetMalsDir(), plug.Name)))
-	plug.LuaVM.SetGlobal("plugin_resource_dir", lua.LString(filepath.Join(assets.GetMalsDir(), plug.Name, "resources")))
-	plug.LuaVM.SetGlobal("plugin_name", lua.LString(plug.Name))
-
-	plug.registerLuaFunction("active", func() (*core.Session, error) {
-		return con.GetInteractive(), nil
-	})
-
-	plug.registerLuaFunction("blog", func(sess *core.Session, message string) (bool, error) {
-		_, err := con.Rpc.SessionEvent(sess.Context(), &clientpb.Event{
-			Type:    consts.EventSession,
-			Op:      consts.CtrlSessionConsole,
-			Session: sess.Session,
-			Client:  con.Client,
-			Message: message,
-		})
-		if err != nil {
-			return false, err
-		}
-		return true, nil
-	})
-
-	// 读取resource文件
-	plug.registerLuaFunction("script_resource", func(filename string) (string, error) {
-		return intermediate.GetResourceFile(plug.Name, filename)
-	})
-
-	plug.registerLuaFunction("find_resource", func(base string, ext string) (string, error) {
-		return intermediate.FindResourceFile(plug.Name, base, con.GetInteractive().Os.Arch, ext)
-	})
-
-	// 读取资源文件内容
-	plug.registerLuaFunction("read_resource", func(filename string) (string, error) {
-		return intermediate.ReadResourceFile(plug.Name, filename)
-	})
-	return nil
-}
-
 func (plug *Plugin) InitLua(con *Console) error {
 	vm := plugin.NewLuaVM()
 	plug.LuaVM = vm
 	cmd := con.ImplantMenu()
 
-	err := plug.registerBuiltin(con)
+	err := plug.RegisterLuaBuiltin(vm)
 	if err != nil {
 		return err
 	}

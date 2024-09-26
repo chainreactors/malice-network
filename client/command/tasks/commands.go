@@ -46,7 +46,7 @@ cancel_task <task_id>
 func Register(con *repl.Console) {
 	con.RegisterImplantFunc(
 		consts.ModuleCancelTask,
-		CancelTaskCmd,
+		CancelTask,
 		"",
 		nil,
 		common.ParseStatus,
