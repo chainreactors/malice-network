@@ -20,8 +20,8 @@ func WrapFuncForLua(fn *InternalFunc) lua.LGFunction {
 		// 调用 Go 函数
 		result, err := fn.Func(args...)
 		if err != nil {
-			L.Push(lua.LString(fmt.Sprintf("Error: %v", err)))
-			return 1
+			L.Error(lua.LString(fmt.Sprintf("Error: %v", err)), 1)
+			return 0
 		}
 
 		// 将结果推回 Lua

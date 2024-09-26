@@ -3,6 +3,7 @@ package repl
 import (
 	"errors"
 	"fmt"
+	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/client/core/plugin"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -178,7 +179,8 @@ func (plug *Plugin) InitLua(con *Console) error {
 						default:
 							val, err := cmd.Flags().GetString(paramName)
 							if err != nil {
-								return fmt.Errorf("error getting flag %s: %w", paramName, err)
+								logs.Log.Errorf("error getting flag %s: %s", paramName, err.Error())
+								return err
 							}
 							vm.Push(lua.LString(val))
 						}
@@ -186,7 +188,7 @@ func (plug *Plugin) InitLua(con *Console) error {
 
 					go func() {
 						if err := vm.PCall(len(paramNames), lua.MultRet, nil); err != nil {
-							con.Log.Errorf("error calling Lua function %s: %s", funcName, err.Error())
+							con.Log.Errorf("error calling Lua function %s:\n%s", funcName, err.Error())
 							return
 						}
 
