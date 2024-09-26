@@ -236,13 +236,23 @@ func exitImplantMenu(c *console.Console) {
 	root.Execute()
 }
 
-func CmdExists(name string, cmd *cobra.Command) bool {
+func CmdExist(cmd *cobra.Command, name string) bool {
 	for _, c := range cmd.Commands() {
 		if name == c.Name() {
 			return true
 		}
 	}
 	return false
+}
+
+func GetCmd(cmd *cobra.Command, name string) *cobra.Command {
+	for _, c := range cmd.Commands() {
+		if name == c.Name() {
+			return c
+		}
+	}
+	return nil
+
 }
 
 func Login(con *Console, config *mtls.ClientConfig) error {

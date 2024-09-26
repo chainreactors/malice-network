@@ -37,7 +37,7 @@ func LoadAddonCmd(cmd *cobra.Command, con *repl.Console) {
 
 	session := con.GetInteractive()
 
-	if repl.CmdExists(name, con.ImplantMenu()) {
+	if repl.CmdExist(con.ImplantMenu(), name) {
 		con.Log.Warnf("%s alread exist, please use -n/--name to specify a ne"+
 			"w name", name)
 		return

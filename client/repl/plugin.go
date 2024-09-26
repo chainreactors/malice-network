@@ -6,7 +6,6 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/client/core/plugin"
-	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
 	lua "github.com/yuin/gopher-lua"
@@ -93,8 +92,10 @@ type Plugin struct {
 func (plug *Plugin) InitLua(con *Console) error {
 	vm := plugin.NewLuaVM()
 	plug.LuaVM = vm
-	cmd := con.ImplantMenu()
-
+	plugCmd := &cobra.Command{
+		Use:   plug.Name,
+		Short: fmt.Sprintf("%s cmds", plug.Name),
+	}
 	err := plug.RegisterLuaBuiltin(vm)
 	if err != nil {
 		return err
@@ -149,13 +150,29 @@ func (plug *Plugin) InitLua(con *Console) error {
 		funcName := key.String()
 
 		if fn, ok := value.(*lua.LFunction); ok {
+			cmd := plugCmd
 			if !strings.HasPrefix(funcName, "command_") {
 				return
 			}
-			cmdName := strings.TrimPrefix(funcName, "command_")
-			if CmdExists(cmdName, cmd) {
-				con.Log.Warnf("%s already exists, skipped\n", funcName)
-				return
+			var cmdName string
+			cmdNames := strings.Split(funcName[8:], "__")
+			if len(cmdNames) == 1 {
+				cmdName = cmdNames[0]
+			} else {
+				for i := 0; i < len(cmdNames)-1; i++ {
+					subName := cmdNames[i]
+					if c := GetCmd(cmd, subName); c != nil {
+						cmd = c
+					} else {
+						subCmd := &cobra.Command{
+							Use:   subName,
+							Short: fmt.Sprintf("%s group", subName),
+						}
+						cmd.AddCommand(subCmd)
+						cmd = subCmd
+					}
+				}
+				cmdName = cmdNames[len(cmdNames)-1]
 			}
 
 			var paramNames []string
@@ -203,7 +220,6 @@ func (plug *Plugin) InitLua(con *Console) error {
 
 					return nil
 				},
-				GroupID: consts.MalGroup,
 			}
 
 			for _, paramName := range paramNames {
@@ -212,11 +228,11 @@ func (plug *Plugin) InitLua(con *Console) error {
 				}
 				malCmd.Flags().String(paramName, "", fmt.Sprintf("parameter %s for %s", paramName, funcName))
 			}
-
-			plug.CMDs = append(plug.CMDs, malCmd)
+			cmd.AddCommand(malCmd)
 			con.Log.Debugf("Registered Command: %s\n", funcName)
 		}
 	})
+	plug.CMDs = plugCmd.Commands()
 	return nil
 }
 

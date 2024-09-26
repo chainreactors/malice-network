@@ -147,7 +147,7 @@ func LoadAlias(manifestPath string, con *repl.Console) (*AliasManifest, error) {
 	// for each alias command, add a new app command
 	//implantMenu := con.App.Menu(consts.ImplantGroup)
 	// do not add if the command already exists
-	//if console.CmdExists(aliasManifest.CommandName, implantMenu.Command) {
+	//if console.CmdExist(aliasManifest.CommandName, implantMenu.Command) {
 	//	return nil, fmt.Errorf("'%s' command already exists", aliasManifest.CommandName)
 	//}
 

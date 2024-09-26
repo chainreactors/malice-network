@@ -134,7 +134,7 @@ func ExtensionLoadCmd(cmd *cobra.Command, con *repl.Console) {
 	}
 	// do not add if the command already exists
 	for _, extCmd := range manifest.ExtCommand {
-		if repl.CmdExists(extCmd.CommandName, con.ImplantMenu()) {
+		if repl.CmdExist(con.ImplantMenu(), extCmd.CommandName) {
 			con.Log.Errorf("%s command already exists\n", extCmd.CommandName)
 			confirmModel := tui.NewConfirm(fmt.Sprintf("%s command already exists. Overwrite?", extCmd.CommandName))
 			newConfirm := tui.NewModel(confirmModel, nil, false, true)
