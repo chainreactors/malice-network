@@ -317,7 +317,6 @@ func (s *ServerStatus) EventHandler() {
 			tui.Down(0)
 			Log.Importantf("[%s] %s: %s %s", event.Type, event.Op, event.Message, event.Err)
 		}
-		//con.triggerReactions(event)
 	}
 }
 
