@@ -2,6 +2,9 @@ package plugin
 
 import (
 	"github.com/chainreactors/malice-network/client/assets"
+	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/malice-network/client/core/intermediate"
+	lua "github.com/yuin/gopher-lua"
 	"os"
 	"path/filepath"
 )
@@ -35,4 +38,30 @@ type Plugin struct {
 	Enable  bool
 	Content []byte
 	Path    string
+}
+
+func (plug *Plugin) RegisterLuaBuiltin(vm *lua.LState) error {
+	vm.SetGlobal("plugin_dir", lua.LString(filepath.Join(assets.GetMalsDir(), plug.Name)))
+	vm.SetGlobal("plugin_resource_dir", lua.LString(filepath.Join(assets.GetMalsDir(), plug.Name, "resources")))
+	vm.SetGlobal("plugin_name", lua.LString(plug.Name))
+
+	// 读取resource文件
+	plug.registerLuaFunction(vm, "script_resource", func(filename string) (string, error) {
+		return intermediate.GetResourceFile(plug.Name, filename)
+	})
+
+	plug.registerLuaFunction(vm, "find_resource", func(sess *core.Session, base string, ext string) (string, error) {
+		return intermediate.FindResourceFile(plug.Name, base, sess.Os.Arch, ext)
+	})
+
+	// 读取资源文件内容
+	plug.registerLuaFunction(vm, "read_resource", func(filename string) (string, error) {
+		return intermediate.ReadResourceFile(plug.Name, filename)
+	})
+	return nil
+}
+
+func (plug *Plugin) registerLuaFunction(vm *lua.LState, name string, fn interface{}) {
+	wrappedFunc := intermediate.WrapInternalFunc(fn)
+	vm.SetGlobal(name, vm.NewFunction(intermediate.WrapFuncForLua(wrappedFunc)))
 }

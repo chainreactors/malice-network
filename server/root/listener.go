@@ -31,13 +31,13 @@ func (ln *ListenerCommand) Execute(rpc clientrpc.RootRPCClient, msg *rootpb.Oper
 		if err != nil {
 			return nil, err
 		}
-		configDir, _ := os.Getwd()
+		wd, _ := os.Getwd()
 		var conf *mtls.ClientConfig
 		err = yaml.Unmarshal([]byte(resp.Response), &conf)
 		if err != nil {
 			return nil, fmt.Errorf("failed to unmarshal listener auth: %w", err)
 		}
-		yamlPath := filepath.Join(configDir, fmt.Sprintf("%s.auth", msg.Args[0]))
+		yamlPath := filepath.Join(wd, fmt.Sprintf("%s.auth", msg.Args[0]))
 		err = os.WriteFile(yamlPath, []byte(resp.Response), 0644)
 		if err != nil {
 			return nil, err

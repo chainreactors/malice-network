@@ -103,7 +103,12 @@ func BindClientsCommands(con *repl.Console) console.Commands {
 		client.InitDefaultHelpCmd()
 		client.InitDefaultHelpFlag()
 		client.SetHelpCommandGroupID(consts.GenericGroup)
+		RegisterClientFunc(con)
 		return client
 	}
 	return clientCommands
+}
+
+func RegisterClientFunc(con *repl.Console) {
+	generic.Register(con)
 }

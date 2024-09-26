@@ -1,4 +1,5 @@
 .idea/
 bin/
+dist/
 go.sum
 /external
