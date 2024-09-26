@@ -136,14 +136,13 @@ func WrapImplantFunc(con *Console, fun interface{}, callback ImplantPluginCallba
 		if err != nil {
 			return nil, err
 		}
-
+		sess.Console(task, fmt.Sprintf("args %v", args))
 		content, err := con.Rpc.WaitTaskFinish(context.Background(), task)
 		if err != nil {
 			return nil, err
 		}
 
 		tui.Down(0)
-		con.Log.Importantf(logs.GreenBold(fmt.Sprintf("session: %s task: %d index: %d\n", task.SessionId, task.TaskId, task.Cur)))
 		err = handler.HandleMaleficError(content.Spite)
 		if err != nil {
 			con.Log.Errorf(err.Error())

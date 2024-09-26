@@ -191,11 +191,11 @@ func (plug *Plugin) InitLua(con *Console) error {
 						}
 
 						resultCount := vm.GetTop()
-						for i := 1; i <= resultCount; i++ {
-							// 从栈顶依次弹出返回值
-							result := vm.Get(-resultCount + i - 1)
-							con.Log.Consolef("%v\n", result)
-						}
+						//for i := 1; i <= resultCount; i++ {
+						//	// 从栈顶依次弹出返回值
+						//	result := vm.Get(-resultCount + i - 1)
+						//	con.Log.Consolef("%v\n", result)
+						//}
 						vm.Pop(resultCount)
 					}()
 

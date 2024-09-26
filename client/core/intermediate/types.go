@@ -3,12 +3,15 @@ package intermediate
 import (
 	"fmt"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
+	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 )
 
 type InternalFunc struct {
 	Name           string
+	RawName        string
 	Raw            interface{}
 	Func           func(...interface{}) (interface{}, error)
 	FinishCallback ImplantCallback // implant callback
@@ -75,6 +78,7 @@ func GetInternalFuncSignature(fn interface{}) *InternalFunc {
 	}
 	return &InternalFunc{
 		Raw:         fn,
+		RawName:     filepath.Base(runtime.FuncForPC(reflect.ValueOf(fn).Pointer()).Name()),
 		ArgTypes:    argTypes,
 		ReturnTypes: returnTypes,
 	}
