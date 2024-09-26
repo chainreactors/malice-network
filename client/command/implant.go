@@ -155,6 +155,7 @@ func BindImplantCommands(con *repl.Console) console.Commands {
 				continue
 			}
 			for _, cmd := range plug.CMDs {
+				cmd.GroupID = consts.MalGroup
 				implant.AddCommand(cmd)
 				logs.Log.Debugf("add command: %s", cmd.Name())
 			}
