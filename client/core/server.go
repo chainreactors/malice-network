@@ -344,7 +344,7 @@ func (s *ServerStatus) handlerSession(event *clientpb.Event) {
 	case consts.CtrlSessionRegister:
 		s.AddSession(event.Session)
 		Log.Importantf("register session: %s ", event.Message)
-	case consts.CtrlSessionConsole:
+	case consts.CtrlSessionTask:
 		log := s.ObserverLog(sid)
 		log.Importantf(logs.GreenBold(fmt.Sprintf("[%s.%d] run task %s: %s", sid, event.Task.TaskId, event.Task.Type, event.Message)))
 	case consts.CtrlSessionError:

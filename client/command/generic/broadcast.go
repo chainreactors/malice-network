@@ -16,7 +16,7 @@ func BroadcastCmd(cmd *cobra.Command, con *repl.Console) {
 		_, err = Notify(con, &clientpb.Event{
 			Type:    consts.EventNotify,
 			Client:  con.Client,
-			Message: strings.Join(msg, " "),
+			Message: []byte(strings.Join(msg, " ")),
 		})
 		if err != nil {
 			con.Log.Errorf("notify error: %s", err)
@@ -26,7 +26,7 @@ func BroadcastCmd(cmd *cobra.Command, con *repl.Console) {
 		_, err = Broadcast(con, &clientpb.Event{
 			Type:    consts.EventBroadcast,
 			Client:  con.Client,
-			Message: strings.Join(msg, " "),
+			Message: []byte(strings.Join(msg, " ")),
 		})
 		if err != nil {
 			con.Log.Errorf("broadcast error: %s", err)

@@ -43,11 +43,11 @@ func (s *Session) Context() context.Context {
 func (s *Session) Console(task *clientpb.Task, msg string) {
 	_, err := s.Server.Rpc.SessionEvent(s.Context(), &clientpb.Event{
 		Type:    consts.EventSession,
-		Op:      consts.CtrlSessionConsole,
+		Op:      consts.CtrlSessionTask,
 		Task:    task,
 		Session: s.Session,
 		Client:  s.Server.Client,
-		Message: msg,
+		Message: []byte(msg),
 	})
 	if err != nil {
 		Log.Errorf(err.Error())
