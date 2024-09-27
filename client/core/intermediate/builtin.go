@@ -137,6 +137,11 @@ func RegisterCustomBuiltin(rpc clientrpc.MaliceRPCClient) {
 			return true, nil
 		}, nil
 	})
+
+	// todo impl help
+	RegisterFunction("help", func(string, string) (bool, error) {
+		return true, nil
+	})
 }
 
 func RegisterGRPCBuiltin(rpc clientrpc.MaliceRPCClient) {
