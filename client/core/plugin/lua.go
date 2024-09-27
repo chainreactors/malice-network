@@ -14,6 +14,12 @@ import (
 	"unicode"
 )
 
+var (
+	ReservedARGS    = "args"
+	ReservedCMDLINE = "cmdline"
+	ReservedWords   = []string{ReservedCMDLINE, ReservedARGS}
+)
+
 func NewLuaVM() *lua.LState {
 	vm := lua.NewState()
 	vm.OpenLibs()
