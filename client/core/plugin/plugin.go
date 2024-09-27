@@ -44,6 +44,7 @@ func (plug *Plugin) RegisterLuaBuiltin(vm *lua.LState) error {
 	vm.SetGlobal("plugin_dir", lua.LString(filepath.Join(assets.GetMalsDir(), plug.Name)))
 	vm.SetGlobal("plugin_resource_dir", lua.LString(filepath.Join(assets.GetMalsDir(), plug.Name, "resources")))
 	vm.SetGlobal("plugin_name", lua.LString(plug.Name))
+	//vm.SetGlobal("temp_dir", )
 
 	// 读取resource文件
 	plug.registerLuaFunction(vm, "script_resource", func(filename string) (string, error) {

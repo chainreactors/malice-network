@@ -9,25 +9,47 @@ import (
 )
 
 func WrapFuncForLua(fn *InternalFunc) lua.LGFunction {
-	return func(L *lua.LState) int {
+	return func(vm *lua.LState) int {
 		var args []interface{}
+		fmt.Println(fn.RawName)
+		top := vm.GetTop()
+
+		// 检查最后一个参数是否为回调函数
+		var callback *lua.LFunction
+		if top > 0 {
+			if vm.Get(top).Type() == lua.LTFunction {
+				callback = vm.Get(top).(*lua.LFunction)
+				top-- // 去掉回调函数，调整参数数量
+			}
+		}
 
 		// 将 Lua 参数转换为 Go 参数
-		for i := 1; i <= L.GetTop(); i++ {
-			args = append(args, ConvertLuaValueToGo(L, L.Get(i)))
+		for i := 1; i <= top; i++ {
+			args = append(args, ConvertLuaValueToGo(vm, vm.Get(i)))
 		}
 
 		// 调用 Go 函数
 		result, err := fn.Func(args...)
 		if err != nil {
-			L.Error(lua.LString(fmt.Sprintf("Error: %v", err)), 1)
+			vm.Error(lua.LString(fmt.Sprintf("Error: %v", err)), 1)
 			return 0
 		}
 
-		// 将结果推回 Lua
-		L.Push(ConvertGoValueToLua(L, result))
+		// 如果有回调，调用回调函数
+		if callback != nil {
+			vm.Push(callback)
+			vm.Push(ConvertGoValueToLua(vm, result))
+			// 可以推送需要传递给回调的参数，如果需要的话
+			if err := vm.PCall(1, 1, nil); err != nil { // 期待一个返回值
+				vm.Error(lua.LString(fmt.Sprintf("Callback Error: %v", err)), 1)
+				return 0
+			}
 
-		return 1
+			return 1
+		} else {
+			vm.Push(ConvertGoValueToLua(vm, result))
+			return 1
+		}
 	}
 }
 

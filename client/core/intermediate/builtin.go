@@ -13,8 +13,11 @@ import (
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/kballard/go-shellquote"
 	"google.golang.org/protobuf/proto"
+	"os"
 	"reflect"
 )
+
+type BuiltinCallback func(content string) (bool, error)
 
 func RegisterBuiltin(rpc clientrpc.MaliceRPCClient) {
 	RegisterCustomBuiltin(rpc)
@@ -101,6 +104,38 @@ func RegisterCustomBuiltin(rpc clientrpc.MaliceRPCClient) {
 		s, _ := ParseAssembly(task.Spite)
 		logs.Log.Console(s)
 		return s, nil
+	})
+
+	RegisterFunction("callback_file", func(filename string) (BuiltinCallback, error) {
+		return func(content string) (bool, error) {
+			err := os.WriteFile(filename, []byte(content), 0644)
+			if err != nil {
+				return false, err
+			}
+			return true, nil
+		}, nil
+	})
+
+	RegisterFunction("callback_append", func(filename string) (BuiltinCallback, error) {
+		return func(content string) (bool, error) {
+			f, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+			if err != nil {
+				return false, err
+			}
+			defer f.Close() // 确保在函数结束时关闭文件
+
+			// 写入内容
+			if _, err := f.Write([]byte(content)); err != nil {
+				return false, err
+			}
+			return true, nil
+		}, nil
+	})
+
+	RegisterFunction("callback_discard", func() (BuiltinCallback, error) {
+		return func(content string) (bool, error) {
+			return true, nil
+		}, nil
 	})
 }
 
