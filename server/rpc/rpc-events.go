@@ -28,12 +28,13 @@ func (rpc *Server) Events(_ *clientpb.Empty, stream clientrpc.MaliceRPC_EventsSe
 				Type:    event.EventType,
 				Op:      event.Op,
 				Err:     event.Err,
-				Message: event.Message,
+				Message: []byte(event.Message),
 				Job:     event.Job,
 				Client:  event.Client,
 				Session: event.Session,
 				Task:    event.Task,
 				Spite:   event.Spite,
+				Callee:  event.Callee,
 			}
 
 			err := stream.Send(pbEvent)
@@ -51,7 +52,7 @@ func (rpc *Server) Broadcast(ctx context.Context, req *clientpb.Event) (*clientp
 		Op:        req.Op,
 		Client:    req.Client,
 		Err:       req.Err,
-		Message:   req.Message,
+		Message:   string(req.Message),
 	})
 	return &clientpb.Empty{}, nil
 }
@@ -60,7 +61,7 @@ func (rpc *Server) Notify(ctx context.Context, req *clientpb.Event) (*clientpb.E
 	err := core.EventBroker.Notify(core.Event{
 		EventType: req.Type,
 		Op:        req.Op,
-		Message:   req.Message,
+		Message:   string(req.Message),
 		Client:    req.Client,
 		IsNotify:  true,
 		Err:       req.Err,
@@ -79,7 +80,7 @@ func (rpc *Server) SessionEvent(ctx context.Context, req *clientpb.Event) (*clie
 		EventType: req.Type,
 		Op:        req.Op,
 		Err:       req.Err,
-		Message:   req.Message,
+		Message:   string(req.Message),
 	})
 	return &clientpb.Empty{}, nil
 }

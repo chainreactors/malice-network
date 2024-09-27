@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
@@ -78,12 +79,33 @@ func Commands(con *repl.Console) []*cobra.Command {
 	return []*cobra.Command{loginCmd, versionCmd, exitCmd, broadcastCmd, cmdCmd}
 }
 
+func Log(con *repl.Console, sess *core.Session, msg string, notify bool) (bool, error) {
+	_, err := con.Rpc.SessionEvent(sess.Context(), &clientpb.Event{
+		Type:    consts.EventSession,
+		Op:      consts.CtrlSessionLog,
+		Session: sess.Session,
+		Client:  con.Client,
+		Message: []byte(msg),
+	})
+	if err != nil {
+		return false, err
+	}
+	if notify {
+		return Notify(con, &clientpb.Event{
+			Type:    consts.EventNotify,
+			Client:  con.Client,
+			Message: []byte(msg),
+		})
+	}
+	return true, nil
+}
+
 func Register(con *repl.Console) {
 	con.RegisterServerFunc(consts.CommandBroadcast, func(con *repl.Console, msg string) (bool, error) {
 		return Broadcast(con, &clientpb.Event{
 			Type:    consts.EventBroadcast,
 			Client:  con.Client,
-			Message: msg,
+			Message: []byte(msg),
 		})
 	})
 
@@ -91,22 +113,22 @@ func Register(con *repl.Console) {
 		return Notify(con, &clientpb.Event{
 			Type:    consts.EventNotify,
 			Client:  con.Client,
-			Message: msg,
+			Message: []byte(msg),
 		})
 	})
 
-	con.RegisterServerFunc("blog", func(con *repl.Console, sess *core.Session, msg string) (bool, error) {
-		_, err := con.Rpc.SessionEvent(sess.Context(), &clientpb.Event{
-			Type:    consts.EventSession,
-			Op:      consts.CtrlSessionConsole,
-			Session: sess.Session,
-			Client:  con.Client,
-			Message: msg,
-		})
-		if err != nil {
-			return false, err
+	con.RegisterServerFunc("callback_log", func(con *repl.Console, sess *core.Session, notify bool) intermediate.BuiltinCallback {
+		return func(content string) (bool, error) {
+			return Log(con, sess, content, notify)
 		}
-		return true, nil
+	})
+
+	con.RegisterServerFunc("log", func(con *repl.Console, sess *core.Session, msg string, notify bool) (bool, error) {
+		return Log(con, sess, msg, notify)
+	})
+
+	con.RegisterServerFunc("blog", func(con *repl.Console, sess *core.Session, msg string) (bool, error) {
+		return Log(con, sess, msg, false)
 	})
 
 	con.RegisterServerFunc("barch", func(con *repl.Console, sess *core.Session, msg string) (string, error) {

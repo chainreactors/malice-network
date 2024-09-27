@@ -11,7 +11,6 @@ import (
 func WrapFuncForLua(fn *InternalFunc) lua.LGFunction {
 	return func(vm *lua.LState) int {
 		var args []interface{}
-		fmt.Println(fn.RawName)
 		top := vm.GetTop()
 
 		// 检查最后一个参数是否为回调函数
