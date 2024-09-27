@@ -1,6 +1,12 @@
 package consts
 
 const (
+	CalleeCMD = "cmd"
+	CalleeMal = "mal"
+	CalleeSDK = "sdk"
+)
+
+const (
 	CtrlTaskCallback    = "task_callback"
 	CtrlTaskFinish      = "task_finish"
 	CtrlTaskCancel      = "task_cancel"

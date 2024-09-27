@@ -14,17 +14,29 @@ func NewSession(sess *clientpb.Session, server *ServerStatus) *Session {
 	return &Session{
 		Session: sess,
 		Server:  server,
+		Callee:  consts.CalleeCMD,
 	}
 }
 
 type Session struct {
 	*clientpb.Session
 	Server *ServerStatus
+	Callee string // cmd/mal/sdk
+}
+
+func (s *Session) Clone(callee string) *Session {
+	return &Session{
+		Session: s.Session,
+		Server:  s.Server,
+		Callee:  callee,
+	}
 }
 
 func (s *Session) Context() context.Context {
 	return metadata.NewOutgoingContext(context.Background(), metadata.Pairs(
-		"session_id", s.SessionId),
+		"session_id", s.SessionId,
+		"callee", s.Callee,
+	),
 	)
 }
 

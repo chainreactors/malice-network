@@ -68,7 +68,6 @@ func InlineExe(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, a
 	}
 	if pe.CheckPEType(binary.Bin) != consts.EXEFile {
 		return nil, errors.New("the file is not a PE file")
-
 	}
 	task, err := rpc.ExecuteEXE(sess.Context(), binary)
 	if err != nil {

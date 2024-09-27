@@ -99,14 +99,14 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 				}
 				greq.Session.AddMessage(resp, blockId)
 				if resp.GetAck().Success {
-					greq.Task.Done(resp)
+					greq.Task.Done(resp, "")
 					err = db.UpdateFile(greq.Task, blockId)
 					if err != nil {
 						logs.Log.Errorf("cannot update task %d , %s in db", greq.Task.Id, err.Error())
 						return
 					}
 					if msg.End {
-						greq.Task.Finish("")
+						greq.Task.Finish(resp, "")
 					}
 				}
 			}
@@ -187,14 +187,14 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 				logs.Log.Errorf("cannot update task %d , %s in db", greq.Task.Id, err.Error())
 				return
 			}
-			greq.Task.Done(ack)
+			greq.Task.Done(ack, "")
 			if block.End {
 				checksum, _ := file.CalculateSHA256Checksum(fileName)
 				if checksum != respCheckSum {
 					greq.Task.Panic(buildErrorEvent(greq.Task, fmt.Errorf("checksum error")))
 					return
 				}
-				greq.Task.Finish("sync id " + checksum)
+				greq.Task.Finish(resp, "sync id "+checksum)
 			}
 		}
 	}()
