@@ -54,6 +54,7 @@ type Task struct {
 	Id        uint32
 	Type      string
 	SessionId string
+	Callee    string
 	Cur       int
 	Total     int
 	Callback  func()
@@ -96,27 +97,24 @@ func (t *Task) Percent() string {
 	return fmt.Sprintf("%f/100%", t.Cur/t.Total*100)
 }
 
-func (t *Task) Done(spite *implantpb.Spite) {
+func (t *Task) Publish(op string, spite *implantpb.Spite, msg string) {
 	EventBroker.Publish(Event{
 		EventType: consts.EventTask,
-		Op:        consts.CtrlTaskCallback,
-		Spite:     spite,
-		Session:   t.Session.ToProtobuf(),
-		Task:      t.ToProtobuf(),
-	})
-	t.DoneCh <- true
-}
-
-func (t *Task) Finish(msg string) {
-	spite, _ := t.Session.GetLastMessage(int(t.Id))
-	EventBroker.Publish(Event{
-		EventType: consts.EventTask,
-		Op:        consts.CtrlTaskFinish,
+		Op:        op,
 		Task:      t.ToProtobuf(),
 		Session:   t.Session.ToProtobuf(),
 		Spite:     spite,
 		Message:   msg,
+		Callee:    t.Callee,
 	})
+}
+func (t *Task) Done(spite *implantpb.Spite, msg string) {
+	t.Publish(consts.CtrlTaskCallback, spite, msg)
+	t.DoneCh <- true
+}
+
+func (t *Task) Finish(spite *implantpb.Spite, msg string) {
+	t.Publish(consts.CtrlTaskFinish, spite, msg)
 	if t.Callback != nil {
 		t.Callback()
 	}

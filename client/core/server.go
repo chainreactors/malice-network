@@ -238,11 +238,15 @@ func (s *ServerStatus) triggerTaskFinish(event *clientpb.Event) {
 		log.Errorf(logs.RedBold(err.Error()))
 		return
 	}
+
 	if fn, ok := intermediate.InternalFunctions[event.Task.Type]; ok && fn.FinishCallback != nil {
 		log.Importantf(logs.GreenBold(fmt.Sprintf("[%s.%d] task finish (%d/%d), %s",
 			event.Task.SessionId, event.Task.TaskId,
 			event.Task.Cur, event.Task.Total,
 			event.Message)))
+		if event.Callee != consts.CalleeCMD {
+			return
+		}
 		resp, err := fn.FinishCallback(&clientpb.TaskContext{
 			Task:    event.Task,
 			Session: event.Session,
@@ -254,7 +258,7 @@ func (s *ServerStatus) triggerTaskFinish(event *clientpb.Event) {
 			log.Console(resp + "\n")
 		}
 	} else {
-		log.Consolef("%v\n", event.Spite.GetBody())
+		log.Consolef("%s not impl output impl\n", event.Task.Type)
 	}
 
 	callbackId := fmt.Sprintf("%s_%d", task.SessionId, task.TaskId)
@@ -335,18 +339,19 @@ func (s *ServerStatus) handlerTask(event *clientpb.Event) {
 }
 
 func (s *ServerStatus) handlerSession(event *clientpb.Event) {
+	sid := event.Session.SessionId
 	switch event.Op {
 	case consts.CtrlSessionRegister:
 		s.AddSession(event.Session)
 		Log.Importantf("register session: %s ", event.Message)
 	case consts.CtrlSessionConsole:
-		log := s.ObserverLog(event.Task.SessionId)
-		log.Importantf(logs.GreenBold(fmt.Sprintf("[%s.%d] run task %s: %s", event.Task.SessionId, event.Task.TaskId, event.Task.Type, event.Message)))
+		log := s.ObserverLog(sid)
+		log.Importantf(logs.GreenBold(fmt.Sprintf("[%s.%d] run task %s: %s", sid, event.Task.TaskId, event.Task.Type, event.Message)))
 	case consts.CtrlSessionError:
-		log := s.ObserverLog(event.Task.SessionId)
-		log.Errorf(logs.GreenBold(fmt.Sprintf("[%s] task: %d error: %s\n", event.Task.SessionId, event.Task.TaskId, event.Err)))
+		log := s.ObserverLog(sid)
+		log.Errorf(logs.GreenBold(fmt.Sprintf("[%s] task: %d error: %s\n", sid, event.Task.TaskId, event.Err)))
 	case consts.CtrlSessionLog:
-		log := s.ObserverLog(event.Task.SessionId)
-		log.Errorf("[%s] log: \n%s\n", event.Task.SessionId, event.Message)
+		log := s.ObserverLog(sid)
+		log.Errorf("[%s] log: \n%s\n", sid, event.Message)
 	}
 }

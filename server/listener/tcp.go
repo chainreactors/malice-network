@@ -118,7 +118,7 @@ func (l *TCPPipeline) Start() error {
 }
 
 func (l *TCPPipeline) handler() (net.Listener, error) {
-	logs.Log.Infof("Starting TCP listener on %s:%d", l.Host, l.Port)
+	logs.Log.Infof("[pipeline] starting TCP pipeline on %s:%d", l.Host, l.Port)
 	ln, err := net.Listen("tcp", fmt.Sprintf("%s:%d", l.Host, l.Port))
 	if err != nil {
 		return nil, err

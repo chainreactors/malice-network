@@ -22,6 +22,7 @@ import (
 func newGenericRequest(ctx context.Context, msg proto.Message, opts ...int) (*GenericRequest, error) {
 	req := &GenericRequest{
 		Message: msg,
+		Callee:  getCallee(ctx),
 	}
 	if session, err := getSession(ctx); err == nil {
 		req.Session = session
@@ -42,6 +43,7 @@ type GenericRequest struct {
 	Task    *core.Task
 	Count   int
 	Session *core.Session
+	Callee  string
 }
 
 func (r *GenericRequest) InitSpite() (*implantpb.Spite, error) {
@@ -55,9 +57,8 @@ func (r *GenericRequest) InitSpite() (*implantpb.Spite, error) {
 		return nil, err
 	}
 	r.Task = r.Session.NewTask(spite.Name, r.Count)
-
+	r.Task.Callee = r.Callee
 	spite.TaskId = r.Task.Id
-	r.Message = nil
 	err = db.AddTask(r.Task)
 	if err != nil {
 		return nil, err
@@ -98,8 +99,8 @@ func (r *GenericRequest) HandlerResponse(ch chan *implantpb.Spite, typ types.Msg
 			}
 		})
 	}
-	r.Task.Done(resp)
-	r.Task.Finish("")
+	r.Task.Done(resp, "")
+	r.Task.Finish(resp, "")
 }
 
 func buildErrorEvent(task *core.Task, err error) core.Event {
@@ -186,6 +187,18 @@ func getSessionID(ctx context.Context) (string, error) {
 		return sid[0], nil
 	} else {
 		return "", ErrNotFoundSession
+	}
+}
+
+func getCallee(ctx context.Context) string {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return consts.CalleeCMD
+	}
+	if callee := md.Get("callee"); len(callee) > 0 {
+		return callee[0]
+	} else {
+		return consts.CalleeCMD
 	}
 }
 

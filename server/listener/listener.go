@@ -65,6 +65,9 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 		if err != nil {
 			return err
 		}
+		if !tcpPipeline.Enable {
+			continue
+		}
 		_, err = lis.Rpc.StartTcpPipeline(context.Background(), &lispb.CtrlPipeline{
 			Name:       tcpPipeline.Name,
 			ListenerId: lis.Name,
@@ -114,6 +117,9 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 		_, err = lis.Rpc.RegisterWebsite(context.Background(), webProtobuf)
 		if err != nil {
 			return err
+		}
+		if !newWebsite.Enable {
+			continue
 		}
 		_, err = lis.Rpc.StartWebsite(context.Background(), &lispb.CtrlPipeline{
 			Name:       newWebsite.WebsiteName,

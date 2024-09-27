@@ -114,6 +114,6 @@ func Register(con *repl.Console) {
 	})
 
 	con.RegisterServerFunc("active", func(con *repl.Console) (*core.Session, error) {
-		return con.GetInteractive(), nil
+		return con.GetInteractive().Clone(consts.CalleeMal), nil
 	})
 }
