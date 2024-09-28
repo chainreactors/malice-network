@@ -57,7 +57,7 @@ func InitLogs(debug bool) {
 
 // StartClientListener - Start a mutual TLS listener
 func StartClientListener(address string) (*grpc.Server, net.Listener, error) {
-	logs.Log.Importantf("Starting gRPC console on %s", address)
+	logs.Log.Importantf("[server] starting gRPC console on %s", address)
 
 	InitLogs(config.Bool("debug"))
 	tlsConfig := certutils.GetOperatorServerMTLSConfig("server")
