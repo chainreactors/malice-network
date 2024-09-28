@@ -41,7 +41,28 @@ var (
 	ReservedARGS    = "args"
 	ReservedCMDLINE = "cmdline"
 	ReservedWords   = []string{ReservedCMDLINE, ReservedARGS}
+
+	LuaPackages = map[string]*lua.LTable{}
 )
+
+func MalLoader(L *lua.LState) int {
+	// 从 LState 获取传入的包名
+	packageName := L.ToString(1)
+
+	// 创建模块表
+	mod := L.NewTable()
+	L.SetField(mod, "_NAME", lua.LString(packageName))
+	// 查找 InternalFunctions 中属于该包的函数并注册
+	for _, fn := range intermediate.InternalFunctions {
+		if fn.Package == packageName {
+			mod.RawSetString(fn.Name, L.NewFunction(intermediate.WrapFuncForLua(fn)))
+		}
+	}
+
+	// 如果没有找到函数，则返回空表
+	L.Push(mod)
+	return 1
+}
 
 func LoadLib(vm *lua.LState) {
 	vm.OpenLibs()
@@ -68,6 +89,11 @@ func LoadLib(vm *lua.LState) {
 	vm.PreloadModule("http", gluahttp.NewHttpModule(&http.Client{}).Loader)
 	vm.PreloadModule("crypto", luacrypto.Loader)
 	vm.PreloadModule("re", gluare.Loader)
+
+	// mal package
+	vm.PreloadModule(intermediate.BeaconPackage, MalLoader)
+	vm.PreloadModule(intermediate.RpcPackage, MalLoader)
+	vm.PreloadModule(intermediate.ArmoryPackage, MalLoader)
 }
 
 func NewLuaVM() *lua.LState {
@@ -77,6 +103,9 @@ func NewLuaVM() *lua.LState {
 	RegisterAllProtobufMessages(vm)
 
 	for name, fun := range intermediate.InternalFunctions {
+		if fun.Package != intermediate.BuiltinPackage {
+			continue
+		}
 		vm.SetGlobal(name, vm.NewFunction(intermediate.WrapFuncForLua(fun)))
 	}
 	return vm

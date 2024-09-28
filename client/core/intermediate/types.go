@@ -11,6 +11,7 @@ import (
 
 type InternalFunc struct {
 	Name           string
+	Package        string
 	RawName        string
 	Raw            interface{}
 	Func           func(...interface{}) (interface{}, error)
@@ -25,7 +26,8 @@ type ImplantCallback func(content *clientpb.TaskContext) (string, error)
 var InternalFunctions = make(map[string]*InternalFunc)
 
 // RegisterInternalFunc 注册并生成 Lua 定义文件
-func RegisterInternalFunc(name string, fn *InternalFunc, callback ImplantCallback) error {
+func RegisterInternalFunc(pkg, name string, fn *InternalFunc, callback ImplantCallback) error {
+	fn.Package = pkg
 	name = strings.ReplaceAll(name, "-", "_")
 	if callback != nil {
 		fn.FinishCallback = callback
@@ -49,7 +51,7 @@ func RegisterInternalDoneCallback(name string, callback ImplantCallback) error {
 
 func RegisterFunction(name string, fn interface{}) {
 	wrappedFunc := WrapInternalFunc(fn)
-	err := RegisterInternalFunc(name, wrappedFunc, nil)
+	err := RegisterInternalFunc(BuiltinPackage, name, wrappedFunc, nil)
 	if err != nil {
 		return
 	}

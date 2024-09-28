@@ -9,8 +9,23 @@ import (
 	"reflect"
 )
 
+var (
+	luaFunctionCache = map[string]lua.LGFunction{}
+)
+
+const (
+	BeaconPackage  = "beacon"
+	RpcPackage     = "rpc"
+	ArmoryPackage  = "armory"
+	BuiltinPackage = "builtin"
+)
+
 func WrapFuncForLua(fn *InternalFunc) lua.LGFunction {
-	return func(vm *lua.LState) int {
+	if luaFn, ok := luaFunctionCache[fmt.Sprintf("%s_%s", fn.Package, fn.Name)]; ok {
+		return luaFn
+	}
+
+	luaFn := func(vm *lua.LState) int {
 		var args []interface{}
 		top := vm.GetTop()
 
@@ -56,6 +71,8 @@ func WrapFuncForLua(fn *InternalFunc) lua.LGFunction {
 			return 1
 		}
 	}
+	luaFunctionCache[fmt.Sprintf("%s_%s", fn.Package, fn.Name)] = luaFn
+	return luaFn
 }
 
 // Convert the []interface{} and map[string]interface{} to the expected types defined in ArgTypes
