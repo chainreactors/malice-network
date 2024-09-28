@@ -43,7 +43,7 @@ func (rpc *Server) RegisterListener(ctx context.Context, req *lispb.RegisterList
 	if err != nil {
 		return &implantpb.Empty{}, nil
 	}
-	logs.Log.Importantf("%s register listener %s", p.Addr, req.Name)
+	logs.Log.Importantf("[server] %s register listener: %s", p.Addr, req.Name)
 	return &implantpb.Empty{}, nil
 }
 
