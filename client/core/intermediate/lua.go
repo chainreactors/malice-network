@@ -2,6 +2,7 @@ package intermediate
 
 import (
 	"fmt"
+	"github.com/chainreactors/utils/iutils"
 	lua "github.com/yuin/gopher-lua"
 	"google.golang.org/protobuf/proto"
 	luar "layeh.com/gopher-luar"
@@ -24,9 +25,14 @@ func WrapFuncForLua(fn *InternalFunc) lua.LGFunction {
 
 		// 将 Lua 参数转换为 Go 参数
 		for i := 1; i <= top; i++ {
-			args = append(args, ConvertLuaValueToGo(vm, vm.Get(i)))
+			args = append(args, ConvertLuaValueToGo(vm.Get(i)))
 		}
 
+		args, err := ConvertArgsToExpectedTypes(args, fn.ArgTypes)
+		if err != nil {
+			vm.Error(lua.LString(fmt.Sprintf("Error: %v", err)), 1)
+			return 0
+		}
 		// 调用 Go 函数
 		result, err := fn.Func(args...)
 		if err != nil {
@@ -52,44 +58,170 @@ func WrapFuncForLua(fn *InternalFunc) lua.LGFunction {
 	}
 }
 
-// 将 Lua 表转换为 Go 的 map[string]interface{}
-func luaTableToMap(L *lua.LState, tbl *lua.LTable) map[string]interface{} {
-	result := make(map[string]interface{})
-	tbl.ForEach(func(key, value lua.LValue) {
-		switch keyStr := key.(type) {
-		case lua.LString:
-			result[string(keyStr)] = ConvertLuaValueToGo(L, value)
-		}
-	})
-	return result
-}
+// Convert the []interface{} and map[string]interface{} to the expected types defined in ArgTypes
+func ConvertArgsToExpectedTypes(args []interface{}, argTypes []reflect.Type) ([]interface{}, error) {
+	if len(args) != len(argTypes) {
+		return nil, fmt.Errorf("argument count mismatch: expected %d, got %d", len(argTypes), len(args))
+	}
 
-func isArrayTable(L *lua.LState, tbl *lua.LTable) bool {
-	maxKey := 0
-	isArray := true
-	tbl.ForEach(func(key lua.LValue, value lua.LValue) {
-		if key.Type() != lua.LTNumber {
-			isArray = false
-		} else {
-			if int(lua.LVAsNumber(key)) > maxKey {
-				maxKey = int(lua.LVAsNumber(key))
+	convertedArgs := make([]interface{}, len(args))
+
+	for i, arg := range args {
+		expectedType := argTypes[i]
+		val := reflect.ValueOf(arg)
+
+		// Skip conversion if types are already identical
+		if val.Type() == expectedType {
+			convertedArgs[i] = arg
+			continue
+		}
+
+		// Handle string conversion with ToString
+		if expectedType.Kind() == reflect.String {
+			convertedArgs[i] = iutils.ToString(arg)
+			continue
+		}
+
+		// Handle slice conversion
+		if expectedType.Kind() == reflect.Slice && val.Kind() == reflect.Slice {
+			elemType := expectedType.Elem()
+			sliceVal := reflect.MakeSlice(expectedType, val.Len(), val.Len())
+			for j := 0; j < val.Len(); j++ {
+				elem := val.Index(j)
+				convertedElem, err := convertValueToExpectedType(elem.Interface(), elemType)
+				if err != nil {
+					return nil, fmt.Errorf("cannot convert slice element at index %d: %v", j, err)
+				}
+				sliceVal.Index(j).Set(reflect.ValueOf(convertedElem))
 			}
+			convertedArgs[i] = sliceVal.Interface()
+			continue
 		}
-	})
-	return isArray && maxKey == tbl.Len()
+
+		// Handle map conversion
+		if expectedType.Kind() == reflect.Map && val.Kind() == reflect.Map {
+			keyType := expectedType.Key()
+			elemType := expectedType.Elem()
+			mapVal := reflect.MakeMap(expectedType)
+			for _, key := range val.MapKeys() {
+				convertedKey, err := convertValueToExpectedType(key.Interface(), keyType)
+				if err != nil {
+					return nil, fmt.Errorf("cannot convert map key %v: %v", key, err)
+				}
+				convertedValue, err := convertValueToExpectedType(val.MapIndex(key).Interface(), elemType)
+				if err != nil {
+					return nil, fmt.Errorf("cannot convert map value for key %v: %v", key, err)
+				}
+				mapVal.SetMapIndex(reflect.ValueOf(convertedKey), reflect.ValueOf(convertedValue))
+			}
+			convertedArgs[i] = mapVal.Interface()
+			continue
+		}
+
+		// Default conversion using reflect.Convert
+		if val.Type().ConvertibleTo(expectedType) {
+			convertedArgs[i] = val.Convert(expectedType).Interface()
+		} else {
+			return nil, fmt.Errorf("cannot convert argument %d to %s", i+1, expectedType)
+		}
+	}
+	return convertedArgs, nil
 }
 
-func luaTableToStringSlice(L *lua.LState, tbl *lua.LTable) []string {
-	var result []string
-	tbl.ForEach(func(key lua.LValue, value lua.LValue) {
-		if str, ok := value.(lua.LString); ok {
-			result = append(result, string(str))
+// Helper function to convert individual values to the expected type
+func convertValueToExpectedType(value interface{}, expectedType reflect.Type) (interface{}, error) {
+	val := reflect.ValueOf(value)
+
+	// Skip conversion if types are already identical
+	if val.Type() == expectedType {
+		return value, nil
+	}
+
+	// Handle string conversion
+	if expectedType.Kind() == reflect.String {
+		return iutils.ToString(value), nil
+	}
+
+	// Handle slice conversion
+	if expectedType.Kind() == reflect.Slice && val.Kind() == reflect.Slice {
+		elemType := expectedType.Elem()
+		sliceVal := reflect.MakeSlice(expectedType, val.Len(), val.Len())
+		for j := 0; j < val.Len(); j++ {
+			convertedElem, err := convertValueToExpectedType(val.Index(j).Interface(), elemType)
+			if err != nil {
+				return nil, fmt.Errorf("cannot convert slice element at index %d: %v", j, err)
+			}
+			sliceVal.Index(j).Set(reflect.ValueOf(convertedElem))
 		}
-	})
-	return result
+		return sliceVal.Interface(), nil
+	}
+
+	// Handle map conversion
+	if expectedType.Kind() == reflect.Map && val.Kind() == reflect.Map {
+		keyType := expectedType.Key()
+		elemType := expectedType.Elem()
+		mapVal := reflect.MakeMap(expectedType)
+		for _, key := range val.MapKeys() {
+			convertedKey, err := convertValueToExpectedType(key.Interface(), keyType)
+			if err != nil {
+				return nil, fmt.Errorf("cannot convert map key %v: %v", key, err)
+			}
+			convertedValue, err := convertValueToExpectedType(val.MapIndex(key).Interface(), elemType)
+			if err != nil {
+				return nil, fmt.Errorf("cannot convert map value for key %v: %v", key, err)
+			}
+			mapVal.SetMapIndex(reflect.ValueOf(convertedKey), reflect.ValueOf(convertedValue))
+		}
+		return mapVal.Interface(), nil
+	}
+
+	// Default conversion
+	if val.Type().ConvertibleTo(expectedType) {
+		return val.Convert(expectedType).Interface(), nil
+	}
+
+	return nil, fmt.Errorf("cannot convert value to %s", expectedType)
 }
 
-func ConvertLuaValueToGo(L *lua.LState, value lua.LValue) interface{} {
+func isArray(tbl *lua.LTable) bool {
+	length := tbl.Len() // Length of the array part
+	count := 0
+	isSequential := true
+	tbl.ForEach(func(key, val lua.LValue) {
+		if k, ok := key.(lua.LNumber); ok {
+			index := int(k)
+			if index != count+1 {
+				isSequential = false
+			}
+			count++
+		} else {
+			isSequential = false
+		}
+	})
+	return isSequential && count == length
+}
+
+// ConvertLuaTableToGo takes a Lua table and converts it into a Go slice or map
+func ConvertLuaTableToGo(tbl *lua.LTable) interface{} {
+	// Check if the Lua table is an array (keys are sequential integers starting from 1)
+	if isArray(tbl) {
+		// Convert to Go slice
+		var array []interface{}
+		tbl.ForEach(func(key, val lua.LValue) {
+			array = append(array, ConvertLuaValueToGo(val))
+		})
+		return array
+	}
+
+	// Otherwise, convert to Go map
+	m := make(map[string]interface{})
+	tbl.ForEach(func(key, val lua.LValue) {
+		m[key.String()] = ConvertLuaValueToGo(val)
+	})
+	return m
+}
+
+func ConvertLuaValueToGo(value lua.LValue) interface{} {
 	switch v := value.(type) {
 	case lua.LString:
 		return string(v)
@@ -101,10 +233,7 @@ func ConvertLuaValueToGo(L *lua.LState, value lua.LValue) interface{} {
 	case lua.LBool:
 		return bool(v)
 	case *lua.LTable:
-		if isArrayTable(L, v) {
-			return luaTableToStringSlice(L, v)
-		}
-		return luaTableToMap(L, v)
+		return ConvertLuaTableToGo(v)
 	case *lua.LUserData:
 		if protoMsg, ok := v.Value.(proto.Message); ok {
 			return protoMsg

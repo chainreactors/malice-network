@@ -77,7 +77,7 @@ func RegisterCustomBuiltin(rpc clientrpc.MaliceRPCClient) {
 	// args, pack_bof_args("ZZ", {"aa", "bb"})
 	RegisterFunction("pack_bof_args", func(format string, args []string) ([]string, error) {
 		if len(format) != len(args) {
-			return nil, fmt.Errorf("format and args length mismatch")
+			return nil, fmt.Errorf("%d format and %d args,  length mismatch", len(format), len(args))
 		}
 		var packedArgs []string
 		for i, arg := range args {
