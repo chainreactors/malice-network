@@ -21,7 +21,7 @@ const (
 )
 
 func WrapFuncForLua(fn *InternalFunc) lua.LGFunction {
-	if luaFn, ok := luaFunctionCache[fmt.Sprintf("%s_%s", fn.Package, fn.Name)]; ok {
+	if luaFn, ok := luaFunctionCache[fn.String()]; ok {
 		return luaFn
 	}
 
@@ -31,7 +31,7 @@ func WrapFuncForLua(fn *InternalFunc) lua.LGFunction {
 
 		// 检查最后一个参数是否为回调函数
 		var callback *lua.LFunction
-		if top > 0 {
+		if top > 0 && fn.HasLuaCallback {
 			if vm.Get(top).Type() == lua.LTFunction {
 				callback = vm.Get(top).(*lua.LFunction)
 				top-- // 去掉回调函数，调整参数数量
@@ -42,7 +42,7 @@ func WrapFuncForLua(fn *InternalFunc) lua.LGFunction {
 		for i := 1; i <= top; i++ {
 			args = append(args, ConvertLuaValueToGo(vm.Get(i)))
 		}
-
+		fmt.Printf("%v\n", fn.ArgTypes)
 		args, err := ConvertArgsToExpectedTypes(args, fn.ArgTypes)
 		if err != nil {
 			vm.Error(lua.LString(fmt.Sprintf("Error: %v", err)), 1)
@@ -71,7 +71,7 @@ func WrapFuncForLua(fn *InternalFunc) lua.LGFunction {
 			return 1
 		}
 	}
-	luaFunctionCache[fmt.Sprintf("%s_%s", fn.Package, fn.Name)] = luaFn
+	luaFunctionCache[fn.String()] = luaFn
 	return luaFn
 }
 
@@ -258,6 +258,8 @@ func ConvertLuaValueToGo(value lua.LValue) interface{} {
 		return v.Value
 	case *lua.LNilType:
 		return nil
+	case *lua.LFunction:
+		return v
 	default:
 		return v.String()
 	}

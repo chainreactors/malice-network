@@ -2,7 +2,6 @@ package command
 
 import (
 	"errors"
-	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/addon"
 	"github.com/chainreactors/malice-network/client/command/alias"
@@ -149,15 +148,10 @@ func BindImplantCommands(con *repl.Console) console.Commands {
 
 		RegisterImplantFunc(con)
 		for _, malName := range assets.GetInstalledMalManifests() {
-			plug, err := mal.LoadMal(con, malName)
+			_, err := mal.LoadMal(con, implant, malName)
 			if err != nil {
 				con.Log.Errorf("Failed to load mal: %s\n", err)
 				continue
-			}
-			for _, cmd := range plug.CMDs {
-				cmd.GroupID = consts.MalGroup
-				implant.AddCommand(cmd)
-				logs.Log.Debugf("add command: %s", cmd.Name())
 			}
 		}
 		return implant

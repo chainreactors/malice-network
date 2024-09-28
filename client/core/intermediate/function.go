@@ -15,10 +15,15 @@ type InternalFunc struct {
 	RawName        string
 	Raw            interface{}
 	Func           func(...interface{}) (interface{}, error)
+	HasLuaCallback bool
 	FinishCallback ImplantCallback // implant callback
 	DoneCallback   ImplantCallback
 	ArgTypes       []reflect.Type
 	ReturnTypes    []reflect.Type
+}
+
+func (fn *InternalFunc) String() string {
+	return fmt.Sprintf("%s.%s", fn.Package, fn.Name)
 }
 
 type ImplantCallback func(content *clientpb.TaskContext) (string, error)
