@@ -346,7 +346,7 @@ func protoNew(L *lua.LState) int {
 		initTable := L.CheckTable(3)
 		initTable.ForEach(func(key lua.LValue, value lua.LValue) {
 			fieldName := key.String()
-			fieldValue := intermediate.ConvertLuaValueToGo(L, value)
+			fieldValue := intermediate.ConvertLuaValueToGo(value)
 			setFieldByName(msg, fieldName, fieldValue)
 		})
 	}
@@ -376,7 +376,7 @@ func protoIndex(L *lua.LState) int {
 func protoNewIndex(L *lua.LState) int {
 	ud := L.CheckUserData(1)
 	fieldName := L.CheckString(2)
-	newValue := intermediate.ConvertLuaValueToGo(L, L.Get(3))
+	newValue := intermediate.ConvertLuaValueToGo(L.Get(3))
 
 	if msg, ok := ud.Value.(proto.Message); ok {
 		setFieldByName(msg, fieldName, newValue)
