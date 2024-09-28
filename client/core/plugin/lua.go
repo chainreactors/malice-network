@@ -3,11 +3,34 @@ package plugin
 import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/core/intermediate"
+	"github.com/cjoudrey/gluahttp"
+	luacrypto "github.com/tengattack/gluacrypto/crypto"
+	"github.com/vadv/gopher-lua-libs/argparse"
+	"github.com/vadv/gopher-lua-libs/base64"
+	"github.com/vadv/gopher-lua-libs/filepath"
+	"github.com/vadv/gopher-lua-libs/goos"
+	"github.com/vadv/gopher-lua-libs/humanize"
+	"github.com/vadv/gopher-lua-libs/inspect"
+	"github.com/vadv/gopher-lua-libs/ioutil"
+	"github.com/vadv/gopher-lua-libs/json"
+	"github.com/vadv/gopher-lua-libs/plugin"
+	"github.com/vadv/gopher-lua-libs/pprof"
+	"github.com/vadv/gopher-lua-libs/regexp"
+	"github.com/vadv/gopher-lua-libs/runtime"
+	"github.com/vadv/gopher-lua-libs/shellescape"
+	"github.com/vadv/gopher-lua-libs/storage"
+	luastrings "github.com/vadv/gopher-lua-libs/strings"
+	"github.com/vadv/gopher-lua-libs/tcp"
+	"github.com/vadv/gopher-lua-libs/time"
+	"github.com/vadv/gopher-lua-libs/xmlpath"
+	"github.com/vadv/gopher-lua-libs/yaml"
+	"github.com/yuin/gluare"
 	lua "github.com/yuin/gopher-lua"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
+	"net/http"
 	"os"
 	"reflect"
 	"strings"
@@ -20,9 +43,36 @@ var (
 	ReservedWords   = []string{ReservedCMDLINE, ReservedARGS}
 )
 
+func LoadLib(vm *lua.LState) {
+	vm.OpenLibs()
+	plugin.Preload(vm)
+	argparse.Preload(vm)
+	base64.Preload(vm)
+	filepath.Preload(vm)
+	goos.Preload(vm)
+	humanize.Preload(vm)
+	inspect.Preload(vm)
+	ioutil.Preload(vm)
+	json.Preload(vm)
+	pprof.Preload(vm)
+	regexp.Preload(vm)
+	runtime.Preload(vm)
+	shellescape.Preload(vm)
+	storage.Preload(vm)
+	luastrings.Preload(vm)
+	tcp.Preload(vm)
+	time.Preload(vm)
+	xmlpath.Preload(vm)
+	yaml.Preload(vm)
+
+	vm.PreloadModule("http", gluahttp.NewHttpModule(&http.Client{}).Loader)
+	vm.PreloadModule("crypto", luacrypto.Loader)
+	vm.PreloadModule("re", gluare.Loader)
+}
+
 func NewLuaVM() *lua.LState {
 	vm := lua.NewState()
-	vm.OpenLibs()
+	LoadLib(vm)
 	RegisterProtobufMessageType(vm)
 	RegisterAllProtobufMessages(vm)
 
