@@ -22,7 +22,7 @@ type LoadedMal struct {
 
 func MalLoadCmd(ctx *cobra.Command, con *repl.Console) {
 	dirPath := ctx.Flags().Arg(0)
-	mal, err := LoadMal(con, filepath.Join(assets.GetMalsDir(), dirPath, ManifestFileName))
+	mal, err := LoadMal(con, con.ImplantMenu(), filepath.Join(assets.GetMalsDir(), dirPath, ManifestFileName))
 	if err != nil {
 		con.Log.Error(err)
 		return
@@ -46,24 +46,26 @@ func LoadMalManiFest(con *repl.Console, filename string) (*plugin.MalManiFest, e
 	return manifest, nil
 }
 
-func LoadMal(con *repl.Console, filename string) (*LoadedMal, error) {
+func LoadMal(con *repl.Console, rootCmd *cobra.Command, filename string) (*LoadedMal, error) {
 	manifest, err := LoadMalManiFest(con, filename)
-	plug, err := con.Plugins.LoadPlugin(manifest, con)
+	plug, err := con.Plugins.LoadPlugin(manifest, con, rootCmd)
 	if err != nil {
 		return nil, err
 	}
 
-	var cmds []string
+	var cmdNames []string
+	var cmds []*cobra.Command
 	for _, cmd := range plug.CMDs {
-		cmds = append(cmds, cmd.Name())
+		cmdNames = append(cmdNames, cmd.CMD.Name())
+		cmds = append(cmds, cmd.CMD)
 	}
 	mal := &LoadedMal{
 		Manifest: manifest,
-		CMDs:     plug.CMDs,
+		CMDs:     cmds,
 		Plugin:   plug.Plugin,
 	}
 	loadedMals[manifest.Name] = mal
-	con.Log.Importantf("load mal: %s successfully, register %v", filename, cmds)
+	con.Log.Importantf("load mal: %s successfully, register %v", filename, cmdNames)
 	return mal, nil
 }
 

@@ -4,21 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/client/core/plugin"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/utils/handler"
 	"github.com/chainreactors/malice-network/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/chainreactors/tui"
-	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
 	lua "github.com/yuin/gopher-lua"
-	"os"
 	"reflect"
-	"slices"
-	"strings"
 )
 
 var (
@@ -37,10 +33,12 @@ type Plugins struct {
 	Plugins map[string]*Plugin
 }
 
-func (plugins *Plugins) LoadPlugin(manifest *plugin.MalManiFest, con *Console) (*Plugin, error) {
+func (plugins *Plugins) LoadPlugin(manifest *plugin.MalManiFest, con *Console, rootCmd *cobra.Command) (*Plugin, error) {
+	var plug *Plugin
+	var err error
 	switch manifest.Type {
 	case plugin.LuaScript:
-		return plugins.LoadLuaScript(manifest, con)
+		plug, err = plugins.LoadLuaScript(manifest, con)
 	case plugin.TCLScript:
 		// TODO
 		return nil, fmt.Errorf("not impl")
@@ -50,6 +48,14 @@ func (plugins *Plugins) LoadPlugin(manifest *plugin.MalManiFest, con *Console) (
 	default:
 		return nil, fmt.Errorf("not found valid script type: %s", manifest.Type)
 	}
+	if err != nil {
+		return nil, err
+	}
+	for _, cmd := range plug.CMDs {
+		cmd.CMD.GroupID = consts.MalGroup
+		rootCmd.AddCommand(cmd.CMD)
+	}
+	return plug, nil
 }
 
 func (plugins *Plugins) LoadLuaScript(manifest *plugin.MalManiFest, con *Console) (*Plugin, error) {
@@ -95,16 +101,11 @@ func NewPlugin(manifest *plugin.MalManiFest, con *Console) (*Plugin, error) {
 type Plugin struct {
 	*plugin.Plugin
 	LuaVM *lua.LState
-	CMDs  []*cobra.Command
 }
 
 func (plug *Plugin) InitLua(con *Console) error {
 	vm := plugin.NewLuaVM()
 	plug.LuaVM = vm
-	plugCmd := &cobra.Command{
-		Use:   plug.Name,
-		Short: fmt.Sprintf("%s cmds", plug.Name),
-	}
 	err := plug.RegisterLuaBuiltin(vm)
 	if err != nil {
 		return err
@@ -114,7 +115,7 @@ func (plug *Plugin) InitLua(con *Console) error {
 		return fmt.Errorf("failed to load Lua script: %w", err)
 	}
 
-	globals := vm.Get(lua.GlobalsIndex).(*lua.LTable)
+	//globals := vm.Get(lua.GlobalsIndex).(*lua.LTable)
 	//globals.ForEach(func(key lua.LValue, value lua.LValue) {
 	//	if fn, ok := value.(*lua.LFunction); ok {
 	//		funcName := key.String()
@@ -150,113 +151,6 @@ func (plug *Plugin) InitLua(con *Console) error {
 	//	}
 	//})
 
-	globals.ForEach(func(key lua.LValue, value lua.LValue) {
-		funcName := key.String()
-
-		if fn, ok := value.(*lua.LFunction); ok {
-			cmd := plugCmd
-			if !strings.HasPrefix(funcName, "command_") {
-				return
-			}
-			var cmdName string
-			cmdNames := strings.Split(funcName[8:], "__")
-			if len(cmdNames) == 1 {
-				cmdName = cmdNames[0]
-			} else {
-				for i := 0; i < len(cmdNames)-1; i++ {
-					subName := cmdNames[i]
-					if c := GetCmd(cmd, subName); c != nil {
-						cmd = c
-					} else {
-						subCmd := &cobra.Command{
-							Use:   subName,
-							Short: fmt.Sprintf("%s group", subName),
-						}
-						cmd.AddCommand(subCmd)
-						cmd = subCmd
-					}
-				}
-				cmdName = cmdNames[len(cmdNames)-1]
-			}
-
-			var paramNames []string
-			for _, param := range fn.Proto.DbgLocals {
-				paramNames = append(paramNames, param.Name)
-			}
-
-			// 创建新的 Cobra 命令
-			malCmd := &cobra.Command{
-				Use:   cmdName,
-				Short: fmt.Sprintf("Lua function %s", funcName),
-				RunE: func(cmd *cobra.Command, args []string) error {
-					vm.Push(fn) // 将函数推入栈
-
-					for _, paramName := range paramNames {
-						switch paramName {
-						case "cmdline":
-							vm.Push(lua.LString(shellquote.Join(args...)))
-						case "args":
-							vm.Push(intermediate.ConvertGoValueToLua(vm, args))
-						default:
-							val, err := cmd.Flags().GetString(paramName)
-							if err != nil {
-								logs.Log.Errorf("error getting flag %s: %s", paramName, err.Error())
-								return err
-							}
-							vm.Push(lua.LString(val))
-						}
-					}
-
-					var outFunc intermediate.BuiltinCallback
-					if outFile, _ := cmd.Flags().GetString("file"); outFile == "" {
-						outFunc = func(content string) (bool, error) {
-							con.Log.Console(content)
-							return true, nil
-						}
-					} else {
-						outFunc = func(content string) (bool, error) {
-							err := os.WriteFile(outFile, []byte(content), 0644)
-							if err != nil {
-								return false, err
-							}
-							return true, nil
-						}
-					}
-					go func() {
-						if err := vm.PCall(len(paramNames), lua.MultRet, nil); err != nil {
-							con.Log.Errorf("error calling Lua function %s:\n%s", funcName, err.Error())
-							return
-						}
-
-						resultCount := vm.GetTop()
-						for i := 1; i <= resultCount; i++ {
-							// 从栈顶依次弹出返回值
-							result := vm.Get(-resultCount + i - 1)
-							_, err := outFunc(result.String())
-							if err != nil {
-								con.Log.Errorf("error calling outFunc:\n%s", err.Error())
-								return
-							}
-						}
-						vm.Pop(resultCount)
-					}()
-
-					return nil
-				},
-			}
-
-			malCmd.Flags().StringP("file", "f", "", "enable, output")
-			for _, paramName := range paramNames {
-				if slices.Contains(plugin.ReservedWords, paramName) {
-					continue
-				}
-				malCmd.Flags().String(paramName, "", fmt.Sprintf("parameter %s for %s", paramName, funcName))
-			}
-			cmd.AddCommand(malCmd)
-			con.Log.Debugf("Registered Command: %s\n", funcName)
-		}
-	})
-	plug.CMDs = plugCmd.Commands()
 	return nil
 }
 
@@ -339,7 +233,8 @@ func WrapImplantFunc(con *Console, fun interface{}, callback ImplantPluginCallba
 	wrappedFunc := wrapImplantFunc(fun)
 
 	interFunc := intermediate.GetInternalFuncSignature(fun)
-	interFunc.ArgTypes = interFunc.ArgTypes[2:]
+	interFunc.ArgTypes = interFunc.ArgTypes[1:]
+	interFunc.HasLuaCallback = true
 	interFunc.Func = func(args ...interface{}) (interface{}, error) {
 		var sess *core.Session
 		if len(args) == 0 {
