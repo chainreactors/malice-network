@@ -41,11 +41,13 @@ type Plugin struct {
 }
 
 func (plug *Plugin) RegisterLuaBuiltin(vm *lua.LState) error {
-	vm.SetGlobal("plugin_dir", lua.LString(filepath.Join(assets.GetMalsDir(), plug.Name)))
-	vm.SetGlobal("plugin_resource_dir", lua.LString(filepath.Join(assets.GetMalsDir(), plug.Name, "resources")))
+	plugDir := filepath.Join(assets.GetMalsDir(), plug.Name)
+	vm.SetGlobal("plugin_dir", lua.LString(plugDir))
+	vm.SetGlobal("plugin_resource_dir", lua.LString(filepath.Join(plugDir, "resources")))
 	vm.SetGlobal("plugin_name", lua.LString(plug.Name))
-	//vm.SetGlobal("temp_dir", )
-
+	packageMod := vm.GetGlobal("package").(*lua.LTable)
+	luaPath := lua.LuaPathDefault + ";" + plugDir + "\\?.lua"
+	vm.SetField(packageMod, "path", lua.LString(luaPath))
 	// 读取resource文件
 	plug.registerLuaFunction(vm, "script_resource", func(filename string) (string, error) {
 		return intermediate.GetResourceFile(plug.Name, filename)
