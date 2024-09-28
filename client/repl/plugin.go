@@ -110,11 +110,6 @@ func (plug *Plugin) InitLua(con *Console) error {
 		return err
 	}
 
-	for name, fn := range intermediate.InternalFunctions {
-		//fmt.Printf("Registering internal function: %s %v\n", name, fn.ArgTypes)
-		vm.SetGlobal(name, vm.NewFunction(intermediate.WrapFuncForLua(fn)))
-	}
-
 	if err := vm.DoString(string(plug.Content)); err != nil {
 		return fmt.Errorf("failed to load Lua script: %w", err)
 	}
@@ -263,11 +258,6 @@ func (plug *Plugin) InitLua(con *Console) error {
 	})
 	plug.CMDs = plugCmd.Commands()
 	return nil
-}
-
-func (plug *Plugin) registerLuaFunction(name string, fn interface{}) {
-	wrappedFunc := intermediate.WrapInternalFunc(fn)
-	plug.LuaVM.SetGlobal(name, plug.LuaVM.NewFunction(intermediate.WrapFuncForLua(wrappedFunc)))
 }
 
 type implantFunc func(rpc clientrpc.MaliceRPCClient, sess *core.Session, params ...interface{}) (*clientpb.Task, error)

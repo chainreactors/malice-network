@@ -61,6 +61,7 @@ func (plug *Plugin) RegisterLuaBuiltin(vm *lua.LState) error {
 	plug.registerLuaFunction(vm, "read_resource", func(filename string) (string, error) {
 		return intermediate.ReadResourceFile(plug.Name, filename)
 	})
+
 	return nil
 }
 

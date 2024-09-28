@@ -160,14 +160,14 @@ func (c *Console) RegisterImplantFunc(name string, fn interface{},
 	}
 
 	if fn != nil {
-		intermediate.RegisterInternalFunc(name, WrapImplantFunc(c, fn, pluginCallback), implantCallback)
+		intermediate.RegisterInternalFunc(intermediate.BuiltinPackage, name, WrapImplantFunc(c, fn, pluginCallback), implantCallback)
 	}
 
 	if bfn != nil {
-		intermediate.RegisterInternalFunc(bname, WrapImplantFunc(c, bfn, pluginCallback), implantCallback)
+		intermediate.RegisterInternalFunc(intermediate.BeaconPackage, bname, WrapImplantFunc(c, bfn, pluginCallback), implantCallback)
 	}
 }
 
 func (c *Console) RegisterServerFunc(name string, fn interface{}) error {
-	return intermediate.RegisterInternalFunc(name, WrapServerFunc(c, fn), nil)
+	return intermediate.RegisterInternalFunc(intermediate.BuiltinPackage, name, WrapServerFunc(c, fn), nil)
 }

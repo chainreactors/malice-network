@@ -208,6 +208,6 @@ func RegisterGRPCBuiltin(rpc clientrpc.MaliceRPCClient) {
 		internalFunc.ArgTypes = internalFunc.ArgTypes[1:3]
 
 		// 注册函数
-		RegisterInternalFunc(methodName, internalFunc, nil)
+		RegisterInternalFunc(RpcPackage, methodName, internalFunc, nil)
 	}
 }
