@@ -138,7 +138,6 @@ func (c *Console) SwitchImplant(sess *core.Session) {
 		if depend, ok := cmd.Annotations["depend"]; ok {
 			for _, dep := range strings.Split(depend, ",") {
 				if !slices.Contains(sess.Modules, dep) {
-					fmt.Println(cmd.Name())
 					cmd.Hidden = true
 				}
 			}

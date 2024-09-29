@@ -16,6 +16,7 @@ type InternalFunc struct {
 	Raw            interface{}
 	Func           func(...interface{}) (interface{}, error)
 	HasLuaCallback bool
+	NoCache        bool
 	FinishCallback ImplantCallback // implant callback
 	DoneCallback   ImplantCallback
 	ArgTypes       []reflect.Type
