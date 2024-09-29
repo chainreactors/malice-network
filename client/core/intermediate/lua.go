@@ -42,7 +42,6 @@ func WrapFuncForLua(fn *InternalFunc) lua.LGFunction {
 		for i := 1; i <= top; i++ {
 			args = append(args, ConvertLuaValueToGo(vm.Get(i)))
 		}
-		fmt.Printf("%v\n", fn.ArgTypes)
 		args, err := ConvertArgsToExpectedTypes(args, fn.ArgTypes)
 		if err != nil {
 			vm.Error(lua.LString(fmt.Sprintf("Error: %v", err)), 1)

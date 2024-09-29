@@ -497,7 +497,7 @@ func makeExtPlatformFilters(ext *ExtCommand) map[string]string {
 	var arch []string
 	for _, file := range ext.Files {
 		all["os"] = file.OS
-		arch = append(arch, file.Arch)
+		arch = append(arch, intermediate.FormatArch(file.Arch))
 	}
 	all["arch"] = strings.Join(arch, ",")
 	all["depend"] = ext.DependsOn
