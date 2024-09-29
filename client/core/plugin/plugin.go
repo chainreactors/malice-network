@@ -168,5 +168,6 @@ func (plug *Plugin) registerLuaFunction(vm *lua.LState, name string, fn interfac
 	wrappedFunc := intermediate.WrapInternalFunc(fn)
 	wrappedFunc.Package = intermediate.BuiltinPackage
 	wrappedFunc.Name = name
+	wrappedFunc.NoCache = true
 	vm.SetGlobal(name, vm.NewFunction(intermediate.WrapFuncForLua(wrappedFunc)))
 }
