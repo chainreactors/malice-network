@@ -94,7 +94,7 @@ func FindTaskAndMaxTasksID(sessionID string) ([]*models.Task, int, error) {
 		maxTemp = taskID
 	}
 
-	return tasks, maxTemp + 1, nil
+	return tasks, maxTemp, nil
 }
 
 func UpdateLast(sessionID string) error {

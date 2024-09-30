@@ -27,3 +27,7 @@ func (t *Task) BeforeCreate(tx *gorm.DB) (err error) {
 func (t *Task) UpdateCur(db *gorm.DB, newCur int) error {
 	return db.Model(t).Update("cur", newCur).Error
 }
+
+func (t *Task) UpdateTotal(db *gorm.DB, newTotal int) error {
+	return db.Model(t).Update("total", newTotal).Error
+}

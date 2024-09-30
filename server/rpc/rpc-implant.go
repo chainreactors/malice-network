@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -23,14 +24,33 @@ func (rpc *Server) Register(ctx context.Context, req *lispb.RegisterSession) (*i
 		}
 		return &implantpb.Empty{}, nil
 	}
-
+	_, err := db.FindSession(req.SessionId)
 	sess = core.NewSession(req)
-	core.Sessions.Add(sess)
-	dbSession := db.Session()
-	d := dbSession.Create(models.ConvertToSessionDB(sess))
-	if d.Error != nil {
-		sess.Update(req)
+	if err != nil && !errors.Is(err, db.ErrRecordNotFound) {
+		return &implantpb.Empty{}, err
+	} else if errors.Is(err, db.ErrRecordNotFound) {
+		dbSession := db.Session()
+		d := dbSession.Create(models.ConvertToSessionDB(sess))
+		if d.Error != nil {
+			return &implantpb.Empty{}, err
+		} else {
+			core.EventBroker.Publish(core.Event{
+				EventType: consts.EventSession,
+				Op:        consts.CtrlSessionRegister,
+				Session:   sess.ToProtobuf(),
+				IsNotify:  true,
+				Message:   fmt.Sprintf("session %s from %s start at %s", sess.ID, sess.RemoteAddr, sess.PipelineID),
+			})
+			logs.Log.Importantf("init new session %s from %s", sess.ID, sess.PipelineID)
+		}
+	} else {
 		logs.Log.Warnf("session %s re-register ", sess.ID)
+		_, taskID, err := db.FindTaskAndMaxTasksID(req.SessionId)
+		if err != nil {
+			logs.Log.Errorf("cannot find max task id , %s ", err.Error())
+			return &implantpb.Empty{}, nil
+		}
+		sess.SetLastTaskId(uint32(taskID))
 		core.EventBroker.Publish(core.Event{
 			EventType: consts.EventSession,
 			Op:        consts.CtrlSessionRegister,
@@ -38,18 +58,10 @@ func (rpc *Server) Register(ctx context.Context, req *lispb.RegisterSession) (*i
 			IsNotify:  true,
 			Message:   fmt.Sprintf("session %s from %s re-register at %s", sess.ID, sess.RemoteAddr, sess.PipelineID),
 		})
-		return &implantpb.Empty{}, nil
-	} else {
-		core.EventBroker.Publish(core.Event{
-			EventType: consts.EventSession,
-			Op:        consts.CtrlSessionRegister,
-			Session:   sess.ToProtobuf(),
-			IsNotify:  true,
-			Message:   fmt.Sprintf("session %s from %s start at %s", sess.ID, sess.RemoteAddr, sess.PipelineID),
-		})
-		logs.Log.Importantf("init new session %s from %s", sess.ID, sess.PipelineID)
-		return &implantpb.Empty{}, nil
 	}
+	core.Sessions.Add(sess)
+	sess.Load()
+	return &implantpb.Empty{}, nil
 }
 
 func (rpc *Server) SysInfo(ctx context.Context, req *implantpb.SysInfo) (*implantpb.Empty, error) {
