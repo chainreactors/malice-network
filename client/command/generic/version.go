@@ -3,7 +3,7 @@ package generic
 import (
 	"context"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/spf13/cobra"
 )
 

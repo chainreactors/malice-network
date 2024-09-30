@@ -3,8 +3,8 @@ package types
 import (
 	"errors"
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/proto/listener/lispb"
+	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
+	"github.com/chainreactors/malice-network/helper/proto/listener/lispb"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -93,8 +93,8 @@ func BuildOneSpites(spite *implantpb.Spite) *implantpb.Spites {
 //		return spite.GetRegister(), nil
 //	case *implantpb.Spite_ExecResponse:
 //		return spite.GetExecResponse(), nil
-//	case *implantpb.Spite_AssemblyResponse:
-//		return spite.GetAssemblyResponse(), nil
+//	case *implantpb.Spite_BinaryResponse:
+//		return spite.GetBinaryResponse(), nil
 //	default:
 //		return nil, ErrUnknownSpite
 //	}

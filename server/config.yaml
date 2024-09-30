@@ -9,25 +9,10 @@ server:
     certificate:
     certificate_key:
   notify:
-    enable: false
-    telegram:
-        enable: false
-        api_key:
-        chat_id:
-    dingtalk:
-        enable: false
-        secret:
-        token:
+    enable: true
     lark:
-      enable: false
-      webhook_url:
-    serverchan:
-        enable: false
-        url:
-        method:
-        headers:
-        content_type:
-        bodyTemplate:
+      enable: true
+      webhook_url: https://open.feishu.cn/open-apis/bot/v2/hook/b2da7594-3b40-4fa6-81ea-dd30d458742e
 
 listeners:
   name: listener

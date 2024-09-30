@@ -3,7 +3,7 @@ package listener
 import (
 	"context"
 	"fmt"
-	"github.com/chainreactors/malice-network/proto/listener/lispb"
+	"github.com/chainreactors/malice-network/helper/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/tests/common"
 	"testing"
 )

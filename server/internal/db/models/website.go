@@ -1,7 +1,7 @@
 package models
 
 import (
-	"github.com/chainreactors/malice-network/proto/listener/lispb"
+	"github.com/chainreactors/malice-network/helper/proto/listener/lispb"
 	"github.com/gofrs/uuid"
 	"gorm.io/gorm"
 	"os"

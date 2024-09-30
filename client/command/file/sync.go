@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 )
 
 func SyncCmd(cmd *cobra.Command, con *repl.Console) {

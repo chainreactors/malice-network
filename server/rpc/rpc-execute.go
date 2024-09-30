@@ -2,9 +2,9 @@ package rpc
 
 import (
 	"context"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/types"
-	"github.com/chainreactors/malice-network/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 	"math"
 )
 
@@ -50,7 +50,7 @@ func (rpc *Server) ExecuteAssembly(ctx context.Context, req *implantpb.ExecuteCl
 	if err != nil {
 		return nil, err
 	}
-	go greq.HandlerResponse(ch, types.MsgAssemblyResponse)
+	go greq.HandlerResponse(ch, types.MsgBinaryResponse)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -65,7 +65,7 @@ func (rpc *Server) ExecuteShellcode(ctx context.Context, req *implantpb.ExecuteB
 	if err != nil {
 		return nil, err
 	}
-	go greq.HandlerResponse(ch, types.MsgAssemblyResponse)
+	go greq.HandlerResponse(ch, types.MsgBinaryResponse)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -79,7 +79,7 @@ func (rpc *Server) ExecuteBof(ctx context.Context, req *implantpb.ExecuteBinary)
 	if err != nil {
 		return nil, err
 	}
-	go greq.HandlerResponse(ch, types.MsgAssemblyResponse)
+	go greq.HandlerResponse(ch, types.MsgBinaryResponse)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -95,7 +95,7 @@ func (rpc *Server) ExecuteEXE(ctx context.Context, req *implantpb.ExecuteBinary)
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgAssemblyResponse)
+	go greq.HandlerResponse(ch, types.MsgBinaryResponse)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -110,7 +110,7 @@ func (rpc *Server) ExecuteDll(ctx context.Context, req *implantpb.ExecuteBinary)
 	if err != nil {
 		return nil, err
 	}
-	go greq.HandlerResponse(ch, types.MsgAssemblyResponse)
+	go greq.HandlerResponse(ch, types.MsgBinaryResponse)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -124,7 +124,7 @@ func (rpc *Server) ExecutePowerpick(ctx context.Context, req *implantpb.ExecuteC
 	if err != nil {
 		return nil, err
 	}
-	go greq.HandlerResponse(ch, types.MsgAssemblyResponse)
+	go greq.HandlerResponse(ch, types.MsgBinaryResponse)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -139,7 +139,7 @@ func (rpc *Server) ExecuteArmory(ctx context.Context, req *implantpb.ExecuteBina
 	if err != nil {
 		return nil, err
 	}
-	go greq.HandlerResponse(ch, types.MsgAssemblyResponse)
+	go greq.HandlerResponse(ch, types.MsgBinaryResponse)
 	return greq.Task.ToProtobuf(), nil
 }
 

@@ -3,7 +3,7 @@ package models
 import (
 	"encoding/json"
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"gorm.io/gorm"
 	"regexp"
 	"strconv"

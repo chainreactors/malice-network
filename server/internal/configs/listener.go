@@ -3,7 +3,7 @@ package configs
 import (
 	"crypto/x509/pkix"
 	"github.com/chainreactors/malice-network/helper/certs"
-	"github.com/chainreactors/malice-network/proto/listener/lispb"
+	"github.com/chainreactors/malice-network/helper/proto/listener/lispb"
 	"os"
 )
 
