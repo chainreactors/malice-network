@@ -2,7 +2,7 @@ package types
 
 import (
 	"errors"
-	"github.com/chainreactors/malice-network/proto/listener/lispb"
+	"github.com/chainreactors/malice-network/helper/proto/listener/lispb"
 	"io"
 	"net/http"
 	"os"

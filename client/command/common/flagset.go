@@ -2,7 +2,7 @@ package common
 
 import (
 	"github.com/chainreactors/malice-network/client/core/intermediate"
-	"github.com/chainreactors/malice-network/proto/implant/implantpb"
+	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )

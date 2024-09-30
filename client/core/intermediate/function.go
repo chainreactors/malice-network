@@ -2,7 +2,7 @@ package intermediate
 
 import (
 	"fmt"
-	"github.com/chainreactors/malice-network/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"path/filepath"
 	"reflect"
 	"runtime"

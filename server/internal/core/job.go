@@ -1,8 +1,8 @@
 package core
 
 import (
-	"github.com/chainreactors/malice-network/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/proto/listener/lispb"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/proto/listener/lispb"
 	"google.golang.org/protobuf/proto"
 	"sync"
 )

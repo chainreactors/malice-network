@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/proto/listener/lispb"
+	"github.com/chainreactors/malice-network/helper/proto/listener/lispb"
 	"github.com/rsteube/carapace"
 	"io/ioutil"
 	"os"

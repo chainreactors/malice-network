@@ -4,13 +4,13 @@ import (
 	"context"
 	"fmt"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
+	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/helper/utils/file"
 	"github.com/chainreactors/malice-network/helper/utils/handler"
 	"github.com/chainreactors/malice-network/helper/utils/pe"
-	"github.com/chainreactors/malice-network/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/kballard/go-shellquote"
 	"google.golang.org/protobuf/proto"
 	"os"
@@ -97,7 +97,7 @@ func RegisterCustomBuiltin(rpc clientrpc.MaliceRPCClient) {
 
 	// 打印 assembly
 	RegisterFunction("assemblyprint", func(task *clientpb.TaskContext) (string, error) {
-		err := handler.AssertStatusAndResponse(task.GetSpite(), types.MsgAssemblyResponse)
+		err := handler.AssertStatusAndResponse(task.GetSpite(), types.MsgBinaryResponse)
 		if err != nil {
 			return "", err
 		}

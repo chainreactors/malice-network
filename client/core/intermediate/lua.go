@@ -21,7 +21,7 @@ const (
 )
 
 func WrapFuncForLua(fn *InternalFunc) lua.LGFunction {
-	if luaFn, ok := luaFunctionCache[fn.String()]; !fn.NoCache && ok {
+	if luaFn, ok := luaFunctionCache[fn.String()]; ok {
 		return luaFn
 	}
 
@@ -70,7 +70,10 @@ func WrapFuncForLua(fn *InternalFunc) lua.LGFunction {
 			return 1
 		}
 	}
-	luaFunctionCache[fn.String()] = luaFn
+	if !fn.NoCache {
+		luaFunctionCache[fn.String()] = luaFn
+	}
+
 	return luaFn
 }
 

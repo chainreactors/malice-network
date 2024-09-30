@@ -1,7 +1,7 @@
 package types
 
 import (
-	"github.com/chainreactors/malice-network/proto/implant/implantpb"
+	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 )
 
 func NewSpitesCache() *SpitesCache {

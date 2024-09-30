@@ -6,11 +6,11 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
+	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/utils/file"
 	"github.com/chainreactors/malice-network/helper/utils/handler"
-	"github.com/chainreactors/malice-network/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"math"
 	"os"
 	"path/filepath"
@@ -115,7 +115,7 @@ func ParseAssembly(spite *implantpb.Spite) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	response := spite.GetAssemblyResponse()
+	response := spite.GetBinaryResponse()
 	if response == nil {
 		return "", fmt.Errorf("assembly response is nil")
 	}

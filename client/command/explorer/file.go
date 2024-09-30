@@ -3,7 +3,7 @@ package explorer
 import (
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/proto/implant/implantpb"
+	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 	"os"
