@@ -1,9 +1,10 @@
 package consts
 
 const (
-	CalleeCMD = "cmd"
-	CalleeMal = "mal"
-	CalleeSDK = "sdk"
+	CalleeCMD      = "cmd"
+	CalleeMal      = "mal"
+	CalleeSDK      = "sdk"
+	CalleeExplorer = "explorer"
 )
 
 const (
