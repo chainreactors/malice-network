@@ -48,9 +48,9 @@ type Console struct {
 	//*core.ActiveTarget
 	*core.ServerStatus
 	*Plugins
-	Log      *core.Logger
-	App      *console.Console
-	Settings *assets.Settings
+	Log     *core.Logger
+	App     *console.Console
+	Profile *assets.Profile
 }
 
 func (c *Console) NewConsole() {
