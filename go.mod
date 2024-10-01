@@ -33,6 +33,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/tengattack/gluacrypto v0.0.0-20240324200146-54b58c95c255
 	github.com/tetratelabs/wazero v1.5.0
+	github.com/traefik/yaegi v0.16.1
 	github.com/vadv/gopher-lua-libs v0.5.0
 	github.com/yuin/gluare v0.0.0-20170607022532-d7c94f1a80ed
 	github.com/yuin/gopher-lua v1.1.1

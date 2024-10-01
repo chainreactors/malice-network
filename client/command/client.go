@@ -113,6 +113,7 @@ func BindClientsCommands(con *repl.Console) console.Commands {
 		client.InitDefaultHelpFlag()
 		client.SetHelpCommandGroupID(consts.GenericGroup)
 		RegisterClientFunc(con)
+		RegisterImplantFunc(con)
 		return client
 	}
 	return clientCommands

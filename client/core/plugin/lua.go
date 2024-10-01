@@ -2,12 +2,17 @@ package plugin
 
 import (
 	"fmt"
+	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/client/assets"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/cjoudrey/gluahttp"
+	"github.com/kballard/go-shellquote"
+	"github.com/spf13/cobra"
 	luacrypto "github.com/tengattack/gluacrypto/crypto"
 	"github.com/vadv/gopher-lua-libs/argparse"
 	"github.com/vadv/gopher-lua-libs/base64"
-	"github.com/vadv/gopher-lua-libs/filepath"
+	luafilepath "github.com/vadv/gopher-lua-libs/filepath"
 	"github.com/vadv/gopher-lua-libs/goos"
 	"github.com/vadv/gopher-lua-libs/humanize"
 	"github.com/vadv/gopher-lua-libs/inspect"
@@ -32,7 +37,9 @@ import (
 	"google.golang.org/protobuf/reflect/protoregistry"
 	"net/http"
 	"os"
+	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"unicode"
 )
@@ -45,7 +52,199 @@ var (
 	LuaPackages = map[string]*lua.LTable{}
 )
 
-func MalLoader(L *lua.LState) int {
+type LuaPlugin struct {
+	*DefaultPlugin
+	vm *lua.LState
+}
+
+func NewLuaMalPlugin(manifest *MalManiFest) (*LuaPlugin, error) {
+	plug, err := NewPlugin(manifest)
+	if err != nil {
+		return nil, err
+	}
+	mal := &LuaPlugin{
+		DefaultPlugin: plug,
+		vm:            NewLuaVM(),
+	}
+	err = mal.RegisterLuaBuiltin()
+	if err != nil {
+		return nil, err
+	}
+
+	//globals := vm.Get(lua.GlobalsIndex).(*lua.LTable)
+	//globals.ForEach(func(key lua.LValue, value lua.LValue) {
+	//	if fn, ok := value.(*lua.LFunction); ok {
+	//		funcName := key.String()
+	//		if strings.HasPrefix(funcName, "command_") {
+	//			// 注册到 RPCFunctions 中
+	//			intermediate.InternalFunctions[funcName] = func(req ...interface{}) (interface{}, error) {
+	//				vm.Push(fn) // 将函数推入栈
+	//
+	//				// 将所有参数推入栈
+	//				for _, arg := range req {
+	//					vm.Push(lua.LString(fmt.Sprintf("%v", arg)))
+	//				}
+	//
+	//				// 调用函数
+	//				if err := vm.PCall(len(req), lua.MultRet, nil); err != nil {
+	//					return nil, fmt.Errorf("error calling Lua function %s: %w", funcName, err)
+	//				}
+	//
+	//				// 获取返回值
+	//				results := make([]interface{}, 0, vm.GetTop())
+	//				for i := 1; i <= vm.GetTop(); i++ {
+	//					results = append(results, vm.Get(i))
+	//				}
+	//
+	//				// 如果有返回值，返回第一个值，否则返回nil
+	//				if len(results) > 0 {
+	//					return results[0], nil
+	//				}
+	//				return nil, nil
+	//			}
+	//			fmt.Printf("Registered Lua function to RPCFunctions: %s\n", funcName)
+	//		}
+	//	}
+	//})
+
+	return mal, nil
+}
+
+func (plug *LuaPlugin) Run() error {
+	if err := plug.vm.DoString(string(plug.Content)); err != nil {
+		return fmt.Errorf("failed to load Lua script: %w", err)
+	}
+	return nil
+}
+
+func (plug *LuaPlugin) RegisterLuaBuiltin() error {
+	vm := plug.vm
+	plugDir := filepath.Join(assets.GetMalsDir(), plug.Name)
+	vm.SetGlobal("plugin_dir", lua.LString(plugDir))
+	vm.SetGlobal("plugin_resource_dir", lua.LString(filepath.Join(plugDir, "resources")))
+	vm.SetGlobal("plugin_name", lua.LString(plug.Name))
+	packageMod := vm.GetGlobal("package").(*lua.LTable)
+	luaPath := lua.LuaPathDefault + ";" + plugDir + "\\?.lua"
+	vm.SetField(packageMod, "path", lua.LString(luaPath))
+	// 读取resource文件
+	plug.registerLuaFunction(vm, "script_resource", func(filename string) (string, error) {
+		return intermediate.GetResourceFile(plug.Name, filename)
+	})
+
+	plug.registerLuaFunction(vm, "find_resource", func(sess *core.Session, base string, ext string) (string, error) {
+		return intermediate.FindResourceFile(plug.Name, base, sess.Os.Arch, ext)
+	})
+
+	// 读取资源文件内容
+	plug.registerLuaFunction(vm, "read_resource", func(filename string) (string, error) {
+		return intermediate.ReadResourceFile(plug.Name, filename)
+	})
+
+	plug.registerLuaFunction(vm, "help", func(name string, long string) (bool, error) {
+		cmd := plug.CMDs.Find(name)
+		cmd.Long = long
+		return true, nil
+	})
+
+	plug.registerLuaFunction(vm, "example", func(name string, example string) (bool, error) {
+		cmd := plug.CMDs.Find(name)
+		cmd.Example = example
+		return true, nil
+	})
+
+	plug.registerLuaFunction(vm, "command", func(name string, fn *lua.LFunction, short string) (bool, error) {
+		cmd := plug.CMDs.Find(name)
+
+		var paramNames []string
+		for _, param := range fn.Proto.DbgLocals {
+			paramNames = append(paramNames, param.Name)
+		}
+
+		// 创建新的 Cobra 命令
+		malCmd := &cobra.Command{
+			Use:   cmd.Name,
+			Short: short,
+			RunE: func(cmd *cobra.Command, args []string) error {
+				vm.Push(fn) // 将函数推入栈
+
+				for _, paramName := range paramNames {
+					switch paramName {
+					case "cmdline":
+						vm.Push(lua.LString(shellquote.Join(args...)))
+					case "args":
+						vm.Push(intermediate.ConvertGoValueToLua(vm, args))
+					default:
+						val, err := cmd.Flags().GetString(paramName)
+						if err != nil {
+							logs.Log.Errorf("error getting flag %s: %s", paramName, err.Error())
+							return err
+						}
+						vm.Push(lua.LString(val))
+					}
+				}
+
+				var outFunc intermediate.BuiltinCallback
+				if outFile, _ := cmd.Flags().GetString("file"); outFile == "" {
+					outFunc = func(content string) (bool, error) {
+						logs.Log.Console(content)
+						return true, nil
+					}
+				} else {
+					outFunc = func(content string) (bool, error) {
+						err := os.WriteFile(outFile, []byte(content), 0644)
+						if err != nil {
+							return false, err
+						}
+						return true, nil
+					}
+				}
+				go func() {
+					if err := vm.PCall(len(paramNames), lua.MultRet, nil); err != nil {
+						logs.Log.Errorf("error calling Lua %s:\n%s", fn.String(), err.Error())
+						return
+					}
+
+					resultCount := vm.GetTop()
+					for i := 1; i <= resultCount; i++ {
+						// 从栈顶依次弹出返回值
+						result := vm.Get(-resultCount + i - 1)
+						_, err := outFunc(result.String())
+						if err != nil {
+							logs.Log.Errorf("error calling outFunc:\n%s", err.Error())
+							return
+						}
+					}
+					vm.Pop(resultCount)
+				}()
+
+				return nil
+			},
+		}
+
+		malCmd.Flags().StringP("file", "f", "", "output file")
+		for _, paramName := range paramNames {
+			if slices.Contains(ReservedWords, paramName) {
+				continue
+			}
+			malCmd.Flags().String(paramName, "", paramName)
+		}
+		logs.Log.Debugf("Registered Command: %s\n", cmd.Name)
+		plug.CMDs.SetCommand(name, malCmd)
+		return true, nil
+	})
+
+	return nil
+}
+
+func (plug *LuaPlugin) registerLuaFunction(vm *lua.LState, name string, fn interface{}) {
+	wrappedFunc := intermediate.WrapInternalFunc(fn)
+	wrappedFunc.Package = intermediate.BuiltinPackage
+	wrappedFunc.Name = name
+	wrappedFunc.NoCache = true
+	vm.SetGlobal(name, vm.NewFunction(intermediate.WrapFuncForLua(wrappedFunc)))
+}
+
+func luaLoader(L *lua.LState) int {
 	// 从 LState 获取传入的包名
 	packageName := L.ToString(1)
 
@@ -69,7 +268,7 @@ func LoadLib(vm *lua.LState) {
 	plugin.Preload(vm)
 	argparse.Preload(vm)
 	base64.Preload(vm)
-	filepath.Preload(vm)
+	luafilepath.Preload(vm)
 	goos.Preload(vm)
 	humanize.Preload(vm)
 	inspect.Preload(vm)
@@ -91,9 +290,9 @@ func LoadLib(vm *lua.LState) {
 	vm.PreloadModule("re", gluare.Loader)
 
 	// mal package
-	vm.PreloadModule(intermediate.BeaconPackage, MalLoader)
-	vm.PreloadModule(intermediate.RpcPackage, MalLoader)
-	vm.PreloadModule(intermediate.ArmoryPackage, MalLoader)
+	vm.PreloadModule(intermediate.BeaconPackage, luaLoader)
+	vm.PreloadModule(intermediate.RpcPackage, luaLoader)
+	vm.PreloadModule(intermediate.ArmoryPackage, luaLoader)
 }
 
 func NewLuaVM() *lua.LState {

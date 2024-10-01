@@ -69,7 +69,6 @@ func (c *Console) NewConsole() {
 	implant.Prompt().Primary = c.GetPrompt
 	implant.AddInterrupt(io.EOF, exitImplantMenu) // Ctrl-D
 	implant.AddHistorySourceFile("history", filepath.Join(assets.GetRootAppDir(), "implant_history"))
-
 }
 
 func (c *Console) Start(bindCmds ...BindCmds) error {

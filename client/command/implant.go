@@ -146,7 +146,6 @@ func BindImplantCommands(con *repl.Console) console.Commands {
 			return implant
 		}
 
-		RegisterImplantFunc(con)
 		for _, malName := range assets.GetInstalledMalManifests() {
 			_, err := mal.LoadMal(con, implant, malName)
 			if err != nil {
