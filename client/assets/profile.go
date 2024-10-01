@@ -5,7 +5,11 @@ var (
 )
 
 type Profile struct {
-	Aliases    []string `yaml:"aliases"`
-	Extensions []string `yaml:"extensions"`
-	Modules    []string `yaml:"modules"`
+	ResourceDir string   `yaml:"resources" default:""`
+	TempDir     string   `yaml:"tmp" default:""`
+	Aliases     []string `yaml:"aliases"`
+	Extensions  []string `yaml:"extensions"`
+	Mals        []string `yaml:"mals"`
+	//Modules     []string  `yaml:"modules"`
+	Settings *Settings `yaml:"settings"`
 }
