@@ -17,7 +17,7 @@ var loadedMals = make(map[string]*LoadedMal)
 type LoadedMal struct {
 	Manifest *plugin.MalManiFest
 	CMDs     []*cobra.Command
-	Plugin   *plugin.Plugin
+	Plugin   plugin.Plugin
 }
 
 func MalLoadCmd(ctx *cobra.Command, con *repl.Console) {
@@ -55,14 +55,14 @@ func LoadMal(con *repl.Console, rootCmd *cobra.Command, filename string) (*Loade
 
 	var cmdNames []string
 	var cmds []*cobra.Command
-	for _, cmd := range plug.CMDs {
+	for _, cmd := range plug.Commands() {
 		cmdNames = append(cmdNames, cmd.CMD.Name())
 		cmds = append(cmds, cmd.CMD)
 	}
 	mal := &LoadedMal{
 		Manifest: manifest,
 		CMDs:     cmds,
-		Plugin:   plug.Plugin,
+		Plugin:   plug,
 	}
 	loadedMals[manifest.Name] = mal
 	con.Log.Importantf("load mal: %s successfully, register %v", filename, cmdNames)
@@ -82,7 +82,7 @@ func ListMalManiFest(con *repl.Console) {
 		{Title: "Author", Width: 4},
 	}, true)
 	for _, m := range loadedMals {
-		plug := m.Plugin
+		plug := m.Plugin.Manifest()
 		row := table.Row{
 			plug.Name,
 			plug.Type,

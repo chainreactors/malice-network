@@ -13,7 +13,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/utils/handler"
 	"github.com/chainreactors/tui"
 	"github.com/spf13/cobra"
-	lua "github.com/yuin/gopher-lua"
 	"reflect"
 )
 
@@ -23,135 +22,43 @@ var (
 
 func NewPlugins() *Plugins {
 	plugins := &Plugins{
-		Plugins: map[string]*Plugin{},
+		Plugins: make(map[string]*plugin.Plugin),
 	}
-
 	return plugins
 }
 
 type Plugins struct {
-	Plugins map[string]*Plugin
+	Plugins map[string]*plugin.Plugin
 }
 
-func (plugins *Plugins) LoadPlugin(manifest *plugin.MalManiFest, con *Console, rootCmd *cobra.Command) (*Plugin, error) {
-	var plug *Plugin
+func (plugins *Plugins) LoadPlugin(manifest *plugin.MalManiFest, con *Console, rootCmd *cobra.Command) (plugin.Plugin, error) {
+	if _, ok := plugins.Plugins[manifest.Name]; ok {
+		return nil, ErrorAlreadyScriptName
+	}
+
+	var plug plugin.Plugin
 	var err error
 	switch manifest.Type {
 	case plugin.LuaScript:
-		plug, err = plugins.LoadLuaScript(manifest, con)
-	case plugin.TCLScript:
-		// TODO
-		return nil, fmt.Errorf("not impl")
+		plug, err = plugin.NewLuaMalPlugin(manifest)
 	case plugin.GoPlugin:
-		// TODO
-		return nil, fmt.Errorf("not impl")
+		plug, err = plugin.NewGoMalPlugin(manifest)
 	default:
 		return nil, fmt.Errorf("not found valid script type: %s", manifest.Type)
 	}
 	if err != nil {
 		return nil, err
 	}
-	for _, cmd := range plug.CMDs {
+
+	err = plug.Run()
+	if err != nil {
+		return nil, err
+	}
+	for _, cmd := range plug.Commands() {
 		cmd.CMD.GroupID = consts.MalGroup
 		rootCmd.AddCommand(cmd.CMD)
 	}
 	return plug, nil
-}
-
-func (plugins *Plugins) LoadLuaScript(manifest *plugin.MalManiFest, con *Console) (*Plugin, error) {
-	// 检查脚本名称是否已存在
-	if _, ok := plugins.Plugins[manifest.Name]; ok {
-		return nil, ErrorAlreadyScriptName
-	}
-
-	// 创建并存储新的插件
-	plug, err := NewPlugin(manifest, con)
-	if err != nil {
-		return nil, err
-	}
-
-	err = plug.InitLua(con)
-	if err != nil {
-		return nil, err
-	}
-	plugins.Plugins[manifest.Name] = plug
-	// 全局模块
-	//L.PreloadModule(manifest.Name, func(L *lua.LState) int {
-	//	if err := L.DoString(string(content)); err != nil {
-	//		Log.Errorf("failed to preload Lua script: %s", err.Error())
-	//		return 0
-	//	}
-	//	return 1
-	//})
-
-	return plug, nil
-}
-
-func NewPlugin(manifest *plugin.MalManiFest, con *Console) (*Plugin, error) {
-	plug, err := plugin.NewPlugin(manifest)
-	if err != nil {
-		return nil, err
-	}
-
-	return &Plugin{
-		Plugin: plug,
-	}, nil
-}
-
-type Plugin struct {
-	*plugin.Plugin
-	LuaVM *lua.LState
-}
-
-func (plug *Plugin) InitLua(con *Console) error {
-	vm := plugin.NewLuaVM()
-	plug.LuaVM = vm
-	err := plug.RegisterLuaBuiltin(vm)
-	if err != nil {
-		return err
-	}
-
-	if err := vm.DoString(string(plug.Content)); err != nil {
-		return fmt.Errorf("failed to load Lua script: %w", err)
-	}
-
-	//globals := vm.Get(lua.GlobalsIndex).(*lua.LTable)
-	//globals.ForEach(func(key lua.LValue, value lua.LValue) {
-	//	if fn, ok := value.(*lua.LFunction); ok {
-	//		funcName := key.String()
-	//		if strings.HasPrefix(funcName, "command_") {
-	//			// 注册到 RPCFunctions 中
-	//			intermediate.InternalFunctions[funcName] = func(req ...interface{}) (interface{}, error) {
-	//				vm.Push(fn) // 将函数推入栈
-	//
-	//				// 将所有参数推入栈
-	//				for _, arg := range req {
-	//					vm.Push(lua.LString(fmt.Sprintf("%v", arg)))
-	//				}
-	//
-	//				// 调用函数
-	//				if err := vm.PCall(len(req), lua.MultRet, nil); err != nil {
-	//					return nil, fmt.Errorf("error calling Lua function %s: %w", funcName, err)
-	//				}
-	//
-	//				// 获取返回值
-	//				results := make([]interface{}, 0, vm.GetTop())
-	//				for i := 1; i <= vm.GetTop(); i++ {
-	//					results = append(results, vm.Get(i))
-	//				}
-	//
-	//				// 如果有返回值，返回第一个值，否则返回nil
-	//				if len(results) > 0 {
-	//					return results[0], nil
-	//				}
-	//				return nil, nil
-	//			}
-	//			fmt.Printf("Registered Lua function to RPCFunctions: %s\n", funcName)
-	//		}
-	//	}
-	//})
-
-	return nil
 }
 
 type implantFunc func(rpc clientrpc.MaliceRPCClient, sess *core.Session, params ...interface{}) (*clientpb.Task, error)
