@@ -17,6 +17,7 @@ var inputrc string
 var (
 	MaliceDirName = ".config/malice"
 	ConfigDirName = "configs"
+	TempDirName   = "temp"
 )
 
 func GetConfigDir() string {
@@ -62,6 +63,17 @@ func GetConfigs() ([]string, error) {
 	}
 
 	return files, nil
+}
+func GetTempDir() string {
+	rootDir, _ := filepath.Abs(GetRootAppDir())
+	dir := filepath.Join(rootDir, TempDirName)
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		err = os.MkdirAll(dir, 0700)
+		if err != nil {
+			logs.Log.Errorf(err.Error())
+		}
+	}
+	return dir
 }
 
 func MvConfig(oldPath string) error {
