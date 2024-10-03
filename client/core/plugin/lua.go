@@ -120,9 +120,11 @@ func (plug *LuaPlugin) Run() error {
 func (plug *LuaPlugin) RegisterLuaBuiltin() error {
 	vm := plug.vm
 	plugDir := filepath.Join(assets.GetMalsDir(), plug.Name)
+	tempDir := assets.GetTempDir()
 	vm.SetGlobal("plugin_dir", lua.LString(plugDir))
 	vm.SetGlobal("plugin_resource_dir", lua.LString(filepath.Join(plugDir, "resources")))
 	vm.SetGlobal("plugin_name", lua.LString(plug.Name))
+	vm.SetGlobal("temp_dir", lua.LString(tempDir))
 	packageMod := vm.GetGlobal("package").(*lua.LTable)
 	luaPath := lua.LuaPathDefault + ";" + plugDir + "\\?.lua"
 	vm.SetField(packageMod, "path", lua.LString(luaPath))
