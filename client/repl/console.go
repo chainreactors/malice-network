@@ -124,7 +124,7 @@ func (c *Console) ImplantMenu() *cobra.Command {
 func (c *Console) SwitchImplant(sess *core.Session) {
 	c.ActiveTarget.Set(sess)
 	c.App.SwitchMenu(consts.ImplantMenu)
-
+	sess.GetLog()
 	var count int
 	for _, cmd := range c.ImplantMenu().Commands() {
 		cmd.Hidden = false

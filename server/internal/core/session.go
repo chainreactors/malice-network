@@ -11,7 +11,9 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/gookit/config/v2"
+	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
+	"gopkg.in/natefinch/lumberjack.v2"
 	"path"
 	"path/filepath"
 	"strings"
@@ -77,25 +79,42 @@ type Session struct {
 	taskseq    uint32
 	*Cache
 	responses *sync.Map
-	log       *logs.Logger
+	rpcLog    *logs.Logger
+	taskLog   *logrus.Logger
 }
 
-func (s *Session) Logger() *logs.Logger {
+func (s *Session) RpcLogger() *logs.Logger {
 	var err error
-	if s.log == nil {
+	if s.rpcLog == nil {
 		if auditLevel := config.Int(consts.AuditLevel); auditLevel > 0 {
-			s.log, err = logs.NewFileLogger(filepath.Join(configs.AuditPath, s.ID+".log"))
+			s.rpcLog, err = logs.NewFileLogger(filepath.Join(configs.AuditPath, s.ID+".log"))
 			if err == nil {
-				s.log.SuffixFunc = func() string {
+				s.rpcLog.SuffixFunc = func() string {
 					return time.Now().Format("2006-01-02 15:04.05")
 				}
 				if auditLevel == 2 {
-					s.log.SetLevel(logs.Debug)
+					s.rpcLog.SetLevel(logs.Debug)
 				}
 			}
 		}
 	}
-	return s.log
+	return s.rpcLog
+}
+
+func (s *Session) TaskLogger() *logrus.Logger {
+	if s.taskLog == nil {
+		s.taskLog = logrus.New()
+		s.taskLog.SetOutput(&lumberjack.Logger{
+			Filename:   filepath.Join(configs.TaskPath, s.ID+".log"),
+			MaxSize:    100,
+			MaxBackups: 1,
+			MaxAge:     30,
+			Compress:   true,
+		})
+		s.taskLog.SetFormatter(&logrus.TextFormatter{})
+		s.taskLog.SetLevel(logrus.InfoLevel)
+	}
+	return s.taskLog
 }
 
 func (s *Session) ToProtobuf() *clientpb.Session {

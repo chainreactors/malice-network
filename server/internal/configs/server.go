@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/chainreactors/files"
 	"github.com/chainreactors/logs"
+	crConfig "github.com/chainreactors/malice-network/helper/utils/config"
 	"gopkg.in/yaml.v3"
 	"io"
 	insecureRand "math/rand"
@@ -25,6 +26,7 @@ var (
 	PluginPath                  = path.Join(ServerRootPath, "plugins")
 	AuditPath                   = path.Join(ServerRootPath, "audit")
 	CachePath                   = path.Join(TempPath, "cache")
+	TaskPath                    = path.Join(TempPath, "tasks")
 	ErrNoConfig                 = errors.New("no config found")
 	WebsitePath                 = path.Join(ServerRootPath, "web")
 )
@@ -97,7 +99,7 @@ type MiscConfig struct {
 func LoadMiscConfig() ([]byte, []byte, error) {
 	var opt ServerConfig
 	// load config
-	err := LoadConfig(ServerConfigFileName, &opt)
+	err := crConfig.LoadConfig(ServerConfigFileName, &opt)
 	if err != nil {
 		logs.Log.Errorf("Failed to load config: %s", err)
 		return nil, nil, err

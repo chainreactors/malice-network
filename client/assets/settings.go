@@ -19,6 +19,7 @@ type Settings struct {
 	AlwaysOverflow    bool   `json:"always_overflow"`
 	VimMode           bool   `json:"vim_mode"`
 	DefaultTimeout    int
+	MaxServerLogSize  int `json:"max_server_log_size"`
 }
 
 func LoadSettings() (*Settings, error) {

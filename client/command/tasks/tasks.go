@@ -17,15 +17,16 @@ func listTasks(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf("Error updating tasks: %v", err)
 		return
 	}
+	isAll, _ := cmd.Flags().GetBool("all")
 	tasks := con.GetInteractive().Tasks.GetTasks()
 	if 0 < len(tasks) {
-		printTasks(tasks, con)
+		printTasks(tasks, con, isAll)
 	} else {
 		con.Log.Info("No tasks")
 	}
 }
 
-func printTasks(tasks []*clientpb.Task, con *repl.Console) {
+func printTasks(tasks []*clientpb.Task, con *repl.Console, isAll bool) {
 	var rowEntries []table.Row
 	var row table.Row
 	tableModel := tui.NewTable([]table.Column{
@@ -40,6 +41,9 @@ func printTasks(tasks []*clientpb.Task, con *repl.Console) {
 		if task.Status != 0 {
 			status = "Error"
 		} else if task.Cur/task.Total == 1 {
+			if !isAll {
+				continue
+			}
 			status = "Complete"
 		} else {
 			status = "Run"

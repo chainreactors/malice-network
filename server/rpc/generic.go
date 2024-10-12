@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
@@ -100,7 +101,16 @@ func (r *GenericRequest) HandlerResponse(ch chan *implantpb.Spite, typ types.Msg
 		})
 	}
 	r.Task.Done(resp, "")
+	err = db.UpdateTask(r.Task, r.Task.Cur)
+	if err != nil {
+		return
+	}
 	r.Task.Finish(resp, "")
+	if r.Task.Type == consts.ModuleUpload {
+		r.Session.TaskLogger().Info(fmt.Sprintf("Task %v_%v %v %v", r.Task.Name(), r.Task.Cur, r.Message, resp.GetAck().Success))
+	} else {
+		r.Session.TaskLogger().Info(fmt.Sprintf("Task %v_%v %s", r.Task.Name(), r.Task.Cur, resp))
+	}
 }
 
 func buildErrorEvent(task *core.Task, err error) core.Event {

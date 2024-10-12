@@ -9,10 +9,10 @@ server:
     certificate:
     certificate_key:
   notify:
-    enable: true
+    enable: false
     lark:
-      enable: true
-      webhook_url: https://open.feishu.cn/open-apis/bot/v2/hook/b2da7594-3b40-4fa6-81ea-dd30d458742e
+      enable: false
+      webhook_url:
 
 listeners:
   name: listener

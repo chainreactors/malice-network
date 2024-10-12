@@ -5,6 +5,7 @@ import (
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 func Commands(con *repl.Console) []*cobra.Command {
@@ -16,6 +17,10 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return
 		},
 	}
+
+	common.Bind("tasks", true, taskCmd, func(f *pflag.FlagSet) {
+		f.BoolP("all", "a", false, "show all tasks")
+	})
 
 	fileCmd := &cobra.Command{
 		Use:   consts.CommandFiles,

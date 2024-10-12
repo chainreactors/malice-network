@@ -46,12 +46,12 @@ func logInterceptor(log *logs.Logger) grpc.UnaryServerInterceptor {
 func auditInterceptor() grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 		sess, err := getSession(ctx)
-		if err == nil && sess.Logger() != nil {
-			sess.Logger().Consolef("[request] %s %s \n", info.FullMethod, reflect.TypeOf(req))
-			sess.Logger().Debugf("%+v", req)
+		if err == nil && sess.RpcLogger() != nil {
+			sess.RpcLogger().Consolef("[request] %s %s \n", info.FullMethod, reflect.TypeOf(req))
+			sess.RpcLogger().Debugf("%+v", req)
 			resp, err := handler(ctx, req)
-			sess.Logger().Consolef("[response] %s %s \n", info.FullMethod, reflect.TypeOf(resp))
-			sess.Logger().Debugf("%+v", resp)
+			sess.RpcLogger().Consolef("[response] %s %s \n", info.FullMethod, reflect.TypeOf(resp))
+			sess.RpcLogger().Debugf("%+v", resp)
 			return resp, err
 		}
 		return handler(ctx, req)
