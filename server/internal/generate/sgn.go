@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/client/assets"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -67,56 +66,56 @@ func sgnCmd(appDir string, cwd string, command []string) ([]byte, error) {
 	return stdout.Bytes(), err
 }
 
-// EncodeShellcode - Encode a shellcode
-func EncodeShellcode(shellcode []byte, arch string, iterations int, badChars []byte) ([]byte, error) {
-	logs.Log.Infof("[sgn] EncodeShellcode: %d bytes", len(shellcode))
-	inputFile, err := os.CreateTemp("", "sgn")
-	if err != nil {
-		logs.Log.Error(err.Error())
-		return nil, ErrFailedToEncode
-	}
-	_, err = inputFile.Write(shellcode)
-	if err != nil {
-		logs.Log.Error(err.Error())
-		return nil, ErrFailedToEncode
-	}
-	defer os.Remove(inputFile.Name())
-	outputFile, err := os.CreateTemp("", "sgn")
-	if err != nil {
-		logs.Log.Error(err.Error())
-		return nil, ErrFailedToEncode
-	}
-	outputFile.Close()
-	defer os.Remove(outputFile.Name())
-
-	config := SGNConfig{
-		AppDir: assets.GetRootAppDir(),
-
-		Architecture:   strings.ToLower(arch),
-		Iterations:     iterations,
-		MaxObfuscation: 20,
-		Safe:           false,
-		PlainDecoder:   false,
-		Asci:           false,
-		BadChars:       badChars,
-		Verbose:        false,
-
-		Input:  inputFile.Name(),
-		Output: outputFile.Name(),
-	}
-	_, err = sgnCmd(config.AppDir, ".", configToArgs(config))
-	if err != nil {
-		logs.Log.Error(err.Error())
-		return nil, ErrFailedToEncode
-	}
-	data, err := os.ReadFile(outputFile.Name())
-	if err != nil {
-		logs.Log.Error(err.Error())
-		return nil, ErrFailedToEncode
-	}
-	logs.Log.Infof("[sgn] successfully encoded to %d bytes", len(data))
-	return data, nil
-}
+//// EncodeShellcode - Encode a shellcode
+//func EncodeShellcode(shellcode []byte, arch string, iterations int, badChars []byte) ([]byte, error) {
+//	logs.Log.Infof("[sgn] EncodeShellcode: %d bytes", len(shellcode))
+//	inputFile, err := os.CreateTemp("", "sgn")
+//	if err != nil {
+//		logs.Log.Error(err.Error())
+//		return nil, ErrFailedToEncode
+//	}
+//	_, err = inputFile.Write(shellcode)
+//	if err != nil {
+//		logs.Log.Error(err.Error())
+//		return nil, ErrFailedToEncode
+//	}
+//	defer os.Remove(inputFile.Name())
+//	outputFile, err := os.CreateTemp("", "sgn")
+//	if err != nil {
+//		logs.Log.Error(err.Error())
+//		return nil, ErrFailedToEncode
+//	}
+//	outputFile.Close()
+//	defer os.Remove(outputFile.Name())
+//
+//	config := SGNConfig{
+//		AppDir: assets.GetRootAppDir(),
+//
+//		Architecture:   strings.ToLower(arch),
+//		Iterations:     iterations,
+//		MaxObfuscation: 20,
+//		Safe:           false,
+//		PlainDecoder:   false,
+//		Asci:           false,
+//		BadChars:       badChars,
+//		Verbose:        false,
+//
+//		Input:  inputFile.Name(),
+//		Output: outputFile.Name(),
+//	}
+//	_, err = sgnCmd(config.AppDir, ".", configToArgs(config))
+//	if err != nil {
+//		logs.Log.Error(err.Error())
+//		return nil, ErrFailedToEncode
+//	}
+//	data, err := os.ReadFile(outputFile.Name())
+//	if err != nil {
+//		logs.Log.Error(err.Error())
+//		return nil, ErrFailedToEncode
+//	}
+//	logs.Log.Infof("[sgn] successfully encoded to %d bytes", len(data))
+//	return data, nil
+//}
 
 func configToArgs(config SGNConfig) []string {
 	args := []string{}

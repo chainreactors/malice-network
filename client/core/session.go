@@ -3,10 +3,13 @@ package core
 import (
 	"context"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"google.golang.org/grpc/metadata"
+	"os"
+	"path/filepath"
 	"slices"
 )
 
@@ -103,6 +106,27 @@ func (s *Session) HasTask(taskId uint32) bool {
 		}
 	}
 	return false
+}
+
+func (s *Session) GetLog() {
+	log, err := s.Server.Rpc.SyncLog(s.Context(), &clientpb.Sync{
+		FileId: s.SessionId,
+	})
+	if err != nil {
+		Log.Errorf("Can't get log file: %s", err)
+		return
+	}
+	logPath := assets.GetProfile().TempDir
+	if logPath == "" {
+		logPath = assets.GetTempDir()
+	}
+	logPath = filepath.Join(logPath, log.Name)
+	err = os.WriteFile(logPath, log.Content, 0644)
+
+	if err != nil {
+		Log.Errorf("Can't write log file: %s", err)
+		return
+	}
 }
 
 func NewObserver(session *Session) *Observer {

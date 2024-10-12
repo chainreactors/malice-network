@@ -88,6 +88,9 @@ func explorerCmd(cmd *cobra.Command, con *repl.Console) {
 			return enterFunc(m, con)
 		})
 		fileModel = fileModel.SetKeyBinding("backspace", backFunc)
+		fileModel = fileModel.SetKeyBinding("r", func(m *tui.TreeModel) (tea.Model, tea.Cmd) {
+			return freshFunc(m, con)
+		})
 		newFile := tui.NewModel(fileModel, nil, false, false)
 		err = newFile.Run()
 		if err != nil {
@@ -138,6 +141,12 @@ func padRight(str string, length int) string {
 func enterFunc(m *tui.TreeModel, con *repl.Console) (tea.Model, tea.Cmd) {
 	selectedNode := m.Tree.Children[m.Cursor]
 	session := con.GetInteractive()
+	if len(selectedNode.Children) > 0 {
+		m.Selected = append(m.Selected, selectedNode.Name)
+		m.Tree = selectedNode
+		m.Cursor = 0
+		return m, nil
+	}
 	task, err := con.Rpc.Ls(session.Clone(consts.CalleeExplorer).Context(), &implantpb.Request{
 		Name:  consts.ModuleLs,
 		Input: "./" + selectedNode.Name,
@@ -164,11 +173,9 @@ func enterFunc(m *tui.TreeModel, con *repl.Console) (tea.Model, tea.Cmd) {
 			})
 		}
 	}
-	if len(selectedNode.Children) > 0 {
-		m.Selected = append(m.Selected, selectedNode.Name)
-		m.Tree = selectedNode
-		m.Cursor = 0
-	}
+	m.Selected = append(m.Selected, selectedNode.Name)
+	m.Tree = selectedNode
+	m.Cursor = 0
 	return m, nil
 }
 
@@ -187,5 +194,40 @@ func backFunc(m *tui.TreeModel) (tea.Model, tea.Cmd) {
 		}
 		m.Cursor = 0
 	}
+	return m, nil
+}
+
+func freshFunc(m *tui.TreeModel, con *repl.Console) (tea.Model, tea.Cmd) {
+	selectedNode := m.Tree
+	selectedNode.Children = []*tui.TreeNode{}
+	session := con.GetInteractive()
+	task, err := con.Rpc.Ls(session.Clone(consts.CalleeExplorer).Context(), &implantpb.Request{
+		Name:  consts.ModuleLs,
+		Input: "./" + selectedNode.Name,
+	})
+	if err != nil {
+		con.Log.Errorf("load directory error: %v", err)
+		return m, nil
+	}
+	fileChan := make(chan []*implantpb.FileInfo, 1)
+	con.AddCallback(task, func(msg *implantpb.Spite) {
+		resp := msg.GetLsResponse()
+		fileChan <- resp.GetFiles()
+	})
+	select {
+	case files := <-fileChan:
+		for _, protoFile := range files {
+			selectedNode.Children = append(selectedNode.Children, &tui.TreeNode{
+				Name: protoFile.GetName(),
+				Info: []string{
+					strconv.FormatBool(protoFile.IsDir),
+					formatFileMode(protoFile.Mode),
+					strconv.FormatUint(protoFile.Size, 10),
+					strconv.FormatInt(protoFile.ModTime, 10)},
+			})
+		}
+	}
+	m.Tree = selectedNode
+	m.Cursor = 0
 	return m, nil
 }

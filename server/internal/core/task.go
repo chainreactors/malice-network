@@ -87,7 +87,7 @@ func (t *Task) ToProtobuf() *clientpb.Task {
 }
 
 func (t *Task) Name() string {
-	return fmt.Sprintf("%s_%s", t.SessionId, t.Type)
+	return fmt.Sprintf("%s_%v_%s", t.SessionId, t.Id, t.Type)
 }
 func (t *Task) String() string {
 	return fmt.Sprintf("%d/%d", t.Cur, t.Total)

@@ -15,9 +15,10 @@ import (
 var inputrc string
 
 var (
-	MaliceDirName = ".config/malice"
-	ConfigDirName = "configs"
-	TempDirName   = "temp"
+	MaliceDirName   = ".config/malice"
+	ConfigDirName   = "configs"
+	ResourceDirName = "resource"
+	TempDirName     = "temp"
 )
 
 func GetConfigDir() string {
@@ -44,6 +45,30 @@ func GetRootAppDir() string {
 	return dir
 }
 
+func GetResourceDir() string {
+	rootDir, _ := filepath.Abs(GetRootAppDir())
+	dir := filepath.Join(rootDir, ResourceDirName)
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		err = os.MkdirAll(dir, 0700)
+		if err != nil {
+			logs.Log.Errorf(err.Error())
+		}
+	}
+	return dir
+}
+
+func GetTempDir() string {
+	rootDir, _ := filepath.Abs(GetRootAppDir())
+	dir := filepath.Join(rootDir, TempDirName)
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		err = os.MkdirAll(dir, 0700)
+		if err != nil {
+			logs.Log.Errorf(err.Error())
+		}
+	}
+	return dir
+}
+
 func GetConfigs() ([]string, error) {
 	var files []string
 
@@ -63,17 +88,6 @@ func GetConfigs() ([]string, error) {
 	}
 
 	return files, nil
-}
-func GetTempDir() string {
-	rootDir, _ := filepath.Abs(GetRootAppDir())
-	dir := filepath.Join(rootDir, TempDirName)
-	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		err = os.MkdirAll(dir, 0700)
-		if err != nil {
-			logs.Log.Errorf(err.Error())
-		}
-	}
-	return dir
 }
 
 func MvConfig(oldPath string) error {
