@@ -13,6 +13,11 @@ func ParseAssembly(ctx *clientpb.TaskContext) (interface{}, error) {
 	return intermediate.ParseAssembly(ctx.Spite)
 }
 
+func NewSacrifice(ppid int64, hidden, block_dll, disable_etw bool, argue string) *implantpb.SacrificeProcess {
+	sac, _ := intermediate.NewSacrificeProcessMessage(ppid, hidden, block_dll, disable_etw, argue)
+	return sac
+}
+
 func NewExecutable(module string, path string, args []string, arch string, output bool, sac *implantpb.SacrificeProcess) (*implantpb.ExecuteBinary, error) {
 	binary, err := intermediate.NewBinary(module, path, args, output, math.MaxUint32, arch, "", sac)
 	if err != nil {
@@ -20,6 +25,21 @@ func NewExecutable(module string, path string, args []string, arch string, outpu
 	}
 	binary.Output = output
 	return binary, nil
+}
+
+func UpdateClrBinary(binary *implantpb.ExecuteBinary, bypassETW, bypassAMSI bool) {
+	if !bypassETW && bypassAMSI {
+		return
+	}
+
+	binary.Param = make(map[string]string)
+	if bypassETW {
+		binary.Param["bypass_etw"] = ""
+	}
+
+	if bypassAMSI {
+		binary.Param["bypass_amsi"] = ""
+	}
 }
 
 func NewBinary(module string, path string, args []string, output bool, timeout uint32, arch string, process string, sac *implantpb.SacrificeProcess) (*implantpb.ExecuteBinary, error) {

@@ -456,8 +456,7 @@ func Register(con *repl.Console) {
 		ExecShellcode,
 		"bshinject",
 		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, ppid int, arch, path string) (*clientpb.Task, error) {
-			sac, _ := intermediate.NewSacrificeProcessMessage(int64(ppid), false, true, true, "")
-			return ExecShellcode(rpc, sess, path, nil, true, math.MaxUint32, sess.Os.Arch, "", sac)
+			return ExecShellcode(rpc, sess, path, nil, true, math.MaxUint32, sess.Os.Arch, "", common.NewSacrifice(int64(ppid), false, true, true, ""))
 		},
 		common.ParseAssembly,
 		nil)

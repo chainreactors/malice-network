@@ -33,12 +33,14 @@ func ExecLocal(rpc clientrpc.MaliceRPCClient, sess *core.Session,
 		process = args[0]
 	}
 
-	binary := &implantpb.ExecSacrificeRequest{
+	binary := &implantpb.ExecuteBinary{
 		ProcessName: process,
-		Args:        args,
+		Bin:         []byte(args[0]),
+		Args:        args[1:],
 		Output:      output,
 		Sacrifice:   sac,
 	}
+
 	task, err := rpc.ExecuteLocal(sess.Context(), binary)
 	if err != nil {
 		return nil, err

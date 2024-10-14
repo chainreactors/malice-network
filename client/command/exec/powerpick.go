@@ -40,16 +40,13 @@ func PowerPick(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, p
 	}
 
 	psBin.WriteString(strings.Join(ps, " "))
-	clr := &implantpb.ExecuteClr{
-		AmsiBypass: amsi,
-		EtwBypass:  etw,
-		ExecuteBinary: &implantpb.ExecuteBinary{
-			Bin:    psBin.Bytes(),
-			Type:   consts.ModulePowerpick,
-			Output: true,
-		},
+	binary := &implantpb.ExecuteBinary{
+		Bin:    psBin.Bytes(),
+		Type:   consts.ModulePowerpick,
+		Output: true,
 	}
-	task, err := rpc.ExecutePowerpick(sess.Context(), clr)
+	common.UpdateClrBinary(binary, etw, amsi)
+	task, err := rpc.ExecutePowerpick(sess.Context(), binary)
 	if err != nil {
 		return nil, err
 	}
