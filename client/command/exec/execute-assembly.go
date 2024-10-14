@@ -6,7 +6,6 @@ import (
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/spf13/cobra"
 )
@@ -29,12 +28,8 @@ func ExecAssembly(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string
 	if err != nil {
 		return nil, err
 	}
-	clr := &implantpb.ExecuteClr{
-		AmsiBypass:    amsi,
-		EtwBypass:     etw,
-		ExecuteBinary: binary,
-	}
-	task, err := rpc.ExecuteAssembly(sess.Context(), clr)
+	common.UpdateClrBinary(binary, etw, amsi)
+	task, err := rpc.ExecuteAssembly(sess.Context(), binary)
 	if err != nil {
 		return nil, err
 	}

@@ -67,12 +67,6 @@ func BuildSpite(spite *implantpb.Spite, msg proto.Message) (*implantpb.Spite, er
 	case *implantpb.LoadAddon:
 		spite.Name = MsgLoadAddon.String()
 		spite.Body = &implantpb.Spite_LoadAddon{LoadAddon: msg.(*implantpb.LoadAddon)}
-	case *implantpb.ExecSacrificeRequest:
-		spite.Name = MsgExecuteLocal.String()
-		spite.Body = &implantpb.Spite_ExecuteSacrificeRequest{ExecuteSacrificeRequest: msg.(*implantpb.ExecSacrificeRequest)}
-	case *implantpb.ExecuteClr:
-		spite.Name = msg.(*implantpb.ExecuteClr).ExecuteBinary.Type
-		spite.Body = &implantpb.Spite_ExecuteClr{ExecuteClr: msg.(*implantpb.ExecuteClr)}
 	default:
 		return spite, ErrUnknownSpite
 	}

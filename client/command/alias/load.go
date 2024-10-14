@@ -295,17 +295,16 @@ func ExecuteAlias(rpc clientrpc.MaliceRPCClient, sess *core.Session, aliasName s
 		if err != nil {
 			return nil, err
 		}
-		task, err = rpc.ExecuteAssembly(sess.Context(), &implantpb.ExecuteClr{
-			EtwBypass:  etw,
-			AmsiBypass: amsi,
-			ExecuteBinary: &implantpb.ExecuteBinary{
-				Name:   loadedAlias.Command.Name(),
-				Bin:    binData,
-				Type:   consts.ModuleExecuteAssembly,
-				Args:   params,
-				Output: true,
-			},
-		})
+		binary := &implantpb.ExecuteBinary{
+			Name:   loadedAlias.Command.Name(),
+			Bin:    binData,
+			Type:   consts.ModuleExecuteAssembly,
+			Args:   params,
+			Output: true,
+		}
+
+		common.UpdateClrBinary(binary, etw, amsi)
+		task, err = rpc.ExecuteAssembly(sess.Context(), binary)
 	} else {
 		task, err = rpc.ExecuteDLL(sess.Context(), &implantpb.ExecuteBinary{
 			Name:       loadedAlias.Command.Name(),

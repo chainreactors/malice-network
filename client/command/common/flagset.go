@@ -1,7 +1,6 @@
 package common
 
 import (
-	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -42,7 +41,7 @@ func ParseSacrificeFlags(cmd *cobra.Command) (*implantpb.SacrificeProcess, error
 	isBlockDll, _ := cmd.Flags().GetBool("block_dll")
 	hidden, _ := cmd.Flags().GetBool("hidden")
 	disableEtw, _ := cmd.Flags().GetBool("etw")
-	return intermediate.NewSacrificeProcessMessage(int64(ppid), hidden, isBlockDll, disableEtw, argue)
+	return NewSacrifice(int64(ppid), hidden, isBlockDll, disableEtw, argue), nil
 }
 
 func CLRFlagSet(f *pflag.FlagSet) {
