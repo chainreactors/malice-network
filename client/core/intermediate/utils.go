@@ -21,8 +21,8 @@ func GetResourceFile(pluginName, filename string) (string, error) {
 	return resourcePath, nil
 }
 
-func FindResourceFile(pluginName, filename, arch, ext string) (string, error) {
-	return GetResourceFile(pluginName, fmt.Sprintf("%s.%s.%s", filename, FormatArch(arch), ext))
+func FindResourceFile(pluginName, filename string) (string, error) {
+	return GetResourceFile(pluginName, filename)
 }
 
 func ReadResourceFile(pluginName, filename string) (string, error) {
