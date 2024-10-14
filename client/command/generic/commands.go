@@ -131,7 +131,7 @@ func Register(con *repl.Console) {
 		return Log(con, sess, msg, false)
 	})
 
-	con.RegisterServerFunc("barch", func(con *repl.Console, sess *core.Session, msg string) (string, error) {
+	con.RegisterServerFunc("barch", func(con *repl.Console, sess *core.Session) (string, error) {
 		return sess.Os.Arch, nil
 	})
 
