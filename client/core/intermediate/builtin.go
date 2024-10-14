@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/encoders/hash"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
@@ -84,6 +85,10 @@ func RegisterCustomBuiltin(rpc clientrpc.MaliceRPCClient) {
 			packedArgs = append(packedArgs, format[i:i+1]+arg)
 		}
 		return pe.PackArgs(packedArgs)
+	})
+
+	RegisterFunction("arg_hex", func(input string) (string, error) {
+		return "hex::" + hash.Hexlify([]byte(input)), nil
 	})
 
 	RegisterFunction("format_path", func(s string) (string, error) {
