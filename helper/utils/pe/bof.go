@@ -146,10 +146,15 @@ func PackArgs(data []string) ([]string, error) {
 	var args []string
 	var err error
 	for _, arg := range data {
-		if len(arg) < 2 {
+		if len(arg) < 1 {
 			return nil, fmt.Errorf("'%' have not enough arguments", args)
 		}
-		arg, err = PackArg(arg[0], arg[1:])
+		format := arg[0]
+		packedArg := ""
+		if len(arg) > 1 {
+			packedArg = arg[1:]
+		}
+		arg, err = PackArg(format, packedArg)
 		if err != nil {
 			return nil, err
 		}
