@@ -189,6 +189,12 @@ func RegisterAlias(aliasManifest *AliasManifest, cmd *cobra.Command, con *repl.C
 			return ExecuteAlias(rpc, sess, aliasManifest.CommandName, args, amsi, etw, sac)
 		}, common.ParseAssembly),
 	}
+	profile := assets.GetProfile()
+	assets.AddUniqueAlias(profile, aliasManifest.CommandName)
+	err := assets.SaveProfile(profile)
+	if err != nil {
+		return err
+	}
 	cmd.AddCommand(addAliasCmd)
 
 	return nil

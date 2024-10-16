@@ -15,6 +15,7 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"github.com/gookit/config/v2"
+	"google.golang.org/protobuf/proto"
 	"os"
 	"path"
 )
@@ -98,7 +99,16 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 					return
 				}
 				greq.Session.AddMessage(resp, blockId)
-				greq.Session.TaskLogger().Info(fmt.Sprintf("Task %v_%v %v %v", greq.Task.Name(), greq.Task.Cur, greq.Message, resp.GetAck().Success))
+				respByte, err := proto.Marshal(resp)
+				if err != nil {
+					logs.Log.Errorf("Failed to marshal resp to byte: %v", err)
+					return
+				}
+				err = greq.Session.TaskLog(greq.Task, respByte)
+				if err != nil {
+					logs.Log.Errorf("Failed to write task log: %v", err)
+					return
+				}
 				if resp.GetAck().Success {
 					greq.Task.Done(resp, "")
 					err = db.UpdateFile(greq.Task, blockId)
@@ -151,6 +161,10 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 		if err != nil {
 			logs.Log.Errorf("cannot create task %d , %s in db", greq.Task.Id, err.Error())
 		}
+		err = db.UpdateDownloadTotal(greq.Task, greq.Task.Total)
+		if err != nil {
+			logs.Log.Errorf("cannot update task %d , %s in db", greq.Task.Id, err.Error())
+		}
 		downloadFile, err := os.OpenFile(fileName, os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
 			logs.Log.Errorf("cannot create file %s, %s", fileName, err.Error())
@@ -164,7 +178,16 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 			Success: true,
 			End:     false,
 		})
-		greq.Session.TaskLogger().Info(fmt.Sprintf("Task %v_%v %v %v", greq.Task.Name(), greq.Task.Cur, greq.Message, ack.GetAck().Success))
+		respByte, err := proto.Marshal(ack)
+		if err != nil {
+			logs.Log.Errorf("Failed to marshal resp to byte: %v", err)
+			return
+		}
+		err = greq.Session.TaskLog(greq.Task, respByte)
+		if err != nil {
+			logs.Log.Errorf("Failed to write task log: %v", err)
+			return
+		}
 		ack.Name = types.MsgDownload.String()
 		in <- ack
 		for resp := range out {
@@ -221,16 +244,4 @@ func (rpc *Server) Sync(ctx context.Context, req *clientpb.Sync) (*clientpb.Sync
 		Content: data,
 	}
 	return resp, nil
-}
-
-func (rpc *Server) SyncLog(ctx context.Context, req *clientpb.Sync) (*clientpb.SyncResp, error) {
-	data, err := os.ReadFile(path.Join(configs.TaskPath, req.FileId+".log"))
-	if err != nil {
-		return nil, err
-	}
-	resp := &clientpb.SyncResp{
-		Name:    req.FileId + ".log",
-		Content: data,
-	}
-	return resp, err
 }

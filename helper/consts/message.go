@@ -78,6 +78,7 @@ const (
 	CommandNote             = "note"
 	CommandGroup            = "group"
 	CommandObverse          = "obverse"
+	CommandHistory          = "history"
 	CommandDelSession       = "del"
 	CommandUse              = "use"
 	CommandBackground       = "background"

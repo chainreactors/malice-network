@@ -26,7 +26,6 @@ var (
 	PluginPath                  = path.Join(ServerRootPath, "plugins")
 	AuditPath                   = path.Join(ServerRootPath, "audit")
 	CachePath                   = path.Join(TempPath, "cache")
-	TaskPath                    = path.Join(TempPath, "tasks")
 	ErrNoConfig                 = errors.New("no config found")
 	WebsitePath                 = path.Join(ServerRootPath, "web")
 )

@@ -272,7 +272,14 @@ func ExtensionRegisterCommand(extCmd *ExtCommand, cmd *cobra.Command, con *repl.
 			return ExecuteExtension(rpc, sess, extensionCmd.Name(), args)
 		}, common.ParseAssembly),
 	}
+	profile := assets.GetProfile()
+	assets.AddUniqueExtension(profile, extCmd.CommandName)
 	cmd.AddCommand(extensionCmd)
+	err := assets.SaveProfile(profile)
+	if err != nil {
+		con.Log.Errorf("Error saving profile: %s\n", err)
+		return
+	}
 }
 
 //func loadExtension(goos string, goarch string, extcmd *ExtCommand, con *console.Console) error {

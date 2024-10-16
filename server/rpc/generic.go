@@ -3,7 +3,6 @@ package rpc
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
@@ -101,16 +100,23 @@ func (r *GenericRequest) HandlerResponse(ch chan *implantpb.Spite, typ types.Msg
 		})
 	}
 	r.Task.Done(resp, "")
-	err = db.UpdateTask(r.Task, r.Task.Cur)
+	r.Task.Finish(resp, "")
+	err = db.UpdateTask(r.Task)
 	if err != nil {
+		logs.Log.Errorf("update task cur failed %s", err)
 		return
 	}
-	r.Task.Finish(resp, "")
-	if r.Task.Type == consts.ModuleUpload {
-		r.Session.TaskLogger().Info(fmt.Sprintf("Task %v_%v %v %v", r.Task.Name(), r.Task.Cur, r.Message, resp.GetAck().Success))
-	} else {
-		r.Session.TaskLogger().Info(fmt.Sprintf("Task %v_%v %s", r.Task.Name(), r.Task.Cur, resp))
+	respByte, err := proto.Marshal(resp)
+	if err != nil {
+		logs.Log.Errorf("Failed to marshal resp to byte: %v", err)
+		return
 	}
+	err = r.Session.TaskLog(r.Task, respByte)
+	if err != nil {
+		logs.Log.Errorf("Failed to log task: %v", err)
+	}
+	return
+
 }
 
 func buildErrorEvent(task *core.Task, err error) core.Event {

@@ -43,6 +43,7 @@ require (
 	google.golang.org/grpc v1.65.0
 	google.golang.org/protobuf v1.34.2
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
+	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
 	gorm.io/gorm v1.25.4
 	layeh.com/gopher-luar v1.0.11
@@ -132,6 +133,5 @@ require (
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240711142825-46eb208f015d // indirect
 	gopkg.in/xmlpath.v2 v2.0.0-20150820204837-860cbeca3ebc // indirect
-	gopkg.in/yaml.v2 v2.4.0 // indirect
 	mvdan.cc/sh/v3 v3.7.0 // indirect
 )

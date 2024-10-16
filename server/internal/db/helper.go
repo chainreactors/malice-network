@@ -389,6 +389,16 @@ func UpdateFile(task *core.Task, newCur int) error {
 	return fileModel.UpdateCur(Session(), newCur)
 }
 
+func GetTaskPB(taskID string) (*clientpb.Task, error) {
+	var task models.Task
+	err := Session().Where("id = ?", taskID).First(&task).Error
+	if err != nil {
+		return nil, err
+	}
+	taskProto := task.ToProtobuf()
+	return taskProto, nil
+}
+
 func ToTask(task models.Task) (*core.Task, error) {
 	parts := strings.Split(task.ID, "-")
 	if len(parts) != 2 {
@@ -408,6 +418,7 @@ func ToTask(task models.Task) (*core.Task, error) {
 }
 
 func AddTask(task *core.Task) error {
+
 	taskModel := &models.Task{
 		ID:        task.SessionId + "-" + utils.ToString(task.Id),
 		Type:      task.Type,
@@ -418,11 +429,22 @@ func AddTask(task *core.Task) error {
 	return Session().Create(taskModel).Error
 }
 
-func UpdateTask(task *core.Task, newCur int) error {
+func UpdateTask(task *core.Task) error {
 	taskModel := &models.Task{
 		ID: task.SessionId + "-" + utils.ToString(task.Id),
 	}
-	return taskModel.UpdateCur(Session(), newCur)
+	return taskModel.UpdateCur(Session(), task.Total)
+}
+
+func UpdateDownloadTotal(task *core.Task, total int) error {
+	taskModel := &models.Task{
+		ID: task.SessionId + "-" + utils.ToString(task.Id),
+	}
+	return taskModel.UpdateTotal(Session(), total)
+}
+
+func UpdateTaskDescription(taskID, Description string) error {
+	return Session().Model(&models.Task{}).Where("id = ?", taskID).Update("description", Description).Error
 }
 
 // WebsiteByName - Get website by name

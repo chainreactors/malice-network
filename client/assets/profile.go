@@ -5,8 +5,7 @@ import (
 	"github.com/chainreactors/logs"
 	crConfig "github.com/chainreactors/malice-network/helper/utils/config"
 	"github.com/chainreactors/malice-network/helper/utils/file"
-	"github.com/gookit/config/v2"
-	"github.com/gookit/config/v2/yaml"
+	"gopkg.in/yaml.v2"
 	"os"
 	"path/filepath"
 )
@@ -58,7 +57,6 @@ func findFile(filename string) (string, error) {
 
 func loadProfile(path string) (*Profile, error) {
 	var profile Profile
-	config.AddDriver(yaml.Driver)
 	if !file.Exist(path) {
 		confStr := crConfig.InitDefaultConfig(&profile, 0)
 		err := os.WriteFile(path, confStr, 0644)
@@ -93,4 +91,44 @@ func GetProfile() *Profile {
 	}
 
 	return profile
+}
+
+func SaveProfile(profile *Profile) error {
+	path, err := findFile(maliceProfile)
+	data, err := yaml.Marshal(profile)
+	if err != nil {
+		return err
+	}
+	err = os.WriteFile(path, data, 0644)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func contains(slice []string, item string) bool {
+	for _, s := range slice {
+		if s == item {
+			return true
+		}
+	}
+	return false
+}
+
+func AddUniqueMal(profile *Profile, manifestName string) {
+	if !contains(profile.Mals, manifestName) {
+		profile.Mals = append(profile.Mals, manifestName)
+	}
+}
+
+func AddUniqueAlias(profile *Profile, alias string) {
+	if !contains(profile.Aliases, alias) {
+		profile.Aliases = append(profile.Aliases, alias)
+	}
+}
+
+func AddUniqueExtension(profile *Profile, extension string) {
+	if !contains(profile.Extensions, extension) {
+		profile.Extensions = append(profile.Extensions, extension)
+	}
 }

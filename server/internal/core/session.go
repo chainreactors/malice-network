@@ -11,11 +11,11 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/gookit/config/v2"
-	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
-	"gopkg.in/natefinch/lumberjack.v2"
+	"os"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -50,7 +50,11 @@ func NewSession(req *lispb.RegisterSession) *Session {
 		Cache:      NewCache(10*consts.KB, path.Join(configs.CachePath, req.SessionId+".gob")),
 		responses:  &sync.Map{},
 	}
-
+	logDir := filepath.Join(configs.LogPath, sess.ID)
+	err := os.MkdirAll(logDir, os.ModePerm)
+	if err != nil {
+		logs.Log.Errorf("cannot create log directory %s, %s", logDir, err.Error())
+	}
 	if req.RegisterData.Sysinfo != nil {
 		sess.UpdateSysInfo(req.RegisterData.Sysinfo)
 	}
@@ -80,7 +84,6 @@ type Session struct {
 	*Cache
 	responses *sync.Map
 	rpcLog    *logs.Logger
-	taskLog   *logrus.Logger
 }
 
 func (s *Session) RpcLogger() *logs.Logger {
@@ -101,20 +104,17 @@ func (s *Session) RpcLogger() *logs.Logger {
 	return s.rpcLog
 }
 
-func (s *Session) TaskLogger() *logrus.Logger {
-	if s.taskLog == nil {
-		s.taskLog = logrus.New()
-		s.taskLog.SetOutput(&lumberjack.Logger{
-			Filename:   filepath.Join(configs.TaskPath, s.ID+".log"),
-			MaxSize:    100,
-			MaxBackups: 1,
-			MaxAge:     30,
-			Compress:   true,
-		})
-		s.taskLog.SetFormatter(&logrus.TextFormatter{})
-		s.taskLog.SetLevel(logrus.InfoLevel)
+func (s *Session) TaskLog(task *Task, spite []byte) error {
+	id := strconv.FormatUint(uint64(task.Id), 10)
+	cur := strconv.FormatUint(uint64(task.Cur), 10)
+	filePath := filepath.Join(configs.LogPath, s.ID, id+"_"+cur)
+	f, err := os.OpenFile(filePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
 	}
-	return s.taskLog
+	defer f.Close()
+	_, err = f.WriteString(string(spite))
+	return err
 }
 
 func (s *Session) ToProtobuf() *clientpb.Session {
