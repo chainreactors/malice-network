@@ -61,7 +61,7 @@ func (rpc *Server) Broadcast(ctx context.Context, req *clientpb.Event) (*clientp
 }
 
 func (rpc *Server) Notify(ctx context.Context, req *clientpb.Event) (*clientpb.Empty, error) {
-	err := core.EventBroker.Notify(core.Event{
+	core.EventBroker.Notify(core.Event{
 		EventType: req.Type,
 		Op:        req.Op,
 		Message:   string(req.Message),
@@ -69,9 +69,6 @@ func (rpc *Server) Notify(ctx context.Context, req *clientpb.Event) (*clientpb.E
 		IsNotify:  true,
 		Err:       req.Err,
 	})
-	if err != nil {
-		return nil, err
-	}
 	return &clientpb.Empty{}, nil
 }
 
