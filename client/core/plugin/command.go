@@ -5,11 +5,12 @@ import (
 	"strings"
 )
 
+const CMDSeq = ":"
+
 type Commands map[string]*Command
 
 func (cs Commands) Find(name string) *Command {
-	// 将命令名按 "_" 分割为子命令
-	subs := strings.Split(name, "_")
+	subs := strings.Split(name, CMDSeq)
 	if len(subs) == 0 {
 		return nil
 	}
@@ -31,7 +32,7 @@ func (cs Commands) Find(name string) *Command {
 	// 如果还有后续子命令，递归处理剩余的部分
 	if len(subs) > 1 {
 		// 递归查找或创建剩余的子命令
-		return cmd.Subs.Find(strings.Join(subs[1:], "_"))
+		return cmd.Subs.Find(strings.Join(subs[1:], CMDSeq))
 	}
 
 	// 如果已经到达最后一级，返回当前命令
@@ -39,13 +40,12 @@ func (cs Commands) Find(name string) *Command {
 }
 
 func (cs Commands) SetCommand(name string, cmd *cobra.Command) {
-	// 将命令名按 "_" 分割为子命令
-	subs := strings.Split(name, "_")
+	subs := strings.Split(name, CMDSeq)
 
 	// 遍历每一级，查找或创建各级命令
 	var parentCmd *Command
 	for i := 0; i < len(subs)-1; i++ {
-		currentName := strings.Join(subs[:i+1], "_")
+		currentName := strings.Join(subs[:i+1], CMDSeq)
 		if parentCmd == nil {
 			// 查找或创建第一级命令
 			parentCmd = cs.Find(currentName)
@@ -54,7 +54,6 @@ func (cs Commands) SetCommand(name string, cmd *cobra.Command) {
 			parentCmd = parentCmd.Subs.Find(subs[i])
 		}
 
-		// 如果没有 CMD 则自动创建一个 CMD
 		if parentCmd.CMD == nil {
 			parentCmd.CMD = &cobra.Command{Use: parentCmd.Name}
 		}

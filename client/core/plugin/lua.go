@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/cjoudrey/gluahttp"
 	"github.com/kballard/go-shellquote"
@@ -132,8 +133,8 @@ func (plug *LuaPlugin) RegisterLuaBuiltin() error {
 		return intermediate.GetResourceFile(plug.Name, filename)
 	})
 
-	plug.registerLuaFunction(vm, "find_resource", func(filename string) (string, error) {
-		return intermediate.FindResourceFile(plug.Name, filename)
+	plug.registerLuaFunction(vm, "find_resource", func(sess *core.Session, base string, ext string) (string, error) {
+		return intermediate.FindResourceFile(plug.Name, base, sess.Os.Arch, ext)
 	})
 
 	// 读取资源文件内容
@@ -153,7 +154,7 @@ func (plug *LuaPlugin) RegisterLuaBuiltin() error {
 		return true, nil
 	})
 
-	plug.registerLuaFunction(vm, "command", func(name string, fn *lua.LFunction, short string) (bool, error) {
+	plug.registerLuaFunction(vm, "command", func(name string, fn *lua.LFunction, short string, ttp string) (bool, error) {
 		cmd := plug.CMDs.Find(name)
 
 		var paramNames []string
@@ -165,6 +166,9 @@ func (plug *LuaPlugin) RegisterLuaBuiltin() error {
 		malCmd := &cobra.Command{
 			Use:   cmd.Name,
 			Short: short,
+			Annotations: map[string]string{
+				"ttp": ttp,
+			},
 			RunE: func(cmd *cobra.Command, args []string) error {
 				vm.Push(fn) // 将函数推入栈
 
