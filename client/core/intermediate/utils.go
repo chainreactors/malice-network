@@ -3,6 +3,7 @@ package intermediate
 import (
 	"context"
 	"fmt"
+	"github.com/chainreactors/files"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -17,12 +18,15 @@ import (
 )
 
 func GetResourceFile(pluginName, filename string) (string, error) {
-	resourcePath := filepath.Join(assets.GetMalsDir(), pluginName, "resources", filename)
-	return resourcePath, nil
+	resourceFile := filepath.Join(assets.GetMalsDir(), pluginName, "resources", filename)
+	if files.IsExist(resourceFile) {
+		return resourceFile, nil
+	}
+	return "", fmt.Errorf("file not found")
 }
 
-func FindResourceFile(pluginName, filename string) (string, error) {
-	return GetResourceFile(pluginName, filename)
+func FindResourceFile(pluginName, filename, arch, ext string) (string, error) {
+	return GetResourceFile(pluginName, fmt.Sprintf("%s.%s.%s", filename, FormatArch(arch), ext))
 }
 
 func ReadResourceFile(pluginName, filename string) (string, error) {
