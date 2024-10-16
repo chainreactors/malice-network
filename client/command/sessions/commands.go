@@ -147,6 +147,18 @@ observe -r
 
 	common.BindArgCompletions(observeCmd, nil, common.SessionIDCompleter(con))
 
+	historyCommand := &cobra.Command{
+		Use:   consts.CommandHistory,
+		Short: "show log history",
+		Long:  "Displays the specified number of log lines of the current session.",
+		Args:  cobra.MaximumNArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			historyCmd(cmd, con)
+		},
+	}
+
+	common.BindArgCompletions(historyCommand, nil, carapace.ActionValues().Usage("number of lines"))
+
 	return []*cobra.Command{
 		sessionsCmd,
 		noteCommand,
@@ -155,5 +167,6 @@ observe -r
 		backCommand,
 		useCommand,
 		observeCmd,
+		historyCommand,
 	}
 }

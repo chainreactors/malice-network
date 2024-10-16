@@ -1,7 +1,10 @@
 package models
 
 import (
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"gorm.io/gorm"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -30,4 +33,19 @@ func (t *Task) UpdateCur(db *gorm.DB, newCur int) error {
 
 func (t *Task) UpdateTotal(db *gorm.DB, newTotal int) error {
 	return db.Model(t).Update("total", newTotal).Error
+}
+
+func (t *Task) ToProtobuf() *clientpb.Task {
+	parts := strings.Split(t.ID, "-")
+
+	taskIdStr := parts[1]
+	taskID, _ := strconv.ParseUint(taskIdStr, 10, 32)
+	return &clientpb.Task{
+		TaskId:      uint32(taskID),
+		Type:        t.Type,
+		SessionId:   t.SessionID,
+		Cur:         int32(t.Cur),
+		Total:       int32(t.Total),
+		Description: t.Description,
+	}
 }

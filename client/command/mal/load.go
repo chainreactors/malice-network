@@ -48,11 +48,14 @@ func LoadMalManiFest(con *repl.Console, filename string) (*plugin.MalManiFest, e
 
 func LoadMal(con *repl.Console, rootCmd *cobra.Command, filename string) (*LoadedMal, error) {
 	manifest, err := LoadMalManiFest(con, filename)
+	if err != nil {
+		return nil, err
+	}
 	plug, err := con.Plugins.LoadPlugin(manifest, con, rootCmd)
 	if err != nil {
 		return nil, err
 	}
-
+	profile := assets.GetProfile()
 	var cmdNames []string
 	var cmds []*cobra.Command
 	for _, cmd := range plug.Commands() {
@@ -65,6 +68,11 @@ func LoadMal(con *repl.Console, rootCmd *cobra.Command, filename string) (*Loade
 		Plugin:   plug,
 	}
 	loadedMals[manifest.Name] = mal
+	assets.AddUniqueMal(profile, manifest.Name)
+	err = assets.SaveProfile(profile)
+	if err != nil {
+		return nil, err
+	}
 	con.Log.Importantf("load mal: %s successfully, register %v", filename, cmdNames)
 	return mal, nil
 }

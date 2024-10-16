@@ -19,6 +19,7 @@ var (
 	ConfigDirName   = "configs"
 	ResourceDirName = "resource"
 	TempDirName     = "temp"
+	LogDirName      = "log"
 )
 
 func GetConfigDir() string {
@@ -67,6 +68,19 @@ func GetTempDir() string {
 		}
 	}
 	return dir
+}
+
+func GetLogDir() string {
+	rootDir, _ := filepath.Abs(GetRootAppDir())
+	dir := filepath.Join(rootDir, LogDirName)
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		err = os.MkdirAll(dir, 0700)
+		if err != nil {
+			logs.Log.Errorf(err.Error())
+		}
+	}
+	return dir
+
 }
 
 func GetConfigs() ([]string, error) {

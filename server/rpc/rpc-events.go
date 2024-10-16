@@ -3,9 +3,12 @@ package rpc
 import (
 	"context"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/server/internal/core"
+	"github.com/chainreactors/malice-network/server/internal/db"
+	"strconv"
 )
 
 func (rpc *Server) Events(_ *clientpb.Empty, stream clientrpc.MaliceRPC_EventsServer) error {
@@ -82,5 +85,13 @@ func (rpc *Server) SessionEvent(ctx context.Context, req *clientpb.Event) (*clie
 		Err:       req.Err,
 		Message:   string(req.Message),
 	})
+	if req.Op == consts.CtrlSessionTask {
+		taskId := strconv.FormatUint(uint64(req.Task.TaskId), 10)
+		id := req.Session.SessionId + "-" + taskId
+		err := db.UpdateTaskDescription(id, string(req.Message))
+		if err != nil {
+			return nil, err
+		}
+	}
 	return &clientpb.Empty{}, nil
 }
