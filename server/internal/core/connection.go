@@ -4,10 +4,9 @@ import (
 	"context"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/encoders/hash"
-	"github.com/chainreactors/malice-network/helper/packet"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/types"
-
+	"github.com/chainreactors/malice-network/helper/utils/peek"
+	"github.com/chainreactors/malice-network/server/internal/parser"
 	"net"
 	"sync"
 	"time"
@@ -19,17 +18,18 @@ var (
 	}
 )
 
-func NewConnection(rawid []byte) *Connection {
+func NewConnection(p *parser.MessageParser, sid []byte) *Connection {
 	conn := &Connection{
-		RawID:       rawid,
-		SessionID:   hash.Md5Hash(rawid),
+		RawID:       sid,
+		SessionID:   hash.Md5Hash(sid),
 		LastMessage: time.Now(),
 		C:           make(chan *implantpb.Spite, 255),
 		Sender:      make(chan *implantpb.Spites, 1),
 		Alive:       true,
-		cache:       types.NewSpitesCache(),
+		cache:       parser.NewSpitesBuf(),
+		Parser:      p,
 	}
-	Connections.Add(conn)
+
 	go func() {
 		for {
 			select {
@@ -60,7 +60,8 @@ type Connection struct {
 	C           chan *implantpb.Spite // spite
 	Sender      chan *implantpb.Spites
 	Alive       bool
-	cache       *types.SpitesCache
+	Parser      *parser.MessageParser
+	cache       *parser.SpitesCache
 }
 
 func (c *Connection) Send(ctx context.Context, conn net.Conn) {
@@ -70,7 +71,7 @@ func (c *Connection) Send(ctx context.Context, conn net.Conn) {
 	case <-ctx.Done():
 		return
 	case msg := <-c.Sender:
-		err := packet.WritePacket(conn, msg, c.RawID)
+		err := c.Parser.WritePacket(conn, msg, c.RawID)
 		if err != nil {
 			// retry
 			logs.Log.Debugf("Error write packet, %s", err.Error())
@@ -82,6 +83,25 @@ func (c *Connection) Send(ctx context.Context, conn net.Conn) {
 
 type connections struct {
 	connections *sync.Map // map[session_id]*Session
+}
+
+func (c *connections) NeedConnection(conn *peek.Conn) (*Connection, error) {
+	p, err := parser.NewParser(conn)
+	if err != nil {
+		return nil, err
+	}
+	sid, _, err := p.PeekHeader(conn)
+	if err != nil {
+		return nil, err
+	}
+
+	if newC := c.Get(hash.Md5Hash(sid)); newC != nil {
+		return newC, nil
+	} else {
+		newC := NewConnection(p, sid)
+		c.Add(newC)
+		return newC, nil
+	}
 }
 
 func (c *connections) All() []*Connection {
@@ -109,10 +129,6 @@ func (c *connections) Get(sessionID string) *Connection {
 
 func (c *connections) Add(connect *Connection) *Connection {
 	c.connections.Store(connect.SessionID, connect)
-	//EventBroker.Publish(Event{
-	//	EventType: consts.SessionOpenedEvent,
-	//	Session:   session,
-	//})
 	return connect
 }
 
