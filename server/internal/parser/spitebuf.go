@@ -1,10 +1,10 @@
-package types
+package parser
 
 import (
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 )
 
-func NewSpitesCache() *SpitesCache {
+func NewSpitesBuf() *SpitesCache {
 	return &SpitesCache{cache: []*implantpb.Spite{}}
 }
 

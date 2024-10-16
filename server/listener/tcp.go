@@ -2,15 +2,11 @@ package listener
 
 import (
 	"context"
-	"encoding/binary"
 	"fmt"
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/encoders/hash"
-	"github.com/chainreactors/malice-network/helper/packet"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/types"
-
 	"github.com/chainreactors/malice-network/helper/proto/listener/lispb"
+	"github.com/chainreactors/malice-network/helper/types"
+	"github.com/chainreactors/malice-network/helper/utils/peek"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/listener/encryption"
@@ -149,29 +145,27 @@ func (l *TCPPipeline) handler() (net.Listener, error) {
 func (l *TCPPipeline) handleRead(conn net.Conn) {
 	defer conn.Close()
 
-	var connect *core.Connection
+	peekConn := peek.WrapPeekConn(conn)
+	connect, err := core.Connections.NeedConnection(peekConn)
+	if err != nil {
+		logs.Log.Debugf("peek read header error: %s %v", conn.RemoteAddr(), err)
+		return
+	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	for {
-		var rawID []byte
 		var err error
 		var msg proto.Message
-		var length int
-		rawID, length, err = packet.ReadHeader(conn)
+		_, length, err := connect.Parser.ReadHeader(peekConn)
 		if err != nil {
 			//logs.Log.Debugf("Error reading header: %s %v", conn.RemoteAddr(), err)
 			return
 		}
-		sid := hash.Md5Hash(rawID)
-		connect = core.Connections.Get(sid)
-		if connect == nil {
-			connect = core.NewConnection(rawID)
-		}
 
 		go connect.Send(ctx, conn)
 		if length != 0 {
-			msg, err = packet.ReadMessage(conn, length)
+			msg, err = connect.Parser.ReadMessage(peekConn, length)
 			if err != nil {
 				logs.Log.Debugf("Error reading message:%s %v", conn.RemoteAddr(), err)
 				return
@@ -182,20 +176,10 @@ func (l *TCPPipeline) handleRead(conn net.Conn) {
 
 		core.Forwarders.Send(l.ID(), &core.Message{
 			Message:    msg,
-			SessionID:  hash.Md5Hash(rawID),
+			SessionID:  connect.SessionID,
 			RemoteAddr: conn.RemoteAddr().String(),
 		})
 	}
-}
-
-func (l *TCPPipeline) handleWrite(conn net.Conn, ch chan *implantpb.Spites, rawid []byte) {
-	msg := <-ch
-	err := packet.WritePacket(conn, msg, rawid)
-	if err != nil {
-		logs.Log.Debugf(err.Error())
-		ch <- msg
-	}
-	return
 }
 
 func (l *TCPPipeline) wrapConn(conn net.Conn) net.Conn {
@@ -207,19 +191,4 @@ func (l *TCPPipeline) wrapConn(conn net.Conn) net.Conn {
 		return eConn
 	}
 	return conn
-}
-
-func handleShellcode(conn net.Conn, data []byte) {
-	logs.Log.Infof("Accepted incoming connection: %s", conn.RemoteAddr())
-	// Send shellcode size
-	dataSize := uint32(len(data))
-	lenBuf := make([]byte, 4)
-	binary.LittleEndian.PutUint32(lenBuf, dataSize)
-	logs.Log.Infof("Shellcode size: %d\n", dataSize)
-	final := append(lenBuf, data...)
-	logs.Log.Infof("Sending shellcode (%d)\n", len(final))
-	// Send shellcode
-	conn.Write(final)
-	// Closing connection
-	conn.Close()
 }

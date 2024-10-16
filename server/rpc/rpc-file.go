@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/packet"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/types"
@@ -14,6 +13,7 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
+	"github.com/chainreactors/malice-network/server/internal/parser"
 	"github.com/gookit/config/v2"
 	"google.golang.org/protobuf/proto"
 	"os"
@@ -22,7 +22,7 @@ import (
 
 // Upload - Upload a file from the remote file system
 func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*clientpb.Task, error) {
-	count := packet.Count(req.Data, config.Int(consts.MaxPacketLength))
+	count := parser.Count(req.Data, config.Int(consts.MaxPacketLength))
 	if count == 1 {
 		greq, err := newGenericRequest(ctx, req)
 		if err != nil {
@@ -78,7 +78,7 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 				greq.Task.Panic(buildErrorEvent(greq.Task, err))
 				return
 			}
-			for block := range packet.Chunked(req.Data, config.Int(consts.MaxPacketLength)) {
+			for block := range parser.Chunked(req.Data, config.Int(consts.MaxPacketLength)) {
 				msg := &implantpb.Block{
 					BlockId: uint32(blockId),
 					Content: block,

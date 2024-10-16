@@ -1,4 +1,4 @@
-package packet
+package parser
 
 func Count(content []byte, max int) int {
 	length := len(content)
