@@ -131,7 +131,7 @@ func PackArg(format byte, arg string) (string, error) {
 		if len(arg) == 0 {
 			packedData = PackWideString("")
 		} else {
-			packedData = PackWideString(arg[1:])
+			packedData = PackWideString(arg)
 		}
 		return packedData, nil
 	default:
