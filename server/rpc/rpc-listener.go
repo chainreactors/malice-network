@@ -35,14 +35,11 @@ func (rpc *Server) RegisterListener(ctx context.Context, req *lispb.RegisterList
 		Active:    true,
 		Pipelines: make(core.Pipelines),
 	})
-	err := core.EventBroker.Notify(core.Event{
+	core.EventBroker.Notify(core.Event{
 		EventType: consts.EventListener,
 		Op:        consts.CtrlListenerStart,
 		Message:   fmt.Sprintf("Listener %s started at %s", req.Name, p.Addr.String()),
 	})
-	if err != nil {
-		return &implantpb.Empty{}, nil
-	}
 	logs.Log.Importantf("[server] %s register listener: %s", p.Addr, req.Name)
 	return &implantpb.Empty{}, nil
 }

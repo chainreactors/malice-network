@@ -127,11 +127,7 @@ type NotifyConfig struct {
 		WebHookUrl string `config:"webhook_url"`
 	} `config:"lark"`
 	ServerChan struct {
-		Enable       bool                `config:"enable" default:"false"`
-		URL          string              `config:"url"`
-		Method       string              `config:"method"`
-		Headers      map[string][]string `config:"headers"`
-		ContentType  string              `config:"content_type"`
-		BodyTemplate string              `config:"bodyTemplate"`
+		Enable bool   `config:"enable" default:"false"`
+		URL    string `config:"url"`
 	} `config:"serverchan"`
 }
