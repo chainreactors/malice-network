@@ -164,7 +164,7 @@ func (l *TCPPipeline) handleRead(conn net.Conn) {
 		}
 
 		go connect.Send(ctx, conn)
-		if length != 0 {
+		if length != 1 {
 			msg, err = connect.Parser.ReadMessage(peekConn, length)
 			if err != nil {
 				logs.Log.Debugf("Error reading message:%s %v", conn.RemoteAddr(), err)
