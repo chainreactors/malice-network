@@ -82,7 +82,6 @@ func PrintSessions(sessions map[string]*core.Session, con *repl.Console, isAll b
 	tableModel.SetHandle(func() {
 		SessionLogin(tableModel, con)()
 	})
-	tableModel.Title = "Sessions"
 	newTable := tui.NewModel(tableModel, tableModel.ConsoleHandler, true, false)
 	err = newTable.Run()
 	if err != nil {

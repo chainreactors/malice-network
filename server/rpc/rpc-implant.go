@@ -84,8 +84,10 @@ func (rpc *Server) Ping(ctx context.Context, req *implantpb.Ping) (*implantpb.Em
 	}
 	if s, ok := core.Sessions.Get(id); !ok {
 		sess, err := db.FindSession(id)
-		if err != nil {
+		if err != nil && !errors.Is(err, db.ErrRecordNotFound) {
 			return nil, err
+		} else if errors.Is(err, db.ErrRecordNotFound) {
+			return &implantpb.Empty{}, nil
 		}
 		newSess := core.NewSession(sess)
 		_, taskID, err := db.FindTaskAndMaxTasksID(id)

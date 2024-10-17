@@ -2,7 +2,6 @@ package rpc
 
 import (
 	"context"
-	"errors"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
@@ -127,7 +126,7 @@ func (rpc *Server) GetSessionLog(ctx context.Context, req *clientpb.SessionLog) 
 	}
 
 	if len(taskFiles) == 0 {
-		return nil, errors.New("no log files found")
+		return contexts, nil
 	}
 
 	sort.Slice(taskFiles, func(i, j int) bool {

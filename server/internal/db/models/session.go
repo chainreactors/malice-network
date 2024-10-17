@@ -26,7 +26,6 @@ type Session struct {
 	Os         *Os      `gorm:"embedded"`
 	Process    *Process `gorm:"embedded"`
 	Time       *Timer   `gorm:"embedded"`
-	Last       time.Time
 }
 
 func (s *Session) BeforeCreate(tx *gorm.DB) (err error) {
@@ -40,7 +39,6 @@ func (s *Session) BeforeCreate(tx *gorm.DB) (err error) {
 }
 
 func ConvertToSessionDB(session *core.Session) *Session {
-	currentTime := time.Now()
 	return &Session{
 		SessionID:  session.ID,
 		GroupName:  "default",
@@ -51,7 +49,6 @@ func ConvertToSessionDB(session *core.Session) *Session {
 		Os:         convertToOsDB(session.Os),
 		Process:    convertToProcessDB(session.Process),
 		Time:       convertToTimeDB(session.Timer),
-		Last:       currentTime,
 	}
 }
 

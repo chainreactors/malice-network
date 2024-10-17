@@ -15,13 +15,12 @@ var (
 )
 
 type Profile struct {
-	ResourceDir string   `config:"resources" default:""`
-	TempDir     string   `config:"tmp" default:""`
-	Aliases     []string `config:"aliases" default:""`
-	Extensions  []string `config:"extensions" default:""`
-	Mals        []string `config:"mals" default:""`
-	//Modules     []string  `yaml:"modules"`
-	Settings *Settings `config:"settings"`
+	ResourceDir string    `yaml:"resources" config:"resources" default:""`
+	TempDir     string    `yaml:"tmp" config:"tmp" default:""`
+	Aliases     []string  `yaml:"aliases" config:"aliases" default:""`
+	Extensions  []string  `yaml:"extensions" config:"extensions" default:""`
+	Mals        []string  `yaml:"mals" config:"mals" default:""`
+	Settings    *Settings `yaml:"settings" config:"settings"`
 }
 
 func findFile(filename string) (string, error) {
