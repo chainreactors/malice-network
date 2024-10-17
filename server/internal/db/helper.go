@@ -35,7 +35,7 @@ func FindAliveSessions() ([]*lispb.RegisterSession, error) {
 	result := Session().Raw(`
 		SELECT * 
 		FROM sessions 
-		WHERE last > datetime('now', '-' || (interval * 2) || ' seconds')
+		WHERE last_checkin > strftime('%s', 'now') - (interval * 2)
 		`).Scan(&activeSessions)
 	if result.Error != nil {
 		return nil, result.Error
@@ -100,12 +100,10 @@ func FindTaskAndMaxTasksID(sessionID string) ([]*models.Task, int, error) {
 func UpdateLast(sessionID string) error {
 	var session models.Session
 	result := Session().Where("session_id = ?", sessionID).First(&session)
-	loc := time.Now().Location()
 	if result.Error != nil {
 		return result.Error
 	}
-	session.Last = time.Now().In(loc)
-	session.Time.LastCheckin = uint64(session.Last.Unix())
+	session.Time.LastCheckin = uint64(time.Now().Unix())
 	result = Session().Save(&session)
 	if result.Error != nil {
 		return result.Error
@@ -123,8 +121,9 @@ func UpdateSessionStatus() error {
 			return err
 		}
 		for _, session := range sessions {
+			lastCheckin := time.Unix(int64(session.Time.LastCheckin), 0)
 			currentTime := time.Now()
-			timeDiff := currentTime.Sub(session.Last)
+			timeDiff := currentTime.Sub(lastCheckin)
 			isAlive := timeDiff <= time.Duration(session.Time.Interval)*time.Second
 			if err := Session().Model(&session).Update("IsAlive", isAlive).Error; err != nil {
 				return err
