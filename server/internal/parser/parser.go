@@ -2,15 +2,11 @@ package parser
 
 import (
 	"errors"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/utils/peek"
 	"github.com/chainreactors/malice-network/server/internal/parser/malefic"
 	"io"
-)
-
-const (
-	ImplantMalefic      = "malefic"
-	ImplantCobaltStrike = "cobaltstrike"
 )
 
 var (
@@ -25,14 +21,17 @@ type PacketParser interface {
 }
 
 func NewParser(conn *peek.Conn) (*MessageParser, error) {
-	discriminator, err := conn.Peek(1)
+	discriminator, err := conn.Peek(9)
 	if err != nil {
 		return nil, err
 	}
 
 	switch discriminator[0] {
 	case 0xd1:
-		return &MessageParser{Implant: ImplantMalefic, PacketParser: &malefic.MaleficParser{}}, nil
+		return &MessageParser{
+			Implant:      consts.ImplantMalefic,
+			PacketParser: &malefic.MaleficParser{},
+		}, nil
 	default:
 		return nil, ErrInvalidImplant
 	}
@@ -45,7 +44,7 @@ type MessageParser struct {
 
 func (parser *MessageParser) ReadHeader(conn *peek.Conn) ([]byte, int, error) {
 	switch parser.Implant {
-	case ImplantMalefic:
+	case consts.ImplantMalefic:
 		sid, length, err := parser.PeekHeader(conn)
 		if err != nil {
 			return nil, 0, err
@@ -80,6 +79,7 @@ func (parser *MessageParser) ReadPacket(conn *peek.Conn) ([]byte, *implantpb.Spi
 	if err != nil {
 		return nil, nil, err
 	}
+
 	msg, err := parser.Parse(buf)
 	return sessionId, msg, nil
 }
@@ -89,6 +89,7 @@ func (parser *MessageParser) WritePacket(conn io.ReadWriter, msg *implantpb.Spit
 	if err != nil {
 		return err
 	}
+
 	_, err = conn.Write(bs)
 	if err != nil {
 		return err

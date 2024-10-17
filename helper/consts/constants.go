@@ -44,6 +44,17 @@ const (
 	MalGroup    = "mal"
 )
 
+const (
+	CryptorXOR = "XOR"
+	CryptorRAW = "RAW" // debug only
+	CryptorAES = "AES"
+)
+
+const (
+	ImplantMalefic      = "malefic"
+	ImplantCobaltStrike = "cobaltstrike"
+)
+
 // config
 const (
 	MaxPacketLength = "server.config.packet_length"

@@ -3,6 +3,8 @@ package configs
 import (
 	"crypto/x509/pkix"
 	"github.com/chainreactors/malice-network/helper/certs"
+	"github.com/chainreactors/malice-network/helper/consts"
+	cryptostream "github.com/chainreactors/malice-network/helper/cryptography/stream"
 	"github.com/chainreactors/malice-network/helper/proto/listener/lispb"
 	"os"
 )
@@ -153,6 +155,13 @@ type EncryptionConfig struct {
 	Enable bool   `config:"enable"`
 	Type   string `config:"type"`
 	Key    string `config:"key"`
+}
+
+func (e *EncryptionConfig) NewCrypto() (cryptostream.Cryptor, error) {
+	if !e.Enable {
+		return cryptostream.NewCryptor(consts.CryptorRAW, nil, nil)
+	}
+	return cryptostream.NewCryptor(e.Type, []byte(e.Key), cryptostream.PKCS7Pad([]byte(e.Key), 16))
 }
 
 func (e *EncryptionConfig) ToProtobuf() *lispb.Encryption {
