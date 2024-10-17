@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/chainreactors/logs"
+	cryptostream "github.com/chainreactors/malice-network/helper/cryptography/stream"
 	"github.com/chainreactors/malice-network/helper/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/helper/utils/peek"
@@ -17,20 +18,23 @@ import (
 
 func StartTcpPipeline(conn *grpc.ClientConn, pipeline *lispb.Pipeline) (*TCPPipeline, error) {
 	tcp := pipeline.GetTcp()
+
 	pp := &TCPPipeline{
 		Name:   tcp.Name,
 		Port:   uint16(tcp.Port),
 		Host:   tcp.Host,
 		Enable: true,
-		TlsConfig: &configs.CertConfig{
-			Cert:   pipeline.GetTls().Cert,
-			Key:    pipeline.GetTls().Key,
-			Enable: pipeline.GetTls().Enable,
-		},
-		Encryption: &configs.EncryptionConfig{
-			Enable: pipeline.GetEncryption().Enable,
-			Type:   pipeline.GetEncryption().Type,
-			Key:    pipeline.GetEncryption().Key,
+		Pipeline: &Pipeline{
+			TlsConfig: &configs.CertConfig{
+				Cert:   pipeline.GetTls().Cert,
+				Key:    pipeline.GetTls().Key,
+				Enable: pipeline.GetTls().Enable,
+			},
+			Encryption: &configs.EncryptionConfig{
+				Enable: pipeline.GetEncryption().Enable,
+				Type:   pipeline.GetEncryption().Type,
+				Key:    pipeline.GetEncryption().Key,
+			},
 		},
 	}
 	err := pp.Start()
@@ -61,13 +65,12 @@ func ToTcpConfig(pipeline *lispb.TCPPipeline, tls *lispb.TLS) *configs.TcpPipeli
 }
 
 type TCPPipeline struct {
-	ln         net.Listener
-	Name       string
-	Port       uint16
-	Host       string
-	Enable     bool
-	TlsConfig  *configs.CertConfig
-	Encryption *configs.EncryptionConfig
+	ln     net.Listener
+	Name   string
+	Port   uint16
+	Host   string
+	Enable bool
+	*Pipeline
 }
 
 func (l *TCPPipeline) ToProtobuf() proto.Message {
@@ -136,7 +139,7 @@ func (l *TCPPipeline) handler() (net.Listener, error) {
 				continue
 			}
 			logs.Log.Debugf("accept from %s", conn.RemoteAddr())
-			go l.handleRead(l.wrapConn(conn))
+			go l.handleRead(conn)
 		}
 	}()
 	return ln, nil
@@ -144,7 +147,12 @@ func (l *TCPPipeline) handler() (net.Listener, error) {
 
 func (l *TCPPipeline) handleRead(conn net.Conn) {
 	defer conn.Close()
-
+	cry, err := l.Encryption.NewCrypto()
+	if err != nil {
+		logs.Log.Errorf("new crypto error: %v", err)
+		return
+	}
+	conn = cryptostream.NewCryptoConn(conn, cry)
 	peekConn := peek.WrapPeekConn(conn)
 	connect, err := core.Connections.NeedConnection(peekConn)
 	if err != nil {
