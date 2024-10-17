@@ -94,7 +94,7 @@ func (broker *eventBroker) Publish(event Event) {
 
 // Notify - Notify all third-patry services
 func (broker *eventBroker) Notify(event Event) {
-	broker.notifier.Send(&event)
+	go broker.notifier.Send(&event)
 }
 
 func newBroker() *eventBroker {
