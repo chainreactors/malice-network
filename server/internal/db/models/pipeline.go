@@ -83,8 +83,9 @@ func ToTlsDB(tls *lispb.TLS) TlsConfig {
 
 func ToEncryptionDB(encryption *lispb.Encryption) EncryptionConfig {
 	return EncryptionConfig{
-		Type: encryption.Type,
-		Key:  encryption.Key,
+		Enable: encryption.Enable,
+		Type:   encryption.Type,
+		Key:    encryption.Key,
 	}
 }
 
@@ -123,15 +124,17 @@ func ToProtobuf(pipeline *Pipeline) *lispb.Pipeline {
 
 func ToTlsProtobuf(tls *TlsConfig) *lispb.TLS {
 	return &lispb.TLS{
-		Cert: tls.Cert,
-		Key:  tls.Key,
+		Enable: tls.Enable,
+		Cert:   tls.Cert,
+		Key:    tls.Key,
 	}
 }
 
 func ToEncryptionProtobuf(encryption *EncryptionConfig) *lispb.Encryption {
 	return &lispb.Encryption{
-		Type: encryption.Type,
-		Key:  encryption.Key,
+		Enable: encryption.Enable,
+		Type:   encryption.Type,
+		Key:    encryption.Key,
 	}
 
 }

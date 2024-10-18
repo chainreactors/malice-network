@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"io"
+	"strings"
 )
 
 func NewCryptor(name string, key, secret []byte) (Cryptor, error) {
-	switch name {
+	switch strings.ToUpper(name) {
 	case consts.CryptorXOR:
 		return NewXorEncryptor(key, secret), nil
 	case consts.CryptorAES:
@@ -26,12 +27,11 @@ type Cryptor interface {
 	Reset() error
 }
 
-// PKCS7Pad pads the input data to the block size using PKCS#7 padding
 func PKCS7Pad(data []byte, blockSize int) []byte {
-	if len(data) > blockSize {
+	if len(data) >= blockSize {
 		return data[:blockSize]
 	}
-	padding := blockSize - (len(data) % blockSize)
-	padText := bytes.Repeat([]byte{byte(padding)}, padding)
+	padding := blockSize - len(data)
+	padText := bytes.Repeat([]byte{0}, padding)
 	return append(data, padText...)
 }

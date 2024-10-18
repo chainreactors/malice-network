@@ -171,7 +171,7 @@ func (l *TCPPipeline) handleRead(conn net.Conn) {
 			return
 		}
 
-		go connect.Send(ctx, conn)
+		go connect.Send(ctx, peekConn)
 		if length != 1 {
 			msg, err = connect.Parser.ReadMessage(peekConn, length)
 			if err != nil {
