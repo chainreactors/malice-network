@@ -2,9 +2,9 @@ package pe
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/binary"
 	"fmt"
-	"github.com/gookit/goutil/encodes"
 	"golang.org/x/text/encoding/unicode"
 	"strconv"
 )
@@ -164,7 +164,7 @@ func PackArgs(data []string) ([]string, error) {
 }
 
 func PackBinary(data string) string {
-	return fmt.Sprintf(`bin:%s`, encodes.B64Encode(data))
+	return fmt.Sprintf(`bin:%s`, base64.StdEncoding.EncodeToString([]byte(data)))
 }
 
 func PackInt(i uint32) (string, error) {
