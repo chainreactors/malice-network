@@ -105,7 +105,7 @@ func (t *TlsConfig) ReadCert() (*CertConfig, error) {
 			Cert:   "",
 			Key:    "",
 			CA:     "",
-			Enable: true,
+			Enable: t.Enable,
 		}, nil
 	}
 	cert, err := os.ReadFile(t.CertFile)
@@ -124,7 +124,7 @@ func (t *TlsConfig) ReadCert() (*CertConfig, error) {
 		Cert:   string(cert),
 		Key:    string(key),
 		CA:     string(ca),
-		Enable: true,
+		Enable: t.Enable,
 	}, nil
 }
 

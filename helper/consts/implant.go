@@ -4,6 +4,11 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 )
 
+const (
+	ImplantMalefic      = "malefic"
+	ImplantCobaltStrike = "cobaltstrike"
+)
+
 // release type
 type ReleaseType int
 

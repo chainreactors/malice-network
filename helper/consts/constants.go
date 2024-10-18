@@ -50,11 +50,6 @@ const (
 	CryptorAES = "AES"
 )
 
-const (
-	ImplantMalefic      = "malefic"
-	ImplantCobaltStrike = "cobaltstrike"
-)
-
 // config
 const (
 	MaxPacketLength = "server.config.packet_length"
