@@ -55,8 +55,9 @@ var (
 
 type LuaPlugin struct {
 	*DefaultPlugin
-	vm   *lua.LState
-	lock *sync.Mutex
+	vm      *lua.LState
+	lock    *sync.Mutex
+	cmdLock *sync.Mutex
 }
 
 func NewLuaMalPlugin(manifest *MalManiFest) (*LuaPlugin, error) {
@@ -68,6 +69,7 @@ func NewLuaMalPlugin(manifest *MalManiFest) (*LuaPlugin, error) {
 		DefaultPlugin: plug,
 		vm:            NewLuaVM(),
 		lock:          &sync.Mutex{},
+		cmdLock:       &sync.Mutex{},
 	}
 	err = mal.RegisterLuaBuiltin()
 	if err != nil {
@@ -209,6 +211,8 @@ func (plug *LuaPlugin) RegisterLuaBuiltin() error {
 					}
 				}
 				go func() {
+					plug.cmdLock.Lock()
+					defer plug.cmdLock.Unlock()
 					if err := vm.PCall(len(paramNames), lua.MultRet, nil); err != nil {
 						logs.Log.Errorf("error calling Lua %s:\n%s", fn.String(), err.Error())
 						return
