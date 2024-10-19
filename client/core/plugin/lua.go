@@ -173,6 +173,8 @@ func (plug *LuaPlugin) RegisterLuaBuiltin() error {
 				"ttp": ttp,
 			},
 			RunE: func(cmd *cobra.Command, args []string) error {
+				plug.lock.Lock()
+				defer plug.lock.Unlock()
 				vm.Push(fn) // 将函数推入栈
 
 				for _, paramName := range paramNames {
@@ -207,8 +209,6 @@ func (plug *LuaPlugin) RegisterLuaBuiltin() error {
 					}
 				}
 				go func() {
-					plug.lock.Lock()
-					defer plug.lock.Unlock()
 					if err := vm.PCall(len(paramNames), lua.MultRet, nil); err != nil {
 						logs.Log.Errorf("error calling Lua %s:\n%s", fn.String(), err.Error())
 						return
