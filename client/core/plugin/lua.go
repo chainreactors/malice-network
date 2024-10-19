@@ -67,6 +67,7 @@ func NewLuaMalPlugin(manifest *MalManiFest) (*LuaPlugin, error) {
 	mal := &LuaPlugin{
 		DefaultPlugin: plug,
 		vm:            NewLuaVM(),
+		lock:          &sync.Mutex{},
 	}
 	err = mal.RegisterLuaBuiltin()
 	if err != nil {
