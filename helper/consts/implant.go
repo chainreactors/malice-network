@@ -1,9 +1,5 @@
 package consts
 
-import (
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-)
-
 const (
 	ImplantMalefic      = "malefic"
 	ImplantCobaltStrike = "cobaltstrike"
@@ -35,8 +31,35 @@ const (
 	MaleficErrorUnexceptBody
 )
 
-func GetWindowsVer(ver string) string {
-	return WindowsVer[ver]
+type Arch uint32
+
+const (
+	I686      Arch = 0
+	X86_64    Arch = 1
+	Arm       Arch = 2
+	Aarch64   Arch = 3
+	Mips      Arch = 4
+	Powerpc   Arch = 5
+	Powerpc64 Arch = 6
+	Riscv32   Arch = 7
+	Riscv64   Arch = 8
+)
+
+// ArchAlias 将别名映射为标准的架构名称
+var ArchAlias = map[string]string{
+	"x86_64": "x64",
+	"amd64":  "x64",
+	"x86":    "x86",
+	"386":    "x86",
+}
+
+// ArchMap 将字符串映射为 Arch 枚举值
+var ArchMap = map[string]Arch{
+	"x64":   X86_64,
+	"x86":   I686,
+	"arm":   Arm,
+	"arm64": Aarch64,
+	"mips":  Mips,
 }
 
 var (
@@ -71,26 +94,5 @@ var (
 		"10.0.20348": "Server2022",
 		"10.0.22621": "11",
 		"11.0.22000": "11",
-	}
-	ArchAlias = map[string]string{
-		"x86_64": "x64",
-		"amd64":  "x64",
-		"x86":    "x86",
-		"386":    "x86",
-	}
-	//ArchMap = map[implantpb.Arch]string{
-	//	implantpb.Arch_x86_64: "amd64",
-	//	implantpb.Arch_i686:    "386",
-	//	implantpb.Arch_arm:     "arm",
-	//	implantpb.Arch_aarch64:   "arm64",
-	//	implantpb.Arch_mips:    "mips",
-	//}
-
-	ArchMap = map[string]implantpb.Arch{
-		"x64":   implantpb.Arch_x86_64,
-		"x86":   implantpb.Arch_i686,
-		"arm":   implantpb.Arch_arm,
-		"arm64": implantpb.Arch_aarch64,
-		"mips":  implantpb.Arch_mips,
 	}
 )

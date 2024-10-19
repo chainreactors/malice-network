@@ -147,10 +147,10 @@ func FormatArch(arch string) string {
 	}
 }
 
-func MapArch(arch string) implantpb.Arch {
+func MapArch(arch string) uint32 {
 	arch = FormatArch(arch)
 	if v, found := consts.ArchMap[arch]; found {
-		return v
+		return uint32(v)
 	} else {
 		return 0
 	}
