@@ -55,9 +55,8 @@ var (
 
 type LuaPlugin struct {
 	*DefaultPlugin
-	vm      *lua.LState
-	lock    *sync.Mutex
-	cmdLock *sync.Mutex
+	vm   *lua.LState
+	lock *sync.Mutex
 }
 
 func NewLuaMalPlugin(manifest *MalManiFest) (*LuaPlugin, error) {
@@ -68,8 +67,6 @@ func NewLuaMalPlugin(manifest *MalManiFest) (*LuaPlugin, error) {
 	mal := &LuaPlugin{
 		DefaultPlugin: plug,
 		vm:            NewLuaVM(),
-		lock:          &sync.Mutex{},
-		cmdLock:       &sync.Mutex{},
 	}
 	err = mal.RegisterLuaBuiltin()
 	if err != nil {
@@ -174,64 +171,62 @@ func (plug *LuaPlugin) RegisterLuaBuiltin() error {
 			Annotations: map[string]string{
 				"ttp": ttp,
 			},
-			RunE: func(cmd *cobra.Command, args []string) error {
-				plug.lock.Lock()
-				defer plug.lock.Unlock()
-				vm.Push(fn) // 将函数推入栈
-
-				for _, paramName := range paramNames {
-					switch paramName {
-					case "cmdline":
-						vm.Push(lua.LString(shellquote.Join(args...)))
-					case "args":
-						vm.Push(intermediate.ConvertGoValueToLua(vm, args))
-					default:
-						val, err := cmd.Flags().GetString(paramName)
-						if err != nil {
-							logs.Log.Errorf("error getting flag %s: %s", paramName, err.Error())
-							return err
-						}
-						vm.Push(lua.LString(val))
-					}
-				}
-
-				var outFunc intermediate.BuiltinCallback
-				if outFile, _ := cmd.Flags().GetString("file"); outFile == "" {
-					outFunc = func(content string) (bool, error) {
-						logs.Log.Console(content)
-						return true, nil
-					}
-				} else {
-					outFunc = func(content string) (bool, error) {
-						err := os.WriteFile(outFile, []byte(content), 0644)
-						if err != nil {
-							return false, err
-						}
-						return true, nil
-					}
-				}
+			Run: func(cmd *cobra.Command, args []string) {
 				go func() {
-					plug.cmdLock.Lock()
-					defer plug.cmdLock.Unlock()
-					if err := vm.PCall(len(paramNames), lua.MultRet, nil); err != nil {
-						logs.Log.Errorf("error calling Lua %s:\n%s", fn.String(), err.Error())
-						return
+					plug.lock.Lock()
+					vm.Push(fn) // 将函数推入栈
+
+					for _, paramName := range paramNames {
+						switch paramName {
+						case "cmdline":
+							vm.Push(lua.LString(shellquote.Join(args...)))
+						case "args":
+							vm.Push(intermediate.ConvertGoValueToLua(vm, args))
+						default:
+							val, err := cmd.Flags().GetString(paramName)
+							if err != nil {
+								logs.Log.Errorf("error getting flag %s: %s", paramName, err.Error())
+								return
+							}
+							vm.Push(lua.LString(val))
+						}
 					}
 
-					resultCount := vm.GetTop()
-					for i := 1; i <= resultCount; i++ {
-						// 从栈顶依次弹出返回值
-						result := vm.Get(-resultCount + i - 1)
-						_, err := outFunc(result.String())
-						if err != nil {
-							logs.Log.Errorf("error calling outFunc:\n%s", err.Error())
+					var outFunc intermediate.BuiltinCallback
+					if outFile, _ := cmd.Flags().GetString("file"); outFile == "" {
+						outFunc = func(content string) (bool, error) {
+							logs.Log.Console(content)
+							return true, nil
+						}
+					} else {
+						outFunc = func(content string) (bool, error) {
+							err := os.WriteFile(outFile, []byte(content), 0644)
+							if err != nil {
+								return false, err
+							}
+							return true, nil
+						}
+					}
+					go func() {
+						defer plug.lock.Unlock()
+						if err := vm.PCall(len(paramNames), lua.MultRet, nil); err != nil {
+							logs.Log.Errorf("error calling Lua %s:\n%s", fn.String(), err.Error())
 							return
 						}
-					}
-					vm.Pop(resultCount)
-				}()
 
-				return nil
+						resultCount := vm.GetTop()
+						for i := 1; i <= resultCount; i++ {
+							// 从栈顶依次弹出返回值
+							result := vm.Get(-resultCount + i - 1)
+							_, err := outFunc(result.String())
+							if err != nil {
+								logs.Log.Errorf("error calling outFunc:\n%s", err.Error())
+								return
+							}
+						}
+						vm.Pop(resultCount)
+					}()
+				}()
 			},
 		}
 
