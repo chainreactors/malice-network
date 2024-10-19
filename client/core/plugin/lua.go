@@ -41,6 +41,7 @@ import (
 	"reflect"
 	"slices"
 	"strings"
+	"sync"
 	"unicode"
 )
 
@@ -54,7 +55,8 @@ var (
 
 type LuaPlugin struct {
 	*DefaultPlugin
-	vm *lua.LState
+	vm   *lua.LState
+	lock *sync.Mutex
 }
 
 func NewLuaMalPlugin(manifest *MalManiFest) (*LuaPlugin, error) {
@@ -65,6 +67,7 @@ func NewLuaMalPlugin(manifest *MalManiFest) (*LuaPlugin, error) {
 	mal := &LuaPlugin{
 		DefaultPlugin: plug,
 		vm:            NewLuaVM(),
+		lock:          &sync.Mutex{},
 	}
 	err = mal.RegisterLuaBuiltin()
 	if err != nil {
@@ -204,6 +207,8 @@ func (plug *LuaPlugin) RegisterLuaBuiltin() error {
 					}
 				}
 				go func() {
+					plug.lock.Lock()
+					defer plug.lock.Unlock()
 					if err := vm.PCall(len(paramNames), lua.MultRet, nil); err != nil {
 						logs.Log.Errorf("error calling Lua %s:\n%s", fn.String(), err.Error())
 						return
