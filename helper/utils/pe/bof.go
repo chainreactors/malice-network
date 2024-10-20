@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"golang.org/x/text/encoding/unicode"
 	"strconv"
+	"strings"
 )
 
 type BOFArgsBuffer struct {
@@ -197,4 +198,42 @@ func PackString(s string) string {
 
 func PackWideString(s string) string {
 	return fmt.Sprintf(`wstr:%s`, s)
+}
+
+const (
+	CALLBACK_OUTPUT      = 0
+	CALLBACK_SCREENSHOT  = 3
+	CALLBACK_OUTPUT_OEM  = 30
+	CALLBACK_ERROR       = 31
+	CALLBACK_OUTPUT_UTF8 = 32
+)
+
+type BOFResponse struct {
+	CallbackType uint8
+	OutputType   uint8
+	Length       uint32
+	Data         []byte
+}
+
+func (bof *BOFResponse) String() string {
+	switch bof.CallbackType {
+	case CALLBACK_OUTPUT, CALLBACK_OUTPUT_OEM, CALLBACK_OUTPUT_UTF8:
+		return string(bof.Data)
+	case CALLBACK_ERROR:
+		return "error: " + string(bof.Data)
+	case CALLBACK_SCREENSHOT:
+		return "screenshot"
+	default:
+		return "not impl callback id"
+	}
+}
+
+type BOFResponses []*BOFResponse
+
+func (bofs BOFResponses) String() string {
+	var s strings.Builder
+	for _, r := range bofs {
+		s.WriteString(r.String() + "\n")
+	}
+	return s.String()
 }

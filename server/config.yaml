@@ -38,6 +38,6 @@ listeners:
         key_file: ""
         ca_file: ""
       encryption:
-        enable: false
-        type: aes-cfb
+        enable: true
+        type: aes
         key: maliceofinternal

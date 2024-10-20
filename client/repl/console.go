@@ -151,7 +151,7 @@ func (c *Console) SwitchImplant(sess *core.Session) {
 }
 
 func (c *Console) RegisterImplantFunc(name string, fn interface{},
-	bname string, bfn interface{},
+	bname string, bfn interface{}, // return to plugin
 	pluginCallback ImplantPluginCallback, implantCallback intermediate.ImplantCallback) {
 
 	if implantCallback == nil {

@@ -18,7 +18,7 @@ import (
 	"reflect"
 )
 
-type BuiltinCallback func(content string) (bool, error)
+type BuiltinCallback func(content interface{}) (bool, error)
 
 func RegisterBuiltin(rpc clientrpc.MaliceRPCClient) {
 	RegisterCustomBuiltin(rpc)
@@ -112,8 +112,12 @@ func RegisterCustomBuiltin(rpc clientrpc.MaliceRPCClient) {
 	})
 
 	RegisterFunction("callback_file", func(filename string) (BuiltinCallback, error) {
-		return func(content string) (bool, error) {
-			err := os.WriteFile(filename, []byte(content), 0644)
+		return func(content interface{}) (bool, error) {
+			_, ok := content.(string)
+			if !ok {
+				return false, fmt.Errorf("expect content tpye string, found %s", reflect.TypeOf(content).String())
+			}
+			err := os.WriteFile(filename, []byte(content.(string)), 0644)
 			if err != nil {
 				return false, err
 			}
@@ -122,7 +126,11 @@ func RegisterCustomBuiltin(rpc clientrpc.MaliceRPCClient) {
 	})
 
 	RegisterFunction("callback_append", func(filename string) (BuiltinCallback, error) {
-		return func(content string) (bool, error) {
+		return func(content interface{}) (bool, error) {
+			_, ok := content.(string)
+			if !ok {
+				return false, fmt.Errorf("expect content tpye string, found %s", reflect.TypeOf(content).String())
+			}
 			f, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 			if err != nil {
 				return false, err
@@ -130,7 +138,7 @@ func RegisterCustomBuiltin(rpc clientrpc.MaliceRPCClient) {
 			defer f.Close() // 确保在函数结束时关闭文件
 
 			// 写入内容
-			if _, err := f.Write([]byte(content)); err != nil {
+			if _, err := f.Write([]byte(content.(string))); err != nil {
 				return false, err
 			}
 			return true, nil
@@ -138,7 +146,7 @@ func RegisterCustomBuiltin(rpc clientrpc.MaliceRPCClient) {
 	})
 
 	RegisterFunction("callback_discard", func() (BuiltinCallback, error) {
-		return func(content string) (bool, error) {
+		return func(content interface{}) (bool, error) {
 			return true, nil
 		}, nil
 	})
