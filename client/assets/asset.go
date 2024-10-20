@@ -70,6 +70,10 @@ func GetTempDir() string {
 	return dir
 }
 
+func GenerateTempFile(filename string) (*os.File, error) {
+	return os.Create(filepath.Join(GetTempDir(), filename))
+}
+
 func GetLogDir() string {
 	rootDir, _ := filepath.Abs(GetRootAppDir())
 	dir := filepath.Join(rootDir, LogDirName)

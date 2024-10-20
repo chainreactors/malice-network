@@ -132,32 +132,32 @@ func (plug *LuaPlugin) RegisterLuaBuiltin() error {
 	luaPath := lua.LuaPathDefault + ";" + plugDir + "\\?.lua"
 	vm.SetField(packageMod, "path", lua.LString(luaPath))
 	// 读取resource文件
-	plug.registerLuaFunction(vm, "script_resource", func(filename string) (string, error) {
+	plug.registerLuaFunction("script_resource", func(filename string) (string, error) {
 		return intermediate.GetResourceFile(plug.Name, filename)
 	})
 
-	plug.registerLuaFunction(vm, "find_resource", func(sess *core.Session, base string, ext string) (string, error) {
+	plug.registerLuaFunction("find_resource", func(sess *core.Session, base string, ext string) (string, error) {
 		return intermediate.FindResourceFile(plug.Name, base, sess.Os.Arch, ext)
 	})
 
 	// 读取资源文件内容
-	plug.registerLuaFunction(vm, "read_resource", func(filename string) (string, error) {
+	plug.registerLuaFunction("read_resource", func(filename string) (string, error) {
 		return intermediate.ReadResourceFile(plug.Name, filename)
 	})
 
-	plug.registerLuaFunction(vm, "help", func(name string, long string) (bool, error) {
+	plug.registerLuaFunction("help", func(name string, long string) (bool, error) {
 		cmd := plug.CMDs.Find(name)
 		cmd.Long = long
 		return true, nil
 	})
 
-	plug.registerLuaFunction(vm, "example", func(name string, example string) (bool, error) {
+	plug.registerLuaFunction("example", func(name string, example string) (bool, error) {
 		cmd := plug.CMDs.Find(name)
 		cmd.Example = example
 		return true, nil
 	})
 
-	plug.registerLuaFunction(vm, "command", func(name string, fn *lua.LFunction, short string, ttp string) (bool, error) {
+	plug.registerLuaFunction("command", func(name string, fn *lua.LFunction, short string, ttp string) (bool, error) {
 		cmd := plug.CMDs.Find(name)
 
 		var paramNames []string
@@ -195,13 +195,17 @@ func (plug *LuaPlugin) RegisterLuaBuiltin() error {
 
 					var outFunc intermediate.BuiltinCallback
 					if outFile, _ := cmd.Flags().GetString("file"); outFile == "" {
-						outFunc = func(content string) (bool, error) {
-							logs.Log.Console(content)
+						outFunc = func(content interface{}) (bool, error) {
+							logs.Log.Consolef("%v", content)
 							return true, nil
 						}
 					} else {
-						outFunc = func(content string) (bool, error) {
-							err := os.WriteFile(outFile, []byte(content), 0644)
+						outFunc = func(content interface{}) (bool, error) {
+							cont, ok := content.(string)
+							if !ok {
+								return false, fmt.Errorf("expect content tpye string, found %s", reflect.TypeOf(content).String())
+							}
+							err := os.WriteFile(outFile, []byte(cont), 0644)
 							if err != nil {
 								return false, err
 							}
@@ -246,7 +250,8 @@ func (plug *LuaPlugin) RegisterLuaBuiltin() error {
 	return nil
 }
 
-func (plug *LuaPlugin) registerLuaFunction(vm *lua.LState, name string, fn interface{}) {
+func (plug *LuaPlugin) registerLuaFunction(name string, fn interface{}) {
+	vm := plug.vm
 	wrappedFunc := intermediate.WrapInternalFunc(fn)
 	wrappedFunc.Package = intermediate.BuiltinPackage
 	wrappedFunc.Name = name

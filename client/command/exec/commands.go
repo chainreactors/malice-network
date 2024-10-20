@@ -1,14 +1,18 @@
 package exec
 
 import (
+	"fmt"
+	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/encoders/hash"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
+	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"github.com/kballard/go-shellquote"
 	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
@@ -535,8 +539,15 @@ func Register(con *repl.Console) {
 			}
 			return ExecBof(rpc, sess, path, cmdline, true)
 		},
-		common.ParseAssembly,
-		nil)
+		common.ParseBOFResponse,
+		func(content *clientpb.TaskContext) (string, error) {
+			bofResps, err := common.ParseBOFResponse(content)
+			if err != nil {
+				return "", err
+			}
+
+			return bofResps.(pe.BOFResponses).String(), nil
+		})
 
 	con.RegisterImplantFunc(
 		consts.ModulePowerpick,
@@ -572,4 +583,32 @@ func Register(con *repl.Console) {
 		common.ParseExecResponse,
 		nil,
 	)
+
+	con.RegisterServerFunc("callback_bof", func(con *repl.Console, sess *core.Session) (intermediate.BuiltinCallback, error) {
+		return func(content interface{}) (bool, error) {
+			resps, ok := content.(pe.BOFResponses)
+			if !ok {
+				return false, fmt.Errorf("invalid response type")
+			}
+			log := con.ObserverLog(sess.SessionId)
+			for _, resp := range resps {
+				if resp.CallbackType == pe.CALLBACK_SCREENSHOT {
+					if resp.Length == 0 {
+						log.Errorf("null screenshot data")
+						continue
+					}
+					screenfile, err := assets.GenerateTempFile(fmt.Sprintf("%s_%s", sess.SessionId, hash.Md5Hash(resp.Data)))
+					if err != nil {
+						log.Errorf(err.Error())
+						continue
+					}
+					screenfile.Write(resp.Data)
+					log.Infof("screenshot saved to %s", screenfile.Name())
+				}
+			}
+
+			log.Console(resps.String())
+			return true, nil
+		}, nil
+	})
 }

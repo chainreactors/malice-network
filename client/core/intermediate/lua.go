@@ -58,7 +58,6 @@ func WrapFuncForLua(fn *InternalFunc) lua.LGFunction {
 		if callback != nil {
 			vm.Push(callback)
 			vm.Push(ConvertGoValueToLua(vm, result))
-			// 可以推送需要传递给回调的参数，如果需要的话
 			if err := vm.PCall(1, 1, nil); err != nil { // 期待一个返回值
 				vm.Error(lua.LString(fmt.Sprintf("Callback Error: %v", err)), 1)
 				return 0
