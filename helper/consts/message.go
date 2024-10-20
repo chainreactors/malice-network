@@ -106,6 +106,7 @@ const (
 	CommandMalList          = "list"
 	CommandMalInstall       = "install"
 	CommandMalRemove        = "remove"
+	CommandMalRefresh       = "refresh"
 	CommandTcp              = "tcp"
 	CommandWebsite          = "website"
 	CommandListener         = "listener"
