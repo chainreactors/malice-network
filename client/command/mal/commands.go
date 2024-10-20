@@ -58,5 +58,13 @@ func Commands(con *repl.Console) []*cobra.Command {
 			RemoveMalCmd(cmd, con)
 		},
 	})
+
+	cmd.AddCommand(&cobra.Command{
+		Use:   consts.CommandMalRefresh,
+		Short: "Refresh mal manifests",
+		Run: func(cmd *cobra.Command, args []string) {
+			RefreshMalCmd(cmd, con)
+		},
+	})
 	return []*cobra.Command{cmd}
 }
