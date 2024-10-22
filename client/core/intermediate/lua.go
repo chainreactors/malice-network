@@ -253,10 +253,18 @@ func ConvertLuaValueToGo(value lua.LValue) interface{} {
 	case *lua.LTable:
 		return ConvertLuaTableToGo(v)
 	case *lua.LUserData:
-		if protoMsg, ok := v.Value.(proto.Message); ok {
-			return protoMsg
+		switch v.Value.(type) {
+		case proto.Message:
+			return v.Value.(proto.Message)
+		default:
+			stringer, ok := v.Value.(fmt.Stringer)
+			if ok {
+				return stringer.String()
+			} else {
+				return v.Value
+			}
 		}
-		return v.Value
+
 	case *lua.LNilType:
 		return nil
 	case *lua.LFunction:

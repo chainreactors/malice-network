@@ -223,7 +223,7 @@ func (plug *LuaPlugin) RegisterLuaBuiltin() error {
 						for i := 1; i <= resultCount; i++ {
 							// 从栈顶依次弹出返回值
 							result := vm.Get(-resultCount + i - 1)
-							_, err := outFunc(result.String())
+							_, err := outFunc(intermediate.ConvertLuaValueToGo(result))
 							if err != nil {
 								logs.Log.Errorf("error calling outFunc:\n%s", err.Error())
 								return
