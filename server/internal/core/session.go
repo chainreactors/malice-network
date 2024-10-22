@@ -89,7 +89,7 @@ type Session struct {
 func (s *Session) RpcLogger() *logs.Logger {
 	var err error
 	if s.rpcLog == nil {
-		if auditLevel := config.Int(consts.AuditLevel); auditLevel > 0 {
+		if auditLevel := config.Int(consts.ConfigAuditLevel); auditLevel > 0 {
 			s.rpcLog, err = logs.NewFileLogger(filepath.Join(configs.AuditPath, s.ID+".log"))
 			if err == nil {
 				s.rpcLog.SuffixFunc = func() string {

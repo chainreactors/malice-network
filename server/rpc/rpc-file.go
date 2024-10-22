@@ -22,7 +22,7 @@ import (
 
 // Upload - Upload a file from the remote file system
 func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*clientpb.Task, error) {
-	count := parser.Count(req.Data, config.Int(consts.MaxPacketLength))
+	count := parser.Count(req.Data, config.Int(consts.ConfigMaxPacketLength))
 	if count == 1 {
 		greq, err := newGenericRequest(ctx, req)
 		if err != nil {
@@ -78,7 +78,7 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 				greq.Task.Panic(buildErrorEvent(greq.Task, err))
 				return
 			}
-			for block := range parser.Chunked(req.Data, config.Int(consts.MaxPacketLength)) {
+			for block := range parser.Chunked(req.Data, config.Int(consts.ConfigMaxPacketLength)) {
 				msg := &implantpb.Block{
 					BlockId: uint32(blockId),
 					Content: block,
@@ -149,7 +149,7 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 		respCheckSum := resp.GetDownloadResponse().Checksum
 		fileName := path.Join(configs.TempPath, respCheckSum)
 		greq.Session.AddMessage(resp, 0)
-		greq.Task.Total = int(resp.GetDownloadResponse().Size)/config.Int(consts.MaxPacketLength) + 1
+		greq.Task.Total = int(resp.GetDownloadResponse().Size)/config.Int(consts.ConfigMaxPacketLength) + 1
 		td := &models.FileDescription{
 			Name:     req.Name,
 			NickName: respCheckSum,

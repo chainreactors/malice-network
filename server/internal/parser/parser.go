@@ -6,11 +6,13 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/utils/peek"
 	"github.com/chainreactors/malice-network/server/internal/parser/malefic"
+	"github.com/gookit/config/v2"
 	"io"
 )
 
 var (
 	ErrInvalidImplant = errors.New("invalid implant")
+	ErrPacketTooLarge = errors.New("packet too large")
 )
 
 // PacketParser packet parser, like malefic, beacon ...
@@ -48,6 +50,9 @@ func (parser *MessageParser) ReadHeader(conn *peek.Conn) ([]byte, int, error) {
 		sid, length, err := parser.PeekHeader(conn)
 		if err != nil {
 			return nil, 0, err
+		}
+		if length > config.Int(consts.ConfigMaxPacketLength) {
+			return nil, 0, ErrPacketTooLarge
 		}
 		if _, err := conn.Reader.Discard(malefic.HeaderLength); err != nil {
 			return nil, 0, err

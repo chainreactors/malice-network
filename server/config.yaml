@@ -5,7 +5,7 @@ server:
   audit: 1  # 0 close , 1 basic , 2 detail
   enable: true
   config:
-    packet_length: 1048576 # 1M:
+    packet_length: 10485760 # 1M:
     certificate:
     certificate_key:
   notify:

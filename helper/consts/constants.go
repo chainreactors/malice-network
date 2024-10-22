@@ -52,8 +52,8 @@ const (
 
 // config
 const (
-	MaxPacketLength = "server.config.packet_length"
-	AuditLevel      = "server.audit"
+	ConfigMaxPacketLength = "server.config.packet_length"
+	ConfigAuditLevel      = "server.audit"
 )
 
 const (
