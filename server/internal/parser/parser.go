@@ -54,8 +54,8 @@ func (parser *MessageParser) ReadHeader(conn *peek.Conn) ([]byte, int, error) {
 		if length > config.Int(consts.ConfigMaxPacketLength) {
 			return nil, 0, ErrPacketTooLarge
 		}
-		if _, err := conn.Reader.Discard(malefic.HeaderLength); err != nil {
-			return nil, 0, err
+		if n, err := conn.Reader.Discard(malefic.HeaderLength); err != nil {
+			return nil, n, err
 		}
 		return sid, length, nil
 	default:
@@ -69,8 +69,7 @@ func (parser *MessageParser) ReadMessage(conn *peek.Conn, length int) (*implantp
 	if err != nil {
 		return nil, err
 	}
-	msg, err := parser.Parse(buf)
-	return msg, nil
+	return parser.Parse(buf)
 }
 
 func (parser *MessageParser) ReadPacket(conn *peek.Conn) ([]byte, *implantpb.Spites, error) {

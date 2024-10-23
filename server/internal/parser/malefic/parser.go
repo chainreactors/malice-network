@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	cryptostream "github.com/chainreactors/malice-network/helper/cryptography/stream"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/utils/peek"
 	"google.golang.org/protobuf/proto"
@@ -28,29 +29,6 @@ var (
 
 type MaleficParser struct{}
 
-func (parser *MaleficParser) marshalMessage(msg *implantpb.Spites, sid []byte) ([]byte, error) {
-	var buf bytes.Buffer
-	if len(sid) != 4 {
-		return nil, ErrInvalidId
-	}
-
-	data, err := proto.Marshal(msg)
-	if err != nil {
-		return nil, err
-	}
-
-	buf.WriteByte(StartDelimiter)
-	buf.Write(sid)
-	err = binary.Write(&buf, binary.LittleEndian, int32(len(data)))
-	if err != nil {
-		return nil, err
-	}
-
-	buf.Write(data)
-	buf.WriteByte(EndDelimiter)
-	return buf.Bytes(), nil
-}
-
 func (parser *MaleficParser) PeekHeader(conn *peek.Conn) ([]byte, int, error) {
 	header, err := conn.Peek(HeaderLength)
 	if err != nil {
@@ -71,8 +49,12 @@ func (parser *MaleficParser) Parse(buf []byte) (*implantpb.Spites, error) {
 		return nil, ErrInvalidEnd
 	}
 	buf = buf[:length]
+	buf, err := cryptostream.Decompress(buf)
+	if err != nil {
+		return nil, err
+	}
 	spites := &implantpb.Spites{}
-	err := proto.Unmarshal(buf, spites)
+	err = proto.Unmarshal(buf, spites)
 	if err != nil {
 		return nil, err
 	}
@@ -80,5 +62,27 @@ func (parser *MaleficParser) Parse(buf []byte) (*implantpb.Spites, error) {
 }
 
 func (parser *MaleficParser) Marshal(spites *implantpb.Spites, sid []byte) ([]byte, error) {
-	return parser.marshalMessage(spites, sid)
+	var buf bytes.Buffer
+	if len(sid) != 4 {
+		return nil, ErrInvalidId
+	}
+
+	data, err := proto.Marshal(spites)
+	if err != nil {
+		return nil, err
+	}
+	data, err = cryptostream.Compress(data)
+	if err != nil {
+		return nil, err
+	}
+	buf.WriteByte(StartDelimiter)
+	buf.Write(sid)
+	err = binary.Write(&buf, binary.LittleEndian, int32(len(data)))
+	if err != nil {
+		return nil, err
+	}
+
+	buf.Write(data)
+	buf.WriteByte(EndDelimiter)
+	return buf.Bytes(), nil
 }
