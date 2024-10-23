@@ -17,6 +17,7 @@ import (
 func (rpc *Server) Register(ctx context.Context, req *lispb.RegisterSession) (*implantpb.Empty, error) {
 	sess, success := core.Sessions.Get(req.SessionId)
 	if success {
+		logs.Log.Infof("alive session %s re-register", sess.ID)
 		sess.Update(req)
 		err := db.UpdateSessionInfo(sess)
 		if err != nil {

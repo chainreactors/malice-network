@@ -37,18 +37,19 @@ var (
 
 func NewSession(req *lispb.RegisterSession) *Session {
 	sess := &Session{
-		Name:       req.RegisterData.Name,
-		Group:      "default",
-		ProxyURL:   req.RegisterData.Proxy,
-		Modules:    req.RegisterData.Module,
-		Addons:     req.RegisterData.Addon,
-		ID:         req.SessionId,
-		PipelineID: req.ListenerId,
-		RemoteAddr: req.RemoteAddr,
-		Timer:      req.RegisterData.Timer,
-		Tasks:      &Tasks{active: &sync.Map{}},
-		Cache:      NewCache(10*consts.KB, path.Join(configs.CachePath, req.SessionId+".gob")),
-		responses:  &sync.Map{},
+		Name:        req.RegisterData.Name,
+		Group:       "default",
+		ProxyURL:    req.RegisterData.Proxy,
+		Modules:     req.RegisterData.Module,
+		Addons:      req.RegisterData.Addon,
+		ID:          req.SessionId,
+		PipelineID:  req.ListenerId,
+		RemoteAddr:  req.RemoteAddr,
+		IsPrivilege: req.RegisterData.Sysinfo.IsPrivilege,
+		Timer:       req.RegisterData.Timer,
+		Tasks:       &Tasks{active: &sync.Map{}},
+		Cache:       NewCache(10*consts.KB, path.Join(configs.CachePath, req.SessionId+".gob")),
+		responses:   &sync.Map{},
 	}
 	logDir := filepath.Join(configs.LogPath, sess.ID)
 	err := os.MkdirAll(logDir, os.ModePerm)
@@ -64,23 +65,24 @@ func NewSession(req *lispb.RegisterSession) *Session {
 
 // Session - Represents a connection to an implant
 type Session struct {
-	PipelineID string
-	ListenerID string
-	ID         string
-	Name       string
-	Group      string
-	RemoteAddr string
-	Os         *implantpb.Os
-	Process    *implantpb.Process
-	Timer      *implantpb.Timer
-	Filepath   string
-	WordDir    string
-	ProxyURL   string
-	Modules    []string
-	Addons     *implantpb.Addons
-	Locale     string
-	Tasks      *Tasks // task manager
-	taskseq    uint32
+	PipelineID  string
+	ListenerID  string
+	ID          string
+	Name        string
+	Group       string
+	RemoteAddr  string
+	IsPrivilege bool
+	Os          *implantpb.Os
+	Process     *implantpb.Process
+	Timer       *implantpb.Timer
+	Filepath    string
+	WordDir     string
+	ProxyURL    string
+	Modules     []string
+	Addons      *implantpb.Addons
+	Locale      string
+	Tasks       *Tasks // task manager
+	taskseq     uint32
 	*Cache
 	responses *sync.Map
 	rpcLog    *logs.Logger
