@@ -15,8 +15,8 @@ require (
 	github.com/charmbracelet/lipgloss v0.13.0
 	github.com/cjoudrey/gluahttp v0.0.0-20201111170219-25003d9adfa9
 	github.com/gofrs/uuid v4.4.0+incompatible
+	github.com/golang/snappy v0.0.4
 	github.com/gookit/config/v2 v2.2.5
-	github.com/gookit/goutil v0.6.15
 	github.com/jessevdk/go-flags v1.5.0
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 	github.com/klauspost/compress v1.17.0
@@ -29,7 +29,6 @@ require (
 	github.com/reeflective/console v0.1.18
 	github.com/robfig/cron/v3 v3.0.0
 	github.com/rsteube/carapace v0.46.3-0.20231214181515-27e49f3c3b69
-	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/pflag v1.0.5
 	github.com/tengattack/gluacrypto v0.0.0-20240324200146-54b58c95c255
@@ -42,7 +41,6 @@ require (
 	golang.org/x/text v0.17.0
 	google.golang.org/grpc v1.65.0
 	google.golang.org/protobuf v1.34.2
-	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
 	gorm.io/gorm v1.25.4
@@ -86,6 +84,7 @@ require (
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gookit/color v1.5.4 // indirect
+	github.com/gookit/goutil v0.6.15 // indirect
 	github.com/gorilla/css v1.0.1 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
