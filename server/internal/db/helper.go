@@ -540,3 +540,36 @@ func RemoveWebsite(id string) error {
 	err := Session().Delete(&models.WebsiteContent{}, uuid).Error
 	return err
 }
+
+// generator
+func NewProfile(profile *clientpb.Profile) error {
+	model := &models.Profile{
+		Name:       profile.Name,
+		Target:     profile.Target,
+		Type:       profile.Type,
+		Proxy:      profile.Proxy,
+		Obfuscate:  profile.Obfuscate,
+		Modules:    profile.Modules,
+		CA:         profile.Ca,
+		ParamsJson: profile.Params,
+		ListenerID: profile.ListenerId,
+		PipelineID: profile.PipelineId,
+	}
+	return Session().Create(model).Error
+}
+
+func GetProfile(name string) (models.Profile, error) {
+	var profile models.Profile
+
+	result := Session().Preload("Pipeline").Where("name = ?", name).First(&profile)
+	if result.Error != nil {
+		return profile, result.Error
+	}
+	return profile, nil
+}
+
+func GetProfiles() ([]models.Profile, error) {
+	var profiles []models.Profile
+	result := Session().Find(&profiles)
+	return profiles, result.Error
+}

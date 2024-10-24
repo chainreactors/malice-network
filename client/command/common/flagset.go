@@ -76,3 +76,18 @@ func ParsePipelineFlags(cmd *cobra.Command) (string, string, uint, string, strin
 	tlsEnable, _ := cmd.Flags().GetBool("tls")
 	return name, host, portUint, certPath, keyPath, tlsEnable
 }
+
+func GenerateFlagSet(f *pflag.FlagSet) {
+	f.String("url", "", "build url")
+	f.String("target", "", "build target")
+	f.String("interval", "10", "interval")
+	f.String("jitter", "5", "jitter")
+}
+
+func ParseGenerateFlags(cmd *cobra.Command) (string, string, string, string) {
+	url, _ := cmd.Flags().GetString("url")
+	target, _ := cmd.Flags().GetString("target")
+	interval, _ := cmd.Flags().GetString("interval")
+	jitter, _ := cmd.Flags().GetString("jitter")
+	return url, target, interval, jitter
+}
