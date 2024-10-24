@@ -81,16 +81,16 @@ func ParseBOFResponse(ctx *clientpb.TaskContext) (interface{}, error) {
 	for {
 		bofResp := &pe.BOFResponse{}
 
-		err := binary.Read(reader, binary.LittleEndian, &bofResp.CallbackType)
+		err := binary.Read(reader, binary.LittleEndian, &bofResp.OutputType)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read OutputType: %v", err)
+		}
+
+		err = binary.Read(reader, binary.LittleEndian, &bofResp.CallbackType)
 		if err == io.EOF {
 			break
 		} else if err != nil {
 			return nil, fmt.Errorf("failed to read CallbackType: %v", err)
-		}
-
-		err = binary.Read(reader, binary.LittleEndian, &bofResp.OutputType)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read OutputType: %v", err)
 		}
 
 		err = binary.Read(reader, binary.LittleEndian, &bofResp.Length)
