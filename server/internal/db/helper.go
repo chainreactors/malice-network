@@ -112,7 +112,7 @@ func UpdateLast(sessionID string) error {
 }
 
 func UpdateSessionStatus() error {
-	ticker := time.NewTicker(10 * time.Second)
+	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
 
 	for range ticker.C {
@@ -124,7 +124,7 @@ func UpdateSessionStatus() error {
 			lastCheckin := time.Unix(int64(session.Time.LastCheckin), 0)
 			currentTime := time.Now()
 			timeDiff := currentTime.Sub(lastCheckin)
-			isAlive := timeDiff <= time.Duration(session.Time.Interval)*time.Second
+			isAlive := timeDiff <= time.Duration(session.Time.Interval+session.Time.Jitter)*2*time.Second
 			if err := Session().Model(&session).Update("IsAlive", isAlive).Error; err != nil {
 				return err
 			}
