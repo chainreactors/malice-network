@@ -27,9 +27,10 @@ const (
 
 // client Groups
 const (
-	GenericGroup  = "generic"
-	ManageGroup   = "manage"
-	ListenerGroup = "listener"
+	GenericGroup   = "generic"
+	ManageGroup    = "manage"
+	ListenerGroup  = "listener"
+	GeneratorGroup = "generator"
 )
 
 // implant Groups
