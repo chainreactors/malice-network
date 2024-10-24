@@ -99,7 +99,7 @@ func SessionModuleComplete(con *repl.Console) carapace.Action {
 func SessionAddonComplete(con *repl.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
-		for _, s := range con.GetInteractive().Addons.Addons {
+		for _, s := range con.GetInteractive().Addons {
 			results = append(results, s.Name, "")
 		}
 		return carapace.ActionValuesDescribed(results...).Tag("session addons")

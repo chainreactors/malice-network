@@ -21,7 +21,7 @@ func (rpc *Server) ListAddon(ctx context.Context, req *implantpb.Request) (*clie
 	go greq.HandlerResponse(ch, types.MsgListAddon, func(spite *implantpb.Spite) {
 		if exts := spite.GetAddons(); exts != nil {
 			sess, _ := getSession(ctx)
-			sess.Addons = exts
+			sess.Addons = exts.Addons
 		}
 	})
 	return greq.Task.ToProtobuf(), nil
@@ -39,7 +39,7 @@ func (rpc *Server) LoadAddon(ctx context.Context, req *implantpb.LoadAddon) (*cl
 
 	go greq.HandlerResponse(ch, types.MsgEmpty, func(spite *implantpb.Spite) {
 		sess, _ := getSession(ctx)
-		sess.Addons.Addons = append(sess.Addons.Addons, &implantpb.Addon{
+		sess.Addons = append(sess.Addons, &implantpb.Addon{
 			Name:   req.Name,
 			Depend: req.Depend,
 			Type:   req.Type,
@@ -51,7 +51,7 @@ func (rpc *Server) LoadAddon(ctx context.Context, req *implantpb.LoadAddon) (*cl
 func (rpc *Server) ExecuteAddon(ctx context.Context, req *implantpb.ExecuteAddon) (*clientpb.Task, error) {
 	if session, err := getSession(ctx); err == nil {
 		hasAddon := false
-		for _, addon := range session.Addons.Addons {
+		for _, addon := range session.Addons {
 			if addon.Name == req.Addon {
 				hasAddon = true
 				break

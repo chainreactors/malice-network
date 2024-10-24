@@ -8,24 +8,23 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"gorm.io/gorm"
-	"strings"
 	"time"
 )
 
 type Session struct {
-	SessionID  string    `gorm:"primaryKey;->;<-:create;type:uuid;"`
-	CreatedAt  time.Time `gorm:"->;<-:create;"`
-	Note       string
-	GroupName  string
-	RemoteAddr string
-	ListenerId string
-	IsAlive    bool
-	Modules    string
-	Extensions string
-	IsRemoved  bool     `gorm:"default:false"`
-	Os         *Os      `gorm:"embedded"`
-	Process    *Process `gorm:"embedded"`
-	Time       *Timer   `gorm:"embedded"`
+	SessionID   string    `gorm:"primaryKey;->;<-:create;type:uuid;"`
+	CreatedAt   time.Time `gorm:"->;<-:create;"`
+	Note        string
+	GroupName   string
+	RemoteAddr  string
+	IsPrivilege bool
+	ListenerId  string
+	IsAlive     bool
+	Context     string
+	IsRemoved   bool     `gorm:"default:false"`
+	Os          *Os      `gorm:"embedded"`
+	Process     *Process `gorm:"embedded"`
+	Time        *Timer   `gorm:"embedded"`
 }
 
 func (s *Session) BeforeCreate(tx *gorm.DB) (err error) {
@@ -38,39 +37,69 @@ func (s *Session) BeforeCreate(tx *gorm.DB) (err error) {
 	return nil
 }
 
+func (s *Session) ToClientProtobuf() *clientpb.Session {
+	ctx := recoverFromContext(s.Context)
+
+	return &clientpb.Session{
+		SessionId:  s.SessionID,
+		ListenerId: s.ListenerId,
+		Note:       s.Note,
+		RemoteAddr: s.RemoteAddr,
+		IsAlive:    s.IsAlive,
+		GroupName:  s.GroupName,
+		Os:         s.Os.toProtobuf(),
+		Process:    s.Process.toProtobuf(),
+		Timer:      s.Time.toProtobuf(),
+		Modules:    ctx.Modules,
+		Addons:     ctx.Addons,
+	}
+}
+
+func (s *Session) ToRegisterProtobuf() *lispb.RegisterSession {
+	return &lispb.RegisterSession{
+		SessionId:  s.SessionID,
+		ListenerId: s.ListenerId,
+		RemoteAddr: s.RemoteAddr,
+		RegisterData: &implantpb.Register{
+			Name:  s.Note,
+			Timer: s.Time.toProtobuf(),
+			Sysinfo: &implantpb.SysInfo{
+				Os:      s.Os.toProtobuf(),
+				Process: s.Process.toProtobuf(),
+			},
+		},
+	}
+}
+
 func ConvertToSessionDB(session *core.Session) *Session {
 	return &Session{
-		SessionID:  session.ID,
-		GroupName:  "default",
-		RemoteAddr: session.RemoteAddr,
-		ListenerId: session.PipelineID,
-		Modules:    convertToModuleDB(session.Modules),
-		Extensions: convertToExtensionDB(session.Addons),
-		Os:         convertToOsDB(session.Os),
-		Process:    convertToProcessDB(session.Process),
-		Time:       convertToTimeDB(session.Timer),
+		SessionID:   session.ID,
+		GroupName:   "default",
+		RemoteAddr:  session.RemoteAddr,
+		ListenerId:  session.PipelineID,
+		IsPrivilege: session.IsPrivilege,
+		Context:     convertToContext(session.SessionContext),
+		Os:          convertToOsDB(session.Os),
+		Process:     convertToProcessDB(session.Process),
+		Time:        convertToTimeDB(session.Timer),
 	}
 }
 
-func convertToModuleDB(modules []string) string {
-	return strings.Join(modules, ",")
-}
-
-func recoverFromExtension(addon string) *implantpb.Addons {
-	var ext implantpb.Addons
-	err := json.Unmarshal([]byte(addon), &ext)
-	if err != nil {
-		return nil
-	}
-	return &ext
-}
-
-func convertToExtensionDB(addon *implantpb.Addons) string {
-	content, err := json.Marshal(addon)
+func convertToContext(context *core.SessionContext) string {
+	content, err := json.Marshal(context)
 	if err != nil {
 		return ""
 	}
 	return string(content)
+}
+
+func recoverFromContext(context string) *core.SessionContext {
+	var ctx *core.SessionContext
+	err := json.Unmarshal([]byte(context), &ctx)
+	if err != nil {
+		return nil
+	}
+	return ctx
 }
 
 func convertToOsDB(os *implantpb.Os) *Os {
@@ -112,55 +141,6 @@ type Os struct {
 	Locale   string `gorm:"type:varchar(255)" json:"locale"`
 }
 
-type Process struct {
-	Name  string `gorm:"type:varchar(255)" json:"name"`
-	Pid   int32  `json:"pid"`
-	Ppid  int32  `json:"ppid"`
-	Owner string `gorm:"type:varchar(255)" json:"owner"`
-	Arch  string `gorm:"type:varchar(255)" json:"arch"`
-	Path  string `gorm:"type:varchar(255)" json:"path"`
-	Args  string `gorm:"type:varchar(255)" json:"args"`
-}
-
-type Timer struct {
-	Interval    uint64 `json:"interval"`
-	Jitter      uint64 `json:"jitter"`
-	Heartbeat   uint64 `json:"heartbeat"`
-	LastCheckin uint64 `json:"last_checkin"`
-}
-
-func (s *Session) ToClientProtobuf() *clientpb.Session {
-	return &clientpb.Session{
-		SessionId:  s.SessionID,
-		ListenerId: s.ListenerId,
-		Note:       s.Note,
-		RemoteAddr: s.RemoteAddr,
-		IsAlive:    s.IsAlive,
-		GroupName:  s.GroupName,
-		Os:         s.Os.toProtobuf(),
-		Process:    s.Process.toProtobuf(),
-		Timer:      s.Time.toProtobuf(),
-	}
-}
-
-func (s *Session) ToRegisterProtobuf() *lispb.RegisterSession {
-	return &lispb.RegisterSession{
-		SessionId:  s.SessionID,
-		ListenerId: s.ListenerId,
-		RemoteAddr: s.RemoteAddr,
-		RegisterData: &implantpb.Register{
-			Name:  s.Note,
-			Timer: s.Time.toProtobuf(),
-			Sysinfo: &implantpb.SysInfo{
-				Os:      s.Os.toProtobuf(),
-				Process: s.Process.toProtobuf(),
-			},
-			Module: strings.Split(s.Modules, ","),
-			Addon:  recoverFromExtension(s.Extensions),
-		},
-	}
-}
-
 func (o *Os) toProtobuf() *implantpb.Os {
 	return &implantpb.Os{
 		Name:     o.Name,
@@ -171,6 +151,33 @@ func (o *Os) toProtobuf() *implantpb.Os {
 		Locale:   o.Locale,
 	}
 }
+
+type Timer struct {
+	Interval    uint64 `json:"interval"`
+	Jitter      uint64 `json:"jitter"`
+	Heartbeat   uint64 `json:"heartbeat"`
+	LastCheckin uint64 `json:"last_checkin"`
+}
+
+func (t *Timer) toProtobuf() *implantpb.Timer {
+	return &implantpb.Timer{
+		Interval:    t.Interval,
+		Jitter:      t.Jitter,
+		Heartbeat:   t.Heartbeat,
+		LastCheckin: t.LastCheckin,
+	}
+}
+
+type Process struct {
+	Name  string `gorm:"type:varchar(255)" json:"name"`
+	Pid   int32  `json:"pid"`
+	Ppid  int32  `json:"ppid"`
+	Owner string `gorm:"type:varchar(255)" json:"owner"`
+	Arch  string `gorm:"type:varchar(255)" json:"arch"`
+	Path  string `gorm:"type:varchar(255)" json:"path"`
+	Args  string `gorm:"type:varchar(255)" json:"args"`
+}
+
 func (p *Process) toProtobuf() *implantpb.Process {
 	return &implantpb.Process{
 		Name:  p.Name,
@@ -180,13 +187,5 @@ func (p *Process) toProtobuf() *implantpb.Process {
 		Arch:  p.Arch,
 		Path:  p.Path,
 		Args:  p.Args,
-	}
-}
-func (t *Timer) toProtobuf() *implantpb.Timer {
-	return &implantpb.Timer{
-		Interval:    t.Interval,
-		Jitter:      t.Jitter,
-		Heartbeat:   t.Heartbeat,
-		LastCheckin: t.LastCheckin,
 	}
 }

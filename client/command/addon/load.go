@@ -51,7 +51,7 @@ func LoadAddonCmd(cmd *cobra.Command, con *repl.Console) {
 
 	session.Console(task, fmt.Sprintf("Load addon %s", name))
 	con.AddCallback(task, func(msg *implantpb.Spite) {
-		RefreshAddonCommand(session.Addons.Addons, con)
+		RefreshAddonCommand(session.Addons, con)
 	})
 }
 
@@ -69,7 +69,7 @@ func LoadAddon(rpc clientrpc.MaliceRPCClient, sess *core.Session, name, path, de
 	})
 }
 
-func RegisterAddon(addon *implantpb.Addon, con *repl.Console) (*loadedAddon, error) {
+func RegisterAddonCmd(addon *implantpb.Addon, con *repl.Console) (*loadedAddon, error) {
 	addonCmd := &cobra.Command{
 		Use:   addon.Name,
 		Short: fmt.Sprintf("%s %s", addon.Depend, addon.Name),
@@ -101,7 +101,7 @@ func RefreshAddonCommand(addons []*implantpb.Addon, con *repl.Console) error {
 	}
 
 	for _, addon := range addons {
-		loaded, err := RegisterAddon(addon, con)
+		loaded, err := RegisterAddonCmd(addon, con)
 		if err != nil {
 			return err
 		}

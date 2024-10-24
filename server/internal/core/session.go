@@ -35,21 +35,39 @@ var (
 	ErrImplantSendTimeout = errors.New("implant timeout")
 )
 
+func NewSessionContext(req *lispb.RegisterSession) *SessionContext {
+	return &SessionContext{
+		Modules: req.RegisterData.Module,
+		Addons:  req.RegisterData.Addon.Addons,
+		Loot:    map[string]string{},
+	}
+}
+
+type SessionContext struct {
+	Modules []string
+	Addons  []*implantpb.Addon
+	Loot    map[string]string
+}
+
+func (ctx *SessionContext) Update(req *lispb.RegisterSession) {
+	ctx.Modules = req.RegisterData.Module
+	ctx.Addons = req.RegisterData.Addon.Addons
+}
+
 func NewSession(req *lispb.RegisterSession) *Session {
 	sess := &Session{
-		Name:        req.RegisterData.Name,
-		Group:       "default",
-		ProxyURL:    req.RegisterData.Proxy,
-		Modules:     req.RegisterData.Module,
-		Addons:      req.RegisterData.Addon,
-		ID:          req.SessionId,
-		PipelineID:  req.ListenerId,
-		RemoteAddr:  req.RemoteAddr,
-		IsPrivilege: req.RegisterData.Sysinfo.IsPrivilege,
-		Timer:       req.RegisterData.Timer,
-		Tasks:       &Tasks{active: &sync.Map{}},
-		Cache:       NewCache(10*consts.KB, path.Join(configs.CachePath, req.SessionId+".gob")),
-		responses:   &sync.Map{},
+		Name:           req.RegisterData.Name,
+		Group:          "default",
+		ProxyURL:       req.RegisterData.Proxy,
+		ID:             req.SessionId,
+		PipelineID:     req.ListenerId,
+		RemoteAddr:     req.RemoteAddr,
+		IsPrivilege:    req.RegisterData.Sysinfo.IsPrivilege,
+		Timer:          req.RegisterData.Timer,
+		Tasks:          &Tasks{active: &sync.Map{}},
+		Cache:          NewCache(10*consts.KB, path.Join(configs.CachePath, req.SessionId+".gob")),
+		SessionContext: NewSessionContext(req),
+		responses:      &sync.Map{},
 	}
 	logDir := filepath.Join(configs.LogPath, sess.ID)
 	err := os.MkdirAll(logDir, os.ModePerm)
@@ -78,11 +96,10 @@ type Session struct {
 	Filepath    string
 	WordDir     string
 	ProxyURL    string
-	Modules     []string
-	Addons      *implantpb.Addons
 	Locale      string
-	Tasks       *Tasks // task manager
-	taskseq     uint32
+	*SessionContext
+	Tasks   *Tasks // task manager
+	taskseq uint32
 	*Cache
 	responses *sync.Map
 	rpcLog    *logs.Logger
@@ -142,9 +159,8 @@ func (s *Session) ToProtobuf() *clientpb.Session {
 func (s *Session) Update(req *lispb.RegisterSession) {
 	s.Name = req.RegisterData.Name
 	s.ProxyURL = req.RegisterData.Proxy
-	s.Modules = req.RegisterData.Module
-	s.Addons = req.RegisterData.Addon
 	s.Timer = req.RegisterData.Timer
+	s.SessionContext.Update(req)
 
 	if req.RegisterData.Sysinfo != nil {
 		s.UpdateSysInfo(req.RegisterData.Sysinfo)

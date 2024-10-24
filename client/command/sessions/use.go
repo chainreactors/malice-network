@@ -22,7 +22,7 @@ func UseSessionCmd(cmd *cobra.Command, con *repl.Console) {
 }
 
 func Use(con *repl.Console, sess *core.Session) {
-	err := addon.RefreshAddonCommand(sess.Addons.Addons, con)
+	err := addon.RefreshAddonCommand(sess.Addons, con)
 	if err != nil {
 		core.Log.Errorf(err.Error())
 		return

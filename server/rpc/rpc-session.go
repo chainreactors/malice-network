@@ -18,9 +18,9 @@ import (
 )
 
 func (rpc *Server) GetSessions(ctx context.Context, _ *clientpb.Empty) (*clientpb.Sessions, error) {
-	sessions := &clientpb.Sessions{}
-	for _, session := range core.Sessions.All() {
-		sessions.Sessions = append(sessions.Sessions, session.ToProtobuf())
+	sessions, err := db.FindAllSessions()
+	if err != nil {
+		return nil, err
 	}
 	return sessions, nil
 }
@@ -38,9 +38,15 @@ func (rpc *Server) GetAlivedSessions(ctx context.Context, _ *clientpb.Empty) (*c
 
 func (rpc *Server) GetSession(ctx context.Context, req *clientpb.SessionRequest) (*clientpb.Session, error) {
 	session, ok := core.Sessions.Get(req.SessionId)
-	if !ok {
-		return nil, ErrNotFoundSession
+	if ok {
+		return session.ToProtobuf(), nil
 	}
+	reg, err := db.FindSession(req.SessionId)
+	if err != nil {
+		return nil, err
+	}
+	session = core.NewSession(reg)
+	core.Sessions.Add(session)
 	return session.ToProtobuf(), nil
 }
 
