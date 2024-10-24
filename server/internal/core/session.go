@@ -139,7 +139,7 @@ func (s *Session) TaskLog(task *Task, spite []byte) error {
 func (s *Session) ToProtobuf() *clientpb.Session {
 	currentTime := time.Now()
 	timeDiff := currentTime.Unix() - int64(s.Timer.LastCheckin)
-	isAlive := uint64(timeDiff*1000) <= s.Timer.Interval*10
+	isAlive := uint64(timeDiff) <= (s.Timer.Interval+s.Timer.Jitter)*2
 	return &clientpb.Session{
 		SessionId:  s.ID,
 		Note:       s.Name,

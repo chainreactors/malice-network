@@ -56,6 +56,9 @@ func (s *Session) ToClientProtobuf() *clientpb.Session {
 }
 
 func (s *Session) ToRegisterProtobuf() *lispb.RegisterSession {
+	ctx := recoverFromContext(s.Context)
+	addons := &implantpb.Addons{}
+	addons.Addons = append(addons.Addons, ctx.Addons...)
 	return &lispb.RegisterSession{
 		SessionId:  s.SessionID,
 		ListenerId: s.ListenerId,
@@ -67,6 +70,8 @@ func (s *Session) ToRegisterProtobuf() *lispb.RegisterSession {
 				Os:      s.Os.toProtobuf(),
 				Process: s.Process.toProtobuf(),
 			},
+			Module: ctx.Modules,
+			Addon:  addons,
 		},
 	}
 }
