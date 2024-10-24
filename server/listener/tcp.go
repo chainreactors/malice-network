@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/chainreactors/logs"
 	cryptostream "github.com/chainreactors/malice-network/helper/cryptography/stream"
+	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/helper/utils/peek"
@@ -159,12 +160,11 @@ func (l *TCPPipeline) handleRead(conn net.Conn) {
 		logs.Log.Debugf("peek read header error: %s %v", conn.RemoteAddr(), err)
 		return
 	}
-
+	var msg *implantpb.Spites
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	for {
 		var err error
-		var msg proto.Message
 		_, length, err := connect.Parser.ReadHeader(peekConn)
 		if err != nil {
 			//logs.Log.Debugf("Error reading header: %s %v", conn.RemoteAddr(), err)
@@ -177,6 +177,9 @@ func (l *TCPPipeline) handleRead(conn net.Conn) {
 			if err != nil {
 				logs.Log.Debugf("Error reading message:%s %v", conn.RemoteAddr(), err)
 				return
+			}
+			if msg.Spites == nil {
+				msg = types.BuildPingSpite()
 			}
 		} else {
 			msg = types.BuildPingSpite()
