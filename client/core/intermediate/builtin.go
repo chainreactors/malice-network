@@ -2,6 +2,7 @@ package intermediate
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/encoders/hash"
@@ -23,6 +24,8 @@ type BuiltinCallback func(content interface{}) (bool, error)
 func RegisterBuiltin(rpc clientrpc.MaliceRPCClient) {
 	RegisterCustomBuiltin(rpc)
 	RegisterGRPCBuiltin(rpc)
+	RegisterEncodeFunc()
+	RegisterPayloadFunction(rpc)
 }
 
 func RegisterCustomBuiltin(rpc clientrpc.MaliceRPCClient) {
@@ -218,4 +221,47 @@ func RegisterGRPCBuiltin(rpc clientrpc.MaliceRPCClient) {
 		// 注册函数
 		RegisterInternalFunc(RpcPackage, methodName, internalFunc, nil)
 	}
+}
+
+func RegisterEncodeFunc() {
+	// Base64函数
+	RegisterFunction("base64_encode", func(input string) (string, error) {
+		return base64.StdEncoding.EncodeToString([]byte(input)), nil
+	})
+	RegisterFunction("base64_decode", func(input string) (string, error) {
+		data, err := base64.StdEncoding.DecodeString(input)
+		if err != nil {
+			return "", err
+		}
+		return string(data), nil
+	})
+
+}
+func RegisterCSFunction(name string, fn interface{}) {
+	// 生成shellcode
+	RegisterFunction("payload_local", func(shellcode_path string) (string, error) {
+		if shellcode_path != "" {
+			shellcode, _ := os.ReadFile(shellcode_path)
+			if _, err := os.Stat(shellcode_path); os.IsNotExist(err) {
+				return "", fmt.Errorf("shellcode file does not exist: %s", shellcode_path)
+			}
+			return string(shellcode), nil
+		} else {
+			return "", nil
+		}
+	})
+}
+
+func RegisterPayloadFunction(rpc clientrpc.MaliceRPCClient) {
+	RegisterFunction("payload_local", func(shellcodePath string) (string, error) {
+		if shellcodePath != "" {
+			shellcode, _ := os.ReadFile(shellcodePath)
+			if _, err := os.Stat(shellcodePath); os.IsNotExist(err) {
+				return "", fmt.Errorf("shellcode file does not exist: %s", shellcodePath)
+			}
+			return string(shellcode), nil
+		} else {
+			return "shellcode123", nil
+		}
+	})
 }
