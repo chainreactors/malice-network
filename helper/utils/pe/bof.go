@@ -224,7 +224,7 @@ func (bof *BOFResponse) String() string {
 	case CALLBACK_SCREENSHOT:
 		return "screenshot"
 	default:
-		return "not impl callback id"
+		return "not impl callback id: " + strconv.Itoa(int(bof.CallbackType))
 	}
 }
 
