@@ -84,7 +84,7 @@ func (s *Session) HasDepend(module string) bool {
 }
 
 func (s *Session) HasAddon(addon string) bool {
-	for _, a := range s.Addons.Addons {
+	for _, a := range s.Addons {
 		if a.Name == addon {
 			return s.HasDepend(a.Depend)
 		}
@@ -93,7 +93,7 @@ func (s *Session) HasAddon(addon string) bool {
 }
 
 func (s *Session) GetAddon(name string) *implantpb.Addon {
-	for _, a := range s.Addons.Addons {
+	for _, a := range s.Addons {
 		if a.Name == name {
 			return a
 		}
