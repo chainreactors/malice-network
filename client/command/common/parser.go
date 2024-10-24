@@ -82,7 +82,9 @@ func ParseBOFResponse(ctx *clientpb.TaskContext) (interface{}, error) {
 		bofResp := &pe.BOFResponse{}
 
 		err := binary.Read(reader, binary.LittleEndian, &bofResp.OutputType)
-		if err != nil {
+		if err == io.EOF {
+			break
+		} else if err != nil {
 			return nil, fmt.Errorf("failed to read OutputType: %v", err)
 		}
 
