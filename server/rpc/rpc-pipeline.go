@@ -57,6 +57,8 @@ func (rpc *Server) StartTcpPipeline(ctx context.Context, req *lispb.CtrlPipeline
 		return &clientpb.Empty{}, err
 	}
 	pipeline := models.ToProtobuf(&pipelineDB)
+	listener := core.Listeners.Get(req.ListenerId)
+	listener.Pipelines.Pipelines = append(listener.Pipelines.Pipelines, pipeline)
 	pipeline.GetTcp().Enable = true
 	job := &core.Job{
 		ID:      core.CurrentJobID(),
@@ -86,6 +88,12 @@ func (rpc *Server) StopTcpPipeline(ctx context.Context, req *lispb.CtrlPipeline)
 		return &clientpb.Empty{}, err
 	}
 	pipeline := models.ToProtobuf(&pipelineDB)
+	listener := core.Listeners.Get(req.ListenerId)
+	for i, p := range listener.Pipelines.Pipelines {
+		if p.GetTcp().Name == req.Name {
+			listener.Pipelines.Pipelines = append(listener.Pipelines.Pipelines[:i], listener.Pipelines.Pipelines[i+1:]...)
+		}
+	}
 	ctrl := clientpb.JobCtrl{
 		Id:   core.NextCtrlID(),
 		Ctrl: consts.CtrlPipelineStop,

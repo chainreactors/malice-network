@@ -162,6 +162,8 @@ func (rpc *Server) StartWebsite(ctx context.Context, req *lispb.CtrlPipeline) (*
 		return &clientpb.Empty{}, err
 	}
 	pipeline := models.ToProtobuf(&pipelineDB)
+	listener := core.Listeners.Get(req.ListenerId)
+	listener.Pipelines.Pipelines = append(listener.Pipelines.Pipelines, pipeline)
 	contents, err := website.MapContent(req.Name, true)
 	if err != nil {
 		return &clientpb.Empty{}, err
@@ -206,6 +208,12 @@ func (rpc *Server) StopWebsite(ctx context.Context, req *lispb.CtrlPipeline) (*c
 	}
 	core.Jobs.Ctrl <- &ctrl
 	err = db.UnEnablePipeline(pipelineDB)
+	listener := core.Listeners.Get(req.ListenerId)
+	for i, p := range listener.Pipelines.Pipelines {
+		if p.GetWeb().Name == req.Name {
+			listener.Pipelines.Pipelines = append(listener.Pipelines.Pipelines[:i], listener.Pipelines.Pipelines[i+1:]...)
+		}
+	}
 	if err != nil {
 		return nil, err
 	}

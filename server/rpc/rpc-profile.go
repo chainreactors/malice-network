@@ -26,7 +26,6 @@ func (rpc *Server) GetProfiles(ctx context.Context, req *clientpb.Empty) (*clien
 			Name:       profile.Name,
 			Target:     profile.Target,
 			Type:       profile.Type,
-			ListenerId: profile.ListenerID,
 			PipelineId: profile.PipelineID,
 		})
 	}

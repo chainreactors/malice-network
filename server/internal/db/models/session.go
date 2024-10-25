@@ -133,7 +133,7 @@ func convertToTimeDB(timer *implantpb.Timer) *Timer {
 		Interval:    timer.Interval,
 		Jitter:      timer.Jitter,
 		Heartbeat:   timer.Heartbeat,
-		LastCheckin: timer.LastCheckin,
+		LastCheckin: uint64(time.Now().Unix()),
 	}
 }
 
@@ -158,10 +158,10 @@ func (o *Os) toProtobuf() *implantpb.Os {
 }
 
 type Timer struct {
-	Interval    uint64 `json:"interval"`
-	Jitter      uint64 `json:"jitter"`
-	Heartbeat   uint64 `json:"heartbeat"`
-	LastCheckin uint64 `json:"last_checkin"`
+	Interval    uint64  `json:"interval"`
+	Jitter      float64 `json:"jitter"`
+	Heartbeat   float64 `json:"heartbeat"`
+	LastCheckin uint64  `json:"last_checkin"`
 }
 
 func (t *Timer) toProtobuf() *implantpb.Timer {

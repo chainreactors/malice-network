@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/listener/lispb"
 	"github.com/rsteube/carapace"
@@ -87,10 +88,14 @@ func ListenerIDCompleter(con *repl.Console) carapace.Action {
 
 }
 
-func PipelineNameCompleter(con *repl.Console, cmd *cobra.Command) carapace.Action {
+func ListenerPipelineNameCompleter(con *repl.Console, cmd *cobra.Command) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
 		listenerID := cmd.Flags().Arg(0)
+		err := con.UpdateListener()
+		if err != nil {
+			return carapace.Action{}
+		}
 		if listenerID == "" {
 			return carapace.ActionValuesDescribed(results...).Tag("pipeline name")
 		}
@@ -104,7 +109,8 @@ func PipelineNameCompleter(con *repl.Console, cmd *cobra.Command) carapace.Actio
 		for _, pipeline := range lis.GetPipelines().GetPipelines() {
 			switch pipeline.Body.(type) {
 			case *lispb.Pipeline_Tcp:
-				results = append(results, pipeline.GetTcp().Name, "type tcp")
+				results = append(results, pipeline.GetTcp().Name, fmt.Sprintf("type tcp %s:%v",
+					pipeline.GetTcp().Host, pipeline.GetTcp().Port))
 			case *lispb.Pipeline_Web:
 				results = append(results, pipeline.GetWeb().Name, "type web")
 			}
@@ -173,20 +179,32 @@ func ResourceCompelete(con *repl.Console) carapace.Action {
 	return carapace.ActionCallback(callback)
 }
 
-func JobsCompelete(con *repl.Console) carapace.Action {
+func JobsComplete(con *repl.Console, cmd *cobra.Command, use string) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
 		err := con.UpdateListener()
 		if err != nil {
 			return carapace.Action{}
 		}
-		for _, l := range con.Listeners {
-			for _, pipeline := range l.GetPipelines().Pipelines {
-				switch pipeline.Body.(type) {
-				case *lispb.Pipeline_Tcp:
-					results = append(results, pipeline.GetTcp().Name, "tcp job")
-				case *lispb.Pipeline_Web:
-					results = append(results, pipeline.GetWeb().Name, "web job")
+		listenerID := cmd.Flags().Arg(0)
+		var lis *clientpb.Listener
+		for _, listener := range con.Listeners {
+			if listener.Id == listenerID {
+				lis = listener
+				break
+			}
+		}
+		for _, pipeline := range lis.GetPipelines().Pipelines {
+			switch pipeline.Body.(type) {
+			case *lispb.Pipeline_Tcp:
+				if use == consts.CommandTcp {
+					results = append(results, pipeline.GetTcp().Name,
+						fmt.Sprintf("tcp job %s:%v", pipeline.GetTcp().Host, pipeline.GetTcp().Port))
+				}
+			case *lispb.Pipeline_Web:
+				if use == consts.CommandWebsite {
+					results = append(results, pipeline.GetWeb().Name,
+						fmt.Sprintf("web job %v, path %s", pipeline.GetWeb().Port, pipeline.GetWeb().RootPath))
 				}
 			}
 		}
@@ -195,7 +213,7 @@ func JobsCompelete(con *repl.Console) carapace.Action {
 	return carapace.ActionCallback(callback)
 }
 
-func ProfileCompelete(con *repl.Console) carapace.Action {
+func ProfileComplete(con *repl.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
 		profiles, err := con.Rpc.GetProfiles(context.Background(), &clientpb.Empty{})
@@ -207,6 +225,27 @@ func ProfileCompelete(con *repl.Console) carapace.Action {
 			results = append(results, s.Name, fmt.Sprintf("profile %s, type %s, target %s", s.Name, s.Type, s.Target))
 		}
 		return carapace.ActionValuesDescribed(results...).Tag("profile")
+	}
+	return carapace.ActionCallback(callback)
+}
+
+func AllPipelineComplete(con *repl.Console) carapace.Action {
+	callback := func(c carapace.Context) carapace.Action {
+		results := make([]string, 0)
+		err := con.UpdateListener()
+		if err != nil {
+			return carapace.Action{}
+		}
+		for _, listener := range con.Listeners {
+			for _, pipeline := range listener.GetPipelines().GetPipelines() {
+				switch pipeline.Body.(type) {
+				case *lispb.Pipeline_Tcp:
+					results = append(results, pipeline.GetTcp().Name, fmt.Sprintf("type tcp %s:%v",
+						pipeline.GetTcp().Host, pipeline.GetTcp().Port))
+				}
+			}
+		}
+		return carapace.ActionValuesDescribed(results...).Tag("pipeline name")
 	}
 	return carapace.ActionCallback(callback)
 }

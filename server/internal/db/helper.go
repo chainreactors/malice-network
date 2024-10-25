@@ -124,7 +124,7 @@ func UpdateSessionStatus() error {
 			lastCheckin := time.Unix(int64(session.Time.LastCheckin), 0)
 			currentTime := time.Now()
 			timeDiff := currentTime.Sub(lastCheckin)
-			isAlive := timeDiff <= time.Duration(session.Time.Interval+session.Time.Jitter)*2*time.Second
+			isAlive := timeDiff <= time.Duration(float64(session.Time.Interval)*(1+session.Time.Jitter))*2*time.Second
 			if err := Session().Model(&session).Update("IsAlive", isAlive).Error; err != nil {
 				return err
 			}
@@ -552,7 +552,6 @@ func NewProfile(profile *clientpb.Profile) error {
 		Modules:    profile.Modules,
 		CA:         profile.Ca,
 		ParamsJson: profile.Params,
-		ListenerID: profile.ListenerId,
 		PipelineID: profile.PipelineId,
 	}
 	return Session().Create(model).Error

@@ -6,7 +6,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 )
 
 func Commands(con *repl.Console) []*cobra.Command {
@@ -23,27 +22,25 @@ func Commands(con *repl.Console) []*cobra.Command {
 	newCmd := &cobra.Command{
 		Use:   "new",
 		Short: "New compile profile",
-		Args:  cobra.MaximumNArgs(4),
 		Run: func(cmd *cobra.Command, args []string) {
 			ProfileNewCmd(cmd, con)
 			return
 		},
 		Example: `~~~`,
 	}
-	common.BindArgCompletions(newCmd, nil,
-		common.ListenerIDCompleter(con), common.PipelineNameCompleter(con, newCmd),
-		carapace.ActionValues().Usage("build target"),
-		carapace.ActionValues().Usage("profile name"),
-	)
-	common.BindFlag(newCmd, func(f *pflag.FlagSet) {
-		f.String("type", "", "Set build type")
-		f.String("proxy", "", "Set proxy")
-		f.String("obfuscate", "", "Set obfuscate")
-		f.StringSlice("modules", []string{}, "Set modules e.g.: execute_exe,execute_dll")
-		f.String("ca", "", "Set ca")
+	common.BindFlag(newCmd, common.ProfileSet)
+	common.BindFlagCompletions(newCmd, func(comp carapace.ActionMap) {
+		comp["name"] = carapace.ActionValues("profile name")
+		comp["target"] = carapace.ActionValues("x86", "x64", "x86_64", "arm", "arm64")
+		comp["pipeline_id"] = common.AllPipelineComplete(con)
+		comp["type"] = carapace.ActionValues("dll", "exe", "shellcode", "stage0", "stage1")
+		comp["proxy"] = carapace.ActionValues("http", "socks5")
+		comp["obfuscate"] = carapace.ActionValues("true", "false")
+		comp["modules"] = carapace.ActionValues("e.g.: execute_exe,execute_dll")
+		comp["ca"] = carapace.ActionValues("true", "false")
 
-		f.Int("interval", 10, "Set interval")
-		f.Int("jitter", 5, "Set jitter")
+		comp["interval"] = carapace.ActionValues("5")
+		comp["jitter"] = carapace.ActionValues("0.2")
 	})
 
 	profileCmd.AddCommand(newCmd)
@@ -64,7 +61,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		},
 	}
 	common.BindFlag(peCmd, common.GenerateFlagSet)
-	common.BindArgCompletions(peCmd, nil, common.ProfileCompelete(con))
+	common.BindArgCompletions(peCmd, nil, common.ProfileComplete(con))
 
 	moduleCmd := &cobra.Command{
 		Use:   consts.CommandModule,
@@ -77,7 +74,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	}
 
 	common.BindFlag(moduleCmd, common.GenerateFlagSet)
-	common.BindArgCompletions(moduleCmd, nil, common.ProfileCompelete(con))
+	common.BindArgCompletions(moduleCmd, nil, common.ProfileComplete(con))
 
 	shellCodeCmd := &cobra.Command{
 		Use:   consts.CommandShellCode,
@@ -90,7 +87,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	}
 
 	common.BindFlag(shellCodeCmd, common.GenerateFlagSet)
-	common.BindArgCompletions(shellCodeCmd, nil, common.ProfileCompelete(con))
+	common.BindArgCompletions(shellCodeCmd, nil, common.ProfileComplete(con))
 
 	stage0Cmd := &cobra.Command{
 		Use:   consts.CommandStage0,
@@ -103,7 +100,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	}
 
 	common.BindFlag(stage0Cmd, common.GenerateFlagSet)
-	common.BindArgCompletions(stage0Cmd, nil, common.ProfileCompelete(con))
+	common.BindArgCompletions(stage0Cmd, nil, common.ProfileComplete(con))
 
 	stage1Cmd := &cobra.Command{
 		Use:   consts.CommandStage1,
@@ -116,7 +113,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	}
 
 	common.BindFlag(stage1Cmd, common.GenerateFlagSet)
-	common.BindArgCompletions(stage1Cmd, nil, common.ProfileCompelete(con))
+	common.BindArgCompletions(stage1Cmd, nil, common.ProfileComplete(con))
 
 	generateCmd.AddCommand(peCmd, moduleCmd, shellCodeCmd, stage0Cmd, stage1Cmd, shellCodeCmd)
 

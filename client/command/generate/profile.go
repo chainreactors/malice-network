@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/tui"
@@ -43,19 +44,10 @@ func ProfileShowCmd(cmd *cobra.Command, con *repl.Console) {
 }
 
 func ProfileNewCmd(cmd *cobra.Command, con *repl.Console) {
-	listenerID := cmd.Flags().Arg(0)
-	pipelineName := cmd.Flags().Arg(1)
-	profileName := cmd.Flags().Arg(2)
-	buildTarget := cmd.Flags().Arg(3)
-	buildType, _ := cmd.Flags().GetString("type")
-	proxy, _ := cmd.Flags().GetString("proxy")
-	obfuscate, _ := cmd.Flags().GetString("obfuscate")
-	modules, _ := cmd.Flags().GetStringSlice("modules")
-	modulesStr := strings.Join(modules, ",")
-	ca, _ := cmd.Flags().GetString("ca")
+	profileName, pipelineName, buildTarget, buildType, proxy, obfuscate,
+		modules, ca, interval, jitter := common.ParseProfileFlags(cmd)
 
-	interval, _ := cmd.Flags().GetInt("interval")
-	jitter, _ := cmd.Flags().GetInt("jitter")
+	modulesStr := strings.Join(modules, ",")
 
 	params := map[string]interface{}{
 		"interval": interval,
@@ -79,7 +71,6 @@ func ProfileNewCmd(cmd *cobra.Command, con *repl.Console) {
 		Modules:    modulesStr,
 		Ca:         ca,
 		Params:     string(paramsJson),
-		ListenerId: listenerID,
 		PipelineId: pipelineName,
 	}
 	_, err = con.Rpc.NewProfile(context.Background(), profile)
