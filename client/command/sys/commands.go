@@ -66,7 +66,12 @@ kill 1234
 		Use:   consts.ModuleEnv,
 		Short: "List environment variables",
 		Run: func(cmd *cobra.Command, args []string) {
-			EnvCmd(cmd, con)
+			if len(args) == 0 {
+				EnvCmd(cmd, con)
+				return
+			} else {
+				con.Log.Errorf("unknown cmd '%s'", args[0])
+			}
 			return
 		},
 		Annotations: map[string]string{
@@ -83,11 +88,11 @@ kill 1234
 			return
 		},
 		Annotations: map[string]string{
-			"depend": consts.ModuleSetEnv,
+			"depend": consts.ModuleEnv,
 		},
 		Example: `~~~
-setenv key1 value1
-~~~`,
+	setenv key1 value1
+	~~~`,
 	}
 
 	common.BindArgCompletions(setEnvCmd, nil,
@@ -103,16 +108,16 @@ setenv key1 value1
 			return
 		},
 		Annotations: map[string]string{
-			"depend": consts.ModuleUnsetEnv,
+			"depend": consts.ModuleEnv,
 		},
 		Example: `~~~
-unsetenv key1
-~~~
-`}
+	unsetenv key1
+	~~~
+	`}
 
 	common.BindArgCompletions(unSetEnvCmd, nil,
 		carapace.ActionValues().Usage("environment variable"))
-
+	envCmd.AddCommand(unSetEnvCmd, setEnvCmd)
 	netstatCmd := &cobra.Command{
 		Use:   consts.ModuleNetstat,
 		Short: "List network connections",
@@ -163,8 +168,6 @@ bypass --amsi --etw
 		killCmd,
 		psCmd,
 		envCmd,
-		setEnvCmd,
-		unSetEnvCmd,
 		netstatCmd,
 		infoCmd,
 		bypassCmd,
