@@ -21,7 +21,7 @@ import (
 
 var (
 	ErrNotFoundSession = errors.New("session not found")
-	Prompt             = "IOM"
+	Prompt             = "IoM"
 )
 
 // BindCmds - Bind extra commands to the app object
