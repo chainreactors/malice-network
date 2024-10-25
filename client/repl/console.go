@@ -152,19 +152,28 @@ func (c *Console) SwitchImplant(sess *core.Session) {
 
 func (c *Console) RegisterImplantFunc(name string, fn interface{},
 	bname string, bfn interface{}, // return to plugin
-	pluginCallback ImplantPluginCallback, implantCallback intermediate.ImplantCallback) {
+	funcCallback ImplantFuncCallback, callback intermediate.ImplantCallback) {
 
-	if implantCallback == nil {
-		implantCallback = WrapImplantCallback(pluginCallback)
+	if callback == nil {
+		callback = WrapClientCallback(funcCallback)
 	}
 
 	if fn != nil {
-		intermediate.RegisterInternalFunc(intermediate.BuiltinPackage, name, WrapImplantFunc(c, fn, pluginCallback), implantCallback)
+		intermediate.RegisterInternalFunc(intermediate.BuiltinPackage, name, WrapImplantFunc(c, fn, funcCallback), callback)
 	}
 
 	if bfn != nil {
-		intermediate.RegisterInternalFunc(intermediate.BeaconPackage, bname, WrapImplantFunc(c, bfn, pluginCallback), implantCallback)
+		intermediate.RegisterInternalFunc(intermediate.BeaconPackage, bname, WrapImplantFunc(c, bfn, funcCallback), callback)
 	}
+}
+
+func (c *Console) RegisterBuiltinFunc(pkg, name string, fn interface{}, callback ImplantFuncCallback) error {
+	var implantCallback intermediate.ImplantCallback
+	if callback == nil {
+		implantCallback = WrapClientCallback(callback)
+	}
+
+	return intermediate.RegisterInternalFunc(pkg, name, WrapImplantFunc(c, fn, callback), implantCallback)
 }
 
 func (c *Console) RegisterServerFunc(name string, fn interface{}) error {

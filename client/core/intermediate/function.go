@@ -1,6 +1,7 @@
 package intermediate
 
 import (
+	"errors"
 	"fmt"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"path/filepath"
@@ -8,6 +9,18 @@ import (
 	"runtime"
 	"strings"
 )
+
+var ErrFunctionNotFound = errors.New("function not found")
+
+type InternalHelper struct {
+	Short        string
+	Long         string
+	Input        []string
+	Output       []string
+	BeaconInput  []string
+	BeaconOutput []string
+	Example      string
+}
 
 type InternalFunc struct {
 	Name           string
@@ -19,6 +32,7 @@ type InternalFunc struct {
 	NoCache        bool
 	FinishCallback ImplantCallback // implant callback
 	DoneCallback   ImplantCallback
+	Helper         *InternalHelper
 	ArgTypes       []reflect.Type
 	ReturnTypes    []reflect.Type
 }
@@ -27,6 +41,7 @@ func (fn *InternalFunc) String() string {
 	return fmt.Sprintf("%s.%s", fn.Package, fn.Name)
 }
 
+// callback to callee, like lua or go, return string
 type ImplantCallback func(content *clientpb.TaskContext) (string, error)
 
 var InternalFunctions = make(map[string]*InternalFunc)
@@ -44,6 +59,16 @@ func RegisterInternalFunc(pkg, name string, fn *InternalFunc, callback ImplantCa
 	fn.Name = name
 	InternalFunctions[name] = fn
 	return nil
+}
+
+func AddHelper(name string, helper *InternalHelper) error {
+	name = strings.ReplaceAll(name, "-", "_")
+	if fn, ok := InternalFunctions[name]; ok {
+		fn.Helper = helper
+		return nil
+	} else {
+		return ErrFunctionNotFound
+	}
 }
 
 func RegisterInternalDoneCallback(name string, callback ImplantCallback) error {

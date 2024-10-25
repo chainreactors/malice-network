@@ -5,6 +5,7 @@ import (
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/addon"
 	"github.com/chainreactors/malice-network/client/command/alias"
+	"github.com/chainreactors/malice-network/client/command/basic"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/exec"
 	"github.com/chainreactors/malice-network/client/command/explorer"
@@ -92,6 +93,7 @@ func BindImplantCommands(con *repl.Console) console.Commands {
 		bind := makeBind(implant, con)
 		bindCommonCommands(bind)
 		bind(consts.ImplantGroup,
+			basic.Commands,
 			tasks.Commands,
 			modules.Commands,
 			explorer.Commands,
@@ -160,6 +162,7 @@ func BindImplantCommands(con *repl.Console) console.Commands {
 
 func RegisterImplantFunc(con *repl.Console) {
 	tasks.Register(con)
+	basic.Register(con)
 	sys.Register(con)
 	file.Register(con)
 	filesystem.Register(con)

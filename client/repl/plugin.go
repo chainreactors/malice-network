@@ -62,9 +62,11 @@ func (plugins *Plugins) LoadPlugin(manifest *plugin.MalManiFest, con *Console, r
 }
 
 type implantFunc func(rpc clientrpc.MaliceRPCClient, sess *core.Session, params ...interface{}) (*clientpb.Task, error)
-type ImplantPluginCallback func(content *clientpb.TaskContext) (interface{}, error)
 
-func WrapImplantCallback(callback ImplantPluginCallback) intermediate.ImplantCallback {
+// ImplantFuncCallback, function internal callback func, retrun golang struct
+type ImplantFuncCallback func(content *clientpb.TaskContext) (interface{}, error)
+
+func WrapClientCallback(callback ImplantFuncCallback) intermediate.ImplantCallback {
 	return func(content *clientpb.TaskContext) (string, error) {
 		res, err := callback(content)
 		if err != nil {
@@ -136,7 +138,7 @@ func wrapImplantFunc(fun interface{}) implantFunc {
 	}
 }
 
-func WrapImplantFunc(con *Console, fun interface{}, callback ImplantPluginCallback) *intermediate.InternalFunc {
+func WrapImplantFunc(con *Console, fun interface{}, callback ImplantFuncCallback) *intermediate.InternalFunc {
 	wrappedFunc := wrapImplantFunc(fun)
 
 	interFunc := intermediate.GetInternalFuncSignature(fun)
