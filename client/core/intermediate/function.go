@@ -3,6 +3,7 @@ package intermediate
 import (
 	"errors"
 	"fmt"
+	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"path/filepath"
 	"reflect"
@@ -10,16 +11,19 @@ import (
 	"strings"
 )
 
-var ErrFunctionNotFound = errors.New("function not found")
+var (
+	ErrFunctionNotFound = errors.New("function not found")
+	WarnArgsMismatch    = errors.New("arguments mismatch")
+	WarnReturnMismatch  = errors.New("return values mismatch")
+)
 
 type InternalHelper struct {
-	Short        string
-	Long         string
-	Input        []string
-	Output       []string
-	BeaconInput  []string
-	BeaconOutput []string
-	Example      string
+	Short   string
+	Long    string
+	Input   []string
+	Output  []string
+	Example string
+	CMDName string
 }
 
 type InternalFunc struct {
@@ -64,10 +68,16 @@ func RegisterInternalFunc(pkg, name string, fn *InternalFunc, callback ImplantCa
 func AddHelper(name string, helper *InternalHelper) error {
 	name = strings.ReplaceAll(name, "-", "_")
 	if fn, ok := InternalFunctions[name]; ok {
+		if len(helper.Input) != len(fn.ArgTypes) {
+			logs.Log.Warnf("function %s %s", name, WarnArgsMismatch.Error())
+		}
+		if len(helper.Output) != len(fn.ReturnTypes) {
+			logs.Log.Warnf("function %s %s", name, WarnReturnMismatch.Error())
+		}
 		fn.Helper = helper
 		return nil
 	} else {
-		return ErrFunctionNotFound
+		return fmt.Errorf("%s %w", name, ErrFunctionNotFound)
 	}
 }
 
