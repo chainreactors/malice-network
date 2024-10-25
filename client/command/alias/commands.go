@@ -161,6 +161,6 @@ alias remove rubeus
 
 func Register(con *repl.Console) {
 	for name, aliasPkg := range loadedAliases {
-		intermediate.RegisterInternalFunc(intermediate.ArmoryPackage, name, aliasPkg.Func, repl.WrapImplantCallback(common.ParseAssembly))
+		intermediate.RegisterInternalFunc(intermediate.ArmoryPackage, name, aliasPkg.Func, repl.WrapClientCallback(common.ParseAssembly))
 	}
 }
