@@ -2,4 +2,3 @@
 bin/
 dist/
 go.sum
-/external

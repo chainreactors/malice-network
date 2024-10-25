@@ -1,0 +1,63 @@
+{
+    "$schema": "https://raw.githubusercontent.com/JanDeDobbeleer/oh-my-posh/main/themes/schema.json",
+    "blocks": [
+        {
+            "alignment": "left",
+            "newline": true,
+            "segments": [
+                {
+                    "foreground": "lightRed",
+                    "style": "plain",
+                    "template": " {{ .UserName }}@{{ .HostName }} ",
+                    "type": "session"
+                },
+                {
+                    "foreground": "cyan",
+                    "properties": {
+                        "style": "folder"
+                    },
+                    "style": "plain",
+                    "template": "<#ffffff>in</> {{ .Path }} ",
+                    "type": "path"
+                },
+                {
+                    "style": "plain",
+                    "template": " {{ .Type }}(<#df2e1c>{{ .Path }}</>) ",
+                    "type": "module"
+                }
+            ],
+            "type": "prompt"
+        },
+        {
+            "alignment": "right",
+            "segments": [
+                {
+                    "foreground": "#ff94df",
+                    "properties": {
+                        "branch_icon": " <#ff94df><b>\ue0a0 </b></>",
+                        "fetch_stash_count": true
+                    },
+                    "style": "plain",
+                    "template": "<#ffffff>on</> {{ .HEAD }}{{ if gt .StashCount 0 }} \uf692 {{ .StashCount }}{{ end }} ",
+                    "type": "git"
+                }
+            ],
+            "type": "rprompt"
+        },
+        {
+            "alignment": "left",
+            "newline": true,
+            "segments": [
+                {
+                    "foreground": "lightGreen",
+                    "style": "plain",
+                    "template": "\u276f",
+                    "type": "text"
+                }
+            ],
+            "type": "prompt"
+        }
+    ],
+    "final_space": true,
+    "version": 2
+}
