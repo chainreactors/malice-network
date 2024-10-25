@@ -2,6 +2,7 @@ package parser
 
 import (
 	"errors"
+	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/utils/peek"
@@ -88,7 +89,7 @@ func (parser *MessageParser) ReadPacket(conn *peek.Conn) ([]byte, *implantpb.Spi
 	return sessionId, msg, nil
 }
 
-func (parser *MessageParser) WritePacket(conn io.ReadWriter, msg *implantpb.Spites, sid []byte) error {
+func (parser *MessageParser) WritePacket(conn *peek.Conn, msg *implantpb.Spites, sid []byte) error {
 	bs, err := parser.Marshal(msg, sid)
 	if err != nil {
 		return err
@@ -98,11 +99,12 @@ func (parser *MessageParser) WritePacket(conn io.ReadWriter, msg *implantpb.Spit
 	if err != nil {
 		return err
 	}
-	//if len(bs) <= 1000 {
-	//	logs.Log.Debugf("write packet to %s , %d bytes, %v", conn.RemoteAddr(), len(bs), msg)
-	//} else {
-	//	logs.Log.Debugf("write packet to %s , %d bytes", conn.RemoteAddr(), len(bs))
-	//}
+
+	if len(bs) <= 1000 {
+		logs.Log.Debugf("write packet to %s , %d bytes, %v", conn.RemoteAddr(), len(bs), msg)
+	} else {
+		logs.Log.Debugf("write packet to %s , %d bytes", conn.RemoteAddr(), len(bs))
+	}
 
 	return nil
 }
