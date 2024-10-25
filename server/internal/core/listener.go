@@ -48,7 +48,7 @@ type Listener struct {
 	Name      string
 	Host      string
 	Active    bool
-	Pipelines Pipelines
+	Pipelines lispb.Pipelines
 }
 
 func (l *Listener) ToProtobuf() *clientpb.Listener {
@@ -56,7 +56,7 @@ func (l *Listener) ToProtobuf() *clientpb.Listener {
 		Id:        l.Name,
 		Addr:      l.Host,
 		Active:    l.Active,
-		Pipelines: l.Pipelines.ToProtobuf(),
+		Pipelines: &l.Pipelines,
 	}
 }
 
@@ -109,13 +109,14 @@ func (l *listeners) Stop(name string) error {
 	val, ok := l.Load(name)
 	if ok {
 		val.(*Listener).Active = false
-		for _, pipeline := range val.(*Listener).Pipelines {
-			err := pipeline.Close()
-			if err != nil {
-				// TODO - need or not give error if pipeline close failed
-				continue
-			}
-		}
+		//for _, pipeline := range val.(*Listener).Pipelines.Pipelines {
+		//	// TODO close pipeline
+		//	//err := pipeline.Close()
+		//	if err != nil {
+		//		// TODO - need or not give error if pipeline close failed
+		//		continue
+		//	}
+		//}
 	} else {
 		return errors.New("listener not found")
 	}

@@ -130,8 +130,8 @@ func startTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) {
 }
 
 func stopTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) {
-	name := cmd.Flags().Arg(0)
-	listenerID := cmd.Flags().Arg(1)
+	name := cmd.Flags().Arg(1)
+	listenerID := cmd.Flags().Arg(0)
 	_, err := con.LisRpc.StopTcpPipeline(context.Background(), &lispb.CtrlPipeline{
 		Name:       name,
 		ListenerId: listenerID,

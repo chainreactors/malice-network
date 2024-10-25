@@ -126,8 +126,9 @@ tcp stop tcp_test listener
 	}
 
 	common.BindArgCompletions(tcpStopCmd, nil,
-		carapace.ActionValues().Usage("tcp pipeline name"),
-		common.ListenerIDCompleter(con))
+		common.ListenerIDCompleter(con),
+		common.JobsComplete(con, tcpStopCmd, consts.CommandTcp),
+	)
 
 	tcpCmd.AddCommand(tcpRegisterCmd, tcpStartCmd, tcpStopCmd)
 
@@ -225,8 +226,9 @@ website stop web_test listener
 	}
 
 	common.BindArgCompletions(websiteStopCmd, nil,
-		carapace.ActionValues().Usage("website name"),
-		common.ListenerIDCompleter(con))
+		common.ListenerIDCompleter(con),
+		common.JobsComplete(con, websiteStopCmd, consts.CommandWebsite),
+	)
 
 	websiteCmd.AddCommand(websiteRegisterCmd, websiteStartCmd, websiteStopCmd)
 

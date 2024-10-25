@@ -36,11 +36,10 @@ type Profile struct {
 	Params     map[string]interface{} `gorm:"-"`         // Ignored by GORM
 	ParamsJson string                 `gorm:"type:text"` // Used for storing serialized params
 
-	ListenerID    string `gorm:"type:string;index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
 	PipelineID    string `gorm:"type:string;index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
 	implantConfig string // raw implant config
 
-	Pipeline Pipeline `gorm:"foreignKey:ListenerID,Name;references:ListenerID,Name;"`
+	Pipeline Pipeline `gorm:"foreignKey:Name;references:Name;"`
 
 	CreatedAt time.Time `gorm:"->;<-:create;"`
 }
