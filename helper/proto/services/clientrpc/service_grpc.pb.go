@@ -51,7 +51,8 @@ type MaliceRPCClient interface {
 	Notify(ctx context.Context, in *clientpb.Event, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	SessionEvent(ctx context.Context, in *clientpb.Event, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	// implant::internal
-	Sleep(ctx context.Context, in *implantpb.Sleep, opts ...grpc.CallOption) (*clientpb.Task, error)
+	Sleep(ctx context.Context, in *implantpb.Timer, opts ...grpc.CallOption) (*clientpb.Task, error)
+	Suicide(ctx context.Context, in *implantpb.Request, opts ...grpc.CallOption) (*clientpb.Task, error)
 	ListModule(ctx context.Context, in *implantpb.Request, opts ...grpc.CallOption) (*clientpb.Task, error)
 	LoadModule(ctx context.Context, in *implantpb.LoadModule, opts ...grpc.CallOption) (*clientpb.Task, error)
 	RefreshModule(ctx context.Context, in *implantpb.Request, opts ...grpc.CallOption) (*clientpb.Task, error)
@@ -365,9 +366,18 @@ func (c *maliceRPCClient) SessionEvent(ctx context.Context, in *clientpb.Event, 
 	return out, nil
 }
 
-func (c *maliceRPCClient) Sleep(ctx context.Context, in *implantpb.Sleep, opts ...grpc.CallOption) (*clientpb.Task, error) {
+func (c *maliceRPCClient) Sleep(ctx context.Context, in *implantpb.Timer, opts ...grpc.CallOption) (*clientpb.Task, error) {
 	out := new(clientpb.Task)
 	err := c.cc.Invoke(ctx, "/clientrpc.MaliceRPC/Sleep", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *maliceRPCClient) Suicide(ctx context.Context, in *implantpb.Request, opts ...grpc.CallOption) (*clientpb.Task, error) {
+	out := new(clientpb.Task)
+	err := c.cc.Invoke(ctx, "/clientrpc.MaliceRPC/Suicide", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1033,7 +1043,8 @@ type MaliceRPCServer interface {
 	Notify(context.Context, *clientpb.Event) (*clientpb.Empty, error)
 	SessionEvent(context.Context, *clientpb.Event) (*clientpb.Empty, error)
 	// implant::internal
-	Sleep(context.Context, *implantpb.Sleep) (*clientpb.Task, error)
+	Sleep(context.Context, *implantpb.Timer) (*clientpb.Task, error)
+	Suicide(context.Context, *implantpb.Request) (*clientpb.Task, error)
 	ListModule(context.Context, *implantpb.Request) (*clientpb.Task, error)
 	LoadModule(context.Context, *implantpb.LoadModule) (*clientpb.Task, error)
 	RefreshModule(context.Context, *implantpb.Request) (*clientpb.Task, error)
@@ -1189,8 +1200,11 @@ func (UnimplementedMaliceRPCServer) Notify(context.Context, *clientpb.Event) (*c
 func (UnimplementedMaliceRPCServer) SessionEvent(context.Context, *clientpb.Event) (*clientpb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SessionEvent not implemented")
 }
-func (UnimplementedMaliceRPCServer) Sleep(context.Context, *implantpb.Sleep) (*clientpb.Task, error) {
+func (UnimplementedMaliceRPCServer) Sleep(context.Context, *implantpb.Timer) (*clientpb.Task, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Sleep not implemented")
+}
+func (UnimplementedMaliceRPCServer) Suicide(context.Context, *implantpb.Request) (*clientpb.Task, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Suicide not implemented")
 }
 func (UnimplementedMaliceRPCServer) ListModule(context.Context, *implantpb.Request) (*clientpb.Task, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListModule not implemented")
@@ -1815,7 +1829,7 @@ func _MaliceRPC_SessionEvent_Handler(srv interface{}, ctx context.Context, dec f
 }
 
 func _MaliceRPC_Sleep_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(implantpb.Sleep)
+	in := new(implantpb.Timer)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -1827,7 +1841,25 @@ func _MaliceRPC_Sleep_Handler(srv interface{}, ctx context.Context, dec func(int
 		FullMethod: "/clientrpc.MaliceRPC/Sleep",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MaliceRPCServer).Sleep(ctx, req.(*implantpb.Sleep))
+		return srv.(MaliceRPCServer).Sleep(ctx, req.(*implantpb.Timer))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MaliceRPC_Suicide_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(implantpb.Request)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MaliceRPCServer).Suicide(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/clientrpc.MaliceRPC/Suicide",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MaliceRPCServer).Suicide(ctx, req.(*implantpb.Request))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3186,6 +3218,10 @@ var MaliceRPC_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Sleep",
 			Handler:    _MaliceRPC_Sleep_Handler,
+		},
+		{
+			MethodName: "Suicide",
+			Handler:    _MaliceRPC_Suicide_Handler,
 		},
 		{
 			MethodName: "ListModule",

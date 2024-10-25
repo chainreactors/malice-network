@@ -53,8 +53,8 @@ const (
 	ModuleKill                 = "kill"
 	ModuleWhoami               = "whoami"
 	ModuleEnv                  = "env"
-	ModuleSetEnv               = "setenv"
-	ModuleUnsetEnv             = "unsetenv"
+	ModuleSetEnv               = "set"
+	ModuleUnsetEnv             = "unset"
 	ModuleInfo                 = "info"
 	ModuleNetstat              = "netstat"
 	ModuleBypass               = "bypass"
@@ -67,6 +67,8 @@ const (
 	ModuleExecuteAddon         = "execute_addon"
 	ModuleClear                = "clear"
 	ModuleCancelTask           = "cancel_task"
+	ModuleSleep                = "sleep"
+	ModuleSuicide              = "suicide"
 )
 
 const (
