@@ -7,7 +7,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/utils/peek"
 	"github.com/chainreactors/malice-network/server/internal/parser"
-	"net"
 	"sync"
 	"time"
 )
@@ -34,6 +33,7 @@ func NewConnection(p *parser.MessageParser, sid []byte) *Connection {
 		for {
 			select {
 			case spite := <-conn.C:
+				logs.Log.Debugf("Received spite %s", spite.Name)
 				conn.cache.Append(spite)
 			}
 		}
@@ -64,7 +64,7 @@ type Connection struct {
 	cache       *parser.SpitesCache
 }
 
-func (c *Connection) Send(ctx context.Context, conn net.Conn) {
+func (c *Connection) Send(ctx context.Context, conn *peek.Conn) {
 	select {
 	case <-time.After(100 * time.Millisecond):
 		return
