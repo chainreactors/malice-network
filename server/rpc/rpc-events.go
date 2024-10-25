@@ -12,14 +12,12 @@ import (
 )
 
 func (rpc *Server) Events(_ *clientpb.Empty, stream clientrpc.MaliceRPC_EventsServer) error {
-	clientName := getClientName(stream.Context())
 	events := core.EventBroker.Subscribe()
-	client := core.NewClient(clientName)
-	core.Clients.Add(client)
+	clientID := core.GetCurrentID()
 	defer func() {
-		logs.Log.Infof("%d client disconnected", client.ID)
+		logs.Log.Infof("%d client disconnected", clientID)
 		core.EventBroker.Unsubscribe(events)
-		core.Clients.Remove(int(client.ID))
+		core.Clients.Remove(int(clientID))
 	}()
 
 	for {

@@ -85,6 +85,9 @@ func (cc *clients) ActiveClients() []*Client {
 	return cs
 }
 
+func GetCurrentID() uint32 {
+	return clientID
+}
 func getClientID() uint32 {
 	clientID++
 	return clientID
