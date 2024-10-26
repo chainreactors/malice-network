@@ -134,3 +134,10 @@ const (
 	TaskErrorFieldInvalid        = 6
 	TaskError                    = 99
 )
+
+const (
+	OPSecLOW   = "low"
+	OPSecMID   = "mid"
+	OPSecHIGH  = "high"
+	OPSecOPsec = "opsec"
+)
