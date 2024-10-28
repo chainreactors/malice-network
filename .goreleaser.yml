@@ -3,7 +3,6 @@ version: 2
 
 before:
   hooks:
-    - go generate ./client
     - go mod tidy
 
 builds:
