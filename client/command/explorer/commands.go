@@ -9,7 +9,7 @@ import (
 func Commands(con *repl.Console) []*cobra.Command {
 	return []*cobra.Command{
 		{
-			Use:   consts.ModuleExplore,
+			Use:   consts.CommandExplore,
 			Short: "file explorer",
 			Run: func(cmd *cobra.Command, args []string) {
 				explorerCmd(cmd, con)

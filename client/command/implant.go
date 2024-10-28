@@ -14,8 +14,12 @@ import (
 	"github.com/chainreactors/malice-network/client/command/filesystem"
 	"github.com/chainreactors/malice-network/client/command/mal"
 	"github.com/chainreactors/malice-network/client/command/modules"
+	"github.com/chainreactors/malice-network/client/command/privilege"
+	"github.com/chainreactors/malice-network/client/command/reg"
+	"github.com/chainreactors/malice-network/client/command/service"
 	"github.com/chainreactors/malice-network/client/command/sys"
 	"github.com/chainreactors/malice-network/client/command/tasks"
+	"github.com/chainreactors/malice-network/client/command/taskschd"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/reeflective/console"
@@ -104,7 +108,12 @@ func BindImplantCommands(con *repl.Console) console.Commands {
 			exec.Commands)
 
 		bind(consts.SysGroup,
-			sys.Commands)
+			sys.Commands,
+			service.Commands,
+			reg.Commands,
+			taskschd.Commands,
+			privilege.Commands,
+		)
 
 		bind(consts.FileGroup,
 			file.Commands,
@@ -171,4 +180,8 @@ func RegisterImplantFunc(con *repl.Console) {
 	alias.Register(con)
 	extension.Register(con)
 	addon.Register(con)
+	service.Register(con)
+	reg.Register(con)
+	taskschd.Register(con)
+	privilege.Register(con)
 }

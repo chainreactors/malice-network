@@ -9,8 +9,11 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/utils/pe"
+	"github.com/chainreactors/tui"
+	"github.com/charmbracelet/bubbles/table"
 	"io"
 	"math"
+	"strings"
 )
 
 func ParseAssembly(ctx *clientpb.TaskContext) (interface{}, error) {
@@ -72,6 +75,54 @@ func ParseExecResponse(ctx *clientpb.TaskContext) (interface{}, error) {
 		return fmt.Sprintf("pid: %d\n%s", resp.Pid, resp.Stdout), nil
 	}
 	return nil, fmt.Errorf("no response")
+}
+
+func ParseArrayResponse(ctx *clientpb.TaskContext) (interface{}, error) {
+	array := ctx.Spite.GetResponse().GetArray()
+	if array == nil {
+		return nil, fmt.Errorf("no response")
+	}
+
+	return array, nil
+}
+
+func FormatArrayResponse(ctx *clientpb.TaskContext) (string, error) {
+	array, err := ParseArrayResponse(ctx)
+	if err != nil {
+		return "", err
+	}
+	return ctx.Task.Type + ":\n" + strings.Join(array.([]string), "\n\t"), nil
+}
+
+func ParseKVResponse(ctx *clientpb.TaskContext) (interface{}, error) {
+	set := ctx.Spite.GetResponse().GetKv()
+	if set == nil {
+		return nil, fmt.Errorf("no response")
+	}
+	return set, nil
+}
+
+func FormatKVResponse(ctx *clientpb.TaskContext) (string, error) {
+	set, err := ParseKVResponse(ctx)
+	if err != nil {
+		return "", err
+	}
+	var rowEntries []table.Row
+	var row table.Row
+	tableModel := tui.NewTable([]table.Column{
+		{Title: "Key", Width: 20},
+		{Title: "Value", Width: 70},
+	}, true)
+	for k, v := range set.(map[string]string) {
+		row = table.Row{
+			k,
+			v,
+		}
+		rowEntries = append(rowEntries, row)
+	}
+	tableModel.SetRows(rowEntries)
+	tableModel.Title = ctx.Task.Type
+	return tableModel.View(), nil
 }
 
 func ParseBOFResponse(ctx *clientpb.TaskContext) (interface{}, error) {
