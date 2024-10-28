@@ -126,6 +126,10 @@ type MaliceRPCClient interface {
 	ExecuteShellcode(ctx context.Context, in *implantpb.ExecuteBinary, opts ...grpc.CallOption) (*clientpb.Task, error)
 	ExecuteBof(ctx context.Context, in *implantpb.ExecuteBinary, opts ...grpc.CallOption) (*clientpb.Task, error)
 	ExecuteLocal(ctx context.Context, in *implantpb.ExecuteBinary, opts ...grpc.CallOption) (*clientpb.Task, error)
+	// shellcode
+	EXE2Shellcode(ctx context.Context, in *clientpb.EXE2Shellcode, opts ...grpc.CallOption) (*clientpb.Bin, error)
+	DLL2Shellcode(ctx context.Context, in *clientpb.DLL2Shellcode, opts ...grpc.CallOption) (*clientpb.Bin, error)
+	ShellcodeEncode(ctx context.Context, in *clientpb.ShellcodeEncode, opts ...grpc.CallOption) (*clientpb.Bin, error)
 	// jobs
 	ListJobs(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*lispb.Pipelines, error)
 	// Websites
@@ -966,6 +970,33 @@ func (c *maliceRPCClient) ExecuteLocal(ctx context.Context, in *implantpb.Execut
 	return out, nil
 }
 
+func (c *maliceRPCClient) EXE2Shellcode(ctx context.Context, in *clientpb.EXE2Shellcode, opts ...grpc.CallOption) (*clientpb.Bin, error) {
+	out := new(clientpb.Bin)
+	err := c.cc.Invoke(ctx, "/clientrpc.MaliceRPC/EXE2Shellcode", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *maliceRPCClient) DLL2Shellcode(ctx context.Context, in *clientpb.DLL2Shellcode, opts ...grpc.CallOption) (*clientpb.Bin, error) {
+	out := new(clientpb.Bin)
+	err := c.cc.Invoke(ctx, "/clientrpc.MaliceRPC/DLL2Shellcode", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *maliceRPCClient) ShellcodeEncode(ctx context.Context, in *clientpb.ShellcodeEncode, opts ...grpc.CallOption) (*clientpb.Bin, error) {
+	out := new(clientpb.Bin)
+	err := c.cc.Invoke(ctx, "/clientrpc.MaliceRPC/ShellcodeEncode", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *maliceRPCClient) ListJobs(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*lispb.Pipelines, error) {
 	out := new(lispb.Pipelines)
 	err := c.cc.Invoke(ctx, "/clientrpc.MaliceRPC/ListJobs", in, out, opts...)
@@ -1178,6 +1209,10 @@ type MaliceRPCServer interface {
 	ExecuteShellcode(context.Context, *implantpb.ExecuteBinary) (*clientpb.Task, error)
 	ExecuteBof(context.Context, *implantpb.ExecuteBinary) (*clientpb.Task, error)
 	ExecuteLocal(context.Context, *implantpb.ExecuteBinary) (*clientpb.Task, error)
+	// shellcode
+	EXE2Shellcode(context.Context, *clientpb.EXE2Shellcode) (*clientpb.Bin, error)
+	DLL2Shellcode(context.Context, *clientpb.DLL2Shellcode) (*clientpb.Bin, error)
+	ShellcodeEncode(context.Context, *clientpb.ShellcodeEncode) (*clientpb.Bin, error)
 	// jobs
 	ListJobs(context.Context, *clientpb.Empty) (*lispb.Pipelines, error)
 	// Websites
@@ -1463,6 +1498,15 @@ func (UnimplementedMaliceRPCServer) ExecuteBof(context.Context, *implantpb.Execu
 }
 func (UnimplementedMaliceRPCServer) ExecuteLocal(context.Context, *implantpb.ExecuteBinary) (*clientpb.Task, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ExecuteLocal not implemented")
+}
+func (UnimplementedMaliceRPCServer) EXE2Shellcode(context.Context, *clientpb.EXE2Shellcode) (*clientpb.Bin, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method EXE2Shellcode not implemented")
+}
+func (UnimplementedMaliceRPCServer) DLL2Shellcode(context.Context, *clientpb.DLL2Shellcode) (*clientpb.Bin, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DLL2Shellcode not implemented")
+}
+func (UnimplementedMaliceRPCServer) ShellcodeEncode(context.Context, *clientpb.ShellcodeEncode) (*clientpb.Bin, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ShellcodeEncode not implemented")
 }
 func (UnimplementedMaliceRPCServer) ListJobs(context.Context, *clientpb.Empty) (*lispb.Pipelines, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListJobs not implemented")
@@ -3100,6 +3144,60 @@ func _MaliceRPC_ExecuteLocal_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MaliceRPC_EXE2Shellcode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(clientpb.EXE2Shellcode)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MaliceRPCServer).EXE2Shellcode(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/clientrpc.MaliceRPC/EXE2Shellcode",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MaliceRPCServer).EXE2Shellcode(ctx, req.(*clientpb.EXE2Shellcode))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MaliceRPC_DLL2Shellcode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(clientpb.DLL2Shellcode)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MaliceRPCServer).DLL2Shellcode(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/clientrpc.MaliceRPC/DLL2Shellcode",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MaliceRPCServer).DLL2Shellcode(ctx, req.(*clientpb.DLL2Shellcode))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MaliceRPC_ShellcodeEncode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(clientpb.ShellcodeEncode)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MaliceRPCServer).ShellcodeEncode(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/clientrpc.MaliceRPC/ShellcodeEncode",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MaliceRPCServer).ShellcodeEncode(ctx, req.(*clientpb.ShellcodeEncode))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _MaliceRPC_ListJobs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(clientpb.Empty)
 	if err := dec(in); err != nil {
@@ -3670,6 +3768,18 @@ var MaliceRPC_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ExecuteLocal",
 			Handler:    _MaliceRPC_ExecuteLocal_Handler,
+		},
+		{
+			MethodName: "EXE2Shellcode",
+			Handler:    _MaliceRPC_EXE2Shellcode_Handler,
+		},
+		{
+			MethodName: "DLL2Shellcode",
+			Handler:    _MaliceRPC_DLL2Shellcode_Handler,
+		},
+		{
+			MethodName: "ShellcodeEncode",
+			Handler:    _MaliceRPC_ShellcodeEncode_Handler,
 		},
 		{
 			MethodName: "ListJobs",
