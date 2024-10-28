@@ -125,13 +125,13 @@ kill 1234
 	}
 
 	infoCmd := &cobra.Command{
-		Use:   consts.ModuleInfo,
+		Use:   consts.ModuleSysInfo,
 		Short: "Get basic sys info",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return InfoCmd(cmd, con)
 		},
 		Annotations: map[string]string{
-			"depend": consts.ModuleInfo,
+			"depend": consts.ModuleSysInfo,
 			"ttp":    "T1082",
 		},
 	}
@@ -158,7 +158,7 @@ bypass --amsi --etw
 	})
 
 	wmiQueryCmd := &cobra.Command{
-		Use:   consts.ModuleWmiQuery + " --namespace [namespace] --args [args...]",
+		Use:   consts.ModuleWmiQuery,
 		Short: "Perform a WMI query",
 		Long:  "Executes a WMI query within the specified namespace to retrieve system information or perform administrative actions.",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -177,7 +177,7 @@ bypass --amsi --etw
 	wmiQueryCmd.Flags().StringSlice("args", []string{}, "Arguments for the WMI query")
 
 	wmiExecuteCmd := &cobra.Command{
-		Use:   consts.ModuleWmiExec + " --namespace [namespace] --class_name [class_name] --method_name [method_name]",
+		Use:   consts.ModuleWmiExec,
 		Short: "Execute a WMI method",
 		Long:  "Executes a specified method within a WMI class, allowing for more complex administrative actions via WMI.",
 		RunE: func(cmd *cobra.Command, args []string) error {

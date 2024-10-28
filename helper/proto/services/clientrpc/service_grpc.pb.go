@@ -105,6 +105,8 @@ type MaliceRPCClient interface {
 	TaskSchdStart(ctx context.Context, in *implantpb.TaskScheduleRequest, opts ...grpc.CallOption) (*clientpb.Task, error)
 	TaskSchdStop(ctx context.Context, in *implantpb.TaskScheduleRequest, opts ...grpc.CallOption) (*clientpb.Task, error)
 	TaskSchdDelete(ctx context.Context, in *implantpb.TaskScheduleRequest, opts ...grpc.CallOption) (*clientpb.Task, error)
+	TaskSchdQuery(ctx context.Context, in *implantpb.TaskScheduleRequest, opts ...grpc.CallOption) (*clientpb.Task, error)
+	TaskSchdRun(ctx context.Context, in *implantpb.TaskScheduleRequest, opts ...grpc.CallOption) (*clientpb.Task, error)
 	// implant::sys:wmi
 	WmiQuery(ctx context.Context, in *implantpb.WmiQueryRequest, opts ...grpc.CallOption) (*clientpb.Task, error)
 	WmiExecute(ctx context.Context, in *implantpb.WmiMethodRequest, opts ...grpc.CallOption) (*clientpb.Task, error)
@@ -136,6 +138,8 @@ type MaliceRPCClient interface {
 	NewProfile(ctx context.Context, in *clientpb.Profile, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	GetProfiles(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Profiles, error)
 	Generate(ctx context.Context, in *clientpb.Generate, opts ...grpc.CallOption) (*clientpb.Empty, error)
+	DownloadOutput(ctx context.Context, in *clientpb.Sync, opts ...grpc.CallOption) (*clientpb.SyncResp, error)
+	GetBuilders(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Builders, error)
 }
 
 type maliceRPCClient struct {
@@ -799,6 +803,24 @@ func (c *maliceRPCClient) TaskSchdDelete(ctx context.Context, in *implantpb.Task
 	return out, nil
 }
 
+func (c *maliceRPCClient) TaskSchdQuery(ctx context.Context, in *implantpb.TaskScheduleRequest, opts ...grpc.CallOption) (*clientpb.Task, error) {
+	out := new(clientpb.Task)
+	err := c.cc.Invoke(ctx, "/clientrpc.MaliceRPC/TaskSchdQuery", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *maliceRPCClient) TaskSchdRun(ctx context.Context, in *implantpb.TaskScheduleRequest, opts ...grpc.CallOption) (*clientpb.Task, error) {
+	out := new(clientpb.Task)
+	err := c.cc.Invoke(ctx, "/clientrpc.MaliceRPC/TaskSchdRun", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *maliceRPCClient) WmiQuery(ctx context.Context, in *implantpb.WmiQueryRequest, opts ...grpc.CallOption) (*clientpb.Task, error) {
 	out := new(clientpb.Task)
 	err := c.cc.Invoke(ctx, "/clientrpc.MaliceRPC/WmiQuery", in, out, opts...)
@@ -1024,6 +1046,24 @@ func (c *maliceRPCClient) Generate(ctx context.Context, in *clientpb.Generate, o
 	return out, nil
 }
 
+func (c *maliceRPCClient) DownloadOutput(ctx context.Context, in *clientpb.Sync, opts ...grpc.CallOption) (*clientpb.SyncResp, error) {
+	out := new(clientpb.SyncResp)
+	err := c.cc.Invoke(ctx, "/clientrpc.MaliceRPC/DownloadOutput", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *maliceRPCClient) GetBuilders(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Builders, error) {
+	out := new(clientpb.Builders)
+	err := c.cc.Invoke(ctx, "/clientrpc.MaliceRPC/GetBuilders", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MaliceRPCServer is the server API for MaliceRPC service.
 // All implementations must embed UnimplementedMaliceRPCServer
 // for forward compatibility
@@ -1107,6 +1147,8 @@ type MaliceRPCServer interface {
 	TaskSchdStart(context.Context, *implantpb.TaskScheduleRequest) (*clientpb.Task, error)
 	TaskSchdStop(context.Context, *implantpb.TaskScheduleRequest) (*clientpb.Task, error)
 	TaskSchdDelete(context.Context, *implantpb.TaskScheduleRequest) (*clientpb.Task, error)
+	TaskSchdQuery(context.Context, *implantpb.TaskScheduleRequest) (*clientpb.Task, error)
+	TaskSchdRun(context.Context, *implantpb.TaskScheduleRequest) (*clientpb.Task, error)
 	// implant::sys:wmi
 	WmiQuery(context.Context, *implantpb.WmiQueryRequest) (*clientpb.Task, error)
 	WmiExecute(context.Context, *implantpb.WmiMethodRequest) (*clientpb.Task, error)
@@ -1138,6 +1180,8 @@ type MaliceRPCServer interface {
 	NewProfile(context.Context, *clientpb.Profile) (*clientpb.Empty, error)
 	GetProfiles(context.Context, *clientpb.Empty) (*clientpb.Profiles, error)
 	Generate(context.Context, *clientpb.Generate) (*clientpb.Empty, error)
+	DownloadOutput(context.Context, *clientpb.Sync) (*clientpb.SyncResp, error)
+	GetBuilders(context.Context, *clientpb.Empty) (*clientpb.Builders, error)
 	mustEmbedUnimplementedMaliceRPCServer()
 }
 
@@ -1355,6 +1399,12 @@ func (UnimplementedMaliceRPCServer) TaskSchdStop(context.Context, *implantpb.Tas
 func (UnimplementedMaliceRPCServer) TaskSchdDelete(context.Context, *implantpb.TaskScheduleRequest) (*clientpb.Task, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method TaskSchdDelete not implemented")
 }
+func (UnimplementedMaliceRPCServer) TaskSchdQuery(context.Context, *implantpb.TaskScheduleRequest) (*clientpb.Task, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method TaskSchdQuery not implemented")
+}
+func (UnimplementedMaliceRPCServer) TaskSchdRun(context.Context, *implantpb.TaskScheduleRequest) (*clientpb.Task, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method TaskSchdRun not implemented")
+}
 func (UnimplementedMaliceRPCServer) WmiQuery(context.Context, *implantpb.WmiQueryRequest) (*clientpb.Task, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method WmiQuery not implemented")
 }
@@ -1429,6 +1479,12 @@ func (UnimplementedMaliceRPCServer) GetProfiles(context.Context, *clientpb.Empty
 }
 func (UnimplementedMaliceRPCServer) Generate(context.Context, *clientpb.Generate) (*clientpb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Generate not implemented")
+}
+func (UnimplementedMaliceRPCServer) DownloadOutput(context.Context, *clientpb.Sync) (*clientpb.SyncResp, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DownloadOutput not implemented")
+}
+func (UnimplementedMaliceRPCServer) GetBuilders(context.Context, *clientpb.Empty) (*clientpb.Builders, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetBuilders not implemented")
 }
 func (UnimplementedMaliceRPCServer) mustEmbedUnimplementedMaliceRPCServer() {}
 
@@ -2706,6 +2762,42 @@ func _MaliceRPC_TaskSchdDelete_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MaliceRPC_TaskSchdQuery_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(implantpb.TaskScheduleRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MaliceRPCServer).TaskSchdQuery(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/clientrpc.MaliceRPC/TaskSchdQuery",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MaliceRPCServer).TaskSchdQuery(ctx, req.(*implantpb.TaskScheduleRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MaliceRPC_TaskSchdRun_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(implantpb.TaskScheduleRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MaliceRPCServer).TaskSchdRun(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/clientrpc.MaliceRPC/TaskSchdRun",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MaliceRPCServer).TaskSchdRun(ctx, req.(*implantpb.TaskScheduleRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _MaliceRPC_WmiQuery_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(implantpb.WmiQueryRequest)
 	if err := dec(in); err != nil {
@@ -3156,6 +3248,42 @@ func _MaliceRPC_Generate_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MaliceRPC_DownloadOutput_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(clientpb.Sync)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MaliceRPCServer).DownloadOutput(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/clientrpc.MaliceRPC/DownloadOutput",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MaliceRPCServer).DownloadOutput(ctx, req.(*clientpb.Sync))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MaliceRPC_GetBuilders_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(clientpb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MaliceRPCServer).GetBuilders(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/clientrpc.MaliceRPC/GetBuilders",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MaliceRPCServer).GetBuilders(ctx, req.(*clientpb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // MaliceRPC_ServiceDesc is the grpc.ServiceDesc for MaliceRPC service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -3440,6 +3568,14 @@ var MaliceRPC_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _MaliceRPC_TaskSchdDelete_Handler,
 		},
 		{
+			MethodName: "TaskSchdQuery",
+			Handler:    _MaliceRPC_TaskSchdQuery_Handler,
+		},
+		{
+			MethodName: "TaskSchdRun",
+			Handler:    _MaliceRPC_TaskSchdRun_Handler,
+		},
+		{
 			MethodName: "WmiQuery",
 			Handler:    _MaliceRPC_WmiQuery_Handler,
 		},
@@ -3538,6 +3674,14 @@ var MaliceRPC_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Generate",
 			Handler:    _MaliceRPC_Generate_Handler,
+		},
+		{
+			MethodName: "DownloadOutput",
+			Handler:    _MaliceRPC_DownloadOutput_Handler,
+		},
+		{
+			MethodName: "GetBuilders",
+			Handler:    _MaliceRPC_GetBuilders_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

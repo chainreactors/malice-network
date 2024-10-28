@@ -64,7 +64,7 @@ const (
 	ModuleSetEnv               = "env_set"
 	ModuleUnsetEnv             = "env_unset"
 
-	ModuleInfo    = "info"
+	ModuleSysInfo = "sysinfo"
 	ModuleNetstat = "netstat"
 	ModuleBypass  = "bypass"
 	ModuleCurl    = "curl"
@@ -100,6 +100,7 @@ const (
 	ModuleTaskSchdStart  = "taskschd_start"
 	ModuleTaskSchdStop   = "taskschd_stop"
 	ModuleTaskSchdDelete = "taskschd_delete"
+	ModuleTaskSchdRun    = "taskschd_run"
 
 	// wmi
 	ModuleWmiQuery = "wmi_query"
