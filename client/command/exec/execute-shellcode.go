@@ -9,19 +9,20 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/spf13/cobra"
+	"math"
 )
 
 // ExecuteShellcodeCmd - Execute shellcode in-memory
-func ExecuteShellcodeCmd(cmd *cobra.Command, con *repl.Console) {
+func ExecuteShellcodeCmd(cmd *cobra.Command, con *repl.Console) error {
 	session := con.GetInteractive()
 	path, args, output, timeout, arch, process := common.ParseFullBinaryFlags(cmd)
 	sac, _ := common.ParseSacrificeFlags(cmd)
 	task, err := ExecShellcode(con.Rpc, session, path, args, output, timeout, arch, process, sac)
 	if err != nil {
-		con.Log.Errorf("Execute shellcode error: %v", err)
-		return
+		return err
 	}
 	session.Console(task, path)
+	return nil
 }
 
 func ExecShellcode(rpc clientrpc.MaliceRPCClient, sess *core.Session, shellcodePath string,
@@ -38,15 +39,15 @@ func ExecShellcode(rpc clientrpc.MaliceRPCClient, sess *core.Session, shellcodeP
 	return task, err
 }
 
-func InlineShellcodeCmd(cmd *cobra.Command, con *repl.Console) {
+func InlineShellcodeCmd(cmd *cobra.Command, con *repl.Console) error {
 	session := con.GetInteractive()
 	path, args, output, timeout, arch, process := common.ParseFullBinaryFlags(cmd)
 	task, err := InlineShellcode(con.Rpc, session, path, args, output, timeout, arch, process)
 	if err != nil {
-		con.Log.Errorf("Execute inline shellcode error: %v", err)
-		return
+		return err
 	}
 	con.GetInteractive().Console(task, path)
+	return nil
 }
 
 func InlineShellcode(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, args []string,
@@ -63,4 +64,27 @@ func InlineShellcode(rpc clientrpc.MaliceRPCClient, sess *core.Session, path str
 		return nil, err
 	}
 	return shellcodeTask, err
+}
+
+func RegisterShellcodeFunc(con *repl.Console) {
+
+	con.RegisterImplantFunc(
+		consts.ModuleExecuteShellcode,
+		ExecShellcode,
+		"bshinject",
+		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, ppid int, arch, path string) (*clientpb.Task, error) {
+			return ExecShellcode(rpc, sess, path, nil, true, math.MaxUint32, sess.Os.Arch, "", common.NewSacrifice(int64(ppid), false, true, true, ""))
+		},
+		common.ParseAssembly,
+		nil)
+
+	con.RegisterImplantFunc(
+		consts.ModuleAliasInlineShellcode,
+		InlineShellcode,
+		"binline_shellcode",
+		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string) (*clientpb.Task, error) {
+			return InlineShellcode(rpc, sess, path, nil, true, math.MaxUint32, sess.Os.Arch, "")
+		},
+		common.ParseAssembly,
+		nil)
 }

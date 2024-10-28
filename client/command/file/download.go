@@ -10,16 +10,16 @@ import (
 	"path/filepath"
 )
 
-func DownloadCmd(cmd *cobra.Command, con *repl.Console) {
+func DownloadCmd(cmd *cobra.Command, con *repl.Console) error {
 	path := cmd.Flags().Arg(0)
 	session := con.GetInteractive()
 	task, err := Download(con.Rpc, session, path)
 	if err != nil {
-		con.Log.Errorf("Download error: %v", err)
-		return
+		return err
 	}
 
 	con.GetInteractive().Console(task, "Downloaded file "+path)
+	return nil
 }
 
 func Download(rpc clientrpc.MaliceRPCClient, session *core.Session, path string) (*clientpb.Task, error) {

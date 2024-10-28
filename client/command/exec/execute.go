@@ -1,8 +1,10 @@
 package exec
 
 import (
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
@@ -10,17 +12,17 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func ExecuteCmd(cmd *cobra.Command, con *repl.Console) {
+func ExecuteCmd(cmd *cobra.Command, con *repl.Console) error {
 	session := con.GetInteractive()
 	//token := ctx.Flags.Bool("token")
 	quiet, _ := cmd.Flags().GetBool("quiet")
 	cmdStr := shellquote.Join(cmd.Flags().Args()...)
 	task, err := Execute(con.Rpc, session, cmdStr, !quiet)
 	if err != nil {
-		con.Log.Errorf("Execute error: %v", err)
-		return
+		return err
 	}
 	con.GetInteractive().Console(task, "exec: "+cmdStr)
+	return nil
 }
 
 func Execute(rpc clientrpc.MaliceRPCClient, sess *core.Session, cmd string, output bool) (*clientpb.Task, error) {
@@ -37,4 +39,15 @@ func Execute(rpc clientrpc.MaliceRPCClient, sess *core.Session, cmd string, outp
 		return nil, err
 	}
 	return task, nil
+}
+
+func RegisterExecuteFunc(con *repl.Console) {
+	con.RegisterImplantFunc(
+		consts.ModuleExecution,
+		Execute,
+		"",
+		nil,
+		common.ParseExecResponse,
+		nil,
+	)
 }

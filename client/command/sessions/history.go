@@ -10,27 +10,26 @@ import (
 	"strconv"
 )
 
-func historyCmd(cmd *cobra.Command, con *repl.Console) {
+func historyCmd(cmd *cobra.Command, con *repl.Console) error {
 	if con.GetInteractive() == nil {
 		con.Log.Errorf("No session selected")
-		return
+		return nil
 	}
+
 	rawLen := cmd.Flags().Arg(0)
 	if rawLen == "" {
 		rawLen = "10"
 	}
 	length, err := strconv.Atoi(rawLen)
 	if err != nil {
-		con.Log.Errorf("Invalid length: %s", rawLen)
-		return
+		return err
 	}
 	contexts, err := con.Rpc.GetSessionLog(con.GetInteractive().Context(), &clientpb.SessionLog{
 		SessionId: con.GetInteractive().SessionId,
 		Limit:     int32(length),
 	})
 	if err != nil {
-		con.Log.Errorf("Failed to get session log: %v", err)
-		return
+		return err
 	}
 	log := con.ServerStatus.ObserverLog(con.GetInteractive().SessionId)
 	for _, context := range contexts.Contexts {
@@ -53,4 +52,5 @@ func historyCmd(cmd *cobra.Command, con *repl.Console) {
 			log.Consolef("%s not impl output impl\n", context.Task.Type)
 		}
 	}
+	return nil
 }

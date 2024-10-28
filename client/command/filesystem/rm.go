@@ -10,20 +10,16 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func RmCmd(cmd *cobra.Command, con *repl.Console) {
+func RmCmd(cmd *cobra.Command, con *repl.Console) error {
 	fileName := cmd.Flags().Arg(0)
-	if fileName == "" {
-		con.Log.Errorf("required arguments missing")
-		return
-	}
 	session := con.GetInteractive()
 	task, err := Rm(con.Rpc, session, fileName)
 	if err != nil {
-		con.Log.Errorf("Rm error: %v", err)
-		return
+		return err
 	}
 
 	session.Console(task, "rm "+fileName)
+	return nil
 }
 
 func Rm(rpc clientrpc.MaliceRPCClient, session *core.Session, fileName string) (*clientpb.Task, error) {

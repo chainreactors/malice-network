@@ -7,20 +7,21 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
+	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
 )
 
-func ExecuteAssemblyCmd(cmd *cobra.Command, con *repl.Console) {
+func ExecuteAssemblyCmd(cmd *cobra.Command, con *repl.Console) error {
 	session := con.GetInteractive()
 	path, args, output, _ := common.ParseBinaryFlags(cmd)
 	//output, _ := cmd.Flags().GetBool("output")
 	amsi, etw := common.ParseCLRFlags(cmd)
 	task, err := ExecAssembly(con.Rpc, session, path, args, output, amsi, etw)
 	if err != nil {
-		con.Log.Errorf("Execute error: %v", err)
-		return
+		return err
 	}
 	con.GetInteractive().Console(task, path)
+	return nil
 }
 
 func ExecAssembly(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, args []string, output, amsi, etw bool) (*clientpb.Task, error) {
@@ -34,4 +35,20 @@ func ExecAssembly(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string
 		return nil, err
 	}
 	return task, nil
+}
+
+func RegisterAssemblyFunc(con *repl.Console) {
+	con.RegisterImplantFunc(
+		consts.ModuleExecuteAssembly,
+		ExecAssembly,
+		"bexecute_assembly",
+		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, path, args string) (*clientpb.Task, error) {
+			cmdline, err := shellquote.Split(args)
+			if err != nil {
+				return nil, err
+			}
+			return ExecAssembly(rpc, sess, path, cmdline, true, true, true)
+		},
+		common.ParseAssembly,
+		nil)
 }

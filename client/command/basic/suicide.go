@@ -11,13 +11,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func SuicideCmd(cmd *cobra.Command, con *repl.Console) {
+func SuicideCmd(cmd *cobra.Command, con *repl.Console) error {
 	session := con.GetInteractive()
 	task, err := Suicide(con.Rpc, session)
 	if err != nil {
-		con.Log.Errorf("Suicide error: %v", err)
+		return err
 	}
 	session.Console(task, fmt.Sprintf("%s suicide", session.SessionId))
+	return nil
 }
 
 func Suicide(rpc clientrpc.MaliceRPCClient, session *core.Session) (*clientpb.Task, error) {

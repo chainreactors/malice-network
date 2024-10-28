@@ -19,9 +19,9 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Use:   consts.ModuleListModule,
 		Short: "List modules",
 		// Long:  help.FormatLongHelp(consts.ModuleListModule),
-		Run: func(cmd *cobra.Command, args []string) {
-			ListModulesCmd(cmd, con)
-			return
+		RunE: func(cmd *cobra.Command, args []string) error {
+
+			return ListModulesCmd(cmd, con)
 		},
 	}
 
@@ -30,9 +30,8 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Short: "Load module",
 		// Long:  help.FormatLongHelp(consts.ModuleLoadModule),
 		Args: cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			LoadModuleCmd(cmd, con)
-			return
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return LoadModuleCmd(cmd, con)
 		},
 		Example: `load module from malefic-modules
 before loading, you can list the current modules: 
@@ -59,9 +58,8 @@ execute_addon、clear 、ps、powerpic...
 		Use:   consts.ModuleRefreshModule,
 		Short: "Refresh module",
 		// Long:  help.FormatLongHelp(consts.ModuleRefreshModule),
-		Run: func(cmd *cobra.Command, args []string) {
-			RefreshModuleCmd(cmd, con)
-			return
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return RefreshModuleCmd(cmd, con)
 		},
 	}
 
@@ -69,9 +67,8 @@ execute_addon、clear 、ps、powerpic...
 		Use:   consts.ModuleClear,
 		Short: "Clear modules",
 		// Long:  help.FormatLongHelp(consts.ModuleClear),
-		Run: func(cmd *cobra.Command, args []string) {
-			ClearCmd(cmd, con)
-			return
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return ClearCmd(cmd, con)
 		},
 	}
 

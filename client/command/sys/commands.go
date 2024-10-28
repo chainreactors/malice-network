@@ -3,30 +3,23 @@ package sys
 import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
-	"github.com/chainreactors/tui"
-	"github.com/charmbracelet/bubbles/table"
 	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"strconv"
-	"strings"
 )
 
 func Commands(con *repl.Console) []*cobra.Command {
 	whoamiCmd := &cobra.Command{
 		Use:   consts.ModuleWhoami,
 		Short: "Print current user",
-		Run: func(cmd *cobra.Command, args []string) {
-			WhoamiCmd(cmd, con)
-			return
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return WhoamiCmd(cmd, con)
 		},
 		Annotations: map[string]string{
 			"depend": consts.ModuleWhoami,
+			"ttp":    "T1033",
 		},
 	}
 
@@ -34,12 +27,12 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Use:   consts.ModuleKill + " [pid]",
 		Short: "Kill the process by pid",
 		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			KillCmd(cmd, con)
-			return
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return KillCmd(cmd, con)
 		},
 		Annotations: map[string]string{
 			"depend": consts.ModuleKill,
+			"ttp":    "T1106",
 		},
 		Example: `kill the process which pid is 1234
 ~~~
@@ -53,29 +46,28 @@ kill 1234
 	psCmd := &cobra.Command{
 		Use:   consts.ModulePs,
 		Short: "List processes",
-		Run: func(cmd *cobra.Command, args []string) {
-			PsCmd(cmd, con)
-			return
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return PsCmd(cmd, con)
 		},
 		Annotations: map[string]string{
 			"depend": consts.ModulePs,
+			"ttp":    "T1057",
 		},
 	}
 
 	envCmd := &cobra.Command{
 		Use:   consts.ModuleEnv,
 		Short: "List environment variables",
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
-				EnvCmd(cmd, con)
-				return
+				return EnvCmd(cmd, con)
 			} else {
-				con.Log.Errorf("unknown cmd '%s'", args[0])
+				return fmt.Errorf("unknown cmd '%s'", args[0])
 			}
-			return
 		},
 		Annotations: map[string]string{
 			"depend": consts.ModuleEnv,
+			"ttp":    "T1134",
 		},
 	}
 
@@ -88,6 +80,7 @@ kill 1234
 		},
 		Annotations: map[string]string{
 			"depend": consts.ModuleSetEnv,
+			"ttp":    "T1134",
 		},
 		Example: `~~~
 	setenv key1 value1
@@ -102,55 +95,56 @@ kill 1234
 		Use:   consts.SubCommandName(consts.ModuleUnsetEnv) + " [env-key]",
 		Short: "Unset environment variable",
 		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			UnsetEnvCmd(cmd, con)
-			return
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return UnsetEnvCmd(cmd, con)
 		},
 		Annotations: map[string]string{
 			"depend": consts.ModuleUnsetEnv,
+			"ttp":    "T1134",
 		},
 		Example: `~~~
 	unsetenv key1
-	~~~
-	`}
+	~~~`,
+	}
 
 	common.BindArgCompletions(unSetEnvCmd, nil,
 		carapace.ActionValues().Usage("environment variable"))
 
 	envCmd.AddCommand(unSetEnvCmd, setEnvCmd)
+
 	netstatCmd := &cobra.Command{
 		Use:   consts.ModuleNetstat,
 		Short: "List network connections",
-		Run: func(cmd *cobra.Command, args []string) {
-			NetstatCmd(cmd, con)
-			return
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return NetstatCmd(cmd, con)
 		},
 		Annotations: map[string]string{
 			"depend": consts.ModuleNetstat,
+			"ttp":    "T1049",
 		},
 	}
 
 	infoCmd := &cobra.Command{
 		Use:   consts.ModuleInfo,
 		Short: "Get basic sys info",
-		Run: func(cmd *cobra.Command, args []string) {
-			InfoCmd(cmd, con)
-			return
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return InfoCmd(cmd, con)
 		},
 		Annotations: map[string]string{
 			"depend": consts.ModuleInfo,
+			"ttp":    "T1082",
 		},
 	}
 
 	bypassCmd := &cobra.Command{
 		Use:   consts.ModuleBypass,
 		Short: "Bypass AMSI and ETW",
-		Run: func(cmd *cobra.Command, args []string) {
-			BypassCmd(cmd, con)
-			return
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return BypassCmd(cmd, con)
 		},
 		Annotations: map[string]string{
 			"depend": consts.ModuleBypass,
+			"ttp":    "T1562.001",
 		},
 		Example: `
 ~~~
@@ -164,26 +158,47 @@ bypass --amsi --etw
 	})
 
 	wmiQueryCmd := &cobra.Command{
-		Use:   consts.ModuleWmiQuery,
+		Use:   consts.ModuleWmiQuery + " --namespace [namespace] --args [args...]",
 		Short: "Perform a WMI query",
+		Long:  "Executes a WMI query within the specified namespace to retrieve system information or perform administrative actions.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return WmiQueryCmd(cmd, con)
 		},
+		Annotations: map[string]string{
+			"depend": consts.ModuleWmiQuery,
+			"ttp":    "T1047",
+		},
+		Example: `Perform a WMI query in the root\\cimv2 namespace:
+  ~~~
+  wmiquery --namespace root\\cimv2 --args "SELECT * FROM Win32_Process"
+  ~~~`,
 	}
 	wmiQueryCmd.Flags().String("namespace", "", "WMI namespace (e.g., root\\cimv2)")
 	wmiQueryCmd.Flags().StringSlice("args", []string{}, "Arguments for the WMI query")
 
 	wmiExecuteCmd := &cobra.Command{
-		Use:   consts.ModuleWmiExec,
+		Use:   consts.ModuleWmiExec + " --namespace [namespace] --class_name [class_name] --method_name [method_name]",
 		Short: "Execute a WMI method",
+		Long:  "Executes a specified method within a WMI class, allowing for more complex administrative actions via WMI.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return WmiExecuteCmd(cmd, con)
 		},
+		Annotations: map[string]string{
+			"depend": consts.ModuleWmiExec,
+			"ttp":    "T1047",
+		},
+		Example: `Execute a WMI method:
+  ~~~
+  wmiexecute --namespace root\\cimv2 --class_name Win32_Process --method_name Create --params CommandLine="notepad.exe"
+  ~~~`,
 	}
-	wmiExecuteCmd.Flags().String("namespace", "", "WMI namespace (e.g., root\\cimv2)")
-	wmiExecuteCmd.Flags().String("class_name", "", "WMI class name")
-	wmiExecuteCmd.Flags().String("method_name", "", "WMI method name")
-	wmiExecuteCmd.Flags().StringToString("params", map[string]string{}, "Parameters for the WMI method")
+
+	common.BindFlag(wmiExecuteCmd, func(f *pflag.FlagSet) {
+		f.String("namespace", "", "WMI namespace (e.g., root\\cimv2)")
+		f.String("class_name", "", "WMI class name")
+		f.String("method_name", "", "WMI method name")
+		f.StringToString("params", map[string]string{}, "Parameters for the WMI method")
+	})
 
 	return []*cobra.Command{
 		whoamiCmd,
@@ -199,178 +214,12 @@ bypass --amsi --etw
 }
 
 func Register(con *repl.Console) {
-	con.RegisterImplantFunc(
-		consts.ModuleEnv,
-		Env,
-		"benv",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session) (*clientpb.Task, error) {
-			return Env(rpc, sess)
-		},
-		common.ParseKVResponse, common.FormatKVResponse)
-
-	con.RegisterImplantFunc(
-		consts.ModuleSetEnv,
-		SetEnv,
-		"bsetenv",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, envName, value string) (*clientpb.Task, error) {
-			return SetEnv(rpc, sess, envName, value)
-		},
-		common.ParseStatus,
-		nil,
-	)
-
-	con.RegisterImplantFunc(
-		consts.ModuleUnsetEnv,
-		UnSetEnv,
-		"bunsetenv",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, envName string) (*clientpb.Task, error) {
-			return UnSetEnv(rpc, sess, envName)
-		},
-		common.ParseStatus,
-		nil)
-
-	con.RegisterImplantFunc(
-		consts.ModuleInfo,
-		Info,
-		"",
-		nil,
-		func(ctx *clientpb.TaskContext) (interface{}, error) {
-			return ctx.Spite.GetBody(), nil
-		},
-		func(content *clientpb.TaskContext) (string, error) {
-			info := content.Spite.GetSysinfo()
-			var s strings.Builder
-			s.WriteString("System Info:\n")
-			s.WriteString(fmt.Sprintf("file: %s workdir: %s\n", info.Filepath, info.Workdir))
-			s.WriteString(fmt.Sprintf("os: %s arch: %s, hostname: %s, username: %s\n", info.Os.Name, info.Os.Arch, info.Os.Hostname, info.Os.Username))
-			s.WriteString(fmt.Sprintf("process: %s, pid: %d, ppid %d, args: %s\n", info.Process.Name, info.Process.Pid, info.Process.Ppid, info.Process.Args))
-			return s.String(), nil
-		})
-
-	con.RegisterImplantFunc(
-		consts.ModuleKill,
-		Kill,
-		"bkill",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, pid string) (*clientpb.Task, error) {
-			return Kill(rpc, sess, pid)
-		},
-		common.ParseStatus,
-		nil)
-
-	con.RegisterImplantFunc(
-		consts.ModuleNetstat,
-		Netstat,
-		"bnetstat",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session) (*clientpb.Task, error) {
-			return Netstat(rpc, sess)
-		},
-		func(ctx *clientpb.TaskContext) (interface{}, error) {
-			netstatSet := ctx.Spite.GetNetstatResponse()
-			var socks []string
-			for _, sock := range netstatSet.GetSocks() {
-				socks = append(socks, fmt.Sprintf("%s:%s:%s:%s:%s",
-					sock.LocalAddr,
-					sock.RemoteAddr,
-					sock.SkState,
-					sock.Pid,
-					sock.Protocol))
-			}
-			return strings.Join(socks, ","), nil
-		},
-		func(content *clientpb.TaskContext) (string, error) {
-			resp := content.Spite.GetNetstatResponse()
-			var rowEntries []table.Row
-			var row table.Row
-			tableModel := tui.NewTable([]table.Column{
-				{Title: "LocalAddr", Width: 30},
-				{Title: "RemoteAddr", Width: 30},
-				{Title: "SkState", Width: 20},
-				{Title: "Pid", Width: 7},
-				{Title: "Protocol", Width: 10},
-			}, true)
-			for _, sock := range resp.GetSocks() {
-				row = table.Row{
-					sock.LocalAddr,
-					sock.RemoteAddr,
-					sock.SkState,
-					sock.Pid,
-					sock.Protocol,
-				}
-				rowEntries = append(rowEntries, row)
-			}
-			tableModel.SetRows(rowEntries)
-			return tableModel.View(), nil
-		})
-
-	con.RegisterImplantFunc(
-		consts.ModulePs,
-		Ps,
-		"bps",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session) (*clientpb.Task, error) {
-			return Ps(rpc, sess)
-		},
-		func(ctx *clientpb.TaskContext) (interface{}, error) {
-			psSet := ctx.Spite.GetPsResponse()
-			var ps []string
-			for _, p := range psSet.GetProcesses() {
-				ps = append(ps, fmt.Sprintf("%s:%v:%v:%s:%s:%s:%s",
-					p.Name,
-					p.Pid,
-					p.Ppid,
-					p.Arch,
-					p.Owner,
-					p.Path,
-					p.Args))
-			}
-			return strings.Join(ps, ","), nil
-		},
-		func(content *clientpb.TaskContext) (string, error) {
-			resp := content.Spite.GetPsResponse()
-			var rowEntries []table.Row
-			var row table.Row
-			tableModel := tui.NewTable([]table.Column{
-				{Title: "Name", Width: 20},
-				{Title: "PID", Width: 5},
-				{Title: "PPID", Width: 5},
-				{Title: "Arch", Width: 7},
-				{Title: "Owner", Width: 7},
-				{Title: "Path", Width: 50},
-				{Title: "Args", Width: 50},
-			}, true)
-			for _, process := range resp.GetProcesses() {
-				row = table.Row{
-					process.Name,
-					strconv.Itoa(int(process.Pid)),
-					strconv.Itoa(int(process.Ppid)),
-					process.Arch,
-					process.Owner,
-					process.Path,
-					process.Args,
-				}
-				rowEntries = append(rowEntries, row)
-			}
-			tableModel.SetRows(rowEntries)
-			return tableModel.View(), nil
-		})
-
-	con.RegisterImplantFunc(
-		consts.ModuleWhoami,
-		Whoami,
-		"bwhoami",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session) (*clientpb.Task, error) {
-			return Whoami(rpc, sess)
-		},
-		common.ParseResponse,
-		nil)
-
-	con.RegisterImplantFunc(
-		consts.ModuleBypass,
-		Bypass,
-		"",
-		nil,
-		common.ParseStatus,
-		nil,
-	)
-
+	RegisterEnvFunc(con)
+	RegisterPsFunc(con)
+	RegisterNetstatFunc(con)
+	RegisterInfoFunc(con)
+	RegisterBypassFunc(con)
+	RegisterKillFunc(con)
+	RegisterWhoamiFunc(con)
 	RegisterWmiFunc(con)
 }

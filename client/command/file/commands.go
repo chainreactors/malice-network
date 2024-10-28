@@ -21,9 +21,8 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Short: "Download file",
 		Long:  "download file in implant",
 		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			DownloadCmd(cmd, con)
-			return
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return DownloadCmd(cmd, con)
 		},
 		Annotations: map[string]string{
 			"depend": consts.ModuleDownload,
@@ -42,9 +41,8 @@ download ./file.txt
 		Short: "Upload file",
 		Long:  "upload local file to remote implant",
 		Args:  cobra.ExactArgs(2),
-		Run: func(cmd *cobra.Command, args []string) {
-			UploadCmd(cmd, con)
-			return
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return UploadCmd(cmd, con)
 		},
 		Annotations: map[string]string{
 			"depend": consts.ModuleUpload,
@@ -68,9 +66,8 @@ upload ./file.txt /tmp/file.txt
 		Short: "Sync file",
 		Long:  "sync download file in server",
 		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			SyncCmd(cmd, con)
-			return
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return SyncCmd(cmd, con)
 		},
 		Example: `~~~
 sync 1

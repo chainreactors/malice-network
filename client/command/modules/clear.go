@@ -10,14 +10,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func ClearCmd(cmd *cobra.Command, con *repl.Console) {
+func ClearCmd(cmd *cobra.Command, con *repl.Console) error {
 	task, err := clearAll(con.Rpc, con.GetInteractive())
 	if err != nil {
-		con.Log.Errorf(err.Error())
-		return
+		return err
 	}
 
 	con.GetInteractive().Console(task, "clear all custom modules and exts")
+	return nil
 }
 
 func clearAll(rpc clientrpc.MaliceRPCClient, sess *core.Session) (*clientpb.Task, error) {

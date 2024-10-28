@@ -9,12 +9,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func listFiles(cmd *cobra.Command, con *repl.Console) {
+func ListFiles(cmd *cobra.Command, con *repl.Console) error {
 	resp, err := con.Rpc.GetTaskFiles(con.ActiveTarget.Context(),
 		&clientpb.Session{SessionId: con.GetInteractive().SessionId})
 	if err != nil {
-		con.Log.Errorf("Error getting tasks: %v", err)
-		return
+		return err
 	}
 	if 0 < len(resp.Files) {
 		printFiles(resp, con)
@@ -22,6 +21,7 @@ func listFiles(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Info("No files")
 	}
 
+	return nil
 }
 
 func printFiles(files *clientpb.Files, con *repl.Console) {

@@ -13,7 +13,7 @@ import (
 	"os"
 )
 
-func UploadCmd(cmd *cobra.Command, con *repl.Console) {
+func UploadCmd(cmd *cobra.Command, con *repl.Console) error {
 	path := cmd.Flags().Arg(0)
 	target := cmd.Flags().Arg(1)
 	priv, _ := cmd.Flags().GetInt("priv")
@@ -21,10 +21,11 @@ func UploadCmd(cmd *cobra.Command, con *repl.Console) {
 
 	task, err := Upload(con.Rpc, con.GetInteractive(), path, target, priv, hidden)
 	if err != nil {
-		return
+		return err
 	}
 
 	con.GetInteractive().Console(task, fmt.Sprintf("Upload %s", path))
+	return nil
 }
 
 func Upload(rpc clientrpc.MaliceRPCClient, session *core.Session, path string, target string, priv int, hidden bool) (*clientpb.Task, error) {

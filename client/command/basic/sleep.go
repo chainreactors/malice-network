@@ -11,12 +11,8 @@ import (
 	"strconv"
 )
 
-func SleepCmd(cmd *cobra.Command, con *repl.Console) {
+func SleepCmd(cmd *cobra.Command, con *repl.Console) error {
 	interval, err := strconv.Atoi(cmd.Flags().Arg(0))
-	if err != nil {
-		con.Log.Errorf("Cat error: %v", err)
-		return
-	}
 	session := con.GetInteractive()
 	jitter, _ := cmd.Flags().GetFloat64("jitter")
 	if jitter == 0 {
@@ -25,10 +21,11 @@ func SleepCmd(cmd *cobra.Command, con *repl.Console) {
 
 	task, err := Sleep(con.Rpc, session, uint64(interval), jitter)
 	if err != nil {
-		con.Log.Errorf("Sleep error: %v", err)
+		return err
 	}
 
 	session.Console(task, fmt.Sprintf("change sleep %d %f", interval, jitter))
+	return nil
 }
 
 func Sleep(rpc clientrpc.MaliceRPCClient, session *core.Session, interval uint64, jitter float64) (*clientpb.Task, error) {
