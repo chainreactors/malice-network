@@ -6,6 +6,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/helper/utils/mtls"
+	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"github.com/gofrs/uuid"
@@ -572,4 +573,45 @@ func GetProfiles() ([]models.Profile, error) {
 	var profiles []models.Profile
 	result := Session().Find(&profiles)
 	return profiles, result.Error
+}
+
+func SaveBuilder(req *clientpb.Generate) (string, error) {
+	modules := strings.Join(req.Modules, ",")
+	builder := models.Builder{
+		Name:        configs.GetRandomID(),
+		ProfileName: req.Name,
+		Target:      req.Target,
+		Type:        req.Type,
+		Stager:      req.Stager,
+		CreatedAt:   time.Now(),
+		CA:          req.Ca,
+		Modules:     modules,
+	}
+
+	paramsJson, err := json.Marshal(req.Params)
+	if err != nil {
+		return "", err
+	}
+	builder.ParamsJson = string(paramsJson)
+
+	if err := Session().Create(&builder).Error; err != nil {
+		return "", err
+
+	}
+
+	return builder.Name, nil
+}
+
+func GetBuilders() (*clientpb.Builders, error) {
+	var builders []models.Builder
+	result := Session().Preload("Profile").Find(&builders)
+	if result.Error != nil {
+		return nil, result.Error
+
+	}
+	var pbBuilders *clientpb.Builders
+	for _, builder := range builders {
+		pbBuilders.Builders = append(pbBuilders.GetBuilders(), builder.ToProtobuf())
+	}
+	return pbBuilders, nil
 }

@@ -7,7 +7,9 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/server/internal/build"
 	"github.com/chainreactors/malice-network/server/internal/configs"
+	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/docker/docker/client"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"sync"
@@ -51,21 +53,47 @@ func (rpc *Server) Generate(ctx context.Context, req *clientpb.Generate) (*clien
 	}
 	//logs.Log.Infof("config output %s", output)
 	switch req.Type {
-	case consts.CommandPE:
+	case consts.PE:
 		err = build.BuildPE(cli, req)
 		if err != nil {
 			return nil, err
 		}
 	}
+	fileName, err := db.SaveBuilder(req)
+	if err != nil {
+		logs.Log.Errorf("save builder error: %v, you can find build output in ./malice/build/target/%s/", err,
+			req.Target)
+		return nil, err
+	}
+	if fileName != "" {
+		err = build.MoveBuildOutput(req.Target, req.Type, fileName)
+		if err != nil {
+			return nil, err
+		}
+	}
 	return &clientpb.Empty{}, nil
-	//if req.Target != "" {
-	//	profile.Target = req.Target
-	//}
-	//if req.Type != "" {
-	//	profile.Type = req.Type
-	//}
-	//if len(req.Params) > 0 {
-	//	profile.Params = req.Params
-	//}
 
+}
+
+func (rpc *Server) GetBuilders(ctx context.Context, req *clientpb.Empty) (*clientpb.Builders, error) {
+	builders, err := db.GetBuilders()
+	if err != nil {
+		return nil, err
+	}
+	return builders, nil
+}
+
+func (rpc *Server) DownloadOutput(ctx context.Context, req *clientpb.Sync) (*clientpb.SyncResp, error) {
+	filePath, err := build.GetOutPutPath(req.FileId)
+	if err != nil {
+		return nil, err
+	}
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, err
+	}
+	return &clientpb.SyncResp{
+		Name:    filepath.Base(filePath),
+		Content: data,
+	}, nil
 }

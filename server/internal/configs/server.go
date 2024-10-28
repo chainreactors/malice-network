@@ -29,6 +29,8 @@ var (
 	ErrNoConfig                 = errors.New("no config found")
 	WebsitePath                 = path.Join(ServerRootPath, "web")
 	BuildPath                   = path.Join(ServerRootPath, "build")
+	TargetPath                  = path.Join(BuildPath, "target")
+	BuildOutputPath             = path.Join(BuildPath, "output")
 )
 
 func NewFileLog(filename string) *logs.Logger {
@@ -75,7 +77,7 @@ func (c *ServerConfig) Save() error {
 	return nil
 }
 
-func getRandomID() string {
+func GetRandomID() string {
 	seededRand := insecureRand.New(insecureRand.NewSource(time.Now().UnixNano()))
 	buf := make([]byte, 32)
 	seededRand.Read(buf)

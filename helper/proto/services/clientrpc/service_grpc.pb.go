@@ -118,6 +118,8 @@ const (
 	MaliceRPC_NewProfile_FullMethodName           = "/clientrpc.MaliceRPC/NewProfile"
 	MaliceRPC_GetProfiles_FullMethodName          = "/clientrpc.MaliceRPC/GetProfiles"
 	MaliceRPC_Generate_FullMethodName             = "/clientrpc.MaliceRPC/Generate"
+	MaliceRPC_DownloadOutput_FullMethodName       = "/clientrpc.MaliceRPC/DownloadOutput"
+	MaliceRPC_GetBuilders_FullMethodName          = "/clientrpc.MaliceRPC/GetBuilders"
 )
 
 // MaliceRPCClient is the client API for MaliceRPC service.
@@ -234,6 +236,8 @@ type MaliceRPCClient interface {
 	NewProfile(ctx context.Context, in *clientpb.Profile, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	GetProfiles(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Profiles, error)
 	Generate(ctx context.Context, in *clientpb.Generate, opts ...grpc.CallOption) (*clientpb.Empty, error)
+	DownloadOutput(ctx context.Context, in *clientpb.Sync, opts ...grpc.CallOption) (*clientpb.SyncResp, error)
+	GetBuilders(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Builders, error)
 }
 
 type maliceRPCClient struct {
@@ -1122,6 +1126,24 @@ func (c *maliceRPCClient) Generate(ctx context.Context, in *clientpb.Generate, o
 	return out, nil
 }
 
+func (c *maliceRPCClient) DownloadOutput(ctx context.Context, in *clientpb.Sync, opts ...grpc.CallOption) (*clientpb.SyncResp, error) {
+	out := new(clientpb.SyncResp)
+	err := c.cc.Invoke(ctx, MaliceRPC_DownloadOutput_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *maliceRPCClient) GetBuilders(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Builders, error) {
+	out := new(clientpb.Builders)
+	err := c.cc.Invoke(ctx, MaliceRPC_GetBuilders_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MaliceRPCServer is the server API for MaliceRPC service.
 // All implementations must embed UnimplementedMaliceRPCServer
 // for forward compatibility
@@ -1236,6 +1258,8 @@ type MaliceRPCServer interface {
 	NewProfile(context.Context, *clientpb.Profile) (*clientpb.Empty, error)
 	GetProfiles(context.Context, *clientpb.Empty) (*clientpb.Profiles, error)
 	Generate(context.Context, *clientpb.Generate) (*clientpb.Empty, error)
+	DownloadOutput(context.Context, *clientpb.Sync) (*clientpb.SyncResp, error)
+	GetBuilders(context.Context, *clientpb.Empty) (*clientpb.Builders, error)
 	mustEmbedUnimplementedMaliceRPCServer()
 }
 
@@ -1527,6 +1551,12 @@ func (UnimplementedMaliceRPCServer) GetProfiles(context.Context, *clientpb.Empty
 }
 func (UnimplementedMaliceRPCServer) Generate(context.Context, *clientpb.Generate) (*clientpb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Generate not implemented")
+}
+func (UnimplementedMaliceRPCServer) DownloadOutput(context.Context, *clientpb.Sync) (*clientpb.SyncResp, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DownloadOutput not implemented")
+}
+func (UnimplementedMaliceRPCServer) GetBuilders(context.Context, *clientpb.Empty) (*clientpb.Builders, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetBuilders not implemented")
 }
 func (UnimplementedMaliceRPCServer) mustEmbedUnimplementedMaliceRPCServer() {}
 
@@ -3254,6 +3284,42 @@ func _MaliceRPC_Generate_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MaliceRPC_DownloadOutput_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(clientpb.Sync)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MaliceRPCServer).DownloadOutput(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MaliceRPC_DownloadOutput_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MaliceRPCServer).DownloadOutput(ctx, req.(*clientpb.Sync))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MaliceRPC_GetBuilders_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(clientpb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MaliceRPCServer).GetBuilders(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MaliceRPC_GetBuilders_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MaliceRPCServer).GetBuilders(ctx, req.(*clientpb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // MaliceRPC_ServiceDesc is the grpc.ServiceDesc for MaliceRPC service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -3636,6 +3702,14 @@ var MaliceRPC_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Generate",
 			Handler:    _MaliceRPC_Generate_Handler,
+		},
+		{
+			MethodName: "DownloadOutput",
+			Handler:    _MaliceRPC_DownloadOutput_Handler,
+		},
+		{
+			MethodName: "GetBuilders",
+			Handler:    _MaliceRPC_GetBuilders_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

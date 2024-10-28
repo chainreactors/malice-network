@@ -1,6 +1,6 @@
 package configs
 
-type GeneratorServerConfig struct {
+type GeneratorBasicConfig struct {
 	Name     string   `yaml:"name" config:"name" default:"malefic"`
 	Urls     []string `yaml:"urls" config:"urls" default:"[]"`
 	Protocol string   `yaml:"protocol" config:"protocol" default:"tcp"`
@@ -70,6 +70,6 @@ type ModifyConfig struct {
 }
 
 type GeneratorConfig struct {
-	Server   GeneratorServerConfig `yaml:"server" config:"server"`
-	Implants ImplantsConfig        `yaml:"implants" config:"implants"`
+	Basic    GeneratorBasicConfig `yaml:"basic" config:"basic"`
+	Implants ImplantsConfig       `yaml:"implants" config:"implants"`
 }

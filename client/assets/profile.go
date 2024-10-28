@@ -23,6 +23,13 @@ var (
 		"i686-pc-windows-gnu",
 		"x86_64-pc-windows-gnu",
 	}
+
+	TypeList = []string{
+		"elf",
+		"pe",
+		"dll",
+		"shellcode",
+	}
 )
 
 type Profile struct {
