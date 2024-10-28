@@ -2,8 +2,10 @@ package build
 
 import (
 	"context"
+	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 )
@@ -13,14 +15,19 @@ var (
 	tag       = "nightly-2024-08-16-latest"
 )
 
-func BuildPE(cli *client.Client, req *clientpb.Generate) error {
+func BuildPE(cli *client.Client, req *clientpb.Generate, environs []string) error {
 	ctx := context.Background()
-
+	hostDir := configs.BuildPath
+	containerDir := "/root/src"
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
-		Image: namespace + "/" + req.Target + ":" + tag,
+		Image: fmt.Sprintf("%s/%s:%s", namespace, req.Target, tag),
 		Cmd:   []string{"cargo", "build", "--release", "--target", req.Target},
+		Env:   environs,
 	}, &container.HostConfig{
 		AutoRemove: true,
+		Binds: []string{
+			fmt.Sprintf("%s:%s", hostDir, containerDir),
+		},
 	}, nil, nil, "test-container")
 	if err != nil {
 		return err

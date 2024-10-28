@@ -2,6 +2,9 @@ package rpc
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
+	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
@@ -12,6 +15,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 )
 
@@ -21,8 +25,37 @@ var maleficConfig = "malefic_config"
 var community = "community"
 var prebuild = "prebuild"
 
-func setEnv() error {
-	return nil
+func randomString(length int) string {
+	b := make([]byte, length)
+	_, _ = rand.Read(b)
+	return base64.URLEncoding.EncodeToString(b)
+}
+
+func setEnv() []string {
+	environs := make([]string, 0)
+	// rustflag
+	rustflag := "RUSTFLAGS=-A warnings "
+	rsFiles, _ := findRSFiles(configs.BuildPath)
+	for _, rsFile := range rsFiles {
+		rustflag = rustflag + fmt.Sprintf("--remap-path-prefix=%s=%s.rs ", rsFile, randomString(12))
+	}
+	// add to environs
+	environs = append(environs, rustflag)
+	return environs
+}
+
+func findRSFiles(root string) ([]string, error) {
+	var rsFiles []string
+	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() && strings.HasSuffix(info.Name(), ".rs") {
+			rsFiles = append(rsFiles, path)
+		}
+		return nil
+	})
+	return rsFiles, err
 }
 
 func getDockerClient() (*client.Client, error) {
@@ -45,34 +78,39 @@ func (rpc *Server) Generate(ctx context.Context, req *clientpb.Generate) (*clien
 	if err != nil {
 		return nil, err
 	}
-
-	cmd := exec.Command(filepath.Join(configs.BuildPath, maleficConfig), req.Stager, community, prebuild)
+	logs.Log.Infof("start to build ...", req.Target)
+	// malefic-config
+	buildArgs := []string{req.Stager, community, prebuild}
+	switch req.Stager {
+	case "prelude":
+		buildArgs = []string{req.Stager, "autorun.yaml", community, prebuild}
+	}
+	cmd := exec.Command(filepath.Join(configs.BuildPath, maleficConfig), buildArgs[0:]...)
+	// 打印即将执行的build命令
+	logs.Log.Infof("building: %s %s", cmd.Path, strings.Join(cmd.Args, " "))
 	_, err = cmd.CombinedOutput()
 	if err != nil {
 		logs.Log.Errorf("exec failed %s", err)
 	}
-	//logs.Log.Infof("config output %s", output)
+
+	// set environs for rust compiler
+	environs := setEnv()
 	switch req.Type {
 	case consts.PE:
-		err = build.BuildPE(cli, req)
+		err = build.BuildPE(cli, req, environs)
 		if err != nil {
 			return nil, err
 		}
 	}
+
 	fileName, err := db.SaveBuilder(req)
-	if err != nil {
-		logs.Log.Errorf("save builder error: %v, you can find build output in ./malice/build/target/%s/", err,
-			req.Target)
-		return nil, err
-	}
 	if fileName != "" {
 		err = build.MoveBuildOutput(req.Target, req.Type, fileName)
-		if err != nil {
-			return nil, err
-		}
+	} else {
+		logs.Log.Errorf("save builder error: %v, you can find build output in ./malice/build/target/%s/", err,
+			req.Target)
 	}
-	return &clientpb.Empty{}, nil
-
+	return &clientpb.Empty{}, err
 }
 
 func (rpc *Server) GetBuilders(ctx context.Context, req *clientpb.Empty) (*clientpb.Builders, error) {
