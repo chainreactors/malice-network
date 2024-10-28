@@ -135,4 +135,20 @@ func Register(con *repl.Console) {
 	con.RegisterServerFunc("active", func(con *repl.Console) (*core.Session, error) {
 		return con.GetInteractive().Clone(consts.CalleeMal), nil
 	})
+
+	con.RegisterServerFunc("is64", func(session *core.Session) (bool, error) {
+		return session.Os.Arch == "x64", nil
+	})
+
+	con.RegisterServerFunc("isactive", func(sess *core.Session) (bool, error) {
+		return sess.IsAlive, nil
+	})
+
+	con.RegisterServerFunc("isadmin", func(sess *core.Session) (bool, error) {
+		return sess.IsPrivilege, nil
+	})
+
+	con.RegisterServerFunc("isbeacon", func(sess *core.Session) (bool, error) {
+		return sess.Type == consts.ImplantTypeBeacon, nil
+	})
 }

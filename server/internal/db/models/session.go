@@ -17,6 +17,7 @@ type Session struct {
 	Note        string
 	GroupName   string
 	RemoteAddr  string
+	Type        string
 	IsPrivilege bool
 	ListenerId  string
 	IsAlive     bool
@@ -41,6 +42,7 @@ func (s *Session) ToClientProtobuf() *clientpb.Session {
 	ctx := recoverFromContext(s.Context)
 
 	return &clientpb.Session{
+		Type:       s.Type,
 		SessionId:  s.SessionID,
 		ListenerId: s.ListenerId,
 		Note:       s.Note,
@@ -78,6 +80,7 @@ func (s *Session) ToRegisterProtobuf() *lispb.RegisterSession {
 
 func ConvertToSessionDB(session *core.Session) *Session {
 	return &Session{
+		Type:        session.Type,
 		SessionID:   session.ID,
 		GroupName:   "default",
 		RemoteAddr:  session.RemoteAddr,

@@ -5,6 +5,13 @@ const (
 	ImplantCobaltStrike = "cobaltstrike"
 )
 
+const (
+	ImplantTypeBeacon   = "beacon"
+	ImplantTypeBind     = "bind"
+	ImplantTypeWebshell = "webshell"
+	ImplantTypeReverse  = "ssh"
+)
+
 // release type
 type ReleaseType int
 
