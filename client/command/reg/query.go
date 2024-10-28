@@ -10,6 +10,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/spf13/cobra"
+	"strings"
 )
 
 // RegQueryCmd queries a registry key value.
@@ -42,11 +43,14 @@ func RegisterRegQueryFunc(con *repl.Console) {
 	con.RegisterImplantFunc(
 		consts.ModuleRegQuery,
 		RegQuery,
-		"",
-		nil,
-		func(content *clientpb.TaskContext) (interface{}, error) {
-			return fmt.Sprintf("Registry Query Result: %v", content.Spite.GetBody()), nil
+		"breg_queryv",
+		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, key, value, arch string) (*clientpb.Task, error) {
+			s := strings.Split(key, "\\")
+			hive := s[0]
+			path := strings.Join(s[1:], "\\")
+			return RegQuery(rpc, sess, hive, path, key)
 		},
+		common.ParseResponse,
 		nil,
 	)
 }

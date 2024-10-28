@@ -10,6 +10,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/spf13/cobra"
+	"strings"
 )
 
 // RegListKeyCmd lists the keys under a specific registry path.
@@ -49,10 +50,22 @@ func RegisterRegListFunc(con *repl.Console) {
 	con.RegisterImplantFunc(
 		consts.ModuleRegListValue,
 		RegListValue,
-		"",
-		nil,
-		common.ParseArrayResponse,
-		common.FormatArrayResponse,
+		"breq_query",
+		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, key, arch string) (*clientpb.Task, error) {
+			s := strings.Split(key, "\\")
+			hive := s[0]
+			path := strings.Join(s[1:], "\\")
+			return RegListValue(rpc, sess, hive, path)
+		},
+		func(content *clientpb.TaskContext) (interface{}, error) {
+			kv := content.Spite.GetResponse().GetKv()
+			var s strings.Builder
+			for k, v := range kv {
+				s.WriteString(fmt.Sprintf("Value: %s | Data: %s\n", k, v))
+			}
+			return s.String(), nil
+		},
+		common.FormatKVResponse,
 	)
 }
 
