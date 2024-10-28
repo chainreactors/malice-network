@@ -17,6 +17,7 @@ type Task struct {
 	Cur         int
 	Total       int
 	Description string
+	ClientName  string
 }
 
 func (t *Task) BeforeCreate(tx *gorm.DB) (err error) {
@@ -47,5 +48,6 @@ func (t *Task) ToProtobuf() *clientpb.Task {
 		Cur:         int32(t.Cur),
 		Total:       int32(t.Total),
 		Description: t.Description,
+		ClientName:  t.ClientName,
 	}
 }

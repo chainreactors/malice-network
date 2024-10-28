@@ -5,13 +5,23 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/server/rpc/generator"
+	"github.com/chainreactors/malice-network/server/internal/build"
+	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/docker/docker/client"
+	"os/exec"
+	"path/filepath"
 	"sync"
 )
 
 var dockerClient *client.Client
 var once sync.Once
+var maleficConfig = "malefic_config"
+var community = "community"
+var prebuild = "prebuild"
+
+func setEnv() error {
+	return nil
+}
 
 func getDockerClient() (*client.Client, error) {
 	var err error
@@ -29,13 +39,20 @@ func (rpc *Server) Generate(ctx context.Context, req *clientpb.Generate) (*clien
 	if err != nil {
 		return &clientpb.Empty{}, err
 	}
-	err = generator.DbToConfig(req)
+	err = build.DbToConfig(req)
 	if err != nil {
 		return nil, err
 	}
+
+	cmd := exec.Command(filepath.Join(configs.BuildPath, maleficConfig), req.Stager, community, prebuild)
+	_, err = cmd.CombinedOutput()
+	if err != nil {
+		logs.Log.Errorf("exec failed %s", err)
+	}
+	//logs.Log.Infof("config output %s", output)
 	switch req.Type {
 	case consts.CommandPE:
-		err = generator.BuildPE(cli)
+		err = build.BuildPE(cli, req)
 		if err != nil {
 			return nil, err
 		}

@@ -1,18 +1,24 @@
-package generator
+package build
 
 import (
 	"context"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 )
 
-func BuildPE(cli *client.Client) error {
+var (
+	namespace = "ghcr.io/chainreactors"
+	tag       = "nightly-2024-08-16-latest"
+)
+
+func BuildPE(cli *client.Client, req *clientpb.Generate) error {
 	ctx := context.Background()
 
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
-		Image: "nginx",
-		Cmd:   []string{"sh", "-c", "echo hello world && sleep 5"},
+		Image: namespace + "/" + req.Target + ":" + tag,
+		Cmd:   []string{"cargo", "build", "--release", "--target", req.Target},
 	}, &container.HostConfig{
 		AutoRemove: true,
 	}, nil, nil, "test-container")

@@ -50,7 +50,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Short:   "Generate",
 		GroupID: consts.GeneratorGroup,
 	}
-
+	// build beacon --format/-f exe,dll,shellcode -i 1.1.1 -m load_pe
 	peCmd := &cobra.Command{
 		Use:   consts.CommandPE,
 		Short: "Generate PE",

@@ -21,8 +21,11 @@ type Profile struct {
 	Target string // build target win64,win32,linux64
 
 	// build type
-	// pe, dll, module dll, stage0, stage1, shellcode
+	// pe,dll,shellcode
 	Type string
+
+	// shellcode prelude beacon bind
+	Stager string
 
 	Proxy     string // not impl
 	Obfuscate string // not impl, obf llvm plug ,

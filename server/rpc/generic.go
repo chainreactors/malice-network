@@ -46,7 +46,7 @@ type GenericRequest struct {
 	Callee  string
 }
 
-func (r *GenericRequest) InitSpite() (*implantpb.Spite, error) {
+func (r *GenericRequest) InitSpite(ctx context.Context) (*implantpb.Spite, error) {
 	spite := &implantpb.Spite{
 		Timeout: uint64(consts.MinTimeout.Seconds()),
 		Async:   true,
@@ -59,6 +59,8 @@ func (r *GenericRequest) InitSpite() (*implantpb.Spite, error) {
 	r.Task = r.Session.NewTask(spite.Name, r.Count)
 	r.Task.Callee = r.Callee
 	spite.TaskId = r.Task.Id
+	clientName := getClientName(ctx)
+	r.Task.ClientName = clientName
 	err = db.AddTask(r.Task)
 	if err != nil {
 		return nil, err
@@ -144,7 +146,7 @@ func buildErrorEvent(task *core.Task, err error) core.Event {
 }
 
 func (rpc *Server) GenericHandler(ctx context.Context, req *GenericRequest) (chan *implantpb.Spite, error) {
-	spite, err := req.InitSpite()
+	spite, err := req.InitSpite(ctx)
 	if err != nil {
 		logs.Log.Errorf(err.Error())
 		return nil, err
@@ -165,7 +167,7 @@ func (rpc *Server) GenericHandler(ctx context.Context, req *GenericRequest) (cha
 
 // StreamGenericHandler - Generic handler for async request/response's for beacon tasks
 func (rpc *Server) StreamGenericHandler(ctx context.Context, req *GenericRequest) (chan *implantpb.Spite, chan *implantpb.Spite, error) {
-	spite, err := req.InitSpite()
+	spite, err := req.InitSpite(ctx)
 	if err != nil {
 		logs.Log.Errorf(err.Error())
 		return nil, nil, err

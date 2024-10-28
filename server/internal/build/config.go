@@ -1,4 +1,4 @@
-package generator
+package build
 
 import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
