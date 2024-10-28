@@ -162,6 +162,9 @@ func (plug *LuaPlugin) RegisterLuaBuiltin() error {
 
 		var paramNames []string
 		for _, param := range fn.Proto.DbgLocals {
+			if strings.HasPrefix(param.Name, "_") {
+				continue
+			}
 			paramNames = append(paramNames, param.Name)
 		}
 
