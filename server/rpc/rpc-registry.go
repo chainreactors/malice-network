@@ -7,36 +7,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/types"
 )
 
-func (rpc *Server) Kill(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
-	greq, err := newGenericRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	ch, err := rpc.GenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
-	}
-
-	go greq.HandlerResponse(ch, types.MsgEmpty)
-
-	return greq.Task.ToProtobuf(), nil
-}
-
-func (rpc *Server) Ps(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
-	greq, err := newGenericRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	ch, err := rpc.GenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
-	}
-
-	go greq.HandlerResponse(ch, types.MsgPs)
-	return greq.Task.ToProtobuf(), nil
-}
-
-func (rpc *Server) Env(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
+func (rpc *Server) RegQuery(ctx context.Context, req *implantpb.RegistryRequest) (*clientpb.Task, error) {
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err
@@ -50,7 +21,7 @@ func (rpc *Server) Env(ctx context.Context, req *implantpb.Request) (*clientpb.T
 	return greq.Task.ToProtobuf(), nil
 }
 
-func (rpc *Server) SetEnv(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
+func (rpc *Server) RegAdd(ctx context.Context, req *implantpb.RegistryWriteRequest) (*clientpb.Task, error) {
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err
@@ -64,7 +35,7 @@ func (rpc *Server) SetEnv(ctx context.Context, req *implantpb.Request) (*clientp
 	return greq.Task.ToProtobuf(), nil
 }
 
-func (rpc *Server) UnsetEnv(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
+func (rpc *Server) RegDelete(ctx context.Context, req *implantpb.RegistryRequest) (*clientpb.Task, error) {
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err
@@ -78,7 +49,7 @@ func (rpc *Server) UnsetEnv(ctx context.Context, req *implantpb.Request) (*clien
 	return greq.Task.ToProtobuf(), nil
 }
 
-func (rpc *Server) Whoami(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
+func (rpc *Server) RegListKey(ctx context.Context, req *implantpb.RegistryRequest) (*clientpb.Task, error) {
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err
@@ -92,7 +63,7 @@ func (rpc *Server) Whoami(ctx context.Context, req *implantpb.Request) (*clientp
 	return greq.Task.ToProtobuf(), nil
 }
 
-func (rpc *Server) Bypass(ctx context.Context, req *implantpb.BypassRequest) (*clientpb.Task, error) {
+func (rpc *Server) RegListValue(ctx context.Context, req *implantpb.RegistryRequest) (*clientpb.Task, error) {
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err
@@ -102,6 +73,6 @@ func (rpc *Server) Bypass(ctx context.Context, req *implantpb.BypassRequest) (*c
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgEmpty)
+	go greq.HandlerResponse(ch, types.MsgResponse)
 	return greq.Task.ToProtobuf(), nil
 }

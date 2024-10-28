@@ -15,6 +15,7 @@ const (
 	MsgResponse       MsgName = "response"
 	MsgBlock          MsgName = "block"
 	MsgRegister       MsgName = "register"
+	MsgSysInfo        MsgName = "sysinfo"
 	MsgUpload         MsgName = consts.ModuleUpload
 	MsgDownload       MsgName = consts.ModuleDownload
 	MsgCurl           MsgName = consts.ModuleCurl
@@ -28,12 +29,18 @@ const (
 	MsgExecuteAddon   MsgName = consts.ModuleExecuteAddon
 	MsgExecuteLocal   MsgName = consts.ModuleExecuteLocal
 	//MsgExecuteSpawn     MsgName = "execute_spawn"
-	MsgLs      MsgName = consts.ModuleLs
-	MsgNetstat MsgName = consts.ModuleNetstat
-	MsgPs      MsgName = consts.ModulePs
-	MsgKill    MsgName = consts.ModuleKill
-	MsgBypass  MsgName = consts.ModuleBypass
-	MsgSysInfo MsgName = "sysinfo"
+	MsgLs          MsgName = consts.ModuleLs
+	MsgNetstat     MsgName = consts.ModuleNetstat
+	MsgPs          MsgName = consts.ModulePs
+	MsgKill        MsgName = consts.ModuleKill
+	MsgBypass      MsgName = consts.ModuleBypass
+	MsgRegistryAdd MsgName = consts.ModuleRegAdd
+
+	MsgServicesResponse MsgName = consts.ModuleServiceList
+	MsgServiceResponse  MsgName = consts.ModuleServiceQuery
+	MsgTaskSchdResponse MsgName = consts.ModuleTaskSchdList
+	MsgWmiQuery         MsgName = consts.ModuleWmiQuery
+	MsgWmiExecute       MsgName = consts.ModuleWmiExec
 )
 
 func (r MsgName) String() string {
@@ -85,6 +92,11 @@ func MessageType(message *implantpb.Spite) MsgName {
 		return MsgBypass
 	case *implantpb.Spite_NetstatResponse:
 		return MsgNetstat
+	case *implantpb.Spite_ServiceResponse:
+		return MsgServiceResponse
+	case *implantpb.Spite_ServicesResponse:
+		return MsgServicesResponse
+
 	default:
 		return MsgUnknown
 	}

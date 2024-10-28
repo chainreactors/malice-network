@@ -67,6 +67,24 @@ func BuildSpite(spite *implantpb.Spite, msg proto.Message) (*implantpb.Spite, er
 	case *implantpb.LoadAddon:
 		spite.Name = MsgLoadAddon.String()
 		spite.Body = &implantpb.Spite_LoadAddon{LoadAddon: msg.(*implantpb.LoadAddon)}
+	case *implantpb.RegistryRequest:
+		spite.Name = msg.(*implantpb.RegistryRequest).Type
+		spite.Body = &implantpb.Spite_RegistryRequest{RegistryRequest: msg.(*implantpb.RegistryRequest).Registry}
+	case *implantpb.RegistryWriteRequest:
+		spite.Name = MsgRegistryAdd.String()
+		spite.Body = &implantpb.Spite_RegistryWriteRequest{RegistryWriteRequest: msg.(*implantpb.RegistryWriteRequest)}
+	case *implantpb.ServiceRequest:
+		spite.Name = msg.(*implantpb.ServiceRequest).Type
+		spite.Body = &implantpb.Spite_ServiceRequest{ServiceRequest: msg.(*implantpb.ServiceRequest).Service}
+	case *implantpb.TaskScheduleRequest:
+		spite.Name = msg.(*implantpb.TaskScheduleRequest).Type
+		spite.Body = &implantpb.Spite_ScheduleRequest{ScheduleRequest: msg.(*implantpb.TaskScheduleRequest).Taskschd}
+	case *implantpb.WmiQueryRequest:
+		spite.Name = MsgWmiQuery.String()
+		spite.Body = &implantpb.Spite_WmiRequest{WmiRequest: msg.(*implantpb.WmiQueryRequest)}
+	case *implantpb.WmiMethodRequest:
+		spite.Name = MsgWmiExecute.String()
+		spite.Body = &implantpb.Spite_WmiMethodRequest{WmiMethodRequest: msg.(*implantpb.WmiMethodRequest)}
 	default:
 		return spite, ErrUnknownSpite
 	}
@@ -80,19 +98,6 @@ func BuildSpites(spites []*implantpb.Spite) *implantpb.Spites {
 func BuildOneSpites(spite *implantpb.Spite) *implantpb.Spites {
 	return BuildSpites([]*implantpb.Spite{spite})
 }
-
-//func ParseSpite(spite *implantpb.Spite) (proto.Message, error) {
-//	switch spite.Body.(type) {
-//	case *implantpb.Spite_Register:
-//		return spite.GetRegister(), nil
-//	case *implantpb.Spite_ExecResponse:
-//		return spite.GetExecResponse(), nil
-//	case *implantpb.Spite_BinaryResponse:
-//		return spite.GetBinaryResponse(), nil
-//	default:
-//		return nil, ErrUnknownSpite
-//	}
-//}
 
 func BuildPipeline(msg proto.Message, tls proto.Message) *lispb.Pipeline {
 	var pipeline = &lispb.Pipeline{}

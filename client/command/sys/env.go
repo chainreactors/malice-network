@@ -1,6 +1,7 @@
 package sys
 
 import (
+	"fmt"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -30,20 +31,21 @@ func Env(rpc clientrpc.MaliceRPCClient, session *core.Session) (*clientpb.Task, 
 	return task, err
 }
 
-func SetEnvCmd(cmd *cobra.Command, con *repl.Console) {
+func SetEnvCmd(cmd *cobra.Command, con *repl.Console) error {
 	envName := cmd.Flags().Arg(0)
 	value := cmd.Flags().Arg(1)
 	if envName == "" || value == "" {
 		con.Log.Errorf("required arguments missing")
-		return
+		return fmt.Errorf("required arguments missing")
 	}
 	session := con.GetInteractive()
 	task, err := SetEnv(con.Rpc, session, envName, value)
 	if err != nil {
-		return
+		return err
 	}
 
 	session.Console(task, "setenv "+envName+" "+value)
+	return nil
 }
 
 func SetEnv(rpc clientrpc.MaliceRPCClient, session *core.Session, envName, value string) (*clientpb.Task, error) {

@@ -1,5 +1,7 @@
 package consts
 
+import "strings"
+
 var (
 	ModuleAliases = map[string]string{
 		ModuleAliasInlineShellcode: ModuleExecuteShellcode,
@@ -23,7 +25,13 @@ var (
 
 // client module and command
 const (
-	ModuleExplore              = "explorer"
+	// internal
+	ModuleClear      = "clear"
+	ModuleCancelTask = "cancel_task"
+	ModuleSleep      = "sleep"
+	ModuleSuicide    = "suicide"
+
+	//execute
 	ModuleAliasShell           = "shell"
 	ModuleAliasPowershell      = "powershell"
 	ModuleExecution            = "exec"
@@ -53,23 +61,63 @@ const (
 	ModuleKill                 = "kill"
 	ModuleWhoami               = "whoami"
 	ModuleEnv                  = "env"
-	ModuleSetEnv               = "set"
-	ModuleUnsetEnv             = "unset"
-	ModuleInfo                 = "info"
-	ModuleNetstat              = "netstat"
-	ModuleBypass               = "bypass"
-	ModuleCurl                 = "curl"
-	ModuleListModule           = "list_module"
-	ModuleLoadModule           = "load_module"
-	ModuleRefreshModule        = "refresh_module"
-	ModuleListAddon            = "list_addon"
-	ModuleLoadAddon            = "load_addon"
-	ModuleExecuteAddon         = "execute_addon"
-	ModuleClear                = "clear"
-	ModuleCancelTask           = "cancel_task"
-	ModuleSleep                = "sleep"
-	ModuleSuicide              = "suicide"
+	ModuleSetEnv               = "env_set"
+	ModuleUnsetEnv             = "env_unset"
+
+	ModuleInfo    = "info"
+	ModuleNetstat = "netstat"
+	ModuleBypass  = "bypass"
+	ModuleCurl    = "curl"
+
+	// module
+	ModuleListModule    = "list_module"
+	ModuleLoadModule    = "load_module"
+	ModuleRefreshModule = "refresh_module"
+
+	// addon
+	ModuleListAddon    = "list_addon"
+	ModuleLoadAddon    = "load_addon"
+	ModuleExecuteAddon = "execute_addon"
+
+	// registry
+	ModuleRegQuery     = "reg_query"
+	ModuleRegAdd       = "reg_add"
+	ModuleRegDelete    = "reg_delete"
+	ModuleRegListKey   = "reg_list_key"
+	ModuleRegListValue = "reg_list_value"
+
+	// service
+	ModuleServiceList   = "service_list"
+	ModuleServiceCreate = "service_create"
+	ModuleServiceQuery  = "service_query"
+	ModuleServiceStart  = "service_start"
+	ModuleServiceStop   = "service_stop"
+
+	// taskschd
+	ModuleTaskSchdList   = "taskschd_list"
+	ModuleTaskSchdCreate = "taskschd_create"
+	ModuleTaskSchdQuery  = "taskschd_query"
+	ModuleTaskSchdStart  = "taskschd_start"
+	ModuleTaskSchdStop   = "taskschd_stop"
+	ModuleTaskSchdDelete = "taskschd_delete"
+
+	// wmi
+	ModuleWmiQuery = "wmi_query"
+	ModuleWmiExec  = "wmi_execute"
+	// privilege
+	ModuleRunas     = "runas"
+	ModulePrivs     = "privs"
+	ModuleGetSystem = "getsystem"
 )
+
+func SubCommandName(module string) string {
+	i := strings.Index(module, "_")
+	if i == -1 {
+		return module
+	} else {
+		return module[i+1:]
+	}
+}
 
 const (
 	CommandLogin            = "login"
@@ -77,6 +125,7 @@ const (
 	CommandSessions         = "sessions"
 	CommandTasks            = "tasks"
 	CommandFiles            = "files"
+	CommandExplore          = "explorer"
 	CommandNote             = "note"
 	CommandGroup            = "group"
 	CommandObverse          = "obverse"
@@ -123,6 +172,9 @@ const (
 	CommandShellCode        = "shellcode"
 	CommandDownload         = "download"
 	CommandProfile          = "profile"
+	CommandReg              = "reg"
+	CommandService          = "service"
+	CommandTaskSchd         = "taskschd"
 )
 
 // task error

@@ -152,18 +152,18 @@ func (c *Console) SwitchImplant(sess *core.Session) {
 
 func (c *Console) RegisterImplantFunc(name string, fn interface{},
 	bname string, bfn interface{}, // return to plugin
-	funcCallback ImplantFuncCallback, callback intermediate.ImplantCallback) {
+	internalCallback ImplantFuncCallback, callback intermediate.ImplantCallback) {
 
 	if callback == nil {
-		callback = WrapClientCallback(funcCallback)
+		callback = WrapClientCallback(internalCallback)
 	}
 
 	if fn != nil {
-		intermediate.RegisterInternalFunc(intermediate.BuiltinPackage, name, WrapImplantFunc(c, fn, funcCallback), callback)
+		intermediate.RegisterInternalFunc(intermediate.BuiltinPackage, name, WrapImplantFunc(c, fn, internalCallback), callback)
 	}
 
 	if bfn != nil {
-		intermediate.RegisterInternalFunc(intermediate.BeaconPackage, bname, WrapImplantFunc(c, bfn, funcCallback), callback)
+		intermediate.RegisterInternalFunc(intermediate.BeaconPackage, bname, WrapImplantFunc(c, bfn, internalCallback), callback)
 	}
 }
 
