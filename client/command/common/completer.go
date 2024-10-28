@@ -213,6 +213,27 @@ func JobsComplete(con *repl.Console, cmd *cobra.Command, use string) carapace.Ac
 	return carapace.ActionCallback(callback)
 }
 
+func TargetComplete(con *repl.Console) carapace.Action {
+	callback := func(c carapace.Context) carapace.Action {
+		results := make([]string, 0)
+		for _, s := range assets.TargetList {
+			results = append(results, s, fmt.Sprintf("build target"))
+		}
+		return carapace.ActionValuesDescribed(results...).Tag("build")
+	}
+	return carapace.ActionCallback(callback)
+}
+
+func TypeComplete(con *repl.Console) carapace.Action {
+	callback := func(c carapace.Context) carapace.Action {
+		results := make([]string, 0)
+		for _, s := range assets.TypeList {
+			results = append(results, s, fmt.Sprintf("build type"))
+		}
+		return carapace.ActionValuesDescribed(results...).Tag("build")
+	}
+	return carapace.ActionCallback(callback)
+}
 func ProfileComplete(con *repl.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)

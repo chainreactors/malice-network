@@ -78,18 +78,26 @@ func ParsePipelineFlags(cmd *cobra.Command) (string, string, uint, string, strin
 }
 
 func GenerateFlagSet(f *pflag.FlagSet) {
-	f.String("url", "", "build url")
+	f.String("profile_name", "", "profile name")
+	f.StringP("ip", "i", "", "build ip")
+	f.StringP("format", "f", "", "build type")
 	f.String("target", "", "build target")
+	f.String("ca", "", "Set ca")
 	f.String("interval", "10", "interval")
+	f.StringSliceP("modules", "m", []string{}, "Set modules e.g.: execute_exe,execute_dll")
 	f.String("jitter", "5", "jitter")
 }
 
-func ParseGenerateFlags(cmd *cobra.Command) (string, string, string, string) {
-	url, _ := cmd.Flags().GetString("url")
+func ParseGenerateFlags(cmd *cobra.Command) (string, string, string, string, []string, string, string, string) {
+	name, _ := cmd.Flags().GetString("profile_name")
+	url, _ := cmd.Flags().GetString("ip")
 	target, _ := cmd.Flags().GetString("target")
+	buildType, _ := cmd.Flags().GetString("format")
+	modules, _ := cmd.Flags().GetStringSlice("modules")
+	ca, _ := cmd.Flags().GetString("ca")
 	interval, _ := cmd.Flags().GetString("interval")
 	jitter, _ := cmd.Flags().GetString("jitter")
-	return url, target, interval, jitter
+	return name, url, target, buildType, modules, ca, interval, jitter
 }
 
 func ProfileSet(f *pflag.FlagSet) {

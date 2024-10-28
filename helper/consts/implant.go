@@ -62,6 +62,16 @@ var ArchMap = map[string]Arch{
 	"mips":  Mips,
 }
 
+const (
+	ELF           = "elf"
+	PE            = "pe"
+	DLL           = "dll"
+	Shellcode     = ".shellcode"
+	PEFile        = ".exe"
+	ShellcodeFile = ".bin"
+	DllFile       = ".dll"
+)
+
 var (
 	WindowsVer = map[string]string{
 		"5.0.2195": "2000",

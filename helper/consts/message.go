@@ -116,12 +116,12 @@ const (
 	CommandRegister         = "register"
 	CommandPipelineStart    = "start"
 	CommandPipelineStop     = "stop"
-	CommandGenerate         = "generate"
-	CommandPE               = "pe"
-	CommandModule           = "module"
-	CommandStage0           = "stage0"
-	CommandStage1           = "stage1"
+	CommandBuild            = "build"
+	CommandPrelude          = "prelude"
+	CommandBeacon           = "beacon"
+	CommandBind             = "bind"
 	CommandShellCode        = "shellcode"
+	CommandDownload         = "download"
 	CommandProfile          = "profile"
 )
 

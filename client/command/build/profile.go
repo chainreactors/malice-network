@@ -1,4 +1,4 @@
-package generate
+package build
 
 import (
 	"context"
@@ -13,11 +13,10 @@ import (
 	"strings"
 )
 
-func ProfileShowCmd(cmd *cobra.Command, con *repl.Console) {
+func ProfileShowCmd(cmd *cobra.Command, con *repl.Console) error {
 	resp, err := con.Rpc.GetProfiles(context.Background(), &clientpb.Empty{})
 	if err != nil {
-		con.Log.Errorf("get profiles failed: %s", err)
-		return
+		return err
 	}
 	var rowEntries []table.Row
 	var row table.Row
@@ -41,9 +40,10 @@ func ProfileShowCmd(cmd *cobra.Command, con *repl.Console) {
 	}
 	tableModel.SetRows(rowEntries)
 	fmt.Printf(tableModel.View())
+	return nil
 }
 
-func ProfileNewCmd(cmd *cobra.Command, con *repl.Console) {
+func ProfileNewCmd(cmd *cobra.Command, con *repl.Console) error {
 	profileName, pipelineName, buildTarget, buildType, proxy, obfuscate,
 		modules, ca, interval, jitter := common.ParseProfileFlags(cmd)
 
@@ -56,8 +56,7 @@ func ProfileNewCmd(cmd *cobra.Command, con *repl.Console) {
 
 	paramsJson, err := json.Marshal(params)
 	if err != nil {
-		con.Log.Errorf("json marshal failed: %s", err)
-		return
+		return err
 	}
 	if profileName == "" {
 		profileName = fmt.Sprintf("%s-%s", buildTarget, profileName)
@@ -75,8 +74,8 @@ func ProfileNewCmd(cmd *cobra.Command, con *repl.Console) {
 	}
 	_, err = con.Rpc.NewProfile(context.Background(), profile)
 	if err != nil {
-		con.Log.Errorf("new profile failed: %s", err)
-		return
+		return err
 	}
 	con.Log.Infof("New profile %s success", profileName)
+	return nil
 }
