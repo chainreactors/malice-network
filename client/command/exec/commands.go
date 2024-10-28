@@ -9,15 +9,10 @@ import (
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/encoders/hash"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/utils/pe"
-	"github.com/kballard/go-shellquote"
 	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"math"
 )
 
 func Commands(con *repl.Console) []*cobra.Command {
@@ -26,9 +21,8 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Short: "Execute commands",
 		Long:  `Exec implant local executable file`,
 		Args:  cobra.MinimumNArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			ExecuteCmd(cmd, con)
-			return
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return ExecuteCmd(cmd, con)
 		},
 		Annotations: map[string]string{
 			"depend": consts.ModuleExecution,
@@ -57,8 +51,8 @@ exec gogo.exe -- -i 127.0.0.1 -p http
 		Long: `
 Execute local PE on sacrifice process, support spoofing process arguments, spoofing ppid, block-dll, disable etw
 		`,
-		Run: func(cmd *cobra.Command, args []string) {
-			ExecuteLocalCmd(cmd, con)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return ExecuteLocalCmd(cmd, con)
 		},
 		Args: cobra.MinimumNArgs(1),
 		Annotations: map[string]string{
@@ -81,8 +75,8 @@ execute_local local_exe --ppid 1234 --block_dll --etw --argue "argue"
 		Short: "Execute cmd",
 		Long:  `equal: exec cmd /c "[cmdline]"`,
 		Args:  cobra.MinimumNArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			ShellCmd(cmd, con)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return ShellCmd(cmd, con)
 		},
 		Annotations: map[string]string{
 			"depend": consts.ModuleExecution,
@@ -104,8 +98,8 @@ execute_local local_exe --ppid 1234 --block_dll --etw --argue "argue"
 		Short: "Execute cmd with powershell",
 		Long:  `equal: powershell.exe -ExecutionPolicy Bypass -w hidden -nop "[cmdline]"`,
 		Args:  cobra.MinimumNArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			PowershellCmd(cmd, con)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return PowershellCmd(cmd, con)
 		},
 		Annotations: map[string]string{
 			"depend": consts.ModuleExecution,
@@ -130,9 +124,8 @@ Load CLR assembly in implant process(will not create new process)
 if return 0x80004005, please use --amsi bypass.
 `,
 		Args: cobra.MinimumNArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			ExecuteAssemblyCmd(cmd, con)
-			return
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return ExecuteAssemblyCmd(cmd, con)
 		},
 		Annotations: map[string]string{
 			"depend": consts.ModuleExecuteAssembly,
@@ -161,9 +154,8 @@ execute-assembly --amsi potato.exe -- -cmd "cmd /c whoami"
 
 In the future, configurable shellcode injection settings will be provided, along with Donut, SGN, SRDI, etc.`,
 		Args: cobra.MinimumNArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			ExecuteShellcodeCmd(cmd, con)
-			return
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return ExecuteShellcodeCmd(cmd, con)
 		},
 		Annotations: map[string]string{
 			"depend": consts.ModuleExecuteShellcode,
@@ -191,9 +183,8 @@ The current shellcode injection method uses APC.
 	inline execute shellcode may cause the implant to crash, please use with caution.
 `,
 		Args: cobra.MinimumNArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			InlineShellcodeCmd(cmd, con)
-			return
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return InlineShellcodeCmd(cmd, con)
 		},
 		Annotations: map[string]string{
 			"depend": consts.ModuleExecuteShellcode,
@@ -216,9 +207,8 @@ inline_shellcode example.bin
 use a custom Headless PE loader to load DLL in the sacrificed process.
 `,
 		Args: cobra.MinimumNArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			ExecuteDLLCmd(cmd, con)
-			return
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return ExecuteDLLCmd(cmd, con)
 		},
 		Annotations: map[string]string{
 			"depend": consts.ModuleExecuteDll,
@@ -254,9 +244,8 @@ use a custom Headless PE loader to load DLL in the current process.
 	inline execute dll may cause the implant to crash, please use with caution.
 `,
 		Args: cobra.MinimumNArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			InlineDLLCmd(cmd, con)
-			return
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return InlineDLLCmd(cmd, con)
 		},
 		Annotations: map[string]string{
 			"depend": consts.ModuleExecuteDll,
@@ -283,9 +272,8 @@ inline_dll example.dll -e RunFunction -- arg1 arg2
 		Short: "Executes the given PE in the sacrifice process",
 		Long:  `use a custom Headless PE loader to load EXE in the sacrificed process.`,
 		Args:  cobra.MinimumNArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			ExecuteExeCmd(cmd, con)
-			return
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return ExecuteExeCmd(cmd, con)
 		},
 		Annotations: map[string]string{
 			"depend": consts.ModuleExecuteExe,
@@ -315,9 +303,8 @@ use a custom Headless PE loader to load EXE in the current process.
 	if double run same exe, More likely to crash
 `,
 		Args: cobra.MinimumNArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			InlineExeCmd(cmd, con)
-			return
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return InlineExeCmd(cmd, con)
 		},
 		Annotations: map[string]string{
 			"depend": consts.ModuleExecuteExe,
@@ -347,9 +334,8 @@ Arguments for the BOF can be passed after the -- delimiter. Each argument must b
 * bin - A base64-encoded binary blob
 `,
 		Args: cobra.MinimumNArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			ExecuteBofCmd(cmd, con)
-			return
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return ExecuteBofCmd(cmd, con)
 		},
 		Annotations: map[string]string{
 			"depend": consts.ModuleExecuteBof,
@@ -367,9 +353,8 @@ bof dir.x64.o -- wstr:"C:\\Windows\\System32"
 	powerpickCmd := &cobra.Command{
 		Use:   consts.ModulePowerpick + " [args]",
 		Short: "unmanaged powershell on implant process (Windows Only)",
-		Run: func(cmd *cobra.Command, args []string) {
-			ExecutePowershellCmd(cmd, con)
-			return
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return ExecutePowershellCmd(cmd, con)
 		},
 		Annotations: map[string]string{
 			"depend": consts.ModulePowerpick,
@@ -410,179 +395,15 @@ powerpick -s powerview.ps1 -- Get-NetUser
 }
 
 func Register(con *repl.Console) {
-	con.RegisterImplantFunc(
-		consts.ModuleAliasShell,
-		Shell,
-		"bshell",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, cmd string) (*clientpb.Task, error) {
-			return Shell(rpc, sess, cmd, true)
-		},
-		common.ParseExecResponse,
-		nil,
-	)
-
-	con.RegisterImplantFunc(
-		consts.ModuleExecution,
-		Execute,
-		"",
-		nil,
-		common.ParseExecResponse,
-		nil,
-	)
-
-	con.RegisterImplantFunc(
-		consts.ModuleAliasPowershell,
-		Powershell,
-		"bpowershell",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, cmdline string) (*clientpb.Task, error) {
-			return Powershell(rpc, sess, cmdline, true)
-		},
-		common.ParseExecResponse,
-		nil,
-	)
-
-	con.RegisterImplantFunc(
-		consts.ModuleExecuteAssembly,
-		ExecAssembly,
-		"bexecute_assembly",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, path, args string) (*clientpb.Task, error) {
-			cmdline, err := shellquote.Split(args)
-			if err != nil {
-				return nil, err
-			}
-			return ExecAssembly(rpc, sess, path, cmdline, true, true, true)
-		},
-		common.ParseAssembly,
-		nil)
-
-	con.RegisterImplantFunc(
-		consts.ModuleExecuteShellcode,
-		ExecShellcode,
-		"bshinject",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, ppid int, arch, path string) (*clientpb.Task, error) {
-			return ExecShellcode(rpc, sess, path, nil, true, math.MaxUint32, sess.Os.Arch, "", common.NewSacrifice(int64(ppid), false, true, true, ""))
-		},
-		common.ParseAssembly,
-		nil)
-
-	con.RegisterImplantFunc(
-		consts.ModuleAliasInlineShellcode,
-		InlineShellcode,
-		"binline_shellcode",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string) (*clientpb.Task, error) {
-			return InlineShellcode(rpc, sess, path, nil, true, math.MaxUint32, sess.Os.Arch, "")
-		},
-		common.ParseAssembly,
-		nil)
-
-	con.RegisterImplantFunc(
-		consts.ModuleExecuteDll,
-		ExecDLL,
-		"bdllinject",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, ppid int, path string) (*clientpb.Task, error) {
-			sac, _ := intermediate.NewSacrificeProcessMessage(int64(ppid), false, true, true, "")
-			return ExecDLL(rpc, sess, path, "DLLMain", nil, true, math.MaxUint32, sess.Os.Arch, "", sac)
-		},
-		common.ParseAssembly,
-		nil)
-
-	con.RegisterImplantFunc(
-		consts.ModuleAliasInlineDll,
-		InlineDLL,
-		"binline_dll",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, path, entryPoint string, args string) (*clientpb.Task, error) {
-			param, err := shellquote.Split(args)
-			if err != nil {
-				return nil, err
-			}
-			return InlineDLL(rpc, sess, path, entryPoint, param, true, math.MaxUint32, sess.Os.Arch, "")
-		},
-		common.ParseAssembly,
-		nil)
-
-	con.RegisterImplantFunc(
-		consts.ModuleExecuteExe,
-		ExecExe,
-		"bexecute_exe",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, args string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
-			cmdline, err := shellquote.Split(args)
-			if err != nil {
-				return nil, err
-			}
-			return ExecExe(rpc, sess, path, cmdline, true, math.MaxUint32, sess.Os.Arch, "", sac)
-		},
-		common.ParseAssembly,
-		nil)
-
-	con.RegisterImplantFunc(
-		consts.ModuleAliasInlineExe,
-		InlineExe,
-		"binline_exe",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, args string) (*clientpb.Task, error) {
-			param, err := shellquote.Split(args)
-			if err != nil {
-				return nil, err
-			}
-			return InlineExe(rpc, sess, path, param, true, math.MaxUint32, sess.Os.Arch, "")
-		},
-		common.ParseAssembly,
-		nil)
-
-	con.RegisterImplantFunc(
-		consts.ModuleExecuteBof,
-		ExecBof,
-		"binline_execute",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, args string) (*clientpb.Task, error) {
-			cmdline, err := shellquote.Split(args)
-			if err != nil {
-				return nil, err
-			}
-			return ExecBof(rpc, sess, path, cmdline, true)
-		},
-		common.ParseBOFResponse,
-		func(content *clientpb.TaskContext) (string, error) {
-			bofResps, err := common.ParseBOFResponse(content)
-			if err != nil {
-				return "", err
-			}
-
-			return bofResps.(pe.BOFResponses).String(), nil
-		})
-
-	con.RegisterImplantFunc(
-		consts.ModulePowerpick,
-		PowerPick,
-		"bpowerpick",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, script string, ps string) (*clientpb.Task, error) {
-			cmdline, err := shellquote.Split(ps)
-			if err != nil {
-				return nil, err
-			}
-			return PowerPick(rpc, sess, script, cmdline, true, true)
-		},
-		common.ParseAssembly,
-		nil)
-
-	con.RegisterImplantFunc(
-		consts.ModuleExecuteLocal,
-		ExecLocal,
-		"bexecute",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, cmdline string) (*clientpb.Task, error) {
-			args, err := shellquote.Split(cmdline)
-			if err != nil {
-				return nil, err
-			}
-			return ExecLocal(rpc, sess, args, true, "", &implantpb.SacrificeProcess{
-				Hidden:   false,
-				BlockDll: false,
-				Etw:      false,
-				Ppid:     0,
-				Argue:    "",
-			})
-		},
-		common.ParseExecResponse,
-		nil,
-	)
+	RegisterExecuteFunc(con)
+	RegisterExecuteLocalFunc(con)
+	RegisterPowershellFunc(con)
+	RegisterShellFunc(con)
+	RegisterAssemblyFunc(con)
+	RegisterShellcodeFunc(con)
+	RegisterDLLFunc(con)
+	RegisterExeFunc(con)
+	RegisterBofFunc(con)
 
 	con.RegisterServerFunc("callback_bof", func(con *repl.Console, sess *core.Session) (intermediate.BuiltinCallback, error) {
 		return func(content interface{}) (bool, error) {

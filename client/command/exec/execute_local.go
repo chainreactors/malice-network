@@ -4,26 +4,28 @@ import (
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/utils/file"
+	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
 	"strings"
 )
 
 // ExecuteLocalCmd - Execute local PE on sacrifice process
-func ExecuteLocalCmd(cmd *cobra.Command, con *repl.Console) {
+func ExecuteLocalCmd(cmd *cobra.Command, con *repl.Console) error {
 	args := cmd.Flags().Args()
 	process, _ := cmd.Flags().GetString("process")
 	output, _ := cmd.Flags().GetBool("output")
 	sac, _ := common.ParseSacrificeFlags(cmd)
 	task, err := ExecLocal(con.Rpc, con.GetInteractive(), args, output, process, sac)
 	if err != nil {
-		con.Log.Errorf("Execute EXE error: %v", err)
-		return
+		return err
 	}
 	con.GetInteractive().Console(task, strings.Join(args, " "))
+	return nil
 }
 
 func ExecLocal(rpc clientrpc.MaliceRPCClient, sess *core.Session,
@@ -46,4 +48,27 @@ func ExecLocal(rpc clientrpc.MaliceRPCClient, sess *core.Session,
 		return nil, err
 	}
 	return task, nil
+}
+
+func RegisterExecuteLocalFunc(con *repl.Console) {
+	con.RegisterImplantFunc(
+		consts.ModuleExecuteLocal,
+		ExecLocal,
+		"bexecute",
+		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, cmdline string) (*clientpb.Task, error) {
+			args, err := shellquote.Split(cmdline)
+			if err != nil {
+				return nil, err
+			}
+			return ExecLocal(rpc, sess, args, true, "", &implantpb.SacrificeProcess{
+				Hidden:   false,
+				BlockDll: false,
+				Etw:      false,
+				Ppid:     0,
+				Argue:    "",
+			})
+		},
+		common.ParseExecResponse,
+		nil,
+	)
 }

@@ -2,19 +2,18 @@ package sessions
 
 import (
 	"context"
-	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/spf13/cobra"
 )
 
-func groupCmd(cmd *cobra.Command, con *repl.Console) {
+func groupCmd(cmd *cobra.Command, con *repl.Console) error {
 	sid := cmd.Flags().Arg(1)
 	group := cmd.Flags().Arg(0)
 
 	if con.GetInteractive() == nil && sid == "" {
 		con.Log.Errorf("No session selected")
-		return
+		return nil
 	} else if sid == "" && con.GetInteractive() != nil {
 		sid = con.GetInteractive().Session.GetSessionId()
 	}
@@ -25,9 +24,9 @@ func groupCmd(cmd *cobra.Command, con *repl.Console) {
 		Arg:       group,
 	})
 	if err != nil {
-		logs.Log.Errorf("Session error: %v", err)
-		return
+		return err
 	}
 	con.UpdateSession(sid)
 	con.Log.Infof("update %s group to %s", sid, group)
+	return nil
 }

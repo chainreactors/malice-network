@@ -10,14 +10,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func ListModulesCmd(cmd *cobra.Command, con *repl.Console) {
+func ListModulesCmd(cmd *cobra.Command, con *repl.Console) error {
 	session := con.GetInteractive()
 	task, err := ListModules(con.Rpc, session)
 	if err != nil {
-		con.Log.Errorf("ListModules error: %v", err)
-		return
+		return err
 	}
 	session.Console(task, "list modules")
+	return nil
 }
 
 func ListModules(rpc clientrpc.MaliceRPCClient, session *core.Session) (*clientpb.Task, error) {

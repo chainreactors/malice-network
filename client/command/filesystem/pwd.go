@@ -10,15 +10,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func PwdCmd(cmd *cobra.Command, con *repl.Console) {
+func PwdCmd(cmd *cobra.Command, con *repl.Console) error {
 	session := con.GetInteractive()
 	task, err := Pwd(con.Rpc, session)
 	if err != nil {
-		con.Log.Errorf("Pwd error: %v", err)
-		return
+		return err
 	}
 
 	session.Console(task, "pwd")
+	return nil
 }
 
 func Pwd(rpc clientrpc.MaliceRPCClient, session *core.Session) (*clientpb.Task, error) {

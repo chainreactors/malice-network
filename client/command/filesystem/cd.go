@@ -10,19 +10,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func CdCmd(cmd *cobra.Command, con *repl.Console) {
+func CdCmd(cmd *cobra.Command, con *repl.Console) error {
 	path := cmd.Flags().Arg(0)
-	if path == "" {
-		con.Log.Errorf("required arguments missing")
-		return
-	}
 	task, err := Cd(con.Rpc, con.GetInteractive(), path)
 	if err != nil {
-		con.Log.Errorf("Cd error: %v", err)
-		return
+		return err
 	}
 
 	con.GetInteractive().Console(task, "cd "+path)
+	return nil
 }
 
 func Cd(rpc clientrpc.MaliceRPCClient, session *core.Session, path string) (*clientpb.Task, error) {

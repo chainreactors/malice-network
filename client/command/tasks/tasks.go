@@ -11,11 +11,10 @@ import (
 	"strconv"
 )
 
-func listTasks(cmd *cobra.Command, con *repl.Console) {
+func ListTasks(cmd *cobra.Command, con *repl.Console) error {
 	err := con.UpdateTasks(con.GetInteractive())
 	if err != nil {
-		con.Log.Errorf("Error updating tasks: %v", err)
-		return
+		return err
 	}
 	isAll, _ := cmd.Flags().GetBool("all")
 	tasks := con.GetInteractive().Tasks.GetTasks()
@@ -24,6 +23,7 @@ func listTasks(cmd *cobra.Command, con *repl.Console) {
 	} else {
 		con.Log.Info("No tasks")
 	}
+	return nil
 }
 
 func printTasks(tasks []*clientpb.Task, con *repl.Console, isAll bool) {

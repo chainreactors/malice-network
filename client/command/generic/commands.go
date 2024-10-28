@@ -18,11 +18,8 @@ func Commands(con *repl.Console) []*cobra.Command {
 	loginCmd := &cobra.Command{
 		Use:   consts.CommandLogin,
 		Short: "Login to server",
-		Run: func(cmd *cobra.Command, args []string) {
-			err := LoginCmd(cmd, con)
-			if err != nil {
-				con.App.Printf("Error login server: %s", err)
-			}
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return LoginCmd(cmd, con)
 		},
 	}
 

@@ -12,9 +12,8 @@ func Commands(con *repl.Console) []*cobra.Command {
 	taskCmd := &cobra.Command{
 		Use:   consts.CommandTasks,
 		Short: "List tasks",
-		Run: func(cmd *cobra.Command, args []string) {
-			listTasks(cmd, con)
-			return
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return ListTasks(cmd, con)
 		},
 	}
 
@@ -25,9 +24,8 @@ func Commands(con *repl.Console) []*cobra.Command {
 	fileCmd := &cobra.Command{
 		Use:   consts.CommandFiles,
 		Short: "List all downloaded files.",
-		Run: func(cmd *cobra.Command, args []string) {
-			listFiles(cmd, con)
-			return
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return ListFiles(cmd, con)
 		},
 	}
 
@@ -35,9 +33,8 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Use:   consts.ModuleCancelTask + " [task_id]",
 		Short: "Cancel a task by task_id",
 		Args:  cobra.MinimumNArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			CancelTaskCmd(cmd, con)
-			return
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return CancelTaskCmd(cmd, con)
 		},
 		Example: `~~~
 cancel_task <task_id>

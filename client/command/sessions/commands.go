@@ -65,9 +65,8 @@ note newNote
 		Long: `Add a session to a group. If the group does not exist, it will be created.
 When using an active session, only provide the group name.`,
 		Args: cobra.MaximumNArgs(2),
-		Run: func(cmd *cobra.Command, args []string) {
-			groupCmd(cmd, con)
-			return
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return groupCmd(cmd, con)
 		},
 		Example: `~~~
 // Add a session to a group
@@ -89,8 +88,8 @@ group newGroup
 		Short: "del session",
 		Long:  "Del a specified session.",
 		Args:  cobra.MinimumNArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			removeCmd(cmd, con)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return removeCmd(cmd, con)
 		},
 		Example: `~~~
 // Delete a specified session
@@ -105,9 +104,8 @@ del 08d6c05a21512a79a1dfeb9d2a8f262f
 		Short: "Use session",
 		Long:  "use",
 		Args:  cobra.MinimumNArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			UseSessionCmd(cmd, con)
-			return
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return UseSessionCmd(cmd, con)
 		},
 	}
 
@@ -117,10 +115,10 @@ del 08d6c05a21512a79a1dfeb9d2a8f262f
 		Use:   consts.CommandBackground,
 		Short: "back to root context",
 		Long:  "Exit the current session and return to the root context.",
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			con.ActiveTarget.Background()
 			con.App.SwitchMenu(consts.ClientMenu)
-			return
+			return nil
 		},
 	}
 
@@ -152,8 +150,8 @@ observe -r
 		Short: "show log history",
 		Long:  "Displays the specified number of log lines of the current session.",
 		Args:  cobra.MaximumNArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			historyCmd(cmd, con)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return historyCmd(cmd, con)
 		},
 	}
 

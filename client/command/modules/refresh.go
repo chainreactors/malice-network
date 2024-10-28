@@ -10,14 +10,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func RefreshModuleCmd(cmd *cobra.Command, con *repl.Console) {
+func RefreshModuleCmd(cmd *cobra.Command, con *repl.Console) error {
 	task, err := refreshModule(con.Rpc, con.GetInteractive())
 	if err != nil {
-		con.Log.Errorf(err.Error())
-		return
+		return err
 	}
 
 	con.GetInteractive().Console(task, "refresh module")
+	return nil
 }
 
 func refreshModule(rpc clientrpc.MaliceRPCClient, session *core.Session) (*clientpb.Task, error) {

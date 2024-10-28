@@ -10,22 +10,18 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func MvCmd(cmd *cobra.Command, con *repl.Console) {
+func MvCmd(cmd *cobra.Command, con *repl.Console) error {
 	sourcePath := cmd.Flags().Arg(0)
 	targetPath := cmd.Flags().Arg(1)
-	if sourcePath == "" || targetPath == "" {
-		con.Log.Errorf("required arguments missing")
-		return
-	}
 
 	session := con.GetInteractive()
 	task, err := Mv(con.Rpc, session, sourcePath, targetPath)
 	if err != nil {
-		con.Log.Errorf("Mv error: %v", err)
-		return
+		return err
 	}
 
 	session.Console(task, "mv "+sourcePath+" "+targetPath)
+	return nil
 }
 
 func Mv(rpc clientrpc.MaliceRPCClient, session *core.Session, sourcePath string, targetPath string) (*clientpb.Task, error) {

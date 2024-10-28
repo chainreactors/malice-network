@@ -10,20 +10,16 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func MkdirCmd(cmd *cobra.Command, con *repl.Console) {
+func MkdirCmd(cmd *cobra.Command, con *repl.Console) error {
 	path := cmd.Flags().Arg(0)
-	if path == "" {
-		con.Log.Errorf("required arguments missing")
-		return
-	}
 	session := con.GetInteractive()
 	task, err := Mkdir(con.Rpc, session, path)
 	if err != nil {
-		con.Log.Errorf("Mkdir error: %v", err)
-		return
+		return err
 	}
 
 	session.Console(task, "mkdir "+path)
+	return nil
 }
 
 func Mkdir(rpc clientrpc.MaliceRPCClient, session *core.Session, path string) (*clientpb.Task, error) {

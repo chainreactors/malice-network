@@ -15,8 +15,9 @@ func Commands(con *repl.Console) []*cobra.Command {
 	sleepCmd := &cobra.Command{
 		Use:   consts.ModuleSleep + "[interval/second]",
 		Short: "change implant sleep config",
-		Run: func(cmd *cobra.Command, args []string) {
-			SleepCmd(cmd, con)
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return SleepCmd(cmd, con)
 		},
 	}
 
@@ -27,8 +28,8 @@ func Commands(con *repl.Console) []*cobra.Command {
 	suicideCmd := &cobra.Command{
 		Use:   consts.ModuleSuicide,
 		Short: "kill implant",
-		Run: func(cmd *cobra.Command, args []string) {
-			SuicideCmd(cmd, con)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return SuicideCmd(cmd, con)
 		},
 	}
 
