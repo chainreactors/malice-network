@@ -40,6 +40,8 @@ func NewSessionContext(req *lispb.RegisterSession) *SessionContext {
 		Modules: req.RegisterData.Module,
 		Addons:  req.RegisterData.Addon.Addons,
 		Loot:    map[string]string{},
+		Argue:   map[string]string{},
+		Data:    map[string]string{},
 	}
 }
 
@@ -47,6 +49,8 @@ type SessionContext struct {
 	Modules []string
 	Addons  []*implantpb.Addon
 	Loot    map[string]string
+	Argue   map[string]string
+	Data    map[string]string
 }
 
 func (ctx *SessionContext) Update(req *lispb.RegisterSession) {
@@ -83,6 +87,7 @@ func NewSession(req *lispb.RegisterSession) *Session {
 
 // Session - Represents a connection to an implant
 type Session struct {
+	Type        string
 	PipelineID  string
 	ListenerID  string
 	ID          string
@@ -141,18 +146,20 @@ func (s *Session) ToProtobuf() *clientpb.Session {
 	timeDiff := currentTime.Unix() - int64(s.Timer.LastCheckin)
 	isAlive := timeDiff <= int64(s.Timer.Interval)*3
 	return &clientpb.Session{
-		SessionId:  s.ID,
-		Note:       s.Name,
-		GroupName:  s.Group,
-		IsAlive:    isAlive,
-		RemoteAddr: s.RemoteAddr,
-		ListenerId: s.PipelineID,
-		Os:         s.Os,
-		Process:    s.Process,
-		Timer:      s.Timer,
-		Tasks:      s.Tasks.ToProtobuf(),
-		Modules:    s.Modules,
-		Addons:     s.Addons,
+		Type:        s.Type,
+		SessionId:   s.ID,
+		Note:        s.Name,
+		GroupName:   s.Group,
+		IsAlive:     isAlive,
+		IsPrivilege: s.IsPrivilege,
+		RemoteAddr:  s.RemoteAddr,
+		ListenerId:  s.PipelineID,
+		Os:          s.Os,
+		Process:     s.Process,
+		Timer:       s.Timer,
+		Tasks:       s.Tasks.ToProtobuf(),
+		Modules:     s.Modules,
+		Addons:      s.Addons,
 	}
 }
 
