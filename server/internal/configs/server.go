@@ -28,9 +28,7 @@ var (
 	CachePath                   = path.Join(TempPath, "cache")
 	ErrNoConfig                 = errors.New("no config found")
 	WebsitePath                 = path.Join(ServerRootPath, "web")
-	GeneratePath                = path.Join(ServerRootPath, "generate")
-	BakPath                     = path.Join(GeneratePath, "bak")
-	BuildPath                   = path.Join(GeneratePath, "build")
+	BuildPath                   = path.Join(ServerRootPath, "build")
 )
 
 func NewFileLog(filename string) *logs.Logger {

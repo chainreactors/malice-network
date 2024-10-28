@@ -35,6 +35,7 @@ func printTasks(tasks []*clientpb.Task, con *repl.Console, isAll bool) {
 		{Title: "Status", Width: 8},
 		{Title: "cur", Width: 5},
 		{Title: "total", Width: 5},
+		{Title: "ClientName", Width: 15},
 	}, true)
 	for _, task := range tasks {
 		var status string
@@ -54,6 +55,7 @@ func printTasks(tasks []*clientpb.Task, con *repl.Console, isAll bool) {
 			status,
 			strconv.Itoa(int(task.Cur)),
 			strconv.Itoa(int(task.Total)),
+			task.ClientName,
 		}
 		rowEntries = append(rowEntries, row)
 	}
