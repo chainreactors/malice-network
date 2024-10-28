@@ -147,15 +147,20 @@ func ParseBOFResponse(ctx *clientpb.TaskContext) (interface{}, error) {
 		}
 
 		err = binary.Read(reader, binary.LittleEndian, &bofResp.Length)
-		if err != nil {
+		if err == io.EOF {
+			break
+		} else if err != nil {
 			return nil, fmt.Errorf("failed to read Length: %v", err)
 		}
 
 		strData := make([]byte, bofResp.Length)
 		_, err = io.ReadFull(reader, strData)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read Str: %v", err)
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return nil, fmt.Errorf("failed to read StrData: %v", err)
 		}
+
 		bofResp.Data = strData
 
 		bofResps = append(bofResps, bofResp)
