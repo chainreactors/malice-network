@@ -17,7 +17,7 @@ func (rpc *Server) TaskSchdList(ctx context.Context, req *implantpb.Request) (*c
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgTaskSchdResponse)
+	go greq.HandlerResponse(ch, types.MsgTaskSchdsResponse)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -64,6 +64,34 @@ func (rpc *Server) TaskSchdStop(ctx context.Context, req *implantpb.TaskSchedule
 }
 
 func (rpc *Server) TaskSchdDelete(ctx context.Context, req *implantpb.TaskScheduleRequest) (*clientpb.Task, error) {
+	greq, err := newGenericRequest(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	ch, err := rpc.GenericHandler(ctx, greq)
+	if err != nil {
+		return nil, err
+	}
+
+	go greq.HandlerResponse(ch, types.MsgEmpty)
+	return greq.Task.ToProtobuf(), nil
+}
+
+func (rpc *Server) TaskSchdQuery(ctx context.Context, req *implantpb.TaskScheduleRequest) (*clientpb.Task, error) {
+	greq, err := newGenericRequest(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	ch, err := rpc.GenericHandler(ctx, greq)
+	if err != nil {
+		return nil, err
+	}
+
+	go greq.HandlerResponse(ch, types.MsgTaskSchdResponse)
+	return greq.Task.ToProtobuf(), nil
+}
+
+func (rpc *Server) TaskSchdRun(ctx context.Context, req *implantpb.TaskScheduleRequest) (*clientpb.Task, error) {
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err

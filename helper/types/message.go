@@ -36,11 +36,12 @@ const (
 	MsgBypass      MsgName = consts.ModuleBypass
 	MsgRegistryAdd MsgName = consts.ModuleRegAdd
 
-	MsgServicesResponse MsgName = consts.ModuleServiceList
-	MsgServiceResponse  MsgName = consts.ModuleServiceQuery
-	MsgTaskSchdResponse MsgName = consts.ModuleTaskSchdList
-	MsgWmiQuery         MsgName = consts.ModuleWmiQuery
-	MsgWmiExecute       MsgName = consts.ModuleWmiExec
+	MsgServicesResponse  MsgName = consts.ModuleServiceList
+	MsgServiceResponse   MsgName = consts.ModuleServiceQuery
+	MsgTaskSchdsResponse MsgName = consts.ModuleTaskSchdList
+	MsgTaskSchdResponse  MsgName = consts.ModuleTaskSchdQuery
+	MsgWmiQuery          MsgName = consts.ModuleWmiQuery
+	MsgWmiExecute        MsgName = consts.ModuleWmiExec
 )
 
 func (r MsgName) String() string {
@@ -96,7 +97,10 @@ func MessageType(message *implantpb.Spite) MsgName {
 		return MsgServiceResponse
 	case *implantpb.Spite_ServicesResponse:
 		return MsgServicesResponse
-
+	case *implantpb.Spite_ScheduleResponse:
+		return MsgTaskSchdResponse
+	case *implantpb.Spite_SchedulesResponse:
+		return MsgTaskSchdsResponse
 	default:
 		return MsgUnknown
 	}

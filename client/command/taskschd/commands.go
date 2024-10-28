@@ -105,8 +105,42 @@ func Commands(con *repl.Console) []*cobra.Command {
   ~~~`,
 	}
 
-	// 将所有子命令添加到 taskschdCmd
-	taskschdCmd.AddCommand(taskSchdListCmd, taskSchdCreateCmd, taskSchdStartCmd, taskSchdStopCmd, taskSchdDeleteCmd)
+	taskSchdQueryCmd := &cobra.Command{
+		Use:   consts.SubCommandName(consts.ModuleTaskSchdQuery) + " [name]",
+		Short: "Query the configuration of a scheduled task",
+		Long:  "Retrieve the current configuration, status, and timing information of a specified scheduled task by name.",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return TaskSchdQueryCmd(cmd, con)
+		},
+		Annotations: map[string]string{
+			"depend": consts.ModuleTaskSchdQuery,
+			"ttp":    "T1053.005",
+		},
+		Example: `Query the configuration of a scheduled task:
+  ~~~
+  taskschd query ExampleTask
+  ~~~`,
+	}
+
+	taskSchdRunCmd := &cobra.Command{
+		Use:   consts.SubCommandName(consts.ModuleTaskSchdRun) + " [name]",
+		Short: "Run a scheduled task immediately",
+		Long:  "Execute a scheduled task immediately by specifying its name.",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return TaskSchdRunCmd(cmd, con)
+		},
+		Annotations: map[string]string{
+			"depend": consts.ModuleTaskSchdRun,
+			"ttp":    "T1053.005",
+		},
+		Example: `Run a scheduled task immediately:
+  ~~~
+  taskschd run ExampleTask
+  ~~~`,
+	}
+	taskschdCmd.AddCommand(taskSchdListCmd, taskSchdCreateCmd, taskSchdStartCmd, taskSchdStopCmd, taskSchdDeleteCmd, taskSchdQueryCmd, taskSchdRunCmd)
 
 	return []*cobra.Command{taskschdCmd}
 }
@@ -117,4 +151,6 @@ func Register(con *repl.Console) {
 	RegisterTaskSchdStartFunc(con)
 	RegisterTaskSchdStopFunc(con)
 	RegisterTaskSchdDeleteFunc(con)
+	RegisterTaskSchdQueryFunc(con)
+	RegisterTaskSchdRunFunc(con)
 }

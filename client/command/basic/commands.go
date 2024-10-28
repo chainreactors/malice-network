@@ -13,7 +13,7 @@ import (
 
 func Commands(con *repl.Console) []*cobra.Command {
 	sleepCmd := &cobra.Command{
-		Use:   consts.ModuleSleep + "[interval/second]",
+		Use:   consts.ModuleSleep + " [interval/second]",
 		Short: "change implant sleep config",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
