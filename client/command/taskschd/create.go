@@ -2,6 +2,7 @@ package taskschd
 
 import (
 	"fmt"
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -48,9 +49,7 @@ func RegisterTaskSchdCreateFunc(con *repl.Console) {
 		TaskSchdCreate,
 		"",
 		nil,
-		func(content *clientpb.TaskContext) (interface{}, error) {
-			return "Scheduled task created successfully", nil
-		},
+		common.ParseStatus,
 		nil,
 	)
 }

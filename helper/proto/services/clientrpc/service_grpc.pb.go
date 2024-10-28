@@ -99,6 +99,7 @@ type MaliceRPCClient interface {
 	ServiceStart(ctx context.Context, in *implantpb.ServiceRequest, opts ...grpc.CallOption) (*clientpb.Task, error)
 	ServiceStop(ctx context.Context, in *implantpb.ServiceRequest, opts ...grpc.CallOption) (*clientpb.Task, error)
 	ServiceQuery(ctx context.Context, in *implantpb.ServiceRequest, opts ...grpc.CallOption) (*clientpb.Task, error)
+	ServiceDelete(ctx context.Context, in *implantpb.ServiceRequest, opts ...grpc.CallOption) (*clientpb.Task, error)
 	// implant::sys::taskschd
 	TaskSchdList(ctx context.Context, in *implantpb.Request, opts ...grpc.CallOption) (*clientpb.Task, error)
 	TaskSchdCreate(ctx context.Context, in *implantpb.TaskScheduleRequest, opts ...grpc.CallOption) (*clientpb.Task, error)
@@ -758,6 +759,15 @@ func (c *maliceRPCClient) ServiceQuery(ctx context.Context, in *implantpb.Servic
 	return out, nil
 }
 
+func (c *maliceRPCClient) ServiceDelete(ctx context.Context, in *implantpb.ServiceRequest, opts ...grpc.CallOption) (*clientpb.Task, error) {
+	out := new(clientpb.Task)
+	err := c.cc.Invoke(ctx, "/clientrpc.MaliceRPC/ServiceDelete", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *maliceRPCClient) TaskSchdList(ctx context.Context, in *implantpb.Request, opts ...grpc.CallOption) (*clientpb.Task, error) {
 	out := new(clientpb.Task)
 	err := c.cc.Invoke(ctx, "/clientrpc.MaliceRPC/TaskSchdList", in, out, opts...)
@@ -1141,6 +1151,7 @@ type MaliceRPCServer interface {
 	ServiceStart(context.Context, *implantpb.ServiceRequest) (*clientpb.Task, error)
 	ServiceStop(context.Context, *implantpb.ServiceRequest) (*clientpb.Task, error)
 	ServiceQuery(context.Context, *implantpb.ServiceRequest) (*clientpb.Task, error)
+	ServiceDelete(context.Context, *implantpb.ServiceRequest) (*clientpb.Task, error)
 	// implant::sys::taskschd
 	TaskSchdList(context.Context, *implantpb.Request) (*clientpb.Task, error)
 	TaskSchdCreate(context.Context, *implantpb.TaskScheduleRequest) (*clientpb.Task, error)
@@ -1383,6 +1394,9 @@ func (UnimplementedMaliceRPCServer) ServiceStop(context.Context, *implantpb.Serv
 }
 func (UnimplementedMaliceRPCServer) ServiceQuery(context.Context, *implantpb.ServiceRequest) (*clientpb.Task, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ServiceQuery not implemented")
+}
+func (UnimplementedMaliceRPCServer) ServiceDelete(context.Context, *implantpb.ServiceRequest) (*clientpb.Task, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ServiceDelete not implemented")
 }
 func (UnimplementedMaliceRPCServer) TaskSchdList(context.Context, *implantpb.Request) (*clientpb.Task, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method TaskSchdList not implemented")
@@ -2672,6 +2686,24 @@ func _MaliceRPC_ServiceQuery_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MaliceRPC_ServiceDelete_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(implantpb.ServiceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MaliceRPCServer).ServiceDelete(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/clientrpc.MaliceRPC/ServiceDelete",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MaliceRPCServer).ServiceDelete(ctx, req.(*implantpb.ServiceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _MaliceRPC_TaskSchdList_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(implantpb.Request)
 	if err := dec(in); err != nil {
@@ -3546,6 +3578,10 @@ var MaliceRPC_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ServiceQuery",
 			Handler:    _MaliceRPC_ServiceQuery_Handler,
+		},
+		{
+			MethodName: "ServiceDelete",
+			Handler:    _MaliceRPC_ServiceDelete_Handler,
 		},
 		{
 			MethodName: "TaskSchdList",
