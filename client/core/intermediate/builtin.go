@@ -2,6 +2,7 @@ package intermediate
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/base64"
 	"fmt"
 	"github.com/chainreactors/logs"
@@ -15,8 +16,11 @@ import (
 	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"github.com/kballard/go-shellquote"
 	"google.golang.org/protobuf/proto"
+	"math/big"
 	"os"
 	"reflect"
+	"regexp"
+	"time"
 )
 
 type BuiltinCallback func(content interface{}) (bool, error)
@@ -234,6 +238,52 @@ func RegisterEncodeFunc() {
 			return "", err
 		}
 		return string(data), nil
+	})
+	// random string
+	RegisterFunction("random_string", func(length int) (string, error) {
+		charArray := []rune("abcdefghijklmnopqrstuvwxyz123456789")
+		randomStr := ""
+		for i := 0; i < length; i++ {
+			index, _ := rand.Int(rand.Reader, big.NewInt(int64(len(charArray))))
+			randomStr += string(charArray[index.Int64()])
+		}
+		return randomStr, nil
+	})
+	// fileExists
+	RegisterFunction("file_exists", func(path string) (bool, error) {
+		_, err := os.Stat(path)
+		if err == nil {
+			return true, nil
+		}
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, nil
+	})
+	// match re
+	RegisterFunction("ismatch", func(pattern, text string) (bool, []string) {
+		reg, err := regexp.Compile(pattern)
+		if err != nil {
+			fmt.Println("regexp compile error: ", err)
+			return false, nil
+		}
+		matches := reg.FindStringSubmatch(text)
+		if matches != nil {
+			return true, matches[1:]
+		}
+		return false, nil
+	})
+	// timestamp
+	RegisterFunction("timestampMillis", func() int64 {
+		timestampMillis := time.Now().UnixNano() / int64(time.Millisecond)
+		return timestampMillis
+	})
+	// tstamp
+	RegisterFunction("tstamp", func(timestampMillis int64) string {
+		seconds := timestampMillis / 1000
+		nanoseconds := (timestampMillis % 1000) * int64(time.Millisecond)
+		t := time.Unix(seconds, nanoseconds)
+		return t.Format("01/02 15:04")
 	})
 
 }
