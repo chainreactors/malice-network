@@ -92,6 +92,7 @@ const (
 	ModuleServiceQuery  = "service_query"
 	ModuleServiceStart  = "service_start"
 	ModuleServiceStop   = "service_stop"
+	ModuleServiceDelete = "service_delete"
 
 	// taskschd
 	ModuleTaskSchdList   = "taskschd_list"

@@ -114,8 +114,25 @@ Control the start type and error control by providing appropriate values.`,
   ~~~`,
 	}
 
-	// 将所有子命令添加到 serviceCmd
-	serviceCmd.AddCommand(serviceListCmd, serviceCreateCmd, serviceStartCmd, serviceStopCmd, serviceQueryCmd)
+	serviceDeleteCmd := &cobra.Command{
+		Use:   consts.SubCommandName(consts.ModuleServiceDelete) + " [name]",
+		Short: "Delete a specified service",
+		Long:  "Delete a service by specifying its name, removing it from the system permanently.",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return ServiceDeleteCmd(cmd, con)
+		},
+		Annotations: map[string]string{
+			"depend": consts.ModuleServiceDelete,
+			"ttp":    "T1489",
+		},
+		Example: `Delete a service named "ExampleService":
+  ~~~
+  service delete ExampleService
+  ~~~`,
+	}
+
+	serviceCmd.AddCommand(serviceListCmd, serviceCreateCmd, serviceStartCmd, serviceStopCmd, serviceQueryCmd, serviceDeleteCmd)
 
 	return []*cobra.Command{serviceCmd}
 }
@@ -126,4 +143,5 @@ func Register(con *repl.Console) {
 	RegisterServiceStartFunc(con)
 	RegisterServiceStopFunc(con)
 	RegisterServiceQueryFunc(con)
+	RegisterServiceDeleteFunc(con)
 }
