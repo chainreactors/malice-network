@@ -42,7 +42,7 @@ type APIsConfig struct {
 	Priority PriorityConfig `yaml:"priority" config:"priority"`
 }
 
-type Allocator struct {
+type Alloctor struct {
 	InProcess    string `yaml:"inprocess" config:"inprocess" default:"NtAllocateVirtualMemory"`
 	CrossProcess string `yaml:"crossprocess" config:"crossprocess" default:"NtAllocateVirtualMemory"`
 }
@@ -61,9 +61,8 @@ type ImplantsConfig struct {
 	Mod                string            `yaml:"mod" config:"mod" default:"beacon"`
 	RegisterInfo       bool              `yaml:"register_info" config:"register_info" default:"true"`
 	Modules            []string          `yaml:"modules" config:"modules" default:"[]"`
-	Metadata           Metadata          `yaml:"metadata" config:"metadata"`
 	APIs               APIsConfig        `yaml:"apis" config:"apis"`
-	Allocator          Allocator         `yaml:"allocator" config:"allocator"`
+	Alloctor           Alloctor          `yaml:"alloctor" config:"alloctor"`
 	SleepMask          bool              `yaml:"sleep_mask" config:"sleep_mask" default:"true"`
 	SacrificeProcess   bool              `yaml:"sacrifice_process" config:"sacrifice_process" default:"true"`
 	ForkAndRun         bool              `yaml:"fork_and_run" config:"fork_and_run" default:"false"`
@@ -75,4 +74,5 @@ type ImplantsConfig struct {
 type GeneratorConfig struct {
 	Basic    GeneratorBasicConfig `yaml:"basic" config:"basic"`
 	Implants ImplantsConfig       `yaml:"implants" config:"implants"`
+	Metadata Metadata             `yaml:"metadata" config:"metadata"`
 }
