@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func RefreshMalCmd(cmd *cobra.Command, con *repl.Console) {
+func RefreshMalCmd(cmd *cobra.Command, con *repl.Console) error {
 	implantCmd := con.ImplantMenu()
 	for _, c := range implantCmd.Commands() {
 		if c.GroupID == consts.MalGroup {
@@ -22,4 +22,5 @@ func RefreshMalCmd(cmd *cobra.Command, con *repl.Console) {
 			continue
 		}
 	}
+	return nil
 }

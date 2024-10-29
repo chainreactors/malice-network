@@ -142,3 +142,10 @@ func ParseRegistryFlags(cmd *cobra.Command) (string, string, string) {
 	key, _ := cmd.Flags().GetString("key")
 	return hive, path, key
 }
+
+func MalHttpFlagset(f *pflag.FlagSet) {
+	f.Bool("ignore-cache", false, "ignore cache")
+	f.String("proxy", "", "proxy")
+	f.String("timeout", "", "timeout")
+	f.Bool("insecure", false, "insecure")
+}
