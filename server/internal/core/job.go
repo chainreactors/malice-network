@@ -2,7 +2,6 @@ package core
 
 import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/listener/lispb"
 	"google.golang.org/protobuf/proto"
 	"sync"
 )
@@ -75,8 +74,8 @@ func (j *Job) ToProtobuf() *clientpb.Job {
 		Name: j.Name,
 	}
 	switch j.Message.(type) {
-	case *lispb.Pipeline:
-		job.Pipeline = j.Message.(*lispb.Pipeline)
+	case *clientpb.Pipeline:
+		job.Pipeline = j.Message.(*clientpb.Pipeline)
 	}
 	return job
 }

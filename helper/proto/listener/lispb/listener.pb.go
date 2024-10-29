@@ -1356,44 +1356,44 @@ func file_listener_lispb_listener_proto_rawDescGZIP() []byte {
 
 var file_listener_lispb_listener_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
 var file_listener_lispb_listener_proto_goTypes = []interface{}{
-	(*RegisterSession)(nil),      // 0: lispb.RegisterSession
-	(*RegisterListener)(nil),     // 1: lispb.RegisterListener
-	(*SpiteSession)(nil),         // 2: lispb.SpiteSession
-	(*Pipelines)(nil),            // 3: lispb.Pipelines
-	(*Pipeline)(nil),             // 4: lispb.Pipeline
-	(*CtrlPipeline)(nil),         // 5: lispb.CtrlPipeline
-	(*TLS)(nil),                  // 6: lispb.TLS
-	(*Encryption)(nil),           // 7: lispb.Encryption
-	(*TCPPipeline)(nil),          // 8: lispb.TCPPipeline
-	(*WebContent)(nil),           // 9: lispb.WebContent
-	(*WebsiteAddContent)(nil),    // 10: lispb.WebsiteAddContent
-	(*WebsiteRemoveContent)(nil), // 11: lispb.WebsiteRemoveContent
-	(*Website)(nil),              // 12: lispb.Website
-	(*WebsiteResponse)(nil),      // 13: lispb.WebsiteResponse
-	(*Websites)(nil),             // 14: lispb.Websites
-	(*ListenerName)(nil),         // 15: lispb.ListenerName
-	(*WebsiteAsset)(nil),         // 16: lispb.WebsiteAsset
-	(*WebsiteAssets)(nil),        // 17: lispb.WebsiteAssets
-	nil,                          // 18: lispb.WebsiteAddContent.ContentsEntry
-	nil,                          // 19: lispb.Website.ContentsEntry
+	(*RegisterSession)(nil),      // 0: clientpb.RegisterSession
+	(*RegisterListener)(nil),     // 1: clientpb.RegisterListener
+	(*SpiteSession)(nil),         // 2: clientpb.SpiteSession
+	(*Pipelines)(nil),            // 3: clientpb.Pipelines
+	(*Pipeline)(nil),             // 4: clientpb.Pipeline
+	(*CtrlPipeline)(nil),         // 5: clientpb.CtrlPipeline
+	(*TLS)(nil),                  // 6: clientpb.TLS
+	(*Encryption)(nil),           // 7: clientpb.Encryption
+	(*TCPPipeline)(nil),          // 8: clientpb.TCPPipeline
+	(*WebContent)(nil),           // 9: clientpb.WebContent
+	(*WebsiteAddContent)(nil),    // 10: clientpb.WebsiteAddContent
+	(*WebsiteRemoveContent)(nil), // 11: clientpb.WebsiteRemoveContent
+	(*Website)(nil),              // 12: clientpb.Website
+	(*WebsiteResponse)(nil),      // 13: clientpb.WebsiteResponse
+	(*Websites)(nil),             // 14: clientpb.Websites
+	(*ListenerName)(nil),         // 15: clientpb.ListenerName
+	(*WebsiteAsset)(nil),         // 16: clientpb.WebsiteAsset
+	(*WebsiteAssets)(nil),        // 17: clientpb.WebsiteAssets
+	nil,                          // 18: clientpb.WebsiteAddContent.ContentsEntry
+	nil,                          // 19: clientpb.Website.ContentsEntry
 	(*implantpb.Register)(nil),   // 20: modulepb.Register
 	(*implantpb.Spite)(nil),      // 21: implantpb.Spite
 }
 var file_listener_lispb_listener_proto_depIdxs = []int32{
-	20, // 0: lispb.RegisterSession.register_data:type_name -> modulepb.Register
-	3,  // 1: lispb.RegisterListener.pipelines:type_name -> lispb.Pipelines
-	21, // 2: lispb.SpiteSession.spite:type_name -> implantpb.Spite
-	4,  // 3: lispb.Pipelines.pipelines:type_name -> lispb.Pipeline
-	8,  // 4: lispb.Pipeline.tcp:type_name -> lispb.TCPPipeline
-	12, // 5: lispb.Pipeline.web:type_name -> lispb.Website
-	6,  // 6: lispb.Pipeline.tls:type_name -> lispb.TLS
-	7,  // 7: lispb.Pipeline.encryption:type_name -> lispb.Encryption
-	18, // 8: lispb.WebsiteAddContent.Contents:type_name -> lispb.WebsiteAddContent.ContentsEntry
-	19, // 9: lispb.Website.Contents:type_name -> lispb.Website.ContentsEntry
-	12, // 10: lispb.Websites.Websites:type_name -> lispb.Website
-	16, // 11: lispb.WebsiteAssets.Assets:type_name -> lispb.WebsiteAsset
-	9,  // 12: lispb.WebsiteAddContent.ContentsEntry.value:type_name -> lispb.WebContent
-	9,  // 13: lispb.Website.ContentsEntry.value:type_name -> lispb.WebContent
+	20, // 0: clientpb.RegisterSession.register_data:type_name -> modulepb.Register
+	3,  // 1: clientpb.RegisterListener.pipelines:type_name -> clientpb.Pipelines
+	21, // 2: clientpb.SpiteSession.spite:type_name -> implantpb.Spite
+	4,  // 3: clientpb.Pipelines.pipelines:type_name -> clientpb.Pipeline
+	8,  // 4: clientpb.Pipeline.tcp:type_name -> clientpb.TCPPipeline
+	12, // 5: clientpb.Pipeline.web:type_name -> clientpb.Website
+	6,  // 6: clientpb.Pipeline.tls:type_name -> clientpb.TLS
+	7,  // 7: clientpb.Pipeline.encryption:type_name -> clientpb.Encryption
+	18, // 8: clientpb.WebsiteAddContent.Contents:type_name -> clientpb.WebsiteAddContent.ContentsEntry
+	19, // 9: clientpb.Website.Contents:type_name -> clientpb.Website.ContentsEntry
+	12, // 10: clientpb.Websites.Websites:type_name -> clientpb.Website
+	16, // 11: clientpb.WebsiteAssets.Assets:type_name -> clientpb.WebsiteAsset
+	9,  // 12: clientpb.WebsiteAddContent.ContentsEntry.value:type_name -> clientpb.WebContent
+	9,  // 13: clientpb.Website.ContentsEntry.value:type_name -> clientpb.WebContent
 	14, // [14:14] is the sub-list for method output_type
 	14, // [14:14] is the sub-list for method input_type
 	14, // [14:14] is the sub-list for extension type_name

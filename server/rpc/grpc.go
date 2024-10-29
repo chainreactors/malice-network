@@ -146,7 +146,7 @@ func NewServer() *Server {
 //		return nil, err
 //	}
 //	data, err := req.Session.RequestAndWait(
-//		&lispb.SpiteSession{SessionId: req.Session.ID, TaskId: req.Task.Id, Spite: spite},
+//		&clientpb.SpiteSession{SessionId: req.Session.ID, TaskId: req.Task.Id, Spite: spite},
 //		pipelinesCh[req.Session.PipelineID],
 //		consts.MinTimeout)
 //	if err != nil {

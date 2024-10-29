@@ -9,7 +9,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
 	"github.com/chainreactors/malice-network/helper/utils/handler"
@@ -304,10 +303,10 @@ func (s *ServerStatus) EventHandler() {
 			tui.Down(0)
 			pipeline := event.GetJob().GetPipeline()
 			switch pipeline.Body.(type) {
-			case *lispb.Pipeline_Tcp:
+			case *clientpb.Pipeline_Tcp:
 				Log.Importantf("[%s] %s: tcp %s.%s in %s:%d", event.Type, event.Op, pipeline.GetTcp().ListenerId,
 					pipeline.GetTcp().Name, pipeline.GetTcp().Host, pipeline.GetTcp().Port)
-			case *lispb.Pipeline_Web:
+			case *clientpb.Pipeline_Web:
 				Log.Importantf("[%s] %s: web %s.%s in %d, routePath is %s", event.Type, event.Op,
 					pipeline.GetWeb().ListenerId, pipeline.GetWeb().Name, pipeline.GetWeb().Port,
 					pipeline.GetWeb().RootPath)

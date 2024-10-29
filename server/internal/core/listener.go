@@ -3,7 +3,6 @@ package core
 import (
 	"errors"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/helper/types"
 	"google.golang.org/protobuf/proto"
 	"sync"
@@ -34,9 +33,9 @@ func (ps Pipelines) Get(id string) Pipeline {
 	return ps[id]
 }
 
-func (ps Pipelines) ToProtobuf() *lispb.Pipelines {
-	var pls = &lispb.Pipelines{
-		Pipelines: make([]*lispb.Pipeline, 0),
+func (ps Pipelines) ToProtobuf() *clientpb.Pipelines {
+	var pls = &clientpb.Pipelines{
+		Pipelines: make([]*clientpb.Pipeline, 0),
 	}
 	for _, p := range ps {
 		pls.Pipelines = append(pls.Pipelines, types.BuildPipeline(p.ToProtobuf(), p.ToTLSProtobuf()))
@@ -48,7 +47,7 @@ type Listener struct {
 	Name      string
 	Host      string
 	Active    bool
-	Pipelines lispb.Pipelines
+	Pipelines clientpb.Pipelines
 }
 
 func (l *Listener) ToProtobuf() *clientpb.Listener {

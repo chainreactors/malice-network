@@ -2,7 +2,7 @@ package types
 
 import (
 	"errors"
-	"github.com/chainreactors/malice-network/helper/proto/listener/lispb"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"io"
 	"net/http"
 	"os"
@@ -15,9 +15,9 @@ const (
 	defaultMimeType = "application/octet-stream"
 )
 
-func WebAddDirectory(web *lispb.WebsiteAddContent, webpath string, contentPath string) *lispb.WebsiteAssets {
-	var webAssets = &lispb.WebsiteAssets{
-		Assets: []*lispb.WebsiteAsset{},
+func WebAddDirectory(web *clientpb.WebsiteAddContent, webpath string, contentPath string) *clientpb.WebsiteAssets {
+	var webAssets = &clientpb.WebsiteAssets{
+		Assets: []*clientpb.WebsiteAsset{},
 	}
 	fullLocalPath, _ := filepath.Abs(contentPath)
 	filepath.Walk(contentPath, func(localPath string, info os.FileInfo, err error) error {
@@ -32,7 +32,7 @@ func WebAddDirectory(web *lispb.WebsiteAddContent, webpath string, contentPath s
 			if err != nil {
 				return err
 			}
-			webAssets.Assets = append(webAssets.Assets, &lispb.WebsiteAsset{
+			webAssets.Assets = append(webAssets.Assets, &clientpb.WebsiteAsset{
 				WebName:  web.Name,
 				Content:  content,
 				FileName: fullWebpath,
@@ -43,7 +43,7 @@ func WebAddDirectory(web *lispb.WebsiteAddContent, webpath string, contentPath s
 	return webAssets
 }
 
-func WebAddFile(web *lispb.WebsiteAddContent, webpath string, contentType string, contentPath string) error {
+func WebAddFile(web *clientpb.WebsiteAddContent, webpath string, contentType string, contentPath string) error {
 	fileInfo, err := os.Stat(contentPath)
 	if os.IsNotExist(err) {
 		return err // contentPath does not exist
@@ -66,7 +66,7 @@ func WebAddFile(web *lispb.WebsiteAddContent, webpath string, contentType string
 		contentType = SniffContentType(file)
 	}
 
-	web.Contents[webpath] = &lispb.WebContent{
+	web.Contents[webpath] = &clientpb.WebContent{
 		Name:        web.Name,
 		Path:        webpath,
 		ContentType: contentType,

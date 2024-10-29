@@ -7,7 +7,6 @@ import (
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/listener/lispb"
 	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
 	"io/ioutil"
@@ -108,10 +107,10 @@ func ListenerPipelineNameCompleter(con *repl.Console, cmd *cobra.Command) carapa
 		}
 		for _, pipeline := range lis.GetPipelines().GetPipelines() {
 			switch pipeline.Body.(type) {
-			case *lispb.Pipeline_Tcp:
+			case *clientpb.Pipeline_Tcp:
 				results = append(results, pipeline.GetTcp().Name, fmt.Sprintf("type tcp %s:%v",
 					pipeline.GetTcp().Host, pipeline.GetTcp().Port))
-			case *lispb.Pipeline_Web:
+			case *clientpb.Pipeline_Web:
 				results = append(results, pipeline.GetWeb().Name, "type web")
 			}
 		}
@@ -196,12 +195,12 @@ func JobsComplete(con *repl.Console, cmd *cobra.Command, use string) carapace.Ac
 		}
 		for _, pipeline := range lis.GetPipelines().Pipelines {
 			switch pipeline.Body.(type) {
-			case *lispb.Pipeline_Tcp:
+			case *clientpb.Pipeline_Tcp:
 				if use == consts.CommandTcp {
 					results = append(results, pipeline.GetTcp().Name,
 						fmt.Sprintf("tcp job %s:%v", pipeline.GetTcp().Host, pipeline.GetTcp().Port))
 				}
-			case *lispb.Pipeline_Web:
+			case *clientpb.Pipeline_Web:
 				if use == consts.CommandWebsite {
 					results = append(results, pipeline.GetWeb().Name,
 						fmt.Sprintf("web job %v, path %s", pipeline.GetWeb().Port, pipeline.GetWeb().RootPath))
@@ -260,7 +259,7 @@ func AllPipelineComplete(con *repl.Console) carapace.Action {
 		for _, listener := range con.Listeners {
 			for _, pipeline := range listener.GetPipelines().GetPipelines() {
 				switch pipeline.Body.(type) {
-				case *lispb.Pipeline_Tcp:
+				case *clientpb.Pipeline_Tcp:
 					results = append(results, pipeline.GetTcp().Name, fmt.Sprintf("type tcp %s:%v",
 						pipeline.GetTcp().Host, pipeline.GetTcp().Port))
 				}

@@ -1,7 +1,7 @@
 package models
 
 import (
-	"github.com/chainreactors/malice-network/helper/proto/listener/lispb"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/gofrs/uuid"
 	"gorm.io/gorm"
 	"os"
@@ -31,12 +31,12 @@ func (wc *WebsiteContent) BeforeCreate(tx *gorm.DB) (err error) {
 }
 
 // ToProtobuf - Converts to protobuf object
-func (wc *WebsiteContent) ToProtobuf(webContentDir string) *lispb.Website {
+func (wc *WebsiteContent) ToProtobuf(webContentDir string) *clientpb.Website {
 	contents, _ := os.ReadFile(filepath.Join(webContentDir, wc.Path))
-	return &lispb.Website{
+	return &clientpb.Website{
 		ID:   wc.ID.String(),
 		Name: wc.Name,
-		Contents: map[string]*lispb.WebContent{
+		Contents: map[string]*clientpb.WebContent{
 			wc.ID.String(): {
 				ID:          wc.ID.String(),
 				WebsiteID:   wc.ID.String(),
@@ -50,7 +50,7 @@ func (wc *WebsiteContent) ToProtobuf(webContentDir string) *lispb.Website {
 }
 
 // FromProtobuf - Converts from protobuf object to WebsiteContent
-func WebsiteContentFromProtobuf(pbWebContent *lispb.WebContent) WebsiteContent {
+func WebsiteContentFromProtobuf(pbWebContent *clientpb.WebContent) WebsiteContent {
 	siteUUID, _ := uuid.FromString(pbWebContent.ID)
 	return WebsiteContent{
 		ID:          siteUUID,

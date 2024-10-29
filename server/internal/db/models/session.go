@@ -5,7 +5,6 @@ import (
 	"errors"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"gorm.io/gorm"
 	"time"
@@ -57,11 +56,11 @@ func (s *Session) ToClientProtobuf() *clientpb.Session {
 	}
 }
 
-func (s *Session) ToRegisterProtobuf() *lispb.RegisterSession {
+func (s *Session) ToRegisterProtobuf() *clientpb.RegisterSession {
 	ctx := recoverFromContext(s.Context)
 	addons := &implantpb.Addons{}
 	addons.Addons = append(addons.Addons, ctx.Addons...)
-	return &lispb.RegisterSession{
+	return &clientpb.RegisterSession{
 		SessionId:  s.SessionID,
 		ListenerId: s.ListenerId,
 		RemoteAddr: s.RemoteAddr,

@@ -6,7 +6,7 @@ import (
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/cryptography"
-	"github.com/chainreactors/malice-network/helper/proto/listener/lispb"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/table"
@@ -26,7 +26,7 @@ func newWebsiteCmd(cmd *cobra.Command, con *repl.Console) {
 	cPath := cmd.Flags().Arg(2)
 	var cert, key string
 	var err error
-	var webAsserts *lispb.WebsiteAssets
+	var webAsserts *clientpb.WebsiteAssets
 	if portUint == 0 {
 		rand.Seed(time.Now().UnixNano())
 		portUint = uint(15001 + rand.Int31n(5001))
@@ -59,9 +59,9 @@ func newWebsiteCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf("Error adding content %s\n", "file is a directory")
 		return
 	}
-	addWeb := &lispb.WebsiteAddContent{
+	addWeb := &clientpb.WebsiteAddContent{
 		Name:     name,
-		Contents: map[string]*lispb.WebContent{},
+		Contents: map[string]*clientpb.WebContent{},
 	}
 
 	types.WebAddFile(addWeb, webPath, contentType, cPath)
@@ -70,24 +70,24 @@ func newWebsiteCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Error(err.Error())
 		return
 	}
-	webAsserts = &lispb.WebsiteAssets{}
-	webAsserts.Assets = append(webAsserts.Assets, &lispb.WebsiteAsset{
+	webAsserts = &clientpb.WebsiteAssets{}
+	webAsserts.Assets = append(webAsserts.Assets, &clientpb.WebsiteAsset{
 		WebName: name,
 		Content: content,
 	})
-	resp, err := con.LisRpc.RegisterWebsite(context.Background(), &lispb.Pipeline{
-		Encryption: &lispb.Encryption{
+	resp, err := con.LisRpc.RegisterWebsite(context.Background(), &clientpb.Pipeline{
+		Encryption: &clientpb.Encryption{
 			Enable: false,
 			Type:   "",
 			Key:    "",
 		},
-		Tls: &lispb.TLS{
+		Tls: &clientpb.TLS{
 			Cert:   cert,
 			Key:    key,
 			Enable: tlsEnable,
 		},
-		Body: &lispb.Pipeline_Web{
-			Web: &lispb.Website{
+		Body: &clientpb.Pipeline_Web{
+			Web: &clientpb.Website{
 				RootPath:   webPath,
 				Port:       port,
 				Name:       name,
@@ -108,7 +108,7 @@ func newWebsiteCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Error(err.Error())
 		return
 	}
-	_, err = con.LisRpc.StartWebsite(context.Background(), &lispb.CtrlPipeline{
+	_, err = con.LisRpc.StartWebsite(context.Background(), &clientpb.CtrlPipeline{
 		Name:       name,
 		ListenerId: listenerID,
 	})
@@ -122,7 +122,7 @@ func newWebsiteCmd(cmd *cobra.Command, con *repl.Console) {
 func startWebsitePipelineCmd(cmd *cobra.Command, con *repl.Console) {
 	name := cmd.Flags().Arg(0)
 	listenerID := cmd.Flags().Arg(1)
-	_, err := con.LisRpc.StartWebsite(context.Background(), &lispb.CtrlPipeline{
+	_, err := con.LisRpc.StartWebsite(context.Background(), &clientpb.CtrlPipeline{
 		Name:       name,
 		ListenerId: listenerID,
 	})
@@ -135,7 +135,7 @@ func startWebsitePipelineCmd(cmd *cobra.Command, con *repl.Console) {
 func stopWebsitePipelineCmd(cmd *cobra.Command, con *repl.Console) {
 	name := cmd.Flags().Arg(1)
 	listenerID := cmd.Flags().Arg(0)
-	_, err := con.LisRpc.StopWebsite(context.Background(), &lispb.CtrlPipeline{
+	_, err := con.LisRpc.StopWebsite(context.Background(), &clientpb.CtrlPipeline{
 		Name:       name,
 		ListenerId: listenerID,
 	})
@@ -150,7 +150,7 @@ func listWebsitesCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Error("listener_id is required")
 		return
 	}
-	websites, err := con.LisRpc.ListWebsites(context.Background(), &lispb.ListenerName{
+	websites, err := con.LisRpc.ListWebsites(context.Background(), &clientpb.ListenerName{
 		Name: listenerID,
 	})
 	if err != nil {

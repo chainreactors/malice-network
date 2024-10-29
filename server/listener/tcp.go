@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"github.com/chainreactors/logs"
 	cryptostream "github.com/chainreactors/malice-network/helper/cryptography/stream"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/helper/utils/peek"
 	"github.com/chainreactors/malice-network/server/internal/configs"
@@ -17,7 +17,7 @@ import (
 	"net"
 )
 
-func StartTcpPipeline(conn *grpc.ClientConn, pipeline *lispb.Pipeline) (*TCPPipeline, error) {
+func StartTcpPipeline(conn *grpc.ClientConn, pipeline *clientpb.Pipeline) (*TCPPipeline, error) {
 	tcp := pipeline.GetTcp()
 
 	pp := &TCPPipeline{
@@ -50,7 +50,7 @@ func StartTcpPipeline(conn *grpc.ClientConn, pipeline *lispb.Pipeline) (*TCPPipe
 	return pp, nil
 }
 
-func ToTcpConfig(pipeline *lispb.TCPPipeline, tls *lispb.TLS) *configs.TcpPipelineConfig {
+func ToTcpConfig(pipeline *clientpb.TCPPipeline, tls *clientpb.TLS) *configs.TcpPipelineConfig {
 	return &configs.TcpPipelineConfig{
 		Name:   pipeline.Name,
 		Port:   uint16(pipeline.Port),
@@ -75,7 +75,7 @@ type TCPPipeline struct {
 }
 
 func (l *TCPPipeline) ToProtobuf() proto.Message {
-	return &lispb.TCPPipeline{
+	return &clientpb.TCPPipeline{
 		Name: l.Name,
 		Port: uint32(l.Port),
 		Host: l.Host,
@@ -83,7 +83,7 @@ func (l *TCPPipeline) ToProtobuf() proto.Message {
 }
 
 func (l *TCPPipeline) ToTLSProtobuf() proto.Message {
-	return &lispb.TLS{
+	return &clientpb.TLS{
 		Cert: l.TlsConfig.Cert,
 		Key:  l.TlsConfig.Key,
 	}
