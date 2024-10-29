@@ -433,6 +433,69 @@ func GenerateLuaDefinitionFile(L *lua.LState, filename string) error {
 	return nil
 }
 
+// generateMarkdownDefinitionFile 生成函数的 Markdown 文档
+func GenerateMarkdownDefinitionFile(L *lua.LState, filename string) error {
+	file, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	for funcName, signature := range intermediate.InternalFunctions {
+		if unicode.IsUpper(rune(funcName[0])) {
+			continue
+		}
+
+		// 写入函数名
+		fmt.Fprintf(file, "## %s\n\n", funcName)
+
+		// 写入 Short 描述
+		if signature.Helper != nil && signature.Helper.Short != "" {
+			fmt.Fprintf(file, "%s\n\n", signature.Helper.Short)
+		}
+
+		// 写入 Long 描述
+		if signature.Helper != nil && signature.Helper.Long != "" {
+			for _, line := range strings.Split(signature.Helper.Long, "\n") {
+				fmt.Fprintf(file, "%s\n", line)
+			}
+			fmt.Fprintf(file, "\n")
+		}
+
+		// 写入参数描述
+		fmt.Fprintf(file, "**Arguments**\n\n")
+		for i, argType := range signature.ArgTypes {
+			luaType := intermediate.ConvertGoValueToLuaType(L, argType)
+			if signature.Helper == nil {
+				fmt.Fprintf(file, "- `$%d` [%s] - parameter description\n", i+1, luaType)
+			} else {
+				keys, values := signature.Helper.FormatInput()
+				paramName := fmt.Sprintf("$%d", i+1)
+				if i < len(keys) && keys[i] != "" {
+					paramName = keys[i]
+				}
+				description := ""
+				if i < len(values) {
+					description = values[i]
+				}
+				fmt.Fprintf(file, "- `%s` [%s] - %s\n", paramName, luaType, description)
+			}
+		}
+		fmt.Fprintf(file, "\n")
+
+		// Example
+		if signature.Helper != nil && signature.Helper.Example != "" {
+			fmt.Fprintf(file, "**Example**\n\n```\n")
+			for _, line := range strings.Split(signature.Helper.Example, "\n") {
+				fmt.Fprintf(file, "%s\n", line)
+			}
+			fmt.Fprintf(file, "```\n\n")
+		}
+	}
+
+	return nil
+}
+
 // generateProtobufMessageClasses 生成 Protobuf message 的 Lua class 定义
 func generateProtobufMessageClasses(L *lua.LState, file *os.File) {
 	// 使用 protoregistry 遍历所有注册的 Protobuf 结构体

@@ -201,5 +201,4 @@ func (c *Console) AddInternalFuncHelper(cmdName string, funcName string, example
 			Example: example,
 		})
 	}
-
 }

@@ -18,7 +18,7 @@ var (
 ## Examples:
 {{.Example}}{{end}}{{if .HasAvailableSubCommands}}
 
-## Available Commands:{{range .Commands}}{{if (or .IsAvailableCommand (eq .Name "help"))}}
+## Available Commands:{{range .Commands}}{{if (or .IsAvaielableCommand (eq .Name "help"))}}
   {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}
 
 ## Flags:

@@ -25,4 +25,5 @@ func main() {
 	command.RegisterImplantFunc(con)
 	vm := plugin.NewLuaVM()
 	plugin.GenerateLuaDefinitionFile(vm, "define.lua")
+	plugin.GenerateMarkdownDefinitionFile(vm, "lua.md")
 }
