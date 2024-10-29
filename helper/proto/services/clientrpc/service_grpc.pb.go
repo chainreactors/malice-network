@@ -11,7 +11,6 @@ import (
 	clientpb "github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	rootpb "github.com/chainreactors/malice-network/helper/proto/client/rootpb"
 	implantpb "github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	lispb "github.com/chainreactors/malice-network/helper/proto/listener/lispb"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -36,7 +35,7 @@ type MaliceRPCClient interface {
 	GetSessionLog(ctx context.Context, in *clientpb.SessionLog, opts ...grpc.CallOption) (*clientpb.TasksContext, error)
 	BasicSessionOP(ctx context.Context, in *clientpb.BasicUpdateSession, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	GetListeners(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Listeners, error)
-	GetPipelines(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*lispb.Pipelines, error)
+	GetPipelines(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Pipelines, error)
 	GetJobs(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Jobs, error)
 	GetTasks(ctx context.Context, in *clientpb.Session, opts ...grpc.CallOption) (*clientpb.Tasks, error)
 	GetTaskContent(ctx context.Context, in *clientpb.Task, opts ...grpc.CallOption) (*clientpb.TaskContext, error)
@@ -131,14 +130,14 @@ type MaliceRPCClient interface {
 	DLL2Shellcode(ctx context.Context, in *clientpb.DLL2Shellcode, opts ...grpc.CallOption) (*clientpb.Bin, error)
 	ShellcodeEncode(ctx context.Context, in *clientpb.ShellcodeEncode, opts ...grpc.CallOption) (*clientpb.Bin, error)
 	// jobs
-	ListJobs(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*lispb.Pipelines, error)
+	ListJobs(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Pipelines, error)
 	// Websites
-	Websites(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*lispb.Websites, error)
-	Website(ctx context.Context, in *lispb.Website, opts ...grpc.CallOption) (*lispb.Website, error)
-	WebsiteRemove(ctx context.Context, in *lispb.Website, opts ...grpc.CallOption) (*clientpb.Empty, error)
-	WebsiteAddContent(ctx context.Context, in *lispb.WebsiteAddContent, opts ...grpc.CallOption) (*lispb.Website, error)
-	WebsiteUpdateContent(ctx context.Context, in *lispb.WebsiteAddContent, opts ...grpc.CallOption) (*lispb.Website, error)
-	WebsiteRemoveContent(ctx context.Context, in *lispb.WebsiteRemoveContent, opts ...grpc.CallOption) (*lispb.Website, error)
+	Websites(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Websites, error)
+	Website(ctx context.Context, in *clientpb.Website, opts ...grpc.CallOption) (*clientpb.Website, error)
+	WebsiteRemove(ctx context.Context, in *clientpb.Website, opts ...grpc.CallOption) (*clientpb.Empty, error)
+	WebsiteAddContent(ctx context.Context, in *clientpb.WebsiteAddContent, opts ...grpc.CallOption) (*clientpb.Website, error)
+	WebsiteUpdateContent(ctx context.Context, in *clientpb.WebsiteAddContent, opts ...grpc.CallOption) (*clientpb.Website, error)
+	WebsiteRemoveContent(ctx context.Context, in *clientpb.WebsiteRemoveContent, opts ...grpc.CallOption) (*clientpb.Website, error)
 	// generator
 	NewProfile(ctx context.Context, in *clientpb.Profile, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	GetProfiles(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Profiles, error)
@@ -236,8 +235,8 @@ func (c *maliceRPCClient) GetListeners(ctx context.Context, in *clientpb.Empty, 
 	return out, nil
 }
 
-func (c *maliceRPCClient) GetPipelines(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*lispb.Pipelines, error) {
-	out := new(lispb.Pipelines)
+func (c *maliceRPCClient) GetPipelines(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Pipelines, error) {
+	out := new(clientpb.Pipelines)
 	err := c.cc.Invoke(ctx, "/clientrpc.MaliceRPC/GetPipelines", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -997,8 +996,8 @@ func (c *maliceRPCClient) ShellcodeEncode(ctx context.Context, in *clientpb.Shel
 	return out, nil
 }
 
-func (c *maliceRPCClient) ListJobs(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*lispb.Pipelines, error) {
-	out := new(lispb.Pipelines)
+func (c *maliceRPCClient) ListJobs(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Pipelines, error) {
+	out := new(clientpb.Pipelines)
 	err := c.cc.Invoke(ctx, "/clientrpc.MaliceRPC/ListJobs", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -1006,8 +1005,8 @@ func (c *maliceRPCClient) ListJobs(ctx context.Context, in *clientpb.Empty, opts
 	return out, nil
 }
 
-func (c *maliceRPCClient) Websites(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*lispb.Websites, error) {
-	out := new(lispb.Websites)
+func (c *maliceRPCClient) Websites(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Websites, error) {
+	out := new(clientpb.Websites)
 	err := c.cc.Invoke(ctx, "/clientrpc.MaliceRPC/Websites", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -1015,8 +1014,8 @@ func (c *maliceRPCClient) Websites(ctx context.Context, in *clientpb.Empty, opts
 	return out, nil
 }
 
-func (c *maliceRPCClient) Website(ctx context.Context, in *lispb.Website, opts ...grpc.CallOption) (*lispb.Website, error) {
-	out := new(lispb.Website)
+func (c *maliceRPCClient) Website(ctx context.Context, in *clientpb.Website, opts ...grpc.CallOption) (*clientpb.Website, error) {
+	out := new(clientpb.Website)
 	err := c.cc.Invoke(ctx, "/clientrpc.MaliceRPC/Website", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -1024,7 +1023,7 @@ func (c *maliceRPCClient) Website(ctx context.Context, in *lispb.Website, opts .
 	return out, nil
 }
 
-func (c *maliceRPCClient) WebsiteRemove(ctx context.Context, in *lispb.Website, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+func (c *maliceRPCClient) WebsiteRemove(ctx context.Context, in *clientpb.Website, opts ...grpc.CallOption) (*clientpb.Empty, error) {
 	out := new(clientpb.Empty)
 	err := c.cc.Invoke(ctx, "/clientrpc.MaliceRPC/WebsiteRemove", in, out, opts...)
 	if err != nil {
@@ -1033,8 +1032,8 @@ func (c *maliceRPCClient) WebsiteRemove(ctx context.Context, in *lispb.Website, 
 	return out, nil
 }
 
-func (c *maliceRPCClient) WebsiteAddContent(ctx context.Context, in *lispb.WebsiteAddContent, opts ...grpc.CallOption) (*lispb.Website, error) {
-	out := new(lispb.Website)
+func (c *maliceRPCClient) WebsiteAddContent(ctx context.Context, in *clientpb.WebsiteAddContent, opts ...grpc.CallOption) (*clientpb.Website, error) {
+	out := new(clientpb.Website)
 	err := c.cc.Invoke(ctx, "/clientrpc.MaliceRPC/WebsiteAddContent", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -1042,8 +1041,8 @@ func (c *maliceRPCClient) WebsiteAddContent(ctx context.Context, in *lispb.Websi
 	return out, nil
 }
 
-func (c *maliceRPCClient) WebsiteUpdateContent(ctx context.Context, in *lispb.WebsiteAddContent, opts ...grpc.CallOption) (*lispb.Website, error) {
-	out := new(lispb.Website)
+func (c *maliceRPCClient) WebsiteUpdateContent(ctx context.Context, in *clientpb.WebsiteAddContent, opts ...grpc.CallOption) (*clientpb.Website, error) {
+	out := new(clientpb.Website)
 	err := c.cc.Invoke(ctx, "/clientrpc.MaliceRPC/WebsiteUpdateContent", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -1051,8 +1050,8 @@ func (c *maliceRPCClient) WebsiteUpdateContent(ctx context.Context, in *lispb.We
 	return out, nil
 }
 
-func (c *maliceRPCClient) WebsiteRemoveContent(ctx context.Context, in *lispb.WebsiteRemoveContent, opts ...grpc.CallOption) (*lispb.Website, error) {
-	out := new(lispb.Website)
+func (c *maliceRPCClient) WebsiteRemoveContent(ctx context.Context, in *clientpb.WebsiteRemoveContent, opts ...grpc.CallOption) (*clientpb.Website, error) {
+	out := new(clientpb.Website)
 	err := c.cc.Invoke(ctx, "/clientrpc.MaliceRPC/WebsiteRemoveContent", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -1119,7 +1118,7 @@ type MaliceRPCServer interface {
 	GetSessionLog(context.Context, *clientpb.SessionLog) (*clientpb.TasksContext, error)
 	BasicSessionOP(context.Context, *clientpb.BasicUpdateSession) (*clientpb.Empty, error)
 	GetListeners(context.Context, *clientpb.Empty) (*clientpb.Listeners, error)
-	GetPipelines(context.Context, *clientpb.Empty) (*lispb.Pipelines, error)
+	GetPipelines(context.Context, *clientpb.Empty) (*clientpb.Pipelines, error)
 	GetJobs(context.Context, *clientpb.Empty) (*clientpb.Jobs, error)
 	GetTasks(context.Context, *clientpb.Session) (*clientpb.Tasks, error)
 	GetTaskContent(context.Context, *clientpb.Task) (*clientpb.TaskContext, error)
@@ -1214,14 +1213,14 @@ type MaliceRPCServer interface {
 	DLL2Shellcode(context.Context, *clientpb.DLL2Shellcode) (*clientpb.Bin, error)
 	ShellcodeEncode(context.Context, *clientpb.ShellcodeEncode) (*clientpb.Bin, error)
 	// jobs
-	ListJobs(context.Context, *clientpb.Empty) (*lispb.Pipelines, error)
+	ListJobs(context.Context, *clientpb.Empty) (*clientpb.Pipelines, error)
 	// Websites
-	Websites(context.Context, *clientpb.Empty) (*lispb.Websites, error)
-	Website(context.Context, *lispb.Website) (*lispb.Website, error)
-	WebsiteRemove(context.Context, *lispb.Website) (*clientpb.Empty, error)
-	WebsiteAddContent(context.Context, *lispb.WebsiteAddContent) (*lispb.Website, error)
-	WebsiteUpdateContent(context.Context, *lispb.WebsiteAddContent) (*lispb.Website, error)
-	WebsiteRemoveContent(context.Context, *lispb.WebsiteRemoveContent) (*lispb.Website, error)
+	Websites(context.Context, *clientpb.Empty) (*clientpb.Websites, error)
+	Website(context.Context, *clientpb.Website) (*clientpb.Website, error)
+	WebsiteRemove(context.Context, *clientpb.Website) (*clientpb.Empty, error)
+	WebsiteAddContent(context.Context, *clientpb.WebsiteAddContent) (*clientpb.Website, error)
+	WebsiteUpdateContent(context.Context, *clientpb.WebsiteAddContent) (*clientpb.Website, error)
+	WebsiteRemoveContent(context.Context, *clientpb.WebsiteRemoveContent) (*clientpb.Website, error)
 	// generator
 	NewProfile(context.Context, *clientpb.Profile) (*clientpb.Empty, error)
 	GetProfiles(context.Context, *clientpb.Empty) (*clientpb.Profiles, error)
@@ -1262,7 +1261,7 @@ func (UnimplementedMaliceRPCServer) BasicSessionOP(context.Context, *clientpb.Ba
 func (UnimplementedMaliceRPCServer) GetListeners(context.Context, *clientpb.Empty) (*clientpb.Listeners, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetListeners not implemented")
 }
-func (UnimplementedMaliceRPCServer) GetPipelines(context.Context, *clientpb.Empty) (*lispb.Pipelines, error) {
+func (UnimplementedMaliceRPCServer) GetPipelines(context.Context, *clientpb.Empty) (*clientpb.Pipelines, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetPipelines not implemented")
 }
 func (UnimplementedMaliceRPCServer) GetJobs(context.Context, *clientpb.Empty) (*clientpb.Jobs, error) {
@@ -1508,25 +1507,25 @@ func (UnimplementedMaliceRPCServer) DLL2Shellcode(context.Context, *clientpb.DLL
 func (UnimplementedMaliceRPCServer) ShellcodeEncode(context.Context, *clientpb.ShellcodeEncode) (*clientpb.Bin, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ShellcodeEncode not implemented")
 }
-func (UnimplementedMaliceRPCServer) ListJobs(context.Context, *clientpb.Empty) (*lispb.Pipelines, error) {
+func (UnimplementedMaliceRPCServer) ListJobs(context.Context, *clientpb.Empty) (*clientpb.Pipelines, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListJobs not implemented")
 }
-func (UnimplementedMaliceRPCServer) Websites(context.Context, *clientpb.Empty) (*lispb.Websites, error) {
+func (UnimplementedMaliceRPCServer) Websites(context.Context, *clientpb.Empty) (*clientpb.Websites, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Websites not implemented")
 }
-func (UnimplementedMaliceRPCServer) Website(context.Context, *lispb.Website) (*lispb.Website, error) {
+func (UnimplementedMaliceRPCServer) Website(context.Context, *clientpb.Website) (*clientpb.Website, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Website not implemented")
 }
-func (UnimplementedMaliceRPCServer) WebsiteRemove(context.Context, *lispb.Website) (*clientpb.Empty, error) {
+func (UnimplementedMaliceRPCServer) WebsiteRemove(context.Context, *clientpb.Website) (*clientpb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method WebsiteRemove not implemented")
 }
-func (UnimplementedMaliceRPCServer) WebsiteAddContent(context.Context, *lispb.WebsiteAddContent) (*lispb.Website, error) {
+func (UnimplementedMaliceRPCServer) WebsiteAddContent(context.Context, *clientpb.WebsiteAddContent) (*clientpb.Website, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method WebsiteAddContent not implemented")
 }
-func (UnimplementedMaliceRPCServer) WebsiteUpdateContent(context.Context, *lispb.WebsiteAddContent) (*lispb.Website, error) {
+func (UnimplementedMaliceRPCServer) WebsiteUpdateContent(context.Context, *clientpb.WebsiteAddContent) (*clientpb.Website, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method WebsiteUpdateContent not implemented")
 }
-func (UnimplementedMaliceRPCServer) WebsiteRemoveContent(context.Context, *lispb.WebsiteRemoveContent) (*lispb.Website, error) {
+func (UnimplementedMaliceRPCServer) WebsiteRemoveContent(context.Context, *clientpb.WebsiteRemoveContent) (*clientpb.Website, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method WebsiteRemoveContent not implemented")
 }
 func (UnimplementedMaliceRPCServer) NewProfile(context.Context, *clientpb.Profile) (*clientpb.Empty, error) {
@@ -3235,7 +3234,7 @@ func _MaliceRPC_Websites_Handler(srv interface{}, ctx context.Context, dec func(
 }
 
 func _MaliceRPC_Website_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(lispb.Website)
+	in := new(clientpb.Website)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -3247,13 +3246,13 @@ func _MaliceRPC_Website_Handler(srv interface{}, ctx context.Context, dec func(i
 		FullMethod: "/clientrpc.MaliceRPC/Website",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MaliceRPCServer).Website(ctx, req.(*lispb.Website))
+		return srv.(MaliceRPCServer).Website(ctx, req.(*clientpb.Website))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _MaliceRPC_WebsiteRemove_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(lispb.Website)
+	in := new(clientpb.Website)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -3265,13 +3264,13 @@ func _MaliceRPC_WebsiteRemove_Handler(srv interface{}, ctx context.Context, dec 
 		FullMethod: "/clientrpc.MaliceRPC/WebsiteRemove",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MaliceRPCServer).WebsiteRemove(ctx, req.(*lispb.Website))
+		return srv.(MaliceRPCServer).WebsiteRemove(ctx, req.(*clientpb.Website))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _MaliceRPC_WebsiteAddContent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(lispb.WebsiteAddContent)
+	in := new(clientpb.WebsiteAddContent)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -3283,13 +3282,13 @@ func _MaliceRPC_WebsiteAddContent_Handler(srv interface{}, ctx context.Context, 
 		FullMethod: "/clientrpc.MaliceRPC/WebsiteAddContent",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MaliceRPCServer).WebsiteAddContent(ctx, req.(*lispb.WebsiteAddContent))
+		return srv.(MaliceRPCServer).WebsiteAddContent(ctx, req.(*clientpb.WebsiteAddContent))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _MaliceRPC_WebsiteUpdateContent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(lispb.WebsiteAddContent)
+	in := new(clientpb.WebsiteAddContent)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -3301,13 +3300,13 @@ func _MaliceRPC_WebsiteUpdateContent_Handler(srv interface{}, ctx context.Contex
 		FullMethod: "/clientrpc.MaliceRPC/WebsiteUpdateContent",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MaliceRPCServer).WebsiteUpdateContent(ctx, req.(*lispb.WebsiteAddContent))
+		return srv.(MaliceRPCServer).WebsiteUpdateContent(ctx, req.(*clientpb.WebsiteAddContent))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _MaliceRPC_WebsiteRemoveContent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(lispb.WebsiteRemoveContent)
+	in := new(clientpb.WebsiteRemoveContent)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -3319,7 +3318,7 @@ func _MaliceRPC_WebsiteRemoveContent_Handler(srv interface{}, ctx context.Contex
 		FullMethod: "/clientrpc.MaliceRPC/WebsiteRemoveContent",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MaliceRPCServer).WebsiteRemoveContent(ctx, req.(*lispb.WebsiteRemoveContent))
+		return srv.(MaliceRPCServer).WebsiteRemoveContent(ctx, req.(*clientpb.WebsiteRemoveContent))
 	}
 	return interceptor(ctx, in, info, handler)
 }

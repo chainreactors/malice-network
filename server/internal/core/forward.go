@@ -3,9 +3,9 @@ package core
 import (
 	"context"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 
-	"github.com/chainreactors/malice-network/helper/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
@@ -127,7 +127,7 @@ func (f *Forward) Handler() {
 		for _, spite := range spites.Spites {
 			switch spite.Body.(type) {
 			case *implantpb.Spite_Register:
-				_, err := f.ImplantRpc.Register(f.ctx, &lispb.RegisterSession{
+				_, err := f.ImplantRpc.Register(f.ctx, &clientpb.RegisterSession{
 					SessionId:    msg.SessionID,
 					ListenerId:   f.ID(),
 					RegisterData: spite.GetRegister(),
@@ -153,7 +153,7 @@ func (f *Forward) Handler() {
 				}
 				spite := spite
 				go func() {
-					err := f.stream.Send(&lispb.SpiteSession{
+					err := f.stream.Send(&clientpb.SpiteSession{
 						ListenerId: f.ID(),
 						SessionId:  msg.SessionID,
 						TaskId:     spite.TaskId,

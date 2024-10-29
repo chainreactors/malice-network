@@ -10,7 +10,6 @@ import (
 	context "context"
 	clientpb "github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	implantpb "github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	lispb "github.com/chainreactors/malice-network/helper/proto/listener/lispb"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -25,7 +24,7 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ImplantRPCClient interface {
-	Register(ctx context.Context, in *lispb.RegisterSession, opts ...grpc.CallOption) (*implantpb.Empty, error)
+	Register(ctx context.Context, in *clientpb.RegisterSession, opts ...grpc.CallOption) (*implantpb.Empty, error)
 	SysInfo(ctx context.Context, in *implantpb.SysInfo, opts ...grpc.CallOption) (*implantpb.Empty, error)
 	Ping(ctx context.Context, in *implantpb.Ping, opts ...grpc.CallOption) (*implantpb.Empty, error)
 }
@@ -38,7 +37,7 @@ func NewImplantRPCClient(cc grpc.ClientConnInterface) ImplantRPCClient {
 	return &implantRPCClient{cc}
 }
 
-func (c *implantRPCClient) Register(ctx context.Context, in *lispb.RegisterSession, opts ...grpc.CallOption) (*implantpb.Empty, error) {
+func (c *implantRPCClient) Register(ctx context.Context, in *clientpb.RegisterSession, opts ...grpc.CallOption) (*implantpb.Empty, error) {
 	out := new(implantpb.Empty)
 	err := c.cc.Invoke(ctx, "/listenerrpc.ImplantRPC/Register", in, out, opts...)
 	if err != nil {
@@ -69,7 +68,7 @@ func (c *implantRPCClient) Ping(ctx context.Context, in *implantpb.Ping, opts ..
 // All implementations must embed UnimplementedImplantRPCServer
 // for forward compatibility
 type ImplantRPCServer interface {
-	Register(context.Context, *lispb.RegisterSession) (*implantpb.Empty, error)
+	Register(context.Context, *clientpb.RegisterSession) (*implantpb.Empty, error)
 	SysInfo(context.Context, *implantpb.SysInfo) (*implantpb.Empty, error)
 	Ping(context.Context, *implantpb.Ping) (*implantpb.Empty, error)
 	mustEmbedUnimplementedImplantRPCServer()
@@ -79,7 +78,7 @@ type ImplantRPCServer interface {
 type UnimplementedImplantRPCServer struct {
 }
 
-func (UnimplementedImplantRPCServer) Register(context.Context, *lispb.RegisterSession) (*implantpb.Empty, error) {
+func (UnimplementedImplantRPCServer) Register(context.Context, *clientpb.RegisterSession) (*implantpb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Register not implemented")
 }
 func (UnimplementedImplantRPCServer) SysInfo(context.Context, *implantpb.SysInfo) (*implantpb.Empty, error) {
@@ -102,7 +101,7 @@ func RegisterImplantRPCServer(s grpc.ServiceRegistrar, srv ImplantRPCServer) {
 }
 
 func _ImplantRPC_Register_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(lispb.RegisterSession)
+	in := new(clientpb.RegisterSession)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -114,7 +113,7 @@ func _ImplantRPC_Register_Handler(srv interface{}, ctx context.Context, dec func
 		FullMethod: "/listenerrpc.ImplantRPC/Register",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ImplantRPCServer).Register(ctx, req.(*lispb.RegisterSession))
+		return srv.(ImplantRPCServer).Register(ctx, req.(*clientpb.RegisterSession))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -183,17 +182,17 @@ var ImplantRPC_ServiceDesc = grpc.ServiceDesc{
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ListenerRPCClient interface {
-	RegisterListener(ctx context.Context, in *lispb.RegisterListener, opts ...grpc.CallOption) (*implantpb.Empty, error)
-	RegisterPipeline(ctx context.Context, in *lispb.Pipeline, opts ...grpc.CallOption) (*implantpb.Empty, error)
-	RegisterWebsite(ctx context.Context, in *lispb.Pipeline, opts ...grpc.CallOption) (*lispb.WebsiteResponse, error)
-	StartTcpPipeline(ctx context.Context, in *lispb.CtrlPipeline, opts ...grpc.CallOption) (*clientpb.Empty, error)
-	StopTcpPipeline(ctx context.Context, in *lispb.CtrlPipeline, opts ...grpc.CallOption) (*clientpb.Empty, error)
-	ListTcpPipelines(ctx context.Context, in *lispb.ListenerName, opts ...grpc.CallOption) (*lispb.Pipelines, error)
-	StartWebsite(ctx context.Context, in *lispb.CtrlPipeline, opts ...grpc.CallOption) (*clientpb.Empty, error)
-	StopWebsite(ctx context.Context, in *lispb.CtrlPipeline, opts ...grpc.CallOption) (*clientpb.Empty, error)
-	UploadWebsite(ctx context.Context, in *lispb.WebsiteAssets, opts ...grpc.CallOption) (*clientpb.Empty, error)
-	ListWebsites(ctx context.Context, in *lispb.ListenerName, opts ...grpc.CallOption) (*lispb.Websites, error)
-	//  rpc ListenerCtrl(lispb.CtrlStatus) returns (stream lispb.CtrlPipeline);
+	RegisterListener(ctx context.Context, in *clientpb.RegisterListener, opts ...grpc.CallOption) (*implantpb.Empty, error)
+	RegisterPipeline(ctx context.Context, in *clientpb.Pipeline, opts ...grpc.CallOption) (*implantpb.Empty, error)
+	RegisterWebsite(ctx context.Context, in *clientpb.Pipeline, opts ...grpc.CallOption) (*clientpb.WebsiteResponse, error)
+	StartTcpPipeline(ctx context.Context, in *clientpb.CtrlPipeline, opts ...grpc.CallOption) (*clientpb.Empty, error)
+	StopTcpPipeline(ctx context.Context, in *clientpb.CtrlPipeline, opts ...grpc.CallOption) (*clientpb.Empty, error)
+	ListTcpPipelines(ctx context.Context, in *clientpb.ListenerName, opts ...grpc.CallOption) (*clientpb.Pipelines, error)
+	StartWebsite(ctx context.Context, in *clientpb.CtrlPipeline, opts ...grpc.CallOption) (*clientpb.Empty, error)
+	StopWebsite(ctx context.Context, in *clientpb.CtrlPipeline, opts ...grpc.CallOption) (*clientpb.Empty, error)
+	UploadWebsite(ctx context.Context, in *clientpb.WebsiteAssets, opts ...grpc.CallOption) (*clientpb.Empty, error)
+	ListWebsites(ctx context.Context, in *clientpb.ListenerName, opts ...grpc.CallOption) (*clientpb.Websites, error)
+	//  rpc ListenerCtrl(clientpb.CtrlStatus) returns (stream clientpb.CtrlPipeline);
 	SpiteStream(ctx context.Context, opts ...grpc.CallOption) (ListenerRPC_SpiteStreamClient, error)
 	JobStream(ctx context.Context, opts ...grpc.CallOption) (ListenerRPC_JobStreamClient, error)
 }
@@ -206,7 +205,7 @@ func NewListenerRPCClient(cc grpc.ClientConnInterface) ListenerRPCClient {
 	return &listenerRPCClient{cc}
 }
 
-func (c *listenerRPCClient) RegisterListener(ctx context.Context, in *lispb.RegisterListener, opts ...grpc.CallOption) (*implantpb.Empty, error) {
+func (c *listenerRPCClient) RegisterListener(ctx context.Context, in *clientpb.RegisterListener, opts ...grpc.CallOption) (*implantpb.Empty, error) {
 	out := new(implantpb.Empty)
 	err := c.cc.Invoke(ctx, "/listenerrpc.ListenerRPC/RegisterListener", in, out, opts...)
 	if err != nil {
@@ -215,7 +214,7 @@ func (c *listenerRPCClient) RegisterListener(ctx context.Context, in *lispb.Regi
 	return out, nil
 }
 
-func (c *listenerRPCClient) RegisterPipeline(ctx context.Context, in *lispb.Pipeline, opts ...grpc.CallOption) (*implantpb.Empty, error) {
+func (c *listenerRPCClient) RegisterPipeline(ctx context.Context, in *clientpb.Pipeline, opts ...grpc.CallOption) (*implantpb.Empty, error) {
 	out := new(implantpb.Empty)
 	err := c.cc.Invoke(ctx, "/listenerrpc.ListenerRPC/RegisterPipeline", in, out, opts...)
 	if err != nil {
@@ -224,8 +223,8 @@ func (c *listenerRPCClient) RegisterPipeline(ctx context.Context, in *lispb.Pipe
 	return out, nil
 }
 
-func (c *listenerRPCClient) RegisterWebsite(ctx context.Context, in *lispb.Pipeline, opts ...grpc.CallOption) (*lispb.WebsiteResponse, error) {
-	out := new(lispb.WebsiteResponse)
+func (c *listenerRPCClient) RegisterWebsite(ctx context.Context, in *clientpb.Pipeline, opts ...grpc.CallOption) (*clientpb.WebsiteResponse, error) {
+	out := new(clientpb.WebsiteResponse)
 	err := c.cc.Invoke(ctx, "/listenerrpc.ListenerRPC/RegisterWebsite", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -233,7 +232,7 @@ func (c *listenerRPCClient) RegisterWebsite(ctx context.Context, in *lispb.Pipel
 	return out, nil
 }
 
-func (c *listenerRPCClient) StartTcpPipeline(ctx context.Context, in *lispb.CtrlPipeline, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+func (c *listenerRPCClient) StartTcpPipeline(ctx context.Context, in *clientpb.CtrlPipeline, opts ...grpc.CallOption) (*clientpb.Empty, error) {
 	out := new(clientpb.Empty)
 	err := c.cc.Invoke(ctx, "/listenerrpc.ListenerRPC/StartTcpPipeline", in, out, opts...)
 	if err != nil {
@@ -242,7 +241,7 @@ func (c *listenerRPCClient) StartTcpPipeline(ctx context.Context, in *lispb.Ctrl
 	return out, nil
 }
 
-func (c *listenerRPCClient) StopTcpPipeline(ctx context.Context, in *lispb.CtrlPipeline, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+func (c *listenerRPCClient) StopTcpPipeline(ctx context.Context, in *clientpb.CtrlPipeline, opts ...grpc.CallOption) (*clientpb.Empty, error) {
 	out := new(clientpb.Empty)
 	err := c.cc.Invoke(ctx, "/listenerrpc.ListenerRPC/StopTcpPipeline", in, out, opts...)
 	if err != nil {
@@ -251,8 +250,8 @@ func (c *listenerRPCClient) StopTcpPipeline(ctx context.Context, in *lispb.CtrlP
 	return out, nil
 }
 
-func (c *listenerRPCClient) ListTcpPipelines(ctx context.Context, in *lispb.ListenerName, opts ...grpc.CallOption) (*lispb.Pipelines, error) {
-	out := new(lispb.Pipelines)
+func (c *listenerRPCClient) ListTcpPipelines(ctx context.Context, in *clientpb.ListenerName, opts ...grpc.CallOption) (*clientpb.Pipelines, error) {
+	out := new(clientpb.Pipelines)
 	err := c.cc.Invoke(ctx, "/listenerrpc.ListenerRPC/ListTcpPipelines", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -260,7 +259,7 @@ func (c *listenerRPCClient) ListTcpPipelines(ctx context.Context, in *lispb.List
 	return out, nil
 }
 
-func (c *listenerRPCClient) StartWebsite(ctx context.Context, in *lispb.CtrlPipeline, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+func (c *listenerRPCClient) StartWebsite(ctx context.Context, in *clientpb.CtrlPipeline, opts ...grpc.CallOption) (*clientpb.Empty, error) {
 	out := new(clientpb.Empty)
 	err := c.cc.Invoke(ctx, "/listenerrpc.ListenerRPC/StartWebsite", in, out, opts...)
 	if err != nil {
@@ -269,7 +268,7 @@ func (c *listenerRPCClient) StartWebsite(ctx context.Context, in *lispb.CtrlPipe
 	return out, nil
 }
 
-func (c *listenerRPCClient) StopWebsite(ctx context.Context, in *lispb.CtrlPipeline, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+func (c *listenerRPCClient) StopWebsite(ctx context.Context, in *clientpb.CtrlPipeline, opts ...grpc.CallOption) (*clientpb.Empty, error) {
 	out := new(clientpb.Empty)
 	err := c.cc.Invoke(ctx, "/listenerrpc.ListenerRPC/StopWebsite", in, out, opts...)
 	if err != nil {
@@ -278,7 +277,7 @@ func (c *listenerRPCClient) StopWebsite(ctx context.Context, in *lispb.CtrlPipel
 	return out, nil
 }
 
-func (c *listenerRPCClient) UploadWebsite(ctx context.Context, in *lispb.WebsiteAssets, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+func (c *listenerRPCClient) UploadWebsite(ctx context.Context, in *clientpb.WebsiteAssets, opts ...grpc.CallOption) (*clientpb.Empty, error) {
 	out := new(clientpb.Empty)
 	err := c.cc.Invoke(ctx, "/listenerrpc.ListenerRPC/UploadWebsite", in, out, opts...)
 	if err != nil {
@@ -287,8 +286,8 @@ func (c *listenerRPCClient) UploadWebsite(ctx context.Context, in *lispb.Website
 	return out, nil
 }
 
-func (c *listenerRPCClient) ListWebsites(ctx context.Context, in *lispb.ListenerName, opts ...grpc.CallOption) (*lispb.Websites, error) {
-	out := new(lispb.Websites)
+func (c *listenerRPCClient) ListWebsites(ctx context.Context, in *clientpb.ListenerName, opts ...grpc.CallOption) (*clientpb.Websites, error) {
+	out := new(clientpb.Websites)
 	err := c.cc.Invoke(ctx, "/listenerrpc.ListenerRPC/ListWebsites", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -306,8 +305,8 @@ func (c *listenerRPCClient) SpiteStream(ctx context.Context, opts ...grpc.CallOp
 }
 
 type ListenerRPC_SpiteStreamClient interface {
-	Send(*lispb.SpiteSession) error
-	Recv() (*lispb.SpiteSession, error)
+	Send(*clientpb.SpiteSession) error
+	Recv() (*clientpb.SpiteSession, error)
 	grpc.ClientStream
 }
 
@@ -315,12 +314,12 @@ type listenerRPCSpiteStreamClient struct {
 	grpc.ClientStream
 }
 
-func (x *listenerRPCSpiteStreamClient) Send(m *lispb.SpiteSession) error {
+func (x *listenerRPCSpiteStreamClient) Send(m *clientpb.SpiteSession) error {
 	return x.ClientStream.SendMsg(m)
 }
 
-func (x *listenerRPCSpiteStreamClient) Recv() (*lispb.SpiteSession, error) {
-	m := new(lispb.SpiteSession)
+func (x *listenerRPCSpiteStreamClient) Recv() (*clientpb.SpiteSession, error) {
+	m := new(clientpb.SpiteSession)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -362,17 +361,17 @@ func (x *listenerRPCJobStreamClient) Recv() (*clientpb.JobCtrl, error) {
 // All implementations must embed UnimplementedListenerRPCServer
 // for forward compatibility
 type ListenerRPCServer interface {
-	RegisterListener(context.Context, *lispb.RegisterListener) (*implantpb.Empty, error)
-	RegisterPipeline(context.Context, *lispb.Pipeline) (*implantpb.Empty, error)
-	RegisterWebsite(context.Context, *lispb.Pipeline) (*lispb.WebsiteResponse, error)
-	StartTcpPipeline(context.Context, *lispb.CtrlPipeline) (*clientpb.Empty, error)
-	StopTcpPipeline(context.Context, *lispb.CtrlPipeline) (*clientpb.Empty, error)
-	ListTcpPipelines(context.Context, *lispb.ListenerName) (*lispb.Pipelines, error)
-	StartWebsite(context.Context, *lispb.CtrlPipeline) (*clientpb.Empty, error)
-	StopWebsite(context.Context, *lispb.CtrlPipeline) (*clientpb.Empty, error)
-	UploadWebsite(context.Context, *lispb.WebsiteAssets) (*clientpb.Empty, error)
-	ListWebsites(context.Context, *lispb.ListenerName) (*lispb.Websites, error)
-	//  rpc ListenerCtrl(lispb.CtrlStatus) returns (stream lispb.CtrlPipeline);
+	RegisterListener(context.Context, *clientpb.RegisterListener) (*implantpb.Empty, error)
+	RegisterPipeline(context.Context, *clientpb.Pipeline) (*implantpb.Empty, error)
+	RegisterWebsite(context.Context, *clientpb.Pipeline) (*clientpb.WebsiteResponse, error)
+	StartTcpPipeline(context.Context, *clientpb.CtrlPipeline) (*clientpb.Empty, error)
+	StopTcpPipeline(context.Context, *clientpb.CtrlPipeline) (*clientpb.Empty, error)
+	ListTcpPipelines(context.Context, *clientpb.ListenerName) (*clientpb.Pipelines, error)
+	StartWebsite(context.Context, *clientpb.CtrlPipeline) (*clientpb.Empty, error)
+	StopWebsite(context.Context, *clientpb.CtrlPipeline) (*clientpb.Empty, error)
+	UploadWebsite(context.Context, *clientpb.WebsiteAssets) (*clientpb.Empty, error)
+	ListWebsites(context.Context, *clientpb.ListenerName) (*clientpb.Websites, error)
+	//  rpc ListenerCtrl(clientpb.CtrlStatus) returns (stream clientpb.CtrlPipeline);
 	SpiteStream(ListenerRPC_SpiteStreamServer) error
 	JobStream(ListenerRPC_JobStreamServer) error
 	mustEmbedUnimplementedListenerRPCServer()
@@ -382,34 +381,34 @@ type ListenerRPCServer interface {
 type UnimplementedListenerRPCServer struct {
 }
 
-func (UnimplementedListenerRPCServer) RegisterListener(context.Context, *lispb.RegisterListener) (*implantpb.Empty, error) {
+func (UnimplementedListenerRPCServer) RegisterListener(context.Context, *clientpb.RegisterListener) (*implantpb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RegisterListener not implemented")
 }
-func (UnimplementedListenerRPCServer) RegisterPipeline(context.Context, *lispb.Pipeline) (*implantpb.Empty, error) {
+func (UnimplementedListenerRPCServer) RegisterPipeline(context.Context, *clientpb.Pipeline) (*implantpb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RegisterPipeline not implemented")
 }
-func (UnimplementedListenerRPCServer) RegisterWebsite(context.Context, *lispb.Pipeline) (*lispb.WebsiteResponse, error) {
+func (UnimplementedListenerRPCServer) RegisterWebsite(context.Context, *clientpb.Pipeline) (*clientpb.WebsiteResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RegisterWebsite not implemented")
 }
-func (UnimplementedListenerRPCServer) StartTcpPipeline(context.Context, *lispb.CtrlPipeline) (*clientpb.Empty, error) {
+func (UnimplementedListenerRPCServer) StartTcpPipeline(context.Context, *clientpb.CtrlPipeline) (*clientpb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method StartTcpPipeline not implemented")
 }
-func (UnimplementedListenerRPCServer) StopTcpPipeline(context.Context, *lispb.CtrlPipeline) (*clientpb.Empty, error) {
+func (UnimplementedListenerRPCServer) StopTcpPipeline(context.Context, *clientpb.CtrlPipeline) (*clientpb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method StopTcpPipeline not implemented")
 }
-func (UnimplementedListenerRPCServer) ListTcpPipelines(context.Context, *lispb.ListenerName) (*lispb.Pipelines, error) {
+func (UnimplementedListenerRPCServer) ListTcpPipelines(context.Context, *clientpb.ListenerName) (*clientpb.Pipelines, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListTcpPipelines not implemented")
 }
-func (UnimplementedListenerRPCServer) StartWebsite(context.Context, *lispb.CtrlPipeline) (*clientpb.Empty, error) {
+func (UnimplementedListenerRPCServer) StartWebsite(context.Context, *clientpb.CtrlPipeline) (*clientpb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method StartWebsite not implemented")
 }
-func (UnimplementedListenerRPCServer) StopWebsite(context.Context, *lispb.CtrlPipeline) (*clientpb.Empty, error) {
+func (UnimplementedListenerRPCServer) StopWebsite(context.Context, *clientpb.CtrlPipeline) (*clientpb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method StopWebsite not implemented")
 }
-func (UnimplementedListenerRPCServer) UploadWebsite(context.Context, *lispb.WebsiteAssets) (*clientpb.Empty, error) {
+func (UnimplementedListenerRPCServer) UploadWebsite(context.Context, *clientpb.WebsiteAssets) (*clientpb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UploadWebsite not implemented")
 }
-func (UnimplementedListenerRPCServer) ListWebsites(context.Context, *lispb.ListenerName) (*lispb.Websites, error) {
+func (UnimplementedListenerRPCServer) ListWebsites(context.Context, *clientpb.ListenerName) (*clientpb.Websites, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListWebsites not implemented")
 }
 func (UnimplementedListenerRPCServer) SpiteStream(ListenerRPC_SpiteStreamServer) error {
@@ -432,7 +431,7 @@ func RegisterListenerRPCServer(s grpc.ServiceRegistrar, srv ListenerRPCServer) {
 }
 
 func _ListenerRPC_RegisterListener_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(lispb.RegisterListener)
+	in := new(clientpb.RegisterListener)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -444,13 +443,13 @@ func _ListenerRPC_RegisterListener_Handler(srv interface{}, ctx context.Context,
 		FullMethod: "/listenerrpc.ListenerRPC/RegisterListener",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ListenerRPCServer).RegisterListener(ctx, req.(*lispb.RegisterListener))
+		return srv.(ListenerRPCServer).RegisterListener(ctx, req.(*clientpb.RegisterListener))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _ListenerRPC_RegisterPipeline_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(lispb.Pipeline)
+	in := new(clientpb.Pipeline)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -462,13 +461,13 @@ func _ListenerRPC_RegisterPipeline_Handler(srv interface{}, ctx context.Context,
 		FullMethod: "/listenerrpc.ListenerRPC/RegisterPipeline",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ListenerRPCServer).RegisterPipeline(ctx, req.(*lispb.Pipeline))
+		return srv.(ListenerRPCServer).RegisterPipeline(ctx, req.(*clientpb.Pipeline))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _ListenerRPC_RegisterWebsite_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(lispb.Pipeline)
+	in := new(clientpb.Pipeline)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -480,13 +479,13 @@ func _ListenerRPC_RegisterWebsite_Handler(srv interface{}, ctx context.Context, 
 		FullMethod: "/listenerrpc.ListenerRPC/RegisterWebsite",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ListenerRPCServer).RegisterWebsite(ctx, req.(*lispb.Pipeline))
+		return srv.(ListenerRPCServer).RegisterWebsite(ctx, req.(*clientpb.Pipeline))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _ListenerRPC_StartTcpPipeline_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(lispb.CtrlPipeline)
+	in := new(clientpb.CtrlPipeline)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -498,13 +497,13 @@ func _ListenerRPC_StartTcpPipeline_Handler(srv interface{}, ctx context.Context,
 		FullMethod: "/listenerrpc.ListenerRPC/StartTcpPipeline",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ListenerRPCServer).StartTcpPipeline(ctx, req.(*lispb.CtrlPipeline))
+		return srv.(ListenerRPCServer).StartTcpPipeline(ctx, req.(*clientpb.CtrlPipeline))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _ListenerRPC_StopTcpPipeline_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(lispb.CtrlPipeline)
+	in := new(clientpb.CtrlPipeline)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -516,13 +515,13 @@ func _ListenerRPC_StopTcpPipeline_Handler(srv interface{}, ctx context.Context, 
 		FullMethod: "/listenerrpc.ListenerRPC/StopTcpPipeline",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ListenerRPCServer).StopTcpPipeline(ctx, req.(*lispb.CtrlPipeline))
+		return srv.(ListenerRPCServer).StopTcpPipeline(ctx, req.(*clientpb.CtrlPipeline))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _ListenerRPC_ListTcpPipelines_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(lispb.ListenerName)
+	in := new(clientpb.ListenerName)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -534,13 +533,13 @@ func _ListenerRPC_ListTcpPipelines_Handler(srv interface{}, ctx context.Context,
 		FullMethod: "/listenerrpc.ListenerRPC/ListTcpPipelines",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ListenerRPCServer).ListTcpPipelines(ctx, req.(*lispb.ListenerName))
+		return srv.(ListenerRPCServer).ListTcpPipelines(ctx, req.(*clientpb.ListenerName))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _ListenerRPC_StartWebsite_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(lispb.CtrlPipeline)
+	in := new(clientpb.CtrlPipeline)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -552,13 +551,13 @@ func _ListenerRPC_StartWebsite_Handler(srv interface{}, ctx context.Context, dec
 		FullMethod: "/listenerrpc.ListenerRPC/StartWebsite",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ListenerRPCServer).StartWebsite(ctx, req.(*lispb.CtrlPipeline))
+		return srv.(ListenerRPCServer).StartWebsite(ctx, req.(*clientpb.CtrlPipeline))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _ListenerRPC_StopWebsite_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(lispb.CtrlPipeline)
+	in := new(clientpb.CtrlPipeline)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -570,13 +569,13 @@ func _ListenerRPC_StopWebsite_Handler(srv interface{}, ctx context.Context, dec 
 		FullMethod: "/listenerrpc.ListenerRPC/StopWebsite",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ListenerRPCServer).StopWebsite(ctx, req.(*lispb.CtrlPipeline))
+		return srv.(ListenerRPCServer).StopWebsite(ctx, req.(*clientpb.CtrlPipeline))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _ListenerRPC_UploadWebsite_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(lispb.WebsiteAssets)
+	in := new(clientpb.WebsiteAssets)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -588,13 +587,13 @@ func _ListenerRPC_UploadWebsite_Handler(srv interface{}, ctx context.Context, de
 		FullMethod: "/listenerrpc.ListenerRPC/UploadWebsite",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ListenerRPCServer).UploadWebsite(ctx, req.(*lispb.WebsiteAssets))
+		return srv.(ListenerRPCServer).UploadWebsite(ctx, req.(*clientpb.WebsiteAssets))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _ListenerRPC_ListWebsites_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(lispb.ListenerName)
+	in := new(clientpb.ListenerName)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -606,7 +605,7 @@ func _ListenerRPC_ListWebsites_Handler(srv interface{}, ctx context.Context, dec
 		FullMethod: "/listenerrpc.ListenerRPC/ListWebsites",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ListenerRPCServer).ListWebsites(ctx, req.(*lispb.ListenerName))
+		return srv.(ListenerRPCServer).ListWebsites(ctx, req.(*clientpb.ListenerName))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -616,8 +615,8 @@ func _ListenerRPC_SpiteStream_Handler(srv interface{}, stream grpc.ServerStream)
 }
 
 type ListenerRPC_SpiteStreamServer interface {
-	Send(*lispb.SpiteSession) error
-	Recv() (*lispb.SpiteSession, error)
+	Send(*clientpb.SpiteSession) error
+	Recv() (*clientpb.SpiteSession, error)
 	grpc.ServerStream
 }
 
@@ -625,12 +624,12 @@ type listenerRPCSpiteStreamServer struct {
 	grpc.ServerStream
 }
 
-func (x *listenerRPCSpiteStreamServer) Send(m *lispb.SpiteSession) error {
+func (x *listenerRPCSpiteStreamServer) Send(m *clientpb.SpiteSession) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func (x *listenerRPCSpiteStreamServer) Recv() (*lispb.SpiteSession, error) {
-	m := new(lispb.SpiteSession)
+func (x *listenerRPCSpiteStreamServer) Recv() (*clientpb.SpiteSession, error) {
+	m := new(clientpb.SpiteSession)
 	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
 	}

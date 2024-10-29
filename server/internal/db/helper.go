@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/helper/utils/mtls"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
@@ -31,7 +30,7 @@ func HasOperator(typ string) (bool, error) {
 	return true, nil
 }
 
-func FindAliveSessions() ([]*lispb.RegisterSession, error) {
+func FindAliveSessions() ([]*clientpb.RegisterSession, error) {
 	var activeSessions []models.Session
 	result := Session().Raw(`
 		SELECT * 
@@ -41,7 +40,7 @@ func FindAliveSessions() ([]*lispb.RegisterSession, error) {
 	if result.Error != nil {
 		return nil, result.Error
 	}
-	var sessions []*lispb.RegisterSession
+	var sessions []*clientpb.RegisterSession
 	for _, session := range activeSessions {
 		if session.IsRemoved {
 			continue
@@ -51,7 +50,7 @@ func FindAliveSessions() ([]*lispb.RegisterSession, error) {
 	return sessions, nil
 }
 
-func FindSession(sessionID string) (*lispb.RegisterSession, error) {
+func FindSession(sessionID string) (*clientpb.RegisterSession, error) {
 	var session models.Session
 	result := Session().Where("session_id = ? AND is_removed = ?", sessionID, false).First(&session)
 	if result.Error != nil {
@@ -254,7 +253,7 @@ func FindPipeline(name, listenerID string) (models.Pipeline, error) {
 
 }
 
-func CreatePipeline(ppProto *lispb.Pipeline) error {
+func CreatePipeline(ppProto *clientpb.Pipeline) error {
 	pipeline := models.ProtoBufToDB(ppProto)
 	newPipeline := models.Pipeline{}
 	result := Session().Where("name = ? AND listener_id  = ?", pipeline.Name, pipeline.ListenerID).First(&newPipeline)
@@ -449,7 +448,7 @@ func UpdateTaskDescription(taskID, Description string) error {
 }
 
 // WebsiteByName - Get website by name
-func WebsiteByName(name string, webContentDir string) (*lispb.Website, error) {
+func WebsiteByName(name string, webContentDir string) (*clientpb.Website, error) {
 	var websiteContent models.WebsiteContent
 	if err := Session().Where("name = ?", name).First(&websiteContent).Error; err != nil {
 		return nil, err
@@ -458,11 +457,11 @@ func WebsiteByName(name string, webContentDir string) (*lispb.Website, error) {
 }
 
 // Websites - Return all websites
-func Websites(webContentDir string) ([]*lispb.Website, error) {
+func Websites(webContentDir string) ([]*clientpb.Website, error) {
 	var websiteContents []*models.WebsiteContent
 	err := Session().Find(&websiteContents).Error
 
-	var pbWebsites []*lispb.Website
+	var pbWebsites []*clientpb.Website
 	for _, websiteContent := range websiteContents {
 		pbWebsites = append(pbWebsites, websiteContent.ToProtobuf(webContentDir))
 	}
@@ -471,7 +470,7 @@ func Websites(webContentDir string) ([]*lispb.Website, error) {
 }
 
 // WebContent by ID and path
-func WebContentByIDAndPath(id string, path string, webContentDir string, eager bool) (*lispb.WebContent, error) {
+func WebContentByIDAndPath(id string, path string, webContentDir string, eager bool) (*clientpb.WebContent, error) {
 	uuidFromString, _ := uuid.FromString(id)
 	content := models.WebsiteContent{}
 	err := Session().Where(&models.WebsiteContent{
@@ -494,7 +493,7 @@ func WebContentByIDAndPath(id string, path string, webContentDir string, eager b
 }
 
 // AddWebsite - Return website, create if it does not exist
-func AddWebsite(webSiteName string, webContentDir string) (*lispb.Website, error) {
+func AddWebsite(webSiteName string, webContentDir string) (*clientpb.Website, error) {
 	pbWebSite, err := WebsiteByName(webSiteName, webContentDir)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		err = Session().Create(&models.WebsiteContent{Name: webSiteName}).Error
@@ -510,7 +509,7 @@ func AddWebsite(webSiteName string, webContentDir string) (*lispb.Website, error
 }
 
 // AddContent - Add content to website
-func AddContent(pbWebContent *lispb.WebContent, webContentDir string) (*lispb.WebContent, error) {
+func AddContent(pbWebContent *clientpb.WebContent, webContentDir string) (*clientpb.WebContent, error) {
 	dbModelWebContent := models.WebsiteContentFromProtobuf(pbWebContent)
 	err := Session().Save(&dbModelWebContent).Error
 	if err != nil {

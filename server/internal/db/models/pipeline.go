@@ -1,7 +1,7 @@
 package models
 
 import (
-	"github.com/chainreactors/malice-network/helper/proto/listener/lispb"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/gofrs/uuid"
 	"gorm.io/gorm"
 	"time"
@@ -44,9 +44,9 @@ func (l *Pipeline) BeforeCreate(tx *gorm.DB) (err error) {
 	return nil
 }
 
-func ProtoBufToDB(pipeline *lispb.Pipeline) Pipeline {
+func ProtoBufToDB(pipeline *clientpb.Pipeline) Pipeline {
 	switch body := pipeline.Body.(type) {
-	case *lispb.Pipeline_Tcp:
+	case *clientpb.Pipeline_Tcp:
 		return Pipeline{
 			ListenerID: body.Tcp.ListenerId,
 			Name:       body.Tcp.Name,
@@ -57,7 +57,7 @@ func ProtoBufToDB(pipeline *lispb.Pipeline) Pipeline {
 			Encryption: ToEncryptionDB(pipeline.Encryption),
 			Enable:     body.Tcp.Enable,
 		}
-	case *lispb.Pipeline_Web:
+	case *clientpb.Pipeline_Web:
 		return Pipeline{
 			ListenerID: body.Web.ListenerId,
 			Name:       body.Web.Name,
@@ -73,7 +73,7 @@ func ProtoBufToDB(pipeline *lispb.Pipeline) Pipeline {
 	}
 }
 
-func ToTlsDB(tls *lispb.TLS) TlsConfig {
+func ToTlsDB(tls *clientpb.TLS) TlsConfig {
 	return TlsConfig{
 		Cert:   tls.Cert,
 		Key:    tls.Key,
@@ -81,7 +81,7 @@ func ToTlsDB(tls *lispb.TLS) TlsConfig {
 	}
 }
 
-func ToEncryptionDB(encryption *lispb.Encryption) EncryptionConfig {
+func ToEncryptionDB(encryption *clientpb.Encryption) EncryptionConfig {
 	return EncryptionConfig{
 		Enable: encryption.Enable,
 		Type:   encryption.Type,
@@ -89,12 +89,12 @@ func ToEncryptionDB(encryption *lispb.Encryption) EncryptionConfig {
 	}
 }
 
-func ToProtobuf(pipeline *Pipeline) *lispb.Pipeline {
+func ToProtobuf(pipeline *Pipeline) *clientpb.Pipeline {
 	switch pipeline.Type {
 	case "tcp":
-		return &lispb.Pipeline{
-			Body: &lispb.Pipeline_Tcp{
-				Tcp: &lispb.TCPPipeline{
+		return &clientpb.Pipeline{
+			Body: &clientpb.Pipeline_Tcp{
+				Tcp: &clientpb.TCPPipeline{
 					Name:       pipeline.Name,
 					Host:       pipeline.Host,
 					ListenerId: pipeline.ListenerID,
@@ -105,9 +105,9 @@ func ToProtobuf(pipeline *Pipeline) *lispb.Pipeline {
 			Encryption: ToEncryptionProtobuf(&pipeline.Encryption),
 		}
 	case "web":
-		return &lispb.Pipeline{
-			Body: &lispb.Pipeline_Web{
-				Web: &lispb.Website{
+		return &clientpb.Pipeline{
+			Body: &clientpb.Pipeline_Web{
+				Web: &clientpb.Website{
 					Name:       pipeline.Name,
 					RootPath:   pipeline.WebPath,
 					ListenerId: pipeline.ListenerID,
@@ -122,16 +122,16 @@ func ToProtobuf(pipeline *Pipeline) *lispb.Pipeline {
 	}
 }
 
-func ToTlsProtobuf(tls *TlsConfig) *lispb.TLS {
-	return &lispb.TLS{
+func ToTlsProtobuf(tls *TlsConfig) *clientpb.TLS {
+	return &clientpb.TLS{
 		Enable: tls.Enable,
 		Cert:   tls.Cert,
 		Key:    tls.Key,
 	}
 }
 
-func ToEncryptionProtobuf(encryption *EncryptionConfig) *lispb.Encryption {
-	return &lispb.Encryption{
+func ToEncryptionProtobuf(encryption *EncryptionConfig) *clientpb.Encryption {
+	return &clientpb.Encryption{
 		Enable: encryption.Enable,
 		Type:   encryption.Type,
 		Key:    encryption.Key,

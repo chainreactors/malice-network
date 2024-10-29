@@ -6,7 +6,7 @@ import (
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/cryptography"
-	"github.com/chainreactors/malice-network/helper/proto/listener/lispb"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/spf13/cobra"
@@ -21,7 +21,7 @@ func listTcpCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Error("listener_id is required")
 		return
 	}
-	Pipelines, err := con.LisRpc.ListTcpPipelines(context.Background(), &lispb.ListenerName{
+	Pipelines, err := con.LisRpc.ListTcpPipelines(context.Background(), &clientpb.ListenerName{
 		Name: listenerID,
 	})
 	if err != nil {
@@ -79,19 +79,19 @@ func newTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) {
 			return
 		}
 	}
-	_, err = con.LisRpc.RegisterPipeline(context.Background(), &lispb.Pipeline{
-		Encryption: &lispb.Encryption{
+	_, err = con.LisRpc.RegisterPipeline(context.Background(), &clientpb.Pipeline{
+		Encryption: &clientpb.Encryption{
 			Enable: false,
 			Type:   "",
 			Key:    "",
 		},
-		Tls: &lispb.TLS{
+		Tls: &clientpb.TLS{
 			Cert:   cert,
 			Key:    key,
 			Enable: tlsEnable,
 		},
-		Body: &lispb.Pipeline_Tcp{
-			Tcp: &lispb.TCPPipeline{
+		Body: &clientpb.Pipeline_Tcp{
+			Tcp: &clientpb.TCPPipeline{
 				Host:       host,
 				Port:       port,
 				Name:       name,
@@ -105,7 +105,7 @@ func newTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) {
 		return
 	}
 
-	_, err = con.LisRpc.StartTcpPipeline(context.Background(), &lispb.CtrlPipeline{
+	_, err = con.LisRpc.StartTcpPipeline(context.Background(), &clientpb.CtrlPipeline{
 		Name:       name,
 		ListenerId: listenerID,
 	})
@@ -119,7 +119,7 @@ func newTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) {
 func startTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) {
 	name := cmd.Flags().Arg(0)
 	listenerID := cmd.Flags().Arg(1)
-	_, err := con.LisRpc.StartTcpPipeline(context.Background(), &lispb.CtrlPipeline{
+	_, err := con.LisRpc.StartTcpPipeline(context.Background(), &clientpb.CtrlPipeline{
 		Name:       name,
 		ListenerId: listenerID,
 	})
@@ -132,7 +132,7 @@ func startTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) {
 func stopTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) {
 	name := cmd.Flags().Arg(1)
 	listenerID := cmd.Flags().Arg(0)
-	_, err := con.LisRpc.StopTcpPipeline(context.Background(), &lispb.CtrlPipeline{
+	_, err := con.LisRpc.StopTcpPipeline(context.Background(), &clientpb.CtrlPipeline{
 		Name:       name,
 		ListenerId: listenerID,
 	})

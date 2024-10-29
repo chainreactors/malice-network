@@ -7,7 +7,6 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/helper/utils/mtls"
@@ -47,7 +46,7 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 		websites:  make(core.Websites),
 	}
 
-	_, err = lis.Rpc.RegisterListener(context.Background(), &lispb.RegisterListener{
+	_, err = lis.Rpc.RegisterListener(context.Background(), &clientpb.RegisterListener{
 		Id:   fmt.Sprintf("%s_%s", lis.Name, lis.Host),
 		Name: lis.Name,
 		Host: conn.Target(),
@@ -68,7 +67,7 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 		if !tcpPipeline.Enable {
 			continue
 		}
-		_, err = lis.Rpc.StartTcpPipeline(context.Background(), &lispb.CtrlPipeline{
+		_, err = lis.Rpc.StartTcpPipeline(context.Background(), &clientpb.CtrlPipeline{
 			Name:       tcpPipeline.Name,
 			ListenerId: lis.Name,
 		})
@@ -82,9 +81,9 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 		if err != nil {
 			return err
 		}
-		addWeb := &lispb.WebsiteAddContent{
+		addWeb := &clientpb.WebsiteAddContent{
 			Name:     newWebsite.WebsiteName,
-			Contents: map[string]*lispb.WebContent{},
+			Contents: map[string]*clientpb.WebContent{},
 		}
 		cPath, _ := filepath.Abs(newWebsite.ContentPath)
 		fileIfo, err := os.Stat(cPath)
@@ -102,9 +101,9 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 				return err
 			}
 		}
-		webProtobuf := &lispb.Pipeline{
-			Body: &lispb.Pipeline_Web{
-				Web: &lispb.Website{
+		webProtobuf := &clientpb.Pipeline{
+			Body: &clientpb.Pipeline_Web{
+				Web: &clientpb.Website{
 					RootPath:   newWebsite.RootPath,
 					Port:       uint32(newWebsite.Port),
 					Name:       newWebsite.WebsiteName,
@@ -121,7 +120,7 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 		if !newWebsite.Enable {
 			continue
 		}
-		_, err = lis.Rpc.StartWebsite(context.Background(), &lispb.CtrlPipeline{
+		_, err = lis.Rpc.StartWebsite(context.Background(), &clientpb.CtrlPipeline{
 			Name:       newWebsite.WebsiteName,
 			ListenerId: lis.Name,
 		})
@@ -190,7 +189,7 @@ func (lns *listener) startHandler(job *clientpb.Job) *clientpb.JobStatus {
 	var err error
 	pipeline := job.GetPipeline()
 	switch pipeline.Body.(type) {
-	case *lispb.Pipeline_Tcp:
+	case *clientpb.Pipeline_Tcp:
 		p := lns.pipelines.Get(pipeline.GetTcp().Name)
 		if p == nil {
 			tcpPipeline, err := StartTcpPipeline(lns.conn, pipeline)
@@ -231,7 +230,7 @@ func (lns *listener) stopHandler(job *clientpb.Job) *clientpb.JobStatus {
 	var err error
 	pipeline := job.GetPipeline()
 	switch pipeline.Body.(type) {
-	case *lispb.Pipeline_Tcp:
+	case *clientpb.Pipeline_Tcp:
 		p := lns.pipelines.Get(pipeline.GetTcp().Name)
 		job.Name = p.ID()
 		if p == nil {

@@ -10,7 +10,7 @@ import (
 
 func TestRegister(t *testing.T) {
 	rpc := common.NewClient(common.DefaultGRPCAddr, []byte{1, 2, 3, 4})
-	_, err := rpc.Listener.RegisterListener(context.Background(), &lispb.RegisterListener{Id: "test"})
+	_, err := rpc.Listener.RegisterListener(context.Background(), &clientpb.RegisterListener{Id: "test"})
 	if err != nil {
 		fmt.Println(err)
 		return

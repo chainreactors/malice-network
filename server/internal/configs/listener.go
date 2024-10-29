@@ -5,7 +5,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/certs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	cryptostream "github.com/chainreactors/malice-network/helper/cryptography/stream"
-	"github.com/chainreactors/malice-network/helper/proto/listener/lispb"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"os"
 )
 
@@ -29,14 +29,14 @@ type TcpPipelineConfig struct {
 	EncryptionConfig *EncryptionConfig `config:"encryption"`
 }
 
-func (tcpPipeline *TcpPipelineConfig) ToProtobuf(lisId string) *lispb.Pipeline {
+func (tcpPipeline *TcpPipelineConfig) ToProtobuf(lisId string) *clientpb.Pipeline {
 	tls, err := tcpPipeline.TlsConfig.ReadCert()
 	if err != nil {
 		panic(err.Error())
 	}
-	return &lispb.Pipeline{
-		Body: &lispb.Pipeline_Tcp{
-			Tcp: &lispb.TCPPipeline{
+	return &clientpb.Pipeline{
+		Body: &clientpb.Pipeline_Tcp{
+			Tcp: &clientpb.TCPPipeline{
 				Name:       tcpPipeline.Name,
 				Host:       tcpPipeline.Host,
 				Port:       uint32(tcpPipeline.Port),
@@ -72,8 +72,8 @@ type CertConfig struct {
 	Enable bool   `yaml:"enable"`
 }
 
-func (t *CertConfig) ToProtobuf() *lispb.TLS {
-	return &lispb.TLS{
+func (t *CertConfig) ToProtobuf() *clientpb.TLS {
+	return &clientpb.TLS{
 		Cert:   t.Cert,
 		Key:    t.Key,
 		Enable: t.Enable,
@@ -164,13 +164,13 @@ func (e *EncryptionConfig) NewCrypto() (cryptostream.Cryptor, error) {
 	return cryptostream.NewCryptor(e.Type, []byte(e.Key), cryptostream.PKCS7Pad([]byte(e.Key), 16))
 }
 
-func (e *EncryptionConfig) ToProtobuf() *lispb.Encryption {
+func (e *EncryptionConfig) ToProtobuf() *clientpb.Encryption {
 	if e == nil {
-		return &lispb.Encryption{
+		return &clientpb.Encryption{
 			Enable: false,
 		}
 	}
-	return &lispb.Encryption{
+	return &clientpb.Encryption{
 		Type:   e.Type,
 		Key:    e.Key,
 		Enable: e.Enable,

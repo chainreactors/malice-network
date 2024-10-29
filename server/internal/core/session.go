@@ -8,7 +8,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/gookit/config/v2"
 	"google.golang.org/grpc"
@@ -35,7 +34,7 @@ var (
 	ErrImplantSendTimeout = errors.New("implant timeout")
 )
 
-func NewSessionContext(req *lispb.RegisterSession) *SessionContext {
+func NewSessionContext(req *clientpb.RegisterSession) *SessionContext {
 	return &SessionContext{
 		Modules: req.RegisterData.Module,
 		Addons:  req.RegisterData.Addon.Addons,
@@ -53,12 +52,12 @@ type SessionContext struct {
 	Data    map[string]string
 }
 
-func (ctx *SessionContext) Update(req *lispb.RegisterSession) {
+func (ctx *SessionContext) Update(req *clientpb.RegisterSession) {
 	ctx.Modules = req.RegisterData.Module
 	ctx.Addons = req.RegisterData.Addon.Addons
 }
 
-func NewSession(req *lispb.RegisterSession) *Session {
+func NewSession(req *clientpb.RegisterSession) *Session {
 	sess := &Session{
 		Name:           req.RegisterData.Name,
 		Group:          "default",
@@ -163,7 +162,7 @@ func (s *Session) ToProtobuf() *clientpb.Session {
 	}
 }
 
-func (s *Session) Update(req *lispb.RegisterSession) {
+func (s *Session) Update(req *clientpb.RegisterSession) {
 	s.Name = req.RegisterData.Name
 	s.ProxyURL = req.RegisterData.Proxy
 	s.Timer = req.RegisterData.Timer
@@ -218,7 +217,7 @@ func (s *Session) UpdateLastCheckin() {
 }
 
 // Request
-func (s *Session) Request(msg *lispb.SpiteSession, stream grpc.ServerStream, timeout time.Duration) error {
+func (s *Session) Request(msg *clientpb.SpiteSession, stream grpc.ServerStream, timeout time.Duration) error {
 	var err error
 	done := make(chan struct{})
 	go func() {
@@ -240,7 +239,7 @@ func (s *Session) Request(msg *lispb.SpiteSession, stream grpc.ServerStream, tim
 	}
 }
 
-func (s *Session) RequestAndWait(msg *lispb.SpiteSession, stream grpc.ServerStream, timeout time.Duration) (*implantpb.Spite, error) {
+func (s *Session) RequestAndWait(msg *clientpb.SpiteSession, stream grpc.ServerStream, timeout time.Duration) (*implantpb.Spite, error) {
 	ch := make(chan *implantpb.Spite)
 	s.StoreResp(msg.TaskId, ch)
 	err := s.Request(msg, stream, timeout)
@@ -253,7 +252,7 @@ func (s *Session) RequestAndWait(msg *lispb.SpiteSession, stream grpc.ServerStre
 }
 
 // RequestWithStream - 'async' means that the response is not returned immediately, but is returned through the channel 'ch
-func (s *Session) RequestWithStream(msg *lispb.SpiteSession, stream grpc.ServerStream, timeout time.Duration) (chan *implantpb.Spite, chan *implantpb.Spite, error) {
+func (s *Session) RequestWithStream(msg *clientpb.SpiteSession, stream grpc.ServerStream, timeout time.Duration) (chan *implantpb.Spite, chan *implantpb.Spite, error) {
 	respCh := make(chan *implantpb.Spite)
 	s.StoreResp(msg.TaskId, respCh)
 	err := s.Request(msg, stream, timeout)
@@ -266,7 +265,7 @@ func (s *Session) RequestWithStream(msg *lispb.SpiteSession, stream grpc.ServerS
 		defer close(respCh)
 		var c = 0
 		for spite := range in {
-			err := stream.SendMsg(&lispb.SpiteSession{
+			err := stream.SendMsg(&clientpb.SpiteSession{
 				SessionId: s.ID,
 				TaskId:    msg.TaskId,
 				Spite:     spite,
@@ -282,7 +281,7 @@ func (s *Session) RequestWithStream(msg *lispb.SpiteSession, stream grpc.ServerS
 	return in, respCh, nil
 }
 
-func (s *Session) RequestWithAsync(msg *lispb.SpiteSession, stream grpc.ServerStream, timeout time.Duration) (chan *implantpb.Spite, error) {
+func (s *Session) RequestWithAsync(msg *clientpb.SpiteSession, stream grpc.ServerStream, timeout time.Duration) (chan *implantpb.Spite, error) {
 	respCh := make(chan *implantpb.Spite)
 	s.StoreResp(msg.TaskId, respCh)
 	err := s.Request(msg, stream, timeout)

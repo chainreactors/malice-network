@@ -10,13 +10,12 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/types"
 
-	"github.com/chainreactors/malice-network/helper/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 )
 
-func (rpc *Server) Register(ctx context.Context, req *lispb.RegisterSession) (*implantpb.Empty, error) {
+func (rpc *Server) Register(ctx context.Context, req *clientpb.RegisterSession) (*implantpb.Empty, error) {
 	sess, success := core.Sessions.Get(req.SessionId)
 	if success {
 		logs.Log.Infof("alive session %s re-register", sess.ID)

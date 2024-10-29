@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/proto/listener/lispb"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/listener/encryption"
 	"google.golang.org/protobuf/proto"
@@ -19,10 +19,10 @@ type Website struct {
 	websiteName string
 	TlsConfig   *configs.CertConfig
 	Encryption  *configs.EncryptionConfig
-	Content     map[string]*lispb.WebContent
+	Content     map[string]*clientpb.WebContent
 }
 
-func StartWebsite(pipeline *lispb.Pipeline, content map[string]*lispb.WebContent) (*Website, error) {
+func StartWebsite(pipeline *clientpb.Pipeline, content map[string]*clientpb.WebContent) (*Website, error) {
 	websitePp := pipeline.GetWeb()
 	web := &Website{
 		port:        int(websitePp.Port),
@@ -91,7 +91,7 @@ func (w *Website) Close() error {
 }
 
 func (w *Website) ToProtobuf() proto.Message {
-	return &lispb.Website{
+	return &clientpb.Website{
 		ID:       fmt.Sprintf("%s_%d", w.websiteName, w.port),
 		Port:     uint32(w.port),
 		Name:     w.websiteName,
@@ -100,13 +100,13 @@ func (w *Website) ToProtobuf() proto.Message {
 }
 
 func (w *Website) ToTLSProtobuf() proto.Message {
-	return &lispb.TLS{
+	return &clientpb.TLS{
 		Cert: w.TlsConfig.Cert,
 		Key:  w.TlsConfig.Key,
 	}
 }
 
-func ToWebsiteConfig(w *lispb.Website, tls *lispb.TLS) *configs.WebsiteConfig {
+func ToWebsiteConfig(w *clientpb.Website, tls *clientpb.TLS) *configs.WebsiteConfig {
 	return &configs.WebsiteConfig{
 		Port:        uint16(w.Port),
 		RootPath:    w.RootPath,

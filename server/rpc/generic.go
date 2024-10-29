@@ -7,7 +7,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/helper/utils/handler"
 	"github.com/chainreactors/malice-network/server/internal/core"
@@ -155,7 +154,7 @@ func (rpc *Server) GenericHandler(ctx context.Context, req *GenericRequest) (cha
 		return nil, ErrNotFoundPipeline
 	}
 	out, err := req.Session.RequestWithAsync(
-		&lispb.SpiteSession{SessionId: req.Session.ID, TaskId: req.Task.Id, Spite: spite},
+		&clientpb.SpiteSession{SessionId: req.Session.ID, TaskId: req.Task.Id, Spite: spite},
 		pipelinesCh[req.Session.PipelineID],
 		consts.MinTimeout)
 	if err != nil {
@@ -176,7 +175,7 @@ func (rpc *Server) StreamGenericHandler(ctx context.Context, req *GenericRequest
 		return nil, nil, ErrNotFoundPipeline
 	}
 	in, out, err := req.Session.RequestWithStream(
-		&lispb.SpiteSession{SessionId: req.Session.ID, TaskId: req.Task.Id, Spite: spite},
+		&clientpb.SpiteSession{SessionId: req.Session.ID, TaskId: req.Task.Id, Spite: spite},
 		pipelinesCh[req.Session.PipelineID],
 		consts.MinTimeout)
 	if err != nil {

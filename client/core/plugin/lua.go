@@ -351,7 +351,6 @@ func GenerateLuaDefinitionFile(L *lua.LState, filename string) error {
 	}
 	defer file.Close()
 
-	// 生成 Protobuf message 的 class 定义
 	generateProtobufMessageClasses(L, file)
 
 	// 遍历所有函数签名并生成 Lua 函数定义

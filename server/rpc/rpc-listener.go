@@ -8,7 +8,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/client/rootpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
 	"github.com/chainreactors/malice-network/helper/utils/mtls"
 	"github.com/chainreactors/malice-network/server/internal/certutils"
@@ -24,7 +23,7 @@ func (rpc *Server) GetListeners(ctx context.Context, req *clientpb.Empty) (*clie
 	return core.Listeners.ToProtobuf(), nil
 }
 
-func (rpc *Server) RegisterListener(ctx context.Context, req *lispb.RegisterListener) (*implantpb.Empty, error) {
+func (rpc *Server) RegisterListener(ctx context.Context, req *clientpb.RegisterListener) (*implantpb.Empty, error) {
 	p, ok := peer.FromContext(ctx)
 	if !ok {
 		return &implantpb.Empty{}, nil
@@ -33,8 +32,8 @@ func (rpc *Server) RegisterListener(ctx context.Context, req *lispb.RegisterList
 		Name:   req.Name,
 		Host:   p.Addr.String(),
 		Active: true,
-		Pipelines: lispb.Pipelines{
-			Pipelines: make([]*lispb.Pipeline, 0),
+		Pipelines: clientpb.Pipelines{
+			Pipelines: make([]*clientpb.Pipeline, 0),
 		},
 	})
 	core.EventBroker.Notify(core.Event{
@@ -133,8 +132,8 @@ func (rpc *Server) ListListeners(ctx context.Context, req *rootpb.Operator) (*cl
 	return listeners, nil
 }
 
-//func (s *Server) ListenerCtrl(req *lispb.CtrlStatus, stream listenerrpc.ListenerRPC_ListenerCtrlServer) error {
-//	var resp lispb.CtrlPipeline
+//func (s *Server) ListenerCtrl(req *clientpb.CtrlStatus, stream listenerrpc.ListenerRPC_ListenerCtrlServer) error {
+//	var resp clientpb.CtrlPipeline
 //	for {
 //		if req.CtrlType == consts.CtrlPipelineStart {
 //
@@ -143,7 +142,7 @@ func (rpc *Server) ListListeners(ctx context.Context, req *rootpb.Operator) (*cl
 //			if err != nil {
 //				logs.Log.Error(err.Error())
 //			}
-//			resp = lispb.CtrlPipeline{
+//			resp = clientpb.CtrlPipeline{
 //				ListenerName: req.ListenerName,
 //				CtrlType:     consts.CtrlPipelineStop,
 //			}

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/listener/lispb"
 	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/spf13/cobra"
@@ -33,7 +32,7 @@ func listJobsCmd(cmd *cobra.Command, con *repl.Console) {
 	}, true)
 	for _, Pipeline := range Pipelines.GetPipelines() {
 		switch Pipeline.Body.(type) {
-		case *lispb.Pipeline_Tcp:
+		case *clientpb.Pipeline_Tcp:
 			tcp := Pipeline.GetTcp()
 			row = table.Row{
 				tcp.Name,
@@ -42,7 +41,7 @@ func listJobsCmd(cmd *cobra.Command, con *repl.Console) {
 				strconv.Itoa(int(tcp.Port)),
 				"TCP",
 			}
-		case *lispb.Pipeline_Web:
+		case *clientpb.Pipeline_Web:
 			website := Pipeline.GetWeb()
 			row = table.Row{
 				website.Name,
