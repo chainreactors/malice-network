@@ -132,13 +132,13 @@ func (p *Profile) UpdateGeneratorConfig(defaultConfig configs.GeneratorConfig, r
 		if err != nil {
 			return err
 		}
-		defaultConfig.Basic.Jitter = jitter
+		defaultConfig.Basic.Jitter = float64(jitter)
 	} else if p.Name != "" {
 		dbJitter, err := strconv.Atoi(dbParams.jitter)
 		if err != nil {
 			return err
 		}
-		defaultConfig.Basic.Jitter = dbJitter
+		defaultConfig.Basic.Jitter = float64(dbJitter)
 	}
 
 	if val, ok := req.Params["ca"]; ok {
