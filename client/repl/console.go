@@ -38,6 +38,7 @@ func NewConsole() (*Console, error) {
 		//Settings:     settings,
 		Log:     core.Log,
 		Plugins: NewPlugins(),
+		CMDs:    make(map[string]*cobra.Command),
 	}
 
 	con.NewConsole()
@@ -51,6 +52,7 @@ type Console struct {
 	Log     *core.Logger
 	App     *console.Console
 	Profile *assets.Profile
+	CMDs    map[string]*cobra.Command
 }
 
 func (c *Console) NewConsole() {
@@ -178,4 +180,26 @@ func (c *Console) RegisterBuiltinFunc(pkg, name string, fn interface{}, callback
 
 func (c *Console) RegisterServerFunc(name string, fn interface{}) error {
 	return intermediate.RegisterInternalFunc(intermediate.BuiltinPackage, name, WrapServerFunc(c, fn), nil)
+}
+
+func (c *Console) AddInternalFuncHelper(cmdName string, funcName string, example string, input, output []string) error {
+	cmd, ok := c.CMDs[cmdName]
+	if ok {
+		return intermediate.AddHelper(funcName, &intermediate.InternalHelper{
+			CMDName: cmdName,
+			Short:   cmd.Short,
+			Long:    cmd.Long,
+			Input:   input,
+			Output:  output,
+			Example: example,
+		})
+	} else {
+		return intermediate.AddHelper(funcName, &intermediate.InternalHelper{
+			CMDName: cmdName,
+			Input:   input,
+			Output:  output,
+			Example: example,
+		})
+	}
+
 }

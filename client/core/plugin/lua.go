@@ -51,6 +51,8 @@ var (
 	ReservedWords   = []string{ReservedCMDLINE, ReservedARGS}
 
 	LuaPackages = map[string]*lua.LTable{}
+
+	ProtoPackage = []string{"implantpb", "clientpb", "modulepb"}
 )
 
 type LuaPlugin struct {
@@ -162,7 +164,7 @@ func (plug *LuaPlugin) RegisterLuaBuiltin() error {
 
 		var paramNames []string
 		for _, param := range fn.Proto.DbgLocals {
-			if strings.HasPrefix(param.Name, "_") {
+			if !strings.HasPrefix(param.Name, "flag_") {
 				continue
 			}
 			paramNames = append(paramNames, param.Name)
@@ -355,22 +357,66 @@ func GenerateLuaDefinitionFile(L *lua.LState, filename string) error {
 
 	// 遍历所有函数签名并生成 Lua 函数定义
 	for funcName, signature := range intermediate.InternalFunctions {
-		// 写入函数名称注释
 		if unicode.IsUpper(rune(funcName[0])) {
 			continue
 		}
+
 		fmt.Fprintf(file, "--- %s\n", funcName)
 
+		if signature.Helper != nil {
+			// 写入 Short 描述
+			if signature.Helper.Short != "" {
+				for _, line := range strings.Split(signature.Helper.Short, "\n") {
+					fmt.Fprintf(file, "--- %s\n", line)
+				}
+				fmt.Fprintf(file, "---\n")
+			}
+
+			// 写入 Long 描述
+			if signature.Helper.Long != "" {
+				for _, line := range strings.Split(signature.Helper.Long, "\n") {
+					fmt.Fprintf(file, "--- %s\n", line)
+				}
+				fmt.Fprintf(file, "---\n")
+			}
+
+			// 写入 Example 描述
+			if signature.Helper.Example != "" {
+				fmt.Fprintf(file, "--- @example\n")
+				for _, line := range strings.Split(signature.Helper.Example, "\n") {
+					fmt.Fprintf(file, "--- %s\n", line)
+				}
+				fmt.Fprintf(file, "---\n")
+			}
+		}
+
+		var paramsName []string
 		// 写入参数注释
 		for i, argType := range signature.ArgTypes {
 			luaType := intermediate.ConvertGoValueToLuaType(L, argType)
-			fmt.Fprintf(file, "--- @param arg%d %s\n", i+1, luaType)
+			//fmt.Fprintf(file, "--- @param arg%d %s\n", i+1, luaType)
+			if signature.Helper == nil {
+				paramsName = append(paramsName, fmt.Sprintf("arg%d", i+1))
+				fmt.Fprintf(file, "--- @param arg%d %s\n", i+1, luaType)
+			} else {
+				keys, values := signature.Helper.FormatInput()
+				paramsName = append(paramsName, keys[i])
+				fmt.Fprintf(file, "--- @param %s %s %s\n", keys[i], luaType, values[i])
+			}
 		}
 
 		// 写入返回值注释
 		for _, returnType := range signature.ReturnTypes {
 			luaType := intermediate.ConvertGoValueToLuaType(L, returnType)
-			fmt.Fprintf(file, "--- @return %s\n", luaType)
+			//fmt.Fprintf(file, "--- @return %s\n", luaType)
+			if signature.Helper == nil {
+				fmt.Fprintf(file, "--- @return %s\n", luaType)
+			} else {
+				keys, values := signature.Helper.FormatOutput()
+				for i := range keys {
+					fmt.Fprintf(file, "--- @return %s %s %s\n", keys[i], luaType, values[i])
+				}
+			}
 		}
 
 		// 写入函数定义
@@ -379,7 +425,7 @@ func GenerateLuaDefinitionFile(L *lua.LState, filename string) error {
 			if i > 0 {
 				fmt.Fprintf(file, ", ")
 			}
-			fmt.Fprintf(file, "arg%d", i+1)
+			fmt.Fprintf(file, paramsName[i])
 		}
 		fmt.Fprintf(file, ") end\n\n")
 	}
@@ -393,9 +439,13 @@ func generateProtobufMessageClasses(L *lua.LState, file *os.File) {
 	protoregistry.GlobalTypes.RangeMessages(func(mt protoreflect.MessageType) bool {
 		// 获取结构体名称
 		messageName := mt.Descriptor().FullName()
-
-		// 只处理 clientpb 和 implantpb 下的 message
-		if !(strings.HasPrefix(string(messageName), "clientpb.") || strings.HasPrefix(string(messageName), "implantpb.")) {
+		var contains bool
+		for _, pkg := range ProtoPackage {
+			if strings.HasPrefix(string(messageName), pkg) {
+				contains = true
+			}
+		}
+		if !contains {
 			return true
 		}
 
@@ -405,7 +455,6 @@ func generateProtobufMessageClasses(L *lua.LState, file *os.File) {
 		// 写入 class 定义
 		fmt.Fprintf(file, "--- @class %s\n", cleanName)
 
-		// 遍历字段并写入注释
 		fields := mt.Descriptor().Fields()
 		for i := 0; i < fields.Len(); i++ {
 			field := fields.Get(i)
@@ -420,13 +469,12 @@ func generateProtobufMessageClasses(L *lua.LState, file *os.File) {
 
 // 移除前缀 clientpb 或 implantpb
 func removePrefix(messageName string) string {
-	if len(messageName) >= 9 && messageName[:9] == "clientpb." {
-		return messageName[9:]
+	i := strings.Index(messageName, ".")
+	if i == -1 {
+		return messageName
+	} else {
+		return messageName[i+1:]
 	}
-	if len(messageName) >= 10 && messageName[:10] == "implantpb." {
-		return messageName[10:]
-	}
-	return messageName
 }
 
 // protoFieldToLuaType 将 Protobuf 字段映射为 Lua 类型
@@ -441,7 +489,9 @@ func protoFieldToLuaType(field protoreflect.FieldDescriptor) string {
 	case protoreflect.BytesKind:
 		return "string" // Lua 中处理为 string
 	case protoreflect.MessageKind:
-		// 去掉前缀，处理 message 类型字段
+		if field.Cardinality() == protoreflect.Repeated {
+			return "table"
+		}
 		return removePrefix(string(field.Message().FullName()))
 	case protoreflect.EnumKind:
 		return "string" // 枚举可以映射为字符串
@@ -467,9 +517,9 @@ func RegisterProtobufMessagesFromPackage(L *lua.LState, pkg string) {
 
 // RegisterAllProtobufMessages 注册 implantpb 和 clientpb 中的所有 Protobuf Message
 func RegisterAllProtobufMessages(L *lua.LState) {
-	// 只需调用函数，不要返回值
 	RegisterProtobufMessagesFromPackage(L, "implantpb")
 	RegisterProtobufMessagesFromPackage(L, "clientpb")
+	RegisterProtobufMessagesFromPackage(L, "modulepb")
 }
 
 // RegisterProtobufMessage 注册 Protobuf message 类型到 Lua

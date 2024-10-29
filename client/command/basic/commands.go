@@ -39,13 +39,21 @@ func Commands(con *repl.Console) []*cobra.Command {
 func Register(con *repl.Console) {
 	con.RegisterImplantFunc(consts.ModuleSleep,
 		Sleep,
-		"",
+		"bsleep",
 		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, interval uint64) (*clientpb.Task, error) {
 			return Sleep(rpc, sess, interval, sess.Timer.Jitter)
 		},
 		common.ParseStatus,
 		nil,
 	)
+
+	con.AddInternalFuncHelper(consts.ModuleSleep, consts.ModuleSleep,
+		`sleep(active(), 10, 0.5)`,
+		[]string{
+			"sess:special session",
+			"interval:time interval, in seconds",
+			"jitter:jitter, percentage of interval",
+		}, []string{"task"})
 
 	con.RegisterImplantFunc(consts.ModuleSuicide,
 		Suicide,

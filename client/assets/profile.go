@@ -1,7 +1,6 @@
 package assets
 
 import (
-	"fmt"
 	"github.com/chainreactors/logs"
 	crConfig "github.com/chainreactors/malice-network/helper/utils/config"
 	"github.com/chainreactors/malice-network/helper/utils/file"
@@ -95,14 +94,14 @@ func loadProfile(path string) (*Profile, error) {
 func GetProfile() *Profile {
 	filePath, err := findFile(maliceProfile)
 	if err != nil {
-		logs.Log.Errorf(fmt.Sprintf("Failed to find malice.yaml: %v", err))
+		logs.Log.Errorf("Failed to find malice.yaml: %v", err)
 		os.Exit(0)
 		return nil
 	}
 
 	profile, err := loadProfile(filePath)
 	if err != nil {
-		logs.Log.Errorf(fmt.Sprintf("Failed to load malice.yaml: %v", err))
+		logs.Log.Errorf("Failed to load malice.yaml: %v", err)
 		os.Exit(0)
 		return nil
 	}

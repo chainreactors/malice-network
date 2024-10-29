@@ -5,6 +5,7 @@ import (
 	"github.com/chainreactors/malice-network/client/command"
 	"github.com/chainreactors/malice-network/client/core/plugin"
 	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/spf13/cobra"
 )
 
 func main() {
@@ -13,6 +14,13 @@ func main() {
 		fmt.Println(err)
 		return
 	}
+	var cmd = &cobra.Command{
+		Use:   "client",
+		Short: "",
+		Long:  ``,
+	}
+	cmd.TraverseChildren = true
+	command.BindBuiltinCommands(con, cmd)
 	command.RegisterClientFunc(con)
 	command.RegisterImplantFunc(con)
 	vm := plugin.NewLuaVM()
