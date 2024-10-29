@@ -16,6 +16,7 @@ require (
 	github.com/cjoudrey/gluahttp v0.0.0-20201111170219-25003d9adfa9
 	github.com/docker/docker v27.3.1+incompatible
 	github.com/gofrs/uuid v4.4.0+incompatible
+	github.com/golang/snappy v0.0.4
 	github.com/gookit/config/v2 v2.2.5
 	github.com/jessevdk/go-flags v1.5.0
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
@@ -91,7 +92,6 @@ require (
 	github.com/goccy/go-yaml v1.12.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
-	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gookit/color v1.5.4 // indirect
 	github.com/gookit/goutil v0.6.15 // indirect

@@ -47,6 +47,7 @@ func makeBind(cmd *cobra.Command, con *repl.Console) bindFunc {
 					c.Annotations["menu"] = cmd.Name()
 				}
 				cmd.AddCommand(c)
+				con.CMDs[c.Name()] = c
 			}
 		}
 	}

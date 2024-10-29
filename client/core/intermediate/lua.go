@@ -304,7 +304,7 @@ func ConvertGoValueToLuaType(L *lua.LState, t reflect.Type) string {
 
 	// 处理其他类型
 	switch t.Kind() {
-	case reflect.Int, reflect.Int32, reflect.Int64, reflect.Float32, reflect.Float64:
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Float32, reflect.Float64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		return "number"
 	case reflect.Bool:
 		return "boolean"

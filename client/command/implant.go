@@ -84,6 +84,40 @@ func makeCompleters(cmd *cobra.Command, con *repl.Console) {
 	})
 }
 
+func BindBuiltinCommands(con *repl.Console, root *cobra.Command) *cobra.Command {
+	bind := makeBind(root, con)
+	bindCommonCommands(bind)
+	bind(consts.ImplantGroup,
+		basic.Commands,
+		tasks.Commands,
+		modules.Commands,
+		explorer.Commands,
+		addon.Commands,
+	)
+
+	bind(consts.ExecuteGroup,
+		exec.Commands)
+
+	bind(consts.SysGroup,
+		sys.Commands,
+		service.Commands,
+		reg.Commands,
+		taskschd.Commands,
+		privilege.Commands,
+	)
+
+	bind(consts.FileGroup,
+		file.Commands,
+		filesystem.Commands)
+
+	bind(consts.ArmoryGroup)
+	bind(consts.AddonGroup)
+	bind(consts.MalGroup)
+	root.InitDefaultHelpCmd()
+	root.SetHelpCommandGroupID(consts.GenericGroup)
+	return root
+}
+
 func BindImplantCommands(con *repl.Console) console.Commands {
 	implantCommands := func() *cobra.Command {
 		implant := &cobra.Command{
@@ -94,37 +128,8 @@ func BindImplantCommands(con *repl.Console) console.Commands {
 			},
 			//GroupID: consts.ImplantMenu,
 		}
-		bind := makeBind(implant, con)
-		bindCommonCommands(bind)
-		bind(consts.ImplantGroup,
-			basic.Commands,
-			tasks.Commands,
-			modules.Commands,
-			explorer.Commands,
-			addon.Commands,
-		)
+		BindBuiltinCommands(con, implant)
 
-		bind(consts.ExecuteGroup,
-			exec.Commands)
-
-		bind(consts.SysGroup,
-			sys.Commands,
-			service.Commands,
-			reg.Commands,
-			taskschd.Commands,
-			privilege.Commands,
-		)
-
-		bind(consts.FileGroup,
-			file.Commands,
-			filesystem.Commands)
-
-		bind(consts.ArmoryGroup)
-		bind(consts.AddonGroup)
-		bind(consts.MalGroup)
-
-		implant.InitDefaultHelpCmd()
-		implant.SetHelpCommandGroupID(consts.GenericGroup)
 		// Load Aliases
 		aliasManifests := assets.GetInstalledAliasManifests()
 		for _, manifest := range aliasManifests {

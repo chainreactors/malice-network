@@ -26,6 +26,44 @@ type InternalHelper struct {
 	CMDName string
 }
 
+func (help *InternalHelper) FormatInput() ([]string, []string) {
+	var keys, values []string
+	if help.Input == nil {
+		return keys, values
+	}
+
+	for _, input := range help.Input {
+		i := strings.Index(input, ":")
+		if i == -1 {
+			keys = append(keys, input)
+			values = append(values, "")
+		} else {
+			keys = append(keys, input[:i])
+			values = append(values, input[i+1:])
+		}
+	}
+	return keys, values
+}
+
+func (help *InternalHelper) FormatOutput() ([]string, []string) {
+	var keys, values []string
+	if help.Output == nil {
+		return keys, values
+	}
+
+	for _, output := range help.Output {
+		i := strings.Index(output, ":")
+		if i == -1 {
+			keys = append(keys, output)
+			values = append(values, "")
+		} else {
+			keys = append(keys, output[:i])
+			values = append(values, output[i+1:])
+		}
+	}
+	return keys, values
+}
+
 type InternalFunc struct {
 	Name           string
 	Package        string
@@ -68,10 +106,10 @@ func RegisterInternalFunc(pkg, name string, fn *InternalFunc, callback ImplantCa
 func AddHelper(name string, helper *InternalHelper) error {
 	name = strings.ReplaceAll(name, "-", "_")
 	if fn, ok := InternalFunctions[name]; ok {
-		if len(helper.Input) != len(fn.ArgTypes) {
+		if helper.Input != nil && len(helper.Input) != len(fn.ArgTypes) {
 			logs.Log.Warnf("function %s %s", name, WarnArgsMismatch.Error())
 		}
-		if len(helper.Output) != len(fn.ReturnTypes) {
+		if helper.Output != nil && len(helper.Output) != len(fn.ReturnTypes) {
 			logs.Log.Warnf("function %s %s", name, WarnReturnMismatch.Error())
 		}
 		fn.Helper = helper
