@@ -18,14 +18,14 @@ var (
 )
 
 // ExtensionsInstallCmd - Install an extension
-func MalInstallCmd(cmd *cobra.Command, con *repl.Console) {
+func MalInstallCmd(cmd *cobra.Command, con *repl.Console) error {
 	localPath := cmd.Flags().Arg(0)
 	_, err := os.Stat(localPath)
 	if os.IsNotExist(err) {
-		con.Log.Errorf("Mal path '%s' does not exist", localPath)
-		return
+		return errors.New("file does not exist")
 	}
 	InstallFromDir(localPath, true, con)
+	return nil
 }
 
 func ParseMalManifest(data []byte) (*plugin.MalManiFest, error) {

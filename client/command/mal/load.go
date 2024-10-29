@@ -20,17 +20,17 @@ type LoadedMal struct {
 	Plugin   plugin.Plugin
 }
 
-func MalLoadCmd(ctx *cobra.Command, con *repl.Console) {
+func MalLoadCmd(ctx *cobra.Command, con *repl.Console) error {
 	dirPath := ctx.Flags().Arg(0)
 	mal, err := LoadMal(con, con.ImplantMenu(), filepath.Join(assets.GetMalsDir(), dirPath, ManifestFileName))
 	if err != nil {
-		con.Log.Error(err)
-		return
+		return err
 	}
 	for _, cmd := range mal.CMDs {
 		con.ImplantMenu().AddCommand(cmd)
 		logs.Log.Debugf("add command: %s", cmd.Name())
 	}
+	return nil
 }
 
 func LoadMalManiFest(con *repl.Console, filename string) (*plugin.MalManiFest, error) {
