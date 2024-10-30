@@ -10,6 +10,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/spf13/cobra"
+	"strings"
 )
 
 // WmiQueryCmd performs a WMI query.
@@ -35,38 +36,22 @@ func WmiQuery(rpc clientrpc.MaliceRPCClient, session *core.Session, namespace st
 	return rpc.WmiQuery(session.Context(), request)
 }
 
-func RegisterWmiFunc(con *repl.Console) {
-	con.RegisterImplantFunc(
-		consts.ModuleWmiQuery,
-		WmiQuery,
-		"",
-		nil,
-		common.ParseKVResponse,
-		common.FormatKVResponse,
-	)
-	con.RegisterImplantFunc(
-		consts.ModuleWmiExec,
-		WmiExecute,
-		"",
-		nil,
-		common.ParseKVResponse,
-		common.FormatKVResponse,
-	)
-}
-
 // WmiExecuteCmd executes a WMI method.
 func WmiExecuteCmd(cmd *cobra.Command, con *repl.Console) error {
 	namespace, _ := cmd.Flags().GetString("namespace")
 	className, _ := cmd.Flags().GetString("class_name")
 	methodName, _ := cmd.Flags().GetString("method_name")
-	params, _ := cmd.Flags().GetStringToString("params")
-
+	param_str, _ := cmd.Flags().GetStringSlice("params")
+	params := make(map[string]string)
+	for _, i := range param_str {
+		kv := strings.SplitN(i, "=", 2)
+		params[kv[0]] = kv[1]
+	}
 	session := con.GetInteractive()
 	task, err := WmiExecute(con.Rpc, session, namespace, className, methodName, params)
 	if err != nil {
 		return err
 	}
-
 	session.Console(task, fmt.Sprintf("execute WMI method %s on class %s in namespace %s", methodName, className, namespace))
 	return nil
 }
@@ -79,4 +64,52 @@ func WmiExecute(rpc clientrpc.MaliceRPCClient, session *core.Session, namespace,
 		Params:     params,
 	}
 	return rpc.WmiExecute(session.Context(), request)
+}
+
+func RegisterWmiFunc(con *repl.Console) {
+	con.RegisterImplantFunc(
+		consts.ModuleWmiQuery,
+		WmiQuery,
+		"",
+		nil,
+		common.ParseKVResponse,
+		common.FormatKVResponse,
+	)
+
+	con.AddInternalFuncHelper(
+		consts.ModuleWmiQuery,
+		consts.ModuleWmiQuery,
+		//session *core.Session, namespace string, args []string
+		"wmi_query(active(), \"root\\cimv2\", {\"SELECT * FROM Win32_OperatingSystem\"})",
+		[]string{
+			"sess: special session",
+			"namespace: WMI namespace",
+			"args: WMI query arguments",
+		},
+		[]string{"task"})
+
+	con.RegisterImplantFunc(
+		consts.ModuleWmiExec,
+		WmiExecute,
+		"",
+		nil,
+		common.ParseKVResponse,
+		common.FormatKVResponse,
+	)
+
+	con.AddInternalFuncHelper(
+		consts.ModuleWmiExec,
+		consts.ModuleWmiExec,
+		//session *core.Session, namespace string, args []string
+		// params map[string]string
+		"wmi_execute(active(), \"root\\cimv2\", \"Win32_Process\", \"Create\", {\"CommandLine\":\"cmd.exe\"})",
+		[]string{
+			"session: special session",
+			"namespace: WMI namespace",
+			"className: WMI class name",
+			"methodName: WMI method name",
+			"params: WMI method parameters",
+		},
+		[]string{"task"})
+
 }

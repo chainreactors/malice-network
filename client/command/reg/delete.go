@@ -47,4 +47,15 @@ func RegisterRegDeleteFunc(con *repl.Console) {
 		common.ParseStatus,
 		nil,
 	)
+	con.AddInternalFuncHelper(
+		consts.ModuleRegDelete,
+		consts.ModuleRegDelete,
+		consts.ModuleRegDelete+"(active(),\"HKEY_LOCAL_MACHINE\",\"SOFTWARE\\Example\",\"TestKey\")",
+		[]string{
+			"session: special session",
+			"hive: registry hive",
+			"path: registry path",
+			"key: registry key",
+		},
+		[]string{"task"})
 }

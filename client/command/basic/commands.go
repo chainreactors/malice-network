@@ -62,4 +62,10 @@ func Register(con *repl.Console) {
 		common.ParseStatus,
 		nil,
 	)
+
+	con.AddInternalFuncHelper(consts.ModuleSuicide, consts.ModuleSuicide,
+		`suicide(active())`,
+		[]string{
+			"sess:special session",
+		}, []string{"task"})
 }

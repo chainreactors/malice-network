@@ -98,4 +98,13 @@ func RegisterLsFunc(con *repl.Console) {
 			return tableModel.View(), nil
 		})
 
+	con.AddInternalFuncHelper(
+		consts.ModuleLs,
+		consts.ModuleLs,
+		consts.ModuleLs+"(active(),\"/tmp\")",
+		[]string{
+			"session: special session",
+			"path: path to list files",
+		},
+		[]string{"task"})
 }

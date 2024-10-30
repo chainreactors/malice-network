@@ -50,4 +50,13 @@ func RegisterInfoFunc(con *repl.Console) {
 			s.WriteString(fmt.Sprintf("process: %s, pid: %d, ppid %d, args: %s\n", info.Process.Name, info.Process.Pid, info.Process.Ppid, info.Process.Args))
 			return s.String(), nil
 		})
+
+	con.AddInternalFuncHelper(
+		consts.ModuleNetstat,
+		consts.ModuleNetstat,
+		"sysinfo(active)",
+		[]string{
+			"sess: special session",
+		},
+		[]string{"task"})
 }

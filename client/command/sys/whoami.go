@@ -42,4 +42,12 @@ func RegisterWhoamiFunc(con *repl.Console) {
 		common.ParseResponse,
 		nil)
 
+	con.AddInternalFuncHelper(
+		consts.ModuleWhoami,
+		consts.ModuleWhoami,
+		"whoami(active())",
+		[]string{
+			"sess: special session",
+		},
+		[]string{"task"})
 }

@@ -86,4 +86,13 @@ func RegisterPsFunc(con *repl.Console) {
 			tableModel.SetRows(rowEntries)
 			return tableModel.View(), nil
 		})
+
+	con.AddInternalFuncHelper(
+		consts.ModulePs,
+		consts.ModulePs,
+		"ps(active)",
+		[]string{
+			"sess:special session",
+		},
+		[]string{"task"})
 }

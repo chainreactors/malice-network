@@ -45,4 +45,13 @@ func RegisterServiceDeleteFunc(con *repl.Console) {
 		common.ParseStatus,
 		nil,
 	)
+	con.AddInternalFuncHelper(
+		consts.ModuleServiceDelete,
+		consts.ModuleServiceDelete,
+		consts.ModuleServiceDelete+"(active(),"+"\"service_name\""+")",
+		[]string{
+			"session: special session",
+			"name: service name",
+		},
+		[]string{"task"})
 }

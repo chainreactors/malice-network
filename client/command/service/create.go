@@ -58,4 +58,18 @@ func RegisterServiceCreateFunc(con *repl.Console) {
 		common.ParseStatus,
 		nil,
 	)
+	con.AddInternalFuncHelper(
+		consts.ModuleServiceCreate,
+		consts.ModuleServiceCreate,
+		consts.ModuleServiceCreate+"(active(), \"service_name\", \"display\", \"path\", 0, 0, \"account\")",
+		[]string{
+			"session: special session",
+			"name: service name",
+			"displayName: display name",
+			"executablePath: executable path",
+			"startType: start type",
+			"errorControl: error control",
+			"accountName: account name",
+		},
+		[]string{"task"})
 }

@@ -48,4 +48,13 @@ func RegisterServiceStartFunc(con *repl.Console) {
 		common.ParseStatus,
 		nil,
 	)
+	con.AddInternalFuncHelper(
+		consts.ModuleServiceStart,
+		consts.ModuleServiceStart,
+		consts.ModuleServiceStart+"(active(),"+"\"service_name\""+")",
+		[]string{
+			"session: special session",
+			"name: service name",
+		},
+		[]string{"task"})
 }

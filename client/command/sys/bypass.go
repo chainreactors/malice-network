@@ -41,4 +41,15 @@ func RegisterBypassFunc(con *repl.Console) {
 		common.ParseStatus,
 		nil,
 	)
+
+	con.AddInternalFuncHelper(
+		consts.ModuleBypass,
+		consts.ModuleBypass,
+		fmt.Sprintf("%s(active(), true, true)", consts.ModuleBypass),
+		[]string{
+			"sess: special session",
+			"bypass_amsi: bypass amsi",
+			"bypass_etw: bypass etw",
+		},
+		[]string{"task"})
 }

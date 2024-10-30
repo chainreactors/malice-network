@@ -54,4 +54,21 @@ func RegisterRunasFunc(con *repl.Console) {
 		common.ParseStatus,
 		nil,
 	)
+	//session *core.Session, username, domain, password, program, args string, show int32, netonly bool
+	// sys runas --username admin --domain EXAMPLE --password admin123 --program /path/to/program --args "arg1 arg2"
+	con.AddInternalFuncHelper(
+		consts.ModuleRunas,
+		consts.ModuleRunas,
+		consts.ModuleRunas+"(active(),\"admin\",\"EXAMPLE\",\"password123\",\"/path/to/program\",\"arg1 arg2\",0,false)",
+		[]string{
+			"session: special session",
+			"username: username",
+			"domain: domain",
+			"password: password",
+			"program: program path",
+			"args: args",
+			"show: show",
+			"netonly: netonly",
+		},
+		[]string{"task"})
 }

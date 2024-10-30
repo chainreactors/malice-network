@@ -39,4 +39,12 @@ func RegisterGetSystemFunc(con *repl.Console) {
 		common.ParseStatus,
 		nil,
 	)
+	con.AddInternalFuncHelper(
+		consts.ModuleGetSystem,
+		consts.ModuleGetSystem,
+		consts.ModuleGetSystem+"(active())",
+		[]string{
+			"session: special session",
+		},
+		[]string{"task"})
 }

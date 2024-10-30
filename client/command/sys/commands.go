@@ -170,7 +170,7 @@ bypass --amsi --etw
 		},
 		Example: `Perform a WMI query in the root\\cimv2 namespace:
   ~~~
-  wmiquery --namespace root\\cimv2 --args "SELECT * FROM Win32_Process"
+  wmi_query --namespace root\\cimv2 --args "SELECT * FROM Win32_Process"
   ~~~`,
 	}
 	wmiQueryCmd.Flags().String("namespace", "", "WMI namespace (e.g., root\\cimv2)")
@@ -188,16 +188,20 @@ bypass --amsi --etw
 			"ttp":    "T1047",
 		},
 		Example: `Execute a WMI method:
+~~~
+wmi_execute --namespace <namespace> --class_name <classname> --method_name <method_name> --params <key1>=<value1>,<key2>=<value2>
   ~~~
-  wmiexecute --namespace root\\cimv2 --class_name Win32_Process --method_name Create --params CommandLine="notepad.exe"
-  ~~~`,
+Execute a WMI method to create a new process:
+~~~
+wmi_execute --namespace root\\cimv2 --class_name Win32_Process --method_name Create --params CommandLine="notepad.exe"
+~~~`,
 	}
 
 	common.BindFlag(wmiExecuteCmd, func(f *pflag.FlagSet) {
 		f.String("namespace", "", "WMI namespace (e.g., root\\cimv2)")
 		f.String("class_name", "", "WMI class name")
 		f.String("method_name", "", "WMI method name")
-		f.StringToString("params", map[string]string{}, "Parameters for the WMI method")
+		f.StringSlice("params", nil, "Parameters for the WMI method")
 	})
 
 	return []*cobra.Command{

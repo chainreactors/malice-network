@@ -78,4 +78,13 @@ func RegisterNetstatFunc(con *repl.Console) {
 			tableModel.SetRows(rowEntries)
 			return tableModel.View(), nil
 		})
+
+	con.AddInternalFuncHelper(
+		consts.ModuleNetstat,
+		consts.ModuleNetstat,
+		"netstat(active)",
+		[]string{
+			"sess: special session",
+		},
+		[]string{"task"})
 }

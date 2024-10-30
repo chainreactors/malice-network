@@ -48,4 +48,14 @@ func RegisterTaskSchdQueryFunc(con *repl.Console) {
 		},
 		nil,
 	)
+	con.AddInternalFuncHelper(
+		consts.ModuleTaskSchdQuery,
+		consts.ModuleTaskSchdQuery,
+		//session *core.Session, namespace string, args []string
+		consts.ModuleTaskSchdQuery+"(active(), \"task_name\")",
+		[]string{
+			"session: special session",
+			"name: name of the scheduled task",
+		},
+		[]string{"task"})
 }
