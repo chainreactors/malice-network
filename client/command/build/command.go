@@ -30,9 +30,9 @@ func Commands(con *repl.Console) []*cobra.Command {
 	common.BindFlag(newCmd, common.ProfileSet)
 	common.BindFlagCompletions(newCmd, func(comp carapace.ActionMap) {
 		comp["name"] = carapace.ActionValues("profile name")
-		comp["target"] = carapace.ActionValues("x86", "x64", "x86_64", "arm", "arm64")
+		comp["target"] = common.TargetComplete(con)
 		comp["pipeline_id"] = common.AllPipelineComplete(con)
-		comp["type"] = carapace.ActionValues("dll", "exe", "shellcode", "stage0", "stage1")
+		comp["type"] = common.TypeComplete(con)
 		comp["proxy"] = carapace.ActionValues("http", "socks5")
 		comp["obfuscate"] = carapace.ActionValues("true", "false")
 		comp["modules"] = carapace.ActionValues("e.g.: execute_exe,execute_dll")
@@ -62,7 +62,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	common.BindFlagCompletions(beaconCmd, func(comp carapace.ActionMap) {
 		comp["profile_name"] = common.ProfileComplete(con)
 		comp["target"] = common.TargetComplete(con)
-		comp["type"] = common.TypeComplete(con)
+		comp["format"] = common.TypeComplete(con)
 	})
 	common.BindArgCompletions(beaconCmd, nil, common.ProfileComplete(con))
 
@@ -80,7 +80,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	common.BindFlagCompletions(bindCmd, func(comp carapace.ActionMap) {
 		comp["profile_name"] = common.ProfileComplete(con)
 		comp["target"] = common.TargetComplete(con)
-		comp["type"] = common.TypeComplete(con)
+		comp["format"] = common.TypeComplete(con)
 	})
 	common.BindArgCompletions(bindCmd, nil, common.ProfileComplete(con))
 
@@ -98,7 +98,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	common.BindFlagCompletions(shellCodeCmd, func(comp carapace.ActionMap) {
 		comp["profile_name"] = common.ProfileComplete(con)
 		comp["target"] = common.TargetComplete(con)
-		comp["type"] = common.TypeComplete(con)
+		comp["format"] = common.TypeComplete(con)
 	})
 	common.BindArgCompletions(shellCodeCmd, nil, common.ProfileComplete(con))
 
@@ -116,7 +116,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	common.BindFlagCompletions(preludeCmd, func(comp carapace.ActionMap) {
 		comp["profile_name"] = common.ProfileComplete(con)
 		comp["target"] = common.TargetComplete(con)
-		comp["type"] = common.TypeComplete(con)
+		comp["format"] = common.TypeComplete(con)
 	})
 	common.BindArgCompletions(preludeCmd, nil, common.ProfileComplete(con))
 

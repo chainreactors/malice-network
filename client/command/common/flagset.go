@@ -83,9 +83,9 @@ func GenerateFlagSet(f *pflag.FlagSet) {
 	f.StringP("format", "f", "", "build type")
 	f.String("target", "", "build target")
 	f.String("ca", "", "Set ca")
-	f.String("interval", "10", "interval")
+	f.String("interval", "", "interval")
 	f.StringSliceP("modules", "m", []string{}, "Set modules e.g.: execute_exe,execute_dll")
-	f.String("jitter", "5", "jitter")
+	f.String("jitter", "", "jitter")
 }
 
 func ParseGenerateFlags(cmd *cobra.Command) (string, string, string, string, []string, string, string, string) {
