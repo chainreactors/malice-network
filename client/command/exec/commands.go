@@ -431,5 +431,5 @@ func Register(con *repl.Console) {
 			log.Console(resps.String())
 			return true, nil
 		}, nil
-	})
+	}, nil)
 }

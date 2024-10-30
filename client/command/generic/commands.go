@@ -106,7 +106,7 @@ func Register(con *repl.Console) {
 			Client:  con.Client,
 			Message: []byte(msg),
 		})
-	})
+	}, nil)
 
 	con.RegisterServerFunc(consts.CommandNotify, func(con *repl.Console, msg string) (bool, error) {
 		return Notify(con, &clientpb.Event{
@@ -114,45 +114,49 @@ func Register(con *repl.Console) {
 			Client:  con.Client,
 			Message: []byte(msg),
 		})
-	})
+	}, nil)
 
 	con.RegisterServerFunc("callback_log", func(con *repl.Console, sess *core.Session, notify bool) intermediate.BuiltinCallback {
 		return func(content interface{}) (bool, error) {
 			return Log(con, sess, fmt.Sprintf("%v", content), notify)
 		}
-	})
+	}, nil)
 
 	con.RegisterServerFunc("log", func(con *repl.Console, sess *core.Session, msg string, notify bool) (bool, error) {
 		return Log(con, sess, msg, notify)
-	})
+	}, nil)
 
 	con.RegisterServerFunc("blog", func(con *repl.Console, sess *core.Session, msg string) (bool, error) {
 		return Log(con, sess, msg, false)
-	})
+	}, nil)
 
 	con.RegisterServerFunc("barch", func(con *repl.Console, sess *core.Session) (string, error) {
 		return sess.Os.Arch, nil
-	})
+	}, nil)
 
 	con.RegisterServerFunc("active", func(con *repl.Console) (*core.Session, error) {
 		return con.GetInteractive().Clone(consts.CalleeMal), nil
+	}, &intermediate.InternalHelper{
+		Short:   "get current session",
+		Output:  []string{"sess"},
+		Example: "active()",
 	})
 
 	con.RegisterServerFunc("is64", func(session *core.Session) (bool, error) {
 		return session.Os.Arch == "x64", nil
-	})
+	}, nil)
 
 	con.RegisterServerFunc("isactive", func(sess *core.Session) (bool, error) {
 		return sess.IsAlive, nil
-	})
+	}, nil)
 
 	con.RegisterServerFunc("isadmin", func(sess *core.Session) (bool, error) {
 		return sess.IsPrivilege, nil
-	})
+	}, nil)
 
 	con.RegisterServerFunc("isbeacon", func(sess *core.Session) (bool, error) {
 		return sess.Type == consts.ImplantTypeBeacon, nil
-	})
+	}, nil)
 
 	con.RegisterServerFunc("donut_exe2shellcode", func(exe []byte, arch string, param string) (string, error) {
 		cmdline, err := shellquote.Split(param)
@@ -170,7 +174,7 @@ func Register(con *repl.Console) {
 			return "", err
 		}
 		return string(bin.Bin), nil
-	})
+	}, nil)
 
 	con.RegisterServerFunc("donut_dll2shellcode", func(dll []byte, arch string, param string) (string, error) {
 		cmdline, err := shellquote.Split(param)
@@ -188,7 +192,7 @@ func Register(con *repl.Console) {
 			return "", err
 		}
 		return string(bin.Bin), nil
-	})
+	}, nil)
 
 	con.RegisterServerFunc("srdi", func(dll []byte, entry string, arch string, param string) (string, error) {
 		bin, err := con.Rpc.DLL2Shellcode(con.Context(), &clientpb.DLL2Shellcode{
@@ -202,7 +206,7 @@ func Register(con *repl.Console) {
 			return "", err
 		}
 		return string(bin.Bin), nil
-	})
+	}, nil)
 
 	con.RegisterServerFunc("sgn_encode", func(shellcode []byte, arch string, iterations int32) (string, error) {
 		bin, err := con.Rpc.ShellcodeEncode(con.Context(), &clientpb.ShellcodeEncode{
@@ -215,5 +219,5 @@ func Register(con *repl.Console) {
 			return "", err
 		}
 		return string(bin.Bin), nil
-	})
+	}, nil)
 }
