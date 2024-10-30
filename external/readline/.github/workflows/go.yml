@@ -1,0 +1,53 @@
+# This workflow will build a golang project
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
+
+name: Go
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  unix:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: 1.22.6
+
+    - name: Build
+      run: go build -v ./...
+
+    - name: Run coverage
+      run: go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+
+  # windows:
+  #   runs-on: windows-latest 
+  #
+  #   steps:
+  #   - uses: actions/checkout@v4
+  #
+  #   - name: Set up Go
+  #     uses: actions/setup-go@v3
+  #     with:
+  #       go-version: 1.20.4
+  #
+  #   - name: Build
+  #     run: go build -v ./...
+  #     shell: powershell
+  #
+  #   - name: Run coverage
+  #     run: go test -v ./...
+  #     shell: powershell
