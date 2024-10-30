@@ -76,7 +76,8 @@ type Console struct {
 func New(app string) *Console {
 	console := &Console{
 		name:  app,
-		shell: readline.NewShell(inputrc.WithApp(strings.ToLower(app))),
+		shell: readline.NewShell(inputrc.WithApp(strings.ToLower(app)), inputrc.WithMode("vi")),
+
 		menus: make(map[string]*Menu),
 		mutex: &sync.RWMutex{},
 	}
