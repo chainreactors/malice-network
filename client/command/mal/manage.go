@@ -74,9 +74,9 @@ func printMals(maljson MalsJson, malHttpConfig MalHTTPConfig, con *repl.Console)
 	var row table.Row
 
 	tableModel := tui.NewTable([]table.Column{
-		{Title: "Name", Width: 15},
+		{Title: "Name", Width: 25},
 		{Title: "Version", Width: 10},
-		{Title: "Repo_url", Width: 30},
+		{Title: "Repo_url", Width: 50},
 		{Title: "Help", Width: 50},
 	}, false)
 	for _, mal := range maljson.Mals {

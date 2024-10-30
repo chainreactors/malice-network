@@ -42,7 +42,7 @@ type Profile struct {
 	PipelineID    string `gorm:"type:string;index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
 	implantConfig string // raw implant config
 
-	Pipeline Pipeline `gorm:"foreignKey:Name;references:Name;"`
+	Pipeline Pipeline `gorm:"foreignKey:PipelineID;references:Name;"`
 
 	CreatedAt time.Time `gorm:"->;<-:create;"`
 }
@@ -94,22 +94,41 @@ func (p *Profile) DeserializeImplantConfig(config interface{}) error {
 }
 
 // UpdateGeneratorConfig
-func (p *Profile) UpdateGeneratorConfig(defaultConfig configs.GeneratorConfig, req *clientpb.Generate, path string) error {
+func (p *Profile) UpdateGeneratorConfig(req *clientpb.Generate, path string) error {
 
-	if p.Name != "" {
-		defaultConfig.Basic.Name = p.Name
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	var configMap map[string]interface{}
+	if err := yaml.Unmarshal(data, &configMap); err != nil {
+		return err
 	}
 
+	var config configs.GeneratorConfig
+	if basicConfig, ok := configMap["basic"]; ok {
+		basicBytes, err := yaml.Marshal(basicConfig)
+		if err != nil {
+			return err
+		}
+		if err := yaml.Unmarshal(basicBytes, &config.Basic); err != nil {
+			return err
+		}
+	}
+
+	if p.Name != "" {
+		config.Basic.Name = p.Name
+	}
 	if req.Url != "" {
-		defaultConfig.Basic.Urls = []string{}
-		defaultConfig.Basic.Urls = append(defaultConfig.Basic.Urls, req.Url)
+		config.Basic.Urls = []string{}
+		config.Basic.Urls = append(config.Basic.Urls, req.Url)
 	} else if p.Name != "" {
-		defaultConfig.Basic.Urls = []string{}
-		defaultConfig.Basic.Urls = append(defaultConfig.Basic.Urls,
+		config.Basic.Urls = []string{}
+		config.Basic.Urls = append(config.Basic.Urls,
 			fmt.Sprintf("%s:%v", p.Pipeline.Host, p.Pipeline.Port))
 	}
 	var dbParams *params
-	err := p.DeserializeImplantConfig(dbParams)
+	err = p.DeserializeImplantConfig(dbParams)
 	if err != nil {
 		return err
 	}
@@ -118,47 +137,49 @@ func (p *Profile) UpdateGeneratorConfig(defaultConfig configs.GeneratorConfig, r
 		if err != nil {
 			return err
 		}
-		defaultConfig.Basic.Interval = interval
+		config.Basic.Interval = interval
 	} else if p.Name != "" {
 		dbInterval, err := strconv.Atoi(dbParams.interval)
 		if err != nil {
 			return err
 		}
-		defaultConfig.Basic.Interval = dbInterval
+		config.Basic.Interval = dbInterval
 	}
 
 	if val, ok := req.Params["jitter"]; ok {
-		jitter, err := strconv.Atoi(val)
+		jitter, err := strconv.ParseFloat(val, 64)
 		if err != nil {
 			return err
 		}
-		defaultConfig.Basic.Jitter = float64(jitter)
+		config.Basic.Jitter = jitter
 	} else if p.Name != "" {
-		dbJitter, err := strconv.Atoi(dbParams.jitter)
+		dbJitter, err := strconv.ParseFloat(dbParams.jitter, 64)
 		if err != nil {
 			return err
 		}
-		defaultConfig.Basic.Jitter = float64(dbJitter)
+		config.Basic.Jitter = dbJitter
 	}
 
 	if val, ok := req.Params["ca"]; ok {
-		defaultConfig.Basic.CA = val
+		config.Basic.CA = val
 	} else if p.Pipeline.Tls.Enable {
-		defaultConfig.Basic.CA = p.Pipeline.Tls.Cert
+		config.Basic.CA = p.Pipeline.Tls.Cert
 	}
 
 	//dbModules := strings.Split(profile.Modules, ",")
 	//
 	//if len(dbModules) > 0 {
-	//	defaultConfig.Implants.Modules = []string{}
-	//	defaultConfig.Implants.Modules = append(defaultConfig.Implants.Modules, dbModules...)
+	//	config.Implants.Modules = []string{}
+	//	config.Implants.Modules = append(config.Implants.Modules, dbModules...)
 	//}
 
-	data, err := yaml.Marshal(defaultConfig)
+	configMap["basic"] = config.Basic
+
+	newData, err := yaml.Marshal(configMap)
 	if err != nil {
 		return err
 	}
-	err = os.WriteFile(path, data, 0644)
+	err = os.WriteFile(path, newData, 0644)
 	if err != nil {
 		return err
 	}

@@ -22,9 +22,9 @@ func NewDBClient() *gorm.DB {
 		panic(fmt.Sprintf("Unknown DB Dialect: '%s'", dbConfig.Dialect))
 	}
 	_ = dbClient.AutoMigrate(
+		&models.Profile{},
 		&models.Builder{},
 		&models.Session{},
-		&models.Profile{},
 		&models.Pipeline{},
 		&models.File{},
 		&models.Task{},

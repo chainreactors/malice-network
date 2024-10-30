@@ -44,7 +44,7 @@ func ProfileShowCmd(cmd *cobra.Command, con *repl.Console) error {
 }
 
 func ProfileNewCmd(cmd *cobra.Command, con *repl.Console) error {
-	profileName, pipelineName, buildTarget, buildType, proxy, obfuscate,
+	profileName, buildTarget, pipelineName, buildType, proxy, obfuscate,
 		modules, ca, interval, jitter := common.ParseProfileFlags(cmd)
 
 	modulesStr := strings.Join(modules, ",")
