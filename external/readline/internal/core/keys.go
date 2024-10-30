@@ -68,8 +68,6 @@ func WaitAvailableKeys(keys *Keys, cfg *inputrc.Config) {
 		// We will either read keyBuf from user, or an EOF
 		// send by ourselves, because we pause reading.
 		keyBuf, err := keys.readInputFiltered()
-		//runes := []rune(string(keyBuf))
-		//fmt.Println(runes)
 		if err != nil && errors.Is(err, io.EOF) {
 			return
 		}
