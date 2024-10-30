@@ -62,13 +62,13 @@ func RegisterRunasFunc(con *repl.Console) {
 		consts.ModuleRunas+"(active(),\"admin\",\"EXAMPLE\",\"password123\",\"/path/to/program\",\"arg1 arg2\",0,false)",
 		[]string{
 			"session: special session",
-			"username: username",
-			"domain: domain",
-			"password: password",
-			"program: program path",
-			"args: args",
-			"show: show",
-			"netonly: netonly",
+			"username",
+			"domain",
+			"password",
+			"program",
+			"args",
+			"show",
+			"netonly",
 		},
 		[]string{"task"})
 }
