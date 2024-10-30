@@ -62,6 +62,11 @@ func MatchMain(eng *Engine) (bind inputrc.Bind, command func(), prefix bool) {
 
 	// Find the target action, macro or command.
 	bind, prefix, read, _ := eng.dispatchKeys(binds)
+	if bind.Action == "" {
+		bind = inputrc.Bind{Action: "self-insert"}
+		eng.prefixed = inputrc.Bind{}
+		read = eng.keys.Read()
+	}
 
 	if !bind.Macro {
 		command = eng.commands[bind.Action]
@@ -116,9 +121,8 @@ func (m *Engine) dispatchKeys(binds map[string]inputrc.Bind) (bind inputrc.Bind,
 		// matching process found a prefix, use it with the keys.
 		if match.Action == "" && len(prefixed) == 0 {
 			prefix = false
-			m.active = inputrc.Bind{Action: "self-insert"}
+			m.active = m.prefixed
 			m.prefixed = inputrc.Bind{}
-			read = m.keys.Read()
 			break
 		}
 		core.PopKey(m.keys)
