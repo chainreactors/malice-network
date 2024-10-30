@@ -125,6 +125,17 @@ func Register(con *repl.Console) {
 		common.ParseStatus,
 		nil)
 
+	con.AddInternalFuncHelper(
+		consts.ModuleLoadModule,
+		consts.ModuleLoadModule,
+		consts.ModuleLoadModule+"(active(),\"bundle_name\",\"module_file.dll\")",
+		[]string{
+			"session: special session",
+			"bundle_name: bundle name",
+			"path: path to the module file",
+		},
+		[]string{"task"})
+
 	con.RegisterImplantFunc(
 		consts.ModuleRefreshModule,
 		refreshModule,
@@ -132,6 +143,15 @@ func Register(con *repl.Console) {
 		nil,
 		common.ParseStatus,
 		nil)
+
+	con.AddInternalFuncHelper(
+		consts.ModuleRefreshModule,
+		consts.ModuleRefreshModule,
+		consts.ModuleRefreshModule+"(active())",
+		[]string{
+			"session: special session",
+		},
+		[]string{"task"})
 
 	//clear
 	con.RegisterImplantFunc(
@@ -141,4 +161,13 @@ func Register(con *repl.Console) {
 		nil,
 		common.ParseStatus,
 		nil)
+
+	con.AddInternalFuncHelper(
+		consts.ModuleClear,
+		consts.ModuleClear,
+		consts.ModuleClear+"(active())",
+		[]string{
+			"session: special session",
+		},
+		[]string{"task"})
 }

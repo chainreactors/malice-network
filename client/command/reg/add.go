@@ -57,4 +57,20 @@ func RegisterRegAddFunc(con *repl.Console) {
 		common.ParseStatus,
 		nil,
 	)
+	con.AddInternalFuncHelper(
+		consts.ModuleRegAdd,
+		consts.ModuleRegAdd,
+		consts.ModuleRegAdd+"(active(),\"HKEY_LOCAL_MACHINE\",\"SOFTWARE\\Example\",\"TestKey\",\"example\",\"\",1,0,0)",
+		[]string{
+			"session: special session",
+			"hive: registry hive",
+			"path: registry path",
+			"key: registry",
+			"stringValue: string value",
+			"byteValue: byte value",
+			"dwordValue: dword value",
+			"qwordValue: qword value",
+			"regtype: registry type",
+		},
+		[]string{"task"})
 }

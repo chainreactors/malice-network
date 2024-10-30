@@ -24,7 +24,7 @@ func MvCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func Mv(rpc clientrpc.MaliceRPCClient, session *core.Session, sourcePath string, targetPath string) (*clientpb.Task, error) {
+func Mv(rpc clientrpc.MaliceRPCClient, session *core.Session, sourcePath, targetPath string) (*clientpb.Task, error) {
 	task, err := rpc.Mv(session.Context(), &implantpb.Request{
 		Name: consts.ModuleMv,
 		Args: []string{sourcePath, targetPath},

@@ -41,4 +41,14 @@ func RegisterTaskSchdListFunc(con *repl.Console) {
 		},
 		nil,
 	)
+
+	con.AddInternalFuncHelper(
+		consts.ModuleTaskSchdList,
+		consts.ModuleTaskSchdList,
+		//session *core.Session, namespace string, args []string
+		consts.ModuleTaskSchdList+"(active())",
+		[]string{
+			"sess: special session",
+		},
+		[]string{"task"})
 }

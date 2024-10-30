@@ -45,4 +45,14 @@ func RegisterTaskSchdDeleteFunc(con *repl.Console) {
 		common.ParseStatus,
 		nil,
 	)
+	con.AddInternalFuncHelper(
+		consts.ModuleTaskSchdDelete,
+		consts.ModuleTaskSchdDelete,
+		//session *core.Session, namespace string, args []string
+		consts.ModuleTaskSchdDelete+"(active(), \"task_name\")",
+		[]string{
+			"session: special session",
+			"name: name of the scheduled task",
+		},
+		[]string{"task"})
 }

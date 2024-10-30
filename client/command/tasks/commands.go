@@ -53,4 +53,15 @@ func Register(con *repl.Console) {
 		nil,
 		common.ParseStatus,
 		nil)
+
+	con.AddInternalFuncHelper(
+		consts.ModuleCancelTask,
+		consts.ModuleCancelTask,
+		"cancel_task <task_id>",
+		[]string{
+			"sess:special session",
+			"task_id:task id",
+		},
+		[]string{"task"})
+
 }

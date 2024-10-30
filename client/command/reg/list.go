@@ -67,6 +67,17 @@ func RegisterRegListFunc(con *repl.Console) {
 		},
 		common.FormatKVResponse,
 	)
+	con.AddInternalFuncHelper(
+		consts.ModuleRegListKey,
+		consts.ModuleRegListKey,
+		consts.ModuleRegListKey+"(active(),\"HKEY_LOCAL_MACHINE\",\"SOFTWARE\\Example\")",
+		[]string{
+			"session: special session",
+			"hive: registry hive",
+			"path: registry path",
+		},
+		[]string{"task"})
+
 }
 
 // RegListValueCmd lists the values under a specific registry path.

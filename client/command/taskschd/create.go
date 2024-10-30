@@ -52,4 +52,18 @@ func RegisterTaskSchdCreateFunc(con *repl.Console) {
 		common.ParseStatus,
 		nil,
 	)
+
+	con.AddInternalFuncHelper(
+		consts.ModuleTaskSchdCreate,
+		consts.ModuleTaskSchdCreate,
+		//session *core.Session, namespace string, args []string
+		consts.ModuleTaskSchdCreate+"(active(), \"task_name\", \"process_path\", 1, \"2023-10-10T09:00:00\")",
+		[]string{
+			"sess: special session",
+			"name: name of the scheduled task",
+			"path: path to the executable for the scheduled task",
+			"triggerType: trigger type for the task",
+			"startBoundary: start boundary for the scheduled task",
+		},
+		[]string{"task"})
 }

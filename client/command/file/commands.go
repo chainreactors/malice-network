@@ -97,6 +97,16 @@ func Register(con *repl.Console) {
 		return fmt.Sprintf("download block %d/%d success", content.Task.Cur, content.Task.Total), nil
 	})
 
+	con.AddInternalFuncHelper(
+		consts.ModuleDownload,
+		consts.ModuleDownload,
+		consts.ModuleDownload+"(active(),\"./file.txt\")",
+		[]string{
+			"session: special session",
+			"path: file path",
+		},
+		[]string{"task"})
+
 	con.RegisterImplantFunc(
 		consts.ModuleUpload,
 		Upload,
@@ -110,4 +120,15 @@ func Register(con *repl.Console) {
 	intermediate.RegisterInternalDoneCallback(consts.ModuleUpload, func(content *clientpb.TaskContext) (string, error) {
 		return fmt.Sprintf("upload block %d/%d success", content.Task.Cur, content.Task.Total), nil
 	})
+	// session *core.Session, path string, target string, priv int, hidden bool
+	con.AddInternalFuncHelper(
+		consts.ModuleDownload,
+		consts.ModuleDownload,
+		consts.ModuleDownload+"(active(),\"path\",\"target\",\"priv\",false)",
+		[]string{
+			"session: special session",
+			"path: file path",
+		},
+		[]string{"task"})
+
 }

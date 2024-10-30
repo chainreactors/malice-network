@@ -223,6 +223,16 @@ func Register(con *repl.Console) {
 		common.ParseStatus,
 		nil)
 
+	con.AddInternalFuncHelper(
+		consts.ModuleCd,
+		consts.ModuleCd,
+		consts.ModuleCd+"(active(),\"path\")",
+		[]string{
+			"session: special session",
+			"path: path to change directory",
+		},
+		[]string{"task"})
+
 	con.RegisterImplantFunc(
 		consts.ModuleCat,
 		Cat,
@@ -230,6 +240,16 @@ func Register(con *repl.Console) {
 		Cat,
 		common.ParseResponse,
 		nil)
+
+	con.AddInternalFuncHelper(
+		consts.ModuleCat,
+		consts.ModuleCat,
+		consts.ModuleCat+"(active(),\"file.txt\")",
+		[]string{
+			"session: special session",
+			"fileName: file to print",
+		},
+		[]string{"task"})
 
 	con.RegisterImplantFunc(
 		consts.ModuleChmod,
@@ -239,6 +259,17 @@ func Register(con *repl.Console) {
 		common.ParseStatus,
 		nil)
 
+	con.AddInternalFuncHelper(
+		consts.ModuleChmod,
+		consts.ModuleChmod,
+		consts.ModuleChmod+"(active(),\"file.txt\",\"644\")",
+		[]string{
+			"session: special session",
+			"path: file to change mode",
+			"mode: mode to change",
+		},
+		[]string{"task"})
+
 	con.RegisterImplantFunc(
 		consts.ModuleChown,
 		Chown,
@@ -246,6 +277,19 @@ func Register(con *repl.Console) {
 		nil,
 		common.ParseStatus,
 		nil)
+
+	con.AddInternalFuncHelper(
+		consts.ModuleChown,
+		consts.ModuleChown,
+		consts.ModuleChown+"(active(),\"file.txt\",\"username\",\"groupname\",true)",
+		[]string{
+			"session: special session",
+			"path: file to change owner",
+			"uid: user to change",
+			"gid: group to change",
+			"recursive: recursive",
+		},
+		[]string{"task"})
 
 	con.RegisterImplantFunc(
 		consts.ModuleCp,
@@ -255,6 +299,17 @@ func Register(con *repl.Console) {
 		common.ParseStatus,
 		nil)
 
+	con.AddInternalFuncHelper(
+		consts.ModuleCp,
+		consts.ModuleCp,
+		consts.ModuleCp+"(active(),\"source\",\"target\")",
+		[]string{
+			"session: special session",
+			"originPath: origin path",
+			"targetPath: target path",
+		},
+		[]string{"task"})
+
 	con.RegisterImplantFunc(
 		consts.ModuleMkdir,
 		Mkdir,
@@ -263,6 +318,16 @@ func Register(con *repl.Console) {
 		common.ParseStatus,
 		nil)
 
+	con.AddInternalFuncHelper(
+		consts.ModuleMkdir,
+		consts.ModuleMkdir,
+		consts.ModuleMkdir+"(active(),\"/tmp\")",
+		[]string{
+			"session: special session",
+			"path: dir",
+		},
+		[]string{"task"})
+
 	con.RegisterImplantFunc(
 		consts.ModuleMv,
 		Mv,
@@ -270,6 +335,17 @@ func Register(con *repl.Console) {
 		Mv,
 		common.ParseStatus,
 		nil)
+
+	con.AddInternalFuncHelper(
+		consts.ModuleMv,
+		consts.ModuleMv,
+		consts.ModuleMv+"(active(),\"/tmp/file1.txt\",\"/tmp/file2.txt\")",
+		[]string{
+			"session: special session",
+			"sourcePath: source path",
+			"targetPath: target path",
+		},
+		[]string{"task"})
 
 	con.RegisterImplantFunc(
 		consts.ModulePwd,
@@ -280,6 +356,15 @@ func Register(con *repl.Console) {
 		nil,
 	)
 
+	con.AddInternalFuncHelper(
+		consts.ModulePwd,
+		consts.ModulePwd,
+		consts.ModulePwd+"(active())",
+		[]string{
+			"session: special session",
+		},
+		[]string{"task"})
+
 	con.RegisterImplantFunc(
 		consts.ModuleRm,
 		Rm,
@@ -287,6 +372,16 @@ func Register(con *repl.Console) {
 		Rm,
 		common.ParseStatus,
 		nil)
+
+	con.AddInternalFuncHelper(
+		consts.ModuleRm,
+		consts.ModuleRm,
+		consts.ModulePwd+"(active(),\"/tmp/file.txt\")",
+		[]string{
+			"session: special session",
+			"fileName: file to remove",
+		},
+		[]string{"task"})
 
 	RegisterLsFunc(con)
 }

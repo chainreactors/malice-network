@@ -39,4 +39,12 @@ func RegisterServiceListFunc(con *repl.Console) {
 		},
 		nil,
 	)
+	con.AddInternalFuncHelper(
+		consts.ModuleServiceList,
+		consts.ModuleServiceList,
+		consts.ModuleServiceList+"(active())",
+		[]string{
+			"session: special session",
+		},
+		[]string{"task"})
 }

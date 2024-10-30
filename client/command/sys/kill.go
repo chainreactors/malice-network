@@ -44,4 +44,15 @@ func RegisterKillFunc(con *repl.Console) {
 		},
 		common.ParseStatus,
 		nil)
+
+	con.AddInternalFuncHelper(
+		consts.ModuleKill,
+		consts.ModuleKill,
+		consts.ModuleKill+"(active(),pid)",
+		[]string{
+			"session: special session",
+			"pid: process id",
+		},
+		[]string{"task"})
+
 }

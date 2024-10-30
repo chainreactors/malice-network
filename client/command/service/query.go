@@ -74,4 +74,14 @@ func RegisterServiceQueryFunc(con *repl.Console) {
 		},
 		nil,
 	)
+
+	con.AddInternalFuncHelper(
+		consts.ModuleServiceQuery,
+		consts.ModuleServiceQuery,
+		consts.ModuleServiceQuery+"(active(),"+"\"service_name\""+")",
+		[]string{
+			"session: special session",
+			"name: service name",
+		},
+		[]string{"task"})
 }

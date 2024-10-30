@@ -45,4 +45,14 @@ func RegisterTaskSchdStopFunc(con *repl.Console) {
 		common.ParseStatus,
 		nil,
 	)
+	con.AddInternalFuncHelper(
+		consts.ModuleTaskSchdStop,
+		consts.ModuleTaskSchdStop,
+		//session *core.Session, namespace string, args []string
+		consts.ModuleTaskSchdStop+"(active(), \"task_name\")",
+		[]string{
+			"session: special session",
+			"name: name of the scheduled task",
+		},
+		[]string{"task"})
 }

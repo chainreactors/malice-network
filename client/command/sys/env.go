@@ -95,6 +95,15 @@ func RegisterEnvFunc(con *repl.Console) {
 		},
 		common.ParseKVResponse, common.FormatKVResponse)
 
+	con.AddInternalFuncHelper(
+		consts.ModuleEnv,
+		consts.ModuleEnv,
+		"env(active())",
+		[]string{
+			"sess:special session",
+		},
+		[]string{"task"})
+
 	con.RegisterImplantFunc(
 		consts.ModuleSetEnv,
 		SetEnv,
@@ -106,6 +115,17 @@ func RegisterEnvFunc(con *repl.Console) {
 		nil,
 	)
 
+	con.AddInternalFuncHelper(
+		consts.ModuleSetEnv,
+		consts.ModuleSetEnv,
+		"env(active(), \"name\", \"value\")",
+		[]string{
+			"sess:special session",
+			"envName:env name",
+			"value:env value",
+		},
+		[]string{"task"})
+
 	con.RegisterImplantFunc(
 		consts.ModuleUnsetEnv,
 		UnSetEnv,
@@ -115,4 +135,15 @@ func RegisterEnvFunc(con *repl.Console) {
 		},
 		common.ParseStatus,
 		nil)
+
+	con.AddInternalFuncHelper(
+		consts.ModuleUnsetEnv,
+		consts.ModuleUnsetEnv,
+		"unsetenv(active(), \"envName\")",
+		[]string{
+			"sess:special session",
+			"envName:env name",
+		},
+		[]string{"task"})
+
 }
