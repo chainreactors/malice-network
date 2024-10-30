@@ -2,6 +2,7 @@ package readline
 
 import (
 	"fmt"
+	"github.com/atotto/clipboard"
 	"io"
 	"sort"
 	"strings"
@@ -34,8 +35,8 @@ func (rl *Shell) standardCommands() commands {
 		// Modes
 		"emacs-editing-mode": rl.emacsEditingMode,
 
-		//"copy-to-clipboard":    rl.copyToClipboard,
-		//"paste-from-clipboard": rl.pasteFromClipboard,
+		"copy-to-clipboard":    rl.copyToClipboard,
+		"paste-from-clipboard": rl.pasteFromClipboard,
 
 		// Moving
 		"forward-char":         rl.forwardChar,
@@ -437,7 +438,6 @@ func (rl *Shell) selfInsert() {
 
 	var quoted []rune
 	var length int
-
 	if rl.Config.GetBool("output-meta") && key[0] != inputrc.Esc {
 		quoted = append(quoted, key[0])
 		length = uniseg.StringWidth(string(quoted))
@@ -1623,40 +1623,35 @@ func (rl *Shell) selectKeywordPrev() {
 	rl.selection.Visual(false)
 }
 
-//// copyToClipboard 将当前选中的内容或整行复制到系统剪贴板
-//func (rl *Shell) copyToClipboard() {
-//	rl.History.SkipSave()
-//
-//	// 检查是否有选中的文本
-//	var text string
-//	if rl.selection.Active() {
-//		text = rl.selection.Text()
-//	} else {
-//		// 如果没有选中，复制整行
-//		text = string(*rl.line)
-//	}
-//
-//	// 将文本复制到剪贴板
-//	err := clipboard.WriteAll(text)
-//	if err != nil {
-//		rl.Hint.SetTemporary(color.FgRed + "复制失败")
-//	} else {
-//		rl.Hint.SetTemporary(color.FgGreen + "已复制到剪贴板")
-//	}
-//}
-//
-//// pasteFromClipboard 从剪贴板获取内容并粘贴到当前光标位置
-//func (rl *Shell) pasteFromClipboard() {
-//	rl.History.Save()
-//
-//	// 从剪贴板读取内容
-//	text, err := clipboard.ReadAll()
-//	if err != nil {
-//		rl.Hint.SetTemporary(color.FgRed + "粘贴失败")
-//		return
-//	}
-//
-//	// 将内容插入到光标位置
-//	rl.cursor.InsertAt([]rune(text)...)
-//	rl.Display.Refresh()
-//}
+// copyToClipboard 将当前选中的内容或整行复制到系统剪贴板
+func (rl *Shell) copyToClipboard() {
+	rl.History.SkipSave()
+
+	// 检查是否有选中的文本
+	var text string
+	if rl.selection.Active() {
+		text = rl.selection.Text()
+	} else {
+		// 如果没有选中，复制整行
+		text = string(*rl.line)
+	}
+
+	// 将文本复制到剪贴板
+	clipboard.WriteAll(text)
+}
+
+// pasteFromClipboard 从剪贴板获取内容并粘贴到当前光标位置
+func (rl *Shell) pasteFromClipboard() {
+	rl.History.Save()
+
+	// 从剪贴板读取内容
+	text, err := clipboard.ReadAll()
+	if err != nil {
+		rl.Hint.SetTemporary(color.FgRed + "paste failed")
+		return
+	}
+
+	// 将内容插入到光标位置
+	rl.cursor.InsertAt([]rune(text)...)
+	rl.Display.Refresh()
+}

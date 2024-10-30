@@ -239,7 +239,7 @@ func DefaultBinds() map[string]map[string]Bind {
 			// previous-screen-line (not bound)
 			// print-last-kbd-macro (not bound)
 			Unescape(`\C-q`):     Bind{"quoted-insert", false},
-			Unescape(`\C-v`):     Bind{"quoted-insert", false},
+			Unescape(`\C-v`):     Bind{"paste-from-clipboard", false},
 			Unescape(`\C-x\C-r`): Bind{"re-read-init-file", false},
 			// redraw-current-line (not bound)
 			Unescape(`\C-r`):               Bind{"reverse-search-history", false},
