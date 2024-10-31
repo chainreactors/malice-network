@@ -11,13 +11,13 @@ import (
 	"strconv"
 )
 
-func ListenerCmd(cmd *cobra.Command, con *repl.Console) {
+func ListenerCmd(cmd *cobra.Command, con *repl.Console) error {
 	listeners, err := con.Rpc.GetListeners(context.Background(), &clientpb.Empty{})
 	if err != nil {
-		con.Log.Errorf("Failed to list listeners: %s", err)
-		return
+		return err
 	}
 	printListeners(listeners)
+	return nil
 }
 
 func printListeners(listeners *clientpb.Listeners) {

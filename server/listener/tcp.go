@@ -22,16 +22,6 @@ func NewTcpPipeline(conn *grpc.ClientConn, pipeline *clientpb.Pipeline) (*TCPPip
 		Enable:         true,
 		PipelineConfig: core.FromProtobuf(pipeline),
 	}
-
-	forward, err := core.NewForward(conn, pp)
-	if err != nil {
-		return nil, err
-	}
-	core.Forwarders.Add(forward)
-	err = pp.Start()
-	if err != nil {
-		return nil, err
-	}
 	return pp, nil
 }
 

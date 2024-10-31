@@ -10,22 +10,20 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
-	listenerID, host, port := common.ParsePipelineFlags(cmd)
+func NewBindPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
+	listenerID, _, _ := common.ParsePipelineFlags(cmd)
 	if listenerID == "" {
 		return fmt.Errorf("listener id is required")
 	}
 	name := cmd.Flags().Arg(0)
-	if port == 0 {
-		port = cryptography.RandomInRange(10240, 65535)
-	}
 	if name == "" {
-		name = fmt.Sprintf("%s-tcp-%d", listenerID, port)
+		name = fmt.Sprintf("%s-bind-%d", listenerID, cryptography.RandomInRange(0, 1000))
 	}
 	tls, err := common.ParseTLSFlags(cmd)
 	if err != nil {
 		return err
 	}
+
 	_, err = con.LisRpc.RegisterPipeline(context.Background(), &clientpb.Pipeline{
 		Encryption: &clientpb.Encryption{
 			Enable: false,
@@ -36,18 +34,15 @@ func NewTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 		Name:       name,
 		ListenerId: listenerID,
 		Enable:     false,
-		Body: &clientpb.Pipeline_Tcp{
-			Tcp: &clientpb.TCPPipeline{
-				Host: host,
-				Port: port,
-			},
+		Body: &clientpb.Pipeline_Bind{
+			Bind: &clientpb.BindPipeline{},
 		},
 	})
 	if err != nil {
 		return err
 	}
 
-	con.Log.Importantf("TCP Pipeline %s regsiter\n", name)
+	con.Log.Importantf("Bind Pipeline %s regsiter\n", name)
 	_, err = con.LisRpc.StartPipeline(context.Background(), &clientpb.CtrlPipeline{
 		Name:       name,
 		ListenerId: listenerID,

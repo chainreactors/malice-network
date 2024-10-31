@@ -1,4 +1,4 @@
-package types
+package webutils
 
 import (
 	"errors"

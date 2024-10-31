@@ -8,8 +8,8 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
-	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/helper/utils/mtls"
+	"github.com/chainreactors/malice-network/helper/utils/webutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"google.golang.org/grpc"
@@ -93,10 +93,10 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 		fileIfo, err := os.Stat(cPath)
 
 		if fileIfo.IsDir() {
-			_ = types.WebAddDirectory(addWeb, newWebsite.RootPath, cPath)
+			_ = webutils.WebAddDirectory(addWeb, newWebsite.RootPath, cPath)
 		} else {
 			file, err := os.Open(cPath)
-			types.WebAddFile(addWeb, newWebsite.RootPath, types.SniffContentType(file), cPath)
+			webutils.WebAddFile(addWeb, newWebsite.RootPath, webutils.SniffContentType(file), cPath)
 			if err != nil {
 				return err
 			}

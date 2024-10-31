@@ -239,9 +239,9 @@ func FindFilesWithNonOneCurTotal(session models.Session) ([]models.File, error) 
 	return files, nil
 }
 
-func FindPipeline(name, listenerID string) (models.Pipeline, error) {
+func FindPipeline(name string) (models.Pipeline, error) {
 	var pipeline models.Pipeline
-	result := Session().Where("name = ? AND listener_id = ?", name, listenerID).First(&pipeline)
+	result := Session().Where("name = ?", name).First(&pipeline)
 	if result.Error != nil {
 		return pipeline, result.Error
 	}
@@ -251,7 +251,6 @@ func FindPipeline(name, listenerID string) (models.Pipeline, error) {
 		return pipeline, result.Error
 	}
 	return pipeline, nil
-
 }
 
 func CreatePipeline(pipeline *models.Pipeline) error {
@@ -277,13 +276,24 @@ func CreatePipeline(pipeline *models.Pipeline) error {
 
 func ListPipelines(listenerID string) ([]models.Pipeline, error) {
 	var pipelines []models.Pipeline
-	err := Session().Where("listener_id = ? AND type != ?", listenerID, consts.WebsitePipeline).Find(&pipelines).Error
+	var err error
+	if listenerID == "" {
+		err = Session().Where(" type != ?", consts.WebsitePipeline).Find(&pipelines).Error
+	} else {
+		err = Session().Where("listener_id = ? AND type != ?", listenerID, consts.WebsitePipeline).Find(&pipelines).Error
+	}
 	return pipelines, err
 }
 
 func ListWebsite(listenerID string) ([]models.Pipeline, error) {
 	var pipelines []models.Pipeline
-	err := Session().Where("listener_id = ? AND type = ?", listenerID, consts.WebsitePipeline).Find(&pipelines).Error
+	//err := Session().Where("listener_id = ? AND type = ?", listenerID, consts.WebsitePipeline).Find(&pipelines).Error
+	var err error
+	if listenerID == "" {
+		err = Session().Where(" type = ?", consts.WebsitePipeline).Find(&pipelines).Error
+	} else {
+		err = Session().Where("listener_id = ? AND type = ?", listenerID, consts.WebsitePipeline).Find(&pipelines).Error
+	}
 	return pipelines, err
 }
 

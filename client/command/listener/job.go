@@ -12,15 +12,14 @@ import (
 	"strconv"
 )
 
-func listJobsCmd(cmd *cobra.Command, con *repl.Console) {
+func ListJobsCmd(cmd *cobra.Command, con *repl.Console) error {
 	Pipelines, err := con.Rpc.ListJobs(context.Background(), &clientpb.Empty{})
 	if err != nil {
-		con.Log.Error(err.Error())
-		return
+		return err
 	}
 	if len(Pipelines.GetPipelines()) == 0 {
 		con.Log.Importantf("No jobs found")
-		return
+		return nil
 	}
 	var rowEntries []table.Row
 	var row table.Row
@@ -57,36 +56,38 @@ func listJobsCmd(cmd *cobra.Command, con *repl.Console) {
 	}
 	tableModel.SetRows(rowEntries)
 	fmt.Printf(tableModel.View())
+	return nil
 }
 
-func listPipelineCmd(cmd *cobra.Command, con *repl.Console) {
-	listenerID := cmd.Flags().Arg(0)
-	if listenerID == "" {
-		con.Log.Error("listener_id is required")
-		return
-	}
-	Pipelines, err := con.LisRpc.ListPipelines(context.Background(), &clientpb.ListenerName{
+func ListPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
+	listenerID, _ := cmd.Flags().GetString("listener")
+	pipelines, err := con.LisRpc.ListPipelines(context.Background(), &clientpb.ListenerName{
 		Name: listenerID,
 	})
 	if err != nil {
-		con.Log.Error(err.Error())
-		return
+		return err
+	}
+	if len(pipelines.Pipelines) == 0 {
+		con.Log.Warnf("No pipelines found")
+		return nil
 	}
 	var rowEntries []table.Row
 	var row table.Row
 	tableModel := tui.NewTable([]table.Column{
 		{Title: "Name", Width: 20},
 		{Title: "Type", Width: 10},
+		{Title: "ListenerID", Width: 15},
 		{Title: "Host", Width: 10},
 		{Title: "Port", Width: 7},
 		{Title: "Enable", Width: 7},
 	}, true)
-	for _, pipeline := range Pipelines.GetPipelines() {
+	for _, pipeline := range pipelines.GetPipelines() {
 		switch body := pipeline.Body.(type) {
 		case *clientpb.Pipeline_Tcp:
 			row = table.Row{
 				pipeline.Name,
 				consts.TCPPipeline,
+				pipeline.ListenerId,
 				body.Tcp.Host,
 				strconv.Itoa(int(body.Tcp.Port)),
 				strconv.FormatBool(pipeline.Enable),
@@ -95,6 +96,7 @@ func listPipelineCmd(cmd *cobra.Command, con *repl.Console) {
 			row = table.Row{
 				pipeline.Name,
 				consts.BindPipeline,
+				pipeline.ListenerId,
 				"",
 				"",
 				strconv.FormatBool(pipeline.Enable),
@@ -105,29 +107,27 @@ func listPipelineCmd(cmd *cobra.Command, con *repl.Console) {
 	}
 	tableModel.SetRows(rowEntries)
 	fmt.Printf(tableModel.View())
+	return nil
 }
 
-func startPipelineCmd(cmd *cobra.Command, con *repl.Console) {
+func StartPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 	name := cmd.Flags().Arg(0)
-	listenerID := cmd.Flags().Arg(1)
 	_, err := con.LisRpc.StartPipeline(context.Background(), &clientpb.CtrlPipeline{
-		Name:       name,
-		ListenerId: listenerID,
+		Name: name,
 	})
-
 	if err != nil {
-		con.Log.Error(err.Error())
+		return err
 	}
+	return nil
 }
 
-func stopPipelineCmd(cmd *cobra.Command, con *repl.Console) {
-	name := cmd.Flags().Arg(1)
-	listenerID := cmd.Flags().Arg(0)
+func StopPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
+	name := cmd.Flags().Arg(0)
 	_, err := con.LisRpc.StopPipeline(context.Background(), &clientpb.CtrlPipeline{
-		Name:       name,
-		ListenerId: listenerID,
+		Name: name,
 	})
 	if err != nil {
-		con.Log.Error(err.Error())
+		return err
 	}
+	return nil
 }

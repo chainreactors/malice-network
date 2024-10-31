@@ -301,13 +301,17 @@ func (s *ServerStatus) EventHandler() {
 			Log.Importantf("%s notified: %s %s", event.Client.Name, event.Message, event.Err)
 		case consts.EventJob:
 			tui.Down(0)
+			if event.Err != "" {
+				Log.Errorf("[%s] %s: %s", event.Type, event.Op, event.Err)
+				continue
+			}
 			pipeline := event.GetJob().GetPipeline()
 			switch pipeline.Body.(type) {
 			case *clientpb.Pipeline_Tcp:
-				Log.Importantf("[%s] %s: tcp %s.%s in %s:%d", event.Type, event.Op, pipeline.ListenerId,
-					pipeline.Name, pipeline.GetTcp().Host, pipeline.GetTcp().Port)
+				Log.Importantf("[%s] %s: tcp %s on %s %s:%d", event.Type, event.Op,
+					pipeline.Name, pipeline.ListenerId, pipeline.GetTcp().Host, pipeline.GetTcp().Port)
 			case *clientpb.Pipeline_Web:
-				Log.Importantf("[%s] %s: web %s.%s in %d, routePath is %s", event.Type, event.Op,
+				Log.Importantf("[%s] %s: web %s on %s %d, routePath is %s", event.Type, event.Op,
 					pipeline.ListenerId, pipeline.Name, pipeline.GetWeb().Port,
 					pipeline.GetWeb().RootPath)
 			}

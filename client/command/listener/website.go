@@ -7,68 +7,52 @@ import (
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/types"
+	"github.com/chainreactors/malice-network/helper/utils/webutils"
 	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/spf13/cobra"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"strconv"
-	"time"
 )
 
-func newWebsiteCmd(cmd *cobra.Command, con *repl.Console) {
-	name, _, portUint, certPath, keyPath, tlsEnable := common.ParsePipelineFlags(cmd)
+func NewWebsiteCmd(cmd *cobra.Command, con *repl.Console) error {
+	listenerID, _, port := common.ParsePipelineFlags(cmd)
 	contentType, _ := cmd.Flags().GetString("content_type")
-	listenerID := cmd.Flags().Arg(0)
+	name := cmd.Flags().Arg(0)
 	webPath := cmd.Flags().Arg(1)
 	cPath := cmd.Flags().Arg(2)
-	var cert, key string
 	var err error
 	var webAsserts *clientpb.WebsiteAssets
-	if portUint == 0 {
-		rand.Seed(time.Now().UnixNano())
-		portUint = uint(15001 + rand.Int31n(5001))
+	if port == 0 {
+		port = cryptography.RandomInRange(10240, 65535)
 	}
-	port := uint32(portUint)
 	if name == "" {
 		name = fmt.Sprintf("%s-web-%d", listenerID, port)
 	}
-	if certPath != "" && keyPath != "" {
-		cert, err = cryptography.ProcessPEM(certPath)
-		if err != nil {
-			con.Log.Error(err.Error())
-			return
-		}
-		key, err = cryptography.ProcessPEM(keyPath)
-		tlsEnable = true
-		if err != nil {
-			con.Log.Error(err.Error())
-			return
-		}
+
+	tls, err := common.ParseTLSFlags(cmd)
+	if err != nil {
+		return err
 	}
 	cPath, _ = filepath.Abs(cPath)
 
 	fileIfo, err := os.Stat(cPath)
 	if err != nil {
-		con.Log.Errorf("Error adding content %s\n", err)
-		return
+		return err
 	}
 	if fileIfo.IsDir() {
-		con.Log.Errorf("Error adding content %s\n", "file is a directory")
-		return
+		return fmt.Errorf("file is a directory")
 	}
 	addWeb := &clientpb.WebsiteAddContent{
 		Name:     name,
 		Contents: map[string]*clientpb.WebContent{},
 	}
 
-	types.WebAddFile(addWeb, webPath, contentType, cPath)
+	webutils.WebAddFile(addWeb, webPath, contentType, cPath)
 	content, err := os.ReadFile(cPath)
 	if err != nil {
-		con.Log.Error(err.Error())
-		return
+		return err
 	}
 	webAsserts = &clientpb.WebsiteAssets{}
 	webAsserts.Assets = append(webAsserts.Assets, &clientpb.WebsiteAsset{
@@ -84,11 +68,7 @@ func newWebsiteCmd(cmd *cobra.Command, con *repl.Console) {
 			Type:   "",
 			Key:    "",
 		},
-		Tls: &clientpb.TLS{
-			Cert:   cert,
-			Key:    key,
-			Enable: tlsEnable,
-		},
+		Tls: tls,
 		Body: &clientpb.Pipeline_Web{
 			Web: &clientpb.Website{
 				RootPath: webPath,
@@ -99,63 +79,57 @@ func newWebsiteCmd(cmd *cobra.Command, con *repl.Console) {
 	})
 
 	if err != nil {
-		con.Log.Error(err.Error())
-		return
+		return err
 	}
 	webAsserts.GetAssets()[0].FileName = resp.ID
 	_, err = con.LisRpc.UploadWebsite(context.Background(), webAsserts)
 	if err != nil {
-		con.Log.Error(err.Error())
-		return
+		return err
 	}
 	_, err = con.LisRpc.StartWebsite(context.Background(), &clientpb.CtrlPipeline{
 		Name:       name,
 		ListenerId: listenerID,
 	})
 	if err != nil {
-		con.Log.Error(err.Error())
-		return
+		return err
 	}
 	con.Log.Importantf("Website %s added\n", name)
+	return nil
 }
 
-func startWebsitePipelineCmd(cmd *cobra.Command, con *repl.Console) {
+func StartWebsitePipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 	name := cmd.Flags().Arg(0)
-	listenerID := cmd.Flags().Arg(1)
+	listenerID, _ := cmd.Flags().GetString("listener")
 	_, err := con.LisRpc.StartWebsite(context.Background(), &clientpb.CtrlPipeline{
 		Name:       name,
 		ListenerId: listenerID,
 	})
 	if err != nil {
-		con.Log.Error(err.Error())
+		return err
 	}
-
+	return nil
 }
 
-func stopWebsitePipelineCmd(cmd *cobra.Command, con *repl.Console) {
+func StopWebsitePipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 	name := cmd.Flags().Arg(1)
-	listenerID := cmd.Flags().Arg(0)
+	listenerID, _ := cmd.Flags().GetString("listener")
 	_, err := con.LisRpc.StopWebsite(context.Background(), &clientpb.CtrlPipeline{
 		Name:       name,
 		ListenerId: listenerID,
 	})
 	if err != nil {
-		con.Log.Error(err.Error())
+		return err
 	}
+	return nil
 }
 
-func listWebsitesCmd(cmd *cobra.Command, con *repl.Console) {
+func ListWebsitesCmd(cmd *cobra.Command, con *repl.Console) error {
 	listenerID := cmd.Flags().Arg(0)
-	if listenerID == "" {
-		con.Log.Error("listener_id is required")
-		return
-	}
 	websites, err := con.LisRpc.ListWebsites(context.Background(), &clientpb.ListenerName{
 		Name: listenerID,
 	})
 	if err != nil {
-		con.Log.Error(err.Error())
-		return
+		return err
 	}
 	var rowEntries []table.Row
 	var row table.Row
@@ -167,7 +141,7 @@ func listWebsitesCmd(cmd *cobra.Command, con *repl.Console) {
 	}, true)
 	if len(websites.Pipelines) == 0 {
 		con.Log.Importantf("No websites found")
-		return
+		return nil
 	}
 	for _, p := range websites.Pipelines {
 		w := p.GetWeb()
@@ -180,4 +154,5 @@ func listWebsitesCmd(cmd *cobra.Command, con *repl.Console) {
 	}
 	tableModel.SetRows(rowEntries)
 	fmt.Printf(tableModel.View())
+	return nil
 }

@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+	"fmt"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
@@ -41,13 +42,16 @@ func (rpc *Server) ListPipelines(ctx context.Context, req *clientpb.ListenerName
 }
 
 func (rpc *Server) StartPipeline(ctx context.Context, req *clientpb.CtrlPipeline) (*clientpb.Empty, error) {
-	pipelineDB, err := db.FindPipeline(req.Name, req.ListenerId)
+	pipelineDB, err := db.FindPipeline(req.Name)
 	if err != nil {
 		return nil, err
 	}
 	pipelineDB.Enable = true
 	pipeline := models.ModelToPipelinePB(pipelineDB)
 	listener := core.Listeners.Get(req.ListenerId)
+	if listener == nil {
+		return nil, fmt.Errorf("listener %s not found", req.ListenerId)
+	}
 	listener.AddPipeline(pipeline)
 	core.Jobs.Add(&core.Job{
 		ID:      core.CurrentJobID(),
@@ -70,12 +74,15 @@ func (rpc *Server) StartPipeline(ctx context.Context, req *clientpb.CtrlPipeline
 }
 
 func (rpc *Server) StopPipeline(ctx context.Context, req *clientpb.CtrlPipeline) (*clientpb.Empty, error) {
-	pipelineDB, err := db.FindPipeline(req.Name, req.ListenerId)
+	pipelineDB, err := db.FindPipeline(req.Name)
 	if err != nil {
 		return &clientpb.Empty{}, err
 	}
 	pipeline := models.ModelToPipelinePB(pipelineDB)
 	listener := core.Listeners.Get(req.ListenerId)
+	if listener == nil {
+		return nil, fmt.Errorf("listener %s not found", req.ListenerId)
+	}
 	listener.RemovePipeline(pipeline)
 	core.Jobs.Ctrl <- &clientpb.JobCtrl{
 		Id:   core.NextCtrlID(),

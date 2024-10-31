@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+	"fmt"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/server/internal/certutils"
@@ -155,12 +156,15 @@ func (rpc *Server) RegisterWebsite(ctx context.Context, req *clientpb.Pipeline) 
 }
 
 func (rpc *Server) StartWebsite(ctx context.Context, req *clientpb.CtrlPipeline) (*clientpb.Empty, error) {
-	pipelineDB, err := db.FindPipeline(req.Name, req.ListenerId)
+	pipelineDB, err := db.FindPipeline(req.Name)
 	if err != nil {
 		return &clientpb.Empty{}, err
 	}
 	pipeline := models.ModelToPipelinePB(pipelineDB)
 	listener := core.Listeners.Get(req.ListenerId)
+	if listener == nil {
+		return nil, fmt.Errorf("listener %s not found", req.ListenerId)
+	}
 	listener.AddPipeline(pipeline)
 	contents, err := website.MapContent(req.Name, true)
 	if err != nil {
@@ -190,7 +194,7 @@ func (rpc *Server) StartWebsite(ctx context.Context, req *clientpb.CtrlPipeline)
 }
 
 func (rpc *Server) StopWebsite(ctx context.Context, req *clientpb.CtrlPipeline) (*clientpb.Empty, error) {
-	pipelineDB, err := db.FindPipeline(req.Name, req.ListenerId)
+	pipelineDB, err := db.FindPipeline(req.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -206,6 +210,9 @@ func (rpc *Server) StopWebsite(ctx context.Context, req *clientpb.CtrlPipeline) 
 	core.Jobs.Ctrl <- &ctrl
 	err = db.DisablePipeline(pipelineDB)
 	listener := core.Listeners.Get(req.ListenerId)
+	if listener == nil {
+		return nil, fmt.Errorf("listener %s not found", req.ListenerId)
+	}
 	listener.RemovePipeline(pipeline)
 	if err != nil {
 		return nil, err
