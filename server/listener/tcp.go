@@ -10,10 +10,8 @@ import (
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/helper/utils/peek"
 	"github.com/chainreactors/malice-network/server/internal/certutils"
-	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"google.golang.org/grpc"
-	"google.golang.org/protobuf/proto"
 	"net"
 )
 
@@ -21,22 +19,11 @@ func StartTcpPipeline(conn *grpc.ClientConn, pipeline *clientpb.Pipeline) (*TCPP
 	tcp := pipeline.GetTcp()
 
 	pp := &TCPPipeline{
-		Name:   tcp.Name,
-		Port:   uint16(tcp.Port),
-		Host:   tcp.Host,
-		Enable: true,
-		Pipeline: &Pipeline{
-			TlsConfig: &configs.CertConfig{
-				Cert:   pipeline.GetTls().Cert,
-				Key:    pipeline.GetTls().Key,
-				Enable: pipeline.GetTls().Enable,
-			},
-			Encryption: &configs.EncryptionConfig{
-				Enable: pipeline.GetEncryption().Enable,
-				Type:   pipeline.GetEncryption().Type,
-				Key:    pipeline.GetEncryption().Key,
-			},
-		},
+		Name:           tcp.Name,
+		Port:           uint16(tcp.Port),
+		Host:           tcp.Host,
+		Enable:         true,
+		PipelineConfig: FromProtobuf(pipeline),
 	}
 	err := pp.Start()
 	if err != nil {
@@ -50,50 +37,29 @@ func StartTcpPipeline(conn *grpc.ClientConn, pipeline *clientpb.Pipeline) (*TCPP
 	return pp, nil
 }
 
-func ToTcpConfig(pipeline *clientpb.TCPPipeline, tls *clientpb.TLS) *configs.TcpPipelineConfig {
-	return &configs.TcpPipelineConfig{
-		Name:   pipeline.Name,
-		Port:   uint16(pipeline.Port),
-		Host:   pipeline.Host,
-		Enable: true,
-		TlsConfig: &configs.TlsConfig{
-			Name:     fmt.Sprintf("%s_%v", pipeline.Name, uint16(pipeline.Port)),
-			Enable:   true,
-			CertFile: tls.Cert,
-			KeyFile:  tls.Key,
-		},
-	}
-}
-
 type TCPPipeline struct {
 	ln     net.Listener
 	Name   string
 	Port   uint16
 	Host   string
 	Enable bool
-	*Pipeline
+	*PipelineConfig
 }
 
-func (l *TCPPipeline) ToProtobuf() proto.Message {
-	return &clientpb.TCPPipeline{
-		Name: l.Name,
-		Port: uint32(l.Port),
-		Host: l.Host,
+func (l *TCPPipeline) ToProtobuf() *clientpb.Pipeline {
+	p := l.PipelineConfig.ToProtobuf()
+	p.Body = &clientpb.Pipeline_Tcp{
+		Tcp: &clientpb.TCPPipeline{
+			Name: l.Name,
+			Port: uint32(l.Port),
+			Host: l.Host,
+		},
 	}
+	return p
 }
 
-func (l *TCPPipeline) ToTLSProtobuf() proto.Message {
-	return &clientpb.TLS{
-		Cert: l.TlsConfig.Cert,
-		Key:  l.TlsConfig.Key,
-	}
-}
 func (l *TCPPipeline) ID() string {
 	return fmt.Sprintf(l.Name)
-}
-
-func (l *TCPPipeline) Addr() string {
-	return ""
 }
 
 func (l *TCPPipeline) Close() error {
