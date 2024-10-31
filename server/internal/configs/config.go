@@ -55,3 +55,12 @@ func GetListenerConfig() *ListenerConfig {
 	}
 	return l
 }
+
+func GetWorkDir() string {
+	dir, err := os.Getwd()
+	if err != nil {
+		logs.Log.Errorf("Failed to get work dir %s", err)
+		return ""
+	}
+	return dir
+}

@@ -608,7 +608,9 @@ func GetBuilders() (*clientpb.Builders, error) {
 		return nil, result.Error
 
 	}
-	var pbBuilders *clientpb.Builders
+	var pbBuilders = &clientpb.Builders{
+		Builders: make([]*clientpb.Generate, 0),
+	}
 	for _, builder := range builders {
 		pbBuilders.Builders = append(pbBuilders.GetBuilders(), builder.ToProtobuf())
 	}

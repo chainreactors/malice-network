@@ -8,25 +8,38 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
+	"path/filepath"
+	"time"
 )
 
 var (
-	namespace = "ghcr.io/chainreactors"
-	tag       = "nightly-2024-08-16-latest"
+	NameSpace                   = "ghcr.io/chainreactors"
+	Tag                         = "nightly-2024-08-16-latest"
+	ContainerSourceCodePath     = "/root/src"
+	ContainerCargoRegistryCache = "/root/cargo/registry"
+	CargoGitCache               = "/root/cargo/git"
 )
 
-func BuildPE(cli *client.Client, req *clientpb.Generate, environs []string) error {
-	ctx := context.Background()
-	hostDir := configs.BuildPath
-	containerDir := "/root/src"
+func BuildPE(cli *client.Client, req *clientpb.Generate) error {
+
+	SourceCodeVolume := fmt.Sprintf("%s:%s", configs.SourceCodePath, ContainerSourceCodePath)
+	CargoRegistryCacheVolume := fmt.Sprintf("%s:%s", filepath.Join(configs.CargoCachePath, "registry"), ContainerCargoRegistryCache)
+	CargoGitCacheVolume := fmt.Sprintf("%s:%s", filepath.Join(configs.CargoCachePath, "git"), CargoGitCache)
+
+	timeout := 20 * time.Minute
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
-		Image: fmt.Sprintf("%s/%s:%s", namespace, req.Target, tag),
-		Cmd:   []string{"cargo", "build", "--release", "--target", req.Target},
-		Env:   environs,
+		Image: fmt.Sprintf("%s/%s:%s", NameSpace, req.Target, Tag),
+		Cmd:   []string{"cargo", "make", "--disable-check-for-updates", "malefic"},
+		Env:   []string{"TARGET_TRIPLE=" + req.Target + ""},
 	}, &container.HostConfig{
 		AutoRemove: true,
 		Binds: []string{
-			fmt.Sprintf("%s:%s", hostDir, containerDir),
+			SourceCodeVolume,
+			CargoRegistryCacheVolume,
+			CargoGitCacheVolume,
 		},
 	}, nil, nil, "test-container")
 	if err != nil {

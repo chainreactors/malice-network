@@ -28,9 +28,12 @@ var (
 	CachePath                   = path.Join(TempPath, "cache")
 	ErrNoConfig                 = errors.New("no config found")
 	WebsitePath                 = path.Join(ServerRootPath, "web")
-	BuildPath                   = path.Join(ServerRootPath, "build")
-	TargetPath                  = path.Join(BuildPath, "target")
-	BuildOutputPath             = path.Join(BuildPath, "output")
+	// variables for implant build
+	BuildPath       = path.Join(ServerRootPath, "build")
+	SourceCodePath  = path.Join(BuildPath, "src")
+	TargetPath      = path.Join(SourceCodePath, "target")
+	CargoCachePath  = path.Join(BuildPath, "cache")
+	BuildOutputPath = path.Join(SourceCodePath, "output")
 )
 
 func NewFileLog(filename string) *logs.Logger {
