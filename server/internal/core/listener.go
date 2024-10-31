@@ -3,8 +3,6 @@ package core
 import (
 	"errors"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/types"
-	"google.golang.org/protobuf/proto"
 	"sync"
 )
 
@@ -13,35 +11,6 @@ var (
 		&sync.Map{},
 	}
 )
-
-type Pipeline interface {
-	ID() string
-	Start() error
-	Addr() string
-	Close() error
-	ToProtobuf() proto.Message
-	ToTLSProtobuf() proto.Message
-}
-
-type Pipelines map[string]Pipeline
-
-func (ps Pipelines) Add(p Pipeline) {
-	ps[p.ID()] = p
-}
-
-func (ps Pipelines) Get(id string) Pipeline {
-	return ps[id]
-}
-
-func (ps Pipelines) ToProtobuf() *clientpb.Pipelines {
-	var pls = &clientpb.Pipelines{
-		Pipelines: make([]*clientpb.Pipeline, 0),
-	}
-	for _, p := range ps {
-		pls.Pipelines = append(pls.Pipelines, types.BuildPipeline(p.ToProtobuf(), p.ToTLSProtobuf()))
-	}
-	return pls
-}
 
 type Listener struct {
 	Name      string

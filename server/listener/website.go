@@ -99,7 +99,7 @@ func (w *Website) ToProtobuf() proto.Message {
 	}
 }
 
-func (w *Website) ToTLSProtobuf() proto.Message {
+func (w *Website) ToConfigProtobuf() proto.Message {
 	return &clientpb.TLS{
 		Cert: w.TlsConfig.Cert,
 		Key:  w.TlsConfig.Key,

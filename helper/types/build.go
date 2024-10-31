@@ -2,8 +2,6 @@ package types
 
 import (
 	"errors"
-	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"google.golang.org/protobuf/proto"
 )
@@ -97,17 +95,4 @@ func BuildSpites(spites []*implantpb.Spite) *implantpb.Spites {
 
 func BuildOneSpites(spite *implantpb.Spite) *implantpb.Spites {
 	return BuildSpites([]*implantpb.Spite{spite})
-}
-
-func BuildPipeline(msg proto.Message, tls proto.Message) *clientpb.Pipeline {
-	var pipeline = &clientpb.Pipeline{}
-	pipeline.Tls = tls.(*clientpb.TLS)
-	switch msg.(type) {
-	case *clientpb.TCPPipeline:
-		pipeline.Body = &clientpb.Pipeline_Tcp{Tcp: msg.(*clientpb.TCPPipeline)}
-	default:
-		logs.Log.Debug(ErrUnknownJob.Error())
-		return pipeline
-	}
-	return pipeline
 }

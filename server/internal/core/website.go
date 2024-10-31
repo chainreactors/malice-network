@@ -10,7 +10,7 @@ type Website interface {
 	Addr() string
 	Close() error
 	ToProtobuf() proto.Message
-	ToTLSProtobuf() proto.Message
+	ToConfigProtobuf() proto.Message
 }
 
 type Websites map[string]Website
