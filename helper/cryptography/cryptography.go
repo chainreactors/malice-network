@@ -9,13 +9,13 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"github.com/chainreactors/malice-network/helper/cryptography/minisign"
-	"io"
-	"sync"
-
 	"filippo.io/age"
+	"github.com/chainreactors/malice-network/helper/cryptography/minisign"
 	"github.com/chainreactors/malice-network/helper/encoders"
 	"golang.org/x/crypto/chacha20poly1305"
+	"io"
+	"math/big"
+	"sync"
 )
 
 const (
@@ -365,4 +365,10 @@ func generateServerMinisignPrivateKey() (*minisign.PrivateKey, error) {
 		return nil, err
 	}
 	return &privateKey, err
+}
+
+func RandomInRange(min, max uint32) uint32 {
+	rangeSize := max - min + 1
+	n, _ := rand.Int(rand.Reader, big.NewInt(int64(rangeSize)))
+	return uint32(n.Int64()) + min
 }

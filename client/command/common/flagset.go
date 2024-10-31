@@ -1,6 +1,8 @@
 package common
 
 import (
+	"github.com/chainreactors/malice-network/helper/cryptography"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -56,25 +58,45 @@ func ParseCLRFlags(cmd *cobra.Command) (bool, bool) {
 }
 
 func TlsCertFlagSet(f *pflag.FlagSet) {
-	f.String("cert_path", "", "tls cert path")
-	f.String("key_path", "", "tls key path")
+	f.String("cert", "", "tls cert path")
+	f.String("key", "", "tls key path")
 	f.BoolP("tls", "t", false, "enable tls")
 }
 
 func PipelineFlagSet(f *pflag.FlagSet) {
-	f.StringP("name", "n", "", "pipeline name")
-	f.String("host", "", "pipeline host")
+	f.StringP("listener", "l", "", "listener id")
+	f.String("host", "0.0.0.0", "pipeline host")
 	f.UintP("port", "p", 0, "pipeline port")
 }
 
-func ParsePipelineFlags(cmd *cobra.Command) (string, string, uint, string, string, bool) {
-	name, _ := cmd.Flags().GetString("name")
+func ParsePipelineFlags(cmd *cobra.Command) (string, string, uint32) {
+	listenerID, _ := cmd.Flags().GetString("listener")
 	host, _ := cmd.Flags().GetString("host")
-	portUint, _ := cmd.Flags().GetUint("port")
+	portUint, _ := cmd.Flags().GetUint32("port")
+
+	return listenerID, host, portUint
+}
+
+func ParseTLSFlags(cmd *cobra.Command) (*clientpb.TLS, error) {
 	certPath, _ := cmd.Flags().GetString("cert_path")
 	keyPath, _ := cmd.Flags().GetString("key_path")
-	tlsEnable, _ := cmd.Flags().GetBool("tls")
-	return name, host, portUint, certPath, keyPath, tlsEnable
+	var err error
+	var cert, key string
+	if certPath != "" && keyPath != "" {
+		cert, err = cryptography.ProcessPEM(certPath)
+		if err != nil {
+			return nil, err
+		}
+		key, err = cryptography.ProcessPEM(keyPath)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return &clientpb.TLS{
+		Enable: true,
+		Cert:   cert,
+		Key:    key,
+	}, nil
 }
 
 func GenerateFlagSet(f *pflag.FlagSet) {
