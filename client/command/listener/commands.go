@@ -42,7 +42,7 @@ job
 		Long:  "Use a table to list TCP pipelines along with their corresponding listeners",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			listTcpCmd(cmd, con)
+			listPipelineCmd(cmd, con)
 			return
 		},
 		GroupID: consts.ListenerGroup,
@@ -99,7 +99,7 @@ tcp register listener --tls --cert_path /path/to/cert --key_path /path/to/key
 		Args:  cobra.ExactArgs(2),
 		Long:  "Start a TCP pipeline with the specified name and listener ID",
 		Run: func(cmd *cobra.Command, args []string) {
-			startTcpPipelineCmd(cmd, con)
+			startPipelineCmd(cmd, con)
 			return
 		},
 		Example: `~~~
@@ -117,7 +117,7 @@ tcp start tcp_test listener
 		Args:  cobra.ExactArgs(2),
 		Long:  "Stop a TCP pipeline with the specified name and listener ID",
 		Run: func(cmd *cobra.Command, args []string) {
-			stopTcpPipelineCmd(cmd, con)
+			stopPipelineCmd(cmd, con)
 			return
 		},
 		Example: `~~~

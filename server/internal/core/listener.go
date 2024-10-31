@@ -16,7 +16,27 @@ type Listener struct {
 	Name      string
 	Host      string
 	Active    bool
-	Pipelines clientpb.Pipelines
+	Pipelines map[string]*clientpb.Pipeline
+}
+
+func (l *Listener) AddPipeline(pipeline *clientpb.Pipeline) {
+	l.Pipelines[pipeline.Name] = pipeline
+}
+
+func (l *Listener) RemovePipeline(pipeline *clientpb.Pipeline) {
+	delete(l.Pipelines, pipeline.Name)
+}
+
+func (l *Listener) GetPipeline(name string) *clientpb.Pipeline {
+	return l.Pipelines[name]
+}
+
+func (l *Listener) AllPipelines() []*clientpb.Pipeline {
+	pipelines := []*clientpb.Pipeline{}
+	for _, pipeline := range l.Pipelines {
+		pipelines = append(pipelines, pipeline)
+	}
+	return pipelines
 }
 
 func (l *Listener) ToProtobuf() *clientpb.Listener {
@@ -24,7 +44,7 @@ func (l *Listener) ToProtobuf() *clientpb.Listener {
 		Id:        l.Name,
 		Addr:      l.Host,
 		Active:    l.Active,
-		Pipelines: &l.Pipelines,
+		Pipelines: &clientpb.Pipelines{Pipelines: l.AllPipelines()},
 	}
 }
 

@@ -45,7 +45,7 @@ func (s *Session) ToClientProtobuf() *clientpb.Session {
 		SessionId:  s.SessionID,
 		ListenerId: s.ListenerId,
 		Note:       s.Note,
-		RemoteAddr: s.RemoteAddr,
+		Target:     s.RemoteAddr,
 		IsAlive:    s.IsAlive,
 		GroupName:  s.GroupName,
 		Os:         s.Os.toProtobuf(),
@@ -63,7 +63,7 @@ func (s *Session) ToRegisterProtobuf() *clientpb.RegisterSession {
 	return &clientpb.RegisterSession{
 		SessionId:  s.SessionID,
 		ListenerId: s.ListenerId,
-		RemoteAddr: s.RemoteAddr,
+		Target:     s.RemoteAddr,
 		RegisterData: &implantpb.Register{
 			Name:  s.Note,
 			Timer: s.Time.toProtobuf(),
@@ -82,7 +82,7 @@ func ConvertToSessionDB(session *core.Session) *Session {
 		Type:        session.Type,
 		SessionID:   session.ID,
 		GroupName:   "default",
-		RemoteAddr:  session.RemoteAddr,
+		RemoteAddr:  session.Target,
 		ListenerId:  session.PipelineID,
 		IsPrivilege: session.IsPrivilege,
 		Context:     convertToContext(session.SessionContext),

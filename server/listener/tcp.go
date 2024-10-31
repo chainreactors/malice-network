@@ -4,93 +4,118 @@ import (
 	"context"
 	"fmt"
 	"github.com/chainreactors/logs"
-	cryptostream "github.com/chainreactors/malice-network/helper/cryptography/stream"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/types"
-	"github.com/chainreactors/malice-network/helper/utils/peek"
 	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"google.golang.org/grpc"
 	"net"
 )
 
-func StartTcpPipeline(conn *grpc.ClientConn, pipeline *clientpb.Pipeline) (*TCPPipeline, error) {
+func NewTcpPipeline(conn *grpc.ClientConn, pipeline *clientpb.Pipeline) (*TCPPipeline, error) {
 	tcp := pipeline.GetTcp()
 
 	pp := &TCPPipeline{
-		Name:           tcp.Name,
+		grpcConn:       conn,
+		Name:           pipeline.Name,
 		Port:           uint16(tcp.Port),
 		Host:           tcp.Host,
 		Enable:         true,
-		PipelineConfig: FromProtobuf(pipeline),
+		PipelineConfig: core.FromProtobuf(pipeline),
 	}
-	err := pp.Start()
-	if err != nil {
-		return nil, err
-	}
+
 	forward, err := core.NewForward(conn, pp)
 	if err != nil {
 		return nil, err
 	}
 	core.Forwarders.Add(forward)
+	err = pp.Start()
+	if err != nil {
+		return nil, err
+	}
 	return pp, nil
 }
 
 type TCPPipeline struct {
-	ln     net.Listener
-	Name   string
-	Port   uint16
-	Host   string
-	Enable bool
-	*PipelineConfig
+	ln       net.Listener
+	grpcConn *grpc.ClientConn
+	Name     string
+	Port     uint16
+	Host     string
+	Enable   bool
+	*core.PipelineConfig
 }
 
-func (l *TCPPipeline) ToProtobuf() *clientpb.Pipeline {
-	p := l.PipelineConfig.ToProtobuf()
-	p.Body = &clientpb.Pipeline_Tcp{
-		Tcp: &clientpb.TCPPipeline{
-			Name: l.Name,
-			Port: uint32(l.Port),
-			Host: l.Host,
+func (pipeline *TCPPipeline) ToProtobuf() *clientpb.Pipeline {
+	p := &clientpb.Pipeline{
+		Name:       pipeline.Name,
+		Enable:     pipeline.Enable,
+		ListenerId: pipeline.ListenerID,
+		Body: &clientpb.Pipeline_Tcp{
+			Tcp: &clientpb.TCPPipeline{
+				Port: uint32(pipeline.Port),
+				Host: pipeline.Host,
+			},
 		},
+		Tls:        pipeline.Tls.ToProtobuf(),
+		Encryption: pipeline.Encryption.ToProtobuf(),
 	}
 	return p
 }
 
-func (l *TCPPipeline) ID() string {
-	return fmt.Sprintf(l.Name)
+func (pipeline *TCPPipeline) ID() string {
+	return pipeline.Name
 }
 
-func (l *TCPPipeline) Close() error {
-	err := l.ln.Close()
+func (pipeline *TCPPipeline) Close() error {
+	err := pipeline.ln.Close()
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (l *TCPPipeline) Start() error {
-	if !l.Enable {
+func (pipeline *TCPPipeline) Start() error {
+	if !pipeline.Enable {
 		return nil
 	}
-	var err error
-	l.ln, err = l.handler()
+	forward, err := core.NewForward(pipeline.grpcConn, pipeline)
 	if err != nil {
 		return err
 	}
+	core.Forwarders.Add(forward)
+	go func() {
+		// recv message from server and send to implant
+		for {
+			forward := core.Forwarders.Get(pipeline.ID())
+			msg, err := forward.Stream.Recv()
+			if err != nil {
+				return
+			}
+			connect := core.Connections.Get(msg.Session.SessionId)
+			if connect == nil {
+				logs.Log.Errorf("connection %s not found", msg.Session.SessionId)
+				continue
+			}
+			connect.C <- msg
+		}
+	}()
+
+	pipeline.ln, err = pipeline.handler()
+	if err != nil {
+		return err
+	}
+	logs.Log.Infof("[pipeline] starting TCP pipeline on %s:%d", pipeline.Host, pipeline.Port)
 
 	return nil
 }
 
-func (l *TCPPipeline) handler() (net.Listener, error) {
-	logs.Log.Infof("[pipeline] starting TCP pipeline on %s:%d", l.Host, l.Port)
-	ln, err := net.Listen("tcp", fmt.Sprintf("%s:%d", l.Host, l.Port))
+func (pipeline *TCPPipeline) handler() (net.Listener, error) {
+	ln, err := net.Listen("tcp", fmt.Sprintf("%s:%d", pipeline.Host, pipeline.Port))
 	if err != nil {
 		return nil, err
 	}
-	if l.TlsConfig != nil && l.TlsConfig.Enable {
-		ln, err = certutils.WrapWithTls(ln, l.TlsConfig)
+	if pipeline.Tls != nil && pipeline.Tls.Enable {
+		ln, err = certutils.WrapWithTls(ln, pipeline.Tls)
 		if err != nil {
 			return nil, err
 		}
@@ -106,55 +131,32 @@ func (l *TCPPipeline) handler() (net.Listener, error) {
 				continue
 			}
 			logs.Log.Debugf("accept from %s", conn.RemoteAddr())
-			go l.handleRead(conn)
+			go pipeline.handleAccept(conn)
 		}
 	}()
 	return ln, nil
 }
 
-func (l *TCPPipeline) handleRead(conn net.Conn) {
+func (pipeline *TCPPipeline) handleAccept(conn net.Conn) {
 	defer conn.Close()
-	cry, err := l.Encryption.NewCrypto()
+	peekConn, err := pipeline.WrapConn(conn)
 	if err != nil {
-		logs.Log.Errorf("new crypto error: %v", err)
+		logs.Log.Debugf("wrap conn error: %s %v", conn.RemoteAddr(), err)
 		return
 	}
-	conn = cryptostream.NewCryptoConn(conn, cry)
-	peekConn := peek.WrapPeekConn(conn)
 	connect, err := core.Connections.NeedConnection(peekConn)
 	if err != nil {
 		logs.Log.Debugf("peek read header error: %s %v", conn.RemoteAddr(), err)
 		return
 	}
-	var msg *implantpb.Spites
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	for {
-		var err error
-		_, length, err := connect.Parser.ReadHeader(peekConn)
+		err := connect.Handler(ctx, peekConn)
 		if err != nil {
-			//logs.Log.Debugf("Error reading header: %s %v", conn.RemoteAddr(), err)
+			logs.Log.Debugf("handler error: %s", err.Error())
 			return
 		}
-
-		go connect.Send(ctx, peekConn)
-		if length != 1 {
-			msg, err = connect.Parser.ReadMessage(peekConn, length)
-			if err != nil {
-				logs.Log.Debugf("Error reading message:%s %v", conn.RemoteAddr(), err)
-				return
-			}
-			if msg.Spites == nil {
-				msg = types.BuildPingSpite()
-			}
-		} else {
-			msg = types.BuildPingSpite()
-		}
-
-		core.Forwarders.Send(l.ID(), &core.Message{
-			Message:    msg,
-			SessionID:  connect.SessionID,
-			RemoteAddr: conn.RemoteAddr().String(),
-		})
 	}
 }

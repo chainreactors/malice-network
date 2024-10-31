@@ -41,6 +41,7 @@ func ExecLocal(rpc clientrpc.MaliceRPCClient, sess *core.Session,
 		Args:        args[1:],
 		Output:      output,
 		Sacrifice:   sac,
+		Type:        consts.ModuleExecuteLocal,
 	}
 
 	task, err := rpc.ExecuteLocal(sess.Context(), binary)

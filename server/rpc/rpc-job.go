@@ -1,9 +1,11 @@
 package rpc
 
 import (
+	"context"
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
 	"github.com/chainreactors/malice-network/server/internal/core"
 )
@@ -57,4 +59,18 @@ func (rpc *Server) JobStream(stream listenerrpc.ListenerRPC_JobStreamServer) err
 			})
 		}
 	}
+}
+
+func (rpc *Server) ListJobs(ctx context.Context, req *clientpb.Empty) (*clientpb.Pipelines, error) {
+	var pipelines []*clientpb.Pipeline
+	for _, job := range core.Jobs.All() {
+		pipeline, ok := job.Message.(*clientpb.Pipeline)
+		if !ok {
+			continue
+		}
+		if pipeline.GetTcp() != nil {
+			pipelines = append(pipelines, job.Message.(*clientpb.Pipeline))
+		}
+	}
+	return &clientpb.Pipelines{Pipelines: pipelines}, nil
 }

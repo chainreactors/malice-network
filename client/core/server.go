@@ -304,11 +304,11 @@ func (s *ServerStatus) EventHandler() {
 			pipeline := event.GetJob().GetPipeline()
 			switch pipeline.Body.(type) {
 			case *clientpb.Pipeline_Tcp:
-				Log.Importantf("[%s] %s: tcp %s.%s in %s:%d", event.Type, event.Op, pipeline.GetTcp().ListenerId,
-					pipeline.GetTcp().Name, pipeline.GetTcp().Host, pipeline.GetTcp().Port)
+				Log.Importantf("[%s] %s: tcp %s.%s in %s:%d", event.Type, event.Op, pipeline.ListenerId,
+					pipeline.Name, pipeline.GetTcp().Host, pipeline.GetTcp().Port)
 			case *clientpb.Pipeline_Web:
 				Log.Importantf("[%s] %s: web %s.%s in %d, routePath is %s", event.Type, event.Op,
-					pipeline.GetWeb().ListenerId, pipeline.GetWeb().Name, pipeline.GetWeb().Port,
+					pipeline.ListenerId, pipeline.Name, pipeline.GetWeb().Port,
 					pipeline.GetWeb().RootPath)
 			}
 		case consts.EventListener:

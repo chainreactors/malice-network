@@ -34,8 +34,7 @@ func (wc *WebsiteContent) BeforeCreate(tx *gorm.DB) (err error) {
 func (wc *WebsiteContent) ToProtobuf(webContentDir string) *clientpb.Website {
 	contents, _ := os.ReadFile(filepath.Join(webContentDir, wc.Path))
 	return &clientpb.Website{
-		ID:   wc.ID.String(),
-		Name: wc.Name,
+		ID: wc.ID.String(),
 		Contents: map[string]*clientpb.WebContent{
 			wc.ID.String(): {
 				ID:          wc.ID.String(),

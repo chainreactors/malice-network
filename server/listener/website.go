@@ -27,7 +27,7 @@ func StartWebsite(pipeline *clientpb.Pipeline, content map[string]*clientpb.WebC
 	web := &Website{
 		port:        int(websitePp.Port),
 		rootPath:    websitePp.RootPath,
-		websiteName: websitePp.Name,
+		websiteName: websitePp.ID,
 		TlsConfig: &configs.CertConfig{
 			Cert:   pipeline.GetTls().Cert,
 			Key:    pipeline.GetTls().Key,
@@ -94,7 +94,6 @@ func (w *Website) ToProtobuf() proto.Message {
 	return &clientpb.Website{
 		ID:       fmt.Sprintf("%s_%d", w.websiteName, w.port),
 		Port:     uint32(w.port),
-		Name:     w.websiteName,
 		RootPath: w.rootPath,
 	}
 }
@@ -110,9 +109,9 @@ func ToWebsiteConfig(w *clientpb.Website, tls *clientpb.TLS) *configs.WebsiteCon
 	return &configs.WebsiteConfig{
 		Port:        uint16(w.Port),
 		RootPath:    w.RootPath,
-		WebsiteName: w.Name,
+		WebsiteName: w.ID,
 		TlsConfig: &configs.TlsConfig{
-			Name:     fmt.Sprintf("%s_%v", w.Name, uint16(w.Port)),
+			Name:     fmt.Sprintf("%s_%v", w.ID, uint16(w.Port)),
 			Enable:   true,
 			CertFile: tls.Cert,
 			KeyFile:  tls.Key,

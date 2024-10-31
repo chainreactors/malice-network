@@ -12,10 +12,11 @@ import (
 var ListenerConfigFileName = "listener.yaml"
 
 type ListenerConfig struct {
-	Enable       bool                 `config:"enable" default:"true"`
-	Name         string               `config:"name" default:"listener"`
-	Auth         string               `config:"auth" default:"listener.auth"`
-	TcpPipelines []*TcpPipelineConfig `config:"tcp" `
+	Enable             bool                  `config:"enable" default:"true"`
+	Name               string                `config:"name" default:"listener"`
+	Auth               string                `config:"auth" default:"listener.auth"`
+	TcpPipelines       []*TcpPipelineConfig  `config:"tcp" `
+	BindPipelineConfig []*BindPipelineConfig `config:"bind"`
 	//HttpPipelines []*HttpPipelineConfig `config:"http" default:""`
 	Websites []*WebsiteConfig `config:"websites"`
 }
@@ -29,23 +30,49 @@ type TcpPipelineConfig struct {
 	EncryptionConfig *EncryptionConfig `config:"encryption"`
 }
 
-func (tcpPipeline *TcpPipelineConfig) ToProtobuf(lisId string) *clientpb.Pipeline {
+func (tcpPipeline *TcpPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, error) {
 	tls, err := tcpPipeline.TlsConfig.ReadCert()
 	if err != nil {
-		panic(err.Error())
+		return nil, err
 	}
+
 	return &clientpb.Pipeline{
+		Name:       tcpPipeline.Name,
+		ListenerId: lisId,
+		Enable:     tcpPipeline.Enable,
 		Body: &clientpb.Pipeline_Tcp{
 			Tcp: &clientpb.TCPPipeline{
-				Name:       tcpPipeline.Name,
-				Host:       tcpPipeline.Host,
-				Port:       uint32(tcpPipeline.Port),
-				ListenerId: lisId,
+				Host: tcpPipeline.Host,
+				Port: uint32(tcpPipeline.Port),
 			},
 		},
 		Tls:        tls.ToProtobuf(),
 		Encryption: tcpPipeline.EncryptionConfig.ToProtobuf(),
+	}, nil
+}
+
+type BindPipelineConfig struct {
+	Enable           bool              `config:"enable" default:"true"`
+	Name             string            `config:"name" default:"bind"`
+	TlsConfig        *TlsConfig        `config:"tls"`
+	EncryptionConfig *EncryptionConfig `config:"encryption"`
+}
+
+func (pipeline *BindPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, error) {
+	tls, err := pipeline.TlsConfig.ReadCert()
+	if err != nil {
+		return nil, err
 	}
+	return &clientpb.Pipeline{
+		Name:       pipeline.Name,
+		Enable:     pipeline.Enable,
+		ListenerId: lisId,
+		Body: &clientpb.Pipeline_Bind{
+			Bind: &clientpb.BindPipeline{},
+		},
+		Tls:        tls.ToProtobuf(),
+		Encryption: pipeline.EncryptionConfig.ToProtobuf(),
+	}, nil
 }
 
 type HttpPipelineConfig struct {

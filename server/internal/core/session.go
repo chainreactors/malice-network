@@ -59,12 +59,14 @@ func (ctx *SessionContext) Update(req *clientpb.RegisterSession) {
 
 func NewSession(req *clientpb.RegisterSession) *Session {
 	sess := &Session{
+		Type:           req.Type,
 		Name:           req.RegisterData.Name,
 		Group:          "default",
 		ProxyURL:       req.RegisterData.Proxy,
 		ID:             req.SessionId,
+		RawID:          req.RawId,
 		PipelineID:     req.ListenerId,
-		RemoteAddr:     req.RemoteAddr,
+		Target:         req.Target,
 		IsPrivilege:    req.RegisterData.Sysinfo.IsPrivilege,
 		Timer:          req.RegisterData.Timer,
 		Tasks:          &Tasks{active: &sync.Map{}},
@@ -90,9 +92,10 @@ type Session struct {
 	PipelineID  string
 	ListenerID  string
 	ID          string
+	RawID       []byte
 	Name        string
 	Group       string
-	RemoteAddr  string
+	Target      string
 	IsPrivilege bool
 	Os          *implantpb.Os
 	Process     *implantpb.Process
@@ -151,12 +154,29 @@ func (s *Session) ToProtobuf() *clientpb.Session {
 		GroupName:   s.Group,
 		IsAlive:     isAlive,
 		IsPrivilege: s.IsPrivilege,
-		RemoteAddr:  s.RemoteAddr,
+		Target:      s.Target,
 		ListenerId:  s.PipelineID,
 		Os:          s.Os,
 		Process:     s.Process,
 		Timer:       s.Timer,
 		Tasks:       s.Tasks.ToProtobuf(),
+		Modules:     s.Modules,
+		Addons:      s.Addons,
+	}
+}
+
+func (s *Session) ToProtobufLite() *clientpb.Session {
+	return &clientpb.Session{
+		Type:        s.Type,
+		SessionId:   s.ID,
+		Note:        s.Name,
+		GroupName:   s.Group,
+		IsPrivilege: s.IsPrivilege,
+		Target:      s.Target,
+		ListenerId:  s.PipelineID,
+		Os:          s.Os,
+		Process:     s.Process,
+		Timer:       s.Timer,
 		Modules:     s.Modules,
 		Addons:      s.Addons,
 	}
@@ -217,7 +237,7 @@ func (s *Session) UpdateLastCheckin() {
 }
 
 // Request
-func (s *Session) Request(msg *clientpb.SpiteSession, stream grpc.ServerStream, timeout time.Duration) error {
+func (s *Session) Request(msg *clientpb.SpiteRequest, stream grpc.ServerStream, timeout time.Duration) error {
 	var err error
 	done := make(chan struct{})
 	go func() {
@@ -239,9 +259,9 @@ func (s *Session) Request(msg *clientpb.SpiteSession, stream grpc.ServerStream, 
 	}
 }
 
-func (s *Session) RequestAndWait(msg *clientpb.SpiteSession, stream grpc.ServerStream, timeout time.Duration) (*implantpb.Spite, error) {
+func (s *Session) RequestAndWait(msg *clientpb.SpiteRequest, stream grpc.ServerStream, timeout time.Duration) (*implantpb.Spite, error) {
 	ch := make(chan *implantpb.Spite)
-	s.StoreResp(msg.TaskId, ch)
+	s.StoreResp(msg.Task.TaskId, ch)
 	err := s.Request(msg, stream, timeout)
 	if err != nil {
 		return nil, err
@@ -252,9 +272,9 @@ func (s *Session) RequestAndWait(msg *clientpb.SpiteSession, stream grpc.ServerS
 }
 
 // RequestWithStream - 'async' means that the response is not returned immediately, but is returned through the channel 'ch
-func (s *Session) RequestWithStream(msg *clientpb.SpiteSession, stream grpc.ServerStream, timeout time.Duration) (chan *implantpb.Spite, chan *implantpb.Spite, error) {
+func (s *Session) RequestWithStream(msg *clientpb.SpiteRequest, stream grpc.ServerStream, timeout time.Duration) (chan *implantpb.Spite, chan *implantpb.Spite, error) {
 	respCh := make(chan *implantpb.Spite)
-	s.StoreResp(msg.TaskId, respCh)
+	s.StoreResp(msg.Task.TaskId, respCh)
 	err := s.Request(msg, stream, timeout)
 	if err != nil {
 		return nil, nil, err
@@ -265,10 +285,10 @@ func (s *Session) RequestWithStream(msg *clientpb.SpiteSession, stream grpc.Serv
 		defer close(respCh)
 		var c = 0
 		for spite := range in {
-			err := stream.SendMsg(&clientpb.SpiteSession{
-				SessionId: s.ID,
-				TaskId:    msg.TaskId,
-				Spite:     spite,
+			err := stream.SendMsg(&clientpb.SpiteRequest{
+				Session: msg.Session,
+				Task:    msg.Task,
+				Spite:   spite,
 			})
 			if err != nil {
 				logs.Log.Debugf(err.Error())
@@ -281,9 +301,9 @@ func (s *Session) RequestWithStream(msg *clientpb.SpiteSession, stream grpc.Serv
 	return in, respCh, nil
 }
 
-func (s *Session) RequestWithAsync(msg *clientpb.SpiteSession, stream grpc.ServerStream, timeout time.Duration) (chan *implantpb.Spite, error) {
+func (s *Session) RequestWithAsync(msg *clientpb.SpiteRequest, stream grpc.ServerStream, timeout time.Duration) (chan *implantpb.Spite, error) {
 	respCh := make(chan *implantpb.Spite)
-	s.StoreResp(msg.TaskId, respCh)
+	s.StoreResp(msg.Task.TaskId, respCh)
 	err := s.Request(msg, stream, timeout)
 	if err != nil {
 		return nil, err

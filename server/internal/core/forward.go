@@ -20,9 +20,9 @@ var (
 )
 
 type Message struct {
-	proto.Message
+	Spites     *implantpb.Spites
+	RawID      []byte
 	SessionID  string
-	MessageID  string
 	RemoteAddr string
 }
 
@@ -72,7 +72,7 @@ func NewForward(conn *grpc.ClientConn, pipeline Pipeline) (*Forward, error) {
 		ctx:         context.Background(),
 	}
 
-	forward.stream, err = forward.ListenerRpc.SpiteStream(metadata.NewOutgoingContext(context.Background(), metadata.Pairs(
+	forward.Stream, err = forward.ListenerRpc.SpiteStream(metadata.NewOutgoingContext(context.Background(), metadata.Pairs(
 		"pipeline_id", pipeline.ID()),
 	))
 	if err != nil {
@@ -81,21 +81,6 @@ func NewForward(conn *grpc.ClientConn, pipeline Pipeline) (*Forward, error) {
 
 	go forward.Handler()
 
-	go func() {
-		// recv message from server and send to implant
-		for {
-			msg, err := forward.stream.Recv()
-			if err != nil {
-				return
-			}
-			connect := Connections.Get(msg.SessionId)
-			if connect == nil {
-				logs.Log.Errorf("connection %s not found", msg.SessionId)
-				continue
-			}
-			connect.C <- msg.Spite
-		}
-	}()
 	return forward, nil
 }
 
@@ -104,7 +89,7 @@ type Forward struct {
 	ctx   context.Context
 	count int
 	Pipeline
-	stream   listenerrpc.ListenerRPC_SpiteStreamClient
+	Stream   listenerrpc.ListenerRPC_SpiteStreamClient
 	implantC chan *Message // data from implant
 
 	ImplantRpc  listenerrpc.ImplantRPCClient
@@ -123,15 +108,15 @@ func (f *Forward) Count() int {
 // Handler is a loop that handles messages from implant
 func (f *Forward) Handler() {
 	for msg := range f.implantC {
-		spites := msg.Message.(*implantpb.Spites)
-		for _, spite := range spites.Spites {
+		for _, spite := range msg.Spites.Spites {
 			switch spite.Body.(type) {
 			case *implantpb.Spite_Register:
 				_, err := f.ImplantRpc.Register(f.ctx, &clientpb.RegisterSession{
 					SessionId:    msg.SessionID,
 					ListenerId:   f.ID(),
 					RegisterData: spite.GetRegister(),
-					RemoteAddr:   msg.RemoteAddr,
+					Target:       msg.RemoteAddr,
+					RawId:        msg.RawID,
 				})
 				if err != nil {
 					logs.Log.Error(err)
@@ -153,7 +138,7 @@ func (f *Forward) Handler() {
 				}
 				spite := spite
 				go func() {
-					err := f.stream.Send(&clientpb.SpiteSession{
+					err := f.Stream.Send(&clientpb.SpiteResponse{
 						ListenerId: f.ID(),
 						SessionId:  msg.SessionID,
 						TaskId:     spite.TaskId,

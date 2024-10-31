@@ -68,7 +68,7 @@ func PrintSessions(sessions map[string]*core.Session, con *repl.Console, isAll b
 			session.GroupName,
 			session.Note,
 			"",
-			session.RemoteAddr,
+			session.Target,
 			session.Os.Hostname,
 			username,
 			fmt.Sprintf("%s/%s", session.Os.Name, session.Os.Arch),

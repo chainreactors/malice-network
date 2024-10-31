@@ -64,9 +64,9 @@ func SessionIDCompleter(con *repl.Console) carapace.Action {
 		}
 		for _, s := range con.AlivedSessions() {
 			if s.Note != "" {
-				results = append(results, s.SessionId, fmt.Sprintf("SessionAlias, %s，%s", s.Note, s.RemoteAddr))
+				results = append(results, s.SessionId, fmt.Sprintf("SessionAlias, %s，%s", s.Note, s.Target))
 			} else {
-				results = append(results, s.SessionId, fmt.Sprintf("SessionID, %s", s.RemoteAddr))
+				results = append(results, s.SessionId, fmt.Sprintf("SessionID, %s", s.Target))
 			}
 		}
 		return carapace.ActionValuesDescribed(results...).Tag("session id")
@@ -108,10 +108,10 @@ func ListenerPipelineNameCompleter(con *repl.Console, cmd *cobra.Command) carapa
 		for _, pipeline := range lis.GetPipelines().GetPipelines() {
 			switch pipeline.Body.(type) {
 			case *clientpb.Pipeline_Tcp:
-				results = append(results, pipeline.GetTcp().Name, fmt.Sprintf("type tcp %s:%v",
+				results = append(results, pipeline.Name, fmt.Sprintf("type tcp %s:%v",
 					pipeline.GetTcp().Host, pipeline.GetTcp().Port))
 			case *clientpb.Pipeline_Web:
-				results = append(results, pipeline.GetWeb().Name, "type web")
+				results = append(results, pipeline.Name, "type web")
 			}
 		}
 		return carapace.ActionValuesDescribed(results...).Tag("pipeline name")
@@ -197,12 +197,12 @@ func JobsComplete(con *repl.Console, cmd *cobra.Command, use string) carapace.Ac
 			switch pipeline.Body.(type) {
 			case *clientpb.Pipeline_Tcp:
 				if use == consts.CommandTcp {
-					results = append(results, pipeline.GetTcp().Name,
+					results = append(results, pipeline.Name,
 						fmt.Sprintf("tcp job %s:%v", pipeline.GetTcp().Host, pipeline.GetTcp().Port))
 				}
 			case *clientpb.Pipeline_Web:
 				if use == consts.CommandWebsite {
-					results = append(results, pipeline.GetWeb().Name,
+					results = append(results, pipeline.Name,
 						fmt.Sprintf("web job %v, path %s", pipeline.GetWeb().Port, pipeline.GetWeb().RootPath))
 				}
 			}
@@ -260,7 +260,7 @@ func AllPipelineComplete(con *repl.Console) carapace.Action {
 			for _, pipeline := range listener.GetPipelines().GetPipelines() {
 				switch pipeline.Body.(type) {
 				case *clientpb.Pipeline_Tcp:
-					results = append(results, pipeline.GetTcp().Name, fmt.Sprintf("type tcp %s:%v",
+					results = append(results, pipeline.Name, fmt.Sprintf("type tcp %s:%v",
 						pipeline.GetTcp().Host, pipeline.GetTcp().Port))
 				}
 			}

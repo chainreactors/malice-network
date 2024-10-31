@@ -7,48 +7,10 @@ import (
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/tui"
-	"github.com/charmbracelet/bubbles/table"
 	"github.com/spf13/cobra"
 	"math/rand"
-	"strconv"
 	"time"
 )
-
-func listTcpCmd(cmd *cobra.Command, con *repl.Console) {
-	listenerID := cmd.Flags().Arg(0)
-	if listenerID == "" {
-		con.Log.Error("listener_id is required")
-		return
-	}
-	Pipelines, err := con.LisRpc.ListTcpPipelines(context.Background(), &clientpb.ListenerName{
-		Name: listenerID,
-	})
-	if err != nil {
-		con.Log.Error(err.Error())
-		return
-	}
-	var rowEntries []table.Row
-	var row table.Row
-	tableModel := tui.NewTable([]table.Column{
-		{Title: "Name", Width: 20},
-		{Title: "Host", Width: 10},
-		{Title: "Port", Width: 7},
-		{Title: "Enable", Width: 7},
-	}, true)
-	for _, Pipeline := range Pipelines.GetPipelines() {
-		tcp := Pipeline.GetTcp()
-		row = table.Row{
-			tcp.Name,
-			tcp.Host,
-			strconv.Itoa(int(tcp.Port)),
-			strconv.FormatBool(tcp.Enable),
-		}
-		rowEntries = append(rowEntries, row)
-	}
-	tableModel.SetRows(rowEntries)
-	fmt.Printf(tableModel.View())
-}
 
 func newTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) {
 	name, host, portUint, certPath, keyPath, tlsEnable := common.ParsePipelineFlags(cmd)
@@ -90,13 +52,13 @@ func newTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) {
 			Key:    key,
 			Enable: tlsEnable,
 		},
+		Name:       name,
+		ListenerId: listenerID,
+		Enable:     false,
 		Body: &clientpb.Pipeline_Tcp{
 			Tcp: &clientpb.TCPPipeline{
-				Host:       host,
-				Port:       port,
-				Name:       name,
-				ListenerId: listenerID,
-				Enable:     false,
+				Host: host,
+				Port: port,
 			},
 		},
 	})
@@ -105,7 +67,7 @@ func newTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) {
 		return
 	}
 
-	_, err = con.LisRpc.StartTcpPipeline(context.Background(), &clientpb.CtrlPipeline{
+	_, err = con.LisRpc.StartPipeline(context.Background(), &clientpb.CtrlPipeline{
 		Name:       name,
 		ListenerId: listenerID,
 	})
@@ -114,29 +76,4 @@ func newTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) {
 		return
 	}
 	con.Log.Importantf("TCP Pipeline %s added\n", name)
-}
-
-func startTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) {
-	name := cmd.Flags().Arg(0)
-	listenerID := cmd.Flags().Arg(1)
-	_, err := con.LisRpc.StartTcpPipeline(context.Background(), &clientpb.CtrlPipeline{
-		Name:       name,
-		ListenerId: listenerID,
-	})
-
-	if err != nil {
-		con.Log.Error(err.Error())
-	}
-}
-
-func stopTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) {
-	name := cmd.Flags().Arg(1)
-	listenerID := cmd.Flags().Arg(0)
-	_, err := con.LisRpc.StopTcpPipeline(context.Background(), &clientpb.CtrlPipeline{
-		Name:       name,
-		ListenerId: listenerID,
-	})
-	if err != nil {
-		con.Log.Error(err.Error())
-	}
 }
