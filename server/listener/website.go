@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
-	"github.com/chainreactors/malice-network/server/listener/encryption"
 	"google.golang.org/protobuf/proto"
 	"net/http"
 	"net/url"
@@ -58,7 +58,7 @@ func (w *Website) Addr() string {
 func (w *Website) Start() error {
 	http.HandleFunc(w.rootPath, w.websiteContentHandler)
 	var err error
-	tlsConfig, err := encryption.WrapToTlsConfig(w.TlsConfig)
+	tlsConfig, err := certutils.WrapToTlsConfig(w.TlsConfig)
 	if err != nil {
 		return err
 	}
