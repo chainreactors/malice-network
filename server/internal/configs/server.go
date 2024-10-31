@@ -4,7 +4,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/chainreactors/files"
 	"github.com/chainreactors/logs"
 	crConfig "github.com/chainreactors/malice-network/helper/utils/config"
 	"gopkg.in/yaml.v3"
@@ -17,7 +16,7 @@ import (
 
 var (
 	ServerConfigFileName        = "config.yaml"
-	ServerRootPath              = files.GetExcPath() + ".malice"
+	ServerRootPath              = path.Join(GetWorkDir(), ".malice")
 	CurrentServerConfigFilename = "config.yaml"
 	LogPath                     = path.Join(ServerRootPath, "logs")
 	CertsPath                   = path.Join(ServerRootPath, "certs")
