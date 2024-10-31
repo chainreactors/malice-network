@@ -74,6 +74,8 @@ github.com/chainreactors/logs v0.0.0-20240207121836-c946f072f81f h1:tcfp+CEdgiMv
 github.com/chainreactors/logs v0.0.0-20240207121836-c946f072f81f/go.mod h1:6Mv6W70JrtL6VClulZhmMRZnoYpcTahcDTKLMNEjK0o=
 github.com/chainreactors/tui v0.0.0-20241017075821-c4292d23e0c9 h1:hJeWTgXX9OlIkjA2B4uoHkOtlEJf01bgna3+vGBr9wI=
 github.com/chainreactors/tui v0.0.0-20241017075821-c4292d23e0c9/go.mod h1:PGljG4yiAGUZvGzue6zTAapxQgVMxbezmCsr9l0xzKc=
+github.com/chainreactors/tui v0.0.0-20241031204320-bd545f364928 h1:uvEz5FQenQB6l9ZexViVFb/lOjQ2oD8DKK7jqE1yZdc=
+github.com/chainreactors/tui v0.0.0-20241031204320-bd545f364928/go.mod h1:PGljG4yiAGUZvGzue6zTAapxQgVMxbezmCsr9l0xzKc=
 github.com/chainreactors/utils v0.0.0-20240805193040-ff3b97aa3c3f h1:2NKmadFYP9vCwC0YrazgttFACleOhxScTPzg0i76YAY=
 github.com/chainreactors/utils v0.0.0-20240805193040-ff3b97aa3c3f/go.mod h1:LajXuvESQwP+qCMAvlcoSXppQCjuLlBrnQpu9XQ1HtU=
 github.com/charmbracelet/bubbles v0.18.0 h1:PYv1A036luoBGroX6VWjQIE9Syf2Wby2oOl/39KLfy0=

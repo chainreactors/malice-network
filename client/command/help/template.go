@@ -13,12 +13,13 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"text/template"
 	"time"
 	"unicode"
 )
 
-var templateFuncs = template.FuncMap{
+var TemplateFuncs = template.FuncMap{
 	"trim":                    strings.TrimSpace,
 	"trimRightSpace":          trimRightSpace,
 	"trimTrailingWhitespaces": trimRightSpace,
@@ -73,14 +74,14 @@ var MousetrapDisplayDuration = 5 * time.Second
 // AddTemplateFunc adds a template function that's available to Usage and Help
 // template generation.
 func AddTemplateFunc(name string, tmplFunc interface{}) {
-	templateFuncs[name] = tmplFunc
+	TemplateFuncs[name] = tmplFunc
 }
 
 // AddTemplateFuncs adds multiple template functions that are available to Usage and
 // Help template generation.
 func AddTemplateFuncs(tmplFuncs template.FuncMap) {
 	for k, v := range tmplFuncs {
-		templateFuncs[k] = v
+		TemplateFuncs[k] = v
 	}
 }
 
@@ -169,7 +170,7 @@ func rpad(s string, padding int) string {
 // tmpl executes the given template text on data, writing the result to w.
 func tmpl(w io.Writer, text string, data interface{}) error {
 	t := template.New("top")
-	t.Funcs(templateFuncs)
+	t.Funcs(TemplateFuncs)
 	template.Must(t.Parse(text))
 	return t.Execute(w, data)
 }
@@ -241,17 +242,22 @@ func FlagUsages(f *pflag.FlagSet) string {
 	return s.String()
 }
 
-// renderMarkdown
 func renderMarkdown(markdownContent string) string {
-	r, err := glamour.NewTermRenderer(glamour.WithAutoStyle())
+	r, err := glamour.NewTermRenderer(
+		glamour.WithAutoStyle(),
+		glamour.WithColorProfile(termenv.ANSI),
+		glamour.WithEmoji(),
+	)
 	if err != nil {
 		return markdownContent
 	}
-	if rendered, err := r.Render(markdownContent); err == nil {
-		return rendered
-	} else {
+
+	rendered, err := r.Render(markdownContent)
+	if err != nil {
 		return markdownContent
 	}
+
+	return rendered
 }
 
 // removeImages
@@ -290,4 +296,47 @@ func FormatHelpTmpl(helpStr string) string {
 		Gray:      termenv.String("").Foreground(tui.Gray).String(),
 	})
 	return outputBuf.String()
+}
+
+var renderOpsec = func(opsecStr string, use string, padding int) string {
+	if opsecStr == "" {
+		opsecStr = "0.0"
+	}
+	opsec, err := strconv.ParseFloat(opsecStr, 64)
+	if err != nil {
+		return fmt.Sprintf("%-*s", padding, use)
+	}
+	coloredText := tui.RenderOpsec(opsec, use)
+	return coloredText
+}
+
+var (
+	renderer     *glamour.TermRenderer
+	rendererOnce sync.Once
+)
+
+func getMarkdownRenderer() (*glamour.TermRenderer, error) {
+	var err error
+	rendererOnce.Do(func() {
+		renderer, err = glamour.NewTermRenderer(
+			glamour.WithAutoStyle(),
+			glamour.WithColorProfile(termenv.ANSI),
+			glamour.WithEmoji(),
+		)
+	})
+	return renderer, err
+}
+
+var renderMarkdownFunc = func(title string) string {
+	r, err := getMarkdownRenderer()
+	if err != nil {
+		return strings.TrimSpace(title)
+	}
+
+	rendered, err := r.Render(title)
+	if err != nil {
+		return strings.TrimSpace(title)
+	}
+
+	return strings.TrimSpace(rendered)
 }

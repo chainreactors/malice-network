@@ -21,7 +21,6 @@ func init() {
 		if err := config.Load(); err != nil {
 			return nil, err
 		}
-
 		output := action.Invoke(context).value("export", "")
 		var e export.Export
 		if err := json.Unmarshal([]byte(output), &e); err != nil {

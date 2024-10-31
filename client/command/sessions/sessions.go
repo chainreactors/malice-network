@@ -115,3 +115,10 @@ func SessionLogin(tableModel *tui.TableModel, con *repl.Console) func() {
 		Use(con, session)
 	}
 }
+
+func SessionInfoCmd(cmd *cobra.Command, con *repl.Console) error {
+	session := con.GetInteractive().Session
+	result := tui.RenderColoredKeyValue(session, 5, 1, "Tasks")
+	con.Log.Info(result)
+	return nil
+}

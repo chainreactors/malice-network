@@ -39,8 +39,10 @@ func (c *Console) complete(line []rune, pos int) readline.Completions {
 	// The completions are never nil: fill out our own object
 	// with everything it contains, regardless of errors.
 	raw := make([]readline.Completion, len(completions.Values))
+	ansiEscape := regexp.MustCompile(`\x1b\[[0-9;]*m`)
 
 	for idx, val := range completions.Values.Decolor() {
+		val.Value = ansiEscape.ReplaceAllString(val.Value, "")
 		raw[idx] = readline.Completion{
 			Value:       unescapeValue(prefixComp, prefixLine, val.Value),
 			Display:     val.Display,
