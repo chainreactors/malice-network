@@ -39,7 +39,7 @@ job
 		Use:   consts.CommandTcp,
 		Short: "List tcp pipelines in listener",
 		Long:  "Use a table to list TCP pipelines along with their corresponding listeners",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},

@@ -510,7 +510,11 @@ func ActionCommands(cmd *cobra.Command) Action {
 		for _, subcommand := range cmd.Commands() {
 			if (!subcommand.Hidden || env.Hidden()) && subcommand.Deprecated == "" {
 				group := common.Group{Cmd: subcommand}
-				batch = append(batch, ActionStyledValuesDescribed(subcommand.Name(), subcommand.Short, group.Style()).Tag(group.Tag()))
+				if _, ok := subcommand.Annotations["opsec"]; ok {
+					batch = append(batch, ActionStyledValuesDescribed(subcommand.Use, subcommand.Short, group.Style()).Tag(group.Tag()))
+				} else {
+					batch = append(batch, ActionStyledValuesDescribed(subcommand.Name(), subcommand.Short, group.Style()).Tag(group.Tag()))
+				}
 				for _, alias := range subcommand.Aliases {
 					batch = append(batch, ActionStyledValuesDescribed(alias, subcommand.Short, group.Style()).Tag(group.Tag()))
 				}

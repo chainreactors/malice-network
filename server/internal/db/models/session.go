@@ -53,6 +53,7 @@ func (s *Session) ToClientProtobuf() *clientpb.Session {
 		Timer:      s.Time.toProtobuf(),
 		Modules:    ctx.Modules,
 		Addons:     ctx.Addons,
+		Data:       ctx.Data,
 	}
 }
 

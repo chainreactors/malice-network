@@ -41,6 +41,8 @@ func makeBind(cmd *cobra.Command, con *repl.Console) bindFunc {
 				c.GroupID = group
 				c.SetHelpFunc(help.HelpFunc)
 				c.SetUsageFunc(help.UsageFunc)
+				SetColoredUse(c)
+
 				if c.Annotations == nil {
 					c.Annotations = map[string]string{"menu": cmd.Name()}
 				} else {

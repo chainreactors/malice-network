@@ -157,6 +157,16 @@ observe -r
 
 	common.BindArgCompletions(historyCommand, nil, carapace.ActionValues().Usage("number of lines"))
 
+	infoCommand := &cobra.Command{
+		Use:   "info",
+		Short: "show session info",
+		Long:  "Displays the specified session info.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return SessionInfoCmd(cmd, con)
+		},
+	}
+	sessionsCmd.AddCommand(infoCommand)
+
 	return []*cobra.Command{
 		sessionsCmd,
 		noteCommand,
