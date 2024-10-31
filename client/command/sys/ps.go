@@ -47,11 +47,12 @@ func RegisterPsFunc(con *repl.Console) {
 			psSet := ctx.Spite.GetPsResponse()
 			var ps []string
 			for _, p := range psSet.GetProcesses() {
-				ps = append(ps, fmt.Sprintf("%s:%v:%v:%s:%s:%s:%s",
+				ps = append(ps, fmt.Sprintf("%s:%d:%d:%s:%s:%s:%s:%s",
 					p.Name,
 					p.Pid,
 					p.Ppid,
 					p.Arch,
+					p.Uid,
 					p.Owner,
 					p.Path,
 					p.Args))
@@ -67,6 +68,7 @@ func RegisterPsFunc(con *repl.Console) {
 				{Title: "PID", Width: 5},
 				{Title: "PPID", Width: 5},
 				{Title: "Arch", Width: 7},
+				{Title: "UID", Width: 36},
 				{Title: "Owner", Width: 7},
 				{Title: "Path", Width: 50},
 				{Title: "Args", Width: 50},
@@ -77,6 +79,7 @@ func RegisterPsFunc(con *repl.Console) {
 					strconv.Itoa(int(process.Pid)),
 					strconv.Itoa(int(process.Ppid)),
 					process.Arch,
+					process.Uid,
 					process.Owner,
 					process.Path,
 					process.Args,
