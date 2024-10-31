@@ -425,7 +425,10 @@ func (rl *Shell) selfInsert() {
 	rl.completer.TrimSuffix()
 
 	key := rl.Keys.Caller()
-
+	if len(key) == 0 {
+		// todo: temp fix
+		return
+	}
 	// Handle autopair insertion (for the closer only)
 	searching, _, _ := rl.completer.NonIncrementallySearching()
 	isearch := rl.Keymap.Local() == keymap.Isearch
