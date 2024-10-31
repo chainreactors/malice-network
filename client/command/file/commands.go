@@ -100,7 +100,7 @@ func Register(con *repl.Console) {
 	con.AddInternalFuncHelper(
 		consts.ModuleDownload,
 		consts.ModuleDownload,
-		consts.ModuleDownload+"(active(),\"./file.txt\")",
+		consts.ModuleDownload+"(active(),`file.txt`)",
 		[]string{
 			"session: special session",
 			"path: file path",
@@ -120,14 +120,16 @@ func Register(con *repl.Console) {
 	intermediate.RegisterInternalDoneCallback(consts.ModuleUpload, func(content *clientpb.TaskContext) (string, error) {
 		return fmt.Sprintf("upload block %d/%d success", content.Task.Cur, content.Task.Total), nil
 	})
-	// session *core.Session, path string, target string, priv int, hidden bool
 	con.AddInternalFuncHelper(
 		consts.ModuleDownload,
 		consts.ModuleDownload,
-		consts.ModuleDownload+"(active(),\"path\",\"target\",\"priv\",false)",
+		consts.ModuleDownload+"(active(),`path`,`target`,`priv`,false)",
 		[]string{
 			"session: special session",
-			"path: file path",
+			"path: source path",
+			"target: target path",
+			"priv",
+			"hidden",
 		},
 		[]string{"task"})
 

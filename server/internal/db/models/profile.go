@@ -132,7 +132,7 @@ func (p *Profile) UpdateGeneratorConfig(req *clientpb.Generate, path string) err
 	if err != nil {
 		return err
 	}
-	if val, ok := req.Params["interval"]; ok {
+	if val, ok := req.Params["interval"]; ok && val != "" {
 		interval, err := strconv.Atoi(val)
 		if err != nil {
 			return err
@@ -146,7 +146,7 @@ func (p *Profile) UpdateGeneratorConfig(req *clientpb.Generate, path string) err
 		config.Basic.Interval = dbInterval
 	}
 
-	if val, ok := req.Params["jitter"]; ok {
+	if val, ok := req.Params["jitter"]; ok && val != "" {
 		jitter, err := strconv.ParseFloat(val, 64)
 		if err != nil {
 			return err

@@ -73,7 +73,7 @@ func downloadBuilder(tableModel *tui.TableModel, con *repl.Console) func() {
 			con.Log.Errorf("download build output %s", err)
 		}
 	}
-	filePath := filepath.Join(assets.TempDirName, resp.Name)
+	filePath := filepath.Join(assets.GetTempDir(), resp.Name)
 	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return func() {

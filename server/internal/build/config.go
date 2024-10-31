@@ -30,7 +30,7 @@ func DbToConfig(req *clientpb.Generate) error {
 			return err
 		}
 	}
-	path := filepath.Join(configs.BuildPath, generateConfig)
+	path := filepath.Join(configs.SourceCodePath, generateConfig)
 	err = config.LoadConfig(path, &profile)
 	if err != nil {
 		return err
