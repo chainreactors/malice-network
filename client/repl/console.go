@@ -128,7 +128,11 @@ func (c *Console) SwitchImplant(sess *core.Session) {
 	c.App.SwitchMenu(consts.ImplantMenu)
 	sess.GetLog()
 	var count int
-	for _, cmd := range c.ImplantMenu().Commands() {
+	for _, cmd := range c.CMDs {
+		if cmd.Annotations["menu"] != consts.ImplantMenu {
+			count++
+			continue
+		}
 		cmd.Hidden = false
 		if o, ok := cmd.Annotations["os"]; ok && !strings.Contains(o, sess.Os.Name) {
 			cmd.Hidden = true
@@ -143,7 +147,7 @@ func (c *Console) SwitchImplant(sess *core.Session) {
 				}
 			}
 		}
-		if cmd.Annotations["menu"] == consts.ImplantMenu && cmd.Hidden == false {
+		if cmd.Hidden == false {
 			count++
 		}
 	}

@@ -57,6 +57,7 @@ func (f *forwarders) Remove(id string) {
 func (f *forwarders) Send(id string, msg *Message) {
 	fw := f.Get(id)
 	if fw == nil {
+		logs.Log.Errorf("forwarder %s not found", id)
 		return
 	}
 	fw.Add(msg)
