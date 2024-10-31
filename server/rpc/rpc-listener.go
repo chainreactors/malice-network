@@ -29,12 +29,10 @@ func (rpc *Server) RegisterListener(ctx context.Context, req *clientpb.RegisterL
 		return &implantpb.Empty{}, nil
 	}
 	core.Listeners.Add(&core.Listener{
-		Name:   req.Name,
-		Host:   p.Addr.String(),
-		Active: true,
-		Pipelines: clientpb.Pipelines{
-			Pipelines: make([]*clientpb.Pipeline, 0),
-		},
+		Name:      req.Name,
+		Host:      p.Addr.String(),
+		Active:    true,
+		Pipelines: make(map[string]*clientpb.Pipeline),
 	})
 	core.EventBroker.Notify(core.Event{
 		EventType: consts.EventListener,

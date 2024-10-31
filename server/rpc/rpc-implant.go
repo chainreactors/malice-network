@@ -41,7 +41,7 @@ func (rpc *Server) Register(ctx context.Context, req *clientpb.RegisterSession) 
 				Op:        consts.CtrlSessionRegister,
 				Session:   sess.ToProtobuf(),
 				IsNotify:  true,
-				Message:   fmt.Sprintf("session %s from %s start at %s", sess.ID, sess.RemoteAddr, sess.PipelineID),
+				Message:   fmt.Sprintf("session %s from %s start at %s", sess.ID, sess.Target, sess.PipelineID),
 			})
 			logs.Log.Importantf("init new session %s from %s", sess.ID, sess.PipelineID)
 		}
@@ -58,7 +58,7 @@ func (rpc *Server) Register(ctx context.Context, req *clientpb.RegisterSession) 
 			Op:        consts.CtrlSessionRegister,
 			Session:   sess.ToProtobuf(),
 			IsNotify:  true,
-			Message:   fmt.Sprintf("session %s from %s re-register at %s", sess.ID, sess.RemoteAddr, sess.PipelineID),
+			Message:   fmt.Sprintf("session %s from %s re-register at %s", sess.ID, sess.Target, sess.PipelineID),
 		})
 	}
 	core.Sessions.Add(sess)

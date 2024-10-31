@@ -95,7 +95,7 @@ func Names() ([]string, error) {
 
 	var names []string
 	for _, website := range websites {
-		names = append(names, website.Name)
+		names = append(names, website.ID)
 	}
 	return names, nil
 }
@@ -114,7 +114,7 @@ func MapContent(name string, eager bool) (*clientpb.Website, error) {
 
 	if eager {
 		eagerContents := map[string]*clientpb.WebContent{}
-		content, err := db.WebContentByIDAndPath(website.ID, website.Name, webContentDir, true)
+		content, err := db.WebContentByIDAndPath(website.ID, website.RootPath, webContentDir, true)
 		if err != nil {
 			return nil, err
 		}

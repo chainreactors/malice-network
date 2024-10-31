@@ -76,6 +76,9 @@ func newWebsiteCmd(cmd *cobra.Command, con *repl.Console) {
 		Content: content,
 	})
 	resp, err := con.LisRpc.RegisterWebsite(context.Background(), &clientpb.Pipeline{
+		Name:       name,
+		ListenerId: listenerID,
+		Enable:     false,
 		Encryption: &clientpb.Encryption{
 			Enable: false,
 			Type:   "",
@@ -88,12 +91,9 @@ func newWebsiteCmd(cmd *cobra.Command, con *repl.Console) {
 		},
 		Body: &clientpb.Pipeline_Web{
 			Web: &clientpb.Website{
-				RootPath:   webPath,
-				Port:       port,
-				Name:       name,
-				ListenerId: listenerID,
-				Contents:   addWeb.Contents,
-				Enable:     false,
+				RootPath: webPath,
+				Port:     port,
+				Contents: addWeb.Contents,
 			},
 		},
 	})
@@ -165,16 +165,16 @@ func listWebsitesCmd(cmd *cobra.Command, con *repl.Console) {
 		{Title: "RootPath", Width: 15},
 		{Title: "Enable", Width: 7},
 	}, true)
-	if len(websites.Websites) == 0 {
+	if len(websites.Pipelines) == 0 {
 		con.Log.Importantf("No websites found")
 		return
 	}
-	for _, w := range websites.Websites {
+	for _, p := range websites.Pipelines {
+		w := p.GetWeb()
 		row = table.Row{
-			w.Name,
+			w.ID,
 			strconv.Itoa(int(w.Port)),
 			w.RootPath,
-			strconv.FormatBool(w.Enable),
 		}
 		rowEntries = append(rowEntries, row)
 	}

@@ -154,7 +154,7 @@ func (rpc *Server) GenericHandler(ctx context.Context, req *GenericRequest) (cha
 		return nil, ErrNotFoundPipeline
 	}
 	out, err := req.Session.RequestWithAsync(
-		&clientpb.SpiteSession{SessionId: req.Session.ID, TaskId: req.Task.Id, Spite: spite},
+		&clientpb.SpiteRequest{Session: req.Session.ToProtobufLite(), Task: req.Task.ToProtobuf(), Spite: spite},
 		pipelinesCh[req.Session.PipelineID],
 		consts.MinTimeout)
 	if err != nil {
@@ -175,7 +175,7 @@ func (rpc *Server) StreamGenericHandler(ctx context.Context, req *GenericRequest
 		return nil, nil, ErrNotFoundPipeline
 	}
 	in, out, err := req.Session.RequestWithStream(
-		&clientpb.SpiteSession{SessionId: req.Session.ID, TaskId: req.Task.Id, Spite: spite},
+		&clientpb.SpiteRequest{Session: req.Session.ToProtobufLite(), Task: req.Task.ToProtobuf(), Spite: spite},
 		pipelinesCh[req.Session.PipelineID],
 		consts.MinTimeout)
 	if err != nil {

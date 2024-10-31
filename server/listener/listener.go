@@ -59,18 +59,22 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 	Listener = lis
 
 	for _, tcpPipeline := range cfg.TcpPipelines {
-		pipeline := tcpPipeline.ToProtobuf(lis.Name)
-		_, err = lis.Rpc.RegisterPipeline(context.Background(), pipeline)
+		pipeline, err := tcpPipeline.ToProtobuf(lis.Name)
 		if err != nil {
 			return err
 		}
-		if !tcpPipeline.Enable {
-			continue
+		err = lis.RegisterAndStart(pipeline)
+		if err != nil {
+			return err
 		}
-		_, err = lis.Rpc.StartTcpPipeline(context.Background(), &clientpb.CtrlPipeline{
-			Name:       tcpPipeline.Name,
-			ListenerId: lis.Name,
-		})
+	}
+
+	for _, bindPipeline := range cfg.BindPipelineConfig {
+		pipeline, err := bindPipeline.ToProtobuf(lis.Name)
+		if err != nil {
+			return err
+		}
+		err = lis.RegisterAndStart(pipeline)
 		if err != nil {
 			return err
 		}
@@ -102,13 +106,13 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 			}
 		}
 		webProtobuf := &clientpb.Pipeline{
+			Name:       newWebsite.WebsiteName,
+			ListenerId: lis.Name,
 			Body: &clientpb.Pipeline_Web{
 				Web: &clientpb.Website{
-					RootPath:   newWebsite.RootPath,
-					Port:       uint32(newWebsite.Port),
-					Name:       newWebsite.WebsiteName,
-					ListenerId: lis.Name,
-					Contents:   addWeb.Contents,
+					RootPath: newWebsite.RootPath,
+					Port:     uint32(newWebsite.Port),
+					Contents: addWeb.Contents,
 				},
 			},
 			Tls: tls.ToProtobuf(),
@@ -142,8 +146,27 @@ type listener struct {
 	websites  core.Websites
 }
 
+func (lns *listener) RegisterAndStart(pipeline *clientpb.Pipeline) error {
+	if !pipeline.Enable {
+		return nil
+	}
+	_, err := lns.Rpc.RegisterPipeline(context.Background(), pipeline)
+	if err != nil {
+		return err
+	}
+
+	_, err = lns.Rpc.StartPipeline(context.Background(), &clientpb.CtrlPipeline{
+		Name:       pipeline.Name,
+		ListenerId: lns.ID(),
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (lns *listener) ID() string {
-	return fmt.Sprintf("%s_%s", lns.Name, lns.Host)
+	return lns.Name
 }
 
 func (lns *listener) ToProtobuf() *clientpb.Listener {
@@ -186,38 +209,17 @@ func (lns *listener) Handler() {
 }
 
 func (lns *listener) startHandler(job *clientpb.Job) *clientpb.JobStatus {
-	var err error
-	pipeline := job.GetPipeline()
-	switch pipeline.Body.(type) {
-	case *clientpb.Pipeline_Tcp:
-		p := lns.pipelines.Get(pipeline.GetTcp().Name)
-		if p == nil {
-			tcpPipeline, err := StartTcpPipeline(lns.conn, pipeline)
-			if err != nil {
-				return &clientpb.JobStatus{
-					ListenerId: lns.ID(),
-					Ctrl:       consts.CtrlJobStart,
-					Status:     consts.CtrlStatusFailed,
-					Error:      err.Error(),
-					Job:        job,
-				}
-			}
-			job.Name = tcpPipeline.Name
-			lns.pipelines.Add(tcpPipeline)
-		} else {
-			err = p.Start()
-			job.Name = p.ID()
-			if err != nil {
-				return &clientpb.JobStatus{
-					ListenerId: lns.ID(),
-					Ctrl:       consts.CtrlJobStart,
-					Status:     consts.CtrlStatusFailed,
-					Error:      err.Error(),
-					Job:        job,
-				}
-			}
+	pipeline, err := lns.startPipeline(job.GetPipeline())
+	if err != nil {
+		return &clientpb.JobStatus{
+			ListenerId: lns.ID(),
+			Ctrl:       consts.CtrlJobStart,
+			Status:     consts.CtrlStatusFailed,
+			Error:      err.Error(),
+			Job:        job,
 		}
 	}
+	job.Name = pipeline.ID()
 	return &clientpb.JobStatus{
 		ListenerId: lns.ID(),
 		Ctrl:       consts.CtrlJobStart,
@@ -226,12 +228,33 @@ func (lns *listener) startHandler(job *clientpb.Job) *clientpb.JobStatus {
 	}
 }
 
+func (lns *listener) startPipeline(pipelinepb *clientpb.Pipeline) (core.Pipeline, error) {
+	var err error
+	p := lns.pipelines.Get(pipelinepb.Name)
+	switch pipelinepb.Body.(type) {
+	case *clientpb.Pipeline_Tcp:
+		p, err = NewTcpPipeline(lns.conn, pipelinepb)
+	case *clientpb.Pipeline_Bind:
+		p, err = NewBindPipeline(lns.conn, pipelinepb)
+	default:
+		return nil, fmt.Errorf("not impl")
+	}
+	if err != nil {
+		return nil, err
+	}
+	err = p.Start()
+	if err != nil {
+		return nil, err
+	}
+	return p, nil
+}
+
 func (lns *listener) stopHandler(job *clientpb.Job) *clientpb.JobStatus {
 	var err error
 	pipeline := job.GetPipeline()
 	switch pipeline.Body.(type) {
 	case *clientpb.Pipeline_Tcp:
-		p := lns.pipelines.Get(pipeline.GetTcp().Name)
+		p := lns.pipelines.Get(pipeline.Name)
 		job.Name = p.ID()
 		if p == nil {
 			return &clientpb.JobStatus{
@@ -246,7 +269,7 @@ func (lns *listener) stopHandler(job *clientpb.Job) *clientpb.JobStatus {
 		if err != nil {
 			break
 		}
-		coreJob := core.Jobs.Get(pipeline.GetTcp().Name)
+		coreJob := core.Jobs.Get(pipeline.Name)
 		if coreJob != nil {
 			core.Jobs.Remove(coreJob)
 		}
@@ -271,8 +294,8 @@ func (lns *listener) stopHandler(job *clientpb.Job) *clientpb.JobStatus {
 func (lns *listener) startWebsite(job *clientpb.Job) *clientpb.JobStatus {
 	var err error
 	getWeb := job.GetPipeline().GetWeb()
-	job.Name = getWeb.Name
-	w := lns.websites.Get(getWeb.Name)
+	job.Name = getWeb.ID
+	w := lns.websites.Get(getWeb.ID)
 	if w == nil {
 		starResult, err := StartWebsite(job.GetPipeline(), getWeb.Contents)
 		if err != nil {
@@ -297,7 +320,7 @@ func (lns *listener) startWebsite(job *clientpb.Job) *clientpb.JobStatus {
 			}
 		}
 	}
-	job.GetPipeline().GetWeb().Enable = true
+	job.GetPipeline().Enable = true
 	return &clientpb.JobStatus{
 		ListenerId: lns.ID(),
 		Ctrl:       consts.CtrlJobStart,
@@ -309,8 +332,8 @@ func (lns *listener) startWebsite(job *clientpb.Job) *clientpb.JobStatus {
 func (lns *listener) stopWebsite(job *clientpb.Job) *clientpb.JobStatus {
 	var err error
 	getWeb := job.GetPipeline().GetWeb()
-	job.Name = getWeb.Name
-	w := lns.websites.Get(getWeb.Name)
+	job.Name = getWeb.ID
+	w := lns.websites.Get(getWeb.ID)
 	if w == nil {
 		return &clientpb.JobStatus{
 			ListenerId: lns.ID(),
@@ -330,7 +353,7 @@ func (lns *listener) stopWebsite(job *clientpb.Job) *clientpb.JobStatus {
 			Job:        job,
 		}
 	}
-	coreJob := core.Jobs.Get(getWeb.Name)
+	coreJob := core.Jobs.Get(getWeb.ID)
 	if coreJob != nil {
 		core.Jobs.Remove(coreJob)
 	}

@@ -41,3 +41,11 @@ listeners:
         enable: true
         type: aes
         key: maliceofinternal
+  bind:
+    -
+      name: bind_default
+      enable: true
+      encryption:
+        enable: true
+        type: aes
+        key: maliceofinternal

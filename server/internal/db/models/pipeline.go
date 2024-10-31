@@ -1,6 +1,7 @@
 package models
 
 import (
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/gofrs/uuid"
 	"gorm.io/gorm"
@@ -44,32 +45,87 @@ func (l *Pipeline) BeforeCreate(tx *gorm.DB) (err error) {
 	return nil
 }
 
-func ProtoBufToDB(pipeline *clientpb.Pipeline) Pipeline {
+func ToPipelineModel(pipeline *clientpb.Pipeline) *Pipeline {
 	switch body := pipeline.Body.(type) {
 	case *clientpb.Pipeline_Tcp:
-		return Pipeline{
-			ListenerID: body.Tcp.ListenerId,
-			Name:       body.Tcp.Name,
+		return &Pipeline{
+			ListenerID: pipeline.ListenerId,
+			Name:       pipeline.Name,
+			Enable:     pipeline.Enable,
 			Host:       body.Tcp.Host,
 			Port:       uint16(body.Tcp.Port),
-			Type:       "tcp",
+			Type:       consts.TCPPipeline,
 			Tls:        ToTlsDB(pipeline.Tls),
 			Encryption: ToEncryptionDB(pipeline.Encryption),
-			Enable:     body.Tcp.Enable,
+		}
+	case *clientpb.Pipeline_Bind:
+		return &Pipeline{
+			ListenerID: pipeline.ListenerId,
+			Name:       pipeline.Name,
+			Enable:     pipeline.Enable,
+			Type:       consts.BindPipeline,
+			Tls:        ToTlsDB(pipeline.Tls),
+			Encryption: ToEncryptionDB(pipeline.Encryption),
 		}
 	case *clientpb.Pipeline_Web:
-		return Pipeline{
-			ListenerID: body.Web.ListenerId,
-			Name:       body.Web.Name,
+		return &Pipeline{
+			ListenerID: pipeline.ListenerId,
+			Name:       pipeline.Name,
+			Enable:     pipeline.Enable,
 			WebPath:    body.Web.RootPath,
 			Port:       uint16(body.Web.Port),
 			Type:       "web",
 			Tls:        ToTlsDB(pipeline.Tls),
 			Encryption: ToEncryptionDB(pipeline.Encryption),
-			Enable:     body.Web.Enable,
 		}
 	default:
-		return Pipeline{}
+		return nil
+	}
+}
+
+func ModelToPipelinePB(pipeline Pipeline) *clientpb.Pipeline {
+	switch pipeline.Type {
+	case consts.TCPPipeline:
+		return &clientpb.Pipeline{
+			Name:       pipeline.Name,
+			ListenerId: pipeline.ListenerID,
+			Enable:     pipeline.Enable,
+			Body: &clientpb.Pipeline_Tcp{
+				Tcp: &clientpb.TCPPipeline{
+					Host: pipeline.Host,
+					Port: uint32(pipeline.Port),
+				},
+			},
+			Tls:        ToTlsProtobuf(&pipeline.Tls),
+			Encryption: ToEncryptionProtobuf(&pipeline.Encryption),
+		}
+	case consts.BindPipeline:
+		return &clientpb.Pipeline{
+			Name:       pipeline.Name,
+			ListenerId: pipeline.ListenerID,
+			Enable:     pipeline.Enable,
+			Body: &clientpb.Pipeline_Bind{
+				Bind: &clientpb.BindPipeline{},
+			},
+			Tls:        ToTlsProtobuf(&pipeline.Tls),
+			Encryption: ToEncryptionProtobuf(&pipeline.Encryption),
+		}
+	case consts.WebsitePipeline:
+		return &clientpb.Pipeline{
+			Name:       pipeline.Name,
+			ListenerId: pipeline.ListenerID,
+			Enable:     pipeline.Enable,
+			Body: &clientpb.Pipeline_Web{
+				Web: &clientpb.Website{
+					RootPath: pipeline.WebPath,
+					Port:     uint32(pipeline.Port),
+				},
+			},
+			Tls:        ToTlsProtobuf(&pipeline.Tls),
+			Encryption: ToEncryptionProtobuf(&pipeline.Encryption),
+		}
+	default:
+		return nil
 	}
 }
 
@@ -86,39 +142,6 @@ func ToEncryptionDB(encryption *clientpb.Encryption) EncryptionConfig {
 		Enable: encryption.Enable,
 		Type:   encryption.Type,
 		Key:    encryption.Key,
-	}
-}
-
-func ToProtobuf(pipeline *Pipeline) *clientpb.Pipeline {
-	switch pipeline.Type {
-	case "tcp":
-		return &clientpb.Pipeline{
-			Body: &clientpb.Pipeline_Tcp{
-				Tcp: &clientpb.TCPPipeline{
-					Name:       pipeline.Name,
-					Host:       pipeline.Host,
-					ListenerId: pipeline.ListenerID,
-					Port:       uint32(pipeline.Port),
-				},
-			},
-			Tls:        ToTlsProtobuf(&pipeline.Tls),
-			Encryption: ToEncryptionProtobuf(&pipeline.Encryption),
-		}
-	case "web":
-		return &clientpb.Pipeline{
-			Body: &clientpb.Pipeline_Web{
-				Web: &clientpb.Website{
-					Name:       pipeline.Name,
-					RootPath:   pipeline.WebPath,
-					ListenerId: pipeline.ListenerID,
-					Port:       uint32(pipeline.Port),
-				},
-			},
-			Tls:        ToTlsProtobuf(&pipeline.Tls),
-			Encryption: ToEncryptionProtobuf(&pipeline.Encryption),
-		}
-	default:
-		return nil
 	}
 }
 

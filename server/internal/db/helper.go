@@ -3,6 +3,7 @@ package db
 import (
 	"encoding/json"
 	"errors"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/utils/mtls"
 	"github.com/chainreactors/malice-network/server/internal/configs"
@@ -253,8 +254,7 @@ func FindPipeline(name, listenerID string) (models.Pipeline, error) {
 
 }
 
-func CreatePipeline(ppProto *clientpb.Pipeline) error {
-	pipeline := models.ProtoBufToDB(ppProto)
+func CreatePipeline(pipeline *models.Pipeline) error {
 	newPipeline := models.Pipeline{}
 	result := Session().Where("name = ? AND listener_id  = ?", pipeline.Name, pipeline.ListenerID).First(&newPipeline)
 	if result.Error != nil {
@@ -275,9 +275,15 @@ func CreatePipeline(ppProto *clientpb.Pipeline) error {
 	return nil
 }
 
-func ListPipelines(listenerID string, pipelineType string) ([]models.Pipeline, error) {
+func ListPipelines(listenerID string) ([]models.Pipeline, error) {
 	var pipelines []models.Pipeline
-	err := Session().Where("listener_id = ? AND type = ?", listenerID, pipelineType).Find(&pipelines).Error
+	err := Session().Where("listener_id = ? AND type != ?", listenerID, consts.WebsitePipeline).Find(&pipelines).Error
+	return pipelines, err
+}
+
+func ListWebsite(listenerID string) ([]models.Pipeline, error) {
+	var pipelines []models.Pipeline
+	err := Session().Where("listener_id = ? AND type = ?", listenerID, consts.WebsitePipeline).Find(&pipelines).Error
 	return pipelines, err
 }
 
@@ -287,7 +293,7 @@ func EnablePipeline(pipeline models.Pipeline) error {
 	return result.Error
 }
 
-func UnEnablePipeline(pipeline models.Pipeline) error {
+func DisablePipeline(pipeline models.Pipeline) error {
 	pipeline.Enable = false
 	result := Session().Save(&pipeline)
 	return result.Error

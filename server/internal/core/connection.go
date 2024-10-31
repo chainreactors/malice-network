@@ -2,9 +2,12 @@ package core
 
 import (
 	"context"
+	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/encoders/hash"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
+	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/helper/utils/peek"
 	"github.com/chainreactors/malice-network/server/internal/parser"
 	"sync"
@@ -22,7 +25,7 @@ func NewConnection(p *parser.MessageParser, sid []byte) *Connection {
 		RawID:       sid,
 		SessionID:   hash.Md5Hash(sid),
 		LastMessage: time.Now(),
-		C:           make(chan *implantpb.Spite, 255),
+		C:           make(chan *clientpb.SpiteRequest, 255),
 		Sender:      make(chan *implantpb.Spites, 1),
 		Alive:       true,
 		cache:       parser.NewSpitesBuf(),
@@ -32,9 +35,9 @@ func NewConnection(p *parser.MessageParser, sid []byte) *Connection {
 	go func() {
 		for {
 			select {
-			case spite := <-conn.C:
-				logs.Log.Debugf("Received spite %s", spite.Name)
-				conn.cache.Append(spite)
+			case req := <-conn.C:
+				logs.Log.Debugf("Received spite %s", req.Spite.Name)
+				conn.cache.Append(req.Spite)
 			}
 		}
 	}()
@@ -57,7 +60,8 @@ type Connection struct {
 	RawID       []byte
 	SessionID   string
 	LastMessage time.Time
-	C           chan *implantpb.Spite // spite
+	PipelineID  string
+	C           chan *clientpb.SpiteRequest // spite
 	Sender      chan *implantpb.Spites
 	Alive       bool
 	Parser      *parser.MessageParser
@@ -79,6 +83,35 @@ func (c *Connection) Send(ctx context.Context, conn *peek.Conn) {
 			return
 		}
 	}
+}
+
+func (c *Connection) Handler(ctx context.Context, conn *peek.Conn) error {
+	var err error
+	_, length, err := c.Parser.ReadHeader(conn)
+	if err != nil {
+		//logs.Log.Debugf("Error reading header: %s %v", conn.RemoteAddr(), err)
+		return fmt.Errorf("error reading header:%s %w", conn.RemoteAddr(), err)
+	}
+	var msg *implantpb.Spites
+	go c.Send(ctx, conn)
+	if length != 1 {
+		msg, err = c.Parser.ReadMessage(conn, length)
+		if err != nil {
+			return fmt.Errorf("error reading message:%s %w", conn.RemoteAddr(), err)
+		}
+		if msg.Spites == nil {
+			msg = types.BuildPingSpite()
+		}
+	} else {
+		msg = types.BuildPingSpite()
+	}
+
+	Forwarders.Send(c.PipelineID, &Message{
+		Spites:     msg,
+		SessionID:  c.SessionID,
+		RemoteAddr: conn.RemoteAddr().String(),
+	})
+	return nil
 }
 
 type connections struct {
