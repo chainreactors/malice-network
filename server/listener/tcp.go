@@ -9,9 +9,9 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/helper/utils/peek"
+	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
-	"github.com/chainreactors/malice-network/server/listener/encryption"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
 	"net"
@@ -124,7 +124,7 @@ func (l *TCPPipeline) handler() (net.Listener, error) {
 		return nil, err
 	}
 	if l.TlsConfig != nil && l.TlsConfig.Enable {
-		ln, err = encryption.WrapWithTls(ln, l.TlsConfig)
+		ln, err = certutils.WrapWithTls(ln, l.TlsConfig)
 		if err != nil {
 			return nil, err
 		}
@@ -191,15 +191,4 @@ func (l *TCPPipeline) handleRead(conn net.Conn) {
 			RemoteAddr: conn.RemoteAddr().String(),
 		})
 	}
-}
-
-func (l *TCPPipeline) wrapConn(conn net.Conn) net.Conn {
-	if l.Encryption != nil && l.Encryption.Enable {
-		eConn, err := encryption.WrapWithEncryption(conn, []byte(l.Encryption.Key))
-		if err != nil {
-			return conn
-		}
-		return eConn
-	}
-	return conn
 }

@@ -1,4 +1,4 @@
-package encryption
+package certutils
 
 import (
 	"crypto/tls"
