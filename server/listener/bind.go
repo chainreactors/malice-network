@@ -90,7 +90,7 @@ func (pipeline *TCPBindPipeline) handlerReq(req *clientpb.SpiteRequest) error {
 	defer cancel()
 	var connect *core.Connection
 	if connect = core.Connections.Get(req.Session.SessionId); connect == nil {
-		connect, err = core.Connections.NeedConnection(peekConn)
+		connect, err = core.Connections.NeedConnection(peekConn, pipeline.ID())
 		if err != nil {
 			return err
 		}

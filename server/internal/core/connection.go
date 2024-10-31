@@ -20,8 +20,9 @@ var (
 	}
 )
 
-func NewConnection(p *parser.MessageParser, sid []byte) *Connection {
+func NewConnection(p *parser.MessageParser, sid []byte, pipelineID string) *Connection {
 	conn := &Connection{
+		PipelineID:  pipelineID,
 		RawID:       sid,
 		SessionID:   hash.Md5Hash(sid),
 		LastMessage: time.Now(),
@@ -118,7 +119,7 @@ type connections struct {
 	connections *sync.Map // map[session_id]*Session
 }
 
-func (c *connections) NeedConnection(conn *peek.Conn) (*Connection, error) {
+func (c *connections) NeedConnection(conn *peek.Conn, pipelineID string) (*Connection, error) {
 	p, err := parser.NewParser(conn)
 	if err != nil {
 		return nil, err
@@ -131,7 +132,7 @@ func (c *connections) NeedConnection(conn *peek.Conn) (*Connection, error) {
 	if newC := c.Get(hash.Md5Hash(sid)); newC != nil {
 		return newC, nil
 	} else {
-		newC := NewConnection(p, sid)
+		newC := NewConnection(p, sid, pipelineID)
 		c.Add(newC)
 		return newC, nil
 	}

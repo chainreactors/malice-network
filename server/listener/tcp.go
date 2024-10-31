@@ -134,7 +134,7 @@ func (pipeline *TCPPipeline) handleAccept(conn net.Conn) {
 		logs.Log.Debugf("wrap conn error: %s %v", conn.RemoteAddr(), err)
 		return
 	}
-	connect, err := core.Connections.NeedConnection(peekConn)
+	connect, err := core.Connections.NeedConnection(peekConn, pipeline.ID())
 	if err != nil {
 		logs.Log.Debugf("peek read header error: %s %v", conn.RemoteAddr(), err)
 		return

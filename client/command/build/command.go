@@ -12,7 +12,6 @@ func Commands(con *repl.Console) []*cobra.Command {
 	profileCmd := &cobra.Command{
 		Use:   consts.CommandProfile,
 		Short: "Show all compile profile ",
-		Long:  "Show all compile profile",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ProfileShowCmd(cmd, con)
 		},
@@ -53,7 +52,6 @@ func Commands(con *repl.Console) []*cobra.Command {
 	beaconCmd := &cobra.Command{
 		Use:   consts.CommandBeacon,
 		Short: "build beacon",
-		Long:  "build beacon",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return BeaconCmd(cmd, con)
 		},
@@ -69,7 +67,6 @@ func Commands(con *repl.Console) []*cobra.Command {
 	bindCmd := &cobra.Command{
 		Use:   consts.CommandBind,
 		Short: "build bind",
-		Long:  "build bind",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return BindCmd(cmd, con)
@@ -87,7 +84,6 @@ func Commands(con *repl.Console) []*cobra.Command {
 	shellCodeCmd := &cobra.Command{
 		Use:   consts.CommandShellCode,
 		Short: "build ShellCode",
-		Long:  "build ShellCode",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ShellCodeCmd(cmd, con)
@@ -105,7 +101,6 @@ func Commands(con *repl.Console) []*cobra.Command {
 	preludeCmd := &cobra.Command{
 		Use:   consts.CommandPrelude,
 		Short: "build prelude",
-		Long:  "build prelude",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return PreludeCmd(cmd, con)
@@ -123,7 +118,6 @@ func Commands(con *repl.Console) []*cobra.Command {
 	downloadCmd := &cobra.Command{
 		Use:   consts.CommandDownload,
 		Short: "download build output file in server",
-		Long:  "download build output file in server",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return DownloadCmd(cmd, con)
 		},
