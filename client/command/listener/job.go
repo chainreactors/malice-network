@@ -61,7 +61,7 @@ func ListJobsCmd(cmd *cobra.Command, con *repl.Console) error {
 
 func ListPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 	listenerID, _ := cmd.Flags().GetString("listener")
-	pipelines, err := con.LisRpc.ListPipelines(context.Background(), &clientpb.ListenerName{
+	pipelines, err := con.Rpc.ListPipelines(context.Background(), &clientpb.ListenerName{
 		Name: listenerID,
 	})
 	if err != nil {
@@ -112,7 +112,7 @@ func ListPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 
 func StartPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 	name := cmd.Flags().Arg(0)
-	_, err := con.LisRpc.StartPipeline(context.Background(), &clientpb.CtrlPipeline{
+	_, err := con.Rpc.StartPipeline(context.Background(), &clientpb.CtrlPipeline{
 		Name: name,
 	})
 	if err != nil {
@@ -123,7 +123,7 @@ func StartPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 
 func StopPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 	name := cmd.Flags().Arg(0)
-	_, err := con.LisRpc.StopPipeline(context.Background(), &clientpb.CtrlPipeline{
+	_, err := con.Rpc.StopPipeline(context.Background(), &clientpb.CtrlPipeline{
 		Name: name,
 	})
 	if err != nil {

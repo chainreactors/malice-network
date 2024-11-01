@@ -40,6 +40,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"unicode"
@@ -156,6 +157,21 @@ func (plug *LuaPlugin) RegisterLuaBuiltin() error {
 	plug.registerLuaFunction("example", func(name string, example string) (bool, error) {
 		cmd := plug.CMDs.Find(name)
 		cmd.Example = example
+		return true, nil
+	})
+
+	plug.registerLuaFunction("opsec", func(name string, opsec int) (bool, error) {
+		cmd := plug.CMDs.Find(name)
+		if cmd.CMD == nil {
+			return false, fmt.Errorf("command %s not found", name)
+		}
+		if cmd.CMD.Annotations == nil {
+			cmd.CMD.Annotations = map[string]string{
+				"opsec": strconv.Itoa(opsec),
+			}
+		} else {
+			cmd.CMD.Annotations["opsec"] = strconv.Itoa(opsec)
+		}
 		return true, nil
 	})
 

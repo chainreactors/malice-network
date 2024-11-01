@@ -27,7 +27,7 @@ func NewTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 	encryption := common.ParseEncryptionFlags(cmd)
-	_, err = con.LisRpc.RegisterPipeline(context.Background(), &clientpb.Pipeline{
+	_, err = con.Rpc.RegisterPipeline(context.Background(), &clientpb.Pipeline{
 		Encryption: encryption,
 		Tls:        tls,
 		Name:       name,
@@ -45,7 +45,7 @@ func NewTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 	}
 
 	con.Log.Importantf("TCP Pipeline %s regsiter\n", name)
-	_, err = con.LisRpc.StartPipeline(context.Background(), &clientpb.CtrlPipeline{
+	_, err = con.Rpc.StartPipeline(context.Background(), &clientpb.CtrlPipeline{
 		Name:       name,
 		ListenerId: listenerID,
 	})

@@ -7,7 +7,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/client/rootpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
 	"github.com/chainreactors/malice-network/helper/utils/mtls"
 	"github.com/chainreactors/malice-network/server/internal/certutils"
@@ -23,7 +22,7 @@ func (rpc *Server) GetListeners(ctx context.Context, req *clientpb.Empty) (*clie
 	return core.Listeners.ToProtobuf(), nil
 }
 
-func (rpc *Server) RegisterListener(ctx context.Context, req *clientpb.RegisterListener) (*implantpb.Empty, error) {
+func (rpc *Server) RegisterListener(ctx context.Context, req *clientpb.RegisterListener) (*clientpb.Empty, error) {
 	p, ok := peer.FromContext(ctx)
 	if !ok {
 		return nil, fmt.Errorf("failed to get peer from context")
@@ -40,7 +39,7 @@ func (rpc *Server) RegisterListener(ctx context.Context, req *clientpb.RegisterL
 		Message:   fmt.Sprintf("Listener %s started at %s", req.Name, p.Addr.String()),
 	})
 	logs.Log.Importantf("[server] %s register listener: %s", p.Addr, req.Name)
-	return &implantpb.Empty{}, nil
+	return &clientpb.Empty{}, nil
 }
 
 func (rpc *Server) SpiteStream(stream listenerrpc.ListenerRPC_SpiteStreamServer) error {

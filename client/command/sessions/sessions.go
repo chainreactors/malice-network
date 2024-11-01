@@ -13,22 +13,21 @@ import (
 	"time"
 )
 
-func SessionsCmd(cmd *cobra.Command, con *repl.Console) {
+func SessionsCmd(cmd *cobra.Command, con *repl.Console) error {
 	err := con.UpdateSessions(true)
 	if err != nil {
-		con.Log.Errorf("%s", err)
-		return
+		return err
 	}
 	isAll, err := cmd.Flags().GetBool("all")
 	if err != nil {
-		con.Log.Errorf("%s", err)
-		return
+		return err
 	}
 	if 0 < len(con.Sessions) {
 		PrintSessions(con.Sessions, con, isAll)
 	} else {
 		con.Log.Info("No sessions")
 	}
+	return nil
 }
 
 func PrintSessions(sessions map[string]*core.Session, con *repl.Console, isAll bool) {

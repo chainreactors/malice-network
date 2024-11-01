@@ -12,14 +12,14 @@ import (
 func Commands(con *repl.Console) []*cobra.Command {
 	sessionsCmd := &cobra.Command{
 		Use:   consts.CommandSessions,
-		Short: "List sessions",
+		Short: "List and Choice sessions",
 		Long: `Display a table of active sessions on the server, 
 allowing you to navigate up and down to select a desired session. 
 Press the Enter key to use the selected session. 
 Use the -a or --all option to display all sessions, including those that have been disconnected.
 		`,
-		Run: func(cmd *cobra.Command, args []string) {
-			SessionsCmd(cmd, con)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return SessionsCmd(cmd, con)
 		},
 		Example: `~~~
 // List all active sessions
@@ -34,8 +34,18 @@ sessions -a
 		f.BoolP("all", "a", false, "show all sessions")
 	})
 
+	sessCmd := &cobra.Command{
+		Use:   consts.CommandSession,
+		Short: "Session manager",
+	}
+
+	sessNewCmd := &cobra.Command{
+		Use:   consts.CommandNewSession + " [session]",
+		Short: "new session",
+	}
+
 	noteCommand := &cobra.Command{
-		Use:   consts.CommandNote + " [note] [session]",
+		Use:   consts.CommandSessionNote + " [note] [session]",
 		Short: "add note to session",
 		Long: `Add a note to a session. If a note already exists, it will be updated. 
 When using an active session, only provide the new note.`,
@@ -60,7 +70,7 @@ note newNote
 	)
 
 	groupCommand := &cobra.Command{
-		Use:   consts.CommandGroup + " [group] [session]",
+		Use:   consts.CommandSessionGroup + " [group] [session]",
 		Short: "group session",
 		Long: `Add a session to a group. If the group does not exist, it will be created.
 When using an active session, only provide the group name.`,
@@ -99,6 +109,7 @@ del 08d6c05a21512a79a1dfeb9d2a8f262f
 
 	common.BindArgCompletions(removeCommand, nil, common.SessionIDCompleter(con))
 
+	sessCmd.AddCommand(sessNewCmd, noteCommand, groupCommand, removeCommand)
 	useCommand := &cobra.Command{
 		Use:   consts.CommandUse + " [session]",
 		Short: "Use session",
@@ -126,8 +137,8 @@ del 08d6c05a21512a79a1dfeb9d2a8f262f
 		Use:   consts.CommandObverse,
 		Short: "observe manager",
 		Long:  "Control observers to listen session in the background.",
-		Run: func(cmd *cobra.Command, args []string) {
-			ObserveCmd(cmd, con)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return ObserveCmd(cmd, con)
 		},
 		Example: `~~~
 // List all observers
@@ -169,9 +180,7 @@ observe -r
 
 	return []*cobra.Command{
 		sessionsCmd,
-		noteCommand,
-		groupCommand,
-		removeCommand,
+		sessCmd,
 		backCommand,
 		useCommand,
 		observeCmd,

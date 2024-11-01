@@ -59,7 +59,7 @@ func NewWebsiteCmd(cmd *cobra.Command, con *repl.Console) error {
 		WebName: name,
 		Content: content,
 	})
-	resp, err := con.LisRpc.RegisterWebsite(context.Background(), &clientpb.Pipeline{
+	resp, err := con.Rpc.RegisterWebsite(context.Background(), &clientpb.Pipeline{
 		Name:       name,
 		ListenerId: listenerID,
 		Enable:     false,
@@ -82,11 +82,11 @@ func NewWebsiteCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 	webAsserts.GetAssets()[0].FileName = resp.ID
-	_, err = con.LisRpc.UploadWebsite(context.Background(), webAsserts)
+	_, err = con.Rpc.UploadWebsite(context.Background(), webAsserts)
 	if err != nil {
 		return err
 	}
-	_, err = con.LisRpc.StartWebsite(context.Background(), &clientpb.CtrlPipeline{
+	_, err = con.Rpc.StartWebsite(context.Background(), &clientpb.CtrlPipeline{
 		Name:       name,
 		ListenerId: listenerID,
 	})
@@ -100,7 +100,7 @@ func NewWebsiteCmd(cmd *cobra.Command, con *repl.Console) error {
 func StartWebsitePipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 	name := cmd.Flags().Arg(0)
 	listenerID, _ := cmd.Flags().GetString("listener")
-	_, err := con.LisRpc.StartWebsite(context.Background(), &clientpb.CtrlPipeline{
+	_, err := con.Rpc.StartWebsite(context.Background(), &clientpb.CtrlPipeline{
 		Name:       name,
 		ListenerId: listenerID,
 	})
@@ -113,7 +113,7 @@ func StartWebsitePipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 func StopWebsitePipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 	name := cmd.Flags().Arg(1)
 	listenerID, _ := cmd.Flags().GetString("listener")
-	_, err := con.LisRpc.StopWebsite(context.Background(), &clientpb.CtrlPipeline{
+	_, err := con.Rpc.StopWebsite(context.Background(), &clientpb.CtrlPipeline{
 		Name:       name,
 		ListenerId: listenerID,
 	})
@@ -125,7 +125,7 @@ func StopWebsitePipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 
 func ListWebsitesCmd(cmd *cobra.Command, con *repl.Console) error {
 	listenerID := cmd.Flags().Arg(0)
-	websites, err := con.LisRpc.ListWebsites(context.Background(), &clientpb.ListenerName{
+	websites, err := con.Rpc.ListWebsites(context.Background(), &clientpb.ListenerName{
 		Name: listenerID,
 	})
 	if err != nil {
