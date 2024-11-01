@@ -20,170 +20,18 @@ import (
 // Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
-// ImplantRPCClient is the client API for ImplantRPC service.
-//
-// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type ImplantRPCClient interface {
-	Register(ctx context.Context, in *clientpb.RegisterSession, opts ...grpc.CallOption) (*implantpb.Empty, error)
-	SysInfo(ctx context.Context, in *implantpb.SysInfo, opts ...grpc.CallOption) (*implantpb.Empty, error)
-	Ping(ctx context.Context, in *implantpb.Ping, opts ...grpc.CallOption) (*implantpb.Empty, error)
-}
-
-type implantRPCClient struct {
-	cc grpc.ClientConnInterface
-}
-
-func NewImplantRPCClient(cc grpc.ClientConnInterface) ImplantRPCClient {
-	return &implantRPCClient{cc}
-}
-
-func (c *implantRPCClient) Register(ctx context.Context, in *clientpb.RegisterSession, opts ...grpc.CallOption) (*implantpb.Empty, error) {
-	out := new(implantpb.Empty)
-	err := c.cc.Invoke(ctx, "/listenerrpc.ImplantRPC/Register", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *implantRPCClient) SysInfo(ctx context.Context, in *implantpb.SysInfo, opts ...grpc.CallOption) (*implantpb.Empty, error) {
-	out := new(implantpb.Empty)
-	err := c.cc.Invoke(ctx, "/listenerrpc.ImplantRPC/SysInfo", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *implantRPCClient) Ping(ctx context.Context, in *implantpb.Ping, opts ...grpc.CallOption) (*implantpb.Empty, error) {
-	out := new(implantpb.Empty)
-	err := c.cc.Invoke(ctx, "/listenerrpc.ImplantRPC/Ping", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-// ImplantRPCServer is the server API for ImplantRPC service.
-// All implementations must embed UnimplementedImplantRPCServer
-// for forward compatibility
-type ImplantRPCServer interface {
-	Register(context.Context, *clientpb.RegisterSession) (*implantpb.Empty, error)
-	SysInfo(context.Context, *implantpb.SysInfo) (*implantpb.Empty, error)
-	Ping(context.Context, *implantpb.Ping) (*implantpb.Empty, error)
-	mustEmbedUnimplementedImplantRPCServer()
-}
-
-// UnimplementedImplantRPCServer must be embedded to have forward compatible implementations.
-type UnimplementedImplantRPCServer struct {
-}
-
-func (UnimplementedImplantRPCServer) Register(context.Context, *clientpb.RegisterSession) (*implantpb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Register not implemented")
-}
-func (UnimplementedImplantRPCServer) SysInfo(context.Context, *implantpb.SysInfo) (*implantpb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SysInfo not implemented")
-}
-func (UnimplementedImplantRPCServer) Ping(context.Context, *implantpb.Ping) (*implantpb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Ping not implemented")
-}
-func (UnimplementedImplantRPCServer) mustEmbedUnimplementedImplantRPCServer() {}
-
-// UnsafeImplantRPCServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to ImplantRPCServer will
-// result in compilation errors.
-type UnsafeImplantRPCServer interface {
-	mustEmbedUnimplementedImplantRPCServer()
-}
-
-func RegisterImplantRPCServer(s grpc.ServiceRegistrar, srv ImplantRPCServer) {
-	s.RegisterService(&ImplantRPC_ServiceDesc, srv)
-}
-
-func _ImplantRPC_Register_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(clientpb.RegisterSession)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ImplantRPCServer).Register(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/listenerrpc.ImplantRPC/Register",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ImplantRPCServer).Register(ctx, req.(*clientpb.RegisterSession))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _ImplantRPC_SysInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(implantpb.SysInfo)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ImplantRPCServer).SysInfo(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/listenerrpc.ImplantRPC/SysInfo",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ImplantRPCServer).SysInfo(ctx, req.(*implantpb.SysInfo))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _ImplantRPC_Ping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(implantpb.Ping)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ImplantRPCServer).Ping(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/listenerrpc.ImplantRPC/Ping",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ImplantRPCServer).Ping(ctx, req.(*implantpb.Ping))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-// ImplantRPC_ServiceDesc is the grpc.ServiceDesc for ImplantRPC service.
-// It's only intended for direct use with grpc.RegisterService,
-// and not to be introspected or modified (even as a copy)
-var ImplantRPC_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "listenerrpc.ImplantRPC",
-	HandlerType: (*ImplantRPCServer)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "Register",
-			Handler:    _ImplantRPC_Register_Handler,
-		},
-		{
-			MethodName: "SysInfo",
-			Handler:    _ImplantRPC_SysInfo_Handler,
-		},
-		{
-			MethodName: "Ping",
-			Handler:    _ImplantRPC_Ping_Handler,
-		},
-	},
-	Streams:  []grpc.StreamDesc{},
-	Metadata: "services/listenerrpc/service.proto",
-}
-
 // ListenerRPCClient is the client API for ListenerRPC service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ListenerRPCClient interface {
-	RegisterListener(ctx context.Context, in *clientpb.RegisterListener, opts ...grpc.CallOption) (*implantpb.Empty, error)
-	RegisterPipeline(ctx context.Context, in *clientpb.Pipeline, opts ...grpc.CallOption) (*implantpb.Empty, error)
+	// implant
+	// implant
+	Register(ctx context.Context, in *clientpb.RegisterSession, opts ...grpc.CallOption) (*clientpb.Empty, error)
+	SysInfo(ctx context.Context, in *implantpb.SysInfo, opts ...grpc.CallOption) (*clientpb.Empty, error)
+	Ping(ctx context.Context, in *implantpb.Ping, opts ...grpc.CallOption) (*clientpb.Empty, error)
+	// pipeline
+	RegisterListener(ctx context.Context, in *clientpb.RegisterListener, opts ...grpc.CallOption) (*clientpb.Empty, error)
+	RegisterPipeline(ctx context.Context, in *clientpb.Pipeline, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	RegisterWebsite(ctx context.Context, in *clientpb.Pipeline, opts ...grpc.CallOption) (*clientpb.WebsiteResponse, error)
 	StartPipeline(ctx context.Context, in *clientpb.CtrlPipeline, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	StopPipeline(ctx context.Context, in *clientpb.CtrlPipeline, opts ...grpc.CallOption) (*clientpb.Empty, error)
@@ -205,8 +53,35 @@ func NewListenerRPCClient(cc grpc.ClientConnInterface) ListenerRPCClient {
 	return &listenerRPCClient{cc}
 }
 
-func (c *listenerRPCClient) RegisterListener(ctx context.Context, in *clientpb.RegisterListener, opts ...grpc.CallOption) (*implantpb.Empty, error) {
-	out := new(implantpb.Empty)
+func (c *listenerRPCClient) Register(ctx context.Context, in *clientpb.RegisterSession, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+	out := new(clientpb.Empty)
+	err := c.cc.Invoke(ctx, "/listenerrpc.ListenerRPC/Register", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *listenerRPCClient) SysInfo(ctx context.Context, in *implantpb.SysInfo, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+	out := new(clientpb.Empty)
+	err := c.cc.Invoke(ctx, "/listenerrpc.ListenerRPC/SysInfo", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *listenerRPCClient) Ping(ctx context.Context, in *implantpb.Ping, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+	out := new(clientpb.Empty)
+	err := c.cc.Invoke(ctx, "/listenerrpc.ListenerRPC/Ping", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *listenerRPCClient) RegisterListener(ctx context.Context, in *clientpb.RegisterListener, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+	out := new(clientpb.Empty)
 	err := c.cc.Invoke(ctx, "/listenerrpc.ListenerRPC/RegisterListener", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -214,8 +89,8 @@ func (c *listenerRPCClient) RegisterListener(ctx context.Context, in *clientpb.R
 	return out, nil
 }
 
-func (c *listenerRPCClient) RegisterPipeline(ctx context.Context, in *clientpb.Pipeline, opts ...grpc.CallOption) (*implantpb.Empty, error) {
-	out := new(implantpb.Empty)
+func (c *listenerRPCClient) RegisterPipeline(ctx context.Context, in *clientpb.Pipeline, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+	out := new(clientpb.Empty)
 	err := c.cc.Invoke(ctx, "/listenerrpc.ListenerRPC/RegisterPipeline", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -361,8 +236,14 @@ func (x *listenerRPCJobStreamClient) Recv() (*clientpb.JobCtrl, error) {
 // All implementations must embed UnimplementedListenerRPCServer
 // for forward compatibility
 type ListenerRPCServer interface {
-	RegisterListener(context.Context, *clientpb.RegisterListener) (*implantpb.Empty, error)
-	RegisterPipeline(context.Context, *clientpb.Pipeline) (*implantpb.Empty, error)
+	// implant
+	// implant
+	Register(context.Context, *clientpb.RegisterSession) (*clientpb.Empty, error)
+	SysInfo(context.Context, *implantpb.SysInfo) (*clientpb.Empty, error)
+	Ping(context.Context, *implantpb.Ping) (*clientpb.Empty, error)
+	// pipeline
+	RegisterListener(context.Context, *clientpb.RegisterListener) (*clientpb.Empty, error)
+	RegisterPipeline(context.Context, *clientpb.Pipeline) (*clientpb.Empty, error)
 	RegisterWebsite(context.Context, *clientpb.Pipeline) (*clientpb.WebsiteResponse, error)
 	StartPipeline(context.Context, *clientpb.CtrlPipeline) (*clientpb.Empty, error)
 	StopPipeline(context.Context, *clientpb.CtrlPipeline) (*clientpb.Empty, error)
@@ -381,10 +262,19 @@ type ListenerRPCServer interface {
 type UnimplementedListenerRPCServer struct {
 }
 
-func (UnimplementedListenerRPCServer) RegisterListener(context.Context, *clientpb.RegisterListener) (*implantpb.Empty, error) {
+func (UnimplementedListenerRPCServer) Register(context.Context, *clientpb.RegisterSession) (*clientpb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Register not implemented")
+}
+func (UnimplementedListenerRPCServer) SysInfo(context.Context, *implantpb.SysInfo) (*clientpb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SysInfo not implemented")
+}
+func (UnimplementedListenerRPCServer) Ping(context.Context, *implantpb.Ping) (*clientpb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Ping not implemented")
+}
+func (UnimplementedListenerRPCServer) RegisterListener(context.Context, *clientpb.RegisterListener) (*clientpb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RegisterListener not implemented")
 }
-func (UnimplementedListenerRPCServer) RegisterPipeline(context.Context, *clientpb.Pipeline) (*implantpb.Empty, error) {
+func (UnimplementedListenerRPCServer) RegisterPipeline(context.Context, *clientpb.Pipeline) (*clientpb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RegisterPipeline not implemented")
 }
 func (UnimplementedListenerRPCServer) RegisterWebsite(context.Context, *clientpb.Pipeline) (*clientpb.WebsiteResponse, error) {
@@ -428,6 +318,60 @@ type UnsafeListenerRPCServer interface {
 
 func RegisterListenerRPCServer(s grpc.ServiceRegistrar, srv ListenerRPCServer) {
 	s.RegisterService(&ListenerRPC_ServiceDesc, srv)
+}
+
+func _ListenerRPC_Register_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(clientpb.RegisterSession)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ListenerRPCServer).Register(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/listenerrpc.ListenerRPC/Register",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ListenerRPCServer).Register(ctx, req.(*clientpb.RegisterSession))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ListenerRPC_SysInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(implantpb.SysInfo)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ListenerRPCServer).SysInfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/listenerrpc.ListenerRPC/SysInfo",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ListenerRPCServer).SysInfo(ctx, req.(*implantpb.SysInfo))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ListenerRPC_Ping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(implantpb.Ping)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ListenerRPCServer).Ping(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/listenerrpc.ListenerRPC/Ping",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ListenerRPCServer).Ping(ctx, req.(*implantpb.Ping))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _ListenerRPC_RegisterListener_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -669,6 +613,18 @@ var ListenerRPC_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "listenerrpc.ListenerRPC",
 	HandlerType: (*ListenerRPCServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "Register",
+			Handler:    _ListenerRPC_Register_Handler,
+		},
+		{
+			MethodName: "SysInfo",
+			Handler:    _ListenerRPC_SysInfo_Handler,
+		},
+		{
+			MethodName: "Ping",
+			Handler:    _ListenerRPC_Ping_Handler,
+		},
 		{
 			MethodName: "RegisterListener",
 			Handler:    _ListenerRPC_RegisterListener_Handler,

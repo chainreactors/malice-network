@@ -6,14 +6,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func ObserveCmd(cmd *cobra.Command, con *repl.Console) {
+func ObserveCmd(cmd *cobra.Command, con *repl.Console) error {
 	var session *core.Session
 	isList, _ := cmd.Flags().GetBool("list")
 	if isList {
 		for i, ob := range con.Observers {
 			con.Log.Infof("%s: %s", i, ob.SessionId())
 		}
-		return
+		return nil
 	}
 
 	idArg := cmd.Flags().Args()
@@ -26,7 +26,7 @@ func ObserveCmd(cmd *cobra.Command, con *repl.Console) {
 				con.Log.Infof("%d: %s", i, ob.SessionId())
 				i++
 			}
-			return
+			return nil
 		}
 	}
 	for _, sid := range idArg {
@@ -34,7 +34,7 @@ func ObserveCmd(cmd *cobra.Command, con *repl.Console) {
 
 		if session == nil {
 			con.Log.Warn(repl.ErrNotFoundSession.Error())
-			return
+			return nil
 		}
 		isRemove, _ := cmd.Flags().GetBool("remove")
 		if isRemove {
@@ -43,4 +43,5 @@ func ObserveCmd(cmd *cobra.Command, con *repl.Console) {
 			con.AddObserver(session)
 		}
 	}
+	return nil
 }

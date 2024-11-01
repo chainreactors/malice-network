@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
@@ -13,7 +12,7 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/core"
 )
 
-func (rpc *Server) RegisterPipeline(ctx context.Context, req *clientpb.Pipeline) (*implantpb.Empty, error) {
+func (rpc *Server) RegisterPipeline(ctx context.Context, req *clientpb.Pipeline) (*clientpb.Empty, error) {
 	pipelineModel := models.ToPipelineModel(req)
 	var err error
 	if pipelineModel.Enable && pipelineModel.Tls.Cert == "" && pipelineModel.Tls.Key == "" {
@@ -26,7 +25,7 @@ func (rpc *Server) RegisterPipeline(ctx context.Context, req *clientpb.Pipeline)
 	if err != nil {
 		return nil, err
 	}
-	return &implantpb.Empty{}, nil
+	return &clientpb.Empty{}, nil
 }
 
 func (rpc *Server) ListPipelines(ctx context.Context, req *clientpb.ListenerName) (*clientpb.Pipelines, error) {

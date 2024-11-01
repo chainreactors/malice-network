@@ -15,7 +15,7 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 )
 
-func (rpc *Server) Register(ctx context.Context, req *clientpb.RegisterSession) (*implantpb.Empty, error) {
+func (rpc *Server) Register(ctx context.Context, req *clientpb.RegisterSession) (*clientpb.Empty, error) {
 	sess, success := core.Sessions.Get(req.SessionId)
 	if success {
 		logs.Log.Infof("alive session %s re-register", sess.ID)
@@ -24,17 +24,17 @@ func (rpc *Server) Register(ctx context.Context, req *clientpb.RegisterSession) 
 		if err != nil {
 			logs.Log.Errorf("update session %s info failed in db, %s", sess.ID, err.Error())
 		}
-		return &implantpb.Empty{}, nil
+		return &clientpb.Empty{}, nil
 	}
 	_, err := db.FindSession(req.SessionId)
 	sess = core.NewSession(req)
 	if err != nil && !errors.Is(err, db.ErrRecordNotFound) {
-		return &implantpb.Empty{}, err
+		return &clientpb.Empty{}, err
 	} else if errors.Is(err, db.ErrRecordNotFound) {
 		dbSession := db.Session()
 		d := dbSession.Create(models.ConvertToSessionDB(sess))
 		if d.Error != nil {
-			return &implantpb.Empty{}, err
+			return &clientpb.Empty{}, err
 		} else {
 			core.EventBroker.Publish(core.Event{
 				EventType: consts.EventSession,
@@ -50,7 +50,7 @@ func (rpc *Server) Register(ctx context.Context, req *clientpb.RegisterSession) 
 		_, taskID, err := db.FindTaskAndMaxTasksID(req.SessionId)
 		if err != nil {
 			logs.Log.Errorf("cannot find max task id , %s ", err.Error())
-			return &implantpb.Empty{}, nil
+			return &clientpb.Empty{}, nil
 		}
 		sess.SetLastTaskId(uint32(taskID))
 		core.EventBroker.Publish(core.Event{
@@ -63,10 +63,10 @@ func (rpc *Server) Register(ctx context.Context, req *clientpb.RegisterSession) 
 	}
 	core.Sessions.Add(sess)
 	sess.Load()
-	return &implantpb.Empty{}, nil
+	return &clientpb.Empty{}, nil
 }
 
-func (rpc *Server) SysInfo(ctx context.Context, req *implantpb.SysInfo) (*implantpb.Empty, error) {
+func (rpc *Server) SysInfo(ctx context.Context, req *implantpb.SysInfo) (*clientpb.Empty, error) {
 	id, err := getSessionID(ctx)
 	if err != nil {
 		return nil, err
@@ -76,10 +76,10 @@ func (rpc *Server) SysInfo(ctx context.Context, req *implantpb.SysInfo) (*implan
 		return nil, nil
 	}
 	sess.UpdateSysInfo(req)
-	return &implantpb.Empty{}, nil
+	return &clientpb.Empty{}, nil
 }
 
-func (rpc *Server) Ping(ctx context.Context, req *implantpb.Ping) (*implantpb.Empty, error) {
+func (rpc *Server) Ping(ctx context.Context, req *implantpb.Ping) (*clientpb.Empty, error) {
 	id, err := getSessionID(ctx)
 	if err != nil {
 		return nil, err
@@ -89,7 +89,7 @@ func (rpc *Server) Ping(ctx context.Context, req *implantpb.Ping) (*implantpb.Em
 		if err != nil && !errors.Is(err, db.ErrRecordNotFound) {
 			return nil, err
 		} else if errors.Is(err, db.ErrRecordNotFound) {
-			return &implantpb.Empty{}, nil
+			return &clientpb.Empty{}, nil
 		}
 		newSess := core.NewSession(sess)
 		_, taskID, err := db.FindTaskAndMaxTasksID(id)
@@ -109,7 +109,7 @@ func (rpc *Server) Ping(ctx context.Context, req *implantpb.Ping) (*implantpb.Em
 		return nil, err
 	}
 
-	return &implantpb.Empty{}, nil
+	return &clientpb.Empty{}, nil
 }
 
 // sleep

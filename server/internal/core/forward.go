@@ -67,7 +67,6 @@ func NewForward(conn *grpc.ClientConn, pipeline Pipeline) (*Forward, error) {
 	var err error
 	forward := &Forward{
 		implantC:    make(chan *Message, 255),
-		ImplantRpc:  listenerrpc.NewImplantRPCClient(conn),
 		ListenerRpc: listenerrpc.NewListenerRPCClient(conn),
 		Pipeline:    pipeline,
 		ctx:         context.Background(),
@@ -93,7 +92,6 @@ type Forward struct {
 	Stream   listenerrpc.ListenerRPC_SpiteStreamClient
 	implantC chan *Message // data from implant
 
-	ImplantRpc  listenerrpc.ImplantRPCClient
 	ListenerRpc listenerrpc.ListenerRPCClient
 }
 
@@ -112,7 +110,7 @@ func (f *Forward) Handler() {
 		for _, spite := range msg.Spites.Spites {
 			switch spite.Body.(type) {
 			case *implantpb.Spite_Register:
-				_, err := f.ImplantRpc.Register(f.ctx, &clientpb.RegisterSession{
+				_, err := f.ListenerRpc.Register(f.ctx, &clientpb.RegisterSession{
 					SessionId:    msg.SessionID,
 					ListenerId:   f.ID(),
 					RegisterData: spite.GetRegister(),
@@ -124,7 +122,7 @@ func (f *Forward) Handler() {
 					continue
 				}
 			case *implantpb.Spite_Ping:
-				_, err := f.ImplantRpc.Ping(metadata.NewOutgoingContext(context.Background(), metadata.Pairs(
+				_, err := f.ListenerRpc.Ping(metadata.NewOutgoingContext(context.Background(), metadata.Pairs(
 					"session_id", msg.SessionID),
 				), &implantpb.Ping{})
 				if err != nil {

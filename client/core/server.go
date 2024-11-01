@@ -24,8 +24,10 @@ type TaskCallback func(resp *implantpb.Spite)
 func InitServerStatus(conn *grpc.ClientConn, config *mtls.ClientConfig) (*ServerStatus, error) {
 	var err error
 	s := &ServerStatus{
-		Rpc:             clientrpc.NewMaliceRPCClient(conn),
-		LisRpc:          listenerrpc.NewListenerRPCClient(conn),
+		Rpc: &Rpc{
+			MaliceRPCClient:   clientrpc.NewMaliceRPCClient(conn),
+			ListenerRPCClient: listenerrpc.NewListenerRPCClient(conn),
+		},
 		ActiveTarget:    &ActiveTarget{},
 		Sessions:        make(map[string]*Session),
 		Observers:       map[string]*Observer{},
@@ -70,9 +72,13 @@ func InitServerStatus(conn *grpc.ClientConn, config *mtls.ClientConfig) (*Server
 	return s, nil
 }
 
+type Rpc struct {
+	clientrpc.MaliceRPCClient
+	listenerrpc.ListenerRPCClient
+}
+
 type ServerStatus struct {
-	Rpc    clientrpc.MaliceRPCClient
-	LisRpc listenerrpc.ListenerRPCClient
+	*Rpc
 	Info   *clientpb.Basic
 	Client *clientpb.Client
 	*ActiveTarget

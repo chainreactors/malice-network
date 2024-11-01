@@ -82,7 +82,6 @@ func StartClientListener(address string) (*grpc.Server, net.Listener, error) {
 		authInterceptor(rpcLog))...)
 	clientrpc.RegisterMaliceRPCServer(grpcServer, NewServer())
 	clientrpc.RegisterRootRPCServer(grpcServer, NewServer())
-	listenerrpc.RegisterImplantRPCServer(grpcServer, NewServer())
 	listenerrpc.RegisterListenerRPCServer(grpcServer, NewServer())
 	go func() {
 		panicked := true
@@ -128,7 +127,6 @@ type Server struct {
 	// Magical methods to break backwards compatibility
 	// Here be dragons: https://github.com/grpc/grpc-go/issues/3794
 	clientrpc.UnimplementedMaliceRPCServer
-	listenerrpc.UnimplementedImplantRPCServer
 	listenerrpc.UnimplementedListenerRPCServer
 	clientrpc.UnimplementedRootRPCServer
 }
