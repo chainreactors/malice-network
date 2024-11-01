@@ -26,12 +26,9 @@ func NewTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
+	encryption := common.ParseEncryptionFlags(cmd)
 	_, err = con.LisRpc.RegisterPipeline(context.Background(), &clientpb.Pipeline{
-		Encryption: &clientpb.Encryption{
-			Enable: false,
-			Type:   "",
-			Key:    "",
-		},
+		Encryption: encryption,
 		Tls:        tls,
 		Name:       name,
 		ListenerId: listenerID,
