@@ -63,6 +63,12 @@ func TlsCertFlagSet(f *pflag.FlagSet) {
 	f.BoolP("tls", "t", false, "enable tls")
 }
 
+func EncryptionFlagSet(f *pflag.FlagSet) {
+	f.String("encryption-type", "", "encryption type")
+	f.String("encryption-key", "", "encryption key")
+	f.Bool("encryption-enable", false, "whether to enable encryption ")
+}
+
 func PipelineFlagSet(f *pflag.FlagSet) {
 	f.StringP("listener", "l", "", "listener id")
 	f.String("host", "0.0.0.0", "pipeline host")
@@ -97,6 +103,17 @@ func ParseTLSFlags(cmd *cobra.Command) (*clientpb.TLS, error) {
 		Cert:   cert,
 		Key:    key,
 	}, nil
+}
+
+func ParseEncryptionFlags(cmd *cobra.Command) *clientpb.Encryption {
+	encryptionType, _ := cmd.Flags().GetString("encryption-type")
+	encryptionKey, _ := cmd.Flags().GetString("encryption-key")
+	enable, _ := cmd.Flags().GetBool("encryption-enable")
+	return &clientpb.Encryption{
+		Enable: enable,
+		Type:   encryptionType,
+		Key:    encryptionKey,
+	}
 }
 
 func GenerateFlagSet(f *pflag.FlagSet) {

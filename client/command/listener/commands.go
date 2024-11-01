@@ -72,7 +72,7 @@ tcp register listener --tls --cert_path /path/to/cert --key_path /path/to/key
 ~~~`,
 	}
 
-	common.BindFlag(newTCPPipelineCmd, common.TlsCertFlagSet, common.PipelineFlagSet)
+	common.BindFlag(newTCPPipelineCmd, common.TlsCertFlagSet, common.PipelineFlagSet, common.EncryptionFlagSet)
 
 	common.BindFlagCompletions(newTCPPipelineCmd, func(comp carapace.ActionMap) {
 		comp["listener"] = common.ListenerIDCompleter(con)
@@ -224,9 +224,10 @@ website register name /webtest /path/to/file --tls --cert /path/to/cert --key /p
 		carapace.ActionValues().Usage("website router root path"),
 		carapace.ActionFiles().Usage("website content path"))
 
-	common.BindFlag(websiteRegisterCmd, common.TlsCertFlagSet, common.PipelineFlagSet, func(f *pflag.FlagSet) {
-		f.String("content_type", "", "website content type")
-	})
+	common.BindFlag(websiteRegisterCmd, common.TlsCertFlagSet, common.PipelineFlagSet, common.EncryptionFlagSet,
+		func(f *pflag.FlagSet) {
+			f.String("content_type", "", "website content type")
+		})
 
 	common.BindFlagCompletions(websiteRegisterCmd, func(comp carapace.ActionMap) {
 		comp["listener"] = common.ListenerIDCompleter(con)

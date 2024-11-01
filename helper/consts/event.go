@@ -26,6 +26,7 @@ const (
 	CtrlSessionLog      = "session_log"
 	CtrlSessionTask     = "session_task"
 	CtrlSessionError    = "session_finish"
+	CtrlSessionStop     = "session_stop"
 )
 
 // ctrl status

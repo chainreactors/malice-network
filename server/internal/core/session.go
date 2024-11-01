@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -22,9 +23,7 @@ import (
 
 var (
 	// Sessions - Manages implant connections
-	Sessions = &sessions{
-		active: &sync.Map{},
-	}
+	Sessions         = NewSessions()
 	ExtensionModules = []string{consts.ModuleExecuteBof, consts.ModuleExecuteDll}
 	// ErrUnknownMessageType - Returned if the implant did not understand the message for
 	//                         example when the command is not supported on the platform
@@ -33,6 +32,34 @@ var (
 	// ErrImplantSendTimeout - The implant did not respond prior to timeout deadline
 	ErrImplantSendTimeout = errors.New("implant timeout")
 )
+
+func NewSessions() *sessions {
+	newSessions := &sessions{
+		active: &sync.Map{},
+	}
+	ticker := NewTicker()
+	_, err := ticker.Start(60, func() {
+		for _, session := range newSessions.All() {
+			currentTime := time.Now()
+			timeDiff := currentTime.Unix() - int64(session.Timer.LastCheckin)
+			isAlive := timeDiff <= int64(1+session.Timer.Interval)*3
+			if !isAlive {
+				newSessions.Remove(session.ID)
+				EventBroker.Publish(Event{
+					EventType: consts.EventSession,
+					Op:        consts.CtrlSessionStop,
+					Session:   session.ToProtobuf(),
+					IsNotify:  true,
+					Message:   fmt.Sprintf("session %s from %s at %s has stoped ", session.ID, session.Target, session.PipelineID),
+				})
+			}
+		}
+	})
+	if err != nil {
+		logs.Log.Errorf("cannot start ticker, %s", err.Error())
+	}
+	return newSessions
+}
 
 func NewSessionContext(req *clientpb.RegisterSession) *SessionContext {
 	return &SessionContext{
@@ -74,6 +101,7 @@ func NewSession(req *clientpb.RegisterSession) *Session {
 		SessionContext: NewSessionContext(req),
 		responses:      &sync.Map{},
 	}
+
 	logDir := filepath.Join(configs.LogPath, sess.ID)
 	err := os.MkdirAll(logDir, os.ModePerm)
 	if err != nil {
@@ -146,7 +174,7 @@ func (s *Session) TaskLog(task *Task, spite []byte) error {
 func (s *Session) ToProtobuf() *clientpb.Session {
 	currentTime := time.Now()
 	timeDiff := currentTime.Unix() - int64(s.Timer.LastCheckin)
-	isAlive := timeDiff <= int64(s.Timer.Interval)*3
+	isAlive := timeDiff <= int64(1+s.Timer.Interval)*3
 	return &clientpb.Session{
 		Type:        s.Type,
 		SessionId:   s.ID,
