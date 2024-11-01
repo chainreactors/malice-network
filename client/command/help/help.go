@@ -10,8 +10,6 @@ import (
 
 func SetCustomHelpTemplate() (*template.Template, error) {
 	funcMap := TemplateFuncs
-	funcMap["RenderOpsec"] = renderOpsec
-	funcMap["RenderMarkdown"] = renderMarkdownFunc
 
 	customTemplate := `{{RenderMarkdown "## Description:"}}
 {{RenderOpsec (or .Annotations.opsec "0.0") .Name .NamePadding}}

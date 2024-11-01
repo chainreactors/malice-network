@@ -26,7 +26,6 @@ func UsageFunc(cmd *cobra.Command) error {
 	return err
 }
 
-// FormatLongHelp
 func FormatLongHelp(long string) string {
 	content := removeImages(long)
 
@@ -35,8 +34,6 @@ func FormatLongHelp(long string) string {
 
 func SetCustomUsageTemplate() (*template.Template, error) {
 	funcMap := TemplateFuncs
-	funcMap["RenderOpsec"] = renderOpsec
-	funcMap["RenderMarkdown"] = renderMarkdownFunc
 
 	customTemplate := `{{RenderMarkdown "## Usage:"}}{{if .Runnable}}
   {{RenderMarkdown .UseLine}}{{end}}{{if .HasAvailableSubCommands}}
@@ -51,8 +48,8 @@ func SetCustomUsageTemplate() (*template.Template, error) {
 {{RenderMarkdown "## Available Commands:"}}{{range $cmds}}{{if (or .IsAvailableCommand (eq .Name "help"))}}
 {{RenderOpsec (or .Annotations.opsec "0.0") .Name .NamePadding}} {{.Short}}{{end}}{{end}}{{else}}{{range $group := .Groups}}
 
-{{.Title}}{{range $cmds}}{{if (and (eq .GroupID $group.ID) (or .IsAvailableCommand (eq .Name "help")))}}
-{{RenderOpsec (or .Annotations.opsec "0.0") .Name .NamePadding}} {{.Short}}{{end}}{{end}}{{end}}{{if not .AllChildCommandsHaveGroup}}
+{{RenderMarkdown (printf "### %s" .Title)}}{{range $cmds}}{{if (and (eq .GroupID $group.ID) (or .IsAvailableCommand (eq .Name "help")))}}
+    {{RenderOpsec (or .Annotations.opsec "0.0") .Name .NamePadding}} {{.Short}}{{end}}{{end}}{{end}}{{if not .AllChildCommandsHaveGroup}}
 
 {{RenderMarkdown "## Additional Commands:"}}{{range $cmds}}{{if (and (eq .GroupID "") (or .IsAvailableCommand (eq .Name "help")))}}
 {RenderOpsec (or .Annotations.opsec "0.0") .Name .NamePadding}} {{.Short}}{{end}}{{end}}{{end}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}
