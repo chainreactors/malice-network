@@ -12,6 +12,7 @@ import (
 	"github.com/chainreactors/malice-network/client/command/extension"
 	"github.com/chainreactors/malice-network/client/command/file"
 	"github.com/chainreactors/malice-network/client/command/filesystem"
+	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/command/mal"
 	"github.com/chainreactors/malice-network/client/command/modules"
 	"github.com/chainreactors/malice-network/client/command/privilege"
@@ -169,6 +170,9 @@ func BindImplantCommands(con *repl.Console) console.Commands {
 				continue
 			}
 		}
+		SetColoredUse(implant)
+		implant.SetUsageFunc(help.UsageFunc)
+		implant.SetHelpFunc(help.HelpFunc)
 		return implant
 	}
 	return implantCommands
