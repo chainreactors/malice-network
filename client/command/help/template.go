@@ -28,6 +28,8 @@ var TemplateFuncs = template.FuncMap{
 	"gt":                      Gt,
 	"eq":                      Eq,
 	"FlagUsages":              FlagUsages,
+	"RenderOpsec":             renderOpsec,
+	"RenderMarkdown":          renderMarkdownFunc,
 }
 
 var initializers []func()
