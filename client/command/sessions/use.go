@@ -9,23 +9,23 @@ import (
 
 func UseSessionCmd(cmd *cobra.Command, con *repl.Console) error {
 	var session *core.Session
-	if session = con.GetSession(cmd.Flags().Arg(0)); session == nil {
-		return repl.ErrNotFoundSession
+	sid := cmd.Flags().Arg(0)
+	var err error
+	if session = con.GetSession(sid); session == nil {
+		session, err = con.UpdateSession(sid)
+		if err != nil {
+			return err
+		}
 	}
-	session, err := con.UpdateSession(session.SessionId)
+
+	return Use(con, session)
+}
+
+func Use(con *repl.Console, sess *core.Session) error {
+	err := addon.RefreshAddonCommand(sess.Addons, con)
 	if err != nil {
 		return err
 	}
-
-	Use(con, session)
-	return nil
-}
-
-func Use(con *repl.Console, sess *core.Session) {
-	err := addon.RefreshAddonCommand(sess.Addons, con)
-	if err != nil {
-		core.Log.Errorf(err.Error())
-		return
-	}
 	con.SwitchImplant(sess)
+	return nil
 }

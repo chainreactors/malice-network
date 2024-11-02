@@ -33,10 +33,19 @@ func Commands(con *repl.Console) []*cobra.Command {
 		},
 	}
 
-	return []*cobra.Command{sleepCmd, suicideCmd}
+	pingCmd := &cobra.Command{
+		Use:   consts.ModulePing,
+		Short: "check if implant is alive",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return PingCmd(cmd, con)
+		},
+	}
+	return []*cobra.Command{sleepCmd, suicideCmd, pingCmd}
 }
 
 func Register(con *repl.Console) {
+	con.RegisterImplantFunc(consts.ModulePing, Ping, "", nil, common.ParseStatus, nil)
+
 	con.RegisterImplantFunc(consts.ModuleSleep,
 		Sleep,
 		"bsleep",
@@ -67,5 +76,7 @@ func Register(con *repl.Console) {
 		`suicide(active())`,
 		[]string{
 			"sess:special session",
-		}, []string{"task"})
+		},
+		[]string{"task"},
+	)
 }

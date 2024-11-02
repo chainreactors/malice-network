@@ -18,7 +18,7 @@ func groupCmd(cmd *cobra.Command, con *repl.Console) error {
 		sid = con.GetInteractive().Session.GetSessionId()
 	}
 
-	_, err := con.Rpc.BasicSessionOP(context.Background(), &clientpb.BasicUpdateSession{
+	_, err := con.Rpc.SessionManage(context.Background(), &clientpb.BasicUpdateSession{
 		SessionId: sid,
 		Op:        "group",
 		Arg:       group,

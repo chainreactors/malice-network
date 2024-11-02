@@ -372,3 +372,9 @@ func RandomInRange(min, max uint32) uint32 {
 	n, _ := rand.Int(rand.Reader, big.NewInt(int64(rangeSize)))
 	return uint32(n.Int64()) + min
 }
+
+func RandomBytes(size int) []byte {
+	buf := make([]byte, size)
+	rand.Read(buf)
+	return buf
+}

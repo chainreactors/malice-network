@@ -37,12 +37,10 @@ func PrintSessions(sessions map[string]*core.Session, con *repl.Console, isAll b
 	//groupColors := make(map[string]termenv.ANSIColor)
 	tableModel := tui.NewTable([]table.Column{
 		{Title: "ID", Width: 15},
-		{Title: "Group", Width: 7},
-		{Title: "Note", Width: 7},
-		{Title: "Transport", Width: 10},
+		{Title: "Group", Width: 10},
+		{Title: "Pipeline", Width: 10},
 		{Title: "Remote Address", Width: 15},
-		{Title: "Hostname", Width: 10},
-		{Title: "Username", Width: 10},
+		{Title: "Username", Width: 15},
 		{Title: "Operating System", Width: 20},
 		{Title: "Last Message", Width: 15},
 		{Title: "Health", Width: 15},
@@ -58,18 +56,15 @@ func PrintSessions(sessions map[string]*core.Session, con *repl.Console, isAll b
 			SessionHealth = pterm.FgGreen.Sprint("[ALIVE]")
 		}
 		currentTime := time.Now()
-		lastCheckinTime := time.Unix(int64(session.Timer.LastCheckin), 0)
+		lastCheckinTime := time.Unix(int64(session.LastCheckin), 0)
 		timeDiff := currentTime.Sub(lastCheckinTime)
 		secondsDiff := uint64(timeDiff.Seconds())
-		username := strings.TrimPrefix(session.Os.Username, session.Os.Hostname+"\\")
 		row = table.Row{
 			session.SessionId,
-			session.GroupName,
-			session.Note,
-			"",
+			fmt.Sprintf("[%s]%s", session.GroupName, session.Note),
+			session.PipelineId,
 			session.Target,
-			session.Os.Hostname,
-			username,
+			fmt.Sprintf("%s/%s", session.Os.Hostname, session.Os.Username),
 			fmt.Sprintf("%s/%s", session.Os.Name, session.Os.Arch),
 			strconv.FormatUint(secondsDiff, 10) + "s",
 			SessionHealth,

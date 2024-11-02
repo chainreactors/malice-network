@@ -20,7 +20,7 @@ func noteCmd(cmd *cobra.Command, con *repl.Console) {
 	}
 
 	var err error
-	_, err = con.Rpc.BasicSessionOP(context.Background(), &clientpb.BasicUpdateSession{
+	_, err = con.Rpc.SessionManage(context.Background(), &clientpb.BasicUpdateSession{
 		SessionId: sid,
 		Op:        "note",
 		Arg:       name,

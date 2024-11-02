@@ -9,7 +9,7 @@ import (
 
 func removeCmd(cmd *cobra.Command, con *repl.Console) error {
 	id := cmd.Flags().Arg(0)
-	_, err := con.Rpc.BasicSessionOP(context.Background(), &clientpb.BasicUpdateSession{
+	_, err := con.Rpc.SessionManage(context.Background(), &clientpb.BasicUpdateSession{
 		SessionId: id,
 		Op:        "delete",
 	})

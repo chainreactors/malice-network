@@ -4,9 +4,12 @@ import (
 	"context"
 	"fmt"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/encoders/hash"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/utils/peek"
 	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/core"
+	"github.com/chainreactors/malice-network/server/internal/parser"
 	"google.golang.org/grpc"
 	"net"
 )
@@ -75,8 +78,8 @@ func (pipeline *TCPPipeline) Start() error {
 	core.Forwarders.Add(forward)
 	go func() {
 		// recv message from server and send to implant
+		defer logs.Log.Errorf("forwarder stream exit!!!")
 		for {
-			forward := core.Forwarders.Get(pipeline.ID())
 			msg, err := forward.Stream.Recv()
 			if err != nil {
 				return
@@ -134,7 +137,7 @@ func (pipeline *TCPPipeline) handleAccept(conn net.Conn) {
 		logs.Log.Debugf("wrap conn error: %s %v", conn.RemoteAddr(), err)
 		return
 	}
-	connect, err := core.Connections.NeedConnection(peekConn, pipeline.ID())
+	connect, err := pipeline.getConnection(peekConn)
 	if err != nil {
 		logs.Log.Debugf("peek read header error: %s %v", conn.RemoteAddr(), err)
 		return
@@ -148,5 +151,24 @@ func (pipeline *TCPPipeline) handleAccept(conn net.Conn) {
 			logs.Log.Debugf("handler error: %s", err.Error())
 			return
 		}
+	}
+}
+
+func (pipeline *TCPPipeline) getConnection(conn *peek.Conn) (*core.Connection, error) {
+	p, err := parser.NewParser(conn)
+	if err != nil {
+		return nil, err
+	}
+	sid, _, err := p.PeekHeader(conn)
+	if err != nil {
+		return nil, err
+	}
+
+	if newC := core.Connections.Get(hash.Md5Hash(sid)); newC != nil {
+		return newC, nil
+	} else {
+		newC := core.NewConnection(p, sid, pipeline.ID())
+		core.Connections.Add(newC)
+		return newC, nil
 	}
 }

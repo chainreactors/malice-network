@@ -17,23 +17,24 @@ import (
 	"strconv"
 )
 
-func (rpc *Server) GetSessions(ctx context.Context, _ *clientpb.Empty) (*clientpb.Sessions, error) {
-	sessions, err := db.FindAllSessions()
-	if err != nil {
-		return nil, err
-	}
-	return sessions, nil
-}
-
-func (rpc *Server) GetAlivedSessions(ctx context.Context, _ *clientpb.Empty) (*clientpb.Sessions, error) {
-	var sessions []*clientpb.Session
-	for _, session := range core.Sessions.All() {
-		sessionProto := session.ToProtobuf()
-		if sessionProto.IsAlive {
-			sessions = append(sessions, session.ToProtobuf())
+func (rpc *Server) GetSessions(ctx context.Context, req *clientpb.SessionRequest) (*clientpb.Sessions, error) {
+	var sessions *clientpb.Sessions
+	var err error
+	if req.All {
+		sessions, err = db.FindAllSessions()
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		sessions = &clientpb.Sessions{
+			Sessions: make([]*clientpb.Session, 0),
+		}
+		for _, session := range core.Sessions.All() {
+			sessions.Sessions = append(sessions.Sessions, session.ToProtobuf())
 		}
 	}
-	return &clientpb.Sessions{Sessions: sessions}, nil
+
+	return sessions, nil
 }
 
 func (rpc *Server) GetSession(ctx context.Context, req *clientpb.SessionRequest) (*clientpb.Session, error) {
@@ -50,7 +51,7 @@ func (rpc *Server) GetSession(ctx context.Context, req *clientpb.SessionRequest)
 	return session.ToProtobuf(), nil
 }
 
-func (rpc *Server) BasicSessionOP(ctx context.Context, req *clientpb.BasicUpdateSession) (*clientpb.Empty, error) {
+func (rpc *Server) SessionManage(ctx context.Context, req *clientpb.BasicUpdateSession) (*clientpb.Empty, error) {
 	switch req.Op {
 	case "delete":
 		core.Sessions.Remove(req.SessionId)
@@ -103,7 +104,7 @@ type taskFile struct {
 	Name   string
 }
 
-func (rpc *Server) GetSessionLog(ctx context.Context, req *clientpb.SessionLog) (*clientpb.TasksContext, error) {
+func (rpc *Server) GetSessionHistory(ctx context.Context, req *clientpb.SessionLog) (*clientpb.TasksContext, error) {
 	var taskFiles []taskFile
 	contexts := &clientpb.TasksContext{
 		Contexts: make([]*clientpb.TaskContext, 0),
@@ -183,4 +184,18 @@ func (rpc *Server) GetSessionLog(ctx context.Context, req *clientpb.SessionLog) 
 		})
 	}
 	return contexts, nil
+}
+
+func (rpc *Server) Ping(ctx context.Context, req *implantpb.Ping) (*clientpb.Task, error) {
+	greq, err := newGenericRequest(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	ch, err := rpc.GenericHandler(ctx, greq)
+	if err != nil {
+		return nil, err
+	}
+
+	go greq.HandlerResponse(ch, types.MsgPing)
+	return greq.Task.ToProtobuf(), nil
 }

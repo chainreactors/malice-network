@@ -15,9 +15,15 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 )
 
+func newSession(reg *clientpb.RegisterSession) (*core.Session, error) {
+	sess := core.NewSession(reg)
+	d := db.Session().Create(models.ConvertToSessionDB(sess))
+	return sess, d.Error
+}
+
 func (rpc *Server) Register(ctx context.Context, req *clientpb.RegisterSession) (*clientpb.Empty, error) {
-	sess, success := core.Sessions.Get(req.SessionId)
-	if success {
+	sess, ok := core.Sessions.Get(req.SessionId)
+	if ok {
 		logs.Log.Infof("alive session %s re-register", sess.ID)
 		sess.Update(req)
 		err := db.UpdateSessionInfo(sess)
@@ -26,26 +32,23 @@ func (rpc *Server) Register(ctx context.Context, req *clientpb.RegisterSession) 
 		}
 		return &clientpb.Empty{}, nil
 	}
-	_, err := db.FindSession(req.SessionId)
-	sess = core.NewSession(req)
+
+	// 如果内存中不存在, 则尝试从数据库中恢复
+	reqsess, err := db.FindSession(req.SessionId)
 	if err != nil && !errors.Is(err, db.ErrRecordNotFound) {
-		return &clientpb.Empty{}, err
+		return nil, err
 	} else if errors.Is(err, db.ErrRecordNotFound) {
-		dbSession := db.Session()
-		d := dbSession.Create(models.ConvertToSessionDB(sess))
-		if d.Error != nil {
-			return &clientpb.Empty{}, err
+		// new session and save to db
+		sess, err = newSession(req)
+		if err != nil {
+			return nil, err
 		} else {
-			core.EventBroker.Publish(core.Event{
-				EventType: consts.EventSession,
-				Op:        consts.CtrlSessionRegister,
-				Session:   sess.ToProtobuf(),
-				IsNotify:  true,
-				Message:   fmt.Sprintf("session %s from %s start at %s", sess.ID, sess.Target, sess.PipelineID),
-			})
+			sess.Publish(consts.CtrlSessionRegister, fmt.Sprintf("session %s from %s start at %s", sess.ID, sess.Target, sess.PipelineID))
 			logs.Log.Importantf("init new session %s from %s", sess.ID, sess.PipelineID)
 		}
 	} else {
+		// 数据库中已存在, update
+		sess = core.NewSession(reqsess)
 		logs.Log.Warnf("session %s re-register ", sess.ID)
 		_, taskID, err := db.FindTaskAndMaxTasksID(req.SessionId)
 		if err != nil {
@@ -53,13 +56,7 @@ func (rpc *Server) Register(ctx context.Context, req *clientpb.RegisterSession) 
 			return &clientpb.Empty{}, nil
 		}
 		sess.SetLastTaskId(uint32(taskID))
-		core.EventBroker.Publish(core.Event{
-			EventType: consts.EventSession,
-			Op:        consts.CtrlSessionRegister,
-			Session:   sess.ToProtobuf(),
-			IsNotify:  true,
-			Message:   fmt.Sprintf("session %s from %s re-register at %s", sess.ID, sess.Target, sess.PipelineID),
-		})
+		sess.Publish(consts.CtrlSessionReRegister, fmt.Sprintf("session %s from %s re-register at %s", sess.ID, sess.Target, sess.PipelineID))
 	}
 	core.Sessions.Add(sess)
 	sess.Load()
@@ -79,17 +76,15 @@ func (rpc *Server) SysInfo(ctx context.Context, req *implantpb.SysInfo) (*client
 	return &clientpb.Empty{}, nil
 }
 
-func (rpc *Server) Ping(ctx context.Context, req *implantpb.Ping) (*clientpb.Empty, error) {
+func (rpc *Server) Checkin(ctx context.Context, req *implantpb.Ping) (*clientpb.Empty, error) {
 	id, err := getSessionID(ctx)
 	if err != nil {
 		return nil, err
 	}
 	if s, ok := core.Sessions.Get(id); !ok {
 		sess, err := db.FindSession(id)
-		if err != nil && !errors.Is(err, db.ErrRecordNotFound) {
+		if err != nil {
 			return nil, err
-		} else if errors.Is(err, db.ErrRecordNotFound) {
-			return &clientpb.Empty{}, nil
 		}
 		newSess := core.NewSession(sess)
 		_, taskID, err := db.FindTaskAndMaxTasksID(id)
@@ -98,6 +93,7 @@ func (rpc *Server) Ping(ctx context.Context, req *implantpb.Ping) (*clientpb.Emp
 		}
 		newSess.SetLastTaskId(uint32(taskID))
 		core.Sessions.Add(newSess)
+		newSess.Publish(consts.CtrlSessionReborn, fmt.Sprintf("session %s from %s reborn at %s", newSess.ID, newSess.Target, newSess.PipelineID))
 		newSess.Load()
 		logs.Log.Debugf("recover session %s", id)
 	} else {
@@ -139,4 +135,16 @@ func (rpc *Server) Suicide(ctx context.Context, req *implantpb.Request) (*client
 
 	go greq.HandlerResponse(ch, types.MsgEmpty)
 	return greq.Task.ToProtobuf(), nil
+}
+
+func (rpc *Server) InitBindSession(ctx context.Context, req *implantpb.Request) (*clientpb.Empty, error) {
+	greq, err := newGenericRequest(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	_, err = rpc.GenericHandler(ctx, greq)
+	if err != nil {
+		return nil, err
+	}
+	return &clientpb.Empty{}, nil
 }

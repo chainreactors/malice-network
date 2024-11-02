@@ -10,6 +10,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/helper/utils/peek"
 	"github.com/chainreactors/malice-network/server/internal/parser"
+	"io"
 	"sync"
 	"time"
 )
@@ -71,7 +72,7 @@ type Connection struct {
 
 func (c *Connection) Send(ctx context.Context, conn *peek.Conn) {
 	select {
-	case <-time.After(100 * time.Millisecond):
+	case <-time.After(1000 * time.Millisecond):
 		return
 	case <-ctx.Done():
 		return
@@ -90,11 +91,13 @@ func (c *Connection) Handler(ctx context.Context, conn *peek.Conn) error {
 	var err error
 	_, length, err := c.Parser.ReadHeader(conn)
 	if err != nil {
-		//logs.Log.Debugf("Error reading header: %s %v", conn.RemoteAddr(), err)
+		if err == io.EOF {
+			return nil
+		}
 		return fmt.Errorf("error reading header:%s %w", conn.RemoteAddr(), err)
 	}
-	var msg *implantpb.Spites
 	go c.Send(ctx, conn)
+	var msg *implantpb.Spites
 	if length != 1 {
 		msg, err = c.Parser.ReadMessage(conn, length)
 		if err != nil {
@@ -117,25 +120,6 @@ func (c *Connection) Handler(ctx context.Context, conn *peek.Conn) error {
 
 type connections struct {
 	connections *sync.Map // map[session_id]*Session
-}
-
-func (c *connections) NeedConnection(conn *peek.Conn, pipelineID string) (*Connection, error) {
-	p, err := parser.NewParser(conn)
-	if err != nil {
-		return nil, err
-	}
-	sid, _, err := p.PeekHeader(conn)
-	if err != nil {
-		return nil, err
-	}
-
-	if newC := c.Get(hash.Md5Hash(sid)); newC != nil {
-		return newC, nil
-	} else {
-		newC := NewConnection(p, sid, pipelineID)
-		c.Add(newC)
-		return newC, nil
-	}
 }
 
 func (c *connections) All() []*Connection {

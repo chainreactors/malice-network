@@ -25,10 +25,10 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ListenerRPCClient interface {
 	// implant
-	// implant
 	Register(ctx context.Context, in *clientpb.RegisterSession, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	SysInfo(ctx context.Context, in *implantpb.SysInfo, opts ...grpc.CallOption) (*clientpb.Empty, error)
-	Ping(ctx context.Context, in *implantpb.Ping, opts ...grpc.CallOption) (*clientpb.Empty, error)
+	Checkin(ctx context.Context, in *implantpb.Ping, opts ...grpc.CallOption) (*clientpb.Empty, error)
+	InitBindSession(ctx context.Context, in *implantpb.Request, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	// pipeline
 	RegisterListener(ctx context.Context, in *clientpb.RegisterListener, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	RegisterPipeline(ctx context.Context, in *clientpb.Pipeline, opts ...grpc.CallOption) (*clientpb.Empty, error)
@@ -71,9 +71,18 @@ func (c *listenerRPCClient) SysInfo(ctx context.Context, in *implantpb.SysInfo, 
 	return out, nil
 }
 
-func (c *listenerRPCClient) Ping(ctx context.Context, in *implantpb.Ping, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+func (c *listenerRPCClient) Checkin(ctx context.Context, in *implantpb.Ping, opts ...grpc.CallOption) (*clientpb.Empty, error) {
 	out := new(clientpb.Empty)
-	err := c.cc.Invoke(ctx, "/listenerrpc.ListenerRPC/Ping", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/listenerrpc.ListenerRPC/Checkin", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *listenerRPCClient) InitBindSession(ctx context.Context, in *implantpb.Request, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+	out := new(clientpb.Empty)
+	err := c.cc.Invoke(ctx, "/listenerrpc.ListenerRPC/InitBindSession", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -237,10 +246,10 @@ func (x *listenerRPCJobStreamClient) Recv() (*clientpb.JobCtrl, error) {
 // for forward compatibility
 type ListenerRPCServer interface {
 	// implant
-	// implant
 	Register(context.Context, *clientpb.RegisterSession) (*clientpb.Empty, error)
 	SysInfo(context.Context, *implantpb.SysInfo) (*clientpb.Empty, error)
-	Ping(context.Context, *implantpb.Ping) (*clientpb.Empty, error)
+	Checkin(context.Context, *implantpb.Ping) (*clientpb.Empty, error)
+	InitBindSession(context.Context, *implantpb.Request) (*clientpb.Empty, error)
 	// pipeline
 	RegisterListener(context.Context, *clientpb.RegisterListener) (*clientpb.Empty, error)
 	RegisterPipeline(context.Context, *clientpb.Pipeline) (*clientpb.Empty, error)
@@ -268,8 +277,11 @@ func (UnimplementedListenerRPCServer) Register(context.Context, *clientpb.Regist
 func (UnimplementedListenerRPCServer) SysInfo(context.Context, *implantpb.SysInfo) (*clientpb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SysInfo not implemented")
 }
-func (UnimplementedListenerRPCServer) Ping(context.Context, *implantpb.Ping) (*clientpb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Ping not implemented")
+func (UnimplementedListenerRPCServer) Checkin(context.Context, *implantpb.Ping) (*clientpb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Checkin not implemented")
+}
+func (UnimplementedListenerRPCServer) InitBindSession(context.Context, *implantpb.Request) (*clientpb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method InitBindSession not implemented")
 }
 func (UnimplementedListenerRPCServer) RegisterListener(context.Context, *clientpb.RegisterListener) (*clientpb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RegisterListener not implemented")
@@ -356,20 +368,38 @@ func _ListenerRPC_SysInfo_Handler(srv interface{}, ctx context.Context, dec func
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ListenerRPC_Ping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _ListenerRPC_Checkin_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(implantpb.Ping)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ListenerRPCServer).Ping(ctx, in)
+		return srv.(ListenerRPCServer).Checkin(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/listenerrpc.ListenerRPC/Ping",
+		FullMethod: "/listenerrpc.ListenerRPC/Checkin",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ListenerRPCServer).Ping(ctx, req.(*implantpb.Ping))
+		return srv.(ListenerRPCServer).Checkin(ctx, req.(*implantpb.Ping))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ListenerRPC_InitBindSession_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(implantpb.Request)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ListenerRPCServer).InitBindSession(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/listenerrpc.ListenerRPC/InitBindSession",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ListenerRPCServer).InitBindSession(ctx, req.(*implantpb.Request))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -622,8 +652,12 @@ var ListenerRPC_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _ListenerRPC_SysInfo_Handler,
 		},
 		{
-			MethodName: "Ping",
-			Handler:    _ListenerRPC_Ping_Handler,
+			MethodName: "Checkin",
+			Handler:    _ListenerRPC_Checkin_Handler,
+		},
+		{
+			MethodName: "InitBindSession",
+			Handler:    _ListenerRPC_InitBindSession_Handler,
 		},
 		{
 			MethodName: "RegisterListener",

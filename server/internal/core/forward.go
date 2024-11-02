@@ -112,17 +112,17 @@ func (f *Forward) Handler() {
 			case *implantpb.Spite_Register:
 				_, err := f.ListenerRpc.Register(f.ctx, &clientpb.RegisterSession{
 					SessionId:    msg.SessionID,
-					ListenerId:   f.ID(),
+					PipelineId:   f.ID(),
 					RegisterData: spite.GetRegister(),
 					Target:       msg.RemoteAddr,
 					RawId:        msg.RawID,
 				})
 				if err != nil {
-					logs.Log.Error(err)
+					logs.Log.Errorf("register err %s", err.Error())
 					continue
 				}
 			case *implantpb.Spite_Ping:
-				_, err := f.ListenerRpc.Ping(metadata.NewOutgoingContext(context.Background(), metadata.Pairs(
+				_, err := f.ListenerRpc.Checkin(metadata.NewOutgoingContext(context.Background(), metadata.Pairs(
 					"session_id", msg.SessionID),
 				), &implantpb.Ping{})
 				if err != nil {

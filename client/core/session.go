@@ -112,7 +112,7 @@ func (s *Session) HasTask(taskId uint32) bool {
 
 func (s *Session) GetLog() {
 	profile := assets.GetProfile()
-	contexts, err := s.Server.Rpc.GetSessionLog(s.Context(), &clientpb.SessionLog{
+	contexts, err := s.Server.Rpc.GetSessionHistory(s.Context(), &clientpb.SessionLog{
 		SessionId: s.SessionId,
 		Limit:     int32(profile.Settings.MaxServerLogSize),
 	})
