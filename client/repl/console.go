@@ -151,7 +151,7 @@ func (c *Console) SwitchImplant(sess *core.Session) {
 			count++
 		}
 	}
-	c.Log.Importantf("os: %s, arch: %s, process: %d %s, pipeline: %s", sess.Os.Name, sess.Os.Arch, sess.Process.Ppid, sess.Process.Name, sess.ListenerId)
+	c.Log.Importantf("os: %s, arch: %s, process: %d %s, pipeline: %s", sess.Os.Name, sess.Os.Arch, sess.Process.Ppid, sess.Process.Name, sess.PipelineId)
 	c.Log.Importantf("%d modules, %d available cmds, %d addons", len(sess.Modules), count, len(sess.Addons))
 	c.Log.Infof("Active session %s (%s), group: %s\n", sess.Note, sess.SessionId, sess.GroupName)
 }

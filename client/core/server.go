@@ -64,7 +64,7 @@ func InitServerStatus(conn *grpc.ClientConn, config *mtls.ClientConfig) (*Server
 		s.Listeners = append(s.Listeners, listener)
 	}
 
-	err = s.UpdateSessions(true)
+	err = s.UpdateSessions(false)
 	if err != nil {
 		return nil, err
 	}
@@ -105,11 +105,9 @@ func (s *ServerStatus) UpdateSessions(all bool) error {
 	if s == nil {
 		return errors.New("You need login first")
 	}
-	if all {
-		sessions, err = s.Rpc.GetSessions(context.Background(), &clientpb.Empty{})
-	} else {
-		sessions, err = s.Rpc.GetAlivedSessions(context.Background(), &clientpb.Empty{})
-	}
+	sessions, err = s.Rpc.GetSessions(context.Background(), &clientpb.SessionRequest{
+		All: all,
+	})
 	if err != nil {
 		return err
 	}

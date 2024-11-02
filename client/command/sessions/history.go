@@ -24,7 +24,7 @@ func historyCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	contexts, err := con.Rpc.GetSessionLog(con.GetInteractive().Context(), &clientpb.SessionLog{
+	contexts, err := con.Rpc.GetSessionHistory(con.GetInteractive().Context(), &clientpb.SessionLog{
 		SessionId: con.GetInteractive().SessionId,
 		Limit:     int32(length),
 	})

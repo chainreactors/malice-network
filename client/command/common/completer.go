@@ -233,6 +233,7 @@ func TypeComplete(con *repl.Console) carapace.Action {
 	}
 	return carapace.ActionCallback(callback)
 }
+
 func ProfileComplete(con *repl.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
@@ -258,11 +259,7 @@ func AllPipelineComplete(con *repl.Console) carapace.Action {
 		}
 		for _, listener := range con.Listeners {
 			for _, pipeline := range listener.GetPipelines().GetPipelines() {
-				switch pipeline.Body.(type) {
-				case *clientpb.Pipeline_Tcp:
-					results = append(results, pipeline.Name, fmt.Sprintf("type tcp %s:%v",
-						pipeline.GetTcp().Host, pipeline.GetTcp().Port))
-				}
+				results = append(results, pipeline.Name, fmt.Sprintf("%s: %s", pipeline.ListenerId, pipeline.Name))
 			}
 		}
 		return carapace.ActionValuesDescribed(results...).Tag("pipeline name")

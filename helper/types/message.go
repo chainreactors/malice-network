@@ -11,6 +11,7 @@ const (
 	MsgUnknown        MsgName = "unknown"
 	MsgNil            MsgName = "nil"
 	MsgEmpty          MsgName = "empty"
+	MsgPing           MsgName = "ping"
 	MsgRequest        MsgName = "request"
 	MsgResponse       MsgName = "response"
 	MsgBlock          MsgName = "block"
@@ -63,6 +64,8 @@ func MessageType(message *implantpb.Spite) MsgName {
 		return MsgRegister
 	case *implantpb.Spite_Empty:
 		return MsgEmpty
+	case *implantpb.Spite_Ping:
+		return MsgPing
 	case *implantpb.Spite_Sysinfo:
 		return MsgSysInfo
 	case *implantpb.Spite_ExecRequest, *implantpb.Spite_ExecResponse:

@@ -26,11 +26,12 @@ var (
 // client module and command
 const (
 	// internal
+	ModulePing       = "ping"
 	ModuleClear      = "clear"
 	ModuleCancelTask = "cancel_task"
 	ModuleSleep      = "sleep"
 	ModuleSuicide    = "suicide"
-
+	ModuleInit       = "init"
 	//execute
 	ModuleAliasShell           = "shell"
 	ModuleAliasPowershell      = "powershell"
@@ -125,7 +126,7 @@ const (
 	CommandLogin            = "login"
 	CommandExit             = "exit"
 	CommandSessions         = "sessions"
-	CommandNewSession       = "new"
+	CommandNewBindSession   = "newbind"
 	CommandTasks            = "tasks"
 	CommandFiles            = "files"
 	CommandExplore          = "explorer"

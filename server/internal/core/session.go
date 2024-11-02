@@ -3,7 +3,6 @@ package core
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -101,7 +100,6 @@ func NewSession(req *clientpb.RegisterSession) *Session {
 		SessionContext: NewSessionContext(req),
 		responses:      &sync.Map{},
 	}
-
 	logDir := filepath.Join(configs.LogPath, sess.ID)
 	err := os.MkdirAll(logDir, os.ModePerm)
 	if err != nil {
@@ -175,15 +173,24 @@ func (s *Session) ToProtobuf() *clientpb.Session {
 	currentTime := time.Now()
 	timeDiff := currentTime.Unix() - int64(s.Timer.LastCheckin)
 	isAlive := timeDiff <= int64(1+s.Timer.Interval)*3
+	if s.Type != consts.BindPipeline {
+		currentTime := time.Now()
+		timeDiff := currentTime.Unix() - int64(s.LastCheckin)
+		isAlive = timeDiff <= int64(s.Timer.Interval)*3
+	} else {
+		isAlive = true
+	}
+
 	return &clientpb.Session{
 		Type:        s.Type,
 		SessionId:   s.ID,
+		RawId:       s.RawID,
 		Note:        s.Name,
 		GroupName:   s.Group,
 		IsAlive:     isAlive,
 		IsPrivilege: s.IsPrivilege,
 		Target:      s.Target,
-		ListenerId:  s.PipelineID,
+		PipelineId:  s.PipelineID,
 		Os:          s.Os,
 		Process:     s.Process,
 		Timer:       s.Timer,
@@ -197,11 +204,12 @@ func (s *Session) ToProtobufLite() *clientpb.Session {
 	return &clientpb.Session{
 		Type:        s.Type,
 		SessionId:   s.ID,
+		RawId:       s.RawID,
 		Note:        s.Name,
 		GroupName:   s.Group,
 		IsPrivilege: s.IsPrivilege,
 		Target:      s.Target,
-		ListenerId:  s.PipelineID,
+		PipelineId:  s.PipelineID,
 		Os:          s.Os,
 		Process:     s.Process,
 		Timer:       s.Timer,
@@ -217,19 +225,34 @@ func (s *Session) Update(req *clientpb.RegisterSession) {
 	s.SessionContext.Update(req)
 
 	if req.RegisterData.Sysinfo != nil {
+		if !s.Initialized {
+			s.Publish(consts.CtrlSessionInit, fmt.Sprintf("session %s init", s.ID))
+		}
 		s.UpdateSysInfo(req.RegisterData.Sysinfo)
 	}
 }
 
 func (s *Session) UpdateSysInfo(info *implantpb.SysInfo) {
+	s.Initialized = true
 	info.Os.Name = strings.ToLower(info.Os.Name)
 	if info.Os.Name == "windows" {
 		info.Os.Arch = intermediate.FormatArch(info.Os.Arch)
 	}
+	s.IsPrivilege = info.IsPrivilege
 	s.Filepath = info.Filepath
 	s.WordDir = info.Workdir
 	s.Os = info.Os
 	s.Process = info.Process
+}
+
+func (s *Session) Publish(Op string, msg string) {
+	EventBroker.Publish(Event{
+		EventType: consts.EventSession,
+		Op:        Op,
+		Session:   s.ToProtobuf(),
+		IsNotify:  true,
+		Message:   msg,
+	})
 }
 
 func (s *Session) nextTaskId() uint32 {
@@ -261,7 +284,7 @@ func (s *Session) AllTask() []*Task {
 }
 
 func (s *Session) UpdateLastCheckin() {
-	s.Timer.LastCheckin = uint64(time.Now().Unix())
+	s.LastCheckin = uint64(time.Now().Unix())
 }
 
 // Request

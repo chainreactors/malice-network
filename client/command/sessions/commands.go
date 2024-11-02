@@ -40,9 +40,24 @@ sessions -a
 	}
 
 	sessNewCmd := &cobra.Command{
-		Use:   consts.CommandNewSession + " [session]",
-		Short: "new session",
+		Use:   consts.CommandNewBindSession + " [session]",
+		Short: "new bind session",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return NewBindSessionCmd(cmd, con)
+		},
 	}
+
+	common.BindFlag(sessNewCmd, func(f *pflag.FlagSet) {
+		f.StringP("name", "n", "", "session name")
+		f.StringP("target", "t", "", "session target")
+		f.String("pipeline", "", "pipeline id")
+		sessNewCmd.MarkFlagRequired("target")
+		sessNewCmd.MarkFlagRequired("pipeline")
+	})
+
+	common.BindFlagCompletions(sessNewCmd, func(comp carapace.ActionMap) {
+		comp["pipeline"] = common.AllPipelineComplete(con)
+	})
 
 	noteCommand := &cobra.Command{
 		Use:   consts.CommandSessionNote + " [note] [session]",

@@ -52,6 +52,7 @@ func (parser *MessageParser) ReadHeader(conn *peek.Conn) ([]byte, int, error) {
 		if err != nil {
 			return nil, 0, err
 		}
+		logs.Log.Debugf("%v read packet from %s , %d bytes", sid, conn.RemoteAddr(), length)
 		if length > config.Int(consts.ConfigMaxPacketLength) {
 			return nil, 0, ErrPacketTooLarge
 		}

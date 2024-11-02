@@ -11,16 +11,19 @@ import (
 )
 
 type Session struct {
-	SessionID   string    `gorm:"primaryKey;->;<-:create;type:uuid;"`
+	SessionID   string `gorm:"primaryKey;->;<-:create;type:uuid;"`
+	RawID       []byte
 	CreatedAt   time.Time `gorm:"->;<-:create;"`
 	Note        string
 	GroupName   string
-	RemoteAddr  string
+	Target      string
+	Initialized bool
 	Type        string
 	IsPrivilege bool
-	ListenerId  string
+	PipelineID  string
 	IsAlive     bool
 	Context     string
+	LastCheckin uint64
 	IsRemoved   bool     `gorm:"default:false"`
 	Os          *Os      `gorm:"embedded"`
 	Process     *Process `gorm:"embedded"`
@@ -41,39 +44,42 @@ func (s *Session) ToClientProtobuf() *clientpb.Session {
 	ctx := recoverFromContext(s.Context)
 
 	return &clientpb.Session{
-		Type:       s.Type,
-		SessionId:  s.SessionID,
-		ListenerId: s.ListenerId,
-		Note:       s.Note,
-		Target:     s.RemoteAddr,
-		IsAlive:    s.IsAlive,
-		GroupName:  s.GroupName,
-		Os:         s.Os.toProtobuf(),
-		Process:    s.Process.toProtobuf(),
-		Timer:      s.Time.toProtobuf(),
-		Modules:    ctx.Modules,
-		Addons:     ctx.Addons,
-		Data:       ctx.Data,
+		Type:          s.Type,
+		SessionId:     s.SessionID,
+		RawId:         s.RawID,
+		PipelineId:    s.PipelineID,
+		Note:          s.Note,
+		Target:        s.Target,
+		IsAlive:       s.IsAlive,
+		GroupName:     s.GroupName,
+		IsInitialized: s.Initialized,
+		LastCheckin:   s.LastCheckin,
+		Os:            s.Os.toProtobuf(),
+		Process:       s.Process.toProtobuf(),
+		Timer:         s.Time.toProtobuf(),
+		Modules:       ctx.Modules,
+		Addons:        ctx.Addons,
+		Data:          ctx.Data,
 	}
 }
 
 func (s *Session) ToRegisterProtobuf() *clientpb.RegisterSession {
 	ctx := recoverFromContext(s.Context)
-	addons := &implantpb.Addons{}
-	addons.Addons = append(addons.Addons, ctx.Addons...)
 	return &clientpb.RegisterSession{
 		SessionId:  s.SessionID,
-		ListenerId: s.ListenerId,
-		Target:     s.RemoteAddr,
+		RawId:      s.RawID,
+		PipelineId: s.PipelineID,
+		Target:     s.Target,
 		RegisterData: &implantpb.Register{
 			Name:  s.Note,
 			Timer: s.Time.toProtobuf(),
 			Sysinfo: &implantpb.SysInfo{
-				Os:      s.Os.toProtobuf(),
-				Process: s.Process.toProtobuf(),
+				Os:          s.Os.toProtobuf(),
+				Process:     s.Process.toProtobuf(),
+				IsPrivilege: s.IsPrivilege,
 			},
 			Module: ctx.Modules,
-			Addon:  addons,
+			Addons: ctx.Addons,
 		},
 	}
 }
@@ -82,10 +88,13 @@ func ConvertToSessionDB(session *core.Session) *Session {
 	return &Session{
 		Type:        session.Type,
 		SessionID:   session.ID,
+		RawID:       session.RawID,
 		GroupName:   "default",
-		RemoteAddr:  session.Target,
-		ListenerId:  session.PipelineID,
+		Target:      session.Target,
+		PipelineID:  session.PipelineID,
 		IsPrivilege: session.IsPrivilege,
+		Initialized: session.Initialized,
+		LastCheckin: uint64(time.Now().Unix()),
 		Context:     convertToContext(session.SessionContext),
 		Os:          convertToOsDB(session.Os),
 		Process:     convertToProcessDB(session.Process),
@@ -111,6 +120,9 @@ func recoverFromContext(context string) *core.SessionContext {
 }
 
 func convertToOsDB(os *implantpb.Os) *Os {
+	if os == nil {
+		return &Os{}
+	}
 	return &Os{
 		Name:     os.Name,
 		Version:  os.Version,
@@ -121,6 +133,9 @@ func convertToOsDB(os *implantpb.Os) *Os {
 	}
 }
 func convertToProcessDB(process *implantpb.Process) *Process {
+	if process == nil {
+		return &Process{}
+	}
 	return &Process{
 		Name:  process.Name,
 		Pid:   int32(process.Pid),
@@ -132,10 +147,12 @@ func convertToProcessDB(process *implantpb.Process) *Process {
 	}
 }
 func convertToTimeDB(timer *implantpb.Timer) *Timer {
+	if timer == nil {
+		return &Timer{}
+	}
 	return &Timer{
-		Interval:    timer.Interval,
-		Jitter:      timer.Jitter,
-		LastCheckin: uint64(time.Now().Unix()),
+		Interval: timer.Interval,
+		Jitter:   timer.Jitter,
 	}
 }
 
@@ -160,16 +177,14 @@ func (o *Os) toProtobuf() *implantpb.Os {
 }
 
 type Timer struct {
-	Interval    uint64  `json:"interval"`
-	Jitter      float64 `json:"jitter"`
-	LastCheckin uint64  `json:"last_checkin"`
+	Interval uint64  `json:"interval"`
+	Jitter   float64 `json:"jitter"`
 }
 
 func (t *Timer) toProtobuf() *implantpb.Timer {
 	return &implantpb.Timer{
-		Interval:    t.Interval,
-		Jitter:      t.Jitter,
-		LastCheckin: t.LastCheckin,
+		Interval: t.Interval,
+		Jitter:   t.Jitter,
 	}
 }
 

@@ -31,8 +31,7 @@ func (sc *CryptoConn) Write(data []byte) (int, error) {
 
 // Read 方法从底层连接读取数据并解密
 func (sc *CryptoConn) Read(data []byte) (int, error) {
-	// 读取加密数据
-	encryptedData := make([]byte, 1024) // 假设读取缓冲区的大小
+	encryptedData := make([]byte, 1024)
 	n, err := sc.Conn.Read(encryptedData)
 	if err != nil {
 		return 0, err
@@ -44,7 +43,6 @@ func (sc *CryptoConn) Read(data []byte) (int, error) {
 		return 0, err
 	}
 
-	// 将解密后的数据拷贝到传入的缓冲区
 	copy(data, decryptedData)
 	return len(decryptedData), nil
 }
