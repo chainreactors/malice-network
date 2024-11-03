@@ -110,7 +110,7 @@ func (s *Session) HasTask(taskId uint32) bool {
 	return false
 }
 
-func (s *Session) GetLog() {
+func (s *Session) GetHistory() {
 	profile := assets.GetProfile()
 	contexts, err := s.Server.Rpc.GetSessionHistory(s.Context(), &clientpb.SessionLog{
 		SessionId: s.SessionId,
