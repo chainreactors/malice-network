@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -22,7 +23,9 @@ import (
 
 var (
 	// Sessions - Manages implant connections
-	Sessions         = NewSessions()
+	Sessions = &sessions{
+		active: &sync.Map{},
+	}
 	ExtensionModules = []string{consts.ModuleExecuteBof, consts.ModuleExecuteDll}
 	// ErrUnknownMessageType - Returned if the implant did not understand the message for
 	//                         example when the command is not supported on the platform
@@ -32,72 +35,54 @@ var (
 	ErrImplantSendTimeout = errors.New("implant timeout")
 )
 
-func NewSessions() *sessions {
-	newSessions := &sessions{
-		active: &sync.Map{},
-	}
-	ticker := NewTicker()
-	_, err := ticker.Start(60, func() {
-		for _, session := range newSessions.All() {
-			currentTime := time.Now()
-			timeDiff := currentTime.Unix() - int64(session.Timer.LastCheckin)
-			isAlive := timeDiff <= int64(1+session.Timer.Interval)*3
-			if !isAlive {
-				newSessions.Remove(session.ID)
-				EventBroker.Publish(Event{
-					EventType: consts.EventSession,
-					Op:        consts.CtrlSessionStop,
-					Session:   session.ToProtobuf(),
-					IsNotify:  true,
-					Message:   fmt.Sprintf("session %s from %s at %s has stoped ", session.ID, session.Target, session.PipelineID),
-				})
-			}
-		}
-	})
-	if err != nil {
-		logs.Log.Errorf("cannot start ticker, %s", err.Error())
-	}
-	return newSessions
-}
-
 func NewSessionContext(req *clientpb.RegisterSession) *SessionContext {
 	return &SessionContext{
+		SessionInfo: &SessionInfo{
+			ProxyURL: req.RegisterData.Proxy,
+			Timer:    req.RegisterData.Timer,
+		},
 		Modules: req.RegisterData.Module,
-		Addons:  req.RegisterData.Addon.Addons,
+		Addons:  req.RegisterData.Addons,
 		Loot:    map[string]string{},
 		Argue:   map[string]string{},
 		Data:    map[string]string{},
+		Any:     map[string]interface{}{},
 	}
 }
 
 type SessionContext struct {
+	*SessionInfo
 	Modules []string
 	Addons  []*implantpb.Addon
 	Loot    map[string]string
 	Argue   map[string]string
 	Data    map[string]string
+	Any     map[string]interface{}
 }
 
 func (ctx *SessionContext) Update(req *clientpb.RegisterSession) {
 	ctx.Modules = req.RegisterData.Module
-	ctx.Addons = req.RegisterData.Addon.Addons
+	ctx.Addons = req.RegisterData.Addons
 }
 
-func NewSession(req *clientpb.RegisterSession) *Session {
+func (ctx *SessionContext) GetAny(id string) (interface{}, bool) {
+	v, ok := ctx.Any[id]
+	return v, ok
+}
+
+func RegisterSession(req *clientpb.RegisterSession) *Session {
 	sess := &Session{
 		Type:           req.Type,
 		Name:           req.RegisterData.Name,
 		Group:          "default",
-		ProxyURL:       req.RegisterData.Proxy,
 		ID:             req.SessionId,
 		RawID:          req.RawId,
-		PipelineID:     req.ListenerId,
+		PipelineID:     req.PipelineId,
 		Target:         req.Target,
-		IsPrivilege:    req.RegisterData.Sysinfo.IsPrivilege,
-		Timer:          req.RegisterData.Timer,
 		Tasks:          &Tasks{active: &sync.Map{}},
-		Cache:          NewCache(10*consts.KB, path.Join(configs.CachePath, req.SessionId+".gob")),
 		SessionContext: NewSessionContext(req),
+		Taskseq:        1,
+		Cache:          NewCache(10*consts.KB, path.Join(configs.CachePath, req.SessionId+".gob")),
 		responses:      &sync.Map{},
 	}
 	logDir := filepath.Join(configs.LogPath, sess.ID)
@@ -122,20 +107,26 @@ type Session struct {
 	Name        string
 	Group       string
 	Target      string
-	IsPrivilege bool
+	Initialized bool
+	LastCheckin uint64
+	Tasks       *Tasks // task manager
+	*SessionContext
+
+	*Cache
+	Taskseq   uint32
+	responses *sync.Map
+	rpcLog    *logs.Logger
+}
+
+type SessionInfo struct {
 	Os          *implantpb.Os
 	Process     *implantpb.Process
 	Timer       *implantpb.Timer
+	IsPrivilege bool
 	Filepath    string
 	WordDir     string
 	ProxyURL    string
 	Locale      string
-	*SessionContext
-	Tasks   *Tasks // task manager
-	taskseq uint32
-	*Cache
-	responses *sync.Map
-	rpcLog    *logs.Logger
 }
 
 func (s *Session) RpcLogger() *logs.Logger {
@@ -169,10 +160,13 @@ func (s *Session) TaskLog(task *Task, spite []byte) error {
 	return err
 }
 
+func (s *Session) Recover() error {
+	s.responses = &sync.Map{}
+	return s.Load()
+}
+
 func (s *Session) ToProtobuf() *clientpb.Session {
-	currentTime := time.Now()
-	timeDiff := currentTime.Unix() - int64(s.Timer.LastCheckin)
-	isAlive := timeDiff <= int64(1+s.Timer.Interval)*3
+	var isAlive bool
 	if s.Type != consts.BindPipeline {
 		currentTime := time.Now()
 		timeDiff := currentTime.Unix() - int64(s.LastCheckin)
@@ -256,12 +250,12 @@ func (s *Session) Publish(Op string, msg string) {
 }
 
 func (s *Session) nextTaskId() uint32 {
-	s.taskseq++
-	return s.taskseq
+	s.Taskseq++
+	return s.Taskseq
 }
 
 func (s *Session) SetLastTaskId(id uint32) {
-	s.taskseq = id
+	s.Taskseq = id
 }
 
 func (s *Session) NewTask(name string, total int) *Task {
@@ -288,32 +282,18 @@ func (s *Session) UpdateLastCheckin() {
 }
 
 // Request
-func (s *Session) Request(msg *clientpb.SpiteRequest, stream grpc.ServerStream, timeout time.Duration) error {
-	var err error
-	done := make(chan struct{})
-	go func() {
-		err = stream.SendMsg(msg)
-		if err != nil {
-			logs.Log.Debugf(err.Error())
-			return
-		}
-		close(done)
-	}()
-	select {
-	case <-done:
-		if err != nil {
-			return err
-		}
-		return nil
-	case <-time.After(timeout):
-		return ErrImplantSendTimeout
+func (s *Session) Request(msg *clientpb.SpiteRequest, stream grpc.ServerStream) error {
+	err := stream.SendMsg(msg)
+	if err != nil {
+		return err
 	}
+	return nil
 }
 
 func (s *Session) RequestAndWait(msg *clientpb.SpiteRequest, stream grpc.ServerStream, timeout time.Duration) (*implantpb.Spite, error) {
 	ch := make(chan *implantpb.Spite)
 	s.StoreResp(msg.Task.TaskId, ch)
-	err := s.Request(msg, stream, timeout)
+	err := s.Request(msg, stream)
 	if err != nil {
 		return nil, err
 	}
@@ -326,7 +306,7 @@ func (s *Session) RequestAndWait(msg *clientpb.SpiteRequest, stream grpc.ServerS
 func (s *Session) RequestWithStream(msg *clientpb.SpiteRequest, stream grpc.ServerStream, timeout time.Duration) (chan *implantpb.Spite, chan *implantpb.Spite, error) {
 	respCh := make(chan *implantpb.Spite)
 	s.StoreResp(msg.Task.TaskId, respCh)
-	err := s.Request(msg, stream, timeout)
+	err := s.Request(msg, stream)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -355,7 +335,7 @@ func (s *Session) RequestWithStream(msg *clientpb.SpiteRequest, stream grpc.Serv
 func (s *Session) RequestWithAsync(msg *clientpb.SpiteRequest, stream grpc.ServerStream, timeout time.Duration) (chan *implantpb.Spite, error) {
 	respCh := make(chan *implantpb.Spite)
 	s.StoreResp(msg.Task.TaskId, respCh)
-	err := s.Request(msg, stream, timeout)
+	err := s.Request(msg, stream)
 	if err != nil {
 		return nil, err
 	}

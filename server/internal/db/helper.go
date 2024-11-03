@@ -3,6 +3,7 @@ package db
 import (
 	"encoding/json"
 	"errors"
+	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/utils/mtls"
@@ -13,8 +14,8 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/utils"
 	"os"
+	"path"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -31,27 +32,24 @@ func HasOperator(typ string) (bool, error) {
 	return true, nil
 }
 
-func FindAliveSessions() ([]*clientpb.RegisterSession, error) {
+func FindAliveSessions() ([]*clientpb.Session, error) {
 	var activeSessions []models.Session
 	result := Session().Raw(`
 		SELECT * 
 		FROM sessions 
-		WHERE last_checkin > strftime('%s', 'now') - (interval * 2)
+		WHERE last_checkin > strftime('%s', 'now') - (interval * 2) AND is_removed = false
 		`).Scan(&activeSessions)
 	if result.Error != nil {
 		return nil, result.Error
 	}
-	var sessions []*clientpb.RegisterSession
+	var sessions []*clientpb.Session
 	for _, session := range activeSessions {
-		if session.IsRemoved {
-			continue
-		}
-		sessions = append(sessions, session.ToRegisterProtobuf())
+		sessions = append(sessions, session.ToProtobuf())
 	}
 	return sessions, nil
 }
 
-func FindSession(sessionID string) (*clientpb.RegisterSession, error) {
+func FindSession(sessionID string) (*clientpb.Session, error) {
 	var session models.Session
 	result := Session().Where("session_id = ? AND is_removed = ?", sessionID, false).First(&session)
 	if result.Error != nil {
@@ -60,7 +58,61 @@ func FindSession(sessionID string) (*clientpb.RegisterSession, error) {
 	//if session.Last.Before(time.Now().Add(-time.Second * time.Duration(session.Time.Interval*2))) {
 	//	return nil, errors.New("session is dead")
 	//}
-	return session.ToRegisterProtobuf(), nil
+	return session.ToProtobuf(), nil
+}
+
+func RecoverSession(s *clientpb.Session) (*core.Session, error) {
+	tasks, tid, err := FindTaskAndMaxTasksID(s.SessionId)
+	if err != nil {
+		return nil, err
+	}
+
+	sess := &core.Session{
+		Type:  s.Type,
+		Name:  s.Note,
+		Group: s.GroupName,
+		//ProxyURL:       s.ProxyURL,
+		ID:          s.SessionId,
+		RawID:       s.RawId,
+		PipelineID:  s.PipelineId,
+		Target:      s.Target,
+		Initialized: s.IsInitialized,
+		SessionContext: &core.SessionContext{
+			SessionInfo: &core.SessionInfo{
+				Timer:       s.Timer,
+				Os:          s.Os,
+				Process:     s.Process,
+				IsPrivilege: s.IsPrivilege,
+			},
+			Modules: s.Modules,
+			Addons:  s.Addons,
+			Loot:    s.Loot,
+			Argue:   s.Argue,
+			Data:    s.Data,
+			Any:     map[string]interface{}{},
+		},
+		Taskseq: tid,
+		Tasks:   core.NewTasks(),
+		Cache:   core.NewCache(10*consts.KB, path.Join(configs.CachePath, s.SessionId+".gob")),
+	}
+	sess.Recover()
+	for _, task := range tasks {
+		newTask, err := ToTask(task)
+		if err != nil {
+			logs.Log.Errorf("cannot convert task to core task , %s ", err.Error())
+			continue
+		}
+		sess.Tasks.Add(newTask)
+	}
+	return sess, nil
+}
+
+func RecoverFromSessionID(sid string) (*core.Session, error) {
+	sess, err := FindSession(sid)
+	if err != nil {
+		return nil, err
+	}
+	return RecoverSession(sess)
 }
 
 func FindAllSessions() (*clientpb.Sessions, error) {
@@ -71,13 +123,15 @@ func FindAllSessions() (*clientpb.Sessions, error) {
 	}
 	var pbSessions []*clientpb.Session
 	for _, session := range sessions {
-		pbSessions = append(pbSessions, session.ToClientProtobuf())
+		if session.IsRemoved {
+			continue
+		}
+		pbSessions = append(pbSessions, session.ToProtobuf())
 	}
 	return &clientpb.Sessions{Sessions: pbSessions}, nil
-
 }
 
-func FindTaskAndMaxTasksID(sessionID string) ([]*models.Task, int, error) {
+func FindTaskAndMaxTasksID(sessionID string) ([]*models.Task, uint32, error) {
 	var tasks []*models.Task
 
 	err := Session().Where("session_id = ?", sessionID).Find(&tasks).Error
@@ -85,17 +139,14 @@ func FindTaskAndMaxTasksID(sessionID string) ([]*models.Task, int, error) {
 		return tasks, 0, err
 	}
 
-	maxTemp := 0
+	var max int
 	for _, task := range tasks {
-		parts := strings.Split(task.ID, "-")
-		taskID, err := strconv.Atoi(parts[1])
-		if err != nil {
-			continue
+		if task.Seq > max {
+			max = task.Seq
 		}
-		maxTemp = taskID
 	}
 
-	return tasks, maxTemp, nil
+	return tasks, uint32(max), nil
 }
 
 func UpdateLast(sessionID string) error {
@@ -130,17 +181,6 @@ func UpdateSessionStatus() error {
 				return err
 			}
 		}
-	}
-	return nil
-}
-
-func UpdateSessionInfo(coreSession *core.Session) error {
-	updateSession := models.ConvertToSessionDB(coreSession)
-	updateSession.IsAlive = true
-	result := Session().Save(updateSession)
-
-	if result.Error != nil {
-		return result.Error
 	}
 	return nil
 }
@@ -398,17 +438,9 @@ func GetTaskPB(taskID string) (*clientpb.Task, error) {
 	return taskProto, nil
 }
 
-func ToTask(task models.Task) (*core.Task, error) {
-	parts := strings.Split(task.ID, "-")
-	if len(parts) != 2 {
-		return nil, errors.New("invalid task id")
-	}
-	taskID, err := strconv.Atoi(parts[1])
-	if err != nil {
-		return nil, err
-	}
+func ToTask(task *models.Task) (*core.Task, error) {
 	return &core.Task{
-		Id:        uint32(taskID),
+		Id:        uint32(task.Seq),
 		Type:      task.Type,
 		SessionId: task.SessionID,
 		Cur:       task.Cur,
@@ -417,9 +449,9 @@ func ToTask(task models.Task) (*core.Task, error) {
 }
 
 func AddTask(task *core.Task) error {
-
 	taskModel := &models.Task{
 		ID:         task.SessionId + "-" + utils.ToString(task.Id),
+		Seq:        int(task.Id),
 		Type:       task.Type,
 		SessionID:  task.SessionId,
 		Cur:        task.Cur,

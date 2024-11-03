@@ -42,11 +42,10 @@ func (rpc *Server) GetSession(ctx context.Context, req *clientpb.SessionRequest)
 	if ok {
 		return session.ToProtobuf(), nil
 	}
-	reg, err := db.FindSession(req.SessionId)
+	session, err := db.RecoverFromSessionID(req.SessionId)
 	if err != nil {
 		return nil, err
 	}
-	session = core.NewSession(reg)
 	core.Sessions.Add(session)
 	return session.ToProtobuf(), nil
 }
@@ -173,13 +172,13 @@ func (rpc *Server) GetSessionHistory(ctx context.Context, req *clientpb.SessionL
 		if err != nil {
 			return nil, err
 		}
-		session, ok := core.Sessions.Get(req.SessionId)
-		if !ok {
-			return nil, ErrNotFoundSession
+		session, err := db.FindSession(req.SessionId)
+		if err != nil {
+			return nil, err
 		}
 		contexts.Contexts = append(contexts.Contexts, &clientpb.TaskContext{
 			Task:    task,
-			Session: session.ToProtobuf(),
+			Session: session,
 			Spite:   spite,
 		})
 	}

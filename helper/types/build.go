@@ -2,6 +2,7 @@ package types
 
 import (
 	"errors"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"google.golang.org/protobuf/proto"
 )
@@ -11,10 +12,15 @@ var (
 	ErrUnknownJob   = errors.New("unknown job body")
 )
 
-func BuildPingSpite() *implantpb.Spites {
-	return BuildOneSpites(&implantpb.Spite{
+func BuildPingSpite() *implantpb.Spite {
+	return &implantpb.Spite{
+		Name: consts.ModulePing,
 		Body: &implantpb.Spite_Ping{},
-	})
+	}
+}
+
+func BuildPingSpites() *implantpb.Spites {
+	return BuildOneSpites(BuildPingSpite())
 }
 
 // BuildSpite build spite request

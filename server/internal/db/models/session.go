@@ -40,7 +40,7 @@ func (s *Session) BeforeCreate(tx *gorm.DB) (err error) {
 	return nil
 }
 
-func (s *Session) ToClientProtobuf() *clientpb.Session {
+func (s *Session) ToProtobuf() *clientpb.Session {
 	ctx := recoverFromContext(s.Context)
 
 	return &clientpb.Session{
@@ -49,10 +49,11 @@ func (s *Session) ToClientProtobuf() *clientpb.Session {
 		RawId:         s.RawID,
 		PipelineId:    s.PipelineID,
 		Note:          s.Note,
+		GroupName:     s.GroupName,
 		Target:        s.Target,
 		IsAlive:       s.IsAlive,
-		GroupName:     s.GroupName,
 		IsInitialized: s.Initialized,
+		IsPrivilege:   s.IsPrivilege,
 		LastCheckin:   s.LastCheckin,
 		Os:            s.Os.toProtobuf(),
 		Process:       s.Process.toProtobuf(),
@@ -90,6 +91,7 @@ func ConvertToSessionDB(session *core.Session) *Session {
 		SessionID:   session.ID,
 		RawID:       session.RawID,
 		GroupName:   "default",
+		IsAlive:     true,
 		Target:      session.Target,
 		PipelineID:  session.PipelineID,
 		IsPrivilege: session.IsPrivilege,

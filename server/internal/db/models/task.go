@@ -3,14 +3,13 @@ package models
 import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"gorm.io/gorm"
-	"strconv"
-	"strings"
 	"time"
 )
 
 type Task struct {
 	ID          string    `gorm:"primaryKey;->;<-:create;type:uuid;"`
 	CreatedAt   time.Time `gorm:"->;<-:create;"`
+	Seq         int
 	Type        string
 	SessionID   string
 	Session     Session `gorm:"foreignKey:SessionID"`
@@ -37,12 +36,8 @@ func (t *Task) UpdateTotal(db *gorm.DB, newTotal int) error {
 }
 
 func (t *Task) ToProtobuf() *clientpb.Task {
-	parts := strings.Split(t.ID, "-")
-
-	taskIdStr := parts[1]
-	taskID, _ := strconv.ParseUint(taskIdStr, 10, 32)
 	return &clientpb.Task{
-		TaskId:      uint32(taskID),
+		TaskId:      uint32(t.Seq),
 		Type:        t.Type,
 		SessionId:   t.SessionID,
 		Cur:         int32(t.Cur),
