@@ -125,6 +125,9 @@ func SubCommandName(module string) string {
 const (
 	CommandLogin            = "login"
 	CommandExit             = "exit"
+	CommandWait             = "wait"
+	CommandRecover          = "recover"
+	CommandPolling          = "polling"
 	CommandSessions         = "sessions"
 	CommandNewBindSession   = "newbind"
 	CommandTasks            = "tasks"
