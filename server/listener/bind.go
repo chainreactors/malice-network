@@ -15,8 +15,8 @@ import (
 	"net"
 )
 
-func NewBindPipeline(conn *grpc.ClientConn, pipeline *clientpb.Pipeline) (*TCPBindPipeline, error) {
-	pp := &TCPBindPipeline{
+func NewBindPipeline(conn *grpc.ClientConn, pipeline *clientpb.Pipeline) (*BindPipeline, error) {
+	pp := &BindPipeline{
 		grpcConn:       conn,
 		Name:           pipeline.Name,
 		Enable:         true,
@@ -25,7 +25,7 @@ func NewBindPipeline(conn *grpc.ClientConn, pipeline *clientpb.Pipeline) (*TCPBi
 	return pp, nil
 }
 
-type TCPBindPipeline struct {
+type BindPipeline struct {
 	grpcConn *grpc.ClientConn
 	Name     string
 	//Port   uint16
@@ -34,11 +34,11 @@ type TCPBindPipeline struct {
 	*core.PipelineConfig
 }
 
-func (pipeline *TCPBindPipeline) ID() string {
+func (pipeline *BindPipeline) ID() string {
 	return pipeline.Name
 }
 
-func (pipeline *TCPBindPipeline) ToProtobuf() *clientpb.Pipeline {
+func (pipeline *BindPipeline) ToProtobuf() *clientpb.Pipeline {
 	return &clientpb.Pipeline{
 		Name:       pipeline.Name,
 		Enable:     pipeline.Enable,
@@ -51,7 +51,7 @@ func (pipeline *TCPBindPipeline) ToProtobuf() *clientpb.Pipeline {
 	}
 }
 
-func (pipeline *TCPBindPipeline) Start() error {
+func (pipeline *BindPipeline) Start() error {
 	if !pipeline.Enable {
 		return nil
 	}
@@ -67,11 +67,11 @@ func (pipeline *TCPBindPipeline) Start() error {
 	return nil
 }
 
-func (pipeline *TCPBindPipeline) Close() error {
+func (pipeline *BindPipeline) Close() error {
 	return nil
 }
 
-func (pipeline *TCPBindPipeline) handler() error {
+func (pipeline *BindPipeline) handler() error {
 	for {
 		forward := core.Forwarders.Get(pipeline.ID())
 		msg, err := forward.Stream.Recv()
@@ -87,7 +87,7 @@ func (pipeline *TCPBindPipeline) handler() error {
 	}
 }
 
-func (pipeline *TCPBindPipeline) handlerReq(req *clientpb.SpiteRequest) error {
+func (pipeline *BindPipeline) handlerReq(req *clientpb.SpiteRequest) error {
 	conn, err := net.Dial("tcp", req.Session.Target)
 	if err != nil {
 		return err
@@ -116,14 +116,7 @@ func (pipeline *TCPBindPipeline) handlerReq(req *clientpb.SpiteRequest) error {
 	return nil
 }
 
-func (pipeline *TCPBindPipeline) newConnection(p *parser.MessageParser, sid []byte, pipelineID string) *core.Connection {
-	go func() {
-
-	}()
-	return core.NewConnection(p, sid, pipelineID)
-}
-
-func (pipeline *TCPBindPipeline) initConnection(conn *peek.Conn, req *clientpb.SpiteRequest) (*core.Connection, error) {
+func (pipeline *BindPipeline) initConnection(conn *peek.Conn, req *clientpb.SpiteRequest) (*core.Connection, error) {
 	p := &parser.MessageParser{
 		Implant:      consts.ImplantMalefic,
 		PacketParser: &malefic.MaleficParser{},
@@ -134,7 +127,7 @@ func (pipeline *TCPBindPipeline) initConnection(conn *peek.Conn, req *clientpb.S
 	return connect, nil
 }
 
-func (pipeline *TCPBindPipeline) getConnection(conn *peek.Conn, sid []byte) (*core.Connection, error) {
+func (pipeline *BindPipeline) getConnection(conn *peek.Conn, sid []byte) (*core.Connection, error) {
 	p, err := parser.NewParser(conn)
 	if err != nil {
 		return nil, err

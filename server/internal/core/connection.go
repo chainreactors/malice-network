@@ -38,7 +38,7 @@ func NewConnection(p *parser.MessageParser, sid []byte, pipelineID string) *Conn
 		for {
 			select {
 			case req := <-conn.C:
-				logs.Log.Debugf("Received spite %s", req.Spite.Name)
+				logs.Log.Debugf("[pipeline] received spite_request %s", req.Spite.Name)
 				conn.cache.Append(req.Spite)
 			}
 		}
@@ -104,10 +104,10 @@ func (c *Connection) Handler(ctx context.Context, conn *peek.Conn) error {
 			return fmt.Errorf("error reading message:%s %w", conn.RemoteAddr(), err)
 		}
 		if msg.Spites == nil {
-			msg = types.BuildPingSpite()
+			msg = types.BuildPingSpites()
 		}
 	} else {
-		msg = types.BuildPingSpite()
+		msg = types.BuildPingSpites()
 	}
 
 	Forwarders.Send(c.PipelineID, &Message{

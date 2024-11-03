@@ -9,6 +9,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/types"
+	"time"
 
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
@@ -16,7 +17,7 @@ import (
 )
 
 func newSession(reg *clientpb.RegisterSession) (*core.Session, error) {
-	sess := core.NewSession(reg)
+	sess := core.RegisterSession(reg)
 	d := db.Session().Create(models.ConvertToSessionDB(sess))
 	return sess, d.Error
 }
@@ -26,7 +27,7 @@ func (rpc *Server) Register(ctx context.Context, req *clientpb.RegisterSession) 
 	if ok {
 		logs.Log.Infof("alive session %s re-register", sess.ID)
 		sess.Update(req)
-		err := db.UpdateSessionInfo(sess)
+		err := db.Session().Save(models.ConvertToSessionDB(sess)).Error
 		if err != nil {
 			logs.Log.Errorf("update session %s info failed in db, %s", sess.ID, err.Error())
 		}
@@ -34,7 +35,7 @@ func (rpc *Server) Register(ctx context.Context, req *clientpb.RegisterSession) 
 	}
 
 	// 如果内存中不存在, 则尝试从数据库中恢复
-	reqsess, err := db.FindSession(req.SessionId)
+	dbSess, err := db.FindSession(req.SessionId)
 	if err != nil && !errors.Is(err, db.ErrRecordNotFound) {
 		return nil, err
 	} else if errors.Is(err, db.ErrRecordNotFound) {
@@ -48,18 +49,14 @@ func (rpc *Server) Register(ctx context.Context, req *clientpb.RegisterSession) 
 		}
 	} else {
 		// 数据库中已存在, update
-		sess = core.NewSession(reqsess)
-		logs.Log.Warnf("session %s re-register ", sess.ID)
-		_, taskID, err := db.FindTaskAndMaxTasksID(req.SessionId)
+		sess, err = db.RecoverSession(dbSess)
 		if err != nil {
-			logs.Log.Errorf("cannot find max task id , %s ", err.Error())
-			return &clientpb.Empty{}, nil
+			return nil, err
 		}
-		sess.SetLastTaskId(uint32(taskID))
+		logs.Log.Infof("session %s re-register ", sess.ID)
 		sess.Publish(consts.CtrlSessionReRegister, fmt.Sprintf("session %s from %s re-register at %s", sess.ID, sess.Target, sess.PipelineID))
 	}
 	core.Sessions.Add(sess)
-	sess.Load()
 	return &clientpb.Empty{}, nil
 }
 
@@ -77,30 +74,23 @@ func (rpc *Server) SysInfo(ctx context.Context, req *implantpb.SysInfo) (*client
 }
 
 func (rpc *Server) Checkin(ctx context.Context, req *implantpb.Ping) (*clientpb.Empty, error) {
-	id, err := getSessionID(ctx)
+	sid, err := getSessionID(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if s, ok := core.Sessions.Get(id); !ok {
-		sess, err := db.FindSession(id)
+	if s, ok := core.Sessions.Get(sid); !ok {
+		sess, err := db.RecoverFromSessionID(sid)
 		if err != nil {
 			return nil, err
 		}
-		newSess := core.NewSession(sess)
-		_, taskID, err := db.FindTaskAndMaxTasksID(id)
-		if err != nil {
-			logs.Log.Errorf("cannot find max task id , %s ", err.Error())
-		}
-		newSess.SetLastTaskId(uint32(taskID))
-		core.Sessions.Add(newSess)
-		newSess.Publish(consts.CtrlSessionReborn, fmt.Sprintf("session %s from %s reborn at %s", newSess.ID, newSess.Target, newSess.PipelineID))
-		newSess.Load()
-		logs.Log.Debugf("recover session %s", id)
+		core.Sessions.Add(sess)
+		sess.Publish(consts.CtrlSessionReborn, fmt.Sprintf("session %s from %s reborn at %s", sess.ID, sess.Target, sess.PipelineID))
+		logs.Log.Debugf("recover session %s", sid)
 	} else {
 		s.UpdateLastCheckin()
 	}
 
-	err = db.UpdateLast(id)
+	err = db.UpdateLast(sid)
 	if err != nil {
 		return nil, err
 	}
@@ -147,4 +137,55 @@ func (rpc *Server) InitBindSession(ctx context.Context, req *implantpb.Request) 
 		return nil, err
 	}
 	return &clientpb.Empty{}, nil
+}
+
+func hasIntersection(slice1, slice2 []uint32) bool {
+	set := make(map[uint32]struct{})
+
+	for _, v := range slice1 {
+		set[v] = struct{}{}
+	}
+
+	for _, v := range slice2 {
+		if _, exists := set[v]; exists {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (rpc *Server) Polling(ctx context.Context, req *clientpb.Polling) (*clientpb.Empty, error) {
+	sess, ok := core.Sessions.Get(req.SessionId)
+	if !ok {
+		return nil, ErrNotFoundSession
+	}
+	var err error
+	go func() {
+		logs.Log.Debugf("polling:%s %s, interval %d", req.Id, sess.ID, req.Interval)
+		sess.Any[req.Id] = true
+		defer func() {
+			delete(sess.Any, req.Id)
+			logs.Log.Debugf("polling:%s %s done", req.Id, sess.ID)
+		}()
+		for {
+			if _, ok := sess.SessionContext.GetAny(req.Id); !ok {
+				break
+			}
+			if !req.Force {
+				// 如果不为force, 且所有需要等待的任务都已经完成, 则退出轮询
+				if !hasIntersection(req.Tasks, sess.Tasks.GetNotFinish()) {
+					break
+				}
+			}
+			err = sess.Request(
+				&clientpb.SpiteRequest{Session: sess.ToProtobufLite(), Task: nil, Spite: types.BuildPingSpite()},
+				pipelinesCh[sess.PipelineID])
+			if err != nil {
+				return
+			}
+			time.Sleep(time.Duration(req.Interval))
+		}
+	}()
+	return &clientpb.Empty{}, err
 }

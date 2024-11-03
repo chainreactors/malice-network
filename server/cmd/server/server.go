@@ -194,23 +194,10 @@ func RecoverAliveSession() error {
 	if len(sessions) > 0 {
 		logs.Log.Debugf("recover %d sessions", len(sessions))
 		for _, session := range sessions {
-			newSession := core.NewSession(session)
-			err = newSession.Load()
+			newSession, err := db.RecoverSession(session)
 			if err != nil {
-				logs.Log.Debugf("cannot load session , %s ", err.Error())
-			}
-			tasks, taskID, err := db.FindTaskAndMaxTasksID(session.SessionId)
-			if err != nil {
-				logs.Log.Errorf("cannot find max task id , %s ", err.Error())
-			}
-			newSession.SetLastTaskId(uint32(taskID))
-			for _, task := range tasks {
-				newTask, err := db.ToTask(*task)
-				if err != nil {
-					logs.Log.Errorf("cannot convert task to core task , %s ", err.Error())
-					continue
-				}
-				newSession.Tasks.Add(newTask)
+				logs.Log.Errorf("cannot recover session %s , %s ", session.SessionId, err.Error())
+				continue
 			}
 			core.Sessions.Add(newSession)
 		}

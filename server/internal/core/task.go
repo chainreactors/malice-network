@@ -7,7 +7,12 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"sync"
+	"time"
 )
+
+func NewTasks() *Tasks {
+	return &Tasks{active: &sync.Map{}}
+}
 
 type Tasks struct {
 	active *sync.Map
@@ -50,6 +55,18 @@ func (t *Tasks) Remove(taskId uint32) {
 	t.active.Delete(taskId)
 }
 
+func (t *Tasks) GetNotFinish() []uint32 {
+	all := []uint32{}
+	t.active.Range(func(key, value interface{}) bool {
+		task := value.(*Task)
+		if !task.Finished() {
+			all = append(all)
+		}
+		return true
+	})
+	return all
+}
+
 type Task struct {
 	Id         uint32
 	Type       string
@@ -63,6 +80,7 @@ type Task struct {
 	Session    *Session
 	DoneCh     chan bool
 	Closed     bool
+	Deadline   time.Time
 	ClientName string
 }
 
@@ -82,7 +100,8 @@ func (t *Task) ToProtobuf() *clientpb.Task {
 		Type:       t.Type,
 		Cur:        int32(t.Cur),
 		Total:      int32(t.Total),
-		Status:     0,
+		Timeout:    t.Timeout(),
+		Finished:   t.Finished(),
 		ClientName: t.ClientName,
 	}
 	return task
@@ -121,6 +140,14 @@ func (t *Task) Finish(spite *implantpb.Spite, msg string) {
 		t.Callback()
 	}
 	t.Close()
+}
+
+func (t *Task) Finished() bool {
+	return t.Cur == t.Total
+}
+
+func (t *Task) Timeout() bool {
+	return time.Now().After(t.Deadline)
 }
 
 func (t *Task) Panic(event Event) {

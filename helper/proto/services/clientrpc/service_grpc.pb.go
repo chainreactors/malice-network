@@ -48,6 +48,7 @@ type MaliceRPCClient interface {
 	Broadcast(ctx context.Context, in *clientpb.Event, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	Notify(ctx context.Context, in *clientpb.Event, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	SessionEvent(ctx context.Context, in *clientpb.Event, opts ...grpc.CallOption) (*clientpb.Empty, error)
+	OnHook(ctx context.Context, in *clientpb.On, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	// implant::internal
 	Ping(ctx context.Context, in *implantpb.Ping, opts ...grpc.CallOption) (*clientpb.Task, error)
 	Sleep(ctx context.Context, in *implantpb.Timer, opts ...grpc.CallOption) (*clientpb.Task, error)
@@ -60,6 +61,8 @@ type MaliceRPCClient interface {
 	ExecuteAddon(ctx context.Context, in *implantpb.ExecuteAddon, opts ...grpc.CallOption) (*clientpb.Task, error)
 	Clear(ctx context.Context, in *implantpb.Request, opts ...grpc.CallOption) (*clientpb.Task, error)
 	CancelTask(ctx context.Context, in *implantpb.ImplantTask, opts ...grpc.CallOption) (*clientpb.Task, error)
+	// implant::bind
+	Polling(ctx context.Context, in *clientpb.Polling, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	// implant::file
 	Upload(ctx context.Context, in *implantpb.UploadRequest, opts ...grpc.CallOption) (*clientpb.Task, error)
 	Download(ctx context.Context, in *implantpb.DownloadRequest, opts ...grpc.CallOption) (*clientpb.Task, error)
@@ -366,6 +369,15 @@ func (c *maliceRPCClient) SessionEvent(ctx context.Context, in *clientpb.Event, 
 	return out, nil
 }
 
+func (c *maliceRPCClient) OnHook(ctx context.Context, in *clientpb.On, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+	out := new(clientpb.Empty)
+	err := c.cc.Invoke(ctx, "/clientrpc.MaliceRPC/OnHook", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *maliceRPCClient) Ping(ctx context.Context, in *implantpb.Ping, opts ...grpc.CallOption) (*clientpb.Task, error) {
 	out := new(clientpb.Task)
 	err := c.cc.Invoke(ctx, "/clientrpc.MaliceRPC/Ping", in, out, opts...)
@@ -459,6 +471,15 @@ func (c *maliceRPCClient) Clear(ctx context.Context, in *implantpb.Request, opts
 func (c *maliceRPCClient) CancelTask(ctx context.Context, in *implantpb.ImplantTask, opts ...grpc.CallOption) (*clientpb.Task, error) {
 	out := new(clientpb.Task)
 	err := c.cc.Invoke(ctx, "/clientrpc.MaliceRPC/CancelTask", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *maliceRPCClient) Polling(ctx context.Context, in *clientpb.Polling, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+	out := new(clientpb.Empty)
+	err := c.cc.Invoke(ctx, "/clientrpc.MaliceRPC/Polling", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1131,6 +1152,7 @@ type MaliceRPCServer interface {
 	Broadcast(context.Context, *clientpb.Event) (*clientpb.Empty, error)
 	Notify(context.Context, *clientpb.Event) (*clientpb.Empty, error)
 	SessionEvent(context.Context, *clientpb.Event) (*clientpb.Empty, error)
+	OnHook(context.Context, *clientpb.On) (*clientpb.Empty, error)
 	// implant::internal
 	Ping(context.Context, *implantpb.Ping) (*clientpb.Task, error)
 	Sleep(context.Context, *implantpb.Timer) (*clientpb.Task, error)
@@ -1143,6 +1165,8 @@ type MaliceRPCServer interface {
 	ExecuteAddon(context.Context, *implantpb.ExecuteAddon) (*clientpb.Task, error)
 	Clear(context.Context, *implantpb.Request) (*clientpb.Task, error)
 	CancelTask(context.Context, *implantpb.ImplantTask) (*clientpb.Task, error)
+	// implant::bind
+	Polling(context.Context, *clientpb.Polling) (*clientpb.Empty, error)
 	// implant::file
 	Upload(context.Context, *implantpb.UploadRequest) (*clientpb.Task, error)
 	Download(context.Context, *implantpb.DownloadRequest) (*clientpb.Task, error)
@@ -1297,6 +1321,9 @@ func (UnimplementedMaliceRPCServer) Notify(context.Context, *clientpb.Event) (*c
 func (UnimplementedMaliceRPCServer) SessionEvent(context.Context, *clientpb.Event) (*clientpb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SessionEvent not implemented")
 }
+func (UnimplementedMaliceRPCServer) OnHook(context.Context, *clientpb.On) (*clientpb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method OnHook not implemented")
+}
 func (UnimplementedMaliceRPCServer) Ping(context.Context, *implantpb.Ping) (*clientpb.Task, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Ping not implemented")
 }
@@ -1329,6 +1356,9 @@ func (UnimplementedMaliceRPCServer) Clear(context.Context, *implantpb.Request) (
 }
 func (UnimplementedMaliceRPCServer) CancelTask(context.Context, *implantpb.ImplantTask) (*clientpb.Task, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CancelTask not implemented")
+}
+func (UnimplementedMaliceRPCServer) Polling(context.Context, *clientpb.Polling) (*clientpb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Polling not implemented")
 }
 func (UnimplementedMaliceRPCServer) Upload(context.Context, *implantpb.UploadRequest) (*clientpb.Task, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Upload not implemented")
@@ -1937,6 +1967,24 @@ func _MaliceRPC_SessionEvent_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MaliceRPC_OnHook_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(clientpb.On)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MaliceRPCServer).OnHook(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/clientrpc.MaliceRPC/OnHook",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MaliceRPCServer).OnHook(ctx, req.(*clientpb.On))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _MaliceRPC_Ping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(implantpb.Ping)
 	if err := dec(in); err != nil {
@@ -2131,6 +2179,24 @@ func _MaliceRPC_CancelTask_Handler(srv interface{}, ctx context.Context, dec fun
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(MaliceRPCServer).CancelTask(ctx, req.(*implantpb.ImplantTask))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MaliceRPC_Polling_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(clientpb.Polling)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MaliceRPCServer).Polling(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/clientrpc.MaliceRPC/Polling",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MaliceRPCServer).Polling(ctx, req.(*clientpb.Polling))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3501,6 +3567,10 @@ var MaliceRPC_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _MaliceRPC_SessionEvent_Handler,
 		},
 		{
+			MethodName: "OnHook",
+			Handler:    _MaliceRPC_OnHook_Handler,
+		},
+		{
 			MethodName: "Ping",
 			Handler:    _MaliceRPC_Ping_Handler,
 		},
@@ -3543,6 +3613,10 @@ var MaliceRPC_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CancelTask",
 			Handler:    _MaliceRPC_CancelTask_Handler,
+		},
+		{
+			MethodName: "Polling",
+			Handler:    _MaliceRPC_Polling_Handler,
 		},
 		{
 			MethodName: "Upload",
