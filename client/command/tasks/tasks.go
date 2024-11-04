@@ -55,7 +55,7 @@ func printTasks(tasks []*clientpb.Task, con *repl.Console, isAll bool) {
 			status,
 			strconv.Itoa(int(task.Cur)),
 			strconv.Itoa(int(task.Total)),
-			task.ClientName,
+			task.Callby,
 		}
 		rowEntries = append(rowEntries, row)
 	}

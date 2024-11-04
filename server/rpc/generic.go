@@ -59,7 +59,7 @@ func (r *GenericRequest) InitSpite(ctx context.Context) (*implantpb.Spite, error
 	r.Task.Callee = r.Callee
 	spite.TaskId = r.Task.Id
 	clientName := getClientName(ctx)
-	r.Task.ClientName = clientName
+	r.Task.CallBy = clientName
 	err = db.AddTask(r.Task)
 	if err != nil {
 		return nil, err

@@ -33,18 +33,59 @@ func Commands(con *repl.Console) []*cobra.Command {
 		},
 	}
 
-	pingCmd := &cobra.Command{
+	getCmd := &cobra.Command{
 		Use:   consts.ModulePing,
-		Short: "check if implant is alive",
+		Short: "get bind implant response",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return PingCmd(cmd, con)
+			return GetCmd(cmd, con)
 		},
 	}
-	return []*cobra.Command{sleepCmd, suicideCmd, pingCmd}
+
+	waitCmd := &cobra.Command{
+		Use:   consts.CommandWait + " [task_id1] [task_id2]",
+		Short: "wait for task to finish",
+		Args:  cobra.MinimumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return WaitCmd(cmd, con)
+		},
+	}
+	common.BindFlag(waitCmd, func(f *pflag.FlagSet) {
+		f.Int("interval", 1, "interval")
+	})
+	taskComp := common.SessionTaskComplete(con)
+	common.BindArgCompletions(waitCmd, &taskComp)
+
+	pollingCmd := &cobra.Command{
+		Use:   consts.CommandPolling,
+		Short: "polling task status",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return PollingCmd(cmd, con)
+		},
+	}
+	common.BindFlag(pollingCmd, func(f *pflag.FlagSet) {
+		f.Int("interval", 1, "interval")
+	})
+
+	recoverCmd := &cobra.Command{
+		Use:   consts.CommandRecover,
+		Short: "recover session",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return RecoverCmd(cmd, con)
+		},
+	}
+
+	initCmd := &cobra.Command{
+		Use:   consts.ModuleInit,
+		Short: "init session",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return InitCmd(cmd, con)
+		},
+	}
+	return []*cobra.Command{sleepCmd, suicideCmd, getCmd, waitCmd, pollingCmd, initCmd, recoverCmd}
 }
 
 func Register(con *repl.Console) {
-	con.RegisterImplantFunc(consts.ModulePing, Ping, "", nil, common.ParseStatus, nil)
+	//con.RegisterImplantFunc(consts.ModulePing, Ping, "", nil, common.ParseStatus, nil)
 
 	con.RegisterImplantFunc(consts.ModuleSleep,
 		Sleep,

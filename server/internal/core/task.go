@@ -68,20 +68,20 @@ func (t *Tasks) GetNotFinish() []uint32 {
 }
 
 type Task struct {
-	Id         uint32
-	Type       string
-	SessionId  string
-	Callee     string
-	Cur        int
-	Total      int
-	Callback   func()
-	Ctx        context.Context
-	Cancel     context.CancelFunc
-	Session    *Session
-	DoneCh     chan bool
-	Closed     bool
-	Deadline   time.Time
-	ClientName string
+	Id        uint32
+	Type      string
+	SessionId string
+	Callee    string
+	Cur       int
+	Total     int
+	Callback  func()
+	Ctx       context.Context
+	Cancel    context.CancelFunc
+	Session   *Session
+	DoneCh    chan bool
+	Closed    bool
+	Deadline  time.Time
+	CallBy    string
 }
 
 func (t *Task) Handler() {
@@ -95,14 +95,14 @@ func (t *Task) Handler() {
 
 func (t *Task) ToProtobuf() *clientpb.Task {
 	task := &clientpb.Task{
-		TaskId:     t.Id,
-		SessionId:  t.SessionId,
-		Type:       t.Type,
-		Cur:        int32(t.Cur),
-		Total:      int32(t.Total),
-		Timeout:    t.Timeout(),
-		Finished:   t.Finished(),
-		ClientName: t.ClientName,
+		TaskId:    t.Id,
+		SessionId: t.SessionId,
+		Type:      t.Type,
+		Cur:       int32(t.Cur),
+		Total:     int32(t.Total),
+		Timeout:   t.Timeout(),
+		Finished:  t.Finished(),
+		Callby:    t.CallBy,
 	}
 	return task
 }
