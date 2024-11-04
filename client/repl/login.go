@@ -7,10 +7,7 @@ import (
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/utils/mtls"
-	"github.com/chainreactors/tui"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/connectivity"
-	"time"
 )
 
 func Connect(con *Console, config *mtls.ClientConfig) (*grpc.ClientConn, error) {
@@ -25,15 +22,11 @@ func Connect(con *Console, config *mtls.ClientConfig) (*grpc.ClientConn, error) 
 		return nil, err
 	}
 
-	// 初次连接成功后，立即初始化并记录状态
 	logs.Log.Info("Initial connection established, initializing state...")
-	if err := restoreAndLogState(con, conn, config); err != nil {
+	if err := initState(con, conn, config); err != nil {
 		logs.Log.Errorf("Failed to initialize state: %v", err)
 		return nil, err
 	}
-
-	// 启动协程持续监控连接状态变化
-	go monitorConnectionState(con, conn, config)
 
 	return conn, nil
 }
@@ -48,29 +41,7 @@ func Login(con *Console, config *mtls.ClientConfig) error {
 	return nil
 }
 
-// monitorConnectionState 监控连接状态变化并在自动重连后恢复状态
-func monitorConnectionState(con *Console, conn *grpc.ClientConn, config *mtls.ClientConfig) {
-	var previousState connectivity.State
-	for {
-		currentState := conn.GetState()
-		if previousState != connectivity.Ready && currentState == connectivity.Ready {
-			tui.Down(0)
-			logs.Log.Info("Connection re-established, restoring state...")
-			if err := restoreAndLogState(con, conn, config); err != nil {
-				logs.Log.Errorf("Failed to restore state after reconnect: %v", err)
-			}
-		}
-		// 更新前一个状态，并等待状态变化
-		previousState = currentState
-		conn.WaitForStateChange(context.Background(), currentState)
-
-		// 等待一段时间以避免高频率的状态检查
-		time.Sleep(100 * time.Millisecond)
-	}
-}
-
-// restoreAndLogState 恢复并记录 Login 的状态
-func restoreAndLogState(con *Console, conn *grpc.ClientConn, config *mtls.ClientConfig) error {
+func initState(con *Console, conn *grpc.ClientConn, config *mtls.ClientConfig) error {
 	var err error
 	con.ServerStatus, err = core.InitServerStatus(conn, config)
 	if err != nil {
