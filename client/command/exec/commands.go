@@ -105,7 +105,12 @@ execute_local local_exe --ppid 1234 --block_dll --etw --argue "argue"
 			"depend": consts.ModuleExecution,
 			"os":     "windows",
 		},
+		Example: `execute powershell command:
+~~~
+powershell dir
+~~~`,
 	}
+
 	common.BindArgCompletions(powershellCmd, nil,
 		carapace.ActionValues().Usage("powershell to execute"),
 		carapace.ActionValues().Usage("arguments to the command"),

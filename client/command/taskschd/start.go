@@ -49,7 +49,7 @@ func RegisterTaskSchdStartFunc(con *repl.Console) {
 		consts.ModuleTaskSchdStart,
 		consts.ModuleTaskSchdStart,
 		//session *core.Session, namespace string, args []string
-		consts.ModuleTaskSchdCreate+"(active(), \"task_name\")",
+		consts.ModuleTaskSchdCreate+`(active(), "task_name")`,
 		[]string{
 			"session: special session",
 			"name: name of the scheduled task",

@@ -51,7 +51,7 @@ func RegisterServiceStartFunc(con *repl.Console) {
 	con.AddInternalFuncHelper(
 		consts.ModuleServiceStart,
 		consts.ModuleServiceStart,
-		consts.ModuleServiceStart+"(active(),"+"\"service_name\""+")",
+		consts.ModuleServiceStart+`(active(),"service_name")`,
 		[]string{
 			"session: special session",
 			"name: service name",

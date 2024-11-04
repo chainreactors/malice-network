@@ -51,4 +51,30 @@ func RegisterAssemblyFunc(con *repl.Console) {
 		},
 		common.ParseAssembly,
 		nil)
+
+	con.AddInternalFuncHelper(
+		consts.ModuleExecuteAssembly,
+		consts.ModuleExecuteAssembly,
+		consts.ModuleExecuteAssembly+`(active(),"sharp.exe",{},true,false,false)`,
+		[]string{
+			"sessions",
+			"path",
+			"args",
+			"output",
+			"amsi",
+			"etw",
+		},
+		[]string{"task"})
+
+	con.AddInternalFuncHelper(
+		"bexecute_assembly",
+		"bexecute_assembly",
+		`bexecute_assembly(active(),"sharp.exe",{})`,
+		[]string{
+			"sessions",
+			"path",
+			"args",
+		},
+		[]string{"task"})
+
 }

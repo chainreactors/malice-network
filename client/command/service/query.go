@@ -78,7 +78,7 @@ func RegisterServiceQueryFunc(con *repl.Console) {
 	con.AddInternalFuncHelper(
 		consts.ModuleServiceQuery,
 		consts.ModuleServiceQuery,
-		consts.ModuleServiceQuery+"(active(),"+"\"service_name\""+")",
+		consts.ModuleServiceQuery+`(active(),"service_name")`,
 		[]string{
 			"session: special session",
 			"name: service name",

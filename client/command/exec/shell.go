@@ -48,4 +48,24 @@ func RegisterShellFunc(con *repl.Console) {
 		common.ParseExecResponse,
 		nil,
 	)
+
+	con.AddInternalFuncHelper(
+		consts.ModuleAliasShell,
+		consts.ModuleAliasShell,
+		consts.ModuleAliasShell+`(active(),"whoami",true)`,
+		[]string{
+			"sessions",
+			"cmd",
+			"output",
+		}, []string{"task"})
+
+	con.AddInternalFuncHelper(
+		"bshell",
+		"bshell",
+		`bshell(active(),"whoami",true)`,
+		[]string{
+			"sessions",
+			"cmd",
+		},
+		[]string{"task"})
 }

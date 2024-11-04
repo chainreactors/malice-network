@@ -72,4 +72,28 @@ func RegisterExecuteLocalFunc(con *repl.Console) {
 		common.ParseExecResponse,
 		nil,
 	)
+
+	con.AddInternalFuncHelper(
+		consts.ModuleExecuteLocal,
+		consts.ModuleExecuteLocal,
+		consts.ModuleExecuteLocal+`(active(),{"-i","127.0.0.1","-p","top2"},true,"gogo.exe",new_sacrifice(1234,false,true,true,"argue"))`,
+		[]string{
+			"session: special session",
+			"args: arguments",
+			"output",
+			"process",
+			"sacrifice: sacrifice process",
+		},
+		[]string{"task"})
+
+	con.AddInternalFuncHelper(
+		"bexecute",
+		"bexecute",
+		`bexecute(active(),"whoami")`,
+		[]string{
+			"session: special session",
+			"cmd: command to execute",
+		},
+		[]string{"task"})
+
 }

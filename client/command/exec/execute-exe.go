@@ -93,6 +93,21 @@ func RegisterExeFunc(con *repl.Console) {
 		common.ParseAssembly,
 		nil)
 
+	con.AddInternalFuncHelper(
+		consts.ModuleAliasInlineExe,
+		consts.ModuleAliasInlineExe,
+		consts.ModuleAliasInlineExe+`(active(),"gogo.exe",{"-i","127.0.0.1"},true,60,"",""))`,
+		[]string{
+			"session: special session",
+			"path: PE file",
+			"args: PE args",
+			"output",
+			"timeout",
+			"arch",
+			"process",
+		},
+		[]string{"task"})
+
 	con.RegisterImplantFunc(
 		consts.ModuleExecuteExe,
 		ExecExe,
@@ -106,4 +121,21 @@ func RegisterExeFunc(con *repl.Console) {
 		},
 		common.ParseAssembly,
 		nil)
+
+	con.AddInternalFuncHelper(
+		consts.ModuleExecuteExe,
+		consts.ModuleExecuteExe,
+		consts.ModuleExecuteExe+`(active(),"/path/to/gogo.exe",{"-i","127.0.0.1"},true,60,"","",new_sacrifice(1234,false,true,true,"argue"))`,
+		[]string{
+			"session: special session",
+			"pePath: PE file",
+			"args: PE args",
+			"output",
+			"timeout",
+			"arch",
+			"process",
+			"sac: sacrifice process",
+		},
+		[]string{"task"})
+
 }

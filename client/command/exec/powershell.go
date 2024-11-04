@@ -64,7 +64,6 @@ func PowerPick(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, p
 		psBin.Write(content)
 		psBin.WriteString("\n")
 	}
-
 	psBin.WriteString(strings.Join(ps, " "))
 	binary := &implantpb.ExecuteBinary{
 		Bin:    psBin.Bytes(),
@@ -93,6 +92,30 @@ func RegisterPowershellFunc(con *repl.Console) {
 		},
 		common.ParseAssembly,
 		nil)
+	//rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, ps []string, amsi, etw bool
+	con.AddInternalFuncHelper(
+		consts.ModulePowerpick,
+		consts.ModulePowerpick,
+		consts.ModulePowerpick+`(active(),"powerview.ps1",{""},true,true))`,
+		[]string{
+			"session: special session",
+			"path: powershell script",
+			"ps: ps args",
+			"amsi",
+			"etw",
+		},
+		[]string{"task"})
+
+	con.AddInternalFuncHelper(
+		"bpowerpick",
+		"bpowerpick",
+		`bpowerpick(active(),"powerview.ps1",{""}))`,
+		[]string{
+			"session: special session",
+			"path: powershell script",
+			"ps: ps args",
+		},
+		[]string{"task"})
 
 	con.RegisterImplantFunc(
 		consts.ModuleAliasPowershell,
@@ -104,5 +127,26 @@ func RegisterPowershellFunc(con *repl.Console) {
 		common.ParseExecResponse,
 		nil,
 	)
+
+	con.AddInternalFuncHelper(
+		consts.ModuleAliasPowershell,
+		consts.ModuleAliasPowershell,
+		consts.ModuleAliasPowershell+`(active(),"dir",true))`,
+		[]string{
+			"session",
+			"cmd",
+			"output",
+		},
+		[]string{"task"})
+
+	con.AddInternalFuncHelper(
+		"bpowershell",
+		"bpowershell",
+		`bpowershell(active(),"dir")`,
+		[]string{
+			"session",
+			"cmd",
+		},
+		[]string{"task"})
 
 }

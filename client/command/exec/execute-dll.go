@@ -29,8 +29,8 @@ func ExecuteDLLCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func ExecDLL(rpc clientrpc.MaliceRPCClient, sess *core.Session, pePath string, entrypoint string, args []string, output bool, timeout uint32, arch string, process string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
-	binary, err := common.NewBinary(consts.ModuleExecuteDll, pePath, args, output, timeout, arch, process, sac)
+func ExecDLL(rpc clientrpc.MaliceRPCClient, sess *core.Session, dllPath string, entrypoint string, args []string, output bool, timeout uint32, arch string, process string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
+	binary, err := common.NewBinary(consts.ModuleExecuteDll, dllPath, args, output, timeout, arch, process, sac)
 	if err != nil {
 		return nil, err
 	}
@@ -92,6 +92,23 @@ func RegisterDLLFunc(con *repl.Console) {
 		common.ParseAssembly,
 		nil)
 
+	con.AddInternalFuncHelper(
+		consts.ModuleExecuteDll,
+		consts.ModuleExecuteDll,
+		consts.ModuleExecuteDll+`(active(),"example.dll",{},true,60,"","",new_sacrifice(1234,false,true,true,""))`,
+		[]string{
+			"session: special session",
+			"dllPath",
+			"entrypoint",
+			"args",
+			"output",
+			"timeout",
+			"arch",
+			"process",
+			"sac: sacrifice process",
+		},
+		[]string{"task"})
+
 	con.RegisterImplantFunc(
 		consts.ModuleAliasInlineDll,
 		InlineDLL,
@@ -105,5 +122,21 @@ func RegisterDLLFunc(con *repl.Console) {
 		},
 		common.ParseAssembly,
 		nil)
+
+	con.AddInternalFuncHelper(
+		consts.ModuleAliasInlineDll,
+		consts.ModuleAliasInlineDll,
+		consts.ModuleAliasInlineDll+`(active(),"example.dll","",{"arg1","arg2"},true,60,"","")`,
+		[]string{
+			"session: special session",
+			"path",
+			"entryPoint",
+			"args",
+			"output",
+			"timeout",
+			"arch",
+			"process",
+		},
+		[]string{"task"})
 
 }

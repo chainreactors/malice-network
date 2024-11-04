@@ -61,7 +61,7 @@ func RegisterServiceCreateFunc(con *repl.Console) {
 	con.AddInternalFuncHelper(
 		consts.ModuleServiceCreate,
 		consts.ModuleServiceCreate,
-		consts.ModuleServiceCreate+"(active(), \"service_name\", \"display\", \"path\", 0, 0, \"account\")",
+		consts.ModuleServiceCreate+`(active(), "service_name", "display", "path", 0, 0, "account")`,
 		[]string{
 			"session: special session",
 			"name: service name",
