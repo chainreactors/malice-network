@@ -39,6 +39,9 @@ func Commands(con *repl.Console) []*cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return GetCmd(cmd, con)
 		},
+		Annotations: map[string]string{
+			"implant": consts.ImplantTypeBind,
+		},
 	}
 
 	waitCmd := &cobra.Command{
@@ -47,6 +50,9 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return WaitCmd(cmd, con)
+		},
+		Annotations: map[string]string{
+			"implant": consts.ImplantTypeBind,
 		},
 	}
 	common.BindFlag(waitCmd, func(f *pflag.FlagSet) {
@@ -60,6 +66,9 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Short: "polling task status",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return PollingCmd(cmd, con)
+		},
+		Annotations: map[string]string{
+			"implant": consts.ImplantTypeBind,
 		},
 	}
 	common.BindFlag(pollingCmd, func(f *pflag.FlagSet) {
@@ -79,6 +88,9 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Short: "init session",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return InitCmd(cmd, con)
+		},
+		Annotations: map[string]string{
+			"implant": consts.ImplantTypeBind,
 		},
 	}
 	return []*cobra.Command{sleepCmd, suicideCmd, getCmd, waitCmd, pollingCmd, initCmd, recoverCmd}

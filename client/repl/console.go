@@ -130,7 +130,6 @@ func (c *Console) SwitchImplant(sess *core.Session) {
 	var count int
 	for _, cmd := range c.CMDs {
 		if cmd.Annotations["menu"] != consts.ImplantMenu {
-			count++
 			continue
 		}
 		cmd.Hidden = false
@@ -138,6 +137,9 @@ func (c *Console) SwitchImplant(sess *core.Session) {
 			cmd.Hidden = true
 		}
 		if arch, ok := cmd.Annotations["arch"]; ok && !strings.Contains(arch, sess.Os.Arch) {
+			cmd.Hidden = true
+		}
+		if implantType, ok := cmd.Annotations["implant"]; ok && sess.Type != implantType {
 			cmd.Hidden = true
 		}
 		if depend, ok := cmd.Annotations["depend"]; ok {

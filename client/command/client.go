@@ -16,12 +16,10 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/utils/file"
 	"github.com/chainreactors/malice-network/helper/utils/mtls"
-	"github.com/chainreactors/tui"
 	"github.com/reeflective/console"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 	"path/filepath"
-	"strconv"
 )
 
 func bindCommonCommands(bind bindFunc) {
@@ -119,10 +117,10 @@ func BindClientsCommands(con *repl.Console) console.Commands {
 
 		client.InitDefaultHelpCmd()
 		client.InitDefaultHelpFlag()
-		SetColoredUse(client)
 		client.SetUsageFunc(help.UsageFunc)
 		client.SetHelpFunc(help.HelpFunc)
 		client.SetHelpCommandGroupID(consts.GenericGroup)
+
 		RegisterClientFunc(con)
 		RegisterImplantFunc(con)
 		return client
@@ -132,16 +130,4 @@ func BindClientsCommands(con *repl.Console) console.Commands {
 
 func RegisterClientFunc(con *repl.Console) {
 	generic.Register(con)
-}
-
-// SetColoredUse modifies the Use field with color based on OPSEC score
-func SetColoredUse(cmd *cobra.Command) {
-	for _, c := range cmd.Commands() {
-		if opsecStr, ok := c.Annotations["opsec"]; ok {
-			opsec, err := strconv.ParseFloat(opsecStr, 64)
-			if err == nil {
-				c.Use = tui.RenderOpsec(opsec, c.Name())
-			}
-		}
-	}
 }
