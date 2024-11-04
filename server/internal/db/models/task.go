@@ -8,7 +8,9 @@ import (
 
 type Task struct {
 	ID          string    `gorm:"primaryKey;->;<-:create;type:uuid;"`
-	CreatedAt   time.Time `gorm:"->;<-:create;"`
+	Created     time.Time `gorm:"->;<-:create;"`
+	Deadline    time.Time
+	CallBy      string
 	Seq         int
 	Type        string
 	SessionID   string
@@ -23,7 +25,7 @@ func (t *Task) BeforeCreate(tx *gorm.DB) (err error) {
 	if err != nil {
 		return err
 	}
-	t.CreatedAt = time.Now()
+	t.Created = time.Now()
 	return nil
 }
 
@@ -43,6 +45,8 @@ func (t *Task) ToProtobuf() *clientpb.Task {
 		Cur:         int32(t.Cur),
 		Total:       int32(t.Total),
 		Description: t.Description,
-		ClientName:  t.ClientName,
+		Callby:      t.ClientName,
+		Timeout:     time.Now().After(t.Deadline),
+		Finished:    t.Cur == t.Total,
 	}
 }

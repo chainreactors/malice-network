@@ -445,6 +445,8 @@ func ToTask(task *models.Task) (*core.Task, error) {
 		SessionId: task.SessionID,
 		Cur:       task.Cur,
 		Total:     task.Total,
+		Deadline:  task.Deadline,
+		CallBy:    task.CallBy,
 	}, nil
 }
 
@@ -456,7 +458,7 @@ func AddTask(task *core.Task) error {
 		SessionID:  task.SessionId,
 		Cur:        task.Cur,
 		Total:      task.Total,
-		ClientName: task.ClientName,
+		ClientName: task.CallBy,
 	}
 	return Session().Create(taskModel).Error
 }
