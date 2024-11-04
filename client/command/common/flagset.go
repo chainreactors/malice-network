@@ -169,19 +169,6 @@ func ParseProfileFlags(cmd *cobra.Command) (string, string, string, string, stri
 	return profileName, buildTarget, pipelineId, buildType, proxy, obfuscate, modules, ca, interval, jitter
 }
 
-func RegistryFlagSet(f *pflag.FlagSet) {
-	f.String("hive", "", "Registry hive (e.g., HKEY_LOCAL_MACHINE)")
-	f.String("path", "", "Path within the registry hive")
-	f.String("key", "", "Key to query or modify")
-}
-
-func ParseRegistryFlags(cmd *cobra.Command) (string, string, string) {
-	hive, _ := cmd.Flags().GetString("hive")
-	path, _ := cmd.Flags().GetString("path")
-	key, _ := cmd.Flags().GetString("key")
-	return hive, path, key
-}
-
 func MalHttpFlagset(f *pflag.FlagSet) {
 	f.Bool("ignore-cache", false, "ignore cache")
 	f.String("proxy", "", "proxy")

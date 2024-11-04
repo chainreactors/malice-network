@@ -9,14 +9,15 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
+	"github.com/chainreactors/malice-network/helper/utils/file"
 	"github.com/spf13/cobra"
-	"strings"
 )
 
 // RegQueryCmd queries a registry key value.
 func RegQueryCmd(cmd *cobra.Command, con *repl.Console) error {
-	hive, path, key := common.ParseRegistryFlags(cmd)
-
+	path := cmd.Flags().Arg(0)
+	hive, path := formatRegPath(path)
+	key := cmd.Flags().Arg(1)
 	session := con.GetInteractive()
 	task, err := RegQuery(con.Rpc, session, hive, path, key)
 	if err != nil {
@@ -32,7 +33,7 @@ func RegQuery(rpc clientrpc.MaliceRPCClient, session *core.Session, hive, path, 
 		Type: consts.ModuleRegQuery,
 		Registry: &implantpb.Registry{
 			Hive: hive,
-			Path: path,
+			Path: file.FormatWindowPath(path),
 			Key:  key,
 		},
 	}
@@ -45,9 +46,7 @@ func RegisterRegQueryFunc(con *repl.Console) {
 		RegQuery,
 		"breg_queryv",
 		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, key, value, arch string) (*clientpb.Task, error) {
-			s := strings.Split(key, "\\")
-			hive := s[0]
-			path := strings.Join(s[1:], "\\")
+			hive, path := formatRegPath(key)
 			return RegQuery(rpc, sess, hive, path, key)
 		},
 		common.ParseResponse,
