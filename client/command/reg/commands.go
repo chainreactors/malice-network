@@ -110,7 +110,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Use:   consts.SubCommandName(consts.ModuleRegListValue) + " --hive [hive] --path [path]",
 		Short: "List values in a registry path",
 		Long:  "Retrieve a list of all values under a specified registry path.",
-		Args:  cobra.ExactArgs(2),
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return RegListValueCmd(cmd, con)
 		},
@@ -120,7 +120,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		},
 		Example: `List values in a registry path:
   ~~~
-  reg list_value HKEY_LOCAL_MACHINE\\SOFTWARE\\Example TestKEY
+  reg list_value HKEY_LOCAL_MACHINE\\SOFTWARE\\Example
   ~~~`,
 	}
 
