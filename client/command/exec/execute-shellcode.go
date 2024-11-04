@@ -78,6 +78,22 @@ func RegisterShellcodeFunc(con *repl.Console) {
 		common.ParseAssembly,
 		nil)
 
+	con.AddInternalFuncHelper(
+		consts.ModuleExecuteShellcode,
+		consts.ModuleExecuteShellcode,
+		consts.ModuleExecuteShellcode+`(active(), "/path/to/shellcode", {}, true, 60, "x64", "",new_sacrifice(1234,false,true,true)`,
+		[]string{
+			"session: special session",
+			"shellcodePath: path to shellcode",
+			"args: arguments",
+			"output",
+			"timeout",
+			"arch",
+			"process",
+			"sac: sacrifice process",
+		},
+		[]string{"task"})
+
 	con.RegisterImplantFunc(
 		consts.ModuleAliasInlineShellcode,
 		InlineShellcode,
@@ -87,4 +103,20 @@ func RegisterShellcodeFunc(con *repl.Console) {
 		},
 		common.ParseAssembly,
 		nil)
+
+	con.AddInternalFuncHelper(
+		consts.ModuleAliasInlineShellcode,
+		consts.ModuleAliasInlineShellcode,
+		consts.ModuleAliasInlineShellcode+`(active(),"/path/to/shellcode",{},true,60,"x64","")`,
+		[]string{
+			"session: special session",
+			"path",
+			"args",
+			"output",
+			"timeout",
+			"arch",
+			"process",
+		},
+		[]string{"task"})
+
 }

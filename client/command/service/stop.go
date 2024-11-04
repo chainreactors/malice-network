@@ -48,7 +48,7 @@ func RegisterServiceStopFunc(con *repl.Console) {
 	con.AddInternalFuncHelper(
 		consts.ModuleServiceStop,
 		consts.ModuleServiceStop,
-		consts.ModuleServiceStop+"(active(),"+"\"service_name\""+")",
+		consts.ModuleServiceStop+`(active(),"service_name")`,
 		[]string{
 			"session: special session",
 			"name: service name",

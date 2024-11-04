@@ -118,7 +118,7 @@ func RegisterEnvFunc(con *repl.Console) {
 	con.AddInternalFuncHelper(
 		consts.ModuleSetEnv,
 		consts.ModuleSetEnv,
-		"env(active(), \"name\", \"value\")",
+		`env(active(), "name", "value")`,
 		[]string{
 			"sess:special session",
 			"envName:env name",
@@ -139,7 +139,7 @@ func RegisterEnvFunc(con *repl.Console) {
 	con.AddInternalFuncHelper(
 		consts.ModuleUnsetEnv,
 		consts.ModuleUnsetEnv,
-		"unsetenv(active(), \"envName\")",
+		`unsetenv(active(), "envName")`,
 		[]string{
 			"sess:special session",
 			"envName:env name",

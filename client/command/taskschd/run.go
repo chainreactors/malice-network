@@ -49,8 +49,7 @@ func RegisterTaskSchdRunFunc(con *repl.Console) {
 	con.AddInternalFuncHelper(
 		consts.ModuleTaskSchdRun,
 		consts.ModuleTaskSchdRun,
-		//session *core.Session, namespace string, args []string
-		consts.ModuleTaskSchdRun+"(active(), \"task_name\")",
+		consts.ModuleTaskSchdRun+`(active(), "task_name")`,
 		[]string{
 			"session: special session",
 			"name: name of the scheduled task",

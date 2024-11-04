@@ -112,7 +112,7 @@ func Register(con *repl.Console) {
 		Upload,
 		"bupload",
 		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string) (*clientpb.Task, error) {
-			return Upload(rpc, sess, path, filepath.Base(path), 0744, false)
+			return Upload(rpc, sess, path, filepath.Base(path), 0o744, false)
 		},
 		common.ParseStatus,
 		nil)
@@ -120,16 +120,27 @@ func Register(con *repl.Console) {
 	intermediate.RegisterInternalDoneCallback(consts.ModuleUpload, func(content *clientpb.TaskContext) (string, error) {
 		return fmt.Sprintf("upload block %d/%d success", content.Task.Cur, content.Task.Total), nil
 	})
+
 	con.AddInternalFuncHelper(
-		consts.ModuleDownload,
-		consts.ModuleDownload,
-		consts.ModuleDownload+"(active(),`path`,`target`,`priv`,false)",
+		consts.ModuleUpload,
+		consts.ModuleUpload,
+		consts.ModuleUpload+`(active(),"/source/path","/target/path",parse_octal("644"),false)`,
 		[]string{
 			"session: special session",
 			"path: source path",
 			"target: target path",
 			"priv",
 			"hidden",
+		},
+		[]string{"task"})
+
+	con.AddInternalFuncHelper(
+		"bupload",
+		"bupload",
+		`bupload(active(),"/source/path")`,
+		[]string{
+			"session: special session",
+			"path: source path",
 		},
 		[]string{"task"})
 

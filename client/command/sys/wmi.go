@@ -79,8 +79,7 @@ func RegisterWmiFunc(con *repl.Console) {
 	con.AddInternalFuncHelper(
 		consts.ModuleWmiQuery,
 		consts.ModuleWmiQuery,
-		//session *core.Session, namespace string, args []string
-		"wmi_query(active(), \"root\\cimv2\", {\"SELECT * FROM Win32_OperatingSystem\"})",
+		`wmi_query(active(), "root\\cimv2", {"SELECT * FROM Win32_OperatingSystem"})`,
 		[]string{
 			"sess: special session",
 			"namespace: WMI namespace",
@@ -102,7 +101,7 @@ func RegisterWmiFunc(con *repl.Console) {
 		consts.ModuleWmiExec,
 		//session *core.Session, namespace string, args []string
 		// params map[string]string
-		"wmi_execute(active(), \"root\\cimv2\", \"Win32_Process\", \"Create\", {\"CommandLine\":\"cmd.exe\"})",
+		`wmi_execute(active(), "root\\cimv2", "Win32_Process", "Create", {"CommandLine":"cmd.exe"})`,
 		[]string{
 			"session: special session",
 			"namespace: WMI namespace",

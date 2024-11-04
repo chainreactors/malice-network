@@ -97,8 +97,6 @@ func Commands(con *repl.Console) []*cobra.Command {
 }
 
 func Register(con *repl.Console) {
-	//con.RegisterImplantFunc(consts.ModulePing, Ping, "", nil, common.ParseStatus, nil)
-
 	con.RegisterImplantFunc(consts.ModuleSleep,
 		Sleep,
 		"bsleep",
@@ -117,6 +115,15 @@ func Register(con *repl.Console) {
 			"jitter:jitter, percentage of interval",
 		}, []string{"task"})
 
+	con.AddInternalFuncHelper(
+		"bsleep",
+		"bsleep",
+		`sleep(active(), 10)`,
+		[]string{
+			"sess:special session",
+			"interval:time interval, in seconds",
+		}, []string{"task"})
+
 	con.RegisterImplantFunc(consts.ModuleSuicide,
 		Suicide,
 		"bexit",
@@ -129,7 +136,11 @@ func Register(con *repl.Console) {
 		`suicide(active())`,
 		[]string{
 			"sess:special session",
-		},
-		[]string{"task"},
-	)
+		}, []string{"task"})
+
+	con.AddInternalFuncHelper("bexit", "bexit",
+		`bexit(active())`,
+		[]string{
+			"sess:special session",
+		}, []string{"task"})
 }

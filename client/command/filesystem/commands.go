@@ -226,7 +226,7 @@ func Register(con *repl.Console) {
 	con.AddInternalFuncHelper(
 		consts.ModuleCd,
 		consts.ModuleCd,
-		consts.ModuleCd+"(active(),\"path\")",
+		consts.ModuleCd+`(active(),"path")`,
 		[]string{
 			"session: special session",
 			"path: path to change directory",
@@ -244,7 +244,7 @@ func Register(con *repl.Console) {
 	con.AddInternalFuncHelper(
 		consts.ModuleCat,
 		consts.ModuleCat,
-		consts.ModuleCat+"(active(),\"file.txt\")",
+		consts.ModuleCat+`(active(),"file.txt")`,
 		[]string{
 			"session: special session",
 			"fileName: file to print",
@@ -262,7 +262,7 @@ func Register(con *repl.Console) {
 	con.AddInternalFuncHelper(
 		consts.ModuleChmod,
 		consts.ModuleChmod,
-		consts.ModuleChmod+"(active(),\"file.txt\",\"644\")",
+		consts.ModuleChmod+`(active(),"file.txt","644")`,
 		[]string{
 			"session: special session",
 			"path: file to change mode",
@@ -281,7 +281,7 @@ func Register(con *repl.Console) {
 	con.AddInternalFuncHelper(
 		consts.ModuleChown,
 		consts.ModuleChown,
-		consts.ModuleChown+"(active(),\"file.txt\",\"username\",\"groupname\",true)",
+		consts.ModuleChown+`(active(),"file.txt","username","groupname",true)`,
 		[]string{
 			"session: special session",
 			"path: file to change owner",
@@ -302,7 +302,7 @@ func Register(con *repl.Console) {
 	con.AddInternalFuncHelper(
 		consts.ModuleCp,
 		consts.ModuleCp,
-		consts.ModuleCp+"(active(),\"source\",\"target\")",
+		consts.ModuleCp+`(active(),"source","target")`,
 		[]string{
 			"session: special session",
 			"originPath: origin path",
@@ -321,7 +321,7 @@ func Register(con *repl.Console) {
 	con.AddInternalFuncHelper(
 		consts.ModuleMkdir,
 		consts.ModuleMkdir,
-		consts.ModuleMkdir+"(active(),\"/tmp\")",
+		consts.ModuleMkdir+`(active(),"/tmp")`,
 		[]string{
 			"session: special session",
 			"path: dir",
@@ -339,7 +339,7 @@ func Register(con *repl.Console) {
 	con.AddInternalFuncHelper(
 		consts.ModuleMv,
 		consts.ModuleMv,
-		consts.ModuleMv+"(active(),\"/tmp/file1.txt\",\"/tmp/file2.txt\")",
+		consts.ModuleMv+`(active(),"/tmp/file1.txt","/tmp/file2.txt")`,
 		[]string{
 			"session: special session",
 			"sourcePath: source path",
@@ -376,7 +376,7 @@ func Register(con *repl.Console) {
 	con.AddInternalFuncHelper(
 		consts.ModuleRm,
 		consts.ModuleRm,
-		consts.ModulePwd+"(active(),\"/tmp/file.txt\")",
+		consts.ModulePwd+`(active(),"/tmp/file.txt")`,
 		[]string{
 			"session: special session",
 			"fileName: file to remove",

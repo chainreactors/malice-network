@@ -59,7 +59,7 @@ func RegisterRunasFunc(con *repl.Console) {
 	con.AddInternalFuncHelper(
 		consts.ModuleRunas,
 		consts.ModuleRunas,
-		consts.ModuleRunas+"(active(),\"admin\",\"EXAMPLE\",\"password123\",\"/path/to/program\",\"arg1 arg2\",0,false)",
+		consts.ModuleRunas+`(active(),"admin","EXAMPLE","password123","/path/to/program","arg1 arg2",0,false)`,
 		[]string{
 			"session: special session",
 			"username",

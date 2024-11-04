@@ -55,4 +55,27 @@ func RegisterBofFunc(con *repl.Console) {
 
 			return bofResps.(pe.BOFResponses).String(), nil
 		})
+
+	con.AddInternalFuncHelper(
+		consts.ModuleExecuteBof,
+		consts.ModuleExecuteBof,
+		consts.ModuleExecuteBof+`(active(),"/path/dir.x64.o",{"/path/to/list"},true)`,
+		[]string{
+			"session: special session",
+			"bofPath: path to BOF",
+			"args: arguments",
+			"output: output",
+		},
+		[]string{"task"})
+
+	con.AddInternalFuncHelper(
+		"binline_execute",
+		"binline_execute",
+		`binline_execute(active(),"/path/dir.x64.o","/path/to/list")`,
+		[]string{
+			"session: special session",
+			"bofPath: path to BOF",
+			"args: arguments",
+		},
+		[]string{"task"})
 }

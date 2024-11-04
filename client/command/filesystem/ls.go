@@ -101,7 +101,17 @@ func RegisterLsFunc(con *repl.Console) {
 	con.AddInternalFuncHelper(
 		consts.ModuleLs,
 		consts.ModuleLs,
-		consts.ModuleLs+"(active(),\"/tmp\")",
+		consts.ModuleLs+`(active(),"/tmp")`,
+		[]string{
+			"session: special session",
+			"path: path to list files",
+		},
+		[]string{"task"})
+
+	con.AddInternalFuncHelper(
+		"bls",
+		"bls",
+		`bls(active(),"/tmp")`,
 		[]string{
 			"session: special session",
 			"path: path to list files",
