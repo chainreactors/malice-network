@@ -3,6 +3,7 @@ package command
 import (
 	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/spf13/cobra"
 )
 
@@ -38,19 +39,30 @@ func makeBind(cmd *cobra.Command, con *repl.Console) bindFunc {
 		// Bind the command to the root
 		for _, command := range cmds {
 			for _, c := range command(con) {
-				c.GroupID = group
-				c.SetHelpFunc(help.HelpFunc)
-				c.SetUsageFunc(help.UsageFunc)
-				SetColoredUse(c)
-
 				if c.Annotations == nil {
-					c.Annotations = map[string]string{"menu": cmd.Name()}
-				} else {
-					c.Annotations["menu"] = cmd.Name()
+					c.Annotations = map[string]string{}
+				}
+				c.Annotations["menu"] = cmd.Name()
+				c.GroupID = group
+				if cmd.Name() == consts.ImplantMenu {
+					updateCommand(con, c, group)
 				}
 				cmd.AddCommand(c)
-				con.CMDs[c.Name()] = c
 			}
 		}
+	}
+}
+
+func updateCommand(con *repl.Console, c *cobra.Command, group string) {
+	c.SetHelpFunc(help.HelpFunc)
+	c.SetUsageFunc(help.UsageFunc)
+	if c.Annotations == nil {
+		c.Annotations = map[string]string{}
+	}
+	help.RenderOpsec(c.Annotations["opsec"], c.Use)
+	con.CMDs[c.Name()] = c
+
+	for _, subCmd := range c.Commands() {
+		updateCommand(con, subCmd, group)
 	}
 }

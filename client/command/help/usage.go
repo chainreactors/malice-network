@@ -4,7 +4,10 @@ import (
 	_ "embed"
 	"fmt"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/tui"
+	"github.com/muesli/termenv"
 	"github.com/spf13/cobra"
+	"strconv"
 	"strings"
 	"text/template"
 )
@@ -71,4 +74,30 @@ func SetCustomUsageTemplate() (*template.Template, error) {
 		return nil, err
 	}
 	return usageTmpl, nil
+}
+
+// RenderOpsec renders a description with color based on OPSEC score
+func RenderOpsec(opsecLevel string, description string) string {
+	if opsecLevel == "" {
+		return description
+	}
+	opsec, err := strconv.ParseFloat(opsecLevel, 64)
+	if err != nil {
+		return ""
+	}
+	//ansiEscape := regexp.MustCompile(`\x1b\[[0-9;]*m`)
+	//description = ansiEscape.ReplaceAllString(description, "")
+	var coloredDescription string
+	switch {
+	case opsec > 0 && opsec <= 3.9:
+		coloredDescription = termenv.String(description).Foreground(tui.Red).String()
+	case opsec >= 4.0 && opsec <= 6.9:
+		coloredDescription = termenv.String(description).Foreground(tui.Orange).String()
+	case opsec >= 7.0 && opsec <= 8.9:
+		coloredDescription = termenv.String(description).Foreground(tui.Yellow).String()
+	case opsec >= 9.0 && opsec <= 10.0:
+		coloredDescription = termenv.String(description).Foreground(tui.Green).String()
+	}
+
+	return fmt.Sprintf("%s (opsec %.1f)%-9s", coloredDescription, opsec, "")
 }

@@ -170,7 +170,7 @@ func BindImplantCommands(con *repl.Console) console.Commands {
 				continue
 			}
 		}
-		SetColoredUse(implant)
+
 		implant.SetUsageFunc(help.UsageFunc)
 		implant.SetHelpFunc(help.HelpFunc)
 		return implant
