@@ -4,9 +4,21 @@ import (
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/utils/file"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"strings"
 )
+
+func formatRegPath(path string) (string, string) {
+	path = file.FormatWindowPath(path)
+	i := strings.Index(path, "\\")
+	if i == -1 {
+		return path, ""
+	} else {
+		return path[:i], path[i+1:]
+	}
+}
 
 func Commands(con *repl.Console) []*cobra.Command {
 	regCmd := &cobra.Command{
@@ -19,6 +31,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Use:   consts.SubCommandName(consts.ModuleRegQuery) + " --hive [hive] --path [path] --key [key]",
 		Short: "Query a registry key",
 		Long:  "Retrieve the value associated with a specific registry key.",
+		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return RegQueryCmd(cmd, con)
 		},
@@ -28,15 +41,15 @@ func Commands(con *repl.Console) []*cobra.Command {
 		},
 		Example: `Query a registry key:
   ~~~
-  reg query --hive HKEY_LOCAL_MACHINE --path SOFTWARE\\Example --key TestKey
+  reg query HKEY_LOCAL_MACHINE\\SOFTWARE\\Example TestKey
   ~~~`,
 	}
-	common.BindFlag(regQueryCmd, common.RegistryFlagSet)
 
 	regAddCmd := &cobra.Command{
 		Use:   consts.SubCommandName(consts.ModuleRegAdd) + " --hive [hive] --path [path] --key [key]",
 		Short: "Add or modify a registry key",
 		Long:  "Add or modify a registry key with specified values such as string, byte, DWORD, or QWORD.",
+		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return RegAddCmd(cmd, con)
 		},
@@ -46,10 +59,10 @@ func Commands(con *repl.Console) []*cobra.Command {
 		},
 		Example: `Add or modify a registry key:
   ~~~
-  reg add --hive HKEY_LOCAL_MACHINE --path SOFTWARE\\Example --key TestKey --string_value "example" --dword_value 1
+  reg add HKEY_LOCAL_MACHINE\\SOFTWARE\\Example TestKey --string_value "example" --dword_value 1
   ~~~`,
 	}
-	common.BindFlag(regQueryCmd, common.RegistryFlagSet, func(f *pflag.FlagSet) {
+	common.BindFlag(regQueryCmd, func(f *pflag.FlagSet) {
 		f.String("string_value", "", "String value to write")
 		f.BytesBase64("byte_value", []byte{}, "Byte array value to write")
 		f.Uint32("dword_value", 0, "DWORD value to write")
@@ -61,6 +74,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Use:   consts.SubCommandName(consts.ModuleRegDelete) + " --hive [hive] --path [path] --key [key]",
 		Short: "Delete a registry key",
 		Long:  "Remove a specific registry key.",
+		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return RegDeleteCmd(cmd, con)
 		},
@@ -70,15 +84,15 @@ func Commands(con *repl.Console) []*cobra.Command {
 		},
 		Example: `Delete a registry key:
   ~~~
-  reg delete --hive HKEY_LOCAL_MACHINE --path SOFTWARE\\Example --key TestKey
+  reg delete HKEY_LOCAL_MACHINE\\SOFTWARE\\Example TestKey
   ~~~`,
 	}
-	common.BindFlag(regDeleteCmd, common.RegistryFlagSet)
 
 	regListKeyCmd := &cobra.Command{
 		Use:   consts.SubCommandName(consts.ModuleRegListKey) + " --hive [hive] --path [path]",
 		Short: "List subkeys in a registry path",
 		Long:  "Retrieve a list of all subkeys under a specified registry path.",
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return RegListKeyCmd(cmd, con)
 		},
@@ -88,15 +102,15 @@ func Commands(con *repl.Console) []*cobra.Command {
 		},
 		Example: `List subkeys in a registry path:
   ~~~
-  reg listkey --hive HKEY_LOCAL_MACHINE --path SOFTWARE\\Example
+  reg list_key HKEY_LOCAL_MACHINE\\SOFTWARE\\Example
   ~~~`,
 	}
-	common.BindFlag(regListKeyCmd, common.RegistryFlagSet)
 
 	regListValueCmd := &cobra.Command{
 		Use:   consts.SubCommandName(consts.ModuleRegListValue) + " --hive [hive] --path [path]",
 		Short: "List values in a registry path",
 		Long:  "Retrieve a list of all values under a specified registry path.",
+		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return RegListValueCmd(cmd, con)
 		},
@@ -106,10 +120,9 @@ func Commands(con *repl.Console) []*cobra.Command {
 		},
 		Example: `List values in a registry path:
   ~~~
-  reg listvalue --hive HKEY_LOCAL_MACHINE --path SOFTWARE\\Example
+  reg list_value HKEY_LOCAL_MACHINE\\SOFTWARE\\Example TestKEY
   ~~~`,
 	}
-	common.BindFlag(regListValueCmd, common.RegistryFlagSet)
 
 	// 将所有子命令添加到 regCmd
 	regCmd.AddCommand(regQueryCmd, regAddCmd, regDeleteCmd, regListKeyCmd, regListValueCmd)
