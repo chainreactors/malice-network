@@ -1,7 +1,6 @@
 package mtls
 
 import (
-	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -67,17 +66,4 @@ func GetGrpcOptions(caCertificate []byte, certificate []byte, privateKey []byte,
 		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(consts.ClientMaxReceiveMessageSize)),
 	}
 	return options, nil
-}
-
-func Connect(config *ClientConfig) (*grpc.ClientConn, error) {
-	options, err := GetGrpcOptions([]byte(config.CACertificate), []byte(config.Certificate), []byte(config.PrivateKey), config.Type)
-	if err != nil {
-		return nil, err
-	}
-	ctx, _ := context.WithTimeout(context.Background(), consts.DefaultTimeout)
-	connection, err := grpc.DialContext(ctx, config.Address(), options...)
-	if err != nil {
-		return nil, err
-	}
-	return connection, nil
 }
