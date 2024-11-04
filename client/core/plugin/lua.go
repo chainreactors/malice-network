@@ -40,6 +40,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"slices"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -361,7 +362,6 @@ func RegisterProtobufMessageType(L *lua.LState) {
 	L.SetField(mt, "New", L.NewFunction(protoNew))
 }
 
-// generateLuaDefinitionFile 生成 Lua 函数定义和 Protobuf class 定义文件
 func GenerateLuaDefinitionFile(L *lua.LState, filename string) error {
 	file, err := os.Create(filename)
 	if err != nil {
@@ -371,85 +371,91 @@ func GenerateLuaDefinitionFile(L *lua.LState, filename string) error {
 
 	generateProtobufMessageClasses(L, file)
 
-	// 遍历所有函数签名并生成 Lua 函数定义
+	// 按 package 分组，然后在每个分组内按 funcName 排序
+	groupedFunctions := make(map[string][]string)
 	for funcName, signature := range intermediate.InternalFunctions {
 		if unicode.IsUpper(rune(funcName[0])) {
 			continue
 		}
+		groupedFunctions[signature.Package] = append(groupedFunctions[signature.Package], funcName)
+	}
 
-		fmt.Fprintf(file, "--- %s\n", funcName)
+	// 排序每个 package 内的函数名
+	for _, funcs := range groupedFunctions {
+		sort.Strings(funcs)
+	}
 
-		if signature.Helper != nil {
-			// 写入 Short 描述
-			if signature.Helper.Short != "" {
-				for _, line := range strings.Split(signature.Helper.Short, "\n") {
-					fmt.Fprintf(file, "--- %s\n", line)
+	// 生成 Lua 定义文件
+	for pkg, funcs := range groupedFunctions {
+		fmt.Fprintf(file, "-- Package: %s\n\n", pkg)
+		for _, funcName := range funcs {
+			signature := intermediate.InternalFunctions[funcName]
+
+			fmt.Fprintf(file, "--- %s\n", funcName)
+
+			// Short, Long, Example 描述
+			if signature.Helper != nil {
+				if signature.Helper.Short != "" {
+					for _, line := range strings.Split(signature.Helper.Short, "\n") {
+						fmt.Fprintf(file, "--- %s\n", line)
+					}
+					fmt.Fprintf(file, "---\n")
 				}
-				fmt.Fprintf(file, "---\n")
-			}
-
-			// 写入 Long 描述
-			if signature.Helper.Long != "" {
-				for _, line := range strings.Split(signature.Helper.Long, "\n") {
-					fmt.Fprintf(file, "--- %s\n", line)
+				if signature.Helper.Long != "" {
+					for _, line := range strings.Split(signature.Helper.Long, "\n") {
+						fmt.Fprintf(file, "--- %s\n", line)
+					}
+					fmt.Fprintf(file, "---\n")
 				}
-				fmt.Fprintf(file, "---\n")
-			}
-
-			// 写入 Example 描述
-			if signature.Helper.Example != "" {
-				fmt.Fprintf(file, "--- @example\n")
-				for _, line := range strings.Split(signature.Helper.Example, "\n") {
-					fmt.Fprintf(file, "--- %s\n", line)
-				}
-				fmt.Fprintf(file, "---\n")
-			}
-		}
-
-		var paramsName []string
-		// 写入参数注释
-		for i, argType := range signature.ArgTypes {
-			luaType := intermediate.ConvertGoValueToLuaType(L, argType)
-			//fmt.Fprintf(file, "--- @param arg%d %s\n", i+1, luaType)
-			if signature.Helper == nil {
-				paramsName = append(paramsName, fmt.Sprintf("arg%d", i+1))
-				fmt.Fprintf(file, "--- @param arg%d %s\n", i+1, luaType)
-			} else {
-				keys, values := signature.Helper.FormatInput()
-				paramsName = append(paramsName, keys[i])
-				fmt.Fprintf(file, "--- @param %s %s %s\n", keys[i], luaType, values[i])
-			}
-		}
-
-		// 写入返回值注释
-		for _, returnType := range signature.ReturnTypes {
-			luaType := intermediate.ConvertGoValueToLuaType(L, returnType)
-			//fmt.Fprintf(file, "--- @return %s\n", luaType)
-			if signature.Helper == nil {
-				fmt.Fprintf(file, "--- @return %s\n", luaType)
-			} else {
-				keys, values := signature.Helper.FormatOutput()
-				for i := range keys {
-					fmt.Fprintf(file, "--- @return %s %s %s\n", keys[i], luaType, values[i])
+				if signature.Helper.Example != "" {
+					fmt.Fprintf(file, "--- @example\n")
+					for _, line := range strings.Split(signature.Helper.Example, "\n") {
+						fmt.Fprintf(file, "--- %s\n", line)
+					}
+					fmt.Fprintf(file, "---\n")
 				}
 			}
-		}
 
-		// 写入函数定义
-		fmt.Fprintf(file, "function %s(", funcName)
-		for i := range signature.ArgTypes {
-			if i > 0 {
-				fmt.Fprintf(file, ", ")
+			// 参数和返回值描述
+			var paramsName []string
+			for i, argType := range signature.ArgTypes {
+				luaType := intermediate.ConvertGoValueToLuaType(L, argType)
+				if signature.Helper == nil {
+					paramsName = append(paramsName, fmt.Sprintf("arg%d", i+1))
+					fmt.Fprintf(file, "--- @param arg%d %s\n", i+1, luaType)
+				} else {
+					keys, values := signature.Helper.FormatInput()
+					paramsName = append(paramsName, keys[i])
+					fmt.Fprintf(file, "--- @param %s %s %s\n", keys[i], luaType, values[i])
+				}
 			}
-			fmt.Fprintf(file, paramsName[i])
+			for _, returnType := range signature.ReturnTypes {
+				luaType := intermediate.ConvertGoValueToLuaType(L, returnType)
+				if signature.Helper == nil {
+					fmt.Fprintf(file, "--- @return %s\n", luaType)
+				} else {
+					keys, values := signature.Helper.FormatOutput()
+					for i := range keys {
+						fmt.Fprintf(file, "--- @return %s %s %s\n", keys[i], luaType, values[i])
+					}
+				}
+			}
+
+			// 函数定义
+			fmt.Fprintf(file, "function %s(", funcName)
+			for i := range signature.ArgTypes {
+				if i > 0 {
+					fmt.Fprintf(file, ", ")
+				}
+				fmt.Fprintf(file, paramsName[i])
+			}
+			fmt.Fprintf(file, ") end\n\n")
 		}
-		fmt.Fprintf(file, ") end\n\n")
 	}
 
 	return nil
 }
 
-// generateMarkdownDefinitionFile 生成函数的 Markdown 文档
 func GenerateMarkdownDefinitionFile(L *lua.LState, filename string) error {
 	file, err := os.Create(filename)
 	if err != nil {
@@ -457,55 +463,72 @@ func GenerateMarkdownDefinitionFile(L *lua.LState, filename string) error {
 	}
 	defer file.Close()
 
-	for funcName, signature := range intermediate.InternalFunctions {
+	// 按 package 分组，然后在每个分组内按 funcName 排序
+	groupedFunctions := make(map[string][]string)
+	for funcName, iFunc := range intermediate.InternalFunctions {
 		if unicode.IsUpper(rune(funcName[0])) {
 			continue
 		}
+		groupedFunctions[iFunc.Package] = append(groupedFunctions[iFunc.Package], funcName)
+	}
 
-		// 写入函数名
-		fmt.Fprintf(file, "## %s\n\n", funcName)
+	// 排序每个 package 内的函数名
+	for _, funcs := range groupedFunctions {
+		sort.Strings(funcs)
+	}
 
-		// 写入 Short 描述
-		if signature.Helper != nil && signature.Helper.Short != "" {
-			fmt.Fprintf(file, "%s\n\n", signature.Helper.Short)
-		}
+	// 生成 Markdown 文档
+	for pkg, funcs := range groupedFunctions {
+		// Package 名称作为二级标题
+		fmt.Fprintf(file, "## %s\n\n", pkg)
+		for _, funcName := range funcs {
+			iFunc := intermediate.InternalFunctions[funcName]
 
-		// 写入 Long 描述
-		if signature.Helper != nil && signature.Helper.Long != "" {
-			for _, line := range strings.Split(signature.Helper.Long, "\n") {
-				fmt.Fprintf(file, "%s\n", line)
+			// 函数名作为三级标题
+			fmt.Fprintf(file, "### %s\n\n", funcName)
+
+			// 写入 Short 描述
+			if iFunc.Helper != nil && iFunc.Helper.Short != "" {
+				fmt.Fprintf(file, "%s\n\n", iFunc.Helper.Short)
+			}
+
+			// 写入 Long 描述
+			if iFunc.Helper != nil && iFunc.Helper.Long != "" {
+				for _, line := range strings.Split(iFunc.Helper.Long, "\n") {
+					fmt.Fprintf(file, "%s\n", line)
+				}
+				fmt.Fprintf(file, "\n")
+			}
+
+			// 写入参数描述
+			fmt.Fprintf(file, "**Arguments**\n\n")
+			for i, argType := range iFunc.ArgTypes {
+				luaType := intermediate.ConvertGoValueToLuaType(L, argType)
+				if iFunc.Helper == nil {
+					fmt.Fprintf(file, "- `$%d` [%s] - parameter description\n", i+1, luaType)
+				} else {
+					keys, values := iFunc.Helper.FormatInput()
+					paramName := fmt.Sprintf("$%d", i+1)
+					if i < len(keys) && keys[i] != "" {
+						paramName = keys[i]
+					}
+					description := ""
+					if i < len(values) {
+						description = values[i]
+					}
+					fmt.Fprintf(file, "- `%s` [%s] - %s\n", paramName, luaType, description)
+				}
 			}
 			fmt.Fprintf(file, "\n")
-		}
 
-		// 写入参数描述
-		fmt.Fprintf(file, "**Arguments**\n\n")
-		for i, argType := range signature.ArgTypes {
-			luaType := intermediate.ConvertGoValueToLuaType(L, argType)
-			if signature.Helper == nil {
-				fmt.Fprintf(file, "- `$%d` [%s] - parameter description\n", i+1, luaType)
-			} else {
-				keys, values := signature.Helper.FormatInput()
-				paramName := fmt.Sprintf("$%d", i+1)
-				if i < len(keys) && keys[i] != "" {
-					paramName = keys[i]
+			// Example
+			if iFunc.Helper != nil && iFunc.Helper.Example != "" {
+				fmt.Fprintf(file, "**Example**\n\n```\n")
+				for _, line := range strings.Split(iFunc.Helper.Example, "\n") {
+					fmt.Fprintf(file, "%s\n", line)
 				}
-				description := ""
-				if i < len(values) {
-					description = values[i]
-				}
-				fmt.Fprintf(file, "- `%s` [%s] - %s\n", paramName, luaType, description)
+				fmt.Fprintf(file, "```\n\n")
 			}
-		}
-		fmt.Fprintf(file, "\n")
-
-		// Example
-		if signature.Helper != nil && signature.Helper.Example != "" {
-			fmt.Fprintf(file, "**Example**\n\n```\n")
-			for _, line := range strings.Split(signature.Helper.Example, "\n") {
-				fmt.Fprintf(file, "%s\n", line)
-			}
-			fmt.Fprintf(file, "```\n\n")
 		}
 	}
 
