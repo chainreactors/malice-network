@@ -20,6 +20,8 @@ import (
 	"os"
 	"reflect"
 	"regexp"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -33,6 +35,30 @@ func RegisterBuiltin(rpc clientrpc.MaliceRPCClient) {
 }
 
 func RegisterCustomBuiltin(rpc clientrpc.MaliceRPCClient) {
+	// 构建 sacrifice 进程消息
+	RegisterFunction("new_sacrifice", func(ppid int64, hidden, blockDll, disableETW bool, argue string) (*implantpb.SacrificeProcess, error) {
+		return NewSacrificeProcessMessage(ppid, hidden, blockDll, disableETW, argue)
+	})
+	AddHelper(
+		"new_sacrifice",
+		&InternalHelper{
+			CMDName: "new_sacrifice",
+			Input: []string{
+				"ppid: parent process id",
+				"hidden",
+				"blockDll",
+				"disableETW",
+				"argue: arguments",
+			},
+			Output: []string{
+				"implantpb.SacrificeProcess",
+			},
+			Example: `
+sac = new_sacrifice(123, false, false, false, "")
+`,
+		},
+	)
+
 	// 构建 x86 二进制消息
 	RegisterFunction("new_86_executable", func(module, filename, argsStr string, sacrifice *implantpb.SacrificeProcess) (*implantpb.ExecuteBinary, error) {
 		cmdline, err := shellquote.Split(argsStr)
@@ -41,6 +67,22 @@ func RegisterCustomBuiltin(rpc clientrpc.MaliceRPCClient) {
 		}
 		return NewExecutable(module, filename, cmdline, "x86", sacrifice)
 	})
+	AddHelper("new_86_executable",
+		&InternalHelper{
+			CMDName: "new_86_executable",
+			Input: []string{
+				"module",
+				"filename: path to the binary",
+				"argsStr: command line arguments",
+				"sacrifice: sacrifice process",
+			},
+			Output: []string{
+				"implantpb.ExecuteBinary",
+			},
+			Example: `
+sac = new_sacrifice(123, false, false, false, "")
+new_86_exec = new_86_executable("module", "filename", "args", sac)
+`})
 
 	// 构建 64 位二进制消息
 	RegisterFunction("new_64_executable", func(module, filename, argsStr string, sacrifice *implantpb.SacrificeProcess) (*implantpb.ExecuteBinary, error) {
@@ -50,6 +92,22 @@ func RegisterCustomBuiltin(rpc clientrpc.MaliceRPCClient) {
 		}
 		return NewExecutable(module, filename, cmdline, "amd64", sacrifice)
 	})
+	AddHelper("new_64_executable",
+		&InternalHelper{
+			CMDName: "new_64_executable",
+			Input: []string{
+				"module",
+				"filename: path to the binary",
+				"argsStr: command line arguments",
+				"sacrifice: sacrifice process",
+			},
+			Output: []string{
+				"implantpb.ExecuteBinary",
+			},
+			Example: `
+sac = new_sacrifice(123, false, false, false, "")
+new_64_exec = new_64_executable("module", "filename", "args", sac)
+`})
 
 	// 构建新的二进制消息
 	RegisterFunction("new_binary", func(module, filename string, args []string,
@@ -58,10 +116,26 @@ func RegisterCustomBuiltin(rpc clientrpc.MaliceRPCClient) {
 		return NewBinary(module, filename, args, output, timeout, arch, process, sacrifice)
 	})
 
-	// 构建 sacrifice 进程消息
-	RegisterFunction("new_sacrifice", func(ppid int64, hidden, blockDll, disableETW bool, argue string) (*implantpb.SacrificeProcess, error) {
-		return NewSacrificeProcessMessage(ppid, hidden, blockDll, disableETW, argue)
-	})
+	AddHelper("new_binary",
+		&InternalHelper{
+			CMDName: "new_binary",
+			Input: []string{
+				"module",
+				"filename: path to the binary",
+				"args: command line arguments",
+				"output",
+				"timeout",
+				"arch",
+				"process",
+				"sacrifice: sacrifice process",
+			},
+			Output: []string{
+				"implantpb.ExecuteBinary",
+			},
+			Example: `
+sac = new_sacrifice(123, false, false, false, "")
+new_bin = new_binary("module", "filename", "args", true, 100, "amd64", "process", sac)
+`})
 
 	// 等待任务结果
 	RegisterFunction("wait", func(task *clientpb.Task) (*clientpb.TaskContext, error) {
@@ -81,6 +155,18 @@ func RegisterCustomBuiltin(rpc clientrpc.MaliceRPCClient) {
 		}
 		return pe.PackArg(format[0], arg)
 	})
+	AddHelper("pack_bof",
+		&InternalHelper{
+			CMDName: "pack_bof",
+			Input: []string{
+				"format",
+				"arg",
+			},
+			Output: []string{
+				"string",
+			},
+			Example: `pack_bof("Z", "aa")`,
+		})
 
 	// args, pack_bof_args("ZZ", {"aa", "bb"})
 	RegisterFunction("pack_bof_args", func(format string, args []string) ([]string, error) {
@@ -93,14 +179,55 @@ func RegisterCustomBuiltin(rpc clientrpc.MaliceRPCClient) {
 		}
 		return pe.PackArgs(packedArgs)
 	})
+	AddHelper(
+		"pack_bof_args",
+		&InternalHelper{
+			CMDName: "pack_bof_args",
+			Input: []string{
+				"format",
+				"args",
+			},
+			Output: []string{
+				"[]string",
+			},
+			Example: `
+pack_bof_args("ZZ", {"aa", "bb"})
+`,
+		})
 
 	RegisterFunction("arg_hex", func(input string) (string, error) {
 		return "hex::" + hash.Hexlify([]byte(input)), nil
 	})
+	AddHelper(
+		"arg_hex",
+		&InternalHelper{
+			CMDName: "arg_hex",
+			Input: []string{
+				"input",
+			},
+			Output: []string{
+				"string",
+			},
+			Example: `arg_hex("aa")`,
+		})
 
 	RegisterFunction("format_path", func(s string) (string, error) {
 		return file.FormatWindowPath(s), nil
 	})
+	AddHelper(
+		"format_path",
+		&InternalHelper{
+			CMDName: "format_path",
+			Input: []string{
+				"s",
+			},
+			Output: []string{
+				"string",
+			},
+			Example: `
+format_path("C:\\Windows\\System32\\calc.exe")
+`,
+		})
 
 	// 打印任务
 	RegisterFunction("taskprint", func(task *clientpb.TaskContext) (*implantpb.Spite, error) {
@@ -232,6 +359,19 @@ func RegisterEncodeFunc() {
 	RegisterFunction("base64_encode", func(input string) (string, error) {
 		return base64.StdEncoding.EncodeToString([]byte(input)), nil
 	})
+	AddHelper(
+		"base64_encode",
+		&InternalHelper{
+			CMDName: "base64_encode",
+			Input: []string{
+				"input",
+			},
+			Output: []string{
+				"string",
+			},
+			Example: `base64_encode("hello")`,
+		})
+
 	RegisterFunction("base64_decode", func(input string) (string, error) {
 		data, err := base64.StdEncoding.DecodeString(input)
 		if err != nil {
@@ -239,6 +379,18 @@ func RegisterEncodeFunc() {
 		}
 		return string(data), nil
 	})
+	AddHelper(
+		"base64_decode",
+		&InternalHelper{
+			CMDName: "base64_decode",
+			Input: []string{
+				"input",
+			},
+			Output: []string{
+				"string",
+			},
+			Example: `base64_decode("aGVsbG8=")`,
+		})
 	// random string
 	RegisterFunction("random_string", func(length int) (string, error) {
 		charArray := []rune("abcdefghijklmnopqrstuvwxyz123456789")
@@ -249,6 +401,18 @@ func RegisterEncodeFunc() {
 		}
 		return randomStr, nil
 	})
+	AddHelper(
+		"random_string",
+		&InternalHelper{
+			CMDName: "random_string",
+			Input: []string{
+				"length",
+			},
+			Output: []string{
+				"string",
+			},
+			Example: `random_string(10)`,
+		})
 	// fileExists
 	RegisterFunction("file_exists", func(path string) (bool, error) {
 		_, err := os.Stat(path)
@@ -260,6 +424,18 @@ func RegisterEncodeFunc() {
 		}
 		return false, nil
 	})
+	AddHelper(
+		"file_exists",
+		&InternalHelper{
+			CMDName: "file_exists",
+			Input: []string{
+				"path",
+			},
+			Output: []string{
+				"bool",
+			},
+			Example: `file_exists("C:\\Windows\\System32\\calc.exe")`,
+		})
 	// match re
 	RegisterFunction("ismatch", func(pattern, text string) (bool, []string) {
 		reg, err := regexp.Compile(pattern)
@@ -273,11 +449,36 @@ func RegisterEncodeFunc() {
 		}
 		return false, nil
 	})
+	AddHelper(
+		"ismatch",
+		&InternalHelper{
+			CMDName: "ismatch",
+			Input: []string{
+				"pattern",
+				"text",
+			},
+			Output: []string{
+				"bool",
+				"[]string",
+			},
+			Example: `ismatch("([a-z]+) ([0-9]+)", "hello 123")`,
+		})
+
 	// timestamp
 	RegisterFunction("timestampMillis", func() int64 {
 		timestampMillis := time.Now().UnixNano() / int64(time.Millisecond)
 		return timestampMillis
 	})
+	AddHelper(
+		"timestampMillis",
+		&InternalHelper{
+			CMDName: "timestampMillis",
+			Input:   []string{},
+			Output: []string{
+				"int64",
+			},
+			Example: `timestampMillis()`,
+		})
 	// tstamp
 	RegisterFunction("tstamp", func(timestampMillis int64) string {
 		seconds := timestampMillis / 1000
@@ -285,6 +486,56 @@ func RegisterEncodeFunc() {
 		t := time.Unix(seconds, nanoseconds)
 		return t.Format("01/02 15:04")
 	})
+
+	// 0o744 0744
+	RegisterFunction("parse_octal", func(octalString string) int64 {
+		var result int64
+		var err error
+		if strings.HasPrefix(octalString, "0o") {
+			result, err = strconv.ParseInt(octalString[2:], 8, 64)
+		} else if strings.HasPrefix(octalString, "0") && len(octalString) > 1 {
+			result, err = strconv.ParseInt(octalString[1:], 8, 64)
+		} else {
+			result, err = strconv.ParseInt(octalString, 8, 64)
+		}
+		if err != nil {
+			return -1
+		}
+		return result
+	})
+	AddHelper(
+		"parse_octal",
+		&InternalHelper{
+			CMDName: "parse_octal",
+			Input: []string{
+				"octalString",
+			},
+			Output: []string{
+				"int64",
+			},
+			Example: `parse_octal("0o744")`,
+		})
+
+	RegisterFunction("parse_hex", func(hexString string) int64 {
+		if strings.HasPrefix(hexString, "0x") {
+			result, _ := strconv.ParseInt(hexString[2:], 16, 64)
+			return result
+		} else {
+			return -1
+		}
+	})
+	AddHelper(
+		"parse_hex",
+		&InternalHelper{
+			CMDName: "parse_hex",
+			Input: []string{
+				"hexString",
+			},
+			Output: []string{
+				"int64",
+			},
+			Example: `parse_hex("0x1f4")`,
+		})
 
 }
 func RegisterCSFunction(name string, fn interface{}) {
