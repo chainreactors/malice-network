@@ -107,6 +107,17 @@ func (t *Task) ToProtobuf() *clientpb.Task {
 	return task
 }
 
+func FromTaskProtobuf(task *clientpb.Task) *Task {
+	return &Task{
+		Id:        task.TaskId,
+		Type:      task.Type,
+		SessionId: task.SessionId,
+		Cur:       int(task.Cur),
+		Total:     int(task.Total),
+		CallBy:    task.Callby,
+	}
+}
+
 func (t *Task) Name() string {
 	return fmt.Sprintf("%s_%v_%s", t.SessionId, t.Id, t.Type)
 }

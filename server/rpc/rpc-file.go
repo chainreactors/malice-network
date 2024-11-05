@@ -16,6 +16,7 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/parser"
 	"github.com/gookit/config/v2"
 	"google.golang.org/protobuf/proto"
+	"gorm.io/gorm/utils"
 	"os"
 	"path"
 )
@@ -32,7 +33,8 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 		if err != nil {
 			return nil, err
 		}
-		err = db.AddFile("upload", greq.Task, &models.FileDescription{
+		taskPb := greq.Task.ToProtobuf()
+		err = db.AddFile("upload", taskPb, &models.FileDescription{
 			Name:    req.Name,
 			Path:    req.Target,
 			Command: fmt.Sprintf("upload -%d -%t", req.Priv, req.Hidden),
@@ -43,7 +45,8 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 			return nil, err
 		}
 		go greq.HandlerResponse(ch, types.MsgBlock)
-		err = db.UpdateFile(greq.Task, greq.Task.Cur+1)
+		taskID := greq.Task.SessionId + "-" + utils.ToString(greq.Task.Id)
+		err = db.UpdateFileByID(taskID, greq.Task.Cur+1)
 		if err != nil {
 			logs.Log.Errorf("cannot update task %d , %s in db", greq.Task.Id, err.Error())
 			return nil, err
@@ -61,7 +64,8 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 			return nil, err
 		}
 		var blockId = 0
-		err = db.AddFile("upload", greq.Task, &models.FileDescription{
+		taskPb := greq.Task.ToProtobuf()
+		err = db.AddFile("upload", taskPb, &models.FileDescription{
 			Name:     req.Name,
 			NickName: "",
 			Path:     req.Target,
@@ -111,7 +115,8 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 				}
 				if resp.GetAck().Success {
 					greq.Task.Done(resp, "")
-					err = db.UpdateFile(greq.Task, blockId)
+					taskID := greq.Task.SessionId + "-" + utils.ToString(greq.Task.Id)
+					err = db.UpdateFileByID(taskID, blockId)
 					if err != nil {
 						logs.Log.Errorf("cannot update task %d , %s in db", greq.Task.Id, err.Error())
 						return
@@ -157,11 +162,12 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 			Command:  fmt.Sprintf("download -%s -%s ", req.Name, req.Path),
 			Size:     int64(resp.GetDownloadResponse().Size),
 		}
-		err = db.AddFile("download", greq.Task, td)
+		taskPb := greq.Task.ToProtobuf()
+		err = db.AddFile("download", taskPb, td)
 		if err != nil {
 			logs.Log.Errorf("cannot create task %d , %s in db", greq.Task.Id, err.Error())
 		}
-		err = db.UpdateDownloadTotal(greq.Task, greq.Task.Total)
+		err = db.UpdateDownloadTotal(greq.Task.ToProtobuf(), greq.Task.Total)
 		if err != nil {
 			logs.Log.Errorf("cannot update task %d , %s in db", greq.Task.Id, err.Error())
 		}
@@ -207,7 +213,8 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 			in <- ack
 			ack.Name = types.MsgDownload.String()
 			greq.Session.AddMessage(resp, int(block.BlockId+1))
-			err = db.UpdateFile(greq.Task, int(block.BlockId+1))
+			taskID := greq.Task.SessionId + "-" + utils.ToString(greq.Task.Id)
+			err = db.UpdateFileByID(taskID, int(block.BlockId+1))
 			if err != nil {
 				logs.Log.Errorf("cannot update task %d , %s in db", greq.Task.Id, err.Error())
 				return

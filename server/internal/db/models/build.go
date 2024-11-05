@@ -52,3 +52,11 @@ func (b *Builder) ToProtobuf() *clientpb.Generate {
 		Modules: strings.Split(b.Modules, ","),
 	}
 }
+
+func (b *Builder) FromProtobuf(pb *clientpb.Generate) {
+	b.Name = pb.Name
+	b.Target = pb.Target
+	b.Type = pb.Type
+	b.Stager = pb.Stager
+	b.Modules = strings.Join(pb.Modules, ",")
+}
