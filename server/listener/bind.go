@@ -72,6 +72,7 @@ func (pipeline *BindPipeline) Close() error {
 }
 
 func (pipeline *BindPipeline) handler() error {
+	defer logs.Log.Errorf("bind pipeline exit!!!")
 	for {
 		forward := core.Forwarders.Get(pipeline.ID())
 		msg, err := forward.Stream.Recv()

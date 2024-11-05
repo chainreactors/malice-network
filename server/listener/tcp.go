@@ -114,6 +114,7 @@ func (pipeline *TCPPipeline) handler() (net.Listener, error) {
 		}
 	}
 	go func() {
+		defer logs.Log.Errorf("tcp pipeline exit!!!")
 		for {
 			conn, err := ln.Accept()
 			if err != nil {
