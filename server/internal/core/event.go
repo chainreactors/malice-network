@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/server/internal/configs"
@@ -58,7 +59,10 @@ func (broker *eventBroker) Start() {
 		case sub := <-broker.unsubscribe:
 			delete(subscribers, sub)
 		case event := <-broker.publish:
-			logs.Log.Infof("[event.%s] %s: %s", event.EventType, event.Op, event.Message)
+			if event.EventType != consts.EventHeartbeat {
+				logs.Log.Infof("[event.%s] %s: %s", event.EventType, event.Op, event.Message)
+			}
+
 			for sub := range subscribers {
 				sub <- event
 			}
@@ -97,7 +101,7 @@ func (broker *eventBroker) Notify(event Event) {
 	go broker.notifier.Send(&event)
 }
 
-func newBroker() *eventBroker {
+func NewBroker() *eventBroker {
 	broker := &eventBroker{
 		stop:        make(chan struct{}),
 		publish:     make(chan Event, eventBufSize),
@@ -108,12 +112,36 @@ func newBroker() *eventBroker {
 			enable: false},
 	}
 	go broker.Start()
+	ticker := NewTicker()
+
+	publishHeartbeat := func(interval string) {
+		broker.Publish(Event{
+			EventType: consts.EventHeartbeat,
+			Op:        interval,
+			Message:   fmt.Sprintf("Heartbeat event every %s", interval),
+			IsNotify:  false,
+		})
+	}
+
+	ticker.Start(1, func() { publishHeartbeat(consts.CtrlHeartbeat1s) })
+	ticker.Start(5, func() { publishHeartbeat(consts.CtrlHeartbeat5s) })
+	ticker.Start(10, func() { publishHeartbeat(consts.CtrlHeartbeat10s) })
+	ticker.Start(15, func() { publishHeartbeat(consts.CtrlHeartbeat15s) })
+	ticker.Start(30, func() { publishHeartbeat(consts.CtrlHeartbeat30s) })
+	ticker.Start(60, func() { publishHeartbeat(consts.CtrlHeartbeat1m) })
+	ticker.Start(300, func() { publishHeartbeat(consts.CtrlHeartbeat5m) })
+	ticker.Start(600, func() { publishHeartbeat(consts.CtrlHeartbeat10m) })
+	ticker.Start(900, func() { publishHeartbeat(consts.CtrlHeartbeat15m) })
+	ticker.Start(1200, func() { publishHeartbeat(consts.CtrlHeartbeat20m) })
+	ticker.Start(1800, func() { publishHeartbeat(consts.CtrlHeartbeat30m) })
+	ticker.Start(3600, func() { publishHeartbeat(consts.CtrlHeartbeat60m) })
+	EventBroker = broker
 	return broker
 }
 
 var (
 	// EventBroker - Distributes event messages
-	EventBroker = newBroker()
+	EventBroker *eventBroker
 )
 
 type Notifier struct {

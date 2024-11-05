@@ -88,7 +88,7 @@ func (s *ServerStatus) triggerTaskFinish(event *clientpb.Event) {
 		s.doneCallbacks.Delete(callbackId)
 	}
 }
-func (s *ServerStatus) AddEventHook(event intermediate.Event, callback intermediate.OnEventFunc) {
+func (s *ServerStatus) AddEventHook(event intermediate.EventCondition, callback intermediate.OnEventFunc) {
 	if _, ok := s.EventHook[event]; !ok {
 		s.EventHook[event] = []intermediate.OnEventFunc{}
 	}
@@ -108,15 +108,17 @@ func (s *ServerStatus) EventHandler() {
 		if err == io.EOF || event == nil {
 			return
 		}
-		if fns, ok := s.EventHook[intermediate.NewEvent(event)]; ok {
-			go func() {
-				for _, fn := range fns {
-					_, err := fn(event)
-					if err != nil {
-						Log.Errorf("error running event hook: %s", err)
+		for condition, fns := range s.EventHook {
+			if condition.Match(event) {
+				go func() {
+					for _, fn := range fns {
+						_, err := fn(event)
+						if err != nil {
+							Log.Errorf("error running event hook: %s", err)
+						}
 					}
-				}
-			}()
+				}()
+			}
 		}
 		// Trigger event based on type
 		switch event.Type {

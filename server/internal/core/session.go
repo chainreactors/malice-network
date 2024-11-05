@@ -23,7 +23,7 @@ import (
 
 var (
 	// Sessions - Manages implant connections
-	Sessions         = NewSessions()
+	Sessions         *sessions
 	ExtensionModules = []string{consts.ModuleExecuteBof, consts.ModuleExecuteDll}
 	// ErrUnknownMessageType - Returned if the implant did not understand the message for
 	//                         example when the command is not supported on the platform
@@ -58,6 +58,7 @@ func NewSessions() *sessions {
 	if err != nil {
 		logs.Log.Errorf("cannot start ticker, %s", err.Error())
 	}
+	Sessions = newSessions
 	return newSessions
 }
 

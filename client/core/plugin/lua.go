@@ -6,7 +6,9 @@ import (
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/core/intermediate"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/cjoudrey/gluahttp"
 	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
@@ -79,42 +81,6 @@ func NewLuaMalPlugin(manifest *MalManiFest) (*LuaPlugin, error) {
 		return nil, err
 	}
 
-	//globals := vm.Get(lua.GlobalsIndex).(*lua.LTable)
-	//globals.ForEach(func(key lua.LValue, value lua.LValue) {
-	//	if fn, ok := value.(*lua.LFunction); ok {
-	//		funcName := key.String()
-	//		if strings.HasPrefix(funcName, "command_") {
-	//			// 注册到 RPCFunctions 中
-	//			intermediate.InternalFunctions[funcName] = func(req ...interface{}) (interface{}, error) {
-	//				vm.Push(fn) // 将函数推入栈
-	//
-	//				// 将所有参数推入栈
-	//				for _, arg := range req {
-	//					vm.Push(lua.LString(fmt.Sprintf("%v", arg)))
-	//				}
-	//
-	//				// 调用函数
-	//				if err := vm.PCall(len(req), lua.MultRet, nil); err != nil {
-	//					return nil, fmt.Errorf("error calling Lua function %s: %w", funcName, err)
-	//				}
-	//
-	//				// 获取返回值
-	//				results := make([]interface{}, 0, vm.GetTop())
-	//				for i := 1; i <= vm.GetTop(); i++ {
-	//					results = append(results, vm.Get(i))
-	//				}
-	//
-	//				// 如果有返回值，返回第一个值，否则返回nil
-	//				if len(results) > 0 {
-	//					return results[0], nil
-	//				}
-	//				return nil, nil
-	//			}
-	//			fmt.Printf("Registered Lua function to RPCFunctions: %s\n", funcName)
-	//		}
-	//	}
-	//})
-
 	return mal, nil
 }
 
@@ -122,6 +88,45 @@ func (plug *LuaPlugin) Run() error {
 	if err := plug.vm.DoString(string(plug.Content)); err != nil {
 		return fmt.Errorf("failed to load Lua script: %w", err)
 	}
+	plug.registerLuaOnHook("beacon_checkin", intermediate.EventCondition{Type: consts.EventSession, Op: consts.CtrlSessionCheckin})
+	plug.registerLuaOnHook("beacon_initial", intermediate.EventCondition{Type: consts.EventSession, Op: consts.CtrlSessionRegister})
+	plug.registerLuaOnHook("beacon_error", intermediate.EventCondition{Type: consts.EventSession, Op: consts.CtrlSessionError})
+	plug.registerLuaOnHook("beacon_indicator", intermediate.EventCondition{Type: consts.EventSession, Op: consts.CtrlSessionLog})
+	//plug.registerLuaOnHook("beacon_initial_empty", intermediate.EventCondition{Type: consts.EventSession, Op: consts.CtrlSessionDNS})
+	//plug.registerLuaOnHook("beacon_input", intermediate.EventCondition{Type: consts.EventInput})
+	//plug.registerLuaOnHook("beacon_mode", intermediate.EventCondition{Type: consts.EventModeChange})
+	plug.registerLuaOnHook("beacon_output", intermediate.EventCondition{Type: consts.EventTask})
+	plug.registerLuaOnHook("beacon_output_alt", intermediate.EventCondition{Type: consts.EventSession, Op: consts.CtrlSessionLog})
+	plug.registerLuaOnHook("beacon_output_jobs", intermediate.EventCondition{Type: consts.EventTask, Op: consts.CtrlTaskFinish})
+	plug.registerLuaOnHook("beacon_output_ls", intermediate.EventCondition{Type: consts.EventTask, Op: consts.CtrlTaskFinish, MessageType: types.MsgLs.String()})
+	plug.registerLuaOnHook("beacon_output_ps", intermediate.EventCondition{Type: consts.EventTask, Op: consts.CtrlTaskFinish, MessageType: types.MsgPs.String()})
+	plug.registerLuaOnHook("beacon_tasked", intermediate.EventCondition{Type: consts.EventClient, Op: consts.CtrlTaskCallback})
+
+	// 注册其他非 Beacon 特定事件
+	//plug.registerLuaOnHook("disconnect", intermediate.EventCondition{Type: consts.EventDisconnect})
+	plug.registerLuaOnHook("event_action", intermediate.EventCondition{Type: consts.EventBroadcast})
+	plug.registerLuaOnHook("event_beacon_initial", intermediate.EventCondition{Type: consts.EventSession, Op: consts.CtrlSessionInit})
+	plug.registerLuaOnHook("event_join", intermediate.EventCondition{Type: consts.EventJoin, Op: consts.CtrlClientJoin})
+	plug.registerLuaOnHook("event_notify", intermediate.EventCondition{Type: consts.EventNotify})
+	//plug.registerLuaOnHook("event_nouser", intermediate.EventCondition{Type: consts.EventNotify, Op: consts.CtrlClientLeft})
+	//plug.registerLuaOnHook("event_private", intermediate.EventCondition{Type: consts.EventBroadcast, Op: consts.CtrlTaskCallback})
+	plug.registerLuaOnHook("event_public", intermediate.EventCondition{Type: consts.EventBroadcast})
+	plug.registerLuaOnHook("event_quit", intermediate.EventCondition{Type: consts.EventLeft, Op: consts.CtrlClientLeft})
+
+	// 注册心跳事件
+	plug.registerLuaOnHook("heartbeat_1s", intermediate.EventCondition{Type: consts.EventSession, Op: consts.CtrlHeartbeat1s})
+	plug.registerLuaOnHook("heartbeat_5s", intermediate.EventCondition{Type: consts.EventSession, Op: consts.CtrlHeartbeat5s})
+	plug.registerLuaOnHook("heartbeat_10s", intermediate.EventCondition{Type: consts.EventSession, Op: consts.CtrlHeartbeat10s})
+	plug.registerLuaOnHook("heartbeat_15s", intermediate.EventCondition{Type: consts.EventSession, Op: consts.CtrlHeartbeat15s})
+	plug.registerLuaOnHook("heartbeat_30s", intermediate.EventCondition{Type: consts.EventSession, Op: consts.CtrlHeartbeat30s})
+	plug.registerLuaOnHook("heartbeat_1m", intermediate.EventCondition{Type: consts.EventSession, Op: consts.CtrlHeartbeat1m})
+	plug.registerLuaOnHook("heartbeat_5m", intermediate.EventCondition{Type: consts.EventSession, Op: consts.CtrlHeartbeat5m})
+	plug.registerLuaOnHook("heartbeat_10m", intermediate.EventCondition{Type: consts.EventSession, Op: consts.CtrlHeartbeat10m})
+	plug.registerLuaOnHook("heartbeat_15m", intermediate.EventCondition{Type: consts.EventSession, Op: consts.CtrlHeartbeat15m})
+	plug.registerLuaOnHook("heartbeat_20m", intermediate.EventCondition{Type: consts.EventSession, Op: consts.CtrlHeartbeat20m})
+	plug.registerLuaOnHook("heartbeat_30m", intermediate.EventCondition{Type: consts.EventSession, Op: consts.CtrlHeartbeat30m})
+	plug.registerLuaOnHook("heartbeat_60m", intermediate.EventCondition{Type: consts.EventSession, Op: consts.CtrlHeartbeat60m})
+
 	return nil
 }
 
@@ -271,15 +276,15 @@ func (plug *LuaPlugin) RegisterLuaBuiltin() error {
 		return true, nil
 	})
 
-	plug.registerLuaOnHook("beacon_checkin")
-	plug.registerLuaOnHook("beacon_initial")
 	return nil
 }
 
-func (plug *LuaPlugin) registerLuaOnHook(name string) {
+func (plug *LuaPlugin) registerLuaOnHook(name string, condition intermediate.EventCondition) {
 	vm := plug.vm
-	if fn := vm.GetGlobal("on_" + name); fn != nil {
-		plug.Events[intermediate.EventMap[name]] = func(event *clientpb.Event) (bool, error) {
+	if fn := vm.GetGlobal("on_" + name); fn != lua.LNil {
+		plug.Events[condition] = func(event *clientpb.Event) (bool, error) {
+			plug.lock.Lock()
+			defer plug.lock.Unlock()
 			vm.Push(fn)
 			vm.Push(intermediate.ConvertGoValueToLua(vm, event))
 
