@@ -158,4 +158,3 @@ require (
 	mvdan.cc/sh/v3 v3.7.0 // indirect
 )
 
-replace github.com/chainreactors/tui v0.0.0-20241017075821-c4292d23e0c9 => ./external/tui
