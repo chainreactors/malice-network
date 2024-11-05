@@ -25,7 +25,8 @@ func newSession(reg *clientpb.RegisterSession) (*core.Session, error) {
 func (rpc *Server) Register(ctx context.Context, req *clientpb.RegisterSession) (*clientpb.Empty, error) {
 	sess, ok := core.Sessions.Get(req.SessionId)
 	if ok {
-		logs.Log.Infof("alive session %s re-register", sess.ID)
+		logs.Log.Infof("session %s re-register", sess.ID)
+		sess.Publish(consts.CtrlSessionRegister, fmt.Sprintf("session %s from %s re-register at %s", sess.ID, sess.Target, sess.PipelineID))
 		sess.Update(req)
 		err := db.Session().Save(models.ConvertToSessionDB(sess)).Error
 		if err != nil {
@@ -45,7 +46,7 @@ func (rpc *Server) Register(ctx context.Context, req *clientpb.RegisterSession) 
 			return nil, err
 		} else {
 			sess.Publish(consts.CtrlSessionRegister, fmt.Sprintf("session %s from %s start at %s", sess.ID, sess.Target, sess.PipelineID))
-			logs.Log.Importantf("init new session %s from %s", sess.ID, sess.PipelineID)
+			logs.Log.Importantf("recover session %s from %s", sess.ID, sess.PipelineID)
 		}
 	} else {
 		// 数据库中已存在, update
@@ -54,7 +55,7 @@ func (rpc *Server) Register(ctx context.Context, req *clientpb.RegisterSession) 
 			return nil, err
 		}
 		logs.Log.Infof("session %s re-register ", sess.ID)
-		sess.Publish(consts.CtrlSessionReRegister, fmt.Sprintf("session %s from %s re-register at %s", sess.ID, sess.Target, sess.PipelineID))
+		sess.Publish(consts.CtrlSessionRegister, fmt.Sprintf("session %s from %s re-register at %s", sess.ID, sess.Target, sess.PipelineID))
 	}
 	core.Sessions.Add(sess)
 	return &clientpb.Empty{}, nil

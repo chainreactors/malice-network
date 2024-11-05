@@ -2,38 +2,32 @@ package intermediate
 
 import (
 	"fmt"
-	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 )
 
-var (
-	EventMap = map[string]Event{
-		"beacon_checkin": Event{Type: consts.EventSession, Op: consts.CtrlSessionCheckin},
-		"beacon_initial": Event{Type: consts.EventSession, Op: consts.CtrlSessionRegister},
-	}
-)
+type OnEventFunc func(*clientpb.Event) (bool, error)
 
-func NewEvent(e *clientpb.Event) Event {
-	event := Event{
-		Type: e.Type,
-		Op:   e.Op,
-	}
+//func NewEvent(e *clientpb.Event) EventCondition {
+//	event := EventCondition{
+//		Type: e.Type,
+//		Op:   e.Op,
+//	}
+//
+//	if e.Task != nil {
+//		event.TaskId = fmt.Sprintf("%s_%d", e.Task.SessionId, e.Task.TaskId)
+//		event.MessageType = e.Task.Type
+//	}
+//	if e.Session != nil {
+//		event.SessionId = e.Session.SessionId
+//	}
+//	if e.Job != nil {
+//		event.ListenerId = e.Job.Pipeline.ListenerId
+//		event.PipelineId = e.Job.Pipeline.Name
+//	}
+//	return event
+//}
 
-	if e.Task != nil {
-		event.TaskId = fmt.Sprintf("%s_%d", e.Task.SessionId, e.Task.TaskId)
-		event.MessageType = e.Task.Type
-	}
-	if e.Session != nil {
-		event.SessionId = e.Session.SessionId
-	}
-	if e.Job != nil {
-		event.ListenerId = e.Job.Pipeline.ListenerId
-		event.PipelineId = e.Job.Pipeline.Name
-	}
-	return event
-}
-
-type Event struct {
+type EventCondition struct {
 	Type        string
 	Op          string
 	MessageType string
@@ -43,4 +37,28 @@ type Event struct {
 	PipelineId  string
 }
 
-type OnEventFunc func(*clientpb.Event) (bool, error)
+func (cond *EventCondition) Match(e *clientpb.Event) bool {
+	// 使用空字段表示任意匹配
+	if cond.Type != "" && cond.Type != e.Type {
+		return false
+	}
+	if cond.Op != "" && cond.Op != e.Op {
+		return false
+	}
+	if cond.MessageType != "" && cond.MessageType != e.Task.Type {
+		return false
+	}
+	if cond.TaskId != "" && e.Task != nil && cond.TaskId != fmt.Sprintf("%s_%d", e.Task.SessionId, e.Task.TaskId) {
+		return false
+	}
+	if cond.SessionId != "" && e.Session != nil && cond.SessionId != e.Session.SessionId {
+		return false
+	}
+	if cond.ListenerId != "" && e.Job != nil && e.Job.Pipeline != nil && cond.ListenerId != e.Job.Pipeline.ListenerId {
+		return false
+	}
+	if cond.PipelineId != "" && e.Job != nil && e.Job.Pipeline != nil && cond.PipelineId != e.Job.Pipeline.Name {
+		return false
+	}
+	return true
+}

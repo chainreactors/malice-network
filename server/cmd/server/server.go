@@ -41,6 +41,8 @@ func init() {
 	config.AddDriver(yaml.Driver)
 	db.Client = db.NewDBClient()
 	codenames.SetupCodenames(configs.ServerRootPath)
+	core.NewBroker()
+	core.NewSessions()
 }
 
 func Execute() {
