@@ -12,6 +12,8 @@ const (
 	CtrlTaskFinish        = "task_finish"
 	CtrlTaskCancel        = "task_cancel"
 	CtrlTaskError         = "task_error"
+	CtrlClientJoin        = "client_join"
+	CtrlClientLeft        = "client_left"
 	CtrlWebUpload         = "web_upload"
 	CtrlListenerStart     = "listener_start"
 	CtrlListenerStop      = "listener_stop"
@@ -30,7 +32,8 @@ const (
 	CtrlSessionLog        = "session_log"
 	CtrlSessionTask       = "session_task"
 	CtrlSessionError      = "session_error"
-	CtrlSessionStop     = "session_stop"
+	CtrlSessionStop       = "session_stop"
+	CtrlSessionCheckin    = "session_checkin"
 )
 
 // ctrl status
@@ -43,6 +46,7 @@ const (
 const (
 	EventJoin        = "join"
 	EventLeft        = "left"
+	EventClient      = "client"
 	EventBroadcast   = "broadcast"
 	EventNotify      = "notify"
 	EventSession     = "session"

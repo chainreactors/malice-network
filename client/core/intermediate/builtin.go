@@ -284,6 +284,7 @@ format_path("C:\\Windows\\System32\\calc.exe")
 			return true, nil
 		}, nil
 	})
+
 }
 
 func RegisterGRPCBuiltin(rpc clientrpc.MaliceRPCClient) {

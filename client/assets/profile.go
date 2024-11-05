@@ -7,6 +7,7 @@ import (
 	"gopkg.in/yaml.v2"
 	"os"
 	"path/filepath"
+	"slices"
 )
 
 var (
@@ -122,29 +123,26 @@ func SaveProfile(profile *Profile) error {
 	return nil
 }
 
-func contains(slice []string, item string) bool {
-	for _, s := range slice {
-		if s == item {
-			return true
-		}
+func (profile *Profile) AddMal(manifestName string) bool {
+	if !slices.Contains(profile.Mals, manifestName) {
+		profile.Mals = append(profile.Mals, manifestName)
+		return true
 	}
 	return false
 }
 
-func AddUniqueMal(profile *Profile, manifestName string) {
-	if !contains(profile.Mals, manifestName) {
-		profile.Mals = append(profile.Mals, manifestName)
-	}
-}
-
-func AddUniqueAlias(profile *Profile, alias string) {
-	if !contains(profile.Aliases, alias) {
+func (profile *Profile) AddAlias(alias string) bool {
+	if !slices.Contains(profile.Aliases, alias) {
 		profile.Aliases = append(profile.Aliases, alias)
+		return true
 	}
+	return false
 }
 
-func AddUniqueExtension(profile *Profile, extension string) {
-	if !contains(profile.Extensions, extension) {
+func (profile *Profile) AddExtension(extension string) bool {
+	if !slices.Contains(profile.Extensions, extension) {
 		profile.Extensions = append(profile.Extensions, extension)
+		return true
 	}
+	return false
 }

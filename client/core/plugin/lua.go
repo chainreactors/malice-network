@@ -6,6 +6,7 @@ import (
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/core/intermediate"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/cjoudrey/gluahttp"
 	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
@@ -264,12 +265,32 @@ func (plug *LuaPlugin) RegisterLuaBuiltin() error {
 			}
 			malCmd.Flags().String(paramName, "", paramName)
 		}
+
 		logs.Log.Debugf("Registered Command: %s\n", cmd.Name)
 		plug.CMDs.SetCommand(name, malCmd)
 		return true, nil
 	})
 
+	plug.registerLuaOnHook("beacon_checkin")
+	plug.registerLuaOnHook("beacon_initial")
 	return nil
+}
+
+func (plug *LuaPlugin) registerLuaOnHook(name string) {
+	vm := plug.vm
+	if fn := vm.GetGlobal("on_" + name); fn != nil {
+		plug.Events[intermediate.EventMap[name]] = func(event *clientpb.Event) (bool, error) {
+			vm.Push(fn)
+			vm.Push(intermediate.ConvertGoValueToLua(vm, event))
+
+			if err := vm.PCall(1, lua.MultRet, nil); err != nil {
+				return false, fmt.Errorf("error calling Lua function %s: %w", name, err)
+			}
+
+			vm.Pop(vm.GetTop())
+			return true, nil
+		}
+	}
 }
 
 func (plug *LuaPlugin) registerLuaFunction(name string, fn interface{}) {
@@ -505,7 +526,7 @@ func GenerateMarkdownDefinitionFile(L *lua.LState, filename string) error {
 			for i, argType := range iFunc.ArgTypes {
 				luaType := intermediate.ConvertGoValueToLuaType(L, argType)
 				if iFunc.Helper == nil {
-					fmt.Fprintf(file, "- `$%d` [%s] - parameter description\n", i+1, luaType)
+					fmt.Fprintf(file, "- `$%d` [%s] \n", i+1, luaType)
 				} else {
 					keys, values := iFunc.Helper.FormatInput()
 					paramName := fmt.Sprintf("$%d", i+1)

@@ -273,7 +273,7 @@ func ExtensionRegisterCommand(extCmd *ExtCommand, cmd *cobra.Command, con *repl.
 		}, common.ParseAssembly),
 	}
 	profile := assets.GetProfile()
-	assets.AddUniqueExtension(profile, extCmd.CommandName)
+	profile.AddExtension(extCmd.CommandName)
 	cmd.AddCommand(extensionCmd)
 	err := assets.SaveProfile(profile)
 	if err != nil {
