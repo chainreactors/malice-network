@@ -55,7 +55,11 @@ func LoadMal(con *repl.Console, rootCmd *cobra.Command, filename string) (*Loade
 	if err != nil {
 		return nil, err
 	}
+	for event, fn := range plug.GetEvents() {
+		con.AddEventHook(event, fn)
+	}
 	profile := assets.GetProfile()
+	profile.AddMal(manifest.Name)
 	var cmdNames []string
 	var cmds []*cobra.Command
 	for _, cmd := range plug.Commands() {
@@ -67,8 +71,9 @@ func LoadMal(con *repl.Console, rootCmd *cobra.Command, filename string) (*Loade
 		CMDs:     cmds,
 		Plugin:   plug,
 	}
+
 	loadedMals[manifest.Name] = mal
-	assets.AddUniqueMal(profile, manifest.Name)
+
 	err = assets.SaveProfile(profile)
 	if err != nil {
 		return nil, err

@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"github.com/chainreactors/malice-network/client/assets"
+	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"os"
 	"path/filepath"
 )
@@ -17,6 +18,7 @@ type Plugin interface {
 	Run() error
 	Manifest() *MalManiFest
 	Commands() Commands
+	GetEvents() map[intermediate.Event]intermediate.OnEventFunc
 }
 
 func NewPlugin(manifest *MalManiFest) (*DefaultPlugin, error) {
@@ -32,6 +34,7 @@ func NewPlugin(manifest *MalManiFest) (*DefaultPlugin, error) {
 		Content:     content,
 		Path:        path,
 		CMDs:        make(Commands),
+		Events:      make(map[intermediate.Event]intermediate.OnEventFunc),
 	}
 
 	return plug, nil
@@ -43,6 +46,7 @@ type DefaultPlugin struct {
 	Content []byte
 	Path    string
 	CMDs    Commands
+	Events  map[intermediate.Event]intermediate.OnEventFunc
 }
 
 func (plug *DefaultPlugin) Manifest() *MalManiFest {
@@ -51,4 +55,8 @@ func (plug *DefaultPlugin) Manifest() *MalManiFest {
 
 func (plug *DefaultPlugin) Commands() Commands {
 	return plug.CMDs
+}
+
+func (plug *DefaultPlugin) GetEvents() map[intermediate.Event]intermediate.OnEventFunc {
+	return plug.Events
 }
