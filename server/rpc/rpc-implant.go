@@ -18,7 +18,8 @@ import (
 
 func newSession(reg *clientpb.RegisterSession) (*core.Session, error) {
 	sess := core.RegisterSession(reg)
-	d := db.Session().Create(models.ConvertToSessionDB(sess))
+	sessDB := models.FromRegisterSessionPb(reg)
+	d := db.Session().Create(sessDB)
 	return sess, d.Error
 }
 
@@ -28,7 +29,8 @@ func (rpc *Server) Register(ctx context.Context, req *clientpb.RegisterSession) 
 		logs.Log.Infof("session %s re-register", sess.ID)
 		sess.Publish(consts.CtrlSessionRegister, fmt.Sprintf("session %s from %s re-register at %s", sess.ID, sess.Target, sess.PipelineID))
 		sess.Update(req)
-		err := db.Session().Save(models.ConvertToSessionDB(sess)).Error
+		sessDB := models.FromRegisterSessionPb(req)
+		err := db.Session().Save(sessDB).Error
 		if err != nil {
 			logs.Log.Errorf("update session %s info failed in db, %s", sess.ID, err.Error())
 		}
@@ -50,7 +52,17 @@ func (rpc *Server) Register(ctx context.Context, req *clientpb.RegisterSession) 
 		}
 	} else {
 		// 数据库中已存在, update
-		sess, err = db.RecoverSession(dbSess)
+		sess = core.RecoverSession(dbSess)
+		tasks, tid, err := db.FindTaskAndMaxTasksID(sess.ID)
+		if err != nil {
+			return nil, err
+		}
+		sess.Taskseq = tid
+		for _, task := range tasks {
+			taskPb := task.ToProtobuf()
+			sess.Tasks.Add(core.FromTaskProtobuf(taskPb))
+		}
+		sess.Recover()
 		if err != nil {
 			return nil, err
 		}
@@ -80,10 +92,21 @@ func (rpc *Server) Checkin(ctx context.Context, req *implantpb.Ping) (*clientpb.
 		return nil, err
 	}
 	if s, ok := core.Sessions.Get(sid); !ok {
-		sess, err := db.RecoverFromSessionID(sid)
+		dbSess, err := db.FindSession(sid)
 		if err != nil {
 			return nil, err
 		}
+		sess := core.RecoverSession(dbSess)
+		tasks, tid, err := db.FindTaskAndMaxTasksID(sess.ID)
+		if err != nil {
+			return nil, err
+		}
+		sess.Taskseq = tid
+		for _, task := range tasks {
+			taskPb := task.ToProtobuf()
+			sess.Tasks.Add(core.FromTaskProtobuf(taskPb))
+		}
+		sess.Recover()
 		core.Sessions.Add(sess)
 		sess.Publish(consts.CtrlSessionReborn, fmt.Sprintf("session %s from %s reborn at %s", sess.ID, sess.Target, sess.PipelineID))
 		logs.Log.Debugf("recover session %s", sid)

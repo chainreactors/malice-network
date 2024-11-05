@@ -5,7 +5,6 @@ import (
 	"errors"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/server/internal/core"
 	"gorm.io/gorm"
 	"time"
 )
@@ -41,7 +40,7 @@ func (s *Session) BeforeCreate(tx *gorm.DB) (err error) {
 }
 
 func (s *Session) ToProtobuf() *clientpb.Session {
-	ctx := recoverFromContext(s.Context)
+	ctx := ToRegister(s.Context)
 
 	return &clientpb.Session{
 		Type:          s.Type,
@@ -58,14 +57,13 @@ func (s *Session) ToProtobuf() *clientpb.Session {
 		Os:            s.Os.toProtobuf(),
 		Process:       s.Process.toProtobuf(),
 		Timer:         s.Time.toProtobuf(),
-		Modules:       ctx.Modules,
+		Modules:       ctx.Module,
 		Addons:        ctx.Addons,
-		Data:          ctx.Data,
 	}
 }
 
 func (s *Session) ToRegisterProtobuf() *clientpb.RegisterSession {
-	ctx := recoverFromContext(s.Context)
+	ctx := ToRegister(s.Context)
 	return &clientpb.RegisterSession{
 		SessionId:  s.SessionID,
 		RawId:      s.RawID,
@@ -79,82 +77,28 @@ func (s *Session) ToRegisterProtobuf() *clientpb.RegisterSession {
 				Process:     s.Process.toProtobuf(),
 				IsPrivilege: s.IsPrivilege,
 			},
-			Module: ctx.Modules,
+			Module: ctx.Module,
 			Addons: ctx.Addons,
 		},
 	}
 }
 
-func ConvertToSessionDB(session *core.Session) *Session {
+func FromRegisterSessionPb(reg *clientpb.RegisterSession) *Session {
 	return &Session{
-		Type:        session.Type,
-		SessionID:   session.ID,
-		RawID:       session.RawID,
+		SessionID:   reg.SessionId,
+		RawID:       reg.RawId,
+		Note:        reg.RegisterData.Name,
 		GroupName:   "default",
+		Target:      reg.Target,
+		Initialized: false,
+		Type:        reg.Type,
+		IsPrivilege: reg.RegisterData.Sysinfo.IsPrivilege,
+		PipelineID:  reg.PipelineId,
 		IsAlive:     true,
-		Target:      session.Target,
-		PipelineID:  session.PipelineID,
-		IsPrivilege: session.IsPrivilege,
-		Initialized: session.Initialized,
-		LastCheckin: uint64(time.Now().Unix()),
-		Context:     convertToContext(session.SessionContext),
-		Os:          convertToOsDB(session.Os),
-		Process:     convertToProcessDB(session.Process),
-		Time:        convertToTimeDB(session.Timer),
-	}
-}
-
-func convertToContext(context *core.SessionContext) string {
-	content, err := json.Marshal(context)
-	if err != nil {
-		return ""
-	}
-	return string(content)
-}
-
-func recoverFromContext(context string) *core.SessionContext {
-	var ctx *core.SessionContext
-	err := json.Unmarshal([]byte(context), &ctx)
-	if err != nil {
-		return nil
-	}
-	return ctx
-}
-
-func convertToOsDB(os *implantpb.Os) *Os {
-	if os == nil {
-		return &Os{}
-	}
-	return &Os{
-		Name:     os.Name,
-		Version:  os.Version,
-		Arch:     os.Arch,
-		Username: os.Username,
-		Hostname: os.Hostname,
-		Locale:   os.Locale,
-	}
-}
-func convertToProcessDB(process *implantpb.Process) *Process {
-	if process == nil {
-		return &Process{}
-	}
-	return &Process{
-		Name:  process.Name,
-		Pid:   int32(process.Pid),
-		Ppid:  int32(process.Ppid),
-		Owner: process.Owner,
-		Arch:  process.Arch,
-		Path:  process.Path,
-		Args:  process.Args,
-	}
-}
-func convertToTimeDB(timer *implantpb.Timer) *Timer {
-	if timer == nil {
-		return &Timer{}
-	}
-	return &Timer{
-		Interval: timer.Interval,
-		Jitter:   timer.Jitter,
+		Context:     FromRegister(reg.RegisterData),
+		Os:          FromOsPb(reg.RegisterData.Sysinfo.Os),
+		Process:     FromProcessPb(reg.RegisterData.Sysinfo.Process),
+		Time:        FromTimePb(reg.RegisterData.Timer),
 	}
 }
 
@@ -178,6 +122,20 @@ func (o *Os) toProtobuf() *implantpb.Os {
 	}
 }
 
+func FromOsPb(os *implantpb.Os) *Os {
+	if os == nil {
+		return &Os{}
+	}
+	return &Os{
+		Name:     os.Name,
+		Version:  os.Version,
+		Arch:     os.Arch,
+		Username: os.Username,
+		Hostname: os.Hostname,
+		Locale:   os.Locale,
+	}
+}
+
 type Timer struct {
 	Interval uint64  `json:"interval"`
 	Jitter   float64 `json:"jitter"`
@@ -187,6 +145,16 @@ func (t *Timer) toProtobuf() *implantpb.Timer {
 	return &implantpb.Timer{
 		Interval: t.Interval,
 		Jitter:   t.Jitter,
+	}
+}
+
+func FromTimePb(timer *implantpb.Timer) *Timer {
+	if timer == nil {
+		return &Timer{}
+	}
+	return &Timer{
+		Interval: timer.Interval,
+		Jitter:   timer.Jitter,
 	}
 }
 
@@ -210,4 +178,37 @@ func (p *Process) toProtobuf() *implantpb.Process {
 		Path:  p.Path,
 		Args:  p.Args,
 	}
+}
+
+func FromProcessPb(process *implantpb.Process) *Process {
+	if process == nil {
+		return &Process{}
+	}
+	return &Process{
+		Name:  process.Name,
+		Pid:   int32(process.Pid),
+		Ppid:  int32(process.Ppid),
+		Owner: process.Owner,
+		Arch:  process.Arch,
+		Path:  process.Path,
+		Args:  process.Args,
+	}
+}
+
+// FromRegister - convert session to context json string
+func FromRegister(register *implantpb.Register) string {
+	content, err := json.Marshal(register)
+	if err != nil {
+		return ""
+	}
+	return string(content)
+}
+
+func ToRegister(context string) *implantpb.Register {
+	var register *implantpb.Register
+	err := json.Unmarshal([]byte(context), &register)
+	if err != nil {
+		return nil
+	}
+	return register
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/server/internal/configs"
+	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/gookit/config/v2"
 	"google.golang.org/grpc"
 	"os"
@@ -109,7 +110,7 @@ func RegisterSession(req *clientpb.RegisterSession) *Session {
 		Tasks:          &Tasks{active: &sync.Map{}},
 		SessionContext: NewSessionContext(req),
 		Taskseq:        1,
-		Cache:          NewCache(10*consts.KB, path.Join(configs.CachePath, req.SessionId+".gob")),
+		Cache:          NewCache(1*consts.MB, path.Join(configs.CachePath, req.SessionId+".gob")),
 		responses:      &sync.Map{},
 	}
 	logDir := filepath.Join(configs.LogPath, sess.ID)
@@ -189,7 +190,31 @@ func (s *Session) TaskLog(task *Task, spite []byte) error {
 
 func (s *Session) Recover() error {
 	s.responses = &sync.Map{}
-	return s.Load()
+	all, err := s.Cache.GetAll()
+	if err != nil {
+		return err
+	}
+	tasks, err := db.GetAllTask()
+	if err != nil {
+		return err
+	}
+	for _, task := range tasks.Tasks {
+		if task.Cur < task.Total {
+			for key, value := range all {
+				cacheTaskID := strconv.FormatUint(uint64(value.TaskId), 10) + "_" + strconv.FormatUint(uint64(task.Cur), 10)
+				if err != nil {
+					continue
+				}
+				if cacheTaskID == key {
+					ch := make(chan *implantpb.Spite)
+					s.responses.Store(task, ch)
+					ch <- value
+				}
+			}
+		}
+	}
+
+	return nil
 }
 
 func (s *Session) ToProtobuf() *clientpb.Session {
@@ -236,6 +261,30 @@ func (s *Session) ToProtobufLite() *clientpb.Session {
 		Timer:       s.Timer,
 		Modules:     s.Modules,
 		Addons:      s.Addons,
+	}
+}
+
+func RecoverSession(sess *clientpb.Session) *Session {
+	return &Session{
+		Type:        sess.Type,
+		Name:        sess.Note,
+		Group:       sess.GroupName,
+		ID:          sess.SessionId,
+		RawID:       sess.RawId,
+		PipelineID:  sess.PipelineId,
+		Target:      sess.Target,
+		Initialized: sess.IsInitialized,
+		LastCheckin: sess.LastCheckin,
+		Tasks:       &Tasks{active: &sync.Map{}},
+		SessionContext: &SessionContext{SessionInfo: &SessionInfo{Os: sess.Os,
+			Process: sess.Process,
+			Timer:   sess.Timer},
+			Modules: sess.Modules,
+			Addons:  sess.Addons,
+		},
+		Taskseq:   1,
+		Cache:     NewCache(1*consts.MB, path.Join(configs.CachePath, sess.SessionId+".gob")),
+		responses: &sync.Map{},
 	}
 }
 

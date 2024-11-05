@@ -45,7 +45,7 @@ func (l *Pipeline) BeforeCreate(tx *gorm.DB) (err error) {
 	return nil
 }
 
-func ToPipelineModel(pipeline *clientpb.Pipeline) *Pipeline {
+func FromPipelinePb(pipeline *clientpb.Pipeline) *Pipeline {
 	switch body := pipeline.Body.(type) {
 	case *clientpb.Pipeline_Tcp:
 		return &Pipeline{
@@ -83,7 +83,7 @@ func ToPipelineModel(pipeline *clientpb.Pipeline) *Pipeline {
 	}
 }
 
-func ModelToPipelinePB(pipeline Pipeline) *clientpb.Pipeline {
+func ToPipelinePB(pipeline Pipeline) *clientpb.Pipeline {
 	switch pipeline.Type {
 	case consts.TCPPipeline:
 		return &clientpb.Pipeline{
@@ -159,5 +159,4 @@ func ToEncryptionProtobuf(encryption *EncryptionConfig) *clientpb.Encryption {
 		Type:   encryption.Type,
 		Key:    encryption.Key,
 	}
-
 }

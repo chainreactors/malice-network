@@ -13,7 +13,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"sort"
 	"strconv"
 )
 
@@ -42,7 +41,18 @@ func (rpc *Server) GetSession(ctx context.Context, req *clientpb.SessionRequest)
 	if ok {
 		return session.ToProtobuf(), nil
 	}
-	session, err := db.RecoverFromSessionID(req.SessionId)
+	dbSess, err := db.FindSession(req.SessionId)
+	session = core.RecoverSession(dbSess)
+	tasks, tid, err := db.FindTaskAndMaxTasksID(session.ID)
+	if err != nil {
+		return nil, err
+	}
+	session.Taskseq = tid
+	for _, task := range tasks {
+		taskPb := task.ToProtobuf()
+		session.Tasks.Add(core.FromTaskProtobuf(taskPb))
+	}
+	session.Recover()
 	if err != nil {
 		return nil, err
 	}
@@ -97,19 +107,37 @@ func (rpc *Server) Info(ctx context.Context, req *implantpb.Request) (*clientpb.
 	return greq.Task.ToProtobuf(), nil
 }
 
-type taskFile struct {
-	TaskID int
-	Cur    int
-	Name   string
-}
+//type taskFile struct {
+//	TaskID int
+//	Cur    int
+//	Name   string
+//}
 
 func (rpc *Server) GetSessionHistory(ctx context.Context, req *clientpb.SessionLog) (*clientpb.TasksContext, error) {
-	var taskFiles []taskFile
+	var tid int
 	contexts := &clientpb.TasksContext{
 		Contexts: make([]*clientpb.TaskContext, 0),
 	}
 	taskDir := filepath.Join(configs.LogPath, req.SessionId)
+	session, ok := core.Sessions.Get(req.SessionId)
+	if !ok {
+		_, taskId, err := db.FindTaskAndMaxTasksID(req.SessionId)
+		if err != nil {
+			return nil, err
+		}
+		tid = int(taskId)
+	} else {
+		tid = int(session.Taskseq)
+	}
+
+	startTaskID := max(1, tid-int(req.Limit)+1)
+	endTaskID := tid
 	re := regexp.MustCompile(`^(\d+)_(\d+)$`)
+
+	taskIDs := make(map[int]struct{})
+	for i := startTaskID; i <= endTaskID; i++ {
+		taskIDs[i] = struct{}{}
+	}
 
 	files, err := os.ReadDir(taskDir)
 	if err != nil {
@@ -119,70 +147,114 @@ func (rpc *Server) GetSessionHistory(ctx context.Context, req *clientpb.SessionL
 	for _, file := range files {
 		if !file.IsDir() {
 			matches := re.FindStringSubmatch(file.Name())
-			if matches != nil {
-				taskid, _ := strconv.Atoi(matches[1])
-				cur, _ := strconv.Atoi(matches[2])
-				taskFiles = append(taskFiles, taskFile{
-					TaskID: taskid,
-					Cur:    cur,
-					Name:   file.Name(),
+			if matches == nil {
+				continue
+			}
+
+			taskID, _ := strconv.Atoi(matches[1])
+
+			if _, exists := taskIDs[taskID]; exists {
+				taskPath := filepath.Join(taskDir, file.Name())
+				content, err := os.ReadFile(taskPath)
+				if err != nil {
+					logs.Log.Errorf("Error reading file: %s", err)
+					continue
+				}
+
+				spite := &implantpb.Spite{}
+				err = proto.Unmarshal(content, spite)
+				if err != nil {
+					logs.Log.Errorf("Error unmarshalling protobuf: %s", err)
+					continue
+				}
+
+				taskIDStr := req.SessionId + "-" + strconv.Itoa(taskID)
+				task, err := db.GetTaskPB(taskIDStr)
+				if err != nil {
+					return nil, err
+				}
+				session, err := db.FindSession(req.SessionId)
+				if err != nil {
+					return nil, err
+				}
+
+				contexts.Contexts = append(contexts.Contexts, &clientpb.TaskContext{
+					Task:    task,
+					Session: session,
+					Spite:   spite,
 				})
 			}
 		}
 	}
 
-	if len(taskFiles) == 0 {
-		return contexts, nil
-	}
-
-	sort.Slice(taskFiles, func(i, j int) bool {
-		if taskFiles[i].TaskID == taskFiles[j].TaskID {
-			return taskFiles[i].Cur < taskFiles[j].Cur
-		}
-		return taskFiles[i].TaskID > taskFiles[j].TaskID
-	})
-
-	taskIDCount := 0
-	lastTaskID := -1
-	for _, f := range taskFiles {
-		if f.TaskID != lastTaskID {
-			taskIDCount++
-			lastTaskID = f.TaskID
-		}
-
-		if taskIDCount > int(req.Limit) {
-			break
-		}
-
-		taskPath := filepath.Join(taskDir, f.Name)
-		content, err := os.ReadFile(taskPath)
-		if err != nil {
-			logs.Log.Errorf("Error reading file: %s", err)
-			continue
-		}
-		spite := &implantpb.Spite{}
-		err = proto.Unmarshal(content, spite)
-		if err != nil {
-			logs.Log.Errorf("Error unmarshalling protobuf: %s", err)
-			continue
-		}
-
-		taskID := req.SessionId + "-" + strconv.Itoa(f.TaskID)
-		task, err := db.GetTaskPB(taskID)
-		if err != nil {
-			return nil, err
-		}
-		session, err := db.FindSession(req.SessionId)
-		if err != nil {
-			return nil, err
-		}
-		contexts.Contexts = append(contexts.Contexts, &clientpb.TaskContext{
-			Task:    task,
-			Session: session,
-			Spite:   spite,
-		})
-	}
 	return contexts, nil
+	//for _, file := range files {
+	//	if !file.IsDir() {
+	//		matches := re.FindStringSubmatch(file.Name())
+	//		if matches != nil {
+	//			taskid, _ := strconv.Atoi(matches[1])
+	//			cur, _ := strconv.Atoi(matches[2])
+	//			taskFiles = append(taskFiles, taskFile{
+	//				TaskID: taskid,
+	//				Cur:    cur,
+	//				Name:   file.Name(),
+	//			})
+	//		}
+	//	}
+	//}
+	//
+	//if len(taskFiles) == 0 {
+	//	return contexts, nil
+	//}
+	//
+	//sort.Slice(taskFiles, func(i, j int) bool {
+	//	if taskFiles[i].TaskID == taskFiles[j].TaskID {
+	//		return taskFiles[i].Cur < taskFiles[j].Cur
+	//	}
+	//	return taskFiles[i].TaskID > taskFiles[j].TaskID
+	//})
+	//
+	//taskIDCount := 0
+	//lastTaskID := -1
+	//for _, f := range taskFiles {
+	//	if f.TaskID != lastTaskID {
+	//		taskIDCount++
+	//		lastTaskID = f.TaskID
+	//	}
+	//
+	//	if taskIDCount > int(req.Limit) {
+	//		break
+	//	}
+	//
+	//	taskPath := filepath.Join(taskDir, f.Name)
+	//	content, err := os.ReadFile(taskPath)
+	//	if err != nil {
+	//		logs.Log.Errorf("Error reading file: %s", err)
+	//		continue
+	//	}
+	//	spite := &implantpb.Spite{}
+	//	err = proto.Unmarshal(content, spite)
+	//	if err != nil {
+	//		logs.Log.Errorf("Error unmarshalling protobuf: %s", err)
+	//		continue
+	//	}
+	//
+	//	taskID := req.SessionId + "-" + strconv.Itoa(f.TaskID)
+	//	task, err := db.GetTaskPB(taskID)
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//	session, err := db.FindSession(req.SessionId)
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//	contexts.Contexts = append(contexts.Contexts, &clientpb.TaskContext{
+	//		Task:    task,
+	//		Session: session,
+	//		Spite:   spite,
+	//	})
+	//}
+	//return contexts, nil
 }
 
 func (rpc *Server) Ping(ctx context.Context, req *implantpb.Ping) (*clientpb.Task, error) {

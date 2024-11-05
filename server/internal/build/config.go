@@ -35,7 +35,7 @@ func DbToConfig(req *clientpb.Generate) error {
 	if err != nil {
 		return err
 	}
-	err = profileDB.UpdateGeneratorConfig(req, path)
+	err = db.UpdateGeneratorConfig(req, path, profileDB)
 	if err != nil {
 		return err
 	}

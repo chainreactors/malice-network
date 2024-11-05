@@ -123,7 +123,7 @@ func (rpc *Server) WebsiteRemoveContent(ctx context.Context, req *clientpb.Websi
 }
 
 func (rpc *Server) RegisterWebsite(ctx context.Context, req *clientpb.Pipeline) (*clientpb.WebsiteResponse, error) {
-	pipelineModel := models.ToPipelineModel(req)
+	pipelineModel := models.FromPipelinePb(req)
 	var err error
 	if pipelineModel.Enable && pipelineModel.Tls.Cert == "" && pipelineModel.Tls.Key == "" {
 		pipelineModel.Tls.Cert, pipelineModel.Tls.Key, err = certutils.GenerateTlsCert(req.Name, req.ListenerId)
@@ -160,7 +160,7 @@ func (rpc *Server) StartWebsite(ctx context.Context, req *clientpb.CtrlPipeline)
 	if err != nil {
 		return &clientpb.Empty{}, err
 	}
-	pipeline := models.ModelToPipelinePB(pipelineDB)
+	pipeline := models.ToPipelinePB(pipelineDB)
 	listener := core.Listeners.Get(req.ListenerId)
 	if listener == nil {
 		return nil, fmt.Errorf("listener %s not found", req.ListenerId)
@@ -198,7 +198,7 @@ func (rpc *Server) StopWebsite(ctx context.Context, req *clientpb.CtrlPipeline) 
 	if err != nil {
 		return nil, err
 	}
-	pipeline := models.ModelToPipelinePB(pipelineDB)
+	pipeline := models.ToPipelinePB(pipelineDB)
 	ctrl := clientpb.JobCtrl{
 		Id:   core.NextCtrlID(),
 		Ctrl: consts.CtrlWebsiteStop,
@@ -241,7 +241,7 @@ func (rpc *Server) ListWebsites(ctx context.Context, req *clientpb.ListenerName)
 		return nil, err
 	}
 	for _, pipeline := range pipelines {
-		websites = append(websites, models.ModelToPipelinePB(pipeline))
+		websites = append(websites, models.ToPipelinePB(pipeline))
 	}
 	return &clientpb.Pipelines{Pipelines: websites}, nil
 }

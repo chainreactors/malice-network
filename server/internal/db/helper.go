@@ -3,19 +3,19 @@ package db
 import (
 	"encoding/json"
 	"errors"
-	"github.com/chainreactors/logs"
+	"fmt"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/utils/mtls"
 	"github.com/chainreactors/malice-network/server/internal/configs"
-	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"github.com/gofrs/uuid"
+	"gopkg.in/yaml.v3"
 	"gorm.io/gorm"
 	"gorm.io/gorm/utils"
 	"os"
-	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -59,60 +59,6 @@ func FindSession(sessionID string) (*clientpb.Session, error) {
 	//	return nil, errors.New("session is dead")
 	//}
 	return session.ToProtobuf(), nil
-}
-
-func RecoverSession(s *clientpb.Session) (*core.Session, error) {
-	tasks, tid, err := FindTaskAndMaxTasksID(s.SessionId)
-	if err != nil {
-		return nil, err
-	}
-
-	sess := &core.Session{
-		Type:  s.Type,
-		Name:  s.Note,
-		Group: s.GroupName,
-		//ProxyURL:       s.ProxyURL,
-		ID:          s.SessionId,
-		RawID:       s.RawId,
-		PipelineID:  s.PipelineId,
-		Target:      s.Target,
-		Initialized: s.IsInitialized,
-		SessionContext: &core.SessionContext{
-			SessionInfo: &core.SessionInfo{
-				Timer:       s.Timer,
-				Os:          s.Os,
-				Process:     s.Process,
-				IsPrivilege: s.IsPrivilege,
-			},
-			Modules: s.Modules,
-			Addons:  s.Addons,
-			Loot:    s.Loot,
-			Argue:   s.Argue,
-			Data:    s.Data,
-			Any:     map[string]interface{}{},
-		},
-		Taskseq: tid,
-		Tasks:   core.NewTasks(),
-		Cache:   core.NewCache(10*consts.KB, path.Join(configs.CachePath, s.SessionId+".gob")),
-	}
-	sess.Recover()
-	for _, task := range tasks {
-		newTask, err := ToTask(task)
-		if err != nil {
-			logs.Log.Errorf("cannot convert task to core task , %s ", err.Error())
-			continue
-		}
-		sess.Tasks.Add(newTask)
-	}
-	return sess, nil
-}
-
-func RecoverFromSessionID(sid string) (*core.Session, error) {
-	sess, err := FindSession(sid)
-	if err != nil {
-		return nil, err
-	}
-	return RecoverSession(sess)
 }
 
 func FindAllSessions() (*clientpb.Sessions, error) {
@@ -404,26 +350,26 @@ func SaveCertificate(certificate *models.Certificate) error {
 	return nil
 }
 
-func AddFile(typ string, task *core.Task, td *models.FileDescription) error {
+func AddFile(typ string, taskpb *clientpb.Task, td *models.FileDescription) error {
 	tdString, err := td.ToJsonString()
 	if err != nil {
 		return err
 	}
 	fileModel := &models.File{
-		ID:          task.SessionId + "-" + utils.ToString(task.Id),
+		ID:          taskpb.SessionId + "-" + utils.ToString(taskpb.TaskId),
 		Type:        typ,
-		SessionID:   task.SessionId,
-		Cur:         task.Cur,
-		Total:       task.Total,
+		SessionID:   taskpb.SessionId,
+		Cur:         int(taskpb.Cur),
+		Total:       int(taskpb.Total),
 		Description: tdString,
 	}
 	Session().Create(fileModel)
 	return nil
 }
 
-func UpdateFile(task *core.Task, newCur int) error {
+func UpdateFileByID(ID string, newCur int) error {
 	fileModel := &models.File{
-		ID: task.SessionId + "-" + utils.ToString(task.Id),
+		ID: ID,
 	}
 	return fileModel.UpdateCur(Session(), newCur)
 }
@@ -438,41 +384,42 @@ func GetTaskPB(taskID string) (*clientpb.Task, error) {
 	return taskProto, nil
 }
 
-func ToTask(task *models.Task) (*core.Task, error) {
-	return &core.Task{
-		Id:        uint32(task.Seq),
-		Type:      task.Type,
-		SessionId: task.SessionID,
-		Cur:       task.Cur,
-		Total:     task.Total,
-		Deadline:  task.Deadline,
-		CallBy:    task.CallBy,
-	}, nil
+func GetAllTask() (*clientpb.Tasks, error) {
+	var tasks []models.Task
+	err := Session().Find(&tasks).Error
+	if err != nil {
+		return nil, err
+	}
+	var pbTasks *clientpb.Tasks
+	for _, task := range tasks {
+		pbTasks.Tasks = append(pbTasks.Tasks, task.ToProtobuf())
+	}
+	return pbTasks, nil
 }
 
-func AddTask(task *core.Task) error {
+func AddTask(task *clientpb.Task) error {
 	taskModel := &models.Task{
-		ID:         task.SessionId + "-" + utils.ToString(task.Id),
-		Seq:        int(task.Id),
+		ID:         task.SessionId + "-" + utils.ToString(task.TaskId),
+		Seq:        int(task.TaskId),
 		Type:       task.Type,
 		SessionID:  task.SessionId,
-		Cur:        task.Cur,
-		Total:      task.Total,
-		ClientName: task.CallBy,
+		Cur:        int(task.Cur),
+		Total:      int(task.Total),
+		ClientName: task.Callby,
 	}
 	return Session().Create(taskModel).Error
 }
 
-func UpdateTask(task *core.Task) error {
+func UpdateTask(task *clientpb.Task) error {
 	taskModel := &models.Task{
-		ID: task.SessionId + "-" + utils.ToString(task.Id),
+		ID: task.SessionId + "-" + utils.ToString(task.TaskId),
 	}
-	return taskModel.UpdateCur(Session(), task.Total)
+	return taskModel.UpdateCur(Session(), int(task.Total))
 }
 
-func UpdateDownloadTotal(task *core.Task, total int) error {
+func UpdateDownloadTotal(task *clientpb.Task, total int) error {
 	taskModel := &models.Task{
-		ID: task.SessionId + "-" + utils.ToString(task.Id),
+		ID: task.SessionId + "-" + utils.ToString(task.TaskId),
 	}
 	return taskModel.UpdateTotal(Session(), total)
 }
@@ -649,4 +596,99 @@ func GetBuilders() (*clientpb.Builders, error) {
 		pbBuilders.Builders = append(pbBuilders.GetBuilders(), builder.ToProtobuf())
 	}
 	return pbBuilders, nil
+}
+
+// Generator Profile
+
+// UpdateGeneratorConfig - Update the generator config
+func UpdateGeneratorConfig(req *clientpb.Generate, path string, profile models.Profile) error {
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	var configMap map[string]interface{}
+	if err := yaml.Unmarshal(data, &configMap); err != nil {
+		return err
+	}
+
+	var config configs.GeneratorConfig
+	if basicConfig, ok := configMap["basic"]; ok {
+		basicBytes, err := yaml.Marshal(basicConfig)
+		if err != nil {
+			return err
+		}
+		if err := yaml.Unmarshal(basicBytes, &config.Basic); err != nil {
+			return err
+		}
+	}
+
+	if profile.Name != "" {
+		config.Basic.Name = profile.Name
+	}
+	if req.Url != "" {
+		config.Basic.Urls = []string{}
+		config.Basic.Urls = append(config.Basic.Urls, req.Url)
+	} else if profile.Name != "" {
+		config.Basic.Urls = []string{}
+		config.Basic.Urls = append(config.Basic.Urls,
+			fmt.Sprintf("%s:%v", profile.Pipeline.Host, profile.Pipeline.Port))
+	}
+	var dbParams *models.Params
+	err = profile.DeserializeImplantConfig(dbParams)
+	if err != nil {
+		return err
+	}
+	if val, ok := req.Params["interval"]; ok && val != "" {
+		interval, err := strconv.Atoi(val)
+		if err != nil {
+			return err
+		}
+		config.Basic.Interval = interval
+	} else if profile.Name != "" {
+		dbInterval, err := strconv.Atoi(dbParams.Interval)
+		if err != nil {
+			return err
+		}
+		config.Basic.Interval = dbInterval
+	}
+
+	if val, ok := req.Params["jitter"]; ok && val != "" {
+		jitter, err := strconv.ParseFloat(val, 64)
+		if err != nil {
+			return err
+		}
+		config.Basic.Jitter = jitter
+	} else if profile.Name != "" {
+		dbJitter, err := strconv.ParseFloat(dbParams.Jitter, 64)
+		if err != nil {
+			return err
+		}
+		config.Basic.Jitter = dbJitter
+	}
+
+	if val, ok := req.Params["ca"]; ok {
+		config.Basic.CA = val
+	} else if profile.Pipeline.Tls.Enable {
+		config.Basic.CA = profile.Pipeline.Tls.Cert
+	}
+
+	//dbModules := strings.Split(profile.Modules, ",")
+	//
+	//if len(dbModules) > 0 {
+	//	config.Implants.Modules = []string{}
+	//	config.Implants.Modules = append(config.Implants.Modules, dbModules...)
+	//}
+
+	configMap["basic"] = config.Basic
+
+	newData, err := yaml.Marshal(configMap)
+	if err != nil {
+		return err
+	}
+	err = os.WriteFile(path, newData, 0644)
+	if err != nil {
+		return err
+	}
+	return nil
 }

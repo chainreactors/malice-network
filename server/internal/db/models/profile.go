@@ -2,14 +2,8 @@ package models
 
 import (
 	"encoding/json"
-	"fmt"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/gofrs/uuid"
-	"gopkg.in/yaml.v3"
 	"gorm.io/gorm"
-	"os"
-	"strconv"
 	"time"
 )
 
@@ -47,9 +41,9 @@ type Profile struct {
 	CreatedAt time.Time `gorm:"->;<-:create;"`
 }
 
-type params struct {
-	interval string
-	jitter   string
+type Params struct {
+	Interval string
+	Jitter   string
 }
 
 func (p *Profile) BeforeCreate(tx *gorm.DB) (err error) {
@@ -89,99 +83,6 @@ func (p *Profile) DeserializeImplantConfig(config interface{}) error {
 		if err != nil {
 			return err
 		}
-	}
-	return nil
-}
-
-// UpdateGeneratorConfig
-func (p *Profile) UpdateGeneratorConfig(req *clientpb.Generate, path string) error {
-
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return err
-	}
-	var configMap map[string]interface{}
-	if err := yaml.Unmarshal(data, &configMap); err != nil {
-		return err
-	}
-
-	var config configs.GeneratorConfig
-	if basicConfig, ok := configMap["basic"]; ok {
-		basicBytes, err := yaml.Marshal(basicConfig)
-		if err != nil {
-			return err
-		}
-		if err := yaml.Unmarshal(basicBytes, &config.Basic); err != nil {
-			return err
-		}
-	}
-
-	if p.Name != "" {
-		config.Basic.Name = p.Name
-	}
-	if req.Url != "" {
-		config.Basic.Urls = []string{}
-		config.Basic.Urls = append(config.Basic.Urls, req.Url)
-	} else if p.Name != "" {
-		config.Basic.Urls = []string{}
-		config.Basic.Urls = append(config.Basic.Urls,
-			fmt.Sprintf("%s:%v", p.Pipeline.Host, p.Pipeline.Port))
-	}
-	var dbParams *params
-	err = p.DeserializeImplantConfig(dbParams)
-	if err != nil {
-		return err
-	}
-	if val, ok := req.Params["interval"]; ok && val != "" {
-		interval, err := strconv.Atoi(val)
-		if err != nil {
-			return err
-		}
-		config.Basic.Interval = interval
-	} else if p.Name != "" {
-		dbInterval, err := strconv.Atoi(dbParams.interval)
-		if err != nil {
-			return err
-		}
-		config.Basic.Interval = dbInterval
-	}
-
-	if val, ok := req.Params["jitter"]; ok && val != "" {
-		jitter, err := strconv.ParseFloat(val, 64)
-		if err != nil {
-			return err
-		}
-		config.Basic.Jitter = jitter
-	} else if p.Name != "" {
-		dbJitter, err := strconv.ParseFloat(dbParams.jitter, 64)
-		if err != nil {
-			return err
-		}
-		config.Basic.Jitter = dbJitter
-	}
-
-	if val, ok := req.Params["ca"]; ok {
-		config.Basic.CA = val
-	} else if p.Pipeline.Tls.Enable {
-		config.Basic.CA = p.Pipeline.Tls.Cert
-	}
-
-	//dbModules := strings.Split(profile.Modules, ",")
-	//
-	//if len(dbModules) > 0 {
-	//	config.Implants.Modules = []string{}
-	//	config.Implants.Modules = append(config.Implants.Modules, dbModules...)
-	//}
-
-	configMap["basic"] = config.Basic
-
-	newData, err := yaml.Marshal(configMap)
-	if err != nil {
-		return err
-	}
-	err = os.WriteFile(path, newData, 0644)
-	if err != nil {
-		return err
 	}
 	return nil
 }

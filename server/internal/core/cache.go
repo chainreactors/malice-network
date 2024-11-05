@@ -3,6 +3,7 @@ package core
 import (
 	"bytes"
 	"encoding/gob"
+	"errors"
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -25,7 +26,11 @@ func NewCache(maxSize int, savePath string) *Cache {
 		savePath: savePath,
 		maxSize:  maxSize,
 	}
-	_, err := GlobalTicker.Start(consts.DefaultCacheJitter, func() {
+	err := newCache.Load()
+	if err != nil {
+		return nil
+	}
+	_, err = GlobalTicker.Start(consts.DefaultCacheJitter, func() {
 		err := newCache.Save()
 		if err != nil {
 			logs.Log.Errorf("save cache error %s", err.Error())
@@ -66,12 +71,19 @@ func (c *Cache) GetMessages(taskID int) ([]*implantpb.Spite, bool) {
 	}
 	return spite, true
 }
+func (c *Cache) GetAll() (map[string]*implantpb.Spite, error) {
+	items := make(map[string]*implantpb.Spite)
 
-//func (c *Cache) GetAll()  {
-//	for k, v := range c.cache.Items() {
-//		logs.Log.Importantf(k, v)
-//	}
-//}
+	for k, v := range c.cache.Items() {
+		spite, ok := v.Object.(*implantpb.Spite)
+		if !ok {
+			return nil, errors.New(fmt.Sprintf("cache item %s is not of type *implantpb.Spite", k))
+		}
+		items[k] = spite
+	}
+
+	return items, nil
+}
 
 func (c *Cache) Save() error {
 	err := c.cache.SaveFile(c.savePath)

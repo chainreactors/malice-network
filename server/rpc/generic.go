@@ -60,7 +60,7 @@ func (r *GenericRequest) InitSpite(ctx context.Context) (*implantpb.Spite, error
 	spite.TaskId = r.Task.Id
 	clientName := getClientName(ctx)
 	r.Task.CallBy = clientName
-	err = db.AddTask(r.Task)
+	err = db.AddTask(r.Task.ToProtobuf())
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +102,7 @@ func (r *GenericRequest) HandlerResponse(ch chan *implantpb.Spite, typ types.Msg
 	}
 	r.Task.Done(resp, "")
 	r.Task.Finish(resp, "")
-	err = db.UpdateTask(r.Task)
+	err = db.UpdateTask(r.Task.ToProtobuf())
 	if err != nil {
 		logs.Log.Errorf("update task cur failed %s", err)
 		return
