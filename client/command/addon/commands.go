@@ -6,6 +6,8 @@ import (
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/tui"
+	"github.com/charmbracelet/bubbles/table"
 	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -101,8 +103,26 @@ func Register(con *repl.Console) {
 				s.WriteString(fmt.Sprintf("%s\t%s\t%s\n", ext.Name, ext.Type, ext.Depend))
 			}
 			return s.String(), nil
-		}, nil)
-
+		},
+		func(content *clientpb.TaskContext) (string, error) {
+			exts := content.Spite.GetAddons()
+			if len(exts.Addons) == 0 {
+				return "", fmt.Errorf("no addon found")
+			}
+			var rowEntries []table.Row
+			var row table.Row
+			tableModel := tui.NewTable([]table.Column{
+				{Title: "Name", Width: 25},
+				{Title: "Type", Width: 10},
+				{Title: "Depend", Width: 35},
+			}, true)
+			for _, ext := range exts.Addons {
+				row = table.Row{ext.Name, ext.Type, ext.Depend}
+				rowEntries = append(rowEntries, row)
+			}
+			tableModel.SetRows(rowEntries)
+			return tableModel.View(), nil
+		})
 	con.RegisterImplantFunc(consts.ModuleLoadAddon,
 		LoadAddon,
 		"",
