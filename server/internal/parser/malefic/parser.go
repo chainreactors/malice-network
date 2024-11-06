@@ -30,18 +30,18 @@ var (
 
 type MaleficParser struct{}
 
-func (parser *MaleficParser) PeekHeader(conn *peek.Conn) ([]byte, int, error) {
+func (parser *MaleficParser) PeekHeader(conn *peek.Conn) (uint32, int, error) {
 	header, err := conn.Peek(HeaderLength)
 	if err != nil {
-		return nil, 0, err
+		return 0, 0, err
 	}
 
 	if header[MsgStart] != StartDelimiter {
-		return nil, 0, ErrInvalidStart
+		return 0, 0, ErrInvalidStart
 	}
 	sessionId := header[MsgSessionStart:MsgSessionEnd]
 	length := int(binary.LittleEndian.Uint32(header[MsgSessionEnd:]))
-	return sessionId, length + 1, nil
+	return binary.LittleEndian.Uint32(sessionId), length + 1, nil
 }
 
 func (parser *MaleficParser) Parse(buf []byte) (*implantpb.Spites, error) {
@@ -62,11 +62,8 @@ func (parser *MaleficParser) Parse(buf []byte) (*implantpb.Spites, error) {
 	return spites, nil
 }
 
-func (parser *MaleficParser) Marshal(spites *implantpb.Spites, sid []byte) ([]byte, error) {
+func (parser *MaleficParser) Marshal(spites *implantpb.Spites, sid uint32) ([]byte, error) {
 	var buf bytes.Buffer
-	if len(sid) != 4 {
-		return nil, ErrInvalidId
-	}
 
 	data, err := proto.Marshal(spites)
 	if err != nil {
@@ -77,7 +74,7 @@ func (parser *MaleficParser) Marshal(spites *implantpb.Spites, sid []byte) ([]by
 		return nil, err
 	}
 	buf.WriteByte(StartDelimiter)
-	buf.Write(sid)
+	binary.Write(&buf, binary.LittleEndian, sid)
 	err = binary.Write(&buf, binary.LittleEndian, int32(len(data)))
 	if err != nil {
 		return nil, err

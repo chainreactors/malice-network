@@ -7,6 +7,7 @@ import (
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/cryptography"
+	"github.com/chainreactors/malice-network/helper/encoders"
 	"github.com/chainreactors/malice-network/helper/encoders/hash"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
@@ -35,7 +36,7 @@ func NewBindSession(con *repl.Console, PipelineID string, target string, name st
 	sid := hash.Md5Hash(rid)
 	_, err := con.Rpc.Register(con.Context(), &clientpb.RegisterSession{
 		PipelineId: PipelineID,
-		RawId:      rid,
+		RawId:      encoders.BytesToUint32(rid),
 		SessionId:  sid,
 		Target:     target,
 		Type:       consts.ImplantTypeBind,

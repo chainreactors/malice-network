@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/encoders"
 	"github.com/chainreactors/malice-network/helper/encoders/hash"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/types"
@@ -128,7 +129,7 @@ func (pipeline *BindPipeline) initConnection(conn *peek.Conn, req *clientpb.Spit
 	return connect, nil
 }
 
-func (pipeline *BindPipeline) getConnection(conn *peek.Conn, sid []byte) (*core.Connection, error) {
+func (pipeline *BindPipeline) getConnection(conn *peek.Conn, sid uint32) (*core.Connection, error) {
 	p, err := parser.NewParser(conn)
 	if err != nil {
 		return nil, err
@@ -137,7 +138,7 @@ func (pipeline *BindPipeline) getConnection(conn *peek.Conn, sid []byte) (*core.
 	if err != nil {
 		return nil, err
 	}
-	if newC := core.Connections.Get(hash.Md5Hash(sid)); newC != nil {
+	if newC := core.Connections.Get(hash.Md5Hash(encoders.Uint32ToBytes(sid))); newC != nil {
 		return newC, nil
 	} else {
 		newC := core.NewConnection(p, sid, pipeline.ID())

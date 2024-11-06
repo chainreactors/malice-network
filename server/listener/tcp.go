@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/encoders"
 	"github.com/chainreactors/malice-network/helper/encoders/hash"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/utils/peek"
@@ -165,7 +166,7 @@ func (pipeline *TCPPipeline) getConnection(conn *peek.Conn) (*core.Connection, e
 		return nil, err
 	}
 
-	if newC := core.Connections.Get(hash.Md5Hash(sid)); newC != nil {
+	if newC := core.Connections.Get(hash.Md5Hash(encoders.Uint32ToBytes(sid))); newC != nil {
 		return newC, nil
 	} else {
 		newC := core.NewConnection(p, sid, pipeline.ID())

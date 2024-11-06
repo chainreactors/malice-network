@@ -21,7 +21,7 @@ var (
 
 type Message struct {
 	Spites     *implantpb.Spites
-	RawID      []byte
+	RawID      uint32
 	SessionID  string
 	RemoteAddr string
 }

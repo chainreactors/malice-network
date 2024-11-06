@@ -131,7 +131,7 @@ type Session struct {
 	PipelineID  string
 	ListenerID  string
 	ID          string
-	RawID       []byte
+	RawID       uint32
 	Name        string
 	Group       string
 	Target      string
