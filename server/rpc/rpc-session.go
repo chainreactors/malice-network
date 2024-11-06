@@ -42,17 +42,10 @@ func (rpc *Server) GetSession(ctx context.Context, req *clientpb.SessionRequest)
 		return session.ToProtobuf(), nil
 	}
 	dbSess, err := db.FindSession(req.SessionId)
-	session = core.RecoverSession(dbSess)
-	tasks, tid, err := db.FindTaskAndMaxTasksID(session.ID)
 	if err != nil {
 		return nil, err
 	}
-	session.Taskseq = tid
-	for _, task := range tasks {
-		taskPb := task.ToProtobuf()
-		session.Tasks.Add(core.FromTaskProtobuf(taskPb))
-	}
-	session.Recover()
+	session, err = core.RecoverSession(dbSess)
 	if err != nil {
 		return nil, err
 	}

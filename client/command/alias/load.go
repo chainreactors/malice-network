@@ -333,7 +333,7 @@ func makeAliasPlatformFilters(alias *AliasManifest) map[string]string {
 	var arch []string
 	for _, file := range alias.Files {
 		all["os"] = file.OS
-		arch = append(arch, intermediate.FormatArch(file.Arch))
+		arch = append(arch, consts.FormatArch(file.Arch))
 	}
 	all["arch"] = strings.Join(arch, ",")
 

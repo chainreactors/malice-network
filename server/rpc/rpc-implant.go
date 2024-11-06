@@ -13,15 +13,7 @@ import (
 
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
-	"github.com/chainreactors/malice-network/server/internal/db/models"
 )
-
-func newSession(reg *clientpb.RegisterSession) (*core.Session, error) {
-	sess := core.RegisterSession(reg)
-	sessDB := models.FromRegisterSessionPb(reg)
-	d := db.Session().Create(sessDB)
-	return sess, d.Error
-}
 
 func (rpc *Server) Register(ctx context.Context, req *clientpb.RegisterSession) (*clientpb.Empty, error) {
 	sess, ok := core.Sessions.Get(req.SessionId)
@@ -29,8 +21,7 @@ func (rpc *Server) Register(ctx context.Context, req *clientpb.RegisterSession) 
 		logs.Log.Infof("session %s re-register", sess.ID)
 		sess.Publish(consts.CtrlSessionRegister, fmt.Sprintf("session %s from %s re-register at %s", sess.ID, sess.Target, sess.PipelineID))
 		sess.Update(req)
-		sessDB := models.FromRegisterSessionPb(req)
-		err := db.Session().Save(sessDB).Error
+		err := db.Session().Save(sess.ToModel()).Error
 		if err != nil {
 			logs.Log.Errorf("update session %s info failed in db, %s", sess.ID, err.Error())
 		}
@@ -43,8 +34,12 @@ func (rpc *Server) Register(ctx context.Context, req *clientpb.RegisterSession) 
 		return nil, err
 	} else if errors.Is(err, db.ErrRecordNotFound) {
 		// new session and save to db
-		sess, err = newSession(req)
+		sess, err := core.RegisterSession(req)
 		if err != nil {
+			return nil, err
+		}
+		d := db.Session().Create(sess.ToModel())
+		if d.Error != nil {
 			return nil, err
 		} else {
 			sess.Publish(consts.CtrlSessionRegister, fmt.Sprintf("session %s from %s start at %s", sess.ID, sess.Target, sess.PipelineID))
@@ -52,17 +47,7 @@ func (rpc *Server) Register(ctx context.Context, req *clientpb.RegisterSession) 
 		}
 	} else {
 		// 数据库中已存在, update
-		sess = core.RecoverSession(dbSess)
-		tasks, tid, err := db.FindTaskAndMaxTasksID(sess.ID)
-		if err != nil {
-			return nil, err
-		}
-		sess.Taskseq = tid
-		for _, task := range tasks {
-			taskPb := task.ToProtobuf()
-			sess.Tasks.Add(core.FromTaskProtobuf(taskPb))
-		}
-		sess.Recover()
+		sess, err = core.RecoverSession(dbSess)
 		if err != nil {
 			return nil, err
 		}
@@ -96,17 +81,10 @@ func (rpc *Server) Checkin(ctx context.Context, req *implantpb.Ping) (*clientpb.
 		if err != nil {
 			return nil, err
 		}
-		sess := core.RecoverSession(dbSess)
-		tasks, tid, err := db.FindTaskAndMaxTasksID(sess.ID)
+		sess, err := core.RecoverSession(dbSess)
 		if err != nil {
 			return nil, err
 		}
-		sess.Taskseq = tid
-		for _, task := range tasks {
-			taskPb := task.ToProtobuf()
-			sess.Tasks.Add(core.FromTaskProtobuf(taskPb))
-		}
-		sess.Recover()
 		core.Sessions.Add(sess)
 		sess.Publish(consts.CtrlSessionReborn, fmt.Sprintf("session %s from %s reborn at %s", sess.ID, sess.Target, sess.PipelineID))
 		logs.Log.Debugf("recover session %s", sid)

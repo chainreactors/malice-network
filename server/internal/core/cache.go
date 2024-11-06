@@ -20,26 +20,22 @@ type Cache struct {
 	maxSize  int
 }
 
-func NewCache(maxSize int, savePath string) *Cache {
+func NewCache(maxSize int, savePath string) (*Cache, error) {
 	newCache := &Cache{
 		cache:    *cache.New(cache.NoExpiration, cache.NoExpiration),
 		savePath: savePath,
 		maxSize:  maxSize,
 	}
-	err := newCache.Load()
-	if err != nil {
-		return nil
-	}
-	_, err = GlobalTicker.Start(consts.DefaultCacheJitter, func() {
+	_, err := GlobalTicker.Start(consts.DefaultCacheJitter, func() {
 		err := newCache.Save()
 		if err != nil {
 			logs.Log.Errorf("save cache error %s", err.Error())
 		}
 	})
 	if err != nil {
-		return nil
+		return nil, err
 	}
-	return newCache
+	return newCache, nil
 }
 
 func (c *Cache) AddMessage(spite *implantpb.Spite, index int) {

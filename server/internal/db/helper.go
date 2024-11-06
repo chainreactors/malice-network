@@ -122,7 +122,7 @@ func UpdateSessionStatus() error {
 			lastCheckin := time.Unix(int64(session.LastCheckin), 0)
 			currentTime := time.Now()
 			timeDiff := currentTime.Sub(lastCheckin)
-			isAlive := timeDiff <= time.Duration(float64(session.Time.Interval)*(1+session.Time.Jitter))*2*time.Second
+			isAlive := timeDiff <= time.Duration(float64(session.Interval)*(1+session.Jitter))*2*time.Second
 			if err := Session().Model(&session).Update("IsAlive", isAlive).Error; err != nil {
 				return err
 			}
@@ -390,7 +390,7 @@ func GetAllTask() (*clientpb.Tasks, error) {
 	if err != nil {
 		return nil, err
 	}
-	var pbTasks *clientpb.Tasks
+	pbTasks := &clientpb.Tasks{}
 	for _, task := range tasks {
 		pbTasks.Tasks = append(pbTasks.Tasks, task.ToProtobuf())
 	}
