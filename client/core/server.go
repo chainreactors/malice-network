@@ -152,7 +152,9 @@ func (s *ServerStatus) UpdateTasks(session *Session) error {
 	if session == nil {
 		return errors.New("session is nil")
 	}
-	tasks, err := s.Rpc.GetTasks(context.Background(), session.Session)
+	tasks, err := s.Rpc.GetTasks(context.Background(), &clientpb.TaskRequest{
+		SessionId: session.SessionId,
+	})
 	if err != nil {
 		return err
 	}
