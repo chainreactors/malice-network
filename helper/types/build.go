@@ -35,6 +35,9 @@ func BuildSpite(spite *implantpb.Spite, msg proto.Message) (*implantpb.Spite, er
 	case *implantpb.Ping:
 		spite.Name = MsgPing.String()
 		spite.Body = &implantpb.Spite_Ping{Ping: msg.(*implantpb.Ping)}
+	case *implantpb.Timer:
+		spite.Name = MsgSleep.String()
+		spite.Body = &implantpb.Spite_SleepRequest{SleepRequest: msg.(*implantpb.Timer)}
 	case *implantpb.ACK:
 		spite.Name = MsgAck.String()
 		spite.Body = &implantpb.Spite_Ack{Ack: msg.(*implantpb.ACK)}

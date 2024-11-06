@@ -12,6 +12,7 @@ const (
 	MsgNil            MsgName = "nil"
 	MsgEmpty          MsgName = "empty"
 	MsgPing           MsgName = "ping"
+	MsgSleep          MsgName = "sleep"
 	MsgRequest        MsgName = "request"
 	MsgResponse       MsgName = "response"
 	MsgBlock          MsgName = "block"
