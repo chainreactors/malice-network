@@ -237,6 +237,11 @@ execute_dll example.dll -e entrypoint -- arg1 arg2
 
 	common.BindFlag(execDLLCmd, common.ExecuteFlagSet, common.SacrificeFlagSet, func(f *pflag.FlagSet) {
 		f.StringP("entrypoint", "e", "", "custom entrypoint")
+		f.StringP("binPath", "", "", "custom process path")
+	})
+
+	common.BindFlagCompletions(execDLLCmd, func(comp carapace.ActionMap) {
+		comp["binPath"] = carapace.ActionFiles()
 	})
 
 	inlineDLLCmd := &cobra.Command{

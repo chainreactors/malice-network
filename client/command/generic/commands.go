@@ -142,19 +142,19 @@ func Register(con *repl.Console) {
 		Example: "active()",
 	})
 
-	con.RegisterServerFunc("is64", func(session *core.Session) (bool, error) {
-		return session.Os.Arch == "x64", nil
+	con.RegisterServerFunc("is64", func(con *repl.Console, sess *core.Session) (bool, error) {
+		return sess.Os.Arch == "x64", nil
 	}, nil)
 
-	con.RegisterServerFunc("isactive", func(sess *core.Session) (bool, error) {
+	con.RegisterServerFunc("isactive", func(con *repl.Console, sess *core.Session) (bool, error) {
 		return sess.IsAlive, nil
 	}, nil)
 
-	con.RegisterServerFunc("isadmin", func(sess *core.Session) (bool, error) {
+	con.RegisterServerFunc("isadmin", func(con *repl.Console, sess *core.Session) (bool, error) {
 		return sess.IsPrivilege, nil
 	}, nil)
 
-	con.RegisterServerFunc("isbeacon", func(sess *core.Session) (bool, error) {
+	con.RegisterServerFunc("isbeacon", func(con *repl.Console, sess *core.Session) (bool, error) {
 		return sess.Type == consts.ImplantTypeBeacon, nil
 	}, nil)
 
