@@ -11,7 +11,7 @@ import (
 
 type Session struct {
 	SessionID   string `gorm:"primaryKey;->;<-:create;type:uuid;"`
-	RawID       []byte
+	RawID       uint32
 	CreatedAt   time.Time `gorm:"->;<-:create;"`
 	Note        string
 	GroupName   string

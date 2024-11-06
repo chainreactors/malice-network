@@ -18,9 +18,9 @@ var (
 
 // PacketParser packet parser, like malefic, beacon ...
 type PacketParser interface {
-	PeekHeader(conn *peek.Conn) ([]byte, int, error)
+	PeekHeader(conn *peek.Conn) (uint32, int, error)
 	Parse([]byte) (*implantpb.Spites, error)
-	Marshal(*implantpb.Spites, []byte) ([]byte, error)
+	Marshal(*implantpb.Spites, uint32) ([]byte, error)
 }
 
 func NewParser(conn *peek.Conn) (*MessageParser, error) {
@@ -30,7 +30,7 @@ func NewParser(conn *peek.Conn) (*MessageParser, error) {
 	}
 
 	switch discriminator[0] {
-	case 0xd1:
+	case malefic.StartDelimiter:
 		return &MessageParser{
 			Implant:      consts.ImplantMalefic,
 			PacketParser: &malefic.MaleficParser{},
@@ -45,23 +45,23 @@ type MessageParser struct {
 	PacketParser
 }
 
-func (parser *MessageParser) ReadHeader(conn *peek.Conn) ([]byte, int, error) {
+func (parser *MessageParser) ReadHeader(conn *peek.Conn) (uint32, int, error) {
 	switch parser.Implant {
 	case consts.ImplantMalefic:
 		sid, length, err := parser.PeekHeader(conn)
 		if err != nil {
-			return nil, 0, err
+			return 0, 0, err
 		}
 		logs.Log.Debugf("%v read packet from %s , %d bytes", sid, conn.RemoteAddr(), length)
 		if length > config.Int(consts.ConfigMaxPacketLength) {
-			return nil, 0, ErrPacketTooLarge
+			return 0, 0, ErrPacketTooLarge
 		}
 		if n, err := conn.Reader.Discard(malefic.HeaderLength); err != nil {
-			return nil, n, err
+			return 0, n, err
 		}
 		return sid, length, nil
 	default:
-		return nil, 0, ErrInvalidImplant
+		return 0, 0, ErrInvalidImplant
 	}
 }
 
@@ -74,23 +74,23 @@ func (parser *MessageParser) ReadMessage(conn *peek.Conn, length int) (*implantp
 	return parser.Parse(buf)
 }
 
-func (parser *MessageParser) ReadPacket(conn *peek.Conn) ([]byte, *implantpb.Spites, error) {
+func (parser *MessageParser) ReadPacket(conn *peek.Conn) (uint32, *implantpb.Spites, error) {
 	sessionId, length, err := parser.ReadHeader(conn)
 	if err != nil {
-		return nil, nil, err
+		return 0, nil, err
 	}
 
 	buf := make([]byte, length)
 	_, err = io.ReadFull(conn, buf)
 	if err != nil {
-		return nil, nil, err
+		return 0, nil, err
 	}
 
 	msg, err := parser.Parse(buf)
 	return sessionId, msg, nil
 }
 
-func (parser *MessageParser) WritePacket(conn *peek.Conn, msg *implantpb.Spites, sid []byte) error {
+func (parser *MessageParser) WritePacket(conn *peek.Conn, msg *implantpb.Spites, sid uint32) error {
 	bs, err := parser.Marshal(msg, sid)
 	if err != nil {
 		return err

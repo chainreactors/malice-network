@@ -7,7 +7,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/types"
 
-	"github.com/chainreactors/malice-network/server/listener/encryption"
 	"google.golang.org/protobuf/proto"
 	"net"
 	"sync"

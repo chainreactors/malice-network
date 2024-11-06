@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/encoders"
 	"github.com/chainreactors/malice-network/helper/encoders/hash"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
@@ -21,11 +22,11 @@ var (
 	}
 )
 
-func NewConnection(p *parser.MessageParser, sid []byte, pipelineID string) *Connection {
+func NewConnection(p *parser.MessageParser, sid uint32, pipelineID string) *Connection {
 	conn := &Connection{
 		PipelineID:  pipelineID,
 		RawID:       sid,
-		SessionID:   hash.Md5Hash(sid),
+		SessionID:   hash.Md5Hash(encoders.Uint32ToBytes(sid)),
 		LastMessage: time.Now(),
 		C:           make(chan *clientpb.SpiteRequest, 255),
 		Sender:      make(chan *implantpb.Spites, 1),
@@ -59,7 +60,7 @@ func NewConnection(p *parser.MessageParser, sid []byte, pipelineID string) *Conn
 }
 
 type Connection struct {
-	RawID       []byte
+	RawID       uint32
 	SessionID   string
 	LastMessage time.Time
 	PipelineID  string
