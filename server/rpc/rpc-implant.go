@@ -176,7 +176,16 @@ func (rpc *Server) Polling(ctx context.Context, req *clientpb.Polling) (*clientp
 			}
 			if !req.Force {
 				// 如果不为force, 且所有需要等待的任务都已经完成, 则退出轮询
-				if !hasIntersection(req.Tasks, sess.Tasks.GetNotFinish()) {
+				tasks := sess.Tasks.All()
+				var notfinishedId []uint32
+				for _, task := range tasks {
+					if task.Finished() {
+						continue
+					}
+					notfinishedId = append(notfinishedId, task.Id)
+				}
+
+				if !hasIntersection(req.Tasks, notfinishedId) {
 					break
 				}
 			}

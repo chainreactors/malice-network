@@ -55,12 +55,12 @@ func (t *Tasks) Remove(taskId uint32) {
 	t.active.Delete(taskId)
 }
 
-func (t *Tasks) GetNotFinish() []uint32 {
-	all := []uint32{}
+func (t *Tasks) GetNotFinish() []*clientpb.Task {
+	var all []*clientpb.Task
 	t.active.Range(func(key, value interface{}) bool {
 		task := value.(*Task)
 		if !task.Finished() {
-			all = append(all)
+			all = append(all, task.ToProtobuf())
 		}
 		return true
 	})

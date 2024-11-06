@@ -36,12 +36,12 @@ func PrintSessions(sessions map[string]*core.Session, con *repl.Console, isAll b
 	var row table.Row
 	//groupColors := make(map[string]termenv.ANSIColor)
 	tableModel := tui.NewTable([]table.Column{
-		{Title: "ID", Width: 15},
+		{Title: "ID", Width: 8},
 		{Title: "Group", Width: 10},
 		{Title: "Pipeline", Width: 10},
-		{Title: "Remote Address", Width: 15},
+		{Title: "Remote Address", Width: 16},
 		{Title: "Username", Width: 15},
-		{Title: "Operating System", Width: 20},
+		{Title: "System", Width: 20},
 		{Title: "Last Message", Width: 15},
 		{Title: "Health", Width: 15},
 	}, false)
@@ -55,12 +55,9 @@ func PrintSessions(sessions map[string]*core.Session, con *repl.Console, isAll b
 		} else {
 			SessionHealth = pterm.FgGreen.Sprint("[ALIVE]")
 		}
-		currentTime := time.Now()
-		lastCheckinTime := time.Unix(int64(session.LastCheckin), 0)
-		timeDiff := currentTime.Sub(lastCheckinTime)
-		secondsDiff := uint64(timeDiff.Seconds())
+		secondsDiff := uint64(time.Now().Unix() - int64(session.LastCheckin))
 		row = table.Row{
-			session.SessionId,
+			session.SessionId[:8],
 			fmt.Sprintf("[%s]%s", session.GroupName, session.Note),
 			session.PipelineId,
 			session.Target,
