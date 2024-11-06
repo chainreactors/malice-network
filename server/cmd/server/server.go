@@ -164,6 +164,7 @@ func Execute() {
 		for _, session := range core.Sessions.All() {
 			session.Save()
 		}
+		pprof.StopCPUProfile()
 		core.GlobalTicker.RemoveAll()
 		cancel()
 		os.Exit(0)
@@ -205,12 +206,6 @@ func RecoverAliveSession() error {
 			core.Sessions.Add(newSession)
 		}
 	}
-	go func() {
-		err := db.UpdateSessionStatus()
-		if err != nil {
-			logs.Log.Errorf("cannot update session status , %s ", err.Error())
-		}
-	}()
 	return nil
 }
 
@@ -236,5 +231,6 @@ func main() {
 	if err := pprof.StartCPUProfile(f); err != nil {
 		logs.Log.Errorf("could not start CPU profile: ", err)
 	}
+
 	Execute()
 }

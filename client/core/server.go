@@ -84,6 +84,7 @@ type ServerStatus struct {
 	sessions        []*clientpb.Session
 	finishCallbacks *sync.Map
 	doneCallbacks   *sync.Map
+	EventStatus     bool
 	EventHook       map[intermediate.EventCondition][]intermediate.OnEventFunc
 }
 

@@ -142,9 +142,7 @@ del 08d6c05a21512a79a1dfeb9d2a8f262f
 		Short: "back to root context",
 		Long:  "Exit the current session and return to the root context.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			con.ActiveTarget.Background()
-			con.App.SwitchMenu(consts.ClientMenu)
-			return nil
+			return BackGround(cmd, con)
 		},
 	}
 

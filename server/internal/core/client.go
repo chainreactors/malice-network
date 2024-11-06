@@ -68,11 +68,11 @@ func (cc *clients) Remove(clientID int) {
 	cc.mutex.Lock()
 	defer cc.mutex.Unlock()
 	client := cc.active[clientID]
-	delete(cc.active, clientID)
 	EventBroker.Publish(Event{
 		EventType: consts.EventLeft,
 		Client:    client.Client,
 	})
+	delete(cc.active, clientID)
 }
 
 func (cc *clients) ActiveClients() []*Client {
