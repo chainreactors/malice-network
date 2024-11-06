@@ -10,18 +10,21 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
+	"github.com/chainreactors/malice-network/helper/utils/file"
 	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
 	"math"
+	"os"
 )
 
 func ExecuteDLLCmd(cmd *cobra.Command, con *repl.Console) error {
 	session := con.GetInteractive()
 	sac, _ := common.ParseSacrificeFlags(cmd)
 	entrypoint, _ := cmd.Flags().GetString("entrypoint")
+	binPath, _ := cmd.Flags().GetString("binPath")
 	path, args, output, timeout, arch, process := common.ParseFullBinaryFlags(cmd)
-	task, err := ExecDLL(con.Rpc, session, path, entrypoint, args, output, timeout, arch, process, sac)
+	task, err := ExecDLL(con.Rpc, session, path, entrypoint, args, binPath, output, timeout, arch, process, sac)
 	if err != nil {
 		return err
 	}
@@ -29,14 +32,25 @@ func ExecuteDLLCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func ExecDLL(rpc clientrpc.MaliceRPCClient, sess *core.Session, dllPath string, entrypoint string, args []string, output bool, timeout uint32, arch string, process string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
+func ExecDLL(rpc clientrpc.MaliceRPCClient, sess *core.Session, dllPath string, entrypoint string, args []string, binPath string, output bool, timeout uint32, arch string, process string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 	binary, err := common.NewBinary(consts.ModuleExecuteDll, dllPath, args, output, timeout, arch, process, sac)
 	if err != nil {
 		return nil, err
 	}
+
+	binPath = file.FormatWindowPath(binPath)
+	if _, err := os.Stat(binPath); err == nil {
+		binData, err := os.ReadFile(binPath)
+		if err != nil {
+			return nil, err
+		}
+		binary.Data = binData
+	}
+
 	if arch == "" {
 		arch = sess.Os.Arch
 	}
+
 	binary.EntryPoint = entrypoint
 	if pe.CheckPEType(binary.Bin) != consts.DLLFile {
 		return nil, errors.New("the file is not a DLL file")
@@ -87,7 +101,7 @@ func RegisterDLLFunc(con *repl.Console) {
 		"bdllinject",
 		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, ppid int, path string) (*clientpb.Task, error) {
 			sac, _ := intermediate.NewSacrificeProcessMessage(int64(ppid), false, true, true, "")
-			return ExecDLL(rpc, sess, path, "DLLMain", nil, true, math.MaxUint32, sess.Os.Arch, "", sac)
+			return ExecDLL(rpc, sess, path, "DLLMain", nil, "", true, math.MaxUint32, sess.Os.Arch, "", sac)
 		},
 		common.ParseAssembly,
 		nil)
