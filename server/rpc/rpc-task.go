@@ -29,12 +29,14 @@ func getTaskContext(sess *core.Session, task *core.Task, index int32) (*clientpb
 	return nil, ErrNotFoundTaskContent
 }
 
-func (rpc *Server) GetTasks(ctx context.Context, session *clientpb.Session) (*clientpb.Tasks, error) {
-	sess, ok := core.Sessions.Get(session.SessionId)
+func (rpc *Server) GetTasks(ctx context.Context, req *clientpb.TaskRequest) (*clientpb.Tasks, error) {
+	sess, ok := core.Sessions.Get(req.SessionId)
 	if !ok {
 		return nil, ErrNotFoundSession
 	}
-
+	if req.All {
+		return sess.Tasks.ToProtobuf(), nil
+	}
 	return sess.Tasks.ToProtobuf(), nil
 }
 

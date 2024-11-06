@@ -35,7 +35,8 @@ func printTasks(tasks []*clientpb.Task, con *repl.Console, isAll bool) {
 		{Title: "Status", Width: 8},
 		{Title: "cur", Width: 5},
 		{Title: "total", Width: 5},
-		{Title: "ClientName", Width: 15},
+		{Title: "callby", Width: 10},
+		{Title: "timeout", Width: 8},
 	}, true)
 	for _, task := range tasks {
 		var status string
@@ -47,7 +48,7 @@ func printTasks(tasks []*clientpb.Task, con *repl.Console, isAll bool) {
 			}
 			status = "Complete"
 		} else {
-			status = "Run"
+			status = "Running"
 		}
 		row = table.Row{
 			strconv.Itoa(int(task.TaskId)),
@@ -56,6 +57,7 @@ func printTasks(tasks []*clientpb.Task, con *repl.Console, isAll bool) {
 			strconv.Itoa(int(task.Cur)),
 			strconv.Itoa(int(task.Total)),
 			task.Callby,
+			strconv.FormatBool(task.Timeout),
 		}
 		rowEntries = append(rowEntries, row)
 	}

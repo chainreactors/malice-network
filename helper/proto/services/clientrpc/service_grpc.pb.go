@@ -36,7 +36,7 @@ type MaliceRPCClient interface {
 	GetListeners(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Listeners, error)
 	GetPipelines(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Pipelines, error)
 	GetJobs(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Jobs, error)
-	GetTasks(ctx context.Context, in *clientpb.Session, opts ...grpc.CallOption) (*clientpb.Tasks, error)
+	GetTasks(ctx context.Context, in *clientpb.TaskRequest, opts ...grpc.CallOption) (*clientpb.Tasks, error)
 	GetTaskContent(ctx context.Context, in *clientpb.Task, opts ...grpc.CallOption) (*clientpb.TaskContext, error)
 	GetTaskFiles(ctx context.Context, in *clientpb.Session, opts ...grpc.CallOption) (*clientpb.Files, error)
 	WaitTaskContent(ctx context.Context, in *clientpb.Task, opts ...grpc.CallOption) (*clientpb.TaskContext, error)
@@ -247,7 +247,7 @@ func (c *maliceRPCClient) GetJobs(ctx context.Context, in *clientpb.Empty, opts 
 	return out, nil
 }
 
-func (c *maliceRPCClient) GetTasks(ctx context.Context, in *clientpb.Session, opts ...grpc.CallOption) (*clientpb.Tasks, error) {
+func (c *maliceRPCClient) GetTasks(ctx context.Context, in *clientpb.TaskRequest, opts ...grpc.CallOption) (*clientpb.Tasks, error) {
 	out := new(clientpb.Tasks)
 	err := c.cc.Invoke(ctx, "/clientrpc.MaliceRPC/GetTasks", in, out, opts...)
 	if err != nil {
@@ -1140,7 +1140,7 @@ type MaliceRPCServer interface {
 	GetListeners(context.Context, *clientpb.Empty) (*clientpb.Listeners, error)
 	GetPipelines(context.Context, *clientpb.Empty) (*clientpb.Pipelines, error)
 	GetJobs(context.Context, *clientpb.Empty) (*clientpb.Jobs, error)
-	GetTasks(context.Context, *clientpb.Session) (*clientpb.Tasks, error)
+	GetTasks(context.Context, *clientpb.TaskRequest) (*clientpb.Tasks, error)
 	GetTaskContent(context.Context, *clientpb.Task) (*clientpb.TaskContext, error)
 	GetTaskFiles(context.Context, *clientpb.Session) (*clientpb.Files, error)
 	WaitTaskContent(context.Context, *clientpb.Task) (*clientpb.TaskContext, error)
@@ -1288,7 +1288,7 @@ func (UnimplementedMaliceRPCServer) GetPipelines(context.Context, *clientpb.Empt
 func (UnimplementedMaliceRPCServer) GetJobs(context.Context, *clientpb.Empty) (*clientpb.Jobs, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetJobs not implemented")
 }
-func (UnimplementedMaliceRPCServer) GetTasks(context.Context, *clientpb.Session) (*clientpb.Tasks, error) {
+func (UnimplementedMaliceRPCServer) GetTasks(context.Context, *clientpb.TaskRequest) (*clientpb.Tasks, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetTasks not implemented")
 }
 func (UnimplementedMaliceRPCServer) GetTaskContent(context.Context, *clientpb.Task) (*clientpb.TaskContext, error) {
@@ -1767,7 +1767,7 @@ func _MaliceRPC_GetJobs_Handler(srv interface{}, ctx context.Context, dec func(i
 }
 
 func _MaliceRPC_GetTasks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(clientpb.Session)
+	in := new(clientpb.TaskRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -1779,7 +1779,7 @@ func _MaliceRPC_GetTasks_Handler(srv interface{}, ctx context.Context, dec func(
 		FullMethod: "/clientrpc.MaliceRPC/GetTasks",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MaliceRPCServer).GetTasks(ctx, req.(*clientpb.Session))
+		return srv.(MaliceRPCServer).GetTasks(ctx, req.(*clientpb.TaskRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
