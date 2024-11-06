@@ -76,22 +76,23 @@ func (rpc *Server) Checkin(ctx context.Context, req *implantpb.Ping) (*clientpb.
 	if err != nil {
 		return nil, err
 	}
-	if s, ok := core.Sessions.Get(sid); !ok {
+	var sess *core.Session
+	var ok bool
+	if sess, ok = core.Sessions.Get(sid); !ok {
 		dbSess, err := db.FindSession(sid)
 		if err != nil {
 			return nil, err
 		}
-		sess, err := core.RecoverSession(dbSess)
+		sess, err = core.RecoverSession(dbSess)
 		if err != nil {
 			return nil, err
 		}
 		core.Sessions.Add(sess)
 		sess.Publish(consts.CtrlSessionReborn, fmt.Sprintf("session %s from %s reborn at %s", sess.ID, sess.Target, sess.PipelineID))
 		logs.Log.Debugf("recover session %s", sid)
-	} else {
-		s.UpdateLastCheckin()
 	}
 
+	sess.UpdateLastCheckin()
 	err = db.UpdateLast(sid)
 	if err != nil {
 		return nil, err

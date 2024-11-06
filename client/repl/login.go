@@ -22,21 +22,20 @@ func Connect(con *Console, config *mtls.ClientConfig) (*grpc.ClientConn, error) 
 		return nil, err
 	}
 
-	logs.Log.Info("Initial connection established, initializing state...")
-	if err := initState(con, conn, config); err != nil {
-		logs.Log.Errorf("Failed to initialize state: %v", err)
-		return nil, err
-	}
-
 	return conn, nil
 }
 
 func Login(con *Console, config *mtls.ClientConfig) error {
-	_, err := Connect(con, config)
+	conn, err := Connect(con, config)
 	if err != nil {
-		logs.Log.Errorf("Failed to connect: %v", err)
 		return err
 	}
+	logs.Log.Info("Initial connection established, initializing state...")
+	if err := initState(con, conn, config); err != nil {
+		return err
+	}
+	con.ActiveTarget.Background()
+	con.App.SwitchMenu(consts.ClientMenu)
 	logs.Log.Importantf("Connected to server %s", config.Address())
 	return nil
 }
@@ -48,7 +47,6 @@ func initState(con *Console, conn *grpc.ClientConn, config *mtls.ClientConfig) e
 		logs.Log.Errorf("init server failed : %v", err)
 		return err
 	}
-	go con.EventHandler()
 
 	// 记录状态信息
 	var pipelineCount int

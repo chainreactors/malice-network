@@ -17,6 +17,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"time"
 )
 
 var (
@@ -40,7 +41,14 @@ func NewConsole() (*Console, error) {
 		Plugins: NewPlugins(),
 		CMDs:    make(map[string]*cobra.Command),
 	}
-
+	go func() {
+		for {
+			if con.ServerStatus != nil && !con.ServerStatus.EventStatus {
+				go con.EventHandler()
+				time.Sleep(time.Second)
+			}
+		}
+	}()
 	con.NewConsole()
 	return con, nil
 }

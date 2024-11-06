@@ -96,13 +96,16 @@ func (s *ServerStatus) AddEventHook(event intermediate.EventCondition, callback 
 }
 
 func (s *ServerStatus) EventHandler() {
-	defer Log.Warnf("event stream broken")
-	Log.Importantf("starting event loop")
 	eventStream, err := s.Rpc.Events(context.Background(), &clientpb.Empty{})
 	if err != nil {
-		logs.Log.Warnf("Error getting event stream: %v", err)
 		return
 	}
+	s.EventStatus = true
+	Log.Importantf("starting event loop")
+	defer func() {
+		Log.Warnf("event stream broken")
+		s.EventStatus = false
+	}()
 	for {
 		event, err := eventStream.Recv()
 		if err == io.EOF || event == nil {
