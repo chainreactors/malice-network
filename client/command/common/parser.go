@@ -11,6 +11,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/table"
+	"github.com/muesli/termenv"
 	"io"
 	"math"
 	"strings"
@@ -71,9 +72,10 @@ func ParseResponse(ctx *clientpb.TaskContext) (interface{}, error) {
 
 func ParseExecResponse(ctx *clientpb.TaskContext) (interface{}, error) {
 	resp := ctx.Spite.GetExecResponse()
-	if resp.Stdout != nil {
-		return fmt.Sprintf("pid: %d\n%s", resp.Pid, resp.Stdout), nil
+	if resp.Stdout != nil || resp.Stderr != nil {
+		return fmt.Sprintf("pid: %d\n%s\n%s", resp.Pid, resp.Stdout, termenv.String(string(resp.Stderr)).Foreground(tui.Red).String()), nil
 	}
+
 	return nil, fmt.Errorf("no response")
 }
 
