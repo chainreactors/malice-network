@@ -73,7 +73,7 @@ func HandleTaskError(status *implantpb.Status) error {
 
 func AssertRequestName(req *implantpb.Request, expect types.MsgName) error {
 	if req.Name != string(expect) {
-		return ErrAssertFailure
+		return fmt.Errorf("%w, assert request name failure, expect %s, got %s", ErrAssertFailure, expect, req.Name)
 	}
 	return nil
 }
@@ -85,7 +85,7 @@ func AssertResponse(spite *implantpb.Spite, expect types.MsgName) error {
 	}
 
 	if expect != types.MessageType(spite) {
-		return ErrAssertFailure
+		return fmt.Errorf("%w, assert response type failure, expect %s, got %s", ErrAssertFailure, expect, types.MessageType(spite))
 	}
 	return nil
 }

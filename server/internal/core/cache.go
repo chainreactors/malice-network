@@ -15,14 +15,14 @@ import (
 )
 
 type Cache struct {
-	cache    cache.Cache
+	cache    *cache.Cache
 	savePath string
 	maxSize  int
 }
 
 func NewCache(maxSize int, savePath string) (*Cache, error) {
 	newCache := &Cache{
-		cache:    *cache.New(cache.NoExpiration, cache.NoExpiration),
+		cache:    cache.New(cache.NoExpiration, cache.NoExpiration),
 		savePath: savePath,
 		maxSize:  maxSize,
 	}
