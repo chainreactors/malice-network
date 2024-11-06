@@ -119,9 +119,6 @@ func (pipeline *TCPPipeline) handler() (net.Listener, error) {
 		for {
 			conn, err := ln.Accept()
 			if err != nil {
-				if errType, ok := err.(*net.OpError); ok && errType.Op == "accept" {
-					break
-				}
 				logs.Log.Errorf("Accept failed: %v", err)
 				continue
 			}
