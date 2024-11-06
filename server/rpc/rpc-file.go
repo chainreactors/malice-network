@@ -44,7 +44,7 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 			logs.Log.Errorf("cannot create task %d, %s in db", greq.Task.Id, err.Error())
 			return nil, err
 		}
-		go greq.HandlerResponse(ch, types.MsgBlock)
+		go greq.HandlerResponse(ch, types.MsgAck)
 		taskID := greq.Task.SessionId + "-" + utils.ToString(greq.Task.Id)
 		err = db.UpdateFileByID(taskID, greq.Task.Cur+1)
 		if err != nil {
