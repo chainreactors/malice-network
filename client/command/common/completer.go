@@ -58,10 +58,6 @@ func LocalPathCompleter(prefix string, args []string, con *repl.Console) []strin
 func SessionIDCompleter(con *repl.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
-		err := con.UpdateSessions(true)
-		if err != nil {
-			return carapace.Action{}
-		}
 		for _, s := range con.AlivedSessions() {
 			if s.Note != "" {
 				results = append(results, s.SessionId, fmt.Sprintf("SessionAlias, %s，%s", s.Note, s.Target))
@@ -91,10 +87,6 @@ func ListenerPipelineNameCompleter(con *repl.Console, cmd *cobra.Command) carapa
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
 		listenerID := cmd.Flags().Arg(0)
-		err := con.UpdateListener()
-		if err != nil {
-			return carapace.Action{}
-		}
 		if listenerID == "" {
 			return carapace.ActionValuesDescribed(results...).Tag("pipeline name")
 		}
@@ -181,10 +173,6 @@ func ResourceCompelete(con *repl.Console) carapace.Action {
 func JobsComplete(con *repl.Console, cmd *cobra.Command, use string) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
-		err := con.UpdateListener()
-		if err != nil {
-			return carapace.Action{}
-		}
 		listenerID := cmd.Flags().Arg(0)
 		var lis *clientpb.Listener
 		for _, listener := range con.Listeners {
@@ -253,10 +241,6 @@ func ProfileComplete(con *repl.Console) carapace.Action {
 func AllPipelineComplete(con *repl.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
-		err := con.UpdateListener()
-		if err != nil {
-			return carapace.Action{}
-		}
 		for _, listener := range con.Listeners {
 			for _, pipeline := range listener.GetPipelines().GetPipelines() {
 				results = append(results, pipeline.Name, fmt.Sprintf("%s: %s", pipeline.ListenerId, pipeline.Name))
