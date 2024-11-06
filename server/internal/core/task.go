@@ -84,15 +84,6 @@ type Task struct {
 	CallBy    string
 }
 
-func (t *Task) Handler() {
-	for ok := range t.DoneCh {
-		if !ok {
-			return
-		}
-		t.Cur++
-	}
-}
-
 func (t *Task) ToProtobuf() *clientpb.Task {
 	task := &clientpb.Task{
 		TaskId:    t.Id,
@@ -141,8 +132,8 @@ func (t *Task) Publish(op string, spite *implantpb.Spite, msg string) {
 	})
 }
 func (t *Task) Done(spite *implantpb.Spite, msg string) {
+	t.Cur++
 	t.Publish(consts.CtrlTaskCallback, spite, msg)
-	t.DoneCh <- true
 }
 
 func (t *Task) Finish(spite *implantpb.Spite, msg string) {

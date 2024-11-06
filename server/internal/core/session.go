@@ -341,11 +341,10 @@ func (s *Session) NewTask(name string, total int) *Task {
 		Id:        s.nextTaskId(),
 		SessionId: s.ID,
 		Session:   s,
-		DoneCh:    make(chan bool, total),
+		DoneCh:    make(chan bool),
 	}
 	task.Ctx, task.Cancel = context.WithCancel(context.Background())
 	s.Tasks.Add(task)
-	go task.Handler()
 	return task
 }
 
