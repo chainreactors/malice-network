@@ -19,6 +19,7 @@ import (
 	"github.com/jessevdk/go-flags"
 	"os"
 	"os/signal"
+	"runtime/pprof"
 	"syscall"
 )
 
@@ -196,16 +197,10 @@ func RecoverAliveSession() error {
 	if len(sessions) > 0 {
 		logs.Log.Debugf("recover %d sessions", len(sessions))
 		for _, session := range sessions {
-			newSession := core.RecoverSession(session)
-			tasks, tid, err := db.FindTaskAndMaxTasksID(newSession.ID)
+			newSession, err := core.RecoverSession(session)
 			if err != nil {
-				return err
-			}
-			newSession.Taskseq = tid
-			newSession.Recover()
-			for _, task := range tasks {
-				taskPb := task.ToProtobuf()
-				newSession.Tasks.Add(core.FromTaskProtobuf(taskPb))
+				logs.Log.Errorf("cannot recover session %s , %s ", session.SessionId, err.Error())
+				continue
 			}
 			core.Sessions.Add(newSession)
 		}
@@ -232,5 +227,14 @@ func StartListener(opt *configs.ListenerConfig) error {
 }
 
 func main() {
+	f, err := os.Create("cpu.prof")
+	if err != nil {
+		logs.Log.Errorf("could not create CPU profile: ", err)
+	}
+	defer f.Close()
+
+	if err := pprof.StartCPUProfile(f); err != nil {
+		logs.Log.Errorf("could not start CPU profile: ", err)
+	}
 	Execute()
 }

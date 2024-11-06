@@ -114,6 +114,7 @@ func (c *Connection) Handler(ctx context.Context, conn *peek.Conn) error {
 	Forwarders.Send(c.PipelineID, &Message{
 		Spites:     msg,
 		SessionID:  c.SessionID,
+		RawID:      c.RawID,
 		RemoteAddr: conn.RemoteAddr().String(),
 	})
 	return nil

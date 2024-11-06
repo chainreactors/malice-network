@@ -113,3 +113,20 @@ var (
 		"11.0.22000": "11",
 	}
 )
+
+func FormatArch(arch string) string {
+	if v, found := ArchAlias[arch]; found {
+		return v
+	} else {
+		return arch
+	}
+}
+
+func MapArch(arch string) uint32 {
+	arch = FormatArch(arch)
+	if v, found := ArchMap[arch]; found {
+		return uint32(v)
+	} else {
+		return 0
+	}
+}

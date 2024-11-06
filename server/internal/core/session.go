@@ -2,15 +2,17 @@ package core
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db"
+	"github.com/chainreactors/malice-network/server/internal/db/content"
+	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"github.com/gookit/config/v2"
 	"google.golang.org/grpc"
 	"os"
@@ -43,7 +45,7 @@ func NewSessions() *sessions {
 		for _, session := range newSessions.All() {
 			currentTime := time.Now()
 			timeDiff := currentTime.Unix() - int64(session.LastCheckin)
-			isAlive := timeDiff <= int64(1+session.Timer.Interval)*3
+			isAlive := timeDiff <= int64(1+session.Interval)*3
 			if !isAlive {
 				newSessions.Remove(session.ID)
 				EventBroker.Publish(Event{
@@ -63,42 +65,15 @@ func NewSessions() *sessions {
 	return newSessions
 }
 
-func NewSessionContext(req *clientpb.RegisterSession) *SessionContext {
-	return &SessionContext{
-		SessionInfo: &SessionInfo{
-			ProxyURL: req.RegisterData.Proxy,
-			Timer:    req.RegisterData.Timer,
-		},
-		Modules: req.RegisterData.Module,
-		Addons:  req.RegisterData.Addons,
-		Loot:    map[string]string{},
-		Argue:   map[string]string{},
-		Data:    map[string]string{},
-		Any:     map[string]interface{}{},
+func RegisterSession(req *clientpb.RegisterSession) (*Session, error) {
+	cache, err := NewCache(1*consts.MB, path.Join(configs.CachePath, req.SessionId+".gob"))
+	if err != nil {
+		return nil, err
 	}
-}
-
-type SessionContext struct {
-	*SessionInfo
-	Modules []string
-	Addons  []*implantpb.Addon
-	Loot    map[string]string
-	Argue   map[string]string
-	Data    map[string]string
-	Any     map[string]interface{}
-}
-
-func (ctx *SessionContext) Update(req *clientpb.RegisterSession) {
-	ctx.Modules = req.RegisterData.Module
-	ctx.Addons = req.RegisterData.Addons
-}
-
-func (ctx *SessionContext) GetAny(id string) (interface{}, bool) {
-	v, ok := ctx.Any[id]
-	return v, ok
-}
-
-func RegisterSession(req *clientpb.RegisterSession) *Session {
+	err = cache.Save()
+	if err != nil {
+		return nil, err
+	}
 	sess := &Session{
 		Type:           req.Type,
 		Name:           req.RegisterData.Name,
@@ -107,14 +82,14 @@ func RegisterSession(req *clientpb.RegisterSession) *Session {
 		RawID:          req.RawId,
 		PipelineID:     req.PipelineId,
 		Target:         req.Target,
-		Tasks:          &Tasks{active: &sync.Map{}},
-		SessionContext: NewSessionContext(req),
+		Tasks:          NewTasks(),
+		SessionContext: content.NewSessionContext(req),
 		Taskseq:        1,
-		Cache:          NewCache(1*consts.MB, path.Join(configs.CachePath, req.SessionId+".gob")),
+		Cache:          cache,
 		responses:      &sync.Map{},
 	}
 	logDir := filepath.Join(configs.LogPath, sess.ID)
-	err := os.MkdirAll(logDir, os.ModePerm)
+	err = os.MkdirAll(logDir, os.ModePerm)
 	if err != nil {
 		logs.Log.Errorf("cannot create log directory %s, %s", logDir, err.Error())
 	}
@@ -122,7 +97,56 @@ func RegisterSession(req *clientpb.RegisterSession) *Session {
 		sess.UpdateSysInfo(req.RegisterData.Sysinfo)
 	}
 
-	return sess
+	return sess, nil
+}
+
+func RecoverSession(sess *clientpb.Session) (*Session, error) {
+	cache, err := NewCache(1*consts.MB, path.Join(configs.CachePath, sess.SessionId+".gob"))
+	if err != nil {
+		return nil, err
+	}
+	err = cache.Load()
+	if err != nil {
+		return nil, err
+	}
+	s := &Session{
+		Type:        sess.Type,
+		Name:        sess.Note,
+		Group:       sess.GroupName,
+		ID:          sess.SessionId,
+		RawID:       sess.RawId,
+		PipelineID:  sess.PipelineId,
+		Target:      sess.Target,
+		Initialized: sess.IsInitialized,
+		LastCheckin: sess.LastCheckin,
+		Tasks:       NewTasks(),
+		SessionContext: &content.SessionContext{SessionInfo: &content.SessionInfo{
+			Os:       sess.Os,
+			Process:  sess.Process,
+			Interval: sess.Timer.Interval,
+			Jitter:   sess.Timer.Jitter,
+		},
+			Modules: sess.Modules,
+			Addons:  sess.Addons,
+		},
+		Taskseq:   1,
+		Cache:     cache,
+		responses: &sync.Map{},
+	}
+	tasks, tid, err := db.FindTaskAndMaxTasksID(s.ID)
+	if err != nil {
+		return nil, err
+	}
+	s.Taskseq = tid
+	for _, task := range tasks {
+		taskPb := task.ToProtobuf()
+		s.Tasks.Add(FromTaskProtobuf(taskPb))
+	}
+	err = s.Recover()
+	if err != nil {
+		return nil, err
+	}
+	return s, nil
 }
 
 // Session - Represents a connection to an implant
@@ -138,23 +162,12 @@ type Session struct {
 	Initialized bool
 	LastCheckin uint64
 	Tasks       *Tasks // task manager
-	*SessionContext
+	*content.SessionContext
 
 	*Cache
 	Taskseq   uint32
 	responses *sync.Map
 	rpcLog    *logs.Logger
-}
-
-type SessionInfo struct {
-	Os          *implantpb.Os
-	Process     *implantpb.Process
-	Timer       *implantpb.Timer
-	IsPrivilege bool
-	Filepath    string
-	WordDir     string
-	ProxyURL    string
-	Locale      string
 }
 
 func (s *Session) RpcLogger() *logs.Logger {
@@ -189,7 +202,6 @@ func (s *Session) TaskLog(task *Task, spite []byte) error {
 }
 
 func (s *Session) Recover() error {
-	s.responses = &sync.Map{}
 	all, err := s.Cache.GetAll()
 	if err != nil {
 		return err
@@ -222,7 +234,7 @@ func (s *Session) ToProtobuf() *clientpb.Session {
 	if s.Type != consts.BindPipeline {
 		currentTime := time.Now()
 		timeDiff := currentTime.Unix() - int64(s.LastCheckin)
-		isAlive = timeDiff <= 1+int64(s.Timer.Interval)*3
+		isAlive = timeDiff <= 1+int64(s.Interval)*3
 	} else {
 		isAlive = true
 	}
@@ -239,7 +251,7 @@ func (s *Session) ToProtobuf() *clientpb.Session {
 		PipelineId:  s.PipelineID,
 		Os:          s.Os,
 		Process:     s.Process,
-		Timer:       s.Timer,
+		Timer:       &implantpb.Timer{Interval: s.Interval, Jitter: s.Jitter},
 		Tasks:       s.Tasks.ToProtobuf(),
 		Modules:     s.Modules,
 		Addons:      s.Addons,
@@ -258,40 +270,44 @@ func (s *Session) ToProtobufLite() *clientpb.Session {
 		PipelineId:  s.PipelineID,
 		Os:          s.Os,
 		Process:     s.Process,
-		Timer:       s.Timer,
+		Timer:       &implantpb.Timer{Interval: s.Interval, Jitter: s.Jitter},
 		Modules:     s.Modules,
 		Addons:      s.Addons,
 	}
 }
 
-func RecoverSession(sess *clientpb.Session) *Session {
-	return &Session{
-		Type:        sess.Type,
-		Name:        sess.Note,
-		Group:       sess.GroupName,
-		ID:          sess.SessionId,
-		RawID:       sess.RawId,
-		PipelineID:  sess.PipelineId,
-		Target:      sess.Target,
-		Initialized: sess.IsInitialized,
-		LastCheckin: sess.LastCheckin,
-		Tasks:       &Tasks{active: &sync.Map{}},
-		SessionContext: &SessionContext{SessionInfo: &SessionInfo{Os: sess.Os,
-			Process: sess.Process,
-			Timer:   sess.Timer},
-			Modules: sess.Modules,
-			Addons:  sess.Addons,
-		},
-		Taskseq:   1,
-		Cache:     NewCache(1*consts.MB, path.Join(configs.CachePath, sess.SessionId+".gob")),
-		responses: &sync.Map{},
+func (s *Session) ToModel() *models.Session {
+	contextContent, err := json.Marshal(s)
+	if err != nil {
+		return nil
+	}
+	sessPb := s.ToProtobuf()
+	return &models.Session{
+		SessionID:   s.ID,
+		RawID:       s.RawID,
+		CreatedAt:   time.Now(),
+		Note:        s.Name,
+		GroupName:   s.Group,
+		Target:      s.Target,
+		Initialized: s.Initialized,
+		Type:        s.Type,
+		IsPrivilege: s.IsPrivilege,
+		PipelineID:  s.PipelineID,
+		IsAlive:     true,
+		Context:     string(contextContent),
+		LastCheckin: s.LastCheckin,
+		Interval:    s.Interval,
+		Jitter:      s.Jitter,
+		Os:          models.FromOsPb(sessPb.Os),
+		Process:     models.FromProcessPb(sessPb.Process),
 	}
 }
 
 func (s *Session) Update(req *clientpb.RegisterSession) {
 	s.Name = req.RegisterData.Name
 	s.ProxyURL = req.RegisterData.Proxy
-	s.Timer = req.RegisterData.Timer
+	s.Interval = req.RegisterData.Timer.Interval
+	s.Jitter = req.RegisterData.Timer.Jitter
 	s.SessionContext.Update(req)
 
 	if req.RegisterData.Sysinfo != nil {
@@ -306,7 +322,7 @@ func (s *Session) UpdateSysInfo(info *implantpb.SysInfo) {
 	s.Initialized = true
 	info.Os.Name = strings.ToLower(info.Os.Name)
 	if info.Os.Name == "windows" {
-		info.Os.Arch = intermediate.FormatArch(info.Os.Arch)
+		info.Os.Arch = consts.FormatArch(info.Os.Arch)
 	}
 	s.IsPrivilege = info.IsPrivilege
 	s.Filepath = info.Filepath

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
+	"github.com/chainreactors/malice-network/server/internal/db/content"
 	"gorm.io/gorm"
 	"time"
 )
@@ -23,10 +24,11 @@ type Session struct {
 	IsAlive     bool
 	Context     string
 	LastCheckin uint64
+	Interval    uint64
+	Jitter      float64
 	IsRemoved   bool     `gorm:"default:false"`
 	Os          *Os      `gorm:"embedded"`
 	Process     *Process `gorm:"embedded"`
-	Time        *Timer   `gorm:"embedded"`
 }
 
 func (s *Session) BeforeCreate(tx *gorm.DB) (err error) {
@@ -40,8 +42,7 @@ func (s *Session) BeforeCreate(tx *gorm.DB) (err error) {
 }
 
 func (s *Session) ToProtobuf() *clientpb.Session {
-	ctx := ToRegister(s.Context)
-
+	cont, _ := content.RecoverSessionContext(s.Context)
 	return &clientpb.Session{
 		Type:          s.Type,
 		SessionId:     s.SessionID,
@@ -56,49 +57,9 @@ func (s *Session) ToProtobuf() *clientpb.Session {
 		LastCheckin:   s.LastCheckin,
 		Os:            s.Os.toProtobuf(),
 		Process:       s.Process.toProtobuf(),
-		Timer:         s.Time.toProtobuf(),
-		Modules:       ctx.Module,
-		Addons:        ctx.Addons,
-	}
-}
-
-func (s *Session) ToRegisterProtobuf() *clientpb.RegisterSession {
-	ctx := ToRegister(s.Context)
-	return &clientpb.RegisterSession{
-		SessionId:  s.SessionID,
-		RawId:      s.RawID,
-		PipelineId: s.PipelineID,
-		Target:     s.Target,
-		RegisterData: &implantpb.Register{
-			Name:  s.Note,
-			Timer: s.Time.toProtobuf(),
-			Sysinfo: &implantpb.SysInfo{
-				Os:          s.Os.toProtobuf(),
-				Process:     s.Process.toProtobuf(),
-				IsPrivilege: s.IsPrivilege,
-			},
-			Module: ctx.Module,
-			Addons: ctx.Addons,
-		},
-	}
-}
-
-func FromRegisterSessionPb(reg *clientpb.RegisterSession) *Session {
-	return &Session{
-		SessionID:   reg.SessionId,
-		RawID:       reg.RawId,
-		Note:        reg.RegisterData.Name,
-		GroupName:   "default",
-		Target:      reg.Target,
-		Initialized: false,
-		Type:        reg.Type,
-		IsPrivilege: reg.RegisterData.Sysinfo.IsPrivilege,
-		PipelineID:  reg.PipelineId,
-		IsAlive:     true,
-		Context:     FromRegister(reg.RegisterData),
-		Os:          FromOsPb(reg.RegisterData.Sysinfo.Os),
-		Process:     FromProcessPb(reg.RegisterData.Sysinfo.Process),
-		Time:        FromTimePb(reg.RegisterData.Timer),
+		Timer:         &implantpb.Timer{Interval: s.Interval, Jitter: s.Jitter},
+		Modules:       cont.Modules,
+		Addons:        cont.Addons,
 	}
 }
 
