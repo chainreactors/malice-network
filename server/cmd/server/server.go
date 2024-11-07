@@ -48,7 +48,6 @@ func init() {
 func Execute() {
 	var opt Options
 	var err error
-	core.NewTicker()
 	parser := flags.NewParser(&opt, flags.Default)
 	parser.SubcommandsOptional = true
 	args, err := parser.Parse()

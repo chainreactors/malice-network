@@ -40,7 +40,7 @@ func NewSessions() *sessions {
 	newSessions := &sessions{
 		active: &sync.Map{},
 	}
-	ticker := NewTicker()
+	ticker := GlobalTicker
 	_, err := ticker.Start(60, func() {
 		for _, session := range newSessions.All() {
 			currentTime := time.Now()
@@ -71,11 +71,8 @@ func NewSessions() *sessions {
 }
 
 func RegisterSession(req *clientpb.RegisterSession) (*Session, error) {
-	cache, err := NewCache(1*consts.MB, path.Join(configs.CachePath, req.SessionId+".gob"))
-	if err != nil {
-		return nil, err
-	}
-	err = cache.Save()
+	cache := NewCache(path.Join(configs.CachePath, req.SessionId))
+	err := cache.Save()
 	if err != nil {
 		return nil, err
 	}
@@ -88,6 +85,7 @@ func RegisterSession(req *clientpb.RegisterSession) (*Session, error) {
 		PipelineID:     req.PipelineId,
 		Target:         req.Target,
 		Tasks:          NewTasks(),
+		LastCheckin:    time.Now().Unix(),
 		SessionContext: content.NewSessionContext(req),
 		Taskseq:        1,
 		Cache:          cache,
@@ -106,11 +104,8 @@ func RegisterSession(req *clientpb.RegisterSession) (*Session, error) {
 }
 
 func RecoverSession(sess *clientpb.Session) (*Session, error) {
-	cache, err := NewCache(1*consts.MB, path.Join(configs.CachePath, sess.SessionId+".gob"))
-	if err != nil {
-		return nil, err
-	}
-	err = cache.Load()
+	cache := NewCache(path.Join(configs.CachePath, sess.SessionId))
+	err := cache.Load()
 	if err != nil {
 		return nil, err
 	}
@@ -165,7 +160,7 @@ type Session struct {
 	Group       string
 	Target      string
 	Initialized bool
-	LastCheckin uint64
+	LastCheckin int64
 	Tasks       *Tasks // task manager
 	*content.SessionContext
 
@@ -205,10 +200,7 @@ func (s *Session) TaskLog(task *Task, spite []byte) error {
 }
 
 func (s *Session) Recover() error {
-	all, err := s.Cache.GetAll()
-	if err != nil {
-		return err
-	}
+	all := s.Cache.GetAll()
 	tasks, err := db.GetAllTask()
 	if err != nil {
 		return err
@@ -372,7 +364,7 @@ func (s *Session) AllTask() []*Task {
 }
 
 func (s *Session) UpdateLastCheckin() {
-	s.LastCheckin = uint64(time.Now().Unix())
+	s.LastCheckin = time.Now().Unix()
 }
 
 // Request

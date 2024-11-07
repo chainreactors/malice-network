@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	GlobalTicker *Ticker
+	GlobalTicker = NewTicker()
 	mutex        sync.Mutex
 )
 
@@ -20,13 +20,11 @@ func NewTicker() *Ticker {
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	if GlobalTicker == nil {
-		GlobalTicker = &Ticker{
-			cron: cron.New(),
-		}
-		GlobalTicker.cron.Start()
+	ticker := &Ticker{
+		cron: cron.New(),
 	}
-	return GlobalTicker
+	ticker.cron.Start()
+	return ticker
 }
 
 func (t *Ticker) Start(interval int, cmd func()) (cron.EntryID, error) {

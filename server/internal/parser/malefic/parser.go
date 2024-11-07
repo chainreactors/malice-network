@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
-	"github.com/chainreactors/logs"
 	cryptostream "github.com/chainreactors/malice-network/helper/cryptography/stream"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/utils/peek"
@@ -82,6 +81,6 @@ func (parser *MaleficParser) Marshal(spites *implantpb.Spites, sid uint32) ([]by
 
 	buf.Write(data)
 	buf.WriteByte(EndDelimiter)
-	logs.Log.Debugf("marshal %v %d bytes", buf.Bytes()[:9], len(data))
+	//logs.Log.Debugf("marshal %v %d bytes", buf.Bytes()[:9], len(data))
 	return buf.Bytes(), nil
 }

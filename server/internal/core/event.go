@@ -112,7 +112,7 @@ func NewBroker() *eventBroker {
 			enable: false},
 	}
 	go broker.Start()
-	ticker := NewTicker()
+	ticker := GlobalTicker
 
 	publishHeartbeat := func(interval string) {
 		broker.Publish(Event{

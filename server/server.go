@@ -1,4 +1,4 @@
-package server
+package main
 
 import "github.com/chainreactors/malice-network/server/cmd/server"
 
