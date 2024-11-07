@@ -2,6 +2,7 @@ package parser
 
 import (
 	"errors"
+	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
@@ -53,8 +54,8 @@ func (parser *MessageParser) ReadHeader(conn *peek.Conn) (uint32, int, error) {
 			return 0, 0, err
 		}
 		//logs.Log.Debugf("%v read packet from %s , %d bytes", sid, conn.RemoteAddr(), length)
-		if length > config.Int(consts.ConfigMaxPacketLength) {
-			return 0, 0, ErrPacketTooLarge
+		if length > config.Int(consts.ConfigMaxPacketLength)+consts.KB*16 {
+			return 0, 0, fmt.Errorf("%w,expect: %d, recv: %d", ErrPacketTooLarge, config.Int(consts.ConfigMaxPacketLength), length)
 		}
 		if n, err := conn.Reader.Discard(malefic.HeaderLength); err != nil {
 			return 0, n, err
