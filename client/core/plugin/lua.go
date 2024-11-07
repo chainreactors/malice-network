@@ -22,15 +22,12 @@ import (
 	"github.com/vadv/gopher-lua-libs/ioutil"
 	"github.com/vadv/gopher-lua-libs/json"
 	"github.com/vadv/gopher-lua-libs/plugin"
-	"github.com/vadv/gopher-lua-libs/pprof"
 	"github.com/vadv/gopher-lua-libs/regexp"
-	"github.com/vadv/gopher-lua-libs/runtime"
 	"github.com/vadv/gopher-lua-libs/shellescape"
 	"github.com/vadv/gopher-lua-libs/storage"
 	luastrings "github.com/vadv/gopher-lua-libs/strings"
 	"github.com/vadv/gopher-lua-libs/tcp"
 	"github.com/vadv/gopher-lua-libs/time"
-	"github.com/vadv/gopher-lua-libs/xmlpath"
 	"github.com/vadv/gopher-lua-libs/yaml"
 	"github.com/yuin/gluare"
 	lua "github.com/yuin/gopher-lua"
@@ -337,15 +334,15 @@ func LoadLib(vm *lua.LState) {
 	inspect.Preload(vm)
 	ioutil.Preload(vm)
 	json.Preload(vm)
-	pprof.Preload(vm)
+	//pprof.Preload(vm)
 	regexp.Preload(vm)
-	runtime.Preload(vm)
+	//runtime.Preload(vm)
 	shellescape.Preload(vm)
 	storage.Preload(vm)
 	luastrings.Preload(vm)
 	tcp.Preload(vm)
 	time.Preload(vm)
-	xmlpath.Preload(vm)
+	//xmlpath.Preload(vm)
 	yaml.Preload(vm)
 
 	vm.PreloadModule("http", gluahttp.NewHttpModule(&http.Client{}).Loader)
