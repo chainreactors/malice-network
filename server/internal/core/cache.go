@@ -90,10 +90,18 @@ func (c *Cache) Save() error {
 }
 
 func (c *Cache) Load() error {
-	gob.Register(&implantpb.Spite{})
-	_, err := os.Stat(c.savePath)
+	file, err := os.Open(c.savePath)
 	if os.IsNotExist(err) {
 		return fmt.Errorf("cache file %s does not exist", c.savePath)
+	}
+	defer file.Close()
+
+	stat, err := file.Stat()
+	if err != nil {
+		return err
+	}
+	if stat.Size() == 0 {
+		return nil
 	}
 	err = c.cache.LoadFile(c.savePath)
 	if err != nil {
