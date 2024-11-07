@@ -215,7 +215,6 @@ func (s *Session) Recover() error {
 				if cacheTaskID == key {
 					ch := make(chan *implantpb.Spite)
 					s.responses.Store(task, ch)
-					ch <- value
 				}
 			}
 		}
