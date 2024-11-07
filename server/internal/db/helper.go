@@ -133,7 +133,7 @@ func UpdateSessionStatus() error {
 
 // Basic Session OP
 func DeleteSession(sessionID string) error {
-	result := Session().Where("session_id = ?", sessionID).Update("is_removed", true)
+	result := Session().Model(&models.Session{}).Where("session_id = ?", sessionID).Update("is_removed", true)
 	return result.Error
 }
 
