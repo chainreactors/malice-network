@@ -134,6 +134,7 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 
 // Download - Download a file from implant
 func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest) (*clientpb.Task, error) {
+	req.BufferSize = uint32(config.Uint(consts.ConfigMaxPacketLength))
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err

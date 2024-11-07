@@ -1,7 +1,6 @@
 package sessions
 
 import (
-	"fmt"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/client/repl"
@@ -18,10 +17,6 @@ func NewBindSessionCmd(cmd *cobra.Command, con *repl.Console) error {
 	name, _ := cmd.Flags().GetString("name")
 	target, _ := cmd.Flags().GetString("target")
 	pipelineID, _ := cmd.Flags().GetString("pipeline")
-
-	if target == "" {
-		return fmt.Errorf("target is required")
-	}
 
 	sess, err := NewBindSession(con, pipelineID, target, name)
 	if err != nil {
