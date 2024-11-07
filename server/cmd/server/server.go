@@ -19,7 +19,6 @@ import (
 	"github.com/jessevdk/go-flags"
 	"os"
 	"os/signal"
-	"runtime/pprof"
 	"syscall"
 )
 
@@ -164,7 +163,7 @@ func Execute() {
 		for _, session := range core.Sessions.All() {
 			session.Save()
 		}
-		pprof.StopCPUProfile()
+		//pprof.StopCPUProfile()
 		core.GlobalTicker.RemoveAll()
 		cancel()
 		os.Exit(0)
@@ -222,15 +221,15 @@ func StartListener(opt *configs.ListenerConfig) error {
 }
 
 func main() {
-	f, err := os.Create("cpu.prof")
-	if err != nil {
-		logs.Log.Errorf("could not create CPU profile: ", err)
-	}
-	defer f.Close()
-
-	if err := pprof.StartCPUProfile(f); err != nil {
-		logs.Log.Errorf("could not start CPU profile: ", err)
-	}
+	//f, err := os.Create("cpu.prof")
+	//if err != nil {
+	//	logs.Log.Errorf("could not create CPU profile: ", err)
+	//}
+	//defer f.Close()
+	//
+	//if err := pprof.StartCPUProfile(f); err != nil {
+	//	logs.Log.Errorf("could not start CPU profile: ", err)
+	//}
 
 	Execute()
 }
