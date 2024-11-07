@@ -83,6 +83,9 @@ func (rpc *Server) Checkin(ctx context.Context, req *implantpb.Ping) (*clientpb.
 		if err != nil {
 			return nil, err
 		}
+		if dbSess == nil {
+			return nil, nil
+		}
 		sess, err = core.RecoverSession(dbSess)
 		if err != nil {
 			return nil, err

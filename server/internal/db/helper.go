@@ -51,9 +51,12 @@ func FindAliveSessions() ([]*clientpb.Session, error) {
 
 func FindSession(sessionID string) (*clientpb.Session, error) {
 	var session models.Session
-	result := Session().Where("session_id = ? AND is_removed = ?", sessionID, false).First(&session)
+	result := Session().Where("session_id = ?", sessionID, false).First(&session)
 	if result.Error != nil {
 		return nil, result.Error
+	}
+	if session.IsRemoved {
+		return nil, nil
 	}
 	//if session.Last.Before(time.Now().Add(-time.Second * time.Duration(session.Time.Interval*2))) {
 	//	return nil, errors.New("session is dead")
