@@ -39,7 +39,7 @@ sessions -a
 		Short: "Session manager",
 	}
 
-	sessNewCmd := &cobra.Command{
+	bindSessNewCmd := &cobra.Command{
 		Use:   consts.CommandNewBindSession + " [session]",
 		Short: "new bind session",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -47,15 +47,15 @@ sessions -a
 		},
 	}
 
-	common.BindFlag(sessNewCmd, func(f *pflag.FlagSet) {
+	common.BindFlag(bindSessNewCmd, func(f *pflag.FlagSet) {
 		f.StringP("name", "n", "", "session name")
 		f.StringP("target", "t", "", "session target")
 		f.String("pipeline", "", "pipeline id")
-		sessNewCmd.MarkFlagRequired("target")
-		sessNewCmd.MarkFlagRequired("pipeline")
+		bindSessNewCmd.MarkFlagRequired("target")
+		bindSessNewCmd.MarkFlagRequired("pipeline")
 	})
 
-	common.BindFlagCompletions(sessNewCmd, func(comp carapace.ActionMap) {
+	common.BindFlagCompletions(bindSessNewCmd, func(comp carapace.ActionMap) {
 		comp["pipeline"] = common.AllPipelineComplete(con)
 	})
 
@@ -124,7 +124,7 @@ del 08d6c05a21512a79a1dfeb9d2a8f262f
 
 	common.BindArgCompletions(removeCommand, nil, common.SessionIDCompleter(con))
 
-	sessCmd.AddCommand(sessNewCmd, noteCommand, groupCommand, removeCommand)
+	sessCmd.AddCommand(bindSessNewCmd, noteCommand, groupCommand, removeCommand)
 	useCommand := &cobra.Command{
 		Use:   consts.CommandUse + " [session]",
 		Short: "Use session",
