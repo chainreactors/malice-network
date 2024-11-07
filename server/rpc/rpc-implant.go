@@ -34,7 +34,7 @@ func (rpc *Server) Register(ctx context.Context, req *clientpb.RegisterSession) 
 		return nil, err
 	} else if errors.Is(err, db.ErrRecordNotFound) {
 		// new session and save to db
-		sess, err := core.RegisterSession(req)
+		sess, err = core.RegisterSession(req)
 		if err != nil {
 			return nil, err
 		}
