@@ -9,10 +9,45 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/patrickmn/go-cache"
+	"google.golang.org/protobuf/reflect/protoregistry"
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
 )
+
+func init() {
+	gob.Register(&implantpb.Spite{})
+	msgType, _ := protoregistry.GlobalTypes.FindMessageByName("implantpb.Spite")
+	val := reflect.ValueOf(msgType).Elem()
+
+	field := val.FieldByName("OneofWrappers").Interface()
+	for _, i := range field.([]interface{}) {
+		gob.Register(reflect.New(reflect.TypeOf(i)).Interface())
+	}
+
+	msg := &implantpb.Spite{}
+
+	msgReflect := msg.ProtoReflect()
+	oneofDesc := msgReflect.Descriptor().Oneofs().ByName("body")
+
+	for i := 0; i < oneofDesc.Fields().Len(); i++ {
+		field := oneofDesc.Fields().Get(i)
+
+		fieldMessageDescriptor := field.Message()
+
+		messageType, _ := protoregistry.GlobalTypes.FindMessageByName(fieldMessageDescriptor.FullName())
+		if messageType == nil {
+			fmt.Printf("Cannot find Go type for %s\n", fieldMessageDescriptor.FullName())
+			continue
+		}
+
+		fieldInstance := messageType.New().Interface()
+
+		gob.Register(fieldInstance)
+
+	}
+}
 
 type Cache struct {
 	cache    *cache.Cache
