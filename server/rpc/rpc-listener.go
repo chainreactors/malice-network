@@ -70,7 +70,9 @@ func (rpc *Server) SpiteStream(stream listenerrpc.ListenerRPC_SpiteStreamServer)
 		}
 
 		if ch, ok := sess.GetResp(msg.TaskId); ok {
-			ch <- msg.Spite
+			go func() {
+				ch <- msg.Spite
+			}()
 		}
 	}
 }

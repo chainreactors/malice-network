@@ -189,9 +189,7 @@ func (s *Session) RpcLogger() *logs.Logger {
 }
 
 func (s *Session) TaskLog(task *Task, spite []byte) error {
-	id := strconv.FormatUint(uint64(task.Id), 10)
-	cur := strconv.FormatUint(uint64(task.Cur), 10)
-	filePath := filepath.Join(configs.LogPath, s.ID, id+"_"+cur)
+	filePath := filepath.Join(configs.LogPath, s.ID, fmt.Sprintf("%d_%d", task.Id, task.Cur))
 	f, err := os.OpenFile(filePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
 		return err
@@ -382,20 +380,19 @@ func (s *Session) Request(msg *clientpb.SpiteRequest, stream grpc.ServerStream) 
 }
 
 func (s *Session) RequestAndWait(msg *clientpb.SpiteRequest, stream grpc.ServerStream, timeout time.Duration) (*implantpb.Spite, error) {
-	ch := make(chan *implantpb.Spite)
+	ch := make(chan *implantpb.Spite, 16)
 	s.StoreResp(msg.Task.TaskId, ch)
 	err := s.Request(msg, stream)
 	if err != nil {
 		return nil, err
 	}
 	resp := <-ch
-	// todo save to database
 	return resp, nil
 }
 
 // RequestWithStream - 'async' means that the response is not returned immediately, but is returned through the channel 'ch
 func (s *Session) RequestWithStream(msg *clientpb.SpiteRequest, stream grpc.ServerStream, timeout time.Duration) (chan *implantpb.Spite, chan *implantpb.Spite, error) {
-	respCh := make(chan *implantpb.Spite)
+	respCh := make(chan *implantpb.Spite, 16)
 	s.StoreResp(msg.Task.TaskId, respCh)
 	err := s.Request(msg, stream)
 	if err != nil {
@@ -424,7 +421,7 @@ func (s *Session) RequestWithStream(msg *clientpb.SpiteRequest, stream grpc.Serv
 }
 
 func (s *Session) RequestWithAsync(msg *clientpb.SpiteRequest, stream grpc.ServerStream, timeout time.Duration) (chan *implantpb.Spite, error) {
-	respCh := make(chan *implantpb.Spite)
+	respCh := make(chan *implantpb.Spite, 16)
 	s.StoreResp(msg.Task.TaskId, respCh)
 	err := s.Request(msg, stream)
 	if err != nil {
