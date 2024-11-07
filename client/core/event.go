@@ -10,6 +10,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/utils/handler"
 	"github.com/chainreactors/tui"
 	"io"
+	"time"
 )
 
 func (s *ServerStatus) AddDoneCallback(task *clientpb.Task, callback TaskCallback) {
@@ -96,7 +97,8 @@ func (s *ServerStatus) AddEventHook(event intermediate.EventCondition, callback 
 }
 
 func (s *ServerStatus) EventHandler() {
-	eventStream, err := s.Rpc.Events(context.Background(), &clientpb.Empty{})
+	ctx, _ := context.WithTimeout(context.Background(), 3*time.Second)
+	eventStream, err := s.Rpc.Events(ctx, &clientpb.Empty{})
 	if err != nil {
 		return
 	}
