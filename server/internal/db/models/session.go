@@ -23,7 +23,7 @@ type Session struct {
 	PipelineID  string
 	IsAlive     bool
 	Context     string
-	LastCheckin uint64
+	LastCheckin int64
 	Interval    uint64
 	Jitter      float64
 	IsRemoved   bool     `gorm:"default:false"`

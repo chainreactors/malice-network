@@ -104,7 +104,7 @@ func UpdateLast(sessionID string) error {
 	if result.Error != nil {
 		return result.Error
 	}
-	session.LastCheckin = uint64(time.Now().Unix())
+	session.LastCheckin = time.Now().Unix()
 	result = Session().Save(&session)
 	if result.Error != nil {
 		return result.Error
@@ -122,7 +122,7 @@ func UpdateSessionStatus() error {
 			return err
 		}
 		for _, session := range sessions {
-			lastCheckin := time.Unix(int64(session.LastCheckin), 0)
+			lastCheckin := time.Unix(session.LastCheckin, 0)
 			currentTime := time.Now()
 			timeDiff := currentTime.Sub(lastCheckin)
 			isAlive := timeDiff <= time.Duration(float64(session.Interval)*(1+session.Jitter))*2*time.Second

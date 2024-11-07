@@ -28,7 +28,7 @@ builds:
     no_unique_dist_dir: true
 
   -
-    main: ./server/cmd/server/
+    main: ./server/
     id: server
     binary: "malice_network_{{ .Os }}_{{ .Arch }}"
     goos:

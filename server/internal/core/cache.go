@@ -1,234 +1,195 @@
 package core
 
 import (
-	"bytes"
-	"encoding/gob"
-	"errors"
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/patrickmn/go-cache"
-	"google.golang.org/protobuf/reflect/protoregistry"
+	"google.golang.org/protobuf/proto"
+	"io"
+	"math"
 	"os"
-	"reflect"
-	"strconv"
-	"strings"
+	"sync"
+	"time"
 )
 
-func init() {
-	gob.Register(&implantpb.Spite{})
-	msgType, _ := protoregistry.GlobalTypes.FindMessageByName("implantpb.Spite")
-	val := reflect.ValueOf(msgType).Elem()
-
-	field := val.FieldByName("OneofWrappers").Interface()
-	for _, i := range field.([]interface{}) {
-		gob.Register(reflect.New(reflect.TypeOf(i)).Interface())
-	}
-
-	msg := &implantpb.Spite{}
-
-	msgReflect := msg.ProtoReflect()
-	oneofDesc := msgReflect.Descriptor().Oneofs().ByName("body")
-
-	for i := 0; i < oneofDesc.Fields().Len(); i++ {
-		field := oneofDesc.Fields().Get(i)
-
-		fieldMessageDescriptor := field.Message()
-
-		messageType, _ := protoregistry.GlobalTypes.FindMessageByName(fieldMessageDescriptor.FullName())
-		if messageType == nil {
-			fmt.Printf("Cannot find Go type for %s\n", fieldMessageDescriptor.FullName())
-			continue
-		}
-
-		fieldInstance := messageType.New().Interface()
-
-		gob.Register(fieldInstance)
-
-	}
-}
-
 type Cache struct {
-	cache    *cache.Cache
-	savePath string
+	items    map[string]*clientpb.SpiteCacheItem
+	mutex    sync.RWMutex
 	maxSize  int
+	duration time.Duration
+	savePath string
 }
 
-func NewCache(maxSize int, savePath string) (*Cache, error) {
-	newCache := &Cache{
-		cache:    cache.New(cache.NoExpiration, cache.NoExpiration),
-		savePath: savePath,
-		maxSize:  maxSize,
+// NewCache initializes a new cache with a specified size, duration, and save path
+func NewCache(savePath string) *Cache {
+	cache := &Cache{
+		items:    make(map[string]*clientpb.SpiteCacheItem),
+		maxSize:  1024,
+		duration: math.MaxInt64,
+		savePath: savePath + ".cache",
 	}
-	_, err := GlobalTicker.Start(consts.DefaultCacheJitter, func() {
-		err := newCache.Save()
+	GlobalTicker.Start(consts.DefaultCacheInterval, func() {
+		err := cache.Save()
 		if err != nil {
-			logs.Log.Errorf("save cache error %s", err.Error())
+			logs.Log.Errorf("Failed to save cache: %v", err)
+			return
 		}
 	})
-	if err != nil {
-		return nil, err
-	}
-	return newCache, nil
+
+	GlobalTicker.Start(consts.DefaultCacheInterval, cache.trim)
+	return cache
 }
 
+// AddMessage adds a new item to the cache with TaskId and Index as part of the key
 func (c *Cache) AddMessage(spite *implantpb.Spite, index int) {
-	cacheKey := strconv.Itoa(int(spite.TaskId)) + "_" + strconv.Itoa(index)
-	c.cache.Set(cacheKey, spite, cache.NoExpiration)
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	cacheKey := fmt.Sprintf("%d_%d", spite.TaskId, index)
+	c.items[cacheKey] = &clientpb.SpiteCacheItem{
+		Index:      int32(index),
+		Id:         cacheKey,
+		Spite:      spite,
+		Expiration: time.Now().Add(c.duration).Unix(),
+	}
+
 	c.trim()
 }
 
+// GetMessage retrieves a cache item by TaskId and Index
 func (c *Cache) GetMessage(taskID, index int) (*implantpb.Spite, bool) {
-	spite, found := c.cache.Get(fmt.Sprintf("%d_%d", taskID, index))
-	if found {
-		return spite.(*implantpb.Spite), found
-	} else {
-		return nil, false
-	}
-}
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
 
-func (c *Cache) GetMessages(taskID int) ([]*implantpb.Spite, bool) {
-	spite := make([]*implantpb.Spite, 0, c.cache.ItemCount())
-	for k, v := range c.cache.Items() {
-		parts := strings.Split(k, "_")
-		if len(parts) != 2 {
-			continue
-		}
-		taskIDStr := parts[0]
-		if taskIDStr == strconv.Itoa(taskID) {
-			spite = append(spite, v.Object.(*implantpb.Spite))
-		}
-	}
-	return spite, true
-}
-func (c *Cache) GetAll() (map[string]*implantpb.Spite, error) {
-	items := make(map[string]*implantpb.Spite)
-
-	for k, v := range c.cache.Items() {
-		spite, ok := v.Object.(*implantpb.Spite)
-		if !ok {
-			return nil, errors.New(fmt.Sprintf("cache item %s is not of type *implantpb.Spite", k))
-		}
-		items[k] = spite
-	}
-
-	return items, nil
-}
-
-func (c *Cache) Save() error {
-	err := c.cache.SaveFile(c.savePath)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (c *Cache) Load() error {
-	file, err := os.Open(c.savePath)
-	if os.IsNotExist(err) {
-		return fmt.Errorf("cache file %s does not exist", c.savePath)
-	}
-	defer file.Close()
-
-	stat, err := file.Stat()
-	if err != nil {
-		return err
-	}
-	if stat.Size() == 0 {
-		return nil
-	}
-	err = c.cache.LoadFile(c.savePath)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (c *Cache) GetLastMessage(taskID int) (*implantpb.Spite, bool) {
-	key := c.getMaxCurKeyForTaskID(taskID)
-	value, ok := c.cache.Get(key)
-	if ok {
-		return value.(*implantpb.Spite), ok
+	cacheKey := fmt.Sprintf("%d_%d", taskID, index)
+	item, found := c.items[cacheKey]
+	if found && time.Now().Unix() < item.Expiration {
+		return item.Spite, true
 	}
 	return nil, false
 }
 
-func (c *Cache) SetSize(size int) {
-	c.maxSize = size
-	c.trim()
+func (c *Cache) GetMessages(taskID int) ([]*implantpb.Spite, bool) {
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
+
+	var messages []*implantpb.Spite
+	for _, item := range c.items {
+		if int(item.Spite.TaskId) == taskID && time.Now().Unix() < item.Expiration {
+			messages = append(messages, item.Spite)
+		}
+	}
+	if len(messages) > 0 {
+		return messages, true
+
+	}
+	return nil, false
 }
 
-func (c *Cache) trim() {
-	var buf bytes.Buffer
-	enc := gob.NewEncoder(&buf)
-	for _, v := range c.cache.Items() {
-		gob.Register(v.Object)
-	}
-	err := enc.Encode(c.cache.Items())
+// Save serializes the cache items to a file using protobuf
+func (c *Cache) Save() error {
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
+
+	file, err := os.Create(c.savePath)
 	if err != nil {
-		return
+		return err
 	}
-	if buf.Len() > c.maxSize {
-		c.cache.Delete(c.getMinTaskIDKey())
+	defer file.Close()
+
+	items := &clientpb.SpiteCache{
+		Items: make([]*clientpb.SpiteCacheItem, 0, len(c.items)),
+	}
+	for _, item := range c.items {
+		items.Items = append(items.Items, item)
+	}
+	data, err := proto.Marshal(items)
+	if err != nil {
+		return err
+	}
+	if _, err = file.Write(data); err != nil {
+		return err
+	}
+	return nil
+}
+
+// Load deserializes cache items from a file using protobuf
+func (c *Cache) Load() error {
+	file, err := os.OpenFile(c.savePath, os.O_RDWR|os.O_CREATE, 0644)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	item := &clientpb.SpiteCache{}
+	data, err := io.ReadAll(file)
+	if err != nil {
+		return err
+	}
+
+	if err = proto.Unmarshal(data, item); err != nil {
+		return err
+	}
+
+	for _, item := range item.Items {
+		c.items[item.Id] = item
+	}
+
+	return nil
+}
+
+// trim removes expired items or items beyond max size
+func (c *Cache) trim() {
+	for k, v := range c.items {
+		if time.Now().Unix() > v.Expiration {
+			delete(c.items, k)
+		}
+	}
+
+	for len(c.items) > c.maxSize {
+		var oldestKey string
+		oldestTime := time.Now().Unix()
+		for k, v := range c.items {
+			if v.Expiration < oldestTime {
+				oldestTime = v.Expiration
+				oldestKey = k
+			}
+		}
+		delete(c.items, oldestKey)
 	}
 }
 
-func (c *Cache) getMinTaskIDKey() string {
-	minKey := ""
-	minTaskID := -1
-	minCur := -1
+// GetAll returns all items in the cache
+func (c *Cache) GetAll() map[string]*implantpb.Spite {
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
 
-	for key := range c.cache.Items() {
-		parts := strings.Split(key, "_")
-		if len(parts) != 2 {
-			continue
-		}
-		taskIDStr := parts[0]
-		curStr := parts[1]
-		taskID, err := strconv.Atoi(taskIDStr)
-		if err != nil {
-			continue
-		}
-		cur, err := strconv.Atoi(curStr)
-		if err != nil {
-			continue
-		}
-		if minKey == "" || taskID < minTaskID || (taskID == minTaskID && cur < minCur) {
-			minKey = key
-			minTaskID = taskID
-			minCur = cur
+	allItems := make(map[string]*implantpb.Spite)
+	for k, v := range c.items {
+		if time.Now().Unix() < v.Expiration {
+			allItems[k] = v.Spite
 		}
 	}
-	return minKey
+	return allItems
 }
 
-func (c *Cache) getMaxCurKeyForTaskID(taskID int) string {
-	maxKey := ""
-	maxCur := -1
+func (c *Cache) GetLastMessage(taskID int) (*implantpb.Spite, bool) {
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
 
-	for key := range c.cache.Items() {
-		parts := strings.Split(key, "_")
-		if len(parts) != 2 {
-			continue
-		}
-		taskIDStr := parts[0]
-		curStr := parts[1]
-		curTaskID, err := strconv.Atoi(taskIDStr)
-		if err != nil {
-			continue
-		}
-		if curTaskID != taskID {
-			continue
-		}
-		cur, err := strconv.Atoi(curStr)
-		if err != nil {
-			continue
-		}
-		if maxKey == "" || cur > maxCur {
-			maxKey = key
-			maxCur = cur
+	var lastSpite *implantpb.Spite
+	maxIndex := -1
+
+	for _, item := range c.items {
+		if int(item.Spite.TaskId) == taskID && int(item.Index) > maxIndex && time.Now().Unix() < item.Expiration {
+			maxIndex = int(item.Index)
+			lastSpite = item.Spite
 		}
 	}
-	return maxKey
+
+	if lastSpite != nil {
+		return lastSpite, true
+	}
+	return nil, false
 }
