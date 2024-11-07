@@ -51,7 +51,7 @@ func FindAliveSessions() ([]*clientpb.Session, error) {
 
 func FindSession(sessionID string) (*clientpb.Session, error) {
 	var session models.Session
-	result := Session().Where("session_id = ?", sessionID, false).First(&session)
+	result := Session().Where("session_id = ?", sessionID).First(&session)
 	if result.Error != nil {
 		return nil, result.Error
 	}
