@@ -68,6 +68,9 @@ func (cc *clients) Remove(clientID int) {
 	cc.mutex.Lock()
 	defer cc.mutex.Unlock()
 	client := cc.active[clientID]
+	if client == nil {
+		return
+	}
 	EventBroker.Publish(Event{
 		EventType: consts.EventLeft,
 		Client:    client.Client,
