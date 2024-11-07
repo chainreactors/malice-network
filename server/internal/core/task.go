@@ -116,10 +116,6 @@ func (t *Task) String() string {
 	return fmt.Sprintf("%d/%d", t.Cur, t.Total)
 }
 
-func (t *Task) Percent() string {
-	return fmt.Sprintf("%f/100%", t.Cur/t.Total*100)
-}
-
 func (t *Task) Publish(op string, spite *implantpb.Spite, msg string) {
 	EventBroker.Publish(Event{
 		EventType: consts.EventTask,
