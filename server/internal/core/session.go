@@ -57,6 +57,11 @@ func NewSessions() *sessions {
 				})
 			}
 		}
+		err := db.UpdateSessionStatus()
+		if err != nil {
+			logs.Log.Errorf("cannot update session status, %s", err.Error())
+			return
+		}
 	})
 	if err != nil {
 		logs.Log.Errorf("cannot start ticker, %s", err.Error())
