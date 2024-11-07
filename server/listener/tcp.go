@@ -144,12 +144,10 @@ func (pipeline *TCPPipeline) handleAccept(conn net.Conn) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	for {
-		err := connect.Handler(ctx, peekConn)
-		if err != nil {
-			logs.Log.Debugf("handler error: %s", err.Error())
-			return
-		}
+	err = connect.Handler(ctx, peekConn)
+	if err != nil {
+		logs.Log.Debugf("handler error: %s", err.Error())
+		return
 	}
 }
 
