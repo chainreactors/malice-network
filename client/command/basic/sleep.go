@@ -2,6 +2,7 @@ package basic
 
 import (
 	"fmt"
+	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
@@ -18,7 +19,10 @@ func SleepCmd(cmd *cobra.Command, con *repl.Console) error {
 	if jitter == 0 {
 		jitter = session.Timer.Jitter
 	}
-
+	if interval < 1 {
+		logs.Log.Warnf("minimum sleep interval is 1 second, auto set 1")
+		interval = 1
+	}
 	task, err := Sleep(con.Rpc, session, uint64(interval), jitter)
 	if err != nil {
 		return err
