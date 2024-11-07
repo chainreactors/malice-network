@@ -107,6 +107,13 @@ func (f *Forward) Count() int {
 // Handler is a loop that handles messages from implant
 func (f *Forward) Handler() {
 	for msg := range f.implantC {
+		_, err := f.ListenerRpc.Checkin(metadata.NewOutgoingContext(context.Background(), metadata.Pairs(
+			"session_id", msg.SessionID),
+		), &implantpb.Ping{})
+		if err != nil {
+			logs.Log.Error(err)
+			continue
+		}
 		for _, spite := range msg.Spites.Spites {
 			switch spite.Body.(type) {
 			case *implantpb.Spite_Register:
@@ -119,14 +126,6 @@ func (f *Forward) Handler() {
 				})
 				if err != nil {
 					logs.Log.Errorf("register err %s", err.Error())
-					continue
-				}
-			case *implantpb.Spite_Ping:
-				_, err := f.ListenerRpc.Checkin(metadata.NewOutgoingContext(context.Background(), metadata.Pairs(
-					"session_id", msg.SessionID),
-				), &implantpb.Ping{})
-				if err != nil {
-					logs.Log.Error(err)
 					continue
 				}
 			default:
