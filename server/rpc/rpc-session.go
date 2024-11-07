@@ -45,6 +45,9 @@ func (rpc *Server) GetSession(ctx context.Context, req *clientpb.SessionRequest)
 	if err != nil {
 		return nil, err
 	}
+	if dbSess == nil {
+		return nil, nil
+	}
 	session, err = core.RecoverSession(dbSess)
 	if err != nil {
 		return nil, err
@@ -170,7 +173,10 @@ func (rpc *Server) GetSessionHistory(ctx context.Context, req *clientpb.SessionL
 				if err != nil {
 					return nil, err
 				}
-
+				if session == nil {
+					logs.Log.Warnf("session %s has removed", req.SessionId)
+					continue
+				}
 				contexts.Contexts = append(contexts.Contexts, &clientpb.TaskContext{
 					Task:    task,
 					Session: session,

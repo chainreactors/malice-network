@@ -45,6 +45,8 @@ func (rpc *Server) Register(ctx context.Context, req *clientpb.RegisterSession) 
 			sess.Publish(consts.CtrlSessionRegister, fmt.Sprintf("session %s from %s start at %s", sess.ID, sess.Target, sess.PipelineID))
 			logs.Log.Importantf("recover session %s from %s", sess.ID, sess.PipelineID)
 		}
+	} else if dbSess == nil {
+		return nil, nil
 	} else {
 		// 数据库中已存在, update
 		sess, err = core.RecoverSession(dbSess)
