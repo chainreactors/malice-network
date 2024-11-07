@@ -98,6 +98,7 @@ func (rpc *Server) Checkin(ctx context.Context, req *implantpb.Ping) (*clientpb.
 	}
 
 	sess.UpdateLastCheckin()
+	sess.Publish(consts.CtrlSessionCheckin, "")
 	err = db.UpdateLast(sid)
 	if err != nil {
 		return nil, err
