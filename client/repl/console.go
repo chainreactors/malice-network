@@ -44,8 +44,7 @@ func NewConsole() (*Console, error) {
 	go func() {
 		for {
 			if con.ServerStatus != nil && !con.ServerStatus.EventStatus {
-				go con.EventHandler()
-				time.Sleep(3 * time.Second)
+				con.EventHandler()
 			}
 		}
 	}()
