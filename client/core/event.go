@@ -100,6 +100,12 @@ func (s *ServerStatus) EventHandler() {
 	if err != nil {
 		return
 	}
+	_, err = s.Rpc.LoginClient(context.Background(), &clientpb.LoginReq{
+		Name: s.Client.Name,
+	})
+	if err != nil {
+		return
+	}
 	s.EventStatus = true
 	Log.Importantf("starting event loop")
 	defer func() {
