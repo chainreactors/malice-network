@@ -11,14 +11,13 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/cmd/cli"
 	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/gookit/config/v2"
 	"github.com/gookit/config/v2/yaml"
 )
 
 func init() {
-	logs.Log.SetFormatter(repl.DefaultLogStyle)
-	core.Log.SetFormatter(repl.DefaultLogStyle)
+	logs.Log.SetFormatter(core.DefaultLogStyle)
+	core.Log.SetFormatter(core.DefaultLogStyle)
 	config.WithOptions(func(opt *config.Options) {
 		opt.DecoderConfig.TagName = "config"
 		opt.ParseDefault = true
