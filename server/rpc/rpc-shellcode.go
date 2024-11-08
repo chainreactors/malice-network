@@ -6,6 +6,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/server/internal/build"
 	"github.com/chainreactors/malice-network/server/internal/configs"
+	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/generate"
 	"os"
 	"path/filepath"
@@ -55,20 +56,24 @@ func (rpc *Server) ShellcodeEncode(ctx context.Context, req *clientpb.ShellcodeE
 
 func (rpc *Server) MaleficSRDI(ctx context.Context, req *clientpb.MutantFile) (*clientpb.Bin, error) {
 	if req.Id != "" {
-		filePath, err := build.GetOutPutPath(req.Id)
+		filePath, err := db.GetBuilderPath(req.Id)
 		if err != nil {
 			return nil, err
 		}
 		fileName := filepath.Base(filePath)
-		bin, err := build.MaleficSRDI(req, filePath, filepath.Join(configs.SRDIOutputPath, fileName))
+
+		bin, err := build.MaleficSRDI(req, filePath, filepath.Join(configs.BuildOutputPath, fileName))
 		if err != nil {
 			return nil, err
 		}
 		return &clientpb.Bin{Bin: bin, Name: fileName}, nil
 	}
+	_, dstPath, err := db.GetBuilderFromUpload(req.Type)
+	if err != nil {
+		return nil, err
+	}
 	srcPath := filepath.Join(configs.BuildOutputPath, req.Name)
-	dstPath := filepath.Join(configs.SRDIOutputPath, filepath.Ext(req.Name))
-	err := os.WriteFile(srcPath, req.Bin, 0644)
+	err = os.WriteFile(srcPath, req.Bin, 0644)
 	if err != nil {
 		return nil, err
 	}

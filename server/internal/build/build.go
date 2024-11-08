@@ -11,7 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
+	"sync"
 	"time"
 )
 
@@ -26,6 +26,20 @@ var (
 	funcNameOption              = "--function-name"
 	userDataPathOption          = "--user-data-path"
 )
+
+var dockerClient *client.Client
+var once sync.Once
+
+func GetDockerClient() (*client.Client, error) {
+	var err error
+	once.Do(func() {
+		dockerClient, err = client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+		if err != nil {
+			logs.Log.Errorf("Error creating Docker client: %v", err)
+		}
+	})
+	return dockerClient, err
+}
 
 func BuildBeacon(cli *client.Client, req *clientpb.Generate) error {
 
@@ -270,16 +284,7 @@ func BuildModules(cli *client.Client, req *clientpb.Generate) error {
 //}
 
 func MaleficSRDI(req *clientpb.MutantFile, srcPath, dstPath string) ([]byte, error) {
-	var cmd *exec.Cmd
-	if req.Id != "" {
-		dstPath = strings.TrimSuffix(dstPath, filepath.Ext(dstPath))
-		cmd = exec.Command(exePath, command, req.Type, srcPath, req.Platform, req.Arch, dstPath)
-	} else {
-		nameWithoutExt := strings.TrimSuffix(req.Name, filepath.Ext(req.Name))
-		srcPath = filepath.Join(configs.BuildOutputPath, req.Name)
-		dstPath = filepath.Join(configs.SRDIOutputPath, nameWithoutExt)
-		cmd = exec.Command(exePath, command, req.Type, srcPath, req.Platform, req.Arch, dstPath)
-	}
+	cmd := exec.Command(exePath, command, req.Type, srcPath, req.Platform, req.Arch, dstPath)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return []byte{}, err

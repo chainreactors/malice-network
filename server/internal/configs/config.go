@@ -20,7 +20,7 @@ func InitConfig() error {
 	os.MkdirAll(CachePath, perm)
 	os.MkdirAll(WebsitePath, perm)
 	os.MkdirAll(ListenerPath, perm)
-	os.MkdirAll(SRDIOutputPath, perm)
+	os.MkdirAll(BuildOutputPath, perm)
 	return nil
 }
 

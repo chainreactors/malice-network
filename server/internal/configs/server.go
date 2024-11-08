@@ -33,7 +33,6 @@ var (
 	TargetPath      = path.Join(SourceCodePath, "target")
 	CargoCachePath  = path.Join(BuildPath, "cache")
 	BuildOutputPath = path.Join(SourceCodePath, "output")
-	SRDIOutputPath  = path.Join(BuildOutputPath, "srdi")
 )
 
 func NewFileLog(filename string) *logs.Logger {

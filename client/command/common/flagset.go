@@ -182,7 +182,7 @@ func SRDIFlagSet(f *pflag.FlagSet) {
 	f.String("path", "", "file path")
 	f.String("type", "", "mutant type")
 	f.String("arch", "", "shellcode architecture, eg: x86,x86_64")
-	f.String("platform", "", "shellcode platform, eg: win,linux")
+	f.String("platform", "win", "shellcode platform, eg: win,linux")
 	f.String("id", "", "build file id")
 	f.String("function_name", "", "shellcode function name")
 	f.String("user_data_path", "", "user data path")
