@@ -6,6 +6,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 func Commands(con *repl.Console) []*cobra.Command {
@@ -60,7 +61,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	common.BindFlagCompletions(beaconCmd, func(comp carapace.ActionMap) {
 		comp["profile_name"] = common.ProfileComplete(con)
 		comp["target"] = common.TargetComplete(con)
-		comp["format"] = common.TypeComplete(con)
+		comp["type"] = common.TypeComplete(con)
 	})
 	common.BindArgCompletions(beaconCmd, nil, common.ProfileComplete(con))
 
@@ -77,7 +78,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	common.BindFlagCompletions(bindCmd, func(comp carapace.ActionMap) {
 		comp["profile_name"] = common.ProfileComplete(con)
 		comp["target"] = common.TargetComplete(con)
-		comp["format"] = common.TypeComplete(con)
+		comp["type"] = common.TypeComplete(con)
 	})
 	common.BindArgCompletions(bindCmd, nil, common.ProfileComplete(con))
 
@@ -94,7 +95,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	common.BindFlagCompletions(shellCodeCmd, func(comp carapace.ActionMap) {
 		comp["profile_name"] = common.ProfileComplete(con)
 		comp["target"] = common.TargetComplete(con)
-		comp["format"] = common.TypeComplete(con)
+		comp["type"] = common.TypeComplete(con)
 	})
 	common.BindArgCompletions(shellCodeCmd, nil, common.ProfileComplete(con))
 
@@ -111,9 +112,29 @@ func Commands(con *repl.Console) []*cobra.Command {
 	common.BindFlagCompletions(preludeCmd, func(comp carapace.ActionMap) {
 		comp["profile_name"] = common.ProfileComplete(con)
 		comp["target"] = common.TargetComplete(con)
-		comp["format"] = common.TypeComplete(con)
+		comp["type"] = common.TypeComplete(con)
 	})
 	common.BindArgCompletions(preludeCmd, nil, common.ProfileComplete(con))
+
+	modulesCmd := &cobra.Command{
+		Use:   consts.CommandModules,
+		Short: "show all modules",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return ModulesCmd(cmd, con)
+		},
+	}
+
+	common.BindFlag(modulesCmd, common.GenerateFlagSet, func(f *pflag.FlagSet) {
+		f.StringSlice("feature", []string{}, "Set modules e.g.: nano, full")
+	})
+
+	common.BindFlagCompletions(modulesCmd, func(comp carapace.ActionMap) {
+		comp["profile_name"] = common.ProfileComplete(con)
+		comp["target"] = common.TargetComplete(con)
+		comp["type"] = common.TypeComplete(con)
+	})
+	common.BindArgCompletions(modulesCmd, nil, common.ProfileComplete(con))
 
 	downloadCmd := &cobra.Command{
 		Use:   consts.CommandDownload,
@@ -122,7 +143,20 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return DownloadCmd(cmd, con)
 		},
 	}
-	buildCmd.AddCommand(beaconCmd, bindCmd, shellCodeCmd, preludeCmd, downloadCmd)
+	buildCmd.AddCommand(beaconCmd, bindCmd, shellCodeCmd, preludeCmd, modulesCmd, downloadCmd)
 
-	return []*cobra.Command{profileCmd, buildCmd}
+	srdiCmd := &cobra.Command{
+		Use:   consts.CommandSRDI,
+		Short: "build srdi",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return SRDICmd(cmd, con)
+		},
+	}
+	common.BindFlag(srdiCmd, common.SRDIFlagSet)
+	common.BindFlagCompletions(srdiCmd, func(comp carapace.ActionMap) {
+		comp["path"] = carapace.ActionFiles().Usage("file path")
+		comp["id"] = common.BuilderComplete(con)
+	})
+
+	return []*cobra.Command{profileCmd, buildCmd, srdiCmd}
 }

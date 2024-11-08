@@ -17,7 +17,7 @@ import (
 func RegAddCmd(cmd *cobra.Command, con *repl.Console) error {
 	// 解析注册表的各项参数
 	path := cmd.Flags().Arg(0)
-	hive, path := formatRegPath(path)
+	hive, path := FormatRegPath(path)
 	key := cmd.Flags().Arg(1)
 	stringValue, _ := cmd.Flags().GetString("string_value")
 	byteValue, _ := cmd.Flags().GetBytesBase64("byte_value")

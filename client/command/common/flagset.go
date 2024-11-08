@@ -119,24 +119,26 @@ func ParseEncryptionFlags(cmd *cobra.Command) *clientpb.Encryption {
 func GenerateFlagSet(f *pflag.FlagSet) {
 	f.String("profile_name", "", "profile name")
 	f.StringP("ip", "i", "", "build ip")
-	f.StringP("format", "f", "", "build type")
+	f.StringP("type", "", "", "build type")
 	f.String("target", "", "build target")
 	f.String("ca", "", "Set ca")
 	f.String("interval", "", "interval")
 	f.StringSliceP("modules", "m", []string{}, "Set modules e.g.: execute_exe,execute_dll")
 	f.String("jitter", "", "jitter")
+	f.String("shellcode_type", "", "shellcode_type e.g.: srdi, objcopy")
 }
 
-func ParseGenerateFlags(cmd *cobra.Command) (string, string, string, string, []string, string, string, string) {
+func ParseGenerateFlags(cmd *cobra.Command) (string, string, string, string, []string, string, string, string, string) {
 	name, _ := cmd.Flags().GetString("profile_name")
 	url, _ := cmd.Flags().GetString("ip")
 	target, _ := cmd.Flags().GetString("target")
-	buildType, _ := cmd.Flags().GetString("format")
+	buildType, _ := cmd.Flags().GetString("type")
 	modules, _ := cmd.Flags().GetStringSlice("modules")
 	ca, _ := cmd.Flags().GetString("ca")
 	interval, _ := cmd.Flags().GetString("interval")
 	jitter, _ := cmd.Flags().GetString("jitter")
-	return name, url, target, buildType, modules, ca, interval, jitter
+	shellcodeType, _ := cmd.Flags().GetString("shellcode_type")
+	return name, url, target, buildType, modules, ca, interval, jitter, shellcodeType
 }
 
 func ProfileSet(f *pflag.FlagSet) {
@@ -174,4 +176,25 @@ func MalHttpFlagset(f *pflag.FlagSet) {
 	f.String("proxy", "", "proxy")
 	f.String("timeout", "", "timeout")
 	f.Bool("insecure", false, "insecure")
+}
+
+func SRDIFlagSet(f *pflag.FlagSet) {
+	f.String("path", "", "file path")
+	f.String("type", "", "mutant type")
+	f.String("arch", "", "shellcode architecture, eg: x86,x86_64")
+	f.String("platform", "", "shellcode platform, eg: win,linux")
+	f.String("id", "", "build file id")
+	f.String("function_name", "", "shellcode function name")
+	f.String("user_data_path", "", "user data path")
+}
+
+func ParseSRDIFlags(cmd *cobra.Command) (string, string, string, string, string, string, string) {
+	path, _ := cmd.Flags().GetString("path")
+	typ, _ := cmd.Flags().GetString("type")
+	arch, _ := cmd.Flags().GetString("arch")
+	platform, _ := cmd.Flags().GetString("platform")
+	id, _ := cmd.Flags().GetString("id")
+	functionName, _ := cmd.Flags().GetString("function_name")
+	userDataPath, _ := cmd.Flags().GetString("user_data_path")
+	return path, typ, arch, platform, id, functionName, userDataPath
 }

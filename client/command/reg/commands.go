@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-func formatRegPath(path string) (string, string) {
+func FormatRegPath(path string) (string, string) {
 	path = file.FormatWindowPath(path)
 	i := strings.Index(path, "\\")
 	if i == -1 {
