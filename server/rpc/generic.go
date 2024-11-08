@@ -107,12 +107,7 @@ func (r *GenericRequest) HandlerResponse(ch chan *implantpb.Spite, typ types.Msg
 		logs.Log.Errorf("update task cur failed %s", err)
 		return
 	}
-	respByte, err := proto.Marshal(resp)
-	if err != nil {
-		logs.Log.Errorf("Failed to marshal resp to byte: %v", err)
-		return
-	}
-	err = r.Session.TaskLog(r.Task, respByte)
+	err = r.Session.TaskLog(r.Task, resp)
 	if err != nil {
 		logs.Log.Errorf("Failed to log task: %v", err)
 	}

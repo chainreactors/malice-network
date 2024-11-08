@@ -15,6 +15,7 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"github.com/gookit/config/v2"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/proto"
 	"os"
 	"path"
 	"path/filepath"
@@ -188,14 +189,18 @@ func (s *Session) RpcLogger() *logs.Logger {
 	return s.rpcLog
 }
 
-func (s *Session) TaskLog(task *Task, spite []byte) error {
+func (s *Session) TaskLog(task *Task, spite *implantpb.Spite) error {
+	data, err := proto.Marshal(spite)
+	if err != nil {
+		return err
+	}
 	filePath := filepath.Join(configs.LogPath, s.ID, fmt.Sprintf("%d_%d", task.Id, task.Cur))
 	f, err := os.OpenFile(filePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
-	_, err = f.WriteString(string(spite))
+	_, err = f.Write(data)
 	return err
 }
 

@@ -1,12 +1,14 @@
 module github.com/chainreactors/malice-network
 
-go 1.22.7
+go 1.22
+
+toolchain go1.22.7
 
 require (
 	filippo.io/age v1.1.1
 	github.com/Binject/go-donut v0.0.0-20220908180326-fcdcc35d591c
 	github.com/chainreactors/files v0.0.0-20231102192550-a652458cee26
-	github.com/chainreactors/logs v0.0.0-20240207121836-c946f072f81f
+	github.com/chainreactors/logs v0.0.0-20241108080408-6d31ab9dae0a
 	github.com/chainreactors/tui v0.0.0-20241031204320-bd545f364928
 	github.com/chainreactors/utils v0.0.0-20240805193040-ff3b97aa3c3f
 	github.com/charmbracelet/bubbles v0.18.0
