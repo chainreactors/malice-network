@@ -87,7 +87,7 @@ func (r *GenericRequest) SetCallback(callback func()) {
 func (r *GenericRequest) HandlerResponse(ch chan *implantpb.Spite, typ types.MsgName, callbacks ...func(spite *implantpb.Spite)) {
 	resp := <-ch
 	r.Session.AddMessage(resp, r.Task.Cur)
-	err := handler.AssertStatusAndResponse(resp, typ)
+	err := handler.AssertStatusAndSpite(resp, typ)
 	if err != nil {
 		logs.Log.Debug(err)
 		r.Task.Panic(buildErrorEvent(r.Task, err))

@@ -3,7 +3,7 @@ package handler
 import (
 	"errors"
 	"fmt"
-	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/types"
 )
@@ -22,25 +22,25 @@ func HandleMaleficError(content *implantpb.Spite) error {
 	switch content.Error {
 	case 0:
 		return nil
-	case consts.MaleficErrorPanic:
+	case errs.MaleficErrorPanic:
 		err = fmt.Errorf("module Panic")
-	case consts.MaleficErrorUnpackError:
+	case errs.MaleficErrorUnpackError:
 		err = fmt.Errorf("module unpack error")
-	case consts.MaleficErrorMissbody:
+	case errs.MaleficErrorMissbody:
 		err = fmt.Errorf("module miss body")
-	case consts.MaleficErrorModuleError:
+	case errs.MaleficErrorModuleError:
 		err = fmt.Errorf("module error")
-	case consts.MaleficErrorModuleNotFound:
+	case errs.MaleficErrorModuleNotFound:
 		err = fmt.Errorf("module not found")
-	case consts.MaleficErrorTaskError:
+	case errs.MaleficErrorTaskError:
 		return HandleTaskError(content.Status)
-	case consts.MaleficErrorTaskNotFound:
+	case errs.MaleficErrorTaskNotFound:
 		err = fmt.Errorf("task not found")
-	case consts.MaleficErrorTaskOperatorNotFound:
+	case errs.MaleficErrorTaskOperatorNotFound:
 		err = fmt.Errorf("task operator not found")
-	case consts.MaleficErrorExtensionNotFound:
+	case errs.MaleficErrorExtensionNotFound:
 		err = fmt.Errorf("extension not found")
-	case consts.MaleficErrorUnexceptBody:
+	case errs.MaleficErrorUnexceptBody:
 		err = fmt.Errorf("unexcept body")
 	default:
 		err = fmt.Errorf("unknown Malefic error, %d", content.Error)
@@ -53,17 +53,17 @@ func HandleTaskError(status *implantpb.Status) error {
 	switch status.Status {
 	case 0:
 		return nil
-	case consts.TaskErrorOperatorError:
+	case errs.TaskErrorOperatorError:
 		err = fmt.Errorf("task error: %s", status.Error)
-	case consts.TaskErrorNotExpectBody:
+	case errs.TaskErrorNotExpectBody:
 		err = fmt.Errorf("task error: %s", status.Error)
-	case consts.TaskErrorFieldRequired:
+	case errs.TaskErrorFieldRequired:
 		err = fmt.Errorf("task error: %s", status.Error)
-	case consts.TaskErrorFieldLengthMismatch:
+	case errs.TaskErrorFieldLengthMismatch:
 		err = fmt.Errorf("task error: %s", status.Error)
-	case consts.TaskErrorFieldInvalid:
+	case errs.TaskErrorFieldInvalid:
 		err = fmt.Errorf("task error: %s", status.Error)
-	case consts.TaskError:
+	case errs.TaskError:
 		err = fmt.Errorf("task error: %s", status.Error)
 	default:
 		err = fmt.Errorf("unknown error, %v", status)
@@ -78,7 +78,7 @@ func AssertRequestName(req *implantpb.Request, expect types.MsgName) error {
 	return nil
 }
 
-func AssertResponse(spite *implantpb.Spite, expect types.MsgName) error {
+func AssertSpite(spite *implantpb.Spite, expect types.MsgName) error {
 	body := spite.GetBody()
 	if body == nil && expect != types.MsgNil {
 		return ErrNilResponseBody
@@ -90,9 +90,9 @@ func AssertResponse(spite *implantpb.Spite, expect types.MsgName) error {
 	return nil
 }
 
-func AssertStatusAndResponse(spite *implantpb.Spite, expect types.MsgName) error {
+func AssertStatusAndSpite(spite *implantpb.Spite, expect types.MsgName) error {
 	if err := HandleMaleficError(spite); err != nil {
 		return err
 	}
-	return AssertResponse(spite, expect)
+	return AssertSpite(spite, expect)
 }
