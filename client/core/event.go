@@ -126,23 +126,23 @@ func (s *ServerStatus) EventHandler() {
 		// Trigger event based on type
 		switch event.Type {
 		case consts.EventClient:
-			tui.Down(0)
+			tui.Down(1)
 			if event.Op == consts.CtrlClientJoin {
 				Log.Infof("%s has joined the game", event.Client.Name)
 			} else if event.Op == consts.CtrlClientLeft {
 				Log.Infof("%s left the game", event.Client.Name)
 			}
 		case consts.EventBroadcast:
-			tui.Down(0)
+			tui.Down(1)
 			Log.Infof("%s : %s  %s", event.Client.Name, event.Message, event.Err)
 		case consts.EventSession:
-			tui.Down(0)
+			tui.Down(1)
 			s.handlerSession(event)
 		case consts.EventNotify:
-			tui.Down(0)
+			tui.Down(1)
 			Log.Importantf("%s notified: %s %s", event.Client.Name, event.Message, event.Err)
 		case consts.EventJob:
-			tui.Down(0)
+			tui.Down(1)
 			if event.Err != "" {
 				Log.Errorf("[%s] %s: %s", event.Type, event.Op, event.Err)
 				continue
@@ -158,19 +158,19 @@ func (s *ServerStatus) EventHandler() {
 					pipeline.GetWeb().RootPath)
 			}
 		case consts.EventListener:
-			tui.Down(0)
+			tui.Down(1)
 			Log.Importantf("[%s] %s: %s %s", event.Type, event.Op, event.Message, event.Err)
 		case consts.EventTask:
 			s.handlerTask(event)
 		case consts.EventWebsite:
-			tui.Down(0)
+			tui.Down(1)
 			Log.Importantf("[%s] %s: %s %s", event.Type, event.Op, event.Message, event.Err)
 		}
 	}
 }
 
 func (s *ServerStatus) handlerTask(event *clientpb.Event) {
-	tui.Down(0)
+	tui.Down(1)
 	switch event.Op {
 	case consts.CtrlTaskCallback:
 		s.triggerTaskDone(event)

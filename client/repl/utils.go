@@ -14,6 +14,7 @@ import (
 )
 
 var (
+	NewLine                    = "\x1b[1E"
 	Debug           logs.Level = 10
 	Warn            logs.Level = 20
 	Info            logs.Level = 30

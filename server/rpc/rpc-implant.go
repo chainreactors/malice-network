@@ -2,7 +2,6 @@ package rpc
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -17,44 +16,15 @@ import (
 
 func (rpc *Server) Register(ctx context.Context, req *clientpb.RegisterSession) (*clientpb.Empty, error) {
 	sess, ok := core.Sessions.Get(req.SessionId)
-	if ok {
-		logs.Log.Infof("session %s re-register", sess.ID)
-		sess.Publish(consts.CtrlSessionRegister, fmt.Sprintf("session %s from %s re-register at %s", sess.ID, sess.Target, sess.PipelineID))
-		sess.Update(req)
-		err := db.Session().Save(sess.ToModel()).Error
-		if err != nil {
-			logs.Log.Errorf("update session %s info failed in db, %s", sess.ID, err.Error())
-		}
-		return &clientpb.Empty{}, nil
+	if !ok {
+		return nil, ErrNotFoundSession
 	}
-
-	// 如果内存中不存在, 则尝试从数据库中恢复
-	dbSess, err := db.FindSession(req.SessionId)
-	if err != nil && !errors.Is(err, db.ErrRecordNotFound) {
-		return nil, err
-	} else if errors.Is(err, db.ErrRecordNotFound) {
-		// new session and save to db
-		sess, err = core.RegisterSession(req)
-		if err != nil {
-			return nil, err
-		}
-		d := db.Session().Create(sess.ToModel())
-		if d.Error != nil {
-			return nil, err
-		} else {
-			sess.Publish(consts.CtrlSessionRegister, fmt.Sprintf("session %s from %s start at %s", sess.ID, sess.Target, sess.PipelineID))
-			logs.Log.Importantf("recover session %s from %s", sess.ID, sess.PipelineID)
-		}
-	} else if dbSess == nil {
-		return nil, nil
-	} else {
-		// 数据库中已存在, update
-		sess, err = core.RecoverSession(dbSess)
-		if err != nil {
-			return nil, err
-		}
-		logs.Log.Infof("session %s re-register ", sess.ID)
-		sess.Publish(consts.CtrlSessionRegister, fmt.Sprintf("session %s from %s re-register at %s", sess.ID, sess.Target, sess.PipelineID))
+	logs.Log.Infof("session %s re-register", sess.ID)
+	sess.Publish(consts.CtrlSessionRegister, fmt.Sprintf("session %s from %s re-register at %s", sess.ID, sess.Target, sess.PipelineID))
+	sess.Update(req)
+	err := db.Session().Save(sess.ToModel()).Error
+	if err != nil {
+		logs.Log.Errorf("update session %s info failed in db, %s", sess.ID, err.Error())
 	}
 	core.Sessions.Add(sess)
 	return &clientpb.Empty{}, nil
