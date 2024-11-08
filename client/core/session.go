@@ -125,7 +125,7 @@ func (s *Session) GetHistory() {
 
 	for _, context := range contexts.Contexts {
 		if fn, ok := intermediate.InternalFunctions[context.Task.Type]; ok && fn.FinishCallback != nil {
-			err = os.WriteFile(logPath, []byte(logs.GreenBold(fmt.Sprintf("[%s.%d] task finish (%d/%d), %s",
+			err = os.WriteFile(logPath, []byte(logs.GreenBold(fmt.Sprintf("[%s.%d] task finish (%d/%d),%s\n",
 				context.Task.SessionId, context.Task.TaskId,
 				context.Task.Cur, context.Task.Total,
 				context.Task.Description))), os.ModePerm)
