@@ -22,12 +22,6 @@ import (
 	"syscall"
 )
 
-//go:generate protoc -I proto/ proto/client/clientpb/client.proto --go_out=paths=source_relative:proto/
-//go:generate protoc -I proto/ proto/client/rootpb/root.proto --go_out=paths=source_relative:proto/
-//go:generate protoc -I proto/ proto/implant/implantpb/implant.proto --go_out=paths=source_relative:proto/
-//go:generate protoc -I proto/ proto/services/clientrpc/service.proto --go_out=paths=source_relative:proto/ --go-grpc_out=paths=source_relative:proto/
-//go:generate protoc -I proto/ proto/services/listenerrpc/service.proto --go_out=paths=source_relative:proto/ --go-grpc_out=paths=source_relative:proto/
-
 func init() {
 	err := configs.InitConfig()
 	if err != nil {
@@ -39,10 +33,7 @@ func init() {
 		opt.ParseDefault = true
 	})
 	config.AddDriver(yaml.Driver)
-	db.Client = db.NewDBClient()
 	codenames.SetupCodenames(configs.ServerRootPath)
-	core.NewBroker()
-	core.NewSessions()
 }
 
 func Execute() {
@@ -92,6 +83,9 @@ func Execute() {
 	}
 
 	if opt.Server.Enable {
+		db.Client = db.NewDBClient()
+		core.NewBroker()
+		core.NewSessions()
 		if opt.IP != "" {
 			logs.Log.Infof("manually specified IP: %s will override %s config: %s", opt.IP, opt.Config, opt.Server.IP)
 			opt.Server.IP = opt.IP
