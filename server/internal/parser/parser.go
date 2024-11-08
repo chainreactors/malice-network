@@ -1,69 +1,38 @@
 package parser
 
 import (
-	"errors"
-	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/utils/peek"
 	"github.com/chainreactors/malice-network/server/internal/parser/malefic"
-	"github.com/gookit/config/v2"
+	"github.com/chainreactors/malice-network/server/internal/parser/pulse"
 	"io"
-)
-
-var (
-	ErrInvalidImplant = errors.New("invalid implant")
-	ErrPacketTooLarge = errors.New("packet too large")
 )
 
 // PacketParser packet parser, like malefic, beacon ...
 type PacketParser interface {
 	PeekHeader(conn *peek.Conn) (uint32, int, error)
+	ReadHeader(conn *peek.Conn) (uint32, int, error)
 	Parse([]byte) (*implantpb.Spites, error)
 	Marshal(*implantpb.Spites, uint32) ([]byte, error)
 }
 
-func NewParser(conn *peek.Conn) (*MessageParser, error) {
-	discriminator, err := conn.Peek(9)
-	if err != nil {
-		return nil, err
-	}
-
-	switch discriminator[0] {
-	case malefic.StartDelimiter:
-		return &MessageParser{
-			Implant:      consts.ImplantMalefic,
-			PacketParser: &malefic.MaleficParser{},
-		}, nil
+func NewParser(name string) (*MessageParser, error) {
+	switch name {
+	case consts.ImplantMalefic:
+		return &MessageParser{Implant: name, PacketParser: malefic.NewMaleficParser()}, nil
+	case consts.ImplantPulse:
+		return &MessageParser{Implant: name, PacketParser: pulse.NewPulseParser()}, nil
 	default:
-		return nil, ErrInvalidImplant
+		return nil, errs.ErrInvalidImplant
 	}
 }
 
 type MessageParser struct {
 	Implant string
 	PacketParser
-}
-
-func (parser *MessageParser) ReadHeader(conn *peek.Conn) (uint32, int, error) {
-	switch parser.Implant {
-	case consts.ImplantMalefic:
-		sid, length, err := parser.PeekHeader(conn)
-		if err != nil {
-			return 0, 0, err
-		}
-		//logs.Log.Debugf("%v read packet from %s , %d bytes", sid, conn.RemoteAddr(), length)
-		if length > config.Int(consts.ConfigMaxPacketLength)+consts.KB*16 {
-			return 0, 0, fmt.Errorf("%w,expect: %d, recv: %d", ErrPacketTooLarge, config.Int(consts.ConfigMaxPacketLength), length)
-		}
-		if n, err := conn.Reader.Discard(malefic.HeaderLength); err != nil {
-			return 0, n, err
-		}
-		return sid, length, nil
-	default:
-		return 0, 0, ErrInvalidImplant
-	}
 }
 
 func (parser *MessageParser) ReadMessage(conn *peek.Conn, length int) (*implantpb.Spites, error) {

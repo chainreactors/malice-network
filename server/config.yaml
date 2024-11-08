@@ -23,6 +23,7 @@ listeners:
       port: 5001
       host: 0.0.0.0
       protocol: tcp
+      parser: malefic
       enable: true
       tls:
         enable: false
@@ -40,6 +41,15 @@ listeners:
       encryption:
         enable: true
         type: aes
+        key: maliceofinternal
+    - name: shellcode
+      port: 5002
+      host: 0.0.0.0
+      parser: pulse
+      enable: true
+      encryption:
+        enable: true
+        type: xor
         key: maliceofinternal
   bind:
     -

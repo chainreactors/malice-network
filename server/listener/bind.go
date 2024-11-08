@@ -130,11 +130,7 @@ func (pipeline *BindPipeline) initConnection(conn *peek.Conn, req *clientpb.Spit
 }
 
 func (pipeline *BindPipeline) getConnection(conn *peek.Conn, sid uint32) (*core.Connection, error) {
-	p, err := parser.NewParser(conn)
-	if err != nil {
-		return nil, err
-	}
-	_, _, err = p.PeekHeader(conn)
+	p, err := parser.NewParser(pipeline.Parser)
 	if err != nil {
 		return nil, err
 	}

@@ -26,28 +26,30 @@ type TcpPipelineConfig struct {
 	Name             string            `config:"name" default:"tcp"`
 	Host             string            `config:"host" default:"0.0.0.0"`
 	Port             uint16            `config:"port" default:"5001"`
+	Parser           string            `config:"parser" default:"malefic"`
 	TlsConfig        *TlsConfig        `config:"tls"`
 	EncryptionConfig *EncryptionConfig `config:"encryption"`
 }
 
-func (tcpPipeline *TcpPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, error) {
-	tls, err := tcpPipeline.TlsConfig.ReadCert()
+func (tcp *TcpPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, error) {
+	tls, err := tcp.TlsConfig.ReadCert()
 	if err != nil {
 		return nil, err
 	}
 
 	return &clientpb.Pipeline{
-		Name:       tcpPipeline.Name,
+		Name:       tcp.Name,
 		ListenerId: lisId,
-		Enable:     tcpPipeline.Enable,
+		Enable:     tcp.Enable,
+		Parser:     tcp.Parser,
 		Body: &clientpb.Pipeline_Tcp{
 			Tcp: &clientpb.TCPPipeline{
-				Host: tcpPipeline.Host,
-				Port: uint32(tcpPipeline.Port),
+				Host: tcp.Host,
+				Port: uint32(tcp.Port),
 			},
 		},
 		Tls:        tls.ToProtobuf(),
-		Encryption: tcpPipeline.EncryptionConfig.ToProtobuf(),
+		Encryption: tcp.EncryptionConfig.ToProtobuf(),
 	}, nil
 }
 
@@ -67,6 +69,7 @@ func (pipeline *BindPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline
 		Name:       pipeline.Name,
 		Enable:     pipeline.Enable,
 		ListenerId: lisId,
+		Parser:     consts.ImplantMalefic,
 		Body: &clientpb.Pipeline_Bind{
 			Bind: &clientpb.BindPipeline{},
 		},
@@ -89,6 +92,7 @@ type WebsiteConfig struct {
 	WebsiteName string     `config:"name" default:"web"`
 	Port        uint16     `config:"port" default:"443"`
 	ContentPath string     `config:"content_path" default:""`
+	Parser      string     `config:"parser" default:"parser"`
 	TlsConfig   *TlsConfig `config:"tls" `
 }
 

@@ -38,6 +38,7 @@ func (ps Pipelines) ToProtobuf() *clientpb.Pipelines {
 func FromProtobuf(pipeline *clientpb.Pipeline) *PipelineConfig {
 	return &PipelineConfig{
 		ListenerID: pipeline.ListenerId,
+		Parser:     pipeline.Parser,
 		Tls: &configs.CertConfig{
 			Cert:   pipeline.GetTls().Cert,
 			Key:    pipeline.GetTls().Key,
@@ -53,6 +54,7 @@ func FromProtobuf(pipeline *clientpb.Pipeline) *PipelineConfig {
 
 type PipelineConfig struct {
 	ListenerID string
+	Parser     string
 	Tls        *configs.CertConfig
 	Encryption *configs.EncryptionConfig
 }
