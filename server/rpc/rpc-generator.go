@@ -8,34 +8,14 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/server/internal/build"
-	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db"
-	"github.com/docker/docker/client"
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 )
 
-var dockerClient *client.Client
-var once sync.Once
-var maleficConfig = "malefic_config"
-var community = "community"
-var prebuild = "prebuild"
-
-func getDockerClient() (*client.Client, error) {
-	var err error
-	once.Do(func() {
-		dockerClient, err = client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-		if err != nil {
-			logs.Log.Errorf("Error creating Docker client: %v", err)
-		}
-	})
-	return dockerClient, err
-}
-
 func (rpc *Server) Generate(ctx context.Context, req *clientpb.Generate) (*clientpb.Bin, error) {
-	cli, err := getDockerClient()
+	cli, err := build.GetDockerClient()
 	if err != nil {
 		return nil, err
 	}
@@ -72,8 +52,7 @@ func (rpc *Server) Generate(ctx context.Context, req *clientpb.Generate) (*clien
 			return nil, err
 		}
 	}
-
-	fileName, err := db.SaveBuilder(req)
+	fileName, _, err := db.SaveBuilderFromGenerate(req)
 	_, srcPath, err := build.MoveBuildOutput(req.Target, req.Platform, fileName)
 	if fileName != "" {
 		if err != nil {
@@ -81,18 +60,20 @@ func (rpc *Server) Generate(ctx context.Context, req *clientpb.Generate) (*clien
 			return nil, err
 		}
 		if req.ShellcodeType != "" {
+			req.Stager = "shellcode"
+			shellCodeName, srdiPath, _ := db.SaveBuilderFromGenerate(req)
 			data, err := build.MaleficSRDI(&clientpb.MutantFile{
-				Id:       fileName,
+				Id:       shellCodeName,
 				Type:     req.ShellcodeType,
 				Arch:     req.Target,
 				Platform: req.Platform,
-			}, srcPath, filepath.Join(configs.SRDIOutputPath, fileName))
+			}, srcPath, srdiPath)
 			if err != nil {
 				return nil, err
 			}
 			return &clientpb.Bin{
 				Bin:  data,
-				Name: strings.TrimSuffix(fileName, filepath.Ext(fileName)),
+				Name: strings.TrimSuffix(shellCodeName, filepath.Ext(shellCodeName)),
 			}, err
 		}
 	} else {
@@ -118,7 +99,7 @@ func (rpc *Server) GetBuilders(ctx context.Context, req *clientpb.Empty) (*clien
 }
 
 func (rpc *Server) DownloadOutput(ctx context.Context, req *clientpb.Sync) (*clientpb.SyncResp, error) {
-	filePath, err := build.GetOutPutPath(req.FileId)
+	filePath, err := db.GetBuilderPath(req.FileId)
 	if err != nil {
 		return nil, err
 	}

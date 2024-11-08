@@ -558,31 +558,53 @@ func GetProfiles() ([]models.Profile, error) {
 	return profiles, result.Error
 }
 
-func SaveBuilder(req *clientpb.Generate) (string, error) {
+func SaveBuilderFromGenerate(req *clientpb.Generate) (string, string, error) {
 	modules := strings.Join(req.Modules, ",")
+	name := configs.GetRandomID()
+	absBuildOutputPath, err := filepath.Abs(configs.BuildOutputPath)
+	if err != nil {
+		return "", "", err
+	}
 	builder := models.Builder{
-		Name:        configs.GetRandomID(),
+		Name:        name,
 		ProfileName: req.Name,
 		Target:      req.Target,
 		Type:        req.Type,
 		Stager:      req.Stager,
-		CreatedAt:   time.Now(),
 		CA:          req.Ca,
 		Modules:     modules,
+		Path:        filepath.Join(absBuildOutputPath, name),
 	}
 
 	paramsJson, err := json.Marshal(req.Params)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	builder.ParamsJson = string(paramsJson)
 
 	if err := Session().Create(&builder).Error; err != nil {
-		return "", err
+		return "", "", err
 
 	}
 
-	return builder.Name, nil
+	return name, builder.Path, nil
+}
+
+func GetBuilderFromUpload(shellcodeType string) (string, string, error) {
+	name := configs.GetRandomID()
+	absBuildOutputPath, err := filepath.Abs(configs.BuildOutputPath)
+	if err != nil {
+		return "", "", err
+	}
+	builder := models.Builder{
+		Name:   name,
+		Stager: shellcodeType,
+		Path:   filepath.Join(absBuildOutputPath, name),
+	}
+	if err := Session().Create(&builder).Error; err != nil {
+		return "", "", err
+	}
+	return name, builder.Path, nil
 }
 
 func GetBuilders() (*clientpb.Builders, error) {
@@ -599,6 +621,15 @@ func GetBuilders() (*clientpb.Builders, error) {
 		pbBuilders.Builders = append(pbBuilders.GetBuilders(), builder.ToProtobuf())
 	}
 	return pbBuilders, nil
+}
+
+func GetBuilderPath(fileName string) (string, error) {
+	var builder models.Builder
+	result := Session().Where("name = ?", fileName).First(&builder)
+	if result.Error != nil {
+		return "", result.Error
+	}
+	return builder.Path, nil
 }
 
 // Generator Profile
