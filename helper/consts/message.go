@@ -180,9 +180,13 @@ const (
 	CommandBeacon           = "beacon"
 	CommandBind             = "bind"
 	CommandShellCode        = "shellcode"
+	CommandModules          = "modules"
+	CommandLoader           = "loader"
 	CommandDownload         = "download"
 	CommandProfile          = "profile"
+	CommandSRDI             = "srdi"
 	CommandReg              = "reg"
+	CommandRegExplorer      = "reg_explorer"
 	CommandService          = "service"
 	CommandTaskSchd         = "taskschd"
 )

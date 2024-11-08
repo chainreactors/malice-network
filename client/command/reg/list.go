@@ -17,7 +17,7 @@ import (
 // RegListKeyCmd lists the keys under a specific registry path.
 func RegListKeyCmd(cmd *cobra.Command, con *repl.Console) error {
 	path := cmd.Flags().Arg(0)
-	hive, path := formatRegPath(path)
+	hive, path := FormatRegPath(path)
 	session := con.GetInteractive()
 	task, err := RegListKey(con.Rpc, session, hive, path)
 	if err != nil {
@@ -53,7 +53,7 @@ func RegisterRegListFunc(con *repl.Console) {
 		RegListValue,
 		"breq_query",
 		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, key, arch string) (*clientpb.Task, error) {
-			hive, path := formatRegPath(key)
+			hive, path := FormatRegPath(key)
 			return RegListValue(rpc, sess, hive, path)
 		},
 		func(content *clientpb.TaskContext) (interface{}, error) {
@@ -82,7 +82,7 @@ func RegisterRegListFunc(con *repl.Console) {
 // RegListValueCmd lists the values under a specific registry path.
 func RegListValueCmd(cmd *cobra.Command, con *repl.Console) error {
 	path := cmd.Flags().Arg(0)
-	hive, path := formatRegPath(path)
+	hive, path := FormatRegPath(path)
 	session := con.GetInteractive()
 	task, err := RegListValue(con.Rpc, session, hive, path)
 	if err != nil {

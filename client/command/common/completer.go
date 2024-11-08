@@ -238,6 +238,39 @@ func ProfileComplete(con *repl.Console) carapace.Action {
 	return carapace.ActionCallback(callback)
 }
 
+func BuilderComplete(con *repl.Console) carapace.Action {
+	callback := func(c carapace.Context) carapace.Action {
+		results := make([]string, 0)
+		builders, err := con.Rpc.GetBuilders(context.Background(), &clientpb.Empty{})
+		if err != nil {
+			con.Log.Errorf("Error get builder: %v\n", err)
+			return carapace.Action{}
+		}
+		for _, s := range builders.Builders {
+			results = append(results, s.Name, fmt.Sprintf("builder %s, type %s, target %s", s.Name, s.Type, s.Target))
+		}
+		return carapace.ActionValuesDescribed(results...).Tag("builder")
+	}
+	return carapace.ActionCallback(callback)
+}
+
+func SyncFileComplete(con *repl.Console) carapace.Action {
+	callback := func(c carapace.Context) carapace.Action {
+		results := make([]string, 0)
+		files, err := con.Rpc.GetTaskFiles(context.Background(),
+			&clientpb.Session{SessionId: con.GetInteractive().SessionId})
+		if err != nil {
+			con.Log.Errorf("Error get files: %v\n", err)
+			return carapace.Action{}
+		}
+		for _, f := range files.Files {
+			results = append(results, f.TaskId, fmt.Sprintf("sync file type %s, remote %s, local %s ", f.Op, f.Remote, f.Local))
+		}
+		return carapace.ActionValuesDescribed(results...).Tag("sync")
+	}
+	return carapace.ActionCallback(callback)
+}
+
 func AllPipelineComplete(con *repl.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)

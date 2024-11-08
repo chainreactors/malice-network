@@ -93,7 +93,7 @@ func FormatArrayResponse(ctx *clientpb.TaskContext) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return ctx.Task.Type + ":\n" + strings.Join(array.([]string), "\n\t"), nil
+	return ctx.Task.Type + ":\n\t" + strings.Join(array.([]string), "\n\t"), nil
 }
 
 func ParseKVResponse(ctx *clientpb.TaskContext) (interface{}, error) {

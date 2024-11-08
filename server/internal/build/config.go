@@ -42,28 +42,28 @@ func DbToConfig(req *clientpb.Generate) error {
 	return nil
 }
 
-func MoveBuildOutput(target, buildType, name string) error {
+func MoveBuildOutput(target, platform, name string) (string, string, error) {
 	var sourcePath string
 	var dstPath string
-	switch buildType {
-	case consts.PE:
+	switch platform {
+	case consts.Windows:
 		sourcePath = filepath.Join(configs.TargetPath, target, release, malefic+consts.PEFile)
 		dstPath = filepath.Join(configs.BuildOutputPath, name+consts.PEFile)
-	case consts.DLL:
-		sourcePath = filepath.Join(configs.TargetPath, target, release, malefic+consts.DllFile)
-		dstPath = filepath.Join(configs.BuildOutputPath, name+consts.DllFile)
-	case consts.Shellcode:
-		sourcePath = filepath.Join(configs.TargetPath, target, release, malefic+consts.ShellcodeFile)
-		dstPath = filepath.Join(configs.BuildOutputPath, name+consts.ShellcodeFile)
-	case consts.ELF:
+	//case consts.DLL:
+	//	sourcePath = filepath.Join(configs.TargetPath, target, release, malefic+consts.DllFile)
+	//	dstPath = filepath.Join(configs.BuildOutputPath, name+consts.DllFile)
+	//case consts.Shellcode:
+	//	sourcePath = filepath.Join(configs.TargetPath, target, release, malefic+consts.ShellcodeFile)
+	//	dstPath = filepath.Join(configs.BuildOutputPath, name+consts.ShellcodeFile)
+	case consts.Linux:
 		sourcePath = filepath.Join(configs.TargetPath, target, release, malefic)
 		dstPath = filepath.Join(configs.BuildOutputPath, name)
 	}
 	err := file.CopyFile(sourcePath, dstPath)
 	if err != nil {
-		return err
+		return "", "", err
 	}
-	return nil
+	return sourcePath, dstPath, nil
 }
 
 func GetOutPutPath(name string) (string, error) {

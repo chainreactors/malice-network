@@ -16,7 +16,7 @@ import (
 // RegDeleteCmd deletes a registry key.
 func RegDeleteCmd(cmd *cobra.Command, con *repl.Console) error {
 	path := cmd.Flags().Arg(0)
-	hive, path := formatRegPath(path)
+	hive, path := FormatRegPath(path)
 	key := cmd.Flags().Arg(1)
 	session := con.GetInteractive()
 	task, err := RegDelete(con.Rpc, session, hive, path, key)

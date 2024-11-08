@@ -75,7 +75,7 @@ sync 1
 	}
 
 	common.BindArgCompletions(syncCmd, nil,
-		carapace.ActionValues().Usage("file ID"))
+		common.SyncFileComplete(con))
 
 	return []*cobra.Command{
 		downloadCmd,

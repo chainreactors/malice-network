@@ -18,6 +18,10 @@ func ProfileShowCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
+	if len(resp.Profiles) == 0 {
+		con.Log.Info("No profiles")
+		return nil
+	}
 	var rowEntries []table.Row
 	var row table.Row
 	tableModel := tui.NewTable([]table.Column{

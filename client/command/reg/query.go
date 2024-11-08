@@ -16,7 +16,7 @@ import (
 // RegQueryCmd queries a registry key value.
 func RegQueryCmd(cmd *cobra.Command, con *repl.Console) error {
 	path := cmd.Flags().Arg(0)
-	hive, path := formatRegPath(path)
+	hive, path := FormatRegPath(path)
 	key := cmd.Flags().Arg(1)
 	session := con.GetInteractive()
 	task, err := RegQuery(con.Rpc, session, hive, path, key)
@@ -46,7 +46,7 @@ func RegisterRegQueryFunc(con *repl.Console) {
 		RegQuery,
 		"breg_queryv",
 		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, key, value, arch string) (*clientpb.Task, error) {
-			hive, path := formatRegPath(key)
+			hive, path := FormatRegPath(key)
 			return RegQuery(rpc, sess, hive, path, key)
 		},
 		common.ParseResponse,

@@ -70,6 +70,11 @@ var ArchMap = map[string]Arch{
 }
 
 const (
+	Windows = "win"
+	Linux   = "linux"
+)
+
+const (
 	ELF           = "elf"
 	PE            = "pe"
 	DLL           = "dll"

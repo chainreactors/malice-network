@@ -1,8 +1,10 @@
 package file
 
 import (
+	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/spf13/cobra"
 	"os"
+	"path/filepath"
 
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
@@ -17,7 +19,8 @@ func SyncCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	file, err := os.OpenFile(syncTask.Name, os.O_CREATE|os.O_WRONLY, 0644)
+	path := filepath.Join(assets.GetTempDir(), syncTask.Name)
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return err
 	}
@@ -26,5 +29,6 @@ func SyncCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
+	con.Log.Infof("sync file in path: %s", path)
 	return nil
 }
