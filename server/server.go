@@ -1,6 +1,8 @@
 package main
 
-import "github.com/chainreactors/malice-network/server/cmd/server"
+import (
+	"github.com/chainreactors/malice-network/server/cmd/server"
+)
 
 func main() {
 	//f, err := os.Create("cpu.prof")
