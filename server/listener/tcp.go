@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/encoders"
 	"github.com/chainreactors/malice-network/helper/encoders/hash"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
@@ -27,6 +28,11 @@ func NewTcpPipeline(conn *grpc.ClientConn, pipeline *clientpb.Pipeline) (*TCPPip
 		Enable:         true,
 		PipelineConfig: core.FromProtobuf(pipeline),
 	}
+	var err error
+	pp.parser, err = parser.NewParser(pp.Parser)
+	if err != nil {
+		return nil, err
+	}
 	return pp, nil
 }
 
@@ -37,6 +43,7 @@ type TCPPipeline struct {
 	Port     uint16
 	Host     string
 	Enable   bool
+	parser   *parser.MessageParser
 	*core.PipelineConfig
 }
 
@@ -99,7 +106,7 @@ func (pipeline *TCPPipeline) Start() error {
 	if err != nil {
 		return err
 	}
-	logs.Log.Infof("[pipeline] starting TCP pipeline on %s:%d", pipeline.Host, pipeline.Port)
+	logs.Log.Infof("[pipeline] starting TCP pipeline on %s:%d, parser: %s", pipeline.Host, pipeline.Port, pipeline.Parser)
 
 	return nil
 }
@@ -124,13 +131,35 @@ func (pipeline *TCPPipeline) handler() (net.Listener, error) {
 				continue
 			}
 			logs.Log.Debugf("accept from %s", conn.RemoteAddr())
-			go pipeline.handleAccept(conn)
+			switch pipeline.Parser {
+			case consts.ImplantMalefic:
+				go pipeline.handleBeacon(conn)
+			case consts.ImplantPulse:
+				go pipeline.handlePulse(conn)
+			}
+
 		}
 	}()
 	return ln, nil
 }
 
-func (pipeline *TCPPipeline) handleAccept(conn net.Conn) {
+func (pipeline *TCPPipeline) handlePulse(conn net.Conn) {
+	defer conn.Close()
+	peekConn, err := pipeline.WrapConn(conn)
+	if err != nil {
+		logs.Log.Debugf("wrap conn error: %s %v", conn.RemoteAddr(), err)
+		return
+	}
+	p := pipeline.parser
+	magic, _, err := p.ReadHeader(peekConn)
+	if err != nil {
+		return
+	}
+	//build.GetOutPutPath(shellcodeId)
+	p.WritePacket(peekConn, nil, magic)
+}
+
+func (pipeline *TCPPipeline) handleBeacon(conn net.Conn) {
 	defer conn.Close()
 	peekConn, err := pipeline.WrapConn(conn)
 	if err != nil {
@@ -157,10 +186,7 @@ func (pipeline *TCPPipeline) handleAccept(conn net.Conn) {
 }
 
 func (pipeline *TCPPipeline) getConnection(conn *peek.Conn) (*core.Connection, error) {
-	p, err := parser.NewParser(conn)
-	if err != nil {
-		return nil, err
-	}
+	p := pipeline.parser
 	sid, _, err := p.PeekHeader(conn)
 	if err != nil {
 		return nil, err

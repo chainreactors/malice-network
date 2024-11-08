@@ -18,6 +18,7 @@ type Pipeline struct {
 	Host       string           `config:"host"`
 	Port       uint16           `config:"port"`
 	Type       string           `gorm:"type:string;"`
+	Parser     string           `gorm:"type:string;"`
 	Enable     bool             `gorm:"type:boolean;"`
 	Tls        TlsConfig        `gorm:"embedded;embeddedPrefix:tls_"`
 	Encryption EncryptionConfig `gorm:"embedded;embeddedPrefix:encryption_"`
@@ -52,6 +53,7 @@ func FromPipelinePb(pipeline *clientpb.Pipeline) *Pipeline {
 			ListenerID: pipeline.ListenerId,
 			Name:       pipeline.Name,
 			Enable:     pipeline.Enable,
+			Parser:     pipeline.Parser,
 			Host:       body.Tcp.Host,
 			Port:       uint16(body.Tcp.Port),
 			Type:       consts.TCPPipeline,
@@ -63,6 +65,7 @@ func FromPipelinePb(pipeline *clientpb.Pipeline) *Pipeline {
 			ListenerID: pipeline.ListenerId,
 			Name:       pipeline.Name,
 			Enable:     pipeline.Enable,
+			Parser:     pipeline.Parser,
 			Type:       consts.BindPipeline,
 			Tls:        ToTlsDB(pipeline.Tls),
 			Encryption: ToEncryptionDB(pipeline.Encryption),
@@ -72,6 +75,7 @@ func FromPipelinePb(pipeline *clientpb.Pipeline) *Pipeline {
 			ListenerID: pipeline.ListenerId,
 			Name:       pipeline.Name,
 			Enable:     pipeline.Enable,
+			Parser:     pipeline.Parser,
 			WebPath:    body.Web.RootPath,
 			Port:       uint16(body.Web.Port),
 			Type:       "web",
@@ -90,6 +94,7 @@ func ToPipelinePB(pipeline Pipeline) *clientpb.Pipeline {
 			Name:       pipeline.Name,
 			ListenerId: pipeline.ListenerID,
 			Enable:     pipeline.Enable,
+			Parser:     pipeline.Parser,
 			Body: &clientpb.Pipeline_Tcp{
 				Tcp: &clientpb.TCPPipeline{
 					Host: pipeline.Host,
@@ -104,6 +109,7 @@ func ToPipelinePB(pipeline Pipeline) *clientpb.Pipeline {
 			Name:       pipeline.Name,
 			ListenerId: pipeline.ListenerID,
 			Enable:     pipeline.Enable,
+			Parser:     pipeline.Parser,
 			Body: &clientpb.Pipeline_Bind{
 				Bind: &clientpb.BindPipeline{},
 			},
@@ -115,6 +121,7 @@ func ToPipelinePB(pipeline Pipeline) *clientpb.Pipeline {
 			Name:       pipeline.Name,
 			ListenerId: pipeline.ListenerID,
 			Enable:     pipeline.Enable,
+			Parser:     pipeline.Parser,
 			Body: &clientpb.Pipeline_Web{
 				Web: &clientpb.Website{
 					RootPath: pipeline.WebPath,
