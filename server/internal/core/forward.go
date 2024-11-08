@@ -111,8 +111,7 @@ func (f *Forward) Handler() {
 			"session_id", msg.SessionID),
 		), &implantpb.Ping{})
 		if err != nil {
-			logs.Log.Error(err)
-			continue
+			logs.Log.Debug(err)
 		}
 		for _, spite := range msg.Spites.Spites {
 			switch spite.Body.(type) {
@@ -128,6 +127,8 @@ func (f *Forward) Handler() {
 					logs.Log.Errorf("register err %s", err.Error())
 					continue
 				}
+			case *implantpb.Spite_Ping:
+
 			default:
 				if size := proto.Size(spite); size <= 1000 {
 					logs.Log.Debugf("[listener.%s] receive spite %s, %v", msg.SessionID, spite.Name, spite)

@@ -15,18 +15,31 @@ import (
 )
 
 func (rpc *Server) Register(ctx context.Context, req *clientpb.RegisterSession) (*clientpb.Empty, error) {
+	var err error
 	sess, ok := core.Sessions.Get(req.SessionId)
 	if !ok {
-		return nil, ErrNotFoundSession
+		sess, err = core.RegisterSession(req)
+		if err != nil {
+			return nil, err
+		}
+		d := db.Session().Create(sess.ToModel())
+		if d.Error != nil {
+			return nil, err
+		} else {
+			sess.Publish(consts.CtrlSessionRegister, fmt.Sprintf("session %s from %s start at %s", sess.ID, sess.Target, sess.PipelineID))
+			logs.Log.Importantf("recover session %s from %s", sess.ID, sess.PipelineID)
+		}
+	} else {
+		logs.Log.Infof("session %s re-register", sess.ID)
+		sess.Update(req)
+		sess.Publish(consts.CtrlSessionRegister, fmt.Sprintf("session %s from %s re-register at %s", sess.ID, sess.Target, sess.PipelineID))
+		err := db.Session().Save(sess.ToModel()).Error
+		if err != nil {
+			logs.Log.Errorf("update session %s info failed in db, %s", sess.ID, err.Error())
+		}
+		core.Sessions.Add(sess)
 	}
-	logs.Log.Infof("session %s re-register", sess.ID)
-	sess.Publish(consts.CtrlSessionRegister, fmt.Sprintf("session %s from %s re-register at %s", sess.ID, sess.Target, sess.PipelineID))
-	sess.Update(req)
-	err := db.Session().Save(sess.ToModel()).Error
-	if err != nil {
-		logs.Log.Errorf("update session %s info failed in db, %s", sess.ID, err.Error())
-	}
-	core.Sessions.Add(sess)
+
 	return &clientpb.Empty{}, nil
 }
 
