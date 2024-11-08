@@ -191,16 +191,6 @@ const (
 	CommandTaskSchd         = "taskschd"
 )
 
-// task error
-const (
-	TaskErrorOperatorError       = 2
-	TaskErrorNotExpectBody       = 3
-	TaskErrorFieldRequired       = 4
-	TaskErrorFieldLengthMismatch = 5
-	TaskErrorFieldInvalid        = 6
-	TaskError                    = 99
-)
-
 const (
 	OPSecLOW   = "low"
 	OPSecMID   = "mid"

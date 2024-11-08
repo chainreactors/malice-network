@@ -2,6 +2,7 @@ package consts
 
 const (
 	ImplantMalefic      = "malefic"
+	ImplantPulse        = "pulse"
 	ImplantCobaltStrike = "cobaltstrike"
 )
 
@@ -22,20 +23,6 @@ const (
 	ReleaseMacOSX
 	ReleaseUbuntu
 	ReleaseCentos
-)
-
-// Malefic Error
-const (
-	MaleficErrorPanic uint32 = 1 + iota
-	MaleficErrorUnpackError
-	MaleficErrorMissbody
-	MaleficErrorModuleError
-	MaleficErrorModuleNotFound
-	MaleficErrorTaskError
-	MaleficErrorTaskNotFound
-	MaleficErrorTaskOperatorNotFound
-	MaleficErrorExtensionNotFound
-	MaleficErrorUnexceptBody
 )
 
 type Arch uint32

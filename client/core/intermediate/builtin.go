@@ -236,7 +236,7 @@ format_path("C:\\Windows\\System32\\calc.exe")
 
 	// 打印 assembly
 	RegisterFunction("assemblyprint", func(task *clientpb.TaskContext) (string, error) {
-		err := handler.AssertStatusAndResponse(task.GetSpite(), types.MsgBinaryResponse)
+		err := handler.AssertStatusAndSpite(task.GetSpite(), types.MsgBinaryResponse)
 		if err != nil {
 			return "", err
 		}

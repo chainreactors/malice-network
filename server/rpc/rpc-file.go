@@ -97,7 +97,7 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 				spite.Name = types.MsgUpload.String()
 				in <- spite
 				resp := <-out
-				err = handler.AssertResponse(resp, types.MsgAck)
+				err = handler.AssertSpite(resp, types.MsgAck)
 				if err != nil {
 					return
 				}
@@ -142,7 +142,7 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 
 	go func() {
 		resp := <-out
-		err := handler.AssertStatusAndResponse(resp, types.MsgDownload)
+		err := handler.AssertStatusAndSpite(resp, types.MsgDownload)
 		if err != nil {
 			greq.Task.Panic(buildErrorEvent(greq.Task, err))
 			return
@@ -189,7 +189,7 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 		ack.Name = types.MsgDownload.String()
 		in <- ack
 		for resp := range out {
-			err := handler.AssertStatusAndResponse(resp, types.MsgBlock)
+			err := handler.AssertStatusAndSpite(resp, types.MsgBlock)
 			if err != nil {
 				logs.Log.Errorf(err.Error())
 				return
