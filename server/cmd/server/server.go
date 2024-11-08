@@ -57,8 +57,8 @@ func Execute() {
 		}
 		logs.Log.Warnf("config file not found, created default config %s", opt.Config)
 	}
-	// load config
 
+	// load config
 	err = crConfig.LoadConfig(opt.Config, &opt)
 	if err != nil {
 		logs.Log.Warnf("cannot load config , %s ", err.Error())

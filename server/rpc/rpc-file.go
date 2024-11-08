@@ -15,7 +15,6 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"github.com/chainreactors/malice-network/server/internal/parser"
 	"github.com/gookit/config/v2"
-	"google.golang.org/protobuf/proto"
 	"gorm.io/gorm/utils"
 	"os"
 	"path"
@@ -103,12 +102,8 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 					return
 				}
 				greq.Session.AddMessage(resp, blockId)
-				respByte, err := proto.Marshal(resp)
-				if err != nil {
-					logs.Log.Errorf("Failed to marshal resp to byte: %v", err)
-					return
-				}
-				err = greq.Session.TaskLog(greq.Task, respByte)
+
+				err = greq.Session.TaskLog(greq.Task, resp)
 				if err != nil {
 					logs.Log.Errorf("Failed to write task log: %v", err)
 					return
@@ -152,19 +147,24 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 			greq.Task.Panic(buildErrorEvent(greq.Task, err))
 			return
 		}
-		respCheckSum := resp.GetDownloadResponse().Checksum
-		fileName := path.Join(configs.TempPath, respCheckSum)
+
+		err = greq.Session.TaskLog(greq.Task, resp)
+		if err != nil {
+			logs.Log.Errorf("Failed to write task log: %v", err)
+			return
+		}
+
+		downloadAbs := resp.GetDownloadResponse()
+		fileName := path.Join(configs.TempPath, downloadAbs.Checksum)
 		greq.Session.AddMessage(resp, 0)
 		greq.Task.Total = int(resp.GetDownloadResponse().Size)/config.Int(consts.ConfigMaxPacketLength) + 1
-		td := &models.FileDescription{
+		err = db.AddFile("download", greq.Task.ToProtobuf(), &models.FileDescription{
 			Name:     req.Name,
-			NickName: respCheckSum,
+			NickName: downloadAbs.Checksum,
 			Path:     req.Path,
 			Command:  fmt.Sprintf("download -%s -%s ", req.Name, req.Path),
 			Size:     int64(resp.GetDownloadResponse().Size),
-		}
-		taskPb := greq.Task.ToProtobuf()
-		err = db.AddFile("download", taskPb, td)
+		})
 		if err != nil {
 			logs.Log.Errorf("cannot create task %d , %s in db", greq.Task.Id, err.Error())
 		}
@@ -185,16 +185,7 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 			Success: true,
 			End:     false,
 		})
-		respByte, err := proto.Marshal(ack)
-		if err != nil {
-			logs.Log.Errorf("Failed to marshal resp to byte: %v", err)
-			return
-		}
-		err = greq.Session.TaskLog(greq.Task, respByte)
-		if err != nil {
-			logs.Log.Errorf("Failed to write task log: %v", err)
-			return
-		}
+
 		ack.Name = types.MsgDownload.String()
 		in <- ack
 		for resp := range out {
@@ -211,11 +202,10 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 			}
 			ack, _ := greq.NewSpite(&implantpb.ACK{Success: true})
 			ack.TaskId = greq.Task.Id
-			in <- ack
 			ack.Name = types.MsgDownload.String()
+			in <- ack
 			greq.Session.AddMessage(resp, int(block.BlockId+1))
-			taskID := greq.Task.SessionId + "-" + utils.ToString(greq.Task.Id)
-			err = db.UpdateFileByID(taskID, int(block.BlockId+1))
+			err = db.UpdateFileByID(greq.Task.TaskID(), int(block.BlockId+1))
 			if err != nil {
 				logs.Log.Errorf("cannot update task %d , %s in db", greq.Task.Id, err.Error())
 				return
@@ -223,7 +213,7 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 			greq.Task.Done(ack, "")
 			if block.End {
 				checksum, _ := file.CalculateSHA256Checksum(fileName)
-				if checksum != respCheckSum {
+				if checksum != downloadAbs.Checksum {
 					greq.Task.Panic(buildErrorEvent(greq.Task, fmt.Errorf("checksum error")))
 					return
 				}

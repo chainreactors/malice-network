@@ -84,6 +84,10 @@ type Task struct {
 	CallBy    string
 }
 
+func (t *Task) TaskID() string {
+	return fmt.Sprintf("%s-%d", t.SessionId, t.Id)
+}
+
 func (t *Task) ToProtobuf() *clientpb.Task {
 	task := &clientpb.Task{
 		TaskId:    t.Id,
