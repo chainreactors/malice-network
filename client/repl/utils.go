@@ -2,33 +2,13 @@ package repl
 
 import (
 	"fmt"
-	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/tui"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/mattn/go-tty"
 	"github.com/muesli/termenv"
 	"github.com/reeflective/console"
 	"github.com/spf13/cobra"
 	"os"
-)
-
-var (
-	NewLine                    = "\x1b[1E"
-	Debug           logs.Level = 10
-	Warn            logs.Level = 20
-	Info            logs.Level = 30
-	Error           logs.Level = 40
-	Important       logs.Level = 50
-	GroupStyle                 = lipgloss.NewStyle().Foreground(lipgloss.Color("#8BE9FD"))
-	NameStyle                  = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF79C6"))
-	DefaultLogStyle            = map[logs.Level]string{
-		Debug:     termenv.String(tui.Rocket+"[+]").Bold().Background(tui.Blue).String() + " %s ",
-		Warn:      termenv.String(tui.Zap+"[warn]").Bold().Background(tui.Yellow).String() + " %s ",
-		Important: termenv.String(tui.Fire+"[*]").Bold().Background(tui.Purple).String() + " %s ",
-		Info:      termenv.String(tui.HotSpring+"[i]").Bold().Background(tui.Green).String() + " %s ",
-		Error:     termenv.String(tui.Monster+"[-]").Bold().Background(tui.Red).String() + " %s ",
-	}
 )
 
 func exitConsole(c *console.Console) {
@@ -103,9 +83,9 @@ func NewSessionColor(prePrompt, sId string) string {
 	var sessionPrompt string
 	runes := []rune(sId)
 	if termenv.HasDarkBackground() {
-		sessionPrompt = fmt.Sprintf("%s [%s]> ", GroupStyle.Render(prePrompt), NameStyle.Render(string(runes)))
+		sessionPrompt = fmt.Sprintf("%s [%s]> ", core.GroupStyle.Render(prePrompt), core.NameStyle.Render(string(runes)))
 	} else {
-		sessionPrompt = fmt.Sprintf("%s [%s]> ", GroupStyle.Render(prePrompt), NameStyle.Render(string(runes)))
+		sessionPrompt = fmt.Sprintf("%s [%s]> ", core.GroupStyle.Render(prePrompt), core.NameStyle.Render(string(runes)))
 	}
 	return sessionPrompt
 }

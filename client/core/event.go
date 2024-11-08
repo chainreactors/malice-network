@@ -136,7 +136,6 @@ func (s *ServerStatus) EventHandler() {
 			tui.Down(1)
 			Log.Infof("%s : %s  %s", event.Client.Name, event.Message, event.Err)
 		case consts.EventSession:
-			tui.Down(1)
 			s.handlerSession(event)
 		case consts.EventNotify:
 			tui.Down(1)
