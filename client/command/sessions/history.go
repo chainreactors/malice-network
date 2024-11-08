@@ -34,7 +34,7 @@ func historyCmd(cmd *cobra.Command, con *repl.Console) error {
 	log := con.ServerStatus.ObserverLog(con.GetInteractive().SessionId)
 	for _, context := range contexts.Contexts {
 		if fn, ok := intermediate.InternalFunctions[context.Task.Type]; ok && fn.FinishCallback != nil {
-			log.Importantf(logs.GreenBold(fmt.Sprintf("[%s.%d] task finish (%d/%d), %s",
+			log.Importantf(logs.GreenBold(fmt.Sprintf("[%s.%d] task finish (%d/%d),%s\n",
 				context.Task.SessionId, context.Task.TaskId,
 				context.Task.Cur, context.Task.Total,
 				context.Task.Description)))

@@ -28,6 +28,7 @@ func Connect(con *Console, config *mtls.ClientConfig) (*grpc.ClientConn, error) 
 func Login(con *Console, config *mtls.ClientConfig) error {
 	conn, err := Connect(con, config)
 	if err != nil {
+		logs.Log.Errorf("Failed to connect to server %s: %v", config.Address(), err)
 		return err
 	}
 	logs.Log.Info("Initial connection established, initializing state...")

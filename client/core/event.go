@@ -8,7 +8,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/utils/handler"
-	"github.com/chainreactors/tui"
 	"io"
 )
 
@@ -37,7 +36,7 @@ func (s *ServerStatus) triggerTaskDone(event *clientpb.Event) {
 		if err != nil {
 			log.Errorf(logs.RedBold(err.Error()))
 		} else {
-			log.Importantf(logs.GreenBold(fmt.Sprintf("[%s.%d] task done (%d/%d): %s",
+			log.Importantf(logs.GreenBold(fmt.Sprintf("[%s.%d] task done (%d/%d): %s\n",
 				event.Task.SessionId, event.Task.TaskId,
 				event.Task.Cur, event.Task.Total, resp)))
 		}
@@ -60,7 +59,7 @@ func (s *ServerStatus) triggerTaskFinish(event *clientpb.Event) {
 	}
 
 	if fn, ok := intermediate.InternalFunctions[event.Task.Type]; ok && fn.FinishCallback != nil {
-		log.Importantf(logs.GreenBold(fmt.Sprintf("[%s.%d] task finish (%d/%d), %s",
+		log.Importantf(logs.GreenBold(fmt.Sprintf("[%s.%d] task finish (%d/%d),%s\n",
 			event.Task.SessionId, event.Task.TaskId,
 			event.Task.Cur, event.Task.Total,
 			event.Message)))
@@ -101,9 +100,9 @@ func (s *ServerStatus) EventHandler() {
 		return
 	}
 	s.EventStatus = true
-	Log.Importantf("starting event loop")
+	Log.Importantf("starting event loop\n")
 	defer func() {
-		Log.Warnf("event stream broken")
+		Log.Warnf("event stream broken\n")
 		s.EventStatus = false
 	}()
 	for {
@@ -126,22 +125,18 @@ func (s *ServerStatus) EventHandler() {
 		// Trigger event based on type
 		switch event.Type {
 		case consts.EventClient:
-			tui.Down(1)
 			if event.Op == consts.CtrlClientJoin {
 				Log.Infof("%s has joined the game", event.Client.Name)
 			} else if event.Op == consts.CtrlClientLeft {
 				Log.Infof("%s left the game", event.Client.Name)
 			}
 		case consts.EventBroadcast:
-			tui.Down(1)
 			Log.Infof("%s : %s  %s", event.Client.Name, event.Message, event.Err)
 		case consts.EventSession:
 			s.handlerSession(event)
 		case consts.EventNotify:
-			tui.Down(1)
 			Log.Importantf("%s notified: %s %s", event.Client.Name, event.Message, event.Err)
 		case consts.EventJob:
-			tui.Down(1)
 			if event.Err != "" {
 				Log.Errorf("[%s] %s: %s", event.Type, event.Op, event.Err)
 				continue
@@ -157,19 +152,16 @@ func (s *ServerStatus) EventHandler() {
 					pipeline.GetWeb().RootPath)
 			}
 		case consts.EventListener:
-			tui.Down(1)
 			Log.Importantf("[%s] %s: %s %s", event.Type, event.Op, event.Message, event.Err)
 		case consts.EventTask:
 			s.handlerTask(event)
 		case consts.EventWebsite:
-			tui.Down(1)
 			Log.Importantf("[%s] %s: %s %s", event.Type, event.Op, event.Message, event.Err)
 		}
 	}
 }
 
 func (s *ServerStatus) handlerTask(event *clientpb.Event) {
-	tui.Down(1)
 	switch event.Op {
 	case consts.CtrlTaskCallback:
 		s.triggerTaskDone(event)
@@ -189,8 +181,9 @@ func (s *ServerStatus) handlerSession(event *clientpb.Event) {
 		s.AddSession(event.Session)
 		Log.Importantf("register session: %s ", event.Message)
 	case consts.CtrlSessionTask:
-		log := s.ObserverLog(sid)
-		log.Importantf(logs.GreenBold(fmt.Sprintf("[%s.%d] run task %s: %s", sid, event.Task.TaskId, event.Task.Type, event.Message)))
+		//log := s.ObserverLog(sid)
+
+		fmt.Println(logs.GreenBold(fmt.Sprintf("[%s.%d] run task %s: %s", sid, event.Task.TaskId, event.Task.Type, event.Message)))
 	case consts.CtrlSessionError:
 		log := s.ObserverLog(sid)
 		log.Errorf(logs.GreenBold(fmt.Sprintf("[%s] task: %d error: %s\n", sid, event.Task.TaskId, event.Err)))
