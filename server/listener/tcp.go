@@ -12,6 +12,7 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/parser"
 	"google.golang.org/grpc"
+	"io"
 	"net"
 )
 
@@ -144,10 +145,14 @@ func (pipeline *TCPPipeline) handleAccept(conn net.Conn) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	err = connect.Handler(ctx, peekConn)
-	if err != nil {
-		logs.Log.Debugf("handler error: %s", err.Error())
-		return
+	for {
+		err = connect.Handler(ctx, peekConn)
+		if err != nil {
+			if err != io.EOF {
+				logs.Log.Debugf("handler error: %s", err.Error())
+			}
+			return
+		}
 	}
 }
 
