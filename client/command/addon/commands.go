@@ -81,7 +81,7 @@ execute_addon gogo -- -i 127.0.0.1 -p http
 `,
 	}
 	common.BindFlag(execAddonCmd, common.ExecuteFlagSet, common.SacrificeFlagSet)
-	common.BindArgCompletions(execAddonCmd, nil, common.SessionAddonComplete(con))
+	common.BindArgCompletions(execAddonCmd, nil, common.SessionAddonCompleter(con))
 
 	return []*cobra.Command{listaddonCmd, loadaddonCmd, execAddonCmd}
 }

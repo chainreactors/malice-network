@@ -8,7 +8,7 @@ import (
 )
 
 type Builder struct {
-	ID          uint   `gorm:"primaryKey;autoIncrement"`
+	ID          uint32 `gorm:"primaryKey;autoIncrement"`
 	Name        string `gorm:"unique"`
 	ProfileName string `gorm:"index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:ProfileName;references:Name"` // 将 ProfileName 设置为外键
 

@@ -13,13 +13,13 @@ import (
 	"strings"
 )
 
-func DownloadCmd(cmd *cobra.Command, con *repl.Console) error {
+func ListArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
 	builders, err := con.Rpc.GetBuilders(context.Background(), &clientpb.Empty{})
 	if err != nil {
 		return err
 	}
 	if len(builders.Builders) > 0 {
-		err = printBuilders(builders, con)
+		err = PrintArtifacts(builders, con)
 		if err != nil {
 			return err
 		}
@@ -29,7 +29,7 @@ func DownloadCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func printBuilders(builders *clientpb.Builders, con *repl.Console) error {
+func PrintArtifacts(builders *clientpb.Builders, con *repl.Console) error {
 	var rowEntries []table.Row
 	var row table.Row
 
@@ -52,7 +52,7 @@ func printBuilders(builders *clientpb.Builders, con *repl.Console) error {
 	}
 	tableModel.SetRows(rowEntries)
 	tableModel.SetHandle(func() {
-		downloadBuilder(tableModel, con)()
+		downloadArtifactCallback(tableModel, con)()
 	})
 	newTable := tui.NewModel(tableModel, tableModel.ConsoleHandler, true, false)
 	err := newTable.Run()
@@ -63,31 +63,62 @@ func printBuilders(builders *clientpb.Builders, con *repl.Console) error {
 	return nil
 }
 
-func downloadBuilder(tableModel *tui.TableModel, con *repl.Console) func() {
-	selectRow := tableModel.GetSelectedRow()
-	resp, err := con.Rpc.DownloadOutput(context.Background(), &clientpb.Sync{
-		FileId: selectRow[0],
+func DownloadArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
+	name := cmd.Flags().Arg(0)
+	_, err := DownloadArtifact(con, name)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func UploadArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
+	name := cmd.Flags().Arg(0)
+	_, err := UploadArtifact(con, name)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+func DownloadArtifact(con *repl.Console, name string) (bool, error) {
+	resp, err := con.Rpc.DownloadArtifact(context.Background(), &clientpb.Sync{
+		FileId: name,
 	})
 	if err != nil {
-		return func() {
-			con.Log.Errorf("download build output %s", err)
-		}
+		return false, err
 	}
 	filePath := filepath.Join(assets.GetTempDir(), resp.Name)
-	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, 0644)
+	err = os.WriteFile(filePath, resp.Content, 0644)
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func UploadArtifact(con *repl.Console, name string) (bool, error) {
+	bin, err := os.ReadFile(name)
+	if err != nil {
+		return false, err
+	}
+
+	_, err = con.Rpc.UploadArtifact(context.Background(), &clientpb.Bin{
+		Name: name,
+		Bin:  bin,
+	})
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func downloadArtifactCallback(tableModel *tui.TableModel, con *repl.Console) func() {
+	selectRow := tableModel.GetSelectedRow()
+	_, err := DownloadArtifact(con, selectRow[0])
 	if err != nil {
 		return func() {
 			con.Log.Errorf("open file %s", err)
 		}
 	}
-	defer file.Close()
-	_, err = file.Write(resp.Content)
-	if err != nil {
-		return func() {
-			con.Log.Errorf("write file %s", err)
-		}
-	}
-
 	return func() {
 	}
 }

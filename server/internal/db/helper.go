@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/chainreactors/malice-network/helper/codenames"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/encoders"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/utils/mtls"
 	"github.com/chainreactors/malice-network/server/internal/configs"
@@ -559,7 +559,7 @@ func GetProfiles() ([]models.Profile, error) {
 	return profiles, result.Error
 }
 
-func SaveBuilderFromGenerate(req *clientpb.Generate, realName string) (string, error) {
+func SaveArtifactFromGenerate(req *clientpb.Generate, realName string) (string, error) {
 	modules := strings.Join(req.Modules, ",")
 
 	absBuildOutputPath, err := filepath.Abs(configs.BuildOutputPath)
@@ -592,11 +592,8 @@ func SaveBuilderFromGenerate(req *clientpb.Generate, realName string) (string, e
 	return builder.Path, nil
 }
 
-func GetBuilderFromUpload(realName, shellcodeType string) (string, string, error) {
-	name, err := codenames.GetCodename()
-	if err != nil {
-		return "", "", err
-	}
+func AddArtifact(realName, shellcodeType string) (string, string, error) {
+	name := encoders.UUID()
 	absBuildOutputPath, err := filepath.Abs(configs.BuildOutputPath)
 	if err != nil {
 		return "", "", err
@@ -613,7 +610,7 @@ func GetBuilderFromUpload(realName, shellcodeType string) (string, string, error
 	return name, builder.Path, nil
 }
 
-func GetBuilders() (*clientpb.Builders, error) {
+func GetArtifacts() (*clientpb.Builders, error) {
 	var builders []models.Builder
 	result := Session().Preload("Profile").Find(&builders)
 	if result.Error != nil {
@@ -629,13 +626,22 @@ func GetBuilders() (*clientpb.Builders, error) {
 	return pbBuilders, nil
 }
 
-func GetBuilderResource(fileName string) (string, string, error) {
+func GetArtifactByName(name string) (string, string, error) {
 	var builder models.Builder
-	result := Session().Where("name = ?", fileName).First(&builder)
+	result := Session().Where("name = ?", name).First(&builder)
 	if result.Error != nil {
 		return "", "", result.Error
 	}
 	return builder.Path, builder.RealName, nil
+}
+
+func GetArtifactById(id uint32) (models.Builder, error) {
+	var builder models.Builder
+	result := Session().Where("id = ?", id).First(&builder)
+	if result.Error != nil {
+		return builder, result.Error
+	}
+	return builder, nil
 }
 
 // Generator Profile

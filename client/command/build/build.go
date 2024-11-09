@@ -19,10 +19,10 @@ func BeaconCmd(cmd *cobra.Command, con *repl.Console) error {
 		}
 	}
 	go func() {
-		_, err := con.Rpc.Generate(context.Background(), &clientpb.Generate{
+		_, err := con.Rpc.Build(context.Background(), &clientpb.Generate{
 			ProfileName: name,
 			Url:         url,
-			Type:        consts.CommandBeacon,
+			Type:        consts.CommandBuildBeacon,
 			Target:      buildTarget,
 			Modules:     modules,
 			Ca:          ca,
@@ -50,10 +50,10 @@ func BindCmd(cmd *cobra.Command, con *repl.Console) error {
 		}
 	}
 	go func() {
-		_, err := con.Rpc.Generate(context.Background(), &clientpb.Generate{
+		_, err := con.Rpc.Build(context.Background(), &clientpb.Generate{
 			ProfileName: name,
 			Url:         url,
-			Type:        consts.CommandBind,
+			Type:        consts.CommandBuildBind,
 			Target:      buildTarget,
 			Modules:     modules,
 			Ca:          ca,
@@ -81,10 +81,10 @@ func ShellCodeCmd(cmd *cobra.Command, con *repl.Console) error {
 		}
 	}
 	go func() {
-		_, err := con.Rpc.Generate(context.Background(), &clientpb.Generate{
+		_, err := con.Rpc.Build(context.Background(), &clientpb.Generate{
 			ProfileName: name,
 			Url:         url,
-			Type:        consts.CommandShellCode,
+			Type:        consts.CommandBuildShellCode,
 			Target:      buildTarget,
 			Modules:     modules,
 			Ca:          ca,
@@ -112,10 +112,10 @@ func PreludeCmd(cmd *cobra.Command, con *repl.Console) error {
 		}
 	}
 	go func() {
-		_, err := con.Rpc.Generate(context.Background(), &clientpb.Generate{
+		_, err := con.Rpc.Build(context.Background(), &clientpb.Generate{
 			ProfileName: name,
 			Url:         url,
-			Type:        consts.CommandPrelude,
+			Type:        consts.CommandBuildPrelude,
 			Target:      buildTarget,
 			Modules:     modules,
 			Ca:          ca,
@@ -147,11 +147,11 @@ func ModulesCmd(cmd *cobra.Command, con *repl.Console) error {
 		}
 	}
 	go func() {
-		_, err := con.Rpc.Generate(context.Background(), &clientpb.Generate{
+		_, err := con.Rpc.Build(context.Background(), &clientpb.Generate{
 			ProfileName: name,
 			Url:         url,
 			Target:      buildTarget,
-			Type:        consts.CommandModules,
+			Type:        consts.CommandBuildModules,
 			Modules:     modules,
 			Ca:          ca,
 			Params: map[string]string{
@@ -179,11 +179,11 @@ func LoaderCmd(cmd *cobra.Command, con *repl.Console) error {
 		}
 	}
 	go func() {
-		_, err := con.Rpc.Generate(context.Background(), &clientpb.Generate{
+		_, err := con.Rpc.Build(context.Background(), &clientpb.Generate{
 			ProfileName: name,
 			Url:         url,
 			Target:      buildTarget,
-			Type:        consts.CommandLoader,
+			Type:        consts.CommandBuildLoader,
 			Modules:     modules,
 			Ca:          ca,
 			Params: map[string]string{

@@ -86,7 +86,7 @@ tcp register listener --tls --cert_path /path/to/cert --key_path /path/to/key
 	tcpCmd.AddCommand(newTCPPipelineCmd)
 
 	bindCmd := &cobra.Command{
-		Use:   consts.CommandBind,
+		Use:   consts.CommandBuildBind,
 		Short: "manage bind pipeline to a listener",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
@@ -156,7 +156,7 @@ pipeline stop tcp_test
 
 	common.BindArgCompletions(stopPipelineCmd, nil,
 		common.ListenerIDCompleter(con),
-		common.JobsComplete(con, stopPipelineCmd, consts.CommandTcp),
+		common.JobsCompleter(con, stopPipelineCmd, consts.CommandTcp),
 	)
 
 	listPipelineCmd := &cobra.Command{
@@ -270,7 +270,7 @@ website stop web_test listener
 
 	common.BindArgCompletions(websiteStopCmd, nil,
 		common.ListenerIDCompleter(con),
-		common.JobsComplete(con, websiteStopCmd, consts.CommandWebsite),
+		common.JobsCompleter(con, websiteStopCmd, consts.CommandWebsite),
 	)
 
 	websiteCmd.AddCommand(websiteRegisterCmd, websiteStartCmd, websiteStopCmd)
