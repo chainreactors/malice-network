@@ -21,8 +21,8 @@ func DbToConfig(req *clientpb.Generate) error {
 	var profileDB models.Profile
 	var profile configs.GeneratorConfig
 	var err error
-	if req.Name != "" {
-		profileDB, err = db.GetProfile(req.Name)
+	if req.ProfileName != "" {
+		profileDB, err = db.GetProfile(req.ProfileName)
 		if err != nil {
 			return err
 		}

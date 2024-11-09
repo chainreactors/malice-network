@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 	"fmt"
+	"github.com/chainreactors/malice-network/helper/codenames"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/server/internal/build"
 	"github.com/chainreactors/malice-network/server/internal/configs"
@@ -56,19 +57,25 @@ func (rpc *Server) ShellcodeEncode(ctx context.Context, req *clientpb.ShellcodeE
 
 func (rpc *Server) MaleficSRDI(ctx context.Context, req *clientpb.MutantFile) (*clientpb.Bin, error) {
 	if req.Id != "" {
-		filePath, err := db.GetBuilderPath(req.Id)
+		filePath, _, err := db.GetBuilderResource(req.Id)
 		if err != nil {
 			return nil, err
 		}
-		fileName := filepath.Base(filePath)
-
-		bin, err := build.MaleficSRDI(req, filePath, filepath.Join(configs.BuildOutputPath, fileName))
+		fileName, err := codenames.GetCodename()
+		if err != nil {
+			return nil, err
+		}
+		_, srdiPath, err := db.GetBuilderFromUpload(req.Name, req.Type)
+		if err != nil {
+			return nil, err
+		}
+		bin, err := build.MaleficSRDI(req, filePath, srdiPath)
 		if err != nil {
 			return nil, err
 		}
 		return &clientpb.Bin{Bin: bin, Name: fileName}, nil
 	}
-	_, dstPath, err := db.GetBuilderFromUpload(req.Type)
+	_, dstPath, err := db.GetBuilderFromUpload(req.Name, req.Type)
 	if err != nil {
 		return nil, err
 	}
@@ -81,5 +88,5 @@ func (rpc *Server) MaleficSRDI(ctx context.Context, req *clientpb.MutantFile) (*
 	if err != nil {
 		return nil, err
 	}
-	return &clientpb.Bin{Bin: bin}, nil
+	return &clientpb.Bin{Bin: bin, Name: req.Name}, nil
 }

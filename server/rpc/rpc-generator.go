@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/codenames"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/server/internal/build"
@@ -52,41 +53,50 @@ func (rpc *Server) Generate(ctx context.Context, req *clientpb.Generate) (*clien
 			return nil, err
 		}
 	}
-	fileName, _, err := db.SaveBuilderFromGenerate(req)
-	_, srcPath, err := build.MoveBuildOutput(req.Target, req.Platform, fileName)
-	if fileName != "" {
+	name, err := codenames.GetCodename()
+	if err != nil {
+		return nil, err
+	}
+	req.Name = name
+	maleficPath, buildSrcPath, err := build.MoveBuildOutput(req.Target, req.Platform, name)
+	if err != nil {
+		return nil, err
+	}
+	_, err = db.SaveBuilderFromGenerate(req, filepath.Base(maleficPath))
+	if err != nil {
+		logs.Log.Errorf("move build output error: %v", err)
+		return nil, err
+	}
+	if req.ShellcodeType != "" {
+		req.Stager = "shellcode"
+		shellCodeName, err := codenames.GetCodename()
 		if err != nil {
-			logs.Log.Errorf("move build output error: %v", err)
 			return nil, err
 		}
-		if req.ShellcodeType != "" {
-			req.Stager = "shellcode"
-			shellCodeName, srdiPath, _ := db.SaveBuilderFromGenerate(req)
-			data, err := build.MaleficSRDI(&clientpb.MutantFile{
-				Id:       shellCodeName,
-				Type:     req.ShellcodeType,
-				Arch:     req.Target,
-				Platform: req.Platform,
-			}, srcPath, srdiPath)
-			if err != nil {
-				return nil, err
-			}
-			return &clientpb.Bin{
-				Bin:  data,
-				Name: strings.TrimSuffix(shellCodeName, filepath.Ext(shellCodeName)),
-			}, err
+		req.Name = shellCodeName
+		srdiPath, _ := db.SaveBuilderFromGenerate(req, filepath.Base(buildSrcPath))
+		data, err := build.MaleficSRDI(&clientpb.MutantFile{
+			Name:     shellCodeName,
+			Type:     req.ShellcodeType,
+			Arch:     req.Target,
+			Platform: req.Platform,
+		}, buildSrcPath, srdiPath)
+		if err != nil {
+			return nil, err
 		}
-	} else {
-		logs.Log.Errorf("save builder error: %v, you can find build output in ./malice/build/target/%s/", err,
-			req.Target)
+		return &clientpb.Bin{
+			Bin:  data,
+			Name: strings.TrimSuffix(shellCodeName, filepath.Ext(shellCodeName)),
+		}, err
 	}
-	data, err := os.ReadFile(srcPath)
+
+	data, err := os.ReadFile(buildSrcPath)
 	if err != nil {
 		return nil, err
 	}
 	return &clientpb.Bin{
 		Bin:  data,
-		Name: fileName,
+		Name: name,
 	}, err
 }
 
@@ -99,7 +109,7 @@ func (rpc *Server) GetBuilders(ctx context.Context, req *clientpb.Empty) (*clien
 }
 
 func (rpc *Server) DownloadOutput(ctx context.Context, req *clientpb.Sync) (*clientpb.SyncResp, error) {
-	filePath, err := db.GetBuilderPath(req.FileId)
+	filePath, fileName, err := db.GetBuilderResource(req.FileId)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +118,7 @@ func (rpc *Server) DownloadOutput(ctx context.Context, req *clientpb.Sync) (*cli
 		return nil, err
 	}
 	return &clientpb.SyncResp{
-		Name:    filepath.Base(filePath),
+		Name:    fileName,
 		Content: data,
 	}, nil
 }

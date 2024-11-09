@@ -12,6 +12,7 @@ type Builder struct {
 	Name        string `gorm:"unique"`
 	ProfileName string `gorm:"index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:ProfileName;references:Name"` // 将 ProfileName 设置为外键
 
+	RealName   string
 	CreatedAt  time.Time `gorm:"->;<-:create;"`
 	Target     string    // build target, like win64, win32, linux64
 	Type       string    // build type, pe, dll, shellcode
