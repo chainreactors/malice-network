@@ -20,12 +20,12 @@ func BeaconCmd(cmd *cobra.Command, con *repl.Console) error {
 	}
 	go func() {
 		_, err := con.Rpc.Generate(context.Background(), &clientpb.Generate{
-			Name:    name,
-			Url:     url,
-			Type:    consts.CommandBeacon,
-			Target:  buildTarget,
-			Modules: modules,
-			Ca:      ca,
+			ProfileName: name,
+			Url:         url,
+			Type:        consts.CommandBeacon,
+			Target:      buildTarget,
+			Modules:     modules,
+			Ca:          ca,
 			Params: map[string]string{
 				"interval": interval,
 				"jitter":   jitter,
@@ -51,12 +51,12 @@ func BindCmd(cmd *cobra.Command, con *repl.Console) error {
 	}
 	go func() {
 		_, err := con.Rpc.Generate(context.Background(), &clientpb.Generate{
-			Name:    name,
-			Url:     url,
-			Type:    consts.CommandBind,
-			Target:  buildTarget,
-			Modules: modules,
-			Ca:      ca,
+			ProfileName: name,
+			Url:         url,
+			Type:        consts.CommandBind,
+			Target:      buildTarget,
+			Modules:     modules,
+			Ca:          ca,
 			Params: map[string]string{
 				"interval": interval,
 				"jitter":   jitter,
@@ -82,12 +82,12 @@ func ShellCodeCmd(cmd *cobra.Command, con *repl.Console) error {
 	}
 	go func() {
 		_, err := con.Rpc.Generate(context.Background(), &clientpb.Generate{
-			Name:    name,
-			Url:     url,
-			Type:    consts.CommandShellCode,
-			Target:  buildTarget,
-			Modules: modules,
-			Ca:      ca,
+			ProfileName: name,
+			Url:         url,
+			Type:        consts.CommandShellCode,
+			Target:      buildTarget,
+			Modules:     modules,
+			Ca:          ca,
 			Params: map[string]string{
 				"interval": interval,
 				"jitter":   jitter,
@@ -113,12 +113,12 @@ func PreludeCmd(cmd *cobra.Command, con *repl.Console) error {
 	}
 	go func() {
 		_, err := con.Rpc.Generate(context.Background(), &clientpb.Generate{
-			Name:    name,
-			Url:     url,
-			Type:    consts.CommandPrelude,
-			Target:  buildTarget,
-			Modules: modules,
-			Ca:      ca,
+			ProfileName: name,
+			Url:         url,
+			Type:        consts.CommandPrelude,
+			Target:      buildTarget,
+			Modules:     modules,
+			Ca:          ca,
 			Params: map[string]string{
 				"interval": interval,
 				"jitter":   jitter,
@@ -148,12 +148,12 @@ func ModulesCmd(cmd *cobra.Command, con *repl.Console) error {
 	}
 	go func() {
 		_, err := con.Rpc.Generate(context.Background(), &clientpb.Generate{
-			Name:    name,
-			Url:     url,
-			Target:  buildTarget,
-			Type:    consts.CommandModules,
-			Modules: modules,
-			Ca:      ca,
+			ProfileName: name,
+			Url:         url,
+			Target:      buildTarget,
+			Type:        consts.CommandModules,
+			Modules:     modules,
+			Ca:          ca,
 			Params: map[string]string{
 				"interval": interval,
 				"jitter":   jitter,
@@ -180,12 +180,12 @@ func LoaderCmd(cmd *cobra.Command, con *repl.Console) error {
 	}
 	go func() {
 		_, err := con.Rpc.Generate(context.Background(), &clientpb.Generate{
-			Name:    name,
-			Url:     url,
-			Target:  buildTarget,
-			Type:    consts.CommandLoader,
-			Modules: modules,
-			Ca:      ca,
+			ProfileName: name,
+			Url:         url,
+			Target:      buildTarget,
+			Type:        consts.CommandLoader,
+			Modules:     modules,
+			Ca:          ca,
 			Params: map[string]string{
 				"interval": interval,
 				"jitter":   jitter,

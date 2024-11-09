@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/chainreactors/malice-network/helper/codenames"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/utils/mtls"
@@ -558,48 +559,53 @@ func GetProfiles() ([]models.Profile, error) {
 	return profiles, result.Error
 }
 
-func SaveBuilderFromGenerate(req *clientpb.Generate) (string, string, error) {
+func SaveBuilderFromGenerate(req *clientpb.Generate, realName string) (string, error) {
 	modules := strings.Join(req.Modules, ",")
-	name := configs.GetRandomID()
+
 	absBuildOutputPath, err := filepath.Abs(configs.BuildOutputPath)
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 	builder := models.Builder{
-		Name:        name,
-		ProfileName: req.Name,
+		Name:        req.Name,
+		ProfileName: req.ProfileName,
 		Target:      req.Target,
 		Type:        req.Type,
 		Stager:      req.Stager,
 		CA:          req.Ca,
 		Modules:     modules,
-		Path:        filepath.Join(absBuildOutputPath, name),
+		RealName:    realName,
+		Path:        filepath.Join(absBuildOutputPath, req.Name),
 	}
 
 	paramsJson, err := json.Marshal(req.Params)
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 	builder.ParamsJson = string(paramsJson)
 
 	if err := Session().Create(&builder).Error; err != nil {
-		return "", "", err
+		return "", err
 
 	}
 
-	return name, builder.Path, nil
+	return builder.Path, nil
 }
 
-func GetBuilderFromUpload(shellcodeType string) (string, string, error) {
-	name := configs.GetRandomID()
+func GetBuilderFromUpload(realName, shellcodeType string) (string, string, error) {
+	name, err := codenames.GetCodename()
+	if err != nil {
+		return "", "", err
+	}
 	absBuildOutputPath, err := filepath.Abs(configs.BuildOutputPath)
 	if err != nil {
 		return "", "", err
 	}
 	builder := models.Builder{
-		Name:   name,
-		Stager: shellcodeType,
-		Path:   filepath.Join(absBuildOutputPath, name),
+		Name:     name,
+		RealName: realName,
+		Stager:   shellcodeType,
+		Path:     filepath.Join(absBuildOutputPath, name),
 	}
 	if err := Session().Create(&builder).Error; err != nil {
 		return "", "", err
@@ -623,13 +629,13 @@ func GetBuilders() (*clientpb.Builders, error) {
 	return pbBuilders, nil
 }
 
-func GetBuilderPath(fileName string) (string, error) {
+func GetBuilderResource(fileName string) (string, string, error) {
 	var builder models.Builder
 	result := Session().Where("name = ?", fileName).First(&builder)
 	if result.Error != nil {
-		return "", result.Error
+		return "", "", result.Error
 	}
-	return builder.Path, nil
+	return builder.Path, builder.RealName, nil
 }
 
 // Generator Profile
