@@ -112,7 +112,7 @@ func ListenerPipelineNameCompleter(con *repl.Console, cmd *cobra.Command) carapa
 
 }
 
-func SessionModuleComplete(con *repl.Console) carapace.Action {
+func SessionModuleCompleter(con *repl.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
 
@@ -124,7 +124,7 @@ func SessionModuleComplete(con *repl.Console) carapace.Action {
 	return carapace.ActionCallback(callback)
 }
 
-func SessionAddonComplete(con *repl.Console) carapace.Action {
+func SessionAddonCompleter(con *repl.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
 		for _, s := range con.GetInteractive().Addons {
@@ -135,7 +135,7 @@ func SessionAddonComplete(con *repl.Console) carapace.Action {
 	return carapace.ActionCallback(callback)
 }
 
-func SessionTaskComplete(con *repl.Console) carapace.Action {
+func SessionTaskCompleter(con *repl.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
 		for _, s := range con.GetInteractive().Tasks.Tasks {
@@ -146,7 +146,7 @@ func SessionTaskComplete(con *repl.Console) carapace.Action {
 	return carapace.ActionCallback(callback)
 }
 
-func ResourceCompelete(con *repl.Console) carapace.Action {
+func ResourceCompleter(con *repl.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
 		err := filepath.WalkDir(assets.GetConfigDir(), func(path string, d os.DirEntry, err error) error {
@@ -170,7 +170,7 @@ func ResourceCompelete(con *repl.Console) carapace.Action {
 	return carapace.ActionCallback(callback)
 }
 
-func JobsComplete(con *repl.Console, cmd *cobra.Command, use string) carapace.Action {
+func JobsCompleter(con *repl.Console, cmd *cobra.Command, use string) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
 		listenerID := cmd.Flags().Arg(0)
@@ -200,7 +200,7 @@ func JobsComplete(con *repl.Console, cmd *cobra.Command, use string) carapace.Ac
 	return carapace.ActionCallback(callback)
 }
 
-func TargetComplete(con *repl.Console) carapace.Action {
+func TargetCompleter(con *repl.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
 		for _, s := range assets.TargetList {
@@ -211,7 +211,7 @@ func TargetComplete(con *repl.Console) carapace.Action {
 	return carapace.ActionCallback(callback)
 }
 
-func TypeComplete(con *repl.Console) carapace.Action {
+func TypeCompleter(con *repl.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
 		for _, s := range assets.TypeList {
@@ -222,7 +222,7 @@ func TypeComplete(con *repl.Console) carapace.Action {
 	return carapace.ActionCallback(callback)
 }
 
-func ProfileComplete(con *repl.Console) carapace.Action {
+func ProfileCompleter(con *repl.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
 		profiles, err := con.Rpc.GetProfiles(context.Background(), &clientpb.Empty{})
@@ -238,7 +238,7 @@ func ProfileComplete(con *repl.Console) carapace.Action {
 	return carapace.ActionCallback(callback)
 }
 
-func BuilderComplete(con *repl.Console) carapace.Action {
+func ArtifactCompleter(con *repl.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
 		builders, err := con.Rpc.GetBuilders(context.Background(), &clientpb.Empty{})
@@ -254,7 +254,7 @@ func BuilderComplete(con *repl.Console) carapace.Action {
 	return carapace.ActionCallback(callback)
 }
 
-func SyncFileComplete(con *repl.Console) carapace.Action {
+func SyncFileCompleter(con *repl.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
 		files, err := con.Rpc.GetTaskFiles(context.Background(),
@@ -271,7 +271,7 @@ func SyncFileComplete(con *repl.Console) carapace.Action {
 	return carapace.ActionCallback(callback)
 }
 
-func AllPipelineComplete(con *repl.Console) carapace.Action {
+func AllPipelineCompleter(con *repl.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
 		for _, listener := range con.Listeners {

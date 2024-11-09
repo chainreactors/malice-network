@@ -6,6 +6,7 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/server/internal/configs"
+	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"os"
@@ -185,7 +186,6 @@ func BuildPrelude(cli *client.Client, req *clientpb.Generate) error {
 }
 
 func BuildLoader(cli *client.Client, req *clientpb.Generate) error {
-
 	SourceCodeVolume := fmt.Sprintf("%s:%s", configs.SourceCodePath, ContainerSourceCodePath)
 	CargoRegistryCacheVolume := fmt.Sprintf("%s:%s", filepath.Join(configs.CargoCachePath, "registry"), ContainerCargoRegistryCache)
 	CargoGitCacheVolume := fmt.Sprintf("%s:%s", filepath.Join(configs.CargoCachePath, "git"), CargoGitCache)
@@ -232,7 +232,6 @@ func BuildLoader(cli *client.Client, req *clientpb.Generate) error {
 }
 
 func BuildModules(cli *client.Client, req *clientpb.Generate) error {
-
 	SourceCodeVolume := fmt.Sprintf("%s:%s", configs.SourceCodePath, ContainerSourceCodePath)
 	CargoRegistryCacheVolume := fmt.Sprintf("%s:%s", filepath.Join(configs.CargoCachePath, "registry"), ContainerCargoRegistryCache)
 	CargoGitCacheVolume := fmt.Sprintf("%s:%s", filepath.Join(configs.CargoCachePath, "git"), CargoGitCache)
@@ -283,16 +282,30 @@ func BuildModules(cli *client.Client, req *clientpb.Generate) error {
 //
 //}
 
-func MaleficSRDI(req *clientpb.MutantFile, srcPath, dstPath string) ([]byte, error) {
-	cmd := exec.Command(exePath, command, req.Type, srcPath, req.Platform, req.Arch, dstPath)
+func SaveArtifact(dst string, bin []byte) error {
+	filename := filepath.Join(configs.BuildOutputPath, dst)
+	err := os.WriteFile(filename, bin, 0644)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func MaleficSRDI(realName, srcPath, platform, arch string) ([]byte, error) {
+	_, dst, err := db.AddArtifact(realName, "srdi")
+	if err != nil {
+		return nil, err
+	}
+	cmd := exec.Command(exePath, command, "srdi", srcPath, platform, arch, dst)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return []byte{}, err
 	}
 	logs.Log.Infof("SRDI output: %s", string(output))
-	data, err := os.ReadFile(dstPath)
+	data, err := os.ReadFile(dst)
 	if err != nil {
 		return []byte{}, err
 	}
+
 	return data, nil
 }

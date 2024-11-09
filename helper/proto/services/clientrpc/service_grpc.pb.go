@@ -145,8 +145,9 @@ type MaliceRPCClient interface {
 	// generator
 	NewProfile(ctx context.Context, in *clientpb.Profile, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	GetProfiles(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Profiles, error)
-	Generate(ctx context.Context, in *clientpb.Generate, opts ...grpc.CallOption) (*clientpb.Bin, error)
-	DownloadOutput(ctx context.Context, in *clientpb.Sync, opts ...grpc.CallOption) (*clientpb.SyncResp, error)
+	Build(ctx context.Context, in *clientpb.Generate, opts ...grpc.CallOption) (*clientpb.Bin, error)
+	DownloadArtifact(ctx context.Context, in *clientpb.Sync, opts ...grpc.CallOption) (*clientpb.SyncResp, error)
+	UploadArtifact(ctx context.Context, in *clientpb.Bin, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	GetBuilders(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Builders, error)
 }
 
@@ -1108,18 +1109,27 @@ func (c *maliceRPCClient) GetProfiles(ctx context.Context, in *clientpb.Empty, o
 	return out, nil
 }
 
-func (c *maliceRPCClient) Generate(ctx context.Context, in *clientpb.Generate, opts ...grpc.CallOption) (*clientpb.Bin, error) {
+func (c *maliceRPCClient) Build(ctx context.Context, in *clientpb.Generate, opts ...grpc.CallOption) (*clientpb.Bin, error) {
 	out := new(clientpb.Bin)
-	err := c.cc.Invoke(ctx, "/clientrpc.MaliceRPC/Generate", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/clientrpc.MaliceRPC/Build", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *maliceRPCClient) DownloadOutput(ctx context.Context, in *clientpb.Sync, opts ...grpc.CallOption) (*clientpb.SyncResp, error) {
+func (c *maliceRPCClient) DownloadArtifact(ctx context.Context, in *clientpb.Sync, opts ...grpc.CallOption) (*clientpb.SyncResp, error) {
 	out := new(clientpb.SyncResp)
-	err := c.cc.Invoke(ctx, "/clientrpc.MaliceRPC/DownloadOutput", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/clientrpc.MaliceRPC/DownloadArtifact", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *maliceRPCClient) UploadArtifact(ctx context.Context, in *clientpb.Bin, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+	out := new(clientpb.Empty)
+	err := c.cc.Invoke(ctx, "/clientrpc.MaliceRPC/UploadArtifact", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1259,8 +1269,9 @@ type MaliceRPCServer interface {
 	// generator
 	NewProfile(context.Context, *clientpb.Profile) (*clientpb.Empty, error)
 	GetProfiles(context.Context, *clientpb.Empty) (*clientpb.Profiles, error)
-	Generate(context.Context, *clientpb.Generate) (*clientpb.Bin, error)
-	DownloadOutput(context.Context, *clientpb.Sync) (*clientpb.SyncResp, error)
+	Build(context.Context, *clientpb.Generate) (*clientpb.Bin, error)
+	DownloadArtifact(context.Context, *clientpb.Sync) (*clientpb.SyncResp, error)
+	UploadArtifact(context.Context, *clientpb.Bin) (*clientpb.Empty, error)
 	GetBuilders(context.Context, *clientpb.Empty) (*clientpb.Builders, error)
 	mustEmbedUnimplementedMaliceRPCServer()
 }
@@ -1578,11 +1589,14 @@ func (UnimplementedMaliceRPCServer) NewProfile(context.Context, *clientpb.Profil
 func (UnimplementedMaliceRPCServer) GetProfiles(context.Context, *clientpb.Empty) (*clientpb.Profiles, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetProfiles not implemented")
 }
-func (UnimplementedMaliceRPCServer) Generate(context.Context, *clientpb.Generate) (*clientpb.Bin, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Generate not implemented")
+func (UnimplementedMaliceRPCServer) Build(context.Context, *clientpb.Generate) (*clientpb.Bin, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Build not implemented")
 }
-func (UnimplementedMaliceRPCServer) DownloadOutput(context.Context, *clientpb.Sync) (*clientpb.SyncResp, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DownloadOutput not implemented")
+func (UnimplementedMaliceRPCServer) DownloadArtifact(context.Context, *clientpb.Sync) (*clientpb.SyncResp, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DownloadArtifact not implemented")
+}
+func (UnimplementedMaliceRPCServer) UploadArtifact(context.Context, *clientpb.Bin) (*clientpb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UploadArtifact not implemented")
 }
 func (UnimplementedMaliceRPCServer) GetBuilders(context.Context, *clientpb.Empty) (*clientpb.Builders, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetBuilders not implemented")
@@ -3457,38 +3471,56 @@ func _MaliceRPC_GetProfiles_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
-func _MaliceRPC_Generate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _MaliceRPC_Build_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(clientpb.Generate)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(MaliceRPCServer).Generate(ctx, in)
+		return srv.(MaliceRPCServer).Build(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/clientrpc.MaliceRPC/Generate",
+		FullMethod: "/clientrpc.MaliceRPC/Build",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MaliceRPCServer).Generate(ctx, req.(*clientpb.Generate))
+		return srv.(MaliceRPCServer).Build(ctx, req.(*clientpb.Generate))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _MaliceRPC_DownloadOutput_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _MaliceRPC_DownloadArtifact_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(clientpb.Sync)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(MaliceRPCServer).DownloadOutput(ctx, in)
+		return srv.(MaliceRPCServer).DownloadArtifact(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/clientrpc.MaliceRPC/DownloadOutput",
+		FullMethod: "/clientrpc.MaliceRPC/DownloadArtifact",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MaliceRPCServer).DownloadOutput(ctx, req.(*clientpb.Sync))
+		return srv.(MaliceRPCServer).DownloadArtifact(ctx, req.(*clientpb.Sync))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MaliceRPC_UploadArtifact_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(clientpb.Bin)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MaliceRPCServer).UploadArtifact(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/clientrpc.MaliceRPC/UploadArtifact",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MaliceRPCServer).UploadArtifact(ctx, req.(*clientpb.Bin))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3927,12 +3959,16 @@ var MaliceRPC_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _MaliceRPC_GetProfiles_Handler,
 		},
 		{
-			MethodName: "Generate",
-			Handler:    _MaliceRPC_Generate_Handler,
+			MethodName: "Build",
+			Handler:    _MaliceRPC_Build_Handler,
 		},
 		{
-			MethodName: "DownloadOutput",
-			Handler:    _MaliceRPC_DownloadOutput_Handler,
+			MethodName: "DownloadArtifact",
+			Handler:    _MaliceRPC_DownloadArtifact_Handler,
+		},
+		{
+			MethodName: "UploadArtifact",
+			Handler:    _MaliceRPC_UploadArtifact_Handler,
 		},
 		{
 			MethodName: "GetBuilders",

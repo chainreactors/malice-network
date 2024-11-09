@@ -75,7 +75,7 @@ sync 1
 	}
 
 	common.BindArgCompletions(syncCmd, nil,
-		common.SyncFileComplete(con))
+		common.SyncFileCompleter(con))
 
 	return []*cobra.Command{
 		downloadCmd,

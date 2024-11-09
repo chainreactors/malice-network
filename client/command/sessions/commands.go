@@ -56,7 +56,7 @@ sessions -a
 	})
 
 	common.BindFlagCompletions(bindSessNewCmd, func(comp carapace.ActionMap) {
-		comp["pipeline"] = common.AllPipelineComplete(con)
+		comp["pipeline"] = common.AllPipelineCompleter(con)
 	})
 
 	noteCommand := &cobra.Command{

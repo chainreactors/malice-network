@@ -41,7 +41,7 @@ cancel_task <task_id>
 ~~~
 `}
 
-	common.BindArgCompletions(cancelTaskCmd, nil, common.SessionTaskComplete(con))
+	common.BindArgCompletions(cancelTaskCmd, nil, common.SessionTaskCompleter(con))
 	return []*cobra.Command{taskCmd, fileCmd, cancelTaskCmd}
 }
 

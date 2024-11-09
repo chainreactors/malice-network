@@ -58,7 +58,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	common.BindFlag(waitCmd, func(f *pflag.FlagSet) {
 		f.Int("interval", 1, "interval")
 	})
-	taskComp := common.SessionTaskComplete(con)
+	taskComp := common.SessionTaskCompleter(con)
 	common.BindArgCompletions(waitCmd, &taskComp)
 
 	pollingCmd := &cobra.Command{
