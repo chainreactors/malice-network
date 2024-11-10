@@ -2,6 +2,7 @@ package build
 
 import (
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/encoders"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/utils/config"
 	"github.com/chainreactors/malice-network/helper/utils/file"
@@ -32,16 +33,14 @@ func DbToConfig(req *clientpb.Generate) error {
 	if err != nil {
 		return err
 	}
-	err = db.UpdateGeneratorConfig(req, path, profileDB)
-	if err != nil {
-		return err
-	}
-	return nil
+
+	return db.UpdateGeneratorConfig(req, path, profileDB)
 }
 
-func MoveBuildOutput(target, platform, name string) (string, string, error) {
+func MoveBuildOutput(target, platform string) (string, string, error) {
 	var sourcePath string
 	var dstPath string
+	name := encoders.UUID()
 	switch platform {
 	case consts.Windows:
 		sourcePath = filepath.Join(configs.TargetPath, target, release, malefic+consts.PEFile)

@@ -171,6 +171,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		},
 	}
 	common.BindArgCompletions(downloadCmd, nil, common.ArtifactCompleter(con))
+
 	uploadCmd := &cobra.Command{
 		Use:   consts.CommandArtifactUpload,
 		Short: "upload build output file in server",
@@ -179,6 +180,11 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return UploadArtifactCmd(cmd, con)
 		},
 	}
+	common.BindArgCompletions(uploadCmd, nil, carapace.ActionFiles().Usage("custom artifact"))
+	common.BindFlag(uploadCmd, func(f *pflag.FlagSet) {
+		f.StringP("stage", "s", "", "Set stage")
+		f.String("type", "", "Set type")
+	})
 
 	artifactCmd.AddCommand(listArtifactCmd, downloadCmd, uploadCmd)
 

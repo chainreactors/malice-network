@@ -7,6 +7,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db"
+	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"os"
@@ -291,12 +292,24 @@ func SaveArtifact(dst string, bin []byte) error {
 	return nil
 }
 
-func MaleficSRDI(realName, srcPath, platform, arch string) ([]byte, error) {
-	_, dst, err := db.AddArtifact(realName, "srdi")
+func NewMaleficSRDIArtifact(name, src, platform, arch, stage string) (*models.Builder, []byte, error) {
+	builder, err := db.SaveArtifact(name, "srdi", stage)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	cmd := exec.Command(exePath, command, "srdi", srcPath, platform, arch, dst)
+	bin, err := MaleficSRDI(src, builder.Path, platform, arch)
+	if err != nil {
+		return nil, nil, err
+	}
+	err = os.WriteFile(builder.Path, bin, 0644)
+	if err != nil {
+		return nil, nil, err
+	}
+	return builder, bin, nil
+}
+
+func MaleficSRDI(src, dst, platform, arch string) ([]byte, error) {
+	cmd := exec.Command(exePath, command, "srdi", src, platform, arch, dst)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return []byte{}, err

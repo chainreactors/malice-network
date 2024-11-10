@@ -183,18 +183,22 @@ func SRDIFlagSet(f *pflag.FlagSet) {
 	f.String("type", "", "mutant type")
 	f.String("arch", "", "shellcode architecture, eg: x86,x86_64")
 	f.String("platform", "win", "shellcode platform, eg: win,linux")
-	f.String("id", "", "build file id")
+	f.Uint32("id", 0, "build file id")
 	f.String("function_name", "", "shellcode function name")
 	f.String("user_data_path", "", "user data path")
 }
 
-func ParseSRDIFlags(cmd *cobra.Command) (string, string, string, string, string, string, string) {
+func ParseSRDIFlags(cmd *cobra.Command) (string, string, string, string, uint32, map[string]string) {
 	path, _ := cmd.Flags().GetString("path")
 	typ, _ := cmd.Flags().GetString("type")
 	arch, _ := cmd.Flags().GetString("arch")
 	platform, _ := cmd.Flags().GetString("platform")
-	id, _ := cmd.Flags().GetString("id")
+	id, _ := cmd.Flags().GetUint32("id")
 	functionName, _ := cmd.Flags().GetString("function_name")
-	userDataPath, _ := cmd.Flags().GetString("user_data_path")
-	return path, typ, arch, platform, id, functionName, userDataPath
+	userDataPath, _ := cmd.Flags().GetString("userdata_path")
+	params := map[string]string{
+		"function_name": functionName,
+		"userdata_path": userDataPath,
+	}
+	return path, typ, arch, platform, id, params
 }
