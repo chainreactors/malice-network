@@ -9,51 +9,50 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 )
 
-func LocalPathCompleter(prefix string, args []string, con *repl.Console) []string {
-	var parent string
-	var partial string
-	//var sep string
-	//
-	//if runtime.GOOS == "windows" {
-	//	sep = "\\"
-	//} else {
-	//	sep = "/"
-	//}
-	fi, err := os.Stat(prefix)
-	if os.IsNotExist(err) {
-		parent = filepath.Dir(prefix)
-		partial = filepath.Base(prefix)
-	} else {
-		if fi.IsDir() {
-			parent = prefix
-			partial = ""
-		} else {
-			parent = filepath.Dir(prefix)
-			partial = filepath.Base(prefix)
-		}
-	}
-	results := []string{}
-	ls, err := ioutil.ReadDir(parent)
-	if err != nil {
-		return results
-	}
-	for _, fi = range ls {
-		if 0 < len(partial) {
-			if strings.HasPrefix(fi.Name(), partial) {
-				results = append(results, filepath.Join(parent, fi.Name()))
-			}
-		} else {
-			results = append(results, filepath.Join(parent, fi.Name()))
-		}
-	}
-	return results
-}
+//func LocalPathCompleter(prefix string, args []string, con *repl.Console) []string {
+//	var parent string
+//	var partial string
+//	//var sep string
+//	//
+//	//if runtime.GOOS == "windows" {
+//	//	sep = "\\"
+//	//} else {
+//	//	sep = "/"
+//	//}
+//	fi, err := os.Stat(prefix)
+//	if os.IsNotExist(err) {
+//		parent = filepath.Dir(prefix)
+//		partial = filepath.Base(prefix)
+//	} else {
+//		if fi.IsDir() {
+//			parent = prefix
+//			partial = ""
+//		} else {
+//			parent = filepath.Dir(prefix)
+//			partial = filepath.Base(prefix)
+//		}
+//	}
+//	results := []string{}
+//	ls, err := ioutil.ReadDir(parent)
+//	if err != nil {
+//		return results
+//	}
+//	for _, fi = range ls {
+//		if 0 < len(partial) {
+//			if strings.HasPrefix(fi.Name(), partial) {
+//				results = append(results, filepath.Join(parent, fi.Name()))
+//			}
+//		} else {
+//			results = append(results, filepath.Join(parent, fi.Name()))
+//		}
+//	}
+//	return results
+//}
 
 func SessionIDCompleter(con *repl.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
@@ -241,7 +240,7 @@ func ProfileCompleter(con *repl.Console) carapace.Action {
 func ArtifactCompleter(con *repl.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
-		builders, err := con.Rpc.GetBuilders(context.Background(), &clientpb.Empty{})
+		builders, err := con.Rpc.ListArtifact(context.Background(), &clientpb.Empty{})
 		if err != nil {
 			con.Log.Errorf("Error get builder: %v\n", err)
 			return carapace.Action{}

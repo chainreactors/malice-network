@@ -14,7 +14,7 @@ import (
 )
 
 func ListArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
-	builders, err := con.Rpc.GetBuilders(context.Background(), &clientpb.Empty{})
+	builders, err := con.Rpc.ListArtifact(context.Background(), &clientpb.Empty{})
 	if err != nil {
 		return err
 	}
@@ -65,50 +65,49 @@ func PrintArtifacts(builders *clientpb.Builders, con *repl.Console) error {
 
 func DownloadArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
 	name := cmd.Flags().Arg(0)
-	_, err := DownloadArtifact(con, name)
+	builder, err := DownloadArtifact(con, name)
 	if err != nil {
 		return err
 	}
+	outpath := filepath.Join(assets.GetTempDir(), builder.Name)
+	err = os.WriteFile(outpath, builder.Bin, 0644)
+	if err != nil {
+		return err
+	}
+	con.Log.Infof("save artifact to %s", outpath)
 	return nil
+}
+
+func DownloadArtifact(con *repl.Console, name string) (*clientpb.Builder, error) {
+	return con.Rpc.DownloadArtifact(context.Background(), &clientpb.Builder{
+		Name: name,
+	})
 }
 
 func UploadArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
 	name := cmd.Flags().Arg(0)
-	_, err := UploadArtifact(con, name)
+	artifactType, _ := cmd.Flags().GetString("type")
+	stage, _ := cmd.Flags().GetString("stage")
+	builder, err := UploadArtifact(con, name, artifactType, stage)
 	if err != nil {
 		return err
 	}
+	con.Log.Infof("upload artifact success, %d", builder.Id)
 	return nil
 }
-func DownloadArtifact(con *repl.Console, name string) (bool, error) {
-	resp, err := con.Rpc.DownloadArtifact(context.Background(), &clientpb.Sync{
-		FileId: name,
-	})
-	if err != nil {
-		return false, err
-	}
-	filePath := filepath.Join(assets.GetTempDir(), resp.Name)
-	err = os.WriteFile(filePath, resp.Content, 0644)
-	if err != nil {
-		return false, err
-	}
-	return true, nil
-}
 
-func UploadArtifact(con *repl.Console, name string) (bool, error) {
-	bin, err := os.ReadFile(name)
+func UploadArtifact(con *repl.Console, path string, artifactType, stage string) (*clientpb.Builder, error) {
+	bin, err := os.ReadFile(path)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 
-	_, err = con.Rpc.UploadArtifact(context.Background(), &clientpb.Bin{
-		Name: name,
-		Bin:  bin,
+	return con.Rpc.UploadArtifact(context.Background(), &clientpb.Builder{
+		Name:  filepath.Base(path),
+		Bin:   bin,
+		Type:  artifactType,
+		Stage: stage,
 	})
-	if err != nil {
-		return false, err
-	}
-	return true, nil
 }
 
 func downloadArtifactCallback(tableModel *tui.TableModel, con *repl.Console) func() {

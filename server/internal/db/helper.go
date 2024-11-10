@@ -559,13 +559,9 @@ func GetProfiles() ([]models.Profile, error) {
 	return profiles, result.Error
 }
 
-func SaveArtifactFromGenerate(req *clientpb.Generate, realName string) (string, error) {
+func SaveArtifactFromGenerate(req *clientpb.Generate, realName, path string) (*models.Builder, error) {
 	modules := strings.Join(req.Modules, ",")
 
-	absBuildOutputPath, err := filepath.Abs(configs.BuildOutputPath)
-	if err != nil {
-		return "", err
-	}
 	builder := models.Builder{
 		Name:        req.Name,
 		ProfileName: req.ProfileName,
@@ -574,40 +570,38 @@ func SaveArtifactFromGenerate(req *clientpb.Generate, realName string) (string, 
 		Stager:      req.Stager,
 		CA:          req.Ca,
 		Modules:     modules,
-		RealName:    realName,
-		Path:        filepath.Join(absBuildOutputPath, req.Name),
+		Path:        path,
 	}
 
 	paramsJson, err := json.Marshal(req.Params)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	builder.ParamsJson = string(paramsJson)
 
 	if err := Session().Create(&builder).Error; err != nil {
-		return "", err
+		return nil, err
 
 	}
 
-	return builder.Path, nil
+	return &builder, nil
 }
 
-func AddArtifact(realName, shellcodeType string) (string, string, error) {
-	name := encoders.UUID()
+func SaveArtifact(name, artifactType, stage string) (*models.Builder, error) {
 	absBuildOutputPath, err := filepath.Abs(configs.BuildOutputPath)
 	if err != nil {
-		return "", "", err
+		return nil, err
 	}
 	builder := models.Builder{
-		Name:     name,
-		RealName: realName,
-		Stager:   shellcodeType,
-		Path:     filepath.Join(absBuildOutputPath, name),
+		Name:   name,
+		Stager: stage,
+		Type:   artifactType,
+		Path:   filepath.Join(absBuildOutputPath, encoders.UUID()),
 	}
 	if err := Session().Create(&builder).Error; err != nil {
-		return "", "", err
+		return nil, err
 	}
-	return name, builder.Path, nil
+	return &builder, nil
 }
 
 func GetArtifacts() (*clientpb.Builders, error) {
@@ -626,29 +620,26 @@ func GetArtifacts() (*clientpb.Builders, error) {
 	return pbBuilders, nil
 }
 
-func GetArtifactByName(name string) (string, string, error) {
+func GetArtifactByName(name string) (*models.Builder, error) {
 	var builder models.Builder
 	result := Session().Where("name = ?", name).First(&builder)
 	if result.Error != nil {
-		return "", "", result.Error
+		return nil, result.Error
 	}
-	return builder.Path, builder.RealName, nil
+	return &builder, nil
 }
 
-func GetArtifactById(id uint32) (models.Builder, error) {
+func GetArtifactById(id uint32) (*models.Builder, error) {
 	var builder models.Builder
 	result := Session().Where("id = ?", id).First(&builder)
 	if result.Error != nil {
-		return builder, result.Error
+		return nil, result.Error
 	}
-	return builder, nil
+	return &builder, nil
 }
-
-// Generator Profile
 
 // UpdateGeneratorConfig - Update the generator config
 func UpdateGeneratorConfig(req *clientpb.Generate, path string, profile models.Profile) error {
-
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return err

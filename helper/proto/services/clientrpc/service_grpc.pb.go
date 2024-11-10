@@ -132,7 +132,6 @@ type MaliceRPCClient interface {
 	EXE2Shellcode(ctx context.Context, in *clientpb.EXE2Shellcode, opts ...grpc.CallOption) (*clientpb.Bin, error)
 	DLL2Shellcode(ctx context.Context, in *clientpb.DLL2Shellcode, opts ...grpc.CallOption) (*clientpb.Bin, error)
 	ShellcodeEncode(ctx context.Context, in *clientpb.ShellcodeEncode, opts ...grpc.CallOption) (*clientpb.Bin, error)
-	MaleficSRDI(ctx context.Context, in *clientpb.MutantFile, opts ...grpc.CallOption) (*clientpb.Bin, error)
 	// jobs
 	ListJobs(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Pipelines, error)
 	// Websites
@@ -145,10 +144,11 @@ type MaliceRPCClient interface {
 	// generator
 	NewProfile(ctx context.Context, in *clientpb.Profile, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	GetProfiles(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Profiles, error)
-	Build(ctx context.Context, in *clientpb.Generate, opts ...grpc.CallOption) (*clientpb.Bin, error)
-	DownloadArtifact(ctx context.Context, in *clientpb.Sync, opts ...grpc.CallOption) (*clientpb.SyncResp, error)
-	UploadArtifact(ctx context.Context, in *clientpb.Bin, opts ...grpc.CallOption) (*clientpb.Empty, error)
-	GetBuilders(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Builders, error)
+	Build(ctx context.Context, in *clientpb.Generate, opts ...grpc.CallOption) (*clientpb.Builder, error)
+	DownloadArtifact(ctx context.Context, in *clientpb.Builder, opts ...grpc.CallOption) (*clientpb.Builder, error)
+	UploadArtifact(ctx context.Context, in *clientpb.Builder, opts ...grpc.CallOption) (*clientpb.Builder, error)
+	ListArtifact(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Builders, error)
+	MaleficSRDI(ctx context.Context, in *clientpb.Builder, opts ...grpc.CallOption) (*clientpb.Builder, error)
 }
 
 type maliceRPCClient struct {
@@ -1019,15 +1019,6 @@ func (c *maliceRPCClient) ShellcodeEncode(ctx context.Context, in *clientpb.Shel
 	return out, nil
 }
 
-func (c *maliceRPCClient) MaleficSRDI(ctx context.Context, in *clientpb.MutantFile, opts ...grpc.CallOption) (*clientpb.Bin, error) {
-	out := new(clientpb.Bin)
-	err := c.cc.Invoke(ctx, "/clientrpc.MaliceRPC/MaleficSRDI", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *maliceRPCClient) ListJobs(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Pipelines, error) {
 	out := new(clientpb.Pipelines)
 	err := c.cc.Invoke(ctx, "/clientrpc.MaliceRPC/ListJobs", in, out, opts...)
@@ -1109,8 +1100,8 @@ func (c *maliceRPCClient) GetProfiles(ctx context.Context, in *clientpb.Empty, o
 	return out, nil
 }
 
-func (c *maliceRPCClient) Build(ctx context.Context, in *clientpb.Generate, opts ...grpc.CallOption) (*clientpb.Bin, error) {
-	out := new(clientpb.Bin)
+func (c *maliceRPCClient) Build(ctx context.Context, in *clientpb.Generate, opts ...grpc.CallOption) (*clientpb.Builder, error) {
+	out := new(clientpb.Builder)
 	err := c.cc.Invoke(ctx, "/clientrpc.MaliceRPC/Build", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -1118,8 +1109,8 @@ func (c *maliceRPCClient) Build(ctx context.Context, in *clientpb.Generate, opts
 	return out, nil
 }
 
-func (c *maliceRPCClient) DownloadArtifact(ctx context.Context, in *clientpb.Sync, opts ...grpc.CallOption) (*clientpb.SyncResp, error) {
-	out := new(clientpb.SyncResp)
+func (c *maliceRPCClient) DownloadArtifact(ctx context.Context, in *clientpb.Builder, opts ...grpc.CallOption) (*clientpb.Builder, error) {
+	out := new(clientpb.Builder)
 	err := c.cc.Invoke(ctx, "/clientrpc.MaliceRPC/DownloadArtifact", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -1127,8 +1118,8 @@ func (c *maliceRPCClient) DownloadArtifact(ctx context.Context, in *clientpb.Syn
 	return out, nil
 }
 
-func (c *maliceRPCClient) UploadArtifact(ctx context.Context, in *clientpb.Bin, opts ...grpc.CallOption) (*clientpb.Empty, error) {
-	out := new(clientpb.Empty)
+func (c *maliceRPCClient) UploadArtifact(ctx context.Context, in *clientpb.Builder, opts ...grpc.CallOption) (*clientpb.Builder, error) {
+	out := new(clientpb.Builder)
 	err := c.cc.Invoke(ctx, "/clientrpc.MaliceRPC/UploadArtifact", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -1136,9 +1127,18 @@ func (c *maliceRPCClient) UploadArtifact(ctx context.Context, in *clientpb.Bin, 
 	return out, nil
 }
 
-func (c *maliceRPCClient) GetBuilders(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Builders, error) {
+func (c *maliceRPCClient) ListArtifact(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Builders, error) {
 	out := new(clientpb.Builders)
-	err := c.cc.Invoke(ctx, "/clientrpc.MaliceRPC/GetBuilders", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/clientrpc.MaliceRPC/ListArtifact", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *maliceRPCClient) MaleficSRDI(ctx context.Context, in *clientpb.Builder, opts ...grpc.CallOption) (*clientpb.Builder, error) {
+	out := new(clientpb.Builder)
+	err := c.cc.Invoke(ctx, "/clientrpc.MaliceRPC/MaleficSRDI", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1256,7 +1256,6 @@ type MaliceRPCServer interface {
 	EXE2Shellcode(context.Context, *clientpb.EXE2Shellcode) (*clientpb.Bin, error)
 	DLL2Shellcode(context.Context, *clientpb.DLL2Shellcode) (*clientpb.Bin, error)
 	ShellcodeEncode(context.Context, *clientpb.ShellcodeEncode) (*clientpb.Bin, error)
-	MaleficSRDI(context.Context, *clientpb.MutantFile) (*clientpb.Bin, error)
 	// jobs
 	ListJobs(context.Context, *clientpb.Empty) (*clientpb.Pipelines, error)
 	// Websites
@@ -1269,10 +1268,11 @@ type MaliceRPCServer interface {
 	// generator
 	NewProfile(context.Context, *clientpb.Profile) (*clientpb.Empty, error)
 	GetProfiles(context.Context, *clientpb.Empty) (*clientpb.Profiles, error)
-	Build(context.Context, *clientpb.Generate) (*clientpb.Bin, error)
-	DownloadArtifact(context.Context, *clientpb.Sync) (*clientpb.SyncResp, error)
-	UploadArtifact(context.Context, *clientpb.Bin) (*clientpb.Empty, error)
-	GetBuilders(context.Context, *clientpb.Empty) (*clientpb.Builders, error)
+	Build(context.Context, *clientpb.Generate) (*clientpb.Builder, error)
+	DownloadArtifact(context.Context, *clientpb.Builder) (*clientpb.Builder, error)
+	UploadArtifact(context.Context, *clientpb.Builder) (*clientpb.Builder, error)
+	ListArtifact(context.Context, *clientpb.Empty) (*clientpb.Builders, error)
+	MaleficSRDI(context.Context, *clientpb.Builder) (*clientpb.Builder, error)
 	mustEmbedUnimplementedMaliceRPCServer()
 }
 
@@ -1559,9 +1559,6 @@ func (UnimplementedMaliceRPCServer) DLL2Shellcode(context.Context, *clientpb.DLL
 func (UnimplementedMaliceRPCServer) ShellcodeEncode(context.Context, *clientpb.ShellcodeEncode) (*clientpb.Bin, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ShellcodeEncode not implemented")
 }
-func (UnimplementedMaliceRPCServer) MaleficSRDI(context.Context, *clientpb.MutantFile) (*clientpb.Bin, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method MaleficSRDI not implemented")
-}
 func (UnimplementedMaliceRPCServer) ListJobs(context.Context, *clientpb.Empty) (*clientpb.Pipelines, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListJobs not implemented")
 }
@@ -1589,17 +1586,20 @@ func (UnimplementedMaliceRPCServer) NewProfile(context.Context, *clientpb.Profil
 func (UnimplementedMaliceRPCServer) GetProfiles(context.Context, *clientpb.Empty) (*clientpb.Profiles, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetProfiles not implemented")
 }
-func (UnimplementedMaliceRPCServer) Build(context.Context, *clientpb.Generate) (*clientpb.Bin, error) {
+func (UnimplementedMaliceRPCServer) Build(context.Context, *clientpb.Generate) (*clientpb.Builder, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Build not implemented")
 }
-func (UnimplementedMaliceRPCServer) DownloadArtifact(context.Context, *clientpb.Sync) (*clientpb.SyncResp, error) {
+func (UnimplementedMaliceRPCServer) DownloadArtifact(context.Context, *clientpb.Builder) (*clientpb.Builder, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DownloadArtifact not implemented")
 }
-func (UnimplementedMaliceRPCServer) UploadArtifact(context.Context, *clientpb.Bin) (*clientpb.Empty, error) {
+func (UnimplementedMaliceRPCServer) UploadArtifact(context.Context, *clientpb.Builder) (*clientpb.Builder, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UploadArtifact not implemented")
 }
-func (UnimplementedMaliceRPCServer) GetBuilders(context.Context, *clientpb.Empty) (*clientpb.Builders, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetBuilders not implemented")
+func (UnimplementedMaliceRPCServer) ListArtifact(context.Context, *clientpb.Empty) (*clientpb.Builders, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListArtifact not implemented")
+}
+func (UnimplementedMaliceRPCServer) MaleficSRDI(context.Context, *clientpb.Builder) (*clientpb.Builder, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method MaleficSRDI not implemented")
 }
 func (UnimplementedMaliceRPCServer) mustEmbedUnimplementedMaliceRPCServer() {}
 
@@ -3291,24 +3291,6 @@ func _MaliceRPC_ShellcodeEncode_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
-func _MaliceRPC_MaleficSRDI_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(clientpb.MutantFile)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(MaliceRPCServer).MaleficSRDI(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/clientrpc.MaliceRPC/MaleficSRDI",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MaliceRPCServer).MaleficSRDI(ctx, req.(*clientpb.MutantFile))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _MaliceRPC_ListJobs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(clientpb.Empty)
 	if err := dec(in); err != nil {
@@ -3490,7 +3472,7 @@ func _MaliceRPC_Build_Handler(srv interface{}, ctx context.Context, dec func(int
 }
 
 func _MaliceRPC_DownloadArtifact_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(clientpb.Sync)
+	in := new(clientpb.Builder)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -3502,13 +3484,13 @@ func _MaliceRPC_DownloadArtifact_Handler(srv interface{}, ctx context.Context, d
 		FullMethod: "/clientrpc.MaliceRPC/DownloadArtifact",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MaliceRPCServer).DownloadArtifact(ctx, req.(*clientpb.Sync))
+		return srv.(MaliceRPCServer).DownloadArtifact(ctx, req.(*clientpb.Builder))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _MaliceRPC_UploadArtifact_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(clientpb.Bin)
+	in := new(clientpb.Builder)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -3520,25 +3502,43 @@ func _MaliceRPC_UploadArtifact_Handler(srv interface{}, ctx context.Context, dec
 		FullMethod: "/clientrpc.MaliceRPC/UploadArtifact",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MaliceRPCServer).UploadArtifact(ctx, req.(*clientpb.Bin))
+		return srv.(MaliceRPCServer).UploadArtifact(ctx, req.(*clientpb.Builder))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _MaliceRPC_GetBuilders_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _MaliceRPC_ListArtifact_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(clientpb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(MaliceRPCServer).GetBuilders(ctx, in)
+		return srv.(MaliceRPCServer).ListArtifact(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/clientrpc.MaliceRPC/GetBuilders",
+		FullMethod: "/clientrpc.MaliceRPC/ListArtifact",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MaliceRPCServer).GetBuilders(ctx, req.(*clientpb.Empty))
+		return srv.(MaliceRPCServer).ListArtifact(ctx, req.(*clientpb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MaliceRPC_MaleficSRDI_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(clientpb.Builder)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MaliceRPCServer).MaleficSRDI(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/clientrpc.MaliceRPC/MaleficSRDI",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MaliceRPCServer).MaleficSRDI(ctx, req.(*clientpb.Builder))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3919,10 +3919,6 @@ var MaliceRPC_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _MaliceRPC_ShellcodeEncode_Handler,
 		},
 		{
-			MethodName: "MaleficSRDI",
-			Handler:    _MaliceRPC_MaleficSRDI_Handler,
-		},
-		{
 			MethodName: "ListJobs",
 			Handler:    _MaliceRPC_ListJobs_Handler,
 		},
@@ -3971,8 +3967,12 @@ var MaliceRPC_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _MaliceRPC_UploadArtifact_Handler,
 		},
 		{
-			MethodName: "GetBuilders",
-			Handler:    _MaliceRPC_GetBuilders_Handler,
+			MethodName: "ListArtifact",
+			Handler:    _MaliceRPC_ListArtifact_Handler,
+		},
+		{
+			MethodName: "MaleficSRDI",
+			Handler:    _MaliceRPC_MaleficSRDI_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

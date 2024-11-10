@@ -13,36 +13,42 @@ import (
 )
 
 func SRDICmd(cmd *cobra.Command, con *repl.Console) error {
-	path, typ, arch, platform, id, functionName, userDataPath := common.ParseSRDIFlags(cmd)
+	path, typ, arch, platform, id, params := common.ParseSRDIFlags(cmd)
 	var fileName string
 	var err error
-	var bin []byte
-	if path == "" && id == "" {
-		return errors.New("require path or id")
-	} else if path != "" {
-		fileName = filepath.Base(path)
-		bin, err = os.ReadFile(path)
-		if err != nil {
-			return err
-		}
-	}
-	resp, err := con.Rpc.MaleficSRDI(context.Background(), &clientpb.MutantFile{
-		Id:           id,
-		Bin:          bin,
-		Arch:         arch,
-		Type:         typ,
-		Name:         fileName,
-		Platform:     platform,
-		FunctionName: functionName,
-		UserDataPath: userDataPath,
-	})
+
+	resp, err := MaleficSRDI(con, path, id, typ, arch, platform, params)
 	if err != nil {
 		return err
 	}
-	err = os.WriteFile(filepath.Join(assets.TempDirName, fileName), resp.Bin, 0644)
+	err = os.WriteFile(filepath.Join(assets.TempDirName, resp.Name), resp.Bin, 0644)
 	if err != nil {
 		return err
 	}
 	con.Log.Infof("Save mutant file to %s", filepath.Join(assets.TempDirName, fileName))
 	return nil
+}
+
+func MaleficSRDI(con *repl.Console, path string, id uint32, typ, arch, platform string, params map[string]string) (*clientpb.Builder, error) {
+	if path == "" && id == 0 {
+		return nil, errors.New("require path or id")
+	}
+	var bin []byte
+	var err error
+	if path != "" {
+		bin, err = os.ReadFile(path)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return con.Rpc.MaleficSRDI(context.Background(), &clientpb.Builder{
+		Id:           id,
+		Bin:          bin,
+		Arch:         arch,
+		Type:         typ,
+		Name:         filepath.Base(path),
+		Platform:     platform,
+		FunctionName: params["function_name"],
+		UserDataPath: params["userdata_path"],
+	})
 }

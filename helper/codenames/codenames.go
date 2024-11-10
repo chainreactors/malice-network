@@ -96,15 +96,9 @@ func RandomNoun() (string, error) {
 }
 
 // GetCodename - Returns a randomly generated 'codename'
-func GetCodename() (string, error) {
-	adjective, err := RandomAdjective()
-	if err != nil {
-		return "", err
-	}
-	noun, err := RandomNoun()
-	if err != nil {
-		return "", err
-	}
+func GetCodename() string {
+	adjective, _ := RandomAdjective()
+	noun, _ := RandomNoun()
 	codename := fmt.Sprintf("%s_%s", strings.ToUpper(adjective), strings.ToUpper(noun))
-	return strings.ReplaceAll(codename, " ", "-"), nil
+	return strings.ReplaceAll(codename, " ", "-")
 }
