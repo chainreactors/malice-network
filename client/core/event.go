@@ -8,6 +8,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/utils/handler"
+	"github.com/chainreactors/tui"
 	"io"
 )
 
@@ -141,6 +142,7 @@ func (s *ServerStatus) EventHandler() {
 				Log.Errorf("[%s] %s: %s", event.Type, event.Op, event.Err)
 				continue
 			}
+			tui.Down(1)
 			pipeline := event.GetJob().GetPipeline()
 			switch pipeline.Body.(type) {
 			case *clientpb.Pipeline_Tcp:
@@ -152,16 +154,19 @@ func (s *ServerStatus) EventHandler() {
 					pipeline.GetWeb().RootPath)
 			}
 		case consts.EventListener:
+			tui.Down(1)
 			Log.Importantf("[%s] %s: %s %s", event.Type, event.Op, event.Message, event.Err)
 		case consts.EventTask:
 			s.handlerTask(event)
 		case consts.EventWebsite:
+			tui.Down(1)
 			Log.Importantf("[%s] %s: %s %s", event.Type, event.Op, event.Message, event.Err)
 		}
 	}
 }
 
 func (s *ServerStatus) handlerTask(event *clientpb.Event) {
+	tui.Down(1)
 	switch event.Op {
 	case consts.CtrlTaskCallback:
 		s.triggerTaskDone(event)
@@ -181,9 +186,7 @@ func (s *ServerStatus) handlerSession(event *clientpb.Event) {
 		s.AddSession(event.Session)
 		Log.Importantf("register session: %s ", event.Message)
 	case consts.CtrlSessionTask:
-		//log := s.ObserverLog(sid)
-
-		fmt.Println(logs.GreenBold(fmt.Sprintf("[%s.%d] run task %s: %s", sid, event.Task.TaskId, event.Task.Type, event.Message)))
+		logs.Log.Infof(logs.GreenBold(fmt.Sprintf("[%s.%d] run task %s: %s", sid, event.Task.TaskId, event.Task.Type, event.Message)))
 	case consts.CtrlSessionError:
 		log := s.ObserverLog(sid)
 		log.Errorf(logs.GreenBold(fmt.Sprintf("[%s] task: %d error: %s\n", sid, event.Task.TaskId, event.Err)))
