@@ -2,6 +2,7 @@ package listener
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -177,7 +178,7 @@ func (pipeline *TCPPipeline) handleBeacon(conn net.Conn) {
 	for {
 		err = connect.Handler(ctx, peekConn)
 		if err != nil {
-			if err != io.EOF {
+			if !errors.Is(err, io.EOF) {
 				logs.Log.Debugf("handler error: %s", err.Error())
 			}
 			return
