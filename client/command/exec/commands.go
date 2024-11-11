@@ -13,6 +13,7 @@ import (
 	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"path/filepath"
 )
 
 func Commands(con *repl.Console) []*cobra.Command {
@@ -416,7 +417,7 @@ func Register(con *repl.Console) {
 	RegisterExeFunc(con)
 	RegisterBofFunc(con)
 
-	con.RegisterServerFunc("callback_bof", func(con *repl.Console, sess *core.Session) (intermediate.BuiltinCallback, error) {
+	con.RegisterServerFunc("callback_bof", func(con *repl.Console, sess *core.Session, filename string) (intermediate.BuiltinCallback, error) {
 		return func(content interface{}) (bool, error) {
 			resps, ok := content.(pe.BOFResponses)
 			if !ok {
@@ -429,13 +430,26 @@ func Register(con *repl.Console) {
 						log.Errorf("null screenshot data")
 						continue
 					}
-					screenfile, err := assets.GenerateTempFile(fmt.Sprintf("%s_%s", sess.SessionId, hash.Md5Hash(resp.Data)))
+					extension := filepath.Ext(filename)
+					if extension == "" {
+						extension = ".jpg"
+					}
+					screenfile, err := assets.GenerateTempFile(fmt.Sprintf("%s_%s%s", sess.SessionId, hash.Md5Hash(resp.Data), extension))
 					if err != nil {
-						log.Errorf(err.Error())
+						log.Errorf("failed to generate temp file: %s", err.Error())
 						continue
 					}
-					screenfile.Write(resp.Data)
-					log.Infof("screenshot saved to %s", screenfile.Name())
+					defer func() {
+						if closeErr := screenfile.Close(); closeErr != nil {
+							log.Errorf("failed to close screenshot file: %s", closeErr.Error())
+						}
+					}()
+					data := resp.Data[4:]
+					if _, err := screenfile.Write(data); err != nil {
+						log.Errorf("failed to write screenshot data: %s", err.Error())
+						continue
+					}
+					log.Infof("Screenshot saved to %s", screenfile.Name())
 				}
 			}
 
