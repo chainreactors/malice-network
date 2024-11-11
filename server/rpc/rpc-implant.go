@@ -67,10 +67,10 @@ func (rpc *Server) Checkin(ctx context.Context, req *implantpb.Ping) (*clientpb.
 		dbSess, err := db.FindSession(sid)
 		if err != nil {
 			return nil, err
-		}
-		if dbSess == nil {
+		} else if dbSess == nil {
 			return nil, nil
 		}
+		dbSess.LastCheckin = time.Now().Unix()
 		sess, err = core.RecoverSession(dbSess)
 		if err != nil {
 			return nil, err

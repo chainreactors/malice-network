@@ -70,5 +70,5 @@ const (
 	DefaultLongPollTimeout = time.Second
 	DefaultLongPollJitter  = time.Second
 	minPollTimeout         = time.Second
-	DefaultCacheInterval   = 10
+	DefaultCacheInterval   = 60
 )

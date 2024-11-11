@@ -113,28 +113,6 @@ func UpdateLast(sessionID string) error {
 	return nil
 }
 
-func UpdateSessionStatus() error {
-	ticker := time.NewTicker(2 * time.Second)
-	defer ticker.Stop()
-
-	for range ticker.C {
-		var sessions []models.Session
-		if err := Session().Find(&sessions).Error; err != nil {
-			return err
-		}
-		for _, session := range sessions {
-			lastCheckin := time.Unix(session.LastCheckin, 0)
-			currentTime := time.Now()
-			timeDiff := currentTime.Sub(lastCheckin)
-			isAlive := timeDiff <= time.Duration(float64(session.Interval)*(1+session.Jitter))*2*time.Second
-			if err := Session().Model(&session).Update("IsAlive", isAlive).Error; err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
 // Basic Session OP
 func DeleteSession(sessionID string) error {
 	result := Session().Model(&models.Session{}).Where("session_id = ?", sessionID).Update("is_removed", true)
