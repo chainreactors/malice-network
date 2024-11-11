@@ -254,7 +254,7 @@ func renderMarkdown(markdownContent string) string {
 		return markdownContent
 	}
 
-	rendered, err := r.Render(markdownContent)
+	rendered, err := r.Render(strings.TrimSpace(markdownContent))
 	if err != nil {
 		return markdownContent
 	}
