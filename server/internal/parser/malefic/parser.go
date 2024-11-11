@@ -86,8 +86,13 @@ func (parser *MaleficParser) Marshal(spites *implantpb.Spites, sid uint32) ([]by
 	if err != nil {
 		return nil, err
 	}
+	data, err = cryptostream.Compress(data)
+	if err != nil {
+		return nil, err
+	}
 	buf.WriteByte(parser.StartDelimiter)
 	binary.Write(&buf, binary.LittleEndian, sid)
+
 	err = binary.Write(&buf, binary.LittleEndian, int32(len(data)))
 	if err != nil {
 		return nil, err
