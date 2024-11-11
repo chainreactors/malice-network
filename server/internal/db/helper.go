@@ -566,7 +566,7 @@ func SaveArtifactFromGenerate(req *clientpb.Generate, realName, path string) (*m
 }
 
 func SaveArtifact(name, artifactType, stage string) (*models.Builder, error) {
-	absBuildOutputPath, err := filepath.Abs(configs.BuildOutputPath)
+	absBuildOutputPath, err := filepath.Abs(configs.TempPath)
 	if err != nil {
 		return nil, err
 	}

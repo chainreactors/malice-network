@@ -78,7 +78,7 @@ func LoadMal(con *repl.Console, rootCmd *cobra.Command, filename string) (*Loade
 	if err != nil {
 		return nil, err
 	}
-	con.Log.Importantf("load mal: %s successfully, register %v", filename, cmdNames)
+	con.Log.Importantf("load mal: %s successfully, register %v\n", filename, cmdNames)
 	return mal, nil
 }
 
