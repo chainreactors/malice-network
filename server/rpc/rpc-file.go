@@ -200,18 +200,19 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 				logs.Log.Errorf(err.Error())
 				return
 			}
-			ack, _ := greq.NewSpite(&implantpb.ACK{Success: true})
-			ack.TaskId = greq.Task.Id
-			ack.Name = types.MsgDownload.String()
-			in <- ack
-			greq.Session.AddMessage(resp, int(block.BlockId+1))
 			err = db.UpdateFileByID(greq.Task.TaskID(), int(block.BlockId+1))
 			if err != nil {
 				logs.Log.Errorf("cannot update task %d , %s in db", greq.Task.Id, err.Error())
 				return
 			}
 			greq.Task.Done(ack, "")
-			if block.End {
+			if !block.End {
+				ack, _ := greq.NewSpite(&implantpb.ACK{Success: true})
+				ack.TaskId = greq.Task.Id
+				ack.Name = types.MsgDownload.String()
+				in <- ack
+				//greq.Session.AddMessage(resp, int(block.BlockId+1))
+			} else {
 				checksum, _ := file.CalculateSHA256Checksum(fileName)
 				if checksum != downloadAbs.Checksum {
 					greq.Task.Panic(buildErrorEvent(greq.Task, fmt.Errorf("checksum error")))
