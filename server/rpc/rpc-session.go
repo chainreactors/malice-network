@@ -44,8 +44,7 @@ func (rpc *Server) GetSession(ctx context.Context, req *clientpb.SessionRequest)
 	dbSess, err := db.FindSession(req.SessionId)
 	if err != nil {
 		return nil, err
-	}
-	if dbSess == nil {
+	} else if dbSess == nil {
 		return nil, nil
 	}
 	session, err = core.RecoverSession(dbSess)

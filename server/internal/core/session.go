@@ -42,7 +42,7 @@ func NewSessions() *sessions {
 		active: &sync.Map{},
 	}
 	ticker := GlobalTicker
-	_, err := ticker.Start(60, func() {
+	_, err := ticker.Start(consts.DefaultCacheInterval, func() {
 		for _, session := range newSessions.All() {
 			currentTime := time.Now()
 			timeDiff := currentTime.Unix() - int64(session.LastCheckin)
@@ -51,18 +51,17 @@ func NewSessions() *sessions {
 				newSessions.Remove(session.ID)
 				EventBroker.Publish(Event{
 					EventType: consts.EventSession,
-					Op:        consts.CtrlSessionStop,
+					Op:        consts.CtrlSessionLeave,
 					Session:   session.ToProtobuf(),
 					IsNotify:  true,
 					Message:   fmt.Sprintf("session %s from %s at %s has stoped ", session.ID, session.Target, session.PipelineID),
 				})
+				if err := db.Session().Model(session.ToModel()).Update("IsAlive", isAlive).Error; err != nil {
+					logs.Log.Errorf(err.Error())
+				}
 			}
 		}
-		err := db.UpdateSessionStatus()
-		if err != nil {
-			logs.Log.Errorf("cannot update session status, %s", err.Error())
-			return
-		}
+
 	})
 	if err != nil {
 		logs.Log.Errorf("cannot start ticker, %s", err.Error())

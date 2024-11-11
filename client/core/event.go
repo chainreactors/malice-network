@@ -190,7 +190,7 @@ func (s *ServerStatus) handlerSession(event *clientpb.Event) {
 	case consts.CtrlSessionLog:
 		log := s.ObserverLog(sid)
 		log.Errorf("[%s] log: \n%s\n", sid, event.Message)
-	case consts.CtrlSessionStop:
+	case consts.CtrlSessionLeave:
 		Log.Importantf(logs.RedBold(fmt.Sprintf("[%s] session stop: %s", sid, event.Message)))
 	}
 }

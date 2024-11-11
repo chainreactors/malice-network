@@ -31,7 +31,7 @@ const (
 	CtrlSessionLog      = "session_log"
 	CtrlSessionTask     = "session_task"
 	CtrlSessionError    = "session_error"
-	CtrlSessionStop     = "session_stop"
+	CtrlSessionLeave    = "session_leave"
 	CtrlSessionCheckin  = "session_checkin"
 )
 
