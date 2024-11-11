@@ -11,7 +11,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/helper/utils/peek"
 	"github.com/chainreactors/malice-network/server/internal/parser"
-	"io"
 	"sync"
 	"time"
 )
@@ -92,9 +91,6 @@ func (c *Connection) Handler(ctx context.Context, conn *peek.Conn) error {
 	var err error
 	_, length, err := c.Parser.ReadHeader(conn)
 	if err != nil {
-		if err == io.EOF {
-			return nil
-		}
 		return fmt.Errorf("error reading header:%s %w", conn.RemoteAddr(), err)
 	}
 	go c.Send(ctx, conn)

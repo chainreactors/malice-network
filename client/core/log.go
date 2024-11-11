@@ -10,7 +10,7 @@ import (
 var (
 	LogLevel = logs.Warn
 	Log      = &Logger{Logger: logs.NewLogger(LogLevel)}
-	MuteLog  = &Logger{Logger: logs.NewLogger(logs.Important)}
+	MuteLog  = &Logger{Logger: logs.NewLogger(logs.Important + 1)}
 )
 
 var (

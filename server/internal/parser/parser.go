@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/errs"
@@ -66,11 +67,13 @@ func (parser *MessageParser) WritePacket(conn *peek.Conn, msg *implantpb.Spites,
 		return err
 	}
 
-	_, err = conn.Write(bs)
+	n, err := conn.Write(bs)
 	if err != nil {
 		return err
 	}
-
+	if n != len(bs) {
+		return fmt.Errorf("send error, expect send %d, real send %d", len(bs), n)
+	}
 	if len(bs) <= 1000 {
 		logs.Log.Debugf("write packet to %s , %d bytes, %v", conn.RemoteAddr(), len(bs), msg)
 	} else {
