@@ -170,6 +170,9 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return DownloadArtifactCmd(cmd, con)
 		},
 	}
+	common.BindFlag(downloadCmd, func(f *pflag.FlagSet) {
+		f.StringP("output", "o", "", "output path")
+	})
 	common.BindArgCompletions(downloadCmd, nil, common.ArtifactCompleter(con))
 
 	uploadCmd := &cobra.Command{
@@ -183,7 +186,8 @@ func Commands(con *repl.Console) []*cobra.Command {
 	common.BindArgCompletions(uploadCmd, nil, carapace.ActionFiles().Usage("custom artifact"))
 	common.BindFlag(uploadCmd, func(f *pflag.FlagSet) {
 		f.StringP("stage", "s", "", "Set stage")
-		f.String("type", "", "Set type")
+		f.StringP("type", "t", "", "Set type")
+		f.StringP("name", "n", "", "alias name")
 	})
 
 	artifactCmd.AddCommand(listArtifactCmd, downloadCmd, uploadCmd)

@@ -7,8 +7,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const defaultTimeout = 60
-
 // Bind is a convenience function to bind flags to a given command.
 // name - The name of the flag set (can be empty).
 // cmd  - The command to which the flags should be bound.

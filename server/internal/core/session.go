@@ -41,8 +41,7 @@ func NewSessions() *sessions {
 	newSessions := &sessions{
 		active: &sync.Map{},
 	}
-	ticker := GlobalTicker
-	_, err := ticker.Start(consts.DefaultCacheInterval, func() {
+	_, err := GlobalTicker.Start(consts.DefaultCacheInterval, func() {
 		for _, session := range newSessions.All() {
 			currentTime := time.Now()
 			timeDiff := currentTime.Unix() - int64(session.LastCheckin)
