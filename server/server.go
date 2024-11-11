@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/chainreactors/malice-network/server/cmd/server"
+	//_ "net/http/pprof"
 )
 
 func main() {
@@ -14,6 +15,10 @@ func main() {
 	//if err := pprof.StartCPUProfile(f); err != nil {
 	//	logs.Log.Errorf("could not start CPU profile: ", err)
 	//}
+	//
+	//go func() {
+	//	http.ListenAndServe("localhost:6060", nil)
+	//}()
 
 	server.Execute()
 }

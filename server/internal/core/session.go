@@ -19,7 +19,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -203,23 +202,14 @@ func (s *Session) TaskLog(task *Task, spite *implantpb.Spite) error {
 }
 
 func (s *Session) Recover() error {
-	all := s.Cache.GetAll()
 	tasks, err := db.GetAllTask()
 	if err != nil {
 		return err
 	}
 	for _, task := range tasks.Tasks {
 		if task.Cur < task.Total {
-			for key, value := range all {
-				cacheTaskID := strconv.FormatUint(uint64(value.TaskId), 10) + "_" + strconv.FormatUint(uint64(task.Cur), 10)
-				if err != nil {
-					continue
-				}
-				if cacheTaskID == key {
-					ch := make(chan *implantpb.Spite)
-					s.responses.Store(task, ch)
-				}
-			}
+			ch := make(chan *implantpb.Spite, 16)
+			s.responses.Store(task, ch)
 		}
 	}
 
