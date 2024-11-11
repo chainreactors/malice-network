@@ -11,10 +11,13 @@ import (
 func SetCustomHelpTemplate() (*template.Template, error) {
 	funcMap := TemplateFuncs
 
-	customTemplate := `{{RenderMarkdown "## Description:"}}
-{{RenderOpsec (or .Annotations.opsec "0.0") .Name .NamePadding}}
+	customTemplate := `
+    {{RenderOpsec (or .Annotations.opsec "0.0") .Name .NamePadding}}
 
-{{if or .Runnable .HasSubCommands}}{{.UsageString}}{{end}}`
+{{RenderMarkdown "## Description:"}}
+{{with (or .Long .Short)}}{{RenderMarkdown (printf "%s" (trimTrailingWhitespaces .))}}{{end}}
+{{if or .Runnable .HasSubCommands}}{{ .UsageString}}{{end}}
+`
 
 	helpTmpl, err := template.New("helpTemplate").Funcs(funcMap).Parse(customTemplate)
 	if err != nil {

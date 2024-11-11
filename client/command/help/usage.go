@@ -38,12 +38,13 @@ func FormatLongHelp(long string) string {
 func SetCustomUsageTemplate() (*template.Template, error) {
 	funcMap := TemplateFuncs
 
-	customTemplate := `{{RenderMarkdown "## Usage:"}}{{if .Runnable}}
-  {{RenderMarkdown .UseLine}}{{end}}{{if .HasAvailableSubCommands}}
-  {{RenderMarkdown (printf "%s %s" .CommandPath "[command]")}}{{end}}{{if gt (len .Aliases) 0}}
+	customTemplate := `
+{{RenderMarkdown "## Usage:"}}{{if .Runnable}}
+{{RenderMarkdown .UseLine}}{{end}}{{if .HasAvailableSubCommands}}
+{{RenderMarkdown (printf "%s %s" .CommandPath "[command]")}}{{end}}{{if gt (len .Aliases) 0}}
 
 {{RenderMarkdown "## Aliases:"}}
-  {{RenderMarkdown .NameAndAliases}}{{end}}{{if .HasExample}}
+{{RenderMarkdown .NameAndAliases}}{{end}}{{if .HasExample}}
 
 {{RenderMarkdown "## Examples:"}}
 {{RenderMarkdown .Example}}{{end}}{{if .HasAvailableSubCommands}}{{$cmds := .Commands}}{{if eq (len .Groups) 0}}
@@ -55,13 +56,13 @@ func SetCustomUsageTemplate() (*template.Template, error) {
     {{RenderOpsec (or .Annotations.opsec "0.0") .Name .NamePadding}} {{.Short}}{{end}}{{end}}{{end}}{{if not .AllChildCommandsHaveGroup}}
 
 {{RenderMarkdown "## Additional Commands:"}}{{range $cmds}}{{if (and (eq .GroupID "") (or .IsAvailableCommand (eq .Name "help")))}}
-{RenderOpsec (or .Annotations.opsec "0.0") .Name .NamePadding}} {{.Short}}{{end}}{{end}}{{end}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}
+    {{RenderOpsec (or .Annotations.opsec "0.0") .Name .NamePadding}} {{.Short}}{{end}}{{end}}{{end}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}
 
 {{RenderMarkdown "## Flags:"}}
-{{RenderMarkdown (.LocalFlags.FlagUsages | trimTrailingWhitespaces)}}{{end}}{{if .HasAvailableInheritedFlags}}
+{{RenderMarkdown (.LocalFlags | FlagUsages)}}{{end}}{{if .HasAvailableInheritedFlags}}
 
 {{RenderMarkdown "## Global Flags:"}}
-{{RenderMarkdown (.InheritedFlags.FlagUsages | trimTrailingWhitespaces)}}{{end}}{{if .HasHelpSubCommands}}
+{{RenderMarkdown (.InheritedFlags | FlagUsages)}}{{end}}{{if .HasHelpSubCommands}}
 
 {{RenderMarkdown "## Additional help topics:"}}{{range .Commands}}{{if .IsAdditionalHelpTopicCommand}}
 {{RenderMarkdown (printf "%s %s" (rpad .CommandPath .CommandPathPadding) .Short)}}{{end}}{{end}}{{end}}{{if .HasAvailableSubCommands}}
@@ -99,5 +100,5 @@ func RenderOpsec(opsecLevel string, description string) string {
 		coloredDescription = termenv.String(description).Foreground(tui.Green).String()
 	}
 
-	return fmt.Sprintf("%s (opsec %.1f)%-9s", coloredDescription, opsec, "")
+	return renderMarkdown(fmt.Sprintf("%s (opsec %.1f)%-9s", coloredDescription, opsec, ""))
 }
