@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 )
 
 //go:embed _inputrc
@@ -78,12 +79,14 @@ func GenerateTempFile(sessionId, filename string) (*os.File, error) {
 			logs.Log.Errorf("failed to create session directory: %s", err.Error())
 		}
 	}
-	baseName := filepath.Base(filename)
+	baseName := strings.TrimSuffix(filepath.Base(filename), filepath.Ext(filename))
 	ext := filepath.Ext(filename)
 	fullPath := filepath.Join(sessionDir, filename)
-	for i := 1; file.Exist(fullPath); i++ {
-		fullPath = filepath.Join(sessionDir, fmt.Sprintf("%s(%d)%s", baseName, i, ext))
-	}
+	timestampMillis := time.Now().UnixNano() / int64(time.Millisecond)
+	seconds := timestampMillis / 1000
+	nanoseconds := (timestampMillis % 1000) * int64(time.Millisecond)
+	t := time.Unix(seconds, nanoseconds)
+	fullPath = filepath.Join(sessionDir, fmt.Sprintf("%s_%s%s", baseName, t.Format("2006-01-02_15-04-05"), ext))
 	return os.Create(fullPath)
 }
 
