@@ -2,6 +2,7 @@ package assets
 
 import (
 	_ "embed"
+	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/utils/file"
 	"os"
@@ -70,8 +71,20 @@ func GetTempDir() string {
 	return dir
 }
 
-func GenerateTempFile(filename string) (*os.File, error) {
-	return os.Create(filepath.Join(GetTempDir(), filename))
+func GenerateTempFile(sessionId, filename string) (*os.File, error) {
+	sessionDir := filepath.Join(GetTempDir(), sessionId)
+	if !file.Exist(sessionDir) {
+		if err := os.MkdirAll(sessionDir, os.ModePerm); err != nil {
+			logs.Log.Errorf("failed to create session directory: %s", err.Error())
+		}
+	}
+	baseName := filepath.Base(filename)
+	ext := filepath.Ext(filename)
+	fullPath := filepath.Join(sessionDir, filename)
+	for i := 1; file.Exist(fullPath); i++ {
+		fullPath = filepath.Join(sessionDir, fmt.Sprintf("%s(%d)%s", baseName, i, ext))
+	}
+	return os.Create(fullPath)
 }
 
 func GetLogDir() string {

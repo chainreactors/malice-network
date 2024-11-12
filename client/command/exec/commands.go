@@ -8,12 +8,10 @@ import (
 	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/encoders/hash"
 	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"path/filepath"
 )
 
 func Commands(con *repl.Console) []*cobra.Command {
@@ -430,13 +428,9 @@ func Register(con *repl.Console) {
 						log.Errorf("null screenshot data")
 						continue
 					}
-					extension := filepath.Ext(filename)
-					if extension == "" {
-						extension = ".jpg"
-					}
-					screenfile, err := assets.GenerateTempFile(fmt.Sprintf("%s_%s%s", sess.SessionId, hash.Md5Hash(resp.Data), extension))
+					screenfile, err := assets.GenerateTempFile(sess.SessionId, filename)
 					if err != nil {
-						log.Errorf("failed to generate temp file: %s", err.Error())
+						log.Errorf("failed to create screenshot file: %s", err.Error())
 						continue
 					}
 					defer func() {
@@ -444,12 +438,13 @@ func Register(con *repl.Console) {
 							log.Errorf("failed to close screenshot file: %s", closeErr.Error())
 						}
 					}()
+
 					data := resp.Data[4:]
 					if _, err := screenfile.Write(data); err != nil {
 						log.Errorf("failed to write screenshot data: %s", err.Error())
 						continue
 					}
-					log.Infof("Screenshot saved to %s", screenfile.Name())
+					log.Infof("\nScreenshot saved to %s\n", screenfile.Name())
 				}
 			}
 
