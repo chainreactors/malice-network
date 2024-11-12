@@ -15,7 +15,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
-	"github.com/chainreactors/malice-network/helper/utils/file"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"github.com/chainreactors/tui"
 	"github.com/rsteube/carapace"
@@ -467,7 +467,7 @@ func validManifest(manifest *ExtensionManifest) error {
 			if extFiles.Arch == "" {
 				return errors.New("missing `files.arch` field in extension manifest")
 			}
-			extFiles.Path = file.ResolvePath(extFiles.Path)
+			extFiles.Path = fileutils.ResolvePath(extFiles.Path)
 			if extFiles.Path == "" || extFiles.Path == "/" {
 				return errors.New("missing `files.path` field in extension manifest")
 			}

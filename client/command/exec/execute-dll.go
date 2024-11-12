@@ -10,7 +10,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
-	"github.com/chainreactors/malice-network/helper/utils/file"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
@@ -38,7 +38,7 @@ func ExecDLL(rpc clientrpc.MaliceRPCClient, sess *core.Session, dllPath string, 
 		return nil, err
 	}
 
-	binPath = file.FormatWindowPath(binPath)
+	binPath = fileutils.FormatWindowPath(binPath)
 	if _, err := os.Stat(binPath); err == nil {
 		binData, err := os.ReadFile(binPath)
 		if err != nil {

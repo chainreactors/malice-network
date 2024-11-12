@@ -4,14 +4,14 @@ import (
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/utils/file"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"strings"
 )
 
 func FormatRegPath(path string) (string, string) {
-	path = file.FormatWindowPath(path)
+	path = fileutils.FormatWindowPath(path)
 	i := strings.Index(path, "\\")
 	if i == -1 {
 		return path, ""

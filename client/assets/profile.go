@@ -3,7 +3,7 @@ package assets
 import (
 	"github.com/chainreactors/logs"
 	crConfig "github.com/chainreactors/malice-network/helper/utils/config"
-	"github.com/chainreactors/malice-network/helper/utils/file"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"gopkg.in/yaml.v2"
 	"os"
 	"path/filepath"
@@ -76,7 +76,7 @@ func findFile(filename string) (string, error) {
 
 func loadProfile(path string) (*Profile, error) {
 	var profile Profile
-	if !file.Exist(path) {
+	if !fileutils.Exist(path) {
 		confStr := crConfig.InitDefaultConfig(&profile, 0)
 		err := os.WriteFile(path, confStr, 0644)
 		if err != nil {

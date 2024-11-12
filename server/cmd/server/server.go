@@ -6,7 +6,7 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/codenames"
 	crConfig "github.com/chainreactors/malice-network/helper/utils/config"
-	"github.com/chainreactors/malice-network/helper/utils/file"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/mtls"
 	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
@@ -48,7 +48,7 @@ func Execute() {
 		}
 		return
 	}
-	if !file.Exist(opt.Config) {
+	if !fileutils.Exist(opt.Config) {
 		confStr := crConfig.InitDefaultConfig(&opt, 0)
 		err := os.WriteFile(opt.Config, confStr, 0644)
 		if err != nil {

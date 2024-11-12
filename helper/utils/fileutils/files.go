@@ -1,9 +1,10 @@
-package file
+package fileutils
 
 import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"github.com/klauspost/compress/flate"
 	"io"
 	"os"
@@ -92,4 +93,57 @@ func ChmodR(path string, filePerm, dirPerm os.FileMode) error {
 func ForceRemoveAll(rootPath string) {
 	ChmodR(rootPath, 0600, 0700)
 	os.RemoveAll(rootPath)
+}
+
+func MoveFile(sourcePath, destPath string) error {
+	sourceFile, err := os.Open(sourcePath)
+	if err != nil {
+		return err
+	}
+
+	destFile, err := os.Create(destPath)
+	if err != nil {
+		return err
+	}
+	defer destFile.Close()
+
+	if _, err = io.Copy(destFile, sourceFile); err != nil {
+		return err
+	}
+
+	if err = destFile.Sync(); err != nil {
+		return err
+	}
+	sourceFile.Close()
+	return os.Remove(sourcePath)
+}
+
+func MoveDirectory(sourceDir, destDir string) error {
+	if _, err := os.Stat(destDir); os.IsNotExist(err) {
+		if err := os.MkdirAll(destDir, os.ModePerm); err != nil {
+			return err
+		}
+	}
+
+	return filepath.Walk(sourceDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		relPath, err := filepath.Rel(sourceDir, path)
+		if err != nil {
+			return err
+		}
+
+		destPath := filepath.Join(destDir, relPath)
+
+		if info.IsDir() {
+			return os.MkdirAll(destPath, os.ModePerm)
+		} else {
+			if err := MoveFile(path, destPath); err != nil {
+				return fmt.Errorf("failed to move file %s to %s: %w", path, destPath, err)
+			}
+		}
+		return nil
+	})
 }

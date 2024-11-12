@@ -5,7 +5,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/encoders"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/utils/config"
-	"github.com/chainreactors/malice-network/helper/utils/file"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
@@ -55,7 +55,7 @@ func MoveBuildOutput(target, platform string) (string, string, error) {
 		sourcePath = filepath.Join(configs.TargetPath, target, release, malefic)
 		dstPath = filepath.Join(configs.BuildOutputPath, name)
 	}
-	err := file.CopyFile(sourcePath, dstPath)
+	err := fileutils.CopyFile(sourcePath, dstPath)
 	if err != nil {
 		return "", "", err
 	}

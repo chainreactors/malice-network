@@ -4,7 +4,7 @@ import (
 	_ "embed"
 	"fmt"
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/utils/file"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -17,11 +17,11 @@ import (
 var inputrc string
 
 var (
-	MaliceDirName   = ".config/malice"
-	ConfigDirName   = "configs"
-	ResourceDirName = "resource"
-	TempDirName     = "temp"
-	LogDirName      = "log"
+	MaliceDirName    = ".config/malice"
+	ConfigDirName    = "configs"
+	ResourcesDirName = "resources"
+	TempDirName      = "temp"
+	LogDirName       = "log"
 )
 
 func GetConfigDir() string {
@@ -50,7 +50,7 @@ func GetRootAppDir() string {
 
 func GetResourceDir() string {
 	rootDir, _ := filepath.Abs(GetRootAppDir())
-	dir := filepath.Join(rootDir, ResourceDirName)
+	dir := filepath.Join(rootDir, ResourcesDirName)
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
 		err = os.MkdirAll(dir, 0700)
 		if err != nil {
@@ -74,7 +74,7 @@ func GetTempDir() string {
 
 func GenerateTempFile(sessionId, filename string) (*os.File, error) {
 	sessionDir := filepath.Join(GetTempDir(), sessionId)
-	if !file.Exist(sessionDir) {
+	if !fileutils.Exist(sessionDir) {
 		if err := os.MkdirAll(sessionDir, os.ModePerm); err != nil {
 			logs.Log.Errorf("failed to create session directory: %s", err.Error())
 		}
@@ -127,11 +127,11 @@ func GetConfigs() ([]string, error) {
 func MvConfig(oldPath string) error {
 	fileName := filepath.Base(oldPath)
 	newPath := filepath.Join(GetConfigDir(), fileName)
-	err := file.CopyFile(oldPath, newPath)
+	err := fileutils.CopyFile(oldPath, newPath)
 	if err != nil {
 		return err
 	}
-	err = file.RemoveFile(oldPath)
+	err = fileutils.RemoveFile(oldPath)
 	if err != nil {
 		return err
 	}

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/utils/file"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/tui"
 	"github.com/spf13/cobra"
 	"io/ioutil"
@@ -30,7 +30,7 @@ func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *repl.Conso
 	var err error
 
 	if isGz {
-		manifestData, err = file.ReadFileFromTarGz(extLocalPath, ManifestFileName)
+		manifestData, err = fileutils.ReadFileFromTarGz(extLocalPath, ManifestFileName)
 	} else {
 		manifestData, err = os.ReadFile(filepath.Join(extLocalPath, ManifestFileName))
 	}
@@ -60,7 +60,7 @@ func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *repl.Conso
 				return
 			}
 		}
-		file.ForceRemoveAll(installPath)
+		fileutils.ForceRemoveAll(installPath)
 	}
 
 	con.Log.Infof("Installing extension '%s' (%s) ... ", manifest.Name, manifest.Version)
@@ -72,7 +72,7 @@ func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *repl.Conso
 	err = os.WriteFile(filepath.Join(installPath, ManifestFileName), manifestData, 0o600)
 	if err != nil {
 		con.Log.Errorf("\nFailed to write %s: %s\n", ManifestFileName, err)
-		file.ForceRemoveAll(installPath)
+		fileutils.ForceRemoveAll(installPath)
 		return
 	}
 	for _, manifestCmd := range manifest.ExtCommand {
@@ -82,22 +82,22 @@ func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *repl.Conso
 				if isGz {
 					err = installArtifact(extLocalPath, newInstallPath, manifestFile.Path)
 				} else {
-					src := filepath.Join(extLocalPath, file.ResolvePath(manifestFile.Path))
-					dst := filepath.Join(newInstallPath, file.ResolvePath(manifestFile.Path))
+					src := filepath.Join(extLocalPath, fileutils.ResolvePath(manifestFile.Path))
+					dst := filepath.Join(newInstallPath, fileutils.ResolvePath(manifestFile.Path))
 					err = os.MkdirAll(filepath.Dir(dst), 0700) //required for extensions with multiple dirs between the .o file and the manifest
 					if err != nil {
 						con.Log.Errorf("\nError creating extension directory: %s\n", err)
-						file.ForceRemoveAll(newInstallPath)
+						fileutils.ForceRemoveAll(newInstallPath)
 						return
 					}
-					err = file.CopyFile(src, dst)
+					err = fileutils.CopyFile(src, dst)
 					if err != nil {
 						err = fmt.Errorf("error copying file '%s' -> '%s': %s", src, dst, err)
 					}
 				}
 				if err != nil {
 					con.Log.Errorf("Error installing command: %s\n", err)
-					file.ForceRemoveAll(newInstallPath)
+					fileutils.ForceRemoveAll(newInstallPath)
 					return
 				}
 			}
@@ -179,14 +179,14 @@ func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *repl.Conso
 
 func installArtifact(extGzFilePath string, installPath string, artifactPath string) error {
 	artifactPath = strings.ReplaceAll(artifactPath, `\`, "")
-	data, err := file.ReadFileFromTarGz(extGzFilePath, artifactPath)
+	data, err := fileutils.ReadFileFromTarGz(extGzFilePath, artifactPath)
 	if err != nil {
 		return err
 	}
 	if len(data) == 0 {
 		return fmt.Errorf("archive path '%s' is empty", "."+artifactPath)
 	}
-	localArtifactPath := filepath.Join(installPath, file.ResolvePath(artifactPath))
+	localArtifactPath := filepath.Join(installPath, fileutils.ResolvePath(artifactPath))
 	artifactDir := filepath.Dir(localArtifactPath)
 	if _, err := os.Stat(artifactDir); os.IsNotExist(err) {
 		err := os.MkdirAll(artifactDir, 0700)

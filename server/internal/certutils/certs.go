@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/certs"
-	"github.com/chainreactors/malice-network/helper/utils/file"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/mtls"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db"
@@ -104,7 +104,7 @@ func GetOperatorServerMTLSConfig(host string) *tls.Config {
 func GenerateRootCert() error {
 	rootCertPath := path.Join(configs.CertsPath, rootCert)
 	rootKeyPath := path.Join(configs.CertsPath, rootKey)
-	if file.Exist(rootCertPath) && file.Exist(rootKeyPath) {
+	if fileutils.Exist(rootCertPath) && fileutils.Exist(rootKeyPath) {
 		return nil
 	}
 	cert, key, err := certs.GenerateCACert(RootName)
@@ -129,7 +129,7 @@ func GenerateRootCert() error {
 func GenerateServerCert(name string) ([]byte, []byte, error) {
 	certPath := path.Join(configs.CertsPath, serverCert)
 	certKeyPath := path.Join(configs.CertsPath, serverKey)
-	if file.Exist(certPath) && file.Exist(certKeyPath) {
+	if fileutils.Exist(certPath) && fileutils.Exist(certKeyPath) {
 		certBytes, err := os.ReadFile(certPath)
 		if err != nil {
 			return nil, nil, err

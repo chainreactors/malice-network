@@ -11,7 +11,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/types"
-	"github.com/chainreactors/malice-network/helper/utils/file"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/handler"
 	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"github.com/kballard/go-shellquote"
@@ -216,7 +216,7 @@ pack_bof_args("ZZ", {"aa", "bb"})
 		})
 
 	RegisterFunction("format_path", func(s string) (string, error) {
-		return file.FormatWindowPath(s), nil
+		return fileutils.FormatWindowPath(s), nil
 	})
 	AddHelper(
 		"format_path",
