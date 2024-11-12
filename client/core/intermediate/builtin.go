@@ -36,7 +36,6 @@ func RegisterBuiltin(rpc clientrpc.MaliceRPCClient) {
 	RegisterCustomBuiltin(rpc)
 	RegisterGRPCBuiltin(rpc)
 	RegisterEncodeFunc(rpc)
-	RegisterArtifactFunction(rpc)
 }
 
 func RegisterCustomBuiltin(rpc clientrpc.MaliceRPCClient) {
@@ -551,18 +550,4 @@ func RegisterEncodeFunc(rpc clientrpc.MaliceRPCClient) {
 			Example: `parse_hex("0x1f4")`,
 		})
 
-}
-
-func RegisterArtifactFunction(rpc clientrpc.MaliceRPCClient) {
-	RegisterFunction("payload_local", func(shellcodePath string) (string, error) {
-		if shellcodePath != "" {
-			shellcode, _ := os.ReadFile(shellcodePath)
-			if _, err := os.Stat(shellcodePath); os.IsNotExist(err) {
-				return "", fmt.Errorf("shellcode file does not exist: %s", shellcodePath)
-			}
-			return string(shellcode), nil
-		} else {
-			return "shellcode123", nil
-		}
-	})
 }

@@ -8,12 +8,10 @@ import (
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"os"
 	"os/exec"
-	"strings"
 )
 
 func Commands(con *repl.Console) []*cobra.Command {
@@ -156,68 +154,5 @@ func Register(con *repl.Console) {
 
 	con.RegisterServerFunc("isbeacon", func(con *repl.Console, sess *core.Session) (bool, error) {
 		return sess.Type == consts.ImplantTypeBeacon, nil
-	}, nil)
-
-	con.RegisterServerFunc("donut_exe2shellcode", func(exe []byte, arch string, param string) (string, error) {
-		cmdline, err := shellquote.Split(param)
-		if err != nil {
-			return "", err
-		}
-
-		bin, err := con.Rpc.EXE2Shellcode(con.Context(), &clientpb.EXE2Shellcode{
-			Bin:    exe,
-			Arch:   arch,
-			Type:   "donut",
-			Params: strings.Join(cmdline, ","),
-		})
-		if err != nil {
-			return "", err
-		}
-		return string(bin.Bin), nil
-	}, nil)
-
-	con.RegisterServerFunc("donut_dll2shellcode", func(dll []byte, arch string, param string) (string, error) {
-		cmdline, err := shellquote.Split(param)
-		if err != nil {
-			return "", err
-		}
-
-		bin, err := con.Rpc.DLL2Shellcode(con.Context(), &clientpb.DLL2Shellcode{
-			Bin:    dll,
-			Arch:   arch,
-			Type:   "donut",
-			Params: strings.Join(cmdline, ","),
-		})
-		if err != nil {
-			return "", err
-		}
-		return string(bin.Bin), nil
-	}, nil)
-
-	con.RegisterServerFunc("srdi", func(dll []byte, entry string, arch string, param string) (string, error) {
-		bin, err := con.Rpc.DLL2Shellcode(con.Context(), &clientpb.DLL2Shellcode{
-			Bin:        dll,
-			Arch:       arch,
-			Type:       "srdi",
-			Entrypoint: entry,
-			Params:     param,
-		})
-		if err != nil {
-			return "", err
-		}
-		return string(bin.Bin), nil
-	}, nil)
-
-	con.RegisterServerFunc("sgn_encode", func(shellcode []byte, arch string, iterations int32) (string, error) {
-		bin, err := con.Rpc.ShellcodeEncode(con.Context(), &clientpb.ShellcodeEncode{
-			Shellcode:  shellcode,
-			Arch:       arch,
-			Type:       "sgn",
-			Iterations: iterations,
-		})
-		if err != nil {
-			return "", err
-		}
-		return string(bin.Bin), nil
 	}, nil)
 }

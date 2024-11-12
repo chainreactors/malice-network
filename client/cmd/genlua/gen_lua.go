@@ -32,5 +32,5 @@ func main() {
 	plugin.GenerateLuaDefinitionFile(vm, "define.lua")
 	plugin.GenerateMarkdownDefinitionFile(vm, intermediate.BuiltinPackage, "builtin.md")
 	plugin.GenerateMarkdownDefinitionFile(vm, intermediate.RpcPackage, "rpc.md")
-	plugin.GenerateMarkdownDefinitionFile(vm, intermediate.BeaconPackage, "beacon_md")
+	plugin.GenerateMarkdownDefinitionFile(vm, intermediate.BeaconPackage, "beacon.md")
 }

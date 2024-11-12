@@ -25,17 +25,12 @@ func GetResourceFile(pluginName, filename string) (string, error) {
 	return "", fmt.Errorf("file not found")
 }
 
-func FindResourceFile(pluginName, filename, arch, ext string) (string, error) {
-	return GetResourceFile(pluginName, fmt.Sprintf("%s.%s.%s", filename, consts.FormatArch(arch), ext))
-}
-
-func ReadResourceFile(pluginName, filename string) (string, error) {
-	resourcePath, _ := GetResourceFile(pluginName, filename)
-	content, err := os.ReadFile(resourcePath)
-	if err != nil {
-		return "", err
+func GetGlobalResourceFile(filename string) (string, error) {
+	resourceFile := filepath.Join(assets.GetResourceDir(), filename)
+	if files.IsExist(resourceFile) {
+		return resourceFile, nil
 	}
-	return string(content), nil
+	return "", fmt.Errorf("file not found")
 }
 
 func NewSacrificeProcessMessage(ppid int64, hidden, block_dll, disable_etw bool, argue string) (*implantpb.SacrificeProcess, error) {
