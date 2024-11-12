@@ -130,11 +130,11 @@ func (plug *LuaPlugin) Run() error {
 func (plug *LuaPlugin) RegisterLuaBuiltin() error {
 	vm := plug.vm
 	plugDir := filepath.Join(assets.GetMalsDir(), plug.Name)
-	tempDir := assets.GetTempDir()
 	vm.SetGlobal("plugin_dir", lua.LString(plugDir))
 	vm.SetGlobal("plugin_resource_dir", lua.LString(filepath.Join(plugDir, "resources")))
 	vm.SetGlobal("plugin_name", lua.LString(plug.Name))
-	vm.SetGlobal("temp_dir", lua.LString(tempDir))
+	vm.SetGlobal("temp_dir", lua.LString(assets.GetTempDir()))
+	vm.SetGlobal("resource_dir", lua.LString(assets.GetResourceDir()))
 	packageMod := vm.GetGlobal("package").(*lua.LTable)
 	luaPath := lua.LuaPathDefault + ";" + plugDir + "\\?.lua"
 	vm.SetField(packageMod, "path", lua.LString(luaPath))
@@ -143,13 +143,35 @@ func (plug *LuaPlugin) RegisterLuaBuiltin() error {
 		return intermediate.GetResourceFile(plug.Name, filename)
 	})
 
+	plug.registerLuaFunction("global_resource", func(filename string) (string, error) {
+		return intermediate.GetGlobalResourceFile(filename)
+	})
+
 	plug.registerLuaFunction("find_resource", func(sess *core.Session, base string, ext string) (string, error) {
-		return intermediate.FindResourceFile(plug.Name, base, sess.Os.Arch, ext)
+		return intermediate.GetResourceFile(plug.Name, fmt.Sprintf("%s.%s.%s", base, consts.FormatArch(sess.Os.Arch), ext))
+	})
+
+	plug.registerLuaFunction("find_global_resource", func(sess *core.Session, base string, ext string) (string, error) {
+		return intermediate.GetGlobalResourceFile(fmt.Sprintf("%s.%s.%s", base, consts.FormatArch(sess.Os.Arch), ext))
 	})
 
 	// 读取资源文件内容
 	plug.registerLuaFunction("read_resource", func(filename string) (string, error) {
-		return intermediate.ReadResourceFile(plug.Name, filename)
+		resourcePath, _ := intermediate.GetResourceFile(plug.Name, filename)
+		content, err := os.ReadFile(resourcePath)
+		if err != nil {
+			return "", err
+		}
+		return string(content), nil
+	})
+
+	plug.registerLuaFunction("read_global_resource", func(filename string) (string, error) {
+		resourcePath, _ := intermediate.GetGlobalResourceFile(filename)
+		content, err := os.ReadFile(resourcePath)
+		if err != nil {
+			return "", err
+		}
+		return string(content), nil
 	})
 
 	plug.registerLuaFunction("help", func(name string, long string) (bool, error) {
