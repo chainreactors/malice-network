@@ -42,7 +42,7 @@ func printTasks(tasks []*clientpb.Task, con *repl.Console, isAll bool) {
 		var status string
 		if task.Status != 0 {
 			status = "Error"
-		} else if task.Cur/task.Total == 1 {
+		} else if task.Cur != task.Total {
 			if !isAll {
 				continue
 			}
