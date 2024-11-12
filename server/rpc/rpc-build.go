@@ -161,3 +161,20 @@ func (rpc *Server) UploadArtifact(ctx context.Context, req *clientpb.Builder) (*
 		Name: builder.Name,
 	}, nil
 }
+
+// for listener
+func (rpc *Server) GetArtifact(ctx context.Context, req *clientpb.Builder) (*clientpb.Builder, error) {
+	builder, err := db.GetArtifactById(req.Id)
+	if err != nil {
+		return nil, err
+	}
+	data, err := os.ReadFile(builder.Path)
+	if err != nil {
+		return nil, err
+	}
+	return &clientpb.Builder{
+		Id:   builder.ID,
+		Name: builder.Name,
+		Bin:  data,
+	}, nil
+}

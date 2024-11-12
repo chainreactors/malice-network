@@ -4293,53 +4293,6 @@ func (x *Websites) GetWebsites() []*Website {
 	return nil
 }
 
-type ListenerName struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Name string `protobuf:"bytes,1,opt,name=Name,proto3" json:"Name,omitempty"`
-}
-
-func (x *ListenerName) Reset() {
-	*x = ListenerName{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_client_clientpb_client_proto_msgTypes[61]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *ListenerName) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ListenerName) ProtoMessage() {}
-
-func (x *ListenerName) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[61]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ListenerName.ProtoReflect.Descriptor instead.
-func (*ListenerName) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{61}
-}
-
-func (x *ListenerName) GetName() string {
-	if x != nil {
-		return x.Name
-	}
-	return ""
-}
-
 type WebsiteAsset struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -4353,7 +4306,7 @@ type WebsiteAsset struct {
 func (x *WebsiteAsset) Reset() {
 	*x = WebsiteAsset{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_client_clientpb_client_proto_msgTypes[62]
+		mi := &file_client_clientpb_client_proto_msgTypes[61]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4366,7 +4319,7 @@ func (x *WebsiteAsset) String() string {
 func (*WebsiteAsset) ProtoMessage() {}
 
 func (x *WebsiteAsset) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[62]
+	mi := &file_client_clientpb_client_proto_msgTypes[61]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4379,7 +4332,7 @@ func (x *WebsiteAsset) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WebsiteAsset.ProtoReflect.Descriptor instead.
 func (*WebsiteAsset) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{62}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{61}
 }
 
 func (x *WebsiteAsset) GetFileName() string {
@@ -4414,7 +4367,7 @@ type WebsiteAssets struct {
 func (x *WebsiteAssets) Reset() {
 	*x = WebsiteAssets{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_client_clientpb_client_proto_msgTypes[63]
+		mi := &file_client_clientpb_client_proto_msgTypes[62]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4427,7 +4380,7 @@ func (x *WebsiteAssets) String() string {
 func (*WebsiteAssets) ProtoMessage() {}
 
 func (x *WebsiteAssets) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[63]
+	mi := &file_client_clientpb_client_proto_msgTypes[62]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4440,7 +4393,7 @@ func (x *WebsiteAssets) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WebsiteAssets.ProtoReflect.Descriptor instead.
 func (*WebsiteAssets) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{63}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{62}
 }
 
 func (x *WebsiteAssets) GetAssets() []*WebsiteAsset {
@@ -4465,7 +4418,7 @@ type Polling struct {
 func (x *Polling) Reset() {
 	*x = Polling{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_client_clientpb_client_proto_msgTypes[64]
+		mi := &file_client_clientpb_client_proto_msgTypes[63]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4478,7 +4431,7 @@ func (x *Polling) String() string {
 func (*Polling) ProtoMessage() {}
 
 func (x *Polling) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[64]
+	mi := &file_client_clientpb_client_proto_msgTypes[63]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4491,7 +4444,7 @@ func (x *Polling) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Polling.ProtoReflect.Descriptor instead.
 func (*Polling) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{64}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{63}
 }
 
 func (x *Polling) GetId() string {
@@ -5030,32 +4983,30 @@ var file_client_clientpb_client_proto_rawDesc = []byte{
 	0x12, 0x2d, 0x0a, 0x08, 0x57, 0x65, 0x62, 0x73, 0x69, 0x74, 0x65, 0x73, 0x18, 0x01, 0x20, 0x03,
 	0x28, 0x0b, 0x32, 0x11, 0x2e, 0x63, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x70, 0x62, 0x2e, 0x57, 0x65,
 	0x62, 0x73, 0x69, 0x74, 0x65, 0x52, 0x08, 0x57, 0x65, 0x62, 0x73, 0x69, 0x74, 0x65, 0x73, 0x22,
-	0x22, 0x0a, 0x0c, 0x4c, 0x69, 0x73, 0x74, 0x65, 0x6e, 0x65, 0x72, 0x4e, 0x61, 0x6d, 0x65, 0x12,
-	0x12, 0x0a, 0x04, 0x4e, 0x61, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x4e,
-	0x61, 0x6d, 0x65, 0x22, 0x5e, 0x0a, 0x0c, 0x57, 0x65, 0x62, 0x73, 0x69, 0x74, 0x65, 0x41, 0x73,
-	0x73, 0x65, 0x74, 0x12, 0x1a, 0x0a, 0x08, 0x46, 0x69, 0x6c, 0x65, 0x4e, 0x61, 0x6d, 0x65, 0x18,
-	0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x46, 0x69, 0x6c, 0x65, 0x4e, 0x61, 0x6d, 0x65, 0x12,
-	0x18, 0x0a, 0x07, 0x43, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0c,
-	0x52, 0x07, 0x43, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x12, 0x18, 0x0a, 0x07, 0x57, 0x65, 0x62,
-	0x4e, 0x61, 0x6d, 0x65, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x57, 0x65, 0x62, 0x4e,
-	0x61, 0x6d, 0x65, 0x22, 0x3f, 0x0a, 0x0d, 0x57, 0x65, 0x62, 0x73, 0x69, 0x74, 0x65, 0x41, 0x73,
-	0x73, 0x65, 0x74, 0x73, 0x12, 0x2e, 0x0a, 0x06, 0x41, 0x73, 0x73, 0x65, 0x74, 0x73, 0x18, 0x01,
-	0x20, 0x03, 0x28, 0x0b, 0x32, 0x16, 0x2e, 0x63, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x70, 0x62, 0x2e,
-	0x57, 0x65, 0x62, 0x73, 0x69, 0x74, 0x65, 0x41, 0x73, 0x73, 0x65, 0x74, 0x52, 0x06, 0x41, 0x73,
-	0x73, 0x65, 0x74, 0x73, 0x22, 0x80, 0x01, 0x0a, 0x07, 0x50, 0x6f, 0x6c, 0x6c, 0x69, 0x6e, 0x67,
-	0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x02, 0x69, 0x64,
-	0x12, 0x1d, 0x0a, 0x0a, 0x73, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x5f, 0x69, 0x64, 0x18, 0x02,
-	0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x73, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x49, 0x64, 0x12,
-	0x1a, 0x0a, 0x08, 0x69, 0x6e, 0x74, 0x65, 0x72, 0x76, 0x61, 0x6c, 0x18, 0x03, 0x20, 0x01, 0x28,
-	0x04, 0x52, 0x08, 0x69, 0x6e, 0x74, 0x65, 0x72, 0x76, 0x61, 0x6c, 0x12, 0x14, 0x0a, 0x05, 0x74,
-	0x61, 0x73, 0x6b, 0x73, 0x18, 0x04, 0x20, 0x03, 0x28, 0x0d, 0x52, 0x05, 0x74, 0x61, 0x73, 0x6b,
-	0x73, 0x12, 0x14, 0x0a, 0x05, 0x66, 0x6f, 0x72, 0x63, 0x65, 0x18, 0x05, 0x20, 0x01, 0x28, 0x08,
-	0x52, 0x05, 0x66, 0x6f, 0x72, 0x63, 0x65, 0x42, 0x46, 0x5a, 0x44, 0x67, 0x69, 0x74, 0x68, 0x75,
-	0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x63, 0x68, 0x61, 0x69, 0x6e, 0x72, 0x65, 0x61, 0x63, 0x74,
-	0x6f, 0x72, 0x73, 0x2f, 0x6d, 0x61, 0x6c, 0x69, 0x63, 0x65, 0x2d, 0x6e, 0x65, 0x74, 0x77, 0x6f,
-	0x72, 0x6b, 0x2f, 0x68, 0x65, 0x6c, 0x70, 0x65, 0x72, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2f,
-	0x63, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x2f, 0x63, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x70, 0x62, 0x62,
-	0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x5e, 0x0a, 0x0c, 0x57, 0x65, 0x62, 0x73, 0x69, 0x74, 0x65, 0x41, 0x73, 0x73, 0x65, 0x74, 0x12,
+	0x1a, 0x0a, 0x08, 0x46, 0x69, 0x6c, 0x65, 0x4e, 0x61, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28,
+	0x09, 0x52, 0x08, 0x46, 0x69, 0x6c, 0x65, 0x4e, 0x61, 0x6d, 0x65, 0x12, 0x18, 0x0a, 0x07, 0x43,
+	0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x07, 0x43, 0x6f,
+	0x6e, 0x74, 0x65, 0x6e, 0x74, 0x12, 0x18, 0x0a, 0x07, 0x57, 0x65, 0x62, 0x4e, 0x61, 0x6d, 0x65,
+	0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x57, 0x65, 0x62, 0x4e, 0x61, 0x6d, 0x65, 0x22,
+	0x3f, 0x0a, 0x0d, 0x57, 0x65, 0x62, 0x73, 0x69, 0x74, 0x65, 0x41, 0x73, 0x73, 0x65, 0x74, 0x73,
+	0x12, 0x2e, 0x0a, 0x06, 0x41, 0x73, 0x73, 0x65, 0x74, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b,
+	0x32, 0x16, 0x2e, 0x63, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x70, 0x62, 0x2e, 0x57, 0x65, 0x62, 0x73,
+	0x69, 0x74, 0x65, 0x41, 0x73, 0x73, 0x65, 0x74, 0x52, 0x06, 0x41, 0x73, 0x73, 0x65, 0x74, 0x73,
+	0x22, 0x80, 0x01, 0x0a, 0x07, 0x50, 0x6f, 0x6c, 0x6c, 0x69, 0x6e, 0x67, 0x12, 0x0e, 0x0a, 0x02,
+	0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x02, 0x69, 0x64, 0x12, 0x1d, 0x0a, 0x0a,
+	0x73, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09,
+	0x52, 0x09, 0x73, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x49, 0x64, 0x12, 0x1a, 0x0a, 0x08, 0x69,
+	0x6e, 0x74, 0x65, 0x72, 0x76, 0x61, 0x6c, 0x18, 0x03, 0x20, 0x01, 0x28, 0x04, 0x52, 0x08, 0x69,
+	0x6e, 0x74, 0x65, 0x72, 0x76, 0x61, 0x6c, 0x12, 0x14, 0x0a, 0x05, 0x74, 0x61, 0x73, 0x6b, 0x73,
+	0x18, 0x04, 0x20, 0x03, 0x28, 0x0d, 0x52, 0x05, 0x74, 0x61, 0x73, 0x6b, 0x73, 0x12, 0x14, 0x0a,
+	0x05, 0x66, 0x6f, 0x72, 0x63, 0x65, 0x18, 0x05, 0x20, 0x01, 0x28, 0x08, 0x52, 0x05, 0x66, 0x6f,
+	0x72, 0x63, 0x65, 0x42, 0x46, 0x5a, 0x44, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f,
+	0x6d, 0x2f, 0x63, 0x68, 0x61, 0x69, 0x6e, 0x72, 0x65, 0x61, 0x63, 0x74, 0x6f, 0x72, 0x73, 0x2f,
+	0x6d, 0x61, 0x6c, 0x69, 0x63, 0x65, 0x2d, 0x6e, 0x65, 0x74, 0x77, 0x6f, 0x72, 0x6b, 0x2f, 0x68,
+	0x65, 0x6c, 0x70, 0x65, 0x72, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2f, 0x63, 0x6c, 0x69, 0x65,
+	0x6e, 0x74, 0x2f, 0x63, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x70, 0x62, 0x62, 0x06, 0x70, 0x72, 0x6f,
+	0x74, 0x6f, 0x33,
 }
 
 var (
@@ -5070,7 +5021,7 @@ func file_client_clientpb_client_proto_rawDescGZIP() []byte {
 	return file_client_clientpb_client_proto_rawDescData
 }
 
-var file_client_clientpb_client_proto_msgTypes = make([]protoimpl.MessageInfo, 71)
+var file_client_clientpb_client_proto_msgTypes = make([]protoimpl.MessageInfo, 70)
 var file_client_clientpb_client_proto_goTypes = []interface{}{
 	(*Empty)(nil),                // 0: clientpb.Empty
 	(*Basic)(nil),                // 1: clientpb.Basic
@@ -5133,37 +5084,36 @@ var file_client_clientpb_client_proto_goTypes = []interface{}{
 	(*Website)(nil),              // 58: clientpb.Website
 	(*WebsiteResponse)(nil),      // 59: clientpb.WebsiteResponse
 	(*Websites)(nil),             // 60: clientpb.Websites
-	(*ListenerName)(nil),         // 61: clientpb.ListenerName
-	(*WebsiteAsset)(nil),         // 62: clientpb.WebsiteAsset
-	(*WebsiteAssets)(nil),        // 63: clientpb.WebsiteAssets
-	(*Polling)(nil),              // 64: clientpb.Polling
-	nil,                          // 65: clientpb.Session.ArgueEntry
-	nil,                          // 66: clientpb.Session.DataEntry
-	nil,                          // 67: clientpb.Session.LootEntry
-	nil,                          // 68: clientpb.Generate.ParamsEntry
-	nil,                          // 69: clientpb.WebsiteAddContent.ContentsEntry
-	nil,                          // 70: clientpb.Website.ContentsEntry
-	(*implantpb.Os)(nil),         // 71: modulepb.Os
-	(*implantpb.Process)(nil),    // 72: modulepb.Process
-	(*implantpb.Timer)(nil),      // 73: modulepb.Timer
-	(*implantpb.Addon)(nil),      // 74: modulepb.Addon
-	(*implantpb.Spite)(nil),      // 75: implantpb.Spite
-	(*implantpb.Register)(nil),   // 76: modulepb.Register
+	(*WebsiteAsset)(nil),         // 61: clientpb.WebsiteAsset
+	(*WebsiteAssets)(nil),        // 62: clientpb.WebsiteAssets
+	(*Polling)(nil),              // 63: clientpb.Polling
+	nil,                          // 64: clientpb.Session.ArgueEntry
+	nil,                          // 65: clientpb.Session.DataEntry
+	nil,                          // 66: clientpb.Session.LootEntry
+	nil,                          // 67: clientpb.Generate.ParamsEntry
+	nil,                          // 68: clientpb.WebsiteAddContent.ContentsEntry
+	nil,                          // 69: clientpb.Website.ContentsEntry
+	(*implantpb.Os)(nil),         // 70: modulepb.Os
+	(*implantpb.Process)(nil),    // 71: modulepb.Process
+	(*implantpb.Timer)(nil),      // 72: modulepb.Timer
+	(*implantpb.Addon)(nil),      // 73: modulepb.Addon
+	(*implantpb.Spite)(nil),      // 74: implantpb.Spite
+	(*implantpb.Register)(nil),   // 75: modulepb.Register
 }
 var file_client_clientpb_client_proto_depIdxs = []int32{
 	28, // 0: clientpb.Session.tasks:type_name -> clientpb.Tasks
-	71, // 1: clientpb.Session.os:type_name -> modulepb.Os
-	72, // 2: clientpb.Session.process:type_name -> modulepb.Process
-	73, // 3: clientpb.Session.timer:type_name -> modulepb.Timer
-	74, // 4: clientpb.Session.addons:type_name -> modulepb.Addon
-	65, // 5: clientpb.Session.argue:type_name -> clientpb.Session.ArgueEntry
-	66, // 6: clientpb.Session.data:type_name -> clientpb.Session.DataEntry
-	67, // 7: clientpb.Session.loot:type_name -> clientpb.Session.LootEntry
+	70, // 1: clientpb.Session.os:type_name -> modulepb.Os
+	71, // 2: clientpb.Session.process:type_name -> modulepb.Process
+	72, // 3: clientpb.Session.timer:type_name -> modulepb.Timer
+	73, // 4: clientpb.Session.addons:type_name -> modulepb.Addon
+	64, // 5: clientpb.Session.argue:type_name -> clientpb.Session.ArgueEntry
+	65, // 6: clientpb.Session.data:type_name -> clientpb.Session.DataEntry
+	66, // 7: clientpb.Session.loot:type_name -> clientpb.Session.LootEntry
 	2,  // 8: clientpb.Sessions.sessions:type_name -> clientpb.Session
 	9,  // 9: clientpb.SpiteCache.items:type_name -> clientpb.SpiteCacheItem
-	75, // 10: clientpb.SpiteCacheItem.spite:type_name -> implantpb.Spite
+	74, // 10: clientpb.SpiteCacheItem.spite:type_name -> implantpb.Spite
 	49, // 11: clientpb.Job.pipeline:type_name -> clientpb.Pipeline
-	63, // 12: clientpb.Job.website_assets:type_name -> clientpb.WebsiteAssets
+	62, // 12: clientpb.Job.website_assets:type_name -> clientpb.WebsiteAssets
 	10, // 13: clientpb.Jobs.job:type_name -> clientpb.Job
 	10, // 14: clientpb.JobCtrl.job:type_name -> clientpb.Job
 	10, // 15: clientpb.JobStatus.job:type_name -> clientpb.Job
@@ -5174,37 +5124,37 @@ var file_client_clientpb_client_proto_depIdxs = []int32{
 	10, // 20: clientpb.Event.job:type_name -> clientpb.Job
 	16, // 21: clientpb.Event.client:type_name -> clientpb.Client
 	27, // 22: clientpb.Event.task:type_name -> clientpb.Task
-	75, // 23: clientpb.Event.spite:type_name -> implantpb.Spite
+	74, // 23: clientpb.Event.spite:type_name -> implantpb.Spite
 	27, // 24: clientpb.TaskContext.task:type_name -> clientpb.Task
 	2,  // 25: clientpb.TaskContext.session:type_name -> clientpb.Session
-	75, // 26: clientpb.TaskContext.spite:type_name -> implantpb.Spite
+	74, // 26: clientpb.TaskContext.spite:type_name -> implantpb.Spite
 	27, // 27: clientpb.TaskContexts.task:type_name -> clientpb.Task
 	2,  // 28: clientpb.TaskContexts.session:type_name -> clientpb.Session
-	75, // 29: clientpb.TaskContexts.spites:type_name -> implantpb.Spite
+	74, // 29: clientpb.TaskContexts.spites:type_name -> implantpb.Spite
 	24, // 30: clientpb.TasksContext.contexts:type_name -> clientpb.TaskContext
 	27, // 31: clientpb.Tasks.tasks:type_name -> clientpb.Task
 	32, // 32: clientpb.TaskDescs.tasks:type_name -> clientpb.TaskDesc
 	30, // 33: clientpb.Files.files:type_name -> clientpb.File
 	34, // 34: clientpb.Plugins.plugins:type_name -> clientpb.Plugin
 	40, // 35: clientpb.Profiles.profiles:type_name -> clientpb.Profile
-	68, // 36: clientpb.Generate.params:type_name -> clientpb.Generate.ParamsEntry
+	67, // 36: clientpb.Generate.params:type_name -> clientpb.Generate.ParamsEntry
 	42, // 37: clientpb.Builders.builders:type_name -> clientpb.Generate
-	76, // 38: clientpb.RegisterSession.register_data:type_name -> modulepb.Register
+	75, // 38: clientpb.RegisterSession.register_data:type_name -> modulepb.Register
 	48, // 39: clientpb.RegisterListener.pipelines:type_name -> clientpb.Pipelines
 	2,  // 40: clientpb.SpiteRequest.session:type_name -> clientpb.Session
 	27, // 41: clientpb.SpiteRequest.task:type_name -> clientpb.Task
-	75, // 42: clientpb.SpiteRequest.spite:type_name -> implantpb.Spite
-	75, // 43: clientpb.SpiteResponse.spite:type_name -> implantpb.Spite
+	74, // 42: clientpb.SpiteRequest.spite:type_name -> implantpb.Spite
+	74, // 43: clientpb.SpiteResponse.spite:type_name -> implantpb.Spite
 	49, // 44: clientpb.Pipelines.pipelines:type_name -> clientpb.Pipeline
 	54, // 45: clientpb.Pipeline.tcp:type_name -> clientpb.TCPPipeline
 	53, // 46: clientpb.Pipeline.bind:type_name -> clientpb.BindPipeline
 	58, // 47: clientpb.Pipeline.web:type_name -> clientpb.Website
 	51, // 48: clientpb.Pipeline.tls:type_name -> clientpb.TLS
 	52, // 49: clientpb.Pipeline.encryption:type_name -> clientpb.Encryption
-	69, // 50: clientpb.WebsiteAddContent.Contents:type_name -> clientpb.WebsiteAddContent.ContentsEntry
-	70, // 51: clientpb.Website.Contents:type_name -> clientpb.Website.ContentsEntry
+	68, // 50: clientpb.WebsiteAddContent.Contents:type_name -> clientpb.WebsiteAddContent.ContentsEntry
+	69, // 51: clientpb.Website.Contents:type_name -> clientpb.Website.ContentsEntry
 	58, // 52: clientpb.Websites.Websites:type_name -> clientpb.Website
-	62, // 53: clientpb.WebsiteAssets.Assets:type_name -> clientpb.WebsiteAsset
+	61, // 53: clientpb.WebsiteAssets.Assets:type_name -> clientpb.WebsiteAsset
 	55, // 54: clientpb.WebsiteAddContent.ContentsEntry.value:type_name -> clientpb.WebContent
 	55, // 55: clientpb.Website.ContentsEntry.value:type_name -> clientpb.WebContent
 	56, // [56:56] is the sub-list for method output_type
@@ -5953,18 +5903,6 @@ func file_client_clientpb_client_proto_init() {
 			}
 		}
 		file_client_clientpb_client_proto_msgTypes[61].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ListenerName); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_client_clientpb_client_proto_msgTypes[62].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*WebsiteAsset); i {
 			case 0:
 				return &v.state
@@ -5976,7 +5914,7 @@ func file_client_clientpb_client_proto_init() {
 				return nil
 			}
 		}
-		file_client_clientpb_client_proto_msgTypes[63].Exporter = func(v interface{}, i int) interface{} {
+		file_client_clientpb_client_proto_msgTypes[62].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*WebsiteAssets); i {
 			case 0:
 				return &v.state
@@ -5988,7 +5926,7 @@ func file_client_clientpb_client_proto_init() {
 				return nil
 			}
 		}
-		file_client_clientpb_client_proto_msgTypes[64].Exporter = func(v interface{}, i int) interface{} {
+		file_client_clientpb_client_proto_msgTypes[63].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*Polling); i {
 			case 0:
 				return &v.state
@@ -6012,7 +5950,7 @@ func file_client_clientpb_client_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_client_clientpb_client_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   71,
+			NumMessages:   70,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -33,7 +33,7 @@ type PulseParser struct {
 	Magic          uint32
 }
 
-func (parser *PulseParser) PeekHeader(conn *peek.Conn) (uint32, int, error) {
+func (parser *PulseParser) PeekHeader(conn *peek.Conn) (uint32, uint32, error) {
 	header, err := conn.Peek(HeaderLength)
 	if err != nil {
 		return 0, 0, err
@@ -43,11 +43,11 @@ func (parser *PulseParser) PeekHeader(conn *peek.Conn) (uint32, int, error) {
 		return 0, 0, errs.ErrInvalidStart
 	}
 	magic := encoders.BytesToUint32(header[MsgMagicStart:MsgMagicEnd])
-	length := int(binary.LittleEndian.Uint32(header[MsgMagicEnd:]))
+	length := binary.LittleEndian.Uint32(header[MsgMagicEnd:])
 	return magic, length + 1, nil
 }
 
-func (parser *PulseParser) ReadHeader(conn *peek.Conn) (uint32, int, error) {
+func (parser *PulseParser) ReadHeader(conn *peek.Conn) (uint32, uint32, error) {
 	magic, length, err := parser.PeekHeader(conn)
 	if err != nil {
 		return 0, 0, err
@@ -56,8 +56,8 @@ func (parser *PulseParser) ReadHeader(conn *peek.Conn) (uint32, int, error) {
 		return 0, 0, errs.ErrInvalidMagic
 	}
 
-	if n, err := conn.Reader.Discard(HeaderLength); err != nil {
-		return 0, n, err
+	if _, err := conn.Reader.Discard(HeaderLength); err != nil {
+		return 0, 0, err
 	}
 	return magic, length, nil
 }

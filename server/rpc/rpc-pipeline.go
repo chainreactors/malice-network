@@ -28,9 +28,9 @@ func (rpc *Server) RegisterPipeline(ctx context.Context, req *clientpb.Pipeline)
 	return &clientpb.Empty{}, nil
 }
 
-func (rpc *Server) ListPipelines(ctx context.Context, req *clientpb.ListenerName) (*clientpb.Pipelines, error) {
+func (rpc *Server) ListPipelines(ctx context.Context, req *clientpb.Listener) (*clientpb.Pipelines, error) {
 	var result []*clientpb.Pipeline
-	pipelines, err := db.ListPipelines(req.Name)
+	pipelines, err := db.ListPipelines(req.Id)
 	if err != nil {
 		return nil, err
 	}

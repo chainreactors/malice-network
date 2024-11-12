@@ -233,9 +233,9 @@ func (lns *listener) startPipeline(pipelinepb *clientpb.Pipeline) (core.Pipeline
 	p := lns.pipelines.Get(pipelinepb.Name)
 	switch pipelinepb.Body.(type) {
 	case *clientpb.Pipeline_Tcp:
-		p, err = NewTcpPipeline(lns.conn, pipelinepb)
+		p, err = NewTcpPipeline(lns.Rpc, pipelinepb)
 	case *clientpb.Pipeline_Bind:
-		p, err = NewBindPipeline(lns.conn, pipelinepb)
+		p, err = NewBindPipeline(lns.Rpc, pipelinepb)
 	default:
 		return nil, fmt.Errorf("not impl")
 	}

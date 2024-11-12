@@ -32,7 +32,7 @@ type MaleficParser struct {
 	EndDelimiter   byte
 }
 
-func (parser *MaleficParser) PeekHeader(conn *peek.Conn) (uint32, int, error) {
+func (parser *MaleficParser) PeekHeader(conn *peek.Conn) (uint32, uint32, error) {
 	header, err := conn.Peek(HeaderLength)
 	if err != nil {
 		return 0, 0, err
@@ -42,21 +42,21 @@ func (parser *MaleficParser) PeekHeader(conn *peek.Conn) (uint32, int, error) {
 		return 0, 0, errs.ErrInvalidStart
 	}
 	sessionId := header[MsgSessionStart:MsgSessionEnd]
-	length := int(binary.LittleEndian.Uint32(header[MsgSessionEnd:]))
+	length := binary.LittleEndian.Uint32(header[MsgSessionEnd:])
 	return binary.LittleEndian.Uint32(sessionId), length + 1, nil
 }
 
-func (parser *MaleficParser) ReadHeader(conn *peek.Conn) (uint32, int, error) {
+func (parser *MaleficParser) ReadHeader(conn *peek.Conn) (uint32, uint32, error) {
 	sid, length, err := parser.PeekHeader(conn)
 	if err != nil {
 		return 0, 0, err
 	}
 	//logs.Log.Debugf("%v read packet from %s , %d bytes", sid, conn.RemoteAddr(), length)
-	if length > config.Int(consts.ConfigMaxPacketLength)+consts.KB*16 {
+	if length > uint32(config.Uint(consts.ConfigMaxPacketLength))+consts.KB*16 {
 		return 0, 0, fmt.Errorf("%w,expect: %d, recv: %d", errs.ErrPacketTooLarge, config.Int(consts.ConfigMaxPacketLength), length)
 	}
-	if n, err := conn.Reader.Discard(HeaderLength); err != nil {
-		return 0, n, err
+	if _, err := conn.Reader.Discard(HeaderLength); err != nil {
+		return 0, 0, err
 	}
 	return sid, length, nil
 }
@@ -93,7 +93,7 @@ func (parser *MaleficParser) Marshal(spites *implantpb.Spites, sid uint32) ([]by
 	buf.WriteByte(parser.StartDelimiter)
 	binary.Write(&buf, binary.LittleEndian, sid)
 
-	err = binary.Write(&buf, binary.LittleEndian, int32(len(data)))
+	err = binary.Write(&buf, binary.LittleEndian, len(data))
 	if err != nil {
 		return nil, err
 	}

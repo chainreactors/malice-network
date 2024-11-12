@@ -61,8 +61,8 @@ func ListJobsCmd(cmd *cobra.Command, con *repl.Console) error {
 
 func ListPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 	listenerID, _ := cmd.Flags().GetString("listener")
-	pipelines, err := con.Rpc.ListPipelines(context.Background(), &clientpb.ListenerName{
-		Name: listenerID,
+	pipelines, err := con.Rpc.ListPipelines(context.Background(), &clientpb.Listener{
+		Id: listenerID,
 	})
 	if err != nil {
 		return err
