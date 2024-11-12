@@ -133,7 +133,7 @@ func (pipeline *TCPPipeline) handler() (net.Listener, error) {
 				logs.Log.Errorf("Accept failed: %v", err)
 				continue
 			}
-			logs.Log.Debugf("accept from %s", conn.RemoteAddr())
+			logs.Log.Debugf("[pipeline.%s] accept from %s", pipeline.Name, conn.RemoteAddr())
 			switch pipeline.Parser {
 			case consts.ImplantMalefic:
 				go pipeline.handleBeacon(conn)
@@ -156,6 +156,7 @@ func (pipeline *TCPPipeline) handlePulse(conn net.Conn) {
 	p := pipeline.parser
 	magic, artifactId, err := p.ReadHeader(peekConn)
 	if err != nil {
+		logs.Log.Errorf(err.Error())
 		return
 	}
 	builder, err := pipeline.rpc.GetArtifact(context.Background(), &clientpb.Builder{
@@ -171,6 +172,7 @@ func (pipeline *TCPPipeline) handlePulse(conn net.Conn) {
 		},
 	}), magic)
 	if err != nil {
+		logs.Log.Errorf(err.Error())
 		return
 	}
 }

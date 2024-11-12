@@ -43,23 +43,23 @@ func (parser *PulseParser) PeekHeader(conn *peek.Conn) (uint32, uint32, error) {
 		return 0, 0, errs.ErrInvalidStart
 	}
 	magic := encoders.BytesToUint32(header[MsgMagicStart:MsgMagicEnd])
-	length := binary.LittleEndian.Uint32(header[MsgMagicEnd:])
-	return magic, length + 1, nil
+	artifact := binary.LittleEndian.Uint32(header[MsgMagicEnd:])
+	return magic, artifact, nil
 }
 
 func (parser *PulseParser) ReadHeader(conn *peek.Conn) (uint32, uint32, error) {
-	magic, length, err := parser.PeekHeader(conn)
+	magic, artifact, err := parser.PeekHeader(conn)
 	if err != nil {
 		return 0, 0, err
 	}
-	if magic == parser.Magic {
+	if magic != parser.Magic {
 		return 0, 0, errs.ErrInvalidMagic
 	}
 
 	if _, err := conn.Reader.Discard(HeaderLength); err != nil {
 		return 0, 0, err
 	}
-	return magic, length, nil
+	return magic, artifact, nil
 }
 
 func (parser *PulseParser) Parse(buf []byte) (*implantpb.Spites, error) {
