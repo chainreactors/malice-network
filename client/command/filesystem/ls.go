@@ -56,6 +56,10 @@ func RegisterLsFunc(con *repl.Console) {
 			}
 			resp := ctx.Spite.GetLsResponse()
 			var fileDetails []string
+			if len(resp.GetFiles()) == 0 {
+				con.Log.Infof("No files")
+				return "", nil
+			}
 			for _, file := range resp.GetFiles() {
 				fileStr := fmt.Sprintf("%s|%s|%s|%s|%s",
 					file.Name,
