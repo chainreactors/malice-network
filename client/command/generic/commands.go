@@ -136,7 +136,7 @@ func Register(con *repl.Console) {
 
 	con.RegisterServerFunc("active", func(con *repl.Console) (*core.Session, error) {
 		return con.GetInteractive().Clone(consts.CalleeMal), nil
-	}, &intermediate.InternalHelper{
+	}, &intermediate.Helper{
 		Short:   "get current session",
 		Output:  []string{"sess"},
 		Example: "active()",

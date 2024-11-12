@@ -25,13 +25,18 @@ import (
 	"time"
 )
 
+const (
+	GroupEncode   = "encode"
+	GroupArtifact = "artifact"
+)
+
 type BuiltinCallback func(content interface{}) (bool, error)
 
 func RegisterBuiltin(rpc clientrpc.MaliceRPCClient) {
 	RegisterCustomBuiltin(rpc)
 	RegisterGRPCBuiltin(rpc)
-	RegisterEncodeFunc()
-	RegisterPayloadFunction(rpc)
+	RegisterEncodeFunc(rpc)
+	RegisterArtifactFunction(rpc)
 }
 
 func RegisterCustomBuiltin(rpc clientrpc.MaliceRPCClient) {
@@ -41,7 +46,7 @@ func RegisterCustomBuiltin(rpc clientrpc.MaliceRPCClient) {
 	})
 	AddHelper(
 		"new_sacrifice",
-		&InternalHelper{
+		&Helper{
 			CMDName: "new_sacrifice",
 			Input: []string{
 				"ppid: parent process id",
@@ -68,7 +73,7 @@ sac = new_sacrifice(123, false, false, false, "")
 		return NewExecutable(module, filename, cmdline, "x86", sacrifice)
 	})
 	AddHelper("new_86_executable",
-		&InternalHelper{
+		&Helper{
 			CMDName: "new_86_executable",
 			Input: []string{
 				"module",
@@ -93,7 +98,7 @@ new_86_exec = new_86_executable("module", "filename", "args", sac)
 		return NewExecutable(module, filename, cmdline, "amd64", sacrifice)
 	})
 	AddHelper("new_64_executable",
-		&InternalHelper{
+		&Helper{
 			CMDName: "new_64_executable",
 			Input: []string{
 				"module",
@@ -117,7 +122,7 @@ new_64_exec = new_64_executable("module", "filename", "args", sac)
 	})
 
 	AddHelper("new_binary",
-		&InternalHelper{
+		&Helper{
 			CMDName: "new_binary",
 			Input: []string{
 				"module",
@@ -156,7 +161,7 @@ new_bin = new_binary("module", "filename", "args", true, 100, "amd64", "process"
 		return pe.PackArg(format[0], arg)
 	})
 	AddHelper("pack_bof",
-		&InternalHelper{
+		&Helper{
 			CMDName: "pack_bof",
 			Input: []string{
 				"format",
@@ -181,7 +186,7 @@ new_bin = new_binary("module", "filename", "args", true, 100, "amd64", "process"
 	})
 	AddHelper(
 		"pack_bof_args",
-		&InternalHelper{
+		&Helper{
 			CMDName: "pack_bof_args",
 			Input: []string{
 				"format",
@@ -200,7 +205,7 @@ pack_bof_args("ZZ", {"aa", "bb"})
 	})
 	AddHelper(
 		"arg_hex",
-		&InternalHelper{
+		&Helper{
 			CMDName: "arg_hex",
 			Input: []string{
 				"input",
@@ -216,7 +221,7 @@ pack_bof_args("ZZ", {"aa", "bb"})
 	})
 	AddHelper(
 		"format_path",
-		&InternalHelper{
+		&Helper{
 			CMDName: "format_path",
 			Input: []string{
 				"s",
@@ -303,18 +308,15 @@ func RegisterGRPCBuiltin(rpc clientrpc.MaliceRPCClient) {
 
 		// 将方法包装为 InternalFunc
 		rpcFunc := func(args ...interface{}) (interface{}, error) {
-			// 检查是否传入了两个参数
 			if len(args) != 2 {
 				return nil, fmt.Errorf("expected 2 arguments: context and proto.Message")
 			}
 
-			// 确保第一个参数是 context.Context
 			ctx, ok := args[0].(context.Context)
 			if !ok {
 				return nil, fmt.Errorf("first argument must be context.Context")
 			}
 
-			// 确保第二个参数是 proto.Message
 			msg, ok := args[1].(proto.Message)
 			if !ok {
 				return nil, fmt.Errorf("second argument must be proto.Message")
@@ -350,19 +352,23 @@ func RegisterGRPCBuiltin(rpc clientrpc.MaliceRPCClient) {
 		internalFunc.Func = rpcFunc
 		internalFunc.ArgTypes = internalFunc.ArgTypes[1:3]
 
-		// 注册函数
-		RegisterInternalFunc(RpcPackage, methodName, internalFunc, nil)
+		err := RegisterInternalFunc(RpcPackage, methodName, internalFunc, nil)
+		if err != nil {
+			logs.Log.Errorf(err.Error())
+			return
+		}
 	}
 }
 
-func RegisterEncodeFunc() {
+func RegisterEncodeFunc(rpc clientrpc.MaliceRPCClient) {
 	// Base64函数
 	RegisterFunction("base64_encode", func(input string) (string, error) {
 		return base64.StdEncoding.EncodeToString([]byte(input)), nil
 	})
 	AddHelper(
 		"base64_encode",
-		&InternalHelper{
+		&Helper{
+			Group:   GroupEncode,
 			CMDName: "base64_encode",
 			Input: []string{
 				"input",
@@ -382,7 +388,8 @@ func RegisterEncodeFunc() {
 	})
 	AddHelper(
 		"base64_decode",
-		&InternalHelper{
+		&Helper{
+			Group:   GroupEncode,
 			CMDName: "base64_decode",
 			Input: []string{
 				"input",
@@ -404,7 +411,8 @@ func RegisterEncodeFunc() {
 	})
 	AddHelper(
 		"random_string",
-		&InternalHelper{
+		&Helper{
+			Group:   GroupEncode,
 			CMDName: "random_string",
 			Input: []string{
 				"length",
@@ -427,7 +435,8 @@ func RegisterEncodeFunc() {
 	})
 	AddHelper(
 		"file_exists",
-		&InternalHelper{
+		&Helper{
+			Group:   GroupEncode,
 			CMDName: "file_exists",
 			Input: []string{
 				"path",
@@ -452,7 +461,8 @@ func RegisterEncodeFunc() {
 	})
 	AddHelper(
 		"ismatch",
-		&InternalHelper{
+		&Helper{
+			Group:   GroupEncode,
 			CMDName: "ismatch",
 			Input: []string{
 				"pattern",
@@ -472,7 +482,8 @@ func RegisterEncodeFunc() {
 	})
 	AddHelper(
 		"timestampMillis",
-		&InternalHelper{
+		&Helper{
+			Group:   GroupEncode,
 			CMDName: "timestampMillis",
 			Input:   []string{},
 			Output: []string{
@@ -506,7 +517,8 @@ func RegisterEncodeFunc() {
 	})
 	AddHelper(
 		"parse_octal",
-		&InternalHelper{
+		&Helper{
+			Group:   GroupEncode,
 			CMDName: "parse_octal",
 			Input: []string{
 				"octalString",
@@ -527,7 +539,8 @@ func RegisterEncodeFunc() {
 	})
 	AddHelper(
 		"parse_hex",
-		&InternalHelper{
+		&Helper{
+			Group:   GroupEncode,
 			CMDName: "parse_hex",
 			Input: []string{
 				"hexString",
@@ -539,22 +552,8 @@ func RegisterEncodeFunc() {
 		})
 
 }
-func RegisterCSFunction(name string, fn interface{}) {
-	// 生成shellcode
-	RegisterFunction("payload_local", func(shellcode_path string) (string, error) {
-		if shellcode_path != "" {
-			shellcode, _ := os.ReadFile(shellcode_path)
-			if _, err := os.Stat(shellcode_path); os.IsNotExist(err) {
-				return "", fmt.Errorf("shellcode file does not exist: %s", shellcode_path)
-			}
-			return string(shellcode), nil
-		} else {
-			return "", nil
-		}
-	})
-}
 
-func RegisterPayloadFunction(rpc clientrpc.MaliceRPCClient) {
+func RegisterArtifactFunction(rpc clientrpc.MaliceRPCClient) {
 	RegisterFunction("payload_local", func(shellcodePath string) (string, error) {
 		if shellcodePath != "" {
 			shellcode, _ := os.ReadFile(shellcodePath)

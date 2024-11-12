@@ -7,26 +7,6 @@ import (
 
 type OnEventFunc func(*clientpb.Event) (bool, error)
 
-//func NewEvent(e *clientpb.Event) EventCondition {
-//	event := EventCondition{
-//		Type: e.Type,
-//		Op:   e.Op,
-//	}
-//
-//	if e.Task != nil {
-//		event.TaskId = fmt.Sprintf("%s_%d", e.Task.SessionId, e.Task.TaskId)
-//		event.MessageType = e.Task.Type
-//	}
-//	if e.Session != nil {
-//		event.SessionId = e.Session.SessionId
-//	}
-//	if e.Job != nil {
-//		event.ListenerId = e.Job.Pipeline.ListenerId
-//		event.PipelineId = e.Job.Pipeline.Name
-//	}
-//	return event
-//}
-
 type EventCondition struct {
 	Type        string
 	Op          string

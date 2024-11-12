@@ -3,7 +3,6 @@ package command
 import (
 	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/spf13/cobra"
 )
 
@@ -42,9 +41,7 @@ func makeBind(cmd *cobra.Command, con *repl.Console) bindFunc {
 				}
 				c.Annotations["menu"] = cmd.Name()
 				c.GroupID = group
-				if cmd.Name() == consts.ImplantMenu {
-					updateCommand(con, c, group)
-				}
+				updateCommand(con, c, group)
 				cmd.AddCommand(c)
 			}
 		}

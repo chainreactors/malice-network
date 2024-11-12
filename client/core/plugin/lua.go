@@ -409,8 +409,8 @@ func GenerateLuaDefinitionFile(L *lua.LState, filename string) error {
 	}
 
 	// 生成 Lua 定义文件
-	for pkg, funcs := range groupedFunctions {
-		fmt.Fprintf(file, "-- Package: %s\n\n", pkg)
+	for group, funcs := range groupedFunctions {
+		fmt.Fprintf(file, "-- Group: %s\n\n", group)
 		for _, funcName := range funcs {
 			signature := intermediate.InternalFunctions[funcName]
 
@@ -479,7 +479,7 @@ func GenerateLuaDefinitionFile(L *lua.LState, filename string) error {
 	return nil
 }
 
-func GenerateMarkdownDefinitionFile(L *lua.LState, filename string) error {
+func GenerateMarkdownDefinitionFile(L *lua.LState, pkg, filename string) error {
 	file, err := os.Create(filename)
 	if err != nil {
 		return err
@@ -489,10 +489,14 @@ func GenerateMarkdownDefinitionFile(L *lua.LState, filename string) error {
 	// 按 package 分组，然后在每个分组内按 funcName 排序
 	groupedFunctions := make(map[string][]string)
 	for funcName, iFunc := range intermediate.InternalFunctions {
-		if unicode.IsUpper(rune(funcName[0])) {
+		if iFunc.Package != pkg {
 			continue
 		}
-		groupedFunctions[iFunc.Package] = append(groupedFunctions[iFunc.Package], funcName)
+		group := "base"
+		if iFunc.Helper != nil {
+			group = iFunc.Helper.Group
+		}
+		groupedFunctions[group] = append(groupedFunctions[group], funcName)
 	}
 
 	// 排序每个 package 内的函数名
