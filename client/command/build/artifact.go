@@ -77,7 +77,7 @@ func DownloadArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	con.Log.Infof("download artifact %s, save to %s", builder.Name, output)
+	con.Log.Infof("download artifact %s, save to %s\n", builder.Name, output)
 	return nil
 }
 
@@ -130,7 +130,7 @@ func downloadArtifactCallback(tableModel *tui.TableModel, con *repl.Console) fun
 		output := filepath.Join(assets.GetTempDir(), builder.Name)
 		err = os.WriteFile(output, builder.Bin, 0644)
 		if err != nil {
-			con.Log.Errorf(err.Error())
+			con.Log.Errorf(err.Error() + "\n")
 			return
 		}
 	}

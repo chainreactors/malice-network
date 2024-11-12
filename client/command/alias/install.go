@@ -95,7 +95,7 @@ func InstallFromFile(aliasGzFilePath string, aliasName string, promptToOverwrite
 		} else {
 			errorMsg = fmt.Sprintf("Failed to parse %s: %s\n", ManifestFileName, err)
 		}
-		con.Log.Errorf(errorMsg)
+		con.Log.Errorf(errorMsg + "\n")
 		return nil
 	}
 	installPath := filepath.Join(assets.GetAliasesDir(), filepath.Base(manifest.CommandName))
