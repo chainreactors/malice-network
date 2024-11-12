@@ -8,7 +8,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
-	"github.com/chainreactors/malice-network/helper/utils/file"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
 	"strings"
@@ -30,7 +30,7 @@ func ExecuteLocalCmd(cmd *cobra.Command, con *repl.Console) error {
 
 func ExecLocal(rpc clientrpc.MaliceRPCClient, sess *core.Session,
 	args []string, output bool, process string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
-	args[0] = file.FormatWindowPath(args[0])
+	args[0] = fileutils.FormatWindowPath(args[0])
 	if process == "" {
 		process = args[0]
 	}

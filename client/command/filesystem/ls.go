@@ -8,7 +8,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
-	"github.com/chainreactors/malice-network/helper/utils/file"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/handler"
 	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/table"
@@ -84,7 +84,7 @@ func RegisterLsFunc(con *repl.Console) {
 				if f.IsDir {
 					size = "dir"
 				} else {
-					size = file.Bytes(f.Size)
+					size = fileutils.Bytes(f.Size)
 				}
 				row = table.Row{
 					f.Name,

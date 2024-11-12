@@ -9,7 +9,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
-	"github.com/chainreactors/malice-network/helper/utils/file"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/spf13/cobra"
 	"strings"
 )
@@ -33,7 +33,7 @@ func RegListKey(rpc clientrpc.MaliceRPCClient, session *core.Session, hive, path
 		Type: consts.ModuleRegListKey,
 		Registry: &implantpb.Registry{
 			Hive: hive,
-			Path: file.FormatWindowPath(path),
+			Path: fileutils.FormatWindowPath(path),
 		},
 	}
 	return rpc.RegListKey(session.Context(), request)
@@ -98,7 +98,7 @@ func RegListValue(rpc clientrpc.MaliceRPCClient, session *core.Session, hive, pa
 		Type: consts.ModuleRegListValue,
 		Registry: &implantpb.Registry{
 			Hive: hive,
-			Path: file.FormatWindowPath(path),
+			Path: fileutils.FormatWindowPath(path),
 		},
 	}
 	return rpc.RegListValue(session.Context(), request)

@@ -13,7 +13,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
-	"github.com/chainreactors/malice-network/helper/utils/file"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -128,7 +128,7 @@ func LoadAlias(manifestPath string, con *repl.Console) (*AliasManifest, error) {
 	if !strings.HasPrefix(manifestPath, assets.GetAliasesDir()) {
 		manifestPath = path.Join(assets.GetAliasesDir(), manifestPath)
 	}
-	if !file.Exist(manifestPath) {
+	if !fileutils.Exist(manifestPath) {
 		return nil, fmt.Errorf("alias %s maybe not installed", manifestPath)
 	}
 	// parse it
@@ -227,7 +227,7 @@ func ParseAliasManifest(data []byte) (*AliasManifest, error) {
 			return nil, fmt.Errorf("missing command.files.arch in alias manifest")
 		}
 		aliasFile.Arch = strings.ToLower(aliasFile.Arch)
-		aliasFile.Path = file.ResolvePath(aliasFile.Path)
+		aliasFile.Path = fileutils.ResolvePath(aliasFile.Path)
 		if aliasFile.Path == "" || aliasFile.Path == "/" {
 			return nil, fmt.Errorf("missing command.files.path in alias manifest")
 		}

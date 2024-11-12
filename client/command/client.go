@@ -14,7 +14,7 @@ import (
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/utils/file"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/mtls"
 	"github.com/reeflective/console"
 	"github.com/spf13/cobra"
@@ -59,7 +59,7 @@ func ConsoleRunnerCmd(con *repl.Console, run bool) (pre, post func(cmd *cobra.Co
 	pre = func(_ *cobra.Command, args []string) error {
 		if len(args) > 0 {
 			filename := args[0]
-			if !file.Exist(filename) {
+			if !fileutils.Exist(filename) {
 				if cfg, err := mtls.ReadConfig(filepath.Join(assets.GetConfigDir(), filepath.Base(filename))); err == nil {
 					err = repl.Login(con, cfg)
 					if err != nil {

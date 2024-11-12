@@ -9,7 +9,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
-	"github.com/chainreactors/malice-network/helper/utils/file"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/spf13/cobra"
 )
 
@@ -38,7 +38,7 @@ func RegAddCmd(cmd *cobra.Command, con *repl.Console) error {
 func RegAdd(rpc clientrpc.MaliceRPCClient, session *core.Session, hive, path, key, stringValue string, byteValue []byte, dwordValue uint32, qwordValue uint64, regtype uint32) (*clientpb.Task, error) {
 	request := &implantpb.RegistryWriteRequest{
 		Hive:        hive,
-		Path:        file.FormatWindowPath(path),
+		Path:        fileutils.FormatWindowPath(path),
 		Key:         key,
 		StringValue: stringValue,
 		ByteValue:   byteValue,

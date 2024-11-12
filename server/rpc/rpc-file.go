@@ -8,7 +8,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/types"
-	"github.com/chainreactors/malice-network/helper/utils/file"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/handler"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db"
@@ -213,7 +213,7 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 				in <- ack
 				//greq.Session.AddMessage(resp, int(block.BlockId+1))
 			} else {
-				checksum, _ := file.CalculateSHA256Checksum(fileName)
+				checksum, _ := fileutils.CalculateSHA256Checksum(fileName)
 				if checksum != downloadAbs.Checksum {
 					greq.Task.Panic(buildErrorEvent(greq.Task, fmt.Errorf("checksum error")))
 					return

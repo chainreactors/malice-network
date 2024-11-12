@@ -1,6 +1,6 @@
 //go:build windows
 
-package file
+package fileutils
 
 import (
 	"fmt"
