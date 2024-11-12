@@ -91,9 +91,12 @@ func (parser *MaleficParser) Marshal(spites *implantpb.Spites, sid uint32) ([]by
 		return nil, err
 	}
 	buf.WriteByte(parser.StartDelimiter)
-	binary.Write(&buf, binary.LittleEndian, sid)
+	err = binary.Write(&buf, binary.LittleEndian, sid)
+	if err != nil {
+		return nil, err
+	}
 
-	err = binary.Write(&buf, binary.LittleEndian, len(data))
+	err = binary.Write(&buf, binary.LittleEndian, int32(len(data)))
 	if err != nil {
 		return nil, err
 	}
