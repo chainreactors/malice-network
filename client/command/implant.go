@@ -21,6 +21,7 @@ import (
 	"github.com/chainreactors/malice-network/client/command/sys"
 	"github.com/chainreactors/malice-network/client/command/tasks"
 	"github.com/chainreactors/malice-network/client/command/taskschd"
+	"github.com/chainreactors/malice-network/client/core/plugin"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/reeflective/console"
@@ -163,10 +164,11 @@ func BindImplantCommands(con *repl.Console) console.Commands {
 			return implant
 		}
 
-		for _, malName := range assets.GetInstalledMalManifests() {
-			_, err := mal.LoadMal(con, implant, malName)
+		plugin.GlobalPlugins = plugin.LoadGlobalLuaPlugin()
+		for _, malName := range plugin.GetPluginManifest() {
+			_, err := mal.LoadMalWithManifest(con, implant, malName)
 			if err != nil {
-				con.Log.Errorf("Failed to load mal: %s\n", err)
+				con.Log.Errorf("Failed to load mal %s: %s\n", malName.Name, err)
 				continue
 			}
 		}

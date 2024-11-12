@@ -8,7 +8,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/utils/file"
 	"github.com/chainreactors/tui"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
 	"os"
 	"path/filepath"
 )
@@ -28,22 +27,6 @@ func MalInstallCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func ParseMalManifest(data []byte) (*plugin.MalManiFest, error) {
-	extManifest := &plugin.MalManiFest{}
-	err := yaml.Unmarshal(data, &extManifest)
-	if err != nil {
-		return nil, err
-	}
-	return extManifest, validManifest(extManifest)
-}
-
-func validManifest(manifest *plugin.MalManiFest) error {
-	if manifest.Name == "" {
-		return errors.New("missing `name` field in mal manifest")
-	}
-	return nil
-}
-
 func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *repl.Console) {
 	var manifestData []byte
 	var err error
@@ -54,7 +37,7 @@ func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *repl.Conso
 		return
 	}
 
-	manifest, err := ParseMalManifest(manifestData)
+	manifest, err := plugin.ParseMalManifest(manifestData)
 	if err != nil {
 		con.Log.Errorf("Error parsing %s: %s\n", ManifestFileName, err)
 		return

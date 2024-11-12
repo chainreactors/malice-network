@@ -28,7 +28,7 @@ import (
 	luastrings "github.com/vadv/gopher-lua-libs/strings"
 	"github.com/vadv/gopher-lua-libs/tcp"
 	"github.com/vadv/gopher-lua-libs/time"
-	"github.com/vadv/gopher-lua-libs/yaml"
+	luayaml "github.com/vadv/gopher-lua-libs/yaml"
 	"github.com/yuin/gluare"
 	lua "github.com/yuin/gopher-lua"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -54,7 +54,8 @@ var (
 
 	LuaPackages = map[string]*lua.LTable{}
 
-	ProtoPackage = []string{"implantpb", "clientpb", "modulepb"}
+	ProtoPackage  = []string{"implantpb", "clientpb", "modulepb"}
+	GlobalPlugins []*DefaultPlugin
 )
 
 type LuaPlugin struct {
@@ -326,11 +327,27 @@ func (plug *LuaPlugin) registerLuaFunction(name string, fn interface{}) {
 	vm.SetGlobal(name, vm.NewFunction(intermediate.WrapFuncForLua(wrappedFunc)))
 }
 
+func globalLoader(plug *DefaultPlugin) func(L *lua.LState) int {
+	return func(L *lua.LState) int {
+		if err := L.DoString(string(plug.Content)); err != nil {
+			logs.Log.Errorf("error loading Lua global script: %s", err.Error())
+		}
+		mod := L.Get(-1)
+		L.Pop(1)
+
+		if mod.Type() != lua.LTTable {
+			mod = L.NewTable()
+		}
+		L.SetField(mod, "_NAME", lua.LString(plug.Name))
+		L.Push(mod)
+		return 1
+	}
+}
+
 func luaLoader(L *lua.LState) int {
 	// 从 LState 获取传入的包名
 	packageName := L.ToString(1)
 
-	// 创建模块表
 	mod := L.NewTable()
 	L.SetField(mod, "_NAME", lua.LString(packageName))
 	// 查找 InternalFunctions 中属于该包的函数并注册
@@ -365,7 +382,7 @@ func LoadLib(vm *lua.LState) {
 	tcp.Preload(vm)
 	time.Preload(vm)
 	//xmlpath.Preload(vm)
-	yaml.Preload(vm)
+	luayaml.Preload(vm)
 
 	vm.PreloadModule("http", gluahttp.NewHttpModule(&http.Client{}).Loader)
 	vm.PreloadModule("crypto", luacrypto.Loader)
@@ -375,6 +392,10 @@ func LoadLib(vm *lua.LState) {
 	vm.PreloadModule(intermediate.BeaconPackage, luaLoader)
 	vm.PreloadModule(intermediate.RpcPackage, luaLoader)
 	vm.PreloadModule(intermediate.ArmoryPackage, luaLoader)
+
+	for _, global := range GlobalPlugins {
+		vm.PreloadModule(global.Name, globalLoader(global))
+	}
 }
 
 func NewLuaVM() *lua.LState {
