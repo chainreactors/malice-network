@@ -46,6 +46,33 @@ func ArmoryInstallCmd(cmd *cobra.Command, con *repl.Console) {
 	}
 
 	armoryName, _ := cmd.Flags().GetString("armory")
+	if armoryName == "Default" {
+		armoriesConfig := getCurrentArmoryConfiguration()
+		if len(armoriesConfig) == 1 {
+			con.Log.Infof("Reading armory index ... \n")
+		} else {
+			con.Log.Infof("Reading %d armory indexes ... \n", len(armoriesConfig))
+		}
+		clientConfig := parseArmoryHTTPConfig(cmd)
+		indexes := fetchIndexes(clientConfig)
+		if len(indexes) != len(armoriesConfig) {
+			con.Log.Infof("errors!\n")
+			indexCache.Range(func(key, value interface{}) bool {
+				cacheEntry := value.(indexCacheEntry)
+				if cacheEntry.LastErr != nil {
+					con.Log.Errorf("%s - %s\n", cacheEntry.RepoURL, cacheEntry.LastErr)
+				}
+				return true
+			})
+		} else {
+			con.Log.Infof("done!\n")
+		}
+		armoriesInitialized = true
+		if len(indexes) == 0 {
+			con.Log.Infof("No indexes found\n")
+			return
+		}
+	}
 	// Find PK for the armory name
 	armoryPK := getArmoryPublicKey(armoryName)
 	if armoryPK == "" {
@@ -82,6 +109,7 @@ func ArmoryInstallCmd(cmd *cobra.Command, con *repl.Console) {
 	}
 	err := installPackageByName(name, armoryPK, forceInstallation, promptToOverwrite, clientConfig, con)
 	if err == nil {
+		con.Log.Infof("\n%s install complete\n", name)
 		return
 	}
 	if errors.Is(err, ErrPackageNotFound) {
