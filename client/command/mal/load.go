@@ -8,7 +8,6 @@ import (
 	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/spf13/cobra"
-	"os"
 	"path/filepath"
 )
 
@@ -33,24 +32,15 @@ func MalLoadCmd(ctx *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func LoadMalManiFest(con *repl.Console, filename string) (*plugin.MalManiFest, error) {
-	content, err := os.ReadFile(filename)
+func LoadMal(con *repl.Console, rootCmd *cobra.Command, filename string) (*LoadedMal, error) {
+	manifest, err := plugin.LoadMalManiFest(filename)
 	if err != nil {
 		return nil, err
 	}
-	manifest, err := ParseMalManifest(content)
-	if err != nil {
-		return nil, err
-	}
-
-	return manifest, nil
+	return LoadMalWithManifest(con, rootCmd, manifest)
 }
 
-func LoadMal(con *repl.Console, rootCmd *cobra.Command, filename string) (*LoadedMal, error) {
-	manifest, err := LoadMalManiFest(con, filename)
-	if err != nil {
-		return nil, err
-	}
+func LoadMalWithManifest(con *repl.Console, rootCmd *cobra.Command, manifest *plugin.MalManiFest) (*LoadedMal, error) {
 	plug, err := con.Plugins.LoadPlugin(manifest, con, rootCmd)
 	if err != nil {
 		return nil, err
@@ -78,11 +68,11 @@ func LoadMal(con *repl.Console, rootCmd *cobra.Command, filename string) (*Loade
 	if err != nil {
 		return nil, err
 	}
-	con.Log.Importantf("load mal: %s successfully, register %v", filename, cmdNames)
+	con.Log.Importantf("load mal: %s successfully, register %v", manifest.Name, cmdNames)
 	return mal, nil
 }
 
-func ListMalManiFest(con *repl.Console) {
+func ListMalManifest(con *repl.Console) {
 	if len(loadedMals) == 0 {
 		con.Log.Infof("No mal loaded")
 		return

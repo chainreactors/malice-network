@@ -1,7 +1,7 @@
 package mal
 
 import (
-	"github.com/chainreactors/malice-network/client/assets"
+	"github.com/chainreactors/malice-network/client/core/plugin"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/spf13/cobra"
@@ -15,8 +15,8 @@ func RefreshMalCmd(cmd *cobra.Command, con *repl.Console) error {
 		}
 	}
 
-	for _, malName := range assets.GetInstalledMalManifests() {
-		_, err := LoadMal(con, implantCmd, malName)
+	for _, malName := range plugin.GetPluginManifest() {
+		_, err := LoadMalWithManifest(con, implantCmd, malName)
 		if err != nil {
 			con.Log.Errorf("Failed to load mal: %s\n", err)
 			continue
