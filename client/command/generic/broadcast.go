@@ -19,7 +19,7 @@ func BroadcastCmd(cmd *cobra.Command, con *repl.Console) {
 			Message: []byte(strings.Join(msg, " ")),
 		})
 		if err != nil {
-			con.Log.Errorf("notify error: %s", err)
+			con.Log.Errorf("notify error: %s\n", err)
 			return
 		}
 	} else {
@@ -29,7 +29,7 @@ func BroadcastCmd(cmd *cobra.Command, con *repl.Console) {
 			Message: []byte(strings.Join(msg, " ")),
 		})
 		if err != nil {
-			con.Log.Errorf("broadcast error: %s", err)
+			con.Log.Errorf("broadcast error: %s\n", err)
 			return
 		}
 	}

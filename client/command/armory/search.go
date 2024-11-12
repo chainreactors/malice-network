@@ -11,7 +11,7 @@ import (
 
 // ArmorySearchCmd - Search for packages by name
 func ArmorySearchCmd(cmd *cobra.Command, con *repl.Console) {
-	con.Log.Infof("Refreshing package cache ... ")
+	con.Log.Infof("Refreshing package cache ... \n")
 	clientConfig := parseArmoryHTTPConfig(cmd)
 	refresh(clientConfig)
 	tui.Clear()

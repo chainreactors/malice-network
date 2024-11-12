@@ -136,12 +136,12 @@ func BindImplantCommands(con *repl.Console) console.Commands {
 		for _, manifest := range aliasManifests {
 			manifest, err := alias.LoadAlias(manifest, con)
 			if err != nil {
-				con.Log.Errorf("Failed to load alias: %s", err)
+				con.Log.Errorf("Failed to load alias: %s\n", err)
 				continue
 			}
 			err = alias.RegisterAlias(manifest, implant, con)
 			if err != nil {
-				con.Log.Errorf("Failed to register alias: %s", err)
+				con.Log.Errorf("Failed to register alias: %s\n", err)
 				continue
 			}
 		}

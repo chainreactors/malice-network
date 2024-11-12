@@ -29,6 +29,6 @@ func SyncCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	con.Log.Infof("sync file in path: %s", path)
+	con.Log.Infof("sync file in path: %s\n", path)
 	return nil
 }

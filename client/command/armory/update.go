@@ -39,7 +39,7 @@ func ArmoryUpdateCmd(cmd *cobra.Command, con *repl.Console) {
 	var selectedUpdates []UpdateIdentifier
 	var err error
 
-	con.Log.Infof("Refreshing package cache ... ")
+	con.Log.Infof("Refreshing package cache ... \n")
 	clientConfig := parseArmoryHTTPConfig(cmd)
 	refresh(clientConfig)
 	tui.Clear()
@@ -72,7 +72,7 @@ func ArmoryUpdateCmd(cmd *cobra.Command, con *repl.Console) {
 			return
 		}
 	} else {
-		con.Log.Infof("All packages are up to date")
+		con.Log.Infof("All packages are up to date\n")
 		return
 	}
 

@@ -11,7 +11,7 @@ func ObserveCmd(cmd *cobra.Command, con *repl.Console) error {
 	isList, _ := cmd.Flags().GetBool("list")
 	if isList {
 		for i, ob := range con.Observers {
-			con.Log.Infof("%s: %s", i, ob.SessionId())
+			con.Log.Infof("%s: %s\n", i, ob.SessionId())
 		}
 		return nil
 	}
@@ -23,7 +23,7 @@ func ObserveCmd(cmd *cobra.Command, con *repl.Console) error {
 		} else {
 			var i int
 			for _, ob := range con.Observers {
-				con.Log.Infof("%d: %s", i, ob.SessionId())
+				con.Log.Infof("%d: %s\n", i, ob.SessionId())
 				i++
 			}
 			return nil

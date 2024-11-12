@@ -14,7 +14,7 @@ func AddonListCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
 	_, err := ListAddon(con.Rpc, session)
 	if err != nil {
-		con.Log.Errorf("%s", err)
+		con.Log.Errorf("%s\n", err)
 		return
 	}
 }

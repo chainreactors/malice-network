@@ -24,7 +24,7 @@ func ExecuteAddonCmd(cmd *cobra.Command, con *repl.Console) {
 	}
 
 	if !session.HasAddon(cmd.Name()) {
-		con.Log.Errorf("addon %s not found in %s", cmd.Name(), session.SessionId)
+		con.Log.Errorf("addon %s not found in %s\n", cmd.Name(), session.SessionId)
 		return
 	}
 
@@ -36,7 +36,7 @@ func ExecuteAddonCmd(cmd *cobra.Command, con *repl.Console) {
 
 	_, err := ExecuteAddon(con.Rpc, session, cmd.Name(), args, !quiet, timeout, arch, process, sac)
 	if err != nil {
-		con.Log.Errorf("%s", err)
+		con.Log.Errorf("%s\n", err)
 		return
 	}
 }

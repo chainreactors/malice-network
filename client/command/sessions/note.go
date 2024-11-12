@@ -13,7 +13,7 @@ func noteCmd(cmd *cobra.Command, con *repl.Console) {
 	name := cmd.Flags().Arg(0)
 
 	if con.GetInteractive() == nil && sid == "" {
-		con.Log.Errorf("No session selected")
+		con.Log.Errorf("No session selected\n")
 		return
 	} else if sid == "" && con.GetInteractive() != nil {
 		sid = con.GetInteractive().Session.GetSessionId()
@@ -26,9 +26,9 @@ func noteCmd(cmd *cobra.Command, con *repl.Console) {
 		Arg:       name,
 	})
 	if err != nil {
-		logs.Log.Errorf("Session error: %v", err)
+		logs.Log.Errorf("Session error: %v\n", err)
 		return
 	}
 	con.UpdateSession(sid)
-	con.Log.Infof("update %s note to %s", sid, name)
+	con.Log.Infof("update %s note to %s\n", sid, name)
 }

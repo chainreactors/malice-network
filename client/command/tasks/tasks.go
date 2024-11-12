@@ -21,7 +21,7 @@ func ListTasks(cmd *cobra.Command, con *repl.Console) error {
 	if 0 < len(tasks) {
 		printTasks(tasks, con, isAll)
 	} else {
-		con.Log.Info("No tasks")
+		con.Log.Info("No tasks\n")
 	}
 	return nil
 }
