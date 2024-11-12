@@ -31,7 +31,7 @@ func Login(con *Console, config *mtls.ClientConfig) error {
 		logs.Log.Errorf("Failed to connect to server %s: %v", config.Address(), err)
 		return err
 	}
-	logs.Log.Info("Initial connection established, initializing state...\n")
+	logs.Log.Info("Initial connection established, initializing state...")
 	if err := initState(con, conn, config); err != nil {
 		return err
 	}
@@ -60,7 +60,7 @@ func initState(con *Console, conn *grpc.ClientConn, config *mtls.ClientConfig) e
 			alive++
 		}
 	}
-	logs.Log.Importantf("%d listeners, %d pipelines, %d clients, %d sessions (%d alive)\n",
+	logs.Log.Importantf("%d listeners, %d pipelines, %d clients, %d sessions (%d alive)",
 		len(con.Listeners), pipelineCount, len(con.Clients), len(con.Sessions), alive)
 
 	return nil

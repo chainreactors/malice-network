@@ -184,9 +184,9 @@ func (s *ServerStatus) handlerSession(event *clientpb.Event) {
 	switch event.Op {
 	case consts.CtrlSessionRegister:
 		s.AddSession(event.Session)
-		Log.Importantf("register session: %s ", event.Message)
+		Log.Importantf("register session: %s \n", event.Message)
 	case consts.CtrlSessionTask:
-		logs.Log.Infof(logs.GreenBold(fmt.Sprintf("[%s.%d] run task %s: %s", sid, event.Task.TaskId, event.Task.Type, event.Message)))
+		logs.Log.Infof(logs.GreenBold(fmt.Sprintf("[%s.%d] run task %s: %s\n", sid, event.Task.TaskId, event.Task.Type, event.Message)))
 	case consts.CtrlSessionError:
 		log := s.ObserverLog(sid)
 		log.Errorf(logs.GreenBold(fmt.Sprintf("[%s] task: %d error: %s\n", sid, event.Task.TaskId, event.Err)))
@@ -194,6 +194,6 @@ func (s *ServerStatus) handlerSession(event *clientpb.Event) {
 		log := s.ObserverLog(sid)
 		log.Errorf("[%s] log: \n%s\n", sid, event.Message)
 	case consts.CtrlSessionLeave:
-		Log.Importantf(logs.RedBold(fmt.Sprintf("[%s] session stop: %s", sid, event.Message)))
+		Log.Importantf(logs.RedBold(fmt.Sprintf("[%s] session stop: %s\n", sid, event.Message)))
 	}
 }
