@@ -105,7 +105,7 @@ func RegisterDLLFunc(con *repl.Console) {
 		},
 		common.ParseAssembly,
 		nil)
-
+	// sess *core.Session, dllPath string, entrypoint string, args []string, binPath string, output bool, timeout uint32, arch string, process string, sac *implantpb.SacrificeProcess
 	con.AddInternalFuncHelper(
 		consts.ModuleExecuteDll,
 		consts.ModuleExecuteDll,
@@ -115,6 +115,7 @@ func RegisterDLLFunc(con *repl.Console) {
 			"dllPath",
 			"entrypoint",
 			"args",
+			"binPath",
 			"output",
 			"timeout",
 			"arch",
