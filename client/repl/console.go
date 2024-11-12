@@ -192,7 +192,7 @@ func (c *Console) RegisterBuiltinFunc(pkg, name string, fn interface{}, callback
 	return intermediate.RegisterInternalFunc(pkg, name, WrapImplantFunc(c, fn, callback), implantCallback)
 }
 
-func (c *Console) RegisterServerFunc(name string, fn interface{}, helper *intermediate.InternalHelper) error {
+func (c *Console) RegisterServerFunc(name string, fn interface{}, helper *intermediate.Helper) error {
 	err := intermediate.RegisterInternalFunc(intermediate.BuiltinPackage, name, WrapServerFunc(c, fn), nil)
 	if helper != nil {
 		return intermediate.AddHelper(name, helper)
@@ -203,8 +203,9 @@ func (c *Console) RegisterServerFunc(name string, fn interface{}, helper *interm
 func (c *Console) AddInternalFuncHelper(cmdName string, funcName string, example string, input, output []string) error {
 	cmd, ok := c.CMDs[cmdName]
 	if ok {
-		return intermediate.AddHelper(funcName, &intermediate.InternalHelper{
+		return intermediate.AddHelper(funcName, &intermediate.Helper{
 			CMDName: cmdName,
+			Group:   cmd.GroupID,
 			Short:   cmd.Short,
 			Long:    cmd.Long,
 			Input:   input,
@@ -212,7 +213,7 @@ func (c *Console) AddInternalFuncHelper(cmdName string, funcName string, example
 			Example: example,
 		})
 	} else {
-		return intermediate.AddHelper(funcName, &intermediate.InternalHelper{
+		return intermediate.AddHelper(funcName, &intermediate.Helper{
 			CMDName: cmdName,
 			Input:   input,
 			Output:  output,

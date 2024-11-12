@@ -17,7 +17,8 @@ var (
 	WarnReturnMismatch  = errors.New("return values mismatch")
 )
 
-type InternalHelper struct {
+type Helper struct {
+	Group   string
 	Short   string
 	Long    string
 	Input   []string
@@ -26,7 +27,7 @@ type InternalHelper struct {
 	CMDName string
 }
 
-func (help *InternalHelper) FormatInput() ([]string, []string) {
+func (help *Helper) FormatInput() ([]string, []string) {
 	var keys, values []string
 	if help.Input == nil {
 		return keys, values
@@ -45,7 +46,7 @@ func (help *InternalHelper) FormatInput() ([]string, []string) {
 	return keys, values
 }
 
-func (help *InternalHelper) FormatOutput() ([]string, []string) {
+func (help *Helper) FormatOutput() ([]string, []string) {
 	var keys, values []string
 	if help.Output == nil {
 		return keys, values
@@ -74,9 +75,9 @@ type InternalFunc struct {
 	NoCache        bool
 	FinishCallback ImplantCallback // implant callback
 	DoneCallback   ImplantCallback
-	Helper         *InternalHelper
 	ArgTypes       []reflect.Type
 	ReturnTypes    []reflect.Type
+	*Helper
 }
 
 func (fn *InternalFunc) String() string {
@@ -103,7 +104,7 @@ func RegisterInternalFunc(pkg, name string, fn *InternalFunc, callback ImplantCa
 	return nil
 }
 
-func AddHelper(name string, helper *InternalHelper) error {
+func AddHelper(name string, helper *Helper) error {
 	name = strings.ReplaceAll(name, "-", "_")
 	if fn, ok := InternalFunctions[name]; ok {
 		if helper.Input != nil && len(helper.Input) != len(fn.ArgTypes) {

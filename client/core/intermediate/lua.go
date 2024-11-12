@@ -1,6 +1,7 @@
 package intermediate
 
 import (
+	"context"
 	"fmt"
 	"github.com/chainreactors/utils/iutils"
 	lua "github.com/yuin/gopher-lua"
@@ -296,13 +297,6 @@ func ConvertGoValueToLua(L *lua.LState, value interface{}) lua.LValue {
 }
 
 func ConvertGoValueToLuaType(L *lua.LState, t reflect.Type) string {
-	// 判断是否是 Protobuf 消息类型
-	if t.Implements(reflect.TypeOf((*proto.Message)(nil)).Elem()) {
-		// 返回具体的 Protobuf 类型名
-		return t.Elem().Name()
-	}
-
-	// 处理其他类型
 	switch t.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Float32, reflect.Float64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		return "number"
@@ -316,11 +310,19 @@ func ConvertGoValueToLuaType(L *lua.LState, t reflect.Type) string {
 		}
 		return "table"
 	case reflect.Ptr:
+		if t.Implements(reflect.TypeOf((*proto.Message)(nil)).Elem()) {
+			return t.Elem().Name()
+		}
 		if t.Elem().Kind() == reflect.Struct {
 			return "table"
 		}
 		return ConvertGoValueToLuaType(L, t.Elem()) // 递归处理指针类型
+	case reflect.Func:
+		return "function"
 	default:
+		if t.Implements(reflect.TypeOf((*context.Context)(nil)).Elem()) {
+			return "context"
+		}
 		return "any"
 	}
 }

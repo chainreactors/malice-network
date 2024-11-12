@@ -23,11 +23,14 @@ func main() {
 	}
 	cmd.TraverseChildren = true
 	command.BindBuiltinCommands(con, cmd)
-	command.RegisterClientFunc(con)
-	command.RegisterImplantFunc(con)
+	command.BindClientsCommands(con)
 	rpc := clientrpc.NewMaliceRPCClient(nil)
 	intermediate.RegisterBuiltin(rpc)
+	command.RegisterClientFunc(con)
+	command.RegisterImplantFunc(con)
 	vm := plugin.NewLuaVM()
 	plugin.GenerateLuaDefinitionFile(vm, "define.lua")
-	plugin.GenerateMarkdownDefinitionFile(vm, "lua.md")
+	plugin.GenerateMarkdownDefinitionFile(vm, intermediate.BuiltinPackage, "builtin.md")
+	plugin.GenerateMarkdownDefinitionFile(vm, intermediate.RpcPackage, "rpc.md")
+	plugin.GenerateMarkdownDefinitionFile(vm, intermediate.BeaconPackage, "beacon_md")
 }

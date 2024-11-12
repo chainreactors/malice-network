@@ -56,7 +56,7 @@ func NewBindSession(con *repl.Console, PipelineID string, target string, name st
 }
 
 func RegisterNewSessionFunc(con *repl.Console) {
-	con.RegisterServerFunc("new_bind_session", NewBindSession, &intermediate.InternalHelper{
+	con.RegisterServerFunc("new_bind_session", NewBindSession, &intermediate.Helper{
 		Short:   "new bind session",
 		Example: `new_bind_session("listener_id", "target", "name")`,
 		Input: []string{
