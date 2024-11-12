@@ -19,7 +19,7 @@ func AliasesCmd(cmd *cobra.Command, con *repl.Console) {
 	if 0 < len(loadedAliases) {
 		PrintAliases(con)
 	} else {
-		con.Log.Infof("No aliases installed, use the 'armory' command to automatically install some")
+		con.Log.Infof("No aliases installed, use the 'armory' command to automatically install some\n")
 	}
 }
 

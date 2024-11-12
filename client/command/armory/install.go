@@ -35,7 +35,7 @@ func ArmoryInstallCmd(cmd *cobra.Command, con *repl.Console) {
 	var promptToOverwrite bool
 	name := cmd.Flags().Arg(0)
 	if name == "" {
-		con.Log.Errorf("A package or bundle name is required")
+		con.Log.Errorf("A package or bundle name is required\n")
 		return
 	}
 	forceInstallation, _ := cmd.Flags().GetBool("force")
@@ -49,7 +49,7 @@ func ArmoryInstallCmd(cmd *cobra.Command, con *repl.Console) {
 	// Find PK for the armory name
 	armoryPK := getArmoryPublicKey(armoryName)
 	if armoryPK == "" {
-		con.Log.Warnf("Armory '%s' not found", armoryName)
+		con.Log.Warnf("Armory '%s' not found\n", armoryName)
 		//return
 	}
 
@@ -72,7 +72,7 @@ func ArmoryInstallCmd(cmd *cobra.Command, con *repl.Console) {
 		newconfirm := tui.NewModel(confirmModel, nil, false, true)
 		err := newconfirm.Run()
 		if err != nil {
-			con.Log.Errorf("Error running confirm model: %s", err)
+			con.Log.Errorf("Error running confirm model: %s\n", err)
 			return
 		}
 		if !confirmModel.Confirmed {
@@ -93,9 +93,9 @@ func ArmoryInstallCmd(cmd *cobra.Command, con *repl.Console) {
 			}
 		}
 		if armoryPK == "" {
-			con.Log.Errorf("No package or bundle named '%s' was found", name)
+			con.Log.Errorf("No package or bundle named '%s' was found\n", name)
 		} else {
-			con.Log.Errorf("No package or bundle named '%s' was found for armory '%s'", name, armoryName)
+			con.Log.Errorf("No package or bundle named '%s' was found for armory '%s'\n", name, armoryName)
 		}
 	} else if errors.Is(err, ErrPackageAlreadyInstalled) {
 		con.Log.Errorf("Package %q is already installed - use the force option to overwrite it\n", name)

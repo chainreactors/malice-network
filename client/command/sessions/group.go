@@ -12,7 +12,7 @@ func groupCmd(cmd *cobra.Command, con *repl.Console) error {
 	group := cmd.Flags().Arg(0)
 
 	if con.GetInteractive() == nil && sid == "" {
-		con.Log.Errorf("No session selected")
+		con.Log.Errorf("No session selected\n")
 		return nil
 	} else if sid == "" && con.GetInteractive() != nil {
 		sid = con.GetInteractive().Session.GetSessionId()
@@ -27,6 +27,6 @@ func groupCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 	con.UpdateSession(sid)
-	con.Log.Infof("update %s group to %s", sid, group)
+	con.Log.Infof("update %s group to %s\n", sid, group)
 	return nil
 }

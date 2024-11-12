@@ -270,7 +270,7 @@ func runAliasCommand(cmd *cobra.Command, con *repl.Console) {
 		sac, _ := common.ParseSacrificeFlags(cmd)
 		task, err := ExecuteAlias(con.Rpc, session, cmd.Name(), extArgs, amsi, etw, sac)
 		if err != nil {
-			con.Log.Errorf("Execute error: %v", err)
+			con.Log.Errorf("Execute error: %v\n", err)
 			return
 		}
 		session.Console(task, fmt.Sprintf("%s alias: %s", aliasModule(aliasManifest), cmd.Name()))

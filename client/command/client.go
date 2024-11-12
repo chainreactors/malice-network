@@ -66,7 +66,7 @@ func ConsoleRunnerCmd(con *repl.Console, run bool) (pre, post func(cmd *cobra.Co
 						return nil
 					}
 				} else {
-					con.Log.Warnf("not found file, maybe %s already move to config path", filename)
+					con.Log.Warnf("not found file, maybe %s already move to config path\n", filename)
 					err := generic.LoginCmd(nil, con)
 					if err != nil {
 						return nil

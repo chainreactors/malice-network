@@ -16,7 +16,7 @@ func AliasesInstallCmd(cmd *cobra.Command, con *repl.Console) {
 	aliasLocalPath := cmd.Flags().Arg(0)
 	fi, err := os.Stat(aliasLocalPath)
 	if os.IsNotExist(err) {
-		con.Log.Errorf("alias path '%s' does not exist", aliasLocalPath)
+		con.Log.Errorf("alias path '%s' does not exist\n", aliasLocalPath)
 		return
 	}
 	if !fi.IsDir() {
@@ -30,17 +30,17 @@ func AliasesInstallCmd(cmd *cobra.Command, con *repl.Console) {
 func installFromDir(aliasLocalPath string, con *repl.Console) {
 	manifestData, err := os.ReadFile(filepath.Join(aliasLocalPath, ManifestFileName))
 	if err != nil {
-		con.Log.Errorf("Error reading %s: %s", ManifestFileName, err)
+		con.Log.Errorf("Error reading %s: %s\n", ManifestFileName, err)
 		return
 	}
 	manifest, err := ParseAliasManifest(manifestData)
 	if err != nil {
-		con.Log.Errorf("Error parsing %s: %s", ManifestFileName, err)
+		con.Log.Errorf("Error parsing %s: %s\n", ManifestFileName, err)
 		return
 	}
 	installPath := filepath.Join(assets.GetAliasesDir(), filepath.Base(manifest.CommandName))
 	if _, err := os.Stat(installPath); !os.IsNotExist(err) {
-		con.Log.Infof("Alias '%s' already exists", manifest.CommandName)
+		con.Log.Infof("Alias '%s' already exists\n", manifest.CommandName)
 		//confirm := false
 		// todo rewrite to tea
 		//prompt := &survey.Confirm{Message: "Overwrite current install?"}
@@ -51,7 +51,7 @@ func installFromDir(aliasLocalPath string, con *repl.Console) {
 		file.ForceRemoveAll(installPath)
 	}
 
-	con.Log.Infof("Installing alias '%s' (%s) ... ", manifest.Name, manifest.Version)
+	con.Log.Infof("Installing alias '%s' (%s) ... \n", manifest.Name, manifest.Version)
 	err = os.MkdirAll(installPath, 0700)
 	if err != nil {
 		con.Log.Errorf("Error creating alias directory: %s\n", err)
@@ -116,7 +116,7 @@ func InstallFromFile(aliasGzFilePath string, aliasName string, promptToOverwrite
 		file.ForceRemoveAll(installPath)
 	}
 
-	con.Log.Infof("Installing alias '%s' (%s) ... ", manifest.Name, manifest.Version)
+	con.Log.Infof("Installing alias '%s' (%s) ... \n", manifest.Name, manifest.Version)
 	err = os.MkdirAll(installPath, 0700)
 	if err != nil {
 		con.Log.Errorf("Failed to create alias directory: %s\n", err)

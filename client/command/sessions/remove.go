@@ -17,6 +17,6 @@ func removeCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 	delete(con.Sessions, id)
-	con.Log.Infof("delete session %s", id)
+	con.Log.Infof("delete session %s\n", id)
 	return nil
 }

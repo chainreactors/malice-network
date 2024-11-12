@@ -36,7 +36,6 @@ func SetEnvCmd(cmd *cobra.Command, con *repl.Console) error {
 	envName := cmd.Flags().Arg(0)
 	value := cmd.Flags().Arg(1)
 	if envName == "" || value == "" {
-		con.Log.Errorf("required arguments missing")
 		return fmt.Errorf("required arguments missing")
 	}
 	session := con.GetInteractive()

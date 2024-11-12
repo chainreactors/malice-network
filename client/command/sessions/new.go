@@ -22,7 +22,7 @@ func NewBindSessionCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	con.Log.Infof("session %s created", sess.SessionId)
+	con.Log.Infof("session %s created\n", sess.SessionId)
 	return nil
 }
 

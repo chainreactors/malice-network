@@ -18,7 +18,7 @@ func ListFiles(cmd *cobra.Command, con *repl.Console) error {
 	if 0 < len(resp.Files) {
 		printFiles(resp, con)
 	} else {
-		con.Log.Info("No files")
+		con.Log.Info("No files\n")
 	}
 
 	return nil

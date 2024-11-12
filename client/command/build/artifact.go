@@ -99,7 +99,7 @@ func UploadArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	con.Log.Infof("upload artifact %s success, id:%d", builder.Name, builder.Id)
+	con.Log.Infof("upload artifact %s success, id:%d\n", builder.Name, builder.Id)
 	return nil
 }
 

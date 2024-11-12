@@ -38,14 +38,13 @@ func LoadAddonCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
 
 	if repl.CmdExist(con.ImplantMenu(), name) {
-		con.Log.Warnf("%s alread exist, please use -n/--name to specify a ne"+
-			"w name", name)
+		con.Log.Warnf("%s alread exist, please use -n/--name to specify a new name\n", name)
 		return
 	}
 
 	task, err := LoadAddon(con.Rpc, session, name, path, module)
 	if err != nil {
-		con.Log.Errorf("%s", err)
+		con.Log.Errorf("%s\n", err)
 		return
 	}
 
