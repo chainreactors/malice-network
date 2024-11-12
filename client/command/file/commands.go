@@ -57,7 +57,7 @@ upload ./file.txt /tmp/file.txt
 		carapace.ActionValues().Usage("file target path"))
 
 	common.BindFlag(uploadCmd, func(f *pflag.FlagSet) {
-		f.IntP("priv", "", 0o644, "file privilege")
+		f.String("priv", "0644", "file privilege")
 		f.BoolP("hidden", "", false, "hidden file")
 	})
 
@@ -112,7 +112,7 @@ func Register(con *repl.Console) {
 		Upload,
 		"bupload",
 		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string) (*clientpb.Task, error) {
-			return Upload(rpc, sess, path, filepath.Base(path), 0o744, false)
+			return Upload(rpc, sess, path, filepath.Base(path), "0644", false)
 		},
 		common.ParseStatus,
 		nil)
