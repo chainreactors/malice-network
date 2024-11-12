@@ -407,10 +407,10 @@ func buildInstallList(name, armoryPK string, forceInstallation bool, pendingPack
 
 		if !packageEntry.Pkg.IsAlias {
 			dependencies := make(map[string]*pkgCacheEntry)
-			err = resolveExtensionPackageDependencies(packageEntry, dependencies, pendingPackages)
-			if err != nil {
-				return nil, err
-			}
+			//err = resolveExtensionPackageDependencies(packageEntry, dependencies, pendingPackages)
+			//if err != nil {
+			//	return nil, err
+			//}
 			for pkgName, packageEntry := range dependencies {
 				if !slices.Contains(packageInstallList, packageEntry.ID) {
 					packageInstallList = append(packageInstallList, packageEntry.ID)

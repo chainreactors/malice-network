@@ -30,7 +30,7 @@ func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *repl.Conso
 	var err error
 
 	if isGz {
-		manifestData, err = file.ReadFileFromTarGz(extLocalPath, fmt.Sprintf("./%s", ManifestFileName))
+		manifestData, err = file.ReadFileFromTarGz(extLocalPath, ManifestFileName)
 	} else {
 		manifestData, err = os.ReadFile(filepath.Join(extLocalPath, ManifestFileName))
 	}
@@ -178,7 +178,8 @@ func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *repl.Conso
 //}
 
 func installArtifact(extGzFilePath string, installPath string, artifactPath string) error {
-	data, err := file.ReadFileFromTarGz(extGzFilePath, "."+artifactPath)
+	artifactPath = strings.ReplaceAll(artifactPath, `\`, "")
+	data, err := file.ReadFileFromTarGz(extGzFilePath, artifactPath)
 	if err != nil {
 		return err
 	}
