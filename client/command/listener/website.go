@@ -125,8 +125,8 @@ func StopWebsitePipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 
 func ListWebsitesCmd(cmd *cobra.Command, con *repl.Console) error {
 	listenerID := cmd.Flags().Arg(0)
-	websites, err := con.Rpc.ListWebsites(context.Background(), &clientpb.ListenerName{
-		Name: listenerID,
+	websites, err := con.Rpc.ListWebsites(context.Background(), &clientpb.Listener{
+		Id: listenerID,
 	})
 	if err != nil {
 		return err

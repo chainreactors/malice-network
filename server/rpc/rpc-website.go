@@ -234,9 +234,9 @@ func (rpc *Server) UploadWebsite(ctx context.Context, req *clientpb.WebsiteAsset
 	return &clientpb.Empty{}, nil
 }
 
-func (rpc *Server) ListWebsites(ctx context.Context, req *clientpb.ListenerName) (*clientpb.Pipelines, error) {
+func (rpc *Server) ListWebsites(ctx context.Context, req *clientpb.Listener) (*clientpb.Pipelines, error) {
 	var websites []*clientpb.Pipeline
-	pipelines, err := db.ListWebsite(req.Name)
+	pipelines, err := db.ListWebsite(req.Id)
 	if err != nil {
 		return nil, err
 	}

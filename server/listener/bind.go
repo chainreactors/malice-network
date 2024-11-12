@@ -7,18 +7,18 @@ import (
 	"github.com/chainreactors/malice-network/helper/encoders"
 	"github.com/chainreactors/malice-network/helper/encoders/hash"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/helper/utils/peek"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/parser"
 	"github.com/chainreactors/malice-network/server/internal/parser/malefic"
-	"google.golang.org/grpc"
 	"net"
 )
 
-func NewBindPipeline(conn *grpc.ClientConn, pipeline *clientpb.Pipeline) (*BindPipeline, error) {
+func NewBindPipeline(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeline) (*BindPipeline, error) {
 	pp := &BindPipeline{
-		grpcConn:       conn,
+		rpc:            rpc,
 		Name:           pipeline.Name,
 		Enable:         true,
 		PipelineConfig: core.FromProtobuf(pipeline),
@@ -27,10 +27,8 @@ func NewBindPipeline(conn *grpc.ClientConn, pipeline *clientpb.Pipeline) (*BindP
 }
 
 type BindPipeline struct {
-	grpcConn *grpc.ClientConn
-	Name     string
-	//Port   uint16
-	//Target string
+	rpc    listenerrpc.ListenerRPCClient
+	Name   string
 	Enable bool
 	*core.PipelineConfig
 }
@@ -56,7 +54,7 @@ func (pipeline *BindPipeline) Start() error {
 	if !pipeline.Enable {
 		return nil
 	}
-	forward, err := core.NewForward(pipeline.grpcConn, pipeline)
+	forward, err := core.NewForward(pipeline.rpc, pipeline)
 	if err != nil {
 		return err
 	}

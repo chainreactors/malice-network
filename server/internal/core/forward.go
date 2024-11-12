@@ -7,7 +7,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 
 	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/proto"
 	"sync"
@@ -63,11 +62,11 @@ func (f *forwarders) Send(id string, msg *Message) {
 	fw.Add(msg)
 }
 
-func NewForward(conn *grpc.ClientConn, pipeline Pipeline) (*Forward, error) {
+func NewForward(rpc listenerrpc.ListenerRPCClient, pipeline Pipeline) (*Forward, error) {
 	var err error
 	forward := &Forward{
 		implantC:    make(chan *Message, 255),
-		ListenerRpc: listenerrpc.NewListenerRPCClient(conn),
+		ListenerRpc: rpc,
 		Pipeline:    pipeline,
 		ctx:         context.Background(),
 	}

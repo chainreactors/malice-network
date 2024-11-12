@@ -14,8 +14,8 @@ import (
 
 // PacketParser packet parser, like malefic, beacon ...
 type PacketParser interface {
-	PeekHeader(conn *peek.Conn) (uint32, int, error)
-	ReadHeader(conn *peek.Conn) (uint32, int, error)
+	PeekHeader(conn *peek.Conn) (uint32, uint32, error)
+	ReadHeader(conn *peek.Conn) (uint32, uint32, error)
 	Parse([]byte) (*implantpb.Spites, error)
 	Marshal(*implantpb.Spites, uint32) ([]byte, error)
 }
@@ -36,7 +36,7 @@ type MessageParser struct {
 	PacketParser
 }
 
-func (parser *MessageParser) ReadMessage(conn *peek.Conn, length int) (*implantpb.Spites, error) {
+func (parser *MessageParser) ReadMessage(conn *peek.Conn, length uint32) (*implantpb.Spites, error) {
 	buf := make([]byte, length)
 	_, err := io.ReadFull(conn, buf)
 	if err != nil {

@@ -35,11 +35,12 @@ type ListenerRPCClient interface {
 	RegisterWebsite(ctx context.Context, in *clientpb.Pipeline, opts ...grpc.CallOption) (*clientpb.WebsiteResponse, error)
 	StartPipeline(ctx context.Context, in *clientpb.CtrlPipeline, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	StopPipeline(ctx context.Context, in *clientpb.CtrlPipeline, opts ...grpc.CallOption) (*clientpb.Empty, error)
-	ListPipelines(ctx context.Context, in *clientpb.ListenerName, opts ...grpc.CallOption) (*clientpb.Pipelines, error)
+	ListPipelines(ctx context.Context, in *clientpb.Listener, opts ...grpc.CallOption) (*clientpb.Pipelines, error)
 	StartWebsite(ctx context.Context, in *clientpb.CtrlPipeline, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	StopWebsite(ctx context.Context, in *clientpb.CtrlPipeline, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	UploadWebsite(ctx context.Context, in *clientpb.WebsiteAssets, opts ...grpc.CallOption) (*clientpb.Empty, error)
-	ListWebsites(ctx context.Context, in *clientpb.ListenerName, opts ...grpc.CallOption) (*clientpb.Pipelines, error)
+	ListWebsites(ctx context.Context, in *clientpb.Listener, opts ...grpc.CallOption) (*clientpb.Pipelines, error)
+	GetArtifact(ctx context.Context, in *clientpb.Builder, opts ...grpc.CallOption) (*clientpb.Builder, error)
 	//  rpc ListenerCtrl(clientpb.CtrlStatus) returns (stream clientpb.CtrlPipeline);
 	SpiteStream(ctx context.Context, opts ...grpc.CallOption) (ListenerRPC_SpiteStreamClient, error)
 	JobStream(ctx context.Context, opts ...grpc.CallOption) (ListenerRPC_JobStreamClient, error)
@@ -134,7 +135,7 @@ func (c *listenerRPCClient) StopPipeline(ctx context.Context, in *clientpb.CtrlP
 	return out, nil
 }
 
-func (c *listenerRPCClient) ListPipelines(ctx context.Context, in *clientpb.ListenerName, opts ...grpc.CallOption) (*clientpb.Pipelines, error) {
+func (c *listenerRPCClient) ListPipelines(ctx context.Context, in *clientpb.Listener, opts ...grpc.CallOption) (*clientpb.Pipelines, error) {
 	out := new(clientpb.Pipelines)
 	err := c.cc.Invoke(ctx, "/listenerrpc.ListenerRPC/ListPipelines", in, out, opts...)
 	if err != nil {
@@ -170,9 +171,18 @@ func (c *listenerRPCClient) UploadWebsite(ctx context.Context, in *clientpb.Webs
 	return out, nil
 }
 
-func (c *listenerRPCClient) ListWebsites(ctx context.Context, in *clientpb.ListenerName, opts ...grpc.CallOption) (*clientpb.Pipelines, error) {
+func (c *listenerRPCClient) ListWebsites(ctx context.Context, in *clientpb.Listener, opts ...grpc.CallOption) (*clientpb.Pipelines, error) {
 	out := new(clientpb.Pipelines)
 	err := c.cc.Invoke(ctx, "/listenerrpc.ListenerRPC/ListWebsites", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *listenerRPCClient) GetArtifact(ctx context.Context, in *clientpb.Builder, opts ...grpc.CallOption) (*clientpb.Builder, error) {
+	out := new(clientpb.Builder)
+	err := c.cc.Invoke(ctx, "/listenerrpc.ListenerRPC/GetArtifact", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -256,11 +266,12 @@ type ListenerRPCServer interface {
 	RegisterWebsite(context.Context, *clientpb.Pipeline) (*clientpb.WebsiteResponse, error)
 	StartPipeline(context.Context, *clientpb.CtrlPipeline) (*clientpb.Empty, error)
 	StopPipeline(context.Context, *clientpb.CtrlPipeline) (*clientpb.Empty, error)
-	ListPipelines(context.Context, *clientpb.ListenerName) (*clientpb.Pipelines, error)
+	ListPipelines(context.Context, *clientpb.Listener) (*clientpb.Pipelines, error)
 	StartWebsite(context.Context, *clientpb.CtrlPipeline) (*clientpb.Empty, error)
 	StopWebsite(context.Context, *clientpb.CtrlPipeline) (*clientpb.Empty, error)
 	UploadWebsite(context.Context, *clientpb.WebsiteAssets) (*clientpb.Empty, error)
-	ListWebsites(context.Context, *clientpb.ListenerName) (*clientpb.Pipelines, error)
+	ListWebsites(context.Context, *clientpb.Listener) (*clientpb.Pipelines, error)
+	GetArtifact(context.Context, *clientpb.Builder) (*clientpb.Builder, error)
 	//  rpc ListenerCtrl(clientpb.CtrlStatus) returns (stream clientpb.CtrlPipeline);
 	SpiteStream(ListenerRPC_SpiteStreamServer) error
 	JobStream(ListenerRPC_JobStreamServer) error
@@ -298,7 +309,7 @@ func (UnimplementedListenerRPCServer) StartPipeline(context.Context, *clientpb.C
 func (UnimplementedListenerRPCServer) StopPipeline(context.Context, *clientpb.CtrlPipeline) (*clientpb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method StopPipeline not implemented")
 }
-func (UnimplementedListenerRPCServer) ListPipelines(context.Context, *clientpb.ListenerName) (*clientpb.Pipelines, error) {
+func (UnimplementedListenerRPCServer) ListPipelines(context.Context, *clientpb.Listener) (*clientpb.Pipelines, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListPipelines not implemented")
 }
 func (UnimplementedListenerRPCServer) StartWebsite(context.Context, *clientpb.CtrlPipeline) (*clientpb.Empty, error) {
@@ -310,8 +321,11 @@ func (UnimplementedListenerRPCServer) StopWebsite(context.Context, *clientpb.Ctr
 func (UnimplementedListenerRPCServer) UploadWebsite(context.Context, *clientpb.WebsiteAssets) (*clientpb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UploadWebsite not implemented")
 }
-func (UnimplementedListenerRPCServer) ListWebsites(context.Context, *clientpb.ListenerName) (*clientpb.Pipelines, error) {
+func (UnimplementedListenerRPCServer) ListWebsites(context.Context, *clientpb.Listener) (*clientpb.Pipelines, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListWebsites not implemented")
+}
+func (UnimplementedListenerRPCServer) GetArtifact(context.Context, *clientpb.Builder) (*clientpb.Builder, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetArtifact not implemented")
 }
 func (UnimplementedListenerRPCServer) SpiteStream(ListenerRPC_SpiteStreamServer) error {
 	return status.Errorf(codes.Unimplemented, "method SpiteStream not implemented")
@@ -495,7 +509,7 @@ func _ListenerRPC_StopPipeline_Handler(srv interface{}, ctx context.Context, dec
 }
 
 func _ListenerRPC_ListPipelines_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(clientpb.ListenerName)
+	in := new(clientpb.Listener)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -507,7 +521,7 @@ func _ListenerRPC_ListPipelines_Handler(srv interface{}, ctx context.Context, de
 		FullMethod: "/listenerrpc.ListenerRPC/ListPipelines",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ListenerRPCServer).ListPipelines(ctx, req.(*clientpb.ListenerName))
+		return srv.(ListenerRPCServer).ListPipelines(ctx, req.(*clientpb.Listener))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -567,7 +581,7 @@ func _ListenerRPC_UploadWebsite_Handler(srv interface{}, ctx context.Context, de
 }
 
 func _ListenerRPC_ListWebsites_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(clientpb.ListenerName)
+	in := new(clientpb.Listener)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -579,7 +593,25 @@ func _ListenerRPC_ListWebsites_Handler(srv interface{}, ctx context.Context, dec
 		FullMethod: "/listenerrpc.ListenerRPC/ListWebsites",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ListenerRPCServer).ListWebsites(ctx, req.(*clientpb.ListenerName))
+		return srv.(ListenerRPCServer).ListWebsites(ctx, req.(*clientpb.Listener))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ListenerRPC_GetArtifact_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(clientpb.Builder)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ListenerRPCServer).GetArtifact(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/listenerrpc.ListenerRPC/GetArtifact",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ListenerRPCServer).GetArtifact(ctx, req.(*clientpb.Builder))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -698,6 +730,10 @@ var ListenerRPC_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListWebsites",
 			Handler:    _ListenerRPC_ListWebsites_Handler,
+		},
+		{
+			MethodName: "GetArtifact",
+			Handler:    _ListenerRPC_GetArtifact_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
