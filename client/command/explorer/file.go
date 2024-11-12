@@ -25,7 +25,7 @@ func explorerCmd(cmd *cobra.Command, con *repl.Console) {
 		Input: "./",
 	})
 	if err != nil {
-		con.Log.Errorf("load directory error: %v", err)
+		con.Log.Errorf("load directory error: %v\n", err)
 		return
 	}
 	fileChan := make(chan []*implantpb.FileInfo, 1)
@@ -152,7 +152,7 @@ func enterFunc(m *tui.TreeModel, con *repl.Console) (tea.Model, tea.Cmd) {
 		Input: "./" + selectedNode.Name,
 	})
 	if err != nil {
-		con.Log.Errorf("load directory error: %v", err)
+		con.Log.Errorf("load directory error: %v\n", err)
 		return m, nil
 	}
 	fileChan := make(chan []*implantpb.FileInfo, 1)
@@ -206,7 +206,7 @@ func freshFunc(m *tui.TreeModel, con *repl.Console) (tea.Model, tea.Cmd) {
 		Input: "./" + selectedNode.Name,
 	})
 	if err != nil {
-		con.Log.Errorf("load directory error: %v", err)
+		con.Log.Errorf("load directory error: %v\n", err)
 		return m, nil
 	}
 	fileChan := make(chan []*implantpb.FileInfo, 1)

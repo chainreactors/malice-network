@@ -96,7 +96,7 @@ func ShellCodeCmd(cmd *cobra.Command, con *repl.Console) error {
 			Platform:      consts.Windows,
 		})
 		if err != nil {
-			con.Log.Errorf("Build shellcode failed: %v", err)
+			con.Log.Errorf("Build shellcode failed: %v\n", err)
 			return
 		}
 		con.Log.Infof("Build shellcode success")
@@ -127,7 +127,7 @@ func PreludeCmd(cmd *cobra.Command, con *repl.Console) error {
 			Platform:      consts.Windows,
 		})
 		if err != nil {
-			con.Log.Errorf("Build prelude failed: %v", err)
+			con.Log.Errorf("Build prelude failed: %v\n", err)
 			return
 		}
 		con.Log.Infof("Build prelude success")
@@ -163,7 +163,7 @@ func ModulesCmd(cmd *cobra.Command, con *repl.Console) error {
 			Platform:      consts.Windows,
 		})
 		if err != nil {
-			con.Log.Errorf("Build modules failed: %v", err)
+			con.Log.Errorf("Build modules failed: %v\n", err)
 			return
 		}
 		con.Log.Infof("Build modules success")

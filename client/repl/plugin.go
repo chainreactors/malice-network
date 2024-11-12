@@ -170,7 +170,7 @@ func WrapImplantFunc(con *Console, fun interface{}, callback ImplantFuncCallback
 		tui.Down(1)
 		err = handler.HandleMaleficError(content.Spite)
 		if err != nil {
-			con.Log.Errorf(err.Error())
+			con.Log.Errorf(err.Error() + "\n")
 			return nil, err
 		}
 
