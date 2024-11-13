@@ -151,7 +151,7 @@ func (s *ServerStatus) EventHandler() {
 			case *clientpb.Pipeline_Web:
 				Log.Importantf("[%s] %s: web %s on %s %d, routePath is %s", event.Type, event.Op,
 					pipeline.ListenerId, pipeline.Name, pipeline.GetWeb().Port,
-					pipeline.GetWeb().RootPath)
+					pipeline.GetWeb().Root)
 			}
 		case consts.EventListener:
 			tui.Down(1)

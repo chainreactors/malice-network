@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"time"
 )
@@ -136,17 +135,4 @@ func MvConfig(oldPath string) error {
 		return err
 	}
 	return nil
-}
-
-func SetInputrc() {
-	home, _ := os.UserHomeDir()
-	inputrcPath := filepath.Join(home, "_inputrc")
-	if runtime.GOOS == "windows" {
-		if _, err := os.Stat(inputrcPath); os.IsNotExist(err) {
-			err = os.WriteFile(inputrcPath, []byte(inputrc), 0644)
-			if err != nil {
-				logs.Log.Errorf(err.Error())
-			}
-		}
-	}
 }
