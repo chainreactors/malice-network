@@ -88,13 +88,17 @@ type HttpPipelineConfig struct {
 }
 
 type WebsiteConfig struct {
-	Enable      bool       `config:"enable" default:"false"`
-	RootPath    string     `config:"root" default:"."`
-	WebsiteName string     `config:"name" default:"web"`
-	Port        uint16     `config:"port" default:"443"`
-	ContentPath string     `config:"content_path" default:""`
-	Parser      string     `config:"parser" default:"parser"`
-	TlsConfig   *TlsConfig `config:"tls" `
+	Enable      bool                      `config:"enable" default:"false"`
+	RootPath    string                    `config:"root" default:"."`
+	WebsiteName string                    `config:"name" default:"web"`
+	Port        uint16                    `config:"port" default:"443"`
+	WebContents map[string]*WebsiteConfig `config:"content_path" default:""`
+	TlsConfig   *TlsConfig                `config:"tls" `
+}
+
+type WebContent struct {
+	Path   string `config:"path"`
+	Parser string `config:"raw"`
 }
 
 type CertConfig struct {

@@ -114,7 +114,7 @@ func MapContent(name string, eager bool) (*clientpb.Website, error) {
 
 	if eager {
 		eagerContents := map[string]*clientpb.WebContent{}
-		content, err := db.WebContentByIDAndPath(website.ID, website.RootPath, webContentDir, true)
+		content, err := db.WebContentByIDAndPath(website.ID, website.Root, webContentDir, true)
 		if err != nil {
 			return nil, err
 		}

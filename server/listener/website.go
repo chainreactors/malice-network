@@ -6,7 +6,7 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/server/internal/certutils"
-	"github.com/chainreactors/malice-network/server/internal/configs"
+	"github.com/chainreactors/malice-network/server/internal/core"
 	"google.golang.org/protobuf/proto"
 	"net/http"
 	"net/url"
@@ -17,28 +17,18 @@ type Website struct {
 	server      *http.Server
 	rootPath    string
 	websiteName string
-	TlsConfig   *configs.CertConfig
-	Encryption  *configs.EncryptionConfig
-	Content     map[string]*clientpb.WebContent
+	*core.PipelineConfig
+	Content map[string]*clientpb.WebContent
 }
 
 func StartWebsite(pipeline *clientpb.Pipeline, content map[string]*clientpb.WebContent) (*Website, error) {
 	websitePp := pipeline.GetWeb()
 	web := &Website{
-		port:        int(websitePp.Port),
-		rootPath:    websitePp.RootPath,
-		websiteName: websitePp.ID,
-		TlsConfig: &configs.CertConfig{
-			Cert:   pipeline.GetTls().Cert,
-			Key:    pipeline.GetTls().Key,
-			Enable: pipeline.GetTls().Enable,
-		},
-		Encryption: &configs.EncryptionConfig{
-			Enable: pipeline.GetEncryption().Enable,
-			Type:   pipeline.GetEncryption().Type,
-			Key:    pipeline.GetEncryption().Key,
-		},
-		Content: content,
+		port:           int(websitePp.Port),
+		rootPath:       websitePp.Root,
+		websiteName:    websitePp.ID,
+		PipelineConfig: core.FromProtobuf(pipeline),
+		Content:        content,
 	}
 	err := web.Start()
 	if err != nil {
@@ -58,7 +48,7 @@ func (w *Website) Addr() string {
 func (w *Website) Start() error {
 	http.HandleFunc(w.rootPath, w.websiteContentHandler)
 	var err error
-	tlsConfig, err := certutils.WrapToTlsConfig(w.TlsConfig)
+	tlsConfig, err := certutils.WrapToTlsConfig(w.Tls)
 	if err != nil {
 		return err
 	}
@@ -71,9 +61,6 @@ func (w *Website) Start() error {
 			logs.Log.Errorf("HTTP Server failed to start: %v", err)
 		}
 	}()
-	if err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -92,30 +79,9 @@ func (w *Website) Close() error {
 
 func (w *Website) ToProtobuf() proto.Message {
 	return &clientpb.Website{
-		ID:       fmt.Sprintf("%s_%d", w.websiteName, w.port),
-		Port:     uint32(w.port),
-		RootPath: w.rootPath,
-	}
-}
-
-func (w *Website) ToConfigProtobuf() proto.Message {
-	return &clientpb.TLS{
-		Cert: w.TlsConfig.Cert,
-		Key:  w.TlsConfig.Key,
-	}
-}
-
-func ToWebsiteConfig(w *clientpb.Website, tls *clientpb.TLS) *configs.WebsiteConfig {
-	return &configs.WebsiteConfig{
-		Port:        uint16(w.Port),
-		RootPath:    w.RootPath,
-		WebsiteName: w.ID,
-		TlsConfig: &configs.TlsConfig{
-			Name:     fmt.Sprintf("%s_%v", w.ID, uint16(w.Port)),
-			Enable:   true,
-			CertFile: tls.Cert,
-			KeyFile:  tls.Key,
-		},
+		ID:   fmt.Sprintf("%s_%d", w.websiteName, w.port),
+		Port: uint32(w.port),
+		Root: w.rootPath,
 	}
 }
 

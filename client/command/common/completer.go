@@ -190,7 +190,7 @@ func JobsCompleter(con *repl.Console, cmd *cobra.Command, use string) carapace.A
 			case *clientpb.Pipeline_Web:
 				if use == consts.CommandWebsite {
 					results = append(results, pipeline.Name,
-						fmt.Sprintf("web job %v, path %s", pipeline.GetWeb().Port, pipeline.GetWeb().RootPath))
+						fmt.Sprintf("web job %v, path %s", pipeline.GetWeb().Port, pipeline.GetWeb().Root))
 				}
 			}
 		}

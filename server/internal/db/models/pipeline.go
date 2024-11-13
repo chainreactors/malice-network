@@ -76,7 +76,7 @@ func FromPipelinePb(pipeline *clientpb.Pipeline) *Pipeline {
 			Name:       pipeline.Name,
 			Enable:     pipeline.Enable,
 			Parser:     pipeline.Parser,
-			WebPath:    body.Web.RootPath,
+			WebPath:    body.Web.Root,
 			Port:       uint16(body.Web.Port),
 			Type:       "web",
 			Tls:        ToTlsDB(pipeline.Tls),
@@ -124,8 +124,8 @@ func ToPipelinePB(pipeline Pipeline) *clientpb.Pipeline {
 			Parser:     pipeline.Parser,
 			Body: &clientpb.Pipeline_Web{
 				Web: &clientpb.Website{
-					RootPath: pipeline.WebPath,
-					Port:     uint32(pipeline.Port),
+					Root: pipeline.WebPath,
+					Port: uint32(pipeline.Port),
 				},
 			},
 			Tls:        ToTlsProtobuf(&pipeline.Tls),

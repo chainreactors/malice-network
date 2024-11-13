@@ -71,7 +71,7 @@ func NewWebsiteCmd(cmd *cobra.Command, con *repl.Console) error {
 		Tls: tls,
 		Body: &clientpb.Pipeline_Web{
 			Web: &clientpb.Website{
-				RootPath: webPath,
+				Root:     webPath,
 				Port:     port,
 				Contents: addWeb.Contents,
 			},
@@ -148,7 +148,7 @@ func ListWebsitesCmd(cmd *cobra.Command, con *repl.Console) error {
 		row = table.Row{
 			w.ID,
 			strconv.Itoa(int(w.Port)),
-			w.RootPath,
+			w.Root,
 		}
 		rowEntries = append(rowEntries, row)
 	}

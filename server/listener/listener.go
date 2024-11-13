@@ -110,7 +110,7 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 			ListenerId: lis.Name,
 			Body: &clientpb.Pipeline_Web{
 				Web: &clientpb.Website{
-					RootPath: newWebsite.RootPath,
+					Root:     newWebsite.RootPath,
 					Port:     uint32(newWebsite.Port),
 					Contents: addWeb.Contents,
 				},
