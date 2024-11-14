@@ -23,7 +23,7 @@ func NewPulseParser() *PulseParser {
 	return &PulseParser{
 		StartDelimiter: 0x41,
 		EndDelimiter:   0x42,
-		Magic:          hash.BJD2Hash("0xb8d18b4"),
+		Magic:          hash.BJD2Hash("beautiful"),
 	}
 }
 
@@ -55,9 +55,16 @@ func (parser *PulseParser) ReadHeader(conn *peek.Conn) (uint32, uint32, error) {
 	if magic != parser.Magic {
 		return 0, 0, errs.ErrInvalidMagic
 	}
-
 	if _, err := conn.Reader.Discard(HeaderLength); err != nil {
 		return 0, 0, err
+	}
+	end := make([]byte, 1)
+	n, err := conn.Read(end)
+	if err != nil {
+		return 0, 0, err
+	}
+	if n != 1 || end[0] != parser.EndDelimiter {
+		return 0, 0, errs.ErrInvalidEnd
 	}
 	return magic, artifact, nil
 }
@@ -66,7 +73,7 @@ func (parser *PulseParser) Parse(buf []byte) (*implantpb.Spites, error) {
 	return nil, nil
 }
 
-func (parser *PulseParser) Marshal(spites *implantpb.Spites, sid uint32) ([]byte, error) {
+func (parser *PulseParser) Marshal(spites *implantpb.Spites, magic uint32) ([]byte, error) {
 	var buf bytes.Buffer
 	if len(spites.Spites) == 0 {
 		return nil, errs.ErrNullSpites
@@ -78,7 +85,7 @@ func (parser *PulseParser) Marshal(spites *implantpb.Spites, sid uint32) ([]byte
 	}
 	data := spites.Spites[0].GetInit().Data
 	buf.WriteByte(parser.StartDelimiter)
-	binary.Write(&buf, binary.LittleEndian, encoders.Uint32ToBytes(sid))
+	binary.Write(&buf, binary.LittleEndian, encoders.Uint32ToBytes(magic))
 	binary.Write(&buf, binary.LittleEndian, int32(len(data)))
 	buf.Write(data)
 	buf.WriteByte(parser.EndDelimiter)

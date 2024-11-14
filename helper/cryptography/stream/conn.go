@@ -19,13 +19,11 @@ type CryptoConn struct {
 }
 
 func (sc *CryptoConn) Write(data []byte) (int, error) {
-	// 使用 Cryptor 加密数据
 	encryptedData, err := sc.encrypt(data)
 	if err != nil {
 		return 0, err
 	}
 
-	// 将加密后的数据发送到底层连接
 	return sc.Conn.Write(encryptedData)
 }
 

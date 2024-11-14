@@ -664,11 +664,11 @@ func UpdateGeneratorConfig(req *clientpb.Generate, path string, profile models.P
 		config.Basic.Name = profile.Name
 	}
 	if req.Url != "" {
-		config.Basic.Urls = []string{}
-		config.Basic.Urls = append(config.Basic.Urls, req.Url)
+		config.Basic.Targets = []string{}
+		config.Basic.Targets = append(config.Basic.Targets, req.Url)
 	} else if profile.Name != "" {
-		config.Basic.Urls = []string{}
-		config.Basic.Urls = append(config.Basic.Urls,
+		config.Basic.Targets = []string{}
+		config.Basic.Targets = append(config.Basic.Targets,
 			fmt.Sprintf("%s:%v", profile.Pipeline.Host, profile.Pipeline.Port))
 	}
 	var dbParams *models.Params

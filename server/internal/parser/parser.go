@@ -75,7 +75,7 @@ func (parser *MessageParser) WritePacket(conn *peek.Conn, msg *implantpb.Spites,
 		return fmt.Errorf("send error, expect send %d, real send %d", len(bs), n)
 	}
 	if len(bs) <= 1000 {
-		logs.Log.Debugf("write packet to %s , %d bytes, %v", conn.RemoteAddr(), len(bs), msg)
+		logs.Log.Debugf("write packet to %s , %d bytes", conn.RemoteAddr(), len(bs))
 	} else {
 		logs.Log.Debugf("write packet to %s , %d bytes", conn.RemoteAddr(), len(bs))
 	}
