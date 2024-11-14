@@ -25,7 +25,7 @@ func MatchLocal(eng *Engine) (bind inputrc.Bind, command func(), prefix bool) {
 
 	// bind, command, prefix, keys := eng.dispatch(binds)
 	bind, prefix, read, matched := eng.dispatchKeys(binds)
-
+	core.PopKey(eng.keys)
 	if !bind.Macro {
 		command = eng.commands[bind.Action]
 	}
