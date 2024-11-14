@@ -27,9 +27,6 @@ func printListeners(listeners *clientpb.Listeners) {
 		table.NewColumn("ID", "ID", 10),
 		table.NewColumn("Addr", "Addr", 15),
 		table.NewColumn("Active", "Active", 7),
-		//{Title: "ID", Width: 10},
-		//{Title: "Addr", Width: 15},
-		//{Title: "Active", Width: 7},
 	}, true)
 	for _, listener := range listeners.GetListeners() {
 		row = table.NewRow(
@@ -38,10 +35,6 @@ func printListeners(listeners *clientpb.Listeners) {
 				"Addr":   listener.Addr,
 				"Active": strconv.FormatBool(listener.Active),
 			})
-		//table.Row{listener.Id,
-		//	listener.Addr,
-		//	strconv.FormatBool(listener.Active),
-		//}
 		rowEntries = append(rowEntries, row)
 	}
 	tableModel.SetMultiline()

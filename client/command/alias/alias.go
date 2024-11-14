@@ -38,15 +38,6 @@ func PrintAliases(con *repl.Console) {
 		table.NewColumn("Reflective", "Reflective", 10),
 		table.NewColumn("Tool Author", "Tool Author", 20),
 		table.NewColumn("Repository", "Repository", 20),
-		//{Title: "Name", Width: 10},
-		//{Title: "Command Name", Width: 15},
-		//{Title: "Platforms", Width: 10},
-		//{Title: "Version", Width: 10},
-		//{Title: "Installed", Width: 10},
-		//{Title: ".NET Assembly", Width: 15},
-		//{Title: "Reflective", Width: 10},
-		//{Title: "Tool Author", Width: 20},
-		//{Title: "Repository", Width: 20},
 	}, true)
 
 	installedManifests := getInstalledManifests()
@@ -67,17 +58,6 @@ func PrintAliases(con *repl.Console) {
 				"Tool Author":   aliasPkg.Manifest.OriginalAuthor,
 				"Repository":    aliasPkg.Manifest.RepoURL,
 			})
-		//	table.Row{
-		//	aliasPkg.Manifest.Name,
-		//	aliasPkg.Manifest.CommandName,
-		//	strings.Join(aliasPlatforms(aliasPkg.Manifest), ",\n"),
-		//	aliasPkg.Manifest.Version,
-		//	installed,
-		//	strconv.FormatBool(aliasPkg.Manifest.IsAssembly),
-		//	strconv.FormatBool(aliasPkg.Manifest.IsReflective),
-		//	aliasPkg.Manifest.OriginalAuthor,
-		//	aliasPkg.Manifest.RepoURL,
-		//}
 		rowEntries = append(rowEntries, row)
 	}
 	tableModel.SetMultiline()

@@ -36,14 +36,6 @@ func PrintExtensions(con *repl.Console) {
 		table.NewColumn("Extension Author", "Extension Author", 10),
 		table.NewColumn("Original Author", "Original Author", 10),
 		table.NewColumn("Repository", "Repository", 20),
-		//{Title: "Name", Width: 10},
-		//{Title: "Command Name", Width: 10},
-		//{Title: "Platforms", Width: 7},
-		//{Title: "Version", Width: 7},
-		//{Title: "Installed", Width: 4},
-		//{Title: "Extension Author", Width: 10},
-		//{Title: "Original Author", Width: 10},
-		//{Title: "Repository", Width: 20},
 	}, true)
 
 	installedManifests := getInstalledManifests()
@@ -63,16 +55,6 @@ func PrintExtensions(con *repl.Console) {
 				"Original Author":  ext.Manifest.Manifest.OriginalAuthor,
 				"Repository":       ext.Manifest.Manifest.RepoURL,
 			})
-		//table.Row{
-		//	ext.Manifest.Manifest.Name,
-		//	ext.Manifest.CommandName,
-		//	strings.Join(extensionPlatforms(ext.Manifest), ",\n"),
-		//	ext.Manifest.Manifest.Version,
-		//	installed,
-		//	ext.Manifest.Manifest.ExtensionAuthor,
-		//	ext.Manifest.Manifest.OriginalAuthor,
-		//	ext.Manifest.Manifest.RepoURL,
-		//}
 		rowEntries = append(rowEntries, row)
 	}
 	tableModel.SetMultiline()

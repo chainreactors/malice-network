@@ -44,14 +44,6 @@ func PrintSessions(sessions map[string]*core.Session, con *repl.Console, isAll b
 		table.NewColumn("System", "System", 20),
 		table.NewColumn("Last Message", "Last Message", 15),
 		table.NewColumn("Health", "Health", 15),
-		//{Title: "ID", Width: 8},
-		//{Title: "Group", Width: 10},
-		//{Title: "Pipeline", Width: 10},
-		//{Title: "Remote Address", Width: 16},
-		//{Title: "Username", Width: 15},
-		//{Title: "System", Width: 20},
-		//{Title: "Last Message", Width: 15},
-		//{Title: "Health", Width: 15},
 	}, false)
 	for _, session := range sessions {
 		var SessionHealth string
@@ -75,16 +67,6 @@ func PrintSessions(sessions map[string]*core.Session, con *repl.Console, isAll b
 				"Last Message":   strconv.FormatUint(secondsDiff, 10) + "s",
 				"Health":         SessionHealth,
 			})
-		//table.Row{
-		//	session.SessionId[:8],
-		//	fmt.Sprintf("[%s]%s", session.GroupName, session.Note),
-		//	session.PipelineId,
-		//	session.Target,
-		//	fmt.Sprintf("%s/%s", session.Os.Hostname, session.Os.Username),
-		//	fmt.Sprintf("%s/%s", session.Os.Name, session.Os.Arch),
-		//	strconv.FormatUint(secondsDiff, 10) + "s",
-		//	SessionHealth,
-		//}
 		rowEntries = append(rowEntries, row)
 	}
 	var err error
