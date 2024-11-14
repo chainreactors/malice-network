@@ -99,7 +99,7 @@ func GetPluginManifest() []*MalManiFest {
 			logs.Log.Errorf(err.Error())
 			continue
 		}
-		if manifest.Global {
+		if manifest.Lib {
 			continue
 		}
 		manifests = append(manifests, manifest)
@@ -115,7 +115,7 @@ func LoadGlobalLuaPlugin() []*DefaultPlugin {
 			logs.Log.Errorf(err.Error())
 			continue
 		}
-		if !manifest.Global {
+		if !manifest.Lib {
 			continue
 		}
 		plug, err := NewPlugin(manifest)

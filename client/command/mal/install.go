@@ -73,7 +73,7 @@ func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *repl.Conso
 		fileutils.ForceRemoveAll(installPath)
 		return
 	}
-	if manifest.Global {
+	if manifest.Lib {
 		err := fileutils.MoveFile(filepath.Join(installPath, "resources"), assets.GetResourceDir())
 		if err != nil {
 			con.Log.Errorf("\nFailed to move resources to %s: %s\n", assets.GetResourceDir(), err)
