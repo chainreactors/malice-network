@@ -68,7 +68,7 @@ func LoadMalWithManifest(con *repl.Console, rootCmd *cobra.Command, manifest *pl
 	if err != nil {
 		return nil, err
 	}
-	con.Log.Importantf("load mal: %s successfully, register %v", manifest.Name, cmdNames)
+	con.Log.Importantf("load mal: %s successfully, register %v\n", manifest.Name, cmdNames)
 	return mal, nil
 }
 
