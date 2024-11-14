@@ -9,7 +9,7 @@ require (
 	github.com/Binject/go-donut v0.0.0-20220908180326-fcdcc35d591c
 	github.com/chainreactors/files v0.0.0-20231102192550-a652458cee26
 	github.com/chainreactors/logs v0.0.0-20241108080408-6d31ab9dae0a
-	github.com/chainreactors/tui v0.0.0-20241114181843-399bd5598c01
+	github.com/chainreactors/tui v0.0.0-20241114184801-dbf3cd92716b
 	github.com/chainreactors/utils v0.0.0-20240805193040-ff3b97aa3c3f
 	github.com/charmbracelet/bubbles v0.18.0
 	github.com/charmbracelet/bubbletea v0.27.1
