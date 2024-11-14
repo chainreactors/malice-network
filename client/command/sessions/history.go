@@ -1,8 +1,7 @@
 package sessions
 
 import (
-	"fmt"
-	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
@@ -34,19 +33,13 @@ func historyCmd(cmd *cobra.Command, con *repl.Console) error {
 	log := con.ServerStatus.ObserverLog(con.GetInteractive().SessionId)
 	for _, context := range contexts.Contexts {
 		if fn, ok := intermediate.InternalFunctions[context.Task.Type]; ok && fn.FinishCallback != nil {
-			log.Importantf(logs.GreenBold(fmt.Sprintf("[%s.%d] task finish (%d/%d),%s\n",
-				context.Task.SessionId, context.Task.TaskId,
-				context.Task.Cur, context.Task.Total,
-				context.Task.Description)))
-			resp, err := fn.FinishCallback(&clientpb.TaskContext{
+			err := core.HandleTaskContext(log, &clientpb.TaskContext{
 				Task:    context.Task,
 				Session: context.Session,
 				Spite:   context.Spite,
-			})
+			}, fn, false, "")
 			if err != nil {
-				log.Errorf(logs.RedBold(err.Error()))
-			} else {
-				log.Console(resp + "\n")
+				return err
 			}
 		} else {
 			log.Consolef("%s not impl output impl\n", context.Task.Type)

@@ -47,6 +47,7 @@ func (w *Website) Addr() string {
 
 func (w *Website) Start() error {
 	http.HandleFunc(w.rootPath, w.websiteContentHandler)
+	http.HandleFunc(w.rootPath+"/", w.websiteContentHandler)
 	var err error
 	tlsConfig, err := certutils.WrapToTlsConfig(w.Tls)
 	if err != nil {

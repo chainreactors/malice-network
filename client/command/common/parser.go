@@ -10,7 +10,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"github.com/chainreactors/tui"
-	"github.com/charmbracelet/bubbles/table"
+	"github.com/evertras/bubble-table/table"
 	"github.com/muesli/termenv"
 	"io"
 	"math"
@@ -112,16 +112,24 @@ func FormatKVResponse(ctx *clientpb.TaskContext) (string, error) {
 	var rowEntries []table.Row
 	var row table.Row
 	tableModel := tui.NewTable([]table.Column{
-		{Title: "Key", Width: 20},
-		{Title: "Value", Width: 70},
+		table.NewColumn("Key", "Key", 20),
+		table.NewColumn("Value", "Value", 70),
+		//{Title: "Key", Width: 20},
+		//{Title: "Value", Width: 70},
 	}, true)
 	for k, v := range set.(map[string]string) {
-		row = table.Row{
-			k,
-			v,
-		}
+		row = table.NewRow(
+			table.RowData{
+				"Key":   k,
+				"Value": v,
+			})
+		//	table.Row{
+		//	k,
+		//	v,
+		//}
 		rowEntries = append(rowEntries, row)
 	}
+	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)
 	tableModel.Title = ctx.Task.Type
 	return tableModel.View(), nil

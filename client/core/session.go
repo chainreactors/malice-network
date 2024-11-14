@@ -10,7 +10,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"google.golang.org/grpc/metadata"
-	"os"
 	"path/filepath"
 	"slices"
 )
@@ -125,27 +124,13 @@ func (s *Session) GetHistory() {
 
 	for _, context := range contexts.Contexts {
 		if fn, ok := intermediate.InternalFunctions[context.Task.Type]; ok && fn.FinishCallback != nil {
-			err = os.WriteFile(logPath, []byte(logs.GreenBold(fmt.Sprintf("[%s.%d] task finish (%d/%d),%s\n",
-				context.Task.SessionId, context.Task.TaskId,
-				context.Task.Cur, context.Task.Total,
-				context.Task.Description))), os.ModePerm)
-			if err != nil {
-				Log.Errorf("Error writing to file: %s", err)
-				return
-			}
-			resp, err := fn.FinishCallback(&clientpb.TaskContext{
+			err := HandleTaskContext(Log, &clientpb.TaskContext{
 				Task:    context.Task,
 				Session: context.Session,
 				Spite:   context.Spite,
-			})
+			}, fn, true, logPath)
 			if err != nil {
-				Log.Errorf(logs.RedBold(err.Error()))
-			} else {
-				err = os.WriteFile(logPath, []byte(resp), os.ModePerm)
-				if err != nil {
-					Log.Errorf("Error writing to file: %s", err)
-					return
-				}
+				return
 			}
 		} else {
 			Log.Consolef("%s not impl output impl\n", context.Task.Type)

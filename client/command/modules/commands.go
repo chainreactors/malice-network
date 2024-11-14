@@ -7,7 +7,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/tui"
-	"github.com/charmbracelet/bubbles/table"
+	"github.com/evertras/bubble-table/table"
 	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -103,16 +103,24 @@ func Register(con *repl.Console) {
 			var rowEntries []table.Row
 			var row table.Row
 			tableModel := tui.NewTable([]table.Column{
-				{Title: "Name", Width: 15},
-				{Title: "Help", Width: 30},
+				table.NewColumn("Module", "Module", 20),
+				table.NewColumn("Help", "Help", 30),
+				//{Title: "Name", Width: 15},
+				//{Title: "Help", Width: 30},
 			}, true)
 			for _, module := range modules.GetModules() {
-				row = table.Row{
-					module,
-					"",
-				}
+				row = table.NewRow(
+					table.RowData{
+						"Module": module,
+						"Help":   "",
+					})
+				//table.Row{
+				//	module,
+				//	"",
+				//}
 				rowEntries = append(rowEntries, row)
 			}
+			tableModel.SetMultiline()
 			tableModel.SetRows(rowEntries)
 			return tableModel.View(), nil
 		})

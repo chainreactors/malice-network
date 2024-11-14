@@ -5,7 +5,7 @@ import (
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/tui"
-	"github.com/charmbracelet/bubbles/table"
+	"github.com/evertras/bubble-table/table"
 	"github.com/pterm/pterm"
 	"github.com/spf13/cobra"
 	"strconv"
@@ -36,14 +36,22 @@ func PrintSessions(sessions map[string]*core.Session, con *repl.Console, isAll b
 	var row table.Row
 	//groupColors := make(map[string]termenv.ANSIColor)
 	tableModel := tui.NewTable([]table.Column{
-		{Title: "ID", Width: 8},
-		{Title: "Group", Width: 10},
-		{Title: "Pipeline", Width: 10},
-		{Title: "Remote Address", Width: 16},
-		{Title: "Username", Width: 15},
-		{Title: "System", Width: 20},
-		{Title: "Last Message", Width: 15},
-		{Title: "Health", Width: 15},
+		table.NewColumn("ID", "ID", 8),
+		table.NewColumn("Group", "Group", 20),
+		table.NewColumn("Pipeline", "Pipeline", 15),
+		table.NewColumn("Remote Address", "Remote Address", 16),
+		table.NewColumn("Username", "Username", 15),
+		table.NewColumn("System", "System", 20),
+		table.NewColumn("Last Message", "Last Message", 15),
+		table.NewColumn("Health", "Health", 15),
+		//{Title: "ID", Width: 8},
+		//{Title: "Group", Width: 10},
+		//{Title: "Pipeline", Width: 10},
+		//{Title: "Remote Address", Width: 16},
+		//{Title: "Username", Width: 15},
+		//{Title: "System", Width: 20},
+		//{Title: "Last Message", Width: 15},
+		//{Title: "Health", Width: 15},
 	}, false)
 	for _, session := range sessions {
 		var SessionHealth string
@@ -56,24 +64,36 @@ func PrintSessions(sessions map[string]*core.Session, con *repl.Console, isAll b
 			SessionHealth = pterm.FgGreen.Sprint("[ALIVE]")
 		}
 		secondsDiff := uint64(time.Now().Unix() - int64(session.LastCheckin))
-		row = table.Row{
-			session.SessionId[:8],
-			fmt.Sprintf("[%s]%s", session.GroupName, session.Note),
-			session.PipelineId,
-			session.Target,
-			fmt.Sprintf("%s/%s", session.Os.Hostname, session.Os.Username),
-			fmt.Sprintf("%s/%s", session.Os.Name, session.Os.Arch),
-			strconv.FormatUint(secondsDiff, 10) + "s",
-			SessionHealth,
-		}
+		row = table.NewRow(
+			table.RowData{
+				"ID":             session.SessionId[:8],
+				"Group":          fmt.Sprintf("[%s]%s", session.GroupName, session.Note),
+				"Pipeline":       session.PipelineId,
+				"Remote Address": session.Target,
+				"Username":       fmt.Sprintf("%s/%s", session.Os.Hostname, session.Os.Username),
+				"System":         fmt.Sprintf("%s/%s", session.Os.Name, session.Os.Arch),
+				"Last Message":   strconv.FormatUint(secondsDiff, 10) + "s",
+				"Health":         SessionHealth,
+			})
+		//table.Row{
+		//	session.SessionId[:8],
+		//	fmt.Sprintf("[%s]%s", session.GroupName, session.Note),
+		//	session.PipelineId,
+		//	session.Target,
+		//	fmt.Sprintf("%s/%s", session.Os.Hostname, session.Os.Username),
+		//	fmt.Sprintf("%s/%s", session.Os.Name, session.Os.Arch),
+		//	strconv.FormatUint(secondsDiff, 10) + "s",
+		//	SessionHealth,
+		//}
 		rowEntries = append(rowEntries, row)
 	}
 	var err error
 	tableModel.SetRows(rowEntries)
+	tableModel.SetMultiline()
 	tableModel.SetHandle(func() {
 		SessionLogin(tableModel, con)()
 	})
-	newTable := tui.NewModel(tableModel, tableModel.ConsoleHandler, true, false)
+	newTable := tui.NewModel(tableModel, nil, false, false)
 	err = newTable.Run()
 	if err != nil {
 		return
@@ -83,14 +103,14 @@ func PrintSessions(sessions map[string]*core.Session, con *repl.Console, isAll b
 
 func SessionLogin(tableModel *tui.TableModel, con *repl.Console) func() {
 	var sessionId string
-	selectRow := tableModel.GetSelectedRow()
-	if selectRow == nil {
+	selectRow := tableModel.GetHighlightedRow()
+	if selectRow.Data == nil {
 		return func() {
 			con.Log.Errorf("No row selected")
 		}
 	}
 	for _, s := range con.Sessions {
-		if strings.HasPrefix(s.SessionId, selectRow[0]) {
+		if strings.HasPrefix(s.SessionId, selectRow.Data["ID"].(string)) {
 			sessionId = s.SessionId
 		}
 	}

@@ -9,7 +9,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/tui"
-	"github.com/charmbracelet/bubbles/table"
+	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
 	"strings"
 )
@@ -59,22 +59,36 @@ func RegisterNetstatFunc(con *repl.Console) {
 			var rowEntries []table.Row
 			var row table.Row
 			tableModel := tui.NewTable([]table.Column{
-				{Title: "LocalAddr", Width: 30},
-				{Title: "RemoteAddr", Width: 30},
-				{Title: "SkState", Width: 20},
-				{Title: "Pid", Width: 7},
-				{Title: "Protocol", Width: 10},
+				table.NewColumn("LocalAddr", "LocalAddr", 30),
+				table.NewColumn("RemoteAddr", "RemoteAddr", 30),
+				table.NewColumn("SkState", "SkState", 20),
+				table.NewColumn("Pid", "Pid", 7),
+				table.NewColumn("Protocol", "Protocol", 10),
+				//{Title: "LocalAddr", Width: 30},
+				//{Title: "RemoteAddr", Width: 30},
+				//{Title: "SkState", Width: 20},
+				//{Title: "Pid", Width: 7},
+				//{Title: "Protocol", Width: 10},
 			}, true)
 			for _, sock := range resp.GetSocks() {
-				row = table.Row{
-					sock.LocalAddr,
-					sock.RemoteAddr,
-					sock.SkState,
-					sock.Pid,
-					sock.Protocol,
-				}
+				row = table.NewRow(
+					table.RowData{
+						"LocalAddr":  sock.LocalAddr,
+						"RemoteAddr": sock.RemoteAddr,
+						"SkState":    sock.SkState,
+						"Pid":        sock.Pid,
+						"Protocol":   sock.Protocol,
+					})
+				//	table.Row{
+				//	sock.LocalAddr,
+				//	sock.RemoteAddr,
+				//	sock.SkState,
+				//	sock.Pid,
+				//	sock.Protocol,
+				//}
 				rowEntries = append(rowEntries, row)
 			}
+			tableModel.SetMultiline()
 			tableModel.SetRows(rowEntries)
 			return tableModel.View(), nil
 		})

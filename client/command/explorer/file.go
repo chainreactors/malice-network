@@ -9,12 +9,13 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/muesli/termenv"
 	"github.com/spf13/cobra"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 )
 
-func explorerCmd(cmd *cobra.Command, con *repl.Console) {
+func fileExplorerCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
 	root := tui.TreeNode{
 		Name: "./",
@@ -79,13 +80,17 @@ func explorerCmd(cmd *cobra.Command, con *repl.Console) {
 			return formatted
 		}
 
-		fileModel := tui.NewTreeModel(root, customDisplay)
+		fileModel, err := tui.NewTreeModel(root, customDisplay, tui.ChildrenTree)
+		if err != nil {
+			con.Log.Errorf("Error creating tree model: %v", err)
+			return
+		}
 		fileModel = fileModel.SetHeaderView(func() string {
-			return fmt.Sprintf("Current Path: %s%s\n", root.Name, fileModel.Selected)
+			return fmt.Sprintf("Current Path: %s%s\n", root.Name, filepath.Join(fileModel.Selected...))
 		})
 		// Register custom action for 'enter' key
 		fileModel = fileModel.SetKeyBinding("enter", func(m *tui.TreeModel) (tea.Model, tea.Cmd) {
-			return enterFunc(m, con)
+			return fileEnterFunc(m, con)
 		})
 		fileModel = fileModel.SetKeyBinding("backspace", backFunc)
 		fileModel = fileModel.SetKeyBinding("r", func(m *tui.TreeModel) (tea.Model, tea.Cmd) {
@@ -138,7 +143,7 @@ func padRight(str string, length int) string {
 	return fmt.Sprintf("%-*s", length, str)
 }
 
-func enterFunc(m *tui.TreeModel, con *repl.Console) (tea.Model, tea.Cmd) {
+func fileEnterFunc(m *tui.TreeModel, con *repl.Console) (tea.Model, tea.Cmd) {
 	selectedNode := m.Tree.Children[m.Cursor]
 	session := con.GetInteractive()
 	if len(selectedNode.Children) > 0 {
@@ -147,9 +152,10 @@ func enterFunc(m *tui.TreeModel, con *repl.Console) (tea.Model, tea.Cmd) {
 		m.Cursor = 0
 		return m, nil
 	}
+	path := filepath.Join(m.Selected...)
 	task, err := con.Rpc.Ls(session.Clone(consts.CalleeExplorer).Context(), &implantpb.Request{
 		Name:  consts.ModuleLs,
-		Input: "./" + selectedNode.Name,
+		Input: filepath.Join(m.Root.Name, path, selectedNode.Name),
 	})
 	if err != nil {
 		con.Log.Errorf("load directory error: %v\n", err)
@@ -174,6 +180,7 @@ func enterFunc(m *tui.TreeModel, con *repl.Console) (tea.Model, tea.Cmd) {
 		}
 	}
 	m.Selected = append(m.Selected, selectedNode.Name)
+	fmt.Printf("Selected: %v\n", m.Selected)
 	m.Tree = selectedNode
 	m.Cursor = 0
 	return m, nil

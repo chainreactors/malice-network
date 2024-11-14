@@ -5,7 +5,7 @@ import (
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/tui"
-	"github.com/charmbracelet/bubbles/table"
+	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
 	"net/url"
 	"path/filepath"
@@ -74,25 +74,37 @@ func printMals(maljson MalsJson, malHttpConfig MalHTTPConfig, con *repl.Console)
 	var row table.Row
 
 	tableModel := tui.NewTable([]table.Column{
-		{Title: "Name", Width: 25},
-		{Title: "Version", Width: 10},
-		{Title: "Repo_url", Width: 50},
-		{Title: "Help", Width: 50},
+		table.NewColumn("Name", "Name", 25),
+		table.NewColumn("Version", "Version", 10),
+		table.NewColumn("Repo_url", "Repo_url", 50),
+		table.NewColumn("Help", "Help", 50),
+		//{Title: "Name", Width: 25},
+		//{Title: "Version", Width: 10},
+		//{Title: "Repo_url", Width: 50},
+		//{Title: "Help", Width: 50},
 	}, false)
 	for _, mal := range maljson.Mals {
-		row = table.Row{
-			mal.Name,
-			mal.Version,
-			mal.RepoURL,
-			mal.Help,
-		}
+		row = table.NewRow(
+			table.RowData{
+				"Name":     mal.Name,
+				"Version":  mal.Version,
+				"Repo_url": mal.RepoURL,
+				"Help":     mal.Help,
+			})
+		//table.Row{
+		//	mal.Name,
+		//	mal.Version,
+		//	mal.RepoURL,
+		//	mal.Help,
+		//}
 		rowEntries = append(rowEntries, row)
 	}
+	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)
 	tableModel.SetHandle(func() {
 		installMal(tableModel, malHttpConfig, con)
 	})
-	newTable := tui.NewModel(tableModel, tableModel.ConsoleHandler, true, false)
+	newTable := tui.NewModel(tableModel, nil, false, false)
 	err := newTable.Run()
 	if err != nil {
 		return err
@@ -102,15 +114,21 @@ func printMals(maljson MalsJson, malHttpConfig MalHTTPConfig, con *repl.Console)
 }
 
 func installMal(tableModel *tui.TableModel, malHttpConfig MalHTTPConfig, con *repl.Console) func() {
-	selectRow := tableModel.GetSelectedRow()
-	logs.Log.Infof("Installing mal: %s", selectRow[0])
-	err := GithubMalPackageParser(selectRow[2], selectRow[0], selectRow[1], malHttpConfig)
+	selectRow := tableModel.GetHighlightedRow()
+	if selectRow.Data == nil {
+		return func() {
+			con.Log.Errorf("No row selected")
+		}
+	}
+	logs.Log.Infof("Installing mal: %s", selectRow.Data["Name"].(string))
+	err := GithubMalPackageParser(selectRow.Data["Repo_url"].(string), selectRow.Data["Name"].(string),
+		selectRow.Data["Version"].(string), malHttpConfig)
 	if err != nil {
 		return func() {
 			con.Log.Errorf("Error installing mal: %s", err)
 		}
 	}
-	tarGzPath := filepath.Join(assets.GetMalsDir(), selectRow[0]+".tar.gz")
+	tarGzPath := filepath.Join(assets.GetMalsDir(), selectRow.Data["Name"].(string)+".tar.gz")
 	InstallFromDir(tarGzPath, true, con)
 	return func() {
 	}

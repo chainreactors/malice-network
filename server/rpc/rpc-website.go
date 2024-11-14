@@ -125,7 +125,7 @@ func (rpc *Server) WebsiteRemoveContent(ctx context.Context, req *clientpb.Websi
 func (rpc *Server) RegisterWebsite(ctx context.Context, req *clientpb.Pipeline) (*clientpb.WebsiteResponse, error) {
 	pipelineModel := models.FromPipelinePb(req)
 	var err error
-	if pipelineModel.Enable && pipelineModel.Tls.Cert == "" && pipelineModel.Tls.Key == "" {
+	if pipelineModel.Tls.Enable && pipelineModel.Tls.Cert == "" && pipelineModel.Tls.Key == "" {
 		pipelineModel.Tls.Cert, pipelineModel.Tls.Key, err = certutils.GenerateTlsCert(req.Name, req.ListenerId)
 		if err != nil {
 			return &clientpb.WebsiteResponse{}, err
@@ -161,17 +161,18 @@ func (rpc *Server) StartWebsite(ctx context.Context, req *clientpb.CtrlPipeline)
 		return &clientpb.Empty{}, err
 	}
 	pipeline := models.ToPipelinePB(pipelineDB)
-	listener := core.Listeners.Get(req.ListenerId)
+	listener := core.Listeners.Get(pipeline.ListenerId)
 	if listener == nil {
 		return nil, fmt.Errorf("listener %s not found", req.ListenerId)
 	}
 	listener.AddPipeline(pipeline)
-	contents, err := website.MapContent(req.Name, true)
+	w, err := website.MapContents(req.Name)
 	if err != nil {
 		return &clientpb.Empty{}, err
 	}
-	pipeline.GetWeb().Contents = contents.Contents
+	pipeline.GetWeb().Contents = w.Contents
 	pipeline.Enable = true
+	pipeline.GetWeb().ID = pipelineDB.WebPath
 	core.Jobs.Add(&core.Job{
 		ID:      core.CurrentJobID(),
 		Message: pipeline,
@@ -190,6 +191,7 @@ func (rpc *Server) StartWebsite(ctx context.Context, req *clientpb.CtrlPipeline)
 	if err != nil {
 		return nil, err
 	}
+
 	return &clientpb.Empty{}, nil
 }
 
@@ -209,7 +211,7 @@ func (rpc *Server) StopWebsite(ctx context.Context, req *clientpb.CtrlPipeline) 
 	}
 	core.Jobs.Ctrl <- &ctrl
 	err = db.DisablePipeline(pipelineDB)
-	listener := core.Listeners.Get(req.ListenerId)
+	listener := core.Listeners.Get(pipeline.ListenerId)
 	if listener == nil {
 		return nil, fmt.Errorf("listener %s not found", req.ListenerId)
 	}
@@ -221,15 +223,20 @@ func (rpc *Server) StopWebsite(ctx context.Context, req *clientpb.CtrlPipeline) 
 
 }
 
-func (rpc *Server) UploadWebsite(ctx context.Context, req *clientpb.WebsiteAssets) (*clientpb.Empty, error) {
+func (rpc *Server) UploadWebsite(ctx context.Context, req *clientpb.Website) (*clientpb.Empty, error) {
 	ctrl := clientpb.JobCtrl{
 		Id:   core.NextCtrlID(),
 		Ctrl: consts.CtrlWebsiteRegister,
 		Job: &clientpb.Job{
-			Id:            core.NextJobID(),
-			WebsiteAssets: req,
+			Id: core.NextJobID(),
+			Pipeline: &clientpb.Pipeline{
+				Body: &clientpb.Pipeline_Web{
+					Web: req,
+				},
+			},
 		},
 	}
+
 	core.Jobs.Ctrl <- &ctrl
 	return &clientpb.Empty{}, nil
 }

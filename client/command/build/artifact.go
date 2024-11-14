@@ -6,7 +6,7 @@ import (
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/tui"
-	"github.com/charmbracelet/bubbles/table"
+	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
 	"os"
 	"path/filepath"
@@ -34,27 +34,41 @@ func PrintArtifacts(builders *clientpb.Builders, con *repl.Console) error {
 	var row table.Row
 
 	tableModel := tui.NewTable([]table.Column{
-		{Title: "Name", Width: 15},
-		{Title: "Target", Width: 15},
-		{Title: "Type", Width: 10},
-		{Title: "Stager", Width: 10},
-		{Title: "Modules", Width: 30},
+		table.NewColumn("Name", "Name", 15),
+		table.NewColumn("Target", "Target", 15),
+		table.NewColumn("Type", "Type", 10),
+		table.NewColumn("Stager", "Stager", 10),
+		table.NewColumn("Modules", "Modules", 30),
+		//{Title: "Name", Width: 15},
+		//{Title: "Target", Width: 15},
+		//{Title: "Type", Width: 10},
+		//{Title: "Stager", Width: 10},
+		//{Title: "Modules", Width: 30},
 	}, false)
 	for _, builder := range builders.Builders {
-		row = table.Row{
-			builder.Name,
-			builder.Target,
-			builder.Type,
-			builder.Stager,
-			strings.Join(builder.Modules, ","),
-		}
+		row = table.NewRow(
+			table.RowData{
+				"Name":    builder.Name,
+				"Target":  builder.Target,
+				"Type":    builder.Type,
+				"Stager":  builder.Stager,
+				"Modules": strings.Join(builder.Modules, ","),
+			})
+		//table.Row{
+		//	builder.Name,
+		//	builder.Target,
+		//	builder.Type,
+		//	builder.Stager,
+		//	strings.Join(builder.Modules, ","),
+		//}
 		rowEntries = append(rowEntries, row)
 	}
+	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)
 	tableModel.SetHandle(func() {
 		downloadArtifactCallback(tableModel, con)()
 	})
-	newTable := tui.NewModel(tableModel, tableModel.ConsoleHandler, true, false)
+	newTable := tui.NewModel(tableModel, nil, false, false)
 	err := newTable.Run()
 	if err != nil {
 		return err
@@ -118,8 +132,13 @@ func UploadArtifact(con *repl.Console, path string, name, artifactType, stage st
 }
 
 func downloadArtifactCallback(tableModel *tui.TableModel, con *repl.Console) func() {
-	selectRow := tableModel.GetSelectedRow()
-	builder, err := DownloadArtifact(con, selectRow[0])
+	selectRow := tableModel.GetHighlightedRow()
+	if selectRow.Data == nil {
+		return func() {
+			con.Log.Errorf("No row selected")
+		}
+	}
+	builder, err := DownloadArtifact(con, selectRow.Data["Name"].(string))
 	if err != nil {
 		return func() {
 			con.Log.Errorf("open file %s", err)

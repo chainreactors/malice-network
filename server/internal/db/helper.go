@@ -432,13 +432,25 @@ func Websites(webContentDir string) ([]*clientpb.Website, error) {
 	return pbWebsites, err
 }
 
+func WebsitesAllByname(name, webContentDir string) ([]*clientpb.Website, error) {
+	var websiteContent []models.WebsiteContent
+	if err := Session().Where("name = ?", name).Find(&websiteContent).Error; err != nil {
+		return nil, err
+	}
+	var pbWebsites []*clientpb.Website
+	for _, website := range websiteContent {
+		pbWebsites = append(pbWebsites, website.ToProtobuf(webContentDir))
+	}
+	return pbWebsites, nil
+}
+
 // WebContent by ID and path
 func WebContentByIDAndPath(id string, path string, webContentDir string, eager bool) (*clientpb.WebContent, error) {
 	uuidFromString, _ := uuid.FromString(id)
 	content := models.WebsiteContent{}
 	err := Session().Where(&models.WebsiteContent{
 		ID:   uuidFromString,
-		Name: path,
+		Path: path,
 	}).First(&content).Error
 
 	if err != nil {
@@ -473,12 +485,22 @@ func AddWebsite(webSiteName string, webContentDir string) (*clientpb.Website, er
 
 // AddContent - Add content to website
 func AddContent(pbWebContent *clientpb.WebContent, webContentDir string) (*clientpb.WebContent, error) {
+	var existingContent models.WebsiteContent
 	dbModelWebContent := models.WebsiteContentFromProtobuf(pbWebContent)
-	err := Session().Save(&dbModelWebContent).Error
-	if err != nil {
-		return nil, err
+	err := Session().Where("name = ? AND path = ?", pbWebContent.Name, pbWebContent.Path).First(&existingContent).Error
+	if err == nil {
+		dbModelWebContent.ID = existingContent.ID
+		err = Session().Save(&dbModelWebContent).Error
+		if err != nil {
+			return nil, err
+		}
+	} else if errors.Is(err, gorm.ErrRecordNotFound) {
+		err = Session().Create(&dbModelWebContent).Error
+		if err != nil {
+			return nil, err
+		}
 	}
-	pbWebContent.ID = dbModelWebContent.ID.String()
+	pbWebContent.Id = dbModelWebContent.ID.String()
 	return pbWebContent, nil
 }
 

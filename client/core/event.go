@@ -10,6 +10,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/utils/handler"
 	"github.com/chainreactors/tui"
 	"io"
+	"os"
 )
 
 func (s *ServerStatus) AddDoneCallback(task *clientpb.Task, callback TaskCallback) {
@@ -196,4 +197,27 @@ func (s *ServerStatus) handlerSession(event *clientpb.Event) {
 	case consts.CtrlSessionLeave:
 		Log.Importantf(logs.RedBold(fmt.Sprintf("[%s] session stop: %s\n", sid, event.Message)))
 	}
+}
+
+func HandleTaskContext(log *Logger, context *clientpb.TaskContext, fn *intermediate.InternalFunc, writeToFile bool, logPath string) error {
+	log.Importantf(logs.GreenBold(fmt.Sprintf("[%s.%d] task finish (%d/%d), %s\n",
+		context.Task.SessionId, context.Task.TaskId,
+		context.Task.Cur, context.Task.Total,
+		context.Task.Description)))
+
+	resp, err := fn.FinishCallback(context)
+	if err != nil {
+		log.Errorf(logs.RedBold(err.Error()))
+		return err
+	} else {
+		log.Console(resp + "\n")
+		if writeToFile {
+			err := os.WriteFile(logPath, []byte(resp), os.ModePerm)
+			if err != nil {
+				log.Errorf("Error writing to file: %s", err)
+				return err
+			}
+		}
+	}
+	return nil
 }

@@ -6,7 +6,7 @@ import (
 	"github.com/chainreactors/malice-network/client/core/plugin"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/tui"
-	"github.com/charmbracelet/bubbles/table"
+	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
 	"path/filepath"
 )
@@ -79,22 +79,36 @@ func ListMalManifest(con *repl.Console) {
 	}
 	rows := []table.Row{}
 	tableModel := tui.NewTable([]table.Column{
-		{Title: "Name", Width: 10},
-		{Title: "Type", Width: 10},
-		{Title: "Version", Width: 7},
-		{Title: "Author", Width: 4},
+		table.NewColumn("Name", "Name", 10),
+		table.NewColumn("Type", "Type", 10),
+		table.NewColumn("Version", "Version", 7),
+		table.NewColumn("Author", "Author", 4),
+		//{Title: "Name", Width: 10},
+		//{Title: "Type", Width: 10},
+		//{Title: "Version", Width: 7},
+		//{Title: "Author", Width: 4},
 	}, true)
 	for _, m := range loadedMals {
 		plug := m.Plugin.Manifest()
-		row := table.Row{
-			plug.Name,
-			plug.Type,
-			plug.Version,
-			plug.Author,
-		}
+		row := table.NewRow(
+			table.RowData{
+				"Name":    plug.Name,
+				"Type":    plug.Type,
+				"Version": plug.Version,
+				"Author":  plug.Author,
+			},
+		)
+		//Row{
+		//
+		//	plug.Name,
+		//	plug.Type,
+		//	plug.Version,
+		//	plug.Author,
+		//}
 		rows = append(rows, row)
 	}
 	tableModel.SetRows(rows)
+	tableModel.SetMultiline()
 	newTable := tui.NewModel(tableModel, nil, false, false)
 	err := newTable.Run()
 	if err != nil {

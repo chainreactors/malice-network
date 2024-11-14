@@ -11,7 +11,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/handler"
 	"github.com/chainreactors/tui"
-	"github.com/charmbracelet/bubbles/table"
+	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
 	"strconv"
 	"strings"
@@ -78,10 +78,14 @@ func RegisterLsFunc(con *repl.Console) {
 			var rowEntries []table.Row
 			var row table.Row
 			tableModel := tui.NewTable([]table.Column{
-				{Title: "name", Width: 25},
-				{Title: "size", Width: 10},
-				{Title: "mod", Width: 16},
-				{Title: "link", Width: 15},
+				table.NewColumn("Name", "Name", 25),
+				table.NewColumn("Size", "Size", 10),
+				table.NewColumn("Mod", "Mod", 16),
+				table.NewColumn("Link", "Link", 15),
+				//{Title: "name", Width: 25},
+				//{Title: "size", Width: 10},
+				//{Title: "mod", Width: 16},
+				//{Title: "link", Width: 15},
 			}, true)
 			for _, f := range resp.GetFiles() {
 				var size string
@@ -90,14 +94,22 @@ func RegisterLsFunc(con *repl.Console) {
 				} else {
 					size = fileutils.Bytes(f.Size)
 				}
-				row = table.Row{
-					f.Name,
-					size,
-					time.Unix(f.ModTime, 0).Format("2006-01-02 15:04"),
-					f.Link,
-				}
+				row = table.NewRow(
+					table.RowData{
+						"Name": f.Name,
+						"Size": size,
+						"Mod":  time.Unix(f.ModTime, 0).Format("2006-01-02 15:04"),
+						"Link": f.Link,
+					})
+				//	table.Row{
+				//	f.Name,
+				//	size,
+				//	time.Unix(f.ModTime, 0).Format("2006-01-02 15:04"),
+				//	f.Link,
+				//}
 				rowEntries = append(rowEntries, row)
 			}
+			tableModel.SetMultiline()
 			tableModel.SetRows(rowEntries)
 			return tableModel.View(), nil
 		})

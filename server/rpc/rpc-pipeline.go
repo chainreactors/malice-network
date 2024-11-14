@@ -15,7 +15,7 @@ import (
 func (rpc *Server) RegisterPipeline(ctx context.Context, req *clientpb.Pipeline) (*clientpb.Empty, error) {
 	pipelineModel := models.FromPipelinePb(req)
 	var err error
-	if pipelineModel.Enable && pipelineModel.Tls.Cert == "" && pipelineModel.Tls.Key == "" {
+	if pipelineModel.Tls.Enable && pipelineModel.Tls.Cert == "" && pipelineModel.Tls.Key == "" {
 		pipelineModel.Tls.Cert, pipelineModel.Tls.Key, err = certutils.GenerateTlsCert(pipelineModel.Name, pipelineModel.ListenerID)
 		if err != nil {
 			return nil, err
@@ -47,7 +47,7 @@ func (rpc *Server) StartPipeline(ctx context.Context, req *clientpb.CtrlPipeline
 	}
 	pipelineDB.Enable = true
 	pipeline := models.ToPipelinePB(pipelineDB)
-	listener := core.Listeners.Get(req.ListenerId)
+	listener := core.Listeners.Get(pipeline.ListenerId)
 	if listener == nil {
 		return nil, fmt.Errorf("listener %s not found", req.ListenerId)
 	}
@@ -78,7 +78,7 @@ func (rpc *Server) StopPipeline(ctx context.Context, req *clientpb.CtrlPipeline)
 		return &clientpb.Empty{}, err
 	}
 	pipeline := models.ToPipelinePB(pipelineDB)
-	listener := core.Listeners.Get(req.ListenerId)
+	listener := core.Listeners.Get(pipeline.ListenerId)
 	if listener == nil {
 		return nil, fmt.Errorf("listener %s not found", req.ListenerId)
 	}
