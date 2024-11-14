@@ -10,7 +10,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/tui"
-	"github.com/charmbracelet/bubbles/table"
+	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
 	"strconv"
 )
@@ -48,37 +48,62 @@ func RegisterServiceListFunc(con *repl.Console) {
 			}
 
 			tableModel := tui.NewTable([]table.Column{
-				{Title: "Name", Width: 20},
-				{Title: "Display Name", Width: 25},
-				{Title: "Executable Path", Width: 60},
-				{Title: "Start Type", Width: 10},
-				{Title: "Error Control", Width: 10},
-				{Title: "Account Name", Width: 20},
-				{Title: "Current State", Width: 10},
-				{Title: "Process ID", Width: 10},
-				{Title: "Exit Code", Width: 10},
-				{Title: "Checkpoint", Width: 12},
-				{Title: "Wait Hint", Width: 12},
+				table.NewColumn("Name", "Name", 20),
+				table.NewColumn("Display Name", "Display Name", 25),
+				table.NewColumn("Executable Path", "Executable Path", 40),
+				table.NewColumn("Start Type", "Start Type", 10),
+				table.NewColumn("Error Control", "Error Control", 10),
+				table.NewColumn("Account Name", "Account Name", 20),
+				table.NewColumn("Current State", "Current State", 15),
+				table.NewColumn("Process ID", "Process ID", 10),
+				table.NewColumn("Exit Code", "Exit Code", 10),
+				table.NewColumn("Checkpoint", "Checkpoint", 12),
+				table.NewColumn("Wait Hint", "Wait Hint", 12),
+				//{Title: "Name", Width: 20},
+				//{Title: "Display Name", Width: 25},
+				//{Title: "Executable Path", Width: 60},
+				//{Title: "Start Type", Width: 10},
+				//{Title: "Error Control", Width: 10},
+				//{Title: "Account Name", Width: 20},
+				//{Title: "Current State", Width: 10},
+				//{Title: "Process ID", Width: 10},
+				//{Title: "Exit Code", Width: 10},
+				//{Title: "Checkpoint", Width: 12},
+				//{Title: "Wait Hint", Width: 12},
 			}, true)
 
 			var rowEntries []table.Row
 			for _, service := range services {
-				row := table.Row{
-					service.Config.Name,
-					service.Config.DisplayName,
-					service.Config.ExecutablePath,
-					strconv.Itoa(int(service.Config.StartType)),
-					strconv.Itoa(int(service.Config.ErrorControl)),
-					service.Config.AccountName,
-					strconv.Itoa(int(service.Status.CurrentState)),
-					strconv.Itoa(int(service.Status.ProcessId)),
-					strconv.Itoa(int(service.Status.ExitCode)),
-					strconv.Itoa(int(service.Status.Checkpoint)),
-					strconv.Itoa(int(service.Status.WaitHint)),
-				}
+				row := table.NewRow(
+					table.RowData{
+						"Name":            service.Config.Name,
+						"Display Name":    service.Config.DisplayName,
+						"Executable Path": service.Config.ExecutablePath,
+						"Start Type":      strconv.Itoa(int(service.Config.StartType)),
+						"Error Control":   strconv.Itoa(int(service.Config.ErrorControl)),
+						"Account Name":    service.Config.AccountName,
+						"Current State":   strconv.Itoa(int(service.Status.CurrentState)),
+						"Process ID":      strconv.Itoa(int(service.Status.ProcessId)),
+						"Exit Code":       strconv.Itoa(int(service.Status.ExitCode)),
+						"Checkpoint":      strconv.Itoa(int(service.Status.Checkpoint)),
+						"Wait Hint":       strconv.Itoa(int(service.Status.WaitHint)),
+					})
+				//	table.Row{
+				//	service.Config.Name,
+				//	service.Config.DisplayName,
+				//	service.Config.ExecutablePath,
+				//	strconv.Itoa(int(service.Config.StartType)),
+				//	strconv.Itoa(int(service.Config.ErrorControl)),
+				//	service.Config.AccountName,
+				//	strconv.Itoa(int(service.Status.CurrentState)),
+				//	strconv.Itoa(int(service.Status.ProcessId)),
+				//	strconv.Itoa(int(service.Status.ExitCode)),
+				//	strconv.Itoa(int(service.Status.Checkpoint)),
+				//	strconv.Itoa(int(service.Status.WaitHint)),
+				//}
 				rowEntries = append(rowEntries, row)
 			}
-
+			tableModel.SetMultiline()
 			tableModel.SetRows(rowEntries)
 			return tableModel.View(), nil
 		},

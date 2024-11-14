@@ -220,7 +220,7 @@ website register name /webtest /path/to/file --tls --cert /path/to/cert --key /p
 	}
 
 	common.BindArgCompletions(websiteRegisterCmd, nil,
-		common.ListenerIDCompleter(con),
+		carapace.ActionValues().Usage("website name"),
 		carapace.ActionValues().Usage("website router root path"),
 		carapace.ActionFiles().Usage("website content path"))
 
@@ -251,9 +251,16 @@ website start web_test
 ~~~`,
 	}
 
+	common.BindFlag(websiteStartCmd, func(f *pflag.FlagSet) {
+		f.String("listener", "", "listener ID")
+	})
+
+	common.BindFlagCompletions(websiteStartCmd, func(comp carapace.ActionMap) {
+		comp["listener"] = common.ListenerIDCompleter(con)
+	})
+
 	common.BindArgCompletions(websiteStartCmd, nil,
-		carapace.ActionValues().Usage("website name"),
-		common.ListenerIDCompleter(con))
+		carapace.ActionValues().Usage("website name"))
 
 	websiteStopCmd := &cobra.Command{
 		Use:   consts.CommandPipelineStop,
@@ -268,9 +275,16 @@ website stop web_test listener
 ~~~`,
 	}
 
+	common.BindFlag(websiteStopCmd, func(f *pflag.FlagSet) {
+		f.String("listener", "", "listener ID")
+	})
+
+	common.BindFlagCompletions(websiteStopCmd, func(comp carapace.ActionMap) {
+		comp["listener"] = common.ListenerIDCompleter(con)
+	})
+
 	common.BindArgCompletions(websiteStopCmd, nil,
-		common.ListenerIDCompleter(con),
-		common.JobsCompleter(con, websiteStopCmd, consts.CommandWebsite),
+		carapace.ActionValues().Usage("website name"),
 	)
 
 	websiteCmd.AddCommand(websiteRegisterCmd, websiteStartCmd, websiteStopCmd)

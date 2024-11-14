@@ -9,7 +9,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/tui"
-	"github.com/charmbracelet/bubbles/table"
+	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
 	"strconv"
 	"strings"
@@ -64,28 +64,48 @@ func RegisterPsFunc(con *repl.Console) {
 			var rowEntries []table.Row
 			var row table.Row
 			tableModel := tui.NewTable([]table.Column{
-				{Title: "Name", Width: 20},
-				{Title: "PID", Width: 5},
-				{Title: "PPID", Width: 5},
-				{Title: "Arch", Width: 7},
-				{Title: "UID", Width: 36},
-				{Title: "Owner", Width: 7},
-				{Title: "Path", Width: 50},
-				{Title: "Args", Width: 50},
+				table.NewColumn("Name", "Name", 20),
+				table.NewColumn("PID", "PID", 5),
+				table.NewColumn("PPID", "PPID", 5),
+				table.NewColumn("Arch", "Arch", 7),
+				table.NewColumn("UID", "UID", 36),
+				table.NewColumn("Owner", "Owner", 7),
+				table.NewColumn("Path", "Path", 30),
+				table.NewColumn("Args", "Args", 30),
+				//{Title: "Name", Width: 20},
+				//{Title: "PID", Width: 5},
+				//{Title: "PPID", Width: 5},
+				//{Title: "Arch", Width: 7},
+				//{Title: "UID", Width: 36},
+				//{Title: "Owner", Width: 7},
+				//{Title: "Path", Width: 50},
+				//{Title: "Args", Width: 50},
 			}, true)
 			for _, process := range resp.GetProcesses() {
-				row = table.Row{
-					process.Name,
-					strconv.Itoa(int(process.Pid)),
-					strconv.Itoa(int(process.Ppid)),
-					process.Arch,
-					process.Uid,
-					process.Owner,
-					process.Path,
-					process.Args,
-				}
+				row = table.NewRow(
+					table.RowData{
+						"Name":  process.Name,
+						"PID":   strconv.Itoa(int(process.Pid)),
+						"PPID":  strconv.Itoa(int(process.Ppid)),
+						"Arch":  process.Arch,
+						"UID":   process.Uid,
+						"Owner": process.Owner,
+						"Path":  process.Path,
+						"Args":  process.Args,
+					})
+				//Row{
+				//	process.Name,
+				//	strconv.Itoa(int(process.Pid)),
+				//	strconv.Itoa(int(process.Ppid)),
+				//	process.Arch,
+				//	process.Uid,
+				//	process.Owner,
+				//	process.Path,
+				//	process.Args,
+				//}
 				rowEntries = append(rowEntries, row)
 			}
+			tableModel.SetMultiline()
 			tableModel.SetRows(rowEntries)
 			return tableModel.View(), nil
 		})

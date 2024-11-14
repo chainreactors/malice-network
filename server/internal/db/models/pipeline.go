@@ -78,9 +78,8 @@ func FromPipelinePb(pipeline *clientpb.Pipeline) *Pipeline {
 			Parser:     pipeline.Parser,
 			WebPath:    body.Web.Root,
 			Port:       uint16(body.Web.Port),
-			Type:       "web",
+			Type:       consts.WebsitePipeline,
 			Tls:        ToTlsDB(pipeline.Tls),
-			Encryption: ToEncryptionDB(pipeline.Encryption),
 		}
 	default:
 		return nil

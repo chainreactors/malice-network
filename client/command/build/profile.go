@@ -8,7 +8,7 @@ import (
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/tui"
-	"github.com/charmbracelet/bubbles/table"
+	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
 	"strings"
 )
@@ -25,23 +25,37 @@ func ProfileShowCmd(cmd *cobra.Command, con *repl.Console) error {
 	var rowEntries []table.Row
 	var row table.Row
 	tableModel := tui.NewTable([]table.Column{
-		{Title: "name", Width: 20},
-		{Title: "target", Width: 15},
-		{Title: "type", Width: 15},
-		{Title: "obfuscate", Width: 10},
-		{Title: "pipeline", Width: 15},
+		table.NewColumn("Name", "Name", 20),
+		table.NewColumn("Target", "Target", 15),
+		table.NewColumn("Type", "Type", 15),
+		table.NewColumn("Obfuscate", "Obfuscate", 10),
+		table.NewColumn("Pipeline", "Pipeline", 15),
+		//{Title: "name", Width: 20},
+		//{Title: "target", Width: 15},
+		//{Title: "type", Width: 15},
+		//{Title: "obfuscate", Width: 10},
+		//{Title: "pipeline", Width: 15},
 	}, true)
 
 	for _, p := range resp.Profiles {
-		row = table.Row{
-			p.Name,
-			p.Target,
-			p.Type,
-			p.Obfuscate,
-			p.PipelineId,
-		}
+		row = table.NewRow(
+			table.RowData{
+				"Name":      p.Name,
+				"Target":    p.Target,
+				"Type":      p.Type,
+				"Obfuscate": p.Obfuscate,
+				"Pipeline":  p.PipelineId,
+			})
+		//table.Row{
+		//	p.Name,
+		//	p.Target,
+		//	p.Type,
+		//	p.Obfuscate,
+		//	p.PipelineId,
+		//}
 		rowEntries = append(rowEntries, row)
 	}
+	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)
 	fmt.Printf(tableModel.View())
 	return nil

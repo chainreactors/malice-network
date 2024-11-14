@@ -6,7 +6,8 @@ import (
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/tui"
-	"github.com/charmbracelet/bubbles/table"
+	"github.com/evertras/bubble-table/table"
+
 	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
 	"io/ioutil"
@@ -27,14 +28,22 @@ func PrintExtensions(con *repl.Console) {
 	var rowEntries []table.Row
 
 	tableModel := tui.NewTable([]table.Column{
-		{Title: "Name", Width: 10},
-		{Title: "Command Name", Width: 10},
-		{Title: "Platforms", Width: 7},
-		{Title: "Version", Width: 7},
-		{Title: "Installed", Width: 4},
-		{Title: "Extension Author", Width: 10},
-		{Title: "Original Author", Width: 10},
-		{Title: "Repository", Width: 20},
+		table.NewColumn("Name", "Name", 10),
+		table.NewColumn("Command Name", "Command Name", 10),
+		table.NewColumn("Platforms", "Platforms", 7),
+		table.NewColumn("Version", "Version", 7),
+		table.NewColumn("Installed", "Installed", 4),
+		table.NewColumn("Extension Author", "Extension Author", 10),
+		table.NewColumn("Original Author", "Original Author", 10),
+		table.NewColumn("Repository", "Repository", 20),
+		//{Title: "Name", Width: 10},
+		//{Title: "Command Name", Width: 10},
+		//{Title: "Platforms", Width: 7},
+		//{Title: "Version", Width: 7},
+		//{Title: "Installed", Width: 4},
+		//{Title: "Extension Author", Width: 10},
+		//{Title: "Original Author", Width: 10},
+		//{Title: "Repository", Width: 20},
 	}, true)
 
 	installedManifests := getInstalledManifests()
@@ -43,18 +52,30 @@ func PrintExtensions(con *repl.Console) {
 		if _, ok := installedManifests[ext.Manifest.CommandName]; ok {
 			installed = "✅"
 		}
-		row := table.Row{
-			ext.Manifest.Manifest.Name,
-			ext.Manifest.CommandName,
-			strings.Join(extensionPlatforms(ext.Manifest), ",\n"),
-			ext.Manifest.Manifest.Version,
-			installed,
-			ext.Manifest.Manifest.ExtensionAuthor,
-			ext.Manifest.Manifest.OriginalAuthor,
-			ext.Manifest.Manifest.RepoURL,
-		}
+		row := table.NewRow(
+			table.RowData{
+				"Name":             ext.Manifest.Manifest.Name,
+				"Command Name":     ext.Manifest.CommandName,
+				"Platforms":        strings.Join(extensionPlatforms(ext.Manifest), ",\n"),
+				"Version":          ext.Manifest.Manifest.Version,
+				"Installed":        installed,
+				"Extension Author": ext.Manifest.Manifest.ExtensionAuthor,
+				"Original Author":  ext.Manifest.Manifest.OriginalAuthor,
+				"Repository":       ext.Manifest.Manifest.RepoURL,
+			})
+		//table.Row{
+		//	ext.Manifest.Manifest.Name,
+		//	ext.Manifest.CommandName,
+		//	strings.Join(extensionPlatforms(ext.Manifest), ",\n"),
+		//	ext.Manifest.Manifest.Version,
+		//	installed,
+		//	ext.Manifest.Manifest.ExtensionAuthor,
+		//	ext.Manifest.Manifest.OriginalAuthor,
+		//	ext.Manifest.Manifest.RepoURL,
+		//}
 		rowEntries = append(rowEntries, row)
 	}
+	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)
 	newTable := tui.NewModel(tableModel, nil, false, false)
 	err := newTable.Run()

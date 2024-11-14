@@ -110,6 +110,8 @@ github.com/chainreactors/logs v0.0.0-20241108080408-6d31ab9dae0a h1:6GAJZ9RkRjs8
 github.com/chainreactors/logs v0.0.0-20241108080408-6d31ab9dae0a/go.mod h1:6Mv6W70JrtL6VClulZhmMRZnoYpcTahcDTKLMNEjK0o=
 github.com/chainreactors/tui v0.0.0-20241031204320-bd545f364928 h1:uvEz5FQenQB6l9ZexViVFb/lOjQ2oD8DKK7jqE1yZdc=
 github.com/chainreactors/tui v0.0.0-20241031204320-bd545f364928/go.mod h1:PGljG4yiAGUZvGzue6zTAapxQgVMxbezmCsr9l0xzKc=
+github.com/chainreactors/tui v0.0.0-20241114120637-33594b06767a h1:SGDQsdVCduC7M4GQuLiVqHY3DTJc5r8gDNsrqXzV5aw=
+github.com/chainreactors/tui v0.0.0-20241114120637-33594b06767a/go.mod h1:PGljG4yiAGUZvGzue6zTAapxQgVMxbezmCsr9l0xzKc=
 github.com/chainreactors/utils v0.0.0-20240805193040-ff3b97aa3c3f h1:2NKmadFYP9vCwC0YrazgttFACleOhxScTPzg0i76YAY=
 github.com/chainreactors/utils v0.0.0-20240805193040-ff3b97aa3c3f/go.mod h1:LajXuvESQwP+qCMAvlcoSXppQCjuLlBrnQpu9XQ1HtU=
 github.com/charmbracelet/bubbles v0.18.0 h1:PYv1A036luoBGroX6VWjQIE9Syf2Wby2oOl/39KLfy0=
@@ -171,6 +173,8 @@ github.com/envoyproxy/go-control-plane v0.9.4/go.mod h1:6rpuAdCZL397s3pYoYcLgu1m
 github.com/envoyproxy/protoc-gen-validate v0.1.0/go.mod h1:iSmxcyjqTsJpI2R4NaDN7+kN2VEUnK/pcBlmesArF7c=
 github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f h1:Y/CXytFA4m6baUTXGLOoWe4PQhGxaX0KpnayAqC48p4=
 github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f/go.mod h1:vw97MGsxSvLiUE2X8qFplwetxpGLQrlU1Q9AUEIzCaM=
+github.com/evertras/bubble-table v0.17.1 h1:HJwq3iQrZulXDE93ZcqJNiUVQCBbN4IJ2CkB/IxO3kk=
+github.com/evertras/bubble-table v0.17.1/go.mod h1:ifHujS1YxwnYSOgcR2+m3GnJ84f7CVU/4kUOxUCjEbQ=
 github.com/fatih/color v1.7.0/go.mod h1:Zm6kSWBoL9eyXnKyktHP6abPY2pDugNf5KwzbycvMj4=
 github.com/fatih/color v1.15.0 h1:kOqh6YHBtK8aywxGerMG2Eq3H6Qgoqeo13Bk2Mv/nBs=
 github.com/fatih/color v1.15.0/go.mod h1:0h5ZqXfHYED7Bhv2ZJamyIOUej9KtShiJESRwBDUSsw=

@@ -7,7 +7,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/tui"
-	"github.com/charmbracelet/bubbles/table"
+	"github.com/evertras/bubble-table/table"
 	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -112,14 +112,25 @@ func Register(con *repl.Console) {
 			var rowEntries []table.Row
 			var row table.Row
 			tableModel := tui.NewTable([]table.Column{
-				{Title: "Name", Width: 25},
-				{Title: "Type", Width: 10},
-				{Title: "Depend", Width: 35},
-			}, true)
+				table.NewColumn("Name", "Name", 25),
+				table.NewColumn("Type", "Type", 10),
+				table.NewColumn("Depend", "Depend", 35),
+				//{Title: "Name", Width: 25},
+				//{Title: "Type", Width: 10},
+				//{Title: "Depend", Width: 35},
+			},
+				true)
 			for _, ext := range exts.Addons {
-				row = table.Row{ext.Name, ext.Type, ext.Depend}
+				row = table.NewRow(
+					table.RowData{
+						"Name":   ext.Name,
+						"Type":   ext.Type,
+						"Depend": ext.Depend,
+					})
+				//Row{ext.Name, ext.Type, ext.Depend}
 				rowEntries = append(rowEntries, row)
 			}
+			tableModel.SetMultiline()
 			tableModel.SetRows(rowEntries)
 			return tableModel.View(), nil
 		})

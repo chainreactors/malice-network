@@ -10,6 +10,7 @@ import (
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/cryptography/minisign"
 	"github.com/chainreactors/tui"
+	"github.com/evertras/bubble-table/table"
 	"github.com/pterm/pterm"
 	"github.com/spf13/cobra"
 	"net/url"
@@ -17,8 +18,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/charmbracelet/bubbles/table"
 )
 
 // ArmoryIndex - Index JSON containing alias/extension/bundle information
@@ -375,12 +374,18 @@ func PrintArmoryPackages(aliases []*alias.AliasManifest, exts []*extension.Exten
 	var row table.Row
 
 	tableModel := tui.NewTable([]table.Column{
-		{Title: "Armory", Width: 10},
-		{Title: "Command Name", Width: 15},
-		{Title: "Version", Width: 10},
-		{Title: "Type", Width: 7},
-		{Title: "Help", Width: 25},
-		{Title: "URL", Width: 25},
+		table.NewColumn("Armory", "Armory", 10),
+		table.NewColumn("Command Name", "Command Name", 15),
+		table.NewColumn("Version", "Version", 10),
+		table.NewColumn("Type", "Type", 7),
+		table.NewColumn("Help", "Help", 25),
+		table.NewColumn("URL", "URL", 25),
+		//{Title: "Armory", Width: 10},
+		//{Title: "Command Name", Width: 15},
+		//{Title: "Version", Width: 10},
+		//{Title: "Type", Width: 7},
+		//{Title: "Help", Width: 25},
+		//{Title: "URL", Width: 25},
 	}, false)
 
 	type pkgInfo struct {
@@ -421,42 +426,72 @@ func PrintArmoryPackages(aliases []*alias.AliasManifest, exts []*extension.Exten
 		} else {
 			commandName = pkg.CommandName
 		}
-		row = table.Row{
-			pkg.Armory,
-			commandName,
-			pkg.Version,
-			pkg.Type,
-			pkg.Help,
-			pkg.URL,
-		}
+		row = table.NewRow(
+			table.RowData{
+				"Armory":       pkg.Armory,
+				"Command Name": commandName,
+				"Version":      pkg.Version,
+				"Type":         pkg.Type,
+				"Help":         pkg.Help,
+				"URL":          pkg.URL,
+			})
+		//	table.Row{
+		//	pkg.Armory,
+		//	commandName,
+		//	pkg.Version,
+		//	pkg.Type,
+		//	pkg.Help,
+		//	pkg.URL,
+		//}
 
 		rowEntries = append(rowEntries, row)
 	}
 	tableModel.SetRows(rowEntries)
-	tableModel.SetHandle(func() {
-		selected := tableModel.GetSelectedRow()
-		armoryPK := getArmoryPublicKey(selected[0])
-		err := installPackageByName(selected[1], armoryPK, false, true, clientConfig, con)
-		if err == nil {
-			return
-		}
-		if errors.Is(err, ErrPackageNotFound) {
-			if armoryPK == "" {
-				con.Log.Errorf("No package named '%s' was found\n", selected[1])
-			} else {
-				con.Log.Errorf("No package named '%s' was found for armory '%s'\n", selected[1], selected[0])
-			}
-		} else if errors.Is(err, ErrPackageAlreadyInstalled) {
-			con.Log.Errorf("Package %q is already installed - use the force option to overwrite it\n", selected[1])
-		} else {
-			con.Log.Errorf("Could not install package: %s\n", err)
-		}
-	})
-	newTable := tui.NewModel(tableModel, tableModel.ConsoleHandler, true, false)
+	tableModel.SetMultiline()
+	tableModel.SetHandle(DownloadArmoryCallback(tableModel, con, clientConfig))
+	newTable := tui.NewModel(tableModel, nil, false, false)
 	err := newTable.Run()
 	if err != nil {
 		con.Log.Errorf("Failed to run table model: %s\n", err)
 		return
+	}
+}
+
+func DownloadArmoryCallback(tableModel *tui.TableModel, con *repl.Console, clientConfig ArmoryHTTPConfig) func() {
+	selected := tableModel.GetHighlightedRow()
+	if selected.Data == nil {
+		return func() {
+			con.Log.Errorf("No row selected\n")
+		}
+	}
+	armoryPK := getArmoryPublicKey(selected.Data["Armory"].(string))
+	err := installPackageByName(selected.Data["Command Name"].(string), armoryPK, false,
+		true, clientConfig, con)
+	if err == nil {
+		return func() {
+			con.Log.Infof("Successfully installed package %q\n", selected.Data["Command Name"].(string))
+		}
+	}
+	if errors.Is(err, ErrPackageNotFound) {
+		if armoryPK == "" {
+			return func() {
+				con.Log.Errorf("No package named '%s' was found\n", selected.Data["Command Name"].(string))
+			}
+		} else {
+			return func() {
+				con.Log.Errorf("No package named '%s' was found for armory '%s'\n",
+					selected.Data["Command Name"].(string), selected.Data["Armory"].(string))
+			}
+		}
+	} else if errors.Is(err, ErrPackageAlreadyInstalled) {
+		return func() {
+			con.Log.Errorf("Package %q is already installed - use the force option to overwrite it\n",
+				selected.Data["Command Name"].(string))
+		}
+	} else {
+		return func() {
+			con.Log.Errorf("Could not install package: %s\n", err)
+		}
 	}
 }
 
@@ -466,11 +501,16 @@ func PrintArmoryBundles(bundles []*ArmoryBundle, con *repl.Console) {
 	var row table.Row
 
 	tableModel := tui.NewTable([]table.Column{
-		{Title: "Name", Width: 20},
-		{Title: "Contains", Width: 30},
-		{Title: "Type", Width: 4},
-		{Title: "Help", Width: 10},
-		{Title: "URL", Width: 15},
+		table.NewColumn("Name", "Name", 20),
+		table.NewColumn("Contains", "Contains", 30),
+		//table.NewColumn("Type", "Type", 4),
+		//table.NewColumn("Help", "Help", 10),
+		//table.NewColumn("URL", "URL", 15),
+		//{Title: "Name", Width: 20},
+		//{Title: "Contains", Width: 30},
+		//{Title: "Type", Width: 4},
+		//{Title: "Help", Width: 10},
+		//{Title: "URL", Width: 15},
 	}, true)
 	for _, bundle := range bundles {
 		if len(bundle.Packages) < 1 {
@@ -490,12 +530,18 @@ func PrintArmoryBundles(bundles []*ArmoryBundle, con *repl.Console) {
 				}
 			}
 		}
-		row = table.Row{
-			bundle.Name,
-			packages,
-		}
+		row = table.NewRow(
+			table.RowData{
+				"Name":     bundle.Name,
+				"Contains": packages,
+			})
+		//	table.Row{
+		//	bundle.Name,
+		//	packages,
+		//}
 		rowEntries = append(rowEntries, row)
 	}
+	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)
 	newTable := tui.NewModel(tableModel, nil, false, false)
 	err := newTable.Run()

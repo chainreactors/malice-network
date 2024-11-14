@@ -7,7 +7,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/tui"
-	"github.com/charmbracelet/bubbles/table"
+	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
 	"strconv"
 )
@@ -24,36 +24,57 @@ func ListJobsCmd(cmd *cobra.Command, con *repl.Console) error {
 	var rowEntries []table.Row
 	var row table.Row
 	tableModel := tui.NewTable([]table.Column{
-		{Title: "Name", Width: 20},
-		{Title: "Listener_id", Width: 15},
-		{Title: "Host", Width: 10},
-		{Title: "Port", Width: 7},
-		{Title: "Type", Width: 7},
+		table.NewColumn("Name", "Name", 20),
+		table.NewColumn("Listener_id", "Listener_id", 15),
+		table.NewColumn("Host", "Host", 10),
+		table.NewColumn("Port", "Port", 7),
+		table.NewColumn("Type", "Type", 7),
+		//{Title: "Name", Width: 20},
+		//{Title: "Listener_id", Width: 15},
+		//{Title: "Host", Width: 10},
+		//{Title: "Port", Width: 7},
+		//{Title: "Type", Width: 7},
 	}, true)
 	for _, pipeline := range Pipelines.GetPipelines() {
 		switch pipeline.Body.(type) {
 		case *clientpb.Pipeline_Tcp:
 			tcp := pipeline.GetTcp()
-			row = table.Row{
-				pipeline.Name,
-				pipeline.ListenerId,
-				tcp.Host,
-				strconv.Itoa(int(tcp.Port)),
-				"TCP",
-			}
+			row = table.NewRow(
+				table.RowData{
+					"Name":        pipeline.Name,
+					"Listener_id": pipeline.ListenerId,
+					"Host":        tcp.Host,
+					"Port":        strconv.Itoa(int(tcp.Port)),
+					"Type":        "TCP",
+				})
+			//table.Row{
+			//	pipeline.Name,
+			//	pipeline.ListenerId,
+			//	tcp.Host,
+			//	strconv.Itoa(int(tcp.Port)),
+			//	"TCP",
+			//}
 		case *clientpb.Pipeline_Web:
 			website := pipeline.GetWeb()
-			row = table.Row{
-				pipeline.Name,
-				pipeline.ListenerId,
-				"",
-				strconv.Itoa(int(website.Port)),
-				"Web",
-			}
-
+			row = table.NewRow(
+				table.RowData{
+					"Name":        pipeline.Name,
+					"Listener_id": pipeline.ListenerId,
+					"Host":        "",
+					"Port":        strconv.Itoa(int(website.Port)),
+					"Type":        "Web",
+				})
+			//table.Row{
+			//	pipeline.Name,
+			//	pipeline.ListenerId,
+			//	"",
+			//	strconv.Itoa(int(website.Port)),
+			//	"Web",
+			//}
 		}
 		rowEntries = append(rowEntries, row)
 	}
+	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)
 	fmt.Printf(tableModel.View())
 	return nil
@@ -74,33 +95,57 @@ func ListPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 	var rowEntries []table.Row
 	var row table.Row
 	tableModel := tui.NewTable([]table.Column{
-		{Title: "Name", Width: 20},
-		{Title: "Type", Width: 10},
-		{Title: "ListenerID", Width: 15},
-		{Title: "Host", Width: 10},
-		{Title: "Port", Width: 7},
-		{Title: "Enable", Width: 7},
+		table.NewColumn("Name", "Name", 20),
+		table.NewColumn("Type", "Type", 10),
+		table.NewColumn("ListenerID", "ListenerID", 15),
+		table.NewColumn("Host", "Host", 10),
+		table.NewColumn("Port", "Port", 7),
+		table.NewColumn("Enable", "Enable", 7),
+		//{Title: "Name", Width: 20},
+		//{Title: "Type", Width: 10},
+		//{Title: "ListenerID", Width: 15},
+		//{Title: "Host", Width: 10},
+		//{Title: "Port", Width: 7},
+		//{Title: "Enable", Width: 7},
 	}, true)
 	for _, pipeline := range pipelines.GetPipelines() {
 		switch body := pipeline.Body.(type) {
 		case *clientpb.Pipeline_Tcp:
-			row = table.Row{
-				pipeline.Name,
-				consts.TCPPipeline,
-				pipeline.ListenerId,
-				body.Tcp.Host,
-				strconv.Itoa(int(body.Tcp.Port)),
-				strconv.FormatBool(pipeline.Enable),
-			}
+			row = table.NewRow(
+				table.RowData{
+					"Name":       pipeline.Name,
+					"Type":       consts.TCPPipeline,
+					"ListenerID": pipeline.ListenerId,
+					"Host":       body.Tcp.Host,
+					"Port":       strconv.Itoa(int(body.Tcp.Port)),
+					"Enable":     strconv.FormatBool(pipeline.Enable),
+				})
+			//	table.Row{
+			//	pipeline.Name,
+			//	consts.TCPPipeline,
+			//	pipeline.ListenerId,
+			//	body.Tcp.Host,
+			//	strconv.Itoa(int(body.Tcp.Port)),
+			//	strconv.FormatBool(pipeline.Enable),
+			//}
 		case *clientpb.Pipeline_Bind:
-			row = table.Row{
-				pipeline.Name,
-				consts.BindPipeline,
-				pipeline.ListenerId,
-				"",
-				"",
-				strconv.FormatBool(pipeline.Enable),
-			}
+			row = table.NewRow(
+				table.RowData{
+					"Name":       pipeline.Name,
+					"Type":       consts.BindPipeline,
+					"ListenerID": pipeline.ListenerId,
+					"Host":       "",
+					"Port":       "",
+					"Enable":     strconv.FormatBool(pipeline.Enable),
+				})
+			//	table.Row{
+			//	pipeline.Name,
+			//	consts.BindPipeline,
+			//	pipeline.ListenerId,
+			//	"",
+			//	"",
+			//	strconv.FormatBool(pipeline.Enable),
+			//}
 		}
 
 		rowEntries = append(rowEntries, row)

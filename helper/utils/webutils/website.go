@@ -6,8 +6,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"path"
-	"path/filepath"
 )
 
 const (
@@ -15,35 +13,8 @@ const (
 	defaultMimeType = "application/octet-stream"
 )
 
-func WebAddDirectory(web *clientpb.WebsiteAddContent, webpath string, contentPath string) *clientpb.WebsiteAssets {
-	var webAssets = &clientpb.WebsiteAssets{
-		Assets: []*clientpb.WebsiteAsset{},
-	}
-	fullLocalPath, _ := filepath.Abs(contentPath)
-	filepath.Walk(contentPath, func(localPath string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if !info.IsDir() {
-			// localPath is the full absolute path to the file, so we cut it down
-			fullWebpath := path.Join(webpath, filepath.ToSlash(localPath[len(fullLocalPath):]))
-			WebAddFile(web, fullWebpath, "", localPath)
-			content, err := os.ReadFile(localPath)
-			if err != nil {
-				return err
-			}
-			webAssets.Assets = append(webAssets.Assets, &clientpb.WebsiteAsset{
-				WebName:  web.Name,
-				Content:  content,
-				FileName: fullWebpath,
-			})
-		}
-		return nil
-	})
-	return webAssets
-}
-
-func WebAddFile(web *clientpb.WebsiteAddContent, webpath string, contentType string, contentPath string) error {
+func WebAddFile(web *clientpb.WebsiteAddContent, webpath string, contentType string, contentPath string,
+	encryType string, parser string) error {
 	fileInfo, err := os.Stat(contentPath)
 	if os.IsNotExist(err) {
 		return err // contentPath does not exist
@@ -71,6 +42,8 @@ func WebAddFile(web *clientpb.WebsiteAddContent, webpath string, contentType str
 		Path:        webpath,
 		ContentType: contentType,
 		Content:     data,
+		Type:        encryType,
+		Parser:      parser,
 	}
 	return nil
 }

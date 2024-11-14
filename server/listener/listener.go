@@ -85,44 +85,58 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 		if err != nil {
 			return err
 		}
-		addWeb := &clientpb.WebsiteAddContent{
-			Name:     newWebsite.WebsiteName,
-			Contents: map[string]*clientpb.WebContent{},
-		}
-		cPath, _ := filepath.Abs(newWebsite.ContentPath)
-		fileIfo, err := os.Stat(cPath)
-
-		if fileIfo.IsDir() {
-			_ = webutils.WebAddDirectory(addWeb, newWebsite.RootPath, cPath)
-		} else {
-			file, err := os.Open(cPath)
-			webutils.WebAddFile(addWeb, newWebsite.RootPath, webutils.SniffContentType(file), cPath)
-			if err != nil {
-				return err
+		for _, content := range newWebsite.WebContents {
+			addWeb := &clientpb.WebsiteAddContent{
+				Name:     newWebsite.WebsiteName,
+				Contents: map[string]*clientpb.WebContent{},
 			}
-			err = file.Close()
+			cPath, _ := filepath.Abs(content.Path)
+			fileIfo, err := os.Stat(cPath)
+			var path string
 			if err != nil {
-				return err
+				logs.Log.Errorf(err.Error())
+				continue
 			}
-		}
-		webProtobuf := &clientpb.Pipeline{
-			Name:       newWebsite.WebsiteName,
-			ListenerId: lis.Name,
-			Body: &clientpb.Pipeline_Web{
-				Web: &clientpb.Website{
-					Root:     newWebsite.RootPath,
-					Port:     uint32(newWebsite.Port),
-					Contents: addWeb.Contents,
+			if fileIfo.IsDir() {
+				logs.Log.Errorf("file is a directory")
+				continue
+			} else {
+				file, err := os.Open(cPath)
+				path = filepath.Join(newWebsite.RootPath, filepath.Base(cPath))
+				path = filepath.ToSlash(path)
+				webutils.WebAddFile(addWeb, path, webutils.SniffContentType(file), cPath, content.Type, content.Parser)
+				if err != nil {
+					return err
+				}
+				err = file.Close()
+				if err != nil {
+					return err
+				}
+			}
+			webProtobuf := &clientpb.Pipeline{
+				Name:       newWebsite.WebsiteName,
+				ListenerId: lis.Name,
+				Body: &clientpb.Pipeline_Web{
+					Web: &clientpb.Website{
+						Root:     newWebsite.RootPath,
+						Port:     uint32(newWebsite.Port),
+						Contents: addWeb.Contents,
+					},
 				},
-			},
-			Tls: tls.ToProtobuf(),
-		}
-		_, err = lis.Rpc.RegisterWebsite(context.Background(), webProtobuf)
-		if err != nil {
-			return err
-		}
-		if !newWebsite.Enable {
-			continue
+				Tls: tls.ToProtobuf(),
+			}
+			resp, err := lis.Rpc.RegisterWebsite(context.Background(), webProtobuf)
+			if err != nil {
+				return err
+			}
+			if !newWebsite.Enable {
+				continue
+			}
+			webProtobuf.GetWeb().ID = resp.ID
+			_, err = lis.Rpc.UploadWebsite(context.Background(), webProtobuf.GetWeb())
+			if err != nil {
+				return err
+			}
 		}
 		_, err = lis.Rpc.StartWebsite(context.Background(), &clientpb.CtrlPipeline{
 			Name:       newWebsite.WebsiteName,
@@ -131,6 +145,23 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 		if err != nil {
 			return err
 		}
+		//cPath, _ := filepath.Abs(newWebsite.WebContents["a"].RootPath)
+		//fileIfo, err := os.Stat(cPath)
+		//
+		//if fileIfo.IsDir() {
+		//	_ = webutils.WebAddDirectory(addWeb, newWebsite.RootPath, cPath)
+		//} else {
+		//	file, err := os.Open(cPath)
+		//	webutils.WebAddFile(addWeb, newWebsite.RootPath, webutils.SniffContentType(file), cPath)
+		//	if err != nil {
+		//		return err
+		//	}
+		//	err = file.Close()
+		//	if err != nil {
+		//		return err
+		//	}
+		//}
+
 	}
 
 	return nil
@@ -366,10 +397,10 @@ func (lns *listener) stopWebsite(job *clientpb.Job) *clientpb.JobStatus {
 }
 
 func (lns *listener) registerWebsite(job *clientpb.Job) *clientpb.JobStatus {
-	webAssets := job.GetWebsiteAssets().GetAssets()
-	for _, asset := range webAssets {
-		filePath := filepath.Join(configs.WebsitePath, asset.FileName)
-		err := os.WriteFile(filePath, asset.Content, os.ModePerm)
+	webContents := job.GetPipeline().GetWeb().Contents
+	for _, content := range webContents {
+		filePath := filepath.Join(configs.WebsitePath, job.GetPipeline().GetWeb().ID)
+		err := os.WriteFile(filePath, content.Content, os.ModePerm)
 		if err != nil {
 			return &clientpb.JobStatus{
 				ListenerId: lns.ID(),

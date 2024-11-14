@@ -53,7 +53,7 @@ func AddContent(name string, pbWebContent *clientpb.WebContent) (string, error) 
 	}
 
 	//webContentPath := filepath.Join(webContentDir, webContent.ID)
-	return webContent.ID, nil
+	return webContent.Id, nil
 }
 
 // RemoveContent
@@ -73,12 +73,12 @@ func RemoveContent(name string, path string) error {
 		return err
 	}
 
-	err = os.Remove(filepath.Join(webContentDir, content.ID))
+	err = os.Remove(filepath.Join(webContentDir, content.Id))
 	if err != nil {
 		return err
 	}
 
-	return db.RemoveContent(content.ID)
+	return db.RemoveContent(content.Id)
 }
 
 // Name
@@ -100,7 +100,7 @@ func Names() ([]string, error) {
 	return names, nil
 }
 
-// MapConten
+// MapContent
 func MapContent(name string, eager bool) (*clientpb.Website, error) {
 	webContentDir, err := getWebContentDir()
 	if err != nil {
@@ -123,6 +123,32 @@ func MapContent(name string, eager bool) (*clientpb.Website, error) {
 	}
 
 	return website, nil
+}
+
+func MapContents(name string) (*clientpb.Website, error) {
+	webContentDir, err := getWebContentDir()
+	if err != nil {
+		return nil, err
+	}
+
+	websites, err := db.WebsitesAllByname(name, webContentDir)
+	if err != nil {
+		return nil, err
+	}
+	var webResult = &clientpb.Website{
+		Contents: make(map[string]*clientpb.WebContent),
+	}
+	for _, website := range websites {
+		//eagerContents := map[string]*clientpb.WebContent{}
+		content, err := db.WebContentByIDAndPath(website.ID, website.Root, webContentDir, true)
+		if err != nil {
+			return nil, err
+		}
+		//eagerContents[content.Path] = content
+		//website.Contents = eagerContents
+		webResult.Contents[content.Path] = content
+	}
+	return webResult, nil
 }
 
 // AddWebsite

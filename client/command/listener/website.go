@@ -2,6 +2,7 @@ package listener
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/repl"
@@ -9,7 +10,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/utils/webutils"
 	"github.com/chainreactors/tui"
-	"github.com/charmbracelet/bubbles/table"
+	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
 	"os"
 	"path/filepath"
@@ -19,11 +20,15 @@ import (
 func NewWebsiteCmd(cmd *cobra.Command, con *repl.Console) error {
 	listenerID, _, port := common.ParsePipelineFlags(cmd)
 	contentType, _ := cmd.Flags().GetString("content_type")
+	encryptionType, _ := cmd.Flags().GetString("encryption_type")
+	parser, _ := cmd.Flags().GetString("parser")
 	name := cmd.Flags().Arg(0)
 	webPath := cmd.Flags().Arg(1)
 	cPath := cmd.Flags().Arg(2)
 	var err error
-	var webAsserts *clientpb.WebsiteAssets
+	if listenerID == "" {
+		return errors.New("listener id is required")
+	}
 	if port == 0 {
 		port = cryptography.RandomInRange(10240, 65535)
 	}
@@ -49,17 +54,12 @@ func NewWebsiteCmd(cmd *cobra.Command, con *repl.Console) error {
 		Contents: map[string]*clientpb.WebContent{},
 	}
 
-	webutils.WebAddFile(addWeb, webPath, contentType, cPath)
+	webutils.WebAddFile(addWeb, webPath, contentType, cPath, encryptionType, parser)
 	content, err := os.ReadFile(cPath)
 	if err != nil {
 		return err
 	}
-	webAsserts = &clientpb.WebsiteAssets{}
-	webAsserts.Assets = append(webAsserts.Assets, &clientpb.WebsiteAsset{
-		WebName: name,
-		Content: content,
-	})
-	resp, err := con.Rpc.RegisterWebsite(context.Background(), &clientpb.Pipeline{
+	req := &clientpb.Pipeline{
 		Name:       name,
 		ListenerId: listenerID,
 		Enable:     false,
@@ -76,13 +76,15 @@ func NewWebsiteCmd(cmd *cobra.Command, con *repl.Console) error {
 				Contents: addWeb.Contents,
 			},
 		},
-	})
+	}
+	resp, err := con.Rpc.RegisterWebsite(context.Background(), req)
 
 	if err != nil {
 		return err
 	}
-	webAsserts.GetAssets()[0].FileName = resp.ID
-	_, err = con.Rpc.UploadWebsite(context.Background(), webAsserts)
+	req.Body.(*clientpb.Pipeline_Web).Web.Contents[webPath].Content = content
+	req.Body.(*clientpb.Pipeline_Web).Web.ID = resp.ID
+	_, err = con.Rpc.UploadWebsite(context.Background(), req.GetWeb())
 	if err != nil {
 		return err
 	}
@@ -111,7 +113,7 @@ func StartWebsitePipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 }
 
 func StopWebsitePipelineCmd(cmd *cobra.Command, con *repl.Console) error {
-	name := cmd.Flags().Arg(1)
+	name := cmd.Flags().Arg(0)
 	listenerID, _ := cmd.Flags().GetString("listener")
 	_, err := con.Rpc.StopWebsite(context.Background(), &clientpb.CtrlPipeline{
 		Name:       name,
@@ -134,10 +136,14 @@ func ListWebsitesCmd(cmd *cobra.Command, con *repl.Console) error {
 	var rowEntries []table.Row
 	var row table.Row
 	tableModel := tui.NewTable([]table.Column{
-		{Title: "Name", Width: 20},
-		{Title: "Port", Width: 7},
-		{Title: "RootPath", Width: 15},
-		{Title: "Enable", Width: 7},
+		table.NewColumn("Name", "Name", 20),
+		table.NewColumn("Port", "Port", 7),
+		table.NewColumn("RootPath", "RootPath", 15),
+		table.NewColumn("Enable", "Enable", 7),
+		//{Title: "Name", Width: 20},
+		//{Title: "Port", Width: 7},
+		//{Title: "RootPath", Width: 15},
+		//{Title: "Enable", Width: 7},
 	}, true)
 	if len(websites.Pipelines) == 0 {
 		con.Log.Importantf("No websites found")
@@ -145,13 +151,21 @@ func ListWebsitesCmd(cmd *cobra.Command, con *repl.Console) error {
 	}
 	for _, p := range websites.Pipelines {
 		w := p.GetWeb()
-		row = table.Row{
-			w.ID,
-			strconv.Itoa(int(w.Port)),
-			w.Root,
-		}
+		row = table.NewRow(
+			table.RowData{
+				"Name":     p.Name,
+				"Port":     strconv.Itoa(int(w.Port)),
+				"RootPath": w.Root,
+				"Enable":   p.Enable,
+			})
+		//	table.Row{
+		//	w.ID,
+		//	strconv.Itoa(int(w.Port)),
+		//	w.RootPath,
+		//}
 		rowEntries = append(rowEntries, row)
 	}
+	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)
 	fmt.Printf(tableModel.View())
 	return nil

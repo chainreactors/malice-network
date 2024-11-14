@@ -19,6 +19,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -135,6 +136,13 @@ func RecoverSession(sess *clientpb.Session) (*Session, error) {
 	if err != nil {
 		return nil, err
 	}
+	if len(tasks) == 0 {
+		logID, err := s.RecoverTaskIDByLog()
+		if err != nil {
+			return nil, err
+		}
+		tid = max(tid, uint32(logID))
+	}
 	s.Taskseq = tid
 	for _, task := range tasks {
 		taskPb := task.ToProtobuf()
@@ -214,6 +222,32 @@ func (s *Session) Recover() error {
 	}
 
 	return nil
+}
+
+func (s *Session) RecoverTaskIDByLog() (int, error) {
+	files, err := os.ReadDir(filepath.Join(configs.LogPath, s.ID))
+	if err != nil {
+		return 0, err
+	}
+
+	maxTaskID := 0
+
+	for _, file := range files {
+		parts := strings.Split(file.Name(), "_")
+		if len(parts) < 2 {
+			continue
+		}
+
+		taskID, err := strconv.Atoi(parts[0])
+		if err != nil {
+			continue
+		}
+		if taskID > maxTaskID {
+			maxTaskID = taskID
+		}
+	}
+
+	return maxTaskID, nil
 }
 
 func (s *Session) ToProtobuf() *clientpb.Session {
