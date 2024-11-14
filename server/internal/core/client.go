@@ -71,10 +71,7 @@ func (cc *clients) Remove(clientID int) {
 	if client == nil {
 		return
 	}
-	EventBroker.Publish(Event{
-		EventType: consts.EventLeft,
-		Client:    client.Client,
-	})
+
 	delete(cc.active, clientID)
 }
 

@@ -109,7 +109,8 @@ func (pipeline *TCPPipeline) Start() error {
 	if err != nil {
 		return err
 	}
-	logs.Log.Infof("[pipeline] starting TCP pipeline on %s:%d, parser: %s", pipeline.Host, pipeline.Port, pipeline.Parser)
+	logs.Log.Infof("[pipeline] starting TCP pipeline on %s:%d, parser: %s, cryptor: %s, tls: %t",
+		pipeline.Host, pipeline.Port, pipeline.Parser, pipeline.Encryption.Type, pipeline.Tls.Enable)
 
 	return nil
 }
@@ -147,7 +148,6 @@ func (pipeline *TCPPipeline) handler() (net.Listener, error) {
 }
 
 func (pipeline *TCPPipeline) handlePulse(conn net.Conn) {
-	defer conn.Close()
 	peekConn, err := pipeline.WrapConn(conn)
 	if err != nil {
 		logs.Log.Debugf("wrap conn error: %s %v", conn.RemoteAddr(), err)
@@ -163,7 +163,10 @@ func (pipeline *TCPPipeline) handlePulse(conn net.Conn) {
 		Id: uint32(artifactId),
 	})
 	if err != nil {
+		logs.Log.Errorf("not found artifact %s", err.Error())
 		return
+	} else {
+		logs.Log.Infof("send artifact %d %s", builder.Id, builder.Name)
 	}
 	err = p.WritePacket(peekConn, types.BuildOneSpites(&implantpb.Spite{
 		Name: consts.ModuleInit,

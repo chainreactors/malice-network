@@ -2,7 +2,7 @@ package configs
 
 type GeneratorBasicConfig struct {
 	Name       string   `yaml:"name" config:"name" default:"malefic"`
-	Urls       []string `yaml:"urls" config:"urls" default:"[]"`
+	Targets    []string `yaml:"targets" config:"targets" default:"[]"`
 	Protocol   string   `yaml:"protocol" config:"protocol" default:"tcp"`
 	TLS        bool     `yaml:"tls" config:"tls" default:"false"`
 	Proxy      string   `yaml:"proxy" config:"proxy" default:""`

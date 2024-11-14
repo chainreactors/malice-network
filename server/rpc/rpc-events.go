@@ -15,9 +15,9 @@ func (rpc *Server) Events(_ *clientpb.Empty, stream clientrpc.MaliceRPC_EventsSe
 	events := core.EventBroker.Subscribe()
 	clientID := core.GetCurrentID()
 	defer func() {
-		logs.Log.Infof("%d client disconnected", clientID)
-		core.EventBroker.Unsubscribe(events)
+		logs.Log.Infof("client: %d disconnected", clientID)
 		core.Clients.Remove(int(clientID))
+		core.EventBroker.Unsubscribe(events)
 	}()
 
 	for {
