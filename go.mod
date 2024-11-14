@@ -9,7 +9,7 @@ require (
 	github.com/Binject/go-donut v0.0.0-20220908180326-fcdcc35d591c
 	github.com/chainreactors/files v0.0.0-20231102192550-a652458cee26
 	github.com/chainreactors/logs v0.0.0-20241108080408-6d31ab9dae0a
-	github.com/chainreactors/tui v0.0.0-20241114120637-33594b06767a
+	github.com/chainreactors/tui v0.0.0-20241114181843-399bd5598c01
 	github.com/chainreactors/utils v0.0.0-20240805193040-ff3b97aa3c3f
 	github.com/charmbracelet/bubbles v0.18.0
 	github.com/charmbracelet/bubbletea v0.27.1
@@ -17,6 +17,7 @@ require (
 	github.com/charmbracelet/lipgloss v0.13.0
 	github.com/cjoudrey/gluahttp v0.0.0-20201111170219-25003d9adfa9
 	github.com/docker/docker v27.3.1+incompatible
+	github.com/evertras/bubble-table v0.17.1
 	github.com/gofrs/uuid v4.4.0+incompatible
 	github.com/golang/snappy v0.0.4
 	github.com/gookit/config/v2 v2.2.5
@@ -82,7 +83,6 @@ require (
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
-	github.com/evertras/bubble-table v0.17.1 // indirect
 	github.com/fatih/color v1.15.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/frankban/quicktest v1.14.6 // indirect

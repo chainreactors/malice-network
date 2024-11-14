@@ -69,6 +69,8 @@ func (w *Website) Close() error {
 	if w.server != nil {
 		logs.Log.Importantf("Stopping server")
 		err := w.server.Shutdown(nil)
+		http.DefaultServeMux.Handle(w.rootPath, nil)
+		http.DefaultServeMux.HandleFunc(w.rootPath+"/", nil)
 		if err != nil {
 			return err
 		}

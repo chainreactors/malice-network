@@ -85,8 +85,8 @@ func fileExplorerCmd(cmd *cobra.Command, con *repl.Console) {
 			con.Log.Errorf("Error creating tree model: %v", err)
 			return
 		}
-		fileModel = fileModel.SetHeaderView(func() string {
-			return fmt.Sprintf("Current Path: %s%s\n", root.Name, filepath.Join(fileModel.Selected...))
+		fileModel = fileModel.SetHeaderView(func(m *tui.TreeModel) string {
+			return fmt.Sprintf("Current Path: %s%s\n", root.Name, filepath.Join(m.Selected...))
 		})
 		// Register custom action for 'enter' key
 		fileModel = fileModel.SetKeyBinding("enter", func(m *tui.TreeModel) (tea.Model, tea.Cmd) {
@@ -96,14 +96,8 @@ func fileExplorerCmd(cmd *cobra.Command, con *repl.Console) {
 		fileModel = fileModel.SetKeyBinding("r", func(m *tui.TreeModel) (tea.Model, tea.Cmd) {
 			return freshFunc(m, con)
 		})
-		newFile := tui.NewModel(fileModel, nil, false, false)
-		err = newFile.Run()
-		if err != nil {
-			con.Log.Errorf("Error running explorer: %v", err)
-			return
-		}
-		tui.Reset()
-		return
+		fileModel.Run()
+		break
 	}
 }
 func formatFileMode(mode uint32) string {
@@ -152,6 +146,9 @@ func fileEnterFunc(m *tui.TreeModel, con *repl.Console) (tea.Model, tea.Cmd) {
 		m.Cursor = 0
 		return m, nil
 	}
+	if selectedNode.Info[0] == "false" {
+		return m, nil
+	}
 	path := filepath.Join(m.Selected...)
 	task, err := con.Rpc.Ls(session.Clone(consts.CalleeExplorer).Context(), &implantpb.Request{
 		Name:  consts.ModuleLs,
@@ -168,6 +165,9 @@ func fileEnterFunc(m *tui.TreeModel, con *repl.Console) (tea.Model, tea.Cmd) {
 	})
 	select {
 	case files := <-fileChan:
+		if len(files) == 0 {
+			return m, nil
+		}
 		for _, protoFile := range files {
 			selectedNode.Children = append(selectedNode.Children, &tui.TreeNode{
 				Name: protoFile.GetName(),
@@ -183,6 +183,7 @@ func fileEnterFunc(m *tui.TreeModel, con *repl.Console) (tea.Model, tea.Cmd) {
 	fmt.Printf("Selected: %v\n", m.Selected)
 	m.Tree = selectedNode
 	m.Cursor = 0
+	tui.ClearAll()
 	return m, nil
 }
 

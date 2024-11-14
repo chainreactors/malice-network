@@ -380,12 +380,6 @@ func PrintArmoryPackages(aliases []*alias.AliasManifest, exts []*extension.Exten
 		table.NewColumn("Type", "Type", 7),
 		table.NewColumn("Help", "Help", 25),
 		table.NewColumn("URL", "URL", 25),
-		//{Title: "Armory", Width: 10},
-		//{Title: "Command Name", Width: 15},
-		//{Title: "Version", Width: 10},
-		//{Title: "Type", Width: 7},
-		//{Title: "Help", Width: 25},
-		//{Title: "URL", Width: 25},
 	}, false)
 
 	type pkgInfo struct {
@@ -435,14 +429,6 @@ func PrintArmoryPackages(aliases []*alias.AliasManifest, exts []*extension.Exten
 				"Help":         pkg.Help,
 				"URL":          pkg.URL,
 			})
-		//	table.Row{
-		//	pkg.Armory,
-		//	commandName,
-		//	pkg.Version,
-		//	pkg.Type,
-		//	pkg.Help,
-		//	pkg.URL,
-		//}
 
 		rowEntries = append(rowEntries, row)
 	}
@@ -503,14 +489,6 @@ func PrintArmoryBundles(bundles []*ArmoryBundle, con *repl.Console) {
 	tableModel := tui.NewTable([]table.Column{
 		table.NewColumn("Name", "Name", 20),
 		table.NewColumn("Contains", "Contains", 30),
-		//table.NewColumn("Type", "Type", 4),
-		//table.NewColumn("Help", "Help", 10),
-		//table.NewColumn("URL", "URL", 15),
-		//{Title: "Name", Width: 20},
-		//{Title: "Contains", Width: 30},
-		//{Title: "Type", Width: 4},
-		//{Title: "Help", Width: 10},
-		//{Title: "URL", Width: 15},
 	}, true)
 	for _, bundle := range bundles {
 		if len(bundle.Packages) < 1 {
@@ -535,10 +513,6 @@ func PrintArmoryBundles(bundles []*ArmoryBundle, con *repl.Console) {
 				"Name":     bundle.Name,
 				"Contains": packages,
 			})
-		//	table.Row{
-		//	bundle.Name,
-		//	packages,
-		//}
 		rowEntries = append(rowEntries, row)
 	}
 	tableModel.SetMultiline()

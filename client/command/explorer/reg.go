@@ -58,7 +58,7 @@ func regExplorerCmd(cmd *cobra.Command, con *repl.Console) error {
 			con.Log.Errorf("Error creating tree model: %v", err)
 			return err
 		}
-		regModel = regModel.SetHeaderView(func() string {
+		regModel = regModel.SetHeaderView(func(m *tui.TreeModel) string {
 			return fmt.Sprintf("Current Path: %s%s\n", root.Name, regModel.Selected)
 		})
 		regModel = regModel.SetKeyBinding("enter", func(m *tui.TreeModel) (tea.Model, tea.Cmd) {

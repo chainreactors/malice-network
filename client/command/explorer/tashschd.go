@@ -53,7 +53,7 @@ func taskschdExplorerCmd(cmd *cobra.Command, con *repl.Console) error {
 		if err != nil {
 			return err
 		}
-		taskschdModel = taskschdModel.SetHeaderView(func() string {
+		taskschdModel = taskschdModel.SetHeaderView(func(m *tui.TreeModel) string {
 			return "taskched"
 		})
 		taskschdModel = taskschdModel.SetKeyBinding("enter", func(m *tui.TreeModel) (tea.Model, tea.Cmd) {

@@ -105,8 +105,6 @@ func Register(con *repl.Console) {
 			tableModel := tui.NewTable([]table.Column{
 				table.NewColumn("Module", "Module", 20),
 				table.NewColumn("Help", "Help", 30),
-				//{Title: "Name", Width: 15},
-				//{Title: "Help", Width: 30},
 			}, true)
 			for _, module := range modules.GetModules() {
 				row = table.NewRow(
@@ -114,10 +112,6 @@ func Register(con *repl.Console) {
 						"Module": module,
 						"Help":   "",
 					})
-				//table.Row{
-				//	module,
-				//	"",
-				//}
 				rowEntries = append(rowEntries, row)
 			}
 			tableModel.SetMultiline()

@@ -64,11 +64,6 @@ func RegisterNetstatFunc(con *repl.Console) {
 				table.NewColumn("SkState", "SkState", 20),
 				table.NewColumn("Pid", "Pid", 7),
 				table.NewColumn("Protocol", "Protocol", 10),
-				//{Title: "LocalAddr", Width: 30},
-				//{Title: "RemoteAddr", Width: 30},
-				//{Title: "SkState", Width: 20},
-				//{Title: "Pid", Width: 7},
-				//{Title: "Protocol", Width: 10},
 			}, true)
 			for _, sock := range resp.GetSocks() {
 				row = table.NewRow(
@@ -79,13 +74,6 @@ func RegisterNetstatFunc(con *repl.Console) {
 						"Pid":        sock.Pid,
 						"Protocol":   sock.Protocol,
 					})
-				//	table.Row{
-				//	sock.LocalAddr,
-				//	sock.RemoteAddr,
-				//	sock.SkState,
-				//	sock.Pid,
-				//	sock.Protocol,
-				//}
 				rowEntries = append(rowEntries, row)
 			}
 			tableModel.SetMultiline()

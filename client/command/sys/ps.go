@@ -72,14 +72,6 @@ func RegisterPsFunc(con *repl.Console) {
 				table.NewColumn("Owner", "Owner", 7),
 				table.NewColumn("Path", "Path", 30),
 				table.NewColumn("Args", "Args", 30),
-				//{Title: "Name", Width: 20},
-				//{Title: "PID", Width: 5},
-				//{Title: "PPID", Width: 5},
-				//{Title: "Arch", Width: 7},
-				//{Title: "UID", Width: 36},
-				//{Title: "Owner", Width: 7},
-				//{Title: "Path", Width: 50},
-				//{Title: "Args", Width: 50},
 			}, true)
 			for _, process := range resp.GetProcesses() {
 				row = table.NewRow(
@@ -93,16 +85,6 @@ func RegisterPsFunc(con *repl.Console) {
 						"Path":  process.Path,
 						"Args":  process.Args,
 					})
-				//Row{
-				//	process.Name,
-				//	strconv.Itoa(int(process.Pid)),
-				//	strconv.Itoa(int(process.Ppid)),
-				//	process.Arch,
-				//	process.Uid,
-				//	process.Owner,
-				//	process.Path,
-				//	process.Args,
-				//}
 				rowEntries = append(rowEntries, row)
 			}
 			tableModel.SetMultiline()

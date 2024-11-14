@@ -140,10 +140,6 @@ func ListWebsitesCmd(cmd *cobra.Command, con *repl.Console) error {
 		table.NewColumn("Port", "Port", 7),
 		table.NewColumn("RootPath", "RootPath", 15),
 		table.NewColumn("Enable", "Enable", 7),
-		//{Title: "Name", Width: 20},
-		//{Title: "Port", Width: 7},
-		//{Title: "RootPath", Width: 15},
-		//{Title: "Enable", Width: 7},
 	}, true)
 	if len(websites.Pipelines) == 0 {
 		con.Log.Importantf("No websites found")
@@ -158,11 +154,6 @@ func ListWebsitesCmd(cmd *cobra.Command, con *repl.Console) error {
 				"RootPath": w.Root,
 				"Enable":   p.Enable,
 			})
-		//	table.Row{
-		//	w.ID,
-		//	strconv.Itoa(int(w.Port)),
-		//	w.RootPath,
-		//}
 		rowEntries = append(rowEntries, row)
 	}
 	tableModel.SetMultiline()
