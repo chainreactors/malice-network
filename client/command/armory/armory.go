@@ -377,9 +377,9 @@ func PrintArmoryPackages(aliases []*alias.AliasManifest, exts []*extension.Exten
 		table.NewColumn("Armory", "Armory", 10),
 		table.NewColumn("Command Name", "Command Name", 15),
 		table.NewColumn("Version", "Version", 10),
-		table.NewColumn("Type", "Type", 7),
-		table.NewColumn("Help", "Help", 25),
-		table.NewColumn("URL", "URL", 25),
+		table.NewColumn("Type", "Type", 15),
+		table.NewColumn("Help", "Help", 40),
+		table.NewColumn("URL", "URL", 40),
 	}, false)
 
 	type pkgInfo struct {
