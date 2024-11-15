@@ -57,7 +57,7 @@ func BuildBeacon(cli *client.Client, req *clientpb.Generate) error {
 		Image: fmt.Sprintf("%s/%s:%s", NameSpace, req.Target, Tag),
 		//Cmd:   []string{"cargo", "make", "--disable-check-for-updates", "malefic"},
 		Cmd: []string{"sh", "-c",
-			fmt.Sprintf("malefic-mutant generate beacon && cargo build --target %s --release -p malefic",
+			fmt.Sprintf("./malefic_mutant generate beacon && cargo build --target %s --release -p malefic",
 				req.Target)},
 		//"cargo run -p malefic-mutant stage0 professional x86_64 source && cargo build --release -p malefic-pulse"},
 		Env: []string{"TARGET_TRIPLE=" + req.Target + ""},
@@ -105,7 +105,7 @@ func BuildBind(cli *client.Client, req *clientpb.Generate) error {
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
 		Image: fmt.Sprintf("%s/%s:%s", NameSpace, req.Target, Tag),
 		Cmd: []string{"sh", "-c",
-			fmt.Sprintf("malefic-mutant generate bind  && cargo build --target %s --release -p malefic",
+			fmt.Sprintf("./malefic_mutant generate bind  && cargo build --target %s --release -p malefic",
 				req.Target)},
 		Env: []string{"TARGET_TRIPLE=" + req.Target + ""},
 	}, &container.HostConfig{
@@ -148,11 +148,10 @@ func BuildPrelude(cli *client.Client, req *clientpb.Generate) error {
 	timeout := 20 * time.Minute
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
 		Image: fmt.Sprintf("%s/%s:%s", NameSpace, req.Target, Tag),
 		Cmd: []string{"sh", "-c",
-			fmt.Sprintf("malefic-mutant prelude autorun.yaml && cargo build --target %s --release -p malefic-prelude",
+			fmt.Sprintf("./malefic_mutant generate prelude autorun.yaml && cargo build --target %s --release -p malefic-prelude",
 				req.Target)},
 		Env: []string{"TARGET_TRIPLE=" + req.Target + ""},
 	}, &container.HostConfig{
@@ -198,7 +197,7 @@ func BuildLoader(cli *client.Client, req *clientpb.Generate) error {
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
 		Image: fmt.Sprintf("%s/%s:%s", NameSpace, req.Target, Tag),
 		Cmd: []string{"sh", "-c",
-			fmt.Sprintf("malefic-mutant prelude autorun.yaml && cargo build --target %s --release -p malefic-prelude",
+			fmt.Sprintf("./malefic_mutant prelude autorun.yaml && cargo build --target %s --release -p malefic-prelude",
 				req.Target)},
 		Env: []string{"TARGET_TRIPLE=" + req.Target + ""},
 	}, &container.HostConfig{
@@ -244,8 +243,8 @@ func BuildModules(cli *client.Client, req *clientpb.Generate) error {
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
 		Image: fmt.Sprintf("%s/%s:%s", NameSpace, req.Target, Tag),
 		Cmd: []string{"sh", "-c",
-			fmt.Sprintf("malefic-mutant generate modules  && cargo build --target %s --release -p malefic-modules --features %s",
-				req.Target, req.Feature)},
+			fmt.Sprintf("./malefic_mutant generate modules %s -s && cargo build --target %s --release -p malefic-modules --features %s",
+				req.Feature, req.Target, req.Feature)},
 		Env: []string{"TARGET_TRIPLE=" + req.Target + ""},
 	}, &container.HostConfig{
 		AutoRemove: true,

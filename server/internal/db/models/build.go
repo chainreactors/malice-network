@@ -21,6 +21,8 @@ type Builder struct {
 	CA         string // ca file , ca file content
 	Path       string
 	Profile    Profile `gorm:"foreignKey:ProfileName;references:Name;"`
+	Os         string
+	Arch       string
 }
 
 func (b *Builder) BeforeCreate(tx *gorm.DB) (err error) {
@@ -28,23 +30,27 @@ func (b *Builder) BeforeCreate(tx *gorm.DB) (err error) {
 	return nil
 }
 
-func (b *Builder) ToProtobuf() *clientpb.Generate {
+func (b *Builder) ToProtobuf() *clientpb.Builder {
 	if b.ProfileName != "" {
-		return &clientpb.Generate{
-			Name:    b.Name,
-			Target:  b.Profile.Target,
-			Type:    b.Profile.Type,
-			Stager:  b.Profile.Stager,
-			Modules: strings.Split(b.Profile.Modules, ","),
+		return &clientpb.Builder{
+			Name:     b.Name,
+			Target:   b.Profile.Target,
+			Type:     b.Profile.Type,
+			Stage:    b.Profile.Stager,
+			Platform: b.Os,
+			Arch:     b.Arch,
+			Modules:  b.Profile.Modules,
 		}
 	}
 
-	return &clientpb.Generate{
-		Name:    b.Name,
-		Target:  b.Target,
-		Type:    b.Type,
-		Stager:  b.Stager,
-		Modules: strings.Split(b.Modules, ","),
+	return &clientpb.Builder{
+		Name:     b.Name,
+		Target:   b.Target,
+		Type:     b.Type,
+		Stage:    b.Stager,
+		Platform: b.Os,
+		Modules:  b.Modules,
+		Arch:     b.Arch,
 	}
 }
 

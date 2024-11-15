@@ -137,7 +137,7 @@ func PreludeCmd(cmd *cobra.Command, con *repl.Console) error {
 
 func ModulesCmd(cmd *cobra.Command, con *repl.Console) error {
 	name, url, buildTarget, _, modules, ca, interval, jitter, shellcodeType := common.ParseGenerateFlags(cmd)
-	features, _ := cmd.Flags().GetStringSlice("features")
+	features, _ := cmd.Flags().GetStringSlice("feature")
 	if len(features) == 0 {
 		return errors.New("require features")
 	}
