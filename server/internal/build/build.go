@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db"
@@ -23,7 +24,7 @@ var (
 	ContainerSourceCodePath     = "/root/src"
 	ContainerCargoRegistryCache = "/root/cargo/registry"
 	CargoGitCache               = "/root/cargo/git"
-	exePath                     = "malefic-mutant.exe"
+	exePath                     = filepath.Join(configs.SourceCodePath, "malefic_mutant")
 	command                     = "generate"
 	funcNameOption              = "--function-name"
 	userDataPathOption          = "--user-data-path"
@@ -291,12 +292,12 @@ func SaveArtifact(dst string, bin []byte) error {
 	return nil
 }
 
-func NewMaleficSRDIArtifact(name, src, platform, arch, stage string) (*models.Builder, []byte, error) {
+func NewMaleficSRDIArtifact(name, src, platform, arch, stage, funcName, dataPath string) (*models.Builder, []byte, error) {
 	builder, err := db.SaveArtifact(name, "srdi", stage)
 	if err != nil {
 		return nil, nil, err
 	}
-	bin, err := MaleficSRDI(src, builder.Path, platform, arch)
+	bin, err := MaleficSRDI(src, builder.Path, platform, arch, funcName, dataPath)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -307,8 +308,16 @@ func NewMaleficSRDIArtifact(name, src, platform, arch, stage string) (*models.Bu
 	return builder, bin, nil
 }
 
-func MaleficSRDI(src, dst, platform, arch string) ([]byte, error) {
-	cmd := exec.Command(exePath, command, "srdi", src, platform, arch, dst)
+func MaleficSRDI(src, dst, platform, arch, funcName, dataPath string) ([]byte, error) {
+	args := []string{command, consts.SRDIType, src, platform, arch, dst}
+	if funcName != "" {
+		args = append(args, funcNameOption, funcName)
+	}
+	if dataPath != "" {
+		args = append(args, userDataPathOption, dataPath)
+	}
+
+	cmd := exec.Command(exePath, args...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return []byte{}, err

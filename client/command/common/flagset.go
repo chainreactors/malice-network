@@ -180,17 +180,17 @@ func MalHttpFlagset(f *pflag.FlagSet) {
 
 func SRDIFlagSet(f *pflag.FlagSet) {
 	f.String("path", "", "file path")
-	f.String("type", "", "mutant type")
-	f.String("arch", "", "shellcode architecture, eg: x86,x86_64")
-	f.String("platform", "win", "shellcode platform, eg: win,linux")
+	//f.String("type", "", "mutant type")
+	f.String("arch", "", "shellcode architecture, eg: x86,x64")
+	f.String("platform", "win", "shellcode platform, eg: windows,linux")
 	f.Uint32("id", 0, "build file id")
 	f.String("function_name", "", "shellcode function name")
 	f.String("user_data_path", "", "user data path")
 }
 
-func ParseSRDIFlags(cmd *cobra.Command) (string, string, string, string, uint32, map[string]string) {
+func ParseSRDIFlags(cmd *cobra.Command) (string, string, string, uint32, map[string]string) {
 	path, _ := cmd.Flags().GetString("path")
-	typ, _ := cmd.Flags().GetString("type")
+	//typ, _ := cmd.Flags().GetString("type")
 	arch, _ := cmd.Flags().GetString("arch")
 	platform, _ := cmd.Flags().GetString("platform")
 	id, _ := cmd.Flags().GetUint32("id")
@@ -200,5 +200,5 @@ func ParseSRDIFlags(cmd *cobra.Command) (string, string, string, string, uint32,
 		"function_name": functionName,
 		"userdata_path": userDataPath,
 	}
-	return path, typ, arch, platform, id, params
+	return path, arch, platform, id, params
 }

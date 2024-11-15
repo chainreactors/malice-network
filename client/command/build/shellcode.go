@@ -6,6 +6,7 @@ import (
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/spf13/cobra"
 	"os"
@@ -13,11 +14,11 @@ import (
 )
 
 func SRDICmd(cmd *cobra.Command, con *repl.Console) error {
-	path, typ, arch, platform, id, params := common.ParseSRDIFlags(cmd)
+	path, arch, platform, id, params := common.ParseSRDIFlags(cmd)
 	var fileName string
 	var err error
 
-	resp, err := MaleficSRDI(con, path, id, typ, arch, platform, params)
+	resp, err := MaleficSRDI(con, path, id, arch, platform, params)
 	if err != nil {
 		return err
 	}
@@ -29,7 +30,7 @@ func SRDICmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func MaleficSRDI(con *repl.Console, path string, id uint32, typ, arch, platform string, params map[string]string) (*clientpb.Builder, error) {
+func MaleficSRDI(con *repl.Console, path string, id uint32, arch, platform string, params map[string]string) (*clientpb.Builder, error) {
 	if path == "" && id == 0 {
 		return nil, errors.New("require path or id")
 	}
@@ -45,7 +46,7 @@ func MaleficSRDI(con *repl.Console, path string, id uint32, typ, arch, platform 
 		Id:           id,
 		Bin:          bin,
 		Arch:         arch,
-		Type:         typ,
+		Type:         consts.SRDIType,
 		Name:         filepath.Base(path),
 		Platform:     platform,
 		FunctionName: params["function_name"],

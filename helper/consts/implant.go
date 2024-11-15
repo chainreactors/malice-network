@@ -11,6 +11,7 @@ const (
 	ImplantTypeBind     = "bind"
 	ImplantTypeWebshell = "webshell"
 	ImplantTypeReverse  = "ssh"
+	SRDIType            = "srdi"
 )
 
 // release type
