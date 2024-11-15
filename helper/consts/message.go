@@ -107,6 +107,12 @@ const (
 	// wmi
 	ModuleWmiQuery = "wmi_query"
 	ModuleWmiExec  = "wmi_execute"
+
+	// pipe
+	ModulePipeUpload = "pipe_upload"
+	ModulePipeClose  = "pipe_close"
+	ModulePipeRead   = "pipe_read"
+
 	// privilege
 	ModuleRunas     = "runas"
 	ModulePrivs     = "privs"
@@ -192,6 +198,7 @@ const (
 	CommandRegExplorer      = "reg_explorer"
 	CommandService          = "service"
 	CommandTaskSchd         = "taskschd"
+	CommandPipe             = "pipe"
 )
 
 const (

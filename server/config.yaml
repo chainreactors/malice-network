@@ -59,15 +59,3 @@ listeners:
         enable: true
         type: aes
         key: maliceofinternal
-  websites:
-    - name: test2
-      port: 10049
-      root: "/test3"
-      enable: false
-      content:
-        - path: gougu\images\click-edit.png
-          raw: aaaaaaa
-          type: aes
-        - path: gougu\images\data-none.png
-          raw: bbbbbbb
-          type: xor

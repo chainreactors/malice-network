@@ -25,76 +25,79 @@ func BuildPingSpites() *implantpb.Spites {
 
 // BuildSpite build spite request
 func BuildSpite(spite *implantpb.Spite, msg proto.Message) (*implantpb.Spite, error) {
-	switch msg.(type) {
+	switch msg := msg.(type) {
 	case *implantpb.Request:
-		spite.Name = msg.(*implantpb.Request).Name
-		spite.Body = &implantpb.Spite_Request{Request: msg.(*implantpb.Request)}
+		spite.Name = msg.Name
+		spite.Body = &implantpb.Spite_Request{Request: msg}
 	case *implantpb.ImplantTask:
-		spite.Name = msg.(*implantpb.ImplantTask).Op
-		spite.Body = &implantpb.Spite_Task{Task: msg.(*implantpb.ImplantTask)}
+		spite.Name = msg.Op
+		spite.Body = &implantpb.Spite_Task{Task: msg}
 	case *implantpb.Ping:
 		spite.Name = MsgPing.String()
-		spite.Body = &implantpb.Spite_Ping{Ping: msg.(*implantpb.Ping)}
+		spite.Body = &implantpb.Spite_Ping{Ping: msg}
 	case *implantpb.Timer:
 		spite.Name = MsgSleep.String()
-		spite.Body = &implantpb.Spite_SleepRequest{SleepRequest: msg.(*implantpb.Timer)}
+		spite.Body = &implantpb.Spite_SleepRequest{SleepRequest: msg}
 	case *implantpb.ACK:
 		spite.Name = MsgAck.String()
-		spite.Body = &implantpb.Spite_Ack{Ack: msg.(*implantpb.ACK)}
+		spite.Body = &implantpb.Spite_Ack{Ack: msg}
 	case *implantpb.Block:
 		spite.Name = MsgBlock.String()
-		spite.Body = &implantpb.Spite_Block{Block: msg.(*implantpb.Block)}
+		spite.Body = &implantpb.Spite_Block{Block: msg}
 	case *implantpb.Register:
 		spite.Name = MsgRegister.String()
-		spite.Body = &implantpb.Spite_Register{Register: msg.(*implantpb.Register)}
+		spite.Body = &implantpb.Spite_Register{Register: msg}
 	case *implantpb.ExecRequest:
 		spite.Name = MsgExec.String()
-		spite.Body = &implantpb.Spite_ExecRequest{ExecRequest: msg.(*implantpb.ExecRequest)}
+		spite.Body = &implantpb.Spite_ExecRequest{ExecRequest: msg}
 	case *implantpb.ExecResponse:
 		spite.Name = MsgExec.String()
-		spite.Body = &implantpb.Spite_ExecResponse{ExecResponse: msg.(*implantpb.ExecResponse)}
+		spite.Body = &implantpb.Spite_ExecResponse{ExecResponse: msg}
 	case *implantpb.UploadRequest:
 		spite.Name = MsgUpload.String()
-		spite.Body = &implantpb.Spite_UploadRequest{UploadRequest: msg.(*implantpb.UploadRequest)}
+		spite.Body = &implantpb.Spite_UploadRequest{UploadRequest: msg}
 	case *implantpb.DownloadRequest:
 		spite.Name = MsgDownload.String()
-		spite.Body = &implantpb.Spite_DownloadRequest{DownloadRequest: msg.(*implantpb.DownloadRequest)}
+		spite.Body = &implantpb.Spite_DownloadRequest{DownloadRequest: msg}
 	case *implantpb.ExecuteBinary:
-		spite.Name = msg.(*implantpb.ExecuteBinary).Type
-		spite.Body = &implantpb.Spite_ExecuteBinary{ExecuteBinary: msg.(*implantpb.ExecuteBinary)}
+		spite.Name = msg.Type
+		spite.Body = &implantpb.Spite_ExecuteBinary{ExecuteBinary: msg}
 	//case *implantpb.CurlRequest:
 	//	spite.Name = MsgCurl.String()
 	//	spite.Body = &implantpb.Spite_CurlRequest{CurlRequest: msg.(*implantpb.CurlRequest)}
 	case *implantpb.BypassRequest:
 		spite.Name = MsgBypass.String()
-		spite.Body = &implantpb.Spite_BypassRequest{BypassRequest: msg.(*implantpb.BypassRequest)}
+		spite.Body = &implantpb.Spite_BypassRequest{BypassRequest: msg}
 	case *implantpb.ExecuteAddon:
 		spite.Name = MsgExecuteAddon.String()
-		spite.Body = &implantpb.Spite_ExecuteAddon{ExecuteAddon: msg.(*implantpb.ExecuteAddon)}
+		spite.Body = &implantpb.Spite_ExecuteAddon{ExecuteAddon: msg}
 	case *implantpb.LoadModule:
 		spite.Name = MsgLoadModule.String()
-		spite.Body = &implantpb.Spite_LoadModule{LoadModule: msg.(*implantpb.LoadModule)}
+		spite.Body = &implantpb.Spite_LoadModule{LoadModule: msg}
 	case *implantpb.LoadAddon:
 		spite.Name = MsgLoadAddon.String()
-		spite.Body = &implantpb.Spite_LoadAddon{LoadAddon: msg.(*implantpb.LoadAddon)}
+		spite.Body = &implantpb.Spite_LoadAddon{LoadAddon: msg}
 	case *implantpb.RegistryRequest:
-		spite.Name = msg.(*implantpb.RegistryRequest).Type
-		spite.Body = &implantpb.Spite_RegistryRequest{RegistryRequest: msg.(*implantpb.RegistryRequest).Registry}
+		spite.Name = msg.Type
+		spite.Body = &implantpb.Spite_RegistryRequest{RegistryRequest: msg.Registry}
 	case *implantpb.RegistryWriteRequest:
 		spite.Name = MsgRegistryAdd.String()
-		spite.Body = &implantpb.Spite_RegistryWriteRequest{RegistryWriteRequest: msg.(*implantpb.RegistryWriteRequest)}
+		spite.Body = &implantpb.Spite_RegistryWriteRequest{RegistryWriteRequest: msg}
 	case *implantpb.ServiceRequest:
-		spite.Name = msg.(*implantpb.ServiceRequest).Type
-		spite.Body = &implantpb.Spite_ServiceRequest{ServiceRequest: msg.(*implantpb.ServiceRequest).Service}
+		spite.Name = msg.Type
+		spite.Body = &implantpb.Spite_ServiceRequest{ServiceRequest: msg.Service}
 	case *implantpb.TaskScheduleRequest:
-		spite.Name = msg.(*implantpb.TaskScheduleRequest).Type
-		spite.Body = &implantpb.Spite_ScheduleRequest{ScheduleRequest: msg.(*implantpb.TaskScheduleRequest).Taskschd}
+		spite.Name = msg.Type
+		spite.Body = &implantpb.Spite_ScheduleRequest{ScheduleRequest: msg.Taskschd}
 	case *implantpb.WmiQueryRequest:
 		spite.Name = MsgWmiQuery.String()
-		spite.Body = &implantpb.Spite_WmiRequest{WmiRequest: msg.(*implantpb.WmiQueryRequest)}
+		spite.Body = &implantpb.Spite_WmiRequest{WmiRequest: msg}
 	case *implantpb.WmiMethodRequest:
 		spite.Name = MsgWmiExecute.String()
-		spite.Body = &implantpb.Spite_WmiMethodRequest{WmiMethodRequest: msg.(*implantpb.WmiMethodRequest)}
+		spite.Body = &implantpb.Spite_WmiMethodRequest{WmiMethodRequest: msg}
+	case *implantpb.PipeRequest:
+		spite.Name = msg.Type
+		spite.Body = &implantpb.Spite_PipeRequest{PipeRequest: msg.Pipe}
 	default:
 		return spite, ErrUnknownSpite
 	}
