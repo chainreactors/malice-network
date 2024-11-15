@@ -12,9 +12,6 @@ import (
 	"time"
 )
 
-//go:embed _inputrc
-var inputrc string
-
 var (
 	MaliceDirName    = ".config/malice"
 	ConfigDirName    = "configs"
