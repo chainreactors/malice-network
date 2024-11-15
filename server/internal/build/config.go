@@ -10,12 +10,14 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"path/filepath"
+	"strings"
 )
 
 var (
 	generateConfig = "config.yaml"
 	release        = "release"
 	malefic        = "malefic"
+	modules        = "modules"
 )
 
 func DbToConfig(req *clientpb.Generate) error {
@@ -37,21 +39,25 @@ func DbToConfig(req *clientpb.Generate) error {
 	return db.UpdateGeneratorConfig(req, path, profileDB)
 }
 
-func MoveBuildOutput(target, platform string) (string, string, error) {
+func MoveBuildOutput(target, buildType string) (string, string, error) {
 	var sourcePath string
 	var dstPath string
 	name := encoders.UUID()
-	switch platform {
-	case consts.Windows:
+	switch {
+	case strings.Contains(target, "windows"):
 		sourcePath = filepath.Join(configs.TargetPath, target, release, malefic+consts.PEFile)
 		dstPath = filepath.Join(configs.BuildOutputPath, name)
+		if buildType == consts.CommandBuildModules {
+			sourcePath = filepath.Join(configs.TargetPath, target, release, modules+consts.DllFile)
+			dstPath = filepath.Join(configs.BuildOutputPath, name+consts.DllFile)
+		}
 	//case consts.DLL:
 	//	sourcePath = filepath.Join(configs.TargetPath, target, release, malefic+consts.DllFile)
 	//	dstPath = filepath.Join(configs.BuildOutputPath, name+consts.DllFile)
 	//case consts.Shellcode:
 	//	sourcePath = filepath.Join(configs.TargetPath, target, release, malefic+consts.ShellcodeFile)
 	//	dstPath = filepath.Join(configs.BuildOutputPath, name+consts.ShellcodeFile)
-	case consts.Linux:
+	case strings.Contains(target, "linux"):
 		sourcePath = filepath.Join(configs.TargetPath, target, release, malefic)
 		dstPath = filepath.Join(configs.BuildOutputPath, name)
 	}

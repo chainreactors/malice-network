@@ -11,7 +11,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
 )
 
 func ListArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
@@ -40,11 +39,6 @@ func PrintArtifacts(builders *clientpb.Builders, con *repl.Console) error {
 		table.NewColumn("Type", "Type", 10),
 		table.NewColumn("Stager", "Stager", 10),
 		table.NewColumn("Modules", "Modules", 30),
-		//{Title: "Name", Width: 15},
-		//{Title: "Target", Width: 15},
-		//{Title: "Type", Width: 10},
-		//{Title: "Stager", Width: 10},
-		//{Title: "Modules", Width: 30},
 	}, false)
 	for _, builder := range builders.Builders {
 		row = table.NewRow(
@@ -52,16 +46,10 @@ func PrintArtifacts(builders *clientpb.Builders, con *repl.Console) error {
 				"Name":    builder.Name,
 				"Target":  builder.Target,
 				"Type":    builder.Type,
-				"Stager":  builder.Stager,
-				"Modules": strings.Join(builder.Modules, ","),
+				"Stager":  builder.Stage,
+				"Modules": builder.Modules,
 			})
-		//table.Row{
-		//	builder.Name,
-		//	builder.Target,
-		//	builder.Type,
-		//	builder.Stager,
-		//	strings.Join(builder.Modules, ","),
-		//}
+
 		rowEntries = append(rowEntries, row)
 	}
 	newTable := tui.NewModel(tableModel, nil, false, false)

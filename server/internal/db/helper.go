@@ -17,7 +17,6 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -560,8 +559,10 @@ func GetProfiles() ([]models.Profile, error) {
 }
 
 func SaveArtifactFromGenerate(req *clientpb.Generate, realName, path string) (*models.Builder, error) {
-	modules := strings.Join(req.Modules, ",")
-
+	arch, osType, ok := consts.GetTargetInfo(req.Target)
+	if !ok {
+		return nil, errors.New("invalid target")
+	}
 	builder := models.Builder{
 		Name:        req.Name,
 		ProfileName: req.ProfileName,
@@ -569,8 +570,10 @@ func SaveArtifactFromGenerate(req *clientpb.Generate, realName, path string) (*m
 		Type:        req.Type,
 		Stager:      req.Stager,
 		CA:          req.Ca,
-		Modules:     modules,
+		Modules:     req.Feature,
 		Path:        path,
+		Arch:        arch,
+		Os:          osType,
 	}
 
 	paramsJson, err := json.Marshal(req.Params)
@@ -612,7 +615,7 @@ func GetArtifacts() (*clientpb.Builders, error) {
 
 	}
 	var pbBuilders = &clientpb.Builders{
-		Builders: make([]*clientpb.Generate, 0),
+		Builders: make([]*clientpb.Builder, 0),
 	}
 	for _, builder := range builders {
 		pbBuilders.Builders = append(pbBuilders.GetBuilders(), builder.ToProtobuf())

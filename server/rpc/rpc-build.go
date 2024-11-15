@@ -58,7 +58,7 @@ func (rpc *Server) Build(ctx context.Context, req *clientpb.Generate) (*clientpb
 			return nil, err
 		}
 	}
-	maleficPath, artifactPath, err := build.MoveBuildOutput(req.Target, req.Platform)
+	maleficPath, artifactPath, err := build.MoveBuildOutput(req.Target, req.Type)
 	if err != nil {
 		return nil, err
 	}
@@ -108,10 +108,13 @@ func (rpc *Server) DownloadArtifact(ctx context.Context, req *clientpb.Builder) 
 	if err != nil {
 		return nil, err
 	}
+	name := req.Name + filepath.Ext(builder.Path)
 	return &clientpb.Builder{
-		Id:   builder.ID,
-		Name: builder.Name,
-		Bin:  data,
+		Id:       builder.ID,
+		Name:     name,
+		Bin:      data,
+		Arch:     builder.Arch,
+		Platform: builder.Os,
 	}, nil
 }
 

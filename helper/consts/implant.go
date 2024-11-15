@@ -28,16 +28,28 @@ const (
 type Arch uint32
 
 const (
-	I686      Arch = 0
-	X86_64    Arch = 1
-	Arm       Arch = 2
-	Aarch64   Arch = 3
-	Mips      Arch = 4
-	Powerpc   Arch = 5
-	Powerpc64 Arch = 6
-	Riscv32   Arch = 7
-	Riscv64   Arch = 8
+	I686    Arch = 0
+	X86_64  Arch = 1
+	Arm     Arch = 2
+	Aarch64 Arch = 3
+	Mips    Arch = 4
 )
+
+func (a Arch) String() string {
+	switch a {
+	case I686:
+		return "x86"
+	case X86_64:
+		return "x64"
+	case Arm:
+		return "arm"
+	case Aarch64:
+		return "arm64"
+	case Mips:
+		return "mips"
+	}
+	return ""
+}
 
 // ArchAlias 将别名映射为标准的架构名称
 var ArchAlias = map[string]string{
@@ -105,6 +117,74 @@ var (
 		"11.0.22000": "11",
 	}
 )
+
+type Target struct {
+	Name string
+	Arch string
+	OS   string
+}
+
+var TargetMap = []*Target{
+	{
+		Name: "x86_64-apple-darwin",
+		Arch: ArchMap["x64"].String(),
+		OS:   "macos",
+	},
+	{
+		Name: "aarch64-apple-darwin",
+		Arch: ArchMap["arm64"].String(),
+		OS:   "macos",
+	},
+	{
+		Name: "x86_64-unknown-linux-gnu",
+		Arch: ArchMap["x64"].String(),
+		OS:   "linux",
+	},
+	{
+		Name: "i686-unknown-linux-gnu",
+		Arch: ArchMap["x86"].String(),
+		OS:   "linux",
+	},
+	{
+		Name: "x86_64-pc-windows-msvc",
+		Arch: ArchMap["x64"].String(),
+		OS:   "windows",
+	},
+	{
+		Name: "i686-pc-windows-msvc",
+		Arch: ArchMap["x86"].String(),
+		OS:   "windows",
+	},
+	{
+		Name: "i686-pc-windows-gnu",
+		Arch: ArchMap["x86"].String(),
+		OS:   "windows",
+	},
+	{
+		Name: "x86_64-pc-windows-gnu",
+		Arch: ArchMap["x64"].String(),
+		OS:   "windows",
+	},
+	{
+		Name: "x86_64-unknown-linux-musl",
+		Arch: ArchMap["x64"].String(),
+		OS:   "linux",
+	},
+	{
+		Name: "i686-unknown-linux-musl",
+		Arch: ArchMap["x86"].String(),
+		OS:   "linux",
+	},
+}
+
+func GetTargetInfo(name string) (string, string, bool) {
+	for _, target := range TargetMap {
+		if target.Name == name {
+			return target.Arch, target.OS, true
+		}
+	}
+	return "", "", false
+}
 
 func FormatArch(arch string) string {
 	if v, found := ArchAlias[arch]; found {
