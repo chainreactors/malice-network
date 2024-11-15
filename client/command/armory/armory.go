@@ -13,6 +13,7 @@ import (
 	"github.com/evertras/bubble-table/table"
 	"github.com/pterm/pterm"
 	"github.com/spf13/cobra"
+	"io"
 	"net/url"
 	"slices"
 	"strings"
@@ -432,10 +433,10 @@ func PrintArmoryPackages(aliases []*alias.AliasManifest, exts []*extension.Exten
 
 		rowEntries = append(rowEntries, row)
 	}
+	newTable := tui.NewModel(tableModel, nil, false, false)
 	tableModel.SetRows(rowEntries)
 	tableModel.SetMultiline()
-	tableModel.SetHandle(DownloadArmoryCallback(tableModel, con, clientConfig))
-	newTable := tui.NewModel(tableModel, nil, false, false)
+	tableModel.SetHandle(DownloadArmoryCallback(tableModel, newTable.Buffer, con, clientConfig))
 	err := newTable.Run()
 	if err != nil {
 		con.Log.Errorf("Failed to run table model: %s\n", err)
@@ -443,11 +444,11 @@ func PrintArmoryPackages(aliases []*alias.AliasManifest, exts []*extension.Exten
 	}
 }
 
-func DownloadArmoryCallback(tableModel *tui.TableModel, con *repl.Console, clientConfig ArmoryHTTPConfig) func() {
+func DownloadArmoryCallback(tableModel *tui.TableModel, writer io.Writer, con *repl.Console, clientConfig ArmoryHTTPConfig) func() {
 	selected := tableModel.GetHighlightedRow()
 	if selected.Data == nil {
 		return func() {
-			con.Log.Errorf("No row selected\n")
+			con.Log.FErrorf(writer, "No row selected\n")
 		}
 	}
 	armoryPK := getArmoryPublicKey(selected.Data["Armory"].(string))
@@ -455,28 +456,28 @@ func DownloadArmoryCallback(tableModel *tui.TableModel, con *repl.Console, clien
 		true, clientConfig, con)
 	if err == nil {
 		return func() {
-			con.Log.Infof("Successfully installed package %q\n", selected.Data["Command Name"].(string))
+			con.Log.FInfof(writer, "Successfully installed package %q\n", selected.Data["Command Name"].(string))
 		}
 	}
 	if errors.Is(err, ErrPackageNotFound) {
 		if armoryPK == "" {
 			return func() {
-				con.Log.Errorf("No package named '%s' was found\n", selected.Data["Command Name"].(string))
+				con.Log.FErrorf(writer, "No package named '%s' was found\n", selected.Data["Command Name"].(string))
 			}
 		} else {
 			return func() {
-				con.Log.Errorf("No package named '%s' was found for armory '%s'\n",
+				con.Log.FErrorf(writer, "No package named '%s' was found for armory '%s'\n",
 					selected.Data["Command Name"].(string), selected.Data["Armory"].(string))
 			}
 		}
 	} else if errors.Is(err, ErrPackageAlreadyInstalled) {
 		return func() {
-			con.Log.Errorf("Package %q is already installed - use the force option to overwrite it\n",
+			con.Log.FErrorf(writer, "Package %q is already installed - use the force option to overwrite it\n",
 				selected.Data["Command Name"].(string))
 		}
 	} else {
 		return func() {
-			con.Log.Errorf("Could not install package: %s\n", err)
+			con.Log.FErrorf(writer, "Could not install package: %s\n", err)
 		}
 	}
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -63,12 +64,13 @@ func PrintArtifacts(builders *clientpb.Builders, con *repl.Console) error {
 		//}
 		rowEntries = append(rowEntries, row)
 	}
+	newTable := tui.NewModel(tableModel, nil, false, false)
+
 	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)
 	tableModel.SetHandle(func() {
-		downloadArtifactCallback(tableModel, con)()
+		downloadArtifactCallback(tableModel, newTable.Buffer, con)()
 	})
-	newTable := tui.NewModel(tableModel, nil, false, false)
 	err := newTable.Run()
 	if err != nil {
 		return err
@@ -131,25 +133,25 @@ func UploadArtifact(con *repl.Console, path string, name, artifactType, stage st
 	})
 }
 
-func downloadArtifactCallback(tableModel *tui.TableModel, con *repl.Console) func() {
+func downloadArtifactCallback(tableModel *tui.TableModel, writer io.Writer, con *repl.Console) func() {
 	selectRow := tableModel.GetHighlightedRow()
 	if selectRow.Data == nil {
 		return func() {
-			con.Log.Errorf("No row selected")
+			con.Log.FErrorf(writer, "No row selected\n")
 		}
 	}
 	builder, err := DownloadArtifact(con, selectRow.Data["Name"].(string))
 	if err != nil {
 		return func() {
-			con.Log.Errorf("open file %s", err)
+			con.Log.FErrorf(writer, "open file %s\n", err)
 		}
 	}
-	con.Log.Infof("download artifact %s\n", builder.Name)
+	con.Log.FInfof(writer, "download artifact %s\n", builder.Name)
 	return func() {
 		output := filepath.Join(assets.GetTempDir(), builder.Name)
 		err = os.WriteFile(output, builder.Bin, 0644)
 		if err != nil {
-			con.Log.Errorf(err.Error() + "\n")
+			con.Log.FErrorf(writer, err.Error()+"\n")
 			return
 		}
 	}
