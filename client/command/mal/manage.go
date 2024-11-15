@@ -7,6 +7,7 @@ import (
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
+	"io"
 	"net/url"
 	"path/filepath"
 	"time"
@@ -99,12 +100,13 @@ func printMals(maljson MalsJson, malHttpConfig MalHTTPConfig, con *repl.Console)
 		//}
 		rowEntries = append(rowEntries, row)
 	}
+	newTable := tui.NewModel(tableModel, nil, false, false)
+
 	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)
 	tableModel.SetHandle(func() {
-		installMal(tableModel, malHttpConfig, con)
+		installMal(tableModel, newTable.Buffer, malHttpConfig, con)
 	})
-	newTable := tui.NewModel(tableModel, nil, false, false)
 	err := newTable.Run()
 	if err != nil {
 		return err
@@ -113,11 +115,11 @@ func printMals(maljson MalsJson, malHttpConfig MalHTTPConfig, con *repl.Console)
 	return nil
 }
 
-func installMal(tableModel *tui.TableModel, malHttpConfig MalHTTPConfig, con *repl.Console) func() {
+func installMal(tableModel *tui.TableModel, writer io.Writer, malHttpConfig MalHTTPConfig, con *repl.Console) func() {
 	selectRow := tableModel.GetHighlightedRow()
 	if selectRow.Data == nil {
 		return func() {
-			con.Log.Errorf("No row selected")
+			con.Log.FErrorf(writer, "No row selected\n")
 		}
 	}
 	logs.Log.Infof("Installing mal: %s", selectRow.Data["Name"].(string))
@@ -125,7 +127,7 @@ func installMal(tableModel *tui.TableModel, malHttpConfig MalHTTPConfig, con *re
 		selectRow.Data["Version"].(string), malHttpConfig)
 	if err != nil {
 		return func() {
-			con.Log.Errorf("Error installing mal: %s", err)
+			con.Log.FErrorf(writer, "Error installing mal: %s\n", err)
 		}
 	}
 	tarGzPath := filepath.Join(assets.GetMalsDir(), selectRow.Data["Name"].(string)+".tar.gz")
