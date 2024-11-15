@@ -35,7 +35,7 @@ func PrintArtifacts(builders *clientpb.Builders, con *repl.Console) error {
 
 	tableModel := tui.NewTable([]table.Column{
 		table.NewColumn("Name", "Name", 15),
-		table.NewColumn("Target", "Target", 15),
+		table.NewColumn("Target", "Target", 30),
 		table.NewColumn("Type", "Type", 10),
 		table.NewColumn("Stager", "Stager", 10),
 		table.NewColumn("Modules", "Modules", 30),
@@ -134,7 +134,7 @@ func downloadArtifactCallback(tableModel *tui.TableModel, writer io.Writer, con 
 			con.Log.FErrorf(writer, "open file %s\n", err)
 		}
 	}
-	con.Log.FInfof(writer, "download artifact %s\n", builder.Name)
+	con.Log.FInfof(writer, "download artifact %s\n", filepath.Join(assets.GetTempDir(), builder.Name))
 	return func() {
 		output := filepath.Join(assets.GetTempDir(), builder.Name)
 		err = os.WriteFile(output, builder.Bin, 0644)

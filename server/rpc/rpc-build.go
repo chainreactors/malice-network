@@ -79,7 +79,8 @@ func (rpc *Server) Build(ctx context.Context, req *clientpb.Generate) (*clientpb
 			Id:   builder.ID,
 		}, nil
 	} else {
-		builder, bin, err := build.NewMaleficSRDIArtifact(req.Name+"_srdi", artifactPath, req.Platform, "", req.Stager)
+		builder, bin, err := build.NewMaleficSRDIArtifact(req.Name+"_srdi", artifactPath, req.Platform,
+			"", req.Stager, "", "")
 		if err != nil {
 			return nil, err
 		}
@@ -122,25 +123,21 @@ func (rpc *Server) MaleficSRDI(ctx context.Context, req *clientpb.Builder) (*cli
 	var filePath, realName string
 	var builder *models.Builder
 	var err error
-	if req.Name != "" {
-		builder, err = db.GetArtifactByName(req.Name)
-		filePath = builder.Path
-		realName = builder.Name
-	} else if req.Id != 0 {
+	if req.Id != 0 {
 		builder, err = db.GetArtifactById(req.Id)
+		if err != nil {
+			return nil, err
+		}
 		filePath = builder.Path
 		realName = builder.Name
 	} else {
 		dst := encoders.UUID()
-		filePath = filepath.Join(configs.BuildOutputPath, dst)
+		filePath = filepath.Join(configs.TempPath, dst)
 		realName = req.Name
 		err = build.SaveArtifact(dst, req.Bin)
 	}
-	if err != nil {
-		return nil, err
-	}
 
-	builder, bin, err := build.NewMaleficSRDIArtifact(realName+"_srdi", filePath, req.Platform, req.Arch, req.Stage)
+	builder, bin, err := build.NewMaleficSRDIArtifact(realName+"_"+consts.SRDIType, filePath, req.Platform, req.Arch, req.Stage, req.FunctionName, req.UserDataPath)
 	if err != nil {
 		return nil, err
 	}
