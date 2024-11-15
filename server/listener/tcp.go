@@ -163,7 +163,7 @@ func (pipeline *TCPPipeline) handlePulse(conn net.Conn) {
 		Id: uint32(artifactId),
 	})
 	if err != nil {
-		logs.Log.Errorf("not found artifact %s", err.Error())
+		logs.Log.Errorf("not found artifact %d ,%s ", artifactId, err.Error())
 		return
 	} else {
 		logs.Log.Infof("send artifact %d %s", builder.Id, builder.Name)

@@ -32,8 +32,7 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 		if err != nil {
 			return nil, err
 		}
-		taskPb := greq.Task.ToProtobuf()
-		err = db.AddFile("upload", taskPb, &models.FileDescription{
+		err = db.AddFile("upload", greq.Task.ToProtobuf(), &models.FileDescription{
 			Name:    req.Name,
 			Path:    req.Target,
 			Command: fmt.Sprintf("upload -%d -%t", req.Priv, req.Hidden),
@@ -63,8 +62,7 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 			return nil, err
 		}
 		var blockId = 0
-		taskPb := greq.Task.ToProtobuf()
-		err = db.AddFile("upload", taskPb, &models.FileDescription{
+		err = db.AddFile("upload", greq.Task.ToProtobuf(), &models.FileDescription{
 			Name:     req.Name,
 			NickName: "",
 			Path:     req.Target,

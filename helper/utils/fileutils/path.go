@@ -1,10 +1,7 @@
 package fileutils
 
-import "strings"
+import "path/filepath"
 
 func FormatWindowPath(path string) string {
-	path = strings.ReplaceAll(path, "\\\\", "/")
-	path = strings.ReplaceAll(path, "\\", "/")
-	path = strings.ReplaceAll(path, "/", `\`)
-	return path
+	return filepath.FromSlash(path)
 }

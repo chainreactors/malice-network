@@ -15,6 +15,7 @@ import (
 	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/command/mal"
 	"github.com/chainreactors/malice-network/client/command/modules"
+	"github.com/chainreactors/malice-network/client/command/pipe"
 	"github.com/chainreactors/malice-network/client/command/privilege"
 	"github.com/chainreactors/malice-network/client/command/reg"
 	"github.com/chainreactors/malice-network/client/command/service"
@@ -110,7 +111,9 @@ func BindBuiltinCommands(con *repl.Console, root *cobra.Command) *cobra.Command 
 
 	bind(consts.FileGroup,
 		file.Commands,
-		filesystem.Commands)
+		filesystem.Commands,
+		pipe.Commands,
+	)
 
 	bind(consts.ArmoryGroup)
 	bind(consts.AddonGroup)
@@ -195,4 +198,5 @@ func RegisterImplantFunc(con *repl.Console) {
 	reg.Register(con)
 	taskschd.Register(con)
 	privilege.Register(con)
+	pipe.Register(con)
 }
