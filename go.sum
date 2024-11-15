@@ -108,10 +108,10 @@ github.com/chainreactors/files v0.0.0-20231102192550-a652458cee26 h1:p+RrnAjk2Es
 github.com/chainreactors/files v0.0.0-20231102192550-a652458cee26/go.mod h1:/Xa9YXhjBlaC33JTD6ZTJFig6pcplak2IDcovf42/6A=
 github.com/chainreactors/logs v0.0.0-20241108080408-6d31ab9dae0a h1:6GAJZ9RkRjs8XM/vBC9KR6+TJkRgb7geHdylXXXoGyA=
 github.com/chainreactors/logs v0.0.0-20241108080408-6d31ab9dae0a/go.mod h1:6Mv6W70JrtL6VClulZhmMRZnoYpcTahcDTKLMNEjK0o=
-github.com/chainreactors/tui v0.0.0-20241114181843-399bd5598c01 h1:z2X3ehLMNHY9FVChL9d1W0kkp7106UjvRIXO1ci2Ceg=
-github.com/chainreactors/tui v0.0.0-20241114181843-399bd5598c01/go.mod h1:PGljG4yiAGUZvGzue6zTAapxQgVMxbezmCsr9l0xzKc=
 github.com/chainreactors/tui v0.0.0-20241114184801-dbf3cd92716b h1:O7jfHSSvO0k9qLJ4GhD2pphcrk1i8HO+XqEeubg9h5M=
 github.com/chainreactors/tui v0.0.0-20241114184801-dbf3cd92716b/go.mod h1:PGljG4yiAGUZvGzue6zTAapxQgVMxbezmCsr9l0xzKc=
+github.com/chainreactors/tui v0.0.0-20241115071332-57e03d1fe9b1 h1:epsKULL0klYs1Ev4XjZF/7jwzbiJaCYEHmD7ZiCHvtU=
+github.com/chainreactors/tui v0.0.0-20241115071332-57e03d1fe9b1/go.mod h1:PGljG4yiAGUZvGzue6zTAapxQgVMxbezmCsr9l0xzKc=
 github.com/chainreactors/utils v0.0.0-20240805193040-ff3b97aa3c3f h1:2NKmadFYP9vCwC0YrazgttFACleOhxScTPzg0i76YAY=
 github.com/chainreactors/utils v0.0.0-20240805193040-ff3b97aa3c3f/go.mod h1:LajXuvESQwP+qCMAvlcoSXppQCjuLlBrnQpu9XQ1HtU=
 github.com/charmbracelet/bubbles v0.18.0 h1:PYv1A036luoBGroX6VWjQIE9Syf2Wby2oOl/39KLfy0=
