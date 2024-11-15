@@ -8,8 +8,8 @@ require (
 	filippo.io/age v1.1.1
 	github.com/Binject/go-donut v0.0.0-20220908180326-fcdcc35d591c
 	github.com/chainreactors/files v0.0.0-20231102192550-a652458cee26
-	github.com/chainreactors/logs v0.0.0-20241108080408-6d31ab9dae0a
-	github.com/chainreactors/tui v0.0.0-20241115071332-57e03d1fe9b1
+	github.com/chainreactors/logs v0.0.0-20241115105204-6132e39f5261
+	github.com/chainreactors/tui v0.0.0-20241115110829-08f279aa2ea1
 	github.com/chainreactors/utils v0.0.0-20240805193040-ff3b97aa3c3f
 	github.com/charmbracelet/bubbles v0.18.0
 	github.com/charmbracelet/bubbletea v0.27.1

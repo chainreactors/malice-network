@@ -8,6 +8,7 @@ import (
 	"github.com/evertras/bubble-table/table"
 	"github.com/pterm/pterm"
 	"github.com/spf13/cobra"
+	"io"
 	"strconv"
 	"strings"
 	"time"
@@ -69,13 +70,13 @@ func PrintSessions(sessions map[string]*core.Session, con *repl.Console, isAll b
 			})
 		rowEntries = append(rowEntries, row)
 	}
+	newTable := tui.NewModel(tableModel, nil, false, false)
 	var err error
 	tableModel.SetRows(rowEntries)
 	tableModel.SetMultiline()
 	tableModel.SetHandle(func() {
-		SessionLogin(tableModel, con)()
+		SessionLogin(tableModel, newTable.Buffer, con)()
 	})
-	newTable := tui.NewModel(tableModel, nil, false, false)
 	err = newTable.Run()
 	if err != nil {
 		return
@@ -83,12 +84,12 @@ func PrintSessions(sessions map[string]*core.Session, con *repl.Console, isAll b
 	tui.Reset()
 }
 
-func SessionLogin(tableModel *tui.TableModel, con *repl.Console) func() {
+func SessionLogin(tableModel *tui.TableModel, writer io.Writer, con *repl.Console) func() {
 	var sessionId string
 	selectRow := tableModel.GetHighlightedRow()
 	if selectRow.Data == nil {
 		return func() {
-			con.Log.Errorf("No row selected")
+			con.Log.FErrorf(writer, "No row selected\n")
 		}
 	}
 	for _, s := range con.Sessions {
