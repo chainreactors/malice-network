@@ -1,6 +1,7 @@
 package generic
 
 import (
+	"errors"
 	"fmt"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
@@ -59,17 +60,31 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Use:   "! [command]",
 		Short: "Run a command",
 		Args:  cobra.MinimumNArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			// os exec
 
-			out, err := exec.Command(args[0], args[1:]...).Output()
-			if err != nil {
-				fmt.Println("Error:", err)
-				return
+			if len(args) < 1 {
+				return errors.New("command requires one or more arguments")
 			}
 
-			// 打印标准输出
-			fmt.Println(string(out))
+			// Above, the length of args is checked to be at least 2
+			path, err := exec.LookPath(args[0])
+			if err != nil {
+				return err
+			}
+
+			shellCmd := exec.Command(path, args[1:]...)
+
+			// Load OS environment
+			shellCmd.Env = os.Environ()
+
+			out, err := shellCmd.CombinedOutput()
+			if err != nil {
+				return err
+			}
+
+			fmt.Print(string(out))
+			return nil
 		},
 	}
 
