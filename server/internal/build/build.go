@@ -11,6 +11,7 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
+	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -20,19 +21,36 @@ import (
 
 var (
 	NameSpace                   = "ghcr.io/chainreactors"
-	Tag                         = "nightly-2024-08-16-latest"
+	Tag                         = "nightly-2023-09-18-latest"
 	ContainerSourceCodePath     = "/root/src"
 	ContainerCargoRegistryCache = "/root/cargo/registry"
-	CargoGitCache               = "/root/cargo/git"
-	exePath                     = filepath.Join(configs.SourceCodePath, "malefic_mutant")
+	ContainerCargoGitCache      = "/root/cargo/git"
+	ContainerBinPath            = "/root/bin"
+	LocalMutantPath             = filepath.Join(configs.BinPath, "malefic_mutant")
 	command                     = "generate"
 	funcNameOption              = "--function-name"
 	userDataPathOption          = "--user-data-path"
+
+	SourceCodeVolume         = fmt.Sprintf("%s:%s", configs.SourceCodePath, ContainerSourceCodePath)
+	CargoRegistryCacheVolume = fmt.Sprintf("%s:%s", filepath.Join(configs.CargoCachePath, "registry"), ContainerCargoRegistryCache)
+	CargoGitCacheVolume      = fmt.Sprintf("%s:%s", filepath.Join(configs.CargoCachePath, "git"), ContainerCargoGitCache)
+	BinPathVolume            = fmt.Sprintf("%s:%s", configs.BinPath, ContainerBinPath)
+	Volumes                  = []string{SourceCodeVolume, CargoRegistryCacheVolume, CargoGitCacheVolume, BinPathVolume}
 )
 
 var dockerClient *client.Client
 var once sync.Once
 
+func generateContainerName(length int) string {
+	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	src := rand.NewSource(time.Now().UnixNano())
+	r := rand.New(src)
+	randomPart := make([]byte, length)
+	for i := range randomPart {
+		randomPart[i] = charset[r.Intn(len(charset))]
+	}
+	return string(randomPart)
+}
 func GetDockerClient() (*client.Client, error) {
 	var err error
 	once.Do(func() {
@@ -45,31 +63,23 @@ func GetDockerClient() (*client.Client, error) {
 }
 
 func BuildBeacon(cli *client.Client, req *clientpb.Generate) error {
-
-	SourceCodeVolume := fmt.Sprintf("%s:%s", configs.SourceCodePath, ContainerSourceCodePath)
-	CargoRegistryCacheVolume := fmt.Sprintf("%s:%s", filepath.Join(configs.CargoCachePath, "registry"), ContainerCargoRegistryCache)
-	CargoGitCacheVolume := fmt.Sprintf("%s:%s", filepath.Join(configs.CargoCachePath, "git"), CargoGitCache)
-
 	timeout := 20 * time.Minute
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-
+	buildBeaconCommand := fmt.Sprintf(
+		"%s/malefic_mutant generate beacon && cargo build --target %s --release -p malefic",
+		ContainerBinPath,
+		req.Target,
+	)
+	containerName := "malefic_" + generateContainerName(8)
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
 		Image: fmt.Sprintf("%s/%s:%s", NameSpace, req.Target, Tag),
-		//Cmd:   []string{"cargo", "make", "--disable-check-for-updates", "malefic"},
-		Cmd: []string{"sh", "-c",
-			fmt.Sprintf("./malefic_mutant generate beacon && cargo build --target %s --release -p malefic",
-				req.Target)},
+		Cmd:   []string{"sh", "-c", buildBeaconCommand},
 		//"cargo run -p malefic-mutant stage0 professional x86_64 source && cargo build --release -p malefic-pulse"},
-		Env: []string{"TARGET_TRIPLE=" + req.Target + ""},
 	}, &container.HostConfig{
 		AutoRemove: true,
-		Binds: []string{
-			SourceCodeVolume,
-			CargoRegistryCacheVolume,
-			CargoGitCacheVolume,
-		},
-	}, nil, nil, "test-container")
+		Binds:      Volumes,
+	}, nil, nil, containerName)
 	if err != nil {
 		return err
 	}
@@ -94,29 +104,23 @@ func BuildBeacon(cli *client.Client, req *clientpb.Generate) error {
 }
 
 func BuildBind(cli *client.Client, req *clientpb.Generate) error {
-
-	SourceCodeVolume := fmt.Sprintf("%s:%s", configs.SourceCodePath, ContainerSourceCodePath)
-	CargoRegistryCacheVolume := fmt.Sprintf("%s:%s", filepath.Join(configs.CargoCachePath, "registry"), ContainerCargoRegistryCache)
-	CargoGitCacheVolume := fmt.Sprintf("%s:%s", filepath.Join(configs.CargoCachePath, "git"), CargoGitCache)
-
 	timeout := 20 * time.Minute
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
+	BuildBindCommand := fmt.Sprintf(
+		"%s/malefic_mutant generate bind  && cargo build --target %s --release -p malefic",
+		ContainerBinPath,
+		req.Target,
+	)
+	containerName := "malefic_" + generateContainerName(8)
 
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
 		Image: fmt.Sprintf("%s/%s:%s", NameSpace, req.Target, Tag),
-		Cmd: []string{"sh", "-c",
-			fmt.Sprintf("./malefic_mutant generate bind  && cargo build --target %s --release -p malefic",
-				req.Target)},
-		Env: []string{"TARGET_TRIPLE=" + req.Target + ""},
+		Cmd:   []string{"sh", "-c", BuildBindCommand},
 	}, &container.HostConfig{
 		AutoRemove: true,
-		Binds: []string{
-			SourceCodeVolume,
-			CargoRegistryCacheVolume,
-			CargoGitCacheVolume,
-		},
-	}, nil, nil, "test-container")
+		Binds:      Volumes,
+	}, nil, nil, containerName)
 	if err != nil {
 		return err
 	}
@@ -142,27 +146,22 @@ func BuildBind(cli *client.Client, req *clientpb.Generate) error {
 
 func BuildPrelude(cli *client.Client, req *clientpb.Generate) error {
 
-	SourceCodeVolume := fmt.Sprintf("%s:%s", configs.SourceCodePath, ContainerSourceCodePath)
-	CargoRegistryCacheVolume := fmt.Sprintf("%s:%s", filepath.Join(configs.CargoCachePath, "registry"), ContainerCargoRegistryCache)
-	CargoGitCacheVolume := fmt.Sprintf("%s:%s", filepath.Join(configs.CargoCachePath, "git"), CargoGitCache)
-
 	timeout := 20 * time.Minute
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
+	BuildPreludeCommand := fmt.Sprintf(
+		"%s/malefic_mutant generate prelude autorun.yaml && cargo build --target %s --release -p malefic-prelude",
+		ContainerBinPath,
+		req.Target,
+	)
+	containerName := "malefic_" + generateContainerName(8)
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
 		Image: fmt.Sprintf("%s/%s:%s", NameSpace, req.Target, Tag),
-		Cmd: []string{"sh", "-c",
-			fmt.Sprintf("./malefic_mutant generate prelude autorun.yaml && cargo build --target %s --release -p malefic-prelude",
-				req.Target)},
-		Env: []string{"TARGET_TRIPLE=" + req.Target + ""},
+		Cmd:   []string{"sh", "-c", BuildPreludeCommand},
 	}, &container.HostConfig{
 		AutoRemove: true,
-		Binds: []string{
-			SourceCodeVolume,
-			CargoRegistryCacheVolume,
-			CargoGitCacheVolume,
-		},
-	}, nil, nil, "test-container")
+		Binds:      Volumes,
+	}, nil, nil, containerName)
 	if err != nil {
 		return err
 	}
@@ -187,28 +186,22 @@ func BuildPrelude(cli *client.Client, req *clientpb.Generate) error {
 }
 
 func BuildLoader(cli *client.Client, req *clientpb.Generate) error {
-	SourceCodeVolume := fmt.Sprintf("%s:%s", configs.SourceCodePath, ContainerSourceCodePath)
-	CargoRegistryCacheVolume := fmt.Sprintf("%s:%s", filepath.Join(configs.CargoCachePath, "registry"), ContainerCargoRegistryCache)
-	CargoGitCacheVolume := fmt.Sprintf("%s:%s", filepath.Join(configs.CargoCachePath, "git"), CargoGitCache)
-
 	timeout := 20 * time.Minute
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-
+	BuildBindCommand := fmt.Sprintf(
+		"%s/malefic_mutant prelude autorun.yaml && cargo build --target %s --release -p malefic-prelude",
+		ContainerBinPath,
+		req.Target,
+	)
+	containerName := "malefic_" + generateContainerName(8)
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
 		Image: fmt.Sprintf("%s/%s:%s", NameSpace, req.Target, Tag),
-		Cmd: []string{"sh", "-c",
-			fmt.Sprintf("./malefic_mutant prelude autorun.yaml && cargo build --target %s --release -p malefic-prelude",
-				req.Target)},
-		Env: []string{"TARGET_TRIPLE=" + req.Target + ""},
+		Cmd:   []string{"sh", "-c", BuildBindCommand},
 	}, &container.HostConfig{
 		AutoRemove: true,
-		Binds: []string{
-			SourceCodeVolume,
-			CargoRegistryCacheVolume,
-			CargoGitCacheVolume,
-		},
-	}, nil, nil, "test-container")
+		Binds:      Volumes,
+	}, nil, nil, containerName)
 	if err != nil {
 		return err
 	}
@@ -233,20 +226,19 @@ func BuildLoader(cli *client.Client, req *clientpb.Generate) error {
 }
 
 func BuildModules(cli *client.Client, req *clientpb.Generate) error {
-	SourceCodeVolume := fmt.Sprintf("%s:%s", configs.SourceCodePath, ContainerSourceCodePath)
-	CargoRegistryCacheVolume := fmt.Sprintf("%s:%s", filepath.Join(configs.CargoCachePath, "registry"), ContainerCargoRegistryCache)
-	CargoGitCacheVolume := fmt.Sprintf("%s:%s", filepath.Join(configs.CargoCachePath, "git"), CargoGitCache)
-
 	timeout := 20 * time.Minute
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-
+	containerName := "malefic_" + generateContainerName(8)
+	buildModulesCommand := fmt.Sprintf(
+		"%s/malefic_mutant generate modules %s -s && cargo build --target %s --release -p malefic-modules --features %s",
+		ContainerBinPath,
+		req.Feature,
+		req.Target,
+		req.Feature)
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
 		Image: fmt.Sprintf("%s/%s:%s", NameSpace, req.Target, Tag),
-		Cmd: []string{"sh", "-c",
-			fmt.Sprintf("./malefic_mutant generate modules %s -s && cargo build --target %s --release -p malefic-modules --features %s",
-				req.Feature, req.Target, req.Feature)},
-		Env: []string{"TARGET_TRIPLE=" + req.Target + ""},
+		Cmd:   []string{"sh", "-c", buildModulesCommand},
 	}, &container.HostConfig{
 		AutoRemove: true,
 		Binds: []string{
@@ -254,7 +246,7 @@ func BuildModules(cli *client.Client, req *clientpb.Generate) error {
 			CargoRegistryCacheVolume,
 			CargoGitCacheVolume,
 		},
-	}, nil, nil, "test-container")
+	}, nil, nil, containerName)
 	if err != nil {
 		return err
 	}
@@ -317,7 +309,7 @@ func MaleficSRDI(src, dst, platform, arch, funcName, dataPath string) ([]byte, e
 		args = append(args, userDataPathOption, dataPath)
 	}
 
-	cmd := exec.Command(exePath, args...)
+	cmd := exec.Command(LocalMutantPath, args...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return []byte{}, err
