@@ -28,7 +28,8 @@ var (
 	ErrNoConfig                 = errors.New("no config found")
 	WebsitePath                 = path.Join(ServerRootPath, "web")
 	// variables for implant build
-	BuildPath       = path.Join(ServerRootPath, "build")
+	BuildPath       = path.Join(GetWorkDir(), "..", "malefic", "build")
+	BinPath         = path.Join(BuildPath, "bin")
 	SourceCodePath  = path.Join(BuildPath, "src")
 	TargetPath      = path.Join(SourceCodePath, "target")
 	CargoCachePath  = path.Join(BuildPath, "cache")
