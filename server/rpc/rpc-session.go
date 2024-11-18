@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/types"
@@ -66,7 +67,7 @@ func (rpc *Server) SessionManage(ctx context.Context, req *clientpb.BasicUpdateS
 	case "note":
 		session, ok := core.Sessions.Get(req.SessionId)
 		if !ok {
-			return nil, ErrNotFoundSession
+			return nil, errs.ErrNotFoundSession
 		}
 		session.Name = req.Arg
 		err := db.UpdateSession(req.SessionId, req.Arg, "")
@@ -76,7 +77,7 @@ func (rpc *Server) SessionManage(ctx context.Context, req *clientpb.BasicUpdateS
 	case "group":
 		session, ok := core.Sessions.Get(req.SessionId)
 		if !ok {
-			return nil, ErrNotFoundSession
+			return nil, errs.ErrNotFoundSession
 		}
 		session.Group = req.Arg
 		err := db.UpdateSession(req.SessionId, "", req.Arg)

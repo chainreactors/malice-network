@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/encoders"
+	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/utils/mtls"
 	"github.com/chainreactors/malice-network/server/internal/configs"
@@ -559,9 +560,9 @@ func GetProfiles() ([]models.Profile, error) {
 }
 
 func SaveArtifactFromGenerate(req *clientpb.Generate, realName, path string) (*models.Builder, error) {
-	arch, osType, ok := consts.GetTargetInfo(req.Target)
+	target, ok := consts.GetBuildTarget(req.Target)
 	if !ok {
-		return nil, errors.New("invalid target")
+		return nil, errs.ErrNotFoundTarget
 	}
 	builder := models.Builder{
 		Name:        req.Name,
@@ -572,8 +573,8 @@ func SaveArtifactFromGenerate(req *clientpb.Generate, realName, path string) (*m
 		CA:          req.Ca,
 		Modules:     req.Feature,
 		Path:        path,
-		Arch:        arch,
-		Os:          osType,
+		Arch:        target.Arch,
+		Os:          target.OS,
 	}
 
 	paramsJson, err := json.Marshal(req.Params)

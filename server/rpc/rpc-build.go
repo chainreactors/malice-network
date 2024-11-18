@@ -8,6 +8,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/codenames"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/encoders"
+	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/server/internal/build"
 	"github.com/chainreactors/malice-network/server/internal/configs"
@@ -20,6 +21,10 @@ import (
 func (rpc *Server) Build(ctx context.Context, req *clientpb.Generate) (*clientpb.Builder, error) {
 	if req.Name == "" {
 		req.Name = codenames.GetCodename()
+	}
+	_, ok := consts.GetBuildTarget(req.Target)
+	if !ok {
+		return nil, errs.ErrNotFoundTarget
 	}
 	cli, err := build.GetDockerClient()
 	if err != nil {

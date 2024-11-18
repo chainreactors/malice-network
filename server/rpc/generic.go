@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/types"
@@ -125,8 +126,8 @@ func buildErrorEvent(task *core.Task, err error) core.Event {
 		eventErr = handler.ErrAssertFailure.Error()
 	case errors.Is(err, handler.ErrNilResponseBody):
 		eventErr = handler.ErrNilResponseBody.Error()
-	case errors.Is(err, ErrMissingRequestField):
-		eventErr = ErrMissingRequestField.Error()
+	case errors.Is(err, errs.ErrMissingRequestField):
+		eventErr = errs.ErrMissingRequestField.Error()
 	default:
 		eventErr = err.Error()
 	}
@@ -146,7 +147,7 @@ func (rpc *Server) GenericHandler(ctx context.Context, req *GenericRequest) (cha
 		return nil, err
 	}
 	if pipelinesCh[req.Session.PipelineID] == nil {
-		return nil, ErrNotFoundPipeline
+		return nil, errs.ErrNotFoundPipeline
 	}
 	out, err := req.Session.RequestWithAsync(
 		&clientpb.SpiteRequest{Session: req.Session.ToProtobufLite(), Task: req.Task.ToProtobuf(), Spite: spite},
@@ -167,7 +168,7 @@ func (rpc *Server) StreamGenericHandler(ctx context.Context, req *GenericRequest
 		return nil, nil, err
 	}
 	if pipelinesCh[req.Session.PipelineID] == nil {
-		return nil, nil, ErrNotFoundPipeline
+		return nil, nil, errs.ErrNotFoundPipeline
 	}
 	in, out, err := req.Session.RequestWithStream(
 		&clientpb.SpiteRequest{Session: req.Session.ToProtobufLite(), Task: req.Task.ToProtobuf(), Spite: spite},
@@ -193,12 +194,12 @@ func (rpc *Server) GetBasic(ctx context.Context, _ *clientpb.Empty) (*clientpb.B
 func getSessionID(ctx context.Context) (string, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
-		return "", ErrNotFoundSession
+		return "", errs.ErrNotFoundSession
 	}
 	if sid := md.Get("session_id"); len(sid) > 0 {
 		return sid[0], nil
 	} else {
-		return "", ErrNotFoundSession
+		return "", errs.ErrNotFoundSession
 	}
 }
 
@@ -222,7 +223,7 @@ func getSession(ctx context.Context) (*core.Session, error) {
 
 	session, ok := core.Sessions.Get(sid)
 	if !ok {
-		return nil, ErrInvalidSessionID
+		return nil, errs.ErrInvalidSessionID
 	}
 	return session, nil
 }
@@ -230,12 +231,12 @@ func getSession(ctx context.Context) (*core.Session, error) {
 func getListenerID(ctx context.Context) (string, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
-		return "", ErrNotFoundListener
+		return "", errs.ErrNotFoundListener
 	}
 	if sid := md.Get("listener_id"); len(sid) > 0 {
 		return sid[0], nil
 	} else {
-		return "", ErrNotFoundListener
+		return "", errs.ErrNotFoundListener
 	}
 }
 
@@ -258,12 +259,12 @@ func getRemoteAddr(ctx context.Context) string {
 func getPipelineID(ctx context.Context) (string, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
-		return "", ErrNotFoundPipeline
+		return "", errs.ErrNotFoundPipeline
 	}
 	if sid := md.Get("pipeline_id"); len(sid) > 0 {
 		return sid[0], nil
 	} else {
-		return "", ErrNotFoundPipeline
+		return "", errs.ErrNotFoundPipeline
 	}
 }
 

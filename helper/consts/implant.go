@@ -75,9 +75,9 @@ const (
 )
 
 const (
-	ELF           = "elf"
-	PE            = "pe"
-	DLL           = "dll"
+	ELF           = ".elf"
+	PE            = ".pe"
+	DLL           = ".dll"
 	Shellcode     = ".shellcode"
 	PEFile        = ".exe"
 	ShellcodeFile = ".bin"
@@ -119,72 +119,70 @@ var (
 	}
 )
 
-type Target struct {
+// target
+const (
+	TargetX64Darwin     = "x86_64-apple-darwin"
+	TargetArm64Darwin   = "aarch64-apple-darwin"
+	TargetX64Linux      = "x86_64-unknown-linux-musl"
+	TargetX86Linux      = "i686-unknown-linux-musl"
+	TargetX64Windows    = "x86_64-pc-windows-msvc"
+	TargetX86Windows    = "i686-pc-windows-msvc"
+	TargetX86WindowsGnu = "i686-pc-windows-gnu"
+	TargetX64WindowsGnu = "x86_64-pc-windows-gnu"
+)
+
+type BuildTarget struct {
 	Name string
 	Arch string
 	OS   string
 }
 
-var TargetMap = []*Target{
-	{
-		Name: "x86_64-apple-darwin",
+var BuildTargetMap = map[string]*BuildTarget{
+	TargetX64Darwin: {
+		Name: TargetX64Darwin,
 		Arch: ArchMap["x64"].String(),
 		OS:   "macos",
 	},
-	{
-		Name: "aarch64-apple-darwin",
+	TargetArm64Darwin: {
+		Name: TargetArm64Darwin,
 		Arch: ArchMap["arm64"].String(),
 		OS:   "macos",
 	},
-	{
-		Name: "x86_64-unknown-linux-gnu",
+	TargetX64Linux: {
+		Name: TargetX64Linux,
 		Arch: ArchMap["x64"].String(),
 		OS:   "linux",
 	},
-	{
-		Name: "i686-unknown-linux-gnu",
+	TargetX86Linux: {
+		Name: TargetX86Linux,
 		Arch: ArchMap["x86"].String(),
 		OS:   "linux",
 	},
-	{
-		Name: "x86_64-pc-windows-msvc",
+	TargetX64Windows: {
+		Name: TargetX64Windows,
 		Arch: ArchMap["x64"].String(),
 		OS:   "windows",
 	},
-	{
-		Name: "i686-pc-windows-msvc",
+	TargetX86Windows: {
+		Name: TargetX86Windows,
 		Arch: ArchMap["x86"].String(),
 		OS:   "windows",
 	},
-	{
-		Name: "i686-pc-windows-gnu",
+	TargetX86WindowsGnu: {
+		Name: TargetX86WindowsGnu,
 		Arch: ArchMap["x86"].String(),
 		OS:   "windows",
 	},
-	{
-		Name: "x86_64-pc-windows-gnu",
+	TargetX64WindowsGnu: {
+		Name: TargetX64WindowsGnu,
 		Arch: ArchMap["x64"].String(),
 		OS:   "windows",
-	},
-	{
-		Name: "x86_64-unknown-linux-musl",
-		Arch: ArchMap["x64"].String(),
-		OS:   "linux",
-	},
-	{
-		Name: "i686-unknown-linux-musl",
-		Arch: ArchMap["x86"].String(),
-		OS:   "linux",
 	},
 }
 
-func GetTargetInfo(name string) (string, string, bool) {
-	for _, target := range TargetMap {
-		if target.Name == name {
-			return target.Arch, target.OS, true
-		}
-	}
-	return "", "", false
+func GetBuildTarget(name string) (*BuildTarget, bool) {
+	v, found := BuildTargetMap[name]
+	return v, found
 }
 
 func FormatArch(arch string) string {
