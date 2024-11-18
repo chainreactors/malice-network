@@ -128,7 +128,7 @@ func GenerateFlagSet(f *pflag.FlagSet) {
 	f.String("shellcode_type", "", "shellcode_type e.g.: srdi, objcopy")
 }
 
-func ParseGenerateFlags(cmd *cobra.Command) (string, string, string, string, []string, string, string, string, string) {
+func ParseGenerateFlags(cmd *cobra.Command) (string, string, string, string, []string, string, string, string, bool) {
 	name, _ := cmd.Flags().GetString("profile_name")
 	url, _ := cmd.Flags().GetString("ip")
 	target, _ := cmd.Flags().GetString("target")
@@ -137,17 +137,17 @@ func ParseGenerateFlags(cmd *cobra.Command) (string, string, string, string, []s
 	ca, _ := cmd.Flags().GetString("ca")
 	interval, _ := cmd.Flags().GetString("interval")
 	jitter, _ := cmd.Flags().GetString("jitter")
-	shellcodeType, _ := cmd.Flags().GetString("shellcode_type")
-	return name, url, target, buildType, modules, ca, interval, jitter, shellcodeType
+	enableSRDI, _ := cmd.Flags().GetBool("srdi")
+	return name, url, target, buildType, modules, ca, interval, jitter, enableSRDI
 }
 
 func ProfileSet(f *pflag.FlagSet) {
 	f.String("name", "", "Set profile name")
 	f.String("target", "", "Set build target")
 	f.String("pipeline_id", "", "Set profile pipeline_id")
-	f.String("type", "", "Set build type")
+	//f.String("type", "", "Set build type")
 	f.String("proxy", "", "Set proxy")
-	f.String("obfuscate", "", "Set obfuscate")
+	//f.String("obfuscate", "", "Set obfuscate")
 	f.StringSlice("modules", []string{}, "Set modules e.g.: execute_exe,execute_dll")
 	f.String("ca", "", "Set ca")
 

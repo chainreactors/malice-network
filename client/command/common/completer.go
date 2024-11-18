@@ -199,10 +199,10 @@ func JobsCompleter(con *repl.Console, cmd *cobra.Command, use string) carapace.A
 	return carapace.ActionCallback(callback)
 }
 
-func TargetCompleter(con *repl.Console) carapace.Action {
+func BuildTargetCompleter(con *repl.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
-		for _, s := range assets.TargetList {
+		for s, _ := range consts.BuildTargetMap {
 			results = append(results, s, fmt.Sprintf("build target"))
 		}
 		return carapace.ActionValuesDescribed(results...).Tag("build")
@@ -210,16 +210,16 @@ func TargetCompleter(con *repl.Console) carapace.Action {
 	return carapace.ActionCallback(callback)
 }
 
-func TypeCompleter(con *repl.Console) carapace.Action {
-	callback := func(c carapace.Context) carapace.Action {
-		results := make([]string, 0)
-		for _, s := range assets.TypeList {
-			results = append(results, s, fmt.Sprintf("build type"))
-		}
-		return carapace.ActionValuesDescribed(results...).Tag("build")
-	}
-	return carapace.ActionCallback(callback)
-}
+//func BuildFormatCompleter(con *repl.Console) carapace.Action {
+//	callback := func(c carapace.Context) carapace.Action {
+//		results := make([]string, 0)
+//		for _, s := range consts.BuildFormats {
+//			results = append(results, s, fmt.Sprintf("build type"))
+//		}
+//		return carapace.ActionValuesDescribed(results...).Tag("build")
+//	}
+//	return carapace.ActionCallback(callback)
+//}
 
 func ProfileCompleter(con *repl.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {

@@ -562,7 +562,7 @@ func GetProfiles() ([]models.Profile, error) {
 func SaveArtifactFromGenerate(req *clientpb.Generate, realName, path string) (*models.Builder, error) {
 	target, ok := consts.GetBuildTarget(req.Target)
 	if !ok {
-		return nil, errs.ErrNotFoundTarget
+		return nil, errs.ErrInvalidateTarget
 	}
 	builder := models.Builder{
 		Name:        req.Name,

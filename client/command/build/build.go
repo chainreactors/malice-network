@@ -12,7 +12,7 @@ import (
 )
 
 func BeaconCmd(cmd *cobra.Command, con *repl.Console) error {
-	name, url, buildTarget, _, modules, ca, interval, jitter, shellcodeType := common.ParseGenerateFlags(cmd)
+	name, url, buildTarget, _, modules, ca, interval, jitter, srdi := common.ParseGenerateFlags(cmd)
 	if name == "" {
 		if buildTarget == "" {
 			return errors.New("require build target")
@@ -30,8 +30,8 @@ func BeaconCmd(cmd *cobra.Command, con *repl.Console) error {
 				"interval": interval,
 				"jitter":   jitter,
 			},
-			ShellcodeType: shellcodeType,
-			Platform:      consts.Windows,
+			Srdi:     srdi,
+			Platform: consts.Windows,
 		})
 		if err != nil {
 			con.Log.Errorf("Build beacon failed: %v", err)
@@ -43,7 +43,7 @@ func BeaconCmd(cmd *cobra.Command, con *repl.Console) error {
 }
 
 func BindCmd(cmd *cobra.Command, con *repl.Console) error {
-	name, url, buildTarget, _, modules, ca, interval, jitter, shellcodeType := common.ParseGenerateFlags(cmd)
+	name, url, buildTarget, _, modules, ca, interval, jitter, srdi := common.ParseGenerateFlags(cmd)
 	if name == "" {
 		if buildTarget == "" {
 			return errors.New("require build target")
@@ -61,8 +61,8 @@ func BindCmd(cmd *cobra.Command, con *repl.Console) error {
 				"interval": interval,
 				"jitter":   jitter,
 			},
-			ShellcodeType: shellcodeType,
-			Platform:      consts.Windows,
+			Srdi:     srdi,
+			Platform: consts.Windows,
 		})
 		if err != nil {
 			con.Log.Errorf("Build bind failed: %v", err)
@@ -74,7 +74,7 @@ func BindCmd(cmd *cobra.Command, con *repl.Console) error {
 }
 
 func ShellCodeCmd(cmd *cobra.Command, con *repl.Console) error {
-	name, url, buildTarget, _, modules, ca, interval, jitter, shellcodeType := common.ParseGenerateFlags(cmd)
+	name, url, buildTarget, _, modules, ca, interval, jitter, srdi := common.ParseGenerateFlags(cmd)
 	if name == "" {
 		if buildTarget == "" {
 			return errors.New("require build target")
@@ -92,8 +92,8 @@ func ShellCodeCmd(cmd *cobra.Command, con *repl.Console) error {
 				"interval": interval,
 				"jitter":   jitter,
 			},
-			ShellcodeType: shellcodeType,
-			Platform:      consts.Windows,
+			Srdi:     srdi,
+			Platform: consts.Windows,
 		})
 		if err != nil {
 			con.Log.Errorf("Build shellcode failed: %v\n", err)
@@ -105,7 +105,7 @@ func ShellCodeCmd(cmd *cobra.Command, con *repl.Console) error {
 }
 
 func PreludeCmd(cmd *cobra.Command, con *repl.Console) error {
-	name, url, buildTarget, _, modules, ca, interval, jitter, shellcodeType := common.ParseGenerateFlags(cmd)
+	name, url, buildTarget, _, modules, ca, interval, jitter, srdi := common.ParseGenerateFlags(cmd)
 	if name == "" {
 		if buildTarget == "" {
 			return errors.New("require build target")
@@ -123,8 +123,8 @@ func PreludeCmd(cmd *cobra.Command, con *repl.Console) error {
 				"interval": interval,
 				"jitter":   jitter,
 			},
-			ShellcodeType: shellcodeType,
-			Platform:      consts.Windows,
+			Srdi:     srdi,
+			Platform: consts.Windows,
 		})
 		if err != nil {
 			con.Log.Errorf("Build prelude failed: %v\n", err)
@@ -136,7 +136,7 @@ func PreludeCmd(cmd *cobra.Command, con *repl.Console) error {
 }
 
 func ModulesCmd(cmd *cobra.Command, con *repl.Console) error {
-	name, url, buildTarget, _, modules, ca, interval, jitter, shellcodeType := common.ParseGenerateFlags(cmd)
+	name, url, buildTarget, _, modules, ca, interval, jitter, srdi := common.ParseGenerateFlags(cmd)
 	features, _ := cmd.Flags().GetStringSlice("feature")
 	if len(features) == 0 {
 		return errors.New("require features")
@@ -158,9 +158,9 @@ func ModulesCmd(cmd *cobra.Command, con *repl.Console) error {
 				"interval": interval,
 				"jitter":   jitter,
 			},
-			Feature:       strings.Join(features, ","),
-			ShellcodeType: shellcodeType,
-			Platform:      consts.Windows,
+			Feature:  strings.Join(features, ","),
+			Srdi:     srdi,
+			Platform: consts.Windows,
 		})
 		if err != nil {
 			con.Log.Errorf("Build modules failed: %v\n", err)
@@ -172,7 +172,7 @@ func ModulesCmd(cmd *cobra.Command, con *repl.Console) error {
 }
 
 func LoaderCmd(cmd *cobra.Command, con *repl.Console) error {
-	name, url, buildTarget, _, modules, ca, interval, jitter, shellcodeType := common.ParseGenerateFlags(cmd)
+	name, url, buildTarget, _, modules, ca, interval, jitter, srdi := common.ParseGenerateFlags(cmd)
 	if name == "" {
 		if buildTarget == "" {
 			return errors.New("require build target")
@@ -190,8 +190,8 @@ func LoaderCmd(cmd *cobra.Command, con *repl.Console) error {
 				"interval": interval,
 				"jitter":   jitter,
 			},
-			ShellcodeType: shellcodeType,
-			Platform:      consts.Windows,
+			Srdi:     srdi,
+			Platform: consts.Windows,
 		})
 		if err != nil {
 			con.Log.Errorf("Build loader failed: %v", err)

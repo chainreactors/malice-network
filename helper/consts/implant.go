@@ -14,18 +14,6 @@ const (
 	SRDIType            = "srdi"
 )
 
-// release type
-type ReleaseType int
-
-const (
-	ReleaseWinWorkstation ReleaseType = 1 + iota
-	ReleaseWinDomainController
-	ReleaseWinServer
-	ReleaseMacOSX
-	ReleaseUbuntu
-	ReleaseCentos
-)
-
 type Arch uint32
 
 const (
@@ -69,21 +57,6 @@ var ArchMap = map[string]Arch{
 	"mips":  Mips,
 }
 
-const (
-	Windows = "win"
-	Linux   = "linux"
-)
-
-const (
-	ELF           = ".elf"
-	PE            = ".pe"
-	DLL           = ".dll"
-	Shellcode     = ".shellcode"
-	PEFile        = ".exe"
-	ShellcodeFile = ".bin"
-	DllFile       = ".dll"
-)
-
 var (
 	WindowsVer = map[string]string{
 		"5.0.2195": "2000",
@@ -119,6 +92,21 @@ var (
 	}
 )
 
+const (
+	Windows = "windows"
+	Linux   = "linux"
+	Darwin
+)
+
+const (
+	ELF           = ".elf"
+	PE            = ".pe"
+	DLL           = ".dll"
+	PEFile        = ".exe"
+	ShellcodeFile = ".bin"
+	DllFile       = ".dll"
+)
+
 // target
 const (
 	TargetX64Darwin     = "x86_64-apple-darwin"
@@ -141,42 +129,42 @@ var BuildTargetMap = map[string]*BuildTarget{
 	TargetX64Darwin: {
 		Name: TargetX64Darwin,
 		Arch: ArchMap["x64"].String(),
-		OS:   "macos",
+		OS:   Darwin,
 	},
 	TargetArm64Darwin: {
 		Name: TargetArm64Darwin,
 		Arch: ArchMap["arm64"].String(),
-		OS:   "macos",
+		OS:   Darwin,
 	},
 	TargetX64Linux: {
 		Name: TargetX64Linux,
 		Arch: ArchMap["x64"].String(),
-		OS:   "linux",
+		OS:   Linux,
 	},
 	TargetX86Linux: {
 		Name: TargetX86Linux,
 		Arch: ArchMap["x86"].String(),
-		OS:   "linux",
+		OS:   Linux,
 	},
 	TargetX64Windows: {
 		Name: TargetX64Windows,
 		Arch: ArchMap["x64"].String(),
-		OS:   "windows",
+		OS:   Windows,
 	},
 	TargetX86Windows: {
 		Name: TargetX86Windows,
 		Arch: ArchMap["x86"].String(),
-		OS:   "windows",
+		OS:   Windows,
 	},
 	TargetX86WindowsGnu: {
 		Name: TargetX86WindowsGnu,
 		Arch: ArchMap["x86"].String(),
-		OS:   "windows",
+		OS:   Windows,
 	},
 	TargetX64WindowsGnu: {
 		Name: TargetX64WindowsGnu,
 		Arch: ArchMap["x64"].String(),
-		OS:   "windows",
+		OS:   Windows,
 	},
 }
 
