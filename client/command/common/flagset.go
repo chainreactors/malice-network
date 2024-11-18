@@ -125,7 +125,7 @@ func GenerateFlagSet(f *pflag.FlagSet) {
 	f.String("interval", "", "interval")
 	f.StringSliceP("modules", "m", []string{}, "Set modules e.g.: execute_exe,execute_dll")
 	f.String("jitter", "", "jitter")
-	f.String("shellcode_type", "", "shellcode_type e.g.: srdi, objcopy")
+	f.String("shellcode_type", "", "shellcode_type e.g.: srdi")
 }
 
 func ParseGenerateFlags(cmd *cobra.Command) (string, string, string, string, []string, string, string, string, bool) {

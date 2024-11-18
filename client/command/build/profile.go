@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/helper/codenames"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
@@ -30,11 +31,6 @@ func ProfileShowCmd(cmd *cobra.Command, con *repl.Console) error {
 		table.NewColumn("Type", "Type", 15),
 		table.NewColumn("Obfuscate", "Obfuscate", 10),
 		table.NewColumn("Pipeline", "Pipeline", 15),
-		//{Title: "name", Width: 20},
-		//{Title: "target", Width: 15},
-		//{Title: "type", Width: 15},
-		//{Title: "obfuscate", Width: 10},
-		//{Title: "pipeline", Width: 15},
 	}, true)
 
 	for _, p := range resp.Profiles {
@@ -46,13 +42,6 @@ func ProfileShowCmd(cmd *cobra.Command, con *repl.Console) error {
 				"Obfuscate": p.Obfuscate,
 				"Pipeline":  p.PipelineId,
 			})
-		//table.Row{
-		//	p.Name,
-		//	p.Target,
-		//	p.Type,
-		//	p.Obfuscate,
-		//	p.PipelineId,
-		//}
 		rowEntries = append(rowEntries, row)
 	}
 	tableModel.SetMultiline()
@@ -77,7 +66,7 @@ func ProfileNewCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 	if profileName == "" {
-		profileName = fmt.Sprintf("%s-%s", buildTarget, profileName)
+		profileName = fmt.Sprintf("%s-%s", buildTarget, codenames.GetCodename())
 	}
 	profile := &clientpb.Profile{
 		Name:       profileName,

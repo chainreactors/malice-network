@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -238,6 +239,22 @@ func ProfileCompleter(con *repl.Console) carapace.Action {
 }
 
 func ArtifactCompleter(con *repl.Console) carapace.Action {
+	callback := func(c carapace.Context) carapace.Action {
+		results := make([]string, 0)
+		builders, err := con.Rpc.ListArtifact(context.Background(), &clientpb.Empty{})
+		if err != nil {
+			con.Log.Errorf("Error get builder: %v\n", err)
+			return carapace.Action{}
+		}
+		for _, s := range builders.Builders {
+			results = append(results, strconv.Itoa(int(s.Id)), fmt.Sprintf("builder %s, type %s, target %s", s.Name, s.Type, s.Target))
+		}
+		return carapace.ActionValuesDescribed(results...).Tag("builder")
+	}
+	return carapace.ActionCallback(callback)
+}
+
+func ArtifactNameCompleter(con *repl.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
 		builders, err := con.Rpc.ListArtifact(context.Background(), &clientpb.Empty{})
