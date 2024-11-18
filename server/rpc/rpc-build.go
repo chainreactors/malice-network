@@ -24,7 +24,7 @@ func (rpc *Server) Build(ctx context.Context, req *clientpb.Generate) (*clientpb
 	}
 	_, ok := consts.GetBuildTarget(req.Target)
 	if !ok {
-		return nil, errs.ErrNotFoundTarget
+		return nil, errs.ErrInvalidateTarget
 	}
 	cli, err := build.GetDockerClient()
 	if err != nil {
@@ -73,7 +73,7 @@ func (rpc *Server) Build(ctx context.Context, req *clientpb.Generate) (*clientpb
 		logs.Log.Errorf("move build output error: %v", err)
 		return nil, err
 	}
-	if req.ShellcodeType == "" {
+	if !req.Srdi {
 		data, err := os.ReadFile(artifactPath)
 		if err != nil {
 			return nil, err

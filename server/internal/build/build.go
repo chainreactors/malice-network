@@ -29,7 +29,7 @@ var (
 	LocalMutantPath             = filepath.Join(configs.BinPath, "malefic_mutant")
 	command                     = "generate"
 	funcNameOption              = "--function-name"
-	userDataPathOption          = "--user-data-path"
+	userDataPathOption          = "--userdata-path"
 
 	SourceCodeVolume         = fmt.Sprintf("%s:%s", configs.SourceCodePath, ContainerSourceCodePath)
 	CargoRegistryCacheVolume = fmt.Sprintf("%s:%s", filepath.Join(configs.CargoCachePath, "registry"), ContainerCargoRegistryCache)

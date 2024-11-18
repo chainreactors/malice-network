@@ -7,15 +7,14 @@ import (
 )
 
 var (
-	ErrNotFoundTarget = errors.New("target not found")
-	ErrDisableOutput  = errors.New("output disabled")
+	ErrDisableOutput = errors.New("output disabled")
 )
 
 // grpc
 var (
 	// ErrInvalidSessionID - Invalid Session ID in request
 	ErrInvalidSessionID = status.Error(codes.InvalidArgument, "Invalid session ID")
-
+	ErrInvalidateTarget = status.Error(codes.InvalidArgument, "target not validate")
 	// ErrMissingRequestField - Returned when a request does not contain a  implantpb.Request
 	ErrMissingRequestField = status.Error(codes.InvalidArgument, "Missing session request field")
 	// ErrAsyncNotSupported - Unsupported mode / command type

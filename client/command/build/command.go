@@ -34,11 +34,10 @@ func Commands(con *repl.Console) []*cobra.Command {
 	common.BindFlag(newCmd, common.ProfileSet)
 	common.BindFlagCompletions(newCmd, func(comp carapace.ActionMap) {
 		comp["name"] = carapace.ActionValues("profile name")
-		comp["target"] = common.TargetCompleter(con)
+		comp["target"] = common.BuildTargetCompleter(con)
 		comp["pipeline_id"] = common.AllPipelineCompleter(con)
-		comp["type"] = common.TypeCompleter(con)
 		comp["proxy"] = carapace.ActionValues("http", "socks5")
-		comp["obfuscate"] = carapace.ActionValues("true", "false")
+		//comp["obfuscate"] = carapace.ActionValues("true", "false")
 		comp["modules"] = carapace.ActionValues("e.g.: execute_exe,execute_dll")
 		comp["ca"] = carapace.ActionValues("true", "false")
 
@@ -63,8 +62,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	common.BindFlag(beaconCmd, common.GenerateFlagSet)
 	common.BindFlagCompletions(beaconCmd, func(comp carapace.ActionMap) {
 		comp["profile_name"] = common.ProfileCompleter(con)
-		comp["target"] = common.TargetCompleter(con)
-		comp["type"] = common.TypeCompleter(con)
+		comp["target"] = common.BuildTargetCompleter(con)
 	})
 	common.BindArgCompletions(beaconCmd, nil, common.ProfileCompleter(con))
 
@@ -80,8 +78,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	common.BindFlag(bindCmd, common.GenerateFlagSet)
 	common.BindFlagCompletions(bindCmd, func(comp carapace.ActionMap) {
 		comp["profile_name"] = common.ProfileCompleter(con)
-		comp["target"] = common.TargetCompleter(con)
-		comp["type"] = common.TypeCompleter(con)
+		comp["target"] = common.BuildTargetCompleter(con)
 	})
 	common.BindArgCompletions(bindCmd, nil, common.ProfileCompleter(con))
 
@@ -97,8 +94,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	common.BindFlag(shellCodeCmd, common.GenerateFlagSet)
 	common.BindFlagCompletions(shellCodeCmd, func(comp carapace.ActionMap) {
 		comp["profile_name"] = common.ProfileCompleter(con)
-		comp["target"] = common.TargetCompleter(con)
-		comp["type"] = common.TypeCompleter(con)
+		comp["target"] = common.BuildTargetCompleter(con)
 	})
 	common.BindArgCompletions(shellCodeCmd, nil, common.ProfileCompleter(con))
 
@@ -114,8 +110,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	common.BindFlag(preludeCmd, common.GenerateFlagSet)
 	common.BindFlagCompletions(preludeCmd, func(comp carapace.ActionMap) {
 		comp["profile_name"] = common.ProfileCompleter(con)
-		comp["target"] = common.TargetCompleter(con)
-		comp["type"] = common.TypeCompleter(con)
+		comp["target"] = common.BuildTargetCompleter(con)
 	})
 	common.BindArgCompletions(preludeCmd, nil, common.ProfileCompleter(con))
 
@@ -134,8 +129,8 @@ func Commands(con *repl.Console) []*cobra.Command {
 
 	common.BindFlagCompletions(modulesCmd, func(comp carapace.ActionMap) {
 		comp["profile_name"] = common.ProfileCompleter(con)
-		comp["target"] = common.TargetCompleter(con)
-		comp["type"] = common.TypeCompleter(con)
+		comp["target"] = common.BuildTargetCompleter(con)
+		//comp["type"] = common.BuildFormatCompleter(con)
 	})
 	common.BindArgCompletions(modulesCmd, nil, common.ProfileCompleter(con))
 
