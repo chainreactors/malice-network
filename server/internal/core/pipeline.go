@@ -64,7 +64,7 @@ func (p *PipelineConfig) WrapConn(conn net.Conn) (*peek.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	conn = cryptostream.cryptostream.NewCryptoConn(conn, cry)
+	conn = cryptostream.NewCryptoConn(conn, cry)
 	return peek.WrapPeekConn(conn), nil
 }
 
