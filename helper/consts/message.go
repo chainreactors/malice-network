@@ -193,6 +193,8 @@ const (
 	CommandArtifactDownload = "download"
 	CommandArtifactUpload   = "upload"
 	CommandProfile          = "profile"
+	CommandProfileList      = "list"
+	CommandProfileNew       = "load"
 	CommandSRDI             = "srdi"
 	CommandReg              = "reg"
 	CommandRegExplorer      = "reg_explorer"

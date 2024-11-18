@@ -34,12 +34,6 @@ func printFiles(files *clientpb.Files, con *repl.Console) {
 		table.NewColumn("Type", "Type", 10),
 		table.NewColumn("LocalName", "LocalName", 30),
 		table.NewColumn("RemotePath", "RemotePath", 30),
-		//{Title: "FileID", Width: 8},
-		//{Title: "Name", Width: 20},
-		//{Title: "TempID", Width: 10},
-		//{Title: "Type", Width: 10},
-		//{Title: "LocalName", Width: 30},
-		//{Title: "RemotePath", Width: 30},
 	}, true)
 	for _, file := range files.Files {
 		row = table.NewRow(
@@ -51,22 +45,9 @@ func printFiles(files *clientpb.Files, con *repl.Console) {
 				"LocalName":  file.Local,
 				"RemotePath": file.Remote,
 			})
-		//table.Row{
-		//	file.TaskId,
-		//	file.Name,
-		//	file.TempId,
-		//	file.Op,
-		//	file.Local,
-		//	file.Remote,
-		//}
 		rowEntries = append(rowEntries, row)
 	}
 	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)
 	fmt.Printf(tableModel.View())
-	//newTable := tui.NewModel(tableModel, nil, false, false)
-	//err := newTable.Run()
-	//if err != nil {
-	//	con.Log.Errorf("Error running table: %v", err)
-	//}
 }

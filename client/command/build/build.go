@@ -8,7 +8,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/spf13/cobra"
-	"strings"
 )
 
 func BeaconCmd(cmd *cobra.Command, con *repl.Console) error {
@@ -137,9 +136,8 @@ func PreludeCmd(cmd *cobra.Command, con *repl.Console) error {
 
 func ModulesCmd(cmd *cobra.Command, con *repl.Console) error {
 	name, url, buildTarget, _, modules, ca, interval, jitter, srdi := common.ParseGenerateFlags(cmd)
-	features, _ := cmd.Flags().GetStringSlice("feature")
-	if len(features) == 0 {
-		return errors.New("require features")
+	if len(modules) == 0 {
+		modules = []string{"full"}
 	}
 	if name == "" {
 		if buildTarget == "" {
@@ -158,7 +156,6 @@ func ModulesCmd(cmd *cobra.Command, con *repl.Console) error {
 				"interval": interval,
 				"jitter":   jitter,
 			},
-			Feature:  strings.Join(features, ","),
 			Srdi:     srdi,
 			Platform: consts.Windows,
 		})

@@ -15,6 +15,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 )
@@ -230,12 +231,14 @@ func BuildModules(cli *client.Client, req *clientpb.Generate) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	containerName := "malefic_" + generateContainerName(8)
+	buildModules := strings.Join(req.Modules, ",")
 	buildModulesCommand := fmt.Sprintf(
 		"%s/malefic_mutant generate modules %s -s && cargo build --target %s --release -p malefic-modules --features %s",
 		ContainerBinPath,
-		req.Feature,
+		buildModules,
 		req.Target,
-		req.Feature)
+		buildModules,
+	)
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
 		Image: fmt.Sprintf("%s/%s:%s", NameSpace, req.Target, Tag),
 		Cmd:   []string{"sh", "-c", buildModulesCommand},

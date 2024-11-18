@@ -29,11 +29,6 @@ func ListJobsCmd(cmd *cobra.Command, con *repl.Console) error {
 		table.NewColumn("Host", "Host", 10),
 		table.NewColumn("Port", "Port", 7),
 		table.NewColumn("Type", "Type", 7),
-		//{Title: "Name", Width: 20},
-		//{Title: "Listener_id", Width: 15},
-		//{Title: "Host", Width: 10},
-		//{Title: "Port", Width: 7},
-		//{Title: "Type", Width: 7},
 	}, true)
 	for _, pipeline := range Pipelines.GetPipelines() {
 		switch pipeline.Body.(type) {
@@ -47,13 +42,6 @@ func ListJobsCmd(cmd *cobra.Command, con *repl.Console) error {
 					"Port":        strconv.Itoa(int(tcp.Port)),
 					"Type":        "TCP",
 				})
-			//table.Row{
-			//	pipeline.Name,
-			//	pipeline.ListenerId,
-			//	tcp.Host,
-			//	strconv.Itoa(int(tcp.Port)),
-			//	"TCP",
-			//}
 		case *clientpb.Pipeline_Web:
 			website := pipeline.GetWeb()
 			row = table.NewRow(
@@ -64,13 +52,7 @@ func ListJobsCmd(cmd *cobra.Command, con *repl.Console) error {
 					"Port":        strconv.Itoa(int(website.Port)),
 					"Type":        "Web",
 				})
-			//table.Row{
-			//	pipeline.Name,
-			//	pipeline.ListenerId,
-			//	"",
-			//	strconv.Itoa(int(website.Port)),
-			//	"Web",
-			//}
+
 		}
 		rowEntries = append(rowEntries, row)
 	}
@@ -101,12 +83,6 @@ func ListPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 		table.NewColumn("Host", "Host", 10),
 		table.NewColumn("Port", "Port", 7),
 		table.NewColumn("Enable", "Enable", 7),
-		//{Title: "Name", Width: 20},
-		//{Title: "Type", Width: 10},
-		//{Title: "ListenerID", Width: 15},
-		//{Title: "Host", Width: 10},
-		//{Title: "Port", Width: 7},
-		//{Title: "Enable", Width: 7},
 	}, true)
 	for _, pipeline := range pipelines.GetPipelines() {
 		switch body := pipeline.Body.(type) {
@@ -120,14 +96,6 @@ func ListPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 					"Port":       strconv.Itoa(int(body.Tcp.Port)),
 					"Enable":     strconv.FormatBool(pipeline.Enable),
 				})
-			//	table.Row{
-			//	pipeline.Name,
-			//	consts.TCPPipeline,
-			//	pipeline.ListenerId,
-			//	body.Tcp.Host,
-			//	strconv.Itoa(int(body.Tcp.Port)),
-			//	strconv.FormatBool(pipeline.Enable),
-			//}
 		case *clientpb.Pipeline_Bind:
 			row = table.NewRow(
 				table.RowData{
@@ -138,14 +106,6 @@ func ListPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 					"Port":       "",
 					"Enable":     strconv.FormatBool(pipeline.Enable),
 				})
-			//	table.Row{
-			//	pipeline.Name,
-			//	consts.BindPipeline,
-			//	pipeline.ListenerId,
-			//	"",
-			//	"",
-			//	strconv.FormatBool(pipeline.Enable),
-			//}
 		}
 
 		rowEntries = append(rowEntries, row)
