@@ -6,6 +6,7 @@ import (
 	"github.com/chainreactors/malice-network/client/command/addon"
 	"github.com/chainreactors/malice-network/client/command/alias"
 	"github.com/chainreactors/malice-network/client/command/armory"
+	"github.com/chainreactors/malice-network/client/command/build"
 	"github.com/chainreactors/malice-network/client/command/exec"
 	"github.com/chainreactors/malice-network/client/command/explorer"
 	"github.com/chainreactors/malice-network/client/command/extension"
@@ -15,9 +16,14 @@ import (
 	"github.com/chainreactors/malice-network/client/command/listener"
 	"github.com/chainreactors/malice-network/client/command/mal"
 	"github.com/chainreactors/malice-network/client/command/modules"
+	"github.com/chainreactors/malice-network/client/command/pipe"
+	"github.com/chainreactors/malice-network/client/command/privilege"
+	"github.com/chainreactors/malice-network/client/command/reg"
+	"github.com/chainreactors/malice-network/client/command/service"
 	"github.com/chainreactors/malice-network/client/command/sessions"
 	"github.com/chainreactors/malice-network/client/command/sys"
 	"github.com/chainreactors/malice-network/client/command/tasks"
+	"github.com/chainreactors/malice-network/client/command/taskschd"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/spf13/cobra"
@@ -153,7 +159,9 @@ func GenMarkdownTreeCustom(cmd *cobra.Command, writer io.Writer, linkHandler fun
 func GenGroupHelp(writer io.Writer, con *repl.Console, groupId string, binds ...func(con *repl.Console) []*cobra.Command) {
 	writer.Write([]byte(fmt.Sprintf("## %s\n", groupId)))
 	for _, b := range binds {
-		for _, c := range b(con) {
+		cmds := b(con)
+		sort.Sort(byName(cmds))
+		for _, c := range cmds {
 			c.SetHelpCommand(nil)
 			_ = GenMarkdownTreeCustom(c, writer, func(s string) string {
 				return "#" + strings.ReplaceAll(s, " ", "-")
@@ -178,11 +186,17 @@ func GenImplantHelp(con *repl.Console) {
 		exec.Commands)
 
 	GenGroupHelp(implantMd, con, consts.SysGroup,
-		sys.Commands)
+		sys.Commands,
+		service.Commands,
+		reg.Commands,
+		taskschd.Commands,
+		privilege.Commands,
+	)
 
 	GenGroupHelp(implantMd, con, consts.FileGroup,
 		file.Commands,
-		filesystem.Commands)
+		filesystem.Commands,
+		pipe.Commands)
 }
 
 func GenClientHelp(con *repl.Console) {
@@ -204,6 +218,10 @@ func GenClientHelp(con *repl.Console) {
 	GenGroupHelp(clientMd, con, consts.ListenerGroup,
 		listener.Commands,
 	)
+
+	GenGroupHelp(clientMd, con, consts.GeneratorGroup,
+		build.Commands)
+
 }
 
 func main() {
