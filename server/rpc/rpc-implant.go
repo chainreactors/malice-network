@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/types"
@@ -150,7 +151,7 @@ func hasIntersection(slice1, slice2 []uint32) bool {
 func (rpc *Server) Polling(ctx context.Context, req *clientpb.Polling) (*clientpb.Empty, error) {
 	sess, ok := core.Sessions.Get(req.SessionId)
 	if !ok {
-		return nil, ErrNotFoundSession
+		return nil, errs.ErrNotFoundSession
 	}
 	var err error
 	go func() {
