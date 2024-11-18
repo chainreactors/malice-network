@@ -15,21 +15,25 @@ import (
 	luacrypto "github.com/tengattack/gluacrypto/crypto"
 	"github.com/vadv/gopher-lua-libs/argparse"
 	"github.com/vadv/gopher-lua-libs/base64"
+	"github.com/vadv/gopher-lua-libs/cmd"
+	"github.com/vadv/gopher-lua-libs/db"
 	luafilepath "github.com/vadv/gopher-lua-libs/filepath"
 	"github.com/vadv/gopher-lua-libs/goos"
 	"github.com/vadv/gopher-lua-libs/humanize"
 	"github.com/vadv/gopher-lua-libs/inspect"
 	"github.com/vadv/gopher-lua-libs/ioutil"
 	"github.com/vadv/gopher-lua-libs/json"
+	"github.com/vadv/gopher-lua-libs/log"
 	"github.com/vadv/gopher-lua-libs/plugin"
 	"github.com/vadv/gopher-lua-libs/regexp"
 	"github.com/vadv/gopher-lua-libs/shellescape"
+	"github.com/vadv/gopher-lua-libs/stats"
 	"github.com/vadv/gopher-lua-libs/storage"
 	luastrings "github.com/vadv/gopher-lua-libs/strings"
 	"github.com/vadv/gopher-lua-libs/tcp"
+	"github.com/vadv/gopher-lua-libs/template"
 	"github.com/vadv/gopher-lua-libs/time"
 	luayaml "github.com/vadv/gopher-lua-libs/yaml"
-	"github.com/yuin/gluare"
 	lua "github.com/yuin/gopher-lua"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
@@ -364,6 +368,8 @@ func luaLoader(L *lua.LState) int {
 
 func LoadLib(vm *lua.LState) {
 	vm.OpenLibs()
+
+	// https://github.com/vadv/gopher-lua-libs
 	plugin.Preload(vm)
 	argparse.Preload(vm)
 	base64.Preload(vm)
@@ -381,12 +387,16 @@ func LoadLib(vm *lua.LState) {
 	luastrings.Preload(vm)
 	tcp.Preload(vm)
 	time.Preload(vm)
+	stats.Loader(vm)
 	//xmlpath.Preload(vm)
 	luayaml.Preload(vm)
+	db.Loader(vm)
+	template.Loader(vm)
+	log.Loader(vm)
+	cmd.Loader(vm)
 
 	vm.PreloadModule("http", gluahttp.NewHttpModule(&http.Client{}).Loader)
 	vm.PreloadModule("crypto", luacrypto.Loader)
-	vm.PreloadModule("re", gluare.Loader)
 
 	// mal package
 	vm.PreloadModule(intermediate.BeaconPackage, luaLoader)
