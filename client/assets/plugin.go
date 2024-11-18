@@ -32,7 +32,7 @@ func GetInstalledAliasManifests() []string {
 	for _, alias := range GetProfile().Aliases {
 		manifestPath := filepath.Join(aliasDir, alias, "alias.json")
 		if _, err := os.Stat(manifestPath); os.IsNotExist(err) {
-			logs.Log.Errorf("no manifest in %s, skipping ...", manifestPath)
+			logs.Log.Errorf("no manifest in %s, skipping ...\n", manifestPath)
 			continue
 		}
 		manifests = append(manifests, manifestPath)
@@ -60,7 +60,7 @@ func GetInstalledExtensionManifests() []string {
 	for _, extension := range GetProfile().Extensions {
 		manifestPath := filepath.Join(extDir, extension, "extension.json")
 		if _, err := os.Stat(manifestPath); os.IsNotExist(err) {
-			logs.Log.Errorf("no manifest in %s, skipping ...", manifestPath)
+			logs.Log.Errorf("no manifest in %s, skipping ...\n", manifestPath)
 			continue
 		}
 		manifests = append(manifests, manifestPath)
@@ -86,7 +86,7 @@ func GetInstalledMalManifests() []string {
 	for _, mal := range GetProfile().Mals {
 		manifestPath := filepath.Join(dir, mal, "mal.yaml")
 		if _, err := os.Stat(manifestPath); os.IsNotExist(err) {
-			logs.Log.Errorf("no manifest in %s, skipping ...", manifestPath)
+			logs.Log.Errorf("no manifest in %s, skipping ...\n", manifestPath)
 			continue
 		}
 		manifests = append(manifests, manifestPath)
