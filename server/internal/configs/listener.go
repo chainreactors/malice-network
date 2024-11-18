@@ -4,8 +4,8 @@ import (
 	"crypto/x509/pkix"
 	"github.com/chainreactors/malice-network/helper/certs"
 	"github.com/chainreactors/malice-network/helper/consts"
-	cryptostream "github.com/chainreactors/malice-network/helper/cryptography/stream"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/server/internal/stream"
 	"os"
 	"slices"
 )

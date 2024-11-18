@@ -1,10 +1,10 @@
 package core
 
 import (
-	"github.com/chainreactors/malice-network/helper/cryptography/stream"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/utils/peek"
 	"github.com/chainreactors/malice-network/server/internal/configs"
+	"github.com/chainreactors/malice-network/server/internal/stream"
 	"net"
 )
 
@@ -64,7 +64,7 @@ func (p *PipelineConfig) WrapConn(conn net.Conn) (*peek.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	conn = cryptostream.NewCryptoConn(conn, cry)
+	conn = cryptostream.cryptostream.NewCryptoConn(conn, cry)
 	return peek.WrapPeekConn(conn), nil
 }
 

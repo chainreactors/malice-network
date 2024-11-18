@@ -5,10 +5,10 @@ import (
 	"encoding/binary"
 	"fmt"
 	"github.com/chainreactors/malice-network/helper/consts"
-	cryptostream "github.com/chainreactors/malice-network/helper/cryptography/stream"
 	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/utils/peek"
+	"github.com/chainreactors/malice-network/server/internal/stream"
 	"github.com/gookit/config/v2"
 	"google.golang.org/protobuf/proto"
 )
