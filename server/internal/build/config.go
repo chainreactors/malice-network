@@ -4,11 +4,9 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/encoders"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/utils/config"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db"
-	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"path/filepath"
 	"strings"
 )
@@ -20,23 +18,15 @@ var (
 	modules        = "modules"
 )
 
-func DbToConfig(req *clientpb.Generate) error {
-	var profileDB models.Profile
-	var profile configs.GeneratorConfig
+func GenerateProfile(req *clientpb.Generate) error {
 	var err error
-	if req.ProfileName != "" {
-		profileDB, err = db.GetProfile(req.ProfileName)
-		if err != nil {
-			return err
-		}
-	}
-	path := filepath.Join(configs.SourceCodePath, generateConfig)
-	err = config.LoadConfig(path, &profile)
+	profile, err := db.GetProfile(req.ProfileName)
 	if err != nil {
 		return err
 	}
+	path := filepath.Join(configs.SourceCodePath, generateConfig)
 
-	return db.UpdateGeneratorConfig(req, path, profileDB)
+	return db.UpdateGeneratorConfig(req, path, profile)
 }
 
 func MoveBuildOutput(target, buildType string) (string, string, error) {

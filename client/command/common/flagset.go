@@ -117,25 +117,25 @@ func ParseEncryptionFlags(cmd *cobra.Command) *clientpb.Encryption {
 }
 
 func GenerateFlagSet(f *pflag.FlagSet) {
-	f.String("profile_name", "", "profile name")
+	f.String("profile", "", "profile name")
 	f.StringP("address", "a", "", "implant address")
 	f.String("target", "", "build target")
 	f.String("ca", "", "custom ca file")
-	f.String("interval", "", "interval /second")
-	f.String("jitter", "", "jitter")
+	f.Int("interval", -1, "interval /second")
+	f.Float64("jitter", -1, "jitter")
 	f.StringSliceP("modules", "m", []string{}, "Set modules e.g.: execute_exe,execute_dll")
 	f.String("srdi", "", "enable srdi")
 }
 
-func ParseGenerateFlags(cmd *cobra.Command) (string, string, string, []string, string, string, string, bool) {
-	name, _ := cmd.Flags().GetString("profile_name")
+func ParseGenerateFlags(cmd *cobra.Command) (string, string, string, []string, string, int, float64, bool) {
+	name, _ := cmd.Flags().GetString("profile")
 	address, _ := cmd.Flags().GetString("address")
-	buildTarget, _ := cmd.Flags().GetString("buildTarget")
+	buildTarget, _ := cmd.Flags().GetString("target")
 	//buildType, _ := cmd.Flags().GetString("type")
 	modules, _ := cmd.Flags().GetStringSlice("modules")
 	ca, _ := cmd.Flags().GetString("ca")
-	interval, _ := cmd.Flags().GetString("interval")
-	jitter, _ := cmd.Flags().GetString("jitter")
+	interval, _ := cmd.Flags().GetInt("interval")
+	jitter, _ := cmd.Flags().GetFloat64("jitter")
 	enableSRDI, _ := cmd.Flags().GetBool("srdi")
 	return name, address, buildTarget, modules, ca, interval, jitter, enableSRDI
 }
@@ -143,7 +143,7 @@ func ParseGenerateFlags(cmd *cobra.Command) (string, string, string, []string, s
 func ProfileSet(f *pflag.FlagSet) {
 	f.String("name", "", "Set profile name")
 	f.String("target", "", "Set build target")
-	f.String("pipeline_id", "", "Set profile pipeline_id")
+	f.String("pipeline", "", "Set profile pipeline_id")
 	//f.String("type", "", "Set build type")
 	f.String("proxy", "", "Set proxy")
 	//f.String("obfuscate", "", "Set obfuscate")
@@ -154,10 +154,10 @@ func ProfileSet(f *pflag.FlagSet) {
 	f.Float32("jitter", 0.2, "Set jitter")
 }
 
-func ParseProfileFlags(cmd *cobra.Command) (string, string, string, string, string, string, []string, string, int, float32) {
+func ParseProfileFlags(cmd *cobra.Command) (string, string, string, string, string, string, []string, string, int, float64) {
 	profileName, _ := cmd.Flags().GetString("name")
 	buildTarget, _ := cmd.Flags().GetString("target")
-	pipelineId, _ := cmd.Flags().GetString("pipeline_id")
+	pipelineId, _ := cmd.Flags().GetString("pipeline")
 	buildType, _ := cmd.Flags().GetString("type")
 	proxy, _ := cmd.Flags().GetString("proxy")
 	obfuscate, _ := cmd.Flags().GetString("obfuscate")
@@ -165,7 +165,7 @@ func ParseProfileFlags(cmd *cobra.Command) (string, string, string, string, stri
 	ca, _ := cmd.Flags().GetString("ca")
 
 	interval, _ := cmd.Flags().GetInt("interval")
-	jitter, _ := cmd.Flags().GetFloat32("jitter")
+	jitter, _ := cmd.Flags().GetFloat64("jitter")
 
 	return profileName, buildTarget, pipelineId, buildType, proxy, obfuscate, modules, ca, interval, jitter
 }

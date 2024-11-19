@@ -7,11 +7,11 @@ const (
 )
 
 const (
-	ImplantTypeBeacon   = "beacon"
-	ImplantTypeBind     = "bind"
-	ImplantTypeWebshell = "webshell"
-	ImplantTypeReverse  = "ssh"
-	SRDIType            = "srdi"
+	ImplantModBeacon  = "beacon"
+	ImplantModBind    = "bind"
+	ImplantModPulse   = "pulse"
+	ImplantModPrelude = "prelude"
+	SRDIType          = "srdi"
 )
 
 type Arch uint32

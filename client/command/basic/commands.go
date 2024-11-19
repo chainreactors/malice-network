@@ -40,7 +40,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return GetCmd(cmd, con)
 		},
 		Annotations: map[string]string{
-			"implant": consts.ImplantTypeBind,
+			"implant": consts.ImplantModBind,
 		},
 	}
 
@@ -52,7 +52,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return WaitCmd(cmd, con)
 		},
 		Annotations: map[string]string{
-			"implant": consts.ImplantTypeBind,
+			"implant": consts.ImplantModBind,
 		},
 	}
 	common.BindFlag(waitCmd, func(f *pflag.FlagSet) {
@@ -68,7 +68,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return PollingCmd(cmd, con)
 		},
 		Annotations: map[string]string{
-			"implant": consts.ImplantTypeBind,
+			"implant": consts.ImplantModBind,
 		},
 	}
 	common.BindFlag(pollingCmd, func(f *pflag.FlagSet) {
@@ -90,7 +90,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return InitCmd(cmd, con)
 		},
 		Annotations: map[string]string{
-			"implant": consts.ImplantTypeBind,
+			"implant": consts.ImplantModBind,
 		},
 	}
 	return []*cobra.Command{sleepCmd, suicideCmd, getCmd, waitCmd, pollingCmd, initCmd, recoverCmd}

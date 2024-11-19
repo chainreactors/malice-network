@@ -7,6 +7,7 @@ import (
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/spf13/cobra"
 )
 
@@ -16,6 +17,10 @@ func BeaconCmd(cmd *cobra.Command, con *repl.Console) error {
 		return errors.New("require build target")
 	}
 	go func() {
+		params := &types.ProfileParams{
+			Interval: interval,
+			Jitter:   jitter,
+		}
 		_, err := con.Rpc.Build(context.Background(), &clientpb.Generate{
 			ProfileName: name,
 			Address:     address,
@@ -23,11 +28,8 @@ func BeaconCmd(cmd *cobra.Command, con *repl.Console) error {
 			Target:      buildTarget,
 			Modules:     modules,
 			Ca:          ca,
-			Params: map[string]string{
-				"interval": interval,
-				"jitter":   jitter,
-			},
-			Srdi: srdi,
+			Params:      params.String(),
+			Srdi:        srdi,
 		})
 		if err != nil {
 			con.Log.Errorf("Build beacon failed: %v", err)
@@ -44,6 +46,10 @@ func BindCmd(cmd *cobra.Command, con *repl.Console) error {
 		return errors.New("require build target")
 	}
 	go func() {
+		params := &types.ProfileParams{
+			Interval: interval,
+			Jitter:   jitter,
+		}
 		_, err := con.Rpc.Build(context.Background(), &clientpb.Generate{
 			ProfileName: name,
 			Address:     address,
@@ -51,11 +57,8 @@ func BindCmd(cmd *cobra.Command, con *repl.Console) error {
 			Target:      buildTarget,
 			Modules:     modules,
 			Ca:          ca,
-			Params: map[string]string{
-				"interval": interval,
-				"jitter":   jitter,
-			},
-			Srdi: srdi,
+			Params:      params.String(),
+			Srdi:        srdi,
 		})
 		if err != nil {
 			con.Log.Errorf("Build bind failed: %v", err)
@@ -67,11 +70,12 @@ func BindCmd(cmd *cobra.Command, con *repl.Console) error {
 }
 
 func PreludeCmd(cmd *cobra.Command, con *repl.Console) error {
-	name, address, buildTarget, modules, ca, interval, jitter, srdi := common.ParseGenerateFlags(cmd)
+	name, address, buildTarget, modules, ca, _, _, srdi := common.ParseGenerateFlags(cmd)
 	if buildTarget == "" {
 		return errors.New("require build target")
 	}
 	go func() {
+
 		_, err := con.Rpc.Build(context.Background(), &clientpb.Generate{
 			ProfileName: name,
 			Address:     address,
@@ -79,11 +83,7 @@ func PreludeCmd(cmd *cobra.Command, con *repl.Console) error {
 			Target:      buildTarget,
 			Modules:     modules,
 			Ca:          ca,
-			Params: map[string]string{
-				"interval": interval,
-				"jitter":   jitter,
-			},
-			Srdi: srdi,
+			Srdi:        srdi,
 		})
 		if err != nil {
 			con.Log.Errorf("Build prelude failed: %v\n", err)
@@ -95,7 +95,7 @@ func PreludeCmd(cmd *cobra.Command, con *repl.Console) error {
 }
 
 func ModulesCmd(cmd *cobra.Command, con *repl.Console) error {
-	name, address, buildTarget, modules, ca, interval, jitter, srdi := common.ParseGenerateFlags(cmd)
+	name, address, buildTarget, modules, _, _, _, srdi := common.ParseGenerateFlags(cmd)
 	if len(modules) == 0 {
 		modules = []string{"full"}
 	}
@@ -109,12 +109,7 @@ func ModulesCmd(cmd *cobra.Command, con *repl.Console) error {
 			Target:      buildTarget,
 			Type:        consts.CommandBuildModules,
 			Modules:     modules,
-			Ca:          ca,
-			Params: map[string]string{
-				"interval": interval,
-				"jitter":   jitter,
-			},
-			Srdi: srdi,
+			Srdi:        srdi,
 		})
 		if err != nil {
 			con.Log.Errorf("Build modules failed: %v\n", err)

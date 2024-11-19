@@ -204,7 +204,7 @@ func BuildTargetCompleter(con *repl.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
 		for s, _ := range consts.BuildTargetMap {
-			results = append(results, s, fmt.Sprintf("build target"))
+			results = append(results, s, "")
 		}
 		return carapace.ActionValuesDescribed(results...).Tag("build")
 	}
