@@ -27,15 +27,19 @@ var (
 	ContainerCargoRegistryCache = "/root/cargo/registry"
 	ContainerCargoGitCache      = "/root/cargo/git"
 	ContainerBinPath            = "/root/bin"
-	LocalMutantPath             = filepath.Join(configs.BinPath, "malefic_mutant")
+	LocalMutantPath             = filepath.Join(configs.BinPath, "malefic-mutant")
 	command                     = "generate"
 	funcNameOption              = "--function-name"
 	userDataPathOption          = "--userdata-path"
 
-	SourceCodeVolume         = fmt.Sprintf("%s:%s", configs.SourceCodePath, ContainerSourceCodePath)
-	CargoRegistryCacheVolume = fmt.Sprintf("%s:%s", filepath.Join(configs.CargoCachePath, "registry"), ContainerCargoRegistryCache)
-	CargoGitCacheVolume      = fmt.Sprintf("%s:%s", filepath.Join(configs.CargoCachePath, "git"), ContainerCargoGitCache)
-	BinPathVolume            = fmt.Sprintf("%s:%s", configs.BinPath, ContainerBinPath)
+	sourcePath, _            = filepath.Abs(configs.SourceCodePath)
+	binPath, _               = filepath.Abs(configs.BinPath)
+	registryPath, _          = filepath.Abs(filepath.Join(configs.CargoCachePath, "registry"))
+	gitPath, _               = filepath.Abs(filepath.Join(configs.CargoCachePath, "git"))
+	SourceCodeVolume         = fmt.Sprintf("%s:%s", filepath.ToSlash(sourcePath), ContainerSourceCodePath)
+	CargoRegistryCacheVolume = fmt.Sprintf("%s:%s", filepath.ToSlash(registryPath), ContainerCargoRegistryCache)
+	CargoGitCacheVolume      = fmt.Sprintf("%s:%s", filepath.ToSlash(gitPath), ContainerCargoGitCache)
+	BinPathVolume            = fmt.Sprintf("%s:%s", filepath.ToSlash(binPath), ContainerBinPath)
 	Volumes                  = []string{SourceCodeVolume, CargoRegistryCacheVolume, CargoGitCacheVolume, BinPathVolume}
 )
 
@@ -52,6 +56,7 @@ func generateContainerName(length int) string {
 	}
 	return string(randomPart)
 }
+
 func GetDockerClient() (*client.Client, error) {
 	var err error
 	once.Do(func() {
@@ -68,7 +73,7 @@ func BuildBeacon(cli *client.Client, req *clientpb.Generate) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	buildBeaconCommand := fmt.Sprintf(
-		"%s/malefic_mutant generate beacon && cargo build --target %s --release -p malefic",
+		"%s/malefic-mutant generate beacon && cargo build --target %s --release -p malefic",
 		ContainerBinPath,
 		req.Target,
 	)
@@ -78,8 +83,8 @@ func BuildBeacon(cli *client.Client, req *clientpb.Generate) error {
 		Cmd:   []string{"sh", "-c", buildBeaconCommand},
 		//"cargo run -p malefic-mutant stage0 professional x86_64 source && cargo build --release -p malefic-pulse"},
 	}, &container.HostConfig{
-		AutoRemove: true,
-		Binds:      Volumes,
+		//AutoRemove: true,
+		Binds: Volumes,
 	}, nil, nil, containerName)
 	if err != nil {
 		return err
@@ -109,7 +114,7 @@ func BuildBind(cli *client.Client, req *clientpb.Generate) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	BuildBindCommand := fmt.Sprintf(
-		"%s/malefic_mutant generate bind  && cargo build --target %s --release -p malefic",
+		"%s/malefic-mutant generate bind  && cargo build --target %s --release -p malefic",
 		ContainerBinPath,
 		req.Target,
 	)
@@ -151,7 +156,7 @@ func BuildPrelude(cli *client.Client, req *clientpb.Generate) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	BuildPreludeCommand := fmt.Sprintf(
-		"%s/malefic_mutant generate prelude autorun.yaml && cargo build --target %s --release -p malefic-prelude",
+		"%s/malefic-mutant generate prelude autorun.yaml && cargo build --target %s --release -p malefic-prelude",
 		ContainerBinPath,
 		req.Target,
 	)
@@ -191,7 +196,7 @@ func BuildPulse(cli *client.Client, req *clientpb.Generate) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	BuildBindCommand := fmt.Sprintf(
-		"%s/malefic_mutant generate pulse x64 win && cargo build --target %s --release --profile release-lto -p malefic-pulse",
+		"%s/malefic-mutant generate pulse x64 win && cargo build --target %s --release --profile release-lto -p malefic-pulse",
 		ContainerBinPath,
 		req.Target,
 	)
@@ -233,7 +238,7 @@ func BuildModules(cli *client.Client, req *clientpb.Generate) error {
 	containerName := "malefic_" + generateContainerName(8)
 	buildModules := strings.Join(req.Modules, ",")
 	buildModulesCommand := fmt.Sprintf(
-		"%s/malefic_mutant generate modules %s -s && cargo build --target %s --release -p malefic-modules --features %s",
+		"%s/malefic-mutant generate modules %s -s && cargo build --target %s --release -p malefic-modules --features %s",
 		ContainerBinPath,
 		buildModules,
 		req.Target,

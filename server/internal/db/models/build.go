@@ -33,26 +33,30 @@ func (b *Builder) BeforeCreate(tx *gorm.DB) (err error) {
 func (b *Builder) ToProtobuf(bin []byte) *clientpb.Builder {
 	if b.ProfileName != "" {
 		return &clientpb.Builder{
-			Bin:      bin,
-			Name:     b.Name,
-			Target:   b.Profile.Target,
-			Type:     b.Profile.Type,
-			Stage:    b.Profile.Stager,
-			Platform: b.Os,
-			Arch:     b.Arch,
-			Modules:  b.Profile.Modules,
+			Bin:         bin,
+			Name:        b.Name,
+			Target:      b.Target,
+			Type:        b.Type,
+			Stage:       b.Stager,
+			Platform:    b.Os,
+			Arch:        b.Arch,
+			Modules:     b.Modules,
+			ProfileName: b.ProfileName,
+			PipelineId:  b.Profile.PipelineID,
 		}
 	}
 
 	return &clientpb.Builder{
-		Bin:      bin,
-		Name:     b.Name,
-		Target:   b.Target,
-		Type:     b.Type,
-		Stage:    b.Stager,
-		Platform: b.Os,
-		Modules:  b.Modules,
-		Arch:     b.Arch,
+		Bin:         bin,
+		Name:        b.Name,
+		Target:      b.Target,
+		Type:        b.Type,
+		Stage:       b.Stager,
+		Platform:    b.Os,
+		Modules:     b.Modules,
+		Arch:        b.Arch,
+		ProfileName: "",
+		PipelineId:  "",
 	}
 }
 

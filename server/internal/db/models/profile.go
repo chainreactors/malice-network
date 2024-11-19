@@ -62,14 +62,12 @@ func (p *Profile) AfterFind(tx *gorm.DB) (err error) {
 
 // Deserialize implantConfig (JSON string) to a struct or map
 func (p *Profile) DeserializeImplantConfig() error {
-	var params *types.ProfileParams
-	if p.implantConfig != "" {
-		err := json.Unmarshal([]byte(p.implantConfig), params)
+	if p.ParamsJson != "" {
+		err := json.Unmarshal([]byte(p.ParamsJson), &p.Params)
 		if err != nil {
 			return err
 		}
 	}
-	p.Params = params
 	return nil
 }
 
