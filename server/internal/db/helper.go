@@ -554,6 +554,9 @@ func GetProfile(name string) (*types.ProfileConfig, error) {
 	if result.Error != nil {
 		return nil, result.Error
 	}
+	if profileModel.PipelineID != "" && profileModel.Pipeline == nil {
+		return nil, errs.ErrNotFoundPipeline
+	}
 	err := profileModel.DeserializeImplantConfig()
 	if err != nil {
 		return nil, err

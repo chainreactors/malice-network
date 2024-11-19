@@ -13,7 +13,7 @@ import (
 )
 
 func (rpc *Server) RegisterPipeline(ctx context.Context, req *clientpb.Pipeline) (*clientpb.Empty, error) {
-	pipelineModel := models.FromPipelinePb(req)
+	pipelineModel := models.FromPipelinePb(req, getRemoteAddr(ctx))
 	var err error
 	if pipelineModel.Tls.Enable && pipelineModel.Tls.Cert == "" && pipelineModel.Tls.Key == "" {
 		pipelineModel.Tls.Cert, pipelineModel.Tls.Key, err = certutils.GenerateTlsCert(pipelineModel.Name, pipelineModel.ListenerID)

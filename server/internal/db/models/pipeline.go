@@ -28,6 +28,7 @@ type Pipeline struct {
 	ListenerID string           `gorm:"type:string;"`
 	Name       string           `gorm:"unique,type:string"`
 	WebPath    string           `gorm:"type:string;default:''"`
+	IP         string           `gorm:"type:string;default:''"`
 	Host       string           `config:"host"`
 	Port       uint16           `config:"port"`
 	Type       string           `gorm:"type:string;"`
@@ -38,7 +39,7 @@ type Pipeline struct {
 }
 
 func (p *Pipeline) Address() string {
-	return fmt.Sprintf("%s:%d", p.Host, p.Port)
+	return fmt.Sprintf("%s:%d", p.IP, p.Port)
 }
 
 // BeforeCreate - GORM hook
@@ -51,7 +52,7 @@ func (l *Pipeline) BeforeCreate(tx *gorm.DB) (err error) {
 	return nil
 }
 
-func FromPipelinePb(pipeline *clientpb.Pipeline) *Pipeline {
+func FromPipelinePb(pipeline *clientpb.Pipeline, ip string) *Pipeline {
 	switch body := pipeline.Body.(type) {
 	case *clientpb.Pipeline_Tcp:
 		return &Pipeline{
@@ -60,6 +61,7 @@ func FromPipelinePb(pipeline *clientpb.Pipeline) *Pipeline {
 			Enable:     pipeline.Enable,
 			Parser:     pipeline.Parser,
 			Host:       body.Tcp.Host,
+			IP:         ip,
 			Port:       uint16(body.Tcp.Port),
 			Type:       consts.TCPPipeline,
 			Tls:        ToTlsDB(pipeline.Tls),
@@ -82,6 +84,7 @@ func FromPipelinePb(pipeline *clientpb.Pipeline) *Pipeline {
 			Enable:     pipeline.Enable,
 			Parser:     pipeline.Parser,
 			WebPath:    body.Web.Root,
+			IP:         ip,
 			Port:       uint16(body.Web.Port),
 			Type:       consts.WebsitePipeline,
 			Tls:        ToTlsDB(pipeline.Tls),
