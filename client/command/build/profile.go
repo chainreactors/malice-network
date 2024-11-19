@@ -2,15 +2,16 @@ package build
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/codenames"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
+	"os"
 	"strings"
 )
 
@@ -54,17 +55,19 @@ func ProfileNewCmd(cmd *cobra.Command, con *repl.Console) error {
 	profileName, buildTarget, pipelineName, buildType, proxy, obfuscate,
 		modules, ca, interval, jitter := common.ParseProfileFlags(cmd)
 
-	modulesStr := strings.Join(modules, ",")
-
-	params := map[string]interface{}{
-		"interval": interval,
-		"jitter":   jitter,
-	}
-
-	paramsJson, err := json.Marshal(params)
+	profilePath := cmd.Flags().Arg(0)
+	content, err := os.ReadFile(profilePath)
 	if err != nil {
 		return err
 	}
+
+	modulesStr := strings.Join(modules, ",")
+
+	params := &types.ProfileParams{
+		Interval: interval,
+		Jitter:   jitter,
+	}
+
 	if profileName == "" {
 		profileName = fmt.Sprintf("%s-%s", buildTarget, codenames.GetCodename())
 	}
@@ -76,13 +79,14 @@ func ProfileNewCmd(cmd *cobra.Command, con *repl.Console) error {
 		Obfuscate:  obfuscate,
 		Modules:    modulesStr,
 		Ca:         ca,
-		Params:     string(paramsJson),
+		Params:     params.String(),
 		PipelineId: pipelineName,
+		Content:    content,
 	}
 	_, err = con.Rpc.NewProfile(context.Background(), profile)
 	if err != nil {
 		return err
 	}
-	con.Log.Infof("New profile %s success", profileName)
+	con.Log.Infof("load new profile %s success\n", profileName)
 	return nil
 }

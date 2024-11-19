@@ -22,12 +22,7 @@ func (rpc *Server) GetProfiles(ctx context.Context, req *clientpb.Empty) (*clien
 		return nil, err
 	}
 	for _, profile := range profilesDB {
-		profiles.Profiles = append(profiles.Profiles, &clientpb.Profile{
-			Name:       profile.Name,
-			Target:     profile.Target,
-			Type:       profile.Type,
-			PipelineId: profile.PipelineID,
-		})
+		profiles.Profiles = append(profiles.Profiles, profile.ToProtobuf())
 	}
 
 	return &profiles, nil

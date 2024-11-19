@@ -1,12 +1,25 @@
 package models
 
 import (
+	"fmt"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/gofrs/uuid"
 	"gorm.io/gorm"
 	"time"
 )
+
+type TlsConfig struct {
+	Enable bool   `gorm:"column:enable"`
+	Cert   string `gorm:"column:cert"`
+	Key    string `gorm:"column:key"`
+}
+
+type EncryptionConfig struct {
+	Enable bool   `gorm:"column:enable"`
+	Type   string `gorm:"column:type"`
+	Key    string `gorm:"column:key"`
+}
 
 // Pipeline
 type Pipeline struct {
@@ -24,16 +37,8 @@ type Pipeline struct {
 	Encryption EncryptionConfig `gorm:"embedded;embeddedPrefix:encryption_"`
 }
 
-type TlsConfig struct {
-	Enable bool   `gorm:"column:enable"`
-	Cert   string `gorm:"column:cert"`
-	Key    string `gorm:"column:key"`
-}
-
-type EncryptionConfig struct {
-	Enable bool   `gorm:"column:enable"`
-	Type   string `gorm:"column:type"`
-	Key    string `gorm:"column:key"`
+func (p *Pipeline) Address() string {
+	return fmt.Sprintf("%s:%d", p.Host, p.Port)
 }
 
 // BeforeCreate - GORM hook

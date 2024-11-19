@@ -30,7 +30,7 @@ func (rpc *Server) Build(ctx context.Context, req *clientpb.Generate) (*clientpb
 	if err != nil {
 		return nil, err
 	}
-	err = build.DbToConfig(req)
+	err = build.GenerateProfile(req)
 	if err != nil {
 		return nil, errors.New(fmt.Sprintf("Err create config: %v", err))
 	}

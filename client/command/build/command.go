@@ -36,7 +36,7 @@ profile list
 	}
 
 	newCmd := &cobra.Command{
-		Use:   consts.CommandProfileNew,
+		Use:   consts.CommandProfileLoad,
 		Short: "Create a new compile profile",
 		Long: `Create a new compile profile with customizable attributes.
 
@@ -48,6 +48,7 @@ If no **name** is provided, the command concatenates the target with a random na
 - **jitter** adds randomness to the interval (default value is 0.2).
 - The **proxy** flag allows setting up proxy configurations (e.g., http or socks5).
 - **ca** enables or disables CA validation (default: disabled).`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ProfileNewCmd(cmd, con)
 		},
@@ -63,10 +64,12 @@ profile new --name my_profile --target x86_64-unknown-linux-musl --interval 10 -
 ~~~`,
 	}
 	common.BindFlag(newCmd, common.ProfileSet)
+	newCmd.MarkFlagRequired("pipeline")
+	newCmd.MarkFlagRequired("name")
 	common.BindFlagCompletions(newCmd, func(comp carapace.ActionMap) {
 		comp["name"] = carapace.ActionValues("profile name")
-		comp["target"] = common.BuildTargetCompleter(con)
-		comp["pipeline_id"] = common.AllPipelineCompleter(con)
+		//comp["target"] = common.BuildTargetCompleter(con)
+		comp["pipeline"] = common.AllPipelineCompleter(con)
 		comp["proxy"] = carapace.ActionValues("http", "socks5")
 		//comp["obfuscate"] = carapace.ActionValues("true", "false")
 		comp["modules"] = carapace.ActionValues("e.g.: execute_exe,execute_dll")
@@ -75,6 +78,7 @@ profile new --name my_profile --target x86_64-unknown-linux-musl --interval 10 -
 		comp["interval"] = carapace.ActionValues("5")
 		comp["jitter"] = carapace.ActionValues("0.2")
 	})
+	common.BindArgCompletions(newCmd, nil, carapace.ActionFiles().Usage("profile path"))
 
 	profileCmd.AddCommand(listCmd, newCmd)
 
@@ -106,11 +110,12 @@ build beacon --target x86_64-pc-windows-msvc --profile_name beacon_profile --mod
 ~~~`,
 	}
 	common.BindFlag(beaconCmd, common.GenerateFlagSet)
+	beaconCmd.MarkFlagRequired("target")
+	beaconCmd.MarkFlagRequired("profile")
 	common.BindFlagCompletions(beaconCmd, func(comp carapace.ActionMap) {
-		comp["profile_name"] = common.ProfileCompleter(con)
+		comp["profile"] = common.ProfileCompleter(con)
 		comp["target"] = common.BuildTargetCompleter(con)
 	})
-	common.BindArgCompletions(beaconCmd, nil, common.ProfileCompleter(con))
 
 	bindCmd := &cobra.Command{
 		Use:   consts.CommandBuildBind,
@@ -137,43 +142,46 @@ build bind --target x86_64-pc-windows-msvc --modules base,sys_full
 	}
 
 	common.BindFlag(bindCmd, common.GenerateFlagSet)
+	bindCmd.MarkFlagRequired("target")
+	bindCmd.MarkFlagRequired("profile")
 	common.BindFlagCompletions(bindCmd, func(comp carapace.ActionMap) {
-		comp["profile_name"] = common.ProfileCompleter(con)
+		comp["profile"] = common.ProfileCompleter(con)
 		comp["target"] = common.BuildTargetCompleter(con)
 	})
-	common.BindArgCompletions(bindCmd, nil, common.ProfileCompleter(con))
 
-	preludeCmd := &cobra.Command{
-		Use:   consts.CommandBuildPrelude,
-		Short: "Build a prelude payload",
-		Long: `Generate a prelude payload as part of a multi-stage deployment.
-
-The **target** flag is required to specify the platform, such as **x86_64-unknown-linux-musl** or **x86_64-pc-windows-msvc**, ensuring compatibility with the deployment environment.
-- The **profile_name** flag is optional; if provided, it must match an existing compile profile. This allows the prelude payload to inherit settings such as interval, jitter, or proxy configurations.
-- Use the **modules** flag to include additional functionalities in the payload, such as execute_exe or execute_dll. Modules should be specified as a comma-separated list.
-`,
-		Args: cobra.MaximumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return PreludeCmd(cmd, con)
-		},
-		Example: `~~~
-// Build a prelude payload for the Windows platform
-build prelude --target x86_64-unknown-linux-musl
-
-// Build a prelude payload with anti-sandbox and anti-debugging enabled
-build prelude --target x86_64-unknown-linux-musl --modules base,sys_full
-
-// Build a prelude payload with a specific profile
-build prelude --target x86_64-pc-windows-msvc --profile_name prelude_profile
-~~~`,
-	}
-
-	common.BindFlag(preludeCmd, common.GenerateFlagSet)
-	common.BindFlagCompletions(preludeCmd, func(comp carapace.ActionMap) {
-		comp["profile_name"] = common.ProfileCompleter(con)
-		comp["target"] = common.BuildTargetCompleter(con)
-	})
-	common.BindArgCompletions(preludeCmd, nil, common.ProfileCompleter(con))
+	//	preludeCmd := &cobra.Command{
+	//		Use:   consts.CommandBuildPrelude,
+	//		Short: "Build a prelude payload",
+	//		Long: `Generate a prelude payload as part of a multi-stage deployment.
+	//
+	//The **target** flag is required to specify the platform, such as **x86_64-unknown-linux-musl** or **x86_64-pc-windows-msvc**, ensuring compatibility with the deployment environment.
+	//- The **profile_name** flag is optional; if provided, it must match an existing compile profile. This allows the prelude payload to inherit settings such as interval, jitter, or proxy configurations.
+	//- Use the **modules** flag to include additional functionalities in the payload, such as execute_exe or execute_dll. Modules should be specified as a comma-separated list.
+	//`,
+	//		Args: cobra.MaximumNArgs(1),
+	//		RunE: func(cmd *cobra.Command, args []string) error {
+	//			return PreludeCmd(cmd, con)
+	//		},
+	//		Example: `~~~
+	//// Build a prelude payload for the Windows platform
+	//build prelude --target x86_64-unknown-linux-musl
+	//
+	//// Build a prelude payload with anti-sandbox and anti-debugging enabled
+	//build prelude --target x86_64-unknown-linux-musl --modules base,sys_full
+	//
+	//// Build a prelude payload with a specific profile
+	//build prelude --target x86_64-pc-windows-msvc --profile_name prelude_profile
+	//~~~`,
+	//	}
+	//
+	//	common.BindFlag(preludeCmd, common.GenerateFlagSet)
+	//	preludeCmd.MarkFlagRequired("target")
+	//	preludeCmd.MarkFlagRequired("profile")
+	//	common.BindFlagCompletions(preludeCmd, func(comp carapace.ActionMap) {
+	//		comp["profile"] = common.ProfileCompleter(con)
+	//		comp["target"] = common.BuildTargetCompleter(con)
+	//	})
+	//	common.BindArgCompletions(preludeCmd, nil, common.ProfileCompleter(con))
 
 	modulesCmd := &cobra.Command{
 		Use:   consts.CommandBuildModules,
@@ -203,10 +211,12 @@ build modules --target x86_64-pc-windows-msvc --profile_name my_profile --module
 	}
 
 	common.BindFlagCompletions(modulesCmd, func(comp carapace.ActionMap) {
-		comp["profile_name"] = common.ProfileCompleter(con)
+		comp["profile"] = common.ProfileCompleter(con)
 		comp["target"] = common.BuildTargetCompleter(con)
 	})
-	common.BindArgCompletions(modulesCmd, nil, common.ProfileCompleter(con))
+
+	modulesCmd.MarkFlagRequired("target")
+	modulesCmd.MarkFlagRequired("profile")
 
 	pulseCmd := &cobra.Command{
 		Use:   consts.CommandBuildPulse,
@@ -221,7 +231,15 @@ build pulse --target x86_64-pc-windows-msvc --srdi --address 127.0.0.1:5002
 ~~~
 `,
 	}
-	buildCmd.AddCommand(beaconCmd, bindCmd, preludeCmd, modulesCmd, pulseCmd)
+	common.BindFlag(pulseCmd, common.GenerateFlagSet)
+	pulseCmd.MarkFlagRequired("target")
+	pulseCmd.MarkFlagRequired("profile")
+	common.BindFlagCompletions(pulseCmd, func(comp carapace.ActionMap) {
+		comp["profile"] = common.ProfileCompleter(con)
+		comp["target"] = common.BuildTargetCompleter(con)
+	})
+
+	buildCmd.AddCommand(beaconCmd, bindCmd, modulesCmd, pulseCmd)
 	srdiCmd := &cobra.Command{
 		Use:   consts.CommandSRDI,
 		Short: "Build SRDI artifact",
@@ -234,7 +252,7 @@ SRDI technology reduces the PE characteristics of a DLL, enabling more effective
 - The **arch** flag defines the architecture of the generated shellcode, such as **x86** or **x64**. This flag is required to ensure compatibility with the target environment.
 - The **platform** flag specifies the platform of the shellcode. Defaults to **win**, but can also be set to **linux**. This flag is required to tailor the shellcode for the desired operating system.
 - The **function_name** flag sets the entry function name within the DLL for execution. This is critical for specifying which function will be executed when the DLL is loaded.
-- The **user_data_path** flag allows the inclusion of user-defined data to be embedded with the shellcode during generation. This can be used to pass additional information or configuration to the payload at runtime.`,
+- The **userdata_path** flag allows the inclusion of user-defined data to be embedded with the shellcode during generation. This can be used to pass additional information or configuration to the payload at runtime.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return SRDICmd(cmd, con)
 		},

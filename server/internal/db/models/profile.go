@@ -2,6 +2,8 @@ package models
 
 import (
 	"encoding/json"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/gofrs/uuid"
 	"gorm.io/gorm"
 	"time"
@@ -15,7 +17,6 @@ type Profile struct {
 	Target string // build target win64,win32,linux64
 
 	// build type
-	// pe,dll,shellcode,elf
 	Type string
 
 	// shellcode prelude beacon bind
@@ -26,24 +27,17 @@ type Profile struct {
 
 	Modules string // default modules, comma split, e.g. "execute_exe,execute_dll"
 	CA      string // ca file , ca file content
-
+	Raw     []byte
 	// params
-	//interval int    // default 10
-	//jitter   int    // default 5
-	Params     map[string]interface{} `gorm:"-"`         // Ignored by GORM
-	ParamsJson string                 `gorm:"type:text"` // Used for storing serialized params
+	Params     *types.ProfileParams `gorm:"-"`         // Ignored by GORM
+	ParamsJson string               `gorm:"type:text"` // Used for storing serialized params
 
 	PipelineID    string `gorm:"type:string;index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
 	implantConfig string // raw implant config
 
-	Pipeline Pipeline `gorm:"foreignKey:PipelineID;references:Name;"`
+	Pipeline *Pipeline `gorm:"foreignKey:PipelineID;references:Name;"`
 
 	CreatedAt time.Time `gorm:"->;<-:create;"`
-}
-
-type Params struct {
-	Interval string
-	Jitter   string
 }
 
 func (p *Profile) BeforeCreate(tx *gorm.DB) (err error) {
@@ -66,23 +60,28 @@ func (p *Profile) AfterFind(tx *gorm.DB) (err error) {
 	return nil
 }
 
-// Serialize implantConfig (raw implant config) to JSON
-func (p *Profile) SerializeImplantConfig(config interface{}) error {
-	configJson, err := json.Marshal(config)
-	if err != nil {
-		return err
-	}
-	p.implantConfig = string(configJson)
-	return nil
-}
-
 // Deserialize implantConfig (JSON string) to a struct or map
-func (p *Profile) DeserializeImplantConfig(config interface{}) error {
+func (p *Profile) DeserializeImplantConfig() error {
+	var params *types.ProfileParams
 	if p.implantConfig != "" {
-		err := json.Unmarshal([]byte(p.implantConfig), config)
+		err := json.Unmarshal([]byte(p.implantConfig), params)
 		if err != nil {
 			return err
 		}
 	}
+	p.Params = params
 	return nil
+}
+
+func (p *Profile) ToProtobuf() *clientpb.Profile {
+	return &clientpb.Profile{
+		Name:       p.Name,
+		Target:     p.Target,
+		Type:       p.Type,
+		Modules:    p.Modules,
+		Ca:         p.CA,
+		PipelineId: p.PipelineID,
+		Content:    p.Raw,
+		Params:     p.ParamsJson,
+	}
 }

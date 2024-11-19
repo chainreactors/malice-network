@@ -3,11 +3,11 @@ package db
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/encoders"
 	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/helper/utils/mtls"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
@@ -17,7 +17,7 @@ import (
 	"gorm.io/gorm/utils"
 	"os"
 	"path/filepath"
-	"strconv"
+	"strings"
 	"time"
 )
 
@@ -529,27 +529,64 @@ func RemoveWebsite(id string) error {
 
 // generator
 func NewProfile(profile *clientpb.Profile) error {
+	if profile.Content == nil {
+		profile.Content = types.DefaultProfile
+	}
 	model := &models.Profile{
-		Name:       profile.Name,
-		Target:     profile.Target,
-		Type:       profile.Type,
-		Proxy:      profile.Proxy,
-		Obfuscate:  profile.Obfuscate,
+		Name:   profile.Name,
+		Target: profile.Target,
+		Type:   profile.Type,
+		Proxy:  profile.Proxy,
+		//Obfuscate:  profile.Obfuscate,
 		Modules:    profile.Modules,
 		CA:         profile.Ca,
 		ParamsJson: profile.Params,
 		PipelineID: profile.PipelineId,
+		Raw:        profile.Content,
 	}
 	return Session().Create(model).Error
 }
 
-func GetProfile(name string) (models.Profile, error) {
-	var profile models.Profile
+func GetProfile(name string) (*types.ProfileConfig, error) {
+	var profileModel *models.Profile
 
-	result := Session().Preload("Pipeline").Where("name = ?", name).First(&profile)
+	result := Session().Preload("Pipeline").Where("name = ?", name).First(&profileModel)
 	if result.Error != nil {
-		return profile, result.Error
+		return nil, result.Error
 	}
+	err := profileModel.DeserializeImplantConfig()
+	if err != nil {
+		return nil, err
+	}
+	profile, err := types.LoadProfile(profileModel.Raw)
+	if err != nil {
+		return nil, err
+	}
+	if profile.Basic != nil && profileModel.Type != consts.ImplantModPulse {
+		if profileModel.CA != "" {
+			profile.Basic.CA = profileModel.CA
+		}
+		if profileModel.Name != "" {
+			profile.Basic.Name = profileModel.Name
+		}
+		if profileModel.Modules != "" {
+			profile.Implant.Modules = strings.Split(profileModel.Modules, ",")
+		}
+		if profileModel.Params.Interval != -1 {
+			profile.Basic.Interval = profileModel.Params.Interval
+		}
+		if profileModel.Params.Jitter != -1 {
+			profile.Basic.Jitter = profileModel.Params.Jitter
+		}
+		if profileModel.Pipeline != nil {
+			profile.Basic.Targets = []string{profileModel.Pipeline.Address()}
+		}
+	} else if profile.Pulse != nil && profileModel.Type == consts.ImplantPulse {
+		if profileModel.Pipeline != nil {
+			profile.Pulse.Target = profileModel.Pipeline.Address()
+		}
+	}
+
 	return profile, nil
 }
 
@@ -645,78 +682,39 @@ func GetArtifactById(id uint32) (*models.Builder, error) {
 }
 
 // UpdateGeneratorConfig - Update the generator config
-func UpdateGeneratorConfig(req *clientpb.Generate, path string, profile models.Profile) error {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return err
-	}
-	var config *configs.GeneratorConfig
-	if err := yaml.Unmarshal(data, &config); err != nil {
-		return err
-	}
-
+func UpdateGeneratorConfig(req *clientpb.Generate, path string, config *types.ProfileConfig) error {
 	if config.Basic != nil {
-		if profile.Name != "" {
-			config.Basic.Name = profile.Name
+		if req.Name != "" {
+			config.Basic.Name = req.Name
 		}
 		if req.Address != "" {
-			config.Basic.Targets = []string{}
-			config.Basic.Targets = append(config.Basic.Targets, req.Address)
-		} else if profile.Name != "" {
-			config.Basic.Targets = []string{}
-			config.Basic.Targets = append(config.Basic.Targets,
-				fmt.Sprintf("%s:%v", profile.Pipeline.Host, profile.Pipeline.Port))
+			config.Basic.Targets = []string{req.Address}
 		}
-		var dbParams *models.Params
-		err = profile.DeserializeImplantConfig(dbParams)
+
+		var params *types.ProfileParams
+		err := json.Unmarshal([]byte(req.Params), &params)
 		if err != nil {
 			return err
 		}
-		if val, ok := req.Params["interval"]; ok && val != "" {
-			interval, err := strconv.Atoi(val)
-			if err != nil {
-				return err
-			}
-			config.Basic.Interval = interval
-		} else if profile.Name != "" {
-			dbInterval, err := strconv.Atoi(dbParams.Interval)
-			if err != nil {
-				return err
-			}
-			config.Basic.Interval = dbInterval
+		if params.Interval != -1 {
+			config.Basic.Interval = params.Interval
 		}
 
-		if val, ok := req.Params["jitter"]; ok && val != "" {
-			jitter, err := strconv.ParseFloat(val, 64)
-			if err != nil {
-				return err
-			}
-			config.Basic.Jitter = jitter
-		} else if profile.Name != "" {
-			dbJitter, err := strconv.ParseFloat(dbParams.Jitter, 64)
-			if err != nil {
-				return err
-			}
-			config.Basic.Jitter = dbJitter
+		if params.Jitter != -1 {
+			config.Basic.Jitter = params.Jitter
 		}
 
-		if val, ok := req.Params["ca"]; ok {
-			config.Basic.CA = val
-		} else if profile.Pipeline.Tls.Enable {
-			config.Basic.CA = profile.Pipeline.Tls.Cert
+		if req.Ca != "" {
+			config.Basic.CA = req.Ca
 		}
 
-		//var modules []string
-		//if len(req.Modules) > 0 {
-		//	modules = req.Modules
-		//}else if profile.Name != ""{
-		//	modules = strings.Split(profile.Modules, ",")
-		//}
-		//config.Basic.Modules = modules
+		if len(req.Modules) > 0 {
+			config.Implant.Modules = req.Modules
+		}
 
 	} else if config.Pulse != nil {
-		if profile.Name != "" {
-			config.Pulse.Target = req.Target
+		if req.Address != "" {
+			config.Pulse.Target = req.Address
 		}
 	}
 
