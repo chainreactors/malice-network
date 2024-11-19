@@ -238,8 +238,11 @@ func WriteStringAndCheck(b io.StringWriter, s string) {
 func FlagUsages(f *pflag.FlagSet) string {
 	var s strings.Builder
 	f.VisitAll(func(flag *pflag.Flag) {
-		// 每个 flag 的前面添加 '* ' 来表示无序列表
-		fmt.Fprintf(&s, "* -%s, --%s: %s (default: %s)\n", flag.Shorthand, flag.Name, flag.Usage, flag.DefValue)
+		if flag.Shorthand == "" {
+			fmt.Fprintf(&s, "* \t --%s: %s (default: %s)\n", flag.Name, flag.Usage, flag.DefValue)
+		} else {
+			fmt.Fprintf(&s, "* -%s, --%s: %s (default: %s)\n", flag.Shorthand, flag.Name, flag.Usage, flag.DefValue)
+		}
 	})
 	return s.String()
 }
