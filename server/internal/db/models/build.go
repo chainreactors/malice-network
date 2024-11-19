@@ -30,9 +30,10 @@ func (b *Builder) BeforeCreate(tx *gorm.DB) (err error) {
 	return nil
 }
 
-func (b *Builder) ToProtobuf() *clientpb.Builder {
+func (b *Builder) ToProtobuf(bin []byte) *clientpb.Builder {
 	if b.ProfileName != "" {
 		return &clientpb.Builder{
+			Bin:      bin,
 			Name:     b.Name,
 			Target:   b.Profile.Target,
 			Type:     b.Profile.Type,
@@ -44,6 +45,7 @@ func (b *Builder) ToProtobuf() *clientpb.Builder {
 	}
 
 	return &clientpb.Builder{
+		Bin:      bin,
 		Name:     b.Name,
 		Target:   b.Target,
 		Type:     b.Type,

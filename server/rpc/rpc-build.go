@@ -66,21 +66,13 @@ func (rpc *Server) Build(ctx context.Context, req *clientpb.Generate) (*clientpb
 		if err != nil {
 			return nil, err
 		}
-		return &clientpb.Builder{
-			Bin:  data,
-			Name: req.Name,
-			Id:   builder.ID,
-		}, nil
+		return builder.ToProtobuf(data), nil
 	} else {
 		builder, bin, err := build.NewMaleficSRDIArtifact(req.Name+"_srdi", artifactPath, target.OS, target.Arch, req.Stager, "", "")
 		if err != nil {
 			return nil, err
 		}
-		return &clientpb.Builder{
-			Bin:  bin,
-			Name: builder.Name,
-			Id:   builder.ID,
-		}, nil
+		return builder.ToProtobuf(bin), nil
 	}
 }
 
@@ -101,14 +93,7 @@ func (rpc *Server) DownloadArtifact(ctx context.Context, req *clientpb.Builder) 
 	if err != nil {
 		return nil, err
 	}
-	name := req.Name + filepath.Ext(builder.Path)
-	return &clientpb.Builder{
-		Id:       builder.ID,
-		Name:     name,
-		Bin:      data,
-		Arch:     builder.Arch,
-		Platform: builder.Os,
-	}, nil
+	return builder.ToProtobuf(data), nil
 }
 
 func (rpc *Server) MaleficSRDI(ctx context.Context, req *clientpb.Builder) (*clientpb.Builder, error) {
@@ -133,7 +118,7 @@ func (rpc *Server) MaleficSRDI(ctx context.Context, req *clientpb.Builder) (*cli
 	if err != nil {
 		return nil, err
 	}
-	return &clientpb.Builder{Bin: bin, Name: req.Name, Id: builder.ID}, nil
+	return builder.ToProtobuf(bin), nil
 }
 
 func (rpc *Server) UploadArtifact(ctx context.Context, req *clientpb.Builder) (*clientpb.Builder, error) {
@@ -148,10 +133,7 @@ func (rpc *Server) UploadArtifact(ctx context.Context, req *clientpb.Builder) (*
 	if err != nil {
 		return nil, err
 	}
-	return &clientpb.Builder{
-		Id:   builder.ID,
-		Name: builder.Name,
-	}, nil
+	return builder.ToProtobuf(nil), nil
 }
 
 // for listener
@@ -164,9 +146,6 @@ func (rpc *Server) GetArtifact(ctx context.Context, req *clientpb.Builder) (*cli
 	if err != nil {
 		return nil, err
 	}
-	return &clientpb.Builder{
-		Id:   builder.ID,
-		Name: builder.Name,
-		Bin:  data,
-	}, nil
+
+	return builder.ToProtobuf(data), nil
 }
