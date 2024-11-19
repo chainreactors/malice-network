@@ -83,8 +83,8 @@ func BuildBeacon(cli *client.Client, req *clientpb.Generate) error {
 		Cmd:   []string{"sh", "-c", buildBeaconCommand},
 		//"cargo run -p malefic-mutant stage0 professional x86_64 source && cargo build --release -p malefic-pulse"},
 	}, &container.HostConfig{
-		//AutoRemove: true,
-		Binds: Volumes,
+		AutoRemove: true,
+		Binds:      Volumes,
 	}, nil, nil, containerName)
 	if err != nil {
 		return err
