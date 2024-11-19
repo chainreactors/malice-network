@@ -12,7 +12,9 @@ import (
 	"github.com/chainreactors/malice-network/helper/utils/handler"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
+	"github.com/muesli/termenv"
 	"github.com/spf13/cobra"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -80,7 +82,8 @@ func RegisterLsFunc(con *repl.Console) {
 			tableModel := tui.NewTable([]table.Column{
 				table.NewColumn("Name", "Name", 25),
 				table.NewColumn("Size", "Size", 10),
-				table.NewColumn("Mod", "Mod", 16),
+				table.NewColumn("Mode", "Mode", 10),
+				table.NewColumn("Time", "Time", 16),
 				table.NewColumn("Link", "Link", 15),
 				//{Title: "name", Width: 25},
 				//{Title: "size", Width: 10},
@@ -90,7 +93,7 @@ func RegisterLsFunc(con *repl.Console) {
 			for _, f := range resp.GetFiles() {
 				var size string
 				if f.IsDir {
-					size = "dir"
+					size = termenv.String("dir").Foreground(tui.Green).String()
 				} else {
 					size = fileutils.Bytes(f.Size)
 				}
@@ -98,7 +101,8 @@ func RegisterLsFunc(con *repl.Console) {
 					table.RowData{
 						"Name": f.Name,
 						"Size": size,
-						"Mod":  time.Unix(f.ModTime, 0).Format("2006-01-02 15:04"),
+						"Mode": os.FileMode(f.Mode).String(),
+						"Time": time.Unix(f.ModTime, 0).Format("2006-01-02 15:04"),
 						"Link": f.Link,
 					})
 				//	table.Row{
