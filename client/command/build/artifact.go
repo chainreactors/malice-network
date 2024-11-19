@@ -39,15 +39,19 @@ func PrintArtifacts(builders *clientpb.Builders, con *repl.Console) error {
 		table.NewColumn("Type", "Type", 10),
 		table.NewColumn("Stager", "Stager", 10),
 		table.NewColumn("Modules", "Modules", 30),
+		table.NewColumn("Profile", "Profile", 20),
+		table.NewColumn("Pipeline", "Pipeline", 20),
 	}, false)
 	for _, builder := range builders.Builders {
 		row = table.NewRow(
 			table.RowData{
-				"Name":    builder.Name,
-				"Target":  builder.Target,
-				"Type":    builder.Type,
-				"Stager":  builder.Stage,
-				"Modules": builder.Modules,
+				"Name":     builder.Name,
+				"Target":   builder.Target,
+				"Type":     builder.Type,
+				"Stager":   builder.Stage,
+				"Modules":  builder.Modules,
+				"Profile":  builder.ProfileName,
+				"Pipeline": builder.PipelineId,
 			})
 
 		rowEntries = append(rowEntries, row)

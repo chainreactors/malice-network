@@ -35,9 +35,11 @@ type BasicProfile struct {
 }
 
 type PulseProfile struct {
-	Target     string `yaml:"target" config:"target" default:""`
-	Encryption string `yaml:"encryption" config:"encryption" default:"aes"`
-	Key        string `yaml:"key" config:"key" default:"maliceofinternal"`
+	Target     string                 `yaml:"target"`
+	Encryption string                 `yaml:"encryption"`
+	Key        string                 `yaml:"key"`
+	Protocol   string                 `yaml:"protocol"`
+	Extras     map[string]interface{} `yaml:",inline"`
 }
 
 type ImplantProfile struct {
@@ -56,8 +58,8 @@ type ProfileConfig struct {
 }
 
 type ProfileParams struct {
-	Interval int
-	Jitter   float64
+	Interval int     `json:"Interval"`
+	Jitter   float64 `json:"Jitter"`
 }
 
 func (p *ProfileParams) String() string {
