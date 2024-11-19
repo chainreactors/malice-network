@@ -124,7 +124,7 @@ install_malice_network() {
     for file in "${FILES[@]}"; do
         download_file "$MALICE_NETWORK_RELEASES_URL/$file" "$file"
     done
-    download_file "https://github.com/chainreactors/malice-network/blob/dev/server/config.yaml" "config.yaml"
+    download_file "https://raw.githubusercontent.com/chainreactors/malice-network/refs/heads/dev/server/config.yaml" "config.yaml"
 
     log_task_status "completed" "All components downloaded successfully."
 

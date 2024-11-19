@@ -8,12 +8,15 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
+	"strings"
 
 	"github.com/chainreactors/malice-network/server/internal/core"
 )
 
 func (rpc *Server) RegisterPipeline(ctx context.Context, req *clientpb.Pipeline) (*clientpb.Empty, error) {
-	pipelineModel := models.FromPipelinePb(req, getRemoteAddr(ctx))
+	ip := getRemoteAddr(ctx)
+	ip = strings.Split(ip, ":")[0]
+	pipelineModel := models.FromPipelinePb(req, ip)
 	var err error
 	if pipelineModel.Tls.Enable && pipelineModel.Tls.Cert == "" && pipelineModel.Tls.Key == "" {
 		pipelineModel.Tls.Cert, pipelineModel.Tls.Key, err = certutils.GenerateTlsCert(pipelineModel.Name, pipelineModel.ListenerID)
