@@ -90,8 +90,7 @@ profile new --name my_profile --target x86_64-unknown-linux-musl --interval 10 -
 
 The **target** flag is required to specify the arch and platform for the beacon, such as **x86_64-unknown-linux-musl** or **x86_64-pc-windows-msvc**.
 - If **profile_name** is provided, it must match an existing compile profile. Otherwise, the command will use default settings for the beacon generation.
-- Additional modules can be added to the beacon using the **modules** flag, separated by commas.
-- The **shellcode_type** flag determines whether the payload should be converted into shellcode. For example, setting this flag to **srdi** triggers the conversion process.`,
+- Additional modules can be added to the beacon using the **modules** flag, separated by commas.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return BeaconCmd(cmd, con)
 		},
@@ -103,10 +102,7 @@ build beacon --target x86_64-unknown-linux-musl --profile_name beacon_profile
 build beacon --target x86_64-unknown-linux-musl
 
 // Build a beacon using a specific profile and additional modules
-build beacon --target x86_64-pc-windows-msvc --profile_name beacon_profile --modules base,sys_full
-
-// Build a beacon and convert it into shellcode (srdi format)
-build beacon --target x86_64-pc-windows-msvc --shellcode_type srdi
+build beacon --target x86_64-pc-windows-msvc --profile_name beacon_profile --modules full
 ~~~`,
 	}
 	common.BindFlag(beaconCmd, common.GenerateFlagSet)
@@ -123,8 +119,7 @@ build beacon --target x86_64-pc-windows-msvc --shellcode_type srdi
 
 The **target** flag is required to specify the target arch and platform, such as **x86_64-unknown-linux-musl** or **x86_64-pc-windows-msvc**.
 - If **profile_name** is provided, it must match an existing compile profile.
-- Use additional flags to include functionality such as modules or custom configurations.
-- The **shellcode_type** flag can be set to specify whether the beacon should be converted into shellcode, such as **srdi**.`,
+- Use additional flags to include functionality such as modules or custom configurations.`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return BindCmd(cmd, con)
@@ -138,9 +133,6 @@ build bind --target x86_64-pc-windows-msvc --profile_name bind_profile
 
 // Build a bind payload with additional modules
 build bind --target x86_64-pc-windows-msvc --modules base,sys_full
-
-// Build a bind payload and convert it into shellcode (srdi format)
-build bind --target x86_64-pc-windows-msvc --shellcode_type srdi
 ~~~`,
 	}
 
@@ -151,23 +143,6 @@ build bind --target x86_64-pc-windows-msvc --shellcode_type srdi
 	})
 	common.BindArgCompletions(bindCmd, nil, common.ProfileCompleter(con))
 
-	shellCodeCmd := &cobra.Command{
-		Use:   consts.CommandBuildShellCode,
-		Short: "build ShellCode",
-
-		Args: cobra.MaximumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return ShellCodeCmd(cmd, con)
-		},
-	}
-
-	common.BindFlag(shellCodeCmd, common.GenerateFlagSet)
-	common.BindFlagCompletions(shellCodeCmd, func(comp carapace.ActionMap) {
-		comp["profile_name"] = common.ProfileCompleter(con)
-		comp["target"] = common.BuildTargetCompleter(con)
-	})
-	common.BindArgCompletions(shellCodeCmd, nil, common.ProfileCompleter(con))
-
 	preludeCmd := &cobra.Command{
 		Use:   consts.CommandBuildPrelude,
 		Short: "Build a prelude payload",
@@ -176,7 +151,7 @@ build bind --target x86_64-pc-windows-msvc --shellcode_type srdi
 The **target** flag is required to specify the platform, such as **x86_64-unknown-linux-musl** or **x86_64-pc-windows-msvc**, ensuring compatibility with the deployment environment.
 - The **profile_name** flag is optional; if provided, it must match an existing compile profile. This allows the prelude payload to inherit settings such as interval, jitter, or proxy configurations.
 - Use the **modules** flag to include additional functionalities in the payload, such as execute_exe or execute_dll. Modules should be specified as a comma-separated list.
-- The **shellcode_type** flag determines whether the payload should be converted into shellcode format, such as **srdi**, enabling compatibility with specific deployment requirements.`,
+`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return PreludeCmd(cmd, con)
@@ -190,9 +165,6 @@ build prelude --target x86_64-unknown-linux-musl --modules base,sys_full
 
 // Build a prelude payload with a specific profile
 build prelude --target x86_64-pc-windows-msvc --profile_name prelude_profile
-
-// Build a prelude payload and convert it into shellcode (srdi format)
-build prelude --target x86_64-pc-windows-msvc --shellcode_type srdi
 ~~~`,
 	}
 
@@ -210,7 +182,7 @@ build prelude --target x86_64-pc-windows-msvc --shellcode_type srdi
 
 The **target** flag is required to specify the platform for the modules, such as **x86_64-unknown-linux-musl** or **x86_64-pc-windows-msvc**,
 - The **profile_name** flag is optional; if provided, it must match an existing compile profile, allowing the modules to inherit relevant configurations such as interval, jitter, or proxy settings.
-- Additional modules can be explicitly defined using the **modules** flag as a comma-separated list (e.g., base, fs_mem, execute_dll). This allows fine-grained control over which modules are compiled. If **modules** is not specified, the default value will be **full**, which includes all available modules.`,
+- Additional modules can be explicitly defined using the **modules** flag as a comma-separated list (e.g., base,execute_dll). This allows fine-grained control over which modules are compiled. If **modules** is not specified, the default value will be **full**, which includes all available modules.`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ModulesCmd(cmd, con)
@@ -226,19 +198,30 @@ build modules --target x86_64-unknown-linux-musl --modules nano
 build modules --target x86_64-pc-windows-msvc --modules base,execute_dll
 
 // Compile modules using a specific profile
-build modules --target x86_64-pc-windows-msvc --profile_name my_profile --modules base, fs_mem
+build modules --target x86_64-pc-windows-msvc --profile_name my_profile --modules full
 ~~~`,
 	}
 
 	common.BindFlagCompletions(modulesCmd, func(comp carapace.ActionMap) {
 		comp["profile_name"] = common.ProfileCompleter(con)
 		comp["target"] = common.BuildTargetCompleter(con)
-		//comp["type"] = common.BuildFormatCompleter(con)
 	})
 	common.BindArgCompletions(modulesCmd, nil, common.ProfileCompleter(con))
 
-	buildCmd.AddCommand(beaconCmd, bindCmd, preludeCmd, modulesCmd)
-
+	pulseCmd := &cobra.Command{
+		Use:   consts.CommandBuildPulse,
+		Short: "stage 0 shellcode generate",
+		Long:  `Generate 'pulse' payload`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return PulseCmd(cmd, con)
+		},
+		Example: `
+~~~
+build pulse --target x86_64-pc-windows-msvc --srdi --address 127.0.0.1:5002
+~~~
+`,
+	}
+	buildCmd.AddCommand(beaconCmd, bindCmd, preludeCmd, modulesCmd, pulseCmd)
 	srdiCmd := &cobra.Command{
 		Use:   consts.CommandSRDI,
 		Short: "Build SRDI artifact",

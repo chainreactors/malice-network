@@ -591,13 +591,15 @@ func SaveArtifactFromGenerate(req *clientpb.Generate, realName, path string) (*m
 	return &builder, nil
 }
 
-func SaveArtifact(name, artifactType, stage string) (*models.Builder, error) {
+func SaveArtifact(name, artifactType, platform, arch, stage string) (*models.Builder, error) {
 	absBuildOutputPath, err := filepath.Abs(configs.TempPath)
 	if err != nil {
 		return nil, err
 	}
 	builder := models.Builder{
 		Name:   name,
+		Os:     platform,
+		Arch:   arch,
 		Stager: stage,
 		Type:   artifactType,
 		Path:   filepath.Join(absBuildOutputPath, encoders.UUID()),
@@ -648,88 +650,79 @@ func UpdateGeneratorConfig(req *clientpb.Generate, path string, profile models.P
 	if err != nil {
 		return err
 	}
-	var configMap map[string]interface{}
-	if err := yaml.Unmarshal(data, &configMap); err != nil {
+	var config *configs.GeneratorConfig
+	if err := yaml.Unmarshal(data, &config); err != nil {
 		return err
 	}
 
-	var config configs.GeneratorConfig
-	if basicConfig, ok := configMap["basic"]; ok {
-		basicBytes, err := yaml.Marshal(basicConfig)
+	if config.Basic != nil {
+		if profile.Name != "" {
+			config.Basic.Name = profile.Name
+		}
+		if req.Address != "" {
+			config.Basic.Targets = []string{}
+			config.Basic.Targets = append(config.Basic.Targets, req.Address)
+		} else if profile.Name != "" {
+			config.Basic.Targets = []string{}
+			config.Basic.Targets = append(config.Basic.Targets,
+				fmt.Sprintf("%s:%v", profile.Pipeline.Host, profile.Pipeline.Port))
+		}
+		var dbParams *models.Params
+		err = profile.DeserializeImplantConfig(dbParams)
 		if err != nil {
 			return err
 		}
-		if err := yaml.Unmarshal(basicBytes, &config.Basic); err != nil {
-			return err
+		if val, ok := req.Params["interval"]; ok && val != "" {
+			interval, err := strconv.Atoi(val)
+			if err != nil {
+				return err
+			}
+			config.Basic.Interval = interval
+		} else if profile.Name != "" {
+			dbInterval, err := strconv.Atoi(dbParams.Interval)
+			if err != nil {
+				return err
+			}
+			config.Basic.Interval = dbInterval
+		}
+
+		if val, ok := req.Params["jitter"]; ok && val != "" {
+			jitter, err := strconv.ParseFloat(val, 64)
+			if err != nil {
+				return err
+			}
+			config.Basic.Jitter = jitter
+		} else if profile.Name != "" {
+			dbJitter, err := strconv.ParseFloat(dbParams.Jitter, 64)
+			if err != nil {
+				return err
+			}
+			config.Basic.Jitter = dbJitter
+		}
+
+		if val, ok := req.Params["ca"]; ok {
+			config.Basic.CA = val
+		} else if profile.Pipeline.Tls.Enable {
+			config.Basic.CA = profile.Pipeline.Tls.Cert
+		}
+
+		//var modules []string
+		//if len(req.Modules) > 0 {
+		//	modules = req.Modules
+		//}else if profile.Name != ""{
+		//	modules = strings.Split(profile.Modules, ",")
+		//}
+		//config.Basic.Modules = modules
+
+	} else if config.Pulse != nil {
+		if profile.Name != "" {
+			config.Pulse.Target = req.Target
 		}
 	}
 
-	if profile.Name != "" {
-		config.Basic.Name = profile.Name
-	}
-	if req.Url != "" {
-		config.Basic.Targets = []string{}
-		config.Basic.Targets = append(config.Basic.Targets, req.Url)
-	} else if profile.Name != "" {
-		config.Basic.Targets = []string{}
-		config.Basic.Targets = append(config.Basic.Targets,
-			fmt.Sprintf("%s:%v", profile.Pipeline.Host, profile.Pipeline.Port))
-	}
-	var dbParams *models.Params
-	err = profile.DeserializeImplantConfig(dbParams)
+	newData, err := yaml.Marshal(config)
 	if err != nil {
 		return err
 	}
-	if val, ok := req.Params["interval"]; ok && val != "" {
-		interval, err := strconv.Atoi(val)
-		if err != nil {
-			return err
-		}
-		config.Basic.Interval = interval
-	} else if profile.Name != "" {
-		dbInterval, err := strconv.Atoi(dbParams.Interval)
-		if err != nil {
-			return err
-		}
-		config.Basic.Interval = dbInterval
-	}
-
-	if val, ok := req.Params["jitter"]; ok && val != "" {
-		jitter, err := strconv.ParseFloat(val, 64)
-		if err != nil {
-			return err
-		}
-		config.Basic.Jitter = jitter
-	} else if profile.Name != "" {
-		dbJitter, err := strconv.ParseFloat(dbParams.Jitter, 64)
-		if err != nil {
-			return err
-		}
-		config.Basic.Jitter = dbJitter
-	}
-
-	if val, ok := req.Params["ca"]; ok {
-		config.Basic.CA = val
-	} else if profile.Pipeline.Tls.Enable {
-		config.Basic.CA = profile.Pipeline.Tls.Cert
-	}
-
-	//dbModules := strings.Split(profile.Modules, ",")
-	//
-	//if len(dbModules) > 0 {
-	//	config.Implants.Modules = []string{}
-	//	config.Implants.Modules = append(config.Implants.Modules, dbModules...)
-	//}
-
-	configMap["basic"] = config.Basic
-
-	newData, err := yaml.Marshal(configMap)
-	if err != nil {
-		return err
-	}
-	err = os.WriteFile(path, newData, 0644)
-	if err != nil {
-		return err
-	}
-	return nil
+	return os.WriteFile(path, newData, 0644)
 }

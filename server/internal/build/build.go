@@ -186,12 +186,12 @@ func BuildPrelude(cli *client.Client, req *clientpb.Generate) error {
 	return nil
 }
 
-func BuildLoader(cli *client.Client, req *clientpb.Generate) error {
+func BuildPulse(cli *client.Client, req *clientpb.Generate) error {
 	timeout := 20 * time.Minute
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	BuildBindCommand := fmt.Sprintf(
-		"%s/malefic_mutant prelude autorun.yaml && cargo build --target %s --release -p malefic-prelude",
+		"%s/malefic_mutant generate pulse x64 win && cargo build --target %s --release --profile release-lto -p malefic-pulse",
 		ContainerBinPath,
 		req.Target,
 	)
@@ -273,11 +273,6 @@ func BuildModules(cli *client.Client, req *clientpb.Generate) error {
 	return nil
 }
 
-//func buildDLL() {
-//	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-//
-//}
-
 func SaveArtifact(dst string, bin []byte) error {
 	filename := filepath.Join(configs.BuildOutputPath, dst)
 	err := os.WriteFile(filename, bin, 0644)
@@ -288,7 +283,7 @@ func SaveArtifact(dst string, bin []byte) error {
 }
 
 func NewMaleficSRDIArtifact(name, src, platform, arch, stage, funcName, dataPath string) (*models.Builder, []byte, error) {
-	builder, err := db.SaveArtifact(name, "srdi", stage)
+	builder, err := db.SaveArtifact(name, "srdi", platform, arch, stage)
 	if err != nil {
 		return nil, nil, err
 	}

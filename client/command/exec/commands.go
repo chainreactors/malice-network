@@ -131,6 +131,7 @@ if return 0x80004005, please use --amsi bypass.
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ExecuteAssemblyCmd(cmd, con)
 		},
+		Aliases: []string{consts.ModuleInlineAssembly},
 		Annotations: map[string]string{
 			"depend": consts.ModuleExecuteAssembly,
 		},
