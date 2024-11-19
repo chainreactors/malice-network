@@ -621,7 +621,7 @@ func GetArtifacts() (*clientpb.Builders, error) {
 		Builders: make([]*clientpb.Builder, 0),
 	}
 	for _, builder := range builders {
-		pbBuilders.Builders = append(pbBuilders.GetBuilders(), builder.ToProtobuf())
+		pbBuilders.Builders = append(pbBuilders.GetBuilders(), builder.ToProtobuf(nil))
 	}
 	return pbBuilders, nil
 }
