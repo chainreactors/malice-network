@@ -13,6 +13,14 @@ type GeneratorBasicConfig struct {
 	Key        string   `yaml:"key" config:"key" default:"maliceofinternal"`
 }
 
+type GeneratePulseConfig struct {
+	Target     string `yaml:"target" config:"target" default:""`
+	Encryption string `yaml:"encryption" config:"encryption" default:"aes"`
+	Key        string `yaml:"key" config:"key" default:"maliceofinternal"`
+}
+
 type GeneratorConfig struct {
-	Basic GeneratorBasicConfig `yaml:"basic" config:"basic"`
+	Basic  *GeneratorBasicConfig  `yaml:"basic" config:"basic"`
+	Pulse  *GeneratePulseConfig   `yaml:"pulse" config:"pulse"`
+	Extras map[string]interface{} `yaml:",inline"`
 }

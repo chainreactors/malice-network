@@ -22,7 +22,7 @@ func (rpc *Server) Build(ctx context.Context, req *clientpb.Generate) (*clientpb
 	if req.Name == "" {
 		req.Name = codenames.GetCodename()
 	}
-	_, ok := consts.GetBuildTarget(req.Target)
+	target, ok := consts.GetBuildTarget(req.Target)
 	if !ok {
 		return nil, errs.ErrInvalidateTarget
 	}
@@ -39,29 +39,17 @@ func (rpc *Server) Build(ctx context.Context, req *clientpb.Generate) (*clientpb
 	switch req.Type {
 	case consts.CommandBuildBeacon:
 		err = build.BuildBeacon(cli, req)
-		if err != nil {
-			return nil, err
-		}
 	case consts.CommandBuildBind:
 		err = build.BuildBind(cli, req)
-		if err != nil {
-			return nil, err
-		}
 	case consts.CommandBuildPrelude:
 		err = build.BuildPrelude(cli, req)
-		if err != nil {
-			return nil, err
-		}
 	case consts.CommandBuildModules:
 		err = build.BuildModules(cli, req)
-		if err != nil {
-			return nil, err
-		}
-	case consts.CommandBuildLoader:
-		err = build.BuildLoader(cli, req)
-		if err != nil {
-			return nil, err
-		}
+	case consts.CommandBuildPulse:
+		err = build.BuildPulse(cli, req)
+	}
+	if err != nil {
+		return nil, err
 	}
 	maleficPath, artifactPath, err := build.MoveBuildOutput(req.Target, req.Type)
 	if err != nil {
@@ -84,8 +72,7 @@ func (rpc *Server) Build(ctx context.Context, req *clientpb.Generate) (*clientpb
 			Id:   builder.ID,
 		}, nil
 	} else {
-		builder, bin, err := build.NewMaleficSRDIArtifact(req.Name+"_srdi", artifactPath, req.Platform,
-			"", req.Stager, "", "")
+		builder, bin, err := build.NewMaleficSRDIArtifact(req.Name+"_srdi", artifactPath, target.OS, target.Arch, req.Stager, "", "")
 		if err != nil {
 			return nil, err
 		}
@@ -153,7 +140,7 @@ func (rpc *Server) UploadArtifact(ctx context.Context, req *clientpb.Builder) (*
 	if req.Name == "" {
 		req.Name = codenames.GetCodename()
 	}
-	builder, err := db.SaveArtifact(req.Name, req.Type, req.Stage)
+	builder, err := db.SaveArtifact(req.Name, req.Type, req.Platform, req.Arch, req.Stage)
 	if err != nil {
 		return nil, err
 	}

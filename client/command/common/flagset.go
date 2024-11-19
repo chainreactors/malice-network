@@ -118,27 +118,26 @@ func ParseEncryptionFlags(cmd *cobra.Command) *clientpb.Encryption {
 
 func GenerateFlagSet(f *pflag.FlagSet) {
 	f.String("profile_name", "", "profile name")
-	f.StringP("ip", "i", "", "build ip")
-	f.StringP("type", "", "", "build type")
+	f.StringP("address", "a", "", "implant address")
 	f.String("target", "", "build target")
-	f.String("ca", "", "Set ca")
-	f.String("interval", "", "interval")
-	f.StringSliceP("modules", "m", []string{}, "Set modules e.g.: execute_exe,execute_dll")
+	f.String("ca", "", "custom ca file")
+	f.String("interval", "", "interval /second")
 	f.String("jitter", "", "jitter")
-	f.String("shellcode_type", "", "shellcode_type e.g.: srdi")
+	f.StringSliceP("modules", "m", []string{}, "Set modules e.g.: execute_exe,execute_dll")
+	f.String("srdi", "", "enable srdi")
 }
 
-func ParseGenerateFlags(cmd *cobra.Command) (string, string, string, string, []string, string, string, string, bool) {
+func ParseGenerateFlags(cmd *cobra.Command) (string, string, string, []string, string, string, string, bool) {
 	name, _ := cmd.Flags().GetString("profile_name")
-	url, _ := cmd.Flags().GetString("ip")
-	target, _ := cmd.Flags().GetString("target")
-	buildType, _ := cmd.Flags().GetString("type")
+	address, _ := cmd.Flags().GetString("address")
+	buildTarget, _ := cmd.Flags().GetString("buildTarget")
+	//buildType, _ := cmd.Flags().GetString("type")
 	modules, _ := cmd.Flags().GetStringSlice("modules")
 	ca, _ := cmd.Flags().GetString("ca")
 	interval, _ := cmd.Flags().GetString("interval")
 	jitter, _ := cmd.Flags().GetString("jitter")
 	enableSRDI, _ := cmd.Flags().GetBool("srdi")
-	return name, url, target, buildType, modules, ca, interval, jitter, enableSRDI
+	return name, address, buildTarget, modules, ca, interval, jitter, enableSRDI
 }
 
 func ProfileSet(f *pflag.FlagSet) {
