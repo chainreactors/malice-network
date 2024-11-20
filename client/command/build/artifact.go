@@ -74,18 +74,22 @@ func PrintArtifacts(builders *clientpb.Builders, con *repl.Console) error {
 func DownloadArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
 	name := cmd.Flags().Arg(0)
 	output, _ := cmd.Flags().GetString("output")
-	builder, err := DownloadArtifact(con, name)
-	if err != nil {
-		return err
-	}
-	if output != "" {
-		output = filepath.Join(assets.GetTempDir(), builder.Name)
-	}
-	err = os.WriteFile(output, builder.Bin, 0644)
-	if err != nil {
-		return err
-	}
-	con.Log.Infof("download artifact %s, save to %s\n", builder.Name, output)
+	go func() {
+		builder, err := DownloadArtifact(con, name)
+		if err != nil {
+			con.Log.Errorf("download artifact failed: %s", err)
+			return
+		}
+		if output == "" {
+			output = filepath.Join(assets.GetTempDir(), builder.Name)
+		}
+		err = os.WriteFile(output, builder.Bin, 0644)
+		if err != nil {
+			con.Log.Errorf("open file failed: %s", err)
+			return
+		}
+		con.Log.Infof("download artifact %s, save to %s\n", builder.Name, output)
+	}()
 	return nil
 }
 
@@ -132,19 +136,20 @@ func downloadArtifactCallback(tableModel *tui.TableModel, writer io.Writer, con 
 			con.Log.FErrorf(writer, "No row selected\n")
 		}
 	}
-	builder, err := DownloadArtifact(con, selectRow.Data["Name"].(string))
-	if err != nil {
-		return func() {
-			con.Log.FErrorf(writer, "open file %s\n", err)
-		}
-	}
-	con.Log.FInfof(writer, "download artifact %s\n", filepath.Join(assets.GetTempDir(), builder.Name))
 	return func() {
-		output := filepath.Join(assets.GetTempDir(), builder.Name)
-		err = os.WriteFile(output, builder.Bin, 0644)
-		if err != nil {
-			con.Log.FErrorf(writer, err.Error()+"\n")
+		go func() {
+			builder, err := DownloadArtifact(con, selectRow.Data["Name"].(string))
+			if err != nil {
+				con.Log.Errorf("open file %s\n", err)
+			}
+			con.Log.Infof("download artifact %s\n", filepath.Join(assets.GetTempDir(), builder.Name))
+			output := filepath.Join(assets.GetTempDir(), builder.Name)
+			err = os.WriteFile(output, builder.Bin, 0644)
+			if err != nil {
+				con.Log.Errorf(err.Error() + "\n")
+				return
+			}
 			return
-		}
+		}()
 	}
 }
