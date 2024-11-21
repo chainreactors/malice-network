@@ -44,9 +44,9 @@ func MoveBuildOutput(target, buildType string) (string, string, error) {
 	//case consts.DLL:
 	//	sourcePath = filepath.Join(configs.TargetPath, target, release, malefic+consts.DllFile)
 	//	dstPath = filepath.Join(configs.BuildOutputPath, name+consts.DllFile)
-	//case consts.Shellcode:
-	//	sourcePath = filepath.Join(configs.TargetPath, target, release, malefic+consts.ShellcodeFile)
-	//	dstPath = filepath.Join(configs.BuildOutputPath, name+consts.ShellcodeFile)
+	case strings.Contains(target, "darwin"):
+		sourcePath = filepath.Join(configs.TargetPath, target, release, malefic)
+		dstPath = filepath.Join(configs.BuildOutputPath, name)
 	case strings.Contains(target, "linux"):
 		sourcePath = filepath.Join(configs.TargetPath, target, release, malefic)
 		dstPath = filepath.Join(configs.BuildOutputPath, name)

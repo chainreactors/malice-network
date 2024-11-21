@@ -35,7 +35,11 @@ func (rpc *Server) Build(ctx context.Context, req *clientpb.Generate) (*clientpb
 		return nil, errors.New(fmt.Sprintf("Err create config: %v", err))
 	}
 	logs.Log.Infof("start to build %s ...", req.Target)
-
+	builder, err := db.SaveArtifactFromGenerate(req)
+	if err != nil {
+		logs.Log.Errorf("move build output error: %v", err)
+		return nil, err
+	}
 	switch req.Type {
 	case consts.CommandBuildBeacon:
 		err = build.BuildBeacon(cli, req)
@@ -51,14 +55,14 @@ func (rpc *Server) Build(ctx context.Context, req *clientpb.Generate) (*clientpb
 	if err != nil {
 		return nil, err
 	}
-	maleficPath, artifactPath, err := build.MoveBuildOutput(req.Target, req.Type)
-	if err != nil {
-		return nil, err
-	}
-
-	builder, err := db.SaveArtifactFromGenerate(req, filepath.Base(maleficPath), artifactPath)
+	_, artifactPath, err := build.MoveBuildOutput(req.Target, req.Type)
 	if err != nil {
 		logs.Log.Errorf("move build output error: %v", err)
+		return nil, err
+	}
+	builder.Path = artifactPath
+	err = db.UpdateBuilder(builder)
+	if err != nil {
 		return nil, err
 	}
 	if !req.Srdi {
@@ -148,4 +152,13 @@ func (rpc *Server) GetArtifact(ctx context.Context, req *clientpb.Builder) (*cli
 	}
 
 	return builder.ToProtobuf(data), nil
+}
+
+func (rpc *Server) BuildLog(ctx context.Context, req *clientpb.Builder) (*clientpb.Builder, error) {
+	resultLog, err := db.GetBuilderLogs(req.Name, int(req.Num))
+	if err != nil {
+		return nil, err
+	}
+	req.Log = []byte(resultLog)
+	return req, nil
 }

@@ -75,7 +75,7 @@ func ConsoleRunnerCmd(con *repl.Console, run bool) (pre, post func(cmd *cobra.Co
 			} else {
 				err := repl.NewConfigLogin(con, filename)
 				if err != nil {
-					core.Log.Errorf("Error logging in: %s", err)
+					core.Log.Warnf("Error logging in: %s", err)
 					return nil
 				}
 			}
@@ -130,4 +130,5 @@ func BindClientsCommands(con *repl.Console) console.Commands {
 
 func RegisterClientFunc(con *repl.Console) {
 	generic.Register(con)
+	build.Register(con)
 }

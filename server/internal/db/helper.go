@@ -3,6 +3,7 @@ package db
 import (
 	"encoding/json"
 	"errors"
+	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/encoders"
 	"github.com/chainreactors/malice-network/helper/errs"
@@ -599,7 +600,7 @@ func GetProfiles() ([]models.Profile, error) {
 	return profiles, result.Error
 }
 
-func SaveArtifactFromGenerate(req *clientpb.Generate, realName, path string) (*models.Builder, error) {
+func SaveArtifactFromGenerate(req *clientpb.Generate) (*models.Builder, error) {
 	target, ok := consts.GetBuildTarget(req.Target)
 	if !ok {
 		return nil, errs.ErrInvalidateTarget
@@ -612,7 +613,6 @@ func SaveArtifactFromGenerate(req *clientpb.Generate, realName, path string) (*m
 		Stager:      req.Stager,
 		CA:          req.Ca,
 		Modules:     req.Feature,
-		Path:        path,
 		Arch:        target.Arch,
 		Os:          target.OS,
 	}
@@ -629,6 +629,13 @@ func SaveArtifactFromGenerate(req *clientpb.Generate, realName, path string) (*m
 	}
 
 	return &builder, nil
+}
+
+func UpdateBuilder(builder *models.Builder) error {
+	return Session().Model(builder).
+		Select("path").
+		Updates(builder).
+		Error
 }
 
 func SaveArtifact(name, artifactType, platform, arch, stage string) (*models.Builder, error) {
@@ -726,4 +733,31 @@ func UpdateGeneratorConfig(req *clientpb.Generate, path string, config *types.Pr
 		return err
 	}
 	return os.WriteFile(path, newData, 0644)
+}
+
+func UpdateBuilderLog(name string, logEntry string) {
+	err := Session().Model(&models.Builder{}).
+		Where("name = ?", name).
+		Update("log", gorm.Expr("ifnull(log, '') || ?", logEntry)).
+		Error
+
+	if err != nil {
+		logs.Log.Errorf("Error updating log for Builder name %s: %v", name, err)
+	}
+}
+
+func GetBuilderLogs(builderName string, limit int) (string, error) {
+	var builder models.Builder
+	if err := Session().Where("name = ?", builderName).First(&builder).Error; err != nil {
+		return "", err
+	}
+
+	split := strings.Split(builder.Log, "\n")
+
+	if limit > 0 && len(split) > limit {
+		split = split[len(split)-limit:]
+	}
+	result := strings.Join(split, "\n")
+
+	return result, nil
 }

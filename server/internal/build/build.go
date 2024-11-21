@@ -1,20 +1,24 @@
 package build
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/server/internal/configs"
+	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
+	"io"
 	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -32,6 +36,7 @@ var (
 	funcNameOption              = "--function-name"
 	userDataPathOption          = "--userdata-path"
 
+	autorunPath              = filepath.Join(configs.SourceCodePath, "autorun.yaml")
 	sourcePath, _            = filepath.Abs(configs.SourceCodePath)
 	binPath, _               = filepath.Abs(configs.BinPath)
 	registryPath, _          = filepath.Abs(filepath.Join(configs.CargoCachePath, "registry"))
@@ -93,19 +98,25 @@ func BuildBeacon(cli *client.Client, req *clientpb.Generate) error {
 	if err := cli.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
 		logs.Log.Errorf("Error starting container: %v", err)
 	}
-
+	sendContaninerCtrlMsg(false, containerName, req)
 	logs.Log.Infof("Container %s started successfully.", resp.ID)
-
+	err = catchLogs(cli, resp.ID, req.Name)
+	if err != nil {
+		return err
+	}
 	statusCh, errCh := cli.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
 	select {
 	case err := <-errCh:
 		if err != nil {
+			if strings.Contains(err.Error(), "No such container") {
+				return nil
+			}
 			return err
 		}
 	case <-statusCh:
 		logs.Log.Infof("Container %s has stopped and will be automatically removed.", resp.ID)
 	}
-
+	sendContaninerCtrlMsg(true, containerName, req)
 	return nil
 }
 
@@ -135,23 +146,34 @@ func BuildBind(cli *client.Client, req *clientpb.Generate) error {
 		logs.Log.Errorf("Error starting container: %v", err)
 	}
 
+	sendContaninerCtrlMsg(false, containerName, req)
 	logs.Log.Infof("Container %s started successfully.", resp.ID)
 
+	err = catchLogs(cli, resp.ID, req.Name)
+	if err != nil {
+		return err
+	}
 	statusCh, errCh := cli.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
 	select {
 	case err := <-errCh:
 		if err != nil {
+			if strings.Contains(err.Error(), "No such container") {
+				return nil
+			}
 			return err
 		}
 	case <-statusCh:
 		logs.Log.Infof("Container %s has stopped and will be automatically removed.", resp.ID)
 	}
-
+	sendContaninerCtrlMsg(true, containerName, req)
 	return nil
 }
 
 func BuildPrelude(cli *client.Client, req *clientpb.Generate) error {
-
+	err := os.WriteFile(autorunPath, req.Bin, 0644)
+	if err != nil {
+		return err
+	}
 	timeout := 20 * time.Minute
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
@@ -176,18 +198,27 @@ func BuildPrelude(cli *client.Client, req *clientpb.Generate) error {
 		logs.Log.Errorf("Error starting container: %v", err)
 	}
 
+	sendContaninerCtrlMsg(false, containerName, req)
 	logs.Log.Infof("Container %s started successfully.", resp.ID)
+
+	err = catchLogs(cli, resp.ID, req.Name)
+	if err != nil {
+		return err
+	}
 
 	statusCh, errCh := cli.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
 	select {
 	case err := <-errCh:
 		if err != nil {
+			if strings.Contains(err.Error(), "No such container") {
+				return nil
+			}
 			return err
 		}
 	case <-statusCh:
 		logs.Log.Infof("Container %s has stopped and will be automatically removed.", resp.ID)
 	}
-
+	sendContaninerCtrlMsg(true, containerName, req)
 	return nil
 }
 
@@ -216,18 +247,27 @@ func BuildPulse(cli *client.Client, req *clientpb.Generate) error {
 		logs.Log.Errorf("Error starting container: %v", err)
 	}
 
+	sendContaninerCtrlMsg(false, containerName, req)
 	logs.Log.Infof("Container %s started successfully.", resp.ID)
+
+	err = catchLogs(cli, resp.ID, req.Name)
+	if err != nil {
+		return err
+	}
 
 	statusCh, errCh := cli.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
 	select {
 	case err := <-errCh:
 		if err != nil {
+			if strings.Contains(err.Error(), "No such container") {
+				return nil
+			}
 			return err
 		}
 	case <-statusCh:
 		logs.Log.Infof("Container %s has stopped and will be automatically removed.", resp.ID)
 	}
-
+	sendContaninerCtrlMsg(true, containerName, req)
 	return nil
 }
 
@@ -263,17 +303,28 @@ func BuildModules(cli *client.Client, req *clientpb.Generate) error {
 		logs.Log.Errorf("Error starting container: %v", err)
 	}
 
+	sendContaninerCtrlMsg(false, containerName, req)
 	logs.Log.Infof("Container %s started successfully.", resp.ID)
+
+	err = catchLogs(cli, resp.ID, req.Name)
+	if err != nil {
+		return err
+	}
 
 	statusCh, errCh := cli.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
 	select {
 	case err := <-errCh:
 		if err != nil {
+			if strings.Contains(err.Error(), "No such container") {
+				return nil
+			}
 			return err
 		}
 	case <-statusCh:
 		logs.Log.Infof("Container %s has stopped and will be automatically removed.", resp.ID)
 	}
+
+	sendContaninerCtrlMsg(true, containerName, req)
 
 	return nil
 }
@@ -324,4 +375,57 @@ func MaleficSRDI(src, dst, platform, arch, funcName, dataPath string) ([]byte, e
 	}
 
 	return data, nil
+}
+
+func catchLogs(cli *client.Client, containerID, name string) error {
+	logOptions := container.LogsOptions{
+		ShowStdout: true,
+		ShowStderr: true,
+		Follow:     true,
+		Timestamps: true,
+	}
+
+	logReader, err := cli.ContainerLogs(context.Background(), containerID, logOptions)
+	if err != nil {
+		logs.Log.Errorf("Error fetching logs for container %s: %v", containerID, err)
+		return err
+	}
+	defer logReader.Close()
+
+	reader := bufio.NewReader(logReader)
+	var logBuffer strings.Builder
+
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil && err != io.EOF {
+			logs.Log.Errorf("Error reading logs for container %s: %v", containerID, err)
+			return err
+		}
+
+		if err == io.EOF {
+			break
+		}
+		re := regexp.MustCompile(`[\x00-\x1F&&[^\n]]+`)
+		line = re.ReplaceAllString(line, "")
+		logBuffer.WriteString(line)
+		db.UpdateBuilderLog(name, line)
+	}
+
+	return nil
+}
+
+func sendContaninerCtrlMsg(isEnd bool, containerName string, req *clientpb.Generate) {
+	if isEnd {
+		core.EventBroker.Publish(core.Event{
+			EventType: consts.EventBuild,
+			IsNotify:  false,
+			Message:   fmt.Sprintf("builder %s type %s in Container %s has stopped and will be automatically removed.", req.Name, req.Type, containerName),
+		})
+	} else {
+		core.EventBroker.Publish(core.Event{
+			EventType: consts.EventBuild,
+			IsNotify:  false,
+			Message:   fmt.Sprintf("builder %s type %s in Container %s has started", req.Name, req.Type, containerName),
+		})
+	}
 }

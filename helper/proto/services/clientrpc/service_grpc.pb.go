@@ -128,6 +128,7 @@ const (
 	MaliceRPC_NewProfile_FullMethodName           = "/clientrpc.MaliceRPC/NewProfile"
 	MaliceRPC_GetProfiles_FullMethodName          = "/clientrpc.MaliceRPC/GetProfiles"
 	MaliceRPC_Build_FullMethodName                = "/clientrpc.MaliceRPC/Build"
+	MaliceRPC_BuildLog_FullMethodName             = "/clientrpc.MaliceRPC/BuildLog"
 	MaliceRPC_DownloadArtifact_FullMethodName     = "/clientrpc.MaliceRPC/DownloadArtifact"
 	MaliceRPC_UploadArtifact_FullMethodName       = "/clientrpc.MaliceRPC/UploadArtifact"
 	MaliceRPC_ListArtifact_FullMethodName         = "/clientrpc.MaliceRPC/ListArtifact"
@@ -262,6 +263,7 @@ type MaliceRPCClient interface {
 	NewProfile(ctx context.Context, in *clientpb.Profile, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	GetProfiles(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Profiles, error)
 	Build(ctx context.Context, in *clientpb.Generate, opts ...grpc.CallOption) (*clientpb.Builder, error)
+	BuildLog(ctx context.Context, in *clientpb.Builder, opts ...grpc.CallOption) (*clientpb.Builder, error)
 	DownloadArtifact(ctx context.Context, in *clientpb.Builder, opts ...grpc.CallOption) (*clientpb.Builder, error)
 	UploadArtifact(ctx context.Context, in *clientpb.Builder, opts ...grpc.CallOption) (*clientpb.Builder, error)
 	ListArtifact(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Builders, error)
@@ -1253,6 +1255,15 @@ func (c *maliceRPCClient) Build(ctx context.Context, in *clientpb.Generate, opts
 	return out, nil
 }
 
+func (c *maliceRPCClient) BuildLog(ctx context.Context, in *clientpb.Builder, opts ...grpc.CallOption) (*clientpb.Builder, error) {
+	out := new(clientpb.Builder)
+	err := c.cc.Invoke(ctx, MaliceRPC_BuildLog_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *maliceRPCClient) DownloadArtifact(ctx context.Context, in *clientpb.Builder, opts ...grpc.CallOption) (*clientpb.Builder, error) {
 	out := new(clientpb.Builder)
 	err := c.cc.Invoke(ctx, MaliceRPC_DownloadArtifact_FullMethodName, in, out, opts...)
@@ -1417,6 +1428,7 @@ type MaliceRPCServer interface {
 	NewProfile(context.Context, *clientpb.Profile) (*clientpb.Empty, error)
 	GetProfiles(context.Context, *clientpb.Empty) (*clientpb.Profiles, error)
 	Build(context.Context, *clientpb.Generate) (*clientpb.Builder, error)
+	BuildLog(context.Context, *clientpb.Builder) (*clientpb.Builder, error)
 	DownloadArtifact(context.Context, *clientpb.Builder) (*clientpb.Builder, error)
 	UploadArtifact(context.Context, *clientpb.Builder) (*clientpb.Builder, error)
 	ListArtifact(context.Context, *clientpb.Empty) (*clientpb.Builders, error)
@@ -1745,6 +1757,9 @@ func (UnimplementedMaliceRPCServer) GetProfiles(context.Context, *clientpb.Empty
 }
 func (UnimplementedMaliceRPCServer) Build(context.Context, *clientpb.Generate) (*clientpb.Builder, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Build not implemented")
+}
+func (UnimplementedMaliceRPCServer) BuildLog(context.Context, *clientpb.Builder) (*clientpb.Builder, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method BuildLog not implemented")
 }
 func (UnimplementedMaliceRPCServer) DownloadArtifact(context.Context, *clientpb.Builder) (*clientpb.Builder, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DownloadArtifact not implemented")
@@ -3682,6 +3697,24 @@ func _MaliceRPC_Build_Handler(srv interface{}, ctx context.Context, dec func(int
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MaliceRPC_BuildLog_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(clientpb.Builder)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MaliceRPCServer).BuildLog(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MaliceRPC_BuildLog_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MaliceRPCServer).BuildLog(ctx, req.(*clientpb.Builder))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _MaliceRPC_DownloadArtifact_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(clientpb.Builder)
 	if err := dec(in); err != nil {
@@ -4180,6 +4213,10 @@ var MaliceRPC_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Build",
 			Handler:    _MaliceRPC_Build_Handler,
+		},
+		{
+			MethodName: "BuildLog",
+			Handler:    _MaliceRPC_BuildLog_Handler,
 		},
 		{
 			MethodName: "DownloadArtifact",

@@ -32,7 +32,7 @@ func UploadCmd(cmd *cobra.Command, con *repl.Console) error {
 func Upload(rpc clientrpc.MaliceRPCClient, session *core.Session, path string, target string, priv string, hidden bool) (*clientpb.Task, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		core.Log.Errorf("Can't open file: %s", err)
+		return nil, err
 	}
 	value, err := strconv.ParseUint(priv, 8, 32)
 	if err != nil {
