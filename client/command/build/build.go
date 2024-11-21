@@ -3,12 +3,14 @@ package build
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/spf13/cobra"
+	"os"
 )
 
 func BeaconCmd(cmd *cobra.Command, con *repl.Console) error {
@@ -35,7 +37,6 @@ func BeaconCmd(cmd *cobra.Command, con *repl.Console) error {
 			con.Log.Errorf("Build beacon failed: %v", err)
 			return
 		}
-		con.Log.Infof("Build beacon success")
 	}()
 	return nil
 }
@@ -64,7 +65,6 @@ func BindCmd(cmd *cobra.Command, con *repl.Console) error {
 			con.Log.Errorf("Build bind failed: %v", err)
 			return
 		}
-		con.Log.Infof("Build bind success")
 	}()
 	return nil
 }
@@ -74,8 +74,15 @@ func PreludeCmd(cmd *cobra.Command, con *repl.Console) error {
 	if buildTarget == "" {
 		return errors.New("require build target")
 	}
+	autorunPath, _ := cmd.Flags().GetString("autorun")
+	if autorunPath == "" {
+		return errors.New("require autorun.yaml path")
+	}
+	file, err := os.ReadFile(autorunPath)
+	if err != nil {
+		return err
+	}
 	go func() {
-
 		_, err := con.Rpc.Build(context.Background(), &clientpb.Generate{
 			ProfileName: name,
 			Address:     address,
@@ -84,12 +91,12 @@ func PreludeCmd(cmd *cobra.Command, con *repl.Console) error {
 			Modules:     modules,
 			Ca:          ca,
 			Srdi:        srdi,
+			Bin:         file,
 		})
 		if err != nil {
 			con.Log.Errorf("Build prelude failed: %v\n", err)
 			return
 		}
-		con.Log.Infof("Build prelude success")
 	}()
 	return nil
 }
@@ -115,7 +122,6 @@ func ModulesCmd(cmd *cobra.Command, con *repl.Console) error {
 			con.Log.Errorf("Build modules failed: %v\n", err)
 			return
 		}
-		con.Log.Infof("Build modules success")
 	}()
 	return nil
 }
@@ -137,7 +143,24 @@ func PulseCmd(cmd *cobra.Command, con *repl.Console) error {
 			con.Log.Errorf("Build loader failed: %v", err)
 			return
 		}
-		con.Log.Infof("Build loader success")
 	}()
+	return nil
+}
+
+func BuildLogCmd(cmd *cobra.Command, con *repl.Console) error {
+	name := cmd.Flags().Arg(0)
+	num, _ := cmd.Flags().GetInt("rows")
+	builder, err := con.Rpc.BuildLog(context.Background(), &clientpb.Builder{
+		Name: name,
+		Num:  uint32(num),
+	})
+	if err != nil {
+		return err
+	}
+	if len(builder.Log) == 0 {
+		con.Log.Infof("No log for %s", name)
+		return nil
+	}
+	fmt.Println(string(builder.Log))
 	return nil
 }

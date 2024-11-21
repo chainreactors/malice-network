@@ -162,6 +162,9 @@ func (s *ServerStatus) EventHandler() {
 		case consts.EventWebsite:
 			tui.Down(1)
 			Log.Importantf("[%s] %s: %s %s", event.Type, event.Op, event.Message, event.Err)
+		case consts.EventBuild:
+			tui.Down(1)
+			Log.Importantf("[%s] %s", event.Type, event.Message)
 		}
 	}
 }

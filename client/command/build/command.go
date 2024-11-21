@@ -149,39 +149,41 @@ build bind --target x86_64-pc-windows-msvc --modules base,sys_full
 		comp["target"] = common.BuildTargetCompleter(con)
 	})
 
-	//	preludeCmd := &cobra.Command{
-	//		Use:   consts.CommandBuildPrelude,
-	//		Short: "Build a prelude payload",
-	//		Long: `Generate a prelude payload as part of a multi-stage deployment.
-	//
-	//The **target** flag is required to specify the platform, such as **x86_64-unknown-linux-musl** or **x86_64-pc-windows-msvc**, ensuring compatibility with the deployment environment.
-	//- The **profile_name** flag is optional; if provided, it must match an existing compile profile. This allows the prelude payload to inherit settings such as interval, jitter, or proxy configurations.
-	//- Use the **modules** flag to include additional functionalities in the payload, such as execute_exe or execute_dll. Modules should be specified as a comma-separated list.
-	//`,
-	//		Args: cobra.MaximumNArgs(1),
-	//		RunE: func(cmd *cobra.Command, args []string) error {
-	//			return PreludeCmd(cmd, con)
-	//		},
-	//		Example: `~~~
-	//// Build a prelude payload for the Windows platform
-	//build prelude --target x86_64-unknown-linux-musl
-	//
-	//// Build a prelude payload with anti-sandbox and anti-debugging enabled
-	//build prelude --target x86_64-unknown-linux-musl --modules base,sys_full
-	//
-	//// Build a prelude payload with a specific profile
-	//build prelude --target x86_64-pc-windows-msvc --profile_name prelude_profile
-	//~~~`,
-	//	}
-	//
-	//	common.BindFlag(preludeCmd, common.GenerateFlagSet)
-	//	preludeCmd.MarkFlagRequired("target")
-	//	preludeCmd.MarkFlagRequired("profile")
-	//	common.BindFlagCompletions(preludeCmd, func(comp carapace.ActionMap) {
-	//		comp["profile"] = common.ProfileCompleter(con)
-	//		comp["target"] = common.BuildTargetCompleter(con)
-	//	})
-	//	common.BindArgCompletions(preludeCmd, nil, common.ProfileCompleter(con))
+	preludeCmd := &cobra.Command{
+		Use:   consts.CommandBuildPrelude,
+		Short: "Build a prelude payload",
+		Long: `Generate a prelude payload as part of a multi-stage deployment.
+	
+	The **target** flag is required to specify the platform, such as **x86_64-unknown-linux-musl** or **x86_64-pc-windows-msvc**, ensuring compatibility with the deployment environment.
+	- The **profile_name** flag is optional; if provided, it must match an existing compile profile. This allows the prelude payload to inherit settings such as interval, jitter, or proxy configurations.
+	- Use the **modules** flag to include additional functionalities in the payload, such as execute_exe or execute_dll. Modules should be specified as a comma-separated list.
+	`,
+		Args: cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return PreludeCmd(cmd, con)
+		},
+		Example: `~~~
+	// Build a prelude payload for the Windows platform
+	build prelude --target x86_64-unknown-linux-musl
+	
+	// Build a prelude payload with anti-sandbox and anti-debugging enabled
+	build prelude --target x86_64-unknown-linux-musl --modules base,sys_full
+	
+	// Build a prelude payload with a specific profile
+	build prelude --target x86_64-pc-windows-msvc --profile_name prelude_profile
+	~~~`,
+	}
+
+	common.BindFlag(preludeCmd, common.GenerateFlagSet)
+	preludeCmd.MarkFlagRequired("target")
+	preludeCmd.MarkFlagRequired("profile")
+	preludeCmd.MarkFlagRequired("autorun")
+	common.BindFlagCompletions(preludeCmd, func(comp carapace.ActionMap) {
+		comp["profile"] = common.ProfileCompleter(con)
+		comp["target"] = common.BuildTargetCompleter(con)
+		comp["autorun"] = carapace.ActionFiles().Usage("autorun.yaml path")
+	})
+	common.BindArgCompletions(preludeCmd, nil, common.ProfileCompleter(con))
 
 	modulesCmd := &cobra.Command{
 		Use:   consts.CommandBuildModules,
@@ -239,7 +241,27 @@ build pulse --target x86_64-pc-windows-msvc --srdi --address 127.0.0.1:5002
 		comp["target"] = common.BuildTargetCompleter(con)
 	})
 
-	buildCmd.AddCommand(beaconCmd, bindCmd, modulesCmd, pulseCmd)
+	logCmd := &cobra.Command{
+		Use:   consts.CommandBuildLog,
+		Short: "Show build log",
+		Long:  `Displays the log for the specified number of rows`,
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return BuildLogCmd(cmd, con)
+		},
+		Example: `
+~~~
+build log builder_name --rows 70
+~~~
+`,
+	}
+	common.BindFlag(logCmd, func(f *pflag.FlagSet) {
+		f.Int("rows", 50, "number of rows")
+	})
+	common.BindArgCompletions(logCmd, nil, common.ArtifactNameCompleter(con))
+
+	buildCmd.AddCommand(beaconCmd, bindCmd, modulesCmd, pulseCmd, preludeCmd, logCmd)
+
 	srdiCmd := &cobra.Command{
 		Use:   consts.CommandSRDI,
 		Short: "Build SRDI artifact",

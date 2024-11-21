@@ -189,6 +189,7 @@ const (
 	CommandBuildShellCode   = "shellcode"
 	CommandBuildModules     = "modules"
 	CommandBuildPulse       = "pulse"
+	CommandBuildLog         = "log"
 	CommandArtifact         = "artifact"
 	CommandArtifactList     = "list"
 	CommandArtifactDownload = "download"

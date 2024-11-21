@@ -23,6 +23,7 @@ type Builder struct {
 	Profile    Profile `gorm:"foreignKey:ProfileName;references:Name;"`
 	Os         string
 	Arch       string
+	Log        string
 }
 
 func (b *Builder) BeforeCreate(tx *gorm.DB) (err error) {

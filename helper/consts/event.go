@@ -70,4 +70,5 @@ const (
 	EventPipeline  = "pipeline"
 	EventJob       = "job"
 	EventHeartbeat = "heartbeat"
+	EventBuild     = "build"
 )
