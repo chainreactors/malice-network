@@ -11,6 +11,10 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Use:   consts.CommandTaskSchd,
 		Short: "Manage scheduled tasks",
 		Long:  "Perform operations related to scheduled tasks, including listing, creating, starting, stopping, and deleting tasks.",
+		Annotations: map[string]string{
+			"depend": consts.ModuleTaskSchdList,
+			"ttp":    "T1053.005",
+		},
 	}
 
 	taskSchdListCmd := &cobra.Command{

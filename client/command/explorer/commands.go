@@ -15,22 +15,18 @@ func Commands(con *repl.Console) []*cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return regExplorerCmd(cmd, con)
 		},
+		Annotations: map[string]string{
+			"depend": consts.ModuleRegListKey,
+		},
 	}
-	return []*cobra.Command{
-		{
-			Use:   consts.CommandExplore,
-			Short: "file explorer",
-			Run: func(cmd *cobra.Command, args []string) {
-				fileExplorerCmd(cmd, con)
-				return
-			},
-		}, regCommand,
-		//{
-		//	Use:   consts.CommandTaskSchd,
-		//	Short: "task scheduler explorer",
-		//	RunE: func(cmd *cobra.Command, args []string) error {
-		//		return taskschdExplorerCmd(cmd, con)
-		//	},
-		//},
+
+	fileCmd := &cobra.Command{
+		Use:   consts.CommandExplore,
+		Short: "file explorer",
+		Run: func(cmd *cobra.Command, args []string) {
+			fileExplorerCmd(cmd, con)
+			return
+		},
 	}
+	return []*cobra.Command{regCommand, fileCmd}
 }

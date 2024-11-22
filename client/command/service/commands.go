@@ -13,6 +13,9 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Use:   consts.CommandService,
 		Short: "Perform service operations",
 		Long:  "Manage services, including listing, creating, starting, stopping, and querying service status.",
+		Annotations: map[string]string{
+			"depend": consts.ModuleServiceList,
+		},
 	}
 
 	serviceListCmd := &cobra.Command{

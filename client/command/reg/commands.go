@@ -25,6 +25,10 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Use:   consts.CommandReg,
 		Short: "Perform registry operations",
 		Long:  "Manage Windows registry entries, including querying, adding, deleting, listing keys, and listing values.",
+		Annotations: map[string]string{
+			"depend": consts.ModuleRegQuery,
+			"ttp":    "T1012",
+		},
 	}
 
 	regQueryCmd := &cobra.Command{
