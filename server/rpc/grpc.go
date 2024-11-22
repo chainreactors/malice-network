@@ -34,7 +34,7 @@ func StartClientListener(address string) (*grpc.Server, net.Listener, error) {
 	logs.Log.Importantf("[server] starting gRPC console on %s", address)
 
 	InitLogs(config.Bool("debug"))
-	tlsConfig := certutils.GetOperatorServerMTLSConfig("server")
+	tlsConfig := certutils.GetOperatorServerMTLSConfig(configs.GetServerConfig().IP)
 	creds := credentials.NewTLS(tlsConfig)
 	ln, err := net.Listen("tcp", address)
 	if err != nil {

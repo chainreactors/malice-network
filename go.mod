@@ -43,7 +43,7 @@ require (
 	golang.org/x/crypto v0.28.0
 	golang.org/x/text v0.19.0
 	google.golang.org/grpc v1.67.1
-	google.golang.org/protobuf v1.35.1
+	google.golang.org/protobuf v1.35.2
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
 	gorm.io/gorm v1.25.4
@@ -155,6 +155,7 @@ require (
 	golang.org/x/term v0.25.0 // indirect
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20241007155032-5fefd90f89a9 // indirect
+	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.5.1 // indirect
 	gopkg.in/xmlpath.v2 v2.0.0-20150820204837-860cbeca3ebc // indirect
 	gotest.tools/v3 v3.5.1 // indirect
 	mvdan.cc/sh/v3 v3.7.0 // indirect

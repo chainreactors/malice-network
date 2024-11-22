@@ -144,7 +144,7 @@ func GenerateServerCert(name string) ([]byte, []byte, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	cert, key, err := certs.GenerateChildCert(name, true, ca, caKey)
+	cert, key, err := certs.GenerateChildCert(name, false, ca, caKey)
 	if err != nil {
 		return nil, nil, err
 	}
