@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
+	"github.com/chainreactors/malice-network/helper/utils/mtls"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -118,6 +119,29 @@ func GetConfigs() ([]string, error) {
 	}
 
 	return files, nil
+}
+
+func LoadConfig(filename string) (*mtls.ClientConfig, error) {
+	var needmove bool
+	if !fileutils.Exist(filepath.Join(GetConfigDir(), filepath.Base(filename))) {
+		needmove = true
+	} else if fileutils.Exist(filepath.Join(GetConfigDir(), filepath.Base(filename))) {
+		filename = filepath.Join(GetConfigDir(), filepath.Base(filename))
+	} else {
+		return nil, fmt.Errorf("config file %s not found", filename)
+	}
+	config, err := mtls.ReadConfig(filename)
+	if err != nil {
+		return nil, err
+	}
+	if needmove {
+		err = MvConfig(filename)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return config, nil
 }
 
 func MvConfig(oldPath string) error {

@@ -36,10 +36,10 @@ func ImplantCmd(con *repl.Console) *cobra.Command {
 	cmd := makeCommands()
 	cmd.Use = consts.ImplantMenu
 	// Flags
-	implantFlags := pflag.NewFlagSet(consts.ImplantMenu, pflag.ContinueOnError)
-	implantFlags.StringP("use", "s", "", "interact with a session")
-	cmd.Flags().AddFlagSet(implantFlags)
-
+	common.Bind(cmd.Use, true, cmd, func(f *pflag.FlagSet) {
+		f.String("use", "", "set session context")
+	})
+	cobra.MarkFlagRequired(cmd.Flags(), "use")
 	// Pre-runners (console setup, connection, etc)
 	cmd.PreRunE, cmd.PersistentPostRunE = makeRunners(cmd, con)
 	makeCompleters(cmd, con)
@@ -47,7 +47,7 @@ func ImplantCmd(con *repl.Console) *cobra.Command {
 }
 
 func makeRunners(implantCmd *cobra.Command, con *repl.Console) (pre, post func(cmd *cobra.Command, args []string) error) {
-	startConsole, closeConsole := ConsoleRunnerCmd(con, false)
+	startConsole, closeConsole := ConsoleRunnerCmd(con, implantCmd)
 
 	// The pre-run function connects to the server and sets up a "fake" console,
 	// so we can have access to active sessions/beacons, and other stuff needed.
@@ -88,8 +88,8 @@ func makeCompleters(cmd *cobra.Command, con *repl.Console) {
 }
 
 func BindBuiltinCommands(con *repl.Console, root *cobra.Command) *cobra.Command {
-	bind := makeBind(root, con)
-	bindCommonCommands(bind)
+	bind := MakeBind(root, con)
+	BindCommonCommands(bind)
 	bind(consts.ImplantGroup,
 		basic.Commands,
 		tasks.Commands,

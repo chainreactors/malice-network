@@ -1,28 +1,24 @@
 package command
 
 import (
-	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/alias"
 	"github.com/chainreactors/malice-network/client/command/armory"
 	"github.com/chainreactors/malice-network/client/command/build"
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/extension"
 	"github.com/chainreactors/malice-network/client/command/generic"
 	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/command/listener"
 	"github.com/chainreactors/malice-network/client/command/mal"
 	"github.com/chainreactors/malice-network/client/command/sessions"
-	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/utils/fileutils"
-	"github.com/chainreactors/malice-network/helper/utils/mtls"
 	"github.com/reeflective/console"
 	"github.com/spf13/cobra"
-	"google.golang.org/grpc"
-	"path/filepath"
+	"github.com/spf13/pflag"
 )
 
-func bindCommonCommands(bind bindFunc) {
+func BindCommonCommands(bind BindFunc) {
 	bind(consts.GenericGroup,
 		generic.Commands)
 
@@ -49,50 +45,24 @@ func ConsoleCmd(con *repl.Console) *cobra.Command {
 		Short: "Start the client console",
 	}
 
-	consoleCmd.RunE, consoleCmd.PersistentPostRunE = ConsoleRunnerCmd(con, true)
+	consoleCmd.RunE, consoleCmd.PersistentPostRunE = ConsoleRunnerCmd(con, consoleCmd)
 	return consoleCmd
 }
 
-func ConsoleRunnerCmd(con *repl.Console, run bool) (pre, post func(cmd *cobra.Command, args []string) error) {
-	var ln *grpc.ClientConn
+func ConsoleRunnerCmd(con *repl.Console, cmd *cobra.Command) (pre, post func(cmd *cobra.Command, args []string) error) {
+	common.Bind(cmd.Use, true, cmd, func(f *pflag.FlagSet) {
+		f.String("auth", "", "auth token")
+		f.Bool("console", false, "run console")
+	})
 
-	pre = func(_ *cobra.Command, args []string) error {
-		if len(args) > 0 {
-			filename := args[0]
-			if !fileutils.Exist(filename) {
-				if cfg, err := mtls.ReadConfig(filepath.Join(assets.GetConfigDir(), filepath.Base(filename))); err == nil {
-					err = repl.Login(con, cfg)
-					if err != nil {
-						return nil
-					}
-				} else {
-					con.Log.Warnf("not found file, maybe %s already move to config path\n", filename)
-					err := generic.LoginCmd(nil, con)
-					if err != nil {
-						return nil
-					}
-				}
-			} else {
-				err := repl.NewConfigLogin(con, filename)
-				if err != nil {
-					core.Log.Warnf("Error logging in: %s", err)
-					return nil
-				}
-			}
-		} else {
-			err := generic.LoginCmd(nil, con)
-			if err != nil {
-				return nil
-			}
-		}
-
-		return con.Start(BindClientsCommands, BindImplantCommands)
+	pre = func(cmd *cobra.Command, args []string) error {
+		return generic.LoginCmd(cmd, con)
 	}
 
 	// Close the RPC connection once exiting
-	post = func(_ *cobra.Command, _ []string) error {
-		if ln != nil {
-			return ln.Close()
+	post = func(cmd *cobra.Command, _ []string) error {
+		if run, _ := cmd.Flags().GetBool("console"); run {
+			return con.Start(BindClientsCommands, BindImplantCommands)
 		}
 
 		return nil
@@ -111,9 +81,9 @@ func BindClientsCommands(con *repl.Console) console.Commands {
 			},
 		}
 
-		bind := makeBind(client, con)
+		bind := MakeBind(client, con)
 
-		bindCommonCommands(bind)
+		BindCommonCommands(bind)
 
 		client.InitDefaultHelpCmd()
 		client.InitDefaultHelpFlag()

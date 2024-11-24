@@ -28,16 +28,16 @@ func Connect(con *Console, config *mtls.ClientConfig) (*grpc.ClientConn, error) 
 func Login(con *Console, config *mtls.ClientConfig) error {
 	conn, err := Connect(con, config)
 	if err != nil {
-		logs.Log.Errorf("Failed to connect to server %s: %v", config.Address(), err)
+		logs.Log.Errorf("Failed to connect to server %s: %v\n", config.Address(), err)
 		return err
 	}
-	logs.Log.Info("Initial connection established, initializing state...")
+	logs.Log.Info("Initial connection established, initializing state...\n")
 	if err := initState(con, conn, config); err != nil {
 		return err
 	}
 	con.ActiveTarget.Background()
 	con.App.SwitchMenu(consts.ClientMenu)
-	logs.Log.Importantf("Connected to server %s", config.Address())
+	logs.Log.Importantf("Connected to server %s\n", config.Address())
 	return nil
 }
 
@@ -45,7 +45,7 @@ func initState(con *Console, conn *grpc.ClientConn, config *mtls.ClientConfig) e
 	var err error
 	con.ServerStatus, err = core.InitServerStatus(conn, config)
 	if err != nil {
-		logs.Log.Errorf("init server failed : %v", err)
+		logs.Log.Errorf("init server failed : %v\n", err)
 		return err
 	}
 
@@ -60,7 +60,7 @@ func initState(con *Console, conn *grpc.ClientConn, config *mtls.ClientConfig) e
 			alive++
 		}
 	}
-	logs.Log.Importantf("%d listeners, %d pipelines, %d clients, %d sessions (%d alive)",
+	logs.Log.Importantf("%d listeners, %d pipelines, %d clients, %d sessions (%d alive)\n",
 		len(con.Listeners), pipelineCount, len(con.Clients), len(con.Sessions), alive)
 
 	return nil

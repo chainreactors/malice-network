@@ -24,7 +24,7 @@ func ListArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
 			return err
 		}
 	} else {
-		con.Log.Info("No builders available")
+		con.Log.Info("No builders available\n")
 	}
 	return nil
 }

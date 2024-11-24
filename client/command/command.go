@@ -10,9 +10,9 @@ import (
 // name - The name of the flag set (can be empty).
 // cmd  - The command to which the flags should be bound.
 
-type bindFunc func(group string, cmds ...func(con *repl.Console) []*cobra.Command)
+type BindFunc func(group string, cmds ...func(con *repl.Console) []*cobra.Command)
 
-func makeBind(cmd *cobra.Command, con *repl.Console) bindFunc {
+func MakeBind(cmd *cobra.Command, con *repl.Console) BindFunc {
 	return func(group string, cmds ...func(con *repl.Console) []*cobra.Command) {
 		found := false
 
