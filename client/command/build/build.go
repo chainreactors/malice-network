@@ -149,7 +149,7 @@ func PulseCmd(cmd *cobra.Command, con *repl.Console) error {
 
 func BuildLogCmd(cmd *cobra.Command, con *repl.Console) error {
 	name := cmd.Flags().Arg(0)
-	num, _ := cmd.Flags().GetInt("rows")
+	num, _ := cmd.Flags().GetInt("limit")
 	builder, err := con.Rpc.BuildLog(context.Background(), &clientpb.Builder{
 		Name: name,
 		Num:  uint32(num),

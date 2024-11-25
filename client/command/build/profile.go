@@ -7,12 +7,10 @@ import (
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/codenames"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
 	"os"
-	"strings"
 )
 
 func ProfileShowCmd(cmd *cobra.Command, con *repl.Console) error {
@@ -52,8 +50,7 @@ func ProfileShowCmd(cmd *cobra.Command, con *repl.Console) error {
 }
 
 func ProfileNewCmd(cmd *cobra.Command, con *repl.Console) error {
-	profileName, buildTarget, pipelineName, buildType, proxy, obfuscate,
-		modules, ca, interval, jitter := common.ParseProfileFlags(cmd)
+	profileName, pipelineName := common.ParseProfileFlags(cmd)
 
 	profilePath := cmd.Flags().Arg(0)
 	content, err := os.ReadFile(profilePath)
@@ -61,25 +58,11 @@ func ProfileNewCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	modulesStr := strings.Join(modules, ",")
-
-	params := &types.ProfileParams{
-		Interval: interval,
-		Jitter:   jitter,
-	}
-
 	if profileName == "" {
-		profileName = fmt.Sprintf("%s-%s", buildTarget, codenames.GetCodename())
+		profileName = fmt.Sprintf("%s", codenames.GetCodename())
 	}
 	profile := &clientpb.Profile{
 		Name:       profileName,
-		Target:     buildTarget,
-		Type:       buildType,
-		Proxy:      proxy,
-		Obfuscate:  obfuscate,
-		Modules:    modulesStr,
-		Ca:         ca,
-		Params:     params.String(),
 		PipelineId: pipelineName,
 		Content:    content,
 	}

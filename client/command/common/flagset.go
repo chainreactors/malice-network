@@ -119,7 +119,7 @@ func ParseEncryptionFlags(cmd *cobra.Command) *clientpb.Encryption {
 func GenerateFlagSet(f *pflag.FlagSet) {
 	f.String("profile", "", "profile name")
 	f.StringP("address", "a", "", "implant address")
-	f.String("target", "", "build target")
+	f.String("target", "", "build target, specify the target arch and platform, such as  **x86_64-pc-windows-msvc**.")
 	f.String("ca", "", "custom ca file")
 	f.Int("interval", -1, "interval /second")
 	f.Float64("jitter", -1, "jitter")
@@ -141,33 +141,32 @@ func ParseGenerateFlags(cmd *cobra.Command) (string, string, string, []string, s
 }
 
 func ProfileSet(f *pflag.FlagSet) {
-	f.String("name", "", "Set profile name")
-	f.String("target", "", "Set build target")
-	f.String("pipeline", "", "Set profile pipeline_id")
+	f.String("name", "", "Overwrite profile name")
+	//f.String("target", "", "Overwrite build target")
+	f.String("pipeline", "", "Overwrite profile pipeline_id")
 	//f.String("type", "", "Set build type")
-	f.String("proxy", "", "Set proxy")
+	//f.String("proxy", "", "Overwrite proxy")
 	//f.String("obfuscate", "", "Set obfuscate")
-	f.StringSlice("modules", []string{}, "Set modules e.g.: execute_exe,execute_dll")
-	f.String("ca", "", "Set ca")
-
-	f.Int("interval", 5, "Set interval")
-	f.Float32("jitter", 0.2, "Set jitter")
+	//f.StringSlice("modules", []string{}, "Overwrite modules e.g.: execute_exe,execute_dll")
+	//f.String("ca", "", "Overwrite ca")
+	//f.Int("interval", 5, "Overwrite interval")
+	//f.Float32("jitter", 0.2, "Overwrite jitter")
 }
 
-func ParseProfileFlags(cmd *cobra.Command) (string, string, string, string, string, string, []string, string, int, float64) {
+func ParseProfileFlags(cmd *cobra.Command) (string, string) {
 	profileName, _ := cmd.Flags().GetString("name")
-	buildTarget, _ := cmd.Flags().GetString("target")
+	//buildTarget, _ := cmd.Flags().GetString("target")
 	pipelineId, _ := cmd.Flags().GetString("pipeline")
-	buildType, _ := cmd.Flags().GetString("type")
-	proxy, _ := cmd.Flags().GetString("proxy")
-	obfuscate, _ := cmd.Flags().GetString("obfuscate")
-	modules, _ := cmd.Flags().GetStringSlice("modules")
-	ca, _ := cmd.Flags().GetString("ca")
+	//buildType, _ := cmd.Flags().GetString("type")
+	//proxy, _ := cmd.Flags().GetString("proxy")
+	//obfuscate, _ := cmd.Flags().GetString("obfuscate")
+	//modules, _ := cmd.Flags().GetStringSlice("modules")
+	//ca, _ := cmd.Flags().GetString("ca")
+	//
+	//interval, _ := cmd.Flags().GetInt("interval")
+	//jitter, _ := cmd.Flags().GetFloat64("jitter")
 
-	interval, _ := cmd.Flags().GetInt("interval")
-	jitter, _ := cmd.Flags().GetFloat64("jitter")
-
-	return profileName, buildTarget, pipelineId, buildType, proxy, obfuscate, modules, ca, interval, jitter
+	return profileName, pipelineId
 }
 
 func MalHttpFlagset(f *pflag.FlagSet) {
@@ -180,21 +179,21 @@ func MalHttpFlagset(f *pflag.FlagSet) {
 func SRDIFlagSet(f *pflag.FlagSet) {
 	f.String("path", "", "file path")
 	//f.String("type", "", "mutant type")
-	f.String("arch", "", "shellcode architecture, eg: x86,x64")
+	f.String("arch", "x64", "shellcode architecture, eg: x86,x64")
 	f.String("platform", "win", "shellcode platform, eg: windows,linux")
 	f.Uint32("id", 0, "build file id")
-	f.String("function_name", "", "shellcode function name")
-	f.String("user_data_path", "", "user data path")
+	f.String("function_name", "", "shellcode entrypoint")
+	f.String("userdata_path", "", "user data path")
 }
 
 func ParseSRDIFlags(cmd *cobra.Command) (string, string, string, uint32, map[string]string) {
 	path, _ := cmd.Flags().GetString("path")
 	//typ, _ := cmd.Flags().GetString("type")
-	arch, _ := cmd.Flags().GetString("arch")
+	arch, _ := cmd.Flags().GetString("arch, x86 or x64")
 	platform, _ := cmd.Flags().GetString("platform")
 	id, _ := cmd.Flags().GetUint32("id")
-	functionName, _ := cmd.Flags().GetString("function_name")
-	userDataPath, _ := cmd.Flags().GetString("userdata_path")
+	functionName, _ := cmd.Flags().GetString("function_name, sets the entry function name within the DLL for execution. This is critical for specifying which function will be executed when the DLL is loaded.")
+	userDataPath, _ := cmd.Flags().GetString("userdata_path, allows the inclusion of user-defined data to be embedded with the shellcode during generation. This can be used to pass additional information or configuration to the payload at runtime.")
 	params := map[string]string{
 		"function_name": functionName,
 		"userdata_path": userDataPath,

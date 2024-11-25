@@ -41,14 +41,7 @@ profile list
 		Long: `Create a new compile profile with customizable attributes.
 
 The **profile load** command requires a valid configuration file path (e.g., **config.yaml**) to load settings. This file specifies attributes necessary for generating the compile profile.
-If no **name** is provided, the command concatenates the target with a random name.
-- Specify the **pipeline_id** to associate the listener and pipeline.
-- Specify the **target** to set the build target arch and platform.
-- Use the **modules** flag to define a comma-separated list of modules, such as execute_exe or execute_dll.
-- **interval** defaults to 5 seconds, controlling the execution interval of the profile.
-- **jitter** adds randomness to the interval (default value is 0.2).
-- The **proxy** flag allows setting up proxy configurations (e.g., http or socks5).
-- **ca** enables or disables CA validation (default: disabled).`,
+`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ProfileNewCmd(cmd, con)
@@ -95,10 +88,7 @@ profile load /path/to/config.yaml --name my_profile --interval 10 --jitter 0.5
 		Use:   consts.CommandBuildBeacon,
 		Short: "Build a beacon",
 		Long: `Generate a beacon artifact based on the specified profile.
-
-The **target** flag is required to specify the arch and platform for the beacon, such as **x86_64-unknown-linux-musl** or **x86_64-pc-windows-msvc**.
-- The **profile** flag is now mandatory and must match an existing compile profile. The server generates a new configuration in malefic build folder based on this profile.
-- Additional modules can be added to the beacon using the **modules** flag, separated by commas.`,
+`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return BeaconCmd(cmd, con)
 		},
@@ -125,12 +115,8 @@ build beacon --target x86_64-pc-windows-msvc --profile beacon_profile --srdi
 	bindCmd := &cobra.Command{
 		Use:   consts.CommandBuildBind,
 		Short: "Build a bind payload",
-		Long: `Generate a bind payload that connects a client to the server.
-
-The **target** flag is required to specify the target arch and platform, such as **x86_64-unknown-linux-musl** or **x86_64-pc-windows-msvc**.
-- The **profile** flag is now mandatory and must match an existing compile profile. The server generates a new configuration in malefic build folder based on this profile.
-- Use additional flags to include functionality such as modules or custom configurations.`,
-		Args: cobra.MaximumNArgs(1),
+		Long:  `Generate a bind payload that connects a client to the server.`,
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return BindCmd(cmd, con)
 		},
@@ -161,9 +147,6 @@ build bind --target x86_64-pc-windows-msvc --profile bind_profile --srdi
 		Long: `Generate a prelude payload as part of a multi-stage deployment.
 	
 	The **target** flag is required to specify the platform, such as **x86_64-unknown-linux-musl** or **x86_64-pc-windows-msvc**, ensuring compatibility with the deployment environment.
-	- The **profile** flag is now mandatory and must match an existing compile profile. The server generates a new configuration in malefic build folder based on this profile.
-	- The **autorun** flag is required to specify the path to the autorun.yaml file, the yaml describes the relevant information and execution order of the binary program 
-	- Use the **modules** flag to include additional functionalities in the payload, such as execute_exe or execute_dll. Modules should be specified as a comma-separated list.
 	`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -181,7 +164,9 @@ build bind --target x86_64-pc-windows-msvc --profile bind_profile --srdi
 	~~~`,
 	}
 
-	common.BindFlag(preludeCmd, common.GenerateFlagSet)
+	common.BindFlag(preludeCmd, common.GenerateFlagSet, func(f *pflag.FlagSet) {
+		f.String("autorun", "", "set autorun.yaml")
+	})
 	preludeCmd.MarkFlagRequired("target")
 	preludeCmd.MarkFlagRequired("profile")
 	preludeCmd.MarkFlagRequired("autorun")
@@ -196,11 +181,7 @@ build bind --target x86_64-pc-windows-msvc --profile bind_profile --srdi
 		Use:   consts.CommandBuildModules,
 		Short: "Compile specified modules into DLLs",
 		Long: `Compile the specified modules into DLL files for deployment or integration.
-
-The **target** flag is required to specify the platform for the modules, such as **x86_64-unknown-linux-musl** or **x86_64-pc-windows-msvc**,
-- The **profile** flag is now mandatory and must match an existing compile profile. The server generates a new configuration in malefic build folder based on this profile.
-- Additional modules can be explicitly defined using the **modules** flag as a comma-separated list (e.g., base,execute_dll). This allows fine-grained control over which modules are compiled. If **modules** is not specified, the default value will be **full**, which includes all available modules.`,
-		Args: cobra.MaximumNArgs(1),
+`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ModulesCmd(cmd, con)
 		},
@@ -231,10 +212,7 @@ build modules --target x86_64-pc-windows-msvc --profile module_profile --srdi
 		Use:   consts.CommandBuildPulse,
 		Short: "stage 0 shellcode generate",
 		Long: `Generate 'pulse' payload,a minimized shellcode template, corresponding to CS artifact, very suitable for loading by various loaders
-
-The **target** flag is mandatory to specify the architecture and platform for the beacon, such as **x86_64-unknown-linux-musl** or **x86_64-pc-windows-msvc**.
-- The **profile** flag is mandatory and must match an existing compile profile. This profile specifies the configuration settings for the beacon generation.
-- Additional modules can be added to the beacon using the **modules** flag, separated by commas.`,
+`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return PulseCmd(cmd, con)
 		},
@@ -269,12 +247,12 @@ build pulse --target x86_64-pc-windows-msvc --profile pulse_profile --srdi
 		},
 		Example: `
 ~~~
-build log builder_name --rows 70
+build log builder_name --limit 70
 ~~~
 `,
 	}
 	common.BindFlag(logCmd, func(f *pflag.FlagSet) {
-		f.Int("rows", 50, "number of rows")
+		f.Int("limit", 50, "limit of rows")
 	})
 	common.BindArgCompletions(logCmd, nil, common.ArtifactNameCompleter(con))
 
@@ -286,13 +264,7 @@ build log builder_name --rows 70
 		Long: `Generate an SRDI (Shellcode Reflective DLL Injection) artifact to minimize PE (Portable Executable) signatures.
 
 SRDI technology reduces the PE characteristics of a DLL, enabling more effective injection and evasion during execution. The following options are supported:
-
-- The **path** flag specifies the file path to the target DLL that will be processed. This is required if **id** is not provided.
-- The **id** flag identifies a specific artifact or build file in the system for conversion to SRDI format. This is required if **path** is not provided.
-- The **arch** flag defines the architecture of the generated shellcode, such as **x86** or **x64**. This flag is required to ensure compatibility with the target environment.
-- The **platform** flag specifies the platform of the shellcode. Defaults to **win**, but can also be set to **linux**. This flag is required to tailor the shellcode for the desired operating system.
-- The **function_name** flag sets the entry function name within the DLL for execution. This is critical for specifying which function will be executed when the DLL is loaded.
-- The **userdata_path** flag allows the inclusion of user-defined data to be embedded with the shellcode during generation. This can be used to pass additional information or configuration to the payload at runtime.`,
+`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return SRDICmd(cmd, con)
 		},
@@ -343,9 +315,7 @@ artifact list
 		Use:   consts.CommandArtifactDownload,
 		Short: "Download a build output file from the server",
 		Long: `Download a specific build output file from the server by specifying its unique artifact name.
-
-The following flag is supported:
-- **--output**, **-o**: Specify the output path where the downloaded file will be saved. If not provided, the file will be saved in the current directory.`,
+`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return DownloadArtifactCmd(cmd, con)
@@ -361,10 +331,7 @@ The following flag is supported:
 		Short: "Upload a build output file to the server",
 		Long: `Upload a custom artifact to the server for storage or further use.
 
-The following flags are supported:
-- **--stage**, **-s**: Specify the stage for the artifact (eg.,: **loader**, **prelude**, **beacon**, **bind**, **modules**)
-- **--type**, **-t**: Define the type of the artifact
-- **--name**, **-n**: Provide an alias name for the uploaded artifact. If not provided, the server will use the original file name.`,
+`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return UploadArtifactCmd(cmd, con)
