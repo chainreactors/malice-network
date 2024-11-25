@@ -40,6 +40,7 @@ profile list
 		Short: "Create a new compile profile",
 		Long: `Create a new compile profile with customizable attributes.
 
+The **profile load** command requires a valid configuration file path (e.g., **config.yaml**) to load settings. This file specifies attributes necessary for generating the compile profile.
 If no **name** is provided, the command concatenates the target with a random name.
 - Specify the **pipeline_id** to associate the listener and pipeline.
 - Specify the **target** to set the build target arch and platform.
@@ -53,14 +54,17 @@ If no **name** is provided, the command concatenates the target with a random na
 			return ProfileNewCmd(cmd, con)
 		},
 		Example: `~~~
-// Create a new profile with default settings
-profile new --name my_profile --target x86_64-unknown-linux-musl
+// Create a new profile
+profile load /path/to/config.yaml --name my_profile
+
+// Create a new profile using network configuration in pipeline
+profile load /path/to/config.yaml --name my_profile --pipeline pipeline_name
 
 // Create a profile with specific modules
-profile new --name my_profile --target x86_64-unknown-linux-musl --modules base,sys_full
+profile load /path/to/config.yaml --name my_profile --modules base,sys_full
 
 // Create a profile with custom interval and jitter
-profile new --name my_profile --target x86_64-unknown-linux-musl --interval 10 --jitter 0.5
+profile load /path/to/config.yaml --name my_profile --interval 10 --jitter 0.5
 ~~~`,
 	}
 	common.BindFlag(newCmd, common.ProfileSet)
@@ -93,20 +97,21 @@ profile new --name my_profile --target x86_64-unknown-linux-musl --interval 10 -
 		Long: `Generate a beacon artifact based on the specified profile.
 
 The **target** flag is required to specify the arch and platform for the beacon, such as **x86_64-unknown-linux-musl** or **x86_64-pc-windows-msvc**.
-- If **profile_name** is provided, it must match an existing compile profile. Otherwise, the command will use default settings for the beacon generation.
+- The **profile** flag is now mandatory and must match an existing compile profile. The server generates a new configuration in malefic build folder based on this profile.
 - Additional modules can be added to the beacon using the **modules** flag, separated by commas.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return BeaconCmd(cmd, con)
 		},
 		Example: `~~~
-// Build a beacon with specified settings
-build beacon --target x86_64-unknown-linux-musl --profile_name beacon_profile
+// Build a beacon
+build beacon --target x86_64-unknown-linux-musl --profile beacon_profile
 
-// Build a beacon for the Windows platform
-build beacon --target x86_64-unknown-linux-musl
+// Build a beacon using additional modules
+build beacon --target x86_64-pc-windows-msvc --profile beacon_profile --modules full
 
-// Build a beacon using a specific profile and additional modules
-build beacon --target x86_64-pc-windows-msvc --profile_name beacon_profile --modules full
+// Build a beacon using SRDI technology
+build beacon --target x86_64-pc-windows-msvc --profile beacon_profile --srdi
+
 ~~~`,
 	}
 	common.BindFlag(beaconCmd, common.GenerateFlagSet)
@@ -123,21 +128,22 @@ build beacon --target x86_64-pc-windows-msvc --profile_name beacon_profile --mod
 		Long: `Generate a bind payload that connects a client to the server.
 
 The **target** flag is required to specify the target arch and platform, such as **x86_64-unknown-linux-musl** or **x86_64-pc-windows-msvc**.
-- If **profile_name** is provided, it must match an existing compile profile.
+- The **profile** flag is now mandatory and must match an existing compile profile. The server generates a new configuration in malefic build folder based on this profile.
 - Use additional flags to include functionality such as modules or custom configurations.`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return BindCmd(cmd, con)
 		},
 		Example: `~~~
-// Build a bind payload for the Windows platform
-build bind --target x86_64-unknown-linux-musl
-
-// Build a bind payload with a specific profile
-build bind --target x86_64-pc-windows-msvc --profile_name bind_profile
+// Build a bind payload
+build bind --target x86_64-pc-windows-msvc --profile bind_profile
 
 // Build a bind payload with additional modules
-build bind --target x86_64-pc-windows-msvc --modules base,sys_full
+build bind --target x86_64-unknown-linux-musl --profile bind_profile --modules base,sys_full
+
+// Build a bind payload with SRDI technology
+build bind --target x86_64-pc-windows-msvc --profile bind_profile --srdi
+
 ~~~`,
 	}
 
@@ -155,7 +161,8 @@ build bind --target x86_64-pc-windows-msvc --modules base,sys_full
 		Long: `Generate a prelude payload as part of a multi-stage deployment.
 	
 	The **target** flag is required to specify the platform, such as **x86_64-unknown-linux-musl** or **x86_64-pc-windows-msvc**, ensuring compatibility with the deployment environment.
-	- The **profile_name** flag is optional; if provided, it must match an existing compile profile. This allows the prelude payload to inherit settings such as interval, jitter, or proxy configurations.
+	- The **profile** flag is now mandatory and must match an existing compile profile. The server generates a new configuration in malefic build folder based on this profile.
+	- The **autorun** flag is required to specify the path to the autorun.yaml file, the yaml describes the relevant information and execution order of the binary program 
 	- Use the **modules** flag to include additional functionalities in the payload, such as execute_exe or execute_dll. Modules should be specified as a comma-separated list.
 	`,
 		Args: cobra.MaximumNArgs(1),
@@ -163,14 +170,14 @@ build bind --target x86_64-pc-windows-msvc --modules base,sys_full
 			return PreludeCmd(cmd, con)
 		},
 		Example: `~~~
-	// Build a prelude payload for the Windows platform
-	build prelude --target x86_64-unknown-linux-musl
+	// Build a prelude payload
+	build prelude --target x86_64-unknown-linux-musl --profile prelude_profile --autorun /path/to/autorun.yaml
 	
-	// Build a prelude payload with anti-sandbox and anti-debugging enabled
-	build prelude --target x86_64-unknown-linux-musl --modules base,sys_full
+	// Build a prelude payload with additional modules
+	build prelude --target x86_64-pc-windows-msvc --profile prelude_profile --autorun /path/to/autorun.yaml --modules base,sys_full
 	
-	// Build a prelude payload with a specific profile
-	build prelude --target x86_64-pc-windows-msvc --profile_name prelude_profile
+	// Build a prelude payload with SRDI technology
+	build prelude --target x86_64-pc-windows-msvc --profile prelude_profile --autorun /path/to/autorun.yaml --srdi
 	~~~`,
 	}
 
@@ -191,7 +198,7 @@ build bind --target x86_64-pc-windows-msvc --modules base,sys_full
 		Long: `Compile the specified modules into DLL files for deployment or integration.
 
 The **target** flag is required to specify the platform for the modules, such as **x86_64-unknown-linux-musl** or **x86_64-pc-windows-msvc**,
-- The **profile_name** flag is optional; if provided, it must match an existing compile profile, allowing the modules to inherit relevant configurations such as interval, jitter, or proxy settings.
+- The **profile** flag is now mandatory and must match an existing compile profile. The server generates a new configuration in malefic build folder based on this profile.
 - Additional modules can be explicitly defined using the **modules** flag as a comma-separated list (e.g., base,execute_dll). This allows fine-grained control over which modules are compiled. If **modules** is not specified, the default value will be **full**, which includes all available modules.`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -199,16 +206,16 @@ The **target** flag is required to specify the platform for the modules, such as
 		},
 		Example: `~~~
 // Compile all modules for the Windows platform
-build modules --target x86_64-unknown-linux-musl
+build modules --target x86_64-unknown-linux-musl --profile module_profile
 
 // Compile a predefined feature set of modules (nano)
-build modules --target x86_64-unknown-linux-musl --modules nano
+build modules --target x86_64-unknown-linux-musl --profile module_profile --modules nano
 
 // Compile specific modules into DLLs
-build modules --target x86_64-pc-windows-msvc --modules base,execute_dll
+build modules --target x86_64-pc-windows-msvc --profile module_profile --modules base,execute_dll
 
-// Compile modules using a specific profile
-build modules --target x86_64-pc-windows-msvc --profile_name my_profile --modules full
+// Compile modules with srdi
+build modules --target x86_64-pc-windows-msvc --profile module_profile --srdi
 ~~~`,
 	}
 
@@ -223,13 +230,24 @@ build modules --target x86_64-pc-windows-msvc --profile_name my_profile --module
 	pulseCmd := &cobra.Command{
 		Use:   consts.CommandBuildPulse,
 		Short: "stage 0 shellcode generate",
-		Long:  `Generate 'pulse' payload`,
+		Long: `Generate 'pulse' payload,a minimized shellcode template, corresponding to CS artifact, very suitable for loading by various loaders
+
+The **target** flag is mandatory to specify the architecture and platform for the beacon, such as **x86_64-unknown-linux-musl** or **x86_64-pc-windows-msvc**.
+- The **profile** flag is mandatory and must match an existing compile profile. This profile specifies the configuration settings for the beacon generation.
+- Additional modules can be added to the beacon using the **modules** flag, separated by commas.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return PulseCmd(cmd, con)
 		},
 		Example: `
 ~~~
-build pulse --target x86_64-pc-windows-msvc --srdi --address 127.0.0.1:5002
+// Build a pulse payload
+build pulse --target x86_64-unknown-linux-musl --profile pulse_profile
+
+// Build a pulse payload with additional modules
+build pulse --target x86_64-pc-windows-msvc --profile pulse_profile --modules base,sys_full
+	
+// Build a pulse payload with SRDI technology
+build pulse --target x86_64-pc-windows-msvc --profile pulse_profile --srdi
 ~~~
 `,
 	}
