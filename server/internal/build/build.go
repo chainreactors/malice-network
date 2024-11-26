@@ -227,7 +227,7 @@ func BuildPulse(cli *client.Client, req *clientpb.Generate) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	BuildBindCommand := fmt.Sprintf(
-		"%s/malefic-mutant generate pulse x64 win && cargo build --target %s --release --profile release-lto -p malefic-pulse",
+		"%s/malefic-mutant generate pulse x64 win && cargo build --target %s --profile release-lto -p malefic-pulse",
 		ContainerBinPath,
 		req.Target,
 	)

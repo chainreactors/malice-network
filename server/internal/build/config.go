@@ -14,8 +14,11 @@ import (
 var (
 	generateConfig = "config.yaml"
 	release        = "release"
+	releaseLto     = "release-lto"
 	malefic        = "malefic"
 	modules        = "modules"
+	prelude        = "malefic-prelude"
+	pulse          = "malefic-pulse"
 )
 
 func GenerateProfile(req *clientpb.Generate) error {
@@ -35,23 +38,32 @@ func MoveBuildOutput(target, buildType string) (string, string, error) {
 	name := encoders.UUID()
 	switch {
 	case strings.Contains(target, "windows"):
-		sourcePath = filepath.Join(configs.TargetPath, target, release, malefic+consts.PEFile)
-		dstPath = filepath.Join(configs.BuildOutputPath, name)
 		if buildType == consts.CommandBuildModules {
 			sourcePath = filepath.Join(configs.TargetPath, target, release, modules+consts.DllFile)
 			dstPath = filepath.Join(configs.BuildOutputPath, name+consts.DllFile)
+		} else if buildType == consts.CommandBuildPrelude {
+			sourcePath = filepath.Join(configs.TargetPath, target, release, prelude+consts.PEFile)
+			dstPath = filepath.Join(configs.BuildOutputPath, name+consts.PEFile)
+		} else if buildType == consts.CommandBuildPulse {
+			sourcePath = filepath.Join(configs.TargetPath, target, releaseLto, pulse+consts.PEFile)
+			dstPath = filepath.Join(configs.BuildOutputPath, name+consts.PEFile)
+		} else {
+			sourcePath = filepath.Join(configs.TargetPath, target, release, malefic+consts.PEFile)
+			dstPath = filepath.Join(configs.BuildOutputPath, name+consts.PEFile)
 		}
-	//case consts.DLL:
-	//	sourcePath = filepath.Join(configs.TargetPath, target, release, malefic+consts.DllFile)
-	//	dstPath = filepath.Join(configs.BuildOutputPath, name+consts.DllFile)
 	case strings.Contains(target, "darwin"):
 		sourcePath = filepath.Join(configs.TargetPath, target, release, malefic)
 		dstPath = filepath.Join(configs.BuildOutputPath, name)
 	case strings.Contains(target, "linux"):
-		sourcePath = filepath.Join(configs.TargetPath, target, release, malefic)
-		dstPath = filepath.Join(configs.BuildOutputPath, name)
+		if buildType == consts.CommandBuildPrelude {
+			sourcePath = filepath.Join(configs.TargetPath, target, release, prelude)
+			dstPath = filepath.Join(configs.BuildOutputPath, name)
+		} else {
+			sourcePath = filepath.Join(configs.TargetPath, target, release, malefic)
+			dstPath = filepath.Join(configs.BuildOutputPath, name)
+		}
 	}
-	err := fileutils.CopyFile(sourcePath, dstPath)
+	err := fileutils.MoveFile(sourcePath, dstPath)
 	if err != nil {
 		return "", "", err
 	}

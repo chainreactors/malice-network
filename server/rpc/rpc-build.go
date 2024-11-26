@@ -97,7 +97,9 @@ func (rpc *Server) DownloadArtifact(ctx context.Context, req *clientpb.Builder) 
 	if err != nil {
 		return nil, err
 	}
-	return builder.ToProtobuf(data), nil
+	result := builder.ToProtobuf(data)
+	result.Name = result.Name + filepath.Ext(builder.Path)
+	return result, nil
 }
 
 func (rpc *Server) MaleficSRDI(ctx context.Context, req *clientpb.Builder) (*clientpb.Builder, error) {

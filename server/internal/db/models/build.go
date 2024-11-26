@@ -44,6 +44,7 @@ func (b *Builder) ToProtobuf(bin []byte) *clientpb.Builder {
 			Modules:     b.Modules,
 			ProfileName: b.ProfileName,
 			PipelineId:  b.Profile.PipelineID,
+			Time:        b.CreatedAt.Format("2006-01-02 15:04:05"),
 		}
 	}
 
@@ -58,6 +59,7 @@ func (b *Builder) ToProtobuf(bin []byte) *clientpb.Builder {
 		Arch:        b.Arch,
 		ProfileName: "",
 		PipelineId:  "",
+		Time:        b.CreatedAt.Format("2006-01-02 15:04:05"),
 	}
 }
 

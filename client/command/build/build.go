@@ -1,7 +1,6 @@
 package build
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"github.com/chainreactors/malice-network/client/command/common"
@@ -23,7 +22,7 @@ func BeaconCmd(cmd *cobra.Command, con *repl.Console) error {
 			Interval: interval,
 			Jitter:   jitter,
 		}
-		_, err := con.Rpc.Build(context.Background(), &clientpb.Generate{
+		_, err := con.Rpc.Build(con.Context(), &clientpb.Generate{
 			ProfileName: name,
 			Address:     address,
 			Type:        consts.CommandBuildBeacon,
@@ -51,7 +50,7 @@ func BindCmd(cmd *cobra.Command, con *repl.Console) error {
 			Interval: interval,
 			Jitter:   jitter,
 		}
-		_, err := con.Rpc.Build(context.Background(), &clientpb.Generate{
+		_, err := con.Rpc.Build(con.Context(), &clientpb.Generate{
 			ProfileName: name,
 			Address:     address,
 			Type:        consts.CommandBuildBind,
@@ -83,7 +82,7 @@ func PreludeCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 	go func() {
-		_, err := con.Rpc.Build(context.Background(), &clientpb.Generate{
+		_, err := con.Rpc.Build(con.Context(), &clientpb.Generate{
 			ProfileName: name,
 			Address:     address,
 			Type:        consts.CommandBuildPrelude,
@@ -110,7 +109,7 @@ func ModulesCmd(cmd *cobra.Command, con *repl.Console) error {
 		return errors.New("require build target")
 	}
 	go func() {
-		_, err := con.Rpc.Build(context.Background(), &clientpb.Generate{
+		_, err := con.Rpc.Build(con.Context(), &clientpb.Generate{
 			ProfileName: name,
 			Address:     address,
 			Target:      buildTarget,
@@ -132,7 +131,7 @@ func PulseCmd(cmd *cobra.Command, con *repl.Console) error {
 		return errors.New("require build target")
 	}
 	go func() {
-		_, err := con.Rpc.Build(context.Background(), &clientpb.Generate{
+		_, err := con.Rpc.Build(con.Context(), &clientpb.Generate{
 			ProfileName: name,
 			Address:     address,
 			Target:      buildTarget,
@@ -150,7 +149,7 @@ func PulseCmd(cmd *cobra.Command, con *repl.Console) error {
 func BuildLogCmd(cmd *cobra.Command, con *repl.Console) error {
 	name := cmd.Flags().Arg(0)
 	num, _ := cmd.Flags().GetInt("limit")
-	builder, err := con.Rpc.BuildLog(context.Background(), &clientpb.Builder{
+	builder, err := con.Rpc.BuildLog(con.Context(), &clientpb.Builder{
 		Name: name,
 		Num:  uint32(num),
 	})

@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
@@ -40,6 +39,7 @@ func PrintArtifacts(builders *clientpb.Builders, con *repl.Console) error {
 		table.NewColumn("Type", "Type", 10),
 		table.NewColumn("Stager", "Stager", 10),
 		table.NewColumn("Modules", "Modules", 30),
+		table.NewColumn("Time", "Time", 20),
 		table.NewColumn("Profile", "Profile", 20),
 		table.NewColumn("Pipeline", "Pipeline", 20),
 	}, false)
@@ -53,6 +53,7 @@ func PrintArtifacts(builders *clientpb.Builders, con *repl.Console) error {
 				"Modules":  builder.Modules,
 				"Profile":  builder.ProfileName,
 				"Pipeline": builder.PipelineId,
+				"Time":     builder.Time,
 			})
 
 		rowEntries = append(rowEntries, row)
@@ -80,9 +81,6 @@ func DownloadArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
 		if err != nil {
 			con.Log.Errorf("download artifact failed: %s", err)
 			return
-		}
-		if builder.Type == consts.CommandBuildModules {
-			builder.Name = builder.Name + consts.DllFile
 		}
 		if output == "" {
 			output = filepath.Join(assets.GetTempDir(), builder.Name)
