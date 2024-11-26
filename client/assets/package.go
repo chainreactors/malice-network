@@ -40,14 +40,13 @@ var (
 )
 
 type MalConfig struct {
-	// PublicKey        string `json:"public_key" yaml:"public_key"`
-	RepoURL          string `json:"repo_url" yaml:"repo_url"`
-	Authorization    string `json:"authorization" yaml:"authorization"`
-	AuthorizationCmd string `json:"authorization_cmd" yaml:"authorization_cmd"`
-	Name             string `json:"name" yaml:"name"`
-	Enabled          bool   `json:"enabled" yaml:"enabled"`
-	Version          string `json:"version" yaml:"version"`
-	Help             string `json:"help" yaml:"help"`
+	RepoURL          string `yaml:"repo_url"`
+	Authorization    string `yaml:"authorization"`
+	AuthorizationCmd string `yaml:"authorization_cmd"`
+	Name             string `yaml:"name"`
+	Enabled          bool   `yaml:"enabled"`
+	Version          string `yaml:"version"`
+	Help             string `yaml:"help"`
 }
 
 func GetMalsConfig() []*MalConfig {

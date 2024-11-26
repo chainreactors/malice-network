@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
@@ -79,6 +80,9 @@ func DownloadArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
 		if err != nil {
 			con.Log.Errorf("download artifact failed: %s", err)
 			return
+		}
+		if builder.Type == consts.CommandBuildModules {
+			builder.Name = builder.Name + consts.DllFile
 		}
 		if output == "" {
 			output = filepath.Join(assets.GetTempDir(), builder.Name)

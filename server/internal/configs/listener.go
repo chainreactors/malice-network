@@ -97,9 +97,9 @@ type WebsiteConfig struct {
 }
 
 type WebContent struct {
-	Path   string `config:"path"`
-	Parser string `config:"raw"`
-	Type   string `config:"type"`
+	Path             string            `config:"path"`
+	Parser           string            `config:"parser"`
+	EncryptionConfig *EncryptionConfig `config:"encryption"`
 }
 
 type CertConfig struct {

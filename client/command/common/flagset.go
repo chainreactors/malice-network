@@ -66,13 +66,13 @@ func TlsCertFlagSet(f *pflag.FlagSet) {
 func EncryptionFlagSet(f *pflag.FlagSet) {
 	f.String("encryption-type", "", "encryption type")
 	f.String("encryption-key", "", "encryption key")
-	f.Bool("encryption-enable", false, "whether to enable encryption ")
+	f.Bool("encryption-enable", false, "whether to enable encryption")
 }
 
 func PipelineFlagSet(f *pflag.FlagSet) {
 	f.StringP("listener", "l", "", "listener id")
-	f.String("host", "0.0.0.0", "pipeline host")
-	f.UintP("port", "p", 0, "pipeline port")
+	f.String("host", "0.0.0.0", "pipeline host, the default value is **0.0.0.0**")
+	f.UintP("port", "p", 0, "pipeline port, random port is selected from the range **10000-15000**")
 }
 
 func ParsePipelineFlags(cmd *cobra.Command) (string, string, uint32) {

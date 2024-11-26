@@ -52,23 +52,20 @@ tcp listener
 		Use:   consts.CommandPipelineNew + " [name] ",
 		Short: "Register a new TCP pipeline and start it",
 		Long: `Register a new TCP pipeline with the specified listener.
-- If **name** is not provided, it will be generated in the format **listenerID_tcp_port**.
-- If **host** is not specified, the default value will be **0.0.0.0**.
-- If **port** is not specified, a random port will be selected from the range **10000-15000**.
-- If TLS is enabled, you can provide file paths for the certificate and key.
-- If no certificate or key paths are provided, the server will automatically generate a TLS certificate and key.`,
+If **name** is not provided, it will be generated in the format **listenerID_tcp_port**.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return NewTcpPipelineCmd(cmd, con)
 		},
+		Args: cobra.MaximumNArgs(1),
 		Example: `~~~
 // Register a TCP pipeline with the default settings
-tcp register listener
+tcp register --listener tcp_default
 
 // Register a TCP pipeline with a custom name, host, and port
-tcp register listener --name tcp_test --host 192.168.0.43 --port 5003
+tcp register --name tcp_test --listener tcp_default --host 192.168.0.43 --port 5003
 
 // Register a TCP pipeline with TLS enabled and specify certificate and key paths
-tcp register listener --tls --cert_path /path/to/cert --key_path /path/to/key
+tcp register --listener tcp_default --tls --cert_path /path/to/cert --key_path /path/to/key
 ~~~`,
 	}
 
@@ -82,7 +79,7 @@ tcp register listener --tls --cert_path /path/to/cert --key_path /path/to/key
 		comp["key_path"] = carapace.ActionFiles().Usage("path to the key file")
 		comp["tls"] = carapace.ActionValues().Usage("enable tls")
 	})
-
+	newTCPPipelineCmd.MarkFlagRequired("listener")
 	tcpCmd.AddCommand(newTCPPipelineCmd)
 
 	bindCmd := &cobra.Command{
@@ -197,13 +194,7 @@ website [listener]
 		Use:   consts.CommandPipelineNew + " [listener_id] [route_path] [content_path]",
 		Short: "Register a new website and start it",
 		Args:  cobra.ExactArgs(3),
-		Long: `Register a new website with the specified listener.
-- You must provide a web route path and the static file path. Currently, only one file can be registered.
-- If **name** is not provided, it will be generated in the format **listenerID_web_port**.
-- If **port** is not specified, a random port will be selected from the range **15001-20000**.
-- If **content_type** is not specified, the default value will be **text/html**.
-- If TLS is enabled, you can provide file paths for the certificate and key.
-- If no certificate or key paths are provided, the server will automatically generate a TLS certificate and key.`,
+		Long:  `Register a new website with the specified listener.If **name** is not provided, it will be generated in the format **listenerID_web_port**.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return NewWebsiteCmd(cmd, con)
 		},
@@ -226,7 +217,7 @@ website register name /webtest /path/to/file --tls --cert /path/to/cert --key /p
 
 	common.BindFlag(websiteRegisterCmd, common.TlsCertFlagSet, common.PipelineFlagSet, common.EncryptionFlagSet,
 		func(f *pflag.FlagSet) {
-			f.String("content_type", "", "website content type")
+			f.String("content_type", "", "website content type, the default value is **text/html")
 		})
 
 	common.BindFlagCompletions(websiteRegisterCmd, func(comp carapace.ActionMap) {

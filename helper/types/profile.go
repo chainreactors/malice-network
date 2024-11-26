@@ -53,13 +53,13 @@ type ImplantProfile struct {
 type ProfileConfig struct {
 	Basic   *BasicProfile          `yaml:"basic" config:"basic"`
 	Pulse   *PulseProfile          `yaml:"pulse" config:"pulse"`
-	Implant *ImplantProfile        `yaml:"implant" config:"implant"`
+	Implant *ImplantProfile        `yaml:"implants" config:"implants"`
 	Extras  map[string]interface{} `yaml:",inline"`
 }
 
 type ProfileParams struct {
-	Interval int     `json:"Interval"`
-	Jitter   float64 `json:"Jitter"`
+	Interval int     `json:"interval"`
+	Jitter   float64 `json:"jitter"`
 }
 
 func (p *ProfileParams) String() string {

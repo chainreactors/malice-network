@@ -278,7 +278,7 @@ func BuildModules(cli *client.Client, req *clientpb.Generate) error {
 	containerName := "malefic_" + generateContainerName(8)
 	buildModules := strings.Join(req.Modules, ",")
 	buildModulesCommand := fmt.Sprintf(
-		"%s/malefic-mutant generate modules %s -s && cargo build --target %s --release -p malefic-modules --features %s",
+		"%s/malefic-mutant generate modules %s && cargo build --target %s --release -p malefic-modules --features %s",
 		ContainerBinPath,
 		buildModules,
 		req.Target,
@@ -289,11 +289,7 @@ func BuildModules(cli *client.Client, req *clientpb.Generate) error {
 		Cmd:   []string{"sh", "-c", buildModulesCommand},
 	}, &container.HostConfig{
 		AutoRemove: true,
-		Binds: []string{
-			SourceCodeVolume,
-			CargoRegistryCacheVolume,
-			CargoGitCacheVolume,
-		},
+		Binds:      Volumes,
 	}, nil, nil, containerName)
 	if err != nil {
 		return err

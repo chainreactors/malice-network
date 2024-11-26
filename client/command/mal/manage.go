@@ -55,7 +55,7 @@ func parseMalHTTPConfig(cmd *cobra.Command) MalHTTPConfig {
 func MalCmd(cmd *cobra.Command, con *repl.Console) error {
 	malHttpConfig := parseMalHTTPConfig(cmd)
 	//malIndex, _ := DefaultMalIndexParser(malHttpConfig)
-	malsJson, err := parserMalJson(malHttpConfig)
+	malsJson, err := parserMalYaml(malHttpConfig)
 	if err != nil {
 		return err
 	}
@@ -70,7 +70,7 @@ func MalCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func printMals(maljson MalsJson, malHttpConfig MalHTTPConfig, con *repl.Console) error {
+func printMals(maljson MalsYaml, malHttpConfig MalHTTPConfig, con *repl.Console) error {
 	var rowEntries []table.Row
 	var row table.Row
 

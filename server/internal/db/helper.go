@@ -576,10 +576,8 @@ func GetProfile(name string) (*types.ProfileConfig, error) {
 		if profileModel.Modules != "" {
 			profile.Implant.Modules = strings.Split(profileModel.Modules, ",")
 		}
-		if profileModel.Params.Interval != -1 {
+		if profileModel.Params != nil {
 			profile.Basic.Interval = profileModel.Params.Interval
-		}
-		if profileModel.Params.Jitter != -1 {
 			profile.Basic.Jitter = profileModel.Params.Jitter
 		}
 		if profileModel.Pipeline != nil {
@@ -702,18 +700,19 @@ func UpdateGeneratorConfig(req *clientpb.Generate, path string, config *types.Pr
 		}
 
 		var params *types.ProfileParams
-		err := json.Unmarshal([]byte(req.Params), &params)
-		if err != nil {
-			return err
-		}
-		if params.Interval != -1 {
-			config.Basic.Interval = params.Interval
-		}
+		if req.Params != "" {
+			err := json.Unmarshal([]byte(req.Params), &params)
+			if err != nil {
+				return err
+			}
+			if params.Interval != -1 {
+				config.Basic.Interval = params.Interval
+			}
 
-		if params.Jitter != -1 {
-			config.Basic.Jitter = params.Jitter
+			if params.Jitter != -1 {
+				config.Basic.Jitter = params.Jitter
+			}
 		}
-
 		if req.Ca != "" {
 			config.Basic.CA = req.Ca
 		}

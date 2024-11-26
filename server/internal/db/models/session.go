@@ -43,6 +43,7 @@ func (s *Session) BeforeCreate(tx *gorm.DB) (err error) {
 
 func (s *Session) ToProtobuf() *clientpb.Session {
 	cont, _ := content.RecoverSessionContext(s.Context)
+	secondsDiff := time.Now().Unix() - s.LastCheckin
 	return &clientpb.Session{
 		Type:          s.Type,
 		SessionId:     s.SessionID,
@@ -54,7 +55,7 @@ func (s *Session) ToProtobuf() *clientpb.Session {
 		IsAlive:       s.IsAlive,
 		IsInitialized: s.Initialized,
 		IsPrivilege:   s.IsPrivilege,
-		LastCheckin:   s.LastCheckin,
+		LastCheckin:   secondsDiff,
 		Os:            s.Os.toProtobuf(),
 		Process:       s.Process.toProtobuf(),
 		Timer:         &implantpb.Timer{Interval: s.Interval, Jitter: s.Jitter},

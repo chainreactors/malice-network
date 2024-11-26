@@ -12,9 +12,6 @@ import (
 
 func NewTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 	listenerID, host, port := common.ParsePipelineFlags(cmd)
-	if listenerID == "" {
-		return fmt.Errorf("listener id is required")
-	}
 	name := cmd.Flags().Arg(0)
 	if port == 0 {
 		port = cryptography.RandomInRange(10240, 65535)

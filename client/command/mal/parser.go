@@ -24,8 +24,8 @@ const (
 	malIndexSigFileName = "mal.minisig"
 )
 
-type MalsJson struct {
-	Mals []assets.MalConfig `json:"mals" yaml:"mals"`
+type MalsYaml struct {
+	Mals []assets.MalConfig `yaml:"mals"`
 }
 
 // GitHub API Parsers for Mal
@@ -155,8 +155,8 @@ func githubTagParser(repoUrl string, version string, clientConfig MalHTTPConfig)
 	return "", errors.New("tag not found in location header")
 }
 
-func parserMalJson(clientConfig MalHTTPConfig) (MalsJson, error) {
-	var malData MalsJson
+func parserMalYaml(clientConfig MalHTTPConfig) (MalsYaml, error) {
+	var malData MalsYaml
 	resp, body, err := httpRequest(clientConfig, assets.DefaultMalRepoURL, http.Header{})
 	if err != nil {
 		return malData, err
@@ -175,17 +175,17 @@ func parserMalJson(clientConfig MalHTTPConfig) (MalsJson, error) {
 	}
 	release := releases[0]
 
-	var malsJson []byte
+	var malsYaml []byte
 	for _, asset := range release.Assets {
 		if asset.Name == malIndexFileName {
-			malsJson, err = downloadRequest(clientConfig, asset.URL)
+			malsYaml, err = downloadRequest(clientConfig, asset.URL)
 			if err != nil {
 				break
 			}
 		}
 	}
 
-	err = json.Unmarshal(malsJson, &malData)
+	err = yaml.Unmarshal(malsYaml, &malData)
 	if err != nil {
 		return malData, err
 	}

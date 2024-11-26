@@ -11,7 +11,6 @@ import (
 	"io"
 	"strconv"
 	"strings"
-	"time"
 )
 
 func SessionsCmd(cmd *cobra.Command, con *repl.Console) error {
@@ -56,7 +55,6 @@ func PrintSessions(sessions map[string]*core.Session, con *repl.Console, isAll b
 		} else {
 			SessionHealth = pterm.FgGreen.Sprint("[ALIVE]")
 		}
-		secondsDiff := uint64(time.Now().Unix() - int64(session.LastCheckin))
 		row = table.NewRow(
 			table.RowData{
 				"ID":             session.SessionId[:8],
@@ -65,7 +63,7 @@ func PrintSessions(sessions map[string]*core.Session, con *repl.Console, isAll b
 				"Remote Address": session.Target,
 				"Username":       fmt.Sprintf("%s/%s", session.Os.Hostname, session.Os.Username),
 				"System":         fmt.Sprintf("%s/%s", session.Os.Name, session.Os.Arch),
-				"Last Message":   strconv.FormatUint(secondsDiff, 10) + "s",
+				"Last Message":   strconv.FormatUint(uint64(session.LastCheckin), 10) + "s",
 				"Health":         SessionHealth,
 			})
 		rowEntries = append(rowEntries, row)
@@ -82,6 +80,7 @@ func PrintSessions(sessions map[string]*core.Session, con *repl.Console, isAll b
 		return
 	}
 	tui.Reset()
+	con.Session.GetHistory()
 }
 
 func SessionLogin(tableModel *tui.TableModel, writer io.Writer, con *repl.Console) func() {

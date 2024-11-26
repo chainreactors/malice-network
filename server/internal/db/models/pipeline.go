@@ -104,7 +104,7 @@ func ToPipelinePB(pipeline Pipeline) *clientpb.Pipeline {
 			Parser:     pipeline.Parser,
 			Body: &clientpb.Pipeline_Tcp{
 				Tcp: &clientpb.TCPPipeline{
-					Host: pipeline.Host,
+					Host: pipeline.IP,
 					Port: uint32(pipeline.Port),
 				},
 			},

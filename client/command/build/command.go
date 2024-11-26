@@ -199,6 +199,7 @@ build modules --target x86_64-pc-windows-msvc --profile module_profile --modules
 build modules --target x86_64-pc-windows-msvc --profile module_profile --srdi
 ~~~`,
 	}
+	common.BindFlag(modulesCmd, common.GenerateFlagSet)
 
 	common.BindFlagCompletions(modulesCmd, func(comp carapace.ActionMap) {
 		comp["profile"] = common.ProfileCompleter(con)

@@ -104,7 +104,7 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 				file, err := os.Open(cPath)
 				path = filepath.Join(newWebsite.RootPath, filepath.Base(cPath))
 				path = filepath.ToSlash(path)
-				webutils.WebAddFile(addWeb, path, webutils.SniffContentType(file), cPath, content.Type, content.Parser)
+				webutils.WebAddFile(addWeb, path, webutils.SniffContentType(file), cPath, content.EncryptionConfig.Type, content.Parser)
 				if err != nil {
 					return err
 				}
