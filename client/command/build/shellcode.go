@@ -1,7 +1,6 @@
 package build
 
 import (
-	"context"
 	"errors"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/common"
@@ -42,7 +41,7 @@ func MaleficSRDI(con *repl.Console, path string, id uint32, arch, platform strin
 			return nil, err
 		}
 	}
-	return con.Rpc.MaleficSRDI(context.Background(), &clientpb.Builder{
+	return con.Rpc.MaleficSRDI(con.Context(), &clientpb.Builder{
 		Id:           id,
 		Bin:          bin,
 		Arch:         arch,

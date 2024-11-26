@@ -67,7 +67,7 @@ profile load /path/to/config.yaml --name my_profile --interval 10 --jitter 0.5
 		comp["name"] = carapace.ActionValues("profile name")
 		//comp["target"] = common.BuildTargetCompleter(con)
 		comp["pipeline"] = common.AllPipelineCompleter(con)
-		comp["proxy"] = carapace.ActionValues("http", "socks5")
+		//comp["proxy"] = carapace.ActionValues("").Usage("")
 		//comp["obfuscate"] = carapace.ActionValues("true", "false")
 		comp["modules"] = carapace.ActionValues("e.g.: execute_exe,execute_dll")
 		comp["ca"] = carapace.ActionValues("true", "false")

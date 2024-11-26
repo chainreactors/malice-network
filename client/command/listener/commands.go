@@ -36,7 +36,7 @@ job
 	}
 
 	tcpCmd := &cobra.Command{
-		Use:   consts.CommandTcp,
+		Use:   consts.CommandPipelineTcp,
 		Short: "List tcp pipelines in listener",
 		Long:  "Use a table to list TCP pipelines along with their corresponding listeners",
 		Args:  cobra.MaximumNArgs(1),
@@ -83,7 +83,7 @@ tcp register --listener tcp_default --tls --cert_path /path/to/cert --key_path /
 	tcpCmd.AddCommand(newTCPPipelineCmd)
 
 	bindCmd := &cobra.Command{
-		Use:   consts.CommandBuildBind,
+		Use:   consts.CommandPipelineBind,
 		Short: "manage bind pipeline to a listener",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
@@ -153,7 +153,7 @@ pipeline stop tcp_test
 
 	common.BindArgCompletions(stopPipelineCmd, nil,
 		common.ListenerIDCompleter(con),
-		common.JobsCompleter(con, stopPipelineCmd, consts.CommandTcp),
+		common.JobsCompleter(con, stopPipelineCmd, consts.CommandPipelineTcp),
 	)
 
 	listPipelineCmd := &cobra.Command{

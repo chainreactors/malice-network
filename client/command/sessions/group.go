@@ -1,7 +1,6 @@
 package sessions
 
 import (
-	"context"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/spf13/cobra"
@@ -18,7 +17,7 @@ func groupCmd(cmd *cobra.Command, con *repl.Console) error {
 		sid = con.GetInteractive().Session.GetSessionId()
 	}
 
-	_, err := con.Rpc.SessionManage(context.Background(), &clientpb.BasicUpdateSession{
+	_, err := con.Rpc.SessionManage(con.Context(), &clientpb.BasicUpdateSession{
 		SessionId: sid,
 		Op:        "group",
 		Arg:       group,

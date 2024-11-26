@@ -1,7 +1,6 @@
 package listener
 
 import (
-	"context"
 	"fmt"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
@@ -12,7 +11,7 @@ import (
 )
 
 func ListenerCmd(cmd *cobra.Command, con *repl.Console) error {
-	listeners, err := con.Rpc.GetListeners(context.Background(), &clientpb.Empty{})
+	listeners, err := con.Rpc.GetListeners(con.Context(), &clientpb.Empty{})
 	if err != nil {
 		return err
 	}

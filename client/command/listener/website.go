@@ -1,7 +1,6 @@
 package listener
 
 import (
-	"context"
 	"fmt"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/repl"
@@ -73,18 +72,18 @@ func NewWebsiteCmd(cmd *cobra.Command, con *repl.Console) error {
 			},
 		},
 	}
-	resp, err := con.Rpc.RegisterWebsite(context.Background(), req)
+	resp, err := con.Rpc.RegisterWebsite(con.Context(), req)
 
 	if err != nil {
 		return err
 	}
 	req.Body.(*clientpb.Pipeline_Web).Web.Contents[webPath].Content = content
 	req.Body.(*clientpb.Pipeline_Web).Web.ID = resp.ID
-	_, err = con.Rpc.UploadWebsite(context.Background(), req.GetWeb())
+	_, err = con.Rpc.UploadWebsite(con.Context(), req.GetWeb())
 	if err != nil {
 		return err
 	}
-	_, err = con.Rpc.StartWebsite(context.Background(), &clientpb.CtrlPipeline{
+	_, err = con.Rpc.StartWebsite(con.Context(), &clientpb.CtrlPipeline{
 		Name:       name,
 		ListenerId: listenerID,
 	})
@@ -98,7 +97,7 @@ func NewWebsiteCmd(cmd *cobra.Command, con *repl.Console) error {
 func StartWebsitePipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 	name := cmd.Flags().Arg(0)
 	listenerID, _ := cmd.Flags().GetString("listener")
-	_, err := con.Rpc.StartWebsite(context.Background(), &clientpb.CtrlPipeline{
+	_, err := con.Rpc.StartWebsite(con.Context(), &clientpb.CtrlPipeline{
 		Name:       name,
 		ListenerId: listenerID,
 	})
@@ -111,7 +110,7 @@ func StartWebsitePipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 func StopWebsitePipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 	name := cmd.Flags().Arg(0)
 	listenerID, _ := cmd.Flags().GetString("listener")
-	_, err := con.Rpc.StopWebsite(context.Background(), &clientpb.CtrlPipeline{
+	_, err := con.Rpc.StopWebsite(con.Context(), &clientpb.CtrlPipeline{
 		Name:       name,
 		ListenerId: listenerID,
 	})
@@ -123,7 +122,7 @@ func StopWebsitePipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 
 func ListWebsitesCmd(cmd *cobra.Command, con *repl.Console) error {
 	listenerID := cmd.Flags().Arg(0)
-	websites, err := con.Rpc.ListWebsites(context.Background(), &clientpb.Listener{
+	websites, err := con.Rpc.ListWebsites(con.Context(), &clientpb.Listener{
 		Id: listenerID,
 	})
 	if err != nil {

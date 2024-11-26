@@ -1,7 +1,6 @@
 package listener
 
 import (
-	"context"
 	"fmt"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/repl"
@@ -24,7 +23,7 @@ func NewBindPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 	encryption := common.ParseEncryptionFlags(cmd)
-	_, err = con.Rpc.RegisterPipeline(context.Background(), &clientpb.Pipeline{
+	_, err = con.Rpc.RegisterPipeline(con.Context(), &clientpb.Pipeline{
 		Encryption: encryption,
 		Tls:        tls,
 		Name:       name,
@@ -39,7 +38,7 @@ func NewBindPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 	}
 
 	con.Log.Importantf("Bind Pipeline %s regsiter\n", name)
-	_, err = con.Rpc.StartPipeline(context.Background(), &clientpb.CtrlPipeline{
+	_, err = con.Rpc.StartPipeline(con.Context(), &clientpb.CtrlPipeline{
 		Name:       name,
 		ListenerId: listenerID,
 	})

@@ -1,7 +1,6 @@
 package common
 
 import (
-	"context"
 	"fmt"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/repl"
@@ -184,7 +183,7 @@ func JobsCompleter(con *repl.Console, cmd *cobra.Command, use string) carapace.A
 		for _, pipeline := range lis.GetPipelines().Pipelines {
 			switch pipeline.Body.(type) {
 			case *clientpb.Pipeline_Tcp:
-				if use == consts.CommandTcp {
+				if use == consts.CommandPipelineTcp {
 					results = append(results, pipeline.Name,
 						fmt.Sprintf("tcp job %s:%v", pipeline.GetTcp().Host, pipeline.GetTcp().Port))
 				}
@@ -225,7 +224,7 @@ func BuildTargetCompleter(con *repl.Console) carapace.Action {
 func ProfileCompleter(con *repl.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
-		profiles, err := con.Rpc.GetProfiles(context.Background(), &clientpb.Empty{})
+		profiles, err := con.Rpc.GetProfiles(con.Context(), &clientpb.Empty{})
 		if err != nil {
 			con.Log.Errorf("Error get profiles: %v\n", err)
 			return carapace.Action{}
@@ -241,7 +240,7 @@ func ProfileCompleter(con *repl.Console) carapace.Action {
 func ArtifactCompleter(con *repl.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
-		builders, err := con.Rpc.ListArtifact(context.Background(), &clientpb.Empty{})
+		builders, err := con.Rpc.ListArtifact(con.Context(), &clientpb.Empty{})
 		if err != nil {
 			con.Log.Errorf("Error get builder: %v\n", err)
 			return carapace.Action{}
@@ -257,7 +256,7 @@ func ArtifactCompleter(con *repl.Console) carapace.Action {
 func ArtifactNameCompleter(con *repl.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
-		builders, err := con.Rpc.ListArtifact(context.Background(), &clientpb.Empty{})
+		builders, err := con.Rpc.ListArtifact(con.Context(), &clientpb.Empty{})
 		if err != nil {
 			con.Log.Errorf("Error get builder: %v\n", err)
 			return carapace.Action{}
@@ -273,7 +272,7 @@ func ArtifactNameCompleter(con *repl.Console) carapace.Action {
 func SyncFileCompleter(con *repl.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
-		files, err := con.Rpc.GetTaskFiles(context.Background(),
+		files, err := con.Rpc.GetTaskFiles(con.Context(),
 			&clientpb.Session{SessionId: con.GetInteractive().SessionId})
 		if err != nil {
 			con.Log.Errorf("Error get files: %v\n", err)

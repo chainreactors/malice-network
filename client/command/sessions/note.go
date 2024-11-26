@@ -1,7 +1,6 @@
 package sessions
 
 import (
-	"context"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
@@ -20,7 +19,7 @@ func noteCmd(cmd *cobra.Command, con *repl.Console) {
 	}
 
 	var err error
-	_, err = con.Rpc.SessionManage(context.Background(), &clientpb.BasicUpdateSession{
+	_, err = con.Rpc.SessionManage(con.Context(), &clientpb.BasicUpdateSession{
 		SessionId: sid,
 		Op:        "note",
 		Arg:       name,

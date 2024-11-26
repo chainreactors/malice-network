@@ -1,7 +1,6 @@
 package build
 
 import (
-	"context"
 	"fmt"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/repl"
@@ -14,7 +13,7 @@ import (
 )
 
 func ProfileShowCmd(cmd *cobra.Command, con *repl.Console) error {
-	resp, err := con.Rpc.GetProfiles(context.Background(), &clientpb.Empty{})
+	resp, err := con.Rpc.GetProfiles(con.Context(), &clientpb.Empty{})
 	if err != nil {
 		return err
 	}
@@ -66,7 +65,7 @@ func ProfileNewCmd(cmd *cobra.Command, con *repl.Console) error {
 		PipelineId: pipelineName,
 		Content:    content,
 	}
-	_, err = con.Rpc.NewProfile(context.Background(), profile)
+	_, err = con.Rpc.NewProfile(con.Context(), profile)
 	if err != nil {
 		return err
 	}
