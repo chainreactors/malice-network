@@ -698,7 +698,6 @@ func UpdateGeneratorConfig(req *clientpb.Generate, path string, config *types.Pr
 		if req.Address != "" {
 			config.Basic.Targets = []string{req.Address}
 		}
-
 		var params *types.ProfileParams
 		if req.Params != "" {
 			err := json.Unmarshal([]byte(req.Params), &params)
@@ -727,6 +726,9 @@ func UpdateGeneratorConfig(req *clientpb.Generate, path string, config *types.Pr
 		}
 	}
 
+	if req.Type == consts.CommandBuildBind {
+		config.Implant.Mod = consts.CommandBuildBind
+	}
 	newData, err := yaml.Marshal(config)
 	if err != nil {
 		return err

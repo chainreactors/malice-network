@@ -8,7 +8,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/utils/handler"
-	"github.com/chainreactors/tui"
 	"io"
 	"os"
 )
@@ -26,7 +25,7 @@ func (s *ServerStatus) triggerTaskDone(event *clientpb.Event) {
 	log := s.ObserverLog(event.Task.SessionId)
 	err := handler.HandleMaleficError(event.Spite)
 	if err != nil {
-		log.Errorf(logs.RedBold(err.Error()))
+		log.Errorf(logs.RedBold(err.Error()) + "\n")
 		return
 	}
 	if fn, ok := intermediate.InternalFunctions[event.Task.Type]; ok && fn.DoneCallback != nil {
@@ -128,58 +127,53 @@ func (s *ServerStatus) EventHandler() {
 		switch event.Type {
 		case consts.EventClient:
 			if event.Op == consts.CtrlClientJoin {
-				Log.Infof("%s has joined the game", event.Client.Name)
+				Log.Infof("%s has joined the game\n", event.Client.Name)
 			} else if event.Op == consts.CtrlClientLeft {
-				Log.Infof("%s left the game", event.Client.Name)
+				Log.Infof("%s left the game\n", event.Client.Name)
 			}
 		case consts.EventBroadcast:
-			Log.Infof("%s : %s  %s", event.Client.Name, event.Message, event.Err)
+			Log.Infof("%s : %s  %s\n", event.Client.Name, event.Message, event.Err)
 		case consts.EventSession:
 			s.handlerSession(event)
 		case consts.EventNotify:
-			Log.Importantf("%s notified: %s %s", event.Client.Name, event.Message, event.Err)
+			Log.Importantf("%s notified: %s %s\n", event.Client.Name, event.Message, event.Err)
 		case consts.EventJob:
 			if event.Err != "" {
-				Log.Errorf("[%s] %s: %s", event.Type, event.Op, event.Err)
+				Log.Errorf("[%s] %s: %s\n", event.Type, event.Op, event.Err)
 				continue
 			}
-			tui.Down(1)
 			pipeline := event.GetJob().GetPipeline()
 			switch pipeline.Body.(type) {
 			case *clientpb.Pipeline_Tcp:
-				Log.Importantf("[%s] %s: tcp %s on %s %s:%d", event.Type, event.Op,
+				Log.Importantf("[%s] %s: tcp %s on %s %s:%d\n", event.Type, event.Op,
 					pipeline.Name, pipeline.ListenerId, pipeline.GetTcp().Host, pipeline.GetTcp().Port)
 			case *clientpb.Pipeline_Web:
-				Log.Importantf("[%s] %s: web %s on %s %d, routePath is %s", event.Type, event.Op,
+				Log.Importantf("[%s] %s: web %s on %s %d, routePath is %s\n", event.Type, event.Op,
 					pipeline.ListenerId, pipeline.Name, pipeline.GetWeb().Port,
 					pipeline.GetWeb().Root)
 			}
 		case consts.EventListener:
-			tui.Down(1)
-			Log.Importantf("[%s] %s: %s %s", event.Type, event.Op, event.Message, event.Err)
+			Log.Importantf("[%s] %s: %s %s\n", event.Type, event.Op, event.Message, event.Err)
 		case consts.EventTask:
 			s.handlerTask(event)
 		case consts.EventWebsite:
-			tui.Down(1)
-			Log.Importantf("[%s] %s: %s %s", event.Type, event.Op, event.Message, event.Err)
+			Log.Importantf("[%s] %s: %s %s\n", event.Type, event.Op, event.Message, event.Err)
 		case consts.EventBuild:
-			tui.Down(1)
-			Log.Importantf("[%s] %s", event.Type, event.Message)
+			Log.Importantf("[%s] %s\n", event.Type, event.Message)
 		}
 	}
 }
 
 func (s *ServerStatus) handlerTask(event *clientpb.Event) {
-	tui.Down(1)
 	switch event.Op {
 	case consts.CtrlTaskCallback:
 		s.triggerTaskDone(event)
 	case consts.CtrlTaskFinish:
 		s.triggerTaskFinish(event)
 	case consts.CtrlTaskCancel:
-		Log.Importantf("[%s.%d] task canceled", event.Task.SessionId, event.Task.TaskId)
+		Log.Importantf("[%s.%d] task canceled\n", event.Task.SessionId, event.Task.TaskId)
 	case consts.CtrlTaskError:
-		Log.Errorf("[%s.%d] %s", event.Task.SessionId, event.Task.TaskId, event.Err)
+		Log.Errorf("[%s.%d] %s\n", event.Task.SessionId, event.Task.TaskId, event.Err)
 	}
 }
 

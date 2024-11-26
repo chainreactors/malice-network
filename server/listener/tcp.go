@@ -36,6 +36,7 @@ func NewTcpPipeline(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeli
 	if err != nil {
 		return nil, err
 	}
+
 	return pp, nil
 }
 
@@ -72,6 +73,7 @@ func (pipeline *TCPPipeline) ID() string {
 }
 
 func (pipeline *TCPPipeline) Close() error {
+	pipeline.Enable = false
 	err := pipeline.ln.Close()
 	if err != nil {
 		return err
@@ -132,7 +134,12 @@ func (pipeline *TCPPipeline) handler() (net.Listener, error) {
 			conn, err := ln.Accept()
 			if err != nil {
 				logs.Log.Errorf("Accept failed: %v", err)
-				continue
+				if !pipeline.Enable {
+					logs.Log.Importantf("%s already disable, break accept", ln.Addr().String())
+					return
+				} else {
+					continue
+				}
 			}
 			logs.Log.Debugf("[pipeline.%s] accept from %s", pipeline.Name, conn.RemoteAddr())
 			switch pipeline.Parser {

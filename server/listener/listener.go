@@ -277,6 +277,7 @@ func (lns *listener) startPipeline(pipelinepb *clientpb.Pipeline) (core.Pipeline
 	if err != nil {
 		return nil, err
 	}
+	lns.pipelines.Add(p)
 	return p, nil
 }
 
@@ -286,7 +287,6 @@ func (lns *listener) stopHandler(job *clientpb.Job) *clientpb.JobStatus {
 	switch pipeline.Body.(type) {
 	case *clientpb.Pipeline_Tcp:
 		p := lns.pipelines.Get(pipeline.Name)
-		job.Name = p.ID()
 		if p == nil {
 			return &clientpb.JobStatus{
 				ListenerId: lns.ID(),
@@ -296,6 +296,7 @@ func (lns *listener) stopHandler(job *clientpb.Job) *clientpb.JobStatus {
 				Job:        job,
 			}
 		}
+		job.Name = p.ID()
 		err = p.Close()
 		if err != nil {
 			break
