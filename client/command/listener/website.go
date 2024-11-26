@@ -2,7 +2,6 @@ package listener
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/repl"
@@ -26,9 +25,6 @@ func NewWebsiteCmd(cmd *cobra.Command, con *repl.Console) error {
 	webPath := cmd.Flags().Arg(1)
 	cPath := cmd.Flags().Arg(2)
 	var err error
-	if listenerID == "" {
-		return errors.New("listener id is required")
-	}
 	if port == 0 {
 		port = cryptography.RandomInRange(10240, 65535)
 	}

@@ -200,13 +200,13 @@ website [listener]
 		},
 		Example: `~~~
 // Register a website with the default settings
-website register name /webtest /path/to/file
+website register name /webtest /path/to/file --listener tcp_default
 
 // Register a website with a custom name, port, and content type
-website register name /webtest /path/to/file --name web_test --port 5003 --content_type text/html
+website register name /webtest /path/to/file --name web_test --port 5003 --content_type text/html --listener tcp_default
 			
 // Register a website with TLS enabled and specify certificate and key paths
-website register name /webtest /path/to/file --tls --cert /path/to/cert --key /path/to/key
+website register name /webtest /path/to/file --tls --cert /path/to/cert --key /path/to/key --listener tcp_default
 ~~~`,
 	}
 
@@ -228,6 +228,7 @@ website register name /webtest /path/to/file --tls --cert /path/to/cert --key /p
 		comp["key"] = carapace.ActionFiles().Usage("path to the key file")
 		comp["tls"] = carapace.ActionValues().Usage("enable tls")
 	})
+	websiteCmd.MarkFlagRequired("listener")
 
 	websiteStartCmd := &cobra.Command{
 		Use:   consts.CommandPipelineStart,
