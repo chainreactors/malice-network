@@ -77,18 +77,17 @@ func SetCustomUsageTemplate() (*template.Template, error) {
 	return usageTmpl, nil
 }
 
-// RenderOpsec renders a description with color based on OPSEC score
-func RenderOpsec(opsecLevel string, description string) string {
-	if opsecLevel == "" {
-		return description
-	}
-	opsec, err := strconv.ParseFloat(opsecLevel, 64)
+func RenderOpsec(opsecStr string, description string) string {
+	var coloredDescription string
+	opsec, err := strconv.ParseFloat(opsecStr, 64)
 	if err != nil {
 		return ""
 	}
-	//ansiEscape := regexp.MustCompile(`\x1b\[[0-9;]*m`)
-	//description = ansiEscape.ReplaceAllString(description, "")
-	var coloredDescription string
+	if opsec == 0.0 {
+		return fmt.Sprintf("%-35s %s", description, "")
+	} else {
+		description = fmt.Sprintf("%-15s %s", description, "")
+	}
 	switch {
 	case opsec > 0 && opsec <= 3.9:
 		coloredDescription = termenv.String(description).Foreground(tui.Red).String()
@@ -98,7 +97,13 @@ func RenderOpsec(opsecLevel string, description string) string {
 		coloredDescription = termenv.String(description).Foreground(tui.Yellow).String()
 	case opsec >= 9.0 && opsec <= 10.0:
 		coloredDescription = termenv.String(description).Foreground(tui.Green).String()
+	default:
+		if termenv.HasDarkBackground() {
+			coloredDescription = termenv.String(description).Foreground(tui.White).String()
+		} else {
+			coloredDescription = termenv.String(description).Foreground(tui.Black).String()
+		}
 	}
 
-	return renderMarkdown(fmt.Sprintf("%s (opsec %.1f)%-9s", coloredDescription, opsec, ""))
+	return fmt.Sprintf("%s (opsec %.1f)%-9s", coloredDescription, opsec, "")
 }
