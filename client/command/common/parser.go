@@ -36,7 +36,7 @@ func NewExecutable(module string, path string, args []string, arch string, outpu
 }
 
 func UpdateClrBinary(binary *implantpb.ExecuteBinary, bypassETW, bypassAMSI bool) {
-	if !bypassETW && bypassAMSI {
+	if !bypassETW && !bypassAMSI {
 		return
 	}
 
