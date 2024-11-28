@@ -24,7 +24,7 @@ func InitServerStatus(conn *grpc.ClientConn, config *mtls.ClientConfig) (*Server
 		},
 		ActiveTarget:    &ActiveTarget{},
 		Sessions:        make(map[string]*Session),
-		Observers:       map[string]*Observer{},
+		Observers:       make(map[string]*Session),
 		finishCallbacks: &sync.Map{},
 		doneCallbacks:   &sync.Map{},
 		EventHook:       make(map[intermediate.EventCondition][]intermediate.OnEventFunc),
@@ -80,7 +80,7 @@ type ServerStatus struct {
 	Clients         []*clientpb.Client
 	Listeners       []*clientpb.Listener
 	Sessions        map[string]*Session
-	Observers       map[string]*Observer
+	Observers       map[string]*Session
 	sessions        []*clientpb.Session
 	finishCallbacks *sync.Map
 	doneCallbacks   *sync.Map
@@ -139,6 +139,14 @@ func (s *ServerStatus) UpdateSession(sid string) (*Session, error) {
 	}
 }
 
+func (s *ServerStatus) GetLocalSession(sid string) (*Session, bool) {
+	if sess, ok := s.Sessions[sid]; ok {
+		return sess, true
+	} else {
+		return nil, false
+	}
+}
+
 func (s *ServerStatus) AlivedSessions() []*clientpb.Session {
 	var alivedSessions []*clientpb.Session
 	for _, session := range s.sessions {
@@ -175,7 +183,7 @@ func (s *ServerStatus) UpdateListener() error {
 
 func (s *ServerStatus) AddObserver(session *Session) string {
 	Log.Infof("Add observer to %s", session.SessionId)
-	s.Observers[session.SessionId] = &Observer{session, Log}
+	s.Observers[session.SessionId] = session
 	return session.SessionId
 }
 
@@ -185,7 +193,7 @@ func (s *ServerStatus) RemoveObserver(observerID string) {
 
 func (s *ServerStatus) ObserverLog(sessionId string) *Logger {
 	if s.Session != nil && s.Session.SessionId == sessionId {
-		return s.Observer.Log
+		return s.Session.Log
 	}
 
 	if observer, ok := s.Observers[sessionId]; ok {

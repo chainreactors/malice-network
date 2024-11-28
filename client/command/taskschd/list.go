@@ -49,7 +49,7 @@ func RegisterTaskSchdListFunc(con *repl.Console) {
 			}
 			var result []string
 			for _, schedule := range taskScheduleResponse.Schedules {
-				result = append(result, tui.RenderColoredKeyValue(schedule, 5, 0))
+				result = append(result, tui.RendStructDefault(schedule))
 			}
 			return strings.Join(result, "\n"), nil
 		},

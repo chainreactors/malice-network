@@ -85,7 +85,7 @@ func (broker *eventBroker) Subscribe() chan Event {
 // Unsubscribe - Remove a subscription channel
 func (broker *eventBroker) Unsubscribe(events chan Event) {
 	broker.unsubscribe <- events
-	close(events)
+	//close(events)
 }
 
 // Publish - Push a message to all subscribers

@@ -17,6 +17,7 @@ func WhoamiCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
+
 	session.Console(task, "")
 	return nil
 }

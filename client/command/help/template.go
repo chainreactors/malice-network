@@ -307,11 +307,8 @@ var renderOpsec = func(opsecStr string, use string, padding int) string {
 	if opsecStr == "" {
 		opsecStr = "0.0"
 	}
-	opsec, err := strconv.ParseFloat(opsecStr, 64)
-	if err != nil {
-		return fmt.Sprintf("%-*s", padding, use)
-	}
-	coloredText := tui.RenderOpsec(opsec, use)
+
+	coloredText := RenderOpsec(opsecStr, use)
 	return coloredText
 }
 

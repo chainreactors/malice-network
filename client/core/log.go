@@ -5,6 +5,8 @@ import (
 	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/termenv"
+	"os"
+	"regexp"
 )
 
 var (
@@ -33,4 +35,14 @@ var (
 
 type Logger struct {
 	*logs.Logger
+	logFile *os.File
+}
+
+var ansi = regexp.MustCompile(`\x1b\[[0-9;]*m`)
+
+func (l *Logger) FileLog(s string) {
+	if l.logFile != nil {
+		l.logFile.WriteString(ansi.ReplaceAllString(s, ""))
+		l.logFile.Sync()
+	}
 }

@@ -9,7 +9,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/utils/handler"
 	"io"
-	"os"
 )
 
 func (s *ServerStatus) AddDoneCallback(task *clientpb.Task, callback TaskCallback) {
@@ -22,28 +21,29 @@ func (s *ServerStatus) AddCallback(task *clientpb.Task, callback TaskCallback) {
 
 func (s *ServerStatus) triggerTaskDone(event *clientpb.Event) {
 	task := event.GetTask()
+	var sess *Session
+	var ok bool
+	var err error
+	sess, ok = s.GetLocalSession(event.Task.SessionId)
+	if !ok {
+		sess, err = s.UpdateSession(event.Task.SessionId)
+		if err != nil {
+			Log.Errorf("session not found: %s\n", event.Task.SessionId)
+			return
+		}
+	}
+
 	log := s.ObserverLog(event.Task.SessionId)
-	err := handler.HandleMaleficError(event.Spite)
+	err = handler.HandleMaleficError(event.Spite)
 	if err != nil {
 		log.Errorf(logs.RedBold(err.Error()) + "\n")
 		return
 	}
-	if fn, ok := intermediate.InternalFunctions[event.Task.Type]; ok && fn.DoneCallback != nil {
-		resp, err := fn.DoneCallback(&clientpb.TaskContext{
-			Task:    event.Task,
-			Session: event.Session,
-			Spite:   event.Spite,
-		})
-		if err != nil {
-			log.Errorf(logs.RedBold(err.Error()))
-		} else {
-			log.Importantf(logs.GreenBold(fmt.Sprintf("[%s.%d] task done (%d/%d): %s\n",
-				event.Task.SessionId, event.Task.TaskId,
-				event.Task.Cur, event.Task.Total, resp)))
-		}
-	} else {
-		log.Debugf("%v\n", event.Spite)
-	}
+	HandlerTask(sess, &clientpb.TaskContext{
+		Task:    event.Task,
+		Session: event.Session,
+		Spite:   event.Spite,
+	}, event.Message, event.Callee, false)
 
 	if callback, ok := s.finishCallbacks.Load(fmt.Sprintf("%s_%d", task.SessionId, task.TaskId)); ok {
 		callback.(TaskCallback)(event.Spite)
@@ -52,40 +52,77 @@ func (s *ServerStatus) triggerTaskDone(event *clientpb.Event) {
 
 func (s *ServerStatus) triggerTaskFinish(event *clientpb.Event) {
 	task := event.GetTask()
+	var sess *Session
+	var ok bool
+	var err error
+	sess, ok = s.GetLocalSession(event.Task.SessionId)
+	if !ok {
+		sess, err = s.UpdateSession(event.Task.SessionId)
+		if err != nil {
+			Log.Errorf("session not found: %s\n", event.Task.SessionId)
+			return
+		}
+	}
+
 	log := s.ObserverLog(event.Task.SessionId)
-	err := handler.HandleMaleficError(event.Spite)
+	err = handler.HandleMaleficError(event.Spite)
 	if err != nil {
-		log.Errorf(logs.RedBold(err.Error()))
+		log.Errorf(logs.RedBold(err.Error()) + "\n")
 		return
 	}
 
-	if fn, ok := intermediate.InternalFunctions[event.Task.Type]; ok && fn.FinishCallback != nil {
-		log.Importantf(logs.GreenBold(fmt.Sprintf("[%s.%d] task finish (%d/%d),%s\n",
-			event.Task.SessionId, event.Task.TaskId,
-			event.Task.Cur, event.Task.Total,
-			event.Message)))
-		if event.Callee != consts.CalleeCMD {
-			return
-		}
-		resp, err := fn.FinishCallback(&clientpb.TaskContext{
-			Task:    event.Task,
-			Session: event.Session,
-			Spite:   event.Spite,
-		})
-		if err != nil {
-			log.Errorf(logs.RedBold(err.Error()))
-		} else {
-			log.Console(resp + "\n")
-		}
-	} else {
-		log.Consolef("%s not impl output impl\n", event.Task.Type)
-	}
+	HandlerTask(sess, &clientpb.TaskContext{
+		Task:    event.Task,
+		Session: event.Session,
+		Spite:   event.Spite,
+	}, event.Message, event.Callee, true)
 
 	callbackId := fmt.Sprintf("%s_%d", task.SessionId, task.TaskId)
 	if callback, ok := s.finishCallbacks.Load(callbackId); ok {
 		callback.(TaskCallback)(event.Spite)
 		s.finishCallbacks.Delete(callbackId)
 		s.doneCallbacks.Delete(callbackId)
+	}
+}
+
+func HandlerTask(sess *Session, context *clientpb.TaskContext, message []byte, callee string, isFinish bool) {
+	log := sess.Log
+	if fn, ok := intermediate.InternalFunctions[context.Task.Type]; ok && fn.FinishCallback != nil {
+		var prompt string
+		if isFinish {
+			prompt = "task finish"
+		} else {
+			prompt = "task done"
+		}
+
+		s := logs.GreenBold(fmt.Sprintf("[%s.%d] %s (%d/%d),%s\n",
+			context.Task.SessionId, context.Task.TaskId, prompt,
+			context.Task.Cur, context.Task.Total,
+			message))
+		log.Importantf(s)
+		if callee != consts.CalleeCMD {
+			return
+		}
+		var err error
+		var resp string
+		if isFinish {
+			log.FileLog(s)
+			resp, err = fn.FinishCallback(context)
+			log.FileLog(resp + "\n")
+		} else {
+			resp, err = fn.DoneCallback(context)
+		}
+		if err != nil {
+			log.Errorf(logs.RedBold(err.Error()))
+		} else {
+			log.Console(resp + "\n")
+		}
+	} else {
+		if isFinish {
+			log.Consolef("%s not impl output impl\n", context.Task.Type)
+		} else {
+			log.Debugf("%s not impl output impl\n", context.Task.Type)
+		}
 	}
 }
 func (s *ServerStatus) AddEventHook(event intermediate.EventCondition, callback intermediate.OnEventFunc) {
@@ -101,7 +138,7 @@ func (s *ServerStatus) EventHandler() {
 		return
 	}
 	s.EventStatus = true
-	Log.Importantf("starting event loop\n")
+	Log.Debugf("starting event loop\n")
 	defer func() {
 		Log.Warnf("event stream broken\n")
 		s.EventStatus = false
@@ -194,27 +231,4 @@ func (s *ServerStatus) handlerSession(event *clientpb.Event) {
 	case consts.CtrlSessionLeave:
 		Log.Importantf(logs.RedBold(fmt.Sprintf("[%s] session stop: %s\n", sid, event.Message)))
 	}
-}
-
-func HandleTaskContext(log *Logger, context *clientpb.TaskContext, fn *intermediate.InternalFunc, writeToFile bool, logPath string) error {
-	log.Importantf(logs.GreenBold(fmt.Sprintf("[%s.%d] task finish (%d/%d), %s\n",
-		context.Task.SessionId, context.Task.TaskId,
-		context.Task.Cur, context.Task.Total,
-		context.Task.Description)))
-
-	resp, err := fn.FinishCallback(context)
-	if err != nil {
-		log.Errorf(logs.RedBold(err.Error()))
-		return err
-	} else {
-		log.Console(resp + "\n")
-		if writeToFile {
-			err := os.WriteFile(logPath, []byte(resp), os.ModePerm)
-			if err != nil {
-				log.Errorf("Error writing to file: %s", err)
-				return err
-			}
-		}
-	}
-	return nil
 }

@@ -114,7 +114,7 @@ func SessionInfoCmd(cmd *cobra.Command, con *repl.Console) error {
 	if session == nil {
 		return repl.ErrNotFoundSession
 	}
-	result := tui.RenderColoredKeyValue(session, 5, 1, "Tasks")
+	result := tui.RendStructDefault(session, "Tasks")
 	con.Log.Info(result)
 	return nil
 }

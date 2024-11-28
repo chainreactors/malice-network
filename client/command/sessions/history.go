@@ -1,9 +1,10 @@
 package sessions
 
 import (
+	"fmt"
 	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/spf13/cobra"
 	"strconv"
@@ -11,8 +12,7 @@ import (
 
 func historyCmd(cmd *cobra.Command, con *repl.Console) error {
 	if con.GetInteractive() == nil {
-		con.Log.Errorf("No session selected")
-		return nil
+		return fmt.Errorf("No session selected")
 	}
 
 	rawLen := cmd.Flags().Arg(0)
@@ -23,27 +23,16 @@ func historyCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	contexts, err := con.Rpc.GetSessionHistory(con.GetInteractive().Context(), &clientpb.SessionLog{
-		SessionId: con.GetInteractive().SessionId,
+	sess := con.GetInteractive()
+	contexts, err := con.Rpc.GetSessionHistory(sess.Context(), &clientpb.SessionLog{
+		SessionId: sess.SessionId,
 		Limit:     int32(length),
 	})
 	if err != nil {
 		return err
 	}
-	log := con.ServerStatus.ObserverLog(con.GetInteractive().SessionId)
 	for _, context := range contexts.Contexts {
-		if fn, ok := intermediate.InternalFunctions[context.Task.Type]; ok && fn.FinishCallback != nil {
-			err := core.HandleTaskContext(log, &clientpb.TaskContext{
-				Task:    context.Task,
-				Session: context.Session,
-				Spite:   context.Spite,
-			}, fn, false, "")
-			if err != nil {
-				return err
-			}
-		} else {
-			log.Consolef("%s not impl output impl\n", context.Task.Type)
-		}
+		core.HandlerTask(sess, context, []byte{}, consts.CalleeCMD, true)
 	}
 	return nil
 }
