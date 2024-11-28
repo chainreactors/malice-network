@@ -2,19 +2,28 @@ package cryptostream
 
 import (
 	"bytes"
+	"io"
 	"net"
 )
 
 func NewCryptoConn(conn net.Conn, cryptor Cryptor) *CryptoConn {
 	return &CryptoConn{
-		Conn:    conn,
-		Cryptor: cryptor,
+		Conn:            conn,
+		ReadWriteCloser: conn,
+		Cryptor:         cryptor,
+	}
+}
+
+func NewCryptoRWC(rwc io.ReadWriteCloser, cryptor Cryptor) *CryptoConn {
+	return &CryptoConn{
+		ReadWriteCloser: rwc,
+		Cryptor:         cryptor,
 	}
 }
 
 type CryptoConn struct {
 	net.Conn
-
+	io.ReadWriteCloser
 	Cryptor
 }
 
@@ -24,13 +33,13 @@ func (sc *CryptoConn) Write(data []byte) (int, error) {
 		return 0, err
 	}
 
-	return sc.Conn.Write(encryptedData)
+	return sc.ReadWriteCloser.Write(encryptedData)
 }
 
 // Read 方法从底层连接读取数据并解密
 func (sc *CryptoConn) Read(data []byte) (int, error) {
 	encryptedData := make([]byte, 1024)
-	n, err := sc.Conn.Read(encryptedData)
+	n, err := sc.ReadWriteCloser.Read(encryptedData)
 	if err != nil {
 		return 0, err
 	}
