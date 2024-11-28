@@ -64,7 +64,7 @@ func ConsoleRunnerCmd(con *repl.Console, cmd *cobra.Command) (pre, post func(cmd
 
 	// Close the RPC connection once exiting
 	post = func(cmd *cobra.Command, _ []string) error {
-		if run, _ := cmd.Flags().GetBool("console"); run || cmd.Use == consts.CommandLogin {
+		if run, _ := cmd.Flags().GetBool("console"); run || cmd.Use == consts.CommandLogin || cmd.Use == consts.ImplantMenu {
 			return con.Start(BindClientsCommands, BindImplantCommands)
 		}
 

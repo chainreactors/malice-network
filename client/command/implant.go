@@ -37,9 +37,9 @@ func ImplantCmd(con *repl.Console) *cobra.Command {
 	makeCommands := BindImplantCommands(con)
 	cmd := makeCommands()
 	cmd.Use = consts.ImplantMenu
-	//cmd.RunE = func(cmd *cobra.Command, args []string) error {
-	//
-	//}
+	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		return nil
+	}
 	// Flags
 	common.Bind(cmd.Use, true, cmd, func(f *pflag.FlagSet) {
 		f.String("use", "", "set session context")
@@ -73,11 +73,6 @@ func makeRunners(implantCmd *cobra.Command, con *repl.Console) (pre, post func(c
 		return nil
 	}
 	post = func(cmd *cobra.Command, args []string) error {
-		err := implantCmd.Parent().PersistentPostRunE(implantCmd, args)
-		if err != nil {
-			return err
-		}
-
 		sess := con.GetInteractive()
 		if sess.LastTask != nil {
 			if wait, _ := cmd.Flags().GetBool("wait"); wait {
@@ -91,8 +86,7 @@ func makeRunners(implantCmd *cobra.Command, con *repl.Console) (pre, post func(c
 				con.Log.Console(tui.RendStructDefault(sess.LastTask))
 			}
 		}
-
-		return nil
+		return implantCmd.Parent().PersistentPostRunE(implantCmd, args)
 	}
 
 	return pre, post
