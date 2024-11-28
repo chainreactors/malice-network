@@ -54,6 +54,10 @@ func (sc *CryptoConn) Read(data []byte) (int, error) {
 	return len(decryptedData), nil
 }
 
+func (sc *CryptoConn) Close() error {
+	return sc.ReadWriteCloser.Close()
+}
+
 // 加密数据
 func (sc *CryptoConn) encrypt(data []byte) ([]byte, error) {
 	reader := bytes.NewReader(data)
