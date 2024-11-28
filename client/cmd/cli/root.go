@@ -10,9 +10,7 @@ import (
 
 func rootCmd(con *repl.Console) (*cobra.Command, error) {
 	var cmd = &cobra.Command{
-		Use:   "client",
-		Short: "",
-		Long:  ``,
+		Use: "client",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := generic.LoginCmd(cmd, con); err != nil {
 				return err

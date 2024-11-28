@@ -1,7 +1,7 @@
 package command
 
 import (
-	"errors"
+	"fmt"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/addon"
 	"github.com/chainreactors/malice-network/client/command/alias"
@@ -25,6 +25,7 @@ import (
 	"github.com/chainreactors/malice-network/client/core/plugin"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/tui"
 	"github.com/reeflective/console"
 	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
@@ -35,40 +36,59 @@ func ImplantCmd(con *repl.Console) *cobra.Command {
 	makeCommands := BindImplantCommands(con)
 	cmd := makeCommands()
 	cmd.Use = consts.ImplantMenu
+	//cmd.RunE = func(cmd *cobra.Command, args []string) error {
+	//
+	//}
 	// Flags
 	common.Bind(cmd.Use, true, cmd, func(f *pflag.FlagSet) {
 		f.String("use", "", "set session context")
+		f.Bool("wait", false, "wait task finished")
 	})
 	cobra.MarkFlagRequired(cmd.Flags(), "use")
-	// Pre-runners (console setup, connection, etc)
-	cmd.PreRunE, cmd.PersistentPostRunE = makeRunners(cmd, con)
+	cmd.PersistentPreRunE, cmd.PersistentPostRunE = makeRunners(cmd, con)
 	makeCompleters(cmd, con)
 	return cmd
 }
 
 func makeRunners(implantCmd *cobra.Command, con *repl.Console) (pre, post func(cmd *cobra.Command, args []string) error) {
-	startConsole, closeConsole := ConsoleRunnerCmd(con, implantCmd)
-
-	// The pre-run function connects to the server and sets up a "fake" console,
 	// so we can have access to active sessions/beacons, and other stuff needed.
-	pre = func(_ *cobra.Command, args []string) error {
-		startConsole(implantCmd, args)
-
+	pre = func(cmd *cobra.Command, args []string) error {
 		// Set the active target.
-		target, _ := implantCmd.Flags().GetString("use")
+		err := implantCmd.Parent().PersistentPreRunE(implantCmd, args)
+		if err != nil {
+			return err
+		}
+		target, _ := cmd.Flags().GetString("use")
 		if target == "" {
-			return errors.New("no target implant to run command on")
+			return fmt.Errorf("no target implant to run command on")
 		}
 
 		session := con.GetSession(target)
-		if session != nil {
-			con.ActiveTarget.Set(session)
+		if session == nil {
+			return fmt.Errorf("no session found for %s", target)
+		}
+		con.SwitchImplant(session)
+
+		return nil
+	}
+	post = func(cmd *cobra.Command, args []string) error {
+		err := implantCmd.Parent().PersistentPostRunE(implantCmd, args)
+		if err != nil {
+			return err
+		}
+
+		sess := con.GetInteractive()
+		if sess.LastTask != nil {
+			tui.RendStructDefault(sess.LastTask)
+			if wait, _ := cmd.Flags().GetBool("wait"); wait {
+				con.WaitTaskFinish(sess.Context(), sess.LastTask)
+			}
 		}
 
 		return nil
 	}
 
-	return pre, closeConsole
+	return pre, post
 }
 
 func makeCompleters(cmd *cobra.Command, con *repl.Console) {

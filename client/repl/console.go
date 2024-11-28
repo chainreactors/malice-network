@@ -46,7 +46,7 @@ func NewConsole() (*Console, error) {
 			if con.ServerStatus != nil && !con.ServerStatus.EventStatus {
 				con.EventHandler()
 			}
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(10 * time.Millisecond)
 		}
 	}()
 	con.NewConsole()
@@ -160,8 +160,8 @@ func (c *Console) SwitchImplant(sess *core.Session) {
 			count++
 		}
 	}
-	c.Log.Importantf("os: %s, arch: %s, process: %d %s, pipeline: %s", sess.Os.Name, sess.Os.Arch, sess.Process.Ppid, sess.Process.Name, sess.PipelineId)
-	c.Log.Importantf("%d modules, %d available cmds, %d addons", len(sess.Modules), count, len(sess.Addons))
+	c.Log.Importantf("os: %s, arch: %s, process: %d %s, pipeline: %s\n", sess.Os.Name, sess.Os.Arch, sess.Process.Ppid, sess.Process.Name, sess.PipelineId)
+	c.Log.Importantf("%d modules, %d available cmds, %d addons\n", len(sess.Modules), count, len(sess.Addons))
 	c.Log.Infof("Active session %s (%s), group: %s\n", sess.Note, sess.SessionId, sess.GroupName)
 }
 
