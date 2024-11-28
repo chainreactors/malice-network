@@ -87,42 +87,51 @@ func (s *ServerStatus) triggerTaskFinish(event *clientpb.Event) {
 
 func HandlerTask(sess *Session, context *clientpb.TaskContext, message []byte, callee string, isFinish bool) {
 	log := sess.Log
-	if fn, ok := intermediate.InternalFunctions[context.Task.Type]; ok && fn.FinishCallback != nil {
-		var prompt string
-		if isFinish {
-			prompt = "task finish"
-		} else {
-			prompt = "task done"
-		}
-
-		s := logs.GreenBold(fmt.Sprintf("[%s.%d] %s (%d/%d),%s\n",
-			context.Task.SessionId, context.Task.TaskId, prompt,
-			context.Task.Cur, context.Task.Total,
-			message))
-		log.Importantf(s)
-		if callee != consts.CalleeCMD {
+	var callback intermediate.ImplantCallback
+	fn, ok := intermediate.InternalFunctions[context.Task.Type]
+	if !ok {
+		log.Errorf("function %s not found\n", context.Task.Type)
+		return
+	}
+	var prompt string
+	if isFinish {
+		prompt = "task finish"
+		if fn.FinishCallback == nil {
+			log.Consolef("%s not impl output impl\n", context.Task.Type)
 			return
 		}
-		var err error
-		var resp string
-		if isFinish {
-			log.FileLog(s)
-			resp, err = fn.FinishCallback(context)
-			log.FileLog(resp + "\n")
-		} else {
-			resp, err = fn.DoneCallback(context)
-		}
-		if err != nil {
-			log.Errorf(logs.RedBold(err.Error()))
-		} else {
-			log.Console(resp + "\n")
-		}
+		callback = fn.FinishCallback
 	} else {
-		if isFinish {
-			log.Consolef("%s not impl output impl\n", context.Task.Type)
-		} else {
+		prompt = "task done"
+		if fn.DoneCallback == nil {
 			log.Debugf("%s not impl output impl\n", context.Task.Type)
+			return
 		}
+		callback = fn.DoneCallback
+	}
+
+	s := logs.GreenBold(fmt.Sprintf("[%s.%d] %s (%d/%d),%s\n",
+		context.Task.SessionId, context.Task.TaskId, prompt,
+		context.Task.Cur, context.Task.Total,
+		message))
+	log.Importantf(s)
+	if callee != consts.CalleeCMD {
+		return
+	}
+	var err error
+	var resp string
+	if isFinish {
+		log.FileLog(s)
+		resp, err = callback(context)
+		log.FileLog(resp + "\n")
+	} else {
+		resp, err = callback(context)
+	}
+
+	if err != nil {
+		log.Errorf(logs.RedBold(err.Error()))
+	} else {
+		log.Console(resp + "\n")
 	}
 }
 func (s *ServerStatus) AddEventHook(event intermediate.EventCondition, callback intermediate.OnEventFunc) {

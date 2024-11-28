@@ -41,14 +41,6 @@ func NewConsole() (*Console, error) {
 		Plugins: NewPlugins(),
 		CMDs:    make(map[string]*cobra.Command),
 	}
-	go func() {
-		for {
-			if con.ServerStatus != nil && !con.ServerStatus.EventStatus {
-				con.EventHandler()
-			}
-			time.Sleep(10 * time.Millisecond)
-		}
-	}()
 	con.NewConsole()
 	return con, nil
 }
@@ -82,6 +74,14 @@ func (c *Console) NewConsole() {
 }
 
 func (c *Console) Start(bindCmds ...BindCmds) error {
+	go func() {
+		for {
+			if c.ServerStatus != nil && !c.ServerStatus.EventStatus {
+				c.EventHandler()
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+	}()
 	intermediate.RegisterBuiltin(c.Rpc)
 	//c.App.Menu(consts.ClientMenu).SetCommands(bindCmds[0](c))
 	//c.App.Menu(consts.ImplantMenu).SetCommands(bindCmds[1](c))

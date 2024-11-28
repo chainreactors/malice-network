@@ -22,6 +22,7 @@ import (
 	"github.com/chainreactors/malice-network/client/command/sys"
 	"github.com/chainreactors/malice-network/client/command/tasks"
 	"github.com/chainreactors/malice-network/client/command/taskschd"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/core/plugin"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -79,9 +80,15 @@ func makeRunners(implantCmd *cobra.Command, con *repl.Console) (pre, post func(c
 
 		sess := con.GetInteractive()
 		if sess.LastTask != nil {
-			tui.RendStructDefault(sess.LastTask)
 			if wait, _ := cmd.Flags().GetBool("wait"); wait {
-				con.WaitTaskFinish(sess.Context(), sess.LastTask)
+				RegisterImplantFunc(con)
+				context, err := con.WaitTaskFinish(sess.Context(), sess.LastTask)
+				if err != nil {
+					return err
+				}
+				core.HandlerTask(sess, context, nil, consts.CalleeCMD, true)
+			} else {
+				con.Log.Console(tui.RendStructDefault(sess.LastTask))
 			}
 		}
 
