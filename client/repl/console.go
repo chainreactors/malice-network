@@ -87,7 +87,11 @@ func (c *Console) Start(bindCmds ...BindCmds) error {
 	//c.App.Menu(consts.ImplantMenu).SetCommands(bindCmds[1](c))
 	c.App.Menu(consts.ClientMenu).Command = bindCmds[0](c)()
 	c.App.Menu(consts.ImplantMenu).Command = bindCmds[1](c)()
-	c.App.SwitchMenu(consts.ClientMenu)
+	if c.GetInteractive() == nil {
+		c.App.SwitchMenu(consts.ClientMenu)
+	} else {
+		c.SwitchImplant(c.GetInteractive())
+	}
 	err := c.App.Start()
 	if err != nil {
 		return err

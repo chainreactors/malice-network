@@ -22,7 +22,6 @@ func rootCmd(con *repl.Console) (*cobra.Command, error) {
 	bind := command.MakeBind(cmd, con)
 	command.BindCommonCommands(bind)
 	cmd.PersistentPreRunE, cmd.PersistentPostRunE = command.ConsoleRunnerCmd(con, cmd)
-	//cmd.AddCommand(command.ConsoleCmd(con))
 	cmd.AddCommand(command.ImplantCmd(con))
 	carapace.Gen(cmd)
 

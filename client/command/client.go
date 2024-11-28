@@ -39,16 +39,6 @@ func BindCommonCommands(bind BindFunc) {
 	)
 }
 
-func ConsoleCmd(con *repl.Console) *cobra.Command {
-	consoleCmd := &cobra.Command{
-		Use:   "console",
-		Short: "Start the client console",
-	}
-
-	consoleCmd.RunE, consoleCmd.PersistentPostRunE = ConsoleRunnerCmd(con, consoleCmd)
-	return consoleCmd
-}
-
 func ConsoleRunnerCmd(con *repl.Console, cmd *cobra.Command) (pre, post func(cmd *cobra.Command, args []string) error) {
 	common.Bind(cmd.Use, true, cmd, func(f *pflag.FlagSet) {
 		f.String("auth", "", "auth token")

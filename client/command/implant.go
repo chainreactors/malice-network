@@ -68,7 +68,8 @@ func makeRunners(implantCmd *cobra.Command, con *repl.Console) (pre, post func(c
 		if session == nil {
 			return fmt.Errorf("no session found for %s", target)
 		}
-		con.SwitchImplant(session)
+		con.ActiveTarget.Set(session)
+		con.App.SwitchMenu(consts.ImplantMenu)
 
 		return nil
 	}
@@ -86,6 +87,7 @@ func makeRunners(implantCmd *cobra.Command, con *repl.Console) (pre, post func(c
 				con.Log.Console(tui.RendStructDefault(sess.LastTask))
 			}
 		}
+
 		return implantCmd.Parent().PersistentPostRunE(implantCmd, args)
 	}
 
