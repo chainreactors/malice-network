@@ -31,7 +31,7 @@ func printListeners(listeners *clientpb.Listeners) {
 		row = table.NewRow(
 			table.RowData{
 				"ID":     listener.Id,
-				"Addr":   listener.Addr,
+				"Addr":   listener.Ip,
 				"Active": strconv.FormatBool(listener.Active),
 			})
 		rowEntries = append(rowEntries, row)
