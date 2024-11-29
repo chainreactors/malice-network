@@ -44,7 +44,7 @@ func NewSessions() *sessions {
 	_, err := GlobalTicker.Start(consts.DefaultCacheInterval, func() {
 		for _, session := range newSessions.All() {
 			timeDiff := time.Now().Unix() - session.LastCheckin
-			isAlive := timeDiff <= int64(1+session.Interval)*3
+			isAlive := timeDiff <= int64(1+session.Interval)*5
 			sessModel := session.ToModel()
 			if !isAlive {
 				sessModel.IsAlive = false
@@ -54,7 +54,7 @@ func NewSessions() *sessions {
 					Op:        consts.CtrlSessionLeave,
 					Session:   session.ToProtobuf(),
 					IsNotify:  true,
-					Message:   fmt.Sprintf("session %s from %s at %s has stoped ", session.ID, session.Target, session.PipelineID),
+					Message:   fmt.Sprintf("session %s from %s at %s has leaved ", session.ID, session.Target, session.PipelineID),
 				})
 			}
 			err := db.Session().Save(sessModel).Error
