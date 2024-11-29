@@ -52,7 +52,7 @@ func (ln *ListenerCommand) Execute(rpc clientrpc.RootRPCClient, msg *rootpb.Oper
 			return nil, err
 		}
 		for _, listener := range listeners.Listeners {
-			logs.Log.Consolef("%s\t%s\n", listener.Id, listener.Addr)
+			logs.Log.Consolef("%s\t%s\n", listener.Id, listener.Ip)
 		}
 		return nil, nil
 	}

@@ -73,6 +73,7 @@ func FromPipelinePb(pipeline *clientpb.Pipeline, ip string) *Pipeline {
 			Name:       pipeline.Name,
 			Enable:     pipeline.Enable,
 			Parser:     pipeline.Parser,
+			IP:         ip,
 			Type:       consts.BindPipeline,
 			Tls:        ToTlsDB(pipeline.Tls),
 			Encryption: ToEncryptionDB(pipeline.Encryption),
@@ -102,9 +103,10 @@ func ToPipelinePB(pipeline Pipeline) *clientpb.Pipeline {
 			ListenerId: pipeline.ListenerID,
 			Enable:     pipeline.Enable,
 			Parser:     pipeline.Parser,
+			Ip:         pipeline.IP,
 			Body: &clientpb.Pipeline_Tcp{
 				Tcp: &clientpb.TCPPipeline{
-					Host: pipeline.IP,
+					Host: pipeline.Host,
 					Port: uint32(pipeline.Port),
 				},
 			},

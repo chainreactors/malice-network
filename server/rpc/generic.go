@@ -16,6 +16,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
 	"google.golang.org/protobuf/proto"
+	"net"
 	"runtime"
 )
 
@@ -241,19 +242,30 @@ func getListenerID(ctx context.Context) (string, error) {
 }
 
 func getRemoteAddr(ctx context.Context) string {
-	// Extract peer information from context
 	p, ok := peer.FromContext(ctx)
 	if !ok {
 		return ""
 	}
 
-	// Check if the peer address is a net.Addr
 	if p.Addr == nil {
 		return ""
 	}
 
-	// Return the remote address as a string
 	return p.Addr.String()
+}
+
+func getRemoteIp(ctx context.Context) string {
+	p, ok := peer.FromContext(ctx)
+	if !ok {
+		return ""
+	}
+
+	if p.Addr == nil {
+		return ""
+	}
+
+	host, _, _ := net.SplitHostPort(p.Addr.String())
+	return host
 }
 
 func getPipelineID(ctx context.Context) (string, error) {

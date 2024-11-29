@@ -42,7 +42,7 @@ func (l *Listener) AllPipelines() []*clientpb.Pipeline {
 func (l *Listener) ToProtobuf() *clientpb.Listener {
 	return &clientpb.Listener{
 		Id:        l.Name,
-		Addr:      l.Host,
+		Ip:        l.Host,
 		Active:    l.Active,
 		Pipelines: &clientpb.Pipelines{Pipelines: l.AllPipelines()},
 	}

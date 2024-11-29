@@ -8,7 +8,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
 	"github.com/chainreactors/malice-network/server/internal/core"
-	"google.golang.org/grpc/peer"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -17,22 +16,19 @@ func (rpc *Server) GetListeners(ctx context.Context, req *clientpb.Empty) (*clie
 }
 
 func (rpc *Server) RegisterListener(ctx context.Context, req *clientpb.RegisterListener) (*clientpb.Empty, error) {
-	p, ok := peer.FromContext(ctx)
-	if !ok {
-		return nil, fmt.Errorf("failed to get peer from context")
-	}
+	ip := getRemoteIp(ctx)
 	core.Listeners.Add(&core.Listener{
 		Name:      req.Name,
-		Host:      p.Addr.String(),
+		Host:      ip,
 		Active:    true,
 		Pipelines: make(map[string]*clientpb.Pipeline),
 	})
 	core.EventBroker.Notify(core.Event{
 		EventType: consts.EventListener,
 		Op:        consts.CtrlListenerStart,
-		Message:   fmt.Sprintf("Listener %s started at %s", req.Name, p.Addr.String()),
+		Message:   fmt.Sprintf("Listener %s started at %s", req.Name, ip),
 	})
-	logs.Log.Importantf("[server] %s register listener: %s", p.Addr, req.Name)
+	logs.Log.Importantf("[server] %s register listener: %s", ip, req.Name)
 	return &clientpb.Empty{}, nil
 }
 

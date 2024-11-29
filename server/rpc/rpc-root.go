@@ -116,8 +116,8 @@ func (rpc *Server) ListListeners(ctx context.Context, req *rootpb.Operator) (*cl
 	listeners := &clientpb.Listeners{}
 	for _, listener := range dbListeners {
 		listeners.Listeners = append(listeners.Listeners, &clientpb.Listener{
-			Id:   listener.Name,
-			Addr: listener.Remote,
+			Id: listener.Name,
+			Ip: listener.Remote,
 		})
 	}
 
