@@ -10,8 +10,9 @@ import (
 func UseSessionCmd(cmd *cobra.Command, con *repl.Console) error {
 	var session *core.Session
 	sid := cmd.Flags().Arg(0)
+	var ok bool
 	var err error
-	if session = con.GetSession(sid); session == nil {
+	if session, ok = con.GetLocalSession(sid); ok {
 		session, err = con.UpdateSession(sid)
 		if err != nil {
 			return err

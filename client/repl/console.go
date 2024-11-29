@@ -107,13 +107,6 @@ func (c *Console) Context() context.Context {
 	)
 }
 
-func (c *Console) GetSession(sessionID string) *core.Session {
-	if sess, ok := c.Sessions[sessionID]; ok {
-		return sess
-	}
-	return nil
-}
-
 func (c *Console) GetPrompt() string {
 	session := c.ActiveTarget.Get()
 	if session != nil {

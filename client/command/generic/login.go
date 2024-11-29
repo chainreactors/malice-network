@@ -1,11 +1,11 @@
 package generic
 
 import (
+	"fmt"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/tui"
 	"github.com/spf13/cobra"
-	"path/filepath"
 )
 
 func LoginCmd(cmd *cobra.Command, con *repl.Console) error {
@@ -17,13 +17,11 @@ func LoginCmd(cmd *cobra.Command, con *repl.Console) error {
 	}
 	files, err := assets.GetConfigs()
 	if err != nil {
-		con.Log.Errorf("Error retrieving YAML files: %s\n", err)
-		return err
+		return fmt.Errorf("error retrieving YAML files: %w", err)
 	}
 
 	if len(files) == 0 {
-		con.Log.Error("No auth config found, maybe use `iom [authfile.auth]` auto import\n")
-		return nil
+		return fmt.Errorf("no auth config found, maybe use `iom login [authfile.auth]` auto import")
 	}
 	// Create a model for the interactive list
 	m := tui.NewSelect(files)
@@ -37,8 +35,7 @@ func LoginCmd(cmd *cobra.Command, con *repl.Console) error {
 
 	// After the interactive list is completed, check the selected item
 	if m.SelectedItem >= 0 && m.SelectedItem < len(m.Choices) {
-		configFile := filepath.Join(assets.GetConfigDir(), m.Choices[m.SelectedItem])
-		return Login(con, configFile)
+		return Login(con, m.Choices[m.SelectedItem])
 	}
 
 	return nil

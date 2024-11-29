@@ -40,7 +40,6 @@ func ImplantCmd(con *repl.Console) *cobra.Command {
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		return nil
 	}
-	// Flags
 	common.Bind(cmd.Use, true, cmd, func(f *pflag.FlagSet) {
 		f.String("use", "", "set session context")
 		f.Bool("wait", false, "wait task finished")
@@ -59,15 +58,22 @@ func makeRunners(implantCmd *cobra.Command, con *repl.Console) (pre, post func(c
 		if err != nil {
 			return err
 		}
-		target, _ := cmd.Flags().GetString("use")
-		if target == "" {
-			return fmt.Errorf("no target implant to run command on")
+		sid, _ := cmd.Flags().GetString("use")
+		if sid == "" {
+			return fmt.Errorf("no implant to run command on")
 		}
 
-		session := con.GetSession(target)
-		if session == nil {
-			return fmt.Errorf("no session found for %s", target)
+		var session *core.Session
+		var ok bool
+
+		if session, ok = con.GetLocalSession(sid); ok {
+			var err error
+			session, err = con.UpdateSession(sid)
+			if err != nil {
+				return err
+			}
 		}
+
 		con.ActiveTarget.Set(session)
 		con.App.SwitchMenu(consts.ImplantMenu)
 
