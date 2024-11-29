@@ -122,19 +122,25 @@ func GetConfigs() ([]string, error) {
 }
 
 func LoadConfig(filename string) (*mtls.ClientConfig, error) {
-	var needmove bool
-	if !fileutils.Exist(filepath.Join(GetConfigDir(), filepath.Base(filename))) {
-		needmove = true
-	} else if fileutils.Exist(filepath.Join(GetConfigDir(), filepath.Base(filename))) {
-		filename = filepath.Join(GetConfigDir(), filepath.Base(filename))
+	baseFilename := filepath.Base(filename)
+	configPath := filepath.Join(GetConfigDir(), baseFilename)
+
+	var needMove bool
+
+	if fileutils.Exist(filename) {
+		needMove = true
+	} else if fileutils.Exist(configPath) {
+		filename = configPath
 	} else {
 		return nil, fmt.Errorf("config file %s not found", filename)
 	}
+
 	config, err := mtls.ReadConfig(filename)
 	if err != nil {
 		return nil, err
 	}
-	if needmove {
+
+	if needMove {
 		err = MvConfig(filename)
 		if err != nil {
 			return nil, err
