@@ -5,6 +5,8 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
+	"strconv"
+	"time"
 
 	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
 	"google.golang.org/grpc/metadata"
@@ -103,19 +105,24 @@ func (f *Forward) Count() int {
 	return f.count
 }
 
+func (f *Forward) Context(sid string) context.Context {
+	return metadata.NewOutgoingContext(f.ctx, metadata.Pairs(
+		"session_id", sid,
+		"timestamp", strconv.FormatInt(time.Now().Unix(), 10),
+	))
+}
+
 // Handler is a loop that handles messages from implant
 func (f *Forward) Handler() {
 	for msg := range f.implantC {
-		_, err := f.ListenerRpc.Checkin(metadata.NewOutgoingContext(context.Background(), metadata.Pairs(
-			"session_id", msg.SessionID),
-		), &implantpb.Ping{})
+		_, err := f.ListenerRpc.Checkin(f.Context(msg.SessionID), &implantpb.Ping{})
 		if err != nil {
 			logs.Log.Debug(err)
 		}
 		for _, spite := range msg.Spites.Spites {
 			switch spite.Body.(type) {
 			case *implantpb.Spite_Register:
-				_, err := f.ListenerRpc.Register(f.ctx, &clientpb.RegisterSession{
+				_, err := f.ListenerRpc.Register(f.Context(msg.SessionID), &clientpb.RegisterSession{
 					SessionId:    msg.SessionID,
 					PipelineId:   f.ID(),
 					RegisterData: spite.GetRegister(),

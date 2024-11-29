@@ -23,6 +23,7 @@ func (rpc *Server) Register(ctx context.Context, req *clientpb.RegisterSession) 
 		if err != nil {
 			return nil, err
 		}
+		sess.LastCheckin = getTimestamp(ctx)
 		d := db.Session().Create(sess.ToModel())
 		if d.Error != nil {
 			return nil, err
@@ -71,7 +72,7 @@ func (rpc *Server) Checkin(ctx context.Context, req *implantpb.Ping) (*clientpb.
 		} else if dbSess == nil {
 			return nil, nil
 		}
-		dbSess.LastCheckin = time.Now().Unix()
+		dbSess.LastCheckin = getTimestamp(ctx)
 		sess, err = core.RecoverSession(dbSess)
 		if err != nil {
 			return nil, err
@@ -80,13 +81,8 @@ func (rpc *Server) Checkin(ctx context.Context, req *implantpb.Ping) (*clientpb.
 		sess.Publish(consts.CtrlSessionReborn, fmt.Sprintf("session %s from %s reborn at %s", sess.ID, sess.Target, sess.PipelineID))
 		logs.Log.Debugf("recover session %s", sid)
 	}
-
-	sess.UpdateLastCheckin()
+	sess.LastCheckin = getTimestamp(ctx)
 	sess.Publish(consts.CtrlSessionCheckin, "")
-	err = db.UpdateLast(sid)
-	if err != nil {
-		return nil, err
-	}
 
 	return &clientpb.Empty{}, nil
 }

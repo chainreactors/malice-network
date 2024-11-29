@@ -18,6 +18,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"net"
 	"runtime"
+	"strconv"
 )
 
 func newGenericRequest(ctx context.Context, msg proto.Message, opts ...int) (*GenericRequest, error) {
@@ -266,6 +267,19 @@ func getRemoteIp(ctx context.Context) string {
 
 	host, _, _ := net.SplitHostPort(p.Addr.String())
 	return host
+}
+
+func getTimestamp(ctx context.Context) int64 {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return 0
+	}
+	if timestamp := md.Get("timestamp"); len(timestamp) > 0 {
+		if ts, err := strconv.ParseInt(timestamp[0], 10, 64); err == nil {
+			return ts
+		}
+	}
+	return 0
 }
 
 func getPipelineID(ctx context.Context) (string, error) {

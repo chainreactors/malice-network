@@ -43,10 +43,11 @@ func NewSessions() *sessions {
 	}
 	_, err := GlobalTicker.Start(consts.DefaultCacheInterval, func() {
 		for _, session := range newSessions.All() {
-			currentTime := time.Now()
-			timeDiff := currentTime.Unix() - int64(session.LastCheckin)
+			timeDiff := time.Now().Unix() - session.LastCheckin
 			isAlive := timeDiff <= int64(1+session.Interval)*3
+			sessModel := session.ToModel()
 			if !isAlive {
+				sessModel.IsAlive = false
 				newSessions.Remove(session.ID)
 				EventBroker.Publish(Event{
 					EventType: consts.EventSession,
@@ -55,9 +56,10 @@ func NewSessions() *sessions {
 					IsNotify:  true,
 					Message:   fmt.Sprintf("session %s from %s at %s has stoped ", session.ID, session.Target, session.PipelineID),
 				})
-				if err := db.Session().Model(session.ToModel()).Update("IsAlive", isAlive).Error; err != nil {
-					logs.Log.Errorf(err.Error())
-				}
+			}
+			err := db.Session().Save(sessModel).Error
+			if err != nil {
+				logs.Log.Errorf("update session %s info failed in db, %s", session.ID, err.Error())
 			}
 		}
 
@@ -84,7 +86,6 @@ func RegisterSession(req *clientpb.RegisterSession) (*Session, error) {
 		PipelineID:     req.PipelineId,
 		Target:         req.Target,
 		Tasks:          NewTasks(),
-		LastCheckin:    time.Now().Unix(),
 		SessionContext: content.NewSessionContext(req),
 		Taskseq:        1,
 		Cache:          cache,

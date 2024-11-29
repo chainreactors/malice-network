@@ -19,7 +19,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 )
 
 func HasOperator(typ string) (bool, error) {
@@ -98,20 +97,6 @@ func FindTaskAndMaxTasksID(sessionID string) ([]*models.Task, uint32, error) {
 	}
 
 	return tasks, uint32(max), nil
-}
-
-func UpdateLast(sessionID string) error {
-	var session models.Session
-	result := Session().Where("session_id = ?", sessionID).First(&session)
-	if result.Error != nil {
-		return result.Error
-	}
-	session.LastCheckin = time.Now().Unix()
-	result = Session().Save(&session)
-	if result.Error != nil {
-		return result.Error
-	}
-	return nil
 }
 
 // Basic Session OP
