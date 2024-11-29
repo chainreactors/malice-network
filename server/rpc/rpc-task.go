@@ -36,7 +36,11 @@ func (rpc *Server) GetTasks(ctx context.Context, req *clientpb.TaskRequest) (*cl
 		return nil, errs.ErrNotFoundSession
 	}
 	if req.All {
-		return sess.Tasks.ToProtobuf(), nil
+		tasks, err := db.GetAllTask()
+		if err != nil {
+			return nil, err
+		}
+		return tasks, err
 	}
 	return sess.Tasks.ToProtobuf(), nil
 }

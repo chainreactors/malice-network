@@ -42,9 +42,6 @@ func printTasks(tasks []*clientpb.Task, con *repl.Console, isAll bool) {
 		if task.Status != 0 {
 			status = "Error"
 		} else if task.Cur != task.Total {
-			if !isAll {
-				continue
-			}
 			status = "Running"
 		} else {
 			status = "Complete"
