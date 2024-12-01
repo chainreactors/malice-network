@@ -109,16 +109,9 @@ func ModulesCmd(cmd *cobra.Command, con *repl.Console) error {
 		return errors.New("require build target")
 	}
 	go func() {
-		_, err := con.Rpc.Build(con.Context(), &clientpb.Generate{
-			ProfileName: name,
-			Address:     address,
-			Target:      buildTarget,
-			Type:        consts.CommandBuildModules,
-			Modules:     modules,
-			Srdi:        srdi,
-		})
+		_, err := BuildModules(con, name, address, buildTarget, modules, srdi)
 		if err != nil {
-			con.Log.Errorf("Build modules failed: %v\n", err)
+			con.Log.Errorf("Build modules failed: %v", err)
 			return
 		}
 	}()
@@ -162,4 +155,19 @@ func BuildLogCmd(cmd *cobra.Command, con *repl.Console) error {
 	}
 	fmt.Println(string(builder.Log))
 	return nil
+}
+
+func BuildModules(con *repl.Console, name, address, buildTarget string, modules []string, srdi bool) (bool, error) {
+	_, err := con.Rpc.Build(con.Context(), &clientpb.Generate{
+		ProfileName: name,
+		Address:     address,
+		Target:      buildTarget,
+		Type:        consts.CommandBuildModules,
+		Modules:     modules,
+		Srdi:        srdi,
+	})
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }

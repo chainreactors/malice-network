@@ -14,6 +14,11 @@ const (
 	SRDIType          = "srdi"
 )
 
+const (
+	BuildFromAction = "action"
+	BuildFromDocker = "docker"
+)
+
 type Arch uint32
 
 const (
@@ -118,6 +123,25 @@ const (
 	TargetX86WindowsGnu = "i686-pc-windows-gnu"
 	TargetX64WindowsGnu = "x86_64-pc-windows-gnu"
 )
+
+var BuildType = []string{
+	"beacon",
+	"bind",
+	"pulse",
+	"prelude",
+	"modules",
+}
+
+var Modules = []string{
+	"nano",
+	"full",
+	"base",
+	"extend",
+	"fs_full",
+	"sys_full",
+	"execute_full",
+	"net_full",
+}
 
 type BuildTarget struct {
 	Name string

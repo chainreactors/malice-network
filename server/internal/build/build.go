@@ -271,19 +271,28 @@ func BuildPulse(cli *client.Client, req *clientpb.Generate) error {
 	return nil
 }
 
-func BuildModules(cli *client.Client, req *clientpb.Generate) error {
+func BuildModules(cli *client.Client, req *clientpb.Generate, isImmediate bool) error {
 	timeout := 20 * time.Minute
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	containerName := "malefic_" + generateContainerName(8)
 	buildModules := strings.Join(req.Modules, ",")
-	buildModulesCommand := fmt.Sprintf(
-		"%s/malefic-mutant generate modules %s && cargo build --target %s --release -p malefic-modules --features %s",
-		ContainerBinPath,
-		buildModules,
-		req.Target,
-		buildModules,
-	)
+	var buildModulesCommand string
+	if isImmediate {
+		buildModulesCommand = fmt.Sprintf(
+			"cargo build --target %s --release -p malefic-modules --features %s",
+			req.Target,
+			buildModules,
+		)
+	} else {
+		buildModulesCommand = fmt.Sprintf(
+			"%s/malefic-mutant generate modules %s && cargo build --target %s --release -p malefic-modules --features %s",
+			ContainerBinPath,
+			buildModules,
+			req.Target,
+			buildModules,
+		)
+	}
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
 		Image: fmt.Sprintf("%s/%s:%s", NameSpace, req.Target, Tag),
 		Cmd:   []string{"sh", "-c", buildModulesCommand},

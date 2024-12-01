@@ -28,8 +28,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	loadModuleCmd := &cobra.Command{
 		Use:   consts.ModuleLoadModule + " [module_file]",
 		Short: "Load module",
-		// Long:  help.FormatLongHelp(consts.ModuleLoadModule),
-		Args: cobra.ExactArgs(1),
+		// Long:  help.FormatLongHelp(consts.ModuleLoadModule),duan
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return LoadModuleCmd(cmd, con)
 		},
@@ -49,7 +48,14 @@ execute_addon、clear 、ps、powerpic...
 `}
 
 	common.BindFlag(loadModuleCmd, func(f *pflag.FlagSet) {
+		f.String("path", "", "modules path")
+		f.StringSlice("modules", []string{}, "modules list,eg: basic,extend")
 		f.StringP("bundle", "b", "", "bundle name")
+		f.String("build", "", "build resource,eg: docker/action")
+	})
+	common.BindFlagCompletions(loadModuleCmd, func(comp carapace.ActionMap) {
+		comp["path"] = carapace.ActionFiles()
+		comp["modules"] = common.ModulesCompleter()
 	})
 	common.BindArgCompletions(loadModuleCmd, nil,
 		carapace.ActionFiles().Usage("path to the module file"))

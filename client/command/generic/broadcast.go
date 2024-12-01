@@ -37,10 +37,16 @@ func BroadcastCmd(cmd *cobra.Command, con *repl.Console) {
 
 func Broadcast(con *repl.Console, event *clientpb.Event) (bool, error) {
 	_, err := con.Rpc.Broadcast(con.Context(), event)
-	return true, err
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 func Notify(con *repl.Console, event *clientpb.Event) (bool, error) {
 	_, err := con.Rpc.Notify(con.Context(), event)
-	return true, err
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }

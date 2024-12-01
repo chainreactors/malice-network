@@ -1,6 +1,7 @@
 package command
 
 import (
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/spf13/cobra"
@@ -54,7 +55,15 @@ func updateCommand(con *repl.Console, c *cobra.Command, group string) {
 	if c.Annotations == nil {
 		c.Annotations = map[string]string{}
 	}
-	help.RenderOpsec(c.Annotations["opsec"], c.Use)
+	if c.Annotations["opsec"] != "" {
+		c.PreRunE = func(cmd *cobra.Command, args []string) error {
+			err := common.OpsecConfirm(cmd)
+			if err != nil {
+				return err
+			}
+			return nil
+		}
+	}
 	con.CMDs[c.Name()] = c
 
 	for _, subCmd := range c.Commands() {

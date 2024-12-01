@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/codenames"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/encoders"
 	"github.com/chainreactors/malice-network/helper/errs"
@@ -18,6 +19,7 @@ import (
 	"gorm.io/gorm/utils"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
@@ -583,6 +585,29 @@ func GetProfiles() ([]models.Profile, error) {
 	return profiles, result.Error
 }
 
+func SaveBuiladerFromAction(inputs map[string]string) (*models.Builder, error) {
+	target, ok := consts.GetBuildTarget(inputs["targets"])
+	if !ok {
+		return nil, errs.ErrInvalidateTarget
+	}
+	builder := models.Builder{
+		Name:     codenames.GetCodename(),
+		Target:   inputs["target"],
+		Type:     inputs["package"],
+		Resource: consts.BuildFromAction,
+		Arch:     target.Arch,
+		Modules:  inputs["malefic_modules_features"],
+		Os:       target.OS,
+	}
+
+	if err := Session().Create(&builder).Error; err != nil {
+		return nil, err
+
+	}
+
+	return &builder, nil
+}
+
 func SaveArtifactFromGenerate(req *clientpb.Generate) (*models.Builder, error) {
 	target, ok := consts.GetBuildTarget(req.Target)
 	if !ok {
@@ -594,6 +619,40 @@ func SaveArtifactFromGenerate(req *clientpb.Generate) (*models.Builder, error) {
 		Target:      req.Target,
 		Type:        req.Type,
 		Stager:      req.Stager,
+		Resource:    consts.BuildFromDocker,
+		CA:          req.Ca,
+		Modules:     req.Feature,
+		Arch:        target.Arch,
+		Os:          target.OS,
+	}
+
+	paramsJson, err := json.Marshal(req.Params)
+	if err != nil {
+		return nil, err
+	}
+	builder.ParamsJson = string(paramsJson)
+
+	if err := Session().Create(&builder).Error; err != nil {
+		return nil, err
+
+	}
+
+	return &builder, nil
+}
+
+func SaveArtifactFromID(req *clientpb.Generate, ID uint32, resource string) (*models.Builder, error) {
+	target, ok := consts.GetBuildTarget(req.Target)
+	if !ok {
+		return nil, errs.ErrInvalidateTarget
+	}
+	builder := models.Builder{
+		ID:          ID,
+		Name:        req.Name,
+		ProfileName: req.ProfileName,
+		Target:      req.Target,
+		Type:        req.Type,
+		Stager:      req.Stager,
+		Resource:    resource,
 		CA:          req.Ca,
 		Modules:     req.Feature,
 		Arch:        target.Arch,
@@ -746,4 +805,15 @@ func GetBuilderLogs(builderName string, limit int) (string, error) {
 	result := strings.Join(split, "\n")
 
 	return result, nil
+}
+
+func GetBuilderByModules(modules []string) (*models.Builder, error) {
+	sort.Strings(modules)
+	modulesStr := strings.Join(modules, ",")
+	var builder models.Builder
+	result := Session().Where("modules = ?", modulesStr).First(&builder)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return &builder, nil
 }

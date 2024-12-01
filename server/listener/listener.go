@@ -81,6 +81,9 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 	}
 
 	for _, newWebsite := range cfg.Websites {
+		if !newWebsite.Enable {
+			continue
+		}
 		tls, err := newWebsite.TlsConfig.ReadCert()
 		if err != nil {
 			return err
@@ -128,9 +131,6 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 			resp, err := lis.Rpc.RegisterWebsite(context.Background(), webProtobuf)
 			if err != nil {
 				return err
-			}
-			if !newWebsite.Enable {
-				continue
 			}
 			webProtobuf.GetWeb().ID = resp.ID
 			_, err = lis.Rpc.UploadWebsite(context.Background(), webProtobuf.GetWeb())
@@ -329,7 +329,7 @@ func (lns *listener) startWebsite(job *clientpb.Job) *clientpb.JobStatus {
 	job.Name = getWeb.ID
 	w := lns.websites.Get(getWeb.ID)
 	if w == nil {
-		starResult, err := StartWebsite(job.GetPipeline(), getWeb.Contents)
+		starResult, err := StartWebsite(lns.Rpc, job.GetPipeline(), getWeb.Contents)
 		if err != nil {
 			return &clientpb.JobStatus{
 				ListenerId: lns.ID(),

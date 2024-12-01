@@ -135,6 +135,7 @@ func downloadArtifactCallback(tableModel *tui.TableModel, writer io.Writer, con 
 	if selectRow.Data == nil {
 		return func() {
 			con.Log.FErrorf(writer, "No row selected\n")
+			return
 		}
 	}
 	return func() {

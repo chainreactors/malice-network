@@ -204,6 +204,11 @@ const (
 	CommandService          = "service"
 	CommandTaskSchd         = "taskschd"
 	CommandPipe             = "pipe"
+	CommandAction           = "action"
+	CommandActionRun        = "run"
+	CommandActionEnable     = "enable"
+	CommandActionDisable    = "disable"
+	CommandActionList       = "list"
 )
 
 const (

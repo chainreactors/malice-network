@@ -110,6 +110,7 @@ func installMal(tableModel *tui.TableModel, writer io.Writer, malHttpConfig MalH
 	if selectRow.Data == nil {
 		return func() {
 			con.Log.FErrorf(writer, "No row selected\n")
+			return
 		}
 	}
 	logs.Log.Infof("Installing mal: %s", selectRow.Data["Name"].(string))

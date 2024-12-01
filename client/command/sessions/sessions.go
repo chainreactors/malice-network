@@ -80,7 +80,9 @@ func PrintSessions(sessions map[string]*core.Session, con *repl.Console, isAll b
 		return
 	}
 	tui.Reset()
-	con.Session.GetHistory()
+	if con.ActiveTarget.Session != nil {
+		con.Session.GetHistory()
+	}
 }
 
 func SessionLogin(tableModel *tui.TableModel, writer io.Writer, con *repl.Console) func() {
@@ -89,6 +91,7 @@ func SessionLogin(tableModel *tui.TableModel, writer io.Writer, con *repl.Consol
 	if selectRow.Data == nil {
 		return func() {
 			con.Log.FErrorf(writer, "No row selected\n")
+			return
 		}
 	}
 	for _, s := range con.Sessions {

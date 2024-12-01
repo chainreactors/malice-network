@@ -210,16 +210,16 @@ func BuildTargetCompleter(con *repl.Console) carapace.Action {
 	return carapace.ActionCallback(callback)
 }
 
-//func BuildFormatCompleter(con *repl.Console) carapace.Action {
-//	callback := func(c carapace.Context) carapace.Action {
-//		results := make([]string, 0)
-//		for _, s := range consts.BuildFormats {
-//			results = append(results, s, fmt.Sprintf("build type"))
-//		}
-//		return carapace.ActionValuesDescribed(results...).Tag("build")
-//	}
-//	return carapace.ActionCallback(callback)
-//}
+func BuildTypeCompleter(con *repl.Console) carapace.Action {
+	callback := func(c carapace.Context) carapace.Action {
+		results := make([]string, 0)
+		for _, s := range consts.BuildType {
+			results = append(results, s, fmt.Sprintf("build type"))
+		}
+		return carapace.ActionValuesDescribed(results...).Tag("build")
+	}
+	return carapace.ActionCallback(callback)
+}
 
 func ProfileCompleter(con *repl.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
@@ -295,6 +295,17 @@ func AllPipelineCompleter(con *repl.Console) carapace.Action {
 			}
 		}
 		return carapace.ActionValuesDescribed(results...).Tag("pipeline name")
+	}
+	return carapace.ActionCallback(callback)
+}
+
+func ModulesCompleter() carapace.Action {
+	callback := func(c carapace.Context) carapace.Action {
+		results := make([]string, 0)
+		for _, s := range consts.Modules {
+			results = append(results, s, fmt.Sprintf("modules"))
+		}
+		return carapace.ActionValuesDescribed(results...).Tag("modules")
 	}
 	return carapace.ActionCallback(callback)
 }

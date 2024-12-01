@@ -200,3 +200,33 @@ func ParseSRDIFlags(cmd *cobra.Command) (string, string, string, uint32, map[str
 	}
 	return path, arch, platform, id, params
 }
+
+func GithubFlagSet(f *pflag.FlagSet) {
+	f.String("owner", "", "github owner")
+	f.String("repo", "", "github repo")
+	f.String("token", "", "github token")
+	f.String("workflowFile", "", "github workflow file")
+}
+
+func ParseGithubFlags(cmd *cobra.Command) (string, string, string, string) {
+	owner, _ := cmd.Flags().GetString("owner")
+	repo, _ := cmd.Flags().GetString("repo")
+	token, _ := cmd.Flags().GetString("token")
+	file, _ := cmd.Flags().GetString("workflowFile")
+	return owner, repo, token, file
+}
+
+func ActionFlagSet(f *pflag.FlagSet) {
+	f.String("config", "", "config.yaml/autorun.yaml path")
+	f.String("type", "", "action build type")
+	f.String("target", "", "action build target")
+	f.StringSlice("modules", []string{}, "action build modules")
+}
+
+func ParseActionFlags(cmd *cobra.Command) (string, string, string, []string) {
+	buildType, _ := cmd.Flags().GetString("type")
+	buildTarget, _ := cmd.Flags().GetString("target")
+	buildConfig, _ := cmd.Flags().GetString("config")
+	buildModules, _ := cmd.Flags().GetStringSlice("modules")
+	return buildType, buildTarget, buildConfig, buildModules
+}

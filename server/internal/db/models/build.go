@@ -3,6 +3,7 @@ package models
 import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"gorm.io/gorm"
+	"sort"
 	"strings"
 	"time"
 )
@@ -17,6 +18,7 @@ type Builder struct {
 	Type       string    // build type, pe, dll, shellcode
 	Stager     string    // shellcode prelude beacon bind
 	Modules    string    // default modules, comma split, e.g. "execute_exe,execute_dll"
+	Resource   string    // resource file
 	ParamsJson string
 	CA         string // ca file , ca file content
 	Path       string
@@ -28,6 +30,9 @@ type Builder struct {
 
 func (b *Builder) BeforeCreate(tx *gorm.DB) (err error) {
 	b.CreatedAt = time.Now()
+	moduleList := strings.Split(b.Modules, ",")
+	sort.Strings(moduleList)
+	b.Modules = strings.Join(moduleList, ",")
 	return nil
 }
 
@@ -45,6 +50,7 @@ func (b *Builder) ToProtobuf(bin []byte) *clientpb.Builder {
 			ProfileName: b.ProfileName,
 			PipelineId:  b.Profile.PipelineID,
 			Time:        b.CreatedAt.Format("2006-01-02 15:04:05"),
+			Resource:    b.Resource,
 		}
 	}
 
@@ -60,6 +66,7 @@ func (b *Builder) ToProtobuf(bin []byte) *clientpb.Builder {
 		ProfileName: "",
 		PipelineId:  "",
 		Time:        b.CreatedAt.Format("2006-01-02 15:04:05"),
+		Resource:    b.Resource,
 	}
 }
 

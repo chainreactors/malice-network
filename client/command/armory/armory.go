@@ -449,6 +449,7 @@ func DownloadArmoryCallback(tableModel *tui.TableModel, writer io.Writer, con *r
 	if selected.Data == nil {
 		return func() {
 			con.Log.FErrorf(writer, "No row selected\n")
+			return
 		}
 	}
 	armoryPK := getArmoryPublicKey(selected.Data["Armory"].(string))

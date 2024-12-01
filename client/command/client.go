@@ -1,6 +1,7 @@
 package command
 
 import (
+	"github.com/chainreactors/malice-network/client/command/action"
 	"github.com/chainreactors/malice-network/client/command/alias"
 	"github.com/chainreactors/malice-network/client/command/armory"
 	"github.com/chainreactors/malice-network/client/command/build"
@@ -36,6 +37,7 @@ func BindCommonCommands(bind BindFunc) {
 
 	bind(consts.GeneratorGroup,
 		build.Commands,
+		action.Commands,
 	)
 }
 
@@ -94,4 +96,5 @@ func BindClientsCommands(con *repl.Console) console.Commands {
 func RegisterClientFunc(con *repl.Console) {
 	generic.Register(con)
 	build.Register(con)
+	action.Register(con)
 }
