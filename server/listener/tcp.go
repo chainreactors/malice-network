@@ -89,6 +89,7 @@ func (pipeline *TCPPipeline) Start() error {
 	if err != nil {
 		return err
 	}
+	forward.ListenerId = pipeline.ListenerID
 	core.Forwarders.Add(forward)
 	go func() {
 		// recv message from server and send to implant

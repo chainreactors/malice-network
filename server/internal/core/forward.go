@@ -90,8 +90,9 @@ type Forward struct {
 	ctx   context.Context
 	count int
 	Pipeline
-	Stream   listenerrpc.ListenerRPC_SpiteStreamClient
-	implantC chan *Message // data from implant
+	ListenerId string
+	Stream     listenerrpc.ListenerRPC_SpiteStreamClient
+	implantC   chan *Message // data from implant
 
 	ListenerRpc listenerrpc.ListenerRPCClient
 }
@@ -108,6 +109,7 @@ func (f *Forward) Count() int {
 func (f *Forward) Context(sid string) context.Context {
 	return metadata.NewOutgoingContext(f.ctx, metadata.Pairs(
 		"session_id", sid,
+		"listener_id", f.ListenerId,
 		"timestamp", strconv.FormatInt(time.Now().Unix(), 10),
 	))
 }
@@ -125,6 +127,7 @@ func (f *Forward) Handler() {
 				_, err := f.ListenerRpc.Register(f.Context(msg.SessionID), &clientpb.RegisterSession{
 					SessionId:    msg.SessionID,
 					PipelineId:   f.ID(),
+					ListenerId:   f.ListenerId,
 					RegisterData: spite.GetRegister(),
 					Target:       msg.RemoteAddr,
 					RawId:        msg.RawID,

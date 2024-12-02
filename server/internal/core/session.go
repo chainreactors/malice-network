@@ -43,10 +43,8 @@ func NewSessions() *sessions {
 	}
 	_, err := GlobalTicker.Start(consts.DefaultCacheInterval, func() {
 		for _, session := range newSessions.All() {
-			timeDiff := time.Now().Unix() - session.LastCheckin
-			isAlive := timeDiff <= int64(1+session.Interval)*5
 			sessModel := session.ToModel()
-			if !isAlive {
+			if !session.isAlived() {
 				sessModel.IsAlive = false
 				newSessions.Remove(session.ID)
 				EventBroker.Publish(Event{
@@ -84,6 +82,7 @@ func RegisterSession(req *clientpb.RegisterSession) (*Session, error) {
 		ID:             req.SessionId,
 		RawID:          req.RawId,
 		PipelineID:     req.PipelineId,
+		ListenerID:     req.ListenerId,
 		Target:         req.Target,
 		Tasks:          NewTasks(),
 		SessionContext: content.NewSessionContext(req),
@@ -251,23 +250,23 @@ func (s *Session) RecoverTaskIDByLog() (int, error) {
 	return maxTaskID, nil
 }
 
-func (s *Session) ToProtobuf() *clientpb.Session {
-	var isAlive bool
-	if s.Type != consts.BindPipeline {
-		currentTime := time.Now()
-		timeDiff := currentTime.Unix() - int64(s.LastCheckin)
-		isAlive = timeDiff <= 1+int64(s.Interval)*3
+func (s *Session) isAlived() bool {
+	if s.Type == consts.BindPipeline {
+		return true
 	} else {
-		isAlive = true
+		timeDiff := time.Now().Unix() - s.LastCheckin
+		return timeDiff <= 1+int64(s.Interval)*5
 	}
+}
 
+func (s *Session) ToProtobuf() *clientpb.Session {
 	return &clientpb.Session{
 		Type:        s.Type,
 		SessionId:   s.ID,
 		RawId:       s.RawID,
 		Note:        s.Name,
 		GroupName:   s.Group,
-		IsAlive:     isAlive,
+		IsAlive:     s.isAlived(),
 		IsPrivilege: s.IsPrivilege,
 		Target:      s.Target,
 		PipelineId:  s.PipelineID,
@@ -319,6 +318,7 @@ func (s *Session) ToModel() *models.Session {
 		Type:        s.Type,
 		IsPrivilege: s.IsPrivilege,
 		PipelineID:  s.PipelineID,
+		ListenerID:  s.ListenerID,
 		IsAlive:     true,
 		Context:     string(contextContent),
 		LastCheckin: s.LastCheckin,

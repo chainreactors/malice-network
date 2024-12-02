@@ -158,8 +158,9 @@ func (c *listenerRPCClient) StopPipeline(ctx context.Context, in *clientpb.CtrlP
 }
 
 func (c *listenerRPCClient) DeletePipeline(ctx context.Context, in *clientpb.CtrlPipeline, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(clientpb.Empty)
-	err := c.cc.Invoke(ctx, ListenerRPC_DeletePipeline_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, ListenerRPC_DeletePipeline_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}

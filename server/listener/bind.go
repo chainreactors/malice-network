@@ -55,6 +55,7 @@ func (pipeline *BindPipeline) Start() error {
 		return nil
 	}
 	forward, err := core.NewForward(pipeline.rpc, pipeline)
+	forward.ListenerId = pipeline.ListenerID
 	if err != nil {
 		return err
 	}

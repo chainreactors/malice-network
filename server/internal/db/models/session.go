@@ -21,6 +21,7 @@ type Session struct {
 	Type        string
 	IsPrivilege bool
 	PipelineID  string
+	ListenerID  string
 	IsAlive     bool
 	Context     string
 	LastCheckin int64
@@ -43,19 +44,19 @@ func (s *Session) BeforeCreate(tx *gorm.DB) (err error) {
 
 func (s *Session) ToProtobuf() *clientpb.Session {
 	cont, _ := content.RecoverSessionContext(s.Context)
-	secondsDiff := time.Now().Unix() - s.LastCheckin
 	return &clientpb.Session{
 		Type:          s.Type,
 		SessionId:     s.SessionID,
 		RawId:         s.RawID,
 		PipelineId:    s.PipelineID,
+		ListenerId:    s.ListenerID,
 		Note:          s.Note,
 		GroupName:     s.GroupName,
 		Target:        s.Target,
 		IsAlive:       s.IsAlive,
 		IsInitialized: s.Initialized,
 		IsPrivilege:   s.IsPrivilege,
-		LastCheckin:   secondsDiff,
+		LastCheckin:   s.LastCheckin,
 		Os:            s.Os.toProtobuf(),
 		Process:       s.Process.toProtobuf(),
 		Timer:         &implantpb.Timer{Interval: s.Interval, Jitter: s.Jitter},

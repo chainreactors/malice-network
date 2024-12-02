@@ -63,7 +63,7 @@ func PrintSessions(sessions map[string]*core.Session, con *repl.Console, isAll b
 				"Remote Address": session.Target,
 				"Username":       fmt.Sprintf("%s/%s", session.Os.Hostname, session.Os.Username),
 				"System":         fmt.Sprintf("%s/%s", session.Os.Name, session.Os.Arch),
-				"Last Message":   strconv.FormatUint(uint64(session.LastCheckin), 10) + "s",
+				"Last Message":   strconv.FormatUint(uint64(session.Timediff), 10) + "s",
 				"Health":         SessionHealth,
 			})
 		rowEntries = append(rowEntries, row)
