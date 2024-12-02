@@ -100,3 +100,29 @@ func (rpc *Server) StopPipeline(ctx context.Context, req *clientpb.CtrlPipeline)
 	}
 	return &clientpb.Empty{}, nil
 }
+
+func (rpc *Server) DeletePipeline(ctx context.Context, req *clientpb.CtrlPipeline) (*clientpb.Empty, error) {
+	pipelineDB, err := db.FindPipeline(req.Name)
+	if err != nil {
+		return &clientpb.Empty{}, err
+	}
+	pipeline := models.ToPipelinePB(pipelineDB)
+	listener := core.Listeners.Get(pipeline.ListenerId)
+	if listener == nil {
+		return nil, fmt.Errorf("listener %s not found", req.ListenerId)
+	}
+	listener.RemovePipeline(pipeline)
+	core.Jobs.Ctrl <- &clientpb.JobCtrl{
+		Id:   core.NextCtrlID(),
+		Ctrl: consts.CtrlPipelineStop,
+		Job: &clientpb.Job{
+			Id:       core.NextJobID(),
+			Pipeline: pipeline,
+		},
+	}
+	err = db.DeletePipeline(req.Name)
+	if err != nil {
+		return nil, err
+	}
+	return &clientpb.Empty{}, nil
+}

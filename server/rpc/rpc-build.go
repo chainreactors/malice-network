@@ -10,6 +10,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/encoders"
 	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/server/internal/build"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db"
@@ -17,6 +18,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 )
 
@@ -36,9 +38,13 @@ func (rpc *Server) Build(ctx context.Context, req *clientpb.Generate) (*clientpb
 	if err != nil {
 		return nil, err
 	}
-	err = build.GenerateProfile(req)
+	profileByte, err := build.GenerateProfile(req)
 	if err != nil {
 		return nil, errors.New(fmt.Sprintf("Err create config: %v", err))
+	}
+	if req.Feature == "" {
+		profile, _ := types.LoadProfile([]byte(profileByte))
+		req.Feature = strings.Join(profile.Implant.Modules, ",")
 	}
 	logs.Log.Infof("start to build %s ...", req.Target)
 	builder, err := db.SaveArtifactFromGenerate(req)

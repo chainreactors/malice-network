@@ -21,11 +21,11 @@ var (
 	pulse          = "malefic-pulse"
 )
 
-func GenerateProfile(req *clientpb.Generate) error {
+func GenerateProfile(req *clientpb.Generate) (string, error) {
 	var err error
 	profile, err := db.GetProfile(req.ProfileName)
 	if err != nil {
-		return err
+		return "", err
 	}
 	path := filepath.Join(configs.SourceCodePath, generateConfig)
 

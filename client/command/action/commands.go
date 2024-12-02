@@ -8,6 +8,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 func Commands(con *repl.Console) []*cobra.Command {
@@ -26,15 +27,20 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return RunWorkFlowCmd(cmd, con)
 		},
 	}
-	common.BindFlag(runCmd, common.GithubFlagSet, common.ActionFlagSet)
+	common.BindFlag(runCmd, common.GithubFlagSet, common.GenerateFlagSet, func(f *pflag.FlagSet) {
+		f.String("type", "", "action run type")
+		f.String("autorun", "", "autorun.yaml path")
+	})
 	common.BindFlagCompletions(runCmd, func(comp carapace.ActionMap) {
-		comp["config"] = carapace.ActionFiles().Usage("config.yaml/autorun.yaml path")
 		comp["type"] = common.BuildTypeCompleter(con)
 		comp["target"] = common.BuildTargetCompleter(con)
+		comp["profile"] = common.ProfileCompleter(con)
+		comp["autorun"] = carapace.ActionFiles()
 	})
 	runCmd.MarkFlagRequired("config")
 	runCmd.MarkFlagRequired("type")
 	runCmd.MarkFlagRequired("target")
+	runCmd.MarkFlagRequired("profile")
 
 	enableCmd := &cobra.Command{
 		Use:   consts.CommandActionEnable,

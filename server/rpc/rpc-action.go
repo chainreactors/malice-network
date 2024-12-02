@@ -4,11 +4,24 @@ import (
 	"context"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/server/internal/build"
+	"strings"
 )
 
 // TriggerWorkflowDispatch triggers a workflow dispatch event
 func (rpc *Server) TriggerWorkflowDispatch(ctx context.Context, req *clientpb.WorkflowRequest) (*clientpb.Builder, error) {
-	builder, err := build.TriggerWorkflowDispatch(req.Owner, req.Repo, req.WorkflowId, req.Token, req.Inputs)
+	var modules []string
+	if req.Inputs["malefic_modules_features"] != "" {
+		modules = strings.Split(req.Inputs["malefic_modules_features"], ",")
+	}
+	generateReq := &clientpb.Generate{
+		ProfileName: req.Profile,
+		Address:     req.Address,
+		Type:        req.Inputs["package"],
+		Modules:     modules,
+		Ca:          req.Ca,
+		Params:      req.Params,
+	}
+	builder, err := build.TriggerWorkflowDispatch(req.Owner, req.Repo, req.WorkflowId, req.Token, req.Inputs, generateReq)
 	if err != nil {
 		return nil, err
 	}

@@ -9,10 +9,10 @@ import (
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
-	"log"
 	"os"
 	"strings"
 )
@@ -48,22 +48,40 @@ func RunWorkFlowCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	buildType, buildTarget, buildPath, modules := common.ParseActionFlags(cmd)
-
-	fileData, err := os.ReadFile(buildPath)
-	if err != nil {
-		log.Fatalf("failed to read file: %v", err)
+	name, address, buildTarget, modules, ca, interval, jitter, _ := common.ParseGenerateFlags(cmd)
+	if buildTarget == "" {
+		return errors.New("require build target")
 	}
-	base64Encoded := base64.StdEncoding.EncodeToString(fileData)
+	buildType := cmd.Flag("type").Value.String()
+	params := &types.ProfileParams{
+		Interval: interval,
+		Jitter:   jitter,
+	}
+	//fileData, err := os.ReadFile(buildPath)
+	//if err != nil {
+	//	log.Fatalf("failed to read file: %v", err)
+	//}
+	//base64Encoded := base64.StdEncoding.EncodeToString(fileData)
 	inputs := map[string]string{
-		"malefic_config_yaml": base64Encoded,
-		"package":             buildType,
-		"targets":             buildTarget,
+		"package": buildType,
+		"targets": buildTarget,
 	}
 	if buildType == consts.CommandBuildModules && len(modules) == 0 {
 		inputs["malefic_modules_features"] = "full"
 	} else if len(modules) > 0 {
 		inputs["malefic_modules_features"] = strings.Join(modules, ",")
+	}
+	if buildType == consts.CommandBuildPrelude {
+		autorunPath, _ := cmd.Flags().GetString("autorun")
+		if autorunPath == "" {
+			return errors.New("require autorun.yaml path")
+		}
+		fileData, err := os.ReadFile(autorunPath)
+		if err != nil {
+			return err
+		}
+		base64Encoded := base64.StdEncoding.EncodeToString(fileData)
+		inputs["malefic_config_yaml"] = base64Encoded
 	}
 	req := &clientpb.WorkflowRequest{
 		Owner:      owner,
@@ -71,6 +89,10 @@ func RunWorkFlowCmd(cmd *cobra.Command, con *repl.Console) error {
 		Token:      token,
 		WorkflowId: file,
 		Inputs:     inputs,
+		Profile:    name,
+		Address:    address,
+		Ca:         ca,
+		Params:     params.String(),
 	}
 	_, err = RunWorkFlow(con, req)
 	if err != nil {

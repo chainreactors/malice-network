@@ -30,6 +30,7 @@ const (
 	ListenerRPC_RegisterWebsite_FullMethodName  = "/listenerrpc.ListenerRPC/RegisterWebsite"
 	ListenerRPC_StartPipeline_FullMethodName    = "/listenerrpc.ListenerRPC/StartPipeline"
 	ListenerRPC_StopPipeline_FullMethodName     = "/listenerrpc.ListenerRPC/StopPipeline"
+	ListenerRPC_DeletePipeline_FullMethodName   = "/listenerrpc.ListenerRPC/DeletePipeline"
 	ListenerRPC_ListPipelines_FullMethodName    = "/listenerrpc.ListenerRPC/ListPipelines"
 	ListenerRPC_StartWebsite_FullMethodName     = "/listenerrpc.ListenerRPC/StartWebsite"
 	ListenerRPC_StopWebsite_FullMethodName      = "/listenerrpc.ListenerRPC/StopWebsite"
@@ -55,6 +56,7 @@ type ListenerRPCClient interface {
 	RegisterWebsite(ctx context.Context, in *clientpb.Pipeline, opts ...grpc.CallOption) (*clientpb.WebsiteResponse, error)
 	StartPipeline(ctx context.Context, in *clientpb.CtrlPipeline, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	StopPipeline(ctx context.Context, in *clientpb.CtrlPipeline, opts ...grpc.CallOption) (*clientpb.Empty, error)
+	DeletePipeline(ctx context.Context, in *clientpb.CtrlPipeline, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	ListPipelines(ctx context.Context, in *clientpb.Listener, opts ...grpc.CallOption) (*clientpb.Pipelines, error)
 	StartWebsite(ctx context.Context, in *clientpb.CtrlPipeline, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	StopWebsite(ctx context.Context, in *clientpb.CtrlPipeline, opts ...grpc.CallOption) (*clientpb.Empty, error)
@@ -164,6 +166,15 @@ func (c *listenerRPCClient) StopPipeline(ctx context.Context, in *clientpb.CtrlP
 	return out, nil
 }
 
+func (c *listenerRPCClient) DeletePipeline(ctx context.Context, in *clientpb.CtrlPipeline, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+	out := new(clientpb.Empty)
+	err := c.cc.Invoke(ctx, ListenerRPC_DeletePipeline_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *listenerRPCClient) ListPipelines(ctx context.Context, in *clientpb.Listener, opts ...grpc.CallOption) (*clientpb.Pipelines, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(clientpb.Pipelines)
@@ -265,6 +276,7 @@ type ListenerRPCServer interface {
 	RegisterWebsite(context.Context, *clientpb.Pipeline) (*clientpb.WebsiteResponse, error)
 	StartPipeline(context.Context, *clientpb.CtrlPipeline) (*clientpb.Empty, error)
 	StopPipeline(context.Context, *clientpb.CtrlPipeline) (*clientpb.Empty, error)
+	DeletePipeline(context.Context, *clientpb.CtrlPipeline) (*clientpb.Empty, error)
 	ListPipelines(context.Context, *clientpb.Listener) (*clientpb.Pipelines, error)
 	StartWebsite(context.Context, *clientpb.CtrlPipeline) (*clientpb.Empty, error)
 	StopWebsite(context.Context, *clientpb.CtrlPipeline) (*clientpb.Empty, error)
@@ -310,6 +322,9 @@ func (UnimplementedListenerRPCServer) StartPipeline(context.Context, *clientpb.C
 }
 func (UnimplementedListenerRPCServer) StopPipeline(context.Context, *clientpb.CtrlPipeline) (*clientpb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method StopPipeline not implemented")
+}
+func (UnimplementedListenerRPCServer) DeletePipeline(context.Context, *clientpb.CtrlPipeline) (*clientpb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeletePipeline not implemented")
 }
 func (UnimplementedListenerRPCServer) ListPipelines(context.Context, *clientpb.Listener) (*clientpb.Pipelines, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListPipelines not implemented")
@@ -518,6 +533,24 @@ func _ListenerRPC_StopPipeline_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ListenerRPC_DeletePipeline_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(clientpb.CtrlPipeline)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ListenerRPCServer).DeletePipeline(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ListenerRPC_DeletePipeline_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ListenerRPCServer).DeletePipeline(ctx, req.(*clientpb.CtrlPipeline))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ListenerRPC_ListPipelines_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(clientpb.Listener)
 	if err := dec(in); err != nil {
@@ -682,6 +715,10 @@ var ListenerRPC_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "StopPipeline",
 			Handler:    _ListenerRPC_StopPipeline_Handler,
+		},
+		{
+			MethodName: "DeletePipeline",
+			Handler:    _ListenerRPC_DeletePipeline_Handler,
 		},
 		{
 			MethodName: "ListPipelines",

@@ -13,7 +13,7 @@ import (
 )
 
 func ListPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
-	listenerID, _ := cmd.Flags().GetString("listener")
+	listenerID := cmd.Flags().Arg(0)
 	pipelines, err := con.Rpc.ListPipelines(con.Context(), &clientpb.Listener{
 		Id: listenerID,
 	})
@@ -90,6 +90,17 @@ func StartPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 func StopPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 	name := cmd.Flags().Arg(0)
 	_, err := con.Rpc.StopPipeline(con.Context(), &clientpb.CtrlPipeline{
+		Name: name,
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func DeletePipelineCmd(cmd *cobra.Command, con *repl.Console) error {
+	name := cmd.Flags().Arg(0)
+	_, err := con.Rpc.DeletePipeline(con.Context(), &clientpb.CtrlPipeline{
 		Name: name,
 	})
 	if err != nil {

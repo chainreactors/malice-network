@@ -34,13 +34,14 @@ func PrintArtifacts(builders *clientpb.Builders, con *repl.Console) error {
 
 	tableModel := tui.NewTable([]table.Column{
 		table.NewColumn("Name", "Name", 15),
+		table.NewColumn("Pipeline", "Pipeline", 20),
 		table.NewColumn("Target", "Target", 30),
 		table.NewColumn("Type", "Type", 10),
+		table.NewColumn("Source", "Source", 10),
 		table.NewColumn("Stager", "Stager", 10),
 		table.NewColumn("Modules", "Modules", 30),
 		table.NewColumn("Time", "Time", 20),
 		table.NewColumn("Profile", "Profile", 20),
-		table.NewColumn("Pipeline", "Pipeline", 20),
 	}, false)
 	for _, builder := range builders.Builders {
 		row = table.NewRow(
@@ -48,6 +49,7 @@ func PrintArtifacts(builders *clientpb.Builders, con *repl.Console) error {
 				"Name":     builder.Name,
 				"Target":   builder.Target,
 				"Type":     builder.Type,
+				"Source":   builder.Resource,
 				"Stager":   builder.Stage,
 				"Modules":  builder.Modules,
 				"Profile":  builder.ProfileName,

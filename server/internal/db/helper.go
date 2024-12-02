@@ -214,6 +214,11 @@ func CreatePipeline(pipeline *models.Pipeline) error {
 	return nil
 }
 
+func DeletePipeline(name string) error {
+	result := Session().Where("name = ?", name).Delete(&models.Pipeline{})
+	return result.Error
+}
+
 func ListPipelines(listenerID string) ([]models.Pipeline, error) {
 	var pipelines []models.Pipeline
 	var err error
@@ -585,19 +590,21 @@ func GetProfiles() ([]models.Profile, error) {
 	return profiles, result.Error
 }
 
-func SaveBuiladerFromAction(inputs map[string]string) (*models.Builder, error) {
+func SaveBuiladerFromAction(inputs map[string]string, req *clientpb.Generate) (*models.Builder, error) {
 	target, ok := consts.GetBuildTarget(inputs["targets"])
 	if !ok {
 		return nil, errs.ErrInvalidateTarget
 	}
 	builder := models.Builder{
-		Name:     codenames.GetCodename(),
-		Target:   inputs["target"],
-		Type:     inputs["package"],
-		Resource: consts.BuildFromAction,
-		Arch:     target.Arch,
-		Modules:  inputs["malefic_modules_features"],
-		Os:       target.OS,
+		Name:        codenames.GetCodename(),
+		ProfileName: req.ProfileName,
+		Target:      target.Name,
+		Type:        inputs["package"],
+		Resource:    consts.BuildFromAction,
+		Arch:        target.Arch,
+		Modules:     strings.Join(req.Modules, ","),
+		Os:          target.OS,
+		CA:          req.Ca,
 	}
 
 	if err := Session().Create(&builder).Error; err != nil {
@@ -734,7 +741,7 @@ func GetArtifactById(id uint32) (*models.Builder, error) {
 }
 
 // UpdateGeneratorConfig - Update the generator config
-func UpdateGeneratorConfig(req *clientpb.Generate, path string, config *types.ProfileConfig) error {
+func UpdateGeneratorConfig(req *clientpb.Generate, path string, config *types.ProfileConfig) (string, error) {
 	if config.Basic != nil {
 		if req.Name != "" {
 			config.Basic.Name = req.Name
@@ -746,7 +753,7 @@ func UpdateGeneratorConfig(req *clientpb.Generate, path string, config *types.Pr
 		if req.Params != "" {
 			err := json.Unmarshal([]byte(req.Params), &params)
 			if err != nil {
-				return err
+				return "", err
 			}
 			if params.Interval != -1 {
 				config.Basic.Interval = params.Interval
@@ -775,9 +782,9 @@ func UpdateGeneratorConfig(req *clientpb.Generate, path string, config *types.Pr
 	}
 	newData, err := yaml.Marshal(config)
 	if err != nil {
-		return err
+		return "", err
 	}
-	return os.WriteFile(path, newData, 0644)
+	return string(newData), os.WriteFile(path, newData, 0644)
 }
 
 func UpdateBuilderLog(name string, logEntry string) {

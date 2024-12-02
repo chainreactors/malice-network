@@ -62,24 +62,29 @@ type WorkflowDispatchPayload struct {
 }
 
 // TriggerWorkflowDispatch is a reusable function to trigger a GitHub Actions workflow dispatch event
-func TriggerWorkflowDispatch(owner, repo, workflowID, token string, inputs map[string]string) (*clientpb.Builder, error) {
+func TriggerWorkflowDispatch(owner, repo, workflowID, token string, inputs map[string]string, req *clientpb.Generate) (*clientpb.Builder, error) {
+	config, err := GenerateProfile(req)
+	profile, err := types.LoadProfile([]byte(config))
+	if err != nil {
+		return nil, err
+	}
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("Err create config: %v", err))
+	}
 	if inputs["package"] == consts.CommandBuildPulse {
-		toBytes, err := base64ToBytes(inputs["malefic_config_yaml"])
-		if err != nil {
-			return nil, err
-		}
-		profile, err := types.LoadProfile(toBytes)
-		if err != nil {
-			return nil, err
-		}
 		artifactID := profile.Pulse.Extras["flags"].(map[string]interface{})["artifact_id"].(int)
 		_, err = db.GetArtifactById(uint32(artifactID))
 		if err != nil && !errors.Is(err, db.ErrRecordNotFound) {
 			return nil, err
 		} else if errors.Is(err, db.ErrRecordNotFound) {
 			beaconReq := copyMap(inputs)
+			base64Encoded := base64.StdEncoding.EncodeToString([]byte(config))
+			beaconReq["malefic_config_yaml"] = base64Encoded
 			beaconReq["package"] = consts.CommandBuildBeacon
-			beaconBuilder, err := db.SaveBuiladerFromAction(beaconReq)
+			if len(req.Modules) == 0 {
+				req.Modules = profile.Implant.Modules
+			}
+			beaconBuilder, err := db.SaveBuiladerFromAction(beaconReq, req)
 			beaconReq["remark"] = beaconBuilder.Name
 			if err != nil {
 				return nil, fmt.Errorf("failed to save beacon builder: %v", err)
@@ -92,7 +97,14 @@ func TriggerWorkflowDispatch(owner, repo, workflowID, token string, inputs map[s
 		}
 	}
 	// Create the payload
-	builder, err := db.SaveBuiladerFromAction(inputs)
+	if inputs["package"] != consts.CommandBuildPrelude {
+		base64Encoded := base64.StdEncoding.EncodeToString([]byte(config))
+		inputs["malefic_config_yaml"] = base64Encoded
+	}
+	if len(req.Modules) == 0 {
+		req.Modules = profile.Implant.Modules
+	}
+	builder, err := db.SaveBuiladerFromAction(inputs, req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to save builder: %v", err)
 	}

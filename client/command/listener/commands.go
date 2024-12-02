@@ -159,6 +159,7 @@ pipeline stop tcp_test
 	listPipelineCmd := &cobra.Command{
 		Use:   consts.CommandPipelineList,
 		Short: "List pipelines in listener",
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ListPipelineCmd(cmd, con)
 		},
@@ -174,7 +175,19 @@ pipeline list listener_id
 ~~~`,
 	}
 
-	pipelineCmd.AddCommand(startPipelineCmd, stopPipelineCmd, listPipelineCmd)
+	deletePipeCmd := &cobra.Command{
+		Use:   consts.CommandPipelineDelete,
+		Short: "Delete a pipeline",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return DeletePipelineCmd(cmd, con)
+		},
+	}
+
+	common.BindArgCompletions(deletePipeCmd, nil,
+		carapace.ActionValues().Usage("tcp pipeline name"),
+		common.ListenerIDCompleter(con))
+
+	pipelineCmd.AddCommand(startPipelineCmd, stopPipelineCmd, listPipelineCmd, deletePipeCmd)
 
 	websiteCmd := &cobra.Command{
 		Use:   consts.CommandWebsite,
