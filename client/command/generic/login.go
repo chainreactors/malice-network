@@ -1,6 +1,7 @@
 package generic
 
 import (
+	"errors"
 	"fmt"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/repl"
@@ -34,11 +35,11 @@ func LoginCmd(cmd *cobra.Command, con *repl.Console) error {
 	}
 
 	// After the interactive list is completed, check the selected item
-	if m.SelectedItem >= 0 && m.SelectedItem < len(m.Choices) {
-		return Login(con, m.Choices[m.SelectedItem])
+	if m.Selected != "" {
+		return Login(con, m.Selected)
+	} else {
+		return errors.New("no user selected")
 	}
-
-	return nil
 }
 
 func Login(con *repl.Console, authFile string) error {

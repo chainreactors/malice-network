@@ -126,6 +126,8 @@ github.com/chainreactors/tui v0.0.0-20241128091150-d833e0bfc9bb h1:2gGB5kUUt7nLC
 github.com/chainreactors/tui v0.0.0-20241128091150-d833e0bfc9bb/go.mod h1:+J5acoMNk5wLy6hhBYQMAchOS11wIhoEU9cVDV629eo=
 github.com/chainreactors/tui v0.0.0-20241128091624-3a7432a7c2da h1:Eob5+y2jUrX0M7ZYZy+qSWbgJueTUwWdGxifZBeSXfw=
 github.com/chainreactors/tui v0.0.0-20241128091624-3a7432a7c2da/go.mod h1:+J5acoMNk5wLy6hhBYQMAchOS11wIhoEU9cVDV629eo=
+github.com/chainreactors/tui v0.0.0-20241202114141-0552fb168d30 h1:Ztwc0mQFycLPi2sTSCEpq8LSAnUXBWjUh7sqUVrwUdI=
+github.com/chainreactors/tui v0.0.0-20241202114141-0552fb168d30/go.mod h1:+J5acoMNk5wLy6hhBYQMAchOS11wIhoEU9cVDV629eo=
 github.com/chainreactors/utils v0.0.0-20240805193040-ff3b97aa3c3f h1:2NKmadFYP9vCwC0YrazgttFACleOhxScTPzg0i76YAY=
 github.com/chainreactors/utils v0.0.0-20240805193040-ff3b97aa3c3f/go.mod h1:LajXuvESQwP+qCMAvlcoSXppQCjuLlBrnQpu9XQ1HtU=
 github.com/charmbracelet/bubbles v0.18.0 h1:PYv1A036luoBGroX6VWjQIE9Syf2Wby2oOl/39KLfy0=

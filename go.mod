@@ -9,7 +9,7 @@ require (
 	github.com/Binject/go-donut v0.0.0-20220908180326-fcdcc35d591c
 	github.com/chainreactors/files v0.0.0-20231102192550-a652458cee26
 	github.com/chainreactors/logs v0.0.0-20241115105204-6132e39f5261
-	github.com/chainreactors/tui v0.0.0-20241128091624-3a7432a7c2da
+	github.com/chainreactors/tui v0.0.0-20241202114141-0552fb168d30
 	github.com/chainreactors/utils v0.0.0-20240805193040-ff3b97aa3c3f
 	github.com/charmbracelet/bubbles v0.18.0
 	github.com/charmbracelet/bubbletea v0.27.1
@@ -160,5 +160,3 @@ require (
 	gotest.tools/v3 v3.5.1 // indirect
 	mvdan.cc/sh/v3 v3.7.0 // indirect
 )
-
-replace github.com/chainreactors/tui v0.0.0-20241114184801-dbf3cd92716b => ./external/tui
