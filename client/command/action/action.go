@@ -3,15 +3,12 @@ package action
 import (
 	"encoding/base64"
 	"errors"
-	"fmt"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/types"
-	"github.com/chainreactors/tui"
-	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
 	"os"
 	"strings"
@@ -99,119 +96,10 @@ func RunWorkFlowCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func EnableWorkFlowCmd(cmd *cobra.Command, con *repl.Console) error {
-	owner, repo, token, file, err := checkGithubArg(cmd, false)
-	if err != nil {
-		return err
-	}
-	req := &clientpb.WorkflowRequest{
-		Owner:      owner,
-		Repo:       repo,
-		Token:      token,
-		WorkflowId: file,
-	}
-	_, err = EnableWorkFlow(con, req)
-	if err != nil {
-		return err
-	}
-	con.Log.Infof("Enable workflow %s success\n", file)
-	return nil
-}
-
-func DisableWorkFlowCmd(cmd *cobra.Command, con *repl.Console) error {
-	owner, repo, token, file, err := checkGithubArg(cmd, false)
-	if err != nil {
-		return err
-	}
-	req := &clientpb.WorkflowRequest{
-		Owner:      owner,
-		Repo:       repo,
-		Token:      token,
-		WorkflowId: file,
-	}
-	_, err = DisableWorkFlow(con, req)
-	if err != nil {
-		return err
-	}
-	con.Log.Infof("Disable workflow %s success\n", file)
-	return nil
-}
-
-func ListWorkFlowCmd(cmd *cobra.Command, con *repl.Console) error {
-	owner, repo, token, file, err := checkGithubArg(cmd, true)
-	if err != nil {
-		return err
-	}
-	req := &clientpb.WorkflowRequest{
-		Owner:      owner,
-		Repo:       repo,
-		Token:      token,
-		WorkflowId: file,
-	}
-	resp, err := ListWorkFlow(con, req)
-	if err != nil {
-		return err
-	}
-	if len(resp.Workflows) == 0 {
-		con.Log.Infof("No workflow\n")
-		return nil
-	}
-	var rowEntries []table.Row
-	var row table.Row
-	tableModel := tui.NewTable([]table.Column{
-		table.NewColumn("NodeID", "Node ID", 15),
-		table.NewColumn("Name", "Name", 15),
-		table.NewColumn("Path", "Path", 20),
-		table.NewColumn("State", "State", 10),
-		table.NewColumn("created_at", "Created at", 15),
-		table.NewColumn("updated_at", "Updated at", 15),
-	}, true)
-	for _, wf := range resp.Workflows {
-		row = table.NewRow(
-			table.RowData{
-				"NodeID":     wf.NodeId,
-				"Name":       wf.Name,
-				"Path":       wf.Path,
-				"Status":     wf.Status,
-				"created_at": wf.CreatedAt,
-				"updated_at": wf.UpdatedAt,
-			})
-		rowEntries = append(rowEntries, row)
-	}
-	tableModel.SetMultiline()
-	tableModel.SetRows(rowEntries)
-	fmt.Println(tableModel.View())
-	return nil
-}
-
 func RunWorkFlow(con *repl.Console, req *clientpb.WorkflowRequest) (*clientpb.Builder, error) {
 	builder, err := con.Rpc.TriggerWorkflowDispatch(con.Context(), req)
 	if err != nil {
 		return builder, err
 	}
 	return builder, nil
-}
-
-func EnableWorkFlow(con *repl.Console, req *clientpb.WorkflowRequest) (bool, error) {
-	_, err := con.Rpc.EnableWorkflow(con.Context(), req)
-	if err != nil {
-		return false, err
-	}
-	return true, nil
-}
-
-func DisableWorkFlow(con *repl.Console, req *clientpb.WorkflowRequest) (bool, error) {
-	_, err := con.Rpc.DisableWorkflow(con.Context(), req)
-	if err != nil {
-		return false, err
-	}
-	return true, nil
-}
-
-func ListWorkFlow(con *repl.Console, req *clientpb.WorkflowRequest) (*clientpb.ListWorkflowsResponse, error) {
-	resp, err := con.Rpc.ListRepositoryWorkflows(con.Context(), req)
-	if err != nil {
-		return resp, err
-	}
-	return resp, nil
 }

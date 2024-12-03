@@ -138,8 +138,6 @@ const (
 	MaliceRPC_EnableWorkflow_FullMethodName          = "/clientrpc.MaliceRPC/EnableWorkflow"
 	MaliceRPC_DisableWorkflow_FullMethodName         = "/clientrpc.MaliceRPC/DisableWorkflow"
 	MaliceRPC_ListRepositoryWorkflows_FullMethodName = "/clientrpc.MaliceRPC/ListRepositoryWorkflows"
-	MaliceRPC_ListArtifacts_FullMethodName           = "/clientrpc.MaliceRPC/ListArtifacts"
-	MaliceRPC_DownloadGithubArtifact_FullMethodName  = "/clientrpc.MaliceRPC/DownloadGithubArtifact"
 )
 
 // MaliceRPCClient is the client API for MaliceRPC service.
@@ -281,9 +279,6 @@ type MaliceRPCClient interface {
 	EnableWorkflow(ctx context.Context, in *clientpb.WorkflowRequest, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	DisableWorkflow(ctx context.Context, in *clientpb.WorkflowRequest, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	ListRepositoryWorkflows(ctx context.Context, in *clientpb.WorkflowRequest, opts ...grpc.CallOption) (*clientpb.ListWorkflowsResponse, error)
-	// artifacts
-	ListArtifacts(ctx context.Context, in *clientpb.WorkflowRequest, opts ...grpc.CallOption) (*clientpb.ListArtifactsResponse, error)
-	DownloadGithubArtifact(ctx context.Context, in *clientpb.WorkflowRequest, opts ...grpc.CallOption) (*clientpb.DownloadArtifactsResponse, error)
 }
 
 type maliceRPCClient struct {
@@ -1361,24 +1356,6 @@ func (c *maliceRPCClient) ListRepositoryWorkflows(ctx context.Context, in *clien
 	return out, nil
 }
 
-func (c *maliceRPCClient) ListArtifacts(ctx context.Context, in *clientpb.WorkflowRequest, opts ...grpc.CallOption) (*clientpb.ListArtifactsResponse, error) {
-	out := new(clientpb.ListArtifactsResponse)
-	err := c.cc.Invoke(ctx, MaliceRPC_ListArtifacts_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *maliceRPCClient) DownloadGithubArtifact(ctx context.Context, in *clientpb.WorkflowRequest, opts ...grpc.CallOption) (*clientpb.DownloadArtifactsResponse, error) {
-	out := new(clientpb.DownloadArtifactsResponse)
-	err := c.cc.Invoke(ctx, MaliceRPC_DownloadGithubArtifact_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // MaliceRPCServer is the server API for MaliceRPC service.
 // All implementations must embed UnimplementedMaliceRPCServer
 // for forward compatibility
@@ -1518,9 +1495,6 @@ type MaliceRPCServer interface {
 	EnableWorkflow(context.Context, *clientpb.WorkflowRequest) (*clientpb.Empty, error)
 	DisableWorkflow(context.Context, *clientpb.WorkflowRequest) (*clientpb.Empty, error)
 	ListRepositoryWorkflows(context.Context, *clientpb.WorkflowRequest) (*clientpb.ListWorkflowsResponse, error)
-	// artifacts
-	ListArtifacts(context.Context, *clientpb.WorkflowRequest) (*clientpb.ListArtifactsResponse, error)
-	DownloadGithubArtifact(context.Context, *clientpb.WorkflowRequest) (*clientpb.DownloadArtifactsResponse, error)
 	mustEmbedUnimplementedMaliceRPCServer()
 }
 
@@ -1875,12 +1849,6 @@ func (UnimplementedMaliceRPCServer) DisableWorkflow(context.Context, *clientpb.W
 }
 func (UnimplementedMaliceRPCServer) ListRepositoryWorkflows(context.Context, *clientpb.WorkflowRequest) (*clientpb.ListWorkflowsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListRepositoryWorkflows not implemented")
-}
-func (UnimplementedMaliceRPCServer) ListArtifacts(context.Context, *clientpb.WorkflowRequest) (*clientpb.ListArtifactsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListArtifacts not implemented")
-}
-func (UnimplementedMaliceRPCServer) DownloadGithubArtifact(context.Context, *clientpb.WorkflowRequest) (*clientpb.DownloadArtifactsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DownloadGithubArtifact not implemented")
 }
 func (UnimplementedMaliceRPCServer) mustEmbedUnimplementedMaliceRPCServer() {}
 
@@ -3986,42 +3954,6 @@ func _MaliceRPC_ListRepositoryWorkflows_Handler(srv interface{}, ctx context.Con
 	return interceptor(ctx, in, info, handler)
 }
 
-func _MaliceRPC_ListArtifacts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(clientpb.WorkflowRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(MaliceRPCServer).ListArtifacts(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: MaliceRPC_ListArtifacts_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MaliceRPCServer).ListArtifacts(ctx, req.(*clientpb.WorkflowRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _MaliceRPC_DownloadGithubArtifact_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(clientpb.WorkflowRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(MaliceRPCServer).DownloadGithubArtifact(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: MaliceRPC_DownloadGithubArtifact_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MaliceRPCServer).DownloadGithubArtifact(ctx, req.(*clientpb.WorkflowRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // MaliceRPC_ServiceDesc is the grpc.ServiceDesc for MaliceRPC service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -4488,14 +4420,6 @@ var MaliceRPC_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListRepositoryWorkflows",
 			Handler:    _MaliceRPC_ListRepositoryWorkflows_Handler,
-		},
-		{
-			MethodName: "ListArtifacts",
-			Handler:    _MaliceRPC_ListArtifacts_Handler,
-		},
-		{
-			MethodName: "DownloadGithubArtifact",
-			Handler:    _MaliceRPC_DownloadGithubArtifact_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

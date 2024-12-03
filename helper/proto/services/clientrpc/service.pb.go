@@ -33,7 +33,7 @@ var file_services_clientrpc_service_proto_rawDesc = []byte{
 	0x65, 0x6e, 0x74, 0x2f, 0x72, 0x6f, 0x6f, 0x74, 0x70, 0x62, 0x2f, 0x72, 0x6f, 0x6f, 0x74, 0x2e,
 	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x1a, 0x1e, 0x69, 0x6d, 0x70, 0x6c, 0x61, 0x6e, 0x74, 0x2f, 0x69,
 	0x6d, 0x70, 0x6c, 0x61, 0x6e, 0x74, 0x70, 0x62, 0x2f, 0x6d, 0x6f, 0x64, 0x75, 0x6c, 0x65, 0x2e,
-	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x32, 0xc3, 0x31, 0x0a, 0x09, 0x4d, 0x61, 0x6c, 0x69, 0x63, 0x65,
+	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x32, 0x9c, 0x30, 0x0a, 0x09, 0x4d, 0x61, 0x6c, 0x69, 0x63, 0x65,
 	0x52, 0x50, 0x43, 0x12, 0x33, 0x0a, 0x0b, 0x4c, 0x6f, 0x67, 0x69, 0x6e, 0x43, 0x6c, 0x69, 0x65,
 	0x6e, 0x74, 0x12, 0x12, 0x2e, 0x63, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x70, 0x62, 0x2e, 0x4c, 0x6f,
 	0x67, 0x69, 0x6e, 0x52, 0x65, 0x71, 0x1a, 0x10, 0x2e, 0x63, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x70,
@@ -419,112 +419,99 @@ var file_services_clientrpc_service_proto_rawDesc = []byte{
 	0x74, 0x70, 0x62, 0x2e, 0x57, 0x6f, 0x72, 0x6b, 0x66, 0x6c, 0x6f, 0x77, 0x52, 0x65, 0x71, 0x75,
 	0x65, 0x73, 0x74, 0x1a, 0x1f, 0x2e, 0x63, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x70, 0x62, 0x2e, 0x4c,
 	0x69, 0x73, 0x74, 0x57, 0x6f, 0x72, 0x6b, 0x66, 0x6c, 0x6f, 0x77, 0x73, 0x52, 0x65, 0x73, 0x70,
-	0x6f, 0x6e, 0x73, 0x65, 0x12, 0x4b, 0x0a, 0x0d, 0x4c, 0x69, 0x73, 0x74, 0x41, 0x72, 0x74, 0x69,
-	0x66, 0x61, 0x63, 0x74, 0x73, 0x12, 0x19, 0x2e, 0x63, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x70, 0x62,
-	0x2e, 0x57, 0x6f, 0x72, 0x6b, 0x66, 0x6c, 0x6f, 0x77, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
-	0x1a, 0x1f, 0x2e, 0x63, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x70, 0x62, 0x2e, 0x4c, 0x69, 0x73, 0x74,
-	0x41, 0x72, 0x74, 0x69, 0x66, 0x61, 0x63, 0x74, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
-	0x65, 0x12, 0x58, 0x0a, 0x16, 0x44, 0x6f, 0x77, 0x6e, 0x6c, 0x6f, 0x61, 0x64, 0x47, 0x69, 0x74,
-	0x68, 0x75, 0x62, 0x41, 0x72, 0x74, 0x69, 0x66, 0x61, 0x63, 0x74, 0x12, 0x19, 0x2e, 0x63, 0x6c,
-	0x69, 0x65, 0x6e, 0x74, 0x70, 0x62, 0x2e, 0x57, 0x6f, 0x72, 0x6b, 0x66, 0x6c, 0x6f, 0x77, 0x52,
-	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x23, 0x2e, 0x63, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x70,
-	0x62, 0x2e, 0x44, 0x6f, 0x77, 0x6e, 0x6c, 0x6f, 0x61, 0x64, 0x41, 0x72, 0x74, 0x69, 0x66, 0x61,
-	0x63, 0x74, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x32, 0xc3, 0x02, 0x0a, 0x07,
-	0x52, 0x6f, 0x6f, 0x74, 0x52, 0x50, 0x43, 0x12, 0x2f, 0x0a, 0x09, 0x41, 0x64, 0x64, 0x43, 0x6c,
-	0x69, 0x65, 0x6e, 0x74, 0x12, 0x10, 0x2e, 0x72, 0x6f, 0x6f, 0x74, 0x70, 0x62, 0x2e, 0x4f, 0x70,
-	0x65, 0x72, 0x61, 0x74, 0x6f, 0x72, 0x1a, 0x10, 0x2e, 0x72, 0x6f, 0x6f, 0x74, 0x70, 0x62, 0x2e,
-	0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x32, 0x0a, 0x0c, 0x52, 0x65, 0x6d, 0x6f,
-	0x76, 0x65, 0x43, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x12, 0x10, 0x2e, 0x72, 0x6f, 0x6f, 0x74, 0x70,
+	0x6f, 0x6e, 0x73, 0x65, 0x32, 0xc3, 0x02, 0x0a, 0x07, 0x52, 0x6f, 0x6f, 0x74, 0x52, 0x50, 0x43,
+	0x12, 0x2f, 0x0a, 0x09, 0x41, 0x64, 0x64, 0x43, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x12, 0x10, 0x2e,
+	0x72, 0x6f, 0x6f, 0x74, 0x70, 0x62, 0x2e, 0x4f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x6f, 0x72, 0x1a,
+	0x10, 0x2e, 0x72, 0x6f, 0x6f, 0x74, 0x70, 0x62, 0x2e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
+	0x65, 0x12, 0x32, 0x0a, 0x0c, 0x52, 0x65, 0x6d, 0x6f, 0x76, 0x65, 0x43, 0x6c, 0x69, 0x65, 0x6e,
+	0x74, 0x12, 0x10, 0x2e, 0x72, 0x6f, 0x6f, 0x74, 0x70, 0x62, 0x2e, 0x4f, 0x70, 0x65, 0x72, 0x61,
+	0x74, 0x6f, 0x72, 0x1a, 0x10, 0x2e, 0x72, 0x6f, 0x6f, 0x74, 0x70, 0x62, 0x2e, 0x52, 0x65, 0x73,
+	0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x32, 0x0a, 0x0b, 0x4c, 0x69, 0x73, 0x74, 0x43, 0x6c, 0x69,
+	0x65, 0x6e, 0x74, 0x73, 0x12, 0x10, 0x2e, 0x72, 0x6f, 0x6f, 0x74, 0x70, 0x62, 0x2e, 0x4f, 0x70,
+	0x65, 0x72, 0x61, 0x74, 0x6f, 0x72, 0x1a, 0x11, 0x2e, 0x63, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x70,
+	0x62, 0x2e, 0x43, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x73, 0x12, 0x31, 0x0a, 0x0b, 0x41, 0x64, 0x64,
+	0x4c, 0x69, 0x73, 0x74, 0x65, 0x6e, 0x65, 0x72, 0x12, 0x10, 0x2e, 0x72, 0x6f, 0x6f, 0x74, 0x70,
 	0x62, 0x2e, 0x4f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x6f, 0x72, 0x1a, 0x10, 0x2e, 0x72, 0x6f, 0x6f,
-	0x74, 0x70, 0x62, 0x2e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x32, 0x0a, 0x0b,
-	0x4c, 0x69, 0x73, 0x74, 0x43, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x73, 0x12, 0x10, 0x2e, 0x72, 0x6f,
-	0x6f, 0x74, 0x70, 0x62, 0x2e, 0x4f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x6f, 0x72, 0x1a, 0x11, 0x2e,
-	0x63, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x70, 0x62, 0x2e, 0x43, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x73,
-	0x12, 0x31, 0x0a, 0x0b, 0x41, 0x64, 0x64, 0x4c, 0x69, 0x73, 0x74, 0x65, 0x6e, 0x65, 0x72, 0x12,
-	0x10, 0x2e, 0x72, 0x6f, 0x6f, 0x74, 0x70, 0x62, 0x2e, 0x4f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x6f,
-	0x72, 0x1a, 0x10, 0x2e, 0x72, 0x6f, 0x6f, 0x74, 0x70, 0x62, 0x2e, 0x52, 0x65, 0x73, 0x70, 0x6f,
-	0x6e, 0x73, 0x65, 0x12, 0x34, 0x0a, 0x0e, 0x52, 0x65, 0x6d, 0x6f, 0x76, 0x65, 0x4c, 0x69, 0x73,
-	0x74, 0x65, 0x6e, 0x65, 0x72, 0x12, 0x10, 0x2e, 0x72, 0x6f, 0x6f, 0x74, 0x70, 0x62, 0x2e, 0x4f,
-	0x70, 0x65, 0x72, 0x61, 0x74, 0x6f, 0x72, 0x1a, 0x10, 0x2e, 0x72, 0x6f, 0x6f, 0x74, 0x70, 0x62,
-	0x2e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x36, 0x0a, 0x0d, 0x4c, 0x69, 0x73,
-	0x74, 0x4c, 0x69, 0x73, 0x74, 0x65, 0x6e, 0x65, 0x72, 0x73, 0x12, 0x10, 0x2e, 0x72, 0x6f, 0x6f,
-	0x74, 0x70, 0x62, 0x2e, 0x4f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x6f, 0x72, 0x1a, 0x13, 0x2e, 0x63,
-	0x6c, 0x69, 0x65, 0x6e, 0x74, 0x70, 0x62, 0x2e, 0x4c, 0x69, 0x73, 0x74, 0x65, 0x6e, 0x65, 0x72,
-	0x73, 0x42, 0x49, 0x5a, 0x47, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f,
-	0x63, 0x68, 0x61, 0x69, 0x6e, 0x72, 0x65, 0x61, 0x63, 0x74, 0x6f, 0x72, 0x73, 0x2f, 0x6d, 0x61,
-	0x6c, 0x69, 0x63, 0x65, 0x2d, 0x6e, 0x65, 0x74, 0x77, 0x6f, 0x72, 0x6b, 0x2f, 0x68, 0x65, 0x6c,
-	0x70, 0x65, 0x72, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2f, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63,
-	0x65, 0x73, 0x2f, 0x63, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x72, 0x70, 0x63, 0x62, 0x06, 0x70, 0x72,
-	0x6f, 0x74, 0x6f, 0x33,
+	0x74, 0x70, 0x62, 0x2e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x34, 0x0a, 0x0e,
+	0x52, 0x65, 0x6d, 0x6f, 0x76, 0x65, 0x4c, 0x69, 0x73, 0x74, 0x65, 0x6e, 0x65, 0x72, 0x12, 0x10,
+	0x2e, 0x72, 0x6f, 0x6f, 0x74, 0x70, 0x62, 0x2e, 0x4f, 0x70, 0x65, 0x72, 0x61, 0x74, 0x6f, 0x72,
+	0x1a, 0x10, 0x2e, 0x72, 0x6f, 0x6f, 0x74, 0x70, 0x62, 0x2e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e,
+	0x73, 0x65, 0x12, 0x36, 0x0a, 0x0d, 0x4c, 0x69, 0x73, 0x74, 0x4c, 0x69, 0x73, 0x74, 0x65, 0x6e,
+	0x65, 0x72, 0x73, 0x12, 0x10, 0x2e, 0x72, 0x6f, 0x6f, 0x74, 0x70, 0x62, 0x2e, 0x4f, 0x70, 0x65,
+	0x72, 0x61, 0x74, 0x6f, 0x72, 0x1a, 0x13, 0x2e, 0x63, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x70, 0x62,
+	0x2e, 0x4c, 0x69, 0x73, 0x74, 0x65, 0x6e, 0x65, 0x72, 0x73, 0x42, 0x49, 0x5a, 0x47, 0x67, 0x69,
+	0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x63, 0x68, 0x61, 0x69, 0x6e, 0x72, 0x65,
+	0x61, 0x63, 0x74, 0x6f, 0x72, 0x73, 0x2f, 0x6d, 0x61, 0x6c, 0x69, 0x63, 0x65, 0x2d, 0x6e, 0x65,
+	0x74, 0x77, 0x6f, 0x72, 0x6b, 0x2f, 0x68, 0x65, 0x6c, 0x70, 0x65, 0x72, 0x2f, 0x70, 0x72, 0x6f,
+	0x74, 0x6f, 0x2f, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x73, 0x2f, 0x63, 0x6c, 0x69, 0x65,
+	0x6e, 0x74, 0x72, 0x70, 0x63, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var file_services_clientrpc_service_proto_goTypes = []any{
-	(*clientpb.LoginReq)(nil),                  // 0: clientpb.LoginReq
-	(*clientpb.Empty)(nil),                     // 1: clientpb.Empty
-	(*clientpb.SessionRequest)(nil),            // 2: clientpb.SessionRequest
-	(*clientpb.SessionLog)(nil),                // 3: clientpb.SessionLog
-	(*clientpb.BasicUpdateSession)(nil),        // 4: clientpb.BasicUpdateSession
-	(*clientpb.TaskRequest)(nil),               // 5: clientpb.TaskRequest
-	(*clientpb.Task)(nil),                      // 6: clientpb.Task
-	(*clientpb.Session)(nil),                   // 7: clientpb.Session
-	(*clientpb.Event)(nil),                     // 8: clientpb.Event
-	(*clientpb.On)(nil),                        // 9: clientpb.On
-	(*implantpb.Ping)(nil),                     // 10: modulepb.Ping
-	(*implantpb.Timer)(nil),                    // 11: modulepb.Timer
-	(*implantpb.Request)(nil),                  // 12: modulepb.Request
-	(*implantpb.LoadModule)(nil),               // 13: modulepb.LoadModule
-	(*implantpb.LoadAddon)(nil),                // 14: modulepb.LoadAddon
-	(*implantpb.ExecuteAddon)(nil),             // 15: modulepb.ExecuteAddon
-	(*implantpb.ImplantTask)(nil),              // 16: modulepb.ImplantTask
-	(*clientpb.Polling)(nil),                   // 17: clientpb.Polling
-	(*implantpb.UploadRequest)(nil),            // 18: modulepb.UploadRequest
-	(*implantpb.DownloadRequest)(nil),          // 19: modulepb.DownloadRequest
-	(*clientpb.Sync)(nil),                      // 20: clientpb.Sync
-	(*implantpb.ChownRequest)(nil),             // 21: modulepb.ChownRequest
-	(*implantpb.CurlRequest)(nil),              // 22: modulepb.CurlRequest
-	(*implantpb.BypassRequest)(nil),            // 23: modulepb.BypassRequest
-	(*implantpb.RegistryRequest)(nil),          // 24: modulepb.RegistryRequest
-	(*implantpb.RegistryWriteRequest)(nil),     // 25: modulepb.RegistryWriteRequest
-	(*implantpb.ServiceRequest)(nil),           // 26: modulepb.ServiceRequest
-	(*implantpb.TaskScheduleRequest)(nil),      // 27: modulepb.TaskScheduleRequest
-	(*implantpb.WmiQueryRequest)(nil),          // 28: modulepb.WmiQueryRequest
-	(*implantpb.WmiMethodRequest)(nil),         // 29: modulepb.WmiMethodRequest
-	(*implantpb.RunAsRequest)(nil),             // 30: modulepb.RunAsRequest
-	(*implantpb.PipeRequest)(nil),              // 31: modulepb.PipeRequest
-	(*implantpb.ExecRequest)(nil),              // 32: modulepb.ExecRequest
-	(*implantpb.ExecuteBinary)(nil),            // 33: modulepb.ExecuteBinary
-	(*clientpb.EXE2Shellcode)(nil),             // 34: clientpb.EXE2Shellcode
-	(*clientpb.DLL2Shellcode)(nil),             // 35: clientpb.DLL2Shellcode
-	(*clientpb.ShellcodeEncode)(nil),           // 36: clientpb.ShellcodeEncode
-	(*clientpb.Website)(nil),                   // 37: clientpb.Website
-	(*clientpb.WebsiteAddContent)(nil),         // 38: clientpb.WebsiteAddContent
-	(*clientpb.WebsiteRemoveContent)(nil),      // 39: clientpb.WebsiteRemoveContent
-	(*clientpb.Profile)(nil),                   // 40: clientpb.Profile
-	(*clientpb.Generate)(nil),                  // 41: clientpb.Generate
-	(*clientpb.Builder)(nil),                   // 42: clientpb.Builder
-	(*clientpb.WorkflowRequest)(nil),           // 43: clientpb.WorkflowRequest
-	(*rootpb.Operator)(nil),                    // 44: rootpb.Operator
-	(*clientpb.Client)(nil),                    // 45: clientpb.Client
-	(*clientpb.Basic)(nil),                     // 46: clientpb.Basic
-	(*clientpb.Clients)(nil),                   // 47: clientpb.Clients
-	(*clientpb.Sessions)(nil),                  // 48: clientpb.Sessions
-	(*clientpb.TasksContext)(nil),              // 49: clientpb.TasksContext
-	(*clientpb.Listeners)(nil),                 // 50: clientpb.Listeners
-	(*clientpb.Pipelines)(nil),                 // 51: clientpb.Pipelines
-	(*clientpb.Jobs)(nil),                      // 52: clientpb.Jobs
-	(*clientpb.Tasks)(nil),                     // 53: clientpb.Tasks
-	(*clientpb.TaskContext)(nil),               // 54: clientpb.TaskContext
-	(*clientpb.Files)(nil),                     // 55: clientpb.Files
-	(*clientpb.TaskContexts)(nil),              // 56: clientpb.TaskContexts
-	(*clientpb.SyncResp)(nil),                  // 57: clientpb.SyncResp
-	(*clientpb.Bin)(nil),                       // 58: clientpb.Bin
-	(*clientpb.Websites)(nil),                  // 59: clientpb.Websites
-	(*clientpb.Profiles)(nil),                  // 60: clientpb.Profiles
-	(*clientpb.Builders)(nil),                  // 61: clientpb.Builders
-	(*clientpb.ListWorkflowsResponse)(nil),     // 62: clientpb.ListWorkflowsResponse
-	(*clientpb.ListArtifactsResponse)(nil),     // 63: clientpb.ListArtifactsResponse
-	(*clientpb.DownloadArtifactsResponse)(nil), // 64: clientpb.DownloadArtifactsResponse
-	(*rootpb.Response)(nil),                    // 65: rootpb.Response
+	(*clientpb.LoginReq)(nil),              // 0: clientpb.LoginReq
+	(*clientpb.Empty)(nil),                 // 1: clientpb.Empty
+	(*clientpb.SessionRequest)(nil),        // 2: clientpb.SessionRequest
+	(*clientpb.SessionLog)(nil),            // 3: clientpb.SessionLog
+	(*clientpb.BasicUpdateSession)(nil),    // 4: clientpb.BasicUpdateSession
+	(*clientpb.TaskRequest)(nil),           // 5: clientpb.TaskRequest
+	(*clientpb.Task)(nil),                  // 6: clientpb.Task
+	(*clientpb.Session)(nil),               // 7: clientpb.Session
+	(*clientpb.Event)(nil),                 // 8: clientpb.Event
+	(*clientpb.On)(nil),                    // 9: clientpb.On
+	(*implantpb.Ping)(nil),                 // 10: modulepb.Ping
+	(*implantpb.Timer)(nil),                // 11: modulepb.Timer
+	(*implantpb.Request)(nil),              // 12: modulepb.Request
+	(*implantpb.LoadModule)(nil),           // 13: modulepb.LoadModule
+	(*implantpb.LoadAddon)(nil),            // 14: modulepb.LoadAddon
+	(*implantpb.ExecuteAddon)(nil),         // 15: modulepb.ExecuteAddon
+	(*implantpb.ImplantTask)(nil),          // 16: modulepb.ImplantTask
+	(*clientpb.Polling)(nil),               // 17: clientpb.Polling
+	(*implantpb.UploadRequest)(nil),        // 18: modulepb.UploadRequest
+	(*implantpb.DownloadRequest)(nil),      // 19: modulepb.DownloadRequest
+	(*clientpb.Sync)(nil),                  // 20: clientpb.Sync
+	(*implantpb.ChownRequest)(nil),         // 21: modulepb.ChownRequest
+	(*implantpb.CurlRequest)(nil),          // 22: modulepb.CurlRequest
+	(*implantpb.BypassRequest)(nil),        // 23: modulepb.BypassRequest
+	(*implantpb.RegistryRequest)(nil),      // 24: modulepb.RegistryRequest
+	(*implantpb.RegistryWriteRequest)(nil), // 25: modulepb.RegistryWriteRequest
+	(*implantpb.ServiceRequest)(nil),       // 26: modulepb.ServiceRequest
+	(*implantpb.TaskScheduleRequest)(nil),  // 27: modulepb.TaskScheduleRequest
+	(*implantpb.WmiQueryRequest)(nil),      // 28: modulepb.WmiQueryRequest
+	(*implantpb.WmiMethodRequest)(nil),     // 29: modulepb.WmiMethodRequest
+	(*implantpb.RunAsRequest)(nil),         // 30: modulepb.RunAsRequest
+	(*implantpb.PipeRequest)(nil),          // 31: modulepb.PipeRequest
+	(*implantpb.ExecRequest)(nil),          // 32: modulepb.ExecRequest
+	(*implantpb.ExecuteBinary)(nil),        // 33: modulepb.ExecuteBinary
+	(*clientpb.EXE2Shellcode)(nil),         // 34: clientpb.EXE2Shellcode
+	(*clientpb.DLL2Shellcode)(nil),         // 35: clientpb.DLL2Shellcode
+	(*clientpb.ShellcodeEncode)(nil),       // 36: clientpb.ShellcodeEncode
+	(*clientpb.Website)(nil),               // 37: clientpb.Website
+	(*clientpb.WebsiteAddContent)(nil),     // 38: clientpb.WebsiteAddContent
+	(*clientpb.WebsiteRemoveContent)(nil),  // 39: clientpb.WebsiteRemoveContent
+	(*clientpb.Profile)(nil),               // 40: clientpb.Profile
+	(*clientpb.Generate)(nil),              // 41: clientpb.Generate
+	(*clientpb.Builder)(nil),               // 42: clientpb.Builder
+	(*clientpb.WorkflowRequest)(nil),       // 43: clientpb.WorkflowRequest
+	(*rootpb.Operator)(nil),                // 44: rootpb.Operator
+	(*clientpb.Client)(nil),                // 45: clientpb.Client
+	(*clientpb.Basic)(nil),                 // 46: clientpb.Basic
+	(*clientpb.Clients)(nil),               // 47: clientpb.Clients
+	(*clientpb.Sessions)(nil),              // 48: clientpb.Sessions
+	(*clientpb.TasksContext)(nil),          // 49: clientpb.TasksContext
+	(*clientpb.Listeners)(nil),             // 50: clientpb.Listeners
+	(*clientpb.Pipelines)(nil),             // 51: clientpb.Pipelines
+	(*clientpb.Jobs)(nil),                  // 52: clientpb.Jobs
+	(*clientpb.Tasks)(nil),                 // 53: clientpb.Tasks
+	(*clientpb.TaskContext)(nil),           // 54: clientpb.TaskContext
+	(*clientpb.Files)(nil),                 // 55: clientpb.Files
+	(*clientpb.TaskContexts)(nil),          // 56: clientpb.TaskContexts
+	(*clientpb.SyncResp)(nil),              // 57: clientpb.SyncResp
+	(*clientpb.Bin)(nil),                   // 58: clientpb.Bin
+	(*clientpb.Websites)(nil),              // 59: clientpb.Websites
+	(*clientpb.Profiles)(nil),              // 60: clientpb.Profiles
+	(*clientpb.Builders)(nil),              // 61: clientpb.Builders
+	(*clientpb.ListWorkflowsResponse)(nil), // 62: clientpb.ListWorkflowsResponse
+	(*rootpb.Response)(nil),                // 63: rootpb.Response
 }
 var file_services_clientrpc_service_proto_depIdxs = []int32{
 	0,   // 0: clientrpc.MaliceRPC.LoginClient:input_type -> clientpb.LoginReq
@@ -643,140 +630,136 @@ var file_services_clientrpc_service_proto_depIdxs = []int32{
 	43,  // 113: clientrpc.MaliceRPC.EnableWorkflow:input_type -> clientpb.WorkflowRequest
 	43,  // 114: clientrpc.MaliceRPC.DisableWorkflow:input_type -> clientpb.WorkflowRequest
 	43,  // 115: clientrpc.MaliceRPC.ListRepositoryWorkflows:input_type -> clientpb.WorkflowRequest
-	43,  // 116: clientrpc.MaliceRPC.ListArtifacts:input_type -> clientpb.WorkflowRequest
-	43,  // 117: clientrpc.MaliceRPC.DownloadGithubArtifact:input_type -> clientpb.WorkflowRequest
-	44,  // 118: clientrpc.RootRPC.AddClient:input_type -> rootpb.Operator
-	44,  // 119: clientrpc.RootRPC.RemoveClient:input_type -> rootpb.Operator
-	44,  // 120: clientrpc.RootRPC.ListClients:input_type -> rootpb.Operator
-	44,  // 121: clientrpc.RootRPC.AddListener:input_type -> rootpb.Operator
-	44,  // 122: clientrpc.RootRPC.RemoveListener:input_type -> rootpb.Operator
-	44,  // 123: clientrpc.RootRPC.ListListeners:input_type -> rootpb.Operator
-	45,  // 124: clientrpc.MaliceRPC.LoginClient:output_type -> clientpb.Client
-	46,  // 125: clientrpc.MaliceRPC.GetBasic:output_type -> clientpb.Basic
-	47,  // 126: clientrpc.MaliceRPC.GetClients:output_type -> clientpb.Clients
-	48,  // 127: clientrpc.MaliceRPC.GetSessions:output_type -> clientpb.Sessions
-	7,   // 128: clientrpc.MaliceRPC.GetSession:output_type -> clientpb.Session
-	49,  // 129: clientrpc.MaliceRPC.GetSessionHistory:output_type -> clientpb.TasksContext
-	1,   // 130: clientrpc.MaliceRPC.SessionManage:output_type -> clientpb.Empty
-	50,  // 131: clientrpc.MaliceRPC.GetListeners:output_type -> clientpb.Listeners
-	51,  // 132: clientrpc.MaliceRPC.GetPipelines:output_type -> clientpb.Pipelines
-	52,  // 133: clientrpc.MaliceRPC.GetJobs:output_type -> clientpb.Jobs
-	53,  // 134: clientrpc.MaliceRPC.GetTasks:output_type -> clientpb.Tasks
-	54,  // 135: clientrpc.MaliceRPC.GetTaskContent:output_type -> clientpb.TaskContext
-	55,  // 136: clientrpc.MaliceRPC.GetTaskFiles:output_type -> clientpb.Files
-	54,  // 137: clientrpc.MaliceRPC.WaitTaskContent:output_type -> clientpb.TaskContext
-	54,  // 138: clientrpc.MaliceRPC.WaitTaskFinish:output_type -> clientpb.TaskContext
-	56,  // 139: clientrpc.MaliceRPC.GetAllTaskContent:output_type -> clientpb.TaskContexts
-	55,  // 140: clientrpc.MaliceRPC.GetFiles:output_type -> clientpb.Files
-	8,   // 141: clientrpc.MaliceRPC.Events:output_type -> clientpb.Event
-	1,   // 142: clientrpc.MaliceRPC.Broadcast:output_type -> clientpb.Empty
-	1,   // 143: clientrpc.MaliceRPC.Notify:output_type -> clientpb.Empty
-	1,   // 144: clientrpc.MaliceRPC.SessionEvent:output_type -> clientpb.Empty
-	1,   // 145: clientrpc.MaliceRPC.OnHook:output_type -> clientpb.Empty
-	6,   // 146: clientrpc.MaliceRPC.Ping:output_type -> clientpb.Task
-	6,   // 147: clientrpc.MaliceRPC.Sleep:output_type -> clientpb.Task
-	6,   // 148: clientrpc.MaliceRPC.Suicide:output_type -> clientpb.Task
-	6,   // 149: clientrpc.MaliceRPC.ListModule:output_type -> clientpb.Task
-	6,   // 150: clientrpc.MaliceRPC.LoadModule:output_type -> clientpb.Task
-	6,   // 151: clientrpc.MaliceRPC.RefreshModule:output_type -> clientpb.Task
-	6,   // 152: clientrpc.MaliceRPC.ListAddon:output_type -> clientpb.Task
-	6,   // 153: clientrpc.MaliceRPC.LoadAddon:output_type -> clientpb.Task
-	6,   // 154: clientrpc.MaliceRPC.ExecuteAddon:output_type -> clientpb.Task
-	6,   // 155: clientrpc.MaliceRPC.Clear:output_type -> clientpb.Task
-	6,   // 156: clientrpc.MaliceRPC.CancelTask:output_type -> clientpb.Task
-	1,   // 157: clientrpc.MaliceRPC.Polling:output_type -> clientpb.Empty
-	6,   // 158: clientrpc.MaliceRPC.Upload:output_type -> clientpb.Task
-	6,   // 159: clientrpc.MaliceRPC.Download:output_type -> clientpb.Task
-	57,  // 160: clientrpc.MaliceRPC.Sync:output_type -> clientpb.SyncResp
-	6,   // 161: clientrpc.MaliceRPC.Pwd:output_type -> clientpb.Task
-	6,   // 162: clientrpc.MaliceRPC.Ls:output_type -> clientpb.Task
-	6,   // 163: clientrpc.MaliceRPC.Cd:output_type -> clientpb.Task
-	6,   // 164: clientrpc.MaliceRPC.Rm:output_type -> clientpb.Task
-	6,   // 165: clientrpc.MaliceRPC.Mv:output_type -> clientpb.Task
-	6,   // 166: clientrpc.MaliceRPC.Cp:output_type -> clientpb.Task
-	6,   // 167: clientrpc.MaliceRPC.Cat:output_type -> clientpb.Task
-	6,   // 168: clientrpc.MaliceRPC.Mkdir:output_type -> clientpb.Task
-	6,   // 169: clientrpc.MaliceRPC.Chmod:output_type -> clientpb.Task
-	6,   // 170: clientrpc.MaliceRPC.Chown:output_type -> clientpb.Task
-	6,   // 171: clientrpc.MaliceRPC.Kill:output_type -> clientpb.Task
-	6,   // 172: clientrpc.MaliceRPC.Ps:output_type -> clientpb.Task
-	6,   // 173: clientrpc.MaliceRPC.Netstat:output_type -> clientpb.Task
-	6,   // 174: clientrpc.MaliceRPC.Curl:output_type -> clientpb.Task
-	6,   // 175: clientrpc.MaliceRPC.Env:output_type -> clientpb.Task
-	6,   // 176: clientrpc.MaliceRPC.SetEnv:output_type -> clientpb.Task
-	6,   // 177: clientrpc.MaliceRPC.UnsetEnv:output_type -> clientpb.Task
-	6,   // 178: clientrpc.MaliceRPC.Whoami:output_type -> clientpb.Task
-	6,   // 179: clientrpc.MaliceRPC.Info:output_type -> clientpb.Task
-	6,   // 180: clientrpc.MaliceRPC.Bypass:output_type -> clientpb.Task
-	6,   // 181: clientrpc.MaliceRPC.RegQuery:output_type -> clientpb.Task
-	6,   // 182: clientrpc.MaliceRPC.RegAdd:output_type -> clientpb.Task
-	6,   // 183: clientrpc.MaliceRPC.RegDelete:output_type -> clientpb.Task
-	6,   // 184: clientrpc.MaliceRPC.RegListKey:output_type -> clientpb.Task
-	6,   // 185: clientrpc.MaliceRPC.RegListValue:output_type -> clientpb.Task
-	6,   // 186: clientrpc.MaliceRPC.ServiceList:output_type -> clientpb.Task
-	6,   // 187: clientrpc.MaliceRPC.ServiceCreate:output_type -> clientpb.Task
-	6,   // 188: clientrpc.MaliceRPC.ServiceStart:output_type -> clientpb.Task
-	6,   // 189: clientrpc.MaliceRPC.ServiceStop:output_type -> clientpb.Task
-	6,   // 190: clientrpc.MaliceRPC.ServiceQuery:output_type -> clientpb.Task
-	6,   // 191: clientrpc.MaliceRPC.ServiceDelete:output_type -> clientpb.Task
-	6,   // 192: clientrpc.MaliceRPC.TaskSchdList:output_type -> clientpb.Task
-	6,   // 193: clientrpc.MaliceRPC.TaskSchdCreate:output_type -> clientpb.Task
-	6,   // 194: clientrpc.MaliceRPC.TaskSchdStart:output_type -> clientpb.Task
-	6,   // 195: clientrpc.MaliceRPC.TaskSchdStop:output_type -> clientpb.Task
-	6,   // 196: clientrpc.MaliceRPC.TaskSchdDelete:output_type -> clientpb.Task
-	6,   // 197: clientrpc.MaliceRPC.TaskSchdQuery:output_type -> clientpb.Task
-	6,   // 198: clientrpc.MaliceRPC.TaskSchdRun:output_type -> clientpb.Task
-	6,   // 199: clientrpc.MaliceRPC.WmiQuery:output_type -> clientpb.Task
-	6,   // 200: clientrpc.MaliceRPC.WmiExecute:output_type -> clientpb.Task
-	6,   // 201: clientrpc.MaliceRPC.Runas:output_type -> clientpb.Task
-	6,   // 202: clientrpc.MaliceRPC.Privs:output_type -> clientpb.Task
-	6,   // 203: clientrpc.MaliceRPC.GetSystem:output_type -> clientpb.Task
-	6,   // 204: clientrpc.MaliceRPC.PipeUpload:output_type -> clientpb.Task
-	6,   // 205: clientrpc.MaliceRPC.PipeRead:output_type -> clientpb.Task
-	6,   // 206: clientrpc.MaliceRPC.PipeClose:output_type -> clientpb.Task
-	6,   // 207: clientrpc.MaliceRPC.Execute:output_type -> clientpb.Task
-	6,   // 208: clientrpc.MaliceRPC.ExecuteSpawn:output_type -> clientpb.Task
-	6,   // 209: clientrpc.MaliceRPC.ExecuteAssembly:output_type -> clientpb.Task
-	6,   // 210: clientrpc.MaliceRPC.ExecutePowerpick:output_type -> clientpb.Task
-	6,   // 211: clientrpc.MaliceRPC.ExecuteEXE:output_type -> clientpb.Task
-	6,   // 212: clientrpc.MaliceRPC.ExecuteDLL:output_type -> clientpb.Task
-	6,   // 213: clientrpc.MaliceRPC.ExecuteArmory:output_type -> clientpb.Task
-	6,   // 214: clientrpc.MaliceRPC.ExecuteShellcode:output_type -> clientpb.Task
-	6,   // 215: clientrpc.MaliceRPC.ExecuteBof:output_type -> clientpb.Task
-	6,   // 216: clientrpc.MaliceRPC.ExecuteLocal:output_type -> clientpb.Task
-	58,  // 217: clientrpc.MaliceRPC.EXE2Shellcode:output_type -> clientpb.Bin
-	58,  // 218: clientrpc.MaliceRPC.DLL2Shellcode:output_type -> clientpb.Bin
-	58,  // 219: clientrpc.MaliceRPC.ShellcodeEncode:output_type -> clientpb.Bin
-	51,  // 220: clientrpc.MaliceRPC.ListJobs:output_type -> clientpb.Pipelines
-	59,  // 221: clientrpc.MaliceRPC.Websites:output_type -> clientpb.Websites
-	37,  // 222: clientrpc.MaliceRPC.Website:output_type -> clientpb.Website
-	1,   // 223: clientrpc.MaliceRPC.WebsiteRemove:output_type -> clientpb.Empty
-	37,  // 224: clientrpc.MaliceRPC.WebsiteAddContent:output_type -> clientpb.Website
-	37,  // 225: clientrpc.MaliceRPC.WebsiteUpdateContent:output_type -> clientpb.Website
-	37,  // 226: clientrpc.MaliceRPC.WebsiteRemoveContent:output_type -> clientpb.Website
-	1,   // 227: clientrpc.MaliceRPC.NewProfile:output_type -> clientpb.Empty
-	60,  // 228: clientrpc.MaliceRPC.GetProfiles:output_type -> clientpb.Profiles
-	42,  // 229: clientrpc.MaliceRPC.Build:output_type -> clientpb.Builder
-	42,  // 230: clientrpc.MaliceRPC.BuildLog:output_type -> clientpb.Builder
-	42,  // 231: clientrpc.MaliceRPC.DownloadArtifact:output_type -> clientpb.Builder
-	42,  // 232: clientrpc.MaliceRPC.UploadArtifact:output_type -> clientpb.Builder
-	61,  // 233: clientrpc.MaliceRPC.ListArtifact:output_type -> clientpb.Builders
-	42,  // 234: clientrpc.MaliceRPC.MaleficSRDI:output_type -> clientpb.Builder
-	42,  // 235: clientrpc.MaliceRPC.BuildModules:output_type -> clientpb.Builder
-	42,  // 236: clientrpc.MaliceRPC.TriggerWorkflowDispatch:output_type -> clientpb.Builder
-	1,   // 237: clientrpc.MaliceRPC.EnableWorkflow:output_type -> clientpb.Empty
-	1,   // 238: clientrpc.MaliceRPC.DisableWorkflow:output_type -> clientpb.Empty
-	62,  // 239: clientrpc.MaliceRPC.ListRepositoryWorkflows:output_type -> clientpb.ListWorkflowsResponse
-	63,  // 240: clientrpc.MaliceRPC.ListArtifacts:output_type -> clientpb.ListArtifactsResponse
-	64,  // 241: clientrpc.MaliceRPC.DownloadGithubArtifact:output_type -> clientpb.DownloadArtifactsResponse
-	65,  // 242: clientrpc.RootRPC.AddClient:output_type -> rootpb.Response
-	65,  // 243: clientrpc.RootRPC.RemoveClient:output_type -> rootpb.Response
-	47,  // 244: clientrpc.RootRPC.ListClients:output_type -> clientpb.Clients
-	65,  // 245: clientrpc.RootRPC.AddListener:output_type -> rootpb.Response
-	65,  // 246: clientrpc.RootRPC.RemoveListener:output_type -> rootpb.Response
-	50,  // 247: clientrpc.RootRPC.ListListeners:output_type -> clientpb.Listeners
-	124, // [124:248] is the sub-list for method output_type
-	0,   // [0:124] is the sub-list for method input_type
+	44,  // 116: clientrpc.RootRPC.AddClient:input_type -> rootpb.Operator
+	44,  // 117: clientrpc.RootRPC.RemoveClient:input_type -> rootpb.Operator
+	44,  // 118: clientrpc.RootRPC.ListClients:input_type -> rootpb.Operator
+	44,  // 119: clientrpc.RootRPC.AddListener:input_type -> rootpb.Operator
+	44,  // 120: clientrpc.RootRPC.RemoveListener:input_type -> rootpb.Operator
+	44,  // 121: clientrpc.RootRPC.ListListeners:input_type -> rootpb.Operator
+	45,  // 122: clientrpc.MaliceRPC.LoginClient:output_type -> clientpb.Client
+	46,  // 123: clientrpc.MaliceRPC.GetBasic:output_type -> clientpb.Basic
+	47,  // 124: clientrpc.MaliceRPC.GetClients:output_type -> clientpb.Clients
+	48,  // 125: clientrpc.MaliceRPC.GetSessions:output_type -> clientpb.Sessions
+	7,   // 126: clientrpc.MaliceRPC.GetSession:output_type -> clientpb.Session
+	49,  // 127: clientrpc.MaliceRPC.GetSessionHistory:output_type -> clientpb.TasksContext
+	1,   // 128: clientrpc.MaliceRPC.SessionManage:output_type -> clientpb.Empty
+	50,  // 129: clientrpc.MaliceRPC.GetListeners:output_type -> clientpb.Listeners
+	51,  // 130: clientrpc.MaliceRPC.GetPipelines:output_type -> clientpb.Pipelines
+	52,  // 131: clientrpc.MaliceRPC.GetJobs:output_type -> clientpb.Jobs
+	53,  // 132: clientrpc.MaliceRPC.GetTasks:output_type -> clientpb.Tasks
+	54,  // 133: clientrpc.MaliceRPC.GetTaskContent:output_type -> clientpb.TaskContext
+	55,  // 134: clientrpc.MaliceRPC.GetTaskFiles:output_type -> clientpb.Files
+	54,  // 135: clientrpc.MaliceRPC.WaitTaskContent:output_type -> clientpb.TaskContext
+	54,  // 136: clientrpc.MaliceRPC.WaitTaskFinish:output_type -> clientpb.TaskContext
+	56,  // 137: clientrpc.MaliceRPC.GetAllTaskContent:output_type -> clientpb.TaskContexts
+	55,  // 138: clientrpc.MaliceRPC.GetFiles:output_type -> clientpb.Files
+	8,   // 139: clientrpc.MaliceRPC.Events:output_type -> clientpb.Event
+	1,   // 140: clientrpc.MaliceRPC.Broadcast:output_type -> clientpb.Empty
+	1,   // 141: clientrpc.MaliceRPC.Notify:output_type -> clientpb.Empty
+	1,   // 142: clientrpc.MaliceRPC.SessionEvent:output_type -> clientpb.Empty
+	1,   // 143: clientrpc.MaliceRPC.OnHook:output_type -> clientpb.Empty
+	6,   // 144: clientrpc.MaliceRPC.Ping:output_type -> clientpb.Task
+	6,   // 145: clientrpc.MaliceRPC.Sleep:output_type -> clientpb.Task
+	6,   // 146: clientrpc.MaliceRPC.Suicide:output_type -> clientpb.Task
+	6,   // 147: clientrpc.MaliceRPC.ListModule:output_type -> clientpb.Task
+	6,   // 148: clientrpc.MaliceRPC.LoadModule:output_type -> clientpb.Task
+	6,   // 149: clientrpc.MaliceRPC.RefreshModule:output_type -> clientpb.Task
+	6,   // 150: clientrpc.MaliceRPC.ListAddon:output_type -> clientpb.Task
+	6,   // 151: clientrpc.MaliceRPC.LoadAddon:output_type -> clientpb.Task
+	6,   // 152: clientrpc.MaliceRPC.ExecuteAddon:output_type -> clientpb.Task
+	6,   // 153: clientrpc.MaliceRPC.Clear:output_type -> clientpb.Task
+	6,   // 154: clientrpc.MaliceRPC.CancelTask:output_type -> clientpb.Task
+	1,   // 155: clientrpc.MaliceRPC.Polling:output_type -> clientpb.Empty
+	6,   // 156: clientrpc.MaliceRPC.Upload:output_type -> clientpb.Task
+	6,   // 157: clientrpc.MaliceRPC.Download:output_type -> clientpb.Task
+	57,  // 158: clientrpc.MaliceRPC.Sync:output_type -> clientpb.SyncResp
+	6,   // 159: clientrpc.MaliceRPC.Pwd:output_type -> clientpb.Task
+	6,   // 160: clientrpc.MaliceRPC.Ls:output_type -> clientpb.Task
+	6,   // 161: clientrpc.MaliceRPC.Cd:output_type -> clientpb.Task
+	6,   // 162: clientrpc.MaliceRPC.Rm:output_type -> clientpb.Task
+	6,   // 163: clientrpc.MaliceRPC.Mv:output_type -> clientpb.Task
+	6,   // 164: clientrpc.MaliceRPC.Cp:output_type -> clientpb.Task
+	6,   // 165: clientrpc.MaliceRPC.Cat:output_type -> clientpb.Task
+	6,   // 166: clientrpc.MaliceRPC.Mkdir:output_type -> clientpb.Task
+	6,   // 167: clientrpc.MaliceRPC.Chmod:output_type -> clientpb.Task
+	6,   // 168: clientrpc.MaliceRPC.Chown:output_type -> clientpb.Task
+	6,   // 169: clientrpc.MaliceRPC.Kill:output_type -> clientpb.Task
+	6,   // 170: clientrpc.MaliceRPC.Ps:output_type -> clientpb.Task
+	6,   // 171: clientrpc.MaliceRPC.Netstat:output_type -> clientpb.Task
+	6,   // 172: clientrpc.MaliceRPC.Curl:output_type -> clientpb.Task
+	6,   // 173: clientrpc.MaliceRPC.Env:output_type -> clientpb.Task
+	6,   // 174: clientrpc.MaliceRPC.SetEnv:output_type -> clientpb.Task
+	6,   // 175: clientrpc.MaliceRPC.UnsetEnv:output_type -> clientpb.Task
+	6,   // 176: clientrpc.MaliceRPC.Whoami:output_type -> clientpb.Task
+	6,   // 177: clientrpc.MaliceRPC.Info:output_type -> clientpb.Task
+	6,   // 178: clientrpc.MaliceRPC.Bypass:output_type -> clientpb.Task
+	6,   // 179: clientrpc.MaliceRPC.RegQuery:output_type -> clientpb.Task
+	6,   // 180: clientrpc.MaliceRPC.RegAdd:output_type -> clientpb.Task
+	6,   // 181: clientrpc.MaliceRPC.RegDelete:output_type -> clientpb.Task
+	6,   // 182: clientrpc.MaliceRPC.RegListKey:output_type -> clientpb.Task
+	6,   // 183: clientrpc.MaliceRPC.RegListValue:output_type -> clientpb.Task
+	6,   // 184: clientrpc.MaliceRPC.ServiceList:output_type -> clientpb.Task
+	6,   // 185: clientrpc.MaliceRPC.ServiceCreate:output_type -> clientpb.Task
+	6,   // 186: clientrpc.MaliceRPC.ServiceStart:output_type -> clientpb.Task
+	6,   // 187: clientrpc.MaliceRPC.ServiceStop:output_type -> clientpb.Task
+	6,   // 188: clientrpc.MaliceRPC.ServiceQuery:output_type -> clientpb.Task
+	6,   // 189: clientrpc.MaliceRPC.ServiceDelete:output_type -> clientpb.Task
+	6,   // 190: clientrpc.MaliceRPC.TaskSchdList:output_type -> clientpb.Task
+	6,   // 191: clientrpc.MaliceRPC.TaskSchdCreate:output_type -> clientpb.Task
+	6,   // 192: clientrpc.MaliceRPC.TaskSchdStart:output_type -> clientpb.Task
+	6,   // 193: clientrpc.MaliceRPC.TaskSchdStop:output_type -> clientpb.Task
+	6,   // 194: clientrpc.MaliceRPC.TaskSchdDelete:output_type -> clientpb.Task
+	6,   // 195: clientrpc.MaliceRPC.TaskSchdQuery:output_type -> clientpb.Task
+	6,   // 196: clientrpc.MaliceRPC.TaskSchdRun:output_type -> clientpb.Task
+	6,   // 197: clientrpc.MaliceRPC.WmiQuery:output_type -> clientpb.Task
+	6,   // 198: clientrpc.MaliceRPC.WmiExecute:output_type -> clientpb.Task
+	6,   // 199: clientrpc.MaliceRPC.Runas:output_type -> clientpb.Task
+	6,   // 200: clientrpc.MaliceRPC.Privs:output_type -> clientpb.Task
+	6,   // 201: clientrpc.MaliceRPC.GetSystem:output_type -> clientpb.Task
+	6,   // 202: clientrpc.MaliceRPC.PipeUpload:output_type -> clientpb.Task
+	6,   // 203: clientrpc.MaliceRPC.PipeRead:output_type -> clientpb.Task
+	6,   // 204: clientrpc.MaliceRPC.PipeClose:output_type -> clientpb.Task
+	6,   // 205: clientrpc.MaliceRPC.Execute:output_type -> clientpb.Task
+	6,   // 206: clientrpc.MaliceRPC.ExecuteSpawn:output_type -> clientpb.Task
+	6,   // 207: clientrpc.MaliceRPC.ExecuteAssembly:output_type -> clientpb.Task
+	6,   // 208: clientrpc.MaliceRPC.ExecutePowerpick:output_type -> clientpb.Task
+	6,   // 209: clientrpc.MaliceRPC.ExecuteEXE:output_type -> clientpb.Task
+	6,   // 210: clientrpc.MaliceRPC.ExecuteDLL:output_type -> clientpb.Task
+	6,   // 211: clientrpc.MaliceRPC.ExecuteArmory:output_type -> clientpb.Task
+	6,   // 212: clientrpc.MaliceRPC.ExecuteShellcode:output_type -> clientpb.Task
+	6,   // 213: clientrpc.MaliceRPC.ExecuteBof:output_type -> clientpb.Task
+	6,   // 214: clientrpc.MaliceRPC.ExecuteLocal:output_type -> clientpb.Task
+	58,  // 215: clientrpc.MaliceRPC.EXE2Shellcode:output_type -> clientpb.Bin
+	58,  // 216: clientrpc.MaliceRPC.DLL2Shellcode:output_type -> clientpb.Bin
+	58,  // 217: clientrpc.MaliceRPC.ShellcodeEncode:output_type -> clientpb.Bin
+	51,  // 218: clientrpc.MaliceRPC.ListJobs:output_type -> clientpb.Pipelines
+	59,  // 219: clientrpc.MaliceRPC.Websites:output_type -> clientpb.Websites
+	37,  // 220: clientrpc.MaliceRPC.Website:output_type -> clientpb.Website
+	1,   // 221: clientrpc.MaliceRPC.WebsiteRemove:output_type -> clientpb.Empty
+	37,  // 222: clientrpc.MaliceRPC.WebsiteAddContent:output_type -> clientpb.Website
+	37,  // 223: clientrpc.MaliceRPC.WebsiteUpdateContent:output_type -> clientpb.Website
+	37,  // 224: clientrpc.MaliceRPC.WebsiteRemoveContent:output_type -> clientpb.Website
+	1,   // 225: clientrpc.MaliceRPC.NewProfile:output_type -> clientpb.Empty
+	60,  // 226: clientrpc.MaliceRPC.GetProfiles:output_type -> clientpb.Profiles
+	42,  // 227: clientrpc.MaliceRPC.Build:output_type -> clientpb.Builder
+	42,  // 228: clientrpc.MaliceRPC.BuildLog:output_type -> clientpb.Builder
+	42,  // 229: clientrpc.MaliceRPC.DownloadArtifact:output_type -> clientpb.Builder
+	42,  // 230: clientrpc.MaliceRPC.UploadArtifact:output_type -> clientpb.Builder
+	61,  // 231: clientrpc.MaliceRPC.ListArtifact:output_type -> clientpb.Builders
+	42,  // 232: clientrpc.MaliceRPC.MaleficSRDI:output_type -> clientpb.Builder
+	42,  // 233: clientrpc.MaliceRPC.BuildModules:output_type -> clientpb.Builder
+	42,  // 234: clientrpc.MaliceRPC.TriggerWorkflowDispatch:output_type -> clientpb.Builder
+	1,   // 235: clientrpc.MaliceRPC.EnableWorkflow:output_type -> clientpb.Empty
+	1,   // 236: clientrpc.MaliceRPC.DisableWorkflow:output_type -> clientpb.Empty
+	62,  // 237: clientrpc.MaliceRPC.ListRepositoryWorkflows:output_type -> clientpb.ListWorkflowsResponse
+	63,  // 238: clientrpc.RootRPC.AddClient:output_type -> rootpb.Response
+	63,  // 239: clientrpc.RootRPC.RemoveClient:output_type -> rootpb.Response
+	47,  // 240: clientrpc.RootRPC.ListClients:output_type -> clientpb.Clients
+	63,  // 241: clientrpc.RootRPC.AddListener:output_type -> rootpb.Response
+	63,  // 242: clientrpc.RootRPC.RemoveListener:output_type -> rootpb.Response
+	50,  // 243: clientrpc.RootRPC.ListListeners:output_type -> clientpb.Listeners
+	122, // [122:244] is the sub-list for method output_type
+	0,   // [0:122] is the sub-list for method input_type
 	0,   // [0:0] is the sub-list for extension type_name
 	0,   // [0:0] is the sub-list for extension extendee
 	0,   // [0:0] is the sub-list for field type_name
