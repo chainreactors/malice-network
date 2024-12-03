@@ -680,15 +680,22 @@ func SaveArtifactFromID(req *clientpb.Generate, ID uint32, resource string) (*mo
 	return &builder, nil
 }
 
-func UpdateBuilder(builder *models.Builder) error {
+func UpdateBuilderPath(builder *models.Builder) error {
 	return Session().Model(builder).
 		Select("path").
 		Updates(builder).
 		Error
 }
 
+func UpdateBuilderSrdi(builder *models.Builder) error {
+	return Session().Model(builder).
+		Select("type", "path").
+		Updates(builder).
+		Error
+}
+
 func SaveArtifact(name, artifactType, platform, arch, stage string) (*models.Builder, error) {
-	absBuildOutputPath, err := filepath.Abs(configs.TempPath)
+	absBuildOutputPath, err := filepath.Abs(configs.BuildOutputPath)
 	if err != nil {
 		return nil, err
 	}
@@ -775,6 +782,9 @@ func UpdateGeneratorConfig(req *clientpb.Generate, path string, config *types.Pr
 		if req.Address != "" {
 			config.Pulse.Target = req.Address
 		}
+	}
+	if req.ArtifactId != 0 && config.Pulse.Extras["flags"].(map[string]interface{})["artifact_id"].(int) == 0 {
+		config.Pulse.Extras["flags"].(map[string]interface{})["artifact_id"] = req.ArtifactId
 	}
 
 	if req.Type == consts.CommandBuildBind {

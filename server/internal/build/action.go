@@ -12,6 +12,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/server/internal/db"
+	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"net/http"
 	"time"
 )
@@ -72,8 +73,17 @@ func TriggerWorkflowDispatch(owner, repo, workflowID, token string, inputs map[s
 		return nil, errors.New(fmt.Sprintf("Err create config: %v", err))
 	}
 	if inputs["package"] == consts.CommandBuildPulse {
-		artifactID := profile.Pulse.Extras["flags"].(map[string]interface{})["artifact_id"].(int)
-		_, err = db.GetArtifactById(uint32(artifactID))
+		var artifactID uint32
+		if req.ArtifactId != 0 {
+			artifactID = req.ArtifactId
+		} else {
+			yamlID := profile.Pulse.Extras["flags"].(map[string]interface{})["artifact_id"].(int)
+			if uint32(yamlID) != 0 {
+				artifactID = uint32(yamlID)
+			}
+			artifactID = 0
+		}
+		idBuilder, err := db.GetArtifactById(artifactID)
 		if err != nil && !errors.Is(err, db.ErrRecordNotFound) {
 			return nil, err
 		} else if errors.Is(err, db.ErrRecordNotFound) {
@@ -93,7 +103,23 @@ func TriggerWorkflowDispatch(owner, repo, workflowID, token string, inputs map[s
 			if err != nil {
 				return nil, err
 			}
-			go downloadArtifactWhenReady(owner, repo, token, beaconBuilder.Name)
+			beaconBuilder.Type = consts.ShellcodeTYPE
+			go downloadArtifactWhenReady(owner, repo, token, beaconBuilder)
+			req.ArtifactId = beaconBuilder.ID
+			_, err = GenerateProfile(req)
+			if err != nil {
+				return nil, errors.New(fmt.Sprintf("Err create config: %v", err))
+			}
+		} else if idBuilder.Type != consts.ShellcodeTYPE {
+			idBuilder.Type = consts.ShellcodeTYPE
+			target, ok := consts.GetBuildTarget(inputs["targets"])
+			if !ok {
+				return nil, err
+			}
+			_, _, err := UploadSrdiArtifact(idBuilder, target.OS, target.Arch)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 	// Create the payload
@@ -113,7 +139,7 @@ func TriggerWorkflowDispatch(owner, repo, workflowID, token string, inputs map[s
 	if err != nil {
 		return nil, err
 	}
-	go downloadArtifactWhenReady(owner, repo, token, builder.Name)
+	go downloadArtifactWhenReady(owner, repo, token, builder)
 	return builder.ToProtobuf([]byte{}), nil
 }
 
@@ -163,14 +189,20 @@ func triggerBuildBeaconWorkflow(owner, repo, workflowID, token string, inputs ma
 }
 
 // downloadArtifactWhenReady waits for the artifact to be ready and downloads it
-func downloadArtifactWhenReady(owner, repo, token, builderName string) {
+func downloadArtifactWhenReady(owner, repo, token string, builder *models.Builder) {
 	for {
 		time.Sleep(30 * time.Second)
 
 		// Attempt to download the artifact
-		_, err := DownloadArtifact(owner, repo, token, builderName)
+		_, err := DownloadArtifact(owner, repo, token, builder.Name)
 		if err == nil {
 			logs.Log.Info("Artifact downloaded successfully!")
+			if builder.Type == consts.ShellcodeTYPE {
+				_, _, err := UploadSrdiArtifact(builder, builder.Os, builder.Arch)
+				if err != nil {
+					logs.Log.Errorf("action to srdi failed")
+				}
+			}
 			break
 		} else if errors.Is(err, errs.ErrWorkflowFailed) {
 			logs.Log.Errorf("Download artifact failed due to workflow failure: %s", err)

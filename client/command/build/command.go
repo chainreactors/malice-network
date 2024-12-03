@@ -230,7 +230,13 @@ build pulse --target x86_64-pc-windows-msvc --profile pulse_profile --srdi
 ~~~
 `,
 	}
-	common.BindFlag(pulseCmd, common.GenerateFlagSet)
+	common.BindFlag(pulseCmd, func(f *pflag.FlagSet) {
+		f.String("profile", "", "profile name")
+		f.StringP("address", "a", "", "implant address")
+		f.String("srdi", "", "enable srdi")
+		f.String("target", "", "build target")
+		f.Uint32("artifact-id", 0, "load remote shellcode build-id")
+	})
 	pulseCmd.MarkFlagRequired("target")
 	pulseCmd.MarkFlagRequired("profile")
 	common.BindFlagCompletions(pulseCmd, func(comp carapace.ActionMap) {

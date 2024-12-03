@@ -119,17 +119,22 @@ func ModulesCmd(cmd *cobra.Command, con *repl.Console) error {
 }
 
 func PulseCmd(cmd *cobra.Command, con *repl.Console) error {
-	name, address, buildTarget, _, _, _, _, srdi := common.ParseGenerateFlags(cmd)
+	profile, _ := cmd.Flags().GetString("profile")
+	address, _ := cmd.Flags().GetString("address")
+	buildTarget, _ := cmd.Flags().GetString("target")
+	srdi, _ := cmd.Flags().GetBool("srdi")
+	artifactId, _ := cmd.Flags().GetUint32("artifact-id")
 	if buildTarget == "" {
 		return errors.New("require build target")
 	}
 	go func() {
 		_, err := con.Rpc.Build(con.Context(), &clientpb.Generate{
-			ProfileName: name,
+			ProfileName: profile,
 			Address:     address,
 			Target:      buildTarget,
 			Type:        consts.CommandBuildPulse,
 			Srdi:        srdi,
+			ArtifactId:  artifactId,
 		})
 		if err != nil {
 			con.Log.Errorf("Build loader failed: %v", err)

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/encoders"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
@@ -359,27 +360,66 @@ func NewMaleficSRDIArtifact(name, src, platform, arch, stage, funcName, dataPath
 	return builder, bin, nil
 }
 
+func UploadSrdiArtifact(builder *models.Builder, platform, arch string) (*models.Builder, []byte, error) {
+	absBuildOutputPath, err := filepath.Abs(configs.BuildOutputPath)
+	if err != nil {
+		return nil, nil, err
+	}
+	dstPath := filepath.Join(absBuildOutputPath, encoders.UUID())
+	bin, err := MaleficSRDI(builder.Path, dstPath, platform, arch, "", "")
+	if err != nil {
+		return nil, nil, err
+	}
+	err = os.WriteFile(dstPath, bin, 0644)
+	if err != nil {
+		return nil, nil, err
+	}
+	builder.Path = dstPath
+	err = db.UpdateBuilderSrdi(builder)
+	if err != nil {
+		return nil, nil, err
+	}
+	return builder, bin, nil
+}
+
 func MaleficSRDI(src, dst, platform, arch, funcName, dataPath string) ([]byte, error) {
-	args := []string{command, consts.SRDIType, src, platform, arch, dst}
+	args := []string{command, "srdi", src, platform, arch, dst}
 	if funcName != "" {
 		args = append(args, funcNameOption, funcName)
 	}
 	if dataPath != "" {
 		args = append(args, userDataPathOption, dataPath)
 	}
-
-	cmd := exec.Command(LocalMutantPath, args...)
-	output, err := cmd.CombinedOutput()
+	absPath, err := filepath.Abs(LocalMutantPath)
 	if err != nil {
 		return []byte{}, err
 	}
-	logs.Log.Infof("SRDI output: %s", string(output))
+	cmdString := strings.Join(args, " ")
+
+	var shell string
+	if isWindows() {
+		shell = "cmd.exe"
+	} else {
+		shell = "/bin/sh"
+	}
+
+	cmd := exec.Command(shell, "-c", absPath+" "+cmdString)
+
+	_, err = cmd.CombinedOutput()
+	if err != nil {
+		return nil, err
+	}
+
 	data, err := os.ReadFile(dst)
 	if err != nil {
-		return []byte{}, err
+		return nil, err
 	}
 
 	return data, nil
+}
+
+func isWindows() bool {
+	return strings.Contains(strings.ToLower(os.Getenv("OS")), "windows")
 }
 
 func catchLogs(cli *client.Client, containerID, name string) error {

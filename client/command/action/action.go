@@ -53,15 +53,11 @@ func RunWorkFlowCmd(cmd *cobra.Command, con *repl.Console) error {
 		return errors.New("require build target")
 	}
 	buildType := cmd.Flag("type").Value.String()
+	artifactID, _ := cmd.Flags().GetUint32("artifact-id")
 	params := &types.ProfileParams{
 		Interval: interval,
 		Jitter:   jitter,
 	}
-	//fileData, err := os.ReadFile(buildPath)
-	//if err != nil {
-	//	log.Fatalf("failed to read file: %v", err)
-	//}
-	//base64Encoded := base64.StdEncoding.EncodeToString(fileData)
 	inputs := map[string]string{
 		"package": buildType,
 		"targets": buildTarget,
@@ -93,12 +89,13 @@ func RunWorkFlowCmd(cmd *cobra.Command, con *repl.Console) error {
 		Address:    address,
 		Ca:         ca,
 		Params:     params.String(),
+		ArtifactId: artifactID,
 	}
-	_, err = RunWorkFlow(con, req)
+	resp, err := RunWorkFlow(con, req)
 	if err != nil {
 		return err
 	}
-	con.Log.Infof("Create workflow success\n")
+	con.Log.Infof("Create workflow %s type %s targrt %s success\n", resp.Name, resp.Type, resp.Target)
 	return nil
 }
 

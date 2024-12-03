@@ -147,7 +147,7 @@ func GenerateFlagSet(f *pflag.FlagSet) {
 	f.Int("interval", -1, "interval /second")
 	f.Float64("jitter", -1, "jitter")
 	f.StringSliceP("modules", "m", []string{}, "Set modules e.g.: execute_exe,execute_dll")
-	f.String("srdi", "", "enable srdi")
+	f.Bool("srdi", false, "enable srdi")
 }
 
 func ParseGenerateFlags(cmd *cobra.Command) (string, string, string, []string, string, int, float64, bool) {

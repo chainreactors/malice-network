@@ -30,6 +30,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	common.BindFlag(runCmd, common.GithubFlagSet, common.GenerateFlagSet, func(f *pflag.FlagSet) {
 		f.String("type", "", "action run type")
 		f.String("autorun", "", "autorun.yaml path")
+		f.Uint32("artifact-id", 0, "load remote shellcode build-id")
 	})
 	common.BindFlagCompletions(runCmd, func(comp carapace.ActionMap) {
 		comp["type"] = common.BuildTypeCompleter(con)

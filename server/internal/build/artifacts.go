@@ -220,7 +220,7 @@ func DownloadArtifact(owner, repo, token, buildName string) (*clientpb.DownloadA
 	}
 
 	builder.Path = resultPath
-	err = db.UpdateBuilder(builder)
+	err = db.UpdateBuilderPath(builder)
 	if err != nil {
 		return nil, err
 	}

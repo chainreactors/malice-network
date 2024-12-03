@@ -11,7 +11,7 @@ const (
 	ImplantModBind    = "bind"
 	ImplantModPulse   = "pulse"
 	ImplantModPrelude = "prelude"
-	SRDIType          = "srdi"
+	ShellcodeTYPE     = "shellcode"
 )
 
 const (
