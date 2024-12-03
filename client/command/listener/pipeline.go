@@ -7,7 +7,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
-	"github.com/muesli/termenv"
 	"github.com/spf13/cobra"
 	"strconv"
 )
@@ -39,14 +38,14 @@ func ListPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 	for _, pipeline := range pipelines.GetPipelines() {
 		newRow := table.RowData{}
 		if pipeline.Enable {
-			newRow["Enable"] = termenv.String(strconv.FormatBool(pipeline.Enable)).Foreground(tui.Green).String()
+			newRow["Enable"] = tui.GreenFg.Render(strconv.FormatBool(pipeline.Enable))
 		} else {
-			newRow["Enable"] = termenv.String(strconv.FormatBool(pipeline.Enable)).Foreground(tui.Red).String()
+			newRow["Enable"] = tui.RedFg.Render(strconv.FormatBool(pipeline.Enable))
 		}
 		if pipeline.Tls.Enable {
-			newRow["TLS"] = termenv.String(strconv.FormatBool(pipeline.Tls.Enable)).Foreground(tui.Green).String()
+			newRow["TLS"] = tui.GreenFg.Render(strconv.FormatBool(pipeline.Tls.Enable))
 		} else {
-			newRow["TLS"] = termenv.String(strconv.FormatBool(pipeline.Tls.Enable)).Foreground(tui.Red).String()
+			newRow["TLS"] = tui.RedFg.Render(strconv.FormatBool(pipeline.Tls.Enable))
 		}
 		if pipeline.Encryption.Enable {
 			newRow["Encryption"] = pipeline.Encryption.Type

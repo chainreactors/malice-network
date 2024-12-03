@@ -7,7 +7,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/tui"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/muesli/termenv"
 	"github.com/spf13/cobra"
 	"path/filepath"
 	"strconv"
@@ -72,10 +71,10 @@ func fileExplorerCmd(cmd *cobra.Command, con *repl.Console) {
 				padRight(rawFile, 10),
 				padRight(rawTime, 20))
 
-			formatted = strings.Replace(formatted, rawInfo, termenv.String(rawInfo).Foreground(tui.Gray).String(), 1)
-			formatted = strings.Replace(formatted, rawName, termenv.String(rawName).Foreground(tui.SlateBlue).String(), 1)
-			formatted = strings.Replace(formatted, rawFile, termenv.String(rawFile).Foreground(tui.DarkGray).String(), 1)
-			formatted = strings.Replace(formatted, rawTime, termenv.String(rawTime).Foreground(tui.DarkGray).String(), 1)
+			formatted = strings.Replace(formatted, rawInfo, tui.GrayFg.Render(rawInfo), 1)
+			formatted = strings.Replace(formatted, rawName, tui.SlateBlueFg.Render(rawName), 1)
+			formatted = strings.Replace(formatted, rawFile, tui.DarkGrayFg.Render(rawFile), 1)
+			formatted = strings.Replace(formatted, rawTime, tui.DarkGrayFg.Render(rawTime), 1)
 
 			return formatted
 		}

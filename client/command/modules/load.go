@@ -9,7 +9,6 @@ import (
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
@@ -97,16 +96,10 @@ func LoadModuleCmd(cmd *cobra.Command, con *repl.Console) error {
 				}
 				for {
 					time.Sleep(120 * time.Second)
-					resp, err := con.Rpc.DownloadGithubArtifact(con.Context(), &clientpb.WorkflowRequest{
-						Owner:      setting.GithubOwner,
-						Repo:       setting.GithubRepo,
-						Token:      setting.GithubToken,
-						WorkflowId: workflowID,
-						BuildName:  builder.Name,
-					})
+					resp, err := con.Rpc.DownloadArtifact(con.Context(), &clientpb.Builder{Name: builder.Name})
 					if err == nil {
 						modulePath := filepath.Join(assets.GetTempDir(), resp.Name)
-						err := os.WriteFile(modulePath, resp.Zip, 0666)
+						err := os.WriteFile(modulePath, resp.Bin, 0666)
 						if err != nil {
 							con.Log.Errorf("Write modules failed: %v\n", err)
 							break
@@ -118,9 +111,6 @@ func LoadModuleCmd(cmd *cobra.Command, con *repl.Console) error {
 							break
 						}
 						con.GetInteractive().Console(task, fmt.Sprintf("load %s %s\n", modules, modulePath))
-						break
-					} else if errors.Is(err, errs.ErrWorkflowFailed) {
-						con.Log.Error("Workflow failure\n")
 						break
 					}
 				}

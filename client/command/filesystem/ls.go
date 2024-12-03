@@ -12,7 +12,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/utils/handler"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
-	"github.com/muesli/termenv"
 	"github.com/spf13/cobra"
 	"os"
 	"strconv"
@@ -93,7 +92,7 @@ func RegisterLsFunc(con *repl.Console) {
 			for _, f := range resp.GetFiles() {
 				var size string
 				if f.IsDir {
-					size = termenv.String("dir").Foreground(tui.Green).String()
+					size = tui.GreenFg.Render("dir")
 				} else {
 					size = fileutils.Bytes(f.Size)
 				}

@@ -42,6 +42,23 @@ const (
 	defaultTraverseRunHooks = false
 )
 
+var (
+	profile   = termenv.ColorProfile()
+	Blue      = profile.Color("#3398DA")
+	Yellow    = profile.Color("#F1C40F")
+	Purple    = profile.Color("#8D44AD")
+	Green     = profile.Color("#2FCB71")
+	Red       = profile.Color("#E74C3C")
+	Gray      = profile.Color("#BDC3C7")
+	DarkGray  = profile.Color("#808080")
+	Cyan      = profile.Color("#1ABC9C")
+	Orange    = profile.Color("#E67E22")
+	Black     = profile.Color("#000000")
+	Pink      = profile.Color("#EE82EE")
+	SlateBlue = profile.Color("#6A5ACD")
+	White     = profile.Color("#FFFFFF")
+)
+
 // EnablePrefixMatching allows setting automatic prefix matching. Automatic prefix matching can be a dangerous thing
 // to automatically enable in CLI tools.
 // Set this to true to enable it.
@@ -291,14 +308,14 @@ func FormatHelpTmpl(helpStr string) string {
 		Normal:    tui.Normal,
 		Bold:      tui.Bold,
 		Underline: tui.Underline,
-		Black:     termenv.String("").Foreground(tui.Black).String(),
-		Red:       termenv.String("").Foreground(tui.Red).String(),
-		Green:     termenv.String("").Foreground(tui.Green).String(),
-		Orange:    termenv.String("").Foreground(tui.Orange).String(),
-		Blue:      termenv.String("").Foreground(tui.Blue).String(),
-		Purple:    termenv.String("").Foreground(tui.Purple).String(),
-		Cyan:      termenv.String("").Foreground(tui.Cyan).String(),
-		Gray:      termenv.String("").Foreground(tui.Gray).String(),
+		Black:     termenv.String("").Foreground(Black).String(),
+		Red:       termenv.String("").Foreground(Red).String(),
+		Green:     termenv.String("").Foreground(Green).String(),
+		Orange:    termenv.String("").Foreground(Orange).String(),
+		Blue:      termenv.String("").Foreground(Blue).String(),
+		Purple:    termenv.String("").Foreground(Purple).String(),
+		Cyan:      termenv.String("").Foreground(Cyan).String(),
+		Gray:      termenv.String("").Foreground(Gray).String(),
 	})
 	return outputBuf.String()
 }

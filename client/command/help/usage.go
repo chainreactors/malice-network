@@ -90,18 +90,18 @@ func RenderOpsec(opsecStr string, description string) string {
 	}
 	switch {
 	case opsec > 0 && opsec <= 3.9:
-		coloredDescription = termenv.String(description).Foreground(tui.Red).String()
+		coloredDescription = tui.RedFg.Render(description)
 	case opsec >= 4.0 && opsec <= 6.9:
-		coloredDescription = termenv.String(description).Foreground(tui.Orange).String()
+		coloredDescription = tui.OrangeFg.Render(description)
 	case opsec >= 7.0 && opsec <= 8.9:
-		coloredDescription = termenv.String(description).Foreground(tui.Yellow).String()
+		coloredDescription = tui.YellowFg.Render(description)
 	case opsec >= 9.0 && opsec <= 10.0:
-		coloredDescription = termenv.String(description).Foreground(tui.Green).String()
+		coloredDescription = tui.GreenFg.Render(description)
 	default:
 		if termenv.HasDarkBackground() {
-			coloredDescription = termenv.String(description).Foreground(tui.White).String()
+			coloredDescription = tui.WhiteFg.Render(description)
 		} else {
-			coloredDescription = termenv.String(description).Foreground(tui.Black).String()
+			coloredDescription = tui.BlackFg.Render(description)
 		}
 	}
 

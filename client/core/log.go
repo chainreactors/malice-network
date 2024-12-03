@@ -4,7 +4,6 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/muesli/termenv"
 	"os"
 	"regexp"
 )
@@ -25,11 +24,11 @@ var (
 	GroupStyle                 = lipgloss.NewStyle().Foreground(lipgloss.Color("#8BE9FD"))
 	NameStyle                  = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF79C6"))
 	DefaultLogStyle            = map[logs.Level]string{
-		Debug:     NewLine + termenv.String(tui.Rocket+"[+]").Bold().Background(tui.Blue).String() + " %s",
-		Warn:      NewLine + termenv.String(tui.Zap+"[warn]").Bold().Background(tui.Yellow).String() + " %s",
-		Important: NewLine + termenv.String(tui.Fire+"[*]").Bold().Background(tui.Purple).String() + " %s",
-		Info:      NewLine + termenv.String(tui.HotSpring+"[i]").Bold().Background(tui.Green).String() + " %s",
-		Error:     NewLine + termenv.String(tui.Monster+"[-]").Bold().Background(tui.Red).String() + " %s",
+		Debug:     NewLine + tui.BlueBg.Bold(true).Render(tui.Rocket+"[+]") + " %s",
+		Warn:      NewLine + tui.YellowBg.Bold(true).Render(tui.Zap+"[warn]") + " %s",
+		Important: NewLine + tui.PurpleBg.Bold(true).Render(tui.Fire+"[*]") + " %s",
+		Info:      NewLine + tui.GreenBg.Bold(true).Render(tui.HotSpring+"[i]") + " %s",
+		Error:     NewLine + tui.RedBg.Bold(true).Render(tui.Monster+"[-]") + " %s",
 	}
 )
 
