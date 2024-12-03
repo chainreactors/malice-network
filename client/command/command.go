@@ -41,7 +41,6 @@ func MakeBind(cmd *cobra.Command, con *repl.Console) BindFunc {
 					c.Annotations = map[string]string{}
 				}
 				c.Annotations["menu"] = cmd.Name()
-				c.GroupID = group
 				updateCommand(con, c, group)
 				cmd.AddCommand(c)
 			}
@@ -52,6 +51,7 @@ func MakeBind(cmd *cobra.Command, con *repl.Console) BindFunc {
 func updateCommand(con *repl.Console, c *cobra.Command, group string) {
 	c.SetHelpFunc(help.HelpFunc)
 	c.SetUsageFunc(help.UsageFunc)
+	c.GroupID = group
 	if c.Annotations == nil {
 		c.Annotations = map[string]string{}
 	}
@@ -64,7 +64,11 @@ func updateCommand(con *repl.Console, c *cobra.Command, group string) {
 			return nil
 		}
 	}
+
 	con.CMDs[c.Name()] = c
+	if dep, ok := c.Annotations["depend"]; ok {
+		con.Helpers[dep] = c
+	}
 
 	for _, subCmd := range c.Commands() {
 		updateCommand(con, subCmd, group)

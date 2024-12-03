@@ -52,8 +52,8 @@ func RegisterInfoFunc(con *repl.Console) {
 		})
 
 	con.AddCommandFuncHelper(
-		consts.ModuleNetstat,
-		consts.ModuleNetstat,
+		consts.ModuleSysInfo,
+		consts.ModuleSysInfo,
 		"sysinfo(active)",
 		[]string{
 			"sess: special session",

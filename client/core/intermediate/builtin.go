@@ -205,72 +205,6 @@ new_bin = new_binary("module", "filename", "args", true, 100, "amd64", "process"
 		return GetResult(rpc, task, index)
 	})
 
-	// bof 参数格式化
-	// single arg, pack_bof("Z", "aa")
-	RegisterFunction("pack_bof", func(format string, arg string) (string, error) {
-		if len(format) != 1 {
-			return "", fmt.Errorf("format length must be 1")
-		}
-		return pe.PackArg(format[0], arg)
-	})
-	AddHelper("pack_bof",
-		&Helper{
-			Short: "pack bof single argument",
-			Input: []string{
-				"format",
-				"arg",
-			},
-			Output: []string{
-				"string",
-			},
-			Example: `pack_bof("Z", "aa")`,
-		})
-
-	// args, pack_bof_args("ZZ", {"aa", "bb"})
-	RegisterFunction("pack_bof_args", func(format string, args []string) ([]string, error) {
-		if len(format) != len(args) {
-			return nil, fmt.Errorf("%d format and %d args,  length mismatch", len(format), len(args))
-		}
-		var packedArgs []string
-		for i, arg := range args {
-			packedArgs = append(packedArgs, format[i:i+1]+arg)
-		}
-		return pe.PackArgs(packedArgs)
-	})
-	AddHelper(
-		"pack_bof_args",
-		&Helper{
-			Short: "pack bof arguments",
-			Input: []string{
-				"format",
-				"args",
-			},
-			Output: []string{
-				"[]string",
-			},
-			Example: `
-pack_bof_args("ZZ", {"aa", "bb"})
-`,
-		})
-
-	RegisterFunction("format_path", func(s string) (string, error) {
-		return fileutils.FormatWindowPath(s), nil
-	})
-	AddHelper(
-		"format_path",
-		&Helper{
-			Short: "format windows path",
-			Input: []string{
-				"s",
-			},
-			Output: []string{
-				"string",
-			},
-			Example: `
-format_path("C:\\Windows\\System32\\calc.exe")
-`,
-		})
-
 	// 打印任务
 	RegisterFunction("taskprint", func(task *clientpb.TaskContext) (*implantpb.Spite, error) {
 		return PrintTask(task)
@@ -398,6 +332,72 @@ func RegisterGRPCBuiltin(rpc clientrpc.MaliceRPCClient) {
 }
 
 func RegisterEncodeFunc(rpc clientrpc.MaliceRPCClient) {
+
+	// bof 参数格式化
+	// single arg, pack_bof("Z", "aa")
+	RegisterFunction("pack_bof", func(format string, arg string) (string, error) {
+		if len(format) != 1 {
+			return "", fmt.Errorf("format length must be 1")
+		}
+		return pe.PackArg(format[0], arg)
+	})
+	AddHelper("pack_bof",
+		&Helper{
+			Short: "pack bof single argument",
+			Input: []string{
+				"format",
+				"arg",
+			},
+			Output: []string{
+				"string",
+			},
+			Example: `pack_bof("Z", "aa")`,
+		})
+
+	// args, pack_bof_args("ZZ", {"aa", "bb"})
+	RegisterFunction("pack_bof_args", func(format string, args []string) ([]string, error) {
+		if len(format) != len(args) {
+			return nil, fmt.Errorf("%d format and %d args,  length mismatch", len(format), len(args))
+		}
+		var packedArgs []string
+		for i, arg := range args {
+			packedArgs = append(packedArgs, format[i:i+1]+arg)
+		}
+		return pe.PackArgs(packedArgs)
+	})
+	AddHelper(
+		"pack_bof_args",
+		&Helper{
+			Short: "pack bof arguments",
+			Input: []string{
+				"format",
+				"args",
+			},
+			Output: []string{
+				"[]string",
+			},
+			Example: `
+pack_bof_args("ZZ", {"aa", "bb"})
+`,
+		})
+
+	RegisterFunction("format_path", func(s string) (string, error) {
+		return fileutils.FormatWindowPath(s), nil
+	})
+	AddHelper(
+		"format_path",
+		&Helper{
+			Short: "format windows path",
+			Input: []string{
+				"s",
+			},
+			Output: []string{
+				"string",
+			},
+			Example: `
+format_path("C:\\Windows\\System32\\calc.exe")
+`,
+		})
 	// Base64函数
 	RegisterFunction("base64_encode", func(input string) (string, error) {
 		return base64.StdEncoding.EncodeToString([]byte(input)), nil

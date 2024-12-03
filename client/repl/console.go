@@ -40,6 +40,7 @@ func NewConsole() (*Console, error) {
 		Log:     core.Log,
 		Plugins: NewPlugins(),
 		CMDs:    make(map[string]*cobra.Command),
+		Helpers: make(map[string]*cobra.Command),
 	}
 	con.NewConsole()
 	return con, nil
@@ -53,6 +54,7 @@ type Console struct {
 	App     *console.Console
 	Profile *assets.Profile
 	CMDs    map[string]*cobra.Command
+	Helpers map[string]*cobra.Command
 }
 
 func (c *Console) NewConsole() {
@@ -198,10 +200,19 @@ func (c *Console) RegisterServerFunc(name string, fn interface{}, helper *interm
 
 func (c *Console) AddCommandFuncHelper(cmdName string, funcName string, example string, input, output []string) error {
 	cmd, ok := c.CMDs[cmdName]
+	if !ok {
+		cmd, ok = c.Helpers[cmdName]
+	}
 	if ok {
+		var group string
+		if cmd.GroupID == "" {
+			group = cmd.Parent().GroupID
+		} else {
+			group = cmd.GroupID
+		}
 		return intermediate.AddHelper(funcName, &intermediate.Helper{
 			CMDName: cmdName,
-			Group:   cmd.GroupID,
+			Group:   group,
 			Short:   cmd.Short,
 			Long:    cmd.Long,
 			Input:   input,

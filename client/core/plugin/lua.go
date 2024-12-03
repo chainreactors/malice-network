@@ -549,20 +549,26 @@ func GenerateMarkdownDefinitionFile(L *lua.LState, pkg, filename string) error {
 		if iFunc.Package != pkg {
 			continue
 		}
-		group := "base"
-		if iFunc.Helper != nil {
+		group := "basic"
+		if iFunc.Helper != nil && iFunc.Helper.Group != "" {
 			group = iFunc.Helper.Group
 		}
 		groupedFunctions[group] = append(groupedFunctions[group], funcName)
 	}
+	var groups []string
+	for g, _ := range groupedFunctions {
+		groups = append(groups, g)
+	}
 
+	sort.Strings(groups)
 	// 排序每个 package 内的函数名
 	for _, funcs := range groupedFunctions {
 		sort.Strings(funcs)
 	}
 
 	// 生成 Markdown 文档
-	for pkg, funcs := range groupedFunctions {
+	for _, pkg := range groups {
+		funcs := groupedFunctions[pkg]
 		// Package 名称作为二级标题
 		fmt.Fprintf(file, "## %s\n\n", pkg)
 		for _, funcName := range funcs {
