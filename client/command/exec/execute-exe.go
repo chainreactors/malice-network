@@ -93,7 +93,7 @@ func RegisterExeFunc(con *repl.Console) {
 		common.ParseAssembly,
 		nil)
 
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		consts.ModuleAliasInlineExe,
 		consts.ModuleAliasInlineExe,
 		consts.ModuleAliasInlineExe+`(active(),"gogo.exe",{"-i","127.0.0.1"},true,60,"",""))`,
@@ -122,7 +122,7 @@ func RegisterExeFunc(con *repl.Console) {
 		common.ParseAssembly,
 		nil)
 
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		consts.ModuleExecuteExe,
 		consts.ModuleExecuteExe,
 		consts.ModuleExecuteExe+`(active(),"/path/to/gogo.exe",{"-i","127.0.0.1"},true,60,"","",new_sacrifice(1234,false,true,true,"argue"))`,

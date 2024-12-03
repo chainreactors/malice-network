@@ -45,7 +45,7 @@ func RegisterTaskSchdDeleteFunc(con *repl.Console) {
 		common.ParseStatus,
 		nil,
 	)
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		consts.ModuleTaskSchdDelete,
 		consts.ModuleTaskSchdDelete,
 		//session *core.Session, namespace string, args []string

@@ -45,7 +45,7 @@ func RegisterKillFunc(con *repl.Console) {
 		common.ParseStatus,
 		nil)
 
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		consts.ModuleKill,
 		consts.ModuleKill,
 		consts.ModuleKill+"(active(),pid)",

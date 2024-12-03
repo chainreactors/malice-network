@@ -107,7 +107,7 @@ func Register(con *repl.Console) {
 		nil,
 	)
 
-	con.AddInternalFuncHelper(consts.ModuleSleep, consts.ModuleSleep,
+	con.AddCommandFuncHelper(consts.ModuleSleep, consts.ModuleSleep,
 		`sleep(active(), 10, 0.5)`,
 		[]string{
 			"sess:special session",
@@ -115,7 +115,7 @@ func Register(con *repl.Console) {
 			"jitter:jitter, percentage of interval",
 		}, []string{"task"})
 
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		"bsleep",
 		"bsleep",
 		`sleep(active(), 10)`,
@@ -132,13 +132,13 @@ func Register(con *repl.Console) {
 		nil,
 	)
 
-	con.AddInternalFuncHelper(consts.ModuleSuicide, consts.ModuleSuicide,
+	con.AddCommandFuncHelper(consts.ModuleSuicide, consts.ModuleSuicide,
 		`suicide(active())`,
 		[]string{
 			"sess:special session",
 		}, []string{"task"})
 
-	con.AddInternalFuncHelper("bexit", "bexit",
+	con.AddCommandFuncHelper("bexit", "bexit",
 		`bexit(active())`,
 		[]string{
 			"sess:special session",

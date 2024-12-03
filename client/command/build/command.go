@@ -1,8 +1,8 @@
 package build
 
 import (
-	"fmt"
 	"github.com/chainreactors/malice-network/client/command/common"
+	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
@@ -10,7 +10,6 @@ import (
 	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"os"
 	"strings"
 )
 
@@ -367,37 +366,38 @@ artifact upload /path/to/artifact --type DLL
 }
 
 func Register(con *repl.Console) {
-	con.RegisterServerFunc("payload_local", func(shellcodePath string) (string, error) {
-		if shellcodePath != "" {
-			shellcode, _ := os.ReadFile(shellcodePath)
-			if _, err := os.Stat(shellcodePath); os.IsNotExist(err) {
-				return "", fmt.Errorf("shellcode file does not exist: %s", shellcodePath)
+	con.RegisterServerFunc("donut_exe2shellcode",
+		func(con *repl.Console, exe []byte, arch string, param string) (string, error) {
+			cmdline, err := shellquote.Split(param)
+			if err != nil {
+				return "", err
 			}
-			return string(shellcode), nil
-		} else {
-			return "shellcode123", nil
-		}
-	}, nil)
 
-	con.RegisterServerFunc("donut_exe2shellcode", func(exe []byte, arch string, param string) (string, error) {
-		cmdline, err := shellquote.Split(param)
-		if err != nil {
-			return "", err
-		}
-
-		bin, err := con.Rpc.EXE2Shellcode(con.Context(), &clientpb.EXE2Shellcode{
-			Bin:    exe,
-			Arch:   arch,
-			Type:   "donut",
-			Params: strings.Join(cmdline, ","),
+			bin, err := con.Rpc.EXE2Shellcode(con.Context(), &clientpb.EXE2Shellcode{
+				Bin:    exe,
+				Arch:   arch,
+				Type:   "donut",
+				Params: strings.Join(cmdline, ","),
+			})
+			if err != nil {
+				return "", err
+			}
+			return string(bin.Bin), nil
+		},
+		&intermediate.Helper{
+			Group: intermediate.GroupArtifact,
+			Short: "exe to shellcode with donut",
+			Input: []string{
+				"bin: dll bin",
+				"arch: architecture",
+				"param: cmd args",
+			},
+			Output: []string{
+				"shellcode: shellcode bin",
+			},
 		})
-		if err != nil {
-			return "", err
-		}
-		return string(bin.Bin), nil
-	}, nil)
 
-	con.RegisterServerFunc("donut_dll2shellcode", func(dll []byte, arch string, param string) (string, error) {
+	con.RegisterServerFunc("donut_dll2shellcode", func(con *repl.Console, dll []byte, arch string, param string) (string, error) {
 		cmdline, err := shellquote.Split(param)
 		if err != nil {
 			return "", err
@@ -413,9 +413,20 @@ func Register(con *repl.Console) {
 			return "", err
 		}
 		return string(bin.Bin), nil
-	}, nil)
+	}, &intermediate.Helper{
+		Group: intermediate.GroupArtifact,
+		Short: "dll to shellcode with donut",
+		Input: []string{
+			"bin: dll bin",
+			"arch: architecture, x86/x64",
+			"param: cmd args",
+		},
+		Output: []string{
+			"shellcode: shellcode bin",
+		},
+	})
 
-	con.RegisterServerFunc("srdi", func(dll []byte, entry string, arch string, param string) (string, error) {
+	con.RegisterServerFunc("srdi", func(con *repl.Console, dll []byte, entry string, arch string, param string) (string, error) {
 		bin, err := con.Rpc.DLL2Shellcode(con.Context(), &clientpb.DLL2Shellcode{
 			Bin:        dll,
 			Arch:       arch,
@@ -427,9 +438,21 @@ func Register(con *repl.Console) {
 			return "", err
 		}
 		return string(bin.Bin), nil
-	}, nil)
+	}, &intermediate.Helper{
+		Group: intermediate.GroupArtifact,
+		Short: "dll/exe to shellcode with srdi",
+		Input: []string{
+			"bin: dll/exe bin",
+			"entry: entry function for dll",
+			"arch: architecture, x86/x64",
+			"param: cmd args",
+		},
+		Output: []string{
+			"shellcode: shellcode bin",
+		},
+	})
 
-	con.RegisterServerFunc("sgn_encode", func(shellcode []byte, arch string, iterations int32) (string, error) {
+	con.RegisterServerFunc("sgn_encode", func(con *repl.Console, shellcode []byte, arch string, iterations int32) (string, error) {
 		bin, err := con.Rpc.ShellcodeEncode(con.Context(), &clientpb.ShellcodeEncode{
 			Shellcode:  shellcode,
 			Arch:       arch,
@@ -440,5 +463,64 @@ func Register(con *repl.Console) {
 			return "", err
 		}
 		return string(bin.Bin), nil
-	}, nil)
+	}, &intermediate.Helper{
+		Group: intermediate.GroupArtifact,
+		Short: "shellcode encode with sgn",
+		Input: []string{
+			"bin: shellcode bin",
+			"arch: architecture, x86/x64",
+			"iterations: sgn iterations",
+		},
+		Output: []string{
+			"shellcode: encoded shellcode bin",
+		},
+	})
+
+	con.RegisterServerFunc("artifact_stager", func(con *repl.Console, profile string, arch string, os string) (string, error) {
+		builder, err := con.Rpc.FindArtifact(con.Context(), &clientpb.Builder{
+			ProfileName: profile,
+			Arch:        arch,
+			Platform:    os,
+			Type:        "pulse",
+		})
+		if err != nil {
+			return "", err
+		}
+		return string(builder.Bin), nil
+	}, &intermediate.Helper{
+		Group: intermediate.GroupArtifact,
+		Short: "get artifact stager shellcode",
+		Input: []string{
+			"profile: profile name",
+			"arch: architecture, x86/x64",
+			"os: platform, win/linux",
+		},
+		Output: []string{
+			"shellcode: shellcode bin",
+		},
+	})
+
+	con.RegisterServerFunc("artifact_payload", func(con *repl.Console, profile string, arch string, os string) (string, error) {
+		builder, err := con.Rpc.FindArtifact(con.Context(), &clientpb.Builder{
+			ProfileName: profile,
+			Arch:        arch,
+			Platform:    os,
+			Type:        "beacon",
+		})
+		if err != nil {
+			return "", err
+		}
+		return string(builder.Bin), nil
+	}, &intermediate.Helper{
+		Group: intermediate.GroupArtifact,
+		Short: "get artifact stageless shellcode",
+		Input: []string{
+			"profile: profile name",
+			"arch: architecture, x86/x64",
+			"os: platform, win/linux",
+		},
+		Output: []string{
+			"shellcode: shellcode bin",
+		},
+	})
 }

@@ -196,7 +196,7 @@ func (c *Console) RegisterServerFunc(name string, fn interface{}, helper *interm
 	return err
 }
 
-func (c *Console) AddInternalFuncHelper(cmdName string, funcName string, example string, input, output []string) error {
+func (c *Console) AddCommandFuncHelper(cmdName string, funcName string, example string, input, output []string) error {
 	cmd, ok := c.CMDs[cmdName]
 	if ok {
 		return intermediate.AddHelper(funcName, &intermediate.Helper{

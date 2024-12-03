@@ -46,7 +46,7 @@ func RegisterTaskSchdRunFunc(con *repl.Console) {
 		nil,
 	)
 
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		consts.ModuleTaskSchdRun,
 		consts.ModuleTaskSchdRun,
 		consts.ModuleTaskSchdRun+`(active(), "task_name")`,

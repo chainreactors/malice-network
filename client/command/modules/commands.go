@@ -133,7 +133,7 @@ func Register(con *repl.Console) {
 		common.ParseStatus,
 		nil)
 
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		consts.ModuleLoadModule,
 		consts.ModuleLoadModule,
 		consts.ModuleLoadModule+"(active(),\"bundle_name\",\"module_file.dll\")",
@@ -152,7 +152,7 @@ func Register(con *repl.Console) {
 		common.ParseStatus,
 		nil)
 
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		consts.ModuleRefreshModule,
 		consts.ModuleRefreshModule,
 		consts.ModuleRefreshModule+"(active())",
@@ -170,7 +170,7 @@ func Register(con *repl.Console) {
 		common.ParseStatus,
 		nil)
 
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		consts.ModuleClear,
 		consts.ModuleClear,
 		consts.ModuleClear+"(active())",

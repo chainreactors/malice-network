@@ -50,7 +50,7 @@ func RegisterExecuteFunc(con *repl.Console) {
 		common.ParseExecResponse,
 		nil,
 	)
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		consts.ModuleExecution,
 		consts.ModuleExecution,
 		consts.ModuleExecution+"(active(),`whoami`,true)",

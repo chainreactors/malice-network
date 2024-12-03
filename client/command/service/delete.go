@@ -45,7 +45,7 @@ func RegisterServiceDeleteFunc(con *repl.Console) {
 		common.ParseStatus,
 		nil,
 	)
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		consts.ModuleServiceDelete,
 		consts.ModuleServiceDelete,
 		consts.ModuleServiceDelete+`(active(),"service_name")`,

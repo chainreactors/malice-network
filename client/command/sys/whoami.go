@@ -43,7 +43,7 @@ func RegisterWhoamiFunc(con *repl.Console) {
 		common.ParseResponse,
 		nil)
 
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		consts.ModuleWhoami,
 		consts.ModuleWhoami,
 		"whoami(active())",

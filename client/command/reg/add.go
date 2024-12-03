@@ -58,7 +58,7 @@ func RegisterRegAddFunc(con *repl.Console) {
 		common.ParseStatus,
 		nil,
 	)
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		consts.ModuleRegAdd,
 		consts.ModuleRegAdd,
 		consts.ModuleRegAdd+"(active(),\"HKEY_LOCAL_MACHINE\",\"SOFTWARE\\Example\",\"TestKey\",\"example\",\"\",1,0,0)",

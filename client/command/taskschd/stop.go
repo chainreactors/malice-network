@@ -45,7 +45,7 @@ func RegisterTaskSchdStopFunc(con *repl.Console) {
 		common.ParseStatus,
 		nil,
 	)
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		consts.ModuleTaskSchdStop,
 		consts.ModuleTaskSchdStop,
 		consts.ModuleTaskSchdStop+`(active(), "task_name")`,

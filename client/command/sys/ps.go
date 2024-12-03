@@ -92,7 +92,7 @@ func RegisterPsFunc(con *repl.Console) {
 			return tableModel.View(), nil
 		})
 
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		consts.ModulePs,
 		consts.ModulePs,
 		"ps(active)",

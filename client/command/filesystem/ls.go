@@ -117,7 +117,7 @@ func RegisterLsFunc(con *repl.Console) {
 			return tableModel.View(), nil
 		})
 
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		consts.ModuleLs,
 		consts.ModuleLs,
 		consts.ModuleLs+`(active(),"/tmp")`,
@@ -127,7 +127,7 @@ func RegisterLsFunc(con *repl.Console) {
 		},
 		[]string{"task"})
 
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		"bls",
 		"bls",
 		`bls(active(),"/tmp")`,

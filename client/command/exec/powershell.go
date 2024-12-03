@@ -96,7 +96,7 @@ func RegisterPowershellFunc(con *repl.Console) {
 		common.ParseAssembly,
 		nil)
 	//rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, ps []string, amsi, etw bool
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		consts.ModulePowerpick,
 		consts.ModulePowerpick,
 		consts.ModulePowerpick+`(active(),"powerview.ps1",{""},new_bypass_all()))`,
@@ -108,7 +108,7 @@ func RegisterPowershellFunc(con *repl.Console) {
 		},
 		[]string{"task"})
 
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		"bpowerpick",
 		"bpowerpick",
 		`bpowerpick(active(),"powerview.ps1",{""}))`,
@@ -130,7 +130,7 @@ func RegisterPowershellFunc(con *repl.Console) {
 		nil,
 	)
 
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		consts.ModuleAliasPowershell,
 		consts.ModuleAliasPowershell,
 		consts.ModuleAliasPowershell+`(active(),"dir",true))`,
@@ -141,7 +141,7 @@ func RegisterPowershellFunc(con *repl.Console) {
 		},
 		[]string{"task"})
 
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		"bpowershell",
 		"bpowershell",
 		`bpowershell(active(),"dir")`,

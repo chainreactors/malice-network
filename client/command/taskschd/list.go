@@ -87,7 +87,7 @@ func RegisterTaskSchdListFunc(con *repl.Console) {
 		//},
 	)
 
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		consts.ModuleTaskSchdList,
 		consts.ModuleTaskSchdList,
 		//session *core.Session, namespace string, args []string

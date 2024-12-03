@@ -52,7 +52,7 @@ func RegisterRegQueryFunc(con *repl.Console) {
 		common.ParseResponse,
 		nil,
 	)
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		consts.ModuleRegQuery,
 		consts.ModuleRegQuery,
 		consts.ModuleRegQuery+"(active(),\"HKEY_LOCAL_MACHINE\",\"SOFTWARE\\Example\",\"TestKey\")",

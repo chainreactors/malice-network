@@ -48,7 +48,7 @@ func RegisterServiceStartFunc(con *repl.Console) {
 		common.ParseStatus,
 		nil,
 	)
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		consts.ModuleServiceStart,
 		consts.ModuleServiceStart,
 		consts.ModuleServiceStart+`(active(),"service_name")`,

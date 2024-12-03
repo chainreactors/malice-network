@@ -49,7 +49,7 @@ func RegisterShellFunc(con *repl.Console) {
 		nil,
 	)
 
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		consts.ModuleAliasShell,
 		consts.ModuleAliasShell,
 		consts.ModuleAliasShell+`(active(),"whoami",true)`,
@@ -59,7 +59,7 @@ func RegisterShellFunc(con *repl.Console) {
 			"output",
 		}, []string{"task"})
 
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		"bshell",
 		"bshell",
 		`bshell(active(),"whoami",true)`,

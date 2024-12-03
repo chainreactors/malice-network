@@ -97,7 +97,7 @@ func Register(con *repl.Console) {
 		return fmt.Sprintf("download block %d/%d success", content.Task.Cur, content.Task.Total), nil
 	})
 
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		consts.ModuleDownload,
 		consts.ModuleDownload,
 		consts.ModuleDownload+"(active(),`file.txt`)",
@@ -121,7 +121,7 @@ func Register(con *repl.Console) {
 		return fmt.Sprintf("upload block %d/%d success", content.Task.Cur, content.Task.Total), nil
 	})
 
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		consts.ModuleUpload,
 		consts.ModuleUpload,
 		consts.ModuleUpload+`(active(),"/source/path","/target/path",parse_octal("644"),false)`,
@@ -134,7 +134,7 @@ func Register(con *repl.Console) {
 		},
 		[]string{"task"})
 
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		"bupload",
 		"bupload",
 		`bupload(active(),"/source/path")`,

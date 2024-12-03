@@ -45,7 +45,7 @@ func RegisterServiceStopFunc(con *repl.Console) {
 		common.ParseStatus,
 		nil,
 	)
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		consts.ModuleServiceStop,
 		consts.ModuleServiceStop,
 		consts.ModuleServiceStop+`(active(),"service_name")`,

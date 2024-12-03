@@ -729,6 +729,22 @@ func GetArtifacts() (*clientpb.Builders, error) {
 	return pbBuilders, nil
 }
 
+// FindArtifact
+func FindArtifact(target *clientpb.Builder) (*clientpb.Builder, error) {
+	var builder models.Builder
+	// where os, arch ,name
+	result := Session().Where("os = ? AND arch = ? AND name = ? AND type = ? ", target.Platform, target.Arch, target.Name, target.Type).First(&builder)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	content, err := os.ReadFile(builder.Path)
+	if err != nil {
+		return nil, err
+	}
+	return builder.ToProtobuf(content), nil
+}
+
 func GetArtifactByName(name string) (*models.Builder, error) {
 	var builder models.Builder
 	result := Session().Where("name = ?", name).First(&builder)

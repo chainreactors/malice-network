@@ -223,7 +223,7 @@ func Register(con *repl.Console) {
 		common.ParseStatus,
 		nil)
 
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		consts.ModuleCd,
 		consts.ModuleCd,
 		consts.ModuleCd+`(active(),"path")`,
@@ -241,7 +241,7 @@ func Register(con *repl.Console) {
 		common.ParseResponse,
 		nil)
 
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		consts.ModuleCat,
 		consts.ModuleCat,
 		consts.ModuleCat+`(active(),"file.txt")`,
@@ -259,7 +259,7 @@ func Register(con *repl.Console) {
 		common.ParseStatus,
 		nil)
 
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		consts.ModuleChmod,
 		consts.ModuleChmod,
 		consts.ModuleChmod+`(active(),"file.txt","644")`,
@@ -278,7 +278,7 @@ func Register(con *repl.Console) {
 		common.ParseStatus,
 		nil)
 
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		consts.ModuleChown,
 		consts.ModuleChown,
 		consts.ModuleChown+`(active(),"file.txt","username","groupname",true)`,
@@ -299,7 +299,7 @@ func Register(con *repl.Console) {
 		common.ParseStatus,
 		nil)
 
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		consts.ModuleCp,
 		consts.ModuleCp,
 		consts.ModuleCp+`(active(),"source","target")`,
@@ -318,7 +318,7 @@ func Register(con *repl.Console) {
 		common.ParseStatus,
 		nil)
 
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		consts.ModuleMkdir,
 		consts.ModuleMkdir,
 		consts.ModuleMkdir+`(active(),"/tmp")`,
@@ -336,7 +336,7 @@ func Register(con *repl.Console) {
 		common.ParseStatus,
 		nil)
 
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		consts.ModuleMv,
 		consts.ModuleMv,
 		consts.ModuleMv+`(active(),"/tmp/file1.txt","/tmp/file2.txt")`,
@@ -356,7 +356,7 @@ func Register(con *repl.Console) {
 		nil,
 	)
 
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		consts.ModulePwd,
 		consts.ModulePwd,
 		consts.ModulePwd+"(active())",
@@ -373,7 +373,7 @@ func Register(con *repl.Console) {
 		common.ParseStatus,
 		nil)
 
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		consts.ModuleRm,
 		consts.ModuleRm,
 		consts.ModulePwd+`(active(),"/tmp/file.txt")`,

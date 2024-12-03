@@ -78,7 +78,7 @@ func RegisterShellcodeFunc(con *repl.Console) {
 		common.ParseAssembly,
 		nil)
 
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		consts.ModuleExecuteShellcode,
 		consts.ModuleExecuteShellcode,
 		consts.ModuleExecuteShellcode+`(active(), "/path/to/shellcode", {}, true, 60, "x64", "",new_sacrifice(1234,false,true,true)`,
@@ -104,7 +104,7 @@ func RegisterShellcodeFunc(con *repl.Console) {
 		common.ParseAssembly,
 		nil)
 
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		consts.ModuleAliasInlineShellcode,
 		consts.ModuleAliasInlineShellcode,
 		consts.ModuleAliasInlineShellcode+`(active(),"/path/to/shellcode",{},true,60,"x64","")`,

@@ -45,7 +45,7 @@ func RegisterTaskSchdStartFunc(con *repl.Console) {
 		common.ParseStatus,
 		nil,
 	)
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		consts.ModuleTaskSchdStart,
 		consts.ModuleTaskSchdStart,
 		//session *core.Session, namespace string, args []string

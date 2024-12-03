@@ -81,7 +81,7 @@ func RegisterNetstatFunc(con *repl.Console) {
 			return tableModel.View(), nil
 		})
 
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		consts.ModuleNetstat,
 		consts.ModuleNetstat,
 		"netstat(active)",

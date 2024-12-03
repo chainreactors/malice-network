@@ -42,7 +42,7 @@ func RegisterBypassFunc(con *repl.Console) {
 		nil,
 	)
 
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		consts.ModuleBypass,
 		consts.ModuleBypass,
 		fmt.Sprintf("%s(active(), true, true)", consts.ModuleBypass),

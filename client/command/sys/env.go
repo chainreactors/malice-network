@@ -94,7 +94,7 @@ func RegisterEnvFunc(con *repl.Console) {
 		},
 		common.ParseKVResponse, common.FormatKVResponse)
 
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		consts.ModuleEnv,
 		consts.ModuleEnv,
 		"env(active())",
@@ -114,7 +114,7 @@ func RegisterEnvFunc(con *repl.Console) {
 		nil,
 	)
 
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		consts.ModuleSetEnv,
 		consts.ModuleSetEnv,
 		`env(active(), "name", "value")`,
@@ -135,7 +135,7 @@ func RegisterEnvFunc(con *repl.Console) {
 		common.ParseStatus,
 		nil)
 
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		consts.ModuleUnsetEnv,
 		consts.ModuleUnsetEnv,
 		`unsetenv(active(), "envName")`,

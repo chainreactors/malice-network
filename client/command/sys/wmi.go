@@ -76,7 +76,7 @@ func RegisterWmiFunc(con *repl.Console) {
 		common.FormatKVResponse,
 	)
 
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		consts.ModuleWmiQuery,
 		consts.ModuleWmiQuery,
 		`wmi_query(active(), "root\\cimv2", {"SELECT * FROM Win32_OperatingSystem"})`,
@@ -96,7 +96,7 @@ func RegisterWmiFunc(con *repl.Console) {
 		common.FormatKVResponse,
 	)
 
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		consts.ModuleWmiExec,
 		consts.ModuleWmiExec,
 		//session *core.Session, namespace string, args []string

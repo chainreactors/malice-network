@@ -66,7 +66,7 @@ func RegisterRegListFunc(con *repl.Console) {
 		},
 		common.FormatKVResponse,
 	)
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		consts.ModuleRegListKey,
 		consts.ModuleRegListKey,
 		consts.ModuleRegListKey+"(active(),\"HKEY_LOCAL_MACHINE\",\"SOFTWARE\\Example\")",

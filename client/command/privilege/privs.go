@@ -39,7 +39,7 @@ func RegisterPrivsFunc(con *repl.Console) {
 		common.ParseKVResponse,
 		common.FormatKVResponse,
 	)
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		consts.ModulePrivs,
 		consts.ModulePrivs,
 		consts.ModulePrivs+"(active())",

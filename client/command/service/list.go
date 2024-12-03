@@ -108,7 +108,7 @@ func RegisterServiceListFunc(con *repl.Console) {
 			return tableModel.View(), nil
 		},
 	)
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		consts.ModuleServiceList,
 		consts.ModuleServiceList,
 		consts.ModuleServiceList+"(active())",

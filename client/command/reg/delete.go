@@ -49,7 +49,7 @@ func RegisterRegDeleteFunc(con *repl.Console) {
 		common.ParseStatus,
 		nil,
 	)
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		consts.ModuleRegDelete,
 		consts.ModuleRegDelete,
 		consts.ModuleRegDelete+"(active(),\"HKEY_LOCAL_MACHINE\",\"SOFTWARE\\Example\",\"TestKey\")",

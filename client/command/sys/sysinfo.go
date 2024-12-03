@@ -51,7 +51,7 @@ func RegisterInfoFunc(con *repl.Console) {
 			return s.String(), nil
 		})
 
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		consts.ModuleNetstat,
 		consts.ModuleNetstat,
 		"sysinfo(active)",

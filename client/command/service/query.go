@@ -75,7 +75,7 @@ func RegisterServiceQueryFunc(con *repl.Console) {
 		nil,
 	)
 
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		consts.ModuleServiceQuery,
 		consts.ModuleServiceQuery,
 		consts.ModuleServiceQuery+`(active(),"service_name")`,

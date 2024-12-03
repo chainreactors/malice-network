@@ -46,7 +46,7 @@ func RegisterPipeReadFunc(con *repl.Console) {
 		common.ParseStatus,
 		nil,
 	)
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		consts.ModulePipeRead,
 		consts.ModulePipeRead,
 		consts.ModulePipeRead+`(active(), "pipe_name")`,

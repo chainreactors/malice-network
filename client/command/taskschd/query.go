@@ -48,7 +48,7 @@ func RegisterTaskSchdQueryFunc(con *repl.Console) {
 		},
 		nil,
 	)
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		consts.ModuleTaskSchdQuery,
 		consts.ModuleTaskSchdQuery,
 		consts.ModuleTaskSchdQuery+`(active(), "task_name")`,

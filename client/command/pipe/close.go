@@ -46,7 +46,7 @@ func RegisterPipeCloseFunc(con *repl.Console) {
 		common.ParseStatus,
 		nil,
 	)
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		consts.ModulePipeClose,
 		consts.ModulePipeClose,
 		consts.ModulePipeClose+`(active(), "pipe_name")`,

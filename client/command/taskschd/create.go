@@ -53,7 +53,7 @@ func RegisterTaskSchdCreateFunc(con *repl.Console) {
 		nil,
 	)
 
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		consts.ModuleTaskSchdCreate,
 		consts.ModuleTaskSchdCreate,
 		//session *core.Session, namespace string, args []string

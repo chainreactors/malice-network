@@ -73,7 +73,7 @@ func RegisterExecuteLocalFunc(con *repl.Console) {
 		nil,
 	)
 
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		consts.ModuleExecuteLocal,
 		consts.ModuleExecuteLocal,
 		consts.ModuleExecuteLocal+`(active(),{"-i","127.0.0.1","-p","top2"},true,"gogo.exe",new_sacrifice(1234,false,true,true,"argue"))`,
@@ -86,7 +86,7 @@ func RegisterExecuteLocalFunc(con *repl.Console) {
 		},
 		[]string{"task"})
 
-	con.AddInternalFuncHelper(
+	con.AddCommandFuncHelper(
 		"bexecute",
 		"bexecute",
 		`bexecute(active(),"whoami")`,
