@@ -266,7 +266,7 @@ build log builder_name --limit 70
 
 	srdiCmd := &cobra.Command{
 		Use:   consts.CommandSRDI,
-		Short: "Build SRDI artifact",
+		Short: "use srdi to generate shellcode",
 		Long: `Generate an SRDI (Shellcode Reflective DLL Injection) artifact to minimize PE (Portable Executable) signatures.
 
 SRDI technology reduces the PE characteristics of a DLL, enabling more effective injection and evasion during execution. The following options are supported:
@@ -366,6 +366,33 @@ artifact upload /path/to/artifact --type DLL
 }
 
 func Register(con *repl.Console) {
+	con.RegisterServerFunc("malefic_srdi", MaleficSRDI, &intermediate.Helper{
+		Group: intermediate.GroupArtifact,
+		Short: "malefic srdi",
+	})
+
+	con.RegisterServerFunc("find_artifact", func(con *repl.Console, profile, arch, os, typ string) (*clientpb.Builder, error) {
+		return con.Rpc.FindArtifact(con.Context(), &clientpb.Builder{
+			ProfileName: profile,
+			Arch:        arch,
+			Platform:    os,
+			Type:        typ,
+		})
+	}, &intermediate.Helper{
+		Group: intermediate.GroupArtifact,
+		Short: "find build artifact",
+	})
+
+	con.RegisterServerFunc("upload_artifact", UploadArtifact, &intermediate.Helper{
+		Group: intermediate.GroupArtifact,
+		Short: "upload local bin to server build",
+	})
+
+	con.RegisterServerFunc("download_artifact", DownloadArtifact, &intermediate.Helper{
+		Group: intermediate.GroupArtifact,
+		Short: "download artifact with special build id",
+	})
+
 	con.RegisterServerFunc("donut_exe2shellcode",
 		func(con *repl.Console, exe []byte, arch string, param string) (string, error) {
 			cmdline, err := shellquote.Split(param)
