@@ -47,14 +47,37 @@ func ParseSacrificeFlags(cmd *cobra.Command) (*implantpb.SacrificeProcess, error
 }
 
 func CLRFlagSet(f *pflag.FlagSet) {
-	f.Bool("amsi", false, "disable AMSI")
-	f.Bool("etw", false, "disable ETW")
+	f.Bool("amsi", false, "bypass AMSI")
+	f.Bool("etw", false, "bypass ETW")
+	f.Bool("wldp", false, "bypass WLDP")
+	f.Bool("bypass-all", false, "bypass AMSI,ETW,WLDP")
 }
 
-func ParseCLRFlags(cmd *cobra.Command) (bool, bool) {
-	disableAmsi, _ := cmd.Flags().GetBool("amsi")
-	disableEtw, _ := cmd.Flags().GetBool("etw")
-	return disableAmsi, disableEtw
+func ParseCLRFlags(cmd *cobra.Command) map[string]string {
+	bypassAmsi, _ := cmd.Flags().GetBool("amsi")
+	bypassEtw, _ := cmd.Flags().GetBool("etw")
+	bypassWLDP, _ := cmd.Flags().GetBool("wldp")
+	bypassAll, _ := cmd.Flags().GetBool("bypass-all")
+
+	if bypassAll {
+		return map[string]string{
+			"bypass_amsi": "",
+			"bypass_etw":  "",
+			"bypass_wldp": "",
+		}
+	}
+
+	params := make(map[string]string)
+	if bypassAmsi {
+		params["bypass_amsi"] = ""
+	}
+	if bypassEtw {
+		params["bypass_etw"] = ""
+	}
+	if bypassWLDP {
+		params["bypass_wldp"] = ""
+	}
+	return params
 }
 
 func TlsCertFlagSet(f *pflag.FlagSet) {

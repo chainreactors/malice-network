@@ -501,8 +501,10 @@ func GenerateLuaDefinitionFile(L *lua.LState, filename string) error {
 					fmt.Fprintf(file, "--- @param arg%d %s\n", i+1, luaType)
 				} else {
 					keys, values := signature.Helper.FormatInput()
-					paramsName = append(paramsName, keys[i])
-					fmt.Fprintf(file, "--- @param %s %s %s\n", keys[i], luaType, values[i])
+					if len(keys) > 0 {
+						paramsName = append(paramsName, keys[i])
+						fmt.Fprintf(file, "--- @param %s %s %s\n", keys[i], luaType, values[i])
+					}
 				}
 			}
 			for _, returnType := range signature.ReturnTypes {
@@ -523,7 +525,9 @@ func GenerateLuaDefinitionFile(L *lua.LState, filename string) error {
 				if i > 0 {
 					fmt.Fprintf(file, ", ")
 				}
-				fmt.Fprintf(file, paramsName[i])
+				if len(paramsName) > 0 {
+					fmt.Fprintf(file, paramsName[i])
+				}
 			}
 			fmt.Fprintf(file, ") end\n\n")
 		}
@@ -580,23 +584,25 @@ func GenerateMarkdownDefinitionFile(L *lua.LState, pkg, filename string) error {
 				fmt.Fprintf(file, "\n")
 			}
 
-			// 写入参数描述
-			fmt.Fprintf(file, "**Arguments**\n\n")
-			for i, argType := range iFunc.ArgTypes {
-				luaType := intermediate.ConvertGoValueToLuaType(L, argType)
-				if iFunc.Helper == nil {
-					fmt.Fprintf(file, "- `$%d` [%s] \n", i+1, luaType)
-				} else {
-					keys, values := iFunc.Helper.FormatInput()
-					paramName := fmt.Sprintf("$%d", i+1)
-					if i < len(keys) && keys[i] != "" {
-						paramName = keys[i]
+			// 写入参数描述.
+			if len(iFunc.ArgTypes) > 0 {
+				fmt.Fprintf(file, "**Arguments**\n\n")
+				for i, argType := range iFunc.ArgTypes {
+					luaType := intermediate.ConvertGoValueToLuaType(L, argType)
+					if iFunc.Helper == nil {
+						fmt.Fprintf(file, "- `$%d` [%s] \n", i+1, luaType)
+					} else {
+						keys, values := iFunc.Helper.FormatInput()
+						paramName := fmt.Sprintf("$%d", i+1)
+						if i < len(keys) && keys[i] != "" {
+							paramName = keys[i]
+						}
+						description := ""
+						if i < len(values) {
+							description = values[i]
+						}
+						fmt.Fprintf(file, "- `%s` [%s] - %s\n", paramName, luaType, description)
 					}
-					description := ""
-					if i < len(values) {
-						description = values[i]
-					}
-					fmt.Fprintf(file, "- `%s` [%s] - %s\n", paramName, luaType, description)
 				}
 			}
 			fmt.Fprintf(file, "\n")

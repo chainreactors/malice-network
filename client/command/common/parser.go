@@ -35,21 +35,6 @@ func NewExecutable(module string, path string, args []string, arch string, outpu
 	return bin, nil
 }
 
-func UpdateClrBinary(binary *implantpb.ExecuteBinary, bypassETW, bypassAMSI bool) {
-	if !bypassETW && !bypassAMSI {
-		return
-	}
-
-	binary.Param = make(map[string]string)
-	if bypassETW {
-		binary.Param["bypass_etw"] = ""
-	}
-
-	if bypassAMSI {
-		binary.Param["bypass_amsi"] = ""
-	}
-}
-
 func NewBinary(module string, path string, args []string, output bool, timeout uint32, arch string, process string, sac *implantpb.SacrificeProcess) (*implantpb.ExecuteBinary, error) {
 	if name, ok := consts.ModuleAliases[module]; ok {
 		module = name

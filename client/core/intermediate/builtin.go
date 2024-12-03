@@ -45,8 +45,9 @@ func RegisterCustomBuiltin(rpc clientrpc.MaliceRPCClient) {
 	})
 	AddHelper(
 		"new_sacrifice",
+
 		&Helper{
-			CMDName: "new_sacrifice",
+			Short: "new sacrifice process config",
 			Input: []string{
 				"ppid: parent process id",
 				"hidden",
@@ -73,7 +74,7 @@ sac = new_sacrifice(123, false, false, false, "")
 	})
 	AddHelper("new_86_executable",
 		&Helper{
-			CMDName: "new_86_executable",
+			Short: "new x86 process execute binary config",
 			Input: []string{
 				"module",
 				"filename: path to the binary",
@@ -98,7 +99,7 @@ new_86_exec = new_86_executable("module", "filename", "args", sac)
 	})
 	AddHelper("new_64_executable",
 		&Helper{
-			CMDName: "new_64_executable",
+			Short: "new x64 process execute binary config",
 			Input: []string{
 				"module",
 				"filename: path to the binary",
@@ -113,6 +114,59 @@ sac = new_sacrifice(123, false, false, false, "")
 new_64_exec = new_64_executable("module", "filename", "args", sac)
 `})
 
+	RegisterFunction("new_bypass", func(bypassAmsi, bypassEtw, bypassWLDP bool) map[string]string {
+		params := make(map[string]string)
+		if bypassAmsi {
+			params["bypass_amsi"] = ""
+		}
+		if bypassEtw {
+			params["bypass_etw"] = ""
+		}
+		if bypassWLDP {
+			params["bypass_wldp"] = ""
+		}
+		return params
+	})
+
+	RegisterFunction("new_bypass_all", func() map[string]string {
+		return map[string]string{
+			"bypass_amsi": "",
+			"bypass_etw":  "",
+			"bypass_wldp": "",
+		}
+	})
+
+	AddHelper(
+		"new_bypass",
+		&Helper{
+			Short: "new bypass options",
+			Input: []string{
+				"bypassAMSI",
+				"bypassETW",
+				"bypassWLDP",
+			},
+			Output: []string{
+				"param: table, {\n    bypass_amsi = \"\",\n    bypass_etw = \"\",\n    bypass_wldp = \"\"\n}",
+			},
+			Example: `
+params = new_bypass(true, true, true)
+`,
+		},
+	)
+
+	AddHelper(
+		"new_bypass_all",
+		&Helper{
+			Short: "new bypass all options",
+			Input: []string{},
+			Output: []string{
+				"map[string]string: contains all bypass options (AMSI, ETW, WLDP)",
+			},
+			Example: `
+params = new_bypass_all()
+`,
+		},
+	)
 	// 构建新的二进制消息
 	RegisterFunction("new_binary", func(module, filename string, args []string,
 		output bool, timeout uint32, arch, process string,
@@ -122,7 +176,7 @@ new_64_exec = new_64_executable("module", "filename", "args", sac)
 
 	AddHelper("new_binary",
 		&Helper{
-			CMDName: "new_binary",
+			Short: "new execute binary config",
 			Input: []string{
 				"module",
 				"filename: path to the binary",
@@ -161,7 +215,7 @@ new_bin = new_binary("module", "filename", "args", true, 100, "amd64", "process"
 	})
 	AddHelper("pack_bof",
 		&Helper{
-			CMDName: "pack_bof",
+			Short: "pack bof single argument",
 			Input: []string{
 				"format",
 				"arg",
@@ -186,7 +240,7 @@ new_bin = new_binary("module", "filename", "args", true, 100, "amd64", "process"
 	AddHelper(
 		"pack_bof_args",
 		&Helper{
-			CMDName: "pack_bof_args",
+			Short: "pack bof arguments",
 			Input: []string{
 				"format",
 				"args",
@@ -199,29 +253,13 @@ pack_bof_args("ZZ", {"aa", "bb"})
 `,
 		})
 
-	RegisterFunction("arg_hex", func(input string) (string, error) {
-		return "hex::" + hash.Hexlify([]byte(input)), nil
-	})
-	AddHelper(
-		"arg_hex",
-		&Helper{
-			CMDName: "arg_hex",
-			Input: []string{
-				"input",
-			},
-			Output: []string{
-				"string",
-			},
-			Example: `arg_hex("aa")`,
-		})
-
 	RegisterFunction("format_path", func(s string) (string, error) {
 		return fileutils.FormatWindowPath(s), nil
 	})
 	AddHelper(
 		"format_path",
 		&Helper{
-			CMDName: "format_path",
+			Short: "format windows path",
 			Input: []string{
 				"s",
 			},
@@ -385,11 +423,12 @@ func RegisterEncodeFunc(rpc clientrpc.MaliceRPCClient) {
 		}
 		return string(data), nil
 	})
+
 	AddHelper(
 		"base64_decode",
 		&Helper{
-			Group:   GroupEncode,
-			CMDName: "base64_decode",
+			Group: GroupEncode,
+			Short: "base64 decode",
 			Input: []string{
 				"input",
 			},
@@ -398,6 +437,24 @@ func RegisterEncodeFunc(rpc clientrpc.MaliceRPCClient) {
 			},
 			Example: `base64_decode("aGVsbG8=")`,
 		})
+
+	RegisterFunction("arg_hex", func(input string) (string, error) {
+		return "hex::" + hash.Hexlify([]byte(input)), nil
+	})
+	AddHelper(
+		"arg_hex",
+		&Helper{
+			Group: GroupEncode,
+			Short: "hexlify encode",
+			Input: []string{
+				"input",
+			},
+			Output: []string{
+				"string",
+			},
+			Example: `arg_hex("aa")`,
+		})
+
 	// random string
 	RegisterFunction("random_string", func(length int) (string, error) {
 		charArray := []rune("abcdefghijklmnopqrstuvwxyz123456789")
@@ -411,8 +468,8 @@ func RegisterEncodeFunc(rpc clientrpc.MaliceRPCClient) {
 	AddHelper(
 		"random_string",
 		&Helper{
-			Group:   GroupEncode,
-			CMDName: "random_string",
+			Group: GroupEncode,
+			Short: "generate random string",
 			Input: []string{
 				"length",
 			},
@@ -435,8 +492,8 @@ func RegisterEncodeFunc(rpc clientrpc.MaliceRPCClient) {
 	AddHelper(
 		"file_exists",
 		&Helper{
-			Group:   GroupEncode,
-			CMDName: "file_exists",
+			Group: GroupEncode,
+			Short: "check file exists",
 			Input: []string{
 				"path",
 			},
@@ -461,8 +518,8 @@ func RegisterEncodeFunc(rpc clientrpc.MaliceRPCClient) {
 	AddHelper(
 		"ismatch",
 		&Helper{
-			Group:   GroupEncode,
-			CMDName: "ismatch",
+			Group: GroupEncode,
+			Short: "regexp match",
 			Input: []string{
 				"pattern",
 				"text",
@@ -482,9 +539,9 @@ func RegisterEncodeFunc(rpc clientrpc.MaliceRPCClient) {
 	AddHelper(
 		"timestampMillis",
 		&Helper{
-			Group:   GroupEncode,
-			CMDName: "timestampMillis",
-			Input:   []string{},
+			Group: GroupEncode,
+			Short: "get current timestamp in milliseconds",
+			Input: []string{},
 			Output: []string{
 				"int64",
 			},
@@ -517,8 +574,8 @@ func RegisterEncodeFunc(rpc clientrpc.MaliceRPCClient) {
 	AddHelper(
 		"parse_octal",
 		&Helper{
-			Group:   GroupEncode,
-			CMDName: "parse_octal",
+			Group: GroupEncode,
+			Short: "parse octal string to int64",
 			Input: []string{
 				"octalString",
 			},
@@ -539,8 +596,8 @@ func RegisterEncodeFunc(rpc clientrpc.MaliceRPCClient) {
 	AddHelper(
 		"parse_hex",
 		&Helper{
-			Group:   GroupEncode,
-			CMDName: "parse_hex",
+			Group: GroupEncode,
+			Short: "parse hex string to int64",
 			Input: []string{
 				"hexString",
 			},

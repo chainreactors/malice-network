@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	_ "github.com/chainreactors/malice-network/client/cmd/cli"
 	"github.com/chainreactors/malice-network/client/command"
 	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/client/core/plugin"

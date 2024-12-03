@@ -45,8 +45,7 @@ func ExecutePowershellCmd(cmd *cobra.Command, con *repl.Console) error {
 	script, _ := cmd.Flags().GetString("script")
 	cmdline := cmd.Flags().Args()
 	session := con.GetInteractive()
-	amsi, etw := common.ParseCLRFlags(cmd)
-	task, err := PowerPick(con.Rpc, session, script, cmdline, amsi, etw)
+	task, err := PowerPick(con.Rpc, session, script, cmdline, common.ParseCLRFlags(cmd))
 	if err != nil {
 		return err
 	}
@@ -54,7 +53,7 @@ func ExecutePowershellCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func PowerPick(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, ps []string, amsi, etw bool) (*clientpb.Task, error) {
+func PowerPick(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, ps []string, param map[string]string) (*clientpb.Task, error) {
 	var psBin bytes.Buffer
 	if path != "" {
 		content, err := os.ReadFile(path)
@@ -68,9 +67,9 @@ func PowerPick(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, p
 	binary := &implantpb.ExecuteBinary{
 		Bin:    psBin.Bytes(),
 		Type:   consts.ModulePowerpick,
+		Param:  param,
 		Output: true,
 	}
-	common.UpdateClrBinary(binary, etw, amsi)
 	task, err := rpc.ExecutePowerpick(sess.Context(), binary)
 	if err != nil {
 		return nil, err
@@ -88,7 +87,11 @@ func RegisterPowershellFunc(con *repl.Console) {
 			if err != nil {
 				return nil, err
 			}
-			return PowerPick(rpc, sess, script, cmdline, true, true)
+			return PowerPick(rpc, sess, script, cmdline, map[string]string{
+				"bypass_amsi": "",
+				"bypass_etw":  "",
+				"bypass_wldp": "",
+			})
 		},
 		common.ParseAssembly,
 		nil)
@@ -96,13 +99,12 @@ func RegisterPowershellFunc(con *repl.Console) {
 	con.AddInternalFuncHelper(
 		consts.ModulePowerpick,
 		consts.ModulePowerpick,
-		consts.ModulePowerpick+`(active(),"powerview.ps1",{""},true,true))`,
+		consts.ModulePowerpick+`(active(),"powerview.ps1",{""},new_bypass_all()))`,
 		[]string{
 			"session: special session",
 			"path: powershell script",
-			"ps: ps args",
-			"amsi",
-			"etw",
+			"powershell: powershell cmdline",
+			"param: bypass amsi,etw,wldp",
 		},
 		[]string{"task"})
 

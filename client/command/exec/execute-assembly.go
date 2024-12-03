@@ -14,9 +14,8 @@ import (
 func ExecuteAssemblyCmd(cmd *cobra.Command, con *repl.Console) error {
 	session := con.GetInteractive()
 	path, args, output, _ := common.ParseBinaryFlags(cmd)
-	//output, _ := cmd.Flags().GetBool("output")
-	amsi, etw := common.ParseCLRFlags(cmd)
-	task, err := ExecAssembly(con.Rpc, session, path, args, output, amsi, etw)
+	clrparam := common.ParseCLRFlags(cmd)
+	task, err := ExecAssembly(con.Rpc, session, path, args, output, clrparam)
 	if err != nil {
 		return err
 	}
@@ -24,12 +23,12 @@ func ExecuteAssemblyCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func ExecAssembly(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, args []string, output, amsi, etw bool) (*clientpb.Task, error) {
+func ExecAssembly(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, args []string, output bool, param map[string]string) (*clientpb.Task, error) {
 	binary, err := common.NewExecutable(consts.ModuleExecuteAssembly, path, args, sess.Os.Arch, output, nil)
 	if err != nil {
 		return nil, err
 	}
-	common.UpdateClrBinary(binary, etw, amsi)
+	binary.Param = param
 	task, err := rpc.ExecuteAssembly(sess.Context(), binary)
 	if err != nil {
 		return nil, err
@@ -47,7 +46,11 @@ func RegisterAssemblyFunc(con *repl.Console) {
 			if err != nil {
 				return nil, err
 			}
-			return ExecAssembly(rpc, sess, path, cmdline, true, true, true)
+			return ExecAssembly(rpc, sess, path, cmdline, true, map[string]string{
+				"bypass_amsi": "",
+				"bypass_etw":  "",
+				"bypass_wldp": "",
+			})
 		},
 		common.ParseAssembly,
 		nil)
@@ -55,14 +58,13 @@ func RegisterAssemblyFunc(con *repl.Console) {
 	con.AddInternalFuncHelper(
 		consts.ModuleExecuteAssembly,
 		consts.ModuleExecuteAssembly,
-		consts.ModuleExecuteAssembly+`(active(),"sharp.exe",{},true,false,false)`,
+		consts.ModuleExecuteAssembly+`(active(),"sharp.exe",{}, true, new_bypass_all())`,
 		[]string{
 			"sessions",
 			"path",
 			"args",
 			"output",
-			"amsi",
-			"etw",
+			"param, bypass amsi,wldp,etw",
 		},
 		[]string{"task"})
 
