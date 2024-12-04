@@ -8,38 +8,19 @@ import (
 )
 
 // DonutShellcodeFromFile 从给定的 PE 文件生成 Donut shellcode
-func DonutShellcodeFromFile(filePath string, arch string, dotnet bool, params string, className string, method string) (data []byte, err error) {
+func DonutShellcodeFromFile(filePath string, arch string, params string, className string, method string) (data []byte, err error) {
 	pe, err := os.ReadFile(filePath)
 	if err != nil {
 		return
 	}
-	isDLL := (filepath.Ext(filePath) == ".dll")
-	return DonutShellcodeFromPE(pe, arch, params, className, method, isDLL, false, true)
+	return DonutShellcodeFromPE(filepath.Base(filePath), pe, arch, params, className, method, false, true)
 }
 
 // DonutShellcodeFromPE 从给定的 PE 数据生成 Donut shellcode
-func DonutShellcodeFromPE(pe []byte, arch string, params string, className string, method string, isDLL bool, isUnicode bool, createNewThread bool) (data []byte, err error) {
-	ext := ".exe"
-	if isDLL {
-		ext = ".dll"
-	}
-
-	// 创建临时文件来存储 PE 数据
-	tmpFile, err := os.CreateTemp("", "gonut_*."+filepath.Ext(ext))
-	if err != nil {
-		return nil, err
-	}
-	defer os.Remove(tmpFile.Name())
-
-	if _, err = tmpFile.Write(pe); err != nil {
-		return nil, err
-	}
-	if err = tmpFile.Close(); err != nil {
-		return nil, err
-	}
-
+func DonutShellcodeFromPE(filename string, pe []byte, arch string, params string, className string, method string, isUnicode bool, createNewThread bool) (data []byte, err error) {
 	config := gonut.DefaultConfig()
-	config.Input = tmpFile.Name()
+	config.Input = filename
+	config.InputBin = pe
 	config.Output = ""
 	config.Arch = getDonutArch(arch)
 	config.Args = params
@@ -69,28 +50,10 @@ func DonutShellcodeFromPE(pe []byte, arch string, params string, className strin
 }
 
 // DonutFromAssembly 从 .NET 程序集生成 donut shellcode
-func DonutFromAssembly(assembly []byte, isDLL bool, arch string, params string, method string, className string, appDomain string) ([]byte, error) {
-	ext := ".exe"
-	if isDLL {
-		ext = ".dll"
-	}
-
-	// 创建临时文件来存储程序集数据
-	tmpFile, err := os.CreateTemp("", "gonut_*."+filepath.Ext(ext))
-	if err != nil {
-		return nil, err
-	}
-	defer os.Remove(tmpFile.Name())
-
-	if _, err = tmpFile.Write(assembly); err != nil {
-		return nil, err
-	}
-	if err = tmpFile.Close(); err != nil {
-		return nil, err
-	}
-
+func DonutFromAssembly(filename string, assembly []byte, arch string, params string, method string, className string, appDomain string) ([]byte, error) {
 	config := gonut.DefaultConfig()
-	config.Input = tmpFile.Name()
+	config.Input = filename
+	config.InputBin = assembly
 	config.Output = ""
 	config.Arch = getDonutArch(arch)
 	config.Args = params
@@ -104,7 +67,7 @@ func DonutFromAssembly(assembly []byte, isDLL bool, arch string, params string, 
 	config.Unicode = gonut.BoolType(false)
 
 	o := gonut.New(config)
-	if err = o.Create(); err != nil {
+	if err := o.Create(); err != nil {
 		return nil, err
 	}
 

@@ -10,7 +10,7 @@ import (
 
 func (rpc *Server) EXE2Shellcode(ctx context.Context, req *clientpb.EXE2Shellcode) (*clientpb.Bin, error) {
 	if req.Type == "donut" {
-		bin, err := donut.DonutShellcodeFromPE(req.Bin, req.Arch, req.Params, "", "", false, false, true)
+		bin, err := donut.DonutShellcodeFromPE("1.exe", req.Bin, req.Arch, req.Params, "", "", false, true)
 		if err != nil {
 			return nil, err
 		}
@@ -22,7 +22,7 @@ func (rpc *Server) EXE2Shellcode(ctx context.Context, req *clientpb.EXE2Shellcod
 
 func (rpc *Server) DLL2Shellcode(ctx context.Context, req *clientpb.DLL2Shellcode) (*clientpb.Bin, error) {
 	if req.Type == "donut" {
-		bin, err := donut.DonutShellcodeFromPE(req.Bin, req.Arch, req.Params, "", "", true, false, true)
+		bin, err := donut.DonutShellcodeFromPE("1.dll", req.Bin, req.Arch, req.Params, "", "", false, true)
 		if err != nil {
 			return nil, err
 		}

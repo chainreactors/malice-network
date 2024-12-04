@@ -17,8 +17,9 @@ type Config struct {
 	OEP      uint32               // original entrypoint of target host file
 
 	// files in/out
-	Input  string // name of input file to read and load in-memory
-	Output string // name of output file to save loader
+	Input    string // name of input file to read and load in-memory
+	InputBin []byte
+	Output   string // name of output file to save loader
 
 	// .NET stuff
 	Runtime string // runtime version to use for CLR

@@ -103,20 +103,23 @@ func (o *Gonut) ReadFileInfo() error {
 		return fmt.Errorf("don't recognize file extension: '%s'", ext)
 	}
 
-	bs, err := os.ReadFile(o.Config.Input)
-	if err != nil {
-		o.DPRINT("Unable to open %s for reading.", o.Config.Input)
-		return err
+	var err error
+	if o.Config.InputBin == nil {
+		o.Config.InputBin, err = os.ReadFile(o.Config.Input)
+		if err != nil {
+			o.DPRINT("Unable to open %s for reading.", o.Config.Input)
+			return err
+		}
 	}
 
-	o.FileInfo.Data = bs
+	o.FileInfo.Data = o.Config.InputBin
 
 	// file is EXE or DLL?
 	if o.FileInfo.Type == DONUT_MODULE_EXE || o.FileInfo.Type == DONUT_MODULE_DLL {
 		// Use Binject's debug/pe instead of donut's valid_dos_hdr/valid_nt_hdr/etc.
 		// https://github.com/Binject/debug/tree/master/pe
 
-		o.FileInfo.PeFile, err = pe.NewFile(bytes.NewReader(bs))
+		o.FileInfo.PeFile, err = pe.NewFile(bytes.NewReader(o.FileInfo.Data))
 		if err != nil {
 			return err
 		}
@@ -715,9 +718,9 @@ func (o *Gonut) ValidateFileInfo() error {
 // static int validate_loader_cfg(PDONUT_CONFIG c) { ... }
 func (o *Gonut) ValidateLoaderConfig() error {
 	o.DPRINT("Validating configuration.")
-	if o.Config.Input == "" {
-		return fmt.Errorf("no input file")
-	}
+	//if o.Config.Input == "" {
+	//	return fmt.Errorf("no input file")
+	//}
 
 	// check ExitOpt
 	switch o.Config.ExitOpt {

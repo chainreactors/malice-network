@@ -65,3 +65,15 @@ func CheckExtModule(filename string) string {
 	}
 	return ""
 }
+
+func IsPeExt(filename string) bool {
+	ext := filepath.Ext(filename)
+	switch ext {
+	case ".exe":
+		return true
+	case ".dll":
+		return true
+	default:
+		return false
+	}
+}

