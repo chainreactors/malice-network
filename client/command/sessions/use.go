@@ -1,6 +1,7 @@
 package sessions
 
 import (
+	"fmt"
 	"github.com/chainreactors/malice-network/client/command/addon"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
@@ -18,7 +19,9 @@ func UseSessionCmd(cmd *cobra.Command, con *repl.Console) error {
 			return err
 		}
 	}
-
+	if session == nil {
+		return fmt.Errorf("session %s not found", sid)
+	}
 	return Use(con, session)
 }
 
