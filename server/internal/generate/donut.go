@@ -1,14 +1,13 @@
 package generate
 
 import (
-	"bytes"
-	"github.com/Binject/go-donut/donut"
+	"github.com/wabzsy/gonut"
 	"os"
 	"path/filepath"
 	"strings"
 )
 
-// DonutShellcodeFromFile returns a Donut shellcode for the given PE file
+// DonutShellcodeFromFile 从给定的 PE 文件生成 Donut shellcode
 func DonutShellcodeFromFile(filePath string, arch string, dotnet bool, params string, className string, method string) (data []byte, err error) {
 	pe, err := os.ReadFile(filePath)
 	if err != nil {
@@ -18,121 +17,109 @@ func DonutShellcodeFromFile(filePath string, arch string, dotnet bool, params st
 	return DonutShellcodeFromPE(pe, arch, dotnet, params, className, method, isDLL, false, true)
 }
 
-// DonutShellcodeFromPE returns a Donut shellcode for the given PE file
+// DonutShellcodeFromPE 从给定的 PE 数据生成 Donut shellcode
 func DonutShellcodeFromPE(pe []byte, arch string, dotnet bool, params string, className string, method string, isDLL bool, isUnicode bool, createNewThread bool) (data []byte, err error) {
 	ext := ".exe"
 	if isDLL {
 		ext = ".dll"
 	}
-	var isUnicodeVar uint32
-	if isUnicode {
-		isUnicodeVar = 1
+
+	// 创建临时文件来存储 PE 数据
+	tmpFile, err := os.CreateTemp("", "gonut_*."+filepath.Ext(ext))
+	if err != nil {
+		return nil, err
+	}
+	defer os.Remove(tmpFile.Name())
+
+	if _, err = tmpFile.Write(pe); err != nil {
+		return nil, err
+	}
+	if err = tmpFile.Close(); err != nil {
+		return nil, err
 	}
 
-	thread := uint32(0)
-	if createNewThread {
-		thread = 1
+	config := gonut.DefaultConfig()
+	config.Input = tmpFile.Name()
+	config.Output = ""
+	config.Arch = getDonutArch(arch)
+	config.Args = params
+	config.Class = className
+	config.Method = method
+	config.Bypass = gonut.DONUT_BYPASS_CONTINUE
+	config.Format = gonut.DONUT_FORMAT_BINARY
+	config.Entropy = gonut.DONUT_ENTROPY_NONE
+	config.GonutCompress = gonut.GONUT_COMPRESS_NONE
+	config.ExitOpt = gonut.DONUT_OPT_EXIT_THREAD
+	config.Unicode = gonut.BoolType(isUnicode)
+	config.Thread = gonut.BoolType(createNewThread)
+
+	o := gonut.New(config)
+	if err = o.Create(); err != nil {
+		return nil, err
 	}
 
-	donutArch := getDonutArch(arch)
-	// We don't use DonutConfig.Thread = 1 because we create our own remote thread
-	// in the task runner, and we're doing some housekeeping on it.
-	// Having DonutConfig.Thread = 1 means another thread will be created
-	// inside the one we created, and that will fuck up our monitoring
-	// since we can't grab a handle to the thread created by the Donut loader,
-	// and thus the waitForCompletion call will most of the time never complete.
-	config := donut.DonutConfig{
-		Type:       getDonutType(ext, false),
-		InstType:   donut.DONUT_INSTANCE_PIC,
-		Parameters: params,
-		Class:      className,
-		Method:     method,
-		Bypass:     3,         // 1=skip, 2=abort on fail, 3=continue on fail.
-		Format:     uint32(1), // 1=raw, 2=base64, 3=c, 4=ruby, 5=python, 6=powershell, 7=C#, 8=hex
-		Arch:       donutArch,
-		Entropy:    0,         // 1=disable, 2=use random names, 3=random names + symmetric encryption (default)
-		Compress:   uint32(1), // 1=disable, 2=LZNT1, 3=Xpress, 4=Xpress Huffman
-		ExitOpt:    1,         // exit thread
-		Unicode:    isUnicodeVar,
-		Thread:     thread,
+	// 添加栈对齐检查代码
+	stackCheckPrologue := []byte{
+		// 检查栈是否为8字节对齐但不是16字节对齐，否则在LoadLibrary中会出错
+		0x48, 0x83, 0xE4, 0xF0, // and rsp,0xfffffffffffffff0
+		0x48, 0x83, 0xC4, 0x08, // add rsp,0x8
 	}
-	return getDonut(pe, &config)
+
+	return append(stackCheckPrologue, o.PicData...), nil
 }
 
-// DonutFromAssembly - Generate a donut shellcode from a .NET assembly
+// DonutFromAssembly 从 .NET 程序集生成 donut shellcode
 func DonutFromAssembly(assembly []byte, isDLL bool, arch string, params string, method string, className string, appDomain string) ([]byte, error) {
 	ext := ".exe"
 	if isDLL {
 		ext = ".dll"
 	}
-	donutArch := getDonutArch(arch)
-	config := donut.DefaultConfig()
-	config.Bypass = 3
-	config.Runtime = "v4.0.30319" // we might want to make this configurable
-	config.Format = 1
-	config.Arch = donutArch
-	config.Class = className
-	config.Parameters = params
-	config.Domain = appDomain
-	config.Method = method
-	config.Entropy = 3
-	config.Unicode = 0
-	config.Type = getDonutType(ext, true)
-	return getDonut(assembly, config)
-}
 
-func getDonut(data []byte, config *donut.DonutConfig) (shellcode []byte, err error) {
-	buf := bytes.NewBuffer(data)
-	res, err := donut.ShellcodeFromBytes(buf, config)
+	// 创建临时文件来存储程序集数据
+	tmpFile, err := os.CreateTemp("", "gonut_*."+filepath.Ext(ext))
 	if err != nil {
-		return
+		return nil, err
 	}
-	shellcode = res.Bytes()
-	stackCheckPrologue := []byte{
-		// Check stack is 8 byte but not 16 byte aligned or else errors in LoadLibrary
-		0x48, 0x83, 0xE4, 0xF0, // and rsp,0xfffffffffffffff0
-		0x48, 0x83, 0xC4, 0x08, // add rsp,0x8
+	defer os.Remove(tmpFile.Name())
+
+	if _, err = tmpFile.Write(assembly); err != nil {
+		return nil, err
 	}
-	shellcode = append(stackCheckPrologue, shellcode...)
-	return
+	if err = tmpFile.Close(); err != nil {
+		return nil, err
+	}
+
+	config := gonut.DefaultConfig()
+	config.Input = tmpFile.Name()
+	config.Output = ""
+	config.Arch = getDonutArch(arch)
+	config.Args = params
+	config.Class = className
+	config.Method = method
+	config.Domain = appDomain
+	config.Runtime = "v4.0.30319"
+	config.Bypass = gonut.DONUT_BYPASS_CONTINUE
+	config.Format = gonut.DONUT_FORMAT_BINARY
+	config.Entropy = gonut.DONUT_ENTROPY_DEFAULT
+	config.Unicode = gonut.BoolType(false)
+
+	o := gonut.New(config)
+	if err = o.Create(); err != nil {
+		return nil, err
+	}
+
+	return o.PicData, nil
 }
 
-func getDonutArch(arch string) donut.DonutArch {
-	var donutArch donut.DonutArch
+func getDonutArch(arch string) gonut.ArchType {
 	switch strings.ToLower(arch) {
 	case "x32", "386":
-		donutArch = donut.X32
+		return gonut.DONUT_ARCH_X86
 	case "x64", "amd64":
-		donutArch = donut.X64
+		return gonut.DONUT_ARCH_X64
 	case "x84":
-		donutArch = donut.X84
+		return gonut.DONUT_ARCH_X96
 	default:
-		donutArch = donut.X84
+		return gonut.DONUT_ARCH_X96
 	}
-	return donutArch
-}
-
-func getDonutType(ext string, dotnet bool) donut.ModuleType {
-	var donutType donut.ModuleType
-	switch strings.ToLower(filepath.Ext(ext)) {
-	case ".exe", ".bin":
-		if dotnet {
-			donutType = donut.DONUT_MODULE_NET_EXE
-		} else {
-			donutType = donut.DONUT_MODULE_EXE
-		}
-	case ".dll":
-		if dotnet {
-			donutType = donut.DONUT_MODULE_NET_DLL
-		} else {
-			donutType = donut.DONUT_MODULE_DLL
-		}
-	case ".xsl":
-		donutType = donut.DONUT_MODULE_XSL
-	case ".js":
-		donutType = donut.DONUT_MODULE_JS
-	case ".vbs":
-		donutType = donut.DONUT_MODULE_VBS
-	}
-	return donutType
 }

@@ -55,7 +55,7 @@ require (
 	atomicgo.dev/keyboard v0.2.9 // indirect
 	atomicgo.dev/schedule v0.1.0 // indirect
 	dario.cat/mergo v1.0.0 // indirect
-	github.com/Binject/debug v0.0.0-20210312092933-6277045c2fdf // indirect
+	github.com/Binject/debug v0.0.0-20230508195519-26db73212a7a // indirect
 	github.com/Microsoft/go-winio v0.4.14 // indirect
 	github.com/VividCortex/ewma v1.1.1 // indirect
 	github.com/alecthomas/chroma/v2 v2.14.0 // indirect
@@ -138,6 +138,8 @@ require (
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/stretchr/testify v1.9.0 // indirect
 	github.com/technoweenie/multipartstreamer v1.0.1 // indirect
+	github.com/wabzsy/compression v0.0.0-20230725232933-73109bacf457 // indirect
+	github.com/wabzsy/gonut v1.0.0 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	github.com/yuin/gluamapper v0.0.0-20150323120927-d836955830e7 // indirect
 	github.com/yuin/goldmark v1.7.4 // indirect
