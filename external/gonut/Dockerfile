@@ -1,0 +1,18 @@
+FROM golang:alpine as builder
+LABEL authors="wabzsy"
+
+WORKDIR /src
+COPY . .
+
+WORKDIR /src/gonut
+ENV CGO_ENABLED=0
+RUN go mod download && go build -trimpath -ldflags "-s -w"
+
+FROM alpine:latest
+
+WORKDIR /opt/
+COPY --from=builder /src/gonut/gonut /bin/
+
+ENTRYPOINT ["gonut"]
+
+# docker run --rm -it -v `pwd`:/opt gonut --version
