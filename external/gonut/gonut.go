@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"github.com/Binject/debug/pe"
-	"github.com/wabzsy/compression"
 	"log"
 	"net/url"
 	"os"
@@ -13,6 +11,9 @@ import (
 	"runtime"
 	"strings"
 	"unsafe"
+
+	"github.com/Binject/debug/pe"
+	"github.com/wabzsy/compression"
 )
 
 type Gonut struct {
@@ -439,7 +440,7 @@ func (o *Gonut) BuildInstance() error {
 		if o.Config.Thread {
 			o.DPRINT("Copying strings required to intercept exit-related API")
 			// these exit-related API will be replaced with pointer to RtlExitUserThread
-			copy(o.Instance.ExitApi[:], "ExitProcess;exit;_exit;_cexit;_c_exit;quick_exit;_Exit")
+			copy(o.Instance.ExitApi[:], "ExitProcess;exit;_exit;_cexit;_c_exit;quick_exit;_Exit;_o_exit")
 		}
 	}
 
@@ -511,28 +512,31 @@ func (o *Gonut) BuildInstance() error {
 // donut/donut.c
 // static int build_loader(PDONUT_CONFIG c) { ... }
 func (o *Gonut) BuildLoader() error {
-
-	loaderSize := 0
-
-	// target is x86?
-	if o.Config.Arch == DONUT_ARCH_X86 {
-		loaderSize = len(LOADER_EXE_X86)
-	} else
-	// target is amd64?
-	if o.Config.Arch == DONUT_ARCH_X64 {
-		loaderSize = len(LOADER_EXE_X64)
-	} else
-	// target can be both x86 and amd64?
-	if o.Config.Arch == DONUT_ARCH_X96 {
-		loaderSize = len(LOADER_EXE_X86) + len(LOADER_EXE_X64)
+	// x64 栈对齐指令
+	var LOADER_EXE_X64_RSP_ALIGN = []byte{
+		0x55,             // push rbp
+		0x48, 0x89, 0xE5, // mov rbp, rsp
+		0x48, 0x83, 0xE4, 0xF0, // and rsp, -0x10
+		0x48, 0x83, 0xEC, 0x20, // sub rsp, 0x20
+		0xE8, 0x05, 0x00, 0x00, 0x00, // call $ + 5
+		0x48, 0x89, 0xEC, // mov rsp, rbp
+		0x5D, // pop rbp
+		0xC3, // ret
 	}
 
-	o.DPRINT("Inserting opcodes")
+	loaderSize := 0
+	// 计算所需空间大小
+	if o.Config.Arch == DONUT_ARCH_X86 {
+		loaderSize = len(LOADER_EXE_X86) + int(o.Instance.Len) + 32
+	} else if o.Config.Arch == DONUT_ARCH_X64 {
+		loaderSize = len(LOADER_EXE_X64_RSP_ALIGN) + len(LOADER_EXE_X64) + int(o.Instance.Len) + 32
+	} else if o.Config.Arch == DONUT_ARCH_X96 {
+		loaderSize = len(LOADER_EXE_X86) + len(LOADER_EXE_X64_RSP_ALIGN) + len(LOADER_EXE_X64) + int(o.Instance.Len) + 32
+	}
 
-	// insert shellcode
-	pl := NewPicGenerator(o.Instance.Len + 32 + uint32(loaderSize))
+	pl := NewPicGenerator(uint32(loaderSize))
 
-	// call $ + c->inst_len
+	// call $ + inst_len
 	pl.PutByte(0xE8)
 	pl.PutUint32(o.Instance.Len)
 	pl.PutBytes(o.InstanceData)
@@ -540,7 +544,6 @@ func (o *Gonut) BuildLoader() error {
 	// pop ecx
 	pl.PutByte(0x59)
 
-	// x86?
 	if o.Config.Arch == DONUT_ARCH_X86 {
 		// pop edx
 		pl.PutByte(0x5A)
@@ -549,31 +552,18 @@ func (o *Gonut) BuildLoader() error {
 		// push edx
 		pl.PutByte(0x52)
 
-		o.DPRINT("Copying %d bytes of x86 shellcode", loaderSize)
-
+		o.DPRINT("Copying %d bytes of x86 shellcode", len(LOADER_EXE_X86))
 		pl.PutBytes(LOADER_EXE_X86)
-	} else
-	// AMD64?
-	if o.Config.Arch == DONUT_ARCH_X64 {
-		o.DPRINT("Copying %d bytes of amd64 shellcode", loaderSize)
+
+	} else if o.Config.Arch == DONUT_ARCH_X64 {
+		o.DPRINT("Copying %d bytes of amd64 shellcode", len(LOADER_EXE_X64))
 
 		// ensure stack is 16-byte aligned for x64 for Microsoft x64 calling convention
-
-		// and rsp, -0x10
-		pl.PutByte(0x48)
-		pl.PutByte(0x83)
-		pl.PutByte(0xE4)
-		pl.PutByte(0xF0)
-		// push rcx
-		// this is just for alignment, any 8 bytes would do
-		pl.PutByte(0x51)
-
+		pl.PutBytes(LOADER_EXE_X64_RSP_ALIGN)
 		pl.PutBytes(LOADER_EXE_X64)
-	} else
-	// x86 + AMD64?
-	if o.Config.Arch == DONUT_ARCH_X96 {
 
-		o.DPRINT("Copying %d bytes of x86 + amd64 shellcode", loaderSize)
+	} else if o.Config.Arch == DONUT_ARCH_X96 {
+		o.DPRINT("Copying %d bytes of x86 + amd64 shellcode", len(LOADER_EXE_X86)+len(LOADER_EXE_X64))
 
 		// xor eax, eax
 		pl.PutByte(0x31)
@@ -583,20 +573,12 @@ func (o *Gonut) BuildLoader() error {
 		// js dword x86_code
 		pl.PutByte(0x0F)
 		pl.PutByte(0x88)
-		pl.PutUint32(uint32(len(LOADER_EXE_X64) + 5))
+		pl.PutUint32(uint32(len(LOADER_EXE_X64_RSP_ALIGN) + len(LOADER_EXE_X64)))
 
 		// ensure stack is 16-byte aligned for x64 for Microsoft x64 calling convention
-
-		// and rsp, -0x10
-		pl.PutByte(0x48)
-		pl.PutByte(0x83)
-		pl.PutByte(0xE4)
-		pl.PutByte(0xF0)
-		// push rcx
-		// this is just for alignment, any 8 bytes would do
-		pl.PutByte(0x51)
-
+		pl.PutBytes(LOADER_EXE_X64_RSP_ALIGN)
 		pl.PutBytes(LOADER_EXE_X64)
+
 		// pop edx
 		pl.PutByte(0x5A)
 		// push ecx
@@ -607,7 +589,6 @@ func (o *Gonut) BuildLoader() error {
 	}
 
 	o.PicData = pl.Result()
-
 	o.DPRINT("len(o.PicData): %d", len(o.PicData))
 	return nil
 }
@@ -754,8 +735,7 @@ func (o *Gonut) ValidateLoaderConfig() error {
 
 	// check Headers
 	switch o.Config.Headers {
-	case
-		DONUT_HEADERS_OVERWRITE,
+	case DONUT_HEADERS_OVERWRITE,
 		DONUT_HEADERS_KEEP:
 	default:
 		return fmt.Errorf("invalid `headers option` specified: %d", o.Config.Headers)
@@ -980,6 +960,10 @@ func (o *Gonut) ShowResults() {
 }
 
 func New(c *Config) *Gonut {
+	if c.Headers == 0 {
+		c.Headers = DONUT_HEADERS_OVERWRITE // 设置默认值
+	}
+
 	return &Gonut{
 		Config: c,
 	}

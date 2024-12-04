@@ -37,14 +37,7 @@ func DonutShellcodeFromPE(filename string, pe []byte, arch string, params string
 		return nil, err
 	}
 
-	// 添加栈对齐检查代码
-	stackCheckPrologue := []byte{
-		// 检查栈是否为8字节对齐但不是16字节对齐，否则在LoadLibrary中会出错
-		0x48, 0x83, 0xE4, 0xF0, // and rsp,0xfffffffffffffff0
-		0x48, 0x83, 0xC4, 0x08, // add rsp,0x8
-	}
-
-	return append(stackCheckPrologue, o.PicData...), nil
+	return o.PicData, nil
 }
 
 func DonutFromAssemblyFromFile(filePath string, arch string, params string, method string, className string, appDomain string) ([]byte, error) {
