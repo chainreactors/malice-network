@@ -20,7 +20,7 @@ import (
 
 func ExecuteDLLCmd(cmd *cobra.Command, con *repl.Console) error {
 	session := con.GetInteractive()
-	sac, _ := common.ParseSacrificeFlags(cmd)
+	sac := common.ParseSacrificeFlags(cmd)
 	entrypoint, _ := cmd.Flags().GetString("entrypoint")
 	binPath, _ := cmd.Flags().GetString("binPath")
 	path, args, output, timeout, arch, process := common.ParseFullBinaryFlags(cmd)
@@ -99,8 +99,8 @@ func RegisterDLLFunc(con *repl.Console) {
 		consts.ModuleExecuteDll,
 		ExecDLL,
 		"bdllinject",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, ppid int, path string) (*clientpb.Task, error) {
-			sac, _ := intermediate.NewSacrificeProcessMessage(int64(ppid), false, true, true, "")
+		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, ppid uint32, path string) (*clientpb.Task, error) {
+			sac, _ := intermediate.NewSacrificeProcessMessage(ppid, false, true, true, "")
 			return ExecDLL(rpc, sess, path, "DLLMain", nil, "", true, math.MaxUint32, sess.Os.Arch, "", sac)
 		},
 		common.ParseAssembly,

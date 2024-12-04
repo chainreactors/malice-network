@@ -6,12 +6,11 @@ toolchain go1.22.7
 
 require (
 	filippo.io/age v1.1.1
-	github.com/Binject/go-donut v0.0.0-20220908180326-fcdcc35d591c
+	github.com/EgeBalci/sgn v0.0.0-20240222152057-f54fa65b57e2
 	github.com/chainreactors/files v0.0.0-20231102192550-a652458cee26
 	github.com/chainreactors/logs v0.0.0-20241115105204-6132e39f5261
 	github.com/chainreactors/tui v0.0.0-20241203114431-17449fd7eef3
 	github.com/chainreactors/utils v0.0.0-20240805193040-ff3b97aa3c3f
-	github.com/charmbracelet/bubbles v0.18.0
 	github.com/charmbracelet/bubbletea v0.27.1
 	github.com/charmbracelet/glamour v0.8.0
 	github.com/charmbracelet/lipgloss v0.13.0
@@ -38,7 +37,7 @@ require (
 	github.com/tetratelabs/wazero v1.5.0
 	github.com/traefik/yaegi v0.16.1
 	github.com/vadv/gopher-lua-libs v0.5.0
-	github.com/yuin/gluare v0.0.0-20170607022532-d7c94f1a80ed
+	github.com/wabzsy/gonut v1.0.0
 	github.com/yuin/gopher-lua v1.1.1
 	golang.org/x/crypto v0.28.0
 	golang.org/x/text v0.19.0
@@ -56,9 +55,11 @@ require (
 	atomicgo.dev/schedule v0.1.0 // indirect
 	dario.cat/mergo v1.0.0 // indirect
 	github.com/Binject/debug v0.0.0-20230508195519-26db73212a7a // indirect
+	github.com/EgeBalci/keystone-go v0.0.0-20200525180613-e6c7cd32ceae // indirect
 	github.com/Microsoft/go-winio v0.4.14 // indirect
 	github.com/VividCortex/ewma v1.1.1 // indirect
 	github.com/alecthomas/chroma/v2 v2.14.0 // indirect
+	github.com/alecthomas/kong v0.8.1 // indirect
 	github.com/alessio/shellescape v1.4.1 // indirect
 	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/aws/aws-sdk-go v1.34.0 // indirect
@@ -68,6 +69,7 @@ require (
 	github.com/blinkbean/dingtalk v1.1.3 // indirect
 	github.com/cbroglie/mustache v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
+	github.com/charmbracelet/bubbles v0.18.0 // indirect
 	github.com/charmbracelet/harmonica v0.2.0 // indirect
 	github.com/charmbracelet/x/ansi v0.1.4 // indirect
 	github.com/charmbracelet/x/input v0.1.0 // indirect
@@ -83,7 +85,7 @@ require (
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
-	github.com/fatih/color v1.15.0 // indirect
+	github.com/fatih/color v1.16.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/frankban/quicktest v1.14.6 // indirect
 	github.com/go-lark/lark v1.14.1 // indirect
@@ -94,7 +96,6 @@ require (
 	github.com/goccy/go-yaml v1.12.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/gookit/color v1.5.4 // indirect
 	github.com/gookit/goutil v0.6.15 // indirect
 	github.com/gorilla/css v1.0.1 // indirect
@@ -122,6 +123,7 @@ require (
 	github.com/muesli/cancelreader v0.2.2 // indirect
 	github.com/muesli/reflow v0.3.0 // indirect
 	github.com/ncruces/julianday v0.1.5 // indirect
+	github.com/olekukonko/tablewriter v0.0.4 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
@@ -139,7 +141,6 @@ require (
 	github.com/stretchr/testify v1.9.0 // indirect
 	github.com/technoweenie/multipartstreamer v1.0.1 // indirect
 	github.com/wabzsy/compression v0.0.0-20230725232933-73109bacf457 // indirect
-	github.com/wabzsy/gonut v1.0.0 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	github.com/yuin/gluamapper v0.0.0-20150323120927-d836955830e7 // indirect
 	github.com/yuin/goldmark v1.7.4 // indirect
@@ -157,7 +158,6 @@ require (
 	golang.org/x/term v0.25.0 // indirect
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20241007155032-5fefd90f89a9 // indirect
-	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.5.1 // indirect
 	gopkg.in/xmlpath.v2 v2.0.0-20150820204837-860cbeca3ebc // indirect
 	gotest.tools/v3 v3.5.1 // indirect
 	mvdan.cc/sh/v3 v3.7.0 // indirect

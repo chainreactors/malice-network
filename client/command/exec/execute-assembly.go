@@ -6,7 +6,9 @@ import (
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
+	"github.com/chainreactors/malice-network/helper/utils/donut"
 	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
 )
@@ -14,8 +16,7 @@ import (
 func ExecuteAssemblyCmd(cmd *cobra.Command, con *repl.Console) error {
 	session := con.GetInteractive()
 	path, args, output, _ := common.ParseBinaryFlags(cmd)
-	clrparam := common.ParseCLRFlags(cmd)
-	task, err := ExecAssembly(con.Rpc, session, path, args, output, clrparam)
+	task, err := ExecuteAssembly(con.Rpc, session, path, args, output, common.ParseSacrificeFlags(cmd))
 	if err != nil {
 		return err
 	}
@@ -23,7 +24,38 @@ func ExecuteAssemblyCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func ExecAssembly(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, args []string, output bool, param map[string]string) (*clientpb.Task, error) {
+func ExecuteAssembly(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, args []string, output bool, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
+	binary, err := common.NewExecutable(consts.ModuleExecuteShellcode, path, args, sess.Os.Arch, output, sac)
+	if err != nil {
+		return nil, err
+	}
+
+	cmdline := shellquote.Join(args...)
+	content, err := donut.DonutShellcodeFromPE(binary.Bin, consts.Arch(binary.Arch).String(), cmdline, "", "", false, false, true)
+	if err != nil {
+		return nil, err
+	}
+	binary.Bin = content
+	task, err := rpc.ExecuteShellcode(sess.Context(), binary)
+	if err != nil {
+		return nil, err
+	}
+	return task, nil
+}
+
+func InlineAssemblyCmd(cmd *cobra.Command, con *repl.Console) error {
+	session := con.GetInteractive()
+	path, args, output, _ := common.ParseBinaryFlags(cmd)
+	clrparam := common.ParseCLRFlags(cmd)
+	task, err := InlineAssembly(con.Rpc, session, path, args, output, clrparam)
+	if err != nil {
+		return err
+	}
+	con.GetInteractive().Console(task, path)
+	return nil
+}
+
+func InlineAssembly(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, args []string, output bool, param map[string]string) (*clientpb.Task, error) {
 	binary, err := common.NewExecutable(consts.ModuleExecuteAssembly, path, args, sess.Os.Arch, output, nil)
 	if err != nil {
 		return nil, err
@@ -39,18 +71,14 @@ func ExecAssembly(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string
 func RegisterAssemblyFunc(con *repl.Console) {
 	con.RegisterImplantFunc(
 		consts.ModuleExecuteAssembly,
-		ExecAssembly,
+		ExecuteAssembly,
 		"bexecute_assembly",
 		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, path, args string) (*clientpb.Task, error) {
 			cmdline, err := shellquote.Split(args)
 			if err != nil {
 				return nil, err
 			}
-			return ExecAssembly(rpc, sess, path, cmdline, true, map[string]string{
-				"bypass_amsi": "",
-				"bypass_etw":  "",
-				"bypass_wldp": "",
-			})
+			return ExecuteAssembly(rpc, sess, path, cmdline, true, common.NewSacrifice(0, false, true, true, ""))
 		},
 		common.ParseAssembly,
 		nil)
@@ -79,4 +107,16 @@ func RegisterAssemblyFunc(con *repl.Console) {
 		},
 		[]string{"task"})
 
+	con.RegisterImplantFunc(
+		consts.ModuleInlineAssembly,
+		InlineAssembly,
+		"",
+		nil,
+		common.ParseAssembly,
+		nil,
+	)
+	con.AddCommandFuncHelper(consts.ModuleInlineAssembly, consts.ModuleInlineAssembly,
+		consts.ModuleInlineAssembly+`(active(),"seatbelt.exe",{},true)`,
+		[]string{"sessions", "path", "args", "output"},
+		[]string{"task"})
 }

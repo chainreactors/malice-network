@@ -123,34 +123,57 @@ powershell dir
 		Use:   consts.ModuleExecuteAssembly + " [file]",
 		Short: "Loads and executes a .NET assembly in implant process (Windows Only)",
 		Long: `
-Load CLR assembly in implant process(will not create new process)
-
-if return 0x80004005, please use --amsi bypass.
+Load CLR assembly in sacrifice process (with donut)
 `,
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ExecuteAssemblyCmd(cmd, con)
 		},
-		Aliases: []string{consts.ModuleInlineAssembly},
 		Annotations: map[string]string{
-			"depend": consts.ModuleExecuteAssembly,
+			"depend": consts.ModuleExecuteShellcode,
 		},
-		Example: `Execute a .NET assembly without "-" arguments
-~~~
-execute-assembly --amsi potato.exe "whoami" 
-~~~
-Execute a .NET assembly with "-" arguments, you need add "--" before the arguments
-~~~
-execute-assembly --amsi potato.exe -- -cmd "cmd /c whoami"
+		Example: `~~~
+execute-assembly potato.exe "whoami" 
 ~~~
 `,
 	}
 
 	common.BindArgCompletions(execAssemblyCmd, nil,
 		carapace.ActionFiles().Usage("path the assembly file"),
-		carapace.ActionValues().Usage("arguments to pass to the assembly entrypoint"))
+		carapace.ActionValues().Usage("arguments to pass to the assembly args"))
 
-	common.BindFlag(execAssemblyCmd, common.CLRFlagSet)
+	common.BindFlag(execAssemblyCmd, common.SacrificeFlagSet)
+
+	inlineAssemblyCmd := &cobra.Command{
+		Use:   consts.ModuleInlineAssembly + " [file]",
+		Short: "Loads and inline execute a .NET assembly (Windows Only)",
+		Args:  cobra.MinimumNArgs(1),
+		Long: `Load CLR assembly in implant process(will not create new process)
+
+if return 0x80004005, please use --amsi bypass.`,
+		Example: `
+inline execute a .NET assembly
+~~~
+inline-assembly --amsi potato.exe "whoami" 
+~~~
+Execute a .NET assembly with "-" arguments, you need add "--" before the arguments
+~~~
+inline-assembly --amsi potato.exe -- cmd /c whoami
+~~~
+`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return InlineAssemblyCmd(cmd, con)
+		},
+		Annotations: map[string]string{
+			"depend": consts.ModuleExecuteAssembly,
+		},
+	}
+
+	common.BindArgCompletions(inlineAssemblyCmd, nil,
+		carapace.ActionFiles().Usage("path the assembly file"),
+		carapace.ActionValues().Usage("arguments to pass to the assembly args"))
+
+	common.BindFlag(inlineAssemblyCmd, common.CLRFlagSet)
 
 	execShellcodeCmd := &cobra.Command{
 		Use:   consts.ModuleExecuteShellcode + " [shellcode_file]",
@@ -394,6 +417,7 @@ powerpick -s powerview.ps1 -- Get-NetUser
 		shellCmd,
 		powershellCmd,
 		execAssemblyCmd,
+		inlineAssemblyCmd,
 		execShellcodeCmd,
 		inlineShellcodeCmd,
 		execDLLCmd,

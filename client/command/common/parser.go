@@ -20,7 +20,7 @@ func ParseAssembly(ctx *clientpb.TaskContext) (interface{}, error) {
 	return intermediate.ParseAssembly(ctx.Spite)
 }
 
-func NewSacrifice(ppid int64, hidden, block_dll, disable_etw bool, argue string) *implantpb.SacrificeProcess {
+func NewSacrifice(ppid uint32, hidden, block_dll, disable_etw bool, argue string) *implantpb.SacrificeProcess {
 	sac, _ := intermediate.NewSacrificeProcessMessage(ppid, hidden, block_dll, disable_etw, argue)
 	return sac
 }

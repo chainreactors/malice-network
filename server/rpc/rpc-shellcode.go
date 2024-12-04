@@ -4,12 +4,13 @@ import (
 	"context"
 	"fmt"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/utils/donut"
 	"github.com/chainreactors/malice-network/server/internal/generate"
 )
 
 func (rpc *Server) EXE2Shellcode(ctx context.Context, req *clientpb.EXE2Shellcode) (*clientpb.Bin, error) {
 	if req.Type == "donut" {
-		bin, err := generate.DonutShellcodeFromPE(req.Bin, req.Arch, false, req.Params, "", "", false, false, true)
+		bin, err := donut.DonutShellcodeFromPE(req.Bin, req.Arch, req.Params, "", "", false, false, true)
 		if err != nil {
 			return nil, err
 		}
@@ -21,7 +22,7 @@ func (rpc *Server) EXE2Shellcode(ctx context.Context, req *clientpb.EXE2Shellcod
 
 func (rpc *Server) DLL2Shellcode(ctx context.Context, req *clientpb.DLL2Shellcode) (*clientpb.Bin, error) {
 	if req.Type == "donut" {
-		bin, err := generate.DonutShellcodeFromPE(req.Bin, req.Arch, false, req.Params, "", "", true, false, true)
+		bin, err := donut.DonutShellcodeFromPE(req.Bin, req.Arch, req.Params, "", "", true, false, true)
 		if err != nil {
 			return nil, err
 		}

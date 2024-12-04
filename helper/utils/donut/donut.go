@@ -1,4 +1,4 @@
-package generate
+package donut
 
 import (
 	"github.com/wabzsy/gonut"
@@ -14,11 +14,11 @@ func DonutShellcodeFromFile(filePath string, arch string, dotnet bool, params st
 		return
 	}
 	isDLL := (filepath.Ext(filePath) == ".dll")
-	return DonutShellcodeFromPE(pe, arch, dotnet, params, className, method, isDLL, false, true)
+	return DonutShellcodeFromPE(pe, arch, params, className, method, isDLL, false, true)
 }
 
 // DonutShellcodeFromPE 从给定的 PE 数据生成 Donut shellcode
-func DonutShellcodeFromPE(pe []byte, arch string, dotnet bool, params string, className string, method string, isDLL bool, isUnicode bool, createNewThread bool) (data []byte, err error) {
+func DonutShellcodeFromPE(pe []byte, arch string, params string, className string, method string, isDLL bool, isUnicode bool, createNewThread bool) (data []byte, err error) {
 	ext := ".exe"
 	if isDLL {
 		ext = ".dll"

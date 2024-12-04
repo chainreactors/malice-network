@@ -16,8 +16,7 @@ import (
 func ExecuteShellcodeCmd(cmd *cobra.Command, con *repl.Console) error {
 	session := con.GetInteractive()
 	path, args, output, timeout, arch, process := common.ParseFullBinaryFlags(cmd)
-	sac, _ := common.ParseSacrificeFlags(cmd)
-	task, err := ExecShellcode(con.Rpc, session, path, args, output, timeout, arch, process, sac)
+	task, err := ExecShellcode(con.Rpc, session, path, args, output, timeout, arch, process, common.ParseSacrificeFlags(cmd))
 	if err != nil {
 		return err
 	}
@@ -32,6 +31,9 @@ func ExecShellcode(rpc clientrpc.MaliceRPCClient, sess *core.Session, shellcodeP
 		arch = sess.Os.Arch
 	}
 	shellcodeBin, err := common.NewBinary(consts.ModuleExecuteShellcode, shellcodePath, args, output, timeout, arch, process, sac)
+	if err != nil {
+		return nil, err
+	}
 	task, err := rpc.ExecuteShellcode(sess.Context(), shellcodeBin)
 	if err != nil {
 		return nil, err
@@ -72,8 +74,8 @@ func RegisterShellcodeFunc(con *repl.Console) {
 		consts.ModuleExecuteShellcode,
 		ExecShellcode,
 		"bshinject",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, ppid int, arch, path string) (*clientpb.Task, error) {
-			return ExecShellcode(rpc, sess, path, nil, true, math.MaxUint32, sess.Os.Arch, "", common.NewSacrifice(int64(ppid), false, true, true, ""))
+		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, ppid uint32, arch, path string) (*clientpb.Task, error) {
+			return ExecShellcode(rpc, sess, path, nil, true, math.MaxUint32, sess.Os.Arch, "", common.NewSacrifice(ppid, false, true, true, ""))
 		},
 		common.ParseAssembly,
 		nil)

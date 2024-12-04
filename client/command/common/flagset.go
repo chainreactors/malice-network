@@ -31,19 +31,19 @@ func ParseFullBinaryFlags(cmd *cobra.Command) (string, []string, bool, uint32, s
 }
 
 func SacrificeFlagSet(f *pflag.FlagSet) {
-	f.UintP("ppid", "p", 0, "spoofing parent processes, (0 means injection into ourselves)")
+	f.Uint32P("ppid", "p", 0, "spoofing parent processes, (0 means injection into ourselves)")
 	f.BoolP("block_dll", "b", false, "block not microsoft dll injection")
 	f.StringP("argue", "a", "", "spoofing process arguments, eg: notepad.exe ")
 	f.Bool("etw", false, "disable ETW")
 }
 
-func ParseSacrificeFlags(cmd *cobra.Command) (*implantpb.SacrificeProcess, error) {
-	ppid, _ := cmd.Flags().GetUint("ppid")
+func ParseSacrificeFlags(cmd *cobra.Command) *implantpb.SacrificeProcess {
+	ppid, _ := cmd.Flags().GetUint32("ppid")
 	argue, _ := cmd.Flags().GetString("argue")
 	isBlockDll, _ := cmd.Flags().GetBool("block_dll")
 	hidden, _ := cmd.Flags().GetBool("hidden")
 	disableEtw, _ := cmd.Flags().GetBool("etw")
-	return NewSacrifice(int64(ppid), hidden, isBlockDll, disableEtw, argue), nil
+	return NewSacrifice(ppid, hidden, isBlockDll, disableEtw, argue)
 }
 
 func CLRFlagSet(f *pflag.FlagSet) {

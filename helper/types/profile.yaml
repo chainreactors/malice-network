@@ -16,7 +16,7 @@ pulse:
     start: 0x41
     end: 0x42
     magic: "beautiful"
-    artifact_id: 16
+    artifact_id: 0
   encryption: xor
   key: "maliceofinternal"
   target: 127.0.0.1:5002

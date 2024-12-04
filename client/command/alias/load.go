@@ -267,7 +267,7 @@ func runAliasCommand(cmd *cobra.Command, con *repl.Console) {
 				return
 			}
 		}
-		sac, _ := common.ParseSacrificeFlags(cmd)
+		sac := common.ParseSacrificeFlags(cmd)
 		task, err := ExecuteAlias(con.Rpc, session, cmd.Name(), extArgs, clrparams, sac)
 		if err != nil {
 			con.Log.Errorf("Execute error: %v\n", err)

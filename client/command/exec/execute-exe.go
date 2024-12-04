@@ -18,7 +18,7 @@ import (
 // ExecuteExeCmd - Execute PE on sacrifice process
 func ExecuteExeCmd(cmd *cobra.Command, con *repl.Console) error {
 	path, args, output, timeout, arch, process := common.ParseFullBinaryFlags(cmd)
-	sac, _ := common.ParseSacrificeFlags(cmd)
+	sac := common.ParseSacrificeFlags(cmd)
 	task, err := ExecExe(con.Rpc, con.GetInteractive(), path, args, output, timeout, arch, process, sac)
 	if err != nil {
 		return err

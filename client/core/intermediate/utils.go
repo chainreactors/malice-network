@@ -33,9 +33,9 @@ func GetGlobalResourceFile(filename string) (string, error) {
 	return "", fmt.Errorf("file not found")
 }
 
-func NewSacrificeProcessMessage(ppid int64, hidden, block_dll, bypassETW bool, argue string) (*implantpb.SacrificeProcess, error) {
+func NewSacrificeProcessMessage(ppid uint32, hidden, block_dll, bypassETW bool, argue string) (*implantpb.SacrificeProcess, error) {
 	return &implantpb.SacrificeProcess{
-		Ppid:     uint32(ppid),
+		Ppid:     ppid,
 		Hidden:   hidden,
 		BlockDll: block_dll,
 		Argue:    argue,

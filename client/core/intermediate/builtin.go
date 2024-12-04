@@ -40,7 +40,7 @@ func RegisterBuiltin(rpc clientrpc.MaliceRPCClient) {
 
 func RegisterCustomBuiltin(rpc clientrpc.MaliceRPCClient) {
 	// 构建 sacrifice 进程消息
-	RegisterFunction("new_sacrifice", func(ppid int64, hidden, blockDll, disableETW bool, argue string) (*implantpb.SacrificeProcess, error) {
+	RegisterFunction("new_sacrifice", func(ppid uint32, hidden, blockDll, disableETW bool, argue string) (*implantpb.SacrificeProcess, error) {
 		return NewSacrificeProcessMessage(ppid, hidden, blockDll, disableETW, argue)
 	})
 	AddHelper(

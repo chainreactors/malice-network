@@ -19,7 +19,7 @@ func ExecuteLocalCmd(cmd *cobra.Command, con *repl.Console) error {
 	args := cmd.Flags().Args()
 	process, _ := cmd.Flags().GetString("process")
 	output, _ := cmd.Flags().GetBool("output")
-	sac, _ := common.ParseSacrificeFlags(cmd)
+	sac := common.ParseSacrificeFlags(cmd)
 	task, err := ExecLocal(con.Rpc, con.GetInteractive(), args, output, process, sac)
 	if err != nil {
 		return err
