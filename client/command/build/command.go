@@ -6,11 +6,10 @@ import (
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/kballard/go-shellquote"
+	"github.com/chainreactors/malice-network/helper/utils/donut"
 	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"strings"
 )
 
 func Commands(con *repl.Console) []*cobra.Command {
@@ -393,54 +392,35 @@ func Register(con *repl.Console) {
 		Short: "download artifact with special build id",
 	})
 
-	con.RegisterServerFunc("donut_exe2shellcode",
-		func(con *repl.Console, exe []byte, arch string, param string) (string, error) {
-			cmdline, err := shellquote.Split(param)
+	intermediate.RegisterFunction("exe2shellcode",
+		func(exe []byte, arch string, cmdline string) (string, error) {
+			bin, err := donut.DonutShellcodeFromPE("1.exe", exe, arch, cmdline, false, true)
 			if err != nil {
 				return "", err
 			}
-
-			bin, err := con.Rpc.EXE2Shellcode(con.Context(), &clientpb.EXE2Shellcode{
-				Bin:    exe,
-				Arch:   arch,
-				Type:   "donut",
-				Params: strings.Join(cmdline, ","),
-			})
-			if err != nil {
-				return "", err
-			}
-			return string(bin.Bin), nil
+			return string(bin), nil
+		})
+	intermediate.AddHelper("exe2shellcode", &intermediate.Helper{
+		Group: intermediate.GroupArtifact,
+		Short: "exe to shellcode with donut",
+		Input: []string{
+			"bin: dll bin",
+			"arch: architecture",
+			"param: cmd args",
 		},
-		&intermediate.Helper{
-			Group: intermediate.GroupArtifact,
-			Short: "exe to shellcode with donut",
-			Input: []string{
-				"bin: dll bin",
-				"arch: architecture",
-				"param: cmd args",
-			},
-			Output: []string{
-				"shellcode: shellcode bin",
-			},
-		})
+		Output: []string{
+			"shellcode: shellcode bin",
+		},
+	})
 
-	con.RegisterServerFunc("donut_dll2shellcode", func(con *repl.Console, dll []byte, arch string, param string) (string, error) {
-		cmdline, err := shellquote.Split(param)
+	intermediate.RegisterFunction("dll2shellcode", func(dll []byte, arch string, cmdline string) (string, error) {
+		bin, err := donut.DonutShellcodeFromPE("1.dll", dll, arch, cmdline, false, true)
 		if err != nil {
 			return "", err
 		}
-
-		bin, err := con.Rpc.DLL2Shellcode(con.Context(), &clientpb.DLL2Shellcode{
-			Bin:    dll,
-			Arch:   arch,
-			Type:   "donut",
-			Params: strings.Join(cmdline, ","),
-		})
-		if err != nil {
-			return "", err
-		}
-		return string(bin.Bin), nil
-	}, &intermediate.Helper{
+		return string(bin), nil
+	})
+	intermediate.AddHelper("dll2shellcode", &intermediate.Helper{
 		Group: intermediate.GroupArtifact,
 		Short: "dll to shellcode with donut",
 		Input: []string{
@@ -450,6 +430,37 @@ func Register(con *repl.Console) {
 		},
 		Output: []string{
 			"shellcode: shellcode bin",
+		},
+	})
+
+	intermediate.RegisterFunction("clr2shellcode", donut.DonutFromAssemblyFromFile)
+	intermediate.AddHelper("clr2shellcode", &intermediate.Helper{
+		Group: intermediate.GroupArtifact,
+		Short: "clr to shellcode with donut",
+		Input: []string{
+			"file: path to PE file",
+			"arch: architecture, x86/x64",
+			"cmdline: cmd args",
+			"method: name of method or DLL function to invoke for .NET DLL and unmanaged DLL",
+			"classname: name of class with optional namespace for .NET DLL",
+			"appdomain: name of domain to create for .NET DLL/EXE",
+		},
+		Output: []string{
+			"shellcode: bin",
+		},
+	})
+
+	intermediate.RegisterFunction("donut", donut.DonutShellcodeFromFile)
+	intermediate.AddHelper("donut", &intermediate.Helper{
+		Group: intermediate.GroupArtifact,
+		Short: "Generates x86, x64, or AMD64+x86 position-independent shellcode that loads .NET Assemblies, PE files, and other Windows payloads from memory and runs them with parameters ",
+		Input: []string{
+			"file: path to PE file",
+			"arch: architecture, x86/x64",
+			"cmdline: cmd args",
+		},
+		Output: []string{
+			"shellcode",
 		},
 	})
 

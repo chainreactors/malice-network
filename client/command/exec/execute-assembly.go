@@ -117,7 +117,7 @@ func RegisterAssemblyFunc(con *repl.Console) {
 		nil,
 	)
 	con.AddCommandFuncHelper(consts.ModuleInlineAssembly, consts.ModuleInlineAssembly,
-		consts.ModuleInlineAssembly+`(active(),"seatbelt.exe",{},true)`,
-		[]string{"sessions", "path", "args", "output"},
+		consts.ModuleInlineAssembly+`(active(),"seatbelt.exe",{},true,new_bypass_all())`,
+		[]string{"sessions", "path", "args", "output", "bypass_params"},
 		[]string{"task"})
 }

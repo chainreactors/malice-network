@@ -41,7 +41,7 @@ func ExecShellcode(rpc clientrpc.MaliceRPCClient, sess *core.Session, shellcodeP
 	}
 	if pe.IsPeExt(shellcodePath) {
 		cmdline := shellquote.Join(args...)
-		binary.Bin, err = donut.DonutShellcodeFromPE(shellcodePath, binary.Bin, arch, cmdline, "", "", false, true)
+		binary.Bin, err = donut.DonutShellcodeFromPE(shellcodePath, binary.Bin, arch, cmdline, false, true)
 		if err != nil {
 			return nil, err
 		}
@@ -77,7 +77,7 @@ func InlineShellcode(rpc clientrpc.MaliceRPCClient, sess *core.Session, path str
 	}
 	if pe.IsPeExt(path) {
 		cmdline := shellquote.Join(args...)
-		binary.Bin, err = donut.DonutShellcodeFromPE(path, binary.Bin, arch, cmdline, "", "", false, true)
+		binary.Bin, err = donut.DonutShellcodeFromPE(path, binary.Bin, arch, cmdline, false, true)
 		if err != nil {
 			return nil, err
 		}

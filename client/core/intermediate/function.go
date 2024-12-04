@@ -108,10 +108,10 @@ func AddHelper(name string, helper *Helper) error {
 	name = strings.ReplaceAll(name, "-", "_")
 	if fn, ok := InternalFunctions[name]; ok {
 		if helper.Input != nil && len(helper.Input) != len(fn.ArgTypes) {
-			logs.Log.Warnf("function %s %s", name, WarnArgsMismatch.Error())
+			logs.Log.Warnf("function %s %s\n", name, WarnArgsMismatch.Error())
 		}
 		if helper.Output != nil && len(helper.Output) != len(fn.ReturnTypes) {
-			logs.Log.Warnf("function %s %s", name, WarnReturnMismatch.Error())
+			logs.Log.Warnf("function %s %s\n", name, WarnReturnMismatch.Error())
 		}
 		fn.Helper = helper
 		return nil

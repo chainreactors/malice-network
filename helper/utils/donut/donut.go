@@ -8,24 +8,22 @@ import (
 )
 
 // DonutShellcodeFromFile 从给定的 PE 文件生成 Donut shellcode
-func DonutShellcodeFromFile(filePath string, arch string, params string, className string, method string) (data []byte, err error) {
+func DonutShellcodeFromFile(filePath string, arch string, params string) (data []byte, err error) {
 	pe, err := os.ReadFile(filePath)
 	if err != nil {
 		return
 	}
-	return DonutShellcodeFromPE(filepath.Base(filePath), pe, arch, params, className, method, false, true)
+	return DonutShellcodeFromPE(filepath.Base(filePath), pe, arch, params, false, true)
 }
 
 // DonutShellcodeFromPE 从给定的 PE 数据生成 Donut shellcode
-func DonutShellcodeFromPE(filename string, pe []byte, arch string, params string, className string, method string, isUnicode bool, createNewThread bool) (data []byte, err error) {
+func DonutShellcodeFromPE(filename string, pe []byte, arch string, params string, isUnicode bool, createNewThread bool) (data []byte, err error) {
 	config := gonut.DefaultConfig()
 	config.Input = filename
 	config.InputBin = pe
 	config.Output = ""
 	config.Arch = getDonutArch(arch)
 	config.Args = params
-	config.Class = className
-	config.Method = method
 	config.Bypass = gonut.DONUT_BYPASS_CONTINUE
 	config.Format = gonut.DONUT_FORMAT_BINARY
 	config.Entropy = gonut.DONUT_ENTROPY_NONE
@@ -47,6 +45,14 @@ func DonutShellcodeFromPE(filename string, pe []byte, arch string, params string
 	}
 
 	return append(stackCheckPrologue, o.PicData...), nil
+}
+
+func DonutFromAssemblyFromFile(filePath string, arch string, params string, method string, className string, appDomain string) ([]byte, error) {
+	assembly, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, err
+	}
+	return DonutFromAssembly(filePath, assembly, arch, params, method, className, appDomain)
 }
 
 // DonutFromAssembly 从 .NET 程序集生成 donut shellcode
