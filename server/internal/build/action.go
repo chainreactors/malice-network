@@ -197,7 +197,7 @@ func downloadArtifactWhenReady(owner, repo, token string, builder *models.Builde
 		_, err := DownloadArtifact(owner, repo, token, builder.Name)
 		if err == nil {
 			logs.Log.Info("Artifact downloaded successfully!")
-			if !builder.IsSRDI {
+			if builder.IsSRDI {
 				_, _, err := UploadSrdiArtifact(builder, builder.Os, builder.Arch)
 				if err != nil {
 					logs.Log.Errorf("action to srdi failed")

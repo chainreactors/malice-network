@@ -25,6 +25,8 @@ const downloadApiUrl = "https://api.github.com/repos/%s/%s/actions/artifacts/%s/
 
 const archiveFormat = "zip"
 
+var notifiedWorkflows = make(map[string]bool)
+
 // createGitHubRequest
 func createGitHubRequest(url, token string) (*http.Request, error) {
 	req, err := http.NewRequest("GET", url, nil)
@@ -123,6 +125,14 @@ func findArtifactsURL(workflows []Workflow, name string) (string, error) {
 				return wf.ArtifactsURL, nil
 			} else if wf.Conclusion == "failure" {
 				return "", errs.ErrWorkflowFailed
+			}
+			if !notifiedWorkflows[name] {
+				core.EventBroker.Publish(core.Event{
+					EventType: consts.EventBuild,
+					IsNotify:  false,
+					Message:   fmt.Sprintf("action %s run in %s.", name, wf.HTMLURL),
+				})
+				notifiedWorkflows[name] = true
 			}
 		}
 	}

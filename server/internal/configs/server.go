@@ -29,7 +29,7 @@ var (
 	WebsitePath                 = path.Join(ServerRootPath, "web")
 	// variables for implant build
 	BuildPath       = path.Join(GetWorkDir(), "..", "malefic", "build")
-	BinPath         = path.Join(BuildPath, "bin")
+	BinPath         = path.Join(ServerRootPath, "bin")
 	SourceCodePath  = path.Join(BuildPath, "src")
 	TargetPath      = path.Join(SourceCodePath, "target")
 	CargoCachePath  = path.Join(BuildPath, "cache")

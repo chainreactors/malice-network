@@ -20,11 +20,6 @@ func Commands(con *repl.Console) []*cobra.Command {
 		},
 	}
 
-	runCmd := &cobra.Command{
-		Use:   consts.CommandActionRun,
-		Short: " run github workflow",
-	}
-
 	beaconCmd := &cobra.Command{
 		Use:   consts.CommandBuildBeacon,
 		Short: "run github action to build beacon",
@@ -110,8 +105,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	preludeCmd.MarkFlagRequired("profile")
 	preludeCmd.MarkFlagRequired("autorun")
 
-	runCmd.AddCommand(beaconCmd, bindCmd, preludeCmd, pulseCmd, modulesCmd)
-	actionCmd.AddCommand(runCmd)
+	actionCmd.AddCommand(beaconCmd, bindCmd, preludeCmd, pulseCmd, modulesCmd)
 	return []*cobra.Command{actionCmd}
 }
 

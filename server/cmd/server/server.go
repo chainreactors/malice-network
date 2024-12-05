@@ -8,6 +8,7 @@ import (
 	crConfig "github.com/chainreactors/malice-network/helper/utils/config"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/mtls"
+	"github.com/chainreactors/malice-network/server/assets"
 	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
@@ -34,6 +35,7 @@ func init() {
 	})
 	config.AddDriver(yaml.Driver)
 	codenames.SetupCodenames(configs.ServerRootPath)
+	assets.SetupGithubFile()
 }
 
 func Execute() {

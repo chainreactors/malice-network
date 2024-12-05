@@ -17,6 +17,7 @@ func InitConfig() error {
 	os.MkdirAll(TempPath, perm)
 	//os.MkdirAll(PluginPath, perm)
 	os.MkdirAll(AuditPath, perm)
+	os.MkdirAll(BinPath, perm)
 	os.MkdirAll(CachePath, perm)
 	os.MkdirAll(WebsitePath, perm)
 	os.MkdirAll(ListenerPath, perm)
