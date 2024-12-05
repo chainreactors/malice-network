@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/server/internal/configs"
+	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"io"
 	"net/http"
@@ -224,7 +226,11 @@ func DownloadArtifact(owner, repo, token, buildName string) (*clientpb.DownloadA
 	if err != nil {
 		return nil, err
 	}
-
+	core.EventBroker.Publish(core.Event{
+		EventType: consts.EventBuild,
+		IsNotify:  false,
+		Message:   fmt.Sprintf("action %s type %s target %s download successed.", builder.Name, builder.Type, builder.Target),
+	})
 	return &clientpb.DownloadArtifactsResponse{
 		Zip:  fileByte,
 		Name: filepath.Base(resultPath),
