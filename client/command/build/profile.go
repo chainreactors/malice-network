@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/codenames"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
@@ -48,7 +47,7 @@ func ProfileShowCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func ProfileNewCmd(cmd *cobra.Command, con *repl.Console) error {
+func ProfileLoadCmd(cmd *cobra.Command, con *repl.Console) error {
 	profileName, pipelineName := common.ParseProfileFlags(cmd)
 
 	profilePath := cmd.Flags().Arg(0)
@@ -57,15 +56,26 @@ func ProfileNewCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	if profileName == "" {
-		profileName = fmt.Sprintf("%s", codenames.GetCodename())
-	}
 	profile := &clientpb.Profile{
 		Name:       profileName,
 		PipelineId: pipelineName,
 		Content:    content,
 	}
 	_, err = con.Rpc.NewProfile(con.Context(), profile)
+	if err != nil {
+		return err
+	}
+	con.Log.Infof("load implant profile %s success\n", profileName)
+	return nil
+}
+
+func ProfileNewCmd(cmd *cobra.Command, con *repl.Console) error {
+	profileName, pipelineName := common.ParseProfileFlags(cmd)
+	profile := &clientpb.Profile{
+		Name:       profileName,
+		PipelineId: pipelineName,
+	}
+	_, err := con.Rpc.NewProfile(con.Context(), profile)
 	if err != nil {
 		return err
 	}

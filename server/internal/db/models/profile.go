@@ -13,8 +13,7 @@ type Profile struct {
 	ID uuid.UUID `gorm:"primaryKey;->;<-:create;type:uuid;"`
 
 	// build
-	Name   string `gorm:"unique"` // Ensuring Name is unique
-	Target string // build target win64,win32,linux64
+	Name string `gorm:"unique"` // Ensuring Name is unique
 
 	// build type
 	Type string
@@ -22,7 +21,6 @@ type Profile struct {
 	// shellcode prelude beacon bind
 	Stager string
 
-	Proxy     string // not impl
 	Obfuscate string // not impl, obf llvm plug ,
 
 	Modules string // default modules, comma split, e.g. "execute_exe,execute_dll"
@@ -74,7 +72,6 @@ func (p *Profile) DeserializeImplantConfig() error {
 func (p *Profile) ToProtobuf() *clientpb.Profile {
 	return &clientpb.Profile{
 		Name:       p.Name,
-		Target:     p.Target,
 		Type:       p.Type,
 		Modules:    p.Modules,
 		Ca:         p.CA,

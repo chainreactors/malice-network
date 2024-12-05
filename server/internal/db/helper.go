@@ -526,10 +526,8 @@ func NewProfile(profile *clientpb.Profile) error {
 		profile.Content = types.DefaultProfile
 	}
 	model := &models.Profile{
-		Name:   profile.Name,
-		Target: profile.Target,
-		Type:   profile.Type,
-		Proxy:  profile.Proxy,
+		Name: profile.Name,
+		Type: profile.Type,
 		//Obfuscate:  profile.Obfuscate,
 		Modules:    profile.Modules,
 		CA:         profile.Ca,
