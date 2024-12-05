@@ -191,7 +191,6 @@ func triggerBuildBeaconWorkflow(owner, repo, workflowID, token string, inputs ma
 // downloadArtifactWhenReady waits for the artifact to be ready and downloads it
 func downloadArtifactWhenReady(owner, repo, token string, builder *models.Builder) {
 	for {
-		time.Sleep(30 * time.Second)
 
 		// Attempt to download the artifact
 		_, err := DownloadArtifact(owner, repo, token, builder.Name)
@@ -210,6 +209,8 @@ func downloadArtifactWhenReady(owner, repo, token string, builder *models.Builde
 		} else {
 			logs.Log.Debugf("Download artifact failed: %s", err)
 		}
+		time.Sleep(30 * time.Second)
+
 	}
 }
 
