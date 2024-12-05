@@ -31,13 +31,13 @@ func checkGithubArg(cmd *cobra.Command, isList bool) (string, string, string, st
 			file = profile.GithubWorkflowFile
 		}
 		if file == "" {
-			return "", "", "", "", errors.New("require github workflowID")
+			file = "generate.yaml"
 		}
 	}
 	return owner, repo, token, file, nil
 }
 
-func RunWorkFlowCmd(cmd *cobra.Command, con *repl.Console) error {
+func RunBeaconWorkFlowCmd(cmd *cobra.Command, con *repl.Console) error {
 	owner, repo, token, file, err := checkGithubArg(cmd, false)
 	if err != nil {
 		return err
@@ -46,33 +46,186 @@ func RunWorkFlowCmd(cmd *cobra.Command, con *repl.Console) error {
 	if buildTarget == "" {
 		return errors.New("require build target")
 	}
-	buildType := cmd.Flag("type").Value.String()
+	params := &types.ProfileParams{
+		Interval: interval,
+		Jitter:   jitter,
+	}
+	inputs := map[string]string{
+		"package": consts.CommandBuildBeacon,
+		"targets": buildTarget,
+	}
+	if len(modules) > 0 {
+		inputs["malefic_modules_features"] = strings.Join(modules, ",")
+	}
+	req := &clientpb.WorkflowRequest{
+		Owner:      owner,
+		Repo:       repo,
+		Token:      token,
+		WorkflowId: file,
+		Inputs:     inputs,
+		Profile:    name,
+		Address:    address,
+		Ca:         ca,
+		Params:     params.String(),
+	}
+	resp, err := RunWorkFlow(con, req)
+	if err != nil {
+		return err
+	}
+	con.Log.Infof("Create workflow %s type %s targrt %s success\n", resp.Name, resp.Type, resp.Target)
+	return nil
+}
+
+func RunBindWorkFlowCmd(cmd *cobra.Command, con *repl.Console) error {
+	owner, repo, token, file, err := checkGithubArg(cmd, false)
+	if err != nil {
+		return err
+	}
+	name, address, buildTarget, modules, ca, interval, jitter, _ := common.ParseGenerateFlags(cmd)
+	if buildTarget == "" {
+		return errors.New("require build target")
+	}
+	params := &types.ProfileParams{
+		Interval: interval,
+		Jitter:   jitter,
+	}
+	inputs := map[string]string{
+		"package": consts.CommandBuildBind,
+		"targets": buildTarget,
+	}
+	if len(modules) > 0 {
+		inputs["malefic_modules_features"] = strings.Join(modules, ",")
+	}
+	req := &clientpb.WorkflowRequest{
+		Owner:      owner,
+		Repo:       repo,
+		Token:      token,
+		WorkflowId: file,
+		Inputs:     inputs,
+		Profile:    name,
+		Address:    address,
+		Ca:         ca,
+		Params:     params.String(),
+	}
+	resp, err := RunWorkFlow(con, req)
+	if err != nil {
+		return err
+	}
+	con.Log.Infof("Create workflow %s type %s targrt %s success\n", resp.Name, resp.Type, resp.Target)
+	return nil
+}
+func RunPreludeWorkFlowCmd(cmd *cobra.Command, con *repl.Console) error {
+	owner, repo, token, file, err := checkGithubArg(cmd, false)
+	if err != nil {
+		return err
+	}
+	name, address, buildTarget, modules, ca, interval, jitter, _ := common.ParseGenerateFlags(cmd)
+	if buildTarget == "" {
+		return errors.New("require build target")
+	}
+	params := &types.ProfileParams{
+		Interval: interval,
+		Jitter:   jitter,
+	}
+	inputs := map[string]string{
+		"package": consts.CommandBuildPrelude,
+		"targets": buildTarget,
+	}
+	if len(modules) > 0 {
+		inputs["malefic_modules_features"] = strings.Join(modules, ",")
+	}
+	autorunPath, _ := cmd.Flags().GetString("autorun")
+	if autorunPath == "" {
+		return errors.New("require autorun.yaml path")
+	}
+	fileData, err := os.ReadFile(autorunPath)
+	if err != nil {
+		return err
+	}
+	base64Encoded := base64.StdEncoding.EncodeToString(fileData)
+	inputs["malefic_config_yaml"] = base64Encoded
+
+	req := &clientpb.WorkflowRequest{
+		Owner:      owner,
+		Repo:       repo,
+		Token:      token,
+		WorkflowId: file,
+		Inputs:     inputs,
+		Profile:    name,
+		Address:    address,
+		Ca:         ca,
+		Params:     params.String(),
+	}
+	resp, err := RunWorkFlow(con, req)
+	if err != nil {
+		return err
+	}
+	con.Log.Infof("Create workflow %s type %s targrt %s success\n", resp.Name, resp.Type, resp.Target)
+	return nil
+}
+func RunModulesWorkFlowCmd(cmd *cobra.Command, con *repl.Console) error {
+	owner, repo, token, file, err := checkGithubArg(cmd, false)
+	if err != nil {
+		return err
+	}
+	name, address, buildTarget, modules, ca, interval, jitter, _ := common.ParseGenerateFlags(cmd)
+	if buildTarget == "" {
+		return errors.New("require build target")
+	}
+	params := &types.ProfileParams{
+		Interval: interval,
+		Jitter:   jitter,
+	}
+	inputs := map[string]string{
+		"package": consts.CommandBuildModules,
+		"targets": buildTarget,
+	}
+	if len(modules) == 0 {
+		inputs["malefic_modules_features"] = "full"
+	} else if len(modules) > 0 {
+		inputs["malefic_modules_features"] = strings.Join(modules, ",")
+	}
+	req := &clientpb.WorkflowRequest{
+		Owner:      owner,
+		Repo:       repo,
+		Token:      token,
+		WorkflowId: file,
+		Inputs:     inputs,
+		Profile:    name,
+		Address:    address,
+		Ca:         ca,
+		Params:     params.String(),
+	}
+	resp, err := RunWorkFlow(con, req)
+	if err != nil {
+		return err
+	}
+	con.Log.Infof("Create workflow %s type %s targrt %s success\n", resp.Name, resp.Type, resp.Target)
+	return nil
+}
+
+func RunPulseWorkFlowCmd(cmd *cobra.Command, con *repl.Console) error {
+	owner, repo, token, file, err := checkGithubArg(cmd, false)
+	if err != nil {
+		return err
+	}
+	name, address, buildTarget, modules, ca, interval, jitter, _ := common.ParseGenerateFlags(cmd)
+	if buildTarget == "" {
+		return errors.New("require build target")
+	}
 	artifactID, _ := cmd.Flags().GetUint32("artifact-id")
 	params := &types.ProfileParams{
 		Interval: interval,
 		Jitter:   jitter,
 	}
 	inputs := map[string]string{
-		"package": buildType,
+		"package": consts.CommandBuildPulse,
 		"targets": buildTarget,
 	}
-	if buildType == consts.CommandBuildModules && len(modules) == 0 {
-		inputs["malefic_modules_features"] = "full"
-	} else if len(modules) > 0 {
+	if len(modules) > 0 {
 		inputs["malefic_modules_features"] = strings.Join(modules, ",")
 	}
-	if buildType == consts.CommandBuildPrelude {
-		autorunPath, _ := cmd.Flags().GetString("autorun")
-		if autorunPath == "" {
-			return errors.New("require autorun.yaml path")
-		}
-		fileData, err := os.ReadFile(autorunPath)
-		if err != nil {
-			return err
-		}
-		base64Encoded := base64.StdEncoding.EncodeToString(fileData)
-		inputs["malefic_config_yaml"] = base64Encoded
-	}
+
 	req := &clientpb.WorkflowRequest{
 		Owner:      owner,
 		Repo:       repo,

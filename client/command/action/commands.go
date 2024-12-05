@@ -23,26 +23,94 @@ func Commands(con *repl.Console) []*cobra.Command {
 	runCmd := &cobra.Command{
 		Use:   consts.CommandActionRun,
 		Short: " run github workflow",
+	}
+
+	beaconCmd := &cobra.Command{
+		Use:   consts.CommandBuildBeacon,
+		Short: "run github action to build beacon",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return RunWorkFlowCmd(cmd, con)
+			return RunBeaconWorkFlowCmd(cmd, con)
 		},
 	}
-	common.BindFlag(runCmd, common.GithubFlagSet, common.GenerateFlagSet, func(f *pflag.FlagSet) {
-		f.String("type", "", "action run type")
-		f.String("autorun", "", "autorun.yaml path")
-		f.Uint32("artifact-id", 0, "load remote shellcode build-id")
-	})
-	common.BindFlagCompletions(runCmd, func(comp carapace.ActionMap) {
-		comp["type"] = common.BuildTypeCompleter(con)
+
+	common.BindFlag(beaconCmd, common.GithubFlagSet, common.GenerateFlagSet)
+	common.BindFlagCompletions(beaconCmd, func(comp carapace.ActionMap) {
 		comp["target"] = common.BuildTargetCompleter(con)
 		comp["profile"] = common.ProfileCompleter(con)
-		comp["autorun"] = carapace.ActionFiles()
 	})
-	runCmd.MarkFlagRequired("config")
-	runCmd.MarkFlagRequired("type")
-	runCmd.MarkFlagRequired("target")
-	runCmd.MarkFlagRequired("profile")
+	beaconCmd.MarkFlagRequired("target")
+	beaconCmd.MarkFlagRequired("profile")
 
+	bindCmd := &cobra.Command{
+		Use:   consts.CommandBuildBind,
+		Short: "run github action to build bind",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return RunBindWorkFlowCmd(cmd, con)
+		},
+	}
+
+	common.BindFlag(bindCmd, common.GithubFlagSet, common.GenerateFlagSet)
+	common.BindFlagCompletions(bindCmd, func(comp carapace.ActionMap) {
+		comp["target"] = common.BuildTargetCompleter(con)
+		comp["profile"] = common.ProfileCompleter(con)
+	})
+	bindCmd.MarkFlagRequired("target")
+	bindCmd.MarkFlagRequired("profile")
+
+	modulesCmd := &cobra.Command{
+		Use:   consts.CommandBuildModules,
+		Short: "run github action to build modules",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return RunModulesWorkFlowCmd(cmd, con)
+		},
+	}
+
+	common.BindFlag(modulesCmd, common.GithubFlagSet, common.GenerateFlagSet)
+	common.BindFlagCompletions(modulesCmd, func(comp carapace.ActionMap) {
+		comp["target"] = common.BuildTargetCompleter(con)
+		comp["profile"] = common.ProfileCompleter(con)
+	})
+	modulesCmd.MarkFlagRequired("target")
+	modulesCmd.MarkFlagRequired("profile")
+
+	pulseCmd := &cobra.Command{
+		Use:   consts.CommandBuildPulse,
+		Short: "run github action to build pulse",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return RunPulseWorkFlowCmd(cmd, con)
+		},
+	}
+
+	common.BindFlag(pulseCmd, common.GithubFlagSet, common.GenerateFlagSet, func(f *pflag.FlagSet) {
+		f.Uint32("artifact-id", 0, "load remote shellcode build-id")
+	})
+	common.BindFlagCompletions(pulseCmd, func(comp carapace.ActionMap) {
+		comp["target"] = common.BuildTargetCompleter(con)
+		comp["profile"] = common.ProfileCompleter(con)
+	})
+	pulseCmd.MarkFlagRequired("target")
+	pulseCmd.MarkFlagRequired("profile")
+
+	preludeCmd := &cobra.Command{
+		Use:   consts.CommandBuildPrelude,
+		Short: "run github action to build prelude",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return RunPreludeWorkFlowCmd(cmd, con)
+		},
+	}
+
+	common.BindFlag(preludeCmd, common.GithubFlagSet, common.GenerateFlagSet, func(f *pflag.FlagSet) {
+		f.String("autorun", "", "autorun.yaml path")
+	})
+	common.BindFlagCompletions(preludeCmd, func(comp carapace.ActionMap) {
+		comp["target"] = common.BuildTargetCompleter(con)
+		comp["profile"] = common.ProfileCompleter(con)
+	})
+	preludeCmd.MarkFlagRequired("target")
+	preludeCmd.MarkFlagRequired("profile")
+	preludeCmd.MarkFlagRequired("autorun")
+
+	runCmd.AddCommand(beaconCmd, bindCmd, preludeCmd, pulseCmd, modulesCmd)
 	actionCmd.AddCommand(runCmd)
 	return []*cobra.Command{actionCmd}
 }
