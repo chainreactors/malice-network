@@ -338,7 +338,7 @@ func (s *Session) Update(req *clientpb.RegisterSession) {
 
 	if req.RegisterData.Sysinfo != nil {
 		if !s.Initialized {
-			s.Publish(consts.CtrlSessionInit, fmt.Sprintf("session %s init", s.ID))
+			s.Publish(consts.CtrlSessionInit, fmt.Sprintf("session %s init", s.ID), true)
 		}
 		s.UpdateSysInfo(req.RegisterData.Sysinfo)
 	}
@@ -357,12 +357,12 @@ func (s *Session) UpdateSysInfo(info *implantpb.SysInfo) {
 	s.Process = info.Process
 }
 
-func (s *Session) Publish(Op string, msg string) {
+func (s *Session) Publish(Op string, msg string, notify bool) {
 	EventBroker.Publish(Event{
 		EventType: consts.EventSession,
 		Op:        Op,
 		Session:   s.ToProtobuf(),
-		IsNotify:  true,
+		IsNotify:  notify,
 		Message:   msg,
 	})
 }
