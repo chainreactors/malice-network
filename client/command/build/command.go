@@ -6,7 +6,6 @@ import (
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/utils/donut"
 	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -33,16 +32,15 @@ profile list
 ~~~`,
 	}
 
-	newCmd := &cobra.Command{
+	loadProfileCmd := &cobra.Command{
 		Use:   consts.CommandProfileLoad,
-		Short: "Create a new compile profile",
-		Long: `Create a new compile profile with customizable attributes.
-
+		Short: "Load exist implant profile",
+		Long: `
 The **profile load** command requires a valid configuration file path (e.g., **config.yaml**) to load settings. This file specifies attributes necessary for generating the compile profile.
 `,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return ProfileNewCmd(cmd, con)
+			return ProfileLoadCmd(cmd, con)
 		},
 		Example: `~~~
 // Create a new profile
@@ -58,10 +56,10 @@ profile load /path/to/config.yaml --name my_profile --modules base,sys_full
 profile load /path/to/config.yaml --name my_profile --interval 10 --jitter 0.5
 ~~~`,
 	}
-	common.BindFlag(newCmd, common.ProfileSet)
-	newCmd.MarkFlagRequired("pipeline")
-	newCmd.MarkFlagRequired("name")
-	common.BindFlagCompletions(newCmd, func(comp carapace.ActionMap) {
+	common.BindFlag(loadProfileCmd, common.ProfileSet)
+	loadProfileCmd.MarkFlagRequired("pipeline")
+	loadProfileCmd.MarkFlagRequired("name")
+	common.BindFlagCompletions(loadProfileCmd, func(comp carapace.ActionMap) {
 		comp["name"] = carapace.ActionValues("profile name")
 		//comp["target"] = common.BuildTargetCompleter(con)
 		comp["pipeline"] = common.AllPipelineCompleter(con)
@@ -73,9 +71,29 @@ profile load /path/to/config.yaml --name my_profile --interval 10 --jitter 0.5
 		comp["interval"] = carapace.ActionValues("5")
 		comp["jitter"] = carapace.ActionValues("0.2")
 	})
-	common.BindArgCompletions(newCmd, nil, carapace.ActionFiles().Usage("profile path"))
+	common.BindArgCompletions(loadProfileCmd, nil, carapace.ActionFiles().Usage("profile path"))
 
-	profileCmd.AddCommand(listCmd, newCmd)
+	newProfileCmd := &cobra.Command{
+		Use:   consts.CommandProfileNew,
+		Short: "Create new compile profile with default profile",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return ProfileNewCmd(cmd, con)
+		},
+		Example: `
+~~~
+profile new --name my_profile --pipeline default_tcp
+~~~
+`,
+	}
+	common.BindFlag(newProfileCmd, common.ProfileSet)
+	loadProfileCmd.MarkFlagRequired("pipeline")
+	loadProfileCmd.MarkFlagRequired("name")
+	common.BindFlagCompletions(newProfileCmd, func(comp carapace.ActionMap) {
+		comp["name"] = carapace.ActionValues("profile name")
+		comp["pipeline"] = common.AllPipelineCompleter(con)
+	})
+
+	profileCmd.AddCommand(listCmd, loadProfileCmd, newProfileCmd)
 
 	buildCmd := &cobra.Command{
 		Use:   consts.CommandBuild,
@@ -263,36 +281,6 @@ build log builder_name --limit 70
 
 	buildCmd.AddCommand(beaconCmd, bindCmd, modulesCmd, pulseCmd, preludeCmd, logCmd)
 
-	srdiCmd := &cobra.Command{
-		Use:   consts.CommandSRDI,
-		Short: "use srdi to generate shellcode",
-		Long: `Generate an SRDI (Shellcode Reflective DLL Injection) artifact to minimize PE (Portable Executable) signatures.
-
-SRDI technology reduces the PE characteristics of a DLL, enabling more effective injection and evasion during execution. The following options are supported:
-`,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return SRDICmd(cmd, con)
-		},
-		Example: `~~~
-// Convert a DLL to SRDI format with architecture and platform
-srdi --path /path/to/target --arch x64 --platform win
-
-// Specify an entry function for the DLL during SRDI conversion
-srdi --path /path/to/target --arch x86 --platform linux 
-
-// Include user-defined data with the generated shellcode
-srdi --path /path/to/target.dll --arch x64 --platform win --user_data_path /path/to/user_data --function_name DllMain
-
-// Convert a specific artifact to SRDI format using its ID
-srdi --id artifact_id --arch x64 --platform linux
-~~~`,
-	}
-	common.BindFlag(srdiCmd, common.SRDIFlagSet)
-	common.BindFlagCompletions(srdiCmd, func(comp carapace.ActionMap) {
-		comp["path"] = carapace.ActionFiles().Usage("file path")
-		comp["id"] = common.ArtifactCompleter(con)
-	})
-
 	artifactCmd := &cobra.Command{
 		Use:   consts.CommandArtifact,
 		Short: "artifact manage",
@@ -361,15 +349,10 @@ artifact upload /path/to/artifact --type DLL
 
 	artifactCmd.AddCommand(listArtifactCmd, downloadCmd, uploadCmd)
 
-	return []*cobra.Command{profileCmd, buildCmd, artifactCmd, srdiCmd}
+	return []*cobra.Command{profileCmd, buildCmd, artifactCmd}
 }
 
 func Register(con *repl.Console) {
-	con.RegisterServerFunc("malefic_srdi", MaleficSRDI, &intermediate.Helper{
-		Group: intermediate.GroupArtifact,
-		Short: "malefic srdi",
-	})
-
 	con.RegisterServerFunc("find_artifact", func(con *repl.Console, profile, arch, os, typ string) (*clientpb.Builder, error) {
 		return con.Rpc.FindArtifact(con.Context(), &clientpb.Builder{
 			ProfileName: profile,
@@ -390,128 +373,6 @@ func Register(con *repl.Console) {
 	con.RegisterServerFunc("download_artifact", DownloadArtifact, &intermediate.Helper{
 		Group: intermediate.GroupArtifact,
 		Short: "download artifact with special build id",
-	})
-
-	intermediate.RegisterFunction("exe2shellcode",
-		func(exe []byte, arch string, cmdline string) (string, error) {
-			bin, err := donut.DonutShellcodeFromPE("1.exe", exe, arch, cmdline, false, true)
-			if err != nil {
-				return "", err
-			}
-			return string(bin), nil
-		})
-	intermediate.AddHelper("exe2shellcode", &intermediate.Helper{
-		Group: intermediate.GroupArtifact,
-		Short: "exe to shellcode with donut",
-		Input: []string{
-			"bin: dll bin",
-			"arch: architecture",
-			"param: cmd args",
-		},
-		Output: []string{
-			"shellcode: shellcode bin",
-		},
-	})
-
-	intermediate.RegisterFunction("dll2shellcode", func(dll []byte, arch string, cmdline string) (string, error) {
-		bin, err := donut.DonutShellcodeFromPE("1.dll", dll, arch, cmdline, false, true)
-		if err != nil {
-			return "", err
-		}
-		return string(bin), nil
-	})
-	intermediate.AddHelper("dll2shellcode", &intermediate.Helper{
-		Group: intermediate.GroupArtifact,
-		Short: "dll to shellcode with donut",
-		Input: []string{
-			"bin: dll bin",
-			"arch: architecture, x86/x64",
-			"param: cmd args",
-		},
-		Output: []string{
-			"shellcode: shellcode bin",
-		},
-	})
-
-	intermediate.RegisterFunction("clr2shellcode", donut.DonutFromAssemblyFromFile)
-	intermediate.AddHelper("clr2shellcode", &intermediate.Helper{
-		Group: intermediate.GroupArtifact,
-		Short: "clr to shellcode with donut",
-		Input: []string{
-			"file: path to PE file",
-			"arch: architecture, x86/x64",
-			"cmdline: cmd args",
-			"method: name of method or DLL function to invoke for .NET DLL and unmanaged DLL",
-			"classname: name of class with optional namespace for .NET DLL",
-			"appdomain: name of domain to create for .NET DLL/EXE",
-		},
-		Output: []string{
-			"shellcode: bin",
-		},
-	})
-
-	intermediate.RegisterFunction("donut", donut.DonutShellcodeFromFile)
-	intermediate.AddHelper("donut", &intermediate.Helper{
-		Group: intermediate.GroupArtifact,
-		Short: "Generates x86, x64, or AMD64+x86 position-independent shellcode that loads .NET Assemblies, PE files, and other Windows payloads from memory and runs them with parameters ",
-		Input: []string{
-			"file: path to PE file",
-			"arch: architecture, x86/x64",
-			"cmdline: cmd args",
-		},
-		Output: []string{
-			"shellcode",
-		},
-	})
-
-	con.RegisterServerFunc("srdi", func(con *repl.Console, dll []byte, entry string, arch string, param string) (string, error) {
-		bin, err := con.Rpc.DLL2Shellcode(con.Context(), &clientpb.DLL2Shellcode{
-			Bin:        dll,
-			Arch:       arch,
-			Type:       "srdi",
-			Entrypoint: entry,
-			Params:     param,
-		})
-		if err != nil {
-			return "", err
-		}
-		return string(bin.Bin), nil
-	}, &intermediate.Helper{
-		Group: intermediate.GroupArtifact,
-		Short: "dll/exe to shellcode with srdi",
-		Input: []string{
-			"bin: dll/exe bin",
-			"entry: entry function for dll",
-			"arch: architecture, x86/x64",
-			"param: cmd args",
-		},
-		Output: []string{
-			"shellcode: shellcode bin",
-		},
-	})
-
-	con.RegisterServerFunc("sgn_encode", func(con *repl.Console, shellcode []byte, arch string, iterations int32) (string, error) {
-		bin, err := con.Rpc.ShellcodeEncode(con.Context(), &clientpb.ShellcodeEncode{
-			Shellcode:  shellcode,
-			Arch:       arch,
-			Type:       "sgn",
-			Iterations: iterations,
-		})
-		if err != nil {
-			return "", err
-		}
-		return string(bin.Bin), nil
-	}, &intermediate.Helper{
-		Group: intermediate.GroupArtifact,
-		Short: "shellcode encode with sgn",
-		Input: []string{
-			"bin: shellcode bin",
-			"arch: architecture, x86/x64",
-			"iterations: sgn iterations",
-		},
-		Output: []string{
-			"shellcode: encoded shellcode bin",
-		},
 	})
 
 	con.RegisterServerFunc("artifact_stager", func(con *repl.Console, profile string, arch string, os string) (string, error) {

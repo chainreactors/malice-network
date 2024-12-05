@@ -34,7 +34,7 @@ type DonutInstance struct {
 
 	Iv uint64 // the 64-bit initial value for maru hash
 
-	Hash [64]uint64 // holds up to 64 api hashes/addrs {api}
+	Hash [128]uint64 // holds up to 64 api hashes/addrs {api}
 
 	ExitOpt ExitType    // 1 to call RtlExitUserProcess and terminate the host process, 2 to never exit or cleanup and block
 	Entropy EntropyType // indicates entropy level

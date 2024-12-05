@@ -169,5 +169,5 @@ var ApiImports = []ApiImport{
 	// 异常处理相关
 	{NTDLL_DLL, "NtContinue"},
 
-	//{"", ""}, // last one always contains two NULL pointers
+	{"", ""}, // last one always contains two NULL pointers
 }

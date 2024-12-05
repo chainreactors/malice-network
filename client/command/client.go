@@ -11,6 +11,7 @@ import (
 	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/command/listener"
 	"github.com/chainreactors/malice-network/client/command/mal"
+	"github.com/chainreactors/malice-network/client/command/mutant"
 	"github.com/chainreactors/malice-network/client/command/sessions"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -38,6 +39,7 @@ func BindCommonCommands(bind BindFunc) {
 	bind(consts.GeneratorGroup,
 		build.Commands,
 		action.Commands,
+		mutant.Commands,
 	)
 }
 
@@ -97,4 +99,5 @@ func RegisterClientFunc(con *repl.Console) {
 	generic.Register(con)
 	build.Register(con)
 	action.Register(con)
+	mutant.Register(con)
 }

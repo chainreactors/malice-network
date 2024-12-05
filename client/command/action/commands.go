@@ -14,7 +14,7 @@ import (
 func Commands(con *repl.Console) []*cobra.Command {
 	actionCmd := &cobra.Command{
 		Use:   consts.CommandAction,
-		Short: "Github action",
+		Short: "Github action build",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
