@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+	"fmt"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/server/internal/build"
 	"github.com/chainreactors/malice-network/server/internal/configs"
@@ -16,6 +17,9 @@ func (rpc *Server) TriggerWorkflowDispatch(ctx context.Context, req *clientpb.Wo
 	}
 	if req.Owner == "" || req.Repo == "" || req.Token == "" {
 		config := configs.GetServerConfig()
+		if config == nil {
+			return nil, fmt.Errorf("please set github config use flag or server config")
+		}
 		req.Owner = config.GithubConfig.Owner
 		req.Repo = config.GithubConfig.Repo
 		req.Token = config.GithubConfig.Token

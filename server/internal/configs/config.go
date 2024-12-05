@@ -46,6 +46,16 @@ func GetServerConfig() *ServerConfig {
 	return s
 }
 
+func GetGithubConfig() *GithubConfig {
+	g := &GithubConfig{}
+	err := config.MapStruct("github", g)
+	if err != nil {
+		logs.Log.Errorf("Failed to map github config %s", err)
+		return nil
+	}
+	return g
+}
+
 func GetListenerConfig() *ListenerConfig {
 	l := &ListenerConfig{}
 	err := config.MapStruct("listeners", l)
