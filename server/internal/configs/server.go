@@ -60,6 +60,7 @@ type ServerConfig struct {
 	LogConfig    *LogConfig    `config:"log"`
 	MiscConfig   *MiscConfig   `config:"config"`
 	NotifyConfig *NotifyConfig `config:"notify"`
+	GithubConfig *GithubConfig `config:"github"`
 }
 
 func (c *ServerConfig) Address() string {
@@ -136,4 +137,11 @@ type NotifyConfig struct {
 		Enable bool   `config:"enable" default:"false"`
 		URL    string `config:"url"`
 	} `config:"serverchan"`
+}
+
+type GithubConfig struct {
+	Repo     string `config:"repo" default:""`
+	Owner    string `config:"owner" default:""`
+	Token    string `config:"token" default:""`
+	Workflow string `config:"workflow" default:"generate.yaml"`
 }

@@ -22,6 +22,7 @@ type Builder struct {
 	ParamsJson string
 	CA         string // ca file , ca file content
 	Path       string
+	IsSRDI     bool
 	Profile    Profile `gorm:"foreignKey:ProfileName;references:Name;"`
 	Os         string
 	Arch       string
@@ -46,6 +47,7 @@ func (b *Builder) ToProtobuf(bin []byte) *clientpb.Builder {
 		Platform:    b.Os,
 		Arch:        b.Arch,
 		Modules:     b.Modules,
+		IsSrdi:      b.IsSRDI,
 		ProfileName: b.ProfileName,
 		PipelineId:  b.Profile.PipelineID,
 		Time:        b.CreatedAt.Format("2006-01-02 15:04:05"),

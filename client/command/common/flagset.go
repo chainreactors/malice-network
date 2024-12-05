@@ -212,7 +212,7 @@ func SRDIFlagSet(f *pflag.FlagSet) {
 func ParseSRDIFlags(cmd *cobra.Command) (string, string, string, uint32, map[string]string) {
 	path, _ := cmd.Flags().GetString("path")
 	//typ, _ := cmd.Flags().GetString("type")
-	arch, _ := cmd.Flags().GetString("arch, x86 or x64")
+	arch, _ := cmd.Flags().GetString("arch")
 	platform, _ := cmd.Flags().GetString("platform")
 	id, _ := cmd.Flags().GetUint32("id")
 	functionName, _ := cmd.Flags().GetString("function_name, sets the entry function name within the DLL for execution. This is critical for specifying which function will be executed when the DLL is loaded.")

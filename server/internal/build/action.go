@@ -103,15 +103,15 @@ func TriggerWorkflowDispatch(owner, repo, workflowID, token string, inputs map[s
 			if err != nil {
 				return nil, err
 			}
-			beaconBuilder.Type = consts.ShellcodeTYPE
+			beaconBuilder.IsSRDI = true
 			go downloadArtifactWhenReady(owner, repo, token, beaconBuilder)
 			req.ArtifactId = beaconBuilder.ID
 			_, err = GenerateProfile(req)
 			if err != nil {
 				return nil, errors.New(fmt.Sprintf("Err create config: %v", err))
 			}
-		} else if idBuilder.Type != consts.ShellcodeTYPE {
-			idBuilder.Type = consts.ShellcodeTYPE
+		} else if !idBuilder.IsSRDI {
+			idBuilder.IsSRDI = true
 			target, ok := consts.GetBuildTarget(inputs["targets"])
 			if !ok {
 				return nil, err
@@ -197,7 +197,7 @@ func downloadArtifactWhenReady(owner, repo, token string, builder *models.Builde
 		_, err := DownloadArtifact(owner, repo, token, builder.Name)
 		if err == nil {
 			logs.Log.Info("Artifact downloaded successfully!")
-			if builder.Type == consts.ShellcodeTYPE {
+			if !builder.IsSRDI {
 				_, _, err := UploadSrdiArtifact(builder, builder.Os, builder.Arch)
 				if err != nil {
 					logs.Log.Errorf("action to srdi failed")

@@ -93,6 +93,7 @@ func (bqm *BuildQueueManager) executeBuild(req *clientpb.Generate, builder model
 	if err != nil {
 		return nil, err
 	}
+	req.Name = builder.Name
 	profileByte, err := GenerateProfile(req)
 	if err != nil {
 		return nil, errors.New(fmt.Sprintf("Err create config: %v", err))
@@ -165,8 +166,8 @@ func (bqm *BuildQueueManager) executeBuild(req *clientpb.Generate, builder model
 				return nil, errors.New(fmt.Sprintf("Err create config: %v", err))
 			}
 			err = BuildPulse(cli, req)
-		} else if idBuilder.Type != consts.ShellcodeTYPE {
-			idBuilder.Type = consts.ShellcodeTYPE
+		} else if !idBuilder.IsSRDI {
+			idBuilder.IsSRDI = true
 			_, _, err := UploadSrdiArtifact(idBuilder, target.OS, target.Arch)
 			if err != nil {
 				return nil, err
@@ -203,7 +204,7 @@ func (bqm *BuildQueueManager) executeBuild(req *clientpb.Generate, builder model
 		}
 		return builder.ToProtobuf(data), nil
 	} else {
-		builder.Type = consts.ShellcodeTYPE
+		builder.IsSRDI = true
 		builder.Path = artifactPath
 		srdiBuilder, bin, err := UploadSrdiArtifact(&builder, target.OS, target.Arch)
 		if err != nil {

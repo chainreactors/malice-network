@@ -1,9 +1,33 @@
 project_name: malice
 version: 2
 
+
 before:
   hooks:
-    - go mod tidy
+    - name: "Go mod tidy"
+      command: go mod tidy
+
+    - name: "Download and extract assets"
+      command: |
+        # Download and extract sgn Linux zip
+        curl -L https://github.com/EgeBalci/sgn/releases/download/v2.0.1/sgn_linux_amd64_2.0.1.zip -o /tmp/sgn_linux.zip
+        unzip /tmp/sgn_linux.zip -d server/assets/linux
+        rm /tmp/sgn_linux.zip
+
+        # Download and extract sgn Windows zip
+        curl -L https://github.com/EgeBalci/sgn/releases/download/v2.0.1/sgn_windows_amd64_2.0.1.zip -o /tmp/sgn_windows.zip
+        unzip /tmp/sgn_windows.zip -d server/assets/windows
+        rm /tmp/sgn_windows.zip
+
+        # Download malefic for Windows
+        curl -L https://github.com/chainreactors/malefic/releases/download/v0.0.3/malefic-mutant-x86_64-pc-windows-msvc.exe -o server/assets/windows/malefic-mutant.exe
+
+        # Download malefic for Linux
+        curl -L https://github.com/chainreactors/malefic/releases/download/v0.0.3/malefic-mutant-x86_64-unknown-linux-musl -o server/assets/linux/malefic-mutant
+        chmod +x server/assets/linux/malefic-mutant
+      env:
+        GOPATH: "{{ .Env.GOPATH }}"
+
 
 builds:
   -

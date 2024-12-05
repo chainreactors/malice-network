@@ -48,6 +48,7 @@ func MaleficSRDI(con *repl.Console, path string, id uint32, arch, platform strin
 		Type:         consts.ShellcodeTYPE,
 		Name:         filepath.Base(path),
 		Platform:     platform,
+		IsSrdi:       true,
 		FunctionName: params["function_name"],
 		UserDataPath: params["userdata_path"],
 	})

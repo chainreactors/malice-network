@@ -33,7 +33,7 @@ var (
 	ContainerCargoGitCache      = "/root/cargo/git"
 	ContainerBinPath            = "/root/bin"
 	LocalMutantPath             = filepath.Join(configs.BinPath, "malefic-mutant")
-	command                     = "generate"
+	command                     = "build"
 	funcNameOption              = "--function-name"
 	userDataPathOption          = "--userdata-path"
 
@@ -383,6 +383,9 @@ func UploadSrdiArtifact(builder *models.Builder, platform, arch string) (*models
 }
 
 func MaleficSRDI(src, dst, platform, arch, funcName, dataPath string) ([]byte, error) {
+	if platform == consts.Windows {
+		platform = "win"
+	}
 	args := []string{command, "srdi", src, platform, arch, dst}
 	if funcName != "" {
 		args = append(args, funcNameOption, funcName)
@@ -390,25 +393,15 @@ func MaleficSRDI(src, dst, platform, arch, funcName, dataPath string) ([]byte, e
 	if dataPath != "" {
 		args = append(args, userDataPathOption, dataPath)
 	}
-	absPath, err := filepath.Abs(LocalMutantPath)
-	if err != nil {
-		return []byte{}, err
-	}
-	cmdString := strings.Join(args, " ")
 
-	var shell string
-	if isWindows() {
-		shell = "cmd.exe"
-	} else {
-		shell = "/bin/sh"
-	}
+	cmd := exec.Command(LocalMutantPath, args...)
 
-	cmd := exec.Command(shell, "-c", absPath+" "+cmdString)
-
-	_, err = cmd.CombinedOutput()
+	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return nil, err
 	}
+
+	logs.Log.Debugf("SRDI output: %s", output)
 
 	data, err := os.ReadFile(dst)
 	if err != nil {

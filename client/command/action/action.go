@@ -26,9 +26,6 @@ func checkGithubArg(cmd *cobra.Command, isList bool) (string, string, string, st
 	if token == "" {
 		token = profile.GithubToken
 	}
-	if owner == "" || repo == "" || token == "" {
-		return "", "", "", "", errors.New("require github owner/repo/token")
-	}
 	if !isList {
 		if file == "" {
 			file = profile.GithubWorkflowFile

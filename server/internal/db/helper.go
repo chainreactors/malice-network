@@ -602,6 +602,7 @@ func SaveBuiladerFromAction(inputs map[string]string, req *clientpb.Generate) (*
 		Type:        inputs["package"],
 		Resource:    consts.BuildFromAction,
 		Arch:        target.Arch,
+		IsSRDI:      req.Srdi,
 		Modules:     strings.Join(req.Modules, ","),
 		Os:          target.OS,
 		CA:          req.Ca,
@@ -628,6 +629,7 @@ func SaveArtifactFromGenerate(req *clientpb.Generate) (*models.Builder, error) {
 		Stager:      req.Stager,
 		Resource:    consts.BuildFromDocker,
 		CA:          req.Ca,
+		IsSRDI:      req.Srdi,
 		Modules:     req.Feature,
 		Arch:        target.Arch,
 		Os:          target.OS,
@@ -660,6 +662,7 @@ func SaveArtifactFromID(req *clientpb.Generate, ID uint32, resource string) (*mo
 		Type:        req.Type,
 		Stager:      req.Stager,
 		Resource:    resource,
+		IsSRDI:      req.Srdi,
 		CA:          req.Ca,
 		Modules:     req.Feature,
 		Arch:        target.Arch,
@@ -689,7 +692,7 @@ func UpdateBuilderPath(builder *models.Builder) error {
 
 func UpdateBuilderSrdi(builder *models.Builder) error {
 	return Session().Model(builder).
-		Select("type", "path").
+		Select("is_srdi", "path").
 		Updates(builder).
 		Error
 }

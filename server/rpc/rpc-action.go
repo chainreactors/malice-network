@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/server/internal/build"
+	"github.com/chainreactors/malice-network/server/internal/configs"
 	"strings"
 )
 
@@ -12,6 +13,12 @@ func (rpc *Server) TriggerWorkflowDispatch(ctx context.Context, req *clientpb.Wo
 	var modules []string
 	if req.Inputs["malefic_modules_features"] != "" {
 		modules = strings.Split(req.Inputs["malefic_modules_features"], ",")
+	}
+	if req.Owner == "" || req.Repo == "" || req.Token == "" {
+		config := configs.GetServerConfig()
+		req.Owner = config.GithubConfig.Owner
+		req.Repo = config.GithubConfig.Repo
+		req.Token = config.GithubConfig.Token
 	}
 	generateReq := &clientpb.Generate{
 		ProfileName: req.Profile,
@@ -63,28 +70,4 @@ func (rpc *Server) ListRepositoryWorkflows(ctx context.Context, req *clientpb.Wo
 	}
 
 	return response, nil
-}
-
-func (rpc *Server) ListArtifacts(ctx context.Context, req *clientpb.WorkflowRequest) (*clientpb.ListArtifactsResponse, error) {
-	artifacts, err := build.ListArtifacts(req.Owner, req.Repo, req.Token)
-	if err != nil {
-		return nil, err
-	}
-	protoArtifacts := make([]*clientpb.Artifact, len(artifacts))
-	for i, artifact := range artifacts {
-		protoArtifacts[i] = artifact.ToProtoBuf()
-	}
-
-	response := &clientpb.ListArtifactsResponse{
-		Artifacts: protoArtifacts,
-	}
-	return response, nil
-}
-
-func (rpc *Server) DownloadGithubArtifact(ctx context.Context, req *clientpb.WorkflowRequest) (*clientpb.DownloadArtifactsResponse, error) {
-	resp, err := build.DownloadArtifact(req.Owner, req.Repo, req.Token, req.BuildName)
-	if err != nil {
-		return nil, err
-	}
-	return resp, nil
 }
