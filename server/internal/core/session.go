@@ -176,6 +176,10 @@ type Session struct {
 	rpcLog    *logs.Logger
 }
 
+func (s *Session) Abstract() string {
+	return fmt.Sprintf("%s(%s) %s-%s %s", s.Name, s.ID, s.Os.Name, s.Os.Arch, s.Os.Username)
+}
+
 func (s *Session) RpcLogger() *logs.Logger {
 	var err error
 	if s.rpcLog == nil {
