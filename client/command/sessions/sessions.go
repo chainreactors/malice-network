@@ -39,11 +39,11 @@ func PrintSessions(sessions map[string]*core.Session, con *repl.Console, isAll b
 		table.NewColumn("ID", "ID", 8),
 		table.NewColumn("Group", "Group", 20),
 		table.NewColumn("Pipeline", "Pipeline", 15),
-		table.NewColumn("Remote Address", "Remote Address", 16),
+		table.NewColumn("Remote Address", "Remote Address", 25),
 		table.NewColumn("Username", "Username", 15),
 		table.NewColumn("System", "System", 20),
-		table.NewColumn("Last Message", "Last Message", 15),
-		table.NewColumn("Health", "Health", 15),
+		table.NewColumn("Last Message", "Last Message", 10),
+		table.NewColumn("Health", "Health", 10),
 	}, false)
 	for _, session := range sessions {
 		var SessionHealth string
