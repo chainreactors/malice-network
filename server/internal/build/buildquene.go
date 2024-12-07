@@ -173,7 +173,7 @@ func (bqm *BuildQueueManager) executeBuild(req *clientpb.Generate, builder model
 			err = BuildPulse(cli, req)
 		} else if !idBuilder.IsSRDI {
 			idBuilder.IsSRDI = true
-			_, _, err := UploadSrdiArtifact(idBuilder, target.OS, target.Arch)
+			_, err := SRDIArtifact(idBuilder, target.OS, target.Arch)
 			if err != nil {
 				return nil, err
 			}
@@ -211,11 +211,11 @@ func (bqm *BuildQueueManager) executeBuild(req *clientpb.Generate, builder model
 	} else {
 		builder.IsSRDI = true
 		builder.Path = artifactPath
-		srdiBuilder, bin, err := UploadSrdiArtifact(&builder, target.OS, target.Arch)
+		bin, err := SRDIArtifact(&builder, target.OS, target.Arch)
 		if err != nil {
 			return nil, err
 		}
-		return srdiBuilder.ToProtobuf(bin), nil
+		return builder.ToProtobuf(bin), nil
 	}
 }
 

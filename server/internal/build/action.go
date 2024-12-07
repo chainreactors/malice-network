@@ -123,7 +123,7 @@ func TriggerWorkflowDispatch(owner, repo, workflowID, token string, inputs map[s
 			if !ok {
 				return nil, err
 			}
-			_, _, err := UploadSrdiArtifact(idBuilder, target.OS, target.Arch)
+			_, err := SRDIArtifact(idBuilder, target.OS, target.Arch)
 			if err != nil {
 				return nil, err
 			}
@@ -203,7 +203,7 @@ func downloadArtifactWhenReady(owner, repo, token string, builder *models.Builde
 		if err == nil {
 			logs.Log.Info("Artifact downloaded successfully!")
 			if builder.IsSRDI {
-				_, _, err := UploadSrdiArtifact(builder, builder.Os, builder.Arch)
+				_, err := SRDIArtifact(builder, builder.Os, builder.Arch)
 				if err != nil {
 					logs.Log.Errorf("action to srdi failed")
 				}

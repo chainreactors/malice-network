@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/chainreactors/malice-network/helper/codenames"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/server/internal/build"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"os"
 	"path/filepath"
@@ -50,12 +51,25 @@ func (rpc *Server) GetArtifact(ctx context.Context, req *clientpb.Builder) (*cli
 	if err != nil {
 		return nil, err
 	}
-	data, err := os.ReadFile(builder.Path)
+	var data []byte
+	if builder.ShellcodePath == "" {
+		data, err = build.SRDIArtifact(builder, builder.Os, builder.Arch)
+	} else {
+		data, err = os.ReadFile(builder.ShellcodePath)
+	}
 	if err != nil {
 		return nil, err
 	}
 
 	return builder.ToProtobuf(data), nil
+}
+
+func (rpc *Server) ListArtifact(ctx context.Context, req *clientpb.Empty) (*clientpb.Builders, error) {
+	builders, err := db.GetArtifacts()
+	if err != nil {
+		return nil, err
+	}
+	return builders, nil
 }
 
 func (rpc *Server) FindArtifact(ctx context.Context, req *clientpb.Builder) (*clientpb.Builder, error) {

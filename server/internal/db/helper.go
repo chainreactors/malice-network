@@ -744,8 +744,13 @@ func FindArtifact(target *clientpb.Builder) (*clientpb.Builder, error) {
 	if result.Error != nil {
 		return nil, result.Error
 	}
-
-	content, err := os.ReadFile(builder.Path)
+	var content []byte
+	var err error
+	if target.IsSrdi {
+		content, err = os.ReadFile(builder.ShellcodePath)
+	} else {
+		content, err = os.ReadFile(builder.Path)
+	}
 	if err != nil {
 		return nil, err
 	}

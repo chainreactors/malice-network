@@ -239,7 +239,7 @@ func DownloadArtifact(owner, repo, token, buildName string) (*clientpb.DownloadA
 	core.EventBroker.Publish(core.Event{
 		EventType: consts.EventBuild,
 		IsNotify:  false,
-		Message:   fmt.Sprintf("action %s type %s target %s download successed.", builder.Name, builder.Type, builder.Target),
+		Message:   fmt.Sprintf("action %s type %s has finished. yon can run `artifact download %s` ", builder.Name, builder.Type, builder.Name),
 	})
 	return &clientpb.DownloadArtifactsResponse{
 		Zip:  fileByte,

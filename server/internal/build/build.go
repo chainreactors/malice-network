@@ -360,26 +360,26 @@ func NewMaleficSRDIArtifact(name, src, platform, arch, stage, funcName, dataPath
 	return builder, bin, nil
 }
 
-func UploadSrdiArtifact(builder *models.Builder, platform, arch string) (*models.Builder, []byte, error) {
+func SRDIArtifact(builder *models.Builder, platform, arch string) ([]byte, error) {
 	absBuildOutputPath, err := filepath.Abs(configs.BuildOutputPath)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	dstPath := filepath.Join(absBuildOutputPath, encoders.UUID())
 	bin, err := MaleficSRDI(builder.Path, dstPath, platform, arch, "", "")
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	err = os.WriteFile(dstPath, bin, 0644)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	builder.ShellcodePath = dstPath
 	err = db.UpdateBuilderSrdi(builder)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	return builder, bin, nil
+	return bin, nil
 }
 
 func MaleficSRDI(src, dst, platform, arch, funcName, dataPath string) ([]byte, error) {

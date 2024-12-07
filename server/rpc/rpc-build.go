@@ -6,15 +6,10 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/codenames"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/encoders"
-	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/server/internal/build"
-	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db"
-	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"os"
-	"path/filepath"
 )
 
 func (rpc *Server) Build(ctx context.Context, req *clientpb.Generate) (*clientpb.Builder, error) {
@@ -36,46 +31,6 @@ func (rpc *Server) Build(ctx context.Context, req *clientpb.Generate) (*clientpb
 	logs.Log.Infof("Build request processed successfully for target: %s", req.Target)
 
 	return builder.ToProtobuf(nil), nil
-}
-
-func (rpc *Server) ListArtifact(ctx context.Context, req *clientpb.Empty) (*clientpb.Builders, error) {
-	builders, err := db.GetArtifacts()
-	if err != nil {
-		return nil, err
-	}
-	return builders, nil
-}
-
-func (rpc *Server) MaleficSRDI(ctx context.Context, req *clientpb.Builder) (*clientpb.Builder, error) {
-	var filePath, realName string
-	var err error
-	var artifact *models.Builder
-	var bin []byte
-	target, ok := consts.GetBuildTarget(req.Target)
-	if !ok {
-		return nil, errs.ErrInvalidateTarget
-	}
-	if req.Id != 0 {
-		builder, err := db.GetArtifactById(req.Id)
-		if err != nil {
-			return nil, err
-		}
-		artifact, bin, err = build.UploadSrdiArtifact(builder, target.OS, target.Arch)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		dst := encoders.UUID()
-		filePath = filepath.Join(configs.TempPath, dst)
-		realName = req.Name
-		err = build.SaveArtifact(dst, req.Bin)
-		artifact, bin, err = build.NewMaleficSRDIArtifact(realName, filePath, target.OS, target.Arch, req.Stage, req.FunctionName, req.UserDataPath)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return artifact.ToProtobuf(bin), nil
 }
 
 func (rpc *Server) BuildLog(ctx context.Context, req *clientpb.Builder) (*clientpb.Builder, error) {
