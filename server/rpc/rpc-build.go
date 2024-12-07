@@ -30,7 +30,7 @@ func (rpc *Server) Build(ctx context.Context, req *clientpb.Generate) (*clientpb
 	}()
 	logs.Log.Infof("Build request processed successfully for target: %s", req.Target)
 
-	return builder.ToProtobuf(nil), nil
+	return builder.ToProtobuf(), nil
 }
 
 func (rpc *Server) BuildLog(ctx context.Context, req *clientpb.Builder) (*clientpb.Builder, error) {
@@ -43,7 +43,7 @@ func (rpc *Server) BuildLog(ctx context.Context, req *clientpb.Builder) (*client
 }
 
 func (rpc *Server) BuildModules(ctx context.Context, req *clientpb.Generate) (*clientpb.Builder, error) {
-	builder, err := db.GetBuilderByModules(req.Modules)
+	builder, err := db.GetBuilderByModules(req.Target, req.Modules)
 	if err != nil && !errors.Is(err, db.ErrRecordNotFound) {
 		return nil, err
 	} else if errors.Is(err, db.ErrRecordNotFound) {
@@ -74,15 +74,15 @@ func (rpc *Server) BuildModules(ctx context.Context, req *clientpb.Generate) (*c
 		if err != nil {
 			return nil, err
 		}
-		data, err := os.ReadFile(artifactPath)
+		_, err = os.ReadFile(artifactPath)
 		if err != nil {
 			return nil, err
 		}
-		return builder.ToProtobuf(data), nil
+		return builder.ToProtobuf(), nil
 	}
-	data, err := os.ReadFile(builder.Path)
+	_, err = os.ReadFile(builder.Path)
 	if err != nil {
 		return nil, err
 	}
-	return builder.ToProtobuf(data), nil
+	return builder.ToProtobuf(), nil
 }

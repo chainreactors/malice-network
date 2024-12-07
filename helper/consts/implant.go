@@ -7,16 +7,17 @@ const (
 )
 
 const (
-	ImplantModBeacon  = "beacon"
-	ImplantModBind    = "bind"
-	ImplantModPulse   = "pulse"
-	ImplantModPrelude = "prelude"
-	ShellcodeTYPE     = "shellcode"
+	ImplantModBeacon    = "beacon"
+	ImplantModBind      = "bind"
+	ImplantModPulse     = "pulse"
+	ImplantModPrelude   = "prelude"
+	ImplantModShellcode = "shellcode"
 )
 
 const (
-	BuildFromAction = "action"
-	BuildFromDocker = "docker"
+	ArtifactFromAction = "action"
+	ArtifactFromDocker = "docker"
+	ArtifactFromUpload = "upload"
 )
 
 type Arch uint32

@@ -57,7 +57,7 @@ func RunBeaconWorkFlowCmd(cmd *cobra.Command, con *repl.Console) error {
 	if len(modules) > 0 {
 		inputs["malefic_modules_features"] = strings.Join(modules, ",")
 	}
-	req := &clientpb.WorkflowRequest{
+	req := &clientpb.GithubWorkflowRequest{
 		Owner:      owner,
 		Repo:       repo,
 		Token:      token,
@@ -96,7 +96,7 @@ func RunBindWorkFlowCmd(cmd *cobra.Command, con *repl.Console) error {
 	if len(modules) > 0 {
 		inputs["malefic_modules_features"] = strings.Join(modules, ",")
 	}
-	req := &clientpb.WorkflowRequest{
+	req := &clientpb.GithubWorkflowRequest{
 		Owner:      owner,
 		Repo:       repo,
 		Token:      token,
@@ -145,7 +145,7 @@ func RunPreludeWorkFlowCmd(cmd *cobra.Command, con *repl.Console) error {
 	base64Encoded := base64.StdEncoding.EncodeToString(fileData)
 	inputs["malefic_config_yaml"] = base64Encoded
 
-	req := &clientpb.WorkflowRequest{
+	req := &clientpb.GithubWorkflowRequest{
 		Owner:      owner,
 		Repo:       repo,
 		Token:      token,
@@ -185,7 +185,7 @@ func RunModulesWorkFlowCmd(cmd *cobra.Command, con *repl.Console) error {
 	} else if len(modules) > 0 {
 		inputs["malefic_modules_features"] = strings.Join(modules, ",")
 	}
-	req := &clientpb.WorkflowRequest{
+	req := &clientpb.GithubWorkflowRequest{
 		Owner:      owner,
 		Repo:       repo,
 		Token:      token,
@@ -226,7 +226,7 @@ func RunPulseWorkFlowCmd(cmd *cobra.Command, con *repl.Console) error {
 		inputs["malefic_modules_features"] = strings.Join(modules, ",")
 	}
 
-	req := &clientpb.WorkflowRequest{
+	req := &clientpb.GithubWorkflowRequest{
 		Owner:      owner,
 		Repo:       repo,
 		Token:      token,
@@ -246,7 +246,7 @@ func RunPulseWorkFlowCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func RunWorkFlow(con *repl.Console, req *clientpb.WorkflowRequest) (*clientpb.Builder, error) {
+func RunWorkFlow(con *repl.Console, req *clientpb.GithubWorkflowRequest) (*clientpb.Builder, error) {
 	builder, err := con.Rpc.TriggerWorkflowDispatch(con.Context(), req)
 	if err != nil {
 		return builder, err

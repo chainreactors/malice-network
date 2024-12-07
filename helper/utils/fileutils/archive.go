@@ -2,6 +2,8 @@ package fileutils
 
 import (
 	"archive/tar"
+	"archive/zip"
+	"bytes"
 	"compress/gzip"
 	"fmt"
 	"io"
@@ -94,22 +96,17 @@ func ExtractTarGz(gzipPath string, dest string) error {
 	return nil
 }
 
-func InstallArtifact(aliasGzFilePath string, installPath, artifactPath string) error {
-	data, err := ReadFileFromTarGz(aliasGzFilePath, fmt.Sprintf("./%s", strings.TrimPrefix(artifactPath, string(os.PathSeparator))))
+func UnzipOneWithBytes(content []byte) ([]byte, error) {
+	zipReader, err := zip.NewReader(bytes.NewReader(content), int64(len(content)))
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("error opening ZIP file: %v", err)
 	}
-	if len(data) == 0 {
-		return fmt.Errorf("empty file %s", artifactPath)
+	if len(zipReader.File) > 1 {
+		return nil, fmt.Errorf("error: multiple files in zip")
 	}
-	localArtifactPath := filepath.Join(installPath, ResolvePath(artifactPath))
-	artifactDir := filepath.Dir(localArtifactPath)
-	if _, err := os.Stat(artifactDir); os.IsNotExist(err) {
-		os.MkdirAll(artifactDir, 0700)
-	}
-	err = os.WriteFile(localArtifactPath, data, 0700)
+	file, err := zipReader.File[0].Open()
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("error opening file inside ZIP: %v", err)
 	}
-	return nil
+	return io.ReadAll(file)
 }

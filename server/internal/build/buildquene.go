@@ -23,9 +23,9 @@ func init() {
 
 // BuildTask defines a task structure for the build process
 type BuildTask struct {
-	req     *clientpb.Generate     // The build request
-	result  chan *clientpb.Builder // Channel to send back the build result
-	err     chan error             // Channel to send back error in case of failure
+	req     *clientpb.Generate      // The build request
+	result  chan *clientpb.Artifact // Channel to send back the build result
+	err     chan error              // Channel to send back error in case of failure
 	builder models.Builder
 }
 
@@ -81,7 +81,7 @@ func (bqm *BuildQueueManager) worker(id int) {
 }
 
 // executeBuild executes the build process based on the request
-func (bqm *BuildQueueManager) executeBuild(req *clientpb.Generate, builder models.Builder) (*clientpb.Builder, error) {
+func (bqm *BuildQueueManager) executeBuild(req *clientpb.Generate, builder models.Builder) (*clientpb.Artifact, error) {
 	target, ok := consts.GetBuildTarget(req.Target)
 	if !ok {
 		return nil, errs.ErrInvalidateTarget
@@ -147,7 +147,7 @@ func (bqm *BuildQueueManager) executeBuild(req *clientpb.Generate, builder model
 				beaconReq.Target = consts.TargetX64WindowsGnu
 			}
 			if artifactID != 0 {
-				beaconBuilder, err = db.SaveArtifactFromID(beaconReq, artifactID, consts.BuildFromDocker)
+				beaconBuilder, err = db.SaveArtifactFromID(beaconReq, artifactID, consts.ArtifactFromDocker)
 				if err != nil {
 					logs.Log.Errorf("move build output error: %v", err)
 					return nil, err
@@ -207,7 +207,7 @@ func (bqm *BuildQueueManager) executeBuild(req *clientpb.Generate, builder model
 		if err != nil {
 			return nil, err
 		}
-		return builder.ToProtobuf(data), nil
+		return builder.ToArtifact(data), nil
 	} else {
 		builder.IsSRDI = true
 		builder.Path = artifactPath
@@ -215,14 +215,14 @@ func (bqm *BuildQueueManager) executeBuild(req *clientpb.Generate, builder model
 		if err != nil {
 			return nil, err
 		}
-		return builder.ToProtobuf(bin), nil
+		return builder.ToArtifact(bin), nil
 	}
 }
 
 // AddTask adds a build task to the queue and waits for the result
-func (bqm *BuildQueueManager) AddTask(req *clientpb.Generate, builder models.Builder) (*clientpb.Builder, error) {
-	resultChan := make(chan *clientpb.Builder) // Channel to receive the result
-	errChan := make(chan error)                // Channel to receive errors
+func (bqm *BuildQueueManager) AddTask(req *clientpb.Generate, builder models.Builder) (*clientpb.Artifact, error) {
+	resultChan := make(chan *clientpb.Artifact) // Channel to receive the result
+	errChan := make(chan error)                 // Channel to receive errors
 	task := BuildTask{
 		req:     req,
 		result:  resultChan,

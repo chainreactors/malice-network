@@ -167,7 +167,7 @@ func (pipeline *TCPPipeline) handlePulse(conn net.Conn) {
 		logs.Log.Errorf(err.Error())
 		return
 	}
-	builder, err := pipeline.rpc.GetArtifact(context.Background(), &clientpb.Builder{
+	builder, err := pipeline.rpc.GetArtifact(context.Background(), &clientpb.Artifact{
 		Id: uint32(artifactId),
 	})
 	if err != nil {

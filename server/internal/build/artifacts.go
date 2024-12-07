@@ -1,13 +1,13 @@
 package build
 
 import (
-	"archive/zip"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/encoders"
 	"github.com/chainreactors/malice-network/helper/errs"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
@@ -16,7 +16,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"strconv"
 	"time"
 )
 
@@ -58,24 +57,6 @@ type Artifact struct {
 		HeadBranch       string `json:"head_branch"`
 		HeadSHA          string `json:"head_sha"`
 	} `json:"workflow_run"`
-}
-
-func (a *Artifact) ToProtoBuf() *clientpb.Artifact {
-	createdAt := a.CreatedAt.Format(time.RFC3339)
-	expiresAt := a.ExpiresAt.Format(time.RFC3339)
-	updatedAt := a.UpdatedAt.Format(time.RFC3339)
-
-	return &clientpb.Artifact{
-		Id:                 strconv.FormatInt(a.ID, 10),
-		NodeId:             a.NodeID,
-		Name:               a.Name,
-		SizeInBytes:        a.SizeInBytes,
-		ArchiveDownloadUrl: a.ArchiveDownloadURL,
-		Expired:            strconv.FormatBool(a.Expired),
-		CreatedAt:          createdAt,
-		ExpiresAt:          expiresAt,
-		UpdatedAt:          updatedAt,
-	}
 }
 
 // ArtifactsResponse is the response structure for listing artifacts
@@ -199,90 +180,49 @@ func fetchArtifactDownloadUrl(artifactUrl, token string) (string, error) {
 	return artifactDownloadUrl, nil
 }
 
-// DownloadArtifact downloads the specified artifact
-func DownloadArtifact(owner, repo, token, buildName string) (*clientpb.DownloadArtifactsResponse, error) {
+func PushArtifact(owner, repo, token, buildName string) error {
 	builder, err := db.GetArtifactByName(buildName)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if builder.Path != "" {
-		file, err := os.ReadFile(builder.Path)
+		_, err := os.ReadFile(builder.Path)
 		if err != nil {
-			return nil, err
+			return err
 		}
-		return &clientpb.DownloadArtifactsResponse{
-			Zip:  file,
-			Name: filepath.Base(builder.Path),
-		}, nil
+		return nil
 	}
 
 	artifactDownloadUrl, err := getArtifactDownloadUrl(owner, repo, token, buildName)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	zipPath, err := downloadFile(artifactDownloadUrl, token, buildName)
+	raw, err := downloadFile(artifactDownloadUrl, token, buildName)
 	if err != nil {
-		return nil, fmt.Errorf("download artifact failed: %v", err)
+		return fmt.Errorf("download artifact failed: %v", err)
 	}
 
-	resultPath, fileByte, err := Unzip(zipPath, configs.BuildOutputPath, buildName)
+	content, err := fileutils.UnzipOneWithBytes(raw)
 	if err != nil {
-		return nil, fmt.Errorf("unzip artifact failed: %v", err)
+		return fmt.Errorf("unzip artifact failed: %v", err)
 	}
-
-	builder.Path = resultPath
+	filename := filepath.Join(configs.BuildOutputPath, encoders.UUID())
+	err = os.WriteFile(filepath.Join(configs.BuildOutputPath, encoders.UUID()), content, 0644)
+	if err != nil {
+		return err
+	}
+	builder.Path = filename
 	err = db.UpdateBuilderPath(builder)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	core.EventBroker.Publish(core.Event{
 		EventType: consts.EventBuild,
 		IsNotify:  false,
-		Message:   fmt.Sprintf("action %s type %s has finished. yon can run `artifact download %s` ", builder.Name, builder.Type, builder.Name),
+		Message:   fmt.Sprintf("action %s %s %s has finished", builder.Name, builder.Type, builder.Target),
 	})
-	return &clientpb.DownloadArtifactsResponse{
-		Zip:  fileByte,
-		Name: filepath.Base(resultPath),
-	}, nil
-}
-
-func Unzip(zipFile, outputDir, name string) (string, []byte, error) {
-	zipReader, err := zip.OpenReader(zipFile)
-	if err != nil {
-		return "", nil, fmt.Errorf("error opening ZIP file: %v", err)
-	}
-	defer zipReader.Close()
-	if err := os.MkdirAll(outputDir, 0755); err != nil {
-		return "", nil, fmt.Errorf("error creating output directory: %v", err)
-	}
-	if len(zipReader.File) > 1 {
-		return "", nil, fmt.Errorf("error: multiple files in zip")
-	}
-	file := zipReader.File[0]
-	filePath := filepath.Join(outputDir, name+filepath.Ext(file.Name))
-	if file.FileInfo().IsDir() {
-		return "", nil, fmt.Errorf("error extracting directory: %v", file.Name)
-	}
-	dstFile, err := os.Create(filePath)
-	if err != nil {
-		return "", nil, fmt.Errorf("error creating file: %v", err)
-	}
-	defer dstFile.Close()
-	srcFile, err := file.Open()
-	if err != nil {
-		return "", nil, fmt.Errorf("error opening file inside ZIP: %v", err)
-	}
-	defer srcFile.Close()
-
-	if _, err := io.Copy(dstFile, srcFile); err != nil {
-		return "", nil, fmt.Errorf("error copying file contents: %v", err)
-	}
-	fileByte, err := os.ReadFile(filePath)
-	if err != nil {
-		return "", nil, fmt.Errorf("error reading file: %v", err)
-	}
-	return filePath, fileByte, nil
+	return nil
 }
 
 // getArtifactDownloadUrl retrieves the artifact download URL from the GitHub API response
@@ -309,40 +249,24 @@ func getArtifactDownloadUrl(owner, repo, token, buildName string) (string, error
 }
 
 // downloadFile downloads the artifact file from GitHub API and saves it locally
-func downloadFile(artifactDownloadUrl, token, buildName string) (string, error) {
+func downloadFile(artifactDownloadUrl, token, buildName string) ([]byte, error) {
 	// Create the request with the correct headers to download the artifact
 	req, err := createGitHubRequest(artifactDownloadUrl, token)
 	if err != nil {
-		return "", fmt.Errorf("failed to create download request: %v", err)
+		return nil, fmt.Errorf("failed to create download request: %v", err)
 	}
 
 	// Send the request
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("failed to send download request: %v", err)
+		return nil, fmt.Errorf("failed to send download request: %v", err)
 	}
 	defer resp.Body.Close()
 
 	// Check if the response status code is OK (200)
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("failed to download artifact, status code: %d", resp.StatusCode)
+		return nil, fmt.Errorf("failed to download artifact, status code: %d", resp.StatusCode)
 	}
 
-	// Define the path to save the artifact file
-	zipPath := filepath.Join(configs.TempPath, buildName+"."+archiveFormat)
-
-	// Create the file to save the artifact
-	outFile, err := os.Create(zipPath)
-	if err != nil {
-		return "", fmt.Errorf("failed to create file to save artifact: %v", err)
-	}
-	defer outFile.Close()
-
-	// Copy the response body directly into the file to optimize memory usage
-	_, err = io.Copy(outFile, resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("failed to write response body to file: %v", err)
-	}
-
-	return zipPath, nil
+	return io.ReadAll(resp.Body)
 }

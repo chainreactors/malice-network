@@ -13,7 +13,7 @@ import (
 )
 
 func ListArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
-	builders, err := con.Rpc.ListArtifact(con.Context(), &clientpb.Empty{})
+	builders, err := con.Rpc.ListBuilder(con.Context(), &clientpb.Empty{})
 	if err != nil {
 		return err
 	}
@@ -96,8 +96,8 @@ func DownloadArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func DownloadArtifact(con *repl.Console, name string) (*clientpb.Builder, error) {
-	return con.Rpc.DownloadArtifact(con.Context(), &clientpb.Builder{
+func DownloadArtifact(con *repl.Console, name string) (*clientpb.Artifact, error) {
+	return con.Rpc.DownloadArtifact(con.Context(), &clientpb.Artifact{
 		Name: name,
 	})
 }
@@ -124,7 +124,7 @@ func UploadArtifact(con *repl.Console, path string, name, artifactType, stage st
 		return nil, err
 	}
 
-	return con.Rpc.UploadArtifact(con.Context(), &clientpb.Builder{
+	return con.Rpc.UploadArtifact(con.Context(), &clientpb.Artifact{
 		Name:  name,
 		Bin:   bin,
 		Type:  artifactType,

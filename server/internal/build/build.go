@@ -344,8 +344,8 @@ func SaveArtifact(dst string, bin []byte) error {
 	return nil
 }
 
-func NewMaleficSRDIArtifact(name, src, platform, arch, stage, funcName, dataPath string) (*models.Builder, []byte, error) {
-	builder, err := db.SaveArtifact(name, "srdi", platform, arch, stage)
+func NewMaleficSRDIArtifact(name, typ, src, platform, arch, stage, funcName, dataPath string) (*models.Builder, []byte, error) {
+	builder, err := db.SaveArtifact(name, typ, platform, arch, stage, consts.CommandArtifactUpload)
 	if err != nil {
 		return nil, nil, err
 	}

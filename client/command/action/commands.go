@@ -112,7 +112,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 func Register(con *repl.Console) {
 	settings := assets.GetProfile().Settings
 	con.RegisterServerFunc(consts.CommandAction+"_"+consts.CommandActionRun, func(con *repl.Console, msg string) (*clientpb.Builder, error) {
-		return RunWorkFlow(con, &clientpb.WorkflowRequest{
+		return RunWorkFlow(con, &clientpb.GithubWorkflowRequest{
 			Owner:      settings.GithubOwner,
 			Repo:       settings.GithubRepo,
 			Token:      settings.GithubToken,

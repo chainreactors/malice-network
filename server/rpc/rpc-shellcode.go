@@ -58,7 +58,7 @@ func (rpc *Server) ShellcodeEncode(ctx context.Context, req *clientpb.ShellcodeE
 	}
 }
 
-func (rpc *Server) MaleficSRDI(ctx context.Context, req *clientpb.Builder) (*clientpb.Builder, error) {
+func (rpc *Server) MaleficSRDI(ctx context.Context, req *clientpb.Builder) (*clientpb.Artifact, error) {
 	var filePath, realName string
 	var err error
 	var artifact *models.Builder
@@ -81,11 +81,11 @@ func (rpc *Server) MaleficSRDI(ctx context.Context, req *clientpb.Builder) (*cli
 		filePath = filepath.Join(configs.TempPath, dst)
 		realName = req.Name
 		err = build.SaveArtifact(dst, req.Bin)
-		artifact, bin, err = build.NewMaleficSRDIArtifact(realName, filePath, target.OS, target.Arch, req.Stage, req.FunctionName, req.UserDataPath)
+		artifact, bin, err = build.NewMaleficSRDIArtifact(realName, req.Type, filePath, target.OS, target.Arch, req.Stage, req.FunctionName, req.UserDataPath)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	return artifact.ToProtobuf(bin), nil
+	return artifact.ToArtifact(bin), nil
 }

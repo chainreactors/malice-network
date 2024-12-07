@@ -29,7 +29,7 @@ func SRDICmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func MaleficSRDI(con *repl.Console, path string, id uint32, target string, params map[string]string) (*clientpb.Builder, error) {
+func MaleficSRDI(con *repl.Console, path string, id uint32, target string, params map[string]string) (*clientpb.Artifact, error) {
 	if path == "" && id == 0 {
 		return nil, errors.New("require path or id")
 	}
@@ -44,7 +44,7 @@ func MaleficSRDI(con *repl.Console, path string, id uint32, target string, param
 	return con.Rpc.MaleficSRDI(con.Context(), &clientpb.Builder{
 		Id:           id,
 		Bin:          bin,
-		Type:         consts.ShellcodeTYPE,
+		Type:         consts.ImplantModShellcode,
 		Name:         filepath.Base(path),
 		Target:       target,
 		IsSrdi:       true,

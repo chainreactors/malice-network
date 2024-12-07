@@ -598,7 +598,7 @@ func SaveBuilderFromAction(inputs map[string]string, req *clientpb.Generate) (*m
 		ProfileName: req.ProfileName,
 		Target:      target.Name,
 		Type:        inputs["package"],
-		Resource:    consts.BuildFromAction,
+		Source:      consts.ArtifactFromAction,
 		Arch:        target.Arch,
 		IsSRDI:      req.Srdi,
 		Modules:     strings.Join(req.Modules, ","),
@@ -624,7 +624,7 @@ func SaveArtifactFromGenerate(req *clientpb.Generate) (*models.Builder, error) {
 		Target:      req.Target,
 		Type:        req.Type,
 		Stager:      req.Stager,
-		Resource:    consts.BuildFromDocker,
+		Source:      consts.ArtifactFromDocker,
 		CA:          req.Ca,
 		IsSRDI:      req.Srdi,
 		Modules:     req.Feature,
@@ -658,7 +658,7 @@ func SaveArtifactFromID(req *clientpb.Generate, ID uint32, resource string) (*mo
 		Target:      req.Target,
 		Type:        req.Type,
 		Stager:      req.Stager,
-		Resource:    resource,
+		Source:      resource,
 		IsSRDI:      req.Srdi,
 		CA:          req.Ca,
 		Modules:     req.Feature,
@@ -694,7 +694,7 @@ func UpdateBuilderSrdi(builder *models.Builder) error {
 		Error
 }
 
-func SaveArtifact(name, artifactType, platform, arch, stage string) (*models.Builder, error) {
+func SaveArtifact(name, artifactType, platform, arch, stage, source string) (*models.Builder, error) {
 	absBuildOutputPath, err := filepath.Abs(configs.BuildOutputPath)
 	if err != nil {
 		return nil, err
@@ -706,8 +706,9 @@ func SaveArtifact(name, artifactType, platform, arch, stage string) (*models.Bui
 		Arch:   arch,
 		Stager: stage,
 		Type:   artifactType,
+		Source: source,
 	}
-	if artifactType == consts.ShellcodeTYPE {
+	if artifactType == consts.ImplantModShellcode {
 		builder.IsSRDI = true
 		builder.ShellcodePath = filepath.Join(absBuildOutputPath, encoders.UUID())
 	} else {
@@ -720,7 +721,7 @@ func SaveArtifact(name, artifactType, platform, arch, stage string) (*models.Bui
 	return &builder, nil
 }
 
-func GetArtifacts() (*clientpb.Builders, error) {
+func GetBuilders() (*clientpb.Builders, error) {
 	var builders []models.Builder
 	result := Session().Preload("Profile").Find(&builders)
 	if result.Error != nil {
@@ -731,16 +732,23 @@ func GetArtifacts() (*clientpb.Builders, error) {
 		Builders: make([]*clientpb.Builder, 0),
 	}
 	for _, builder := range builders {
-		pbBuilders.Builders = append(pbBuilders.GetBuilders(), builder.ToProtobuf(nil))
+		pbBuilders.Builders = append(pbBuilders.GetBuilders(), builder.ToProtobuf())
 	}
 	return pbBuilders, nil
 }
 
 // FindArtifact
-func FindArtifact(target *clientpb.Builder) (*clientpb.Builder, error) {
+func FindArtifact(target *clientpb.Artifact) (*clientpb.Artifact, error) {
 	var builder models.Builder
 	// where os, arch ,name
-	result := Session().Where("os = ? AND arch = ? AND name = ? AND type = ? ", target.Platform, target.Arch, target.Name, target.Type).First(&builder)
+	var result *gorm.DB
+	if target.Id != 0 {
+		result = Session().Where("id = ?", target.Id).First(&builder)
+	} else if target.Name != "" {
+		result = Session().Where("name = ?", target.Name).First(&builder)
+	} else {
+		result = Session().Where("os = ? AND arch = ? AND type = ? AND pipeline", target.Platform, target.Arch, target.Type, target.Pipeline).First(&builder)
+	}
 	if result.Error != nil {
 		return nil, result.Error
 	}
@@ -754,7 +762,7 @@ func FindArtifact(target *clientpb.Builder) (*clientpb.Builder, error) {
 	if err != nil {
 		return nil, err
 	}
-	return builder.ToProtobuf(content), nil
+	return builder.ToArtifact(content), nil
 }
 
 func GetArtifactByName(name string) (*models.Builder, error) {
@@ -852,11 +860,11 @@ func GetBuilderLogs(builderName string, limit int) (string, error) {
 	return result, nil
 }
 
-func GetBuilderByModules(modules []string) (*models.Builder, error) {
+func GetBuilderByModules(target string, modules []string) (*models.Builder, error) {
 	sort.Strings(modules)
 	modulesStr := strings.Join(modules, ",")
 	var builder models.Builder
-	result := Session().Where("modules = ?", modulesStr).First(&builder)
+	result := Session().Where("target = ? AND modules = ?", target, modulesStr).First(&builder)
 	if result.Error != nil {
 		return nil, result.Error
 	}

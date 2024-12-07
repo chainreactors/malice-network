@@ -40,11 +40,11 @@ type Workflow struct {
 }
 
 // ToProtoBuf converts the Workflow struct to its corresponding Protocol Buffers message
-func (w *Workflow) ToProtoBuf() *clientpb.Workflow {
+func (w *Workflow) ToProtoBuf() *clientpb.GithubWorkflow {
 	createdAt := w.CreatedAt.Format(time.RFC3339)
 	updatedAt := w.UpdatedAt.Format(time.RFC3339)
 
-	return &clientpb.Workflow{
+	return &clientpb.GithubWorkflow{
 		Id:        w.ID,
 		NodeId:    w.NodeID,
 		Name:      w.Name,
@@ -146,7 +146,7 @@ func TriggerWorkflowDispatch(owner, repo, workflowID, token string, inputs map[s
 		return nil, err
 	}
 	go downloadArtifactWhenReady(owner, repo, token, builder)
-	return builder.ToProtobuf([]byte{}), nil
+	return builder.ToProtobuf(), nil
 }
 
 // triggerBuildBeaconWorkflow triggers the BuildBeacon workflow when artifact is not found
@@ -197,9 +197,7 @@ func triggerBuildBeaconWorkflow(owner, repo, workflowID, token string, inputs ma
 // downloadArtifactWhenReady waits for the artifact to be ready and downloads it
 func downloadArtifactWhenReady(owner, repo, token string, builder *models.Builder) {
 	for {
-
-		// Attempt to download the artifact
-		_, err := DownloadArtifact(owner, repo, token, builder.Name)
+		err := PushArtifact(owner, repo, token, builder.Name)
 		if err == nil {
 			logs.Log.Info("Artifact downloaded successfully!")
 			if builder.IsSRDI {

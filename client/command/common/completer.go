@@ -240,7 +240,7 @@ func ProfileCompleter(con *repl.Console) carapace.Action {
 func ArtifactCompleter(con *repl.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
-		builders, err := con.Rpc.ListArtifact(con.Context(), &clientpb.Empty{})
+		builders, err := con.Rpc.ListBuilder(con.Context(), &clientpb.Empty{})
 		if err != nil {
 			con.Log.Errorf("Error get builder: %v\n", err)
 			return carapace.Action{}
@@ -256,7 +256,7 @@ func ArtifactCompleter(con *repl.Console) carapace.Action {
 func ArtifactNameCompleter(con *repl.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
-		builders, err := con.Rpc.ListArtifact(con.Context(), &clientpb.Empty{})
+		builders, err := con.Rpc.ListBuilder(con.Context(), &clientpb.Empty{})
 		if err != nil {
 			con.Log.Errorf("Error get builder: %v\n", err)
 			return carapace.Action{}

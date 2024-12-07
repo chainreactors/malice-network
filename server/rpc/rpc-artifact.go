@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 	"github.com/chainreactors/malice-network/helper/codenames"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/server/internal/build"
 	"github.com/chainreactors/malice-network/server/internal/db"
@@ -10,7 +11,7 @@ import (
 	"path/filepath"
 )
 
-func (rpc *Server) DownloadArtifact(ctx context.Context, req *clientpb.Builder) (*clientpb.Builder, error) {
+func (rpc *Server) DownloadArtifact(ctx context.Context, req *clientpb.Artifact) (*clientpb.Artifact, error) {
 	var path string
 	builder, err := db.GetArtifactByName(req.Name)
 	if err != nil {
@@ -25,16 +26,16 @@ func (rpc *Server) DownloadArtifact(ctx context.Context, req *clientpb.Builder) 
 	if err != nil {
 		return nil, err
 	}
-	result := builder.ToProtobuf(data)
+	result := builder.ToArtifact(data)
 	result.Name = result.Name + filepath.Ext(path)
 	return result, nil
 }
 
-func (rpc *Server) UploadArtifact(ctx context.Context, req *clientpb.Builder) (*clientpb.Builder, error) {
+func (rpc *Server) UploadArtifact(ctx context.Context, req *clientpb.Artifact) (*clientpb.Builder, error) {
 	if req.Name == "" {
 		req.Name = codenames.GetCodename()
 	}
-	builder, err := db.SaveArtifact(req.Name, req.Type, req.Platform, req.Arch, req.Stage)
+	builder, err := db.SaveArtifact(req.Name, req.Type, req.Platform, req.Arch, req.Stage, consts.ArtifactFromUpload)
 	if err != nil {
 		return nil, err
 	}
@@ -42,11 +43,11 @@ func (rpc *Server) UploadArtifact(ctx context.Context, req *clientpb.Builder) (*
 	if err != nil {
 		return nil, err
 	}
-	return builder.ToProtobuf(nil), nil
+	return builder.ToProtobuf(), nil
 }
 
 // for listener
-func (rpc *Server) GetArtifact(ctx context.Context, req *clientpb.Builder) (*clientpb.Builder, error) {
+func (rpc *Server) GetArtifact(ctx context.Context, req *clientpb.Artifact) (*clientpb.Artifact, error) {
 	builder, err := db.GetArtifactById(req.Id)
 	if err != nil {
 		return nil, err
@@ -61,17 +62,17 @@ func (rpc *Server) GetArtifact(ctx context.Context, req *clientpb.Builder) (*cli
 		return nil, err
 	}
 
-	return builder.ToProtobuf(data), nil
+	return builder.ToArtifact(data), nil
 }
 
-func (rpc *Server) ListArtifact(ctx context.Context, req *clientpb.Empty) (*clientpb.Builders, error) {
-	builders, err := db.GetArtifacts()
+func (rpc *Server) ListBuilder(ctx context.Context, req *clientpb.Empty) (*clientpb.Builders, error) {
+	builders, err := db.GetBuilders()
 	if err != nil {
 		return nil, err
 	}
 	return builders, nil
 }
 
-func (rpc *Server) FindArtifact(ctx context.Context, req *clientpb.Builder) (*clientpb.Builder, error) {
+func (rpc *Server) FindArtifact(ctx context.Context, req *clientpb.Artifact) (*clientpb.Artifact, error) {
 	return db.FindArtifact(req)
 }

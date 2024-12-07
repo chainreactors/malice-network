@@ -110,7 +110,8 @@ func RecoverSession(sess *clientpb.Session) (*Session, error) {
 	}
 	s := &Session{
 		Type:        sess.Type,
-		Name:        sess.Note,
+		Name:        sess.Name,
+		Note:        sess.Note,
 		Group:       sess.GroupName,
 		ID:          sess.SessionId,
 		RawID:       sess.RawId,
@@ -164,6 +165,7 @@ type Session struct {
 	RawID       uint32
 	Name        string
 	Group       string
+	Note        string
 	Target      string
 	Initialized bool
 	LastCheckin int64

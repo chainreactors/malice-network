@@ -2,6 +2,7 @@ package build
 
 import (
 	"github.com/chainreactors/malice-network/client/command/common"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -353,16 +354,42 @@ artifact upload /path/to/artifact --type DLL
 }
 
 func Register(con *repl.Console) {
-	con.RegisterServerFunc("find_artifact", func(con *repl.Console, profile, arch, os, typ string) (*clientpb.Builder, error) {
-		return con.Rpc.FindArtifact(con.Context(), &clientpb.Builder{
-			ProfileName: profile,
-			Arch:        arch,
-			Platform:    os,
-			Type:        typ,
+	con.RegisterServerFunc("search_artifact", func(con *repl.Console, arch, os, typ, pipeline string) (*clientpb.Artifact, error) {
+		return con.Rpc.FindArtifact(con.Context(), &clientpb.Artifact{
+			Arch:     arch,
+			Platform: os,
+			Type:     typ,
+			Pipeline: pipeline,
 		})
 	}, &intermediate.Helper{
 		Group: intermediate.GroupArtifact,
-		Short: "find build artifact",
+		Short: "search build artifact with arch,os,typ and pipeline id",
+		Input: []string{
+			"arch: arch",
+			"os: os",
+			"type: build type, beacon,bind,prelude",
+			"pipeline: pipeline id",
+		},
+		Output: []string{
+			"builder",
+		},
+	})
+
+	con.RegisterServerFunc("get_artifact", func(con *repl.Console, sess *core.Session) (*clientpb.Artifact, error) {
+		artifact, err := con.Rpc.FindArtifact(sess.Context(), &clientpb.Artifact{Name: sess.Name})
+		if err != nil {
+			return nil, err
+		}
+		return artifact, nil
+	}, &intermediate.Helper{
+		Group: intermediate.GroupArtifact,
+		Short: "get artifact with session self",
+		Input: []string{
+			"sess: session",
+		},
+		Output: []string{
+			"builder",
+		},
 	})
 
 	con.RegisterServerFunc("upload_artifact", UploadArtifact, &intermediate.Helper{
@@ -375,36 +402,34 @@ func Register(con *repl.Console) {
 		Short: "download artifact with special build id",
 	})
 
-	con.RegisterServerFunc("artifact_stager", func(con *repl.Console, profile string, arch string, os string) (string, error) {
-		builder, err := con.Rpc.FindArtifact(con.Context(), &clientpb.Builder{
-			ProfileName: profile,
-			Arch:        arch,
-			Platform:    os,
-			Type:        "pulse",
+	con.RegisterServerFunc("artifact_stager", func(con *repl.Console, sess *core.Session) (string, error) {
+		artifact, err := con.Rpc.FindArtifact(con.Context(), &clientpb.Artifact{
+			Pipeline: sess.PipelineId,
+			Arch:     sess.Os.Arch,
+			Platform: sess.Os.Name,
+			Type:     "pulse",
 		})
 		if err != nil {
 			return "", err
 		}
-		return string(builder.Bin), nil
+		return string(artifact.Bin), nil
 	}, &intermediate.Helper{
 		Group: intermediate.GroupArtifact,
 		Short: "get artifact stager shellcode",
 		Input: []string{
-			"profile: profile name",
-			"arch: architecture, x86/x64",
-			"os: platform, win/linux",
+			"sess: session",
 		},
 		Output: []string{
 			"shellcode: shellcode bin",
 		},
 	})
 
-	con.RegisterServerFunc("artifact_payload", func(con *repl.Console, profile string, arch string, os string) (string, error) {
-		builder, err := con.Rpc.FindArtifact(con.Context(), &clientpb.Builder{
-			ProfileName: profile,
-			Arch:        arch,
-			Platform:    os,
-			Type:        "beacon",
+	con.RegisterServerFunc("artifact_payload", func(con *repl.Console, sess *core.Session) (string, error) {
+		builder, err := con.Rpc.FindArtifact(con.Context(), &clientpb.Artifact{
+			Pipeline: sess.PipelineId,
+			Arch:     sess.Os.Arch,
+			Platform: sess.Os.Name,
+			Type:     "beacon",
 		})
 		if err != nil {
 			return "", err
@@ -414,9 +439,7 @@ func Register(con *repl.Console) {
 		Group: intermediate.GroupArtifact,
 		Short: "get artifact stageless shellcode",
 		Input: []string{
-			"profile: profile name",
-			"arch: architecture, x86/x64",
-			"os: platform, win/linux",
+			"sess: Session",
 		},
 		Output: []string{
 			"shellcode: shellcode bin",

@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // AliasesInstallCmd - Install an alias
@@ -130,7 +131,7 @@ func InstallFromFile(aliasGzFilePath string, aliasName string, promptToOverwrite
 	}
 	for _, aliasFile := range manifest.Files {
 		if aliasFile.Path != "" {
-			err := fileutils.InstallArtifact(aliasGzFilePath, installPath, aliasFile.Path)
+			err := InstallAlias(aliasGzFilePath, installPath, aliasFile.Path)
 			if err != nil {
 				con.Log.Errorf("Failed to install file: %s\n", err)
 				fileutils.ForceRemoveAll(installPath)
@@ -140,4 +141,24 @@ func InstallFromFile(aliasGzFilePath string, aliasName string, promptToOverwrite
 	}
 	con.Log.Console("done!\n")
 	return &installPath
+}
+
+func InstallAlias(aliasGzFilePath string, installPath, artifactPath string) error {
+	data, err := fileutils.ReadFileFromTarGz(aliasGzFilePath, fmt.Sprintf("./%s", strings.TrimPrefix(artifactPath, string(os.PathSeparator))))
+	if err != nil {
+		return err
+	}
+	if len(data) == 0 {
+		return fmt.Errorf("empty file %s", artifactPath)
+	}
+	localArtifactPath := filepath.Join(installPath, fileutils.ResolvePath(artifactPath))
+	artifactDir := filepath.Dir(localArtifactPath)
+	if _, err := os.Stat(artifactDir); os.IsNotExist(err) {
+		os.MkdirAll(artifactDir, 0700)
+	}
+	err = os.WriteFile(localArtifactPath, data, 0700)
+	if err != nil {
+		return err
+	}
+	return nil
 }

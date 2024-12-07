@@ -83,7 +83,7 @@ func LoadModuleCmd(cmd *cobra.Command, con *repl.Console) error {
 				"malefic_modules_features": strings.Join(modules, ","),
 			}
 			go func() {
-				builder, err := action.RunWorkFlow(con, &clientpb.WorkflowRequest{
+				builder, err := action.RunWorkFlow(con, &clientpb.GithubWorkflowRequest{
 					Inputs:     inputs,
 					Owner:      setting.GithubOwner,
 					Repo:       setting.GithubRepo,
@@ -96,7 +96,7 @@ func LoadModuleCmd(cmd *cobra.Command, con *repl.Console) error {
 				}
 				for {
 					time.Sleep(120 * time.Second)
-					resp, err := con.Rpc.DownloadArtifact(con.Context(), &clientpb.Builder{Name: builder.Name})
+					resp, err := con.Rpc.DownloadArtifact(con.Context(), &clientpb.Artifact{Name: builder.Name})
 					if err == nil {
 						modulePath := filepath.Join(assets.GetTempDir(), resp.Name)
 						err := os.WriteFile(modulePath, resp.Bin, 0666)

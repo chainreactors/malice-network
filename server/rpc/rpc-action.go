@@ -10,7 +10,7 @@ import (
 )
 
 // TriggerWorkflowDispatch triggers a workflow dispatch event
-func (rpc *Server) TriggerWorkflowDispatch(ctx context.Context, req *clientpb.WorkflowRequest) (*clientpb.Builder, error) {
+func (rpc *Server) TriggerWorkflowDispatch(ctx context.Context, req *clientpb.GithubWorkflowRequest) (*clientpb.Builder, error) {
 	var modules []string
 	if req.Inputs["malefic_modules_features"] != "" {
 		modules = strings.Split(req.Inputs["malefic_modules_features"], ",")
@@ -40,7 +40,7 @@ func (rpc *Server) TriggerWorkflowDispatch(ctx context.Context, req *clientpb.Wo
 }
 
 // EnableWorkflow enables a GitHub Actions workflow
-func (rpc *Server) EnableWorkflow(ctx context.Context, req *clientpb.WorkflowRequest) (*clientpb.Empty, error) {
+func (rpc *Server) EnableWorkflow(ctx context.Context, req *clientpb.GithubWorkflowRequest) (*clientpb.Empty, error) {
 	err := build.EnableWorkflow(req.Owner, req.Repo, req.WorkflowId, req.Token)
 	if err != nil {
 		return nil, err
@@ -49,7 +49,7 @@ func (rpc *Server) EnableWorkflow(ctx context.Context, req *clientpb.WorkflowReq
 }
 
 // DisableWorkflow disables a GitHub Actions workflow
-func (rpc *Server) DisableWorkflow(ctx context.Context, req *clientpb.WorkflowRequest) (*clientpb.Empty, error) {
+func (rpc *Server) DisableWorkflow(ctx context.Context, req *clientpb.GithubWorkflowRequest) (*clientpb.Empty, error) {
 	err := build.DisableWorkflow(req.Owner, req.Repo, req.WorkflowId, req.Token)
 	if err != nil {
 		return nil, err
@@ -58,18 +58,18 @@ func (rpc *Server) DisableWorkflow(ctx context.Context, req *clientpb.WorkflowRe
 }
 
 // ListRepositoryWorkflows fetches the workflows for a given repository
-func (rpc *Server) ListRepositoryWorkflows(ctx context.Context, req *clientpb.WorkflowRequest) (*clientpb.ListWorkflowsResponse, error) {
+func (rpc *Server) ListRepositoryWorkflows(ctx context.Context, req *clientpb.GithubWorkflowRequest) (*clientpb.GithubWorkflows, error) {
 	workflows, err := build.ListRepositoryWorkflows(req.Owner, req.Repo, req.Token)
 	if err != nil {
 		return nil, err
 	}
 
-	protoWorkflows := make([]*clientpb.Workflow, len(workflows))
+	protoWorkflows := make([]*clientpb.GithubWorkflow, len(workflows))
 	for i, wf := range workflows {
 		protoWorkflows[i] = wf.ToProtoBuf()
 	}
 
-	response := &clientpb.ListWorkflowsResponse{
+	response := &clientpb.GithubWorkflows{
 		Workflows: protoWorkflows,
 	}
 

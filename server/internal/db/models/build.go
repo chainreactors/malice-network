@@ -18,7 +18,7 @@ type Builder struct {
 	Type          string    // build type, pe, dll, shellcode
 	Stager        string    // shellcode prelude beacon bind
 	Modules       string    // default modules, comma split, e.g. "execute_exe,execute_dll"
-	Resource      string    // resource file
+	Source        string    // resource file
 	ParamsJson    string
 	CA            string // ca file , ca file content
 	Path          string
@@ -38,10 +38,26 @@ func (b *Builder) BeforeCreate(tx *gorm.DB) (err error) {
 	return nil
 }
 
-func (b *Builder) ToProtobuf(bin []byte) *clientpb.Builder {
+func (b *Builder) ToArtifact(bin []byte) *clientpb.Artifact {
+	return &clientpb.Artifact{
+		Id:       b.ID,
+		Bin:      bin,
+		Name:     b.Name,
+		Target:   b.Target,
+		Type:     b.Type,
+		Stage:    b.Stager,
+		Platform: b.Os,
+		Arch:     b.Arch,
+		IsSrdi:   b.IsSRDI,
+		Profile:  b.ProfileName,
+		Pipeline: b.Profile.PipelineID,
+		Time:     b.CreatedAt.Unix(),
+	}
+}
+
+func (b *Builder) ToProtobuf() *clientpb.Builder {
 	return &clientpb.Builder{
 		Id:          b.ID,
-		Bin:         bin,
 		Name:        b.Name,
 		Target:      b.Target,
 		Type:        b.Type,
@@ -52,8 +68,8 @@ func (b *Builder) ToProtobuf(bin []byte) *clientpb.Builder {
 		IsSrdi:      b.IsSRDI,
 		ProfileName: b.ProfileName,
 		PipelineId:  b.Profile.PipelineID,
-		Time:        b.CreatedAt.Format("2006-01-02 15:04:05"),
-		Resource:    b.Resource,
+		Time:        b.CreatedAt.Unix(),
+		Resource:    b.Source,
 	}
 }
 
