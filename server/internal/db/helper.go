@@ -3,6 +3,7 @@ package db
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/codenames"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -739,7 +740,7 @@ func GetBuilders() (*clientpb.Builders, error) {
 
 // FindArtifact
 func FindArtifact(target *clientpb.Artifact) (*clientpb.Artifact, error) {
-	var builder models.Builder
+	var builder *models.Builder
 	// where os, arch ,name
 	var result *gorm.DB
 	if target.Id != 0 {
@@ -747,10 +748,26 @@ func FindArtifact(target *clientpb.Artifact) (*clientpb.Artifact, error) {
 	} else if target.Name != "" {
 		result = Session().Where("name = ?", target.Name).First(&builder)
 	} else {
-		result = Session().Where("os = ? AND arch = ? AND type = ? AND pipeline", target.Platform, target.Arch, target.Type, target.Pipeline).First(&builder)
+		var builders []*models.Builder
+		result = Session().Where("os = ? AND arch = ? AND type = ? ", target.Platform, target.Arch, target.Type).
+			Preload("Profile.Pipeline").
+			Find(&builders)
+		if result.Error != nil {
+			return nil, result.Error
+		}
+
+		for _, v := range builders {
+			if v.Profile.PipelineID == target.Pipeline {
+				builder = v
+				break
+			}
+		}
 	}
 	if result.Error != nil {
 		return nil, result.Error
+	}
+	if builder == nil {
+		return nil, fmt.Errorf("no artifact found , please build %s first", target.Type)
 	}
 	var content []byte
 	var err error

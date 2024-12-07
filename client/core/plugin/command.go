@@ -41,6 +41,11 @@ func (cs Commands) Find(name string) *Command {
 
 func (cs Commands) SetCommand(name string, cmd *cobra.Command) {
 	subs := strings.Split(name, CMDSeq)
+	if len(subs) == 1 {
+		cur := cs.Find(subs[0])
+		cur.CMD = cmd
+		return
+	}
 
 	// 遍历每一级，查找或创建各级命令
 	var parentCmd *Command
