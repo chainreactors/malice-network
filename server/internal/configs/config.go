@@ -49,7 +49,7 @@ func GetServerConfig() *ServerConfig {
 
 func GetGithubConfig() *GithubConfig {
 	g := &GithubConfig{}
-	err := config.MapStruct("github", g)
+	err := config.MapStruct("server.github", g)
 	if err != nil {
 		logs.Log.Errorf("Failed to map github config %s", err)
 		return nil

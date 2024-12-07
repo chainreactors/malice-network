@@ -86,8 +86,8 @@ profile new --name my_profile --pipeline default_tcp
 `,
 	}
 	common.BindFlag(newProfileCmd, common.ProfileSet)
-	loadProfileCmd.MarkFlagRequired("pipeline")
-	loadProfileCmd.MarkFlagRequired("name")
+	newProfileCmd.MarkFlagRequired("pipeline")
+	newProfileCmd.MarkFlagRequired("name")
 	common.BindFlagCompletions(newProfileCmd, func(comp carapace.ActionMap) {
 		comp["name"] = carapace.ActionValues("profile name")
 		comp["pipeline"] = common.AllPipelineCompleter(con)

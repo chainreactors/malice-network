@@ -65,7 +65,7 @@ func ProfileLoadCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	con.Log.Infof("load implant profile %s success\n", profileName)
+	con.Log.Infof("load implant profile %s for %s\n", profileName, pipelineName)
 	return nil
 }
 
@@ -79,6 +79,6 @@ func ProfileNewCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	con.Log.Infof("load new profile %s success\n", profileName)
+	con.Log.Infof("create new profile %s for %s success\n", profileName, pipelineName)
 	return nil
 }

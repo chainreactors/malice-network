@@ -16,13 +16,13 @@ func (rpc *Server) TriggerWorkflowDispatch(ctx context.Context, req *clientpb.Wo
 		modules = strings.Split(req.Inputs["malefic_modules_features"], ",")
 	}
 	if req.Owner == "" || req.Repo == "" || req.Token == "" {
-		config := configs.GetServerConfig()
+		config := configs.GetGithubConfig()
 		if config == nil {
 			return nil, fmt.Errorf("please set github config use flag or server config")
 		}
-		req.Owner = config.GithubConfig.Owner
-		req.Repo = config.GithubConfig.Repo
-		req.Token = config.GithubConfig.Token
+		req.Owner = config.Owner
+		req.Repo = config.Repo
+		req.Token = config.Token
 	}
 	generateReq := &clientpb.Generate{
 		ProfileName: req.Profile,

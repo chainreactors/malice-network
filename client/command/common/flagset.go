@@ -164,9 +164,9 @@ func ParseGenerateFlags(cmd *cobra.Command) (string, string, string, []string, s
 }
 
 func ProfileSet(f *pflag.FlagSet) {
-	f.String("name", "", "Overwrite profile name")
+	f.StringP("name", "n", "", "Overwrite profile name")
 	//f.String("target", "", "Overwrite build target")
-	f.String("pipeline", "", "Overwrite profile pipeline_id")
+	f.StringP("pipeline", "p", "", "Overwrite profile pipeline_id")
 	//f.String("type", "", "Set build type")
 	//f.String("proxy", "", "Overwrite proxy")
 	//f.String("obfuscate", "", "Set obfuscate")
