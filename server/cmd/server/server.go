@@ -34,7 +34,7 @@ func init() {
 		opt.ParseDefault = true
 	})
 	config.AddDriver(yaml.Driver)
-	codenames.SetupCodenames(configs.ServerRootPath)
+	codenames.SetupCodenames()
 	assets.SetupGithubFile()
 }
 

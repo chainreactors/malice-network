@@ -588,7 +588,7 @@ func GetProfiles() ([]models.Profile, error) {
 	return profiles, result.Error
 }
 
-func SaveBuiladerFromAction(inputs map[string]string, req *clientpb.Generate) (*models.Builder, error) {
+func SaveBuilderFromAction(inputs map[string]string, req *clientpb.Generate) (*models.Builder, error) {
 	target, ok := consts.GetBuildTarget(inputs["targets"])
 	if !ok {
 		return nil, errs.ErrInvalidateTarget
@@ -608,7 +608,6 @@ func SaveBuiladerFromAction(inputs map[string]string, req *clientpb.Generate) (*
 
 	if err := Session().Create(&builder).Error; err != nil {
 		return nil, err
-
 	}
 
 	return &builder, nil
