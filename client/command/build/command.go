@@ -354,14 +354,7 @@ artifact upload /path/to/artifact --type DLL
 }
 
 func Register(con *repl.Console) {
-	con.RegisterServerFunc("search_artifact", func(con *repl.Console, arch, os, typ, pipeline string) (*clientpb.Artifact, error) {
-		return con.Rpc.FindArtifact(con.Context(), &clientpb.Artifact{
-			Arch:     arch,
-			Platform: os,
-			Type:     typ,
-			Pipeline: pipeline,
-		})
-	}, &intermediate.Helper{
+	con.RegisterServerFunc("search_artifact", SearchArtifact, &intermediate.Helper{
 		Group: intermediate.GroupArtifact,
 		Short: "search build artifact with arch,os,typ and pipeline id",
 		Input: []string{
@@ -403,12 +396,7 @@ func Register(con *repl.Console) {
 	})
 
 	con.RegisterServerFunc("artifact_stager", func(con *repl.Console, sess *core.Session) (string, error) {
-		artifact, err := con.Rpc.FindArtifact(con.Context(), &clientpb.Artifact{
-			Pipeline: sess.PipelineId,
-			Arch:     sess.Os.Arch,
-			Platform: sess.Os.Name,
-			Type:     "pulse",
-		})
+		artifact, err := SearchArtifact(con, sess.Os.Name, sess.Os.Arch, "pulse", sess.PipelineId)
 		if err != nil {
 			return "", err
 		}
@@ -425,16 +413,11 @@ func Register(con *repl.Console) {
 	})
 
 	con.RegisterServerFunc("artifact_payload", func(con *repl.Console, sess *core.Session) (string, error) {
-		builder, err := con.Rpc.FindArtifact(con.Context(), &clientpb.Artifact{
-			Pipeline: sess.PipelineId,
-			Arch:     sess.Os.Arch,
-			Platform: sess.Os.Name,
-			Type:     "beacon",
-		})
+		artifact, err := SearchArtifact(con, sess.Os.Name, sess.Os.Arch, "beacon", sess.PipelineId)
 		if err != nil {
 			return "", err
 		}
-		return string(builder.Bin), nil
+		return string(artifact.Bin), nil
 	}, &intermediate.Helper{
 		Group: intermediate.GroupArtifact,
 		Short: "get artifact stageless shellcode",
