@@ -124,8 +124,8 @@ func PulseCmd(cmd *cobra.Command, con *repl.Console) error {
 	buildTarget, _ := cmd.Flags().GetString("target")
 	srdi, _ := cmd.Flags().GetBool("srdi")
 	artifactId, _ := cmd.Flags().GetUint32("artifact-id")
-	if buildTarget == "" {
-		return errors.New("require build target")
+	if buildTarget != consts.TargetX64Windows && buildTarget != consts.TargetX86Windows {
+		return errors.New("pulse build target must be x86_64-pc-windows-msvc or i686-pc-windows-msvc")
 	}
 	go func() {
 		_, err := con.Rpc.Build(con.Context(), &clientpb.Generate{

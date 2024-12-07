@@ -67,7 +67,7 @@ func SetCustomUsageTemplate() (*template.Template, error) {
 {{RenderMarkdown "## Additional help topics:"}}{{range .Commands}}{{if .IsAdditionalHelpTopicCommand}}
 {{RenderMarkdown (printf "%s %s" (rpad .CommandPath .CommandPathPadding) .Short)}}{{end}}{{end}}{{end}}{{if .HasAvailableSubCommands}}
 
-{{RenderMarkdown (printf "## Use \"%s [command] --help\" for more information about a command." .CommandPath)}}{{end}}
+{{RenderMarkdown (printf "## Use \"%s [command] --help\" for more information about a command." .Name)}}{{end}}
 `
 
 	usageTmpl, err := template.New("usageTemplate").Funcs(funcMap).Parse(customTemplate)

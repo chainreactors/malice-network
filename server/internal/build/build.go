@@ -353,7 +353,7 @@ func NewMaleficSRDIArtifact(name, src, platform, arch, stage, funcName, dataPath
 	if err != nil {
 		return nil, nil, err
 	}
-	err = os.WriteFile(builder.Path, bin, 0644)
+	err = os.WriteFile(builder.ShellcodePath, bin, 0644)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -374,7 +374,7 @@ func UploadSrdiArtifact(builder *models.Builder, platform, arch string) (*models
 	if err != nil {
 		return nil, nil, err
 	}
-	builder.Path = dstPath
+	builder.ShellcodePath = dstPath
 	err = db.UpdateBuilderSrdi(builder)
 	if err != nil {
 		return nil, nil, err

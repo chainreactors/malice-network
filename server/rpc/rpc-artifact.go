@@ -10,16 +10,22 @@ import (
 )
 
 func (rpc *Server) DownloadArtifact(ctx context.Context, req *clientpb.Builder) (*clientpb.Builder, error) {
+	var path string
 	builder, err := db.GetArtifactByName(req.Name)
 	if err != nil {
 		return nil, err
 	}
-	data, err := os.ReadFile(builder.Path)
+	if builder.IsSRDI {
+		path = builder.ShellcodePath
+	} else {
+		path = builder.Path
+	}
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
 	result := builder.ToProtobuf(data)
-	result.Name = result.Name + filepath.Ext(builder.Path)
+	result.Name = result.Name + filepath.Ext(path)
 	return result, nil
 }
 

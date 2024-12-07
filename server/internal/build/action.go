@@ -96,6 +96,11 @@ func TriggerWorkflowDispatch(owner, repo, workflowID, token string, inputs map[s
 			}
 			beaconBuilder, err := db.SaveBuiladerFromAction(beaconReq, req)
 			beaconReq["remark"] = beaconBuilder.Name
+			if beaconReq["targets"] == consts.TargetX86Windows {
+				beaconReq["targets"] = consts.TargetX86WindowsGnu
+			} else {
+				beaconReq["targets"] = consts.TargetX64WindowsGnu
+			}
 			if err != nil {
 				return nil, fmt.Errorf("failed to save beacon builder: %v", err)
 			}

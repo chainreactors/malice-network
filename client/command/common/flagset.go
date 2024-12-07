@@ -202,18 +202,16 @@ func MalHttpFlagset(f *pflag.FlagSet) {
 func SRDIFlagSet(f *pflag.FlagSet) {
 	f.String("path", "", "file path")
 	//f.String("type", "", "mutant type")
-	f.String("arch", "x64", "shellcode architecture, eg: x86,x64")
-	f.String("platform", "win", "shellcode platform, eg: windows,linux")
+	f.String("target", "", "shellcode build target")
 	f.Uint32("id", 0, "build file id")
 	f.String("function_name", "", "shellcode entrypoint")
 	f.String("userdata_path", "", "user data path")
 }
 
-func ParseSRDIFlags(cmd *cobra.Command) (string, string, string, uint32, map[string]string) {
+func ParseSRDIFlags(cmd *cobra.Command) (string, string, uint32, map[string]string) {
 	path, _ := cmd.Flags().GetString("path")
 	//typ, _ := cmd.Flags().GetString("type")
-	arch, _ := cmd.Flags().GetString("arch")
-	platform, _ := cmd.Flags().GetString("platform")
+	target, _ := cmd.Flags().GetString("target")
 	id, _ := cmd.Flags().GetUint32("id")
 	functionName, _ := cmd.Flags().GetString("function_name, sets the entry function name within the DLL for execution. This is critical for specifying which function will be executed when the DLL is loaded.")
 	userDataPath, _ := cmd.Flags().GetString("userdata_path, allows the inclusion of user-defined data to be embedded with the shellcode during generation. This can be used to pass additional information or configuration to the payload at runtime.")
@@ -221,7 +219,7 @@ func ParseSRDIFlags(cmd *cobra.Command) (string, string, string, uint32, map[str
 		"function_name": functionName,
 		"userdata_path": userDataPath,
 	}
-	return path, arch, platform, id, params
+	return path, target, id, params
 }
 
 func GithubFlagSet(f *pflag.FlagSet) {

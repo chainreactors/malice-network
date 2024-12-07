@@ -570,7 +570,7 @@ func GetProfile(name string) (*types.ProfileConfig, error) {
 			profile.Basic.Interval = profileModel.Params.Interval
 			profile.Basic.Jitter = profileModel.Params.Jitter
 		}
-		if profileModel.Pipeline != nil {
+		if profileModel.Pipeline != nil && len(profile.Basic.Targets) == 0 {
 			profile.Basic.Targets = []string{profileModel.Pipeline.Address()}
 		}
 	} else if profile.Pulse != nil && profileModel.Type == consts.ImplantPulse {
@@ -690,7 +690,7 @@ func UpdateBuilderPath(builder *models.Builder) error {
 
 func UpdateBuilderSrdi(builder *models.Builder) error {
 	return Session().Model(builder).
-		Select("is_srdi", "path").
+		Select("is_srdi", "shellcode_path").
 		Updates(builder).
 		Error
 }
@@ -700,14 +700,21 @@ func SaveArtifact(name, artifactType, platform, arch, stage string) (*models.Bui
 	if err != nil {
 		return nil, err
 	}
+
 	builder := models.Builder{
 		Name:   name,
 		Os:     platform,
 		Arch:   arch,
 		Stager: stage,
 		Type:   artifactType,
-		Path:   filepath.Join(absBuildOutputPath, encoders.UUID()),
 	}
+	if artifactType == consts.ShellcodeTYPE {
+		builder.IsSRDI = true
+		builder.ShellcodePath = filepath.Join(absBuildOutputPath, encoders.UUID())
+	} else {
+		builder.Path = filepath.Join(absBuildOutputPath, encoders.UUID())
+	}
+
 	if err := Session().Create(&builder).Error; err != nil {
 		return nil, err
 	}

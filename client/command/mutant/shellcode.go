@@ -13,11 +13,11 @@ import (
 )
 
 func SRDICmd(cmd *cobra.Command, con *repl.Console) error {
-	path, arch, platform, id, params := common.ParseSRDIFlags(cmd)
+	path, target, id, params := common.ParseSRDIFlags(cmd)
 	var fileName string
 	var err error
 
-	resp, err := MaleficSRDI(con, path, id, arch, platform, params)
+	resp, err := MaleficSRDI(con, path, id, target, params)
 	if err != nil {
 		return err
 	}
@@ -29,7 +29,7 @@ func SRDICmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func MaleficSRDI(con *repl.Console, path string, id uint32, arch, platform string, params map[string]string) (*clientpb.Builder, error) {
+func MaleficSRDI(con *repl.Console, path string, id uint32, target string, params map[string]string) (*clientpb.Builder, error) {
 	if path == "" && id == 0 {
 		return nil, errors.New("require path or id")
 	}
@@ -44,10 +44,9 @@ func MaleficSRDI(con *repl.Console, path string, id uint32, arch, platform strin
 	return con.Rpc.MaleficSRDI(con.Context(), &clientpb.Builder{
 		Id:           id,
 		Bin:          bin,
-		Arch:         arch,
 		Type:         consts.ShellcodeTYPE,
 		Name:         filepath.Base(path),
-		Platform:     platform,
+		Target:       target,
 		IsSrdi:       true,
 		FunctionName: params["function_name"],
 		UserDataPath: params["userdata_path"],

@@ -25,21 +25,22 @@ SRDI technology reduces the PE characteristics of a DLL, enabling more effective
 			return SRDICmd(cmd, con)
 		},
 		Example: `~~~
-// Convert a DLL to SRDI format with architecture and platform
-srdi --path /path/to/target --arch x64 --platform win
+// Convert a DLL to SRDI format with build target
+srdi --path /path/to/target --target x86_64-pc-windows-msvc
 
 // Specify an entry function for the DLL during SRDI conversion
-srdi --path /path/to/target --arch x86 --platform linux 
+srdi --path /path/to/target --target x86_64-pc-windows-msvc
 
 // Include user-defined data with the generated shellcode
-srdi --path /path/to/target.dll --arch x64 --platform win --user_data_path /path/to/user_data --function_name DllMain
+srdi --path /path/to/target.dll ---target x86_64-pc-windows-msvc --user_data_path /path/to/user_data --function_name DllMain
 
 // Convert a specific artifact to SRDI format using its ID
-srdi --id artifact_id --arch x64 --platform linux
+srdi --id artifact_id --target x86_64-pc-windows-msvc
 ~~~`,
 	}
 	common.BindFlag(srdiCmd, common.SRDIFlagSet)
 	common.BindFlagCompletions(srdiCmd, func(comp carapace.ActionMap) {
+		comp["target"] = common.BuildTargetCompleter(con)
 		comp["path"] = carapace.ActionFiles().Usage("file path")
 		comp["id"] = common.ArtifactCompleter(con)
 	})

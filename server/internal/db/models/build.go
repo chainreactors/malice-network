@@ -13,20 +13,21 @@ type Builder struct {
 	Name        string `gorm:"unique"`
 	ProfileName string `gorm:"index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:ProfileName;references:Name"` // 将 ProfileName 设置为外键
 
-	CreatedAt  time.Time `gorm:"->;<-:create;"`
-	Target     string    // build target, like win64, win32, linux64
-	Type       string    // build type, pe, dll, shellcode
-	Stager     string    // shellcode prelude beacon bind
-	Modules    string    // default modules, comma split, e.g. "execute_exe,execute_dll"
-	Resource   string    // resource file
-	ParamsJson string
-	CA         string // ca file , ca file content
-	Path       string
-	IsSRDI     bool
-	Profile    Profile `gorm:"foreignKey:ProfileName;references:Name;"`
-	Os         string
-	Arch       string
-	Log        string
+	CreatedAt     time.Time `gorm:"->;<-:create;"`
+	Target        string    // build target, like win64, win32, linux64
+	Type          string    // build type, pe, dll, shellcode
+	Stager        string    // shellcode prelude beacon bind
+	Modules       string    // default modules, comma split, e.g. "execute_exe,execute_dll"
+	Resource      string    // resource file
+	ParamsJson    string
+	CA            string // ca file , ca file content
+	Path          string
+	IsSRDI        bool
+	ShellcodePath string
+	Profile       Profile `gorm:"foreignKey:ProfileName;references:Name;"`
+	Os            string
+	Arch          string
+	Log           string
 }
 
 func (b *Builder) BeforeCreate(tx *gorm.DB) (err error) {
@@ -39,6 +40,7 @@ func (b *Builder) BeforeCreate(tx *gorm.DB) (err error) {
 
 func (b *Builder) ToProtobuf(bin []byte) *clientpb.Builder {
 	return &clientpb.Builder{
+		Id:          b.ID,
 		Bin:         bin,
 		Name:        b.Name,
 		Target:      b.Target,

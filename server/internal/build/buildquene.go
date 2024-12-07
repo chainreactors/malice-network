@@ -141,6 +141,11 @@ func (bqm *BuildQueueManager) executeBuild(req *clientpb.Generate, builder model
 				Srdi:        true,
 			}
 			var beaconBuilder *models.Builder
+			if beaconReq.Target == consts.TargetX86Windows {
+				beaconReq.Target = consts.TargetX86WindowsGnu
+			} else {
+				beaconReq.Target = consts.TargetX64WindowsGnu
+			}
 			if artifactID != 0 {
 				beaconBuilder, err = db.SaveArtifactFromID(beaconReq, artifactID, consts.BuildFromDocker)
 				if err != nil {

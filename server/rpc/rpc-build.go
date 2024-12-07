@@ -7,6 +7,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/codenames"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/encoders"
+	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/server/internal/build"
 	"github.com/chainreactors/malice-network/server/internal/configs"
@@ -47,27 +48,34 @@ func (rpc *Server) ListArtifact(ctx context.Context, req *clientpb.Empty) (*clie
 
 func (rpc *Server) MaleficSRDI(ctx context.Context, req *clientpb.Builder) (*clientpb.Builder, error) {
 	var filePath, realName string
-	var builder *models.Builder
 	var err error
+	var artifact *models.Builder
+	var bin []byte
+	target, ok := consts.GetBuildTarget(req.Target)
+	if !ok {
+		return nil, errs.ErrInvalidateTarget
+	}
 	if req.Id != 0 {
-		builder, err = db.GetArtifactById(req.Id)
+		builder, err := db.GetArtifactById(req.Id)
 		if err != nil {
 			return nil, err
 		}
-		filePath = builder.Path
-		realName = builder.Name
+		artifact, bin, err = build.UploadSrdiArtifact(builder, target.OS, target.Arch)
+		if err != nil {
+			return nil, err
+		}
 	} else {
 		dst := encoders.UUID()
 		filePath = filepath.Join(configs.TempPath, dst)
 		realName = req.Name
 		err = build.SaveArtifact(dst, req.Bin)
+		artifact, bin, err = build.NewMaleficSRDIArtifact(realName, filePath, target.OS, target.Arch, req.Stage, req.FunctionName, req.UserDataPath)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	builder, bin, err := build.NewMaleficSRDIArtifact(realName+"_"+consts.ShellcodeTYPE, filePath, req.Platform, req.Arch, req.Stage, req.FunctionName, req.UserDataPath)
-	if err != nil {
-		return nil, err
-	}
-	return builder.ToProtobuf(bin), nil
+	return artifact.ToProtobuf(bin), nil
 }
 
 func (rpc *Server) BuildLog(ctx context.Context, req *clientpb.Builder) (*clientpb.Builder, error) {
