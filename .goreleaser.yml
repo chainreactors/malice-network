@@ -5,7 +5,8 @@ version: 2
 before:
   hooks:
     - go mod tidy
-    - curl -L https://github.com/EgeBalci/sgn/releases/download/v2.0.1/sgn_linux_amd64_2.0.1.zip -o /tmp/sgn_linux.zip
+    - |
+      curl -L https://github.com/EgeBalci/sgn/releases/download/v2.0.1/sgn_linux_amd64_2.0.1.zip -o /tmp/sgn_linux.zip
       unzip /tmp/sgn_linux.zip -d server/assets/linux
       rm /tmp/sgn_linux.zip
 
