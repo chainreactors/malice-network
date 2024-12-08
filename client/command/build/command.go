@@ -94,7 +94,23 @@ profile new --name my_profile --pipeline default_tcp
 		comp["pipeline"] = common.AllPipelineCompleter(con)
 	})
 
-	profileCmd.AddCommand(listCmd, loadProfileCmd, newProfileCmd)
+	deleteProfileCmd := &cobra.Command{
+		Use:   consts.CommandProfileDelete,
+		Short: "Delete a compile profile in server",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return ProfileDeleteCmd(cmd, con)
+		},
+		Example: `
+~~~
+profile delete --name profile_name
+~~~
+`,
+	}
+	common.BindArgCompletions(deleteProfileCmd, nil,
+		common.ProfileCompleter(con))
+
+	profileCmd.AddCommand(listCmd, loadProfileCmd, newProfileCmd, deleteProfileCmd)
 
 	buildCmd := &cobra.Command{
 		Use:   consts.CommandBuild,
@@ -348,7 +364,26 @@ artifact upload /path/to/artifact --type DLL
 		f.StringP("name", "n", "", "alias name")
 	})
 
-	artifactCmd.AddCommand(listArtifactCmd, downloadCmd, uploadCmd)
+	deleteCommand := &cobra.Command{
+		Use:   consts.CommandArtifactDelete,
+		Short: "Delete a artifact file in the server",
+		Long: `Delete a specify artifact in the server.
+
+`,
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return DeleteArtifactCmd(cmd, con)
+		},
+		Example: `
+~~~
+artifact delete --name artifact_name
+~~~
+`}
+
+	common.BindArgCompletions(deleteCommand, nil,
+		common.ArtifactCompleter(con))
+
+	artifactCmd.AddCommand(listArtifactCmd, downloadCmd, uploadCmd, deleteCommand)
 
 	return []*cobra.Command{profileCmd, buildCmd, artifactCmd}
 }
@@ -393,6 +428,11 @@ func Register(con *repl.Console) {
 	con.RegisterServerFunc("download_artifact", DownloadArtifact, &intermediate.Helper{
 		Group: intermediate.GroupArtifact,
 		Short: "download artifact with special build id",
+	})
+
+	con.RegisterServerFunc("delete_artifact", DeleteArtifact, &intermediate.Helper{
+		Group: intermediate.GroupArtifact,
+		Short: "delete artifact with special build name",
 	})
 
 	con.RegisterServerFunc("artifact_stager", func(con *repl.Console, sess *core.Session) (string, error) {

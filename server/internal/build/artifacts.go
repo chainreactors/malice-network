@@ -19,9 +19,6 @@ import (
 	"time"
 )
 
-const artifactApiURL = "https://api.github.com/repos/%s/%s/actions/artifacts"
-const downloadApiUrl = "https://api.github.com/repos/%s/%s/actions/artifacts/%s/%s"
-
 const archiveFormat = "zip"
 
 var notifiedWorkflows = make(map[string]bool)
@@ -63,39 +60,6 @@ type Artifact struct {
 type ArtifactsResponse struct {
 	TotalCount int        `json:"total_count"`
 	Artifacts  []Artifact `json:"artifacts"`
-}
-
-// ListArtifacts lists artifacts for a GitHub repository
-func ListArtifacts(owner, repo, token string) ([]Artifact, error) {
-	// Create the API URL
-	escapedOwner := url.QueryEscape(owner)
-	escapedRepo := url.QueryEscape(repo)
-	apiUrl := fmt.Sprintf(artifactApiURL, escapedOwner, escapedRepo)
-
-	req, err := createGitHubRequest(apiUrl, token)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %v", err)
-	}
-
-	// Send the request
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to send request: %v", err)
-	}
-	defer resp.Body.Close()
-
-	// Check for successful response
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to list artifacts. Status code: %d", resp.StatusCode)
-	}
-
-	// Parse the response
-	var result ArtifactsResponse
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %v", err)
-	}
-
-	return result.Artifacts, nil
 }
 
 // findArtifactsURL finds the ArtifactsURL for a workflow by name
@@ -208,7 +172,7 @@ func PushArtifact(owner, repo, token, buildName string) error {
 		return fmt.Errorf("unzip artifact failed: %v", err)
 	}
 	filename := filepath.Join(configs.BuildOutputPath, encoders.UUID())
-	err = os.WriteFile(filepath.Join(configs.BuildOutputPath, encoders.UUID()), content, 0644)
+	err = os.WriteFile(filename, content, 0644)
 	if err != nil {
 		return err
 	}
