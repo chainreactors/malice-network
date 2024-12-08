@@ -11,6 +11,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
+	"github.com/docker/docker/client"
 	"os"
 	"path/filepath"
 	"strings"
@@ -86,24 +87,34 @@ func (bqm *BuildQueueManager) executeBuild(req *clientpb.Generate, builder model
 	if !ok {
 		return nil, errs.ErrInvalidateTarget
 	}
+
+	// Ensure valid build target
 	if req.Type == consts.CommandBuildPulse && !strings.Contains(target.Name, "windows") {
 		return nil, errs.ErrInvalidateTarget
 	}
+
+	// Get Docker client
 	cli, err := GetDockerClient()
 	if err != nil {
 		return nil, err
 	}
+
+	// Prepare build request
 	req.Name = builder.Name
 	profileByte, err := GenerateProfile(req)
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("Err create config: %v", err))
+		return nil, fmt.Errorf("failed to create config: %v", err)
 	}
+
+	// Set feature if empty
 	if req.Feature == "" {
 		profile, _ := types.LoadProfile([]byte(profileByte))
 		req.Feature = strings.Join(profile.Implant.Modules, ",")
 	}
+
 	logs.Log.Infof("start to build %s ...", req.Target)
 
+	// Handle different build types
 	switch req.Type {
 	case consts.CommandBuildBeacon:
 		err = BuildBeacon(cli, req)
@@ -114,73 +125,7 @@ func (bqm *BuildQueueManager) executeBuild(req *clientpb.Generate, builder model
 	case consts.CommandBuildModules:
 		err = BuildModules(cli, req, true) // Immediate build assumed
 	case consts.CommandBuildPulse:
-		var artifactID uint32
-		if req.ArtifactId != 0 {
-			artifactID = req.ArtifactId
-		} else {
-			profile, _ := db.GetProfile(req.ProfileName)
-			yamlID := profile.Pulse.Extras["flags"].(map[string]interface{})["artifact_id"].(int)
-			if uint32(yamlID) != 0 {
-				artifactID = uint32(yamlID)
-			}
-			artifactID = 0
-		}
-		idBuilder, err := db.GetArtifactById(artifactID)
-		if err != nil && !errors.Is(err, db.ErrRecordNotFound) {
-			return nil, err
-		} else if errors.Is(err, db.ErrRecordNotFound) {
-			beaconReq := &clientpb.Generate{
-				Name:        codenames.GetCodename(),
-				ProfileName: req.ProfileName,
-				Address:     req.Address,
-				Type:        consts.CommandBuildBeacon,
-				Target:      req.Target,
-				Modules:     req.Modules,
-				Ca:          req.Ca,
-				Params:      req.Params,
-				Srdi:        true,
-			}
-			var beaconBuilder *models.Builder
-			if beaconReq.Target == consts.TargetX86Windows {
-				beaconReq.Target = consts.TargetX86WindowsGnu
-			} else {
-				beaconReq.Target = consts.TargetX64WindowsGnu
-			}
-			if artifactID != 0 {
-				beaconBuilder, err = db.SaveArtifactFromID(beaconReq, artifactID, consts.ArtifactFromDocker)
-				if err != nil {
-					logs.Log.Errorf("move build output error: %v", err)
-					return nil, err
-				}
-			} else {
-				beaconBuilder, err = db.SaveArtifactFromGenerate(beaconReq)
-				if err != nil {
-					logs.Log.Errorf("move build output error: %v", err)
-					return nil, err
-				}
-			}
-			go func() {
-				_, err := GlobalBuildQueueManager.AddTask(beaconReq, *beaconBuilder)
-				if err != nil {
-					logs.Log.Errorf("Error adding BuildBeacon task: %v", err)
-				}
-			}()
-			req.ArtifactId = beaconBuilder.ID
-			_, err := GenerateProfile(req)
-			if err != nil {
-				return nil, errors.New(fmt.Sprintf("Err create config: %v", err))
-			}
-			err = BuildPulse(cli, req)
-		} else if !idBuilder.IsSRDI {
-			idBuilder.IsSRDI = true
-			_, err := SRDIArtifact(idBuilder, target.OS, target.Arch)
-			if err != nil {
-				return nil, err
-			}
-			err = BuildPulse(cli, req)
-		} else {
-			err = BuildPulse(cli, req)
-		}
+		err = bqm.handleBuildPulse(cli, req, target)
 	default:
 		err = fmt.Errorf("unknown build type: %s", req.Type)
 	}
@@ -188,35 +133,129 @@ func (bqm *BuildQueueManager) executeBuild(req *clientpb.Generate, builder model
 	if err != nil {
 		return nil, err
 	}
+
+	// Finalize build and move output
+	return bqm.finalizeBuild(req, builder, target)
+}
+
+// handleBuildPulse handles the specific logic for Pulse builds
+func (bqm *BuildQueueManager) handleBuildPulse(cli *client.Client, req *clientpb.Generate, target *consts.BuildTarget) error {
+	var artifactID uint32
+	if req.ArtifactId != 0 {
+		artifactID = req.ArtifactId
+	} else {
+		profile, _ := db.GetProfile(req.ProfileName)
+		yamlID := profile.Pulse.Extras["flags"].(map[string]interface{})["artifact_id"].(int)
+		if uint32(yamlID) != 0 {
+			artifactID = uint32(yamlID)
+		}
+		artifactID = 0
+	}
+
+	idBuilder, err := db.GetArtifactById(artifactID)
+	if err != nil && !errors.Is(err, db.ErrRecordNotFound) {
+		return err
+	}
+
+	// Handle case when artifact is not found
+	if errors.Is(err, db.ErrRecordNotFound) {
+		return bqm.handleNewBeaconBuild(cli, req, artifactID, target)
+	}
+
+	if !idBuilder.IsSRDI {
+		idBuilder.IsSRDI = true
+		_, err := SRDIArtifact(idBuilder, target.OS, target.Arch)
+		if err != nil {
+			return err
+		}
+	}
+
+	return BuildPulse(cli, req)
+}
+
+// handleNewBeaconBuild handles the creation of a new Beacon build
+func (bqm *BuildQueueManager) handleNewBeaconBuild(cli *client.Client, req *clientpb.Generate, artifactID uint32, target *consts.BuildTarget) error {
+	beaconReq := &clientpb.Generate{
+		Name:        codenames.GetCodename(),
+		ProfileName: req.ProfileName,
+		Address:     req.Address,
+		Type:        consts.CommandBuildBeacon,
+		Target:      req.Target,
+		Modules:     req.Modules,
+		Ca:          req.Ca,
+		Params:      req.Params,
+		Srdi:        true,
+	}
+
+	// Set the correct target for Windows
+	if beaconReq.Target == consts.TargetX86Windows {
+		beaconReq.Target = consts.TargetX86WindowsGnu
+	} else {
+		beaconReq.Target = consts.TargetX64WindowsGnu
+	}
+
+	var beaconBuilder *models.Builder
+	var err error
+	if artifactID != 0 {
+		beaconBuilder, err = db.SaveArtifactFromID(beaconReq, artifactID, consts.ArtifactFromDocker)
+	} else {
+		beaconBuilder, err = db.SaveArtifactFromGenerate(beaconReq)
+	}
+	if err != nil {
+		logs.Log.Errorf("error saving artifact: %v", err)
+		return err
+	}
+
+	// Add Beacon build task to queue asynchronously
+	go func() {
+		_, err := GlobalBuildQueueManager.AddTask(beaconReq, *beaconBuilder)
+		if err != nil {
+			logs.Log.Errorf("Error adding BuildBeacon task: %v", err)
+		}
+	}()
+
+	// Generate profile and build Pulse
+	req.ArtifactId = beaconBuilder.ID
+	_, err = GenerateProfile(req)
+	if err != nil {
+		return fmt.Errorf("failed to create config: %v", err)
+	}
+	return BuildPulse(cli, req)
+}
+
+// finalizeBuild moves the build output and updates the builder path
+func (bqm *BuildQueueManager) finalizeBuild(req *clientpb.Generate, builder models.Builder, target *consts.BuildTarget) (*clientpb.Artifact, error) {
 	_, artifactPath, err := MoveBuildOutput(req.Target, req.Type)
 	if err != nil {
 		logs.Log.Errorf("move build output error: %v", err)
 		return nil, err
 	}
+
 	if !req.Srdi {
 		absArtifactPath, err := filepath.Abs(artifactPath)
 		if err != nil {
 			return nil, err
 		}
+
 		builder.Path = absArtifactPath
 		err = db.UpdateBuilderPath(&builder)
 		if err != nil {
 			return nil, err
 		}
+
 		data, err := os.ReadFile(absArtifactPath)
 		if err != nil {
 			return nil, err
 		}
 		return builder.ToArtifact(data), nil
-	} else {
-		builder.IsSRDI = true
-		builder.Path = artifactPath
-		bin, err := SRDIArtifact(&builder, target.OS, target.Arch)
-		if err != nil {
-			return nil, err
-		}
-		return builder.ToArtifact(bin), nil
 	}
+	builder.Path = artifactPath
+	bin, err := SRDIArtifact(&builder, target.OS, target.Arch)
+	if err != nil {
+		return nil, err
+	}
+
+	return builder.ToArtifact(bin), nil
 }
 
 // AddTask adds a build task to the queue and waits for the result

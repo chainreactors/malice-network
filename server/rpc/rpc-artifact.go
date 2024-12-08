@@ -8,7 +8,6 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/build"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"os"
-	"path/filepath"
 )
 
 func (rpc *Server) DownloadArtifact(ctx context.Context, req *clientpb.Artifact) (*clientpb.Artifact, error) {
@@ -26,8 +25,8 @@ func (rpc *Server) DownloadArtifact(ctx context.Context, req *clientpb.Artifact)
 	if err != nil {
 		return nil, err
 	}
+	builder.Name = build.GetFilePath(builder.Name, builder.Target)
 	result := builder.ToArtifact(data)
-	result.Name = result.Name + filepath.Ext(path)
 	return result, nil
 }
 
@@ -61,7 +60,6 @@ func (rpc *Server) GetArtifact(ctx context.Context, req *clientpb.Artifact) (*cl
 	if err != nil {
 		return nil, err
 	}
-
 	return builder.ToArtifact(data), nil
 }
 

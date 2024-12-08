@@ -411,10 +411,6 @@ func MaleficSRDI(src, dst, platform, arch, funcName, dataPath string) ([]byte, e
 	return data, nil
 }
 
-func isWindows() bool {
-	return strings.Contains(strings.ToLower(os.Getenv("OS")), "windows")
-}
-
 func catchLogs(cli *client.Client, containerID, name string) error {
 	logOptions := container.LogsOptions{
 		ShowStdout: true,
