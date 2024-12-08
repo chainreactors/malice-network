@@ -2,10 +2,14 @@ package rpc
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/server/internal/build"
 	"github.com/chainreactors/malice-network/server/internal/configs"
+	"github.com/chainreactors/malice-network/server/internal/db"
+	"os"
 	"strings"
 )
 
@@ -23,6 +27,22 @@ func (rpc *Server) TriggerWorkflowDispatch(ctx context.Context, req *clientpb.Gi
 		req.Owner = config.Owner
 		req.Repo = config.Repo
 		req.Token = config.Token
+	}
+	if req.Inputs["package"] == consts.CommandBuildModules {
+		moduleBuilder, err := db.GetBuilderByModules(req.Inputs["targets"], modules)
+		if err != nil && !errors.Is(err, db.ErrRecordNotFound) {
+			return nil, err
+		}
+		if moduleBuilder.Path != "" {
+			bin, err := os.ReadFile(moduleBuilder.Path)
+			if err != nil {
+				return nil, err
+			}
+			moduleBuilder.Name = build.GetFilePath(moduleBuilder.Name, moduleBuilder.Target, moduleBuilder.Type)
+			result := moduleBuilder.ToProtobuf()
+			result.Bin = bin
+			return result, nil
+		}
 	}
 	generateReq := &clientpb.Generate{
 		ProfileName: req.Profile,

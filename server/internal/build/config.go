@@ -63,14 +63,14 @@ func MoveBuildOutput(target, buildType string) (string, string, error) {
 	return sourcePath, dstPath, nil
 }
 
-func GetFilePath(name, target string) string {
+func GetFilePath(name, target, buildType string) string {
 	switch {
 	case strings.Contains(target, "windows"):
-		if target == consts.CommandBuildModules {
+		if buildType == consts.CommandBuildModules {
 			name = name + consts.DllFile
-		} else if target == consts.CommandBuildPrelude {
+		} else if buildType == consts.CommandBuildPrelude {
 			name = name + consts.PEFile
-		} else if target == consts.CommandBuildPulse {
+		} else if buildType == consts.CommandBuildPulse {
 			name = name + consts.PEFile
 		} else {
 			name = name + consts.PEFile

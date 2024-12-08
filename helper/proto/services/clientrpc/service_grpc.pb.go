@@ -269,7 +269,7 @@ type MaliceRPCClient interface {
 	GetProfiles(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Profiles, error)
 	DeleteProfile(ctx context.Context, in *clientpb.Profile, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	Build(ctx context.Context, in *clientpb.Generate, opts ...grpc.CallOption) (*clientpb.Builder, error)
-	BuildModules(ctx context.Context, in *clientpb.Generate, opts ...grpc.CallOption) (*clientpb.Builder, error)
+	BuildModules(ctx context.Context, in *clientpb.Generate, opts ...grpc.CallOption) (*clientpb.Artifact, error)
 	BuildLog(ctx context.Context, in *clientpb.Builder, opts ...grpc.CallOption) (*clientpb.Builder, error)
 	ListBuilder(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Builders, error)
 	DownloadArtifact(ctx context.Context, in *clientpb.Artifact, opts ...grpc.CallOption) (*clientpb.Artifact, error)
@@ -1275,8 +1275,8 @@ func (c *maliceRPCClient) Build(ctx context.Context, in *clientpb.Generate, opts
 	return out, nil
 }
 
-func (c *maliceRPCClient) BuildModules(ctx context.Context, in *clientpb.Generate, opts ...grpc.CallOption) (*clientpb.Builder, error) {
-	out := new(clientpb.Builder)
+func (c *maliceRPCClient) BuildModules(ctx context.Context, in *clientpb.Generate, opts ...grpc.CallOption) (*clientpb.Artifact, error) {
+	out := new(clientpb.Artifact)
 	err := c.cc.Invoke(ctx, MaliceRPC_BuildModules_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -1485,7 +1485,7 @@ type MaliceRPCServer interface {
 	GetProfiles(context.Context, *clientpb.Empty) (*clientpb.Profiles, error)
 	DeleteProfile(context.Context, *clientpb.Profile) (*clientpb.Empty, error)
 	Build(context.Context, *clientpb.Generate) (*clientpb.Builder, error)
-	BuildModules(context.Context, *clientpb.Generate) (*clientpb.Builder, error)
+	BuildModules(context.Context, *clientpb.Generate) (*clientpb.Artifact, error)
 	BuildLog(context.Context, *clientpb.Builder) (*clientpb.Builder, error)
 	ListBuilder(context.Context, *clientpb.Empty) (*clientpb.Builders, error)
 	DownloadArtifact(context.Context, *clientpb.Artifact) (*clientpb.Artifact, error)
@@ -1823,7 +1823,7 @@ func (UnimplementedMaliceRPCServer) DeleteProfile(context.Context, *clientpb.Pro
 func (UnimplementedMaliceRPCServer) Build(context.Context, *clientpb.Generate) (*clientpb.Builder, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Build not implemented")
 }
-func (UnimplementedMaliceRPCServer) BuildModules(context.Context, *clientpb.Generate) (*clientpb.Builder, error) {
+func (UnimplementedMaliceRPCServer) BuildModules(context.Context, *clientpb.Generate) (*clientpb.Artifact, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method BuildModules not implemented")
 }
 func (UnimplementedMaliceRPCServer) BuildLog(context.Context, *clientpb.Builder) (*clientpb.Builder, error) {
