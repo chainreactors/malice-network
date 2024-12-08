@@ -1,6 +1,7 @@
 package build
 
 import (
+	"errors"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
@@ -112,9 +113,13 @@ func DownloadArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
 }
 
 func DownloadArtifact(con *repl.Console, name string) (*clientpb.Artifact, error) {
-	return con.Rpc.DownloadArtifact(con.Context(), &clientpb.Artifact{
+	artifact, err := con.Rpc.DownloadArtifact(con.Context(), &clientpb.Artifact{
 		Name: name,
 	})
+	if len(artifact.Bin) == 0 {
+		return artifact, errors.New("artifact maybe not download in server")
+	}
+	return artifact, err
 }
 
 func UploadArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
