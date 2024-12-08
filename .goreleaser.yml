@@ -20,9 +20,6 @@ before:
 
       # Download malefic for Linux
       curl -L https://github.com/chainreactors/malefic/releases/download/v0.0.3/malefic-mutant-x86_64-unknown-linux-musl -o server/assets/linux/malefic-mutant
-      curl -L https://github.com/chainreactors/malefic/releases/download/v0.0.3/malefic-mutant-x86_64-unknown-linux-musl -o server/assets/windows/malefic-mutant
-      chmod +x server/assets/linux/malefic-mutant
-
 
 builds:
   -

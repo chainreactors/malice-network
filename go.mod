@@ -6,7 +6,6 @@ toolchain go1.22.7
 
 require (
 	filippo.io/age v1.1.1
-	github.com/EgeBalci/sgn v0.0.0-20240222152057-f54fa65b57e2
 	github.com/chainreactors/files v0.0.0-20231102192550-a652458cee26
 	github.com/chainreactors/logs v0.0.0-20241115105204-6132e39f5261
 	github.com/chainreactors/tui v0.0.0-20241203114431-17449fd7eef3
@@ -55,11 +54,9 @@ require (
 	atomicgo.dev/schedule v0.1.0 // indirect
 	dario.cat/mergo v1.0.0 // indirect
 	github.com/Binject/debug v0.0.0-20230508195519-26db73212a7a // indirect
-	github.com/EgeBalci/keystone-go v0.0.0-20200525180613-e6c7cd32ceae // indirect
 	github.com/Microsoft/go-winio v0.4.14 // indirect
 	github.com/VividCortex/ewma v1.1.1 // indirect
 	github.com/alecthomas/chroma/v2 v2.14.0 // indirect
-	github.com/alecthomas/kong v0.8.1 // indirect
 	github.com/alessio/shellescape v1.4.1 // indirect
 	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/aws/aws-sdk-go v1.34.0 // indirect
@@ -88,6 +85,9 @@ require (
 	github.com/fatih/color v1.16.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/frankban/quicktest v1.14.6 // indirect
+	github.com/go-dedup/megophone v0.0.0-20170830025436-f01be21026f5 // indirect
+	github.com/go-dedup/simhash v0.0.0-20170904020510-9ecaca7b509c // indirect
+	github.com/go-dedup/text v0.0.0-20170907015346-8bb1b95e3cb7 // indirect
 	github.com/go-lark/lark v1.14.1 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
@@ -123,7 +123,6 @@ require (
 	github.com/muesli/cancelreader v0.2.2 // indirect
 	github.com/muesli/reflow v0.3.0 // indirect
 	github.com/ncruces/julianday v0.1.5 // indirect
-	github.com/olekukonko/tablewriter v0.0.4 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
@@ -140,6 +139,7 @@ require (
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/stretchr/testify v1.9.0 // indirect
 	github.com/technoweenie/multipartstreamer v1.0.1 // indirect
+	github.com/twmb/murmur3 v1.1.8 // indirect
 	github.com/wabzsy/compression v0.0.0-20230725232933-73109bacf457 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	github.com/yuin/gluamapper v0.0.0-20150323120927-d836955830e7 // indirect
