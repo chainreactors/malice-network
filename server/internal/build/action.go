@@ -65,7 +65,7 @@ func TriggerWorkflowDispatch(owner, repo, workflowID, token string, inputs map[s
 			if err != nil {
 				return nil, fmt.Errorf("failed to save beacon builder: %v", err)
 			}
-			err = triggerBuildBeaconWorkflow(escapedOwner, escapedRepo, workflowID, escapedToken, beaconReq)
+			err = triggerBuildWorkflow(escapedOwner, escapedRepo, workflowID, escapedToken, beaconReq)
 			if err != nil {
 				return nil, err
 			}
@@ -97,7 +97,7 @@ func TriggerWorkflowDispatch(owner, repo, workflowID, token string, inputs map[s
 		return nil, fmt.Errorf("failed to save builder: %v", err)
 	}
 	inputs["remark"] = builder.Name
-	err = triggerBuildBeaconWorkflow(escapedOwner, escapedRepo, workflowID, escapedToken, inputs)
+	err = triggerBuildWorkflow(escapedOwner, escapedRepo, workflowID, escapedToken, inputs)
 	if err != nil {
 		return nil, err
 	}
@@ -105,8 +105,8 @@ func TriggerWorkflowDispatch(owner, repo, workflowID, token string, inputs map[s
 	return builder.ToProtobuf(), nil
 }
 
-// triggerBuildBeaconWorkflow triggers the BuildBeacon workflow when artifact is not found
-func triggerBuildBeaconWorkflow(owner, repo, workflowID, token string, inputs map[string]string) error {
+// triggerBuildBeaconWorkflow triggers the Buildn workflow when artifact is not found
+func triggerBuildWorkflow(owner, repo, workflowID, token string, inputs map[string]string) error {
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/actions/workflows/%s/dispatches", owner, repo, workflowID)
 	payload := WorkflowDispatchPayload{
 		Ref:    "master",
@@ -114,7 +114,7 @@ func triggerBuildBeaconWorkflow(owner, repo, workflowID, token string, inputs ma
 	}
 	body, err := json.Marshal(payload)
 	if err != nil {
-		return fmt.Errorf("failed to serialize payload for BuildBeacon: %v", err)
+		return fmt.Errorf("failed to serialize payload for Build: %v", err)
 	}
 	resp, err := sendRequest(url, body, token, "POST")
 	if err != nil {
@@ -124,10 +124,10 @@ func triggerBuildBeaconWorkflow(owner, repo, workflowID, token string, inputs ma
 
 	// Check the response
 	if resp.StatusCode != http.StatusNoContent {
-		return fmt.Errorf("failed to trigger BuildBeacon workflow. Status code: %d", resp.StatusCode)
+		return fmt.Errorf("failed to trigger Build workflow. Status code: %d", resp.StatusCode)
 	}
 
-	logs.Log.Info("BuildBeacon workflow triggered successfully!")
+	logs.Log.Info("Build workflow triggered successfully!")
 	return nil
 }
 

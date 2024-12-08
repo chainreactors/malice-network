@@ -48,14 +48,18 @@ execute_addon、clear 、ps、powerpic...
 `}
 
 	common.BindFlag(loadModuleCmd, func(f *pflag.FlagSet) {
-		f.String("path", "", "modules path")
+		f.String("path", "", "module path")
 		f.StringSlice("modules", []string{}, "modules list,eg: basic,extend")
 		f.StringP("bundle", "b", "", "bundle name")
 		f.String("build", "", "build resource,eg: docker/action")
+		f.String("target", "", "module target")
+		f.String("profile", "", "build profile")
 	})
 	common.BindFlagCompletions(loadModuleCmd, func(comp carapace.ActionMap) {
 		comp["path"] = carapace.ActionFiles()
 		comp["modules"] = common.ModulesCompleter()
+		comp["target"] = common.BuildTargetCompleter(con)
+		comp["profile"] = common.ProfileCompleter(con)
 	})
 	common.BindArgCompletions(loadModuleCmd, nil,
 		carapace.ActionFiles().Usage("path to the module file"))

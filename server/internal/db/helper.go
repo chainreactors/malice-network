@@ -636,7 +636,7 @@ func SaveArtifactFromGenerate(req *clientpb.Generate) (*models.Builder, error) {
 		Source:      consts.ArtifactFromDocker,
 		CA:          req.Ca,
 		IsSRDI:      req.Srdi,
-		Modules:     req.Feature,
+		Modules:     strings.Join(req.Modules, ""),
 		Arch:        target.Arch,
 		Os:          target.OS,
 	}
