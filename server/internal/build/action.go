@@ -129,10 +129,7 @@ func TriggerWorkflowDispatch(owner, repo, workflowID, token string, inputs map[s
 			}
 		}
 	}
-	// Create the payload
-	if inputs["package"] != consts.CommandBuildPrelude {
-		inputs["malefic_config_yaml"] = base64Encoded
-	}
+	inputs["malefic_config_yaml"] = base64Encoded
 	if len(req.Modules) == 0 {
 		req.Modules = profile.Implant.Modules
 	}

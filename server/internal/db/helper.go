@@ -589,6 +589,14 @@ func GetProfiles() ([]models.Profile, error) {
 	return profiles, result.Error
 }
 
+func DeleteProfileByName(profileName string) error {
+	err := Session().Where("name = ?", profileName).Delete(&models.Profile{}).Error
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func SaveBuilderFromAction(inputs map[string]string, req *clientpb.Generate) (*models.Builder, error) {
 	target, ok := consts.GetBuildTarget(inputs["targets"])
 	if !ok {
@@ -798,6 +806,29 @@ func GetArtifactById(id uint32) (*models.Builder, error) {
 		return nil, result.Error
 	}
 	return &builder, nil
+}
+
+func DeleteArtifactByName(artifactName string) error {
+	model := &models.Builder{}
+	err := Session().Where("name = ?", artifactName).First(model).Error
+	if err != nil {
+		return err
+	}
+	err = os.Remove(model.Path)
+	if err != nil {
+		return err
+	}
+	if model.ShellcodePath != "" {
+		err = os.Remove(model.ShellcodePath)
+		if err != nil {
+			return err
+		}
+	}
+	err = Session().Delete(model).Error
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // UpdateGeneratorConfig - Update the generator config

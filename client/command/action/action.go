@@ -143,7 +143,7 @@ func RunPreludeWorkFlowCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 	base64Encoded := base64.StdEncoding.EncodeToString(fileData)
-	inputs["malefic_config_yaml"] = base64Encoded
+	inputs["autorun_yaml "] = base64Encoded
 
 	req := &clientpb.GithubWorkflowRequest{
 		Owner:      owner,

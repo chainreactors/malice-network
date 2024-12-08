@@ -76,3 +76,7 @@ func (rpc *Server) ListBuilder(ctx context.Context, req *clientpb.Empty) (*clien
 func (rpc *Server) FindArtifact(ctx context.Context, req *clientpb.Artifact) (*clientpb.Artifact, error) {
 	return db.FindArtifact(req)
 }
+
+func (rpc *Server) DeleteArtifact(ctx context.Context, req *clientpb.Artifact) (*clientpb.Empty, error) {
+	return &clientpb.Empty{}, db.DeleteArtifactByName(req.Name)
+}

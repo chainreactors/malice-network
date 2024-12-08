@@ -7,7 +7,6 @@ import (
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
-	"io"
 	"os"
 	"path/filepath"
 )
@@ -33,6 +32,7 @@ func PrintArtifacts(builders *clientpb.Builders, con *repl.Console) error {
 	var row table.Row
 
 	tableModel := tui.NewTable([]table.Column{
+		table.NewColumn("ID", "ID", 10),
 		table.NewColumn("Name", "Name", 15),
 		table.NewColumn("Pipeline", "Pipeline", 20),
 		table.NewColumn("Target", "Target", 30),
@@ -46,6 +46,7 @@ func PrintArtifacts(builders *clientpb.Builders, con *repl.Console) error {
 	for _, builder := range builders.Builders {
 		row = table.NewRow(
 			table.RowData{
+				"ID":       builder.Id,
 				"Name":     builder.Name,
 				"Target":   builder.Target,
 				"Type":     builder.Type,
@@ -63,14 +64,28 @@ func PrintArtifacts(builders *clientpb.Builders, con *repl.Console) error {
 
 	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)
-	tableModel.SetHandle(func() {
-		downloadArtifactCallback(tableModel, newTable.Buffer, con)()
-	})
+	tableModel.SetHandle(func() {})
 	err := newTable.Run()
 	if err != nil {
 		return err
 	}
+
 	tui.Reset()
+	selectRow := tableModel.GetHighlightedRow()
+	if selectRow.Data == nil {
+		con.Log.Error("No row selected\n")
+		return nil
+	}
+	builder, err := DownloadArtifact(con, selectRow.Data["Name"].(string))
+	if err != nil {
+		con.Log.Errorf("open file %s\n", err)
+	}
+	con.Log.Infof("download artifact %s\n", filepath.Join(assets.GetTempDir(), builder.Name))
+	output := filepath.Join(assets.GetTempDir(), builder.Name)
+	err = os.WriteFile(output, builder.Bin, 0644)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -118,6 +133,17 @@ func UploadArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
+func DeleteArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
+	name := cmd.Flags().Arg(0)
+	_, err := DeleteArtifact(con, name)
+	if err != nil {
+		return err
+	}
+
+	con.Log.Infof("delete artifact %s success\n", name)
+	return nil
+}
+
 func UploadArtifact(con *repl.Console, path string, name, artifactType, stage string) (*clientpb.Builder, error) {
 	bin, err := os.ReadFile(path)
 	if err != nil {
@@ -132,32 +158,6 @@ func UploadArtifact(con *repl.Console, path string, name, artifactType, stage st
 	})
 }
 
-func downloadArtifactCallback(tableModel *tui.TableModel, writer io.Writer, con *repl.Console) func() {
-	selectRow := tableModel.GetHighlightedRow()
-	if selectRow.Data == nil {
-		return func() {
-			con.Log.FErrorf(writer, "No row selected\n")
-			return
-		}
-	}
-	return func() {
-		go func() {
-			builder, err := DownloadArtifact(con, selectRow.Data["Name"].(string))
-			if err != nil {
-				con.Log.Errorf("open file %s\n", err)
-			}
-			con.Log.Infof("download artifact %s\n", filepath.Join(assets.GetTempDir(), builder.Name))
-			output := filepath.Join(assets.GetTempDir(), builder.Name)
-			err = os.WriteFile(output, builder.Bin, 0644)
-			if err != nil {
-				con.Log.Errorf(err.Error() + "\n")
-				return
-			}
-			return
-		}()
-	}
-}
-
 func SearchArtifact(con *repl.Console, os, arch, typ, pipeline string) (*clientpb.Artifact, error) {
 	return con.Rpc.FindArtifact(con.Context(), &clientpb.Artifact{
 		Arch:     arch,
@@ -165,4 +165,14 @@ func SearchArtifact(con *repl.Console, os, arch, typ, pipeline string) (*clientp
 		Type:     typ,
 		Pipeline: pipeline,
 	})
+}
+
+func DeleteArtifact(con *repl.Console, name string) (bool, error) {
+	_, err := con.Rpc.DeleteArtifact(con.Context(), &clientpb.Artifact{
+		Name: name,
+	})
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }

@@ -82,3 +82,15 @@ func ProfileNewCmd(cmd *cobra.Command, con *repl.Console) error {
 	con.Log.Infof("create new profile %s for %s success\n", profileName, pipelineName)
 	return nil
 }
+
+func ProfileDeleteCmd(cmd *cobra.Command, con *repl.Console) error {
+	name := cmd.Flags().Arg(0)
+	_, err := con.Rpc.DeleteProfile(con.Context(), &clientpb.Profile{
+		Name: name,
+	})
+	if err != nil {
+		return err
+	}
+	con.Log.Infof("delete profile %s success\n", name)
+	return nil
+}
