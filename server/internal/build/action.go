@@ -12,6 +12,7 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"github.com/chainreactors/utils/encode"
+	"golang.org/x/exp/maps"
 	"net/http"
 	"net/url"
 	"time"
@@ -49,7 +50,8 @@ func TriggerWorkflowDispatch(owner, repo, workflowID, token string, inputs map[s
 		if err != nil && !errors.Is(err, db.ErrRecordNotFound) {
 			return nil, err
 		} else if errors.Is(err, db.ErrRecordNotFound) {
-			beaconReq := copyMap(inputs)
+			beaconReq := make(map[string]string)
+			maps.Copy(inputs, beaconReq)
 			beaconReq["malefic_config_yaml"] = base64Encoded
 			beaconReq["package"] = consts.CommandBuildBeacon
 			if len(req.Modules) == 0 {
@@ -153,13 +155,4 @@ func downloadArtifactWhenReady(owner, repo, token string, builder *models.Builde
 		time.Sleep(30 * time.Second)
 
 	}
-}
-
-// copyMap creates a shallow copy of the input map
-func copyMap(original map[string]string) map[string]string {
-	c := make(map[string]string, len(original))
-	for k, v := range original {
-		c[k] = v
-	}
-	return c
 }
