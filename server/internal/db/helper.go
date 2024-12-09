@@ -37,6 +37,18 @@ func HasOperator(typ string) (bool, error) {
 }
 
 func FindAliveSessions() ([]*clientpb.Session, error) {
+	updateResult := Session().Exec(`
+        UPDATE sessions
+        SET is_alive = false
+        WHERE last_checkin < strftime('%s', 'now') - (interval * 2) 
+        AND is_removed = false
+    `)
+
+	if updateResult.Error != nil {
+		logs.Log.Infof("Failed to update inactive sessions: %v", updateResult.Error)
+		return nil, updateResult.Error
+	}
+
 	var activeSessions []models.Session
 	result := Session().Raw(`
 		SELECT * 
