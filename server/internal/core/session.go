@@ -260,8 +260,7 @@ func (s *Session) isAlived() bool {
 	if s.Type == consts.BindPipeline {
 		return true
 	} else {
-		timeDiff := time.Now().Unix() - s.LastCheckin
-		return timeDiff <= 1+int64(s.Interval)*5
+		return time.Now().Unix()-s.LastCheckin <= (1+int64(s.Interval))*5
 	}
 }
 
