@@ -61,6 +61,7 @@ func (s *Session) ToProtobuf() *clientpb.Session {
 		Process:       s.Process.toProtobuf(),
 		Timer:         &implantpb.Timer{Interval: s.Interval, Jitter: s.Jitter},
 		Modules:       cont.Modules,
+		Timediff:      time.Now().Unix() - s.LastCheckin,
 		Addons:        cont.Addons,
 	}
 }
