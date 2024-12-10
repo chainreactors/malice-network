@@ -14,11 +14,11 @@ import (
 )
 
 func SessionsCmd(cmd *cobra.Command, con *repl.Console) error {
-	err := con.UpdateSessions(true)
+	isAll, err := cmd.Flags().GetBool("all")
 	if err != nil {
 		return err
 	}
-	isAll, err := cmd.Flags().GetBool("all")
+	err = con.UpdateSessions(isAll)
 	if err != nil {
 		return err
 	}
