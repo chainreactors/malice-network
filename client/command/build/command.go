@@ -393,10 +393,11 @@ func Register(con *repl.Console) {
 		Group: intermediate.GroupArtifact,
 		Short: "search build artifact with arch,os,typ and pipeline id",
 		Input: []string{
+			"pipeline: pipeline id",
+			"type: build type, beacon,bind,prelude",
+			"format: only support shellcode",
 			"arch: arch",
 			"os: os",
-			"type: build type, beacon,bind,prelude",
-			"pipeline: pipeline id",
 		},
 		Output: []string{
 			"builder",
@@ -443,7 +444,7 @@ func Register(con *repl.Console) {
 	})
 
 	con.RegisterServerFunc("self_stager", func(con *repl.Console, sess *core.Session) (string, error) {
-		artifact, err := SearchArtifact(con, sess.Os.Name, sess.Os.Arch, "pulse", sess.PipelineId, true)
+		artifact, err := SearchArtifact(con, sess.PipelineId, "pulse", "shellcode", sess.Os.Name, sess.Os.Arch)
 		if err != nil {
 			return "", err
 		}
@@ -461,7 +462,7 @@ func Register(con *repl.Console) {
 	})
 
 	con.RegisterServerFunc("artifact_stager", func(con *repl.Console, pipeline, format, os, arch string) (string, error) {
-		artifact, err := SearchArtifact(con, os, arch, "pulse", pipeline, true)
+		artifact, err := SearchArtifact(con, pipeline, "pulse", "shellcode", os, arch)
 		if err != nil {
 			return "", err
 		}
@@ -481,7 +482,7 @@ func Register(con *repl.Console) {
 		Example: `artifact_stager("tcp_default","raw","windows","x64")`,
 	})
 	con.RegisterServerFunc("self_payload", func(con *repl.Console, sess *core.Session) (string, error) {
-		artifact, err := SearchArtifact(con, sess.Os.Name, sess.Os.Arch, "beacon", sess.PipelineId, true)
+		artifact, err := SearchArtifact(con, sess.PipelineId, "beacon", "shellcode", sess.Os.Name, sess.Os.Arch)
 		if err != nil {
 			return "", err
 		}
@@ -499,7 +500,7 @@ func Register(con *repl.Console) {
 	})
 
 	con.RegisterServerFunc("artifact_payload", func(con *repl.Console, pipeline, format, os, arch string) (string, error) {
-		artifact, err := SearchArtifact(con, os, arch, "beacon", pipeline, true)
+		artifact, err := SearchArtifact(con, pipeline, "beacon", "shellcode", os, arch)
 		if err != nil {
 			return "", err
 		}
