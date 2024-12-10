@@ -163,12 +163,13 @@ func UploadArtifact(con *repl.Console, path string, name, artifactType, stage st
 	})
 }
 
-func SearchArtifact(con *repl.Console, os, arch, typ, pipeline string) (*clientpb.Artifact, error) {
+func SearchArtifact(con *repl.Console, os, arch, typ, pipeline string, isSRDI bool) (*clientpb.Artifact, error) {
 	return con.Rpc.FindArtifact(con.Context(), &clientpb.Artifact{
 		Arch:     arch,
 		Platform: os,
 		Type:     typ,
 		Pipeline: pipeline,
+		IsSrdi:   isSRDI,
 	})
 }
 
