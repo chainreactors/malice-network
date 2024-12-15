@@ -255,3 +255,33 @@ func (rpc *Server) ListWebsites(ctx context.Context, req *clientpb.Listener) (*c
 	}
 	return &clientpb.Pipelines{Pipelines: websites}, nil
 }
+
+func (rpc *Server) DeleteWebsite(ctx context.Context, req *clientpb.CtrlPipeline) (*clientpb.Empty, error) {
+	pipelineDB, err := db.FindPipeline(req.Name)
+	if err != nil {
+		return nil, err
+	}
+	pipeline := models.ToPipelinePB(pipelineDB)
+	listener := core.Listeners.Get(pipeline.ListenerId)
+	if listener == nil {
+		return nil, fmt.Errorf("listener %s not found", req.ListenerId)
+	}
+	listener.RemovePipeline(pipeline)
+	core.Jobs.Ctrl <- &clientpb.JobCtrl{
+		Id:   core.NextCtrlID(),
+		Ctrl: consts.CtrlWebsiteStop,
+		Job: &clientpb.Job{
+			Id:       core.NextJobID(),
+			Pipeline: pipeline,
+		},
+	}
+	err = db.DeletePipeline(req.Name)
+	if err != nil {
+		return nil, err
+	}
+	err = db.DeleteWebsite(req.Name)
+	if err != nil {
+		return nil, err
+	}
+	return &clientpb.Empty{}, nil
+}

@@ -2,7 +2,9 @@ package build
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
+	"github.com/chainreactors/malice-network/helper/errs"
 	"net/http"
 	"time"
 )
@@ -23,6 +25,7 @@ type Workflow struct {
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
 	Status       string    `json:"status"`
+	State        string    `json:"state"`
 	Conclusion   string    `json:"conclusion"`
 	URL          string    `json:"url"`
 	HTMLURL      string    `json:"html_url"`
@@ -83,4 +86,28 @@ func sendRequest(url string, payload []byte, token string, reqType string) (*htt
 		return nil, fmt.Errorf("failed to send request: %v", err)
 	}
 	return resp, nil
+}
+
+func GetWorkflowStatus(owner, repo, workflowID, token string) error {
+	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/actions/workflows/%s", owner, repo, workflowID)
+	resp, err := sendRequest(url, []byte{}, token, "GET")
+	if err != nil {
+		return fmt.Errorf("failed to send request to workflow URL: %v", err)
+	}
+	defer resp.Body.Close()
+
+	// Check for successful response
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("failed to get workflow details, status code: %d", resp.StatusCode)
+	}
+
+	var workflow Workflow
+	if err := json.NewDecoder(resp.Body).Decode(&workflow); err != nil {
+		return fmt.Errorf("failed to parse workflow details: %v", err)
+	}
+	if workflow.State != "active" {
+		return errs.ErrorDockerNotActive
+	}
+
+	return nil
 }

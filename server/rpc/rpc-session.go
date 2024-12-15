@@ -60,7 +60,7 @@ func (rpc *Server) SessionManage(ctx context.Context, req *clientpb.BasicUpdateS
 	switch req.Op {
 	case "delete":
 		core.Sessions.Remove(req.SessionId)
-		err := db.DeleteSession(req.SessionId)
+		err := db.RemoveSession(req.SessionId)
 		if err != nil {
 			return nil, err
 		}

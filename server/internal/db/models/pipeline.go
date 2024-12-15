@@ -129,6 +129,7 @@ func ToPipelinePB(pipeline Pipeline) *clientpb.Pipeline {
 		return &clientpb.Pipeline{
 			Name:       pipeline.Name,
 			ListenerId: pipeline.ListenerID,
+			Ip:         pipeline.IP,
 			Enable:     pipeline.Enable,
 			Parser:     pipeline.Parser,
 			Body: &clientpb.Pipeline_Web{

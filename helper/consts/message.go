@@ -145,7 +145,7 @@ const (
 	CommandSessionGroup     = "group"
 	CommandObverse          = "obverse"
 	CommandHistory          = "history"
-	CommandDelSession       = "del"
+	CommandRemoveSession    = "remove"
 	CommandUse              = "use"
 	CommandBackground       = "background"
 	CommandSync             = "sync"

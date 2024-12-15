@@ -33,6 +33,8 @@ var (
 	ErrNotFoundTaskContent = status.Error(codes.NotFound, "Task content not found")
 	ErrTaskIndexExceed     = status.Error(codes.NotFound, "task index id exceed total")
 
-	ErrWorkflowFailed = status.Error(codes.Unknown, "workflow failed")
+	ErrWorkflowFailed      = status.Error(codes.Unknown, "workflow failed")
+	ErrorWorkflowNotActive = status.Error(codes.Unknown, "workflow not active")
+	ErrorDockerNotActive   = status.Error(codes.Unknown, "docker not active")
 	//ErrInvalidBeaconTaskCancelState = status.Error(codes.InvalidArgument, fmt.Sprintf("Invalid task state, must be '%s' to cancel", models.PENDING))
 )

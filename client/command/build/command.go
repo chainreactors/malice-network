@@ -333,6 +333,7 @@ artifact list
 	}
 	common.BindFlag(downloadCmd, func(f *pflag.FlagSet) {
 		f.StringP("output", "o", "", "output path")
+		f.BoolP("srdi", "s", false, "download srdi")
 	})
 	common.BindArgCompletions(downloadCmd, nil, common.ArtifactNameCompleter(con))
 

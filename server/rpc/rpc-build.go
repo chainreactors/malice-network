@@ -73,3 +73,15 @@ func (rpc *Server) BuildModules(ctx context.Context, req *clientpb.Generate) (*c
 	builder.Name = build.GetFilePath(builder.Name, builder.Target, builder.Type)
 	return builder.ToArtifact(bin), nil
 }
+
+func (rpc *Server) DockerStatus(ctx context.Context, req *clientpb.Empty) (*clientpb.Empty, error) {
+	cli, err := build.GetDockerClient()
+	if err != nil {
+		return nil, err
+	}
+	_, err = cli.Ping(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &clientpb.Empty{}, nil
+}

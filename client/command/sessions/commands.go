@@ -109,16 +109,16 @@ group newGroup
 	)
 
 	removeCommand := &cobra.Command{
-		Use:   consts.CommandDelSession + " [session]",
-		Short: "del session",
-		Long:  "Del a specified session.",
+		Use:   consts.CommandRemoveSession + " [session]",
+		Short: "remove session",
+		Long:  "Remove a specified session.",
 		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return removeCmd(cmd, con)
 		},
 		Example: `~~~
-// Delete a specified session
-del 08d6c05a21512a79a1dfeb9d2a8f262f
+// remove a specified session
+remove 08d6c05a21512a79a1dfeb9d2a8f262f
 ~~~`,
 	}
 
