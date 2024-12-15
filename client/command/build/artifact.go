@@ -77,7 +77,7 @@ func PrintArtifacts(builders *clientpb.Builders, con *repl.Console) error {
 		con.Log.Error("No row selected\n")
 		return nil
 	}
-	builder, err := DownloadArtifact(con, selectRow.Data["Name"].(string))
+	builder, err := DownloadArtifact(con, selectRow.Data["Name"].(string), false)
 	if err != nil {
 		con.Log.Errorf("open file %s\n", err)
 	}
@@ -93,8 +93,9 @@ func PrintArtifacts(builders *clientpb.Builders, con *repl.Console) error {
 func DownloadArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
 	name := cmd.Flags().Arg(0)
 	output, _ := cmd.Flags().GetString("output")
+	srdi, _ := cmd.Flags().GetBool("srdi")
 	go func() {
-		builder, err := DownloadArtifact(con, name)
+		builder, err := DownloadArtifact(con, name, srdi)
 		if err != nil {
 			con.Log.Errorf("download artifact failed: %s", err)
 			return
@@ -112,9 +113,10 @@ func DownloadArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func DownloadArtifact(con *repl.Console, name string) (*clientpb.Artifact, error) {
+func DownloadArtifact(con *repl.Console, name string, srdi bool) (*clientpb.Artifact, error) {
 	artifact, err := con.Rpc.DownloadArtifact(con.Context(), &clientpb.Artifact{
-		Name: name,
+		Name:   name,
+		IsSrdi: srdi,
 	})
 	if len(artifact.Bin) == 0 {
 		return artifact, errors.New("artifact maybe not download in server")

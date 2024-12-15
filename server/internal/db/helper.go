@@ -115,7 +115,7 @@ func FindTaskAndMaxTasksID(sessionID string) ([]*models.Task, uint32, error) {
 }
 
 // Basic Session OP
-func DeleteSession(sessionID string) error {
+func RemoveSession(sessionID string) error {
 	result := Session().Model(&models.Session{}).Where("session_id = ?", sessionID).Update("is_removed", true)
 	return result.Error
 }
@@ -241,6 +241,23 @@ func ListPipelines(listenerID string) ([]models.Pipeline, error) {
 		err = Session().Where("listener_id = ? AND type != ?", listenerID, consts.WebsitePipeline).Find(&pipelines).Error
 	}
 	return pipelines, err
+}
+
+func DeleteWebsite(name string) error {
+	website := models.WebsiteContent{}
+	result := Session().Where("name = ?", name).First(&website)
+	if result.Error != nil {
+		return result.Error
+	}
+	err := os.Remove(filepath.Join(configs.WebsitePath, website.ID.String()))
+	if err != nil {
+		return err
+	}
+	result = Session().Delete(&website)
+	if result.Error != nil {
+		return result.Error
+	}
+	return nil
 }
 
 func ListWebsite(listenerID string) ([]models.Pipeline, error) {
@@ -929,4 +946,19 @@ func GetBuilderByModules(target string, modules []string) (*models.Builder, erro
 		return nil, result.Error
 	}
 	return &builder, nil
+}
+
+func GetBuilderByProfileName(profileName string) (*clientpb.Builders, error) {
+	var builders []models.Builder
+	result := Session().Where("profile_name = ?", profileName).Find(&builders)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	var pbBuilders = &clientpb.Builders{
+		Builders: make([]*clientpb.Builder, 0),
+	}
+	for _, builder := range builders {
+		pbBuilders.Builders = append(pbBuilders.GetBuilders(), builder.ToProtobuf())
+	}
+	return pbBuilders, nil
 }

@@ -16,7 +16,7 @@ func (rpc *Server) DownloadArtifact(ctx context.Context, req *clientpb.Artifact)
 	if err != nil {
 		return nil, err
 	}
-	if builder.IsSRDI {
+	if builder.IsSRDI && req.IsSrdi {
 		path = builder.ShellcodePath
 	} else {
 		path = builder.Path
@@ -77,4 +77,12 @@ func (rpc *Server) FindArtifact(ctx context.Context, req *clientpb.Artifact) (*c
 
 func (rpc *Server) DeleteArtifact(ctx context.Context, req *clientpb.Artifact) (*clientpb.Empty, error) {
 	return &clientpb.Empty{}, db.DeleteArtifactByName(req.Name)
+}
+
+func (rpc *Server) GetArtifactsByProfile(ctx context.Context, req *clientpb.Profile) (*clientpb.Builders, error) {
+	builders, err := db.GetBuilderByProfileName(req.Name)
+	if err != nil {
+		return nil, err
+	}
+	return builders, nil
 }

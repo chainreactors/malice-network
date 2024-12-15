@@ -35,9 +35,9 @@ type SessionContext struct {
 	*SessionInfo
 	Modules []string
 	Addons  []*implantpb.Addon
-	Loot    map[string]string
-	Argue   map[string]string
-	Data    map[string]string
+	Loot    map[string]string // mimikatz,zombie
+	Argue   map[string]string // 参数欺骗
+	Data    map[string]string // 元数据
 	Any     map[string]interface{}
 }
 
