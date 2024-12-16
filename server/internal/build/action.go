@@ -20,6 +20,7 @@ import (
 
 // TriggerWorkflowDispatch is a reusable function to trigger a GitHub Actions workflow dispatch event
 func TriggerWorkflowDispatch(owner, repo, workflowID, token string, inputs map[string]string, req *clientpb.Generate) (*clientpb.Builder, error) {
+	var newProfile string
 	config, err := GenerateProfile(req)
 	if err != nil {
 		return nil, err
@@ -51,7 +52,7 @@ func TriggerWorkflowDispatch(owner, repo, workflowID, token string, inputs map[s
 			return nil, err
 		} else if errors.Is(err, db.ErrRecordNotFound) {
 			beaconReq := make(map[string]string)
-			maps.Copy(inputs, beaconReq)
+			maps.Copy(beaconReq, inputs)
 			beaconReq["malefic_config_yaml"] = base64Encoded
 			beaconReq["package"] = consts.CommandBuildBeacon
 			if len(req.Modules) == 0 {
@@ -74,7 +75,7 @@ func TriggerWorkflowDispatch(owner, repo, workflowID, token string, inputs map[s
 			beaconBuilder.IsSRDI = true
 			go downloadArtifactWhenReady(escapedOwner, escapedRepo, escapedToken, beaconBuilder)
 			req.ArtifactId = beaconBuilder.ID
-			_, err = GenerateProfile(req)
+			newProfile, err = GenerateProfile(req)
 			if err != nil {
 				return nil, errors.New(fmt.Sprintf("Err create config: %v", err))
 			}
@@ -89,6 +90,9 @@ func TriggerWorkflowDispatch(owner, repo, workflowID, token string, inputs map[s
 				return nil, err
 			}
 		}
+	}
+	if newProfile != "" {
+		base64Encoded = encode.Base64Encode([]byte(newProfile))
 	}
 	inputs["malefic_config_yaml"] = base64Encoded
 	if len(req.Modules) == 0 {
@@ -136,11 +140,11 @@ func triggerBuildWorkflow(owner, repo, workflowID, token string, inputs map[stri
 // downloadArtifactWhenReady waits for the artifact to be ready and downloads it
 func downloadArtifactWhenReady(owner, repo, token string, builder *models.Builder) {
 	for {
-		err := PushArtifact(owner, repo, token, builder.Name)
+		newBuilder, err := PushArtifact(owner, repo, token, builder.Name)
 		if err == nil {
 			logs.Log.Info("Artifact downloaded successfully!")
 			if builder.IsSRDI {
-				_, err := SRDIArtifact(builder, builder.Os, builder.Arch)
+				_, err = SRDIArtifact(newBuilder, newBuilder.Os, newBuilder.Arch)
 				if err != nil {
 					logs.Log.Errorf("action to srdi failed")
 				}

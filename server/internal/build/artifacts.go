@@ -11,6 +11,7 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
+	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"io"
 	"net/http"
 	"os"
@@ -19,52 +20,53 @@ import (
 
 var notifiedWorkflows = make(map[string]bool)
 
-func PushArtifact(owner, repo, token, buildName string) error {
+func PushArtifact(owner, repo, token, buildName string) (*models.Builder, error) {
 	builder, err := db.GetArtifactByName(buildName)
 	if err != nil {
-		return err
+		return builder, err
 	}
 	if builder.Path != "" {
 		_, err := os.ReadFile(builder.Path)
 		if err != nil {
-			return err
+			return builder, err
 		}
-		return nil
+		return builder, nil
 	}
 
 	artifactDownloadUrl, err := getArtifactDownloadUrl(owner, repo, token, buildName)
 	if err != nil {
-		return err
+		return builder, err
 	}
 
 	raw, err := downloadFile(artifactDownloadUrl, token)
 	if err != nil {
-		return fmt.Errorf("download artifact failed: %v", err)
+		return builder, fmt.Errorf("download artifact failed: %v", err)
 	}
 
 	content, err := fileutils.UnzipOneWithBytes(raw)
 	if err != nil {
-		return fmt.Errorf("unzip artifact failed: %v", err)
+		return builder, fmt.Errorf("unzip artifact failed: %v", err)
 	}
 	filename := filepath.Join(configs.BuildOutputPath, encoders.UUID())
 	err = os.WriteFile(filename, content, 0644)
 	if err != nil {
-		return err
+		return builder, err
 	}
 	builder.Path, err = filepath.Abs(filename)
 	if err != nil {
-		return err
+		return builder, err
 	}
+	builder.IsSRDI = true
 	err = db.UpdateBuilderPath(builder)
 	if err != nil {
-		return err
+		return builder, err
 	}
 	core.EventBroker.Publish(core.Event{
 		EventType: consts.EventBuild,
 		IsNotify:  false,
 		Message:   fmt.Sprintf("action %s %s %s has finished", builder.Name, builder.Type, builder.Target),
 	})
-	return nil
+	return builder, nil
 }
 
 // getArtifactDownloadUrl retrieves the artifact download URL from the GitHub API response
