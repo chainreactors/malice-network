@@ -13,18 +13,12 @@ server:
     lark:
       enable: false
       webhook_url:
-  github:
-    repo: malefic
-    workflow: generate.yml
-    owner:
-    token:
-
 listeners:
   name: listener
   auth: listener.auth
   enable: true
   tcp:
-    - name: beacon_pipeline
+    - name: tcp_default
       port: 5001
       host: 0.0.0.0
       protocol: tcp
@@ -47,15 +41,10 @@ listeners:
         enable: true
         type: aes
         key: maliceofinternal
-    - name: pulse_pipline
+    - name: shellcode
       port: 5002
       host: 0.0.0.0
       parser: pulse
-      auto_build:
-          target:
-            - x86_64-pc-windows-gnu
-            - x86_64-unknown-linux-musl
-          beacon_pipeline: beacon_pipeline
       enable: true
       encryption:
         enable: true
@@ -63,22 +52,14 @@ listeners:
         key: maliceofinternal
   bind:
     -
-      name: bind_pipeline
+      name: bind_default
       enable: true
       encryption:
         enable: true
         type: aes
         key: maliceofinternal
-  websites:
-    - name: default-website
-      port: 80
-      root: "/"
+  rem:
+    -
+      name: rem_default
       enable: true
-      content:
-        - path: /pulse
-          type: pulse
-          encryption:
-            enable: true
-            type: xor
-            key: maliceofinternal
-
+      console: tcp://0.0.0.0
