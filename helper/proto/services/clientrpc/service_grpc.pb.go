@@ -39,6 +39,7 @@ const (
 	MaliceRPC_WaitTaskFinish_FullMethodName          = "/clientrpc.MaliceRPC/WaitTaskFinish"
 	MaliceRPC_GetAllTaskContent_FullMethodName       = "/clientrpc.MaliceRPC/GetAllTaskContent"
 	MaliceRPC_GetFiles_FullMethodName                = "/clientrpc.MaliceRPC/GetFiles"
+	MaliceRPC_GetAllDownloadFiles_FullMethodName     = "/clientrpc.MaliceRPC/GetAllDownloadFiles"
 	MaliceRPC_Events_FullMethodName                  = "/clientrpc.MaliceRPC/Events"
 	MaliceRPC_Broadcast_FullMethodName               = "/clientrpc.MaliceRPC/Broadcast"
 	MaliceRPC_Notify_FullMethodName                  = "/clientrpc.MaliceRPC/Notify"
@@ -165,6 +166,7 @@ type MaliceRPCClient interface {
 	WaitTaskFinish(ctx context.Context, in *clientpb.Task, opts ...grpc.CallOption) (*clientpb.TaskContext, error)
 	GetAllTaskContent(ctx context.Context, in *clientpb.Task, opts ...grpc.CallOption) (*clientpb.TaskContexts, error)
 	GetFiles(ctx context.Context, in *clientpb.Session, opts ...grpc.CallOption) (*clientpb.Files, error)
+	GetAllDownloadFiles(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Files, error)
 	// event
 	Events(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (MaliceRPC_EventsClient, error)
 	Broadcast(ctx context.Context, in *clientpb.Event, opts ...grpc.CallOption) (*clientpb.Empty, error)
@@ -442,6 +444,15 @@ func (c *maliceRPCClient) GetAllTaskContent(ctx context.Context, in *clientpb.Ta
 func (c *maliceRPCClient) GetFiles(ctx context.Context, in *clientpb.Session, opts ...grpc.CallOption) (*clientpb.Files, error) {
 	out := new(clientpb.Files)
 	err := c.cc.Invoke(ctx, MaliceRPC_GetFiles_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *maliceRPCClient) GetAllDownloadFiles(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Files, error) {
+	out := new(clientpb.Files)
+	err := c.cc.Invoke(ctx, MaliceRPC_GetAllDownloadFiles_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1411,6 +1422,7 @@ type MaliceRPCServer interface {
 	WaitTaskFinish(context.Context, *clientpb.Task) (*clientpb.TaskContext, error)
 	GetAllTaskContent(context.Context, *clientpb.Task) (*clientpb.TaskContexts, error)
 	GetFiles(context.Context, *clientpb.Session) (*clientpb.Files, error)
+	GetAllDownloadFiles(context.Context, *clientpb.Empty) (*clientpb.Files, error)
 	// event
 	Events(*clientpb.Empty, MaliceRPC_EventsServer) error
 	Broadcast(context.Context, *clientpb.Event) (*clientpb.Empty, error)
@@ -1588,6 +1600,9 @@ func (UnimplementedMaliceRPCServer) GetAllTaskContent(context.Context, *clientpb
 }
 func (UnimplementedMaliceRPCServer) GetFiles(context.Context, *clientpb.Session) (*clientpb.Files, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetFiles not implemented")
+}
+func (UnimplementedMaliceRPCServer) GetAllDownloadFiles(context.Context, *clientpb.Empty) (*clientpb.Files, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetAllDownloadFiles not implemented")
 }
 func (UnimplementedMaliceRPCServer) Events(*clientpb.Empty, MaliceRPC_EventsServer) error {
 	return status.Errorf(codes.Unimplemented, "method Events not implemented")
@@ -2210,6 +2225,24 @@ func _MaliceRPC_GetFiles_Handler(srv interface{}, ctx context.Context, dec func(
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(MaliceRPCServer).GetFiles(ctx, req.(*clientpb.Session))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MaliceRPC_GetAllDownloadFiles_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(clientpb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MaliceRPCServer).GetAllDownloadFiles(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MaliceRPC_GetAllDownloadFiles_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MaliceRPCServer).GetAllDownloadFiles(ctx, req.(*clientpb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4127,6 +4160,10 @@ var MaliceRPC_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetFiles",
 			Handler:    _MaliceRPC_GetFiles_Handler,
+		},
+		{
+			MethodName: "GetAllDownloadFiles",
+			Handler:    _MaliceRPC_GetAllDownloadFiles_Handler,
 		},
 		{
 			MethodName: "Broadcast",
