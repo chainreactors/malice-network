@@ -171,9 +171,17 @@ func GetTaskDescriptionByID(taskID string) (*models.FileDescription, error) {
 }
 
 // File
-func GetAllFiles(sessionID string) ([]models.File, error) {
+func GetFilesBySessionID(sessionID string) ([]models.File, error) {
 	var files []models.File
 	result := Session().Where("session_id = ?", sessionID).Find(&files)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return files, nil
+}
+
+func GetAllDownloadFiles() (files []models.File, err error) {
+	result := Session().Where("type = ?", "download").Find(&files)
 	if result.Error != nil {
 		return nil, result.Error
 	}
