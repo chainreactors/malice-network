@@ -90,6 +90,14 @@ func FromPipelinePb(pipeline *clientpb.Pipeline, ip string) *Pipeline {
 			Type:       consts.WebsitePipeline,
 			Tls:        ToTlsDB(pipeline.Tls),
 		}
+	case *clientpb.Pipeline_Rem:
+		return &Pipeline{
+			ListenerID: pipeline.ListenerId,
+			Name:       pipeline.Name,
+			Enable:     pipeline.Enable,
+			Type:       consts.RemPipeline,
+			Host:       body.Rem.Console,
+		}
 	default:
 		return nil
 	}
@@ -139,6 +147,17 @@ func ToPipelinePB(pipeline Pipeline) *clientpb.Pipeline {
 			},
 			Tls:        ToTlsProtobuf(&pipeline.Tls),
 			Encryption: ToEncryptionProtobuf(&pipeline.Encryption),
+		}
+	case consts.RemPipeline:
+		return &clientpb.Pipeline{
+			Name:       pipeline.Name,
+			ListenerId: pipeline.ListenerID,
+			Enable:     pipeline.Enable,
+			Body: &clientpb.Pipeline_Rem{
+				Rem: &clientpb.REM{
+					Console: pipeline.Host,
+				},
+			},
 		}
 	default:
 		return nil

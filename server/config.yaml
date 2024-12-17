@@ -13,7 +13,6 @@ server:
     lark:
       enable: false
       webhook_url:
-
 listeners:
   name: listener
   auth: listener.auth
@@ -59,3 +58,8 @@ listeners:
         enable: true
         type: aes
         key: maliceofinternal
+  rem:
+    -
+      name: rem_default
+      enable: true
+      console: tcp://0.0.0.0

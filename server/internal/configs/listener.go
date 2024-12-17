@@ -19,7 +19,8 @@ type ListenerConfig struct {
 	TcpPipelines       []*TcpPipelineConfig  `config:"tcp" `
 	BindPipelineConfig []*BindPipelineConfig `config:"bind"`
 	//HttpPipelines []*HttpPipelineConfig `config:"http" default:""`
-	Websites []*WebsiteConfig `config:"websites"`
+	Websites []*WebsiteConfig `config:"website"`
+	REMs     []*REMConfig     `config:"rem"`
 }
 
 type TcpPipelineConfig struct {
@@ -81,10 +82,29 @@ func (pipeline *BindPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline
 
 type HttpPipelineConfig struct {
 	Enable    bool       `config:"enable" default:"false"`
-	Name      string     `config:"name" default:"http"`
+	Name      string     `config:"name" default:"default-http"`
 	Host      string     `config:"host" default:"0.0.0.0"`
 	Port      uint16     `config:"port" default:"8443"`
 	TlsConfig *TlsConfig `config:"tls"`
+}
+
+type REMConfig struct {
+	Enable  bool   `config:"enable" default:"false"`
+	Name    string `config:"name" default:"default-rem"`
+	Console string `config:"console" default:"tcp://0.0.0.0"`
+}
+
+func (r *REMConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, error) {
+	return &clientpb.Pipeline{
+		Name:       r.Name,
+		Enable:     r.Enable,
+		ListenerId: lisId,
+		Body: &clientpb.Pipeline_Rem{
+			Rem: &clientpb.REM{
+				Console: r.Console,
+			},
+		},
+	}, nil
 }
 
 type WebsiteConfig struct {
