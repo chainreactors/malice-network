@@ -2,7 +2,10 @@ package assets
 
 import (
 	"embed"
+	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/server/internal/configs"
+	"os"
+	"path/filepath"
 )
 
 var (
