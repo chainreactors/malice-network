@@ -31,3 +31,7 @@ func (rpc *Server) GetProfiles(ctx context.Context, req *clientpb.Empty) (*clien
 func (rpc *Server) DeleteProfile(ctx context.Context, req *clientpb.Profile) (*clientpb.Empty, error) {
 	return &clientpb.Empty{}, db.DeleteProfileByName(req.Name)
 }
+
+func (rpc *Server) UpdateProfile(ctx context.Context, req *clientpb.Profile) (*clientpb.Empty, error) {
+	return &clientpb.Empty{}, db.UpdateProfileRaw(req.Name, req.Content)
+}

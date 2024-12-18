@@ -634,6 +634,9 @@ func DeleteProfileByName(profileName string) error {
 	return nil
 }
 
+func UpdateProfileRaw(profileName string, raw []byte) error {
+	return Session().Model(&models.Profile{}).Where("name = ?", profileName).Update("raw", raw).Error
+}
 func SaveBuilderFromAction(inputs map[string]string, req *clientpb.Generate) (*models.Builder, error) {
 	target, ok := consts.GetBuildTarget(inputs["targets"])
 	if !ok {
