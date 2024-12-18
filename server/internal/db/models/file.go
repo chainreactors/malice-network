@@ -87,11 +87,12 @@ func (f *File) ToFileProtobuf() *clientpb.File {
 		return &clientpb.File{}
 	}
 	return &clientpb.File{
-		TaskId: match[1],
-		Name:   file.Name,
-		Local:  file.Name,
-		TempId: file.NickName,
-		Remote: file.Path,
-		Op:     f.Type,
+		TaskId:    match[1],
+		Name:      file.Name,
+		Local:     file.Name,
+		TempId:    file.NickName,
+		Remote:    file.Path,
+		SessionId: f.SessionID,
+		Op:        f.Type,
 	}
 }
