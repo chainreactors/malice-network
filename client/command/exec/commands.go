@@ -66,7 +66,7 @@ execute_local local_exe --ppid 1234 --block_dll --etw --argue "argue"
 	}
 	common.BindFlag(execLocalCmd, common.SacrificeFlagSet, func(f *pflag.FlagSet) {
 		f.StringP("process", "n", "", "custom process path")
-		f.BoolP("quit", "q", false, "disable output")
+		f.BoolP("quiet", "q", false, "disable output")
 	})
 
 	shellCmd := &cobra.Command{

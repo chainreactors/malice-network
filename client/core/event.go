@@ -230,6 +230,9 @@ func (s *ServerStatus) handlerSession(event *clientpb.Event) {
 		s.AddSession(event.Session)
 		Log.Importantf("register session: %s \n", event.Message)
 	case consts.CtrlSessionTask:
+		if len(event.Message) > 200 {
+			event.Message = event.Message[:200]
+		}
 		logs.Log.Infof(logs.GreenBold(fmt.Sprintf("[%s.%d] run task %s: %s\n", sid, event.Task.TaskId, event.Task.Type, event.Message)))
 	case consts.CtrlSessionError:
 		log := s.ObserverLog(sid)
