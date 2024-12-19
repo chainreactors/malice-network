@@ -73,6 +73,7 @@ func (rpc *Server) MaleficSRDI(ctx context.Context, req *clientpb.Builder) (*cli
 			return nil, err
 		}
 		bin, err = build.SRDIArtifact(builder, target.OS, target.Arch)
+		artifact = builder
 		if err != nil {
 			return nil, err
 		}
