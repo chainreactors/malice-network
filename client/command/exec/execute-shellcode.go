@@ -1,6 +1,7 @@
 package exec
 
 import (
+	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
@@ -10,6 +11,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/utils/donut"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
@@ -37,22 +39,22 @@ func ExecShellcode(rpc clientrpc.MaliceRPCClient, sess *core.Session, shellcodeP
 
 	binary, err := common.NewBinary(consts.ModuleExecuteShellcode, shellcodePath, args, output, timeout, arch, process, sac)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create binary: %w", err)
 	}
-	if pe.IsPeExt(shellcodePath) {
+	if pe.IsPeExt(shellcodePath) && fileutils.Exist(shellcodePath) {
 		cmdline := shellquote.Join(args...)
 		binary.Bin, err = donut.DonutShellcodeFromPE(shellcodePath, binary.Bin, arch, cmdline, false, true)
 		if err != nil {
 			return nil, err
 		}
-		logs.Log.Infof("found pe file, auto convert to shellcode with donut")
+		logs.Log.Infof("found PE file, auto-converted to shellcode with Donut")
 		binary.Args = nil
 	}
 	task, err := rpc.ExecuteShellcode(sess.Context(), binary)
 	if err != nil {
 		return nil, err
 	}
-	return task, err
+	return task, nil
 }
 
 func InlineShellcodeCmd(cmd *cobra.Command, con *repl.Console) error {
