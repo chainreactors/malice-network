@@ -410,6 +410,19 @@ func GetAllTask() (*clientpb.Tasks, error) {
 	return pbTasks, nil
 }
 
+func GetTasksByID(sessionID string) (*clientpb.Tasks, error) {
+	var tasks []models.Task
+	err := Session().Where("session_id = ?", sessionID).Find(&tasks).Error
+	if err != nil {
+		return nil, err
+	}
+	pbTasks := &clientpb.Tasks{}
+	for _, task := range tasks {
+		pbTasks.Tasks = append(pbTasks.Tasks, task.ToProtobuf())
+	}
+	return pbTasks, nil
+}
+
 func AddTask(task *clientpb.Task) error {
 	taskModel := &models.Task{
 		ID:         task.SessionId + "-" + utils.ToString(task.TaskId),

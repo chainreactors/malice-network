@@ -31,18 +31,19 @@ func getTaskContext(sess *core.Session, task *core.Task, index int32) (*clientpb
 }
 
 func (rpc *Server) GetTasks(ctx context.Context, req *clientpb.TaskRequest) (*clientpb.Tasks, error) {
-	sess, ok := core.Sessions.Get(req.SessionId)
-	if !ok {
-		return nil, errs.ErrNotFoundSession
-	}
 	if req.All {
-		tasks, err := db.GetAllTask()
+		tasks, err := db.GetTasksByID(req.SessionId)
 		if err != nil {
 			return nil, err
 		}
 		return tasks, err
+	} else {
+		sess, ok := core.Sessions.Get(req.SessionId)
+		if !ok {
+			return nil, errs.ErrNotFoundSession
+		}
+		return sess.Tasks.ToProtobuf(), nil
 	}
-	return sess.Tasks.ToProtobuf(), nil
 }
 
 func (rpc *Server) GetTaskContent(ctx context.Context, req *clientpb.Task) (*clientpb.TaskContext, error) {
