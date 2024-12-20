@@ -13,6 +13,7 @@ import (
 	"github.com/chainreactors/malice-network/client/command/listener"
 	"github.com/chainreactors/malice-network/client/command/mal"
 	"github.com/chainreactors/malice-network/client/command/mutant"
+	"github.com/chainreactors/malice-network/client/command/rem"
 	"github.com/chainreactors/malice-network/client/command/sessions"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -36,6 +37,7 @@ func BindCommonCommands(bind BindFunc) {
 
 	bind(consts.ListenerGroup,
 		listener.Commands,
+		rem.Commands,
 	)
 
 	bind(consts.GeneratorGroup,
