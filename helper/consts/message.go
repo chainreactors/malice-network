@@ -214,6 +214,12 @@ const (
 	CommandActionEnable     = "enable"
 	CommandActionDisable    = "disable"
 	CommandActionList       = "list"
+	CommandRem              = "rem"
+	CommandListRem          = "list"
+	CommandRemNew           = "new"
+	CommandRemStart         = "start"
+	CommandRemStop          = "stop"
+	CommandRemDelete        = "delete"
 )
 
 const (

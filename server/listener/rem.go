@@ -4,6 +4,7 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
+	"github.com/chainreactors/malice-network/helper/proxy"
 	rem "github.com/chainreactors/rem/runner"
 	"github.com/chainreactors/rem/utils"
 )
@@ -11,26 +12,12 @@ import (
 func NewRem(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeline) (*REM, error) {
 	remConfig := pipeline.GetRem()
 
-	u, err := utils.NewConsoleURL(remConfig.Console)
-	if err != nil {
-		return nil, err
-	}
-	var option rem.Options
-	err = option.ParseArgs([]string{"-c", remConfig.Console})
-	if err != nil {
-		return nil, err
-	}
-	remRunner, err := option.Prepare()
-	if err != nil {
-		return nil, err
-	}
-	remRunner.URLs.ConsoleURL = u
-	console, err := rem.NewConsole(remRunner, remRunner.URLs)
+	remCon, err := proxy.NewRemServer(remConfig.Console)
 	if err != nil {
 		return nil, err
 	}
 	pp := &REM{
-		remCon:     console,
+		remCon:     remCon,
 		rpc:        rpc,
 		Name:       pipeline.Name,
 		Enable:     true,
