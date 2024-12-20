@@ -155,19 +155,5 @@ var ApiImports = []ApiImport{
 	//{NTDLL_DLL,    "RtlFreeUnicodeString"},
 	//{NTDLL_DLL,    "RtlFreeString"},
 
-	// v1.1 update
-	// Module Overloading 相关
-	{NTDLL_DLL, "RtlCreateUnicodeString"}, // 创建 Unicode 字符串
-	{NTDLL_DLL, "NtCreateSection"},        // 创建内存段
-	{NTDLL_DLL, "NtMapViewOfSection"},     // 映射内存段视图
-	{NTDLL_DLL, "NtUnmapViewOfSection"},   // 取消映射内存段视图
-
-	// 压缩相关
-	{NTDLL_DLL, "RtlGetCompressionWorkSpaceSize"}, // 获取压缩工作空间大小
-	{NTDLL_DLL, "RtlDecompressBuffer"},            // 解压缩缓冲区
-
-	// 异常处理相关
-	{NTDLL_DLL, "NtContinue"},
-
-	{"", ""}, // last one always contains two NULL pointers
+	//{"", ""}, // last one always contains two NULL pointers
 }
