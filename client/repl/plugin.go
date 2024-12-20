@@ -161,7 +161,13 @@ func WrapImplantFunc(con *Console, fun interface{}, callback ImplantFuncCallback
 		if err != nil {
 			return nil, err
 		}
-		sess.Console(task, fmt.Sprintf("args %v", args))
+
+		out := fmt.Sprintf("args %v", args)
+		if len(out) > 256 {
+			sess.Console(task, "args too long")
+		} else {
+			sess.Console(task, out)
+		}
 		content, err := con.Rpc.WaitTaskFinish(context.Background(), task)
 		if err != nil {
 			return nil, err
