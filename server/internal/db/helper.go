@@ -4,6 +4,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
+	"sort"
+	"strings"
+
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/codenames"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -18,10 +23,6 @@ import (
 	"gopkg.in/yaml.v3"
 	"gorm.io/gorm"
 	"gorm.io/gorm/utils"
-	"os"
-	"path/filepath"
-	"sort"
-	"strings"
 )
 
 func HasOperator(typ string) (bool, error) {
@@ -802,21 +803,18 @@ func GetBuilders() (*clientpb.Builders, error) {
 // FindArtifact
 func FindArtifact(target *clientpb.Artifact) (*clientpb.Artifact, error) {
 	var builder *models.Builder
-	// where os, arch ,name
 	var result *gorm.DB
+
+	// 根据 ID 或名称查找构建器
 	if target.Id != 0 {
 		result = Session().Where("id = ?", target.Id).First(&builder)
 	} else if target.Name != "" {
 		result = Session().Where("name = ?", target.Name).First(&builder)
 	} else {
 		var builders []*models.Builder
-		result = Session().Where("os = ? AND arch = ? AND type = ? ", target.Platform, target.Arch, target.Type).
+		result = Session().Where("os = ? AND arch = ? AND type = ?", target.Platform, target.Arch, target.Type).
 			Preload("Profile.Pipeline").
 			Find(&builders)
-		if result.Error != nil {
-			return nil, result.Error
-		}
-
 		for _, v := range builders {
 			if v.Profile.PipelineID == target.Pipeline {
 				builder = v
@@ -825,11 +823,12 @@ func FindArtifact(target *clientpb.Artifact) (*clientpb.Artifact, error) {
 		}
 	}
 	if result.Error != nil {
-		return nil, result.Error
+		return nil, fmt.Errorf("error finding artifact: %v, target: %+v", result.Error, target)
 	}
 	if builder == nil {
-		return nil, fmt.Errorf("no artifact found , please build %s first", target.Type)
+		return nil, fmt.Errorf("no artifact found for target: %+v, please build %s first", target, target.Type)
 	}
+
 	var content []byte
 	var err error
 	if target.IsSrdi {
@@ -838,8 +837,9 @@ func FindArtifact(target *clientpb.Artifact) (*clientpb.Artifact, error) {
 		content, err = os.ReadFile(builder.Path)
 	}
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error reading file for builder: %s, error: %v", builder.Name, err)
 	}
+
 	return builder.ToArtifact(content), nil
 }
 

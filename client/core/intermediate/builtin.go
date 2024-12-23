@@ -5,6 +5,14 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
+	"math/big"
+	"os"
+	"reflect"
+	"regexp"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/encoders/hash"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
@@ -13,16 +21,10 @@ import (
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/handler"
+	"github.com/chainreactors/malice-network/helper/utils/mals"
 	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"github.com/kballard/go-shellquote"
 	"google.golang.org/protobuf/proto"
-	"math/big"
-	"os"
-	"reflect"
-	"regexp"
-	"strconv"
-	"strings"
-	"time"
 )
 
 const (
@@ -365,6 +367,7 @@ func RegisterEncodeFunc(rpc clientrpc.MaliceRPCClient) {
 		}
 		return pe.PackArgs(packedArgs)
 	})
+
 	AddHelper(
 		"pack_bof_args",
 		&Helper{
@@ -380,6 +383,11 @@ func RegisterEncodeFunc(rpc clientrpc.MaliceRPCClient) {
 pack_bof_args("ZZ", {"aa", "bb"})
 `,
 		})
+
+	// mal pack
+	RegisterFunction("mal_pack_binary", func(data string) (string, error) {
+		return mals.PackMalBinary(data), nil
+	})
 
 	RegisterFunction("format_path", func(s string) (string, error) {
 		return fileutils.FormatWindowPath(s), nil

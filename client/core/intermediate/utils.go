@@ -16,6 +16,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/handler"
+	"github.com/chainreactors/malice-network/helper/utils/mals"
 )
 
 func GetResourceFile(pluginName, filename string) (string, error) {
@@ -47,15 +48,20 @@ func NewSacrificeProcessMessage(ppid uint32, hidden, block_dll, bypassETW bool, 
 func NewBinary(module string, path string, args []string, output bool, timeout uint32, arch string, process string, sac *implantpb.SacrificeProcess) (*implantpb.ExecuteBinary, error) {
 	var bin []byte
 	var err error
+
 	if fileutils.Exist(path) {
 		bin, err = os.ReadFile(fileutils.FormatWindowPath(path))
 		if err != nil {
 			return nil, fmt.Errorf("NewBinary error: %s", err)
 		}
 	} else {
-		bin = []byte(path)
-		path = "binpath"
+		bin, err = mals.UnPackMalBinary(path)
+		if err != nil {
+			return nil, err
+		}
+		path = "virtual_path"
 	}
+
 	return &implantpb.ExecuteBinary{
 		Name:        filepath.Base(path),
 		Bin:         bin,

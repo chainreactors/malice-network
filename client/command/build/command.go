@@ -1,6 +1,8 @@
 package build
 
 import (
+	"fmt"
+
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/core/intermediate"
@@ -485,7 +487,7 @@ func Register(con *repl.Console) {
 	con.RegisterServerFunc("self_payload", func(con *repl.Console, sess *core.Session) (string, error) {
 		artifact, err := SearchArtifact(con, sess.PipelineId, "beacon", "shellcode", sess.Os.Name, sess.Os.Arch)
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("get artifact error: %s", err)
 		}
 		return string(artifact.Bin), nil
 	}, &intermediate.Helper{

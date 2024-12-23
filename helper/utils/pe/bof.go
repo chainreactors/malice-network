@@ -5,9 +5,10 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"fmt"
-	"golang.org/x/text/encoding/unicode"
 	"strconv"
 	"strings"
+
+	"golang.org/x/text/encoding/unicode"
 )
 
 type BOFArgsBuffer struct {
@@ -203,8 +204,8 @@ func PackWideString(s string) string {
 const (
 	CALLBACK_OUTPUT      = 0
 	CALLBACK_SCREENSHOT  = 3
+	CALLBACK_ERROR       = 13
 	CALLBACK_OUTPUT_OEM  = 30
-	CALLBACK_ERROR       = 31
 	CALLBACK_OUTPUT_UTF8 = 32
 )
 
@@ -220,11 +221,11 @@ func (bof *BOFResponse) String() string {
 	case CALLBACK_OUTPUT, CALLBACK_OUTPUT_OEM, CALLBACK_OUTPUT_UTF8:
 		return string(bof.Data)
 	case CALLBACK_ERROR:
-		return "error: " + string(bof.Data)
+		return fmt.Sprintf("Error: %s", string(bof.Data))
 	case CALLBACK_SCREENSHOT:
 		return "screenshot"
 	default:
-		return "not impl callback id: " + strconv.Itoa(int(bof.CallbackType))
+		return fmt.Sprintf("\nUnimplemented callback type ID: %d.\nData: %s", bof.CallbackType, bof.Data)
 	}
 }
 
