@@ -13,7 +13,7 @@ import (
 )
 
 func BeaconCmd(cmd *cobra.Command, con *repl.Console) error {
-	name, address, buildTarget, modules, ca, interval, jitter, srdi := common.ParseGenerateFlags(cmd)
+	name, address, buildTarget, modules, ca, interval, jitter, _ := common.ParseGenerateFlags(cmd)
 	if buildTarget == "" {
 		return errors.New("require build target")
 	}
@@ -30,7 +30,7 @@ func BeaconCmd(cmd *cobra.Command, con *repl.Console) error {
 			Modules:     modules,
 			Ca:          ca,
 			Params:      params.String(),
-			Srdi:        srdi,
+			Srdi:        true,
 		})
 		if err != nil {
 			con.Log.Errorf("Build beacon failed: %v", err)
@@ -41,7 +41,7 @@ func BeaconCmd(cmd *cobra.Command, con *repl.Console) error {
 }
 
 func BindCmd(cmd *cobra.Command, con *repl.Console) error {
-	name, address, buildTarget, modules, ca, interval, jitter, srdi := common.ParseGenerateFlags(cmd)
+	name, address, buildTarget, modules, ca, interval, jitter, _ := common.ParseGenerateFlags(cmd)
 	if buildTarget == "" {
 		return errors.New("require build target")
 	}
@@ -58,7 +58,7 @@ func BindCmd(cmd *cobra.Command, con *repl.Console) error {
 			Modules:     modules,
 			Ca:          ca,
 			Params:      params.String(),
-			Srdi:        srdi,
+			Srdi:        true,
 		})
 		if err != nil {
 			con.Log.Errorf("Build bind failed: %v", err)
@@ -69,7 +69,7 @@ func BindCmd(cmd *cobra.Command, con *repl.Console) error {
 }
 
 func PreludeCmd(cmd *cobra.Command, con *repl.Console) error {
-	name, address, buildTarget, modules, ca, _, _, srdi := common.ParseGenerateFlags(cmd)
+	name, address, buildTarget, modules, ca, _, _, _ := common.ParseGenerateFlags(cmd)
 	if buildTarget == "" {
 		return errors.New("require build target")
 	}
@@ -89,7 +89,7 @@ func PreludeCmd(cmd *cobra.Command, con *repl.Console) error {
 			Target:      buildTarget,
 			Modules:     modules,
 			Ca:          ca,
-			Srdi:        srdi,
+			Srdi:        true,
 			Bin:         file,
 		})
 		if err != nil {
@@ -122,7 +122,6 @@ func PulseCmd(cmd *cobra.Command, con *repl.Console) error {
 	profile, _ := cmd.Flags().GetString("profile")
 	address, _ := cmd.Flags().GetString("address")
 	buildTarget, _ := cmd.Flags().GetString("target")
-	srdi, _ := cmd.Flags().GetBool("srdi")
 	artifactId, _ := cmd.Flags().GetUint32("artifact-id")
 	if buildTarget != consts.TargetX64Windows && buildTarget != consts.TargetX86Windows {
 		return errors.New("pulse build target must be x86_64-pc-windows-msvc or i686-pc-windows-msvc")
@@ -133,7 +132,7 @@ func PulseCmd(cmd *cobra.Command, con *repl.Console) error {
 			Address:     address,
 			Target:      buildTarget,
 			Type:        consts.CommandBuildPulse,
-			Srdi:        srdi,
+			Srdi:        true,
 			ArtifactId:  artifactId,
 		})
 		if err != nil {
