@@ -49,8 +49,9 @@ func (w *Website) Addr() string {
 }
 
 func (w *Website) Start() error {
-	http.HandleFunc(w.rootPath, w.websiteContentHandler)
-	http.HandleFunc(w.rootPath+"/", w.websiteContentHandler)
+	mux := http.NewServeMux()
+	mux.HandleFunc(w.rootPath, w.websiteContentHandler)
+	mux.HandleFunc(w.rootPath+"/", w.websiteContentHandler)
 	var err error
 	tlsConfig, err := certutils.WrapToTlsConfig(w.Tls)
 	if err != nil {
@@ -58,6 +59,7 @@ func (w *Website) Start() error {
 	}
 	w.server = &http.Server{Addr: fmt.Sprintf(":%d", w.port),
 		TLSConfig: tlsConfig,
+		Handler:   mux,
 	}
 	go func() {
 		logs.Log.Importantf("HTTP Server is running on port %d", w.port)
@@ -71,12 +73,13 @@ func (w *Website) Start() error {
 func (w *Website) Close() error {
 	if w.server != nil {
 		logs.Log.Importantf("Stopping server")
+		//http.HandleFunc(w.rootPath, nil)
+		//http.HandleFunc(w.rootPath+"/", nil)
 		err := w.server.Shutdown(nil)
-		http.DefaultServeMux.Handle(w.rootPath, nil)
-		http.DefaultServeMux.HandleFunc(w.rootPath+"/", nil)
 		if err != nil {
 			return err
 		}
+		w.server = nil
 		return nil
 	} else {
 		return errors.New("server is not running")
@@ -108,7 +111,7 @@ func (w *Website) websiteContentHandler(resp http.ResponseWriter, req *http.Requ
 	}
 	content, ok := w.Content[u.Path]
 	if !ok {
-		logs.Log.Errorf("Failed to get content ")
+		logs.Log.Debugf("Failed to get content ")
 		return
 	}
 	//parserContent.Marshal()

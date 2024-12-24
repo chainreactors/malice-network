@@ -17,12 +17,12 @@ import (
 func fileExplorerCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
 	root := tui.TreeNode{
-		Name: "./",
+		Name: "/",
 	}
 
 	task, err := con.Rpc.Ls(session.Clone(consts.CalleeExplorer).Context(), &implantpb.Request{
 		Name:  consts.ModuleLs,
-		Input: "./",
+		Input: "/",
 	})
 	if err != nil {
 		con.Log.Errorf("load directory error: %v\n", err)

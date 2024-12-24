@@ -373,7 +373,7 @@ func AddFile(typ string, taskpb *clientpb.Task, td *models.FileDescription) erro
 		ID:          taskpb.SessionId + "-" + utils.ToString(taskpb.TaskId),
 		Type:        typ,
 		SessionID:   taskpb.SessionId,
-		Cur:         int(taskpb.Cur),
+		Cur:         int(taskpb.Total),
 		Total:       int(taskpb.Total),
 		Description: tdString,
 	}
@@ -442,6 +442,13 @@ func UpdateTask(task *clientpb.Task) error {
 		ID: task.SessionId + "-" + utils.ToString(task.TaskId),
 	}
 	return taskModel.UpdateCur(Session(), int(task.Total))
+}
+
+func UpdateTaskCur(cur int, taskID string) error {
+	taskModel := &models.Task{
+		ID: taskID,
+	}
+	return taskModel.UpdateCur(Session(), cur)
 }
 
 func UpdateDownloadTotal(task *clientpb.Task, total int) error {
@@ -556,6 +563,10 @@ func RemoveWebsiteContent(id string) error {
 		return err
 	}
 	return nil
+}
+
+func UploadWebsiteIP(name, ip string) error {
+	return Session().Model(&models.Pipeline{}).Where("name = ?", name).Update("ip", ip).Error
 }
 
 // RemoveContent - Remove content by ID

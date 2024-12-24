@@ -32,6 +32,12 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 		if err != nil {
 			return nil, err
 		}
+		go greq.HandlerResponse(ch, types.MsgAck)
+		taskID := greq.Task.SessionId + "-" + utils.ToString(greq.Task.Id)
+		err = db.UpdateTaskCur(greq.Task.Cur+1, taskID)
+		if err != nil {
+			return nil, err
+		}
 		err = db.AddFile("upload", greq.Task.ToProtobuf(), &models.FileDescription{
 			Name:    req.Name,
 			Path:    req.Target,
@@ -40,13 +46,6 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 		})
 		if err != nil {
 			logs.Log.Errorf("cannot create task %d, %s in db", greq.Task.Id, err.Error())
-			return nil, err
-		}
-		go greq.HandlerResponse(ch, types.MsgAck)
-		taskID := greq.Task.SessionId + "-" + utils.ToString(greq.Task.Id)
-		err = db.UpdateFileByID(taskID, greq.Task.Cur+1)
-		if err != nil {
-			logs.Log.Errorf("cannot update task %d , %s in db", greq.Task.Id, err.Error())
 			return nil, err
 		}
 		return greq.Task.ToProtobuf(), nil
@@ -62,16 +61,6 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 			return nil, err
 		}
 		var blockId = 0
-		err = db.AddFile("upload", greq.Task.ToProtobuf(), &models.FileDescription{
-			Name:     req.Name,
-			NickName: "",
-			Path:     req.Target,
-			Command:  fmt.Sprintf("upload -%d -%t", req.Priv, req.Hidden),
-			Size:     int64(len(req.Data)),
-		})
-		if err != nil {
-			logs.Log.Errorf("cannot create task %d , %s in db", greq.Task.Id, err.Error())
-		}
 		go func() {
 			stat := <-out
 			err := handler.HandleMaleficError(stat)
@@ -109,12 +98,22 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 				if resp.GetAck().Success {
 					greq.Task.Done(resp, "")
 					taskID := greq.Task.SessionId + "-" + utils.ToString(greq.Task.Id)
-					err = db.UpdateFileByID(taskID, blockId)
+					err = db.UpdateTaskCur(blockId, taskID)
 					if err != nil {
 						logs.Log.Errorf("cannot update task %d , %s in db", greq.Task.Id, err.Error())
 						return
 					}
 					if msg.End {
+						err = db.AddFile("upload", greq.Task.ToProtobuf(), &models.FileDescription{
+							Name:     req.Name,
+							NickName: "",
+							Path:     req.Target,
+							Command:  fmt.Sprintf("upload -%d -%t", req.Priv, req.Hidden),
+							Size:     int64(len(req.Data)),
+						})
+						if err != nil {
+							logs.Log.Errorf("cannot create task %d , %s in db", greq.Task.Id, err.Error())
+						}
 						greq.Task.Finish(resp, "")
 					}
 				}
@@ -156,20 +155,7 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 		fileName := path.Join(configs.TempPath, downloadAbs.Checksum)
 		greq.Session.AddMessage(resp, 0)
 		greq.Task.Total = int(resp.GetDownloadResponse().Size)/config.Int(consts.ConfigMaxPacketLength) + 1
-		err = db.AddFile("download", greq.Task.ToProtobuf(), &models.FileDescription{
-			Name:     req.Name,
-			NickName: downloadAbs.Checksum,
-			Path:     req.Path,
-			Command:  fmt.Sprintf("download -%s -%s ", req.Name, req.Path),
-			Size:     int64(resp.GetDownloadResponse().Size),
-		})
-		if err != nil {
-			logs.Log.Errorf("cannot create task %d , %s in db", greq.Task.Id, err.Error())
-		}
-		err = db.UpdateDownloadTotal(greq.Task.ToProtobuf(), greq.Task.Total)
-		if err != nil {
-			logs.Log.Errorf("cannot update task %d , %s in db", greq.Task.Id, err.Error())
-		}
+		size := resp.GetDownloadResponse().Size
 		downloadFile, err := os.OpenFile(fileName, os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
 			logs.Log.Errorf("cannot create file %s, %s", fileName, err.Error())
@@ -198,7 +184,7 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 				logs.Log.Errorf(err.Error())
 				return
 			}
-			err = db.UpdateFileByID(greq.Task.TaskID(), int(block.BlockId+1))
+			err = db.UpdateTaskCur(int(block.BlockId+1), greq.Task.TaskID())
 			if err != nil {
 				logs.Log.Errorf("cannot update task %d , %s in db", greq.Task.Id, err.Error())
 				return
@@ -216,6 +202,20 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 					greq.Task.Panic(buildErrorEvent(greq.Task, fmt.Errorf("checksum error")))
 					return
 				}
+				err = db.AddFile("download", greq.Task.ToProtobuf(), &models.FileDescription{
+					Name:     req.Name,
+					NickName: downloadAbs.Checksum,
+					Path:     req.Path,
+					Command:  fmt.Sprintf("download -%s -%s ", req.Name, req.Path),
+					Size:     int64(size),
+				})
+				if err != nil {
+					logs.Log.Errorf("cannot create task %d , %s in db", greq.Task.Id, err.Error())
+				}
+				//err = db.UpdateDownloadTotal(greq.Task.ToProtobuf(), greq.Task.Total)
+				//if err != nil {
+				//	logs.Log.Errorf("cannot update task %d , %s in db", greq.Task.Id, err.Error())
+				//}
 				greq.Task.Finish(resp, "sync id "+checksum)
 			}
 		}

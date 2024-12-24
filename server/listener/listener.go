@@ -365,7 +365,7 @@ func (lns *listener) stopWebsite(job *clientpb.Job) *clientpb.JobStatus {
 	var err error
 	getWeb := job.GetPipeline().GetWeb()
 	job.Name = getWeb.ID
-	w := lns.websites.Get(getWeb.ID)
+	w := lns.websites.Get(getWeb.Root)
 	if w == nil {
 		return &clientpb.JobStatus{
 			ListenerId: lns.ID(),
