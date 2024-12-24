@@ -212,10 +212,6 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 				if err != nil {
 					logs.Log.Errorf("cannot create task %d , %s in db", greq.Task.Id, err.Error())
 				}
-				//err = db.UpdateDownloadTotal(greq.Task.ToProtobuf(), greq.Task.Total)
-				//if err != nil {
-				//	logs.Log.Errorf("cannot update task %d , %s in db", greq.Task.Id, err.Error())
-				//}
 				greq.Task.Finish(resp, "sync id "+checksum)
 			}
 		}

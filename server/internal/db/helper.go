@@ -381,13 +381,6 @@ func AddFile(typ string, taskpb *clientpb.Task, td *models.FileDescription) erro
 	return nil
 }
 
-func UpdateFileByID(ID string, newCur int) error {
-	fileModel := &models.File{
-		ID: ID,
-	}
-	return fileModel.UpdateCur(Session(), newCur)
-}
-
 func GetTaskPB(taskID string) (*clientpb.Task, error) {
 	var task models.Task
 	err := Session().Where("id = ?", taskID).First(&task).Error

@@ -157,9 +157,5 @@ func MvConfig(oldPath string) error {
 	if err != nil {
 		return err
 	}
-	err = fileutils.RemoveFile(oldPath)
-	if err != nil {
-		return err
-	}
 	return nil
 }
