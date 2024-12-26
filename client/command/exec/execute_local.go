@@ -68,8 +68,7 @@ func InlineLocal(rpc clientrpc.MaliceRPCClient, sess *core.Session,
 	args[0] = fileutils.FormatWindowPath(args[0])
 
 	binary := &implantpb.ExecuteBinary{
-		ProcessName: process,
-		Bin:         []byte(args[0]),
+		ProcessName: args[0],
 		Args:        args[1:],
 		Output:      output,
 		Type:        consts.ModuleInlineLocal,
