@@ -15,12 +15,27 @@ func ExecuteFlagSet(f *pflag.FlagSet) {
 	f.String("arch", "", "architecture x64,x86")
 }
 
+func ParseBinaryDataFlags(cmd *cobra.Command) (string, string, bool, uint32) {
+	path := cmd.Flags().Arg(0)
+	data := cmd.Flags().Arg(1)
+	timeout, _ := cmd.Flags().GetUint32("timeout")
+	quiet, _ := cmd.Flags().GetBool("quiet")
+	return path, data, !quiet, timeout
+}
+
 func ParseBinaryFlags(cmd *cobra.Command) (string, []string, bool, uint32) {
 	path := cmd.Flags().Arg(0)
 	args := cmd.Flags().Args()[1:]
 	timeout, _ := cmd.Flags().GetUint32("timeout")
 	quiet, _ := cmd.Flags().GetBool("quiet")
 	return path, args, !quiet, timeout
+}
+
+func ParseFullBinaryDataFlags(cmd *cobra.Command) (string, string, bool, uint32, string, string) {
+	path, data, output, timeout := ParseBinaryDataFlags(cmd)
+	arch, _ := cmd.Flags().GetString("arch")
+	process, _ := cmd.Flags().GetString("process")
+	return path, data, output, timeout, arch, process
 }
 
 func ParseFullBinaryFlags(cmd *cobra.Command) (string, []string, bool, uint32, string, string) {

@@ -123,7 +123,7 @@ func (bqm *BuildQueueManager) executeBuild(req *clientpb.Generate, builder model
 	case consts.CommandBuildPrelude:
 		err = BuildPrelude(cli, req)
 	case consts.CommandBuildModules:
-		err = BuildModules(cli, req, true) // Immediate build assumed
+		err = BuildModules(cli, req) // Immediate build assumed
 	case consts.CommandBuildPulse:
 		err = bqm.handleBuildPulse(cli, req, target)
 	default:
@@ -231,31 +231,29 @@ func (bqm *BuildQueueManager) finalizeBuild(req *clientpb.Generate, builder mode
 		return nil, err
 	}
 
-	if !req.Srdi {
-		absArtifactPath, err := filepath.Abs(artifactPath)
-		if err != nil {
-			return nil, err
-		}
-
-		builder.Path = absArtifactPath
-		err = db.UpdateBuilderPath(&builder)
-		if err != nil {
-			return nil, err
-		}
-
-		data, err := os.ReadFile(absArtifactPath)
-		if err != nil {
-			return nil, err
-		}
-		return builder.ToArtifact(data), nil
-	}
-	builder.Path = artifactPath
-	bin, err := SRDIArtifact(&builder, target.OS, target.Arch)
+	absArtifactPath, err := filepath.Abs(artifactPath)
 	if err != nil {
 		return nil, err
 	}
 
-	return builder.ToArtifact(bin), nil
+	builder.Path = absArtifactPath
+	err = db.UpdateBuilderPath(&builder)
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := os.ReadFile(absArtifactPath)
+	if err != nil {
+		return nil, err
+	}
+	if builder.IsSRDI {
+		_, err = SRDIArtifact(&builder, target.OS, target.Arch)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return builder.ToArtifact(data), nil
 }
 
 // AddTask adds a build task to the queue and waits for the result

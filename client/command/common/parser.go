@@ -4,6 +4,10 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"io"
+	"math"
+	"strings"
+
 	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
@@ -11,9 +15,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
-	"io"
-	"math"
-	"strings"
 )
 
 func ParseAssembly(ctx *clientpb.TaskContext) (interface{}, error) {
@@ -40,6 +41,14 @@ func NewBinary(module string, path string, args []string, output bool, timeout u
 	}
 
 	return intermediate.NewBinary(module, path, args, output, timeout, arch, process, sac)
+}
+
+func NewBinaryData(module string, path string, data string, output bool, timeout uint32, arch string, process string, sac *implantpb.SacrificeProcess) (*implantpb.ExecuteBinary, error) {
+	if name, ok := consts.ModuleAliases[module]; ok {
+		module = name
+	}
+
+	return intermediate.NewBinaryData(module, path, data, output, timeout, arch, process, sac)
 }
 
 func ParseStatus(ctx *clientpb.TaskContext) (interface{}, error) {

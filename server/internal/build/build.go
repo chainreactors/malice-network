@@ -26,8 +26,9 @@ import (
 )
 
 var (
-	NameSpace                   = "ghcr.io/chainreactors"
-	Tag                         = "nightly-2023-09-18-latest"
+	//NameSpace                   = "ghcr.io/chainreactors"
+	//Tag                         = "nightly-2023-09-18-latest"
+	DefaultImage                = "ghcr.io/chainreactors/malefic-builder:v0.0.4"
 	ContainerSourceCodePath     = "/root/src"
 	ContainerCargoRegistryCache = "/root/cargo/registry"
 	ContainerCargoGitCache      = "/root/cargo/git"
@@ -46,7 +47,8 @@ var (
 	CargoRegistryCacheVolume = fmt.Sprintf("%s:%s", filepath.ToSlash(registryPath), ContainerCargoRegistryCache)
 	CargoGitCacheVolume      = fmt.Sprintf("%s:%s", filepath.ToSlash(gitPath), ContainerCargoGitCache)
 	BinPathVolume            = fmt.Sprintf("%s:%s", filepath.ToSlash(binPath), ContainerBinPath)
-	Volumes                  = []string{SourceCodeVolume, CargoRegistryCacheVolume, CargoGitCacheVolume, BinPathVolume}
+	//Volumes                  = []string{SourceCodeVolume, CargoRegistryCacheVolume, CargoGitCacheVolume, BinPathVolume}
+	Volumes = []string{SourceCodeVolume, CargoRegistryCacheVolume, CargoGitCacheVolume}
 )
 
 var dockerClient *client.Client
@@ -79,13 +81,12 @@ func BuildBeacon(cli *client.Client, req *clientpb.Generate) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	buildBeaconCommand := fmt.Sprintf(
-		"%s/malefic-mutant generate beacon && cargo build --target %s --release -p malefic",
-		ContainerBinPath,
+		"make beacon target_triple=%s",
 		req.Target,
 	)
 	containerName := "malefic_" + generateContainerName(8)
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
-		Image: fmt.Sprintf("%s/%s:%s", NameSpace, req.Target, Tag),
+		Image: DefaultImage,
 		Cmd:   []string{"sh", "-c", buildBeaconCommand},
 		//"cargo run -p malefic-mutant stage0 professional x86_64 source && cargo build --release -p malefic-pulse"},
 	}, &container.HostConfig{
@@ -126,14 +127,13 @@ func BuildBind(cli *client.Client, req *clientpb.Generate) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	BuildBindCommand := fmt.Sprintf(
-		"%s/malefic-mutant generate bind  && cargo build --target %s --release -p malefic",
-		ContainerBinPath,
+		"make bind target_triple=%s",
 		req.Target,
 	)
 	containerName := "malefic_" + generateContainerName(8)
 
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
-		Image: fmt.Sprintf("%s/%s:%s", NameSpace, req.Target, Tag),
+		Image: DefaultImage,
 		Cmd:   []string{"sh", "-c", BuildBindCommand},
 	}, &container.HostConfig{
 		AutoRemove: true,
@@ -179,13 +179,12 @@ func BuildPrelude(cli *client.Client, req *clientpb.Generate) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	BuildPreludeCommand := fmt.Sprintf(
-		"%s/malefic-mutant generate prelude autorun.yaml && cargo build --target %s --release -p malefic-prelude",
-		ContainerBinPath,
+		"make prelude target_triple=%s",
 		req.Target,
 	)
 	containerName := "malefic_" + generateContainerName(8)
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
-		Image: fmt.Sprintf("%s/%s:%s", NameSpace, req.Target, Tag),
+		Image: DefaultImage,
 		Cmd:   []string{"sh", "-c", BuildPreludeCommand},
 	}, &container.HostConfig{
 		AutoRemove: true,
@@ -228,13 +227,12 @@ func BuildPulse(cli *client.Client, req *clientpb.Generate) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	BuildBindCommand := fmt.Sprintf(
-		"%s/malefic-mutant generate pulse x64 win && cargo build --target %s --profile release-lto -p malefic-pulse",
-		ContainerBinPath,
+		"make pulse target_triple=%s",
 		req.Target,
 	)
 	containerName := "malefic_" + generateContainerName(8)
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
-		Image: fmt.Sprintf("%s/%s:%s", NameSpace, req.Target, Tag),
+		Image: DefaultImage,
 		Cmd:   []string{"sh", "-c", BuildBindCommand},
 	}, &container.HostConfig{
 		AutoRemove: true,
@@ -272,30 +270,20 @@ func BuildPulse(cli *client.Client, req *clientpb.Generate) error {
 	return nil
 }
 
-func BuildModules(cli *client.Client, req *clientpb.Generate, isImmediate bool) error {
+func BuildModules(cli *client.Client, req *clientpb.Generate) error {
 	timeout := 20 * time.Minute
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	containerName := "malefic_" + generateContainerName(8)
 	buildModules := strings.Join(req.Modules, ",")
 	var buildModulesCommand string
-	if isImmediate {
-		buildModulesCommand = fmt.Sprintf(
-			"cargo build --target %s --release -p malefic-modules --features %s",
-			req.Target,
-			buildModules,
-		)
-	} else {
-		buildModulesCommand = fmt.Sprintf(
-			"%s/malefic-mutant generate modules %s && cargo build --target %s --release -p malefic-modules --features %s",
-			ContainerBinPath,
-			buildModules,
-			req.Target,
-			buildModules,
-		)
-	}
+	buildModulesCommand = fmt.Sprintf(
+		"make modules target_triple=%s malefic_modules_features=%s",
+		req.Target,
+		buildModules,
+	)
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
-		Image: fmt.Sprintf("%s/%s:%s", NameSpace, req.Target, Tag),
+		Image: DefaultImage,
 		Cmd:   []string{"sh", "-c", buildModulesCommand},
 	}, &container.HostConfig{
 		AutoRemove: true,

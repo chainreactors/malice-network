@@ -75,6 +75,37 @@ func NewBinary(module string, path string, args []string, output bool, timeout u
 	}, nil
 }
 
+func NewBinaryData(module string, path string, data string, output bool, timeout uint32, arch string, process string, sac *implantpb.SacrificeProcess) (*implantpb.ExecuteBinary, error) {
+	var bin []byte
+	var err error
+
+	if fileutils.Exist(path) {
+		bin, err = os.ReadFile(fileutils.FormatWindowPath(path))
+		if err != nil {
+			return nil, fmt.Errorf("NewBinary error: %s", err)
+		}
+	} else {
+		bin, err = mals.UnPackMalBinary(path)
+		if err != nil {
+			return nil, err
+		}
+		path = "virtual_path"
+	}
+	binData := []byte(data)
+
+	return &implantpb.ExecuteBinary{
+		Name:        filepath.Base(path),
+		Bin:         bin,
+		Type:        module,
+		Data:        binData,
+		Output:      output,
+		Timeout:     timeout,
+		Arch:        consts.MapArch(arch),
+		ProcessName: process,
+		Sacrifice:   sac,
+	}, nil
+}
+
 func NewExecutable(module string, path string, args []string, arch string, sac *implantpb.SacrificeProcess) (*implantpb.ExecuteBinary, error) {
 	bin, err := os.ReadFile(path)
 	if err != nil {

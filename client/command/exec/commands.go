@@ -267,6 +267,36 @@ execute_dll example.dll -e entrypoint -- arg1 arg2
 		comp["binPath"] = carapace.ActionFiles()
 	})
 
+	execDLLSpawnCmd := &cobra.Command{
+		Use:   consts.ModuleExecuteDllSpawn + " [dll]",
+		Short: "ExecuteDllSpawn the given DLL in the sacrifice process",
+		Long:  `use a custom Headless PE loader to load DLL in the sacrificed process.`,
+		Args:  cobra.MinimumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return ExecuteDLLSpawnCmd(cmd, con)
+		},
+		Annotations: map[string]string{
+			"depend": consts.ModuleExecuteDllSpawn,
+		},
+		Example: `
+~~~
+execute_dllspawn example.dll
+~~~
+`,
+	}
+	common.BindArgCompletions(execDLLSpawnCmd, nil,
+		carapace.ActionFiles().Usage("path the DLL file"),
+		carapace.ActionValues().Usage("arguments to pass to the assembly entrypoint"))
+
+	common.BindFlag(execDLLSpawnCmd, common.ExecuteFlagSet, common.SacrificeFlagSet, func(f *pflag.FlagSet) {
+		f.StringP("entrypoint", "e", "", "custom entrypoint")
+		f.StringP("binPath", "", "", "custom process path")
+	})
+
+	common.BindFlagCompletions(execDLLSpawnCmd, func(comp carapace.ActionMap) {
+		comp["binPath"] = carapace.ActionFiles()
+	})
+
 	inlineDLLCmd := &cobra.Command{
 		Use:   consts.ModuleAliasInlineDll + " [dll]",
 		Short: "Executes the given inline DLL in the current process",
@@ -426,6 +456,7 @@ powerpick -s powerview.ps1 -- Get-NetUser
 		inlinePECmd,
 		execBofCmd,
 		powerpickCmd,
+		execDLLSpawnCmd,
 	}
 }
 
@@ -437,6 +468,7 @@ func Register(con *repl.Console) {
 	RegisterAssemblyFunc(con)
 	RegisterShellcodeFunc(con)
 	RegisterDLLFunc(con)
+	RegisterDLLSpawnFunc(con)
 	RegisterExeFunc(con)
 	RegisterBofFunc(con)
 

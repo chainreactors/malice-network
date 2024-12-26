@@ -44,6 +44,7 @@ const (
 	ModuleExecuteExe           = "execute_exe"
 	ModuleAliasInlineExe       = "inline_exe"
 	ModuleExecuteDll           = "execute_dll"
+	ModuleExecuteDllSpawn      = "execute_dllspawn"
 	ModuleAliasInlineDll       = "inline_dll"
 	ModuleExecuteBof           = "bof"
 	ModulePowerpick            = "powerpick"

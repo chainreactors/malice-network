@@ -38,21 +38,21 @@ func MoveBuildOutput(target, buildType string) (string, string, error) {
 	switch {
 	case strings.Contains(target, "windows"):
 		if buildType == consts.CommandBuildModules {
-			sourcePath = filepath.Join(configs.TargetPath, target, release, modules+consts.DllFile)
+			sourcePath = filepath.Join(configs.TargetPath, target, releaseLto, modules+consts.DllFile)
 		} else if buildType == consts.CommandBuildPrelude {
-			sourcePath = filepath.Join(configs.TargetPath, target, release, prelude+consts.PEFile)
+			sourcePath = filepath.Join(configs.TargetPath, target, releaseLto, prelude+consts.PEFile)
 		} else if buildType == consts.CommandBuildPulse {
 			sourcePath = filepath.Join(configs.TargetPath, target, releaseLto, pulse+consts.PEFile)
 		} else {
-			sourcePath = filepath.Join(configs.TargetPath, target, release, malefic+consts.PEFile)
+			sourcePath = filepath.Join(configs.TargetPath, target, releaseLto, malefic+consts.PEFile)
 		}
 	case strings.Contains(target, "darwin"):
-		sourcePath = filepath.Join(configs.TargetPath, target, release, malefic)
+		sourcePath = filepath.Join(configs.TargetPath, target, releaseLto, malefic)
 	case strings.Contains(target, "linux"):
 		if buildType == consts.CommandBuildPrelude {
-			sourcePath = filepath.Join(configs.TargetPath, target, release, prelude)
+			sourcePath = filepath.Join(configs.TargetPath, target, releaseLto, prelude)
 		} else {
-			sourcePath = filepath.Join(configs.TargetPath, target, release, malefic)
+			sourcePath = filepath.Join(configs.TargetPath, target, releaseLto, malefic)
 		}
 	}
 	dstPath := filepath.Join(configs.BuildOutputPath, name)
