@@ -8,7 +8,7 @@ require (
 	filippo.io/age v1.1.1
 	github.com/chainreactors/files v0.0.0-20231102192550-a652458cee26
 	github.com/chainreactors/logs v0.0.0-20241115105204-6132e39f5261
-	github.com/chainreactors/tui v0.0.0-20241203114431-17449fd7eef3
+	github.com/chainreactors/tui v0.0.0-20241226071726-9a327cb703a2
 	github.com/chainreactors/utils v0.0.0-20240805193040-ff3b97aa3c3f
 	github.com/charmbracelet/bubbletea v0.27.1
 	github.com/charmbracelet/glamour v0.8.0

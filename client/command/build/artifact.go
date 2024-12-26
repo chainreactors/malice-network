@@ -72,7 +72,7 @@ func PrintArtifacts(builders *clientpb.Builders, con *repl.Console) error {
 	}
 
 	tui.Reset()
-	selectRow := tableModel.GetHighlightedRow()
+	selectRow := tableModel.GetSelectedRow()
 	if selectRow.Data == nil {
 		con.Log.Error("No row selected\n")
 		return nil
