@@ -22,7 +22,7 @@ func Md5Hash(raw []byte) string {
 	return Hexlify(m[:])
 }
 
-func BJD2Hash(input string) uint32 {
+func DJB2Hash(input string) uint32 {
 	var hash uint32 = 5381
 
 	for _, char := range input {
