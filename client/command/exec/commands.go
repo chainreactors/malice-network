@@ -66,6 +66,31 @@ execute_local local_exe --ppid 1234 --block_dll --etw --argue "argue"
 	}
 	common.BindFlag(execLocalCmd, common.SacrificeFlagSet, func(f *pflag.FlagSet) {
 		f.StringP("process", "n", "", "custom process path")
+		f.BoolP("output", "o", false, "disable output")
+	})
+
+	inlineLocalCmd := &cobra.Command{
+		Use:   consts.ModuleInlineLocal + " [local_exe]",
+		Short: "Execute inline PE on implant process",
+		Long: `
+Execute inline PE on implant process, support spoofing process arguments
+`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return InlineLocalCmd(cmd, con)
+		},
+		Args: cobra.MinimumNArgs(1),
+		Annotations: map[string]string{
+			"depend": consts.ModuleInlineLocal,
+			"os":     "windows",
+		},
+		Example: `
+~~~
+inline_local whoami
+~~~`,
+	}
+
+	common.BindFlag(execLocalCmd, common.SacrificeFlagSet, func(f *pflag.FlagSet) {
+		f.StringP("process", "n", "", "custom process path")
 		f.BoolP("quiet", "q", false, "disable output")
 	})
 
@@ -268,19 +293,19 @@ execute_dll example.dll -e entrypoint -- arg1 arg2
 	})
 
 	execDLLSpawnCmd := &cobra.Command{
-		Use:   consts.ModuleExecuteDllSpawn + " [dll]",
-		Short: "ExecuteDllSpawn the given DLL in the sacrifice process",
+		Use:   consts.ModuleDllSpawn + " [dll]",
+		Short: "DllSpawn the given DLL in the sacrifice process",
 		Long:  `use a custom Headless PE loader to load DLL in the sacrificed process.`,
 		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ExecuteDLLSpawnCmd(cmd, con)
 		},
 		Annotations: map[string]string{
-			"depend": consts.ModuleExecuteDllSpawn,
+			"depend": consts.ModuleDllSpawn,
 		},
 		Example: `
 ~~~
-execute_dllspawn example.dll
+dllspawn example.dll
 ~~~
 `,
 	}
@@ -444,6 +469,7 @@ powerpick -s powerview.ps1 -- Get-NetUser
 	return []*cobra.Command{
 		execCmd,
 		execLocalCmd,
+		inlineLocalCmd,
 		shellCmd,
 		powershellCmd,
 		execAssemblyCmd,

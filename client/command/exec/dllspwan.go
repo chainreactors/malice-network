@@ -33,7 +33,7 @@ func ExecuteDLLSpawnCmd(cmd *cobra.Command, con *repl.Console) error {
 }
 
 func ExecuteDLLSpawn(rpc clientrpc.MaliceRPCClient, sess *core.Session, dllPath string, entrypoint string, data string, binPath string, output bool, timeout uint32, arch string, process string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
-	binary, err := common.NewBinaryData(consts.ModuleExecuteDllSpawn, dllPath, data, output, timeout, arch, process, sac)
+	binary, err := common.NewBinaryData(consts.ModuleDllSpawn, dllPath, data, output, timeout, arch, process, sac)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +65,7 @@ func ExecuteDLLSpawn(rpc clientrpc.MaliceRPCClient, sess *core.Session, dllPath 
 func RegisterDLLSpawnFunc(con *repl.Console) {
 
 	con.RegisterImplantFunc(
-		consts.ModuleExecuteDllSpawn,
+		consts.ModuleDllSpawn,
 		ExecuteDLLSpawn,
 		"bdllspawn",
 		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, ppid uint32, path string) (*clientpb.Task, error) {
@@ -76,9 +76,9 @@ func RegisterDLLSpawnFunc(con *repl.Console) {
 		nil)
 	// sess *core.Session, dllPath string, entrypoint string, args []string, binPath string, output bool, timeout uint32, arch string, process string, sac *implantpb.SacrificeProcess
 	con.AddCommandFuncHelper(
-		consts.ModuleExecuteDllSpawn,
-		consts.ModuleExecuteDllSpawn,
-		consts.ModuleExecuteDllSpawn+`(active(),"example.dll",{},true,60,"","",new_sacrifice(1234,false,true,true,""))`,
+		consts.ModuleDllSpawn,
+		consts.ModuleDllSpawn,
+		consts.ModuleDllSpawn+`(active(),"example.dll",{},true,60,"","",new_sacrifice(1234,false,true,true,""))`,
 		[]string{
 			"session: special session",
 			"dllPath",

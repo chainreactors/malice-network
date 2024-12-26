@@ -18,9 +18,9 @@ import (
 func ExecuteLocalCmd(cmd *cobra.Command, con *repl.Console) error {
 	args := cmd.Flags().Args()
 	process, _ := cmd.Flags().GetString("process")
-	output, _ := cmd.Flags().GetBool("output")
+	quiet, _ := cmd.Flags().GetBool("quiet")
 	sac := common.ParseSacrificeFlags(cmd)
-	task, err := ExecLocal(con.Rpc, con.GetInteractive(), args, output, process, sac)
+	task, err := ExecLocal(con.Rpc, con.GetInteractive(), args, !quiet, process, sac)
 	if err != nil {
 		return err
 	}
@@ -45,6 +45,37 @@ func ExecLocal(rpc clientrpc.MaliceRPCClient, sess *core.Session,
 	}
 
 	task, err := rpc.ExecuteLocal(sess.Context(), binary)
+	if err != nil {
+		return nil, err
+	}
+	return task, nil
+}
+
+func InlineLocalCmd(cmd *cobra.Command, con *repl.Console) error {
+	args := cmd.Flags().Args()
+	process, _ := cmd.Flags().GetString("process")
+	output, _ := cmd.Flags().GetBool("output")
+	task, err := InlineLocal(con.Rpc, con.GetInteractive(), args, output, process)
+	if err != nil {
+		return err
+	}
+	con.GetInteractive().Console(task, strings.Join(args, " "))
+	return nil
+}
+
+func InlineLocal(rpc clientrpc.MaliceRPCClient, sess *core.Session,
+	args []string, output bool, process string) (*clientpb.Task, error) {
+	args[0] = fileutils.FormatWindowPath(args[0])
+
+	binary := &implantpb.ExecuteBinary{
+		ProcessName: process,
+		Bin:         []byte(args[0]),
+		Args:        args[1:],
+		Output:      output,
+		Type:        consts.ModuleInlineLocal,
+	}
+
+	task, err := rpc.InlineLocal(sess.Context(), binary)
 	if err != nil {
 		return nil, err
 	}
@@ -96,4 +127,26 @@ func RegisterExecuteLocalFunc(con *repl.Console) {
 		},
 		[]string{"task"})
 
+	// inlinelocal
+	con.RegisterImplantFunc(
+		consts.ModuleInlineLocal,
+		InlineLocal,
+		"",
+		nil,
+		common.ParseExecResponse,
+		nil,
+	)
+
+	con.AddCommandFuncHelper(
+		consts.ModuleInlineLocal,
+		consts.ModuleInlineLocal,
+		consts.ModuleInlineLocal+`(active(),{""},true,"whoami")`,
+		[]string{
+			"session: special session",
+			"args: arguments",
+			"output",
+			"process",
+		},
+		[]string{"task"},
+	)
 }
