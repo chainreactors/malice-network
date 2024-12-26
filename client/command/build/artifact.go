@@ -33,8 +33,8 @@ func PrintArtifacts(builders *clientpb.Builders, con *repl.Console) error {
 	var row table.Row
 
 	tableModel := tui.NewTable([]table.Column{
-		table.NewColumn("ID", "ID", 10),
-		table.NewColumn("Name", "Name", 15),
+		table.NewColumn("ID", "ID", 8),
+		table.NewColumn("Name", "Name", 20),
 		table.NewColumn("Pipeline", "Pipeline", 20),
 		table.NewColumn("Target", "Target", 30),
 		table.NewColumn("Type", "Type", 10),

@@ -123,8 +123,8 @@ func PulseCmd(cmd *cobra.Command, con *repl.Console) error {
 	address, _ := cmd.Flags().GetString("address")
 	buildTarget, _ := cmd.Flags().GetString("target")
 	artifactId, _ := cmd.Flags().GetUint32("artifact-id")
-	if buildTarget != consts.TargetX64Windows && buildTarget != consts.TargetX86Windows {
-		return errors.New("pulse build target must be x86_64-pc-windows-msvc or i686-pc-windows-msvc")
+	if buildTarget != consts.TargetX64WindowsGnu && buildTarget != consts.TargetX86WindowsGnu {
+		return errors.New("pulse build target must be x86_64-pc-windows-gnu or i686-pc-windows-gnu")
 	}
 	go func() {
 		_, err := con.Rpc.Build(con.Context(), &clientpb.Generate{

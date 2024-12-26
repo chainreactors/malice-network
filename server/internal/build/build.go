@@ -55,7 +55,8 @@ var dockerClient *client.Client
 var once sync.Once
 
 func generateContainerName(length int) string {
-	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	//const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
 	src := rand.NewSource(time.Now().UnixNano())
 	r := rand.New(src)
 	randomPart := make([]byte, length)
@@ -441,13 +442,13 @@ func sendContaninerCtrlMsg(isEnd bool, containerName string, req *clientpb.Gener
 		core.EventBroker.Publish(core.Event{
 			EventType: consts.EventBuild,
 			IsNotify:  false,
-			Message:   fmt.Sprintf("builder %s type %s in Container %s has stopped and will be automatically removed.", req.Name, req.Type, containerName),
+			Message:   fmt.Sprintf("%s type(%s) has completed in container(%s). run `artifact list` to get the artifact.", req.Name, req.Type, containerName),
 		})
 	} else {
 		core.EventBroker.Publish(core.Event{
 			EventType: consts.EventBuild,
 			IsNotify:  false,
-			Message:   fmt.Sprintf("builder %s type %s in Container %s has started", req.Name, req.Type, containerName),
+			Message:   fmt.Sprintf("%s type(%s) has started in container(%s)...", req.Name, req.Type, containerName),
 		})
 	}
 }
