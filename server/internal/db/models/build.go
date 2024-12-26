@@ -40,36 +40,38 @@ func (b *Builder) BeforeCreate(tx *gorm.DB) (err error) {
 
 func (b *Builder) ToArtifact(bin []byte) *clientpb.Artifact {
 	return &clientpb.Artifact{
-		Id:       b.ID,
-		Bin:      bin,
-		Name:     b.Name,
-		Target:   b.Target,
-		Type:     b.Type,
-		Stage:    b.Stager,
-		Platform: b.Os,
-		Arch:     b.Arch,
-		IsSrdi:   b.IsSRDI,
-		Profile:  b.ProfileName,
-		Pipeline: b.Profile.PipelineID,
-		Time:     b.CreatedAt.Unix(),
+		Id:            b.ID,
+		Bin:           bin,
+		Name:          b.Name,
+		Target:        b.Target,
+		Type:          b.Type,
+		Stage:         b.Stager,
+		Platform:      b.Os,
+		Arch:          b.Arch,
+		IsSrdi:        b.IsSRDI,
+		Profile:       b.ProfileName,
+		BasicPipeline: b.Profile.BasicPipelineID,
+		PulsePipeline: b.Profile.PulsePipelineID,
+		Time:          b.CreatedAt.Unix(),
 	}
 }
 
 func (b *Builder) ToProtobuf() *clientpb.Builder {
 	return &clientpb.Builder{
-		Id:          b.ID,
-		Name:        b.Name,
-		Target:      b.Target,
-		Type:        b.Type,
-		Stage:       b.Stager,
-		Platform:    b.Os,
-		Arch:        b.Arch,
-		Modules:     b.Modules,
-		IsSrdi:      b.IsSRDI,
-		ProfileName: b.ProfileName,
-		PipelineId:  b.Profile.PipelineID,
-		Time:        b.CreatedAt.Unix(),
-		Resource:    b.Source,
+		Id:            b.ID,
+		Name:          b.Name,
+		Target:        b.Target,
+		Type:          b.Type,
+		Stage:         b.Stager,
+		Platform:      b.Os,
+		Arch:          b.Arch,
+		Modules:       b.Modules,
+		IsSrdi:        b.IsSRDI,
+		ProfileName:   b.ProfileName,
+		BasicPipeline: b.Profile.BasicPipelineID,
+		PulsePipeline: b.Profile.PulsePipelineID,
+		Time:          b.CreatedAt.Unix(),
+		Resource:      b.Source,
 	}
 }
 

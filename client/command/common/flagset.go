@@ -181,7 +181,8 @@ func ParseGenerateFlags(cmd *cobra.Command) (string, string, string, []string, s
 func ProfileSet(f *pflag.FlagSet) {
 	f.StringP("name", "n", "", "Overwrite profile name")
 	//f.String("target", "", "Overwrite build target")
-	f.StringP("pipeline", "p", "", "Overwrite profile pipeline_id")
+	f.StringP("basic-pipeline", "b", "", "Overwrite profile basic pipeline_id")
+	f.StringP("pulse-pipeline", "p", "", "Overwrite profile pulse pipeline_id")
 	//f.String("type", "", "Set build type")
 	//f.String("proxy", "", "Overwrite proxy")
 	//f.String("obfuscate", "", "Set obfuscate")
@@ -191,10 +192,12 @@ func ProfileSet(f *pflag.FlagSet) {
 	//f.Float32("jitter", 0.2, "Overwrite jitter")
 }
 
-func ParseProfileFlags(cmd *cobra.Command) (string, string) {
+func ParseProfileFlags(cmd *cobra.Command) (string, string, string) {
 	profileName, _ := cmd.Flags().GetString("name")
 	//buildTarget, _ := cmd.Flags().GetString("target")
-	pipelineId, _ := cmd.Flags().GetString("pipeline")
+	basicPipelineId, _ := cmd.Flags().GetString("basic-pipeline")
+	pulsePipelineId, _ := cmd.Flags().GetString("pulse-pipeline")
+
 	//buildType, _ := cmd.Flags().GetString("type")
 	//proxy, _ := cmd.Flags().GetString("proxy")
 	//obfuscate, _ := cmd.Flags().GetString("obfuscate")
@@ -204,7 +207,7 @@ func ParseProfileFlags(cmd *cobra.Command) (string, string) {
 	//interval, _ := cmd.Flags().GetInt("interval")
 	//jitter, _ := cmd.Flags().GetFloat64("jitter")
 
-	return profileName, pipelineId
+	return profileName, basicPipelineId, pulsePipelineId
 }
 
 func MalHttpFlagset(f *pflag.FlagSet) {

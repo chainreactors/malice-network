@@ -30,10 +30,15 @@ type Profile struct {
 	Params     *types.ProfileParams `gorm:"-"`         // Ignored by GORM
 	ParamsJson string               `gorm:"type:text"` // Used for storing serialized params
 
-	PipelineID    string `gorm:"type:string;index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
+	// BasicPipeline 和 PulsePipeline
+	BasicPipelineID string `gorm:"type:string;index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
+	PulsePipelineID string `gorm:"type:string;index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
+
 	implantConfig string // raw implant config
 
-	Pipeline *Pipeline `gorm:"foreignKey:PipelineID;references:Name;"`
+	// BasicPipeline 和 PulsePipeline
+	BasicPipeline *Pipeline `gorm:"foreignKey:BasicPipelineID;references:Name;"`
+	PulsePipeline *Pipeline `gorm:"foreignKey:PulsePipelineID;references:Name;"`
 
 	CreatedAt time.Time `gorm:"->;<-:create;"`
 }
@@ -71,12 +76,13 @@ func (p *Profile) DeserializeImplantConfig() error {
 
 func (p *Profile) ToProtobuf() *clientpb.Profile {
 	return &clientpb.Profile{
-		Name:       p.Name,
-		Type:       p.Type,
-		Modules:    p.Modules,
-		Ca:         p.CA,
-		PipelineId: p.PipelineID,
-		Content:    p.Raw,
-		Params:     p.ParamsJson,
+		Name:            p.Name,
+		Type:            p.Type,
+		Modules:         p.Modules,
+		Ca:              p.CA,
+		BasicPipelineId: p.BasicPipelineID,
+		PulsePipelineId: p.PulsePipelineID,
+		Content:         p.Raw,
+		Params:          p.ParamsJson,
 	}
 }

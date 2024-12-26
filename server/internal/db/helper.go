@@ -585,11 +585,28 @@ func NewProfile(profile *clientpb.Profile) error {
 		Name: profile.Name,
 		Type: profile.Type,
 		//Obfuscate:  profile.Obfuscate,
-		Modules:    profile.Modules,
-		CA:         profile.Ca,
-		ParamsJson: profile.Params,
-		PipelineID: profile.PipelineId,
-		Raw:        profile.Content,
+		Modules:         profile.Modules,
+		CA:              profile.Ca,
+		ParamsJson:      profile.Params,
+		PulsePipelineID: profile.PulsePipelineId,
+		BasicPipelineID: profile.BasicPipelineId,
+		Raw:             profile.Content,
+	}
+	basicPipeline, err := FindPipeline(profile.BasicPipelineId)
+	if err != nil {
+		return err
+	}
+	if strings.ToUpper(basicPipeline.Encryption.Type) != consts.CryptorAES {
+		return errs.ErrInvalidEncType
+	}
+	if profile.PulsePipelineId != "" {
+		pulsePipeline, err := FindPipeline(profile.PulsePipelineId)
+		if err != nil {
+			return err
+		}
+		if strings.ToUpper(pulsePipeline.Encryption.Type) != consts.CryptorXOR {
+			return errs.ErrInvalidEncType
+		}
 	}
 	return Session().Create(model).Error
 }
@@ -597,11 +614,14 @@ func NewProfile(profile *clientpb.Profile) error {
 func GetProfile(name string) (*types.ProfileConfig, error) {
 	var profileModel *models.Profile
 
-	result := Session().Preload("Pipeline").Where("name = ?", name).First(&profileModel)
+	result := Session().Preload("BasicPipeline").Preload("PulsePipeline").Where("name = ?", name).First(&profileModel)
 	if result.Error != nil {
 		return nil, result.Error
 	}
-	if profileModel.PipelineID != "" && profileModel.Pipeline == nil {
+	if profileModel.BasicPipelineID != "" && profileModel.BasicPipeline == nil {
+		return nil, errs.ErrNotFoundPipeline
+	}
+	if profileModel.PulsePipelineID != "" && profileModel.PulsePipeline == nil {
 		return nil, errs.ErrNotFoundPipeline
 	}
 	err := profileModel.DeserializeImplantConfig()
@@ -626,12 +646,12 @@ func GetProfile(name string) (*types.ProfileConfig, error) {
 			profile.Basic.Interval = profileModel.Params.Interval
 			profile.Basic.Jitter = profileModel.Params.Jitter
 		}
-		if profileModel.Pipeline != nil && len(profile.Basic.Targets) == 0 {
-			profile.Basic.Targets = []string{profileModel.Pipeline.Address()}
+		if profileModel.BasicPipeline != nil && len(profile.Basic.Targets) == 0 {
+			profile.Basic.Targets = []string{profileModel.BasicPipeline.Address()}
 		}
 	} else if profile.Pulse != nil && profileModel.Type == consts.ImplantPulse {
-		if profileModel.Pipeline != nil {
-			profile.Pulse.Target = profileModel.Pipeline.Address()
+		if profileModel.PulsePipeline != nil {
+			profile.Pulse.Target = profileModel.PulsePipeline.Address()
 		}
 	}
 
@@ -820,7 +840,7 @@ func FindArtifact(target *clientpb.Artifact) (*clientpb.Artifact, error) {
 			Preload("Profile.Pipeline").
 			Find(&builders)
 		for _, v := range builders {
-			if v.Profile.PipelineID == target.Pipeline {
+			if v.Profile.BasicPipelineID == target.BasicPipeline {
 				builder = v
 				break
 			}

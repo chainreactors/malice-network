@@ -11,4 +11,5 @@ var (
 	ErrInvalidId      = errors.New("invalid session id")
 	ErrInvalidImplant = errors.New("invalid implant")
 	ErrPacketTooLarge = errors.New("packet too large")
+	ErrInvalidEncType = errors.New("invalid encryption type")
 )

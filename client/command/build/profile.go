@@ -27,17 +27,19 @@ func ProfileShowCmd(cmd *cobra.Command, con *repl.Console) error {
 		table.NewColumn("Target", "Target", 15),
 		table.NewColumn("Type", "Type", 15),
 		table.NewColumn("Obfuscate", "Obfuscate", 10),
-		table.NewColumn("Pipeline", "Pipeline", 15),
+		table.NewColumn("Basic Pipeline", "Basic Pipeline", 15),
+		table.NewColumn("Pulse Pipeline", "Pulse Pipeline", 15),
 	}, true)
 
 	for _, p := range resp.Profiles {
 		row = table.NewRow(
 			table.RowData{
-				"Name":      p.Name,
-				"Target":    p.Target,
-				"Type":      p.Type,
-				"Obfuscate": p.Obfuscate,
-				"Pipeline":  p.PipelineId,
+				"Name":           p.Name,
+				"Target":         p.Target,
+				"Type":           p.Type,
+				"Obfuscate":      p.Obfuscate,
+				"Basic Pipeline": p.BasicPipelineId,
+				"Pulse Pipeline": p.PulsePipelineId,
 			})
 		rowEntries = append(rowEntries, row)
 	}
@@ -48,7 +50,7 @@ func ProfileShowCmd(cmd *cobra.Command, con *repl.Console) error {
 }
 
 func ProfileLoadCmd(cmd *cobra.Command, con *repl.Console) error {
-	profileName, pipelineName := common.ParseProfileFlags(cmd)
+	profileName, basicPipeline, pulsePipeline := common.ParseProfileFlags(cmd)
 
 	profilePath := cmd.Flags().Arg(0)
 	content, err := os.ReadFile(profilePath)
@@ -57,29 +59,31 @@ func ProfileLoadCmd(cmd *cobra.Command, con *repl.Console) error {
 	}
 
 	profile := &clientpb.Profile{
-		Name:       profileName,
-		PipelineId: pipelineName,
-		Content:    content,
+		Name:            profileName,
+		BasicPipelineId: basicPipeline,
+		PulsePipelineId: pulsePipeline,
+		Content:         content,
 	}
 	_, err = con.Rpc.NewProfile(con.Context(), profile)
 	if err != nil {
 		return err
 	}
-	con.Log.Infof("load implant profile %s for %s\n", profileName, pipelineName)
+	con.Log.Infof("load implant profile %s for %s\n", profileName, basicPipeline)
 	return nil
 }
 
 func ProfileNewCmd(cmd *cobra.Command, con *repl.Console) error {
-	profileName, pipelineName := common.ParseProfileFlags(cmd)
+	profileName, basicPipeline, pulsePipeline := common.ParseProfileFlags(cmd)
 	profile := &clientpb.Profile{
-		Name:       profileName,
-		PipelineId: pipelineName,
+		Name:            profileName,
+		BasicPipelineId: basicPipeline,
+		PulsePipelineId: pulsePipeline,
 	}
 	_, err := con.Rpc.NewProfile(con.Context(), profile)
 	if err != nil {
 		return err
 	}
-	con.Log.Infof("create new profile %s for %s success\n", profileName, pipelineName)
+	con.Log.Infof("create new profile %s for %s success\n", profileName, basicPipeline)
 	return nil
 }
 

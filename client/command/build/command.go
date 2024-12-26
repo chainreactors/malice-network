@@ -60,12 +60,13 @@ profile load /path/to/config.yaml --name my_profile --interval 10 --jitter 0.5
 ~~~`,
 	}
 	common.BindFlag(loadProfileCmd, common.ProfileSet)
-	loadProfileCmd.MarkFlagRequired("pipeline")
+	loadProfileCmd.MarkFlagRequired("basic-pipeline")
 	loadProfileCmd.MarkFlagRequired("name")
 	common.BindFlagCompletions(loadProfileCmd, func(comp carapace.ActionMap) {
 		comp["name"] = carapace.ActionValues("profile name")
 		//comp["target"] = common.BuildTargetCompleter(con)
-		comp["pipeline"] = common.AllPipelineCompleter(con)
+		comp["basic-pipeline"] = common.AllPipelineCompleter(con)
+		comp["pulse-pipeline"] = common.AllPipelineCompleter(con)
 		//comp["proxy"] = carapace.ActionValues("").Usage("")
 		//comp["obfuscate"] = carapace.ActionValues("true", "false")
 		comp["modules"] = carapace.ActionValues("e.g.: execute_exe,execute_dll")
@@ -89,11 +90,12 @@ profile new --name my_profile --pipeline default_tcp
 `,
 	}
 	common.BindFlag(newProfileCmd, common.ProfileSet)
-	newProfileCmd.MarkFlagRequired("pipeline")
+	newProfileCmd.MarkFlagRequired("basic-pipeline")
 	newProfileCmd.MarkFlagRequired("name")
 	common.BindFlagCompletions(newProfileCmd, func(comp carapace.ActionMap) {
 		comp["name"] = carapace.ActionValues("profile name")
-		comp["pipeline"] = common.AllPipelineCompleter(con)
+		comp["basic-pipeline"] = common.AllPipelineCompleter(con)
+		comp["pulse-pipeline"] = common.AllPipelineCompleter(con)
 	})
 
 	deleteProfileCmd := &cobra.Command{
