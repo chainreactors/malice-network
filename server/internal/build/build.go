@@ -382,15 +382,14 @@ func MaleficSRDI(src, dst, platform, arch, funcName, dataPath string) ([]byte, e
 	if dataPath != "" {
 		args = append(args, userDataPathOption, dataPath)
 	}
-
 	cmd := exec.Command(LocalMutantPath, args...)
-
+	cmd.Dir = sourcePath
 	output, err := cmd.CombinedOutput()
+	logs.Log.Debugf("SRDI output: %s", output)
+
 	if err != nil {
 		return nil, err
 	}
-
-	logs.Log.Debugf("SRDI output: %s", output)
 
 	data, err := os.ReadFile(dst)
 	if err != nil {

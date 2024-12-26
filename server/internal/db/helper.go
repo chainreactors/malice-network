@@ -632,7 +632,7 @@ func GetProfile(name string) (*types.ProfileConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	if profile.Basic != nil && profileModel.Type != consts.ImplantModPulse {
+	if profile.Basic != nil {
 		if profileModel.CA != "" {
 			profile.Basic.CA = profileModel.CA
 		}
@@ -646,10 +646,11 @@ func GetProfile(name string) (*types.ProfileConfig, error) {
 			profile.Basic.Interval = profileModel.Params.Interval
 			profile.Basic.Jitter = profileModel.Params.Jitter
 		}
-		if profileModel.BasicPipeline != nil && len(profile.Basic.Targets) == 0 {
+		if profileModel.BasicPipeline != nil {
 			profile.Basic.Targets = []string{profileModel.BasicPipeline.Address()}
 		}
-	} else if profile.Pulse != nil && profileModel.Type == consts.ImplantPulse {
+	}
+	if profile.Pulse != nil {
 		if profileModel.PulsePipeline != nil {
 			profile.Pulse.Target = profileModel.PulsePipeline.Address()
 		}
