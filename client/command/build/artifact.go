@@ -55,7 +55,7 @@ func PrintArtifacts(builders *clientpb.Builders, con *repl.Console) error {
 				"Stager":   builder.Stage,
 				"Modules":  builder.Modules,
 				"Profile":  builder.ProfileName,
-				"Pipeline": builder.PipelineId,
+				"Pipeline": builder.Pipeline,
 				"Time":     builder.Time,
 			})
 

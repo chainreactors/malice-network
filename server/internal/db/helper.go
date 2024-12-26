@@ -840,7 +840,11 @@ func FindArtifact(target *clientpb.Artifact) (*clientpb.Artifact, error) {
 			Preload("Profile.Pipeline").
 			Find(&builders)
 		for _, v := range builders {
-			if v.Profile.BasicPipelineID == target.BasicPipeline {
+			if v.Type == consts.ImplantModPulse && v.Profile.PulsePipelineID == target.Pipeline {
+				builder = v
+				break
+			}
+			if v.Profile.BasicPipelineID == target.Pipeline {
 				builder = v
 				break
 			}
