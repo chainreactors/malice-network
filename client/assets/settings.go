@@ -12,20 +12,13 @@ import (
 //)
 
 type Settings struct {
-	TableStyle         string `yaml:"tables" config:"tables"`
-	AutoAdult          bool   `yaml:"autoadult" config:"autoadult"`
-	BeaconAutoResults  bool   `yaml:"beacon_autoresults" config:"beacon_autoresults"`
-	SmallTermWidth     int    `yaml:"small_term_width" config:"small_term_width"`
-	AlwaysOverflow     bool   `yaml:"always_overflow" config:"always_overflow"`
-	VimMode            bool   `yaml:"vim_mode" config:"vim_mode"`
-	DefaultTimeout     int    `yaml:"default_timeout" config:"default_timeout" default:""`
 	MaxServerLogSize   int    `yaml:"max_server_log_size" config:"max_server_log_size" default:"10"`
 	GithubRepo         string `yaml:"github_repo" config:"github_repo" default:""`
 	GithubOwner        string `yaml:"github_owner" config:"github_owner" default:""`
 	GithubToken        string `yaml:"github_token" config:"github_token" default:""`
-	GithubWorkflowFile string `yaml:"github_workflow_file" config:"github_workflow_file" default:"generate.yaml"`
+	GithubWorkflowFile string `yaml:"github_workflow_file" config:"github_workflow_file" default:"generate.yml"`
 	OpsecThreshold     string `yaml:"opsec_threshold" config:"opsec_threshold" default:"6"`
-	VtApiKey           string `yaml:"vt_api_key" config:"vt_api_key" default:""`
+	//VtApiKey           string `yaml:"vt_api_key" config:"vt_api_key" default:""`
 }
 
 func LoadSettings() (*Settings, error) {

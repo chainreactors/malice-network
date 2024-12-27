@@ -40,8 +40,8 @@ func SetCustomUsageTemplate() (*template.Template, error) {
 
 	customTemplate := `
 {{RenderMarkdown "## Usage:"}}{{if .Runnable}}
-{{RenderMarkdown .UseLine}}{{end}}{{if .HasAvailableSubCommands}}
-{{RenderMarkdown (printf "%s %s" .CommandPath "[command]")}}{{end}}{{if gt (len .Aliases) 0}}
+{{RenderMarkdown (TrimParentCommand .UseLine .)}}{{end}}{{if .HasAvailableSubCommands}}
+{{RenderMarkdown (printf "%s %s" (TrimParentCommand .CommandPath .) "[command]")}}{{end}}{{if gt (len .Aliases) 0}}
 
 {{RenderMarkdown "## Aliases:"}}
 {{RenderMarkdown .NameAndAliases}}{{end}}{{if .HasExample}}

@@ -6,6 +6,7 @@ import (
 	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/glamour"
 	"github.com/muesli/termenv"
+	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"io"
 	"os"
@@ -30,6 +31,7 @@ var TemplateFuncs = template.FuncMap{
 	"FlagUsages":              FlagUsages,
 	"RenderOpsec":             renderOpsec,
 	"RenderMarkdown":          renderMarkdownFunc,
+	"TrimParentCommand":       trimParentCommand,
 }
 
 var initializers []func()
@@ -358,4 +360,9 @@ var renderMarkdownFunc = func(title string) string {
 	}
 
 	return strings.TrimSpace(rendered)
+}
+
+var trimParentCommand = func(useLine string, cmd *cobra.Command) string {
+	parentName := cmd.Parent().Name()
+	return strings.TrimPrefix(useLine, parentName+" ")
 }
