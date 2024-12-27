@@ -137,7 +137,6 @@ const (
 	CommandWait             = "wait"
 	CommandRecover          = "recover"
 	CommandPolling          = "polling"
-	CommandSessions         = "sessions"
 	CommandNewBindSession   = "newbind"
 	CommandTasks            = "tasks"
 	CommandFiles            = "files"

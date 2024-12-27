@@ -111,13 +111,3 @@ func SessionLogin(tableModel *tui.TableModel, writer io.Writer, con *repl.Consol
 		Use(con, session)
 	}
 }
-
-func SessionInfoCmd(cmd *cobra.Command, con *repl.Console) error {
-	session := con.GetInteractive()
-	if session == nil {
-		return repl.ErrNotFoundSession
-	}
-	result := tui.RendStructDefault(session, "Tasks")
-	con.Log.Info(result)
-	return nil
-}

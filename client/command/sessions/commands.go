@@ -10,8 +10,8 @@ import (
 )
 
 func Commands(con *repl.Console) []*cobra.Command {
-	sessionsCmd := &cobra.Command{
-		Use:   consts.CommandSessions,
+	sessCmd := &cobra.Command{
+		Use:   consts.CommandSession,
 		Short: "List and Choice sessions",
 		Long: `Display a table of active sessions on the server, 
 allowing you to navigate up and down to select a desired session. 
@@ -23,21 +23,16 @@ Use the -a or --all option to display all sessions, including those that have be
 		},
 		Example: `~~~
 // List all active sessions
-sessions
+session
 
 // List all sessions, including those that have been disconnected
-sessions -a
+session -a
 ~~~`,
 	}
 
-	common.Bind("sessions", true, sessionsCmd, func(f *pflag.FlagSet) {
+	common.BindFlag(sessCmd, func(f *pflag.FlagSet) {
 		f.BoolP("all", "a", false, "show all sessions")
 	})
-
-	sessCmd := &cobra.Command{
-		Use:   consts.CommandSession,
-		Short: "Session manager",
-	}
 
 	bindSessNewCmd := &cobra.Command{
 		Use:   consts.CommandNewBindSession + " [session]",
@@ -181,18 +176,7 @@ observe -r
 
 	common.BindArgCompletions(historyCommand, nil, carapace.ActionValues().Usage("number of lines"))
 
-	infoCommand := &cobra.Command{
-		Use:   "info",
-		Short: "show session info",
-		Long:  "Displays the specified session info.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return SessionInfoCmd(cmd, con)
-		},
-	}
-	sessionsCmd.AddCommand(infoCommand)
-
 	return []*cobra.Command{
-		sessionsCmd,
 		sessCmd,
 		backCommand,
 		useCommand,

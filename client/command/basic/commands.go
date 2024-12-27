@@ -93,7 +93,16 @@ func Commands(con *repl.Console) []*cobra.Command {
 			"implant": consts.ImplantModBind,
 		},
 	}
-	return []*cobra.Command{sleepCmd, suicideCmd, getCmd, waitCmd, pollingCmd, initCmd, recoverCmd}
+
+	infoCommand := &cobra.Command{
+		Use:   "info",
+		Short: "show session info",
+		Long:  "Displays the specified session info.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return SessionInfoCmd(cmd, con)
+		},
+	}
+	return []*cobra.Command{sleepCmd, suicideCmd, getCmd, waitCmd, pollingCmd, initCmd, recoverCmd, infoCommand}
 }
 
 func Register(con *repl.Console) {
