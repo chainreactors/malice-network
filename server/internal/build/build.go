@@ -402,7 +402,7 @@ func MaleficSRDI(src, dst, platform, arch, funcName, dataPath string) ([]byte, e
 	if platform == consts.Windows {
 		platform = "win"
 	}
-	args := []string{command, "srdi", "malefic", src, platform, arch, dst}
+	args := []string{command, "srdi", "-i", src, "-p", platform, "-a", arch, "-o", dst}
 	if funcName != "" {
 		args = append(args, funcNameOption, funcName)
 	}
