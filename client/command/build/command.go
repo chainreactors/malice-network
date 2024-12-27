@@ -46,17 +46,17 @@ The **profile load** command requires a valid configuration file path (e.g., **c
 			return ProfileLoadCmd(cmd, con)
 		},
 		Example: `~~~
-// Create a new profile
-profile load /path/to/config.yaml --name my_profile
-
 // Create a new profile using network configuration in pipeline
-profile load /path/to/config.yaml --name my_profile --pipeline pipeline_name
+profile load /path/to/config.yaml --name my_profile --basic-pipeline pipeline_name
 
 // Create a profile with specific modules
-profile load /path/to/config.yaml --name my_profile --modules base,sys_full
+profile load /path/to/config.yaml --name my_profile --modules base,sys_full --basic-pipeline pipeline_name
 
 // Create a profile with custom interval and jitter
-profile load /path/to/config.yaml --name my_profile --interval 10 --jitter 0.5
+profile load /path/to/config.yaml --name my_profile --interval 10 --jitter 0.5 --basic-pipeline pipeline_name
+
+// Create a profile for pulse
+profile load /path/to/config.yaml --name my_profile --basic-pipeline pipeline_name --pulse-pipeline pulse_pipeline_name
 ~~~`,
 	}
 	common.BindFlag(loadProfileCmd, common.ProfileSet)
@@ -85,7 +85,7 @@ profile load /path/to/config.yaml --name my_profile --interval 10 --jitter 0.5
 		},
 		Example: `
 ~~~
-profile new --name my_profile --pipeline default_tcp
+profile new --name my_profile --basic-pipeline default_tcp
 ~~~
 `,
 	}
@@ -182,8 +182,6 @@ build bind --target x86_64-pc-windows-msvc --profile bind_profile --srdi
 		Use:   consts.CommandBuildPrelude,
 		Short: "Build a prelude payload",
 		Long: `Generate a prelude payload as part of a multi-stage deployment.
-	
-	The **target** flag is required to specify the platform, such as **x86_64-unknown-linux-musl** or **x86_64-pc-windows-msvc**, ensuring compatibility with the deployment environment.
 	`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -264,6 +262,9 @@ build pulse --target x86_64-pc-windows-msvc --profile pulse_profile --modules ba
 	
 // Build a pulse payload with SRDI technology
 build pulse --target x86_64-pc-windows-msvc --profile pulse_profile --srdi
+
+// Build a pulse payload by specifying artifact
+build pulse --target x86_64-pc-windows-msvc --profile pulse_profile --artifact-id 1
 ~~~
 `,
 	}
@@ -334,6 +335,16 @@ artifact list
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return DownloadArtifactCmd(cmd, con)
 		},
+		Example: `
+// Download a artifact
+	artifact download artifact_name
+
+// Download a artifact to specific path
+	artifact download artifact_name -o /path/to/output
+
+// Download a artifact by srdi
+	artifact download artifact_name -s
+`,
 	}
 	common.BindFlag(downloadCmd, func(f *pflag.FlagSet) {
 		f.StringP("output", "o", "", "output path")
