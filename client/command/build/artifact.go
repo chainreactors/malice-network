@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 func ListArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
@@ -45,6 +46,7 @@ func PrintArtifacts(builders *clientpb.Builders, con *repl.Console) error {
 		table.NewColumn("Profile", "Profile", 20),
 	}, false)
 	for _, builder := range builders.Builders {
+		formattedTime := time.Unix(builder.Time, 0).Format("2006-01-02 15:04:05")
 		row = table.NewRow(
 			table.RowData{
 				"ID":       builder.Id,
@@ -56,7 +58,7 @@ func PrintArtifacts(builders *clientpb.Builders, con *repl.Console) error {
 				"Modules":  builder.Modules,
 				"Profile":  builder.ProfileName,
 				"Pipeline": builder.Pipeline,
-				"Time":     builder.Time,
+				"Time":     formattedTime,
 			})
 
 		rowEntries = append(rowEntries, row)
