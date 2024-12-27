@@ -66,12 +66,8 @@ func makeRunners(implantCmd *cobra.Command, con *repl.Console) (pre, post func(c
 		var session *core.Session
 		var ok bool
 
-		if session, ok = con.GetLocalSession(sid); ok {
-			var err error
-			session, err = con.UpdateSession(sid)
-			if err != nil {
-				return err
-			}
+		if session, ok = con.GetLocalSession(sid); !ok {
+			return fmt.Errorf("session %s not found", sid)
 		}
 
 		con.ActiveTarget.Set(session)
