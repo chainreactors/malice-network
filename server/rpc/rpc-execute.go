@@ -169,6 +169,6 @@ func (rpc *Server) InlineLocal(ctx context.Context, req *implantpb.ExecuteBinary
 	if err != nil {
 		return nil, err
 	}
-	go greq.HandlerResponse(ch, types.MsgExec)
+	go greq.HandlerResponse(ch, types.MsgResponse)
 	return greq.Task.ToProtobuf(), nil
 }
