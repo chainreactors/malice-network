@@ -4,6 +4,16 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"io"
+	"math/rand"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"regexp"
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/encoders"
@@ -14,15 +24,6 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
-	"io"
-	"math/rand"
-	"os"
-	"os/exec"
-	"path/filepath"
-	"regexp"
-	"strings"
-	"sync"
-	"time"
 )
 
 var (
@@ -349,6 +350,32 @@ func NewMaleficSRDIArtifact(name, typ, src, platform, arch, stage, funcName, dat
 	return builder, bin, nil
 }
 
+// for pulse
+func OBJCOPYPulse(builder *models.Builder, platform, arch string) ([]byte, error) {
+	absBuildOutputPath, err := filepath.Abs(configs.BuildOutputPath)
+	if err != nil {
+		return nil, err
+	}
+	dstPath := filepath.Join(absBuildOutputPath, encoders.UUID())
+	cmd := exec.Command("objcopy", "-O", "binary", builder.Path, dstPath)
+	cmd.Dir = sourcePath
+	output, err := cmd.CombinedOutput()
+	logs.Log.Debugf("Objcopy output: %s", output)
+	if err != nil {
+		return nil, err
+	}
+	bin, err := os.ReadFile(dstPath)
+	if err != nil {
+		return nil, err
+	}
+	builder.ShellcodePath = dstPath
+	err = db.UpdateBuilderSrdi(builder)
+	if err != nil {
+		return nil, err
+	}
+	return bin, nil
+}
+
 func SRDIArtifact(builder *models.Builder, platform, arch string) ([]byte, error) {
 	absBuildOutputPath, err := filepath.Abs(configs.BuildOutputPath)
 	if err != nil {
@@ -375,7 +402,7 @@ func MaleficSRDI(src, dst, platform, arch, funcName, dataPath string) ([]byte, e
 	if platform == consts.Windows {
 		platform = "win"
 	}
-	args := []string{command, "srdi", src, platform, arch, dst}
+	args := []string{command, "srdi", "malefic", src, platform, arch, dst}
 	if funcName != "" {
 		args = append(args, funcNameOption, funcName)
 	}

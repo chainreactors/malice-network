@@ -3,6 +3,11 @@ package build
 import (
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"sync"
+
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/codenames"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -12,10 +17,6 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"github.com/docker/docker/client"
-	"os"
-	"path/filepath"
-	"strings"
-	"sync"
 )
 
 func init() {
@@ -93,12 +94,6 @@ func (bqm *BuildQueueManager) executeBuild(req *clientpb.Generate, builder model
 		return nil, errs.ErrInvalidateTarget
 	}
 
-	// Get Docker client
-	cli, err := GetDockerClient()
-	if err != nil {
-		return nil, err
-	}
-
 	// Prepare build request
 	req.Name = builder.Name
 	profileByte, err := GenerateProfile(req)
@@ -112,6 +107,12 @@ func (bqm *BuildQueueManager) executeBuild(req *clientpb.Generate, builder model
 		req.Feature = strings.Join(profile.Implant.Modules, ",")
 	}
 
+	// Get Docker client
+	cli, err := GetDockerClient()
+	if err != nil {
+		return nil, err
+	}
+
 	logs.Log.Infof("start to build %s ...", req.Target)
 
 	// Handle different build types
@@ -123,7 +124,7 @@ func (bqm *BuildQueueManager) executeBuild(req *clientpb.Generate, builder model
 	case consts.CommandBuildPrelude:
 		err = BuildPrelude(cli, req)
 	case consts.CommandBuildModules:
-		err = BuildModules(cli, req) // Immediate build assumed
+		err = BuildModules(cli, req)
 	case consts.CommandBuildPulse:
 		err = bqm.handleBuildPulse(cli, req, target)
 	default:
@@ -148,20 +149,21 @@ func (bqm *BuildQueueManager) handleBuildPulse(cli *client.Client, req *clientpb
 		yamlID := profile.Pulse.Extras["flags"].(map[string]interface{})["artifact_id"].(int)
 		if uint32(yamlID) != 0 {
 			artifactID = uint32(yamlID)
+		} else {
+			artifactID = 0
 		}
-		artifactID = 0
 	}
 
 	idBuilder, err := db.GetArtifactById(artifactID)
 	if err != nil && !errors.Is(err, db.ErrRecordNotFound) {
-		return err
+		return fmt.Errorf("getting artifact error: %v", err)
 	}
 
 	// Handle case when artifact is not found
 	if errors.Is(err, db.ErrRecordNotFound) {
+		logs.Log.Infof("artifact not found, creating new Beacon build")
 		return bqm.handleNewBeaconBuild(cli, req, artifactID, target)
 	}
-
 	if !idBuilder.IsSRDI {
 		idBuilder.IsSRDI = true
 		_, err := SRDIArtifact(idBuilder, target.OS, target.Arch)
@@ -246,10 +248,24 @@ func (bqm *BuildQueueManager) finalizeBuild(req *clientpb.Generate, builder mode
 	if err != nil {
 		return nil, err
 	}
+	//_, err = SRDIArtifact(&builder, target.OS, target.Arch)
+	//if err != nil {
+	//	return nil, err
+	//}
 	if builder.IsSRDI {
-		_, err = SRDIArtifact(&builder, target.OS, target.Arch)
-		if err != nil {
-			return nil, err
+
+		if builder.Type == consts.CommandBuildPulse {
+			logs.Log.Infof("objcopy start ...")
+			_, err = OBJCOPYPulse(&builder, target.OS, target.Arch)
+			if err != nil {
+				return nil, fmt.Errorf("objcopy error: %v", err)
+			}
+			logs.Log.Infof("objcopy end ...")
+		} else {
+			_, err = SRDIArtifact(&builder, target.OS, target.Arch)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
