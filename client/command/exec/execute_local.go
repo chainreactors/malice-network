@@ -37,7 +37,7 @@ func ExecLocal(rpc clientrpc.MaliceRPCClient, sess *core.Session,
 
 	binary := &implantpb.ExecuteBinary{
 		ProcessName: process,
-		Bin:         []byte(args[0]),
+		Path:        args[0],
 		Args:        args[1:],
 		Output:      output,
 		Sacrifice:   sac,
@@ -68,8 +68,9 @@ func InlineLocal(rpc clientrpc.MaliceRPCClient, sess *core.Session,
 	args[0] = fileutils.FormatWindowPath(args[0])
 
 	binary := &implantpb.ExecuteBinary{
-		ProcessName: args[0],
+		Path:        args[0],
 		Args:        args[1:],
+		ProcessName: process,
 		Output:      output,
 		Type:        consts.ModuleInlineLocal,
 	}
@@ -99,7 +100,7 @@ func RegisterExecuteLocalFunc(con *repl.Console) {
 				Argue:    "",
 			})
 		},
-		common.ParseExecResponse,
+		common.ParseAssembly,
 		nil,
 	)
 
@@ -132,7 +133,7 @@ func RegisterExecuteLocalFunc(con *repl.Console) {
 		InlineLocal,
 		"",
 		nil,
-		common.ParseExecResponse,
+		common.ParseAssembly,
 		nil,
 	)
 

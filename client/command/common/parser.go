@@ -65,7 +65,7 @@ func ParseResponse(ctx *clientpb.TaskContext) (interface{}, error) {
 
 func ParseExecResponse(ctx *clientpb.TaskContext) (interface{}, error) {
 	resp := ctx.Spite.GetExecResponse()
-	if resp.Stdout != nil || resp.Stderr != nil {
+	if resp == nil || resp.Stdout != nil || resp.Stderr != nil {
 		return fmt.Sprintf("pid: %d\n%s\n%s", resp.Pid, resp.Stdout, tui.RedFg.Render(string(resp.Stderr))), nil
 	}
 
