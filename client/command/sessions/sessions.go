@@ -37,12 +37,12 @@ func PrintSessions(sessions map[string]*core.Session, con *repl.Console, isAll b
 	//groupColors := make(map[string]termenv.ANSIColor)
 	tableModel := tui.NewTable([]table.Column{
 		table.NewColumn("ID", "ID", 8),
-		table.NewColumn("Group", "Group", 20),
+		table.NewColumn("Group", "Group", 16),
 		table.NewColumn("Pipeline", "Pipeline", 15),
-		table.NewColumn("Remote Address", "Remote Address", 25),
+		table.NewColumn("Remote Address", "Remote Address", 22),
 		table.NewColumn("Username", "Username", 15),
 		table.NewColumn("System", "System", 20),
-		table.NewColumn("Last Message", "Last Message", 10),
+		table.NewColumn("Last Message", "Last Message", 12),
 		table.NewColumn("Health", "Health", 10),
 	}, false)
 	for _, session := range sessions {
@@ -58,7 +58,7 @@ func PrintSessions(sessions map[string]*core.Session, con *repl.Console, isAll b
 		row = table.NewRow(
 			table.RowData{
 				"ID":             session.SessionId[:8],
-				"Group":          fmt.Sprintf("[%s]%s", session.GroupName, session.Note),
+				"Group":          fmt.Sprintf("%s/%s", session.GroupName, session.Note),
 				"Pipeline":       session.PipelineId,
 				"Remote Address": session.Target,
 				"Username":       fmt.Sprintf("%s/%s", session.Os.Hostname, session.Os.Username),

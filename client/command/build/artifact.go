@@ -34,14 +34,14 @@ func PrintArtifacts(builders *clientpb.Builders, con *repl.Console) error {
 	var row table.Row
 
 	tableModel := tui.NewTable([]table.Column{
-		table.NewColumn("ID", "ID", 8),
+		table.NewColumn("ID", "ID", 6),
 		table.NewColumn("Name", "Name", 20),
 		table.NewColumn("Pipeline", "Pipeline", 20),
 		table.NewColumn("Target", "Target", 30),
 		table.NewColumn("Type", "Type", 10),
-		table.NewColumn("Source", "Source", 10),
-		table.NewColumn("Stager", "Stager", 10),
-		table.NewColumn("Modules", "Modules", 30),
+		table.NewColumn("Source", "Source", 6),
+		//table.NewColumn("Stager", "Stager", 10),
+		table.NewColumn("Modules", "Modules", 16),
 		table.NewColumn("Time", "Time", 20),
 		table.NewColumn("Profile", "Profile", 20),
 	}, false)
@@ -49,12 +49,12 @@ func PrintArtifacts(builders *clientpb.Builders, con *repl.Console) error {
 		formattedTime := time.Unix(builder.Time, 0).Format("2006-01-02 15:04:05")
 		row = table.NewRow(
 			table.RowData{
-				"ID":       builder.Id,
-				"Name":     builder.Name,
-				"Target":   builder.Target,
-				"Type":     builder.Type,
-				"Source":   builder.Resource,
-				"Stager":   builder.Stage,
+				"ID":     builder.Id,
+				"Name":   builder.Name,
+				"Target": builder.Target,
+				"Type":   builder.Type,
+				"Source": builder.Resource,
+				//"Stager":   builder.Stage,
 				"Modules":  builder.Modules,
 				"Profile":  builder.ProfileName,
 				"Pipeline": builder.Pipeline,

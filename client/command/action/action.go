@@ -210,7 +210,7 @@ func RunPulseWorkFlowCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 	name, address, buildTarget, modules, ca, interval, jitter, _ := common.ParseGenerateFlags(cmd)
-	if buildTarget != consts.TargetX64Windows && buildTarget != consts.TargetX86Windows {
+	if buildTarget != consts.TargetX64WindowsGnu && buildTarget != consts.TargetX86WindowsGnu {
 		return errors.New("pulse build target must be x86_64-pc-windows-msvc or i686-pc-windows-msvc")
 	}
 	artifactID, _ := cmd.Flags().GetUint32("artifact-id")
