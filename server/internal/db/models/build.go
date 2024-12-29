@@ -44,7 +44,7 @@ func (b *Builder) ToArtifact(bin []byte) *clientpb.Artifact {
 	if b.Type == consts.CommandBuildPulse {
 		pipeline = b.Profile.PulsePipelineID
 	} else {
-		pipeline = b.Profile.BasicPipelineID
+		pipeline = b.Profile.PipelineID
 	}
 	return &clientpb.Artifact{
 		Id:       b.ID,
@@ -67,7 +67,7 @@ func (b *Builder) ToProtobuf() *clientpb.Builder {
 	if b.Type == consts.CommandBuildPulse {
 		pipeline = b.Profile.PulsePipelineID
 	} else {
-		pipeline = b.Profile.BasicPipelineID
+		pipeline = b.Profile.PipelineID
 	}
 	return &clientpb.Builder{
 		Id:          b.ID,

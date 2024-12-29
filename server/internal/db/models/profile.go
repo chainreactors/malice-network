@@ -31,13 +31,13 @@ type Profile struct {
 	ParamsJson string               `gorm:"type:text"` // Used for storing serialized params
 
 	// BasicPipeline 和 PulsePipeline
-	BasicPipelineID string `gorm:"type:string;index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
+	PipelineID      string `gorm:"type:string;index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
 	PulsePipelineID string `gorm:"type:string;index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
 
 	implantConfig string // raw implant config
 
 	// BasicPipeline 和 PulsePipeline
-	BasicPipeline *Pipeline `gorm:"foreignKey:BasicPipelineID;references:Name;"`
+	BasicPipeline *Pipeline `gorm:"foreignKey:PipelineID;references:Name;"`
 	PulsePipeline *Pipeline `gorm:"foreignKey:PulsePipelineID;references:Name;"`
 
 	CreatedAt time.Time `gorm:"->;<-:create;"`
@@ -80,7 +80,7 @@ func (p *Profile) ToProtobuf() *clientpb.Profile {
 		Type:            p.Type,
 		Modules:         p.Modules,
 		Ca:              p.CA,
-		BasicPipelineId: p.BasicPipelineID,
+		PipelineId:      p.PipelineID,
 		PulsePipelineId: p.PulsePipelineID,
 		Content:         p.Raw,
 		Params:          p.ParamsJson,

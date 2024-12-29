@@ -589,10 +589,10 @@ func NewProfile(profile *clientpb.Profile) error {
 		CA:              profile.Ca,
 		ParamsJson:      profile.Params,
 		PulsePipelineID: profile.PulsePipelineId,
-		BasicPipelineID: profile.BasicPipelineId,
+		PipelineID:      profile.PipelineId,
 		Raw:             profile.Content,
 	}
-	basicPipeline, err := FindPipeline(profile.BasicPipelineId)
+	basicPipeline, err := FindPipeline(profile.PipelineId)
 	if err != nil {
 		return err
 	}
@@ -618,7 +618,7 @@ func GetProfile(name string) (*types.ProfileConfig, error) {
 	if result.Error != nil {
 		return nil, result.Error
 	}
-	if profileModel.BasicPipelineID != "" && profileModel.BasicPipeline == nil {
+	if profileModel.PipelineID != "" && profileModel.BasicPipeline == nil {
 		return nil, errs.ErrNotFoundPipeline
 	}
 	if profileModel.PulsePipelineID != "" && profileModel.PulsePipeline == nil {
@@ -845,7 +845,7 @@ func FindArtifact(target *clientpb.Artifact) (*clientpb.Artifact, error) {
 				builder = v
 				break
 			}
-			if v.Profile.BasicPipelineID == target.Pipeline {
+			if v.Profile.PipelineID == target.Pipeline {
 				builder = v
 				break
 			}

@@ -38,7 +38,7 @@ func ProfileShowCmd(cmd *cobra.Command, con *repl.Console) error {
 				"Target":         p.Target,
 				"Type":           p.Type,
 				"Obfuscate":      p.Obfuscate,
-				"Basic Pipeline": p.BasicPipelineId,
+				"Pipeline":       p.PipelineId,
 				"Pulse Pipeline": p.PulsePipelineId,
 			})
 		rowEntries = append(rowEntries, row)
@@ -60,7 +60,7 @@ func ProfileLoadCmd(cmd *cobra.Command, con *repl.Console) error {
 
 	profile := &clientpb.Profile{
 		Name:            profileName,
-		BasicPipelineId: basicPipeline,
+		PipelineId:      basicPipeline,
 		PulsePipelineId: pulsePipeline,
 		Content:         content,
 	}
@@ -76,7 +76,7 @@ func ProfileNewCmd(cmd *cobra.Command, con *repl.Console) error {
 	profileName, basicPipeline, pulsePipeline := common.ParseProfileFlags(cmd)
 	profile := &clientpb.Profile{
 		Name:            profileName,
-		BasicPipelineId: basicPipeline,
+		PipelineId:      basicPipeline,
 		PulsePipelineId: pulsePipeline,
 	}
 	_, err := con.Rpc.NewProfile(con.Context(), profile)

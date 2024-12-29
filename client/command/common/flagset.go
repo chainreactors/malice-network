@@ -181,8 +181,8 @@ func ParseGenerateFlags(cmd *cobra.Command) (string, string, string, []string, s
 func ProfileSet(f *pflag.FlagSet) {
 	f.StringP("name", "n", "", "Overwrite profile name")
 	//f.String("target", "", "Overwrite build target")
-	f.StringP("basic-pipeline", "b", "", "Overwrite profile basic pipeline_id")
-	f.StringP("pulse-pipeline", "p", "", "Overwrite profile pulse pipeline_id")
+	f.StringP("pipeline", "p", "", "Overwrite profile basic pipeline_id")
+	f.String("pulse-pipeline", "", "Overwrite profile pulse pipeline_id")
 	//f.String("type", "", "Set build type")
 	//f.String("proxy", "", "Overwrite proxy")
 	//f.String("obfuscate", "", "Set obfuscate")
@@ -195,7 +195,7 @@ func ProfileSet(f *pflag.FlagSet) {
 func ParseProfileFlags(cmd *cobra.Command) (string, string, string) {
 	profileName, _ := cmd.Flags().GetString("name")
 	//buildTarget, _ := cmd.Flags().GetString("target")
-	basicPipelineId, _ := cmd.Flags().GetString("basic-pipeline")
+	basicPipelineId, _ := cmd.Flags().GetString("pipeline")
 	pulsePipelineId, _ := cmd.Flags().GetString("pulse-pipeline")
 
 	//buildType, _ := cmd.Flags().GetString("type")
