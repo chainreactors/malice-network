@@ -842,6 +842,9 @@ func FindArtifact(target *clientpb.Artifact) (*clientpb.Artifact, error) {
 			Preload("Profile.PulsePipeline").
 			Find(&builders)
 		for _, v := range builders {
+			if v.ShellcodePath == "" {
+				continue
+			}
 			if v.Type == consts.ImplantModPulse && v.Profile.PulsePipelineID == target.Pipeline {
 				builder = v
 				break
@@ -893,7 +896,7 @@ func GetArtifactById(id uint32) (*models.Builder, error) {
 
 func DeleteArtifactByName(artifactName string) error {
 	model := &models.Builder{}
-	err := Session().Where("name = ?", artifactName).First(model).Error
+	err := Session().Where("name = ?", artifactName).First(&model).Error
 	if err != nil {
 		return err
 	}

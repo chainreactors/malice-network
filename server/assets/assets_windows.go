@@ -36,7 +36,7 @@ func SetupGithubFile() error {
 		logs.Log.Errorf("keystone.dll asset not found")
 	}
 
-	err = os.WriteFile(filepath.Join(configs.BinPath, "malefic-mutant.exe"), mutant, 0600)
+	err = os.WriteFile(filepath.Join(configs.BinPath, "malefic-mutant.exe"), mutant, 0700)
 	if err != nil {
 		logs.Log.Errorf("Failed to write malefic-mutant data to: %s by %s", configs.BinPath, err)
 	}
@@ -47,12 +47,12 @@ func SetupGithubFile() error {
 	//	return err
 	//}
 
-	err = os.WriteFile(filepath.Join(configs.BinPath, "sgn.exe"), sgn, 0600)
+	err = os.WriteFile(filepath.Join(configs.BinPath, "sgn.exe"), sgn, 0700)
 	if err != nil {
 		logs.Log.Errorf("Failed to write sgn data to: %s by %s", configs.BinPath, err)
 	}
 
-	err = os.WriteFile(filepath.Join(configs.BinPath, "keystone.dll"), dll, 0600)
+	err = os.WriteFile(filepath.Join(configs.BinPath, "keystone.dll"), dll, 0700)
 	if err != nil {
 		logs.Log.Errorf("Failed to write keystone.dll data %s to: by %s", configs.BinPath, err)
 	}
