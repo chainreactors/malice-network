@@ -838,7 +838,8 @@ func FindArtifact(target *clientpb.Artifact) (*clientpb.Artifact, error) {
 	} else {
 		var builders []*models.Builder
 		result = Session().Where("os = ? AND arch = ? AND type = ?", target.Platform, target.Arch, target.Type).
-			Preload("Profile.Pipeline").
+			Preload("Profile.BasicPipeline").
+			Preload("Profile.PulsePipeline").
 			Find(&builders)
 		for _, v := range builders {
 			if v.Type == consts.ImplantModPulse && v.Profile.PulsePipelineID == target.Pipeline {
