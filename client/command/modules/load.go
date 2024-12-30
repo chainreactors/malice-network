@@ -104,7 +104,7 @@ func buildWithAction(con *repl.Console, target, profile string, modules []string
 	var workflowID string
 	setting := assets.GetProfile().Settings
 	if setting.GithubWorkflowFile == "" {
-		workflowID = "generate.yml"
+		workflowID = "generate.yaml"
 	} else {
 		workflowID = setting.GithubWorkflowFile
 	}

@@ -16,7 +16,7 @@ type Settings struct {
 	GithubRepo         string `yaml:"github_repo" config:"github_repo" default:""`
 	GithubOwner        string `yaml:"github_owner" config:"github_owner" default:""`
 	GithubToken        string `yaml:"github_token" config:"github_token" default:""`
-	GithubWorkflowFile string `yaml:"github_workflow_file" config:"github_workflow_file" default:"generate.yml"`
+	GithubWorkflowFile string `yaml:"github_workflow_file" config:"github_workflow_file" default:"generate.yaml"`
 	OpsecThreshold     string `yaml:"opsec_threshold" config:"opsec_threshold" default:"6"`
 	//VtApiKey           string `yaml:"vt_api_key" config:"vt_api_key" default:""`
 }

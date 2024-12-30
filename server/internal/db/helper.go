@@ -900,9 +900,11 @@ func DeleteArtifactByName(artifactName string) error {
 	if err != nil {
 		return err
 	}
-	err = os.Remove(model.Path)
-	if err != nil {
-		return err
+	if model.Path != "" {
+		err = os.Remove(model.Path)
+		if err != nil {
+			return err
+		}
 	}
 	if model.ShellcodePath != "" {
 		err = os.Remove(model.ShellcodePath)

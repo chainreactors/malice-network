@@ -31,7 +31,7 @@ func checkGithubArg(cmd *cobra.Command, isList bool) (string, string, string, st
 			file = profile.GithubWorkflowFile
 		}
 		if file == "" {
-			file = "generate.yml"
+			file = "generate.yaml"
 		}
 	}
 	return owner, repo, token, file, nil
