@@ -11,7 +11,6 @@ import (
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/tui"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
 )
@@ -41,11 +40,6 @@ func ListArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
 func PrintArtifacts(builders *clientpb.Builders, con *repl.Console) error {
 	var rowEntries []table.Row
 	var row table.Row
-
-	baseStyle := lipgloss.NewStyle().
-		AlignVertical(lipgloss.Center).
-		AlignHorizontal(lipgloss.Center).
-		Align(lipgloss.Center)
 
 	defaultLengths := map[string]int{
 		"ID":       6,
@@ -83,22 +77,22 @@ func PrintArtifacts(builders *clientpb.Builders, con *repl.Console) error {
 				"Profile":  builder.ProfileName,
 				"Pipeline": builder.Pipeline,
 				"Time":     formattedTime,
-			}).WithStyle(baseStyle)
+			})
 
 		rowEntries = append(rowEntries, row)
 	}
 
 	tableModel := tui.NewTable([]table.Column{
-		table.NewColumn("ID", "ID", defaultLengths["ID"]).WithStyle(baseStyle),
-		table.NewColumn("Name", "Name", defaultLengths["Name"]).WithStyle(baseStyle),
-		table.NewColumn("Pipeline", "Pipeline", defaultLengths["Pipeline"]).WithStyle(baseStyle),
-		table.NewColumn("Target", "Target", defaultLengths["Target"]).WithStyle(baseStyle),
-		table.NewColumn("Type", "Type", defaultLengths["Type"]).WithStyle(baseStyle),
-		table.NewColumn("Source", "Source", defaultLengths["Source"]).WithStyle(baseStyle),
+		table.NewColumn("ID", "ID", defaultLengths["ID"]),
+		table.NewColumn("Name", "Name", defaultLengths["Name"]),
+		table.NewColumn("Pipeline", "Pipeline", defaultLengths["Pipeline"]),
+		table.NewColumn("Target", "Target", defaultLengths["Target"]),
+		table.NewColumn("Type", "Type", defaultLengths["Type"]),
+		table.NewColumn("Source", "Source", defaultLengths["Source"]),
 		//table.NewColumn("Stager", "Stager", 10),
-		table.NewColumn("Modules", "Modules", defaultLengths["Modules"]).WithStyle(baseStyle),
-		table.NewColumn("Time", "Time", defaultLengths["Time"]).WithStyle(baseStyle),
-		table.NewColumn("Profile", "Profile", defaultLengths["Profile"]).WithStyle(baseStyle),
+		table.NewColumn("Modules", "Modules", defaultLengths["Modules"]),
+		table.NewColumn("Time", "Time", defaultLengths["Time"]),
+		table.NewColumn("Profile", "Profile", defaultLengths["Profile"]),
 	}, false)
 
 	newTable := tui.NewModel(tableModel, nil, false, false)

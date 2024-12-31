@@ -5,7 +5,6 @@ import (
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/tui"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/evertras/bubble-table/table"
 	"github.com/pterm/pterm"
 	"github.com/spf13/cobra"
@@ -46,10 +45,6 @@ func PrintSessions(sessions map[string]*core.Session, con *repl.Console, isAll b
 		"Last Msg":       8,
 		"Health":         7,
 	}
-	baseStyle := lipgloss.NewStyle().
-		AlignVertical(lipgloss.Center).
-		AlignHorizontal(lipgloss.Center).
-		Align(lipgloss.Center)
 	for _, session := range sessions {
 		updateMaxLength(&maxLengths, "ID", len(session.SessionId[:8]))
 		updateMaxLength(&maxLengths, "Group", len(fmt.Sprintf("%s/%s", session.GroupName, session.Note)))
@@ -80,20 +75,20 @@ func PrintSessions(sessions map[string]*core.Session, con *repl.Console, isAll b
 				"Sleep":         fmt.Sprintf("%d  %.2f", session.Timer.Interval, session.Timer.Jitter),
 				"Last Msg":      strconv.FormatUint(uint64(session.Timediff), 10) + "s",
 				"Health":        SessionHealth,
-			}).WithStyle(baseStyle)
+			})
 		rowEntries = append(rowEntries, row)
 	}
 
 	tableModel := tui.NewTable([]table.Column{
-		table.NewColumn("ID", "ID", maxLengths["ID"]).WithStyle(baseStyle),
-		table.NewColumn("Group", "Group", maxLengths["Group"]).WithStyle(baseStyle),
-		table.NewColumn("Pipeline", "Pipeline", maxLengths["Pipeline"]).WithStyle(baseStyle),
-		table.NewColumn("RemoteAddress", "RemoteAddress", maxLengths["Remote Address"]).WithStyle(baseStyle),
-		table.NewColumn("Username", "Username", maxLengths["Username"]).WithStyle(baseStyle),
-		table.NewColumn("System", "System", maxLengths["System"]).WithStyle(baseStyle),
-		table.NewColumn("Sleep", "Sleep", maxLengths["Sleep"]).WithStyle(baseStyle),
-		table.NewColumn("Last Msg", "Last Msg", maxLengths["Last Msg"]).WithStyle(baseStyle),
-		table.NewColumn("Health", "Health", maxLengths["Health"]).WithStyle(baseStyle),
+		table.NewColumn("ID", "ID", maxLengths["ID"]),
+		table.NewColumn("Group", "Group", maxLengths["Group"]),
+		table.NewColumn("Pipeline", "Pipeline", maxLengths["Pipeline"]),
+		table.NewColumn("RemoteAddress", "RemoteAddress", maxLengths["Remote Address"]),
+		table.NewColumn("Username", "Username", maxLengths["Username"]),
+		table.NewColumn("System", "System", maxLengths["System"]),
+		table.NewColumn("Sleep", "Sleep", maxLengths["Sleep"]),
+		table.NewColumn("Last Msg", "Last Msg", maxLengths["Last Msg"]),
+		table.NewColumn("Health", "Health", maxLengths["Health"]),
 	}, false)
 
 	newTable := tui.NewModel(tableModel, nil, false, false)
