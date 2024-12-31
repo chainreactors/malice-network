@@ -43,6 +43,7 @@ const (
 	MaliceRPC_Events_FullMethodName                  = "/clientrpc.MaliceRPC/Events"
 	MaliceRPC_Broadcast_FullMethodName               = "/clientrpc.MaliceRPC/Broadcast"
 	MaliceRPC_Notify_FullMethodName                  = "/clientrpc.MaliceRPC/Notify"
+	MaliceRPC_GetEvent_FullMethodName                = "/clientrpc.MaliceRPC/GetEvent"
 	MaliceRPC_SessionEvent_FullMethodName            = "/clientrpc.MaliceRPC/SessionEvent"
 	MaliceRPC_OnHook_FullMethodName                  = "/clientrpc.MaliceRPC/OnHook"
 	MaliceRPC_Ping_FullMethodName                    = "/clientrpc.MaliceRPC/Ping"
@@ -156,7 +157,7 @@ type MaliceRPCClient interface {
 	GetClients(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Clients, error)
 	GetSessions(ctx context.Context, in *clientpb.SessionRequest, opts ...grpc.CallOption) (*clientpb.Sessions, error)
 	GetSession(ctx context.Context, in *clientpb.SessionRequest, opts ...grpc.CallOption) (*clientpb.Session, error)
-	GetSessionHistory(ctx context.Context, in *clientpb.SessionLog, opts ...grpc.CallOption) (*clientpb.TasksContext, error)
+	GetSessionHistory(ctx context.Context, in *clientpb.Int, opts ...grpc.CallOption) (*clientpb.TasksContext, error)
 	SessionManage(ctx context.Context, in *clientpb.BasicUpdateSession, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	GetListeners(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Listeners, error)
 	GetPipelines(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Pipelines, error)
@@ -173,6 +174,7 @@ type MaliceRPCClient interface {
 	Events(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (grpc.ServerStreamingClient[clientpb.Event], error)
 	Broadcast(ctx context.Context, in *clientpb.Event, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	Notify(ctx context.Context, in *clientpb.Event, opts ...grpc.CallOption) (*clientpb.Empty, error)
+	GetEvent(ctx context.Context, in *clientpb.Int, opts ...grpc.CallOption) (*clientpb.Events, error)
 	SessionEvent(ctx context.Context, in *clientpb.Event, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	OnHook(ctx context.Context, in *clientpb.On, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	// implant::internal
@@ -351,7 +353,7 @@ func (c *maliceRPCClient) GetSession(ctx context.Context, in *clientpb.SessionRe
 	return out, nil
 }
 
-func (c *maliceRPCClient) GetSessionHistory(ctx context.Context, in *clientpb.SessionLog, opts ...grpc.CallOption) (*clientpb.TasksContext, error) {
+func (c *maliceRPCClient) GetSessionHistory(ctx context.Context, in *clientpb.Int, opts ...grpc.CallOption) (*clientpb.TasksContext, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(clientpb.TasksContext)
 	err := c.cc.Invoke(ctx, MaliceRPC_GetSessionHistory_FullMethodName, in, out, cOpts...)
@@ -514,6 +516,16 @@ func (c *maliceRPCClient) Notify(ctx context.Context, in *clientpb.Event, opts .
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(clientpb.Empty)
 	err := c.cc.Invoke(ctx, MaliceRPC_Notify_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *maliceRPCClient) GetEvent(ctx context.Context, in *clientpb.Int, opts ...grpc.CallOption) (*clientpb.Events, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(clientpb.Events)
+	err := c.cc.Invoke(ctx, MaliceRPC_GetEvent_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1540,7 +1552,7 @@ type MaliceRPCServer interface {
 	GetClients(context.Context, *clientpb.Empty) (*clientpb.Clients, error)
 	GetSessions(context.Context, *clientpb.SessionRequest) (*clientpb.Sessions, error)
 	GetSession(context.Context, *clientpb.SessionRequest) (*clientpb.Session, error)
-	GetSessionHistory(context.Context, *clientpb.SessionLog) (*clientpb.TasksContext, error)
+	GetSessionHistory(context.Context, *clientpb.Int) (*clientpb.TasksContext, error)
 	SessionManage(context.Context, *clientpb.BasicUpdateSession) (*clientpb.Empty, error)
 	GetListeners(context.Context, *clientpb.Empty) (*clientpb.Listeners, error)
 	GetPipelines(context.Context, *clientpb.Empty) (*clientpb.Pipelines, error)
@@ -1557,6 +1569,7 @@ type MaliceRPCServer interface {
 	Events(*clientpb.Empty, grpc.ServerStreamingServer[clientpb.Event]) error
 	Broadcast(context.Context, *clientpb.Event) (*clientpb.Empty, error)
 	Notify(context.Context, *clientpb.Event) (*clientpb.Empty, error)
+	GetEvent(context.Context, *clientpb.Int) (*clientpb.Events, error)
 	SessionEvent(context.Context, *clientpb.Event) (*clientpb.Empty, error)
 	OnHook(context.Context, *clientpb.On) (*clientpb.Empty, error)
 	// implant::internal
@@ -1700,7 +1713,7 @@ func (UnimplementedMaliceRPCServer) GetSessions(context.Context, *clientpb.Sessi
 func (UnimplementedMaliceRPCServer) GetSession(context.Context, *clientpb.SessionRequest) (*clientpb.Session, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSession not implemented")
 }
-func (UnimplementedMaliceRPCServer) GetSessionHistory(context.Context, *clientpb.SessionLog) (*clientpb.TasksContext, error) {
+func (UnimplementedMaliceRPCServer) GetSessionHistory(context.Context, *clientpb.Int) (*clientpb.TasksContext, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSessionHistory not implemented")
 }
 func (UnimplementedMaliceRPCServer) SessionManage(context.Context, *clientpb.BasicUpdateSession) (*clientpb.Empty, error) {
@@ -1747,6 +1760,9 @@ func (UnimplementedMaliceRPCServer) Broadcast(context.Context, *clientpb.Event) 
 }
 func (UnimplementedMaliceRPCServer) Notify(context.Context, *clientpb.Event) (*clientpb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Notify not implemented")
+}
+func (UnimplementedMaliceRPCServer) GetEvent(context.Context, *clientpb.Int) (*clientpb.Events, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetEvent not implemented")
 }
 func (UnimplementedMaliceRPCServer) SessionEvent(context.Context, *clientpb.Event) (*clientpb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SessionEvent not implemented")
@@ -2163,7 +2179,7 @@ func _MaliceRPC_GetSession_Handler(srv interface{}, ctx context.Context, dec fun
 }
 
 func _MaliceRPC_GetSessionHistory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(clientpb.SessionLog)
+	in := new(clientpb.Int)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -2175,7 +2191,7 @@ func _MaliceRPC_GetSessionHistory_Handler(srv interface{}, ctx context.Context, 
 		FullMethod: MaliceRPC_GetSessionHistory_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MaliceRPCServer).GetSessionHistory(ctx, req.(*clientpb.SessionLog))
+		return srv.(MaliceRPCServer).GetSessionHistory(ctx, req.(*clientpb.Int))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2439,6 +2455,24 @@ func _MaliceRPC_Notify_Handler(srv interface{}, ctx context.Context, dec func(in
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(MaliceRPCServer).Notify(ctx, req.(*clientpb.Event))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MaliceRPC_GetEvent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(clientpb.Int)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MaliceRPCServer).GetEvent(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MaliceRPC_GetEvent_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MaliceRPCServer).GetEvent(ctx, req.(*clientpb.Int))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4347,6 +4381,10 @@ var MaliceRPC_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Notify",
 			Handler:    _MaliceRPC_Notify_Handler,
+		},
+		{
+			MethodName: "GetEvent",
+			Handler:    _MaliceRPC_GetEvent_Handler,
 		},
 		{
 			MethodName: "SessionEvent",

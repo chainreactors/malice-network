@@ -24,9 +24,8 @@ func historyCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 	sess := con.GetInteractive()
-	contexts, err := con.Rpc.GetSessionHistory(sess.Context(), &clientpb.SessionLog{
-		SessionId: sess.SessionId,
-		Limit:     int32(length),
+	contexts, err := con.Rpc.GetSessionHistory(sess.Context(), &clientpb.Int{
+		Limit: int32(length),
 	})
 	if err != nil {
 		return err

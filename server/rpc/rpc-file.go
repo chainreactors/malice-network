@@ -195,7 +195,7 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 				ack.TaskId = greq.Task.Id
 				ack.Name = types.MsgDownload.String()
 				in <- ack
-				//greq.Session.AddMessage(resp, int(block.BlockId+1))
+				//greq.Session.Add(resp, int(block.BlockId+1))
 			} else {
 				checksum, _ := fileutils.CalculateSHA256Checksum(fileName)
 				if checksum != downloadAbs.Checksum {

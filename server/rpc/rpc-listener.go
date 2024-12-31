@@ -133,6 +133,7 @@ func (rpc *Server) JobStream(stream listenerrpc.ListenerRPC_JobStreamServer) err
 				Op:        msg.Ctrl,
 				IsNotify:  true,
 				Job:       msg.Job,
+				Important: true,
 			})
 		} else {
 			if msg.Ctrl == consts.CtrlWebUpload {
@@ -140,6 +141,7 @@ func (rpc *Server) JobStream(stream listenerrpc.ListenerRPC_JobStreamServer) err
 					EventType: consts.EventWebsite,
 					Op:        msg.Ctrl,
 					Err:       fmt.Sprintf("status %d,  %s", msg.Status, msg.Error),
+					Important: true,
 				})
 				continue
 			}
@@ -147,6 +149,7 @@ func (rpc *Server) JobStream(stream listenerrpc.ListenerRPC_JobStreamServer) err
 				EventType: consts.EventJob,
 				Op:        msg.Ctrl,
 				Err:       fmt.Sprintf("%s faild,status %d,  %s", msg.Job.Name, msg.Status, msg.Error),
+				Important: true,
 			})
 		}
 	}

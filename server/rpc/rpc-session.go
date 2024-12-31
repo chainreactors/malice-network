@@ -103,21 +103,20 @@ func (rpc *Server) Info(ctx context.Context, req *implantpb.Request) (*clientpb.
 	return greq.Task.ToProtobuf(), nil
 }
 
-//type taskFile struct {
-//	TaskID int
-//	Cur    int
-//	Name   string
-//}
-
-func (rpc *Server) GetSessionHistory(ctx context.Context, req *clientpb.SessionLog) (*clientpb.TasksContext, error) {
+func (rpc *Server) GetSessionHistory(ctx context.Context, req *clientpb.Int) (*clientpb.TasksContext, error) {
+	sid, err := getSessionID(ctx)
+	if err != nil {
+		return nil, err
+	}
 	var tid int
 	contexts := &clientpb.TasksContext{
 		Contexts: make([]*clientpb.TaskContext, 0),
 	}
-	taskDir := filepath.Join(configs.LogPath, req.SessionId)
-	session, ok := core.Sessions.Get(req.SessionId)
+
+	taskDir := filepath.Join(configs.LogPath, sid)
+	session, ok := core.Sessions.Get(sid)
 	if !ok {
-		_, taskId, err := db.FindTaskAndMaxTasksID(req.SessionId)
+		_, taskId, err := db.FindTaskAndMaxTasksID(sid)
 		if err != nil {
 			return nil, err
 		}
@@ -164,17 +163,17 @@ func (rpc *Server) GetSessionHistory(ctx context.Context, req *clientpb.SessionL
 					continue
 				}
 
-				taskIDStr := req.SessionId + "-" + strconv.Itoa(taskID)
+				taskIDStr := sid + "-" + strconv.Itoa(taskID)
 				task, err := db.GetTaskPB(taskIDStr)
 				if err != nil {
 					return nil, err
 				}
-				session, err := db.FindSession(req.SessionId)
+				session, err := db.FindSession(sid)
 				if err != nil {
 					return nil, err
 				}
 				if session == nil {
-					logs.Log.Warnf("session %s has removed", req.SessionId)
+					logs.Log.Warnf("session %s has removed", sid)
 					continue
 				}
 				contexts.Contexts = append(contexts.Contexts, &clientpb.TaskContext{
@@ -187,73 +186,6 @@ func (rpc *Server) GetSessionHistory(ctx context.Context, req *clientpb.SessionL
 	}
 
 	return contexts, nil
-	//for _, file := range files {
-	//	if !file.IsDir() {
-	//		matches := re.FindStringSubmatch(file.Name())
-	//		if matches != nil {
-	//			taskid, _ := strconv.Atoi(matches[1])
-	//			cur, _ := strconv.Atoi(matches[2])
-	//			taskFiles = append(taskFiles, taskFile{
-	//				TaskID: taskid,
-	//				Cur:    cur,
-	//				Name:   file.Name(),
-	//			})
-	//		}
-	//	}
-	//}
-	//
-	//if len(taskFiles) == 0 {
-	//	return contexts, nil
-	//}
-	//
-	//sort.Slice(taskFiles, func(i, j int) bool {
-	//	if taskFiles[i].TaskID == taskFiles[j].TaskID {
-	//		return taskFiles[i].Cur < taskFiles[j].Cur
-	//	}
-	//	return taskFiles[i].TaskID > taskFiles[j].TaskID
-	//})
-	//
-	//taskIDCount := 0
-	//lastTaskID := -1
-	//for _, f := range taskFiles {
-	//	if f.TaskID != lastTaskID {
-	//		taskIDCount++
-	//		lastTaskID = f.TaskID
-	//	}
-	//
-	//	if taskIDCount > int(req.Limit) {
-	//		break
-	//	}
-	//
-	//	taskPath := filepath.Join(taskDir, f.Name)
-	//	content, err := os.ReadFile(taskPath)
-	//	if err != nil {
-	//		logs.Log.Errorf("Error reading file: %s", err)
-	//		continue
-	//	}
-	//	spite := &implantpb.Spite{}
-	//	err = proto.Unmarshal(content, spite)
-	//	if err != nil {
-	//		logs.Log.Errorf("Error unmarshalling protobuf: %s", err)
-	//		continue
-	//	}
-	//
-	//	taskID := req.SessionId + "-" + strconv.Itoa(f.TaskID)
-	//	task, err := db.GetTaskPB(taskID)
-	//	if err != nil {
-	//		return nil, err
-	//	}
-	//	session, err := db.FindSession(req.SessionId)
-	//	if err != nil {
-	//		return nil, err
-	//	}
-	//	contexts.Contexts = append(contexts.Contexts, &clientpb.TaskContext{
-	//		Task:    task,
-	//		Session: session,
-	//		Spite:   spite,
-	//	})
-	//}
-	//return contexts, nil
 }
 
 func (rpc *Server) Ping(ctx context.Context, req *implantpb.Ping) (*clientpb.Task, error) {

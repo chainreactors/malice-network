@@ -193,3 +193,45 @@ func (c *Cache) GetLastMessage(taskID int) (*implantpb.Spite, bool) {
 	}
 	return nil, false
 }
+
+type RingCache struct {
+	capacity int
+	messages []interface{}
+}
+
+func NewMessageCache(capacity int) *RingCache {
+	return &RingCache{
+		capacity: capacity,
+		messages: make([]interface{}, 0, capacity),
+	}
+}
+
+func (mc *RingCache) Add(message interface{}) {
+	if len(mc.messages) == mc.capacity {
+		mc.messages = mc.messages[1:]
+	}
+	// 添加新消息
+	mc.messages = append(mc.messages, message)
+}
+
+func (mc *RingCache) GetAll() []interface{} {
+	return mc.messages
+}
+
+func (mc *RingCache) GetLast() interface{} {
+	if len(mc.messages) == 0 {
+		return nil
+	}
+	return mc.messages[len(mc.messages)-1]
+}
+
+// GetN 返回最后 N 条消息
+func (mc *RingCache) GetN(n int) []interface{} {
+	if n <= 0 {
+		return nil
+	}
+	if n > len(mc.messages) {
+		n = len(mc.messages)
+	}
+	return mc.messages[len(mc.messages)-n:]
+}

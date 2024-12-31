@@ -25,20 +25,7 @@ func (rpc *Server) Events(_ *clientpb.Empty, stream clientrpc.MaliceRPC_EventsSe
 		case <-stream.Context().Done():
 			return nil
 		case event := <-events:
-			pbEvent := &clientpb.Event{
-				Type:    event.EventType,
-				Op:      event.Op,
-				Err:     event.Err,
-				Message: []byte(event.Message),
-				Job:     event.Job,
-				Client:  event.Client,
-				Session: event.Session,
-				Task:    event.Task,
-				Spite:   event.Spite,
-				Callee:  event.Callee,
-			}
-
-			err := stream.Send(pbEvent)
+			err := stream.Send(event.ToProtobuf())
 			if err != nil {
 				logs.Log.Warnf(err.Error())
 				return err
@@ -54,6 +41,7 @@ func (rpc *Server) Broadcast(ctx context.Context, req *clientpb.Event) (*clientp
 		Client:    req.Client,
 		Err:       req.Err,
 		Message:   string(req.Message),
+		Important: true,
 	})
 	return &clientpb.Empty{}, nil
 }
@@ -89,4 +77,16 @@ func (rpc *Server) SessionEvent(ctx context.Context, req *clientpb.Event) (*clie
 		}
 	}
 	return &clientpb.Empty{}, nil
+}
+
+func (rpc *Server) GetEvent(ctx context.Context, req *clientpb.Int) (*clientpb.Events, error) {
+	events := core.EventBroker.GetAll()
+
+	eventspb := &clientpb.Events{
+		Events: []*clientpb.Event{},
+	}
+	for _, e := range events {
+		eventspb.Events = append(eventspb.Events, e.ToProtobuf())
+	}
+	return eventspb, nil
 }

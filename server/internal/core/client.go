@@ -49,6 +49,7 @@ func (cc *clients) Add(client *Client) {
 	EventBroker.Publish(Event{
 		EventType: consts.EventJoin,
 		Client:    client.Client,
+		Important: true,
 	})
 }
 

@@ -115,7 +115,6 @@ func (r *GenericRequest) HandlerResponse(ch chan *implantpb.Spite, typ types.Msg
 		logs.Log.Errorf("Failed to log task: %v", err)
 	}
 	return
-
 }
 
 func buildErrorEvent(task *core.Task, err error) core.Event {

@@ -469,12 +469,14 @@ func sendContaninerCtrlMsg(isEnd bool, containerName string, req *clientpb.Gener
 			EventType: consts.EventBuild,
 			IsNotify:  false,
 			Message:   fmt.Sprintf("%s type(%s) has completed in container(%s). run `artifact list` to get the artifact.", req.Name, req.Type, containerName),
+			Important: true,
 		})
 	} else {
 		core.EventBroker.Publish(core.Event{
 			EventType: consts.EventBuild,
 			IsNotify:  false,
 			Message:   fmt.Sprintf("%s type(%s) has started in container(%s)...", req.Name, req.Type, containerName),
+			Important: true,
 		})
 	}
 }

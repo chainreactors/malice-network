@@ -65,6 +65,7 @@ func PushArtifact(owner, repo, token, buildName string) (*models.Builder, error)
 		EventType: consts.EventBuild,
 		IsNotify:  false,
 		Message:   fmt.Sprintf("action %s %s %s has finished", builder.Name, builder.Type, builder.Target),
+		Important: true,
 	})
 	return builder, nil
 }
@@ -140,6 +141,7 @@ func findArtifactsURL(workflows []Workflow, name string) (string, error) {
 					EventType: consts.EventBuild,
 					IsNotify:  false,
 					Message:   fmt.Sprintf("action %s run in %s.", name, wf.HTMLURL),
+					Important: true,
 				})
 				notifiedWorkflows[name] = true
 			}

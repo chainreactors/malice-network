@@ -46,14 +46,8 @@ func NewSessions() *sessions {
 			sessModel := session.ToModel()
 			if !session.isAlived() {
 				sessModel.IsAlive = false
+				session.Publish(consts.CtrlSessionLeave, fmt.Sprintf("session %s from %s at %s has leaved ", session.ID, session.Target, session.PipelineID), true, true)
 				newSessions.Remove(session.ID)
-				EventBroker.Publish(Event{
-					EventType: consts.EventSession,
-					Op:        consts.CtrlSessionLeave,
-					Session:   session.ToProtobuf(),
-					IsNotify:  true,
-					Message:   fmt.Sprintf("session %s from %s at %s has leaved ", session.ID, session.Target, session.PipelineID),
-				})
 			}
 			err := db.Session().Save(sessModel).Error
 			if err != nil {
@@ -343,7 +337,7 @@ func (s *Session) Update(req *clientpb.RegisterSession) {
 
 	if req.RegisterData.Sysinfo != nil {
 		if !s.Initialized {
-			s.Publish(consts.CtrlSessionInit, fmt.Sprintf("session %s init", s.ID), true)
+			s.Publish(consts.CtrlSessionInit, fmt.Sprintf("session %s init", s.ID), true, true)
 		}
 		s.UpdateSysInfo(req.RegisterData.Sysinfo)
 	}
@@ -362,13 +356,14 @@ func (s *Session) UpdateSysInfo(info *implantpb.SysInfo) {
 	s.Process = info.Process
 }
 
-func (s *Session) Publish(Op string, msg string, notify bool) {
+func (s *Session) Publish(Op string, msg string, notify bool, important bool) {
 	EventBroker.Publish(Event{
 		EventType: consts.EventSession,
 		Op:        Op,
 		Session:   s.ToProtobuf(),
 		IsNotify:  notify,
 		Message:   msg,
+		Important: true,
 	})
 }
 

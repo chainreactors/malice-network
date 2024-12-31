@@ -64,6 +64,13 @@ func InitServerStatus(conn *grpc.ClientConn, config *mtls.ClientConfig) (*Server
 		return nil, err
 	}
 
+	events, err := s.GetEvent(context.Background(), &clientpb.Int{})
+	if err != nil {
+		return nil, err
+	}
+	for _, event := range events.GetEvents() {
+		s.handlerEvent(event)
+	}
 	return s, nil
 }
 

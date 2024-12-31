@@ -43,7 +43,9 @@ func (rpc *Server) WebsiteRemove(ctx context.Context, req *clientpb.Website) (*c
 	}
 	core.EventBroker.Publish(core.Event{
 		EventType: consts.EventWebsite,
+		Op:        consts.CtrlWebsiteRemove,
 		Message:   req.ID,
+		Important: true,
 	})
 
 	return &clientpb.Empty{}, nil
@@ -82,7 +84,9 @@ func (rpc *Server) WebsiteAddContent(ctx context.Context, req *clientpb.WebsiteA
 
 	core.EventBroker.Publish(core.Event{
 		EventType: consts.EventWebsite,
+		Op:        consts.CtrlWebsiteAdd,
 		Message:   req.Name,
+		Important: true,
 	})
 
 	return website.MapContent(req.Name, true)
@@ -100,6 +104,7 @@ func (rpc *Server) WebsiteUpdateContent(ctx context.Context, req *clientpb.Websi
 
 	core.EventBroker.Publish(core.Event{
 		EventType: consts.EventWebsite,
+		Op:        consts.CtrlWebsiteUpdate,
 		Message:   req.Name,
 	})
 

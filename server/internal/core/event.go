@@ -18,7 +18,7 @@ import (
 
 const (
 	// Size is arbitrary, just want to avoid weird cases where we'd block on channel sends
-	eventBufSize = 5
+	eventBufSize = 10
 )
 
 type Event struct {
@@ -28,12 +28,43 @@ type Event struct {
 	Task    *clientpb.Task
 	Spite   *implantpb.Spite
 
+	Important bool
 	EventType string
 	Op        string
 	Message   string
 	Err       string
 	Callee    string
 	IsNotify  bool
+}
+
+func (e *Event) String() string {
+	var id string
+
+	if e.Job != nil {
+		id = fmt.Sprintf("Job %d %s", e.Job.Id, e.Job.Name)
+	} else if e.Task != nil {
+		id = fmt.Sprintf("Task %s %d", e.Task.SessionId, e.Task.TaskId)
+	} else if e.Session != nil {
+		id = fmt.Sprintf("Session %s", e.Session.SessionId)
+	}
+
+	return fmt.Sprintf("%s %s: %s", id, e.Op, e.Message)
+}
+
+// toprotobuf
+func (e *Event) ToProtobuf() *clientpb.Event {
+	return &clientpb.Event{
+		Session: e.Session,
+		Job:     e.Job,
+		Client:  e.Client,
+		Task:    e.Task,
+		Spite:   e.Spite,
+		Type:    e.EventType,
+		Op:      e.Op,
+		Message: []byte(e.Message),
+		Err:     e.Err,
+		Callee:  e.Callee,
+	}
 }
 
 type eventBroker struct {
@@ -43,6 +74,8 @@ type eventBroker struct {
 	unsubscribe chan chan Event
 	send        chan Event
 	notifier    Notifier
+
+	cache *RingCache
 }
 
 func (broker *eventBroker) Start() {
@@ -60,7 +93,7 @@ func (broker *eventBroker) Start() {
 			delete(subscribers, sub)
 		case event := <-broker.publish:
 			if event.EventType != consts.EventHeartbeat {
-				logs.Log.Infof("[event.%s] %s: %s", event.EventType, event.Op, event.Message)
+				logs.Log.Infof("[event.%s] %s", event.EventType, event.String())
 			}
 
 			for sub := range subscribers {
@@ -90,10 +123,22 @@ func (broker *eventBroker) Unsubscribe(events chan Event) {
 
 // Publish - Push a message to all subscribers
 func (broker *eventBroker) Publish(event Event) {
+	if event.Important {
+		broker.cache.Add(&event)
+	}
 	broker.publish <- event
 	if event.IsNotify {
 		broker.Notify(event)
 	}
+}
+
+func (broker *eventBroker) GetAll() []*Event {
+	var events []*Event
+	for _, v := range broker.cache.GetAll() {
+		events = append(events, v.(*Event))
+	}
+
+	return events
 }
 
 // Notify - Notify all third-patry services
@@ -109,7 +154,9 @@ func NewBroker() *eventBroker {
 		unsubscribe: make(chan chan Event, eventBufSize),
 		send:        make(chan Event, eventBufSize),
 		notifier: Notifier{notify: notify.New(),
-			enable: false},
+			enable: false,
+		},
+		cache: NewMessageCache(eventBufSize),
 	}
 	go broker.Start()
 	ticker := GlobalTicker

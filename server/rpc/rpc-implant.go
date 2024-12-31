@@ -28,13 +28,13 @@ func (rpc *Server) Register(ctx context.Context, req *clientpb.RegisterSession) 
 		if d.Error != nil {
 			return nil, err
 		} else {
-			sess.Publish(consts.CtrlSessionRegister, fmt.Sprintf("new session %s from %s start at %s", sess.Abstract(), sess.Target, sess.PipelineID), true)
+			sess.Publish(consts.CtrlSessionRegister, fmt.Sprintf("new session %s from %s start at %s", sess.Abstract(), sess.Target, sess.PipelineID), true, true)
 			logs.Log.Importantf("recover session %s from %s", sess.ID, sess.PipelineID)
 		}
 	} else {
 		logs.Log.Infof("session %s re-register", sess.ID)
 		sess.Update(req)
-		sess.Publish(consts.CtrlSessionRegister, fmt.Sprintf("session %s from %s re-register at %s", sess.Abstract(), sess.Target, sess.PipelineID), true)
+		sess.Publish(consts.CtrlSessionRegister, fmt.Sprintf("session %s from %s re-register at %s", sess.Abstract(), sess.Target, sess.PipelineID), true, true)
 		err := db.Session().Save(sess.ToModel()).Error
 		if err != nil {
 			logs.Log.Errorf("update session %s info failed in db, %s", sess.ID, err.Error())
@@ -78,11 +78,11 @@ func (rpc *Server) Checkin(ctx context.Context, req *implantpb.Ping) (*clientpb.
 			return nil, err
 		}
 		core.Sessions.Add(sess)
-		sess.Publish(consts.CtrlSessionReborn, fmt.Sprintf("session %s from %s reborn at %s", sess.Abstract(), sess.Target, sess.PipelineID), true)
+		sess.Publish(consts.CtrlSessionReborn, fmt.Sprintf("session %s from %s reborn at %s", sess.Abstract(), sess.Target, sess.PipelineID), true, true)
 		logs.Log.Debugf("recover session %s", sid)
 	}
 	sess.LastCheckin = getTimestamp(ctx)
-	sess.Publish(consts.CtrlSessionCheckin, "", false)
+	sess.Publish(consts.CtrlSessionCheckin, "", false, false)
 
 	return &clientpb.Empty{}, nil
 }

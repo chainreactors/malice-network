@@ -122,9 +122,8 @@ func (s *Session) HasTask(taskId uint32) bool {
 
 func (s *Session) GetHistory() {
 	profile := assets.GetProfile()
-	contexts, err := s.Server.Rpc.GetSessionHistory(s.Context(), &clientpb.SessionLog{
-		SessionId: s.SessionId,
-		Limit:     int32(profile.Settings.MaxServerLogSize),
+	contexts, err := s.Server.Rpc.GetSessionHistory(s.Context(), &clientpb.Int{
+		Limit: int32(profile.Settings.MaxServerLogSize),
 	})
 	if err != nil {
 		Log.Errorf("Failed to get session log: %v", err)
