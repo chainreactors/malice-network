@@ -63,14 +63,14 @@ func (rpc *Server) BuildModules(ctx context.Context, req *clientpb.Generate) (*c
 			}
 		}()
 		logs.Log.Infof("Build request processed successfully for target: %s", req.Target)
-		builder.Name = build.GetFilePath(builder.Name, builder.Target, builder.Type)
+		builder.Name = build.GetFilePath(builder.Name, builder.Target, builder.Type, builder.IsSRDI)
 		return builder.ToArtifact([]byte{}), nil
 	}
 	bin, err := os.ReadFile(builder.Path)
 	if err != nil {
 		return nil, err
 	}
-	builder.Name = build.GetFilePath(builder.Name, builder.Target, builder.Type)
+	builder.Name = build.GetFilePath(builder.Name, builder.Target, builder.Type, builder.IsSRDI)
 	return builder.ToArtifact(bin), nil
 }
 

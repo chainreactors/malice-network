@@ -38,7 +38,7 @@ func (rpc *Server) TriggerWorkflowDispatch(ctx context.Context, req *clientpb.Gi
 			if err != nil {
 				return nil, err
 			}
-			moduleBuilder.Name = build.GetFilePath(moduleBuilder.Name, moduleBuilder.Target, moduleBuilder.Type)
+			moduleBuilder.Name = build.GetFilePath(moduleBuilder.Name, moduleBuilder.Target, moduleBuilder.Type, moduleBuilder.IsSRDI)
 			result := moduleBuilder.ToProtobuf()
 			result.Bin = bin
 			return result, nil

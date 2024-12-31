@@ -63,7 +63,10 @@ func MoveBuildOutput(target, buildType string) (string, string, error) {
 	return sourcePath, dstPath, nil
 }
 
-func GetFilePath(name, target, buildType string) string {
+func GetFilePath(name, target, buildType string, isSrdi bool) string {
+	if isSrdi {
+		return name + consts.ShellcodeFile
+	}
 	switch {
 	case strings.Contains(target, "windows"):
 		if buildType == consts.CommandBuildModules {

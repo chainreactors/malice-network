@@ -36,6 +36,7 @@ func LoginCmd(cmd *cobra.Command, con *repl.Console) error {
 
 	// After the interactive list is completed, check the selected item
 	if m.Selected != "" {
+		tui.ClearLines(2)
 		return Login(con, m.Selected)
 	} else {
 		return errors.New("no user selected")

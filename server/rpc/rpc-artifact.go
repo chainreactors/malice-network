@@ -25,7 +25,7 @@ func (rpc *Server) DownloadArtifact(ctx context.Context, req *clientpb.Artifact)
 	if err != nil {
 		return nil, err
 	}
-	builder.Name = build.GetFilePath(builder.Name, builder.Target, builder.Type)
+	builder.Name = build.GetFilePath(builder.Name, builder.Target, builder.Type, builder.IsSRDI)
 	result := builder.ToArtifact(data)
 	return result, nil
 }
