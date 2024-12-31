@@ -4,7 +4,7 @@ import (
 	"github.com/chainreactors/logs"
 	crConfig "github.com/chainreactors/malice-network/helper/utils/config"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 	"os"
 	"path/filepath"
 	"slices"

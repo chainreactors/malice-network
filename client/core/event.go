@@ -169,44 +169,46 @@ func (s *ServerStatus) EventHandler() {
 				}()
 			}
 		}
-		// Trigger event based on type
-		switch event.Type {
-		case consts.EventClient:
-			if event.Op == consts.CtrlClientJoin {
-				Log.Infof("%s has joined the game\n", event.Client.Name)
-			} else if event.Op == consts.CtrlClientLeft {
-				Log.Infof("%s left the game\n", event.Client.Name)
+		go func() {
+			switch event.Type {
+			case consts.EventClient:
+				if event.Op == consts.CtrlClientJoin {
+					Log.Infof("%s has joined the game\n", event.Client.Name)
+				} else if event.Op == consts.CtrlClientLeft {
+					Log.Infof("%s left the game\n", event.Client.Name)
+				}
+			case consts.EventBroadcast:
+				Log.Infof("%s : %s  %s\n", event.Client.Name, event.Message, event.Err)
+			case consts.EventSession:
+				s.handlerSession(event)
+			case consts.EventNotify:
+				Log.Importantf("%s notified: %s %s\n", event.Client.Name, event.Message, event.Err)
+			case consts.EventJob:
+				if event.Err != "" {
+					Log.Errorf("[%s] %s: %s\n", event.Type, event.Op, event.Err)
+					return
+				}
+				pipeline := event.GetJob().GetPipeline()
+				switch pipeline.Body.(type) {
+				case *clientpb.Pipeline_Tcp:
+					Log.Importantf("[%s] %s: tcp %s on %s %s:%d\n", event.Type, event.Op,
+						pipeline.Name, pipeline.ListenerId, pipeline.GetTcp().Host, pipeline.GetTcp().Port)
+				case *clientpb.Pipeline_Web:
+					Log.Importantf("[%s] %s: web %s on %s %d, routePath is %s\n", event.Type, event.Op,
+						pipeline.ListenerId, pipeline.Name, pipeline.GetWeb().Port,
+						pipeline.GetWeb().Root)
+				}
+			case consts.EventListener:
+				Log.Importantf("[%s] %s: %s %s\n", event.Type, event.Op, event.Message, event.Err)
+			case consts.EventTask:
+				s.handlerTask(event)
+			case consts.EventWebsite:
+				Log.Importantf("[%s] %s: %s %s\n", event.Type, event.Op, event.Message, event.Err)
+			case consts.EventBuild:
+				Log.Importantf("[%s] %s\n", event.Type, event.Message)
 			}
-		case consts.EventBroadcast:
-			Log.Infof("%s : %s  %s\n", event.Client.Name, event.Message, event.Err)
-		case consts.EventSession:
-			s.handlerSession(event)
-		case consts.EventNotify:
-			Log.Importantf("%s notified: %s %s\n", event.Client.Name, event.Message, event.Err)
-		case consts.EventJob:
-			if event.Err != "" {
-				Log.Errorf("[%s] %s: %s\n", event.Type, event.Op, event.Err)
-				continue
-			}
-			pipeline := event.GetJob().GetPipeline()
-			switch pipeline.Body.(type) {
-			case *clientpb.Pipeline_Tcp:
-				Log.Importantf("[%s] %s: tcp %s on %s %s:%d\n", event.Type, event.Op,
-					pipeline.Name, pipeline.ListenerId, pipeline.GetTcp().Host, pipeline.GetTcp().Port)
-			case *clientpb.Pipeline_Web:
-				Log.Importantf("[%s] %s: web %s on %s %d, routePath is %s\n", event.Type, event.Op,
-					pipeline.ListenerId, pipeline.Name, pipeline.GetWeb().Port,
-					pipeline.GetWeb().Root)
-			}
-		case consts.EventListener:
-			Log.Importantf("[%s] %s: %s %s\n", event.Type, event.Op, event.Message, event.Err)
-		case consts.EventTask:
-			s.handlerTask(event)
-		case consts.EventWebsite:
-			Log.Importantf("[%s] %s: %s %s\n", event.Type, event.Op, event.Message, event.Err)
-		case consts.EventBuild:
-			Log.Importantf("[%s] %s\n", event.Type, event.Message)
-		}
+		}()
+
 	}
 }
 
