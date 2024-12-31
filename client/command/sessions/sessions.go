@@ -5,6 +5,7 @@ import (
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/tui"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/evertras/bubble-table/table"
 	"github.com/pterm/pterm"
 	"github.com/spf13/cobra"
@@ -34,40 +35,67 @@ func PrintSessions(sessions map[string]*core.Session, con *repl.Console, isAll b
 	//var colorIndex = 1
 	var rowEntries []table.Row
 	var row table.Row
-	//groupColors := make(map[string]termenv.ANSIColor)
-	tableModel := tui.NewTable([]table.Column{
-		table.NewColumn("ID", "ID", 8),
-		table.NewColumn("Group", "Group", 16),
-		table.NewColumn("Pipeline", "Pipeline", 15),
-		table.NewColumn("Remote Address", "Remote Address", 22),
-		table.NewColumn("Username", "Username", 15),
-		table.NewColumn("System", "System", 20),
-		table.NewColumn("Last Message", "Last Message", 12),
-		table.NewColumn("Health", "Health", 10),
-	}, false)
+	maxLengths := map[string]int{
+		"ID":             8,
+		"Group":          14,
+		"Pipeline":       16,
+		"Remote Address": 22,
+		"Username":       16,
+		"System":         16,
+		"Sleep":          9,
+		"Last Msg":       8,
+		"Health":         7,
+	}
+	baseStyle := lipgloss.NewStyle().
+		AlignVertical(lipgloss.Center).
+		AlignHorizontal(lipgloss.Center).
+		Align(lipgloss.Center)
 	for _, session := range sessions {
+		updateMaxLength(&maxLengths, "ID", len(session.SessionId[:8]))
+		updateMaxLength(&maxLengths, "Group", len(fmt.Sprintf("%s/%s", session.GroupName, session.Note)))
+		updateMaxLength(&maxLengths, "Pipeline", len(session.PipelineId))
+		//updateMaxLength(&maxLengths, "Remote Address", len(session.Target))
+		updateMaxLength(&maxLengths, "Username", len(fmt.Sprintf("%s/%s", session.Os.Hostname, session.Os.Username)))
+		updateMaxLength(&maxLengths, "System", len(fmt.Sprintf("%s/%s", session.Os.Name, session.Os.Arch)))
+		//updateMaxLength(&maxLengths, "Sleep", len(fmt.Sprintf("%d %.2f", session.Timer.Interval, session.Timer.Jitter)))
+		//updateMaxLength(&maxLengths, "Last Message", len(strconv.FormatUint(uint64(session.Timediff), 10)+"s"))
+		//updateMaxLength(&maxLengths, "Health", len(pterm.FgGreen.Sprint("[ALIVE]"))) // Assuming ALIVE is longer than DEAD
 		var SessionHealth string
 		if !session.IsAlive {
 			if !isAll {
 				continue
 			}
-			SessionHealth = pterm.FgRed.Sprint("[DEAD]")
+			SessionHealth = pterm.FgRed.Sprint("DEAD")
 		} else {
-			SessionHealth = pterm.FgGreen.Sprint("[ALIVE]")
+			SessionHealth = pterm.FgGreen.Sprint("ALIVE")
 		}
 		row = table.NewRow(
 			table.RowData{
-				"ID":             session.SessionId[:8],
-				"Group":          fmt.Sprintf("%s/%s", session.GroupName, session.Note),
-				"Pipeline":       session.PipelineId,
-				"Remote Address": session.Target,
-				"Username":       fmt.Sprintf("%s/%s", session.Os.Hostname, session.Os.Username),
-				"System":         fmt.Sprintf("%s/%s", session.Os.Name, session.Os.Arch),
-				"Last Message":   strconv.FormatUint(uint64(session.Timediff), 10) + "s",
-				"Health":         SessionHealth,
-			})
+				"ID":            session.SessionId[:8],
+				"Group":         fmt.Sprintf("%s/%s", session.GroupName, session.Note),
+				"Pipeline":      session.PipelineId,
+				"RemoteAddress": session.Target,
+				"Username":      fmt.Sprintf("%s/%s", session.Os.Hostname, session.Os.Username),
+				"System":        fmt.Sprintf("%s/%s", session.Os.Name, session.Os.Arch),
+				"Sleep":         fmt.Sprintf("%d  %.2f", session.Timer.Interval, session.Timer.Jitter),
+				"Last Msg":      strconv.FormatUint(uint64(session.Timediff), 10) + "s",
+				"Health":        SessionHealth,
+			}).WithStyle(baseStyle)
 		rowEntries = append(rowEntries, row)
 	}
+
+	tableModel := tui.NewTable([]table.Column{
+		table.NewColumn("ID", "ID", maxLengths["ID"]).WithStyle(baseStyle),
+		table.NewColumn("Group", "Group", maxLengths["Group"]).WithStyle(baseStyle),
+		table.NewColumn("Pipeline", "Pipeline", maxLengths["Pipeline"]).WithStyle(baseStyle),
+		table.NewColumn("RemoteAddress", "RemoteAddress", maxLengths["Remote Address"]).WithStyle(baseStyle),
+		table.NewColumn("Username", "Username", maxLengths["Username"]).WithStyle(baseStyle),
+		table.NewColumn("System", "System", maxLengths["System"]).WithStyle(baseStyle),
+		table.NewColumn("Sleep", "Sleep", maxLengths["Sleep"]).WithStyle(baseStyle),
+		table.NewColumn("Last Msg", "Last Msg", maxLengths["Last Msg"]).WithStyle(baseStyle),
+		table.NewColumn("Health", "Health", maxLengths["Health"]).WithStyle(baseStyle),
+	}, false)
+
 	newTable := tui.NewModel(tableModel, nil, false, false)
 	var err error
 	tableModel.SetRows(rowEntries)
@@ -82,6 +110,12 @@ func PrintSessions(sessions map[string]*core.Session, con *repl.Console, isAll b
 	tui.Reset()
 	if con.ActiveTarget.Session != nil {
 		con.Session.GetHistory()
+	}
+}
+
+func updateMaxLength(maxLengths *map[string]int, key string, newLength int) {
+	if (*maxLengths)[key] < newLength {
+		(*maxLengths)[key] = newLength
 	}
 }
 

@@ -2,16 +2,25 @@ package build
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
+	"strconv"
+	"time"
+
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/tui"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
-	"os"
-	"path/filepath"
-	"time"
 )
+
+func updateMaxLength(maxLengths *map[string]int, key string, newLength int) {
+	if (*maxLengths)[key] < newLength {
+		(*maxLengths)[key] = newLength
+	}
+}
 
 func ListArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
 	builders, err := con.Rpc.ListBuilder(con.Context(), &clientpb.Empty{})
@@ -33,20 +42,35 @@ func PrintArtifacts(builders *clientpb.Builders, con *repl.Console) error {
 	var rowEntries []table.Row
 	var row table.Row
 
-	tableModel := tui.NewTable([]table.Column{
-		table.NewColumn("ID", "ID", 6),
-		table.NewColumn("Name", "Name", 20),
-		table.NewColumn("Pipeline", "Pipeline", 20),
-		table.NewColumn("Target", "Target", 30),
-		table.NewColumn("Type", "Type", 10),
-		table.NewColumn("Source", "Source", 6),
-		//table.NewColumn("Stager", "Stager", 10),
-		table.NewColumn("Modules", "Modules", 16),
-		table.NewColumn("Time", "Time", 20),
-		table.NewColumn("Profile", "Profile", 20),
-	}, false)
+	baseStyle := lipgloss.NewStyle().
+		AlignVertical(lipgloss.Center).
+		AlignHorizontal(lipgloss.Center).
+		Align(lipgloss.Center)
+
+	defaultLengths := map[string]int{
+		"ID":       6,
+		"Name":     16,
+		"Pipeline": 16,
+		"Target":   22,
+		"Type":     8,
+		"Stager":   10,
+		"Source":   8,
+		"Modules":  8,
+		"Time":     20,
+		"Profile":  20,
+	}
+
 	for _, builder := range builders.Builders {
 		formattedTime := time.Unix(builder.Time, 0).Format("2006-01-02 15:04:05")
+		updateMaxLength(&defaultLengths, "ID", len(strconv.Itoa(int(builder.Id))))
+		updateMaxLength(&defaultLengths, "Name", len(builder.Name))
+		updateMaxLength(&defaultLengths, "Target", len(builder.Target))
+		// updateMaxLength(&defaultLengths, "Type", len(builder.Type))
+		// updateMaxLength(&defaultLengths, "Source", len(builder.Resource))
+		updateMaxLength(&defaultLengths, "Modules", len(builder.Modules))
+		updateMaxLength(&defaultLengths, "Profile", len(builder.ProfileName))
+		updateMaxLength(&defaultLengths, "Pipeline", len(builder.Pipeline))
+		// updateMaxLength(&defaultLengths, "Time", len(formattedTime))
 		row = table.NewRow(
 			table.RowData{
 				"ID":     builder.Id,
@@ -59,10 +83,24 @@ func PrintArtifacts(builders *clientpb.Builders, con *repl.Console) error {
 				"Profile":  builder.ProfileName,
 				"Pipeline": builder.Pipeline,
 				"Time":     formattedTime,
-			})
+			}).WithStyle(baseStyle)
 
 		rowEntries = append(rowEntries, row)
 	}
+
+	tableModel := tui.NewTable([]table.Column{
+		table.NewColumn("ID", "ID", defaultLengths["ID"]).WithStyle(baseStyle),
+		table.NewColumn("Name", "Name", defaultLengths["Name"]).WithStyle(baseStyle),
+		table.NewColumn("Pipeline", "Pipeline", defaultLengths["Pipeline"]).WithStyle(baseStyle),
+		table.NewColumn("Target", "Target", defaultLengths["Target"]).WithStyle(baseStyle),
+		table.NewColumn("Type", "Type", defaultLengths["Type"]).WithStyle(baseStyle),
+		table.NewColumn("Source", "Source", defaultLengths["Source"]).WithStyle(baseStyle),
+		//table.NewColumn("Stager", "Stager", 10),
+		table.NewColumn("Modules", "Modules", defaultLengths["Modules"]).WithStyle(baseStyle),
+		table.NewColumn("Time", "Time", defaultLengths["Time"]).WithStyle(baseStyle),
+		table.NewColumn("Profile", "Profile", defaultLengths["Profile"]).WithStyle(baseStyle),
+	}, false)
+
 	newTable := tui.NewModel(tableModel, nil, false, false)
 
 	tableModel.SetMultiline()
