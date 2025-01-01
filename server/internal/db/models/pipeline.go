@@ -23,32 +23,83 @@ type EncryptionConfig struct {
 
 // Pipeline
 type Pipeline struct {
-	ID         uuid.UUID        `gorm:"primaryKey;->;<-:create;type:uuid;"`
-	CreatedAt  time.Time        `gorm:"->;<-:create;"`
-	ListenerID string           `gorm:"type:string;"`
-	Name       string           `gorm:"unique,type:string"`
-	WebPath    string           `gorm:"type:string;default:''"`
-	IP         string           `gorm:"type:string;default:''"`
-	Host       string           `config:"host"`
-	Port       uint16           `config:"port"`
-	Type       string           `gorm:"type:string;"`
-	Parser     string           `gorm:"type:string;"`
-	Enable     bool             `gorm:"type:boolean;"`
-	Tls        TlsConfig        `gorm:"embedded;embeddedPrefix:tls_"`
-	Encryption EncryptionConfig `gorm:"embedded;embeddedPrefix:encryption_"`
+	ID         uuid.UUID         `gorm:"primaryKey;->;<-:create;type:uuid;"`
+	CreatedAt  time.Time         `gorm:"->;<-:create;"`
+	ListenerID string            `gorm:"type:string;"`
+	Name       string            `gorm:"unique,type:string"`
+	WebPath    string            `gorm:"type:string;default:''"`
+	IP         string            `gorm:"type:string;default:''"`
+	Host       string            `config:"host"`
+	Port       uint16            `config:"port"`
+	Type       string            `gorm:"type:string;"`
+	Parser     string            `gorm:"type:string;"`
+	Enable     bool              `gorm:"type:boolean;"`
+	Tls        TlsConfig         `gorm:"embedded;embeddedPrefix:tls_"`
+	Encryption *EncryptionConfig `gorm:"embedded;embeddedPrefix:encryption_"`
 }
 
-func (p *Pipeline) Address() string {
-	return fmt.Sprintf("%s:%d", p.IP, p.Port)
+func (pipeline *Pipeline) ToProtobuf() *clientpb.Pipeline {
+	switch pipeline.Type {
+	case consts.TCPPipeline:
+		return &clientpb.Pipeline{
+			Name:       pipeline.Name,
+			ListenerId: pipeline.ListenerID,
+			Enable:     pipeline.Enable,
+			Parser:     pipeline.Parser,
+			Ip:         pipeline.IP,
+			Body: &clientpb.Pipeline_Tcp{
+				Tcp: &clientpb.TCPPipeline{
+					Host: pipeline.Host,
+					Port: uint32(pipeline.Port),
+				},
+			},
+			Tls:        ToTlsProtobuf(&pipeline.Tls),
+			Encryption: ToEncryptionProtobuf(pipeline.Encryption),
+		}
+	case consts.BindPipeline:
+		return &clientpb.Pipeline{
+			Name:       pipeline.Name,
+			ListenerId: pipeline.ListenerID,
+			Enable:     pipeline.Enable,
+			Parser:     pipeline.Parser,
+			Body: &clientpb.Pipeline_Bind{
+				Bind: &clientpb.BindPipeline{},
+			},
+			Tls:        ToTlsProtobuf(&pipeline.Tls),
+			Encryption: ToEncryptionProtobuf(pipeline.Encryption),
+		}
+	case consts.WebsitePipeline:
+		return &clientpb.Pipeline{
+			Name:       pipeline.Name,
+			ListenerId: pipeline.ListenerID,
+			Ip:         pipeline.IP,
+			Enable:     pipeline.Enable,
+			Parser:     pipeline.Parser,
+			Body: &clientpb.Pipeline_Web{
+				Web: &clientpb.Website{
+					Root:     pipeline.WebPath,
+					Port:     uint32(pipeline.Port),
+					Contents: make(map[string]*clientpb.WebContent),
+				},
+			},
+			Tls:        ToTlsProtobuf(&pipeline.Tls),
+			Encryption: &clientpb.Encryption{},
+		}
+	default:
+		return nil
+	}
+}
+func (pipeline *Pipeline) Address() string {
+	return fmt.Sprintf("%s:%d", pipeline.IP, pipeline.Port)
 }
 
 // BeforeCreate - GORM hook
-func (l *Pipeline) BeforeCreate(tx *gorm.DB) (err error) {
-	l.ID, err = uuid.NewV4()
+func (pipeline *Pipeline) BeforeCreate(tx *gorm.DB) (err error) {
+	pipeline.ID, err = uuid.NewV4()
 	if err != nil {
 		return err
 	}
-	l.CreatedAt = time.Now()
+	pipeline.CreatedAt = time.Now()
 	return nil
 }
 
@@ -95,57 +146,6 @@ func FromPipelinePb(pipeline *clientpb.Pipeline, ip string) *Pipeline {
 	}
 }
 
-func ToPipelinePB(pipeline Pipeline) *clientpb.Pipeline {
-	switch pipeline.Type {
-	case consts.TCPPipeline:
-		return &clientpb.Pipeline{
-			Name:       pipeline.Name,
-			ListenerId: pipeline.ListenerID,
-			Enable:     pipeline.Enable,
-			Parser:     pipeline.Parser,
-			Ip:         pipeline.IP,
-			Body: &clientpb.Pipeline_Tcp{
-				Tcp: &clientpb.TCPPipeline{
-					Host: pipeline.Host,
-					Port: uint32(pipeline.Port),
-				},
-			},
-			Tls:        ToTlsProtobuf(&pipeline.Tls),
-			Encryption: ToEncryptionProtobuf(&pipeline.Encryption),
-		}
-	case consts.BindPipeline:
-		return &clientpb.Pipeline{
-			Name:       pipeline.Name,
-			ListenerId: pipeline.ListenerID,
-			Enable:     pipeline.Enable,
-			Parser:     pipeline.Parser,
-			Body: &clientpb.Pipeline_Bind{
-				Bind: &clientpb.BindPipeline{},
-			},
-			Tls:        ToTlsProtobuf(&pipeline.Tls),
-			Encryption: ToEncryptionProtobuf(&pipeline.Encryption),
-		}
-	case consts.WebsitePipeline:
-		return &clientpb.Pipeline{
-			Name:       pipeline.Name,
-			ListenerId: pipeline.ListenerID,
-			Ip:         pipeline.IP,
-			Enable:     pipeline.Enable,
-			Parser:     pipeline.Parser,
-			Body: &clientpb.Pipeline_Web{
-				Web: &clientpb.Website{
-					Root: pipeline.WebPath,
-					Port: uint32(pipeline.Port),
-				},
-			},
-			Tls:        ToTlsProtobuf(&pipeline.Tls),
-			Encryption: ToEncryptionProtobuf(&pipeline.Encryption),
-		}
-	default:
-		return nil
-	}
-}
-
 func ToTlsDB(tls *clientpb.TLS) TlsConfig {
 	return TlsConfig{
 		Cert:   tls.Cert,
@@ -154,8 +154,11 @@ func ToTlsDB(tls *clientpb.TLS) TlsConfig {
 	}
 }
 
-func ToEncryptionDB(encryption *clientpb.Encryption) EncryptionConfig {
-	return EncryptionConfig{
+func ToEncryptionDB(encryption *clientpb.Encryption) *EncryptionConfig {
+	if encryption == nil {
+		return nil
+	}
+	return &EncryptionConfig{
 		Enable: encryption.Enable,
 		Type:   encryption.Type,
 		Key:    encryption.Key,
@@ -171,6 +174,9 @@ func ToTlsProtobuf(tls *TlsConfig) *clientpb.TLS {
 }
 
 func ToEncryptionProtobuf(encryption *EncryptionConfig) *clientpb.Encryption {
+	if encryption == nil {
+		return &clientpb.Encryption{}
+	}
 	return &clientpb.Encryption{
 		Enable: encryption.Enable,
 		Type:   encryption.Type,

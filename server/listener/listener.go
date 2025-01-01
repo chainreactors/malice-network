@@ -9,7 +9,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
 	"github.com/chainreactors/malice-network/helper/utils/mtls"
-	"github.com/chainreactors/malice-network/helper/utils/webutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"google.golang.org/grpc"
@@ -43,7 +42,7 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 		pipelines: make(core.Pipelines),
 		conn:      conn,
 		cfg:       cfg,
-		websites:  make(core.Websites),
+		websites:  make(map[string]*Website),
 	}
 
 	_, err = lis.Rpc.RegisterListener(context.Background(), &clientpb.RegisterListener{
@@ -88,56 +87,45 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 		if err != nil {
 			return err
 		}
+
+		web := &clientpb.Website{
+			Root: newWebsite.RootPath,
+			Port: uint32(newWebsite.Port),
+		}
+		pipe := &clientpb.Pipeline{
+			Name:       newWebsite.WebsiteName,
+			ListenerId: lis.Name,
+			Body: &clientpb.Pipeline_Web{
+				Web: web,
+			},
+			Tls: tls.ToProtobuf(),
+		}
+
+		contents := map[string]*clientpb.WebContent{}
 		for _, content := range newWebsite.WebContents {
-			addWeb := &clientpb.WebsiteAddContent{
-				Name:     newWebsite.WebsiteName,
-				Contents: map[string]*clientpb.WebContent{},
-			}
-			cPath, _ := filepath.Abs(content.Path)
-			fileIfo, err := os.Stat(cPath)
-			var path string
+			file, err := os.ReadFile(content.File)
 			if err != nil {
 				logs.Log.Errorf(err.Error())
 				continue
 			}
-			if fileIfo.IsDir() {
-				logs.Log.Errorf("file is a directory")
-				continue
-			} else {
-				file, err := os.Open(cPath)
-				path = filepath.Join(newWebsite.RootPath, filepath.Base(cPath))
-				path = filepath.ToSlash(path)
-				webutils.WebAddFile(addWeb, path, webutils.SniffContentType(file), cPath, content.EncryptionConfig.Type, content.Parser)
-				if err != nil {
-					return err
-				}
-				err = file.Close()
-				if err != nil {
-					return err
-				}
+			contents[content.Path] = &clientpb.WebContent{
+				WebsiteId: newWebsite.WebsiteName,
+				File:      filepath.Base(content.File),
+				Path:      content.Path,
+				Type:      content.Type,
+				Size:      uint64(len(file)),
+				Content:   file,
 			}
-			webProtobuf := &clientpb.Pipeline{
-				Name:       newWebsite.WebsiteName,
-				ListenerId: lis.Name,
-				Body: &clientpb.Pipeline_Web{
-					Web: &clientpb.Website{
-						Root:     newWebsite.RootPath,
-						Port:     uint32(newWebsite.Port),
-						Contents: addWeb.Contents,
-					},
-				},
-				Tls: tls.ToProtobuf(),
-			}
-			resp, err := lis.Rpc.RegisterWebsite(context.Background(), webProtobuf)
-			if err != nil {
-				return err
-			}
-			webProtobuf.GetWeb().ID = resp.ID
-			_, err = lis.Rpc.UploadWebsite(context.Background(), webProtobuf.GetWeb())
 			if err != nil {
 				return err
 			}
 		}
+		web.Contents = contents
+		_, err = lis.Rpc.RegisterWebsite(context.Background(), pipe)
+		if err != nil {
+			return err
+		}
+
 		_, err = lis.Rpc.StartWebsite(context.Background(), &clientpb.CtrlPipeline{
 			Name:       newWebsite.WebsiteName,
 			ListenerId: lis.Name,
@@ -145,23 +133,6 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 		if err != nil {
 			return err
 		}
-		//cPath, _ := filepath.Abs(newWebsite.WebContents["a"].RootPath)
-		//fileIfo, err := os.Stat(cPath)
-		//
-		//if fileIfo.IsDir() {
-		//	_ = webutils.WebAddDirectory(addWeb, newWebsite.RootPath, cPath)
-		//} else {
-		//	file, err := os.Open(cPath)
-		//	webutils.WebAddFile(addWeb, newWebsite.RootPath, webutils.SniffContentType(file), cPath)
-		//	if err != nil {
-		//		return err
-		//	}
-		//	err = file.Close()
-		//	if err != nil {
-		//		return err
-		//	}
-		//}
-
 	}
 
 	return nil
@@ -174,7 +145,7 @@ type listener struct {
 	pipelines core.Pipelines
 	conn      *grpc.ClientConn
 	cfg       *configs.ListenerConfig
-	websites  core.Websites
+	websites  map[string]*Website
 }
 
 func (lns *listener) RegisterAndStart(pipeline *clientpb.Pipeline) error {
@@ -230,6 +201,8 @@ func (lns *listener) Handler() {
 			resp = lns.stopWebsite(msg.Job)
 		case consts.CtrlWebsiteRegister:
 			resp = lns.registerWebsite(msg.Job)
+		case consts.CtrlWebsiteAdd:
+			lns.addWebsiteContent(msg.Job)
 		}
 		err = stream.Send(resp)
 		if err != nil {
@@ -325,9 +298,9 @@ func (lns *listener) stopHandler(job *clientpb.Job) *clientpb.JobStatus {
 
 func (lns *listener) startWebsite(job *clientpb.Job) *clientpb.JobStatus {
 	var err error
-	getWeb := job.GetPipeline().GetWeb()
-	job.Name = getWeb.ID
-	w := lns.websites.Get(getWeb.ID)
+	pipe := job.GetPipeline()
+	getWeb := pipe.GetWeb()
+	w := lns.websites[pipe.Name]
 	if w == nil {
 		starResult, err := StartWebsite(lns.Rpc, job.GetPipeline(), getWeb.Contents)
 		if err != nil {
@@ -339,7 +312,7 @@ func (lns *listener) startWebsite(job *clientpb.Job) *clientpb.JobStatus {
 				Job:        job,
 			}
 		}
-		lns.websites.Add(starResult)
+		lns.websites[pipe.Name] = starResult
 	} else {
 		err = w.Start()
 		if err != nil {
@@ -363,9 +336,8 @@ func (lns *listener) startWebsite(job *clientpb.Job) *clientpb.JobStatus {
 
 func (lns *listener) stopWebsite(job *clientpb.Job) *clientpb.JobStatus {
 	var err error
-	getWeb := job.GetPipeline().GetWeb()
-	job.Name = getWeb.ID
-	w := lns.websites.Get(getWeb.Root)
+	pipe := job.GetPipeline()
+	w := lns.websites[pipe.Name]
 	if w == nil {
 		return &clientpb.JobStatus{
 			ListenerId: lns.ID(),
@@ -385,7 +357,7 @@ func (lns *listener) stopWebsite(job *clientpb.Job) *clientpb.JobStatus {
 			Job:        job,
 		}
 	}
-	coreJob := core.Jobs.Get(getWeb.ID)
+	coreJob := core.Jobs.Get(pipe.Name)
 	if coreJob != nil {
 		core.Jobs.Remove(coreJob)
 	}
@@ -400,7 +372,7 @@ func (lns *listener) stopWebsite(job *clientpb.Job) *clientpb.JobStatus {
 func (lns *listener) registerWebsite(job *clientpb.Job) *clientpb.JobStatus {
 	webContents := job.GetPipeline().GetWeb().Contents
 	for _, content := range webContents {
-		filePath := filepath.Join(configs.WebsitePath, job.GetPipeline().GetWeb().ID)
+		filePath := filepath.Join(configs.WebsitePath, content.File)
 		err := os.WriteFile(filePath, content.Content, os.ModePerm)
 		if err != nil {
 			return &clientpb.JobStatus{
@@ -415,5 +387,19 @@ func (lns *listener) registerWebsite(job *clientpb.Job) *clientpb.JobStatus {
 		ListenerId: lns.ID(),
 		Status:     consts.CtrlStatusSuccess,
 		Ctrl:       consts.CtrlWebUpload,
+	}
+}
+
+func (lns *listener) addWebsiteContent(job *clientpb.Job) *clientpb.JobStatus {
+	pipe := job.GetPipeline()
+	web := pipe.GetWeb()
+	w := lns.websites[pipe.Name]
+	for _, content := range web.Contents {
+		w.AddContent(content)
+	}
+	return &clientpb.JobStatus{
+		ListenerId: lns.ID(),
+		Status:     consts.CtrlStatusSuccess,
+		Ctrl:       consts.CtrlWebsiteAdd,
 	}
 }

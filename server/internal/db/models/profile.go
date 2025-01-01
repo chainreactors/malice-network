@@ -37,7 +37,7 @@ type Profile struct {
 	implantConfig string // raw implant config
 
 	// BasicPipeline 和 PulsePipeline
-	BasicPipeline *Pipeline `gorm:"foreignKey:PipelineID;references:Name;"`
+	Pipeline      *Pipeline `gorm:"foreignKey:PipelineID;references:Name;"`
 	PulsePipeline *Pipeline `gorm:"foreignKey:PulsePipelineID;references:Name;"`
 
 	CreatedAt time.Time `gorm:"->;<-:create;"`

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"mime"
 	"os"
 	"path/filepath"
 	"sort"
@@ -201,8 +202,8 @@ func FindFilesWithNonOneCurTotal(session models.Session) ([]models.File, error) 
 	return files, nil
 }
 
-func FindPipeline(name string) (models.Pipeline, error) {
-	var pipeline models.Pipeline
+func FindPipeline(name string) (*models.Pipeline, error) {
+	var pipeline *models.Pipeline
 	result := Session().Where("name = ?", name).First(&pipeline)
 	if result.Error != nil {
 		return pipeline, result.Error
@@ -281,13 +282,13 @@ func ListWebsite(listenerID string) ([]models.Pipeline, error) {
 	return pipelines, err
 }
 
-func EnablePipeline(pipeline models.Pipeline) error {
+func EnablePipeline(pipeline *models.Pipeline) error {
 	pipeline.Enable = true
 	result := Session().Save(&pipeline)
 	return result.Error
 }
 
-func DisablePipeline(pipeline models.Pipeline) error {
+func DisablePipeline(pipeline *models.Pipeline) error {
 	pipeline.Enable = false
 	result := Session().Save(&pipeline)
 	return result.Error
@@ -455,84 +456,72 @@ func UpdateTaskDescription(taskID, Description string) error {
 	return Session().Model(&models.Task{}).Where("id = ?", taskID).Update("description", Description).Error
 }
 
-// WebsiteByName - Get website by name
-func WebsiteByName(name string, webContentDir string) (*clientpb.Website, error) {
-	var websiteContent models.WebsiteContent
-	if err := Session().Where("name = ?", name).First(&websiteContent).Error; err != nil {
+// FindWebsiteByName - Get website by name
+func FindWebsiteByName(name string) (*models.Pipeline, error) {
+	var website *models.Pipeline
+	if err := Session().Where("name = ? AND type = 'website'", name).First(&website).Error; err != nil {
 		return nil, err
 	}
-	return websiteContent.ToProtobuf(webContentDir), nil
-}
-
-// Websites - Return all websites
-func Websites(webContentDir string) ([]*clientpb.Website, error) {
-	var websiteContents []*models.WebsiteContent
-	err := Session().Find(&websiteContents).Error
-
-	var pbWebsites []*clientpb.Website
-	for _, websiteContent := range websiteContents {
-		pbWebsites = append(pbWebsites, websiteContent.ToProtobuf(webContentDir))
-	}
-
-	return pbWebsites, err
-}
-
-func WebsitesAllByname(name, webContentDir string) ([]*clientpb.Website, error) {
-	var websiteContent []models.WebsiteContent
-	if err := Session().Where("name = ?", name).Find(&websiteContent).Error; err != nil {
-		return nil, err
-	}
-	var pbWebsites []*clientpb.Website
-	for _, website := range websiteContent {
-		pbWebsites = append(pbWebsites, website.ToProtobuf(webContentDir))
-	}
-	return pbWebsites, nil
+	return website, nil
 }
 
 // WebContent by ID and path
-func WebContentByIDAndPath(id string, path string, webContentDir string, eager bool) (*clientpb.WebContent, error) {
-	uuidFromString, _ := uuid.FromString(id)
-	content := models.WebsiteContent{}
-	err := Session().Where(&models.WebsiteContent{
-		ID:   uuidFromString,
-		Path: path,
-	}).First(&content).Error
-
+func FindWebContent(id string) (*models.WebsiteContent, error) {
+	uuidFromString, err := uuid.FromString(id)
 	if err != nil {
 		return nil, err
 	}
-	var data []byte
-	if eager {
-		data, err = os.ReadFile(filepath.Join(webContentDir, content.ID.String()))
-	} else {
-		data = []byte{}
+	contents := &models.WebsiteContent{}
+	err = Session().Where(&models.WebsiteContent{
+		ID: uuidFromString,
+	}).First(&contents).Error
+	if err != nil {
+		return nil, err
 	}
-	result := content.ToProtobuf(webContentDir).Contents[content.ID.String()]
-	result.Content = data
-	return result, err
+	return contents, err
+}
+
+func FindWebContentsByWebsite(website string) ([]*models.WebsiteContent, error) {
+	var contents []*models.WebsiteContent
+	err := Session().Where(&models.WebsiteContent{
+		PipelineID: website,
+	}).Find(&contents).Error
+	if err != nil {
+		return nil, err
+	}
+	return contents, err
 }
 
 // AddWebsite - Return website, create if it does not exist
-func AddWebsite(webSiteName string, webContentDir string) (*clientpb.Website, error) {
-	pbWebSite, err := WebsiteByName(webSiteName, webContentDir)
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		err = Session().Create(&models.WebsiteContent{Name: webSiteName}).Error
-		if err != nil {
-			return nil, err
-		}
-		pbWebSite, err = WebsiteByName(webSiteName, webContentDir)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return pbWebSite, nil
-}
+//func AddWebsite(webSiteName string) (*clientpb.WebContent, error) {
+//	pbWebSite, err := FindWebsiteByName(webSiteName)
+//	if errors.Is(err, gorm.ErrRecordNotFound) {
+//		err = Session().Create(&models.WebsiteContent{
+//			File: webSiteName,
+//		}).Error
+//		if err != nil {
+//			return nil, err
+//		}
+//		pbWebSite, err = FindWebsiteByName(webSiteName)
+//		if err != nil {
+//			return nil, err
+//		}
+//	}
+//	return pbWebSite, nil
+//}
 
 // AddContent - Add content to website
-func AddContent(pbWebContent *clientpb.WebContent, webContentDir string) (*clientpb.WebContent, error) {
+func AddContent(content *clientpb.WebContent) (*models.WebsiteContent, error) {
 	var existingContent models.WebsiteContent
-	dbModelWebContent := models.WebsiteContentFromProtobuf(pbWebContent)
-	err := Session().Where("name = ? AND path = ?", pbWebContent.Name, pbWebContent.Path).First(&existingContent).Error
+	if content.Type == "" {
+		content.ContentType = mime.TypeByExtension(filepath.Ext(content.Path))
+		if content.Type == "" {
+			content.ContentType = "text/html; charset=utf-8" // Default mime
+		}
+	}
+
+	dbModelWebContent := models.FromWebContentPb(content)
+	err := Session().Where("pipeline_id = ? AND path = ?", content.WebsiteId, content.Path).First(&existingContent).Error
 	if err == nil {
 		dbModelWebContent.ID = existingContent.ID
 		err = Session().Save(&dbModelWebContent).Error
@@ -545,8 +534,13 @@ func AddContent(pbWebContent *clientpb.WebContent, webContentDir string) (*clien
 			return nil, err
 		}
 	}
-	pbWebContent.Id = dbModelWebContent.ID.String()
-	return pbWebContent, nil
+	content.Id = dbModelWebContent.ID.String()
+	return dbModelWebContent, nil
+}
+
+func UpdateContent(pbWebContent *clientpb.WebContent) error {
+	dbModelWebContent := models.FromWebContentPb(pbWebContent)
+	return Session().Save(&dbModelWebContent).Error
 }
 
 // RemoveWebsiteContent - Remove all content of a website by ID
@@ -618,7 +612,7 @@ func GetProfile(name string) (*types.ProfileConfig, error) {
 	if result.Error != nil {
 		return nil, result.Error
 	}
-	if profileModel.PipelineID != "" && profileModel.BasicPipeline == nil {
+	if profileModel.PipelineID != "" && profileModel.Pipeline == nil {
 		return nil, errs.ErrNotFoundPipeline
 	}
 	if profileModel.PulsePipelineID != "" && profileModel.PulsePipeline == nil {
@@ -646,8 +640,8 @@ func GetProfile(name string) (*types.ProfileConfig, error) {
 			profile.Basic.Interval = profileModel.Params.Interval
 			profile.Basic.Jitter = profileModel.Params.Jitter
 		}
-		if profileModel.BasicPipeline != nil {
-			profile.Basic.Targets = []string{profileModel.BasicPipeline.Address()}
+		if profileModel.Pipeline != nil {
+			profile.Basic.Targets = []string{profileModel.Pipeline.Address()}
 		}
 	}
 	if profile.Pulse != nil {
@@ -676,6 +670,7 @@ func DeleteProfileByName(profileName string) error {
 func UpdateProfileRaw(profileName string, raw []byte) error {
 	return Session().Model(&models.Profile{}).Where("name = ?", profileName).Update("raw", raw).Error
 }
+
 func SaveBuilderFromAction(inputs map[string]string, req *clientpb.Generate) (*models.Builder, error) {
 	target, ok := consts.GetBuildTarget(inputs["targets"])
 	if !ok {

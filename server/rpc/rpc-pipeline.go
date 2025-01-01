@@ -38,7 +38,7 @@ func (rpc *Server) ListPipelines(ctx context.Context, req *clientpb.Listener) (*
 		return nil, err
 	}
 	for _, pipeline := range pipelines {
-		result = append(result, models.ToPipelinePB(pipeline))
+		result = append(result, pipeline.ToProtobuf())
 	}
 	return &clientpb.Pipelines{Pipelines: result}, nil
 }
@@ -49,7 +49,7 @@ func (rpc *Server) StartPipeline(ctx context.Context, req *clientpb.CtrlPipeline
 		return nil, err
 	}
 	pipelineDB.Enable = true
-	pipeline := models.ToPipelinePB(pipelineDB)
+	pipeline := pipelineDB.ToProtobuf()
 	listener := core.Listeners.Get(pipeline.ListenerId)
 	if listener == nil {
 		return nil, fmt.Errorf("listener %s not found", req.ListenerId)
@@ -80,7 +80,7 @@ func (rpc *Server) StopPipeline(ctx context.Context, req *clientpb.CtrlPipeline)
 	if err != nil {
 		return &clientpb.Empty{}, err
 	}
-	pipeline := models.ToPipelinePB(pipelineDB)
+	pipeline := pipelineDB.ToProtobuf()
 	listener := core.Listeners.Get(pipeline.ListenerId)
 	if listener == nil {
 		return nil, fmt.Errorf("listener %s not found", req.ListenerId)
@@ -106,7 +106,7 @@ func (rpc *Server) DeletePipeline(ctx context.Context, req *clientpb.CtrlPipelin
 	if err != nil {
 		return &clientpb.Empty{}, err
 	}
-	pipeline := models.ToPipelinePB(pipelineDB)
+	pipeline := pipelineDB.ToProtobuf()
 	listener := core.Listeners.Get(pipeline.ListenerId)
 	if listener == nil {
 		return nil, fmt.Errorf("listener %s not found", req.ListenerId)

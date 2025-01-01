@@ -4,21 +4,24 @@ import (
 	"errors"
 	"fmt"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
 	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/core"
-	"google.golang.org/protobuf/proto"
 	"net/http"
 	"net/url"
+	"path"
+	"strings"
 )
 
 type Website struct {
-	port        int
-	server      *http.Server
-	rpc         listenerrpc.ListenerRPCClient
-	rootPath    string
-	websiteName string
+	port     int
+	server   *http.Server
+	rpc      listenerrpc.ListenerRPCClient
+	rootPath string
+	Name     string
+	Enable   bool
 	*core.PipelineConfig
 	Content map[string]*clientpb.WebContent
 }
@@ -28,7 +31,6 @@ func StartWebsite(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeline
 	web := &Website{
 		port:           int(websitePp.Port),
 		rootPath:       websitePp.Root,
-		websiteName:    websitePp.ID,
 		rpc:            rpc,
 		PipelineConfig: core.FromProtobuf(pipeline),
 		Content:        content,
@@ -41,17 +43,12 @@ func StartWebsite(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeline
 }
 
 func (w *Website) ID() string {
-	return fmt.Sprintf("%s", w.websiteName)
-}
-
-func (w *Website) Addr() string {
-	return ""
+	return w.Name
 }
 
 func (w *Website) Start() error {
 	mux := http.NewServeMux()
-	mux.HandleFunc(w.rootPath, w.websiteContentHandler)
-	mux.HandleFunc(w.rootPath+"/", w.websiteContentHandler)
+	mux.HandleFunc(path.Join(w.rootPath, "/"), w.websiteContentHandler)
 	var err error
 	tlsConfig, err := certutils.WrapToTlsConfig(w.Tls)
 	if err != nil {
@@ -86,12 +83,20 @@ func (w *Website) Close() error {
 	}
 }
 
-func (w *Website) ToProtobuf() proto.Message {
-	return &clientpb.Website{
-		ID:   fmt.Sprintf("%s_%d", w.websiteName, w.port),
-		Port: uint32(w.port),
-		Root: w.rootPath,
+func (w *Website) ToProtobuf() *clientpb.Pipeline {
+	p := &clientpb.Pipeline{
+		Name:       w.Name,
+		Enable:     w.Enable,
+		ListenerId: w.ListenerID,
+		Body: &clientpb.Pipeline_Web{
+			Web: &clientpb.Website{
+				Port: uint32(w.port),
+				Root: w.rootPath,
+			},
+		},
+		Tls: w.Tls.ToProtobuf(),
 	}
+	return p
 }
 
 func (w *Website) AddFileRoute(routePath, localFilePath string) {
@@ -109,16 +114,24 @@ func (w *Website) websiteContentHandler(resp http.ResponseWriter, req *http.Requ
 		logs.Log.Errorf("Failed to parse URL: %v", err)
 		return
 	}
-	content, ok := w.Content[u.Path]
+	contentPath := strings.TrimRight(u.Path, "/")
+	content, ok := w.Content[contentPath]
 	if !ok {
-		logs.Log.Debugf("Failed to get content ")
+		logs.Log.Debugf("%s Failed to get content ", req.URL)
 		return
 	}
-	//parserContent.Marshal()
-	//cry.Encrypt(content.Content)
-	resp.Header().Set("Content-Type", content.ContentType)
+	switch content.ContentType {
+	case consts.ImplantPulse:
+	default:
+
+	}
+	resp.Header().Add("Content-Type", content.ContentType)
 	resp.Header().Add("Cache-Control", "no-store, no-cache, must-revalidate")
 	resp.Write(content.Content)
+}
+
+func (w *Website) AddContent(content *clientpb.WebContent) {
+	w.Content[content.Path] = content
 }
 
 //func (w *Website) handlePulse() {

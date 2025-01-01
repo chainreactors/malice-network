@@ -122,12 +122,6 @@ const (
 	MaliceRPC_DLL2Shellcode_FullMethodName           = "/clientrpc.MaliceRPC/DLL2Shellcode"
 	MaliceRPC_ShellcodeEncode_FullMethodName         = "/clientrpc.MaliceRPC/ShellcodeEncode"
 	MaliceRPC_ListJobs_FullMethodName                = "/clientrpc.MaliceRPC/ListJobs"
-	MaliceRPC_Websites_FullMethodName                = "/clientrpc.MaliceRPC/Websites"
-	MaliceRPC_Website_FullMethodName                 = "/clientrpc.MaliceRPC/Website"
-	MaliceRPC_WebsiteRemove_FullMethodName           = "/clientrpc.MaliceRPC/WebsiteRemove"
-	MaliceRPC_WebsiteAddContent_FullMethodName       = "/clientrpc.MaliceRPC/WebsiteAddContent"
-	MaliceRPC_WebsiteUpdateContent_FullMethodName    = "/clientrpc.MaliceRPC/WebsiteUpdateContent"
-	MaliceRPC_WebsiteRemoveContent_FullMethodName    = "/clientrpc.MaliceRPC/WebsiteRemoveContent"
 	MaliceRPC_NewProfile_FullMethodName              = "/clientrpc.MaliceRPC/NewProfile"
 	MaliceRPC_GetProfiles_FullMethodName             = "/clientrpc.MaliceRPC/GetProfiles"
 	MaliceRPC_DeleteProfile_FullMethodName           = "/clientrpc.MaliceRPC/DeleteProfile"
@@ -267,13 +261,6 @@ type MaliceRPCClient interface {
 	ShellcodeEncode(ctx context.Context, in *clientpb.ShellcodeEncode, opts ...grpc.CallOption) (*clientpb.Bin, error)
 	// jobs
 	ListJobs(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Pipelines, error)
-	// Websites
-	Websites(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Websites, error)
-	Website(ctx context.Context, in *clientpb.Website, opts ...grpc.CallOption) (*clientpb.Website, error)
-	WebsiteRemove(ctx context.Context, in *clientpb.Website, opts ...grpc.CallOption) (*clientpb.Empty, error)
-	WebsiteAddContent(ctx context.Context, in *clientpb.WebsiteAddContent, opts ...grpc.CallOption) (*clientpb.Website, error)
-	WebsiteUpdateContent(ctx context.Context, in *clientpb.WebsiteAddContent, opts ...grpc.CallOption) (*clientpb.Website, error)
-	WebsiteRemoveContent(ctx context.Context, in *clientpb.WebsiteRemoveContent, opts ...grpc.CallOption) (*clientpb.Website, error)
 	// generator
 	NewProfile(ctx context.Context, in *clientpb.Profile, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	GetProfiles(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Profiles, error)
@@ -1312,66 +1299,6 @@ func (c *maliceRPCClient) ListJobs(ctx context.Context, in *clientpb.Empty, opts
 	return out, nil
 }
 
-func (c *maliceRPCClient) Websites(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Websites, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(clientpb.Websites)
-	err := c.cc.Invoke(ctx, MaliceRPC_Websites_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *maliceRPCClient) Website(ctx context.Context, in *clientpb.Website, opts ...grpc.CallOption) (*clientpb.Website, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(clientpb.Website)
-	err := c.cc.Invoke(ctx, MaliceRPC_Website_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *maliceRPCClient) WebsiteRemove(ctx context.Context, in *clientpb.Website, opts ...grpc.CallOption) (*clientpb.Empty, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(clientpb.Empty)
-	err := c.cc.Invoke(ctx, MaliceRPC_WebsiteRemove_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *maliceRPCClient) WebsiteAddContent(ctx context.Context, in *clientpb.WebsiteAddContent, opts ...grpc.CallOption) (*clientpb.Website, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(clientpb.Website)
-	err := c.cc.Invoke(ctx, MaliceRPC_WebsiteAddContent_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *maliceRPCClient) WebsiteUpdateContent(ctx context.Context, in *clientpb.WebsiteAddContent, opts ...grpc.CallOption) (*clientpb.Website, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(clientpb.Website)
-	err := c.cc.Invoke(ctx, MaliceRPC_WebsiteUpdateContent_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *maliceRPCClient) WebsiteRemoveContent(ctx context.Context, in *clientpb.WebsiteRemoveContent, opts ...grpc.CallOption) (*clientpb.Website, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(clientpb.Website)
-	err := c.cc.Invoke(ctx, MaliceRPC_WebsiteRemoveContent_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *maliceRPCClient) NewProfile(ctx context.Context, in *clientpb.Profile, opts ...grpc.CallOption) (*clientpb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(clientpb.Empty)
@@ -1662,13 +1589,6 @@ type MaliceRPCServer interface {
 	ShellcodeEncode(context.Context, *clientpb.ShellcodeEncode) (*clientpb.Bin, error)
 	// jobs
 	ListJobs(context.Context, *clientpb.Empty) (*clientpb.Pipelines, error)
-	// Websites
-	Websites(context.Context, *clientpb.Empty) (*clientpb.Websites, error)
-	Website(context.Context, *clientpb.Website) (*clientpb.Website, error)
-	WebsiteRemove(context.Context, *clientpb.Website) (*clientpb.Empty, error)
-	WebsiteAddContent(context.Context, *clientpb.WebsiteAddContent) (*clientpb.Website, error)
-	WebsiteUpdateContent(context.Context, *clientpb.WebsiteAddContent) (*clientpb.Website, error)
-	WebsiteRemoveContent(context.Context, *clientpb.WebsiteRemoveContent) (*clientpb.Website, error)
 	// generator
 	NewProfile(context.Context, *clientpb.Profile) (*clientpb.Empty, error)
 	GetProfiles(context.Context, *clientpb.Empty) (*clientpb.Profiles, error)
@@ -1997,24 +1917,6 @@ func (UnimplementedMaliceRPCServer) ShellcodeEncode(context.Context, *clientpb.S
 }
 func (UnimplementedMaliceRPCServer) ListJobs(context.Context, *clientpb.Empty) (*clientpb.Pipelines, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListJobs not implemented")
-}
-func (UnimplementedMaliceRPCServer) Websites(context.Context, *clientpb.Empty) (*clientpb.Websites, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Websites not implemented")
-}
-func (UnimplementedMaliceRPCServer) Website(context.Context, *clientpb.Website) (*clientpb.Website, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Website not implemented")
-}
-func (UnimplementedMaliceRPCServer) WebsiteRemove(context.Context, *clientpb.Website) (*clientpb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method WebsiteRemove not implemented")
-}
-func (UnimplementedMaliceRPCServer) WebsiteAddContent(context.Context, *clientpb.WebsiteAddContent) (*clientpb.Website, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method WebsiteAddContent not implemented")
-}
-func (UnimplementedMaliceRPCServer) WebsiteUpdateContent(context.Context, *clientpb.WebsiteAddContent) (*clientpb.Website, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method WebsiteUpdateContent not implemented")
-}
-func (UnimplementedMaliceRPCServer) WebsiteRemoveContent(context.Context, *clientpb.WebsiteRemoveContent) (*clientpb.Website, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method WebsiteRemoveContent not implemented")
 }
 func (UnimplementedMaliceRPCServer) NewProfile(context.Context, *clientpb.Profile) (*clientpb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method NewProfile not implemented")
@@ -3881,114 +3783,6 @@ func _MaliceRPC_ListJobs_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
-func _MaliceRPC_Websites_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(clientpb.Empty)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(MaliceRPCServer).Websites(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: MaliceRPC_Websites_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MaliceRPCServer).Websites(ctx, req.(*clientpb.Empty))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _MaliceRPC_Website_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(clientpb.Website)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(MaliceRPCServer).Website(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: MaliceRPC_Website_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MaliceRPCServer).Website(ctx, req.(*clientpb.Website))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _MaliceRPC_WebsiteRemove_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(clientpb.Website)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(MaliceRPCServer).WebsiteRemove(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: MaliceRPC_WebsiteRemove_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MaliceRPCServer).WebsiteRemove(ctx, req.(*clientpb.Website))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _MaliceRPC_WebsiteAddContent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(clientpb.WebsiteAddContent)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(MaliceRPCServer).WebsiteAddContent(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: MaliceRPC_WebsiteAddContent_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MaliceRPCServer).WebsiteAddContent(ctx, req.(*clientpb.WebsiteAddContent))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _MaliceRPC_WebsiteUpdateContent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(clientpb.WebsiteAddContent)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(MaliceRPCServer).WebsiteUpdateContent(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: MaliceRPC_WebsiteUpdateContent_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MaliceRPCServer).WebsiteUpdateContent(ctx, req.(*clientpb.WebsiteAddContent))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _MaliceRPC_WebsiteRemoveContent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(clientpb.WebsiteRemoveContent)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(MaliceRPCServer).WebsiteRemoveContent(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: MaliceRPC_WebsiteRemoveContent_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MaliceRPCServer).WebsiteRemoveContent(ctx, req.(*clientpb.WebsiteRemoveContent))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _MaliceRPC_NewProfile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(clientpb.Profile)
 	if err := dec(in); err != nil {
@@ -4697,30 +4491,6 @@ var MaliceRPC_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListJobs",
 			Handler:    _MaliceRPC_ListJobs_Handler,
-		},
-		{
-			MethodName: "Websites",
-			Handler:    _MaliceRPC_Websites_Handler,
-		},
-		{
-			MethodName: "Website",
-			Handler:    _MaliceRPC_Website_Handler,
-		},
-		{
-			MethodName: "WebsiteRemove",
-			Handler:    _MaliceRPC_WebsiteRemove_Handler,
-		},
-		{
-			MethodName: "WebsiteAddContent",
-			Handler:    _MaliceRPC_WebsiteAddContent_Handler,
-		},
-		{
-			MethodName: "WebsiteUpdateContent",
-			Handler:    _MaliceRPC_WebsiteUpdateContent_Handler,
-		},
-		{
-			MethodName: "WebsiteRemoveContent",
-			Handler:    _MaliceRPC_WebsiteRemoveContent_Handler,
 		},
 		{
 			MethodName: "NewProfile",

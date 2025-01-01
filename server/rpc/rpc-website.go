@@ -6,129 +6,93 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/server/internal/certutils"
+	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
-	"github.com/chainreactors/malice-network/server/internal/website"
-	"mime"
+	"os"
 	"path/filepath"
 	"strings"
 )
 
-func (rpc *Server) Websites(ctx context.Context, _ *clientpb.Empty) (*clientpb.Websites, error) {
-	websiteNames, err := website.Names()
+func MapContents(webpipe *clientpb.Pipeline) error {
+	web := webpipe.GetWeb()
+	contents, err := db.FindWebContentsByWebsite(webpipe.Name)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	websites := &clientpb.Websites{Websites: []*clientpb.Website{}}
-	for _, name := range websiteNames {
-		siteContent, err := website.MapContent(name, false)
-		if err != nil {
-			continue
-		}
-		websites.Websites = append(websites.Websites, siteContent)
+
+	for _, content := range contents {
+		web.Contents[content.Path] = content.ToProtobuf()
 	}
-	return websites, nil
+	return nil
 }
 
-func (rpc *Server) WebsiteRemove(ctx context.Context, req *clientpb.Website) (*clientpb.Empty, error) {
-	dbWebsite, err := website.WebsiteByName(req.ID)
-	if err != nil {
-		return nil, err
+// WebsiteAddContent - Add content to a website, the website is created if `name` does not exist
+func (rpc *Server) WebsiteAddContent(ctx context.Context, req *clientpb.Website) (*clientpb.Empty, error) {
+	if len(req.Contents) != 0 {
+		for _, content := range req.Contents {
+			// If no content-type was specified by the client we try to detect the mime based on path ext
+
+			content.Size = uint64(len(content.Content))
+			rpcLog.Infof("Add website content (%s) %s -> %s", content.File, content.Path, content.Type)
+			_, err := db.AddContent(content)
+			if err != nil {
+				return nil, err
+			}
+		}
 	}
 
-	err = db.RemoveWebsite(dbWebsite.ID)
-	if err != nil {
-		return nil, err
+	core.Jobs.Ctrl <- &clientpb.JobCtrl{
+		Id:   core.NextCtrlID(),
+		Ctrl: consts.CtrlWebsiteAdd,
+		Job: &clientpb.Job{
+			Id: core.NextJobID(),
+			Pipeline: &clientpb.Pipeline{
+				Body: &clientpb.Pipeline_Web{
+					Web: req,
+				},
+			},
+		},
 	}
 	core.EventBroker.Publish(core.Event{
 		EventType: consts.EventWebsite,
-		Op:        consts.CtrlWebsiteRemove,
-		Message:   req.ID,
+		Op:        consts.CtrlWebsiteAdd,
 		Important: true,
 	})
 
 	return &clientpb.Empty{}, nil
 }
 
-// Website - Get one website
-func (rpc *Server) Website(ctx context.Context, req *clientpb.Website) (*clientpb.Website, error) {
-	return website.MapContent(req.ID, true)
-}
-
-// WebsiteAddContent - Add content to a website, the website is created if `name` does not exist
-func (rpc *Server) WebsiteAddContent(ctx context.Context, req *clientpb.WebsiteAddContent) (*clientpb.Website, error) {
-	if 0 < len(req.Contents) {
-		for _, content := range req.Contents {
-			// If no content-type was specified by the client we try to detect the mime based on path ext
-			if content.ContentType == "" {
-				content.ContentType = mime.TypeByExtension(filepath.Ext(content.Path))
-				if content.ContentType == "" {
-					content.ContentType = "text/html; charset=utf-8" // Default mime
-				}
-			}
-
-			content.Size = uint64(len(content.Content))
-			rpcLog.Infof("Add website content (%s) %s -> %s", req.Name, content.Path, content.ContentType)
-			_, err := website.AddContent(req.Name, content)
-			if err != nil {
-				return nil, err
-			}
-		}
-	} else {
-		_, err := website.AddWebsite(req.Name)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	core.EventBroker.Publish(core.Event{
-		EventType: consts.EventWebsite,
-		Op:        consts.CtrlWebsiteAdd,
-		Message:   req.Name,
-		Important: true,
-	})
-
-	return website.MapContent(req.Name, true)
-}
-
 // WebsiteUpdateContent - Update specific content from a website, currently you can only the update Content-type field
-func (rpc *Server) WebsiteUpdateContent(ctx context.Context, req *clientpb.WebsiteAddContent) (*clientpb.Website, error) {
-	dbWebsite, err := website.WebsiteByName(req.Name)
-	if err != nil {
-		return nil, err
-	}
-	for _, content := range req.Contents {
-		_, _ = website.AddContent(dbWebsite.ID, content)
-	}
-
+func (rpc *Server) WebsiteUpdateContent(ctx context.Context, req *clientpb.WebContent) (*clientpb.Empty, error) {
+	db.UpdateContent(req)
 	core.EventBroker.Publish(core.Event{
 		EventType: consts.EventWebsite,
 		Op:        consts.CtrlWebsiteUpdate,
-		Message:   req.Name,
+		Message:   fmt.Sprintf("update content %s", req.Id),
 	})
 
-	return website.MapContent(req.Name, false)
+	return &clientpb.Empty{}, nil
 }
 
 // WebsiteRemoveContent - Remove specific content from a website
-func (rpc *Server) WebsiteRemoveContent(ctx context.Context, req *clientpb.WebsiteRemoveContent) (*clientpb.Website, error) {
-	for _, path := range req.Paths {
-		err := website.RemoveContent(req.Name, path)
-		if err != nil {
-			return nil, err
-		}
+func (rpc *Server) WebsiteRemoveContent(ctx context.Context, req *clientpb.WebContent) (*clientpb.Empty, error) {
+	err := db.RemoveContent(req.Id)
+	if err != nil {
+		return nil, err
 	}
 
 	core.EventBroker.Publish(core.Event{
 		EventType: consts.EventWebsite,
-		Message:   req.Name,
+		Op:        consts.CtrlWebsiteRemove,
+		Message:   fmt.Sprintf("remove content %s", req.Id),
 	})
 
-	return website.MapContent(req.Name, false)
+	return &clientpb.Empty{}, nil
 }
 
-func (rpc *Server) RegisterWebsite(ctx context.Context, req *clientpb.Pipeline) (*clientpb.WebsiteResponse, error) {
+func (rpc *Server) RegisterWebsite(ctx context.Context, req *clientpb.Pipeline) (*clientpb.Empty, error) {
 	ip := getRemoteAddr(ctx)
 	ip = strings.Split(ip, ":")[0]
 	pipelineModel := models.FromPipelinePb(req, ip)
@@ -136,55 +100,50 @@ func (rpc *Server) RegisterWebsite(ctx context.Context, req *clientpb.Pipeline) 
 	if pipelineModel.Tls.Enable && pipelineModel.Tls.Cert == "" && pipelineModel.Tls.Key == "" {
 		pipelineModel.Tls.Cert, pipelineModel.Tls.Key, err = certutils.GenerateTlsCert(req.Name, req.ListenerId)
 		if err != nil {
-			return &clientpb.WebsiteResponse{}, err
+			return nil, err
 		}
 	}
 	err = db.CreatePipeline(pipelineModel)
-	var id = ""
 	if err != nil {
-		return &clientpb.WebsiteResponse{}, err
+		return nil, err
 	}
-	getWeb := req.GetWeb()
-	if 0 < len(getWeb.Contents) {
-		for _, content := range getWeb.Contents {
-			if content.ContentType == "" {
-				content.ContentType = mime.TypeByExtension(filepath.Ext(content.Path))
-				if content.ContentType == "" {
-					content.ContentType = "text/html; charset=utf-8" // Default mime
-				}
-			}
-			content.Size = uint64(len(content.Content))
-			id, err = website.AddContent(getWeb.ID, content)
-			if err != nil {
-				return nil, err
-			}
+	_ = os.Mkdir(filepath.Join(configs.WebsitePath, req.Name), os.ModePerm)
+	for _, content := range req.GetWeb().Contents {
+		_, err = db.AddContent(content)
+		if err != nil {
+			return nil, err
+		}
+		err = os.WriteFile(filepath.Join(configs.WebsitePath, req.Name, content.Id), content.Content, os.ModePerm)
+		if err != nil {
+			return nil, err
 		}
 	}
-	return &clientpb.WebsiteResponse{ID: id}, nil
+
+	return &clientpb.Empty{}, nil
 }
 
 func (rpc *Server) StartWebsite(ctx context.Context, req *clientpb.CtrlPipeline) (*clientpb.Empty, error) {
-	pipelineDB, err := db.FindPipeline(req.Name)
+	webpipe, err := db.FindWebsiteByName(req.Name)
 	if err != nil {
-		return &clientpb.Empty{}, err
+		return nil, err
 	}
-	pipeline := models.ToPipelinePB(pipelineDB)
-	listener := core.Listeners.Get(pipeline.ListenerId)
+
+	listener := core.Listeners.Get(webpipe.ListenerID)
 	if listener == nil {
 		return nil, fmt.Errorf("listener %s not found", req.ListenerId)
 	}
-	listener.AddPipeline(pipeline)
-	w, err := website.MapContents(req.Name)
+
+	webpb := webpipe.ToProtobuf()
+	listener.AddPipeline(webpb)
+	err = MapContents(webpb)
 	if err != nil {
-		return &clientpb.Empty{}, err
+		return nil, err
 	}
-	pipeline.GetWeb().Contents = w.Contents
-	pipeline.Enable = true
-	pipeline.GetWeb().ID = pipelineDB.WebPath
+	webpb.Enable = true
 	core.Jobs.Add(&core.Job{
 		ID:      core.CurrentJobID(),
-		Message: pipeline,
-		Name:    pipeline.Name,
+		Message: webpb,
+		Name:    webpipe.Name,
 	})
 
 	core.Jobs.Ctrl <- &clientpb.JobCtrl{
@@ -192,10 +151,10 @@ func (rpc *Server) StartWebsite(ctx context.Context, req *clientpb.CtrlPipeline)
 		Ctrl: consts.CtrlWebsiteStart,
 		Job: &clientpb.Job{
 			Id:       core.NextJobID(),
-			Pipeline: pipeline,
+			Pipeline: webpb,
 		},
 	}
-	err = db.EnablePipeline(pipelineDB)
+	err = db.EnablePipeline(webpipe)
 	if err != nil {
 		return nil, err
 	}
@@ -208,7 +167,7 @@ func (rpc *Server) StopWebsite(ctx context.Context, req *clientpb.CtrlPipeline) 
 	if err != nil {
 		return nil, err
 	}
-	pipeline := models.ToPipelinePB(pipelineDB)
+	pipeline := pipelineDB.ToProtobuf()
 	ctrl := clientpb.JobCtrl{
 		Id:   core.NextCtrlID(),
 		Ctrl: consts.CtrlWebsiteStop,
@@ -231,24 +190,6 @@ func (rpc *Server) StopWebsite(ctx context.Context, req *clientpb.CtrlPipeline) 
 
 }
 
-func (rpc *Server) UploadWebsite(ctx context.Context, req *clientpb.Website) (*clientpb.Empty, error) {
-	ctrl := clientpb.JobCtrl{
-		Id:   core.NextCtrlID(),
-		Ctrl: consts.CtrlWebsiteRegister,
-		Job: &clientpb.Job{
-			Id: core.NextJobID(),
-			Pipeline: &clientpb.Pipeline{
-				Body: &clientpb.Pipeline_Web{
-					Web: req,
-				},
-			},
-		},
-	}
-
-	core.Jobs.Ctrl <- &ctrl
-	return &clientpb.Empty{}, nil
-}
-
 func (rpc *Server) ListWebsites(ctx context.Context, req *clientpb.Listener) (*clientpb.Pipelines, error) {
 	var websites []*clientpb.Pipeline
 	pipelines, err := db.ListWebsite(req.Id)
@@ -256,7 +197,7 @@ func (rpc *Server) ListWebsites(ctx context.Context, req *clientpb.Listener) (*c
 		return nil, err
 	}
 	for _, pipeline := range pipelines {
-		websites = append(websites, models.ToPipelinePB(pipeline))
+		websites = append(websites, pipeline.ToProtobuf())
 	}
 	return &clientpb.Pipelines{Pipelines: websites}, nil
 }
@@ -266,7 +207,7 @@ func (rpc *Server) DeleteWebsite(ctx context.Context, req *clientpb.CtrlPipeline
 	if err != nil {
 		return nil, err
 	}
-	pipeline := models.ToPipelinePB(pipelineDB)
+	pipeline := pipelineDB.ToProtobuf()
 	listener := core.Listeners.Get(pipeline.ListenerId)
 	if listener == nil {
 		return nil, fmt.Errorf("listener %s not found", req.ListenerId)

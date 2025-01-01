@@ -6,20 +6,15 @@ import (
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/utils/webutils"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
 	"os"
-	"path/filepath"
 	"strconv"
 )
 
 func NewWebsiteCmd(cmd *cobra.Command, con *repl.Console) error {
 	listenerID, _, port := common.ParsePipelineFlags(cmd)
-	contentType, _ := cmd.Flags().GetString("content_type")
-	encryptionType, _ := cmd.Flags().GetString("encryption_type")
-	parser, _ := cmd.Flags().GetString("parser")
 	name := cmd.Flags().Arg(0)
 	webPath := cmd.Flags().Arg(1)
 	cPath := cmd.Flags().Arg(2)
@@ -35,35 +30,28 @@ func NewWebsiteCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	cPath, _ = filepath.Abs(cPath)
 
-	fileIfo, err := os.Stat(cPath)
-	if err != nil {
-		return err
-	}
-	if fileIfo.IsDir() {
-		return fmt.Errorf("file is a directory")
-	}
 	addWeb := &clientpb.WebsiteAddContent{
 		Name:     name,
 		Contents: map[string]*clientpb.WebContent{},
 	}
 
-	webutils.WebAddFile(addWeb, webPath, contentType, cPath, encryptionType, parser)
 	content, err := os.ReadFile(cPath)
 	if err != nil {
 		return err
 	}
+
+	addWeb.Contents[webPath] = &clientpb.WebContent{
+		File:    name,
+		Path:    cPath,
+		Content: content,
+	}
+
 	req := &clientpb.Pipeline{
 		Name:       name,
 		ListenerId: listenerID,
 		Enable:     false,
-		Encryption: &clientpb.Encryption{
-			Enable: false,
-			Type:   "",
-			Key:    "",
-		},
-		Tls: tls,
+		Tls:        tls,
 		Body: &clientpb.Pipeline_Web{
 			Web: &clientpb.Website{
 				Root:     webPath,
@@ -72,17 +60,13 @@ func NewWebsiteCmd(cmd *cobra.Command, con *repl.Console) error {
 			},
 		},
 	}
-	resp, err := con.Rpc.RegisterWebsite(con.Context(), req)
+	_, err = con.Rpc.RegisterWebsite(con.Context(), req)
 
 	if err != nil {
 		return err
 	}
-	req.Body.(*clientpb.Pipeline_Web).Web.Contents[webPath].Content = content
-	req.Body.(*clientpb.Pipeline_Web).Web.ID = resp.ID
-	_, err = con.Rpc.UploadWebsite(con.Context(), req.GetWeb())
-	if err != nil {
-		return err
-	}
+	web := req.GetWeb()
+	web.Contents[webPath].Content = content
 	_, err = con.Rpc.StartWebsite(con.Context(), &clientpb.CtrlPipeline{
 		Name:       name,
 		ListenerId: listenerID,

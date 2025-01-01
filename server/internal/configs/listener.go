@@ -97,9 +97,25 @@ type WebsiteConfig struct {
 }
 
 type WebContent struct {
+	File             string            `config:"file"`
 	Path             string            `config:"path"`
-	Parser           string            `config:"parser"`
+	Type             string            `config:"type"`
 	EncryptionConfig *EncryptionConfig `config:"encryption"`
+}
+
+func (content *WebContent) ToProtobuf() (*clientpb.WebContent, error) {
+	data, err := os.ReadFile(content.File)
+	if err != nil {
+		return nil, err
+	}
+	return &clientpb.WebContent{
+		File:       content.File,
+		Path:       content.Path,
+		Size:       uint64(len(data)),
+		Type:       content.Type,
+		Content:    data,
+		Encryption: content.EncryptionConfig.ToProtobuf(),
+	}, nil
 }
 
 type CertConfig struct {

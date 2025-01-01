@@ -8,10 +8,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
 	"github.com/chainreactors/malice-network/server/internal/core"
-	"github.com/chainreactors/malice-network/server/internal/db"
-	"google.golang.org/grpc/peer"
 	"google.golang.org/protobuf/proto"
-	"strings"
 )
 
 func (rpc *Server) GetListeners(ctx context.Context, req *clientpb.Empty) (*clientpb.Listeners, error) {
@@ -100,20 +97,6 @@ func (rpc *Server) JobStream(stream listenerrpc.ListenerRPC_JobStreamServer) err
 				if err != nil {
 					logs.Log.Errorf("send job ctrl faild %v", err)
 					return
-				}
-				if msg.Ctrl == consts.CtrlWebsiteRegister {
-					p, ok := peer.FromContext(stream.Context())
-					if !ok {
-						logs.Log.Errorf("get peer faild")
-						return
-					}
-					ip := strings.Split(p.Addr.String(), ":")[0]
-					for _, content := range msg.Job.Pipeline.GetWeb().Contents {
-						err := db.UploadWebsiteIP(content.Name, ip)
-						if err != nil {
-							logs.Log.Errorf("upload website ip faild %v", err)
-						}
-					}
 				}
 			}
 		}
