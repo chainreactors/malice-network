@@ -399,8 +399,11 @@ func SRDIArtifact(builder *models.Builder, platform, arch string) ([]byte, error
 }
 
 func MaleficSRDI(src, dst, platform, arch, funcName, dataPath string) ([]byte, error) {
-	if platform == consts.Windows {
+	if platform == "" {
 		platform = "win"
+	}
+	if arch == "" {
+		arch = "x64"
 	}
 	args := []string{command, "srdi", "-i", src, "-p", platform, "-a", arch, "-o", dst}
 	if funcName != "" {

@@ -99,15 +99,20 @@ type WebsiteConfig struct {
 type WebContent struct {
 	File             string            `config:"file"`
 	Path             string            `config:"path"`
-	Type             string            `config:"type"`
+	Type             string            `config:"type" default:"raw"`
 	EncryptionConfig *EncryptionConfig `config:"encryption"`
 }
 
 func (content *WebContent) ToProtobuf() (*clientpb.WebContent, error) {
-	data, err := os.ReadFile(content.File)
-	if err != nil {
-		return nil, err
+	var data []byte
+	var err error
+	if content.Type == "raw" {
+		data, err = os.ReadFile(content.File)
+		if err != nil {
+			return nil, err
+		}
 	}
+
 	return &clientpb.WebContent{
 		File:       content.File,
 		Path:       content.Path,
@@ -210,7 +215,7 @@ type EncryptionConfig struct {
 	Key    string `config:"key"`
 }
 
-func (e *EncryptionConfig) NewCrypto() (cryptostream.Cryptor, error) {
+func NewCrypto(e *clientpb.Encryption) (cryptostream.Cryptor, error) {
 	if !e.Enable {
 		return cryptostream.NewCryptor(consts.CryptorRAW, nil, nil)
 	}

@@ -513,58 +513,42 @@ func FindWebContentsByWebsite(website string) ([]*models.WebsiteContent, error) 
 // AddContent - Add content to website
 func AddContent(content *clientpb.WebContent) (*models.WebsiteContent, error) {
 	var existingContent models.WebsiteContent
-	if content.Type == "" {
+	switch content.Type {
+	case "", "raw":
+		content.ContentType = "text/html; charset=utf-8"
+	case consts.ImplantPulse:
+		content.ContentType = "application/octet-stream"
+	default:
 		content.ContentType = mime.TypeByExtension(filepath.Ext(content.Path))
-		if content.Type == "" {
-			content.ContentType = "text/html; charset=utf-8" // Default mime
-		}
 	}
 
-	dbModelWebContent := models.FromWebContentPb(content)
+	webModel := models.FromWebContentPb(content)
 	err := Session().Where("pipeline_id = ? AND path = ?", content.WebsiteId, content.Path).First(&existingContent).Error
 	if err == nil {
-		dbModelWebContent.ID = existingContent.ID
-		err = Session().Save(&dbModelWebContent).Error
+		webModel.ID = existingContent.ID
+		err = Session().Save(&webModel).Error
 		if err != nil {
 			return nil, err
 		}
 	} else if errors.Is(err, gorm.ErrRecordNotFound) {
-		err = Session().Create(&dbModelWebContent).Error
+		err = Session().Create(&webModel).Error
 		if err != nil {
 			return nil, err
 		}
 	}
-	content.Id = dbModelWebContent.ID.String()
-	return dbModelWebContent, nil
-}
-
-func UpdateContent(pbWebContent *clientpb.WebContent) error {
-	dbModelWebContent := models.FromWebContentPb(pbWebContent)
-	return Session().Save(&dbModelWebContent).Error
-}
-
-// RemoveWebsiteContent - Remove all content of a website by ID
-func RemoveWebsiteContent(id string) error {
-	uuid, _ := uuid.FromString(id)
-	if err := Session().Where("id = ?", uuid).Delete(&models.WebsiteContent{}).Error; err != nil {
-		return err
+	if content.Type == "raw" {
+		err = os.WriteFile(filepath.Join(configs.WebsitePath, content.WebsiteId, webModel.ID.String()), content.Content, os.ModePerm)
+		if err != nil {
+			return nil, err
+		}
 	}
-	return nil
-}
 
-func UploadWebsiteIP(name, ip string) error {
-	return Session().Model(&models.Pipeline{}).Where("name = ?", name).Update("ip", ip).Error
+	content.Id = webModel.ID.String()
+	return webModel, nil
 }
 
 // RemoveContent - Remove content by ID
 func RemoveContent(id string) error {
-	uuid, _ := uuid.FromString(id)
-	err := Session().Delete(&models.WebsiteContent{}, uuid).Error
-	return err
-}
-
-// RemoveWebsite - Remove website by ID
-func RemoveWebsite(id string) error {
 	uuid, _ := uuid.FromString(id)
 	err := Session().Delete(&models.WebsiteContent{}, uuid).Error
 	return err

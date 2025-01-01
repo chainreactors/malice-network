@@ -40,7 +40,7 @@ func (sc *CryptoConn) Write(data []byte) (int, error) {
 func (sc *CryptoConn) Read(data []byte) (int, error) {
 	encryptedData := make([]byte, 1024)
 	n, err := sc.ReadWriteCloser.Read(encryptedData)
-	if err != nil {
+	if n == 0 {
 		return 0, err
 	}
 
@@ -70,6 +70,13 @@ func (sc *CryptoConn) encrypt(data []byte) ([]byte, error) {
 	}
 
 	return writer.Bytes(), nil
+}
+
+func (sc *CryptoConn) RemoteAddr() net.Addr {
+	if sc.Conn != nil {
+		return sc.Conn.RemoteAddr()
+	}
+	return nil
 }
 
 // 解密数据

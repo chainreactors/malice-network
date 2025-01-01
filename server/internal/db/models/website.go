@@ -1,13 +1,14 @@
 package models
 
 import (
+	"os"
+	"path/filepath"
+	"time"
+
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/gofrs/uuid"
 	"gorm.io/gorm"
-	"os"
-	"path/filepath"
-	"time"
 )
 
 // WebsiteContent - Single table that combines Website and WebContent
@@ -38,7 +39,10 @@ func (wc *WebsiteContent) BeforeCreate(tx *gorm.DB) (err error) {
 
 // ToProtobuf - Converts to protobuf object
 func (wc *WebsiteContent) ToProtobuf() *clientpb.WebContent {
-	data, _ := os.ReadFile(filepath.Join(configs.WebsitePath, wc.PipelineID, wc.ID.String()))
+	var data []byte
+	if wc.Type == "raw" {
+		data, _ = os.ReadFile(filepath.Join(configs.WebsitePath, wc.PipelineID, wc.ID.String()))
+	}
 
 	return &clientpb.WebContent{
 		Id:          wc.ID.String(),

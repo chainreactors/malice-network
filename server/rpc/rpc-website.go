@@ -3,6 +3,10 @@ package rpc
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/server/internal/certutils"
@@ -10,9 +14,6 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
-	"os"
-	"path/filepath"
-	"strings"
 )
 
 func MapContents(webpipe *clientpb.Pipeline) error {
@@ -28,50 +29,75 @@ func MapContents(webpipe *clientpb.Pipeline) error {
 	return nil
 }
 
+// ListWebContent - 列出网站的所有内容
+func (rpc *Server) ListWebContent(ctx context.Context, req *clientpb.Website) (*clientpb.Websites, error) {
+	contents, err := db.FindWebContentsByWebsite(req.Host)
+	if err != nil {
+		return nil, err
+	}
+
+	websites := &clientpb.Websites{
+		Websites: []*clientpb.Website{
+			{
+				Host:     req.Host,
+				Port:     req.Port,
+				Root:     req.Root,
+				Contents: make(map[string]*clientpb.WebContent),
+			},
+		},
+	}
+
+	for _, content := range contents {
+		websites.Websites[0].Contents[content.Path] = content.ToProtobuf()
+	}
+
+	return websites, nil
+}
+
 // WebsiteAddContent - Add content to a website, the website is created if `name` does not exist
 func (rpc *Server) WebsiteAddContent(ctx context.Context, req *clientpb.Website) (*clientpb.Empty, error) {
 	if len(req.Contents) != 0 {
 		for _, content := range req.Contents {
-			// If no content-type was specified by the client we try to detect the mime based on path ext
-
 			content.Size = uint64(len(content.Content))
 			rpcLog.Infof("Add website content (%s) %s -> %s", content.File, content.Path, content.Type)
 			_, err := db.AddContent(content)
 			if err != nil {
 				return nil, err
 			}
+
+			job := core.Jobs.Get(content.WebsiteId)
+			if job == nil {
+				return nil, fmt.Errorf("website %s not found", req.Host)
+			}
+
+			core.Jobs.Ctrl <- &clientpb.JobCtrl{
+				Id:   core.NextCtrlID(),
+				Ctrl: consts.CtrlWebContentAdd,
+				Job:  job.ToProtobuf(),
+			}
 		}
 	}
-
-	core.Jobs.Ctrl <- &clientpb.JobCtrl{
-		Id:   core.NextCtrlID(),
-		Ctrl: consts.CtrlWebsiteAdd,
-		Job: &clientpb.Job{
-			Id: core.NextJobID(),
-			Pipeline: &clientpb.Pipeline{
-				Body: &clientpb.Pipeline_Web{
-					Web: req,
-				},
-			},
-		},
-	}
-	core.EventBroker.Publish(core.Event{
-		EventType: consts.EventWebsite,
-		Op:        consts.CtrlWebsiteAdd,
-		Important: true,
-	})
 
 	return &clientpb.Empty{}, nil
 }
 
-// WebsiteUpdateContent - Update specific content from a website, currently you can only the update Content-type field
+// WebsiteUpdateContent - Update specific content from a website
 func (rpc *Server) WebsiteUpdateContent(ctx context.Context, req *clientpb.WebContent) (*clientpb.Empty, error) {
-	db.UpdateContent(req)
-	core.EventBroker.Publish(core.Event{
-		EventType: consts.EventWebsite,
-		Op:        consts.CtrlWebsiteUpdate,
-		Message:   fmt.Sprintf("update content %s", req.Id),
-	})
+	_, err := db.AddContent(req)
+	if err != nil {
+		return nil, err
+	}
+
+	job := core.Jobs.Get(req.WebsiteId)
+	if job == nil {
+		return nil, fmt.Errorf("website %s not found", req.WebsiteId)
+	}
+
+	core.Jobs.Ctrl <- &clientpb.JobCtrl{
+		Id:   core.NextCtrlID(),
+		Ctrl: consts.CtrlWebContentUpdate,
+		Job:  job.ToProtobuf(),
+	}
 
 	return &clientpb.Empty{}, nil
 }
@@ -83,11 +109,16 @@ func (rpc *Server) WebsiteRemoveContent(ctx context.Context, req *clientpb.WebCo
 		return nil, err
 	}
 
-	core.EventBroker.Publish(core.Event{
-		EventType: consts.EventWebsite,
-		Op:        consts.CtrlWebsiteRemove,
-		Message:   fmt.Sprintf("remove content %s", req.Id),
-	})
+	job := core.Jobs.Get(req.WebsiteId)
+	if job == nil {
+		return nil, fmt.Errorf("website %s not found", req.WebsiteId)
+	}
+
+	core.Jobs.Ctrl <- &clientpb.JobCtrl{
+		Id:   core.NextCtrlID(),
+		Ctrl: consts.CtrlWebContentRemove,
+		Job:  job.ToProtobuf(),
+	}
 
 	return &clientpb.Empty{}, nil
 }
@@ -109,11 +140,8 @@ func (rpc *Server) RegisterWebsite(ctx context.Context, req *clientpb.Pipeline) 
 	}
 	_ = os.Mkdir(filepath.Join(configs.WebsitePath, req.Name), os.ModePerm)
 	for _, content := range req.GetWeb().Contents {
+		content.WebsiteId = req.Name
 		_, err = db.AddContent(content)
-		if err != nil {
-			return nil, err
-		}
-		err = os.WriteFile(filepath.Join(configs.WebsitePath, req.Name, content.Id), content.Content, os.ModePerm)
 		if err != nil {
 			return nil, err
 		}
@@ -140,19 +168,17 @@ func (rpc *Server) StartWebsite(ctx context.Context, req *clientpb.CtrlPipeline)
 		return nil, err
 	}
 	webpb.Enable = true
-	core.Jobs.Add(&core.Job{
-		ID:      core.CurrentJobID(),
+	job := &core.Job{
+		ID:      core.NextJobID(),
 		Message: webpb,
 		Name:    webpipe.Name,
-	})
+	}
+	core.Jobs.Add(job)
 
 	core.Jobs.Ctrl <- &clientpb.JobCtrl{
 		Id:   core.NextCtrlID(),
 		Ctrl: consts.CtrlWebsiteStart,
-		Job: &clientpb.Job{
-			Id:       core.NextJobID(),
-			Pipeline: webpb,
-		},
+		Job:  job.ToProtobuf(),
 	}
 	err = db.EnablePipeline(webpipe)
 	if err != nil {
@@ -168,13 +194,16 @@ func (rpc *Server) StopWebsite(ctx context.Context, req *clientpb.CtrlPipeline) 
 		return nil, err
 	}
 	pipeline := pipelineDB.ToProtobuf()
+
+	job := core.Jobs.Get(req.Name)
+	if job == nil {
+		return nil, fmt.Errorf("website %s not found", req.Name)
+	}
+
 	ctrl := clientpb.JobCtrl{
 		Id:   core.NextCtrlID(),
 		Ctrl: consts.CtrlWebsiteStop,
-		Job: &clientpb.Job{
-			Id:       core.NextJobID(),
-			Pipeline: pipeline,
-		},
+		Job:  job.ToProtobuf(),
 	}
 	core.Jobs.Ctrl <- &ctrl
 	err = db.DisablePipeline(pipelineDB)
@@ -187,7 +216,6 @@ func (rpc *Server) StopWebsite(ctx context.Context, req *clientpb.CtrlPipeline) 
 		return nil, err
 	}
 	return &clientpb.Empty{}, nil
-
 }
 
 func (rpc *Server) ListWebsites(ctx context.Context, req *clientpb.Listener) (*clientpb.Pipelines, error) {
@@ -213,13 +241,16 @@ func (rpc *Server) DeleteWebsite(ctx context.Context, req *clientpb.CtrlPipeline
 		return nil, fmt.Errorf("listener %s not found", req.ListenerId)
 	}
 	listener.RemovePipeline(pipeline)
+
+	job := core.Jobs.Get(req.Name)
+	if job == nil {
+		return nil, fmt.Errorf("website %s not found", req.Name)
+	}
+
 	core.Jobs.Ctrl <- &clientpb.JobCtrl{
 		Id:   core.NextCtrlID(),
 		Ctrl: consts.CtrlWebsiteStop,
-		Job: &clientpb.Job{
-			Id:       core.NextJobID(),
-			Pipeline: pipeline,
-		},
+		Job:  job.ToProtobuf(),
 	}
 	err = db.DeletePipeline(req.Name)
 	if err != nil {

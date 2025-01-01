@@ -108,9 +108,6 @@ func (rpc *Server) JobStream(stream listenerrpc.ListenerRPC_JobStreamServer) err
 			return err
 		}
 		if msg.Status == consts.CtrlStatusSuccess {
-			if msg.Ctrl == consts.CtrlWebUpload {
-				continue
-			}
 			core.EventBroker.Publish(core.Event{
 				EventType: consts.EventJob,
 				Op:        msg.Ctrl,
@@ -119,15 +116,6 @@ func (rpc *Server) JobStream(stream listenerrpc.ListenerRPC_JobStreamServer) err
 				Important: true,
 			})
 		} else {
-			if msg.Ctrl == consts.CtrlWebUpload {
-				core.EventBroker.Publish(core.Event{
-					EventType: consts.EventWebsite,
-					Op:        msg.Ctrl,
-					Err:       fmt.Sprintf("status %d,  %s", msg.Status, msg.Error),
-					Important: true,
-				})
-				continue
-			}
 			core.EventBroker.Publish(core.Event{
 				EventType: consts.EventJob,
 				Op:        msg.Ctrl,

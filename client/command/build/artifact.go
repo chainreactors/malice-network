@@ -190,7 +190,6 @@ func UploadArtifact(con *repl.Console, path string, name, artifactType, stage st
 	if err != nil {
 		return nil, err
 	}
-
 	return con.Rpc.UploadArtifact(con.Context(), &clientpb.Artifact{
 		Name:  name,
 		Bin:   bin,

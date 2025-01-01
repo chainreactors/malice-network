@@ -65,14 +65,10 @@ listeners:
       root: "/"
       enable: true
       content:
-        - path: /jquery.js
-          file: ./cpu.prof
-          parser: raw
-        - path: /jquery2.js
-          file: ./pulse.bin
-          parser: pulse
+        - path: /pulse
+          type: pulse
           encryption:
             enable: true
-            type: aes
+            type: xor
             key: maliceofinternal
 

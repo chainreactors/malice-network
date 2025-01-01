@@ -2,16 +2,17 @@ package common
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
-	"os"
-	"path/filepath"
-	"strconv"
-	"strings"
 )
 
 //func LocalPathCompleter(prefix string, args []string, con *repl.Console) []string {
@@ -306,6 +307,44 @@ func ModulesCompleter() carapace.Action {
 			results = append(results, s, fmt.Sprintf("modules"))
 		}
 		return carapace.ActionValuesDescribed(results...).Tag("modules")
+	}
+	return carapace.ActionCallback(callback)
+}
+
+func WebsiteCompleter(con *repl.Console) carapace.Action {
+	callback := func(c carapace.Context) carapace.Action {
+		results := make([]string, 0)
+		for _, listener := range con.Listeners {
+			for _, pipeline := range listener.GetPipelines().GetPipelines() {
+				if web := pipeline.GetWeb(); web != nil {
+					results = append(results, pipeline.Name,
+						fmt.Sprintf("port: %d, root: %s", web.Port, web.Root))
+				}
+			}
+		}
+		return carapace.ActionValuesDescribed(results...).Tag("website name")
+	}
+	return carapace.ActionCallback(callback)
+}
+
+func WebContentCompleter(con *repl.Console, _ string) carapace.Action {
+	callback := func(c carapace.Context) carapace.Action {
+		results := make([]string, 0)
+
+		// List all contents from all websites since content ID is globally unique
+		for _, listener := range con.Listeners {
+			for _, pipeline := range listener.GetPipelines().GetPipelines() {
+				if web := pipeline.GetWeb(); web != nil {
+					for path, content := range web.Contents {
+						results = append(results, content.Id,
+							fmt.Sprintf("website: %s, path: %s, type: %s",
+								pipeline.Name, path, content.Type))
+					}
+				}
+			}
+		}
+
+		return carapace.ActionValuesDescribed(results...).Tag("content id")
 	}
 	return carapace.ActionCallback(callback)
 }

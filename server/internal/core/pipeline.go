@@ -60,7 +60,7 @@ type PipelineConfig struct {
 }
 
 func (p *PipelineConfig) WrapConn(conn net.Conn) (*peek.Conn, error) {
-	cry, err := p.Encryption.NewCrypto()
+	cry, err := configs.NewCrypto(p.Encryption.ToProtobuf())
 	if err != nil {
 		return nil, err
 	}

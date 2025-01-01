@@ -38,8 +38,8 @@ const (
 	ListenerRPC_StopWebsite_FullMethodName          = "/listenerrpc.ListenerRPC/StopWebsite"
 	ListenerRPC_DeleteWebsite_FullMethodName        = "/listenerrpc.ListenerRPC/DeleteWebsite"
 	ListenerRPC_ListWebsites_FullMethodName         = "/listenerrpc.ListenerRPC/ListWebsites"
+	ListenerRPC_ListWebContent_FullMethodName       = "/listenerrpc.ListenerRPC/ListWebContent"
 	ListenerRPC_WebsiteAddContent_FullMethodName    = "/listenerrpc.ListenerRPC/WebsiteAddContent"
-	ListenerRPC_WebsiteRemove_FullMethodName        = "/listenerrpc.ListenerRPC/WebsiteRemove"
 	ListenerRPC_WebsiteUpdateContent_FullMethodName = "/listenerrpc.ListenerRPC/WebsiteUpdateContent"
 	ListenerRPC_WebsiteRemoveContent_FullMethodName = "/listenerrpc.ListenerRPC/WebsiteRemoveContent"
 	ListenerRPC_RegisterRem_FullMethodName          = "/listenerrpc.ListenerRPC/RegisterRem"
@@ -74,8 +74,8 @@ type ListenerRPCClient interface {
 	StopWebsite(ctx context.Context, in *clientpb.CtrlPipeline, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	DeleteWebsite(ctx context.Context, in *clientpb.CtrlPipeline, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	ListWebsites(ctx context.Context, in *clientpb.Listener, opts ...grpc.CallOption) (*clientpb.Pipelines, error)
+	ListWebContent(ctx context.Context, in *clientpb.Website, opts ...grpc.CallOption) (*clientpb.Websites, error)
 	WebsiteAddContent(ctx context.Context, in *clientpb.Website, opts ...grpc.CallOption) (*clientpb.Empty, error)
-	WebsiteRemove(ctx context.Context, in *clientpb.Website, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	WebsiteUpdateContent(ctx context.Context, in *clientpb.WebContent, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	WebsiteRemoveContent(ctx context.Context, in *clientpb.WebContent, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	// rem
@@ -271,20 +271,20 @@ func (c *listenerRPCClient) ListWebsites(ctx context.Context, in *clientpb.Liste
 	return out, nil
 }
 
-func (c *listenerRPCClient) WebsiteAddContent(ctx context.Context, in *clientpb.Website, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+func (c *listenerRPCClient) ListWebContent(ctx context.Context, in *clientpb.Website, opts ...grpc.CallOption) (*clientpb.Websites, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(clientpb.Empty)
-	err := c.cc.Invoke(ctx, ListenerRPC_WebsiteAddContent_FullMethodName, in, out, cOpts...)
+	out := new(clientpb.Websites)
+	err := c.cc.Invoke(ctx, ListenerRPC_ListWebContent_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *listenerRPCClient) WebsiteRemove(ctx context.Context, in *clientpb.Website, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+func (c *listenerRPCClient) WebsiteAddContent(ctx context.Context, in *clientpb.Website, opts ...grpc.CallOption) (*clientpb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(clientpb.Empty)
-	err := c.cc.Invoke(ctx, ListenerRPC_WebsiteRemove_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, ListenerRPC_WebsiteAddContent_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -395,8 +395,8 @@ type ListenerRPCServer interface {
 	StopWebsite(context.Context, *clientpb.CtrlPipeline) (*clientpb.Empty, error)
 	DeleteWebsite(context.Context, *clientpb.CtrlPipeline) (*clientpb.Empty, error)
 	ListWebsites(context.Context, *clientpb.Listener) (*clientpb.Pipelines, error)
+	ListWebContent(context.Context, *clientpb.Website) (*clientpb.Websites, error)
 	WebsiteAddContent(context.Context, *clientpb.Website) (*clientpb.Empty, error)
-	WebsiteRemove(context.Context, *clientpb.Website) (*clientpb.Empty, error)
 	WebsiteUpdateContent(context.Context, *clientpb.WebContent) (*clientpb.Empty, error)
 	WebsiteRemoveContent(context.Context, *clientpb.WebContent) (*clientpb.Empty, error)
 	// rem
@@ -467,11 +467,11 @@ func (UnimplementedListenerRPCServer) DeleteWebsite(context.Context, *clientpb.C
 func (UnimplementedListenerRPCServer) ListWebsites(context.Context, *clientpb.Listener) (*clientpb.Pipelines, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListWebsites not implemented")
 }
+func (UnimplementedListenerRPCServer) ListWebContent(context.Context, *clientpb.Website) (*clientpb.Websites, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListWebContent not implemented")
+}
 func (UnimplementedListenerRPCServer) WebsiteAddContent(context.Context, *clientpb.Website) (*clientpb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method WebsiteAddContent not implemented")
-}
-func (UnimplementedListenerRPCServer) WebsiteRemove(context.Context, *clientpb.Website) (*clientpb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method WebsiteRemove not implemented")
 }
 func (UnimplementedListenerRPCServer) WebsiteUpdateContent(context.Context, *clientpb.WebContent) (*clientpb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method WebsiteUpdateContent not implemented")
@@ -802,6 +802,24 @@ func _ListenerRPC_ListWebsites_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ListenerRPC_ListWebContent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(clientpb.Website)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ListenerRPCServer).ListWebContent(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ListenerRPC_ListWebContent_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ListenerRPCServer).ListWebContent(ctx, req.(*clientpb.Website))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ListenerRPC_WebsiteAddContent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(clientpb.Website)
 	if err := dec(in); err != nil {
@@ -816,24 +834,6 @@ func _ListenerRPC_WebsiteAddContent_Handler(srv interface{}, ctx context.Context
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ListenerRPCServer).WebsiteAddContent(ctx, req.(*clientpb.Website))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _ListenerRPC_WebsiteRemove_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(clientpb.Website)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ListenerRPCServer).WebsiteRemove(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ListenerRPC_WebsiteRemove_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ListenerRPCServer).WebsiteRemove(ctx, req.(*clientpb.Website))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1050,12 +1050,12 @@ var ListenerRPC_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _ListenerRPC_ListWebsites_Handler,
 		},
 		{
-			MethodName: "WebsiteAddContent",
-			Handler:    _ListenerRPC_WebsiteAddContent_Handler,
+			MethodName: "ListWebContent",
+			Handler:    _ListenerRPC_ListWebContent_Handler,
 		},
 		{
-			MethodName: "WebsiteRemove",
-			Handler:    _ListenerRPC_WebsiteRemove_Handler,
+			MethodName: "WebsiteAddContent",
+			Handler:    _ListenerRPC_WebsiteAddContent_Handler,
 		},
 		{
 			MethodName: "WebsiteUpdateContent",
