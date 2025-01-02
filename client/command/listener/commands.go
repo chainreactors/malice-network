@@ -191,6 +191,16 @@ pipeline list listener_id
 
 	websiteCmd := &cobra.Command{
 		Use:   consts.CommandWebsite,
+		Short: "website manager",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return cmd.Help()
+		},
+	}
+
+	common.BindArgCompletions(websiteCmd, nil, common.ListenerIDCompleter(con))
+
+	websiteListCmd := &cobra.Command{
+		Use:   consts.CommandPipelineList,
 		Short: "List website in listener",
 		Long:  "Use a table to list websites along with their corresponding listeners",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -200,8 +210,6 @@ pipeline list listener_id
 website [listener]
 ~~~`,
 	}
-
-	common.BindArgCompletions(websiteCmd, nil, common.ListenerIDCompleter(con))
 
 	websiteRegisterCmd := &cobra.Command{
 		Use:   consts.CommandPipelineNew + " [name]",
@@ -360,7 +368,6 @@ website remove 123e4567-e89b-12d3-a456-426614174000
 	websiteListContentCmd := &cobra.Command{
 		Use:   "list-content [website_name]",
 		Short: "List content in a website",
-		Args:  cobra.ExactArgs(1),
 		Long:  "List all content in a website with detailed information",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ListWebContentCmd(cmd, con)
@@ -374,7 +381,7 @@ website list-content web_test
 	common.BindArgCompletions(websiteListContentCmd, nil,
 		common.WebsiteCompleter(con))
 
-	websiteCmd.AddCommand(websiteRegisterCmd, websiteStartCmd, websiteStopCmd,
+	websiteCmd.AddCommand(websiteListCmd, websiteRegisterCmd, websiteStartCmd, websiteStopCmd,
 		websiteAddContentCmd, websiteUpdateContentCmd, websiteRemoveContentCmd, websiteListContentCmd)
 
 	return []*cobra.Command{listenerCmd, jobCmd, pipelineCmd, tcpCmd, bindCmd, websiteCmd}

@@ -49,8 +49,10 @@ func (pipeline *Pipeline) ToProtobuf() *clientpb.Pipeline {
 			Ip:         pipeline.IP,
 			Body: &clientpb.Pipeline_Tcp{
 				Tcp: &clientpb.TCPPipeline{
-					Host: pipeline.Host,
-					Port: uint32(pipeline.Port),
+					Name:       pipeline.Name,
+					ListenerId: pipeline.ListenerID,
+					Host:       pipeline.Host,
+					Port:       uint32(pipeline.Port),
 				},
 			},
 			Tls:        ToTlsProtobuf(&pipeline.Tls),
@@ -63,7 +65,10 @@ func (pipeline *Pipeline) ToProtobuf() *clientpb.Pipeline {
 			Enable:     pipeline.Enable,
 			Parser:     pipeline.Parser,
 			Body: &clientpb.Pipeline_Bind{
-				Bind: &clientpb.BindPipeline{},
+				Bind: &clientpb.BindPipeline{
+					Name:       pipeline.Name,
+					ListenerId: pipeline.ListenerID,
+				},
 			},
 			Tls:        ToTlsProtobuf(&pipeline.Tls),
 			Encryption: ToEncryptionProtobuf(pipeline.Encryption),
@@ -77,9 +82,11 @@ func (pipeline *Pipeline) ToProtobuf() *clientpb.Pipeline {
 			Parser:     pipeline.Parser,
 			Body: &clientpb.Pipeline_Web{
 				Web: &clientpb.Website{
-					Root:     pipeline.WebPath,
-					Port:     uint32(pipeline.Port),
-					Contents: make(map[string]*clientpb.WebContent),
+					Name:       pipeline.Name,
+					ListenerId: pipeline.ListenerID,
+					Root:       pipeline.WebPath,
+					Port:       uint32(pipeline.Port),
+					Contents:   make(map[string]*clientpb.WebContent),
 				},
 			},
 			Tls:        ToTlsProtobuf(&pipeline.Tls),

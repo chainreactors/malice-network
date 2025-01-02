@@ -24,34 +24,23 @@ func MapContents(webpipe *clientpb.Pipeline) error {
 	}
 
 	for _, content := range contents {
-		web.Contents[content.Path] = content.ToProtobuf()
+		web.Contents[content.Path] = content.ToProtobuf(true)
 	}
 	return nil
 }
 
 // ListWebContent - 列出网站的所有内容
-func (rpc *Server) ListWebContent(ctx context.Context, req *clientpb.Website) (*clientpb.Websites, error) {
-	contents, err := db.FindWebContentsByWebsite(req.Host)
+func (rpc *Server) ListWebContent(ctx context.Context, req *clientpb.Website) (*clientpb.WebContents, error) {
+	contents, err := db.FindWebContentsByWebsite(req.Name)
 	if err != nil {
 		return nil, err
 	}
-
-	websites := &clientpb.Websites{
-		Websites: []*clientpb.Website{
-			{
-				Host:     req.Host,
-				Port:     req.Port,
-				Root:     req.Root,
-				Contents: make(map[string]*clientpb.WebContent),
-			},
-		},
-	}
-
+	res := &clientpb.WebContents{}
 	for _, content := range contents {
-		websites.Websites[0].Contents[content.Path] = content.ToProtobuf()
+		res.Contents = append(res.Contents, content.ToProtobuf(false))
 	}
 
-	return websites, nil
+	return res, nil
 }
 
 // WebsiteAddContent - Add content to a website, the website is created if `name` does not exist
@@ -67,7 +56,7 @@ func (rpc *Server) WebsiteAddContent(ctx context.Context, req *clientpb.Website)
 
 			job := core.Jobs.Get(content.WebsiteId)
 			if job == nil {
-				return nil, fmt.Errorf("website %s not found", req.Host)
+				return nil, fmt.Errorf("website %s not found", req.Name)
 			}
 
 			core.Jobs.Ctrl <- &clientpb.JobCtrl{

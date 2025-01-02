@@ -270,8 +270,8 @@ func DeleteWebsite(name string) error {
 	return nil
 }
 
-func ListWebsite(listenerID string) ([]models.Pipeline, error) {
-	var pipelines []models.Pipeline
+func ListWebsite(listenerID string) ([]*models.Pipeline, error) {
+	var pipelines []*models.Pipeline
 	//err := Session().Where("listener_id = ? AND type = ?", listenerID, consts.WebsitePipeline).Find(&pipelines).Error
 	var err error
 	if listenerID == "" {
@@ -483,12 +483,18 @@ func FindWebContent(id string) (*models.WebsiteContent, error) {
 
 func FindWebContentsByWebsite(website string) ([]*models.WebsiteContent, error) {
 	var contents []*models.WebsiteContent
-	err := Session().Where(&models.WebsiteContent{
-		PipelineID: website,
-	}).Find(&contents).Error
+	var err error
+	if website == "" {
+		err = Session().Preload("Pipeline").Find(&contents).Error
+	} else {
+		err = Session().Where(&models.WebsiteContent{
+			PipelineID: website,
+		}).Preload("Pipeline").Find(&contents).Error
+	}
 	if err != nil {
 		return nil, err
 	}
+
 	return contents, err
 }
 
@@ -592,7 +598,7 @@ func NewProfile(profile *clientpb.Profile) error {
 func GetProfile(name string) (*types.ProfileConfig, error) {
 	var profileModel *models.Profile
 
-	result := Session().Preload("BasicPipeline").Preload("PulsePipeline").Where("name = ?", name).First(&profileModel)
+	result := Session().Preload("Pipeline").Preload("PulsePipeline").Where("name = ?", name).First(&profileModel)
 	if result.Error != nil {
 		return nil, result.Error
 	}

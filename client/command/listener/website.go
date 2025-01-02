@@ -143,7 +143,6 @@ func AddWebContentCmd(cmd *cobra.Command, con *repl.Console) error {
 	}
 
 	website := &clientpb.Website{
-		Host: websiteName,
 		Contents: map[string]*clientpb.WebContent{
 			webPath: {
 				WebsiteId: websiteName,
@@ -215,43 +214,41 @@ func ListWebContentCmd(cmd *cobra.Command, con *repl.Console) error {
 	websiteName := cmd.Flags().Arg(0)
 
 	website := &clientpb.Website{
-		Host: websiteName,
+		Name: websiteName,
 	}
 
-	websites, err := con.Rpc.ListWebContent(con.Context(), website)
+	contents, err := con.Rpc.ListWebContent(con.Context(), website)
 	if err != nil {
 		return err
 	}
 
-	if len(websites.Websites) == 0 {
+	if len(contents.Contents) == 0 {
 		con.Log.Importantf("No content found in website %s\n", websiteName)
 		return nil
 	}
 
 	var rowEntries []table.Row
 	tableModel := tui.NewTable([]table.Column{
-		table.NewColumn("WebsiteName", "WebsiteName", 20),
-		table.NewColumn("ListenerID", "ListenerID", 20),
-		table.NewColumn("ContentID", "ContentID", 36),
+		table.NewColumn("ID", "ID", 8),
+		table.NewColumn("WebsiteName", "WebsiteName", 15),
+		table.NewColumn("ListenerID", "ListenerID", 15),
 		table.NewColumn("Path", "Path", 20),
-		table.NewColumn("Type", "Type", 15),
-		table.NewColumn("Size", "Size", 10),
-		table.NewColumn("ContentType", "ContentType", 15),
+		table.NewColumn("Type", "Type", 10),
+		table.NewColumn("Size", "Size", 8),
+		table.NewColumn("ContentType", "ContentType", 30),
 	}, true)
 
-	for _, website := range websites.Websites {
-		for path, content := range website.Contents {
-			row := table.NewRow(table.RowData{
-				"WebsiteName": websiteName,
-				"ListenerID":  content.WebsiteId,
-				"ContentID":   content.Id,
-				"Path":        path,
-				"Type":        content.Type,
-				"Size":        strconv.FormatUint(content.Size, 10),
-				"ContentType": content.ContentType,
-			})
-			rowEntries = append(rowEntries, row)
-		}
+	for _, content := range contents.Contents {
+		row := table.NewRow(table.RowData{
+			"ID":          content.Id[:8],
+			"WebsiteName": content.WebsiteId,
+			"ListenerID":  content.ListenerId,
+			"Path":        content.Path,
+			"Type":        content.Type,
+			"Size":        strconv.FormatUint(content.Size, 10),
+			"ContentType": content.ContentType,
+		})
+		rowEntries = append(rowEntries, row)
 	}
 
 	tableModel.SetMultiline()

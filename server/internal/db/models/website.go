@@ -38,9 +38,9 @@ func (wc *WebsiteContent) BeforeCreate(tx *gorm.DB) (err error) {
 }
 
 // ToProtobuf - Converts to protobuf object
-func (wc *WebsiteContent) ToProtobuf() *clientpb.WebContent {
+func (wc *WebsiteContent) ToProtobuf(read bool) *clientpb.WebContent {
 	var data []byte
-	if wc.Type == "raw" {
+	if read && wc.Type == "raw" {
 		data, _ = os.ReadFile(filepath.Join(configs.WebsitePath, wc.PipelineID, wc.ID.String()))
 	}
 
@@ -53,6 +53,7 @@ func (wc *WebsiteContent) ToProtobuf() *clientpb.WebContent {
 		ContentType: wc.ContentType,
 		Content:     data,
 		Encryption:  ToEncryptionProtobuf(wc.Encryption),
+		ListenerId:  wc.Pipeline.ListenerID,
 	}
 }
 
