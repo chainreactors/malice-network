@@ -342,13 +342,13 @@ artifact list
 // Download a artifact to specific path
 	artifact download artifact_name -o /path/to/output
 
-// Download a artifact by srdi
+// Download a shellcode artifact by enabling the 'srdi' flag
 	artifact download artifact_name -s
 `,
 	}
 	common.BindFlag(downloadCmd, func(f *pflag.FlagSet) {
 		f.StringP("output", "o", "", "output path")
-		f.BoolP("srdi", "s", false, "download srdi")
+		f.BoolP("srdi", "s", false, "Set to true to download shellcode.")
 	})
 	common.BindArgCompletions(downloadCmd, nil, common.ArtifactNameCompleter(con))
 

@@ -2,6 +2,7 @@ package file
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strconv"
 
@@ -10,11 +11,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
-	"github.com/chainreactors/malice-network/helper/utils/fileutils"
-	"github.com/chainreactors/malice-network/helper/utils/mals"
 	"github.com/spf13/cobra"
-
-	"os"
 )
 
 func UploadCmd(cmd *cobra.Command, con *repl.Console) error {
@@ -33,22 +30,7 @@ func UploadCmd(cmd *cobra.Command, con *repl.Console) error {
 }
 
 func Upload(rpc clientrpc.MaliceRPCClient, session *core.Session, path string, target string, priv string, hidden bool) (*clientpb.Task, error) {
-	var data []byte
-	var err error
-	// data, err := os.ReadFile(path)
-	if fileutils.Exist(path) {
-		data, err = os.ReadFile(path)
-		if err != nil {
-			return nil, fmt.Errorf("ReadFile error: %s", err)
-		}
-	} else {
-		data, err = mals.UnPackMalBinary(path)
-		if err != nil {
-			return nil, fmt.Errorf("the path does not point to a valid file or does not meet the expected binary format: %s", err)
-		}
-		path = "virtual_src_path"
-	}
-
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
@@ -61,6 +43,25 @@ func Upload(rpc clientrpc.MaliceRPCClient, session *core.Session, path string, t
 		Target: target,
 		Priv:   uint32(value),
 		Data:   data,
+		Hidden: hidden,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return task, err
+}
+
+func UploadRaw(rpc clientrpc.MaliceRPCClient, session *core.Session, data string, target string, priv string, hidden bool) (*clientpb.Task, error) {
+	path := "fake_path"
+	value, err := strconv.ParseUint(priv, 8, 32)
+	if err != nil {
+		return nil, err
+	}
+	task, err := rpc.Upload(session.Context(), &implantpb.UploadRequest{
+		Name:   filepath.Base(path),
+		Target: target,
+		Priv:   uint32(value),
+		Data:   []byte(data),
 		Hidden: hidden,
 	})
 	if err != nil {

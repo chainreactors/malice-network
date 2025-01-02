@@ -2,6 +2,8 @@ package file
 
 import (
 	"fmt"
+	"path/filepath"
+
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/core/intermediate"
@@ -12,7 +14,6 @@ import (
 	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"path/filepath"
 )
 
 func Commands(con *repl.Console) []*cobra.Command {
@@ -113,6 +114,16 @@ func Register(con *repl.Console) {
 		"bupload",
 		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string) (*clientpb.Task, error) {
 			return Upload(rpc, sess, path, filepath.Base(path), "0644", false)
+		},
+		common.ParseStatus,
+		nil)
+
+	con.RegisterImplantFunc(
+		"uploadraw",
+		UploadRaw,
+		"buploadraw",
+		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, data, target_path string) (*clientpb.Task, error) {
+			return UploadRaw(rpc, sess, data, target_path, "0644", false)
 		},
 		common.ParseStatus,
 		nil)

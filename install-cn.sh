@@ -24,7 +24,21 @@ download_file() {
 }
 
 # check and install docker
-check_install_docker(){
+check_and_install_docker(){
+    echo "Malefic的构建需要Docker或者Github Action至少一种"
+    while true; do
+        read -p "是否安装 Docker?[y/n]" install_docker
+        install_docker=${install_docker,,}
+        if [[ "$install_docker" == "y" || "$install_docker" == "yes" ]]; then
+            log_task_status in_progress "开始安装Docker..."
+            break
+        elif [[ "$install_docker" == "n" || "$install_docker" == "no" ]]; then
+            log_task_status in_progress "docker 安装已取消"
+            return 
+        else
+            echo "无效输入，请输入 y(yes) 或 n(no)。"
+        fi
+    done
     yum_install_docker(){
         yum install -y yum-utils curl unzip git 
         yum-config-manager --add-repo http://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo
@@ -131,7 +145,7 @@ check_install_docker(){
         log_task_status completed "Docker 已安装，跳过安装..."
     fi
     
-    echo "是否需要配置 Docker 镜像加速源？[y/n]"
+    echo "是否需要配置 Docker 加速源？[y/n]"
     read -r user_choice
     if [[ "$user_choice" == "y" || "$user_choice" == "Y" || "$user_choice" == "yes" || "$user_choice" == "YES" ]]; then
         change_docker_daemon
@@ -140,31 +154,21 @@ check_install_docker(){
     fi
     
     log_task_status completed "Docker 安装完成，当前 Docker 版本为：$(docker --version)"
+
+    docker_pull_image
 }
 
 # pull images for compilation
 docker_pull_image(){
-    SOURCE_NAME_SPACE=${SOURCE_NAME_SPACE:="chainreactors"}
-    FINAL_NAME_SPACE=${FINAL_NAME_SPACE:="ghcr.io/chainreactors"}
-    # if you want more images, add them to the array
-    images=(
-        "x86_64-pc-windows-msvc:nightly-2023-09-18-latest"
-        "i686-pc-windows-msvc:nightly-2023-09-18-latest"
-        "x86_64-pc-windows-gnu:nightly-2023-09-18-latest"
-        "i686-pc-windows-gnu:nightly-2023-09-18-latest"
-        "x86_64-unknown-linux-musl:nightly-2023-09-18-latest"
-        "i686-unknown-linux-musl:nightly-2023-09-18-latest"
-        "aarch64-apple-darwin:nightly-2023-09-18-latest"
-    )
-    log_task_status in_progress "Pulling Docker image for compilation..."
-    for image in "${images[@]}"; do
-        log_task_status in_progress "Pulling $image ..."
-        docker pull "$SOURCE_NAME_SPACE/$image"
-        docker tag "$SOURCE_NAME_SPACE/$image" "$FINAL_NAME_SPACE/$image"       
-        if [ "$SOURCE_NAME_SPACE" != "$FINAL_NAME_SPACE" ]; then
-                docker rmi "$SOURCE_NAME_SPACE/$image"
-        fi
-    done
+
+    SOURCE_IMAGE=${SOURCE_IMAGE:="chainreactors/malefic-builder:v0.0.4-with-dependencies"}
+    FINAL_IMAGE=${FINAL_IMAGE:="ghcr.io/chainreactors/malefic-builder:v0.0.4"}
+
+    docker pull $SOURCE_IMAGE
+    docker tag $SOURCE_IMAGE $FINAL_IMAGE
+    if [ "$SOURCE_IMAGE" != "$FINAL_IMAGE" ]; then
+                docker rmi $SOURCE_IMAGE
+    fi
 }
 # set your server ip
 
@@ -217,7 +221,7 @@ install_malice_network() {
     for file in "${FILES[@]}"; do
         download_file "$MALICE_NETWORK_RELEASES_URL/$file" "$file"
     done
-    download_file "https://raw.githubusercontent.com/chainreactors/malice-network/refs/heads/dev/server/config.yaml" "config.yaml"
+    download_file "https://raw.githubusercontent.com/chainreactors/malice-network/master/server/config.yaml" "config.yaml"
 
     log_task_status "completed" "All components downloaded successfully."
 
@@ -261,63 +265,8 @@ install_malefic(){
         popd
     }
 
-    install_malefic_mutant(){
-        local MALEFIC_RELEASES_URL=${MALEFIC_RELEASES_URL:="https://github.com/chainreactors/malefic/releases/latest/download"}
-        local FILES=(
-            "malefic-mutant-x86_64-unknown-linux-musl"
-        )
-        local md="${MALEFIC_ROOT_DIR}/build/bin"
-        mkdir -p "$md"
-        pushd "${md}"
-        for file in "${FILES[@]}"; do
-            download_file "$MALEFIC_RELEASES_URL/$file" "$file"
-        done
-        mv malefic-mutant-x86_64-unknown-linux-musl malefic-mutant && chmod +x malefic-mutant
-        log_task_status "completed" "Malefic-Mutant downloaded successfully!"
-        popd
-    }
-    
-    install_sgn(){
-        local SGN_RELEASES_URL="https://github.com/EgeBalci/sgn/releases/download/v2.0.1/sgn_linux_amd64_2.0.1.zip"
-        local md="${MALEFIC_ROOT_DIR}/build/bin"
-        mkdir -p "$md"
-        pushd "${md}"
-        download_file "$SGN_RELEASES_URL" "sgn_linux_amd64_2.0.1.zip"
-        unzip sgn_linux_amd64_2.0.1.zip && rm -f sgn_linux_amd64_2.0.1.zip && chmod +x sgn
-        popd
-        log_task_status "completed" "Sgn downloaded successfully!"
-    }
-
-    add_to_path() {
-        local new_path="${MALEFIC_ROOT_DIR}/build/bin"
-        
-        local shell_name=$(basename "$SHELL")
-        local rc_file=""
-        
-        if [[ "$shell_name" == "bash" ]]; then
-            rc_file="${HOME}/.bashrc"
-        elif [[ "$shell_name" == "zsh" ]]; then
-            rc_file="${HOME}/.zshrc"
-        else
-            log_task_status "ended" "Unsupported shell: $shell_name. Only bash and zsh are supported."
-            return 1
-        fi
-
-        if grep -q "export PATH=.*${new_path}" "$rc_file"; then
-            log_task_status "completed" "Path ${new_path} is already in $rc_file"
-        else
-            echo "export PATH=\"${new_path}:\$PATH\"" >> "$rc_file"
-            log_task_status "completed" "Path ${new_path} has been added to $rc_file"
-        fi
-        source "$rc_file"
-        log_task_status "completed" "Sourced $rc_file successfully!"
-    }
-    
     install_source_code # before install resources
     install_resources
-    install_malefic_mutant
-    install_sgn
-    add_to_path
 }
 
 create_systemd_service(){
@@ -355,7 +304,7 @@ systemctl enable malice-network
 systemctl start malice-network
 systemctl status malice-network
 log_task_status "completed" "Malice Network service started successfully!"
-
+log_task_status "completed" "you can find your configs in $IoM_ROOT_DIR"
 }
 
 if [[ "$EUID" -ne 0 ]]; then
@@ -366,9 +315,7 @@ fi
 # --- get Ip ---
 setup_environment
 # --- Install Docker if not installed ---
-check_install_docker
-# --- Install docker image for compilation ---
-docker_pull_image
+check_and_install_docker
 # --- Install Malice Network ---
 install_malice_network
 install_malefic
