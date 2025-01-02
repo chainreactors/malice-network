@@ -61,7 +61,7 @@ listeners:
         key: maliceofinternal
   websites:
     - name: default-website
-      port: 10049
+      port: 80
       root: "/"
       enable: true
       content:
