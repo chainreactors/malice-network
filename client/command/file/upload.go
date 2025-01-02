@@ -2,14 +2,17 @@ package file
 
 import (
 	"fmt"
+	"path/filepath"
+	"strconv"
+
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
+	"github.com/chainreactors/malice-network/helper/utils/mals"
 	"github.com/spf13/cobra"
-	"path/filepath"
-	"strconv"
 
 	"os"
 )
@@ -30,7 +33,22 @@ func UploadCmd(cmd *cobra.Command, con *repl.Console) error {
 }
 
 func Upload(rpc clientrpc.MaliceRPCClient, session *core.Session, path string, target string, priv string, hidden bool) (*clientpb.Task, error) {
-	data, err := os.ReadFile(path)
+	var data []byte
+	var err error
+	// data, err := os.ReadFile(path)
+	if fileutils.Exist(path) {
+		data, err = os.ReadFile(path)
+		if err != nil {
+			return nil, fmt.Errorf("ReadFile error: %s", err)
+		}
+	} else {
+		data, err = mals.UnPackMalBinary(path)
+		if err != nil {
+			return nil, fmt.Errorf("the path does not point to a valid file or does not meet the expected binary format: %s", err)
+		}
+		path = "virtual_src_path"
+	}
+
 	if err != nil {
 		return nil, err
 	}

@@ -49,7 +49,7 @@ var (
 	CargoGitCacheVolume      = fmt.Sprintf("%s:%s", filepath.ToSlash(gitPath), ContainerCargoGitCache)
 	BinPathVolume            = fmt.Sprintf("%s:%s", filepath.ToSlash(binPath), ContainerBinPath)
 	//Volumes                  = []string{SourceCodeVolume, CargoRegistryCacheVolume, CargoGitCacheVolume, BinPathVolume}
-	Volumes = []string{SourceCodeVolume, CargoRegistryCacheVolume, CargoGitCacheVolume}
+	Volumes = []string{SourceCodeVolume}
 )
 
 var dockerClient *client.Client

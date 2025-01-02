@@ -8,8 +8,8 @@ before:
     - unzip -o sgn_linux.zip -d server/assets/linux
     - curl -L https://github.com/EgeBalci/sgn/releases/download/v2.0.1/sgn_windows_amd64_2.0.1.zip -o sgn_windows.zip
     - unzip -o sgn_windows.zip -d server/assets/windows
-    - curl -L https://github.com/chainreactors/malefic/releases/download/v0.0.3/malefic-mutant-x86_64-pc-windows-msvc.exe -o server/assets/windows/malefic-mutant.exe
-    - curl -L https://github.com/chainreactors/malefic/releases/download/v0.0.3/malefic-mutant-x86_64-unknown-linux-musl -o server/assets/linux/malefic-mutant
+    - curl -L https://github.com/chainreactors/malefic/releases/latest/download/malefic-mutant-x86_64-pc-windows-gnu.exe -o server/assets/windows/malefic-mutant.exe
+    - curl -L https://github.com/chainreactors/malefic/releases/latest/download/malefic-mutant-x86_64-unknown-linux-musl -o server/assets/linux/malefic-mutant
 
 builds:
   -

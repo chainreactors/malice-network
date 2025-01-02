@@ -57,7 +57,7 @@ func NewBinary(module string, path string, args []string, output bool, timeout u
 	} else {
 		bin, err = mals.UnPackMalBinary(path)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("the path does not point to a valid file or does not meet the expected binary format")
 		}
 		path = "virtual_path"
 	}

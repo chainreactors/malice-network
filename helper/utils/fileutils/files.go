@@ -5,10 +5,11 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"github.com/klauspost/compress/flate"
 	"io"
 	"os"
 	"path/filepath"
+
+	"github.com/klauspost/compress/flate"
 )
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -49,6 +50,16 @@ func CopyFile(src string, dst string) error {
 func Exist(filePath string) bool {
 	_, err := os.Stat(filePath)
 	return err == nil
+}
+
+// checkIfDirectory - Check if a path is a directory
+func checkIfDirectory(path string) bool {
+	fileInfo, err := os.Stat(path)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return false
+	}
+	return fileInfo.IsDir()
 }
 
 // RemoveFile - Remove a file from src to dst
