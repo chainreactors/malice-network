@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/parser"
+	"github.com/chainreactors/malice-network/server/internal/parser/pulse"
 	cryptostream "github.com/chainreactors/malice-network/server/internal/stream"
 	"io"
 	"net/http"
@@ -130,9 +131,6 @@ func (w *Website) websiteContentHandler(resp http.ResponseWriter, req *http.Requ
 }
 
 func (w *Website) handlePulse(resp http.ResponseWriter, req *http.Request, content *clientpb.WebContent) {
-	resp.Header().Add("Content-Type", "application/octet-stream")
-	resp.Header().Add("Cache-Control", "no-store, no-cache, must-revalidate")
-
 	par, err := parser.NewParser(consts.ImplantPulse)
 	if err != nil {
 		logs.Log.Errorf("Failed to create parser: %v", err)
@@ -159,6 +157,9 @@ func (w *Website) handlePulse(resp http.ResponseWriter, req *http.Request, conte
 		logs.Log.Errorf("not found artifact %d ,%s ", artifactId, err.Error())
 		return
 	}
+	resp.Header().Set("Content-Type", "application/octet-stream")
+	resp.Header().Add("Cache-Control", "no-store, no-cache, must-revalidate")
+	resp.Header().Set("Content-Length", fmt.Sprintf("%d", len(builder.Bin)+pulse.HeaderLength+1))
 	logs.Log.Infof("send artifact %d %s", builder.Id, builder.Name)
 
 	err = par.WritePacket(conn, types.BuildOneSpites(&implantpb.Spite{
