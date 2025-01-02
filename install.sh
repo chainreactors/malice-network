@@ -18,16 +18,54 @@ log_task_status() {
 download_file() {
     local url="$1"
     local dest="$2"
-    log_task_status "in_progress" "Downloading $dest..."
-    echo $url
-    curl --retry 4 --silent -L -o "$dest" "$url" 
+
+    if [ -f "$dest" ]; then
+        log_task_status "in_progress" "$dest already exists, skipping download."
+        echo "Skipping download, $dest already exists."
+    else
+        log_task_status "in_progress" "Downloading $dest..."
+        echo "Downloading from $url to $dest"
+        curl --retry 4 --silent -L -o "$dest" "$url"
+    fi
+}
+
+
+# set your server ip
+setup_environment(){
+  set_server_ip(){
+      default_ip=$(curl --noproxy -4 -s ifconfig.me)
+      if [[ -t 0 ]]; then
+          read -p "Please input your IP Address for the server to start [default: $default_ip]: " input_ip
+          ip_address=${input_ip:-$default_ip}
+      else
+          ip_address=$default_ip
+          log_task_status "completed" "No interactive shell detected. Using default IP Address: $ip_address"
+      fi
+      log_task_status completed "Using IP Address: $ip_address"
+  }
+
+  set_base_dir(){
+      local DEFAULT_DIR="/opt/iom"
+      if [[ -t 0 ]]; then
+          read -p "Please input the base directory for the installation [default: $DEFAULT_DIR]: " input_dir
+          IoM_ROOT_DIR=${input_dir:-$DEFAULT_DIR}
+      else
+          IoM_ROOT_DIR=$DEFAULT_DIR
+          log_task_status "completed" "No interactive shell detected. Using default base directory: $IoM_ROOT_DIR"
+      fi
+      log_task_status completed "Using base directory: $IoM_ROOT_DIR"
+  }
+    set_base_dir
+    set_server_ip
 }
 
 # check and install docker
 check_and_install_docker(){
-    echo "Malefic's build needs docker or github action at least one"
+    log_task_status in_progress "Malefic's build can use the following two methods at least one:"
+    echo "  1. Docker (install docker and compile image)"
+    echo "  2. Github Action (configure reference: https://chainreactors.github.io/wiki/IoM/manual/manual/deploy/#config)"
     while true; do
-        read -p "Do you want to install Docker?[y/n]" install_docker
+        read -p "Do you want to install Docker? [y/n]" install_docker
         install_docker=${install_docker,,}
         if [[ "$install_docker" == "y" || "$install_docker" == "yes" ]]; then
             log_task_status in_progress "Installing Docker..."
@@ -73,59 +111,29 @@ check_and_install_docker(){
         log_task_status completed "Docker is already installed, Skipping .." 
     fi
     log_task_status completed "Docker is installed, Docker version: $(docker --version)"
+    # pull images for compilation
+    docker_pull_image(){
+        SOURCE_IMAGE=${SOURCE_IMAGE:="chainreactors/malefic-builder:v0.0.4-with-dependencies"}
+        FINAL_IMAGE=${FINAL_IMAGE:="ghcr.io/chainreactors/malefic-builder:v0.0.4"}
+        docker pull $SOURCE_IMAGE
+        docker tag $SOURCE_IMAGE $FINAL_IMAGE
+        if [ "$SOURCE_IMAGE" != "$FINAL_IMAGE" ]; then
+            docker rmi $SOURCE_IMAGE
+        fi
+    }
     docker_pull_image
-}
-# pull images for compilation
-docker_pull_image(){
-    SOURCE_IMAGE=${SOURCE_IMAGE:="chainreactors/malefic-builder:v0.0.4-with-dependencies"}
-    FINAL_IMAGE=${FINAL_IMAGE:="ghcr.io/chainreactors/malefic-builder:v0.0.4"}
-
-    docker pull $SOURCE_IMAGE
-    docker tag $SOURCE_IMAGE $FINAL_IMAGE
-    if [ "$SOURCE_IMAGE" != "$FINAL_IMAGE" ]; then
-                docker rmi $SOURCE_IMAGE
-    fi
-}
-# set your server ip
-
-setup_environment(){
-  set_server_ip(){
-      default_ip=$(curl --noproxy -4 -s ifconfig.me)
-      if [[ -t 0 ]]; then
-          read -p "Please input your IP Address for the server to start [default: $default_ip]: " input_ip
-          ip_address=${input_ip:-$default_ip}
-      else
-          ip_address=$default_ip
-          log_task_status "completed" "No interactive shell detected. Using default IP Address: $ip_address"
-      fi
-      log_task_status completed "Using IP Address: $ip_address"
-  }
-
-  set_base_dir(){
-      local DEFAULT_DIR="/opt/iom"
-      if [[ -t 0 ]]; then
-          read -p "Please input the base directory for the installation [default: $DEFAULT_DIR]: " input_dir
-          IoM_ROOT_DIR=${input_dir:-$DEFAULT_DIR}
-      else
-          IoM_ROOT_DIR=$DEFAULT_DIR
-          log_task_status "completed" "No interactive shell detected. Using default base directory: $IoM_ROOT_DIR"
-      fi
-      log_task_status completed "Using base directory: $IoM_ROOT_DIR"
-  }
-    set_base_dir
-    set_server_ip
 }
 
 # install malice-network's artifacts
 install_malice_network() {
+    local MALICE_NETWORK=${MALICE_NETWORK:="v0.0.4"}
     local md="${IoM_ROOT_DIR}/malice-network"
-    local MALICE_NETWORK_RELEASES_URL=${MALICE_NETWORK_RELEASES_URL:="https://github.com/chainreactors/malice-network/releases/latest/download"}
+    local MALICE_NETWORK_RELEASES_URL=${MALICE_NETWORK_RELEASES_URL:="https://github.com/chainreactors/malice-network/releases/download/$MALICE_NETWORK"}
     local FILES=(
         "malice_network_linux_amd64"
         "iom_linux_amd64"
         "malice_checksums.txt"
     )
-    
     # --- Init Install Directory ---
     mkdir -p "$md"
     pushd "${md}"
@@ -137,7 +145,7 @@ install_malice_network() {
     for file in "${FILES[@]}"; do
         download_file "$MALICE_NETWORK_RELEASES_URL/$file" "$file"
     done
-    download_file "https://raw.githubusercontent.com/chainreactors/malice-network/refs/heads/dev/server/config.yaml" "config.yaml"
+    download_file "https://raw.githubusercontent.com/chainreactors/malice-network/$MALICE_NETWORK/server/config.yaml" "config.yaml"
 
     log_task_status "completed" "All components downloaded successfully."
 
@@ -151,23 +159,26 @@ install_malice_network() {
     chmod +x "malice_network_linux_amd64" "iom_linux_amd64"
     log_task_status "completed" "Malice Network installation completed successfully!"
 }
-# install malefic's artifacts sourcecode 、sgn 、malefic_mutant
+# install malefic's artifacts、sourcecode
 install_malefic(){
+    local MALEFIC_VERSION=${MALEFIC_VERSION:="v0.0.4"}
     local MALEFIC_ROOT_DIR="$IoM_ROOT_DIR/malefic"
     
     install_source_code(){
         local MALEFIC_REPO_URL="https://github.com/chainreactors/malefic"
-        local source_dir="${MALEFIC_ROOT_DIR}/build/src"
-        if [ -d "${source_dir}" ]; then
-            echo "[+] Backing up existing src directory..."
-            mv "$SRC_DIR" "$SRC_DIR.backup"
+        local SRC_DIR="${MALEFIC_ROOT_DIR}/build/src"
+        if [ -d "${SRC_DIR}" ]; then
+            BACKUP_DIR="${MALEFIC_ROOT_DIR}/build/src_backup_$(date +%Y%m%d_%H%M%S)"
+            mv "$SRC_DIR" "$BACKUP_DIR"
+            log_task_status in_progress "${SRC_DIR} exists, backed up to ${BACKUP_DIR}. You may delete this directory if it is no longer needed."
         fi
-        git clone --recurse-submodules --depth=1 "${MALEFIC_REPO_URL}" "${source_dir}"
+        git clone --branch $MALEFIC_VERSION --recurse-submodules --depth=1 "${MALEFIC_REPO_URL}" "${SRC_DIR}"
         log_task_status "completed" "Source code downloaded successfully!"
     }
-
+    
     install_resources(){
-        local MALEFIC_RELEASES_URL=${MALEFIC_RELEASES_URL:="https://github.com/chainreactors/malefic/releases/latest/download"}
+        # install win kit lib
+        local MALEFIC_RELEASES_URL=${MALEFIC_RELEASES_URL:="https://github.com/chainreactors/malefic/releases/download/$MALEFIC_VERSION"}
         local FILES=(
             "resources.zip"
         )
@@ -179,7 +190,8 @@ install_malefic(){
         unzip resources.zip && rm -f resources.zip
         log_task_status "completed" 'Resources files downloaded successfully!'
         popd
-    }    
+    }
+
     install_source_code # before install resources
     install_resources
 }
@@ -230,10 +242,11 @@ fi
 
 # --- get Ip ---
 setup_environment
-# --- Install Docker if not installed ---
-check_and_install_docker
 # --- Install Malice Network ---
 install_malice_network
+# --- Install Malefic ---
 install_malefic
+# --- Install Docker if not installed ---
+check_and_install_docker
 # --- Create systemd service ---
 create_systemd_service

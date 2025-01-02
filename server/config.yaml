@@ -19,7 +19,7 @@ listeners:
   auth: listener.auth
   enable: true
   tcp:
-    - name: tcp_default
+    - name: beacon_pipeline
       port: 5001
       host: 0.0.0.0
       protocol: tcp
@@ -42,7 +42,7 @@ listeners:
         enable: true
         type: aes
         key: maliceofinternal
-    - name: shellcode
+    - name: pulse_pipline
       port: 5002
       host: 0.0.0.0
       parser: pulse
@@ -53,7 +53,7 @@ listeners:
         key: maliceofinternal
   bind:
     -
-      name: bind_default
+      name: bind_pipeline
       enable: true
       encryption:
         enable: true
