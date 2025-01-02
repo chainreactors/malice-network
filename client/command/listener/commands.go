@@ -320,6 +320,9 @@ website add /path/to/content.html --website web_test --path /custom/path --type 
 
 	common.BindArgCompletions(websiteAddContentCmd, nil,
 		carapace.ActionFiles().Usage("content file path"))
+	common.BindFlagCompletions(websiteAddContentCmd, func(comp carapace.ActionMap) {
+		comp["website"] = common.WebsiteCompleter(con)
+	})
 
 	websiteUpdateContentCmd := &cobra.Command{
 		Use:   "update [content_id] [file_path]",
