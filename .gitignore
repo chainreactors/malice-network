@@ -2,3 +2,6 @@
 bin/
 dist/
 go.sum
+*.exe
+*.bin
+*.so
