@@ -521,7 +521,7 @@ func AddContent(content *clientpb.WebContent) (*models.WebsiteContent, error) {
 	var existingContent models.WebsiteContent
 	switch content.Type {
 	case "", "raw":
-		content.ContentType = "text/html; charset=utf-8"
+		content.ContentType = mime.TypeByExtension(filepath.Ext(content.Path))
 	case consts.ImplantPulse:
 		content.ContentType = "application/octet-stream"
 	default:

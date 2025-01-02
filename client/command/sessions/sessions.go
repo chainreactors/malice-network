@@ -25,7 +25,7 @@ func SessionsCmd(cmd *cobra.Command, con *repl.Console) error {
 	if 0 < len(con.Sessions) {
 		PrintSessions(con.Sessions, con, isAll)
 	} else {
-		con.Log.Info("No sessions")
+		con.Log.Info("No sessions\n")
 	}
 	return nil
 }

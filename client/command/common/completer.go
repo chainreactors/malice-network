@@ -330,7 +330,7 @@ func WebsiteCompleter(con *repl.Console) carapace.Action {
 func WebContentCompleter(con *repl.Console, _ string) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
-
+		con.UpdateListener()
 		// List all contents from all websites since content ID is globally unique
 		for _, listener := range con.Listeners {
 			for _, pipeline := range listener.GetPipelines().GetPipelines() {

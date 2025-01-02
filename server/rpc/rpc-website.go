@@ -58,7 +58,7 @@ func (rpc *Server) WebsiteAddContent(ctx context.Context, req *clientpb.Website)
 			if job == nil {
 				return nil, fmt.Errorf("website %s not found", req.Name)
 			}
-
+			job.Message.(*clientpb.Pipeline).GetWeb().Contents[content.Path] = content
 			core.Jobs.Ctrl <- &clientpb.JobCtrl{
 				Id:   core.NextCtrlID(),
 				Ctrl: consts.CtrlWebContentAdd,
@@ -93,12 +93,16 @@ func (rpc *Server) WebsiteUpdateContent(ctx context.Context, req *clientpb.WebCo
 
 // WebsiteRemoveContent - Remove specific content from a website
 func (rpc *Server) WebsiteRemoveContent(ctx context.Context, req *clientpb.WebContent) (*clientpb.Empty, error) {
-	err := db.RemoveContent(req.Id)
+	web, err := db.FindWebContent(req.Id)
+	if err != nil {
+		return nil, err
+	}
+	err = db.RemoveContent(req.Id)
 	if err != nil {
 		return nil, err
 	}
 
-	job := core.Jobs.Get(req.WebsiteId)
+	job := core.Jobs.Get(web.PipelineID)
 	if job == nil {
 		return nil, fmt.Errorf("website %s not found", req.WebsiteId)
 	}

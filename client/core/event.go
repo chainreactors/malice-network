@@ -201,9 +201,21 @@ func (s *ServerStatus) handlerEvent(event *clientpb.Event) {
 			Log.Importantf("[%s] %s: tcp %s on %s %s:%d\n", event.Type, event.Op,
 				pipeline.Name, pipeline.ListenerId, pipeline.GetTcp().Host, pipeline.GetTcp().Port)
 		case *clientpb.Pipeline_Web:
+			if event.Op == consts.CtrlWebContentAdd {
+				var root = ""
+				if pipeline.GetWeb().Root != "/" {
+					root = pipeline.GetWeb().Root
+				}
+				for _, content := range pipeline.GetWeb().Contents {
+					Log.Importantf("[%s] %s: web %s on %s %d, routePath is %s\n", event.Type, event.Op,
+						pipeline.ListenerId, pipeline.Name, pipeline.GetWeb().Port,
+						fmt.Sprintf("http://%s:%d%s%s", pipeline.Ip, pipeline.GetWeb().Port, root, content.Path))
+				}
+				return
+			}
 			Log.Importantf("[%s] %s: web %s on %s %d, routePath is %s\n", event.Type, event.Op,
 				pipeline.ListenerId, pipeline.Name, pipeline.GetWeb().Port,
-				pipeline.GetWeb().Root)
+				fmt.Sprintf("http://%s:%d%s", pipeline.Ip, pipeline.GetWeb().Port, pipeline.GetWeb().Root))
 		}
 	case consts.EventListener:
 		Log.Importantf("[%s] %s: %s %s\n", event.Type, event.Op, event.Message, event.Err)
