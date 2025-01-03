@@ -13,6 +13,11 @@ server:
     lark:
       enable: false
       webhook_url:
+  github:
+    repo: malefic
+    workflow: generate.yml
+    owner:
+    token:
 
 listeners:
   name: listener

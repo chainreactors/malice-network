@@ -140,8 +140,8 @@ type NotifyConfig struct {
 }
 
 type GithubConfig struct {
-	Repo     string `config:"repo" default:""`
+	Repo     string `config:"repo" default:"malefic"`
 	Owner    string `config:"owner" default:""`
 	Token    string `config:"token" default:""`
-	Workflow string `config:"workflow" default:"generate.yaml"`
+	Workflow string `config:"workflow" default:"generate.yml"`
 }
