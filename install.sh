@@ -18,17 +18,9 @@ log_task_status() {
 download_file() {
     local url="$1"
     local dest="$2"
-
-    if [ -f "$dest" ]; then
-        log_task_status "in_progress" "$dest already exists, skipping download."
-        echo "Skipping download, $dest already exists."
-    else
-        log_task_status "in_progress" "Downloading $dest..."
-        echo "Downloading from $url to $dest"
-        curl --retry 4 --silent -L -o "$dest" "$url"
-    fi
+    log_task_status "in_progress" "Downloading from $url to $dest"
+    curl --retry 4 --silent -L -o "$dest" "$url"
 }
-
 
 # set your server ip
 setup_environment(){
@@ -64,19 +56,6 @@ check_and_install_docker(){
     log_task_status in_progress "Malefic's build can use the following two methods at least one:"
     echo "  1. Docker (install docker and compile image)"
     echo "  2. Github Action (configure reference: https://chainreactors.github.io/wiki/IoM/manual/manual/deploy/#config)"
-    while true; do
-        read -p "Do you want to install Docker? [y/n]" install_docker
-        install_docker=${install_docker,,}
-        if [[ "$install_docker" == "y" || "$install_docker" == "yes" ]]; then
-            log_task_status in_progress "Installing Docker..."
-            break
-        elif [[ "$install_docker" == "n" || "$install_docker" == "no" ]]; then
-            log_task_status in_progress "Docker installation cancelled"
-            return 
-        else
-            echo "Invalid input, please input y(yes) or n(no)."
-        fi
-    done
     yum_install_docker(){
         yum install -y yum-utils curl unzip git
         yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
@@ -98,21 +77,35 @@ check_and_install_docker(){
         exit 1
     fi
     if ! command -v docker &> /dev/null; then
-        log_task_status in_progress "Docker is not installed, installing..."
-        if [ "$ID" = "centos" ] ; then
+        log_task_status in_progress "Docker is not installed..."
+        while true; do
+            read -p "Do you want to install Docker? [y/n] " install_docker
+            install_docker=${install_docker,,}
+            if [[ "$install_docker" == "y" || "$install_docker" == "yes" ]]; then
+                log_task_status in_progress "Starting Docker installation..."
+                break
+            elif [[ "$install_docker" == "n" || "$install_docker" == "no" ]]; then
+                log_task_status in_progress "Docker installation canceled"
+                return
+            else
+                echo "Invalid input, please enter y(yes) or n(no)."
+            fi
+        done
+        if [ "$ID" = "centos" ]; then
             yum_install_docker
         elif [ "$ID" = "ubuntu" ] || [ "$ID" = "debian" ]; then
             apt_install_docker
         else
-            log_task_status ended "Unsupported OS"
+            log_task_status ended "Current operating system is not supported"
             exit 1
         fi
+        log_task_status completed "Docker installation complete, version: $(docker --version)"
     else
-        log_task_status completed "Docker is already installed, Skipping .." 
+        log_task_status completed "Docker is already installed, version: $(docker --version)"
     fi
-    log_task_status completed "Docker is installed, Docker version: $(docker --version)"
     # pull images for compilation
     docker_pull_image(){
+        log_task_status in_progress "Pulling the Docker image for Malefic compilation..."
         SOURCE_IMAGE=${SOURCE_IMAGE:="chainreactors/malefic-builder:v0.0.4-with-dependencies"}
         FINAL_IMAGE=${FINAL_IMAGE:="ghcr.io/chainreactors/malefic-builder:v0.0.4"}
         docker pull $SOURCE_IMAGE
@@ -120,6 +113,7 @@ check_and_install_docker(){
         if [ "$SOURCE_IMAGE" != "$FINAL_IMAGE" ]; then
             docker rmi $SOURCE_IMAGE
         fi
+        log_task_status completed "Docker image pulled successfully!"
     }
     docker_pull_image
 }
@@ -221,17 +215,18 @@ StandardError=append:$LOG_DIR/error.log
 WantedBy=multi-user.target
 EOF
 
-chown root:root /etc/systemd/system/malice-network.service
-chmod 600 /etc/systemd/system/malice-network.service
-
-# --- Reload systemd and start the service ---
-log_task_status "in_progress" "Starting the Malice Network service..."
-systemctl daemon-reload
-systemctl enable malice-network
-systemctl start malice-network
-systemctl status malice-network
-log_task_status "completed" "Malice Network service started successfully!"
-log_task_status "you can find your configs in $IoM_ROOT_DIR"
+    chown root:root /etc/systemd/system/malice-network.service
+    chmod 600 /etc/systemd/system/malice-network.service
+    # --- Reload systemd and start the service ---
+    log_task_status "in_progress" "Starting the Malice Network service..."
+    systemctl daemon-reload
+    systemctl enable malice-network
+    systemctl start malice-network
+    systemctl status malice-network
+    # --- Show the final status ---
+    log_task_status "in_progress" "Your ROOT DIR : $IoM_ROOT_DIR"
+    log_task_status "in_progress" "Server log : $LOG_DIR/debug.log"
+    log_task_status "completed" "Malice Network service started successfully!"
 
 }
 
