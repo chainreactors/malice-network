@@ -9,6 +9,7 @@ import (
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/mals"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"os"
@@ -149,7 +150,7 @@ func Register(con *repl.Console) {
 
 	con.RegisterServerFunc("active", func(con *repl.Console) (*core.Session, error) {
 		return con.GetInteractive().Clone(consts.CalleeMal), nil
-	}, &intermediate.Helper{
+	}, &mals.Helper{
 		Short:   "get current session",
 		Output:  []string{"sess"},
 		Example: "active()",
