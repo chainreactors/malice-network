@@ -2,9 +2,9 @@ package extension
 
 import (
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
 )

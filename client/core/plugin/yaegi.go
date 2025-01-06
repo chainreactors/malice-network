@@ -2,7 +2,7 @@ package plugin
 
 import (
 	"fmt"
-	"github.com/chainreactors/malice-network/client/core/intermediate"
+	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/traefik/yaegi/interp"
 	"github.com/traefik/yaegi/stdlib"
 	"reflect"

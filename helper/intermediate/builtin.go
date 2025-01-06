@@ -30,6 +30,14 @@ const (
 	GroupArtifact = "artifact"
 )
 
+// lua package
+const (
+	BeaconPackage  = "beacon"
+	RpcPackage     = "rpc"
+	ArmoryPackage  = "armory"
+	BuiltinPackage = "builtin"
+)
+
 type BuiltinCallback func(content interface{}) (bool, error)
 
 func RegisterBuiltin(rpc clientrpc.MaliceRPCClient) {

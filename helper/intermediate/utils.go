@@ -3,8 +3,6 @@ package intermediate
 import (
 	"context"
 	"fmt"
-	"github.com/chainreactors/malice-network/helper/utils/fileutils"
-	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"math"
 	"os"
 	"path/filepath"
@@ -15,7 +13,9 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/handler"
+	"github.com/chainreactors/malice-network/helper/utils/pe"
 )
 
 func GetResourceFile(pluginName, filename string) (string, error) {
