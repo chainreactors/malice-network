@@ -1,85 +1,25 @@
 package pe
 
 import (
-	"bytes"
 	"encoding/base64"
-	"encoding/binary"
 	"fmt"
+	"io"
+	"net/http"
+	"os"
 	"strconv"
 	"strings"
-
-	"golang.org/x/text/encoding/unicode"
 )
 
 type BOFArgsBuffer struct {
-	Buffer *bytes.Buffer
-}
-
-func (b *BOFArgsBuffer) AddData(d []byte) error {
-	dataLen := uint32(len(d))
-	err := binary.Write(b.Buffer, binary.LittleEndian, &dataLen)
-	if err != nil {
-		return err
-	}
-	return binary.Write(b.Buffer, binary.LittleEndian, &d)
-}
-
-func (b *BOFArgsBuffer) AddShort(d uint16) error {
-	return binary.Write(b.Buffer, binary.LittleEndian, &d)
-}
-
-func (b *BOFArgsBuffer) AddInt(d uint32) error {
-	return binary.Write(b.Buffer, binary.LittleEndian, &d)
-}
-
-func (b *BOFArgsBuffer) AddString(d string) error {
-	stringLen := uint32(len(d)) + 1
-	err := binary.Write(b.Buffer, binary.LittleEndian, &stringLen)
-	if err != nil {
-		return err
-	}
-	dBytes := append([]byte(d), 0x00)
-	return binary.Write(b.Buffer, binary.LittleEndian, dBytes)
-}
-
-func (b *BOFArgsBuffer) AddWString(d string) error {
-	encoder := unicode.UTF16(unicode.LittleEndian, unicode.IgnoreBOM).NewEncoder()
-	strBytes := append([]byte(d), 0x00)
-	utf16Data, err := encoder.Bytes(strBytes)
-	if err != nil {
-		return err
-	}
-	stringLen := uint32(len(utf16Data))
-	err = binary.Write(b.Buffer, binary.LittleEndian, &stringLen)
-	if err != nil {
-		return err
-	}
-	return binary.Write(b.Buffer, binary.LittleEndian, utf16Data)
-}
-
-func (b *BOFArgsBuffer) GetBuffer() ([]byte, error) {
-	outBuffer := new(bytes.Buffer)
-	err := binary.Write(outBuffer, binary.LittleEndian, uint32(b.Buffer.Len()))
-	if err != nil {
-		return nil, err
-	}
-	err = binary.Write(outBuffer, binary.LittleEndian, b.Buffer.Bytes())
-	if err != nil {
-		return nil, err
-	}
-	return outBuffer.Bytes(), nil
-}
-
-type IoMBOFArgsBuffer struct {
 	Args []string
 }
 
-func (b *IoMBOFArgsBuffer) AddData(d []byte) error {
+func (b *BOFArgsBuffer) AddData(d []byte) error {
 	b.Args = append(b.Args, PackBinary(string(d)))
 	return nil
 }
 
-func (b *IoMBOFArgsBuffer) AddShort(d uint16) error {
+func (b *BOFArgsBuffer) AddShort(d uint16) error {
 	data, err := PackShort(d)
 	if err != nil {
 		return err
@@ -88,7 +28,7 @@ func (b *IoMBOFArgsBuffer) AddShort(d uint16) error {
 	return nil
 }
 
-func (b *IoMBOFArgsBuffer) AddInt(d uint32) error {
+func (b *BOFArgsBuffer) AddInt(d uint32) error {
 	data, err := PackInt(d)
 	if err != nil {
 		return err
@@ -97,17 +37,17 @@ func (b *IoMBOFArgsBuffer) AddInt(d uint32) error {
 	return nil
 }
 
-func (b *IoMBOFArgsBuffer) AddString(d string) error {
+func (b *BOFArgsBuffer) AddString(d string) error {
 	b.Args = append(b.Args, PackString(d))
 	return nil
 }
 
-func (b *IoMBOFArgsBuffer) AddWString(d string) error {
+func (b *BOFArgsBuffer) AddWString(d string) error {
 	b.Args = append(b.Args, PackWideString(d))
 	return nil
 }
 
-func (b *IoMBOFArgsBuffer) GetArgs() []string {
+func (b *BOFArgsBuffer) GetArgs() []string {
 	return b.Args
 }
 
@@ -169,6 +109,14 @@ func PackBinary(data string) string {
 	return fmt.Sprintf(`bin:%s`, base64.StdEncoding.EncodeToString([]byte(data)))
 }
 
+func PackFile(data string) string {
+	return "file:" + data
+}
+
+func PackURL(data string) string {
+	return "url" + data
+}
+
 func PackInt(i uint32) (string, error) {
 	return fmt.Sprintf(`int:%d`, i), nil
 }
@@ -199,6 +147,54 @@ func PackString(s string) string {
 
 func PackWideString(s string) string {
 	return fmt.Sprintf(`wstr:%s`, s)
+}
+
+func UnPackBinary(data string) ([]byte, error) {
+	if strings.HasPrefix(data, "bin:") {
+		data = data[4:]
+	}
+	return base64.StdEncoding.DecodeString(data)
+}
+
+func UnPackFile(data string) ([]byte, error) {
+	if strings.HasPrefix(data, "file:") {
+		data = data[5:]
+	}
+
+	return os.ReadFile(data)
+}
+
+func UnpackURL(data string) ([]byte, error) {
+	if strings.HasPrefix(data, "url:") {
+		data = data[4:]
+	}
+	resp, err := http.Get(data)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode == 200 {
+		return io.ReadAll(resp.Body)
+	} else {
+		return nil, fmt.Errorf("request error %d", resp.StatusCode)
+	}
+}
+
+func Unpack(data string) ([]byte, error) {
+	unpakced := strings.SplitN(data, ":", 2)
+	if len(unpakced) == 1 {
+		return UnPackFile(data)
+	}
+	switch unpakced[0] {
+	case "file":
+		return UnPackFile(unpakced[1])
+	case "bin":
+		return UnPackBinary(unpakced[1])
+	case "url":
+		return UnpackURL(unpakced[1])
+	default:
+		return nil, fmt.Errorf("Unknown data type %s", unpakced[0])
+	}
 }
 
 const (
