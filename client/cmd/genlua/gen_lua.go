@@ -8,6 +8,7 @@ import (
 	"github.com/chainreactors/malice-network/client/core/plugin"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
+	"github.com/chainreactors/mals"
 	"github.com/spf13/cobra"
 )
 
@@ -29,9 +30,9 @@ func main() {
 	intermediate.RegisterBuiltin(rpc)
 	command.RegisterClientFunc(con)
 	command.RegisterImplantFunc(con)
-	vm := plugin.NewLuaVM()
-	plugin.GenerateLuaDefinitionFile(vm, "define.lua")
-	plugin.GenerateMarkdownDefinitionFile(vm, intermediate.BuiltinPackage, "builtin.md")
-	plugin.GenerateMarkdownDefinitionFile(vm, intermediate.RpcPackage, "rpc.md")
-	plugin.GenerateMarkdownDefinitionFile(vm, intermediate.BeaconPackage, "beacon.md")
+	vm := mals.NewLuaVM()
+	mals.GenerateLuaDefinitionFile(vm, "define.lua", plugin.ProtoPackage, intermediate.InternalFunctions.All())
+	mals.GenerateMarkdownDefinitionFile(vm, intermediate.BuiltinPackage, "builtin.md", intermediate.InternalFunctions.Package(intermediate.BuiltinPackage))
+	mals.GenerateMarkdownDefinitionFile(vm, intermediate.RpcPackage, "rpc.md", intermediate.InternalFunctions.Package(intermediate.RpcPackage))
+	mals.GenerateMarkdownDefinitionFile(vm, intermediate.BeaconPackage, "beacon.md", intermediate.InternalFunctions.Package(intermediate.BeaconPackage))
 }

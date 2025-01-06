@@ -8,6 +8,7 @@ import (
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/mals"
 	"github.com/chainreactors/tui"
 	"github.com/reeflective/console"
 	"github.com/rsteube/carapace/pkg/x"
@@ -190,7 +191,7 @@ func (c *Console) RegisterBuiltinFunc(pkg, name string, fn interface{}, callback
 	return intermediate.RegisterInternalFunc(pkg, name, WrapImplantFunc(c, fn, callback), implantCallback)
 }
 
-func (c *Console) RegisterServerFunc(name string, fn interface{}, helper *intermediate.Helper) error {
+func (c *Console) RegisterServerFunc(name string, fn interface{}, helper *mals.Helper) error {
 	err := intermediate.RegisterInternalFunc(intermediate.BuiltinPackage, name, WrapServerFunc(c, fn), nil)
 	if helper != nil {
 		return intermediate.AddHelper(name, helper)
@@ -210,7 +211,7 @@ func (c *Console) AddCommandFuncHelper(cmdName string, funcName string, example 
 		} else {
 			group = cmd.GroupID
 		}
-		return intermediate.AddHelper(funcName, &intermediate.Helper{
+		return intermediate.AddHelper(funcName, &mals.Helper{
 			CMDName: cmdName,
 			Group:   group,
 			Short:   cmd.Short,
@@ -220,7 +221,7 @@ func (c *Console) AddCommandFuncHelper(cmdName string, funcName string, example 
 			Example: example,
 		})
 	} else {
-		return intermediate.AddHelper(funcName, &intermediate.Helper{
+		return intermediate.AddHelper(funcName, &mals.Helper{
 			CMDName: cmdName,
 			Input:   input,
 			Output:  output,

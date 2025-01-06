@@ -2,11 +2,11 @@ package file
 
 import (
 	"fmt"
+	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"path/filepath"
 
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"

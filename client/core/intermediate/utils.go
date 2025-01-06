@@ -3,12 +3,12 @@ package intermediate
 import (
 	"context"
 	"fmt"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"math"
 	"os"
 	"path/filepath"
 
-	"github.com/chainreactors/files"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -20,7 +20,7 @@ import (
 
 func GetResourceFile(pluginName, filename string) (string, error) {
 	resourceFile := filepath.Join(assets.GetMalsDir(), pluginName, "resources", filename)
-	if files.IsExist(resourceFile) {
+	if fileutils.Exist(resourceFile) {
 		return resourceFile, nil
 	}
 	return "", fmt.Errorf("file not found")
@@ -28,7 +28,7 @@ func GetResourceFile(pluginName, filename string) (string, error) {
 
 func GetGlobalResourceFile(filename string) (string, error) {
 	resourceFile := filepath.Join(assets.GetResourceDir(), filename)
-	if files.IsExist(resourceFile) {
+	if fileutils.Exist(resourceFile) {
 		return resourceFile, nil
 	}
 	return "", fmt.Errorf("file not found")

@@ -2,7 +2,6 @@ package sessions
 
 import (
 	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/cryptography"
@@ -10,6 +9,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/encoders/hash"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
+	"github.com/chainreactors/mals"
 	"github.com/spf13/cobra"
 )
 
@@ -56,7 +56,7 @@ func NewBindSession(con *repl.Console, PipelineID string, target string, name st
 }
 
 func RegisterNewSessionFunc(con *repl.Console) {
-	con.RegisterServerFunc("new_bind_session", NewBindSession, &intermediate.Helper{
+	con.RegisterServerFunc("new_bind_session", NewBindSession, &mals.Helper{
 		Short:   "new bind session",
 		Example: `new_bind_session("listener_id", "target", "name")`,
 		Input: []string{
