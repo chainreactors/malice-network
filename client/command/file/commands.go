@@ -2,7 +2,7 @@ package file
 
 import (
 	"fmt"
-	"github.com/chainreactors/malice-network/client/core/intermediate"
+	"github.com/chainreactors/malice-network/helper/intermediate"
 	"path/filepath"
 
 	"github.com/chainreactors/malice-network/client/command/common"
