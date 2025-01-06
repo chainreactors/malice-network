@@ -37,6 +37,9 @@ const (
 	CtrlWebContentAdd    = "web_content_add"
 	CtrlWebContentUpdate = "web_content_update"
 	CtrlWebContentRemove = "web_content_remove"
+	CtrlRemStart        = "rem_start"
+	CtrlRemStop         = "rem_stop"
+	CtrlRemRegister     = "rem_register"
 )
 
 const (

@@ -23,7 +23,7 @@ func NewPulseParser() *PulseParser {
 	return &PulseParser{
 		StartDelimiter: 0x41,
 		EndDelimiter:   0x42,
-		Magic:          hash.BJD2Hash("beautiful"),
+		Magic:          hash.DJB2Hash("beautiful"),
 	}
 }
 

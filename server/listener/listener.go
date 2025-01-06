@@ -12,9 +12,12 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
 	"github.com/chainreactors/malice-network/helper/utils/mtls"
+	"github.com/chainreactors/malice-network/helper/utils/webutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"google.golang.org/grpc"
+	"os"
+	"path/filepath"
 )
 
 var (
@@ -80,6 +83,29 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 		}
 	}
 
+	for _, rem := range cfg.REMs {
+		if !rem.Enable {
+			continue
+		}
+		pipeline, err := rem.ToProtobuf(lis.Name)
+		if err != nil {
+			return err
+		}
+
+		_, err = lis.Rpc.RegisterRem(context.Background(), pipeline)
+		if err != nil {
+			return err
+		}
+
+		_, err = lis.Rpc.StartRem(context.Background(), &clientpb.CtrlPipeline{
+			Name:       pipeline.Name,
+			ListenerId: lis.ID(),
+		})
+		if err != nil {
+			return err
+		}
+	}
+
 	for _, newWebsite := range cfg.Websites {
 		if !newWebsite.Enable {
 			continue
@@ -122,6 +148,23 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 		if err != nil {
 			return err
 		}
+		//cPath, _ := filepath.Abs(newWebsite.WebContents["a"].RootPath)
+		//fileIfo, err := os.Stat(cPath)
+		//
+		//if fileIfo.IsDir() {
+		//	_ = webutils.WebAddDirectory(addWeb, newWebsite.RootPath, cPath)
+		//} else {
+		//	file, err := os.Open(cPath)
+		//	webutils.WebAddFile(addWeb, newWebsite.RootPath, webutils.SniffContentType(file), cPath)
+		//	if err != nil {
+		//		return err
+		//	}
+		//	err = file.Close()
+		//	if err != nil {
+		//		return err
+		//	}
+		//}
+
 	}
 
 	return nil
@@ -176,7 +219,7 @@ func (lns *listener) Handler() {
 		msg, err := stream.Recv()
 		if err != nil {
 			logs.Log.Errorf(err.Error())
-			continue
+			return
 		}
 
 		var handlerErr error
@@ -197,24 +240,28 @@ func (lns *listener) Handler() {
 			handlerErr = lns.handleWebContentUpdate(msg.Job)
 		case consts.CtrlWebContentRemove:
 			handlerErr = lns.handleWebContentRemove(msg.Job)
+		case consts.CtrlRemStart:
+			handlerErr = lns.startRem(msg.Job)
+		case consts.CtrlRemStop:
+			handlerErr = lns.stopRem(msg.Job)
 		}
 
-		status := &clientpb.JobStatus{
-			ListenerId: lns.ID(),
-			Ctrl:       msg.Ctrl,
-			Job:        msg.Job,
-		}
-		if handlerErr != nil {
-			status.Status = consts.CtrlStatusFailed
-			status.Error = handlerErr.Error()
-		} else {
-			status.Status = consts.CtrlStatusSuccess
-		}
+	status := &clientpb.JobStatus{
+		ListenerId: lns.ID(),
+		Ctrl:       msg.Ctrl,
+		Job:        msg.Job,
+	}
+	if handlerErr != nil {
+		status.Status = consts.CtrlStatusFailed
+		status.Error = handlerErr.Error()
+	} else {
+		status.Status = consts.CtrlStatusSuccess
+	}
 
-		if err := stream.Send(status); err != nil {
-			logs.Log.Errorf(err.Error())
-			continue
-		}
+	if err := stream.Send(status); err != nil {
+		logs.Log.Errorf(err.Error())
+		continue
+	}
 	}
 }
 
@@ -350,4 +397,74 @@ func (lns *listener) handleWebContentRemove(job *clientpb.Job) error {
 		delete(w.Content, path)
 	}
 	return nil
+}
+
+func (lns *listener) startRem(job *clientpb.Job) *clientpb.JobStatus {
+	rem, err := NewRem(lns.Rpc, job.GetPipeline())
+	if err != nil {
+		return &clientpb.JobStatus{
+			ListenerId: lns.ID(),
+			Ctrl:       consts.CtrlJobStart,
+			Status:     consts.CtrlStatusFailed,
+			Error:      err.Error(),
+			Job:        job,
+		}
+	}
+
+	err = rem.Start()
+	if err != nil {
+		return &clientpb.JobStatus{
+			ListenerId: lns.ID(),
+			Ctrl:       consts.CtrlJobStart,
+			Status:     consts.CtrlStatusFailed,
+			Error:      err.Error(),
+			Job:        job,
+		}
+	}
+
+	lns.pipelines.Add(rem)
+	job.Name = rem.ID()
+	return &clientpb.JobStatus{
+		ListenerId: lns.ID(),
+		Ctrl:       consts.CtrlJobStart,
+		Status:     consts.CtrlStatusSuccess,
+		Job:        job,
+	}
+}
+
+func (lns *listener) stopRem(job *clientpb.Job) *clientpb.JobStatus {
+	p := lns.pipelines.Get(job.GetPipeline().Name)
+	if p == nil {
+		return &clientpb.JobStatus{
+			ListenerId: lns.ID(),
+			Ctrl:       consts.CtrlJobStop,
+			Status:     consts.CtrlStatusFailed,
+			Error:      "rem not found",
+			Job:        job,
+		}
+	}
+
+	job.Name = p.ID()
+	err := p.Close()
+	if err != nil {
+		return &clientpb.JobStatus{
+			ListenerId: lns.ID(),
+			Ctrl:       consts.CtrlJobStop,
+			Status:     consts.CtrlStatusFailed,
+			Error:      err.Error(),
+			Job:        job,
+		}
+	}
+
+	coreJob := core.Jobs.Get(job.GetPipeline().Name)
+	if coreJob != nil {
+		core.Jobs.Remove(coreJob)
+	}
+
+	return &clientpb.JobStatus{
+		ListenerId: lns.ID(),
+		Ctrl:       consts.CtrlJobStop,
+		Status:     consts.CtrlStatusSuccess,
+		Job:        job,
+	}
 }
