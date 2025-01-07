@@ -67,7 +67,7 @@ func sgnCmd(appDir string, cwd string, command []string) ([]byte, error) {
 	return stdout.Bytes(), err
 }
 
-// EncodeShellcode - Encode a shellcode
+// // EncodeShellcode - Encode a shellcode
 func EncodeShellcode(shellcode []byte, arch string, iterations int, badChars []byte) ([]byte, error) {
 	logs.Log.Infof("[sgn] EncodeShellcode: %d bytes", len(shellcode))
 	inputFile, err := os.CreateTemp("", "sgn")

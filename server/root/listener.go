@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/proto/client/rootpb"
+	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/utils/mtls"
-	"github.com/chainreactors/malice-network/proto/client/rootpb"
-	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"google.golang.org/protobuf/proto"
 	"gopkg.in/yaml.v3"
 	"os"
@@ -31,13 +31,13 @@ func (ln *ListenerCommand) Execute(rpc clientrpc.RootRPCClient, msg *rootpb.Oper
 		if err != nil {
 			return nil, err
 		}
-		configDir, _ := os.Getwd()
+		wd, _ := os.Getwd()
 		var conf *mtls.ClientConfig
 		err = yaml.Unmarshal([]byte(resp.Response), &conf)
 		if err != nil {
 			return nil, fmt.Errorf("failed to unmarshal listener auth: %w", err)
 		}
-		yamlPath := filepath.Join(configDir, fmt.Sprintf("%s.auth", msg.Args[0]))
+		yamlPath := filepath.Join(wd, fmt.Sprintf("%s.auth", msg.Args[0]))
 		err = os.WriteFile(yamlPath, []byte(resp.Response), 0644)
 		if err != nil {
 			return nil, err
@@ -52,7 +52,7 @@ func (ln *ListenerCommand) Execute(rpc clientrpc.RootRPCClient, msg *rootpb.Oper
 			return nil, err
 		}
 		for _, listener := range listeners.Listeners {
-			logs.Log.Consolef("%s\t%s\n", listener.Id, listener.Addr)
+			logs.Log.Consolef("%s\t%s\n", listener.Id, listener.Ip)
 		}
 		return nil, nil
 	}

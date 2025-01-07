@@ -10,6 +10,7 @@ type MalManiFest struct {
 	Author       string   `json:"author" yaml:"author"`
 	Version      string   `json:"version" yaml:"version"`
 	EntryFile    string   `json:"entry" yaml:"entry"`
+	Lib          bool     `json:"lib" yaml:"lib"`
 	DependModule []string `json:"depend_module" yaml:"depend_modules"`
 	DependArmory []string `json:"depend_armory" yaml:"depend_armory"`
 }

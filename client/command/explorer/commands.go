@@ -7,14 +7,26 @@ import (
 )
 
 func Commands(con *repl.Console) []*cobra.Command {
-	return []*cobra.Command{
-		{
-			Use:   consts.ModuleExplore,
-			Short: "file explorer",
-			Run: func(cmd *cobra.Command, args []string) {
-				explorerCmd(cmd, con)
-				return
-			},
+
+	regCommand := &cobra.Command{
+		Use:   consts.CommandRegExplorer,
+		Short: "registry explorer",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return regExplorerCmd(cmd, con)
+		},
+		Annotations: map[string]string{
+			"depend": consts.ModuleRegListKey,
 		},
 	}
+
+	fileCmd := &cobra.Command{
+		Use:   consts.CommandExplore,
+		Short: "file explorer",
+		Run: func(cmd *cobra.Command, args []string) {
+			fileExplorerCmd(cmd, con)
+			return
+		},
+	}
+	return []*cobra.Command{regCommand, fileCmd}
 }

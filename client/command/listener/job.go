@@ -1,60 +1,61 @@
 package listener
 
 import (
-	"context"
 	"fmt"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/proto/listener/lispb"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/tui"
-	"github.com/charmbracelet/bubbles/table"
+	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
 	"strconv"
 )
 
-func listJobsCmd(cmd *cobra.Command, con *repl.Console) {
-	Pipelines, err := con.Rpc.ListJobs(context.Background(), &clientpb.Empty{})
+func ListJobsCmd(cmd *cobra.Command, con *repl.Console) error {
+	Pipelines, err := con.Rpc.ListJobs(con.Context(), &clientpb.Empty{})
 	if err != nil {
-		con.Log.Error(err.Error())
-		return
+		return err
 	}
 	if len(Pipelines.GetPipelines()) == 0 {
 		con.Log.Importantf("No jobs found")
-		return
+		return nil
 	}
 	var rowEntries []table.Row
 	var row table.Row
 	tableModel := tui.NewTable([]table.Column{
-		{Title: "Name", Width: 20},
-		{Title: "Listener_id", Width: 15},
-		{Title: "Host", Width: 10},
-		{Title: "Port", Width: 7},
-		{Title: "Type", Width: 7},
+		table.NewColumn("Name", "Name", 20),
+		table.NewColumn("Listener_id", "Listener_id", 15),
+		table.NewColumn("Host", "Host", 10),
+		table.NewColumn("Port", "Port", 7),
+		table.NewColumn("Type", "Type", 7),
 	}, true)
-	for _, Pipeline := range Pipelines.GetPipelines() {
-		switch Pipeline.Body.(type) {
-		case *lispb.Pipeline_Tcp:
-			tcp := Pipeline.GetTcp()
-			row = table.Row{
-				tcp.Name,
-				tcp.ListenerId,
-				tcp.Host,
-				strconv.Itoa(int(tcp.Port)),
-				"TCP",
-			}
-		case *lispb.Pipeline_Web:
-			website := Pipeline.GetWeb()
-			row = table.Row{
-				website.Name,
-				website.ListenerId,
-				"",
-				strconv.Itoa(int(website.Port)),
-				"Web",
-			}
+	for _, pipeline := range Pipelines.GetPipelines() {
+		switch pipeline.Body.(type) {
+		case *clientpb.Pipeline_Tcp:
+			tcp := pipeline.GetTcp()
+			row = table.NewRow(
+				table.RowData{
+					"Name":        pipeline.Name,
+					"Listener_id": pipeline.ListenerId,
+					"Host":        tcp.Host,
+					"Port":        strconv.Itoa(int(tcp.Port)),
+					"Type":        "TCP",
+				})
+		case *clientpb.Pipeline_Web:
+			website := pipeline.GetWeb()
+			row = table.NewRow(
+				table.RowData{
+					"Name":        pipeline.Name,
+					"Listener_id": pipeline.ListenerId,
+					"Host":        "",
+					"Port":        strconv.Itoa(int(website.Port)),
+					"Type":        "Web",
+				})
 
 		}
 		rowEntries = append(rowEntries, row)
 	}
+	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)
 	fmt.Printf(tableModel.View())
+	return nil
 }

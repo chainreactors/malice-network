@@ -1,23 +1,32 @@
 package command
 
 import (
-	"errors"
-	"github.com/chainreactors/logs"
+	"fmt"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/addon"
 	"github.com/chainreactors/malice-network/client/command/alias"
+	"github.com/chainreactors/malice-network/client/command/basic"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/exec"
 	"github.com/chainreactors/malice-network/client/command/explorer"
 	"github.com/chainreactors/malice-network/client/command/extension"
 	"github.com/chainreactors/malice-network/client/command/file"
 	"github.com/chainreactors/malice-network/client/command/filesystem"
+	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/command/mal"
 	"github.com/chainreactors/malice-network/client/command/modules"
+	"github.com/chainreactors/malice-network/client/command/pipe"
+	"github.com/chainreactors/malice-network/client/command/privilege"
+	"github.com/chainreactors/malice-network/client/command/reg"
+	"github.com/chainreactors/malice-network/client/command/service"
 	"github.com/chainreactors/malice-network/client/command/sys"
 	"github.com/chainreactors/malice-network/client/command/tasks"
+	"github.com/chainreactors/malice-network/client/command/taskschd"
+	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/malice-network/client/core/plugin"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/tui"
 	"github.com/reeflective/console"
 	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
@@ -28,40 +37,63 @@ func ImplantCmd(con *repl.Console) *cobra.Command {
 	makeCommands := BindImplantCommands(con)
 	cmd := makeCommands()
 	cmd.Use = consts.ImplantMenu
-	// Flags
-	implantFlags := pflag.NewFlagSet(consts.ImplantMenu, pflag.ContinueOnError)
-	implantFlags.StringP("use", "s", "", "interact with a session")
-	cmd.Flags().AddFlagSet(implantFlags)
-
-	// Pre-runners (console setup, connection, etc)
-	cmd.PreRunE, cmd.PersistentPostRunE = makeRunners(cmd, con)
+	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		return nil
+	}
+	common.Bind(cmd.Use, true, cmd, func(f *pflag.FlagSet) {
+		f.String("use", "", "set session context")
+		f.Bool("wait", false, "wait task finished")
+	})
+	cobra.MarkFlagRequired(cmd.Flags(), "use")
+	cmd.PersistentPreRunE, cmd.PersistentPostRunE = makeRunners(cmd, con)
 	makeCompleters(cmd, con)
 	return cmd
 }
 
 func makeRunners(implantCmd *cobra.Command, con *repl.Console) (pre, post func(cmd *cobra.Command, args []string) error) {
-	startConsole, closeConsole := ConsoleRunnerCmd(con, false)
-
-	// The pre-run function connects to the server and sets up a "fake" console,
 	// so we can have access to active sessions/beacons, and other stuff needed.
-	pre = func(_ *cobra.Command, args []string) error {
-		startConsole(implantCmd, args)
-
+	pre = func(cmd *cobra.Command, args []string) error {
 		// Set the active target.
-		target, _ := implantCmd.Flags().GetString("use")
-		if target == "" {
-			return errors.New("no target implant to run command on")
+		err := implantCmd.Parent().PersistentPreRunE(implantCmd, args)
+		if err != nil {
+			return err
+		}
+		sid, _ := cmd.Flags().GetString("use")
+		if sid == "" {
+			return fmt.Errorf("no implant to run command on")
 		}
 
-		session := con.GetSession(target)
-		if session != nil {
-			con.ActiveTarget.Set(session)
+		var session *core.Session
+		var ok bool
+
+		if session, ok = con.GetLocalSession(sid); !ok {
+			return fmt.Errorf("session %s not found", sid)
 		}
+
+		con.ActiveTarget.Set(session)
+		con.App.SwitchMenu(consts.ImplantMenu)
 
 		return nil
 	}
+	post = func(cmd *cobra.Command, args []string) error {
+		sess := con.GetInteractive()
+		if sess.LastTask != nil {
+			if wait, _ := cmd.Flags().GetBool("wait"); wait {
+				RegisterImplantFunc(con)
+				context, err := con.WaitTaskFinish(sess.Context(), sess.LastTask)
+				if err != nil {
+					return err
+				}
+				core.HandlerTask(sess, context, nil, consts.CalleeCMD, true)
+			} else {
+				con.Log.Console(tui.RendStructDefault(sess.LastTask))
+			}
+		}
 
-	return pre, closeConsole
+		return implantCmd.Parent().PersistentPostRunE(implantCmd, args)
+	}
+
+	return pre, post
 }
 
 func makeCompleters(cmd *cobra.Command, con *repl.Console) {
@@ -80,6 +112,42 @@ func makeCompleters(cmd *cobra.Command, con *repl.Console) {
 	})
 }
 
+func BindBuiltinCommands(con *repl.Console, root *cobra.Command) *cobra.Command {
+	bind := MakeBind(root, con)
+	BindCommonCommands(bind)
+	bind(consts.ImplantGroup,
+		basic.Commands,
+		tasks.Commands,
+		modules.Commands,
+		explorer.Commands,
+		addon.Commands,
+	)
+
+	bind(consts.ExecuteGroup,
+		exec.Commands)
+
+	bind(consts.SysGroup,
+		sys.Commands,
+		service.Commands,
+		reg.Commands,
+		taskschd.Commands,
+		privilege.Commands,
+	)
+
+	bind(consts.FileGroup,
+		file.Commands,
+		filesystem.Commands,
+		pipe.Commands,
+	)
+
+	bind(consts.ArmoryGroup)
+	bind(consts.AddonGroup)
+	bind(consts.MalGroup)
+	root.InitDefaultHelpCmd()
+	root.SetHelpCommandGroupID(consts.GenericGroup)
+	return root
+}
+
 func BindImplantCommands(con *repl.Console) console.Commands {
 	implantCommands := func() *cobra.Command {
 		implant := &cobra.Command{
@@ -90,42 +158,19 @@ func BindImplantCommands(con *repl.Console) console.Commands {
 			},
 			//GroupID: consts.ImplantMenu,
 		}
-		bind := makeBind(implant, con)
-		bindCommonCommands(bind)
-		bind(consts.ImplantGroup,
-			tasks.Commands,
-			modules.Commands,
-			explorer.Commands,
-			addon.Commands,
-		)
+		BindBuiltinCommands(con, implant)
 
-		bind(consts.ExecuteGroup,
-			exec.Commands)
-
-		bind(consts.SysGroup,
-			sys.Commands)
-
-		bind(consts.FileGroup,
-			file.Commands,
-			filesystem.Commands)
-
-		bind(consts.ArmoryGroup)
-		bind(consts.AddonGroup)
-		bind(consts.MalGroup)
-
-		implant.InitDefaultHelpCmd()
-		implant.SetHelpCommandGroupID(consts.GenericGroup)
 		// Load Aliases
 		aliasManifests := assets.GetInstalledAliasManifests()
 		for _, manifest := range aliasManifests {
 			manifest, err := alias.LoadAlias(manifest, con)
 			if err != nil {
-				con.Log.Errorf("Failed to load alias: %s", err)
+				con.Log.Errorf("Failed to load alias: %s\n", err)
 				continue
 			}
 			err = alias.RegisterAlias(manifest, implant, con)
 			if err != nil {
-				con.Log.Errorf("Failed to register alias: %s", err)
+				con.Log.Errorf("Failed to register alias: %s\n", err)
 				continue
 			}
 		}
@@ -147,18 +192,17 @@ func BindImplantCommands(con *repl.Console) console.Commands {
 			return implant
 		}
 
-		RegisterImplantFunc(con)
-		for _, malName := range assets.GetInstalledMalManifests() {
-			plug, err := mal.LoadMal(con, malName)
+		plugin.GlobalPlugins = plugin.LoadGlobalLuaPlugin()
+		for _, malName := range plugin.GetPluginManifest() {
+			_, err := mal.LoadMalWithManifest(con, implant, malName)
 			if err != nil {
-				con.Log.Errorf("Failed to load mal: %s\n", err)
+				con.Log.Errorf("Failed to load mal %s: %s\n", malName.Name, err)
 				continue
 			}
-			for _, cmd := range plug.CMDs {
-				implant.AddCommand(cmd)
-				logs.Log.Debugf("add command: %s", cmd.Name())
-			}
 		}
+
+		implant.SetUsageFunc(help.UsageFunc)
+		implant.SetHelpFunc(help.HelpFunc)
 		return implant
 	}
 	return implantCommands
@@ -166,6 +210,7 @@ func BindImplantCommands(con *repl.Console) console.Commands {
 
 func RegisterImplantFunc(con *repl.Console) {
 	tasks.Register(con)
+	basic.Register(con)
 	sys.Register(con)
 	file.Register(con)
 	filesystem.Register(con)
@@ -174,4 +219,9 @@ func RegisterImplantFunc(con *repl.Console) {
 	alias.Register(con)
 	extension.Register(con)
 	addon.Register(con)
+	service.Register(con)
+	reg.Register(con)
+	taskschd.Register(con)
+	privilege.Register(con)
+	pipe.Register(con)
 }

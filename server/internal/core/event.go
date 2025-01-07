@@ -4,19 +4,21 @@ import (
 	"context"
 	"fmt"
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/proto/implant/implantpb"
+	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/nikoksr/notify"
 	"github.com/nikoksr/notify/service/dingding"
 	"github.com/nikoksr/notify/service/http"
 	lark2 "github.com/nikoksr/notify/service/lark"
 	"github.com/nikoksr/notify/service/telegram"
+	"net/url"
 )
 
 const (
 	// Size is arbitrary, just want to avoid weird cases where we'd block on channel sends
-	eventBufSize = 5
+	eventBufSize = 10
 )
 
 type Event struct {
@@ -26,11 +28,43 @@ type Event struct {
 	Task    *clientpb.Task
 	Spite   *implantpb.Spite
 
+	Important bool
 	EventType string
 	Op        string
 	Message   string
 	Err       string
+	Callee    string
 	IsNotify  bool
+}
+
+func (e *Event) String() string {
+	var id string
+
+	if e.Job != nil {
+		id = fmt.Sprintf("Job %d %s", e.Job.Id, e.Job.Name)
+	} else if e.Task != nil {
+		id = fmt.Sprintf("Task %s %d", e.Task.SessionId, e.Task.TaskId)
+	} else if e.Session != nil {
+		id = fmt.Sprintf("Session %s", e.Session.SessionId)
+	}
+
+	return fmt.Sprintf("%s %s: %s", id, e.Op, e.Message)
+}
+
+// toprotobuf
+func (e *Event) ToProtobuf() *clientpb.Event {
+	return &clientpb.Event{
+		Session: e.Session,
+		Job:     e.Job,
+		Client:  e.Client,
+		Task:    e.Task,
+		Spite:   e.Spite,
+		Type:    e.EventType,
+		Op:      e.Op,
+		Message: []byte(e.Message),
+		Err:     e.Err,
+		Callee:  e.Callee,
+	}
 }
 
 type eventBroker struct {
@@ -40,6 +74,8 @@ type eventBroker struct {
 	unsubscribe chan chan Event
 	send        chan Event
 	notifier    Notifier
+
+	cache *RingCache
 }
 
 func (broker *eventBroker) Start() {
@@ -56,7 +92,10 @@ func (broker *eventBroker) Start() {
 		case sub := <-broker.unsubscribe:
 			delete(subscribers, sub)
 		case event := <-broker.publish:
-			logs.Log.Infof("[event.%s] %s: %s", event.EventType, event.Op, event.Message)
+			if event.EventType != consts.EventHeartbeat {
+				logs.Log.Infof("[event.%s] %s", event.EventType, event.String())
+			}
+
 			for sub := range subscribers {
 				sub <- event
 			}
@@ -79,30 +118,35 @@ func (broker *eventBroker) Subscribe() chan Event {
 // Unsubscribe - Remove a subscription channel
 func (broker *eventBroker) Unsubscribe(events chan Event) {
 	broker.unsubscribe <- events
-	close(events)
+	//close(events)
 }
 
 // Publish - Push a message to all subscribers
 func (broker *eventBroker) Publish(event Event) {
+	if event.Important {
+		broker.cache.Add(&event)
+	}
 	broker.publish <- event
 	if event.IsNotify {
-		err := broker.Notify(event)
-		if err != nil {
-			logs.Log.Errorf("notify error: %s", err)
-		}
+		broker.Notify(event)
 	}
+}
+
+func (broker *eventBroker) GetAll() []*Event {
+	var events []*Event
+	for _, v := range broker.cache.GetAll() {
+		events = append(events, v.(*Event))
+	}
+
+	return events
 }
 
 // Notify - Notify all third-patry services
-func (broker *eventBroker) Notify(event Event) error {
-	err := broker.notifier.Send(&event)
-	if err != nil {
-		return err
-	}
-	return nil
+func (broker *eventBroker) Notify(event Event) {
+	go broker.notifier.Send(&event)
 }
 
-func newBroker() *eventBroker {
+func NewBroker() *eventBroker {
 	broker := &eventBroker{
 		stop:        make(chan struct{}),
 		publish:     make(chan Event, eventBufSize),
@@ -110,15 +154,41 @@ func newBroker() *eventBroker {
 		unsubscribe: make(chan chan Event, eventBufSize),
 		send:        make(chan Event, eventBufSize),
 		notifier: Notifier{notify: notify.New(),
-			enable: false},
+			enable: false,
+		},
+		cache: NewMessageCache(eventBufSize),
 	}
 	go broker.Start()
+	ticker := GlobalTicker
+
+	publishHeartbeat := func(interval string) {
+		broker.Publish(Event{
+			EventType: consts.EventHeartbeat,
+			Op:        interval,
+			Message:   fmt.Sprintf("Heartbeat event every %s", interval),
+			IsNotify:  false,
+		})
+	}
+
+	ticker.Start(1, func() { publishHeartbeat(consts.CtrlHeartbeat1s) })
+	ticker.Start(5, func() { publishHeartbeat(consts.CtrlHeartbeat5s) })
+	ticker.Start(10, func() { publishHeartbeat(consts.CtrlHeartbeat10s) })
+	ticker.Start(15, func() { publishHeartbeat(consts.CtrlHeartbeat15s) })
+	ticker.Start(30, func() { publishHeartbeat(consts.CtrlHeartbeat30s) })
+	ticker.Start(60, func() { publishHeartbeat(consts.CtrlHeartbeat1m) })
+	ticker.Start(300, func() { publishHeartbeat(consts.CtrlHeartbeat5m) })
+	ticker.Start(600, func() { publishHeartbeat(consts.CtrlHeartbeat10m) })
+	ticker.Start(900, func() { publishHeartbeat(consts.CtrlHeartbeat15m) })
+	ticker.Start(1200, func() { publishHeartbeat(consts.CtrlHeartbeat20m) })
+	ticker.Start(1800, func() { publishHeartbeat(consts.CtrlHeartbeat30m) })
+	ticker.Start(3600, func() { publishHeartbeat(consts.CtrlHeartbeat60m) })
+	EventBroker = broker
 	return broker
 }
 
 var (
 	// EventBroker - Distributes event messages
-	EventBroker = newBroker()
+	EventBroker *eventBroker
 )
 
 type Notifier struct {
@@ -155,14 +225,13 @@ func (broker *eventBroker) InitService(config *configs.NotifyConfig) error {
 		sc := http.New()
 		sc.AddReceivers(&http.Webhook{
 			URL:         config.ServerChan.URL,
-			Method:      config.ServerChan.Method,
-			Header:      config.ServerChan.Headers,
-			ContentType: config.ServerChan.ContentType,
+			Method:      "POST",
+			ContentType: "application/x-www-form-urlencoded",
 			BuildPayload: func(subject, message string) (payload any) {
-				return map[string]string{
-					"subject": subject,
-					"message": message,
-				}
+				data := url.Values{}
+				data.Set("subject", subject)
+				data.Set("message", message)
+				return data.Encode()
 			},
 		})
 		broker.notifier.notify.UseServices(sc)
@@ -170,15 +239,14 @@ func (broker *eventBroker) InitService(config *configs.NotifyConfig) error {
 	return nil
 }
 
-func (n *Notifier) Send(event *Event) error {
+func (n *Notifier) Send(event *Event) {
 	if !n.enable {
-		return nil
+		return
 	}
 	title := fmt.Sprintf("[%s] %s", event.EventType, event.Op)
-
 	err := n.notify.Send(context.Background(), title, event.Message)
 	if err != nil {
-		return err
+		logs.Log.Errorf("Failed to send notification: %s", err)
 	}
-	return nil
+	return
 }

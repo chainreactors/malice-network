@@ -3,41 +3,15 @@ package rpc
 import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/proto/services/clientrpc"
-	"github.com/chainreactors/malice-network/proto/services/listenerrpc"
+	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
+	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
 	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/gookit/config/v2"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/status"
 	"net"
 	"runtime/debug"
-)
-
-var (
-	// ErrInvalidSessionID - Invalid Session ID in request
-	ErrInvalidSessionID = status.Error(codes.InvalidArgument, "Invalid session ID")
-
-	// ErrMissingRequestField - Returned when a request does not contain a  implantpb.Request
-	ErrMissingRequestField = status.Error(codes.InvalidArgument, "Missing session request field")
-	// ErrAsyncNotSupported - Unsupported mode / command type
-	ErrAsyncNotSupported = status.Error(codes.Unavailable, "Async not supported for this command")
-	// ErrDatabaseFailure - Generic database failure error (real error is logged)
-	ErrDatabaseFailure = status.Error(codes.Internal, "Database operation failed")
-
-	// ErrInvalidName - Invalid name
-	ErrInvalidName     = status.Error(codes.InvalidArgument, "Invalid session name, alphanumerics and _-. only")
-	ErrNotFoundSession = status.Error(codes.NotFound, "Session ID not found")
-	ErrNotFoundTask    = status.Error(codes.NotFound, "Task ID not found")
-
-	ErrNotFoundListener    = status.Error(codes.NotFound, "Listener not found")
-	ErrNotFoundPipeline    = status.Error(codes.NotFound, "Pipeline not found")
-	ErrNotFoundClientName  = status.Error(codes.NotFound, "Client name not found")
-	ErrNotFoundTaskContent = status.Error(codes.NotFound, "Task content not found")
-	ErrTaskIndexExceed     = status.Error(codes.NotFound, "task index id exceed total")
-	//ErrInvalidBeaconTaskCancelState = status.Error(codes.InvalidArgument, fmt.Sprintf("Invalid task state, must be '%s' to cancel", models.PENDING))
 )
 
 var (
@@ -57,10 +31,10 @@ func InitLogs(debug bool) {
 
 // StartClientListener - Start a mutual TLS listener
 func StartClientListener(address string) (*grpc.Server, net.Listener, error) {
-	logs.Log.Importantf("Starting gRPC console on %s", address)
+	logs.Log.Importantf("[server] starting gRPC console on %s", address)
 
 	InitLogs(config.Bool("debug"))
-	tlsConfig := certutils.GetOperatorServerMTLSConfig("server")
+	tlsConfig := certutils.GetOperatorServerMTLSConfig(configs.GetServerConfig().IP)
 	creds := credentials.NewTLS(tlsConfig)
 	ln, err := net.Listen("tcp", address)
 	if err != nil {
@@ -82,7 +56,6 @@ func StartClientListener(address string) (*grpc.Server, net.Listener, error) {
 		authInterceptor(rpcLog))...)
 	clientrpc.RegisterMaliceRPCServer(grpcServer, NewServer())
 	clientrpc.RegisterRootRPCServer(grpcServer, NewServer())
-	listenerrpc.RegisterImplantRPCServer(grpcServer, NewServer())
 	listenerrpc.RegisterListenerRPCServer(grpcServer, NewServer())
 	go func() {
 		panicked := true
@@ -128,7 +101,6 @@ type Server struct {
 	// Magical methods to break backwards compatibility
 	// Here be dragons: https://github.com/grpc/grpc-go/issues/3794
 	clientrpc.UnimplementedMaliceRPCServer
-	listenerrpc.UnimplementedImplantRPCServer
 	listenerrpc.UnimplementedListenerRPCServer
 	clientrpc.UnimplementedRootRPCServer
 }
@@ -146,7 +118,7 @@ func NewServer() *Server {
 //		return nil, err
 //	}
 //	data, err := req.Session.RequestAndWait(
-//		&lispb.SpiteSession{SessionId: req.Session.ID, TaskId: req.Task.Id, Spite: spite},
+//		&clientpb.SpiteSession{SessionId: req.Session.ID, TaskId: req.Task.Id, Spite: spite},
 //		pipelinesCh[req.Session.PipelineID],
 //		consts.MinTimeout)
 //	if err != nil {

@@ -7,10 +7,6 @@ import (
 	"path/filepath"
 )
 
-func ShortSessionID(id string) string {
-	return id[:8]
-}
-
 const (
 	IMAGE_FILE_DLL              uint16 = 0x2000
 	IMAGE_FILE_EXECUTABLE_IMAGE uint16 = 0x0002
@@ -68,4 +64,16 @@ func CheckExtModule(filename string) string {
 		return consts.ModuleExecuteShellcode
 	}
 	return ""
+}
+
+func IsPeExt(filename string) bool {
+	ext := filepath.Ext(filename)
+	switch ext {
+	case ".exe":
+		return true
+	case ".dll":
+		return true
+	default:
+		return false
+	}
 }

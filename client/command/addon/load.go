@@ -7,10 +7,10 @@ import (
 	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
+	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/utils/pe"
-	"github.com/chainreactors/malice-network/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
 	"math"
@@ -37,21 +37,20 @@ func LoadAddonCmd(cmd *cobra.Command, con *repl.Console) {
 
 	session := con.GetInteractive()
 
-	if repl.CmdExists(name, con.ImplantMenu()) {
-		con.Log.Warnf("%s alread exist, please use -n/--name to specify a ne"+
-			"w name", name)
+	if repl.CmdExist(con.ImplantMenu(), name) {
+		con.Log.Warnf("%s alread exist, please use -n/--name to specify a new name\n", name)
 		return
 	}
 
 	task, err := LoadAddon(con.Rpc, session, name, path, module)
 	if err != nil {
-		con.Log.Errorf("%s", err)
+		con.Log.Errorf("%s\n", err)
 		return
 	}
 
 	session.Console(task, fmt.Sprintf("Load addon %s", name))
 	con.AddCallback(task, func(msg *implantpb.Spite) {
-		RefreshAddonCommand(session.Addons.Addons, con)
+		RefreshAddonCommand(session.Addons, con)
 	})
 }
 
@@ -69,7 +68,7 @@ func LoadAddon(rpc clientrpc.MaliceRPCClient, sess *core.Session, name, path, de
 	})
 }
 
-func RegisterAddon(addon *implantpb.Addon, con *repl.Console) (*loadedAddon, error) {
+func RegisterAddonCmd(addon *implantpb.Addon, con *repl.Console) (*loadedAddon, error) {
 	addonCmd := &cobra.Command{
 		Use:   addon.Name,
 		Short: fmt.Sprintf("%s %s", addon.Depend, addon.Name),
@@ -101,7 +100,7 @@ func RefreshAddonCommand(addons []*implantpb.Addon, con *repl.Console) error {
 	}
 
 	for _, addon := range addons {
-		loaded, err := RegisterAddon(addon, con)
+		loaded, err := RegisterAddonCmd(addon, con)
 		if err != nil {
 			return err
 		}

@@ -2,7 +2,7 @@ package core
 
 import (
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"sync"
 )
 
@@ -49,6 +49,7 @@ func (cc *clients) Add(client *Client) {
 	EventBroker.Publish(Event{
 		EventType: consts.EventJoin,
 		Client:    client.Client,
+		Important: true,
 	})
 }
 
@@ -68,11 +69,11 @@ func (cc *clients) Remove(clientID int) {
 	cc.mutex.Lock()
 	defer cc.mutex.Unlock()
 	client := cc.active[clientID]
+	if client == nil {
+		return
+	}
+
 	delete(cc.active, clientID)
-	EventBroker.Publish(Event{
-		EventType: consts.EventLeft,
-		Client:    client.Client,
-	})
 }
 
 func (cc *clients) ActiveClients() []*Client {
@@ -85,6 +86,9 @@ func (cc *clients) ActiveClients() []*Client {
 	return cs
 }
 
+func GetCurrentID() uint32 {
+	return clientID
+}
 func getClientID() uint32 {
 	clientID++
 	return clientID

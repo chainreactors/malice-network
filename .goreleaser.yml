@@ -3,8 +3,13 @@ version: 2
 
 before:
   hooks:
-    - go generate ./client
     - go mod tidy
+    - curl -L https://github.com/EgeBalci/sgn/releases/download/v2.0.1/sgn_linux_amd64_2.0.1.zip -o sgn_linux.zip
+    - unzip -o sgn_linux.zip -d server/assets/linux
+    - curl -L https://github.com/EgeBalci/sgn/releases/download/v2.0.1/sgn_windows_amd64_2.0.1.zip -o sgn_windows.zip
+    - unzip -o sgn_windows.zip -d server/assets/windows
+    - curl -L https://github.com/chainreactors/malefic/releases/download/v0.0.4/malefic-mutant-x86_64-pc-windows-gnu.exe -o server/assets/windows/malefic-mutant.exe
+    - curl -L https://github.com/chainreactors/malefic/releases/download/v0.0.4/malefic-mutant-x86_64-unknown-linux-musl -o server/assets/linux/malefic-mutant
 
 builds:
   -
@@ -29,13 +34,13 @@ builds:
     no_unique_dist_dir: true
 
   -
-    main: ./server/cmd/server/
+    main: ./server/
     id: server
     binary: "malice_network_{{ .Os }}_{{ .Arch }}"
     goos:
       - windows
       - linux
-      - darwin
+#      - darwin
     goarch:
       - amd64
       - arm64
@@ -59,10 +64,7 @@ upx:
 
 archives:
   -
-<<<<<<< HEAD
     name_template: "{{ .Binary }}"
-=======
->>>>>>> 68822df (add auto build config)
     format: binary
 
 checksum:
@@ -77,16 +79,7 @@ changelog:
       - "^docs"
 
 release:
-<<<<<<< HEAD
   github:
     owner: chainreactors
     name: malice-network
   draft: true
-=======
-  disable: true
-  skip_upload: true
-  github:
-    owner: chainreactors
-    name: malice-network
-  draft: true
->>>>>>> 68822df (add auto build config)

@@ -8,7 +8,8 @@ import (
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/tui"
-	"github.com/charmbracelet/bubbles/table"
+	"github.com/evertras/bubble-table/table"
+
 	"github.com/spf13/cobra"
 	"os"
 	"sort"
@@ -39,7 +40,7 @@ func ArmoryUpdateCmd(cmd *cobra.Command, con *repl.Console) {
 	var selectedUpdates []UpdateIdentifier
 	var err error
 
-	con.Log.Infof("Refreshing package cache ... ")
+	con.Log.Infof("Refreshing package cache ... \n")
 	clientConfig := parseArmoryHTTPConfig(cmd)
 	refresh(clientConfig)
 	tui.Clear()
@@ -72,7 +73,7 @@ func ArmoryUpdateCmd(cmd *cobra.Command, con *repl.Console) {
 			return
 		}
 	} else {
-		con.Log.Infof("All packages are up to date")
+		con.Log.Infof("All packages are up to date\n")
 		return
 	}
 
@@ -209,11 +210,12 @@ func displayAvailableUpdates(updateKeys []UpdateIdentifier,
 	)
 
 	tableModel := tui.NewTable([]table.Column{
-		{Title: "Package Name", Width: 20},
-		{Title: "Package Type", Width: 15},
-		{Title: "Installed Version", Width: 20},
-		{Title: "Available Version", Width: 20},
+		table.NewColumn("Package Name", "Package Name", 20),
+		table.NewColumn("Package Type", "Package Type", 15),
+		table.NewColumn("Installed Version", "Installed Version", 20),
+		table.NewColumn("Available Version", "Available Version", 20),
 	}, true)
+
 	tableModel.Title = fmt.Sprintf(title, len(aliasUpdates), aliasSuffix, len(extensionUpdates), extensionSuffix)
 	if len(aliasUpdates) != 1 {
 		aliasSuffix = "es"
@@ -246,14 +248,16 @@ func displayAvailableUpdates(updateKeys []UpdateIdentifier,
 		default:
 			continue
 		}
-		row = table.Row{
-			packageName,
-			packageType,
-			packageVersion.OldVersion,
-			fmt.Sprintf("%s (Armory: %s)", packageVersion.NewVersion, packageVersion.ArmoryName),
-		}
+		row = table.NewRow(
+			table.RowData{
+				"Package Name":      packageName,
+				"Package Type":      packageType,
+				"Installed Version": packageVersion.OldVersion,
+				"Available Version": fmt.Sprintf("%s (Armory: %s)", packageVersion.NewVersion, packageVersion.ArmoryName),
+			})
 		rowEntries = append(rowEntries, row)
 	}
+	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)
 	newTable := tui.NewModel(tableModel, nil, false, false)
 	err := newTable.Run()

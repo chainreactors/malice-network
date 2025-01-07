@@ -2,10 +2,7 @@ package core
 
 import (
 	"errors"
-	"github.com/chainreactors/malice-network/helper/types"
-	"github.com/chainreactors/malice-network/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/proto/listener/lispb"
-	"google.golang.org/protobuf/proto"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"sync"
 )
 
@@ -15,48 +12,39 @@ var (
 	}
 )
 
-type Pipeline interface {
-	ID() string
-	Start() error
-	Addr() string
-	Close() error
-	ToProtobuf() proto.Message
-	ToTLSProtobuf() proto.Message
-}
-
-type Pipelines map[string]Pipeline
-
-func (ps Pipelines) Add(p Pipeline) {
-	ps[p.ID()] = p
-}
-
-func (ps Pipelines) Get(id string) Pipeline {
-	return ps[id]
-}
-
-func (ps Pipelines) ToProtobuf() *lispb.Pipelines {
-	var pls = &lispb.Pipelines{
-		Pipelines: make([]*lispb.Pipeline, 0),
-	}
-	for _, p := range ps {
-		pls.Pipelines = append(pls.Pipelines, types.BuildPipeline(p.ToProtobuf(), p.ToTLSProtobuf()))
-	}
-	return pls
-}
-
 type Listener struct {
 	Name      string
 	Host      string
 	Active    bool
-	Pipelines Pipelines
+	Pipelines map[string]*clientpb.Pipeline
+}
+
+func (l *Listener) AddPipeline(pipeline *clientpb.Pipeline) {
+	l.Pipelines[pipeline.Name] = pipeline
+}
+
+func (l *Listener) RemovePipeline(pipeline *clientpb.Pipeline) {
+	delete(l.Pipelines, pipeline.Name)
+}
+
+func (l *Listener) GetPipeline(name string) *clientpb.Pipeline {
+	return l.Pipelines[name]
+}
+
+func (l *Listener) AllPipelines() []*clientpb.Pipeline {
+	pipelines := []*clientpb.Pipeline{}
+	for _, pipeline := range l.Pipelines {
+		pipelines = append(pipelines, pipeline)
+	}
+	return pipelines
 }
 
 func (l *Listener) ToProtobuf() *clientpb.Listener {
 	return &clientpb.Listener{
 		Id:        l.Name,
-		Addr:      l.Host,
+		Ip:        l.Host,
 		Active:    l.Active,
-		Pipelines: l.Pipelines.ToProtobuf(),
+		Pipelines: &clientpb.Pipelines{Pipelines: l.AllPipelines()},
 	}
 }
 
@@ -109,13 +97,14 @@ func (l *listeners) Stop(name string) error {
 	val, ok := l.Load(name)
 	if ok {
 		val.(*Listener).Active = false
-		for _, pipeline := range val.(*Listener).Pipelines {
-			err := pipeline.Close()
-			if err != nil {
-				// TODO - need or not give error if pipeline close failed
-				continue
-			}
-		}
+		//for _, pipeline := range val.(*Listener).Pipelines.Pipelines {
+		//	// TODO close pipeline
+		//	//err := pipeline.Close()
+		//	if err != nil {
+		//		// TODO - need or not give error if pipeline close failed
+		//		continue
+		//	}
+		//}
 	} else {
 		return errors.New("listener not found")
 	}

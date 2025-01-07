@@ -2,6 +2,7 @@ package cli
 
 import (
 	"github.com/chainreactors/malice-network/client/command"
+	"github.com/chainreactors/malice-network/client/command/generic"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
@@ -9,15 +10,19 @@ import (
 
 func rootCmd(con *repl.Console) (*cobra.Command, error) {
 	var cmd = &cobra.Command{
-		Use:   "client",
-		Short: "",
-		Long:  ``,
+		Use: "client",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := generic.LoginCmd(cmd, con); err != nil {
+				return err
+			}
+			return con.Start(command.BindClientsCommands, command.BindImplantCommands)
+		},
 	}
 	cmd.TraverseChildren = true
-
-	cmd.AddCommand(command.ConsoleCmd(con))
+	bind := command.MakeBind(cmd, con)
+	command.BindCommonCommands(bind)
+	cmd.PersistentPreRunE, cmd.PersistentPostRunE = command.ConsoleRunnerCmd(con, cmd)
 	cmd.AddCommand(command.ImplantCmd(con))
-	cmd.RunE, cmd.PostRunE = command.ConsoleRunnerCmd(con, true)
 	carapace.Gen(cmd)
 
 	return cmd, nil

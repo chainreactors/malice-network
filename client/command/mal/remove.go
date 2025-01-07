@@ -5,33 +5,32 @@ import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/utils/file"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/tui"
 	"github.com/spf13/cobra"
 	"os"
 	"path/filepath"
 )
 
-func RemoveMalCmd(cmd *cobra.Command, con *repl.Console) {
+func RemoveMalCmd(cmd *cobra.Command, con *repl.Console) error {
 	name := cmd.Flags().Arg(0)
 	if name == "" {
-		con.Log.Errorf("Extension name is required\n")
-		return
+		return errors.New("mal name is required")
 	}
 	confirmModel := tui.NewConfirm(fmt.Sprintf("Remove '%s' extension?", name))
 	newConfirm := tui.NewModel(confirmModel, nil, false, true)
 	err := newConfirm.Run()
 	if err != nil {
-		con.Log.Errorf("Error running confirm model: %s", err)
-		return
+		return err
 	}
 	if !confirmModel.Confirmed {
-		return
+		return nil
 	}
 	err = RemoveMal(name, con)
 	if err != nil {
-		con.Log.Errorf(err.Error())
+		return err
 	}
+	return nil
 }
 
 func RemoveMal(name string, con *repl.Console) error {
@@ -52,6 +51,6 @@ func RemoveMal(name string, con *repl.Console) error {
 		return nil
 	}
 	delete(loadedMals, name)
-	file.ForceRemoveAll(extPath)
+	fileutils.ForceRemoveAll(extPath)
 	return nil
 }

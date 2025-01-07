@@ -6,9 +6,8 @@ import (
 	"github.com/chainreactors/malice-network/client/core/plugin"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/tui"
-	"github.com/charmbracelet/bubbles/table"
+	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
-	"os"
 	"path/filepath"
 )
 
@@ -17,79 +16,99 @@ var loadedMals = make(map[string]*LoadedMal)
 type LoadedMal struct {
 	Manifest *plugin.MalManiFest
 	CMDs     []*cobra.Command
-	Plugin   *plugin.Plugin
+	Plugin   plugin.Plugin
 }
 
-func MalLoadCmd(ctx *cobra.Command, con *repl.Console) {
+func MalLoadCmd(ctx *cobra.Command, con *repl.Console) error {
 	dirPath := ctx.Flags().Arg(0)
-	mal, err := LoadMal(con, filepath.Join(assets.GetMalsDir(), dirPath, ManifestFileName))
+	mal, err := LoadMal(con, con.ImplantMenu(), filepath.Join(assets.GetMalsDir(), dirPath, ManifestFileName))
 	if err != nil {
-		con.Log.Error(err)
-		return
+		return err
 	}
 	for _, cmd := range mal.CMDs {
 		con.ImplantMenu().AddCommand(cmd)
 		logs.Log.Debugf("add command: %s", cmd.Name())
 	}
+	return nil
 }
 
-func LoadMalManiFest(con *repl.Console, filename string) (*plugin.MalManiFest, error) {
-	content, err := os.ReadFile(filename)
+func LoadMal(con *repl.Console, rootCmd *cobra.Command, filename string) (*LoadedMal, error) {
+	manifest, err := plugin.LoadMalManiFest(filename)
 	if err != nil {
 		return nil, err
 	}
-	manifest, err := ParseMalManifest(content)
-	if err != nil {
-		return nil, err
-	}
-
-	return manifest, nil
+	return LoadMalWithManifest(con, rootCmd, manifest)
 }
 
-func LoadMal(con *repl.Console, filename string) (*LoadedMal, error) {
-	manifest, err := LoadMalManiFest(con, filename)
-	plug, err := con.Plugins.LoadPlugin(manifest, con)
+func LoadMalWithManifest(con *repl.Console, rootCmd *cobra.Command, manifest *plugin.MalManiFest) (*LoadedMal, error) {
+	plug, err := con.Plugins.LoadPlugin(manifest, con, rootCmd)
 	if err != nil {
 		return nil, err
 	}
-
-	var cmds []string
-	for _, cmd := range plug.CMDs {
-		cmds = append(cmds, cmd.Name())
+	for event, fn := range plug.GetEvents() {
+		con.AddEventHook(event, fn)
+	}
+	profile := assets.GetProfile()
+	profile.AddMal(manifest.Name)
+	var cmdNames []string
+	var cmds []*cobra.Command
+	for _, cmd := range plug.Commands() {
+		cmdNames = append(cmdNames, cmd.CMD.Name())
+		cmds = append(cmds, cmd.CMD)
 	}
 	mal := &LoadedMal{
 		Manifest: manifest,
-		CMDs:     plug.CMDs,
-		Plugin:   plug.Plugin,
+		CMDs:     cmds,
+		Plugin:   plug,
 	}
+
 	loadedMals[manifest.Name] = mal
-	con.Log.Importantf("load mal: %s successfully, register %v", filename, cmds)
+
+	err = assets.SaveProfile(profile)
+	if err != nil {
+		return nil, err
+	}
+	con.Log.Importantf("load mal: %s successfully, register %v\n", manifest.Name, cmdNames)
 	return mal, nil
 }
 
-func ListMalManiFest(con *repl.Console) {
+func ListMalManifest(con *repl.Console) {
 	if len(loadedMals) == 0 {
 		con.Log.Infof("No mal loaded")
 		return
 	}
 	rows := []table.Row{}
 	tableModel := tui.NewTable([]table.Column{
-		{Title: "Name", Width: 10},
-		{Title: "Type", Width: 10},
-		{Title: "Version", Width: 7},
-		{Title: "Author", Width: 4},
+		table.NewColumn("Name", "Name", 10),
+		table.NewColumn("Type", "Type", 10),
+		table.NewColumn("Version", "Version", 7),
+		table.NewColumn("Author", "Author", 4),
+		//{Title: "Name", Width: 10},
+		//{Title: "Type", Width: 10},
+		//{Title: "Version", Width: 7},
+		//{Title: "Author", Width: 4},
 	}, true)
 	for _, m := range loadedMals {
-		plug := m.Plugin
-		row := table.Row{
-			plug.Name,
-			plug.Type,
-			plug.Version,
-			plug.Author,
-		}
+		plug := m.Plugin.Manifest()
+		row := table.NewRow(
+			table.RowData{
+				"Name":    plug.Name,
+				"Type":    plug.Type,
+				"Version": plug.Version,
+				"Author":  plug.Author,
+			},
+		)
+		//Row{
+		//
+		//	plug.Name,
+		//	plug.Type,
+		//	plug.Version,
+		//	plug.Author,
+		//}
 		rows = append(rows, row)
 	}
 	tableModel.SetRows(rows)
+	tableModel.SetMultiline()
 	newTable := tui.NewModel(tableModel, nil, false, false)
 	err := newTable.Run()
 	if err != nil {

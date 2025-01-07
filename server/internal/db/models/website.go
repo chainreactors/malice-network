@@ -1,12 +1,14 @@
 package models
 
 import (
-	"github.com/chainreactors/malice-network/proto/listener/lispb"
-	"github.com/gofrs/uuid"
-	"gorm.io/gorm"
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/server/internal/configs"
+	"github.com/gofrs/uuid"
+	"gorm.io/gorm"
 )
 
 // WebsiteContent - Single table that combines Website and WebContent
@@ -14,10 +16,15 @@ type WebsiteContent struct {
 	ID        uuid.UUID `gorm:"primaryKey;->;<-:create;type:uuid;"`
 	CreatedAt time.Time `gorm:"->;<-:create;"`
 
-	Name        string `gorm:"unique;"`
-	Path        string `gorm:""`
-	Size        uint64 `gorm:""`
-	ContentType string `gorm:""`
+	File        string            `gorm:""`
+	Path        string            `gorm:""`
+	Size        uint64            `gorm:""`
+	Type        string            `gorm:""`
+	ContentType string            `gorm:""`
+	Encryption  *EncryptionConfig `gorm:"embedded;embeddedPrefix:encryption_"`
+
+	Pipeline   *Pipeline `gorm:"foreignKey:PipelineID;references:Name;"`
+	PipelineID string    `gorm:"type:string;index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
 }
 
 // BeforeCreate - GORM hook to automatically set values
@@ -31,32 +38,33 @@ func (wc *WebsiteContent) BeforeCreate(tx *gorm.DB) (err error) {
 }
 
 // ToProtobuf - Converts to protobuf object
-func (wc *WebsiteContent) ToProtobuf(webContentDir string) *lispb.Website {
-	contents, _ := os.ReadFile(filepath.Join(webContentDir, wc.Path))
-	return &lispb.Website{
-		ID:   wc.ID.String(),
-		Name: wc.Name,
-		Contents: map[string]*lispb.WebContent{
-			wc.ID.String(): {
-				ID:          wc.ID.String(),
-				WebsiteID:   wc.ID.String(),
-				Path:        wc.Path,
-				Size:        wc.Size,
-				ContentType: wc.ContentType,
-				Content:     contents,
-			},
-		},
+func (wc *WebsiteContent) ToProtobuf(read bool) *clientpb.WebContent {
+	var data []byte
+	if read && wc.Type == "raw" {
+		data, _ = os.ReadFile(filepath.Join(configs.WebsitePath, wc.PipelineID, wc.ID.String()))
+	}
+
+	return &clientpb.WebContent{
+		Id:          wc.ID.String(),
+		WebsiteId:   wc.PipelineID,
+		Path:        wc.Path,
+		Size:        wc.Size,
+		Type:        wc.Type,
+		ContentType: wc.ContentType,
+		Content:     data,
+		Encryption:  ToEncryptionProtobuf(wc.Encryption),
+		ListenerId:  wc.Pipeline.ListenerID,
 	}
 }
 
-// FromProtobuf - Converts from protobuf object to WebsiteContent
-func WebsiteContentFromProtobuf(pbWebContent *lispb.WebContent) WebsiteContent {
-	siteUUID, _ := uuid.FromString(pbWebContent.ID)
-	return WebsiteContent{
-		ID:          siteUUID,
-		Name:        pbWebContent.Name,
-		Path:        pbWebContent.Path,
-		Size:        pbWebContent.Size,
-		ContentType: pbWebContent.ContentType,
+func FromWebContentPb(content *clientpb.WebContent) *WebsiteContent {
+	return &WebsiteContent{
+		PipelineID:  content.WebsiteId,
+		File:        content.File,
+		Path:        content.Path,
+		Size:        content.Size,
+		Type:        content.Type,
+		ContentType: content.ContentType,
+		Encryption:  ToEncryptionDB(content.Encryption),
 	}
 }

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/utils/file"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/tui"
 	"github.com/spf13/cobra"
 	"os"
@@ -57,6 +57,6 @@ func RemoveExtensionByCommandName(commandName string, con *repl.Console) error {
 	if _, err := os.Stat(extPath); os.IsNotExist(err) {
 		return nil
 	}
-	file.ForceRemoveAll(extPath)
+	fileutils.ForceRemoveAll(extPath)
 	return nil
 }

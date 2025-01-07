@@ -1,23 +1,21 @@
 package sessions
 
 import (
-	"context"
-	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/spf13/cobra"
 )
 
-func removeCmd(cmd *cobra.Command, con *repl.Console) {
+func removeCmd(cmd *cobra.Command, con *repl.Console) error {
 	id := cmd.Flags().Arg(0)
-	_, err := con.Rpc.BasicSessionOP(context.Background(), &clientpb.BasicUpdateSession{
+	_, err := con.Rpc.SessionManage(con.Context(), &clientpb.BasicUpdateSession{
 		SessionId: id,
 		Op:        "delete",
 	})
 	if err != nil {
-		logs.Log.Errorf("Session error: %v", err)
-		return
+		return err
 	}
 	delete(con.Sessions, id)
-	con.Log.Infof("delete session %s", id)
+	con.Log.Infof("delete session %s\n", id)
+	return nil
 }

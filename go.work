@@ -1,0 +1,9 @@
+go 1.22.7
+
+use (
+	.
+	external/carapace
+	external/console
+	external/readline
+	external/gonut
+)

@@ -5,9 +5,9 @@ import (
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/tui"
-	"github.com/charmbracelet/bubbles/table"
+	"github.com/evertras/bubble-table/table"
 	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -19,20 +19,18 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Use:   consts.ModuleListModule,
 		Short: "List modules",
 		// Long:  help.FormatLongHelp(consts.ModuleListModule),
-		Run: func(cmd *cobra.Command, args []string) {
-			ListModulesCmd(cmd, con)
-			return
+		RunE: func(cmd *cobra.Command, args []string) error {
+
+			return ListModulesCmd(cmd, con)
 		},
 	}
 
 	loadModuleCmd := &cobra.Command{
 		Use:   consts.ModuleLoadModule + " [module_file]",
 		Short: "Load module",
-		// Long:  help.FormatLongHelp(consts.ModuleLoadModule),
-		Args: cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			LoadModuleCmd(cmd, con)
-			return
+		// Long:  help.FormatLongHelp(consts.ModuleLoadModule),duan
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return LoadModuleCmd(cmd, con)
 		},
 		Example: `load module from malefic-modules
 before loading, you can list the current modules: 
@@ -50,7 +48,18 @@ execute_addon、clear 、ps、powerpic...
 `}
 
 	common.BindFlag(loadModuleCmd, func(f *pflag.FlagSet) {
+		f.String("path", "", "module path")
+		f.StringSlice("modules", []string{}, "modules list,eg: basic,extend")
 		f.StringP("bundle", "b", "", "bundle name")
+		f.String("build", "", "build resource,eg: docker/action")
+		f.String("target", "", "module target")
+		f.String("profile", "", "build profile")
+	})
+	common.BindFlagCompletions(loadModuleCmd, func(comp carapace.ActionMap) {
+		comp["path"] = carapace.ActionFiles()
+		comp["modules"] = common.ModulesCompleter()
+		comp["target"] = common.BuildTargetCompleter(con)
+		comp["profile"] = common.ProfileCompleter(con)
 	})
 	common.BindArgCompletions(loadModuleCmd, nil,
 		carapace.ActionFiles().Usage("path to the module file"))
@@ -59,9 +68,8 @@ execute_addon、clear 、ps、powerpic...
 		Use:   consts.ModuleRefreshModule,
 		Short: "Refresh module",
 		// Long:  help.FormatLongHelp(consts.ModuleRefreshModule),
-		Run: func(cmd *cobra.Command, args []string) {
-			RefreshModuleCmd(cmd, con)
-			return
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return RefreshModuleCmd(cmd, con)
 		},
 	}
 
@@ -69,9 +77,8 @@ execute_addon、clear 、ps、powerpic...
 		Use:   consts.ModuleClear,
 		Short: "Clear modules",
 		// Long:  help.FormatLongHelp(consts.ModuleClear),
-		Run: func(cmd *cobra.Command, args []string) {
-			ClearCmd(cmd, con)
-			return
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return ClearCmd(cmd, con)
 		},
 	}
 
@@ -106,16 +113,18 @@ func Register(con *repl.Console) {
 			var rowEntries []table.Row
 			var row table.Row
 			tableModel := tui.NewTable([]table.Column{
-				{Title: "Name", Width: 15},
-				{Title: "Help", Width: 30},
+				table.NewColumn("Module", "Module", 20),
+				table.NewColumn("Help", "Help", 30),
 			}, true)
 			for _, module := range modules.GetModules() {
-				row = table.Row{
-					module,
-					"",
-				}
+				row = table.NewRow(
+					table.RowData{
+						"Module": module,
+						"Help":   "",
+					})
 				rowEntries = append(rowEntries, row)
 			}
+			tableModel.SetMultiline()
 			tableModel.SetRows(rowEntries)
 			return tableModel.View(), nil
 		})
@@ -128,6 +137,17 @@ func Register(con *repl.Console) {
 		common.ParseStatus,
 		nil)
 
+	con.AddCommandFuncHelper(
+		consts.ModuleLoadModule,
+		consts.ModuleLoadModule,
+		consts.ModuleLoadModule+"(active(),\"bundle_name\",\"module_file.dll\")",
+		[]string{
+			"session: special session",
+			"bundle_name: bundle name",
+			"path: path to the module file",
+		},
+		[]string{"task"})
+
 	con.RegisterImplantFunc(
 		consts.ModuleRefreshModule,
 		refreshModule,
@@ -135,6 +155,15 @@ func Register(con *repl.Console) {
 		nil,
 		common.ParseStatus,
 		nil)
+
+	con.AddCommandFuncHelper(
+		consts.ModuleRefreshModule,
+		consts.ModuleRefreshModule,
+		consts.ModuleRefreshModule+"(active())",
+		[]string{
+			"session: special session",
+		},
+		[]string{"task"})
 
 	//clear
 	con.RegisterImplantFunc(
@@ -144,4 +173,13 @@ func Register(con *repl.Console) {
 		nil,
 		common.ParseStatus,
 		nil)
+
+	con.AddCommandFuncHelper(
+		consts.ModuleClear,
+		consts.ModuleClear,
+		consts.ModuleClear+"(active())",
+		[]string{
+			"session: special session",
+		},
+		[]string{"task"})
 }

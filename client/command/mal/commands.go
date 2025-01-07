@@ -13,17 +13,19 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Use:   consts.CommandMal,
 		Short: "mal commands",
 		//Long:  help.GetHelpFor(consts.CommandExtension),
-		Run: func(cmd *cobra.Command, args []string) {
-			cmd.Help()
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return MalCmd(cmd, con)
 		},
 	}
+
+	common.BindFlag(cmd, common.MalHttpFlagset)
 
 	installCmd := &cobra.Command{
 		Use:   consts.CommandMalInstall + " [mal_file]",
 		Short: "Install a mal manifest",
 		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			MalInstallCmd(cmd, con)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return MalInstallCmd(cmd, con)
 		},
 	}
 
@@ -37,8 +39,8 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Use:   consts.CommandMalLoad + " [mal]",
 		Short: "Load a mal manifest",
 		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			MalLoadCmd(cmd, con)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return MalLoadCmd(cmd, con)
 		},
 	})
 
@@ -46,7 +48,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Use:   consts.CommandMalList,
 		Short: "List mal manifests",
 		Run: func(cmd *cobra.Command, args []string) {
-			ListMalManiFest(con)
+			ListMalManifest(con)
 		},
 	})
 
@@ -54,8 +56,16 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Use:   consts.CommandMalRemove + " [mal]",
 		Short: "Remove a mal manifest",
 		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			RemoveMalCmd(cmd, con)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return RemoveMalCmd(cmd, con)
+		},
+	})
+
+	cmd.AddCommand(&cobra.Command{
+		Use:   consts.CommandMalRefresh,
+		Short: "Refresh mal manifests",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return RefreshMalCmd(cmd, con)
 		},
 	})
 	return []*cobra.Command{cmd}

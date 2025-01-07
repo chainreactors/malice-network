@@ -27,9 +27,10 @@ const (
 
 // client Groups
 const (
-	GenericGroup  = "generic"
-	ManageGroup   = "manage"
-	ListenerGroup = "listener"
+	GenericGroup   = "generic"
+	ManageGroup    = "manage"
+	ListenerGroup  = "listener"
+	GeneratorGroup = "generator"
 )
 
 // implant Groups
@@ -44,10 +45,16 @@ const (
 	MalGroup    = "mal"
 )
 
+const (
+	CryptorXOR = "XOR"
+	CryptorRAW = "RAW" // debug only
+	CryptorAES = "AES"
+)
+
 // config
 const (
-	MaxPacketLength = "server.config.packet_length"
-	AuditLevel      = "server.audit"
+	ConfigMaxPacketLength = "server.config.packet_length"
+	ConfigAuditLevel      = "server.audit"
 )
 
 const (
@@ -63,5 +70,5 @@ const (
 	DefaultLongPollTimeout = time.Second
 	DefaultLongPollJitter  = time.Second
 	minPollTimeout         = time.Second
-	DefaultCacheJitter     = 60 * 60
+	DefaultCacheInterval   = 60
 )

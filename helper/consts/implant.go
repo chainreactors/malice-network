@@ -1,35 +1,66 @@
 package consts
 
-import "github.com/chainreactors/malice-network/proto/implant/implantpb"
-
-// release type
-type ReleaseType int
-
 const (
-	ReleaseWinWorkstation ReleaseType = 1 + iota
-	ReleaseWinDomainController
-	ReleaseWinServer
-	ReleaseMacOSX
-	ReleaseUbuntu
-	ReleaseCentos
+	ImplantMalefic      = "malefic"
+	ImplantPulse        = "pulse"
+	ImplantCobaltStrike = "cobaltstrike"
 )
 
-// Malefic Error
 const (
-	MaleficErrorPanic uint32 = 1 + iota
-	MaleficErrorUnpackError
-	MaleficErrorMissbody
-	MaleficErrorModuleError
-	MaleficErrorModuleNotFound
-	MaleficErrorTaskError
-	MaleficErrorTaskNotFound
-	MaleficErrorTaskOperatorNotFound
-	MaleficErrorExtensionNotFound
-	MaleficErrorUnexceptBody
+	ImplantModBeacon    = "beacon"
+	ImplantModBind      = "bind"
+	ImplantModPulse     = "pulse"
+	ImplantModPrelude   = "prelude"
+	ImplantModShellcode = "shellcode"
 )
 
-func GetWindowsVer(ver string) string {
-	return WindowsVer[ver]
+const (
+	ArtifactFromAction = "action"
+	ArtifactFromDocker = "docker"
+	ArtifactFromUpload = "upload"
+)
+
+type Arch uint32
+
+const (
+	I686    Arch = 0
+	X86_64  Arch = 1
+	Arm     Arch = 2
+	Aarch64 Arch = 3
+	Mips    Arch = 4
+)
+
+func (a Arch) String() string {
+	switch a {
+	case I686:
+		return "x86"
+	case X86_64:
+		return "x64"
+	case Arm:
+		return "arm"
+	case Aarch64:
+		return "arm64"
+	case Mips:
+		return "mips"
+	}
+	return ""
+}
+
+// ArchAlias 将别名映射为标准的架构名称
+var ArchAlias = map[string]string{
+	"x86_64": "x64",
+	"amd64":  "x64",
+	"x86":    "x86",
+	"386":    "x86",
+}
+
+// ArchMap 将字符串映射为 Arch 枚举值
+var ArchMap = map[string]Arch{
+	"x64":   X86_64,
+	"x86":   I686,
+	"arm":   Arm,
+	"arm64": Aarch64,
+	"mips":  Mips,
 }
 
 var (
@@ -65,33 +96,121 @@ var (
 		"10.0.22621": "11",
 		"11.0.22000": "11",
 	}
-
-	WindowsArch = map[string]string{
-		"x86_64": "amd64",
-		"x86":    "386",
-	}
-
-	//ArchMap = map[implantpb.Arch]string{
-	//	implantpb.Arch_x86_64: "amd64",
-	//	implantpb.Arch_i686:    "386",
-	//	implantpb.Arch_arm:     "arm",
-	//	implantpb.Arch_aarch64:   "arm64",
-	//	implantpb.Arch_mips:    "mips",
-	//}
-
-	ArchMap = map[string]implantpb.Arch{
-		"amd64": implantpb.Arch_x86_64,
-		"386":   implantpb.Arch_i686,
-		"arm":   implantpb.Arch_arm,
-		"arm64": implantpb.Arch_aarch64,
-		"mips":  implantpb.Arch_mips,
-	}
 )
 
-func FormatWindowsArch(arch string) string {
-	if v, found := WindowsArch[arch]; found {
+const (
+	Windows = "windows"
+	Linux   = "linux"
+	Darwin
+)
+
+const (
+	ELF           = ".elf"
+	PE            = ".pe"
+	DLL           = ".dll"
+	PEFile        = ".exe"
+	ShellcodeFile = ".bin"
+	DllFile       = ".dll"
+)
+
+// target
+const (
+	TargetX64Darwin     = "x86_64-apple-darwin"
+	TargetArm64Darwin   = "aarch64-apple-darwin"
+	TargetX64Linux      = "x86_64-unknown-linux-musl"
+	TargetX86Linux      = "i686-unknown-linux-musl"
+	TargetX64Windows    = "x86_64-pc-windows-msvc"
+	TargetX86Windows    = "i686-pc-windows-msvc"
+	TargetX86WindowsGnu = "i686-pc-windows-gnu"
+	TargetX64WindowsGnu = "x86_64-pc-windows-gnu"
+)
+
+var BuildType = []string{
+	"beacon",
+	"bind",
+	"pulse",
+	"prelude",
+	"modules",
+}
+
+var Modules = []string{
+	"nano",
+	"full",
+	"base",
+	"extend",
+	"fs_full",
+	"sys_full",
+	"execute_full",
+	"net_full",
+}
+
+type BuildTarget struct {
+	Name string
+	Arch string
+	OS   string
+}
+
+var BuildTargetMap = map[string]*BuildTarget{
+	TargetX64Darwin: {
+		Name: TargetX64Darwin,
+		Arch: ArchMap["x64"].String(),
+		OS:   Darwin,
+	},
+	TargetArm64Darwin: {
+		Name: TargetArm64Darwin,
+		Arch: ArchMap["arm64"].String(),
+		OS:   Darwin,
+	},
+	TargetX64Linux: {
+		Name: TargetX64Linux,
+		Arch: ArchMap["x64"].String(),
+		OS:   Linux,
+	},
+	TargetX86Linux: {
+		Name: TargetX86Linux,
+		Arch: ArchMap["x86"].String(),
+		OS:   Linux,
+	},
+	//TargetX64Windows: {
+	//	Name: TargetX64Windows,
+	//	Arch: ArchMap["x64"].String(),
+	//	OS:   Windows,
+	//},
+	//TargetX86Windows: {
+	//	Name: TargetX86Windows,
+	//	Arch: ArchMap["x86"].String(),
+	//	OS:   Windows,
+	//},
+	TargetX86WindowsGnu: {
+		Name: TargetX86WindowsGnu,
+		Arch: ArchMap["x86"].String(),
+		OS:   Windows,
+	},
+	TargetX64WindowsGnu: {
+		Name: TargetX64WindowsGnu,
+		Arch: ArchMap["x64"].String(),
+		OS:   Windows,
+	},
+}
+
+func GetBuildTarget(name string) (*BuildTarget, bool) {
+	v, found := BuildTargetMap[name]
+	return v, found
+}
+
+func FormatArch(arch string) string {
+	if v, found := ArchAlias[arch]; found {
 		return v
 	} else {
 		return arch
+	}
+}
+
+func MapArch(arch string) uint32 {
+	arch = FormatArch(arch)
+	if v, found := ArchMap[arch]; found {
+		return uint32(v)
+	} else {
+		return 0
 	}
 }

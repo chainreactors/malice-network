@@ -4,26 +4,22 @@ import (
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/proto/services/clientrpc"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
+	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/spf13/cobra"
 )
 
-func MkdirCmd(cmd *cobra.Command, con *repl.Console) {
+func MkdirCmd(cmd *cobra.Command, con *repl.Console) error {
 	path := cmd.Flags().Arg(0)
-	if path == "" {
-		con.Log.Errorf("required arguments missing")
-		return
-	}
 	session := con.GetInteractive()
 	task, err := Mkdir(con.Rpc, session, path)
 	if err != nil {
-		con.Log.Errorf("Mkdir error: %v", err)
-		return
+		return err
 	}
 
 	session.Console(task, "mkdir "+path)
+	return nil
 }
 
 func Mkdir(rpc clientrpc.MaliceRPCClient, session *core.Session, path string) (*clientpb.Task, error) {

@@ -1,0 +1,14 @@
+.DS_Store
+coverage.txt
+_test
+test
+vendor
+.idea
+*.iml
+*.out
+.vscode
+*_bak
+*.bak
+*.exe
+*.bin
+dev.txt

@@ -1,24 +1,28 @@
 package generic
 
 import (
+	"errors"
+	"fmt"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/utils/mtls"
 	"github.com/chainreactors/tui"
 	"github.com/spf13/cobra"
-	"path/filepath"
 )
 
 func LoginCmd(cmd *cobra.Command, con *repl.Console) error {
+	var err error
+	if filename := cmd.Flags().Arg(0); filename != "" {
+		return Login(con, filename)
+	} else if filename, _ := cmd.Flags().GetString("auth"); filename != "" {
+		return Login(con, filename)
+	}
 	files, err := assets.GetConfigs()
 	if err != nil {
-		con.Log.Errorf("Error retrieving YAML files: %s", err)
-		return err
+		return fmt.Errorf("error retrieving YAML files: %w", err)
 	}
 
 	if len(files) == 0 {
-		con.Log.Error("No auth config found, maybe use `iom [authfile.auth]` auto import")
-		return nil
+		return fmt.Errorf("no auth config found, maybe use `iom login [authfile.auth]` auto import")
 	}
 	// Create a model for the interactive list
 	m := tui.NewSelect(files)
@@ -31,18 +35,22 @@ func LoginCmd(cmd *cobra.Command, con *repl.Console) error {
 	}
 
 	// After the interactive list is completed, check the selected item
-	if m.SelectedItem >= 0 && m.SelectedItem < len(m.Choices) {
-		configFile := filepath.Join(assets.GetConfigDir(), m.Choices[m.SelectedItem])
-		config, err := mtls.ReadConfig(configFile)
-		if err != nil {
-			con.Log.Errorf("Error reading config file: %s", err)
-			return err
-		}
-		err = repl.Login(con, config)
-		if err != nil {
-			return err
-		}
+	if m.Selected != "" {
+		tui.ClearLines(2)
+		return Login(con, m.Selected)
+	} else {
+		return errors.New("no user selected")
 	}
+}
 
+func Login(con *repl.Console, authFile string) error {
+	config, err := assets.LoadConfig(authFile)
+	if err != nil {
+		return err
+	}
+	err = repl.Login(con, config)
+	if err != nil {
+		return err
+	}
 	return nil
 }

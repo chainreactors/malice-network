@@ -4,8 +4,8 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/chainreactors/files"
 	"github.com/chainreactors/logs"
+	crConfig "github.com/chainreactors/malice-network/helper/utils/config"
 	"gopkg.in/yaml.v3"
 	"io"
 	insecureRand "math/rand"
@@ -16,7 +16,7 @@ import (
 
 var (
 	ServerConfigFileName        = "config.yaml"
-	ServerRootPath              = files.GetExcPath() + ".malice"
+	ServerRootPath              = path.Join(GetWorkDir(), ".malice")
 	CurrentServerConfigFilename = "config.yaml"
 	LogPath                     = path.Join(ServerRootPath, "logs")
 	CertsPath                   = path.Join(ServerRootPath, "certs")
@@ -27,6 +27,13 @@ var (
 	CachePath                   = path.Join(TempPath, "cache")
 	ErrNoConfig                 = errors.New("no config found")
 	WebsitePath                 = path.Join(ServerRootPath, "web")
+	// variables for implant build
+	BuildPath       = path.Join(GetWorkDir(), "..", "malefic", "build")
+	BinPath         = path.Join(ServerRootPath, "bin")
+	SourceCodePath  = path.Join(BuildPath, "src")
+	TargetPath      = path.Join(SourceCodePath, "target")
+	CargoCachePath  = path.Join(BuildPath, "cache")
+	BuildOutputPath = path.Join(BuildPath, "output")
 )
 
 func NewFileLog(filename string) *logs.Logger {
@@ -53,6 +60,7 @@ type ServerConfig struct {
 	LogConfig    *LogConfig    `config:"log"`
 	MiscConfig   *MiscConfig   `config:"config"`
 	NotifyConfig *NotifyConfig `config:"notify"`
+	GithubConfig *GithubConfig `config:"github"`
 }
 
 func (c *ServerConfig) Address() string {
@@ -73,7 +81,7 @@ func (c *ServerConfig) Save() error {
 	return nil
 }
 
-func getRandomID() string {
+func GetRandomID() string {
 	seededRand := insecureRand.New(insecureRand.NewSource(time.Now().UnixNano()))
 	buf := make([]byte, 32)
 	seededRand.Read(buf)
@@ -97,7 +105,7 @@ type MiscConfig struct {
 func LoadMiscConfig() ([]byte, []byte, error) {
 	var opt ServerConfig
 	// load config
-	err := LoadConfig(ServerConfigFileName, &opt)
+	err := crConfig.LoadConfig(ServerConfigFileName, &opt)
 	if err != nil {
 		logs.Log.Errorf("Failed to load config: %s", err)
 		return nil, nil, err
@@ -126,11 +134,14 @@ type NotifyConfig struct {
 		WebHookUrl string `config:"webhook_url"`
 	} `config:"lark"`
 	ServerChan struct {
-		Enable       bool                `config:"enable" default:"false"`
-		URL          string              `config:"url"`
-		Method       string              `config:"method"`
-		Headers      map[string][]string `config:"headers"`
-		ContentType  string              `config:"content_type"`
-		BodyTemplate string              `config:"bodyTemplate"`
+		Enable bool   `config:"enable" default:"false"`
+		URL    string `config:"url"`
 	} `config:"serverchan"`
+}
+
+type GithubConfig struct {
+	Repo     string `config:"repo" default:"malefic"`
+	Owner    string `config:"owner" default:""`
+	Token    string `config:"token" default:""`
+	Workflow string `config:"workflow" default:"generate.yml"`
 }

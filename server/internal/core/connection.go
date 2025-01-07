@@ -2,13 +2,15 @@ package core
 
 import (
 	"context"
+	"fmt"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/encoders"
 	"github.com/chainreactors/malice-network/helper/encoders/hash"
-	"github.com/chainreactors/malice-network/helper/packet"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/types"
-	"github.com/chainreactors/malice-network/proto/implant/implantpb"
-
-	"net"
+	"github.com/chainreactors/malice-network/helper/utils/peek"
+	"github.com/chainreactors/malice-network/server/internal/parser"
 	"sync"
 	"time"
 )
@@ -19,22 +21,25 @@ var (
 	}
 )
 
-func NewConnection(rawid []byte) *Connection {
+func NewConnection(p *parser.MessageParser, sid uint32, pipelineID string) *Connection {
 	conn := &Connection{
-		RawID:       rawid,
-		SessionID:   hash.Md5Hash(rawid),
+		PipelineID:  pipelineID,
+		RawID:       sid,
+		SessionID:   hash.Md5Hash(encoders.Uint32ToBytes(sid)),
 		LastMessage: time.Now(),
-		C:           make(chan *implantpb.Spite, 255),
+		C:           make(chan *clientpb.SpiteRequest, 255),
 		Sender:      make(chan *implantpb.Spites, 1),
 		Alive:       true,
-		cache:       types.NewSpitesCache(),
+		cache:       parser.NewSpitesBuf(),
+		Parser:      p,
 	}
-	Connections.Add(conn)
+
 	go func() {
 		for {
 			select {
-			case spite := <-conn.C:
-				conn.cache.Append(spite)
+			case req := <-conn.C:
+				logs.Log.Debugf("[pipeline] received spite_request %s", req.Spite.Name)
+				conn.cache.Append(req.Spite)
 			}
 		}
 	}()
@@ -54,23 +59,25 @@ func NewConnection(rawid []byte) *Connection {
 }
 
 type Connection struct {
-	RawID       []byte
+	RawID       uint32
 	SessionID   string
 	LastMessage time.Time
-	C           chan *implantpb.Spite // spite
+	PipelineID  string
+	C           chan *clientpb.SpiteRequest // spite
 	Sender      chan *implantpb.Spites
 	Alive       bool
-	cache       *types.SpitesCache
+	Parser      *parser.MessageParser
+	cache       *parser.SpitesCache
 }
 
-func (c *Connection) Send(ctx context.Context, conn net.Conn) {
+func (c *Connection) Send(ctx context.Context, conn *peek.Conn) {
 	select {
-	case <-time.After(100 * time.Millisecond):
+	case <-time.After(1000 * time.Millisecond):
 		return
 	case <-ctx.Done():
 		return
 	case msg := <-c.Sender:
-		err := packet.WritePacket(conn, msg, c.RawID)
+		err := c.Parser.WritePacket(conn, msg, c.RawID)
 		if err != nil {
 			// retry
 			logs.Log.Debugf("Error write packet, %s", err.Error())
@@ -78,6 +85,35 @@ func (c *Connection) Send(ctx context.Context, conn net.Conn) {
 			return
 		}
 	}
+}
+
+func (c *Connection) Handler(ctx context.Context, conn *peek.Conn) error {
+	var err error
+	_, length, err := c.Parser.ReadHeader(conn)
+	if err != nil {
+		return fmt.Errorf("error reading header:%s %w", conn.RemoteAddr(), err)
+	}
+	go c.Send(ctx, conn)
+	var msg *implantpb.Spites
+	if length != 1 {
+		msg, err = c.Parser.ReadMessage(conn, length)
+		if err != nil {
+			return fmt.Errorf("error reading message:%s %w", conn.RemoteAddr(), err)
+		}
+		if msg.Spites == nil {
+			msg = types.BuildPingSpites()
+		}
+	} else {
+		msg = types.BuildPingSpites()
+	}
+
+	Forwarders.Send(c.PipelineID, &Message{
+		Spites:     msg,
+		SessionID:  c.SessionID,
+		RawID:      c.RawID,
+		RemoteAddr: conn.RemoteAddr().String(),
+	})
+	return nil
 }
 
 type connections struct {
@@ -109,10 +145,6 @@ func (c *connections) Get(sessionID string) *Connection {
 
 func (c *connections) Add(connect *Connection) *Connection {
 	c.connections.Store(connect.SessionID, connect)
-	//EventBroker.Publish(Event{
-	//	EventType: consts.SessionOpenedEvent,
-	//	Session:   session,
-	//})
 	return connect
 }
 

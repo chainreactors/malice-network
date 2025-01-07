@@ -1,12 +1,14 @@
-package main
+package server
 
 import (
 	"context"
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/codenames"
-	"github.com/chainreactors/malice-network/helper/utils/file"
+	crConfig "github.com/chainreactors/malice-network/helper/utils/config"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/mtls"
+	"github.com/chainreactors/malice-network/server/assets"
 	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
@@ -21,13 +23,6 @@ import (
 	"syscall"
 )
 
-//go:generate protoc -I proto/ proto/client/clientpb/client.proto --go_out=paths=source_relative:proto/
-//go:generate protoc -I proto/ proto/client/rootpb/root.proto --go_out=paths=source_relative:proto/
-//go:generate protoc -I proto/ proto/implant/implantpb/implant.proto --go_out=paths=source_relative:proto/
-//go:generate protoc -I proto/ proto/listener/lispb/listener.proto --go_out=paths=source_relative:proto/
-//go:generate protoc -I proto/ proto/services/clientrpc/service.proto --go_out=paths=source_relative:proto/ --go-grpc_out=paths=source_relative:proto/
-//go:generate protoc -I proto/ proto/services/listenerrpc/service.proto --go_out=paths=source_relative:proto/ --go-grpc_out=paths=source_relative:proto/
-
 func init() {
 	err := configs.InitConfig()
 	if err != nil {
@@ -39,14 +34,13 @@ func init() {
 		opt.ParseDefault = true
 	})
 	config.AddDriver(yaml.Driver)
-	db.Client = db.NewDBClient()
-	codenames.SetupCodenames(configs.ServerRootPath)
+	codenames.SetupCodenames()
+	assets.SetupGithubFile()
 }
 
 func Execute() {
 	var opt Options
 	var err error
-	core.NewTicker()
 	parser := flags.NewParser(&opt, flags.Default)
 	parser.SubcommandsOptional = true
 	args, err := parser.Parse()
@@ -56,18 +50,18 @@ func Execute() {
 		}
 		return
 	}
-	if !file.Exist(opt.Config) {
-		confStr := configs.InitDefaultConfig(&opt, 0)
-		err := os.WriteFile(opt.Config, []byte(confStr), 0644)
+	if !fileutils.Exist(opt.Config) {
+		confStr := crConfig.InitDefaultConfig(&opt, 0)
+		err := os.WriteFile(opt.Config, confStr, 0644)
 		if err != nil {
 			logs.Log.Errorf("cannot write default config , %s ", err.Error())
 			return
 		}
 		logs.Log.Warnf("config file not found, created default config %s", opt.Config)
 	}
-	// load config
 
-	err = configs.LoadConfig(opt.Config, &opt)
+	// load config
+	err = crConfig.LoadConfig(opt.Config, &opt)
 	if err != nil {
 		logs.Log.Warnf("cannot load config , %s ", err.Error())
 		return
@@ -91,6 +85,9 @@ func Execute() {
 	}
 
 	if opt.Server.Enable {
+		db.Client = db.NewDBClient()
+		core.NewBroker()
+		core.NewSessions()
 		if opt.IP != "" {
 			logs.Log.Infof("manually specified IP: %s will override %s config: %s", opt.IP, opt.Config, opt.Server.IP)
 			opt.Server.IP = opt.IP
@@ -138,10 +135,12 @@ func Execute() {
 			return
 		}
 	}
+
 	if opt.Listeners.Enable {
-		logs.Log.Importantf("listener config enabled, Starting listeners")
+		logs.Log.Importantf("[listener] listener config enabled, Starting listeners")
 		err := StartListener(opt.Listeners)
 		if err != nil {
+			logs.Log.Errorf(err.Error())
 			return
 		}
 	}
@@ -159,6 +158,7 @@ func Execute() {
 		for _, session := range core.Sessions.All() {
 			session.Save()
 		}
+		//pprof.StopCPUProfile()
 		core.GlobalTicker.RemoveAll()
 		cancel()
 		os.Exit(0)
@@ -192,33 +192,14 @@ func RecoverAliveSession() error {
 	if len(sessions) > 0 {
 		logs.Log.Debugf("recover %d sessions", len(sessions))
 		for _, session := range sessions {
-			newSession := core.NewSession(session)
-			err = newSession.Load()
+			newSession, err := core.RecoverSession(session)
 			if err != nil {
-				logs.Log.Debugf("cannot load session , %s ", err.Error())
-			}
-			tasks, taskID, err := db.FindTaskAndMaxTasksID(session.SessionId)
-			if err != nil {
-				logs.Log.Errorf("cannot find max task id , %s ", err.Error())
-			}
-			newSession.SetLastTaskId(uint32(taskID))
-			for _, task := range tasks {
-				newTask, err := db.ToTask(*task)
-				if err != nil {
-					logs.Log.Errorf("cannot convert task to core task , %s ", err.Error())
-					continue
-				}
-				newSession.Tasks.Add(newTask)
+				logs.Log.Errorf("cannot recover session %s , %s ", session.SessionId, err.Error())
+				continue
 			}
 			core.Sessions.Add(newSession)
 		}
 	}
-	go func() {
-		err := db.UpdateSessionStatus()
-		if err != nil {
-			logs.Log.Errorf("cannot update session status , %s ", err.Error())
-		}
-	}()
 	return nil
 }
 
@@ -232,8 +213,4 @@ func StartListener(opt *configs.ListenerConfig) error {
 		}
 	}
 	return nil
-}
-
-func main() {
-	Execute()
 }

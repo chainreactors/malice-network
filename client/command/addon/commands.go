@@ -5,7 +5,9 @@ import (
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/tui"
+	"github.com/evertras/bubble-table/table"
 	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -79,7 +81,7 @@ execute_addon gogo -- -i 127.0.0.1 -p http
 `,
 	}
 	common.BindFlag(execAddonCmd, common.ExecuteFlagSet, common.SacrificeFlagSet)
-	common.BindArgCompletions(execAddonCmd, nil, common.SessionAddonComplete(con))
+	common.BindArgCompletions(execAddonCmd, nil, common.SessionAddonCompleter(con))
 
 	return []*cobra.Command{listaddonCmd, loadaddonCmd, execAddonCmd}
 }
@@ -101,8 +103,37 @@ func Register(con *repl.Console) {
 				s.WriteString(fmt.Sprintf("%s\t%s\t%s\n", ext.Name, ext.Type, ext.Depend))
 			}
 			return s.String(), nil
-		}, nil)
-
+		},
+		func(content *clientpb.TaskContext) (string, error) {
+			exts := content.Spite.GetAddons()
+			if len(exts.Addons) == 0 {
+				return "", fmt.Errorf("no addon found")
+			}
+			var rowEntries []table.Row
+			var row table.Row
+			tableModel := tui.NewTable([]table.Column{
+				table.NewColumn("Name", "Name", 25),
+				table.NewColumn("Type", "Type", 10),
+				table.NewColumn("Depend", "Depend", 35),
+				//{Title: "Name", Width: 25},
+				//{Title: "Type", Width: 10},
+				//{Title: "Depend", Width: 35},
+			},
+				true)
+			for _, ext := range exts.Addons {
+				row = table.NewRow(
+					table.RowData{
+						"Name":   ext.Name,
+						"Type":   ext.Type,
+						"Depend": ext.Depend,
+					})
+				//Row{ext.Name, ext.Type, ext.Depend}
+				rowEntries = append(rowEntries, row)
+			}
+			tableModel.SetMultiline()
+			tableModel.SetRows(rowEntries)
+			return tableModel.View(), nil
+		})
 	con.RegisterImplantFunc(consts.ModuleLoadAddon,
 		LoadAddon,
 		"",

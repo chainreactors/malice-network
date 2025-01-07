@@ -1,183 +1,258 @@
 package listener
 
 import (
-	"context"
 	"fmt"
-	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/cryptography"
-	"github.com/chainreactors/malice-network/helper/types"
-	"github.com/chainreactors/malice-network/proto/listener/lispb"
-	"github.com/chainreactors/tui"
-	"github.com/charmbracelet/bubbles/table"
-	"github.com/spf13/cobra"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"strconv"
-	"time"
+
+	"github.com/chainreactors/malice-network/client/command/common"
+	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/helper/cryptography"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/tui"
+	"github.com/evertras/bubble-table/table"
+	"github.com/spf13/cobra"
 )
 
-func newWebsiteCmd(cmd *cobra.Command, con *repl.Console) {
-	name, _, portUint, certPath, keyPath, tlsEnable := common.ParsePipelineFlags(cmd)
-	contentType, _ := cmd.Flags().GetString("content_type")
-	listenerID := cmd.Flags().Arg(0)
-	webPath := cmd.Flags().Arg(1)
-	cPath := cmd.Flags().Arg(2)
-	var cert, key string
-	var err error
-	var webAsserts *lispb.WebsiteAssets
-	if portUint == 0 {
-		rand.Seed(time.Now().UnixNano())
-		portUint = uint(15001 + rand.Int31n(5001))
+// NewWebsiteCmd - 创建新的网站
+func NewWebsiteCmd(cmd *cobra.Command, con *repl.Console) error {
+	listenerID, _, port := common.ParsePipelineFlags(cmd)
+	name := cmd.Flags().Arg(0)
+	root, _ := cmd.Flags().GetString("root")
+
+	if port == 0 {
+		port = cryptography.RandomInRange(10240, 65535)
 	}
-	port := uint32(portUint)
 	if name == "" {
 		name = fmt.Sprintf("%s-web-%d", listenerID, port)
 	}
-	if certPath != "" && keyPath != "" {
-		cert, err = cryptography.ProcessPEM(certPath)
-		if err != nil {
-			con.Log.Error(err.Error())
-			return
-		}
-		key, err = cryptography.ProcessPEM(keyPath)
-		tlsEnable = true
-		if err != nil {
-			con.Log.Error(err.Error())
-			return
-		}
-	}
-	cPath, _ = filepath.Abs(cPath)
 
-	fileIfo, err := os.Stat(cPath)
+	tls, err := common.ParseTLSFlags(cmd)
 	if err != nil {
-		con.Log.Errorf("Error adding content %s\n", err)
-		return
-	}
-	if fileIfo.IsDir() {
-		con.Log.Errorf("Error adding content %s\n", "file is a directory")
-		return
-	}
-	addWeb := &lispb.WebsiteAddContent{
-		Name:     name,
-		Contents: map[string]*lispb.WebContent{},
+		return err
 	}
 
-	types.WebAddFile(addWeb, webPath, contentType, cPath)
-	content, err := os.ReadFile(cPath)
-	if err != nil {
-		con.Log.Error(err.Error())
-		return
-	}
-	webAsserts = &lispb.WebsiteAssets{}
-	webAsserts.Assets = append(webAsserts.Assets, &lispb.WebsiteAsset{
-		WebName: name,
-		Content: content,
-	})
-	resp, err := con.LisRpc.RegisterWebsite(context.Background(), &lispb.Pipeline{
-		Encryption: &lispb.Encryption{
-			Enable: false,
-			Type:   "",
-			Key:    "",
-		},
-		Tls: &lispb.TLS{
-			Cert:   cert,
-			Key:    key,
-			Enable: tlsEnable,
-		},
-		Body: &lispb.Pipeline_Web{
-			Web: &lispb.Website{
-				RootPath:   webPath,
-				Port:       port,
-				Name:       name,
-				ListenerId: listenerID,
-				Contents:   addWeb.Contents,
-				Enable:     false,
+	req := &clientpb.Pipeline{
+		Name:       name,
+		ListenerId: listenerID,
+		Enable:     false,
+		Tls:        tls,
+		Body: &clientpb.Pipeline_Web{
+			Web: &clientpb.Website{
+				Root:     root,
+				Port:     port,
+				Contents: make(map[string]*clientpb.WebContent),
 			},
 		},
-	})
+	}
+	_, err = con.Rpc.RegisterWebsite(con.Context(), req)
+	if err != nil {
+		return err
+	}
 
-	if err != nil {
-		con.Log.Error(err.Error())
-		return
-	}
-	webAsserts.GetAssets()[0].FileName = resp.ID
-	_, err = con.LisRpc.UploadWebsite(context.Background(), webAsserts)
-	if err != nil {
-		con.Log.Error(err.Error())
-		return
-	}
-	_, err = con.LisRpc.StartWebsite(context.Background(), &lispb.CtrlPipeline{
+	_, err = con.Rpc.StartWebsite(con.Context(), &clientpb.CtrlPipeline{
 		Name:       name,
 		ListenerId: listenerID,
 	})
 	if err != nil {
-		con.Log.Error(err.Error())
-		return
+		return err
 	}
-	con.Log.Importantf("Website %s added\n", name)
+	con.Log.Importantf("Website %s created on port %d\n", name, port)
+	return nil
 }
 
-func startWebsitePipelineCmd(cmd *cobra.Command, con *repl.Console) {
+// AddWebContentCmd - 添加网站内容
+func StartWebsitePipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 	name := cmd.Flags().Arg(0)
-	listenerID := cmd.Flags().Arg(1)
-	_, err := con.LisRpc.StartWebsite(context.Background(), &lispb.CtrlPipeline{
+	listenerID, _ := cmd.Flags().GetString("listener")
+	_, err := con.Rpc.StartWebsite(con.Context(), &clientpb.CtrlPipeline{
 		Name:       name,
 		ListenerId: listenerID,
 	})
 	if err != nil {
-		con.Log.Error(err.Error())
+		return err
 	}
-
+	return nil
 }
 
-func stopWebsitePipelineCmd(cmd *cobra.Command, con *repl.Console) {
+func StopWebsitePipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 	name := cmd.Flags().Arg(0)
-	listenerID := cmd.Flags().Arg(1)
-	_, err := con.LisRpc.StopWebsite(context.Background(), &lispb.CtrlPipeline{
+	listenerID, _ := cmd.Flags().GetString("listener")
+	_, err := con.Rpc.StopWebsite(con.Context(), &clientpb.CtrlPipeline{
 		Name:       name,
 		ListenerId: listenerID,
 	})
 	if err != nil {
-		con.Log.Error(err.Error())
+		return err
 	}
+	return nil
 }
 
-func listWebsitesCmd(cmd *cobra.Command, con *repl.Console) {
+func ListWebsitesCmd(cmd *cobra.Command, con *repl.Console) error {
 	listenerID := cmd.Flags().Arg(0)
-	if listenerID == "" {
-		con.Log.Error("listener_id is required")
-		return
-	}
-	websites, err := con.LisRpc.ListWebsites(context.Background(), &lispb.ListenerName{
-		Name: listenerID,
+	websites, err := con.Rpc.ListWebsites(con.Context(), &clientpb.Listener{
+		Id: listenerID,
 	})
 	if err != nil {
-		con.Log.Error(err.Error())
-		return
+		return err
 	}
 	var rowEntries []table.Row
 	var row table.Row
 	tableModel := tui.NewTable([]table.Column{
-		{Title: "Name", Width: 20},
-		{Title: "Port", Width: 7},
-		{Title: "RootPath", Width: 15},
-		{Title: "Enable", Width: 7},
+		table.NewColumn("Name", "Name", 20),
+		table.NewColumn("Port", "Port", 7),
+		table.NewColumn("RootPath", "RootPath", 15),
+		table.NewColumn("Enable", "Enable", 7),
 	}, true)
-	if len(websites.Websites) == 0 {
+	if len(websites.Pipelines) == 0 {
 		con.Log.Importantf("No websites found")
-		return
+		return nil
 	}
-	for _, w := range websites.Websites {
-		row = table.Row{
-			w.Name,
-			strconv.Itoa(int(w.Port)),
-			w.RootPath,
-			strconv.FormatBool(w.Enable),
-		}
+	for _, p := range websites.Pipelines {
+		w := p.GetWeb()
+		row = table.NewRow(
+			table.RowData{
+				"Name":     p.Name,
+				"Port":     strconv.Itoa(int(w.Port)),
+				"RootPath": w.Root,
+				"Enable":   p.Enable,
+			})
 		rowEntries = append(rowEntries, row)
 	}
+	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)
 	fmt.Printf(tableModel.View())
+	return nil
+}
+
+// AddWebContentCmd - 添加网站内容
+func AddWebContentCmd(cmd *cobra.Command, con *repl.Console) error {
+	filePath := cmd.Flags().Arg(0)
+	websiteName, _ := cmd.Flags().GetString("website")
+	webPath, _ := cmd.Flags().GetString("path")
+	contentType, _ := cmd.Flags().GetString("type")
+
+	if webPath == "" {
+		webPath = "/" + filepath.Base(filePath)
+	}
+
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		return err
+	}
+
+	website := &clientpb.Website{
+		Contents: map[string]*clientpb.WebContent{
+			webPath: {
+				WebsiteId: websiteName,
+				File:      filePath,
+				Path:      webPath,
+				Type:      contentType,
+				Content:   content,
+			},
+		},
+	}
+
+	_, err = con.Rpc.WebsiteAddContent(con.Context(), website)
+	if err != nil {
+		return err
+	}
+
+	con.Log.Importantf("Content added to website %s: %s -> %s\n", websiteName, webPath, filePath)
+	return nil
+}
+
+// UpdateWebContentCmd - 更新网站内容
+func UpdateWebContentCmd(cmd *cobra.Command, con *repl.Console) error {
+	contentId := cmd.Flags().Arg(0)
+	filePath := cmd.Flags().Arg(1)
+	websiteName, _ := cmd.Flags().GetString("website")
+	contentType, _ := cmd.Flags().GetString("type")
+
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		return err
+	}
+
+	webContent := &clientpb.WebContent{
+		Id:        contentId,
+		WebsiteId: websiteName,
+		File:      filepath.Base(filePath),
+		Type:      contentType,
+		Content:   content,
+	}
+
+	_, err = con.Rpc.WebsiteUpdateContent(con.Context(), webContent)
+	if err != nil {
+		return err
+	}
+
+	con.Log.Importantf("Content %s updated in website %s\n", contentId, websiteName)
+	return nil
+}
+
+// RemoveWebContentCmd - 删除网站内容
+func RemoveWebContentCmd(cmd *cobra.Command, con *repl.Console) error {
+	contentId := cmd.Flags().Arg(0)
+
+	webContent := &clientpb.WebContent{
+		Id: contentId,
+	}
+
+	_, err := con.Rpc.WebsiteRemoveContent(con.Context(), webContent)
+	if err != nil {
+		return err
+	}
+
+	con.Log.Importantf("Content %s removed\n", contentId)
+	return nil
+}
+
+// ListWebContentCmd - 列出网站内容
+func ListWebContentCmd(cmd *cobra.Command, con *repl.Console) error {
+	websiteName := cmd.Flags().Arg(0)
+
+	website := &clientpb.Website{
+		Name: websiteName,
+	}
+
+	contents, err := con.Rpc.ListWebContent(con.Context(), website)
+	if err != nil {
+		return err
+	}
+
+	if len(contents.Contents) == 0 {
+		con.Log.Importantf("No content found in website %s\n", websiteName)
+		return nil
+	}
+
+	var rowEntries []table.Row
+	tableModel := tui.NewTable([]table.Column{
+		table.NewColumn("ID", "ID", 8),
+		table.NewColumn("WebsiteName", "WebsiteName", 15),
+		table.NewColumn("ListenerID", "ListenerID", 15),
+		table.NewColumn("Path", "Path", 20),
+		table.NewColumn("Type", "Type", 10),
+		table.NewColumn("Size", "Size", 8),
+		table.NewColumn("ContentType", "ContentType", 30),
+	}, true)
+
+	for _, content := range contents.Contents {
+		row := table.NewRow(table.RowData{
+			"ID":          content.Id[:8],
+			"WebsiteName": content.WebsiteId,
+			"ListenerID":  content.ListenerId,
+			"Path":        content.Path,
+			"Type":        content.Type,
+			"Size":        strconv.FormatUint(content.Size, 10),
+			"ContentType": content.ContentType,
+		})
+		rowEntries = append(rowEntries, row)
+	}
+
+	tableModel.SetMultiline()
+	tableModel.SetRows(rowEntries)
+	fmt.Printf(tableModel.View())
+	return nil
 }

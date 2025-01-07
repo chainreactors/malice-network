@@ -1,31 +1,35 @@
 package sessions
 
 import (
+	"fmt"
 	"github.com/chainreactors/malice-network/client/command/addon"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/spf13/cobra"
 )
 
-func UseSessionCmd(cmd *cobra.Command, con *repl.Console) {
+func UseSessionCmd(cmd *cobra.Command, con *repl.Console) error {
 	var session *core.Session
-	if session = con.GetSession(cmd.Flags().Arg(0)); session == nil {
-		con.Log.Errorf(repl.ErrNotFoundSession.Error())
-		return
+	sid := cmd.Flags().Arg(0)
+	var ok bool
+	var err error
+	if session, ok = con.GetLocalSession(sid); ok {
+		session, err = con.UpdateSession(sid)
+		if err != nil {
+			return err
+		}
 	}
-	session, err := con.UpdateSession(session.SessionId)
-	if err != nil {
-		con.Log.Errorf(err.Error())
+	if session == nil {
+		return fmt.Errorf("session %s not found", sid)
 	}
-
-	Use(con, session)
+	return Use(con, session)
 }
 
-func Use(con *repl.Console, sess *core.Session) {
-	err := addon.RefreshAddonCommand(sess.Addons.Addons, con)
+func Use(con *repl.Console, sess *core.Session) error {
+	err := addon.RefreshAddonCommand(sess.Addons, con)
 	if err != nil {
-		core.Log.Errorf(err.Error())
-		return
+		return err
 	}
 	con.SwitchImplant(sess)
+	return nil
 }

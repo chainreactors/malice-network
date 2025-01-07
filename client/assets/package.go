@@ -40,12 +40,13 @@ var (
 )
 
 type MalConfig struct {
-	//PublicKey        string `json:"public_key"`
-	RepoURL          string `json:"repo_url"`
-	Authorization    string `json:"authorization"`
-	AuthorizationCmd string `json:"authorization_cmd"`
-	Name             string `json:"name"`
-	Enabled          bool   `json:"enabled"`
+	RepoURL          string `yaml:"repo_url"`
+	Authorization    string `yaml:"authorization"`
+	AuthorizationCmd string `yaml:"authorization_cmd"`
+	Name             string `yaml:"name"`
+	Enabled          bool   `yaml:"enabled"`
+	Version          string `yaml:"version"`
+	Help             string `yaml:"help"`
 }
 
 func GetMalsConfig() []*MalConfig {
@@ -53,7 +54,7 @@ func GetMalsConfig() []*MalConfig {
 	if _, err := os.Stat(malConfigPath); os.IsNotExist(err) {
 		return []*MalConfig{DefaultMalConfig}
 	}
-	data, err := ioutil.ReadFile(malConfigPath)
+	data, err := os.ReadFile(malConfigPath)
 	if err != nil {
 		return []*MalConfig{DefaultMalConfig}
 	}

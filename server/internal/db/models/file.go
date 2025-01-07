@@ -3,7 +3,7 @@ package models
 import (
 	"encoding/json"
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"gorm.io/gorm"
 	"regexp"
 	"strconv"
@@ -87,11 +87,12 @@ func (f *File) ToFileProtobuf() *clientpb.File {
 		return &clientpb.File{}
 	}
 	return &clientpb.File{
-		TaskId: match[1],
-		Name:   file.Name,
-		Local:  file.Name,
-		TempId: file.NickName,
-		Remote: file.Path,
-		Op:     f.Type,
+		TaskId:    match[1],
+		Name:      file.Name,
+		Local:     file.Name,
+		TempId:    file.NickName,
+		Remote:    file.Path,
+		SessionId: f.SessionID,
+		Op:        f.Type,
 	}
 }

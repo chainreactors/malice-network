@@ -2,9 +2,9 @@ package rpc
 
 import (
 	"context"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/types"
-	"github.com/chainreactors/malice-network/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/proto/implant/implantpb"
 )
 
 func (rpc *Server) Kill(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
@@ -50,7 +50,7 @@ func (rpc *Server) Env(ctx context.Context, req *implantpb.Request) (*clientpb.T
 	return greq.Task.ToProtobuf(), nil
 }
 
-func (rpc *Server) Setenv(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
+func (rpc *Server) SetEnv(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err

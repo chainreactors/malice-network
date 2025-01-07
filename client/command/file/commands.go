@@ -2,17 +2,18 @@ package file
 
 import (
 	"fmt"
+	"path/filepath"
+
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/proto/services/clientrpc"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"path/filepath"
 )
 
 func Commands(con *repl.Console) []*cobra.Command {
@@ -21,9 +22,8 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Short: "Download file",
 		Long:  "download file in implant",
 		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			DownloadCmd(cmd, con)
-			return
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return DownloadCmd(cmd, con)
 		},
 		Annotations: map[string]string{
 			"depend": consts.ModuleDownload,
@@ -42,9 +42,8 @@ download ./file.txt
 		Short: "Upload file",
 		Long:  "upload local file to remote implant",
 		Args:  cobra.ExactArgs(2),
-		Run: func(cmd *cobra.Command, args []string) {
-			UploadCmd(cmd, con)
-			return
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return UploadCmd(cmd, con)
 		},
 		Annotations: map[string]string{
 			"depend": consts.ModuleUpload,
@@ -59,7 +58,7 @@ upload ./file.txt /tmp/file.txt
 		carapace.ActionValues().Usage("file target path"))
 
 	common.BindFlag(uploadCmd, func(f *pflag.FlagSet) {
-		f.IntP("priv", "", 0o644, "file privilege")
+		f.String("priv", "0644", "file privilege")
 		f.BoolP("hidden", "", false, "hidden file")
 	})
 
@@ -68,9 +67,8 @@ upload ./file.txt /tmp/file.txt
 		Short: "Sync file",
 		Long:  "sync download file in server",
 		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			SyncCmd(cmd, con)
-			return
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return SyncCmd(cmd, con)
 		},
 		Example: `~~~
 sync 1
@@ -78,7 +76,7 @@ sync 1
 	}
 
 	common.BindArgCompletions(syncCmd, nil,
-		carapace.ActionValues().Usage("file ID"))
+		common.SyncFileCompleter(con))
 
 	return []*cobra.Command{
 		downloadCmd,
@@ -100,12 +98,32 @@ func Register(con *repl.Console) {
 		return fmt.Sprintf("download block %d/%d success", content.Task.Cur, content.Task.Total), nil
 	})
 
+	con.AddCommandFuncHelper(
+		consts.ModuleDownload,
+		consts.ModuleDownload,
+		consts.ModuleDownload+"(active(),`file.txt`)",
+		[]string{
+			"session: special session",
+			"path: file path",
+		},
+		[]string{"task"})
+
 	con.RegisterImplantFunc(
 		consts.ModuleUpload,
 		Upload,
 		"bupload",
 		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string) (*clientpb.Task, error) {
-			return Upload(rpc, sess, path, filepath.Base(path), 0744, false)
+			return Upload(rpc, sess, path, filepath.Base(path), "0644", false)
+		},
+		common.ParseStatus,
+		nil)
+
+	con.RegisterImplantFunc(
+		"uploadraw",
+		UploadRaw,
+		"buploadraw",
+		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, data, target_path string) (*clientpb.Task, error) {
+			return UploadRaw(rpc, sess, data, target_path, "0644", false)
 		},
 		common.ParseStatus,
 		nil)
@@ -113,4 +131,28 @@ func Register(con *repl.Console) {
 	intermediate.RegisterInternalDoneCallback(consts.ModuleUpload, func(content *clientpb.TaskContext) (string, error) {
 		return fmt.Sprintf("upload block %d/%d success", content.Task.Cur, content.Task.Total), nil
 	})
+
+	con.AddCommandFuncHelper(
+		consts.ModuleUpload,
+		consts.ModuleUpload,
+		consts.ModuleUpload+`(active(),"/source/path","/target/path",parse_octal("644"),false)`,
+		[]string{
+			"session: special session",
+			"path: source path",
+			"target: target path",
+			"priv",
+			"hidden",
+		},
+		[]string{"task"})
+
+	con.AddCommandFuncHelper(
+		"bupload",
+		"bupload",
+		`bupload(active(),"/source/path")`,
+		[]string{
+			"session: special session",
+			"path: source path",
+		},
+		[]string{"task"})
+
 }

@@ -28,21 +28,14 @@ func GetAliasesDir() string {
 // GetInstalledAliasManifests - Returns a list of installed alias manifests
 func GetInstalledAliasManifests() []string {
 	aliasDir := GetAliasesDir()
-	aliasDirContent, err := os.ReadDir(aliasDir)
-	if err != nil {
-		logs.Log.Errorf("error loading aliases: %s", err)
-		return []string{}
-	}
-	manifests := []string{}
-	for _, fi := range aliasDirContent {
-		if fi.IsDir() {
-			manifestPath := filepath.Join(aliasDir, fi.Name(), "alias.json")
-			if _, err := os.Stat(manifestPath); os.IsNotExist(err) {
-				logs.Log.Errorf("no manifest in %s, skipping ...", manifestPath)
-				continue
-			}
-			manifests = append(manifests, manifestPath)
+	var manifests []string
+	for _, alias := range GetProfile().Aliases {
+		manifestPath := filepath.Join(aliasDir, alias, "alias.json")
+		if _, err := os.Stat(manifestPath); os.IsNotExist(err) {
+			logs.Log.Errorf("no manifest in %s, skipping ...\n", manifestPath)
+			continue
 		}
+		manifests = append(manifests, manifestPath)
 	}
 	return manifests
 }
@@ -63,21 +56,14 @@ func GetExtensionsDir() string {
 // GetInstalledExtensionManifests - Returns a list of installed extension manifests
 func GetInstalledExtensionManifests() []string {
 	extDir := GetExtensionsDir()
-	extDirContent, err := os.ReadDir(extDir)
-	if err != nil {
-		logs.Log.Errorf("error loading aliases: %s", err)
-		return []string{}
-	}
-	manifests := []string{}
-	for _, fi := range extDirContent {
-		if fi.IsDir() {
-			manifestPath := filepath.Join(extDir, fi.Name(), "extension.json")
-			if _, err := os.Stat(manifestPath); os.IsNotExist(err) {
-				logs.Log.Errorf("no manifest in %s, skipping ...", manifestPath)
-				continue
-			}
-			manifests = append(manifests, manifestPath)
+	var manifests []string
+	for _, extension := range GetProfile().Extensions {
+		manifestPath := filepath.Join(extDir, extension, "extension.json")
+		if _, err := os.Stat(manifestPath); os.IsNotExist(err) {
+			logs.Log.Errorf("no manifest in %s, skipping ...\n", manifestPath)
+			continue
 		}
+		manifests = append(manifests, manifestPath)
 	}
 	return manifests
 }
@@ -96,21 +82,14 @@ func GetMalsDir() string {
 
 func GetInstalledMalManifests() []string {
 	dir := GetMalsDir()
-	dirList, err := os.ReadDir(dir)
-	if err != nil {
-		logs.Log.Errorf("error loading aliases: %s", err)
-		return []string{}
-	}
-	manifests := []string{}
-	for _, fi := range dirList {
-		if fi.IsDir() {
-			manifestPath := filepath.Join(dir, fi.Name(), "mal.yaml")
-			if _, err := os.Stat(manifestPath); os.IsNotExist(err) {
-				logs.Log.Errorf("no manifest in %s, skipping ...", manifestPath)
-				continue
-			}
-			manifests = append(manifests, manifestPath)
+	var manifests []string
+	for _, mal := range GetProfile().Mals {
+		manifestPath := filepath.Join(dir, mal, "mal.yaml")
+		if _, err := os.Stat(manifestPath); os.IsNotExist(err) {
+			logs.Log.Errorf("no manifest in %s, skipping ...\n", manifestPath)
+			continue
 		}
+		manifests = append(manifests, manifestPath)
 	}
 	return manifests
 }

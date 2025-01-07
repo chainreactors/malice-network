@@ -14,8 +14,8 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Use:   consts.CommandExtension,
 		Short: "Extension commands",
 		Long:  "See Docs at https://sliver.sh/docs?name=Aliases%20and%20Extensions",
-		Run: func(cmd *cobra.Command, args []string) {
-			cmd.Help()
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return cmd.Help()
 		},
 	}
 
@@ -90,6 +90,6 @@ extension remove credman
 
 func Register(con *repl.Console) {
 	for name, ext := range loadedExtensions {
-		intermediate.RegisterInternalFunc(name, ext.Func, repl.WrapImplantCallback(common.ParseAssembly))
+		intermediate.RegisterInternalFunc(intermediate.ArmoryPackage, name, ext.Func, repl.WrapClientCallback(common.ParseAssembly))
 	}
 }

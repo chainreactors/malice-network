@@ -1,5 +1,7 @@
 package consts
 
+import "strings"
+
 var (
 	ModuleAliases = map[string]string{
 		ModuleAliasInlineShellcode: ModuleExecuteShellcode,
@@ -23,17 +25,27 @@ var (
 
 // client module and command
 const (
-	ModuleExplore              = "explorer"
+	// internal
+	ModulePing       = "ping"
+	ModuleClear      = "clear"
+	ModuleCancelTask = "cancel_task"
+	ModuleSleep      = "sleep"
+	ModuleSuicide    = "suicide"
+	ModuleInit       = "init"
+	//execute
 	ModuleAliasShell           = "shell"
 	ModuleAliasPowershell      = "powershell"
 	ModuleExecution            = "exec"
 	ModuleExecuteLocal         = "execute_local"
+	ModuleInlineLocal          = "inline_local"
 	ModuleExecuteAssembly      = "execute_assembly"
+	ModuleInlineAssembly       = "inline_assembly"
 	ModuleExecuteShellcode     = "execute_shellcode"
 	ModuleAliasInlineShellcode = "inline_shellcode"
 	ModuleExecuteExe           = "execute_exe"
 	ModuleAliasInlineExe       = "inline_exe"
 	ModuleExecuteDll           = "execute_dll"
+	ModuleDllSpawn             = "dllspawn"
 	ModuleAliasInlineDll       = "inline_dll"
 	ModuleExecuteBof           = "bof"
 	ModulePowerpick            = "powerpick"
@@ -53,32 +65,88 @@ const (
 	ModuleKill                 = "kill"
 	ModuleWhoami               = "whoami"
 	ModuleEnv                  = "env"
-	ModuleSetEnv               = "setenv"
-	ModuleUnsetEnv             = "unsetenv"
-	ModuleInfo                 = "info"
-	ModuleNetstat              = "netstat"
-	ModuleBypass               = "bypass"
-	ModuleCurl                 = "curl"
-	ModuleListModule           = "list_module"
-	ModuleLoadModule           = "load_module"
-	ModuleRefreshModule        = "refresh_module"
-	ModuleListAddon            = "list_addon"
-	ModuleLoadAddon            = "load_addon"
-	ModuleExecuteAddon         = "execute_addon"
-	ModuleClear                = "clear"
-	ModuleCancelTask           = "cancel_task"
+	ModuleSetEnv               = "env_set"
+	ModuleUnsetEnv             = "env_unset"
+
+	ModuleSysInfo = "sysinfo"
+	ModuleNetstat = "netstat"
+	ModuleBypass  = "bypass"
+	ModuleCurl    = "curl"
+
+	// module
+	ModuleListModule    = "list_module"
+	ModuleLoadModule    = "load_module"
+	ModuleRefreshModule = "refresh_module"
+
+	// addon
+	ModuleListAddon    = "list_addon"
+	ModuleLoadAddon    = "load_addon"
+	ModuleExecuteAddon = "execute_addon"
+
+	// registry
+	ModuleRegQuery     = "reg_query"
+	ModuleRegAdd       = "reg_add"
+	ModuleRegDelete    = "reg_delete"
+	ModuleRegListKey   = "reg_list_key"
+	ModuleRegListValue = "reg_list_value"
+
+	// service
+	ModuleServiceList   = "service_list"
+	ModuleServiceCreate = "service_create"
+	ModuleServiceQuery  = "service_query"
+	ModuleServiceStart  = "service_start"
+	ModuleServiceStop   = "service_stop"
+	ModuleServiceDelete = "service_delete"
+
+	// taskschd
+	ModuleTaskSchdList   = "taskschd_list"
+	ModuleTaskSchdCreate = "taskschd_create"
+	ModuleTaskSchdQuery  = "taskschd_query"
+	ModuleTaskSchdStart  = "taskschd_start"
+	ModuleTaskSchdStop   = "taskschd_stop"
+	ModuleTaskSchdDelete = "taskschd_delete"
+	ModuleTaskSchdRun    = "taskschd_run"
+
+	// wmi
+	ModuleWmiQuery = "wmi_query"
+	ModuleWmiExec  = "wmi_execute"
+
+	// pipe
+	ModulePipeUpload = "pipe_upload"
+	ModulePipeClose  = "pipe_close"
+	ModulePipeRead   = "pipe_read"
+
+	// privilege
+	ModuleRunas     = "runas"
+	ModulePrivs     = "privs"
+	ModuleGetSystem = "getsystem"
 )
+
+func SubCommandName(module string) string {
+	i := strings.Index(module, "_")
+	if i == -1 {
+		return module
+	} else {
+		return module[i+1:]
+	}
+}
 
 const (
 	CommandLogin            = "login"
 	CommandExit             = "exit"
-	CommandSessions         = "sessions"
+	CommandWait             = "wait"
+	CommandRecover          = "recover"
+	CommandPolling          = "polling"
+	CommandNewBindSession   = "newbind"
 	CommandTasks            = "tasks"
 	CommandFiles            = "files"
-	CommandNote             = "note"
-	CommandGroup            = "group"
+	CommandExplore          = "explorer"
+	CommandSession          = "session"
+	CommandSessionNote      = "note"
+	CommandSessionGroup     = "group"
 	CommandObverse          = "obverse"
-	CommandDelSession       = "del"
+	CommandHistory          = "history"
+	CommandRemoveSession    = "remove"
 	CommandUse              = "use"
 	CommandBackground       = "background"
 	CommandSync             = "sync"
@@ -105,21 +173,53 @@ const (
 	CommandMalList          = "list"
 	CommandMalInstall       = "install"
 	CommandMalRemove        = "remove"
-	CommandTcp              = "tcp"
+	CommandMalRefresh       = "refresh"
+	CommandPipelineTcp      = "tcp"
+	CommandPipelineBind     = "bind"
 	CommandWebsite          = "website"
 	CommandListener         = "listener"
 	CommandJob              = "job"
-	CommandRegister         = "register"
+	CommandPipeline         = "pipeline"
+	CommandPipelineNew      = "new"
+	CommandPipelineList     = "list"
 	CommandPipelineStart    = "start"
 	CommandPipelineStop     = "stop"
+	CommandPipelineDelete   = "delete"
+	CommandBuild            = "build"
+	CommandBuildPrelude     = "prelude"
+	CommandBuildBeacon      = "beacon"
+	CommandBuildBind        = "bind"
+	CommandBuildShellCode   = "shellcode"
+	CommandBuildModules     = "modules"
+	CommandBuildPulse       = "pulse"
+	CommandBuildLog         = "log"
+	CommandArtifact         = "artifact"
+	CommandArtifactList     = "list"
+	CommandArtifactDownload = "download"
+	CommandArtifactUpload   = "upload"
+	CommandArtifactDelete   = "delete  "
+	CommandProfile          = "profile"
+	CommandProfileList      = "list"
+	CommandProfileLoad      = "load"
+	CommandProfileNew       = "new"
+	CommandProfileDelete    = "delete"
+	CommandSRDI             = "srdi"
+	CommandDonut            = "donut"
+	CommandReg              = "reg"
+	CommandRegExplorer      = "reg_explorer"
+	CommandService          = "service"
+	CommandTaskSchd         = "taskschd"
+	CommandPipe             = "pipe"
+	CommandAction           = "action"
+	CommandActionRun        = "run"
+	CommandActionEnable     = "enable"
+	CommandActionDisable    = "disable"
+	CommandActionList       = "list"
 )
 
-// task error
 const (
-	TaskErrorOperatorError       = 2
-	TaskErrorNotExpectBody       = 3
-	TaskErrorFieldRequired       = 4
-	TaskErrorFieldLengthMismatch = 5
-	TaskErrorFieldInvalid        = 6
-	TaskError                    = 99
+	OPSecLOW   = "low"
+	OPSecMID   = "mid"
+	OPSecHIGH  = "high"
+	OPSecOPsec = "opsec"
 )

@@ -1,4 +1,7 @@
 .idea/
 bin/
+dist/
 go.sum
-/external
+*.exe
+*.bin
+*.so

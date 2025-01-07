@@ -6,6 +6,7 @@ import (
 	"github.com/chainreactors/tui"
 	"github.com/charmbracelet/glamour"
 	"github.com/muesli/termenv"
+	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"io"
 	"os"
@@ -13,12 +14,13 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"text/template"
 	"time"
 	"unicode"
 )
 
-var templateFuncs = template.FuncMap{
+var TemplateFuncs = template.FuncMap{
 	"trim":                    strings.TrimSpace,
 	"trimRightSpace":          trimRightSpace,
 	"trimTrailingWhitespaces": trimRightSpace,
@@ -27,6 +29,9 @@ var templateFuncs = template.FuncMap{
 	"gt":                      Gt,
 	"eq":                      Eq,
 	"FlagUsages":              FlagUsages,
+	"RenderOpsec":             renderOpsec,
+	"RenderMarkdown":          renderMarkdownFunc,
+	"TrimParentCommand":       trimParentCommand,
 }
 
 var initializers []func()
@@ -37,6 +42,23 @@ const (
 	defaultCommandSorting   = true
 	defaultCaseInsensitive  = false
 	defaultTraverseRunHooks = false
+)
+
+var (
+	profile   = termenv.ColorProfile()
+	Blue      = profile.Color("#3398DA")
+	Yellow    = profile.Color("#F1C40F")
+	Purple    = profile.Color("#8D44AD")
+	Green     = profile.Color("#2FCB71")
+	Red       = profile.Color("#E74C3C")
+	Gray      = profile.Color("#BDC3C7")
+	DarkGray  = profile.Color("#808080")
+	Cyan      = profile.Color("#1ABC9C")
+	Orange    = profile.Color("#E67E22")
+	Black     = profile.Color("#000000")
+	Pink      = profile.Color("#EE82EE")
+	SlateBlue = profile.Color("#6A5ACD")
+	White     = profile.Color("#FFFFFF")
 )
 
 // EnablePrefixMatching allows setting automatic prefix matching. Automatic prefix matching can be a dangerous thing
@@ -73,14 +95,14 @@ var MousetrapDisplayDuration = 5 * time.Second
 // AddTemplateFunc adds a template function that's available to Usage and Help
 // template generation.
 func AddTemplateFunc(name string, tmplFunc interface{}) {
-	templateFuncs[name] = tmplFunc
+	TemplateFuncs[name] = tmplFunc
 }
 
 // AddTemplateFuncs adds multiple template functions that are available to Usage and
 // Help template generation.
 func AddTemplateFuncs(tmplFuncs template.FuncMap) {
 	for k, v := range tmplFuncs {
-		templateFuncs[k] = v
+		TemplateFuncs[k] = v
 	}
 }
 
@@ -169,7 +191,7 @@ func rpad(s string, padding int) string {
 // tmpl executes the given template text on data, writing the result to w.
 func tmpl(w io.Writer, text string, data interface{}) error {
 	t := template.New("top")
-	t.Funcs(templateFuncs)
+	t.Funcs(TemplateFuncs)
 	template.Must(t.Parse(text))
 	return t.Execute(w, data)
 }
@@ -235,23 +257,31 @@ func WriteStringAndCheck(b io.StringWriter, s string) {
 func FlagUsages(f *pflag.FlagSet) string {
 	var s strings.Builder
 	f.VisitAll(func(flag *pflag.Flag) {
-		// 每个 flag 的前面添加 '* ' 来表示无序列表
-		fmt.Fprintf(&s, "* -%s, --%s: %s (default: %s)\n", flag.Shorthand, flag.Name, flag.Usage, flag.DefValue)
+		if flag.Shorthand == "" {
+			fmt.Fprintf(&s, "* \t --%s: %s (default: %s)\n", flag.Name, flag.Usage, flag.DefValue)
+		} else {
+			fmt.Fprintf(&s, "* -%s, --%s: %s (default: %s)\n", flag.Shorthand, flag.Name, flag.Usage, flag.DefValue)
+		}
 	})
 	return s.String()
 }
 
-// renderMarkdown
 func renderMarkdown(markdownContent string) string {
-	r, err := glamour.NewTermRenderer(glamour.WithAutoStyle())
+	r, err := glamour.NewTermRenderer(
+		glamour.WithAutoStyle(),
+		glamour.WithColorProfile(termenv.ANSI),
+		glamour.WithEmoji(),
+	)
 	if err != nil {
 		return markdownContent
 	}
-	if rendered, err := r.Render(markdownContent); err == nil {
-		return rendered
-	} else {
+
+	rendered, err := r.Render(strings.TrimSpace(markdownContent))
+	if err != nil {
 		return markdownContent
 	}
+
+	return rendered
 }
 
 // removeImages
@@ -280,14 +310,59 @@ func FormatHelpTmpl(helpStr string) string {
 		Normal:    tui.Normal,
 		Bold:      tui.Bold,
 		Underline: tui.Underline,
-		Black:     termenv.String("").Foreground(tui.Black).String(),
-		Red:       termenv.String("").Foreground(tui.Red).String(),
-		Green:     termenv.String("").Foreground(tui.Green).String(),
-		Orange:    termenv.String("").Foreground(tui.Orange).String(),
-		Blue:      termenv.String("").Foreground(tui.Blue).String(),
-		Purple:    termenv.String("").Foreground(tui.Purple).String(),
-		Cyan:      termenv.String("").Foreground(tui.Cyan).String(),
-		Gray:      termenv.String("").Foreground(tui.Gray).String(),
+		Black:     termenv.String("").Foreground(Black).String(),
+		Red:       termenv.String("").Foreground(Red).String(),
+		Green:     termenv.String("").Foreground(Green).String(),
+		Orange:    termenv.String("").Foreground(Orange).String(),
+		Blue:      termenv.String("").Foreground(Blue).String(),
+		Purple:    termenv.String("").Foreground(Purple).String(),
+		Cyan:      termenv.String("").Foreground(Cyan).String(),
+		Gray:      termenv.String("").Foreground(Gray).String(),
 	})
 	return outputBuf.String()
+}
+
+var renderOpsec = func(opsecStr string, use string, padding int) string {
+	if opsecStr == "" {
+		opsecStr = "0.0"
+	}
+
+	coloredText := RenderOpsec(opsecStr, use)
+	return coloredText
+}
+
+var (
+	renderer     *glamour.TermRenderer
+	rendererOnce sync.Once
+)
+
+func getMarkdownRenderer() (*glamour.TermRenderer, error) {
+	var err error
+	rendererOnce.Do(func() {
+		renderer, err = glamour.NewTermRenderer(
+			glamour.WithAutoStyle(),
+			glamour.WithColorProfile(termenv.ANSI),
+			glamour.WithEmoji(),
+		)
+	})
+	return renderer, err
+}
+
+var renderMarkdownFunc = func(title string) string {
+	r, err := getMarkdownRenderer()
+	if err != nil {
+		return strings.TrimSpace(title)
+	}
+
+	rendered, err := r.Render(title)
+	if err != nil {
+		return strings.TrimSpace(title)
+	}
+
+	return strings.TrimSpace(rendered)
+}
+
+var trimParentCommand = func(useLine string, cmd *cobra.Command) string {
+	parentName := cmd.Parent().Name()
+	return strings.TrimPrefix(useLine, parentName+" ")
 }

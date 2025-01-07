@@ -1,0 +1,105 @@
+{"datetime":"2023-01-11T03:55:31.19768021+01:00","block":"multiple-ambiguous \"10.203.23.45\nanother test\""}
+{"datetime":"2023-01-11T04:19:34.996246836+01:00","block":"list-first 10.203.23.45 \"127.0.0.1 \nanother test\""}
+{"datetime":"2023-01-11T05:22:18.391148425+01:00","block":"multiple-ambiguous \"10.203.23.45 \nanother line\""}
+{"datetime":"2023-01-11T17:36:12.608735363+01:00","block":"multiple-ambiguous \"192.168.1.1 \ntesting that it works\nfine like this\" and shit like that"}
+{"datetime":"2023-01-11T23:48:06.79239968+01:00","block":"git command \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa another word here aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nanother testing here aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\""}
+{"datetime":"2023-01-12T00:09:40.826273519+01:00","block":"git \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa another word here aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nanother testing here aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \nanother try to check more than 3 lines\" here"}
+{"datetime":"2023-01-13T17:42:05.251704029+01:00","block":"git testing \"this string\nwith another string here that is longer\nand another one short\""}
+{"datetime":"2023-01-14T03:22:30.224150635+01:00","block":"git testing \"this string\nanother test with another string here that is longer another one\nand another one short\""}
+{"datetime":"2023-01-15T03:06:12.516821066+01:00","block":"git \"another\n\ntesting\n\nthis\""}
+{"datetime":"2023-01-15T07:30:08.742273898+01:00","block":"multiple-ambiguous \"10.203.23.45\nanother test\""}
+{"datetime":"2023-01-15T07:31:00.929042673+01:00","block":"multiple-ambiguous \"10.203.23.45\nanother test\""}
+{"datetime":"2023-01-15T09:46:52.147658459+01:00","block":"git testing \"this stringand another one short\" aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
+{"datetime":"2023-01-15T09:56:00.281185044+01:00","block":"git this sssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss"}
+{"datetime":"2023-01-15T10:00:55.285177188+01:00","block":"git testing thataaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
+{"datetime":"2023-01-15T10:04:31.337350601+01:00","block":"git anaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
+{"datetime":"2023-01-15T11:27:55.062589134+01:00","block":"git \"another\nis another sentence\nnot yet finished\""}
+{"datetime":"2023-01-16T05:59:19.888868992+01:00","block":"git \"test\nanother testing which\nworks quite fine here\""}
+{"datetime":"2023-01-16T05:59:52.488582649+01:00","block":"another \"testing string\nthat ends here and works\""}
+{"datetime":"2023-01-16T06:43:59.230557529+01:00","block":"git \"another\nis another sentence\nnot yet finished\""}
+{"datetime":"2023-01-17T03:04:40.384123964+01:00","block":"basic -f \"../another\nwhile that seems to work fine until now\nand that\""}
+{"datetime":"2023-01-17T06:00:47.489362454+01:00","block":"basic -f \"commands.go \nanother testing that now works fine !\nanother string\""}
+{"datetime":"2023-01-17T06:01:36.637208829+01:00","block":"basic -f \"commands.go \nanother one which works\nfine !\""}
+{"datetime":"2023-01-17T06:03:36.41657067+01:00","block":"basic -f \"commands.go \nanother testing\" string that works 'quite\nfine as well !'"}
+{"datetime":"2023-01-17T07:58:23.882655383+01:00","block":"basic -f \"commands.go \nanother strings\" -cp=/usr"}
+{"datetime":"2023-01-18T03:45:08.09073158+01:00","block":"git \"another\nanother one that \nis another sentence\nthis works\nnot yet finished\""}
+{"datetime":"2023-01-18T03:45:32.971677896+01:00","block":"rest-slice-max --help"}
+{"datetime":"2023-01-18T07:43:30.869057266+01:00","block":"git \"another\nthis works\nanother one that \nis another sentence\nnot yet finished\""}
+{"datetime":"2023-01-18T21:59:52.313129486+01:00","block":"basic -f \"commands.go \nanother strings\" -cp=/usr"}
+{"datetime":"2023-01-19T00:17:46.151917638+01:00","block":"basic -f \"commands.go,\nexample,prompt.go,menu.go\n,main.go\""}
+{"datetime":"2023-01-19T06:50:53.833642342+01:00","block":"git remote aaaaaaaaaaaaaaaaaaaaaaaaaa"}
+{"datetime":"2023-01-19T12:44:25.285698942+01:00","block":"basic -f \"commands.go\nanother\n\n\""}
+{"datetime":"2023-01-19T12:48:12.807773+01:00","block":"basic -f \"commands.go\n,interrupt.go \""}
+{"datetime":"2023-01-19T12:49:10.734811114+01:00","block":"basic -f \"commands.go \nanother\""}
+{"datetime":"2023-01-19T12:58:02.614569021+01:00","block":"basic -f \"commands.go,\ninterrupt.go\""}
+{"datetime":"2023-01-19T12:59:34.571425741+01:00","block":"basic -f \"commands.go,\n\ninterrupt.go\""}
+{"datetime":"2023-01-19T13:02:43.798614218+01:00","block":"basic -f \"commands.go,\ninterrupt.go\""}
+{"datetime":"2023-01-19T13:42:12.956859176+01:00","block":"basic -f \"commands.go \nanother one\nwhich\""}
+{"datetime":"2023-01-20T11:55:09.264838127+01:00","block":"basic -f \"commands.go \ncommands\nanother testing\n\ncommand\""}
+{"datetime":"2023-01-20T11:56:10.468538573+01:00","block":"git \"another\ntesting that\""}
+{"datetime":"2023-01-20T11:58:35.284480928+01:00","block":"basic -f \"commands.go \nanother testing\" --alternate \"another\nquote\" -c"}
+{"datetime":"2023-02-18T22:08:05.389983155+01:00","block":"basic -f \"commands.go\nanother\n\n\""}
+{"datetime":"2023-02-18T22:08:06.178742474+01:00","block":"basic -f \"commands.go\nanother\n\n\""}
+{"datetime":"2023-02-18T22:08:43.562258885+01:00","block":"basic -f \"commands.go \nanother \" --alternate \"another\nquote\" -c"}
+{"datetime":"2023-02-19T17:09:36.643284763+01:00","block":"multiple-ambiguous \"192.168.1.1 \ntesting that it works\nfine like this\" and shit like that"}
+{"datetime":"2023-02-20T00:48:52.132132415+01:00","block":"multiple-ambiguous \"192.168.1.1 ytesting that it works\nfine like this\" and shit like that"}
+{"datetime":"2023-02-20T15:11:17.745843452+01:00","block":"multiple-ambiguous \"192.168.1.1 ytesting that it yfine like this\" and shit like that"}
+{"datetime":"2023-02-20T15:11:56.689171231+01:00","block":"multiple-ambiguous \"192.168.1.1 \ntesting that it works\nfine like this\" and shit like that"}
+{"datetime":"2023-02-20T15:13:59.604190996+01:00","block":"multiple-ambiguous \"192.168.1.1 ytesting that it yfine like this\" and shit like that"}
+{"datetime":"2023-02-20T15:19:02.316732063+01:00","block":"multiple-ambiguous \"192.168.1.1 \ntesting that it works\nfine like this\" and shit like that"}
+{"datetime":"2023-02-20T15:19:15.10491494+01:00","block":"git \"another\ntesting that\""}
+{"datetime":"2023-02-20T15:19:34.402547081+01:00","block":"multiple-ambiguous \"192.168.1.1 \ntesting that it works\nfine like this\" and shit like that"}
+{"datetime":"2023-02-20T15:20:28.885131684+01:00","block":"basic --testing \"that\nit works fine\nand shit\" like this this"}
+{"datetime":"2023-02-20T15:20:37.217431158+01:00","block":"basic --testing \"that\nit works fine\nand this\""}
+{"datetime":"2023-04-01T21:02:02.10274848+02:00","block":"this is another test \"with\nquotes and shit that works\nfine\nanother string here\nenough like this\" and"}
+{"datetime":"2023-04-02T03:51:39.821059309+02:00","block":"this is another \"test\nwith quotes\nand shit\""}
+{"datetime":"2023-04-02T03:53:54.899748932+02:00","block":"this is \"another\nanother\none here with\nnewlines\""}
+{"datetime":"2023-04-02T04:08:30.666135761+02:00","block":"this is \"another\nanother one here\nthis is a test\ntest with\n\nthat\""}
+{"datetime":"2023-04-02T04:09:44.60884763+02:00","block":"this is \"another\nanother here working fine\ntest with\nenter\nand this works two\""}
+{"datetime":"2023-04-02T04:11:50.459688807+02:00","block":"this is \"another\nwhich works fine\nand that\n\ntest with\""}
+{"datetime":"2023-04-02T04:20:12.92327187+02:00","block":"y"}
+{"datetime":"2023-04-02T05:08:04.236419813+02:00","block":"this is \"another test\nwith that and this\nwith that and this\nwith that and this\nwith thiswith that and this\""}
+{"datetime":"2023-04-02T05:15:17.060884936+02:00","block":"another"}
+{"datetime":"2023-04-02T05:21:35.868740254+02:00","block":"testing that buffers work"}
+{"datetime":"2023-04-02T05:22:25.58063695+02:00","block":"testing that \"buffers work \nfine and that we can paste from\nthem\n\nor not\""}
+{"datetime":"2023-04-02T21:12:07.628306536+02:00","block":"this test is \"for visual selection\" and surround-type \"shellwords 'with nested' quoting\""}
+{"datetime":"2023-04-04T01:43:26.709922729+02:00","block":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
+{"datetime":"2023-04-04T08:38:21.242637441+02:00","block":"this is another \"test\" # with comments\n# This is also a comment"}
+{"datetime":"2023-04-04T09:01:05.451164569+02:00","block":"this is another \"test\" # With comments\n# And here is another comment\nwhile \"this is another command\" # With a side comment\nwhile this is another one"}
+{"datetime":"2023-04-04T21:17:53.276423761+02:00","block":"ls /home/user"}
+{"datetime":"2023-04-05T23:54:15.612161067+02:00","block":"this is another test which"}
+{"datetime":"2023-04-05T23:55:48.913998456+02:00","block":"this is another another test which does not work and exec"}
+{"datetime":"2023-04-09T03:02:34.313724755+02:00","block":"basic -f ../console.wiki/Expansion-Completers.md -c -p/usr"}
+{"datetime":"2023-04-09T19:01:18.289852268+02:00","block":"basic -f ~/code/github.com/reeflective/console/console.wiki/Expansion-Completers.md"}
+{"datetime":"2023-04-09T23:50:41.16452954+02:00","block":"this is another another test which does not work and execki/Expansion-Completers.md"}
+{"datetime":"2023-04-10T02:13:34.688318916+02:00","block":"basic --email @mail.com"}
+{"datetime":"2023-04-11T00:32:02.218662759+02:00","block":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
+{"datetime":"2023-04-11T10:56:02.207397066+02:00","block":"basic --email user@mail.com --alternate example -cp=/dev/"}
+{"datetime":"2023-04-11T10:56:33.771495959+02:00","block":"basic --email user@mail.com --alternate example -cp"}
+{"datetime":"2023-04-15T20:21:04.926783918+02:00","block":"basic --files ../example/"}
+{"datetime":"2023-04-16T21:39:54.14110427+02:00","block":"multiple-ambiguous 10.203.23.45  127.0.0.1 added here"}
+{"datetime":"2023-04-16T21:41:23.263265233+02:00","block":"basic -p=/usr/"}
+{"datetime":"2023-04-23T19:55:59.373326369+02:00","block":"git testing \"this\nworks fine and it does\""}
+{"datetime":"2023-04-23T22:00:08.494805407+02:00","block":"multiple-ambiguous 10.203.23.45  127.0.0.1"}
+{"datetime":"2023-04-25T17:27:00.490171002+02:00","block":"basic --alternate"}
+{"datetime":"2023-04-25T17:41:42.66481256+02:00","block":"this is another test"}
+{"datetime":"2023-04-28T04:42:24.985114824+02:00","block":"this is a test"}
+{"datetime":"2023-04-29T06:24:01.496183686+02:00","block":"this another \"another one word\" and different-words for yanking 'and deleting' stuff"}
+{"datetime":"2023-05-01T11:06:29.331107357+02:00","block":"basic --alternat"}
+{"datetime":"2023-05-01T16:42:35.580460165+02:00","block":"git this is http://domain.word.com/url?key=value\u0026test=val,testingthis this word"}
+{"datetime":"2023-05-01T20:59:48.621791526+02:00","block":"git \"testing this\n\tanother string here\""}
+{"datetime":"2023-05-02T11:56:15.994834787+02:00","block":"client"}
+{"datetime":"2023-05-02T13:42:35.174213031+02:00","block":"this\ttesting that\tanother"}
+{"datetime":"2023-05-02T17:15:28.198885749+02:00","block":"git this is http://domain.word.com/url?key=value\u0026test=val,testingthis this word http://10.203.23.45:3999  127.0.0.1"}
+{"datetime":"2023-05-03T11:53:52.615117505+02:00","block":"basic --alternate test --email"}
+{"datetime":"2023-05-05T12:33:35.279499069+02:00","block":"git this is http://domain.word.com/url?key=value\u0026test=val,testingthis this word http://10.203.23.45:3999  127.0.0.1"}
+{"datetime":"2023-05-06T10:33:54.933490702+02:00","block":"valid-flags --elems"}
+{"datetime":"2023-05-07T08:28:09.323517912+02:00","block":"this is [ another ] test"}
+{"datetime":"2023-05-07T09:31:36.446616828+02:00","block":"this  is { another } test \"another\""}
+{"datetime":"2023-05-17T02:36:56.221339513+02:00","block":"help help"}
+{"datetime":"2023-05-17T02:36:59.298099991+02:00","block":"help client"}
+{"datetime":"2023-05-17T02:37:04.911736647+02:00","block":"help ignored"}
+{"datetime":"2023-05-17T02:49:26.611062064+02:00","block":"help client"}
+{"datetime":"2023-05-17T15:11:48.33711594+02:00","block":"this is a test line saved to history"}
+{"datetime":"2023-05-17T15:16:05.987285843+02:00","block":"client"}
+{"datetime":"2023-05-17T15:26:07.718906666+02:00","block":"another test"}

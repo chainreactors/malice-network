@@ -1,9 +1,10 @@
-package main
+package server
 
 import (
 	"errors"
+	"fmt"
+	"github.com/chainreactors/malice-network/helper/proto/client/rootpb"
 	"github.com/chainreactors/malice-network/helper/utils/mtls"
-	"github.com/chainreactors/malice-network/proto/client/rootpb"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/root"
@@ -43,7 +44,7 @@ func (opt *Options) Execute(args []string, parser *flags.Parser) error {
 		return nil
 	}
 	var err error
-	opt.localRpc, err = root.NewRootClient(opt.Server.Address())
+	opt.localRpc, err = root.NewRootClient(fmt.Sprintf("127.0.0.1:%d", opt.Server.GRPCPort))
 	if err != nil {
 		return err
 	}
@@ -78,7 +79,7 @@ func (opt *Options) InitUser() error {
 		return nil
 	}
 
-	client, err := root.NewRootClient(opt.Server.Address())
+	client, err := root.NewRootClient(fmt.Sprintf("127.0.0.1:%d", opt.Server.GRPCPort))
 	if err != nil {
 		return err
 	}
@@ -100,7 +101,7 @@ func (opt *Options) InitListener() error {
 		return nil
 	}
 
-	client, err := root.NewRootClient(opt.Server.Address())
+	client, err := root.NewRootClient(fmt.Sprintf("127.0.0.1:%d", opt.Server.GRPCPort))
 	if err != nil {
 		return err
 	}

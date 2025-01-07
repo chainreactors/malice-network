@@ -2,69 +2,65 @@ package rpc
 
 import (
 	"context"
+	"fmt"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/proto/implant/implantpb"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
+	"strings"
 
-	"github.com/chainreactors/malice-network/proto/listener/lispb"
 	"github.com/chainreactors/malice-network/server/internal/core"
 )
 
-func (rpc *Server) RegisterPipeline(ctx context.Context, req *lispb.Pipeline) (*implantpb.Empty, error) {
-	if req.GetTls().Enable && req.GetTls().Cert == "" && req.GetTls().Key == "" {
-		cert, key, err := certutils.GenerateTlsCert(req.GetTcp().Name, req.GetTcp().ListenerId)
+func (rpc *Server) RegisterPipeline(ctx context.Context, req *clientpb.Pipeline) (*clientpb.Empty, error) {
+	ip := getRemoteAddr(ctx)
+	ip = strings.Split(ip, ":")[0]
+	pipelineModel := models.FromPipelinePb(req, ip)
+	var err error
+	if pipelineModel.Tls.Enable && pipelineModel.Tls.Cert == "" && pipelineModel.Tls.Key == "" {
+		pipelineModel.Tls.Cert, pipelineModel.Tls.Key, err = certutils.GenerateTlsCert(pipelineModel.Name, pipelineModel.ListenerID)
 		if err != nil {
-			return &implantpb.Empty{}, err
+			return nil, err
 		}
-		req.GetTls().Cert = cert
-		req.GetTls().Key = key
 	}
-	err := db.CreatePipeline(req)
+	err = db.CreatePipeline(pipelineModel)
 	if err != nil {
-		return &implantpb.Empty{}, err
+		return nil, err
 	}
-	return &implantpb.Empty{}, nil
+	return &clientpb.Empty{}, nil
 }
 
-func (rpc *Server) ListTcpPipelines(ctx context.Context, req *lispb.ListenerName) (*lispb.Pipelines, error) {
-	var result []*lispb.Pipeline
-	pipelines, err := db.ListPipelines(req.Name, "tcp")
+func (rpc *Server) ListPipelines(ctx context.Context, req *clientpb.Listener) (*clientpb.Pipelines, error) {
+	var result []*clientpb.Pipeline
+	pipelines, err := db.ListPipelines(req.Id)
 	if err != nil {
-		return &lispb.Pipelines{}, err
+		return nil, err
 	}
 	for _, pipeline := range pipelines {
-		tcp := lispb.TCPPipeline{
-			Name:   pipeline.Name,
-			Host:   pipeline.Host,
-			Port:   uint32(pipeline.Port),
-			Enable: pipeline.Enable,
-		}
-		result = append(result, &lispb.Pipeline{
-			Body: &lispb.Pipeline_Tcp{
-				Tcp: &tcp,
-			},
-		})
+		result = append(result, pipeline.ToProtobuf())
 	}
-	return &lispb.Pipelines{Pipelines: result}, nil
+	return &clientpb.Pipelines{Pipelines: result}, nil
 }
 
-func (rpc *Server) StartTcpPipeline(ctx context.Context, req *lispb.CtrlPipeline) (*clientpb.Empty, error) {
-	pipelineDB, err := db.FindPipeline(req.Name, req.ListenerId)
+func (rpc *Server) StartPipeline(ctx context.Context, req *clientpb.CtrlPipeline) (*clientpb.Empty, error) {
+	pipelineDB, err := db.FindPipeline(req.Name)
 	if err != nil {
-		return &clientpb.Empty{}, err
+		return nil, err
 	}
-	pipeline := models.ToProtobuf(&pipelineDB)
-	pipeline.GetTcp().Enable = true
-	job := &core.Job{
+	pipelineDB.Enable = true
+	pipeline := pipelineDB.ToProtobuf()
+	listener := core.Listeners.Get(pipeline.ListenerId)
+	if listener == nil {
+		return nil, fmt.Errorf("listener %s not found", req.ListenerId)
+	}
+	listener.AddPipeline(pipeline)
+	core.Jobs.Add(&core.Job{
 		ID:      core.CurrentJobID(),
 		Message: pipeline,
-		Name:    pipeline.GetTcp().Name,
-	}
-	core.Jobs.Add(job)
-	ctrl := clientpb.JobCtrl{
+		Name:    pipeline.Name,
+	})
+	core.Jobs.Ctrl <- &clientpb.JobCtrl{
 		Id:   core.NextCtrlID(),
 		Ctrl: consts.CtrlPipelineStart,
 		Job: &clientpb.Job{
@@ -72,7 +68,6 @@ func (rpc *Server) StartTcpPipeline(ctx context.Context, req *lispb.CtrlPipeline
 			Pipeline: pipeline,
 		},
 	}
-	core.Jobs.Ctrl <- &ctrl
 	err = db.EnablePipeline(pipelineDB)
 	if err != nil {
 		return nil, err
@@ -80,13 +75,18 @@ func (rpc *Server) StartTcpPipeline(ctx context.Context, req *lispb.CtrlPipeline
 	return &clientpb.Empty{}, nil
 }
 
-func (rpc *Server) StopTcpPipeline(ctx context.Context, req *lispb.CtrlPipeline) (*clientpb.Empty, error) {
-	pipelineDB, err := db.FindPipeline(req.Name, req.ListenerId)
+func (rpc *Server) StopPipeline(ctx context.Context, req *clientpb.CtrlPipeline) (*clientpb.Empty, error) {
+	pipelineDB, err := db.FindPipeline(req.Name)
 	if err != nil {
 		return &clientpb.Empty{}, err
 	}
-	pipeline := models.ToProtobuf(&pipelineDB)
-	ctrl := clientpb.JobCtrl{
+	pipeline := pipelineDB.ToProtobuf()
+	listener := core.Listeners.Get(pipeline.ListenerId)
+	if listener == nil {
+		return nil, fmt.Errorf("listener %s not found", req.ListenerId)
+	}
+	listener.RemovePipeline(pipeline)
+	core.Jobs.Ctrl <- &clientpb.JobCtrl{
 		Id:   core.NextCtrlID(),
 		Ctrl: consts.CtrlPipelineStop,
 		Job: &clientpb.Job{
@@ -94,24 +94,35 @@ func (rpc *Server) StopTcpPipeline(ctx context.Context, req *lispb.CtrlPipeline)
 			Pipeline: pipeline,
 		},
 	}
-	core.Jobs.Ctrl <- &ctrl
-	err = db.UnEnablePipeline(pipelineDB)
+	err = db.DisablePipeline(pipelineDB)
 	if err != nil {
 		return nil, err
 	}
 	return &clientpb.Empty{}, nil
 }
 
-func (rpc *Server) ListJobs(ctx context.Context, req *clientpb.Empty) (*lispb.Pipelines, error) {
-	var pipelines []*lispb.Pipeline
-	for _, job := range core.Jobs.All() {
-		pipeline, ok := job.Message.(*lispb.Pipeline)
-		if !ok {
-			continue
-		}
-		if pipeline.GetTcp() != nil {
-			pipelines = append(pipelines, job.Message.(*lispb.Pipeline))
-		}
+func (rpc *Server) DeletePipeline(ctx context.Context, req *clientpb.CtrlPipeline) (*clientpb.Empty, error) {
+	pipelineDB, err := db.FindPipeline(req.Name)
+	if err != nil {
+		return &clientpb.Empty{}, err
 	}
-	return &lispb.Pipelines{Pipelines: pipelines}, nil
+	pipeline := pipelineDB.ToProtobuf()
+	listener := core.Listeners.Get(pipeline.ListenerId)
+	if listener == nil {
+		return nil, fmt.Errorf("listener %s not found", req.ListenerId)
+	}
+	listener.RemovePipeline(pipeline)
+	core.Jobs.Ctrl <- &clientpb.JobCtrl{
+		Id:   core.NextCtrlID(),
+		Ctrl: consts.CtrlPipelineStop,
+		Job: &clientpb.Job{
+			Id:       core.NextJobID(),
+			Pipeline: pipeline,
+		},
+	}
+	err = db.DeletePipeline(req.Name)
+	if err != nil {
+		return nil, err
+	}
+	return &clientpb.Empty{}, nil
 }

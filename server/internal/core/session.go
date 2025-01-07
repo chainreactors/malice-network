@@ -2,17 +2,24 @@ package core
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/proto/listener/lispb"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/server/internal/configs"
+	"github.com/chainreactors/malice-network/server/internal/db"
+	"github.com/chainreactors/malice-network/server/internal/db/content"
+	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"github.com/gookit/config/v2"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/proto"
+	"os"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -20,9 +27,7 @@ import (
 
 var (
 	// Sessions - Manages implant connections
-	Sessions = &sessions{
-		active: &sync.Map{},
-	}
+	Sessions         *sessions
 	ExtensionModules = []string{consts.ModuleExecuteBof, consts.ModuleExecuteDll}
 	// ErrUnknownMessageType - Returned if the implant did not understand the message for
 	//                         example when the command is not supported on the platform
@@ -32,121 +37,343 @@ var (
 	ErrImplantSendTimeout = errors.New("implant timeout")
 )
 
-func NewSession(req *lispb.RegisterSession) *Session {
-	sess := &Session{
-		Name:       req.RegisterData.Name,
-		Group:      "default",
-		ProxyURL:   req.RegisterData.Proxy,
-		Modules:    req.RegisterData.Module,
-		Addons:     req.RegisterData.Addon,
-		ID:         req.SessionId,
-		PipelineID: req.ListenerId,
-		RemoteAddr: req.RemoteAddr,
-		Timer:      req.RegisterData.Timer,
-		Tasks:      &Tasks{active: &sync.Map{}},
-		Cache:      NewCache(10*consts.KB, path.Join(configs.CachePath, req.SessionId+".gob")),
-		responses:  &sync.Map{},
+func NewSessions() *sessions {
+	newSessions := &sessions{
+		active: &sync.Map{},
 	}
+	_, err := GlobalTicker.Start(consts.DefaultCacheInterval, func() {
+		for _, session := range newSessions.All() {
+			sessModel := session.ToModel()
+			if !session.isAlived() {
+				sessModel.IsAlive = false
+				session.Publish(consts.CtrlSessionLeave, fmt.Sprintf("session %s from %s at %s has leaved ", session.ID, session.Target, session.PipelineID), true, true)
+				newSessions.Remove(session.ID)
+			}
+			err := db.Session().Save(sessModel).Error
+			if err != nil {
+				logs.Log.Errorf("update session %s info failed in db, %s", session.ID, err.Error())
+			}
+		}
 
+	})
+	if err != nil {
+		logs.Log.Errorf("cannot start ticker, %s", err.Error())
+	}
+	Sessions = newSessions
+	return newSessions
+}
+
+func RegisterSession(req *clientpb.RegisterSession) (*Session, error) {
+	cache := NewCache(path.Join(configs.CachePath, req.SessionId))
+	err := cache.Save()
+	if err != nil {
+		return nil, err
+	}
+	sess := &Session{
+		Type:           req.Type,
+		Name:           req.RegisterData.Name,
+		Group:          "default",
+		ID:             req.SessionId,
+		RawID:          req.RawId,
+		PipelineID:     req.PipelineId,
+		ListenerID:     req.ListenerId,
+		Target:         req.Target,
+		Tasks:          NewTasks(),
+		SessionContext: content.NewSessionContext(req),
+		Taskseq:        1,
+		Cache:          cache,
+		responses:      &sync.Map{},
+	}
+	logDir := filepath.Join(configs.LogPath, sess.ID)
+	err = os.MkdirAll(logDir, os.ModePerm)
+	if err != nil {
+		logs.Log.Errorf("cannot create log directory %s, %s", logDir, err.Error())
+	}
 	if req.RegisterData.Sysinfo != nil {
 		sess.UpdateSysInfo(req.RegisterData.Sysinfo)
 	}
 
-	return sess
+	return sess, nil
+}
+
+func RecoverSession(sess *clientpb.Session) (*Session, error) {
+	cache := NewCache(path.Join(configs.CachePath, sess.SessionId))
+	err := cache.Load()
+	if err != nil {
+		return nil, err
+	}
+	s := &Session{
+		Type:        sess.Type,
+		Name:        sess.Name,
+		Note:        sess.Note,
+		Group:       sess.GroupName,
+		ID:          sess.SessionId,
+		RawID:       sess.RawId,
+		PipelineID:  sess.PipelineId,
+		Target:      sess.Target,
+		Initialized: sess.IsInitialized,
+		LastCheckin: sess.LastCheckin,
+		Tasks:       NewTasks(),
+		SessionContext: &content.SessionContext{SessionInfo: &content.SessionInfo{
+			Os:       sess.Os,
+			Process:  sess.Process,
+			Interval: sess.Timer.Interval,
+			Jitter:   sess.Timer.Jitter,
+		},
+			Modules: sess.Modules,
+			Addons:  sess.Addons,
+		},
+		Taskseq:   1,
+		Cache:     cache,
+		responses: &sync.Map{},
+	}
+	tasks, tid, err := db.FindTaskAndMaxTasksID(s.ID)
+	if err != nil {
+		return nil, err
+	}
+	if len(tasks) == 0 {
+		logID, err := s.RecoverTaskIDByLog()
+		if err != nil {
+			return nil, err
+		}
+		tid = max(tid, uint32(logID))
+	}
+	s.Taskseq = tid
+	for _, task := range tasks {
+		taskPb := task.ToProtobuf()
+		s.Tasks.Add(FromTaskProtobuf(taskPb))
+	}
+	err = s.Recover()
+	if err != nil {
+		return nil, err
+	}
+	return s, nil
 }
 
 // Session - Represents a connection to an implant
 type Session struct {
-	PipelineID string
-	ListenerID string
-	ID         string
-	Name       string
-	Group      string
-	RemoteAddr string
-	Os         *implantpb.Os
-	Process    *implantpb.Process
-	Timer      *implantpb.Timer
-	Filepath   string
-	WordDir    string
-	ProxyURL   string
-	Modules    []string
-	Addons     *implantpb.Addons
-	Locale     string
-	Tasks      *Tasks // task manager
-	taskseq    uint32
+	Type        string
+	PipelineID  string
+	ListenerID  string
+	ID          string
+	RawID       uint32
+	Name        string
+	Group       string
+	Note        string
+	Target      string
+	Initialized bool
+	LastCheckin int64
+	Tasks       *Tasks // task manager
+	*content.SessionContext
+
 	*Cache
+	Taskseq   uint32
 	responses *sync.Map
-	log       *logs.Logger
+	rpcLog    *logs.Logger
 }
 
-func (s *Session) Logger() *logs.Logger {
+func (s *Session) Abstract() string {
+	return fmt.Sprintf("%s(%s) %s-%s %s", s.Name, s.ID, s.Os.Name, s.Os.Arch, s.Os.Username)
+}
+
+func (s *Session) RpcLogger() *logs.Logger {
 	var err error
-	if s.log == nil {
-		if auditLevel := config.Int(consts.AuditLevel); auditLevel > 0 {
-			s.log, err = logs.NewFileLogger(filepath.Join(configs.AuditPath, s.ID+".log"))
+	if s.rpcLog == nil {
+		if auditLevel := config.Int(consts.ConfigAuditLevel); auditLevel > 0 {
+			s.rpcLog, err = logs.NewFileLogger(filepath.Join(configs.AuditPath, s.ID+".log"))
 			if err == nil {
-				s.log.SuffixFunc = func() string {
+				s.rpcLog.SuffixFunc = func() string {
 					return time.Now().Format("2006-01-02 15:04.05")
 				}
 				if auditLevel == 2 {
-					s.log.SetLevel(logs.Debug)
+					s.rpcLog.SetLevel(logs.Debug)
 				}
 			}
 		}
 	}
-	return s.log
+	return s.rpcLog
 }
 
-func (s *Session) ToProtobuf() *clientpb.Session {
-	currentTime := time.Now()
-	timeDiff := currentTime.Unix() - int64(s.Timer.LastCheckin)
-	isAlive := uint64(timeDiff*1000) <= s.Timer.Interval*10
-	return &clientpb.Session{
-		SessionId:  s.ID,
-		Note:       s.Name,
-		GroupName:  s.Group,
-		IsAlive:    isAlive,
-		RemoteAddr: s.RemoteAddr,
-		ListenerId: s.PipelineID,
-		Os:         s.Os,
-		Process:    s.Process,
-		Timer:      s.Timer,
-		Tasks:      s.Tasks.ToProtobuf(),
-		Modules:    s.Modules,
-		Addons:     s.Addons,
+func (s *Session) TaskLog(task *Task, spite *implantpb.Spite) error {
+	data, err := proto.Marshal(spite)
+	if err != nil {
+		return err
+	}
+	filePath := filepath.Join(configs.LogPath, s.ID, fmt.Sprintf("%d_%d", task.Id, task.Cur))
+	f, err := os.OpenFile(filePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	_, err = f.Write(data)
+	return err
+}
+
+func (s *Session) Recover() error {
+	tasks, err := db.GetAllTask()
+	if err != nil {
+		return err
+	}
+	for _, task := range tasks.Tasks {
+		if task.Cur < task.Total {
+			ch := make(chan *implantpb.Spite, 16)
+			s.responses.Store(task, ch)
+		}
+	}
+
+	return nil
+}
+
+func (s *Session) RecoverTaskIDByLog() (int, error) {
+	files, err := os.ReadDir(filepath.Join(configs.LogPath, s.ID))
+	if err != nil {
+		return 0, err
+	}
+
+	maxTaskID := 0
+
+	for _, file := range files {
+		parts := strings.Split(file.Name(), "_")
+		if len(parts) < 2 {
+			continue
+		}
+
+		taskID, err := strconv.Atoi(parts[0])
+		if err != nil {
+			continue
+		}
+		if taskID > maxTaskID {
+			maxTaskID = taskID
+		}
+	}
+
+	return maxTaskID, nil
+}
+
+func (s *Session) isAlived() bool {
+	if s.Type == consts.BindPipeline {
+		return true
+	} else {
+		return time.Now().Unix()-s.LastCheckin <= (1+int64(s.Interval))*5
 	}
 }
 
-func (s *Session) Update(req *lispb.RegisterSession) {
+func (s *Session) ToProtobuf() *clientpb.Session {
+	return &clientpb.Session{
+		Type:        s.Type,
+		SessionId:   s.ID,
+		RawId:       s.RawID,
+		Note:        s.Name,
+		GroupName:   s.Group,
+		IsAlive:     s.isAlived(),
+		IsPrivilege: s.IsPrivilege,
+		Target:      s.Target,
+		PipelineId:  s.PipelineID,
+		ListenerId:  s.ListenerID,
+		Os:          s.Os,
+		Process:     s.Process,
+		LastCheckin: s.LastCheckin,
+		Timer:       &implantpb.Timer{Interval: s.Interval, Jitter: s.Jitter},
+		Tasks:       s.Tasks.ToProtobuf(),
+		Modules:     s.Modules,
+		Addons:      s.Addons,
+	}
+}
+
+func (s *Session) ToProtobufLite() *clientpb.Session {
+	return &clientpb.Session{
+		Type:        s.Type,
+		SessionId:   s.ID,
+		RawId:       s.RawID,
+		Note:        s.Name,
+		GroupName:   s.Group,
+		IsPrivilege: s.IsPrivilege,
+		Target:      s.Target,
+		PipelineId:  s.PipelineID,
+		ListenerId:  s.ListenerID,
+		Os:          s.Os,
+		Process:     s.Process,
+		LastCheckin: s.LastCheckin,
+		Timer:       &implantpb.Timer{Interval: s.Interval, Jitter: s.Jitter},
+		Modules:     s.Modules,
+		Addons:      s.Addons,
+	}
+}
+
+func (s *Session) ToModel() *models.Session {
+	contextContent, err := json.Marshal(s)
+	if err != nil {
+		return nil
+	}
+	sessPb := s.ToProtobuf()
+	return &models.Session{
+		SessionID:   s.ID,
+		RawID:       s.RawID,
+		CreatedAt:   time.Now(),
+		Note:        s.Name,
+		GroupName:   s.Group,
+		Target:      s.Target,
+		Initialized: s.Initialized,
+		Type:        s.Type,
+		IsPrivilege: s.IsPrivilege,
+		PipelineID:  s.PipelineID,
+		ListenerID:  s.ListenerID,
+		IsAlive:     true,
+		Context:     string(contextContent),
+		LastCheckin: s.LastCheckin,
+		Interval:    s.Interval,
+		Jitter:      s.Jitter,
+		Os:          models.FromOsPb(sessPb.Os),
+		Process:     models.FromProcessPb(sessPb.Process),
+	}
+}
+
+func (s *Session) Update(req *clientpb.RegisterSession) {
 	s.Name = req.RegisterData.Name
 	s.ProxyURL = req.RegisterData.Proxy
-	s.Modules = req.RegisterData.Module
-	s.Addons = req.RegisterData.Addon
-	s.Timer = req.RegisterData.Timer
+	s.Interval = req.RegisterData.Timer.Interval
+	s.Jitter = req.RegisterData.Timer.Jitter
+	s.SessionContext.Update(req)
 
 	if req.RegisterData.Sysinfo != nil {
+		if !s.Initialized {
+			s.Publish(consts.CtrlSessionInit, fmt.Sprintf("session %s init", s.ID), true, true)
+		}
 		s.UpdateSysInfo(req.RegisterData.Sysinfo)
 	}
 }
 
 func (s *Session) UpdateSysInfo(info *implantpb.SysInfo) {
+	s.Initialized = true
 	info.Os.Name = strings.ToLower(info.Os.Name)
 	if info.Os.Name == "windows" {
-		info.Os.Arch = consts.FormatWindowsArch(info.Os.Arch)
+		info.Os.Arch = consts.FormatArch(info.Os.Arch)
 	}
+	s.IsPrivilege = info.IsPrivilege
 	s.Filepath = info.Filepath
 	s.WordDir = info.Workdir
 	s.Os = info.Os
 	s.Process = info.Process
 }
 
+func (s *Session) Publish(Op string, msg string, notify bool, important bool) {
+	EventBroker.Publish(Event{
+		EventType: consts.EventSession,
+		Op:        Op,
+		Session:   s.ToProtobuf(),
+		IsNotify:  notify,
+		Message:   msg,
+		Important: true,
+	})
+}
+
 func (s *Session) nextTaskId() uint32 {
-	s.taskseq++
-	return s.taskseq
+	s.Taskseq++
+	return s.Taskseq
 }
 
 func (s *Session) SetLastTaskId(id uint32) {
-	s.taskseq = id
+	s.Taskseq = id
 }
 
 func (s *Session) NewTask(name string, total int) *Task {
@@ -156,11 +383,10 @@ func (s *Session) NewTask(name string, total int) *Task {
 		Id:        s.nextTaskId(),
 		SessionId: s.ID,
 		Session:   s,
-		DoneCh:    make(chan bool, total),
+		DoneCh:    make(chan bool),
 	}
 	task.Ctx, task.Cancel = context.WithCancel(context.Background())
 	s.Tasks.Add(task)
-	go task.Handler()
 	return task
 }
 
@@ -169,49 +395,34 @@ func (s *Session) AllTask() []*Task {
 }
 
 func (s *Session) UpdateLastCheckin() {
-	s.Timer.LastCheckin = uint64(time.Now().Unix())
+	s.LastCheckin = time.Now().Unix()
 }
 
 // Request
-func (s *Session) Request(msg *lispb.SpiteSession, stream grpc.ServerStream, timeout time.Duration) error {
-	var err error
-	done := make(chan struct{})
-	go func() {
-		err = stream.SendMsg(msg)
-		if err != nil {
-			logs.Log.Debugf(err.Error())
-			return
-		}
-		close(done)
-	}()
-	select {
-	case <-done:
-		if err != nil {
-			return err
-		}
-		return nil
-	case <-time.After(timeout):
-		return ErrImplantSendTimeout
+func (s *Session) Request(msg *clientpb.SpiteRequest, stream grpc.ServerStream) error {
+	err := stream.SendMsg(msg)
+	if err != nil {
+		return err
 	}
+	return nil
 }
 
-func (s *Session) RequestAndWait(msg *lispb.SpiteSession, stream grpc.ServerStream, timeout time.Duration) (*implantpb.Spite, error) {
-	ch := make(chan *implantpb.Spite)
-	s.StoreResp(msg.TaskId, ch)
-	err := s.Request(msg, stream, timeout)
+func (s *Session) RequestAndWait(msg *clientpb.SpiteRequest, stream grpc.ServerStream, timeout time.Duration) (*implantpb.Spite, error) {
+	ch := make(chan *implantpb.Spite, 16)
+	s.StoreResp(msg.Task.TaskId, ch)
+	err := s.Request(msg, stream)
 	if err != nil {
 		return nil, err
 	}
 	resp := <-ch
-	// todo save to database
 	return resp, nil
 }
 
 // RequestWithStream - 'async' means that the response is not returned immediately, but is returned through the channel 'ch
-func (s *Session) RequestWithStream(msg *lispb.SpiteSession, stream grpc.ServerStream, timeout time.Duration) (chan *implantpb.Spite, chan *implantpb.Spite, error) {
-	respCh := make(chan *implantpb.Spite)
-	s.StoreResp(msg.TaskId, respCh)
-	err := s.Request(msg, stream, timeout)
+func (s *Session) RequestWithStream(msg *clientpb.SpiteRequest, stream grpc.ServerStream, timeout time.Duration) (chan *implantpb.Spite, chan *implantpb.Spite, error) {
+	respCh := make(chan *implantpb.Spite, 16)
+	s.StoreResp(msg.Task.TaskId, respCh)
+	err := s.Request(msg, stream)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -221,10 +432,10 @@ func (s *Session) RequestWithStream(msg *lispb.SpiteSession, stream grpc.ServerS
 		defer close(respCh)
 		var c = 0
 		for spite := range in {
-			err := stream.SendMsg(&lispb.SpiteSession{
-				SessionId: s.ID,
-				TaskId:    msg.TaskId,
-				Spite:     spite,
+			err := stream.SendMsg(&clientpb.SpiteRequest{
+				Session: msg.Session,
+				Task:    msg.Task,
+				Spite:   spite,
 			})
 			if err != nil {
 				logs.Log.Debugf(err.Error())
@@ -237,10 +448,10 @@ func (s *Session) RequestWithStream(msg *lispb.SpiteSession, stream grpc.ServerS
 	return in, respCh, nil
 }
 
-func (s *Session) RequestWithAsync(msg *lispb.SpiteSession, stream grpc.ServerStream, timeout time.Duration) (chan *implantpb.Spite, error) {
-	respCh := make(chan *implantpb.Spite)
-	s.StoreResp(msg.TaskId, respCh)
-	err := s.Request(msg, stream, timeout)
+func (s *Session) RequestWithAsync(msg *clientpb.SpiteRequest, stream grpc.ServerStream, timeout time.Duration) (chan *implantpb.Spite, error) {
+	respCh := make(chan *implantpb.Spite, 16)
+	s.StoreResp(msg.Task.TaskId, respCh)
+	err := s.Request(msg, stream)
 	if err != nil {
 		return nil, err
 	}

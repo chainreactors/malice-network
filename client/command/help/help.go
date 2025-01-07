@@ -2,21 +2,45 @@ package help
 
 import (
 	"fmt"
+	"github.com/chainreactors/logs"
 	"github.com/spf13/cobra"
 	"strings"
+	"text/template"
 )
 
-var HelpTemplate = `## Description:
-{{with (or .Long .Short)}}{{. | trimTrailingWhitespaces}}
+func SetCustomHelpTemplate() (*template.Template, error) {
+	funcMap := TemplateFuncs
 
-{{end}}{{if or .Runnable .HasSubCommands}}{{.UsageString}}{{end}}`
+	customTemplate := `
+    {{RenderOpsec (or .Annotations.opsec "0.0") .Name .NamePadding}}
+
+{{RenderMarkdown "## Description:"}}
+{{with (or .Long .Short)}}{{RenderMarkdown (printf "%s" (trimTrailingWhitespaces .))}}{{end}}
+{{if or .Runnable .HasSubCommands}}{{ .UsageString}}{{end}}
+`
+
+	helpTmpl, err := template.New("helpTemplate").Funcs(funcMap).Parse(customTemplate)
+	if err != nil {
+		return nil, err
+	}
+	return helpTmpl, nil
+}
 
 func HelpFunc(cmd *cobra.Command, ss []string) {
 	var s strings.Builder
-	err := tmpl(&s, HelpTemplate, cmd)
+
+	helpTmpl, err := SetCustomHelpTemplate()
 	if err != nil {
-		fmt.Println(err)
+		logs.Log.Errorf("Error creating help template: %s", err)
 		return
 	}
-	fmt.Fprint(cmd.OutOrStdout(), renderMarkdown(s.String()))
+
+	err = helpTmpl.Execute(&s, cmd)
+	if err != nil {
+		logs.Log.Errorf("Error executing help template: %s", err)
+		return
+	}
+
+	fmt.Fprint(cmd.OutOrStdout(), s.String())
+	return
 }

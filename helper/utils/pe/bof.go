@@ -2,11 +2,13 @@ package pe
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/binary"
 	"fmt"
-	"github.com/gookit/goutil/encodes"
-	"golang.org/x/text/encoding/unicode"
 	"strconv"
+	"strings"
+
+	"golang.org/x/text/encoding/unicode"
 )
 
 type BOFArgsBuffer struct {
@@ -109,54 +111,62 @@ func (b *IoMBOFArgsBuffer) GetArgs() []string {
 	return b.Args
 }
 
+func PackArg(format byte, arg string) (string, error) {
+	switch format {
+	case 'b':
+		return PackBinary(arg), nil
+	case 'i':
+		return PackIntString(arg)
+	case 's':
+		return PackShortString(arg)
+	case 'z':
+		var packedData string
+		// Handler for packing empty strings
+		if len(arg) == 0 {
+			packedData = PackString("")
+		} else {
+			packedData = PackString(arg)
+		}
+		return packedData, nil
+	case 'Z':
+		var packedData string
+		if len(arg) == 0 {
+			packedData = PackWideString("")
+		} else {
+			packedData = PackWideString(arg)
+		}
+		return packedData, nil
+	default:
+		return "", fmt.Errorf("Data must be prefixed with 'b', 'i', 's','z', or 'Z'\n")
+	}
+}
 func PackArgs(data []string) ([]string, error) {
 	if len(data) == 0 {
 		return nil, nil
 	}
 
 	var args []string
+	var err error
 	for _, arg := range data {
-		switch arg[0] {
-		case 'b':
-			args = append(args, PackBinary(arg[1:]))
-		case 'i':
-			data, err := PackIntString(arg[1:])
-			if err != nil {
-				return nil, fmt.Errorf("Int packing error:\n INPUT: '%s'\n ERROR:%s\n", arg[1:], err)
-			}
-			args = append(args, data)
-		case 's':
-			data, err := PackShortString(arg[1:])
-			if err != nil {
-				return nil, fmt.Errorf("Short packing error:\n INPUT: '%s'\n ERROR:%s\n", arg[1:], err)
-			}
-			args = append(args, data)
-		case 'z':
-			var packedData string
-			// Handler for packing empty strings
-			if len(arg) < 2 {
-				packedData = PackString("")
-			} else {
-				packedData = PackString(arg[1:])
-			}
-			args = append(args, packedData)
-		case 'Z':
-			var packedData string
-			if len(arg) < 2 {
-				packedData = PackWideString("")
-			} else {
-				packedData = PackWideString(arg[1:])
-			}
-			args = append(args, packedData)
-		default:
-			return nil, fmt.Errorf("Data must be prefixed with 'b', 'i', 's','z', or 'Z'\n")
+		if len(arg) < 1 {
+			return nil, fmt.Errorf("'%' have not enough arguments", args)
 		}
+		format := arg[0]
+		packedArg := ""
+		if len(arg) > 1 {
+			packedArg = arg[1:]
+		}
+		arg, err = PackArg(format, packedArg)
+		if err != nil {
+			return nil, err
+		}
+		args = append(args, arg)
 	}
 	return args, nil
 }
 
 func PackBinary(data string) string {
-	return fmt.Sprintf(`bin:%s`, encodes.B64Encode(data))
+	return fmt.Sprintf(`bin:%s`, base64.StdEncoding.EncodeToString([]byte(data)))
 }
 
 func PackInt(i uint32) (string, error) {
@@ -189,4 +199,42 @@ func PackString(s string) string {
 
 func PackWideString(s string) string {
 	return fmt.Sprintf(`wstr:%s`, s)
+}
+
+const (
+	CALLBACK_OUTPUT      = 0
+	CALLBACK_SCREENSHOT  = 3
+	CALLBACK_ERROR       = 13
+	CALLBACK_OUTPUT_OEM  = 30
+	CALLBACK_OUTPUT_UTF8 = 32
+)
+
+type BOFResponse struct {
+	CallbackType uint8
+	OutputType   uint8
+	Length       uint32
+	Data         []byte
+}
+
+func (bof *BOFResponse) String() string {
+	switch bof.CallbackType {
+	case CALLBACK_OUTPUT, CALLBACK_OUTPUT_OEM, CALLBACK_OUTPUT_UTF8:
+		return string(bof.Data)
+	case CALLBACK_ERROR:
+		return fmt.Sprintf("Error: %s", string(bof.Data))
+	case CALLBACK_SCREENSHOT:
+		return "screenshot"
+	default:
+		return fmt.Sprintf("\nUnimplemented callback type ID: %d.\nData: %s", bof.CallbackType, bof.Data)
+	}
+}
+
+type BOFResponses []*BOFResponse
+
+func (bofs BOFResponses) String() string {
+	var s strings.Builder
+	for _, r := range bofs {
+		s.WriteString(r.String() + "\n")
+	}
+	return s.String()
 }

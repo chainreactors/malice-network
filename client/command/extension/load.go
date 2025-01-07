@@ -12,11 +12,11 @@ import (
 	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/utils/file"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
+	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/pe"
-	"github.com/chainreactors/malice-network/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/proto/services/clientrpc"
 	"github.com/chainreactors/tui"
 	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
@@ -134,7 +134,7 @@ func ExtensionLoadCmd(cmd *cobra.Command, con *repl.Console) {
 	}
 	// do not add if the command already exists
 	for _, extCmd := range manifest.ExtCommand {
-		if repl.CmdExists(extCmd.CommandName, con.ImplantMenu()) {
+		if repl.CmdExist(con.ImplantMenu(), extCmd.CommandName) {
 			con.Log.Errorf("%s command already exists\n", extCmd.CommandName)
 			confirmModel := tui.NewConfirm(fmt.Sprintf("%s command already exists. Overwrite?", extCmd.CommandName))
 			newConfirm := tui.NewModel(confirmModel, nil, false, true)
@@ -272,7 +272,14 @@ func ExtensionRegisterCommand(extCmd *ExtCommand, cmd *cobra.Command, con *repl.
 			return ExecuteExtension(rpc, sess, extensionCmd.Name(), args)
 		}, common.ParseAssembly),
 	}
+	profile := assets.GetProfile()
+	profile.AddExtension(extCmd.CommandName)
 	cmd.AddCommand(extensionCmd)
+	err := assets.SaveProfile(profile)
+	if err != nil {
+		con.Log.Errorf("Error saving profile: %s\n", err)
+		return
+	}
 }
 
 //func loadExtension(goos string, goarch string, extcmd *ExtCommand, con *console.Console) error {
@@ -460,7 +467,7 @@ func validManifest(manifest *ExtensionManifest) error {
 			if extFiles.Arch == "" {
 				return errors.New("missing `files.arch` field in extension manifest")
 			}
-			extFiles.Path = file.ResolvePath(extFiles.Path)
+			extFiles.Path = fileutils.ResolvePath(extFiles.Path)
 			if extFiles.Path == "" || extFiles.Path == "/" {
 				return errors.New("missing `files.path` field in extension manifest")
 			}
@@ -497,7 +504,7 @@ func makeExtPlatformFilters(ext *ExtCommand) map[string]string {
 	var arch []string
 	for _, file := range ext.Files {
 		all["os"] = file.OS
-		arch = append(arch, file.Arch)
+		arch = append(arch, consts.FormatArch(file.Arch))
 	}
 	all["arch"] = strings.Join(arch, ",")
 	all["depend"] = ext.DependsOn

@@ -10,32 +10,52 @@ import (
 )
 
 func Commands(con *repl.Console) []*cobra.Command {
-	sessionsCmd := &cobra.Command{
-		Use:   consts.CommandSessions,
-		Short: "List sessions",
+	sessCmd := &cobra.Command{
+		Use:   consts.CommandSession,
+		Short: "List and Choice sessions",
 		Long: `Display a table of active sessions on the server, 
 allowing you to navigate up and down to select a desired session. 
 Press the Enter key to use the selected session. 
 Use the -a or --all option to display all sessions, including those that have been disconnected.
 		`,
-		Run: func(cmd *cobra.Command, args []string) {
-			SessionsCmd(cmd, con)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return SessionsCmd(cmd, con)
 		},
 		Example: `~~~
 // List all active sessions
-sessions
+session
 
 // List all sessions, including those that have been disconnected
-sessions -a
+session -a
 ~~~`,
 	}
 
-	common.Bind("sessions", true, sessionsCmd, func(f *pflag.FlagSet) {
+	common.BindFlag(sessCmd, func(f *pflag.FlagSet) {
 		f.BoolP("all", "a", false, "show all sessions")
 	})
 
+	bindSessNewCmd := &cobra.Command{
+		Use:   consts.CommandNewBindSession + " [session]",
+		Short: "new bind session",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return NewBindSessionCmd(cmd, con)
+		},
+	}
+
+	common.BindFlag(bindSessNewCmd, func(f *pflag.FlagSet) {
+		f.StringP("name", "n", "", "session name")
+		f.StringP("target", "t", "", "session target")
+		f.String("pipeline", "", "pipeline id")
+		bindSessNewCmd.MarkFlagRequired("target")
+		bindSessNewCmd.MarkFlagRequired("pipeline")
+	})
+
+	common.BindFlagCompletions(bindSessNewCmd, func(comp carapace.ActionMap) {
+		comp["pipeline"] = common.AllPipelineCompleter(con)
+	})
+
 	noteCommand := &cobra.Command{
-		Use:   consts.CommandNote + " [note] [session]",
+		Use:   consts.CommandSessionNote + " [note] [session]",
 		Short: "add note to session",
 		Long: `Add a note to a session. If a note already exists, it will be updated. 
 When using an active session, only provide the new note.`,
@@ -60,14 +80,13 @@ note newNote
 	)
 
 	groupCommand := &cobra.Command{
-		Use:   consts.CommandGroup + " [group] [session]",
+		Use:   consts.CommandSessionGroup + " [group] [session]",
 		Short: "group session",
 		Long: `Add a session to a group. If the group does not exist, it will be created.
 When using an active session, only provide the group name.`,
 		Args: cobra.MaximumNArgs(2),
-		Run: func(cmd *cobra.Command, args []string) {
-			groupCmd(cmd, con)
-			return
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return groupCmd(cmd, con)
 		},
 		Example: `~~~
 // Add a session to a group
@@ -85,29 +104,29 @@ group newGroup
 	)
 
 	removeCommand := &cobra.Command{
-		Use:   consts.CommandDelSession + " [session]",
-		Short: "del session",
-		Long:  "Del a specified session.",
+		Use:   consts.CommandRemoveSession + " [session]",
+		Short: "remove session",
+		Long:  "Remove a specified session.",
 		Args:  cobra.MinimumNArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			removeCmd(cmd, con)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return removeCmd(cmd, con)
 		},
 		Example: `~~~
-// Delete a specified session
-del 08d6c05a21512a79a1dfeb9d2a8f262f
+// remove a specified session
+remove 08d6c05a21512a79a1dfeb9d2a8f262f
 ~~~`,
 	}
 
 	common.BindArgCompletions(removeCommand, nil, common.SessionIDCompleter(con))
 
+	sessCmd.AddCommand(bindSessNewCmd, noteCommand, groupCommand, removeCommand)
 	useCommand := &cobra.Command{
 		Use:   consts.CommandUse + " [session]",
 		Short: "Use session",
 		Long:  "use",
 		Args:  cobra.MinimumNArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			UseSessionCmd(cmd, con)
-			return
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return UseSessionCmd(cmd, con)
 		},
 	}
 
@@ -117,10 +136,8 @@ del 08d6c05a21512a79a1dfeb9d2a8f262f
 		Use:   consts.CommandBackground,
 		Short: "back to root context",
 		Long:  "Exit the current session and return to the root context.",
-		Run: func(cmd *cobra.Command, args []string) {
-			con.ActiveTarget.Background()
-			con.App.SwitchMenu(consts.ClientMenu)
-			return
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return BackGround(cmd, con)
 		},
 	}
 
@@ -128,8 +145,8 @@ del 08d6c05a21512a79a1dfeb9d2a8f262f
 		Use:   consts.CommandObverse,
 		Short: "observe manager",
 		Long:  "Control observers to listen session in the background.",
-		Run: func(cmd *cobra.Command, args []string) {
-			ObserveCmd(cmd, con)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return ObserveCmd(cmd, con)
 		},
 		Example: `~~~
 // List all observers
@@ -147,13 +164,23 @@ observe -r
 
 	common.BindArgCompletions(observeCmd, nil, common.SessionIDCompleter(con))
 
+	historyCommand := &cobra.Command{
+		Use:   consts.CommandHistory,
+		Short: "show log history",
+		Long:  "Displays the specified number of log lines of the current session.",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return historyCmd(cmd, con)
+		},
+	}
+
+	common.BindArgCompletions(historyCommand, nil, carapace.ActionValues().Usage("number of lines"))
+
 	return []*cobra.Command{
-		sessionsCmd,
-		noteCommand,
-		groupCommand,
-		removeCommand,
+		sessCmd,
 		backCommand,
 		useCommand,
 		observeCmd,
+		historyCommand,
 	}
 }
