@@ -254,3 +254,58 @@ func ParseGithubFlags(cmd *cobra.Command) (string, string, string, string) {
 	file, _ := cmd.Flags().GetString("workflowFile")
 	return owner, repo, token, file
 }
+
+func TelegramSet(f *pflag.FlagSet) {
+	f.Bool("telegram-enable", false, "enable telegram")
+	f.String("telegram-token", "", "telegram token")
+	f.Int64("telegram-chat-id", 0, "telegram chat id")
+}
+
+func DingTalkSet(f *pflag.FlagSet) {
+	f.Bool("dingtalk-enable", false, "enable dingtalk")
+	f.String("dingtalk-secret", "", "dingtalk secret")
+	f.String("dingtalk-token", "", "dingtalk token")
+}
+
+func LarkSet(f *pflag.FlagSet) {
+	f.Bool("lark-enable", false, "enable lark")
+	f.String("lark-webhook-url", "", "lark webhook url")
+}
+
+func ServerChanSet(f *pflag.FlagSet) {
+	f.Bool("serverchan-enable", false, "enable serverchan")
+	f.String("serverchan-url", "", "serverchan url")
+}
+
+func ParseNotifyFlags(cmd *cobra.Command) *clientpb.Notify {
+	telegramEnable, _ := cmd.Flags().GetBool("telegram-enable")
+	dingTalkEnable, _ := cmd.Flags().GetBool("dingtalk-enable")
+	larkEnable, _ := cmd.Flags().GetBool("lark-enable")
+	serverChanEnable, _ := cmd.Flags().GetBool("serverchan-enable")
+
+	telegramToken, _ := cmd.Flags().GetString("telegram-token")
+	telegramChatID, _ := cmd.Flags().GetInt64("telegram-chat-id")
+	dingTalkSecret, _ := cmd.Flags().GetString("dingtalk-secret")
+	dingTalkToken, _ := cmd.Flags().GetString("dingtalk-token")
+	larkWebhookURL, _ := cmd.Flags().GetString("lark-webhook-url")
+	serverChanURL, _ := cmd.Flags().GetString("serverchan-url")
+
+	notifyConfig := &clientpb.Notify{
+		TelegramEnable: telegramEnable,
+		TelegramApiKey: telegramToken,
+		TelegramChatId: telegramChatID,
+
+		DingtalkEnable: dingTalkEnable,
+		DingtalkSecret: dingTalkSecret,
+		DingtalkToken:  dingTalkToken,
+
+		LarkEnable:     larkEnable,
+		LarkWebhookUrl: larkWebhookURL,
+
+		ServerchanEnable: serverChanEnable,
+		ServerchanUrl:    serverChanURL,
+	}
+
+	return notifyConfig
+
+}
