@@ -52,8 +52,8 @@ func RegisterBofFunc(con *repl.Console) {
 			if err != nil {
 				return "", err
 			}
-
-			return bofResps.(pe.BOFResponses).String(), nil
+			results := bofResps.(pe.BOFResponses).Handler(content.Session)
+			return results, nil
 		})
 
 	con.AddCommandFuncHelper(
