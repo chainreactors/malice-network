@@ -10,11 +10,11 @@ import (
 )
 
 func OpsecConfirm(cmd *cobra.Command) error {
-	opsec, err := strconv.Atoi(cmd.Annotations["opsec"])
+	opsec, err := strconv.ParseFloat(cmd.Annotations["opsec"], 64)
 	if err != nil {
 		return err
 	}
-	threshold, err := strconv.Atoi(assets.GetProfile().Settings.OpsecThreshold)
+	threshold := assets.GetProfile().Settings.OpsecThreshold
 	if err != nil {
 		return err
 	}

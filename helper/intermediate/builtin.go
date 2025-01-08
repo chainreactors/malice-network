@@ -4,17 +4,20 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
-	"github.com/chainreactors/mals"
-	"github.com/kballard/go-shellquote"
 	"math/big"
 	"os"
+	"path/filepath"
 	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/chainreactors/mals"
+	"github.com/kballard/go-shellquote"
+
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/helper/encoders/hash"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
@@ -477,27 +480,39 @@ format_path("C:\\Windows\\System32\\calc.exe")
 		})
 
 	// timestamp
-	RegisterFunction("timestampMillis", func() int64 {
-		timestampMillis := time.Now().UnixNano() / int64(time.Millisecond)
-		return timestampMillis
+
+	RegisterFunction("timestamp", func() string {
+		return fmt.Sprintf("%d", time.Now().UnixNano()/int64(time.Millisecond))
 	})
+
+	RegisterFunction("timestamp_format", func(optionalFormat string) string {
+		return time.Now().Format(optionalFormat)
+	})
+
 	AddHelper(
-		"timestampMillis",
+		"timestamp",
 		&mals.Helper{
-			Group: GroupEncode,
-			Short: "get current timestamp in milliseconds",
-			Input: []string{},
-			Output: []string{
-				"int64",
-			},
-			Example: `timestampMillis()`,
-		})
-	// tstamp
-	RegisterFunction("tstamp", func(timestampMillis int64) string {
-		seconds := timestampMillis / 1000
-		nanoseconds := (timestampMillis % 1000) * int64(time.Millisecond)
-		t := time.Unix(seconds, nanoseconds)
-		return t.Format("01/02 15:04")
+			Group:   GroupEncode,
+			Short:   "Get current timestamp in milliseconds or formatted date string.",
+			Input:   []string{"string (optional, format)"},
+			Output:  []string{"string"},
+			Example: `timestampOrFormatted(), timestampOrFormatted("01/02 15:04")`,
+		},
+	)
+
+	RegisterFunction("is_full_path", func(path string) bool {
+		return fileutils.CheckFullPath(path)
+	})
+
+	RegisterFunction("get_sess_dir", func(sessid string) string {
+		session_dir := filepath.Join(assets.GetTempDir(), sessid)
+		if _, err := os.Stat(session_dir); os.IsNotExist(err) {
+			err = os.MkdirAll(session_dir, 0700)
+			if err != nil {
+				logs.Log.Errorf(err.Error())
+			}
+		}
+		return session_dir
 	})
 
 	// 0o744 0744

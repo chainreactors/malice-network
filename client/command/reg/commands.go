@@ -66,7 +66,7 @@ func Commands(con *repl.Console) []*cobra.Command {
   reg add HKEY_LOCAL_MACHINE\\SOFTWARE\\Example TestKey --string_value "example" --dword_value 1
   ~~~`,
 	}
-	common.BindFlag(regQueryCmd, func(f *pflag.FlagSet) {
+	common.BindFlag(regAddCmd, func(f *pflag.FlagSet) {
 		f.String("string_value", "", "String value to write")
 		f.BytesBase64("byte_value", []byte{}, "Byte array value to write")
 		f.Uint32("dword_value", 0, "DWORD value to write")
