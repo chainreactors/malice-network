@@ -5,7 +5,6 @@ go 1.22
 require (
 	filippo.io/age v1.1.1
 	github.com/chainreactors/logs v0.0.0-20241115105204-6132e39f5261
-	github.com/chainreactors/mals v0.0.0-20250106113216-39e0e8e7c342
 	github.com/chainreactors/tui v0.0.0-20241231072248-d5b3664065c4
 	github.com/chainreactors/utils v0.0.0-20241209140746-65867d2f78b2
 	github.com/charmbracelet/bubbletea v0.27.1
@@ -57,7 +56,7 @@ require (
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/blinkbean/dingtalk v1.1.3 // indirect
 	github.com/cbroglie/mustache v1.4.0 // indirect
-	github.com/chainreactors/files v0.2.0 // indirect
+	github.com/chainreactors/files v0.0.0-20240716182835-7884ee1e77f0 // indirect
 	github.com/charmbracelet/bubbles v0.18.0 // indirect
 	github.com/charmbracelet/harmonica v0.2.0 // indirect
 	github.com/charmbracelet/x/ansi v0.1.4 // indirect
