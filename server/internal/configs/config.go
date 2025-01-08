@@ -57,6 +57,16 @@ func GetGithubConfig() *GithubConfig {
 	return g
 }
 
+func GetNotifyConfig() *NotifyConfig {
+	n := &NotifyConfig{}
+	err := config.MapStruct("server.notify", n)
+	if err != nil {
+		logs.Log.Errorf("Failed to map notify config %s", err)
+		return nil
+	}
+	return n
+}
+
 func GetListenerConfig() *ListenerConfig {
 	l := &ListenerConfig{}
 	err := config.MapStruct("listeners", l)
@@ -74,4 +84,22 @@ func GetWorkDir() string {
 		return ""
 	}
 	return dir
+}
+
+func UpdateGithubConfig(g *GithubConfig) error {
+	err := config.Set("server.github", g)
+	if err != nil {
+		logs.Log.Errorf("Failed to update github config %s", err)
+		return err
+	}
+	return nil
+}
+
+func UpdateNotifyConfig(n *NotifyConfig) error {
+	err := config.Set("server.notify", n)
+	if err != nil {
+		logs.Log.Errorf("Failed to update notify config %s", err)
+		return err
+	}
+	return nil
 }

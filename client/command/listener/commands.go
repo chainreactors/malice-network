@@ -37,41 +37,26 @@ job
 
 	tcpCmd := &cobra.Command{
 		Use:   consts.CommandPipelineTcp,
-		Short: "List tcp pipelines in listener",
-		Long:  "Use a table to list TCP pipelines along with their corresponding listeners",
-		Args:  cobra.MaximumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return cmd.Help()
-		},
-		Example: `~~~
-tcp listener
-~~~`,
-	}
-
-	newTCPPipelineCmd := &cobra.Command{
-		Use:   consts.CommandPipelineNew + " [name] ",
 		Short: "Register a new TCP pipeline and start it",
-		Long: `Register a new TCP pipeline with the specified listener.
-If **name** is not provided, it will be generated in the format **listenerID_tcp_port**.`,
+		Long:  "Register a new TCP pipeline with the specified listener.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return NewTcpPipelineCmd(cmd, con)
 		},
 		Args: cobra.MaximumNArgs(1),
 		Example: `~~~
 // Register a TCP pipeline with the default settings
-tcp register --listener tcp_default
+tcp --listener tcp_default
 
 // Register a TCP pipeline with a custom name, host, and port
-tcp register --name tcp_test --listener tcp_default --host 192.168.0.43 --port 5003
+tcp --name tcp_test --listener tcp_default --host 192.168.0.43 --port 5003
 
 // Register a TCP pipeline with TLS enabled and specify certificate and key paths
-tcp register --listener tcp_default --tls --cert_path /path/to/cert --key_path /path/to/key
+tcp --listener tcp_default --tls --cert_path /path/to/cert --key_path /path/to/key
 ~~~`,
 	}
+	common.BindFlag(tcpCmd, common.TlsCertFlagSet, common.PipelineFlagSet, common.EncryptionFlagSet)
 
-	common.BindFlag(newTCPPipelineCmd, common.TlsCertFlagSet, common.PipelineFlagSet, common.EncryptionFlagSet)
-
-	common.BindFlagCompletions(newTCPPipelineCmd, func(comp carapace.ActionMap) {
+	common.BindFlagCompletions(tcpCmd, func(comp carapace.ActionMap) {
 		comp["listener"] = common.ListenerIDCompleter(con)
 		comp["host"] = carapace.ActionValues().Usage("tcp host")
 		comp["port"] = carapace.ActionValues().Usage("tcp port")
@@ -79,19 +64,10 @@ tcp register --listener tcp_default --tls --cert_path /path/to/cert --key_path /
 		comp["key_path"] = carapace.ActionFiles().Usage("path to the key file")
 		comp["tls"] = carapace.ActionValues().Usage("enable tls")
 	})
-	newTCPPipelineCmd.MarkFlagRequired("listener")
-	tcpCmd.AddCommand(newTCPPipelineCmd)
+	tcpCmd.MarkFlagRequired("listener")
 
 	bindCmd := &cobra.Command{
 		Use:   consts.CommandPipelineBind,
-		Short: "manage bind pipeline to a listener",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return cmd.Help()
-		},
-	}
-
-	newBindCmd := &cobra.Command{
-		Use:   consts.CommandPipelineNew + " [name]",
 		Short: "Register a new bind pipeline and start it",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return NewBindPipelineCmd(cmd, con)
@@ -99,20 +75,19 @@ tcp register --listener tcp_default --tls --cert_path /path/to/cert --key_path /
 		Example: `
 new bind pipeline
 ~~~
-bind new listener
+bind listener
 ~~~
 `,
 	}
 
-	common.BindFlag(newBindCmd, func(f *pflag.FlagSet) {
+	common.BindFlag(bindCmd, func(f *pflag.FlagSet) {
 		f.String("listener", "", "listener id")
 	})
 
-	common.BindFlagCompletions(newBindCmd, func(comp carapace.ActionMap) {
+	common.BindFlagCompletions(bindCmd, func(comp carapace.ActionMap) {
 		comp["listener"] = common.ListenerIDCompleter(con)
 	})
 
-	bindCmd.AddCommand(newBindCmd)
 	pipelineCmd := &cobra.Command{
 		Use:   consts.CommandPipeline,
 		Short: "manage pipeline",
@@ -191,13 +166,38 @@ pipeline list listener_id
 
 	websiteCmd := &cobra.Command{
 		Use:   consts.CommandWebsite,
-		Short: "website manager",
+		Short: "Register a new website",
+		Args:  cobra.MaximumNArgs(1),
+		Long:  `Register a new website with the specified listener. If **name** is not provided, it will be generated in the format **listenerID_web_port**.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return cmd.Help()
+			return NewWebsiteCmd(cmd, con)
 		},
+		Example: `~~~
+// Register a website with the default settings
+website web_test --listener tcp_default --root /webtest
+
+// Register a website with a custom name and port
+website web_test --listener tcp_default --port 5003 --root /webtest
+
+// Register a website with TLS enabled
+website web_test --listener tcp_default --root /webtest --tls --cert /path/to/cert --key /path/to/key
+~~~`,
 	}
 
-	common.BindArgCompletions(websiteCmd, nil, common.ListenerIDCompleter(con))
+	common.BindFlag(websiteCmd, common.TlsCertFlagSet, common.PipelineFlagSet, func(f *pflag.FlagSet) {
+		f.String("root", "/", "website root path")
+	})
+
+	common.BindFlagCompletions(websiteCmd, func(comp carapace.ActionMap) {
+		comp["listener"] = common.ListenerIDCompleter(con)
+		comp["port"] = carapace.ActionValues().Usage("website port")
+		comp["root"] = carapace.ActionValues().Usage("website root path")
+		comp["cert"] = carapace.ActionFiles().Usage("path to the cert file")
+		comp["key"] = carapace.ActionFiles().Usage("path to the key file")
+		comp["tls"] = carapace.ActionValues().Usage("enable tls")
+	})
+
+	common.BindArgCompletions(websiteCmd, nil, carapace.ActionValues().Usage("website name"))
 
 	websiteListCmd := &cobra.Command{
 		Use:   consts.CommandPipelineList,
@@ -210,39 +210,6 @@ pipeline list listener_id
 website [listener]
 ~~~`,
 	}
-
-	websiteRegisterCmd := &cobra.Command{
-		Use:   consts.CommandPipelineNew + " [name]",
-		Short: "Register a new website",
-		Args:  cobra.MaximumNArgs(1),
-		Long:  `Register a new website with the specified listener. If **name** is not provided, it will be generated in the format **listenerID_web_port**.`,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return NewWebsiteCmd(cmd, con)
-		},
-		Example: `~~~
-// Register a website with the default settings
-website new --listener tcp_default --root /webtest
-
-// Register a website with a custom name and port
-website new web_test --listener tcp_default --port 5003 --root /webtest
-
-// Register a website with TLS enabled
-website new --listener tcp_default --root /webtest --tls --cert /path/to/cert --key /path/to/key
-~~~`,
-	}
-
-	common.BindFlag(websiteRegisterCmd, common.TlsCertFlagSet, common.PipelineFlagSet, func(f *pflag.FlagSet) {
-		f.String("root", "/", "website root path")
-	})
-
-	common.BindFlagCompletions(websiteRegisterCmd, func(comp carapace.ActionMap) {
-		comp["listener"] = common.ListenerIDCompleter(con)
-		comp["port"] = carapace.ActionValues().Usage("website port")
-		comp["root"] = carapace.ActionValues().Usage("website root path")
-		comp["cert"] = carapace.ActionFiles().Usage("path to the cert file")
-		comp["key"] = carapace.ActionFiles().Usage("path to the key file")
-		comp["tls"] = carapace.ActionValues().Usage("enable tls")
-	})
 
 	websiteStartCmd := &cobra.Command{
 		Use:   consts.CommandPipelineStart + " [name]",
@@ -384,7 +351,7 @@ website list-content web_test
 	common.BindArgCompletions(websiteListContentCmd, nil,
 		common.WebsiteCompleter(con))
 
-	websiteCmd.AddCommand(websiteListCmd, websiteRegisterCmd, websiteStartCmd, websiteStopCmd,
+	websiteCmd.AddCommand(websiteListCmd, websiteStartCmd, websiteStopCmd,
 		websiteAddContentCmd, websiteUpdateContentCmd, websiteRemoveContentCmd, websiteListContentCmd)
 
 	return []*cobra.Command{listenerCmd, jobCmd, pipelineCmd, tcpCmd, bindCmd, websiteCmd}

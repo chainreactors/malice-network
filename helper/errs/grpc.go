@@ -37,4 +37,7 @@ var (
 	ErrorWorkflowNotActive = status.Error(codes.Unknown, "workflow not active")
 	ErrorDockerNotActive   = status.Error(codes.Unknown, "docker not active")
 	//ErrInvalidBeaconTaskCancelState = status.Error(codes.InvalidArgument, fmt.Sprintf("Invalid task state, must be '%s' to cancel", models.PENDING))
+
+	ErrNotFoundGithubConfig = status.Error(codes.NotFound, "Github config not found")
+	ErrNotFoundNotifyConfig = status.Error(codes.NotFound, "Notify config not found")
 )

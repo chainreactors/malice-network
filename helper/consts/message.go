@@ -215,6 +215,10 @@ const (
 	CommandActionEnable     = "enable"
 	CommandActionDisable    = "disable"
 	CommandActionList       = "list"
+	CommandConfig           = "config"
+	CommandRefresh          = "refresh"
+	CommandConfigUpdate     = "update"
+	CommandGithub           = "github"
 )
 
 const (
