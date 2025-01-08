@@ -255,7 +255,7 @@ func ListPipelines(listenerID string) ([]models.Pipeline, error) {
 
 func DeleteWebsite(name string) error {
 	website := models.WebsiteContent{}
-	result := Session().Where("name = ?", name).First(&website)
+	result := Session().Where("pipeline_id = ?", name).First(&website)
 	if result.Error != nil {
 		return result.Error
 	}
