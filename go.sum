@@ -53,8 +53,6 @@ github.com/cenkalti/backoff/v4 v4.3.0/go.mod h1:Y3VNntkOUPxTVeUxJ/G5vcM//AlwfmyY
 github.com/chainreactors/files v0.0.0-20231102192550-a652458cee26/go.mod h1:/Xa9YXhjBlaC33JTD6ZTJFig6pcplak2IDcovf42/6A=
 github.com/chainreactors/files v0.0.0-20240716182835-7884ee1e77f0 h1:cU3sGEODXZsUZGBXfnz0nyxF6+37vA+ZGDx6L/FKN4o=
 github.com/chainreactors/files v0.0.0-20240716182835-7884ee1e77f0/go.mod h1:NSxGNMRWryAyrDzZpVwmujI22wbGw6c52bQOd5zEvyU=
-github.com/chainreactors/files v0.2.0 h1:LeN97o4VxIvK9ZACjXfdRTR+N7puXuWyQO5GarCkMLM=
-github.com/chainreactors/files v0.2.0/go.mod h1:/Xa9YXhjBlaC33JTD6ZTJFig6pcplak2IDcovf42/6A=
 github.com/chainreactors/logs v0.0.0-20241115105204-6132e39f5261 h1:gcRLCAF4ANvltkdh7cnLFCNrogwl0Qh8oNaYrKHMyz4=
 github.com/chainreactors/logs v0.0.0-20241115105204-6132e39f5261/go.mod h1:6Mv6W70JrtL6VClulZhmMRZnoYpcTahcDTKLMNEjK0o=
 github.com/chainreactors/mals v0.0.0-20250106113216-39e0e8e7c342 h1:LHqpNvL2Ry7kwCxz6nTF1pgVQEaS080gPWkQxN7T9nA=
