@@ -138,6 +138,22 @@ func UpdateSession(sessionID, note, group string) error {
 	return result.Error
 }
 
+func UpdateSessionTimer(sessionID string, interval uint64, jitter float64) error {
+	var session models.Session
+	result := Session().Where("session_id = ?", sessionID).First(&session)
+	if result.Error != nil {
+		return result.Error
+	}
+	if interval != 0 {
+		session.Interval = interval
+	}
+	if jitter != 0 {
+		session.Jitter = jitter
+	}
+	result = Session().Save(&session)
+	return result.Error
+}
+
 func CreateOperator(name string, typ string, remoteAddr string) error {
 	var operator models.Operator
 	operator.Name = name

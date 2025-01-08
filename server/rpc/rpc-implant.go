@@ -99,6 +99,17 @@ func (rpc *Server) Sleep(ctx context.Context, req *implantpb.Timer) (*clientpb.T
 	}
 
 	go greq.HandlerResponse(ch, types.MsgEmpty)
+	if session, err := getSession(ctx); err == nil {
+		session.Jitter = req.Jitter
+		session.Interval = req.Interval
+		core.Sessions.Add(session)
+		err := db.UpdateSessionTimer(session.ID, req.Interval, req.Jitter)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		return nil, err
+	}
 	return greq.Task.ToProtobuf(), nil
 }
 

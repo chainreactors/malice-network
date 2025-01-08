@@ -57,6 +57,7 @@ import (
 
 func SessionIDCompleter(con *repl.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
+		con.UpdateSessions(false)
 		results := make([]string, 0)
 		for _, s := range con.AlivedSessions() {
 			if s.Note != "" {
