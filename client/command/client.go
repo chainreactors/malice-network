@@ -6,6 +6,7 @@ import (
 	"github.com/chainreactors/malice-network/client/command/armory"
 	"github.com/chainreactors/malice-network/client/command/build"
 	"github.com/chainreactors/malice-network/client/command/common"
+	"github.com/chainreactors/malice-network/client/command/config"
 	"github.com/chainreactors/malice-network/client/command/extension"
 	"github.com/chainreactors/malice-network/client/command/generic"
 	"github.com/chainreactors/malice-network/client/command/help"
@@ -31,6 +32,7 @@ func BindCommonCommands(bind BindFunc) {
 		extension.Commands,
 		armory.Commands,
 		mal.Commands,
+		config.Commands,
 	)
 
 	bind(consts.ListenerGroup,

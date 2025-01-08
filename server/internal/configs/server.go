@@ -118,25 +118,33 @@ func LoadMiscConfig() ([]byte, []byte, error) {
 }
 
 type NotifyConfig struct {
-	Enable   bool `config:"enable" default:"true"`
-	Telegram struct {
-		Enable bool   `config:"enable" default:"false"`
-		APIKey string `config:"api_key"`
-		ChatID int64  `config:"chat_id"`
-	} `config:"telegram"`
-	DingTalk struct {
-		Enable bool   `config:"enable" default:"false"`
-		Secret string `config:"secret"`
-		Token  string `config:"token"`
-	} `config:"dingtalk"`
-	Lark struct {
-		Enable     bool   `config:"enable" default:"false"`
-		WebHookUrl string `config:"webhook_url"`
-	} `config:"lark"`
-	ServerChan struct {
-		Enable bool   `config:"enable" default:"false"`
-		URL    string `config:"url"`
-	} `config:"serverchan"`
+	Enable     bool              `config:"enable" default:"true"`
+	Telegram   *TelegramConfig   `config:"telegram"`
+	DingTalk   *DingTalkConfig   `config:"dingtalk"`
+	Lark       *LarkConfig       `config:"lark"`
+	ServerChan *ServerChanConfig `config:"serverchan"`
+}
+
+type TelegramConfig struct {
+	Enable bool   `config:"enable" default:"false"`
+	APIKey string `config:"api_key"`
+	ChatID int64  `config:"chat_id"`
+}
+
+type DingTalkConfig struct {
+	Enable bool   `config:"enable" default:"false"`
+	Secret string `config:"secret"`
+	Token  string `config:"token"`
+}
+
+type LarkConfig struct {
+	Enable     bool   `config:"enable" default:"false"`
+	WebHookUrl string `config:"webhook_url"`
+}
+
+type ServerChanConfig struct {
+	Enable bool   `config:"enable" default:"false"`
+	URL    string `config:"url"`
 }
 
 type GithubConfig struct {
