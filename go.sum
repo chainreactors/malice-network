@@ -55,8 +55,8 @@ github.com/chainreactors/files v0.0.0-20240716182835-7884ee1e77f0 h1:cU3sGEODXZs
 github.com/chainreactors/files v0.0.0-20240716182835-7884ee1e77f0/go.mod h1:NSxGNMRWryAyrDzZpVwmujI22wbGw6c52bQOd5zEvyU=
 github.com/chainreactors/logs v0.0.0-20241115105204-6132e39f5261 h1:gcRLCAF4ANvltkdh7cnLFCNrogwl0Qh8oNaYrKHMyz4=
 github.com/chainreactors/logs v0.0.0-20241115105204-6132e39f5261/go.mod h1:6Mv6W70JrtL6VClulZhmMRZnoYpcTahcDTKLMNEjK0o=
-github.com/chainreactors/mals v0.0.0-20250106113216-39e0e8e7c342 h1:LHqpNvL2Ry7kwCxz6nTF1pgVQEaS080gPWkQxN7T9nA=
-github.com/chainreactors/mals v0.0.0-20250106113216-39e0e8e7c342/go.mod h1:cpmqFZvxfRalmLq0cGQs21HKiHymkEo7D5Sp1VWYHas=
+github.com/chainreactors/mals v0.0.0-20250108111740-7701bd16eae5 h1:V6ZapihNk36R+c48SYKJWhqBfVKwquqUqJcKY0chTUM=
+github.com/chainreactors/mals v0.0.0-20250108111740-7701bd16eae5/go.mod h1:/dYh9T/vQ2zarhZmlGdch/ZTgXD/s/t3jOqoHYoiRLE=
 github.com/chainreactors/tui v0.0.0-20241231072248-d5b3664065c4 h1:TbIyZG5p55WfskSXt5Te4oibuXhWbrQ94+CB5hC9D7U=
 github.com/chainreactors/tui v0.0.0-20241231072248-d5b3664065c4/go.mod h1:+J5acoMNk5wLy6hhBYQMAchOS11wIhoEU9cVDV629eo=
 github.com/chainreactors/utils v0.0.0-20240716182459-e85f2b01ee16/go.mod h1:LajXuvESQwP+qCMAvlcoSXppQCjuLlBrnQpu9XQ1HtU=
