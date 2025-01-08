@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -235,6 +236,15 @@ func (rpc *Server) DeleteWebsite(ctx context.Context, req *clientpb.CtrlPipeline
 	}
 	listener.RemovePipeline(pipeline)
 
+	err = db.DeletePipeline(req.Name)
+	if err != nil {
+		return nil, err
+	}
+	err = db.DeleteWebsite(req.Name)
+	if err != nil && !errors.Is(err, db.ErrRecordNotFound) {
+		return nil, err
+	}
+
 	job := core.Jobs.Get(req.Name)
 	if job == nil {
 		return nil, fmt.Errorf("website %s not found", req.Name)
@@ -245,13 +255,6 @@ func (rpc *Server) DeleteWebsite(ctx context.Context, req *clientpb.CtrlPipeline
 		Ctrl: consts.CtrlWebsiteStop,
 		Job:  job.ToProtobuf(),
 	}
-	err = db.DeletePipeline(req.Name)
-	if err != nil {
-		return nil, err
-	}
-	err = db.DeleteWebsite(req.Name)
-	if err != nil {
-		return nil, err
-	}
+
 	return &clientpb.Empty{}, nil
 }

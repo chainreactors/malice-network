@@ -311,7 +311,7 @@ website add /path/to/content.html --website web_test --path /custom/path --type 
 ~~~`,
 	}
 
-	common.BindFlag(websiteAddContentCmd, func(f *pflag.FlagSet) {
+	common.BindFlag(websiteAddContentCmd, common.EncryptionFlagSet, func(f *pflag.FlagSet) {
 		f.String("website", "", "website name (required)")
 		f.String("path", "", "web path for the content (defaults to filename)")
 		f.String("type", "raw", "content type of the file")
