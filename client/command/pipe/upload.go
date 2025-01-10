@@ -48,6 +48,20 @@ func PipeUpload(rpc clientrpc.MaliceRPCClient, session *core.Session, pipe strin
 	return task, err
 }
 
+func PipeUploadRaw(rpc clientrpc.MaliceRPCClient, session *core.Session, pipe, data string) (*clientpb.Task, error) {
+	task, err := rpc.PipeUpload(session.Context(), &implantpb.PipeRequest{
+		Type: consts.ModulePipeUpload,
+		Pipe: &implantpb.Pipe{
+			Name: fileutils.FormatWindowPath(pipe),
+			Data: []byte(data),
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	return task, err
+}
+
 // 注册 PipeUpload 命令
 func RegisterPipeUploadFunc(con *repl.Console) {
 	con.RegisterImplantFunc(
@@ -67,4 +81,14 @@ func RegisterPipeUploadFunc(con *repl.Console) {
 			"path: file path to upload",
 		},
 		[]string{"task"})
+
+	con.RegisterImplantFunc(
+		"pipe_upload_raw",
+		PipeUploadRaw,
+		"",
+		nil,
+		common.ParseStatus,
+		nil,
+	)
+
 }
