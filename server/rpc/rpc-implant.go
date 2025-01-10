@@ -35,10 +35,6 @@ func (rpc *Server) Register(ctx context.Context, req *clientpb.RegisterSession) 
 		logs.Log.Infof("session %s re-register", sess.ID)
 		sess.Update(req)
 		sess.Publish(consts.CtrlSessionRegister, fmt.Sprintf("session %s from %s re-register at %s", sess.Abstract(), sess.Target, sess.PipelineID), true, true)
-		err := db.Session().Save(sess.ToModel()).Error
-		if err != nil {
-			logs.Log.Errorf("update session %s info failed in db, %s", sess.ID, err.Error())
-		}
 		core.Sessions.Add(sess)
 	}
 
