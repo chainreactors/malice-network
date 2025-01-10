@@ -110,6 +110,7 @@ func RecoverSession(sess *clientpb.Session) (*Session, error) {
 		ID:          sess.SessionId,
 		RawID:       sess.RawId,
 		PipelineID:  sess.PipelineId,
+		ListenerID:  sess.ListenerId,
 		Target:      sess.Target,
 		Initialized: sess.IsInitialized,
 		LastCheckin: sess.LastCheckin,
@@ -330,6 +331,8 @@ func (s *Session) ToModel() *models.Session {
 
 func (s *Session) Update(req *clientpb.RegisterSession) {
 	s.Name = req.RegisterData.Name
+	s.PipelineID = req.PipelineId
+	s.ListenerID = req.ListenerId
 	s.ProxyURL = req.RegisterData.Proxy
 	s.Interval = req.RegisterData.Timer.Interval
 	s.Jitter = req.RegisterData.Timer.Jitter
@@ -340,6 +343,11 @@ func (s *Session) Update(req *clientpb.RegisterSession) {
 			s.Publish(consts.CtrlSessionInit, fmt.Sprintf("session %s init", s.ID), true, true)
 		}
 		s.UpdateSysInfo(req.RegisterData.Sysinfo)
+	}
+
+	err := db.Session().Save(s.ToModel()).Error
+	if err != nil {
+		logs.Log.Errorf("update session %s info failed in db, %s", s.ID, err.Error())
 	}
 }
 
