@@ -222,12 +222,10 @@ type BOFResponse struct {
 type BOFResponses []*BOFResponse
 
 func (bofResps BOFResponses) Handler(sess *clientpb.Session) string {
-	var file *os.File
-	var fileMap map[string]*os.File
 	var err error
 	var results strings.Builder
 
-	fileMap = make(map[string]*os.File)
+	fileMap := make(map[string]*os.File)
 
 	for _, bofResp := range bofResps {
 		var result string
@@ -262,7 +260,7 @@ func (bofResps BOFResponses) Handler(sess *clientpb.Session) string {
 			result = func() string {
 				fileId := fmt.Sprintf("%d", binary.LittleEndian.Uint32(bofResp.Data[:4]))
 				fileName := string(bofResp.Data[8:])
-				file, err = os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+				file, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 				if err != nil {
 					return fmt.Sprintf("Could not open file '%s' (ID: %s): %s", filepath.Base(file.Name()), fileId, err)
 				}
@@ -272,7 +270,7 @@ func (bofResps BOFResponses) Handler(sess *clientpb.Session) string {
 		case CALLBACK_FILE_WRITE:
 			result = func() string {
 				fileId := fmt.Sprintf("%d", binary.LittleEndian.Uint32(bofResp.Data[:4]))
-				file = fileMap[fileId]
+				file := fileMap[fileId]
 				if file == nil {
 					return fmt.Sprintf("No open file to write to (ID: %s)", fileId)
 				}
@@ -285,7 +283,7 @@ func (bofResps BOFResponses) Handler(sess *clientpb.Session) string {
 		case CALLBACK_FILE_CLOSE:
 			result = func() string {
 				fileId := fmt.Sprintf("%d", binary.LittleEndian.Uint32(bofResp.Data[:4]))
-				file = fileMap[fileId]
+				file := fileMap[fileId]
 				if file == nil {
 					return fmt.Sprintf("No open file to close (ID: %s)", fileId)
 				}
