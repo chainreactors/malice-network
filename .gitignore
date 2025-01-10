@@ -1,6 +1,7 @@
 .idea/
 bin/
 dist/
+.malice/
 go.sum
 *.exe
 *.bin
