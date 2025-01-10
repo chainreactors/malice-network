@@ -1,13 +1,14 @@
 package reg
 
 import (
+	"strings"
+
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"strings"
 )
 
 func FormatRegPath(path string) (string, string) {
@@ -50,10 +51,10 @@ func Commands(con *repl.Console) []*cobra.Command {
 	}
 
 	regAddCmd := &cobra.Command{
-		Use:   consts.SubCommandName(consts.ModuleRegAdd) + " --hive [hive] --path [path] --key [key]",
+		Use:   consts.SubCommandName(consts.ModuleRegAdd) + " [path] /v [value_name] /t [type] /d [data]",
 		Short: "Add or modify a registry key",
-		Long:  "Add or modify a registry key with specified values such as string, byte, DWORD, or QWORD.",
-		Args:  cobra.ExactArgs(2),
+		Long:  "Add or modify a registry key with specified values. Supported types: REG_SZ, REG_BINARY, REG_DWORD, REG_QWORD",
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return RegAddCmd(cmd, con)
 		},
@@ -63,15 +64,15 @@ func Commands(con *repl.Console) []*cobra.Command {
 		},
 		Example: `Add or modify a registry key:
   ~~~
-  reg add HKEY_LOCAL_MACHINE\\SOFTWARE\\Example TestKey --string_value "example" --dword_value 1
+  reg add HKEY_LOCAL_MACHINE\\SOFTWARE\\Example /v TestValue /t REG_DWORD /d 1
+  reg add HKEY_LOCAL_MACHINE\\SOFTWARE\\Example /v TestString /t REG_SZ /d "Hello World"
+  reg add HKEY_LOCAL_MACHINE\\SOFTWARE\\Example /v TestBinary /t REG_BINARY /d 01020304
   ~~~`,
 	}
 	common.BindFlag(regAddCmd, func(f *pflag.FlagSet) {
-		f.String("string_value", "", "String value to write")
-		f.BytesBase64("byte_value", []byte{}, "Byte array value to write")
-		f.Uint32("dword_value", 0, "DWORD value to write")
-		f.Uint64("qword_value", 0, "QWORD value to write")
-		f.Uint32("regtype", 1, "Registry data type (e.g., 1 for REG_SZ)")
+		f.String("v", "", "Value name")
+		f.String("t", "REG_SZ", "Value type (REG_SZ, REG_BINARY, REG_DWORD, REG_QWORD)")
+		f.String("d", "", "Data to set")
 	})
 
 	regDeleteCmd := &cobra.Command{
