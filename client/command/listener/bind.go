@@ -10,7 +10,7 @@ import (
 )
 
 func NewBindPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
-	listenerID, _, _ := common.ParsePipelineFlags(cmd)
+	listenerID, _, _, parser := common.ParsePipelineFlags(cmd)
 	if listenerID == "" {
 		return fmt.Errorf("listener id is required")
 	}
@@ -29,6 +29,7 @@ func NewBindPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 		Name:       name,
 		ListenerId: listenerID,
 		Enable:     false,
+		Parser:     parser,
 		Body: &clientpb.Pipeline_Bind{
 			Bind: &clientpb.BindPipeline{},
 		},

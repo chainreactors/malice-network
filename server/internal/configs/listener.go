@@ -28,6 +28,8 @@ type TcpPipelineConfig struct {
 	Host             string            `config:"host" default:"0.0.0.0"`
 	Port             uint16            `config:"port" default:"5001"`
 	Parser           string            `config:"parser" default:"malefic"`
+	Target           string            `config:"target" default:""`
+	BeaconPipeline   string            `config:"beacon_pipeline" default:""`
 	TlsConfig        *TlsConfig        `config:"tls"`
 	EncryptionConfig *EncryptionConfig `config:"encryption"`
 }
@@ -39,10 +41,12 @@ func (tcp *TcpPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, erro
 	}
 
 	return &clientpb.Pipeline{
-		Name:       tcp.Name,
-		ListenerId: lisId,
-		Enable:     tcp.Enable,
-		Parser:     tcp.Parser,
+		Name:           tcp.Name,
+		ListenerId:     lisId,
+		Enable:         tcp.Enable,
+		Parser:         tcp.Parser,
+		Target:         tcp.Target,
+		BeaconPipeline: tcp.BeaconPipeline,
 		Body: &clientpb.Pipeline_Tcp{
 			Tcp: &clientpb.TCPPipeline{
 				Host: tcp.Host,

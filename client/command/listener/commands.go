@@ -54,7 +54,7 @@ tcp --name tcp_test --listener tcp_default --host 192.168.0.43 --port 5003
 tcp --listener tcp_default --tls --cert_path /path/to/cert --key_path /path/to/key
 ~~~`,
 	}
-	common.BindFlag(tcpCmd, common.TlsCertFlagSet, common.PipelineFlagSet, common.EncryptionFlagSet)
+	common.BindFlag(tcpCmd, common.TlsCertFlagSet, common.PipelineFlagSet, common.EncryptionFlagSet, common.ArtifactFlagSet)
 
 	common.BindFlagCompletions(tcpCmd, func(comp carapace.ActionMap) {
 		comp["listener"] = common.ListenerIDCompleter(con)
@@ -63,6 +63,7 @@ tcp --listener tcp_default --tls --cert_path /path/to/cert --key_path /path/to/k
 		comp["cert_path"] = carapace.ActionFiles().Usage("path to the cert file")
 		comp["key_path"] = carapace.ActionFiles().Usage("path to the key file")
 		comp["tls"] = carapace.ActionValues().Usage("enable tls")
+		comp["target"] = common.BuildTargetCompleter(con)
 	})
 	tcpCmd.MarkFlagRequired("listener")
 

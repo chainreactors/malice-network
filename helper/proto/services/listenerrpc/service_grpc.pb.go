@@ -21,33 +21,39 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	ListenerRPC_SpiteStream_FullMethodName          = "/listenerrpc.ListenerRPC/SpiteStream"
-	ListenerRPC_JobStream_FullMethodName            = "/listenerrpc.ListenerRPC/JobStream"
-	ListenerRPC_Register_FullMethodName             = "/listenerrpc.ListenerRPC/Register"
-	ListenerRPC_SysInfo_FullMethodName              = "/listenerrpc.ListenerRPC/SysInfo"
-	ListenerRPC_Checkin_FullMethodName              = "/listenerrpc.ListenerRPC/Checkin"
-	ListenerRPC_InitBindSession_FullMethodName      = "/listenerrpc.ListenerRPC/InitBindSession"
-	ListenerRPC_RegisterListener_FullMethodName     = "/listenerrpc.ListenerRPC/RegisterListener"
-	ListenerRPC_RegisterPipeline_FullMethodName     = "/listenerrpc.ListenerRPC/RegisterPipeline"
-	ListenerRPC_StartPipeline_FullMethodName        = "/listenerrpc.ListenerRPC/StartPipeline"
-	ListenerRPC_StopPipeline_FullMethodName         = "/listenerrpc.ListenerRPC/StopPipeline"
-	ListenerRPC_DeletePipeline_FullMethodName       = "/listenerrpc.ListenerRPC/DeletePipeline"
-	ListenerRPC_ListPipelines_FullMethodName        = "/listenerrpc.ListenerRPC/ListPipelines"
-	ListenerRPC_RegisterWebsite_FullMethodName      = "/listenerrpc.ListenerRPC/RegisterWebsite"
-	ListenerRPC_StartWebsite_FullMethodName         = "/listenerrpc.ListenerRPC/StartWebsite"
-	ListenerRPC_StopWebsite_FullMethodName          = "/listenerrpc.ListenerRPC/StopWebsite"
-	ListenerRPC_DeleteWebsite_FullMethodName        = "/listenerrpc.ListenerRPC/DeleteWebsite"
-	ListenerRPC_ListWebsites_FullMethodName         = "/listenerrpc.ListenerRPC/ListWebsites"
-	ListenerRPC_ListWebContent_FullMethodName       = "/listenerrpc.ListenerRPC/ListWebContent"
-	ListenerRPC_WebsiteAddContent_FullMethodName    = "/listenerrpc.ListenerRPC/WebsiteAddContent"
-	ListenerRPC_WebsiteUpdateContent_FullMethodName = "/listenerrpc.ListenerRPC/WebsiteUpdateContent"
-	ListenerRPC_WebsiteRemoveContent_FullMethodName = "/listenerrpc.ListenerRPC/WebsiteRemoveContent"
-	ListenerRPC_RegisterRem_FullMethodName          = "/listenerrpc.ListenerRPC/RegisterRem"
-	ListenerRPC_StartRem_FullMethodName             = "/listenerrpc.ListenerRPC/StartRem"
-	ListenerRPC_StopRem_FullMethodName              = "/listenerrpc.ListenerRPC/StopRem"
-	ListenerRPC_DeleteRem_FullMethodName            = "/listenerrpc.ListenerRPC/DeleteRem"
-	ListenerRPC_ListRems_FullMethodName             = "/listenerrpc.ListenerRPC/ListRems"
-	ListenerRPC_GetArtifact_FullMethodName          = "/listenerrpc.ListenerRPC/GetArtifact"
+	ListenerRPC_SpiteStream_FullMethodName             = "/listenerrpc.ListenerRPC/SpiteStream"
+	ListenerRPC_JobStream_FullMethodName               = "/listenerrpc.ListenerRPC/JobStream"
+	ListenerRPC_Register_FullMethodName                = "/listenerrpc.ListenerRPC/Register"
+	ListenerRPC_SysInfo_FullMethodName                 = "/listenerrpc.ListenerRPC/SysInfo"
+	ListenerRPC_Checkin_FullMethodName                 = "/listenerrpc.ListenerRPC/Checkin"
+	ListenerRPC_InitBindSession_FullMethodName         = "/listenerrpc.ListenerRPC/InitBindSession"
+	ListenerRPC_RegisterListener_FullMethodName        = "/listenerrpc.ListenerRPC/RegisterListener"
+	ListenerRPC_RegisterPipeline_FullMethodName        = "/listenerrpc.ListenerRPC/RegisterPipeline"
+	ListenerRPC_StartPipeline_FullMethodName           = "/listenerrpc.ListenerRPC/StartPipeline"
+	ListenerRPC_StopPipeline_FullMethodName            = "/listenerrpc.ListenerRPC/StopPipeline"
+	ListenerRPC_DeletePipeline_FullMethodName          = "/listenerrpc.ListenerRPC/DeletePipeline"
+	ListenerRPC_ListPipelines_FullMethodName           = "/listenerrpc.ListenerRPC/ListPipelines"
+	ListenerRPC_RegisterWebsite_FullMethodName         = "/listenerrpc.ListenerRPC/RegisterWebsite"
+	ListenerRPC_StartWebsite_FullMethodName            = "/listenerrpc.ListenerRPC/StartWebsite"
+	ListenerRPC_StopWebsite_FullMethodName             = "/listenerrpc.ListenerRPC/StopWebsite"
+	ListenerRPC_DeleteWebsite_FullMethodName           = "/listenerrpc.ListenerRPC/DeleteWebsite"
+	ListenerRPC_ListWebsites_FullMethodName            = "/listenerrpc.ListenerRPC/ListWebsites"
+	ListenerRPC_ListWebContent_FullMethodName          = "/listenerrpc.ListenerRPC/ListWebContent"
+	ListenerRPC_WebsiteAddContent_FullMethodName       = "/listenerrpc.ListenerRPC/WebsiteAddContent"
+	ListenerRPC_WebsiteUpdateContent_FullMethodName    = "/listenerrpc.ListenerRPC/WebsiteUpdateContent"
+	ListenerRPC_WebsiteRemoveContent_FullMethodName    = "/listenerrpc.ListenerRPC/WebsiteRemoveContent"
+	ListenerRPC_RegisterRem_FullMethodName             = "/listenerrpc.ListenerRPC/RegisterRem"
+	ListenerRPC_StartRem_FullMethodName                = "/listenerrpc.ListenerRPC/StartRem"
+	ListenerRPC_StopRem_FullMethodName                 = "/listenerrpc.ListenerRPC/StopRem"
+	ListenerRPC_DeleteRem_FullMethodName               = "/listenerrpc.ListenerRPC/DeleteRem"
+	ListenerRPC_ListRems_FullMethodName                = "/listenerrpc.ListenerRPC/ListRems"
+	ListenerRPC_NewProfile_FullMethodName              = "/listenerrpc.ListenerRPC/NewProfile"
+	ListenerRPC_FindArtifact_FullMethodName            = "/listenerrpc.ListenerRPC/FindArtifact"
+	ListenerRPC_Build_FullMethodName                   = "/listenerrpc.ListenerRPC/Build"
+	ListenerRPC_DockerStatus_FullMethodName            = "/listenerrpc.ListenerRPC/DockerStatus"
+	ListenerRPC_TriggerWorkflowDispatch_FullMethodName = "/listenerrpc.ListenerRPC/TriggerWorkflowDispatch"
+	ListenerRPC_WorkflowStatus_FullMethodName          = "/listenerrpc.ListenerRPC/WorkflowStatus"
+	ListenerRPC_GetArtifact_FullMethodName             = "/listenerrpc.ListenerRPC/GetArtifact"
 )
 
 // ListenerRPCClient is the client API for ListenerRPC service.
@@ -84,6 +90,14 @@ type ListenerRPCClient interface {
 	StopRem(ctx context.Context, in *clientpb.CtrlPipeline, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	DeleteRem(ctx context.Context, in *clientpb.CtrlPipeline, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	ListRems(ctx context.Context, in *clientpb.Listener, opts ...grpc.CallOption) (*clientpb.Pipelines, error)
+	// generator
+	NewProfile(ctx context.Context, in *clientpb.Profile, opts ...grpc.CallOption) (*clientpb.Empty, error)
+	FindArtifact(ctx context.Context, in *clientpb.Artifact, opts ...grpc.CallOption) (*clientpb.Artifact, error)
+	Build(ctx context.Context, in *clientpb.Generate, opts ...grpc.CallOption) (*clientpb.Builder, error)
+	DockerStatus(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Empty, error)
+	// action
+	TriggerWorkflowDispatch(ctx context.Context, in *clientpb.GithubWorkflowRequest, opts ...grpc.CallOption) (*clientpb.Builder, error)
+	WorkflowStatus(ctx context.Context, in *clientpb.GithubWorkflowRequest, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	GetArtifact(ctx context.Context, in *clientpb.Artifact, opts ...grpc.CallOption) (*clientpb.Artifact, error)
 }
 
@@ -373,6 +387,60 @@ func (c *listenerRPCClient) ListRems(ctx context.Context, in *clientpb.Listener,
 	return out, nil
 }
 
+func (c *listenerRPCClient) NewProfile(ctx context.Context, in *clientpb.Profile, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+	out := new(clientpb.Empty)
+	err := c.cc.Invoke(ctx, ListenerRPC_NewProfile_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *listenerRPCClient) FindArtifact(ctx context.Context, in *clientpb.Artifact, opts ...grpc.CallOption) (*clientpb.Artifact, error) {
+	out := new(clientpb.Artifact)
+	err := c.cc.Invoke(ctx, ListenerRPC_FindArtifact_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *listenerRPCClient) Build(ctx context.Context, in *clientpb.Generate, opts ...grpc.CallOption) (*clientpb.Builder, error) {
+	out := new(clientpb.Builder)
+	err := c.cc.Invoke(ctx, ListenerRPC_Build_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *listenerRPCClient) DockerStatus(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+	out := new(clientpb.Empty)
+	err := c.cc.Invoke(ctx, ListenerRPC_DockerStatus_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *listenerRPCClient) TriggerWorkflowDispatch(ctx context.Context, in *clientpb.GithubWorkflowRequest, opts ...grpc.CallOption) (*clientpb.Builder, error) {
+	out := new(clientpb.Builder)
+	err := c.cc.Invoke(ctx, ListenerRPC_TriggerWorkflowDispatch_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *listenerRPCClient) WorkflowStatus(ctx context.Context, in *clientpb.GithubWorkflowRequest, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+	out := new(clientpb.Empty)
+	err := c.cc.Invoke(ctx, ListenerRPC_WorkflowStatus_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *listenerRPCClient) GetArtifact(ctx context.Context, in *clientpb.Artifact, opts ...grpc.CallOption) (*clientpb.Artifact, error) {
 	out := new(clientpb.Artifact)
 	err := c.cc.Invoke(ctx, ListenerRPC_GetArtifact_FullMethodName, in, out, opts...)
@@ -416,6 +484,14 @@ type ListenerRPCServer interface {
 	StopRem(context.Context, *clientpb.CtrlPipeline) (*clientpb.Empty, error)
 	DeleteRem(context.Context, *clientpb.CtrlPipeline) (*clientpb.Empty, error)
 	ListRems(context.Context, *clientpb.Listener) (*clientpb.Pipelines, error)
+	// generator
+	NewProfile(context.Context, *clientpb.Profile) (*clientpb.Empty, error)
+	FindArtifact(context.Context, *clientpb.Artifact) (*clientpb.Artifact, error)
+	Build(context.Context, *clientpb.Generate) (*clientpb.Builder, error)
+	DockerStatus(context.Context, *clientpb.Empty) (*clientpb.Empty, error)
+	// action
+	TriggerWorkflowDispatch(context.Context, *clientpb.GithubWorkflowRequest) (*clientpb.Builder, error)
+	WorkflowStatus(context.Context, *clientpb.GithubWorkflowRequest) (*clientpb.Empty, error)
 	GetArtifact(context.Context, *clientpb.Artifact) (*clientpb.Artifact, error)
 	mustEmbedUnimplementedListenerRPCServer()
 }
@@ -501,6 +577,24 @@ func (UnimplementedListenerRPCServer) DeleteRem(context.Context, *clientpb.CtrlP
 }
 func (UnimplementedListenerRPCServer) ListRems(context.Context, *clientpb.Listener) (*clientpb.Pipelines, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListRems not implemented")
+}
+func (UnimplementedListenerRPCServer) NewProfile(context.Context, *clientpb.Profile) (*clientpb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method NewProfile not implemented")
+}
+func (UnimplementedListenerRPCServer) FindArtifact(context.Context, *clientpb.Artifact) (*clientpb.Artifact, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method FindArtifact not implemented")
+}
+func (UnimplementedListenerRPCServer) Build(context.Context, *clientpb.Generate) (*clientpb.Builder, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Build not implemented")
+}
+func (UnimplementedListenerRPCServer) DockerStatus(context.Context, *clientpb.Empty) (*clientpb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DockerStatus not implemented")
+}
+func (UnimplementedListenerRPCServer) TriggerWorkflowDispatch(context.Context, *clientpb.GithubWorkflowRequest) (*clientpb.Builder, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method TriggerWorkflowDispatch not implemented")
+}
+func (UnimplementedListenerRPCServer) WorkflowStatus(context.Context, *clientpb.GithubWorkflowRequest) (*clientpb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method WorkflowStatus not implemented")
 }
 func (UnimplementedListenerRPCServer) GetArtifact(context.Context, *clientpb.Artifact) (*clientpb.Artifact, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetArtifact not implemented")
@@ -1002,6 +1096,114 @@ func _ListenerRPC_ListRems_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ListenerRPC_NewProfile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(clientpb.Profile)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ListenerRPCServer).NewProfile(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ListenerRPC_NewProfile_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ListenerRPCServer).NewProfile(ctx, req.(*clientpb.Profile))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ListenerRPC_FindArtifact_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(clientpb.Artifact)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ListenerRPCServer).FindArtifact(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ListenerRPC_FindArtifact_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ListenerRPCServer).FindArtifact(ctx, req.(*clientpb.Artifact))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ListenerRPC_Build_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(clientpb.Generate)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ListenerRPCServer).Build(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ListenerRPC_Build_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ListenerRPCServer).Build(ctx, req.(*clientpb.Generate))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ListenerRPC_DockerStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(clientpb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ListenerRPCServer).DockerStatus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ListenerRPC_DockerStatus_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ListenerRPCServer).DockerStatus(ctx, req.(*clientpb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ListenerRPC_TriggerWorkflowDispatch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(clientpb.GithubWorkflowRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ListenerRPCServer).TriggerWorkflowDispatch(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ListenerRPC_TriggerWorkflowDispatch_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ListenerRPCServer).TriggerWorkflowDispatch(ctx, req.(*clientpb.GithubWorkflowRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ListenerRPC_WorkflowStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(clientpb.GithubWorkflowRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ListenerRPCServer).WorkflowStatus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ListenerRPC_WorkflowStatus_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ListenerRPCServer).WorkflowStatus(ctx, req.(*clientpb.GithubWorkflowRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ListenerRPC_GetArtifact_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(clientpb.Artifact)
 	if err := dec(in); err != nil {
@@ -1122,6 +1324,30 @@ var ListenerRPC_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListRems",
 			Handler:    _ListenerRPC_ListRems_Handler,
+		},
+		{
+			MethodName: "NewProfile",
+			Handler:    _ListenerRPC_NewProfile_Handler,
+		},
+		{
+			MethodName: "FindArtifact",
+			Handler:    _ListenerRPC_FindArtifact_Handler,
+		},
+		{
+			MethodName: "Build",
+			Handler:    _ListenerRPC_Build_Handler,
+		},
+		{
+			MethodName: "DockerStatus",
+			Handler:    _ListenerRPC_DockerStatus_Handler,
+		},
+		{
+			MethodName: "TriggerWorkflowDispatch",
+			Handler:    _ListenerRPC_TriggerWorkflowDispatch_Handler,
+		},
+		{
+			MethodName: "WorkflowStatus",
+			Handler:    _ListenerRPC_WorkflowStatus_Handler,
 		},
 		{
 			MethodName: "GetArtifact",

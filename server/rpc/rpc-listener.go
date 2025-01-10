@@ -133,7 +133,7 @@ func (rpc *Server) ListJobs(ctx context.Context, req *clientpb.Empty) (*clientpb
 		if !ok {
 			continue
 		}
-		if pipeline.GetTcp() != nil {
+		if pipeline.GetTcp() != nil || pipeline.GetWeb() != nil || pipeline.GetBind() != nil {
 			pipelines = append(pipelines, job.Message.(*clientpb.Pipeline))
 		}
 	}

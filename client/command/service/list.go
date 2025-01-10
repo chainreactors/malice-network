@@ -59,17 +59,6 @@ func RegisterServiceListFunc(con *repl.Console) {
 				table.NewColumn("Exit Code", "Exit Code", 10),
 				table.NewColumn("Checkpoint", "Checkpoint", 12),
 				table.NewColumn("Wait Hint", "Wait Hint", 12),
-				//{Title: "Name", Width: 20},
-				//{Title: "Display Name", Width: 25},
-				//{Title: "Executable Path", Width: 60},
-				//{Title: "Start Type", Width: 10},
-				//{Title: "Error Control", Width: 10},
-				//{Title: "Account Name", Width: 20},
-				//{Title: "Current State", Width: 10},
-				//{Title: "Process ID", Width: 10},
-				//{Title: "Exit Code", Width: 10},
-				//{Title: "Checkpoint", Width: 12},
-				//{Title: "Wait Hint", Width: 12},
 			}, true)
 
 			var rowEntries []table.Row
@@ -88,19 +77,6 @@ func RegisterServiceListFunc(con *repl.Console) {
 						"Checkpoint":      strconv.Itoa(int(service.Status.Checkpoint)),
 						"Wait Hint":       strconv.Itoa(int(service.Status.WaitHint)),
 					})
-				//	table.Row{
-				//	service.Config.Name,
-				//	service.Config.DisplayName,
-				//	service.Config.ExecutablePath,
-				//	strconv.Itoa(int(service.Config.StartType)),
-				//	strconv.Itoa(int(service.Config.ErrorControl)),
-				//	service.Config.AccountName,
-				//	strconv.Itoa(int(service.Status.CurrentState)),
-				//	strconv.Itoa(int(service.Status.ProcessId)),
-				//	strconv.Itoa(int(service.Status.ExitCode)),
-				//	strconv.Itoa(int(service.Status.Checkpoint)),
-				//	strconv.Itoa(int(service.Status.WaitHint)),
-				//}
 				rowEntries = append(rowEntries, row)
 			}
 			tableModel.SetMultiline()
