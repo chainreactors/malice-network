@@ -52,7 +52,6 @@ func RegisterPsFunc(con *repl.Console) {
 					p.Pid,
 					p.Ppid,
 					p.Arch,
-					p.Uid,
 					p.Owner,
 					p.Path,
 					p.Args))
@@ -64,14 +63,13 @@ func RegisterPsFunc(con *repl.Console) {
 			var rowEntries []table.Row
 			var row table.Row
 			tableModel := tui.NewTable([]table.Column{
-				table.NewColumn("Name", "Name", 20),
+				table.NewColumn("Name", "Name", 15),
 				table.NewColumn("PID", "PID", 5),
 				table.NewColumn("PPID", "PPID", 5),
 				table.NewColumn("Arch", "Arch", 7),
-				table.NewColumn("UID", "UID", 36),
-				table.NewColumn("Owner", "Owner", 7),
+				table.NewColumn("Owner", "Owner", 15),
 				table.NewColumn("Path", "Path", 30),
-				table.NewColumn("Args", "Args", 30),
+				table.NewColumn("Args", "Args", 50),
 			}, true)
 			for _, process := range resp.GetProcesses() {
 				row = table.NewRow(
