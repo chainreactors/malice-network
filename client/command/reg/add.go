@@ -24,9 +24,9 @@ func RegAddCmd(cmd *cobra.Command, con *repl.Console) error {
 	hive, path := FormatRegPath(path)
 
 	// 获取参数
-	valueName, _ := cmd.Flags().GetString("v")
-	valueType, _ := cmd.Flags().GetString("t")
-	data, _ := cmd.Flags().GetString("d")
+	valueName, _ := cmd.Flags().GetString("value")
+	valueType, _ := cmd.Flags().GetString("type")
+	data, _ := cmd.Flags().GetString("data")
 
 	session := con.GetInteractive()
 	task, err := RegAdd(con.Rpc, session, hive, path, valueName, valueType, data)

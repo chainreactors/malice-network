@@ -51,7 +51,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	}
 
 	regAddCmd := &cobra.Command{
-		Use:   consts.SubCommandName(consts.ModuleRegAdd) + " [path] /v [value_name] /t [type] /d [data]",
+		Use:   consts.SubCommandName(consts.ModuleRegAdd) + " [path]",
 		Short: "Add or modify a registry key",
 		Long:  "Add or modify a registry key with specified values. Supported types: REG_SZ, REG_BINARY, REG_DWORD, REG_QWORD",
 		Args:  cobra.ExactArgs(1),
@@ -64,15 +64,15 @@ func Commands(con *repl.Console) []*cobra.Command {
 		},
 		Example: `Add or modify a registry key:
   ~~~
-  reg add HKEY_LOCAL_MACHINE\\SOFTWARE\\Example /v TestValue /t REG_DWORD /d 1
-  reg add HKEY_LOCAL_MACHINE\\SOFTWARE\\Example /v TestString /t REG_SZ /d "Hello World"
-  reg add HKEY_LOCAL_MACHINE\\SOFTWARE\\Example /v TestBinary /t REG_BINARY /d 01020304
+  reg add HKEY_LOCAL_MACHINE\\SOFTWARE\\Example -v TestValue -t REG_DWORD -d 1
+  reg add HKEY_LOCAL_MACHINE\\SOFTWARE\\Example -v TestString -t REG_SZ -d "Hello World"
+  reg add HKEY_LOCAL_MACHINE\\SOFTWARE\\Example -v TestBinary -t REG_BINARY -d 01020304
   ~~~`,
 	}
 	common.BindFlag(regAddCmd, func(f *pflag.FlagSet) {
-		f.String("v", "", "Value name")
-		f.String("t", "REG_SZ", "Value type (REG_SZ, REG_BINARY, REG_DWORD, REG_QWORD)")
-		f.String("d", "", "Data to set")
+		f.StringP("value", "v", "", "Value name")
+		f.StringP("type", "t", "REG_SZ", "Value type (REG_SZ, REG_BINARY, REG_DWORD, REG_QWORD)")
+		f.StringP("data", "d", "", "Data to set")
 	})
 
 	regDeleteCmd := &cobra.Command{
