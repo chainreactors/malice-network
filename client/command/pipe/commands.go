@@ -55,6 +55,9 @@ func Commands(con *repl.Console) []*cobra.Command {
   pipe read \\.\pipe\test_pipe
   ~~~`,
 	}
+	common.BindArgCompletions(pipeReadCmd, nil,
+		carapace.ActionValues().Usage("pipe name"),
+	)
 
 	pipeCloseCmd := &cobra.Command{
 		Use:   consts.SubCommandName(consts.ModulePipeClose) + " [pipe_name]",
@@ -69,13 +72,17 @@ func Commands(con *repl.Console) []*cobra.Command {
 			"ttp":    "T1090",
 		},
 		Example: `Close a pipe:
-  ~~~
-  pipe close \\.\pipe\test_pipe
-  ~~~`,
+	~~~
+	pipe close \\.\pipe\test_pipe
+	~~~`,
 	}
+	common.BindArgCompletions(pipeCloseCmd, nil,
+		carapace.ActionValues().Usage("pipe name"),
+	)
 
 	// Add subcommands to the main pipe command
-	pipeCmd.AddCommand(pipeUploadCmd, pipeReadCmd, pipeCloseCmd)
+	pipeCmd.AddCommand(pipeUploadCmd, pipeReadCmd)
+	// , pipeCloseCmd
 
 	return []*cobra.Command{pipeCmd}
 }
