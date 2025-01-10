@@ -15,15 +15,14 @@ import (
 
 // PipeCloseCmd closes a named pipe.
 func PipeCloseCmd(cmd *cobra.Command, con *repl.Console) error {
-	name, _ := cmd.Flags().GetString("name")
-
+	named_pipe := cmd.Flags().Arg(0)
 	session := con.GetInteractive()
-	task, err := PipeClose(con.Rpc, session, name)
+	task, err := PipeClose(con.Rpc, session, named_pipe)
 	if err != nil {
 		return err
 	}
 
-	session.Console(task, fmt.Sprintf("closed named pipe: %s", name))
+	session.Console(task, fmt.Sprintf("closed named pipe: %s", named_pipe))
 	return nil
 }
 
