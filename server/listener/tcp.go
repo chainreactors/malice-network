@@ -28,6 +28,8 @@ func NewTcpPipeline(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeli
 		Name:           pipeline.Name,
 		Port:           uint16(tcp.Port),
 		Host:           tcp.Host,
+		Target:         pipeline.Target,
+		BeaconPipeline: pipeline.BeaconPipeline,
 		Enable:         true,
 		PipelineConfig: core.FromProtobuf(pipeline),
 	}
@@ -41,21 +43,26 @@ func NewTcpPipeline(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeli
 }
 
 type TCPPipeline struct {
-	ln     net.Listener
-	rpc    listenerrpc.ListenerRPCClient
-	Name   string
-	Port   uint16
-	Host   string
-	Enable bool
-	parser *parser.MessageParser
+	ln             net.Listener
+	rpc            listenerrpc.ListenerRPCClient
+	Name           string
+	Port           uint16
+	Host           string
+	Enable         bool
+	Target         string
+	BeaconPipeline string
+	parser         *parser.MessageParser
 	*core.PipelineConfig
 }
 
 func (pipeline *TCPPipeline) ToProtobuf() *clientpb.Pipeline {
 	p := &clientpb.Pipeline{
-		Name:       pipeline.Name,
-		Enable:     pipeline.Enable,
-		ListenerId: pipeline.ListenerID,
+		Name:           pipeline.Name,
+		Enable:         pipeline.Enable,
+		ListenerId:     pipeline.ListenerID,
+		Parser:         pipeline.Parser,
+		Target:         pipeline.Target,
+		BeaconPipeline: pipeline.BeaconPipeline,
 		Body: &clientpb.Pipeline_Tcp{
 			Tcp: &clientpb.TCPPipeline{
 				Port: uint32(pipeline.Port),

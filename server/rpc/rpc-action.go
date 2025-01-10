@@ -27,6 +27,7 @@ func (rpc *Server) TriggerWorkflowDispatch(ctx context.Context, req *clientpb.Gi
 		req.Owner = config.Owner
 		req.Repo = config.Repo
 		req.Token = config.Token
+		req.WorkflowId = config.Workflow
 	}
 	if req.Inputs["package"] == consts.CommandBuildModules {
 		moduleBuilder, err := db.GetBuilderByModules(req.Inputs["targets"], modules)
@@ -68,6 +69,7 @@ func (rpc *Server) WorkflowStatus(ctx context.Context, req *clientpb.GithubWorkf
 		req.Owner = config.Owner
 		req.Repo = config.Repo
 		req.Token = config.Token
+		req.WorkflowId = config.Workflow
 	}
 	err := build.GetWorkflowStatus(req.Owner, req.Repo, req.WorkflowId, req.Token)
 	if err != nil {

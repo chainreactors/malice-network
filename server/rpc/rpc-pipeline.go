@@ -51,6 +51,8 @@ func (rpc *Server) StartPipeline(ctx context.Context, req *clientpb.CtrlPipeline
 	}
 	pipelineDB.Enable = true
 	pipeline := pipelineDB.ToProtobuf()
+	pipeline.Target = req.Target
+	pipeline.BeaconPipeline = req.BeaconPipeline
 	listener := core.Listeners.Get(pipeline.ListenerId)
 	if listener == nil {
 		return nil, fmt.Errorf("listener %s not found", req.ListenerId)

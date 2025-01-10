@@ -1,6 +1,7 @@
 package common
 
 import (
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
@@ -111,14 +112,26 @@ func PipelineFlagSet(f *pflag.FlagSet) {
 	f.StringP("listener", "l", "", "listener id")
 	f.String("host", "0.0.0.0", "pipeline host, the default value is **0.0.0.0**")
 	f.UintP("port", "p", 0, "pipeline port, random port is selected from the range **10000-15000**")
+	f.String("parser", "malefic", "pipeline parser")
 }
 
-func ParsePipelineFlags(cmd *cobra.Command) (string, string, uint32) {
+func ArtifactFlagSet(f *pflag.FlagSet) {
+	f.String("target", "", "build target")
+	f.String("beacon-pipeline", "", "beacon pipeline id")
+}
+
+func ParseArtifactFlags(cmd *cobra.Command) (string, string) {
+	target, _ := cmd.Flags().GetString("target")
+	beaconPipeline, _ := cmd.Flags().GetString("beacon-pipeline")
+	return target, beaconPipeline
+}
+
+func ParsePipelineFlags(cmd *cobra.Command) (string, string, uint32, string) {
 	listenerID, _ := cmd.Flags().GetString("listener")
 	host, _ := cmd.Flags().GetString("host")
 	portUint, _ := cmd.Flags().GetUint32("port")
-
-	return listenerID, host, portUint
+	parser, _ := cmd.Flags().GetString("parser")
+	return listenerID, host, portUint, parser
 }
 
 func ParseTLSFlags(cmd *cobra.Command) (*clientpb.TLS, error) {
@@ -147,6 +160,16 @@ func ParseEncryptionFlags(cmd *cobra.Command) *clientpb.Encryption {
 	encryptionType, _ := cmd.Flags().GetString("encryption-type")
 	encryptionKey, _ := cmd.Flags().GetString("encryption-key")
 	enable, _ := cmd.Flags().GetBool("encryption-enable")
+	parser, _ := cmd.Flags().GetString("parser")
+	if !enable {
+		if parser == "malefic" {
+			encryptionKey = "maliceofinternal"
+			encryptionType = consts.CryptorAES
+		} else {
+			encryptionKey = "maliceofinternal"
+			encryptionType = consts.CryptorXOR
+		}
+	}
 	return &clientpb.Encryption{
 		Enable: enable,
 		Type:   encryptionType,

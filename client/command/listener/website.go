@@ -17,7 +17,7 @@ import (
 
 // NewWebsiteCmd - 创建新的网站
 func NewWebsiteCmd(cmd *cobra.Command, con *repl.Console) error {
-	listenerID, _, port := common.ParsePipelineFlags(cmd)
+	listenerID, _, port, _ := common.ParsePipelineFlags(cmd)
 	name := cmd.Flags().Arg(0)
 	root, _ := cmd.Flags().GetString("root")
 

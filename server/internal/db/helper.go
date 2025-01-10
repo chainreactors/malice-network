@@ -860,7 +860,7 @@ func FindArtifact(target *clientpb.Artifact) (*clientpb.Artifact, error) {
 		return nil, fmt.Errorf("error finding artifact: %v, target: %+v", result.Error, target)
 	}
 	if builder == nil {
-		return nil, fmt.Errorf("no artifact found for target: %+v, please build %s first", target, target.Type)
+		return nil, errs.ErrNotFoundArtifact
 	}
 
 	var content []byte
