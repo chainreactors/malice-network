@@ -46,15 +46,16 @@ func RegisterBofFunc(con *repl.Console) {
 			}
 			return ExecBof(rpc, sess, path, cmdline, true)
 		},
-		common.ParseBOFResponse,
-		func(content *clientpb.TaskContext) (string, error) {
+		func(content *clientpb.TaskContext) (interface{}, error) {
 			bofResps, err := common.ParseBOFResponse(content)
 			if err != nil {
 				return "", err
 			}
 			results := bofResps.(pe.BOFResponses).Handler(content.Session)
 			return results, nil
-		})
+		},
+		nil,
+	)
 
 	con.AddCommandFuncHelper(
 		consts.ModuleExecuteBof,
