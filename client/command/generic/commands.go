@@ -171,6 +171,6 @@ func Register(con *repl.Console) {
 	}, nil)
 
 	con.RegisterServerFunc("isbeacon", func(con *repl.Console, sess *core.Session) (bool, error) {
-		return sess.Type == consts.ImplantModBeacon, nil
+		return sess.Type == consts.CommandBuildBeacon, nil
 	}, nil)
 }

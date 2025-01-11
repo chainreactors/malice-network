@@ -290,7 +290,7 @@ func (lns *listener) autoBuild(pipeline *clientpb.Pipeline) error {
 	var beaconPipeline string
 	var pulsePipeline string
 	var input map[string]string
-	if pipeline.Parser == consts.ImplantPulse {
+	if pipeline.Parser == consts.CommandBuildPulse {
 		buildType = consts.CommandBuildPulse
 		beaconPipeline = pipeline.BeaconPipeline
 		pulsePipeline = pipeline.Name
