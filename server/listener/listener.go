@@ -228,69 +228,63 @@ func (lns *listener) startHandler(job *clientpb.Job) error {
 		return err
 	}
 	job.Name = pipeline.ID()
+	err = lns.autoBuild(job.GetPipeline())
+	if err != nil {
+		logs.Log.Warn(err)
+	}
+	return nil
+}
 
-	pipelineJob := job.GetPipeline()
-	if pipelineJob.Target == "" {
-		logs.Log.Errorf("pipeline %s target is empty, auto build canceled", pipelineJob.Name)
-		return nil
+func (lns *listener) autoBuild(pipeline *clientpb.Pipeline) error {
+	if pipeline.Target == "" {
+		return fmt.Errorf("pipeline %s target is empty, auto build canceled", pipeline.Name)
 	}
 	var buildType string
-	var basicPipeline string
+	var beaconPipeline string
 	var pulsePipeline string
 	var input map[string]string
-	if pipelineJob.Parser == consts.ImplantPulse {
+	if pipeline.Parser == consts.ImplantPulse {
 		buildType = consts.CommandBuildPulse
-		basicPipeline = pipelineJob.BeaconPipeline
-		pulsePipeline = pipelineJob.Name
+		beaconPipeline = pipeline.BeaconPipeline
+		pulsePipeline = pipeline.Name
 		input = map[string]string{
 			"package": consts.CommandBuildPulse,
-			"targets": pipelineJob.Target,
+			"targets": pipeline.Target,
 		}
 	} else {
 		buildType = consts.CommandBuildBeacon
-		basicPipeline = pipelineJob.Name
+		beaconPipeline = pipeline.Name
 		input = map[string]string{
 			"package": consts.CommandBuildBeacon,
-			"targets": pipelineJob.Target,
+			"targets": pipeline.Target,
 		}
 	}
-	target, ok := consts.GetBuildTarget(pipelineJob.Target)
-	if !ok {
-		logs.Log.Errorf(errs.ErrInvalidateTarget.Error())
-		return nil
-	}
-	_, err = lns.Rpc.FindArtifact(context.Background(), &clientpb.Artifact{
-		Pipeline: pipelineJob.Name,
-		Target:   pipelineJob.Target,
+	target, _ := consts.GetBuildTarget(pipeline.Target)
+	_, err := lns.Rpc.FindArtifact(context.Background(), &clientpb.Artifact{
+		Pipeline: pipeline.Name,
+		Target:   pipeline.Target,
 		Type:     buildType,
 		Platform: target.OS,
 		Arch:     target.Arch,
 	})
 	if !errors.Is(err, errs.ErrNotFoundArtifact) && err != nil {
-		logs.Log.Errorf("find artifact error: %s", err.Error())
-		return nil
+		return err
 	} else if err == nil {
 		return nil
 	}
-	_, workflowErr := lns.Rpc.WorkflowStatus(context.Background(), &clientpb.GithubWorkflowRequest{
-		Repo:  "",
-		Owner: "",
-		Token: "",
-	})
+	_, workflowErr := lns.Rpc.WorkflowStatus(context.Background(), &clientpb.GithubWorkflowRequest{})
 	_, dockerErr := lns.Rpc.DockerStatus(context.Background(), &clientpb.Empty{})
 	if workflowErr != nil && dockerErr != nil {
-		logs.Log.Errorf("workflow and docker not worked: %s, %s", workflowErr.Error(), dockerErr.Error())
-		return nil
+		return fmt.Errorf("workflow and docker not worked: %s, %s", workflowErr.Error(), dockerErr.Error())
 	}
 	profileName := codenames.GetCodename()
 	_, err = lns.Rpc.NewProfile(context.Background(), &clientpb.Profile{
 		Name:            profileName,
-		PipelineId:      basicPipeline,
+		PipelineId:      beaconPipeline,
 		PulsePipelineId: pulsePipeline,
 	})
 	if err != nil {
-		logs.Log.Errorf("new profile error: %s", err.Error())
-		return nil
+		return err
 	}
 	if workflowErr == nil {
 		_, err = lns.Rpc.TriggerWorkflowDispatch(context.Background(), &clientpb.GithubWorkflowRequest{
@@ -298,24 +292,19 @@ func (lns *listener) startHandler(job *clientpb.Job) error {
 			Profile: profileName,
 		})
 		if err != nil {
-			logs.Log.Errorf("trigger workflow dispatch error: %s", err.Error())
-			return nil
+			return err
 		}
-		return nil
 	} else if dockerErr == nil {
 		_, err = lns.Rpc.Build(context.Background(), &clientpb.Generate{
-			Target:      pipelineJob.Target,
+			Target:      pipeline.Target,
 			ProfileName: profileName,
 			Type:        buildType,
 			Srdi:        true,
 		})
 		if err != nil {
-			logs.Log.Errorf("docker run error: %s", err.Error())
-			return nil
+			return err
 		}
-		return nil
 	}
-
 	return nil
 }
 
