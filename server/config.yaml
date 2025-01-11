@@ -24,7 +24,6 @@ listeners:
       host: 0.0.0.0
       protocol: tcp
       parser: malefic
-      target: x86_64-pc-windows-gnu
       enable: true
       tls:
         enable: false
@@ -47,8 +46,11 @@ listeners:
       port: 5002
       host: 0.0.0.0
       parser: pulse
-      target: x86_64-pc-windows-gnu
-      beacon_pipeline: beacon_pipeline
+      auto_build:
+          target:
+            - x86_64-pc-windows-gnu
+            - x86_64-unknown-linux-musl
+          beacon_pipeline: beacon_pipeline
       enable: true
       encryption:
         enable: true

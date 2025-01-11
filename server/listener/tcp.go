@@ -49,7 +49,7 @@ type TCPPipeline struct {
 	Port           uint16
 	Host           string
 	Enable         bool
-	Target         string
+	Target         []string
 	BeaconPipeline string
 	parser         *parser.MessageParser
 	*core.PipelineConfig

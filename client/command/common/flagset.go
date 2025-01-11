@@ -116,12 +116,12 @@ func PipelineFlagSet(f *pflag.FlagSet) {
 }
 
 func ArtifactFlagSet(f *pflag.FlagSet) {
-	f.String("target", "", "build target")
+	f.StringSlice("target", []string{}, "build target")
 	f.String("beacon-pipeline", "", "beacon pipeline id")
 }
 
-func ParseArtifactFlags(cmd *cobra.Command) (string, string) {
-	target, _ := cmd.Flags().GetString("target")
+func ParseArtifactFlags(cmd *cobra.Command) ([]string, string) {
+	target, _ := cmd.Flags().GetStringSlice("target")
 	beaconPipeline, _ := cmd.Flags().GetString("beacon-pipeline")
 	return target, beaconPipeline
 }
