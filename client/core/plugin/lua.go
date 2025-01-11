@@ -3,10 +3,6 @@ package plugin
 import (
 	"fmt"
 
-	"github.com/kballard/go-shellquote"
-	"github.com/spf13/cobra"
-	lua "github.com/yuin/gopher-lua"
-	"github.com/yuin/gopher-lua/parse"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -15,6 +11,11 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/kballard/go-shellquote"
+	"github.com/spf13/cobra"
+	lua "github.com/yuin/gopher-lua"
+	"github.com/yuin/gopher-lua/parse"
 
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
