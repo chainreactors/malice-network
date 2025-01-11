@@ -797,7 +797,7 @@ func SaveArtifact(name, artifactType, platform, arch, stage, source string) (*mo
 		Type:   artifactType,
 		Source: source,
 	}
-	if artifactType == consts.ImplantModShellcode {
+	if artifactType == consts.CommandBuildShellCode {
 		builder.IsSRDI = true
 		builder.ShellcodePath = filepath.Join(absBuildOutputPath, encoders.UUID())
 	} else {
@@ -846,7 +846,7 @@ func FindArtifact(target *clientpb.Artifact) (*clientpb.Artifact, error) {
 			if v.ShellcodePath == "" {
 				continue
 			}
-			if v.Type == consts.ImplantModPulse && v.Profile.PulsePipelineID == target.Pipeline {
+			if v.Type == consts.ImplantPulse && v.Profile.PulsePipelineID == target.Pipeline {
 				builder = v
 				break
 			}

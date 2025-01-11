@@ -21,7 +21,7 @@ func (rpc *Server) Build(ctx context.Context, req *clientpb.Generate) (*clientpb
 		return nil, err
 	}
 	go func() {
-		_, err = build.GlobalBuildQueueManager.AddTask(req, *builder)
+		_, err = build.GlobalBuildQueueManager.AddTask(req, builder)
 		if err != nil {
 			logs.Log.Errorf("Failed to enqueue build request: %v", err)
 			return
@@ -56,7 +56,7 @@ func (rpc *Server) BuildModules(ctx context.Context, req *clientpb.Generate) (*c
 			return nil, err
 		}
 		go func() {
-			_, err = build.GlobalBuildQueueManager.AddTask(req, *builder)
+			_, err = build.GlobalBuildQueueManager.AddTask(req, builder)
 			if err != nil {
 				logs.Log.Errorf("Failed to enqueue build request: %v", err)
 				return

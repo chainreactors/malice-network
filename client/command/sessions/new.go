@@ -34,7 +34,7 @@ func NewBindSession(con *repl.Console, PipelineID string, target string, name st
 		RawId:      encoders.BytesToUint32(rid),
 		SessionId:  sid,
 		Target:     target,
-		Type:       consts.ImplantModBind,
+		Type:       consts.ImplantMaleficBind,
 		RegisterData: &implantpb.Register{
 			Name: name,
 		},

@@ -1,17 +1,10 @@
 package consts
 
+// parser
 const (
-	ImplantMalefic      = "malefic"
-	ImplantPulse        = "pulse"
-	ImplantCobaltStrike = "cobaltstrike"
-)
-
-const (
-	ImplantModBeacon    = "beacon"
-	ImplantModBind      = "bind"
-	ImplantModPulse     = "pulse"
-	ImplantModPrelude   = "prelude"
-	ImplantModShellcode = "shellcode"
+	ImplantMalefic     = "malefic"
+	ImplantPulse       = "pulse"
+	ImplantMaleficBind = "bind"
 )
 
 const (
