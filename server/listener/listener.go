@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/chainreactors/malice-network/helper/codenames"
+	"github.com/chainreactors/malice-network/helper/errs"
 	"os"
 	"path/filepath"
 
@@ -147,8 +149,10 @@ func (lns *listener) RegisterAndStart(pipeline *clientpb.Pipeline) error {
 	}
 
 	_, err = lns.Rpc.StartPipeline(context.Background(), &clientpb.CtrlPipeline{
-		Name:       pipeline.Name,
-		ListenerId: lns.ID(),
+		Name:           pipeline.Name,
+		ListenerId:     lns.ID(),
+		BeaconPipeline: pipeline.BeaconPipeline,
+		Target:         pipeline.Target,
 	})
 	if err != nil {
 		return err
@@ -224,6 +228,92 @@ func (lns *listener) startHandler(job *clientpb.Job) error {
 		return err
 	}
 	job.Name = pipeline.ID()
+	err = lns.autoBuild(job.GetPipeline())
+	if err != nil {
+		logs.Log.Warn(err)
+	}
+	return nil
+}
+
+func (lns *listener) autoBuild(pipeline *clientpb.Pipeline) error {
+	if len(pipeline.Target) == 0 {
+		return fmt.Errorf("pipeline %s target is empty, auto build canceled", pipeline.Name)
+	}
+	var buildType string
+	var beaconPipeline string
+	var pulsePipeline string
+	var input map[string]string
+
+	_, workflowErr := lns.Rpc.WorkflowStatus(context.Background(), &clientpb.GithubWorkflowRequest{})
+	_, dockerErr := lns.Rpc.DockerStatus(context.Background(), &clientpb.Empty{})
+	if workflowErr != nil && dockerErr != nil {
+		return fmt.Errorf("workflow and docker not worked: %s, %s", workflowErr.Error(), dockerErr.Error())
+	}
+
+	for _, target := range pipeline.Target {
+		if pipeline.Parser == consts.CommandBuildPulse {
+			buildType = consts.CommandBuildPulse
+			beaconPipeline = pipeline.BeaconPipeline
+			pulsePipeline = pipeline.Name
+			input = map[string]string{
+				"package": consts.CommandBuildPulse,
+				"targets": target,
+			}
+		} else {
+			buildType = consts.CommandBuildBeacon
+			beaconPipeline = pipeline.Name
+			input = map[string]string{
+				"package": consts.CommandBuildBeacon,
+				"targets": target,
+			}
+		}
+		targetMap, ok := consts.GetBuildTarget(target)
+		if !ok {
+			fmt.Printf("Error getting build target for %s\n", target)
+			continue
+		}
+		_, err := lns.Rpc.FindArtifact(context.Background(), &clientpb.Artifact{
+			Pipeline: pipeline.Name,
+			Target:   target,
+			Type:     buildType,
+			Platform: targetMap.OS,
+			Arch:     targetMap.Arch,
+		})
+		if !errors.Is(err, errs.ErrNotFoundArtifact) && err != nil {
+			logs.Log.Errorf("Error finding artifact for %s: %v\n", target, err)
+			continue
+		} else if err == nil {
+			continue
+		}
+		profileName := codenames.GetCodename()
+		_, err = lns.Rpc.NewProfile(context.Background(), &clientpb.Profile{
+			Name:            profileName,
+			PipelineId:      beaconPipeline,
+			PulsePipelineId: pulsePipeline,
+		})
+		if err != nil {
+			return err
+		}
+		if workflowErr == nil {
+			_, err = lns.Rpc.TriggerWorkflowDispatch(context.Background(), &clientpb.GithubWorkflowRequest{
+				Inputs:  input,
+				Profile: profileName,
+			})
+			if err != nil {
+				return err
+			}
+		} else if dockerErr == nil {
+			_, err = lns.Rpc.Build(context.Background(), &clientpb.Generate{
+				Target:      target,
+				ProfileName: profileName,
+				Type:        buildType,
+				Srdi:        true,
+			})
+			if err != nil {
+				return err
+			}
+		}
+	}
 	return nil
 }
 

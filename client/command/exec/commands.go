@@ -2,12 +2,11 @@ package exec
 
 import (
 	"fmt"
-	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
@@ -498,40 +497,15 @@ func Register(con *repl.Console) {
 	RegisterExeFunc(con)
 	RegisterBofFunc(con)
 
-	con.RegisterServerFunc("callback_bof", func(con *repl.Console, sess *core.Session, filename string) (intermediate.BuiltinCallback, error) {
+	con.RegisterServerFunc("callback_bof", func(con *repl.Console, sess *core.Session) (intermediate.BuiltinCallback, error) {
 		return func(content interface{}) (bool, error) {
 			resps, ok := content.(pe.BOFResponses)
 			if !ok {
 				return false, fmt.Errorf("invalid response type")
 			}
 			log := con.ObserverLog(sess.SessionId)
-			for _, resp := range resps {
-				if resp.CallbackType == pe.CALLBACK_SCREENSHOT {
-					if resp.Length == 0 {
-						log.Errorf("null screenshot data")
-						continue
-					}
-					screenfile, err := assets.GenerateTempFile(sess.SessionId, filename)
-					if err != nil {
-						log.Errorf("failed to create screenshot file: %s", err.Error())
-						continue
-					}
-					defer func() {
-						if closeErr := screenfile.Close(); closeErr != nil {
-							log.Errorf("failed to close screenshot file: %s", closeErr.Error())
-						}
-					}()
-
-					data := resp.Data[4:]
-					if _, err := screenfile.Write(data); err != nil {
-						log.Errorf("failed to write screenshot data: %s", err.Error())
-						continue
-					}
-					log.Infof("\nScreenshot saved to %s\n", screenfile.Name())
-				}
-			}
-
-			log.Console(resps.String())
+			results := resps.Handler(sess.Session)
+			log.Console(results)
 			return true, nil
 		}, nil
 	}, nil)

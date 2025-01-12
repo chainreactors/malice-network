@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/mals"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"os"
@@ -149,7 +150,7 @@ func Register(con *repl.Console) {
 
 	con.RegisterServerFunc("active", func(con *repl.Console) (*core.Session, error) {
 		return con.GetInteractive().Clone(consts.CalleeMal), nil
-	}, &intermediate.Helper{
+	}, &mals.Helper{
 		Short:   "get current session",
 		Output:  []string{"sess"},
 		Example: "active()",
@@ -168,6 +169,6 @@ func Register(con *repl.Console) {
 	}, nil)
 
 	con.RegisterServerFunc("isbeacon", func(con *repl.Console, sess *core.Session) (bool, error) {
-		return sess.Type == consts.ImplantModBeacon, nil
+		return sess.Type == consts.CommandBuildBeacon, nil
 	}, nil)
 }

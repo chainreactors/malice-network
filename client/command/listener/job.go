@@ -24,7 +24,7 @@ func ListJobsCmd(cmd *cobra.Command, con *repl.Console) error {
 	tableModel := tui.NewTable([]table.Column{
 		table.NewColumn("Name", "Name", 20),
 		table.NewColumn("Listener_id", "Listener_id", 15),
-		table.NewColumn("Host", "Host", 10),
+		table.NewColumn("IP", "IP", 10),
 		table.NewColumn("Port", "Port", 7),
 		table.NewColumn("Type", "Type", 7),
 	}, true)
@@ -36,17 +36,28 @@ func ListJobsCmd(cmd *cobra.Command, con *repl.Console) error {
 				table.RowData{
 					"Name":        pipeline.Name,
 					"Listener_id": pipeline.ListenerId,
-					"Host":        tcp.Host,
+					"IP":          pipeline.Ip,
 					"Port":        strconv.Itoa(int(tcp.Port)),
 					"Type":        "TCP",
 				})
+		case *clientpb.Pipeline_Bind:
+			//bind := pipeline.GetBind()
+			row = table.NewRow(
+				table.RowData{
+					"Name":        pipeline.Name,
+					"Listener_id": pipeline.ListenerId,
+					"IP":          "",
+					"Port":        "",
+					"Type":        "Bind",
+				})
+
 		case *clientpb.Pipeline_Web:
 			website := pipeline.GetWeb()
 			row = table.NewRow(
 				table.RowData{
 					"Name":        pipeline.Name,
 					"Listener_id": pipeline.ListenerId,
-					"Host":        "",
+					"IP":          pipeline.Ip,
 					"Port":        strconv.Itoa(int(website.Port)),
 					"Type":        "Web",
 				})

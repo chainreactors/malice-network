@@ -12,12 +12,12 @@ import (
 //)
 
 type Settings struct {
-	MaxServerLogSize   int    `yaml:"max_server_log_size" config:"max_server_log_size" default:"10"`
-	GithubRepo         string `yaml:"github_repo" config:"github_repo" default:""`
-	GithubOwner        string `yaml:"github_owner" config:"github_owner" default:""`
-	GithubToken        string `yaml:"github_token" config:"github_token" default:""`
-	GithubWorkflowFile string `yaml:"github_workflow_file" config:"github_workflow_file" default:"generate.yaml"`
-	OpsecThreshold     string `yaml:"opsec_threshold" config:"opsec_threshold" default:"6"`
+	MaxServerLogSize   int     `yaml:"max_server_log_size" config:"max_server_log_size" default:"10"`
+	GithubRepo         string  `yaml:"github_repo" config:"github_repo" default:""`
+	GithubOwner        string  `yaml:"github_owner" config:"github_owner" default:""`
+	GithubToken        string  `yaml:"github_token" config:"github_token" default:""`
+	GithubWorkflowFile string  `yaml:"github_workflow_file" config:"github_workflow_file" default:"generate.yaml"`
+	OpsecThreshold     float64 `yaml:"opsec_threshold" config:"opsec_threshold" default:"6.0"`
 	//VtApiKey           string `yaml:"vt_api_key" config:"vt_api_key" default:""`
 }
 

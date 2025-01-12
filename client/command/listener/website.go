@@ -17,7 +17,7 @@ import (
 
 // NewWebsiteCmd - 创建新的网站
 func NewWebsiteCmd(cmd *cobra.Command, con *repl.Console) error {
-	listenerID, _, port := common.ParsePipelineFlags(cmd)
+	listenerID, _, port, _ := common.ParsePipelineFlags(cmd)
 	name := cmd.Flags().Arg(0)
 	root, _ := cmd.Flags().GetString("root")
 
@@ -132,6 +132,7 @@ func AddWebContentCmd(cmd *cobra.Command, con *repl.Console) error {
 	websiteName, _ := cmd.Flags().GetString("website")
 	webPath, _ := cmd.Flags().GetString("path")
 	contentType, _ := cmd.Flags().GetString("type")
+	encryption := common.ParseEncryptionFlags(cmd)
 
 	if webPath == "" {
 		webPath = "/" + filepath.Base(filePath)
@@ -145,11 +146,12 @@ func AddWebContentCmd(cmd *cobra.Command, con *repl.Console) error {
 	website := &clientpb.Website{
 		Contents: map[string]*clientpb.WebContent{
 			webPath: {
-				WebsiteId: websiteName,
-				File:      filePath,
-				Path:      webPath,
-				Type:      contentType,
-				Content:   content,
+				WebsiteId:  websiteName,
+				File:       filePath,
+				Path:       webPath,
+				Type:       contentType,
+				Content:    content,
+				Encryption: encryption,
 			},
 		},
 	}
@@ -169,6 +171,7 @@ func UpdateWebContentCmd(cmd *cobra.Command, con *repl.Console) error {
 	filePath := cmd.Flags().Arg(1)
 	websiteName, _ := cmd.Flags().GetString("website")
 	contentType, _ := cmd.Flags().GetString("type")
+	encryption := common.ParseEncryptionFlags(cmd)
 
 	content, err := os.ReadFile(filePath)
 	if err != nil {
@@ -176,11 +179,12 @@ func UpdateWebContentCmd(cmd *cobra.Command, con *repl.Console) error {
 	}
 
 	webContent := &clientpb.WebContent{
-		Id:        contentId,
-		WebsiteId: websiteName,
-		File:      filepath.Base(filePath),
-		Type:      contentType,
-		Content:   content,
+		Id:         contentId,
+		WebsiteId:  websiteName,
+		File:       filepath.Base(filePath),
+		Type:       contentType,
+		Content:    content,
+		Encryption: encryption,
 	}
 
 	_, err = con.Rpc.WebsiteUpdateContent(con.Context(), webContent)

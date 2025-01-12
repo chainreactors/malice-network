@@ -15,15 +15,14 @@ import (
 
 // PipeReadCmd reads data from a named pipe.
 func PipeReadCmd(cmd *cobra.Command, con *repl.Console) error {
-	name, _ := cmd.Flags().GetString("name")
-
+	named_pipe := cmd.Flags().Arg(0)
 	session := con.GetInteractive()
-	task, err := PipeRead(con.Rpc, session, name)
+	task, err := PipeRead(con.Rpc, session, named_pipe)
 	if err != nil {
 		return err
 	}
 
-	session.Console(task, fmt.Sprintf("read data from named pipe: %s", name))
+	session.Console(task, fmt.Sprintf("read data from named pipe: %s", named_pipe))
 	return nil
 }
 

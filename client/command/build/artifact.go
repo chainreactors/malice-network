@@ -152,6 +152,9 @@ func DownloadArtifact(con *repl.Console, name string, srdi bool) (*clientpb.Arti
 		Name:   name,
 		IsSrdi: srdi,
 	})
+	if err != nil {
+		return artifact, err
+	}
 	if len(artifact.Bin) == 0 {
 		return artifact, errors.New("artifact maybe not download in server")
 	}

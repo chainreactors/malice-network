@@ -1,85 +1,29 @@
 package pe
 
 import (
-	"bytes"
 	"encoding/base64"
 	"encoding/binary"
 	"fmt"
+	"github.com/chainreactors/malice-network/client/assets"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"io"
+	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
-
-	"golang.org/x/text/encoding/unicode"
 )
 
 type BOFArgsBuffer struct {
-	Buffer *bytes.Buffer
-}
-
-func (b *BOFArgsBuffer) AddData(d []byte) error {
-	dataLen := uint32(len(d))
-	err := binary.Write(b.Buffer, binary.LittleEndian, &dataLen)
-	if err != nil {
-		return err
-	}
-	return binary.Write(b.Buffer, binary.LittleEndian, &d)
-}
-
-func (b *BOFArgsBuffer) AddShort(d uint16) error {
-	return binary.Write(b.Buffer, binary.LittleEndian, &d)
-}
-
-func (b *BOFArgsBuffer) AddInt(d uint32) error {
-	return binary.Write(b.Buffer, binary.LittleEndian, &d)
-}
-
-func (b *BOFArgsBuffer) AddString(d string) error {
-	stringLen := uint32(len(d)) + 1
-	err := binary.Write(b.Buffer, binary.LittleEndian, &stringLen)
-	if err != nil {
-		return err
-	}
-	dBytes := append([]byte(d), 0x00)
-	return binary.Write(b.Buffer, binary.LittleEndian, dBytes)
-}
-
-func (b *BOFArgsBuffer) AddWString(d string) error {
-	encoder := unicode.UTF16(unicode.LittleEndian, unicode.IgnoreBOM).NewEncoder()
-	strBytes := append([]byte(d), 0x00)
-	utf16Data, err := encoder.Bytes(strBytes)
-	if err != nil {
-		return err
-	}
-	stringLen := uint32(len(utf16Data))
-	err = binary.Write(b.Buffer, binary.LittleEndian, &stringLen)
-	if err != nil {
-		return err
-	}
-	return binary.Write(b.Buffer, binary.LittleEndian, utf16Data)
-}
-
-func (b *BOFArgsBuffer) GetBuffer() ([]byte, error) {
-	outBuffer := new(bytes.Buffer)
-	err := binary.Write(outBuffer, binary.LittleEndian, uint32(b.Buffer.Len()))
-	if err != nil {
-		return nil, err
-	}
-	err = binary.Write(outBuffer, binary.LittleEndian, b.Buffer.Bytes())
-	if err != nil {
-		return nil, err
-	}
-	return outBuffer.Bytes(), nil
-}
-
-type IoMBOFArgsBuffer struct {
 	Args []string
 }
 
-func (b *IoMBOFArgsBuffer) AddData(d []byte) error {
+func (b *BOFArgsBuffer) AddData(d []byte) error {
 	b.Args = append(b.Args, PackBinary(string(d)))
 	return nil
 }
 
-func (b *IoMBOFArgsBuffer) AddShort(d uint16) error {
+func (b *BOFArgsBuffer) AddShort(d uint16) error {
 	data, err := PackShort(d)
 	if err != nil {
 		return err
@@ -88,7 +32,7 @@ func (b *IoMBOFArgsBuffer) AddShort(d uint16) error {
 	return nil
 }
 
-func (b *IoMBOFArgsBuffer) AddInt(d uint32) error {
+func (b *BOFArgsBuffer) AddInt(d uint32) error {
 	data, err := PackInt(d)
 	if err != nil {
 		return err
@@ -97,17 +41,17 @@ func (b *IoMBOFArgsBuffer) AddInt(d uint32) error {
 	return nil
 }
 
-func (b *IoMBOFArgsBuffer) AddString(d string) error {
+func (b *BOFArgsBuffer) AddString(d string) error {
 	b.Args = append(b.Args, PackString(d))
 	return nil
 }
 
-func (b *IoMBOFArgsBuffer) AddWString(d string) error {
+func (b *BOFArgsBuffer) AddWString(d string) error {
 	b.Args = append(b.Args, PackWideString(d))
 	return nil
 }
 
-func (b *IoMBOFArgsBuffer) GetArgs() []string {
+func (b *BOFArgsBuffer) GetArgs() []string {
 	return b.Args
 }
 
@@ -169,6 +113,14 @@ func PackBinary(data string) string {
 	return fmt.Sprintf(`bin:%s`, base64.StdEncoding.EncodeToString([]byte(data)))
 }
 
+func PackFile(data string) string {
+	return "file:" + data
+}
+
+func PackURL(data string) string {
+	return "url" + data
+}
+
 func PackInt(i uint32) (string, error) {
 	return fmt.Sprintf(`int:%d`, i), nil
 }
@@ -201,12 +153,63 @@ func PackWideString(s string) string {
 	return fmt.Sprintf(`wstr:%s`, s)
 }
 
+func UnPackBinary(data string) ([]byte, error) {
+	if strings.HasPrefix(data, "bin:") {
+		data = data[4:]
+	}
+	return base64.StdEncoding.DecodeString(data)
+}
+
+func UnPackFile(data string) ([]byte, error) {
+	if strings.HasPrefix(data, "file:") {
+		data = data[5:]
+	}
+	return os.ReadFile(data)
+}
+
+func UnpackURL(data string) ([]byte, error) {
+	if strings.HasPrefix(data, "url:") {
+		data = data[4:]
+	}
+	resp, err := http.Get(data)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode == 200 {
+		return io.ReadAll(resp.Body)
+	} else {
+		return nil, fmt.Errorf("request error %d", resp.StatusCode)
+	}
+}
+
+func Unpack(data string) ([]byte, error) {
+	unpakced := strings.SplitN(data, ":", 2)
+	result, err := UnPackFile(data)
+	if err == nil {
+		return result, err
+	}
+	switch unpakced[0] {
+	case "file":
+		return UnPackFile(unpakced[1])
+	case "bin":
+		return UnPackBinary(unpakced[1])
+	case "url":
+		return UnpackURL(unpakced[1])
+	default:
+		return nil, fmt.Errorf("Unknown data type %s", unpakced[0])
+	}
+}
+
 const (
 	CALLBACK_OUTPUT      = 0
-	CALLBACK_SCREENSHOT  = 3
-	CALLBACK_ERROR       = 13
-	CALLBACK_OUTPUT_OEM  = 30
-	CALLBACK_OUTPUT_UTF8 = 32
+	CALLBACK_FILE        = 0x02
+	CALLBACK_FILE_WRITE  = 0x08
+	CALLBACK_FILE_CLOSE  = 0x09
+	CALLBACK_SCREENSHOT  = 0x03
+	CALLBACK_ERROR       = 0x0d
+	CALLBACK_OUTPUT_OEM  = 0x1e
+	CALLBACK_OUTPUT_UTF8 = 0x20
 )
 
 type BOFResponse struct {
@@ -216,25 +219,99 @@ type BOFResponse struct {
 	Data         []byte
 }
 
-func (bof *BOFResponse) String() string {
-	switch bof.CallbackType {
-	case CALLBACK_OUTPUT, CALLBACK_OUTPUT_OEM, CALLBACK_OUTPUT_UTF8:
-		return string(bof.Data)
-	case CALLBACK_ERROR:
-		return fmt.Sprintf("Error: %s", string(bof.Data))
-	case CALLBACK_SCREENSHOT:
-		return "screenshot"
-	default:
-		return fmt.Sprintf("\nUnimplemented callback type ID: %d.\nData: %s", bof.CallbackType, bof.Data)
-	}
-}
-
 type BOFResponses []*BOFResponse
 
-func (bofs BOFResponses) String() string {
-	var s strings.Builder
-	for _, r := range bofs {
-		s.WriteString(r.String() + "\n")
+func (bofResps BOFResponses) Handler(sess *clientpb.Session) string {
+	var err error
+	var results strings.Builder
+
+	fileMap := make(map[string]*os.File)
+
+	for _, bofResp := range bofResps {
+		var result string
+		switch bofResp.CallbackType {
+		case CALLBACK_OUTPUT, CALLBACK_OUTPUT_OEM, CALLBACK_OUTPUT_UTF8:
+			result = string(bofResp.Data)
+		case CALLBACK_ERROR:
+			result = fmt.Sprintf("Error occurred: %s", string(bofResp.Data))
+		case CALLBACK_SCREENSHOT:
+			fileName := "screenshot.jpg"
+			result = func() string {
+				if bofResp.Length-4 <= 0 {
+					return fmt.Sprintf("Null screenshot data")
+				}
+				screenfile, err := assets.GenerateTempFile(sess.SessionId, fileName)
+				if err != nil {
+					return fmt.Sprintf("Failed to create screenshot file")
+				}
+				defer func() {
+					err := screenfile.Close()
+					if err != nil {
+						return
+					}
+				}()
+				data := bofResp.Data[4:]
+				if _, err := screenfile.Write(data); err != nil {
+					return fmt.Sprintf("Failed to write screenshot data: %s", err.Error())
+				}
+				return fmt.Sprintf("Screenshot saved to %s", screenfile.Name())
+			}()
+		case CALLBACK_FILE:
+			result = func() string {
+				fileId := fmt.Sprintf("%d", binary.LittleEndian.Uint32(bofResp.Data[:4]))
+				fileName := string(bofResp.Data[8:])
+				file, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+				if err != nil {
+					return fmt.Sprintf("Could not open file '%s' (ID: %s): %s", filepath.Base(file.Name()), fileId, err)
+				}
+				fileMap[fileId] = file
+				return fmt.Sprintf("File '%s' (ID: %s) opened successfully", filepath.Base(file.Name()), fileId)
+			}()
+		case CALLBACK_FILE_WRITE:
+			result = func() string {
+				fileId := fmt.Sprintf("%d", binary.LittleEndian.Uint32(bofResp.Data[:4]))
+				file := fileMap[fileId]
+				if file == nil {
+					return fmt.Sprintf("No open file to write to (ID: %s)", fileId)
+				}
+				_, err = file.Write(bofResp.Data[4:])
+				if err != nil {
+					return fmt.Sprintf("Error writing to file (ID: %s): %s", fileId, err)
+				}
+				return fmt.Sprintf("Data(Size: %d) written to file (ID: %s) successfully", bofResp.Length-4, fileId)
+			}()
+		case CALLBACK_FILE_CLOSE:
+			result = func() string {
+				fileId := fmt.Sprintf("%d", binary.LittleEndian.Uint32(bofResp.Data[:4]))
+				file := fileMap[fileId]
+				if file == nil {
+					return fmt.Sprintf("No open file to close (ID: %s)", fileId)
+				}
+				err = file.Close()
+				if err != nil {
+					return fmt.Sprintf("Error closing file (ID: %s): %s", fileId, err)
+				}
+				delete(fileMap, fileId)
+				return fmt.Sprintf("File (ID: %s) closed successfully", fileId)
+			}()
+		default:
+			result = func() string {
+				return fmt.Sprintf("Unimplemented callback type : %d", bofResp.CallbackType)
+			}()
+		}
+		results.WriteString(result + "\n")
 	}
-	return s.String()
+	// Close any remaining open files
+	for fileId, file := range fileMap {
+		if file != nil {
+			err := file.Close()
+			if err != nil {
+				results.WriteString(fmt.Sprintf("Error closing file (ID: %s): %s\n", fileId, err))
+			} else {
+				results.WriteString(fmt.Sprintf("File (ID: %s) closed automatically due to end of processing\n", fileId))
+			}
+			delete(fileMap, fileId)
+		}
+	}
+	return results.String()
 }

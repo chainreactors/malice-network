@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/utils/pe"
+	"github.com/chainreactors/mals"
 	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
 	"math"
@@ -20,7 +20,7 @@ import (
 
 type loadedAddon struct {
 	Command *cobra.Command
-	Func    *intermediate.InternalFunc
+	Func    *mals.MalFunction
 }
 
 func LoadAddonCmd(cmd *cobra.Command, con *repl.Console) {

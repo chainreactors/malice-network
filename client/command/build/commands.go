@@ -2,13 +2,13 @@ package build
 
 import (
 	"fmt"
-
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/mals"
 	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -405,7 +405,7 @@ artifact delete --name artifact_name
 }
 
 func Register(con *repl.Console) {
-	con.RegisterServerFunc("search_artifact", SearchArtifact, &intermediate.Helper{
+	con.RegisterServerFunc("search_artifact", SearchArtifact, &mals.Helper{
 		Group: intermediate.GroupArtifact,
 		Short: "search build artifact with arch,os,typ and pipeline id",
 		Input: []string{
@@ -432,7 +432,7 @@ func Register(con *repl.Console) {
 			return nil, err
 		}
 		return artifact, nil
-	}, &intermediate.Helper{
+	}, &mals.Helper{
 		Group: intermediate.GroupArtifact,
 		Short: "get artifact with session self",
 		Input: []string{
@@ -444,17 +444,17 @@ func Register(con *repl.Console) {
 		},
 	})
 
-	con.RegisterServerFunc("upload_artifact", UploadArtifact, &intermediate.Helper{
+	con.RegisterServerFunc("upload_artifact", UploadArtifact, &mals.Helper{
 		Group: intermediate.GroupArtifact,
 		Short: "upload local bin to server build",
 	})
 
-	con.RegisterServerFunc("download_artifact", DownloadArtifact, &intermediate.Helper{
+	con.RegisterServerFunc("download_artifact", DownloadArtifact, &mals.Helper{
 		Group: intermediate.GroupArtifact,
 		Short: "download artifact with special build id",
 	})
 
-	con.RegisterServerFunc("delete_artifact", DeleteArtifact, &intermediate.Helper{
+	con.RegisterServerFunc("delete_artifact", DeleteArtifact, &mals.Helper{
 		Group: intermediate.GroupArtifact,
 		Short: "delete artifact with special build name",
 	})
@@ -465,7 +465,7 @@ func Register(con *repl.Console) {
 			return "", err
 		}
 		return string(artifact.Bin), nil
-	}, &intermediate.Helper{
+	}, &mals.Helper{
 		Group: intermediate.GroupArtifact,
 		Short: "get self artifact stager shellcode",
 		Input: []string{
@@ -483,7 +483,7 @@ func Register(con *repl.Console) {
 			return "", err
 		}
 		return string(artifact.Bin), nil
-	}, &intermediate.Helper{
+	}, &mals.Helper{
 		Group: intermediate.GroupArtifact,
 		Short: "get artifact stager shellcode",
 		Input: []string{
@@ -503,7 +503,7 @@ func Register(con *repl.Console) {
 			return "", fmt.Errorf("get artifact error: %s", err)
 		}
 		return string(artifact.Bin), nil
-	}, &intermediate.Helper{
+	}, &mals.Helper{
 		Group: intermediate.GroupArtifact,
 		Short: "get self artifact stageless shellcode",
 		Input: []string{
@@ -521,7 +521,7 @@ func Register(con *repl.Console) {
 			return "", err
 		}
 		return string(artifact.Bin), nil
-	}, &intermediate.Helper{
+	}, &mals.Helper{
 		Group: intermediate.GroupArtifact,
 		Short: "get artifact stageless shellcode",
 		Input: []string{

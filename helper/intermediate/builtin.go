@@ -1,19 +1,23 @@
 package intermediate
 
 import (
-	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
 	"math/big"
 	"os"
+	"path/filepath"
 	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/chainreactors/mals"
+	"github.com/kballard/go-shellquote"
+
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/helper/encoders/hash"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
@@ -21,10 +25,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/handler"
-	"github.com/chainreactors/malice-network/helper/utils/mals"
 	"github.com/chainreactors/malice-network/helper/utils/pe"
-	"github.com/kballard/go-shellquote"
-	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -32,11 +33,19 @@ const (
 	GroupArtifact = "artifact"
 )
 
+// lua package
+const (
+	BeaconPackage  = "beacon"
+	RpcPackage     = "rpc"
+	ArmoryPackage  = "armory"
+	BuiltinPackage = "builtin"
+)
+
 type BuiltinCallback func(content interface{}) (bool, error)
 
 func RegisterBuiltin(rpc clientrpc.MaliceRPCClient) {
 	RegisterCustomBuiltin(rpc)
-	RegisterGRPCBuiltin(rpc)
+	mals.RegisterGRPCBuiltin(RpcPackage, rpc)
 	RegisterEncodeFunc(rpc)
 }
 
@@ -48,7 +57,7 @@ func RegisterCustomBuiltin(rpc clientrpc.MaliceRPCClient) {
 	AddHelper(
 		"new_sacrifice",
 
-		&Helper{
+		&mals.Helper{
 			Short: "new sacrifice process config",
 			Input: []string{
 				"ppid: parent process id",
@@ -75,7 +84,7 @@ sac = new_sacrifice(123, false, false, false, "")
 		return NewExecutable(module, filename, cmdline, "x86", sacrifice)
 	})
 	AddHelper("new_86_executable",
-		&Helper{
+		&mals.Helper{
 			Short: "new x86 process execute binary config",
 			Input: []string{
 				"module",
@@ -100,7 +109,7 @@ new_86_exec = new_86_executable("module", "filename", "args", sac)
 		return NewExecutable(module, filename, cmdline, "amd64", sacrifice)
 	})
 	AddHelper("new_64_executable",
-		&Helper{
+		&mals.Helper{
 			Short: "new x64 process execute binary config",
 			Input: []string{
 				"module",
@@ -140,7 +149,7 @@ new_64_exec = new_64_executable("module", "filename", "args", sac)
 
 	AddHelper(
 		"new_bypass",
-		&Helper{
+		&mals.Helper{
 			Short: "new bypass options",
 			Input: []string{
 				"bypassAMSI",
@@ -158,7 +167,7 @@ params = new_bypass(true, true, true)
 
 	AddHelper(
 		"new_bypass_all",
-		&Helper{
+		&mals.Helper{
 			Short: "new bypass all options",
 			Input: []string{},
 			Output: []string{
@@ -177,7 +186,7 @@ params = new_bypass_all()
 	})
 
 	AddHelper("new_binary",
-		&Helper{
+		&mals.Helper{
 			Short: "new execute binary config",
 			Input: []string{
 				"module",
@@ -265,76 +274,7 @@ new_bin = new_binary("module", "filename", "args", true, 100, "amd64", "process"
 
 }
 
-func RegisterGRPCBuiltin(rpc clientrpc.MaliceRPCClient) {
-	rpcType := reflect.TypeOf(rpc)
-	rpcValue := reflect.ValueOf(rpc)
-
-	for i := 0; i < rpcType.NumMethod(); i++ {
-		method := rpcType.Method(i)
-		methodName := method.Name
-
-		// 忽略流式方法
-		methodReturnType := method.Type.Out(0)
-		if methodReturnType.Kind() == reflect.Interface && methodReturnType.Name() == "ClientStream" {
-			continue
-		}
-
-		// 将方法包装为 InternalFunc
-		rpcFunc := func(args ...interface{}) (interface{}, error) {
-			if len(args) != 2 {
-				return nil, fmt.Errorf("expected 2 arguments: context and proto.Message")
-			}
-
-			ctx, ok := args[0].(context.Context)
-			if !ok {
-				return nil, fmt.Errorf("first argument must be context.Context")
-			}
-
-			msg, ok := args[1].(proto.Message)
-			if !ok {
-				return nil, fmt.Errorf("second argument must be proto.Message")
-			}
-
-			// 准备调用方法的参数列表
-			callArgs := []reflect.Value{
-				reflect.ValueOf(ctx), // context.Context
-				reflect.ValueOf(msg), // proto.Message
-			}
-
-			// 调用方法
-			results := rpcValue.MethodByName(methodName).Call(callArgs)
-
-			// 处理返回值
-			var result interface{}
-			if len(results) > 0 {
-				result = results[0].Interface()
-			}
-
-			var err error
-			if len(results) > 1 {
-				if e, ok := results[1].Interface().(error); ok {
-					err = e
-				}
-			}
-
-			return result, err
-		}
-
-		// 创建 InternalFunc 实例并设置真实的参数和返回值类型
-		internalFunc := GetInternalFuncSignature(method.Func.Interface())
-		internalFunc.Func = rpcFunc
-		internalFunc.ArgTypes = internalFunc.ArgTypes[1:3]
-
-		err := RegisterInternalFunc(RpcPackage, methodName, internalFunc, nil)
-		if err != nil {
-			logs.Log.Errorf(err.Error())
-			return
-		}
-	}
-}
-
 func RegisterEncodeFunc(rpc clientrpc.MaliceRPCClient) {
-
 	// bof 参数格式化
 	// single arg, pack_bof("Z", "aa")
 	RegisterFunction("pack_bof", func(format string, arg string) (string, error) {
@@ -344,7 +284,7 @@ func RegisterEncodeFunc(rpc clientrpc.MaliceRPCClient) {
 		return pe.PackArg(format[0], arg)
 	})
 	AddHelper("pack_bof",
-		&Helper{
+		&mals.Helper{
 			Short: "pack bof single argument",
 			Input: []string{
 				"format",
@@ -370,7 +310,7 @@ func RegisterEncodeFunc(rpc clientrpc.MaliceRPCClient) {
 
 	AddHelper(
 		"pack_bof_args",
-		&Helper{
+		&mals.Helper{
 			Short: "pack bof arguments",
 			Input: []string{
 				"format",
@@ -385,8 +325,8 @@ pack_bof_args("ZZ", {"aa", "bb"})
 		})
 
 	// mal pack
-	RegisterFunction("mal_pack_binary", func(data string) (string, error) {
-		return mals.PackMalBinary(data), nil
+	RegisterFunction("pack_binary", func(data string) (string, error) {
+		return pe.PackBinary(data), nil
 	})
 
 	RegisterFunction("format_path", func(s string) (string, error) {
@@ -394,7 +334,7 @@ pack_bof_args("ZZ", {"aa", "bb"})
 	})
 	AddHelper(
 		"format_path",
-		&Helper{
+		&mals.Helper{
 			Short: "format windows path",
 			Input: []string{
 				"s",
@@ -412,7 +352,7 @@ format_path("C:\\Windows\\System32\\calc.exe")
 	})
 	AddHelper(
 		"base64_encode",
-		&Helper{
+		&mals.Helper{
 			Group:   GroupEncode,
 			CMDName: "base64_encode",
 			Input: []string{
@@ -434,7 +374,7 @@ format_path("C:\\Windows\\System32\\calc.exe")
 
 	AddHelper(
 		"base64_decode",
-		&Helper{
+		&mals.Helper{
 			Group: GroupEncode,
 			Short: "base64 decode",
 			Input: []string{
@@ -451,7 +391,7 @@ format_path("C:\\Windows\\System32\\calc.exe")
 	})
 	AddHelper(
 		"arg_hex",
-		&Helper{
+		&mals.Helper{
 			Group: GroupEncode,
 			Short: "hexlify encode",
 			Input: []string{
@@ -475,7 +415,7 @@ format_path("C:\\Windows\\System32\\calc.exe")
 	})
 	AddHelper(
 		"random_string",
-		&Helper{
+		&mals.Helper{
 			Group: GroupEncode,
 			Short: "generate random string",
 			Input: []string{
@@ -499,7 +439,7 @@ format_path("C:\\Windows\\System32\\calc.exe")
 	})
 	AddHelper(
 		"file_exists",
-		&Helper{
+		&mals.Helper{
 			Group: GroupEncode,
 			Short: "check file exists",
 			Input: []string{
@@ -525,7 +465,7 @@ format_path("C:\\Windows\\System32\\calc.exe")
 	})
 	AddHelper(
 		"ismatch",
-		&Helper{
+		&mals.Helper{
 			Group: GroupEncode,
 			Short: "regexp match",
 			Input: []string{
@@ -540,27 +480,39 @@ format_path("C:\\Windows\\System32\\calc.exe")
 		})
 
 	// timestamp
-	RegisterFunction("timestampMillis", func() int64 {
-		timestampMillis := time.Now().UnixNano() / int64(time.Millisecond)
-		return timestampMillis
+
+	RegisterFunction("timestamp", func() string {
+		return fmt.Sprintf("%d", time.Now().UnixNano()/int64(time.Millisecond))
 	})
+
+	RegisterFunction("timestamp_format", func(optionalFormat string) string {
+		return time.Now().Format(optionalFormat)
+	})
+
 	AddHelper(
-		"timestampMillis",
-		&Helper{
-			Group: GroupEncode,
-			Short: "get current timestamp in milliseconds",
-			Input: []string{},
-			Output: []string{
-				"int64",
-			},
-			Example: `timestampMillis()`,
-		})
-	// tstamp
-	RegisterFunction("tstamp", func(timestampMillis int64) string {
-		seconds := timestampMillis / 1000
-		nanoseconds := (timestampMillis % 1000) * int64(time.Millisecond)
-		t := time.Unix(seconds, nanoseconds)
-		return t.Format("01/02 15:04")
+		"timestamp",
+		&mals.Helper{
+			Group:   GroupEncode,
+			Short:   "Get current timestamp in milliseconds or formatted date string.",
+			Input:   []string{"string (optional, format)"},
+			Output:  []string{"string"},
+			Example: `timestampOrFormatted(), timestampOrFormatted("01/02 15:04")`,
+		},
+	)
+
+	RegisterFunction("is_full_path", func(path string) bool {
+		return fileutils.CheckFullPath(path)
+	})
+
+	RegisterFunction("get_sess_dir", func(sessid string) string {
+		session_dir := filepath.Join(assets.GetTempDir(), sessid)
+		if _, err := os.Stat(session_dir); os.IsNotExist(err) {
+			err = os.MkdirAll(session_dir, 0700)
+			if err != nil {
+				logs.Log.Errorf(err.Error())
+			}
+		}
+		return session_dir
 	})
 
 	// 0o744 0744
@@ -581,7 +533,7 @@ format_path("C:\\Windows\\System32\\calc.exe")
 	})
 	AddHelper(
 		"parse_octal",
-		&Helper{
+		&mals.Helper{
 			Group: GroupEncode,
 			Short: "parse octal string to int64",
 			Input: []string{
@@ -603,7 +555,7 @@ format_path("C:\\Windows\\System32\\calc.exe")
 	})
 	AddHelper(
 		"parse_hex",
-		&Helper{
+		&mals.Helper{
 			Group: GroupEncode,
 			Short: "parse hex string to int64",
 			Input: []string{

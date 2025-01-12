@@ -138,6 +138,22 @@ func UpdateSession(sessionID, note, group string) error {
 	return result.Error
 }
 
+func UpdateSessionTimer(sessionID string, interval uint64, jitter float64) error {
+	var session models.Session
+	result := Session().Where("session_id = ?", sessionID).First(&session)
+	if result.Error != nil {
+		return result.Error
+	}
+	if interval != 0 {
+		session.Interval = interval
+	}
+	if jitter != 0 {
+		session.Jitter = jitter
+	}
+	result = Session().Save(&session)
+	return result.Error
+}
+
 func CreateOperator(name string, typ string, remoteAddr string) error {
 	var operator models.Operator
 	operator.Name = name
@@ -255,7 +271,7 @@ func ListPipelines(listenerID string) ([]models.Pipeline, error) {
 
 func DeleteWebsite(name string) error {
 	website := models.WebsiteContent{}
-	result := Session().Where("name = ?", name).First(&website)
+	result := Session().Where("pipeline_id = ?", name).First(&website)
 	if result.Error != nil {
 		return result.Error
 	}
@@ -781,7 +797,7 @@ func SaveArtifact(name, artifactType, platform, arch, stage, source string) (*mo
 		Type:   artifactType,
 		Source: source,
 	}
-	if artifactType == consts.ImplantModShellcode {
+	if artifactType == consts.CommandBuildShellCode {
 		builder.IsSRDI = true
 		builder.ShellcodePath = filepath.Join(absBuildOutputPath, encoders.UUID())
 	} else {
@@ -823,14 +839,14 @@ func FindArtifact(target *clientpb.Artifact) (*clientpb.Artifact, error) {
 	} else {
 		var builders []*models.Builder
 		result = Session().Where("os = ? AND arch = ? AND type = ?", target.Platform, target.Arch, target.Type).
-			Preload("Profile.BasicPipeline").
+			Preload("Profile.Pipeline").
 			Preload("Profile.PulsePipeline").
 			Find(&builders)
 		for _, v := range builders {
 			if v.ShellcodePath == "" {
 				continue
 			}
-			if v.Type == consts.ImplantModPulse && v.Profile.PulsePipelineID == target.Pipeline {
+			if v.Type == consts.ImplantPulse && v.Profile.PulsePipelineID == target.Pipeline {
 				builder = v
 				break
 			}
@@ -844,7 +860,7 @@ func FindArtifact(target *clientpb.Artifact) (*clientpb.Artifact, error) {
 		return nil, fmt.Errorf("error finding artifact: %v, target: %+v", result.Error, target)
 	}
 	if builder == nil {
-		return nil, fmt.Errorf("no artifact found for target: %+v, please build %s first", target, target.Type)
+		return nil, errs.ErrNotFoundArtifact
 	}
 
 	var content []byte

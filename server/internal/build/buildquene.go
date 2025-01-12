@@ -28,7 +28,7 @@ type BuildTask struct {
 	req     *clientpb.Generate      // The build request
 	result  chan *clientpb.Artifact // Channel to send back the build result
 	err     chan error              // Channel to send back error in case of failure
-	builder models.Builder
+	builder *models.Builder
 }
 
 // BuildQueueManager manages the build task queue
@@ -83,7 +83,7 @@ func (bqm *BuildQueueManager) worker(id int) {
 }
 
 // executeBuild executes the build process based on the request
-func (bqm *BuildQueueManager) executeBuild(req *clientpb.Generate, builder models.Builder) (*clientpb.Artifact, error) {
+func (bqm *BuildQueueManager) executeBuild(req *clientpb.Generate, builder *models.Builder) (*clientpb.Artifact, error) {
 	target, ok := consts.GetBuildTarget(req.Target)
 	if !ok {
 		return nil, errs.ErrInvalidateTarget
@@ -210,7 +210,7 @@ func (bqm *BuildQueueManager) handleNewBeaconBuild(cli *client.Client, req *clie
 
 	// Add Beacon build task to queue asynchronously
 	go func() {
-		_, err := GlobalBuildQueueManager.AddTask(beaconReq, *beaconBuilder)
+		_, err := GlobalBuildQueueManager.AddTask(beaconReq, beaconBuilder)
 		if err != nil {
 			logs.Log.Errorf("Error adding BuildBeacon task: %v", err)
 		}
@@ -226,7 +226,7 @@ func (bqm *BuildQueueManager) handleNewBeaconBuild(cli *client.Client, req *clie
 }
 
 // finalizeBuild moves the build output and updates the builder path
-func (bqm *BuildQueueManager) finalizeBuild(req *clientpb.Generate, builder models.Builder, target *consts.BuildTarget) (*clientpb.Artifact, error) {
+func (bqm *BuildQueueManager) finalizeBuild(req *clientpb.Generate, builder *models.Builder, target *consts.BuildTarget) (*clientpb.Artifact, error) {
 	_, artifactPath, err := MoveBuildOutput(req.Target, req.Type)
 	if err != nil {
 		logs.Log.Errorf("move build output error: %v", err)
@@ -239,7 +239,7 @@ func (bqm *BuildQueueManager) finalizeBuild(req *clientpb.Generate, builder mode
 	}
 
 	builder.Path = absArtifactPath
-	err = db.UpdateBuilderPath(&builder)
+	err = db.UpdateBuilderPath(builder)
 	if err != nil {
 		return nil, err
 	}
@@ -256,13 +256,13 @@ func (bqm *BuildQueueManager) finalizeBuild(req *clientpb.Generate, builder mode
 
 		if builder.Type == consts.CommandBuildPulse {
 			logs.Log.Infof("objcopy start ...")
-			_, err = OBJCOPYPulse(&builder, target.OS, target.Arch)
+			_, err = OBJCOPYPulse(builder, target.OS, target.Arch)
 			if err != nil {
 				return nil, fmt.Errorf("objcopy error: %v", err)
 			}
 			logs.Log.Infof("objcopy end ...")
 		} else {
-			_, err = SRDIArtifact(&builder, target.OS, target.Arch)
+			_, err = SRDIArtifact(builder, target.OS, target.Arch)
 			if err != nil {
 				return nil, err
 			}
@@ -273,7 +273,7 @@ func (bqm *BuildQueueManager) finalizeBuild(req *clientpb.Generate, builder mode
 }
 
 // AddTask adds a build task to the queue and waits for the result
-func (bqm *BuildQueueManager) AddTask(req *clientpb.Generate, builder models.Builder) (*clientpb.Artifact, error) {
+func (bqm *BuildQueueManager) AddTask(req *clientpb.Generate, builder *models.Builder) (*clientpb.Artifact, error) {
 	resultChan := make(chan *clientpb.Artifact) // Channel to receive the result
 	errChan := make(chan error)                 // Channel to receive errors
 	task := BuildTask{

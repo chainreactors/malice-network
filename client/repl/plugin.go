@@ -5,12 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/client/core/plugin"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/utils/handler"
+	"github.com/chainreactors/mals"
 	"github.com/chainreactors/tui"
 	"github.com/spf13/cobra"
 	"reflect"
@@ -116,7 +117,7 @@ func wrapImplantFunc(fun interface{}) implantFunc {
 			expectedType := funcType.In(i + 2)
 			paramType := reflect.TypeOf(param)
 			if paramType.Kind() == reflect.Int64 {
-				param = intermediate.ConvertNumericType(param.(int64), expectedType.Kind())
+				param = mals.ConvertNumericType(param.(int64), expectedType.Kind())
 			}
 			if reflect.TypeOf(param) != expectedType {
 				return nil, fmt.Errorf("argument %d should be %v, got %v", i+1, funcType.In(i+3), reflect.TypeOf(param))
@@ -138,10 +139,10 @@ func wrapImplantFunc(fun interface{}) implantFunc {
 	}
 }
 
-func WrapImplantFunc(con *Console, fun interface{}, callback ImplantFuncCallback) *intermediate.InternalFunc {
+func WrapImplantFunc(con *Console, fun interface{}, callback ImplantFuncCallback) *mals.MalFunction {
 	wrappedFunc := wrapImplantFunc(fun)
 
-	interFunc := intermediate.GetInternalFuncSignature(fun)
+	interFunc := mals.GetInternalFuncSignature(fun)
 	interFunc.ArgTypes = interFunc.ArgTypes[1:]
 	interFunc.HasLuaCallback = true
 	interFunc.Func = func(args ...interface{}) (interface{}, error) {
@@ -189,7 +190,7 @@ func WrapImplantFunc(con *Console, fun interface{}, callback ImplantFuncCallback
 	return interFunc
 }
 
-func WrapServerFunc(con *Console, fun interface{}) *intermediate.InternalFunc {
+func WrapServerFunc(con *Console, fun interface{}) *mals.MalFunction {
 	wrappedFunc := func(con *Console, params ...interface{}) (interface{}, error) {
 		funcValue := reflect.ValueOf(fun)
 		funcType := funcValue.Type()
@@ -220,7 +221,7 @@ func WrapServerFunc(con *Console, fun interface{}) *intermediate.InternalFunc {
 
 		return results[0].Interface(), err
 	}
-	internalFunc := intermediate.GetInternalFuncSignature(fun)
+	internalFunc := mals.GetInternalFuncSignature(fun)
 	internalFunc.ArgTypes = internalFunc.ArgTypes[1:]
 	internalFunc.Func = func(args ...interface{}) (interface{}, error) {
 		return wrappedFunc(con, args...)

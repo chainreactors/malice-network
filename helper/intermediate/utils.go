@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/chainreactors/files"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -16,12 +15,12 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/handler"
-	"github.com/chainreactors/malice-network/helper/utils/mals"
+	"github.com/chainreactors/malice-network/helper/utils/pe"
 )
 
 func GetResourceFile(pluginName, filename string) (string, error) {
 	resourceFile := filepath.Join(assets.GetMalsDir(), pluginName, "resources", filename)
-	if files.IsExist(resourceFile) {
+	if fileutils.Exist(resourceFile) {
 		return resourceFile, nil
 	}
 	return "", fmt.Errorf("file not found")
@@ -29,7 +28,7 @@ func GetResourceFile(pluginName, filename string) (string, error) {
 
 func GetGlobalResourceFile(filename string) (string, error) {
 	resourceFile := filepath.Join(assets.GetResourceDir(), filename)
-	if files.IsExist(resourceFile) {
+	if fileutils.Exist(resourceFile) {
 		return resourceFile, nil
 	}
 	return "", fmt.Errorf("file not found")
@@ -46,22 +45,10 @@ func NewSacrificeProcessMessage(ppid uint32, hidden, block_dll, bypassETW bool, 
 }
 
 func NewBinary(module string, path string, args []string, output bool, timeout uint32, arch string, process string, sac *implantpb.SacrificeProcess) (*implantpb.ExecuteBinary, error) {
-	var bin []byte
-	var err error
-
-	if fileutils.Exist(path) {
-		bin, err = os.ReadFile(fileutils.FormatWindowPath(path))
-		if err != nil {
-			return nil, fmt.Errorf("NewBinary error: %s", err)
-		}
-	} else {
-		bin, err = mals.UnPackMalBinary(path)
-		if err != nil {
-			return nil, fmt.Errorf("the path does not point to a valid file or does not meet the expected binary format")
-		}
-		path = "virtual_path"
+	bin, err := pe.Unpack(path)
+	if err != nil {
+		return nil, err
 	}
-
 	return &implantpb.ExecuteBinary{
 		Name:        filepath.Base(path),
 		Bin:         bin,
@@ -76,20 +63,9 @@ func NewBinary(module string, path string, args []string, output bool, timeout u
 }
 
 func NewBinaryData(module string, path string, data string, output bool, timeout uint32, arch string, process string, sac *implantpb.SacrificeProcess) (*implantpb.ExecuteBinary, error) {
-	var bin []byte
-	var err error
-
-	if fileutils.Exist(path) {
-		bin, err = os.ReadFile(fileutils.FormatWindowPath(path))
-		if err != nil {
-			return nil, fmt.Errorf("NewBinary error: %s", err)
-		}
-	} else {
-		bin, err = mals.UnPackMalBinary(path)
-		if err != nil {
-			return nil, err
-		}
-		path = "virtual_path"
+	bin, err := pe.Unpack(path)
+	if err != nil {
+		return nil, err
 	}
 	binData := []byte(data)
 

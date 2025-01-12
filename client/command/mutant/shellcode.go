@@ -44,7 +44,7 @@ func MaleficSRDI(con *repl.Console, path string, id uint32, target string, param
 	return con.Rpc.MaleficSRDI(con.Context(), &clientpb.Builder{
 		Id:           id,
 		Bin:          bin,
-		Type:         consts.ImplantModShellcode,
+		Type:         consts.CommandBuildShellCode,
 		Name:         filepath.Base(path),
 		Target:       target,
 		IsSrdi:       true,

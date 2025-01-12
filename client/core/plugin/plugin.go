@@ -4,7 +4,7 @@ import (
 	"errors"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/client/core/intermediate"
+	"github.com/chainreactors/malice-network/helper/intermediate"
 	"gopkg.in/yaml.v3"
 	"os"
 	"path/filepath"

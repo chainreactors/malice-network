@@ -1,6 +1,7 @@
 package common
 
 import (
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
@@ -111,14 +112,26 @@ func PipelineFlagSet(f *pflag.FlagSet) {
 	f.StringP("listener", "l", "", "listener id")
 	f.String("host", "0.0.0.0", "pipeline host, the default value is **0.0.0.0**")
 	f.UintP("port", "p", 0, "pipeline port, random port is selected from the range **10000-15000**")
+	f.String("parser", "malefic", "pipeline parser")
 }
 
-func ParsePipelineFlags(cmd *cobra.Command) (string, string, uint32) {
+func ArtifactFlagSet(f *pflag.FlagSet) {
+	f.StringSlice("target", []string{}, "build target")
+	f.String("beacon-pipeline", "", "beacon pipeline id")
+}
+
+func ParseArtifactFlags(cmd *cobra.Command) ([]string, string) {
+	target, _ := cmd.Flags().GetStringSlice("target")
+	beaconPipeline, _ := cmd.Flags().GetString("beacon-pipeline")
+	return target, beaconPipeline
+}
+
+func ParsePipelineFlags(cmd *cobra.Command) (string, string, uint32, string) {
 	listenerID, _ := cmd.Flags().GetString("listener")
 	host, _ := cmd.Flags().GetString("host")
 	portUint, _ := cmd.Flags().GetUint32("port")
-
-	return listenerID, host, portUint
+	parser, _ := cmd.Flags().GetString("parser")
+	return listenerID, host, portUint, parser
 }
 
 func ParseTLSFlags(cmd *cobra.Command) (*clientpb.TLS, error) {
@@ -147,6 +160,16 @@ func ParseEncryptionFlags(cmd *cobra.Command) *clientpb.Encryption {
 	encryptionType, _ := cmd.Flags().GetString("encryption-type")
 	encryptionKey, _ := cmd.Flags().GetString("encryption-key")
 	enable, _ := cmd.Flags().GetBool("encryption-enable")
+	parser, _ := cmd.Flags().GetString("parser")
+	if !enable {
+		if parser == "malefic" {
+			encryptionKey = "maliceofinternal"
+			encryptionType = consts.CryptorAES
+		} else {
+			encryptionKey = "maliceofinternal"
+			encryptionType = consts.CryptorXOR
+		}
+	}
 	return &clientpb.Encryption{
 		Enable: enable,
 		Type:   encryptionType,
@@ -253,4 +276,59 @@ func ParseGithubFlags(cmd *cobra.Command) (string, string, string, string) {
 	token, _ := cmd.Flags().GetString("token")
 	file, _ := cmd.Flags().GetString("workflowFile")
 	return owner, repo, token, file
+}
+
+func TelegramSet(f *pflag.FlagSet) {
+	f.Bool("telegram-enable", false, "enable telegram")
+	f.String("telegram-token", "", "telegram token")
+	f.Int64("telegram-chat-id", 0, "telegram chat id")
+}
+
+func DingTalkSet(f *pflag.FlagSet) {
+	f.Bool("dingtalk-enable", false, "enable dingtalk")
+	f.String("dingtalk-secret", "", "dingtalk secret")
+	f.String("dingtalk-token", "", "dingtalk token")
+}
+
+func LarkSet(f *pflag.FlagSet) {
+	f.Bool("lark-enable", false, "enable lark")
+	f.String("lark-webhook-url", "", "lark webhook url")
+}
+
+func ServerChanSet(f *pflag.FlagSet) {
+	f.Bool("serverchan-enable", false, "enable serverchan")
+	f.String("serverchan-url", "", "serverchan url")
+}
+
+func ParseNotifyFlags(cmd *cobra.Command) *clientpb.Notify {
+	telegramEnable, _ := cmd.Flags().GetBool("telegram-enable")
+	dingTalkEnable, _ := cmd.Flags().GetBool("dingtalk-enable")
+	larkEnable, _ := cmd.Flags().GetBool("lark-enable")
+	serverChanEnable, _ := cmd.Flags().GetBool("serverchan-enable")
+
+	telegramToken, _ := cmd.Flags().GetString("telegram-token")
+	telegramChatID, _ := cmd.Flags().GetInt64("telegram-chat-id")
+	dingTalkSecret, _ := cmd.Flags().GetString("dingtalk-secret")
+	dingTalkToken, _ := cmd.Flags().GetString("dingtalk-token")
+	larkWebhookURL, _ := cmd.Flags().GetString("lark-webhook-url")
+	serverChanURL, _ := cmd.Flags().GetString("serverchan-url")
+
+	notifyConfig := &clientpb.Notify{
+		TelegramEnable: telegramEnable,
+		TelegramApiKey: telegramToken,
+		TelegramChatId: telegramChatID,
+
+		DingtalkEnable: dingTalkEnable,
+		DingtalkSecret: dingTalkSecret,
+		DingtalkToken:  dingTalkToken,
+
+		LarkEnable:     larkEnable,
+		LarkWebhookUrl: larkWebhookURL,
+
+		ServerchanEnable: serverChanEnable,
+		ServerchanUrl:    serverChanURL,
+	}
+
+	return notifyConfig
+
 }

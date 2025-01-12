@@ -363,6 +363,9 @@ var renderMarkdownFunc = func(title string) string {
 }
 
 var trimParentCommand = func(useLine string, cmd *cobra.Command) string {
-	parentName := cmd.Parent().Name()
-	return strings.TrimPrefix(useLine, parentName+" ")
+	if cmd.Parent() != nil {
+		parentName := cmd.Parent().Name()
+		return strings.TrimPrefix(useLine, parentName+" ")
+	}
+	return useLine
 }

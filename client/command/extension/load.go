@@ -2,6 +2,7 @@ package extension
 
 import (
 	"bytes"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,7 +10,6 @@ import (
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
@@ -17,10 +17,12 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/pe"
+	"github.com/chainreactors/mals"
 	"github.com/chainreactors/tui"
 	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"golang.org/x/text/encoding/unicode"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -78,7 +80,7 @@ type ExtensionManifest struct {
 type loadedExt struct {
 	Manifest *ExtCommand
 	Command  *cobra.Command
-	Func     *intermediate.InternalFunc
+	Func     *mals.MalFunction
 }
 type ExtCommand struct {
 	CommandName string               `json:"command_name"`
@@ -536,7 +538,7 @@ func makeExtensionArgCompleter(extCmd *ExtCommand, _ *cobra.Command, comps *cara
 
 func getExtArgs(_ *cobra.Command, args []string, _ string, ext *ExtCommand) ([]byte, error) {
 	var err error
-	argsBuffer := pe.BOFArgsBuffer{
+	argsBuffer := BOFArgsBuffer{
 		Buffer: new(bytes.Buffer),
 	}
 
@@ -629,7 +631,7 @@ func getBOFArgs(cmd *cobra.Command, args []string, binPath string, ext *ExtComma
 	}
 
 	// Now build the extension's argument buffer
-	extensionArgsBuffer := pe.IoMBOFArgsBuffer{}
+	extensionArgsBuffer := pe.BOFArgsBuffer{}
 	err = extensionArgsBuffer.AddString(ext.Entrypoint)
 	if err != nil {
 		return nil, err
@@ -647,4 +649,63 @@ func getBOFArgs(cmd *cobra.Command, args []string, binPath string, ext *ExtComma
 		return nil, err
 	}
 	return extensionArgsBuffer.GetArgs(), nil
+}
+
+type BOFArgsBuffer struct {
+	Buffer *bytes.Buffer
+}
+
+func (b *BOFArgsBuffer) AddData(d []byte) error {
+	dataLen := uint32(len(d))
+	err := binary.Write(b.Buffer, binary.LittleEndian, &dataLen)
+	if err != nil {
+		return err
+	}
+	return binary.Write(b.Buffer, binary.LittleEndian, &d)
+}
+
+func (b *BOFArgsBuffer) AddShort(d uint16) error {
+	return binary.Write(b.Buffer, binary.LittleEndian, &d)
+}
+
+func (b *BOFArgsBuffer) AddInt(d uint32) error {
+	return binary.Write(b.Buffer, binary.LittleEndian, &d)
+}
+
+func (b *BOFArgsBuffer) AddString(d string) error {
+	stringLen := uint32(len(d)) + 1
+	err := binary.Write(b.Buffer, binary.LittleEndian, &stringLen)
+	if err != nil {
+		return err
+	}
+	dBytes := append([]byte(d), 0x00)
+	return binary.Write(b.Buffer, binary.LittleEndian, dBytes)
+}
+
+func (b *BOFArgsBuffer) AddWString(d string) error {
+	encoder := unicode.UTF16(unicode.LittleEndian, unicode.IgnoreBOM).NewEncoder()
+	strBytes := append([]byte(d), 0x00)
+	utf16Data, err := encoder.Bytes(strBytes)
+	if err != nil {
+		return err
+	}
+	stringLen := uint32(len(utf16Data))
+	err = binary.Write(b.Buffer, binary.LittleEndian, &stringLen)
+	if err != nil {
+		return err
+	}
+	return binary.Write(b.Buffer, binary.LittleEndian, utf16Data)
+}
+
+func (b *BOFArgsBuffer) GetBuffer() ([]byte, error) {
+	outBuffer := new(bytes.Buffer)
+	err := binary.Write(outBuffer, binary.LittleEndian, uint32(b.Buffer.Len()))
+	if err != nil {
+		return nil, err
+	}
+	err = binary.Write(outBuffer, binary.LittleEndian, b.Buffer.Bytes())
+	if err != nil {
+		return nil, err
+	}
+	return outBuffer.Bytes(), nil
 }

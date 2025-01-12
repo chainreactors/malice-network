@@ -2,11 +2,12 @@ package mutant
 
 import (
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/core/intermediate"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/utils/donut"
+	"github.com/chainreactors/mals"
 	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -145,7 +146,7 @@ srdi --id artifact_id --target x86_64-pc-windows-msvc
 }
 
 func Register(con *repl.Console) {
-	con.RegisterServerFunc("malefic_srdi", MaleficSRDI, &intermediate.Helper{
+	con.RegisterServerFunc("malefic_srdi", MaleficSRDI, &mals.Helper{
 		Group: intermediate.GroupArtifact,
 		Short: "malefic srdi",
 	})
@@ -158,7 +159,7 @@ func Register(con *repl.Console) {
 			}
 			return string(bin), nil
 		})
-	intermediate.AddHelper("exe2shellcode", &intermediate.Helper{
+	intermediate.AddHelper("exe2shellcode", &mals.Helper{
 		Group: intermediate.GroupArtifact,
 		Short: "exe to shellcode with donut",
 		Input: []string{
@@ -178,7 +179,7 @@ func Register(con *repl.Console) {
 		}
 		return string(bin), nil
 	})
-	intermediate.AddHelper("dll2shellcode", &intermediate.Helper{
+	intermediate.AddHelper("dll2shellcode", &mals.Helper{
 		Group: intermediate.GroupArtifact,
 		Short: "dll to shellcode with donut",
 		Input: []string{
@@ -192,7 +193,7 @@ func Register(con *repl.Console) {
 	})
 
 	intermediate.RegisterFunction("clr2shellcode", donut.DonutFromAssemblyFromFile)
-	intermediate.AddHelper("clr2shellcode", &intermediate.Helper{
+	intermediate.AddHelper("clr2shellcode", &mals.Helper{
 		Group: intermediate.GroupArtifact,
 		Short: "clr to shellcode with donut",
 		Input: []string{
@@ -209,7 +210,7 @@ func Register(con *repl.Console) {
 	})
 
 	intermediate.RegisterFunction("donut", donut.DonutShellcodeFromFile)
-	intermediate.AddHelper("donut", &intermediate.Helper{
+	intermediate.AddHelper("donut", &mals.Helper{
 		Group: intermediate.GroupArtifact,
 		Short: "Generates x86, x64, or AMD64+x86 position-independent shellcode that loads .NET Assemblies, PE files, and other Windows payloads from memory and runs them with parameters ",
 		Input: []string{
@@ -234,7 +235,7 @@ func Register(con *repl.Console) {
 			return "", err
 		}
 		return string(bin.Bin), nil
-	}, &intermediate.Helper{
+	}, &mals.Helper{
 		Group: intermediate.GroupArtifact,
 		Short: "dll/exe to shellcode with srdi",
 		Input: []string{
@@ -259,7 +260,7 @@ func Register(con *repl.Console) {
 			return "", err
 		}
 		return string(bin.Bin), nil
-	}, &intermediate.Helper{
+	}, &mals.Helper{
 		Group: intermediate.GroupArtifact,
 		Short: "shellcode encode with sgn",
 		Input: []string{
