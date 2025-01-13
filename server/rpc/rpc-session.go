@@ -125,7 +125,10 @@ func (rpc *Server) GetSessionHistory(ctx context.Context, req *clientpb.Int) (*c
 		tid = int(session.Taskseq)
 	}
 
-	startTaskID := max(1, tid-int(req.Limit)+1)
+	startTaskID := tid - int(req.Limit) + 1
+	if startTaskID < 1 {
+		startTaskID = 1
+	}
 	endTaskID := tid
 	re := regexp.MustCompile(`^(\d+)_(\d+)$`)
 
