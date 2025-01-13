@@ -137,7 +137,9 @@ func RecoverSession(sess *clientpb.Session) (*Session, error) {
 		if err != nil {
 			return nil, err
 		}
-		tid = max(tid, uint32(logID))
+		if uint32(logID) > tid {
+			tid = uint32(logID)
+		}
 	}
 	s.Taskseq = tid
 	for _, task := range tasks {

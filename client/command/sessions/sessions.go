@@ -6,7 +6,6 @@ import (
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
-	"github.com/pterm/pterm"
 	"github.com/spf13/cobra"
 	"io"
 	"strconv"
@@ -60,9 +59,9 @@ func PrintSessions(sessions map[string]*core.Session, con *repl.Console, isAll b
 			if !isAll {
 				continue
 			}
-			SessionHealth = pterm.FgRed.Sprint("DEAD")
+			SessionHealth = tui.RedFg.Render("DEAD")
 		} else {
-			SessionHealth = pterm.FgGreen.Sprint("ALIVE")
+			SessionHealth = tui.GreenFg.Render("ALIVE")
 		}
 		row = table.NewRow(
 			table.RowData{

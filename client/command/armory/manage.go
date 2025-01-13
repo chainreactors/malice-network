@@ -2,7 +2,7 @@ package armory
 
 import (
 	"github.com/chainreactors/malice-network/client/assets"
-	"slices"
+	"golang.org/x/exp/slices"
 )
 
 func getCurrentArmoryConfiguration() []*assets.ArmoryConfig {

@@ -11,11 +11,10 @@ import (
 	"github.com/chainreactors/malice-network/helper/cryptography/minisign"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
-	"github.com/pterm/pterm"
 	"github.com/spf13/cobra"
+	"golang.org/x/exp/slices"
 	"io"
 	"net/url"
-	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -417,7 +416,7 @@ func PrintArmoryPackages(aliases []*alias.AliasManifest, exts []*extension.Exten
 	for _, pkg := range entries {
 		var commandName string
 		if repl.CmdExist(con.ImplantMenu(), pkg.CommandName) {
-			commandName = pterm.FgGreen.Sprint(pkg.CommandName)
+			commandName = tui.GreenFg.Render(pkg.CommandName)
 		} else {
 			commandName = pkg.CommandName
 		}

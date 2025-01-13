@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"github.com/docker/docker/api/types"
 	"io"
 	"math/rand"
 	"os"
@@ -99,7 +100,7 @@ func BuildBeacon(cli *client.Client, req *clientpb.Generate) error {
 		return err
 	}
 
-	if err := cli.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
+	if err := cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
 		logs.Log.Errorf("Error starting container: %v", err)
 	}
 	sendContaninerCtrlMsg(false, containerName, req)
@@ -145,7 +146,7 @@ func BuildBind(cli *client.Client, req *clientpb.Generate) error {
 		return err
 	}
 
-	if err := cli.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
+	if err := cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
 		logs.Log.Errorf("Error starting container: %v", err)
 	}
 
@@ -196,7 +197,7 @@ func BuildPrelude(cli *client.Client, req *clientpb.Generate) error {
 		return err
 	}
 
-	if err := cli.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
+	if err := cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
 		logs.Log.Errorf("Error starting container: %v", err)
 	}
 
@@ -244,7 +245,7 @@ func BuildPulse(cli *client.Client, req *clientpb.Generate) error {
 		return err
 	}
 
-	if err := cli.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
+	if err := cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
 		logs.Log.Errorf("Error starting container: %v", err)
 	}
 
@@ -295,7 +296,7 @@ func BuildModules(cli *client.Client, req *clientpb.Generate) error {
 		return err
 	}
 
-	if err := cli.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
+	if err := cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
 		logs.Log.Errorf("Error starting container: %v", err)
 	}
 
@@ -430,7 +431,7 @@ func MaleficSRDI(src, dst, platform, arch, funcName, dataPath string) ([]byte, e
 }
 
 func catchLogs(cli *client.Client, containerID, name string) error {
-	logOptions := container.LogsOptions{
+	logOptions := types.ContainerLogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
 		Follow:     true,

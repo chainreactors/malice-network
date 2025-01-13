@@ -26,7 +26,7 @@ func NewRootClient(addr string) (*RootClient, error) {
 	if err != nil {
 		return nil, err
 	}
-	conn, err := grpc.NewClient(addr, options...)
+	conn, err := grpc.Dial(addr, options...)
 	if err != nil {
 		return nil, err
 	}
