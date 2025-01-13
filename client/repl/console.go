@@ -13,10 +13,10 @@ import (
 	"github.com/reeflective/console"
 	"github.com/rsteube/carapace/pkg/x"
 	"github.com/spf13/cobra"
+	"golang.org/x/exp/slices"
 	"google.golang.org/grpc/metadata"
 	"io"
 	"path/filepath"
-	"slices"
 	"strings"
 	"time"
 )

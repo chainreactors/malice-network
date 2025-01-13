@@ -8,10 +8,10 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
+	"golang.org/x/exp/slices"
 	"google.golang.org/grpc/metadata"
 	"os"
 	"path/filepath"
-	"slices"
 )
 
 func NewSession(sess *clientpb.Session, server *ServerStatus) *Session {

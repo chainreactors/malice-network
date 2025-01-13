@@ -2,7 +2,7 @@ package common
 
 import (
 	"github.com/spf13/cobra"
-	"slices"
+	"golang.org/x/exp/slices"
 )
 
 // IsDash checks if command contains a dash disabling flag parsing

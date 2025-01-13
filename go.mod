@@ -1,6 +1,6 @@
 module github.com/chainreactors/malice-network
 
-go 1.22
+go 1.20
 
 require (
 	filippo.io/age v1.1.1
@@ -16,27 +16,26 @@ require (
 	github.com/gofrs/uuid v4.4.0+incompatible
 	github.com/golang/snappy v0.0.4
 	github.com/gookit/config/v2 v2.2.5
-	github.com/jessevdk/go-flags v1.5.0
+	github.com/jessevdk/go-flags v1.6.1
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 	github.com/klauspost/compress v1.17.0
 	github.com/mattn/go-tty v0.0.7
 	github.com/muesli/termenv v0.15.3-0.20240618155329-98d742f6907a
 	github.com/ncruces/go-sqlite3 v0.9.0
-	github.com/nikoksr/notify v1.0.0
-	github.com/pterm/pterm v0.12.69
+	github.com/nikoksr/notify v0.41.0
 	github.com/reeflective/console v0.1.18
 	github.com/robfig/cron/v3 v3.0.0
 	github.com/rsteube/carapace v0.46.3-0.20231214181515-27e49f3c3b69
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/pflag v1.0.5
 	github.com/tetratelabs/wazero v1.5.0
-	github.com/traefik/yaegi v0.16.1
+	github.com/traefik/yaegi v0.14.3
 	github.com/wabzsy/gonut v1.0.0
 	github.com/yuin/gopher-lua v1.1.1
 	golang.org/x/crypto v0.28.0
-	golang.org/x/exp v0.0.0-20240808152545-0cdaa3abc0fa
+	golang.org/x/exp v0.0.0-20250106191152-7588d65b2ba8
 	golang.org/x/text v0.19.0
-	google.golang.org/grpc v1.67.1
+	google.golang.org/grpc v1.57.2
 	google.golang.org/protobuf v1.36.1
 	gopkg.in/yaml.v3 v3.0.1
 	gorm.io/gorm v1.25.4
@@ -44,9 +43,6 @@ require (
 
 require (
 	al.essio.dev/pkg/shellescape v1.5.1 // indirect
-	atomicgo.dev/cursor v0.2.0 // indirect
-	atomicgo.dev/keyboard v0.2.9 // indirect
-	atomicgo.dev/schedule v0.1.0 // indirect
 	dario.cat/mergo v1.0.0 // indirect
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/Binject/debug v0.0.0-20230508195519-26db73212a7a // indirect
@@ -65,7 +61,6 @@ require (
 	github.com/charmbracelet/x/term v0.1.1 // indirect
 	github.com/charmbracelet/x/windows v0.1.0 // indirect
 	github.com/cjoudrey/gluahttp v0.0.0-20201111170219-25003d9adfa9 // indirect
-	github.com/containerd/console v1.0.4-0.20230313162750-1ae8d489ac81 // indirect
 	github.com/containerd/log v0.1.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/distribution/reference v0.6.0 // indirect
@@ -87,15 +82,14 @@ require (
 	github.com/go-telegram-bot-api/telegram-bot-api v4.6.4+incompatible // indirect
 	github.com/goccy/go-yaml v1.12.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
+	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/gookit/color v1.5.4 // indirect
 	github.com/gookit/goutil v0.6.15 // indirect
 	github.com/gorilla/css v1.0.1 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
-	github.com/klauspost/cpuid/v2 v2.2.5 // indirect
 	github.com/lib/pq v1.10.9 // indirect
-	github.com/lithammer/fuzzysearch v1.1.8 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
@@ -133,17 +127,25 @@ require (
 	github.com/yuin/goldmark-emoji v1.0.3 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.53.0 // indirect
 	go.opentelemetry.io/otel v1.31.0 // indirect
-	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.31.0 // indirect
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.17.0 // indirect
 	go.opentelemetry.io/otel/metric v1.31.0 // indirect
 	go.opentelemetry.io/otel/sdk v1.31.0 // indirect
 	go.opentelemetry.io/otel/trace v1.31.0 // indirect
 	golang.org/x/net v0.30.0 // indirect
-	golang.org/x/sync v0.8.0 // indirect
+	golang.org/x/sync v0.10.0 // indirect
 	golang.org/x/sys v0.26.0 // indirect
 	golang.org/x/term v0.25.0 // indirect
+	golang.org/x/time v0.9.0 // indirect
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20241007155032-5fefd90f89a9 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20230530153820-e85fd2cbaebc // indirect
 	gotest.tools/v3 v3.5.1 // indirect
 	layeh.com/gopher-luar v1.0.11 // indirect
 	mvdan.cc/sh/v3 v3.7.0 // indirect
+)
+
+replace (
+	github.com/reeflective/console => ./external/console
+	github.com/reeflective/readline => ./external/readline
+	github.com/rsteube/carapace => ./external/carapace
+	github.com/wabzsy/gonut => ./external/gonut
 )

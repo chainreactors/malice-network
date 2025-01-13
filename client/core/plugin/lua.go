@@ -2,17 +2,17 @@ package plugin
 
 import (
 	"fmt"
+	"github.com/kballard/go-shellquote"
+	"golang.org/x/exp/slices"
 
 	"os"
 	"path/filepath"
 	"reflect"
-	"slices"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
 	lua "github.com/yuin/gopher-lua"
 	"github.com/yuin/gopher-lua/parse"

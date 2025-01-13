@@ -4,10 +4,10 @@ import (
 	"github.com/chainreactors/logs"
 	crConfig "github.com/chainreactors/malice-network/helper/utils/config"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
+	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v3"
 	"os"
 	"path/filepath"
-	"slices"
 )
 
 var (

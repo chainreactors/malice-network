@@ -4,7 +4,7 @@ go 1.15
 
 require (
 	github.com/rsteube/carapace v0.31.1
-	github.com/spf13/cobra v1.7.0
+	github.com/spf13/cobra v1.8.0
 	github.com/spf13/pflag v1.0.5
 )
 

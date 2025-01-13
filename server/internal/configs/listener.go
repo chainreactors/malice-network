@@ -6,8 +6,8 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/server/internal/stream"
+	"golang.org/x/exp/slices"
 	"os"
-	"slices"
 )
 
 var ListenerConfigFileName = "listener.yaml"
