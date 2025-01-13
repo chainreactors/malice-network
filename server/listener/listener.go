@@ -36,7 +36,7 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 		return err
 	}
 	serverAddress := listenerCfg.Address()
-	conn, err := grpc.NewClient(serverAddress, options...)
+	conn, err := grpc.Dial(serverAddress, options...)
 	if err != nil {
 		return err
 	}
