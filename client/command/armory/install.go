@@ -12,11 +12,11 @@ import (
 	"github.com/chainreactors/malice-network/helper/cryptography/minisign"
 	"github.com/chainreactors/tui"
 	"github.com/spf13/cobra"
+	"golang.org/x/exp/slices"
 	"io/ioutil"
 	"net/url"
 	"os"
 	"path/filepath"
-	"slices"
 )
 
 var (

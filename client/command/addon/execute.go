@@ -9,7 +9,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/spf13/cobra"
-	"slices"
+	"golang.org/x/exp/slices"
 )
 
 func ExecuteAddonCmd(cmd *cobra.Command, con *repl.Console) {
