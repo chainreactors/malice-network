@@ -45,8 +45,13 @@ type BuiltinCallback func(content interface{}) (bool, error)
 
 func RegisterBuiltin(rpc clientrpc.MaliceRPCClient) {
 	RegisterCustomBuiltin(rpc)
-	mals.RegisterGRPCBuiltin(RpcPackage, rpc)
 	RegisterEncodeFunc(rpc)
+	for _, fn := range mals.RegisterGRPCBuiltin(RpcPackage, rpc) {
+		err := RegisterInternalFunc(RpcPackage, fn.Name, fn, nil)
+		if err != nil {
+			logs.Log.Errorf("register internal function %s failed: %s", fn.Name, err)
+		}
+	}
 }
 
 func RegisterCustomBuiltin(rpc clientrpc.MaliceRPCClient) {
@@ -93,7 +98,7 @@ sac = new_sacrifice(123, false, false, false, "")
 				"sacrifice: sacrifice process",
 			},
 			Output: []string{
-				"implantpb.ExecuteBinary",
+				"ExecuteBinary",
 			},
 			Example: `
 sac = new_sacrifice(123, false, false, false, "")
@@ -118,7 +123,7 @@ new_86_exec = new_86_executable("module", "filename", "args", sac)
 				"sacrifice: sacrifice process",
 			},
 			Output: []string{
-				"implantpb.ExecuteBinary",
+				"ExecuteBinary",
 			},
 			Example: `
 sac = new_sacrifice(123, false, false, false, "")
@@ -199,7 +204,7 @@ params = new_bypass_all()
 				"sacrifice: sacrifice process",
 			},
 			Output: []string{
-				"implantpb.ExecuteBinary",
+				"ExecuteBinary",
 			},
 			Example: `
 sac = new_sacrifice(123, false, false, false, "")

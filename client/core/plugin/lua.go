@@ -24,7 +24,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/types"
-	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"github.com/chainreactors/mals"
 )
 
@@ -469,19 +468,4 @@ func NewLuaVM() *lua.LState {
 		vm.SetGlobal(name, vm.NewFunction(mals.WrapFuncForLua(fun)))
 	}
 	return vm
-}
-
-func FormatLua(value lua.LValue) interface{} {
-	switch v := value.(type) {
-	case *lua.LUserData:
-		switch v.Value.(type) {
-		case *pe.BOFResponses:
-			//resp.Handler()
-			return nil
-		default:
-			return mals.ConvertLuaValueToGo(value)
-		}
-	default:
-		return mals.ConvertLuaValueToGo(value)
-	}
 }
