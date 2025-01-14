@@ -5,7 +5,7 @@ go 1.20
 require (
 	filippo.io/age v1.1.1
 	github.com/chainreactors/logs v0.0.0-20241115105204-6132e39f5261
-	github.com/chainreactors/mals v0.0.0-20250113101555-63f07ba66262
+	github.com/chainreactors/mals v0.0.0-20250114113936-83ce11c2ca05
 	github.com/chainreactors/tui v0.0.0-20241231072248-d5b3664065c4
 	github.com/chainreactors/utils v0.0.0-20241209140746-65867d2f78b2
 	github.com/charmbracelet/bubbletea v0.27.1
@@ -45,7 +45,6 @@ require (
 	golang.org/x/exp v0.0.0-20240808152545-0cdaa3abc0fa
 	google.golang.org/grpc v1.57.2
 	google.golang.org/protobuf v1.34.1
-
 )
 
 require (
