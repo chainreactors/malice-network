@@ -29,7 +29,7 @@ func GetGithubConfigCmd(cmd *cobra.Command, con *repl.Console) error {
 }
 
 func UpdateGithubConfigCmd(cmd *cobra.Command, con *repl.Console) error {
-	owner, repo, token, workflow := common.ParseGithubFlags(cmd)
+	owner, repo, token, workflow, _ := common.ParseGithubFlags(cmd)
 	_, err := UpdateGithubConfig(con, owner, repo, token, workflow)
 	if err != nil {
 		return err

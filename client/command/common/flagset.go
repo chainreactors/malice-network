@@ -268,14 +268,16 @@ func GithubFlagSet(f *pflag.FlagSet) {
 	f.String("repo", "", "github repo")
 	f.String("token", "", "github token")
 	f.String("workflowFile", "", "github workflow file")
+	f.Bool("remove", false, "remove workflow")
 }
 
-func ParseGithubFlags(cmd *cobra.Command) (string, string, string, string) {
+func ParseGithubFlags(cmd *cobra.Command) (string, string, string, string, bool) {
 	owner, _ := cmd.Flags().GetString("owner")
 	repo, _ := cmd.Flags().GetString("repo")
 	token, _ := cmd.Flags().GetString("token")
 	file, _ := cmd.Flags().GetString("workflowFile")
-	return owner, repo, token, file
+	remove, _ := cmd.Flags().GetBool("remove")
+	return owner, repo, token, file, remove
 }
 
 func TelegramSet(f *pflag.FlagSet) {

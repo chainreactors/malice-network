@@ -4,8 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/chainreactors/malice-network/helper/codenames"
+	"github.com/chainreactors/malice-network/helper/errs"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -16,6 +19,8 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"google.golang.org/grpc"
+	"os"
+	"path/filepath"
 )
 
 var (
@@ -32,7 +37,7 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 		return err
 	}
 	serverAddress := listenerCfg.Address()
-	conn, err := grpc.NewClient(serverAddress, options...)
+	conn, err := grpc.Dial(serverAddress, options...)
 	if err != nil {
 		return err
 	}
@@ -44,7 +49,7 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 		pipelines: make(core.Pipelines),
 		conn:      conn,
 		cfg:       cfg,
-		websites:  make(core.Websites),
+		websites:  make(map[string]*Website),
 	}
 
 	_, err = lis.Rpc.RegisterListener(context.Background(), &clientpb.RegisterListener{
@@ -112,56 +117,33 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 		if err != nil {
 			return err
 		}
+
+		web := &clientpb.Website{
+			Root: newWebsite.RootPath,
+			Port: uint32(newWebsite.Port),
+		}
+		pipe := &clientpb.Pipeline{
+			Name:       newWebsite.WebsiteName,
+			ListenerId: lis.Name,
+			Body: &clientpb.Pipeline_Web{
+				Web: web,
+			},
+			Tls: tls.ToProtobuf(),
+		}
+
+		contents := map[string]*clientpb.WebContent{}
 		for _, content := range newWebsite.WebContents {
-			addWeb := &clientpb.WebsiteAddContent{
-				Name:     newWebsite.WebsiteName,
-				Contents: map[string]*clientpb.WebContent{},
-			}
-			cPath, _ := filepath.Abs(content.Path)
-			fileIfo, err := os.Stat(cPath)
-			var path string
-			if err != nil {
-				logs.Log.Errorf(err.Error())
-				continue
-			}
-			if fileIfo.IsDir() {
-				logs.Log.Errorf("file is a directory")
-				continue
-			} else {
-				file, err := os.Open(cPath)
-				path = filepath.Join(newWebsite.RootPath, filepath.Base(cPath))
-				path = filepath.ToSlash(path)
-				webutils.WebAddFile(addWeb, path, webutils.SniffContentType(file), cPath, content.EncryptionConfig.Type, content.Parser)
-				if err != nil {
-					return err
-				}
-				err = file.Close()
-				if err != nil {
-					return err
-				}
-			}
-			webProtobuf := &clientpb.Pipeline{
-				Name:       newWebsite.WebsiteName,
-				ListenerId: lis.Name,
-				Body: &clientpb.Pipeline_Web{
-					Web: &clientpb.Website{
-						Root:     newWebsite.RootPath,
-						Port:     uint32(newWebsite.Port),
-						Contents: addWeb.Contents,
-					},
-				},
-				Tls: tls.ToProtobuf(),
-			}
-			resp, err := lis.Rpc.RegisterWebsite(context.Background(), webProtobuf)
-			if err != nil {
-				return err
-			}
-			webProtobuf.GetWeb().ID = resp.ID
-			_, err = lis.Rpc.UploadWebsite(context.Background(), webProtobuf.GetWeb())
+			contents[content.Path], err = content.ToProtobuf()
 			if err != nil {
 				return err
 			}
 		}
+		web.Contents = contents
+		_, err = lis.Rpc.RegisterWebsite(context.Background(), pipe)
+		if err != nil {
+			return err
+		}
+
 		_, err = lis.Rpc.StartWebsite(context.Background(), &clientpb.CtrlPipeline{
 			Name:       newWebsite.WebsiteName,
 			ListenerId: lis.Name,
@@ -169,6 +151,23 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 		if err != nil {
 			return err
 		}
+		//cPath, _ := filepath.Abs(newWebsite.WebContents["a"].RootPath)
+		//fileIfo, err := os.Stat(cPath)
+		//
+		//if fileIfo.IsDir() {
+		//	_ = webutils.WebAddDirectory(addWeb, newWebsite.RootPath, cPath)
+		//} else {
+		//	file, err := os.Open(cPath)
+		//	webutils.WebAddFile(addWeb, newWebsite.RootPath, webutils.SniffContentType(file), cPath)
+		//	if err != nil {
+		//		return err
+		//	}
+		//	err = file.Close()
+		//	if err != nil {
+		//		return err
+		//	}
+		//}
+
 	}
 
 	return nil
@@ -181,44 +180,7 @@ type listener struct {
 	pipelines core.Pipelines
 	conn      *grpc.ClientConn
 	cfg       *configs.ListenerConfig
-	websites  core.Websites
-}
-
-func (lns *listener) Handler() {
-	stream, err := lns.Rpc.JobStream(context.Background())
-	if err != nil {
-		return
-	}
-
-	for {
-		msg, err := stream.Recv()
-		if err != nil {
-			logs.Log.Errorf(err.Error())
-			return
-		}
-		var resp *clientpb.JobStatus
-		switch msg.Ctrl {
-		case consts.CtrlPipelineStart:
-			resp = lns.startHandler(msg.Job)
-		case consts.CtrlPipelineStop:
-			resp = lns.stopHandler(msg.Job)
-		case consts.CtrlWebsiteStart:
-			resp = lns.startWebsite(msg.Job)
-		case consts.CtrlWebsiteStop:
-			resp = lns.stopWebsite(msg.Job)
-		case consts.CtrlWebsiteRegister:
-			resp = lns.registerWebsite(msg.Job)
-		case consts.CtrlRemStart:
-			resp = lns.startRem(msg.Job)
-		case consts.CtrlRemStop:
-			resp = lns.stopRem(msg.Job)
-		}
-		err = stream.Send(resp)
-		if err != nil {
-			logs.Log.Errorf(err.Error())
-			continue
-		}
-	}
+	websites  map[string]*Website
 }
 
 func (lns *listener) RegisterAndStart(pipeline *clientpb.Pipeline) error {
@@ -231,8 +193,10 @@ func (lns *listener) RegisterAndStart(pipeline *clientpb.Pipeline) error {
 	}
 
 	_, err = lns.Rpc.StartPipeline(context.Background(), &clientpb.CtrlPipeline{
-		Name:       pipeline.Name,
-		ListenerId: lns.ID(),
+		Name:           pipeline.Name,
+		ListenerId:     lns.ID(),
+		BeaconPipeline: pipeline.BeaconPipeline,
+		Target:         pipeline.Target,
 	})
 	if err != nil {
 		return err
@@ -250,24 +214,159 @@ func (lns *listener) ToProtobuf() *clientpb.Listener {
 	}
 }
 
-func (lns *listener) startHandler(job *clientpb.Job) *clientpb.JobStatus {
+func (lns *listener) Handler() {
+	stream, err := lns.Rpc.JobStream(context.Background())
+	if err != nil {
+		return
+	}
+
+	for {
+		msg, err := stream.Recv()
+		if err != nil {
+			logs.Log.Errorf(err.Error())
+			return
+		}
+
+		var handlerErr error
+		switch msg.Ctrl {
+		case consts.CtrlPipelineStart:
+			handlerErr = lns.startHandler(msg.Job)
+		case consts.CtrlPipelineStop:
+			handlerErr = lns.stopHandler(msg.Job)
+		case consts.CtrlWebsiteStart:
+			handlerErr = lns.startWebsite(msg.Job)
+		case consts.CtrlWebsiteStop:
+			handlerErr = lns.stopWebsite(msg.Job)
+		case consts.CtrlWebsiteRegister:
+			handlerErr = lns.registerWebsite(msg.Job)
+		case consts.CtrlWebContentAdd:
+			handlerErr = lns.handleWebContentAdd(msg.Job)
+		case consts.CtrlWebContentUpdate:
+			handlerErr = lns.handleWebContentUpdate(msg.Job)
+		case consts.CtrlWebContentRemove:
+			handlerErr = lns.handleWebContentRemove(msg.Job)
+		case consts.CtrlRemStart:
+			handlerErr = lns.startRem(msg.Job)
+		case consts.CtrlRemStop:
+			handlerErr = lns.stopRem(msg.Job)
+		}
+
+	status := &clientpb.JobStatus{
+		ListenerId: lns.ID(),
+		Ctrl:       msg.Ctrl,
+		Job:        msg.Job,
+	}
+	if handlerErr != nil {
+		status.Status = consts.CtrlStatusFailed
+		status.Error = handlerErr.Error()
+	} else {
+		status.Status = consts.CtrlStatusSuccess
+	}
+
+	if err := stream.Send(status); err != nil {
+		logs.Log.Errorf(err.Error())
+		continue
+	}
+	}
+}
+
+func (lns *listener) startHandler(job *clientpb.Job) error {
 	pipeline, err := lns.startPipeline(job.GetPipeline())
 	if err != nil {
-		return &clientpb.JobStatus{
-			ListenerId: lns.ID(),
-			Ctrl:       consts.CtrlJobStart,
-			Status:     consts.CtrlStatusFailed,
-			Error:      err.Error(),
-			Job:        job,
-		}
+		return err
 	}
 	job.Name = pipeline.ID()
-	return &clientpb.JobStatus{
-		ListenerId: lns.ID(),
-		Ctrl:       consts.CtrlJobStart,
-		Status:     consts.CtrlStatusSuccess,
-		Job:        job,
+	err = lns.autoBuild(job.GetPipeline())
+	if err != nil {
+		logs.Log.Warn(err)
 	}
+	return nil
+}
+
+func (lns *listener) autoBuild(pipeline *clientpb.Pipeline) error {
+	if len(pipeline.Target) == 0 {
+		return fmt.Errorf("pipeline %s target is empty, auto build canceled", pipeline.Name)
+	}
+	var buildType string
+	var beaconPipeline string
+	var pulsePipeline string
+	var input map[string]string
+
+	_, workflowErr := lns.Rpc.WorkflowStatus(context.Background(), &clientpb.GithubWorkflowRequest{})
+	_, dockerErr := lns.Rpc.DockerStatus(context.Background(), &clientpb.Empty{})
+	if workflowErr != nil && dockerErr != nil {
+		return fmt.Errorf("workflow and docker not worked: %s, %s", workflowErr.Error(), dockerErr.Error())
+	}
+
+	for _, target := range pipeline.Target {
+		if pipeline.Parser == consts.CommandBuildPulse {
+			if !strings.Contains(target, "windows") {
+				logs.Log.Warnf("pulse build target must be windows, %s is not supported", target)
+				continue
+			}
+			buildType = consts.CommandBuildPulse
+			beaconPipeline = pipeline.BeaconPipeline
+			pulsePipeline = pipeline.Name
+			input = map[string]string{
+				"package": consts.CommandBuildPulse,
+				"targets": target,
+			}
+		} else {
+			buildType = consts.CommandBuildBeacon
+			beaconPipeline = pipeline.Name
+			input = map[string]string{
+				"package": consts.CommandBuildBeacon,
+				"targets": target,
+			}
+		}
+		targetMap, ok := consts.GetBuildTarget(target)
+		if !ok {
+			fmt.Printf("Error getting build target for %s\n", target)
+			continue
+		}
+		_, err := lns.Rpc.FindArtifact(context.Background(), &clientpb.Artifact{
+			Pipeline: pipeline.Name,
+			Target:   target,
+			Type:     buildType,
+			Platform: targetMap.OS,
+			Arch:     targetMap.Arch,
+		})
+		if !errors.Is(err, errs.ErrNotFoundArtifact) && err != nil {
+			logs.Log.Errorf("Error finding artifact for %s: %v\n", target, err)
+			continue
+		} else if err == nil {
+			continue
+		}
+		profileName := codenames.GetCodename()
+		_, err = lns.Rpc.NewProfile(context.Background(), &clientpb.Profile{
+			Name:            profileName,
+			PipelineId:      beaconPipeline,
+			PulsePipelineId: pulsePipeline,
+		})
+		if err != nil {
+			return err
+		}
+		if workflowErr == nil {
+			_, err = lns.Rpc.TriggerWorkflowDispatch(context.Background(), &clientpb.GithubWorkflowRequest{
+				Inputs:  input,
+				Profile: profileName,
+			})
+			if err != nil {
+				return err
+			}
+		} else if dockerErr == nil {
+			_, err = lns.Rpc.Build(context.Background(), &clientpb.Generate{
+				Target:      target,
+				ProfileName: profileName,
+				Type:        buildType,
+				Srdi:        true,
+			})
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func (lns *listener) startPipeline(pipelinepb *clientpb.Pipeline) (core.Pipeline, error) {
@@ -292,141 +391,107 @@ func (lns *listener) startPipeline(pipelinepb *clientpb.Pipeline) (core.Pipeline
 	return p, nil
 }
 
-func (lns *listener) stopHandler(job *clientpb.Job) *clientpb.JobStatus {
-	var err error
+func (lns *listener) stopHandler(job *clientpb.Job) error {
 	pipeline := job.GetPipeline()
 	switch pipeline.Body.(type) {
 	case *clientpb.Pipeline_Tcp:
 		p := lns.pipelines.Get(pipeline.Name)
 		if p == nil {
-			return &clientpb.JobStatus{
-				ListenerId: lns.ID(),
-				Ctrl:       consts.CtrlJobStop,
-				Status:     consts.CtrlStatusFailed,
-				Error:      errors.New("pipeline not found").Error(),
-				Job:        job,
-			}
+			return errors.New("pipeline not found")
 		}
 		job.Name = p.ID()
-		err = p.Close()
-		if err != nil {
-			break
+		if err := p.Close(); err != nil {
+			return err
 		}
-		coreJob := core.Jobs.Get(pipeline.Name)
-		if coreJob != nil {
+		if coreJob := core.Jobs.Get(pipeline.Name); coreJob != nil {
 			core.Jobs.Remove(coreJob)
 		}
 	}
-	if err != nil {
-		return &clientpb.JobStatus{
-			ListenerId: lns.ID(),
-			Ctrl:       consts.CtrlJobStop,
-			Status:     consts.CtrlStatusFailed,
-			Error:      err.Error(),
-			Job:        job,
-		}
-	}
-	return &clientpb.JobStatus{
-		ListenerId: lns.ID(),
-		Ctrl:       consts.CtrlJobStop,
-		Status:     consts.CtrlStatusSuccess,
-		Job:        job,
-	}
+	return nil
 }
 
-func (lns *listener) startWebsite(job *clientpb.Job) *clientpb.JobStatus {
-	var err error
-	web := job.GetPipeline().GetWeb()
-	job.Name = web.ID
-	w := lns.websites.Get(web.ID)
+func (lns *listener) startWebsite(job *clientpb.Job) error {
+	pipe := job.GetPipeline()
+	web := pipe.GetWeb()
+	w := lns.websites[pipe.Name]
 	if w == nil {
 		starResult, err := StartWebsite(lns.Rpc, job.GetPipeline(), web.Contents)
 		if err != nil {
-			return &clientpb.JobStatus{
-				ListenerId: lns.ID(),
-				Ctrl:       consts.CtrlJobStart,
-				Status:     consts.CtrlStatusFailed,
-				Error:      err.Error(),
-				Job:        job,
-			}
+			return err
 		}
-		lns.websites.Add(starResult)
+		lns.websites[pipe.Name] = starResult
 	} else {
-		err = w.Start()
-		if err != nil {
-			return &clientpb.JobStatus{
-				ListenerId: lns.ID(),
-				Ctrl:       consts.CtrlJobStart,
-				Status:     consts.CtrlStatusFailed,
-				Error:      err.Error(),
-				Job:        job,
-			}
+		if err := w.Start(); err != nil {
+			return err
 		}
 	}
 	job.GetPipeline().Enable = true
-	return &clientpb.JobStatus{
-		ListenerId: lns.ID(),
-		Ctrl:       consts.CtrlJobStart,
-		Status:     consts.CtrlStatusSuccess,
-		Job:        job,
-	}
+	return nil
 }
 
-func (lns *listener) stopWebsite(job *clientpb.Job) *clientpb.JobStatus {
-	var err error
-	getWeb := job.GetPipeline().GetWeb()
-	job.Name = getWeb.ID
-	w := lns.websites.Get(getWeb.ID)
+func (lns *listener) stopWebsite(job *clientpb.Job) error {
+	pipe := job.GetPipeline()
+	w := lns.websites[pipe.Name]
 	if w == nil {
-		return &clientpb.JobStatus{
-			ListenerId: lns.ID(),
-			Ctrl:       consts.CtrlJobStop,
-			Status:     consts.CtrlStatusFailed,
-			Error:      errors.New("website not found").Error(),
-			Job:        job,
-		}
+		return errors.New("website not found")
 	}
-	err = w.Close()
-	if err != nil {
-		return &clientpb.JobStatus{
-			ListenerId: lns.ID(),
-			Ctrl:       consts.CtrlJobStop,
-			Status:     consts.CtrlStatusFailed,
-			Error:      err.Error(),
-			Job:        job,
-		}
+	if err := w.Close(); err != nil {
+		return err
 	}
-	coreJob := core.Jobs.Get(getWeb.ID)
-	if coreJob != nil {
+	if coreJob := core.Jobs.Get(pipe.Name); coreJob != nil {
 		core.Jobs.Remove(coreJob)
 	}
-	return &clientpb.JobStatus{
-		ListenerId: lns.ID(),
-		Ctrl:       consts.CtrlJobStop,
-		Status:     consts.CtrlStatusSuccess,
-		Job:        job,
-	}
+	return nil
 }
 
-func (lns *listener) registerWebsite(job *clientpb.Job) *clientpb.JobStatus {
+func (lns *listener) registerWebsite(job *clientpb.Job) error {
 	webContents := job.GetPipeline().GetWeb().Contents
 	for _, content := range webContents {
-		filePath := filepath.Join(configs.WebsitePath, job.GetPipeline().GetWeb().ID)
-		err := os.WriteFile(filePath, content.Content, os.ModePerm)
-		if err != nil {
-			return &clientpb.JobStatus{
-				ListenerId: lns.ID(),
-				Status:     consts.CtrlStatusFailed,
-				Ctrl:       consts.CtrlWebUpload,
-				Error:      err.Error(),
-			}
+		filePath := filepath.Join(configs.WebsitePath, content.File)
+		if err := os.WriteFile(filePath, content.Content, os.ModePerm); err != nil {
+			return err
 		}
 	}
-	return &clientpb.JobStatus{
-		ListenerId: lns.ID(),
-		Status:     consts.CtrlStatusSuccess,
-		Ctrl:       consts.CtrlWebUpload,
+	return nil
+}
+
+func (lns *listener) handleWebContentAdd(job *clientpb.Job) error {
+	pipe := job.GetPipeline()
+	web := pipe.GetWeb()
+	w := lns.websites[pipe.Name]
+	if w == nil {
+		return errors.New("website not found")
 	}
+	for _, content := range web.Contents {
+		w.AddContent(content)
+	}
+	return nil
+}
+
+func (lns *listener) handleWebContentUpdate(job *clientpb.Job) error {
+	pipe := job.GetPipeline()
+	web := pipe.GetWeb()
+	w := lns.websites[pipe.Name]
+	if w == nil {
+		return errors.New("website not found")
+	}
+	for _, content := range web.Contents {
+		w.AddContent(content)
+	}
+	return nil
+}
+
+func (lns *listener) handleWebContentRemove(job *clientpb.Job) error {
+	pipe := job.GetPipeline()
+	web := pipe.GetWeb()
+	w := lns.websites[pipe.Name]
+	if w == nil {
+		return errors.New("website not found")
+	}
+	for path := range web.Contents {
+		delete(w.Content, path)
+	}
+	return nil
 }
 
 func (lns *listener) startRem(job *clientpb.Job) *clientpb.JobStatus {

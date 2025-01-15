@@ -13,6 +13,7 @@ server:
     lark:
       enable: false
       webhook_url:
+
 listeners:
   name: listener
   auth: listener.auth
@@ -24,6 +25,10 @@ listeners:
       protocol: tcp
       parser: malefic
       enable: true
+      auto_build:
+        target:
+          - x86_64-unknown-linux-musl
+        beacon_pipeline: beacon_pipeline
       tls:
         enable: false
         name: default
@@ -45,6 +50,10 @@ listeners:
       port: 5002
       host: 0.0.0.0
       parser: pulse
+      auto_build:
+          target:
+            - x86_64-pc-windows-gnu
+          beacon_pipeline: beacon_pipeline
       enable: true
       encryption:
         enable: true
