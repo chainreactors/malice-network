@@ -184,6 +184,10 @@ func UnpackURL(data string) ([]byte, error) {
 }
 
 func Unpack(data string) ([]byte, error) {
+	content, err := UnPackFile(data)
+	if err == nil {
+		return content, nil
+	}
 	unpakced := strings.SplitN(data, ":", 2)
 	result, err := UnPackFile(data)
 	if err == nil {

@@ -147,6 +147,14 @@ func FromPipelinePb(pipeline *clientpb.Pipeline, ip string) *Pipeline {
 			Tls:        ToTlsDB(pipeline.Tls),
 			Encryption: ToEncryptionDB(pipeline.Encryption),
 		}
+	case *clientpb.Pipeline_Rem:
+		return &Pipeline{
+			ListenerID: pipeline.ListenerId,
+			Name:       pipeline.Name,
+			Enable:     pipeline.Enable,
+			Type:       consts.RemPipeline,
+			Host:       body.Rem.Console,
+		}
 	case *clientpb.Pipeline_Web:
 		return &Pipeline{
 			ListenerID: pipeline.ListenerId,
