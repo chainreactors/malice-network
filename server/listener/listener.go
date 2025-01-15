@@ -15,12 +15,9 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
 	"github.com/chainreactors/malice-network/helper/utils/mtls"
-	"github.com/chainreactors/malice-network/helper/utils/webutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"google.golang.org/grpc"
-	"os"
-	"path/filepath"
 )
 
 var (
@@ -151,23 +148,6 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 		if err != nil {
 			return err
 		}
-		//cPath, _ := filepath.Abs(newWebsite.WebContents["a"].RootPath)
-		//fileIfo, err := os.Stat(cPath)
-		//
-		//if fileIfo.IsDir() {
-		//	_ = webutils.WebAddDirectory(addWeb, newWebsite.RootPath, cPath)
-		//} else {
-		//	file, err := os.Open(cPath)
-		//	webutils.WebAddFile(addWeb, newWebsite.RootPath, webutils.SniffContentType(file), cPath)
-		//	if err != nil {
-		//		return err
-		//	}
-		//	err = file.Close()
-		//	if err != nil {
-		//		return err
-		//	}
-		//}
-
 	}
 
 	return nil
@@ -224,7 +204,7 @@ func (lns *listener) Handler() {
 		msg, err := stream.Recv()
 		if err != nil {
 			logs.Log.Errorf(err.Error())
-			return
+			continue
 		}
 
 		var handlerErr error
@@ -251,22 +231,22 @@ func (lns *listener) Handler() {
 			handlerErr = lns.stopRem(msg.Job)
 		}
 
-	status := &clientpb.JobStatus{
-		ListenerId: lns.ID(),
-		Ctrl:       msg.Ctrl,
-		Job:        msg.Job,
-	}
-	if handlerErr != nil {
-		status.Status = consts.CtrlStatusFailed
-		status.Error = handlerErr.Error()
-	} else {
-		status.Status = consts.CtrlStatusSuccess
-	}
+		status := &clientpb.JobStatus{
+			ListenerId: lns.ID(),
+			Ctrl:       msg.Ctrl,
+			Job:        msg.Job,
+		}
+		if handlerErr != nil {
+			status.Status = consts.CtrlStatusFailed
+			status.Error = handlerErr.Error()
+		} else {
+			status.Status = consts.CtrlStatusSuccess
+		}
 
-	if err := stream.Send(status); err != nil {
-		logs.Log.Errorf(err.Error())
-		continue
-	}
+		if err := stream.Send(status); err != nil {
+			logs.Log.Errorf(err.Error())
+			continue
+		}
 	}
 }
 
@@ -494,61 +474,32 @@ func (lns *listener) handleWebContentRemove(job *clientpb.Job) error {
 	return nil
 }
 
-func (lns *listener) startRem(job *clientpb.Job) *clientpb.JobStatus {
+func (lns *listener) startRem(job *clientpb.Job) error {
 	rem, err := NewRem(lns.Rpc, job.GetPipeline())
 	if err != nil {
-		return &clientpb.JobStatus{
-			ListenerId: lns.ID(),
-			Ctrl:       consts.CtrlJobStart,
-			Status:     consts.CtrlStatusFailed,
-			Error:      err.Error(),
-			Job:        job,
-		}
+		return err
 	}
 
 	err = rem.Start()
 	if err != nil {
-		return &clientpb.JobStatus{
-			ListenerId: lns.ID(),
-			Ctrl:       consts.CtrlJobStart,
-			Status:     consts.CtrlStatusFailed,
-			Error:      err.Error(),
-			Job:        job,
-		}
+		return err
 	}
 
 	lns.pipelines.Add(rem)
 	job.Name = rem.ID()
-	return &clientpb.JobStatus{
-		ListenerId: lns.ID(),
-		Ctrl:       consts.CtrlJobStart,
-		Status:     consts.CtrlStatusSuccess,
-		Job:        job,
-	}
+	return nil
 }
 
-func (lns *listener) stopRem(job *clientpb.Job) *clientpb.JobStatus {
+func (lns *listener) stopRem(job *clientpb.Job) error {
 	p := lns.pipelines.Get(job.GetPipeline().Name)
 	if p == nil {
-		return &clientpb.JobStatus{
-			ListenerId: lns.ID(),
-			Ctrl:       consts.CtrlJobStop,
-			Status:     consts.CtrlStatusFailed,
-			Error:      "rem not found",
-			Job:        job,
-		}
+		return fmt.Errorf("rem not found")
 	}
 
 	job.Name = p.ID()
 	err := p.Close()
 	if err != nil {
-		return &clientpb.JobStatus{
-			ListenerId: lns.ID(),
-			Ctrl:       consts.CtrlJobStop,
-			Status:     consts.CtrlStatusFailed,
-			Error:      err.Error(),
-			Job:        job,
-		}
+		return err
 	}
 
 	coreJob := core.Jobs.Get(job.GetPipeline().Name)
@@ -556,10 +507,5 @@ func (lns *listener) stopRem(job *clientpb.Job) *clientpb.JobStatus {
 		core.Jobs.Remove(coreJob)
 	}
 
-	return &clientpb.JobStatus{
-		ListenerId: lns.ID(),
-		Ctrl:       consts.CtrlJobStop,
-		Status:     consts.CtrlStatusSuccess,
-		Job:        job,
-	}
+	return nil
 }

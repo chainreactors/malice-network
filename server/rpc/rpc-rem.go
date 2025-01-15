@@ -32,7 +32,7 @@ func (rpc *Server) ListRems(ctx context.Context, req *clientpb.Listener) (*clien
 	}
 	for _, rem := range rems {
 		if rem.Type == consts.RemPipeline {
-			result = append(result, models.ToPipelinePB(rem))
+			result = append(result, rem.ToProtobuf())
 		}
 	}
 	return &clientpb.Pipelines{Pipelines: result}, nil
@@ -44,7 +44,7 @@ func (rpc *Server) StartRem(ctx context.Context, req *clientpb.CtrlPipeline) (*c
 		return nil, err
 	}
 	remDB.Enable = true
-	rem := models.ToPipelinePB(remDB)
+	rem := remDB.ToProtobuf()
 	listener := core.Listeners.Get(rem.ListenerId)
 	if listener == nil {
 		return nil, fmt.Errorf("listener %s not found", req.ListenerId)
@@ -75,7 +75,7 @@ func (rpc *Server) StopRem(ctx context.Context, req *clientpb.CtrlPipeline) (*cl
 	if err != nil {
 		return &clientpb.Empty{}, err
 	}
-	rem := models.ToPipelinePB(remDB)
+	rem := remDB.ToProtobuf()
 	listener := core.Listeners.Get(rem.ListenerId)
 	if listener == nil {
 		return nil, fmt.Errorf("listener %s not found", req.ListenerId)
@@ -101,7 +101,7 @@ func (rpc *Server) DeleteRem(ctx context.Context, req *clientpb.CtrlPipeline) (*
 	if err != nil {
 		return &clientpb.Empty{}, err
 	}
-	rem := models.ToPipelinePB(remDB)
+	rem := remDB.ToProtobuf()
 	listener := core.Listeners.Get(rem.ListenerId)
 	if listener == nil {
 		return nil, fmt.Errorf("listener %s not found", req.ListenerId)
