@@ -10,6 +10,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/spf13/cobra"
 	"os"
+	"strings"
 )
 
 func BeaconCmd(cmd *cobra.Command, con *repl.Console) error {
@@ -123,8 +124,9 @@ func PulseCmd(cmd *cobra.Command, con *repl.Console) error {
 	address, _ := cmd.Flags().GetString("address")
 	buildTarget, _ := cmd.Flags().GetString("target")
 	artifactId, _ := cmd.Flags().GetUint32("artifact-id")
-	if buildTarget != consts.TargetX64WindowsGnu && buildTarget != consts.TargetX86WindowsGnu {
-		return errors.New("pulse build target must be x86_64-pc-windows-gnu or i686-pc-windows-gnu")
+	if !strings.Contains(buildTarget, "windows") {
+		con.Log.Warn("pulse only support windows target\n")
+		return nil
 	}
 	go func() {
 		_, err := con.Rpc.Build(con.Context(), &clientpb.Generate{

@@ -8,6 +8,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/errs"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -299,6 +300,10 @@ func (lns *listener) autoBuild(pipeline *clientpb.Pipeline) error {
 
 	for _, target := range pipeline.Target {
 		if pipeline.Parser == consts.CommandBuildPulse {
+			if !strings.Contains(target, "windows") {
+				logs.Log.Warnf("pulse build target must be windows, %s is not supported", target)
+				continue
+			}
 			buildType = consts.CommandBuildPulse
 			beaconPipeline = pipeline.BeaconPipeline
 			pulsePipeline = pipeline.Name

@@ -843,7 +843,7 @@ func FindArtifact(target *clientpb.Artifact) (*clientpb.Artifact, error) {
 			Preload("Profile.PulsePipeline").
 			Find(&builders)
 		for _, v := range builders {
-			if v.ShellcodePath == "" {
+			if v.ShellcodePath == "" && v.IsSRDI == true {
 				continue
 			}
 			if v.Type == consts.ImplantPulse && v.Profile.PulsePipelineID == target.Pipeline {

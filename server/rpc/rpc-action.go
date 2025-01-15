@@ -53,7 +53,7 @@ func (rpc *Server) TriggerWorkflowDispatch(ctx context.Context, req *clientpb.Gi
 		Ca:          req.Ca,
 		Params:      req.Params,
 	}
-	builder, err := build.TriggerWorkflowDispatch(req.Owner, req.Repo, req.WorkflowId, req.Token, req.Inputs, generateReq)
+	builder, err := build.TriggerWorkflowDispatch(req.Owner, req.Repo, req.WorkflowId, req.Token, req.Inputs, req.IsRemove, generateReq)
 	if err != nil {
 		return nil, err
 	}
