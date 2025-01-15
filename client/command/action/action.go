@@ -14,8 +14,8 @@ import (
 	"strings"
 )
 
-func checkGithubArg(cmd *cobra.Command, isList bool) (string, string, string, string, error) {
-	owner, repo, token, file := common.ParseGithubFlags(cmd)
+func checkGithubArg(cmd *cobra.Command, isList bool) (string, string, string, string, bool, error) {
+	owner, repo, token, file, remove := common.ParseGithubFlags(cmd)
 	profile := assets.GetProfile().Settings
 	if owner == "" {
 		owner = profile.GithubOwner
@@ -34,11 +34,11 @@ func checkGithubArg(cmd *cobra.Command, isList bool) (string, string, string, st
 			file = "generate.yaml"
 		}
 	}
-	return owner, repo, token, file, nil
+	return owner, repo, token, file, remove, nil
 }
 
 func RunBeaconWorkFlowCmd(cmd *cobra.Command, con *repl.Console) error {
-	owner, repo, token, file, err := checkGithubArg(cmd, false)
+	owner, repo, token, file, remove, err := checkGithubArg(cmd, false)
 	if err != nil {
 		return err
 	}
@@ -67,6 +67,7 @@ func RunBeaconWorkFlowCmd(cmd *cobra.Command, con *repl.Console) error {
 		Address:    address,
 		Ca:         ca,
 		Params:     params.String(),
+		IsRemove:   remove,
 	}
 	resp, err := RunWorkFlow(con, req)
 	if err != nil {
@@ -77,7 +78,7 @@ func RunBeaconWorkFlowCmd(cmd *cobra.Command, con *repl.Console) error {
 }
 
 func RunBindWorkFlowCmd(cmd *cobra.Command, con *repl.Console) error {
-	owner, repo, token, file, err := checkGithubArg(cmd, false)
+	owner, repo, token, file, remove, err := checkGithubArg(cmd, false)
 	if err != nil {
 		return err
 	}
@@ -106,6 +107,7 @@ func RunBindWorkFlowCmd(cmd *cobra.Command, con *repl.Console) error {
 		Address:    address,
 		Ca:         ca,
 		Params:     params.String(),
+		IsRemove:   remove,
 	}
 	resp, err := RunWorkFlow(con, req)
 	if err != nil {
@@ -115,7 +117,7 @@ func RunBindWorkFlowCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 func RunPreludeWorkFlowCmd(cmd *cobra.Command, con *repl.Console) error {
-	owner, repo, token, file, err := checkGithubArg(cmd, false)
+	owner, repo, token, file, remove, err := checkGithubArg(cmd, false)
 	if err != nil {
 		return err
 	}
@@ -155,6 +157,7 @@ func RunPreludeWorkFlowCmd(cmd *cobra.Command, con *repl.Console) error {
 		Address:    address,
 		Ca:         ca,
 		Params:     params.String(),
+		IsRemove:   remove,
 	}
 	resp, err := RunWorkFlow(con, req)
 	if err != nil {
@@ -164,7 +167,7 @@ func RunPreludeWorkFlowCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 func RunModulesWorkFlowCmd(cmd *cobra.Command, con *repl.Console) error {
-	owner, repo, token, file, err := checkGithubArg(cmd, false)
+	owner, repo, token, file, remove, err := checkGithubArg(cmd, false)
 	if err != nil {
 		return err
 	}
@@ -195,6 +198,7 @@ func RunModulesWorkFlowCmd(cmd *cobra.Command, con *repl.Console) error {
 		Address:    address,
 		Ca:         ca,
 		Params:     params.String(),
+		IsRemove:   remove,
 	}
 	resp, err := RunWorkFlow(con, req)
 	if err != nil {
@@ -205,13 +209,14 @@ func RunModulesWorkFlowCmd(cmd *cobra.Command, con *repl.Console) error {
 }
 
 func RunPulseWorkFlowCmd(cmd *cobra.Command, con *repl.Console) error {
-	owner, repo, token, file, err := checkGithubArg(cmd, false)
+	owner, repo, token, file, remove, err := checkGithubArg(cmd, false)
 	if err != nil {
 		return err
 	}
 	name, address, buildTarget, modules, ca, interval, jitter, _ := common.ParseGenerateFlags(cmd)
-	if buildTarget != consts.TargetX64WindowsGnu && buildTarget != consts.TargetX86WindowsGnu {
-		return errors.New("pulse build target must be x86_64-pc-windows-msvc or i686-pc-windows-msvc")
+	if !strings.Contains(buildTarget, "windows") {
+		con.Log.Warn("pulse only support windows target\n")
+		return nil
 	}
 	artifactID, _ := cmd.Flags().GetUint32("artifact-id")
 	params := &types.ProfileParams{
@@ -237,6 +242,7 @@ func RunPulseWorkFlowCmd(cmd *cobra.Command, con *repl.Console) error {
 		Ca:         ca,
 		Params:     params.String(),
 		ArtifactId: artifactID,
+		IsRemove:   remove,
 	}
 	resp, err := RunWorkFlow(con, req)
 	if err != nil {

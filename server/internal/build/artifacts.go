@@ -20,7 +20,7 @@ import (
 
 var notifiedWorkflows = make(map[string]bool)
 
-func PushArtifact(owner, repo, token, buildName string) (*models.Builder, error) {
+func PushArtifact(owner, repo, token, buildName string, isRemove bool) (*models.Builder, error) {
 	builder, err := db.GetArtifactByName(buildName)
 	if err != nil {
 		return builder, err
@@ -33,7 +33,7 @@ func PushArtifact(owner, repo, token, buildName string) (*models.Builder, error)
 		return builder, nil
 	}
 
-	artifactDownloadUrl, err := getArtifactDownloadUrl(owner, repo, token, buildName)
+	artifactDownloadUrl, workflowID, err := getArtifactDownloadUrl(owner, repo, token, buildName)
 	if err != nil {
 		return builder, err
 	}
@@ -61,6 +61,18 @@ func PushArtifact(owner, repo, token, buildName string) (*models.Builder, error)
 	if err != nil {
 		return builder, err
 	}
+	if isRemove {
+		err = DeleteSuccessWorkflow(owner, repo, token, workflowID)
+		if err != nil {
+			return builder, err
+		}
+		core.EventBroker.Publish(core.Event{
+			EventType: consts.EventBuild,
+			IsNotify:  false,
+			Message:   fmt.Sprintf("workflow %s %s %s has deleted", builder.Name, builder.Type, builder.Target),
+			Important: true,
+		})
+	}
 	core.EventBroker.Publish(core.Event{
 		EventType: consts.EventBuild,
 		IsNotify:  false,
@@ -71,32 +83,32 @@ func PushArtifact(owner, repo, token, buildName string) (*models.Builder, error)
 }
 
 // getArtifactDownloadUrl retrieves the artifact download URL from the GitHub API response
-func getArtifactDownloadUrl(owner, repo, token, buildName string) (string, error) {
+func getArtifactDownloadUrl(owner, repo, token, buildName string) (string, int64, error) {
 	// Get the artifact list
-	artifactUrl, err := getArtifact(owner, repo, token, buildName)
+	artifactUrl, workflowID, err := getArtifact(owner, repo, token, buildName)
 	if err != nil && !errors.Is(err, errs.ErrWorkflowFailed) {
-		return "", fmt.Errorf("failed to get artifact URL: %v", err)
+		return "", 0, fmt.Errorf("failed to get artifact URL: %v", err)
 	} else if errors.Is(err, errs.ErrWorkflowFailed) {
-		return "", err
+		return "", 0, err
 	}
 
 	artifactDownloadUrl, err := fetchArtifactDownloadUrl(artifactUrl, token)
 	if err != nil {
-		return "", fmt.Errorf("failed to fetch artifact download URL: %v", err)
+		return "", 0, fmt.Errorf("failed to fetch artifact download URL: %v", err)
 	}
-	return artifactDownloadUrl, nil
+	return artifactDownloadUrl, workflowID, nil
 }
 
-func getArtifact(owner, repo, token, buildName string) (string, error) {
+func getArtifact(owner, repo, token, buildName string) (string, int64, error) {
 	workflows, err := listRepositoryWorkflows(owner, repo, token)
 	if err != nil {
-		return "", err
+		return "", 0, err
 	}
-	artifactUrl, err := findArtifactsURL(workflows, buildName)
+	artifactUrl, workflowID, err := findArtifactsURL(workflows, buildName)
 	if err != nil {
-		return "", err
+		return "", 0, err
 	}
-	return artifactUrl, nil
+	return artifactUrl, workflowID, nil
 }
 
 // listRepositoryWorkflows fetches the workflows for a given repository
@@ -128,13 +140,13 @@ func listRepositoryWorkflows(owner, repo, token string) ([]Workflow, error) {
 }
 
 // findArtifactsURL finds the ArtifactsURL for a workflow by name
-func findArtifactsURL(workflows []Workflow, name string) (string, error) {
+func findArtifactsURL(workflows []Workflow, name string) (string, int64, error) {
 	for _, wf := range workflows {
 		if wf.Name == name {
 			if wf.Status == "completed" && wf.Conclusion == "success" {
-				return wf.ArtifactsURL, nil
+				return wf.ArtifactsURL, wf.ID, nil
 			} else if wf.Conclusion == "failure" {
-				return "", errs.ErrWorkflowFailed
+				return "", 0, errs.ErrWorkflowFailed
 			}
 			if !notifiedWorkflows[name] {
 				core.EventBroker.Publish(core.Event{
@@ -147,7 +159,7 @@ func findArtifactsURL(workflows []Workflow, name string) (string, error) {
 			}
 		}
 	}
-	return "", errors.New("no artifact found") // Return empty string if not found
+	return "", 0, errors.New("no artifact found") // Return empty string if not found
 }
 
 // fetchArtifactDownloadUrl  fetch artifactUrl for zip download url
@@ -202,4 +214,17 @@ func downloadFile(artifactDownloadUrl, token string) ([]byte, error) {
 	}
 
 	return io.ReadAll(resp.Body)
+}
+
+func DeleteSuccessWorkflow(owner, repo, token string, workflowID int64) error {
+	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/actions/runs/%d", owner, repo, workflowID)
+	resp, err := sendRequest(url, []byte{}, token, "DELETE")
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("failed to delete workflow. Status code: %d", resp.StatusCode)
+	}
+	return nil
 }

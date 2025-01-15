@@ -19,7 +19,7 @@ import (
 )
 
 // TriggerWorkflowDispatch is a reusable function to trigger a GitHub Actions workflow dispatch event
-func TriggerWorkflowDispatch(owner, repo, workflowID, token string, inputs map[string]string, req *clientpb.Generate) (*clientpb.Builder, error) {
+func TriggerWorkflowDispatch(owner, repo, workflowID, token string, inputs map[string]string, isRemove bool, req *clientpb.Generate) (*clientpb.Builder, error) {
 	var newProfile string
 	config, err := GenerateProfile(req)
 	if err != nil {
@@ -73,7 +73,7 @@ func TriggerWorkflowDispatch(owner, repo, workflowID, token string, inputs map[s
 				return nil, err
 			}
 			beaconBuilder.IsSRDI = true
-			go downloadArtifactWhenReady(escapedOwner, escapedRepo, escapedToken, beaconBuilder)
+			go downloadArtifactWhenReady(escapedOwner, escapedRepo, escapedToken, isRemove, beaconBuilder)
 			req.ArtifactId = beaconBuilder.ID
 			newProfile, err = GenerateProfile(req)
 			if err != nil {
@@ -107,7 +107,7 @@ func TriggerWorkflowDispatch(owner, repo, workflowID, token string, inputs map[s
 	if err != nil {
 		return nil, err
 	}
-	go downloadArtifactWhenReady(escapedOwner, escapedRepo, escapedToken, builder)
+	go downloadArtifactWhenReady(escapedOwner, escapedRepo, escapedToken, isRemove, builder)
 	return builder.ToProtobuf(), nil
 }
 
@@ -138,9 +138,9 @@ func triggerBuildWorkflow(owner, repo, workflowID, token string, inputs map[stri
 }
 
 // downloadArtifactWhenReady waits for the artifact to be ready and downloads it
-func downloadArtifactWhenReady(owner, repo, token string, builder *models.Builder) {
+func downloadArtifactWhenReady(owner, repo, token string, isRemove bool, builder *models.Builder) {
 	for {
-		newBuilder, err := PushArtifact(owner, repo, token, builder.Name)
+		newBuilder, err := PushArtifact(owner, repo, token, builder.Name, isRemove)
 		if err == nil {
 			logs.Log.Info("Artifact downloaded successfully!")
 			if builder.IsSRDI {

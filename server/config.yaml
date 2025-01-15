@@ -30,6 +30,10 @@ listeners:
       protocol: tcp
       parser: malefic
       enable: true
+      auto_build:
+        target:
+          - x86_64-unknown-linux-musl
+        beacon_pipeline: beacon_pipeline
       tls:
         enable: false
         name: default
@@ -54,7 +58,6 @@ listeners:
       auto_build:
           target:
             - x86_64-pc-windows-gnu
-            - x86_64-unknown-linux-musl
           beacon_pipeline: beacon_pipeline
       enable: true
       encryption:
