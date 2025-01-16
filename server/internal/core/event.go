@@ -11,7 +11,7 @@ import (
 	"github.com/nikoksr/notify"
 	"github.com/nikoksr/notify/service/dingding"
 	"github.com/nikoksr/notify/service/http"
-	lark2 "github.com/nikoksr/notify/service/lark"
+	"github.com/nikoksr/notify/service/lark"
 	"github.com/nikoksr/notify/service/telegram"
 	"net/url"
 )
@@ -93,7 +93,11 @@ func (broker *eventBroker) Start() {
 			delete(subscribers, sub)
 		case event := <-broker.publish:
 			if event.EventType != consts.EventHeartbeat {
-				logs.Log.Infof("[event.%s] %s", event.EventType, event.String())
+				if event.Important {
+					logs.Log.Infof("[event.%s] %s", event.EventType, event.String())
+				} else {
+					logs.Log.Debugf("[event.%s] %s", event.EventType, event.String())
+				}
 			}
 
 			for sub := range subscribers {
@@ -218,7 +222,7 @@ func (broker *eventBroker) InitService(config *configs.NotifyConfig) error {
 		broker.notifier.notify.UseServices(dt)
 	}
 	if config.Lark.Enable {
-		lark := lark2.NewWebhookService(config.Lark.WebHookUrl)
+		lark := lark.NewWebhookService(config.Lark.WebHookUrl)
 		broker.notifier.notify.UseServices(lark)
 	}
 	if config.ServerChan.Enable {
