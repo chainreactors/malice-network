@@ -23,6 +23,8 @@ func InitServerStatus(conn *grpc.ClientConn, config *mtls.ClientConfig) (*Server
 			ListenerRPCClient: listenerrpc.NewListenerRPCClient(conn),
 		},
 		ActiveTarget:    &ActiveTarget{},
+		Listeners:       make(map[string]*clientpb.Listener),
+		Pipelines:       make(map[string]*clientpb.Pipeline),
 		Sessions:        make(map[string]*Session),
 		Observers:       make(map[string]*Session),
 		finishCallbacks: &sync.Map{},
@@ -51,12 +53,9 @@ func InitServerStatus(conn *grpc.ClientConn, config *mtls.ClientConfig) (*Server
 		s.Clients = append(s.Clients, client)
 	}
 
-	listeners, err := s.Rpc.GetListeners(context.Background(), &clientpb.Empty{})
+	err = s.UpdateListener()
 	if err != nil {
 		return nil, err
-	}
-	for _, listener := range listeners.GetListeners() {
-		s.Listeners = append(s.Listeners, listener)
 	}
 
 	err = s.UpdateSessions(false)
@@ -85,7 +84,8 @@ type ServerStatus struct {
 	Client *clientpb.Client
 	*ActiveTarget
 	Clients         []*clientpb.Client
-	Listeners       []*clientpb.Listener
+	Listeners       map[string]*clientpb.Listener
+	Pipelines       map[string]*clientpb.Pipeline
 	Sessions        map[string]*Session
 	Observers       map[string]*Session
 	sessions        []*clientpb.Session
@@ -184,7 +184,12 @@ func (s *ServerStatus) UpdateListener() error {
 	if err != nil {
 		return err
 	}
-	s.Listeners = listeners.GetListeners()
+	for _, listener := range listeners.GetListeners() {
+		s.Listeners[listener.Id] = listener
+		for _, pipeline := range listener.Pipelines.GetPipelines() {
+			s.Pipelines[pipeline.Name] = pipeline
+		}
+	}
 	return nil
 }
 

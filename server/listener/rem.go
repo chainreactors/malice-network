@@ -34,6 +34,7 @@ func NewRem(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeline) (*RE
 		rpc:        rpc,
 		Name:       pipeline.Name,
 		Enable:     true,
+		ConsoleURL: u,
 		ListenerID: pipeline.ListenerId,
 	}
 
@@ -86,6 +87,7 @@ func (rem *REM) ToProtobuf() *clientpb.Pipeline {
 		Body: &clientpb.Pipeline_Rem{
 			Rem: &clientpb.REM{
 				Console: rem.remCon.ConsoleURL.String(),
+				Link:    rem.remCon.Link(),
 			},
 		},
 	}

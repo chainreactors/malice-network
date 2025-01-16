@@ -27,6 +27,10 @@ func (l *Listener) RemovePipeline(pipeline *clientpb.Pipeline) {
 	delete(l.Pipelines, pipeline.Name)
 }
 
+func (l *Listener) UpdatePipeline(pipeline *clientpb.Pipeline) {
+	l.Pipelines[pipeline.Name] = pipeline
+}
+
 func (l *Listener) GetPipeline(name string) *clientpb.Pipeline {
 	return l.Pipelines[name]
 }
@@ -81,6 +85,33 @@ func (l *listeners) Get(name string) *Listener {
 		return val.(*Listener)
 	}
 	return nil
+}
+
+func (l *listeners) AddPipeline(pipeline *clientpb.Pipeline) bool {
+	val, ok := l.Load(pipeline.ListenerId)
+	if ok {
+		val.(*Listener).AddPipeline(pipeline)
+		return true
+	}
+	return false
+}
+
+func (l *listeners) RemovePipeline(pipeline *clientpb.Pipeline) bool {
+	val, ok := l.Load(pipeline.ListenerId)
+	if ok {
+		val.(*Listener).RemovePipeline(pipeline)
+		return true
+	}
+	return false
+}
+
+func (l *listeners) UpdatePipeline(pipeline *clientpb.Pipeline) bool {
+	val, ok := l.Load(pipeline.ListenerId)
+	if ok {
+		val.(*Listener).UpdatePipeline(pipeline)
+		return true
+	}
+	return false
 }
 
 func (l *listeners) ToProtobuf() *clientpb.Listeners {

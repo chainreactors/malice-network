@@ -1,11 +1,28 @@
-package proxy
+package rem
 
 import (
 	"fmt"
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	rem "github.com/chainreactors/rem/core"
 	remrunner "github.com/chainreactors/rem/runner"
+	"net"
+	"net/url"
 )
+
+func NewURL(schema, user, pwd, host, port string) *url.URL {
+	var userinfo *url.Userinfo
+	if pwd != "" && user != "" {
+		userinfo = url.UserPassword(user, pwd)
+	} else if user != "" {
+		userinfo = url.User(user)
+	}
+
+	return &url.URL{
+		User:   userinfo,
+		Scheme: schema,
+		Host:   net.JoinHostPort(host, port),
+	}
+}
 
 func NewRemServer(conURL string) (*remrunner.Console, error) {
 	u, err := rem.NewConsoleURL(conURL)

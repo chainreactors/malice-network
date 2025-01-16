@@ -1,13 +1,8 @@
 package errs
 
 import (
-	"errors"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-)
-
-var (
-	ErrDisableOutput = errors.New("output disabled")
 )
 
 // grpc
@@ -28,7 +23,6 @@ var (
 	ErrNotFoundTask    = status.Error(codes.NotFound, "Task ID not found")
 
 	ErrNotFoundListener    = status.Error(codes.NotFound, "Listener not found")
-	ErrNotFoundPipeline    = status.Error(codes.NotFound, "Pipeline not found")
 	ErrNotFoundClientName  = status.Error(codes.NotFound, "Client name not found")
 	ErrNotFoundTaskContent = status.Error(codes.NotFound, "Task content not found")
 	ErrTaskIndexExceed     = status.Error(codes.NotFound, "task index id exceed total")

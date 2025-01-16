@@ -4,20 +4,20 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/chainreactors/malice-network/helper/codenames"
 	"github.com/chainreactors/malice-network/helper/errs"
+	"google.golang.org/grpc"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/codenames"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
 	"github.com/chainreactors/malice-network/helper/utils/mtls"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
-	"google.golang.org/grpc"
 )
 
 var (
@@ -481,6 +481,11 @@ func (lns *listener) startRem(job *clientpb.Job) error {
 	}
 
 	err = rem.Start()
+	if err != nil {
+		return err
+	}
+
+	_, err = lns.Rpc.NewRemCallback(context.Background(), rem.ToProtobuf())
 	if err != nil {
 		return err
 	}

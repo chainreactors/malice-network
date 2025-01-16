@@ -32,6 +32,7 @@ const (
 	ModuleSleep      = "sleep"
 	ModuleSuicide    = "suicide"
 	ModuleInit       = "init"
+
 	//execute
 	ModuleAliasShell           = "shell"
 	ModuleAliasPowershell      = "powershell"
@@ -118,6 +119,10 @@ const (
 	ModuleRunas     = "runas"
 	ModulePrivs     = "privs"
 	ModuleGetSystem = "getsystem"
+
+	// 3rd
+
+	ModuleRem = "rem"
 )
 
 func SubCommandName(module string) string {
@@ -214,22 +219,23 @@ const (
 	CommandActionEnable     = "enable"
 	CommandActionDisable    = "disable"
 	CommandActionList       = "list"
-	CommandRem              = "rem"
-	CommandListRem          = "list"
-	CommandRemNew           = "new"
-	CommandRemStart         = "start"
-	CommandRemStop          = "stop"
-	CommandRemDelete        = "delete"
-	CommandConfig           = "config"
-	CommandRefresh          = "refresh"
-	CommandConfigUpdate     = "update"
-	CommandGithub           = "github"
-	CommandRem              = "rem"
-	CommandListRem          = "list"
-	CommandRemNew           = "new"
-	CommandRemStart         = "start"
-	CommandRemStop          = "stop"
-	CommandRemDelete        = "delete"
+
+	CommandConfig       = "config"
+	CommandRefresh      = "refresh"
+	CommandConfigUpdate = "update"
+	CommandGithub       = "github"
+
+	CommandRem                = "rem"
+	CommandListRem            = "list"
+	CommandRemNew             = "new"
+	CommandRemStart           = "start"
+	CommandRemStop            = "stop"
+	CommandRemDelete          = "delete"
+	CommandSocks5             = "socks5"
+	CommandProxy              = "proxy"
+	CommandReverse            = "reverse"
+	CommandPortForward        = "portfwd"
+	CommandReversePortForward = "rportfwd"
 )
 
 const (

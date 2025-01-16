@@ -13,7 +13,7 @@ func UseSessionCmd(cmd *cobra.Command, con *repl.Console) error {
 	sid := cmd.Flags().Arg(0)
 	var ok bool
 	var err error
-	if session, ok = con.GetLocalSession(sid); ok {
+	if session, ok = con.GetLocalSession(sid); !ok {
 		session, err = con.UpdateSession(sid)
 		if err != nil {
 			return err

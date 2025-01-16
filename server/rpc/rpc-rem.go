@@ -2,7 +2,9 @@ package rpc
 
 import (
 	"context"
-	"fmt"
+	"github.com/chainreactors/malice-network/helper/errs"
+	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
+	"github.com/chainreactors/malice-network/helper/types"
 	"strings"
 
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -17,7 +19,7 @@ func (rpc *Server) RegisterRem(ctx context.Context, req *clientpb.Pipeline) (*cl
 	ip = strings.Split(ip, ":")[0]
 	remModel := models.FromPipelinePb(req, ip)
 
-	err := db.CreatePipeline(remModel)
+	err := db.SavePipeline(remModel)
 	if err != nil {
 		return nil, err
 	}
@@ -45,11 +47,10 @@ func (rpc *Server) StartRem(ctx context.Context, req *clientpb.CtrlPipeline) (*c
 	}
 	remDB.Enable = true
 	rem := remDB.ToProtobuf()
-	listener := core.Listeners.Get(rem.ListenerId)
-	if listener == nil {
-		return nil, fmt.Errorf("listener %s not found", req.ListenerId)
+	ok := core.Listeners.AddPipeline(rem)
+	if !ok {
+		return nil, errs.ErrNotFoundListener
 	}
-	listener.AddPipeline(rem)
 	core.Jobs.Add(&core.Job{
 		ID:      core.CurrentJobID(),
 		Message: rem,
@@ -76,11 +77,10 @@ func (rpc *Server) StopRem(ctx context.Context, req *clientpb.CtrlPipeline) (*cl
 		return &clientpb.Empty{}, err
 	}
 	rem := remDB.ToProtobuf()
-	listener := core.Listeners.Get(rem.ListenerId)
-	if listener == nil {
-		return nil, fmt.Errorf("listener %s not found", req.ListenerId)
+	ok := core.Listeners.RemovePipeline(rem)
+	if !ok {
+		return nil, errs.ErrNotFoundListener
 	}
-	listener.RemovePipeline(rem)
 	core.Jobs.Ctrl <- &clientpb.JobCtrl{
 		Id:   core.NextCtrlID(),
 		Ctrl: consts.CtrlRemStop,
@@ -102,11 +102,10 @@ func (rpc *Server) DeleteRem(ctx context.Context, req *clientpb.CtrlPipeline) (*
 		return &clientpb.Empty{}, err
 	}
 	rem := remDB.ToProtobuf()
-	listener := core.Listeners.Get(rem.ListenerId)
-	if listener == nil {
-		return nil, fmt.Errorf("listener %s not found", req.ListenerId)
+	ok := core.Listeners.RemovePipeline(rem)
+	if !ok {
+		return nil, errs.ErrNotFoundListener
 	}
-	listener.RemovePipeline(rem)
 	core.Jobs.Ctrl <- &clientpb.JobCtrl{
 		Id:   core.NextCtrlID(),
 		Ctrl: consts.CtrlRemStop,
@@ -120,4 +119,30 @@ func (rpc *Server) DeleteRem(ctx context.Context, req *clientpb.CtrlPipeline) (*
 		return nil, err
 	}
 	return &clientpb.Empty{}, nil
+}
+
+func (rpc *Server) NewRemCallback(ctx context.Context, req *clientpb.Pipeline) (*clientpb.Empty, error) {
+	err := db.SavePipeline(models.FromPipelinePb(req, ""))
+	if err != nil {
+		return nil, err
+	}
+	ok := core.Listeners.UpdatePipeline(req)
+	if !ok {
+		return nil, errs.ErrNotFoundListener
+	}
+	return &clientpb.Empty{}, nil
+}
+
+func (rpc *Server) RemDial(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
+	greq, err := newGenericRequest(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	ch, err := rpc.GenericHandler(ctx, greq)
+	if err != nil {
+		return nil, err
+	}
+
+	go greq.HandlerResponse(ch, types.MsgResponse)
+	return greq.Task.ToProtobuf(), nil
 }

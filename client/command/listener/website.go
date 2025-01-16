@@ -40,6 +40,7 @@ func NewWebsiteCmd(cmd *cobra.Command, con *repl.Console) error {
 		Tls:        tls,
 		Body: &clientpb.Pipeline_Web{
 			Web: &clientpb.Website{
+				Name:     name,
 				Root:     root,
 				Port:     port,
 				Contents: make(map[string]*clientpb.WebContent),

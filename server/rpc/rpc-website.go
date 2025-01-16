@@ -128,7 +128,7 @@ func (rpc *Server) RegisterWebsite(ctx context.Context, req *clientpb.Pipeline) 
 			return nil, err
 		}
 	}
-	err = db.CreatePipeline(pipelineModel)
+	err = db.SavePipeline(pipelineModel)
 	if err != nil {
 		return nil, err
 	}

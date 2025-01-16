@@ -1,7 +1,6 @@
 package config
 
 import (
-	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/tui"
@@ -18,7 +17,7 @@ func GetNotifyCmd(cmd *cobra.Command, con *repl.Console) error {
 }
 
 func UpdateNotifyCmd(cmd *cobra.Command, con *repl.Console) error {
-	notify := common.ParseNotifyFlags(cmd)
+	notify := ParseNotifyFlags(cmd)
 	_, err := UpdateNotify(con, notify)
 	if err != nil {
 		return err

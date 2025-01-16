@@ -103,6 +103,7 @@ func TlsCertFlagSet(f *pflag.FlagSet) {
 }
 
 func EncryptionFlagSet(f *pflag.FlagSet) {
+	f.String("parser", "malefic", "pipeline parser")
 	f.String("encryption-type", "", "encryption type")
 	f.String("encryption-key", "", "encryption key")
 	f.Bool("encryption-enable", false, "whether to enable encryption")
@@ -112,7 +113,6 @@ func PipelineFlagSet(f *pflag.FlagSet) {
 	f.StringP("listener", "l", "", "listener id")
 	f.String("host", "0.0.0.0", "pipeline host, the default value is **0.0.0.0**")
 	f.UintP("port", "p", 0, "pipeline port, random port is selected from the range **10000-15000**")
-	f.String("parser", "malefic", "pipeline parser")
 }
 
 func ArtifactFlagSet(f *pflag.FlagSet) {
@@ -261,6 +261,12 @@ func ParseSRDIFlags(cmd *cobra.Command) (string, string, uint32, map[string]stri
 		"userdata_path": userDataPath,
 	}
 	return path, target, id, params
+}
+
+func ProxyFlagSet(f *pflag.FlagSet) {
+	f.StringP("port", "p", "", "Local port to listen on")
+	f.StringP("username", "u", "maliceofinternal", "Username for authentication")
+	f.String("password", "maliceofinternal", "Password for authentication")
 }
 
 func GithubFlagSet(f *pflag.FlagSet) {

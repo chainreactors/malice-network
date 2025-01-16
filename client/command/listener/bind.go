@@ -31,7 +31,9 @@ func NewBindPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 		Enable:     false,
 		Parser:     parser,
 		Body: &clientpb.Pipeline_Bind{
-			Bind: &clientpb.BindPipeline{},
+			Bind: &clientpb.BindPipeline{
+				Name: name,
+			},
 		},
 	})
 	if err != nil {
