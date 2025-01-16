@@ -2,6 +2,11 @@ package command
 
 import (
 	"fmt"
+	"github.com/reeflective/console"
+	"github.com/rsteube/carapace"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
+
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/addon"
 	"github.com/chainreactors/malice-network/client/command/alias"
@@ -16,6 +21,7 @@ import (
 	"github.com/chainreactors/malice-network/client/command/mal"
 	"github.com/chainreactors/malice-network/client/command/modules"
 	"github.com/chainreactors/malice-network/client/command/pipe"
+	"github.com/chainreactors/malice-network/client/command/pivot"
 	"github.com/chainreactors/malice-network/client/command/privilege"
 	"github.com/chainreactors/malice-network/client/command/reg"
 	"github.com/chainreactors/malice-network/client/command/service"
@@ -27,10 +33,6 @@ import (
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/tui"
-	"github.com/reeflective/console"
-	"github.com/rsteube/carapace"
-	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 )
 
 func ImplantCmd(con *repl.Console) *cobra.Command {
@@ -140,6 +142,9 @@ func BindBuiltinCommands(con *repl.Console, root *cobra.Command) *cobra.Command 
 		pipe.Commands,
 	)
 
+	bind(consts.PivotGroup,
+		pivot.Commands,
+	)
 	bind(consts.ArmoryGroup)
 	bind(consts.AddonGroup)
 	bind(consts.MalGroup)
@@ -224,4 +229,5 @@ func RegisterImplantFunc(con *repl.Console) {
 	taskschd.Register(con)
 	privilege.Register(con)
 	pipe.Register(con)
+	pivot.Register(con)
 }

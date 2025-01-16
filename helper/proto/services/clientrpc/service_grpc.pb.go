@@ -118,6 +118,7 @@ const (
 	MaliceRPC_ExecuteBof_FullMethodName            = "/clientrpc.MaliceRPC/ExecuteBof"
 	MaliceRPC_ExecuteLocal_FullMethodName          = "/clientrpc.MaliceRPC/ExecuteLocal"
 	MaliceRPC_InlineLocal_FullMethodName           = "/clientrpc.MaliceRPC/InlineLocal"
+	MaliceRPC_RemDial_FullMethodName               = "/clientrpc.MaliceRPC/RemDial"
 	MaliceRPC_EXE2Shellcode_FullMethodName         = "/clientrpc.MaliceRPC/EXE2Shellcode"
 	MaliceRPC_DLL2Shellcode_FullMethodName         = "/clientrpc.MaliceRPC/DLL2Shellcode"
 	MaliceRPC_ShellcodeEncode_FullMethodName       = "/clientrpc.MaliceRPC/ShellcodeEncode"
@@ -160,12 +161,14 @@ type MaliceRPCClient interface {
 	GetListeners(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Listeners, error)
 	GetPipelines(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Pipelines, error)
 	GetJobs(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Jobs, error)
+	// task
 	GetTasks(ctx context.Context, in *clientpb.TaskRequest, opts ...grpc.CallOption) (*clientpb.Tasks, error)
 	GetTaskContent(ctx context.Context, in *clientpb.Task, opts ...grpc.CallOption) (*clientpb.TaskContext, error)
 	GetTaskFiles(ctx context.Context, in *clientpb.Session, opts ...grpc.CallOption) (*clientpb.Files, error)
 	WaitTaskContent(ctx context.Context, in *clientpb.Task, opts ...grpc.CallOption) (*clientpb.TaskContext, error)
 	WaitTaskFinish(ctx context.Context, in *clientpb.Task, opts ...grpc.CallOption) (*clientpb.TaskContext, error)
 	GetAllTaskContent(ctx context.Context, in *clientpb.Task, opts ...grpc.CallOption) (*clientpb.TaskContexts, error)
+	// file
 	GetFiles(ctx context.Context, in *clientpb.Session, opts ...grpc.CallOption) (*clientpb.Files, error)
 	GetAllDownloadFiles(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Files, error)
 	// event
@@ -259,6 +262,8 @@ type MaliceRPCClient interface {
 	ExecuteBof(ctx context.Context, in *implantpb.ExecuteBinary, opts ...grpc.CallOption) (*clientpb.Task, error)
 	ExecuteLocal(ctx context.Context, in *implantpb.ExecuteBinary, opts ...grpc.CallOption) (*clientpb.Task, error)
 	InlineLocal(ctx context.Context, in *implantpb.ExecuteBinary, opts ...grpc.CallOption) (*clientpb.Task, error)
+	// implant: 3rd
+	RemDial(ctx context.Context, in *implantpb.Request, opts ...grpc.CallOption) (*clientpb.Task, error)
 	// shellcode
 	EXE2Shellcode(ctx context.Context, in *clientpb.EXE2Shellcode, opts ...grpc.CallOption) (*clientpb.Bin, error)
 	DLL2Shellcode(ctx context.Context, in *clientpb.DLL2Shellcode, opts ...grpc.CallOption) (*clientpb.Bin, error)
@@ -1186,6 +1191,15 @@ func (c *maliceRPCClient) InlineLocal(ctx context.Context, in *implantpb.Execute
 	return out, nil
 }
 
+func (c *maliceRPCClient) RemDial(ctx context.Context, in *implantpb.Request, opts ...grpc.CallOption) (*clientpb.Task, error) {
+	out := new(clientpb.Task)
+	err := c.cc.Invoke(ctx, MaliceRPC_RemDial_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *maliceRPCClient) EXE2Shellcode(ctx context.Context, in *clientpb.EXE2Shellcode, opts ...grpc.CallOption) (*clientpb.Bin, error) {
 	out := new(clientpb.Bin)
 	err := c.cc.Invoke(ctx, MaliceRPC_EXE2Shellcode_FullMethodName, in, out, opts...)
@@ -1426,12 +1440,14 @@ type MaliceRPCServer interface {
 	GetListeners(context.Context, *clientpb.Empty) (*clientpb.Listeners, error)
 	GetPipelines(context.Context, *clientpb.Empty) (*clientpb.Pipelines, error)
 	GetJobs(context.Context, *clientpb.Empty) (*clientpb.Jobs, error)
+	// task
 	GetTasks(context.Context, *clientpb.TaskRequest) (*clientpb.Tasks, error)
 	GetTaskContent(context.Context, *clientpb.Task) (*clientpb.TaskContext, error)
 	GetTaskFiles(context.Context, *clientpb.Session) (*clientpb.Files, error)
 	WaitTaskContent(context.Context, *clientpb.Task) (*clientpb.TaskContext, error)
 	WaitTaskFinish(context.Context, *clientpb.Task) (*clientpb.TaskContext, error)
 	GetAllTaskContent(context.Context, *clientpb.Task) (*clientpb.TaskContexts, error)
+	// file
 	GetFiles(context.Context, *clientpb.Session) (*clientpb.Files, error)
 	GetAllDownloadFiles(context.Context, *clientpb.Empty) (*clientpb.Files, error)
 	// event
@@ -1525,6 +1541,8 @@ type MaliceRPCServer interface {
 	ExecuteBof(context.Context, *implantpb.ExecuteBinary) (*clientpb.Task, error)
 	ExecuteLocal(context.Context, *implantpb.ExecuteBinary) (*clientpb.Task, error)
 	InlineLocal(context.Context, *implantpb.ExecuteBinary) (*clientpb.Task, error)
+	// implant: 3rd
+	RemDial(context.Context, *implantpb.Request) (*clientpb.Task, error)
 	// shellcode
 	EXE2Shellcode(context.Context, *clientpb.EXE2Shellcode) (*clientpb.Bin, error)
 	DLL2Shellcode(context.Context, *clientpb.DLL2Shellcode) (*clientpb.Bin, error)
@@ -1849,6 +1867,9 @@ func (UnimplementedMaliceRPCServer) ExecuteLocal(context.Context, *implantpb.Exe
 }
 func (UnimplementedMaliceRPCServer) InlineLocal(context.Context, *implantpb.ExecuteBinary) (*clientpb.Task, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method InlineLocal not implemented")
+}
+func (UnimplementedMaliceRPCServer) RemDial(context.Context, *implantpb.Request) (*clientpb.Task, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RemDial not implemented")
 }
 func (UnimplementedMaliceRPCServer) EXE2Shellcode(context.Context, *clientpb.EXE2Shellcode) (*clientpb.Bin, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method EXE2Shellcode not implemented")
@@ -3669,6 +3690,24 @@ func _MaliceRPC_InlineLocal_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MaliceRPC_RemDial_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(implantpb.Request)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MaliceRPCServer).RemDial(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MaliceRPC_RemDial_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MaliceRPCServer).RemDial(ctx, req.(*implantpb.Request))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _MaliceRPC_EXE2Shellcode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(clientpb.EXE2Shellcode)
 	if err := dec(in); err != nil {
@@ -4505,6 +4544,10 @@ var MaliceRPC_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "InlineLocal",
 			Handler:    _MaliceRPC_InlineLocal_Handler,
+		},
+		{
+			MethodName: "RemDial",
+			Handler:    _MaliceRPC_RemDial_Handler,
 		},
 		{
 			MethodName: "EXE2Shellcode",

@@ -3,6 +3,7 @@ package action
 import (
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/common"
+	"github.com/chainreactors/malice-network/client/command/config"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
@@ -37,7 +38,7 @@ action beacon --target x86_64-pc-windows-msvc --profile beacon_profile --modules
 ~~~`,
 	}
 
-	common.BindFlag(beaconCmd, common.GithubFlagSet, common.GenerateFlagSet)
+	common.BindFlag(beaconCmd, config.GithubFlagSet, common.GenerateFlagSet)
 	common.BindFlagCompletions(beaconCmd, func(comp carapace.ActionMap) {
 		comp["target"] = common.BuildTargetCompleter(con)
 		comp["profile"] = common.ProfileCompleter(con)
@@ -62,7 +63,7 @@ action bind --target x86_64-unknown-linux-musl --profile bind_profile --modules 
 ~~~`,
 	}
 
-	common.BindFlag(bindCmd, common.GithubFlagSet, common.GenerateFlagSet)
+	common.BindFlag(bindCmd, config.GithubFlagSet, common.GenerateFlagSet)
 	common.BindFlagCompletions(bindCmd, func(comp carapace.ActionMap) {
 		comp["target"] = common.BuildTargetCompleter(con)
 		comp["profile"] = common.ProfileCompleter(con)
@@ -90,7 +91,7 @@ action modules --target x86_64-pc-windows-msvc --profile module_profile --module
 ~~~`,
 	}
 
-	common.BindFlag(modulesCmd, common.GithubFlagSet, common.GenerateFlagSet)
+	common.BindFlag(modulesCmd, config.GithubFlagSet, common.GenerateFlagSet)
 	common.BindFlagCompletions(modulesCmd, func(comp carapace.ActionMap) {
 		comp["target"] = common.BuildTargetCompleter(con)
 		comp["profile"] = common.ProfileCompleter(con)
@@ -120,7 +121,7 @@ action pulse --target x86_64-pc-windows-msvc --profile pulse_profile --artifact-
 `,
 	}
 
-	common.BindFlag(pulseCmd, common.GithubFlagSet, common.GenerateFlagSet, func(f *pflag.FlagSet) {
+	common.BindFlag(pulseCmd, config.GithubFlagSet, common.GenerateFlagSet, func(f *pflag.FlagSet) {
 		f.Uint32("artifact-id", 0, "load remote shellcode build-id")
 	})
 	common.BindFlagCompletions(pulseCmd, func(comp carapace.ActionMap) {
@@ -147,7 +148,7 @@ action pulse --target x86_64-pc-windows-msvc --profile pulse_profile --artifact-
 	~~~`,
 	}
 
-	common.BindFlag(preludeCmd, common.GithubFlagSet, common.GenerateFlagSet, func(f *pflag.FlagSet) {
+	common.BindFlag(preludeCmd, config.GithubFlagSet, common.GenerateFlagSet, func(f *pflag.FlagSet) {
 		f.String("autorun", "", "autorun.yaml path")
 	})
 	common.BindFlagCompletions(preludeCmd, func(comp carapace.ActionMap) {

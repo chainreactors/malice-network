@@ -47,6 +47,8 @@ const (
 	ListenerRPC_StopRem_FullMethodName                 = "/listenerrpc.ListenerRPC/StopRem"
 	ListenerRPC_DeleteRem_FullMethodName               = "/listenerrpc.ListenerRPC/DeleteRem"
 	ListenerRPC_ListRems_FullMethodName                = "/listenerrpc.ListenerRPC/ListRems"
+	ListenerRPC_NewRemCallback_FullMethodName          = "/listenerrpc.ListenerRPC/NewRemCallback"
+	ListenerRPC_NewRemAgentCallback_FullMethodName     = "/listenerrpc.ListenerRPC/NewRemAgentCallback"
 	ListenerRPC_NewProfile_FullMethodName              = "/listenerrpc.ListenerRPC/NewProfile"
 	ListenerRPC_FindArtifact_FullMethodName            = "/listenerrpc.ListenerRPC/FindArtifact"
 	ListenerRPC_Build_FullMethodName                   = "/listenerrpc.ListenerRPC/Build"
@@ -90,6 +92,8 @@ type ListenerRPCClient interface {
 	StopRem(ctx context.Context, in *clientpb.CtrlPipeline, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	DeleteRem(ctx context.Context, in *clientpb.CtrlPipeline, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	ListRems(ctx context.Context, in *clientpb.Listener, opts ...grpc.CallOption) (*clientpb.Pipelines, error)
+	NewRemCallback(ctx context.Context, in *clientpb.Pipeline, opts ...grpc.CallOption) (*clientpb.Empty, error)
+	NewRemAgentCallback(ctx context.Context, in *clientpb.Pipeline, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	// generator
 	NewProfile(ctx context.Context, in *clientpb.Profile, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	FindArtifact(ctx context.Context, in *clientpb.Artifact, opts ...grpc.CallOption) (*clientpb.Artifact, error)
@@ -387,6 +391,24 @@ func (c *listenerRPCClient) ListRems(ctx context.Context, in *clientpb.Listener,
 	return out, nil
 }
 
+func (c *listenerRPCClient) NewRemCallback(ctx context.Context, in *clientpb.Pipeline, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+	out := new(clientpb.Empty)
+	err := c.cc.Invoke(ctx, ListenerRPC_NewRemCallback_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *listenerRPCClient) NewRemAgentCallback(ctx context.Context, in *clientpb.Pipeline, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+	out := new(clientpb.Empty)
+	err := c.cc.Invoke(ctx, ListenerRPC_NewRemAgentCallback_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *listenerRPCClient) NewProfile(ctx context.Context, in *clientpb.Profile, opts ...grpc.CallOption) (*clientpb.Empty, error) {
 	out := new(clientpb.Empty)
 	err := c.cc.Invoke(ctx, ListenerRPC_NewProfile_FullMethodName, in, out, opts...)
@@ -484,6 +506,8 @@ type ListenerRPCServer interface {
 	StopRem(context.Context, *clientpb.CtrlPipeline) (*clientpb.Empty, error)
 	DeleteRem(context.Context, *clientpb.CtrlPipeline) (*clientpb.Empty, error)
 	ListRems(context.Context, *clientpb.Listener) (*clientpb.Pipelines, error)
+	NewRemCallback(context.Context, *clientpb.Pipeline) (*clientpb.Empty, error)
+	NewRemAgentCallback(context.Context, *clientpb.Pipeline) (*clientpb.Empty, error)
 	// generator
 	NewProfile(context.Context, *clientpb.Profile) (*clientpb.Empty, error)
 	FindArtifact(context.Context, *clientpb.Artifact) (*clientpb.Artifact, error)
@@ -577,6 +601,12 @@ func (UnimplementedListenerRPCServer) DeleteRem(context.Context, *clientpb.CtrlP
 }
 func (UnimplementedListenerRPCServer) ListRems(context.Context, *clientpb.Listener) (*clientpb.Pipelines, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListRems not implemented")
+}
+func (UnimplementedListenerRPCServer) NewRemCallback(context.Context, *clientpb.Pipeline) (*clientpb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method NewRemCallback not implemented")
+}
+func (UnimplementedListenerRPCServer) NewRemAgentCallback(context.Context, *clientpb.Pipeline) (*clientpb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method NewRemAgentCallback not implemented")
 }
 func (UnimplementedListenerRPCServer) NewProfile(context.Context, *clientpb.Profile) (*clientpb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method NewProfile not implemented")
@@ -1096,6 +1126,42 @@ func _ListenerRPC_ListRems_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ListenerRPC_NewRemCallback_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(clientpb.Pipeline)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ListenerRPCServer).NewRemCallback(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ListenerRPC_NewRemCallback_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ListenerRPCServer).NewRemCallback(ctx, req.(*clientpb.Pipeline))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ListenerRPC_NewRemAgentCallback_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(clientpb.Pipeline)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ListenerRPCServer).NewRemAgentCallback(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ListenerRPC_NewRemAgentCallback_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ListenerRPCServer).NewRemAgentCallback(ctx, req.(*clientpb.Pipeline))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ListenerRPC_NewProfile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(clientpb.Profile)
 	if err := dec(in); err != nil {
@@ -1324,6 +1390,14 @@ var ListenerRPC_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListRems",
 			Handler:    _ListenerRPC_ListRems_Handler,
+		},
+		{
+			MethodName: "NewRemCallback",
+			Handler:    _ListenerRPC_NewRemCallback_Handler,
+		},
+		{
+			MethodName: "NewRemAgentCallback",
+			Handler:    _ListenerRPC_NewRemAgentCallback_Handler,
 		},
 		{
 			MethodName: "NewProfile",

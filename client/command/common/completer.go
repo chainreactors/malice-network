@@ -291,10 +291,8 @@ func SyncFileCompleter(con *repl.Console) carapace.Action {
 func AllPipelineCompleter(con *repl.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
-		for _, listener := range con.Listeners {
-			for _, pipeline := range listener.GetPipelines().GetPipelines() {
-				results = append(results, pipeline.Name, fmt.Sprintf("%s: %s", pipeline.ListenerId, pipeline.Name))
-			}
+		for _, pipeline := range con.Pipelines {
+			results = append(results, pipeline.Name, fmt.Sprintf("%s: %s", pipeline.ListenerId, pipeline.Name))
 		}
 		return carapace.ActionValuesDescribed(results...).Tag("pipeline name")
 	}
@@ -315,12 +313,10 @@ func ModulesCompleter() carapace.Action {
 func WebsiteCompleter(con *repl.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
-		for _, listener := range con.Listeners {
-			for _, pipeline := range listener.GetPipelines().GetPipelines() {
-				if web := pipeline.GetWeb(); web != nil {
-					results = append(results, pipeline.Name,
-						fmt.Sprintf("port: %d, root: %s", web.Port, web.Root))
-				}
+		for _, pipeline := range con.Pipelines {
+			if web := pipeline.GetWeb(); web != nil {
+				results = append(results, pipeline.Name,
+					fmt.Sprintf("port: %d, root: %s", web.Port, web.Root))
 			}
 		}
 		return carapace.ActionValuesDescribed(results...).Tag("website name")
@@ -333,19 +329,31 @@ func WebContentCompleter(con *repl.Console, _ string) carapace.Action {
 		results := make([]string, 0)
 		con.UpdateListener()
 		// List all contents from all websites since content ID is globally unique
-		for _, listener := range con.Listeners {
-			for _, pipeline := range listener.GetPipelines().GetPipelines() {
-				if web := pipeline.GetWeb(); web != nil {
-					for path, content := range web.Contents {
-						results = append(results, content.Id,
-							fmt.Sprintf("website: %s, path: %s, type: %s",
-								pipeline.Name, path, content.Type))
-					}
+		for _, pipeline := range con.Pipelines {
+			if web := pipeline.GetWeb(); web != nil {
+				for path, content := range web.Contents {
+					results = append(results, content.Id,
+						fmt.Sprintf("website: %s, path: %s, type: %s",
+							pipeline.Name, path, content.Type))
 				}
 			}
 		}
 
 		return carapace.ActionValuesDescribed(results...).Tag("content id")
+	}
+	return carapace.ActionCallback(callback)
+}
+
+func RemPipelineCompleter(con *repl.Console) carapace.Action {
+	callback := func(c carapace.Context) carapace.Action {
+		results := make([]string, 0)
+		for _, pipeline := range con.Pipelines {
+			if rem := pipeline.GetRem(); rem != nil {
+				results = append(results, pipeline.Name,
+					fmt.Sprintf("console: %s", rem.Console))
+			}
+		}
+		return carapace.ActionValuesDescribed(results...).Tag("rem pipeline name")
 	}
 	return carapace.ActionCallback(callback)
 }

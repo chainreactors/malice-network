@@ -1,6 +1,10 @@
 package command
 
 import (
+	"github.com/reeflective/console"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
+
 	"github.com/chainreactors/malice-network/client/command/action"
 	"github.com/chainreactors/malice-network/client/command/alias"
 	"github.com/chainreactors/malice-network/client/command/armory"
@@ -13,13 +17,9 @@ import (
 	"github.com/chainreactors/malice-network/client/command/listener"
 	"github.com/chainreactors/malice-network/client/command/mal"
 	"github.com/chainreactors/malice-network/client/command/mutant"
-	"github.com/chainreactors/malice-network/client/command/rem"
 	"github.com/chainreactors/malice-network/client/command/sessions"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/reeflective/console"
-	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 )
 
 func BindCommonCommands(bind BindFunc) {
@@ -37,7 +37,6 @@ func BindCommonCommands(bind BindFunc) {
 
 	bind(consts.ListenerGroup,
 		listener.Commands,
-		rem.Commands,
 	)
 
 	bind(consts.GeneratorGroup,

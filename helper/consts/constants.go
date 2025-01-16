@@ -39,6 +39,7 @@ const (
 	ExecuteGroup = "execute"
 	SysGroup     = "sys"
 	FileGroup    = "file"
+	PivotGroup   = "pivot"
 
 	ArmoryGroup = "armory"
 	AddonGroup  = "addon"

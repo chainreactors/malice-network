@@ -35,6 +35,7 @@ func NewTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 		Enable:         false,
 		Body: &clientpb.Pipeline_Tcp{
 			Tcp: &clientpb.TCPPipeline{
+				Name: name,
 				Host: host,
 				Port: port,
 			},
