@@ -2,11 +2,12 @@ package models
 
 import (
 	"encoding/json"
+	"time"
+
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/gofrs/uuid"
 	"gorm.io/gorm"
-	"time"
 )
 
 type Profile struct {
@@ -27,8 +28,8 @@ type Profile struct {
 	CA      string // ca file , ca file content
 	Raw     []byte
 	// params
-	Params     *types.ProfileParams `gorm:"-"`         // Ignored by GORM
-	ParamsJson string               `gorm:"type:text"` // Used for storing serialized params
+	Params     *types.ProfileParams `gorm:"-"`             // 使用 interface{} 使其更灵活
+	ParamsData string               `gorm:"column:params"` // 改用更简洁的数据库字段名
 
 	// BasicPipeline 和 PulsePipeline
 	PipelineID      string `gorm:"type:string;index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
@@ -53,20 +54,23 @@ func (p *Profile) BeforeCreate(tx *gorm.DB) (err error) {
 }
 
 func (p *Profile) AfterFind(tx *gorm.DB) (err error) {
-	if p.ParamsJson == "" {
+	if p.ParamsData == "" {
 		return nil
 	}
-	err = json.Unmarshal([]byte(p.ParamsJson), &p.Params)
-	if err != nil {
+
+	// 如果知道具体类型，可以直接反序列化
+	var params types.ProfileParams
+	if err := json.Unmarshal([]byte(p.ParamsData), &params); err != nil {
 		return err
 	}
+	p.Params = &params
 	return nil
 }
 
 // Deserialize implantConfig (JSON string) to a struct or map
 func (p *Profile) DeserializeImplantConfig() error {
-	if p.ParamsJson != "" {
-		err := json.Unmarshal([]byte(p.ParamsJson), &p.Params)
+	if p.ParamsData != "" {
+		err := json.Unmarshal([]byte(p.ParamsData), &p.Params)
 		if err != nil {
 			return err
 		}
@@ -83,6 +87,18 @@ func (p *Profile) ToProtobuf() *clientpb.Profile {
 		PipelineId:      p.PipelineID,
 		PulsePipelineId: p.PulsePipelineID,
 		Content:         p.Raw,
-		Params:          p.ParamsJson,
+		Params:          p.ParamsData,
 	}
+}
+
+// BeforeSave GORM 钩子 - 保存前将 Params 序列化
+func (p *Profile) BeforeSave(tx *gorm.DB) error {
+	if p.Params != nil {
+		data, err := json.Marshal(p.Params)
+		if err != nil {
+			return err
+		}
+		p.ParamsData = string(data)
+	}
+	return nil
 }
