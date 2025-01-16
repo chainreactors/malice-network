@@ -1,6 +1,7 @@
 package models
 
 import (
+	"github.com/chainreactors/malice-network/helper/types"
 	"os"
 	"path/filepath"
 	"time"
@@ -16,12 +17,12 @@ type WebsiteContent struct {
 	ID        uuid.UUID `gorm:"primaryKey;->;<-:create;type:uuid;"`
 	CreatedAt time.Time `gorm:"->;<-:create;"`
 
-	File        string            `gorm:""`
-	Path        string            `gorm:""`
-	Size        uint64            `gorm:""`
-	Type        string            `gorm:""`
-	ContentType string            `gorm:""`
-	Encryption  *EncryptionConfig `gorm:"embedded;embeddedPrefix:encryption_"`
+	File        string                  `gorm:""`
+	Path        string                  `gorm:""`
+	Size        uint64                  `gorm:""`
+	Type        string                  `gorm:""`
+	ContentType string                  `gorm:""`
+	Encryption  *types.EncryptionConfig `gorm:"embedded;embeddedPrefix:encryption_"`
 
 	Pipeline   *Pipeline `gorm:"foreignKey:PipelineID;references:Name;"`
 	PipelineID string    `gorm:"type:string;index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
@@ -52,7 +53,7 @@ func (wc *WebsiteContent) ToProtobuf(read bool) *clientpb.WebContent {
 		Type:        wc.Type,
 		ContentType: wc.ContentType,
 		Content:     data,
-		Encryption:  ToEncryptionProtobuf(wc.Encryption),
+		Encryption:  wc.Encryption.ToProtobuf(),
 		ListenerId:  wc.Pipeline.ListenerID,
 	}
 }
@@ -65,6 +66,6 @@ func FromWebContentPb(content *clientpb.WebContent) *WebsiteContent {
 		Size:        content.Size,
 		Type:        content.Type,
 		ContentType: content.ContentType,
-		Encryption:  ToEncryptionDB(content.Encryption),
+		Encryption:  types.FromEncryption(content.Encryption),
 	}
 }

@@ -232,7 +232,7 @@ func FindPipeline(name string) (*models.Pipeline, error) {
 	return pipeline, nil
 }
 
-func CreatePipeline(pipeline *models.Pipeline) error {
+func SavePipeline(pipeline *models.Pipeline) error {
 	newPipeline := &models.Pipeline{}
 	result := Session().Where("name = ? AND listener_id  = ?", pipeline.Name, pipeline.ListenerID).First(&newPipeline)
 	if result.Error != nil {
@@ -587,7 +587,7 @@ func NewProfile(profile *clientpb.Profile) error {
 		//Obfuscate:  profile.Obfuscate,
 		Modules:         profile.Modules,
 		CA:              profile.Ca,
-		ParamsJson:      profile.Params,
+		ParamsData:      profile.Params,
 		PulsePipelineID: profile.PulsePipelineId,
 		PipelineID:      profile.PipelineId,
 		Raw:             profile.Content,
@@ -596,7 +596,7 @@ func NewProfile(profile *clientpb.Profile) error {
 	if err != nil {
 		return err
 	}
-	if strings.ToUpper(basicPipeline.Encryption.Type) != consts.CryptorAES {
+	if strings.ToUpper(basicPipeline.Type) != consts.CryptorAES {
 		return errs.ErrInvalidEncType
 	}
 	if profile.PulsePipelineId != "" {
@@ -815,7 +815,6 @@ func GetBuilders() (*clientpb.Builders, error) {
 	result := Session().Preload("Profile").Find(&builders)
 	if result.Error != nil {
 		return nil, result.Error
-
 	}
 	var pbBuilders = &clientpb.Builders{
 		Builders: make([]*clientpb.Builder, 0),
