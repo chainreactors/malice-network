@@ -3,24 +3,24 @@ package rpc
 import (
 	"context"
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/errs"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/types"
-	"strings"
-
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
+	"github.com/chainreactors/malice-network/helper/rem"
+	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 )
 
 func (rpc *Server) RegisterRem(ctx context.Context, req *clientpb.Pipeline) (*clientpb.Empty, error) {
-	ip := getRemoteAddr(ctx)
-	ip = strings.Split(ip, ":")[0]
-	remModel := models.FromPipelinePb(req, ip)
-
-	err := db.SavePipeline(remModel)
+	lns, err := core.Listeners.Get(req.ListenerId)
+	if err != nil {
+		return nil, err
+	}
+	req.Ip = lns.IP
+	_, err = db.SavePipeline(models.FromPipelinePb(req))
 	if err != nil {
 		return nil, err
 	}
@@ -117,6 +117,11 @@ func (rpc *Server) DeleteRem(ctx context.Context, req *clientpb.CtrlPipeline) (*
 }
 
 func (rpc *Server) RemDial(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
+	pid := req.Params["pipeline_id"]
+	if pid == "" {
+		return nil, errs.ErrNotFoundPipeline
+	}
+	req.Params = nil
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err
@@ -127,13 +132,32 @@ func (rpc *Server) RemDial(ctx context.Context, req *implantpb.Request) (*client
 	}
 
 	go greq.HandlerResponse(ch, types.MsgResponse, func(spite *implantpb.Spite) {
-		pipe, ok := core.Listeners.Find(req.Params["pipeline_id"])
+		pipe, ok := core.Listeners.Find(pid)
 		if !ok {
-			logs.Log.Warnf("pipeline %s not found", req.Params["pipeline_id"])
+			logs.Log.Warnf("pipeline %s not found", pid)
 			return
 		}
 
 		core.Listeners.PushCtrl(consts.CtrlPipelineSync, pipe)
+		remOpt, err := rem.ParseRemCmd(req.Args)
+		if err != nil {
+			return
+		}
+		event := core.Event{
+			EventType: consts.EventPivot,
+			Session:   greq.Session.ToProtobuf(),
+			Important: true,
+			Spite:     spite,
+		}
+		//a := agent.Agents.Get(spite.GetResponse().Output)
+		if remOpt.Mod == "reverse" {
+			event.Op = consts.CtrlPivotReverse
+			event.Message = remOpt.RemoteAddr
+		} else {
+			event.Op = consts.CtrlPivotProxy
+			event.Message = remOpt.LocalAddr
+		}
+		core.EventBroker.Publish(event)
 	})
 	return greq.Task.ToProtobuf(), nil
 }

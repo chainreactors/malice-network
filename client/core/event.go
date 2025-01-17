@@ -146,6 +146,7 @@ func (s *ServerStatus) EventHandler() {
 	if err != nil {
 		return
 	}
+	s.Update()
 	s.EventStatus = true
 	Log.Debugf("starting event loop\n")
 	defer func() {
@@ -191,32 +192,7 @@ func (s *ServerStatus) handlerEvent(event *clientpb.Event) {
 	case consts.EventNotify:
 		Log.Importantf("%s notified: %s %s\n", event.Client.Name, event.Message, event.Err)
 	case consts.EventJob:
-		if event.Err != "" {
-			Log.Errorf("[%s] %s: %s\n", event.Type, event.Op, event.Err)
-			return
-		}
-		pipeline := event.GetJob().GetPipeline()
-		switch pipeline.Body.(type) {
-		case *clientpb.Pipeline_Tcp:
-			Log.Importantf("[%s] %s: tcp %s on %s %s:%d\n", event.Type, event.Op,
-				pipeline.Name, pipeline.ListenerId, pipeline.GetTcp().Host, pipeline.GetTcp().Port)
-		case *clientpb.Pipeline_Web:
-			if event.Op == consts.CtrlWebContentAdd {
-				var root = ""
-				if pipeline.GetWeb().Root != "/" {
-					root = pipeline.GetWeb().Root
-				}
-				for _, content := range pipeline.GetWeb().Contents {
-					Log.Importantf("[%s] %s: web %s on %s %d, routePath is %s\n", event.Type, event.Op,
-						pipeline.ListenerId, pipeline.Name, pipeline.GetWeb().Port,
-						fmt.Sprintf("http://%s:%d%s%s", pipeline.Ip, pipeline.GetWeb().Port, root, content.Path))
-				}
-				return
-			}
-			Log.Importantf("[%s] %s: web %s on %s %d, routePath is %s\n", event.Type, event.Op,
-				pipeline.ListenerId, pipeline.Name, pipeline.GetWeb().Port,
-				fmt.Sprintf("http://%s:%d%s", pipeline.Ip, pipeline.GetWeb().Port, pipeline.GetWeb().Root))
-		}
+		s.handleJob(event)
 	case consts.EventListener:
 		Log.Importantf("[%s] %s: %s %s\n", event.Type, event.Op, event.Message, event.Err)
 	case consts.EventTask:
@@ -225,6 +201,44 @@ func (s *ServerStatus) handlerEvent(event *clientpb.Event) {
 		Log.Importantf("[%s] %s: %s %s\n", event.Type, event.Op, event.Message, event.Err)
 	case consts.EventBuild:
 		Log.Importantf("[%s] %s\n", event.Type, event.Message)
+	case consts.EventPivot:
+		Log.Importantf("[%s] %s: %s\n", event.Type, event.Op, event.Message)
+	}
+}
+
+func (s *ServerStatus) handleJob(event *clientpb.Event) {
+	if event.Err != "" {
+		Log.Errorf("[%s] %s: %s\n", event.Type, event.Op, event.Err)
+		return
+	}
+	pipeline := event.GetJob().GetPipeline()
+	s.Pipelines[pipeline.Name] = pipeline
+	switch pipeline.Body.(type) {
+	case *clientpb.Pipeline_Tcp:
+		Log.Importantf("[%s] %s: tcp %s on %s %s:%d\n", event.Type, event.Op,
+			pipeline.Name, pipeline.ListenerId, pipeline.GetTcp().Host, pipeline.GetTcp().Port)
+	case *clientpb.Pipeline_Bind:
+		Log.Importantf("[%s] %s: bind %s on %s %s\n", event.Type, event.Op,
+			pipeline.Name, pipeline.ListenerId, pipeline.Ip)
+	case *clientpb.Pipeline_Rem:
+		Log.Importantf("[%s] %s: rem %s on %s %s:%d\n", event.Type, event.Op,
+			pipeline.Name, pipeline.ListenerId, pipeline.GetRem().Host, pipeline.GetRem().Port)
+	case *clientpb.Pipeline_Web:
+		if event.Op == consts.CtrlWebContentAdd {
+			var root = ""
+			if pipeline.GetWeb().Root != "/" {
+				root = pipeline.GetWeb().Root
+			}
+			for _, content := range pipeline.GetWeb().Contents {
+				Log.Importantf("[%s] %s: web %s on %s %d, routePath is %s\n", event.Type, event.Op,
+					pipeline.ListenerId, pipeline.Name, pipeline.GetWeb().Port,
+					fmt.Sprintf("http://%s:%d%s%s", pipeline.Ip, pipeline.GetWeb().Port, root, content.Path))
+			}
+			return
+		}
+		Log.Importantf("[%s] %s: web %s on %s %d, routePath is %s\n", event.Type, event.Op,
+			pipeline.ListenerId, pipeline.Name, pipeline.GetWeb().Port,
+			fmt.Sprintf("http://%s:%d%s", pipeline.Ip, pipeline.GetWeb().Port, pipeline.GetWeb().Root))
 	}
 }
 

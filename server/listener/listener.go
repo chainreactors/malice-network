@@ -493,7 +493,9 @@ func (lns *listener) handleWebContentRemove(job *clientpb.Job) error {
 }
 
 func (lns *listener) handleStartRem(job *clientpb.Job) error {
-	rem, err := NewRem(lns.Rpc, job.GetPipeline())
+	pipe := job.GetPipeline()
+	pipe.Ip = lns.IP
+	rem, err := NewRem(lns.Rpc, pipe)
 	if err != nil {
 		return err
 	}

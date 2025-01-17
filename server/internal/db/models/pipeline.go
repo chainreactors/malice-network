@@ -20,7 +20,7 @@ type Pipeline struct {
 	Name                  string    `gorm:"unique,type:string"`
 	IP                    string    `gorm:"type:string;default:''"`
 	Host                  string    `config:"host"`
-	Port                  uint16    `config:"port"`
+	Port                  uint32    `config:"port"`
 	Type                  string    `gorm:"type:string;"`
 	Enable                bool      `gorm:"type:boolean;"`
 	ParamsData            string    `gorm:"column:params"`
@@ -94,7 +94,9 @@ func (pipeline *Pipeline) ToProtobuf() *clientpb.Pipeline {
 			Ip:         pipeline.IP,
 			Body: &clientpb.Pipeline_Rem{
 				Rem: &clientpb.REM{
-					Console: pipeline.Host,
+					Link:      pipeline.PipelineParams.Link,
+					Subscribe: pipeline.PipelineParams.Subscribe,
+					Agents:    pipeline.PipelineParams.Agents,
 				},
 			},
 			Tls:        pipeline.Tls.ToProtobuf(),
@@ -143,10 +145,7 @@ func (pipeline *Pipeline) AfterFind(tx *gorm.DB) error {
 	return nil
 }
 
-func FromPipelinePb(pipeline *clientpb.Pipeline, ip string) *Pipeline {
-	if ip == "" {
-		ip = pipeline.Ip
-	}
+func FromPipelinePb(pipeline *clientpb.Pipeline) *Pipeline {
 	switch body := pipeline.Body.(type) {
 	case *clientpb.Pipeline_Tcp:
 		return &Pipeline{
@@ -154,8 +153,8 @@ func FromPipelinePb(pipeline *clientpb.Pipeline, ip string) *Pipeline {
 			Name:       pipeline.Name,
 			Enable:     pipeline.Enable,
 			Host:       body.Tcp.Host,
-			IP:         ip,
-			Port:       uint16(body.Tcp.Port),
+			IP:         pipeline.Ip,
+			Port:       body.Tcp.Port,
 			Type:       consts.TCPPipeline,
 			PipelineParams: &types.PipelineParams{
 				Parser:     pipeline.Parser,
@@ -168,7 +167,7 @@ func FromPipelinePb(pipeline *clientpb.Pipeline, ip string) *Pipeline {
 			ListenerID: pipeline.ListenerId,
 			Name:       pipeline.Name,
 			Enable:     pipeline.Enable,
-			IP:         ip,
+			IP:         pipeline.Ip,
 			Type:       consts.BindPipeline,
 			PipelineParams: &types.PipelineParams{
 				Parser:     pipeline.Parser,
@@ -182,10 +181,13 @@ func FromPipelinePb(pipeline *clientpb.Pipeline, ip string) *Pipeline {
 			Name:       pipeline.Name,
 			Enable:     pipeline.Enable,
 			Type:       consts.RemPipeline,
-			Host:       body.Rem.Console,
+			Host:       body.Rem.Host,
+			Port:       body.Rem.Port,
+			IP:         pipeline.Ip,
 			PipelineParams: &types.PipelineParams{
 				Link:      body.Rem.Link,
 				Subscribe: body.Rem.Subscribe,
+				Agents:    body.Rem.Agents,
 			},
 		}
 	case *clientpb.Pipeline_Web:
@@ -193,8 +195,8 @@ func FromPipelinePb(pipeline *clientpb.Pipeline, ip string) *Pipeline {
 			ListenerID: pipeline.ListenerId,
 			Name:       pipeline.Name,
 			Enable:     pipeline.Enable,
-			IP:         ip,
-			Port:       uint16(body.Web.Port),
+			IP:         pipeline.Ip,
+			Port:       body.Web.Port,
 			Type:       consts.WebsitePipeline,
 			PipelineParams: &types.PipelineParams{
 				WebPath: body.Web.Root,

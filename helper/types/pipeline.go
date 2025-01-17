@@ -60,10 +60,11 @@ func (encryption *EncryptionConfig) ToProtobuf() *clientpb.Encryption {
 }
 
 type PipelineParams struct {
-	Parser     string            `json:"parser,omitempty"`
-	WebPath    string            `json:"path,omitempty"`
-	Link       string            `json:"link,omitempty"`
-	Subscribe  string            `json:"subscribe,omitempty"`
-	Encryption *EncryptionConfig `json:"encryption,omitempty"`
-	Tls        *TlsConfig        `json:"tls,omitempty"`
+	Parser     string                        `json:"parser,omitempty"`
+	WebPath    string                        `json:"path,omitempty"`
+	Link       string                        `json:"link,omitempty"`
+	Subscribe  string                        `json:"subscribe,omitempty"`
+	Agents     map[string]*clientpb.REMAgent `json:"agents,omitempty"`
+	Encryption *EncryptionConfig             `json:"encryption,omitempty"`
+	Tls        *TlsConfig                    `json:"tls,omitempty"`
 }
