@@ -1,0 +1,49 @@
+package rpc
+
+import (
+	"context"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/server/internal/core"
+	"github.com/chainreactors/malice-network/server/internal/db"
+	"github.com/chainreactors/malice-network/server/internal/db/models"
+	"strconv"
+)
+
+func (rpc *Server) GetContexts(ctx context.Context, req *clientpb.Context) (*clientpb.Contexts, error) {
+	contexts := make([]*clientpb.Context, 0)
+	for _, c := range core.Contexts.All() {
+		if req.Session != nil && req.Session.SessionId != "" && c.SessionID != req.Session.SessionId {
+			continue
+		} else if req.Task != nil && req.Task.TaskId != 0 && c.TaskID != req.Task.SessionId+"-"+strconv.Itoa(int(req.Task.TaskId)) {
+			continue
+		} else if req.Pipeline != nil && req.Pipeline.Name != "" && c.PipelineName != req.Pipeline.Name {
+			continue
+		} else if req.Listener != nil && req.Listener.Id != "" && c.ListenerName != req.Listener.Id {
+			continue
+		}
+		contexts = append(contexts, c.ToProtobuf())
+	}
+	return &clientpb.Contexts{Contexts: contexts}, nil
+}
+
+func (rpc *Server) GetScreenShot(ctx context.Context, req *clientpb.Empty) (*clientpb.Contexts, error) {
+	return &clientpb.Contexts{Contexts: core.Contexts.ScreenShot()}, nil
+}
+
+func (rpc *Server) GetCredential(ctx context.Context, req *clientpb.Empty) (*clientpb.Contexts, error) {
+	return &clientpb.Contexts{Contexts: core.Contexts.Credential()}, nil
+}
+
+func (rpc *Server) GetKeylogger(ctx context.Context, req *clientpb.Empty) (*clientpb.Contexts, error) {
+	return &clientpb.Contexts{Contexts: core.Contexts.KeyLogger()}, nil
+}
+
+func (rpc *Server) AddContext(ctx context.Context, req *clientpb.Context) (*clientpb.Empty, error) {
+	contextDB := models.ToContextDB(req)
+	core.Contexts.Add(contextDB)
+	err := db.CreateContext(contextDB)
+	if err != nil {
+		return nil, err
+	}
+	return &clientpb.Empty{}, nil
+}
