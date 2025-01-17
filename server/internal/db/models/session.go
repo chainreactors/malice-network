@@ -28,8 +28,11 @@ type Session struct {
 	Interval    uint64
 	Jitter      float64
 	IsRemoved   bool     `gorm:"default:false"`
-	Os          *Os      `gorm:"embedded"`
-	Process     *Process `gorm:"embedded"`
+	Os          *Os      `gorm:"embedded;embeddedPrefix:os_"`
+	Process     *Process `gorm:"embedded;embeddedPrefix:process_"`
+
+	ProfileName string  `gorm:"index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:ProfileName;references:Name"`
+	Profile     Profile `gorm:"foreignKey:ProfileName;references:Name;"`
 }
 
 func (s *Session) BeforeCreate(tx *gorm.DB) (err error) {
@@ -63,6 +66,7 @@ func (s *Session) ToProtobuf() *clientpb.Session {
 		Modules:       cont.Modules,
 		Timediff:      time.Now().Unix() - s.LastCheckin,
 		Addons:        cont.Addons,
+		Name:          s.ProfileName,
 	}
 }
 

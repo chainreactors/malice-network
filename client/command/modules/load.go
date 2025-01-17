@@ -80,7 +80,7 @@ func buildWithDocker(con *repl.Console, target, profile string, modules []string
 			con.Log.Errorf("Build modules failed: %v", err)
 			return
 		}
-		modulePath, err = handleModuleDownload(con, builder.Name, builder.Bin)
+		modulePath, err = handleModuleDownload(con, builder.Id, builder.Name, builder.Bin)
 		if err != nil {
 			con.Log.Errorf("Write modules failed: %v\n", err)
 			return
@@ -136,7 +136,7 @@ func buildWithAction(con *repl.Console, target, profile string, modules []string
 			con.Log.Errorf("Run workflow failed: %v", err)
 			return
 		}
-		modulePath, err := handleModuleDownload(con, builder.Name, builder.Bin)
+		modulePath, err := handleModuleDownload(con, builder.Id, builder.Name, builder.Bin)
 		if err != nil {
 			con.Log.Errorf("Write modules failed: %v\n", err)
 			return
@@ -153,7 +153,7 @@ func buildWithAction(con *repl.Console, target, profile string, modules []string
 }
 
 // handleModuleDownload handles module download and saves to disk
-func handleModuleDownload(con *repl.Console, moduleName string, moduleBin []byte) (string, error) {
+func handleModuleDownload(con *repl.Console, moduleID uint32, moduleName string, moduleBin []byte) (string, error) {
 	var modulePath string
 	if len(moduleBin) > 0 {
 		modulePath = filepath.Join(assets.GetTempDir(), moduleName)
@@ -165,7 +165,7 @@ func handleModuleDownload(con *repl.Console, moduleName string, moduleBin []byte
 		for {
 			time.Sleep(30 * time.Second)
 			builder, err := con.Rpc.DownloadArtifact(con.Context(), &clientpb.Artifact{
-				Name: moduleName,
+				Id: moduleID,
 			})
 			if err == nil {
 				modulePath = filepath.Join(assets.GetTempDir(), builder.Name)

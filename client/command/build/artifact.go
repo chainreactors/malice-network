@@ -43,7 +43,6 @@ func PrintArtifacts(builders *clientpb.Builders, con *repl.Console) error {
 
 	defaultLengths := map[string]int{
 		"ID":       6,
-		"Name":     16,
 		"Pipeline": 16,
 		"Target":   22,
 		"Type":     8,
@@ -57,7 +56,6 @@ func PrintArtifacts(builders *clientpb.Builders, con *repl.Console) error {
 	for _, builder := range builders.Builders {
 		formattedTime := time.Unix(builder.Time, 0).Format("2006-01-02 15:04:05")
 		updateMaxLength(&defaultLengths, "ID", len(strconv.Itoa(int(builder.Id))))
-		updateMaxLength(&defaultLengths, "Name", len(builder.Name))
 		updateMaxLength(&defaultLengths, "Target", len(builder.Target))
 		// updateMaxLength(&defaultLengths, "Type", len(builder.Type))
 		// updateMaxLength(&defaultLengths, "Source", len(builder.Resource))
@@ -68,7 +66,6 @@ func PrintArtifacts(builders *clientpb.Builders, con *repl.Console) error {
 		row = table.NewRow(
 			table.RowData{
 				"ID":     builder.Id,
-				"Name":   builder.Name,
 				"Target": builder.Target,
 				"Type":   builder.Type,
 				"Source": builder.Resource,
@@ -84,7 +81,6 @@ func PrintArtifacts(builders *clientpb.Builders, con *repl.Console) error {
 
 	tableModel := tui.NewTable([]table.Column{
 		table.NewColumn("ID", "ID", defaultLengths["ID"]),
-		table.NewColumn("Name", "Name", defaultLengths["Name"]),
 		table.NewColumn("Pipeline", "Pipeline", defaultLengths["Pipeline"]),
 		table.NewColumn("Target", "Target", defaultLengths["Target"]),
 		table.NewColumn("Type", "Type", defaultLengths["Type"]),
@@ -111,9 +107,9 @@ func PrintArtifacts(builders *clientpb.Builders, con *repl.Console) error {
 		con.Log.Error("No row selected\n")
 		return nil
 	}
-	builder, err := DownloadArtifact(con, selectRow.Data["Name"].(string), false)
+	builder, err := DownloadArtifact(con, selectRow.Data["ID"].(uint32), false)
 	if err != nil {
-		con.Log.Errorf("open file %s\n", err)
+		return err
 	}
 	con.Log.Infof("download artifact %s\n", filepath.Join(assets.GetTempDir(), builder.Name))
 	output := filepath.Join(assets.GetTempDir(), builder.Name)
@@ -125,11 +121,15 @@ func PrintArtifacts(builders *clientpb.Builders, con *repl.Console) error {
 }
 
 func DownloadArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
-	name := cmd.Flags().Arg(0)
+	id := cmd.Flags().Arg(0)
+	artifactID, err := strconv.ParseUint(id, 10, 32)
+	if err != nil {
+		return err
+	}
 	output, _ := cmd.Flags().GetString("output")
 	srdi, _ := cmd.Flags().GetBool("srdi")
 	go func() {
-		builder, err := DownloadArtifact(con, name, srdi)
+		builder, err := DownloadArtifact(con, uint32(artifactID), srdi)
 		if err != nil {
 			con.Log.Errorf("download artifact failed: %s", err)
 			return
@@ -147,9 +147,9 @@ func DownloadArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func DownloadArtifact(con *repl.Console, name string, srdi bool) (*clientpb.Artifact, error) {
+func DownloadArtifact(con *repl.Console, ID uint32, srdi bool) (*clientpb.Artifact, error) {
 	artifact, err := con.Rpc.DownloadArtifact(con.Context(), &clientpb.Artifact{
-		Name:   name,
+		Id:     ID,
 		IsSrdi: srdi,
 	})
 	if err != nil {

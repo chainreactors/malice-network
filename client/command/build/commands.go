@@ -299,7 +299,7 @@ build log builder_name --limit 70
 	common.BindFlag(logCmd, func(f *pflag.FlagSet) {
 		f.Int("limit", 50, "limit of rows")
 	})
-	common.BindArgCompletions(logCmd, nil, common.ArtifactNameCompleter(con))
+	common.BindArgCompletions(logCmd, nil, common.ArtifactCompleter(con))
 
 	buildCmd.AddCommand(beaconCmd, bindCmd, modulesCmd, pulseCmd, preludeCmd, logCmd)
 
@@ -350,7 +350,7 @@ artifact list
 		f.StringP("output", "o", "", "output path")
 		f.BoolP("srdi", "s", false, "Set to true to download shellcode.")
 	})
-	common.BindArgCompletions(downloadCmd, nil, common.ArtifactNameCompleter(con))
+	common.BindArgCompletions(downloadCmd, nil, common.ArtifactCompleter(con))
 
 	uploadCmd := &cobra.Command{
 		Use:   consts.CommandArtifactUpload,

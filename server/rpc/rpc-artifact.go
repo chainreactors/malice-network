@@ -12,7 +12,7 @@ import (
 
 func (rpc *Server) DownloadArtifact(ctx context.Context, req *clientpb.Artifact) (*clientpb.Artifact, error) {
 	var path string
-	builder, err := db.GetArtifactByName(req.Name)
+	builder, err := db.GetArtifactById(req.Id)
 	if err != nil {
 		return nil, err
 	}
