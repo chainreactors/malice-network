@@ -47,6 +47,12 @@ func (s *Session) BeforeCreate(tx *gorm.DB) (err error) {
 
 func (s *Session) ToProtobuf() *clientpb.Session {
 	cont, _ := content.RecoverSessionContext(s.Context)
+	if s.Os == nil {
+		s.Os = &Os{}
+	}
+	if s.Process == nil {
+		s.Process = &Process{}
+	}
 	return &clientpb.Session{
 		Type:          s.Type,
 		SessionId:     s.SessionID,
