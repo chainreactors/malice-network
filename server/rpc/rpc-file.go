@@ -153,6 +153,7 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 
 		downloadAbs := resp.GetDownloadResponse()
 		fileName := path.Join(configs.TempPath, downloadAbs.Checksum)
+		moveName := path.Join(configs.ContextPath, greq.Session.ID, consts.DownloadPath, downloadAbs.Checksum)
 		greq.Session.AddMessage(resp, 0)
 		greq.Task.Total = int(resp.GetDownloadResponse().Size)/config.Int(consts.ConfigMaxPacketLength) + 1
 		size := resp.GetDownloadResponse().Size
@@ -212,6 +213,10 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 				if err != nil {
 					logs.Log.Errorf("cannot create task %d , %s in db", greq.Task.Id, err.Error())
 				}
+				err = fileutils.MoveFile(fileName, moveName)
+				if err != nil {
+					return
+				}
 				greq.Task.Finish(resp, "sync id "+checksum)
 			}
 		}
@@ -220,7 +225,7 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 }
 
 func (rpc *Server) Sync(ctx context.Context, req *clientpb.Sync) (*clientpb.SyncResp, error) {
-	td, err := db.GetTaskDescriptionByID(req.FileId)
+	task, td, err := db.GetTaskDescriptionByID(req.FileId)
 	if err != nil {
 		logs.Log.Errorf("cannot find task in db by fileid: %s", err)
 		return nil, err
@@ -228,9 +233,17 @@ func (rpc *Server) Sync(ctx context.Context, req *clientpb.Sync) (*clientpb.Sync
 	//if !file.Exist(td.Path + td.Name) {
 	//	return nil, os.ErrExist
 	//}
-	data, err := os.ReadFile(path.Join(configs.TempPath, td.NickName))
-	if err != nil {
-		return nil, err
+	var data []byte
+	if task.Type == consts.ModuleDownload {
+		data, err = os.ReadFile(path.Join(configs.ContextPath, task.SessionID, consts.DownloadPath, td.NickName))
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		data, err = os.ReadFile(path.Join(configs.TempPath, td.NickName))
+		if err != nil {
+			return nil, err
+		}
 	}
 	resp := &clientpb.SyncResp{
 		Name:    td.Name,
