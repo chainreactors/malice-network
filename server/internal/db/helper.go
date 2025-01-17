@@ -830,7 +830,6 @@ func GetBuilders() (*clientpb.Builders, error) {
 func FindArtifact(target *clientpb.Artifact) (*clientpb.Artifact, error) {
 	var builder *models.Builder
 	var result *gorm.DB
-
 	// 根据 ID 或名称查找构建器
 	if target.Id != 0 {
 		result = Session().Where("id = ?", target.Id).First(&builder)
@@ -843,9 +842,6 @@ func FindArtifact(target *clientpb.Artifact) (*clientpb.Artifact, error) {
 			Preload("Profile.PulsePipeline").
 			Find(&builders)
 		for _, v := range builders {
-			if v.ShellcodePath == "" && v.IsSRDI == true {
-				continue
-			}
 			if v.Type == consts.ImplantPulse && v.Profile.PulsePipelineID == target.Pipeline {
 				builder = v
 				break
@@ -866,7 +862,9 @@ func FindArtifact(target *clientpb.Artifact) (*clientpb.Artifact, error) {
 	var content []byte
 	var err error
 	if target.IsSrdi {
-		content, err = os.ReadFile(builder.ShellcodePath)
+		if builder.ShellcodePath != "" {
+			content, err = os.ReadFile(builder.ShellcodePath)
+		}
 	} else {
 		content, err = os.ReadFile(builder.Path)
 	}

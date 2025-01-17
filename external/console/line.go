@@ -3,10 +3,11 @@ package console
 import (
 	"bytes"
 	"errors"
+	"fmt"
+	"regexp"
 	"strings"
 	"unicode/utf8"
 
-	"github.com/kballard/go-shellquote"
 	"mvdan.cc/sh/v3/syntax"
 )
 
@@ -27,6 +28,7 @@ var (
 // parse is in charge of removing all comments from the input line
 // before execution, and if successfully parsed, split into words.
 func (c *Console) parse(line string) (args []string, err error) {
+
 	lineReader := strings.NewReader(line)
 	parser := syntax.NewParser(syntax.KeepComments(false))
 
@@ -44,7 +46,28 @@ func (c *Console) parse(line string) (args []string, err error) {
 	}
 
 	// Split the line into shell words.
-	return shellquote.Split(parsedLine.String())
+	return shellSplit(parsedLine.String())
+	//return shellquote.Split(parsedLine.String())
+}
+
+func shellSplit(command string) (args []string, err error) {
+	re := regexp.MustCompile(`[^\s"']+|"([^"]*)"|'([^']*)'`)
+	matches := re.FindAllStringSubmatch(command, -1)
+
+	var parts []string
+	for _, match := range matches {
+		if match[1] != "" { // Matched double-quoted part
+			parts = append(parts, match[1])
+			fmt.Printf("match: %s\n", match[1])
+		} else if match[2] != "" { // Matched single-quoted part
+			parts = append(parts, match[2])
+			fmt.Printf("match: %s\n", match[2])
+		} else { // Unquoted part
+			parts = append(parts, match[0])
+			fmt.Printf("match: %s\n", match[0])
+		}
+	}
+	return parts, nil
 }
 
 // acceptMultiline determines if the line just accepted is complete (in which case

@@ -27,27 +27,48 @@ func ListFiles(cmd *cobra.Command, con *repl.Console) error {
 func printFiles(files *clientpb.Files, con *repl.Console) {
 	var rowEntries []table.Row
 	var row table.Row
-	tableModel := tui.NewTable([]table.Column{
-		table.NewColumn("FileID", "FileID", 8),
-		table.NewColumn("Name", "Name", 20),
-		table.NewColumn("TempID", "TempID", 10),
-		table.NewColumn("Type", "Type", 10),
-		table.NewColumn("LocalName", "LocalName", 30),
-		table.NewColumn("RemotePath", "RemotePath", 30),
-	}, true)
+	maxLengths := map[string]int{
+		"FileID":     6,
+		"Name":       16,
+		"Sha256":     64,
+		"Type":       12,
+		"LocalName":  16,
+		"RemotePath": 16,
+	}
+
 	for _, file := range files.Files {
+		updateMaxLength(&maxLengths, "FileID", len(file.TaskId))
+		updateMaxLength(&maxLengths, "Name", len(file.Name))
+		//updateMaxLength(&maxLengths, "TempID", len(file.TempId[:8]))
+		updateMaxLength(&maxLengths, "Type", len(file.Op))
+		updateMaxLength(&maxLengths, "LocalName", len(file.Local))
+		updateMaxLength(&maxLengths, "RemotePath", len(file.Remote))
 		row = table.NewRow(
 			table.RowData{
 				"FileID":     file.TaskId,
 				"Name":       file.Name,
-				"TempID":     file.TempId,
 				"Type":       file.Op,
 				"LocalName":  file.Local,
 				"RemotePath": file.Remote,
+				"Sha256":     file.TempId,
 			})
 		rowEntries = append(rowEntries, row)
 	}
+	tableModel := tui.NewTable([]table.Column{
+		table.NewColumn("FileID", "FileID", maxLengths["FileID"]),
+		table.NewColumn("Name", "Name", maxLengths["Name"]),
+		table.NewColumn("Type", "Type", maxLengths["Type"]),
+		table.NewColumn("LocalName", "LocalName", maxLengths["LocalName"]),
+		table.NewColumn("RemotePath", "RemotePath", maxLengths["RemotePath"]),
+		table.NewColumn("Sha256", "Sha256", maxLengths["Sha256"]),
+	}, true)
 	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)
 	fmt.Printf(tableModel.View())
+}
+
+func updateMaxLength(maxLengths *map[string]int, key string, newLength int) {
+	if (*maxLengths)[key] < newLength {
+		(*maxLengths)[key] = newLength
+	}
 }
