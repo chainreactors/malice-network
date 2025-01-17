@@ -72,6 +72,21 @@ func (rpc *Server) ListBuilder(ctx context.Context, req *clientpb.Empty) (*clien
 }
 
 func (rpc *Server) FindArtifact(ctx context.Context, req *clientpb.Artifact) (*clientpb.Artifact, error) {
+	artifact, err := db.FindArtifact(req)
+	if err != nil {
+	}
+	if req.IsSrdi && len(artifact.Bin) == 0 {
+		builder, err := db.GetArtifactById(artifact.Id)
+		if err != nil {
+			return nil, err
+		}
+		bin, err := build.SRDIArtifact(builder, artifact.Platform, artifact.Arch)
+		if err != nil {
+			return nil, err
+		}
+		artifact.Bin = bin
+		return artifact, err
+	}
 	return db.FindArtifact(req)
 }
 

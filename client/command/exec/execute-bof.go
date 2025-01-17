@@ -7,7 +7,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
-	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
 )
@@ -46,14 +45,7 @@ func RegisterBofFunc(con *repl.Console) {
 			}
 			return ExecBof(rpc, sess, path, cmdline, true)
 		},
-		func(content *clientpb.TaskContext) (interface{}, error) {
-			bofResps, err := common.ParseBOFResponse(content)
-			if err != nil {
-				return "", err
-			}
-			results := bofResps.(pe.BOFResponses).Handler(content.Session)
-			return results, nil
-		},
+		common.ParseBOFResponse,
 		nil,
 	)
 

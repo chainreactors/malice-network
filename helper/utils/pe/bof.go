@@ -221,6 +221,22 @@ type BOFResponse struct {
 
 type BOFResponses []*BOFResponse
 
+func (bofResps BOFResponses) String() string {
+	var results strings.Builder
+	for _, bofResp := range bofResps {
+		var result string
+		switch bofResp.CallbackType {
+		case CALLBACK_OUTPUT, CALLBACK_OUTPUT_OEM, CALLBACK_OUTPUT_UTF8:
+			result = string(bofResp.Data)
+		case CALLBACK_ERROR:
+			result = fmt.Sprintf("Error occurred: %s", string(bofResp.Data))
+		}
+		results.WriteString(result + "\n")
+	}
+
+	return results.String()
+}
+
 func (bofResps BOFResponses) Handler(sess *clientpb.Session) string {
 	var err error
 	var results strings.Builder
@@ -254,6 +270,7 @@ func (bofResps BOFResponses) Handler(sess *clientpb.Session) string {
 				if _, err := screenfile.Write(data); err != nil {
 					return fmt.Sprintf("Failed to write screenshot data: %s", err.Error())
 				}
+
 				return fmt.Sprintf("Screenshot saved to %s", screenfile.Name())
 			}()
 		case CALLBACK_FILE:

@@ -405,77 +405,115 @@ artifact delete --name artifact_name
 }
 
 func Register(con *repl.Console) {
-	con.RegisterServerFunc("search_artifact", SearchArtifact, &mals.Helper{
-		Group: intermediate.GroupArtifact,
-		Short: "search build artifact with arch,os,typ and pipeline id",
-		Input: []string{
-			"pipeline: pipeline id",
-			"type: build type, beacon,bind,prelude",
-			"format: only support shellcode",
-			"arch: arch",
-			"os: os",
-		},
-		Output: []string{
-			"builder",
-		},
-		Example: `search_artifact("x64","windows","beacon","tcp_default", true)`,
-	})
+	con.RegisterServerFunc("search_artifact",
+		SearchArtifact,
+		&mals.Helper{
+			Group: intermediate.GroupArtifact,
+			Short: "search build artifact with arch,os,typ and pipeline id",
+			Input: []string{
+				"pipeline: pipeline id",
+				"type: build type, beacon,bind,prelude",
+				"format: only support shellcode",
+				"arch: arch",
+				"os: os",
+			},
+			Output: []string{
+				"builder",
+			},
+			Example: `search_artifact("x64","windows","beacon","tcp_default", true)`,
+		})
 
-	con.RegisterServerFunc("get_artifact", func(con *repl.Console, sess *core.Session, format string) (*clientpb.Artifact, error) {
-		artifact := &clientpb.Artifact{Name: sess.Name}
-		switch format {
-		case "bin", "raw", "shellcode":
-			artifact.IsSrdi = true
-		}
-		artifact, err := con.Rpc.FindArtifact(sess.Context(), artifact)
-		if err != nil {
-			return nil, err
-		}
-		return artifact, nil
-	}, &mals.Helper{
-		Group: intermediate.GroupArtifact,
-		Short: "get artifact with session self",
-		Input: []string{
-			"sess: session",
-			"format: only support shellcode",
+	con.RegisterServerFunc("get_artifact",
+		func(con *repl.Console, sess *core.Session, format string) (*clientpb.Artifact, error) {
+			artifact := &clientpb.Artifact{Name: sess.Name}
+			switch format {
+			case "bin", "raw", "shellcode":
+				artifact.IsSrdi = true
+			}
+			artifact, err := con.Rpc.FindArtifact(sess.Context(), artifact)
+			if err != nil {
+				return nil, err
+			}
+			return artifact, nil
 		},
-		Output: []string{
-			"builder",
+		&mals.Helper{
+			Group: intermediate.GroupArtifact,
+			Short: "get artifact with session self",
+			Input: []string{
+				"sess: session",
+				"format: only support shellcode",
+			},
+			Output: []string{
+				"builder",
+			},
+		})
+
+	con.RegisterServerFunc("upload_artifact",
+		UploadArtifact,
+		&mals.Helper{
+			Group: intermediate.GroupArtifact,
+			Short: "upload local bin to server build",
 		},
-	})
+	)
 
-	con.RegisterServerFunc("upload_artifact", UploadArtifact, &mals.Helper{
-		Group: intermediate.GroupArtifact,
-		Short: "upload local bin to server build",
-	})
-
-	con.RegisterServerFunc("download_artifact", DownloadArtifact, &mals.Helper{
-		Group: intermediate.GroupArtifact,
-		Short: "download artifact with special build id",
-	})
-
-	con.RegisterServerFunc("delete_artifact", DeleteArtifact, &mals.Helper{
-		Group: intermediate.GroupArtifact,
-		Short: "delete artifact with special build name",
-	})
-
-	con.RegisterServerFunc("self_stager", func(con *repl.Console, sess *core.Session) (string, error) {
-		artifact, err := SearchArtifact(con, sess.PipelineId, "pulse", "shellcode", sess.Os.Name, sess.Os.Arch)
-		if err != nil {
-			return "", err
-		}
-		return string(artifact.Bin), nil
-	}, &mals.Helper{
-		Group: intermediate.GroupArtifact,
-		Short: "get self artifact stager shellcode",
-		Input: []string{
-			"sess: session",
+	con.RegisterServerFunc("download_artifact",
+		DownloadArtifact,
+		&mals.Helper{
+			Group: intermediate.GroupArtifact,
+			Short: "download artifact with special build id",
 		},
-		Output: []string{
-			"artifact_bin",
+	)
+
+	con.RegisterServerFunc("delete_artifact",
+		DeleteArtifact,
+		&mals.Helper{
+			Group: intermediate.GroupArtifact,
+			Short: "delete artifact with special build name",
 		},
-		Example: `self_payload(active())`,
-	})
+	)
+
+	con.RegisterServerFunc("self_artifact",
+		func(con *repl.Console, sess *core.Session) (string, error) {
+			artifact := &clientpb.Artifact{
+				Name: sess.Name,
+			}
+			artifact, err := con.Rpc.FindArtifact(sess.Context(), artifact)
+			if err != nil {
+				return "", err
+			}
+			return string(artifact.Bin), nil
+		},
+		&mals.Helper{
+			Group: intermediate.GroupArtifact,
+			Short: "get artifact with session self",
+			Input: []string{
+				"sess: session",
+			},
+			Output: []string{
+				"artifact",
+			},
+		})
+
+	con.RegisterServerFunc("self_stager",
+		func(con *repl.Console, sess *core.Session) (string, error) {
+			artifact, err := SearchArtifact(con, sess.PipelineId, "pulse", "shellcode", sess.Os.Name, sess.Os.Arch)
+			if err != nil {
+				return "", err
+			}
+			return string(artifact.Bin), nil
+		},
+		&mals.Helper{
+			Group: intermediate.GroupArtifact,
+			Short: "get self artifact stager shellcode",
+			Input: []string{
+				"sess: session",
+			},
+			Output: []string{
+				"artifact_bin",
+			},
+			Example: `self_payload(active())`,
+		},
+	)
 
 	con.RegisterServerFunc("artifact_stager", func(con *repl.Console, pipeline, format, os, arch string) (string, error) {
 		artifact, err := SearchArtifact(con, pipeline, "pulse", "shellcode", os, arch)
@@ -497,6 +535,7 @@ func Register(con *repl.Console) {
 		},
 		Example: `artifact_stager("tcp_default","raw","windows","x64")`,
 	})
+
 	con.RegisterServerFunc("self_payload", func(con *repl.Console, sess *core.Session) (string, error) {
 		artifact, err := SearchArtifact(con, sess.PipelineId, "beacon", "shellcode", sess.Os.Name, sess.Os.Arch)
 		if err != nil {

@@ -2,11 +2,9 @@ package console
 
 import (
 	"fmt"
-	"strings"
 	"sync"
 
 	"github.com/reeflective/readline"
-	"github.com/reeflective/readline/inputrc"
 )
 
 // Console is an integrated console application instance.
@@ -75,8 +73,9 @@ type Console struct {
 // The app parameter is an optional name of the application using this console.
 func New(app string) *Console {
 	console := &Console{
-		name:  app,
-		shell: readline.NewShell(inputrc.WithApp(strings.ToLower(app))),
+		name: app,
+		//shell: readline.NewShell(inputrc.WithApp(strings.ToLower(app))),
+		shell: readline.NewShell(),
 		menus: make(map[string]*Menu),
 		mutex: &sync.RWMutex{},
 	}
@@ -239,7 +238,6 @@ func (c *Console) SystemEditor(buffer []byte, filetype string) ([]byte, error) {
 
 func (c *Console) setupShell() {
 	cfg := c.shell.Config
-
 	// Some options should be set to on because they
 	// are quite neceessary for efficient console use.
 	cfg.Set("skip-completed-text", true)
