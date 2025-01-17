@@ -19,7 +19,7 @@ func (rpc *Server) RegisterListener(ctx context.Context, req *clientpb.RegisterL
 	ip := getRemoteIp(ctx)
 	core.Listeners.Add(&core.Listener{
 		Name:      req.Name,
-		Host:      ip,
+		IP:        ip,
 		Active:    true,
 		Pipelines: make(map[string]*clientpb.Pipeline),
 		Ctrl:      make(chan *clientpb.JobCtrl),

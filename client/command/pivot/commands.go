@@ -4,6 +4,7 @@ import (
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -108,7 +109,13 @@ func Register(con *repl.Console) {
 		RemDial,
 		"",
 		nil,
-		common.ParseStatus,
+		func(content *clientpb.TaskContext) (interface{}, error) {
+			resp, err := common.ParseResponse(content)
+			if err != nil {
+				return nil, err
+			}
+			return resp, nil
+		},
 		nil,
 	)
 

@@ -10,7 +10,7 @@ import (
 )
 
 func ReverseCmd(cmd *cobra.Command, con *repl.Console) error {
-	remName := cmd.Flags().Arg(0)
+	pid := cmd.Flags().Arg(0)
 	port, _ := cmd.Flags().GetString("port")
 	username, _ := cmd.Flags().GetString("username")
 	password, _ := cmd.Flags().GetString("password")
@@ -20,14 +20,15 @@ func ReverseCmd(cmd *cobra.Command, con *repl.Console) error {
 	}
 
 	remoteURL := rem.NewURL("socks5", username, password, "0.0.0.0", port)
-	args, err := FormatRemCmdLine(con, remName, "", remoteURL, nil)
+	args, err := FormatRemCmdLine(con, pid, "reverse", remoteURL, nil)
 	if err != nil {
 		return err
 	}
-	task, err := RemDial(con.Rpc, sess, args)
+	task, err := RemDial(con.Rpc, sess, pid, args)
 	if err != nil {
 		return err
 	}
-	sess.Console(task, fmt.Sprintf("pivoting socks5 on %s:%s", con.Pipelines[remName].Ip, port))
+	sess.Console(task, fmt.Sprintf("pivoting socks5 on %s:%s", con.Pipelines[pid].Ip, port))
+
 	return nil
 }

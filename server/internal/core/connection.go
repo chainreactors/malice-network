@@ -95,7 +95,7 @@ func (c *Connection) Handler(ctx context.Context, conn *peek.Conn) error {
 	}
 	go c.Send(ctx, conn)
 	var msg *implantpb.Spites
-	if length != 1 {
+	if length > 2 {
 		msg, err = c.Parser.ReadMessage(conn, length)
 		if err != nil {
 			return fmt.Errorf("error reading message:%s %w", conn.RemoteAddr(), err)

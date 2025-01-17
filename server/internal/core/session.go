@@ -392,7 +392,7 @@ func (s *Session) Publish(Op string, msg string, notify bool, important bool) {
 		Session:   s.ToProtobuf(),
 		IsNotify:  notify,
 		Message:   msg,
-		Important: true,
+		Important: important,
 	})
 }
 

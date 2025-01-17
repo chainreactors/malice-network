@@ -3,10 +3,6 @@ package rpc
 import (
 	"context"
 	"errors"
-	"os"
-	"path/filepath"
-	"strings"
-
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/server/internal/certutils"
@@ -14,6 +10,8 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
+	"os"
+	"path/filepath"
 )
 
 func MapContents(webpipe *clientpb.Pipeline) error {
@@ -123,17 +121,23 @@ func (rpc *Server) WebsiteRemoveContent(ctx context.Context, req *clientpb.WebCo
 }
 
 func (rpc *Server) RegisterWebsite(ctx context.Context, req *clientpb.Pipeline) (*clientpb.Empty, error) {
-	ip := getRemoteAddr(ctx)
-	ip = strings.Split(ip, ":")[0]
-	pipelineModel := models.FromPipelinePb(req, ip)
-	var err error
+	lns, err := core.Listeners.Get(req.ListenerId)
+	if err != nil {
+		return nil, err
+	}
+	req.Ip = lns.IP
+	pipelineModel := models.FromPipelinePb(req)
+	_, err = db.SavePipeline(pipelineModel)
+	if err != nil {
+		return nil, err
+	}
 	if pipelineModel.Tls.Enable && pipelineModel.Tls.Cert == "" && pipelineModel.Tls.Key == "" {
 		pipelineModel.Tls.Cert, pipelineModel.Tls.Key, err = certutils.GenerateTlsCert(req.Name, req.ListenerId)
 		if err != nil {
 			return nil, err
 		}
 	}
-	err = db.SavePipeline(pipelineModel)
+	_, err = db.SavePipeline(pipelineModel)
 	if err != nil {
 		return nil, err
 	}

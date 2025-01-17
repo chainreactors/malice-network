@@ -394,7 +394,7 @@ rem new --name rem_test --listener listener_id -c tcp://127.0.0.1:19966
 
 	common.BindFlag(newRemCmd, func(f *pflag.FlagSet) {
 		f.StringP("listener", "l", "", "listener id")
-		f.StringP("console", "c", "tcp://0.0.0.0:19966", "REM console URL")
+		f.StringP("console", "c", "tcp://0.0.0.0", "REM console URL")
 	})
 
 	common.BindFlagCompletions(newRemCmd, func(comp carapace.ActionMap) {

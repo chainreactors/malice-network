@@ -11,7 +11,7 @@ import (
 )
 
 func ForwardCmd(cmd *cobra.Command, con *repl.Console) error {
-	remName := cmd.Flags().Arg(0)
+	pid := cmd.Flags().Arg(0)
 	port, _ := cmd.Flags().GetString("port")
 	if port == "" {
 		port = strconv.Itoa(int(cryptography.RandomInRange(20000, 40000)))
@@ -25,20 +25,20 @@ func ForwardCmd(cmd *cobra.Command, con *repl.Console) error {
 	}
 	localURL := rem.NewURL("port", "", "", host, tport)
 	remoteURL := rem.NewURL("raw", "", "", "", port)
-	args, err := FormatRemCmdLine(con, remName, "", remoteURL, localURL)
+	args, err := FormatRemCmdLine(con, pid, "proxy", remoteURL, localURL)
 	if err != nil {
 		return err
 	}
-	task, err := RemDial(con.Rpc, sess, args)
+	task, err := RemDial(con.Rpc, sess, pid, args)
 	if err != nil {
 		return err
 	}
-	sess.Console(task, fmt.Sprintf("pivoting portforward on %s:%s", con.Pipelines[remName].Ip, port))
+	sess.Console(task, fmt.Sprintf("pivoting portforward on %s:%s", con.Pipelines[pid].Ip, port))
 	return nil
 }
 
 func ReversePortForwardCmd(cmd *cobra.Command, con *repl.Console) error {
-	remName := cmd.Flags().Arg(0)
+	pid := cmd.Flags().Arg(0)
 	port, _ := cmd.Flags().GetString("port")
 	if port == "" {
 		port = strconv.Itoa(int(cryptography.RandomInRange(20000, 40000)))
@@ -52,14 +52,14 @@ func ReversePortForwardCmd(cmd *cobra.Command, con *repl.Console) error {
 	}
 	localURL := rem.NewURL("raw", "", "", "", port)
 	remoteURL := rem.NewURL("port", "", "", host, tport)
-	args, err := FormatRemCmdLine(con, remName, "proxy", remoteURL, localURL)
+	args, err := FormatRemCmdLine(con, pid, "reverse", remoteURL, localURL)
 	if err != nil {
 		return err
 	}
-	task, err := RemDial(con.Rpc, sess, args)
+	task, err := RemDial(con.Rpc, sess, pid, args)
 	if err != nil {
 		return err
 	}
-	sess.Console(task, fmt.Sprintf("pivoting portforward on %s:%s", con.Pipelines[remName].Ip, port))
+	sess.Console(task, fmt.Sprintf("pivoting portforward on %s:%s", con.Pipelines[pid].Ip, port))
 	return nil
 }

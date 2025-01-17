@@ -14,6 +14,7 @@ type Session struct {
 	SessionID   string `gorm:"primaryKey;->;<-:create;type:uuid;"`
 	RawID       uint32
 	CreatedAt   time.Time `gorm:"->;<-:create;"`
+	Name        string
 	Note        string
 	GroupName   string
 	Target      string

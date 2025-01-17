@@ -45,20 +45,7 @@ func InitServerStatus(conn *grpc.ClientConn, config *mtls.ClientConfig) (*Server
 		return nil, err
 	}
 
-	clients, err := s.Rpc.GetClients(context.Background(), &clientpb.Empty{})
-	if err != nil {
-		return nil, err
-	}
-	for _, client := range clients.GetClients() {
-		s.Clients = append(s.Clients, client)
-	}
-
-	err = s.UpdateListener()
-	if err != nil {
-		return nil, err
-	}
-
-	err = s.UpdateSessions(false)
+	err = s.Update()
 	if err != nil {
 		return nil, err
 	}
@@ -93,6 +80,27 @@ type ServerStatus struct {
 	doneCallbacks   *sync.Map
 	EventStatus     bool
 	EventHook       map[intermediate.EventCondition][]intermediate.OnEventFunc
+}
+
+func (s *ServerStatus) Update() error {
+	clients, err := s.Rpc.GetClients(context.Background(), &clientpb.Empty{})
+	if err != nil {
+		return err
+	}
+	for _, client := range clients.GetClients() {
+		s.Clients = append(s.Clients, client)
+	}
+
+	err = s.UpdateListener()
+	if err != nil {
+		return err
+	}
+
+	err = s.UpdateSessions(false)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *ServerStatus) AddSession(sess *clientpb.Session) {

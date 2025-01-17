@@ -3,11 +3,40 @@ package rem
 import (
 	"fmt"
 	"github.com/chainreactors/malice-network/helper/cryptography"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/rem/agent"
 	rem "github.com/chainreactors/rem/core"
 	remrunner "github.com/chainreactors/rem/runner"
 	"net"
 	"net/url"
+	"strconv"
 )
+
+func ParseRemCmd(args []string) (*remrunner.Options, error) {
+	var option remrunner.Options
+	err := option.ParseArgs(append([]string{"rem"}, args...))
+	if err != nil {
+		return nil, err
+	}
+	return &option, nil
+}
+
+func ParseConsole(conURL string) (*URL, error) {
+	u, err := rem.NewConsoleURL(conURL)
+	if err != nil {
+		return nil, err
+	}
+	return &URL{URL: u}, nil
+}
+
+type URL struct {
+	*rem.URL
+}
+
+func (u *URL) Port() uint32 {
+	port, _ := strconv.Atoi(u.URL.Port())
+	return uint32(port)
+}
 
 func NewURL(schema, user, pwd, host, port string) *url.URL {
 	var userinfo *url.Userinfo
@@ -24,16 +53,42 @@ func NewURL(schema, user, pwd, host, port string) *url.URL {
 	}
 }
 
-func NewRemServer(conURL string) (*remrunner.Console, error) {
+type RemConsole struct {
+	*remrunner.Console
+}
+
+func (rem *RemConsole) ToProtobuf() map[string]*clientpb.REMAgent {
+	agents := make(map[string]*clientpb.REMAgent)
+	agent.Agents.Range(func(key, value interface{}) bool {
+		a := value.(*agent.Agent)
+		agents[a.ID] = &clientpb.REMAgent{
+			Id:     a.Name(),
+			Mod:    a.Mod,
+			Local:  a.LocalURL.String(),
+			Remote: a.RemoteURL.String(),
+		}
+		return true
+	})
+	return agents
+}
+
+func NewRemServer(conURL string, ip string) (*RemConsole, error) {
 	u, err := rem.NewConsoleURL(conURL)
 	if err != nil {
 		return nil, err
 	}
 	var option remrunner.Options
-	err = option.ParseArgs([]string{"-c", conURL})
+	var args []string
+	if ip == "" {
+		args = []string{"rem", "-c", conURL}
+	} else {
+		args = []string{"rem", "-c", conURL, "-i", ip}
+	}
+	err = option.ParseArgs(args)
 	if err != nil {
 		return nil, err
 	}
+
 	remRunner, err := option.Prepare()
 	if err != nil {
 		return nil, err
@@ -44,10 +99,10 @@ func NewRemServer(conURL string) (*remrunner.Console, error) {
 	if err != nil {
 		return nil, err
 	}
-	return console, nil
+	return &RemConsole{console}, nil
 }
 
-func NewRemClient(conURL string, remoteURL, localURL string) (*remrunner.Console, error) {
+func NewRemClient(conURL string, remoteURL, localURL string) (*RemConsole, error) {
 	u, err := rem.NewConsoleURL(conURL)
 	if err != nil {
 		return nil, err
@@ -66,5 +121,5 @@ func NewRemClient(conURL string, remoteURL, localURL string) (*remrunner.Console
 	if err != nil {
 		return nil, err
 	}
-	return console, nil
+	return &RemConsole{console}, nil
 }

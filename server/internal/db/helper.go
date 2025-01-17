@@ -232,25 +232,25 @@ func FindPipeline(name string) (*models.Pipeline, error) {
 	return pipeline, nil
 }
 
-func SavePipeline(pipeline *models.Pipeline) error {
+func SavePipeline(pipeline *models.Pipeline) (*models.Pipeline, error) {
 	newPipeline := &models.Pipeline{}
 	result := Session().Where("name = ? AND listener_id  = ?", pipeline.Name, pipeline.ListenerID).First(&newPipeline)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			err := Session().Create(&pipeline).Error
 			if err != nil {
-				return err
+				return nil, err
 			}
-			return nil
+			return pipeline, nil
 		}
-		return result.Error
+		return nil, result.Error
 	}
 	pipeline.ID = newPipeline.ID
-	err := Session().Save(&pipeline).Error
-	if err != nil {
-		return err
+	if pipeline.IP == "" {
+		pipeline.IP = newPipeline.IP
 	}
-	return nil
+	err := Session().Save(&pipeline).Error
+	return pipeline, err
 }
 
 func DeletePipeline(name string) error {

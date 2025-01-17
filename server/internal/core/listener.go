@@ -15,7 +15,7 @@ var (
 
 type Listener struct {
 	Name      string
-	Host      string
+	IP        string
 	Active    bool
 	Pipelines map[string]*clientpb.Pipeline
 	Ctrl      chan *clientpb.JobCtrl
@@ -52,7 +52,7 @@ func (l *Listener) AllPipelines() []*clientpb.Pipeline {
 func (l *Listener) ToProtobuf() *clientpb.Listener {
 	return &clientpb.Listener{
 		Id:        l.Name,
-		Ip:        l.Host,
+		Ip:        l.IP,
 		Active:    l.Active,
 		Pipelines: &clientpb.Pipelines{Pipelines: l.AllPipelines()},
 	}
@@ -113,7 +113,10 @@ func (l *listeners) PushCtrl(ctrl string, pipeline *clientpb.Pipeline) {
 		val.PushCtrl(&clientpb.JobCtrl{
 			Id:   NextCtrlID(),
 			Ctrl: ctrl,
-			Job:  &clientpb.Job{Pipeline: pipeline},
+			Job: &clientpb.Job{
+				Name:     pipeline.Name,
+				Pipeline: pipeline,
+			},
 		})
 	}
 }

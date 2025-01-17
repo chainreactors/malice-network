@@ -2,8 +2,6 @@ package rpc
 
 import (
 	"context"
-	"strings"
-
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
@@ -14,17 +12,19 @@ import (
 )
 
 func (rpc *Server) RegisterPipeline(ctx context.Context, req *clientpb.Pipeline) (*clientpb.Empty, error) {
-	ip := getRemoteAddr(ctx)
-	ip = strings.Split(ip, ":")[0]
-	pipelineModel := models.FromPipelinePb(req, ip)
-	var err error
+	lns, err := core.Listeners.Get(req.ListenerId)
+	if err != nil {
+		return nil, err
+	}
+	req.Ip = lns.IP
+	pipelineModel := models.FromPipelinePb(req)
 	if pipelineModel.Tls.Enable && pipelineModel.Tls.Cert == "" && pipelineModel.Tls.Key == "" {
 		pipelineModel.Tls.Cert, pipelineModel.Tls.Key, err = certutils.GenerateTlsCert(pipelineModel.Name, pipelineModel.ListenerID)
 		if err != nil {
 			return nil, err
 		}
 	}
-	err = db.SavePipeline(pipelineModel)
+	_, err = db.SavePipeline(pipelineModel)
 	if err != nil {
 		return nil, err
 	}
@@ -32,11 +32,11 @@ func (rpc *Server) RegisterPipeline(ctx context.Context, req *clientpb.Pipeline)
 }
 
 func (rpc *Server) SyncPipeline(ctx context.Context, req *clientpb.Pipeline) (*clientpb.Empty, error) {
-	err := db.SavePipeline(models.FromPipelinePb(req, ""))
+	pipe, err := db.SavePipeline(models.FromPipelinePb(req))
 	if err != nil {
 		return nil, err
 	}
-	ok := core.Listeners.UpdatePipeline(req)
+	ok := core.Listeners.UpdatePipeline(pipe.ToProtobuf())
 	if !ok {
 		return nil, errs.ErrNotFoundListener
 	}

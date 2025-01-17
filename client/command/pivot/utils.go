@@ -16,10 +16,8 @@ func FormatRemCmdLine(con *repl.Console, pipe, mod string, remote, local *url.UR
 	if !(ok && remPipe.GetRem() != nil) {
 		return nil, errs.ErrNotFoundPipeline
 	}
-	args := []string{"-c", remPipe.GetRem().Console}
-	if mod != "" {
-		args = append(args, "-m", mod)
-	}
+	args := []string{"-c", remPipe.GetRem().Link}
+	args = append(args, "-m", mod)
 	if remote != nil {
 		args = append(args, "-r", remote.String())
 	}
@@ -29,10 +27,13 @@ func FormatRemCmdLine(con *repl.Console, pipe, mod string, remote, local *url.UR
 	return args, nil
 }
 
-func RemDial(rpc clientrpc.MaliceRPCClient, session *core.Session, args []string) (*clientpb.Task, error) {
+func RemDial(rpc clientrpc.MaliceRPCClient, session *core.Session, pid string, args []string) (*clientpb.Task, error) {
 	task, err := rpc.RemDial(session.Context(), &implantpb.Request{
 		Name: consts.ModuleRem,
 		Args: args,
+		Params: map[string]string{
+			"pipeline_id": pid,
+		},
 	})
 	if err != nil {
 		return nil, err

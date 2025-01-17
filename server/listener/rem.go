@@ -4,37 +4,22 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
-	rem "github.com/chainreactors/rem/core"
-	remrunner "github.com/chainreactors/rem/runner"
+	"github.com/chainreactors/malice-network/helper/rem"
 )
 
 func NewRem(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeline) (*REM, error) {
 	remConfig := pipeline.GetRem()
 
-	u, err := rem.NewConsoleURL(remConfig.Console)
-	if err != nil {
-		return nil, err
-	}
-	var option remrunner.Options
-	err = option.ParseArgs([]string{"-c", remConfig.Console})
-	if err != nil {
-		return nil, err
-	}
-	remRunner, err := option.Prepare()
-	if err != nil {
-		return nil, err
-	}
-	remRunner.URLs.ConsoleURL = u
-	console, err := remrunner.NewConsole(remRunner, remRunner.URLs)
+	console, err := rem.NewRemServer(remConfig.Console, pipeline.Ip)
 	if err != nil {
 		return nil, err
 	}
 	pp := &REM{
 		remCon:     console,
 		rpc:        rpc,
+		URL:        &rem.URL{URL: console.ConsoleURL},
 		Name:       pipeline.Name,
 		Enable:     true,
-		ConsoleURL: u,
 		ListenerID: pipeline.ListenerId,
 	}
 
@@ -42,11 +27,11 @@ func NewRem(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeline) (*RE
 }
 
 type REM struct {
-	remCon     *remrunner.Console
+	remCon     *rem.RemConsole
 	rpc        listenerrpc.ListenerRPCClient
+	URL        *rem.URL
 	ListenerID string
 	Name       string
-	ConsoleURL *rem.URL
 	Enable     bool
 }
 
@@ -86,9 +71,12 @@ func (rem *REM) ToProtobuf() *clientpb.Pipeline {
 		ListenerId: rem.ListenerID,
 		Body: &clientpb.Pipeline_Rem{
 			Rem: &clientpb.REM{
-				Console:   rem.remCon.ConsoleURL.String(),
+				Host:      rem.remCon.ConsoleURL.Hostname(),
+				Console:   rem.URL.String(),
+				Port:      rem.URL.Port(),
 				Link:      rem.remCon.Link(),
 				Subscribe: rem.remCon.Subscribe(),
+				Agents:    rem.remCon.ToProtobuf(),
 			},
 		},
 	}

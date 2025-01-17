@@ -45,12 +45,12 @@ func PrintSessions(sessions map[string]*core.Session, con *repl.Console, isAll b
 		"Health":         7,
 	}
 	for _, session := range sessions {
-		updateMaxLength(&maxLengths, "ID", len(session.SessionId[:8]))
-		updateMaxLength(&maxLengths, "Group", len(fmt.Sprintf("%s/%s", session.GroupName, session.Note)))
-		updateMaxLength(&maxLengths, "Pipeline", len(session.PipelineId))
+		updateMaxLength(maxLengths, "ID", len(session.SessionId[:8]))
+		updateMaxLength(maxLengths, "Group", len(fmt.Sprintf("%s/%s", session.GroupName, session.Note)))
+		updateMaxLength(maxLengths, "Pipeline", len(session.PipelineId))
 		//updateMaxLength(&maxLengths, "Remote Address", len(session.Target))
-		updateMaxLength(&maxLengths, "Username", len(fmt.Sprintf("%s/%s", session.Os.Hostname, session.Os.Username)))
-		updateMaxLength(&maxLengths, "System", len(fmt.Sprintf("%s/%s", session.Os.Name, session.Os.Arch)))
+		updateMaxLength(maxLengths, "Username", len(fmt.Sprintf("%s/%s", session.Os.Hostname, session.Os.Username)))
+		updateMaxLength(maxLengths, "System", len(fmt.Sprintf("%s/%s", session.Os.Name, session.Os.Arch)))
 		//updateMaxLength(&maxLengths, "Sleep", len(fmt.Sprintf("%d %.2f", session.Timer.Interval, session.Timer.Jitter)))
 		//updateMaxLength(&maxLengths, "Last Message", len(strconv.FormatUint(uint64(session.Timediff), 10)+"s"))
 		//updateMaxLength(&maxLengths, "Health", len(pterm.FgGreen.Sprint("[ALIVE]"))) // Assuming ALIVE is longer than DEAD
@@ -107,9 +107,9 @@ func PrintSessions(sessions map[string]*core.Session, con *repl.Console, isAll b
 	}
 }
 
-func updateMaxLength(maxLengths *map[string]int, key string, newLength int) {
-	if (*maxLengths)[key] < newLength {
-		(*maxLengths)[key] = newLength
+func updateMaxLength(maxLengths map[string]int, key string, newLength int) {
+	if (maxLengths)[key] < newLength {
+		(maxLengths)[key] = newLength
 	}
 }
 
