@@ -41,6 +41,8 @@ github.com/chainreactors/tui v0.0.0-20241231072248-d5b3664065c4 h1:TbIyZG5p55Wfs
 github.com/chainreactors/tui v0.0.0-20241231072248-d5b3664065c4/go.mod h1:+J5acoMNk5wLy6hhBYQMAchOS11wIhoEU9cVDV629eo=
 github.com/chainreactors/tui v0.0.0-20250117081300-8a86f2afd450 h1:uEigV9P9wj35jdaLoFk/bwpwYNMwdrv9GLsgvKoiT+0=
 github.com/chainreactors/tui v0.0.0-20250117081300-8a86f2afd450/go.mod h1:+J5acoMNk5wLy6hhBYQMAchOS11wIhoEU9cVDV629eo=
+github.com/chainreactors/tui v0.0.0-20250117083346-8eff1b67016e h1:PYELWc4sxylEgoAUwlsfOWX4I1xJd2viaMm+9wq6+pg=
+github.com/chainreactors/tui v0.0.0-20250117083346-8eff1b67016e/go.mod h1:+J5acoMNk5wLy6hhBYQMAchOS11wIhoEU9cVDV629eo=
 github.com/chainreactors/utils v0.0.0-20240716182459-e85f2b01ee16/go.mod h1:LajXuvESQwP+qCMAvlcoSXppQCjuLlBrnQpu9XQ1HtU=
 github.com/chainreactors/utils v0.0.0-20241209140746-65867d2f78b2 h1:YRQRjgb3MUOOqT0CdUDC51dsXbWpI3l6w3H4xexqKr8=
 github.com/chainreactors/utils v0.0.0-20241209140746-65867d2f78b2/go.mod h1:LajXuvESQwP+qCMAvlcoSXppQCjuLlBrnQpu9XQ1HtU=

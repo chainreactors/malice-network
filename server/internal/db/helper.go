@@ -174,18 +174,18 @@ func ListClients() ([]models.Operator, error) {
 	return operators, nil
 }
 
-func GetTaskDescriptionByID(taskID string) (*models.FileDescription, error) {
+func GetTaskDescriptionByID(taskID string) (*models.File, *models.FileDescription, error) {
 	var task models.File
 	if err := Session().Where("id = ?", taskID).First(&task).Error; err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	var td models.FileDescription
 	if err := json.Unmarshal([]byte(task.Description), &td); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return &td, nil
+	return &task, &td, nil
 }
 
 // File
@@ -1019,4 +1019,18 @@ func GetBuilderByProfileName(profileName string) (*clientpb.Builders, error) {
 		pbBuilders.Builders = append(pbBuilders.GetBuilders(), builder.ToProtobuf())
 	}
 	return pbBuilders, nil
+}
+
+// context
+func GetAllContext() ([]*models.Context, error) {
+	var contexts []*models.Context
+	result := Session().Find(&contexts)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return contexts, nil
+}
+
+func CreateContext(ctx *models.Context) error {
+	return Session().Create(ctx).Error
 }

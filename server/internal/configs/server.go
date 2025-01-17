@@ -18,13 +18,13 @@ var (
 	ServerConfigFileName        = "config.yaml"
 	ServerRootPath              = path.Join(GetWorkDir(), ".malice")
 	CurrentServerConfigFilename = "config.yaml"
-	LogPath                     = path.Join(ServerRootPath, "logs")
+	ContextPath                 = path.Join(ServerRootPath, "context")
+	LogPath                     = path.Join(ServerRootPath, "log")
 	CertsPath                   = path.Join(ServerRootPath, "certs")
 	ListenerPath                = path.Join(ServerRootPath, "listener")
 	TempPath                    = path.Join(ServerRootPath, "temp")
 	PluginPath                  = path.Join(ServerRootPath, "plugins")
 	AuditPath                   = path.Join(ServerRootPath, "audit")
-	CachePath                   = path.Join(TempPath, "cache")
 	ErrNoConfig                 = errors.New("no config found")
 	WebsitePath                 = path.Join(ServerRootPath, "web")
 	// variables for implant build

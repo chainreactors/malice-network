@@ -88,6 +88,7 @@ func Execute() {
 		db.Client = db.NewDBClient()
 		core.NewBroker()
 		core.NewSessions()
+		core.NewContext()
 		if opt.IP != "" {
 			logs.Log.Infof("manually specified IP: %s will override %s config: %s", opt.IP, opt.Config, opt.Server.IP)
 			opt.Server.IP = opt.IP
@@ -199,6 +200,10 @@ func RecoverAliveSession() error {
 			}
 			core.Sessions.Add(newSession)
 		}
+	}
+	err = core.Contexts.Recover()
+	if err != nil {
+		return err
 	}
 	return nil
 }

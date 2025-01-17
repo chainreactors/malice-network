@@ -64,8 +64,13 @@ func NewSessions() *sessions {
 }
 
 func RegisterSession(req *clientpb.RegisterSession) (*Session, error) {
-	cache := NewCache(path.Join(configs.CachePath, req.SessionId))
-	err := cache.Save()
+	contextDir := filepath.Join(configs.ContextPath, req.SessionId)
+	err := os.MkdirAll(contextDir, os.ModePerm)
+	if err != nil {
+		logs.Log.Errorf("cannot create log directory %s, %s", contextDir, err.Error())
+	}
+	cache := NewCache(path.Join(contextDir, consts.CachePath, req.SessionId))
+	err = cache.Save()
 	if err != nil {
 		return nil, err
 	}
@@ -84,10 +89,15 @@ func RegisterSession(req *clientpb.RegisterSession) (*Session, error) {
 		Cache:          cache,
 		responses:      &sync.Map{},
 	}
-	logDir := filepath.Join(configs.LogPath, sess.ID)
-	err = os.MkdirAll(logDir, os.ModePerm)
-	if err != nil {
-		logs.Log.Errorf("cannot create log directory %s, %s", logDir, err.Error())
+	downloadDir := filepath.Join(contextDir, consts.DownloadPath)
+	keyLoggerDir := filepath.Join(contextDir, consts.KeyLoggerPath)
+	screenShotDir := filepath.Join(contextDir, consts.ScreenShotPath)
+	taskDir := filepath.Join(contextDir, consts.TaskPath)
+	for _, dir := range []string{downloadDir, keyLoggerDir, screenShotDir, taskDir} {
+		err = os.MkdirAll(dir, os.ModePerm)
+		if err != nil {
+			logs.Log.Errorf("cannot create log directory %s, %s", dir, err.Error())
+		}
 	}
 	if req.RegisterData.Sysinfo != nil {
 		sess.UpdateSysInfo(req.RegisterData.Sysinfo)
@@ -97,7 +107,7 @@ func RegisterSession(req *clientpb.RegisterSession) (*Session, error) {
 }
 
 func RecoverSession(sess *clientpb.Session) (*Session, error) {
-	cache := NewCache(path.Join(configs.CachePath, sess.SessionId))
+	cache := NewCache(path.Join(configs.ContextPath, sess.SessionId, consts.CachePath, sess.SessionId))
 	err := cache.Load()
 	if err != nil {
 		return nil, err
@@ -202,7 +212,7 @@ func (s *Session) TaskLog(task *Task, spite *implantpb.Spite) error {
 	if err != nil {
 		return err
 	}
-	filePath := filepath.Join(configs.LogPath, s.ID, fmt.Sprintf("%d_%d", task.Id, task.Cur))
+	filePath := filepath.Join(configs.ContextPath, s.ID, consts.TaskPath, fmt.Sprintf("%d_%d", task.Id, task.Cur))
 	f, err := os.OpenFile(filePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
 		return err
@@ -228,7 +238,7 @@ func (s *Session) Recover() error {
 }
 
 func (s *Session) RecoverTaskIDByLog() (int, error) {
-	files, err := os.ReadDir(filepath.Join(configs.LogPath, s.ID))
+	files, err := os.ReadDir(filepath.Join(configs.ContextPath, s.ID, consts.TaskPath))
 	if err != nil {
 		return 0, err
 	}

@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
@@ -113,7 +114,7 @@ func (rpc *Server) GetSessionHistory(ctx context.Context, req *clientpb.Int) (*c
 		Contexts: make([]*clientpb.TaskContext, 0),
 	}
 
-	taskDir := filepath.Join(configs.LogPath, sid)
+	taskDir := filepath.Join(configs.ContextPath, sid, consts.TaskPath)
 	session, ok := core.Sessions.Get(sid)
 	if !ok {
 		_, taskId, err := db.FindTaskAndMaxTasksID(sid)
