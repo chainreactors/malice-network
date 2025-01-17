@@ -1,10 +1,14 @@
 package rpc
 
 import (
+	"bytes"
 	"context"
+	"encoding/binary"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/types"
+	"github.com/chainreactors/malice-network/server/internal/handlers"
+	"io"
 	"math"
 )
 
@@ -74,12 +78,53 @@ func (rpc *Server) ExecuteBof(ctx context.Context, req *implantpb.ExecuteBinary)
 	if err != nil {
 		return nil, err
 	}
-
 	ch, err := rpc.GenericHandler(ctx, greq)
 	if err != nil {
 		return nil, err
 	}
-	go greq.HandlerResponse(ch, types.MsgBinaryResponse)
+	go greq.HandlerResponse(ch, types.MsgBinaryResponse, func(spite *implantpb.Spite) {
+		reader := bytes.NewReader(spite.GetBinaryResponse().GetData())
+		var bofResps handlers.BOFResponses
+		for {
+			bofResp := &handlers.BOFResponse{}
+
+			err := binary.Read(reader, binary.LittleEndian, &bofResp.OutputType)
+			if err == io.EOF {
+				break
+			} else if err != nil {
+				return
+			}
+
+			err = binary.Read(reader, binary.LittleEndian, &bofResp.CallbackType)
+			if err == io.EOF {
+				break
+			} else if err != nil {
+				return
+			}
+
+			err = binary.Read(reader, binary.LittleEndian, &bofResp.Length)
+			if err == io.EOF {
+				break
+			} else if err != nil {
+				return
+			}
+
+			strData := make([]byte, bofResp.Length)
+			_, err = io.ReadFull(reader, strData)
+			if err == io.EOF {
+				break
+			} else if err != nil {
+				return
+			}
+
+			bofResp.Data = strData
+
+			bofResps = append(bofResps, bofResp)
+		}
+
+		bofResps.Handler(greq.Task.ToProtobuf())
+	})
+
 	return greq.Task.ToProtobuf(), nil
 }
 

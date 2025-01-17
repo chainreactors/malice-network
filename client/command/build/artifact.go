@@ -207,14 +207,14 @@ func SearchArtifact(con *repl.Console, pipeline, typ, format, os, arch string) (
 	case "srdi", "shellcode", "raw", "bin":
 		isSRDI = true
 	}
-
-	return con.Rpc.FindArtifact(con.Context(), &clientpb.Artifact{
+	artifactResp, err := con.Rpc.FindArtifact(con.Context(), &clientpb.Artifact{
 		Arch:     arch,
 		Platform: os,
 		Type:     typ,
 		Pipeline: pipeline,
 		IsSrdi:   isSRDI,
 	})
+	return artifactResp, err
 }
 
 func DeleteArtifact(con *repl.Console, name string) (bool, error) {
