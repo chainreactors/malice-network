@@ -979,9 +979,9 @@ func UpdateBuilderLog(name string, logEntry string) {
 	}
 }
 
-func GetBuilderLogs(builderName string, limit int) (string, error) {
+func GetBuilderLogs(builderID uint32, limit int) (string, error) {
 	var builder models.Builder
-	if err := Session().Where("name = ?", builderName).First(&builder).Error; err != nil {
+	if err := Session().Where("id = ?", builderID).First(&builder).Error; err != nil {
 		return "", err
 	}
 

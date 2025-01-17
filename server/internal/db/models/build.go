@@ -12,7 +12,7 @@ import (
 type Builder struct {
 	ID          uint32 `gorm:"primaryKey;autoIncrement"`
 	Name        string `gorm:"unique"`
-	ProfileName string `gorm:"index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:ProfileName;references:Name"` // 将 ProfileName 设置为外键
+	ProfileName string `gorm:"index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:ProfileName;references:Name"`
 
 	CreatedAt     time.Time `gorm:"->;<-:create;"`
 	Target        string    // build target, like win64, win32, linux64

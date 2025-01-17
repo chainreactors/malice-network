@@ -33,7 +33,7 @@ func (rpc *Server) Build(ctx context.Context, req *clientpb.Generate) (*clientpb
 }
 
 func (rpc *Server) BuildLog(ctx context.Context, req *clientpb.Builder) (*clientpb.Builder, error) {
-	resultLog, err := db.GetBuilderLogs(req.Name, int(req.Num))
+	resultLog, err := db.GetBuilderLogs(req.Id, int(req.Num))
 	if err != nil {
 		return nil, err
 	}

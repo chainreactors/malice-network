@@ -10,6 +10,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/spf13/cobra"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -146,17 +147,21 @@ func PulseCmd(cmd *cobra.Command, con *repl.Console) error {
 }
 
 func BuildLogCmd(cmd *cobra.Command, con *repl.Console) error {
-	name := cmd.Flags().Arg(0)
+	id := cmd.Flags().Arg(0)
+	buildID, err := strconv.ParseUint(id, 10, 32)
+	if err != nil {
+		return err
+	}
 	num, _ := cmd.Flags().GetInt("limit")
 	builder, err := con.Rpc.BuildLog(con.Context(), &clientpb.Builder{
-		Name: name,
-		Num:  uint32(num),
+		Id:  uint32(buildID),
+		Num: uint32(num),
 	})
 	if err != nil {
 		return err
 	}
 	if len(builder.Log) == 0 {
-		con.Log.Infof("No log for %s", name)
+		con.Log.Infof("No log for %s", id)
 		return nil
 	}
 	fmt.Println(string(builder.Log))
