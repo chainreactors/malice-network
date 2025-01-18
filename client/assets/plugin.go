@@ -29,7 +29,12 @@ func GetAliasesDir() string {
 func GetInstalledAliasManifests() []string {
 	aliasDir := GetAliasesDir()
 	var manifests []string
-	for _, alias := range GetProfile().Aliases {
+	aliases, err := GetAliases()
+	if err != nil {
+		logs.Log.Errorf("Failed to get aliases %s", err)
+		return manifests
+	}
+	for _, alias := range aliases {
 		manifestPath := filepath.Join(aliasDir, alias, "alias.json")
 		if _, err := os.Stat(manifestPath); os.IsNotExist(err) {
 			logs.Log.Errorf("no manifest in %s, skipping ...\n", manifestPath)
@@ -57,7 +62,12 @@ func GetExtensionsDir() string {
 func GetInstalledExtensionManifests() []string {
 	extDir := GetExtensionsDir()
 	var manifests []string
-	for _, extension := range GetProfile().Extensions {
+	extensions, err := GetExtensions()
+	if err != nil {
+		logs.Log.Errorf("Failed to get extensions %s", err)
+		return manifests
+	}
+	for _, extension := range extensions {
 		manifestPath := filepath.Join(extDir, extension, "extension.json")
 		if _, err := os.Stat(manifestPath); os.IsNotExist(err) {
 			logs.Log.Errorf("no manifest in %s, skipping ...\n", manifestPath)
@@ -83,7 +93,12 @@ func GetMalsDir() string {
 func GetInstalledMalManifests() []string {
 	dir := GetMalsDir()
 	var manifests []string
-	for _, mal := range GetProfile().Mals {
+	mals, err := GetMals()
+	if err != nil {
+		logs.Log.Errorf("Failed to get mals %s", err)
+		return manifests
+	}
+	for _, mal := range mals {
 		manifestPath := filepath.Join(dir, mal, "mal.yaml")
 		if _, err := os.Stat(manifestPath); os.IsNotExist(err) {
 			logs.Log.Errorf("no manifest in %s, skipping ...\n", manifestPath)

@@ -5,6 +5,7 @@ import (
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 func Commands(con *repl.Console) []*cobra.Command {
@@ -15,7 +16,6 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return cmd.Help()
 		},
 	}
-
 	configRefreshCmd := &cobra.Command{
 		Use:   consts.CommandRefresh,
 		Short: "Refresh config",
@@ -23,6 +23,10 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return RefreshCmd(cmd, con)
 		},
 	}
+
+	common.BindFlag(configRefreshCmd, func(f *pflag.FlagSet) {
+		f.Bool("client", false, "Refresh client config")
+	})
 
 	githubCmd := &cobra.Command{
 		Use:   consts.CommandGithub,

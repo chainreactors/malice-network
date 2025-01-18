@@ -16,19 +16,22 @@ import (
 
 func checkGithubArg(cmd *cobra.Command, isList bool) (string, string, string, string, bool, error) {
 	owner, repo, token, file, remove := common.ParseGithubFlags(cmd)
-	profile := assets.GetProfile().Settings
+	setting, err := assets.GetSetting()
+	if err != nil {
+		return "", "", "", "", false, err
+	}
 	if owner == "" {
-		owner = profile.GithubOwner
+		owner = setting.GithubOwner
 	}
 	if repo == "" {
-		repo = profile.GithubRepo
+		repo = setting.GithubRepo
 	}
 	if token == "" {
-		token = profile.GithubToken
+		token = setting.GithubToken
 	}
 	if !isList {
 		if file == "" {
-			file = profile.GithubWorkflowFile
+			file = setting.GithubWorkflowFile
 		}
 		if file == "" {
 			file = "generate.yaml"

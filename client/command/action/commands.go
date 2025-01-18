@@ -163,7 +163,11 @@ action pulse --target x86_64-pc-windows-msvc --profile pulse_profile --artifact-
 }
 
 func Register(con *repl.Console) {
-	settings := assets.GetProfile().Settings
+	settings, err := assets.GetSetting()
+	if err != nil {
+		con.Log.Errorf("Get settings failed: %v", err)
+		return
+	}
 	con.RegisterServerFunc(consts.CommandAction+"_"+consts.CommandActionRun, func(con *repl.Console, msg string) (*clientpb.Builder, error) {
 		return RunWorkFlow(con, &clientpb.GithubWorkflowRequest{
 			Owner:      settings.GithubOwner,

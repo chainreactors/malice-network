@@ -121,7 +121,11 @@ func (s *Session) HasTask(taskId uint32) bool {
 }
 
 func (s *Session) GetHistory() {
-	profile := assets.GetProfile()
+	profile, err := assets.GetProfile()
+	if err != nil {
+		Log.Errorf("Failed to get profile: %v", err)
+		return
+	}
 	contexts, err := s.Server.Rpc.GetSessionHistory(s.Context(), &clientpb.Int{
 		Limit: int32(profile.Settings.MaxServerLogSize),
 	})
