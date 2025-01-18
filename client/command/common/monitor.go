@@ -14,7 +14,11 @@ func OpsecConfirm(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
-	threshold := assets.GetProfile().Settings.OpsecThreshold
+	setting, err := assets.GetSetting()
+	if err != nil {
+		return err
+	}
+	threshold := setting.OpsecThreshold
 	if err != nil {
 		return err
 	}
