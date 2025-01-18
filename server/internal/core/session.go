@@ -69,7 +69,7 @@ func RegisterSession(req *clientpb.RegisterSession) (*Session, error) {
 	if err != nil {
 		logs.Log.Errorf("cannot create log directory %s, %s", contextDir, err.Error())
 	}
-	cache := NewCache(path.Join(contextDir, consts.CachePath, req.SessionId))
+	cache := NewCache(path.Join(contextDir, consts.CachePath, CacheName))
 	err = cache.Save()
 	if err != nil {
 		return nil, err
@@ -107,7 +107,7 @@ func RegisterSession(req *clientpb.RegisterSession) (*Session, error) {
 }
 
 func RecoverSession(sess *clientpb.Session) (*Session, error) {
-	cache := NewCache(path.Join(configs.ContextPath, sess.SessionId, consts.CachePath, sess.SessionId))
+	cache := NewCache(path.Join(configs.ContextPath, sess.SessionId, consts.CachePath, CacheName))
 	err := cache.Load()
 	if err != nil {
 		return nil, err

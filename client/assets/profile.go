@@ -2,8 +2,7 @@ package assets
 
 import (
 	"github.com/chainreactors/logs"
-	crConfig "github.com/chainreactors/malice-network/helper/utils/config"
-	"github.com/chainreactors/malice-network/helper/utils/fileutils"
+	"github.com/gookit/config/v2"
 	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v3"
 	"os"
@@ -13,6 +12,22 @@ import (
 var (
 	maliceProfile = "malice.yaml"
 )
+
+var HookFn = func(event string, c *config.Config) {
+	p := &Profile{}
+	if event == config.OnSetValue {
+		err := c.MapStruct("", p)
+		if err != nil {
+			logs.Log.Errorf(err.Error())
+			return
+		}
+		err = SaveProfile(p)
+		if err != nil {
+			logs.Log.Errorf(err.Error())
+			return
+		}
+	}
+}
 
 type Profile struct {
 	ResourceDir string    `yaml:"resources" config:"resources" default:""`
@@ -54,42 +69,61 @@ func findFile(filename string) (string, error) {
 	return malicePath, nil
 }
 
-func loadProfile(path string) (*Profile, error) {
-	var profile Profile
-	if !fileutils.Exist(path) {
-		confStr := crConfig.InitDefaultConfig(&profile, 0)
-		err := os.WriteFile(path, confStr, 0644)
-		if err != nil {
-			logs.Log.Errorf("cannot write default config , %s ", err.Error())
-			return nil, err
-		}
-		logs.Log.Warnf("config file not found, created default config %s", path)
-	}
-
-	err := crConfig.LoadConfig(path, &profile)
+func RefreshProfile() error {
+	a := &Profile{}
+	config.MapStruct("", a)
+	err := config.ReloadFiles()
 	if err != nil {
-		logs.Log.Warnf("cannot load config , %s ", err.Error())
-		return nil, err
+		return err
 	}
-	return &profile, nil
+	config.MapStruct("", a)
+	return nil
 }
 
-func GetProfile() *Profile {
-	filePath, err := findFile(maliceProfile)
+func GetProfile() (*Profile, error) {
+	p := &Profile{}
+	err := config.MapStruct("", p)
 	if err != nil {
-		logs.Log.Errorf("Failed to find malice.yaml: %v", err)
-		os.Exit(0)
-		return nil
+		return p, err
 	}
+	return p, nil
+}
 
-	profile, err := loadProfile(filePath)
+func GetAliases() ([]string, error) {
+	var alias []string
+	err := config.MapStruct("aliases", alias)
 	if err != nil {
-		logs.Log.Errorf("Failed to load malice.yaml: %v", err)
-		os.Exit(0)
-		return nil
+		return alias, err
 	}
+	return alias, nil
+}
 
-	return profile
+func GetExtensions() ([]string, error) {
+	var extension []string
+	err := config.MapStruct("extensions", extension)
+	if err != nil {
+		return extension, err
+	}
+	return extension, nil
+}
+
+func GetMals() ([]string, error) {
+	var mal []string
+	err := config.MapStruct("mals", mal)
+	if err != nil {
+		return mal, err
+	}
+	return mal, nil
+
+}
+
+func GetSetting() (*Settings, error) {
+	s := &Settings{}
+	err := config.MapStruct("settings", s)
+	if err != nil {
+		return s, err
+	}
+	return s, nil
 }
 
 func SaveProfile(profile *Profile) error {

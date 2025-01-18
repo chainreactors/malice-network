@@ -14,6 +14,8 @@ import (
 	"time"
 )
 
+var CacheName = "cache.bin"
+
 type Cache struct {
 	items    map[string]*clientpb.SpiteCacheItem
 	mutex    sync.RWMutex
