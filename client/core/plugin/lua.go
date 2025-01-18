@@ -324,7 +324,7 @@ func (plug *LuaPlugin) RegisterLuaBuiltin(vm *lua.LState) error {
 		return true, nil
 	})
 
-	plug.registerLuaFunction(vm, "command", func(name string, fn *lua.LFunction, short string, ttp string) (bool, error) {
+	plug.registerLuaFunction(vm, "command", func(name string, fn *lua.LFunction, short string, ttp string) (*cobra.Command, error) {
 		cmd := plug.CMDs.Find(name)
 
 		var paramNames []string
@@ -418,7 +418,7 @@ func (plug *LuaPlugin) RegisterLuaBuiltin(vm *lua.LState) error {
 
 		logs.Log.Debugf("Registered Command: %s\n", cmd.Name)
 		plug.CMDs.SetCommand(name, malCmd)
-		return true, nil
+		return malCmd, nil
 	})
 
 	return nil
