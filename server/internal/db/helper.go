@@ -600,13 +600,6 @@ func NewProfile(profile *clientpb.Profile) error {
 		PipelineID:      profile.PipelineId,
 		Raw:             profile.Content,
 	}
-	basicPipeline, err := FindPipeline(profile.PipelineId)
-	if err != nil {
-		return err
-	}
-	if strings.ToUpper(basicPipeline.Type) != consts.CryptorAES {
-		return errs.ErrInvalidEncType
-	}
 	if profile.PulsePipelineId != "" {
 		pulsePipeline, err := FindPipeline(profile.PulsePipelineId)
 		if err != nil {
