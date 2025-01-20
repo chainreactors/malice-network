@@ -298,13 +298,21 @@ func ListWebsite(listenerID string) ([]*models.Pipeline, error) {
 	return pipelines, err
 }
 
-func EnablePipeline(pipeline *models.Pipeline) error {
+func EnablePipeline(pid string) error {
+	pipeline, err := FindPipeline(pid)
+	if err != nil {
+		return err
+	}
 	pipeline.Enable = true
 	result := Session().Save(&pipeline)
 	return result.Error
 }
 
-func DisablePipeline(pipeline *models.Pipeline) error {
+func DisablePipeline(pid string) error {
+	pipeline, err := FindPipeline(pid)
+	if err != nil {
+		return err
+	}
 	pipeline.Enable = false
 	result := Session().Save(&pipeline)
 	return result.Error

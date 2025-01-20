@@ -33,8 +33,8 @@ func InitServerStatus(conn *grpc.ClientConn, config *mtls.ClientConfig) (*Server
 	}
 	client, err := s.Rpc.LoginClient(context.Background(), &clientpb.LoginReq{
 		Name: config.Operator,
-		Host: config.LHost,
-		Port: uint32(config.LPort),
+		Host: config.Host,
+		Port: uint32(config.Port),
 	})
 	if err != nil {
 		return nil, err

@@ -180,8 +180,8 @@ func GenerateClientCert(host, name string, port int) (*mtls.ClientConfig, error)
 	}
 	return &mtls.ClientConfig{
 		Operator:      name,
-		LHost:         host,
-		LPort:         port,
+		Host:          host,
+		Port:          port,
 		Type:          mtls.Client,
 		CACertificate: string(caCert),
 		PrivateKey:    string(key),
@@ -206,8 +206,8 @@ func GenerateListenerCert(host, name string, port int) (*mtls.ClientConfig, erro
 	}
 	return &mtls.ClientConfig{
 		Operator:      name,
-		LHost:         host,
-		LPort:         port,
+		Host:          host,
+		Port:          port,
 		Type:          mtls.Listener,
 		CACertificate: string(caCert),
 		PrivateKey:    string(key),

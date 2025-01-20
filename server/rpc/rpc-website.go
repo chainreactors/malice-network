@@ -3,7 +3,6 @@ package rpc
 import (
 	"context"
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -46,6 +45,15 @@ func (rpc *Server) ListWebContent(ctx context.Context, req *clientpb.Website) (*
 
 // WebsiteAddContent - Add content to a website, the website is created if `name` does not exist
 func (rpc *Server) WebsiteAddContent(ctx context.Context, req *clientpb.Website) (*clientpb.Empty, error) {
+	job, err := core.Jobs.Get(req.Name)
+	if err != nil {
+		return nil, err
+	}
+	lns, err := core.Listeners.Get(req.ListenerId)
+	if err != nil {
+		return nil, err
+	}
+
 	if len(req.Contents) != 0 {
 		for _, content := range req.Contents {
 			content.Size = uint64(len(content.Content))
@@ -55,16 +63,12 @@ func (rpc *Server) WebsiteAddContent(ctx context.Context, req *clientpb.Website)
 				return nil, err
 			}
 
-			job := core.Jobs.Get(content.WebsiteId)
-			if job == nil {
-				return nil, fmt.Errorf("website %s not found", req.Name)
-			}
-			job.Message.(*clientpb.Pipeline).GetWeb().Contents[content.Path] = content
-			core.Jobs.Ctrl <- &clientpb.JobCtrl{
+			job.Pipeline.GetWeb().Contents[content.Path] = content
+			lns.PushCtrl(&clientpb.JobCtrl{
 				Id:   core.NextCtrlID(),
 				Ctrl: consts.CtrlWebContentAdd,
 				Job:  job.ToProtobuf(),
-			}
+			})
 		}
 	}
 
@@ -78,42 +82,43 @@ func (rpc *Server) WebsiteUpdateContent(ctx context.Context, req *clientpb.WebCo
 		return nil, err
 	}
 
-	job := core.Jobs.Get(req.WebsiteId)
-	if job == nil {
-		return nil, fmt.Errorf("website %s not found", req.WebsiteId)
+	job, err := core.Jobs.Get(req.WebsiteId)
+	if err != nil {
+		return nil, err
 	}
-
-	core.Jobs.Ctrl <- &clientpb.JobCtrl{
+	lns, err := core.Listeners.Get(req.ListenerId)
+	if err != nil {
+		return nil, err
+	}
+	lns.PushCtrl(&clientpb.JobCtrl{
 		Id:   core.NextCtrlID(),
-		Ctrl: consts.CtrlWebContentUpdate,
+		Ctrl: consts.CtrlWebContentAdd,
 		Job:  job.ToProtobuf(),
-	}
+	})
 
 	return &clientpb.Empty{}, nil
 }
 
 // WebsiteRemoveContent - Remove specific content from a website
 func (rpc *Server) WebsiteRemoveContent(ctx context.Context, req *clientpb.WebContent) (*clientpb.Empty, error) {
-	web, err := db.FindWebContent(req.Id)
+	job, err := core.Jobs.Get(req.WebsiteId)
 	if err != nil {
 		return nil, err
 	}
+	lns, err := core.Listeners.Get(req.ListenerId)
+	if err != nil {
+		return nil, err
+	}
+	lns.PushCtrl(&clientpb.JobCtrl{
+		Id:   core.NextCtrlID(),
+		Ctrl: consts.CtrlWebContentRemove,
+		Job:  job.ToProtobuf(),
+	})
+
 	err = db.RemoveContent(req.Id)
 	if err != nil {
 		return nil, err
 	}
-
-	job := core.Jobs.Get(web.PipelineID)
-	if job == nil {
-		return nil, fmt.Errorf("website %s not found", req.WebsiteId)
-	}
-
-	core.Jobs.Ctrl <- &clientpb.JobCtrl{
-		Id:   core.NextCtrlID(),
-		Ctrl: consts.CtrlWebContentRemove,
-		Job:  job.ToProtobuf(),
-	}
-
 	return &clientpb.Empty{}, nil
 }
 
@@ -150,11 +155,10 @@ func (rpc *Server) StartWebsite(ctx context.Context, req *clientpb.CtrlPipeline)
 		return nil, err
 	}
 
-	listener := core.Listeners.Get(webpipe.ListenerID)
-	if listener == nil {
-		return nil, fmt.Errorf("listener %s not found", req.ListenerId)
+	listener, err := core.Listeners.Get(req.ListenerId)
+	if err != nil {
+		return nil, err
 	}
-
 	webpb := webpipe.ToProtobuf()
 	listener.AddPipeline(webpb)
 	err = MapContents(webpb)
@@ -163,18 +167,17 @@ func (rpc *Server) StartWebsite(ctx context.Context, req *clientpb.CtrlPipeline)
 	}
 	webpb.Enable = true
 	job := &core.Job{
-		ID:      core.NextJobID(),
-		Message: webpb,
-		Name:    webpipe.Name,
+		ID:       core.NextJobID(),
+		Pipeline: webpb,
+		Name:     webpipe.Name,
 	}
 	core.Jobs.Add(job)
-
-	core.Jobs.Ctrl <- &clientpb.JobCtrl{
+	listener.PushCtrl(&clientpb.JobCtrl{
 		Id:   core.NextCtrlID(),
 		Ctrl: consts.CtrlWebsiteStart,
 		Job:  job.ToProtobuf(),
-	}
-	err = db.EnablePipeline(webpipe)
+	})
+	err = db.EnablePipeline(webpipe.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -183,29 +186,22 @@ func (rpc *Server) StartWebsite(ctx context.Context, req *clientpb.CtrlPipeline)
 }
 
 func (rpc *Server) StopWebsite(ctx context.Context, req *clientpb.CtrlPipeline) (*clientpb.Empty, error) {
-	pipelineDB, err := db.FindPipeline(req.Name)
+	job, err := core.Jobs.Get(req.Name)
 	if err != nil {
 		return nil, err
 	}
-	pipeline := pipelineDB.ToProtobuf()
 
-	job := core.Jobs.Get(req.Name)
-	if job == nil {
-		return nil, fmt.Errorf("website %s not found", req.Name)
+	err = db.DisablePipeline(job.Pipeline.Name)
+	listener, err := core.Listeners.Get(job.Pipeline.ListenerId)
+	if err != nil {
+		return nil, err
 	}
-
-	ctrl := clientpb.JobCtrl{
+	listener.PushCtrl(&clientpb.JobCtrl{
 		Id:   core.NextCtrlID(),
 		Ctrl: consts.CtrlWebsiteStop,
 		Job:  job.ToProtobuf(),
-	}
-	core.Jobs.Ctrl <- &ctrl
-	err = db.DisablePipeline(pipelineDB)
-	listener := core.Listeners.Get(pipeline.ListenerId)
-	if listener == nil {
-		return nil, fmt.Errorf("listener %s not found", req.ListenerId)
-	}
-	listener.RemovePipeline(pipeline)
+	})
+	listener.RemovePipeline(job.Pipeline)
 	if err != nil {
 		return nil, err
 	}
@@ -230,31 +226,26 @@ func (rpc *Server) DeleteWebsite(ctx context.Context, req *clientpb.CtrlPipeline
 		return nil, err
 	}
 	pipeline := pipelineDB.ToProtobuf()
-	listener := core.Listeners.Get(pipeline.ListenerId)
-	if listener == nil {
-		return nil, fmt.Errorf("listener %s not found", req.ListenerId)
-	}
-	listener.RemovePipeline(pipeline)
-
-	err = db.DeletePipeline(req.Name)
+	listener, err := core.Listeners.Get(pipeline.ListenerId)
 	if err != nil {
 		return nil, err
 	}
+	listener.RemovePipeline(pipeline)
 	err = db.DeleteWebsite(req.Name)
 	if err != nil && !errors.Is(err, db.ErrRecordNotFound) {
 		return nil, err
 	}
 
-	job := core.Jobs.Get(req.Name)
-	if job == nil {
-		return nil, fmt.Errorf("website %s not found", req.Name)
+	job, err := core.Jobs.Get(req.Name)
+	if err != nil {
+		return nil, err
 	}
 
-	core.Jobs.Ctrl <- &clientpb.JobCtrl{
+	listener.PushCtrl(&clientpb.JobCtrl{
 		Id:   core.NextCtrlID(),
 		Ctrl: consts.CtrlWebsiteStop,
 		Job:  job.ToProtobuf(),
-	}
+	})
 
 	return &clientpb.Empty{}, nil
 }

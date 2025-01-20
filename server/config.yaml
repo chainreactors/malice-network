@@ -72,7 +72,7 @@ listeners:
         enable: true
         type: aes
         key: maliceofinternal
-  websites:
+  website:
     - name: default-website
       port: 80
       root: "/"

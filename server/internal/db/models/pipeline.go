@@ -36,6 +36,7 @@ func (pipeline *Pipeline) ToProtobuf() *clientpb.Pipeline {
 			Enable:     pipeline.Enable,
 			Parser:     pipeline.Parser,
 			Ip:         pipeline.IP,
+			Type:       consts.TCPPipeline,
 			Body: &clientpb.Pipeline_Tcp{
 				Tcp: &clientpb.TCPPipeline{
 					Name:       pipeline.Name,
@@ -53,6 +54,8 @@ func (pipeline *Pipeline) ToProtobuf() *clientpb.Pipeline {
 			ListenerId: pipeline.ListenerID,
 			Enable:     pipeline.Enable,
 			Parser:     pipeline.Parser,
+			Ip:         pipeline.IP,
+			Type:       consts.BindPipeline,
 			Body: &clientpb.Pipeline_Bind{
 				Bind: &clientpb.BindPipeline{
 					Name:       pipeline.Name,
@@ -69,6 +72,7 @@ func (pipeline *Pipeline) ToProtobuf() *clientpb.Pipeline {
 			Ip:         pipeline.IP,
 			Enable:     pipeline.Enable,
 			Parser:     pipeline.Parser,
+			Type:       consts.WebsitePipeline,
 			Body: &clientpb.Pipeline_Web{
 				Web: &clientpb.Website{
 					Name:       pipeline.Name,
@@ -86,11 +90,15 @@ func (pipeline *Pipeline) ToProtobuf() *clientpb.Pipeline {
 			Name:       pipeline.Name,
 			ListenerId: pipeline.ListenerID,
 			Enable:     pipeline.Enable,
+			Type:       consts.RemPipeline,
+			Ip:         pipeline.IP,
 			Body: &clientpb.Pipeline_Rem{
 				Rem: &clientpb.REM{
 					Console: pipeline.Host,
 				},
 			},
+			Tls:        pipeline.Tls.ToProtobuf(),
+			Encryption: pipeline.Encryption.ToProtobuf(),
 		}
 	default:
 		return nil
@@ -136,6 +144,9 @@ func (pipeline *Pipeline) AfterFind(tx *gorm.DB) error {
 }
 
 func FromPipelinePb(pipeline *clientpb.Pipeline, ip string) *Pipeline {
+	if ip == "" {
+		ip = pipeline.Ip
+	}
 	switch body := pipeline.Body.(type) {
 	case *clientpb.Pipeline_Tcp:
 		return &Pipeline{
@@ -173,7 +184,8 @@ func FromPipelinePb(pipeline *clientpb.Pipeline, ip string) *Pipeline {
 			Type:       consts.RemPipeline,
 			Host:       body.Rem.Console,
 			PipelineParams: &types.PipelineParams{
-				Link: body.Rem.Link,
+				Link:      body.Rem.Link,
+				Subscribe: body.Rem.Subscribe,
 			},
 		}
 	case *clientpb.Pipeline_Web:

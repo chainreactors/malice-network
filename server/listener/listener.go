@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/chainreactors/malice-network/helper/errs"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 	"os"
 	"path/filepath"
 	"strings"
@@ -33,51 +34,48 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 	if err != nil {
 		return err
 	}
-	serverAddress := listenerCfg.Address()
-	conn, err := grpc.Dial(serverAddress, options...)
+	conn, err := grpc.Dial(listenerCfg.Address(), options...)
 	if err != nil {
 		return err
 	}
 
-	lis := &listener{
+	lns := &listener{
 		Rpc:       listenerrpc.NewListenerRPCClient(conn),
 		Name:      cfg.Name,
-		Host:      serverAddress,
+		IP:        cfg.IP,
 		pipelines: make(core.Pipelines),
 		conn:      conn,
 		cfg:       cfg,
 		websites:  make(map[string]*Website),
 	}
 
-	_, err = lis.Rpc.RegisterListener(context.Background(), &clientpb.RegisterListener{
-		Id:   fmt.Sprintf("%s_%s", lis.Name, lis.Host),
-		Name: lis.Name,
-		Host: conn.Target(),
-		Addr: serverAddress,
+	_, err = lns.Rpc.RegisterListener(lns.Context(), &clientpb.RegisterListener{
+		Name: lns.Name,
+		Host: cfg.IP,
 	})
 	if err != nil {
 		return err
 	}
-	go lis.Handler()
-	Listener = lis
+	go lns.Handler()
+	Listener = lns
 
 	for _, tcpPipeline := range cfg.TcpPipelines {
-		pipeline, err := tcpPipeline.ToProtobuf(lis.Name)
+		pipeline, err := tcpPipeline.ToProtobuf(lns.Name)
 		if err != nil {
 			return err
 		}
-		err = lis.RegisterAndStart(pipeline)
+		err = lns.RegisterAndStart(pipeline)
 		if err != nil {
 			return err
 		}
 	}
 
 	for _, bindPipeline := range cfg.BindPipelineConfig {
-		pipeline, err := bindPipeline.ToProtobuf(lis.Name)
+		pipeline, err := bindPipeline.ToProtobuf(lns.Name)
 		if err != nil {
 			return err
 		}
-		err = lis.RegisterAndStart(pipeline)
+		err = lns.RegisterAndStart(pipeline)
 		if err != nil {
 			return err
 		}
@@ -87,19 +85,19 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 		if !rem.Enable {
 			continue
 		}
-		pipeline, err := rem.ToProtobuf(lis.Name)
+		pipeline, err := rem.ToProtobuf(lns.Name)
 		if err != nil {
 			return err
 		}
 
-		_, err = lis.Rpc.RegisterRem(context.Background(), pipeline)
+		_, err = lns.Rpc.RegisterRem(lns.Context(), pipeline)
 		if err != nil {
 			return err
 		}
 
-		_, err = lis.Rpc.StartRem(context.Background(), &clientpb.CtrlPipeline{
+		_, err = lns.Rpc.StartRem(lns.Context(), &clientpb.CtrlPipeline{
 			Name:       pipeline.Name,
-			ListenerId: lis.ID(),
+			ListenerId: lns.ID(),
 		})
 		if err != nil {
 			return err
@@ -121,7 +119,7 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 		}
 		pipe := &clientpb.Pipeline{
 			Name:       newWebsite.WebsiteName,
-			ListenerId: lis.Name,
+			ListenerId: lns.Name,
 			Body: &clientpb.Pipeline_Web{
 				Web: web,
 			},
@@ -136,14 +134,14 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 			}
 		}
 		web.Contents = contents
-		_, err = lis.Rpc.RegisterWebsite(context.Background(), pipe)
+		_, err = lns.Rpc.RegisterWebsite(lns.Context(), pipe)
 		if err != nil {
 			return err
 		}
 
-		_, err = lis.Rpc.StartWebsite(context.Background(), &clientpb.CtrlPipeline{
+		_, err = lns.Rpc.StartWebsite(lns.Context(), &clientpb.CtrlPipeline{
 			Name:       newWebsite.WebsiteName,
-			ListenerId: lis.Name,
+			ListenerId: lns.Name,
 		})
 		if err != nil {
 			return err
@@ -156,7 +154,7 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 type listener struct {
 	Rpc       listenerrpc.ListenerRPCClient
 	Name      string
-	Host      string
+	IP        string
 	pipelines core.Pipelines
 	conn      *grpc.ClientConn
 	cfg       *configs.ListenerConfig
@@ -167,12 +165,12 @@ func (lns *listener) RegisterAndStart(pipeline *clientpb.Pipeline) error {
 	if !pipeline.Enable {
 		return nil
 	}
-	_, err := lns.Rpc.RegisterPipeline(context.Background(), pipeline)
+	_, err := lns.Rpc.RegisterPipeline(lns.Context(), pipeline)
 	if err != nil {
 		return err
 	}
 
-	_, err = lns.Rpc.StartPipeline(context.Background(), &clientpb.CtrlPipeline{
+	_, err = lns.Rpc.StartPipeline(lns.Context(), &clientpb.CtrlPipeline{
 		Name:           pipeline.Name,
 		ListenerId:     lns.ID(),
 		BeaconPipeline: pipeline.BeaconPipeline,
@@ -194,8 +192,16 @@ func (lns *listener) ToProtobuf() *clientpb.Listener {
 	}
 }
 
+func (lns *listener) Context() context.Context {
+	return metadata.NewOutgoingContext(context.Background(), metadata.Pairs(
+		"listener_id", lns.Name,
+		"listener_ip", lns.IP,
+	),
+	)
+}
+
 func (lns *listener) Handler() {
-	stream, err := lns.Rpc.JobStream(context.Background())
+	stream, err := lns.Rpc.JobStream(lns.Context())
 	if err != nil {
 		return
 	}
@@ -210,15 +216,17 @@ func (lns *listener) Handler() {
 		var handlerErr error
 		switch msg.Ctrl {
 		case consts.CtrlPipelineStart:
-			handlerErr = lns.startHandler(msg.Job)
+			handlerErr = lns.handlerStart(msg.Job)
 		case consts.CtrlPipelineStop:
-			handlerErr = lns.stopHandler(msg.Job)
+			handlerErr = lns.handlerStop(msg.Job)
+		case consts.CtrlPipelineSync:
+			handlerErr = lns.syncPipeline(msg.Job)
 		case consts.CtrlWebsiteStart:
-			handlerErr = lns.startWebsite(msg.Job)
+			handlerErr = lns.handleStartWebsite(msg.Job)
 		case consts.CtrlWebsiteStop:
-			handlerErr = lns.stopWebsite(msg.Job)
+			handlerErr = lns.handleStopWebsite(msg.Job)
 		case consts.CtrlWebsiteRegister:
-			handlerErr = lns.registerWebsite(msg.Job)
+			handlerErr = lns.handleRegisterWebsite(msg.Job)
 		case consts.CtrlWebContentAdd:
 			handlerErr = lns.handleWebContentAdd(msg.Job)
 		case consts.CtrlWebContentUpdate:
@@ -226,9 +234,7 @@ func (lns *listener) Handler() {
 		case consts.CtrlWebContentRemove:
 			handlerErr = lns.handleWebContentRemove(msg.Job)
 		case consts.CtrlRemStart:
-			handlerErr = lns.startRem(msg.Job)
-		case consts.CtrlRemStop:
-			handlerErr = lns.stopRem(msg.Job)
+			handlerErr = lns.handleStartRem(msg.Job)
 		}
 
 		status := &clientpb.JobStatus{
@@ -239,19 +245,24 @@ func (lns *listener) Handler() {
 		if handlerErr != nil {
 			status.Status = consts.CtrlStatusFailed
 			status.Error = handlerErr.Error()
+			logs.Log.Errorf("[listener.%s] job ctrl %d %s %s failed: %s", lns.ID(), msg.Id, msg.Job.Name, msg.Ctrl, handlerErr.Error())
 		} else {
 			status.Status = consts.CtrlStatusSuccess
+			logs.Log.Importantf("[listener.%s] job ctrl %d %s %s success", lns.ID(), msg.Id, msg.Job.Name, msg.Ctrl)
 		}
-
 		if err := stream.Send(status); err != nil {
 			logs.Log.Errorf(err.Error())
-			continue
+			return
 		}
 	}
 }
 
-func (lns *listener) startHandler(job *clientpb.Job) error {
+func (lns *listener) handlerStart(job *clientpb.Job) error {
 	pipeline, err := lns.startPipeline(job.GetPipeline())
+	if err != nil {
+		return err
+	}
+	_, err = lns.Rpc.SyncPipeline(lns.Context(), pipeline.ToProtobuf())
 	if err != nil {
 		return err
 	}
@@ -272,8 +283,8 @@ func (lns *listener) autoBuild(pipeline *clientpb.Pipeline) error {
 	var pulsePipeline string
 	var input map[string]string
 
-	_, workflowErr := lns.Rpc.WorkflowStatus(context.Background(), &clientpb.GithubWorkflowRequest{})
-	_, dockerErr := lns.Rpc.DockerStatus(context.Background(), &clientpb.Empty{})
+	_, workflowErr := lns.Rpc.WorkflowStatus(lns.Context(), &clientpb.GithubWorkflowRequest{})
+	_, dockerErr := lns.Rpc.DockerStatus(lns.Context(), &clientpb.Empty{})
 	if workflowErr != nil && dockerErr != nil {
 		return fmt.Errorf("workflow and docker not worked: %s, %s", workflowErr.Error(), dockerErr.Error())
 	}
@@ -304,7 +315,7 @@ func (lns *listener) autoBuild(pipeline *clientpb.Pipeline) error {
 			fmt.Printf("Error getting build target for %s\n", target)
 			continue
 		}
-		_, err := lns.Rpc.FindArtifact(context.Background(), &clientpb.Artifact{
+		_, err := lns.Rpc.FindArtifact(lns.Context(), &clientpb.Artifact{
 			Pipeline: pipeline.Name,
 			Target:   target,
 			Type:     buildType,
@@ -318,7 +329,7 @@ func (lns *listener) autoBuild(pipeline *clientpb.Pipeline) error {
 			continue
 		}
 		profileName := codenames.GetCodename()
-		_, err = lns.Rpc.NewProfile(context.Background(), &clientpb.Profile{
+		_, err = lns.Rpc.NewProfile(lns.Context(), &clientpb.Profile{
 			Name:            profileName,
 			PipelineId:      beaconPipeline,
 			PulsePipelineId: pulsePipeline,
@@ -327,7 +338,7 @@ func (lns *listener) autoBuild(pipeline *clientpb.Pipeline) error {
 			return err
 		}
 		if workflowErr == nil {
-			_, err = lns.Rpc.TriggerWorkflowDispatch(context.Background(), &clientpb.GithubWorkflowRequest{
+			_, err = lns.Rpc.TriggerWorkflowDispatch(lns.Context(), &clientpb.GithubWorkflowRequest{
 				Inputs:  input,
 				Profile: profileName,
 			})
@@ -335,7 +346,7 @@ func (lns *listener) autoBuild(pipeline *clientpb.Pipeline) error {
 				return err
 			}
 		} else if dockerErr == nil {
-			_, err = lns.Rpc.Build(context.Background(), &clientpb.Generate{
+			_, err = lns.Rpc.Build(lns.Context(), &clientpb.Generate{
 				Target:      target,
 				ProfileName: profileName,
 				Type:        buildType,
@@ -346,6 +357,20 @@ func (lns *listener) autoBuild(pipeline *clientpb.Pipeline) error {
 			}
 		}
 	}
+	return nil
+}
+
+func (lns *listener) syncPipeline(pipeline *clientpb.Job) error {
+	p := lns.pipelines.Get(pipeline.Name)
+	if p == nil {
+		return fmt.Errorf("pipeline %s not found", pipeline.Name)
+	}
+
+	_, err := lns.Rpc.SyncPipeline(lns.Context(), p.ToProtobuf())
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -371,26 +396,21 @@ func (lns *listener) startPipeline(pipelinepb *clientpb.Pipeline) (core.Pipeline
 	return p, nil
 }
 
-func (lns *listener) stopHandler(job *clientpb.Job) error {
+func (lns *listener) handlerStop(job *clientpb.Job) error {
 	pipeline := job.GetPipeline()
-	switch pipeline.Body.(type) {
-	case *clientpb.Pipeline_Tcp:
-		p := lns.pipelines.Get(pipeline.Name)
-		if p == nil {
-			return errors.New("pipeline not found")
-		}
-		job.Name = p.ID()
-		if err := p.Close(); err != nil {
-			return err
-		}
-		if coreJob := core.Jobs.Get(pipeline.Name); coreJob != nil {
-			core.Jobs.Remove(coreJob)
-		}
+	p := lns.pipelines.Get(pipeline.Name)
+	if p == nil {
+		return errors.New("pipeline not found")
 	}
+	job.Name = p.ID()
+	if err := p.Close(); err != nil {
+		return err
+	}
+	delete(lns.pipelines, p.ID())
 	return nil
 }
 
-func (lns *listener) startWebsite(job *clientpb.Job) error {
+func (lns *listener) handleStartWebsite(job *clientpb.Job) error {
 	pipe := job.GetPipeline()
 	web := pipe.GetWeb()
 	w := lns.websites[pipe.Name]
@@ -409,7 +429,7 @@ func (lns *listener) startWebsite(job *clientpb.Job) error {
 	return nil
 }
 
-func (lns *listener) stopWebsite(job *clientpb.Job) error {
+func (lns *listener) handleStopWebsite(job *clientpb.Job) error {
 	pipe := job.GetPipeline()
 	w := lns.websites[pipe.Name]
 	if w == nil {
@@ -418,13 +438,11 @@ func (lns *listener) stopWebsite(job *clientpb.Job) error {
 	if err := w.Close(); err != nil {
 		return err
 	}
-	if coreJob := core.Jobs.Get(pipe.Name); coreJob != nil {
-		core.Jobs.Remove(coreJob)
-	}
+	delete(lns.websites, pipe.Name)
 	return nil
 }
 
-func (lns *listener) registerWebsite(job *clientpb.Job) error {
+func (lns *listener) handleRegisterWebsite(job *clientpb.Job) error {
 	webContents := job.GetPipeline().GetWeb().Contents
 	for _, content := range webContents {
 		filePath := filepath.Join(configs.WebsitePath, content.File)
@@ -474,7 +492,7 @@ func (lns *listener) handleWebContentRemove(job *clientpb.Job) error {
 	return nil
 }
 
-func (lns *listener) startRem(job *clientpb.Job) error {
+func (lns *listener) handleStartRem(job *clientpb.Job) error {
 	rem, err := NewRem(lns.Rpc, job.GetPipeline())
 	if err != nil {
 		return err
@@ -485,32 +503,12 @@ func (lns *listener) startRem(job *clientpb.Job) error {
 		return err
 	}
 
-	_, err = lns.Rpc.NewRemCallback(context.Background(), rem.ToProtobuf())
+	_, err = lns.Rpc.SyncPipeline(lns.Context(), rem.ToProtobuf())
 	if err != nil {
 		return err
 	}
 
 	lns.pipelines.Add(rem)
 	job.Name = rem.ID()
-	return nil
-}
-
-func (lns *listener) stopRem(job *clientpb.Job) error {
-	p := lns.pipelines.Get(job.GetPipeline().Name)
-	if p == nil {
-		return fmt.Errorf("rem not found")
-	}
-
-	job.Name = p.ID()
-	err := p.Close()
-	if err != nil {
-		return err
-	}
-
-	coreJob := core.Jobs.Get(job.GetPipeline().Name)
-	if coreJob != nil {
-		core.Jobs.Remove(coreJob)
-	}
-
 	return nil
 }

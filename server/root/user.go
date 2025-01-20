@@ -36,7 +36,7 @@ func (user *UserCommand) Execute(rpc clientrpc.RootRPCClient, msg *rootpb.Operat
 		if err != nil {
 			return nil, fmt.Errorf("failed to unmarshal client auth: %w", err)
 		}
-		yamlPath := filepath.Join(configDir, fmt.Sprintf("%s_%s.auth", conf.Operator, conf.LHost))
+		yamlPath := filepath.Join(configDir, fmt.Sprintf("%s_%s.auth", conf.Operator, conf.Host))
 		err = os.WriteFile(yamlPath, []byte(resp.Response), 0644)
 		if err != nil {
 			return nil, err

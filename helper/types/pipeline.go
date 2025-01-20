@@ -28,6 +28,11 @@ type TlsConfig struct {
 }
 
 func (tls *TlsConfig) ToProtobuf() *clientpb.TLS {
+	if tls == nil {
+		return &clientpb.TLS{
+			Enable: false,
+		}
+	}
 	return &clientpb.TLS{
 		Enable: tls.Enable,
 		Cert:   tls.Cert,
@@ -42,6 +47,11 @@ type EncryptionConfig struct {
 }
 
 func (encryption *EncryptionConfig) ToProtobuf() *clientpb.Encryption {
+	if encryption == nil {
+		return &clientpb.Encryption{
+			Enable: false,
+		}
+	}
 	return &clientpb.Encryption{
 		Enable: encryption.Enable,
 		Type:   encryption.Type,
@@ -53,6 +63,7 @@ type PipelineParams struct {
 	Parser     string            `json:"parser,omitempty"`
 	WebPath    string            `json:"path,omitempty"`
 	Link       string            `json:"link,omitempty"`
+	Subscribe  string            `json:"subscribe,omitempty"`
 	Encryption *EncryptionConfig `json:"encryption,omitempty"`
 	Tls        *TlsConfig        `json:"tls,omitempty"`
 }
