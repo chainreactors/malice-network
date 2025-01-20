@@ -2,6 +2,8 @@ package assets
 
 import (
 	"github.com/chainreactors/logs"
+	crConfig "github.com/chainreactors/malice-network/helper/utils/config"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/gookit/config/v2"
 	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v3"
@@ -69,6 +71,25 @@ func findFile(filename string) (string, error) {
 	return malicePath, nil
 }
 
+func LoadProfile() (*Profile, error) {
+	rootDir, _ := filepath.Abs(GetRootAppDir())
+	malicePath := filepath.Join(rootDir, maliceProfile)
+	profile := &Profile{}
+	if !fileutils.Exist(malicePath) {
+		confStr := crConfig.InitDefaultConfig(profile, 0)
+		err := os.WriteFile(malicePath, confStr, 0644)
+		if err != nil {
+			return profile, err
+		}
+		logs.Log.Warnf("config file not found, created default config %s", malicePath)
+	}
+	err := crConfig.LoadConfig(malicePath, profile)
+	if err != nil {
+		return profile, err
+	}
+	return profile, nil
+}
+
 func RefreshProfile() error {
 	a := &Profile{}
 	config.MapStruct("", a)
@@ -90,29 +111,32 @@ func GetProfile() (*Profile, error) {
 }
 
 func GetAliases() ([]string, error) {
+	profile, err := GetProfile()
 	var alias []string
-	err := config.MapStruct("aliases", alias)
 	if err != nil {
 		return alias, err
 	}
+	alias = profile.Aliases
 	return alias, nil
 }
 
 func GetExtensions() ([]string, error) {
-	var extension []string
-	err := config.MapStruct("extensions", extension)
+	profile, err := GetProfile()
+	var extensions []string
 	if err != nil {
-		return extension, err
+		return extensions, err
 	}
-	return extension, nil
+	extensions = profile.Extensions
+	return extensions, nil
 }
 
 func GetMals() ([]string, error) {
+	profile, err := GetProfile()
 	var mal []string
-	err := config.MapStruct("mals", mal)
 	if err != nil {
 		return mal, err
 	}
+	mal = profile.Mals
 	return mal, nil
 
 }
