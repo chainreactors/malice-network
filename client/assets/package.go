@@ -2,6 +2,7 @@ package assets
 
 import (
 	"encoding/json"
+	"github.com/chainreactors/mals/m"
 	"io/ioutil"
 	"log"
 	"os"
@@ -12,8 +13,6 @@ import (
 const (
 	armoryConfigFileName = "armories.json"
 	DefaultArmoryName    = "Default"
-	malConfigFileName    = "mals.yaml"
-	DefaultMalName       = "Default"
 )
 
 var (
@@ -28,47 +27,28 @@ var (
 		Name:      DefaultArmoryName,
 		Enabled:   true,
 	}
-
-	DefaultMalRepoURL = "https://api.github.com/repos/chainreactors/mals/releases"
-
-	DefaultMalConfig = &MalConfig{
-		//PublicKey: DefaultArmoryPublicKey,
-		RepoURL: DefaultMalRepoURL,
-		Name:    DefaultMalName,
-		Enabled: true,
-	}
 )
 
-type MalConfig struct {
-	RepoURL          string `yaml:"repo_url"`
-	Authorization    string `yaml:"authorization"`
-	AuthorizationCmd string `yaml:"authorization_cmd"`
-	Name             string `yaml:"name"`
-	Enabled          bool   `yaml:"enabled"`
-	Version          string `yaml:"version"`
-	Help             string `yaml:"help"`
-}
-
-func GetMalsConfig() []*MalConfig {
-	malConfigPath := filepath.Join(GetRootAppDir(), malConfigFileName)
+func GetMalsConfig() []*m.MalConfig {
+	malConfigPath := filepath.Join(GetRootAppDir(), m.ManifestFileName)
 	if _, err := os.Stat(malConfigPath); os.IsNotExist(err) {
-		return []*MalConfig{DefaultMalConfig}
+		return nil
 	}
 	data, err := os.ReadFile(malConfigPath)
 	if err != nil {
-		return []*MalConfig{DefaultMalConfig}
+		return nil
 	}
-	var malConfigs []*MalConfig
+	var malConfigs []*m.MalConfig
 	err = json.Unmarshal(data, &malConfigs)
 	if err != nil {
-		return []*MalConfig{DefaultMalConfig}
+		return nil
 	}
 	for _, malConfig := range malConfigs {
 		if malConfig.AuthorizationCmd != "" {
 			malConfig.Authorization = ExecuteAuthorizationCmd(malConfig.AuthorizationCmd)
 		}
 	}
-	return append(malConfigs, DefaultMalConfig)
+	return append(malConfigs, m.DefaultMalConfig)
 }
 
 // ArmoryConfig - The armory config file

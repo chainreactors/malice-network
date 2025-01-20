@@ -38,7 +38,7 @@ func RemoveMal(name string, con *repl.Console) error {
 		return errors.New("command name is required")
 	}
 	if plug, ok := loadedMals[name]; !ok {
-		return errors.New("extension not loaded")
+		return errors.New("mal not loaded")
 	} else {
 		implantMenu := con.ImplantMenu()
 		for _, cmd := range plug.CMDs {

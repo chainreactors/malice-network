@@ -4,6 +4,7 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/mals/m"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
@@ -17,16 +18,7 @@ var (
 	defaultTimeout = 15 * time.Minute
 )
 
-// MalHTTPConfig - Configuration for armory HTTP client
-type MalHTTPConfig struct {
-	MalConfig            *assets.MalConfig
-	IgnoreCache          bool
-	ProxyURL             *url.URL
-	Timeout              time.Duration
-	DisableTLSValidation bool
-}
-
-func parseMalHTTPConfig(cmd *cobra.Command) MalHTTPConfig {
+func parseMalHTTPConfig(cmd *cobra.Command) m.MalHTTPConfig {
 	var proxyURL *url.URL
 	rawProxyURL, _ := cmd.Flags().GetString("proxy")
 	if rawProxyURL != "" {
@@ -44,7 +36,7 @@ func parseMalHTTPConfig(cmd *cobra.Command) MalHTTPConfig {
 	}
 	ignoreCache, _ := cmd.Flags().GetBool("ignore-cache")
 	insecure, _ := cmd.Flags().GetBool("insecure")
-	return MalHTTPConfig{
+	return m.MalHTTPConfig{
 		IgnoreCache:          ignoreCache,
 		ProxyURL:             proxyURL,
 		Timeout:              timeout,
@@ -55,7 +47,7 @@ func parseMalHTTPConfig(cmd *cobra.Command) MalHTTPConfig {
 func MalCmd(cmd *cobra.Command, con *repl.Console) error {
 	malHttpConfig := parseMalHTTPConfig(cmd)
 	//malIndex, _ := DefaultMalIndexParser(malHttpConfig)
-	malsJson, err := parserMalYaml(malHttpConfig)
+	malsJson, err := m.ParserMalYaml(m.DefaultMalRepoURL, filepath.Join(assets.GetConfigDir(), m.MalIndexFileName), malHttpConfig)
 	if err != nil {
 		return err
 	}
@@ -70,7 +62,7 @@ func MalCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func printMals(maljson MalsYaml, malHttpConfig MalHTTPConfig, con *repl.Console) error {
+func printMals(maljson m.MalsYaml, malHttpConfig m.MalHTTPConfig, con *repl.Console) error {
 	var rowEntries []table.Row
 	var row table.Row
 
@@ -95,7 +87,7 @@ func printMals(maljson MalsYaml, malHttpConfig MalHTTPConfig, con *repl.Console)
 	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)
 	tableModel.SetHandle(func() {
-		installMal(tableModel, newTable.Buffer, malHttpConfig, con)
+		InstallMal(tableModel, newTable.Buffer, malHttpConfig, con)
 	})
 	err := newTable.Run()
 	if err != nil {
@@ -105,7 +97,7 @@ func printMals(maljson MalsYaml, malHttpConfig MalHTTPConfig, con *repl.Console)
 	return nil
 }
 
-func installMal(tableModel *tui.TableModel, writer io.Writer, malHttpConfig MalHTTPConfig, con *repl.Console) func() {
+func InstallMal(tableModel *tui.TableModel, writer io.Writer, malHttpConfig m.MalHTTPConfig, con *repl.Console) func() {
 	selectRow := tableModel.GetHighlightedRow()
 	if selectRow.Data == nil {
 		return func() {
@@ -114,8 +106,12 @@ func installMal(tableModel *tui.TableModel, writer io.Writer, malHttpConfig MalH
 		}
 	}
 	logs.Log.Infof("Installing mal: %s", selectRow.Data["Name"].(string))
-	err := GithubMalPackageParser(selectRow.Data["Repo_url"].(string), selectRow.Data["Name"].(string),
-		selectRow.Data["Version"].(string), malHttpConfig)
+	err := m.GithubMalPackageParser(
+		selectRow.Data["Repo_url"].(string),
+		selectRow.Data["Name"].(string),
+		selectRow.Data["Version"].(string),
+		assets.GetMalsDir(),
+		malHttpConfig)
 	if err != nil {
 		return func() {
 			con.Log.FErrorf(writer, "Error installing mal: %s\n", err)
