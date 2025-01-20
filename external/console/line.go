@@ -3,7 +3,6 @@ package console
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"regexp"
 	"strings"
 	"unicode/utf8"
@@ -58,13 +57,10 @@ func shellSplit(command string) (args []string, err error) {
 	for _, match := range matches {
 		if match[1] != "" { // Matched double-quoted part
 			parts = append(parts, match[1])
-			fmt.Printf("match: %s\n", match[1])
 		} else if match[2] != "" { // Matched single-quoted part
 			parts = append(parts, match[2])
-			fmt.Printf("match: %s\n", match[2])
 		} else { // Unquoted part
 			parts = append(parts, match[0])
-			fmt.Printf("match: %s\n", match[0])
 		}
 	}
 	return parts, nil
