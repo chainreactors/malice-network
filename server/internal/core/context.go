@@ -118,30 +118,6 @@ func (ctxs *contexts) filterContexts(filterFunc func(*Context) bool) *clientpb.C
 	return resp
 }
 
-func (ctxs *contexts) WithSession(sid string) *clientpb.Contexts {
-	return ctxs.filterContexts(func(c *Context) bool {
-		return c.Session != nil && c.Session.ID == sid
-	})
-}
-
-func (ctxs *contexts) WithPipeline(pid string) *clientpb.Contexts {
-	return ctxs.filterContexts(func(c *Context) bool {
-		return c.Pipeline != nil && c.Pipeline.Name == pid
-	})
-}
-
-func (ctxs *contexts) WithListener(lName string) *clientpb.Contexts {
-	return ctxs.filterContexts(func(c *Context) bool {
-		return c.Listener != nil && c.Listener.Name == lName
-	})
-}
-
-func (ctxs *contexts) WithTask(tName string) *clientpb.Contexts {
-	return ctxs.filterContexts(func(c *Context) bool {
-		return c.Task != nil && c.Task.TaskID() == tName
-	})
-}
-
 func (ctxs *contexts) ScreenShot() *clientpb.Contexts {
 	return ctxs.filterContexts(func(c *Context) bool {
 		return c.Type == consts.ScreenShotType
