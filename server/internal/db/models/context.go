@@ -28,10 +28,6 @@ type Context struct {
 }
 
 func (c *Context) BeforeCreate(tx *gorm.DB) (err error) {
-	c.ID, err = uuid.NewV4()
-	if err != nil {
-		return err
-	}
 	c.CreatedAt = time.Now()
 	return nil
 }
