@@ -204,14 +204,6 @@ func FromPipelinePb(pipeline *clientpb.Pipeline) *Pipeline {
 			},
 		}
 
-	case *clientpb.Pipeline_Rem:
-		return &Pipeline{
-			ListenerID: pipeline.ListenerId,
-			Name:       pipeline.Name,
-			Enable:     pipeline.Enable,
-			Type:       consts.RemPipeline,
-			Host:       body.Rem.Console,
-		}
 	default:
 		return nil
 	}

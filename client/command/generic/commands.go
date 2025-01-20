@@ -3,6 +3,12 @@ package generic
 import (
 	"errors"
 	"fmt"
+	"github.com/rsteube/carapace"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
+	"os"
+	"os/exec"
+
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
@@ -10,12 +16,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/mals"
-	"github.com/rsteube/carapace"
-	"github.com/spf13/cobra"
-	"github.com/rsteube/carapace"
-	"github.com/spf13/pflag"
-	"os"
-	"os/exec"
 )
 
 func Commands(con *repl.Console) []*cobra.Command {
