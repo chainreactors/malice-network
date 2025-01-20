@@ -44,6 +44,10 @@ func NewConsole() (*Console, error) {
 		Helpers: make(map[string]*cobra.Command),
 	}
 	con.NewConsole()
+	_, err := assets.LoadProfile()
+	if err != nil {
+		return nil, err
+	}
 	return con, nil
 }
 
