@@ -6,14 +6,11 @@ import (
 	"github.com/chainreactors/malice-network/client/core/plugin"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
+	"github.com/chainreactors/mals/m"
 	"github.com/chainreactors/tui"
 	"github.com/spf13/cobra"
 	"os"
 	"path/filepath"
-)
-
-var (
-	ManifestFileName = "mal.yaml"
 )
 
 // ExtensionsInstallCmd - Install an extension
@@ -31,15 +28,15 @@ func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *repl.Conso
 	var manifestData []byte
 	var err error
 
-	manifestData, err = fileutils.ReadFileFromTarGz(extLocalPath, ManifestFileName)
+	manifestData, err = fileutils.ReadFileFromTarGz(extLocalPath, m.ManifestFileName)
 	if err != nil {
-		con.Log.Errorf("Error reading %s: %s\n", ManifestFileName, err)
+		con.Log.Errorf("Error reading %s: %s\n", m.ManifestFileName, err)
 		return
 	}
 
 	manifest, err := plugin.ParseMalManifest(manifestData)
 	if err != nil {
-		con.Log.Errorf("Error parsing %s: %s\n", ManifestFileName, err)
+		con.Log.Errorf("Error parsing %s: %s\n", m.ManifestFileName, err)
 		return
 	}
 
