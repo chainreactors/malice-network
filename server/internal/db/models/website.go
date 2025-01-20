@@ -54,7 +54,7 @@ func (wc *WebsiteContent) ToProtobuf(read bool) *clientpb.WebContent {
 		ContentType: wc.ContentType,
 		Content:     data,
 		Encryption:  wc.Encryption.ToProtobuf(),
-		ListenerId:  wc.Pipeline.ListenerID,
+		ListenerId:  wc.Pipeline.ListenerId,
 	}
 }
 

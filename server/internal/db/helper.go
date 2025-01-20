@@ -234,7 +234,7 @@ func FindPipeline(name string) (*models.Pipeline, error) {
 
 func SavePipeline(pipeline *models.Pipeline) (*models.Pipeline, error) {
 	newPipeline := &models.Pipeline{}
-	result := Session().Where("name = ? AND listener_id  = ?", pipeline.Name, pipeline.ListenerID).First(&newPipeline)
+	result := Session().Where("name = ? AND listener_id  = ?", pipeline.Name, pipeline.ListenerId).First(&newPipeline)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			err := Session().Create(&pipeline).Error

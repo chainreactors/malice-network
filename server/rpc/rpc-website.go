@@ -42,7 +42,7 @@ func (rpc *Server) ListWebContent(ctx context.Context, req *clientpb.Website) (*
 }
 
 // WebsiteAddContent - Add content to a website, the website is created if `name` does not exist
-func (rpc *Server) WebsiteAddContent(ctx context.Context, req *clientpb.Website) (*clientpb.Empty, error) {
+func (rpc *Server) AddWebsiteContent(ctx context.Context, req *clientpb.Website) (*clientpb.Empty, error) {
 	job, err := core.Jobs.Get(req.Name)
 	if err != nil {
 		return nil, err
@@ -74,7 +74,7 @@ func (rpc *Server) WebsiteAddContent(ctx context.Context, req *clientpb.Website)
 }
 
 // WebsiteUpdateContent - Update specific content from a website
-func (rpc *Server) WebsiteUpdateContent(ctx context.Context, req *clientpb.WebContent) (*clientpb.Empty, error) {
+func (rpc *Server) UpdateWebsiteContent(ctx context.Context, req *clientpb.WebContent) (*clientpb.Empty, error) {
 	_, err := db.AddContent(req)
 	if err != nil {
 		return nil, err
@@ -98,7 +98,7 @@ func (rpc *Server) WebsiteUpdateContent(ctx context.Context, req *clientpb.WebCo
 }
 
 // WebsiteRemoveContent - Remove specific content from a website
-func (rpc *Server) WebsiteRemoveContent(ctx context.Context, req *clientpb.WebContent) (*clientpb.Empty, error) {
+func (rpc *Server) RemoveWebsiteContent(ctx context.Context, req *clientpb.WebContent) (*clientpb.Empty, error) {
 	job, err := core.Jobs.Get(req.WebsiteId)
 	if err != nil {
 		return nil, err
@@ -159,7 +159,7 @@ func (rpc *Server) StartWebsite(ctx context.Context, req *clientpb.CtrlPipeline)
 		return nil, err
 	}
 
-	listener, err := core.Listeners.Get(req.ListenerId)
+	listener, err := core.Listeners.Get(webpipe.ListenerId)
 	if err != nil {
 		return nil, err
 	}

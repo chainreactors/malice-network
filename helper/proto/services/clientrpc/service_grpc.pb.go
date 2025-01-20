@@ -30,7 +30,6 @@ const (
 	MaliceRPC_GetSessionHistory_FullMethodName     = "/clientrpc.MaliceRPC/GetSessionHistory"
 	MaliceRPC_SessionManage_FullMethodName         = "/clientrpc.MaliceRPC/SessionManage"
 	MaliceRPC_GetListeners_FullMethodName          = "/clientrpc.MaliceRPC/GetListeners"
-	MaliceRPC_GetPipelines_FullMethodName          = "/clientrpc.MaliceRPC/GetPipelines"
 	MaliceRPC_GetJobs_FullMethodName               = "/clientrpc.MaliceRPC/GetJobs"
 	MaliceRPC_GetTasks_FullMethodName              = "/clientrpc.MaliceRPC/GetTasks"
 	MaliceRPC_GetTaskContent_FullMethodName        = "/clientrpc.MaliceRPC/GetTaskContent"
@@ -159,7 +158,6 @@ type MaliceRPCClient interface {
 	GetSessionHistory(ctx context.Context, in *clientpb.Int, opts ...grpc.CallOption) (*clientpb.TasksContext, error)
 	SessionManage(ctx context.Context, in *clientpb.BasicUpdateSession, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	GetListeners(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Listeners, error)
-	GetPipelines(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Pipelines, error)
 	GetJobs(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Jobs, error)
 	// task
 	GetTasks(ctx context.Context, in *clientpb.TaskRequest, opts ...grpc.CallOption) (*clientpb.Tasks, error)
@@ -370,15 +368,6 @@ func (c *maliceRPCClient) SessionManage(ctx context.Context, in *clientpb.BasicU
 func (c *maliceRPCClient) GetListeners(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Listeners, error) {
 	out := new(clientpb.Listeners)
 	err := c.cc.Invoke(ctx, MaliceRPC_GetListeners_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *maliceRPCClient) GetPipelines(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Pipelines, error) {
-	out := new(clientpb.Pipelines)
-	err := c.cc.Invoke(ctx, MaliceRPC_GetPipelines_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1438,7 +1427,6 @@ type MaliceRPCServer interface {
 	GetSessionHistory(context.Context, *clientpb.Int) (*clientpb.TasksContext, error)
 	SessionManage(context.Context, *clientpb.BasicUpdateSession) (*clientpb.Empty, error)
 	GetListeners(context.Context, *clientpb.Empty) (*clientpb.Listeners, error)
-	GetPipelines(context.Context, *clientpb.Empty) (*clientpb.Pipelines, error)
 	GetJobs(context.Context, *clientpb.Empty) (*clientpb.Jobs, error)
 	// task
 	GetTasks(context.Context, *clientpb.TaskRequest) (*clientpb.Tasks, error)
@@ -1603,9 +1591,6 @@ func (UnimplementedMaliceRPCServer) SessionManage(context.Context, *clientpb.Bas
 }
 func (UnimplementedMaliceRPCServer) GetListeners(context.Context, *clientpb.Empty) (*clientpb.Listeners, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetListeners not implemented")
-}
-func (UnimplementedMaliceRPCServer) GetPipelines(context.Context, *clientpb.Empty) (*clientpb.Pipelines, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetPipelines not implemented")
 }
 func (UnimplementedMaliceRPCServer) GetJobs(context.Context, *clientpb.Empty) (*clientpb.Jobs, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetJobs not implemented")
@@ -2099,24 +2084,6 @@ func _MaliceRPC_GetListeners_Handler(srv interface{}, ctx context.Context, dec f
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(MaliceRPCServer).GetListeners(ctx, req.(*clientpb.Empty))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _MaliceRPC_GetPipelines_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(clientpb.Empty)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(MaliceRPCServer).GetPipelines(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: MaliceRPC_GetPipelines_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MaliceRPCServer).GetPipelines(ctx, req.(*clientpb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4196,10 +4163,6 @@ var MaliceRPC_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetListeners",
 			Handler:    _MaliceRPC_GetListeners_Handler,
-		},
-		{
-			MethodName: "GetPipelines",
-			Handler:    _MaliceRPC_GetPipelines_Handler,
 		},
 		{
 			MethodName: "GetJobs",
