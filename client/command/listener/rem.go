@@ -24,7 +24,9 @@ func ListRemCmd(cmd *cobra.Command, con *repl.Console) error {
 	}
 	var rems []*clientpb.REM
 	for _, pipe := range pipes.Pipelines {
-		rems = append(rems, pipe.GetRem())
+		if pipe.Enable {
+			rems = append(rems, pipe.GetRem())
+		}
 	}
 
 	fmt.Println(tui.RendStructDefault(rems))

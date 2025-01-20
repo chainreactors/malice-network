@@ -19,7 +19,7 @@ func (rpc *Server) RegisterPipeline(ctx context.Context, req *clientpb.Pipeline)
 	req.Ip = lns.IP
 	pipelineModel := models.FromPipelinePb(req)
 	if pipelineModel.Tls.Enable && pipelineModel.Tls.Cert == "" && pipelineModel.Tls.Key == "" {
-		pipelineModel.Tls.Cert, pipelineModel.Tls.Key, err = certutils.GenerateTlsCert(pipelineModel.Name, pipelineModel.ListenerID)
+		pipelineModel.Tls.Cert, pipelineModel.Tls.Key, err = certutils.GenerateTlsCert(pipelineModel.Name, pipelineModel.ListenerId)
 		if err != nil {
 			return nil, err
 		}
@@ -50,9 +50,7 @@ func (rpc *Server) ListPipelines(ctx context.Context, req *clientpb.Listener) (*
 		return nil, err
 	}
 	for _, pipeline := range pipelines {
-		if pipeline.Type == consts.TCPPipeline || pipeline.Type == consts.BindPipeline {
-			result = append(result, pipeline.ToProtobuf())
-		}
+		result = append(result, pipeline.ToProtobuf())
 	}
 	return &clientpb.Pipelines{Pipelines: result}, nil
 }
@@ -65,7 +63,7 @@ func (rpc *Server) StartPipeline(ctx context.Context, req *clientpb.CtrlPipeline
 	pipeline := pipelineDB.ToProtobuf()
 	pipeline.Target = req.Target
 	pipeline.BeaconPipeline = req.BeaconPipeline
-	lns, err := core.Listeners.Get(req.ListenerId)
+	lns, err := core.Listeners.Get(pipelineDB.ListenerId)
 	if err != nil {
 		return nil, err
 	}

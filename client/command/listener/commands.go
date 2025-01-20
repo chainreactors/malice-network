@@ -417,7 +417,7 @@ rem start rem_test
 	}
 
 	common.BindArgCompletions(startRemCmd, nil,
-		carapace.ActionValues().Usage("rem name"))
+		common.RemPipelineCompleter(con))
 
 	stopRemCmd := &cobra.Command{
 		Use:   consts.CommandRemStop,
@@ -433,7 +433,7 @@ rem stop rem_test
 	}
 
 	common.BindArgCompletions(stopRemCmd, nil,
-		carapace.ActionValues().Usage("rem name"))
+		common.RemPipelineCompleter(con))
 
 	deleteRemCmd := &cobra.Command{
 		Use:   consts.CommandPipelineDelete,
@@ -448,7 +448,7 @@ rem delete rem_test
 	}
 
 	common.BindArgCompletions(deleteRemCmd, nil,
-		carapace.ActionValues().Usage("rem name"))
+		common.RemPipelineCompleter(con))
 
 	remCmd.AddCommand(listremCmd, newRemCmd, startRemCmd, stopRemCmd, deleteRemCmd)
 

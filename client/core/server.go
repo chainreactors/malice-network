@@ -96,6 +96,11 @@ func (s *ServerStatus) Update() error {
 		return err
 	}
 
+	err = s.UpdatePipeline()
+	if err != nil {
+		return err
+	}
+
 	err = s.UpdateSessions(false)
 	if err != nil {
 		return err
@@ -194,9 +199,17 @@ func (s *ServerStatus) UpdateListener() error {
 	}
 	for _, listener := range listeners.GetListeners() {
 		s.Listeners[listener.Id] = listener
-		for _, pipeline := range listener.Pipelines.GetPipelines() {
-			s.Pipelines[pipeline.Name] = pipeline
-		}
+	}
+	return nil
+}
+
+func (s *ServerStatus) UpdatePipeline() error {
+	pipelines, err := s.Rpc.ListPipelines(context.Background(), &clientpb.Listener{})
+	if err != nil {
+		return err
+	}
+	for _, pipeline := range pipelines.GetPipelines() {
+		s.Pipelines[pipeline.Name] = pipeline
 	}
 	return nil
 }

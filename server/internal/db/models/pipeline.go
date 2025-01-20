@@ -16,7 +16,7 @@ import (
 type Pipeline struct {
 	ID                    uuid.UUID `gorm:"primaryKey;->;<-:create;type:uuid;"`
 	CreatedAt             time.Time `gorm:"->;<-:create;"`
-	ListenerID            string    `gorm:"type:string;"`
+	ListenerId            string    `gorm:"type:string;"`
 	Name                  string    `gorm:"unique,type:string"`
 	IP                    string    `gorm:"type:string;default:''"`
 	Host                  string    `config:"host"`
@@ -32,7 +32,7 @@ func (pipeline *Pipeline) ToProtobuf() *clientpb.Pipeline {
 	case consts.TCPPipeline:
 		return &clientpb.Pipeline{
 			Name:       pipeline.Name,
-			ListenerId: pipeline.ListenerID,
+			ListenerId: pipeline.ListenerId,
 			Enable:     pipeline.Enable,
 			Parser:     pipeline.Parser,
 			Ip:         pipeline.IP,
@@ -40,7 +40,7 @@ func (pipeline *Pipeline) ToProtobuf() *clientpb.Pipeline {
 			Body: &clientpb.Pipeline_Tcp{
 				Tcp: &clientpb.TCPPipeline{
 					Name:       pipeline.Name,
-					ListenerId: pipeline.ListenerID,
+					ListenerId: pipeline.ListenerId,
 					Host:       pipeline.Host,
 					Port:       uint32(pipeline.Port),
 				},
@@ -51,7 +51,7 @@ func (pipeline *Pipeline) ToProtobuf() *clientpb.Pipeline {
 	case consts.BindPipeline:
 		return &clientpb.Pipeline{
 			Name:       pipeline.Name,
-			ListenerId: pipeline.ListenerID,
+			ListenerId: pipeline.ListenerId,
 			Enable:     pipeline.Enable,
 			Parser:     pipeline.Parser,
 			Ip:         pipeline.IP,
@@ -59,7 +59,7 @@ func (pipeline *Pipeline) ToProtobuf() *clientpb.Pipeline {
 			Body: &clientpb.Pipeline_Bind{
 				Bind: &clientpb.BindPipeline{
 					Name:       pipeline.Name,
-					ListenerId: pipeline.ListenerID,
+					ListenerId: pipeline.ListenerId,
 				},
 			},
 			Tls:        pipeline.Tls.ToProtobuf(),
@@ -68,7 +68,7 @@ func (pipeline *Pipeline) ToProtobuf() *clientpb.Pipeline {
 	case consts.WebsitePipeline:
 		return &clientpb.Pipeline{
 			Name:       pipeline.Name,
-			ListenerId: pipeline.ListenerID,
+			ListenerId: pipeline.ListenerId,
 			Ip:         pipeline.IP,
 			Enable:     pipeline.Enable,
 			Parser:     pipeline.Parser,
@@ -76,7 +76,7 @@ func (pipeline *Pipeline) ToProtobuf() *clientpb.Pipeline {
 			Body: &clientpb.Pipeline_Web{
 				Web: &clientpb.Website{
 					Name:       pipeline.Name,
-					ListenerId: pipeline.ListenerID,
+					ListenerId: pipeline.ListenerId,
 					Root:       pipeline.WebPath,
 					Port:       uint32(pipeline.Port),
 					Contents:   make(map[string]*clientpb.WebContent),
@@ -88,12 +88,15 @@ func (pipeline *Pipeline) ToProtobuf() *clientpb.Pipeline {
 	case consts.RemPipeline:
 		return &clientpb.Pipeline{
 			Name:       pipeline.Name,
-			ListenerId: pipeline.ListenerID,
+			ListenerId: pipeline.ListenerId,
 			Enable:     pipeline.Enable,
 			Type:       consts.RemPipeline,
 			Ip:         pipeline.IP,
 			Body: &clientpb.Pipeline_Rem{
 				Rem: &clientpb.REM{
+					Name:      pipeline.Name,
+					Host:      pipeline.Host,
+					Port:      pipeline.Port,
 					Link:      pipeline.PipelineParams.Link,
 					Subscribe: pipeline.PipelineParams.Subscribe,
 					Agents:    pipeline.PipelineParams.Agents,
@@ -149,7 +152,7 @@ func FromPipelinePb(pipeline *clientpb.Pipeline) *Pipeline {
 	switch body := pipeline.Body.(type) {
 	case *clientpb.Pipeline_Tcp:
 		return &Pipeline{
-			ListenerID: pipeline.ListenerId,
+			ListenerId: pipeline.ListenerId,
 			Name:       pipeline.Name,
 			Enable:     pipeline.Enable,
 			Host:       body.Tcp.Host,
@@ -164,7 +167,7 @@ func FromPipelinePb(pipeline *clientpb.Pipeline) *Pipeline {
 		}
 	case *clientpb.Pipeline_Bind:
 		return &Pipeline{
-			ListenerID: pipeline.ListenerId,
+			ListenerId: pipeline.ListenerId,
 			Name:       pipeline.Name,
 			Enable:     pipeline.Enable,
 			IP:         pipeline.Ip,
@@ -177,7 +180,7 @@ func FromPipelinePb(pipeline *clientpb.Pipeline) *Pipeline {
 		}
 	case *clientpb.Pipeline_Rem:
 		return &Pipeline{
-			ListenerID: pipeline.ListenerId,
+			ListenerId: pipeline.ListenerId,
 			Name:       pipeline.Name,
 			Enable:     pipeline.Enable,
 			Type:       consts.RemPipeline,
@@ -192,7 +195,7 @@ func FromPipelinePb(pipeline *clientpb.Pipeline) *Pipeline {
 		}
 	case *clientpb.Pipeline_Web:
 		return &Pipeline{
-			ListenerID: pipeline.ListenerId,
+			ListenerId: pipeline.ListenerId,
 			Name:       pipeline.Name,
 			Enable:     pipeline.Enable,
 			IP:         pipeline.Ip,

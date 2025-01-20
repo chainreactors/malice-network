@@ -51,7 +51,7 @@ func (rpc *Server) StartRem(ctx context.Context, req *clientpb.CtrlPipeline) (*c
 		return nil, err
 	}
 	rem := remDB.ToProtobuf()
-	lns, err := core.Listeners.Get(req.ListenerId)
+	lns, err := core.Listeners.Get(remDB.ListenerId)
 	if err != nil {
 		return nil, err
 	}

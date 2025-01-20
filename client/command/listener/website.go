@@ -157,7 +157,7 @@ func AddWebContentCmd(cmd *cobra.Command, con *repl.Console) error {
 		},
 	}
 
-	_, err = con.Rpc.WebsiteAddContent(con.Context(), website)
+	_, err = con.Rpc.AddWebsiteContent(con.Context(), website)
 	if err != nil {
 		return err
 	}
@@ -188,7 +188,7 @@ func UpdateWebContentCmd(cmd *cobra.Command, con *repl.Console) error {
 		Encryption: encryption,
 	}
 
-	_, err = con.Rpc.WebsiteUpdateContent(con.Context(), webContent)
+	_, err = con.Rpc.UpdateWebsiteContent(con.Context(), webContent)
 	if err != nil {
 		return err
 	}
@@ -205,7 +205,7 @@ func RemoveWebContentCmd(cmd *cobra.Command, con *repl.Console) error {
 		Id: contentId,
 	}
 
-	_, err := con.Rpc.WebsiteRemoveContent(con.Context(), webContent)
+	_, err := con.Rpc.RemoveWebsiteContent(con.Context(), webContent)
 	if err != nil {
 		return err
 	}
