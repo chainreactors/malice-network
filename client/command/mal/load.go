@@ -5,6 +5,7 @@ import (
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/core/plugin"
 	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/mals/m"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
@@ -21,7 +22,7 @@ type LoadedMal struct {
 
 func MalLoadCmd(ctx *cobra.Command, con *repl.Console) error {
 	dirPath := ctx.Flags().Arg(0)
-	mal, err := LoadMal(con, con.ImplantMenu(), filepath.Join(assets.GetMalsDir(), dirPath, ManifestFileName))
+	mal, err := LoadMal(con, con.ImplantMenu(), filepath.Join(assets.GetMalsDir(), dirPath, m.ManifestFileName))
 	if err != nil {
 		return err
 	}
