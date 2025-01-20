@@ -64,12 +64,18 @@ func NewSessions() *sessions {
 }
 
 func RegisterSession(req *clientpb.RegisterSession) (*Session, error) {
+	var err error
 	contextDir := filepath.Join(configs.ContextPath, req.SessionId)
-	err := os.MkdirAll(contextDir, os.ModePerm)
+	err = os.MkdirAll(contextDir, os.ModePerm)
 	if err != nil {
 		logs.Log.Errorf("cannot create log directory %s, %s", contextDir, err.Error())
 	}
-	cache := NewCache(path.Join(contextDir, consts.CachePath, CacheName))
+	cacheDir := filepath.Join(contextDir, consts.CachePath)
+	err = os.MkdirAll(cacheDir, os.ModePerm)
+	if err != nil {
+		logs.Log.Errorf("cannot create cache directory %s, %s", cacheDir, err.Error())
+	}
+	cache := NewCache(filepath.Join(cacheDir, CacheName))
 	err = cache.Save()
 	if err != nil {
 		return nil, err
