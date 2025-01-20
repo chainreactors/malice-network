@@ -7,11 +7,8 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/server/internal/db"
-	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"sync"
 )
-
-type ContextsResp []*clientpb.Context
 
 type contexts struct {
 	sync.Map
@@ -30,14 +27,30 @@ type Context struct {
 	Value types.Context
 }
 
-func (c *Context) ToProtobuf() *clientpb.Context {
+func (ctx *Context) checkNil() {
+	if ctx.Session == nil {
+		ctx.Session = &Session{}
+	}
+	if ctx.Pipeline == nil {
+		ctx.Pipeline = &clientpb.Pipeline{}
+	}
+	if ctx.Task == nil {
+		ctx.Task = &Task{}
+	}
+	if ctx.Listener == nil {
+		ctx.Listener = &Listener{}
+	}
+}
+
+func (ctx *Context) ToProtobuf() *clientpb.Context {
+	ctx.checkNil()
 	resp := &clientpb.Context{
-		Session:  c.Session.ToProtobuf(),
-		Listener: c.Listener.ToProtobuf(),
-		Pipeline: c.Pipeline,
-		Task:     c.Task.ToProtobuf(),
-		Type:     c.Type,
-		Value:    c.Value.String(),
+		Session:  ctx.Session.ToProtobuf(),
+		Listener: ctx.Listener.ToProtobuf(),
+		Pipeline: ctx.Pipeline,
+		Task:     ctx.Task.ToProtobuf(),
+		Type:     ctx.Type,
+		Value:    ctx.Value.String(),
 	}
 	return resp
 }
@@ -79,6 +92,8 @@ func NewContext(ctx *clientpb.Context) (*Context, error) {
 		Type:     ctx.Type,
 		Value:    value,
 	}
+
+	context.checkNil()
 	return context, nil
 }
 
@@ -90,120 +105,78 @@ func NewContexts() *contexts {
 	return newContexts
 }
 
-func (ctx *contexts) WithSession(sid string) ContextsResp {
-	var contexts ContextsResp
-
-	ctx.Map.Range(func(key, value interface{}) bool {
+func (ctxs *contexts) filterContexts(filterFunc func(*Context) bool) *clientpb.Contexts {
+	var resp *clientpb.Contexts
+	ctxs.Map.Range(func(key, value interface{}) bool {
 		if c, ok := value.(*Context); ok {
-			if c.Session.ID == sid {
-				contexts = append(contexts, c.ToProtobuf())
+			if filterFunc(c) {
+				resp.Contexts = append(resp.Contexts, c.ToProtobuf())
 			}
 		}
 		return true
 	})
-	return contexts
+	return resp
 }
 
-func (ctx *contexts) WithPipeline(pid string) ContextsResp {
-	var contexts ContextsResp
-
-	ctx.Map.Range(func(key, value interface{}) bool {
-		if c, ok := value.(*models.Context); ok {
-			c.PipelineName = pid
-			contexts = append(contexts, c.ToProtobuf())
-		}
-		return true
+func (ctxs *contexts) WithSession(sid string) *clientpb.Contexts {
+	return ctxs.filterContexts(func(c *Context) bool {
+		return c.Session != nil && c.Session.ID == sid
 	})
-	return contexts
 }
 
-func (ctx *contexts) WithListener(lName string) ContextsResp {
-	var contexts ContextsResp
-
-	ctx.Map.Range(func(key, value interface{}) bool {
-		if c, ok := value.(*models.Context); ok {
-			c.ListenerName = lName
-			contexts = append(contexts, c.ToProtobuf())
-		}
-		return true
+func (ctxs *contexts) WithPipeline(pid string) *clientpb.Contexts {
+	return ctxs.filterContexts(func(c *Context) bool {
+		return c.Pipeline != nil && c.Pipeline.Name == pid
 	})
-	return contexts
-
 }
 
-func (ctx *contexts) WithTask(tName string) ContextsResp {
-	var contexts ContextsResp
-
-	ctx.Map.Range(func(key, value interface{}) bool {
-		if c, ok := value.(*models.Context); ok {
-			c.TaskID = tName
-			contexts = append(contexts, c.ToProtobuf())
-		}
-		return true
+func (ctxs *contexts) WithListener(lName string) *clientpb.Contexts {
+	return ctxs.filterContexts(func(c *Context) bool {
+		return c.Listener != nil && c.Listener.Name == lName
 	})
-	return contexts
-
 }
 
-func (ctx *contexts) ScreenShot() ContextsResp {
-	var contexts ContextsResp
-
-	ctx.Map.Range(func(key, value interface{}) bool {
-		if c, ok := value.(*models.Context); ok {
-			if c.Type == consts.ScreenShotType {
-				contexts = append(contexts, c.ToProtobuf())
-			}
-		}
-		return true
+func (ctxs *contexts) WithTask(tName string) *clientpb.Contexts {
+	return ctxs.filterContexts(func(c *Context) bool {
+		return c.Task != nil && c.Task.TaskID() == tName
 	})
-	return contexts
 }
 
-func (ctx *contexts) KeyLogger() ContextsResp {
-	var contexts ContextsResp
-
-	ctx.Map.Range(func(key, value interface{}) bool {
-		if c, ok := value.(*models.Context); ok {
-			if c.Type == consts.KeyLoggerType {
-				contexts = append(contexts, c.ToProtobuf())
-			}
-		}
-		return true
+func (ctxs *contexts) ScreenShot() *clientpb.Contexts {
+	return ctxs.filterContexts(func(c *Context) bool {
+		return c.Type == consts.ScreenShotType
 	})
-	return contexts
 }
 
-func (ctx *contexts) Credential() ContextsResp {
-	var contexts ContextsResp
-
-	ctx.Map.Range(func(key, value interface{}) bool {
-		if c, ok := value.(*models.Context); ok {
-			if c.Type == consts.CredentialType {
-				contexts = append(contexts, c.ToProtobuf())
-			}
-		}
-		return true
+func (ctxs *contexts) KeyLogger() *clientpb.Contexts {
+	return ctxs.filterContexts(func(c *Context) bool {
+		return c.Type == consts.KeyLoggerType
 	})
-	return contexts
 }
 
-func (ctx *contexts) Add(c *Context) {
-	ctx.Store(c.ID, c)
+func (ctxs *contexts) Credential() *clientpb.Contexts {
+	return ctxs.filterContexts(func(c *Context) bool {
+		return c.Type == consts.CredentialType
+	})
 }
 
-func (ctx *contexts) Remove(cID string) {
-	val, ok := ctx.Load(cID)
+func (ctxs *contexts) Add(c *Context) {
+	ctxs.Store(c.ID, c)
+}
+
+func (ctxs *contexts) Remove(cID string) {
+	val, ok := ctxs.Load(cID)
 	if !ok {
 		logs.Log.Errorf("Context not found: %s", cID)
 		return
 	}
 	v := val.(*Context)
-	ctx.Delete(v.ID)
+	ctxs.Delete(v.ID)
 
 }
 
-func (ctx *contexts) Get(cID string) (*Context, bool) {
-	val, ok := ctx.Load(cID)
+func (ctxs *contexts) Get(cID string) (*Context, bool) {
+	val, ok := ctxs.Load(cID)
 	if !ok {
 		return nil, false
 	}
@@ -211,9 +184,9 @@ func (ctx *contexts) Get(cID string) (*Context, bool) {
 	return v, true
 }
 
-func (ctx *contexts) All() []*Context {
+func (ctxs *contexts) All() []*Context {
 	var contexts []*Context
-	ctx.Map.Range(func(key, value interface{}) bool {
+	ctxs.Map.Range(func(key, value interface{}) bool {
 		if c, ok := value.(*Context); ok {
 			contexts = append(contexts, c)
 		}
@@ -223,11 +196,11 @@ func (ctx *contexts) All() []*Context {
 }
 
 func RecoverContext() error {
-	contexts, err := db.GetAllContext()
+	dbContexts, err := db.GetAllContext()
 	if err != nil {
 		return err
 	}
-	for _, c := range contexts {
+	for _, c := range dbContexts {
 		context := c.ToProtobuf()
 		newContext, err := NewContext(context)
 		if err != nil {

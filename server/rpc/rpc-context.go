@@ -28,15 +28,15 @@ func (rpc *Server) GetContexts(ctx context.Context, req *clientpb.Context) (*cli
 }
 
 func (rpc *Server) GetScreenShot(ctx context.Context, req *clientpb.Empty) (*clientpb.Contexts, error) {
-	return &clientpb.Contexts{Contexts: core.Contexts.ScreenShot()}, nil
+	return core.Contexts.ScreenShot(), nil
 }
 
 func (rpc *Server) GetCredential(ctx context.Context, req *clientpb.Empty) (*clientpb.Contexts, error) {
-	return &clientpb.Contexts{Contexts: core.Contexts.Credential()}, nil
+	return core.Contexts.Credential(), nil
 }
 
 func (rpc *Server) GetKeylogger(ctx context.Context, req *clientpb.Empty) (*clientpb.Contexts, error) {
-	return &clientpb.Contexts{Contexts: core.Contexts.KeyLogger()}, nil
+	return core.Contexts.KeyLogger(), nil
 }
 
 func (rpc *Server) AddContext(ctx context.Context, req *clientpb.Context) (*clientpb.Empty, error) {
