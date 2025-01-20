@@ -328,10 +328,9 @@ func (plug *LuaPlugin) RegisterLuaBuiltin(vm *lua.LState) error {
 
 		var paramNames []string
 		for _, param := range fn.Proto.DbgLocals {
-			if !strings.HasPrefix(param.Name, "flag_") && param.Name != "args" {
-				continue
+			if strings.HasPrefix(param.Name, "flag_") || slices.Contains(ReservedWords, param.Name) {
+				paramNames = append(paramNames, param.Name)
 			}
-			paramNames = append(paramNames, param.Name)
 		}
 
 		// 创建新的 Cobra 命令
