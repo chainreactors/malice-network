@@ -30,9 +30,8 @@ import (
 var (
 	ReservedARGS    = "args"
 	ReservedCMDLINE = "cmdline"
-	ReservedWords   = []string{ReservedCMDLINE, ReservedARGS}
-
-	LuaPackages = map[string]*lua.LTable{}
+	ReservedCMD     = "cmd"
+	ReservedWords   = []string{ReservedCMDLINE, ReservedARGS, ReservedCMD}
 
 	ProtoPackage  = []string{"implantpb", "clientpb", "modulepb"}
 	GlobalPlugins []*DefaultPlugin
@@ -354,11 +353,11 @@ func (plug *LuaPlugin) RegisterLuaBuiltin(vm *lua.LState) error {
 
 					for _, paramName := range paramNames {
 						switch paramName {
-						case "cmdline":
+						case ReservedCMDLINE:
 							wrapper.Push(lua.LString(shellquote.Join(args...)))
-						case "args":
+						case ReservedARGS:
 							wrapper.Push(mals.ConvertGoValueToLua(wrapper.LState, args))
-						case "cmd":
+						case ReservedCMD:
 							wrapper.Push(mals.ConvertGoValueToLua(wrapper.LState, cmd))
 						default:
 							val, err := cmd.Flags().GetString(paramName)
