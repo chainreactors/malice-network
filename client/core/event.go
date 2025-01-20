@@ -226,7 +226,7 @@ func (s *ServerStatus) handleJob(event *clientpb.Event) {
 		Log.Importantf("[%s] %s: rem %s on %s %s:%d\n", event.Type, event.Op,
 			pipeline.Name, pipeline.ListenerId, pipeline.Ip, pipeline.GetRem().Port)
 
-		Log.Infof("[%s] %s: rem -c %s \n", event.Type, event.Op, pipeline.GetRem().Link)
+		//Log.Infof("[%s] %s: rem -c %s \n", event.Type, event.Op, pipeline.GetRem().Link)
 	case *clientpb.Pipeline_Web:
 		if event.Op == consts.CtrlWebContentAdd {
 			var root = ""
