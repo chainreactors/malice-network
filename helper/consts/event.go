@@ -82,4 +82,5 @@ const (
 	EventJob       = "job"
 	EventHeartbeat = "heartbeat"
 	EventBuild     = "build"
+	EventPivot     = "pivot"
 )
