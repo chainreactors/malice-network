@@ -358,6 +358,8 @@ func (plug *LuaPlugin) RegisterLuaBuiltin(vm *lua.LState) error {
 							wrapper.Push(lua.LString(shellquote.Join(args...)))
 						case "args":
 							wrapper.Push(mals.ConvertGoValueToLua(wrapper.LState, args))
+						case "cmd":
+							wrapper.Push(mals.ConvertGoValueToLua(wrapper.LState, cmd))
 						default:
 							val, err := cmd.Flags().GetString(paramName)
 							if err != nil {
