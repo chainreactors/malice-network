@@ -1,9 +1,10 @@
 package consts
 
 const (
-	ScreenShotType = "screenshot"
-	KeyLoggerType  = "keylogger"
-	CredentialType = "credential"
+	ContextScreenShot = "screenshot"
+	ContextKeyLogger  = "keylogger"
+	ContextCredential = "credential"
+	ContextPivoting   = "pivoting"
 )
 
 const (

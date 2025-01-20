@@ -48,8 +48,8 @@ func (rpc *Server) SpiteStream(stream listenerrpc.ListenerRPC_SpiteStreamServer)
 			return err
 		}
 
-		sess, ok := core.Sessions.Get(msg.SessionId)
-		if !ok {
+		sess, err := core.Sessions.Get(msg.SessionId)
+		if err != nil {
 			logs.Log.Warnf("session %s not found", msg.SessionId)
 			continue
 		}
@@ -74,12 +74,12 @@ func (rpc *Server) SpiteStream(stream listenerrpc.ListenerRPC_SpiteStreamServer)
 //		if req.CtrlType == consts.CtrlPipelineStart {
 //
 //		} else if req.CtrlType == consts.CtrlPipelineStop {
-//			err := core.Listeners.Stop(req.ListenerName)
+//			err := core.Listeners.Stop(req.ListenerID)
 //			if err != nil {
 //				logs.Log.Error(err.Error())
 //			}
 //			resp = clientpb.CtrlPipeline{
-//				ListenerName: req.ListenerName,
+//				ListenerID: req.ListenerID,
 //				CtrlType:     consts.CtrlPipelineStop,
 //			}
 //		}

@@ -38,6 +38,9 @@ func (t *Task) UpdateTotal(db *gorm.DB, newTotal int) error {
 }
 
 func (t *Task) ToProtobuf() *clientpb.Task {
+	if t == nil {
+		return nil
+	}
 	return &clientpb.Task{
 		TaskId:      uint32(t.Seq),
 		Type:        t.Type,

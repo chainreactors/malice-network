@@ -17,8 +17,8 @@ import (
 
 func (rpc *Server) Register(ctx context.Context, req *clientpb.RegisterSession) (*clientpb.Empty, error) {
 	var err error
-	sess, ok := core.Sessions.Get(req.SessionId)
-	if !ok {
+	sess, err := core.Sessions.Get(req.SessionId)
+	if err != nil {
 		sess, err = core.RegisterSession(req)
 		if err != nil {
 			return nil, err
@@ -46,9 +46,9 @@ func (rpc *Server) SysInfo(ctx context.Context, req *implantpb.SysInfo) (*client
 	if err != nil {
 		return nil, err
 	}
-	sess, ok := core.Sessions.Get(id)
-	if !ok {
-		return nil, nil
+	sess, err := core.Sessions.Get(id)
+	if err != nil {
+		return nil, err
 	}
 	sess.UpdateSysInfo(req)
 	return &clientpb.Empty{}, nil
@@ -60,8 +60,7 @@ func (rpc *Server) Checkin(ctx context.Context, req *implantpb.Ping) (*clientpb.
 		return nil, err
 	}
 	var sess *core.Session
-	var ok bool
-	if sess, ok = core.Sessions.Get(sid); !ok {
+	if sess, err = core.Sessions.Get(sid); err != nil {
 		dbSess, err := db.FindSession(sid)
 		if err != nil {
 			return nil, err
@@ -152,11 +151,10 @@ func hasIntersection(slice1, slice2 []uint32) bool {
 }
 
 func (rpc *Server) Polling(ctx context.Context, req *clientpb.Polling) (*clientpb.Empty, error) {
-	sess, ok := core.Sessions.Get(req.SessionId)
-	if !ok {
+	sess, err := core.Sessions.Get(req.SessionId)
+	if err != nil {
 		return nil, errs.ErrNotFoundSession
 	}
-	var err error
 	go func() {
 		logs.Log.Debugf("polling:%s %s, interval %d", req.Id, sess.ID, req.Interval)
 		sess.Any[req.Id] = true

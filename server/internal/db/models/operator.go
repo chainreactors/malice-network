@@ -1,6 +1,7 @@
 package models
 
 import (
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -24,4 +25,18 @@ func (o *Operator) BeforeCreate(tx *gorm.DB) (err error) {
 	}
 	o.CreatedAt = time.Now()
 	return nil
+}
+
+func (o *Operator) ToProtobuf() *clientpb.Client {
+	return &clientpb.Client{
+		Name: o.Name,
+		Type: o.Type,
+	}
+}
+
+func (o *Operator) ToListener() *clientpb.Listener {
+	return &clientpb.Listener{
+		Id: o.Name,
+		Ip: o.Remote,
+	}
 }

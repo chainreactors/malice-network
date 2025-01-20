@@ -222,9 +222,9 @@ func getSession(ctx context.Context) (*core.Session, error) {
 		return nil, err
 	}
 
-	session, ok := core.Sessions.Get(sid)
-	if !ok {
-		return nil, errs.ErrInvalidSessionID
+	session, err := core.Sessions.Get(sid)
+	if err != nil {
+		return nil, err
 	}
 	return session, nil
 }
