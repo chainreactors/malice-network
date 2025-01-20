@@ -30,7 +30,7 @@ func NewCache(savePath string) *Cache {
 		items:    make(map[string]*clientpb.SpiteCacheItem),
 		maxSize:  1024,
 		duration: math.MaxInt64,
-		savePath: savePath + ".cache",
+		savePath: savePath,
 	}
 	GlobalTicker.Start(consts.DefaultCacheInterval, func() {
 		err := cache.Save()
