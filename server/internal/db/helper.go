@@ -1034,3 +1034,94 @@ func GetAllContext() ([]*models.Context, error) {
 func CreateContext(ctx *models.Context) error {
 	return Session().Create(ctx).Error
 }
+
+func GetContextsByType(typ string) ([]*clientpb.Context, error) {
+	var contexts []*models.Context
+	err := Session().Where("type = ?", typ).Find(&contexts).Error
+	if err != nil {
+		return nil, err
+	}
+
+	var result []*clientpb.Context
+	for _, ctx := range contexts {
+		result = append(result, ctx.ToProtobuf())
+	}
+	return result, nil
+}
+
+func GetContextsBySession(sessionID string) ([]*clientpb.Context, error) {
+	var contexts []*models.Context
+	err := Session().Where("session_id = ?", sessionID).Find(&contexts).Error
+	if err != nil {
+		return nil, err
+	}
+
+	var result []*clientpb.Context
+	for _, ctx := range contexts {
+		result = append(result, ctx.ToProtobuf())
+	}
+	return result, nil
+}
+
+func GetContextsByPipeline(pipelineID string) ([]*clientpb.Context, error) {
+	var contexts []*models.Context
+	err := Session().Where("pipeline_id = ?", pipelineID).Find(&contexts).Error
+	if err != nil {
+		return nil, err
+	}
+
+	var result []*clientpb.Context
+	for _, ctx := range contexts {
+		result = append(result, ctx.ToProtobuf())
+	}
+	return result, nil
+}
+
+func GetContextsByListener(listenerID string) ([]*clientpb.Context, error) {
+	var contexts []*models.Context
+	err := Session().Where("listener_id = ?", listenerID).Find(&contexts).Error
+	if err != nil {
+		return nil, err
+	}
+
+	var result []*clientpb.Context
+	for _, ctx := range contexts {
+		result = append(result, ctx.ToProtobuf())
+	}
+	return result, nil
+}
+
+func GetContextsByTask(taskID uint32) ([]*clientpb.Context, error) {
+	var contexts []*models.Context
+	err := Session().Where("task_id = ?", taskID).Find(&contexts).Error
+	if err != nil {
+		return nil, err
+	}
+
+	var result []*clientpb.Context
+	for _, ctx := range contexts {
+		result = append(result, ctx.ToProtobuf())
+	}
+	return result, nil
+}
+
+func SaveContext(ctx *clientpb.Context) error {
+	contextDB, err := models.FromContextProtobuf(ctx)
+	if err != nil {
+		return err
+	}
+	return Session().Create(contextDB).Error
+}
+
+func DeleteContext(contextID string) error {
+	return Session().Where("id = ?", contextID).Delete(&models.Context{}).Error
+}
+
+func GetContext(contextID string) (*clientpb.Context, error) {
+	var context models.Context
+	err := Session().Where("id = ?", contextID).First(&context).Error
+	if err != nil {
+		return nil, err
+	}
+	return context.ToProtobuf(), nil
+}

@@ -28,6 +28,9 @@ type Pipeline struct {
 }
 
 func (pipeline *Pipeline) ToProtobuf() *clientpb.Pipeline {
+	if pipeline == nil {
+		return nil
+	}
 	switch pipeline.Type {
 	case consts.TCPPipeline:
 		return &clientpb.Pipeline{

@@ -119,7 +119,7 @@ func NewServer() *Server {
 //	}
 //	data, err := req.Session.RequestAndWait(
 //		&clientpb.SpiteSession{SessionId: req.Session.ID, TaskId: req.Task.Id, Spite: spite},
-//		pipelinesCh[req.Session.PipelineName],
+//		pipelinesCh[req.Session.PipelineID],
 //		consts.MinTimeout)
 //	if err != nil {
 //		return nil, err

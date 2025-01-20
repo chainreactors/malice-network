@@ -39,8 +39,8 @@ func (rpc *Server) GetSessions(ctx context.Context, req *clientpb.SessionRequest
 }
 
 func (rpc *Server) GetSession(ctx context.Context, req *clientpb.SessionRequest) (*clientpb.Session, error) {
-	session, ok := core.Sessions.Get(req.SessionId)
-	if ok {
+	session, err := core.Sessions.Get(req.SessionId)
+	if err != nil {
 		return session.ToProtobuf(), nil
 	}
 	dbSess, err := db.FindSession(req.SessionId)
@@ -66,22 +66,22 @@ func (rpc *Server) SessionManage(ctx context.Context, req *clientpb.BasicUpdateS
 			return nil, err
 		}
 	case "note":
-		session, ok := core.Sessions.Get(req.SessionId)
-		if !ok {
+		session, err := core.Sessions.Get(req.SessionId)
+		if err != nil {
 			return nil, errs.ErrNotFoundSession
 		}
 		session.Name = req.Arg
-		err := db.UpdateSession(req.SessionId, req.Arg, "")
+		err = db.UpdateSession(req.SessionId, req.Arg, "")
 		if err != nil {
 			return nil, err
 		}
 	case "group":
-		session, ok := core.Sessions.Get(req.SessionId)
-		if !ok {
+		session, err := core.Sessions.Get(req.SessionId)
+		if err != nil {
 			return nil, errs.ErrNotFoundSession
 		}
 		session.Group = req.Arg
-		err := db.UpdateSession(req.SessionId, "", req.Arg)
+		err = db.UpdateSession(req.SessionId, "", req.Arg)
 		if err != nil {
 			return nil, err
 		}
@@ -115,8 +115,8 @@ func (rpc *Server) GetSessionHistory(ctx context.Context, req *clientpb.Int) (*c
 	}
 
 	taskDir := filepath.Join(configs.ContextPath, sid, consts.TaskPath)
-	session, ok := core.Sessions.Get(sid)
-	if !ok {
+	session, err := core.Sessions.Get(sid)
+	if err != nil {
 		_, taskId, err := db.FindTaskAndMaxTasksID(sid)
 		if err != nil {
 			return nil, err

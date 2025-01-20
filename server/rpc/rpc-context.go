@@ -2,66 +2,60 @@ package rpc
 
 import (
 	"context"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
-	"github.com/chainreactors/malice-network/server/internal/db/models"
-	"github.com/gofrs/uuid"
-	"strconv"
 )
 
 func (rpc *Server) GetContexts(ctx context.Context, req *clientpb.Context) (*clientpb.Contexts, error) {
-	contexts := make([]*clientpb.Context, 0)
-
-	filterFunc := func(c *core.Context) bool {
-		if req.Session != nil && req.Session.SessionId != "" && c.Session.ID != req.Session.SessionId {
-			return false
-		}
-		if req.Task != nil && req.Task.TaskId != 0 && c.Task.TaskID() != req.Task.SessionId+"-"+strconv.Itoa(int(req.Task.TaskId)) {
-			return false
-		}
-		if req.Pipeline != nil && req.Pipeline.Name != "" && c.Pipeline.Name != req.Pipeline.Name {
-			return false
-		}
-		if req.Listener != nil && req.Listener.Id != "" && c.Listener.Name != req.Listener.Id {
-			return false
-		}
-		return true
+	contexts, err := db.GetAllContext()
+	if err != nil {
+		return nil, err
 	}
 
-	for _, c := range core.Contexts.All() {
-		if filterFunc(c) {
-			contexts = append(contexts, c.ToProtobuf())
-		}
+	result := &clientpb.Contexts{
+		Contexts: make([]*clientpb.Context, 0),
 	}
-
-	return &clientpb.Contexts{Contexts: contexts}, nil
+	for _, c := range contexts {
+		result.Contexts = append(result.Contexts, c.ToProtobuf())
+	}
+	return result, nil
 }
+
 func (rpc *Server) GetScreenShot(ctx context.Context, req *clientpb.Empty) (*clientpb.Contexts, error) {
-	return core.Contexts.ScreenShot(), nil
+	contexts, err := db.GetContextsByType(consts.ContextScreenShot)
+	if err != nil {
+		return nil, err
+	}
+	return &clientpb.Contexts{Contexts: contexts}, nil
 }
 
 func (rpc *Server) GetCredential(ctx context.Context, req *clientpb.Empty) (*clientpb.Contexts, error) {
-	return core.Contexts.Credential(), nil
+	contexts, err := db.GetContextsByType(consts.ContextCredential)
+	if err != nil {
+		return nil, err
+	}
+	return &clientpb.Contexts{Contexts: contexts}, nil
 }
 
 func (rpc *Server) GetKeylogger(ctx context.Context, req *clientpb.Empty) (*clientpb.Contexts, error) {
-	return core.Contexts.KeyLogger(), nil
+	contexts, err := db.GetContextsByType(consts.ContextKeyLogger)
+	if err != nil {
+		return nil, err
+	}
+	return &clientpb.Contexts{Contexts: contexts}, nil
+}
+
+func (rpc *Server) GetPivoting(ctx context.Context, req *clientpb.Empty) (*clientpb.Contexts, error) {
+	contexts, err := db.GetContextsByType(consts.ContextPivoting)
+	if err != nil {
+		return nil, err
+	}
+	return &clientpb.Contexts{Contexts: contexts}, nil
 }
 
 func (rpc *Server) AddContext(ctx context.Context, req *clientpb.Context) (*clientpb.Empty, error) {
-	cID, err := uuid.NewV4()
-	if err != nil {
-		return nil, err
-	}
-	req.Id = cID.String()
-	newContext, err := core.NewContext(req)
-	if err != nil {
-		return nil, err
-	}
-	core.Contexts.Add(newContext)
-	contextDB := models.ToContextDB(req)
-	err = db.CreateContext(contextDB)
+	err := db.SaveContext(req)
 	if err != nil {
 		return nil, err
 	}

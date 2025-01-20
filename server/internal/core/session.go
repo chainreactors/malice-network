@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/server/internal/configs"
@@ -523,11 +524,11 @@ func (s *sessions) All() []*Session {
 }
 
 // Get - Get a session by ID
-func (s *sessions) Get(sessionID string) (*Session, bool) {
+func (s *sessions) Get(sessionID string) (*Session, error) {
 	if val, ok := s.active.Load(sessionID); ok {
-		return val.(*Session), true
+		return val.(*Session), nil
 	}
-	return nil, false
+	return nil, errs.ErrNotFoundSession
 }
 
 func (s *sessions) Add(session *Session) *Session {

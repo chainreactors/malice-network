@@ -156,7 +156,45 @@ func (rpc *Server) RemDial(ctx context.Context, req *implantpb.Request) (*client
 			event.Op = consts.CtrlPivotProxy
 			event.Message = remOpt.LocalAddr
 		}
+		lns, err := core.Listeners.Get(pipe.ListenerId)
+		if err != nil {
+			return
+		}
+		err = db.SaveContext(&clientpb.Context{
+			Session:  greq.Session.ToProtobufLite(),
+			Task:     greq.Task.ToProtobuf(),
+			Listener: lns.ToProtobuf(),
+			Pipeline: pipe,
+			Type:     consts.ContextPivoting,
+			Value: string(types.MarshalContext(types.NewPivotingFromProto(&clientpb.REMAgent{
+				Id:     spite.GetResponse().Output,
+				Mod:    remOpt.Mod,
+				Remote: remOpt.RemoteAddr,
+				Local:  remOpt.LocalAddr,
+			}))),
+		})
+		if err != nil {
+			return
+		}
 		core.EventBroker.Publish(event)
 	})
 	return greq.Task.ToProtobuf(), nil
+}
+
+// rpc ListPivots(clientpb.Empty) returns (clientpb.REMAgents);
+func (rpc *Server) ListPivots(ctx context.Context, req *clientpb.Empty) (*clientpb.REMAgents, error) {
+	var result []*clientpb.REMAgent
+
+	core.Jobs.Range(func(key, value any) bool {
+		job := value.(*core.Job)
+		if job.Pipeline.Type != consts.RemPipeline {
+			return true
+		}
+		for _, a := range job.Pipeline.GetRem().Agents {
+			result = append(result, a)
+		}
+		return true
+	})
+
+	return &clientpb.REMAgents{Agents: result}, nil
 }

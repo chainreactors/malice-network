@@ -31,6 +31,7 @@ const (
 	MaliceRPC_SessionManage_FullMethodName         = "/clientrpc.MaliceRPC/SessionManage"
 	MaliceRPC_GetListeners_FullMethodName          = "/clientrpc.MaliceRPC/GetListeners"
 	MaliceRPC_GetJobs_FullMethodName               = "/clientrpc.MaliceRPC/GetJobs"
+	MaliceRPC_ListPivots_FullMethodName            = "/clientrpc.MaliceRPC/ListPivots"
 	MaliceRPC_GetTasks_FullMethodName              = "/clientrpc.MaliceRPC/GetTasks"
 	MaliceRPC_GetTaskContent_FullMethodName        = "/clientrpc.MaliceRPC/GetTaskContent"
 	MaliceRPC_GetTaskFiles_FullMethodName          = "/clientrpc.MaliceRPC/GetTaskFiles"
@@ -159,6 +160,7 @@ type MaliceRPCClient interface {
 	SessionManage(ctx context.Context, in *clientpb.BasicUpdateSession, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	GetListeners(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Listeners, error)
 	GetJobs(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Jobs, error)
+	ListPivots(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.REMAgents, error)
 	// task
 	GetTasks(ctx context.Context, in *clientpb.TaskRequest, opts ...grpc.CallOption) (*clientpb.Tasks, error)
 	GetTaskContent(ctx context.Context, in *clientpb.Task, opts ...grpc.CallOption) (*clientpb.TaskContext, error)
@@ -377,6 +379,15 @@ func (c *maliceRPCClient) GetListeners(ctx context.Context, in *clientpb.Empty, 
 func (c *maliceRPCClient) GetJobs(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Jobs, error) {
 	out := new(clientpb.Jobs)
 	err := c.cc.Invoke(ctx, MaliceRPC_GetJobs_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *maliceRPCClient) ListPivots(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.REMAgents, error) {
+	out := new(clientpb.REMAgents)
+	err := c.cc.Invoke(ctx, MaliceRPC_ListPivots_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1428,6 +1439,7 @@ type MaliceRPCServer interface {
 	SessionManage(context.Context, *clientpb.BasicUpdateSession) (*clientpb.Empty, error)
 	GetListeners(context.Context, *clientpb.Empty) (*clientpb.Listeners, error)
 	GetJobs(context.Context, *clientpb.Empty) (*clientpb.Jobs, error)
+	ListPivots(context.Context, *clientpb.Empty) (*clientpb.REMAgents, error)
 	// task
 	GetTasks(context.Context, *clientpb.TaskRequest) (*clientpb.Tasks, error)
 	GetTaskContent(context.Context, *clientpb.Task) (*clientpb.TaskContext, error)
@@ -1594,6 +1606,9 @@ func (UnimplementedMaliceRPCServer) GetListeners(context.Context, *clientpb.Empt
 }
 func (UnimplementedMaliceRPCServer) GetJobs(context.Context, *clientpb.Empty) (*clientpb.Jobs, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetJobs not implemented")
+}
+func (UnimplementedMaliceRPCServer) ListPivots(context.Context, *clientpb.Empty) (*clientpb.REMAgents, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListPivots not implemented")
 }
 func (UnimplementedMaliceRPCServer) GetTasks(context.Context, *clientpb.TaskRequest) (*clientpb.Tasks, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetTasks not implemented")
@@ -2102,6 +2117,24 @@ func _MaliceRPC_GetJobs_Handler(srv interface{}, ctx context.Context, dec func(i
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(MaliceRPCServer).GetJobs(ctx, req.(*clientpb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MaliceRPC_ListPivots_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(clientpb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MaliceRPCServer).ListPivots(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MaliceRPC_ListPivots_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MaliceRPCServer).ListPivots(ctx, req.(*clientpb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4167,6 +4200,10 @@ var MaliceRPC_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetJobs",
 			Handler:    _MaliceRPC_GetJobs_Handler,
+		},
+		{
+			MethodName: "ListPivots",
+			Handler:    _MaliceRPC_ListPivots_Handler,
 		},
 		{
 			MethodName: "GetTasks",

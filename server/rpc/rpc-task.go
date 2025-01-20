@@ -38,8 +38,8 @@ func (rpc *Server) GetTasks(ctx context.Context, req *clientpb.TaskRequest) (*cl
 		}
 		return tasks, err
 	} else {
-		sess, ok := core.Sessions.Get(req.SessionId)
-		if !ok {
+		sess, err := core.Sessions.Get(req.SessionId)
+		if err != nil {
 			return nil, errs.ErrNotFoundSession
 		}
 		return sess.Tasks.ToProtobuf(), nil
@@ -47,8 +47,8 @@ func (rpc *Server) GetTasks(ctx context.Context, req *clientpb.TaskRequest) (*cl
 }
 
 func (rpc *Server) GetTaskContent(ctx context.Context, req *clientpb.Task) (*clientpb.TaskContext, error) {
-	sess, ok := core.Sessions.Get(req.SessionId)
-	if !ok {
+	sess, err := core.Sessions.Get(req.SessionId)
+	if err != nil {
 		return nil, errs.ErrNotFoundSession
 	}
 	task := sess.Tasks.Get(req.TaskId)
@@ -60,8 +60,8 @@ func (rpc *Server) GetTaskContent(ctx context.Context, req *clientpb.Task) (*cli
 }
 
 func (rpc *Server) WaitTaskContent(ctx context.Context, req *clientpb.Task) (*clientpb.TaskContext, error) {
-	sess, ok := core.Sessions.Get(req.SessionId)
-	if !ok {
+	sess, err := core.Sessions.Get(req.SessionId)
+	if err != nil {
 		return nil, errs.ErrNotFoundSession
 	}
 	task := sess.Tasks.Get(req.TaskId)
@@ -94,8 +94,8 @@ func (rpc *Server) WaitTaskContent(ctx context.Context, req *clientpb.Task) (*cl
 }
 
 func (rpc *Server) WaitTaskFinish(ctx context.Context, req *clientpb.Task) (*clientpb.TaskContext, error) {
-	sess, ok := core.Sessions.Get(req.SessionId)
-	if !ok {
+	sess, err := core.Sessions.Get(req.SessionId)
+	if err != nil {
 		return nil, errs.ErrNotFoundSession
 	}
 	task := sess.Tasks.Get(req.TaskId)
@@ -118,8 +118,8 @@ func (rpc *Server) WaitTaskFinish(ctx context.Context, req *clientpb.Task) (*cli
 }
 
 func (rpc *Server) GetAllTaskContent(ctx context.Context, req *clientpb.Task) (*clientpb.TaskContexts, error) {
-	sess, ok := core.Sessions.Get(req.SessionId)
-	if !ok {
+	sess, err := core.Sessions.Get(req.SessionId)
+	if err != nil {
 		return nil, errs.ErrNotFoundSession
 	}
 	task := sess.Tasks.Get(req.TaskId)
