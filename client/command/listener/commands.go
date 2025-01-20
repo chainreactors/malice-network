@@ -26,9 +26,8 @@ listener
 		Use:   consts.CommandJob,
 		Short: "List jobs in server",
 		Long:  "Use a table to list jobs on the server",
-		Run: func(cmd *cobra.Command, args []string) {
-			ListJobsCmd(cmd, con)
-			return
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return ListJobsCmd(cmd, con)
 		},
 		Example: `~~~
 job
@@ -221,12 +220,11 @@ website [listener]
 		},
 		Example: `~~~
 // Start a website
-website start web_test --listener tcp_default
+website start web_test 
 ~~~`,
 	}
 
 	common.BindFlag(websiteStartCmd, func(f *pflag.FlagSet) {
-		f.String("listener", "", "listener ID")
 	})
 
 	common.BindFlagCompletions(websiteStartCmd, func(comp carapace.ActionMap) {

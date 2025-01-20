@@ -3,7 +3,6 @@ package rpc
 import (
 	"context"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/core"
@@ -36,10 +35,15 @@ func (rpc *Server) SyncPipeline(ctx context.Context, req *clientpb.Pipeline) (*c
 	if err != nil {
 		return nil, err
 	}
-	ok := core.Listeners.UpdatePipeline(pipe.ToProtobuf())
-	if !ok {
-		return nil, errs.ErrNotFoundListener
-	}
+
+	job := core.Jobs.AddPipeline(pipe.ToProtobuf())
+
+	core.EventBroker.Publish(core.Event{
+		EventType: consts.EventJob,
+		Op:        consts.CtrlPipelineSync,
+		Important: true,
+		Job:       job.ToProtobuf(),
+	})
 	return &clientpb.Empty{}, nil
 }
 
@@ -67,7 +71,6 @@ func (rpc *Server) StartPipeline(ctx context.Context, req *clientpb.CtrlPipeline
 	if err != nil {
 		return nil, err
 	}
-	lns.AddPipeline(pipeline)
 	job := &core.Job{
 		ID:       core.NextJobID(),
 		Pipeline: pipeline,

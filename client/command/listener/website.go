@@ -17,15 +17,12 @@ import (
 
 // NewWebsiteCmd - 创建新的网站
 func NewWebsiteCmd(cmd *cobra.Command, con *repl.Console) error {
-	listenerID, _, port, _ := common.ParsePipelineFlags(cmd)
+	listenerID, _, port := common.ParsePipelineFlags(cmd)
 	name := cmd.Flags().Arg(0)
 	root, _ := cmd.Flags().GetString("root")
 
 	if port == 0 {
 		port = cryptography.RandomInRange(10240, 65535)
-	}
-	if name == "" {
-		name = fmt.Sprintf("%s-web-%d", listenerID, port)
 	}
 
 	tls, err := common.ParseTLSFlags(cmd)
@@ -63,7 +60,7 @@ func NewWebsiteCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-// AddWebContentCmd - 添加网站内容
+// AddWebContentCmd
 func StartWebsitePipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 	name := cmd.Flags().Arg(0)
 	listenerID, _ := cmd.Flags().GetString("listener")
@@ -133,8 +130,7 @@ func AddWebContentCmd(cmd *cobra.Command, con *repl.Console) error {
 	websiteName, _ := cmd.Flags().GetString("website")
 	webPath, _ := cmd.Flags().GetString("path")
 	contentType, _ := cmd.Flags().GetString("type")
-	encryption := common.ParseEncryptionFlags(cmd)
-
+	parser, encryption := common.ParseEncryptionFlags(cmd)
 	if webPath == "" {
 		webPath = "/" + filepath.Base(filePath)
 	}
@@ -147,12 +143,13 @@ func AddWebContentCmd(cmd *cobra.Command, con *repl.Console) error {
 	website := &clientpb.Website{
 		Contents: map[string]*clientpb.WebContent{
 			webPath: {
-				WebsiteId:  websiteName,
-				File:       filePath,
-				Path:       webPath,
-				Type:       contentType,
-				Content:    content,
-				Encryption: encryption,
+				WebsiteId:   websiteName,
+				File:        filePath,
+				Path:        webPath,
+				Type:        parser,
+				Content:     content,
+				Encryption:  encryption,
+				ContentType: contentType,
 			},
 		},
 	}
@@ -172,7 +169,7 @@ func UpdateWebContentCmd(cmd *cobra.Command, con *repl.Console) error {
 	filePath := cmd.Flags().Arg(1)
 	websiteName, _ := cmd.Flags().GetString("website")
 	contentType, _ := cmd.Flags().GetString("type")
-	encryption := common.ParseEncryptionFlags(cmd)
+	parser, encryption := common.ParseEncryptionFlags(cmd)
 
 	content, err := os.ReadFile(filePath)
 	if err != nil {
@@ -180,12 +177,13 @@ func UpdateWebContentCmd(cmd *cobra.Command, con *repl.Console) error {
 	}
 
 	webContent := &clientpb.WebContent{
-		Id:         contentId,
-		WebsiteId:  websiteName,
-		File:       filepath.Base(filePath),
-		Type:       contentType,
-		Content:    content,
-		Encryption: encryption,
+		Id:          contentId,
+		WebsiteId:   websiteName,
+		File:        filepath.Base(filePath),
+		Type:        parser,
+		Content:     content,
+		Encryption:  encryption,
+		ContentType: contentType,
 	}
 
 	_, err = con.Rpc.UpdateWebsiteContent(con.Context(), webContent)

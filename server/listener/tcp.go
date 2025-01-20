@@ -30,7 +30,6 @@ func NewTcpPipeline(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeli
 		Host:           tcp.Host,
 		Target:         pipeline.Target,
 		BeaconPipeline: pipeline.BeaconPipeline,
-		Enable:         true,
 		PipelineConfig: core.FromProtobuf(pipeline),
 	}
 	var err error
@@ -89,7 +88,7 @@ func (pipeline *TCPPipeline) Close() error {
 }
 
 func (pipeline *TCPPipeline) Start() error {
-	if !pipeline.Enable {
+	if pipeline.Enable {
 		return nil
 	}
 	forward, err := core.NewForward(pipeline.rpc, pipeline)
@@ -121,7 +120,7 @@ func (pipeline *TCPPipeline) Start() error {
 	}
 	logs.Log.Infof("[pipeline] starting TCP pipeline on %s:%d, parser: %s, cryptor: %s, tls: %t",
 		pipeline.Host, pipeline.Port, pipeline.Parser, pipeline.Encryption.Type, pipeline.Tls.Enable)
-
+	pipeline.Enable = true
 	return nil
 }
 

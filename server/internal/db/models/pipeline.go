@@ -99,6 +99,7 @@ func (pipeline *Pipeline) ToProtobuf() *clientpb.Pipeline {
 					Port:      pipeline.Port,
 					Link:      pipeline.PipelineParams.Link,
 					Subscribe: pipeline.PipelineParams.Subscribe,
+					Console:   pipeline.Console,
 					Agents:    pipeline.PipelineParams.Agents,
 				},
 			},
@@ -191,6 +192,7 @@ func FromPipelinePb(pipeline *clientpb.Pipeline) *Pipeline {
 				Link:      body.Rem.Link,
 				Subscribe: body.Rem.Subscribe,
 				Agents:    body.Rem.Agents,
+				Console:   body.Rem.Console,
 			},
 		}
 	case *clientpb.Pipeline_Web:

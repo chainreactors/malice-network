@@ -164,7 +164,6 @@ func (rpc *Server) StartWebsite(ctx context.Context, req *clientpb.CtrlPipeline)
 		return nil, err
 	}
 	webpb := webpipe.ToProtobuf()
-	listener.AddPipeline(webpb)
 	err = MapContents(webpb)
 	if err != nil {
 		return nil, err

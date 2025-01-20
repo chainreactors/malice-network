@@ -2,7 +2,9 @@ package listener
 
 import (
 	"fmt"
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/rem"
 	"github.com/chainreactors/tui"
@@ -35,16 +37,15 @@ func ListRemCmd(cmd *cobra.Command, con *repl.Console) error {
 
 func NewRemCmd(cmd *cobra.Command, con *repl.Console) error {
 	name := cmd.Flags().Arg(0)
-	listenerID, _ := cmd.Flags().GetString("listener")
+	listenerID, _, _ := common.ParsePipelineFlags(cmd)
 	console, _ := cmd.Flags().GetString("console")
-
-	if name == "" {
-		name = fmt.Sprintf("%s_rem_%s", listenerID, console)
-	}
 
 	parse, err := rem.ParseConsole(console)
 	if err != nil {
 		return err
+	}
+	if parse.Port() == 34996 {
+		parse.SetPort(int(cryptography.RandomInRange(20000, 60000)))
 	}
 	port, err := strconv.Atoi(parse.URL.Port())
 	pipeline := &clientpb.Pipeline{
@@ -53,7 +54,7 @@ func NewRemCmd(cmd *cobra.Command, con *repl.Console) error {
 		Enable:     true,
 		Body: &clientpb.Pipeline_Rem{
 			Rem: &clientpb.REM{
-				Host:    parse.Host,
+				Host:    parse.Hostname(),
 				Port:    uint32(port),
 				Console: parse.String(),
 			},
