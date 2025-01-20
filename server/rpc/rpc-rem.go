@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/types"
@@ -45,51 +46,42 @@ func (rpc *Server) StartRem(ctx context.Context, req *clientpb.CtrlPipeline) (*c
 	if err != nil {
 		return nil, err
 	}
-	remDB.Enable = true
-	rem := remDB.ToProtobuf()
-	ok := core.Listeners.AddPipeline(rem)
-	if !ok {
-		return nil, errs.ErrNotFoundListener
-	}
-	core.Jobs.Add(&core.Job{
-		ID:      core.CurrentJobID(),
-		Message: rem,
-		Name:    rem.Name,
-	})
-	core.Jobs.Ctrl <- &clientpb.JobCtrl{
-		Id:   core.NextCtrlID(),
-		Ctrl: consts.CtrlRemStart,
-		Job: &clientpb.Job{
-			Id:       core.NextJobID(),
-			Pipeline: rem,
-		},
-	}
-	err = db.EnablePipeline(remDB)
+	err = db.EnablePipeline(remDB.Name)
 	if err != nil {
 		return nil, err
 	}
+	rem := remDB.ToProtobuf()
+	lns, err := core.Listeners.Get(req.ListenerId)
+	if err != nil {
+		return nil, err
+	}
+	lns.AddPipeline(rem)
+	job := &core.Job{
+		ID:       core.NextJobID(),
+		Pipeline: rem,
+		Name:     rem.Name,
+	}
+	core.Jobs.Add(job)
+	lns.PushCtrl(&clientpb.JobCtrl{
+		Id:   core.NextCtrlID(),
+		Ctrl: consts.CtrlRemStart,
+		Job:  job.ToProtobuf(),
+	})
+
 	return &clientpb.Empty{}, nil
 }
 
 func (rpc *Server) StopRem(ctx context.Context, req *clientpb.CtrlPipeline) (*clientpb.Empty, error) {
-	remDB, err := db.FindPipeline(req.Name)
+	job, err := core.Jobs.Get(req.Name)
 	if err != nil {
-		return &clientpb.Empty{}, err
+		return nil, err
 	}
-	rem := remDB.ToProtobuf()
-	ok := core.Listeners.RemovePipeline(rem)
+	ok := core.Listeners.RemovePipeline(job.Pipeline)
 	if !ok {
 		return nil, errs.ErrNotFoundListener
 	}
-	core.Jobs.Ctrl <- &clientpb.JobCtrl{
-		Id:   core.NextCtrlID(),
-		Ctrl: consts.CtrlRemStop,
-		Job: &clientpb.Job{
-			Id:       core.NextJobID(),
-			Pipeline: rem,
-		},
-	}
-	err = db.DisablePipeline(remDB)
+	core.Listeners.PushCtrl(consts.CtrlRemStop, job.Pipeline)
+	err = db.DisablePipeline(job.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -106,29 +98,20 @@ func (rpc *Server) DeleteRem(ctx context.Context, req *clientpb.CtrlPipeline) (*
 	if !ok {
 		return nil, errs.ErrNotFoundListener
 	}
-	core.Jobs.Ctrl <- &clientpb.JobCtrl{
+	lns, err := core.Listeners.Get(req.ListenerId)
+	if err != nil {
+		return nil, err
+	}
+	lns.PushCtrl(&clientpb.JobCtrl{
 		Id:   core.NextCtrlID(),
 		Ctrl: consts.CtrlRemStop,
 		Job: &clientpb.Job{
-			Id:       core.NextJobID(),
 			Pipeline: rem,
 		},
-	}
+	})
 	err = db.DeletePipeline(req.Name)
 	if err != nil {
 		return nil, err
-	}
-	return &clientpb.Empty{}, nil
-}
-
-func (rpc *Server) NewRemCallback(ctx context.Context, req *clientpb.Pipeline) (*clientpb.Empty, error) {
-	err := db.SavePipeline(models.FromPipelinePb(req, ""))
-	if err != nil {
-		return nil, err
-	}
-	ok := core.Listeners.UpdatePipeline(req)
-	if !ok {
-		return nil, errs.ErrNotFoundListener
 	}
 	return &clientpb.Empty{}, nil
 }
@@ -143,6 +126,14 @@ func (rpc *Server) RemDial(ctx context.Context, req *implantpb.Request) (*client
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgResponse)
+	go greq.HandlerResponse(ch, types.MsgResponse, func(spite *implantpb.Spite) {
+		pipe, ok := core.Listeners.Find(req.Params["pipeline_id"])
+		if !ok {
+			logs.Log.Warnf("pipeline %s not found", req.Params["pipeline_id"])
+			return
+		}
+
+		core.Listeners.PushCtrl(consts.CtrlPipelineSync, pipe)
+	})
 	return greq.Task.ToProtobuf(), nil
 }

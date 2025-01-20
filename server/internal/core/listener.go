@@ -2,6 +2,7 @@ package core
 
 import (
 	"errors"
+	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"sync"
 )
@@ -17,6 +18,11 @@ type Listener struct {
 	Host      string
 	Active    bool
 	Pipelines map[string]*clientpb.Pipeline
+	Ctrl      chan *clientpb.JobCtrl
+}
+
+func (l *Listener) PushCtrl(ctrl *clientpb.JobCtrl) {
+	l.Ctrl <- ctrl
 }
 
 func (l *Listener) AddPipeline(pipeline *clientpb.Pipeline) {
@@ -75,40 +81,65 @@ func (l *listeners) Remove(listener *Listener) {
 	//}
 }
 
+func (l *listeners) Find(pid string) (*clientpb.Pipeline, bool) {
+	var pipe *clientpb.Pipeline
+	l.Range(func(key, value interface{}) bool {
+		if pipe = value.(*Listener).GetPipeline(pid); pipe != nil {
+			return false
+		}
+		return true
+	})
+	if pipe != nil {
+		return pipe, true
+	}
+	return nil, false
+}
+
 // Get - Get a Job
-func (l *listeners) Get(name string) *Listener {
+func (l *listeners) Get(name string) (*Listener, error) {
 	if name == "" {
-		return nil
+		return nil, errs.ErrNotFoundListener
 	}
 	val, ok := l.Load(name)
 	if ok {
-		return val.(*Listener)
+		return val.(*Listener), nil
 	}
-	return nil
+	return nil, errs.ErrNotFoundListener
+}
+
+func (l *listeners) PushCtrl(ctrl string, pipeline *clientpb.Pipeline) {
+	val, err := l.Get(pipeline.ListenerId)
+	if err == nil {
+		val.PushCtrl(&clientpb.JobCtrl{
+			Id:   NextCtrlID(),
+			Ctrl: ctrl,
+			Job:  &clientpb.Job{Pipeline: pipeline},
+		})
+	}
 }
 
 func (l *listeners) AddPipeline(pipeline *clientpb.Pipeline) bool {
-	val, ok := l.Load(pipeline.ListenerId)
-	if ok {
-		val.(*Listener).AddPipeline(pipeline)
+	val, err := l.Get(pipeline.ListenerId)
+	if err == nil {
+		val.AddPipeline(pipeline)
 		return true
 	}
 	return false
 }
 
 func (l *listeners) RemovePipeline(pipeline *clientpb.Pipeline) bool {
-	val, ok := l.Load(pipeline.ListenerId)
-	if ok {
-		val.(*Listener).RemovePipeline(pipeline)
+	val, err := l.Get(pipeline.ListenerId)
+	if err == nil {
+		val.RemovePipeline(pipeline)
 		return true
 	}
 	return false
 }
 
 func (l *listeners) UpdatePipeline(pipeline *clientpb.Pipeline) bool {
-	val, ok := l.Load(pipeline.ListenerId)
-	if ok {
-		val.(*Listener).UpdatePipeline(pipeline)
+	val, err := l.Get(pipeline.ListenerId)
+	if err == nil {
+		val.UpdatePipeline(pipeline)
 		return true
 	}
 	return false

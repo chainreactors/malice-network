@@ -23,7 +23,7 @@ func ListJobsCmd(cmd *cobra.Command, con *repl.Console) error {
 	var row table.Row
 	tableModel := tui.NewTable([]table.Column{
 		table.NewColumn("Name", "Name", 20),
-		table.NewColumn("Listener_id", "Listener_id", 15),
+		table.NewColumn("Listener", "Listener", 15),
 		table.NewColumn("IP", "IP", 10),
 		table.NewColumn("Port", "Port", 7),
 		table.NewColumn("Type", "Type", 7),
@@ -34,34 +34,30 @@ func ListJobsCmd(cmd *cobra.Command, con *repl.Console) error {
 			tcp := pipeline.GetTcp()
 			row = table.NewRow(
 				table.RowData{
-					"Name":        pipeline.Name,
-					"Listener_id": pipeline.ListenerId,
-					"IP":          pipeline.Ip,
-					"Port":        strconv.Itoa(int(tcp.Port)),
-					"Type":        "TCP",
+					"Name":     pipeline.Name,
+					"Listener": pipeline.ListenerId,
+					"IP":       pipeline.Ip,
+					"Port":     strconv.Itoa(int(tcp.Port)),
+					"Type":     "TCP",
 				})
-		case *clientpb.Pipeline_Bind:
-			//bind := pipeline.GetBind()
-			row = table.NewRow(
-				table.RowData{
-					"Name":        pipeline.Name,
-					"Listener_id": pipeline.ListenerId,
-					"IP":          "",
-					"Port":        "",
-					"Type":        "Bind",
-				})
-
 		case *clientpb.Pipeline_Web:
 			website := pipeline.GetWeb()
 			row = table.NewRow(
 				table.RowData{
-					"Name":        pipeline.Name,
-					"Listener_id": pipeline.ListenerId,
-					"IP":          pipeline.Ip,
-					"Port":        strconv.Itoa(int(website.Port)),
-					"Type":        "Web",
+					"Name":     pipeline.Name,
+					"Listener": pipeline.ListenerId,
+					"IP":       pipeline.Ip,
+					"Port":     strconv.Itoa(int(website.Port)),
+					"Type":     "Web",
 				})
-
+		default:
+			row = table.NewRow(table.RowData{
+				"Name":     pipeline.Name,
+				"Listener": pipeline.ListenerId,
+				"IP":       pipeline.Ip,
+				"Port":     "",
+				"Type":     pipeline.Type,
+			})
 		}
 		rowEntries = append(rowEntries, row)
 	}

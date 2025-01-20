@@ -86,8 +86,9 @@ func (rem *REM) ToProtobuf() *clientpb.Pipeline {
 		ListenerId: rem.ListenerID,
 		Body: &clientpb.Pipeline_Rem{
 			Rem: &clientpb.REM{
-				Console: rem.remCon.ConsoleURL.String(),
-				Link:    rem.remCon.Link(),
+				Console:   rem.remCon.ConsoleURL.String(),
+				Link:      rem.remCon.Link(),
+				Subscribe: rem.remCon.Subscribe(),
 			},
 		},
 	}

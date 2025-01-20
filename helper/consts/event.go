@@ -19,6 +19,7 @@ const (
 	CtrlListenerStop     = "listener_stop"
 	CtrlPipelineStart    = "pipeline_start"
 	CtrlPipelineStop     = "pipeline_stop"
+	CtrlPipelineSync     = "pipeline_sync"
 	CtrlWebsiteStart     = "website_start"
 	CtrlWebsiteStop      = "website_stop"
 	CtrlWebsiteRegister  = "website_register"

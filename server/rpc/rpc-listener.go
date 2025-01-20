@@ -22,6 +22,7 @@ func (rpc *Server) RegisterListener(ctx context.Context, req *clientpb.RegisterL
 		Host:      ip,
 		Active:    true,
 		Pipelines: make(map[string]*clientpb.Pipeline),
+		Ctrl:      make(chan *clientpb.JobCtrl),
 	})
 	core.EventBroker.Notify(core.Event{
 		EventType: consts.EventListener,
@@ -89,10 +90,18 @@ func (rpc *Server) SpiteStream(stream listenerrpc.ListenerRPC_SpiteStreamServer)
 //}
 
 func (rpc *Server) JobStream(stream listenerrpc.ListenerRPC_JobStreamServer) error {
+	listenerID, err := getListenerID(stream.Context())
+	if err != nil {
+		return err
+	}
+	lns, err := core.Listeners.Get(listenerID)
+	if err != nil {
+		return err
+	}
 	go func() {
 		for {
 			select {
-			case msg := <-core.Jobs.Ctrl:
+			case msg := <-lns.Ctrl:
 				err := stream.Send(msg)
 				if err != nil {
 					logs.Log.Errorf("send job ctrl faild %v", err)
@@ -129,13 +138,7 @@ func (rpc *Server) JobStream(stream listenerrpc.ListenerRPC_JobStreamServer) err
 func (rpc *Server) ListJobs(ctx context.Context, req *clientpb.Empty) (*clientpb.Pipelines, error) {
 	var pipelines []*clientpb.Pipeline
 	for _, job := range core.Jobs.All() {
-		pipeline, ok := job.Message.(*clientpb.Pipeline)
-		if !ok {
-			continue
-		}
-		if pipeline.GetTcp() != nil || pipeline.GetWeb() != nil || pipeline.GetBind() != nil {
-			pipelines = append(pipelines, job.Message.(*clientpb.Pipeline))
-		}
+		pipelines = append(pipelines, job.Pipeline)
 	}
 	return &clientpb.Pipelines{Pipelines: pipelines}, nil
 }

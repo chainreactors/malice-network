@@ -16,6 +16,7 @@ type ListenerConfig struct {
 	Enable             bool                  `config:"enable" default:"true"`
 	Name               string                `config:"name" default:"listener"`
 	Auth               string                `config:"auth" default:"listener.auth"`
+	IP                 string                `config:"ip"`
 	TcpPipelines       []*TcpPipelineConfig  `config:"tcp" `
 	BindPipelineConfig []*BindPipelineConfig `config:"bind"`
 	//HttpPipelines []*HttpPipelineConfig `config:"http" default:""`

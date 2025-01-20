@@ -19,8 +19,8 @@ var (
 
 type ClientConfig struct {
 	Operator      string `json:"operator" yaml:"operator"` // This value is actually ignored for the most part (cert CN is used instead)
-	LHost         string `json:"host" yaml:"host"`
-	LPort         int    `json:"port" yaml:"port"`
+	Host          string `json:"host" yaml:"host"`
+	Port          int    `json:"port" yaml:"port"`
 	Type          string `json:"type" yaml:"type"`
 	CACertificate string `json:"ca" yaml:"ca"`
 	PrivateKey    string `json:"key" yaml:"key"`
@@ -28,7 +28,7 @@ type ClientConfig struct {
 }
 
 func (c *ClientConfig) Address() string {
-	return fmt.Sprintf("%s:%d", c.LHost, c.LPort)
+	return fmt.Sprintf("%s:%d", c.Host, c.Port)
 }
 
 //func GetConfigs() map[string]*ClientConfig {
@@ -49,7 +49,7 @@ func (c *ClientConfig) Address() string {
 //			continue
 //		}
 //		digest := sha256.Sum256([]byte(conf.Certificate))
-//		confs[fmt.Sprintf("%s@%s (%x)", conf.Operator, conf.LHost, digest[:8])] = conf
+//		confs[fmt.Sprintf("%s@%s (%x)", conf.Operator, conf.Host, digest[:8])] = conf
 //	}
 //	return confs
 //}
@@ -78,8 +78,8 @@ func ReadConfig(confFilePath string) (*ClientConfig, error) {
 //	// new config
 //	config := &ClientConfig{
 //		Operator:      user,
-//		LHost:         host,
-//		LPort:         port,
+//		Host:         host,
+//		Port:         port,
 //		Type:          caType,
 //		CACertificate: string(ca),
 //		PrivateKey:    string(privateKey),
@@ -96,7 +96,7 @@ func ReadConfig(confFilePath string) (*ClientConfig, error) {
 //	if clientType == listener {
 //		configFile = path.Join(configDir, fmt.Sprintf("%s.yaml", name))
 //	} else {
-//		configFile = path.Join(configDir, fmt.Sprintf("%s_%s.yaml", name, clientConfig.LHost))
+//		configFile = path.Join(configDir, fmt.Sprintf("%s_%s.yaml", name, clientConfig.Host))
 //	}
 //	data, err := yaml.Marshal(clientConfig)
 //	if err != nil {

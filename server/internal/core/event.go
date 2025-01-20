@@ -47,8 +47,11 @@ func (e *Event) String() string {
 	} else if e.Session != nil {
 		id = fmt.Sprintf("Session %s", e.Session.SessionId)
 	}
-
-	return fmt.Sprintf("%s %s: %s", id, e.Op, e.Message)
+	if e.Err != "" {
+		return fmt.Sprintf("%s %s: %s", id, e.Op, e.Err)
+	} else {
+		return fmt.Sprintf("%s %s: %s", id, e.Op, e.Message)
+	}
 }
 
 // toprotobuf
@@ -92,12 +95,10 @@ func (broker *eventBroker) Start() {
 		case sub := <-broker.unsubscribe:
 			delete(subscribers, sub)
 		case event := <-broker.publish:
-			if event.EventType != consts.EventHeartbeat {
-				if event.Important {
-					logs.Log.Infof("[event.%s] %s", event.EventType, event.String())
-				} else {
-					logs.Log.Debugf("[event.%s] %s", event.EventType, event.String())
-				}
+			if event.Important {
+				logs.Log.Infof("[event.%s] %s", event.EventType, event.String())
+			} else {
+				logs.Log.Debugf("[event.%s] %s", event.EventType, event.String())
 			}
 
 			for sub := range subscribers {

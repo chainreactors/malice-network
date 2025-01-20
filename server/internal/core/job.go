@@ -1,15 +1,14 @@
 package core
 
 import (
+	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"google.golang.org/protobuf/proto"
 	"sync"
 )
 
 var (
 	Jobs = &jobs{
-		Map:  &sync.Map{},
-		Ctrl: make(chan *clientpb.JobCtrl),
+		Map: &sync.Map{},
 	}
 	jobID  uint32 = 0
 	ctrlID uint32 = 0
@@ -17,15 +16,19 @@ var (
 
 type jobs struct {
 	*sync.Map
-	Ctrl chan *clientpb.JobCtrl
+}
+
+func (j *jobs) AddPipeline(job Pipeline) {
+	i := NextJobID()
+	j.Store(i, &Job{
+		ID:       i,
+		Name:     job.ID(),
+		Pipeline: job.ToProtobuf(),
+	})
 }
 
 func (j *jobs) Add(job *Job) {
 	j.Store(job.ID, job)
-	//EventBroker.Publish(Event{
-	//	Job:       job,
-	//	EventType: consts.JobStartedEvent,
-	//})
 }
 
 // Remove - Remove a job
@@ -40,16 +43,16 @@ func (j *jobs) Remove(job *Job) {
 }
 
 // Get - Get a Job
-func (j *jobs) Get(jobName string) *Job {
+func (j *jobs) Get(jobName string) (*Job, error) {
 	if jobName == "" {
-		return nil
+		return nil, errs.ErrNotFoundPipeline
 	}
 	for _, job := range j.All() {
 		if job.Name == jobName {
-			return job
+			return job, nil
 		}
 	}
-	return nil
+	return nil, errs.ErrNotFoundPipeline
 }
 
 func (j *jobs) All() []*Job {
@@ -62,20 +65,16 @@ func (j *jobs) All() []*Job {
 }
 
 type Job struct {
-	ID           uint32
-	Name         string
-	Message      proto.Message
-	PersistentID string
+	ID       uint32
+	Name     string
+	Pipeline *clientpb.Pipeline
 }
 
 func (j *Job) ToProtobuf() *clientpb.Job {
 	job := &clientpb.Job{
-		Id:   j.ID,
-		Name: j.Name,
-	}
-	switch j.Message.(type) {
-	case *clientpb.Pipeline:
-		job.Pipeline = j.Message.(*clientpb.Pipeline)
+		Id:       j.ID,
+		Name:     j.Name,
+		Pipeline: j.Pipeline,
 	}
 	return job
 }
