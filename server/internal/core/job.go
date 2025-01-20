@@ -18,16 +18,18 @@ type jobs struct {
 	*sync.Map
 }
 
-func (j *jobs) AddPipeline(job Pipeline) {
-	i := NextJobID()
-	j.Store(i, &Job{
-		ID:       i,
-		Name:     job.ID(),
-		Pipeline: job.ToProtobuf(),
-	})
+func (j *jobs) AddPipeline(pipe *clientpb.Pipeline) *Job {
+	job := &Job{
+		ID:       NextJobID(),
+		Name:     pipe.Name,
+		Pipeline: pipe,
+	}
+	j.Add(job)
+	return job
 }
 
 func (j *jobs) Add(job *Job) {
+	Listeners.AddPipeline(job.Pipeline)
 	j.Store(job.ID, job)
 }
 

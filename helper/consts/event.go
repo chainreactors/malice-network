@@ -78,7 +78,6 @@ const (
 	EventListener  = "listener"
 	EventTask      = "task"
 	EventWebsite   = "website"
-	EventPipeline  = "pipeline"
 	EventJob       = "job"
 	EventHeartbeat = "heartbeat"
 	EventBuild     = "build"

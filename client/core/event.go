@@ -212,17 +212,21 @@ func (s *ServerStatus) handleJob(event *clientpb.Event) {
 		return
 	}
 	pipeline := event.GetJob().GetPipeline()
-	s.Pipelines[pipeline.Name] = pipeline
+	if event.Op == consts.CtrlPipelineSync {
+		s.Pipelines[pipeline.Name] = pipeline
+	}
 	switch pipeline.Body.(type) {
 	case *clientpb.Pipeline_Tcp:
 		Log.Importantf("[%s] %s: tcp %s on %s %s:%d\n", event.Type, event.Op,
-			pipeline.Name, pipeline.ListenerId, pipeline.GetTcp().Host, pipeline.GetTcp().Port)
+			pipeline.Name, pipeline.ListenerId, pipeline.Ip, pipeline.GetTcp().Port)
 	case *clientpb.Pipeline_Bind:
 		Log.Importantf("[%s] %s: bind %s on %s %s\n", event.Type, event.Op,
 			pipeline.Name, pipeline.ListenerId, pipeline.Ip)
 	case *clientpb.Pipeline_Rem:
 		Log.Importantf("[%s] %s: rem %s on %s %s:%d\n", event.Type, event.Op,
-			pipeline.Name, pipeline.ListenerId, pipeline.GetRem().Host, pipeline.GetRem().Port)
+			pipeline.Name, pipeline.ListenerId, pipeline.Ip, pipeline.GetRem().Port)
+
+		Log.Infof("[%s] %s: rem -c %s \n", event.Type, event.Op, pipeline.GetRem().Link)
 	case *clientpb.Pipeline_Web:
 		if event.Op == consts.CtrlWebContentAdd {
 			var root = ""

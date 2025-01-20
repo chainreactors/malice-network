@@ -17,9 +17,8 @@ func NewRem(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeline) (*RE
 	pp := &REM{
 		remCon:     console,
 		rpc:        rpc,
-		URL:        &rem.URL{URL: console.ConsoleURL},
+		remConfig:  remConfig,
 		Name:       pipeline.Name,
-		Enable:     true,
 		ListenerID: pipeline.ListenerId,
 	}
 
@@ -29,7 +28,7 @@ func NewRem(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeline) (*RE
 type REM struct {
 	remCon     *rem.RemConsole
 	rpc        listenerrpc.ListenerRPCClient
-	URL        *rem.URL
+	remConfig  *clientpb.REM
 	ListenerID string
 	Name       string
 	Enable     bool
@@ -40,7 +39,7 @@ func (rem *REM) ID() string {
 }
 
 func (rem *REM) Start() error {
-	if !rem.Enable {
+	if rem.Enable {
 		return nil
 	}
 
@@ -48,7 +47,7 @@ func (rem *REM) Start() error {
 	if err != nil {
 		return err
 	}
-
+	rem.Enable = true
 	logs.Log.Important(rem.remCon.Link())
 	go func() {
 		for {
@@ -72,8 +71,8 @@ func (rem *REM) ToProtobuf() *clientpb.Pipeline {
 		Body: &clientpb.Pipeline_Rem{
 			Rem: &clientpb.REM{
 				Host:      rem.remCon.ConsoleURL.Hostname(),
-				Console:   rem.URL.String(),
-				Port:      rem.URL.Port(),
+				Console:   rem.remConfig.Console,
+				Port:      rem.remConfig.Port,
 				Link:      rem.remCon.Link(),
 				Subscribe: rem.remCon.Subscribe(),
 				Agents:    rem.remCon.ToProtobuf(),

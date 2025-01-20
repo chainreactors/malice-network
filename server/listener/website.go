@@ -4,10 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/chainreactors/malice-network/server/internal/configs"
-	"github.com/chainreactors/malice-network/server/internal/parser"
-	"github.com/chainreactors/malice-network/server/internal/parser/pulse"
-	cryptostream "github.com/chainreactors/malice-network/server/internal/stream"
+
 	"io"
 	"net/http"
 	"path"
@@ -23,7 +20,11 @@ import (
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/helper/utils/peek"
 	"github.com/chainreactors/malice-network/server/internal/certutils"
+	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
+	"github.com/chainreactors/malice-network/server/internal/parser"
+	"github.com/chainreactors/malice-network/server/internal/parser/pulse"
+	cryptostream "github.com/chainreactors/malice-network/server/internal/stream"
 )
 
 type Website struct {
@@ -75,6 +76,7 @@ func (w *Website) Start() error {
 			logs.Log.Errorf("HTTP Server failed to start: %v", err)
 		}
 	}()
+	w.Enable = true
 	return nil
 }
 

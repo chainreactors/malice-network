@@ -544,7 +544,7 @@ func FindWebContentsByWebsite(website string) ([]*models.WebsiteContent, error) 
 func AddContent(content *clientpb.WebContent) (*models.WebsiteContent, error) {
 	var existingContent models.WebsiteContent
 	switch content.Type {
-	case "", "raw":
+	case "", "raw", "default":
 		content.ContentType = mime.TypeByExtension(filepath.Ext(content.Path))
 	case consts.ImplantPulse:
 		content.ContentType = "application/octet-stream"

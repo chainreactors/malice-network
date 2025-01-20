@@ -55,7 +55,6 @@ func (rpc *Server) StartRem(ctx context.Context, req *clientpb.CtrlPipeline) (*c
 	if err != nil {
 		return nil, err
 	}
-	lns.AddPipeline(rem)
 	job := &core.Job{
 		ID:       core.NextJobID(),
 		Pipeline: rem,

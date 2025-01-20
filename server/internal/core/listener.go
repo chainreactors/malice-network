@@ -33,10 +33,6 @@ func (l *Listener) RemovePipeline(pipeline *clientpb.Pipeline) {
 	delete(l.Pipelines, pipeline.Name)
 }
 
-func (l *Listener) UpdatePipeline(pipeline *clientpb.Pipeline) {
-	l.Pipelines[pipeline.Name] = pipeline
-}
-
 func (l *Listener) GetPipeline(name string) *clientpb.Pipeline {
 	return l.Pipelines[name]
 }
@@ -134,15 +130,6 @@ func (l *listeners) RemovePipeline(pipeline *clientpb.Pipeline) bool {
 	val, err := l.Get(pipeline.ListenerId)
 	if err == nil {
 		val.RemovePipeline(pipeline)
-		return true
-	}
-	return false
-}
-
-func (l *listeners) UpdatePipeline(pipeline *clientpb.Pipeline) bool {
-	val, err := l.Get(pipeline.ListenerId)
-	if err == nil {
-		val.UpdatePipeline(pipeline)
 		return true
 	}
 	return false

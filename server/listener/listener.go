@@ -217,7 +217,7 @@ func (lns *listener) Handler() {
 		switch msg.Ctrl {
 		case consts.CtrlPipelineStart:
 			handlerErr = lns.handlerStart(msg.Job)
-		case consts.CtrlPipelineStop:
+		case consts.CtrlPipelineStop, consts.CtrlRemStop:
 			handlerErr = lns.handlerStop(msg.Job)
 		case consts.CtrlPipelineSync:
 			handlerErr = lns.syncPipeline(msg.Job)
@@ -235,6 +235,10 @@ func (lns *listener) Handler() {
 			handlerErr = lns.handleWebContentRemove(msg.Job)
 		case consts.CtrlRemStart:
 			handlerErr = lns.handleStartRem(msg.Job)
+		}
+
+		if msg.Ctrl == consts.CtrlPipelineSync {
+			continue
 		}
 
 		status := &clientpb.JobStatus{

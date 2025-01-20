@@ -102,19 +102,6 @@ func TlsCertFlagSet(f *pflag.FlagSet) {
 	f.BoolP("tls", "t", false, "enable tls")
 }
 
-func EncryptionFlagSet(f *pflag.FlagSet) {
-	f.String("parser", "malefic", "pipeline parser")
-	f.String("encryption-type", "", "encryption type")
-	f.String("encryption-key", "", "encryption key")
-	f.Bool("encryption-enable", false, "whether to enable encryption")
-}
-
-func PipelineFlagSet(f *pflag.FlagSet) {
-	f.StringP("listener", "l", "", "listener id")
-	f.String("host", "0.0.0.0", "pipeline host, the default value is **0.0.0.0**")
-	f.UintP("port", "p", 0, "pipeline port, random port is selected from the range **10000-15000**")
-}
-
 func ArtifactFlagSet(f *pflag.FlagSet) {
 	f.StringSlice("target", []string{}, "build target")
 	f.String("beacon-pipeline", "", "beacon pipeline id")
@@ -126,12 +113,18 @@ func ParseArtifactFlags(cmd *cobra.Command) ([]string, string) {
 	return target, beaconPipeline
 }
 
-func ParsePipelineFlags(cmd *cobra.Command) (string, string, uint32, string) {
+func PipelineFlagSet(f *pflag.FlagSet) {
+	f.StringP("listener", "l", "", "listener id")
+	f.String("host", "0.0.0.0", "pipeline host, the default value is **0.0.0.0**")
+	f.UintP("port", "p", 0, "pipeline port, random port is selected from the range **10000-15000**")
+	f.String("ip", "ip", "external ip")
+}
+
+func ParsePipelineFlags(cmd *cobra.Command) (string, string, uint32) {
 	listenerID, _ := cmd.Flags().GetString("listener")
 	host, _ := cmd.Flags().GetString("host")
 	portUint, _ := cmd.Flags().GetUint32("port")
-	parser, _ := cmd.Flags().GetString("parser")
-	return listenerID, host, portUint, parser
+	return listenerID, host, portUint
 }
 
 func ParseTLSFlags(cmd *cobra.Command) (*clientpb.TLS, error) {
@@ -156,7 +149,14 @@ func ParseTLSFlags(cmd *cobra.Command) (*clientpb.TLS, error) {
 	}, nil
 }
 
-func ParseEncryptionFlags(cmd *cobra.Command) *clientpb.Encryption {
+func EncryptionFlagSet(f *pflag.FlagSet) {
+	f.String("parser", "default", "pipeline parser")
+	f.String("encryption-type", "", "encryption type")
+	f.String("encryption-key", "", "encryption key")
+	f.Bool("encryption-enable", false, "whether to enable encryption")
+}
+
+func ParseEncryptionFlags(cmd *cobra.Command) (string, *clientpb.Encryption) {
 	encryptionType, _ := cmd.Flags().GetString("encryption-type")
 	encryptionKey, _ := cmd.Flags().GetString("encryption-key")
 	enable, _ := cmd.Flags().GetBool("encryption-enable")
@@ -170,7 +170,7 @@ func ParseEncryptionFlags(cmd *cobra.Command) *clientpb.Encryption {
 			encryptionType = consts.CryptorXOR
 		}
 	}
-	return &clientpb.Encryption{
+	return parser, &clientpb.Encryption{
 		Enable: enable,
 		Type:   encryptionType,
 		Key:    encryptionKey,
