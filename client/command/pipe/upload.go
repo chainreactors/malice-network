@@ -72,6 +72,7 @@ func RegisterPipeUploadFunc(con *repl.Console) {
 		common.ParseStatus,
 		nil,
 	)
+
 	con.AddCommandFuncHelper(
 		consts.ModulePipeUpload,
 		consts.ModulePipeUpload,

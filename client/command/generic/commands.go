@@ -92,7 +92,21 @@ func Commands(con *repl.Console) []*cobra.Command {
 	}
 	fileAction := carapace.ActionFiles()
 	common.BindArgCompletions(cmdCmd, &fileAction)
-	return []*cobra.Command{loginCmd, versionCmd, exitCmd, broadcastCmd, cmdCmd}
+
+	pivotCmd := &cobra.Command{
+		Use:   consts.CommandPivot,
+		Short: "List all pivot agents",
+		Long:  "List all active pivot agents with their details",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return ListPivotCmd(cmd, con)
+		},
+		Example: `List all pivot agents:
+~~~
+pivot
+~~~`,
+	}
+
+	return []*cobra.Command{loginCmd, versionCmd, exitCmd, broadcastCmd, cmdCmd, pivotCmd}
 }
 
 func Log(con *repl.Console, sess *core.Session, msg string, notify bool) (bool, error) {

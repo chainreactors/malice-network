@@ -40,7 +40,7 @@ forward pipeline1 --port 8080 --target 192.168.1.1:80
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ReverseCmd(cmd, con)
 		},
-		Aliases: []string{consts.CommandSocks5},
+		Aliases: []string{consts.CommandAliasSocks5},
 		Annotations: map[string]string{
 			"depend": consts.ModuleRem,
 		},
