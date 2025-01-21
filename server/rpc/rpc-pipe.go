@@ -55,9 +55,12 @@ func (rpc *Server) PipeUpload(ctx context.Context, pipe *implantpb.PipeRequest) 
 		go greq.HandlerResponse(ch, types.MsgAck)
 		return greq.Task.ToProtobuf(), nil
 	} else {
-		greq, err := newGenericRequest(ctx, &implantpb.Pipe{
-			Name:   req.Name,
-			Target: req.Target,
+		greq, err := newGenericRequest(ctx, &implantpb.PipeRequest{
+			Type: consts.ModulePipeUpload,
+			Pipe: &implantpb.Pipe{
+				Name:   req.Name,
+				Target: req.Target,
+			},
 		}, count)
 		in, out, err := rpc.StreamGenericHandler(ctx, greq)
 		if err != nil {
