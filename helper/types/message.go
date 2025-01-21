@@ -8,22 +8,29 @@ import (
 type MsgName string
 
 const (
-	MsgUnknown        MsgName = "unknown"
-	MsgNil            MsgName = "nil"
-	MsgEmpty          MsgName = "empty"
-	MsgInit           MsgName = "init"
-	MsgPing           MsgName = "ping"
-	MsgSleep          MsgName = "sleep"
-	MsgRequest        MsgName = "request"
-	MsgResponse       MsgName = "response"
-	MsgBlock          MsgName = "block"
-	MsgRegister       MsgName = "register"
-	MsgSysInfo        MsgName = "sysinfo"
+	// internal
+
+	MsgInit  MsgName = consts.ModuleInit
+	MsgPing  MsgName = consts.ModulePing
+	MsgSleep MsgName = consts.ModuleSleep
+	MsgLogin MsgName = consts.ModuleLogin
+	MsgTask  MsgName = "task"
+	MsgTasks MsgName = "tasks"
+	// basic message
+	MsgResponse MsgName = "response"
+	MsgBlock    MsgName = "block"
+	MsgAck      MsgName = "ack"
+	MsgRegister MsgName = "register"
+	MsgRequest  MsgName = "request"
+	MsgUnknown  MsgName = "unknown"
+	MsgNil      MsgName = "nil"
+	MsgEmpty    MsgName = "empty"
+
+	MsgSysInfo        MsgName = consts.ModuleSysInfo
 	MsgUpload         MsgName = consts.ModuleUpload
 	MsgDownload       MsgName = consts.ModuleDownload
 	MsgCurl           MsgName = consts.ModuleCurl
 	MsgExec           MsgName = consts.ModuleExecution
-	MsgAck            MsgName = "ack"
 	MsgListModule     MsgName = consts.ModuleListModule
 	MsgLoadModule     MsgName = consts.ModuleLoadModule
 	MsgListAddon      MsgName = consts.ModuleListAddon
@@ -70,6 +77,10 @@ func MessageType(message *implantpb.Spite) MsgName {
 		return MsgPing
 	case *implantpb.Spite_Init:
 		return MsgInit
+	case *implantpb.Spite_TaskInfo:
+		return MsgTask
+	case *implantpb.Spite_TaskList:
+		return MsgTasks
 	case *implantpb.Spite_Sysinfo:
 		return MsgSysInfo
 	case *implantpb.Spite_ExecRequest, *implantpb.Spite_ExecResponse:
@@ -108,6 +119,7 @@ func MessageType(message *implantpb.Spite) MsgName {
 		return MsgTaskSchdResponse
 	case *implantpb.Spite_SchedulesResponse:
 		return MsgTaskSchdsResponse
+
 	default:
 		return MsgUnknown
 	}

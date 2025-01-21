@@ -1,9 +1,12 @@
 package tasks
 
 import (
+	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/tui"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -13,7 +16,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Use:   consts.CommandTasks,
 		Short: "List tasks",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return ListTasks(cmd, con)
+			return GetTasksCmd(cmd, con)
 		},
 	}
 
@@ -42,7 +45,32 @@ cancel_task <task_id>
 `}
 
 	common.BindArgCompletions(cancelTaskCmd, nil, common.SessionTaskCompleter(con))
-	return []*cobra.Command{taskCmd, fileCmd, cancelTaskCmd}
+
+	listTaskCmd := &cobra.Command{
+		Use:   consts.ModuleListTask,
+		Short: "List all tasks",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return ListTaskCmd(cmd, con)
+		},
+		Example: `~~~
+list_task
+~~~
+`}
+
+	queryTaskCmd := &cobra.Command{
+		Use:   consts.ModuleQueryTask + " [task_id]",
+		Short: "Query a task by task_id",
+		Args:  cobra.MinimumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return QueryTaskCmd(cmd, con)
+		},
+		Example: `~~~
+query_task <task_id>
+~~~
+`}
+
+	common.BindArgCompletions(queryTaskCmd, nil, common.SessionTaskCompleter(con))
+	return []*cobra.Command{taskCmd, fileCmd, cancelTaskCmd, listTaskCmd, queryTaskCmd}
 }
 
 func Register(con *repl.Console) {
@@ -64,4 +92,43 @@ func Register(con *repl.Console) {
 		},
 		[]string{"task"})
 
+	con.RegisterImplantFunc(
+		consts.ModuleListTask,
+		ListTask,
+		"",
+		nil,
+		func(content *clientpb.TaskContext) (interface{}, error) {
+			logs.Log.Infof("list task\n")
+			return tui.RendStructDefault(content.Spite.GetTaskList()), nil
+		},
+		nil)
+
+	con.AddCommandFuncHelper(
+		consts.ModuleListTask,
+		consts.ModuleListTask,
+		"list_task",
+		[]string{
+			"sess:special session",
+		},
+		[]string{"task"})
+
+	con.RegisterImplantFunc(
+		consts.ModuleQueryTask,
+		QueryTask,
+		"",
+		nil,
+		func(content *clientpb.TaskContext) (interface{}, error) {
+			return tui.RendStructDefault(content.Spite.GetTaskInfo()), nil
+		},
+		nil)
+
+	con.AddCommandFuncHelper(
+		consts.ModuleQueryTask,
+		consts.ModuleQueryTask,
+		"query_task <task_id>",
+		[]string{
+			"sess:special session",
+			"task_id:task id",
+		},
+		[]string{"task"})
 }

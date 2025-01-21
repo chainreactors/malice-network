@@ -28,10 +28,13 @@ const (
 	// internal
 	ModulePing       = "ping"
 	ModuleClear      = "clear"
-	ModuleCancelTask = "cancel_task"
 	ModuleSleep      = "sleep"
 	ModuleSuicide    = "suicide"
 	ModuleInit       = "init"
+	ModuleLogin      = "login"
+	ModuleCancelTask = "cancel_task"
+	ModuleQueryTask  = "query_task"
+	ModuleListTask   = "list_task"
 
 	//execute
 	ModuleAliasShell           = "shell"

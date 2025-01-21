@@ -56,6 +56,8 @@ const (
 	MaliceRPC_LoadAddon_FullMethodName             = "/clientrpc.MaliceRPC/LoadAddon"
 	MaliceRPC_ExecuteAddon_FullMethodName          = "/clientrpc.MaliceRPC/ExecuteAddon"
 	MaliceRPC_Clear_FullMethodName                 = "/clientrpc.MaliceRPC/Clear"
+	MaliceRPC_ListTasks_FullMethodName             = "/clientrpc.MaliceRPC/ListTasks"
+	MaliceRPC_QueryTask_FullMethodName             = "/clientrpc.MaliceRPC/QueryTask"
 	MaliceRPC_CancelTask_FullMethodName            = "/clientrpc.MaliceRPC/CancelTask"
 	MaliceRPC_Polling_FullMethodName               = "/clientrpc.MaliceRPC/Polling"
 	MaliceRPC_Upload_FullMethodName                = "/clientrpc.MaliceRPC/Upload"
@@ -189,7 +191,9 @@ type MaliceRPCClient interface {
 	LoadAddon(ctx context.Context, in *implantpb.LoadAddon, opts ...grpc.CallOption) (*clientpb.Task, error)
 	ExecuteAddon(ctx context.Context, in *implantpb.ExecuteAddon, opts ...grpc.CallOption) (*clientpb.Task, error)
 	Clear(ctx context.Context, in *implantpb.Request, opts ...grpc.CallOption) (*clientpb.Task, error)
-	CancelTask(ctx context.Context, in *implantpb.ImplantTask, opts ...grpc.CallOption) (*clientpb.Task, error)
+	ListTasks(ctx context.Context, in *implantpb.Request, opts ...grpc.CallOption) (*clientpb.Task, error)
+	QueryTask(ctx context.Context, in *implantpb.TaskCtrl, opts ...grpc.CallOption) (*clientpb.Task, error)
+	CancelTask(ctx context.Context, in *implantpb.TaskCtrl, opts ...grpc.CallOption) (*clientpb.Task, error)
 	// implant::bind
 	Polling(ctx context.Context, in *clientpb.Polling, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	// implant::file
@@ -633,7 +637,25 @@ func (c *maliceRPCClient) Clear(ctx context.Context, in *implantpb.Request, opts
 	return out, nil
 }
 
-func (c *maliceRPCClient) CancelTask(ctx context.Context, in *implantpb.ImplantTask, opts ...grpc.CallOption) (*clientpb.Task, error) {
+func (c *maliceRPCClient) ListTasks(ctx context.Context, in *implantpb.Request, opts ...grpc.CallOption) (*clientpb.Task, error) {
+	out := new(clientpb.Task)
+	err := c.cc.Invoke(ctx, MaliceRPC_ListTasks_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *maliceRPCClient) QueryTask(ctx context.Context, in *implantpb.TaskCtrl, opts ...grpc.CallOption) (*clientpb.Task, error) {
+	out := new(clientpb.Task)
+	err := c.cc.Invoke(ctx, MaliceRPC_QueryTask_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *maliceRPCClient) CancelTask(ctx context.Context, in *implantpb.TaskCtrl, opts ...grpc.CallOption) (*clientpb.Task, error) {
 	out := new(clientpb.Task)
 	err := c.cc.Invoke(ctx, MaliceRPC_CancelTask_FullMethodName, in, out, opts...)
 	if err != nil {
@@ -1468,7 +1490,9 @@ type MaliceRPCServer interface {
 	LoadAddon(context.Context, *implantpb.LoadAddon) (*clientpb.Task, error)
 	ExecuteAddon(context.Context, *implantpb.ExecuteAddon) (*clientpb.Task, error)
 	Clear(context.Context, *implantpb.Request) (*clientpb.Task, error)
-	CancelTask(context.Context, *implantpb.ImplantTask) (*clientpb.Task, error)
+	ListTasks(context.Context, *implantpb.Request) (*clientpb.Task, error)
+	QueryTask(context.Context, *implantpb.TaskCtrl) (*clientpb.Task, error)
+	CancelTask(context.Context, *implantpb.TaskCtrl) (*clientpb.Task, error)
 	// implant::bind
 	Polling(context.Context, *clientpb.Polling) (*clientpb.Empty, error)
 	// implant::file
@@ -1682,7 +1706,13 @@ func (UnimplementedMaliceRPCServer) ExecuteAddon(context.Context, *implantpb.Exe
 func (UnimplementedMaliceRPCServer) Clear(context.Context, *implantpb.Request) (*clientpb.Task, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Clear not implemented")
 }
-func (UnimplementedMaliceRPCServer) CancelTask(context.Context, *implantpb.ImplantTask) (*clientpb.Task, error) {
+func (UnimplementedMaliceRPCServer) ListTasks(context.Context, *implantpb.Request) (*clientpb.Task, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListTasks not implemented")
+}
+func (UnimplementedMaliceRPCServer) QueryTask(context.Context, *implantpb.TaskCtrl) (*clientpb.Task, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method QueryTask not implemented")
+}
+func (UnimplementedMaliceRPCServer) CancelTask(context.Context, *implantpb.TaskCtrl) (*clientpb.Task, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CancelTask not implemented")
 }
 func (UnimplementedMaliceRPCServer) Polling(context.Context, *clientpb.Polling) (*clientpb.Empty, error) {
@@ -2574,8 +2604,44 @@ func _MaliceRPC_Clear_Handler(srv interface{}, ctx context.Context, dec func(int
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MaliceRPC_ListTasks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(implantpb.Request)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MaliceRPCServer).ListTasks(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MaliceRPC_ListTasks_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MaliceRPCServer).ListTasks(ctx, req.(*implantpb.Request))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MaliceRPC_QueryTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(implantpb.TaskCtrl)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MaliceRPCServer).QueryTask(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MaliceRPC_QueryTask_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MaliceRPCServer).QueryTask(ctx, req.(*implantpb.TaskCtrl))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _MaliceRPC_CancelTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(implantpb.ImplantTask)
+	in := new(implantpb.TaskCtrl)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -2587,7 +2653,7 @@ func _MaliceRPC_CancelTask_Handler(srv interface{}, ctx context.Context, dec fun
 		FullMethod: MaliceRPC_CancelTask_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MaliceRPCServer).CancelTask(ctx, req.(*implantpb.ImplantTask))
+		return srv.(MaliceRPCServer).CancelTask(ctx, req.(*implantpb.TaskCtrl))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4296,6 +4362,14 @@ var MaliceRPC_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Clear",
 			Handler:    _MaliceRPC_Clear_Handler,
+		},
+		{
+			MethodName: "ListTasks",
+			Handler:    _MaliceRPC_ListTasks_Handler,
+		},
+		{
+			MethodName: "QueryTask",
+			Handler:    _MaliceRPC_QueryTask_Handler,
 		},
 		{
 			MethodName: "CancelTask",

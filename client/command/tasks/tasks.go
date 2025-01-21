@@ -10,7 +10,7 @@ import (
 	"strconv"
 )
 
-func ListTasks(cmd *cobra.Command, con *repl.Console) error {
+func GetTasksCmd(cmd *cobra.Command, con *repl.Console) error {
 	err := con.UpdateTasks(con.GetInteractive())
 	if err != nil {
 		return err
@@ -63,7 +63,6 @@ func printTasks(tasks []*clientpb.Task, con *repl.Console, isAll bool) {
 	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)
 	fmt.Printf(tableModel.View())
-
 }
 
 //	func TasksCmd(ctx *grumble.Context, con *console.Console) {
