@@ -10,8 +10,9 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
+	"github.com/chainreactors/malice-network/helper/utils/pe"
+	"github.com/chainreactors/utils/encode"
 	"github.com/spf13/cobra"
-	"os"
 )
 
 // PipeUploadCmd uploads a file's content to a named pipe.
@@ -29,7 +30,7 @@ func PipeUploadCmd(cmd *cobra.Command, con *repl.Console) error {
 }
 
 func PipeUpload(rpc clientrpc.MaliceRPCClient, session *core.Session, pipe string, path string) (*clientpb.Task, error) {
-	data, err := os.ReadFile(path)
+	data, err := pe.Unpack(path)
 	if err != nil {
 		core.Log.Errorf("Can't open file: %s", err)
 		return nil, err
@@ -83,13 +84,13 @@ func RegisterPipeUploadFunc(con *repl.Console) {
 		},
 		[]string{"task"})
 
-	con.RegisterImplantFunc(
-		"pipe_upload_raw",
-		PipeUploadRaw,
+	con.RegisterImplantFunc("pipe_upload_raw",
+		func(rpc clientrpc.MaliceRPCClient, session *core.Session, pipe string, data string) (*clientpb.Task, error) {
+			return PipeUpload(rpc, session, pipe, fmt.Sprintf("bin:%s", encode.Base64Encode([]byte(data))))
+		},
 		"",
 		nil,
 		common.ParseStatus,
-		nil,
-	)
+		nil)
 
 }
