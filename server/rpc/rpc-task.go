@@ -167,7 +167,7 @@ func (rpc *Server) GetAllDownloadFiles(ctx context.Context, req *clientpb.Empty)
 	return resp, nil
 }
 
-func (rpc *Server) CancelTask(ctx context.Context, req *implantpb.ImplantTask) (*clientpb.Task, error) {
+func (rpc *Server) CancelTask(ctx context.Context, req *implantpb.TaskCtrl) (*clientpb.Task, error) {
 	sess, err := getSession(ctx)
 	if err != nil {
 		return nil, err
@@ -194,5 +194,33 @@ func (rpc *Server) CancelTask(ctx context.Context, req *implantpb.ImplantTask) (
 		})
 	})
 
+	return greq.Task.ToProtobuf(), nil
+}
+
+func (rpc *Server) ListTasks(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
+	greq, err := newGenericRequest(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	ch, err := rpc.GenericHandler(ctx, greq)
+	if err != nil {
+		return nil, err
+	}
+
+	go greq.HandlerResponse(ch, types.MsgTasks)
+	return greq.Task.ToProtobuf(), nil
+}
+
+func (rpc *Server) QueryTask(ctx context.Context, req *implantpb.TaskCtrl) (*clientpb.Task, error) {
+	greq, err := newGenericRequest(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	ch, err := rpc.GenericHandler(ctx, greq)
+	if err != nil {
+		return nil, err
+	}
+
+	go greq.HandlerResponse(ch, types.MsgTask)
 	return greq.Task.ToProtobuf(), nil
 }

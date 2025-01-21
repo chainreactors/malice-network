@@ -97,7 +97,7 @@ func (broker *eventBroker) Start() {
 		case event := <-broker.publish:
 			if event.Important {
 				logs.Log.Infof("[event.%s] %s", event.EventType, event.String())
-			} else {
+			} else if event.EventType != consts.EventHeartbeat {
 				logs.Log.Debugf("[event.%s] %s", event.EventType, event.String())
 			}
 

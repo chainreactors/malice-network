@@ -2,6 +2,8 @@ package tasks
 
 import (
 	"fmt"
+	"strconv"
+
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -9,28 +11,27 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/spf13/cobra"
-	"strconv"
 )
 
-func CancelTaskCmd(cmd *cobra.Command, con *repl.Console) error {
+func QueryTaskCmd(cmd *cobra.Command, con *repl.Console) error {
 	taskId := cmd.Flags().Arg(0)
 	id, err := strconv.Atoi(taskId)
 	if err != nil {
 		return err
 	}
 
-	task, err := CancelTask(con.Rpc, con.GetInteractive(), uint32(id))
+	task, err := QueryTask(con.Rpc, con.GetInteractive(), uint32(id))
 	if err != nil {
 		return err
 	}
 
-	con.GetInteractive().Console(task, fmt.Sprintf("cancel task %d", id))
+	con.GetInteractive().Console(task, fmt.Sprintf("query task %d", id))
 	return nil
 }
 
-func CancelTask(rpc clientrpc.MaliceRPCClient, session *core.Session, taskId uint32) (*clientpb.Task, error) {
-	return rpc.CancelTask(session.Context(), &implantpb.TaskCtrl{
+func QueryTask(rpc clientrpc.MaliceRPCClient, session *core.Session, taskId uint32) (*clientpb.Task, error) {
+	return rpc.QueryTask(session.Context(), &implantpb.TaskCtrl{
 		TaskId: taskId,
-		Op:     consts.ModuleCancelTask,
+		Op:     consts.ModuleQueryTask,
 	})
 }

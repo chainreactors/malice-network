@@ -29,7 +29,7 @@ func BuildSpite(spite *implantpb.Spite, msg proto.Message) (*implantpb.Spite, er
 	case *implantpb.Request:
 		spite.Name = msg.Name
 		spite.Body = &implantpb.Spite_Request{Request: msg}
-	case *implantpb.ImplantTask:
+	case *implantpb.TaskCtrl:
 		spite.Name = msg.Op
 		spite.Body = &implantpb.Spite_Task{Task: msg}
 	case *implantpb.Ping:
@@ -98,6 +98,9 @@ func BuildSpite(spite *implantpb.Spite, msg proto.Message) (*implantpb.Spite, er
 	case *implantpb.PipeRequest:
 		spite.Name = msg.Type
 		spite.Body = &implantpb.Spite_PipeRequest{PipeRequest: msg.Pipe}
+	case *implantpb.Login:
+		spite.Name = MsgLogin.String()
+		spite.Body = &implantpb.Spite_LoginRequest{LoginRequest: msg}
 	default:
 		return spite, ErrUnknownSpite
 	}
