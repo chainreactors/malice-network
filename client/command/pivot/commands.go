@@ -94,7 +94,21 @@ rportforward pipeline1 --port 8080 --remote 192.168.1.1:80
 		f.StringP("remote", "r", "", "implant's address to connect to (host:port)")
 	})
 
+	pivotCmd := &cobra.Command{
+		Use:   consts.CommandPivot,
+		Short: "List all pivot agents",
+		Long:  "List all active pivot agents with their details",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return ListPivotCmd(cmd, con)
+		},
+		Example: `List all pivot agents:
+~~~
+pivot
+~~~`,
+	}
+
 	return []*cobra.Command{
+		pivotCmd,
 		forwardCmd,
 		reverseCmd,
 		proxyCmd,
