@@ -42,7 +42,12 @@ func FindAliveSessions() ([]*clientpb.Session, error) {
 	updateResult := Session().Exec(`
         UPDATE sessions
         SET is_alive = false
-        WHERE last_checkin < strftime('%s', 'now') - (interval * 2) 
+        WHERE last_checkin < strftime('%s', 'now') - (
+            CAST(COALESCE(
+                JSON_EXTRACT(data, '$.interval'),
+                '30'  -- 默认值，如果 interval 不存在
+            ) AS INTEGER) * 2
+        )
         AND is_removed = false
     `)
 
@@ -53,13 +58,21 @@ func FindAliveSessions() ([]*clientpb.Session, error) {
 
 	var activeSessions []models.Session
 	result := Session().Raw(`
-		SELECT * 
-		FROM sessions 
-		WHERE last_checkin > strftime('%s', 'now') - (interval * 2) AND is_removed = false
-		`).Scan(&activeSessions)
+        SELECT * 
+        FROM sessions 
+        WHERE last_checkin > strftime('%s', 'now') - (
+            CAST(COALESCE(
+                JSON_EXTRACT(data, '$.interval'),
+                '30'  -- 默认值，如果 interval 不存在
+            ) AS INTEGER) * 2
+        ) 
+        AND is_removed = false
+    `).Scan(&activeSessions)
+
 	if result.Error != nil {
 		return nil, result.Error
 	}
+
 	var sessions []*clientpb.Session
 	for _, session := range activeSessions {
 		sessions = append(sessions, session.ToProtobuf())
@@ -145,10 +158,10 @@ func UpdateSessionTimer(sessionID string, interval uint64, jitter float64) error
 		return result.Error
 	}
 	if interval != 0 {
-		session.Interval = interval
+		session.Data.Interval = interval
 	}
 	if jitter != 0 {
-		session.Jitter = jitter
+		session.Data.Jitter = jitter
 	}
 	result = Session().Save(&session)
 	return result.Error

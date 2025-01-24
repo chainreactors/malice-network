@@ -3,11 +3,12 @@ package generic
 import (
 	"errors"
 	"fmt"
+	"os"
+	"os/exec"
+
 	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"os"
-	"os/exec"
 
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
@@ -188,4 +189,26 @@ func Register(con *repl.Console) {
 	con.RegisterServerFunc("isbeacon", func(con *repl.Console, sess *core.Session) (bool, error) {
 		return sess.Type == consts.CommandBuildBeacon, nil
 	}, nil)
+
+	con.RegisterServerFunc("bdata", func(con *repl.Console, sess *core.Session) (map[string]interface{}, error) {
+		if sess == nil {
+			return nil, errors.New("session is nil")
+		}
+		return sess.Data.Any, nil
+	}, &mals.Helper{
+		Short:   "get session custom data",
+		Output:  []string{"map[string]interface{}"},
+		Example: "data()",
+	})
+	con.RegisterServerFunc("data", func(con *repl.Console, sess *core.Session) (map[string]interface{}, error) {
+		if sess == nil {
+			return nil, errors.New("session is nil")
+		}
+
+		return sess.Data.Data(), nil
+	}, &mals.Helper{
+		Short:   "get session data",
+		Output:  []string{"map[string]interface{}"},
+		Example: "data()",
+	})
 }

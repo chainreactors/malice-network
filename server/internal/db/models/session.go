@@ -3,37 +3,32 @@ package models
 import (
 	"encoding/json"
 	"errors"
+	"github.com/chainreactors/malice-network/helper/types"
+	"time"
+
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/server/internal/db/content"
 	"gorm.io/gorm"
-	"time"
 )
 
 type Session struct {
 	SessionID   string `gorm:"primaryKey;->;<-:create;type:uuid;"`
 	RawID       uint32
 	CreatedAt   time.Time `gorm:"->;<-:create;"`
-	Name        string
 	Note        string
 	GroupName   string
 	Target      string
 	Initialized bool
 	Type        string
-	IsPrivilege bool
 	PipelineID  string
 	ListenerID  string
 	IsAlive     bool
-	Context     string
 	LastCheckin int64
-	Interval    uint64
-	Jitter      float64
-	IsRemoved   bool     `gorm:"default:false"`
-	Os          *Os      `gorm:"embedded;embeddedPrefix:os_"`
-	Process     *Process `gorm:"embedded;embeddedPrefix:process_"`
-
-	ProfileName string  `gorm:"index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:ProfileName;references:Name"`
-	Profile     Profile `gorm:"foreignKey:ProfileName;references:Name;"`
+	IsRemoved   bool                  `gorm:"default:false"`
+	Data        *types.SessionContext `gorm:"-"`
+	DataString  string                `gorm:"column:data"`
+	ProfileName string                `gorm:"index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:ProfileName;references:Name"`
+	Profile     Profile               `gorm:"foreignKey:ProfileName;references:Name;"`
 }
 
 func (s *Session) BeforeCreate(tx *gorm.DB) (err error) {
@@ -46,17 +41,41 @@ func (s *Session) BeforeCreate(tx *gorm.DB) (err error) {
 	return nil
 }
 
+func (s *Session) BeforeSave(tx *gorm.DB) error {
+	if s.Data != nil {
+		data, err := json.Marshal(s.Data)
+		if err != nil {
+			return err
+		}
+		s.DataString = string(data)
+	}
+	return nil
+}
+
+func (s *Session) AfterFind(tx *gorm.DB) error {
+	if s.DataString == "" {
+		return nil
+	}
+
+	if err := json.Unmarshal([]byte(s.DataString), &s.Data); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (s *Session) ToProtobuf() *clientpb.Session {
 	if s == nil {
 		return nil
 	}
-	cont, _ := content.RecoverSessionContext(s.Context)
-	if s.Os == nil {
-		s.Os = &Os{}
+
+	// 将整个 Data 序列化为 JSON 字符串
+	var dataString string
+	if s.Data != nil {
+		if jsonBytes, err := json.Marshal(s.Data.Data()); err == nil {
+			dataString = string(jsonBytes)
+		}
 	}
-	if s.Process == nil {
-		s.Process = &Process{}
-	}
+
 	return &clientpb.Session{
 		Type:          s.Type,
 		SessionId:     s.SessionID,
@@ -68,49 +87,20 @@ func (s *Session) ToProtobuf() *clientpb.Session {
 		Target:        s.Target,
 		IsAlive:       s.IsAlive,
 		IsInitialized: s.Initialized,
-		IsPrivilege:   s.IsPrivilege,
+		IsPrivilege:   s.Data.IsPrivilege,
 		LastCheckin:   s.LastCheckin,
-		Os:            s.Os.toProtobuf(),
-		Process:       s.Process.toProtobuf(),
-		Timer:         &implantpb.Timer{Interval: s.Interval, Jitter: s.Jitter},
-		Modules:       cont.Modules,
+		Filepath:      s.Data.Filepath,
+		Workdir:       s.Data.WorkDir,
+		Locate:        s.Data.Locale,
+		Proxy:         s.Data.ProxyURL,
+		Os:            s.Data.Os,
+		Process:       s.Data.Process,
+		Timer:         &implantpb.Timer{Interval: s.Data.Interval, Jitter: s.Data.Jitter},
+		Modules:       s.Data.Modules,
 		Timediff:      time.Now().Unix() - s.LastCheckin,
-		Addons:        cont.Addons,
+		Addons:        s.Data.Addons,
 		Name:          s.ProfileName,
-	}
-}
-
-type Os struct {
-	Name     string `gorm:"type:varchar(255)" json:"name"`
-	Version  string `gorm:"type:varchar(255)" json:"version"`
-	Arch     string `gorm:"type:varchar(255)" json:"arch"`
-	Username string `gorm:"type:varchar(255)" json:"username"`
-	Hostname string `gorm:"type:varchar(255)" json:"hostname"`
-	Locale   string `gorm:"type:varchar(255)" json:"locale"`
-}
-
-func (o *Os) toProtobuf() *implantpb.Os {
-	return &implantpb.Os{
-		Name:     o.Name,
-		Version:  o.Version,
-		Arch:     o.Arch,
-		Username: o.Username,
-		Hostname: o.Name,
-		Locale:   o.Locale,
-	}
-}
-
-func FromOsPb(os *implantpb.Os) *Os {
-	if os == nil {
-		return &Os{}
-	}
-	return &Os{
-		Name:     os.Name,
-		Version:  os.Version,
-		Arch:     os.Arch,
-		Username: os.Username,
-		Hostname: os.Hostname,
-		Locale:   os.Locale,
+		Data:          dataString,
 	}
 }
 
@@ -133,43 +123,6 @@ func FromTimePb(timer *implantpb.Timer) *Timer {
 	return &Timer{
 		Interval: timer.Interval,
 		Jitter:   timer.Jitter,
-	}
-}
-
-type Process struct {
-	Name  string `gorm:"type:varchar(255)" json:"name"`
-	Pid   int32  `json:"pid"`
-	Ppid  int32  `json:"ppid"`
-	Owner string `gorm:"type:varchar(255)" json:"owner"`
-	Arch  string `gorm:"type:varchar(255)" json:"arch"`
-	Path  string `gorm:"type:varchar(255)" json:"path"`
-	Args  string `gorm:"type:varchar(255)" json:"args"`
-}
-
-func (p *Process) toProtobuf() *implantpb.Process {
-	return &implantpb.Process{
-		Name:  p.Name,
-		Pid:   uint32(p.Pid),
-		Ppid:  uint32(p.Ppid),
-		Owner: p.Owner,
-		Arch:  p.Arch,
-		Path:  p.Path,
-		Args:  p.Args,
-	}
-}
-
-func FromProcessPb(process *implantpb.Process) *Process {
-	if process == nil {
-		return &Process{}
-	}
-	return &Process{
-		Name:  process.Name,
-		Pid:   int32(process.Pid),
-		Ppid:  int32(process.Ppid),
-		Owner: process.Owner,
-		Arch:  process.Arch,
-		Path:  process.Path,
-		Args:  process.Args,
 	}
 }
 

@@ -125,7 +125,7 @@ func (t *Task) Publish(op string, spite *implantpb.Spite, msg string) {
 		EventType: consts.EventTask,
 		Op:        op,
 		Task:      t.ToProtobuf(),
-		Session:   t.Session.ToProtobuf(),
+		Session:   t.Session.ToProtobufLite(),
 		Spite:     spite,
 		Message:   msg,
 		Callee:    t.Callee,

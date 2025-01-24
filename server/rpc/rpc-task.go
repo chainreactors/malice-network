@@ -23,7 +23,7 @@ func getTaskContext(sess *core.Session, task *core.Task, index int32) (*clientpb
 	if ok {
 		return &clientpb.TaskContext{
 			Task:    task.ToProtobuf(),
-			Session: sess.ToProtobuf(),
+			Session: sess.ToProtobufLite(),
 			Spite:   msg,
 		}, nil
 	}
@@ -109,7 +109,7 @@ func (rpc *Server) WaitTaskFinish(ctx context.Context, req *clientpb.Task) (*cli
 		if ok {
 			return &clientpb.TaskContext{
 				Task:    task.ToProtobuf(),
-				Session: sess.ToProtobuf(),
+				Session: sess.ToProtobufLite(),
 				Spite:   msg,
 			}, nil
 		}
@@ -130,7 +130,7 @@ func (rpc *Server) GetAllTaskContent(ctx context.Context, req *clientpb.Task) (*
 	if ok {
 		return &clientpb.TaskContexts{
 			Task:    task.ToProtobuf(),
-			Session: sess.ToProtobuf(),
+			Session: sess.ToProtobufLite(),
 			Spites:  msgs,
 		}, nil
 	}

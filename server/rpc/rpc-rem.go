@@ -144,7 +144,7 @@ func (rpc *Server) RemDial(ctx context.Context, req *implantpb.Request) (*client
 		}
 		event := core.Event{
 			EventType: consts.EventPivot,
-			Session:   greq.Session.ToProtobuf(),
+			Session:   greq.Session.ToProtobufLite(),
 			Important: true,
 			Spite:     spite,
 		}
