@@ -2,12 +2,14 @@ package core
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
+	"github.com/chainreactors/malice-network/helper/types"
 	"golang.org/x/exp/slices"
 	"google.golang.org/grpc/metadata"
 	"os"
@@ -22,9 +24,15 @@ func NewSession(sess *clientpb.Session, server *ServerStatus) *Session {
 	if err != nil {
 		Log.Warnf("Failed to open log file: %v", err)
 	}
+	var data *types.SessionContext
+	err = json.Unmarshal([]byte(sess.Data), &data)
+	if err != nil {
+		Log.Warnf("Failed to unmarshal session data: %v", err)
+	}
 	return &Session{
 		Session: sess,
 		Server:  server,
+		Data:    data,
 		Callee:  consts.CalleeCMD,
 		Log:     &Logger{Logger: log, logFile: logFile},
 	}
@@ -32,6 +40,7 @@ func NewSession(sess *clientpb.Session, server *ServerStatus) *Session {
 
 type Session struct {
 	*clientpb.Session
+	Data     *types.SessionContext
 	Server   *ServerStatus
 	Callee   string // cmd/mal/sdk
 	LastTask *clientpb.Task
@@ -40,6 +49,7 @@ type Session struct {
 
 func (s *Session) Clone(callee string) *Session {
 	return &Session{
+		Data:    s.Data,
 		Session: s.Session,
 		Server:  s.Server,
 		Callee:  callee,

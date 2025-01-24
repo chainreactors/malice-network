@@ -2,7 +2,6 @@ package core
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/chainreactors/logs"
@@ -10,9 +9,9 @@ import (
 	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
+	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db"
-	"github.com/chainreactors/malice-network/server/internal/db/content"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"github.com/gookit/config/v2"
 	"google.golang.org/grpc"
@@ -91,7 +90,7 @@ func RegisterSession(req *clientpb.RegisterSession) (*Session, error) {
 		ListenerID:     req.ListenerId,
 		Target:         req.Target,
 		Tasks:          NewTasks(),
-		SessionContext: content.NewSessionContext(req),
+		SessionContext: types.NewSessionContext(req),
 		Taskseq:        1,
 		Cache:          cache,
 		responses:      &sync.Map{},
@@ -132,7 +131,7 @@ func RecoverSession(sess *clientpb.Session) (*Session, error) {
 		Initialized: sess.IsInitialized,
 		LastCheckin: sess.LastCheckin,
 		Tasks:       NewTasks(),
-		SessionContext: &content.SessionContext{SessionInfo: &content.SessionInfo{
+		SessionContext: &types.SessionContext{SessionInfo: &types.SessionInfo{
 			Os:       sess.Os,
 			Process:  sess.Process,
 			Interval: sess.Timer.Interval,
@@ -184,7 +183,7 @@ type Session struct {
 	Initialized bool
 	LastCheckin int64
 	Tasks       *Tasks // task manager
-	*content.SessionContext
+	*types.SessionContext
 
 	*Cache
 	Taskseq   uint32
@@ -294,10 +293,15 @@ func (s *Session) ToProtobuf() *clientpb.Session {
 		Os:          s.Os,
 		Process:     s.Process,
 		LastCheckin: s.LastCheckin,
+		Filepath:    s.SessionContext.Filepath,
+		Workdir:     s.SessionContext.WorkDir,
+		Locate:      s.SessionContext.Locale,
+		Proxy:       s.SessionContext.ProxyURL,
 		Timer:       &implantpb.Timer{Interval: s.Interval, Jitter: s.Jitter},
 		Tasks:       s.Tasks.ToProtobuf(),
 		Modules:     s.Modules,
 		Addons:      s.Addons,
+		Data:        s.Marshal(),
 	}
 }
 
@@ -316,38 +320,32 @@ func (s *Session) ToProtobufLite() *clientpb.Session {
 		Os:          s.Os,
 		Process:     s.Process,
 		LastCheckin: s.LastCheckin,
+		Filepath:    s.SessionContext.Filepath,
+		Workdir:     s.SessionContext.WorkDir,
+		Locate:      s.SessionContext.Locale,
+		Proxy:       s.SessionContext.ProxyURL,
 		Timer:       &implantpb.Timer{Interval: s.Interval, Jitter: s.Jitter},
 		Modules:     s.Modules,
 		Addons:      s.Addons,
+		Data:        s.Marshal(),
 	}
 }
 
 func (s *Session) ToModel() *models.Session {
-	contextContent, err := json.Marshal(s)
-	if err != nil {
-		return nil
-	}
-	sessPb := s.ToProtobuf()
 	return &models.Session{
 		SessionID:   s.ID,
 		RawID:       s.RawID,
-		CreatedAt:   time.Now(),
 		Note:        s.Note,
 		ProfileName: s.Name,
 		GroupName:   s.Group,
 		Target:      s.Target,
 		Initialized: s.Initialized,
 		Type:        s.Type,
-		IsPrivilege: s.IsPrivilege,
 		PipelineID:  s.PipelineID,
 		ListenerID:  s.ListenerID,
 		IsAlive:     true,
-		Context:     string(contextContent),
 		LastCheckin: s.LastCheckin,
-		Interval:    s.Interval,
-		Jitter:      s.Jitter,
-		Os:          models.FromOsPb(sessPb.Os),
-		Process:     models.FromProcessPb(sessPb.Process),
+		DataString:  s.Marshal(),
 	}
 }
 
@@ -376,12 +374,10 @@ func (s *Session) Update(req *clientpb.RegisterSession) {
 func (s *Session) UpdateSysInfo(info *implantpb.SysInfo) {
 	s.Initialized = true
 	info.Os.Name = strings.ToLower(info.Os.Name)
-	if info.Os.Name == "windows" {
-		info.Os.Arch = consts.FormatArch(info.Os.Arch)
-	}
+	info.Os.Arch = consts.FormatArch(info.Os.Arch)
 	s.IsPrivilege = info.IsPrivilege
 	s.Filepath = info.Filepath
-	s.WordDir = info.Workdir
+	s.WorkDir = info.Workdir
 	s.Os = info.Os
 	s.Process = info.Process
 }
@@ -390,7 +386,7 @@ func (s *Session) Publish(Op string, msg string, notify bool, important bool) {
 	EventBroker.Publish(Event{
 		EventType: consts.EventSession,
 		Op:        Op,
-		Session:   s.ToProtobuf(),
+		Session:   s.ToProtobufLite(),
 		IsNotify:  notify,
 		Message:   msg,
 		Important: important,

@@ -1,7 +1,9 @@
-package content
+package types
 
 import (
 	"encoding/json"
+	"github.com/mitchellh/mapstructure"
+
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 )
@@ -17,7 +19,6 @@ func NewSessionContext(req *clientpb.RegisterSession) *SessionContext {
 		Addons:  req.RegisterData.Addons,
 		Loot:    map[string]string{},
 		Argue:   map[string]string{},
-		Data:    map[string]string{},
 		Any:     map[string]interface{}{},
 	}
 }
@@ -32,13 +33,26 @@ func RecoverSessionContext(content string) (*SessionContext, error) {
 }
 
 type SessionContext struct {
-	*SessionInfo
-	Modules []string
-	Addons  []*implantpb.Addon
-	Loot    map[string]string // mimikatz,zombie
-	Argue   map[string]string // 参数欺骗
-	Data    map[string]string // 元数据
-	Any     map[string]interface{}
+	*SessionInfo `json:",inline"`
+	Modules      []string               `json:"modules"`
+	Addons       []*implantpb.Addon     `json:"addons"`
+	Loot         map[string]string      `json:"loot"`  // mimikatz,zombie
+	Argue        map[string]string      `json:"argue"` // 参数欺骗
+	Any          map[string]interface{} `json:"any"`
+}
+
+func (ctx *SessionContext) Data() map[string]interface{} {
+	result := make(map[string]interface{})
+	err := mapstructure.Decode(ctx, &result)
+	if err != nil {
+		return nil
+	}
+	return result
+}
+
+func (ctx *SessionContext) Marshal() string {
+	data, _ := json.Marshal(ctx)
+	return string(data)
 }
 
 func (ctx *SessionContext) Update(req *clientpb.RegisterSession) {
@@ -52,13 +66,13 @@ func (ctx *SessionContext) GetAny(id string) (interface{}, bool) {
 }
 
 type SessionInfo struct {
-	Os          *implantpb.Os
-	Process     *implantpb.Process
-	Interval    uint64
-	Jitter      float64
-	IsPrivilege bool
-	Filepath    string
-	WordDir     string
-	ProxyURL    string
-	Locale      string
+	Os          *implantpb.Os      `json:"os"`
+	Process     *implantpb.Process `json:"process"`
+	Interval    uint64             `json:"interval"`
+	Jitter      float64            `json:"jitter"`
+	IsPrivilege bool               `json:"is_privilege"`
+	Filepath    string             `json:"filepath"`
+	WorkDir     string             `json:"workdir"`
+	ProxyURL    string             `json:"proxy"`
+	Locale      string             `json:"locale"`
 }
