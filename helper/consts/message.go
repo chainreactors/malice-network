@@ -241,6 +241,8 @@ const (
 	CommandReverse            = "reverse"
 	CommandPortForward        = "portfwd"
 	CommandReversePortForward = "rportfwd"
+
+	CommandScreenShot = "screenshot"
 )
 
 const (

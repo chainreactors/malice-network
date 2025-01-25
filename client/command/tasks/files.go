@@ -10,8 +10,13 @@ import (
 )
 
 func ListFiles(cmd *cobra.Command, con *repl.Console) error {
-	resp, err := con.Rpc.GetTaskFiles(con.ActiveTarget.Context(),
-		&clientpb.Session{SessionId: con.GetInteractive().SessionId})
+	//resp, err := con.Rpc.GetTaskFiles(con.ActiveTarget.Context(),
+	//	&clientpb.Session{SessionId: con.GetInteractive().SessionId})
+	resp, err := con.Rpc.GetContextFiles(
+		con.ActiveTarget.Context(),
+		&clientpb.Session{
+			SessionId: con.GetInteractive().SessionId,
+		})
 	if err != nil {
 		return err
 	}
@@ -30,7 +35,7 @@ func printFiles(files *clientpb.Files, con *repl.Console) {
 	maxLengths := map[string]int{
 		"FileID":     6,
 		"Name":       16,
-		"Sha256":     64,
+		"Checksum":   64,
 		"Type":       12,
 		"LocalName":  16,
 		"RemotePath": 16,
@@ -39,7 +44,7 @@ func printFiles(files *clientpb.Files, con *repl.Console) {
 	for _, file := range files.Files {
 		updateMaxLength(&maxLengths, "FileID", len(file.TaskId))
 		updateMaxLength(&maxLengths, "Name", len(file.Name))
-		//updateMaxLength(&maxLengths, "TempID", len(file.TempId[:8]))
+		//updateMaxLength(&maxLengths, "Checksum", len(file.TempId[:8]))
 		updateMaxLength(&maxLengths, "Type", len(file.Op))
 		updateMaxLength(&maxLengths, "LocalName", len(file.Local))
 		updateMaxLength(&maxLengths, "RemotePath", len(file.Remote))
@@ -50,7 +55,7 @@ func printFiles(files *clientpb.Files, con *repl.Console) {
 				"Type":       file.Op,
 				"LocalName":  file.Local,
 				"RemotePath": file.Remote,
-				"Sha256":     file.TempId,
+				"Checksum":   file.Checksum,
 			})
 		rowEntries = append(rowEntries, row)
 	}
@@ -60,7 +65,7 @@ func printFiles(files *clientpb.Files, con *repl.Console) {
 		table.NewColumn("Type", "Type", maxLengths["Type"]),
 		table.NewColumn("LocalName", "LocalName", maxLengths["LocalName"]),
 		table.NewColumn("RemotePath", "RemotePath", maxLengths["RemotePath"]),
-		table.NewColumn("Sha256", "Sha256", maxLengths["Sha256"]),
+		table.NewColumn("Checksum", "Checksum", maxLengths["Checksum"]),
 	}, true)
 	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)

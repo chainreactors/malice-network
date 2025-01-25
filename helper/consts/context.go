@@ -5,6 +5,8 @@ const (
 	ContextKeyLogger  = "keylogger"
 	ContextCredential = "credential"
 	ContextPivoting   = "pivoting"
+	ContextDownload   = "download"
+	ContextUpload     = "upload"
 )
 
 const (

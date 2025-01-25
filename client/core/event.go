@@ -203,6 +203,8 @@ func (s *ServerStatus) handlerEvent(event *clientpb.Event) {
 		Log.Importantf("[%s] %s\n", event.Type, event.Message)
 	case consts.EventPivot:
 		Log.Importantf("[%s] %s: %s\n", event.Type, event.Op, event.Message)
+	case consts.EventBof:
+		Log.Importantf("%s\n%s\n", "Get Bof Message", event.Message)
 	}
 }
 
@@ -264,7 +266,7 @@ func (s *ServerStatus) handlerSession(event *clientpb.Event) {
 	switch event.Op {
 	case consts.CtrlSessionRegister:
 		s.AddSession(event.Session)
-		Log.Importantf("register session: %s \n", event.Message)
+		Log.Important(logs.GreenBold(fmt.Sprintf("[%s]: %s \n", consts.CtrlSessionRegister, event.Message)))
 	case consts.CtrlSessionTask:
 		logs.Log.Infof(logs.GreenBold(fmt.Sprintf("[%s.%d] run task %s: %s\n", sid, event.Task.TaskId, event.Task.Type, event.Message)))
 	case consts.CtrlSessionError:
@@ -275,5 +277,7 @@ func (s *ServerStatus) handlerSession(event *clientpb.Event) {
 		log.Errorf("[%s] log: \n%s\n", sid, event.Message)
 	case consts.CtrlSessionLeave:
 		Log.Importantf(logs.RedBold(fmt.Sprintf("[%s] session stop: %s\n", sid, event.Message)))
+	case consts.CtrlSessionReborn:
+		Log.Important(logs.GreenBold(fmt.Sprintf("[%s]: %s\n", consts.CtrlSessionReborn, event.Message)))
 	}
 }

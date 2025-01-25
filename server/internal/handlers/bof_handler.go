@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
@@ -35,7 +36,7 @@ type BOFResponse struct {
 
 type BOFResponses []*BOFResponse
 
-func (bofResps BOFResponses) Handler(taskpb *clientpb.Task) string {
+func (bofResps BOFResponses) Handler(session *clientpb.Session, taskpb *clientpb.Task) string {
 	var err error
 	var results strings.Builder
 	sessionId := taskpb.SessionId
@@ -43,7 +44,6 @@ func (bofResps BOFResponses) Handler(taskpb *clientpb.Task) string {
 
 	for _, bofResp := range bofResps {
 		var result string
-		logs.Log.Consolef("handing %d\n", bofResp.CallbackType)
 		switch bofResp.CallbackType {
 		case CALLBACK_OUTPUT, CALLBACK_OUTPUT_OEM, CALLBACK_OUTPUT_UTF8:
 			result = string(bofResp.Data)
@@ -59,7 +59,7 @@ func (bofResps BOFResponses) Handler(taskpb *clientpb.Task) string {
 				nanoseconds := (timestampMillis % 1000) * int64(time.Millisecond)
 				t := time.Unix(seconds, nanoseconds)
 				screenshotfilename := fmt.Sprintf("screenshot_%s.jpg", t.Format("2006-01-02_15-04-05"))
-				sessionDir := filepath.Join(configs.ServerRootPath, sessionId, "screenshot")
+				sessionDir := filepath.Join(configs.ContextPath, sessionId, consts.ScreenShotPath)
 				if !fileutils.Exist(sessionDir) {
 					if err := os.MkdirAll(sessionDir, os.ModePerm); err != nil {
 						logs.Log.Errorf("failed to create session directory: %s", err.Error())
@@ -80,21 +80,31 @@ func (bofResps BOFResponses) Handler(taskpb *clientpb.Task) string {
 				if _, err := screenfile.Write(data); err != nil {
 					return fmt.Sprintf("Failed to write screenshot data: %s", err.Error())
 				}
-				fileutils.CalculateSHA256Checksum(screenfile.Name())
-				err = db.AddFile("screenshot", taskpb, &models.FileDescription{
-					Name:     screenshotfilename,
-					NickName: "",
-					Path:     "screenshot",
-					Command:  "",
-					Size:     int64(len(bofResp.Data[4:])),
+				checksum, _ := fileutils.CalculateSHA256Checksum(screenfile.Name())
+				fileDescription := &models.FileDescription{
+					Name:       screenshotfilename,
+					Checksum:   checksum,
+					SourcePath: "BOF SCREENSHOT",
+					SavePath:   screenfile.Name(),
+					Command:    "",
+					Size:       int64(len(bofResp.Data[4:])),
+				}
+				fileJson, err := fileDescription.ToJsonString()
+				err = db.SaveContext(&clientpb.Context{
+					Task:    taskpb,
+					Session: session,
+					Type:    consts.ContextScreenShot,
+					Value:   fileJson,
 				})
-				logs.Log.Consolef("Screenshot saved to %s\n", screenfile.Name())
+				if err != nil {
+					return fmt.Sprintf("Failed to save file: %s", err.Error())
+				}
 				return fmt.Sprintf("Screenshot saved to %s", screenfile.Name())
 			}()
 		case CALLBACK_FILE:
 			result = func() string {
 				fileId := fmt.Sprintf("%d", binary.LittleEndian.Uint32(bofResp.Data[:4]))
-				fileDir := filepath.Join(configs.ServerRootPath, sessionId, "download")
+				fileDir := filepath.Join(configs.ContextPath, sessionId, consts.DownloadPath)
 				if !fileutils.Exist(fileDir) {
 					if err := os.MkdirAll(fileDir, os.ModePerm); err != nil {
 						logs.Log.Errorf("failed to create session directory: %s", err.Error())
@@ -107,7 +117,6 @@ func (bofResps BOFResponses) Handler(taskpb *clientpb.Task) string {
 					return fmt.Sprintf("Could not open file '%s' (ID: %s): %s", filepath.Base(file.Name()), fileId, err)
 				}
 				fileMap[fileId] = file
-				logs.Log.Consolef("File '%s' (ID: %s) created successfully", fullPath, fileId)
 				return fmt.Sprintf("File '%s' (ID: %s) opened successfully", filepath.Base(file.Name()), fileId)
 			}()
 		case CALLBACK_FILE_WRITE:
@@ -121,7 +130,6 @@ func (bofResps BOFResponses) Handler(taskpb *clientpb.Task) string {
 				if err != nil {
 					return fmt.Sprintf("Error writing to file (ID: %s): %s", fileId, err)
 				}
-				logs.Log.Debugf("Data(Size: %d) written to File '%s' (ID: %s) successfully", bofResp.Length-4, filepath.Base(file.Name()), fileId)
 				return fmt.Sprintf("Data(Size: %d) written to file (ID: %s) successfully", bofResp.Length-4, fileId)
 			}()
 		case CALLBACK_FILE_CLOSE:
@@ -132,17 +140,31 @@ func (bofResps BOFResponses) Handler(taskpb *clientpb.Task) string {
 				if file == nil {
 					return fmt.Sprintf("No open file to close (ID: %s)", fileId)
 				}
+				checksum, _ := fileutils.CalculateSHA256Checksum(file.Name())
+				fileDescription := &models.FileDescription{
+					Name:       filepath.Base(fileName),
+					Checksum:   checksum,
+					SourcePath: "BOF FILE",
+					SavePath:   file.Name(),
+					Command:    "",
+					Size:       int64(len(bofResp.Data[4:])),
+				}
+				fileJson, err := fileDescription.ToJsonString()
+				err = db.SaveContext(&clientpb.Context{
+					Task:    taskpb,
+					Session: session,
+					Type:    consts.ContextScreenShot,
+					Value:   fileJson,
+				})
 				err = file.Close()
 				if err != nil {
 					return fmt.Sprintf("Error closing file (ID: %s): %s", fileId, err)
 				}
 				delete(fileMap, fileId)
-				logs.Log.Consolef("File '%s' (ID: %s) closed successfully", filepath.Base(fileName), fileId)
 				return fmt.Sprintf("File '%s' (ID: %s) closed successfully", filepath.Base(fileName), fileId)
 			}()
 		default:
 			result = func() string {
-				logs.Log.Errorf("Unimplemented callback type : %d", bofResp.CallbackType)
 				return fmt.Sprintf("Unimplemented callback type : %d", bofResp.CallbackType)
 			}()
 		}
@@ -160,5 +182,6 @@ func (bofResps BOFResponses) Handler(taskpb *clientpb.Task) string {
 			delete(fileMap, fileId)
 		}
 	}
+
 	return results.String()
 }
