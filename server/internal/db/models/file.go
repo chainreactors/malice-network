@@ -22,11 +22,12 @@ type File struct {
 }
 
 type FileDescription struct {
-	Name     string `json:"name"`
-	NickName string `json:"nick_name"`
-	Path     string `json:"path"`
-	Size     int64  `json:"size"`
-	Command  string `json:"command"`
+	Name       string `json:"name"`
+	SourcePath string `json:"source_path"`
+	SavePath   string `json:"save_path"`
+	Size       int64  `json:"size"`
+	Checksum   string `json:"checksum"`
+	Command    string `json:"command"`
 }
 
 // BeforeCreate - GORM hook
@@ -90,8 +91,8 @@ func (f *File) ToFileProtobuf() *clientpb.File {
 		TaskId:    match[1],
 		Name:      file.Name,
 		Local:     file.Name,
-		TempId:    file.NickName,
-		Remote:    file.Path,
+		Checksum:  file.Checksum,
+		Remote:    file.SourcePath,
 		SessionId: f.SessionID,
 		Op:        f.Type,
 	}

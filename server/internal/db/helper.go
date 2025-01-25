@@ -211,6 +211,21 @@ func GetFilesBySessionID(sessionID string) ([]models.File, error) {
 	return files, nil
 }
 
+func GetContextFilesBySessionID(sessionID string, fileTypes []string) ([]models.Context, error) {
+	var files []models.Context
+	query := Session().Model(&models.Context{}).Where("session_id = ?", sessionID)
+
+	if len(fileTypes) > 0 {
+		query = query.Where("type IN (?)", fileTypes)
+	}
+
+	result := query.Find(&files)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return files, nil
+}
+
 func GetAllDownloadFiles() (files []models.File, err error) {
 	result := Session().Where("type = ?", "download").Find(&files)
 	if result.Error != nil {

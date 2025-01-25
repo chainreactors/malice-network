@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/types"
+	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/handlers"
 	"io"
 	"math"
@@ -122,7 +124,13 @@ func (rpc *Server) ExecuteBof(ctx context.Context, req *implantpb.ExecuteBinary)
 			bofResps = append(bofResps, bofResp)
 		}
 
-		bofResps.Handler(greq.Task.ToProtobuf())
+		msg := bofResps.Handler(greq.Session.ToProtobuf(), greq.Task.ToProtobuf())
+		core.EventBroker.Publish(core.Event{
+			EventType: consts.EventBof,
+			Op:        consts.CtrlBof,
+			Message:   msg,
+			IsNotify:  true,
+		})
 	})
 
 	return greq.Task.ToProtobuf(), nil

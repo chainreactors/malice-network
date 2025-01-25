@@ -1,6 +1,9 @@
 package models
 
 import (
+	"encoding/json"
+	"github.com/chainreactors/logs"
+	"regexp"
 	"strconv"
 	"time"
 
@@ -75,4 +78,35 @@ func FromContextProtobuf(ctx *clientpb.Context) (*Context, error) {
 		return nil, err
 	}
 	return context, nil
+}
+
+func (c *Context) ToFileProtobuf() *clientpb.File {
+	re := regexp.MustCompile(`-(\d+)$`)
+	match := re.FindStringSubmatch(c.TaskID)
+	if len(match) < 1 {
+		return &clientpb.File{}
+	}
+	file, err := c.toFileDescription()
+	if err != nil {
+		logs.Log.Errorf("Error parsing task file JSON: %v", err)
+		return &clientpb.File{}
+	}
+	return &clientpb.File{
+		TaskId:    match[1],
+		Name:      file.Name,
+		Local:     file.Name,
+		Checksum:  file.Checksum,
+		Remote:    file.SourcePath,
+		SessionId: c.SessionID,
+		Op:        c.Type,
+	}
+}
+
+func (f *Context) toFileDescription() (*FileDescription, error) {
+	var desc FileDescription
+	err := json.Unmarshal([]byte(f.Value), &desc)
+	if err != nil {
+		return nil, err
+	}
+	return &desc, nil
 }

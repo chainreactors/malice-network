@@ -226,19 +226,7 @@ type BOFResponse struct {
 type BOFResponses []*BOFResponse
 
 func (bofResps BOFResponses) String() string {
-	var results strings.Builder
-	for _, bofResp := range bofResps {
-		var result string
-		switch bofResp.CallbackType {
-		case CALLBACK_OUTPUT, CALLBACK_OUTPUT_OEM, CALLBACK_OUTPUT_UTF8:
-			result = string(bofResp.Data)
-		case CALLBACK_ERROR:
-			result = fmt.Sprintf("Error occurred: %s", string(bofResp.Data))
-		}
-		results.WriteString(result + "\n")
-	}
-
-	return results.String()
+	return ""
 }
 
 func (bofResps BOFResponses) Handler(sess *clientpb.Session) string {

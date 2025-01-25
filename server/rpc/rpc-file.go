@@ -17,7 +17,7 @@ import (
 	"github.com/gookit/config/v2"
 	"gorm.io/gorm/utils"
 	"os"
-	"path"
+	"path/filepath"
 )
 
 // Upload - Upload a file from the remote file system
@@ -38,11 +38,18 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 		if err != nil {
 			return nil, err
 		}
-		err = db.AddFile("upload", greq.Task.ToProtobuf(), &models.FileDescription{
-			Name:    req.Name,
-			Path:    req.Target,
-			Command: fmt.Sprintf("upload -%d -%t", req.Priv, req.Hidden),
-			Size:    int64(len(req.Data)),
+		fileDescription := &models.FileDescription{
+			Name:       req.Name,
+			SourcePath: req.Target,
+			Command:    fmt.Sprintf("upload -%d -%t", req.Priv, req.Hidden),
+			Size:       int64(len(req.Data)),
+		}
+		fileJson, err := fileDescription.ToJsonString()
+		err = db.SaveContext(&clientpb.Context{
+			Task:    greq.Task.ToProtobuf(),
+			Session: greq.Session.ToProtobuf(),
+			Type:    consts.ContextUpload,
+			Value:   fileJson,
 		})
 		if err != nil {
 			logs.Log.Errorf("cannot create task %d, %s in db", greq.Task.Id, err.Error())
@@ -104,12 +111,19 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 						return
 					}
 					if msg.End {
-						err = db.AddFile("upload", greq.Task.ToProtobuf(), &models.FileDescription{
-							Name:     req.Name,
-							NickName: "",
-							Path:     req.Target,
-							Command:  fmt.Sprintf("upload -%d -%t", req.Priv, req.Hidden),
-							Size:     int64(len(req.Data)),
+						fileDescription := &models.FileDescription{
+							Name:       req.Name,
+							Checksum:   "",
+							SourcePath: req.Target,
+							Command:    fmt.Sprintf("upload -%d -%t", req.Priv, req.Hidden),
+							Size:       int64(len(req.Data)),
+						}
+						fileJson, err := fileDescription.ToJsonString()
+						err = db.SaveContext(&clientpb.Context{
+							Task:    greq.Task.ToProtobuf(),
+							Session: greq.Session.ToProtobuf(),
+							Type:    consts.ContextUpload,
+							Value:   fileJson,
 						})
 						if err != nil {
 							logs.Log.Errorf("cannot create task %d , %s in db", greq.Task.Id, err.Error())
@@ -152,8 +166,8 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 		}
 
 		downloadAbs := resp.GetDownloadResponse()
-		fileName := path.Join(configs.TempPath, downloadAbs.Checksum)
-		moveName := path.Join(configs.ContextPath, greq.Session.ID, consts.DownloadPath, downloadAbs.Checksum)
+		fileName := filepath.Join(configs.TempPath, downloadAbs.Checksum)
+		moveName := filepath.Join(configs.ContextPath, greq.Session.ID, consts.DownloadPath, downloadAbs.Checksum)
 		greq.Session.AddMessage(resp, 0)
 		greq.Task.Total = int(resp.GetDownloadResponse().Size)/config.Int(consts.ConfigMaxPacketLength) + 1
 		size := resp.GetDownloadResponse().Size
@@ -203,12 +217,20 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 					greq.Task.Panic(buildErrorEvent(greq.Task, fmt.Errorf("checksum error")))
 					return
 				}
-				err = db.AddFile("download", greq.Task.ToProtobuf(), &models.FileDescription{
-					Name:     req.Name,
-					NickName: downloadAbs.Checksum,
-					Path:     req.Path,
-					Command:  fmt.Sprintf("download -%s -%s ", req.Name, req.Path),
-					Size:     int64(size),
+				fileDescription := &models.FileDescription{
+					Name:       req.Name,
+					Checksum:   downloadAbs.Checksum,
+					SourcePath: req.Path,
+					SavePath:   downloadAbs.Checksum,
+					Command:    fmt.Sprintf("download -%s -%s ", req.Name, req.Path),
+					Size:       int64(size),
+				}
+				fileJson, err := fileDescription.ToJsonString()
+				err = db.SaveContext(&clientpb.Context{
+					Task:    greq.Task.ToProtobuf(),
+					Session: greq.Session.ToProtobuf(),
+					Type:    consts.ContextDownload,
+					Value:   fileJson,
 				})
 				if err != nil {
 					logs.Log.Errorf("cannot create task %d , %s in db", greq.Task.Id, err.Error())
@@ -225,7 +247,7 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 }
 
 func (rpc *Server) Sync(ctx context.Context, req *clientpb.Sync) (*clientpb.SyncResp, error) {
-	task, td, err := db.GetTaskDescriptionByID(req.FileId)
+	_, td, err := db.GetTaskDescriptionByID(req.FileId)
 	if err != nil {
 		logs.Log.Errorf("cannot find task in db by fileid: %s", err)
 		return nil, err
@@ -234,17 +256,7 @@ func (rpc *Server) Sync(ctx context.Context, req *clientpb.Sync) (*clientpb.Sync
 	//	return nil, os.ErrExist
 	//}
 	var data []byte
-	if task.Type == consts.ModuleDownload {
-		data, err = os.ReadFile(path.Join(configs.ContextPath, task.SessionID, consts.DownloadPath, td.NickName))
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		data, err = os.ReadFile(path.Join(configs.TempPath, td.NickName))
-		if err != nil {
-			return nil, err
-		}
-	}
+	data, err = os.ReadFile(td.SavePath)
 	resp := &clientpb.SyncResp{
 		Name:    td.Name,
 		Content: data,

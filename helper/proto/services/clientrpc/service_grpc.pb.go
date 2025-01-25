@@ -35,6 +35,7 @@ const (
 	MaliceRPC_GetTasks_FullMethodName              = "/clientrpc.MaliceRPC/GetTasks"
 	MaliceRPC_GetTaskContent_FullMethodName        = "/clientrpc.MaliceRPC/GetTaskContent"
 	MaliceRPC_GetTaskFiles_FullMethodName          = "/clientrpc.MaliceRPC/GetTaskFiles"
+	MaliceRPC_GetContextFiles_FullMethodName       = "/clientrpc.MaliceRPC/GetContextFiles"
 	MaliceRPC_WaitTaskContent_FullMethodName       = "/clientrpc.MaliceRPC/WaitTaskContent"
 	MaliceRPC_WaitTaskFinish_FullMethodName        = "/clientrpc.MaliceRPC/WaitTaskFinish"
 	MaliceRPC_GetAllTaskContent_FullMethodName     = "/clientrpc.MaliceRPC/GetAllTaskContent"
@@ -167,6 +168,7 @@ type MaliceRPCClient interface {
 	GetTasks(ctx context.Context, in *clientpb.TaskRequest, opts ...grpc.CallOption) (*clientpb.Tasks, error)
 	GetTaskContent(ctx context.Context, in *clientpb.Task, opts ...grpc.CallOption) (*clientpb.TaskContext, error)
 	GetTaskFiles(ctx context.Context, in *clientpb.Session, opts ...grpc.CallOption) (*clientpb.Files, error)
+	GetContextFiles(ctx context.Context, in *clientpb.Session, opts ...grpc.CallOption) (*clientpb.Files, error)
 	WaitTaskContent(ctx context.Context, in *clientpb.Task, opts ...grpc.CallOption) (*clientpb.TaskContext, error)
 	WaitTaskFinish(ctx context.Context, in *clientpb.Task, opts ...grpc.CallOption) (*clientpb.TaskContext, error)
 	GetAllTaskContent(ctx context.Context, in *clientpb.Task, opts ...grpc.CallOption) (*clientpb.TaskContexts, error)
@@ -419,6 +421,15 @@ func (c *maliceRPCClient) GetTaskContent(ctx context.Context, in *clientpb.Task,
 func (c *maliceRPCClient) GetTaskFiles(ctx context.Context, in *clientpb.Session, opts ...grpc.CallOption) (*clientpb.Files, error) {
 	out := new(clientpb.Files)
 	err := c.cc.Invoke(ctx, MaliceRPC_GetTaskFiles_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *maliceRPCClient) GetContextFiles(ctx context.Context, in *clientpb.Session, opts ...grpc.CallOption) (*clientpb.Files, error) {
+	out := new(clientpb.Files)
+	err := c.cc.Invoke(ctx, MaliceRPC_GetContextFiles_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1466,6 +1477,7 @@ type MaliceRPCServer interface {
 	GetTasks(context.Context, *clientpb.TaskRequest) (*clientpb.Tasks, error)
 	GetTaskContent(context.Context, *clientpb.Task) (*clientpb.TaskContext, error)
 	GetTaskFiles(context.Context, *clientpb.Session) (*clientpb.Files, error)
+	GetContextFiles(context.Context, *clientpb.Session) (*clientpb.Files, error)
 	WaitTaskContent(context.Context, *clientpb.Task) (*clientpb.TaskContext, error)
 	WaitTaskFinish(context.Context, *clientpb.Task) (*clientpb.TaskContext, error)
 	GetAllTaskContent(context.Context, *clientpb.Task) (*clientpb.TaskContexts, error)
@@ -1642,6 +1654,9 @@ func (UnimplementedMaliceRPCServer) GetTaskContent(context.Context, *clientpb.Ta
 }
 func (UnimplementedMaliceRPCServer) GetTaskFiles(context.Context, *clientpb.Session) (*clientpb.Files, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetTaskFiles not implemented")
+}
+func (UnimplementedMaliceRPCServer) GetContextFiles(context.Context, *clientpb.Session) (*clientpb.Files, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetContextFiles not implemented")
 }
 func (UnimplementedMaliceRPCServer) WaitTaskContent(context.Context, *clientpb.Task) (*clientpb.TaskContext, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method WaitTaskContent not implemented")
@@ -2219,6 +2234,24 @@ func _MaliceRPC_GetTaskFiles_Handler(srv interface{}, ctx context.Context, dec f
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(MaliceRPCServer).GetTaskFiles(ctx, req.(*clientpb.Session))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MaliceRPC_GetContextFiles_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(clientpb.Session)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MaliceRPCServer).GetContextFiles(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MaliceRPC_GetContextFiles_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MaliceRPCServer).GetContextFiles(ctx, req.(*clientpb.Session))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4282,6 +4315,10 @@ var MaliceRPC_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetTaskFiles",
 			Handler:    _MaliceRPC_GetTaskFiles_Handler,
+		},
+		{
+			MethodName: "GetContextFiles",
+			Handler:    _MaliceRPC_GetContextFiles_Handler,
 		},
 		{
 			MethodName: "WaitTaskContent",

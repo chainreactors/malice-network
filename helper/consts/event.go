@@ -44,6 +44,9 @@ const (
 	CtrlPivotProxy              = "pivot_proxy"
 	CtrlPivotPortForward        = "pivot_portfw"
 	CtrlPivotReversePortForward = "pivot_rportfw"
+	CtrlBof                     = ""
+	CtrlScreenShot              = "screen_shot"
+	CtrlCreateFileBof           = "create_file_bof"
 )
 
 const (
@@ -82,4 +85,5 @@ const (
 	EventHeartbeat = "heartbeat"
 	EventBuild     = "build"
 	EventPivot     = "pivot"
+	EventBof       = "bof"
 )

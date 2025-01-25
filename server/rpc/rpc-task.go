@@ -152,6 +152,25 @@ func (rpc *Server) GetTaskFiles(ctx context.Context, req *clientpb.Session) (*cl
 	return resp, nil
 }
 
+func (rpc *Server) GetContextFiles(ctx context.Context, req *clientpb.Session) (*clientpb.Files, error) {
+	resp := &clientpb.Files{
+		Files: []*clientpb.File{},
+	}
+	//resp := &clientpb.Contexts{
+	//	Contexts: []*clientpb.Context{},
+	//}
+	fileTypes := []string{consts.ContextUpload, consts.ContextDownload}
+	files, err := db.GetContextFilesBySessionID(req.SessionId, fileTypes)
+	if err != nil {
+		return nil, err
+	}
+	for _, file := range files {
+		resp.Files = append(resp.Files, file.ToFileProtobuf())
+	}
+
+	return resp, nil
+}
+
 func (rpc *Server) GetAllDownloadFiles(ctx context.Context, req *clientpb.Empty) (*clientpb.Files, error) {
 	resp := &clientpb.Files{
 		Files: []*clientpb.File{},
