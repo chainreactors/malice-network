@@ -203,8 +203,7 @@ func (s *ServerStatus) handlerEvent(event *clientpb.Event) {
 		Log.Importantf("[%s] %s\n", event.Type, event.Message)
 	case consts.EventPivot:
 		Log.Importantf("[%s] %s: %s\n", event.Type, event.Op, event.Message)
-	case consts.EventBof:
-		Log.Importantf("%s\n%s\n", "Get Bof Message", event.Message)
+	case consts.EventContext:
 	}
 }
 
@@ -279,5 +278,15 @@ func (s *ServerStatus) handlerSession(event *clientpb.Event) {
 		Log.Importantf(logs.RedBold(fmt.Sprintf("[%s] session stop: %s\n", sid, event.Message)))
 	case consts.CtrlSessionReborn:
 		Log.Important(logs.GreenBold(fmt.Sprintf("[%s]: %s\n", consts.CtrlSessionReborn, event.Message)))
+	}
+}
+
+func (s *ServerStatus) handlerContext(event *clientpb.Event) {
+	sid := event.Session.SessionId
+	log := s.ObserverLog(sid)
+	switch event.Op {
+	case consts.ContextScreenShot:
+	case consts.ContextDownload:
+		log.Importantf("download file: %s\n", event.Message)
 	}
 }

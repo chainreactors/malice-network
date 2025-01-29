@@ -2,14 +2,11 @@ package pe
 
 import (
 	"encoding/base64"
-	"encoding/binary"
 	"fmt"
-	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"io"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -230,11 +227,7 @@ func (bofResps BOFResponses) String() string {
 }
 
 func (bofResps BOFResponses) Handler(sess *clientpb.Session) string {
-	var err error
 	var results strings.Builder
-
-	fileMap := make(map[string]*os.File)
-
 	for _, bofResp := range bofResps {
 		var result string
 		switch bofResp.CallbackType {
@@ -242,85 +235,13 @@ func (bofResps BOFResponses) Handler(sess *clientpb.Session) string {
 			result = string(bofResp.Data)
 		case CALLBACK_ERROR:
 			result = fmt.Sprintf("Error occurred: %s", string(bofResp.Data))
-		case CALLBACK_SCREENSHOT:
-			fileName := "screenshot.jpg"
-			result = func() string {
-				if bofResp.Length-4 <= 0 {
-					return fmt.Sprintf("Null screenshot data")
-				}
-				screenfile, err := assets.GenerateTempFile(sess.SessionId, fileName)
-				if err != nil {
-					return fmt.Sprintf("Failed to create screenshot file")
-				}
-				defer func() {
-					err := screenfile.Close()
-					if err != nil {
-						return
-					}
-				}()
-				data := bofResp.Data[4:]
-				if _, err := screenfile.Write(data); err != nil {
-					return fmt.Sprintf("Failed to write screenshot data: %s", err.Error())
-				}
-
-				return fmt.Sprintf("Screenshot saved to %s", screenfile.Name())
-			}()
-		case CALLBACK_FILE:
-			result = func() string {
-				fileId := fmt.Sprintf("%d", binary.LittleEndian.Uint32(bofResp.Data[:4]))
-				fileName := string(bofResp.Data[8:])
-				file, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-				if err != nil {
-					return fmt.Sprintf("Could not open file '%s' (ID: %s): %s", filepath.Base(file.Name()), fileId, err)
-				}
-				fileMap[fileId] = file
-				return fmt.Sprintf("File '%s' (ID: %s) opened successfully", filepath.Base(file.Name()), fileId)
-			}()
-		case CALLBACK_FILE_WRITE:
-			result = func() string {
-				fileId := fmt.Sprintf("%d", binary.LittleEndian.Uint32(bofResp.Data[:4]))
-				file := fileMap[fileId]
-				if file == nil {
-					return fmt.Sprintf("No open file to write to (ID: %s)", fileId)
-				}
-				_, err = file.Write(bofResp.Data[4:])
-				if err != nil {
-					return fmt.Sprintf("Error writing to file (ID: %s): %s", fileId, err)
-				}
-				return fmt.Sprintf("Data(Size: %d) written to file (ID: %s) successfully", bofResp.Length-4, fileId)
-			}()
-		case CALLBACK_FILE_CLOSE:
-			result = func() string {
-				fileId := fmt.Sprintf("%d", binary.LittleEndian.Uint32(bofResp.Data[:4]))
-				file := fileMap[fileId]
-				if file == nil {
-					return fmt.Sprintf("No open file to close (ID: %s)", fileId)
-				}
-				err = file.Close()
-				if err != nil {
-					return fmt.Sprintf("Error closing file (ID: %s): %s", fileId, err)
-				}
-				delete(fileMap, fileId)
-				return fmt.Sprintf("File (ID: %s) closed successfully", fileId)
-			}()
+		case CALLBACK_SCREENSHOT, CALLBACK_FILE, CALLBACK_FILE_WRITE, CALLBACK_FILE_CLOSE:
+			continue
 		default:
-			result = func() string {
-				return fmt.Sprintf("Unimplemented callback type : %d", bofResp.CallbackType)
-			}()
+			result = fmt.Sprintf("Unimplemented callback type : %d", bofResp.CallbackType)
 		}
 		results.WriteString(result + "\n")
 	}
-	// Close any remaining open files
-	for fileId, file := range fileMap {
-		if file != nil {
-			err := file.Close()
-			if err != nil {
-				results.WriteString(fmt.Sprintf("Error closing file (ID: %s): %s\n", fileId, err))
-			} else {
-				results.WriteString(fmt.Sprintf("File (ID: %s) closed automatically due to end of processing\n", fileId))
-			}
-			delete(fileMap, fileId)
-		}
-	}
+
 	return results.String()
 }

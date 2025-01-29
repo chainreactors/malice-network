@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/types"
@@ -41,7 +40,7 @@ func (rpc *Server) GetSessions(ctx context.Context, req *clientpb.SessionRequest
 func (rpc *Server) GetSession(ctx context.Context, req *clientpb.SessionRequest) (*clientpb.Session, error) {
 	session, err := core.Sessions.Get(req.SessionId)
 	if err != nil {
-		return session.ToProtobuf(), nil
+		return nil, err
 	}
 	dbSess, err := db.FindSession(req.SessionId)
 	if err != nil {
@@ -68,7 +67,7 @@ func (rpc *Server) SessionManage(ctx context.Context, req *clientpb.BasicUpdateS
 	case "note":
 		session, err := core.Sessions.Get(req.SessionId)
 		if err != nil {
-			return nil, errs.ErrNotFoundSession
+			return nil, err
 		}
 		session.Name = req.Arg
 		err = db.UpdateSession(req.SessionId, req.Arg, "")
@@ -78,7 +77,7 @@ func (rpc *Server) SessionManage(ctx context.Context, req *clientpb.BasicUpdateS
 	case "group":
 		session, err := core.Sessions.Get(req.SessionId)
 		if err != nil {
-			return nil, errs.ErrNotFoundSession
+			return nil, err
 		}
 		session.Group = req.Arg
 		err = db.UpdateSession(req.SessionId, "", req.Arg)

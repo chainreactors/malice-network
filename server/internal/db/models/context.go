@@ -1,9 +1,6 @@
 package models
 
 import (
-	"encoding/json"
-	"github.com/chainreactors/logs"
-	"regexp"
 	"strconv"
 	"time"
 
@@ -21,7 +18,7 @@ type Context struct {
 	ListenerID string    `gorm:"type:string;index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
 	TaskID     string    `gorm:"type:string;index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
 	Type       string
-	Value      string
+	Value      []byte
 	value      types.Context `gorm:"-"`
 
 	Session  *Session  `gorm:"foreignKey:SessionID;references:SessionID;"`
@@ -39,6 +36,10 @@ func (c *Context) BeforeCreate(tx *gorm.DB) (err error) {
 	}
 	c.CreatedAt = time.Now()
 	return nil
+}
+
+func (c *Context) Context() types.Context {
+	return c.value
 }
 
 func (c *Context) ToProtobuf() *clientpb.Context {
@@ -73,40 +74,40 @@ func FromContextProtobuf(ctx *clientpb.Context) (*Context, error) {
 	}
 
 	var err error
-	context.value, err = types.NewContext(context.Type, []byte(context.Value))
+	context.value, err = types.ParseContext(context.Type, []byte(context.Value))
 	if err != nil {
 		return nil, err
 	}
 	return context, nil
 }
 
-func (c *Context) ToFileProtobuf() *clientpb.File {
-	re := regexp.MustCompile(`-(\d+)$`)
-	match := re.FindStringSubmatch(c.TaskID)
-	if len(match) < 1 {
-		return &clientpb.File{}
-	}
-	file, err := c.toFileDescription()
-	if err != nil {
-		logs.Log.Errorf("Error parsing task file JSON: %v", err)
-		return &clientpb.File{}
-	}
-	return &clientpb.File{
-		TaskId:    match[1],
-		Name:      file.Name,
-		Local:     file.Name,
-		Checksum:  file.Checksum,
-		Remote:    file.SourcePath,
-		SessionId: c.SessionID,
-		Op:        c.Type,
-	}
-}
-
-func (f *Context) toFileDescription() (*FileDescription, error) {
-	var desc FileDescription
-	err := json.Unmarshal([]byte(f.Value), &desc)
-	if err != nil {
-		return nil, err
-	}
-	return &desc, nil
-}
+//func (c *Context) ToFileProtobuf() *clientpb.File {
+//	re := regexp.MustCompile(`-(\d+)$`)
+//	match := re.FindStringSubmatch(c.TaskID)
+//	if len(match) < 1 {
+//		return &clientpb.File{}
+//	}
+//	file, err := c.toFileDescription()
+//	if err != nil {
+//		logs.Log.Errorf("Error parsing task file JSON: %v", err)
+//		return &clientpb.File{}
+//	}
+//	return &clientpb.File{
+//		TaskId: match[1],
+//		Name:   file.Name,
+//		Local:  file.Name,
+//		//Checksum:  file.Checksum,
+//		Remote:    file.TargetPath,
+//		SessionId: c.SessionID,
+//		Op:        c.Type,
+//	}
+//}
+//
+//func (f *Context) toFileDescription() (*types.FileDescription, error) {
+//	var desc types.FileDescription
+//	err := json.Unmarshal([]byte(f.Value), &desc)
+//	if err != nil {
+//		return nil, err
+//	}
+//	return &desc, nil
+//}

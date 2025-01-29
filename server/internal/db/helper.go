@@ -119,14 +119,14 @@ func FindTaskAndMaxTasksID(sessionID string) ([]*models.Task, uint32, error) {
 		return tasks, 0, err
 	}
 
-	var max int
+	var max uint32
 	for _, task := range tasks {
 		if task.Seq > max {
 			max = task.Seq
 		}
 	}
 
-	return tasks, uint32(max), nil
+	return tasks, max, nil
 }
 
 // Basic Session OP
@@ -187,28 +187,13 @@ func ListClients() ([]models.Operator, error) {
 	return operators, nil
 }
 
-func GetTaskDescriptionByID(taskID string) (*models.File, *models.FileDescription, error) {
-	var task models.File
+func FindContext(taskID string) (*models.Context, error) {
+	var task *models.Context
 	if err := Session().Where("id = ?", taskID).First(&task).Error; err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	var td models.FileDescription
-	if err := json.Unmarshal([]byte(task.Description), &td); err != nil {
-		return nil, nil, err
-	}
-
-	return &task, &td, nil
-}
-
-// File
-func GetFilesBySessionID(sessionID string) ([]models.File, error) {
-	var files []models.File
-	result := Session().Where("session_id = ?", sessionID).Find(&files)
-	if result.Error != nil {
-		return nil, result.Error
-	}
-	return files, nil
+	return task, nil
 }
 
 func GetContextFilesBySessionID(sessionID string, fileTypes []string) ([]models.Context, error) {
@@ -226,25 +211,47 @@ func GetContextFilesBySessionID(sessionID string, fileTypes []string) ([]models.
 	return files, nil
 }
 
-func GetAllDownloadFiles() (files []models.File, err error) {
-	result := Session().Where("type = ?", "download").Find(&files)
+func GetDownloadFiles(sid string) ([]*clientpb.File, error) {
+	var files []*models.Context
+	var result *gorm.DB
+	if sid == "" {
+		result = Session().Where("type = ?", consts.ContextDownload).Find(&files)
+	} else {
+		result = Session().Where("session_id = ?", sid).Where("type = ?", consts.ContextDownload).Find(&files)
+	}
 	if result.Error != nil {
 		return nil, result.Error
 	}
-	return files, nil
+	var res []*clientpb.File
+	for _, file := range files {
+		download, err := types.AsContext[*types.DownloadContext](file.Context())
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, &clientpb.File{
+			Name:      download.Name,
+			Local:     download.FilePath,
+			Checksum:  download.Checksum,
+			Remote:    download.TargetPath,
+			TaskId:    file.Task.Seq,
+			SessionId: file.SessionID,
+		})
+	}
+
+	return res, nil
 }
 
-func FindFilesWithNonOneCurTotal(session models.Session) ([]models.File, error) {
-	var files []models.File
-	result := Session().Where("session_id = ?", session.SessionID).Where("cur != total").Find(&files)
-	if result.Error != nil {
-		return files, result.Error
-	}
-	if len(files) == 0 {
-		return files, gorm.ErrRecordNotFound
-	}
-	return files, nil
-}
+//func FindFilesWithNonOneCurTotal(session models.Session) ([]models.File, error) {
+//	var files []models.File
+//	result := Session().Where("session_id = ?", session.SessionID).Where("cur != total").Find(&files)
+//	if result.Error != nil {
+//		return files, result.Error
+//	}
+//	if len(files) == 0 {
+//		return files, gorm.ErrRecordNotFound
+//	}
+//	return files, nil
+//}
 
 func FindPipeline(name string) (*models.Pipeline, error) {
 	var pipeline *models.Pipeline
@@ -417,22 +424,22 @@ func SaveCertificate(certificate *models.Certificate) error {
 	return nil
 }
 
-func AddFile(typ string, taskpb *clientpb.Task, td *models.FileDescription) error {
-	tdString, err := td.ToJsonString()
-	if err != nil {
-		return err
-	}
-	fileModel := &models.File{
-		ID:          taskpb.SessionId + "-" + utils.ToString(taskpb.TaskId),
-		Type:        typ,
-		SessionID:   taskpb.SessionId,
-		Cur:         int(taskpb.Total),
-		Total:       int(taskpb.Total),
-		Description: tdString,
-	}
-	Session().Create(fileModel)
-	return nil
-}
+//func AddFile(typ string, taskpb *clientpb.Task, td *types.FileDescriptor) error {
+//	tdString, err := td.Marshal()
+//	if err != nil {
+//		return err
+//	}
+//	fileModel := &models.File{
+//		ID:          taskpb.SessionId + "-" + utils.ToString(taskpb.TaskId),
+//		Type:        typ,
+//		SessionID:   taskpb.SessionId,
+//		Cur:         int(taskpb.Total),
+//		Total:       int(taskpb.Total),
+//		Description: tdString,
+//	}
+//	Session().Create(fileModel)
+//	return nil
+//}
 
 func GetTaskPB(taskID string) (*clientpb.Task, error) {
 	var task models.Task
@@ -473,7 +480,7 @@ func GetTasksByID(sessionID string) (*clientpb.Tasks, error) {
 func AddTask(task *clientpb.Task) error {
 	taskModel := &models.Task{
 		ID:         task.SessionId + "-" + utils.ToString(task.TaskId),
-		Seq:        int(task.TaskId),
+		Seq:        task.TaskId,
 		Type:       task.Type,
 		SessionID:  task.SessionId,
 		Cur:        int(task.Cur),
@@ -1052,7 +1059,10 @@ func GetBuilderByProfileName(profileName string) (*clientpb.Builders, error) {
 // context
 func GetAllContext() ([]*models.Context, error) {
 	var contexts []*models.Context
-	result := Session().Find(&contexts)
+	result := Session().
+		Preload("Session").
+		Preload("Task").
+		Find(&contexts)
 	if result.Error != nil {
 		return nil, result.Error
 	}
@@ -1065,7 +1075,13 @@ func CreateContext(ctx *models.Context) error {
 
 func GetContextsByType(typ string) ([]*clientpb.Context, error) {
 	var contexts []*models.Context
-	err := Session().Where("type = ?", typ).Find(&contexts).Error
+	err := Session().
+		Preload("Session").
+		Preload("Pipeline").
+		Preload("Listener").
+		Preload("Task").
+		Where("type = ?", typ).
+		Find(&contexts).Error
 	if err != nil {
 		return nil, err
 	}
@@ -1133,12 +1149,12 @@ func GetContextsByTask(taskID uint32) ([]*clientpb.Context, error) {
 	return result, nil
 }
 
-func SaveContext(ctx *clientpb.Context) error {
+func SaveContext(ctx *clientpb.Context) (*models.Context, error) {
 	contextDB, err := models.FromContextProtobuf(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return Session().Create(contextDB).Error
+	return contextDB, Session().Create(contextDB).Error
 }
 
 func DeleteContext(contextID string) error {

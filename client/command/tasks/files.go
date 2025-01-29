@@ -42,7 +42,7 @@ func printFiles(files *clientpb.Files, con *repl.Console) {
 	}
 
 	for _, file := range files.Files {
-		updateMaxLength(&maxLengths, "FileID", len(file.TaskId))
+		updateMaxLength(&maxLengths, "FileID", 4)
 		updateMaxLength(&maxLengths, "Name", len(file.Name))
 		//updateMaxLength(&maxLengths, "Checksum", len(file.TempId[:8]))
 		updateMaxLength(&maxLengths, "Type", len(file.Op))

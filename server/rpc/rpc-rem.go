@@ -160,18 +160,18 @@ func (rpc *Server) RemDial(ctx context.Context, req *implantpb.Request) (*client
 		if err != nil {
 			return
 		}
-		err = db.SaveContext(&clientpb.Context{
+		_, err = db.SaveContext(&clientpb.Context{
 			Session:  greq.Session.ToProtobufLite(),
 			Task:     greq.Task.ToProtobuf(),
 			Listener: lns.ToProtobuf(),
 			Pipeline: pipe,
 			Type:     consts.ContextPivoting,
-			Value: string(types.MarshalContext(types.NewPivotingFromProto(&clientpb.REMAgent{
+			Value: types.MarshalContext(types.NewPivotingFromProto(&clientpb.REMAgent{
 				Id:     spite.GetResponse().Output,
 				Mod:    remOpt.Mod,
 				Remote: remOpt.RemoteAddr,
 				Local:  remOpt.LocalAddr,
-			}))),
+			})),
 		})
 		if err != nil {
 			return
@@ -182,7 +182,7 @@ func (rpc *Server) RemDial(ctx context.Context, req *implantpb.Request) (*client
 }
 
 // rpc ListPivots(clientpb.Empty) returns (clientpb.REMAgents);
-func (rpc *Server) ListPivots(ctx context.Context, req *clientpb.Empty) (*clientpb.REMAgents, error) {
+func (rpc *Server) GetPivots(ctx context.Context, req *clientpb.Empty) (*clientpb.REMAgents, error) {
 	var result []*clientpb.REMAgent
 
 	core.Jobs.Range(func(key, value any) bool {

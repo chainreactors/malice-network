@@ -31,16 +31,14 @@ const (
 	MaliceRPC_SessionManage_FullMethodName         = "/clientrpc.MaliceRPC/SessionManage"
 	MaliceRPC_GetListeners_FullMethodName          = "/clientrpc.MaliceRPC/GetListeners"
 	MaliceRPC_GetJobs_FullMethodName               = "/clientrpc.MaliceRPC/GetJobs"
-	MaliceRPC_ListPivots_FullMethodName            = "/clientrpc.MaliceRPC/ListPivots"
+	MaliceRPC_GetPivots_FullMethodName             = "/clientrpc.MaliceRPC/GetPivots"
 	MaliceRPC_GetTasks_FullMethodName              = "/clientrpc.MaliceRPC/GetTasks"
 	MaliceRPC_GetTaskContent_FullMethodName        = "/clientrpc.MaliceRPC/GetTaskContent"
-	MaliceRPC_GetTaskFiles_FullMethodName          = "/clientrpc.MaliceRPC/GetTaskFiles"
 	MaliceRPC_GetContextFiles_FullMethodName       = "/clientrpc.MaliceRPC/GetContextFiles"
 	MaliceRPC_WaitTaskContent_FullMethodName       = "/clientrpc.MaliceRPC/WaitTaskContent"
 	MaliceRPC_WaitTaskFinish_FullMethodName        = "/clientrpc.MaliceRPC/WaitTaskFinish"
 	MaliceRPC_GetAllTaskContent_FullMethodName     = "/clientrpc.MaliceRPC/GetAllTaskContent"
 	MaliceRPC_GetFiles_FullMethodName              = "/clientrpc.MaliceRPC/GetFiles"
-	MaliceRPC_GetAllDownloadFiles_FullMethodName   = "/clientrpc.MaliceRPC/GetAllDownloadFiles"
 	MaliceRPC_Events_FullMethodName                = "/clientrpc.MaliceRPC/Events"
 	MaliceRPC_Broadcast_FullMethodName             = "/clientrpc.MaliceRPC/Broadcast"
 	MaliceRPC_Notify_FullMethodName                = "/clientrpc.MaliceRPC/Notify"
@@ -143,10 +141,15 @@ const (
 	MaliceRPC_GetNotifyConfig_FullMethodName       = "/clientrpc.MaliceRPC/GetNotifyConfig"
 	MaliceRPC_RefreshConfig_FullMethodName         = "/clientrpc.MaliceRPC/RefreshConfig"
 	MaliceRPC_GetContexts_FullMethodName           = "/clientrpc.MaliceRPC/GetContexts"
-	MaliceRPC_GetScreenShot_FullMethodName         = "/clientrpc.MaliceRPC/GetScreenShot"
-	MaliceRPC_GetCredential_FullMethodName         = "/clientrpc.MaliceRPC/GetCredential"
-	MaliceRPC_GetKeylogger_FullMethodName          = "/clientrpc.MaliceRPC/GetKeylogger"
+	MaliceRPC_GetScreenShots_FullMethodName        = "/clientrpc.MaliceRPC/GetScreenShots"
+	MaliceRPC_GetCredentials_FullMethodName        = "/clientrpc.MaliceRPC/GetCredentials"
+	MaliceRPC_GetKeyloggers_FullMethodName         = "/clientrpc.MaliceRPC/GetKeyloggers"
+	MaliceRPC_GetPorts_FullMethodName              = "/clientrpc.MaliceRPC/GetPorts"
 	MaliceRPC_AddContext_FullMethodName            = "/clientrpc.MaliceRPC/AddContext"
+	MaliceRPC_AddScreenShot_FullMethodName         = "/clientrpc.MaliceRPC/AddScreenShot"
+	MaliceRPC_AddCredential_FullMethodName         = "/clientrpc.MaliceRPC/AddCredential"
+	MaliceRPC_AddKeylogger_FullMethodName          = "/clientrpc.MaliceRPC/AddKeylogger"
+	MaliceRPC_AddPortScan_FullMethodName           = "/clientrpc.MaliceRPC/AddPortScan"
 )
 
 // MaliceRPCClient is the client API for MaliceRPC service.
@@ -163,18 +166,16 @@ type MaliceRPCClient interface {
 	SessionManage(ctx context.Context, in *clientpb.BasicUpdateSession, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	GetListeners(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Listeners, error)
 	GetJobs(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Jobs, error)
-	ListPivots(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.REMAgents, error)
+	GetPivots(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.REMAgents, error)
 	// task
 	GetTasks(ctx context.Context, in *clientpb.TaskRequest, opts ...grpc.CallOption) (*clientpb.Tasks, error)
 	GetTaskContent(ctx context.Context, in *clientpb.Task, opts ...grpc.CallOption) (*clientpb.TaskContext, error)
-	GetTaskFiles(ctx context.Context, in *clientpb.Session, opts ...grpc.CallOption) (*clientpb.Files, error)
 	GetContextFiles(ctx context.Context, in *clientpb.Session, opts ...grpc.CallOption) (*clientpb.Files, error)
 	WaitTaskContent(ctx context.Context, in *clientpb.Task, opts ...grpc.CallOption) (*clientpb.TaskContext, error)
 	WaitTaskFinish(ctx context.Context, in *clientpb.Task, opts ...grpc.CallOption) (*clientpb.TaskContext, error)
 	GetAllTaskContent(ctx context.Context, in *clientpb.Task, opts ...grpc.CallOption) (*clientpb.TaskContexts, error)
 	// file
 	GetFiles(ctx context.Context, in *clientpb.Session, opts ...grpc.CallOption) (*clientpb.Files, error)
-	GetAllDownloadFiles(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Files, error)
 	// event
 	Events(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (MaliceRPC_EventsClient, error)
 	Broadcast(ctx context.Context, in *clientpb.Event, opts ...grpc.CallOption) (*clientpb.Empty, error)
@@ -201,7 +202,7 @@ type MaliceRPCClient interface {
 	// implant::file
 	Upload(ctx context.Context, in *implantpb.UploadRequest, opts ...grpc.CallOption) (*clientpb.Task, error)
 	Download(ctx context.Context, in *implantpb.DownloadRequest, opts ...grpc.CallOption) (*clientpb.Task, error)
-	Sync(ctx context.Context, in *clientpb.Sync, opts ...grpc.CallOption) (*clientpb.SyncResp, error)
+	Sync(ctx context.Context, in *clientpb.Sync, opts ...grpc.CallOption) (*clientpb.Context, error)
 	// implant::fs
 	Pwd(ctx context.Context, in *implantpb.Request, opts ...grpc.CallOption) (*clientpb.Task, error)
 	Ls(ctx context.Context, in *implantpb.Request, opts ...grpc.CallOption) (*clientpb.Task, error)
@@ -296,10 +297,15 @@ type MaliceRPCClient interface {
 	RefreshConfig(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	// context
 	GetContexts(ctx context.Context, in *clientpb.Context, opts ...grpc.CallOption) (*clientpb.Contexts, error)
-	GetScreenShot(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Contexts, error)
-	GetCredential(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Contexts, error)
-	GetKeylogger(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Contexts, error)
+	GetScreenShots(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Contexts, error)
+	GetCredentials(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Contexts, error)
+	GetKeyloggers(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Contexts, error)
+	GetPorts(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Contexts, error)
 	AddContext(ctx context.Context, in *clientpb.Context, opts ...grpc.CallOption) (*clientpb.Empty, error)
+	AddScreenShot(ctx context.Context, in *clientpb.Context, opts ...grpc.CallOption) (*clientpb.Empty, error)
+	AddCredential(ctx context.Context, in *clientpb.Context, opts ...grpc.CallOption) (*clientpb.Empty, error)
+	AddKeylogger(ctx context.Context, in *clientpb.Context, opts ...grpc.CallOption) (*clientpb.Empty, error)
+	AddPortScan(ctx context.Context, in *clientpb.Context, opts ...grpc.CallOption) (*clientpb.Empty, error)
 }
 
 type maliceRPCClient struct {
@@ -391,9 +397,9 @@ func (c *maliceRPCClient) GetJobs(ctx context.Context, in *clientpb.Empty, opts 
 	return out, nil
 }
 
-func (c *maliceRPCClient) ListPivots(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.REMAgents, error) {
+func (c *maliceRPCClient) GetPivots(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.REMAgents, error) {
 	out := new(clientpb.REMAgents)
-	err := c.cc.Invoke(ctx, MaliceRPC_ListPivots_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, MaliceRPC_GetPivots_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -412,15 +418,6 @@ func (c *maliceRPCClient) GetTasks(ctx context.Context, in *clientpb.TaskRequest
 func (c *maliceRPCClient) GetTaskContent(ctx context.Context, in *clientpb.Task, opts ...grpc.CallOption) (*clientpb.TaskContext, error) {
 	out := new(clientpb.TaskContext)
 	err := c.cc.Invoke(ctx, MaliceRPC_GetTaskContent_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *maliceRPCClient) GetTaskFiles(ctx context.Context, in *clientpb.Session, opts ...grpc.CallOption) (*clientpb.Files, error) {
-	out := new(clientpb.Files)
-	err := c.cc.Invoke(ctx, MaliceRPC_GetTaskFiles_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -466,15 +463,6 @@ func (c *maliceRPCClient) GetAllTaskContent(ctx context.Context, in *clientpb.Ta
 func (c *maliceRPCClient) GetFiles(ctx context.Context, in *clientpb.Session, opts ...grpc.CallOption) (*clientpb.Files, error) {
 	out := new(clientpb.Files)
 	err := c.cc.Invoke(ctx, MaliceRPC_GetFiles_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *maliceRPCClient) GetAllDownloadFiles(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Files, error) {
-	out := new(clientpb.Files)
-	err := c.cc.Invoke(ctx, MaliceRPC_GetAllDownloadFiles_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -702,8 +690,8 @@ func (c *maliceRPCClient) Download(ctx context.Context, in *implantpb.DownloadRe
 	return out, nil
 }
 
-func (c *maliceRPCClient) Sync(ctx context.Context, in *clientpb.Sync, opts ...grpc.CallOption) (*clientpb.SyncResp, error) {
-	out := new(clientpb.SyncResp)
+func (c *maliceRPCClient) Sync(ctx context.Context, in *clientpb.Sync, opts ...grpc.CallOption) (*clientpb.Context, error) {
+	out := new(clientpb.Context)
 	err := c.cc.Invoke(ctx, MaliceRPC_Sync_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -1422,27 +1410,36 @@ func (c *maliceRPCClient) GetContexts(ctx context.Context, in *clientpb.Context,
 	return out, nil
 }
 
-func (c *maliceRPCClient) GetScreenShot(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Contexts, error) {
+func (c *maliceRPCClient) GetScreenShots(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Contexts, error) {
 	out := new(clientpb.Contexts)
-	err := c.cc.Invoke(ctx, MaliceRPC_GetScreenShot_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, MaliceRPC_GetScreenShots_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *maliceRPCClient) GetCredential(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Contexts, error) {
+func (c *maliceRPCClient) GetCredentials(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Contexts, error) {
 	out := new(clientpb.Contexts)
-	err := c.cc.Invoke(ctx, MaliceRPC_GetCredential_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, MaliceRPC_GetCredentials_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *maliceRPCClient) GetKeylogger(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Contexts, error) {
+func (c *maliceRPCClient) GetKeyloggers(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Contexts, error) {
 	out := new(clientpb.Contexts)
-	err := c.cc.Invoke(ctx, MaliceRPC_GetKeylogger_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, MaliceRPC_GetKeyloggers_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *maliceRPCClient) GetPorts(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Contexts, error) {
+	out := new(clientpb.Contexts)
+	err := c.cc.Invoke(ctx, MaliceRPC_GetPorts_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1452,6 +1449,42 @@ func (c *maliceRPCClient) GetKeylogger(ctx context.Context, in *clientpb.Empty, 
 func (c *maliceRPCClient) AddContext(ctx context.Context, in *clientpb.Context, opts ...grpc.CallOption) (*clientpb.Empty, error) {
 	out := new(clientpb.Empty)
 	err := c.cc.Invoke(ctx, MaliceRPC_AddContext_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *maliceRPCClient) AddScreenShot(ctx context.Context, in *clientpb.Context, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+	out := new(clientpb.Empty)
+	err := c.cc.Invoke(ctx, MaliceRPC_AddScreenShot_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *maliceRPCClient) AddCredential(ctx context.Context, in *clientpb.Context, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+	out := new(clientpb.Empty)
+	err := c.cc.Invoke(ctx, MaliceRPC_AddCredential_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *maliceRPCClient) AddKeylogger(ctx context.Context, in *clientpb.Context, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+	out := new(clientpb.Empty)
+	err := c.cc.Invoke(ctx, MaliceRPC_AddKeylogger_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *maliceRPCClient) AddPortScan(ctx context.Context, in *clientpb.Context, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+	out := new(clientpb.Empty)
+	err := c.cc.Invoke(ctx, MaliceRPC_AddPortScan_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1472,18 +1505,16 @@ type MaliceRPCServer interface {
 	SessionManage(context.Context, *clientpb.BasicUpdateSession) (*clientpb.Empty, error)
 	GetListeners(context.Context, *clientpb.Empty) (*clientpb.Listeners, error)
 	GetJobs(context.Context, *clientpb.Empty) (*clientpb.Jobs, error)
-	ListPivots(context.Context, *clientpb.Empty) (*clientpb.REMAgents, error)
+	GetPivots(context.Context, *clientpb.Empty) (*clientpb.REMAgents, error)
 	// task
 	GetTasks(context.Context, *clientpb.TaskRequest) (*clientpb.Tasks, error)
 	GetTaskContent(context.Context, *clientpb.Task) (*clientpb.TaskContext, error)
-	GetTaskFiles(context.Context, *clientpb.Session) (*clientpb.Files, error)
 	GetContextFiles(context.Context, *clientpb.Session) (*clientpb.Files, error)
 	WaitTaskContent(context.Context, *clientpb.Task) (*clientpb.TaskContext, error)
 	WaitTaskFinish(context.Context, *clientpb.Task) (*clientpb.TaskContext, error)
 	GetAllTaskContent(context.Context, *clientpb.Task) (*clientpb.TaskContexts, error)
 	// file
 	GetFiles(context.Context, *clientpb.Session) (*clientpb.Files, error)
-	GetAllDownloadFiles(context.Context, *clientpb.Empty) (*clientpb.Files, error)
 	// event
 	Events(*clientpb.Empty, MaliceRPC_EventsServer) error
 	Broadcast(context.Context, *clientpb.Event) (*clientpb.Empty, error)
@@ -1510,7 +1541,7 @@ type MaliceRPCServer interface {
 	// implant::file
 	Upload(context.Context, *implantpb.UploadRequest) (*clientpb.Task, error)
 	Download(context.Context, *implantpb.DownloadRequest) (*clientpb.Task, error)
-	Sync(context.Context, *clientpb.Sync) (*clientpb.SyncResp, error)
+	Sync(context.Context, *clientpb.Sync) (*clientpb.Context, error)
 	// implant::fs
 	Pwd(context.Context, *implantpb.Request) (*clientpb.Task, error)
 	Ls(context.Context, *implantpb.Request) (*clientpb.Task, error)
@@ -1605,10 +1636,15 @@ type MaliceRPCServer interface {
 	RefreshConfig(context.Context, *clientpb.Empty) (*clientpb.Empty, error)
 	// context
 	GetContexts(context.Context, *clientpb.Context) (*clientpb.Contexts, error)
-	GetScreenShot(context.Context, *clientpb.Empty) (*clientpb.Contexts, error)
-	GetCredential(context.Context, *clientpb.Empty) (*clientpb.Contexts, error)
-	GetKeylogger(context.Context, *clientpb.Empty) (*clientpb.Contexts, error)
+	GetScreenShots(context.Context, *clientpb.Empty) (*clientpb.Contexts, error)
+	GetCredentials(context.Context, *clientpb.Empty) (*clientpb.Contexts, error)
+	GetKeyloggers(context.Context, *clientpb.Empty) (*clientpb.Contexts, error)
+	GetPorts(context.Context, *clientpb.Empty) (*clientpb.Contexts, error)
 	AddContext(context.Context, *clientpb.Context) (*clientpb.Empty, error)
+	AddScreenShot(context.Context, *clientpb.Context) (*clientpb.Empty, error)
+	AddCredential(context.Context, *clientpb.Context) (*clientpb.Empty, error)
+	AddKeylogger(context.Context, *clientpb.Context) (*clientpb.Empty, error)
+	AddPortScan(context.Context, *clientpb.Context) (*clientpb.Empty, error)
 	mustEmbedUnimplementedMaliceRPCServer()
 }
 
@@ -1643,17 +1679,14 @@ func (UnimplementedMaliceRPCServer) GetListeners(context.Context, *clientpb.Empt
 func (UnimplementedMaliceRPCServer) GetJobs(context.Context, *clientpb.Empty) (*clientpb.Jobs, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetJobs not implemented")
 }
-func (UnimplementedMaliceRPCServer) ListPivots(context.Context, *clientpb.Empty) (*clientpb.REMAgents, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListPivots not implemented")
+func (UnimplementedMaliceRPCServer) GetPivots(context.Context, *clientpb.Empty) (*clientpb.REMAgents, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetPivots not implemented")
 }
 func (UnimplementedMaliceRPCServer) GetTasks(context.Context, *clientpb.TaskRequest) (*clientpb.Tasks, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetTasks not implemented")
 }
 func (UnimplementedMaliceRPCServer) GetTaskContent(context.Context, *clientpb.Task) (*clientpb.TaskContext, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetTaskContent not implemented")
-}
-func (UnimplementedMaliceRPCServer) GetTaskFiles(context.Context, *clientpb.Session) (*clientpb.Files, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetTaskFiles not implemented")
 }
 func (UnimplementedMaliceRPCServer) GetContextFiles(context.Context, *clientpb.Session) (*clientpb.Files, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetContextFiles not implemented")
@@ -1669,9 +1702,6 @@ func (UnimplementedMaliceRPCServer) GetAllTaskContent(context.Context, *clientpb
 }
 func (UnimplementedMaliceRPCServer) GetFiles(context.Context, *clientpb.Session) (*clientpb.Files, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetFiles not implemented")
-}
-func (UnimplementedMaliceRPCServer) GetAllDownloadFiles(context.Context, *clientpb.Empty) (*clientpb.Files, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetAllDownloadFiles not implemented")
 }
 func (UnimplementedMaliceRPCServer) Events(*clientpb.Empty, MaliceRPC_EventsServer) error {
 	return status.Errorf(codes.Unimplemented, "method Events not implemented")
@@ -1739,7 +1769,7 @@ func (UnimplementedMaliceRPCServer) Upload(context.Context, *implantpb.UploadReq
 func (UnimplementedMaliceRPCServer) Download(context.Context, *implantpb.DownloadRequest) (*clientpb.Task, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Download not implemented")
 }
-func (UnimplementedMaliceRPCServer) Sync(context.Context, *clientpb.Sync) (*clientpb.SyncResp, error) {
+func (UnimplementedMaliceRPCServer) Sync(context.Context, *clientpb.Sync) (*clientpb.Context, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Sync not implemented")
 }
 func (UnimplementedMaliceRPCServer) Pwd(context.Context, *implantpb.Request) (*clientpb.Task, error) {
@@ -1979,17 +2009,32 @@ func (UnimplementedMaliceRPCServer) RefreshConfig(context.Context, *clientpb.Emp
 func (UnimplementedMaliceRPCServer) GetContexts(context.Context, *clientpb.Context) (*clientpb.Contexts, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetContexts not implemented")
 }
-func (UnimplementedMaliceRPCServer) GetScreenShot(context.Context, *clientpb.Empty) (*clientpb.Contexts, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetScreenShot not implemented")
+func (UnimplementedMaliceRPCServer) GetScreenShots(context.Context, *clientpb.Empty) (*clientpb.Contexts, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetScreenShots not implemented")
 }
-func (UnimplementedMaliceRPCServer) GetCredential(context.Context, *clientpb.Empty) (*clientpb.Contexts, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetCredential not implemented")
+func (UnimplementedMaliceRPCServer) GetCredentials(context.Context, *clientpb.Empty) (*clientpb.Contexts, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetCredentials not implemented")
 }
-func (UnimplementedMaliceRPCServer) GetKeylogger(context.Context, *clientpb.Empty) (*clientpb.Contexts, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetKeylogger not implemented")
+func (UnimplementedMaliceRPCServer) GetKeyloggers(context.Context, *clientpb.Empty) (*clientpb.Contexts, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetKeyloggers not implemented")
+}
+func (UnimplementedMaliceRPCServer) GetPorts(context.Context, *clientpb.Empty) (*clientpb.Contexts, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetPorts not implemented")
 }
 func (UnimplementedMaliceRPCServer) AddContext(context.Context, *clientpb.Context) (*clientpb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddContext not implemented")
+}
+func (UnimplementedMaliceRPCServer) AddScreenShot(context.Context, *clientpb.Context) (*clientpb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AddScreenShot not implemented")
+}
+func (UnimplementedMaliceRPCServer) AddCredential(context.Context, *clientpb.Context) (*clientpb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AddCredential not implemented")
+}
+func (UnimplementedMaliceRPCServer) AddKeylogger(context.Context, *clientpb.Context) (*clientpb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AddKeylogger not implemented")
+}
+func (UnimplementedMaliceRPCServer) AddPortScan(context.Context, *clientpb.Context) (*clientpb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AddPortScan not implemented")
 }
 func (UnimplementedMaliceRPCServer) mustEmbedUnimplementedMaliceRPCServer() {}
 
@@ -2166,20 +2211,20 @@ func _MaliceRPC_GetJobs_Handler(srv interface{}, ctx context.Context, dec func(i
 	return interceptor(ctx, in, info, handler)
 }
 
-func _MaliceRPC_ListPivots_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _MaliceRPC_GetPivots_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(clientpb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(MaliceRPCServer).ListPivots(ctx, in)
+		return srv.(MaliceRPCServer).GetPivots(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: MaliceRPC_ListPivots_FullMethodName,
+		FullMethod: MaliceRPC_GetPivots_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MaliceRPCServer).ListPivots(ctx, req.(*clientpb.Empty))
+		return srv.(MaliceRPCServer).GetPivots(ctx, req.(*clientpb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2216,24 +2261,6 @@ func _MaliceRPC_GetTaskContent_Handler(srv interface{}, ctx context.Context, dec
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(MaliceRPCServer).GetTaskContent(ctx, req.(*clientpb.Task))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _MaliceRPC_GetTaskFiles_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(clientpb.Session)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(MaliceRPCServer).GetTaskFiles(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: MaliceRPC_GetTaskFiles_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MaliceRPCServer).GetTaskFiles(ctx, req.(*clientpb.Session))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2324,24 +2351,6 @@ func _MaliceRPC_GetFiles_Handler(srv interface{}, ctx context.Context, dec func(
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(MaliceRPCServer).GetFiles(ctx, req.(*clientpb.Session))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _MaliceRPC_GetAllDownloadFiles_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(clientpb.Empty)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(MaliceRPCServer).GetAllDownloadFiles(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: MaliceRPC_GetAllDownloadFiles_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MaliceRPCServer).GetAllDownloadFiles(ctx, req.(*clientpb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4185,56 +4194,74 @@ func _MaliceRPC_GetContexts_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
-func _MaliceRPC_GetScreenShot_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _MaliceRPC_GetScreenShots_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(clientpb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(MaliceRPCServer).GetScreenShot(ctx, in)
+		return srv.(MaliceRPCServer).GetScreenShots(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: MaliceRPC_GetScreenShot_FullMethodName,
+		FullMethod: MaliceRPC_GetScreenShots_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MaliceRPCServer).GetScreenShot(ctx, req.(*clientpb.Empty))
+		return srv.(MaliceRPCServer).GetScreenShots(ctx, req.(*clientpb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _MaliceRPC_GetCredential_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _MaliceRPC_GetCredentials_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(clientpb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(MaliceRPCServer).GetCredential(ctx, in)
+		return srv.(MaliceRPCServer).GetCredentials(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: MaliceRPC_GetCredential_FullMethodName,
+		FullMethod: MaliceRPC_GetCredentials_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MaliceRPCServer).GetCredential(ctx, req.(*clientpb.Empty))
+		return srv.(MaliceRPCServer).GetCredentials(ctx, req.(*clientpb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _MaliceRPC_GetKeylogger_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _MaliceRPC_GetKeyloggers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(clientpb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(MaliceRPCServer).GetKeylogger(ctx, in)
+		return srv.(MaliceRPCServer).GetKeyloggers(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: MaliceRPC_GetKeylogger_FullMethodName,
+		FullMethod: MaliceRPC_GetKeyloggers_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MaliceRPCServer).GetKeylogger(ctx, req.(*clientpb.Empty))
+		return srv.(MaliceRPCServer).GetKeyloggers(ctx, req.(*clientpb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MaliceRPC_GetPorts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(clientpb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MaliceRPCServer).GetPorts(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MaliceRPC_GetPorts_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MaliceRPCServer).GetPorts(ctx, req.(*clientpb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4253,6 +4280,78 @@ func _MaliceRPC_AddContext_Handler(srv interface{}, ctx context.Context, dec fun
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(MaliceRPCServer).AddContext(ctx, req.(*clientpb.Context))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MaliceRPC_AddScreenShot_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(clientpb.Context)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MaliceRPCServer).AddScreenShot(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MaliceRPC_AddScreenShot_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MaliceRPCServer).AddScreenShot(ctx, req.(*clientpb.Context))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MaliceRPC_AddCredential_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(clientpb.Context)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MaliceRPCServer).AddCredential(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MaliceRPC_AddCredential_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MaliceRPCServer).AddCredential(ctx, req.(*clientpb.Context))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MaliceRPC_AddKeylogger_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(clientpb.Context)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MaliceRPCServer).AddKeylogger(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MaliceRPC_AddKeylogger_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MaliceRPCServer).AddKeylogger(ctx, req.(*clientpb.Context))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MaliceRPC_AddPortScan_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(clientpb.Context)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MaliceRPCServer).AddPortScan(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MaliceRPC_AddPortScan_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MaliceRPCServer).AddPortScan(ctx, req.(*clientpb.Context))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4301,8 +4400,8 @@ var MaliceRPC_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _MaliceRPC_GetJobs_Handler,
 		},
 		{
-			MethodName: "ListPivots",
-			Handler:    _MaliceRPC_ListPivots_Handler,
+			MethodName: "GetPivots",
+			Handler:    _MaliceRPC_GetPivots_Handler,
 		},
 		{
 			MethodName: "GetTasks",
@@ -4311,10 +4410,6 @@ var MaliceRPC_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetTaskContent",
 			Handler:    _MaliceRPC_GetTaskContent_Handler,
-		},
-		{
-			MethodName: "GetTaskFiles",
-			Handler:    _MaliceRPC_GetTaskFiles_Handler,
 		},
 		{
 			MethodName: "GetContextFiles",
@@ -4335,10 +4430,6 @@ var MaliceRPC_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetFiles",
 			Handler:    _MaliceRPC_GetFiles_Handler,
-		},
-		{
-			MethodName: "GetAllDownloadFiles",
-			Handler:    _MaliceRPC_GetAllDownloadFiles_Handler,
 		},
 		{
 			MethodName: "Broadcast",
@@ -4745,20 +4836,40 @@ var MaliceRPC_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _MaliceRPC_GetContexts_Handler,
 		},
 		{
-			MethodName: "GetScreenShot",
-			Handler:    _MaliceRPC_GetScreenShot_Handler,
+			MethodName: "GetScreenShots",
+			Handler:    _MaliceRPC_GetScreenShots_Handler,
 		},
 		{
-			MethodName: "GetCredential",
-			Handler:    _MaliceRPC_GetCredential_Handler,
+			MethodName: "GetCredentials",
+			Handler:    _MaliceRPC_GetCredentials_Handler,
 		},
 		{
-			MethodName: "GetKeylogger",
-			Handler:    _MaliceRPC_GetKeylogger_Handler,
+			MethodName: "GetKeyloggers",
+			Handler:    _MaliceRPC_GetKeyloggers_Handler,
+		},
+		{
+			MethodName: "GetPorts",
+			Handler:    _MaliceRPC_GetPorts_Handler,
 		},
 		{
 			MethodName: "AddContext",
 			Handler:    _MaliceRPC_AddContext_Handler,
+		},
+		{
+			MethodName: "AddScreenShot",
+			Handler:    _MaliceRPC_AddScreenShot_Handler,
+		},
+		{
+			MethodName: "AddCredential",
+			Handler:    _MaliceRPC_AddCredential_Handler,
+		},
+		{
+			MethodName: "AddKeylogger",
+			Handler:    _MaliceRPC_AddKeylogger_Handler,
+		},
+		{
+			MethodName: "AddPortScan",
+			Handler:    _MaliceRPC_AddPortScan_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
