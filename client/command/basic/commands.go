@@ -7,6 +7,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
+	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -112,7 +113,7 @@ func Register(con *repl.Console) {
 		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, interval uint64) (*clientpb.Task, error) {
 			return Sleep(rpc, sess, interval, sess.Timer.Jitter)
 		},
-		common.ParseStatus,
+		output.ParseStatus,
 		nil,
 	)
 
@@ -137,7 +138,7 @@ func Register(con *repl.Console) {
 		Suicide,
 		"bexit",
 		nil,
-		common.ParseStatus,
+		output.ParseStatus,
 		nil,
 	)
 

@@ -3,6 +3,7 @@ package intermediate
 import (
 	"context"
 	"fmt"
+	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"math"
 	"os"
 	"path/filepath"
@@ -15,7 +16,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/handler"
-	"github.com/chainreactors/malice-network/helper/utils/pe"
 )
 
 func GetResourceFile(pluginName, filename string) (string, error) {
@@ -44,7 +44,7 @@ func NewSacrificeProcessMessage(ppid uint32, hidden, block_dll, bypassETW bool, 
 	}, nil
 }
 
-func NewBinary(module string, path string, args []string, output bool, timeout uint32, arch string, process string, sac *implantpb.SacrificeProcess) (*implantpb.ExecuteBinary, error) {
+func NewBinary(module string, path string, args []string, out bool, timeout uint32, arch string, process string, sac *implantpb.SacrificeProcess) (*implantpb.ExecuteBinary, error) {
 	bin, err := pe.Unpack(path)
 	if err != nil {
 		return nil, err
@@ -54,7 +54,7 @@ func NewBinary(module string, path string, args []string, output bool, timeout u
 		Bin:         bin,
 		Type:        module,
 		Args:        args,
-		Output:      output,
+		Output:      out,
 		Timeout:     timeout,
 		Arch:        consts.MapArch(arch),
 		ProcessName: process,
@@ -62,7 +62,7 @@ func NewBinary(module string, path string, args []string, output bool, timeout u
 	}, nil
 }
 
-func NewBinaryData(module string, path string, data string, output bool, timeout uint32, arch string, process string, sac *implantpb.SacrificeProcess) (*implantpb.ExecuteBinary, error) {
+func NewBinaryData(module string, path string, data string, out bool, timeout uint32, arch string, process string, sac *implantpb.SacrificeProcess) (*implantpb.ExecuteBinary, error) {
 	bin, err := pe.Unpack(path)
 	if err != nil {
 		return nil, err
@@ -74,7 +74,7 @@ func NewBinaryData(module string, path string, data string, output bool, timeout
 		Bin:         bin,
 		Type:        module,
 		Data:        binData,
-		Output:      output,
+		Output:      out,
 		Timeout:     timeout,
 		Arch:        consts.MapArch(arch),
 		ProcessName: process,

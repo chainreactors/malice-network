@@ -3,10 +3,10 @@ package reg
 import (
 	"encoding/hex"
 	"fmt"
+	"github.com/chainreactors/malice-network/helper/utils/output"
 	"strconv"
 	"strings"
 
-	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -82,7 +82,7 @@ func RegisterRegAddFunc(con *repl.Console) {
 		RegAdd,
 		"",
 		nil,
-		common.ParseStatus,
+		output.ParseStatus,
 		nil,
 	)
 	con.AddCommandFuncHelper(

@@ -12,6 +12,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/utils/donut"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
+	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
@@ -102,7 +103,7 @@ func RegisterShellcodeFunc(con *repl.Console) {
 		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, ppid uint32, arch, path string) (*clientpb.Task, error) {
 			return ExecShellcode(rpc, sess, path, nil, true, math.MaxUint32, sess.Os.Arch, "", common.NewSacrifice(ppid, false, true, true, ""))
 		},
-		common.ParseAssembly,
+		output.ParseAssembly,
 		nil)
 
 	con.AddCommandFuncHelper(
@@ -128,7 +129,7 @@ func RegisterShellcodeFunc(con *repl.Console) {
 		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string) (*clientpb.Task, error) {
 			return InlineShellcode(rpc, sess, path, nil, true, math.MaxUint32, sess.Os.Arch, "")
 		},
-		common.ParseAssembly,
+		output.ParseAssembly,
 		nil)
 
 	con.AddCommandFuncHelper(

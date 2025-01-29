@@ -6,6 +6,7 @@ import (
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/tui"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -79,7 +80,7 @@ func Register(con *repl.Console) {
 		CancelTask,
 		"",
 		nil,
-		common.ParseStatus,
+		output.ParseStatus,
 		nil)
 
 	con.AddCommandFuncHelper(

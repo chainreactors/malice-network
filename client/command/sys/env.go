@@ -2,13 +2,13 @@ package sys
 
 import (
 	"fmt"
-	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
+	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/spf13/cobra"
 )
 
@@ -92,7 +92,7 @@ func RegisterEnvFunc(con *repl.Console) {
 		func(rpc clientrpc.MaliceRPCClient, sess *core.Session) (*clientpb.Task, error) {
 			return Env(rpc, sess)
 		},
-		common.ParseKVResponse, common.FormatKVResponse)
+		output.ParseKVResponse, output.FormatKVResponse)
 
 	con.AddCommandFuncHelper(
 		consts.ModuleEnv,
@@ -110,7 +110,7 @@ func RegisterEnvFunc(con *repl.Console) {
 		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, envName, value string) (*clientpb.Task, error) {
 			return SetEnv(rpc, sess, envName, value)
 		},
-		common.ParseStatus,
+		output.ParseStatus,
 		nil,
 	)
 
@@ -132,7 +132,7 @@ func RegisterEnvFunc(con *repl.Console) {
 		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, envName string) (*clientpb.Task, error) {
 			return UnSetEnv(rpc, sess, envName)
 		},
-		common.ParseStatus,
+		output.ParseStatus,
 		nil)
 
 	con.AddCommandFuncHelper(

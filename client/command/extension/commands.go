@@ -5,6 +5,7 @@ import (
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/intermediate"
+	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
 )
@@ -90,6 +91,6 @@ extension remove credman
 
 func Register(con *repl.Console) {
 	for name, ext := range loadedExtensions {
-		intermediate.RegisterInternalFunc(intermediate.ArmoryPackage, name, ext.Func, repl.WrapClientCallback(common.ParseAssembly))
+		intermediate.RegisterInternalFunc(intermediate.ArmoryPackage, name, ext.Func, repl.WrapClientCallback(output.ParseAssembly))
 	}
 }

@@ -2,13 +2,13 @@ package sys
 
 import (
 	"fmt"
-	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
+	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/spf13/cobra"
 )
 
@@ -38,7 +38,7 @@ func RegisterBypassFunc(con *repl.Console) {
 		Bypass,
 		"",
 		nil,
-		common.ParseStatus,
+		output.ParseStatus,
 		nil,
 	)
 

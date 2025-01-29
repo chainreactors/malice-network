@@ -13,6 +13,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
+	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/mals"
 	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
@@ -187,7 +188,7 @@ func RegisterAlias(aliasManifest *AliasManifest, cmd *cobra.Command, con *repl.C
 			param map[string]string,
 			sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 			return ExecuteAlias(rpc, sess, aliasManifest.CommandName, args, param, sac)
-		}, common.ParseAssembly),
+		}, output.ParseAssembly),
 	}
 	profile, err := assets.GetProfile()
 	if err != nil {

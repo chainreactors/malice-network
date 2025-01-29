@@ -198,7 +198,7 @@ func Register(con *repl.Console) {
 	}, &mals.Helper{
 		Short:   "get session custom data",
 		Output:  []string{"map[string]interface{}"},
-		Example: "data()",
+		Example: "bdata(active())",
 	})
 	con.RegisterServerFunc("data", func(con *repl.Console, sess *core.Session) (map[string]interface{}, error) {
 		if sess == nil {
@@ -209,6 +209,6 @@ func Register(con *repl.Console) {
 	}, &mals.Helper{
 		Short:   "get session data",
 		Output:  []string{"map[string]interface{}"},
-		Example: "data()",
+		Example: "data(active())",
 	})
 }

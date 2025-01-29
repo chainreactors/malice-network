@@ -9,6 +9,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
+	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
@@ -90,7 +91,7 @@ func RegisterExeFunc(con *repl.Console) {
 			}
 			return InlineExe(rpc, sess, path, param, true, math.MaxUint32, sess.Os.Arch, "")
 		},
-		common.ParseAssembly,
+		output.ParseAssembly,
 		nil)
 
 	con.AddCommandFuncHelper(
@@ -119,7 +120,7 @@ func RegisterExeFunc(con *repl.Console) {
 			}
 			return ExecExe(rpc, sess, path, cmdline, true, math.MaxUint32, sess.Os.Arch, "", sac)
 		},
-		common.ParseAssembly,
+		output.ParseAssembly,
 		nil)
 
 	con.AddCommandFuncHelper(

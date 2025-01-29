@@ -3,6 +3,7 @@ package file
 import (
 	"fmt"
 	"github.com/chainreactors/malice-network/helper/intermediate"
+	"github.com/chainreactors/malice-network/helper/utils/output"
 	"path/filepath"
 
 	"github.com/chainreactors/malice-network/client/command/common"
@@ -91,7 +92,7 @@ func Register(con *repl.Console) {
 		Download,
 		"bdownload",
 		Download,
-		common.ParseStatus,
+		output.ParseStatus,
 		nil)
 
 	intermediate.RegisterInternalDoneCallback(consts.ModuleDownload, func(content *clientpb.TaskContext) (string, error) {
@@ -115,7 +116,7 @@ func Register(con *repl.Console) {
 		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string) (*clientpb.Task, error) {
 			return Upload(rpc, sess, path, filepath.Base(path), "0644", false)
 		},
-		common.ParseStatus,
+		output.ParseStatus,
 		nil)
 
 	con.RegisterImplantFunc(
@@ -125,7 +126,7 @@ func Register(con *repl.Console) {
 		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, data, target_path string) (*clientpb.Task, error) {
 			return UploadRaw(rpc, sess, data, target_path, "0644", false)
 		},
-		common.ParseStatus,
+		output.ParseStatus,
 		nil)
 
 	intermediate.RegisterInternalDoneCallback(consts.ModuleUpload, func(content *clientpb.TaskContext) (string, error) {

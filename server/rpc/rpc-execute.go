@@ -1,17 +1,17 @@
 package rpc
 
 import (
-	"bytes"
 	"context"
-	"encoding/binary"
+	"fmt"
+	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/types"
+	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/malice-network/server/internal/core"
-	"github.com/chainreactors/malice-network/server/internal/handlers"
-	"io"
 	"math"
+	"strings"
 )
 
 var (
@@ -85,50 +85,57 @@ func (rpc *Server) ExecuteBof(ctx context.Context, req *implantpb.ExecuteBinary)
 		return nil, err
 	}
 	go greq.HandlerResponse(ch, types.MsgBinaryResponse, func(spite *implantpb.Spite) {
-		reader := bytes.NewReader(spite.GetBinaryResponse().GetData())
-		var bofResps handlers.BOFResponses
-		for {
-			bofResp := &handlers.BOFResponse{}
-
-			err := binary.Read(reader, binary.LittleEndian, &bofResp.OutputType)
-			if err == io.EOF {
-				break
-			} else if err != nil {
-				return
+		tctx := greq.TaskContext(spite)
+		bofResps, err := output.ParseBOFResponse(tctx)
+		if err != nil {
+			logs.Log.Error(err)
+			return
+		}
+		var results strings.Builder
+		for _, bofResp := range bofResps.(output.BOFResponses) {
+			var result string
+			var err error
+			switch bofResp.CallbackType {
+			case output.CALLBACK_OUTPUT, output.CALLBACK_OUTPUT_OEM, output.CALLBACK_OUTPUT_UTF8:
+				results.WriteString(string(bofResp.Data))
+				continue
+			case output.CALLBACK_ERROR:
+				results.WriteString(fmt.Sprintf("Error occurred: %s\n", string(bofResp.Data)))
+				continue
+			case output.CALLBACK_SCREENSHOT:
+				if bofResp.Length-4 <= 0 {
+					results.WriteString("Null screenshot data\n")
+					continue
+				}
+				result, err = core.HandleScreenshot(bofResp.Data, greq.Task)
+				if err != nil {
+					result = fmt.Sprintf("Screenshot error: %v", err)
+				}
+			case output.CALLBACK_FILE:
+				result, err = core.HandleFileOperations("open", bofResp.Data, greq.Task)
+				if err != nil {
+					result = fmt.Sprintf("File open error: %v", err)
+				}
+			case output.CALLBACK_FILE_WRITE:
+				result, err = core.HandleFileOperations("write", bofResp.Data, greq.Task)
+				if err != nil {
+					result = fmt.Sprintf("File write error: %v", err)
+				}
+			case output.CALLBACK_FILE_CLOSE:
+				result, err = core.HandleFileOperations("close", bofResp.Data, greq.Task)
+				if err != nil {
+					result = fmt.Sprintf("File close error: %v", err)
+				}
+			default:
+				result = fmt.Sprintf("Unimplemented callback type : %d", bofResp.CallbackType)
 			}
-
-			err = binary.Read(reader, binary.LittleEndian, &bofResp.CallbackType)
-			if err == io.EOF {
-				break
-			} else if err != nil {
-				return
-			}
-
-			err = binary.Read(reader, binary.LittleEndian, &bofResp.Length)
-			if err == io.EOF {
-				break
-			} else if err != nil {
-				return
-			}
-
-			strData := make([]byte, bofResp.Length)
-			_, err = io.ReadFull(reader, strData)
-			if err == io.EOF {
-				break
-			} else if err != nil {
-				return
-			}
-
-			bofResp.Data = strData
-
-			bofResps = append(bofResps, bofResp)
+			results.WriteString(result + "\n")
 		}
 
-		msg := bofResps.Handler(greq.Session.ToProtobuf(), greq.Task.ToProtobuf())
 		core.EventBroker.Publish(core.Event{
 			EventType: consts.EventBof,
 			Op:        consts.CtrlBof,
-			Message:   msg,
+			Message:   results.String(),
 			IsNotify:  true,
 		})
 	})
