@@ -4,6 +4,7 @@ import (
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -220,7 +221,7 @@ func Register(con *repl.Console) {
 		Cd,
 		"bcd",
 		Cd,
-		common.ParseStatus,
+		output.ParseStatus,
 		nil)
 
 	con.AddCommandFuncHelper(
@@ -238,7 +239,7 @@ func Register(con *repl.Console) {
 		Cat,
 		"bcat",
 		Cat,
-		common.ParseResponse,
+		output.ParseResponse,
 		nil)
 
 	con.AddCommandFuncHelper(
@@ -256,7 +257,7 @@ func Register(con *repl.Console) {
 		Chmod,
 		"",
 		nil,
-		common.ParseStatus,
+		output.ParseStatus,
 		nil)
 
 	con.AddCommandFuncHelper(
@@ -275,7 +276,7 @@ func Register(con *repl.Console) {
 		Chown,
 		"",
 		nil,
-		common.ParseStatus,
+		output.ParseStatus,
 		nil)
 
 	con.AddCommandFuncHelper(
@@ -296,7 +297,7 @@ func Register(con *repl.Console) {
 		Cp,
 		"bcp",
 		Cp,
-		common.ParseStatus,
+		output.ParseStatus,
 		nil)
 
 	con.AddCommandFuncHelper(
@@ -315,7 +316,7 @@ func Register(con *repl.Console) {
 		Mkdir,
 		"bmkdir",
 		Mkdir,
-		common.ParseStatus,
+		output.ParseStatus,
 		nil)
 
 	con.AddCommandFuncHelper(
@@ -333,7 +334,7 @@ func Register(con *repl.Console) {
 		Mv,
 		"bmv",
 		Mv,
-		common.ParseStatus,
+		output.ParseStatus,
 		nil)
 
 	con.AddCommandFuncHelper(
@@ -352,7 +353,7 @@ func Register(con *repl.Console) {
 		Pwd,
 		"bpwd",
 		Pwd,
-		common.ParseResponse,
+		output.ParseResponse,
 		nil,
 	)
 
@@ -370,7 +371,7 @@ func Register(con *repl.Console) {
 		Rm,
 		"brm",
 		Rm,
-		common.ParseStatus,
+		output.ParseStatus,
 		nil)
 
 	con.AddCommandFuncHelper(

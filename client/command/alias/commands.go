@@ -5,6 +5,7 @@ import (
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/intermediate"
+	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
 )
@@ -161,6 +162,6 @@ alias remove rubeus
 
 func Register(con *repl.Console) {
 	for name, aliasPkg := range loadedAliases {
-		intermediate.RegisterInternalFunc(intermediate.ArmoryPackage, name, aliasPkg.Func, repl.WrapClientCallback(common.ParseAssembly))
+		intermediate.RegisterInternalFunc(intermediate.ArmoryPackage, name, aliasPkg.Func, repl.WrapClientCallback(output.ParseAssembly))
 	}
 }

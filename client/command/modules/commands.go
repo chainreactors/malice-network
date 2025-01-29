@@ -6,6 +6,7 @@ import (
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"github.com/rsteube/carapace"
@@ -134,7 +135,7 @@ func Register(con *repl.Console) {
 		LoadModule,
 		"",
 		nil,
-		common.ParseStatus,
+		output.ParseStatus,
 		nil)
 
 	con.AddCommandFuncHelper(
@@ -153,7 +154,7 @@ func Register(con *repl.Console) {
 		refreshModule,
 		"",
 		nil,
-		common.ParseStatus,
+		output.ParseStatus,
 		nil)
 
 	con.AddCommandFuncHelper(
@@ -171,7 +172,7 @@ func Register(con *repl.Console) {
 		clearAll,
 		"",
 		nil,
-		common.ParseStatus,
+		output.ParseStatus,
 		nil)
 
 	con.AddCommandFuncHelper(

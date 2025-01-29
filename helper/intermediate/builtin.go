@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
+	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -25,7 +26,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/handler"
-	"github.com/chainreactors/malice-network/helper/utils/pe"
 )
 
 const (

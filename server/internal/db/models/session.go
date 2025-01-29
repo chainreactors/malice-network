@@ -3,11 +3,11 @@ package models
 import (
 	"encoding/json"
 	"errors"
-	"github.com/chainreactors/malice-network/helper/types"
 	"time"
 
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
+	"github.com/chainreactors/malice-network/helper/types"
 	"gorm.io/gorm"
 )
 

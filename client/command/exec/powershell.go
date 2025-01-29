@@ -10,6 +10,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
+	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
 	"os"
@@ -93,7 +94,7 @@ func RegisterPowershellFunc(con *repl.Console) {
 				"bypass_wldp": "",
 			})
 		},
-		common.ParseAssembly,
+		output.ParseAssembly,
 		nil)
 	//rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, ps []string, amsi, etw bool
 	con.AddCommandFuncHelper(
@@ -126,7 +127,7 @@ func RegisterPowershellFunc(con *repl.Console) {
 		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, cmdline string) (*clientpb.Task, error) {
 			return Powershell(rpc, sess, cmdline, true)
 		},
-		common.ParseExecResponse,
+		output.ParseExecResponse,
 		nil,
 	)
 

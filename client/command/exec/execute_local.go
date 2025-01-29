@@ -9,6 +9,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
+	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
 	"strings"
@@ -100,7 +101,7 @@ func RegisterExecuteLocalFunc(con *repl.Console) {
 				Argue:    "",
 			})
 		},
-		common.ParseAssembly,
+		output.ParseAssembly,
 		nil,
 	)
 
@@ -133,7 +134,7 @@ func RegisterExecuteLocalFunc(con *repl.Console) {
 		InlineLocal,
 		"",
 		nil,
-		common.ParseAssembly,
+		output.ParseAssembly,
 		nil,
 	)
 

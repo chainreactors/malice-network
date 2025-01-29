@@ -9,6 +9,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/utils/donut"
+	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
 	"path/filepath"
@@ -81,7 +82,7 @@ func RegisterAssemblyFunc(con *repl.Console) {
 			}
 			return ExecuteAssembly(rpc, sess, path, cmdline, true, common.NewSacrifice(0, false, true, true, ""))
 		},
-		common.ParseAssembly,
+		output.ParseAssembly,
 		nil)
 
 	con.AddCommandFuncHelper(
@@ -113,7 +114,7 @@ func RegisterAssemblyFunc(con *repl.Console) {
 		InlineAssembly,
 		"",
 		nil,
-		common.ParseAssembly,
+		output.ParseAssembly,
 		nil,
 	)
 	con.AddCommandFuncHelper(consts.ModuleInlineAssembly, consts.ModuleInlineAssembly,

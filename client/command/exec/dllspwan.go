@@ -3,6 +3,7 @@ package exec
 import (
 	"errors"
 	"github.com/chainreactors/malice-network/helper/intermediate"
+	"github.com/chainreactors/malice-network/helper/utils/output"
 	"math"
 	"os"
 
@@ -72,7 +73,7 @@ func RegisterDLLSpawnFunc(con *repl.Console) {
 			sac, _ := intermediate.NewSacrificeProcessMessage(ppid, false, true, true, "")
 			return ExecuteDLLSpawn(rpc, sess, path, "", "", "", true, math.MaxUint32, sess.Os.Arch, "", sac)
 		},
-		common.ParseAssembly,
+		output.ParseAssembly,
 		nil)
 	// sess *core.Session, dllPath string, entrypoint string, args []string, binPath string, output bool, timeout uint32, arch string, process string, sac *implantpb.SacrificeProcess
 	con.AddCommandFuncHelper(

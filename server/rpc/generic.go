@@ -48,6 +48,14 @@ type GenericRequest struct {
 	Callee  string
 }
 
+func (r *GenericRequest) TaskContext(spite *implantpb.Spite) *clientpb.TaskContext {
+	return &clientpb.TaskContext{
+		Task:    r.Task.ToProtobuf(),
+		Session: r.Session.ToProtobufLite(),
+		Spite:   spite,
+	}
+}
+
 func (r *GenericRequest) InitSpite(ctx context.Context) (*implantpb.Spite, error) {
 	spite := &implantpb.Spite{
 		Timeout: uint64(consts.MinTimeout.Seconds()),

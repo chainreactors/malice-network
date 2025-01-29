@@ -2,7 +2,6 @@ package reg
 
 import (
 	"fmt"
-	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -10,6 +9,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
+	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/spf13/cobra"
 )
 
@@ -49,7 +49,7 @@ func RegisterRegQueryFunc(con *repl.Console) {
 			hive, path := FormatRegPath(key)
 			return RegQuery(rpc, sess, hive, path, key)
 		},
-		common.ParseResponse,
+		output.ParseResponse,
 		nil,
 	)
 	con.AddCommandFuncHelper(

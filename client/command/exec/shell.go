@@ -1,13 +1,13 @@
 package exec
 
 import (
-	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
+	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
 )
@@ -45,7 +45,7 @@ func RegisterShellFunc(con *repl.Console) {
 		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, cmd string) (*clientpb.Task, error) {
 			return Shell(rpc, sess, cmd, true)
 		},
-		common.ParseExecResponse,
+		output.ParseExecResponse,
 		nil,
 	)
 

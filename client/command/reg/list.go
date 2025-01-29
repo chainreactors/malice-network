@@ -2,7 +2,6 @@ package reg
 
 import (
 	"fmt"
-	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -10,6 +9,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
+	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/spf13/cobra"
 	"strings"
 )
@@ -45,8 +45,8 @@ func RegisterRegListFunc(con *repl.Console) {
 		RegListKey,
 		"",
 		nil,
-		common.ParseArrayResponse,
-		common.FormatArrayResponse,
+		output.ParseArrayResponse,
+		output.FormatArrayResponse,
 	)
 	con.RegisterImplantFunc(
 		consts.ModuleRegListValue,
@@ -64,7 +64,7 @@ func RegisterRegListFunc(con *repl.Console) {
 			}
 			return s.String(), nil
 		},
-		common.FormatKVResponse,
+		output.FormatKVResponse,
 	)
 	con.AddCommandFuncHelper(
 		consts.ModuleRegListKey,

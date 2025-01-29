@@ -11,6 +11,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
+	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
@@ -103,7 +104,7 @@ func RegisterDLLFunc(con *repl.Console) {
 			sac, _ := intermediate.NewSacrificeProcessMessage(ppid, false, true, true, "")
 			return ExecDLL(rpc, sess, path, "DLLMain", nil, "", true, math.MaxUint32, sess.Os.Arch, "", sac)
 		},
-		common.ParseAssembly,
+		output.ParseAssembly,
 		nil)
 	// sess *core.Session, dllPath string, entrypoint string, args []string, binPath string, output bool, timeout uint32, arch string, process string, sac *implantpb.SacrificeProcess
 	con.AddCommandFuncHelper(
@@ -135,7 +136,7 @@ func RegisterDLLFunc(con *repl.Console) {
 			}
 			return InlineDLL(rpc, sess, path, entryPoint, param, true, math.MaxUint32, sess.Os.Arch, "")
 		},
-		common.ParseAssembly,
+		output.ParseAssembly,
 		nil)
 
 	con.AddCommandFuncHelper(

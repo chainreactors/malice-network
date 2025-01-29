@@ -1,21 +1,63 @@
-package common
+package output
 
 import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"github.com/chainreactors/malice-network/helper/intermediate"
 	"io"
 	"math"
 	"strings"
 
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 )
+
+const (
+	CALLBACK_OUTPUT      = 0
+	CALLBACK_FILE        = 0x02
+	CALLBACK_FILE_WRITE  = 0x08
+	CALLBACK_FILE_CLOSE  = 0x09
+	CALLBACK_SCREENSHOT  = 0x03
+	CALLBACK_ERROR       = 0x0d
+	CALLBACK_OUTPUT_OEM  = 0x1e
+	CALLBACK_OUTPUT_UTF8 = 0x20
+)
+
+type BOFResponse struct {
+	CallbackType uint8
+	OutputType   uint8
+	Length       uint32
+	Data         []byte
+}
+
+type BOFResponses []*BOFResponse
+
+func (bofResps BOFResponses) String() string {
+	var results strings.Builder
+	for _, resp := range bofResps {
+		switch resp.CallbackType {
+		case CALLBACK_OUTPUT, CALLBACK_OUTPUT_OEM, CALLBACK_OUTPUT_UTF8:
+			results.WriteString(string(resp.Data))
+		case CALLBACK_ERROR:
+			results.WriteString(fmt.Sprintf("Error occurred: %s", string(resp.Data)))
+		case CALLBACK_SCREENSHOT:
+			results.WriteString(fmt.Sprintf("Screenshot data received (size: %d)\n", len(resp.Data)-4))
+		case CALLBACK_FILE:
+			results.WriteString(fmt.Sprintf("File operation started: %s\n", string(resp.Data[8:])))
+		case CALLBACK_FILE_WRITE:
+			results.WriteString(fmt.Sprintf("File data received (size: %d)\n", len(resp.Data)-4))
+		case CALLBACK_FILE_CLOSE:
+			results.WriteString("File operation completed\n")
+		default:
+			results.WriteString(fmt.Sprintf("Callback type %d: %s\n", resp.CallbackType, string(resp.Data)))
+		}
+	}
+	return results.String()
+}
 
 func ParseAssembly(ctx *clientpb.TaskContext) (interface{}, error) {
 	return intermediate.ParseAssembly(ctx.Spite)
@@ -130,10 +172,10 @@ func FormatKVResponse(ctx *clientpb.TaskContext) (string, error) {
 
 func ParseBOFResponse(ctx *clientpb.TaskContext) (interface{}, error) {
 	reader := bytes.NewReader(ctx.Spite.GetBinaryResponse().GetData())
-	var bofResps pe.BOFResponses
+	var bofResps BOFResponses
 
 	for {
-		bofResp := &pe.BOFResponse{}
+		bofResp := &BOFResponse{}
 
 		err := binary.Read(reader, binary.LittleEndian, &bofResp.OutputType)
 		if err == io.EOF {

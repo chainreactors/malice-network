@@ -6,6 +6,7 @@ import (
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"github.com/rsteube/carapace"
@@ -143,5 +144,5 @@ func Register(con *repl.Console) {
 			return "addon loaded", nil
 		}, nil)
 
-	con.RegisterImplantFunc(consts.ModuleExecuteAddon, ExecuteAddon, "", nil, common.ParseAssembly, nil)
+	con.RegisterImplantFunc(consts.ModuleExecuteAddon, ExecuteAddon, "", nil, output.ParseAssembly, nil)
 }

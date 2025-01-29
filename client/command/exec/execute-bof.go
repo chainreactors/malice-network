@@ -7,6 +7,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
+	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
 )
@@ -21,8 +22,8 @@ func ExecuteBofCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func ExecBof(rpc clientrpc.MaliceRPCClient, sess *core.Session, bofPath string, args []string, output bool) (*clientpb.Task, error) {
-	binary, err := common.NewExecutable(consts.ModuleExecuteBof, bofPath, args, sess.Os.Arch, output, nil)
+func ExecBof(rpc clientrpc.MaliceRPCClient, sess *core.Session, bofPath string, args []string, out bool) (*clientpb.Task, error) {
+	binary, err := common.NewExecutable(consts.ModuleExecuteBof, bofPath, args, sess.Os.Arch, out, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +46,7 @@ func RegisterBofFunc(con *repl.Console) {
 			}
 			return ExecBof(rpc, sess, path, cmdline, true)
 		},
-		common.ParseBOFResponse,
+		output.ParseBOFResponse,
 		nil,
 	)
 
