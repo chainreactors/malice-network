@@ -11,7 +11,7 @@ type Task struct {
 	Created     time.Time `gorm:"->;<-:create;"`
 	Deadline    time.Time
 	CallBy      string
-	Seq         int
+	Seq         uint32
 	Type        string
 	SessionID   string
 	Session     Session `gorm:"foreignKey:SessionID"`

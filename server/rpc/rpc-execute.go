@@ -2,21 +2,20 @@ package rpc
 
 import (
 	"context"
-	"fmt"
+	"math"
+	"strings"
+
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/malice-network/server/internal/core"
-	"math"
-	"strings"
 )
 
-var (
-	argueMap = map[string]string{}
-)
+//var (
+//	argueMap = map[string]string{}
+//)
 
 func handleBinary(binary *implantpb.ExecuteBinary) *implantpb.ExecuteBinary {
 	if binary.ProcessName == "" {
@@ -93,51 +92,27 @@ func (rpc *Server) ExecuteBof(ctx context.Context, req *implantpb.ExecuteBinary)
 		}
 		var results strings.Builder
 		for _, bofResp := range bofResps.(output.BOFResponses) {
-			var result string
-			var err error
 			switch bofResp.CallbackType {
 			case output.CALLBACK_OUTPUT, output.CALLBACK_OUTPUT_OEM, output.CALLBACK_OUTPUT_UTF8:
-				results.WriteString(string(bofResp.Data))
 				continue
 			case output.CALLBACK_ERROR:
-				results.WriteString(fmt.Sprintf("Error occurred: %s\n", string(bofResp.Data)))
 				continue
 			case output.CALLBACK_SCREENSHOT:
-				if bofResp.Length-4 <= 0 {
+				if bofResp.Length <= 4 {
 					results.WriteString("Null screenshot data\n")
 					continue
 				}
-				result, err = core.HandleScreenshot(bofResp.Data, greq.Task)
-				if err != nil {
-					result = fmt.Sprintf("Screenshot error: %v", err)
-				}
+				err = core.HandleScreenshot(bofResp.Data, greq.Task)
 			case output.CALLBACK_FILE:
-				result, err = core.HandleFileOperations("open", bofResp.Data, greq.Task)
-				if err != nil {
-					result = fmt.Sprintf("File open error: %v", err)
-				}
+				err = core.HandleFileOperations("open", bofResp.Data, greq.Task)
 			case output.CALLBACK_FILE_WRITE:
-				result, err = core.HandleFileOperations("write", bofResp.Data, greq.Task)
-				if err != nil {
-					result = fmt.Sprintf("File write error: %v", err)
-				}
+				err = core.HandleFileOperations("write", bofResp.Data, greq.Task)
 			case output.CALLBACK_FILE_CLOSE:
-				result, err = core.HandleFileOperations("close", bofResp.Data, greq.Task)
-				if err != nil {
-					result = fmt.Sprintf("File close error: %v", err)
-				}
+				err = core.HandleFileOperations("close", bofResp.Data, greq.Task)
 			default:
-				result = fmt.Sprintf("Unimplemented callback type : %d", bofResp.CallbackType)
+				logs.Log.Errorf("Unimplemented callback type : %d", bofResp.CallbackType)
 			}
-			results.WriteString(result + "\n")
 		}
-
-		core.EventBroker.Publish(core.Event{
-			EventType: consts.EventBof,
-			Op:        consts.CtrlBof,
-			Message:   results.String(),
-			IsNotify:  true,
-		})
 	})
 
 	return greq.Task.ToProtobuf(), nil

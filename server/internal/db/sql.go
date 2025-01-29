@@ -26,7 +26,6 @@ func NewDBClient() *gorm.DB {
 		&models.Builder{},
 		&models.Session{},
 		&models.Pipeline{},
-		&models.File{},
 		&models.Task{},
 		&models.WebsiteContent{},
 		&models.Operator{},

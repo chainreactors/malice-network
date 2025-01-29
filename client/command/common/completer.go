@@ -274,14 +274,13 @@ func ArtifactNameCompleter(con *repl.Console) carapace.Action {
 func SyncFileCompleter(con *repl.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
-		files, err := con.Rpc.GetTaskFiles(con.Context(),
-			&clientpb.Session{SessionId: con.GetInteractive().SessionId})
+		ctxs, err := con.Rpc.GetContexts(con.Context(), &clientpb.Context{})
 		if err != nil {
-			con.Log.Errorf("Error get files: %v\n", err)
+			con.Log.Errorf("Error get ctxs: %v\n", err)
 			return carapace.Action{}
 		}
-		for _, f := range files.Files {
-			results = append(results, f.TaskId, fmt.Sprintf("sync file type %s, remote %s, local %s ", f.Op, f.Remote, f.Local))
+		for _, f := range ctxs.Contexts {
+			results = append(results, f.Id, fmt.Sprintf("%s %s", f.Type, f.Session.SessionId))
 		}
 		return carapace.ActionValuesDescribed(results...).Tag("sync")
 	}

@@ -69,7 +69,7 @@ func (p *PipelineConfig) WrapConn(conn net.Conn) (*peek.Conn, error) {
 }
 
 //
-//func (p *PipelineConfig) ToProtobuf() *clientpb.Pipeline {
+//func (p *PipelineConfig) ToFile() *clientpb.Pipeline {
 //	return &clientpb.Pipeline{
 //		Tls: &clientpb.TLS{
 //			Cert:   p.TlsConfig.Cert,

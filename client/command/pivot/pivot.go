@@ -47,7 +47,7 @@ func ListPivotCmd(cmd *cobra.Command, con *repl.Console) error {
 }
 
 func ListPivot(con *repl.Console) ([]*clientpb.REMAgent, error) {
-	pivots, err := con.ListPivots(con.Context(), &clientpb.Empty{})
+	pivots, err := con.GetPivots(con.Context(), &clientpb.Empty{})
 	if err != nil {
 		return nil, err
 	}

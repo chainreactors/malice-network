@@ -2,12 +2,39 @@ package types
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 )
 
-func NewContext(typ string, content []byte) (Context, error) {
+type FileDescriptor struct {
+	Name       string `json:"name"`
+	TargetPath string `json:"target_path"`
+	FilePath   string `json:"filepath"`
+	Size       int64  `json:"size"`
+	Checksum   string `json:"checksum"`
+	Abstract   string `json:"abstract"`
+}
+
+func (file *FileDescriptor) Marshal() (string, error) {
+	jsonString, err := json.Marshal(file)
+	if err != nil {
+		return "", err
+	}
+	return string(jsonString), nil
+}
+
+// AsContext 将Context接口转换为具体的实现类型
+func AsContext[T Context](ctx Context) (T, error) {
+	if t, ok := ctx.(T); ok {
+		return t, nil
+	}
+	var zero T
+	return zero, fmt.Errorf("cannot convert %T to %T", ctx, zero)
+}
+
+func ParseContext(typ string, content []byte) (Context, error) {
 	var ctx Context
 	var err error
 	switch typ {
@@ -19,6 +46,10 @@ func NewContext(typ string, content []byte) (Context, error) {
 		ctx, err = NewKeyLogger(content)
 	case consts.ContextPivoting:
 		ctx, err = NewPivoting(content)
+	case consts.ContextDownload:
+		ctx, err = NewDownloadContext(content)
+	case consts.ContextUpload:
+		ctx, err = NewUploadContext(content)
 	}
 	return ctx, err
 }
@@ -36,8 +67,34 @@ type Context interface {
 	String() string
 }
 
-func NewScreenShot(content []byte) (*ScreenShot, error) {
-	screenShot := &ScreenShot{}
+func NewDownloadContext(content []byte) (*DownloadContext, error) {
+	downloadContext := &DownloadContext{}
+	err := json.Unmarshal(content, downloadContext)
+	if err != nil {
+		return nil, err
+	}
+	return downloadContext, nil
+}
+
+type DownloadContext struct {
+	*FileDescriptor `json:",inline"`
+	Content         []byte `json:"-"`
+}
+
+func (d *DownloadContext) Type() string {
+	return consts.ContextDownload
+}
+
+func (d *DownloadContext) String() string {
+	marshal, err := json.Marshal(d)
+	if err != nil {
+		return ""
+	}
+	return string(marshal)
+}
+
+func NewScreenShot(content []byte) (*ScreenShotContext, error) {
+	screenShot := &ScreenShotContext{}
 	err := json.Unmarshal(content, screenShot)
 	if err != nil {
 		return nil, err
@@ -45,8 +102,8 @@ func NewScreenShot(content []byte) (*ScreenShot, error) {
 	return screenShot, nil
 }
 
-func NewCredential(content []byte) (*Credential, error) {
-	credential := &Credential{}
+func NewCredential(content []byte) (*CredentialContext, error) {
+	credential := &CredentialContext{}
 	err := json.Unmarshal(content, credential)
 	if err != nil {
 		return nil, err
@@ -54,8 +111,8 @@ func NewCredential(content []byte) (*Credential, error) {
 	return credential, nil
 }
 
-func NewKeyLogger(content []byte) (*KeyLogger, error) {
-	keyLogger := &KeyLogger{}
+func NewKeyLogger(content []byte) (*KeyLoggerContext, error) {
+	keyLogger := &KeyLoggerContext{}
 	err := json.Unmarshal(content, keyLogger)
 	if err != nil {
 		return nil, err
@@ -63,16 +120,16 @@ func NewKeyLogger(content []byte) (*KeyLogger, error) {
 	return keyLogger, nil
 }
 
-type ScreenShot struct {
-	FilePath string
-	Content  string `json:"-"`
+type ScreenShotContext struct {
+	*FileDescriptor `json:",inline"`
+	Content         []byte `json:"-"`
 }
 
-func (s *ScreenShot) Type() string {
+func (s *ScreenShotContext) Type() string {
 	return consts.ContextScreenShot
 }
 
-func (s *ScreenShot) String() string {
+func (s *ScreenShotContext) String() string {
 	marshal, err := json.Marshal(s)
 	if err != nil {
 		return ""
@@ -80,16 +137,16 @@ func (s *ScreenShot) String() string {
 	return string(marshal)
 }
 
-type Credential struct {
+type CredentialContext struct {
 	CredentialType string `json:"type"`
 	Params         map[string]string
 }
 
-func (c *Credential) Type() string {
+func (c *CredentialContext) Type() string {
 	return consts.ContextCredential
 }
 
-func (c *Credential) String() string {
+func (c *CredentialContext) String() string {
 	marshal, err := json.Marshal(c)
 	if err != nil {
 		return ""
@@ -97,16 +154,16 @@ func (c *Credential) String() string {
 	return string(marshal)
 }
 
-type KeyLogger struct {
-	FilePath string
-	Content  string `json:"-"`
+type KeyLoggerContext struct {
+	*FileDescriptor `json:",inline"`
+	Content         []byte `json:"-"`
 }
 
-func (k *KeyLogger) Type() string {
+func (k *KeyLoggerContext) Type() string {
 	return consts.ContextKeyLogger
 }
 
-func (k *KeyLogger) String() string {
+func (k *KeyLoggerContext) String() string {
 	marshal, err := json.Marshal(k)
 	if err != nil {
 		return ""
@@ -114,8 +171,8 @@ func (k *KeyLogger) String() string {
 	return string(marshal)
 }
 
-func NewPivoting(content []byte) (*Pivoting, error) {
-	pivoting := &Pivoting{}
+func NewPivoting(content []byte) (*PivotingContext, error) {
+	pivoting := &PivotingContext{}
 	err := json.Unmarshal(content, pivoting)
 	if err != nil {
 		return nil, err
@@ -123,20 +180,45 @@ func NewPivoting(content []byte) (*Pivoting, error) {
 	return pivoting, nil
 }
 
-func NewPivotingFromProto(agent *clientpb.REMAgent) *Pivoting {
-	return &Pivoting{REMAgent: agent}
+func NewPivotingFromProto(agent *clientpb.REMAgent) *PivotingContext {
+	return &PivotingContext{REMAgent: agent}
 }
 
-type Pivoting struct {
+type PivotingContext struct {
 	*clientpb.REMAgent `json:",inline"`
 }
 
-func (p *Pivoting) Type() string {
+func (p *PivotingContext) Type() string {
 	return consts.ContextPivoting
 }
 
-func (p *Pivoting) String() string {
+func (p *PivotingContext) String() string {
 	marshal, err := json.Marshal(p)
+	if err != nil {
+		return ""
+	}
+	return string(marshal)
+}
+
+func NewUploadContext(content []byte) (*UploadContext, error) {
+	upload := &UploadContext{}
+	err := json.Unmarshal(content, upload)
+	if err != nil {
+		return nil, err
+	}
+	return upload, nil
+}
+
+type UploadContext struct {
+	*FileDescriptor `json:",inline"`
+}
+
+func (u *UploadContext) Type() string {
+	return consts.ContextUpload
+}
+
+func (u *UploadContext) String() string {
+	marshal, err := json.Marshal(u)
 	if err != nil {
 		return ""
 	}

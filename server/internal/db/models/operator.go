@@ -35,6 +35,9 @@ func (o *Operator) ToProtobuf() *clientpb.Client {
 }
 
 func (o *Operator) ToListener() *clientpb.Listener {
+	if o == nil {
+		return nil
+	}
 	return &clientpb.Listener{
 		Id: o.Name,
 		Ip: o.Remote,
