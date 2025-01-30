@@ -3,7 +3,8 @@ package rpc
 import (
 	"context"
 
-	"github.com/chainreactors/malice-network/helper/errs"
+	"github.com/chainreactors/malice-network/helper/consts"
+	errs "github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/server/internal/core"
@@ -85,18 +86,6 @@ func (rpc *Server) AddContext(ctx context.Context, req *clientpb.Context) (*clie
 	return &clientpb.Empty{}, nil
 }
 
-func (rpc *Server) Sync(ctx context.Context, req *clientpb.Sync) (*clientpb.Context, error) {
-	ictx, err := db.FindContext(req.ContextId)
-	if err != nil {
-		return nil, err
-	}
-	//if !file.Exist(td.Path + td.Name) {
-	//	return nil, os.ErrExist
-	//}
-
-	return ictx.ToProtobuf(), nil
-}
-
 func (rpc *Server) AddDownload(ctx context.Context, req *clientpb.Context) (*clientpb.Empty, error) {
 	task, err := getTaskFromContext(req)
 	if err != nil {
@@ -127,11 +116,11 @@ func (rpc *Server) AddCredential(ctx context.Context, req *clientpb.Context) (*c
 		return nil, err
 	}
 
-	_, err = core.SaveFileContext(cred, task)
+	dctx, err := core.SaveFileContext(cred, task)
 	if err != nil {
 		return nil, err
 	}
-
+	core.PushContextEvent(consts.ContextCredential, dctx)
 	return &clientpb.Empty{}, nil
 }
 
@@ -150,6 +139,27 @@ func (rpc *Server) AddPort(ctx context.Context, req *clientpb.Context) (*clientp
 	if err != nil {
 		return nil, err
 	}
-
+	dctx, err := core.SaveFileContext(port, task)
+	if err != nil {
+		return nil, err
+	}
+	core.PushContextEvent(consts.CtrlContextCred, dctx)
 	return &clientpb.Empty{}, nil
+}
+
+func (rpc *Server) Sync(ctx context.Context, req *clientpb.Sync) (*clientpb.Context, error) {
+	ictx, err := db.FindContext(req.ContextId)
+	if err != nil {
+		return nil, err
+	}
+
+	c, err := types.ParseContext(ictx.Type, ictx.Value)
+	if err != nil {
+		return nil, err
+	}
+	ictx.Context, err = core.LoadContext(c)
+	if err != nil {
+		return nil, err
+	}
+	return ictx.ToProtobuf(), nil
 }

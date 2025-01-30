@@ -45,8 +45,13 @@ const (
 	CtrlPivotPortForward        = "pivot_portfw"
 	CtrlPivotReversePortForward = "pivot_rportfw"
 	CtrlContextScreenShot       = "context_" + ContextScreenShot
-	CtrlContextFile             = "context_" + ContextDownload
 	CtrlContextCred             = "context_" + ContextCredential
+	CtrlContextKeyLogger        = "context_" + ContextKeyLogger
+	CtrlContextDownload         = "context_" + ContextDownload
+	CtrlContextPort             = "context_" + ContextPort
+	CtrlContextFileCreate       = "context_file_create"
+	CtrlContextFileWrite        = "context_file_write"
+	CtrlContextFileClose        = "context_file_end"
 )
 
 const (

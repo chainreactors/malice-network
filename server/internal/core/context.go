@@ -24,7 +24,7 @@ func PushContextEvent(Op string, ctx *models.Context) {
 		Op:        Op,
 		Task:      ctx.Task.ToProtobuf(),
 		Important: true,
-		Message:   ctx.Context().String(),
+		Message:   ctx.Context.String(),
 	})
 }
 
@@ -84,6 +84,12 @@ func HandleFileOperations(op string, data []byte, task *Task) error {
 		defer file.Close()
 
 		sess.Any[getFileExtKey(fileId)] = savePath
+		EventBroker.Publish(Event{
+			EventType: consts.EventContext,
+			Op:        consts.CtrlContextFileCreate,
+			Task:      task.ToProtobuf(),
+			Message:   fmt.Sprintf("file created: %s", originalName),
+		})
 		return nil
 
 	case "write":
@@ -101,6 +107,13 @@ func HandleFileOperations(op string, data []byte, task *Task) error {
 		if _, err := file.Write(data[4:]); err != nil {
 			return fmt.Errorf("write file failed: %w", err)
 		}
+
+		EventBroker.Publish(Event{
+			EventType: consts.EventContext,
+			Op:        consts.CtrlContextFileWrite,
+			Task:      task.ToProtobuf(),
+			Message:   fmt.Sprintf("file write: %s %d", savePath, len(data[4:])),
+		})
 		return nil
 
 	case "close":
@@ -123,6 +136,12 @@ func HandleFileOperations(op string, data []byte, task *Task) error {
 			return err
 		}
 		delete(sess.Any, getFileExtKey(fileId))
+		EventBroker.Publish(Event{
+			EventType: consts.EventContext,
+			Op:        consts.CtrlContextFileClose,
+			Task:      task.ToProtobuf(),
+			Message:   fmt.Sprintf("file end: %s", savePath),
+		})
 		return nil
 	}
 
@@ -140,4 +159,39 @@ func SaveFileContext(ctx types.Context, task *Task) (*models.Context, error) {
 		Type:    ctx.Type(),
 		Value:   value,
 	})
+}
+
+func LoadContext(ctx types.Context) (types.Context, error) {
+	switch c := ctx.(type) {
+	case *types.ScreenShotContext:
+		data, err := os.ReadFile(c.FilePath)
+		if err != nil {
+			return nil, err
+		}
+		c.Content = data
+		return c, nil
+	case *types.DownloadContext:
+		data, err := os.ReadFile(c.FilePath)
+		if err != nil {
+			return nil, err
+		}
+		c.Content = data
+		return c, nil
+	case *types.KeyLoggerContext:
+		data, err := os.ReadFile(c.FilePath)
+		if err != nil {
+			return nil, err
+		}
+		c.Content = data
+		return c, nil
+	case *types.UploadContext:
+		data, err := os.ReadFile(c.FilePath)
+		if err != nil {
+			return nil, err
+		}
+		c.Content = data
+		return c, nil
+	}
+
+	return ctx, nil
 }

@@ -19,7 +19,7 @@ type Context struct {
 	TaskID     string    `gorm:"type:string;index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
 	Type       string
 	Value      []byte
-	value      types.Context `gorm:"-"`
+	Context    types.Context `gorm:"-"`
 
 	Session  *Session  `gorm:"foreignKey:SessionID;references:SessionID;"`
 	Pipeline *Pipeline `gorm:"foreignKey:PipelineID;references:Name;"`
@@ -38,10 +38,6 @@ func (c *Context) BeforeCreate(tx *gorm.DB) (err error) {
 	return nil
 }
 
-func (c *Context) Context() types.Context {
-	return c.value
-}
-
 func (c *Context) ToProtobuf() *clientpb.Context {
 	return &clientpb.Context{
 		Id:       c.ID.String(),
@@ -50,7 +46,7 @@ func (c *Context) ToProtobuf() *clientpb.Context {
 		Listener: c.Listener.ToListener(),
 		Task:     c.Task.ToProtobuf(),
 		Type:     c.Type,
-		Value:    c.Value,
+		Value:    types.MarshalContext(c.Context),
 	}
 }
 
@@ -74,40 +70,9 @@ func FromContextProtobuf(ctx *clientpb.Context) (*Context, error) {
 	}
 
 	var err error
-	context.value, err = types.ParseContext(context.Type, []byte(context.Value))
+	context.Context, err = types.ParseContext(context.Type, []byte(context.Value))
 	if err != nil {
 		return nil, err
 	}
 	return context, nil
 }
-
-//func (c *Context) ToFileProtobuf() *clientpb.File {
-//	re := regexp.MustCompile(`-(\d+)$`)
-//	match := re.FindStringSubmatch(c.TaskID)
-//	if len(match) < 1 {
-//		return &clientpb.File{}
-//	}
-//	file, err := c.toFileDescription()
-//	if err != nil {
-//		logs.Log.Errorf("Error parsing task file JSON: %v", err)
-//		return &clientpb.File{}
-//	}
-//	return &clientpb.File{
-//		TaskId: match[1],
-//		Name:   file.Name,
-//		Local:  file.Name,
-//		//Checksum:  file.Checksum,
-//		Remote:    file.TargetPath,
-//		SessionId: c.SessionID,
-//		Op:        c.Type,
-//	}
-//}
-//
-//func (f *Context) toFileDescription() (*types.FileDescription, error) {
-//	var desc types.FileDescription
-//	err := json.Unmarshal([]byte(f.Value), &desc)
-//	if err != nil {
-//		return nil, err
-//	}
-//	return &desc, nil
-//}

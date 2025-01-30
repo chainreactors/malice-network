@@ -6,6 +6,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/parsers"
+	"strings"
 )
 
 type FileDescriptor struct {
@@ -18,11 +19,11 @@ type FileDescriptor struct {
 }
 
 func (file *FileDescriptor) Marshal() (string, error) {
-	jsonString, err := json.Marshal(file)
+	jsonMarshal, err := json.Marshal(file)
 	if err != nil {
 		return "", err
 	}
-	return string(jsonString), nil
+	return string(jsonMarshal), nil
 }
 
 // AsContext 将Context接口转换为具体的实现类型
@@ -76,7 +77,94 @@ func MarshalContext(ctx Context) []byte {
 
 type Context interface {
 	Type() string
+	// Marshal 返回用于存储到数据库的序列化数据，忽略大型二进制数据
+	Marshal() []byte
+	// String 返回context的简要描述
 	String() string
+}
+
+type DownloadContext struct {
+	*FileDescriptor `json:",inline"`
+	Content         []byte
+}
+
+func (d *DownloadContext) Type() string {
+	return consts.ContextDownload
+}
+
+func (d *DownloadContext) Marshal() []byte {
+	marshal, err := json.Marshal(d.FileDescriptor)
+	if err != nil {
+		return nil
+	}
+	return marshal
+}
+
+func (d *DownloadContext) String() string {
+	return fmt.Sprintf("Download: %s (Size: %.2f KB)", d.Name, float64(d.Size)/1024)
+}
+
+type ScreenShotContext struct {
+	*FileDescriptor `json:",inline"`
+	Content         []byte
+}
+
+func (s *ScreenShotContext) Type() string {
+	return consts.ContextScreenShot
+}
+
+func (s *ScreenShotContext) Marshal() []byte {
+	marshal, err := json.Marshal(s.FileDescriptor)
+	if err != nil {
+		return nil
+	}
+	return marshal
+}
+
+func (s *ScreenShotContext) String() string {
+	return fmt.Sprintf("Screenshot: %s (Size: %.2f KB)", s.Name, float64(s.Size)/1024)
+}
+
+type KeyLoggerContext struct {
+	*FileDescriptor `json:",inline"`
+	Content         []byte
+}
+
+func (k *KeyLoggerContext) Type() string {
+	return consts.ContextKeyLogger
+}
+
+func (k *KeyLoggerContext) Marshal() []byte {
+	marshal, err := json.Marshal(k.FileDescriptor)
+	if err != nil {
+		return nil
+	}
+	return marshal
+}
+
+func (k *KeyLoggerContext) String() string {
+	return fmt.Sprintf("Keylogger: %s (Size: %.2f KB)", k.Name, float64(k.Size)/1024)
+}
+
+type CredentialContext struct {
+	CredentialType string            `json:"type"`
+	Params         map[string]string `json:"params"`
+}
+
+func (c *CredentialContext) Type() string {
+	return consts.ContextCredential
+}
+
+func (c *CredentialContext) Marshal() []byte {
+	marshal, err := json.Marshal(c)
+	if err != nil {
+		return nil
+	}
+	return marshal
+}
+
+func (c *CredentialContext) String() string {
+	return fmt.Sprintf("Credential[%s]: %s", c.CredentialType, c.Params["username"])
 }
 
 func NewDownloadContext(content []byte) (*DownloadContext, error) {
@@ -86,32 +174,6 @@ func NewDownloadContext(content []byte) (*DownloadContext, error) {
 		return nil, err
 	}
 	return downloadContext, nil
-}
-
-type DownloadContext struct {
-	*FileDescriptor `json:",inline"`
-	Content         []byte `json:"-"`
-}
-
-func (d *DownloadContext) Type() string {
-	return consts.ContextDownload
-}
-
-func (d *DownloadContext) String() string {
-	marshal, err := json.Marshal(d)
-	if err != nil {
-		return ""
-	}
-	return string(marshal)
-}
-
-func NewScreenShot(content []byte) (*ScreenShotContext, error) {
-	screenShot := &ScreenShotContext{}
-	err := json.Unmarshal(content, screenShot)
-	if err != nil {
-		return nil, err
-	}
-	return screenShot, nil
 }
 
 func NewCredential(content []byte) (*CredentialContext, error) {
@@ -132,55 +194,13 @@ func NewKeyLogger(content []byte) (*KeyLoggerContext, error) {
 	return keyLogger, nil
 }
 
-type ScreenShotContext struct {
-	*FileDescriptor `json:",inline"`
-	Content         []byte `json:"-"`
-}
-
-func (s *ScreenShotContext) Type() string {
-	return consts.ContextScreenShot
-}
-
-func (s *ScreenShotContext) String() string {
-	marshal, err := json.Marshal(s)
+func NewScreenShot(content []byte) (*ScreenShotContext, error) {
+	screenShot := &FileDescriptor{}
+	err := json.Unmarshal(content, screenShot)
 	if err != nil {
-		return ""
+		return nil, err
 	}
-	return string(marshal)
-}
-
-type CredentialContext struct {
-	CredentialType string `json:"type"`
-	Params         map[string]string
-}
-
-func (c *CredentialContext) Type() string {
-	return consts.ContextCredential
-}
-
-func (c *CredentialContext) String() string {
-	marshal, err := json.Marshal(c)
-	if err != nil {
-		return ""
-	}
-	return string(marshal)
-}
-
-type KeyLoggerContext struct {
-	*FileDescriptor `json:",inline"`
-	Content         []byte `json:"-"`
-}
-
-func (k *KeyLoggerContext) Type() string {
-	return consts.ContextKeyLogger
-}
-
-func (k *KeyLoggerContext) String() string {
-	marshal, err := json.Marshal(k)
-	if err != nil {
-		return ""
-	}
-	return string(marshal)
+	return &ScreenShotContext{FileDescriptor: screenShot}, nil
 }
 
 func NewPivoting(content []byte) (*PivotingContext, error) {
@@ -204,12 +224,16 @@ func (p *PivotingContext) Type() string {
 	return consts.ContextPivoting
 }
 
-func (p *PivotingContext) String() string {
+func (p *PivotingContext) Marshal() []byte {
 	marshal, err := json.Marshal(p)
 	if err != nil {
-		return ""
+		return nil
 	}
-	return string(marshal)
+	return marshal
+}
+
+func (p *PivotingContext) String() string {
+	return fmt.Sprintf("Pivoting: %s -> %s", p.GetLocal(), p.GetRemote())
 }
 
 func NewUploadContext(content []byte) (*UploadContext, error) {
@@ -223,18 +247,23 @@ func NewUploadContext(content []byte) (*UploadContext, error) {
 
 type UploadContext struct {
 	*FileDescriptor `json:",inline"`
+	Content         []byte
 }
 
 func (u *UploadContext) Type() string {
 	return consts.ContextUpload
 }
 
-func (u *UploadContext) String() string {
+func (u *UploadContext) Marshal() []byte {
 	marshal, err := json.Marshal(u)
 	if err != nil {
-		return ""
+		return nil
 	}
-	return string(marshal)
+	return marshal
+}
+
+func (u *UploadContext) String() string {
+	return fmt.Sprintf("Upload: %s (Size: %.2f KB)", u.Name, float64(u.Size)/1024)
 }
 
 type Port struct {
@@ -262,15 +291,23 @@ func (p *PortContext) Type() string {
 	return consts.ContextPort
 }
 
-func (p *PortContext) String() string {
+func (p *PortContext) Marshal() []byte {
 	marshal, err := json.Marshal(p)
 	if err != nil {
-		return ""
+		return nil
 	}
-	return string(marshal)
+	return marshal
 }
 
 func (p *PortContext) GogoData() (*parsers.GOGOData, bool) {
 	data, ok := p.Extends.(*parsers.GOGOData)
 	return data, ok
+}
+
+func (p *PortContext) String() string {
+	var ports []string
+	for _, port := range p.Ports {
+		ports = append(ports, fmt.Sprintf("%s:%s/%s", port.Ip, port.Port, port.Protocol))
+	}
+	return fmt.Sprintf("Ports: %s", strings.Join(ports, ", "))
 }

@@ -224,7 +224,7 @@ func GetDownloadFiles(sid string) ([]*clientpb.File, error) {
 	}
 	var res []*clientpb.File
 	for _, file := range files {
-		download, err := types.AsContext[*types.DownloadContext](file.Context())
+		download, err := types.AsContext[*types.DownloadContext](file.Context)
 		if err != nil {
 			return nil, err
 		}
