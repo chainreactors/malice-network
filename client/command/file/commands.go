@@ -63,26 +63,9 @@ upload ./file.txt /tmp/file.txt
 		f.BoolP("hidden", "", false, "hidden file")
 	})
 
-	syncCmd := &cobra.Command{
-		Use:   consts.CommandSync + " [file_id]",
-		Short: "Sync file",
-		Long:  "sync download file in server",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return SyncCmd(cmd, con)
-		},
-		Example: `~~~
-sync 1
-~~~`,
-	}
-
-	common.BindArgCompletions(syncCmd, nil,
-		common.SyncFileCompleter(con))
-
 	return []*cobra.Command{
 		downloadCmd,
 		uploadCmd,
-		syncCmd,
 	}
 }
 

@@ -3,9 +3,9 @@ package types
 import (
 	"encoding/json"
 	"fmt"
-
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/parsers"
 )
 
 type FileDescriptor struct {
@@ -34,6 +34,15 @@ func AsContext[T Context](ctx Context) (T, error) {
 	return zero, fmt.Errorf("cannot convert %T to %T", ctx, zero)
 }
 
+func ToContext[T Context](ctx *clientpb.Context) (T, error) {
+	c, err := ParseContext(ctx.Type, ctx.Value)
+	if err != nil {
+		var zero T
+		return zero, err
+	}
+	return AsContext[T](c)
+}
+
 func ParseContext(typ string, content []byte) (Context, error) {
 	var ctx Context
 	var err error
@@ -50,6 +59,9 @@ func ParseContext(typ string, content []byte) (Context, error) {
 		ctx, err = NewDownloadContext(content)
 	case consts.ContextUpload:
 		ctx, err = NewUploadContext(content)
+	case consts.ContextPort:
+		ctx, err = NewPortContext(content)
+
 	}
 	return ctx, err
 }
@@ -223,4 +235,42 @@ func (u *UploadContext) String() string {
 		return ""
 	}
 	return string(marshal)
+}
+
+type Port struct {
+	Ip       string `json:"ip"`
+	Port     string `json:"port"`
+	Protocol string `json:"protocol"`
+	Status   string `json:"status"`
+}
+
+func NewPortContext(content []byte) (*PortContext, error) {
+	portContext := &PortContext{}
+	err := json.Unmarshal(content, portContext)
+	if err != nil {
+		return nil, err
+	}
+	return portContext, nil
+}
+
+type PortContext struct {
+	Ports   []*Port     `json:"ports"`
+	Extends interface{} `json:"extend"`
+}
+
+func (p *PortContext) Type() string {
+	return consts.ContextPort
+}
+
+func (p *PortContext) String() string {
+	marshal, err := json.Marshal(p)
+	if err != nil {
+		return ""
+	}
+	return string(marshal)
+}
+
+func (p *PortContext) GogoData() (*parsers.GOGOData, bool) {
+	data, ok := p.Extends.(*parsers.GOGOData)
+	return data, ok
 }

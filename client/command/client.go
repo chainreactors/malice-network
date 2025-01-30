@@ -1,6 +1,7 @@
 package command
 
 import (
+	"github.com/chainreactors/malice-network/client/command/context"
 	"github.com/reeflective/console"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -33,6 +34,7 @@ func BindCommonCommands(bind BindFunc) {
 		armory.Commands,
 		mal.Commands,
 		config.Commands,
+		context.Commands,
 	)
 
 	bind(consts.ListenerGroup,
@@ -103,4 +105,5 @@ func RegisterClientFunc(con *repl.Console) {
 	build.Register(con)
 	action.Register(con)
 	mutant.Register(con)
+	context.Register(con)
 }

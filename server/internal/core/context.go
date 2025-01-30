@@ -18,6 +18,16 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 )
 
+func PushContextEvent(Op string, ctx *models.Context) {
+	EventBroker.Publish(Event{
+		EventType: consts.EventContext,
+		Op:        Op,
+		Task:      ctx.Task.ToProtobuf(),
+		Important: true,
+		Message:   ctx.Context().String(),
+	})
+}
+
 func HandleScreenshot(data []byte, task *Task) error {
 	t := time.Now()
 	filename := fmt.Sprintf("%d.jpg", t.Unix())
@@ -41,17 +51,12 @@ func HandleScreenshot(data []byte, task *Task) error {
 			Size:       int64(len(data[4:])),
 		},
 	}
-	ictx, err := saveFileContext(ctx, task)
+	ictx, err := SaveFileContext(ctx, task)
 	if err != nil {
 		return err
 	}
 
-	EventBroker.Publish(Event{
-		EventType: consts.EventContext,
-		Op:        consts.CtrlContextScreenShot,
-		Task:      task.ToProtobuf(),
-		Message:   fmt.Sprintf("Screenshot saved to %s, id: %s", savePath, ictx.ID),
-	})
+	PushContextEvent(consts.CtrlContextScreenShot, ictx)
 	return nil
 }
 
@@ -105,7 +110,7 @@ func HandleFileOperations(op string, data []byte, task *Task) error {
 		}
 
 		checksum, _ := fileutils.CalculateSHA256Checksum(savePath)
-		_, err := saveFileContext(&types.DownloadContext{
+		_, err := SaveFileContext(&types.DownloadContext{
 			FileDescriptor: &types.FileDescriptor{
 				Name:       filepath.Base(savePath),
 				Checksum:   checksum,
@@ -124,7 +129,7 @@ func HandleFileOperations(op string, data []byte, task *Task) error {
 	return fmt.Errorf("unknown operation: %s", op)
 }
 
-func saveFileContext(ctx types.Context, task *Task) (*models.Context, error) {
+func SaveFileContext(ctx types.Context, task *Task) (*models.Context, error) {
 	value, err := json.Marshal(ctx)
 	if err != nil {
 		return nil, err

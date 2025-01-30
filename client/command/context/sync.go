@@ -1,4 +1,4 @@
-package file
+package context
 
 import (
 	"github.com/chainreactors/malice-network/client/assets"

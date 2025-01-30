@@ -81,6 +81,7 @@ const (
 	ContextPivoting   = "pivoting"
 	ContextDownload   = "download"
 	ContextUpload     = "upload"
+	ContextPort       = "port"
 )
 
 const (
