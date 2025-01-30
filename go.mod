@@ -63,6 +63,8 @@ require (
 	github.com/blinkbean/dingtalk v1.1.3 // indirect
 	github.com/cbroglie/mustache v1.4.0 // indirect
 	github.com/chainreactors/files v0.0.0-20240716182835-7884ee1e77f0 // indirect
+	github.com/chainreactors/fingers v0.0.0-20240702104653-a66e34aa41df // indirect
+	github.com/chainreactors/parsers v0.0.0-20241107171801-3f8b998dedc1 // indirect
 	github.com/charmbracelet/bubbles v0.18.0 // indirect
 	github.com/charmbracelet/harmonica v0.2.0 // indirect
 	github.com/charmbracelet/x/ansi v0.1.4 // indirect
@@ -76,6 +78,7 @@ require (
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
+	github.com/facebookincubator/nvdtools v0.1.5 // indirect
 	github.com/fatih/color v1.16.0 // indirect
 	github.com/frankban/quicktest v1.14.6 // indirect
 	github.com/go-dedup/megophone v0.0.0-20170830025436-f01be21026f5 // indirect

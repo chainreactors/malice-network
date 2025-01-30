@@ -1073,7 +1073,7 @@ func CreateContext(ctx *models.Context) error {
 	return Session().Create(ctx).Error
 }
 
-func GetContextsByType(typ string) ([]*clientpb.Context, error) {
+func GetContextsByType(typ string) ([]*models.Context, error) {
 	var contexts []*models.Context
 	err := Session().
 		Preload("Session").
@@ -1086,11 +1086,7 @@ func GetContextsByType(typ string) ([]*clientpb.Context, error) {
 		return nil, err
 	}
 
-	var result []*clientpb.Context
-	for _, ctx := range contexts {
-		result = append(result, ctx.ToProtobuf())
-	}
-	return result, nil
+	return contexts, nil
 }
 
 func GetContextsBySession(sessionID string) ([]*clientpb.Context, error) {

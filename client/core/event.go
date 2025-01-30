@@ -204,6 +204,7 @@ func (s *ServerStatus) handlerEvent(event *clientpb.Event) {
 	case consts.EventPivot:
 		Log.Importantf("[%s] %s: %s\n", event.Type, event.Op, event.Message)
 	case consts.EventContext:
+		s.handlerContext(event)
 	}
 }
 
@@ -286,7 +287,14 @@ func (s *ServerStatus) handlerContext(event *clientpb.Event) {
 	log := s.ObserverLog(sid)
 	switch event.Op {
 	case consts.ContextScreenShot:
+		log.Importantf("new screenshot: %s\n", event.Message)
 	case consts.ContextDownload:
-		log.Importantf("download file: %s\n", event.Message)
+		log.Importantf("new download file: %s\n", event.Message)
+	case consts.ContextUpload:
+		log.Importantf("new upload file: %s\n", event.Message)
+	case consts.ContextCredential:
+		log.Importantf("new credential: %s\n", event.Message)
+	case consts.ContextKeyLogger:
+		log.Importantf("new keylogger: %s\n", event.Message)
 	}
 }
