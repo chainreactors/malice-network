@@ -33,18 +33,19 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 			return nil, err
 		}
 		go greq.HandlerResponse(ch, types.MsgAck, func(spite *implantpb.Spite) {
+			v := &types.UploadContext{
+				FileDescriptor: &types.FileDescriptor{
+					Name:       req.Name,
+					TargetPath: req.Target,
+					Abstract:   fmt.Sprintf("upload -%d -%t", req.Priv, req.Hidden),
+					Size:       int64(len(req.Data)),
+				},
+			}
 			ictx, err := db.SaveContext(&clientpb.Context{
 				Task:    greq.Task.ToProtobuf(),
 				Session: greq.Session.ToProtobuf(),
 				Type:    consts.ContextUpload,
-				Value: types.MarshalContext(&types.UploadContext{
-					FileDescriptor: &types.FileDescriptor{
-						Name:       req.Name,
-						TargetPath: req.Target,
-						Abstract:   fmt.Sprintf("upload -%d -%t", req.Priv, req.Hidden),
-						Size:       int64(len(req.Data)),
-					},
-				}),
+				Value:   v.Marshal(),
 			})
 			if err != nil {
 				logs.Log.Errorf("cannot create task %d, %s in db", greq.Task.Id, err.Error())
@@ -113,18 +114,19 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 						return
 					}
 					if msg.End {
+						v := &types.UploadContext{
+							FileDescriptor: &types.FileDescriptor{
+								Name:       req.Name,
+								TargetPath: req.Target,
+								Abstract:   fmt.Sprintf("upload -%d -%t", req.Priv, req.Hidden),
+								Size:       int64(len(req.Data)),
+							},
+						}
 						ictx, err := db.SaveContext(&clientpb.Context{
 							Task:    greq.Task.ToProtobuf(),
 							Session: greq.Session.ToProtobuf(),
 							Type:    consts.ContextUpload,
-							Value: types.MarshalContext(&types.UploadContext{
-								FileDescriptor: &types.FileDescriptor{
-									Name:       req.Name,
-									TargetPath: req.Target,
-									Abstract:   fmt.Sprintf("upload -%d -%t", req.Priv, req.Hidden),
-									Size:       int64(len(req.Data)),
-								},
-							}),
+							Value:   v.Marshal(),
 						})
 						if err != nil {
 							logs.Log.Errorf("cannot create task %d , %s in db", greq.Task.Id, err.Error())
@@ -219,21 +221,21 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 					greq.Task.Panic(buildErrorEvent(greq.Task, fmt.Errorf("checksum error")))
 					return
 				}
-
+				v := &types.DownloadContext{
+					FileDescriptor: &types.FileDescriptor{
+						Name:       req.Name,
+						Checksum:   downloadAbs.Checksum,
+						TargetPath: req.Path,
+						FilePath:   moveName,
+						Abstract:   fmt.Sprintf("download -%s -%s ", req.Name, req.Path),
+						Size:       int64(size),
+					},
+				}
 				ictx, err := db.SaveContext(&clientpb.Context{
 					Task:    greq.Task.ToProtobuf(),
 					Session: greq.Session.ToProtobuf(),
 					Type:    consts.ContextDownload,
-					Value: types.MarshalContext(&types.DownloadContext{
-						FileDescriptor: &types.FileDescriptor{
-							Name:       req.Name,
-							Checksum:   downloadAbs.Checksum,
-							TargetPath: req.Path,
-							FilePath:   moveName,
-							Abstract:   fmt.Sprintf("download -%s -%s ", req.Name, req.Path),
-							Size:       int64(size),
-						},
-					}),
+					Value:   v.Marshal(),
 				})
 				if err != nil {
 					logs.Log.Errorf("cannot create task %d , %s in db", greq.Task.Id, err.Error())

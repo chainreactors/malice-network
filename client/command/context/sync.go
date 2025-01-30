@@ -1,13 +1,15 @@
 package context
 
 import (
-	"github.com/chainreactors/malice-network/client/assets"
+	"fmt"
 	"github.com/spf13/cobra"
 	"os"
 	"path/filepath"
 
+	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/types"
 )
 
 func SyncCmd(cmd *cobra.Command, con *repl.Console) error {
@@ -20,19 +22,41 @@ func SyncCmd(cmd *cobra.Command, con *repl.Console) error {
 			con.Log.Errorf("sync file error: %v\n", err)
 			return
 		}
-		path := filepath.Join(assets.GetTempDir(), ctx.Type)
-		file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, 0644)
+
+		ictx, err := types.ParseContext(ctx.Type, ctx.Value)
 		if err != nil {
-			con.Log.Errorf("sync file error: %v\n", err)
+			con.Log.Errorf("parse context error: %v\n", err)
 			return
 		}
-		defer file.Close()
-		_, err = file.Write([]byte(ctx.Value))
-		if err != nil {
-			con.Log.Errorf("sync file error: %v\n", err)
-			return
+
+		con.Log.Infof("Context: %s\n", ictx.String())
+
+		switch c := ictx.(type) {
+		case *types.ScreenShotContext, *types.DownloadContext, *types.KeyLoggerContext, *types.UploadContext:
+			var filename string
+			var content []byte
+			switch t := c.(type) {
+			case *types.ScreenShotContext:
+				filename = t.Name
+				content = t.Content
+			case *types.DownloadContext:
+				filename = t.Name
+				content = t.Content
+			case *types.KeyLoggerContext:
+				filename = t.Name
+				content = t.Content
+			case *types.UploadContext:
+				filename = t.Name
+				content = t.Content
+			}
+
+			savePath := filepath.Join(assets.GetTempDir(), fmt.Sprintf("%s_%s", ctx.Id, filename))
+			if err := os.WriteFile(savePath, content, 0644); err != nil {
+				con.Log.Errorf("write file error: %v\n", err)
+				return
+			}
+			con.Log.Infof("File saved to: %s\n", savePath)
 		}
-		con.Log.Infof("sync file in path: %s\n", path)
 	}()
 	return nil
 }

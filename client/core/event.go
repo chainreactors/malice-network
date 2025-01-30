@@ -134,6 +134,7 @@ func HandlerTask(sess *Session, context *clientpb.TaskContext, message []byte, c
 		log.Console(resp + "\n")
 	}
 }
+
 func (s *ServerStatus) AddEventHook(event intermediate.EventCondition, callback intermediate.OnEventFunc) {
 	if _, ok := s.EventHook[event]; !ok {
 		s.EventHook[event] = []intermediate.OnEventFunc{}
@@ -204,7 +205,7 @@ func (s *ServerStatus) handlerEvent(event *clientpb.Event) {
 	case consts.EventPivot:
 		Log.Importantf("[%s] %s: %s\n", event.Type, event.Op, event.Message)
 	case consts.EventContext:
-		s.handlerContext(event)
+		Log.Importantf("[%s] %s: %s\n", event.Type, event.Op, event.Message)
 	}
 }
 
@@ -279,22 +280,5 @@ func (s *ServerStatus) handlerSession(event *clientpb.Event) {
 		Log.Importantf(logs.RedBold(fmt.Sprintf("[%s] session stop: %s\n", sid, event.Message)))
 	case consts.CtrlSessionReborn:
 		Log.Important(logs.GreenBold(fmt.Sprintf("[%s]: %s\n", consts.CtrlSessionReborn, event.Message)))
-	}
-}
-
-func (s *ServerStatus) handlerContext(event *clientpb.Event) {
-	sid := event.Session.SessionId
-	log := s.ObserverLog(sid)
-	switch event.Op {
-	case consts.ContextScreenShot:
-		log.Importantf("new screenshot: %s\n", event.Message)
-	case consts.ContextDownload:
-		log.Importantf("new download file: %s\n", event.Message)
-	case consts.ContextUpload:
-		log.Importantf("new upload file: %s\n", event.Message)
-	case consts.ContextCredential:
-		log.Importantf("new credential: %s\n", event.Message)
-	case consts.ContextKeyLogger:
-		log.Importantf("new keylogger: %s\n", event.Message)
 	}
 }
