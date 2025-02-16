@@ -51,16 +51,17 @@ Control the start type and error control by providing appropriate values.`,
 		},
 		Example: `Create a new service named "example_service":
   ~~~
-  service create --name example_service --display "Example Service" --path /path/to/executable --start_type 2 --error 1
+  service create --name example_service --display "Example Service" --path /path/to/executable --start_type AutoStart --error Normal
   ~~~`,
 	}
+
 	common.BindFlag(serviceCreateCmd, func(f *pflag.FlagSet) {
 		f.String("name", "", "Name of the service (required)")
 		f.String("display", "", "Display name of the service")
 		f.String("path", "", "Path to the executable (required)")
-		f.Uint32("start_type", 3, "Service start type (e.g., 2 for auto-start)")
-		f.Uint32("error", 1, "Error control level (e.g., 1 for normal)")
-		f.String("account", "SYSTEM", "Account name for the service")
+		f.StringP("start_type", "", "AutoStart", "Service start type (BootStart, SystemStart, AutoStart, DemandStart, Disabled)")
+		f.StringP("error", "", "Normal", "Error control level (Ignore, Normal, Severe, Critical)")
+		f.String("account", "LocalSystem", `AccountName for service (LocalSystem, NetworkService; \<hostname\>\\\<username\> NT AUTHORITY\SYSTEM; .\username, ..)`)
 	})
 
 	serviceStartCmd := &cobra.Command{
