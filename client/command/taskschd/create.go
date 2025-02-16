@@ -34,6 +34,7 @@ func TaskSchdCreate(rpc clientrpc.MaliceRPCClient, session *core.Session, name, 
 	request := &implantpb.TaskScheduleRequest{
 		Type: consts.ModuleTaskSchdCreate,
 		Taskschd: &implantpb.TaskSchedule{
+			Path:           "\\",
 			Name:           name,
 			ExecutablePath: path,
 			TriggerType:    triggerType,
