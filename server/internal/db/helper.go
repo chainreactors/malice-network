@@ -211,6 +211,15 @@ func GetContextFilesBySessionID(sessionID string, fileTypes []string) ([]models.
 	return files, nil
 }
 
+func GetContextByTask(taskID string) (*models.Context, error) {
+	var task *models.Context
+	result := Session().Model(&models.Context{}).Where("task_id = ?", taskID).First(&task)
+	if result.Error != nil {
+		return task, result.Error
+	}
+	return task, nil
+}
+
 func GetDownloadFiles(sid string) ([]*clientpb.File, error) {
 	var files []*models.Context
 	var result *gorm.DB
@@ -1086,6 +1095,15 @@ func GetContextsByType(typ string) ([]*models.Context, error) {
 		return nil, err
 	}
 
+	return contexts, nil
+}
+
+func GetContextsBySessionAndType(sessionID, types string) ([]*models.Context, error) {
+	var contexts []*models.Context
+	err := Session().Where("session_id = ? AND type = ?", sessionID, types).Find(&contexts).Error
+	if err != nil {
+		return nil, err
+	}
 	return contexts, nil
 }
 

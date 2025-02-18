@@ -3,6 +3,7 @@ package core
 import (
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -194,4 +195,26 @@ func LoadContext(ctx types.Context) (types.Context, error) {
 	}
 
 	return ctx, nil
+}
+
+func ReadFileForContext(ctx types.Context) ([]byte, error) {
+	var filePath string
+	switch c := ctx.(type) {
+	case *types.ScreenShotContext:
+		filePath = c.FilePath
+	case *types.DownloadContext:
+		filePath = c.FilePath
+	case *types.KeyLoggerContext:
+		filePath = c.FilePath
+	case *types.UploadContext:
+		filePath = c.FilePath
+	default:
+		return nil, errors.New("unsupported context type")
+	}
+
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
 }
