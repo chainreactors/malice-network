@@ -2,7 +2,6 @@ package rpc
 
 import (
 	"context"
-
 	"github.com/chainreactors/malice-network/helper/consts"
 	errs "github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
@@ -17,8 +16,10 @@ func (rpc *Server) GetContexts(ctx context.Context, req *clientpb.Context) (*cli
 	var err error
 
 	// 如果指定了类型，则按类型筛选
-	if req.Type != "" {
+	if req.Type != "" && req.Session == nil {
 		contexts, err = db.GetContextsByType(req.Type)
+	} else if req.Type != "" && req.Session != nil {
+		contexts, err = db.GetContextsBySessionAndType(req.Session.SessionId, req.Type)
 	} else {
 		contexts, err = db.GetAllContext()
 	}
@@ -31,6 +32,11 @@ func (rpc *Server) GetContexts(ctx context.Context, req *clientpb.Context) (*cli
 		Contexts: make([]*clientpb.Context, 0),
 	}
 	for _, c := range contexts {
+		ictx, err := types.ParseContext(c.Type, c.Value)
+		if err != nil {
+			return nil, err
+		}
+		c.Context = ictx
 		result.Contexts = append(result.Contexts, c.ToProtobuf())
 	}
 	return result, nil
@@ -148,7 +154,13 @@ func (rpc *Server) AddPort(ctx context.Context, req *clientpb.Context) (*clientp
 }
 
 func (rpc *Server) Sync(ctx context.Context, req *clientpb.Sync) (*clientpb.Context, error) {
-	ictx, err := db.FindContext(req.ContextId)
+	var ictx *models.Context
+	var err error
+	if req.TaskId != "" {
+		ictx, err = db.GetContextByTask(req.TaskId)
+	} else {
+		ictx, err = db.FindContext(req.ContextId)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -157,9 +169,11 @@ func (rpc *Server) Sync(ctx context.Context, req *clientpb.Sync) (*clientpb.Cont
 	if err != nil {
 		return nil, err
 	}
-	ictx.Context, err = core.LoadContext(c)
+	data, err := core.ReadFileForContext(c)
 	if err != nil {
 		return nil, err
 	}
-	return ictx.ToProtobuf(), nil
+	result := ictx.ToProtobuf()
+	result.Content = data
+	return result, nil
 }

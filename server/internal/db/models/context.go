@@ -70,7 +70,7 @@ func FromContextProtobuf(ctx *clientpb.Context) (*Context, error) {
 	}
 
 	var err error
-	context.Context, err = types.ParseContext(context.Type, []byte(context.Value))
+	context.Context, err = types.ParseContext(context.Type, context.Value)
 	if err != nil {
 		return nil, err
 	}
