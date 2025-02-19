@@ -43,6 +43,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
           VERSION: ${{ env.NIGHTLY_VERSION }}
+          GOPATH: "/home/runner/go"
           COMMIT: ${{ env.COMMIT }}
           CGO_ENABLED: 0
 
