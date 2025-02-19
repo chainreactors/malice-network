@@ -26,13 +26,17 @@ builds:
     ignore:
       - goos: windows
         goarch: arm64
-    ldflags: "-s -w"
+    ldflags: |
+      -s -w
+      -X github.com/chainreactors/malice-network/server/rpc.ver={{.Env.VERSION}}
+      -X github.com/chainreactors/malice-network/server/rpc.commit={{.Env.COMMIT}}
     asmflags:
       - all=-trimpath={{.Env.GOPATH}}
     gcflags:
       - all=-trimpath={{.Env.GOPATH}}
     no_unique_dist_dir: true
-
+    env:
+      - CGO_ENABLED=0
   -
     main: ./server/
     id: server
@@ -47,13 +51,14 @@ builds:
     ignore:
       - goos: windows
         goarch: arm64
-    ldflags: "-s -w"
+    ldflags: "-s -w -X github.com/chainreactors/malice-network/server/rpc.ver={{.Env.VERSION}} -X github.com/chainreactors/malice-network/server/rpc.commit={{.Env.COMMIT}} -X github.com/chainreactors/malice-network/server/rpc.buildstamp={{.Timestamp}}"
     asmflags:
       - all=-trimpath={{.Env.GOPATH}}
     gcflags:
       - all=-trimpath={{.Env.GOPATH}}
     no_unique_dist_dir: true
-
+    env:
+      - CGO_ENABLED=0
 upx:
   -
     enabled: true
