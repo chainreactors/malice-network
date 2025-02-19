@@ -25,16 +25,21 @@ jobs:
         with:
           go-version: "1.20"
 
-      - name: Set Nightly Version
+      - name: Set Version Info
         run: |
           echo "NIGHTLY_VERSION=nightly-$(date +'%Y%m%d')" >> $GITHUB_ENV
+          echo "COMMIT=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v4
         with:
           distribution: goreleaser
           version: latest
-          args: release --snapshot --clean --skip=release
+          args: release --snapshot --clean --skip=publish
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ env.NIGHTLY_VERSION }}
+          COMMIT: ${{ env.COMMIT }}
 
       - name: Delete Old Nightly Releases
         uses: dev-drprasad/delete-older-releases@v0.3.2
@@ -55,6 +60,8 @@ jobs:
             dist/**/*
           body: |
             🌙 Nightly build generated on $(date +'%Y-%m-%d')
+
+            📝 Commit: ${{ env.COMMIT }}
 
             ⚠️ This is an automated nightly build and may be unstable.
 
