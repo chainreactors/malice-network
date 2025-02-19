@@ -1,6 +1,10 @@
 project_name: malice
 version: 2
 
+git:
+  ignore_tags:
+    - nightly
+
 before:
   hooks:
     - go mod tidy
