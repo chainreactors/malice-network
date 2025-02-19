@@ -3,6 +3,10 @@ package rpc
 import (
 	"context"
 	"errors"
+	"net"
+	"runtime"
+	"strconv"
+
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/errs"
@@ -16,9 +20,12 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
 	"google.golang.org/protobuf/proto"
-	"net"
-	"runtime"
-	"strconv"
+)
+
+var (
+	ver        = "0.1.0-dev"
+	commit     = ""
+	buildstamp = ""
 )
 
 func newGenericRequest(ctx context.Context, msg proto.Message, opts ...int) (*GenericRequest, error) {
@@ -191,12 +198,13 @@ func (rpc *Server) StreamGenericHandler(ctx context.Context, req *GenericRequest
 }
 
 func (rpc *Server) GetBasic(ctx context.Context, _ *clientpb.Empty) (*clientpb.Basic, error) {
+	timestamp, _ := strconv.ParseInt(buildstamp, 10, 64)
 	return &clientpb.Basic{
-		Major: 0,
-		Minor: 0,
-		Patch: 2,
-		Os:    runtime.GOOS,
-		Arch:  runtime.GOARCH,
+		Version:    ver,
+		Commit:     commit,
+		CompiledAt: timestamp,
+		Os:         runtime.GOOS,
+		Arch:       runtime.GOARCH,
 	}, nil
 }
 

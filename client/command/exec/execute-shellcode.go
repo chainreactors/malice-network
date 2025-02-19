@@ -48,7 +48,7 @@ func ExecShellcode(rpc clientrpc.MaliceRPCClient, sess *core.Session, shellcodeP
 		if err != nil {
 			return nil, err
 		}
-		logs.Log.Infof("found PE file, auto-converted to shellcode with Donut")
+		logs.Log.Infof("found PE file, auto-converted to shellcode with Donut\n")
 		binary.Args = nil
 	}
 	task, err := rpc.ExecuteShellcode(sess.Context(), binary)
@@ -84,7 +84,7 @@ func InlineShellcode(rpc clientrpc.MaliceRPCClient, sess *core.Session, path str
 		if err != nil {
 			return nil, err
 		}
-		logs.Log.Infof("found pe file, auto convert to shellcode with donut")
+		logs.Log.Infof("found pe file, auto convert to shellcode with donut\n")
 		//binary.Args = nil
 	}
 	shellcodeTask, err := rpc.ExecuteShellcode(sess.Context(), binary)
@@ -142,7 +142,6 @@ func RegisterShellcodeFunc(con *repl.Console) {
 			"args",
 			"output",
 			"timeout",
-			"arch",
 			"process",
 		},
 		[]string{"task"})

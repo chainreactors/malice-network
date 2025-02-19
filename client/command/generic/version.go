@@ -16,5 +16,5 @@ func printVersion(con *repl.Console) {
 		con.Log.Errorf("Error getting version info: %v\n", err)
 		return
 	}
-	con.Log.Importantf("%d.%d.%d on %s %s\n", basic.Major, basic.Minor, basic.Patch, basic.Os, basic.Arch)
+	con.Log.Importantf("%s on %s %s\n", basic.Version, basic.Os, basic.Arch)
 }

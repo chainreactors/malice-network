@@ -2,15 +2,15 @@ package context
 
 import (
 	"fmt"
-	"github.com/chainreactors/malice-network/client/core"
+	"github.com/evertras/bubble-table/table"
+	"github.com/spf13/cobra"
 
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/tui"
-	"github.com/evertras/bubble-table/table"
-	"github.com/spf13/cobra"
 )
 
 func GetCredentialsCmd(cmd *cobra.Command, con *repl.Console) error {

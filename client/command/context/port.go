@@ -2,8 +2,8 @@ package context
 
 import (
 	"fmt"
-	"github.com/chainreactors/malice-network/client/core"
 
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"

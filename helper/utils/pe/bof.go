@@ -185,20 +185,16 @@ func Unpack(data string) ([]byte, error) {
 	if err == nil {
 		return content, nil
 	}
-	unpakced := strings.SplitN(data, ":", 2)
-	result, err := UnPackFile(data)
-	if err == nil {
-		return result, err
-	}
-	switch unpakced[0] {
+	unpacked := strings.SplitN(data, ":", 2)
+	switch unpacked[0] {
 	case "file":
-		return UnPackFile(unpakced[1])
+		return UnPackFile(unpacked[1])
 	case "bin":
-		return UnPackBinary(unpakced[1])
+		return UnPackBinary(unpacked[1])
 	case "url":
-		return UnpackURL(unpakced[1])
+		return UnpackURL(unpacked[1])
 	default:
-		return nil, fmt.Errorf("Unknown data type %s", unpakced[0])
+		return nil, fmt.Errorf("Unknown data type %s", unpacked[0])
 	}
 }
 
