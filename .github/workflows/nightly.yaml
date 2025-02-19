@@ -34,6 +34,15 @@ jobs:
           echo "NIGHTLY_VERSION=nightly-$(date +'%Y%m%d')" >> $GITHUB_ENV
           echo "COMMIT=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
 
+      - name: Download IoM-gui VSIX
+        run: |
+          mkdir -p dist/vsix
+          curl -L -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/chainreactors/IoM-gui/releases/latest | \
+            jq -r '.assets[] | select(.name=="iom.vsix") | .browser_download_url' | \
+            xargs curl -L -o dist/vsix/iom.vsix
+
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v4
         with:
@@ -64,8 +73,9 @@ jobs:
           prerelease: true
           files: |
             dist/**/*
+            dist/vsix/iom.vsix
           body: |
-            🌙 Nightly build generated on $(date +'%Y-%m-%d')
+            🌙 Nightly build 
 
             📝 Commit: ${{ env.COMMIT }}
 
