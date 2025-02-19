@@ -34,15 +34,6 @@ jobs:
           echo "NIGHTLY_VERSION=nightly-$(date +'%Y%m%d')" >> $GITHUB_ENV
           echo "COMMIT=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
 
-      - name: Download IoM-gui VSIX
-        uses: robinraju/release-downloader@v1.11
-        with:
-          repository: "chainreactors/IoM-gui"
-          latest: true
-          fileName: "iom.vsix"
-          token: ${{ secrets.PAT_TOKEN }}
-          out-file-path: "dist/vsix"
-
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v4
         with:
@@ -55,6 +46,15 @@ jobs:
           GOPATH: "/home/runner/go"
           COMMIT: ${{ env.COMMIT }}
           CGO_ENABLED: 0
+
+      - name: Download IoM-gui VSIX
+        uses: robinraju/release-downloader@v1.11
+        with:
+          repository: "chainreactors/IoM-gui"
+          latest: true
+          fileName: "iom.vsix"
+          token: ${{ secrets.PAT_TOKEN }}
+          out-file-path: "dist/vsix"
 
       - name: Delete Old Nightly Releases
         uses: dev-drprasad/delete-older-releases@v0.3.2
@@ -73,7 +73,6 @@ jobs:
           prerelease: true
           files: |
             dist/**/*
-            dist/vsix/iom.vsix
           body: |
             🌙 Nightly build 
 
