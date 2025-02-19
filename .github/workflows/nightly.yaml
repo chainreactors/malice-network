@@ -1,0 +1,63 @@
+name: nightly-release
+
+on:
+  schedule:
+    - cron: "0 5 * * *" # 每天UTC 05:00运行
+  workflow_dispatch: # 允许手动触发
+
+jobs:
+  nightly:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+          submodules: recursive
+
+      - name: Install upx
+        run: sudo apt install upx -y
+        continue-on-error: true
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.20"
+
+      - name: Set Nightly Version
+        run: |
+          echo "NIGHTLY_VERSION=nightly-$(date +'%Y%m%d')" >> $GITHUB_ENV
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v4
+        with:
+          distribution: goreleaser
+          version: latest
+          args: release --snapshot --clean --skip=release
+
+      - name: Delete Old Nightly Releases
+        uses: dev-drprasad/delete-older-releases@v0.3.2
+        with:
+          keep_latest: 7
+          delete_tags: true
+          delete_tag_pattern: nightly-
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Nightly Build ${{ env.NIGHTLY_VERSION }}
+          tag_name: ${{ env.NIGHTLY_VERSION }}
+          prerelease: true
+          files: |
+            dist/**/*
+          body: |
+            🌙 Nightly build generated on $(date +'%Y-%m-%d')
+
+            ⚠️ This is an automated nightly build and may be unstable.
+
+            📦 This release includes the latest changes from the main branch.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
