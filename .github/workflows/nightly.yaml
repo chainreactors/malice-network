@@ -61,7 +61,7 @@ jobs:
         with:
           keep_latest: 7
           delete_tags: true
-          delete_tag_pattern: nightly-
+          delete_tag_pattern: nightly
         env:
           GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
 
@@ -69,7 +69,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           name: Nightly Build ${{ env.NIGHTLY_VERSION }}
-          tag_name: ${{ env.NIGHTLY_VERSION }}
+          tag_name: nightly
           prerelease: true
           files: |
             dist/**/*
