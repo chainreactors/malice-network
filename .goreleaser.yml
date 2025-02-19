@@ -77,9 +77,9 @@ changelog:
       - '^MERGE'
       - "{{ .Tag }}"
       - "^docs"
-
 release:
   github:
     owner: chainreactors
     name: malice-network
   draft: true
+
