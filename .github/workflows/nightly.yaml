@@ -81,5 +81,7 @@ jobs:
             ⚠️ This is an automated nightly build and may be unstable.
 
             📦 This release includes the latest changes from the main branch.
+
+            Usage: https://chainreactors.github.io/wiki/IoM/manual/manual/GUI
         env:
           GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
