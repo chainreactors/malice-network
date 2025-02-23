@@ -14,6 +14,7 @@ import (
 	"github.com/nikoksr/notify/service/lark"
 	"github.com/nikoksr/notify/service/telegram"
 	"net/url"
+	"sync"
 )
 
 const (
@@ -78,6 +79,7 @@ type eventBroker struct {
 	send        chan Event
 	notifier    Notifier
 
+	lock  *sync.Mutex
 	cache *RingCache
 }
 
@@ -100,10 +102,11 @@ func (broker *eventBroker) Start() {
 			} else if event.EventType != consts.EventHeartbeat {
 				logs.Log.Debugf("[event.%s] %s", event.EventType, event.String())
 			}
-
+			broker.lock.Lock()
 			for sub := range subscribers {
 				sub <- event
 			}
+			broker.lock.Unlock()
 		}
 	}
 }
@@ -162,6 +165,7 @@ func NewBroker() *eventBroker {
 			enable: false,
 		},
 		cache: NewMessageCache(eventBufSize),
+		lock:  &sync.Mutex{},
 	}
 	go broker.Start()
 	ticker := GlobalTicker
