@@ -194,7 +194,7 @@ func RecoverAliveSession() error {
 		for _, session := range sessions {
 			newSession, err := core.RecoverSession(session)
 			if err != nil {
-				logs.Log.Errorf("cannot recover session %s , %s ", session.SessionId, err.Error())
+				logs.Log.Errorf("cannot recover session %s , %s ", session.SessionID, err.Error())
 				continue
 			}
 			core.Sessions.Add(newSession)

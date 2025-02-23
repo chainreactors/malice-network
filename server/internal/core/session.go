@@ -112,37 +112,29 @@ func RegisterSession(req *clientpb.RegisterSession) (*Session, error) {
 	return sess, nil
 }
 
-func RecoverSession(sess *clientpb.Session) (*Session, error) {
-	cache := NewCache(path.Join(configs.ContextPath, sess.SessionId, consts.CachePath, CacheName))
+func RecoverSession(sess *models.Session) (*Session, error) {
+	cache := NewCache(path.Join(configs.ContextPath, sess.SessionID, consts.CachePath, CacheName))
 	err := cache.Load()
 	if err != nil {
 		return nil, err
 	}
 	s := &Session{
-		Type:        sess.Type,
-		Name:        sess.Name,
-		Note:        sess.Note,
-		Group:       sess.GroupName,
-		ID:          sess.SessionId,
-		RawID:       sess.RawId,
-		PipelineID:  sess.PipelineId,
-		ListenerID:  sess.ListenerId,
-		Target:      sess.Target,
-		Initialized: sess.IsInitialized,
-		LastCheckin: sess.LastCheckin,
-		Tasks:       NewTasks(),
-		SessionContext: &types.SessionContext{SessionInfo: &types.SessionInfo{
-			Os:       sess.Os,
-			Process:  sess.Process,
-			Interval: sess.Timer.Interval,
-			Jitter:   sess.Timer.Jitter,
-		},
-			Modules: sess.Modules,
-			Addons:  sess.Addons,
-		},
-		Taskseq:   1,
-		Cache:     cache,
-		responses: &sync.Map{},
+		Type:           sess.Type,
+		Name:           sess.ProfileName,
+		Note:           sess.Note,
+		Group:          sess.GroupName,
+		ID:             sess.SessionID,
+		RawID:          sess.RawID,
+		PipelineID:     sess.PipelineID,
+		ListenerID:     sess.ListenerID,
+		Target:         sess.Target,
+		Initialized:    sess.Initialized,
+		LastCheckin:    sess.LastCheckin,
+		Tasks:          NewTasks(),
+		SessionContext: sess.Data,
+		Taskseq:        1,
+		Cache:          cache,
+		responses:      &sync.Map{},
 	}
 	tasks, tid, err := db.FindTaskAndMaxTasksID(s.ID)
 	if err != nil {

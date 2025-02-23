@@ -39,7 +39,7 @@ func HasOperator(typ string) (bool, error) {
 	return true, nil
 }
 
-func FindAliveSessions() ([]*clientpb.Session, error) {
+func FindAliveSessions() ([]*models.Session, error) {
 	updateResult := Session().Exec(`
         UPDATE sessions
         SET is_alive = false
@@ -57,7 +57,7 @@ func FindAliveSessions() ([]*clientpb.Session, error) {
 		return nil, updateResult.Error
 	}
 
-	var activeSessions []models.Session
+	var activeSessions []*models.Session
 	result := Session().Raw(`
         SELECT * 
         FROM sessions 
@@ -74,15 +74,11 @@ func FindAliveSessions() ([]*clientpb.Session, error) {
 		return nil, result.Error
 	}
 
-	var sessions []*clientpb.Session
-	for _, session := range activeSessions {
-		sessions = append(sessions, session.ToProtobuf())
-	}
-	return sessions, nil
+	return activeSessions, nil
 }
 
-func FindSession(sessionID string) (*clientpb.Session, error) {
-	var session models.Session
+func FindSession(sessionID string) (*models.Session, error) {
+	var session *models.Session
 	result := Session().Where("session_id = ?", sessionID).First(&session)
 	if result.Error != nil {
 		return nil, result.Error
@@ -93,11 +89,11 @@ func FindSession(sessionID string) (*clientpb.Session, error) {
 	//if session.Last.Before(time.Now().Add(-time.Second * time.Duration(session.Time.Interval*2))) {
 	//	return nil, errors.New("session is dead")
 	//}
-	return session.ToProtobuf(), nil
+	return session, nil
 }
 
 func FindAllSessions() (*clientpb.Sessions, error) {
-	var sessions []models.Session
+	var sessions []*models.Session
 	result := Session().Order("group_name").Find(&sessions)
 	if result.Error != nil {
 		return nil, result.Error
@@ -153,7 +149,7 @@ func UpdateSession(sessionID, note, group string) error {
 }
 
 func UpdateSessionTimer(sessionID string, interval uint64, jitter float64) error {
-	var session models.Session
+	var session *models.Session
 	result := Session().Where("session_id = ?", sessionID).First(&session)
 	if result.Error != nil {
 		return result.Error
@@ -169,7 +165,7 @@ func UpdateSessionTimer(sessionID string, interval uint64, jitter float64) error
 }
 
 func CreateOperator(name string, typ string, remoteAddr string) error {
-	var operator models.Operator
+	var operator *models.Operator
 	operator.Name = name
 	operator.Type = typ
 	operator.Remote = remoteAddr
@@ -178,8 +174,8 @@ func CreateOperator(name string, typ string, remoteAddr string) error {
 
 }
 
-func ListClients() ([]models.Operator, error) {
-	var operators []models.Operator
+func ListClients() ([]*models.Operator, error) {
+	var operators []*models.Operator
 	err := Session().Find(&operators).Where("type = ?", mtls.Client).Error
 	if err != nil {
 		return nil, err
@@ -197,8 +193,8 @@ func FindContext(taskID string) (*models.Context, error) {
 	return task, nil
 }
 
-func GetContextFilesBySessionID(sessionID string, fileTypes []string) ([]models.Context, error) {
-	var files []models.Context
+func GetContextFilesBySessionID(sessionID string, fileTypes []string) ([]*models.Context, error) {
+	var files []*models.Context
 	query := Session().Model(&models.Context{}).Where("session_id = ?", sessionID)
 
 	if len(fileTypes) > 0 {
