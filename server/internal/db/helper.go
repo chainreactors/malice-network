@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/chainreactors/malice-network/helper/utils/output"
 	"mime"
 	"os"
 	"path/filepath"
@@ -233,7 +234,7 @@ func GetDownloadFiles(sid string) ([]*clientpb.File, error) {
 	}
 	var res []*clientpb.File
 	for _, file := range files {
-		download, err := types.AsContext[*types.DownloadContext](file.Context)
+		download, err := output.AsContext[*output.DownloadContext](file.Context)
 		if err != nil {
 			return nil, err
 		}
@@ -1107,60 +1108,53 @@ func GetContextsBySessionAndType(sessionID, types string) ([]*models.Context, er
 	return contexts, nil
 }
 
-func GetContextsBySession(sessionID string) ([]*clientpb.Context, error) {
+func GetContextsByTask(sessionID, types string, taskID string) ([]*models.Context, error) {
+	var contexts []*models.Context
+	err := Session().Where("session_id = ? AND type = ? AND task_id = ?", sessionID, types, taskID).Find(&contexts).Error
+	if err != nil {
+		return nil, err
+	}
+	return contexts, nil
+
+}
+func GetContextsBySession(sessionID string) ([]*models.Context, error) {
 	var contexts []*models.Context
 	err := Session().Where("session_id = ?", sessionID).Find(&contexts).Error
 	if err != nil {
 		return nil, err
 	}
 
-	var result []*clientpb.Context
-	for _, ctx := range contexts {
-		result = append(result, ctx.ToProtobuf())
-	}
-	return result, nil
+	return contexts, nil
 }
 
-func GetContextsByPipeline(pipelineID string) ([]*clientpb.Context, error) {
+func GetContextsByPipeline(pipelineID string) ([]*models.Context, error) {
 	var contexts []*models.Context
 	err := Session().Where("pipeline_id = ?", pipelineID).Find(&contexts).Error
 	if err != nil {
 		return nil, err
 	}
 
-	var result []*clientpb.Context
-	for _, ctx := range contexts {
-		result = append(result, ctx.ToProtobuf())
-	}
-	return result, nil
+	return contexts, nil
 }
 
-func GetContextsByListener(listenerID string) ([]*clientpb.Context, error) {
+func GetContextsByNonce(nonce string) ([]*models.Context, error) {
+	var contexts []*models.Context
+	err := Session().Where("nonce = ?", nonce).Find(&contexts).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return contexts, nil
+}
+
+func GetContextsByListener(listenerID string) ([]*models.Context, error) {
 	var contexts []*models.Context
 	err := Session().Where("listener_id = ?", listenerID).Find(&contexts).Error
 	if err != nil {
 		return nil, err
 	}
 
-	var result []*clientpb.Context
-	for _, ctx := range contexts {
-		result = append(result, ctx.ToProtobuf())
-	}
-	return result, nil
-}
-
-func GetContextsByTask(taskID uint32) ([]*clientpb.Context, error) {
-	var contexts []*models.Context
-	err := Session().Where("task_id = ?", taskID).Find(&contexts).Error
-	if err != nil {
-		return nil, err
-	}
-
-	var result []*clientpb.Context
-	for _, ctx := range contexts {
-		result = append(result, ctx.ToProtobuf())
-	}
-	return result, nil
+	return contexts, nil
 }
 
 func SaveContext(ctx *clientpb.Context) (*models.Context, error) {

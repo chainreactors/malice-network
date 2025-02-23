@@ -149,7 +149,7 @@ func Register(con *repl.Console) {
 	}, nil)
 
 	con.RegisterServerFunc("callback_log", func(con *repl.Console, sess *core.Session, notify bool) intermediate.BuiltinCallback {
-		return func(content interface{}) (bool, error) {
+		return func(content interface{}) (interface{}, error) {
 			return Log(con, sess, fmt.Sprintf("%v", content), notify)
 		}
 	}, nil)

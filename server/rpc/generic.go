@@ -326,3 +326,19 @@ func getClientName(ctx context.Context) string {
 	}
 	return ""
 }
+
+func getContextNonce(ctx context.Context) (string, string) {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return "", ""
+	}
+	var contextType string
+	var nonce string
+	if n := md.Get("nonce"); len(n) > 0 {
+		nonce = n[0]
+	}
+	if t := md.Get("context"); len(t) > 0 {
+		contextType = t[0]
+	}
+	return contextType, nonce
+}

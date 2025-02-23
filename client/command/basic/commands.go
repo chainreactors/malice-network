@@ -5,9 +5,11 @@ import (
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/utils/output"
+	"github.com/chainreactors/rem/x/utils"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -153,4 +155,16 @@ func Register(con *repl.Console) {
 		[]string{
 			"sess:special session",
 		}, []string{"task"})
+
+	intermediate.RegisterFunction("with_value", func(session *core.Session, key, val string) (*core.Session, error) {
+		return session.WithValue(key, val)
+	})
+
+	intermediate.RegisterFunction("with_values", func(session *core.Session, kv []string) (*core.Session, error) {
+		return session.WithValue(kv...)
+	})
+
+	intermediate.RegisterFunction("with_context", func(session *core.Session, typ string) (*core.Session, error) {
+		return session.WithValue("nonce", utils.RandomString(8), "context", typ)
+	})
 }

@@ -2,6 +2,8 @@ package rpc
 
 import (
 	"context"
+	"encoding/json"
+	"github.com/chainreactors/malice-network/server/internal/db"
 	"math"
 	"strings"
 
@@ -29,6 +31,46 @@ func handleBinary(binary *implantpb.ExecuteBinary) *implantpb.ExecuteBinary {
 	}
 	binary.Timeout = binary.Timeout * 1000
 	return binary
+}
+
+func ContextCallback(task *core.Task, ctx context.Context) func(*implantpb.Spite) {
+	typ, nonce := getContextNonce(ctx)
+	if typ == "" || nonce == "" {
+		return func(spite *implantpb.Spite) {
+			return
+		}
+	}
+	return func(spite *implantpb.Spite) {
+		content := spite.GetBinaryResponse().GetData()
+		if content == nil {
+			logs.Log.Error("Empty content")
+			return
+		}
+		var ctx output.Context
+		var err error
+		switch typ {
+		case "gogo":
+			ctx, err = output.ParseGOGO(content)
+		}
+		var value []byte
+		value, err = json.Marshal(ctx)
+		if err != nil {
+			logs.Log.Error(err)
+			return
+		}
+
+		_, err = db.SaveContext(&clientpb.Context{
+			Task:    task.ToProtobuf(),
+			Session: task.Session.ToProtobufLite(),
+			Type:    ctx.Type(),
+			Value:   value,
+			Nonce:   nonce,
+		})
+		if err != nil {
+			logs.Log.Error(err)
+			return
+		}
+	}
 }
 
 func (rpc *Server) Execute(ctx context.Context, req *implantpb.ExecRequest) (*clientpb.Task, error) {
@@ -70,7 +112,7 @@ func (rpc *Server) ExecuteShellcode(ctx context.Context, req *implantpb.ExecuteB
 	if err != nil {
 		return nil, err
 	}
-	go greq.HandlerResponse(ch, types.MsgBinaryResponse)
+	go greq.HandlerResponse(ch, types.MsgBinaryResponse, ContextCallback(greq.Task, ctx))
 	return greq.Task.ToProtobuf(), nil
 }
 

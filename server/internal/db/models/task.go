@@ -7,7 +7,7 @@ import (
 )
 
 type Task struct {
-	ID          string    `gorm:"primaryKey;->;<-:create;type:uuid;"`
+	ID          string    `gorm:"primaryKey;->;<-:create;"`
 	Created     time.Time `gorm:"->;<-:create;"`
 	Deadline    time.Time
 	CallBy      string
