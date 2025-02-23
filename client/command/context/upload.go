@@ -2,12 +2,12 @@ package context
 
 import (
 	"fmt"
+	"github.com/chainreactors/malice-network/helper/utils/output"
 
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
@@ -21,7 +21,7 @@ func GetUploadsCmd(cmd *cobra.Command, con *repl.Console) error {
 
 	var rowEntries []table.Row
 	for _, ctx := range uploads {
-		upload, err := types.ToContext[*types.UploadContext](ctx)
+		upload, err := output.ToContext[*output.UploadContext](ctx)
 		if err != nil {
 			return err
 		}
@@ -59,12 +59,12 @@ func GetUploads(con *repl.Console) ([]*clientpb.Context, error) {
 	return contexts.Contexts, nil
 }
 
-func AddUpload(con *repl.Console, sess *core.Session, task *clientpb.Task, fileDesc *types.FileDescriptor) (bool, error) {
+func AddUpload(con *repl.Console, sess *core.Session, task *clientpb.Task, fileDesc *output.FileDescriptor) (bool, error) {
 	_, err := con.Rpc.AddUpload(con.Context(), &clientpb.Context{
 		Session: sess.Session,
 		Task:    task,
 		Type:    consts.ContextUpload,
-		Value:   types.MarshalContext(&types.UploadContext{FileDescriptor: fileDesc}),
+		Value:   output.MarshalContext(&output.UploadContext{FileDescriptor: fileDesc}),
 	})
 	if err != nil {
 		return false, err

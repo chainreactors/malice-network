@@ -1,13 +1,16 @@
 package exec
 
 import (
+	"fmt"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/utils/output"
+	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
 )
@@ -72,4 +75,17 @@ func RegisterBofFunc(con *repl.Console) {
 			"args: arguments",
 		},
 		[]string{"task"})
+
+	con.RegisterServerFunc("callback_bof", func(con *repl.Console, sess *core.Session) (intermediate.BuiltinCallback, error) {
+		return func(content interface{}) (interface{}, error) {
+			resps, ok := content.(pe.BOFResponses)
+			if !ok {
+				return false, fmt.Errorf("invalid response type")
+			}
+			log := con.ObserverLog(sess.SessionId)
+			results := resps.Handler()
+			log.Console(results)
+			return true, nil
+		}, nil
+	}, nil)
 }

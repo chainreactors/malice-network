@@ -2,6 +2,7 @@ package context
 
 import (
 	"fmt"
+	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/spf13/cobra"
 	"os"
 	"path/filepath"
@@ -9,7 +10,6 @@ import (
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/types"
 )
 
 func SyncCmd(cmd *cobra.Command, con *repl.Console) error {
@@ -23,29 +23,29 @@ func SyncCmd(cmd *cobra.Command, con *repl.Console) error {
 			return
 		}
 
-		ictx, err := types.ParseContext(ctx.Type, ctx.Value)
+		ictx, err := output.ParseContext(ctx.Type, ctx.Value)
 		if err != nil {
 			con.Log.Errorf("parse context error: %v\n", err)
 			return
 		}
 
-		con.Log.Infof("Context: %s\n", ictx.String())
+		con.Log.Infof("Context: \n%s\n", ictx.String())
 
 		switch c := ictx.(type) {
-		case *types.ScreenShotContext, *types.DownloadContext, *types.KeyLoggerContext, *types.UploadContext:
+		case *output.ScreenShotContext, *output.DownloadContext, *output.KeyLoggerContext, *output.UploadContext:
 			var filename string
 			var content []byte
 			switch t := c.(type) {
-			case *types.ScreenShotContext:
+			case *output.ScreenShotContext:
 				filename = t.Name
 				content = t.Content
-			case *types.DownloadContext:
+			case *output.DownloadContext:
 				filename = t.Name
 				content = t.Content
-			case *types.KeyLoggerContext:
+			case *output.KeyLoggerContext:
 				filename = t.Name
 				content = t.Content
-			case *types.UploadContext:
+			case *output.UploadContext:
 				filename = t.Name
 				content = t.Content
 			}

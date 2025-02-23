@@ -6,7 +6,7 @@ import (
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/types"
+	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
@@ -20,7 +20,7 @@ func GetKeyloggersCmd(cmd *cobra.Command, con *repl.Console) error {
 
 	var rowEntries []table.Row
 	for _, ctx := range keyloggers {
-		keylogger, err := types.ToContext[*types.KeyLoggerContext](ctx)
+		keylogger, err := output.ToContext[*output.KeyLoggerContext](ctx)
 		if err != nil {
 			return err
 		}
@@ -63,7 +63,7 @@ func AddKeylogger(con *repl.Console, sess *core.Session, task *clientpb.Task, da
 		Session: sess.Session,
 		Task:    task,
 		Type:    consts.ContextKeyLogger,
-		Value:   types.MarshalContext(&types.KeyLoggerContext{Content: data}),
+		Value:   output.MarshalContext(&output.KeyLoggerContext{Content: data}),
 	})
 	if err != nil {
 		return false, err
