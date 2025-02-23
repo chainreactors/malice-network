@@ -175,13 +175,9 @@ func (rpc *Server) GetSessionHistory(ctx context.Context, req *clientpb.Int) (*c
 				if err != nil {
 					return nil, err
 				}
-				if session == nil {
-					logs.Log.Warnf("session %s has removed", sid)
-					continue
-				}
 				contexts.Contexts = append(contexts.Contexts, &clientpb.TaskContext{
 					Task:    task,
-					Session: session,
+					Session: session.ToProtobuf(),
 					Spite:   spite,
 				})
 			}

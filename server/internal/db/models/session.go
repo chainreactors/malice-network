@@ -71,7 +71,7 @@ func (s *Session) ToProtobuf() *clientpb.Session {
 	// 将整个 Data 序列化为 JSON 字符串
 	var dataString string
 	if s.Data != nil {
-		if jsonBytes, err := json.Marshal(s.Data.Data()); err == nil {
+		if jsonBytes, err := json.Marshal(s.Data); err == nil {
 			dataString = string(jsonBytes)
 		}
 	}
