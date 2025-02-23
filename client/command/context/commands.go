@@ -2,8 +2,12 @@ package context
 
 import (
 	"github.com/chainreactors/malice-network/client/command/common"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/intermediate"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/spf13/cobra"
 )
 
@@ -102,4 +106,37 @@ func Register(con *repl.Console) {
 	RegisterCredential(con)
 	RegisterUpload(con)
 	RegisterDownload(con)
+
+	con.RegisterServerFunc("callback_context", func(con *repl.Console, sess *core.Session) (intermediate.BuiltinCallback, error) {
+		nonce, err := sess.Value("nonce")
+		if err != nil {
+			return nil, err
+		}
+		typ, err := sess.Value("context")
+		if err != nil {
+			return nil, err
+		}
+		return func(content interface{}) (interface{}, error) {
+			contexts, err := con.Rpc.GetContexts(sess.Context(), &clientpb.Context{
+				Nonce: nonce,
+			})
+			if err != nil {
+				return "", err
+			}
+			var ctxs output.Contexts
+			for _, c := range contexts.Contexts {
+				var ctx output.Context
+				switch typ {
+				case consts.ContextPort, "gogo":
+					ctx, err = output.ToContext[*output.PortContext](c)
+				}
+				if err != nil {
+					return nil, err
+				}
+				ctxs = append(ctxs, ctx)
+			}
+
+			return ctxs.String(), nil
+		}, nil
+	}, nil)
 }

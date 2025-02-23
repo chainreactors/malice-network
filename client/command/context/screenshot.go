@@ -2,12 +2,12 @@ package context
 
 import (
 	"fmt"
+	"github.com/chainreactors/malice-network/helper/utils/output"
 
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
@@ -21,7 +21,7 @@ func GetScreenshotsCmd(cmd *cobra.Command, con *repl.Console) error {
 
 	var rowEntries []table.Row
 	for _, ctx := range screenshots {
-		screenshot, err := types.ToContext[*types.ScreenShotContext](ctx)
+		screenshot, err := output.ToContext[*output.ScreenShotContext](ctx)
 		if err != nil {
 			return err
 		}
@@ -63,7 +63,7 @@ func AddScreenshot(con *repl.Console, sess *core.Session, task *clientpb.Task, d
 		Session: sess.Session,
 		Task:    task,
 		Type:    consts.ContextScreenShot,
-		Value: types.MarshalContext(&types.ScreenShotContext{
+		Value: output.MarshalContext(&output.ScreenShotContext{
 			Content: data,
 		}),
 	})

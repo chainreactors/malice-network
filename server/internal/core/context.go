@@ -5,11 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/chainreactors/malice-network/helper/utils/output"
 	"os"
 	"path/filepath"
 	"time"
-
-	"github.com/chainreactors/malice-network/helper/types"
 
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
@@ -43,8 +42,8 @@ func HandleScreenshot(data []byte, task *Task) error {
 	}
 
 	checksum, _ := fileutils.CalculateSHA256Checksum(savePath)
-	ctx := &types.ScreenShotContext{
-		FileDescriptor: &types.FileDescriptor{
+	ctx := &output.ScreenShotContext{
+		FileDescriptor: &output.FileDescriptor{
 			Name:       filename,
 			Checksum:   checksum,
 			TargetPath: "BOF SCREENSHOT",
@@ -52,7 +51,7 @@ func HandleScreenshot(data []byte, task *Task) error {
 			Size:       int64(len(data[4:])),
 		},
 	}
-	ictx, err := SaveFileContext(ctx, task)
+	ictx, err := SaveContext(ctx, task)
 	if err != nil {
 		return err
 	}
@@ -124,8 +123,8 @@ func HandleFileOperations(op string, data []byte, task *Task) error {
 		}
 
 		checksum, _ := fileutils.CalculateSHA256Checksum(savePath)
-		_, err := SaveFileContext(&types.DownloadContext{
-			FileDescriptor: &types.FileDescriptor{
+		_, err := SaveContext(&output.DownloadContext{
+			FileDescriptor: &output.FileDescriptor{
 				Name:       filepath.Base(savePath),
 				Checksum:   checksum,
 				TargetPath: "BOF DOWNLOAD",
@@ -149,7 +148,7 @@ func HandleFileOperations(op string, data []byte, task *Task) error {
 	return fmt.Errorf("unknown operation: %s", op)
 }
 
-func SaveFileContext(ctx types.Context, task *Task) (*models.Context, error) {
+func SaveContext(ctx output.Context, task *Task) (*models.Context, error) {
 	value, err := json.Marshal(ctx)
 	if err != nil {
 		return nil, err
@@ -162,30 +161,30 @@ func SaveFileContext(ctx types.Context, task *Task) (*models.Context, error) {
 	})
 }
 
-func LoadContext(ctx types.Context) (types.Context, error) {
+func LoadContext(ctx output.Context) (output.Context, error) {
 	switch c := ctx.(type) {
-	case *types.ScreenShotContext:
+	case *output.ScreenShotContext:
 		data, err := os.ReadFile(c.FilePath)
 		if err != nil {
 			return nil, err
 		}
 		c.Content = data
 		return c, nil
-	case *types.DownloadContext:
+	case *output.DownloadContext:
 		data, err := os.ReadFile(c.FilePath)
 		if err != nil {
 			return nil, err
 		}
 		c.Content = data
 		return c, nil
-	case *types.KeyLoggerContext:
+	case *output.KeyLoggerContext:
 		data, err := os.ReadFile(c.FilePath)
 		if err != nil {
 			return nil, err
 		}
 		c.Content = data
 		return c, nil
-	case *types.UploadContext:
+	case *output.UploadContext:
 		data, err := os.ReadFile(c.FilePath)
 		if err != nil {
 			return nil, err
@@ -197,16 +196,16 @@ func LoadContext(ctx types.Context) (types.Context, error) {
 	return ctx, nil
 }
 
-func ReadFileForContext(ctx types.Context) ([]byte, error) {
+func ReadFileForContext(ctx output.Context) ([]byte, error) {
 	var filePath string
 	switch c := ctx.(type) {
-	case *types.ScreenShotContext:
+	case *output.ScreenShotContext:
 		filePath = c.FilePath
-	case *types.DownloadContext:
+	case *output.DownloadContext:
 		filePath = c.FilePath
-	case *types.KeyLoggerContext:
+	case *output.KeyLoggerContext:
 		filePath = c.FilePath
-	case *types.UploadContext:
+	case *output.UploadContext:
 		filePath = c.FilePath
 	default:
 		return nil, errors.New("unsupported context type")

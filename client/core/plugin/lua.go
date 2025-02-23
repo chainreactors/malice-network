@@ -329,7 +329,7 @@ func (plug *LuaPlugin) RegisterLuaBuiltin(vm *lua.LState) error {
 		var paramNames []string
 		for _, param := range fn.Proto.DbgLocals {
 			if strings.HasPrefix(param.Name, "flag_") || slices.Contains(ReservedWords, param.Name) {
-				paramNames = append(paramNames, param.Name)
+				paramNames = append(paramNames, strings.TrimPrefix(param.Name, "flag_"))
 			}
 		}
 
@@ -370,12 +370,12 @@ func (plug *LuaPlugin) RegisterLuaBuiltin(vm *lua.LState) error {
 
 					var outFunc intermediate.BuiltinCallback
 					if outFile, _ := cmd.Flags().GetString("file"); outFile == "" {
-						outFunc = func(content interface{}) (bool, error) {
+						outFunc = func(content interface{}) (interface{}, error) {
 							logs.Log.Consolef("%v\n", content)
 							return true, nil
 						}
 					} else {
-						outFunc = func(content interface{}) (bool, error) {
+						outFunc = func(content interface{}) (interface{}, error) {
 							cont, ok := content.(string)
 							if !ok {
 								return false, fmt.Errorf("expect content tpye string, found %s", reflect.TypeOf(content).String())

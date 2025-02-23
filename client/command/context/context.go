@@ -30,3 +30,14 @@ func GetContextsByType(con *repl.Console, contextType string) (*clientpb.Context
 
 	return allContexts, nil
 }
+
+func GetContextsByTask(con *repl.Console, contextType string, task *clientpb.Task) (*clientpb.Contexts, error) {
+	allContexts, err := con.Rpc.GetContexts(con.Context(), &clientpb.Context{
+		Task: task,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return allContexts, nil
+}
