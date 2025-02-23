@@ -2,10 +2,11 @@ package rpc
 
 import (
 	"context"
+	"fmt"
 	"github.com/chainreactors/malice-network/helper/consts"
 	errs "github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/types"
+	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
@@ -18,8 +19,18 @@ func (rpc *Server) GetContexts(ctx context.Context, req *clientpb.Context) (*cli
 	// 如果指定了类型，则按类型筛选
 	if req.Type != "" && req.Session == nil {
 		contexts, err = db.GetContextsByType(req.Type)
-	} else if req.Type != "" && req.Session != nil {
+	} else if req.Type != "" {
 		contexts, err = db.GetContextsBySessionAndType(req.Session.SessionId, req.Type)
+	} else if req.Type != "" && req.Task != nil {
+		contexts, err = db.GetContextsByTask(req.Session.SessionId, req.Type, fmt.Sprintf("%s_%d", req.Task.SessionId, req.Task.TaskId))
+	} else if req.Pipeline != nil {
+		contexts, err = db.GetContextsByPipeline(req.Pipeline.Name)
+	} else if req.Listener != nil {
+		contexts, err = db.GetContextsByListener(req.Listener.Id)
+	} else if req.Session != nil {
+		contexts, err = db.GetContextsBySession(req.Session.SessionId)
+	} else if req.Nonce != "" {
+		contexts, err = db.GetContextsByNonce(req.Nonce)
 	} else {
 		contexts, err = db.GetAllContext()
 	}
@@ -32,11 +43,11 @@ func (rpc *Server) GetContexts(ctx context.Context, req *clientpb.Context) (*cli
 		Contexts: make([]*clientpb.Context, 0),
 	}
 	for _, c := range contexts {
-		ictx, err := types.ParseContext(c.Type, c.Value)
-		if err != nil {
-			return nil, err
-		}
-		c.Context = ictx
+		//ictx, err := output.ParseContext(c.Type, c.Value)
+		//if err != nil {
+		//	return nil, err
+		//}
+		//c.Context = ictx
 		result.Contexts = append(result.Contexts, c.ToProtobuf())
 	}
 	return result, nil
@@ -71,7 +82,7 @@ func (rpc *Server) AddScreenShot(ctx context.Context, req *clientpb.Context) (*c
 		return nil, err
 	}
 
-	screenshot, err := types.NewScreenShot(req.Value)
+	screenshot, err := output.NewScreenShot(req.Value)
 	if err != nil {
 		return nil, err
 	}
@@ -98,12 +109,12 @@ func (rpc *Server) AddDownload(ctx context.Context, req *clientpb.Context) (*cli
 		return nil, err
 	}
 
-	download, err := types.NewDownloadContext(req.Value)
+	download, err := output.NewDownloadContext(req.Value)
 	if err != nil {
 		return nil, err
 	}
 
-	_, err = core.SaveFileContext(download, task)
+	_, err = core.SaveContext(download, task)
 	if err != nil {
 		return nil, err
 	}
@@ -117,12 +128,12 @@ func (rpc *Server) AddCredential(ctx context.Context, req *clientpb.Context) (*c
 		return nil, err
 	}
 
-	cred, err := types.NewCredential(req.Value)
+	cred, err := output.NewCredential(req.Value)
 	if err != nil {
 		return nil, err
 	}
 
-	dctx, err := core.SaveFileContext(cred, task)
+	dctx, err := core.SaveContext(cred, task)
 	if err != nil {
 		return nil, err
 	}
@@ -136,16 +147,16 @@ func (rpc *Server) AddPort(ctx context.Context, req *clientpb.Context) (*clientp
 		return nil, err
 	}
 
-	port, err := types.NewPortContext(req.Value)
+	port, err := output.NewPortContext(req.Value)
 	if err != nil {
 		return nil, err
 	}
 
-	_, err = core.SaveFileContext(port, task)
+	_, err = core.SaveContext(port, task)
 	if err != nil {
 		return nil, err
 	}
-	dctx, err := core.SaveFileContext(port, task)
+	dctx, err := core.SaveContext(port, task)
 	if err != nil {
 		return nil, err
 	}
@@ -165,15 +176,16 @@ func (rpc *Server) Sync(ctx context.Context, req *clientpb.Sync) (*clientpb.Cont
 		return nil, err
 	}
 
-	c, err := types.ParseContext(ictx.Type, ictx.Value)
+	c, err := output.ParseContext(ictx.Type, ictx.Value)
 	if err != nil {
 		return nil, err
 	}
 	data, err := core.ReadFileForContext(c)
 	if err != nil {
-		return nil, err
+		return ictx.ToProtobuf(), nil
+	} else {
+		result := ictx.ToProtobuf()
+		result.Content = data
+		return result, nil
 	}
-	result := ictx.ToProtobuf()
-	result.Content = data
-	return result, nil
 }

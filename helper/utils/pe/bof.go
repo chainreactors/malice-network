@@ -3,7 +3,6 @@ package pe
 import (
 	"encoding/base64"
 	"fmt"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"io"
 	"net/http"
 	"os"
@@ -222,7 +221,7 @@ func (bofResps BOFResponses) String() string {
 	return ""
 }
 
-func (bofResps BOFResponses) Handler(sess *clientpb.Session) string {
+func (bofResps BOFResponses) Handler() string {
 	var results strings.Builder
 	for _, bofResp := range bofResps {
 		var result string

@@ -10,10 +10,12 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/types"
+	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 	"google.golang.org/grpc/metadata"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 func NewSession(sess *clientpb.Session, server *ServerStatus) *Session {
@@ -30,16 +32,20 @@ func NewSession(sess *clientpb.Session, server *ServerStatus) *Session {
 		Log.Warnf("Failed to unmarshal session data: %v", err)
 	}
 	return &Session{
-		Session: sess,
-		Server:  server,
-		Data:    data,
-		Callee:  consts.CalleeCMD,
-		Log:     &Logger{Logger: log, logFile: logFile},
+		ctx:      context.Background(),
+		ctxValue: make(map[string]string),
+		Session:  sess,
+		Server:   server,
+		Data:     data,
+		Callee:   consts.CalleeCMD,
+		Log:      &Logger{Logger: log, logFile: logFile},
 	}
 }
 
 type Session struct {
 	*clientpb.Session
+	ctx      context.Context
+	ctxValue map[string]string
 	Data     *types.SessionContext
 	Server   *ServerStatus
 	Callee   string // cmd/mal/sdk
@@ -49,19 +55,53 @@ type Session struct {
 
 func (s *Session) Clone(callee string) *Session {
 	return &Session{
-		Data:    s.Data,
-		Session: s.Session,
-		Server:  s.Server,
-		Callee:  callee,
+		Data:     s.Data,
+		Session:  s.Session,
+		Server:   s.Server,
+		Callee:   callee,
+		ctx:      s.ctx,
+		ctxValue: s.ctxValue,
 	}
 }
 
+func (s *Session) Value(key string) (string, error) {
+	if value, ok := s.ctxValue[key]; ok {
+		return value, nil
+	}
+	return "", fmt.Errorf("key not found")
+}
+
+func (s *Session) WithValue(kv ...string) (*Session, error) {
+	ctxValue := maps.Clone(s.ctxValue)
+	if len(kv)%2 == 1 {
+		return nil, fmt.Errorf("got the odd number of input pairs for metadata: %d", len(kv))
+	}
+	for i := 0; i < len(kv); i += 2 {
+		key := strings.ToLower(kv[i])
+		ctxValue[key] = kv[i+1]
+	}
+
+	return &Session{
+		Data:     s.Data,
+		Session:  s.Session,
+		Server:   s.Server,
+		Callee:   s.Callee,
+		ctx:      s.ctx,
+		ctxValue: ctxValue,
+	}, nil
+}
+
 func (s *Session) Context() context.Context {
-	return metadata.NewOutgoingContext(context.Background(), metadata.Pairs(
+	ss := []string{
 		"session_id", s.SessionId,
 		"callee", s.Callee,
-	),
-	)
+	}
+	for k, v := range s.ctxValue {
+		ss = append(ss, k)
+		ss = append(ss, v)
+		delete(s.ctxValue, k)
+	}
+	return metadata.NewOutgoingContext(s.ctx, metadata.Pairs(ss...))
 }
 
 func (s *Session) Console(task *clientpb.Task, msg string) {

@@ -1,4 +1,4 @@
-package types
+package output
 
 import (
 	"encoding/json"
@@ -45,6 +45,18 @@ func ToContext[T Context](ctx *clientpb.Context) (T, error) {
 	return AsContext[T](c)
 }
 
+func ToContexts[T Context](ctxs []*clientpb.Context) ([]T, error) {
+	var contexts []T
+	for _, ctx := range ctxs {
+		c, err := ToContext[T](ctx)
+		if err != nil {
+			return nil, err
+		}
+		contexts = append(contexts, c)
+	}
+	return contexts, nil
+}
+
 func ParseContext(typ string, content []byte) (Context, error) {
 	var ctx Context
 	var err error
@@ -74,6 +86,17 @@ func MarshalContext(ctx Context) []byte {
 		return nil
 	}
 	return marshal
+}
+
+type Contexts []Context
+
+func (ctxs Contexts) String() string {
+	var s strings.Builder
+	for _, ctx := range ctxs {
+		s.WriteString(ctx.Type() + "\n")
+		s.WriteString(ctx.String() + "\n")
+	}
+	return s.String()
 }
 
 type Context interface {
@@ -306,9 +329,9 @@ func (p *PortContext) GogoData() (*parsers.GOGOData, bool) {
 }
 
 func (p *PortContext) String() string {
-	var ports []string
+	var ports strings.Builder
 	for _, port := range p.Ports {
-		ports = append(ports, fmt.Sprintf("%s:%s/%s", port.Ip, port.Port, port.Protocol))
+		ports.WriteString(fmt.Sprintf("%s://%s:%s\t%s\n", port.Protocol, port.Ip, port.Port, port.Status))
 	}
-	return fmt.Sprintf("Ports: %s", strings.Join(ports, ", "))
+	return strings.TrimSpace(ports.String())
 }

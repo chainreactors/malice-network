@@ -41,7 +41,7 @@ const (
 	BuiltinPackage = "builtin"
 )
 
-type BuiltinCallback func(content interface{}) (bool, error)
+type BuiltinCallback func(content interface{}) (interface{}, error)
 
 func RegisterBuiltin(rpc clientrpc.MaliceRPCClient) {
 	RegisterCustomBuiltin(rpc)
@@ -238,7 +238,7 @@ new_bin = new_binary("module", "filename", "args", true, 100, "amd64", "process"
 	})
 
 	RegisterFunction("callback_file", func(filename string) (BuiltinCallback, error) {
-		return func(content interface{}) (bool, error) {
+		return func(content interface{}) (interface{}, error) {
 			_, ok := content.(string)
 			if !ok {
 				return false, fmt.Errorf("expect content tpye string, found %s", reflect.TypeOf(content).String())
@@ -252,7 +252,7 @@ new_bin = new_binary("module", "filename", "args", true, 100, "amd64", "process"
 	})
 
 	RegisterFunction("callback_append", func(filename string) (BuiltinCallback, error) {
-		return func(content interface{}) (bool, error) {
+		return func(content interface{}) (interface{}, error) {
 			_, ok := content.(string)
 			if !ok {
 				return false, fmt.Errorf("expect content tpye string, found %s", reflect.TypeOf(content).String())
@@ -272,7 +272,7 @@ new_bin = new_binary("module", "filename", "args", true, 100, "amd64", "process"
 	})
 
 	RegisterFunction("callback_discard", func() (BuiltinCallback, error) {
-		return func(content interface{}) (bool, error) {
+		return func(content interface{}) (interface{}, error) {
 			return true, nil
 		}, nil
 	})
@@ -334,6 +334,9 @@ pack_bof_args("ZZ", {"aa", "bb"})
 		return pe.PackBinary(data), nil
 	})
 
+	RegisterFunction("shellsplit", func(cmdline string) ([]string, error) {
+		return shellquote.Split(cmdline)
+	})
 	RegisterFunction("format_path", func(s string) (string, error) {
 		return fileutils.FormatWindowPath(s), nil
 	})

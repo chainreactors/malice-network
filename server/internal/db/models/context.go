@@ -1,11 +1,11 @@
 package models
 
 import (
+	"github.com/chainreactors/malice-network/helper/utils/output"
 	"strconv"
 	"time"
 
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/gofrs/uuid"
 	"gorm.io/gorm"
 )
@@ -18,8 +18,9 @@ type Context struct {
 	ListenerID string    `gorm:"type:string;index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
 	TaskID     string    `gorm:"type:string;index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
 	Type       string
+	Nonce      string
 	Value      []byte
-	Context    types.Context `gorm:"-"`
+	Context    output.Context `gorm:"-"`
 
 	Session  *Session  `gorm:"foreignKey:SessionID;references:SessionID;"`
 	Pipeline *Pipeline `gorm:"foreignKey:PipelineID;references:Name;"`
@@ -46,7 +47,7 @@ func (c *Context) ToProtobuf() *clientpb.Context {
 		Listener: c.Listener.ToListener(),
 		Task:     c.Task.ToProtobuf(),
 		Type:     c.Type,
-		Value:    types.MarshalContext(c.Context),
+		Value:    c.Value,
 	}
 }
 
@@ -54,6 +55,7 @@ func FromContextProtobuf(ctx *clientpb.Context) (*Context, error) {
 	context := &Context{
 		Type:  ctx.Type,
 		Value: ctx.Value,
+		Nonce: ctx.Nonce,
 	}
 
 	if ctx.Pipeline != nil {
@@ -70,7 +72,7 @@ func FromContextProtobuf(ctx *clientpb.Context) (*Context, error) {
 	}
 
 	var err error
-	context.Context, err = types.ParseContext(context.Type, context.Value)
+	context.Context, err = output.ParseContext(context.Type, context.Value)
 	if err != nil {
 		return nil, err
 	}

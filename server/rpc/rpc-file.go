@@ -10,6 +10,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/handler"
+	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
@@ -33,8 +34,8 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 			return nil, err
 		}
 		go greq.HandlerResponse(ch, types.MsgAck, func(spite *implantpb.Spite) {
-			v := &types.UploadContext{
-				FileDescriptor: &types.FileDescriptor{
+			v := &output.UploadContext{
+				FileDescriptor: &output.FileDescriptor{
 					Name:       req.Name,
 					TargetPath: req.Target,
 					Abstract:   fmt.Sprintf("upload -%d -%t", req.Priv, req.Hidden),
@@ -114,8 +115,8 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 						return
 					}
 					if msg.End {
-						v := &types.UploadContext{
-							FileDescriptor: &types.FileDescriptor{
+						v := &output.UploadContext{
+							FileDescriptor: &output.FileDescriptor{
 								Name:       req.Name,
 								TargetPath: req.Target,
 								Abstract:   fmt.Sprintf("upload -%d -%t", req.Priv, req.Hidden),
@@ -221,8 +222,8 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 					greq.Task.Panic(buildErrorEvent(greq.Task, fmt.Errorf("checksum error")))
 					return
 				}
-				v := &types.DownloadContext{
-					FileDescriptor: &types.FileDescriptor{
+				v := &output.DownloadContext{
+					FileDescriptor: &output.FileDescriptor{
 						Name:       req.Name,
 						Checksum:   downloadAbs.Checksum,
 						TargetPath: req.Path,

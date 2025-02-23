@@ -9,6 +9,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/rem"
 	"github.com/chainreactors/malice-network/helper/types"
+	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
@@ -166,7 +167,7 @@ func (rpc *Server) RemDial(ctx context.Context, req *implantpb.Request) (*client
 			Listener: lns.ToProtobuf(),
 			Pipeline: pipe,
 			Type:     consts.ContextPivoting,
-			Value: types.MarshalContext(types.NewPivotingFromProto(&clientpb.REMAgent{
+			Value: output.MarshalContext(output.NewPivotingFromProto(&clientpb.REMAgent{
 				Id:     spite.GetResponse().Output,
 				Mod:    remOpt.Mod,
 				Remote: remOpt.RemoteAddr,
