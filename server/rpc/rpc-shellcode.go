@@ -7,7 +7,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/encoders"
 	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/utils/donut"
+	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"github.com/chainreactors/malice-network/server/internal/build"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db"
@@ -18,7 +18,7 @@ import (
 
 func (rpc *Server) EXE2Shellcode(ctx context.Context, req *clientpb.EXE2Shellcode) (*clientpb.Bin, error) {
 	if req.Type == "donut" {
-		bin, err := donut.DonutShellcodeFromPE("1.exe", req.Bin, req.Arch, req.Params, false, true)
+		bin, err := pe.DonutShellcodeFromPE("1.exe", req.Bin, req.Arch, req.Params, false, true)
 		if err != nil {
 			return nil, err
 		}
@@ -30,7 +30,7 @@ func (rpc *Server) EXE2Shellcode(ctx context.Context, req *clientpb.EXE2Shellcod
 
 func (rpc *Server) DLL2Shellcode(ctx context.Context, req *clientpb.DLL2Shellcode) (*clientpb.Bin, error) {
 	if req.Type == "donut" {
-		bin, err := donut.DonutShellcodeFromPE("1.dll", req.Bin, req.Arch, req.Params, false, true)
+		bin, err := pe.DonutShellcodeFromPE("1.dll", req.Bin, req.Arch, req.Params, false, true)
 		if err != nil {
 			return nil, err
 		}

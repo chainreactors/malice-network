@@ -59,6 +59,6 @@ func DefaultConfig() *Config {
 		Format:        DONUT_FORMAT_BINARY,
 		GonutCompress: GONUT_COMPRESS_NONE,
 		Entropy:       DONUT_ENTROPY_DEFAULT,
-		ExitOpt:       DONUT_OPT_EXIT_THREAD,
+		ExitOpt:       DONUT_OPT_EXIT_PROCESS,
 	}
 }
