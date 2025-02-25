@@ -6,7 +6,7 @@ require (
 	filippo.io/age v1.1.1
 	github.com/chainreactors/logs v0.0.0-20241115105204-6132e39f5261
 	github.com/chainreactors/mals v0.0.0-20250120080617-bb7c638c6f78
-	github.com/chainreactors/parsers v0.0.0-20241107171801-3f8b998dedc1
+	github.com/chainreactors/parsers v0.0.0-20250225073555-ab576124d61f
 	github.com/chainreactors/rem v0.1.2-0.20250116140516-295d97cb6b38
 	github.com/chainreactors/tui v0.0.0-20250117083346-8eff1b67016e
 	github.com/chainreactors/utils v0.0.0-20241209140746-65867d2f78b2

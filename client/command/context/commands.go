@@ -127,8 +127,10 @@ func Register(con *repl.Console) {
 			for _, c := range contexts.Contexts {
 				var ctx output.Context
 				switch typ {
-				case consts.ContextPort, "gogo":
+				case consts.ContextPort, output.GOGOPortType:
 					ctx, err = output.ToContext[*output.PortContext](c)
+				case "zombie", consts.ContextCredential:
+					ctx, err = output.ToContext[*output.CredentialContext](c)
 				}
 				if err != nil {
 					return nil, err

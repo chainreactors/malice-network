@@ -3,16 +3,18 @@ package rpc
 import (
 	"context"
 	"encoding/json"
-	"github.com/chainreactors/malice-network/server/internal/db"
+	"fmt"
 	"math"
 	"strings"
 
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/malice-network/server/internal/core"
+	"github.com/chainreactors/malice-network/server/internal/db"
 )
 
 //var (
@@ -46,29 +48,51 @@ func ContextCallback(task *core.Task, ctx context.Context) func(*implantpb.Spite
 			logs.Log.Error("Empty content")
 			return
 		}
-		var ctx output.Context
-		var err error
+		var ctxs output.Contexts
 		switch typ {
-		case "gogo":
-			ctx, err = output.ParseGOGO(content)
-		}
-		var value []byte
-		value, err = json.Marshal(ctx)
-		if err != nil {
-			logs.Log.Error(err)
-			return
+		case output.GOGOPortType:
+			c, err := output.ParseGOGO(content)
+			if err != nil {
+				logs.Log.Error(err)
+				return
+			}
+			ctxs = append(ctxs, c)
+		case "zombie":
+			cs, err := output.ParseZombie(content)
+			if err != nil {
+				logs.Log.Error(err)
+				return
+			}
+			for _, c := range cs {
+				ctxs = append(ctxs, c)
+			}
 		}
 
-		_, err = db.SaveContext(&clientpb.Context{
-			Task:    task.ToProtobuf(),
-			Session: task.Session.ToProtobufLite(),
-			Type:    ctx.Type(),
-			Value:   value,
-			Nonce:   nonce,
-		})
-		if err != nil {
-			logs.Log.Error(err)
-			return
+		for _, c := range ctxs {
+			value, err := json.Marshal(c)
+			if err != nil {
+				logs.Log.Error(err)
+				return
+			}
+
+			model, err := db.SaveContext(&clientpb.Context{
+				Task:    task.ToProtobuf(),
+				Session: task.Session.ToProtobufLite(),
+				Type:    c.Type(),
+				Value:   value,
+				Nonce:   nonce,
+			})
+			if err != nil {
+				logs.Log.Error(err)
+				return
+			}
+
+			core.EventBroker.Publish(core.Event{
+				EventType: consts.EventContext,
+				Op:        c.Type(),
+				Task:      task.ToProtobuf(),
+				Message:   fmt.Sprintf("new %s context: %s", c.Type(), model.ID),
+			})
 		}
 	}
 }
