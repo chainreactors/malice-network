@@ -18,7 +18,6 @@ func NewSessionContext(req *clientpb.RegisterSession) *SessionContext {
 		},
 		Modules: req.RegisterData.Module,
 		Addons:  req.RegisterData.Addons,
-		Loot:    map[string]string{},
 		Argue:   map[string]string{},
 		Any:     map[string]interface{}{},
 	}
@@ -37,7 +36,6 @@ type SessionContext struct {
 	*SessionInfo `json:",inline"`
 	Modules      []string               `json:"modules"`
 	Addons       []*implantpb.Addon     `json:"addons"`
-	Loot         map[string]string      `json:"loot"`  // mimikatz,zombie
 	Argue        map[string]string      `json:"argue"` // 参数欺骗
 	Any          map[string]interface{} `json:"any"`
 }

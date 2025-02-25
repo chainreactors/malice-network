@@ -7,7 +7,6 @@ import (
 
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/parsers"
 )
 
 type FileDescriptor struct {
@@ -170,27 +169,6 @@ func (k *KeyLoggerContext) String() string {
 	return fmt.Sprintf("Keylogger: %s (Size: %.2f KB)", k.Name, float64(k.Size)/1024)
 }
 
-type CredentialContext struct {
-	CredentialType string            `json:"type"`
-	Params         map[string]string `json:"params"`
-}
-
-func (c *CredentialContext) Type() string {
-	return consts.ContextCredential
-}
-
-func (c *CredentialContext) Marshal() []byte {
-	marshal, err := json.Marshal(c)
-	if err != nil {
-		return nil
-	}
-	return marshal
-}
-
-func (c *CredentialContext) String() string {
-	return fmt.Sprintf("Credential[%s]: %s", c.CredentialType, c.Params["username"])
-}
-
 func NewDownloadContext(content []byte) (*DownloadContext, error) {
 	downloadContext := &DownloadContext{}
 	err := json.Unmarshal(content, downloadContext)
@@ -198,15 +176,6 @@ func NewDownloadContext(content []byte) (*DownloadContext, error) {
 		return nil, err
 	}
 	return downloadContext, nil
-}
-
-func NewCredential(content []byte) (*CredentialContext, error) {
-	credential := &CredentialContext{}
-	err := json.Unmarshal(content, credential)
-	if err != nil {
-		return nil, err
-	}
-	return credential, nil
 }
 
 func NewKeyLogger(content []byte) (*KeyLoggerContext, error) {
@@ -288,50 +257,4 @@ func (u *UploadContext) Marshal() []byte {
 
 func (u *UploadContext) String() string {
 	return fmt.Sprintf("Upload: %s (Size: %.2f KB)", u.Name, float64(u.Size)/1024)
-}
-
-type Port struct {
-	Ip       string `json:"ip"`
-	Port     string `json:"port"`
-	Protocol string `json:"protocol"`
-	Status   string `json:"status"`
-}
-
-func NewPortContext(content []byte) (*PortContext, error) {
-	portContext := &PortContext{}
-	err := json.Unmarshal(content, portContext)
-	if err != nil {
-		return nil, err
-	}
-	return portContext, nil
-}
-
-type PortContext struct {
-	Ports   []*Port     `json:"ports"`
-	Extends interface{} `json:"extend"`
-}
-
-func (p *PortContext) Type() string {
-	return consts.ContextPort
-}
-
-func (p *PortContext) Marshal() []byte {
-	marshal, err := json.Marshal(p)
-	if err != nil {
-		return nil
-	}
-	return marshal
-}
-
-func (p *PortContext) GogoData() (*parsers.GOGOData, bool) {
-	data, ok := p.Extends.(*parsers.GOGOData)
-	return data, ok
-}
-
-func (p *PortContext) String() string {
-	var ports strings.Builder
-	for _, port := range p.Ports {
-		ports.WriteString(fmt.Sprintf("%s://%s:%s\t%s\n", port.Protocol, port.Ip, port.Port, port.Status))
-	}
-	return strings.TrimSpace(ports.String())
 }
