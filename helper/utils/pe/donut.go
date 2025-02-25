@@ -1,4 +1,4 @@
-package donut
+package pe
 
 import (
 	"github.com/wabzsy/gonut"
@@ -23,15 +23,16 @@ func DonutShellcodeFromPE(filename string, pe []byte, arch string, params string
 	config.InputBin = pe
 	config.Output = ""
 	config.Arch = getDonutArch(arch)
+	//config.Arch = gonut.DONUT_ARCH_X96
 	config.Args = params
-	config.Bypass = gonut.DONUT_BYPASS_CONTINUE
+	config.Bypass = gonut.DONUT_BYPASS_NONE
 	config.Format = gonut.DONUT_FORMAT_BINARY
 	config.Entropy = gonut.DONUT_ENTROPY_NONE
 	config.GonutCompress = gonut.GONUT_COMPRESS_NONE
-	config.ExitOpt = gonut.DONUT_OPT_EXIT_THREAD
+	config.ExitOpt = gonut.DONUT_OPT_EXIT_PROCESS
+	config.Headers = gonut.DONUT_HEADERS_OVERWRITE
 	config.Unicode = gonut.BoolType(isUnicode)
 	config.Thread = gonut.BoolType(createNewThread)
-
 	o := gonut.New(config)
 	if err = o.Create(); err != nil {
 		return nil, err

@@ -8,8 +8,8 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
-	"github.com/chainreactors/malice-network/helper/utils/donut"
 	"github.com/chainreactors/malice-network/helper/utils/output"
+	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
 	"path/filepath"
@@ -33,7 +33,7 @@ func ExecuteAssembly(rpc clientrpc.MaliceRPCClient, sess *core.Session, path str
 	}
 
 	cmdline := shellquote.Join(args...)
-	content, err := donut.DonutFromAssembly(filepath.Base(path), binary.Bin, consts.Arch(binary.Arch).String(), cmdline, "", "", "")
+	content, err := pe.DonutFromAssembly(filepath.Base(path), binary.Bin, consts.Arch(binary.Arch).String(), cmdline, "", "", "")
 	if err != nil {
 		return nil, err
 	}

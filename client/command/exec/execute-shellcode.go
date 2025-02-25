@@ -10,7 +10,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
-	"github.com/chainreactors/malice-network/helper/utils/donut"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/malice-network/helper/utils/pe"
@@ -44,7 +43,7 @@ func ExecShellcode(rpc clientrpc.MaliceRPCClient, sess *core.Session, shellcodeP
 	}
 	if pe.IsPeExt(shellcodePath) && fileutils.Exist(shellcodePath) {
 		cmdline := shellquote.Join(args...)
-		binary.Bin, err = donut.DonutShellcodeFromPE(shellcodePath, binary.Bin, arch, cmdline, false, false)
+		binary.Bin, err = pe.DonutShellcodeFromPE(shellcodePath, binary.Bin, arch, cmdline, false, false)
 		if err != nil {
 			return nil, err
 		}
@@ -80,7 +79,7 @@ func InlineShellcode(rpc clientrpc.MaliceRPCClient, sess *core.Session, path str
 	}
 	if pe.IsPeExt(path) {
 		cmdline := shellquote.Join(args...)
-		binary.Bin, err = donut.DonutShellcodeFromPE(path, binary.Bin, arch, cmdline, false, true)
+		binary.Bin, err = pe.DonutShellcodeFromPE(path, binary.Bin, arch, cmdline, false, true)
 		if err != nil {
 			return nil, err
 		}
