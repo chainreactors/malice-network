@@ -502,7 +502,6 @@ format_path("C:\\Windows\\System32\\calc.exe")
 		&mals.Helper{
 			Group:   GroupEncode,
 			Short:   "Get current timestamp in milliseconds or formatted date string.",
-			Input:   []string{"string (optional, format)"},
 			Output:  []string{"string"},
 			Example: `timestampOrFormatted(), timestampOrFormatted("01/02 15:04")`,
 		},

@@ -164,7 +164,7 @@ func WrapImplantFunc(con *Console, fun interface{}, callback ImplantFuncCallback
 		}
 
 		out := fmt.Sprintf("args %v", args)
-		if len(out) > 256 {
+		if len(out) > 512 {
 			sess.Console(task, "args too long")
 		} else {
 			sess.Console(task, out)

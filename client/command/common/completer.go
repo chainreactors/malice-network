@@ -356,3 +356,31 @@ func RemPipelineCompleter(con *repl.Console) carapace.Action {
 	}
 	return carapace.ActionCallback(callback)
 }
+func TaskTriggerTypeCompleter() carapace.Action {
+	return carapace.ActionValuesDescribed(
+		"Daily", "Triggers every day",
+		"Monthly", "Triggers every month",
+		"Weekly", "Triggers every week",
+		"AtLogon", "Triggers at user logon",
+		"StartUp", "Triggers at system startup",
+	).Tag("task trigger type")
+}
+
+func ServiceStartTypeCompleter() carapace.Action {
+	return carapace.ActionValuesDescribed(
+		"BootStart", "Starts when the system starts",
+		"SystemStart", "Starts when the system starts",
+		"AutoStart", "Starts automatically",
+		"DemandStart", "Starts on demand",
+		"Disabled", "Starts disabled",
+	).Tag("service start type")
+}
+
+func ServiceErrorControlCompleter() carapace.Action {
+	return carapace.ActionValuesDescribed(
+		"Ignore", "Ignore errors",
+		"Normal", "Normal error control",
+		"Severe", "Severe error control",
+		"Critical", "Critical error control",
+	).Tag("service error control")
+}

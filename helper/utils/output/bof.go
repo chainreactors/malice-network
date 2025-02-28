@@ -47,11 +47,11 @@ func (bofResps BOFResponses) String() string {
 		case CALLBACK_SCREENSHOT:
 			results.WriteString(fmt.Sprintf("Screenshot data received (size: %d)\n", len(resp.Data)-4))
 		case CALLBACK_FILE:
-			results.WriteString(fmt.Sprintf("File operation started: %s\n", string(resp.Data[8:])))
+			results.WriteString(fmt.Sprintf("[>] File operation started: %s\n", string(resp.Data[8:])))
 		case CALLBACK_FILE_WRITE:
-			results.WriteString(fmt.Sprintf("File data received (size: %d)\n", len(resp.Data)-4))
+			results.WriteString(fmt.Sprintf("[+] File data received (size: %d) ...\n", len(resp.Data)-4))
 		case CALLBACK_FILE_CLOSE:
-			results.WriteString("File operation completed\n")
+			results.WriteString("[✓] File operation completed\n")
 		default:
 			results.WriteString(fmt.Sprintf("Callback type %d: %s\n", resp.CallbackType, string(resp.Data)))
 		}
