@@ -141,8 +141,8 @@ func RegisterShellcodeFunc(con *repl.Console) {
 			"args",
 			"output",
 			"timeout",
+			"arch",
 			"process",
 		},
 		[]string{"task"})
-
 }

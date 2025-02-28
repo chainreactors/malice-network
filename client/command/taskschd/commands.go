@@ -4,6 +4,7 @@ import (
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -55,8 +56,12 @@ func Commands(con *repl.Console) []*cobra.Command {
 	common.BindFlag(taskSchdCreateCmd, func(f *pflag.FlagSet) {
 		f.String("name", "", "Name of the scheduled task (required)")
 		f.String("path", "", "Path to the executable for the scheduled task (required)")
-		f.Uint32("trigger_type", 1, "Trigger type for the task (e.g., 1 for daily, 2 for weekly)")
+		f.String("trigger_type", "", "Trigger type for the task (e.g. Daily,Weekly,monthly)")
 		f.String("start_boundary", "", "Start boundary for the scheduled task (e.g., 2023-10-10T09:00:00)")
+	})
+
+	common.BindFlagCompletions(taskSchdCreateCmd, func(comp carapace.ActionMap) {
+		comp["trigger_type"] = common.TaskTriggerTypeCompleter()
 	})
 
 	taskSchdStartCmd := &cobra.Command{

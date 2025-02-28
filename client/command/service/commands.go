@@ -4,6 +4,7 @@ import (
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -62,6 +63,10 @@ Control the start type and error control by providing appropriate values.`,
 		f.StringP("start_type", "", "AutoStart", "Service start type (BootStart, SystemStart, AutoStart, DemandStart, Disabled)")
 		f.StringP("error", "", "Normal", "Error control level (Ignore, Normal, Severe, Critical)")
 		f.String("account", "LocalSystem", `AccountName for service (LocalSystem, NetworkService; \<hostname\>\\\<username\> NT AUTHORITY\SYSTEM; .\username, ..)`)
+	})
+	common.BindFlagCompletions(serviceCreateCmd, func(comp carapace.ActionMap) {
+		comp["start_type"] = common.ServiceStartTypeCompleter()
+		comp["error"] = common.ServiceErrorControlCompleter()
 	})
 
 	serviceStartCmd := &cobra.Command{

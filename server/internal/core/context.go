@@ -107,13 +107,12 @@ func HandleFileOperations(op string, data []byte, task *Task) error {
 		if _, err := file.Write(data[4:]); err != nil {
 			return fmt.Errorf("write file failed: %w", err)
 		}
-
-		EventBroker.Publish(Event{
-			EventType: consts.EventContext,
-			Op:        consts.CtrlContextFileWrite,
-			Task:      task.ToProtobuf(),
-			Message:   fmt.Sprintf("file write: %s %d", savePath, len(data[4:])),
-		})
+		//EventBroker.Publish(Event{
+		//	EventType: consts.EventContext,
+		//	Op:        consts.CtrlContextFileWrite,
+		//	Task:      task.ToProtobuf(),
+		//	Message:   fmt.Sprintf("file write: %s %d", savePath, len(data[4:])),
+		//})
 		return nil
 
 	case "close":
@@ -121,7 +120,6 @@ func HandleFileOperations(op string, data []byte, task *Task) error {
 		if !ok {
 			return fmt.Errorf("no file found for ID: %d", fileId)
 		}
-
 		checksum, _ := fileutils.CalculateSHA256Checksum(savePath)
 		_, err := SaveContext(&output.DownloadContext{
 			FileDescriptor: &output.FileDescriptor{
@@ -140,7 +138,7 @@ func HandleFileOperations(op string, data []byte, task *Task) error {
 			EventType: consts.EventContext,
 			Op:        consts.CtrlContextFileClose,
 			Task:      task.ToProtobuf(),
-			Message:   fmt.Sprintf("file end: %s", savePath),
+			Message:   fmt.Sprintf("file_saved_on_server: %s", savePath),
 		})
 		return nil
 	}

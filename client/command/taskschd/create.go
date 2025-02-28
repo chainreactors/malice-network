@@ -10,6 +10,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/spf13/cobra"
+	"strings"
 )
 
 // TaskSchdCreateCmd creates a new scheduled task.
@@ -17,7 +18,7 @@ func TaskSchdCreateCmd(cmd *cobra.Command, con *repl.Console) error {
 	// 内嵌的 Flag 解析
 	name, _ := cmd.Flags().GetString("name")
 	path, _ := cmd.Flags().GetString("path")
-	triggerType, _ := cmd.Flags().GetUint32("trigger_type")
+	triggerType, _ := cmd.Flags().GetString("trigger_type")
 	startBoundary, _ := cmd.Flags().GetString("start_boundary")
 
 	session := con.GetInteractive()
@@ -30,16 +31,28 @@ func TaskSchdCreateCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func TaskSchdCreate(rpc clientrpc.MaliceRPCClient, session *core.Session, name, path string, triggerType uint32, startBoundary string) (*clientpb.Task, error) {
+func TaskSchdCreate(rpc clientrpc.MaliceRPCClient, session *core.Session, name, path, triggerType, startBoundary string) (*clientpb.Task, error) {
 	request := &implantpb.TaskScheduleRequest{
 		Type: consts.ModuleTaskSchdCreate,
 		Taskschd: &implantpb.TaskSchedule{
 			Path:           "\\",
 			Name:           name,
 			ExecutablePath: path,
-			TriggerType:    triggerType,
-			StartBoundary:  startBoundary,
+			//TriggerType:    triggerType,
+			StartBoundary: startBoundary,
 		},
+	}
+	switch strings.ToLower(triggerType) {
+	case "daily", "day":
+		request.Taskschd.TriggerType = 2
+	case "weekly", "week":
+		request.Taskschd.TriggerType = 3
+	case "monthly", "month", "mon":
+		request.Taskschd.TriggerType = 4
+	case "atlogon", "logon":
+		request.Taskschd.TriggerType = 9
+	case "start", "startup":
+		request.Taskschd.TriggerType = 8
 	}
 	return rpc.TaskSchdCreate(session.Context(), request)
 }
