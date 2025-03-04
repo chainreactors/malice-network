@@ -4,18 +4,19 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/types"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 	"google.golang.org/grpc/metadata"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/client/assets"
+	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
+	"github.com/chainreactors/malice-network/helper/types"
 )
 
 func NewSession(sess *clientpb.Session, server *ServerStatus) *Session {
