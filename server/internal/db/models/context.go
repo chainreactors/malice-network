@@ -15,7 +15,6 @@ type Context struct {
 	CreatedAt  time.Time `gorm:"->;<-:create"`
 	SessionID  string    `gorm:"type:string;index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
 	PipelineID string    `gorm:"type:string;index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
-	ListenerID string    `gorm:"type:string;index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
 	TaskID     string    `gorm:"type:string;index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
 	Type       string
 	Nonce      string
@@ -24,7 +23,6 @@ type Context struct {
 
 	Session  *Session  `gorm:"foreignKey:SessionID;references:SessionID;"`
 	Pipeline *Pipeline `gorm:"foreignKey:PipelineID;references:Name;"`
-	Listener *Operator `gorm:"foreignKey:ListenerID;references:Name;"`
 	Task     *Task     `gorm:"foreignKey:TaskID;references:ID;"`
 }
 
@@ -44,7 +42,6 @@ func (c *Context) ToProtobuf() *clientpb.Context {
 		Id:       c.ID.String(),
 		Session:  c.Session.ToProtobuf(),
 		Pipeline: c.Pipeline.ToProtobuf(),
-		Listener: c.Listener.ToListener(),
 		Task:     c.Task.ToProtobuf(),
 		Type:     c.Type,
 		Value:    c.Value,
@@ -61,9 +58,7 @@ func FromContextProtobuf(ctx *clientpb.Context) (*Context, error) {
 	if ctx.Pipeline != nil {
 		context.PipelineID = ctx.Pipeline.Name
 	}
-	if ctx.Listener != nil {
-		context.ListenerID = ctx.Listener.Id
-	}
+
 	if ctx.Session != nil {
 		context.SessionID = ctx.Session.SessionId
 	}

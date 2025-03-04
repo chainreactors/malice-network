@@ -35,6 +35,18 @@ func AsContext[T Context](ctx Context) (T, error) {
 	return zero, fmt.Errorf("cannot convert %T to %T", ctx, zero)
 }
 
+func AsContexts[T Context](ctxs []Context) ([]T, error) {
+	var contexts []T
+	for _, ctx := range ctxs {
+		c, err := AsContext[T](ctx)
+		if err != nil {
+			return nil, err
+		}
+		contexts = append(contexts, c)
+	}
+	return contexts, nil
+}
+
 func ToContext[T Context](ctx *clientpb.Context) (T, error) {
 	c, err := ParseContext(ctx.Type, ctx.Value)
 	if err != nil {
@@ -106,27 +118,6 @@ type Context interface {
 	String() string
 }
 
-type DownloadContext struct {
-	*FileDescriptor `json:",inline"`
-	Content         []byte
-}
-
-func (d *DownloadContext) Type() string {
-	return consts.ContextDownload
-}
-
-func (d *DownloadContext) Marshal() []byte {
-	marshal, err := json.Marshal(d.FileDescriptor)
-	if err != nil {
-		return nil
-	}
-	return marshal
-}
-
-func (d *DownloadContext) String() string {
-	return fmt.Sprintf("Download: %s (Size: %.2f KB)", d.Name, float64(d.Size)/1024)
-}
-
 type ScreenShotContext struct {
 	*FileDescriptor `json:",inline"`
 	Content         []byte
@@ -194,67 +185,4 @@ func NewScreenShot(content []byte) (*ScreenShotContext, error) {
 		return nil, err
 	}
 	return &ScreenShotContext{FileDescriptor: screenShot}, nil
-}
-
-func NewPivoting(content []byte) (*PivotingContext, error) {
-	pivoting := &PivotingContext{}
-	err := json.Unmarshal(content, pivoting)
-	if err != nil {
-		return nil, err
-	}
-	return pivoting, nil
-}
-
-func NewPivotingFromProto(agent *clientpb.REMAgent) *PivotingContext {
-	return &PivotingContext{REMAgent: agent}
-}
-
-type PivotingContext struct {
-	*clientpb.REMAgent `json:",inline"`
-}
-
-func (p *PivotingContext) Type() string {
-	return consts.ContextPivoting
-}
-
-func (p *PivotingContext) Marshal() []byte {
-	marshal, err := json.Marshal(p)
-	if err != nil {
-		return nil
-	}
-	return marshal
-}
-
-func (p *PivotingContext) String() string {
-	return fmt.Sprintf("Pivoting: %s -> %s", p.GetLocal(), p.GetRemote())
-}
-
-func NewUploadContext(content []byte) (*UploadContext, error) {
-	upload := &UploadContext{}
-	err := json.Unmarshal(content, upload)
-	if err != nil {
-		return nil, err
-	}
-	return upload, nil
-}
-
-type UploadContext struct {
-	*FileDescriptor `json:",inline"`
-	Content         []byte
-}
-
-func (u *UploadContext) Type() string {
-	return consts.ContextUpload
-}
-
-func (u *UploadContext) Marshal() []byte {
-	marshal, err := json.Marshal(u)
-	if err != nil {
-		return nil
-	}
-	return marshal
-}
-
-func (u *UploadContext) String() string {
-	return fmt.Sprintf("Upload: %s (Size: %.2f KB)", u.Name, float64(u.Size)/1024)
 }

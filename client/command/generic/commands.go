@@ -107,6 +107,10 @@ pivot
 ~~~`,
 	}
 
+	common.BindFlag(pivotCmd, func(f *pflag.FlagSet) {
+		f.BoolP("all", "a", false, "list all pivot agents")
+	})
+
 	return []*cobra.Command{loginCmd, versionCmd, exitCmd, broadcastCmd, cmdCmd, pivotCmd}
 }
 

@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 	"fmt"
+
 	"github.com/chainreactors/malice-network/helper/consts"
 	errs "github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
@@ -13,28 +14,28 @@ import (
 )
 
 func (rpc *Server) GetContexts(ctx context.Context, req *clientpb.Context) (*clientpb.Contexts, error) {
-	var contexts []*models.Context
-	var err error
+	query := db.NewContextQuery()
 
-	// 如果指定了类型，则按类型筛选
-	if req.Type != "" && req.Session == nil {
-		contexts, err = db.GetContextsByType(req.Type)
-	} else if req.Type != "" {
-		contexts, err = db.GetContextsBySessionAndType(req.Session.SessionId, req.Type)
-	} else if req.Type != "" && req.Task != nil {
-		contexts, err = db.GetContextsByTask(req.Session.SessionId, req.Type, fmt.Sprintf("%s_%d", req.Task.SessionId, req.Task.TaskId))
-	} else if req.Pipeline != nil {
-		contexts, err = db.GetContextsByPipeline(req.Pipeline.Name)
-	} else if req.Listener != nil {
-		contexts, err = db.GetContextsByListener(req.Listener.Id)
-	} else if req.Session != nil {
-		contexts, err = db.GetContextsBySession(req.Session.SessionId)
-	} else if req.Nonce != "" {
-		contexts, err = db.GetContextsByNonce(req.Nonce)
-	} else {
-		contexts, err = db.GetAllContext()
+	if req.Type != "" {
+		query.ByType(req.Type)
+	}
+	if req.Session != nil {
+		query.BySession(req.Session.SessionId)
+	}
+	if req.Task != nil {
+		query.ByTask(fmt.Sprintf("%s_%d", req.Task.SessionId, req.Task.TaskId))
+	}
+	if req.Pipeline != nil {
+		query.ByPipeline(req.Pipeline.Name)
+	}
+	if req.Listener != nil {
+		query.ByListener(req.Listener.Id)
+	}
+	if req.Nonce != "" {
+		query.ByNonce(req.Nonce)
 	}
 
+	contexts, err := query.Find()
 	if err != nil {
 		return nil, err
 	}
@@ -43,11 +44,6 @@ func (rpc *Server) GetContexts(ctx context.Context, req *clientpb.Context) (*cli
 		Contexts: make([]*clientpb.Context, 0),
 	}
 	for _, c := range contexts {
-		//ictx, err := output.ParseContext(c.Type, c.Value)
-		//if err != nil {
-		//	return nil, err
-		//}
-		//c.Context = ictx
 		result.Contexts = append(result.Contexts, c.ToProtobuf())
 	}
 	return result, nil

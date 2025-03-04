@@ -1,10 +1,12 @@
 package listener
 
 import (
+	"context"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
 	"github.com/chainreactors/malice-network/helper/rem"
+	"time"
 )
 
 func NewRem(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeline) (*REM, error) {
@@ -58,6 +60,17 @@ func (rem *REM) Start() error {
 			}
 
 			go rem.remCon.Handler(agent)
+		}
+	}()
+
+	go func() {
+		for {
+			_, err := rem.rpc.HealthCheckRem(context.Background(), rem.ToProtobuf())
+			if err != nil {
+				logs.Log.Error(err)
+			}
+
+			time.Sleep(60 * time.Second)
 		}
 	}()
 	return nil

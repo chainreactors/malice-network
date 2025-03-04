@@ -167,12 +167,15 @@ func (rpc *Server) RemDial(ctx context.Context, req *implantpb.Request) (*client
 			Listener: lns.ToProtobuf(),
 			Pipeline: pipe,
 			Type:     consts.ContextPivoting,
-			Value: output.MarshalContext(output.NewPivotingFromProto(&clientpb.REMAgent{
-				Id:     spite.GetResponse().Output,
-				Mod:    remOpt.Mod,
-				Remote: remOpt.RemoteAddr,
-				Local:  remOpt.LocalAddr,
-			})),
+			Value: output.MarshalContext(&output.PivotingContext{
+				Enable:    true,
+				Listener:  pipe.ListenerId,
+				Pipeline:  pid,
+				RemID:     spite.GetResponse().Output,
+				Mod:       remOpt.Mod,
+				RemoteURL: remOpt.RemoteAddr,
+				LocalURL:  remOpt.LocalAddr,
+			}),
 		})
 		if err != nil {
 			return
@@ -182,20 +185,30 @@ func (rpc *Server) RemDial(ctx context.Context, req *implantpb.Request) (*client
 	return greq.Task.ToProtobuf(), nil
 }
 
-// rpc ListPivots(clientpb.Empty) returns (clientpb.REMAgents);
-func (rpc *Server) GetPivots(ctx context.Context, req *clientpb.Empty) (*clientpb.REMAgents, error) {
-	var result []*clientpb.REMAgent
+func (rpc *Server) HealthCheckRem(ctx context.Context, req *clientpb.Pipeline) (*clientpb.Empty, error) {
+	ctxs, err := db.NewContextQuery().ByType(consts.ContextPivoting).ByPipeline(req.Name).Find()
+	if err != nil {
+		return nil, err
+	}
 
-	core.Jobs.Range(func(key, value any) bool {
-		job := value.(*core.Job)
-		if job.Pipeline.Type != consts.RemPipeline {
-			return true
-		}
-		for _, a := range job.Pipeline.GetRem().Agents {
-			result = append(result, a)
-		}
-		return true
-	})
+	agents := req.GetRem().Agents
 
-	return &clientpb.REMAgents{Agents: result}, nil
+	for _, c := range ctxs {
+		if _, ok := agents[c.ID.String()]; !ok {
+			t, err := output.ParseContext(consts.ContextPivoting, c.Value)
+			if err != nil {
+				return nil, err
+			}
+			piv := t.(*output.PivotingContext)
+			if piv.Enable {
+				piv.Enable = false
+				c.Value = piv.Marshal()
+				_, err = db.SaveContext(c.ToProtobuf())
+				if err != nil {
+					return nil, err
+				}
+			}
+		}
+	}
+	return &clientpb.Empty{}, nil
 }

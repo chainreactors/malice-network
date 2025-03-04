@@ -4,12 +4,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/chainreactors/malice-network/helper/utils/output"
 	"mime"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/chainreactors/malice-network/helper/utils/output"
 
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/codenames"
@@ -24,6 +25,7 @@ import (
 	"github.com/gofrs/uuid"
 	"gopkg.in/yaml.v3"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 	"gorm.io/gorm/utils"
 )
 
@@ -165,10 +167,11 @@ func UpdateSessionTimer(sessionID string, interval uint64, jitter float64) error
 }
 
 func CreateOperator(name string, typ string, remoteAddr string) error {
-	var operator *models.Operator
-	operator.Name = name
-	operator.Type = typ
-	operator.Remote = remoteAddr
+	operator := &models.Operator{
+		Name:   name,
+		Type:   typ,
+		Remote: remoteAddr,
+	}
 	err := Session().Save(&operator).Error
 	return err
 
@@ -1062,95 +1065,72 @@ func GetBuilderByProfileName(profileName string) (*clientpb.Builders, error) {
 	return pbBuilders, nil
 }
 
-// context
-func GetAllContext() ([]*models.Context, error) {
-	var contexts []*models.Context
-	result := Session().
-		Preload("Session").
-		Preload("Task").
-		Find(&contexts)
-	if result.Error != nil {
-		return nil, result.Error
+// ContextQuery 用于构建Context查询的结构体
+type ContextQuery struct {
+	db *gorm.DB
+}
+
+// NewContextQuery 创建新的Context查询构建器
+func NewContextQuery() *ContextQuery {
+	return &ContextQuery{
+		db: Session().
+			Preload("Session").
+			Preload("Pipeline").
+			Preload("Task"),
 	}
-	return contexts, nil
 }
 
-func CreateContext(ctx *models.Context) error {
-	return Session().Create(ctx).Error
+// ByType 按类型查询
+func (q *ContextQuery) ByType(typ string) *ContextQuery {
+	q.db = q.db.Where("type = ?", typ)
+	return q
 }
 
-func GetContextsByType(typ string) ([]*models.Context, error) {
+// BySession 按会话ID查询
+func (q *ContextQuery) BySession(sessionID string) *ContextQuery {
+	q.db = q.db.Where("session_id = ?", sessionID)
+	return q
+}
+
+// ByTask 按任务ID查询
+func (q *ContextQuery) ByTask(taskID string) *ContextQuery {
+	q.db = q.db.Where("task_id = ?", taskID)
+	return q
+}
+
+// ByPipeline 按Pipeline ID查询
+func (q *ContextQuery) ByPipeline(pipelineID string) *ContextQuery {
+	q.db = q.db.Where("pipeline_id = ?", pipelineID)
+	return q
+}
+
+// ByNonce 按Nonce查询
+func (q *ContextQuery) ByNonce(nonce string) *ContextQuery {
+	q.db = q.db.Where("nonce = ?", nonce)
+	return q
+}
+
+// ByListener 按Listener ID查询
+func (q *ContextQuery) ByListener(listenerID string) *ContextQuery {
+	q.db = q.db.Where("listener_id = ?", listenerID)
+	return q
+}
+
+// Find 执行查询并返回结果
+func (q *ContextQuery) Find() ([]*models.Context, error) {
 	var contexts []*models.Context
-	err := Session().
-		Preload("Session").
-		Preload("Pipeline").
-		Preload("Listener").
-		Preload("Task").
-		Where("type = ?", typ).
-		Find(&contexts).Error
+	err := q.db.Find(&contexts).Error
+	return contexts, err
+}
+
+// First 查询单个结果
+func (q *ContextQuery) First() (*models.Context, error) {
+	var context models.Context
+	err := q.db.First(&context).Error
 	if err != nil {
 		return nil, err
 	}
-
-	return contexts, nil
-}
-
-func GetContextsBySessionAndType(sessionID, types string) ([]*models.Context, error) {
-	var contexts []*models.Context
-	err := Session().Where("session_id = ? AND type = ?", sessionID, types).Find(&contexts).Error
-	if err != nil {
-		return nil, err
-	}
-	return contexts, nil
-}
-
-func GetContextsByTask(sessionID, types string, taskID string) ([]*models.Context, error) {
-	var contexts []*models.Context
-	err := Session().Where("session_id = ? AND type = ? AND task_id = ?", sessionID, types, taskID).Find(&contexts).Error
-	if err != nil {
-		return nil, err
-	}
-	return contexts, nil
-
-}
-func GetContextsBySession(sessionID string) ([]*models.Context, error) {
-	var contexts []*models.Context
-	err := Session().Where("session_id = ?", sessionID).Find(&contexts).Error
-	if err != nil {
-		return nil, err
-	}
-
-	return contexts, nil
-}
-
-func GetContextsByPipeline(pipelineID string) ([]*models.Context, error) {
-	var contexts []*models.Context
-	err := Session().Where("pipeline_id = ?", pipelineID).Find(&contexts).Error
-	if err != nil {
-		return nil, err
-	}
-
-	return contexts, nil
-}
-
-func GetContextsByNonce(nonce string) ([]*models.Context, error) {
-	var contexts []*models.Context
-	err := Session().Where("nonce = ?", nonce).Find(&contexts).Error
-	if err != nil {
-		return nil, err
-	}
-
-	return contexts, nil
-}
-
-func GetContextsByListener(listenerID string) ([]*models.Context, error) {
-	var contexts []*models.Context
-	err := Session().Where("listener_id = ?", listenerID).Find(&contexts).Error
-	if err != nil {
-		return nil, err
-	}
-
-	return contexts, nil
+	return &context, nil
 }
 
 func SaveContext(ctx *clientpb.Context) (*models.Context, error) {
@@ -1158,18 +1138,22 @@ func SaveContext(ctx *clientpb.Context) (*models.Context, error) {
 	if err != nil {
 		return nil, err
 	}
-	return contextDB, Session().Create(contextDB).Error
+
+	if ctx.Id != "" {
+		id, err := uuid.FromString(ctx.Id)
+		if err != nil {
+			return nil, err
+		}
+		contextDB.ID = id
+	}
+
+	return contextDB, Session().Session(&gorm.Session{
+		FullSaveAssociations: false,
+	}).Clauses(clause.OnConflict{
+		UpdateAll: true,
+	}).Create(contextDB).Error
 }
 
 func DeleteContext(contextID string) error {
 	return Session().Where("id = ?", contextID).Delete(&models.Context{}).Error
-}
-
-func GetContext(contextID string) (*clientpb.Context, error) {
-	var context models.Context
-	err := Session().Where("id = ?", contextID).First(&context).Error
-	if err != nil {
-		return nil, err
-	}
-	return context.ToProtobuf(), nil
 }
