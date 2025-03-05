@@ -33,8 +33,8 @@ func ExecuteDLLCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func ExecDLL(rpc clientrpc.MaliceRPCClient, sess *core.Session, dllPath string, entrypoint string, args []string, binPath string, output bool, timeout uint32, arch string, process string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
-	binary, err := common.NewBinary(consts.ModuleExecuteDll, dllPath, args, output, timeout, arch, process, sac)
+func ExecDLL(rpc clientrpc.MaliceRPCClient, sess *core.Session, dllPath string, entrypoint string, args []string, binPath string, out bool, timeout uint32, arch string, process string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
+	binary, err := output.NewBinary(consts.ModuleExecuteDll, dllPath, args, out, timeout, arch, process, sac)
 	if err != nil {
 		return nil, err
 	}
@@ -76,11 +76,11 @@ func InlineDLLCmd(cmd *cobra.Command, con *repl.Console) error {
 }
 
 func InlineDLL(rpc clientrpc.MaliceRPCClient, sess *core.Session, path, entryPoint string, args []string,
-	output bool, timeout uint32, arch string, process string) (*clientpb.Task, error) {
+	out bool, timeout uint32, arch string, process string) (*clientpb.Task, error) {
 	if arch == "" {
 		arch = sess.Os.Arch
 	}
-	binary, err := common.NewBinary(consts.ModuleExecuteDll, path, args, output, timeout, arch, process, nil)
+	binary, err := output.NewBinary(consts.ModuleExecuteDll, path, args, out, timeout, arch, process, nil)
 	if err != nil {
 		return nil, err
 	}

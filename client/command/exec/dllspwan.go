@@ -33,8 +33,8 @@ func ExecuteDLLSpawnCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func ExecuteDLLSpawn(rpc clientrpc.MaliceRPCClient, sess *core.Session, dllPath string, entrypoint string, data string, binPath string, output bool, timeout uint32, arch string, process string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
-	binary, err := common.NewBinaryData(consts.ModuleDllSpawn, dllPath, data, output, timeout, arch, process, sac)
+func ExecuteDLLSpawn(rpc clientrpc.MaliceRPCClient, sess *core.Session, dllPath string, entrypoint string, data string, binPath string, out bool, timeout uint32, arch string, process string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
+	binary, err := output.NewBinaryData(consts.ModuleDllSpawn, dllPath, data, out, timeout, arch, process, sac)
 	if err != nil {
 		return nil, err
 	}

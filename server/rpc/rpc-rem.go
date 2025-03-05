@@ -7,7 +7,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/rem"
+	"github.com/chainreactors/malice-network/helper/third/rem"
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/malice-network/server/internal/core"
@@ -182,6 +182,19 @@ func (rpc *Server) RemDial(ctx context.Context, req *implantpb.Request) (*client
 		}
 		core.EventBroker.Publish(event)
 	})
+	return greq.Task.ToProtobuf(), nil
+}
+
+func (rpc *Server) LoadRem(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
+	greq, err := newGenericRequest(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	ch, err := rpc.GenericHandler(ctx, greq)
+	if err != nil {
+		return nil, err
+	}
+	go greq.HandlerResponse(ch, types.MsgResponse)
 	return greq.Task.ToProtobuf(), nil
 }
 

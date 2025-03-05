@@ -5,6 +5,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
+	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -59,7 +60,7 @@ func ParseSacrificeFlags(cmd *cobra.Command) *implantpb.SacrificeProcess {
 	isBlockDll, _ := cmd.Flags().GetBool("block_dll")
 	hidden, _ := cmd.Flags().GetBool("hidden")
 	disableEtw, _ := cmd.Flags().GetBool("etw")
-	return NewSacrifice(ppid, hidden, isBlockDll, disableEtw, argue)
+	return output.NewSacrifice(ppid, hidden, isBlockDll, disableEtw, argue)
 }
 
 func CLRFlagSet(f *pflag.FlagSet) {

@@ -26,7 +26,7 @@ func ExecuteBofCmd(cmd *cobra.Command, con *repl.Console) error {
 }
 
 func ExecBof(rpc clientrpc.MaliceRPCClient, sess *core.Session, bofPath string, args []string, out bool) (*clientpb.Task, error) {
-	binary, err := common.NewExecutable(consts.ModuleExecuteBof, bofPath, args, sess.Os.Arch, out, nil)
+	binary, err := output.NewExecutable(consts.ModuleExecuteBof, bofPath, args, sess.Os.Arch, out, nil)
 	if err != nil {
 		return nil, err
 	}

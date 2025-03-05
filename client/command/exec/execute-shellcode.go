@@ -32,13 +32,13 @@ func ExecuteShellcodeCmd(cmd *cobra.Command, con *repl.Console) error {
 }
 
 func ExecShellcode(rpc clientrpc.MaliceRPCClient, sess *core.Session, shellcodePath string,
-	args []string, output bool, timeout uint32, arch string, process string,
+	args []string, out bool, timeout uint32, arch string, process string,
 	sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 	if arch == "" {
 		arch = sess.Os.Arch
 	}
 
-	binary, err := common.NewBinary(consts.ModuleExecuteShellcode, shellcodePath, args, output, timeout, arch, process, sac)
+	binary, err := output.NewBinary(consts.ModuleExecuteShellcode, shellcodePath, args, out, timeout, arch, process, sac)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create binary: %w", err)
 	}
@@ -70,11 +70,11 @@ func InlineShellcodeCmd(cmd *cobra.Command, con *repl.Console) error {
 }
 
 func InlineShellcode(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, args []string,
-	output bool, timeout uint32, arch string, process string) (*clientpb.Task, error) {
+	out bool, timeout uint32, arch string, process string) (*clientpb.Task, error) {
 	if arch == "" {
 		arch = sess.Os.Arch
 	}
-	binary, err := common.NewBinary(consts.ModuleExecuteShellcode, path, args, output, timeout, arch, process, nil)
+	binary, err := output.NewBinary(consts.ModuleExecuteShellcode, path, args, out, timeout, arch, process, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +101,7 @@ func RegisterShellcodeFunc(con *repl.Console) {
 		ExecShellcode,
 		"bshinject",
 		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, ppid uint32, arch, path string) (*clientpb.Task, error) {
-			return ExecShellcode(rpc, sess, path, nil, true, math.MaxUint32, sess.Os.Arch, "", common.NewSacrifice(ppid, false, true, true, ""))
+			return ExecShellcode(rpc, sess, path, nil, true, math.MaxUint32, sess.Os.Arch, "", output.NewSacrifice(ppid, false, true, true, ""))
 		},
 		output.ParseAssembly,
 		nil)
