@@ -1,7 +1,6 @@
 package pivot
 
 import (
-	"fmt"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -12,15 +11,20 @@ import (
 	"net/url"
 )
 
-func FormatRemCmdLine(con *repl.Console, pipe, mod string, remote, local *url.URL) ([]string, error) {
+func GetRemLink(con *repl.Console, pipe string) (string, error) {
 	remPipe, ok := con.Pipelines[pipe]
 	if !(ok && remPipe.GetRem() != nil) {
-		return nil, errs.ErrNotFoundPipeline
+		return "", errs.ErrNotFoundPipeline
 	}
-	if remPipe.GetRem().Link == "" {
-		return nil, fmt.Errorf("not found rem link")
+	return remPipe.GetRem().Link, nil
+}
+
+func FormatRemCmdLine(con *repl.Console, pipe, mod string, remote, local *url.URL) ([]string, error) {
+	remLink, err := GetRemLink(con, pipe)
+	if err != nil {
+		return nil, err
 	}
-	args := []string{"-c", remPipe.GetRem().Link}
+	args := []string{"-c", remLink}
 	args = append(args, "-m", mod)
 	if remote != nil {
 		args = append(args, "-r", remote.String())
