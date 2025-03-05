@@ -15,6 +15,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
+	"github.com/wabzsy/gonut"
 	"math"
 )
 
@@ -43,7 +44,7 @@ func ExecShellcode(rpc clientrpc.MaliceRPCClient, sess *core.Session, shellcodeP
 	}
 	if pe.IsPeExt(shellcodePath) && fileutils.Exist(shellcodePath) {
 		cmdline := shellquote.Join(args...)
-		binary.Bin, err = pe.DonutShellcodeFromPE(shellcodePath, binary.Bin, arch, cmdline, false, false)
+		binary.Bin, err = gonut.DonutShellcodeFromPE(shellcodePath, binary.Bin, arch, cmdline, false, false)
 		if err != nil {
 			return nil, err
 		}
@@ -79,7 +80,7 @@ func InlineShellcode(rpc clientrpc.MaliceRPCClient, sess *core.Session, path str
 	}
 	if pe.IsPeExt(path) {
 		cmdline := shellquote.Join(args...)
-		binary.Bin, err = pe.DonutShellcodeFromPE(path, binary.Bin, arch, cmdline, false, true)
+		binary.Bin, err = gonut.DonutShellcodeFromPE(path, binary.Bin, arch, cmdline, false, true)
 		if err != nil {
 			return nil, err
 		}
