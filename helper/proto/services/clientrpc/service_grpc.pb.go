@@ -31,7 +31,6 @@ const (
 	MaliceRPC_SessionManage_FullMethodName         = "/clientrpc.MaliceRPC/SessionManage"
 	MaliceRPC_GetListeners_FullMethodName          = "/clientrpc.MaliceRPC/GetListeners"
 	MaliceRPC_GetJobs_FullMethodName               = "/clientrpc.MaliceRPC/GetJobs"
-	MaliceRPC_GetPivots_FullMethodName             = "/clientrpc.MaliceRPC/GetPivots"
 	MaliceRPC_GetTasks_FullMethodName              = "/clientrpc.MaliceRPC/GetTasks"
 	MaliceRPC_GetTaskContent_FullMethodName        = "/clientrpc.MaliceRPC/GetTaskContent"
 	MaliceRPC_GetContextFiles_FullMethodName       = "/clientrpc.MaliceRPC/GetContextFiles"
@@ -120,6 +119,7 @@ const (
 	MaliceRPC_ExecuteLocal_FullMethodName          = "/clientrpc.MaliceRPC/ExecuteLocal"
 	MaliceRPC_InlineLocal_FullMethodName           = "/clientrpc.MaliceRPC/InlineLocal"
 	MaliceRPC_RemDial_FullMethodName               = "/clientrpc.MaliceRPC/RemDial"
+	MaliceRPC_LoadRem_FullMethodName               = "/clientrpc.MaliceRPC/LoadRem"
 	MaliceRPC_EXE2Shellcode_FullMethodName         = "/clientrpc.MaliceRPC/EXE2Shellcode"
 	MaliceRPC_DLL2Shellcode_FullMethodName         = "/clientrpc.MaliceRPC/DLL2Shellcode"
 	MaliceRPC_ShellcodeEncode_FullMethodName       = "/clientrpc.MaliceRPC/ShellcodeEncode"
@@ -164,7 +164,6 @@ type MaliceRPCClient interface {
 	SessionManage(ctx context.Context, in *clientpb.BasicUpdateSession, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	GetListeners(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Listeners, error)
 	GetJobs(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Jobs, error)
-	GetPivots(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.REMAgents, error)
 	// task
 	GetTasks(ctx context.Context, in *clientpb.TaskRequest, opts ...grpc.CallOption) (*clientpb.Tasks, error)
 	GetTaskContent(ctx context.Context, in *clientpb.Task, opts ...grpc.CallOption) (*clientpb.TaskContext, error)
@@ -269,6 +268,7 @@ type MaliceRPCClient interface {
 	InlineLocal(ctx context.Context, in *implantpb.ExecuteBinary, opts ...grpc.CallOption) (*clientpb.Task, error)
 	// implant: 3rd
 	RemDial(ctx context.Context, in *implantpb.Request, opts ...grpc.CallOption) (*clientpb.Task, error)
+	LoadRem(ctx context.Context, in *implantpb.Request, opts ...grpc.CallOption) (*clientpb.Task, error)
 	// shellcode
 	EXE2Shellcode(ctx context.Context, in *clientpb.EXE2Shellcode, opts ...grpc.CallOption) (*clientpb.Bin, error)
 	DLL2Shellcode(ctx context.Context, in *clientpb.DLL2Shellcode, opts ...grpc.CallOption) (*clientpb.Bin, error)
@@ -387,15 +387,6 @@ func (c *maliceRPCClient) GetListeners(ctx context.Context, in *clientpb.Empty, 
 func (c *maliceRPCClient) GetJobs(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Jobs, error) {
 	out := new(clientpb.Jobs)
 	err := c.cc.Invoke(ctx, MaliceRPC_GetJobs_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *maliceRPCClient) GetPivots(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.REMAgents, error) {
-	out := new(clientpb.REMAgents)
-	err := c.cc.Invoke(ctx, MaliceRPC_GetPivots_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1217,6 +1208,15 @@ func (c *maliceRPCClient) RemDial(ctx context.Context, in *implantpb.Request, op
 	return out, nil
 }
 
+func (c *maliceRPCClient) LoadRem(ctx context.Context, in *implantpb.Request, opts ...grpc.CallOption) (*clientpb.Task, error) {
+	out := new(clientpb.Task)
+	err := c.cc.Invoke(ctx, MaliceRPC_LoadRem_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *maliceRPCClient) EXE2Shellcode(ctx context.Context, in *clientpb.EXE2Shellcode, opts ...grpc.CallOption) (*clientpb.Bin, error) {
 	out := new(clientpb.Bin)
 	err := c.cc.Invoke(ctx, MaliceRPC_EXE2Shellcode_FullMethodName, in, out, opts...)
@@ -1483,7 +1483,6 @@ type MaliceRPCServer interface {
 	SessionManage(context.Context, *clientpb.BasicUpdateSession) (*clientpb.Empty, error)
 	GetListeners(context.Context, *clientpb.Empty) (*clientpb.Listeners, error)
 	GetJobs(context.Context, *clientpb.Empty) (*clientpb.Jobs, error)
-	GetPivots(context.Context, *clientpb.Empty) (*clientpb.REMAgents, error)
 	// task
 	GetTasks(context.Context, *clientpb.TaskRequest) (*clientpb.Tasks, error)
 	GetTaskContent(context.Context, *clientpb.Task) (*clientpb.TaskContext, error)
@@ -1588,6 +1587,7 @@ type MaliceRPCServer interface {
 	InlineLocal(context.Context, *implantpb.ExecuteBinary) (*clientpb.Task, error)
 	// implant: 3rd
 	RemDial(context.Context, *implantpb.Request) (*clientpb.Task, error)
+	LoadRem(context.Context, *implantpb.Request) (*clientpb.Task, error)
 	// shellcode
 	EXE2Shellcode(context.Context, *clientpb.EXE2Shellcode) (*clientpb.Bin, error)
 	DLL2Shellcode(context.Context, *clientpb.DLL2Shellcode) (*clientpb.Bin, error)
@@ -1654,9 +1654,6 @@ func (UnimplementedMaliceRPCServer) GetListeners(context.Context, *clientpb.Empt
 }
 func (UnimplementedMaliceRPCServer) GetJobs(context.Context, *clientpb.Empty) (*clientpb.Jobs, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetJobs not implemented")
-}
-func (UnimplementedMaliceRPCServer) GetPivots(context.Context, *clientpb.Empty) (*clientpb.REMAgents, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetPivots not implemented")
 }
 func (UnimplementedMaliceRPCServer) GetTasks(context.Context, *clientpb.TaskRequest) (*clientpb.Tasks, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetTasks not implemented")
@@ -1922,6 +1919,9 @@ func (UnimplementedMaliceRPCServer) InlineLocal(context.Context, *implantpb.Exec
 func (UnimplementedMaliceRPCServer) RemDial(context.Context, *implantpb.Request) (*clientpb.Task, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemDial not implemented")
 }
+func (UnimplementedMaliceRPCServer) LoadRem(context.Context, *implantpb.Request) (*clientpb.Task, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method LoadRem not implemented")
+}
 func (UnimplementedMaliceRPCServer) EXE2Shellcode(context.Context, *clientpb.EXE2Shellcode) (*clientpb.Bin, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method EXE2Shellcode not implemented")
 }
@@ -2177,24 +2177,6 @@ func _MaliceRPC_GetJobs_Handler(srv interface{}, ctx context.Context, dec func(i
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(MaliceRPCServer).GetJobs(ctx, req.(*clientpb.Empty))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _MaliceRPC_GetPivots_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(clientpb.Empty)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(MaliceRPCServer).GetPivots(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: MaliceRPC_GetPivots_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MaliceRPCServer).GetPivots(ctx, req.(*clientpb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3786,6 +3768,24 @@ func _MaliceRPC_RemDial_Handler(srv interface{}, ctx context.Context, dec func(i
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MaliceRPC_LoadRem_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(implantpb.Request)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MaliceRPCServer).LoadRem(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MaliceRPC_LoadRem_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MaliceRPCServer).LoadRem(ctx, req.(*implantpb.Request))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _MaliceRPC_EXE2Shellcode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(clientpb.EXE2Shellcode)
 	if err := dec(in); err != nil {
@@ -4334,10 +4334,6 @@ var MaliceRPC_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _MaliceRPC_GetJobs_Handler,
 		},
 		{
-			MethodName: "GetPivots",
-			Handler:    _MaliceRPC_GetPivots_Handler,
-		},
-		{
 			MethodName: "GetTasks",
 			Handler:    _MaliceRPC_GetTasks_Handler,
 		},
@@ -4684,6 +4680,10 @@ var MaliceRPC_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RemDial",
 			Handler:    _MaliceRPC_RemDial_Handler,
+		},
+		{
+			MethodName: "LoadRem",
+			Handler:    _MaliceRPC_LoadRem_Handler,
 		},
 		{
 			MethodName: "EXE2Shellcode",

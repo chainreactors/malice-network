@@ -107,6 +107,9 @@ func WaitResult(rpc clientrpc.MaliceRPCClient, task *clientpb.Task) (*clientpb.T
 	if err != nil {
 		return nil, err
 	}
+	if err = handler.HandleMaleficError(content.Spite); err != nil {
+		return nil, fmt.Errorf("task %d failed, %w", task.TaskId, err)
+	}
 	return content, nil
 }
 
@@ -115,6 +118,9 @@ func GetResult(rpc clientrpc.MaliceRPCClient, task *clientpb.Task, index int32) 
 	content, err := rpc.GetTaskContent(context.Background(), task)
 	if err != nil {
 		return nil, err
+	}
+	if err = handler.HandleMaleficError(content.Spite); err != nil {
+		return nil, fmt.Errorf("task %d failed, %w", task.TaskId, err)
 	}
 	return content, nil
 }

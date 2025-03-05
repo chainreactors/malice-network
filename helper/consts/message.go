@@ -126,8 +126,8 @@ const (
 	ModuleGetSystem = "getsystem"
 
 	// 3rd
-
-	ModuleRem = "rem"
+	ModuleRem     = "rem"
+	ModuleLoadRem = "load_rem"
 )
 
 func SubCommandName(module string) string {

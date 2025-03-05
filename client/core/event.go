@@ -91,13 +91,13 @@ func HandlerTask(sess *Session, ctx *clientpb.TaskContext, message []byte, calle
 	var callback intermediate.ImplantCallback
 	fn, ok := intermediate.InternalFunctions[ctx.Task.Type]
 	if !ok {
-		log.Warnf("function %s not found\n", ctx.Task.Type)
+		log.Debugf("function %s not found\n", ctx.Task.Type)
 		status, err := output.ParseStatus(ctx)
 		if err != nil {
 			log.Importantf("parse status error: %s\n", err)
 			return
 		}
-		log.Important(status)
+		log.Importantf("task %d %t", ctx.Task.TaskId, status)
 		return
 	}
 	var prompt string
