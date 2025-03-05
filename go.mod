@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	filippo.io/age v1.1.1
-	github.com/chainreactors/logs v0.0.0-20241115105204-6132e39f5261
+	github.com/chainreactors/logs v0.0.0-20250222133258-50e3d40c73fd
 	github.com/chainreactors/mals v0.0.0-20250227194202-70ea5a1a06f2
 	github.com/chainreactors/parsers v0.0.0-20250225073555-ab576124d61f
 	github.com/chainreactors/rem v0.1.2-0.20250116140516-295d97cb6b38
@@ -13,6 +13,7 @@ require (
 	github.com/charmbracelet/bubbletea v0.27.1
 	github.com/charmbracelet/glamour v0.8.0
 	github.com/charmbracelet/lipgloss v0.13.0
+	github.com/dustin/go-humanize v1.0.1
 	github.com/evertras/bubble-table v0.17.1
 	github.com/gofrs/uuid v4.4.0+incompatible
 	github.com/golang/snappy v0.0.4
@@ -75,7 +76,6 @@ require (
 	github.com/dlclark/regexp2 v1.11.0 // indirect
 	github.com/docker/go-connections v0.5.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
-	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
 	github.com/facebookincubator/nvdtools v0.1.5 // indirect
 	github.com/fatih/color v1.16.0 // indirect
@@ -149,5 +149,4 @@ replace (
 	github.com/reeflective/readline => ./external/readline
 	github.com/rsteube/carapace => ./external/carapace
 	github.com/wabzsy/gonut => ./external/gonut
-//github.com/chainreactors/mals => ./external/mals
 )

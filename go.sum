@@ -106,8 +106,8 @@ github.com/chainreactors/files v0.0.0-20240716182835-7884ee1e77f0/go.mod h1:NSxG
 github.com/chainreactors/fingers v0.0.0-20240702104653-a66e34aa41df h1:1SrOHwdlU+X3/hxViU1ZCcwO+KRvSmJGtTstSph5xL0=
 github.com/chainreactors/fingers v0.0.0-20240702104653-a66e34aa41df/go.mod h1:l8AO6ZbIL8WQ8PkihCK/MD6Iww/O+LY/osAhRJjThs4=
 github.com/chainreactors/logs v0.0.0-20240207121836-c946f072f81f/go.mod h1:6Mv6W70JrtL6VClulZhmMRZnoYpcTahcDTKLMNEjK0o=
-github.com/chainreactors/logs v0.0.0-20241115105204-6132e39f5261 h1:gcRLCAF4ANvltkdh7cnLFCNrogwl0Qh8oNaYrKHMyz4=
-github.com/chainreactors/logs v0.0.0-20241115105204-6132e39f5261/go.mod h1:6Mv6W70JrtL6VClulZhmMRZnoYpcTahcDTKLMNEjK0o=
+github.com/chainreactors/logs v0.0.0-20250222133258-50e3d40c73fd h1:BeO0Bogz/k3gihwDIrXcFTLR9sLg2PoLEwT+x1ruKoA=
+github.com/chainreactors/logs v0.0.0-20250222133258-50e3d40c73fd/go.mod h1:6Mv6W70JrtL6VClulZhmMRZnoYpcTahcDTKLMNEjK0o=
 github.com/chainreactors/mals v0.0.0-20250227194202-70ea5a1a06f2 h1:Mh+83Bzl8x1bXenBKw1SreVN6l5qhH1Luygf4zx+rns=
 github.com/chainreactors/mals v0.0.0-20250227194202-70ea5a1a06f2/go.mod h1:r/dAAqtQJZTo47CgWtdDvpSjPQHg881rcwBY2p9BEOY=
 github.com/chainreactors/parsers v0.0.0-20250225073555-ab576124d61f h1:SfLaU4TMVjloWhLnbajJWtITX/QH9HzS6mV+uNSMpsc=
