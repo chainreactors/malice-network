@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/chainreactors/logs"
-	crConfig "github.com/chainreactors/malice-network/helper/utils/config"
+	"github.com/chainreactors/malice-network/helper/utils/configutil"
 	"gopkg.in/yaml.v3"
 	"io"
 	insecureRand "math/rand"
@@ -105,7 +105,7 @@ type MiscConfig struct {
 func LoadMiscConfig() ([]byte, []byte, error) {
 	var opt ServerConfig
 	// load config
-	err := crConfig.LoadConfig(ServerConfigFileName, &opt)
+	err := configutil.LoadConfig(ServerConfigFileName, &opt)
 	if err != nil {
 		logs.Log.Errorf("Failed to load config: %s", err)
 		return nil, nil, err

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/codenames"
-	crConfig "github.com/chainreactors/malice-network/helper/utils/config"
+	"github.com/chainreactors/malice-network/helper/utils/configutil"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/mtls"
 	"github.com/chainreactors/malice-network/server/assets"
@@ -51,7 +51,7 @@ func Execute() {
 		return
 	}
 	if !fileutils.Exist(opt.Config) {
-		confStr := crConfig.InitDefaultConfig(&opt, 0)
+		confStr := configutil.InitDefaultConfig(&opt, 0)
 		err := os.WriteFile(opt.Config, confStr, 0644)
 		if err != nil {
 			logs.Log.Errorf("cannot write default config , %s ", err.Error())
@@ -61,7 +61,7 @@ func Execute() {
 	}
 
 	// load config
-	err = crConfig.LoadConfig(opt.Config, &opt)
+	err = configutil.LoadConfig(opt.Config, &opt)
 	if err != nil {
 		logs.Log.Warnf("cannot load config , %s ", err.Error())
 		return
