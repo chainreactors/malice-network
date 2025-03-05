@@ -63,7 +63,6 @@ func (rpc *Server) AddWebsiteContent(ctx context.Context, req *clientpb.Website)
 
 			job.Pipeline.GetWeb().Contents[content.Path] = content
 			lns.PushCtrl(&clientpb.JobCtrl{
-				Id:   core.NextCtrlID(),
 				Ctrl: consts.CtrlWebContentAdd,
 				Job:  job.ToProtobuf(),
 			})
@@ -89,7 +88,6 @@ func (rpc *Server) UpdateWebsiteContent(ctx context.Context, req *clientpb.WebCo
 		return nil, err
 	}
 	lns.PushCtrl(&clientpb.JobCtrl{
-		Id:   core.NextCtrlID(),
 		Ctrl: consts.CtrlWebContentAdd,
 		Job:  job.ToProtobuf(),
 	})
@@ -108,7 +106,6 @@ func (rpc *Server) RemoveWebsiteContent(ctx context.Context, req *clientpb.WebCo
 		return nil, err
 	}
 	lns.PushCtrl(&clientpb.JobCtrl{
-		Id:   core.NextCtrlID(),
 		Ctrl: consts.CtrlWebContentRemove,
 		Job:  job.ToProtobuf(),
 	})
@@ -176,7 +173,6 @@ func (rpc *Server) StartWebsite(ctx context.Context, req *clientpb.CtrlPipeline)
 	}
 	core.Jobs.Add(job)
 	listener.PushCtrl(&clientpb.JobCtrl{
-		Id:   core.NextCtrlID(),
 		Ctrl: consts.CtrlWebsiteStart,
 		Job:  job.ToProtobuf(),
 	})
@@ -200,7 +196,6 @@ func (rpc *Server) StopWebsite(ctx context.Context, req *clientpb.CtrlPipeline) 
 		return nil, err
 	}
 	listener.PushCtrl(&clientpb.JobCtrl{
-		Id:   core.NextCtrlID(),
 		Ctrl: consts.CtrlWebsiteStop,
 		Job:  job.ToProtobuf(),
 	})
@@ -245,7 +240,6 @@ func (rpc *Server) DeleteWebsite(ctx context.Context, req *clientpb.CtrlPipeline
 	}
 
 	listener.PushCtrl(&clientpb.JobCtrl{
-		Id:   core.NextCtrlID(),
 		Ctrl: consts.CtrlWebsiteStop,
 		Job:  job.ToProtobuf(),
 	})

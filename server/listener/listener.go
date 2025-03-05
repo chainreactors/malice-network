@@ -237,13 +237,10 @@ func (lns *listener) Handler() {
 			handlerErr = lns.handleStartRem(msg.Job)
 		}
 
-		if msg.Ctrl == consts.CtrlPipelineSync {
-			continue
-		}
-
 		status := &clientpb.JobStatus{
 			ListenerId: lns.ID(),
 			Ctrl:       msg.Ctrl,
+			CtrlId:     msg.Id,
 			Job:        msg.Job,
 		}
 		if handlerErr != nil {

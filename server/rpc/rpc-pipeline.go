@@ -31,12 +31,12 @@ func (rpc *Server) RegisterPipeline(ctx context.Context, req *clientpb.Pipeline)
 }
 
 func (rpc *Server) SyncPipeline(ctx context.Context, req *clientpb.Pipeline) (*clientpb.Empty, error) {
-	pipe, err := db.SavePipeline(models.FromPipelinePb(req))
+	_, err := db.SavePipeline(models.FromPipelinePb(req))
 	if err != nil {
 		return nil, err
 	}
 
-	job := core.Jobs.AddPipeline(pipe.ToProtobuf())
+	job := core.Jobs.AddPipeline(req)
 
 	core.EventBroker.Publish(core.Event{
 		EventType: consts.EventJob,
@@ -78,7 +78,6 @@ func (rpc *Server) StartPipeline(ctx context.Context, req *clientpb.CtrlPipeline
 	}
 	core.Jobs.Add(job)
 	lns.PushCtrl(&clientpb.JobCtrl{
-		Id:   core.NextCtrlID(),
 		Ctrl: consts.CtrlPipelineStart,
 		Job:  job.ToProtobuf()})
 	err = db.EnablePipeline(pipeline.Name)
@@ -99,7 +98,6 @@ func (rpc *Server) StopPipeline(ctx context.Context, req *clientpb.CtrlPipeline)
 	}
 	lns.RemovePipeline(job.Pipeline)
 	lns.PushCtrl(&clientpb.JobCtrl{
-		Id:   core.NextCtrlID(),
 		Ctrl: consts.CtrlPipelineStop,
 		Job:  job.ToProtobuf(),
 	})
@@ -122,7 +120,6 @@ func (rpc *Server) DeletePipeline(ctx context.Context, req *clientpb.CtrlPipelin
 	}
 	lns.RemovePipeline(pipeline)
 	lns.PushCtrl(&clientpb.JobCtrl{
-		Id:   core.NextCtrlID(),
 		Ctrl: consts.CtrlPipelineStop,
 		Job: &clientpb.Job{
 			Pipeline: pipeline,

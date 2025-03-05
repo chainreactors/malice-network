@@ -286,6 +286,7 @@ func (s *ServerStatus) handlerSession(event *clientpb.Event) {
 	case consts.CtrlSessionLeave:
 		Log.Importantf(logs.RedBold(fmt.Sprintf("[%s] session stop: %s\n", sid, event.Message)))
 	case consts.CtrlSessionReborn:
+		s.AddSession(event.Session)
 		Log.Important(logs.GreenBold(fmt.Sprintf("[%s]: %s\n", consts.CtrlSessionReborn, event.Message)))
 	}
 }

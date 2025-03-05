@@ -52,7 +52,7 @@ func (rem *REM) Start() error {
 	rem.Enable = true
 	logs.Log.Important(rem.remCon.Link())
 	go func() {
-		for {
+		for rem.Enable {
 			agent, err := rem.remCon.Accept()
 			if err != nil {
 				logs.Log.Error(err)
@@ -64,13 +64,13 @@ func (rem *REM) Start() error {
 	}()
 
 	go func() {
-		for {
+		for rem.Enable {
 			_, err := rem.rpc.HealthCheckRem(context.Background(), rem.ToProtobuf())
 			if err != nil {
 				logs.Log.Error(err)
 			}
 
-			time.Sleep(60 * time.Second)
+			time.Sleep(30 * time.Second)
 		}
 	}()
 	return nil
