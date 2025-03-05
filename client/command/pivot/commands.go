@@ -40,7 +40,6 @@ forward pipeline1 --port 8080 --target 192.168.1.1:80
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ReverseCmd(cmd, con)
 		},
-		Aliases: []string{consts.CommandAliasSocks5},
 		Annotations: map[string]string{
 			"depend": consts.ModuleRem,
 		},
@@ -118,6 +117,8 @@ func Register(con *repl.Console) {
 		},
 		nil,
 	)
+
+	con.RegisterServerFunc("rem_link", GetRemLink, nil)
 
 	con.AddCommandFuncHelper(
 		consts.ModuleRem,

@@ -110,6 +110,8 @@ github.com/chainreactors/logs v0.0.0-20241115105204-6132e39f5261 h1:gcRLCAF4ANvl
 github.com/chainreactors/logs v0.0.0-20241115105204-6132e39f5261/go.mod h1:6Mv6W70JrtL6VClulZhmMRZnoYpcTahcDTKLMNEjK0o=
 github.com/chainreactors/mals v0.0.0-20250227194202-70ea5a1a06f2 h1:Mh+83Bzl8x1bXenBKw1SreVN6l5qhH1Luygf4zx+rns=
 github.com/chainreactors/mals v0.0.0-20250227194202-70ea5a1a06f2/go.mod h1:r/dAAqtQJZTo47CgWtdDvpSjPQHg881rcwBY2p9BEOY=
+github.com/chainreactors/mals v0.0.0-20250305151630-0fb1f0082e87 h1:h/JNpYAKm2i7/uD+LB6bC0SCp9Og/qPxhnTMLumw5+4=
+github.com/chainreactors/mals v0.0.0-20250305151630-0fb1f0082e87/go.mod h1:r/dAAqtQJZTo47CgWtdDvpSjPQHg881rcwBY2p9BEOY=
 github.com/chainreactors/parsers v0.0.0-20250225073555-ab576124d61f h1:SfLaU4TMVjloWhLnbajJWtITX/QH9HzS6mV+uNSMpsc=
 github.com/chainreactors/parsers v0.0.0-20250225073555-ab576124d61f/go.mod h1:7rXdYz6jrdjF0WUH1ICcAXKIKKjKmJo2PU8u43V7jkA=
 github.com/chainreactors/rem v0.1.2-0.20250116140516-295d97cb6b38 h1:TxgN0ZoudwArLYoE/By7LqjIOAZelnckvg+Xth8l9Qo=

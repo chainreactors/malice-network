@@ -132,6 +132,18 @@ func (p *LuaVMPool) ReleaseVM(wrapper *LuaVMWrapper) {
 	wrapper.Unlock()
 }
 
+const (
+	LuaInternal = iota
+	LuaFlag
+	LuaArg
+	LuaReverse
+)
+
+type LuaParam struct {
+	Name string
+	Type int
+}
+
 type LuaPlugin struct {
 	*DefaultPlugin
 	vmPool   *LuaVMPool
@@ -326,10 +338,27 @@ func (plug *LuaPlugin) RegisterLuaBuiltin(vm *lua.LState) error {
 	plug.registerLuaFunction(vm, "command", func(name string, fn *lua.LFunction, short string, ttp string) (*cobra.Command, error) {
 		cmd := plug.CMDs.Find(name)
 
-		var paramNames []string
+		var params []*LuaParam
 		for _, param := range fn.Proto.DbgLocals {
-			if strings.HasPrefix(param.Name, "flag_") || slices.Contains(ReservedWords, param.Name) {
-				paramNames = append(paramNames, strings.TrimPrefix(param.Name, "flag_"))
+			if strings.HasPrefix(param.Name, "flag_") {
+				params = append(params, &LuaParam{
+					Name: strings.TrimPrefix(param.Name, "flag_"),
+					Type: LuaFlag,
+				})
+			} else if strings.HasPrefix(param.Name, "arg_") {
+				params = append(params, &LuaParam{
+					Name: strings.TrimPrefix(param.Name, "arg_"),
+					Type: LuaArg,
+				})
+			} else if slices.Contains(ReservedWords, param.Name) {
+				params = append(params, &LuaParam{
+					Name: param.Name,
+					Type: LuaReverse,
+				})
+			} else {
+				params = append(params, &LuaParam{
+					Name: param.Name,
+				})
 			}
 		}
 
@@ -350,21 +379,35 @@ func (plug *LuaPlugin) RegisterLuaBuiltin(vm *lua.LState) error {
 					defer plug.Release(wrapper)
 					wrapper.Push(fn)
 
-					for _, paramName := range paramNames {
-						switch paramName {
-						case ReservedCMDLINE:
-							wrapper.Push(lua.LString(shellquote.Join(args...)))
-						case ReservedARGS:
-							wrapper.Push(mals.ConvertGoValueToLua(wrapper.LState, args))
-						case ReservedCMD:
-							wrapper.Push(mals.ConvertGoValueToLua(wrapper.LState, cmd))
-						default:
-							val, err := cmd.Flags().GetString(paramName)
+					for _, p := range params {
+						switch p.Type {
+						case LuaFlag:
+							val, err := cmd.Flags().GetString(p.Name)
 							if err != nil {
-								logs.Log.Errorf("error getting flag %s: %s", paramName, err.Error())
+								logs.Log.Errorf("error getting flag %s: %s", p.Name, err.Error())
 								return
 							}
 							wrapper.Push(lua.LString(val))
+						case LuaArg:
+							i, err := strconv.Atoi(p.Name)
+							if err != nil {
+								logs.Log.Errorf("error converting arg %s to int: %s", p.Name, err.Error())
+								return
+							}
+							val := cmd.Flags().Arg(i)
+							if val == "" {
+								logs.Log.Warnf("arg %d is empty", i)
+							}
+							wrapper.Push(lua.LString(val))
+						case LuaReverse:
+							switch p.Name {
+							case ReservedCMDLINE:
+								wrapper.Push(lua.LString(shellquote.Join(args...)))
+							case ReservedARGS:
+								wrapper.Push(mals.ConvertGoValueToLua(wrapper.LState, args))
+							case ReservedCMD:
+								wrapper.Push(mals.ConvertGoValueToLua(wrapper.LState, cmd))
+							}
 						}
 					}
 
@@ -388,7 +431,7 @@ func (plug *LuaPlugin) RegisterLuaBuiltin(vm *lua.LState) error {
 						}
 					}
 
-					if err := wrapper.PCall(len(paramNames), lua.MultRet, nil); err != nil {
+					if err := wrapper.PCall(len(params), lua.MultRet, nil); err != nil {
 						logs.Log.Errorf("error calling Lua %s:\n%s", fn.String(), err.Error())
 						return
 					}
@@ -409,11 +452,10 @@ func (plug *LuaPlugin) RegisterLuaBuiltin(vm *lua.LState) error {
 		}
 
 		malCmd.Flags().StringP("file", "f", "", "output file")
-		for _, paramName := range paramNames {
-			if slices.Contains(ReservedWords, paramName) {
-				continue
+		for _, p := range params {
+			if p.Type == LuaFlag {
+				malCmd.Flags().String(p.Name, "", p.Name)
 			}
-			malCmd.Flags().String(paramName, "", paramName)
 		}
 
 		logs.Log.Debugf("Registered Command: %s\n", cmd.Name)
