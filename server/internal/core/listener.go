@@ -5,6 +5,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"sync"
+	"time"
 )
 
 var (
@@ -19,10 +20,23 @@ type Listener struct {
 	Active    bool
 	Pipelines map[string]*clientpb.Pipeline
 	Ctrl      chan *clientpb.JobCtrl
+	CtrlJob   *sync.Map
 }
 
-func (l *Listener) PushCtrl(ctrl *clientpb.JobCtrl) {
+func (l *Listener) PushCtrl(ctrl *clientpb.JobCtrl) uint32 {
+	ctrl.Id = NextCtrlID()
 	l.Ctrl <- ctrl
+	return ctrl.Id
+}
+
+func (l *Listener) WaitCtrl(i uint32) {
+	for {
+		done, ok := l.CtrlJob.Load(i)
+		if ok && done.(bool) {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
 }
 
 func (l *Listener) AddPipeline(pipeline *clientpb.Pipeline) {
@@ -107,7 +121,6 @@ func (l *listeners) PushCtrl(ctrl string, pipeline *clientpb.Pipeline) {
 	val, err := l.Get(pipeline.ListenerId)
 	if err == nil {
 		val.PushCtrl(&clientpb.JobCtrl{
-			Id:   NextCtrlID(),
 			Ctrl: ctrl,
 			Job: &clientpb.Job{
 				Name:     pipeline.Name,

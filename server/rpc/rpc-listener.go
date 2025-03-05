@@ -9,6 +9,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"google.golang.org/protobuf/proto"
+	"sync"
 )
 
 func (rpc *Server) GetListeners(ctx context.Context, req *clientpb.Empty) (*clientpb.Listeners, error) {
@@ -23,6 +24,7 @@ func (rpc *Server) RegisterListener(ctx context.Context, req *clientpb.RegisterL
 		Active:    true,
 		Pipelines: make(map[string]*clientpb.Pipeline),
 		Ctrl:      make(chan *clientpb.JobCtrl),
+		CtrlJob:   &sync.Map{},
 	})
 	core.EventBroker.Notify(core.Event{
 		EventType: consts.EventListener,
@@ -102,6 +104,7 @@ func (rpc *Server) JobStream(stream listenerrpc.ListenerRPC_JobStreamServer) err
 		for {
 			select {
 			case msg := <-lns.Ctrl:
+				lns.CtrlJob.Store(msg.Id, false)
 				err := stream.Send(msg)
 				if err != nil {
 					logs.Log.Errorf("send job ctrl faild %v", err)
@@ -116,6 +119,13 @@ func (rpc *Server) JobStream(stream listenerrpc.ListenerRPC_JobStreamServer) err
 		if err != nil {
 			return err
 		}
+		_, ok := lns.CtrlJob.Load(msg.CtrlId)
+		if ok {
+			lns.CtrlJob.Store(msg.CtrlId, true)
+		}
+		if msg.Ctrl == consts.CtrlPipelineSync {
+			continue
+		}
 		if msg.Status == consts.CtrlStatusSuccess {
 			core.EventBroker.Publish(core.Event{
 				EventType: consts.EventJob,
@@ -129,9 +139,11 @@ func (rpc *Server) JobStream(stream listenerrpc.ListenerRPC_JobStreamServer) err
 				EventType: consts.EventJob,
 				Op:        msg.Ctrl,
 				Err:       fmt.Sprintf("%s faild,status %d,  %s", msg.Job.Name, msg.Status, msg.Error),
+				IsNotify:  true,
 				Important: true,
 			})
 		}
+
 	}
 }
 
