@@ -8,6 +8,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/utils/handler"
+	"github.com/chainreactors/malice-network/helper/utils/output"
 	"io"
 )
 
@@ -85,34 +86,40 @@ func (s *ServerStatus) triggerTaskFinish(event *clientpb.Event) {
 	}
 }
 
-func HandlerTask(sess *Session, context *clientpb.TaskContext, message []byte, callee string, isFinish bool) {
+func HandlerTask(sess *Session, ctx *clientpb.TaskContext, message []byte, callee string, isFinish bool) {
 	log := sess.Log
 	var callback intermediate.ImplantCallback
-	fn, ok := intermediate.InternalFunctions[context.Task.Type]
+	fn, ok := intermediate.InternalFunctions[ctx.Task.Type]
 	if !ok {
-		log.Errorf("function %s not found\n", context.Task.Type)
+		log.Warnf("function %s not found\n", ctx.Task.Type)
+		status, err := output.ParseStatus(ctx)
+		if err != nil {
+			log.Importantf("parse status error: %s\n", err)
+			return
+		}
+		log.Important(status)
 		return
 	}
 	var prompt string
 	if isFinish {
 		prompt = "task finish"
 		if fn.FinishCallback == nil {
-			log.Consolef("%s not impl output impl\n", context.Task.Type)
+			log.Consolef("%s not impl output impl\n", ctx.Task.Type)
 			return
 		}
 		callback = fn.FinishCallback
 	} else {
 		prompt = "task done"
 		if fn.DoneCallback == nil {
-			log.Debugf("%s not impl output impl\n", context.Task.Type)
+			log.Debugf("%s not impl output impl\n", ctx.Task.Type)
 			return
 		}
 		callback = fn.DoneCallback
 	}
 
 	s := logs.GreenBold(fmt.Sprintf("[%s.%d] %s (%d/%d),%s\n",
-		context.Task.SessionId, context.Task.TaskId, prompt,
-		context.Task.Cur, context.Task.Total,
+		ctx.Task.SessionId, ctx.Task.TaskId, prompt,
+		ctx.Task.Cur, ctx.Task.Total,
 		message))
 	log.Importantf(s)
 	if callee != consts.CalleeCMD {
@@ -122,10 +129,10 @@ func HandlerTask(sess *Session, context *clientpb.TaskContext, message []byte, c
 	var resp string
 	if isFinish {
 		log.FileLog(s)
-		resp, err = callback(context)
+		resp, err = callback(ctx)
 		log.FileLog(resp + "\n")
 	} else {
-		resp, err = callback(context)
+		resp, err = callback(ctx)
 	}
 
 	if err != nil {

@@ -5,7 +5,7 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
-	"github.com/chainreactors/malice-network/helper/rem"
+	"github.com/chainreactors/malice-network/helper/third/rem"
 	"time"
 )
 

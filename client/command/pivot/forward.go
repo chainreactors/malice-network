@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/cryptography"
-	"github.com/chainreactors/malice-network/helper/rem"
+	"github.com/chainreactors/malice-network/helper/third/rem"
 	"github.com/spf13/cobra"
 	"net"
 	"strconv"

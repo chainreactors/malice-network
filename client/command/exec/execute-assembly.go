@@ -26,8 +26,8 @@ func ExecuteAssemblyCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func ExecuteAssembly(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, args []string, output bool, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
-	binary, err := common.NewExecutable(consts.ModuleExecuteShellcode, path, args, sess.Os.Arch, output, sac)
+func ExecuteAssembly(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, args []string, out bool, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
+	binary, err := output.NewExecutable(consts.ModuleExecuteShellcode, path, args, sess.Os.Arch, out, sac)
 	if err != nil {
 		return nil, err
 	}
@@ -57,8 +57,8 @@ func InlineAssemblyCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func InlineAssembly(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, args []string, output bool, param map[string]string) (*clientpb.Task, error) {
-	binary, err := common.NewExecutable(consts.ModuleExecuteAssembly, path, args, sess.Os.Arch, output, nil)
+func InlineAssembly(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, args []string, out bool, param map[string]string) (*clientpb.Task, error) {
+	binary, err := output.NewExecutable(consts.ModuleExecuteAssembly, path, args, sess.Os.Arch, out, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +80,7 @@ func RegisterAssemblyFunc(con *repl.Console) {
 			if err != nil {
 				return nil, err
 			}
-			return ExecuteAssembly(rpc, sess, path, cmdline, true, common.NewSacrifice(0, false, true, true, ""))
+			return ExecuteAssembly(rpc, sess, path, cmdline, true, output.NewSacrifice(0, false, true, true, ""))
 		},
 		output.ParseAssembly,
 		nil)

@@ -29,12 +29,12 @@ func ExecuteExeCmd(cmd *cobra.Command, con *repl.Console) error {
 }
 
 func ExecExe(rpc clientrpc.MaliceRPCClient, sess *core.Session, pePath string,
-	args []string, output bool, timeout uint32, arch string,
+	args []string, out bool, timeout uint32, arch string,
 	process string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 	if arch == "" {
 		arch = sess.Os.Arch
 	}
-	binary, err := common.NewBinary(consts.ModuleExecuteExe, pePath, args, output, timeout, arch, process, sac)
+	binary, err := output.NewBinary(consts.ModuleExecuteExe, pePath, args, out, timeout, arch, process, sac)
 	if err != nil {
 		return nil, err
 	}
@@ -61,11 +61,11 @@ func InlineExeCmd(cmd *cobra.Command, con *repl.Console) error {
 }
 
 func InlineExe(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, args []string,
-	output bool, timeout uint32, arch string, process string) (*clientpb.Task, error) {
+	out bool, timeout uint32, arch string, process string) (*clientpb.Task, error) {
 	if arch == "" {
 		arch = sess.Os.Arch
 	}
-	binary, err := common.NewBinary(consts.ModuleExecuteExe, path, args, output, timeout, arch, process, nil)
+	binary, err := output.NewBinary(consts.ModuleExecuteExe, path, args, out, timeout, arch, process, nil)
 	if err != nil {
 		return nil, err
 	}

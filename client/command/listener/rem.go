@@ -6,7 +6,7 @@ import (
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/rem"
+	"github.com/chainreactors/malice-network/helper/third/rem"
 	"github.com/chainreactors/tui"
 	"github.com/spf13/cobra"
 	"strconv"
