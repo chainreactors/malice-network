@@ -2,7 +2,7 @@ package assets
 
 import (
 	"encoding/json"
-	"github.com/chainreactors/malice-network/helper/utils/config"
+	"github.com/chainreactors/malice-network/helper/utils/configutil"
 	"io/ioutil"
 	"path/filepath"
 )
@@ -28,7 +28,7 @@ func LoadSettings() (*Settings, error) {
 	//	return defaultSettings(), err
 	//}
 	settings := defaultSettings()
-	err := config.LoadConfig(filepath.Join(rootDir, maliceProfile), settings)
+	err := configutil.LoadConfig(filepath.Join(rootDir, maliceProfile), settings)
 	if err != nil {
 		return defaultSettings(), err
 	}

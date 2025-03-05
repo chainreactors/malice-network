@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	crConfig "github.com/chainreactors/malice-network/helper/utils/config"
+	"github.com/chainreactors/malice-network/helper/utils/configutil"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 )
@@ -101,7 +101,7 @@ func (rpc *Server) UpdateNotifyConfig(ctx context.Context, req *clientpb.Notify)
 
 func (rpc *Server) RefreshConfig(ctx context.Context, req *clientpb.Empty) (*clientpb.Empty, error) {
 	var server configs.ServerConfig
-	err := crConfig.LoadConfig(configs.CurrentServerConfigFilename, &server)
+	err := configutil.LoadConfig(configs.CurrentServerConfigFilename, &server)
 	if err != nil {
 		return nil, err
 	}

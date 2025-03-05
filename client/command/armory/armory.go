@@ -87,11 +87,11 @@ type pkgCacheEntry struct {
 
 var (
 	// public key -> armoryCacheEntry
-	indexCache = sync.Map{}
+	indexCache = &sync.Map{}
 	// package ID -> armoryPkgCacheEntry
-	pkgCache = sync.Map{}
+	pkgCache = &sync.Map{}
 	// public key -> assets.ArmoryConfig
-	currentArmories = sync.Map{}
+	currentArmories = &sync.Map{}
 
 	// cacheTime - How long to cache the index/pkg manifests
 	//cacheTime = time.Hour

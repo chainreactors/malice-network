@@ -2,7 +2,7 @@ package assets
 
 import (
 	"github.com/chainreactors/logs"
-	crConfig "github.com/chainreactors/malice-network/helper/utils/config"
+	"github.com/chainreactors/malice-network/helper/utils/configutil"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/gookit/config/v2"
 	"golang.org/x/exp/slices"
@@ -76,14 +76,14 @@ func LoadProfile() (*Profile, error) {
 	malicePath := filepath.Join(rootDir, maliceProfile)
 	profile := &Profile{}
 	if !fileutils.Exist(malicePath) {
-		confStr := crConfig.InitDefaultConfig(profile, 0)
+		confStr := configutil.InitDefaultConfig(profile, 0)
 		err := os.WriteFile(malicePath, confStr, 0644)
 		if err != nil {
 			return profile, err
 		}
 		logs.Log.Warnf("config file not found, created default config %s", malicePath)
 	}
-	err := crConfig.LoadConfig(malicePath, profile)
+	err := configutil.LoadConfig(malicePath, profile)
 	if err != nil {
 		return profile, err
 	}
