@@ -6,7 +6,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"github.com/chainreactors/mals"
 	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
@@ -153,7 +152,7 @@ func Register(con *repl.Console) {
 
 	intermediate.RegisterFunction("exe2shellcode",
 		func(exe []byte, arch string, cmdline string) (string, error) {
-			bin, err := pe.DonutShellcodeFromPE("1.exe", exe, arch, cmdline, false, true)
+			bin, err := gonut.DonutShellcodeFromPE("1.exe", exe, arch, cmdline, false, true)
 			if err != nil {
 				return "", err
 			}
@@ -173,7 +172,7 @@ func Register(con *repl.Console) {
 	})
 
 	intermediate.RegisterFunction("dll2shellcode", func(dll []byte, arch string, cmdline string) (string, error) {
-		bin, err := pe.DonutShellcodeFromPE("1.dll", dll, arch, cmdline, false, true)
+		bin, err := gonut.DonutShellcodeFromPE("1.dll", dll, arch, cmdline, false, true)
 		if err != nil {
 			return "", err
 		}
@@ -192,7 +191,7 @@ func Register(con *repl.Console) {
 		},
 	})
 
-	intermediate.RegisterFunction("clr2shellcode", pe.DonutFromAssemblyFromFile)
+	intermediate.RegisterFunction("clr2shellcode", gonut.DonutFromAssemblyFromFile)
 	intermediate.AddHelper("clr2shellcode", &mals.Helper{
 		Group: intermediate.GroupArtifact,
 		Short: "clr to shellcode with donut",
@@ -209,7 +208,7 @@ func Register(con *repl.Console) {
 		},
 	})
 
-	intermediate.RegisterFunction("donut", pe.DonutShellcodeFromFile)
+	intermediate.RegisterFunction("donut", gonut.DonutShellcodeFromFile)
 	intermediate.AddHelper("donut", &mals.Helper{
 		Group: intermediate.GroupArtifact,
 		Short: "Generates x86, x64, or AMD64+x86 position-independent shellcode that loads .NET Assemblies, PE files, and other Windows payloads from memory and runs them with parameters ",
