@@ -2,9 +2,6 @@ package plugin
 
 import (
 	"fmt"
-	"github.com/kballard/go-shellquote"
-	"golang.org/x/exp/slices"
-
 	"os"
 	"path/filepath"
 	"reflect"
@@ -13,9 +10,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	lua "github.com/yuin/gopher-lua"
 	"github.com/yuin/gopher-lua/parse"
+	"golang.org/x/exp/slices"
 
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
@@ -451,7 +451,16 @@ func (plug *LuaPlugin) RegisterLuaBuiltin(vm *lua.LState) error {
 			},
 		}
 
-		malCmd.Flags().StringP("file", "f", "", "output file")
+		set := pflag.NewFlagSet("mal common args", pflag.ExitOnError)
+		set.StringP("file", "f", "", "output file")
+		set.BoolP("help", "h", false, "print help")
+		set.VisitAll(func(flag *pflag.Flag) {
+			flag.Annotations = map[string][]string{
+				"group": {"Common Arguments"},
+			}
+		})
+		malCmd.Flags().AddFlagSet(set)
+
 		for _, p := range params {
 			if p.Type == LuaFlag {
 				malCmd.Flags().String(p.Name, "", p.Name)

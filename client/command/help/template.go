@@ -3,11 +3,6 @@ package help
 import (
 	"bytes"
 	"fmt"
-	"github.com/chainreactors/tui"
-	"github.com/charmbracelet/glamour"
-	"github.com/muesli/termenv"
-	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 	"io"
 	"os"
 	"reflect"
@@ -18,6 +13,12 @@ import (
 	"text/template"
 	"time"
 	"unicode"
+
+	"github.com/chainreactors/tui"
+	"github.com/charmbracelet/glamour"
+	"github.com/muesli/termenv"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 var TemplateFuncs = template.FuncMap{
@@ -188,56 +189,56 @@ func rpad(s string, padding int) string {
 	return fmt.Sprintf(formattedString, s)
 }
 
-// tmpl executes the given template text on data, writing the result to w.
-func tmpl(w io.Writer, text string, data interface{}) error {
-	t := template.New("top")
-	t.Funcs(TemplateFuncs)
-	template.Must(t.Parse(text))
-	return t.Execute(w, data)
-}
-
-// ld compares two strings and returns the levenshtein distance between them.
-func ld(s, t string, ignoreCase bool) int {
-	if ignoreCase {
-		s = strings.ToLower(s)
-		t = strings.ToLower(t)
-	}
-	d := make([][]int, len(s)+1)
-	for i := range d {
-		d[i] = make([]int, len(t)+1)
-		d[i][0] = i
-	}
-	for j := range d[0] {
-		d[0][j] = j
-	}
-	for j := 1; j <= len(t); j++ {
-		for i := 1; i <= len(s); i++ {
-			if s[i-1] == t[j-1] {
-				d[i][j] = d[i-1][j-1]
-			} else {
-				min := d[i-1][j]
-				if d[i][j-1] < min {
-					min = d[i][j-1]
-				}
-				if d[i-1][j-1] < min {
-					min = d[i-1][j-1]
-				}
-				d[i][j] = min + 1
-			}
-		}
-
-	}
-	return d[len(s)][len(t)]
-}
-
-func stringInSlice(a string, list []string) bool {
-	for _, b := range list {
-		if b == a {
-			return true
-		}
-	}
-	return false
-}
+//// tmpl executes the given template text on data, writing the result to w.
+//func tmpl(w io.Writer, text string, data interface{}) error {
+//	t := template.New("top")
+//	t.Funcs(TemplateFuncs)
+//	template.Must(t.Parse(text))
+//	return t.Execute(w, data)
+//}
+//
+//// ld compares two strings and returns the levenshtein distance between them.
+//func ld(s, t string, ignoreCase bool) int {
+//	if ignoreCase {
+//		s = strings.ToLower(s)
+//		t = strings.ToLower(t)
+//	}
+//	d := make([][]int, len(s)+1)
+//	for i := range d {
+//		d[i] = make([]int, len(t)+1)
+//		d[i][0] = i
+//	}
+//	for j := range d[0] {
+//		d[0][j] = j
+//	}
+//	for j := 1; j <= len(t); j++ {
+//		for i := 1; i <= len(s); i++ {
+//			if s[i-1] == t[j-1] {
+//				d[i][j] = d[i-1][j-1]
+//			} else {
+//				min := d[i-1][j]
+//				if d[i][j-1] < min {
+//					min = d[i][j-1]
+//				}
+//				if d[i-1][j-1] < min {
+//					min = d[i-1][j-1]
+//				}
+//				d[i][j] = min + 1
+//			}
+//		}
+//
+//	}
+//	return d[len(s)][len(t)]
+//}
+//
+//func stringInSlice(a string, list []string) bool {
+//	for _, b := range list {
+//		if b == a {
+//			return true
+//		}
+//	}
+//	return false
+//}
 
 // CheckErr prints the msg with the prefix 'Error:' and exits with error code 1. If the msg is nil, it does nothing.
 func CheckErr(msg interface{}) {
@@ -253,16 +254,46 @@ func WriteStringAndCheck(b io.StringWriter, s string) {
 	CheckErr(err)
 }
 
-// 自定义 FlagUsages 函数，添加无序列表标记
+// FlagUsages returns a string containing the usage information for all flags in
+// the FlagSet. Flags are grouped by their annotations in markdown format.
 func FlagUsages(f *pflag.FlagSet) string {
 	var s strings.Builder
+	groups := make(map[string][]*pflag.Flag)
+	var ungroupedFlags []*pflag.Flag
+
 	f.VisitAll(func(flag *pflag.Flag) {
-		if flag.Shorthand == "" {
-			fmt.Fprintf(&s, "* \t --%s: %s (default: %s)\n", flag.Name, flag.Usage, flag.DefValue)
+		if group, ok := flag.Annotations["group"]; ok && len(group) > 0 {
+			groups[group[0]] = append(groups[group[0]], flag)
 		} else {
-			fmt.Fprintf(&s, "* -%s, --%s: %s (default: %s)\n", flag.Shorthand, flag.Name, flag.Usage, flag.DefValue)
+			ungroupedFlags = append(ungroupedFlags, flag)
 		}
 	})
+
+	if len(ungroupedFlags) > 0 {
+		for _, flag := range ungroupedFlags {
+			if flag.Shorthand == "" {
+				fmt.Fprintf(&s, "* --%s: %s (default: `%s`)\n", flag.Name, flag.Usage, flag.DefValue)
+			} else {
+				fmt.Fprintf(&s, "* -%s, --%s: %s (default: `%s`)\n", flag.Shorthand, flag.Name, flag.Usage, flag.DefValue)
+			}
+		}
+		s.WriteString("\n")
+	}
+
+	for groupName, flags := range groups {
+		if len(flags) > 0 {
+			fmt.Fprintf(&s, "### %s\n\n", groupName)
+			for _, flag := range flags {
+				if flag.Shorthand == "" {
+					fmt.Fprintf(&s, "* --%s: %s (default: `%s`)\n", flag.Name, flag.Usage, flag.DefValue)
+				} else {
+					fmt.Fprintf(&s, "* -%s, --%s: %s (default: `%s`)\n", flag.Shorthand, flag.Name, flag.Usage, flag.DefValue)
+				}
+			}
+			s.WriteString("\n")
+		}
+	}
+
 	return s.String()
 }
 

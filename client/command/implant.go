@@ -148,6 +148,7 @@ func BindBuiltinCommands(con *repl.Console, root *cobra.Command) *cobra.Command 
 	bind(consts.ArmoryGroup)
 	bind(consts.AddonGroup)
 	bind(consts.MalGroup)
+
 	root.InitDefaultHelpCmd()
 	root.SetHelpCommandGroupID(consts.GenericGroup)
 	return root

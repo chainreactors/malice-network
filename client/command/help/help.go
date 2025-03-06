@@ -28,7 +28,6 @@ func SetCustomHelpTemplate() (*template.Template, error) {
 
 func HelpFunc(cmd *cobra.Command, ss []string) {
 	var s strings.Builder
-
 	helpTmpl, err := SetCustomHelpTemplate()
 	if err != nil {
 		logs.Log.Errorf("Error creating help template: %s", err)
