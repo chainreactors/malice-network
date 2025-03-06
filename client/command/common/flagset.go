@@ -15,6 +15,8 @@ func ExecuteFlagSet(f *pflag.FlagSet) {
 	f.BoolP("quiet", "q", false, "disable output")
 	f.Uint32P("timeout", "t", 60, "timeout, in seconds")
 	f.String("arch", "", "architecture x64,x86")
+
+	SetFlagSetGroup(f, "execute")
 }
 
 func ParseBinaryDataFlags(cmd *cobra.Command) (string, string, bool, uint32) {
@@ -52,6 +54,8 @@ func SacrificeFlagSet(f *pflag.FlagSet) {
 	f.BoolP("block_dll", "b", false, "block not microsoft dll injection")
 	f.StringP("argue", "a", "", "spoofing process arguments, eg: notepad.exe ")
 	f.Bool("etw", false, "disable ETW")
+
+	SetFlagSetGroup(f, "sacrifice")
 }
 
 func ParseSacrificeFlags(cmd *cobra.Command) *implantpb.SacrificeProcess {
@@ -68,6 +72,8 @@ func CLRFlagSet(f *pflag.FlagSet) {
 	f.Bool("etw", false, "bypass ETW")
 	f.Bool("wldp", false, "bypass WLDP")
 	f.Bool("bypass-all", false, "bypass AMSI,ETW,WLDP")
+
+	SetFlagSetGroup(f, "clr")
 }
 
 func ParseCLRFlags(cmd *cobra.Command) map[string]string {
@@ -101,11 +107,15 @@ func TlsCertFlagSet(f *pflag.FlagSet) {
 	f.String("cert", "", "tls cert path")
 	f.String("key", "", "tls key path")
 	f.BoolP("tls", "t", false, "enable tls")
+
+	SetFlagSetGroup(f, "tls")
 }
 
 func ArtifactFlagSet(f *pflag.FlagSet) {
 	f.StringSlice("target", []string{}, "build target")
 	f.String("beacon-pipeline", "", "beacon pipeline id")
+
+	SetFlagSetGroup(f, "artifact")
 }
 
 func ParseArtifactFlags(cmd *cobra.Command) ([]string, string) {
@@ -119,6 +129,8 @@ func PipelineFlagSet(f *pflag.FlagSet) {
 	f.String("host", "0.0.0.0", "pipeline host, the default value is **0.0.0.0**")
 	f.UintP("port", "p", 0, "pipeline port, random port is selected from the range **10000-15000**")
 	f.String("ip", "ip", "external ip")
+
+	SetFlagSetGroup(f, "pipeline")
 }
 
 func ParsePipelineFlags(cmd *cobra.Command) (string, string, uint32) {
@@ -155,6 +167,7 @@ func EncryptionFlagSet(f *pflag.FlagSet) {
 	f.String("encryption-type", "", "encryption type")
 	f.String("encryption-key", "", "encryption key")
 	f.Bool("encryption-enable", false, "whether to enable encryption")
+	SetFlagSetGroup(f, "encryption")
 }
 
 func ParseEncryptionFlags(cmd *cobra.Command) (string, *clientpb.Encryption) {
@@ -187,6 +200,7 @@ func GenerateFlagSet(f *pflag.FlagSet) {
 	f.Float64("jitter", -1, "jitter")
 	f.StringSliceP("modules", "m", []string{}, "Set modules e.g.: execute_exe,execute_dll")
 	f.Bool("srdi", true, "enable srdi")
+	SetFlagSetGroup(f, "generate")
 }
 
 func ParseGenerateFlags(cmd *cobra.Command) (string, string, string, []string, string, int, float64, bool) {
@@ -239,6 +253,8 @@ func MalHttpFlagset(f *pflag.FlagSet) {
 	f.String("proxy", "", "proxy")
 	f.String("timeout", "", "timeout")
 	f.Bool("insecure", false, "insecure")
+
+	SetFlagSetGroup(f, "mal")
 }
 
 func SRDIFlagSet(f *pflag.FlagSet) {
@@ -248,6 +264,8 @@ func SRDIFlagSet(f *pflag.FlagSet) {
 	f.Uint32("id", 0, "build file id")
 	f.String("function_name", "", "shellcode entrypoint")
 	f.String("userdata_path", "", "user data path")
+
+	SetFlagSetGroup(f, "srdi")
 }
 
 func ParseSRDIFlags(cmd *cobra.Command) (string, string, uint32, map[string]string) {
@@ -268,6 +286,8 @@ func ProxyFlagSet(f *pflag.FlagSet) {
 	f.StringP("port", "p", "", "Local port to listen on")
 	f.StringP("username", "u", "maliceofinternal", "Username for authentication")
 	f.String("password", "maliceofinternal", "Password for authentication")
+
+	SetFlagSetGroup(f, "proxy")
 }
 
 func GithubFlagSet(f *pflag.FlagSet) {
@@ -276,6 +296,8 @@ func GithubFlagSet(f *pflag.FlagSet) {
 	f.String("token", "", "github token")
 	f.String("workflowFile", "", "github workflow file")
 	f.Bool("remove", false, "remove workflow")
+
+	SetFlagSetGroup(f, "github")
 }
 
 func ParseGithubFlags(cmd *cobra.Command) (string, string, string, string, bool) {
@@ -285,59 +307,4 @@ func ParseGithubFlags(cmd *cobra.Command) (string, string, string, string, bool)
 	file, _ := cmd.Flags().GetString("workflowFile")
 	remove, _ := cmd.Flags().GetBool("remove")
 	return owner, repo, token, file, remove
-}
-
-func TelegramSet(f *pflag.FlagSet) {
-	f.Bool("telegram-enable", false, "enable telegram")
-	f.String("telegram-token", "", "telegram token")
-	f.Int64("telegram-chat-id", 0, "telegram chat id")
-}
-
-func DingTalkSet(f *pflag.FlagSet) {
-	f.Bool("dingtalk-enable", false, "enable dingtalk")
-	f.String("dingtalk-secret", "", "dingtalk secret")
-	f.String("dingtalk-token", "", "dingtalk token")
-}
-
-func LarkSet(f *pflag.FlagSet) {
-	f.Bool("lark-enable", false, "enable lark")
-	f.String("lark-webhook-url", "", "lark webhook url")
-}
-
-func ServerChanSet(f *pflag.FlagSet) {
-	f.Bool("serverchan-enable", false, "enable serverchan")
-	f.String("serverchan-url", "", "serverchan url")
-}
-
-func ParseNotifyFlags(cmd *cobra.Command) *clientpb.Notify {
-	telegramEnable, _ := cmd.Flags().GetBool("telegram-enable")
-	dingTalkEnable, _ := cmd.Flags().GetBool("dingtalk-enable")
-	larkEnable, _ := cmd.Flags().GetBool("lark-enable")
-	serverChanEnable, _ := cmd.Flags().GetBool("serverchan-enable")
-
-	telegramToken, _ := cmd.Flags().GetString("telegram-token")
-	telegramChatID, _ := cmd.Flags().GetInt64("telegram-chat-id")
-	dingTalkSecret, _ := cmd.Flags().GetString("dingtalk-secret")
-	dingTalkToken, _ := cmd.Flags().GetString("dingtalk-token")
-	larkWebhookURL, _ := cmd.Flags().GetString("lark-webhook-url")
-	serverChanURL, _ := cmd.Flags().GetString("serverchan-url")
-
-	notifyConfig := &clientpb.Notify{
-		TelegramEnable: telegramEnable,
-		TelegramApiKey: telegramToken,
-		TelegramChatId: telegramChatID,
-
-		DingtalkEnable: dingTalkEnable,
-		DingtalkSecret: dingTalkSecret,
-		DingtalkToken:  dingTalkToken,
-
-		LarkEnable:     larkEnable,
-		LarkWebhookUrl: larkWebhookURL,
-
-		ServerchanEnable: serverChanEnable,
-		ServerchanUrl:    serverChanURL,
-	}
-
-	return notifyConfig
-
 }

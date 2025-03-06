@@ -571,7 +571,7 @@ format_path("C:\\Windows\\System32\\calc.exe")
 			Output: []string{
 				"int64",
 			},
-			Example: `parse_hex("0x1f4")`,
+			Example: `parse_hex("0x1f04")`,
 		})
 
 }

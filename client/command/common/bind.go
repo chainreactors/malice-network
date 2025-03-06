@@ -16,7 +16,7 @@ import (
 // cmd         - The pointer to the command the flags should be bound to.
 // flags       - A function using this flag set as parameter, for you to register flags.
 func Bind(desc string, persistent bool, cmd *cobra.Command, flags func(f *pflag.FlagSet)) {
-	flagSet := pflag.NewFlagSet(desc, pflag.ContinueOnError)
+	flagSet := pflag.NewFlagSet("", pflag.ContinueOnError)
 	flags(flagSet)
 
 	if persistent {
@@ -24,6 +24,14 @@ func Bind(desc string, persistent bool, cmd *cobra.Command, flags func(f *pflag.
 	} else {
 		cmd.Flags().AddFlagSet(flagSet)
 	}
+}
+
+func SetFlagSetGroup(flagSet *pflag.FlagSet, name string) {
+	flagSet.VisitAll(func(flag *pflag.Flag) {
+		flag.Annotations = map[string][]string{
+			"group": {name},
+		}
+	})
 }
 
 func BindFlag(cmd *cobra.Command, customSet ...func(f *pflag.FlagSet)) {
