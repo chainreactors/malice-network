@@ -49,12 +49,18 @@ func (rpc *Server) SyncPipeline(ctx context.Context, req *clientpb.Pipeline) (*c
 
 func (rpc *Server) ListPipelines(ctx context.Context, req *clientpb.Listener) (*clientpb.Pipelines, error) {
 	var result []*clientpb.Pipeline
-	pipelines, err := db.ListPipelines(req.Id)
-	if err != nil {
-		return nil, err
-	}
-	for _, pipeline := range pipelines {
-		result = append(result, pipeline.ToProtobuf())
+	if req.Id != "" {
+		pipe, err := core.Listeners.Get(req.Id)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, pipe.AllPipelines()...)
+	} else {
+		core.Listeners.Range(func(key, value any) bool {
+			lns := value.(*core.Listener)
+			result = append(result, lns.AllPipelines()...)
+			return true
+		})
 	}
 	return &clientpb.Pipelines{Pipelines: result}, nil
 }
