@@ -102,13 +102,13 @@ func NewRemServer(conURL string, ip string) (*RemConsole, error) {
 	return &RemConsole{console}, nil
 }
 
-func NewRemClient(conURL string, remoteURL, localURL string) (*RemConsole, error) {
+func NewRemClient(conURL string, args []string) (*RemConsole, error) {
 	u, err := rem.NewConsoleURL(conURL)
 	if err != nil {
 		return nil, err
 	}
 	var option remrunner.Options
-	err = option.ParseArgs([]string{"-c", conURL, "-r", remoteURL, "-l", localURL})
+	err = option.ParseArgs(args)
 	if err != nil {
 		return nil, err
 	}

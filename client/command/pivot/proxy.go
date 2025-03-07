@@ -14,12 +14,13 @@ func ProxyCmd(cmd *cobra.Command, con *repl.Console) error {
 	port, _ := cmd.Flags().GetString("port")
 	username, _ := cmd.Flags().GetString("username")
 	password, _ := cmd.Flags().GetString("password")
+	protocol, _ := cmd.Flags().GetString("protocol")
 	sess := con.GetInteractive()
 	if port == "" {
 		port = strconv.Itoa(int(cryptography.RandomInRange(20000, 40000)))
 	}
 
-	localURL := rem.NewURL("socks5", username, password, "0.0.0.0", port)
+	localURL := rem.NewURL(protocol, username, password, "0.0.0.0", port)
 	args, err := FormatRemCmdLine(con, pid, "proxy", nil, localURL)
 	if err != nil {
 		return err
