@@ -11,6 +11,18 @@ import (
 )
 
 func Commands(con *repl.Console) []*cobra.Command {
+	remCmd := &cobra.Command{
+		Use:   consts.CommandRemDial + " [pipeline] [args]",
+		Short: "Run a command on the implant",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return RemDialCmd(cmd, con)
+		},
+		Annotations: map[string]string{
+			"depend": consts.ModuleRem,
+		},
+	}
+
 	forwardCmd := &cobra.Command{
 		Use:   consts.CommandPortForward + " [pipeline]",
 		Short: "Forward local port to remote target",
@@ -128,6 +140,7 @@ rportforward pipeline1 --port 8080 --remote 192.168.1.1:80
 		f.StringP("local", "l", "", "Local address to connect to (host:port)")
 	})
 	return []*cobra.Command{
+		remCmd,
 		forwardCmd,
 		reverseCmd,
 		proxyCmd,
