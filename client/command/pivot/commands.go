@@ -93,11 +93,47 @@ rportforward pipeline1 --port 8080 --remote 192.168.1.1:80
 		f.StringP("remote", "r", "", "implant's address to connect to (host:port)")
 	})
 
+	rportforwardLocalCmd := &cobra.Command{
+		Use:   consts.CommandReversePortForwardLocal + " [pipeline] [agent]",
+		Short: "Remote port forward through the implant to client",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return RPortForwardLocalCmd(cmd, con)
+		},
+	}
+
+	common.BindArgCompletions(rportforwardLocalCmd, nil,
+		common.RemPipelineCompleter(con),
+		common.RemAgentCompleter(con),
+	)
+	common.BindFlag(rportforwardLocalCmd, func(f *pflag.FlagSet) {
+		f.StringP("port", "p", "", "Local port to listen on")
+		f.StringP("remote", "r", "", "implant's internal address to connect to (host:port)")
+	})
+	rportforwardLocalCmd.MarkFlagRequired("remote")
+
+	portforwardLocalCmd := &cobra.Command{
+		Use:   consts.CommandPortForwardLocal + " [pipeline] [agent]",
+		Short: "Forward local port to remote target",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return PortForwardLocalCmd(cmd, con)
+		},
+	}
+	common.BindArgCompletions(portforwardLocalCmd, nil,
+		common.RemPipelineCompleter(con),
+		common.RemAgentCompleter(con))
+	common.BindFlag(portforwardLocalCmd, func(f *pflag.FlagSet) {
+		f.StringP("port", "p", "", "Local port to listen on")
+		f.StringP("local", "l", "", "Local address to connect to (host:port)")
+	})
 	return []*cobra.Command{
 		forwardCmd,
 		reverseCmd,
 		proxyCmd,
 		rportforwardCmd,
+		portforwardLocalCmd,
+		rportforwardLocalCmd,
 	}
 }
 

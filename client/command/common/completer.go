@@ -2,6 +2,7 @@ package common
 
 import (
 	"fmt"
+	"github.com/chainreactors/malice-network/helper/utils/output"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -356,6 +357,32 @@ func RemPipelineCompleter(con *repl.Console) carapace.Action {
 	}
 	return carapace.ActionCallback(callback)
 }
+
+func RemAgentCompleter(con *repl.Console) carapace.Action {
+	callback := func(c carapace.Context) carapace.Action {
+		results := make([]string, 0)
+		for _, pipeline := range con.Pipelines {
+			if rem := pipeline.GetRem(); rem != nil {
+				ctxs, err := con.Rpc.GetContexts(con.Context(), &clientpb.Context{
+					Type: consts.ContextPivoting,
+				})
+				if err != nil {
+					return carapace.ActionValuesDescribed(results...).Tag("rem agent name")
+				}
+				contexts, err := output.ToContexts[*output.PivotingContext](ctxs.Contexts)
+				if err != nil {
+					return carapace.ActionValuesDescribed(results...).Tag("rem agent name")
+				}
+				for _, ctx := range contexts {
+					results = append(results, ctx.RemID, ctx.String())
+				}
+			}
+		}
+		return carapace.ActionValuesDescribed(results...).Tag("rem agent")
+	}
+	return carapace.ActionCallback(callback)
+}
+
 func TaskTriggerTypeCompleter() carapace.Action {
 	return carapace.ActionValuesDescribed(
 		"Daily", "Triggers every day",

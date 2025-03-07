@@ -286,7 +286,7 @@ func ProxyFlagSet(f *pflag.FlagSet) {
 	f.StringP("port", "p", "", "Local port to listen on")
 	f.StringP("username", "u", "maliceofinternal", "Username for authentication")
 	f.String("password", "maliceofinternal", "Password for authentication")
-
+	f.String("protocol", "socks5", "Inbound protocol")
 	SetFlagSetGroup(f, "proxy")
 }
 
