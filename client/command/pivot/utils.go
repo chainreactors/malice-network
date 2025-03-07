@@ -8,8 +8,19 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
+	"github.com/spf13/cobra"
 	"net/url"
 )
+
+func RemDialCmd(cmd *cobra.Command, con *repl.Console) error {
+	pid := cmd.Flags().Arg(0)
+	args := cmd.Flags().Args()[1:]
+	_, err := RemDial(con.Rpc, con.GetInteractive(), pid, args)
+	if err != nil {
+		return err
+	}
+	return nil
+}
 
 func GetRemLink(con *repl.Console, pipe string) (string, error) {
 	remPipe, ok := con.Pipelines[pipe]

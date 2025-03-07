@@ -235,7 +235,7 @@ const (
 	CommandRemStart                = "start"
 	CommandRemStop                 = "stop"
 	CommandRemDelete               = "delete"
-	CommandAliasSocks5             = "socks5"
+	CommandRemDial                 = "rem_dial"
 	CommandPivot                   = "pivot"
 	CommandProxy                   = "proxy"
 	CommandReverse                 = "reverse"
