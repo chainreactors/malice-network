@@ -355,10 +355,6 @@ func (plug *LuaPlugin) RegisterLuaBuiltin(vm *lua.LState) error {
 					Name: param.Name,
 					Type: LuaReverse,
 				})
-			} else {
-				params = append(params, &LuaParam{
-					Name: param.Name,
-				})
 			}
 		}
 
