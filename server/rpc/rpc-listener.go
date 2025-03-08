@@ -17,10 +17,10 @@ func (rpc *Server) GetListeners(ctx context.Context, req *clientpb.Empty) (*clie
 }
 
 func (rpc *Server) RegisterListener(ctx context.Context, req *clientpb.RegisterListener) (*clientpb.Empty, error) {
-	ip := getRemoteIp(ctx)
+	//ip := getRemoteIp(ctx)
 	core.Listeners.Add(&core.Listener{
 		Name:      req.Name,
-		IP:        ip,
+		IP:        req.Host,
 		Active:    true,
 		Pipelines: make(map[string]*clientpb.Pipeline),
 		Ctrl:      make(chan *clientpb.JobCtrl),
@@ -29,9 +29,9 @@ func (rpc *Server) RegisterListener(ctx context.Context, req *clientpb.RegisterL
 	core.EventBroker.Notify(core.Event{
 		EventType: consts.EventListener,
 		Op:        consts.CtrlListenerStart,
-		Message:   fmt.Sprintf("Listener %s started at %s", req.Name, ip),
+		Message:   fmt.Sprintf("Listener %s started at %s", req.Name, req.Host),
 	})
-	logs.Log.Importantf("[server] %s register listener: %s", ip, req.Name)
+	logs.Log.Importantf("[server] %s register listener: %s", req.Host, req.Name)
 	return &clientpb.Empty{}, nil
 }
 
