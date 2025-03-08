@@ -1,6 +1,7 @@
 package pivot
 
 import (
+	"fmt"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -13,7 +14,7 @@ import (
 func Commands(con *repl.Console) []*cobra.Command {
 	remCmd := &cobra.Command{
 		Use:   consts.CommandRemDial + " [pipeline] [args]",
-		Short: "Run a command on the implant",
+		Short: "Run rem on the implant",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return RemDialCmd(cmd, con)
@@ -162,7 +163,7 @@ func Register(con *repl.Console) {
 			if err != nil {
 				return nil, err
 			}
-			return resp, nil
+			return fmt.Sprintf("rem agent id: %s", resp), nil
 		},
 		nil,
 	)

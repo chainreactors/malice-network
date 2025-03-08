@@ -50,13 +50,13 @@ func SetCustomUsageTemplate() (*template.Template, error) {
 {{RenderMarkdown .Example}}{{end}}{{if .HasAvailableSubCommands}}{{$cmds := .Commands}}{{if eq (len .Groups) 0}}
 
 {{RenderMarkdown "## Available Commands:"}}{{range $cmds}}{{if (or .IsAvailableCommand (eq .Name "help"))}}
-    {{RenderOpsec (or .Annotations.opsec "0.0") .Name .NamePadding}} {{.Short}}{{end}}{{end}}{{else}}{{range $group := .Groups}}
+    {{RenderHelp .}} {{.Short}}{{end}}{{end}}{{else}}{{range $group := .Groups}}
 
 {{RenderMarkdown (printf "### %s" .Title)}}{{range $cmds}}{{if (and (eq .GroupID $group.ID) (or .IsAvailableCommand (eq .Name "help")))}}
-    {{RenderOpsec (or .Annotations.opsec "0.0") .Name .NamePadding}} {{.Short}}{{end}}{{end}}{{end}}{{if not .AllChildCommandsHaveGroup}}
+    {{RenderHelp .}} {{.Short}}{{end}}{{end}}{{end}}{{if not .AllChildCommandsHaveGroup}}
 
 {{RenderMarkdown "## Additional Commands:"}}{{range $cmds}}{{if (and (eq .GroupID "") (or .IsAvailableCommand (eq .Name "help")))}}
-    {{RenderOpsec (or .Annotations.opsec "0.0") .Name .NamePadding}} {{.Short}}{{end}}{{end}}{{end}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}
+    {{RenderHelp .}} {{.Short}}{{end}}{{end}}{{end}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}
 
 {{RenderMarkdown "## Flags:"}}
 {{RenderMarkdown (.LocalFlags | FlagUsages)}}{{end}}{{if .HasAvailableInheritedFlags}}
@@ -77,33 +77,54 @@ func SetCustomUsageTemplate() (*template.Template, error) {
 	return usageTmpl, nil
 }
 
-func RenderOpsec(opsecStr string, description string) string {
-	var coloredDescription string
-	opsec, err := strconv.ParseFloat(opsecStr, 64)
-	if err != nil {
-		return ""
+func RenderHelp(cmd *cobra.Command) string {
+	const (
+		nameWidth  = 15 // Name 列宽度
+		ttpWidth   = 10 // TTP 列宽度
+		opsecWidth = 15 // OPSEC 列宽度
+	)
+
+	// Name 部分
+	name := cmd.Name()
+	if len(name) > nameWidth {
+		name = name[:nameWidth-3] + "..." // 截断超长名称
 	}
-	if opsec == 0.0 {
-		return fmt.Sprintf("%-35s %s", description, "")
-	} else {
-		description = fmt.Sprintf("%-15s %s", description, "")
+	nameStr := fmt.Sprintf("%-*s", nameWidth, name)
+
+	// TTP 部分
+	ttp := ""
+	if val, ok := cmd.Annotations["ttp"]; ok && val != "" {
+		ttp = fmt.Sprintf("(%s)", val)
 	}
-	switch {
-	case opsec > 0 && opsec <= 3.9:
-		coloredDescription = tui.RedFg.Render(description)
-	case opsec >= 4.0 && opsec <= 6.9:
-		coloredDescription = tui.OrangeFg.Render(description)
-	case opsec >= 7.0 && opsec <= 8.9:
-		coloredDescription = tui.YellowFg.Render(description)
-	case opsec >= 9.0 && opsec <= 10.0:
-		coloredDescription = tui.GreenFg.Render(description)
-	default:
-		if termenv.HasDarkBackground() {
-			coloredDescription = tui.WhiteFg.Render(description)
-		} else {
-			coloredDescription = tui.BlackFg.Render(description)
+	ttpStr := fmt.Sprintf("%-*s", ttpWidth, ttp)
+
+	// OPSEC 部分
+	opsecStr := ""
+	var opsec float64
+	if val, ok := cmd.Annotations["opsec"]; ok {
+		var err error
+		opsec, err = strconv.ParseFloat(val, 64)
+		if err == nil && opsec != 0.0 {
+			opsecStr = fmt.Sprintf("[opsec %.1f]", opsec)
 		}
 	}
+	opsecStr = fmt.Sprintf("%-*s", opsecWidth, opsecStr)
 
-	return fmt.Sprintf("%s (opsec %.1f)%-9s", coloredDescription, opsec, "")
+	fullDescription := nameStr + ttpStr + opsecStr
+
+	switch {
+	case opsec > 0 && opsec <= 3.9:
+		return tui.RedFg.Render(fullDescription)
+	case opsec >= 4.0 && opsec <= 6.9:
+		return tui.OrangeFg.Render(fullDescription)
+	case opsec >= 7.0 && opsec <= 8.9:
+		return tui.YellowFg.Render(fullDescription)
+	case opsec >= 9.0 && opsec <= 10.0:
+		return tui.GreenFg.Render(fullDescription)
+	default:
+		if termenv.HasDarkBackground() {
+			return tui.WhiteFg.Render(fullDescription)
+		}
+		return tui.BlackFg.Render(fullDescription)
+	}
 }

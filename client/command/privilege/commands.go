@@ -58,7 +58,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		},
 		Example: `Attempt to elevate privileges:
   ~~~
-  sys getsystem
+  getsystem
   ~~~`,
 	}
 
