@@ -12,7 +12,8 @@ func SetCustomHelpTemplate() (*template.Template, error) {
 	funcMap := TemplateFuncs
 
 	customTemplate := `
-    {{RenderOpsec (or .Annotations.opsec "0.0") .Name .NamePadding}}
+{{RenderMarkdown (print "# " .Name)}}
+{{RenderMarkdown (RenderUsage .)}}
 
 {{RenderMarkdown "## Description:"}}
 {{with (or .Long .Short)}}{{RenderMarkdown (printf "%s" (trimTrailingWhitespaces .))}}{{end}}
@@ -24,6 +25,18 @@ func SetCustomHelpTemplate() (*template.Template, error) {
 		return nil, err
 	}
 	return helpTmpl, nil
+}
+
+func RenderUsage(cmd *cobra.Command) string {
+	var s string
+	if cmd.Annotations["opsec"] != "" {
+		s += fmt.Sprintf("\n\n  OPSEC: %s", cmd.Annotations["opsec"])
+	}
+
+	if ttp, ok := cmd.Annotations["ttp"]; ok {
+		s += fmt.Sprintf("\n\n  ATT&CK: [%s](https://attack.mitre.org/techniques/%s)", ttp, ttp)
+	}
+	return s
 }
 
 func HelpFunc(cmd *cobra.Command, ss []string) {

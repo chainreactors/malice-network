@@ -30,7 +30,8 @@ var TemplateFuncs = template.FuncMap{
 	"gt":                      Gt,
 	"eq":                      Eq,
 	"FlagUsages":              FlagUsages,
-	"RenderOpsec":             renderOpsec,
+	"RenderHelp":              RenderHelp,
+	"RenderUsage":             RenderUsage,
 	"RenderMarkdown":          renderMarkdownFunc,
 	"TrimParentCommand":       trimParentCommand,
 }
@@ -351,15 +352,6 @@ func FormatHelpTmpl(helpStr string) string {
 		Gray:      termenv.String("").Foreground(Gray).String(),
 	})
 	return outputBuf.String()
-}
-
-var renderOpsec = func(opsecStr string, use string, padding int) string {
-	if opsecStr == "" {
-		opsecStr = "0.0"
-	}
-
-	coloredText := RenderOpsec(opsecStr, use)
-	return coloredText
 }
 
 var (
