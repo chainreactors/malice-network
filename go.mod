@@ -7,7 +7,7 @@ require (
 	github.com/chainreactors/logs v0.0.0-20241115105204-6132e39f5261
 	github.com/chainreactors/mals v0.0.0-20250305151630-0fb1f0082e87
 	github.com/chainreactors/parsers v0.0.0-20250225073555-ab576124d61f
-	github.com/chainreactors/rem v0.1.2-0.20250116140516-295d97cb6b38
+	github.com/chainreactors/rem v0.1.2-0.20250311163600-c74af1c1e5ef
 	github.com/chainreactors/tui v0.0.0-20250117083346-8eff1b67016e
 	github.com/chainreactors/utils v0.0.0-20241209140746-65867d2f78b2
 	github.com/charmbracelet/bubbletea v0.27.1
@@ -35,8 +35,8 @@ require (
 	github.com/traefik/yaegi v0.14.3
 	github.com/wabzsy/gonut v1.0.0
 	github.com/yuin/gopher-lua v1.1.1
-	golang.org/x/crypto v0.28.0
-	golang.org/x/text v0.19.0
+	golang.org/x/crypto v0.33.0
+	golang.org/x/text v0.22.0
 	gopkg.in/yaml.v3 v3.0.1
 	gorm.io/gorm v1.25.4
 )
@@ -123,7 +123,7 @@ require (
 	github.com/shadowsocks/go-shadowsocks2 v0.1.5 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
-	github.com/stretchr/testify v1.9.0 // indirect
+	github.com/stretchr/testify v1.10.0 // indirect
 	github.com/technoweenie/multipartstreamer v1.0.1 // indirect
 	github.com/tengattack/gluacrypto v0.0.0-20240324200146-54b58c95c255 // indirect
 	github.com/twmb/murmur3 v1.1.8 // indirect
@@ -133,9 +133,9 @@ require (
 	github.com/yuin/goldmark v1.7.4 // indirect
 	github.com/yuin/goldmark-emoji v1.0.3 // indirect
 	golang.org/x/net v0.30.0 // indirect
-	golang.org/x/sync v0.10.0 // indirect
-	golang.org/x/sys v0.26.0 // indirect
-	golang.org/x/term v0.25.0 // indirect
+	golang.org/x/sync v0.11.0 // indirect
+	golang.org/x/sys v0.30.0 // indirect
+	golang.org/x/term v0.29.0 // indirect
 	golang.org/x/time v0.9.0 // indirect
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230530153820-e85fd2cbaebc // indirect

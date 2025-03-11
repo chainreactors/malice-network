@@ -49,6 +49,8 @@ const (
 	ListenerRPC_DeleteRem_FullMethodName               = "/listenerrpc.ListenerRPC/DeleteRem"
 	ListenerRPC_ListRems_FullMethodName                = "/listenerrpc.ListenerRPC/ListRems"
 	ListenerRPC_HealthCheckRem_FullMethodName          = "/listenerrpc.ListenerRPC/HealthCheckRem"
+	ListenerRPC_RemCtrl_FullMethodName                 = "/listenerrpc.ListenerRPC/RemCtrl"
+	ListenerRPC_RemLog_FullMethodName                  = "/listenerrpc.ListenerRPC/RemLog"
 	ListenerRPC_NewProfile_FullMethodName              = "/listenerrpc.ListenerRPC/NewProfile"
 	ListenerRPC_FindArtifact_FullMethodName            = "/listenerrpc.ListenerRPC/FindArtifact"
 	ListenerRPC_Build_FullMethodName                   = "/listenerrpc.ListenerRPC/Build"
@@ -94,6 +96,8 @@ type ListenerRPCClient interface {
 	DeleteRem(ctx context.Context, in *clientpb.CtrlPipeline, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	ListRems(ctx context.Context, in *clientpb.Listener, opts ...grpc.CallOption) (*clientpb.Pipelines, error)
 	HealthCheckRem(ctx context.Context, in *clientpb.Pipeline, opts ...grpc.CallOption) (*clientpb.Empty, error)
+	RemCtrl(ctx context.Context, in *clientpb.REMAgent, opts ...grpc.CallOption) (*clientpb.Empty, error)
+	RemLog(ctx context.Context, in *clientpb.REMAgent, opts ...grpc.CallOption) (*clientpb.RemLog, error)
 	// generator
 	NewProfile(ctx context.Context, in *clientpb.Profile, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	FindArtifact(ctx context.Context, in *clientpb.Artifact, opts ...grpc.CallOption) (*clientpb.Artifact, error)
@@ -409,6 +413,24 @@ func (c *listenerRPCClient) HealthCheckRem(ctx context.Context, in *clientpb.Pip
 	return out, nil
 }
 
+func (c *listenerRPCClient) RemCtrl(ctx context.Context, in *clientpb.REMAgent, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+	out := new(clientpb.Empty)
+	err := c.cc.Invoke(ctx, ListenerRPC_RemCtrl_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *listenerRPCClient) RemLog(ctx context.Context, in *clientpb.REMAgent, opts ...grpc.CallOption) (*clientpb.RemLog, error) {
+	out := new(clientpb.RemLog)
+	err := c.cc.Invoke(ctx, ListenerRPC_RemLog_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *listenerRPCClient) NewProfile(ctx context.Context, in *clientpb.Profile, opts ...grpc.CallOption) (*clientpb.Empty, error) {
 	out := new(clientpb.Empty)
 	err := c.cc.Invoke(ctx, ListenerRPC_NewProfile_FullMethodName, in, out, opts...)
@@ -508,6 +530,8 @@ type ListenerRPCServer interface {
 	DeleteRem(context.Context, *clientpb.CtrlPipeline) (*clientpb.Empty, error)
 	ListRems(context.Context, *clientpb.Listener) (*clientpb.Pipelines, error)
 	HealthCheckRem(context.Context, *clientpb.Pipeline) (*clientpb.Empty, error)
+	RemCtrl(context.Context, *clientpb.REMAgent) (*clientpb.Empty, error)
+	RemLog(context.Context, *clientpb.REMAgent) (*clientpb.RemLog, error)
 	// generator
 	NewProfile(context.Context, *clientpb.Profile) (*clientpb.Empty, error)
 	FindArtifact(context.Context, *clientpb.Artifact) (*clientpb.Artifact, error)
@@ -607,6 +631,12 @@ func (UnimplementedListenerRPCServer) ListRems(context.Context, *clientpb.Listen
 }
 func (UnimplementedListenerRPCServer) HealthCheckRem(context.Context, *clientpb.Pipeline) (*clientpb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method HealthCheckRem not implemented")
+}
+func (UnimplementedListenerRPCServer) RemCtrl(context.Context, *clientpb.REMAgent) (*clientpb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RemCtrl not implemented")
+}
+func (UnimplementedListenerRPCServer) RemLog(context.Context, *clientpb.REMAgent) (*clientpb.RemLog, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RemLog not implemented")
 }
 func (UnimplementedListenerRPCServer) NewProfile(context.Context, *clientpb.Profile) (*clientpb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method NewProfile not implemented")
@@ -1162,6 +1192,42 @@ func _ListenerRPC_HealthCheckRem_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ListenerRPC_RemCtrl_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(clientpb.REMAgent)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ListenerRPCServer).RemCtrl(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ListenerRPC_RemCtrl_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ListenerRPCServer).RemCtrl(ctx, req.(*clientpb.REMAgent))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ListenerRPC_RemLog_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(clientpb.REMAgent)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ListenerRPCServer).RemLog(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ListenerRPC_RemLog_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ListenerRPCServer).RemLog(ctx, req.(*clientpb.REMAgent))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ListenerRPC_NewProfile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(clientpb.Profile)
 	if err := dec(in); err != nil {
@@ -1398,6 +1464,14 @@ var ListenerRPC_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "HealthCheckRem",
 			Handler:    _ListenerRPC_HealthCheckRem_Handler,
+		},
+		{
+			MethodName: "RemCtrl",
+			Handler:    _ListenerRPC_RemCtrl_Handler,
+		},
+		{
+			MethodName: "RemLog",
+			Handler:    _ListenerRPC_RemLog_Handler,
 		},
 		{
 			MethodName: "NewProfile",

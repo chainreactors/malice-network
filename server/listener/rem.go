@@ -17,7 +17,7 @@ func NewRem(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeline) (*RE
 		return nil, err
 	}
 	pp := &REM{
-		remCon:     console,
+		con:        console,
 		rpc:        rpc,
 		remConfig:  remConfig,
 		Name:       pipeline.Name,
@@ -28,7 +28,7 @@ func NewRem(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeline) (*RE
 }
 
 type REM struct {
-	remCon     *rem.RemConsole
+	con        *rem.RemConsole
 	rpc        listenerrpc.ListenerRPCClient
 	remConfig  *clientpb.REM
 	ListenerID string
@@ -45,21 +45,21 @@ func (rem *REM) Start() error {
 		return nil
 	}
 
-	err := rem.remCon.Listen(rem.remCon.ConsoleURL)
+	err := rem.con.Listen(rem.con.ConsoleURL)
 	if err != nil {
 		return err
 	}
 	rem.Enable = true
-	logs.Log.Important(rem.remCon.Link())
+	logs.Log.Important(rem.con.Link())
 	go func() {
 		for rem.Enable {
-			agent, err := rem.remCon.Accept()
+			agent, err := rem.con.Accept()
 			if err != nil {
 				logs.Log.Error(err)
 				continue
 			}
 
-			go rem.remCon.Handler(agent)
+			go rem.con.Handler(agent)
 		}
 	}()
 
@@ -83,17 +83,17 @@ func (rem *REM) ToProtobuf() *clientpb.Pipeline {
 		ListenerId: rem.ListenerID,
 		Body: &clientpb.Pipeline_Rem{
 			Rem: &clientpb.REM{
-				Host:      rem.remCon.ConsoleURL.Hostname(),
+				Host:      rem.con.ConsoleURL.Hostname(),
 				Console:   rem.remConfig.Console,
 				Port:      rem.remConfig.Port,
-				Link:      rem.remCon.Link(),
-				Subscribe: rem.remCon.Subscribe(),
-				Agents:    rem.remCon.ToProtobuf(),
+				Link:      rem.con.Link(),
+				Subscribe: rem.con.Subscribe(),
+				Agents:    rem.con.ToProtobuf(),
 			},
 		},
 	}
 }
 
 func (rem *REM) Close() error {
-	return rem.remCon.Close()
+	return rem.con.Close()
 }
