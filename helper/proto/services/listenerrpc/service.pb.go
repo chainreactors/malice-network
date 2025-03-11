@@ -31,7 +31,7 @@ var file_services_listenerrpc_service_proto_rawDesc = []byte{
 	0x70, 0x62, 0x2f, 0x63, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x1a,
 	0x1e, 0x69, 0x6d, 0x70, 0x6c, 0x61, 0x6e, 0x74, 0x2f, 0x69, 0x6d, 0x70, 0x6c, 0x61, 0x6e, 0x74,
 	0x70, 0x62, 0x2f, 0x6d, 0x6f, 0x64, 0x75, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x32,
-	0xcf, 0x0f, 0x0a, 0x0b, 0x4c, 0x69, 0x73, 0x74, 0x65, 0x6e, 0x65, 0x72, 0x52, 0x50, 0x43, 0x12,
+	0xaf, 0x10, 0x0a, 0x0b, 0x4c, 0x69, 0x73, 0x74, 0x65, 0x6e, 0x65, 0x72, 0x52, 0x50, 0x43, 0x12,
 	0x42, 0x0a, 0x0b, 0x53, 0x70, 0x69, 0x74, 0x65, 0x53, 0x74, 0x72, 0x65, 0x61, 0x6d, 0x12, 0x17,
 	0x2e, 0x63, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x70, 0x62, 0x2e, 0x53, 0x70, 0x69, 0x74, 0x65, 0x52,
 	0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x1a, 0x16, 0x2e, 0x63, 0x6c, 0x69, 0x65, 0x6e, 0x74,
@@ -130,7 +130,13 @@ var file_services_listenerrpc_service_proto_rawDesc = []byte{
 	0x69, 0x6e, 0x65, 0x73, 0x12, 0x35, 0x0a, 0x0e, 0x48, 0x65, 0x61, 0x6c, 0x74, 0x68, 0x43, 0x68,
 	0x65, 0x63, 0x6b, 0x52, 0x65, 0x6d, 0x12, 0x12, 0x2e, 0x63, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x70,
 	0x62, 0x2e, 0x50, 0x69, 0x70, 0x65, 0x6c, 0x69, 0x6e, 0x65, 0x1a, 0x0f, 0x2e, 0x63, 0x6c, 0x69,
-	0x65, 0x6e, 0x74, 0x70, 0x62, 0x2e, 0x45, 0x6d, 0x70, 0x74, 0x79, 0x12, 0x30, 0x0a, 0x0a, 0x4e,
+	0x65, 0x6e, 0x74, 0x70, 0x62, 0x2e, 0x45, 0x6d, 0x70, 0x74, 0x79, 0x12, 0x2e, 0x0a, 0x07, 0x52,
+	0x65, 0x6d, 0x43, 0x74, 0x72, 0x6c, 0x12, 0x12, 0x2e, 0x63, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x70,
+	0x62, 0x2e, 0x52, 0x45, 0x4d, 0x41, 0x67, 0x65, 0x6e, 0x74, 0x1a, 0x0f, 0x2e, 0x63, 0x6c, 0x69,
+	0x65, 0x6e, 0x74, 0x70, 0x62, 0x2e, 0x45, 0x6d, 0x70, 0x74, 0x79, 0x12, 0x2e, 0x0a, 0x06, 0x52,
+	0x65, 0x6d, 0x4c, 0x6f, 0x67, 0x12, 0x12, 0x2e, 0x63, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x70, 0x62,
+	0x2e, 0x52, 0x45, 0x4d, 0x41, 0x67, 0x65, 0x6e, 0x74, 0x1a, 0x10, 0x2e, 0x63, 0x6c, 0x69, 0x65,
+	0x6e, 0x74, 0x70, 0x62, 0x2e, 0x52, 0x65, 0x6d, 0x4c, 0x6f, 0x67, 0x12, 0x30, 0x0a, 0x0a, 0x4e,
 	0x65, 0x77, 0x50, 0x72, 0x6f, 0x66, 0x69, 0x6c, 0x65, 0x12, 0x11, 0x2e, 0x63, 0x6c, 0x69, 0x65,
 	0x6e, 0x74, 0x70, 0x62, 0x2e, 0x50, 0x72, 0x6f, 0x66, 0x69, 0x6c, 0x65, 0x1a, 0x0f, 0x2e, 0x63,
 	0x6c, 0x69, 0x65, 0x6e, 0x74, 0x70, 0x62, 0x2e, 0x45, 0x6d, 0x70, 0x74, 0x79, 0x12, 0x36, 0x0a,
@@ -177,16 +183,18 @@ var file_services_listenerrpc_service_proto_goTypes = []interface{}{
 	(*clientpb.Listener)(nil),              // 9: clientpb.Listener
 	(*clientpb.Website)(nil),               // 10: clientpb.Website
 	(*clientpb.WebContent)(nil),            // 11: clientpb.WebContent
-	(*clientpb.Profile)(nil),               // 12: clientpb.Profile
-	(*clientpb.Artifact)(nil),              // 13: clientpb.Artifact
-	(*clientpb.Generate)(nil),              // 14: clientpb.Generate
-	(*clientpb.Empty)(nil),                 // 15: clientpb.Empty
-	(*clientpb.GithubWorkflowRequest)(nil), // 16: clientpb.GithubWorkflowRequest
-	(*clientpb.SpiteRequest)(nil),          // 17: clientpb.SpiteRequest
-	(*clientpb.JobCtrl)(nil),               // 18: clientpb.JobCtrl
-	(*clientpb.Pipelines)(nil),             // 19: clientpb.Pipelines
-	(*clientpb.WebContents)(nil),           // 20: clientpb.WebContents
-	(*clientpb.Builder)(nil),               // 21: clientpb.Builder
+	(*clientpb.REMAgent)(nil),              // 12: clientpb.REMAgent
+	(*clientpb.Profile)(nil),               // 13: clientpb.Profile
+	(*clientpb.Artifact)(nil),              // 14: clientpb.Artifact
+	(*clientpb.Generate)(nil),              // 15: clientpb.Generate
+	(*clientpb.Empty)(nil),                 // 16: clientpb.Empty
+	(*clientpb.GithubWorkflowRequest)(nil), // 17: clientpb.GithubWorkflowRequest
+	(*clientpb.SpiteRequest)(nil),          // 18: clientpb.SpiteRequest
+	(*clientpb.JobCtrl)(nil),               // 19: clientpb.JobCtrl
+	(*clientpb.Pipelines)(nil),             // 20: clientpb.Pipelines
+	(*clientpb.WebContents)(nil),           // 21: clientpb.WebContents
+	(*clientpb.RemLog)(nil),                // 22: clientpb.RemLog
+	(*clientpb.Builder)(nil),               // 23: clientpb.Builder
 }
 var file_services_listenerrpc_service_proto_depIdxs = []int32{
 	0,  // 0: listenerrpc.ListenerRPC.SpiteStream:input_type -> clientpb.SpiteResponse
@@ -217,50 +225,54 @@ var file_services_listenerrpc_service_proto_depIdxs = []int32{
 	8,  // 25: listenerrpc.ListenerRPC.DeleteRem:input_type -> clientpb.CtrlPipeline
 	9,  // 26: listenerrpc.ListenerRPC.ListRems:input_type -> clientpb.Listener
 	7,  // 27: listenerrpc.ListenerRPC.HealthCheckRem:input_type -> clientpb.Pipeline
-	12, // 28: listenerrpc.ListenerRPC.NewProfile:input_type -> clientpb.Profile
-	13, // 29: listenerrpc.ListenerRPC.FindArtifact:input_type -> clientpb.Artifact
-	14, // 30: listenerrpc.ListenerRPC.Build:input_type -> clientpb.Generate
-	15, // 31: listenerrpc.ListenerRPC.DockerStatus:input_type -> clientpb.Empty
-	16, // 32: listenerrpc.ListenerRPC.TriggerWorkflowDispatch:input_type -> clientpb.GithubWorkflowRequest
-	16, // 33: listenerrpc.ListenerRPC.WorkflowStatus:input_type -> clientpb.GithubWorkflowRequest
-	13, // 34: listenerrpc.ListenerRPC.GetArtifact:input_type -> clientpb.Artifact
-	17, // 35: listenerrpc.ListenerRPC.SpiteStream:output_type -> clientpb.SpiteRequest
-	18, // 36: listenerrpc.ListenerRPC.JobStream:output_type -> clientpb.JobCtrl
-	15, // 37: listenerrpc.ListenerRPC.Register:output_type -> clientpb.Empty
-	15, // 38: listenerrpc.ListenerRPC.SysInfo:output_type -> clientpb.Empty
-	15, // 39: listenerrpc.ListenerRPC.Checkin:output_type -> clientpb.Empty
-	15, // 40: listenerrpc.ListenerRPC.InitBindSession:output_type -> clientpb.Empty
-	15, // 41: listenerrpc.ListenerRPC.RegisterListener:output_type -> clientpb.Empty
-	15, // 42: listenerrpc.ListenerRPC.RegisterPipeline:output_type -> clientpb.Empty
-	15, // 43: listenerrpc.ListenerRPC.StartPipeline:output_type -> clientpb.Empty
-	15, // 44: listenerrpc.ListenerRPC.StopPipeline:output_type -> clientpb.Empty
-	15, // 45: listenerrpc.ListenerRPC.DeletePipeline:output_type -> clientpb.Empty
-	19, // 46: listenerrpc.ListenerRPC.ListPipelines:output_type -> clientpb.Pipelines
-	15, // 47: listenerrpc.ListenerRPC.SyncPipeline:output_type -> clientpb.Empty
-	15, // 48: listenerrpc.ListenerRPC.RegisterWebsite:output_type -> clientpb.Empty
-	15, // 49: listenerrpc.ListenerRPC.StartWebsite:output_type -> clientpb.Empty
-	15, // 50: listenerrpc.ListenerRPC.StopWebsite:output_type -> clientpb.Empty
-	15, // 51: listenerrpc.ListenerRPC.DeleteWebsite:output_type -> clientpb.Empty
-	19, // 52: listenerrpc.ListenerRPC.ListWebsites:output_type -> clientpb.Pipelines
-	20, // 53: listenerrpc.ListenerRPC.ListWebContent:output_type -> clientpb.WebContents
-	15, // 54: listenerrpc.ListenerRPC.AddWebsiteContent:output_type -> clientpb.Empty
-	15, // 55: listenerrpc.ListenerRPC.UpdateWebsiteContent:output_type -> clientpb.Empty
-	15, // 56: listenerrpc.ListenerRPC.RemoveWebsiteContent:output_type -> clientpb.Empty
-	15, // 57: listenerrpc.ListenerRPC.RegisterRem:output_type -> clientpb.Empty
-	15, // 58: listenerrpc.ListenerRPC.StartRem:output_type -> clientpb.Empty
-	15, // 59: listenerrpc.ListenerRPC.StopRem:output_type -> clientpb.Empty
-	15, // 60: listenerrpc.ListenerRPC.DeleteRem:output_type -> clientpb.Empty
-	19, // 61: listenerrpc.ListenerRPC.ListRems:output_type -> clientpb.Pipelines
-	15, // 62: listenerrpc.ListenerRPC.HealthCheckRem:output_type -> clientpb.Empty
-	15, // 63: listenerrpc.ListenerRPC.NewProfile:output_type -> clientpb.Empty
-	13, // 64: listenerrpc.ListenerRPC.FindArtifact:output_type -> clientpb.Artifact
-	21, // 65: listenerrpc.ListenerRPC.Build:output_type -> clientpb.Builder
-	15, // 66: listenerrpc.ListenerRPC.DockerStatus:output_type -> clientpb.Empty
-	21, // 67: listenerrpc.ListenerRPC.TriggerWorkflowDispatch:output_type -> clientpb.Builder
-	15, // 68: listenerrpc.ListenerRPC.WorkflowStatus:output_type -> clientpb.Empty
-	13, // 69: listenerrpc.ListenerRPC.GetArtifact:output_type -> clientpb.Artifact
-	35, // [35:70] is the sub-list for method output_type
-	0,  // [0:35] is the sub-list for method input_type
+	12, // 28: listenerrpc.ListenerRPC.RemCtrl:input_type -> clientpb.REMAgent
+	12, // 29: listenerrpc.ListenerRPC.RemLog:input_type -> clientpb.REMAgent
+	13, // 30: listenerrpc.ListenerRPC.NewProfile:input_type -> clientpb.Profile
+	14, // 31: listenerrpc.ListenerRPC.FindArtifact:input_type -> clientpb.Artifact
+	15, // 32: listenerrpc.ListenerRPC.Build:input_type -> clientpb.Generate
+	16, // 33: listenerrpc.ListenerRPC.DockerStatus:input_type -> clientpb.Empty
+	17, // 34: listenerrpc.ListenerRPC.TriggerWorkflowDispatch:input_type -> clientpb.GithubWorkflowRequest
+	17, // 35: listenerrpc.ListenerRPC.WorkflowStatus:input_type -> clientpb.GithubWorkflowRequest
+	14, // 36: listenerrpc.ListenerRPC.GetArtifact:input_type -> clientpb.Artifact
+	18, // 37: listenerrpc.ListenerRPC.SpiteStream:output_type -> clientpb.SpiteRequest
+	19, // 38: listenerrpc.ListenerRPC.JobStream:output_type -> clientpb.JobCtrl
+	16, // 39: listenerrpc.ListenerRPC.Register:output_type -> clientpb.Empty
+	16, // 40: listenerrpc.ListenerRPC.SysInfo:output_type -> clientpb.Empty
+	16, // 41: listenerrpc.ListenerRPC.Checkin:output_type -> clientpb.Empty
+	16, // 42: listenerrpc.ListenerRPC.InitBindSession:output_type -> clientpb.Empty
+	16, // 43: listenerrpc.ListenerRPC.RegisterListener:output_type -> clientpb.Empty
+	16, // 44: listenerrpc.ListenerRPC.RegisterPipeline:output_type -> clientpb.Empty
+	16, // 45: listenerrpc.ListenerRPC.StartPipeline:output_type -> clientpb.Empty
+	16, // 46: listenerrpc.ListenerRPC.StopPipeline:output_type -> clientpb.Empty
+	16, // 47: listenerrpc.ListenerRPC.DeletePipeline:output_type -> clientpb.Empty
+	20, // 48: listenerrpc.ListenerRPC.ListPipelines:output_type -> clientpb.Pipelines
+	16, // 49: listenerrpc.ListenerRPC.SyncPipeline:output_type -> clientpb.Empty
+	16, // 50: listenerrpc.ListenerRPC.RegisterWebsite:output_type -> clientpb.Empty
+	16, // 51: listenerrpc.ListenerRPC.StartWebsite:output_type -> clientpb.Empty
+	16, // 52: listenerrpc.ListenerRPC.StopWebsite:output_type -> clientpb.Empty
+	16, // 53: listenerrpc.ListenerRPC.DeleteWebsite:output_type -> clientpb.Empty
+	20, // 54: listenerrpc.ListenerRPC.ListWebsites:output_type -> clientpb.Pipelines
+	21, // 55: listenerrpc.ListenerRPC.ListWebContent:output_type -> clientpb.WebContents
+	16, // 56: listenerrpc.ListenerRPC.AddWebsiteContent:output_type -> clientpb.Empty
+	16, // 57: listenerrpc.ListenerRPC.UpdateWebsiteContent:output_type -> clientpb.Empty
+	16, // 58: listenerrpc.ListenerRPC.RemoveWebsiteContent:output_type -> clientpb.Empty
+	16, // 59: listenerrpc.ListenerRPC.RegisterRem:output_type -> clientpb.Empty
+	16, // 60: listenerrpc.ListenerRPC.StartRem:output_type -> clientpb.Empty
+	16, // 61: listenerrpc.ListenerRPC.StopRem:output_type -> clientpb.Empty
+	16, // 62: listenerrpc.ListenerRPC.DeleteRem:output_type -> clientpb.Empty
+	20, // 63: listenerrpc.ListenerRPC.ListRems:output_type -> clientpb.Pipelines
+	16, // 64: listenerrpc.ListenerRPC.HealthCheckRem:output_type -> clientpb.Empty
+	16, // 65: listenerrpc.ListenerRPC.RemCtrl:output_type -> clientpb.Empty
+	22, // 66: listenerrpc.ListenerRPC.RemLog:output_type -> clientpb.RemLog
+	16, // 67: listenerrpc.ListenerRPC.NewProfile:output_type -> clientpb.Empty
+	14, // 68: listenerrpc.ListenerRPC.FindArtifact:output_type -> clientpb.Artifact
+	23, // 69: listenerrpc.ListenerRPC.Build:output_type -> clientpb.Builder
+	16, // 70: listenerrpc.ListenerRPC.DockerStatus:output_type -> clientpb.Empty
+	23, // 71: listenerrpc.ListenerRPC.TriggerWorkflowDispatch:output_type -> clientpb.Builder
+	16, // 72: listenerrpc.ListenerRPC.WorkflowStatus:output_type -> clientpb.Empty
+	14, // 73: listenerrpc.ListenerRPC.GetArtifact:output_type -> clientpb.Artifact
+	37, // [37:74] is the sub-list for method output_type
+	0,  // [0:37] is the sub-list for method input_type
 	0,  // [0:0] is the sub-list for extension type_name
 	0,  // [0:0] is the sub-list for extension extendee
 	0,  // [0:0] is the sub-list for field type_name

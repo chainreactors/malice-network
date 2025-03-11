@@ -235,6 +235,9 @@ func (lns *listener) Handler() {
 			handlerErr = lns.handleWebContentRemove(msg.Job)
 		case consts.CtrlRemStart:
 			handlerErr = lns.handleStartRem(msg.Job)
+		case consts.CtrlRemCtrl:
+			//handlerErr = lns.handleRemCtrl(msg.Job)
+
 		}
 
 		status := &clientpb.JobStatus{
@@ -513,5 +516,34 @@ func (lns *listener) handleStartRem(job *clientpb.Job) error {
 
 	lns.pipelines.Add(rem)
 	job.Name = rem.ID()
+	return nil
+}
+
+func (lns *listener) handleRemStop(job *clientpb.Job) error {
+	rem := lns.pipelines.Get(job.Name)
+	if rem == nil {
+		return errors.New("rem not found")
+	}
+	if err := rem.Close(); err != nil {
+		return err
+	}
+	delete(lns.pipelines, rem.ID())
+	return nil
+}
+
+func (lns *listener) handlerRemCtrl(job *clientpb.JobCtrl) error {
+	rem := lns.pipelines.Get(job.Job.Name)
+	if rem == nil {
+		return errors.New("rem not found")
+	}
+
+	body := job.GetAgent()
+	if body == nil {
+		return errors.New("agent not found")
+	}
+	_, err := rem.(*REM).con.Fork(body.Id, body.Args)
+	if err != nil {
+		return err
+	}
 	return nil
 }

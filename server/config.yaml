@@ -85,8 +85,8 @@ listeners:
             enable: true
             type: xor
             key: maliceofinternal
-#  rem:
-#    -
-#      name: rem_default
-#      enable: true
-#      console: tcp://0.0.0.0:12345
+  rem:
+    -
+      name: rem_default
+      enable: true
+      console: tcp://0.0.0.0:12345

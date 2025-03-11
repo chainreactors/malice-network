@@ -39,6 +39,7 @@ const (
 	CtrlWebContentRemove        = "web_content_remove"
 	CtrlRemStart                = "rem_start"
 	CtrlRemStop                 = "rem_stop"
+	CtrlRemCtrl                 = "rem_ctrl"
 	CtrlRemRegister             = "rem_register"
 	CtrlPivotReverse            = "pivot_reverse"
 	CtrlPivotProxy              = "pivot_proxy"

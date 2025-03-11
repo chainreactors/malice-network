@@ -192,6 +192,28 @@ func (rpc *Server) RemDial(ctx context.Context, req *implantpb.Request) (*client
 	return greq.Task.ToProtobuf(), nil
 }
 
+// rpc RemCtrl(clientpb.RemArgs) returns (clientpb.Empty);
+func (rpc *Server) RemCtrl(ctx context.Context, req *clientpb.REMAgent) (*clientpb.Empty, error) {
+	pipe, ok := core.Listeners.Find(req.PipelineId)
+	if !ok {
+		return nil, errs.ErrNotFoundListener
+	}
+	lns, err := core.Listeners.Get(pipe.ListenerId)
+	if err != nil {
+		return nil, err
+	}
+	lns.PushCtrl(&clientpb.JobCtrl{
+		Ctrl: consts.CtrlRemCtrl,
+		Job: &clientpb.Job{
+			Pipeline: pipe,
+		},
+		Body: &clientpb.JobCtrl_Agent{
+			Agent: req,
+		},
+	})
+	return &clientpb.Empty{}, nil
+}
+
 func (rpc *Server) LoadRem(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {

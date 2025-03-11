@@ -423,6 +423,7 @@ Arguments for the BOF can be passed after the -- delimiter. Each argument must b
 		Annotations: map[string]string{
 			"depend": consts.ModuleExecuteBof,
 			"opsec":  "9.8",
+			"ttp":    "T1055.002",
 		},
 		Example: `
 ~~~
