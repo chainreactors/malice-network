@@ -122,7 +122,7 @@ func (rpc *Server) JobStream(stream listenerrpc.ListenerRPC_JobStreamServer) err
 		}
 		_, ok := lns.CtrlJob.Load(msg.CtrlId)
 		if ok {
-			lns.CtrlJob.Store(msg.CtrlId, msg.Job)
+			lns.CtrlJob.Store(msg.CtrlId, msg)
 			go func() {
 				time.Sleep(1 * time.Second)
 				lns.CtrlJob.Delete(msg.CtrlId)

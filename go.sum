@@ -122,6 +122,8 @@ github.com/chainreactors/rem v0.1.2-0.20250312104935-5cfdb5d81d5e h1:Sr5VX3wl/Xr
 github.com/chainreactors/rem v0.1.2-0.20250312104935-5cfdb5d81d5e/go.mod h1:U9VgwCIPwqA29jCFhxs5u3YDx2JAbXKaIdolIfZ5W2w=
 github.com/chainreactors/rem v0.1.2-0.20250312160923-127f0b1de6fe h1:svFELaWq88U8fgWq/bdj4biRD9o9MNQ/kBEjZX0yEuk=
 github.com/chainreactors/rem v0.1.2-0.20250312160923-127f0b1de6fe/go.mod h1:U9VgwCIPwqA29jCFhxs5u3YDx2JAbXKaIdolIfZ5W2w=
+github.com/chainreactors/rem v0.1.2-0.20250312174150-a2c831cf9226 h1:rxKEIz/k1AI2PxwgatGCqpMhzkM82Ewe9HWAz+XN2Bg=
+github.com/chainreactors/rem v0.1.2-0.20250312174150-a2c831cf9226/go.mod h1:U9VgwCIPwqA29jCFhxs5u3YDx2JAbXKaIdolIfZ5W2w=
 github.com/chainreactors/tui v0.0.0-20250117083346-8eff1b67016e h1:PYELWc4sxylEgoAUwlsfOWX4I1xJd2viaMm+9wq6+pg=
 github.com/chainreactors/tui v0.0.0-20250117083346-8eff1b67016e/go.mod h1:+J5acoMNk5wLy6hhBYQMAchOS11wIhoEU9cVDV629eo=
 github.com/chainreactors/utils v0.0.0-20240528085651-ba1b255482c1/go.mod h1:JA4eiQZm+7AsfjXBcIzIdVKBEhDCb16eNtWFCGTxlvs=
