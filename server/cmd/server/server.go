@@ -76,7 +76,7 @@ func Execute() {
 	configs.CurrentServerConfigFilename = opt.Config
 	// load config
 	if opt.Debug {
-		logs.Log.SetLevel(logs.Debug)
+		logs.Log.SetLevel(logs.DebugLevel)
 	}
 	err = opt.Validate()
 	if err != nil {

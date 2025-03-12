@@ -9,9 +9,9 @@ import (
 )
 
 var (
-	LogLevel = logs.Warn
+	LogLevel = logs.WarnLevel
 	Log      = &Logger{Logger: logs.NewLogger(LogLevel)}
-	MuteLog  = &Logger{Logger: logs.NewLogger(logs.Important + 1)}
+	MuteLog  = &Logger{Logger: logs.NewLogger(logs.ImportantLevel + 1)}
 )
 
 var (

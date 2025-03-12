@@ -94,11 +94,11 @@ func LoadMalManiFest(filename string) (*MalManiFest, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	manifest, err := ParseMalManifest(content)
 	if err != nil {
 		return nil, err
 	}
-
 	return manifest, nil
 }
 
