@@ -279,15 +279,15 @@ func (s *ServerStatus) handlerSession(event *clientpb.Event) {
 		s.AddSession(event.Session)
 		Log.Important(logs.GreenBold(fmt.Sprintf("[%s]: %s \n", consts.CtrlSessionRegister, event.Message)))
 	case consts.CtrlSessionTask:
-		logs.Log.Infof(logs.GreenBold(fmt.Sprintf("[%s.%d] run task %s: %s\n", sid, event.Task.TaskId, event.Task.Type, event.Message)))
+		logs.Log.Info(logs.GreenBold(fmt.Sprintf("[%s.%d] run task %s: %s\n", sid, event.Task.TaskId, event.Task.Type, event.Message)))
 	case consts.CtrlSessionError:
 		log := s.ObserverLog(sid)
-		log.Errorf(logs.GreenBold(fmt.Sprintf("[%s] task: %d error: %s\n", sid, event.Task.TaskId, event.Err)))
+		log.Error(logs.GreenBold(fmt.Sprintf("[%s] task: %d error: %s\n", sid, event.Task.TaskId, event.Err)))
 	case consts.CtrlSessionLog:
 		log := s.ObserverLog(sid)
 		log.Errorf("[%s] log: \n%s\n", sid, event.Message)
 	case consts.CtrlSessionLeave:
-		Log.Importantf(logs.RedBold(fmt.Sprintf("[%s] session stop: %s\n", sid, event.Message)))
+		Log.Important(logs.RedBold(fmt.Sprintf("[%s] session stop: %s\n", sid, event.Message)))
 	case consts.CtrlSessionReborn:
 		s.AddSession(event.Session)
 		Log.Important(logs.GreenBold(fmt.Sprintf("[%s]: %s\n", consts.CtrlSessionReborn, event.Message)))
