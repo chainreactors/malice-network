@@ -233,11 +233,13 @@ func (s *ServerStatus) handleJob(event *clientpb.Event) {
 		Log.Importantf("[%s] %s: bind %s on %s %s\n", event.Type, event.Op,
 			pipeline.Name, pipeline.ListenerId, pipeline.Ip)
 	case *clientpb.Pipeline_Rem:
-		if event.Op == consts.CtrlRemLog {
+		switch event.Op {
+		case consts.CtrlRemLog:
 			return
+		default:
+			Log.Importantf("[%s] %s: rem %s on %s %s:%d\n", event.Type, event.Op,
+				pipeline.Name, pipeline.ListenerId, pipeline.Ip, pipeline.GetRem().Port)
 		}
-		Log.Importantf("[%s] %s: rem %s on %s %s\n", event.Type, event.Op,
-			pipeline.Name, pipeline.ListenerId, pipeline.Ip)
 
 		//Log.Infof("[%s] %s: rem -c %s \n", event.Type, event.Op, pipeline.GetRem().Link)
 	case *clientpb.Pipeline_Web:

@@ -155,14 +155,13 @@ func (rpc *Server) RemDial(ctx context.Context, req *implantpb.Request) (*client
 			logs.Log.Warnf("pipeline %s not found", pid)
 			return
 		}
+
 		if remOpt, ok := pipe.GetRem().Agents[spite.GetResponse().Output]; ok {
-			if remOpt.Mod == "reverse" {
-				event.Op = consts.CtrlPivotReverse
-				event.Message = remOpt.Remote
-			} else if remOpt.Mod == "proxy" {
-				event.Op = consts.CtrlPivotProxy
-				event.Message = remOpt.Local
-			}
+			pivot := output.NewPivotingWithRem(remOpt)
+			pivot.Pipeline = pipe.Name
+			pivot.Listener = pipe.ListenerId
+			event.Op = "pivot_" + pivot.Mod
+			event.Message = pivot.Abstract()
 			lns, err := core.Listeners.Get(pipe.ListenerId)
 			if err != nil {
 				return
@@ -173,15 +172,7 @@ func (rpc *Server) RemDial(ctx context.Context, req *implantpb.Request) (*client
 				Listener: lns.ToProtobuf(),
 				Pipeline: pipe,
 				Type:     consts.ContextPivoting,
-				Value: output.MarshalContext(&output.PivotingContext{
-					Enable:    true,
-					Listener:  pipe.ListenerId,
-					Pipeline:  pid,
-					RemID:     spite.GetResponse().Output,
-					Mod:       remOpt.Mod,
-					RemoteURL: remOpt.Remote,
-					LocalURL:  remOpt.Local,
-				}),
+				Value:    output.MarshalContext(pivot),
 			})
 			if err != nil {
 				return
@@ -201,15 +192,36 @@ func (rpc *Server) RemCtrl(ctx context.Context, req *clientpb.REMAgent) (*client
 	if err != nil {
 		return nil, err
 	}
-	lns.PushCtrl(&clientpb.JobCtrl{
+	i := lns.PushCtrl(&clientpb.JobCtrl{
 		Ctrl: consts.CtrlRemCtrl,
 		Job: &clientpb.Job{
+			Name:     pipe.Name,
 			Pipeline: pipe,
 			Body: &clientpb.Job_RemAgent{
 				RemAgent: req,
 			},
 		},
 	})
+	status := lns.WaitCtrl(i)
+	if status.Status == consts.CtrlStatusSuccess {
+		pivot := output.NewPivotingWithRem(status.Job.GetRemAgent())
+		pivot.Pipeline = pipe.Name
+		pivot.Listener = pipe.ListenerId
+		_, err = db.SaveContext(&clientpb.Context{
+			Listener: lns.ToProtobuf(),
+			Pipeline: pipe,
+			Type:     consts.ContextPivoting,
+			Value:    output.MarshalContext(pivot),
+		})
+		if err != nil {
+			return nil, err
+		}
+		core.EventBroker.Publish(core.Event{
+			EventType: consts.EventPivot,
+			Op:        "pivot_" + pivot.Mod,
+			Message:   pivot.Abstract(),
+		})
+	}
 	return &clientpb.Empty{}, nil
 }
 
@@ -234,7 +246,7 @@ func (rpc *Server) RemLog(ctx context.Context, req *clientpb.REMAgent) (*clientp
 	})
 
 	job := lns.WaitCtrl(i)
-	return job.GetRemLog(), nil
+	return job.Job.GetRemLog(), nil
 }
 
 func (rpc *Server) LoadRem(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {

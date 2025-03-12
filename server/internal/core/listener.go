@@ -29,11 +29,11 @@ func (l *Listener) PushCtrl(ctrl *clientpb.JobCtrl) uint32 {
 	return ctrl.Id
 }
 
-func (l *Listener) WaitCtrl(i uint32) *clientpb.Job {
+func (l *Listener) WaitCtrl(i uint32) *clientpb.JobStatus {
 	for {
 		done, ok := l.CtrlJob.Load(i)
 		if ok && done != nil {
-			return done.(*clientpb.Job)
+			return done.(*clientpb.JobStatus)
 		}
 		time.Sleep(100 * time.Millisecond)
 	}

@@ -44,6 +44,7 @@ const (
 	CtrlRemRegister             = "rem_register"
 	CtrlPivotReverse            = "pivot_reverse"
 	CtrlPivotProxy              = "pivot_proxy"
+	CtrlPivotConnect            = "pivot_connect"
 	CtrlPivotPortForward        = "pivot_portfw"
 	CtrlPivotReversePortForward = "pivot_rportfw"
 	CtrlContextScreenShot       = "context_" + ContextScreenShot

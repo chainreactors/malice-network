@@ -6,6 +6,8 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
 	"github.com/chainreactors/malice-network/helper/third/rem"
+	"github.com/chainreactors/rem/agent"
+	"github.com/pkg/errors"
 	"time"
 )
 
@@ -96,4 +98,54 @@ func (rem *REM) ToProtobuf() *clientpb.Pipeline {
 
 func (rem *REM) Close() error {
 	return rem.con.Close()
+}
+
+func (lns *listener) handlerRemCtrl(job *clientpb.Job) error {
+	rem := lns.pipelines.Get(job.Name)
+	if rem == nil {
+		return errors.New("rem not found")
+	}
+
+	body := job.GetRemAgent()
+	if body == nil {
+		return errors.New("agent not found")
+	}
+	a, err := rem.(*REM).con.Fork(body.Id, body.Args)
+	if err != nil {
+		return err
+	}
+	job.Body = &clientpb.Job_RemAgent{
+		RemAgent: &clientpb.REMAgent{
+			Id:     a.Name(),
+			Mod:    a.Mod,
+			Local:  a.LocalURL.String(),
+			Remote: a.RemoteURL.String(),
+		},
+	}
+	return nil
+}
+
+func (lns *listener) handlerRemLog(job *clientpb.Job) error {
+	rem := lns.pipelines.Get(job.Name)
+	if rem == nil {
+		return errors.New("rem not found")
+	}
+
+	body := job.GetRemAgent()
+	if body == nil {
+		return errors.New("agent not found")
+	}
+	a, ok := agent.Agents.Get(body.Id)
+	if ok {
+		job.Body = &clientpb.Job_RemLog{
+			RemLog: &clientpb.RemLog{
+				PipelineId: job.Name,
+				AgentId:    body.Id,
+				Log:        a.HistoryLog(),
+			},
+		}
+		return nil
+	} else {
+		return errors.New("agent not found")
+	}
 }
