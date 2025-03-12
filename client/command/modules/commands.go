@@ -3,6 +3,7 @@ package modules
 import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/command/common"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
@@ -12,6 +13,7 @@ import (
 	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"golang.org/x/exp/slices"
 	"strings"
 )
 
@@ -183,4 +185,12 @@ func Register(con *repl.Console) {
 			"session: special session",
 		},
 		[]string{"task"})
+
+	con.RegisterServerFunc("check_module", func(con *repl.Console, sess *core.Session, module string) (bool, error) {
+		session, err := con.UpdateSession(sess.SessionId)
+		if err != nil {
+			return false, err
+		}
+		return slices.Contains(session.Modules, module), nil
+	}, nil)
 }

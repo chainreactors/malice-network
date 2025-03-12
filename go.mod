@@ -5,7 +5,7 @@ go 1.20
 require (
 	filippo.io/age v1.1.1
 	github.com/chainreactors/logs v0.0.0-20241115105204-6132e39f5261
-	github.com/chainreactors/mals v0.0.0-20250305151630-0fb1f0082e87
+	github.com/chainreactors/mals v0.0.0-20250312123103-4c3242132d76
 	github.com/chainreactors/parsers v0.0.0-20250225073555-ab576124d61f
 	github.com/chainreactors/rem v0.1.2-0.20250311163600-c74af1c1e5ef
 	github.com/chainreactors/tui v0.0.0-20250117083346-8eff1b67016e
