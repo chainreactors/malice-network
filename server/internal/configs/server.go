@@ -37,7 +37,7 @@ var (
 )
 
 func NewFileLog(filename string) *logs.Logger {
-	logger := logs.NewLogger(logs.Info)
+	logger := logs.NewLogger(logs.InfoLevel)
 	logger.SetFile(path.Join(LogPath, fmt.Sprintf("%s.log", filename)))
 	logger.SetOutput(io.Discard)
 	logger.Init()
@@ -45,7 +45,7 @@ func NewFileLog(filename string) *logs.Logger {
 }
 
 func NewDebugLog(filename string) *logs.Logger {
-	logger := logs.NewLogger(logs.Debug)
+	logger := logs.NewLogger(logs.DebugLevel)
 	logger.SetFile(path.Join(LogPath, fmt.Sprintf("%s.log", filename)))
 	logger.Init()
 	return logger

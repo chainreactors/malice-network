@@ -10,6 +10,7 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"google.golang.org/protobuf/proto"
 	"sync"
+	"time"
 )
 
 func (rpc *Server) GetListeners(ctx context.Context, req *clientpb.Empty) (*clientpb.Listeners, error) {
@@ -104,7 +105,7 @@ func (rpc *Server) JobStream(stream listenerrpc.ListenerRPC_JobStreamServer) err
 		for {
 			select {
 			case msg := <-lns.Ctrl:
-				lns.CtrlJob.Store(msg.Id, false)
+				lns.CtrlJob.Store(msg.Id, nil)
 				err := stream.Send(msg)
 				if err != nil {
 					logs.Log.Errorf("send job ctrl faild %v", err)
@@ -121,7 +122,11 @@ func (rpc *Server) JobStream(stream listenerrpc.ListenerRPC_JobStreamServer) err
 		}
 		_, ok := lns.CtrlJob.Load(msg.CtrlId)
 		if ok {
-			lns.CtrlJob.Store(msg.CtrlId, true)
+			lns.CtrlJob.Store(msg.CtrlId, msg.Job)
+			go func() {
+				time.Sleep(1 * time.Second)
+				lns.CtrlJob.Delete(msg.CtrlId)
+			}()
 		}
 		if msg.Ctrl == consts.CtrlPipelineSync {
 			continue

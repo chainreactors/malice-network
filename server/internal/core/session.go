@@ -197,7 +197,7 @@ func (s *Session) RpcLogger() *logs.Logger {
 					return time.Now().Format("2006-01-02 15:04.05")
 				}
 				if auditLevel == 2 {
-					s.rpcLog.SetLevel(logs.Debug)
+					s.rpcLog.SetLevel(logs.DebugLevel)
 				}
 			}
 		}

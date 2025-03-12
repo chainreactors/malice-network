@@ -192,7 +192,6 @@ func (rpc *Server) RemDial(ctx context.Context, req *implantpb.Request) (*client
 	return greq.Task.ToProtobuf(), nil
 }
 
-// rpc RemCtrl(clientpb.RemArgs) returns (clientpb.Empty);
 func (rpc *Server) RemCtrl(ctx context.Context, req *clientpb.REMAgent) (*clientpb.Empty, error) {
 	pipe, ok := core.Listeners.Find(req.PipelineId)
 	if !ok {
@@ -206,12 +205,36 @@ func (rpc *Server) RemCtrl(ctx context.Context, req *clientpb.REMAgent) (*client
 		Ctrl: consts.CtrlRemCtrl,
 		Job: &clientpb.Job{
 			Pipeline: pipe,
-		},
-		Body: &clientpb.JobCtrl_Agent{
-			Agent: req,
+			Body: &clientpb.Job_RemAgent{
+				RemAgent: req,
+			},
 		},
 	})
 	return &clientpb.Empty{}, nil
+}
+
+func (rpc *Server) RemLog(ctx context.Context, req *clientpb.REMAgent) (*clientpb.RemLog, error) {
+	pipe, ok := core.Listeners.Find(req.PipelineId)
+	if !ok {
+		return nil, errs.ErrNotFoundListener
+	}
+	lns, err := core.Listeners.Get(pipe.ListenerId)
+	if err != nil {
+		return nil, err
+	}
+	i := lns.PushCtrl(&clientpb.JobCtrl{
+		Ctrl: consts.CtrlRemLog,
+		Job: &clientpb.Job{
+			Name:     pipe.Name,
+			Pipeline: pipe,
+			Body: &clientpb.Job_RemAgent{
+				RemAgent: req,
+			},
+		},
+	})
+
+	job := lns.WaitCtrl(i)
+	return job.GetRemLog(), nil
 }
 
 func (rpc *Server) LoadRem(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {

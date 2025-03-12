@@ -40,6 +40,7 @@ const (
 	CtrlRemStart                = "rem_start"
 	CtrlRemStop                 = "rem_stop"
 	CtrlRemCtrl                 = "rem_ctrl"
+	CtrlRemLog                  = "rem_log"
 	CtrlRemRegister             = "rem_register"
 	CtrlPivotReverse            = "pivot_reverse"
 	CtrlPivotProxy              = "pivot_proxy"

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/chainreactors/malice-network/helper/errs"
+	"github.com/chainreactors/rem/agent"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"os"
@@ -236,8 +237,9 @@ func (lns *listener) Handler() {
 		case consts.CtrlRemStart:
 			handlerErr = lns.handleStartRem(msg.Job)
 		case consts.CtrlRemCtrl:
-			//handlerErr = lns.handleRemCtrl(msg.Job)
-
+			handlerErr = lns.handlerRemCtrl(msg.Job)
+		case consts.CtrlRemLog:
+			handlerErr = lns.handlerRemLog(msg.Job)
 		}
 
 		status := &clientpb.JobStatus{
@@ -519,25 +521,13 @@ func (lns *listener) handleStartRem(job *clientpb.Job) error {
 	return nil
 }
 
-func (lns *listener) handleRemStop(job *clientpb.Job) error {
+func (lns *listener) handlerRemCtrl(job *clientpb.Job) error {
 	rem := lns.pipelines.Get(job.Name)
 	if rem == nil {
 		return errors.New("rem not found")
 	}
-	if err := rem.Close(); err != nil {
-		return err
-	}
-	delete(lns.pipelines, rem.ID())
-	return nil
-}
 
-func (lns *listener) handlerRemCtrl(job *clientpb.JobCtrl) error {
-	rem := lns.pipelines.Get(job.Job.Name)
-	if rem == nil {
-		return errors.New("rem not found")
-	}
-
-	body := job.GetAgent()
+	body := job.GetRemAgent()
 	if body == nil {
 		return errors.New("agent not found")
 	}
@@ -546,4 +536,29 @@ func (lns *listener) handlerRemCtrl(job *clientpb.JobCtrl) error {
 		return err
 	}
 	return nil
+}
+
+func (lns *listener) handlerRemLog(job *clientpb.Job) error {
+	rem := lns.pipelines.Get(job.Name)
+	if rem == nil {
+		return errors.New("rem not found")
+	}
+
+	body := job.GetRemAgent()
+	if body == nil {
+		return errors.New("agent not found")
+	}
+	a, ok := agent.Agents.Get(body.Id)
+	if ok {
+		job.Body = &clientpb.Job_RemLog{
+			RemLog: &clientpb.RemLog{
+				PipelineId: job.Name,
+				AgentId:    body.Id,
+				Log:        a.HistoryLog(),
+			},
+		}
+		return nil
+	} else {
+		return errors.New("agent not found")
+	}
 }
