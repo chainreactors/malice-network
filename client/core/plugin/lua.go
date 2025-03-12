@@ -507,7 +507,7 @@ func NewLuaVM() *lua.LState {
 	vm.PreloadModule(intermediate.BeaconPackage, mals.PackageLoader(intermediate.InternalFunctions.Package(intermediate.BeaconPackage)))
 	vm.PreloadModule(intermediate.RpcPackage, mals.PackageLoader(intermediate.InternalFunctions.Package(intermediate.RpcPackage)))
 	for _, global := range GlobalPlugins {
-		vm.PreloadModule(global.Name, mals.GlobalLoader(global.Name, global.Content))
+		vm.PreloadModule(global.Name, mals.GlobalLoader(global.Name, global.Path, global.Content))
 	}
 
 	// 注册所有内置函数
