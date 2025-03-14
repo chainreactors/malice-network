@@ -313,7 +313,7 @@ website update 123e4567-e89b-12d3-a456-426614174000 /path/to/new_content.html --
 	})
 
 	common.BindArgCompletions(websiteUpdateContentCmd, nil,
-		common.WebContentCompleter(con, ""),
+		common.WebContentCompleter(con),
 		carapace.ActionFiles().Usage("content file path"))
 
 	websiteRemoveContentCmd := &cobra.Command{
@@ -331,7 +331,7 @@ website remove 123e4567-e89b-12d3-a456-426614174000
 	}
 
 	common.BindArgCompletions(websiteRemoveContentCmd, nil,
-		common.WebContentCompleter(con, ""))
+		common.WebContentCompleter(con))
 
 	websiteListContentCmd := &cobra.Command{
 		Use:   "list-content [website_name]",

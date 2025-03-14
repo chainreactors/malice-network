@@ -91,7 +91,7 @@ sync [context_id]
 	}
 
 	common.BindArgCompletions(syncCmd, nil,
-		common.SyncFileCompleter(con))
+		common.SyncCompleter(con))
 
 	return []*cobra.Command{
 		contextCmd,

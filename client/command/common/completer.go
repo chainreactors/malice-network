@@ -2,7 +2,9 @@ package common
 
 import (
 	"fmt"
+	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/malice-network/helper/utils/output"
+	"github.com/chainreactors/mals"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -112,18 +114,6 @@ func ListenerPipelineNameCompleter(con *repl.Console, cmd *cobra.Command) carapa
 	}
 	return carapace.ActionCallback(callback)
 
-}
-
-func SessionModuleCompleter(con *repl.Console) carapace.Action {
-	callback := func(c carapace.Context) carapace.Action {
-		results := make([]string, 0)
-
-		for _, s := range con.GetInteractive().Modules {
-			results = append(results, s, "")
-		}
-		return carapace.ActionValuesDescribed(results...).Tag("session modules")
-	}
-	return carapace.ActionCallback(callback)
 }
 
 func SessionAddonCompleter(con *repl.Console) carapace.Action {
@@ -272,7 +262,7 @@ func ArtifactNameCompleter(con *repl.Console) carapace.Action {
 	return carapace.ActionCallback(callback)
 }
 
-func SyncFileCompleter(con *repl.Console) carapace.Action {
+func SyncCompleter(con *repl.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
 		ctxs, err := con.Rpc.GetContexts(con.Context(), &clientpb.Context{})
@@ -295,6 +285,18 @@ func AllPipelineCompleter(con *repl.Console) carapace.Action {
 			results = append(results, pipeline.Name, fmt.Sprintf("%s: %s", pipeline.ListenerId, pipeline.Name))
 		}
 		return carapace.ActionValuesDescribed(results...).Tag("pipeline name")
+	}
+	return carapace.ActionCallback(callback)
+}
+
+func SessionModuleCompleter(con *repl.Console) carapace.Action {
+	callback := func(c carapace.Context) carapace.Action {
+		results := make([]string, 0)
+
+		for _, s := range con.GetInteractive().Modules {
+			results = append(results, s, "")
+		}
+		return carapace.ActionValuesDescribed(results...).Tag("session modules")
 	}
 	return carapace.ActionCallback(callback)
 }
@@ -324,7 +326,7 @@ func WebsiteCompleter(con *repl.Console) carapace.Action {
 	return carapace.ActionCallback(callback)
 }
 
-func WebContentCompleter(con *repl.Console, _ string) carapace.Action {
+func WebContentCompleter(con *repl.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
 		con.UpdateListener()
@@ -410,4 +412,38 @@ func ServiceErrorControlCompleter() carapace.Action {
 		"Severe", "Severe error control",
 		"Critical", "Critical error control",
 	).Tag("service error control")
+}
+
+func Register(con *repl.Console) {
+	con.RegisterServerFunc("bind_args_completer", func(con *repl.Console, cmd *cobra.Command, actions []carapace.Action) (bool, error) {
+		BindArgCompletions(cmd, nil, actions...)
+		return true, nil
+	}, &mals.Helper{Group: intermediate.GroupClient})
+
+	con.RegisterServerFunc("bind_flags_completer", func(con *repl.Console, cmd *cobra.Command, actions map[string]carapace.Action) (bool, error) {
+		BindFlagCompletions(cmd, func(comp carapace.ActionMap) {
+			for k, v := range actions {
+				comp[k] = v
+			}
+		})
+		return true, nil
+	}, nil)
+	con.RegisterServerFunc("session_completer", intermediate.WrapFunctionReturn(SessionIDCompleter), &mals.Helper{Group: intermediate.GroupClient})
+	con.RegisterServerFunc("listener_completer", intermediate.WrapFunctionReturn(ListenerIDCompleter), &mals.Helper{Group: intermediate.GroupClient})
+	con.RegisterServerFunc("listener_with_pipeline_completer", intermediate.WrapFunctionReturn(ListenerPipelineNameCompleter), &mals.Helper{Group: intermediate.GroupClient})
+	con.RegisterServerFunc("addon_completer", intermediate.WrapFunctionReturn(SessionAddonCompleter), &mals.Helper{Group: intermediate.GroupClient})
+	con.RegisterServerFunc("module_completer", intermediate.WrapFunctionReturn(SessionModuleCompleter), &mals.Helper{Group: intermediate.GroupClient})
+	con.RegisterServerFunc("task_completer", intermediate.WrapFunctionReturn(SessionTaskCompleter), &mals.Helper{Group: intermediate.GroupClient})
+	con.RegisterServerFunc("resource_completer", intermediate.WrapFunctionReturn(ResourceCompleter), &mals.Helper{Group: intermediate.GroupClient})
+	con.RegisterServerFunc("target_completer", intermediate.WrapFunctionReturn(BuildTargetCompleter), &mals.Helper{Group: intermediate.GroupClient})
+	con.RegisterServerFunc("type_completer", intermediate.WrapFunctionReturn(BuildTypeCompleter), &mals.Helper{Group: intermediate.GroupClient})
+	con.RegisterServerFunc("profile_completer", intermediate.WrapFunctionReturn(ProfileCompleter), &mals.Helper{Group: intermediate.GroupClient})
+	con.RegisterServerFunc("artifact_completer", intermediate.WrapFunctionReturn(ArtifactCompleter), &mals.Helper{Group: intermediate.GroupClient})
+	con.RegisterServerFunc("artifact_name_completer", intermediate.WrapFunctionReturn(ArtifactNameCompleter), &mals.Helper{Group: intermediate.GroupClient})
+	con.RegisterServerFunc("sync_completer", intermediate.WrapFunctionReturn(SyncCompleter), &mals.Helper{Group: intermediate.GroupClient})
+	con.RegisterServerFunc("all_pipeline_completer", intermediate.WrapFunctionReturn(AllPipelineCompleter), &mals.Helper{Group: intermediate.GroupClient})
+	con.RegisterServerFunc("website_completer", intermediate.WrapFunctionReturn(WebsiteCompleter), &mals.Helper{Group: intermediate.GroupClient})
+	con.RegisterServerFunc("content_completer", intermediate.WrapFunctionReturn(WebContentCompleter), &mals.Helper{Group: intermediate.GroupClient})
+	con.RegisterServerFunc("rem_completer", intermediate.WrapFunctionReturn(RemPipelineCompleter), &mals.Helper{Group: intermediate.GroupClient})
+	con.RegisterServerFunc("rem_agent_completer", intermediate.WrapFunctionReturn(RemAgentCompleter), &mals.Helper{Group: intermediate.GroupClient})
 }

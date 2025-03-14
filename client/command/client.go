@@ -106,4 +106,5 @@ func RegisterClientFunc(con *repl.Console) {
 	action.Register(con)
 	mutant.Register(con)
 	context.Register(con)
+	common.Register(con)
 }
