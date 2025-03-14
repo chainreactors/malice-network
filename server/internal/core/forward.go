@@ -117,10 +117,6 @@ func (f *Forward) Context(sid string) context.Context {
 // Handler is a loop that handles messages from implant
 func (f *Forward) Handler() {
 	for msg := range f.implantC {
-		_, err := f.ListenerRpc.Checkin(f.Context(msg.SessionID), &implantpb.Ping{})
-		if err != nil {
-			logs.Log.Debug(err)
-		}
 		for _, spite := range msg.Spites.Spites {
 			switch spite.Body.(type) {
 			case *implantpb.Spite_Register:
@@ -156,6 +152,11 @@ func (f *Forward) Handler() {
 						return
 					}
 				}()
+			}
+
+			_, err := f.ListenerRpc.Checkin(f.Context(msg.SessionID), &implantpb.Ping{})
+			if err != nil {
+				logs.Log.Debug(err)
 			}
 		}
 	}
