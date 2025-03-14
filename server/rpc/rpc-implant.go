@@ -62,10 +62,8 @@ func (rpc *Server) Checkin(ctx context.Context, req *implantpb.Ping) (*clientpb.
 	var sess *core.Session
 	if sess, err = core.Sessions.Get(sid); err != nil {
 		dbSess, err := db.FindSession(sid)
-		if err != nil {
+		if err != nil || dbSess == nil {
 			return nil, err
-		} else if dbSess == nil {
-			return nil, nil
 		}
 		dbSess.LastCheckin = getTimestamp(ctx)
 		sess, err = core.RecoverSession(dbSess)
