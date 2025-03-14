@@ -2,15 +2,21 @@ package rem
 
 import (
 	"fmt"
+	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/rem/agent"
 	rem "github.com/chainreactors/rem/core"
 	remrunner "github.com/chainreactors/rem/runner"
+	"github.com/chainreactors/rem/x/utils"
 	"net"
 	"net/url"
 	"strconv"
 )
+
+func init() {
+	utils.Log = logs.NewLogger(logs.InfoLevel)
+}
 
 func ParseRemCmd(args []string) (*remrunner.Options, error) {
 	var option remrunner.Options
