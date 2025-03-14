@@ -31,6 +31,7 @@ import (
 const (
 	GroupEncode   = "encode"
 	GroupArtifact = "artifact"
+	GroupClient   = "client"
 )
 
 // lua package
