@@ -13,6 +13,7 @@ func Example() {
 	if err != nil {
 		panic(err)
 	}
+
 	cfg := inputrc.NewDefaultConfig()
 	if err := inputrc.UserDefault(u, cfg, inputrc.WithApp("bash")); err != nil {
 		panic(err)
@@ -30,10 +31,12 @@ $if Usql
 $endif
 
 `
+
 	cfg := inputrc.NewDefaultConfig()
 	if err := inputrc.Parse(strings.NewReader(example), cfg, inputrc.WithApp("usql")); err != nil {
 		panic(err)
 	}
+
 	fmt.Println("editing mode:", cfg.GetString("editing-mode"))
 	fmt.Println("vi-insert:")
 	fmt.Printf("  %s: %s\n", inputrc.Escape(string(inputrc.Return)), cfg.Binds["vi-insert"][string(inputrc.Return)].Action)

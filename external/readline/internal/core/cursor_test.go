@@ -73,6 +73,7 @@ func TestCursor_Set(t *testing.T) {
 				line: test.fields.line,
 			}
 			c.Set(test.args.pos)
+
 			if c.pos != test.expected {
 				t.Errorf("Cursor position: %d, should be %d", c.pos, test.expected)
 			}
@@ -158,6 +159,7 @@ func TestCursor_Inc(t *testing.T) {
 				line: test.fields.line,
 			}
 			c.Inc()
+
 			if got := c.Pos(); got != test.want {
 				t.Errorf("Cursor.Pos() = %v, want %v", got, test.want)
 			}
@@ -201,6 +203,7 @@ func TestCursor_Dec(t *testing.T) {
 				line: test.fields.line,
 			}
 			c.Dec()
+
 			if got := c.Pos(); got != test.want {
 				t.Errorf("Cursor.Pos() = %v, want %v", got, test.want)
 			}
@@ -257,6 +260,7 @@ func TestCursor_Move(t *testing.T) {
 				line: test.fields.line,
 			}
 			c.Move(test.args.offset)
+
 			if got := c.Pos(); got != test.want {
 				t.Errorf("Cursor.Pos() = %v, want %v", got, test.want)
 			}
@@ -520,6 +524,7 @@ func TestCursor_EndOfLine(t *testing.T) {
 				line: test.fields.line,
 			}
 			cur.EndOfLine()
+
 			if cur.pos != test.want {
 				t.Errorf("Cursor.EndOfLine(): %d, should be %d", cur.pos, test.want)
 			}
@@ -563,6 +568,7 @@ func TestCursor_EndOfLineAppend(t *testing.T) {
 				line: test.fields.line,
 			}
 			cur.EndOfLineAppend()
+
 			if cur.pos != test.want {
 				t.Errorf("Cursor.EndOfLineAppend(): %d, should be %d", cur.pos, test.want)
 			}
@@ -596,9 +602,11 @@ func TestCursor_SetMark(t *testing.T) {
 				line: test.fields.line,
 			}
 			cur.SetMark()
+
 			if cur.pos != test.expected {
 				t.Errorf("Mark: %d, should be %d", cur.mark, test.expected)
 			}
+
 			if cur.pos != cur.mark {
 				t.Errorf("Cpos: %d should be equal to mark: %d", cur.pos, cur.mark)
 			}
@@ -746,6 +754,7 @@ func TestCursor_LineMove(t *testing.T) {
 				line: test.fields.line,
 			}
 			c.LineMove(test.args.offset)
+
 			if c.Pos() != test.wantPos {
 				t.Errorf("Cursor: %d, want %d", c.Pos(), test.wantPos)
 			}
@@ -948,6 +957,7 @@ func TestCursor_CheckAppend(t *testing.T) {
 			if got := cur.Pos(); got != test.want {
 				t.Errorf("Cursor.Pos() = %v, want %v", got, test.want)
 			}
+
 			if gotMark := cur.Mark(); gotMark != test.wantMark {
 				t.Errorf("Cursor.Pos() = %v, want %v", gotMark, test.wantMark)
 			}
@@ -1005,10 +1015,12 @@ func TestCursor_Coordinates(t *testing.T) {
 				mark: test.fields.mark,
 				line: test.fields.line,
 			}
+
 			gotX, gotY := CoordinatesCursor(c, indent)
 			if gotX != test.wantX {
 				t.Errorf("Cursor.Coordinates() gotX = %v, want %v", gotX, test.wantX)
 			}
+
 			if gotY != test.wantY {
 				t.Errorf("Cursor.Coordinates() gotY = %v, want %v", gotY, test.wantY)
 			}

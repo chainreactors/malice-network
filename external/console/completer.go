@@ -10,10 +10,10 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/rsteube/carapace"
-	"github.com/rsteube/carapace/pkg/style"
-	completer "github.com/rsteube/carapace/pkg/x"
-	"github.com/rsteube/carapace/pkg/xdg"
+	"github.com/carapace-sh/carapace"
+	"github.com/carapace-sh/carapace/pkg/style"
+	completer "github.com/carapace-sh/carapace/pkg/x"
+	"github.com/carapace-sh/carapace/pkg/xdg"
 
 	"github.com/reeflective/readline"
 )
@@ -58,7 +58,7 @@ func (c *Console) complete(line []rune, pos int) readline.Completions {
 
 	// Assign both completions and command/flags/args usage strings.
 	comps := readline.CompleteRaw(raw)
-	comps = comps.Usage(completions.Usage)
+	comps = comps.Usage("%s", completions.Usage)
 	comps = c.justifyCommandComps(comps)
 
 	// If any errors arose from the completion call itself.
@@ -253,8 +253,10 @@ func splitCompWords(input string) (words []string, remainder string, err error) 
 			if len(next) == 0 {
 				remainder = string(escapeChar)
 				err = errUnterminatedEscape
-				return
+
+				return words, remainder, err
 			}
+
 			c2, l2 := utf8.DecodeRuneInString(next)
 			if c2 == '\n' {
 				input = next[l2:]
@@ -263,6 +265,7 @@ func splitCompWords(input string) (words []string, remainder string, err error) 
 		}
 
 		var word string
+
 		word, input, err = splitCompWord(input, &buf)
 		if err != nil {
 			return words, word + input, err

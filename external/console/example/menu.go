@@ -63,7 +63,7 @@ func makeClientCommands(app *console.Console) console.Commands {
 							app.Printf("This message is more important, printing it below the prompt and in every menu")
 							return
 						}
-						menu.TransientPrintf(messages[count])
+						menu.TransientPrintf("%s", messages[count])
 						count++
 					}
 				}()
@@ -136,7 +136,7 @@ func makeClientCommands(app *console.Console) console.Commands {
 						if count == 5 {
 							return nil
 						}
-						menu.TransientPrintf(messages[count] + "\n")
+						menu.TransientPrintf("%s", messages[count]+"\n")
 						count++
 					}
 				}
@@ -164,7 +164,6 @@ func setupPrompt(m *console.Menu) {
 		return fmt.Sprintf(prompt, dir)
 	}
 
-	p.Secondary = func() string { return ">" }
 	p.Right = func() string {
 		return "\x1b[1;30m" + time.Now().Format("03:04:05.000") + "\x1b[0m"
 	}

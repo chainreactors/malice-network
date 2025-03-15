@@ -56,6 +56,7 @@ func (e Err) Error() string {
 	if len(e.message) > 0 {
 		return fmt.Sprintf("%s: %s", e.message, e.err.Error())
 	}
+
 	return e.err.Error()
 }
 

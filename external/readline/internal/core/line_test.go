@@ -304,6 +304,7 @@ func TestLine_SelectWord(t *testing.T) {
 			if gotBpos != test.wantBpos {
 				t.Errorf("Line.SelectWord() gotBpos = %v, want %v", gotBpos, test.wantBpos)
 			}
+
 			if gotEpos != test.wantEpos {
 				t.Errorf("Line.SelectWord() gotEpos = %v, want %v", gotEpos, test.wantEpos)
 			}
@@ -374,6 +375,7 @@ func TestLine_SelectBlankWord(t *testing.T) {
 			if gotBpos != test.wantBpos {
 				t.Errorf("Line.SelectWord() gotBpos = %v, want %v", gotBpos, test.wantBpos)
 			}
+
 			if gotEpos != test.wantEpos {
 				t.Errorf("Line.SelectWord() gotEpos = %v, want %v", gotEpos, test.wantEpos)
 			}
@@ -453,6 +455,7 @@ func TestLine_Find(t *testing.T) {
 			if gotRpos := tt.l.Find(tt.args.r, tt.args.pos, tt.args.forward); gotRpos != tt.wantRpos {
 				t.Errorf("Line.Next() = %v, want %v", gotRpos, tt.wantRpos)
 			}
+
 			pos = tt.wantRpos
 		})
 	}
@@ -520,6 +523,7 @@ func TestLine_FindSurround(t *testing.T) {
 			if gotBpos != test.wantBpos {
 				t.Errorf("Line.FindSurround() (bpos) = %v, want %v", gotBpos, test.wantBpos)
 			}
+
 			if gotEpos != test.wantEpos {
 				t.Errorf("Line.FindSurround() (epos) = %v, want %v", gotEpos, test.wantEpos)
 			}
@@ -528,6 +532,7 @@ func TestLine_FindSurround(t *testing.T) {
 			if gotBchar != test.wantBchar {
 				t.Errorf("Line.FindSurround() (bchar) = %v, want %v", gotBchar, test.wantBchar)
 			}
+
 			if gotEchar != test.wantEchar {
 				t.Errorf("Line.FindSurround() (gotEchar) = %v, want %v", gotEchar, test.wantEchar)
 			}
@@ -594,6 +599,7 @@ func TestLine_SurroundQuotes(t *testing.T) {
 			if gotBpos != test.wantBpos {
 				t.Errorf("Line.SurroundQuotes() (bpos) = %v, want %v", gotBpos, test.wantBpos)
 			}
+
 			if gotEpos != test.wantEpos {
 				t.Errorf("Line.SurroundQuotes() (epos) = %v, want %v", gotEpos, test.wantEpos)
 			}
@@ -841,9 +847,11 @@ func TestLine_Tokenize(t *testing.T) {
 			if !reflect.DeepEqual(got, test.want) {
 				t.Errorf("Line.Tokenize() got = %v, want %v", got, test.want)
 			}
+
 			if got1 != test.want1 {
 				t.Errorf("Line.Tokenize() got1 = %v, want %v", got1, test.want1)
 			}
+
 			if got2 != test.want2 {
 				t.Errorf("Line.Tokenize() got2 = %v, want %v", got2, test.want2)
 			}
@@ -902,9 +910,11 @@ func TestLine_TokenizeSpace(t *testing.T) {
 			if !reflect.DeepEqual(got, test.want) {
 				t.Errorf("Line.TokenizeSpace() got = %v, want %v", got, test.want)
 			}
+
 			if got1 != test.want1 {
 				t.Errorf("Line.TokenizeSpace() got1 = %v, want %v", got1, test.want1)
 			}
+
 			if got2 != test.want2 {
 				t.Errorf("Line.TokenizeSpace() got2 = %v, want %v", got2, test.want2)
 			}
@@ -1014,9 +1024,11 @@ func TestLine_TokenizeBlock(t *testing.T) {
 			if !reflect.DeepEqual(got, test.want) {
 				t.Errorf("Line.TokenizeBlock() got = %v, want %v", got, test.want)
 			}
+
 			if got1 != test.want1 {
 				t.Errorf("Line.TokenizeBlock() got1 = %v, want %v", got1, test.want1)
 			}
+
 			if got2 != test.want2 {
 				t.Errorf("Line.TokenizeBlock() got2 = %v, want %v", got2, test.want2)
 			}
@@ -1084,6 +1096,7 @@ func TestCoordinatesLine(t *testing.T) {
 			if gotX != test.wantX {
 				t.Errorf("CoordinatesLine() gotX = %v, want %v", gotX, test.wantX)
 			}
+
 			if gotY != test.wantY {
 				t.Errorf("CoordinatesLine() gotY = %v, want %v", gotY, test.wantY)
 			}

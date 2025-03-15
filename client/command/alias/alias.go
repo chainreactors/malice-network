@@ -8,7 +8,7 @@ import (
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 
-	"github.com/rsteube/carapace"
+	"github.com/carapace-sh/carapace"
 	"github.com/spf13/cobra"
 	"os"
 	"strconv"

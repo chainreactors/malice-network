@@ -137,7 +137,7 @@ func (l *Line) Len() int {
 // (separated by punctuation or spaces) around the specified position.
 func (l *Line) SelectWord(pos int) (bpos, epos int) {
 	if l.Len() == 0 {
-		return
+		return bpos, epos
 	}
 
 	pos = l.checkPosRange(pos)
@@ -180,7 +180,7 @@ func (l *Line) SelectWord(pos int) (bpos, epos int) {
 // of a full bigword (blank word) around the specified position.
 func (l *Line) SelectBlankWord(pos int) (bpos, epos int) {
 	if l.Len() == 0 {
-		return
+		return bpos, epos
 	}
 
 	pos = l.checkPosRange(pos)
@@ -340,6 +340,7 @@ func DisplayLine(l *Line, indent int) {
 			if len(line)+indent < term.GetWidth() {
 				line += term.ClearLineAfter
 			}
+
 			line += term.NewlineReturn
 		}
 
@@ -672,6 +673,7 @@ func closeToken(idx, count, cpos, match int, pos map[int]int, line []rune, split
 
 		return count, split
 	}
+
 	count--
 
 	return count, split

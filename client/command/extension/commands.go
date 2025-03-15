@@ -1,12 +1,12 @@
 package extension
 
 import (
+	"github.com/carapace-sh/carapace"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/malice-network/helper/utils/output"
-	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
 )
 

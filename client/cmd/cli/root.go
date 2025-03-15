@@ -1,10 +1,10 @@
 package cli
 
 import (
+	"github.com/carapace-sh/carapace"
 	"github.com/chainreactors/malice-network/client/command"
 	"github.com/chainreactors/malice-network/client/command/generic"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
 )
 

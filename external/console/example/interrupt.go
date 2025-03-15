@@ -13,7 +13,9 @@ import (
 // readline receives an io.EOF error, which is returned with CtrlD.
 func exitCtrlD(c *console.Console) {
 	reader := bufio.NewReader(os.Stdin)
+
 	fmt.Print("Confirm exit (Y/y): ")
+
 	text, _ := reader.ReadString('\n')
 	answer := strings.TrimSpace(text)
 
