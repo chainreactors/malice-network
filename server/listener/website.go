@@ -99,10 +99,13 @@ func (w *Website) ToProtobuf() *clientpb.Pipeline {
 		Name:       w.Name,
 		Enable:     w.Enable,
 		ListenerId: w.ListenerID,
+		Type:       consts.WebsitePipeline,
 		Body: &clientpb.Pipeline_Web{
 			Web: &clientpb.Website{
-				Port: uint32(w.port),
-				Root: w.rootPath,
+				Name:       w.Name,
+				ListenerId: w.ListenerID,
+				Port:       uint32(w.port),
+				Root:       w.rootPath,
 			},
 		},
 		Tls: w.Tls.ToProtobuf(),

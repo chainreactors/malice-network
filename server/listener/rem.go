@@ -3,6 +3,7 @@ package listener
 import (
 	"context"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
 	"github.com/chainreactors/malice-network/helper/third/rem"
@@ -83,14 +84,17 @@ func (rem *REM) ToProtobuf() *clientpb.Pipeline {
 		Name:       rem.Name,
 		Enable:     rem.Enable,
 		ListenerId: rem.ListenerID,
+		Type:       consts.RemPipeline,
 		Body: &clientpb.Pipeline_Rem{
 			Rem: &clientpb.REM{
-				Host:      rem.con.ConsoleURL.Hostname(),
-				Console:   rem.remConfig.Console,
-				Port:      rem.remConfig.Port,
-				Link:      rem.con.Link(),
-				Subscribe: rem.con.Subscribe(),
-				Agents:    rem.con.ToProtobuf(),
+				Name:       rem.Name,
+				ListenerId: rem.ListenerID,
+				Host:       rem.con.ConsoleURL.Hostname(),
+				Console:    rem.remConfig.Console,
+				Port:       uint32(rem.con.ConsoleURL.IntPort()),
+				Link:       rem.con.Link(),
+				Subscribe:  rem.con.Subscribe(),
+				Agents:     rem.con.ToProtobuf(),
 			},
 		},
 	}
