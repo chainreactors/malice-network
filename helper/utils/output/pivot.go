@@ -66,6 +66,8 @@ func (p *PivotingContext) String() string {
 		return fmt.Sprintf("Pivoting %s: %s %s <- %s on %s", p.RemID, p.Mod, p.LocalURL, p.RemoteURL, p.Pipeline)
 	} else if p.Mod == "proxy" {
 		return fmt.Sprintf("Pivoting %s: %s %s -> %s on %s", p.RemID, p.Mod, p.LocalURL, p.RemoteURL, p.Pipeline)
+	} else if p.Mod == "connect" {
+		return fmt.Sprintf("Pivoting %s: %s connected on %s", p.RemID, p.Mod, p.Pipeline)
 	} else {
 		return string(p.Marshal())
 	}

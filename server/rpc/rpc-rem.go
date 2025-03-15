@@ -29,15 +29,29 @@ func (rpc *Server) RegisterRem(ctx context.Context, req *clientpb.Pipeline) (*cl
 
 func (rpc *Server) ListRems(ctx context.Context, req *clientpb.Listener) (*clientpb.Pipelines, error) {
 	var result []*clientpb.Pipeline
-	rems, err := db.ListPipelines(req.Id)
-	if err != nil {
-		return nil, err
-	}
-	for _, rem := range rems {
-		if rem.Type == consts.RemPipeline {
-			result = append(result, rem.ToProtobuf())
+	if req.Id != "" {
+		ln, err := core.Listeners.Get(req.Id)
+		if err != nil {
+			return nil, err
 		}
+
+		for _, rem := range ln.Pipelines {
+			if rem.Type == consts.RemPipeline {
+				result = append(result, rem)
+			}
+		}
+	} else {
+		core.Listeners.Range(func(key, value any) bool {
+			ln := value.(*core.Listener)
+			for _, rem := range ln.Pipelines {
+				if rem.Type == consts.RemPipeline {
+					result = append(result, rem)
+				}
+			}
+			return true
+		})
 	}
+
 	return &clientpb.Pipelines{Pipelines: result}, nil
 }
 
