@@ -58,14 +58,17 @@ func (pipeline *TCPPipeline) ToProtobuf() *clientpb.Pipeline {
 	p := &clientpb.Pipeline{
 		Name:           pipeline.Name,
 		Enable:         pipeline.Enable,
+		Type:           consts.TCPPipeline,
 		ListenerId:     pipeline.ListenerID,
 		Parser:         pipeline.Parser,
 		Target:         pipeline.Target,
 		BeaconPipeline: pipeline.BeaconPipeline,
 		Body: &clientpb.Pipeline_Tcp{
 			Tcp: &clientpb.TCPPipeline{
-				Port: uint32(pipeline.Port),
-				Host: pipeline.Host,
+				Name:       pipeline.Name,
+				ListenerId: pipeline.ListenerID,
+				Port:       uint32(pipeline.Port),
+				Host:       pipeline.Host,
 			},
 		},
 		Tls:        pipeline.Tls.ToProtobuf(),

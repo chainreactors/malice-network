@@ -41,9 +41,13 @@ func (pipeline *BindPipeline) ToProtobuf() *clientpb.Pipeline {
 	return &clientpb.Pipeline{
 		Name:       pipeline.Name,
 		Enable:     pipeline.Enable,
+		Type:       consts.BindPipeline,
 		ListenerId: pipeline.ListenerID,
 		Body: &clientpb.Pipeline_Bind{
-			Bind: &clientpb.BindPipeline{},
+			Bind: &clientpb.BindPipeline{
+				Name:       pipeline.Name,
+				ListenerId: pipeline.ListenerID,
+			},
 		},
 		Tls:        pipeline.Tls.ToProtobuf(),
 		Encryption: pipeline.Encryption.ToProtobuf(),

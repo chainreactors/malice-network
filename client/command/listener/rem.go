@@ -21,7 +21,7 @@ func ListRemCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 	if len(pipes.Pipelines) == 0 {
-		con.Log.Warnf("No REMs found")
+		con.Log.Warnf("No REMs found\n")
 		return nil
 	}
 	var rems []*clientpb.REM
