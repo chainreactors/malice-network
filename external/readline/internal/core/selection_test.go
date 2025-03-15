@@ -98,6 +98,7 @@ func TestSelection_Mark(t *testing.T) {
 			if bpos != test.wantBpos {
 				t.Errorf("Bpos: '%d', want '%d'", bpos, test.wantBpos)
 			}
+
 			if epos != test.wantEpos {
 				t.Errorf("Epos: '%d', want '%d'", epos, test.wantEpos)
 			}
@@ -166,6 +167,7 @@ func TestSelection_MarkMove(t *testing.T) {
 			if bpos != test.wantBpos {
 				t.Errorf("Bpos: '%d', want '%d'", bpos, test.wantBpos)
 			}
+
 			if epos != test.wantEpos {
 				t.Errorf("Epos: '%d', want '%d'", epos, test.wantEpos)
 			}
@@ -233,6 +235,7 @@ func TestSelection_MarkRange(t *testing.T) {
 			if bpos != test.wantBpos {
 				t.Errorf("Bpos: '%d', want '%d'", bpos, test.wantBpos)
 			}
+
 			if epos != test.wantEpos {
 				t.Errorf("Epos: '%d', want '%d'", epos, test.wantEpos)
 			}
@@ -293,6 +296,7 @@ func TestSelection_MarkSurround(t *testing.T) {
 			if bpos != test.wantBpos {
 				t.Errorf("Bpos: '%d', want '%d'", bpos, test.wantBpos)
 			}
+
 			if epos != test.wantEpos {
 				t.Errorf("Epos: '%d', want '%d'", epos, test.wantEpos)
 			}
@@ -302,6 +306,7 @@ func TestSelection_MarkSurround(t *testing.T) {
 			if bpos != test.wantBposS2 {
 				t.Errorf("BposS2: '%d', want '%d'", bpos, test.wantBposS2)
 			}
+
 			if epos != test.wantEposS2 {
 				t.Errorf("EposS2: '%d', want '%d'", epos, test.wantEposS2)
 			}
@@ -420,6 +425,7 @@ func TestSelection_Visual(t *testing.T) {
 			if gotBpos != test.wantBpos {
 				t.Errorf("Selection.Pos() gotBpos = %v, want %v", gotBpos, test.wantBpos)
 			}
+
 			if gotEpos != test.wantEpos {
 				t.Errorf("Selection.Pos() gotEpos = %v, want %v", gotEpos, test.wantEpos)
 			}
@@ -497,6 +503,7 @@ func TestSelection_Pos(t *testing.T) {
 			if gotBpos != test.wantBpos {
 				t.Errorf("Selection.Pos() gotBpos = %v, want %v", gotBpos, test.wantBpos)
 			}
+
 			if gotEpos != test.wantEpos {
 				t.Errorf("Selection.Pos() gotEpos = %v, want %v", gotEpos, test.wantEpos)
 			}
@@ -565,6 +572,7 @@ func TestSelection_Cursor(t *testing.T) {
 			// Place the cursor where we want to start selecting.
 			test.fields.cursor.Set(test.args.bpos)
 			sel.Mark(test.fields.cursor.Pos())
+
 			if test.args.visualLine {
 				sel.Visual(test.args.visualLine)
 			}
@@ -642,6 +650,7 @@ func TestSelection_Len(t *testing.T) {
 			// Place the cursor where we want to start selecting.
 			test.fields.cursor.Set(test.args.bpos)
 			sel.Mark(test.fields.cursor.Pos())
+
 			if test.args.visualLine {
 				sel.Visual(test.args.visualLine)
 			}
@@ -705,6 +714,7 @@ func TestSelection_Text(t *testing.T) {
 			// Place the cursor where we want to start selecting.
 			test.fields.cursor.Set(test.args.bpos)
 			sel.Mark(test.fields.cursor.Pos())
+
 			if test.args.visualLine {
 				sel.Visual(test.args.visualLine)
 			}
@@ -801,6 +811,7 @@ func TestSelection_Pop(t *testing.T) {
 			// Place the cursor where we want to start selecting.
 			test.fields.cursor.Set(test.args.bpos)
 			sel.Mark(test.fields.cursor.Pos())
+
 			if test.args.visualLine || test.args.visual {
 				sel.Visual(test.args.visualLine)
 			}
@@ -812,12 +823,15 @@ func TestSelection_Pop(t *testing.T) {
 			if test.wantBuf != "" && gotBuf != test.wantBuf {
 				t.Errorf("Selection.Pop() gotBuf = %v, want %v", gotBuf, test.wantBuf)
 			}
+
 			if gotBpos != test.wantBpos {
 				t.Errorf("Selection.Pop() gotBpos = %v, want %v", gotBpos, test.wantBpos)
 			}
+
 			if gotEpos != test.wantEpos {
 				t.Errorf("Selection.Pop() gotEpos = %v, want %v", gotEpos, test.wantEpos)
 			}
+
 			if gotCpos != test.wantCpos {
 				t.Errorf("Selection.Pop() gotCpos = %v, want %v", gotCpos, test.wantCpos)
 			}
@@ -964,6 +978,7 @@ func TestSelection_Surround(t *testing.T) {
 			if gotBuf != test.wantBuf {
 				t.Errorf("Selection.Surround() gotBuf = %v, want %v", gotBuf, test.wantBuf)
 			}
+
 			testSelectionReset(t, sel)
 		})
 	}
@@ -1022,6 +1037,7 @@ func TestSelection_SelectAWord(t *testing.T) {
 			if gotBpos != test.wantBpos {
 				t.Errorf("Selection.SelectAWord() gotBpos = %v, want %v", gotBpos, test.wantBpos)
 			}
+
 			if gotEpos != test.wantEpos {
 				t.Errorf("Selection.SelectAWord() gotEpos = %v, want %v", gotEpos, test.wantEpos)
 			}
@@ -1082,6 +1098,7 @@ func TestSelection_SelectABlankWord(t *testing.T) {
 			if gotBpos != test.wantBpos {
 				t.Errorf("Selection.SelectABlankWord() gotBpos = %v, want %v", gotBpos, test.wantBpos)
 			}
+
 			if gotEpos != test.wantEpos {
 				t.Errorf("Selection.SelectABlankWord() gotEpos = %v, want %v", gotEpos, test.wantEpos)
 			}
@@ -1157,6 +1174,7 @@ func TestSelection_SelectAShellWord(t *testing.T) {
 			if gotBpos != test.wantBpos {
 				t.Errorf("Selection.SelectAShellWord() gotBpos = %v, want %v", gotBpos, test.wantBpos)
 			}
+
 			if gotEpos != test.wantEpos {
 				t.Errorf("Selection.SelectAShellWord() gotEpos = %v, want %v", gotEpos, test.wantEpos)
 			}
@@ -1248,9 +1266,11 @@ func TestSelection_SelectKeyword(t *testing.T) {
 			if gotKbpos != test.wantKbpos {
 				t.Errorf("Selection.SelectKeyword() gotKbpos = %v, want %v", gotKbpos, test.wantKbpos)
 			}
+
 			if gotKepos != test.wantKepos {
 				t.Errorf("Selection.SelectKeyword() gotKepos = %v, want %v", gotKepos, test.wantKepos)
 			}
+
 			if gotMatch != test.wantMatch {
 				t.Errorf("Selection.SelectKeyword() gotMatch = %v, want %v", gotMatch, test.wantMatch)
 			}
@@ -1311,6 +1331,7 @@ func TestSelection_ReplaceWith(t *testing.T) {
 			if gotBuf != test.wantBuf {
 				t.Errorf("Selection.ReplaceWith() gotBuf = %v, want %v", gotBuf, test.wantBuf)
 			}
+
 			testSelectionReset(t, sel)
 		})
 	}
@@ -1492,18 +1513,23 @@ func TestResetMatchers(t *testing.T) {
 			if sel.active != test.wantActive {
 				t.Errorf("ResetMatchers() sel.active = %v, want %v", sel.active, test.wantActive)
 			}
+
 			if sel.bpos != test.wantBpos {
 				t.Errorf("ResetMatchers() sel.bpos = %v, want %v", sel.bpos, test.wantBpos)
 			}
+
 			if sel.epos != test.wantEpos {
 				t.Errorf("ResetMatchers() sel.epos = %v, want %v", sel.epos, test.wantEpos)
 			}
+
 			if sel.visual != test.wantVisual {
 				t.Errorf("ResetMatchers() sel.visual = %v, want %v", sel.visual, test.wantVisual)
 			}
+
 			if sel.visualLine != test.wantVisualLine {
 				t.Errorf("ResetMatchers() sel.visualLine = %v, want %v", sel.visualLine, test.wantVisualLine)
 			}
+
 			if len(sel.surrounds) != test.wantSurrounds {
 				t.Errorf("ResetMatchers() len(sel.surrounds) = %v, want %v", len(sel.surrounds), test.wantSurrounds)
 			}
@@ -1560,24 +1586,31 @@ func TestSelection_Reset(t *testing.T) {
 			if sel.active != test.wantActive {
 				t.Errorf("Selection.Reset() sel.active = %v, want %v", sel.active, test.wantActive)
 			}
+
 			if sel.bpos != test.wantBpos {
 				t.Errorf("Selection.Reset() sel.bpos = %v, want %v", sel.bpos, test.wantBpos)
 			}
+
 			if sel.epos != test.wantEpos {
 				t.Errorf("Selection.Reset() sel.epos = %v, want %v", sel.epos, test.wantEpos)
 			}
+
 			if sel.visual != test.wantVisual {
 				t.Errorf("Selection.Reset() sel.visual = %v, want %v", sel.visual, test.wantVisual)
 			}
+
 			if sel.visualLine != test.wantVisualLine {
 				t.Errorf("Selection.Reset() sel.visualLine = %v, want %v", sel.visualLine, test.wantVisualLine)
 			}
+
 			if sel.fg != test.wantFg {
 				t.Errorf("Selection.Reset() sel.fg = %v, want %v", sel.fg, test.wantFg)
 			}
+
 			if sel.bg != test.wantBg {
 				t.Errorf("Selection.Reset() sel.bg = %v, want %v", sel.bg, test.wantBg)
 			}
+
 			if len(sel.surrounds) != test.wantSurrounds {
 				t.Errorf("Selection.Reset() len(sel.surrounds) = %v, want %v", len(sel.surrounds), test.wantSurrounds)
 			}

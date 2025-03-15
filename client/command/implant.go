@@ -2,8 +2,8 @@ package command
 
 import (
 	"fmt"
+	"github.com/carapace-sh/carapace"
 	"github.com/reeflective/console"
-	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 

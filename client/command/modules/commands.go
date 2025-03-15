@@ -2,6 +2,7 @@ package modules
 
 import (
 	"fmt"
+	"github.com/carapace-sh/carapace"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
@@ -10,7 +11,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
-	"github.com/rsteube/carapace"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"golang.org/x/exp/slices"

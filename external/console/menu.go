@@ -131,7 +131,7 @@ func (m *Menu) DeleteHistorySource(name string) {
 			name = " (" + name + ")"
 		}
 
-		name = fmt.Sprintf("local history%s", name)
+		name = "local history" + name
 	}
 
 	delete(m.histories, name)
@@ -169,7 +169,7 @@ func (m *Menu) TransientPrintf(msg string, args ...any) (n int, err error) {
 	buf := m.out.String()
 	m.out.Reset()
 
-	return m.console.TransientPrintf(buf)
+	return m.console.TransientPrintf("%s", buf)
 }
 
 // Printf prints a message to the console, but only if the current menu
@@ -196,7 +196,7 @@ func (m *Menu) Printf(msg string, args ...any) (n int, err error) {
 	buf := m.out.String()
 	m.out.Reset()
 
-	return m.console.Printf(buf)
+	return m.console.Printf("%s", buf)
 }
 
 // CheckIsAvailable checks if a target command is marked as filtered
@@ -329,7 +329,7 @@ func (m *Menu) defaultHistoryName() string {
 		name = " (" + m.name + ")"
 	}
 
-	return fmt.Sprintf("local history%s", name)
+	return "local history" + name
 }
 
 func (m *Menu) errorFilteredCommandTemplate(filters []string) string {
@@ -346,6 +346,7 @@ func tmpl(w io.Writer, text string, data interface{}) error {
 	t := template.New("top")
 	t.Funcs(templateFuncs)
 	template.Must(t.Parse(text))
+
 	return t.Execute(w, data)
 }
 

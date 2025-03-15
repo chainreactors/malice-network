@@ -81,9 +81,11 @@ func TestIterations_Add(t *testing.T) {
 			if wantTimes := test.wantTimes; iter.times != wantTimes {
 				t.Errorf("Iterations.Add() = %v, want %v", iter.times, wantTimes)
 			}
+
 			if wantActive := test.wantActive; iter.active != wantActive {
 				t.Errorf("Iterations.Add() = %v, want %v", iter.active, wantActive)
 			}
+
 			if wantPending := test.wantPending; iter.pending != wantPending {
 				t.Errorf("Iterations.Add() = %v, want %v", iter.pending, wantPending)
 			}

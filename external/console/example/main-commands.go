@@ -6,7 +6,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/rsteube/carapace"
+	"github.com/carapace-sh/carapace"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
@@ -571,6 +571,7 @@ func mainMenuCommands(app *console.Console) console.Commands {
 			}
 
 			flagMap := make(carapace.ActionMap)
+
 			cmd.Flags().VisitAll(func(f *pflag.Flag) {
 				if f.Name == "file" || strings.Contains(f.Usage, "file") {
 					flagMap[f.Name] = carapace.ActionFiles()
@@ -583,6 +584,7 @@ func mainMenuCommands(app *console.Console) console.Commands {
 				for i := 0; i < 10; i++ {
 					hosts = append(hosts, fmt.Sprintf("host%d", i))
 				}
+
 				c.PositionalCompletion(carapace.ActionValues(hosts...))
 			}
 
