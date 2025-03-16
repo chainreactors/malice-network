@@ -37,6 +37,11 @@ func (c *Context) BeforeCreate(tx *gorm.DB) (err error) {
 	return nil
 }
 
+func (c *Context) AfterFind(tx *gorm.DB) (err error) {
+	c.Context, err = output.ParseContext(c.Type, c.Value)
+	return err
+}
+
 func (c *Context) ToProtobuf() *clientpb.Context {
 	return &clientpb.Context{
 		Id:       c.ID.String(),

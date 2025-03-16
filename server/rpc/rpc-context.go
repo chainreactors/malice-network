@@ -28,9 +28,6 @@ func (rpc *Server) GetContexts(ctx context.Context, req *clientpb.Context) (*cli
 	if req.Pipeline != nil {
 		query.ByPipeline(req.Pipeline.Name)
 	}
-	if req.Listener != nil {
-		query.ByListener(req.Listener.Id)
-	}
 	if req.Nonce != "" {
 		query.ByNonce(req.Nonce)
 	}

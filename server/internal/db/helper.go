@@ -1110,12 +1110,6 @@ func (q *ContextQuery) ByNonce(nonce string) *ContextQuery {
 	return q
 }
 
-// ByListener 按Listener ID查询
-func (q *ContextQuery) ByListener(listenerID string) *ContextQuery {
-	q.db = q.db.Where("listener_id = ?", listenerID)
-	return q
-}
-
 // Find 执行查询并返回结果
 func (q *ContextQuery) Find() ([]*models.Context, error) {
 	var contexts []*models.Context
