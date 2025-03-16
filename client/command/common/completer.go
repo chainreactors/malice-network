@@ -376,7 +376,7 @@ func RemAgentCompleter(con *repl.Console) carapace.Action {
 					return carapace.ActionValuesDescribed(results...).Tag("rem agent name")
 				}
 				for _, ctx := range contexts {
-					results = append(results, ctx.RemID, ctx.String())
+					results = append(results, ctx.RemAgentID, ctx.String())
 				}
 			}
 		}

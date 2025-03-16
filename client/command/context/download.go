@@ -73,6 +73,13 @@ func AddDownload(con *repl.Console, sess *core.Session, task *clientpb.Task, fil
 }
 
 func RegisterDownload(con *repl.Console) {
-	con.RegisterServerFunc("downloads", GetDownloads, nil)
+	con.RegisterServerFunc("downloads", func(con *repl.Console) ([]*output.DownloadContext, error) {
+		downloads, err := GetDownloads(con)
+		if err != nil {
+			return nil, err
+		}
+
+		return output.ToContexts[*output.DownloadContext](downloads)
+	}, nil)
 	con.RegisterServerFunc("add_download", AddDownload, nil)
 }

@@ -74,6 +74,12 @@ func AddScreenshot(con *repl.Console, sess *core.Session, task *clientpb.Task, d
 }
 
 func RegisterScreenshot(con *repl.Console) {
-	con.RegisterServerFunc("screenshots", GetScreenshots, nil)
+	con.RegisterServerFunc("screenshots", func(con *repl.Console) ([]*output.ScreenShotContext, error) {
+		screenshots, err := GetScreenshots(con)
+		if err != nil {
+			return nil, err
+		}
+		return output.ToContexts[*output.ScreenShotContext](screenshots)
+	}, nil)
 	con.RegisterServerFunc("add_screenshot", AddScreenshot, nil)
 }

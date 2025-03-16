@@ -169,11 +169,7 @@ func (rpc *Server) Sync(ctx context.Context, req *clientpb.Sync) (*clientpb.Cont
 		return nil, err
 	}
 
-	c, err := output.ParseContext(ictx.Type, ictx.Value)
-	if err != nil {
-		return nil, err
-	}
-	data, err := core.ReadFileForContext(c)
+	data, err := core.ReadFileForContext(ictx.Context)
 	if err != nil {
 		return ictx.ToProtobuf(), nil
 	} else {

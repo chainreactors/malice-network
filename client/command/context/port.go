@@ -75,6 +75,12 @@ func AddPort(con *repl.Console, sess *core.Session, task *clientpb.Task, ports [
 }
 
 func RegisterPort(con *repl.Console) {
-	con.RegisterServerFunc("ports", GetPorts, nil)
+	con.RegisterServerFunc("ports", func(con *repl.Console) ([]*output.PortContext, error) {
+		ports, err := GetPorts(con)
+		if err != nil {
+			return nil, err
+		}
+		return output.ToContexts[*output.PortContext](ports)
+	}, nil)
 	con.RegisterServerFunc("add_port", AddPort, nil)
 }

@@ -3,6 +3,7 @@ package pivot
 import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/command/common"
+	"github.com/chainreactors/malice-network/client/command/generic"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
@@ -167,9 +168,6 @@ func Register(con *repl.Console) {
 		},
 		nil,
 	)
-
-	con.RegisterServerFunc("rem_link", GetRemLink, nil)
-
 	con.AddCommandFuncHelper(
 		consts.ModuleRem,
 		consts.ModuleRem,
@@ -181,4 +179,8 @@ func Register(con *repl.Console) {
 		},
 		[]string{"task"},
 	)
+
+	con.RegisterServerFunc("rem_link", GetRemLink, nil)
+
+	con.RegisterServerFunc("pivots", generic.ListPivot, nil)
 }

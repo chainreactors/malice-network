@@ -72,6 +72,12 @@ func AddKeylogger(con *repl.Console, sess *core.Session, task *clientpb.Task, da
 }
 
 func RegisterKeylogger(con *repl.Console) {
-	con.RegisterServerFunc("keyloggers", GetKeyloggers, nil)
+	con.RegisterServerFunc("keyloggers", func(con *repl.Console) ([]*output.KeyLoggerContext, error) {
+		keyloggers, err := GetKeyloggers(con)
+		if err != nil {
+			return nil, err
+		}
+		return output.ToContexts[*output.KeyLoggerContext](keyloggers)
+	}, nil)
 	con.RegisterServerFunc("add_keylogger", AddKeylogger, nil)
 }
