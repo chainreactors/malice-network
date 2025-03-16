@@ -1,5 +1,6 @@
 package rpc
 
+import "C"
 import (
 	"context"
 	"github.com/chainreactors/logs"
@@ -310,19 +311,20 @@ func (rpc *Server) HealthCheckRem(ctx context.Context, req *clientpb.Pipeline) (
 
 	agents := req.GetRem().Agents
 	for _, c := range ctxs {
-		if _, ok := agents[c.ID.String()]; !ok {
-			t, err := output.ParseContext(consts.ContextPivoting, c.Value)
+		piv := c.Context.(*output.PivotingContext)
+		if _, ok := agents[piv.RemID]; !ok && piv.Enable {
+			piv.Enable = false
+			c.Value = piv.Marshal()
+			_, err = db.SaveContext(c.ToProtobuf())
 			if err != nil {
 				return nil, err
 			}
-			piv := t.(*output.PivotingContext)
-			if piv.Enable {
-				piv.Enable = false
-				c.Value = piv.Marshal()
-				_, err = db.SaveContext(c.ToProtobuf())
-				if err != nil {
-					return nil, err
-				}
+		} else if ok && !piv.Enable {
+			piv.Enable = true
+			c.Value = piv.Marshal()
+			_, err = db.SaveContext(c.ToProtobuf())
+			if err != nil {
+				return nil, err
 			}
 		}
 	}

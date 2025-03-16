@@ -1,11 +1,14 @@
 package generic
 
 import (
+	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/utils/output"
+	"github.com/chainreactors/tui"
+	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
 )
 
@@ -21,14 +24,7 @@ func ListPivotCmd(cmd *cobra.Command, con *repl.Console) error {
 		return nil
 	}
 
-	for _, c := range agents {
-		if all {
-			logs.Log.Info(c.String() + "\n")
-		} else if c.Enable {
-			logs.Log.Info(c.String() + "\n")
-		}
-
-	}
+	PrintPivots(agents, con, all)
 	return nil
 }
 
@@ -41,4 +37,41 @@ func ListPivot(con *repl.Console) ([]*output.PivotingContext, error) {
 	}
 	ctxs, err := output.ToContexts[*output.PivotingContext](pivots.Contexts)
 	return ctxs, nil
+}
+
+func PrintPivots(pivots []*output.PivotingContext, con *repl.Console, all bool) {
+	var rowEntries []table.Row
+	for _, pivot := range pivots {
+		row := table.NewRow(
+			table.RowData{
+				"Enable":    fmt.Sprintf("%t", pivot.Enable),
+				"Listener":  pivot.Listener,
+				"Pipeline":  pivot.Pipeline,
+				"RemID":     pivot.RemID,
+				"LocalURL":  pivot.LocalURL,
+				"RemoteURL": pivot.RemoteURL,
+				"Mod":       pivot.Mod,
+			})
+		if all || pivot.Enable {
+			rowEntries = append(rowEntries, row)
+		}
+	}
+
+	tableModel := tui.NewTable([]table.Column{
+		table.NewColumn("Enable", "Enable", 6),
+		table.NewColumn("Listener", "Listener", 10),
+		table.NewColumn("Pipeline", "Pipeline", 10),
+		table.NewColumn("RemID", "RemID", 10),
+		table.NewColumn("LocalURL", "LocalURL", 50),
+		table.NewColumn("RemoteURL", "RemoteURL", 50),
+		table.NewColumn("Mod", "Mod", 10),
+	}, true)
+
+	newTable := tui.NewModel(tableModel, nil, false, false)
+	tableModel.SetRows(rowEntries)
+	err := newTable.Run()
+	if err != nil {
+		con.Log.Errorf("Error running table: %v", err)
+	}
+	tui.Reset()
 }
