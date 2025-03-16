@@ -107,7 +107,7 @@ func (m *Engine) dispatchKeys(binds map[string]inputrc.Bind) (bind inputrc.Bind,
 		// Read a single byte from the input buffer.
 		// This mimics the way Bash reads input when the inputrc option `byte-oriented` is set.
 		// This is because the default binds map is built with byte sequences, not runes, and this
-		// has some implications if the terminal is sending 8-bit characters (extended alphabet).
+		// has some implications if the terminal is sending 8-bit characters (extanded alphabet).
 		key, empty := core.PeekKey(m.keys)
 		if empty {
 			break
@@ -123,21 +123,9 @@ func (m *Engine) dispatchKeys(binds map[string]inputrc.Bind) (bind inputrc.Bind,
 			prefix = false
 			m.active = m.prefixed
 			m.prefixed = inputrc.Bind{}
-
-			// FIX related to Github issue #73, where someone
-			// complains not being able to input Unicode characters
-			// correctly. Explanation:
-			// The call to PeekKey at the beginning of this function
-			// used to be PopKey. We don't pop the key unless we have
-			// an empty byte.
-			core.PopKey(m.keys)
-
 			break
 		}
-
-		// FIX related to Github issue #73, also pop the key here.
 		core.PopKey(m.keys)
-
 		// From here, there is at least one bind matched, by prefix
 		// or exactly, so the key we popped is considered matched.
 		matched = append(matched, key)
