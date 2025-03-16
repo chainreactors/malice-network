@@ -46,7 +46,7 @@ func (rpc *Server) ListRems(ctx context.Context, req *clientpb.Listener) (*clien
 		pipe.GetRem().Agents = make(map[string]*clientpb.REMAgent)
 		for _, c := range pivots {
 			piv := c.Context.(*output.PivotingContext)
-			pipe.GetRem().Agents[piv.RemID] = piv.ToRemAgent()
+			pipe.GetRem().Agents[piv.RemAgentID] = piv.ToRemAgent()
 		}
 		result = append(result, pipe)
 	}
@@ -312,7 +312,7 @@ func (rpc *Server) HealthCheckRem(ctx context.Context, req *clientpb.Pipeline) (
 	agents := req.GetRem().Agents
 	for _, c := range ctxs {
 		piv := c.Context.(*output.PivotingContext)
-		if _, ok := agents[piv.RemID]; !ok && piv.Enable {
+		if _, ok := agents[piv.RemAgentID]; !ok && piv.Enable {
 			piv.Enable = false
 			c.Value = piv.Marshal()
 			_, err = db.SaveContext(c.ToProtobuf())

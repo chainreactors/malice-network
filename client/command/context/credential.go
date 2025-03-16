@@ -73,6 +73,12 @@ func AddCredential(con *repl.Console, sess *core.Session, task *clientpb.Task, c
 }
 
 func RegisterCredential(con *repl.Console) {
-	con.RegisterServerFunc("credentials", GetCredentials, nil)
+	con.RegisterServerFunc("credentials", func(con *repl.Console) ([]*output.CredentialContext, error) {
+		ctxs, err := GetCredentials(con)
+		if err != nil {
+			return nil, err
+		}
+		return output.ToContexts[*output.CredentialContext](ctxs)
+	}, nil)
 	con.RegisterServerFunc("add_credential", AddCredential, nil)
 }

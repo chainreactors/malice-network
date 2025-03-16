@@ -18,28 +18,28 @@ func NewPivoting(content []byte) (*PivotingContext, error) {
 
 func NewPivotingWithRem(agent *clientpb.REMAgent) *PivotingContext {
 	return &PivotingContext{
-		Enable:    true,
-		Pipeline:  agent.PipelineId,
-		RemID:     agent.Id,
-		Mod:       agent.Mod,
-		RemoteURL: agent.Remote,
-		LocalURL:  agent.Local,
+		Enable:     true,
+		Pipeline:   agent.PipelineId,
+		RemAgentID: agent.Id,
+		Mod:        agent.Mod,
+		RemoteURL:  agent.Remote,
+		LocalURL:   agent.Local,
 	}
 }
 
 type PivotingContext struct {
-	Enable    bool   `json:"enable"`
-	Listener  string `json:"listener_id"`
-	Pipeline  string `json:"pipeline"`
-	RemID     string `json:"id"`
-	LocalURL  string `json:"local"`
-	RemoteURL string `json:"remote"`
-	Mod       string `json:"mod"`
+	Enable     bool   `json:"enable"`
+	Listener   string `json:"listener_id"`
+	Pipeline   string `json:"pipeline"`
+	RemAgentID string `json:"id"`
+	LocalURL   string `json:"local"`
+	RemoteURL  string `json:"remote"`
+	Mod        string `json:"mod"`
 }
 
 func (p *PivotingContext) ToRemAgent() *clientpb.REMAgent {
 	return &clientpb.REMAgent{
-		Id:         p.RemID,
+		Id:         p.RemAgentID,
 		PipelineId: p.Pipeline,
 		Mod:        p.Mod,
 		Local:      p.LocalURL,
@@ -62,11 +62,11 @@ func (p *PivotingContext) Marshal() []byte {
 
 func (p *PivotingContext) Abstract() string {
 	if p.Mod == "reverse" {
-		return fmt.Sprintf("%s serving %s", p.RemID, p.RemoteURL)
+		return fmt.Sprintf("%s serving %s", p.RemAgentID, p.RemoteURL)
 	} else if p.Mod == "proxy" {
-		return fmt.Sprintf("%s serving %s", p.RemID, p.LocalURL)
+		return fmt.Sprintf("%s serving %s", p.RemAgentID, p.LocalURL)
 	} else if p.Mod == "connect" {
-		return fmt.Sprintf("%s connecting to %s", p.RemID, p.Pipeline)
+		return fmt.Sprintf("%s connecting to %s", p.RemAgentID, p.Pipeline)
 	} else {
 		return fmt.Sprintf("invalid mod %s", p.Mod)
 	}
@@ -74,11 +74,11 @@ func (p *PivotingContext) Abstract() string {
 
 func (p *PivotingContext) String() string {
 	if p.Mod == "reverse" {
-		return fmt.Sprintf("Pivoting %s: %s %s <- %s on %s", p.RemID, p.Mod, p.LocalURL, p.RemoteURL, p.Pipeline)
+		return fmt.Sprintf("Pivoting %s: %s %s <- %s on %s", p.RemAgentID, p.Mod, p.LocalURL, p.RemoteURL, p.Pipeline)
 	} else if p.Mod == "proxy" {
-		return fmt.Sprintf("Pivoting %s: %s %s -> %s on %s", p.RemID, p.Mod, p.LocalURL, p.RemoteURL, p.Pipeline)
+		return fmt.Sprintf("Pivoting %s: %s %s -> %s on %s", p.RemAgentID, p.Mod, p.LocalURL, p.RemoteURL, p.Pipeline)
 	} else if p.Mod == "connect" {
-		return fmt.Sprintf("Pivoting %s: %s connected on %s", p.RemID, p.Mod, p.Pipeline)
+		return fmt.Sprintf("Pivoting %s: %s connected on %s", p.RemAgentID, p.Mod, p.Pipeline)
 	} else {
 		return string(p.Marshal())
 	}

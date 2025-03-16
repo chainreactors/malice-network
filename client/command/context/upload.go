@@ -73,6 +73,13 @@ func AddUpload(con *repl.Console, sess *core.Session, task *clientpb.Task, fileD
 }
 
 func RegisterUpload(con *repl.Console) {
-	con.RegisterServerFunc("uploads", GetUploads, nil)
+	con.RegisterServerFunc("uploads", func(con *repl.Console) ([]*output.UploadContext, error) {
+		uploads, err := GetUploads(con)
+		if err != nil {
+			return nil, err
+		}
+
+		return output.ToContexts[*output.UploadContext](uploads)
+	}, nil)
 	con.RegisterServerFunc("add_upload", AddUpload, nil)
 }

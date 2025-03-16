@@ -26,6 +26,14 @@ func (file *FileDescriptor) Marshal() (string, error) {
 	return string(jsonMarshal), nil
 }
 
+type Context interface {
+	Type() string
+	// Marshal 返回用于存储到数据库的序列化数据，忽略大型二进制数据
+	Marshal() []byte
+	// String 返回context的简要描述
+	String() string
+}
+
 // AsContext 将Context接口转换为具体的实现类型
 func AsContext[T Context](ctx Context) (T, error) {
 	if t, ok := ctx.(T); ok {
@@ -108,14 +116,6 @@ func (ctxs Contexts) String() string {
 		s.WriteString(ctx.String() + "\n")
 	}
 	return s.String()
-}
-
-type Context interface {
-	Type() string
-	// Marshal 返回用于存储到数据库的序列化数据，忽略大型二进制数据
-	Marshal() []byte
-	// String 返回context的简要描述
-	String() string
 }
 
 type ScreenShotContext struct {

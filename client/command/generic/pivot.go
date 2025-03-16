@@ -44,13 +44,13 @@ func PrintPivots(pivots []*output.PivotingContext, con *repl.Console, all bool) 
 	for _, pivot := range pivots {
 		row := table.NewRow(
 			table.RowData{
-				"Enable":    fmt.Sprintf("%t", pivot.Enable),
-				"Listener":  pivot.Listener,
-				"Pipeline":  pivot.Pipeline,
-				"RemID":     pivot.RemID,
-				"LocalURL":  pivot.LocalURL,
-				"RemoteURL": pivot.RemoteURL,
-				"Mod":       pivot.Mod,
+				"Enable":     fmt.Sprintf("%t", pivot.Enable),
+				"Listener":   pivot.Listener,
+				"Pipeline":   pivot.Pipeline,
+				"RemAgentID": pivot.RemAgentID,
+				"LocalURL":   pivot.LocalURL,
+				"RemoteURL":  pivot.RemoteURL,
+				"Mod":        pivot.Mod,
 			})
 		if all || pivot.Enable {
 			rowEntries = append(rowEntries, row)
@@ -61,7 +61,7 @@ func PrintPivots(pivots []*output.PivotingContext, con *repl.Console, all bool) 
 		table.NewColumn("Enable", "Enable", 6),
 		table.NewColumn("Listener", "Listener", 10),
 		table.NewColumn("Pipeline", "Pipeline", 10),
-		table.NewColumn("RemID", "RemID", 10),
+		table.NewColumn("RemAgentID", "RemAgentID", 10),
 		table.NewColumn("LocalURL", "LocalURL", 50),
 		table.NewColumn("RemoteURL", "RemoteURL", 50),
 		table.NewColumn("Mod", "Mod", 10),
