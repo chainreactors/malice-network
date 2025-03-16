@@ -11,8 +11,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
-	"github.com/wabzsy/gonut"
-	"path/filepath"
 )
 
 func ExecuteAssemblyCmd(cmd *cobra.Command, con *repl.Console) error {
@@ -27,18 +25,11 @@ func ExecuteAssemblyCmd(cmd *cobra.Command, con *repl.Console) error {
 }
 
 func ExecuteAssembly(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, args []string, out bool, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
-	binary, err := output.NewExecutable(consts.ModuleExecuteShellcode, path, args, sess.Os.Arch, out, sac)
+	binary, err := output.NewExecutable(consts.ModuleExecuteAssembly, path, args, sess.Os.Arch, out, sac)
 	if err != nil {
 		return nil, err
 	}
-
-	cmdline := shellquote.Join(args...)
-	content, err := gonut.DonutFromAssembly(filepath.Base(path), binary.Bin, consts.Arch(binary.Arch).String(), cmdline, "", "", "")
-	if err != nil {
-		return nil, err
-	}
-	binary.Bin = content
-	task, err := rpc.ExecuteShellcode(sess.Context(), binary)
+	task, err := rpc.ExecuteAssembly(sess.Context(), binary)
 	if err != nil {
 		return nil, err
 	}
