@@ -12,6 +12,7 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
+	"github.com/samber/lo"
 )
 
 func (rpc *Server) RegisterRem(ctx context.Context, req *clientpb.Pipeline) (*clientpb.Empty, error) {
@@ -29,29 +30,25 @@ func (rpc *Server) RegisterRem(ctx context.Context, req *clientpb.Pipeline) (*cl
 
 func (rpc *Server) ListRems(ctx context.Context, req *clientpb.Listener) (*clientpb.Pipelines, error) {
 	var result []*clientpb.Pipeline
-	if req.Id != "" {
-		ln, err := core.Listeners.Get(req.Id)
-		if err != nil {
-			return nil, err
-		}
-
-		for _, rem := range ln.Pipelines {
-			if rem.Type == consts.RemPipeline {
-				result = append(result, rem)
-			}
-		}
-	} else {
-		core.Listeners.Range(func(key, value any) bool {
-			ln := value.(*core.Listener)
-			for _, rem := range ln.Pipelines {
-				if rem.Type == consts.RemPipeline {
-					result = append(result, rem)
-				}
-			}
-			return true
-		})
+	ctxs, err := db.NewContextQuery().ByType(consts.ContextPivoting).Find()
+	if err != nil {
+		return nil, err
 	}
-
+	ctxMap := lo.GroupBy(ctxs, func(item *models.Context) string {
+		return item.PipelineID
+	})
+	for pid, pivots := range ctxMap {
+		pipe, ok := core.Listeners.Find(pid)
+		if !ok {
+			continue
+		}
+		pipe.GetRem().Agents = make(map[string]*clientpb.REMAgent)
+		for _, c := range pivots {
+			piv := c.Context.(*output.PivotingContext)
+			pipe.GetRem().Agents[piv.RemID] = piv.ToRemAgent()
+		}
+		result = append(result, pipe)
+	}
 	return &clientpb.Pipelines{Pipelines: result}, nil
 }
 
@@ -197,7 +194,7 @@ func (rpc *Server) RemDial(ctx context.Context, req *implantpb.Request) (*client
 	return greq.Task.ToProtobuf(), nil
 }
 
-func (rpc *Server) RemCtrl(ctx context.Context, req *clientpb.REMAgent) (*clientpb.Empty, error) {
+func (rpc *Server) RemAgentCtrl(ctx context.Context, req *clientpb.REMAgent) (*clientpb.Empty, error) {
 	pipe, ok := core.Listeners.Find(req.PipelineId)
 	if !ok {
 		return nil, errs.ErrNotFoundListener
@@ -207,7 +204,7 @@ func (rpc *Server) RemCtrl(ctx context.Context, req *clientpb.REMAgent) (*client
 		return nil, err
 	}
 	i := lns.PushCtrl(&clientpb.JobCtrl{
-		Ctrl: consts.CtrlRemCtrl,
+		Ctrl: consts.CtrlRemAgentCtrl,
 		Job: &clientpb.Job{
 			Name:     pipe.Name,
 			Pipeline: pipe,
@@ -218,7 +215,8 @@ func (rpc *Server) RemCtrl(ctx context.Context, req *clientpb.REMAgent) (*client
 	})
 	status := lns.WaitCtrl(i)
 	if status.Status == consts.CtrlStatusSuccess {
-		pivot := output.NewPivotingWithRem(status.Job.GetRemAgent())
+		agent := status.Job.GetRemAgent()
+		pivot := output.NewPivotingWithRem(agent)
 		pivot.Pipeline = pipe.Name
 		pivot.Listener = pipe.ListenerId
 		_, err = db.SaveContext(&clientpb.Context{
@@ -230,6 +228,7 @@ func (rpc *Server) RemCtrl(ctx context.Context, req *clientpb.REMAgent) (*client
 		if err != nil {
 			return nil, err
 		}
+		pipe.GetRem().Agents[agent.Id] = agent
 		core.EventBroker.Publish(core.Event{
 			EventType: consts.EventPivot,
 			Op:        "pivot_" + pivot.Mod,
@@ -239,7 +238,7 @@ func (rpc *Server) RemCtrl(ctx context.Context, req *clientpb.REMAgent) (*client
 	return &clientpb.Empty{}, nil
 }
 
-func (rpc *Server) RemLog(ctx context.Context, req *clientpb.REMAgent) (*clientpb.RemLog, error) {
+func (rpc *Server) RemAgentLog(ctx context.Context, req *clientpb.REMAgent) (*clientpb.RemLog, error) {
 	pipe, ok := core.Listeners.Find(req.PipelineId)
 	if !ok {
 		return nil, errs.ErrNotFoundListener
@@ -249,7 +248,7 @@ func (rpc *Server) RemLog(ctx context.Context, req *clientpb.REMAgent) (*clientp
 		return nil, err
 	}
 	i := lns.PushCtrl(&clientpb.JobCtrl{
-		Ctrl: consts.CtrlRemLog,
+		Ctrl: consts.CtrlRemAgentLog,
 		Job: &clientpb.Job{
 			Name:     pipe.Name,
 			Pipeline: pipe,
@@ -261,6 +260,28 @@ func (rpc *Server) RemLog(ctx context.Context, req *clientpb.REMAgent) (*clientp
 
 	job := lns.WaitCtrl(i)
 	return job.Job.GetRemLog(), nil
+}
+
+func (rpc *Server) RemAgentStop(ctx context.Context, req *clientpb.REMAgent) (*clientpb.Empty, error) {
+	pipe, ok := core.Listeners.Find(req.PipelineId)
+	if !ok {
+		return nil, errs.ErrNotFoundListener
+	}
+	lns, err := core.Listeners.Get(pipe.ListenerId)
+	if err != nil {
+		return nil, err
+	}
+	lns.PushCtrl(&clientpb.JobCtrl{
+		Ctrl: consts.CtrlRemAgentStop,
+		Job: &clientpb.Job{
+			Name:     pipe.Name,
+			Pipeline: pipe,
+			Body: &clientpb.Job_RemAgent{
+				RemAgent: req,
+			},
+		},
+	})
+	return &clientpb.Empty{}, nil
 }
 
 func (rpc *Server) LoadRem(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
@@ -277,13 +298,17 @@ func (rpc *Server) LoadRem(ctx context.Context, req *implantpb.Request) (*client
 }
 
 func (rpc *Server) HealthCheckRem(ctx context.Context, req *clientpb.Pipeline) (*clientpb.Empty, error) {
+	_, err := db.SavePipeline(models.FromPipelinePb(req))
+	if err != nil {
+		return nil, err
+	}
+
 	ctxs, err := db.NewContextQuery().ByType(consts.ContextPivoting).ByPipeline(req.Name).Find()
 	if err != nil {
 		return nil, err
 	}
 
 	agents := req.GetRem().Agents
-
 	for _, c := range ctxs {
 		if _, ok := agents[c.ID.String()]; !ok {
 			t, err := output.ParseContext(consts.ContextPivoting, c.Value)

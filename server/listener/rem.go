@@ -2,6 +2,7 @@ package listener
 
 import (
 	"context"
+	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
@@ -104,7 +105,7 @@ func (rem *REM) Close() error {
 	return rem.con.Close()
 }
 
-func (lns *listener) handlerRemCtrl(job *clientpb.Job) error {
+func (lns *listener) handlerRemAgentCtrl(job *clientpb.Job) error {
 	rem := lns.pipelines.Get(job.Name)
 	if rem == nil {
 		return errors.New("rem not found")
@@ -129,7 +130,7 @@ func (lns *listener) handlerRemCtrl(job *clientpb.Job) error {
 	return nil
 }
 
-func (lns *listener) handlerRemLog(job *clientpb.Job) error {
+func (lns *listener) handlerRemAgentLog(job *clientpb.Job) error {
 	rem := lns.pipelines.Get(job.Name)
 	if rem == nil {
 		return errors.New("rem not found")
@@ -148,6 +149,25 @@ func (lns *listener) handlerRemLog(job *clientpb.Job) error {
 				Log:        a.HistoryLog(),
 			},
 		}
+		return nil
+	} else {
+		return errors.New("agent not found")
+	}
+}
+
+func (lns *listener) handlerRemAgentStop(job *clientpb.Job) error {
+	rem := lns.pipelines.Get(job.Name)
+	if rem == nil {
+		return errors.New("rem not found")
+	}
+
+	body := job.GetRemAgent()
+	if body == nil {
+		return errors.New("agent not found")
+	}
+	a, ok := agent.Agents.Get(body.Id)
+	if ok {
+		a.Close(fmt.Errorf("stop by manual"))
 		return nil
 	} else {
 		return errors.New("agent not found")

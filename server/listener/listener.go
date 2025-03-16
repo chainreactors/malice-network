@@ -235,10 +235,12 @@ func (lns *listener) Handler() {
 			handlerErr = lns.handleWebContentRemove(msg.Job)
 		case consts.CtrlRemStart:
 			handlerErr = lns.handleStartRem(msg.Job)
-		case consts.CtrlRemCtrl:
-			handlerErr = lns.handlerRemCtrl(msg.Job)
-		case consts.CtrlRemLog:
-			handlerErr = lns.handlerRemLog(msg.Job)
+		case consts.CtrlRemAgentCtrl:
+			handlerErr = lns.handlerRemAgentCtrl(msg.Job)
+		case consts.CtrlRemAgentLog:
+			handlerErr = lns.handlerRemAgentLog(msg.Job)
+		case consts.CtrlRemAgentStop:
+			handlerErr = lns.handlerRemAgentStop(msg.Job)
 		}
 
 		status := &clientpb.JobStatus{

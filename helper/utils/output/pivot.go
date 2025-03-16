@@ -37,6 +37,17 @@ type PivotingContext struct {
 	Mod       string `json:"mod"`
 }
 
+func (p *PivotingContext) ToRemAgent() *clientpb.REMAgent {
+	return &clientpb.REMAgent{
+		Id:         p.RemID,
+		PipelineId: p.Pipeline,
+		Mod:        p.Mod,
+		Local:      p.LocalURL,
+		Remote:     p.RemoteURL,
+		Enable:     p.Enable,
+	}
+}
+
 func (p *PivotingContext) Type() string {
 	return consts.ContextPivoting
 }

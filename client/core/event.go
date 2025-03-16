@@ -234,7 +234,7 @@ func (s *ServerStatus) handleJob(event *clientpb.Event) {
 			pipeline.Name, pipeline.ListenerId, pipeline.Ip)
 	case *clientpb.Pipeline_Rem:
 		switch event.Op {
-		case consts.CtrlRemLog:
+		case consts.CtrlRemAgentLog:
 			return
 		default:
 			Log.Importantf("[%s] %s: rem %s on %s %s:%d\n", event.Type, event.Op,

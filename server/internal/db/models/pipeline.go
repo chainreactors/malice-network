@@ -103,7 +103,6 @@ func (pipeline *Pipeline) ToProtobuf() *clientpb.Pipeline {
 					Link:      pipeline.PipelineParams.Link,
 					Subscribe: pipeline.PipelineParams.Subscribe,
 					Console:   pipeline.Console,
-					Agents:    pipeline.PipelineParams.Agents,
 				},
 			},
 			Tls:        pipeline.Tls.ToProtobuf(),
@@ -194,7 +193,6 @@ func FromPipelinePb(pipeline *clientpb.Pipeline) *Pipeline {
 			PipelineParams: &types.PipelineParams{
 				Link:      body.Rem.Link,
 				Subscribe: body.Rem.Subscribe,
-				Agents:    body.Rem.Agents,
 				Console:   body.Rem.Console,
 			},
 		}
