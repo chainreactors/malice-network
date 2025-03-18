@@ -2,15 +2,16 @@ package listener
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"time"
+
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
 	"github.com/chainreactors/malice-network/helper/third/rem"
 	"github.com/chainreactors/rem/agent"
-	"github.com/pkg/errors"
-	"time"
 )
 
 func NewRem(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeline) (*REM, error) {
