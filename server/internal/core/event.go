@@ -210,7 +210,7 @@ func (broker *eventBroker) InitService(config *configs.NotifyConfig) error {
 		return nil
 	}
 	broker.notifier.enable = true
-	if config.Telegram.Enable {
+	if config.Telegram != nil && config.Telegram.Enable {
 		tg, err := telegram.New(config.Telegram.APIKey)
 		if err != nil {
 			return err
@@ -219,18 +219,18 @@ func (broker *eventBroker) InitService(config *configs.NotifyConfig) error {
 		tg.AddReceivers(config.Telegram.ChatID)
 		broker.notifier.notify.UseServices(tg)
 	}
-	if config.DingTalk.Enable {
+	if config.DingTalk != nil && config.DingTalk.Enable {
 		dt := dingding.New(&dingding.Config{
 			Token:  config.DingTalk.Token,
 			Secret: config.DingTalk.Secret,
 		})
 		broker.notifier.notify.UseServices(dt)
 	}
-	if config.Lark.Enable {
+	if config.Lark != nil && config.Lark.Enable {
 		lark := lark.NewWebhookService(config.Lark.WebHookUrl)
 		broker.notifier.notify.UseServices(lark)
 	}
-	if config.ServerChan.Enable {
+	if config.ServerChan != nil && config.ServerChan.Enable {
 		sc := http.New()
 		sc.AddReceivers(&http.Webhook{
 			URL:         config.ServerChan.URL,
