@@ -1,6 +1,5 @@
 package rpc
 
-import "C"
 import (
 	"context"
 	"github.com/chainreactors/logs"
