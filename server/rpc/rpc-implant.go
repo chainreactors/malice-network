@@ -34,7 +34,7 @@ func (rpc *Server) Register(ctx context.Context, req *clientpb.RegisterSession) 
 	} else {
 		logs.Log.Infof("session %s re-register", sess.ID)
 		sess.Update(req)
-		sess.Publish(consts.CtrlSessionReborn, fmt.Sprintf("%s from %s reborn at %s", sess.Abstract(), sess.Target, sess.PipelineID), true, true)
+		//sess.Publish(consts.CtrlSessionReborn, fmt.Sprintf("%s from %s reborn at %s", sess.Abstract(), sess.Target, sess.PipelineID), true, true)
 		core.Sessions.Add(sess)
 	}
 
