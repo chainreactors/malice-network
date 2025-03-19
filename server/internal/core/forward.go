@@ -118,6 +118,10 @@ func (f *Forward) Context(sid string) context.Context {
 func (f *Forward) Handler() {
 	for msg := range f.implantC {
 		for _, spite := range msg.Spites.Spites {
+			_, err := f.ListenerRpc.Checkin(f.Context(msg.SessionID), &implantpb.Ping{})
+			if err != nil {
+				logs.Log.Debug(err)
+			}
 			switch spite.Body.(type) {
 			case *implantpb.Spite_Register:
 				_, err := f.ListenerRpc.Register(f.Context(msg.SessionID), &clientpb.RegisterSession{
@@ -152,11 +156,6 @@ func (f *Forward) Handler() {
 						return
 					}
 				}()
-			}
-
-			_, err := f.ListenerRpc.Checkin(f.Context(msg.SessionID), &implantpb.Ping{})
-			if err != nil {
-				logs.Log.Debug(err)
 			}
 		}
 	}
