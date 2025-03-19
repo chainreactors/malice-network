@@ -8,7 +8,7 @@ require (
 	github.com/chainreactors/logs v0.0.0-20250312104344-9f30fa69d3c9
 	github.com/chainreactors/mals v0.0.0-20250312123103-4c3242132d76
 	github.com/chainreactors/parsers v0.0.0-20250225073555-ab576124d61f
-	github.com/chainreactors/rem v0.1.2-0.20250316181909-86daead65710
+	github.com/chainreactors/rem v0.2.1
 	github.com/chainreactors/tui v0.0.0-20250117083346-8eff1b67016e
 	github.com/chainreactors/utils v0.0.0-20241209140746-65867d2f78b2
 	github.com/charmbracelet/bubbletea v0.27.1
@@ -27,9 +27,9 @@ require (
 	github.com/muesli/termenv v0.15.3-0.20240618155329-98d742f6907a
 	github.com/ncruces/go-sqlite3 v0.9.0
 	github.com/nikoksr/notify v0.41.0
-	github.com/pkg/errors v0.9.1
 	github.com/reeflective/console v0.0.0-00010101000000-000000000000
 	github.com/robfig/cron/v3 v3.0.0
+	github.com/samber/lo v1.49.1
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/pflag v1.0.6
 	github.com/tetratelabs/wazero v1.5.0
@@ -47,9 +47,9 @@ require (
 	github.com/docker/distribution v2.8.2+incompatible // indirect
 	github.com/docker/docker v24.0.9+incompatible
 	golang.org/x/exp v0.0.0-20230817173708-d852ddb80c63
+	golang.org/x/sync v0.11.0 // indirect
 	google.golang.org/grpc v1.57.2
 	google.golang.org/protobuf v1.34.1
-	golang.org/x/sync v0.11.0 // indirect
 )
 
 require (
@@ -115,13 +115,13 @@ require (
 	github.com/ncruces/julianday v0.1.5 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.0 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/reeflective/readline v1.1.2 // indirect
 	github.com/riobard/go-bloom v0.0.0-20200614022211-cdc8013cb5b3 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect
 	github.com/sahilm/fuzzy v0.1.1-0.20230530133925-c48e322e2a8f // indirect
-	github.com/samber/lo v1.49.1 // indirect
 	github.com/shadowsocks/go-shadowsocks2 v0.1.5 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
