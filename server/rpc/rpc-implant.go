@@ -31,6 +31,7 @@ func (rpc *Server) Register(ctx context.Context, req *clientpb.RegisterSession) 
 			sess.Publish(consts.CtrlSessionRegister, fmt.Sprintf("new session %s from %s start at %s", sess.Abstract(), sess.Target, sess.PipelineID), true, true)
 			logs.Log.Importantf("recover session %s from %s", sess.ID, sess.PipelineID)
 		}
+		core.Sessions.Add(sess)
 	} else {
 		logs.Log.Infof("session %s re-register", sess.ID)
 		sess.Update(req)
