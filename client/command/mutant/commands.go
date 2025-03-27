@@ -146,7 +146,7 @@ srdi --id artifact_id --target x86_64-pc-windows-msvc
 
 func Register(con *repl.Console) {
 	con.RegisterServerFunc("malefic_srdi", MaleficSRDI, &mals.Helper{
-		Group: intermediate.GroupArtifact,
+		Group: intermediate.ArtifactGroup,
 		Short: "malefic srdi",
 	})
 
@@ -159,7 +159,7 @@ func Register(con *repl.Console) {
 			return string(bin), nil
 		})
 	intermediate.AddHelper("exe2shellcode", &mals.Helper{
-		Group: intermediate.GroupArtifact,
+		Group: intermediate.ArtifactGroup,
 		Short: "exe to shellcode with donut",
 		Input: []string{
 			"bin: dll bin",
@@ -179,7 +179,7 @@ func Register(con *repl.Console) {
 		return string(bin), nil
 	})
 	intermediate.AddHelper("dll2shellcode", &mals.Helper{
-		Group: intermediate.GroupArtifact,
+		Group: intermediate.ArtifactGroup,
 		Short: "dll to shellcode with donut",
 		Input: []string{
 			"bin: dll bin",
@@ -193,7 +193,7 @@ func Register(con *repl.Console) {
 
 	intermediate.RegisterFunction("clr2shellcode", gonut.DonutFromAssemblyFromFile)
 	intermediate.AddHelper("clr2shellcode", &mals.Helper{
-		Group: intermediate.GroupArtifact,
+		Group: intermediate.ArtifactGroup,
 		Short: "clr to shellcode with donut",
 		Input: []string{
 			"file: path to PE file",
@@ -210,7 +210,7 @@ func Register(con *repl.Console) {
 
 	intermediate.RegisterFunction("donut", gonut.DonutShellcodeFromFile)
 	intermediate.AddHelper("donut", &mals.Helper{
-		Group: intermediate.GroupArtifact,
+		Group: intermediate.ArtifactGroup,
 		Short: "Generates x86, x64, or AMD64+x86 position-independent shellcode that loads .NET Assemblies, PE files, and other Windows payloads from memory and runs them with parameters ",
 		Input: []string{
 			"file: path to PE file",
@@ -235,7 +235,7 @@ func Register(con *repl.Console) {
 		}
 		return string(bin.Bin), nil
 	}, &mals.Helper{
-		Group: intermediate.GroupArtifact,
+		Group: intermediate.ArtifactGroup,
 		Short: "dll/exe to shellcode with srdi",
 		Input: []string{
 			"bin: dll/exe bin",
@@ -260,7 +260,7 @@ func Register(con *repl.Console) {
 		}
 		return string(bin.Bin), nil
 	}, &mals.Helper{
-		Group: intermediate.GroupArtifact,
+		Group: intermediate.ArtifactGroup,
 		Short: "shellcode encode with sgn",
 		Input: []string{
 			"bin: shellcode bin",

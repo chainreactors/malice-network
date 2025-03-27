@@ -29,9 +29,10 @@ import (
 )
 
 const (
-	GroupEncode   = "encode"
-	GroupArtifact = "artifact"
-	GroupClient   = "client"
+	EncodeGroup   = "encode"
+	ArtifactGroup = "artifact"
+	ListenerGroup = "listener"
+	ClientGroup   = "client"
 )
 
 // lua package
@@ -362,7 +363,7 @@ format_path("C:\\Windows\\System32\\calc.exe")
 	AddHelper(
 		"base64_encode",
 		&mals.Helper{
-			Group:   GroupEncode,
+			Group:   EncodeGroup,
 			CMDName: "base64_encode",
 			Input: []string{
 				"input",
@@ -384,7 +385,7 @@ format_path("C:\\Windows\\System32\\calc.exe")
 	AddHelper(
 		"base64_decode",
 		&mals.Helper{
-			Group: GroupEncode,
+			Group: EncodeGroup,
 			Short: "base64 decode",
 			Input: []string{
 				"input",
@@ -401,7 +402,7 @@ format_path("C:\\Windows\\System32\\calc.exe")
 	AddHelper(
 		"arg_hex",
 		&mals.Helper{
-			Group: GroupEncode,
+			Group: EncodeGroup,
 			Short: "hexlify encode",
 			Input: []string{
 				"input",
@@ -425,7 +426,7 @@ format_path("C:\\Windows\\System32\\calc.exe")
 	AddHelper(
 		"random_string",
 		&mals.Helper{
-			Group: GroupEncode,
+			Group: EncodeGroup,
 			Short: "generate random string",
 			Input: []string{
 				"length",
@@ -449,7 +450,7 @@ format_path("C:\\Windows\\System32\\calc.exe")
 	AddHelper(
 		"file_exists",
 		&mals.Helper{
-			Group: GroupEncode,
+			Group: EncodeGroup,
 			Short: "check file exists",
 			Input: []string{
 				"path",
@@ -475,7 +476,7 @@ format_path("C:\\Windows\\System32\\calc.exe")
 	AddHelper(
 		"ismatch",
 		&mals.Helper{
-			Group: GroupEncode,
+			Group: EncodeGroup,
 			Short: "regexp match",
 			Input: []string{
 				"pattern",
@@ -501,7 +502,7 @@ format_path("C:\\Windows\\System32\\calc.exe")
 	AddHelper(
 		"timestamp",
 		&mals.Helper{
-			Group:   GroupEncode,
+			Group:   EncodeGroup,
 			Short:   "Get current timestamp in milliseconds or formatted date string.",
 			Output:  []string{"string"},
 			Example: `timestampOrFormatted(), timestampOrFormatted("01/02 15:04")`,
@@ -542,7 +543,7 @@ format_path("C:\\Windows\\System32\\calc.exe")
 	AddHelper(
 		"parse_octal",
 		&mals.Helper{
-			Group: GroupEncode,
+			Group: EncodeGroup,
 			Short: "parse octal string to int64",
 			Input: []string{
 				"octalString",
@@ -564,7 +565,7 @@ format_path("C:\\Windows\\System32\\calc.exe")
 	AddHelper(
 		"parse_hex",
 		&mals.Helper{
-			Group: GroupEncode,
+			Group: EncodeGroup,
 			Short: "parse hex string to int64",
 			Input: []string{
 				"hexString",

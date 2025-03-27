@@ -408,7 +408,7 @@ func Register(con *repl.Console) {
 	con.RegisterServerFunc("search_artifact",
 		SearchArtifact,
 		&mals.Helper{
-			Group: intermediate.GroupArtifact,
+			Group: intermediate.ArtifactGroup,
 			Short: "search build artifact with arch,os,typ and pipeline id",
 			Input: []string{
 				"pipeline: pipeline id",
@@ -437,7 +437,7 @@ func Register(con *repl.Console) {
 			return artifact, nil
 		},
 		&mals.Helper{
-			Group: intermediate.GroupArtifact,
+			Group: intermediate.ArtifactGroup,
 			Short: "get artifact with session self",
 			Input: []string{
 				"sess: session",
@@ -451,7 +451,7 @@ func Register(con *repl.Console) {
 	con.RegisterServerFunc("upload_artifact",
 		UploadArtifact,
 		&mals.Helper{
-			Group: intermediate.GroupArtifact,
+			Group: intermediate.ArtifactGroup,
 			Short: "upload local bin to server build",
 		},
 	)
@@ -459,7 +459,7 @@ func Register(con *repl.Console) {
 	con.RegisterServerFunc("download_artifact",
 		DownloadArtifact,
 		&mals.Helper{
-			Group: intermediate.GroupArtifact,
+			Group: intermediate.ArtifactGroup,
 			Short: "download artifact with special build id",
 		},
 	)
@@ -467,7 +467,7 @@ func Register(con *repl.Console) {
 	con.RegisterServerFunc("delete_artifact",
 		DeleteArtifact,
 		&mals.Helper{
-			Group: intermediate.GroupArtifact,
+			Group: intermediate.ArtifactGroup,
 			Short: "delete artifact with special build name",
 		},
 	)
@@ -484,7 +484,7 @@ func Register(con *repl.Console) {
 			return string(artifact.Bin), nil
 		},
 		&mals.Helper{
-			Group: intermediate.GroupArtifact,
+			Group: intermediate.ArtifactGroup,
 			Short: "get artifact with session self",
 			Input: []string{
 				"sess: session",
@@ -503,7 +503,7 @@ func Register(con *repl.Console) {
 			return string(artifact.Bin), nil
 		},
 		&mals.Helper{
-			Group: intermediate.GroupArtifact,
+			Group: intermediate.ArtifactGroup,
 			Short: "get self artifact stager shellcode",
 			Input: []string{
 				"sess: session",
@@ -522,7 +522,7 @@ func Register(con *repl.Console) {
 		}
 		return string(artifact.Bin), nil
 	}, &mals.Helper{
-		Group: intermediate.GroupArtifact,
+		Group: intermediate.ArtifactGroup,
 		Short: "get artifact stager shellcode",
 		Input: []string{
 			"pipeline: pipeline id",
@@ -543,7 +543,7 @@ func Register(con *repl.Console) {
 		}
 		return string(artifact.Bin), nil
 	}, &mals.Helper{
-		Group: intermediate.GroupArtifact,
+		Group: intermediate.ArtifactGroup,
 		Short: "get self artifact stageless shellcode",
 		Input: []string{
 			"sess: Session",
@@ -561,7 +561,7 @@ func Register(con *repl.Console) {
 		}
 		return string(artifact.Bin), nil
 	}, &mals.Helper{
-		Group: intermediate.GroupArtifact,
+		Group: intermediate.ArtifactGroup,
 		Short: "get artifact stageless shellcode",
 		Input: []string{
 			"pipeline: pipeline id",
