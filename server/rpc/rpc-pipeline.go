@@ -70,22 +70,21 @@ func (rpc *Server) StartPipeline(ctx context.Context, req *clientpb.CtrlPipeline
 	if err != nil {
 		return nil, err
 	}
-	pipeline := pipelineDB.ToProtobuf()
-	pipeline.Target = req.Target
-	pipeline.BeaconPipeline = req.BeaconPipeline
+
 	lns, err := core.Listeners.Get(pipelineDB.ListenerId)
 	if err != nil {
 		return nil, err
 	}
 	job := &core.Job{
 		ID:       core.NextJobID(),
-		Pipeline: pipeline,
-		Name:     pipeline.Name,
+		Pipeline: req.Pipeline,
+		Name:     req.Pipeline.Name,
 	}
 	core.Jobs.Add(job)
 	lns.PushCtrl(&clientpb.JobCtrl{
 		Ctrl: consts.CtrlPipelineStart,
 		Job:  job.ToProtobuf()})
+	pipeline := pipelineDB.ToProtobuf()
 	err = db.EnablePipeline(pipeline.Name)
 	if err != nil {
 		return nil, err

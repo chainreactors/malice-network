@@ -2,12 +2,16 @@ package configs
 
 import (
 	"crypto/x509/pkix"
+	"encoding/json"
+	"fmt"
+	"os"
+
 	"github.com/chainreactors/malice-network/helper/certs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/server/internal/stream"
+	"github.com/chainreactors/malice-network/helper/types"
+	cryptostream "github.com/chainreactors/malice-network/server/internal/stream"
 	"golang.org/x/exp/slices"
-	"os"
 )
 
 var ListenerConfigFileName = "listener.yaml"
@@ -20,9 +24,9 @@ type ListenerConfig struct {
 	IP                 string                `config:"ip"`
 	TcpPipelines       []*TcpPipelineConfig  `config:"tcp" `
 	BindPipelineConfig []*BindPipelineConfig `config:"bind"`
-	//HttpPipelines []*HttpPipelineConfig `config:"http" default:""`
-	Websites []*WebsiteConfig `config:"website"`
-	REMs     []*REMConfig     `config:"rem"`
+	HttpPipelines      []*HttpPipelineConfig `config:"http"`
+	Websites           []*WebsiteConfig      `config:"website"`
+	REMs               []*REMConfig          `config:"rem"`
 }
 
 type TcpPipelineConfig struct {
@@ -93,11 +97,68 @@ func (pipeline *BindPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline
 }
 
 type HttpPipelineConfig struct {
-	Enable    bool       `config:"enable" default:"false"`
-	Name      string     `config:"name" default:"default-http"`
-	Host      string     `config:"host" default:"0.0.0.0"`
-	Port      uint16     `config:"port" default:"8443"`
-	TlsConfig *TlsConfig `config:"tls"`
+	Enable           bool                `config:"enable" default:"true"`
+	Name             string              `config:"name" default:"http"`
+	Host             string              `config:"host" default:"0.0.0.0"`
+	Port             uint16              `config:"port" default:"8080"`
+	Parser           string              `config:"parser" default:"malefic"`
+	AutoBuildConfig  *AutoBuildConfig    `config:"auto_build"`
+	TlsConfig        *TlsConfig          `config:"tls"`
+	EncryptionConfig *EncryptionConfig   `config:"encryption"`
+	Headers          map[string][]string `config:"headers"`
+	ErrorPage        string              `config:"error_page"`
+	BodyPrefix       string              `config:"body_prefix"`
+	BodySuffix       string              `config:"body_suffix"`
+}
+
+func (http *HttpPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, error) {
+	tls, err := http.TlsConfig.ReadCert()
+	if err != nil {
+		return nil, err
+	}
+	if http.AutoBuildConfig == nil {
+		http.AutoBuildConfig = &AutoBuildConfig{}
+	}
+
+	// 如果指定了错误页面，读取文件内容
+	var errorPageContent string
+	if http.ErrorPage != "" {
+		content, err := os.ReadFile(http.ErrorPage)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read error page file: %v", err)
+		}
+		errorPageContent = string(content)
+	}
+
+	// 序列化额外参数
+	params := types.PipelineParams{
+		Headers:    http.Headers,
+		ErrorPage:  errorPageContent,
+		BodyPrefix: http.BodyPrefix,
+		BodySuffix: http.BodySuffix,
+	}
+	paramsJson, err := json.Marshal(params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal pipeline params: %v", err)
+	}
+
+	return &clientpb.Pipeline{
+		Name:           http.Name,
+		ListenerId:     lisId,
+		Enable:         http.Enable,
+		Parser:         http.Parser,
+		Target:         http.AutoBuildConfig.Target,
+		BeaconPipeline: http.AutoBuildConfig.BeaconPipeline,
+		Body: &clientpb.Pipeline_Http{
+			Http: &clientpb.HTTPPipeline{
+				Host:   http.Host,
+				Port:   uint32(http.Port),
+				Params: string(paramsJson),
+			},
+		},
+		Tls:        tls.ToProtobuf(),
+		Encryption: http.EncryptionConfig.ToProtobuf(),
+	}, nil
 }
 
 type REMConfig struct {
