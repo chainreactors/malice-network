@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/metadata"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/codenames"
@@ -61,6 +62,17 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 
 	for _, tcpPipeline := range cfg.TcpPipelines {
 		pipeline, err := tcpPipeline.ToProtobuf(lns.Name)
+		if err != nil {
+			return err
+		}
+		err = lns.RegisterAndStart(pipeline)
+		if err != nil {
+			return err
+		}
+	}
+
+	for _, httpPipeline := range cfg.HttpPipelines {
+		pipeline, err := httpPipeline.ToProtobuf(lns.Name)
 		if err != nil {
 			return err
 		}
@@ -175,6 +187,7 @@ func (lns *listener) RegisterAndStart(pipeline *clientpb.Pipeline) error {
 		ListenerId:     lns.ID(),
 		BeaconPipeline: pipeline.BeaconPipeline,
 		Target:         pipeline.Target,
+		Pipeline:       pipeline,
 	})
 	if err != nil {
 		return err
@@ -389,6 +402,8 @@ func (lns *listener) startPipeline(pipelinepb *clientpb.Pipeline) (core.Pipeline
 		p, err = NewTcpPipeline(lns.Rpc, pipelinepb)
 	case *clientpb.Pipeline_Bind:
 		p, err = NewBindPipeline(lns.Rpc, pipelinepb)
+	case *clientpb.Pipeline_Http:
+		p, err = NewHttpPipeline(lns.Rpc, pipelinepb)
 	default:
 		return nil, fmt.Errorf("not impl")
 	}

@@ -75,6 +75,13 @@ func (sc *CryptoConn) encrypt(data []byte) ([]byte, error) {
 func (sc *CryptoConn) RemoteAddr() net.Addr {
 	if sc.Conn != nil {
 		return sc.Conn.RemoteAddr()
+	} else if sc.ReadWriteCloser != nil {
+		remote, ok := sc.ReadWriteCloser.(interface {
+			RemoteAddr() net.Addr
+		})
+		if ok {
+			return remote.RemoteAddr()
+		}
 	}
 	return nil
 }

@@ -51,6 +51,25 @@ func (pipeline *Pipeline) ToProtobuf() *clientpb.Pipeline {
 			Tls:        pipeline.Tls.ToProtobuf(),
 			Encryption: pipeline.Encryption.ToProtobuf(),
 		}
+	case consts.HTTPPipeline:
+		return &clientpb.Pipeline{
+			Name:       pipeline.Name,
+			ListenerId: pipeline.ListenerId,
+			Enable:     pipeline.Enable,
+			Parser:     pipeline.Parser,
+			Ip:         pipeline.IP,
+			Type:       consts.HTTPPipeline,
+			Body: &clientpb.Pipeline_Http{
+				Http: &clientpb.HTTPPipeline{
+					Name:       pipeline.Name,
+					ListenerId: pipeline.ListenerId,
+					Host:       pipeline.Host,
+					Port:       uint32(pipeline.Port),
+				},
+			},
+			Tls:        pipeline.Tls.ToProtobuf(),
+			Encryption: pipeline.Encryption.ToProtobuf(),
+		}
 	case consts.BindPipeline:
 		return &clientpb.Pipeline{
 			Name:       pipeline.Name,
@@ -162,6 +181,21 @@ func FromPipelinePb(pipeline *clientpb.Pipeline) *Pipeline {
 			IP:         pipeline.Ip,
 			Port:       body.Tcp.Port,
 			Type:       consts.TCPPipeline,
+			PipelineParams: &types.PipelineParams{
+				Parser:     pipeline.Parser,
+				Tls:        types.FromTls(pipeline.Tls),
+				Encryption: types.FromEncryption(pipeline.Encryption),
+			},
+		}
+	case *clientpb.Pipeline_Http:
+		return &Pipeline{
+			ListenerId: pipeline.ListenerId,
+			Name:       pipeline.Name,
+			Enable:     pipeline.Enable,
+			Host:       body.Http.Host,
+			IP:         pipeline.Ip,
+			Port:       body.Http.Port,
+			Type:       consts.HTTPPipeline,
 			PipelineParams: &types.PipelineParams{
 				Parser:     pipeline.Parser,
 				Tls:        types.FromTls(pipeline.Tls),

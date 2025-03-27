@@ -71,7 +71,6 @@ func (w *Website) Start() error {
 		Handler:   mux,
 	}
 	go func() {
-		logs.Log.Importantf("HTTP Server is running on port %d", w.port)
 		if err = w.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logs.Log.Errorf("HTTP Server failed to start: %v", err)
 		}

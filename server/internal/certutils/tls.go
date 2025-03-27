@@ -2,8 +2,10 @@ package certutils
 
 import (
 	"crypto/tls"
-	"github.com/chainreactors/malice-network/server/internal/configs"
 	"net"
+
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/server/internal/configs"
 )
 
 func WrapWithTls(lsn net.Listener, config *configs.CertConfig) (net.Listener, error) {
@@ -27,4 +29,16 @@ func WrapToTlsConfig(config *configs.CertConfig) (*tls.Config, error) {
 
 	tlsConfig := &tls.Config{Certificates: []tls.Certificate{pair}}
 	return tlsConfig, nil
+}
+
+func GetTlsConfig(tlsConfig *clientpb.TLS) (*tls.Config, error) {
+	cert, err := tls.X509KeyPair([]byte(tlsConfig.Cert), []byte(tlsConfig.Key))
+	if err != nil {
+		return nil, err
+	}
+
+	return &tls.Config{
+		Certificates: []tls.Certificate{cert},
+		MinVersion:   tls.VersionTLS12,
+	}, nil
 }

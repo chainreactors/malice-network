@@ -1,7 +1,10 @@
 package parser
 
 import (
+	"bytes"
 	"fmt"
+	"io"
+
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/errs"
@@ -9,7 +12,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/utils/peek"
 	"github.com/chainreactors/malice-network/server/internal/parser/malefic"
 	"github.com/chainreactors/malice-network/server/internal/parser/pulse"
-	"io"
 )
 
 // PacketParser packet parser, like malefic, beacon ...
@@ -81,4 +83,11 @@ func (parser *MessageParser) WritePacket(conn *peek.Conn, msg *implantpb.Spites,
 	}
 
 	return nil
+}
+
+func (p *MessageParser) PeekHeaderFromBytes(data []byte) (uint32, uint32, error) {
+	reader := bytes.NewReader(data)
+	rwc := peek.WrapReadWriteCloser(reader, io.Discard, nil)
+	conn := peek.WrapPeekConn(rwc)
+	return p.PeekHeader(conn)
 }

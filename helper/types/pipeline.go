@@ -68,4 +68,9 @@ type PipelineParams struct {
 	Agents     map[string]*clientpb.REMAgent `json:"agents,omitempty"`
 	Encryption *EncryptionConfig             `json:"encryption,omitempty"`
 	Tls        *TlsConfig                    `json:"tls,omitempty"`
+	// HTTP pipeline specific params
+	Headers    map[string][]string `json:"headers,omitempty"`
+	ErrorPage  string              `json:"error_page,omitempty" gorm:"-"`
+	BodyPrefix string              `json:"body_prefix,omitempty"`
+	BodySuffix string              `json:"body_suffix,omitempty"`
 }

@@ -5,7 +5,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/utils/peek"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/stream"
-	"net"
+	"io"
 )
 
 type Pipeline interface {
@@ -59,12 +59,12 @@ type PipelineConfig struct {
 	Encryption *configs.EncryptionConfig
 }
 
-func (p *PipelineConfig) WrapConn(conn net.Conn) (*peek.Conn, error) {
+func (p *PipelineConfig) WrapConn(conn io.ReadWriteCloser) (*peek.Conn, error) {
 	cry, err := configs.NewCrypto(p.Encryption.ToProtobuf())
 	if err != nil {
 		return nil, err
 	}
-	conn = cryptostream.NewCryptoConn(conn, cry)
+	conn = cryptostream.NewCryptoRWC(conn, cry)
 	return peek.WrapPeekConn(conn), nil
 }
 
