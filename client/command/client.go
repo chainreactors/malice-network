@@ -2,6 +2,7 @@ package command
 
 import (
 	"github.com/chainreactors/malice-network/client/command/context"
+	"github.com/chainreactors/malice-network/client/command/website"
 	"github.com/reeflective/console"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -39,6 +40,7 @@ func BindCommonCommands(bind BindFunc) {
 
 	bind(consts.ListenerGroup,
 		listener.Commands,
+		website.Commands,
 	)
 
 	bind(consts.GeneratorGroup,
@@ -107,4 +109,5 @@ func RegisterClientFunc(con *repl.Console) {
 	mutant.Register(con)
 	context.Register(con)
 	common.Register(con)
+	website.Register(con)
 }

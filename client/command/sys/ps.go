@@ -67,7 +67,7 @@ func RegisterPsFunc(con *repl.Console) {
 				table.NewColumn("PID", "PID", 5),
 				table.NewColumn("PPID", "PPID", 5),
 				table.NewColumn("Arch", "Arch", 7),
-				table.NewColumn("Owner", "Owner", 15),
+				table.NewColumn("Owner", "Owner", 25),
 				table.NewColumn("Path", "Path", 30),
 				table.NewColumn("Args", "Args", 50),
 			}, true)

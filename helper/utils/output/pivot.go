@@ -30,7 +30,7 @@ func NewPivotingWithRem(agent *clientpb.REMAgent) *PivotingContext {
 type PivotingContext struct {
 	Enable     bool   `json:"enable"`
 	Listener   string `json:"listener_id"`
-	Pipeline   string `json:"pipeline"`
+	Pipeline   string `json:"pipeline_id"`
 	RemAgentID string `json:"id"`
 	LocalURL   string `json:"local"`
 	RemoteURL  string `json:"remote"`
