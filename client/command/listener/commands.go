@@ -65,6 +65,49 @@ tcp --listener tcp_default --tls --cert_path /path/to/cert --key_path /path/to/k
 	})
 	tcpCmd.MarkFlagRequired("listener")
 
+	// 添加HTTP命令
+	httpCmd := &cobra.Command{
+		Use:   consts.HTTPPipeline,
+		Short: "Register a new HTTP pipeline and start it",
+		Long:  "Register a new HTTP pipeline with the specified listener.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return NewHttpPipelineCmd(cmd, con)
+		},
+		Args: cobra.MaximumNArgs(1),
+		Example: `~~~
+// Register an HTTP pipeline with the default settings
+http --listener http_default
+
+// Register an HTTP pipeline with custom headers and error page
+http --name http_test --listener http_default --host 192.168.0.43 --port 8080 --headers "Content-Type=text/html" --error-page /path/to/error.html
+
+// Register an HTTP pipeline with TLS enabled
+http --listener http_default --tls --cert_path /path/to/cert --key_path /path/to/key
+~~~`,
+	}
+
+	// 绑定基本标志
+	common.BindFlag(httpCmd, common.TlsCertFlagSet, common.PipelineFlagSet, common.EncryptionFlagSet, common.ArtifactFlagSet, func(f *pflag.FlagSet) {
+		httpCmd.Flags().StringToString("headers", nil, "HTTP response headers (key=value)")
+		httpCmd.Flags().String("error-page", "", "Path to custom error page file")
+		//httpCmd.Flags().String("body-prefix", "", "Prefix to add to response body")
+		//httpCmd.Flags().String("body-suffix", "", "Suffix to add to response body")
+	})
+
+	common.BindFlagCompletions(httpCmd, func(comp carapace.ActionMap) {
+		comp["listener"] = common.ListenerIDCompleter(con)
+		comp["host"] = carapace.ActionValues().Usage("http host")
+		comp["port"] = carapace.ActionValues().Usage("http port")
+		comp["cert_path"] = carapace.ActionFiles().Usage("path to the cert file")
+		comp["key_path"] = carapace.ActionFiles().Usage("path to the key file")
+		comp["tls"] = carapace.ActionValues().Usage("enable tls")
+		comp["error-page"] = carapace.ActionFiles().Usage("path to error page file")
+		comp["headers"] = carapace.ActionValues().Usage("http headers (key=value)")
+		//comp["body-prefix"] = carapace.ActionValues().Usage("prefix for response body")
+		//comp["body-suffix"] = carapace.ActionValues().Usage("suffix for response body")
+	})
+	httpCmd.MarkFlagRequired("listener")
+
 	bindCmd := &cobra.Command{
 		Use:   consts.CommandPipelineBind,
 		Short: "Register a new bind pipeline and start it",
@@ -261,5 +304,5 @@ rem delete rem_test
 
 	remCmd.AddCommand(listremCmd, newRemCmd, startRemCmd, stopRemCmd, deleteRemCmd)
 
-	return []*cobra.Command{listenerCmd, jobCmd, pipelineCmd, tcpCmd, bindCmd, remCmd}
+	return []*cobra.Command{listenerCmd, jobCmd, pipelineCmd, tcpCmd, bindCmd, remCmd, httpCmd}
 }
