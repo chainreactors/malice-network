@@ -1,30 +1,19 @@
 package listener
 
 import (
-	"context"
 	"errors"
 	"fmt"
 
-	"io"
 	"net/http"
 	"path"
 	"strings"
 
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/encoders"
-	"github.com/chainreactors/malice-network/helper/encoders/hash"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
-	"github.com/chainreactors/malice-network/helper/types"
-	"github.com/chainreactors/malice-network/helper/utils/peek"
 	"github.com/chainreactors/malice-network/server/internal/certutils"
-	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
-	"github.com/chainreactors/malice-network/server/internal/parser"
-	"github.com/chainreactors/malice-network/server/internal/parser/pulse"
-	cryptostream "github.com/chainreactors/malice-network/server/internal/stream"
 )
 
 type Website struct {
@@ -120,99 +109,9 @@ func (w *Website) websiteContentHandler(resp http.ResponseWriter, req *http.Requ
 		return
 	}
 
-	// 根据content type处理不同的协议
-	switch content.Type {
-	case consts.ImplantPulse:
-		w.handlePulse(resp, req, content)
-	//case consts.ImplantMalefic:
-	//	w.handleMalefic(resp, req, content)
-	default:
-		// 默认处理方式，直接返回内容
-		resp.Header().Add("Content-Type", content.ContentType)
-		resp.Header().Add("Cache-Control", "no-store, no-cache, must-revalidate")
-		resp.Write(content.Content)
-	}
-}
-
-func (w *Website) handlePulse(resp http.ResponseWriter, req *http.Request, content *clientpb.WebContent) {
-	par, err := parser.NewParser(consts.ImplantPulse)
-	if err != nil {
-		logs.Log.Errorf("Failed to create parser: %v", err)
-		return
-	}
-
-	cry, err := configs.NewCrypto(content.Encryption)
-	if err != nil {
-		logs.Log.Errorf(err.Error())
-		return
-	}
-	rwc := cryptostream.NewCryptoRWC(peek.WrapReadWriteCloser(req.Body, resp, req.Body.Close), cry)
-	conn := peek.WrapPeekConn(rwc)
-	magic, artifactId, err := par.ReadHeader(conn)
-	if err != nil {
-		logs.Log.Errorf(err.Error())
-		return
-	}
-
-	builder, err := w.rpc.GetArtifact(context.Background(), &clientpb.Artifact{
-		Id: uint32(artifactId),
-	})
-	if err != nil {
-		logs.Log.Errorf("not found artifact %d ,%s ", artifactId, err.Error())
-		return
-	}
-	resp.Header().Set("Content-Type", "application/octet-stream")
+	resp.Header().Add("Content-Type", content.ContentType)
 	resp.Header().Add("Cache-Control", "no-store, no-cache, must-revalidate")
-	resp.Header().Set("Content-Length", fmt.Sprintf("%d", len(builder.Bin)+pulse.HeaderLength+1))
-	logs.Log.Infof("send artifact %d %s", builder.Id, builder.Name)
-
-	err = par.WritePacket(conn, types.BuildOneSpites(&implantpb.Spite{
-		Name: consts.ModuleInit,
-		Body: &implantpb.Spite_Init{
-			Init: &implantpb.Init{Data: builder.Bin},
-		},
-	}), magic)
-	if err != nil {
-		logs.Log.Errorf(err.Error())
-		return
-	}
-}
-
-func (w *Website) handleMalefic(resp http.ResponseWriter, req *http.Request, content *clientpb.WebContent) {
-	resp.Header().Add("Content-Type", "application/octet-stream")
-	resp.Header().Add("Cache-Control", "no-store, no-cache, must-revalidate")
-
-	conn := peek.WrapPeekConn(peek.WrapReadWriteCloser(req.Body, resp, req.Body.Close))
-
-	par, err := parser.NewParser(consts.ImplantMalefic)
-	if err != nil {
-		logs.Log.Errorf("Failed to create parser: %v", err)
-		return
-	}
-
-	sid, _, err := par.PeekHeader(conn)
-	if err != nil {
-		logs.Log.Errorf(err.Error())
-		return
-	}
-
-	var connect *core.Connection
-	if newC := core.Connections.Get(hash.Md5Hash(encoders.Uint32ToBytes(sid))); newC != nil {
-		connect = newC
-	} else {
-		connect = core.NewConnection(par, sid, w.ID())
-		core.Connections.Add(connect)
-	}
-
-	// 处理请求
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	err = connect.Handler(ctx, conn)
-	if err != nil && !errors.Is(err, io.EOF) {
-		logs.Log.Debugf("handler error: %s", err.Error())
-		return
-	}
+	resp.Write(content.Content)
 }
 
 func (w *Website) AddContent(content *clientpb.WebContent) {

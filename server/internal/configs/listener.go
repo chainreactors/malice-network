@@ -190,10 +190,10 @@ type WebsiteConfig struct {
 }
 
 type WebContent struct {
-	File             string            `config:"file"`
-	Path             string            `config:"path"`
-	Type             string            `config:"type" default:"raw"`
-	EncryptionConfig *EncryptionConfig `config:"encryption"`
+	File string `config:"file"`
+	Path string `config:"path"`
+	Type string `config:"type" default:"raw"`
+	//EncryptionConfig *EncryptionConfig `config:"encryption"`
 }
 
 func (content *WebContent) ToProtobuf() (*clientpb.WebContent, error) {
@@ -207,12 +207,12 @@ func (content *WebContent) ToProtobuf() (*clientpb.WebContent, error) {
 	}
 
 	return &clientpb.WebContent{
-		File:       content.File,
-		Path:       content.Path,
-		Size:       uint64(len(data)),
-		Type:       content.Type,
-		Content:    data,
-		Encryption: content.EncryptionConfig.ToProtobuf(),
+		File:    content.File,
+		Path:    content.Path,
+		Size:    uint64(len(data)),
+		Type:    content.Type,
+		Content: data,
+		//Encryption: content.EncryptionConfig.ToProtobuf(),
 	}, nil
 }
 

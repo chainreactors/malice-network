@@ -25,7 +25,7 @@ listeners:
   enable: true
   ip: 127.0.0.1
   tcp:
-    - name: beacon_pipeline
+    - name: tcp_malefic
       port: 5001
       host: 0.0.0.0
       protocol: tcp
@@ -34,7 +34,6 @@ listeners:
       auto_build:
         target:
           - x86_64-unknown-linux-musl
-        beacon_pipeline: beacon_pipeline
       tls:
         enable: false
         name: default
@@ -52,21 +51,21 @@ listeners:
         enable: true
         type: aes
         key: maliceofinternal
-    - name: pulse_pipline
+    - name: tcp_pulse
       port: 5002
       host: 0.0.0.0
       parser: pulse
       auto_build:
         target:
           - x86_64-pc-windows-gnu
-        beacon_pipeline: beacon_pipeline
+        beacon_pipeline: tcp_malefic
       enable: true
       encryption:
         enable: true
         type: xor
         key: maliceofinternal
   http:
-    - name: http-pipeline
+    - name: http-malefic
       enable: true
       host: 0.0.0.0
       port: 8080
@@ -90,8 +89,20 @@ listeners:
         key: maliceofinternal
       auto_build:
         target: ["windows/amd64"]
-        beacon_pipeline: beacon-pipeline
-      error_page: report.html
+      error_page: ""
+    - name: http-pulse
+      enable: true
+      host: 0.0.0.0
+      port: 8081
+      parser: pulse
+      encryption:
+        enable: true
+        type: xor
+        key: maliceofinternal
+      auto_build:
+        target: [ "windows/amd64" ]
+        beacon_pipeline: http-malefic
+      error_page: ""
   bind:
     -
       name: bind_pipeline
@@ -105,13 +116,7 @@ listeners:
       port: 80
       root: "/"
       enable: true
-      content:
-        - path: /pulse
-          type: pulse
-          encryption:
-            enable: true
-            type: xor
-            key: maliceofinternal
+
   rem:
     -
       name: rem_default

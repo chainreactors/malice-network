@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
+	"github.com/chainreactors/malice-network/server/internal/parser/pulse"
 	"io"
 	"net"
 	"net/http"
@@ -168,6 +170,54 @@ func (pipeline *HTTPPipeline) Start() error {
 	return nil
 }
 
+func (pipeline *HTTPPipeline) handlePulse(resp http.ResponseWriter, req *http.Request, conn *peek.Conn) {
+	magic, artifactId, err := pipeline.parser.ReadHeader(conn)
+	if err != nil {
+		logs.Log.Errorf(err.Error())
+		return
+	}
+
+	builder, err := pipeline.rpc.GetArtifact(context.Background(), &clientpb.Artifact{
+		Id: uint32(artifactId),
+	})
+	if err != nil {
+		logs.Log.Errorf("not found artifact %d ,%s ", artifactId, err.Error())
+		return
+	}
+	resp.Header().Set("Content-Type", "application/octet-stream")
+	resp.Header().Add("Cache-Control", "no-store, no-cache, must-revalidate")
+	resp.Header().Set("Content-Length", fmt.Sprintf("%d", len(builder.Bin)+pulse.HeaderLength+1))
+	logs.Log.Infof("send artifact %d %s", builder.Id, builder.Name)
+
+	err = pipeline.parser.WritePacket(conn, types.BuildOneSpites(&implantpb.Spite{
+		Name: consts.ModuleInit,
+		Body: &implantpb.Spite_Init{
+			Init: &implantpb.Init{Data: builder.Bin},
+		},
+	}), magic)
+	if err != nil {
+		logs.Log.Errorf(err.Error())
+		return
+	}
+}
+
+func (pipeline *HTTPPipeline) handleMalefic(w http.ResponseWriter, r *http.Request, conn *peek.Conn) {
+	ctx, _ := context.WithCancel(r.Context())
+	connect, err := pipeline.getConnection(conn)
+	if err != nil {
+		pipeline.writeError(w, http.StatusBadRequest, "Invalid request")
+		return
+	}
+
+	err = connect.HandlerSimplex(ctx, conn)
+	if err != nil {
+		if !errors.Is(err, io.EOF) {
+			logs.Log.Debugf("handler error: %s", err.Error())
+		}
+		return
+	}
+}
+
 func (pipeline *HTTPPipeline) handler(w http.ResponseWriter, r *http.Request) {
 	// 设置自定义响应头
 	for key, values := range pipeline.Headers {
@@ -175,9 +225,6 @@ func (pipeline *HTTPPipeline) handler(w http.ResponseWriter, r *http.Request) {
 			w.Header().Add(key, value)
 		}
 	}
-
-	ctx, _ := context.WithCancel(r.Context())
-
 	rw := &httpReadWriter{
 		body:       r.Body,
 		writer:     w,
@@ -185,24 +232,19 @@ func (pipeline *HTTPPipeline) handler(w http.ResponseWriter, r *http.Request) {
 		bodyPrefix: pipeline.BodyPrefix,
 		bodySuffix: pipeline.BodySuffix,
 	}
-	wrappedConn, err := pipeline.WrapConn(rw)
+
+	conn, err := pipeline.WrapConn(rw)
 	if err != nil {
 		pipeline.writeError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
-
-	connect, err := pipeline.getConnection(wrappedConn)
-	if err != nil {
-		pipeline.writeError(w, http.StatusBadRequest, "Invalid request")
-		return
-	}
-
-	err = connect.HandlerSimplex(ctx, wrappedConn)
-	if err != nil {
-		if !errors.Is(err, io.EOF) {
-			logs.Log.Debugf("handler error: %s", err.Error())
-		}
-		return
+	switch pipeline.Parser {
+	case consts.ImplantMalefic:
+		pipeline.handleMalefic(w, r, conn)
+	case consts.ImplantPulse:
+		pipeline.handlePulse(w, r, conn)
+	default:
+		pipeline.writeError(w, http.StatusInternalServerError, "Internal server error")
 	}
 }
 
