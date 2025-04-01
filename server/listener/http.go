@@ -1,6 +1,7 @@
 package listener
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -10,8 +11,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/chainreactors/malice-network/helper/utils/peek"
-
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/encoders"
@@ -19,6 +18,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
 	"github.com/chainreactors/malice-network/helper/types"
+	"github.com/chainreactors/malice-network/helper/utils/peek"
 	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/parser"
@@ -44,9 +44,9 @@ func NewHttpPipeline(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipel
 		BeaconPipeline: pipeline.BeaconPipeline,
 		PipelineConfig: core.FromProtobuf(pipeline),
 		Headers:        params.Headers,
-		ErrorPage:      params.ErrorPage,
-		BodyPrefix:     params.BodyPrefix,
-		BodySuffix:     params.BodySuffix,
+		ErrorPage:      []byte(params.ErrorPage),
+		BodyPrefix:     []byte(params.BodyPrefix),
+		BodySuffix:     []byte(params.BodySuffix),
 	}
 	var err error
 	pp.parser, err = parser.NewParser(pp.Parser)
@@ -69,9 +69,9 @@ type HTTPPipeline struct {
 	parser         *parser.MessageParser
 	*core.PipelineConfig
 	Headers    map[string][]string
-	ErrorPage  string
-	BodyPrefix string
-	BodySuffix string
+	ErrorPage  []byte
+	BodyPrefix []byte
+	BodySuffix []byte
 }
 
 func (pipeline *HTTPPipeline) ToProtobuf() *clientpb.Pipeline {
@@ -176,15 +176,14 @@ func (pipeline *HTTPPipeline) handler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	ctx, cancel := context.WithCancel(r.Context())
-	defer cancel()
+	ctx, _ := context.WithCancel(r.Context())
 
 	rw := &httpReadWriter{
 		body:       r.Body,
 		writer:     w,
 		remoteAddr: parseRemoteAddr(r.RemoteAddr),
-		bodyPrefix: []byte(pipeline.BodyPrefix),
-		bodySuffix: []byte(pipeline.BodySuffix),
+		bodyPrefix: pipeline.BodyPrefix,
+		bodySuffix: pipeline.BodySuffix,
 	}
 	wrappedConn, err := pipeline.WrapConn(rw)
 	if err != nil {
@@ -198,8 +197,7 @@ func (pipeline *HTTPPipeline) handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	defer cancel()
-	err = connect.Handler(ctx, wrappedConn)
+	err = connect.HandlerSimplex(ctx, wrappedConn)
 	if err != nil {
 		if !errors.Is(err, io.EOF) {
 			logs.Log.Debugf("handler error: %s", err.Error())
@@ -239,23 +237,22 @@ func (h *httpReadWriter) Read(p []byte) (n int, err error) {
 }
 
 func (h *httpReadWriter) Write(p []byte) (n int, err error) {
+	var buf bytes.Buffer
 	if len(h.bodyPrefix) > 0 {
-		if _, err := h.writer.Write(h.bodyPrefix); err != nil {
-			return 0, err
-		}
+		buf.Write(h.bodyPrefix)
 	}
-
-	n, err = h.writer.Write(p)
+	n, err = buf.Write(p)
 	if err != nil {
 		return n, err
 	}
 
 	if len(h.bodySuffix) > 0 {
-		if _, err := h.writer.Write(h.bodySuffix); err != nil {
-			return n, err
-		}
+		buf.Write(h.bodySuffix)
 	}
-
+	//h.writer.Header().Set("Content-Length", strconv.Itoa(buf.Len()))
+	if _, err := h.writer.Write(buf.Bytes()); err != nil {
+		return n, err
+	}
 	return n, nil
 }
 
@@ -285,9 +282,9 @@ func parseRemoteAddr(remoteAddr string) net.Addr {
 
 // writeError 处理HTTP错误响应
 func (pipeline *HTTPPipeline) writeError(w http.ResponseWriter, statusCode int, defaultMessage string) {
-	if pipeline.ErrorPage != "" {
+	if pipeline.ErrorPage != nil {
 		w.WriteHeader(statusCode)
-		w.Write([]byte(pipeline.ErrorPage))
+		w.Write(pipeline.ErrorPage)
 	} else {
 		http.Error(w, defaultMessage, statusCode)
 	}
