@@ -73,7 +73,7 @@ func RegisterDLLSpawnFunc(con *repl.Console) {
 			sac, _ := intermediate.NewSacrificeProcessMessage(ppid, false, true, true, "")
 			return ExecuteDLLSpawn(rpc, sess, path, "", "", "", true, math.MaxUint32, sess.Os.Arch, "", sac)
 		},
-		output.ParseAssembly,
+		output.ParseBinaryResponse,
 		nil)
 	// sess *core.Session, dllPath string, entrypoint string, args []string, binPath string, output bool, timeout uint32, arch string, process string, sac *implantpb.SacrificeProcess
 	con.AddCommandFuncHelper(

@@ -103,7 +103,7 @@ func RegisterShellcodeFunc(con *repl.Console) {
 		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, ppid uint32, arch, path string) (*clientpb.Task, error) {
 			return ExecShellcode(rpc, sess, path, nil, true, math.MaxUint32, sess.Os.Arch, "", output.NewSacrifice(ppid, false, true, true, ""))
 		},
-		output.ParseAssembly,
+		output.ParseBinaryResponse,
 		nil)
 
 	con.AddCommandFuncHelper(
@@ -129,7 +129,7 @@ func RegisterShellcodeFunc(con *repl.Console) {
 		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string) (*clientpb.Task, error) {
 			return InlineShellcode(rpc, sess, path, nil, true, math.MaxUint32, sess.Os.Arch, "")
 		},
-		output.ParseAssembly,
+		output.ParseBinaryResponse,
 		nil)
 
 	con.AddCommandFuncHelper(

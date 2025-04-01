@@ -28,6 +28,7 @@ import (
 	"github.com/chainreactors/malice-network/client/command/sys"
 	"github.com/chainreactors/malice-network/client/command/tasks"
 	"github.com/chainreactors/malice-network/client/command/taskschd"
+	"github.com/chainreactors/malice-network/client/command/third"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/core/plugin"
 	"github.com/chainreactors/malice-network/client/repl"
@@ -134,6 +135,7 @@ func BindBuiltinCommands(con *repl.Console, root *cobra.Command) *cobra.Command 
 		reg.Commands,
 		taskschd.Commands,
 		privilege.Commands,
+		third.Commands,
 	)
 
 	bind(consts.FileGroup,
@@ -219,6 +221,7 @@ func RegisterImplantFunc(con *repl.Console) {
 	basic.Register(con)
 	sys.Register(con)
 	file.Register(con)
+	third.Register(con)
 	filesystem.Register(con)
 	modules.Register(con)
 	exec.Register(con)

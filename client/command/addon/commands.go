@@ -144,5 +144,5 @@ func Register(con *repl.Console) {
 			return "addon loaded", nil
 		}, nil)
 
-	con.RegisterImplantFunc(consts.ModuleExecuteAddon, ExecuteAddon, "", nil, output.ParseAssembly, nil)
+	con.RegisterImplantFunc(consts.ModuleExecuteAddon, ExecuteAddon, "", nil, output.ParseBinaryResponse, nil)
 }

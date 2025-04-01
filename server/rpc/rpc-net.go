@@ -31,6 +31,6 @@ func (rpc *Server) Curl(ctx context.Context, req *implantpb.CurlRequest) (*clien
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgResponse)
+	go greq.HandlerResponse(ch, types.MsgBinaryResponse)
 	return greq.Task.ToProtobuf(), nil
 }

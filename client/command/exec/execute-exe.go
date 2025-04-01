@@ -91,7 +91,7 @@ func RegisterExeFunc(con *repl.Console) {
 			}
 			return InlineExe(rpc, sess, path, param, true, math.MaxUint32, sess.Os.Arch, "")
 		},
-		output.ParseAssembly,
+		output.ParseBinaryResponse,
 		nil)
 
 	con.AddCommandFuncHelper(
@@ -120,7 +120,7 @@ func RegisterExeFunc(con *repl.Console) {
 			}
 			return ExecExe(rpc, sess, path, cmdline, true, math.MaxUint32, sess.Os.Arch, "", sac)
 		},
-		output.ParseAssembly,
+		output.ParseBinaryResponse,
 		nil)
 
 	con.AddCommandFuncHelper(

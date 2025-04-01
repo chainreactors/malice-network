@@ -272,7 +272,7 @@ func ExtensionRegisterCommand(extCmd *ExtCommand, cmd *cobra.Command, con *repl.
 		Command:  cmd,
 		Func: repl.WrapImplantFunc(con, func(rpc clientrpc.MaliceRPCClient, sess *core.Session, args []string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 			return ExecuteExtension(rpc, sess, extensionCmd.Name(), args)
-		}, output.ParseAssembly),
+		}, output.ParseBinaryResponse),
 	}
 	profile, err := assets.GetProfile()
 	if err != nil {

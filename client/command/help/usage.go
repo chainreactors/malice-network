@@ -79,7 +79,7 @@ func SetCustomUsageTemplate() (*template.Template, error) {
 
 func RenderHelp(cmd *cobra.Command) string {
 	const (
-		nameWidth  = 15 // Name 列宽度
+		nameWidth  = 20 // Name 列宽度
 		ttpWidth   = 10 // TTP 列宽度
 		opsecWidth = 15 // OPSEC 列宽度
 	)

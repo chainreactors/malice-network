@@ -234,7 +234,7 @@ new_bin = new_binary("module", "filename", "args", true, 100, "amd64", "process"
 		if err != nil {
 			return "", err
 		}
-		s, _ := ParseAssembly(task.Spite)
+		s, _ := ParseBinaryResponse(task.Spite)
 		logs.Log.Console(s)
 		return s, nil
 	})

@@ -188,7 +188,7 @@ func RegisterAlias(aliasManifest *AliasManifest, cmd *cobra.Command, con *repl.C
 			param map[string]string,
 			sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 			return ExecuteAlias(rpc, sess, aliasManifest.CommandName, args, param, sac)
-		}, output.ParseAssembly),
+		}, output.ParseBinaryResponse),
 	}
 	profile, err := assets.GetProfile()
 	if err != nil {

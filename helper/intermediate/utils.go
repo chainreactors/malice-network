@@ -135,7 +135,7 @@ func PrintTask(task *clientpb.TaskContext) (*implantpb.Spite, error) {
 	return task.Spite, nil
 }
 
-func ParseAssembly(spite *implantpb.Spite) (string, error) {
+func ParseBinaryResponse(spite *implantpb.Spite) (string, error) {
 	err := handler.HandleMaleficError(spite)
 	if err != nil {
 		return "", err
