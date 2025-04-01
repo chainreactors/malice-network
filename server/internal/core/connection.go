@@ -87,15 +87,10 @@ func (c *Connection) Send(ctx context.Context, conn *peek.Conn) {
 	}
 }
 
-func (c *Connection) Handler(ctx context.Context, conn *peek.Conn) error {
-	var err error
-	_, length, err := c.Parser.ReadHeader(conn)
-	if err != nil {
-		return fmt.Errorf("error reading header:%s %w", conn.RemoteAddr(), err)
-	}
-	go c.Send(ctx, conn)
+func (c *Connection) buildResponse(conn *peek.Conn, length uint32) error {
 	var msg *implantpb.Spites
 	if length > 2 {
+		var err error
 		msg, err = c.Parser.ReadMessage(conn, length)
 		if err != nil {
 			return fmt.Errorf("error reading message:%s %w", conn.RemoteAddr(), err)
@@ -114,6 +109,27 @@ func (c *Connection) Handler(ctx context.Context, conn *peek.Conn) error {
 		RemoteAddr: conn.RemoteAddr().String(),
 	})
 	return nil
+}
+
+func (c *Connection) Handler(ctx context.Context, conn *peek.Conn) error {
+	var err error
+	_, length, err := c.Parser.ReadHeader(conn)
+	if err != nil {
+		return fmt.Errorf("error reading header:%s %w", conn.RemoteAddr(), err)
+	}
+	go c.Send(ctx, conn)
+
+	return c.buildResponse(conn, length)
+}
+
+func (c *Connection) HandlerSimplex(ctx context.Context, conn *peek.Conn) error {
+	var err error
+	_, length, err := c.Parser.ReadHeader(conn)
+	if err != nil {
+		return fmt.Errorf("error reading header:%s %w", conn.RemoteAddr(), err)
+	}
+	c.Send(ctx, conn)
+	return c.buildResponse(conn, length)
 }
 
 type connections struct {
