@@ -62,9 +62,9 @@ func BuildSpite(spite *implantpb.Spite, msg proto.Message) (*implantpb.Spite, er
 	case *implantpb.ExecuteBinary:
 		spite.Name = msg.Type
 		spite.Body = &implantpb.Spite_ExecuteBinary{ExecuteBinary: msg}
-	//case *implantpb.CurlRequest:
-	//	spite.Name = MsgCurl.String()
-	//	spite.Body = &implantpb.Spite_CurlRequest{CurlRequest: msg.(*implantpb.CurlRequest)}
+	case *implantpb.CurlRequest:
+		spite.Name = MsgCurl.String()
+		spite.Body = &implantpb.Spite_CurlRequest{CurlRequest: msg}
 	case *implantpb.BypassRequest:
 		spite.Name = MsgBypass.String()
 		spite.Body = &implantpb.Spite_BypassRequest{BypassRequest: msg}

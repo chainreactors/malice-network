@@ -73,7 +73,7 @@ func RegisterAssemblyFunc(con *repl.Console) {
 			}
 			return ExecuteAssembly(rpc, sess, path, cmdline, true, output.NewSacrifice(0, false, true, true, ""))
 		},
-		output.ParseAssembly,
+		output.ParseBinaryResponse,
 		nil)
 
 	con.AddCommandFuncHelper(
@@ -105,7 +105,7 @@ func RegisterAssemblyFunc(con *repl.Console) {
 		InlineAssembly,
 		"",
 		nil,
-		output.ParseAssembly,
+		output.ParseBinaryResponse,
 		nil,
 	)
 	con.AddCommandFuncHelper(consts.ModuleInlineAssembly, consts.ModuleInlineAssembly,

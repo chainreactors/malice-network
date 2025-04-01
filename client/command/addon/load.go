@@ -88,7 +88,7 @@ func RegisterAddonCmd(addon *implantpb.Addon, con *repl.Console) (*loadedAddon, 
 				return nil, err
 			}
 			return ExecuteAddon(rpc, sess, addon.Name, cmdline, true, math.MaxUint32, sess.Os.Arch, "", sac)
-		}, output.ParseAssembly),
+		}, output.ParseBinaryResponse),
 	}, nil
 }
 

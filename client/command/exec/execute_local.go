@@ -101,7 +101,7 @@ func RegisterExecuteLocalFunc(con *repl.Console) {
 				Argue:    "",
 			})
 		},
-		output.ParseAssembly,
+		output.ParseBinaryResponse,
 		nil,
 	)
 
@@ -134,7 +134,7 @@ func RegisterExecuteLocalFunc(con *repl.Console) {
 		InlineLocal,
 		"",
 		nil,
-		output.ParseAssembly,
+		output.ParseBinaryResponse,
 		nil,
 	)
 

@@ -94,7 +94,7 @@ func RegisterPowershellFunc(con *repl.Console) {
 				"bypass_wldp": "",
 			})
 		},
-		output.ParseAssembly,
+		output.ParseBinaryResponse,
 		nil)
 	//rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, ps []string, amsi, etw bool
 	con.AddCommandFuncHelper(

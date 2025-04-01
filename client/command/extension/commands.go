@@ -91,6 +91,6 @@ extension remove credman
 
 func Register(con *repl.Console) {
 	for name, ext := range loadedExtensions {
-		intermediate.RegisterInternalFunc(intermediate.ArmoryPackage, name, ext.Func, repl.WrapClientCallback(output.ParseAssembly))
+		intermediate.RegisterInternalFunc(intermediate.ArmoryPackage, name, ext.Func, repl.WrapClientCallback(output.ParseBinaryResponse))
 	}
 }
