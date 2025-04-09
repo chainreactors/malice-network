@@ -1,6 +1,7 @@
 server:
   grpc_port: 5004
   grpc_host: 0.0.0.0
+  mcp_port: 5005
   ip: 127.0.0.1
   audit: 1  # 0 close , 1 basic , 2 detail
   enable: true
