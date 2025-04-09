@@ -818,29 +818,31 @@ func (o *Gonut) ValidateLoaderConfig() error {
 	// no output file specified?
 	if o.Config.Output != "" {
 		// set to default name based on format
-		switch o.Config.Format {
-		case DONUT_FORMAT_BINARY:
-			o.Config.Output += ".bin"
-		case DONUT_FORMAT_BASE64:
-			o.Config.Output += ".b64"
-		case DONUT_FORMAT_RUBY:
-			o.Config.Output += ".rb"
-		case DONUT_FORMAT_C:
-			o.Config.Output += ".c"
-		case DONUT_FORMAT_PYTHON:
-			o.Config.Output += ".py"
-		case DONUT_FORMAT_POWERSHELL:
-			o.Config.Output += ".ps1"
-		case DONUT_FORMAT_CSHARP:
-			o.Config.Output += ".cs"
-		case DONUT_FORMAT_HEX:
-			o.Config.Output += ".hex"
-		case DONUT_FORMAT_UUID:
-			o.Config.Output += ".uuid"
-		case DONUT_FORMAT_GO:
-			o.Config.Output += ".go"
-		case DONUT_FORMAT_RUST:
-			o.Config.Output += ".rs"
+		if filepath.Ext(o.Config.Output) == "" {
+			switch o.Config.Format {
+			case DONUT_FORMAT_BINARY:
+				o.Config.Output += ".bin"
+			case DONUT_FORMAT_BASE64:
+				o.Config.Output += ".b64"
+			case DONUT_FORMAT_RUBY:
+				o.Config.Output += ".rb"
+			case DONUT_FORMAT_C:
+				o.Config.Output += ".c"
+			case DONUT_FORMAT_PYTHON:
+				o.Config.Output += ".py"
+			case DONUT_FORMAT_POWERSHELL:
+				o.Config.Output += ".ps1"
+			case DONUT_FORMAT_CSHARP:
+				o.Config.Output += ".cs"
+			case DONUT_FORMAT_HEX:
+				o.Config.Output += ".hex"
+			case DONUT_FORMAT_UUID:
+				o.Config.Output += ".uuid"
+			case DONUT_FORMAT_GO:
+				o.Config.Output += ".go"
+			case DONUT_FORMAT_RUST:
+				o.Config.Output += ".rs"
+			}
 		}
 	}
 
