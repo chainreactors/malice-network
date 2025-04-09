@@ -30,6 +30,7 @@ func Start() error {
 	if err != nil {
 		return err
 	}
+	fmt.Print("\x1b[0m")
 	if err := cmd.Execute(); err != nil {
 		fmt.Printf("root command: %s\n", err)
 		os.Exit(1)

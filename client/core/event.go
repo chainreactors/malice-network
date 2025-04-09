@@ -3,13 +3,14 @@ package core
 import (
 	"context"
 	"fmt"
+	"io"
+
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/utils/handler"
 	"github.com/chainreactors/malice-network/helper/utils/output"
-	"io"
 )
 
 func (s *ServerStatus) AddDoneCallback(task *clientpb.Task, callback TaskCallback) {
@@ -189,30 +190,30 @@ func (s *ServerStatus) handlerEvent(event *clientpb.Event) {
 	switch event.Type {
 	case consts.EventClient:
 		if event.Op == consts.CtrlClientJoin {
-			Log.Infof("%s has joined the game\n", event.Client.Name)
+			Log.Info(event.Formatted + "\n")
 		} else if event.Op == consts.CtrlClientLeft {
-			Log.Infof("%s left the game\n", event.Client.Name)
+			Log.Info(event.Formatted + "\n")
 		}
 	case consts.EventBroadcast:
-		Log.Infof("%s : %s  %s\n", event.Client.Name, event.Message, event.Err)
+		Log.Info(event.Formatted + "\n")
 	case consts.EventSession:
 		s.handlerSession(event)
 	case consts.EventNotify:
-		Log.Importantf("%s notified: %s %s\n", event.Client.Name, event.Message, event.Err)
+		Log.Important(event.Formatted + "\n")
 	case consts.EventJob:
 		s.handleJob(event)
 	case consts.EventListener:
-		Log.Importantf("[%s] %s: %s %s\n", event.Type, event.Op, event.Message, event.Err)
+		Log.Important(event.Formatted + "\n")
 	case consts.EventTask:
 		s.handlerTask(event)
 	case consts.EventWebsite:
-		Log.Importantf("[%s] %s: %s %s\n", event.Type, event.Op, event.Message, event.Err)
+		Log.Important(event.Formatted + "\n")
 	case consts.EventBuild:
-		Log.Importantf("[%s] %s\n", event.Type, event.Message)
+		Log.Important(event.Formatted + "\n")
 	case consts.EventPivot:
-		Log.Importantf("[%s] %s: %s\n", event.Type, event.Op, event.Message)
+		Log.Important(event.Formatted + "\n")
 	case consts.EventContext:
-		Log.Importantf("[%s] %s: %s\n", event.Type, event.Op, event.Message)
+		Log.Important(event.Formatted + "\n")
 	}
 }
 
@@ -224,40 +225,8 @@ func (s *ServerStatus) handleJob(event *clientpb.Event) {
 	pipeline := event.GetJob().GetPipeline()
 	if event.Op == consts.CtrlPipelineSync {
 		s.Pipelines[pipeline.Name] = pipeline
-	}
-	switch pipeline.Body.(type) {
-	case *clientpb.Pipeline_Tcp:
-		Log.Importantf("[%s] %s: tcp %s on %s %s:%d\n", event.Type, event.Op,
-			pipeline.Name, pipeline.ListenerId, pipeline.Ip, pipeline.GetTcp().Port)
-	case *clientpb.Pipeline_Bind:
-		Log.Importantf("[%s] %s: bind %s on %s %s\n", event.Type, event.Op,
-			pipeline.Name, pipeline.ListenerId, pipeline.Ip)
-	case *clientpb.Pipeline_Rem:
-		switch event.Op {
-		case consts.CtrlRemAgentLog:
-			return
-		default:
-			Log.Importantf("[%s] %s: rem %s on %s %s:%d\n", event.Type, event.Op,
-				pipeline.Name, pipeline.ListenerId, pipeline.Ip, pipeline.GetRem().Port)
-		}
-
-		//Log.Infof("[%s] %s: rem -c %s \n", event.Type, event.Op, pipeline.GetRem().Link)
-	case *clientpb.Pipeline_Web:
-		if event.Op == consts.CtrlWebContentAdd {
-			var root = ""
-			if pipeline.GetWeb().Root != "/" {
-				root = pipeline.GetWeb().Root
-			}
-			for _, content := range pipeline.GetWeb().Contents {
-				Log.Importantf("[%s] %s: web %s on %s %d, routePath is %s\n", event.Type, event.Op,
-					pipeline.ListenerId, pipeline.Name, pipeline.GetWeb().Port,
-					fmt.Sprintf("http://%s:%d%s%s", pipeline.Ip, pipeline.GetWeb().Port, root, content.Path))
-			}
-			return
-		}
-		Log.Importantf("[%s] %s: web %s on %s %d, routePath is %s\n", event.Type, event.Op,
-			pipeline.ListenerId, pipeline.Name, pipeline.GetWeb().Port,
-			fmt.Sprintf("http://%s:%d%s", pipeline.Ip, pipeline.GetWeb().Port, pipeline.GetWeb().Root))
+	} else {
+		Log.Important(event.Formatted + "\n")
 	}
 }
 
@@ -279,19 +248,19 @@ func (s *ServerStatus) handlerSession(event *clientpb.Event) {
 	switch event.Op {
 	case consts.CtrlSessionRegister:
 		s.AddSession(event.Session)
-		Log.Important(logs.GreenBold(fmt.Sprintf("[%s]: %s \n", consts.CtrlSessionRegister, event.Message)))
+		Log.Important(event.Formatted + "\n")
 	case consts.CtrlSessionTask:
-		logs.Log.Info(logs.GreenBold(fmt.Sprintf("[%s.%d] run task %s: %s\n", sid, event.Task.TaskId, event.Task.Type, event.Message)))
+		Log.Info(event.Formatted + "\n")
 	case consts.CtrlSessionError:
 		log := s.ObserverLog(sid)
-		log.Error(logs.GreenBold(fmt.Sprintf("[%s] task: %d error: %s\n", sid, event.Task.TaskId, event.Err)))
+		log.Error(event.Formatted + "\n")
 	case consts.CtrlSessionLog:
 		log := s.ObserverLog(sid)
-		log.Errorf("[%s] log: \n%s\n", sid, event.Message)
+		log.Error(event.Formatted + "\n")
 	case consts.CtrlSessionLeave:
-		Log.Important(logs.RedBold(fmt.Sprintf("[%s] session stop: %s\n", sid, event.Message)))
+		Log.Important(event.Formatted + "\n")
 	case consts.CtrlSessionReborn:
 		s.AddSession(event.Session)
-		Log.Important(logs.GreenBold(fmt.Sprintf("[%s]: %s\n", consts.CtrlSessionReborn, event.Message)))
+		Log.Important(event.Formatted + "\n")
 	}
 }
