@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/docker/docker/api/types"
+	"github.com/wabzsy/gonut"
 	"io"
 	"math/rand"
 	"os"
@@ -340,7 +341,7 @@ func NewMaleficSRDIArtifact(name, typ, src, platform, arch, stage, funcName, dat
 	if err != nil {
 		return nil, nil, err
 	}
-	bin, err := MaleficSRDI(src, builder.Path, platform, arch, funcName, dataPath)
+	bin, err := gonut.DonutShellcodeFromFile(builder.Path, arch, "")
 	if err != nil {
 		return nil, nil, err
 	}
@@ -383,7 +384,7 @@ func SRDIArtifact(builder *models.Builder, platform, arch string) ([]byte, error
 		return nil, err
 	}
 	dstPath := filepath.Join(absBuildOutputPath, encoders.UUID())
-	bin, err := MaleficSRDI(builder.Path, dstPath, platform, arch, "", "")
+	bin, err := gonut.DonutShellcodeFromFile(builder.Path, arch, "")
 	if err != nil {
 		return nil, err
 	}
@@ -399,6 +400,7 @@ func SRDIArtifact(builder *models.Builder, platform, arch string) ([]byte, error
 	return bin, nil
 }
 
+// Deprecated: Use donut instead
 func MaleficSRDI(src, dst, platform, arch, funcName, dataPath string) ([]byte, error) {
 	if platform == "" || platform == "windows" {
 		platform = "win"
