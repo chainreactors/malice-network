@@ -46,7 +46,6 @@ func AddWebContent(con *repl.Console, localFile, webPath, webPipe, typ, parser s
 				Path:        webPath,
 				Type:        parser,
 				Content:     content,
-				Encryption:  enc,
 				ContentType: typ,
 			},
 		},
@@ -87,7 +86,6 @@ func UpdateWebContent(con *repl.Console, contentId, localFile, webPipe, typ, par
 		File:        localFile,
 		Type:        parser,
 		Content:     content,
-		Encryption:  enc,
 		ContentType: typ,
 	}
 	_, err = con.Rpc.UpdateWebsiteContent(con.Context(), website)

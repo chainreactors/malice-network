@@ -14,13 +14,91 @@ import (
 	"github.com/nikoksr/notify/service/lark"
 	"github.com/nikoksr/notify/service/telegram"
 	"net/url"
+	"strings"
 	"sync"
 )
 
 const (
 	// Size is arbitrary, just want to avoid weird cases where we'd block on channel sends
-	eventBufSize = 10
+	eventBufSize = 25
 )
+
+func (event *Event) format() string {
+	switch event.EventType {
+	case consts.EventClient:
+		if event.Op == consts.CtrlClientJoin {
+			return fmt.Sprintf("%s has joined the game", event.Client.Name)
+		} else if event.Op == consts.CtrlClientLeft {
+			return fmt.Sprintf("%s left the game", event.Client.Name)
+		}
+	case consts.EventBroadcast:
+		return fmt.Sprintf("%s : %s  %s", event.Client.Name, event.Message, event.Err)
+	case consts.EventNotify:
+		return fmt.Sprintf("%s notified: %s %s", event.Client.Name, event.Message, event.Err)
+	case consts.EventListener:
+		return fmt.Sprintf("[%s] %s: %s %s", event.EventType, event.Op, event.Message, event.Err)
+	case consts.EventWebsite:
+		return fmt.Sprintf("[%s] %s: %s %s", event.EventType, event.Op, event.Message, event.Err)
+	case consts.EventBuild:
+		return fmt.Sprintf("[%s] %s", event.EventType, event.Message)
+	case consts.EventPivot:
+		return fmt.Sprintf("[%s] %s: %s", event.EventType, event.Op, event.Message)
+	case consts.EventContext:
+		return fmt.Sprintf("[%s] %s: %s", event.EventType, event.Op, event.Message)
+	case consts.EventSession:
+		sid := event.Session.SessionId
+		switch event.Op {
+		case consts.CtrlSessionRegister:
+			return logs.GreenBold(fmt.Sprintf("[%s]: %s", consts.CtrlSessionRegister, event.Message))
+		case consts.CtrlSessionTask:
+			return logs.GreenBold(fmt.Sprintf("[%s.%d] run task %s: %s", sid, event.Task.TaskId, event.Task.Type, event.Message))
+		case consts.CtrlSessionError:
+			return logs.GreenBold(fmt.Sprintf("[%s] task: %d error: %s", sid, event.Task.TaskId, event.Err))
+		case consts.CtrlSessionLog:
+			return fmt.Sprintf("[%s] log: \n%s", sid, event.Message)
+		}
+	case consts.EventJob:
+		if event.Err != "" {
+			return fmt.Sprintf("[%s] %s: %s", event.EventType, event.Op, event.Err)
+		}
+		pipeline := event.Job.GetPipeline()
+		switch pipeline.Body.(type) {
+		case *clientpb.Pipeline_Tcp:
+			return fmt.Sprintf("[%s] %s: tcp %s on %s %s:%d", event.EventType, event.Op,
+				pipeline.Name, pipeline.ListenerId, pipeline.Ip, pipeline.GetTcp().Port)
+		case *clientpb.Pipeline_Bind:
+			return fmt.Sprintf("[%s] %s: bind %s on %s %s", event.EventType, event.Op,
+				pipeline.Name, pipeline.ListenerId, pipeline.Ip)
+		case *clientpb.Pipeline_Http:
+			return fmt.Sprintf("[%s] %s: http %s on %s %s:%d", event.EventType, event.Op,
+				pipeline.Name, pipeline.ListenerId, pipeline.Ip, pipeline.GetHttp().Port)
+		case *clientpb.Pipeline_Rem:
+			if event.Op == consts.CtrlRemAgentLog {
+				return ""
+			}
+			return fmt.Sprintf("[%s] %s: rem %s on %s %s:%d", event.EventType, event.Op,
+				pipeline.Name, pipeline.ListenerId, pipeline.Ip, pipeline.GetRem().Port)
+		case *clientpb.Pipeline_Web:
+			if event.Op == consts.CtrlWebContentAdd {
+				var root = "/"
+				if pipeline.GetWeb().Root != "/" {
+					root = pipeline.GetWeb().Root
+				}
+				var result string
+				for _, content := range pipeline.GetWeb().Contents {
+					result += fmt.Sprintf("[%s] %s: web %s on %s %d, routePath is http://%s:%d%s%s\n",
+						event.EventType, event.Op, pipeline.ListenerId, pipeline.Name, pipeline.GetWeb().Port,
+						pipeline.Ip, pipeline.GetWeb().Port, root, content.Path)
+				}
+				return strings.TrimSuffix(result, "\n")
+			}
+			return fmt.Sprintf("[%s] %s: web %s on %s %d, routePath is http://%s:%d%s", event.EventType, event.Op,
+				pipeline.ListenerId, pipeline.Name, pipeline.GetWeb().Port,
+				pipeline.Ip, pipeline.GetWeb().Port, pipeline.GetWeb().Root)
+		}
+	}
+	return event.Message
+}
 
 type Event struct {
 	Session *clientpb.Session
@@ -38,36 +116,37 @@ type Event struct {
 	IsNotify  bool
 }
 
-func (e *Event) String() string {
+func (event *Event) String() string {
 	var id string
 
-	if e.Job != nil {
-		id = fmt.Sprintf("Job %d %s", e.Job.Id, e.Job.Name)
-	} else if e.Task != nil {
-		id = fmt.Sprintf("Task %s %d", e.Task.SessionId, e.Task.TaskId)
-	} else if e.Session != nil {
-		id = fmt.Sprintf("Session %s", e.Session.SessionId)
+	if event.Job != nil {
+		id = fmt.Sprintf("Job %d %s", event.Job.Id, event.Job.Name)
+	} else if event.Task != nil {
+		id = fmt.Sprintf("Task %s %d", event.Task.SessionId, event.Task.TaskId)
+	} else if event.Session != nil {
+		id = fmt.Sprintf("Session %s", event.Session.SessionId)
 	}
-	if e.Err != "" {
-		return fmt.Sprintf("%s %s: %s", id, e.Op, e.Err)
+	if event.Err != "" {
+		return fmt.Sprintf("%s %s: %s", id, event.Op, event.Err)
 	} else {
-		return fmt.Sprintf("%s %s: %s", id, e.Op, e.Message)
+		return fmt.Sprintf("%s %s: %s", id, event.Op, event.Message)
 	}
 }
 
 // toprotobuf
-func (e *Event) ToProtobuf() *clientpb.Event {
+func (event *Event) ToProtobuf() *clientpb.Event {
 	return &clientpb.Event{
-		Session: e.Session,
-		Job:     e.Job,
-		Client:  e.Client,
-		Task:    e.Task,
-		Spite:   e.Spite,
-		Type:    e.EventType,
-		Op:      e.Op,
-		Message: []byte(e.Message),
-		Err:     e.Err,
-		Callee:  e.Callee,
+		Session:   event.Session,
+		Job:       event.Job,
+		Client:    event.Client,
+		Task:      event.Task,
+		Spite:     event.Spite,
+		Type:      event.EventType,
+		Op:        event.Op,
+		Formatted: event.format(),
+		Message:   []byte(event.Message),
+		Err:       event.Err,
+		Callee:    event.Callee,
 	}
 }
 

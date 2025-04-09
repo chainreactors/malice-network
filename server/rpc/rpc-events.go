@@ -25,7 +25,8 @@ func (rpc *Server) Events(_ *clientpb.Empty, stream clientrpc.MaliceRPC_EventsSe
 		case <-stream.Context().Done():
 			return nil
 		case event := <-events:
-			err := stream.Send(event.ToProtobuf())
+			pb := event.ToProtobuf()
+			err := stream.Send(pb)
 			if err != nil {
 				logs.Log.Warnf(err.Error())
 				return err
