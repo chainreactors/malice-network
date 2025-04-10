@@ -2,7 +2,6 @@ package website
 
 import (
 	"fmt"
-	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/tui"
@@ -19,12 +18,11 @@ func AddWebContentCmd(cmd *cobra.Command, con *repl.Console) error {
 	websiteName, _ := cmd.Flags().GetString("website")
 	webPath, _ := cmd.Flags().GetString("path")
 	contentType, _ := cmd.Flags().GetString("type")
-	parser, encryption := common.ParseEncryptionFlags(cmd)
 	if webPath == "" {
 		webPath = "/" + filepath.Base(filePath)
 	}
 
-	_, err := AddWebContent(con, filePath, webPath, websiteName, contentType, parser, encryption)
+	_, err := AddWebContent(con, filePath, webPath, websiteName, contentType)
 	if err != nil {
 		return err
 	}
@@ -32,19 +30,19 @@ func AddWebContentCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func AddWebContent(con *repl.Console, localFile, webPath, webPipe, typ, parser string, enc *clientpb.Encryption) (bool, error) {
+func AddWebContent(con *repl.Console, localFile, webPath, webPipe, typ string) (bool, error) {
 	content, err := os.ReadFile(localFile)
 	if err != nil {
 		return false, err
 	}
 
 	website := &clientpb.Website{
+		Name: webPipe,
 		Contents: map[string]*clientpb.WebContent{
 			webPath: {
 				WebsiteId:   webPipe,
 				File:        localFile,
 				Path:        webPath,
-				Type:        parser,
 				Content:     content,
 				ContentType: typ,
 			},
@@ -64,9 +62,8 @@ func UpdateWebContentCmd(cmd *cobra.Command, con *repl.Console) error {
 	filePath := cmd.Flags().Arg(1)
 	websiteName, _ := cmd.Flags().GetString("website")
 	contentType, _ := cmd.Flags().GetString("type")
-	parser, encryption := common.ParseEncryptionFlags(cmd)
 
-	_, err := UpdateWebContent(con, contentId, filePath, websiteName, contentType, parser, encryption)
+	_, err := UpdateWebContent(con, contentId, filePath, websiteName, contentType)
 	if err != nil {
 		return err
 	}
@@ -74,7 +71,7 @@ func UpdateWebContentCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func UpdateWebContent(con *repl.Console, contentId, localFile, webPipe, typ, parser string, enc *clientpb.Encryption) (bool, error) {
+func UpdateWebContent(con *repl.Console, contentId, localFile, webPipe, typ string) (bool, error) {
 	content, err := os.ReadFile(localFile)
 	if err != nil {
 		return false, err
@@ -84,7 +81,6 @@ func UpdateWebContent(con *repl.Console, contentId, localFile, webPipe, typ, par
 		Id:          contentId,
 		WebsiteId:   webPipe,
 		File:        localFile,
-		Type:        parser,
 		Content:     content,
 		ContentType: typ,
 	}
@@ -145,7 +141,6 @@ func ListWebContentCmd(cmd *cobra.Command, con *repl.Console) error {
 		table.NewColumn("WebsiteName", "WebsiteName", 15),
 		table.NewColumn("ListenerID", "ListenerID", 15),
 		table.NewColumn("Path", "Path", 20),
-		table.NewColumn("Type", "Type", 10),
 		table.NewColumn("Size", "Size", 8),
 		table.NewColumn("ContentType", "ContentType", 30),
 	}, true)
@@ -156,7 +151,6 @@ func ListWebContentCmd(cmd *cobra.Command, con *repl.Console) error {
 			"WebsiteName": content.WebsiteId,
 			"ListenerID":  content.ListenerId,
 			"Path":        content.Path,
-			"Type":        content.Type,
 			"Size":        strconv.FormatUint(content.Size, 10),
 			"ContentType": content.ContentType,
 		})
