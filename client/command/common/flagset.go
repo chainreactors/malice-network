@@ -127,7 +127,7 @@ func ParseArtifactFlags(cmd *cobra.Command) ([]string, string) {
 func PipelineFlagSet(f *pflag.FlagSet) {
 	f.StringP("listener", "l", "", "listener id")
 	f.String("host", "0.0.0.0", "pipeline host, the default value is **0.0.0.0**")
-	f.UintP("port", "p", 0, "pipeline port, random port is selected from the range **10000-15000**")
+	f.Uint32P("port", "p", 0, "pipeline port, random port is selected from the range **10000-15000** ")
 	f.String("ip", "ip", "external ip")
 
 	SetFlagSetGroup(f, "pipeline")

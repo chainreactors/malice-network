@@ -18,7 +18,6 @@ func NewWebsiteCmd(cmd *cobra.Command, con *repl.Console) error {
 	listenerID, _, port := common.ParsePipelineFlags(cmd)
 	name := cmd.Flags().Arg(0)
 	root, _ := cmd.Flags().GetString("root")
-
 	if port == 0 {
 		port = cryptography.RandomInRange(10240, 65535)
 	}
