@@ -47,7 +47,7 @@ func (rpc *Server) AddWebsiteContent(ctx context.Context, req *clientpb.Website)
 	if err != nil {
 		return nil, err
 	}
-	lns, err := core.Listeners.Get(req.ListenerId)
+	lns, err := core.Listeners.Get(job.Pipeline.ListenerId)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +83,7 @@ func (rpc *Server) UpdateWebsiteContent(ctx context.Context, req *clientpb.WebCo
 	if err != nil {
 		return nil, err
 	}
-	lns, err := core.Listeners.Get(req.ListenerId)
+	lns, err := core.Listeners.Get(job.Pipeline.ListenerId)
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +101,7 @@ func (rpc *Server) RemoveWebsiteContent(ctx context.Context, req *clientpb.WebCo
 	if err != nil {
 		return nil, err
 	}
-	lns, err := core.Listeners.Get(req.ListenerId)
+	lns, err := core.Listeners.Get(job.Pipeline.ListenerId)
 	if err != nil {
 		return nil, err
 	}

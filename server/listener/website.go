@@ -3,7 +3,6 @@ package listener
 import (
 	"errors"
 	"fmt"
-
 	"net/http"
 	"path"
 	"strings"
