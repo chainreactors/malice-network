@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"path"
 	"strings"
 
 	"github.com/chainreactors/logs"
@@ -35,6 +34,10 @@ func StartWebsite(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeline
 		PipelineConfig: core.FromProtobuf(pipeline),
 		Content:        content,
 	}
+
+	if web.Content == nil {
+		web.Content = make(map[string]*clientpb.WebContent)
+	}
 	err := web.Start()
 	if err != nil {
 		return nil, err
@@ -48,7 +51,7 @@ func (w *Website) ID() string {
 
 func (w *Website) Start() error {
 	mux := http.NewServeMux()
-	mux.HandleFunc(path.Join(w.rootPath, "/"), w.websiteContentHandler)
+	mux.HandleFunc(w.rootPath, w.websiteContentHandler)
 	var err error
 	tlsConfig, err := certutils.WrapToTlsConfig(w.Tls)
 	if err != nil {
@@ -101,8 +104,8 @@ func (w *Website) ToProtobuf() *clientpb.Pipeline {
 }
 
 func (w *Website) websiteContentHandler(resp http.ResponseWriter, req *http.Request) {
-	contentPath := strings.TrimRight(req.URL.Path, "/")
-	content, ok := w.Content[contentPath]
+	contentPath := strings.TrimPrefix(req.URL.Path, w.rootPath)
+	content, ok := w.Content[strings.Trim(contentPath, "/")]
 	if !ok {
 		logs.Log.Debugf("%s Failed to get content ", req.URL)
 		return
@@ -114,5 +117,5 @@ func (w *Website) websiteContentHandler(resp http.ResponseWriter, req *http.Requ
 }
 
 func (w *Website) AddContent(content *clientpb.WebContent) {
-	w.Content[content.Path] = content
+	w.Content[strings.Trim(content.Path, "/")] = content
 }

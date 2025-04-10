@@ -435,17 +435,15 @@ func (lns *listener) handlerStop(job *clientpb.Job) error {
 func (lns *listener) handleStartWebsite(job *clientpb.Job) error {
 	pipe := job.GetPipeline()
 	web := pipe.GetWeb()
-	w := lns.websites[pipe.Name]
-	if w == nil {
-		starResult, err := StartWebsite(lns.Rpc, job.GetPipeline(), web.Contents)
-		if err != nil {
-			return err
-		}
-		lns.websites[pipe.Name] = starResult
-	} else {
-		if err := w.Start(); err != nil {
-			return err
-		}
+
+	website, err := StartWebsite(lns.Rpc, job.GetPipeline(), web.Contents)
+	if err != nil {
+		return err
+	}
+	lns.websites[pipe.Name] = website
+	_, err = lns.Rpc.SyncPipeline(lns.Context(), website.ToProtobuf())
+	if err != nil {
+		return err
 	}
 	job.GetPipeline().Enable = true
 	return nil

@@ -1,6 +1,7 @@
 package models
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"time"
@@ -52,9 +53,16 @@ func (wc *WebsiteContent) ToProtobuf(read bool) *clientpb.WebContent {
 		Type:        wc.Type,
 		ContentType: wc.ContentType,
 		Content:     data,
-		//Encryption:  wc.Encryption.ToProtobuf(),
-		ListenerId: wc.Pipeline.ListenerId,
+		Url:         wc.URL(),
+		ListenerId:  wc.Pipeline.ListenerId,
 	}
+}
+
+func (wc *WebsiteContent) URL() string {
+	if wc.Pipeline.Tls != nil {
+		return fmt.Sprintf("https://%s:%d%s%s", wc.Pipeline.IP, wc.Pipeline.Port, wc.Pipeline.WebPath, wc.Path)
+	}
+	return fmt.Sprintf("http://%s:%d%s%s", wc.Pipeline.IP, wc.Pipeline.Port, wc.Pipeline.WebPath, wc.Path)
 }
 
 func FromWebContentPb(content *clientpb.WebContent) *WebsiteContent {
@@ -65,6 +73,5 @@ func FromWebContentPb(content *clientpb.WebContent) *WebsiteContent {
 		Size:        content.Size,
 		Type:        content.Type,
 		ContentType: content.ContentType,
-		//Encryption:  types.FromEncryption(content.Encryption),
 	}
 }

@@ -87,8 +87,8 @@ type ListenerRPCClient interface {
 	DeleteWebsite(ctx context.Context, in *clientpb.CtrlPipeline, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	ListWebsites(ctx context.Context, in *clientpb.Listener, opts ...grpc.CallOption) (*clientpb.Pipelines, error)
 	ListWebContent(ctx context.Context, in *clientpb.Website, opts ...grpc.CallOption) (*clientpb.WebContents, error)
-	AddWebsiteContent(ctx context.Context, in *clientpb.Website, opts ...grpc.CallOption) (*clientpb.Empty, error)
-	UpdateWebsiteContent(ctx context.Context, in *clientpb.WebContent, opts ...grpc.CallOption) (*clientpb.Empty, error)
+	AddWebsiteContent(ctx context.Context, in *clientpb.Website, opts ...grpc.CallOption) (*clientpb.WebContent, error)
+	UpdateWebsiteContent(ctx context.Context, in *clientpb.WebContent, opts ...grpc.CallOption) (*clientpb.WebContent, error)
 	RemoveWebsiteContent(ctx context.Context, in *clientpb.WebContent, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	// rem
 	RegisterRem(ctx context.Context, in *clientpb.Pipeline, opts ...grpc.CallOption) (*clientpb.Empty, error)
@@ -334,8 +334,8 @@ func (c *listenerRPCClient) ListWebContent(ctx context.Context, in *clientpb.Web
 	return out, nil
 }
 
-func (c *listenerRPCClient) AddWebsiteContent(ctx context.Context, in *clientpb.Website, opts ...grpc.CallOption) (*clientpb.Empty, error) {
-	out := new(clientpb.Empty)
+func (c *listenerRPCClient) AddWebsiteContent(ctx context.Context, in *clientpb.Website, opts ...grpc.CallOption) (*clientpb.WebContent, error) {
+	out := new(clientpb.WebContent)
 	err := c.cc.Invoke(ctx, ListenerRPC_AddWebsiteContent_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -343,8 +343,8 @@ func (c *listenerRPCClient) AddWebsiteContent(ctx context.Context, in *clientpb.
 	return out, nil
 }
 
-func (c *listenerRPCClient) UpdateWebsiteContent(ctx context.Context, in *clientpb.WebContent, opts ...grpc.CallOption) (*clientpb.Empty, error) {
-	out := new(clientpb.Empty)
+func (c *listenerRPCClient) UpdateWebsiteContent(ctx context.Context, in *clientpb.WebContent, opts ...grpc.CallOption) (*clientpb.WebContent, error) {
+	out := new(clientpb.WebContent)
 	err := c.cc.Invoke(ctx, ListenerRPC_UpdateWebsiteContent_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -531,8 +531,8 @@ type ListenerRPCServer interface {
 	DeleteWebsite(context.Context, *clientpb.CtrlPipeline) (*clientpb.Empty, error)
 	ListWebsites(context.Context, *clientpb.Listener) (*clientpb.Pipelines, error)
 	ListWebContent(context.Context, *clientpb.Website) (*clientpb.WebContents, error)
-	AddWebsiteContent(context.Context, *clientpb.Website) (*clientpb.Empty, error)
-	UpdateWebsiteContent(context.Context, *clientpb.WebContent) (*clientpb.Empty, error)
+	AddWebsiteContent(context.Context, *clientpb.Website) (*clientpb.WebContent, error)
+	UpdateWebsiteContent(context.Context, *clientpb.WebContent) (*clientpb.WebContent, error)
 	RemoveWebsiteContent(context.Context, *clientpb.WebContent) (*clientpb.Empty, error)
 	// rem
 	RegisterRem(context.Context, *clientpb.Pipeline) (*clientpb.Empty, error)
@@ -617,10 +617,10 @@ func (UnimplementedListenerRPCServer) ListWebsites(context.Context, *clientpb.Li
 func (UnimplementedListenerRPCServer) ListWebContent(context.Context, *clientpb.Website) (*clientpb.WebContents, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListWebContent not implemented")
 }
-func (UnimplementedListenerRPCServer) AddWebsiteContent(context.Context, *clientpb.Website) (*clientpb.Empty, error) {
+func (UnimplementedListenerRPCServer) AddWebsiteContent(context.Context, *clientpb.Website) (*clientpb.WebContent, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddWebsiteContent not implemented")
 }
-func (UnimplementedListenerRPCServer) UpdateWebsiteContent(context.Context, *clientpb.WebContent) (*clientpb.Empty, error) {
+func (UnimplementedListenerRPCServer) UpdateWebsiteContent(context.Context, *clientpb.WebContent) (*clientpb.WebContent, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateWebsiteContent not implemented")
 }
 func (UnimplementedListenerRPCServer) RemoveWebsiteContent(context.Context, *clientpb.WebContent) (*clientpb.Empty, error) {

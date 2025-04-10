@@ -42,7 +42,7 @@ func (rpc *Server) ListWebContent(ctx context.Context, req *clientpb.Website) (*
 }
 
 // WebsiteAddContent - Add content to a website, the website is created if `name` does not exist
-func (rpc *Server) AddWebsiteContent(ctx context.Context, req *clientpb.Website) (*clientpb.Empty, error) {
+func (rpc *Server) AddWebsiteContent(ctx context.Context, req *clientpb.Website) (*clientpb.WebContent, error) {
 	job, err := core.Jobs.Get(req.Name)
 	if err != nil {
 		return nil, err
@@ -51,12 +51,12 @@ func (rpc *Server) AddWebsiteContent(ctx context.Context, req *clientpb.Website)
 	if err != nil {
 		return nil, err
 	}
-
+	var contentModel *models.WebsiteContent
 	if len(req.Contents) != 0 {
 		for _, content := range req.Contents {
 			content.Size = uint64(len(content.Content))
 			rpcLog.Infof("Add website content (%s) %s -> %s", content.File, content.Path, content.Type)
-			_, err := db.AddContent(content)
+			contentModel, err = db.AddContent(content)
 			if err != nil {
 				return nil, err
 			}
@@ -69,12 +69,12 @@ func (rpc *Server) AddWebsiteContent(ctx context.Context, req *clientpb.Website)
 		}
 	}
 
-	return &clientpb.Empty{}, nil
+	return contentModel.ToProtobuf(false), nil
 }
 
 // WebsiteUpdateContent - Update specific content from a website
-func (rpc *Server) UpdateWebsiteContent(ctx context.Context, req *clientpb.WebContent) (*clientpb.Empty, error) {
-	_, err := db.AddContent(req)
+func (rpc *Server) UpdateWebsiteContent(ctx context.Context, req *clientpb.WebContent) (*clientpb.WebContent, error) {
+	content, err := db.AddContent(req)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +92,7 @@ func (rpc *Server) UpdateWebsiteContent(ctx context.Context, req *clientpb.WebCo
 		Job:  job.ToProtobuf(),
 	})
 
-	return &clientpb.Empty{}, nil
+	return content.ToProtobuf(false), nil
 }
 
 // WebsiteRemoveContent - Remove specific content from a website
@@ -124,10 +124,6 @@ func (rpc *Server) RegisterWebsite(ctx context.Context, req *clientpb.Pipeline) 
 	}
 	req.Ip = lns.IP
 	pipelineModel := models.FromPipelinePb(req)
-	_, err = db.SavePipeline(pipelineModel)
-	if err != nil {
-		return nil, err
-	}
 	if pipelineModel.Tls.Enable && pipelineModel.Tls.Cert == "" && pipelineModel.Tls.Key == "" {
 		pipelineModel.Tls.Cert, pipelineModel.Tls.Key, err = certutils.GenerateTlsCert(req.Name, req.ListenerId)
 		if err != nil {
