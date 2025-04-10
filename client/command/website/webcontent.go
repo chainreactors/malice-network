@@ -22,18 +22,18 @@ func AddWebContentCmd(cmd *cobra.Command, con *repl.Console) error {
 		webPath = "/" + filepath.Base(filePath)
 	}
 
-	_, err := AddWebContent(con, filePath, webPath, websiteName, contentType)
+	c, err := AddWebContent(con, filePath, webPath, websiteName, contentType)
 	if err != nil {
 		return err
 	}
-	con.Log.Importantf("Content added to website %s: %s -> %s\n", websiteName, webPath, filePath)
+	con.Log.Importantf("Content added to website %s: %s -> %s\n", websiteName, filePath, c.Url)
 	return nil
 }
 
-func AddWebContent(con *repl.Console, localFile, webPath, webPipe, typ string) (bool, error) {
+func AddWebContent(con *repl.Console, localFile, webPath, webPipe, typ string) (*clientpb.WebContent, error) {
 	content, err := os.ReadFile(localFile)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 
 	website := &clientpb.Website{
@@ -48,12 +48,12 @@ func AddWebContent(con *repl.Console, localFile, webPath, webPipe, typ string) (
 			},
 		},
 	}
-	_, err = con.Rpc.AddWebsiteContent(con.Context(), website)
+	c, err := con.Rpc.AddWebsiteContent(con.Context(), website)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 
-	return true, nil
+	return c, nil
 }
 
 // UpdateWebContentCmd - 更新网站内容
@@ -71,10 +71,10 @@ func UpdateWebContentCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func UpdateWebContent(con *repl.Console, contentId, localFile, webPipe, typ string) (bool, error) {
+func UpdateWebContent(con *repl.Console, contentId, localFile, webPipe, typ string) (*clientpb.WebContent, error) {
 	content, err := os.ReadFile(localFile)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 
 	website := &clientpb.WebContent{
@@ -84,11 +84,11 @@ func UpdateWebContent(con *repl.Console, contentId, localFile, webPipe, typ stri
 		Content:     content,
 		ContentType: typ,
 	}
-	_, err = con.Rpc.UpdateWebsiteContent(con.Context(), website)
+	c, err := con.Rpc.UpdateWebsiteContent(con.Context(), website)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
-	return true, nil
+	return c, nil
 }
 
 // RemoveWebContentCmd - 删除网站内容

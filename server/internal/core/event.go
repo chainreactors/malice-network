@@ -14,7 +14,6 @@ import (
 	"github.com/nikoksr/notify/service/lark"
 	"github.com/nikoksr/notify/service/telegram"
 	"net/url"
-	"strings"
 	"sync"
 )
 
@@ -79,19 +78,19 @@ func (event *Event) format() string {
 			return fmt.Sprintf("[%s] %s: rem %s on %s %s:%d", event.EventType, event.Op,
 				pipeline.Name, pipeline.ListenerId, pipeline.Ip, pipeline.GetRem().Port)
 		case *clientpb.Pipeline_Web:
-			if event.Op == consts.CtrlWebContentAdd {
-				var root = "/"
-				if pipeline.GetWeb().Root != "/" {
-					root = pipeline.GetWeb().Root
-				}
-				var result string
-				for _, content := range pipeline.GetWeb().Contents {
-					result += fmt.Sprintf("[%s] %s: web %s on %s %d, routePath is http://%s:%d%s%s\n",
-						event.EventType, event.Op, pipeline.ListenerId, pipeline.Name, pipeline.GetWeb().Port,
-						pipeline.Ip, pipeline.GetWeb().Port, root, content.Path)
-				}
-				return strings.TrimSuffix(result, "\n")
-			}
+			//if event.Op == consts.CtrlWebContentAdd {
+			//	var root = "/"
+			//	if pipeline.GetWeb().Root != "/" {
+			//		root = pipeline.GetWeb().Root
+			//	}
+			//	var result string
+			//	for _, content := range pipeline.GetWeb().Contents {
+			//		result += fmt.Sprintf("[%s] %s: web %s on %s %d, routePath is http://%s:%d%s%s\n",
+			//			event.EventType, event.Op, pipeline.ListenerId, pipeline.Name, pipeline.GetWeb().Port,
+			//			pipeline.Ip, pipeline.GetWeb().Port, root, content.Path)
+			//	}
+			//	return strings.TrimSuffix(result, "\n")
+			//}
 			return fmt.Sprintf("[%s] %s: web %s on %s %d, routePath is http://%s:%d%s", event.EventType, event.Op,
 				pipeline.ListenerId, pipeline.Name, pipeline.GetWeb().Port,
 				pipeline.Ip, pipeline.GetWeb().Port, pipeline.GetWeb().Root)

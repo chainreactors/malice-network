@@ -268,11 +268,6 @@ func FindPipeline(name string) (*models.Pipeline, error) {
 	if result.Error != nil {
 		return pipeline, result.Error
 	}
-	pipeline.Enable = true
-	result = Session().Save(&pipeline)
-	if result.Error != nil {
-		return pipeline, result.Error
-	}
 	return pipeline, nil
 }
 
@@ -586,28 +581,33 @@ func FindWebContentsByWebsite(website string) ([]*models.WebsiteContent, error) 
 
 // AddContent - Add content to website
 func AddContent(content *clientpb.WebContent) (*models.WebsiteContent, error) {
-	var existingContent models.WebsiteContent
 	switch content.Type {
 	case "", "raw", "default":
 		content.ContentType = mime.TypeByExtension(filepath.Ext(content.Path))
-	case consts.ImplantPulse:
-		content.ContentType = "application/octet-stream"
 	default:
 		content.ContentType = mime.TypeByExtension(filepath.Ext(content.Path))
 	}
 
+	var existingContent *models.WebsiteContent
 	webModel := models.FromWebContentPb(content)
-	err := Session().Where("pipeline_id = ? AND path = ?", content.WebsiteId, content.Path).First(&existingContent).Error
+	err := Session().Preload("Pipeline").Where("pipeline_id = ? AND path = ?", content.WebsiteId, content.Path).First(&existingContent).Error
 	if err == nil {
 		webModel.ID = existingContent.ID
 		err = Session().Save(&webModel).Error
 		if err != nil {
 			return nil, err
 		}
+		webModel = existingContent
 	} else if errors.Is(err, gorm.ErrRecordNotFound) {
 		err = Session().Create(&webModel).Error
 		if err != nil {
 			return nil, err
+		}
+		if webModel.Pipeline == nil {
+			err := Session().Model(webModel).Association("Pipeline").Find(&webModel.Pipeline)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 	if content.Type == "raw" {
