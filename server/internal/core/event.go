@@ -91,9 +91,16 @@ func (event *Event) format() string {
 			//	}
 			//	return strings.TrimSuffix(result, "\n")
 			//}
-			return fmt.Sprintf("[%s] %s: web %s on %s %d, routePath is http://%s:%d%s", event.EventType, event.Op,
-				pipeline.ListenerId, pipeline.Name, pipeline.GetWeb().Port,
-				pipeline.Ip, pipeline.GetWeb().Port, pipeline.GetWeb().Root)
+			if pipeline.Tls.Enable {
+				return fmt.Sprintf("[%s] %s: web %s on %s %d, routePath is https://%s:%d%s", event.EventType, event.Op,
+					pipeline.ListenerId, pipeline.Name, pipeline.GetWeb().Port,
+					pipeline.Ip, pipeline.GetWeb().Port, pipeline.GetWeb().Root)
+			} else {
+				return fmt.Sprintf("[%s] %s: web %s on %s %d, routePath is http://%s:%d%s", event.EventType, event.Op,
+					pipeline.ListenerId, pipeline.Name, pipeline.GetWeb().Port,
+					pipeline.Ip, pipeline.GetWeb().Port, pipeline.GetWeb().Root)
+			}
+
 		}
 	}
 	return event.Message

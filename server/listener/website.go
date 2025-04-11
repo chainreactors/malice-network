@@ -52,20 +52,31 @@ func (w *Website) ID() string {
 func (w *Website) Start() error {
 	mux := http.NewServeMux()
 	mux.HandleFunc(w.rootPath, w.websiteContentHandler)
-	var err error
-	tlsConfig, err := certutils.WrapToTlsConfig(w.Tls)
-	if err != nil {
-		return err
-	}
-	w.server = &http.Server{Addr: fmt.Sprintf("0.0.0.0:%d", w.port),
-		TLSConfig: tlsConfig,
-		Handler:   mux,
-	}
-	go func() {
-		if err = w.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			logs.Log.Errorf("HTTP Server failed to start: %v", err)
+	if w.Tls != nil && w.Tls.Enable {
+		tlsConfig, err := certutils.WrapToTlsConfig(w.Tls)
+		if err != nil {
+			return err
 		}
-	}()
+		w.server = &http.Server{Addr: fmt.Sprintf("0.0.0.0:%d", w.port),
+			TLSConfig: tlsConfig,
+			Handler:   mux,
+		}
+		go func() {
+			if err = w.server.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
+				logs.Log.Errorf("HTTP Server failed to start: %v", err)
+			}
+		}()
+	} else {
+		w.server = &http.Server{Addr: fmt.Sprintf("0.0.0.0:%d", w.port),
+			Handler: mux,
+		}
+		go func() {
+			if err := w.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				logs.Log.Errorf("HTTP Server failed to start: %v", err)
+			}
+		}()
+	}
+
 	w.Enable = true
 	return nil
 }
