@@ -15,26 +15,50 @@ import (
 
 // NewWebsiteCmd - 创建新的网站
 func NewWebsiteCmd(cmd *cobra.Command, con *repl.Console) error {
-	listenerID, _, port := common.ParsePipelineFlags(cmd)
 	name := cmd.Flags().Arg(0)
 	root, _ := cmd.Flags().GetString("root")
+	listenerID, host, port := common.ParsePipelineFlags(cmd)
 	if port == 0 {
 		port = cryptography.RandomInRange(10240, 65535)
 	}
+	useTls, _ := cmd.Flags().GetBool("tls")
+	certPath, _ := cmd.Flags().GetString("cert_path")
+	keyPath, _ := cmd.Flags().GetString("key_path")
+	return NewWebsite(con, name, root, host, port, useTls, certPath, keyPath, listenerID)
+}
 
-	tls, err := common.ParseTLSFlags(cmd)
-	if err != nil {
-		return err
+// NewWebsite
+func NewWebsite(con *repl.Console, websiteName, root, host string, port uint32, useTls bool, certPath, keyPath, listenerId string) error {
+	var cert, key string
+	var err error
+	if certPath != "" && keyPath != "" {
+		cert, err = cryptography.ProcessPEM(certPath)
+		if err != nil {
+			return err
+		}
+		key, err = cryptography.ProcessPEM(keyPath)
+		if err != nil {
+			return err
+		}
 	}
-
+	tls := &clientpb.TLS{
+		Enable: useTls,
+		Cert:   cert,
+		Key:    key,
+	}
+	if root == "" {
+		root = "/"
+	}
+	host = "0.0.0.0"
 	req := &clientpb.Pipeline{
-		Name:       name,
-		ListenerId: listenerID,
+		Name:       websiteName,
+		ListenerId: listenerId,
 		Enable:     false,
 		Tls:        tls,
+		Ip:         host, // this has not taken effect yet
 		Body: &clientpb.Pipeline_Web{
 			Web: &clientpb.Website{
-				Name:     name,
+				Name:     websiteName,
 				Root:     root,
 				Port:     port,
 				Contents: make(map[string]*clientpb.WebContent),
@@ -47,23 +71,26 @@ func NewWebsiteCmd(cmd *cobra.Command, con *repl.Console) error {
 	}
 
 	_, err = con.Rpc.StartWebsite(con.Context(), &clientpb.CtrlPipeline{
-		Name:       name,
-		ListenerId: listenerID,
+		Name:       websiteName,
+		ListenerId: listenerId,
 	})
 	if err != nil {
 		return err
 	}
-	con.Log.Importantf("Website %s created on port %d\n", name, port)
+	con.Log.Importantf("Website %s created on port %d\n", websiteName, port)
 	return nil
 }
 
-// AddWebContentCmd
+// StartWebsitePipelineCmd
 func StartWebsitePipelineCmd(cmd *cobra.Command, con *repl.Console) error {
-	name := cmd.Flags().Arg(0)
-	listenerID, _ := cmd.Flags().GetString("listener")
+	websiteName := cmd.Flags().Arg(0)
+	return StartWebsite(con, websiteName)
+}
+
+func StartWebsite(con *repl.Console, websiteName string) error {
 	_, err := con.Rpc.StartWebsite(con.Context(), &clientpb.CtrlPipeline{
-		Name:       name,
-		ListenerId: listenerID,
+		Name:       websiteName,
+		ListenerId: "",
 	})
 	if err != nil {
 		return err
@@ -73,10 +100,14 @@ func StartWebsitePipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 
 func StopWebsitePipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 	name := cmd.Flags().Arg(0)
-	listenerID, _ := cmd.Flags().GetString("listener")
+	return StopWebsite(con, name)
+}
+
+// StopWebsite
+func StopWebsite(con *repl.Console, name string) error {
 	_, err := con.Rpc.StopWebsite(con.Context(), &clientpb.CtrlPipeline{
 		Name:       name,
-		ListenerId: listenerID,
+		ListenerId: "",
 	})
 	if err != nil {
 		return err

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
@@ -31,7 +32,7 @@ func AddWebContentCmd(cmd *cobra.Command, con *repl.Console) error {
 }
 
 func AddWebContent(con *repl.Console, localFile, webPath, webPipe, typ string) (*clientpb.WebContent, error) {
-	content, err := os.ReadFile(localFile)
+	content, err := pe.Unpack(localFile)
 	if err != nil {
 		return nil, err
 	}

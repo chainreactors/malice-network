@@ -408,7 +408,7 @@ func (plug *LuaPlugin) RegisterLuaBuiltin(vm *lua.LState) error {
 					}
 
 					var outFunc intermediate.BuiltinCallback
-					if outFile, _ := cmd.Flags().GetString("file"); outFile == "" {
+					if outFile, _ := cmd.Flags().GetString("output_file"); outFile == "" {
 						outFunc = func(content interface{}) (interface{}, error) {
 							logs.Log.Consolef("%v\n", content)
 							return true, nil
@@ -448,7 +448,7 @@ func (plug *LuaPlugin) RegisterLuaBuiltin(vm *lua.LState) error {
 		}
 
 		set := pflag.NewFlagSet("mal common args", pflag.ExitOnError)
-		set.StringP("file", "f", "", "output file")
+		set.StringP("output_file", "f", "", "output file")
 		set.BoolP("help", "h", false, "print help")
 		set.VisitAll(func(flag *pflag.Flag) {
 			flag.Annotations = map[string][]string{
