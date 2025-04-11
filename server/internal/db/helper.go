@@ -583,6 +583,7 @@ func FindWebContentsByWebsite(website string) ([]*models.WebsiteContent, error) 
 func AddContent(content *clientpb.WebContent) (*models.WebsiteContent, error) {
 	switch content.Type {
 	case "", "raw", "default":
+		content.Type = "raw"
 		content.ContentType = mime.TypeByExtension(filepath.Ext(content.Path))
 	default:
 		content.ContentType = mime.TypeByExtension(filepath.Ext(content.Path))
