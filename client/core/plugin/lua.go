@@ -97,14 +97,12 @@ func (p *LuaVMPool) AcquireVM() (*LuaVMWrapper, error) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
-	// 首先尝试找到一个未锁定的 VM
 	for _, wrapper := range p.vms {
 		if wrapper.lock.TryLock() {
 			return wrapper, nil
 		}
 	}
 
-	// 如果还有空间，创建新的 VM
 	if len(p.vms) < p.maxSize {
 		wrapper := NewLuaVMWrapper()
 		wrapper.Lock()
@@ -112,7 +110,6 @@ func (p *LuaVMPool) AcquireVM() (*LuaVMWrapper, error) {
 		return wrapper, nil
 	}
 
-	// 如果已满，等待一个可用的 VM
 	logs.Log.Warnf("VM pool is full, waiting for available VM...")
 	p.lock.Unlock()
 
@@ -269,7 +266,7 @@ func (plug *LuaPlugin) RegisterLuaBuiltin(vm *lua.LState) error {
 	vm.SetGlobal("temp_dir", lua.LString(assets.GetTempDir()))
 	vm.SetGlobal("resource_dir", lua.LString(assets.GetResourceDir()))
 	packageMod := vm.GetGlobal("package").(*lua.LTable)
-	luaPath := lua.LuaPathDefault + ";" + plugDir + "\\?.lua"
+	luaPath := lua.LuaPathDefault + ";" + filepath.Join(plugDir, "?.lua")
 	vm.SetField(packageMod, "path", lua.LString(luaPath))
 
 	// 读取resource文件
