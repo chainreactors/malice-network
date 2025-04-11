@@ -114,6 +114,9 @@ rportforward pipeline1 --port 8080 --remote 192.168.1.1:80
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return RPortForwardLocalCmd(cmd, con)
 		},
+		Annotations: map[string]string{
+			"depend": consts.ModuleRem,
+		},
 	}
 
 	common.BindArgCompletions(rportforwardLocalCmd, nil,
@@ -132,6 +135,9 @@ rportforward pipeline1 --port 8080 --remote 192.168.1.1:80
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return PortForwardLocalCmd(cmd, con)
+		},
+		Annotations: map[string]string{
+			"depend": consts.ModuleRem,
 		},
 	}
 	common.BindArgCompletions(portforwardLocalCmd, nil,

@@ -79,10 +79,6 @@ func (rem *RemConsole) ToProtobuf() map[string]*clientpb.REMAgent {
 }
 
 func NewRemServer(conURL string, ip string) (*RemConsole, error) {
-	u, err := rem.NewConsoleURL(conURL)
-	if err != nil {
-		return nil, err
-	}
 	var option remrunner.Options
 	var args []string
 	if ip == "" {
@@ -90,7 +86,7 @@ func NewRemServer(conURL string, ip string) (*RemConsole, error) {
 	} else {
 		args = []string{"rem", "-c", conURL, "-i", ip}
 	}
-	err = option.ParseArgs(args)
+	err := option.ParseArgs(args)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +95,11 @@ func NewRemServer(conURL string, ip string) (*RemConsole, error) {
 	if err != nil {
 		return nil, err
 	}
-	remRunner.URLs.ConsoleURL = u
+
+	if len(remRunner.ConsoleURLs) > 0 {
+		remRunner.URLs.ConsoleURL = remRunner.ConsoleURLs[0]
+
+	}
 	remRunner.Subscribe = fmt.Sprintf("http://0.0.0.0:%d", cryptography.RandomInRange(20000, 65500))
 	console, err := remrunner.NewConsole(remRunner, remRunner.URLs)
 	if err != nil {

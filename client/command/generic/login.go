@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/tui"
 	"github.com/spf13/cobra"
 )
@@ -51,6 +52,13 @@ func Login(con *repl.Console, authFile string) error {
 	err = repl.Login(con, config)
 	if err != nil {
 		return err
+	}
+
+	if fileutils.Exist(authFile) {
+		err := assets.MvConfig(authFile)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
