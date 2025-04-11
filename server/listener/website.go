@@ -32,6 +32,7 @@ type Website struct {
 func StartWebsite(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeline, content map[string]*clientpb.WebContent) (*Website, error) {
 	websitePp := pipeline.GetWeb()
 	web := &Website{
+		Name:           pipeline.Name,
 		port:           int(websitePp.Port),
 		rootPath:       websitePp.Root,
 		rpc:            rpc,
