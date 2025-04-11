@@ -40,6 +40,7 @@ func (l *Listener) WaitCtrl(i uint32) *clientpb.JobStatus {
 }
 
 func (l *Listener) AddPipeline(pipeline *clientpb.Pipeline) {
+	pipeline.Ip = l.IP
 	l.Pipelines[pipeline.Name] = pipeline
 }
 
