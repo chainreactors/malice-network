@@ -6,7 +6,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/rem/agent"
-	rem "github.com/chainreactors/rem/core"
+	rem "github.com/chainreactors/rem/protocol/core"
 	remrunner "github.com/chainreactors/rem/runner"
 	"github.com/chainreactors/rem/x/utils"
 	"net"
