@@ -125,10 +125,11 @@ func LoadConfig(filename string) (*mtls.ClientConfig, error) {
 	baseFilename := filepath.Base(filename)
 	configPath := filepath.Join(GetConfigDir(), baseFilename)
 
-	var needMove bool
-
-	if fileutils.Exist(filename) {
-		needMove = true
+	if fileutils.Exist(filename) && !fileutils.Exist(configPath) {
+		err := MvConfig(filename)
+		if err != nil {
+			return nil, err
+		}
 	} else if fileutils.Exist(configPath) {
 		filename = configPath
 	} else {
@@ -138,13 +139,6 @@ func LoadConfig(filename string) (*mtls.ClientConfig, error) {
 	config, err := mtls.ReadConfig(filename)
 	if err != nil {
 		return nil, err
-	}
-
-	if needMove {
-		err = MvConfig(filename)
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	return config, nil
