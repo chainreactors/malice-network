@@ -3,7 +3,11 @@ package listener
 import (
 	"errors"
 	"fmt"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
+	"github.com/chainreactors/malice-network/server/internal/configs"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/chainreactors/logs"
@@ -32,11 +36,13 @@ func StartWebsite(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeline
 		rootPath:       websitePp.Root,
 		rpc:            rpc,
 		PipelineConfig: core.FromProtobuf(pipeline),
-		Content:        content,
+		Content:        make(map[string]*clientpb.WebContent),
 	}
-
-	if web.Content == nil {
-		web.Content = make(map[string]*clientpb.WebContent)
+	for _, c := range content {
+		err := web.AddContent(c)
+		if err != nil {
+			return nil, err
+		}
 	}
 	err := web.Start()
 	if err != nil {
@@ -124,9 +130,26 @@ func (w *Website) websiteContentHandler(resp http.ResponseWriter, req *http.Requ
 
 	resp.Header().Add("Content-Type", content.ContentType)
 	resp.Header().Add("Cache-Control", "no-store, no-cache, must-revalidate")
-	resp.Write(content.Content)
+	data, err := os.ReadFile(content.File)
+	if err != nil {
+		return
+	}
+
+	resp.Write(data)
 }
 
-func (w *Website) AddContent(content *clientpb.WebContent) {
-	w.Content[strings.Trim(content.Path, "/")] = content
+func (w *Website) AddContent(content *clientpb.WebContent) error {
+	contentPath := filepath.Join(configs.WebsitePath, content.WebsiteId, content.Id)
+	if !fileutils.Exist(contentPath) {
+		err := os.WriteFile(contentPath, content.Content, 0644)
+		if err != nil {
+			return err
+		}
+	}
+	w.Content[strings.Trim(content.Path, "/")] = &clientpb.WebContent{
+		Path:        content.Path,
+		File:        contentPath,
+		ContentType: content.ContentType,
+	}
+	return nil
 }
