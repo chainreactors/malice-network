@@ -56,7 +56,6 @@ type ServerConfig struct {
 	GRPCPort     uint16        `config:"grpc_port" default:"5004"`
 	GRPCHost     string        `config:"grpc_host" default:"0.0.0.0"`
 	IP           string        `config:"ip" default:""`
-	MCPPort      uint16        `config:"mcp_port" default:"5005"`
 	DaemonConfig bool          `config:"daemon" default:"false"`
 	LogConfig    *LogConfig    `config:"log"`
 	MiscConfig   *MiscConfig   `config:"config"`

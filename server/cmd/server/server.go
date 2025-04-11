@@ -134,13 +134,6 @@ func Execute() {
 			logs.Log.Errorf(err.Error())
 			return
 		}
-
-		mcpServer := core.NewMCPServer()
-		go func() {
-			if err := mcpServer.Start(opt.Server.IP, int(opt.Server.MCPPort)); err != nil {
-				logs.Log.Errorf("MCP server error: %v", err)
-			}
-		}()
 	}
 
 	if opt.Listeners.Enable {
