@@ -9,7 +9,6 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -460,37 +459,7 @@ format_path("C:\\Windows\\System32\\calc.exe")
 			},
 			Example: `file_exists("C:\\Windows\\System32\\calc.exe")`,
 		})
-	// match re
-	RegisterFunction("ismatch", func(pattern, text string) (bool, []string) {
-		reg, err := regexp.Compile(pattern)
-		if err != nil {
-			fmt.Println("regexp compile error: ", err)
-			return false, nil
-		}
-		matches := reg.FindStringSubmatch(text)
-		if matches != nil {
-			return true, matches[1:]
-		}
-		return false, nil
-	})
-	AddHelper(
-		"ismatch",
-		&mals.Helper{
-			Group: EncodeGroup,
-			Short: "regexp match",
-			Input: []string{
-				"pattern",
-				"text",
-			},
-			Output: []string{
-				"bool",
-				"[]string",
-			},
-			Example: `ismatch("([a-z]+) ([0-9]+)", "hello 123")`,
-		})
-
 	// timestamp
-
 	RegisterFunction("timestamp", func() string {
 		return fmt.Sprintf("%d", time.Now().UnixNano()/int64(time.Millisecond))
 	})
@@ -575,5 +544,4 @@ format_path("C:\\Windows\\System32\\calc.exe")
 			},
 			Example: `parse_hex("0x1f04")`,
 		})
-
 }
