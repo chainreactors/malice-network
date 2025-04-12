@@ -119,7 +119,7 @@ func wrapImplantFunc(fun interface{}) implantFunc {
 			if paramType.Kind() == reflect.Int64 {
 				param = mals.ConvertNumericType(param.(int64), expectedType.Kind())
 			}
-			if reflect.TypeOf(param) != expectedType {
+			if expectedType.Kind() != reflect.Interface && reflect.TypeOf(param) != expectedType {
 				return nil, fmt.Errorf("argument %d should be %v, got %v", i+1, funcType.In(i+3), reflect.TypeOf(param))
 			}
 			in[i+2] = reflect.ValueOf(param)
@@ -204,7 +204,7 @@ func WrapServerFunc(con *Console, fun interface{}) *mals.MalFunction {
 		in := make([]reflect.Value, len(params)+1)
 		in[0] = reflect.ValueOf(con)
 		for i, param := range params {
-			if reflect.TypeOf(param) != funcType.In(i+1) {
+			if ftype := funcType.In(i + 1); ftype.Kind() != reflect.Interface && reflect.TypeOf(param) != ftype {
 				return nil, fmt.Errorf("argument %d should be %v, got %v", i+1, funcType.In(i+1), reflect.TypeOf(param))
 			}
 			in[i+1] = reflect.ValueOf(param)
