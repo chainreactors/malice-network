@@ -1,7 +1,6 @@
 package listener
 
 import (
-	"fmt"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/tui"
@@ -15,11 +14,11 @@ func ListenerCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	printListeners(listeners)
+	printListeners(con, listeners)
 	return nil
 }
 
-func printListeners(listeners *clientpb.Listeners) {
+func printListeners(con *repl.Console, listeners *clientpb.Listeners) {
 	var rowEntries []table.Row
 	var row table.Row
 	tableModel := tui.NewTable([]table.Column{
@@ -39,5 +38,5 @@ func printListeners(listeners *clientpb.Listeners) {
 	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)
 	tableModel.Title = "listeners"
-	fmt.Printf(tableModel.View())
+	con.Log.Console(tableModel.View())
 }

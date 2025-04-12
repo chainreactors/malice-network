@@ -1,7 +1,6 @@
 package website
 
 import (
-	"fmt"
 	"strconv"
 
 	"github.com/chainreactors/malice-network/client/command/common"
@@ -148,6 +147,6 @@ func ListWebsitesCmd(cmd *cobra.Command, con *repl.Console) error {
 	}
 	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)
-	fmt.Printf(tableModel.View())
+	con.Log.Console(tableModel.View())
 	return nil
 }

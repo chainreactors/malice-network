@@ -1,7 +1,6 @@
 package tasks
 
 import (
-	"fmt"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/tui"
@@ -69,7 +68,7 @@ func printFiles(files *clientpb.Files, con *repl.Console) {
 	}, true)
 	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)
-	fmt.Printf(tableModel.View())
+	con.Log.Console(tableModel.View())
 }
 
 func updateMaxLength(maxLengths *map[string]int, key string, newLength int) {

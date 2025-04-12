@@ -2,7 +2,6 @@ package build
 
 import (
 	"errors"
-	"fmt"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -164,7 +163,7 @@ func BuildLogCmd(cmd *cobra.Command, con *repl.Console) error {
 		con.Log.Infof("No log for %s", id)
 		return nil
 	}
-	fmt.Println(string(builder.Log))
+	con.Log.Console(string(builder.Log))
 	return nil
 }
 

@@ -1,7 +1,6 @@
 package build
 
 import (
-	"fmt"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
@@ -45,7 +44,7 @@ func ProfileShowCmd(cmd *cobra.Command, con *repl.Console) error {
 	}
 	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)
-	fmt.Printf(tableModel.View())
+	con.Log.Console(tableModel.View())
 	return nil
 }
 

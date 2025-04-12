@@ -88,7 +88,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 				return err
 			}
 
-			fmt.Print(string(out))
+			con.Log.Console(string(out))
 			return nil
 		},
 	}
@@ -137,25 +137,7 @@ func Log(con *repl.Console, sess *core.Session, msg string, notify bool) (bool, 
 }
 
 func Register(con *repl.Console) {
-	con.RegisterServerFunc("run", func(con *repl.Console, cmdline interface{}) (bool, error) {
-		var args []string
-		var err error
-		switch c := cmdline.(type) {
-		case string:
-			args, err = shellquote.Split(c)
-			if err != nil {
-				return false, err
-			}
-		case []string:
-			args = c
-		}
-
-		err = con.App.Execute(con.Context(), con.App.ActiveMenu(), args, false)
-		if err != nil {
-			return false, err
-		}
-		return true, nil
-	}, nil)
+	con.RegisterServerFunc("run", repl.RunCommand, nil)
 
 	con.RegisterServerFunc("async_run", func(con *repl.Console, cmdline interface{}) (bool, error) {
 		var args []string
