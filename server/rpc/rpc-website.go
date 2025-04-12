@@ -60,11 +60,10 @@ func (rpc *Server) AddWebsiteContent(ctx context.Context, req *clientpb.Website)
 			if err != nil {
 				return nil, err
 			}
-
-			job.Pipeline.GetWeb().Contents[content.Path] = content
 			lns.PushCtrl(&clientpb.JobCtrl{
-				Ctrl: consts.CtrlWebContentAdd,
-				Job:  job.ToProtobuf(),
+				Ctrl:    consts.CtrlWebContentAdd,
+				Job:     job.ToProtobuf(),
+				Content: content,
 			})
 		}
 	}
@@ -88,8 +87,9 @@ func (rpc *Server) UpdateWebsiteContent(ctx context.Context, req *clientpb.WebCo
 		return nil, err
 	}
 	lns.PushCtrl(&clientpb.JobCtrl{
-		Ctrl: consts.CtrlWebContentAdd,
-		Job:  job.ToProtobuf(),
+		Ctrl:    consts.CtrlWebContentAdd,
+		Job:     job.ToProtobuf(),
+		Content: content.ToProtobuf(true),
 	})
 
 	return content.ToProtobuf(false), nil
@@ -167,7 +167,6 @@ func (rpc *Server) StartWebsite(ctx context.Context, req *clientpb.CtrlPipeline)
 		Pipeline: webpb,
 		Name:     webpipe.Name,
 	}
-	core.Jobs.Add(job)
 	listener.PushCtrl(&clientpb.JobCtrl{
 		Ctrl: consts.CtrlWebsiteStart,
 		Job:  job.ToProtobuf(),
