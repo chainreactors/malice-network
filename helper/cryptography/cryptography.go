@@ -373,6 +373,23 @@ func RandomInRange(min, max uint32) uint32 {
 	return uint32(n.Int64()) + min
 }
 
+var letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+func RandomString(length int) string {
+	result := make([]byte, length)
+	lettersLen := big.NewInt(int64(len(letters)))
+
+	for i := range result {
+		n, err := rand.Int(rand.Reader, lettersLen)
+		if err != nil {
+			return ""
+		}
+		result[i] = letters[n.Int64()]
+	}
+
+	return string(result)
+}
+
 func RandomBytes(size int) []byte {
 	buf := make([]byte, size)
 	rand.Read(buf)

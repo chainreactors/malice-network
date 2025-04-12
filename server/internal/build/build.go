@@ -4,10 +4,10 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/docker/docker/api/types"
 	"github.com/wabzsy/gonut"
 	"io"
-	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -57,18 +57,6 @@ var (
 var dockerClient *client.Client
 var once sync.Once
 
-func generateContainerName(length int) string {
-	//const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-	const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
-	src := rand.NewSource(time.Now().UnixNano())
-	r := rand.New(src)
-	randomPart := make([]byte, length)
-	for i := range randomPart {
-		randomPart[i] = charset[r.Intn(len(charset))]
-	}
-	return string(randomPart)
-}
-
 func GetDockerClient() (*client.Client, error) {
 	var err error
 	once.Do(func() {
@@ -85,10 +73,10 @@ func BuildBeacon(cli *client.Client, req *clientpb.Generate) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	buildBeaconCommand := fmt.Sprintf(
-		"make beacon target_triple=%s",
+		"malefic-mutant generate beacon && malefic-mutant build malefic -t %s",
 		req.Target,
 	)
-	containerName := "malefic_" + generateContainerName(8)
+	containerName := "malefic_" + cryptography.RandomString(8)
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
 		Image: DefaultImage,
 		Cmd:   []string{"sh", "-c", buildBeaconCommand},
@@ -104,7 +92,7 @@ func BuildBeacon(cli *client.Client, req *clientpb.Generate) error {
 	if err := cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
 		logs.Log.Errorf("Error starting container: %v", err)
 	}
-	sendContaninerCtrlMsg(false, containerName, req)
+	sendContainerCtrlMsg(false, containerName, req)
 	logs.Log.Infof("Container %s started successfully.", resp.ID)
 	err = catchLogs(cli, resp.ID, req.Name)
 	if err != nil {
@@ -122,7 +110,7 @@ func BuildBeacon(cli *client.Client, req *clientpb.Generate) error {
 	case <-statusCh:
 		logs.Log.Infof("Container %s has stopped and will be automatically removed.", resp.ID)
 	}
-	sendContaninerCtrlMsg(true, containerName, req)
+	sendContainerCtrlMsg(true, containerName, req)
 	return nil
 }
 
@@ -131,10 +119,10 @@ func BuildBind(cli *client.Client, req *clientpb.Generate) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	BuildBindCommand := fmt.Sprintf(
-		"make bind target_triple=%s",
+		"malefic-mutant generate bind && malefic-mutant build malefic -t %s",
 		req.Target,
 	)
-	containerName := "malefic_" + generateContainerName(8)
+	containerName := "malefic_" + cryptography.RandomString(8)
 
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
 		Image: DefaultImage,
@@ -151,7 +139,7 @@ func BuildBind(cli *client.Client, req *clientpb.Generate) error {
 		logs.Log.Errorf("Error starting container: %v", err)
 	}
 
-	sendContaninerCtrlMsg(false, containerName, req)
+	sendContainerCtrlMsg(false, containerName, req)
 	logs.Log.Infof("Container %s started successfully.", resp.ID)
 
 	err = catchLogs(cli, resp.ID, req.Name)
@@ -170,7 +158,7 @@ func BuildBind(cli *client.Client, req *clientpb.Generate) error {
 	case <-statusCh:
 		logs.Log.Infof("Container %s has stopped and will be automatically removed.", resp.ID)
 	}
-	sendContaninerCtrlMsg(true, containerName, req)
+	sendContainerCtrlMsg(true, containerName, req)
 	return nil
 }
 
@@ -183,10 +171,10 @@ func BuildPrelude(cli *client.Client, req *clientpb.Generate) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	BuildPreludeCommand := fmt.Sprintf(
-		"make prelude target_triple=%s",
+		"malefic-mutant generate prelude && malefic-mutant build prelude -t %s",
 		req.Target,
 	)
-	containerName := "malefic_" + generateContainerName(8)
+	containerName := "malefic_" + cryptography.RandomString(8)
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
 		Image: DefaultImage,
 		Cmd:   []string{"sh", "-c", BuildPreludeCommand},
@@ -202,7 +190,7 @@ func BuildPrelude(cli *client.Client, req *clientpb.Generate) error {
 		logs.Log.Errorf("Error starting container: %v", err)
 	}
 
-	sendContaninerCtrlMsg(false, containerName, req)
+	sendContainerCtrlMsg(false, containerName, req)
 	logs.Log.Infof("Container %s started successfully.", resp.ID)
 
 	err = catchLogs(cli, resp.ID, req.Name)
@@ -222,7 +210,7 @@ func BuildPrelude(cli *client.Client, req *clientpb.Generate) error {
 	case <-statusCh:
 		logs.Log.Infof("Container %s has stopped and will be automatically removed.", resp.ID)
 	}
-	sendContaninerCtrlMsg(true, containerName, req)
+	sendContainerCtrlMsg(true, containerName, req)
 	return nil
 }
 
@@ -231,10 +219,10 @@ func BuildPulse(cli *client.Client, req *clientpb.Generate) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	BuildBindCommand := fmt.Sprintf(
-		"make pulse target_triple=%s",
+		"malefic-mutant generate pulse &&malefic-mutant build pulse -t %s",
 		req.Target,
 	)
-	containerName := "malefic_" + generateContainerName(8)
+	containerName := "malefic_" + cryptography.RandomString(8)
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
 		Image: DefaultImage,
 		Cmd:   []string{"sh", "-c", BuildBindCommand},
@@ -250,7 +238,7 @@ func BuildPulse(cli *client.Client, req *clientpb.Generate) error {
 		logs.Log.Errorf("Error starting container: %v", err)
 	}
 
-	sendContaninerCtrlMsg(false, containerName, req)
+	sendContainerCtrlMsg(false, containerName, req)
 	logs.Log.Infof("Container %s started successfully.", resp.ID)
 
 	err = catchLogs(cli, resp.ID, req.Name)
@@ -270,7 +258,7 @@ func BuildPulse(cli *client.Client, req *clientpb.Generate) error {
 	case <-statusCh:
 		logs.Log.Infof("Container %s has stopped and will be automatically removed.", resp.ID)
 	}
-	sendContaninerCtrlMsg(true, containerName, req)
+	sendContainerCtrlMsg(true, containerName, req)
 	return nil
 }
 
@@ -278,13 +266,11 @@ func BuildModules(cli *client.Client, req *clientpb.Generate) error {
 	timeout := 20 * time.Minute
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	containerName := "malefic_" + generateContainerName(8)
-	buildModules := strings.Join(req.Modules, ",")
+	containerName := "malefic_" + cryptography.RandomString(8)
 	var buildModulesCommand string
 	buildModulesCommand = fmt.Sprintf(
-		"make modules target_triple=%s malefic_modules_features=%s",
+		"malefic-mutant generate modules && malefic-mutant build modules -t %s",
 		req.Target,
-		buildModules,
 	)
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
 		Image: DefaultImage,
@@ -301,7 +287,7 @@ func BuildModules(cli *client.Client, req *clientpb.Generate) error {
 		logs.Log.Errorf("Error starting container: %v", err)
 	}
 
-	sendContaninerCtrlMsg(false, containerName, req)
+	sendContainerCtrlMsg(false, containerName, req)
 	logs.Log.Infof("Container %s started successfully.", resp.ID)
 
 	err = catchLogs(cli, resp.ID, req.Name)
@@ -322,7 +308,7 @@ func BuildModules(cli *client.Client, req *clientpb.Generate) error {
 		logs.Log.Infof("Container %s has stopped and will be automatically removed.", resp.ID)
 	}
 
-	sendContaninerCtrlMsg(true, containerName, req)
+	sendContainerCtrlMsg(true, containerName, req)
 
 	return nil
 }
@@ -400,38 +386,6 @@ func SRDIArtifact(builder *models.Builder, platform, arch string) ([]byte, error
 	return bin, nil
 }
 
-// Deprecated: Use donut instead
-func MaleficSRDI(src, dst, platform, arch, funcName, dataPath string) ([]byte, error) {
-	if platform == "" || platform == "windows" {
-		platform = "win"
-	}
-	if arch == "" {
-		arch = "x64"
-	}
-	args := []string{command, "srdi", "-i", src, "-p", platform, "-a", arch, "-o", dst}
-	if funcName != "" {
-		args = append(args, funcNameOption, funcName)
-	}
-	if dataPath != "" {
-		args = append(args, userDataPathOption, dataPath)
-	}
-	cmd := exec.Command(LocalMutantPath, args...)
-	cmd.Dir = sourcePath
-	output, err := cmd.CombinedOutput()
-	logs.Log.Debugf("SRDI output: %s", output)
-
-	if err != nil {
-		return nil, err
-	}
-
-	data, err := os.ReadFile(dst)
-	if err != nil {
-		return nil, err
-	}
-
-	return data, nil
-}
-
 func catchLogs(cli *client.Client, containerID, name string) error {
 	logOptions := types.ContainerLogsOptions{
 		ShowStdout: true,
@@ -469,7 +423,7 @@ func catchLogs(cli *client.Client, containerID, name string) error {
 	return nil
 }
 
-func sendContaninerCtrlMsg(isEnd bool, containerName string, req *clientpb.Generate) {
+func sendContainerCtrlMsg(isEnd bool, containerName string, req *clientpb.Generate) {
 	if isEnd {
 		core.EventBroker.Publish(core.Event{
 			EventType: consts.EventBuild,
