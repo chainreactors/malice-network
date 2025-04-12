@@ -158,9 +158,13 @@ type Logger struct {
 
 var ansi = regexp.MustCompile(`\x1b\[[0-9;]*m`)
 
+func RemoveANSI(s string) string {
+	return ansi.ReplaceAllString(s, "")
+}
+
 func (l *Logger) FileLog(s string) {
 	if l.logFile != nil {
-		l.logFile.WriteString(ansi.ReplaceAllString(s, ""))
+		l.logFile.WriteString(RemoveANSI(s))
 		l.logFile.Sync()
 	}
 }

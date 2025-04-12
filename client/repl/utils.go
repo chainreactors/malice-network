@@ -119,5 +119,5 @@ func RunCommand(con *Console, cmdline interface{}) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return core.Stdout.Range(start, time.Now()), nil
+	return core.RemoveANSI(core.Stdout.Range(start, time.Now())), nil
 }
