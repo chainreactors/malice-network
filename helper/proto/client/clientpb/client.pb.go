@@ -951,9 +951,10 @@ type JobCtrl struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id   uint32 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
-	Ctrl string `protobuf:"bytes,2,opt,name=ctrl,proto3" json:"ctrl,omitempty"`
-	Job  *Job   `protobuf:"bytes,3,opt,name=job,proto3" json:"job,omitempty"`
+	Id      uint32      `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Ctrl    string      `protobuf:"bytes,2,opt,name=ctrl,proto3" json:"ctrl,omitempty"`
+	Job     *Job        `protobuf:"bytes,3,opt,name=job,proto3" json:"job,omitempty"`
+	Content *WebContent `protobuf:"bytes,4,opt,name=content,proto3" json:"content,omitempty"`
 }
 
 func (x *JobCtrl) Reset() {
@@ -1005,6 +1006,13 @@ func (x *JobCtrl) GetCtrl() string {
 func (x *JobCtrl) GetJob() *Job {
 	if x != nil {
 		return x.Job
+	}
+	return nil
+}
+
+func (x *JobCtrl) GetContent() *WebContent {
+	if x != nil {
+		return x.Content
 	}
 	return nil
 }
@@ -5950,12 +5958,15 @@ var file_client_clientpb_client_proto_rawDesc = []byte{
 	0x6c, 0x75, 0x65, 0x3a, 0x02, 0x38, 0x01, 0x42, 0x06, 0x0a, 0x04, 0x62, 0x6f, 0x64, 0x79, 0x22,
 	0x27, 0x0a, 0x04, 0x4a, 0x6f, 0x62, 0x73, 0x12, 0x1f, 0x0a, 0x03, 0x6a, 0x6f, 0x62, 0x18, 0x01,
 	0x20, 0x03, 0x28, 0x0b, 0x32, 0x0d, 0x2e, 0x63, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x70, 0x62, 0x2e,
-	0x4a, 0x6f, 0x62, 0x52, 0x03, 0x6a, 0x6f, 0x62, 0x22, 0x4e, 0x0a, 0x07, 0x4a, 0x6f, 0x62, 0x43,
+	0x4a, 0x6f, 0x62, 0x52, 0x03, 0x6a, 0x6f, 0x62, 0x22, 0x7e, 0x0a, 0x07, 0x4a, 0x6f, 0x62, 0x43,
 	0x74, 0x72, 0x6c, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0d, 0x52,
 	0x02, 0x69, 0x64, 0x12, 0x12, 0x0a, 0x04, 0x63, 0x74, 0x72, 0x6c, 0x18, 0x02, 0x20, 0x01, 0x28,
 	0x09, 0x52, 0x04, 0x63, 0x74, 0x72, 0x6c, 0x12, 0x1f, 0x0a, 0x03, 0x6a, 0x6f, 0x62, 0x18, 0x03,
 	0x20, 0x01, 0x28, 0x0b, 0x32, 0x0d, 0x2e, 0x63, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x70, 0x62, 0x2e,
-	0x4a, 0x6f, 0x62, 0x52, 0x03, 0x6a, 0x6f, 0x62, 0x22, 0xa8, 0x01, 0x0a, 0x09, 0x4a, 0x6f, 0x62,
+	0x4a, 0x6f, 0x62, 0x52, 0x03, 0x6a, 0x6f, 0x62, 0x12, 0x2e, 0x0a, 0x07, 0x63, 0x6f, 0x6e, 0x74,
+	0x65, 0x6e, 0x74, 0x18, 0x04, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x14, 0x2e, 0x63, 0x6c, 0x69, 0x65,
+	0x6e, 0x74, 0x70, 0x62, 0x2e, 0x57, 0x65, 0x62, 0x43, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x52,
+	0x07, 0x63, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x22, 0xa8, 0x01, 0x0a, 0x09, 0x4a, 0x6f, 0x62,
 	0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x12, 0x1f, 0x0a, 0x0b, 0x6c, 0x69, 0x73, 0x74, 0x65, 0x6e,
 	0x65, 0x72, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x6c, 0x69, 0x73,
 	0x74, 0x65, 0x6e, 0x65, 0x72, 0x49, 0x64, 0x12, 0x12, 0x0a, 0x04, 0x63, 0x74, 0x72, 0x6c, 0x18,
@@ -6670,65 +6681,66 @@ var file_client_clientpb_client_proto_depIdxs = []int32{
 	60, // 13: clientpb.Job.rem_log:type_name -> clientpb.RemLog
 	10, // 14: clientpb.Jobs.job:type_name -> clientpb.Job
 	10, // 15: clientpb.JobCtrl.job:type_name -> clientpb.Job
-	10, // 16: clientpb.JobStatus.job:type_name -> clientpb.Job
-	51, // 17: clientpb.Listener.pipelines:type_name -> clientpb.Pipelines
-	14, // 18: clientpb.Listeners.listeners:type_name -> clientpb.Listener
-	16, // 19: clientpb.Clients.clients:type_name -> clientpb.Client
-	2,  // 20: clientpb.Event.session:type_name -> clientpb.Session
-	10, // 21: clientpb.Event.job:type_name -> clientpb.Job
-	16, // 22: clientpb.Event.client:type_name -> clientpb.Client
-	28, // 23: clientpb.Event.task:type_name -> clientpb.Task
-	84, // 24: clientpb.Event.spite:type_name -> implantpb.Spite
-	18, // 25: clientpb.Events.events:type_name -> clientpb.Event
-	28, // 26: clientpb.TaskContext.task:type_name -> clientpb.Task
-	2,  // 27: clientpb.TaskContext.session:type_name -> clientpb.Session
-	84, // 28: clientpb.TaskContext.spite:type_name -> implantpb.Spite
-	28, // 29: clientpb.TaskContexts.task:type_name -> clientpb.Task
-	2,  // 30: clientpb.TaskContexts.session:type_name -> clientpb.Session
-	84, // 31: clientpb.TaskContexts.spites:type_name -> implantpb.Spite
-	25, // 32: clientpb.TasksContext.contexts:type_name -> clientpb.TaskContext
-	28, // 33: clientpb.Tasks.tasks:type_name -> clientpb.Task
-	33, // 34: clientpb.TaskDescs.tasks:type_name -> clientpb.TaskDesc
-	31, // 35: clientpb.Files.files:type_name -> clientpb.File
-	35, // 36: clientpb.Plugins.plugins:type_name -> clientpb.Plugin
-	41, // 37: clientpb.Artifacts.artifacts:type_name -> clientpb.Artifact
-	43, // 38: clientpb.Profiles.profiles:type_name -> clientpb.Profile
-	40, // 39: clientpb.Builders.builders:type_name -> clientpb.Builder
-	85, // 40: clientpb.RegisterSession.register_data:type_name -> modulepb.Register
-	51, // 41: clientpb.RegisterListener.pipelines:type_name -> clientpb.Pipelines
-	2,  // 42: clientpb.SpiteRequest.session:type_name -> clientpb.Session
-	28, // 43: clientpb.SpiteRequest.task:type_name -> clientpb.Task
-	84, // 44: clientpb.SpiteRequest.spite:type_name -> implantpb.Spite
-	84, // 45: clientpb.SpiteResponse.spite:type_name -> implantpb.Spite
-	52, // 46: clientpb.Pipelines.pipelines:type_name -> clientpb.Pipeline
-	54, // 47: clientpb.Pipeline.tls:type_name -> clientpb.TLS
-	55, // 48: clientpb.Pipeline.encryption:type_name -> clientpb.Encryption
-	61, // 49: clientpb.Pipeline.tcp:type_name -> clientpb.TCPPipeline
-	56, // 50: clientpb.Pipeline.bind:type_name -> clientpb.BindPipeline
-	57, // 51: clientpb.Pipeline.rem:type_name -> clientpb.REM
-	64, // 52: clientpb.Pipeline.web:type_name -> clientpb.Website
-	62, // 53: clientpb.Pipeline.http:type_name -> clientpb.HTTPPipeline
-	52, // 54: clientpb.CtrlPipeline.pipeline:type_name -> clientpb.Pipeline
-	77, // 55: clientpb.REM.agents:type_name -> clientpb.REM.AgentsEntry
-	59, // 56: clientpb.REMAgents.agents:type_name -> clientpb.REMAgent
-	78, // 57: clientpb.Website.contents:type_name -> clientpb.Website.ContentsEntry
-	64, // 58: clientpb.Websites.websites:type_name -> clientpb.Website
-	63, // 59: clientpb.WebContents.contents:type_name -> clientpb.WebContent
-	79, // 60: clientpb.GithubWorkflowRequest.inputs:type_name -> clientpb.GithubWorkflowRequest.InputsEntry
-	70, // 61: clientpb.GithubWorkflows.workflows:type_name -> clientpb.GithubWorkflow
-	2,  // 62: clientpb.Context.session:type_name -> clientpb.Session
-	28, // 63: clientpb.Context.task:type_name -> clientpb.Task
-	52, // 64: clientpb.Context.pipeline:type_name -> clientpb.Pipeline
-	14, // 65: clientpb.Context.listener:type_name -> clientpb.Listener
-	72, // 66: clientpb.Contexts.contexts:type_name -> clientpb.Context
-	63, // 67: clientpb.Job.ContentsEntry.value:type_name -> clientpb.WebContent
-	59, // 68: clientpb.REM.AgentsEntry.value:type_name -> clientpb.REMAgent
-	63, // 69: clientpb.Website.ContentsEntry.value:type_name -> clientpb.WebContent
-	70, // [70:70] is the sub-list for method output_type
-	70, // [70:70] is the sub-list for method input_type
-	70, // [70:70] is the sub-list for extension type_name
-	70, // [70:70] is the sub-list for extension extendee
-	0,  // [0:70] is the sub-list for field type_name
+	63, // 16: clientpb.JobCtrl.content:type_name -> clientpb.WebContent
+	10, // 17: clientpb.JobStatus.job:type_name -> clientpb.Job
+	51, // 18: clientpb.Listener.pipelines:type_name -> clientpb.Pipelines
+	14, // 19: clientpb.Listeners.listeners:type_name -> clientpb.Listener
+	16, // 20: clientpb.Clients.clients:type_name -> clientpb.Client
+	2,  // 21: clientpb.Event.session:type_name -> clientpb.Session
+	10, // 22: clientpb.Event.job:type_name -> clientpb.Job
+	16, // 23: clientpb.Event.client:type_name -> clientpb.Client
+	28, // 24: clientpb.Event.task:type_name -> clientpb.Task
+	84, // 25: clientpb.Event.spite:type_name -> implantpb.Spite
+	18, // 26: clientpb.Events.events:type_name -> clientpb.Event
+	28, // 27: clientpb.TaskContext.task:type_name -> clientpb.Task
+	2,  // 28: clientpb.TaskContext.session:type_name -> clientpb.Session
+	84, // 29: clientpb.TaskContext.spite:type_name -> implantpb.Spite
+	28, // 30: clientpb.TaskContexts.task:type_name -> clientpb.Task
+	2,  // 31: clientpb.TaskContexts.session:type_name -> clientpb.Session
+	84, // 32: clientpb.TaskContexts.spites:type_name -> implantpb.Spite
+	25, // 33: clientpb.TasksContext.contexts:type_name -> clientpb.TaskContext
+	28, // 34: clientpb.Tasks.tasks:type_name -> clientpb.Task
+	33, // 35: clientpb.TaskDescs.tasks:type_name -> clientpb.TaskDesc
+	31, // 36: clientpb.Files.files:type_name -> clientpb.File
+	35, // 37: clientpb.Plugins.plugins:type_name -> clientpb.Plugin
+	41, // 38: clientpb.Artifacts.artifacts:type_name -> clientpb.Artifact
+	43, // 39: clientpb.Profiles.profiles:type_name -> clientpb.Profile
+	40, // 40: clientpb.Builders.builders:type_name -> clientpb.Builder
+	85, // 41: clientpb.RegisterSession.register_data:type_name -> modulepb.Register
+	51, // 42: clientpb.RegisterListener.pipelines:type_name -> clientpb.Pipelines
+	2,  // 43: clientpb.SpiteRequest.session:type_name -> clientpb.Session
+	28, // 44: clientpb.SpiteRequest.task:type_name -> clientpb.Task
+	84, // 45: clientpb.SpiteRequest.spite:type_name -> implantpb.Spite
+	84, // 46: clientpb.SpiteResponse.spite:type_name -> implantpb.Spite
+	52, // 47: clientpb.Pipelines.pipelines:type_name -> clientpb.Pipeline
+	54, // 48: clientpb.Pipeline.tls:type_name -> clientpb.TLS
+	55, // 49: clientpb.Pipeline.encryption:type_name -> clientpb.Encryption
+	61, // 50: clientpb.Pipeline.tcp:type_name -> clientpb.TCPPipeline
+	56, // 51: clientpb.Pipeline.bind:type_name -> clientpb.BindPipeline
+	57, // 52: clientpb.Pipeline.rem:type_name -> clientpb.REM
+	64, // 53: clientpb.Pipeline.web:type_name -> clientpb.Website
+	62, // 54: clientpb.Pipeline.http:type_name -> clientpb.HTTPPipeline
+	52, // 55: clientpb.CtrlPipeline.pipeline:type_name -> clientpb.Pipeline
+	77, // 56: clientpb.REM.agents:type_name -> clientpb.REM.AgentsEntry
+	59, // 57: clientpb.REMAgents.agents:type_name -> clientpb.REMAgent
+	78, // 58: clientpb.Website.contents:type_name -> clientpb.Website.ContentsEntry
+	64, // 59: clientpb.Websites.websites:type_name -> clientpb.Website
+	63, // 60: clientpb.WebContents.contents:type_name -> clientpb.WebContent
+	79, // 61: clientpb.GithubWorkflowRequest.inputs:type_name -> clientpb.GithubWorkflowRequest.InputsEntry
+	70, // 62: clientpb.GithubWorkflows.workflows:type_name -> clientpb.GithubWorkflow
+	2,  // 63: clientpb.Context.session:type_name -> clientpb.Session
+	28, // 64: clientpb.Context.task:type_name -> clientpb.Task
+	52, // 65: clientpb.Context.pipeline:type_name -> clientpb.Pipeline
+	14, // 66: clientpb.Context.listener:type_name -> clientpb.Listener
+	72, // 67: clientpb.Contexts.contexts:type_name -> clientpb.Context
+	63, // 68: clientpb.Job.ContentsEntry.value:type_name -> clientpb.WebContent
+	59, // 69: clientpb.REM.AgentsEntry.value:type_name -> clientpb.REMAgent
+	63, // 70: clientpb.Website.ContentsEntry.value:type_name -> clientpb.WebContent
+	71, // [71:71] is the sub-list for method output_type
+	71, // [71:71] is the sub-list for method input_type
+	71, // [71:71] is the sub-list for extension type_name
+	71, // [71:71] is the sub-list for extension extendee
+	0,  // [0:71] is the sub-list for field type_name
 }
 
 func init() { file_client_clientpb_client_proto_init() }

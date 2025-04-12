@@ -241,9 +241,9 @@ func (lns *listener) Handler() {
 		case consts.CtrlWebsiteRegister:
 			handlerErr = lns.handleRegisterWebsite(msg.Job)
 		case consts.CtrlWebContentAdd:
-			handlerErr = lns.handleWebContentAdd(msg.Job)
+			handlerErr = lns.handleWebContentAdd(msg)
 		case consts.CtrlWebContentUpdate:
-			handlerErr = lns.handleWebContentUpdate(msg.Job)
+			handlerErr = lns.handleWebContentUpdate(msg)
 		case consts.CtrlWebContentRemove:
 			handlerErr = lns.handleWebContentRemove(msg.Job)
 		case consts.CtrlRemStart:
@@ -473,29 +473,23 @@ func (lns *listener) handleRegisterWebsite(job *clientpb.Job) error {
 	return nil
 }
 
-func (lns *listener) handleWebContentAdd(job *clientpb.Job) error {
-	pipe := job.GetPipeline()
-	web := pipe.GetWeb()
+func (lns *listener) handleWebContentAdd(job *clientpb.JobCtrl) error {
+	pipe := job.GetJob()
 	w := lns.websites[pipe.Name]
 	if w == nil {
 		return errors.New("website not found")
 	}
-	for _, content := range web.Contents {
-		w.AddContent(content)
-	}
+	w.AddContent(job.Content)
 	return nil
 }
 
-func (lns *listener) handleWebContentUpdate(job *clientpb.Job) error {
-	pipe := job.GetPipeline()
-	web := pipe.GetWeb()
+func (lns *listener) handleWebContentUpdate(job *clientpb.JobCtrl) error {
+	pipe := job.GetJob()
 	w := lns.websites[pipe.Name]
 	if w == nil {
 		return errors.New("website not found")
 	}
-	for _, content := range web.Contents {
-		w.AddContent(content)
-	}
+	w.AddContent(job.Content)
 	return nil
 }
 
