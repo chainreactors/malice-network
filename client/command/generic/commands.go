@@ -3,6 +3,7 @@ package generic
 import (
 	"errors"
 	"fmt"
+	"github.com/kballard/go-shellquote"
 	"os"
 	"os/exec"
 
@@ -136,16 +137,40 @@ func Log(con *repl.Console, sess *core.Session, msg string, notify bool) (bool, 
 }
 
 func Register(con *repl.Console) {
-	con.RegisterServerFunc("run", func(con *repl.Console, args []string) (bool, error) {
-		err := con.App.Execute(con.Context(), con.App.ActiveMenu(), args, false)
+	con.RegisterServerFunc("run", func(con *repl.Console, cmdline interface{}) (bool, error) {
+		var args []string
+		var err error
+		switch c := cmdline.(type) {
+		case string:
+			args, err = shellquote.Split(c)
+			if err != nil {
+				return false, err
+			}
+		case []string:
+			args = c
+		}
+
+		err = con.App.Execute(con.Context(), con.App.ActiveMenu(), args, false)
 		if err != nil {
 			return false, err
 		}
 		return true, nil
 	}, nil)
 
-	con.RegisterServerFunc("async_run", func(con *repl.Console, args []string) (bool, error) {
-		err := con.App.Execute(con.Context(), con.App.ActiveMenu(), args, true)
+	con.RegisterServerFunc("async_run", func(con *repl.Console, cmdline interface{}) (bool, error) {
+		var args []string
+		var err error
+		switch c := cmdline.(type) {
+		case string:
+			args, err = shellquote.Split(c)
+			if err != nil {
+				return false, err
+			}
+		case []string:
+			args = c
+		}
+
+		err = con.App.Execute(con.Context(), con.App.ActiveMenu(), args, true)
 		if err != nil {
 			return false, err
 		}
