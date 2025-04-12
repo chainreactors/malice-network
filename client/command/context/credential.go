@@ -1,7 +1,6 @@
 package context
 
 import (
-	"fmt"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
@@ -47,7 +46,7 @@ func GetCredentialsCmd(cmd *cobra.Command, con *repl.Console) error {
 	}, true)
 
 	tableModel.SetRows(rowEntries)
-	fmt.Printf(tableModel.View())
+	con.Log.Console(tableModel.View())
 	return nil
 }
 

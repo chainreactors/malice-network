@@ -1,7 +1,6 @@
 package context
 
 import (
-	"fmt"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/tui"
@@ -34,7 +33,7 @@ func ListContexts(cmd *cobra.Command, con *repl.Console) error {
 	}, true)
 
 	tableModel.SetRows(rowEntries)
-	fmt.Printf(tableModel.View())
+	con.Log.Console(tableModel.View())
 	return nil
 }
 

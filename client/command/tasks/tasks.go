@@ -1,7 +1,6 @@
 package tasks
 
 import (
-	"fmt"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/tui"
@@ -62,7 +61,7 @@ func printTasks(tasks []*clientpb.Task, con *repl.Console, isAll bool) {
 	tableModel.SetAscSort("ID")
 	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)
-	fmt.Printf(tableModel.View())
+	con.Log.Console(tableModel.View())
 }
 
 //	func TasksCmd(ctx *grumble.Context, con *console.Console) {

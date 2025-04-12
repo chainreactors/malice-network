@@ -46,7 +46,7 @@ func GetKeyloggersCmd(cmd *cobra.Command, con *repl.Console) error {
 	}, true)
 
 	tableModel.SetRows(rowEntries)
-	fmt.Printf(tableModel.View())
+	con.Log.Console(tableModel.View())
 	return nil
 }
 

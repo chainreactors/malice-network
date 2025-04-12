@@ -7,7 +7,6 @@ import (
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 	"google.golang.org/grpc/metadata"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -20,15 +19,8 @@ import (
 )
 
 func NewSession(sess *clientpb.Session, server *ServerStatus) *Session {
-	var log *logs.Logger
-	log = logs.NewLogger(LogLevel)
-	log.SetFormatter(DefaultLogStyle)
-	logFile, err := os.OpenFile(filepath.Join(assets.GetLogDir(), fmt.Sprintf("%s.log", sess.SessionId)), os.O_RDWR|os.O_CREATE, 0666)
-	if err != nil {
-		Log.Warnf("Failed to open log file: %v", err)
-	}
 	var data *types.SessionContext
-	err = json.Unmarshal([]byte(sess.Data), &data)
+	err := json.Unmarshal([]byte(sess.Data), &data)
 	if err != nil {
 		Log.Warnf("Failed to unmarshal session data: %v", err)
 	}
@@ -39,7 +31,7 @@ func NewSession(sess *clientpb.Session, server *ServerStatus) *Session {
 		Server:   server,
 		Data:     data,
 		Callee:   consts.CalleeCMD,
-		Log:      &Logger{Logger: log, logFile: logFile},
+		Log:      NewLogger(filepath.Join(assets.GetLogDir(), fmt.Sprintf("%s.log", sess.SessionId))),
 	}
 }
 

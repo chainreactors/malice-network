@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/kballard/go-shellquote"
 	"github.com/mattn/go-tty"
 	"github.com/muesli/termenv"
 	"github.com/reeflective/console"
 	"github.com/spf13/cobra"
 	"os"
+	"time"
 )
 
 func exitConsole(c *console.Console) {
@@ -98,4 +100,24 @@ func Keys[M ~map[K]V, K comparable, V any](m M) []K {
 	}
 
 	return r
+}
+
+func RunCommand(con *Console, cmdline interface{}) (string, error) {
+	var args []string
+	var err error
+	switch c := cmdline.(type) {
+	case string:
+		args, err = shellquote.Split(c)
+		if err != nil {
+			return "", err
+		}
+	case []string:
+		args = c
+	}
+	start := time.Now()
+	err = con.App.Execute(con.Context(), con.App.ActiveMenu(), args, false)
+	if err != nil {
+		return "", err
+	}
+	return core.Stdout.Range(start, time.Now()), nil
 }
