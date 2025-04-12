@@ -136,6 +136,22 @@ func Log(con *repl.Console, sess *core.Session, msg string, notify bool) (bool, 
 }
 
 func Register(con *repl.Console) {
+	con.RegisterServerFunc("run", func(con *repl.Console, args []string) (bool, error) {
+		err := con.App.Execute(con.Context(), con.App.ActiveMenu(), args, false)
+		if err != nil {
+			return false, err
+		}
+		return true, nil
+	}, nil)
+
+	con.RegisterServerFunc("async_run", func(con *repl.Console, args []string) (bool, error) {
+		err := con.App.Execute(con.Context(), con.App.ActiveMenu(), args, true)
+		if err != nil {
+			return false, err
+		}
+		return true, nil
+	}, nil)
+
 	con.RegisterServerFunc(consts.CommandBroadcast, func(con *repl.Console, msg string) (bool, error) {
 		return Broadcast(con, &clientpb.Event{
 			Type:    consts.EventBroadcast,

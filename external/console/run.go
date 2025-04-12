@@ -87,7 +87,7 @@ func (c *Console) StartContext(ctx context.Context) error {
 		// the library user is responsible for setting
 		// the cobra behavior.
 		// If it's an interrupt, we take care of it.
-		if err := c.execute(ctx, menu, args, false); err != nil {
+		if err := c.Execute(ctx, menu, args, false); err != nil {
 			menu.ErrorHandler(ExecutionError{newError(err, "")})
 		}
 
@@ -107,7 +107,7 @@ func (m *Menu) RunCommandArgs(ctx context.Context, args []string) (err error) {
 	m.resetPreRun()
 
 	// Run the command and associated helpers.
-	return m.console.execute(ctx, m, args, !m.console.isExecuting)
+	return m.console.Execute(ctx, m, args, !m.console.isExecuting)
 }
 
 // RunCommandLine is the equivalent of menu.RunCommandArgs(), but accepts
@@ -133,7 +133,7 @@ func (m *Menu) RunCommandLine(ctx context.Context, line string) (err error) {
 // Our main object of interest is the menu's root command, and we explicitly use this reference
 // instead of the menu itself, because if RunCommand() is asynchronously triggered while another
 // command is running, the menu's root command will be overwritten.
-func (c *Console) execute(ctx context.Context, menu *Menu, args []string, async bool) error {
+func (c *Console) Execute(ctx context.Context, menu *Menu, args []string, async bool) error {
 	if !async {
 		c.mutex.RLock()
 		c.isExecuting = true
