@@ -205,6 +205,9 @@ website list-content web_test
 }
 
 func Register(con *repl.Console) {
+	con.RegisterServerFunc("website_new", NewWebsite, &mals.Helper{Group: intermediate.ListenerGroup})
+	con.RegisterServerFunc("website_start", StartWebsite, &mals.Helper{Group: intermediate.ListenerGroup})
+	con.RegisterServerFunc("website_stop", StopWebsite, &mals.Helper{Group: intermediate.ListenerGroup})
 	con.RegisterServerFunc("webcontent_add", AddWebContent, &mals.Helper{Group: intermediate.ListenerGroup})
 	con.RegisterServerFunc("webcontent_update", UpdateWebContent, &mals.Helper{Group: intermediate.ListenerGroup})
 	con.RegisterServerFunc("webcontent_remove", RemoveWebContent, &mals.Helper{Group: intermediate.ListenerGroup})
