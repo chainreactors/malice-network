@@ -54,7 +54,7 @@ jobs:
           CGO_ENABLED: 0
 
       - name: Download IoM-gui VSIX
-        uses: robinraju/release-downloader@v1.11
+        uses: robinraju/release-downloader@v1
         with:
           repository: "chainreactors/IoM-gui"
           latest: true
@@ -65,8 +65,8 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          name: Nightly Build ${{ env.NIGHTLY_VERSION }}
-          tag_name: nightly
+          name: Release ${{ steps.version.outputs.new_tag }}
+          tag_name: ${{ steps.version.outputs.new_tag }}
           draft: true
           files: |
             dist/**/*
