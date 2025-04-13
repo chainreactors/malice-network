@@ -156,10 +156,10 @@ type Logger struct {
 	logFile *os.File
 }
 
-var ansi = regexp.MustCompile(`\x1b\[[0-9;]*m`)
+var ansiEscapeRegex = regexp.MustCompile(`\x1b\[[\d;]*?[a-zA-Z]`)
 
 func RemoveANSI(s string) string {
-	return ansi.ReplaceAllString(s, "")
+	return ansiEscapeRegex.ReplaceAllString(s, "")
 }
 
 func (l *Logger) FileLog(s string) {
