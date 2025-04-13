@@ -41,14 +41,14 @@ func ListPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 		} else {
 			newRow["Enable"] = tui.RedFg.Render(strconv.FormatBool(pipeline.Enable))
 		}
-		if pipeline.Tls.Enable {
+		if pipeline.Tls != nil && pipeline.Tls.Enable {
 			newRow["TLS"] = tui.GreenFg.Render(strconv.FormatBool(pipeline.Tls.Enable))
-		} else {
+		} else if pipeline.Tls != nil {
 			newRow["TLS"] = tui.RedFg.Render(strconv.FormatBool(pipeline.Tls.Enable))
 		}
-		if pipeline.Encryption.Enable {
+		if pipeline.Encryption != nil && pipeline.Encryption.Enable {
 			newRow["Encryption"] = pipeline.Encryption.Type
-		} else {
+		} else if pipeline.Encryption != nil {
 			newRow["Encryption"] = "raw"
 		}
 		switch body := pipeline.Body.(type) {
