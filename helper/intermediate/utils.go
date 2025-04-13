@@ -14,24 +14,17 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
-	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/handler"
 )
 
 func GetResourceFile(pluginName, filename string) (string, error) {
 	resourceFile := filepath.Join(assets.GetMalsDir(), pluginName, "resources", filename)
-	if fileutils.Exist(resourceFile) {
-		return resourceFile, nil
-	}
-	return "", fmt.Errorf("file not found")
+	return resourceFile, nil
 }
 
 func GetGlobalResourceFile(filename string) (string, error) {
 	resourceFile := filepath.Join(assets.GetResourceDir(), filename)
-	if fileutils.Exist(resourceFile) {
-		return resourceFile, nil
-	}
-	return "", fmt.Errorf("file not found")
+	return resourceFile, nil
 }
 
 func NewSacrificeProcessMessage(ppid uint32, hidden, block_dll, bypassETW bool, argue string) (*implantpb.SacrificeProcess, error) {
