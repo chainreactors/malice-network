@@ -122,6 +122,12 @@ func GetConfigs() ([]string, error) {
 }
 
 func LoadConfig(filename string) (*mtls.ClientConfig, error) {
+	if fileutils.Exist(filename) {
+		err := MvConfig(filename)
+		if err != nil {
+			return nil, err
+		}
+	}
 	baseFilename := filepath.Base(filename)
 	configPath := filepath.Join(GetConfigDir(), baseFilename)
 	if fileutils.Exist(configPath) {
