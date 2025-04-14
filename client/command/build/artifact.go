@@ -23,11 +23,12 @@ func updateMaxLength(maxLengths *map[string]int, key string, newLength int) {
 
 func ListArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
 	builders, err := con.Rpc.ListBuilder(con.Context(), &clientpb.Empty{})
+	isStatic, _ := cmd.Flags().GetBool("static")
 	if err != nil {
 		return err
 	}
 	if len(builders.Builders) > 0 {
-		err = PrintArtifacts(builders, con)
+		err = PrintArtifacts(builders, con, isStatic)
 		if err != nil {
 			return err
 		}
@@ -37,7 +38,7 @@ func ListArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func PrintArtifacts(builders *clientpb.Builders, con *repl.Console) error {
+func PrintArtifacts(builders *clientpb.Builders, con *repl.Console, isStatic bool) error {
 	var rowEntries []table.Row
 	var row table.Row
 
@@ -92,9 +93,12 @@ func PrintArtifacts(builders *clientpb.Builders, con *repl.Console) error {
 	}, false)
 
 	newTable := tui.NewModel(tableModel, nil, false, false)
-
-	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)
+	if isStatic {
+		con.Log.Infof(newTable.View())
+		return nil
+	}
+	tableModel.SetMultiline()
 	tableModel.SetHandle(func() {})
 	err := newTable.Run()
 	if err != nil {

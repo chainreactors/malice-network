@@ -45,5 +45,10 @@ func ArmorySearchCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Infof("No packages found matching '%s'\n", rawNameExpr)
 		return
 	}
-	PrintArmoryPackages(matchedAliases, matchedExts, con, clientConfig)
+	isStatic, err := cmd.Flags().GetBool("static")
+	if err != nil {
+		con.Log.Errorf("Error getting static flag: %v", err)
+		return
+	}
+	PrintArmoryPackages(matchedAliases, matchedExts, con, clientConfig, isStatic)
 }

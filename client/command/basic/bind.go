@@ -9,32 +9,12 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/spf13/cobra"
-	"strconv"
 	"time"
 )
 
 func GetCmd(cmd *cobra.Command, con *repl.Console) error {
 	session := con.GetInteractive()
 	_, err := Get(con, session)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func WaitCmd(cmd *cobra.Command, con *repl.Console) error {
-	session := con.GetInteractive()
-	interval, _ := cmd.Flags().GetInt("interval")
-	taskList := cmd.Flags().Args()
-	var tasks []uint32
-	for _, task := range taskList {
-		t, err := strconv.Atoi(task)
-		if err != nil {
-			return err
-		}
-		tasks = append(tasks, uint32(t))
-	}
-	_, err := Polling(con, session, uint64(time.Duration(interval)*time.Second), false, tasks)
 	if err != nil {
 		return err
 	}

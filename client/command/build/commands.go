@@ -315,6 +315,9 @@ build log builder_name --limit 70
 		Long: `Retrieve a list of all build output files currently stored on the server.
 
 This command fetches metadata about artifacts, such as their names, IDs, and associated build configurations. The artifacts are displayed in a table format for easy navigation.`,
+		Annotations: map[string]string{
+			"isStatic": "false",
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ListArtifactCmd(cmd, con)
 		},
@@ -325,6 +328,10 @@ artifact list
 // Navigate the artifact table and press enter to download a specific artifact
 ~~~`,
 	}
+
+	common.BindFlag(listArtifactCmd, func(f *pflag.FlagSet) {
+		f.Bool("static", false, "show all artifact in static table")
+	})
 
 	downloadCmd := &cobra.Command{
 		Use:   consts.CommandArtifactDownload,

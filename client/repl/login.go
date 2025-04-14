@@ -38,6 +38,18 @@ func Login(con *Console, config *mtls.ClientConfig) error {
 	con.ActiveTarget.Background()
 	con.App.SwitchMenu(consts.ClientMenu)
 	logs.Log.Importantf("Connected to server %s\n", config.Address())
+	go func() {
+		mcp := NewMCPServer(con, con.CMDs)
+		setting, err := assets.GetSetting()
+		if err != nil {
+			logs.Log.Errorf("Failed to get setting: %v\n", err)
+			return
+		}
+		err = mcp.Start("127.0.0.1", setting.McpPort)
+		if err != nil {
+			logs.Log.Errorf("Failed to start mcp server: %v\n", err)
+		}
+	}()
 	return nil
 }
 

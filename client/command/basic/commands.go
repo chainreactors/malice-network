@@ -1,6 +1,7 @@
 package basic
 
 import (
+	"github.com/carapace-sh/carapace"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
@@ -48,7 +49,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	}
 
 	waitCmd := &cobra.Command{
-		Use:   consts.CommandWait + " [task_id1] [task_id2]",
+		Use:   consts.CommandWait,
 		Short: "wait for task to finish",
 		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -57,10 +58,14 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Annotations: map[string]string{
 			"implant": consts.ImplantMaleficBind,
 		},
+		Example: `Wait task content.
+~~~
+wait 59
+~~~
+`,
 	}
-	common.BindFlag(waitCmd, func(f *pflag.FlagSet) {
-		f.Int("interval", 1, "interval")
-	})
+	common.BindArgCompletions(waitCmd, nil, carapace.ActionValues().Usage("task ID"))
+
 	taskComp := common.SessionTaskCompleter(con)
 	common.BindArgCompletions(waitCmd, &taskComp)
 

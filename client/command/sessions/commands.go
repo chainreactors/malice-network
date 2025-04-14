@@ -11,7 +11,10 @@ import (
 
 func Commands(con *repl.Console) []*cobra.Command {
 	sessCmd := &cobra.Command{
-		Use:   consts.CommandSession,
+		Use: consts.CommandSession,
+		Annotations: map[string]string{
+			"isStatic": "false",
+		},
 		Short: "List and Choice sessions",
 		Long: `Display a table of active sessions on the server, 
 allowing you to navigate up and down to select a desired session. 
@@ -27,11 +30,15 @@ session
 
 // List all sessions, including those that have been disconnected
 session -a
+
+// List all sessions, and shown in static table for mcp server
+session -a --static
 ~~~`,
 	}
 
 	common.BindFlag(sessCmd, func(f *pflag.FlagSet) {
 		f.BoolP("all", "a", false, "show all sessions")
+		f.Bool("static", false, "show all sessions in static table")
 	})
 
 	bindSessNewCmd := &cobra.Command{
@@ -128,6 +135,12 @@ remove 08d6c05a21512a79a1dfeb9d2a8f262f
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return UseSessionCmd(cmd, con)
 		},
+		Example: `
+~~~
+// use session
+use 08d6c05a21512a79a1dfeb9d2a8f262f
+~~~
+`,
 	}
 
 	common.BindArgCompletions(useCommand, nil, common.SessionIDCompleter(con))

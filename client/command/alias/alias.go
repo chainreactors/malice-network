@@ -17,15 +17,20 @@ import (
 
 // AliasesCmd - The alias command
 func AliasesCmd(cmd *cobra.Command, con *repl.Console) {
+	isStatic, err := cmd.Flags().GetBool("static")
+	if err != nil {
+		con.Log.Errorf("Error getting static flag: %v", err)
+		return
+	}
 	if 0 < len(loadedAliases) {
-		PrintAliases(con)
+		PrintAliases(con, isStatic)
 	} else {
 		con.Log.Infof("No aliases installed, use the 'armory' command to automatically install some\n")
 	}
 }
 
 // PrintAliases - Print a list of loaded aliases
-func PrintAliases(con *repl.Console) {
+func PrintAliases(con *repl.Console, isStatic bool) {
 	var rowEntries []table.Row
 	var row table.Row
 	tableModel := tui.NewTable([]table.Column{
@@ -60,9 +65,14 @@ func PrintAliases(con *repl.Console) {
 			})
 		rowEntries = append(rowEntries, row)
 	}
-	tableModel.SetMultiline()
-	tableModel.SetRows(rowEntries)
 	newTable := tui.NewModel(tableModel, nil, false, false)
+	tableModel.SetRows(rowEntries)
+	if isStatic {
+		con.Log.Infof(newTable.View())
+		return
+	}
+	tableModel.SetMultiline()
+
 	err := newTable.Run()
 	if err != nil {
 		return

@@ -137,6 +137,7 @@ func ArmoryCmd(cmd *cobra.Command, con *repl.Console) {
 	var exts []*extension.ExtensionManifest
 
 	isBundle, _ := cmd.Flags().GetBool("bundle")
+	isStatic, _ := cmd.Flags().GetBool("static")
 
 	for _, index := range indexes {
 		errorCount := 0
@@ -179,7 +180,7 @@ func ArmoryCmd(cmd *cobra.Command, con *repl.Console) {
 			}
 		} else {
 			if 0 < len(aliases) || 0 < len(exts) {
-				PrintArmoryPackages(aliases, exts, con, clientConfig)
+				PrintArmoryPackages(aliases, exts, con, clientConfig, isStatic)
 			} else {
 				con.Log.Infof("No packages found\n")
 			}
@@ -369,7 +370,7 @@ func AliasExtensionOrBundleCompleter(prefix string, args []string, con *repl.Con
 
 // PrintArmoryPackages - Prints the armory packages
 func PrintArmoryPackages(aliases []*alias.AliasManifest, exts []*extension.ExtensionManifest, con *repl.Console,
-	clientConfig ArmoryHTTPConfig) {
+	clientConfig ArmoryHTTPConfig, isStatic bool) {
 	var rowEntries []table.Row
 	var row table.Row
 
@@ -434,6 +435,10 @@ func PrintArmoryPackages(aliases []*alias.AliasManifest, exts []*extension.Exten
 	}
 	newTable := tui.NewModel(tableModel, nil, false, false)
 	tableModel.SetRows(rowEntries)
+	if isStatic {
+		con.Log.Infof(newTable.View())
+		return
+	}
 	tableModel.SetMultiline()
 	tableModel.SetHandle(DownloadArmoryCallback(tableModel, newTable.Buffer, con, clientConfig))
 	err := newTable.Run()
