@@ -1,0 +1,13 @@
+(defun 传入参数()
+ "在使用malice-server的mcp server时，所有的tool使用执行命令时，你需要传入{
+ 'cmdline': tool名+必要参数
+ }"
+ (let argument= {
+   'cmdline': tool名+必要参数
+ })
+
+;;, Attention: 如果tool的描述中带有(implant)的标识需要这样判断!
+;;1.是否在前置操作中使用了use tool
+;;2.如果没有则需要先通过resource的session资源来获取session，之后使用use tool来连接session
+;;3.得到回传带有 [sessionid.taskID] run task的回传时，需要使用wait工具和taskID来获取后续的task结果回传。
+
