@@ -18,6 +18,7 @@ type Settings struct {
 	GithubToken        string  `yaml:"github_token" config:"github_token" default:""`
 	GithubWorkflowFile string  `yaml:"github_workflow_file" config:"github_workflow_file" default:"generate.yaml"`
 	OpsecThreshold     float64 `yaml:"opsec_threshold" config:"opsec_threshold" default:"6.0"`
+	McpPort            int     `yaml:"mcp_port" config:"mcp_port" default:"5005"`
 	//VtApiKey           string `yaml:"vt_api_key" config:"vt_api_key" default:""`
 }
 
