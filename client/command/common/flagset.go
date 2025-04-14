@@ -3,6 +3,7 @@ package common
 import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/cryptography"
+	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/utils/output"
@@ -83,11 +84,7 @@ func ParseCLRFlags(cmd *cobra.Command) map[string]string {
 	bypassAll, _ := cmd.Flags().GetBool("bypass-all")
 
 	if bypassAll {
-		return map[string]string{
-			"bypass_amsi": "",
-			"bypass_etw":  "",
-			"bypass_wldp": "",
-		}
+		return intermediate.NewBypassAll()
 	}
 
 	params := make(map[string]string)

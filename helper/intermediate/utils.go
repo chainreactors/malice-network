@@ -94,6 +94,14 @@ func NewExecutable(module string, path string, args []string, arch string, sac *
 	}, nil
 }
 
+func NewBypassAll() map[string]string {
+	return map[string]string{
+		"bypass_amsi": "",
+		"bypass_etw":  "",
+		"bypass_wldp": "",
+	}
+}
+
 func WaitResult(rpc clientrpc.MaliceRPCClient, task *clientpb.Task) (*clientpb.TaskContext, error) {
 	task.Need = -1
 	content, err := rpc.WaitTaskFinish(context.Background(), task)

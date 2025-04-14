@@ -162,7 +162,7 @@ execute-assembly potato.exe "whoami"
 		carapace.ActionFiles().Usage("path the assembly file"),
 		carapace.ActionValues().Usage("arguments to pass to the assembly args"))
 
-	common.BindFlag(execAssemblyCmd, common.SacrificeFlagSet)
+	common.BindFlag(execAssemblyCmd, common.SacrificeFlagSet, common.CLRFlagSet)
 
 	inlineAssemblyCmd := &cobra.Command{
 		Use:   consts.ModuleInlineAssembly + " [file]",
