@@ -56,8 +56,8 @@ func (plugins *Plugins) LoadPlugin(manifest *plugin.MalManiFest, con *Console, r
 		return nil, err
 	}
 	for _, cmd := range plug.Commands() {
-		cmd.CMD.GroupID = consts.MalGroup
-		rootCmd.AddCommand(cmd.CMD)
+		cmd.Command.GroupID = consts.MalGroup
+		rootCmd.AddCommand(cmd.Command)
 	}
 	return plug, nil
 }

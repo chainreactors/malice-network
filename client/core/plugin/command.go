@@ -22,9 +22,9 @@ func (cs Commands) Find(name string) *Command {
 	cmd, exists := cs[subName]
 	if !exists {
 		cmd = &Command{
-			Name: subName,
-			Subs: make(Commands),               // 初始化子命令映射
-			CMD:  &cobra.Command{Use: subName}, // 创建对应的 Cobra 命令
+			Name:    subName,
+			Subs:    make(Commands),               // 初始化子命令映射
+			Command: &cobra.Command{Use: subName}, // 创建对应的 Cobra 命令
 		}
 		cs[subName] = cmd
 	}
@@ -43,7 +43,7 @@ func (cs Commands) SetCommand(name string, cmd *cobra.Command) {
 	subs := strings.Split(name, CMDSeq)
 	if len(subs) == 1 {
 		cur := cs.Find(subs[0])
-		cur.CMD = cmd
+		cur.Command = cmd
 		return
 	}
 
@@ -59,8 +59,8 @@ func (cs Commands) SetCommand(name string, cmd *cobra.Command) {
 			parentCmd = parentCmd.Subs.Find(subs[i])
 		}
 
-		if parentCmd.CMD == nil {
-			parentCmd.CMD = &cobra.Command{Use: parentCmd.Name}
+		if parentCmd.Command == nil {
+			parentCmd.Command = &cobra.Command{Use: parentCmd.Name}
 		}
 	}
 
@@ -69,18 +69,18 @@ func (cs Commands) SetCommand(name string, cmd *cobra.Command) {
 	finalCmd := parentCmd.Subs.Find(finalCmdName)
 	if finalCmd == nil {
 		finalCmd = &Command{
-			Name: finalCmdName,
-			CMD:  cmd, // 最后一级命令使用传入的 cmd
-			Subs: make(Commands),
+			Name:    finalCmdName,
+			Command: cmd, // 最后一级命令使用传入的 cmd
+			Subs:    make(Commands),
 		}
 		parentCmd.Subs[finalCmdName] = finalCmd
 	} else {
-		finalCmd.CMD = cmd
+		finalCmd.Command = cmd
 	}
 
 	// 将最后一级命令添加为父级命令的子命令
-	if parentCmd != nil && parentCmd.CMD != nil {
-		parentCmd.CMD.AddCommand(cmd)
+	if parentCmd != nil && parentCmd.Command != nil {
+		parentCmd.Command.AddCommand(cmd)
 	}
 }
 
@@ -88,7 +88,7 @@ type Command struct {
 	Name    string
 	Long    string
 	Example string
-	CMD     *cobra.Command
+	Command *cobra.Command
 	Subs    Commands
 	Parent  *Command
 }

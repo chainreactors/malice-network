@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/addon"
 	"github.com/chainreactors/malice-network/client/command/alias"
 	"github.com/chainreactors/malice-network/client/command/armory"
@@ -26,6 +27,8 @@ import (
 	"github.com/chainreactors/malice-network/client/command/taskschd"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/gookit/config/v2"
+	"github.com/gookit/config/v2/yaml"
 	"github.com/spf13/cobra"
 	"io"
 	"os"
@@ -33,7 +36,13 @@ import (
 	"strings"
 )
 
-var markdownExtension = ".md"
+func init() {
+	config.WithOptions(func(opt *config.Options) {
+		opt.DecoderConfig.TagName = "config"
+		opt.ParseDefault = true
+	}, config.WithHookFunc(assets.HookFn))
+	config.AddDriver(yaml.Driver)
+}
 
 type byName []*cobra.Command
 
