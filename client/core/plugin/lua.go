@@ -272,19 +272,19 @@ func (plug *LuaPlugin) RegisterLuaBuiltin(vm *lua.LState) error {
 	// 读取resource文件
 	plug.registerLuaFunction(vm, "script_resource", func(filename string) (string, error) {
 		return intermediate.GetResourceFile(plug.Name, filename)
-	})
+	}, nil)
 
 	plug.registerLuaFunction(vm, "global_resource", func(filename string) (string, error) {
 		return intermediate.GetGlobalResourceFile(filename)
-	})
+	}, nil)
 
 	plug.registerLuaFunction(vm, "find_resource", func(sess *core.Session, base string, ext string) (string, error) {
 		return intermediate.GetResourceFile(plug.Name, fmt.Sprintf("%s.%s.%s", base, consts.FormatArch(sess.Os.Arch), ext))
-	})
+	}, nil)
 
 	plug.registerLuaFunction(vm, "find_global_resource", func(sess *core.Session, base string, ext string) (string, error) {
 		return intermediate.GetGlobalResourceFile(fmt.Sprintf("%s.%s.%s", base, consts.FormatArch(sess.Os.Arch), ext))
-	})
+	}, nil)
 
 	// 读取资源文件内容
 	plug.registerLuaFunction(vm, "read_resource", func(filename string) (string, error) {
@@ -294,7 +294,7 @@ func (plug *LuaPlugin) RegisterLuaBuiltin(vm *lua.LState) error {
 			return "", err
 		}
 		return string(content), nil
-	})
+	}, nil)
 
 	plug.registerLuaFunction(vm, "read_global_resource", func(filename string) (string, error) {
 		resourcePath, _ := intermediate.GetGlobalResourceFile(filename)
@@ -303,34 +303,34 @@ func (plug *LuaPlugin) RegisterLuaBuiltin(vm *lua.LState) error {
 			return "", err
 		}
 		return string(content), nil
-	})
+	}, nil)
 
 	plug.registerLuaFunction(vm, "help", func(name string, long string) (bool, error) {
 		cmd := plug.CMDs.Find(name)
 		cmd.Long = long
 		return true, nil
-	})
+	}, &mals.Helper{Group: intermediate.ClientGroup})
 
 	plug.registerLuaFunction(vm, "example", func(name string, example string) (bool, error) {
 		cmd := plug.CMDs.Find(name)
 		cmd.Example = example
 		return true, nil
-	})
+	}, &mals.Helper{Group: intermediate.ClientGroup})
 
 	plug.registerLuaFunction(vm, "opsec", func(name string, opsec int) (bool, error) {
 		cmd := plug.CMDs.Find(name)
-		if cmd.CMD == nil {
+		if cmd.Command == nil {
 			return false, fmt.Errorf("command %s not found", name)
 		}
-		if cmd.CMD.Annotations == nil {
-			cmd.CMD.Annotations = map[string]string{
+		if cmd.Command.Annotations == nil {
+			cmd.Command.Annotations = map[string]string{
 				"opsec": strconv.Itoa(opsec),
 			}
 		} else {
-			cmd.CMD.Annotations["opsec"] = strconv.Itoa(opsec)
+			cmd.Command.Annotations["opsec"] = strconv.Itoa(opsec)
 		}
 		return true, nil
-	})
+	}, &mals.Helper{Group: intermediate.ClientGroup})
 
 	plug.registerLuaFunction(vm, "command", func(name string, fn *lua.LFunction, short string, ttp string) (*cobra.Command, error) {
 		cmd := plug.CMDs.Find(name)
@@ -463,7 +463,7 @@ func (plug *LuaPlugin) RegisterLuaBuiltin(vm *lua.LState) error {
 		logs.Log.Debugf("Registered Command: %s\n", cmd.Name)
 		plug.CMDs.SetCommand(name, malCmd)
 		return malCmd, nil
-	})
+	}, &mals.Helper{Group: intermediate.ClientGroup})
 
 	return nil
 }
@@ -488,11 +488,12 @@ func (plug *LuaPlugin) registerLuaOnHook(name string, condition intermediate.Eve
 	}
 }
 
-func (plug *LuaPlugin) registerLuaFunction(vm *lua.LState, name string, fn interface{}) {
+func (plug *LuaPlugin) registerLuaFunction(vm *lua.LState, name string, fn interface{}, helper *mals.Helper) {
 	wrappedFunc := mals.WrapInternalFunc(fn)
 	wrappedFunc.Package = intermediate.BuiltinPackage
 	wrappedFunc.Name = name
 	wrappedFunc.NoCache = true
+	wrappedFunc.Helper = helper
 	vm.SetGlobal(name, vm.NewFunction(mals.WrapFuncForLua(wrappedFunc)))
 }
 

@@ -57,8 +57,8 @@ func LoadMalWithManifest(con *repl.Console, rootCmd *cobra.Command, manifest *pl
 	var cmdNames []string
 	var cmds []*cobra.Command
 	for _, cmd := range plug.Commands() {
-		cmdNames = append(cmdNames, cmd.CMD.Name())
-		cmds = append(cmds, cmd.CMD)
+		cmdNames = append(cmdNames, cmd.Command.Name())
+		cmds = append(cmds, cmd.Command)
 	}
 	mal := &LoadedMal{
 		Manifest: manifest,
