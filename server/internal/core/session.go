@@ -95,6 +95,7 @@ func RegisterSession(req *clientpb.RegisterSession) (*Session, error) {
 		Cache:          cache,
 		responses:      &sync.Map{},
 	}
+	sess.Ctx, sess.Cancel = context.WithCancel(context.Background())
 	downloadDir := filepath.Join(contextDir, consts.DownloadPath)
 	keyLoggerDir := filepath.Join(contextDir, consts.KeyLoggerPath)
 	screenShotDir := filepath.Join(contextDir, consts.ScreenShotPath)
@@ -136,6 +137,7 @@ func RecoverSession(sess *models.Session) (*Session, error) {
 		Cache:          cache,
 		responses:      &sync.Map{},
 	}
+	s.Ctx, s.Cancel = context.WithCancel(context.Background())
 	tasks, tid, err := db.FindTaskAndMaxTasksID(s.ID)
 	if err != nil {
 		return nil, err
@@ -152,7 +154,12 @@ func RecoverSession(sess *models.Session) (*Session, error) {
 	s.Taskseq = tid
 	for _, task := range tasks {
 		taskPb := task.ToProtobuf()
-		s.Tasks.Add(FromTaskProtobuf(taskPb))
+		recoverTask := FromTaskProtobuf(taskPb)
+		recoverTask.Ctx, recoverTask.Cancel = context.WithCancel(s.Ctx)
+		if recoverTask.Total == recoverTask.Cur {
+			recoverTask.Cancel()
+		}
+		s.Tasks.Add(recoverTask)
 	}
 	err = s.Recover()
 	if err != nil {
@@ -181,6 +188,9 @@ type Session struct {
 	Taskseq   uint32
 	responses *sync.Map
 	rpcLog    *logs.Logger
+
+	Ctx    context.Context
+	Cancel context.CancelFunc
 }
 
 func (s *Session) Abstract() string {
@@ -403,7 +413,7 @@ func (s *Session) NewTask(name string, total int) *Task {
 		Session:   s,
 		DoneCh:    make(chan bool),
 	}
-	task.Ctx, task.Cancel = context.WithCancel(context.Background())
+	task.Ctx, task.Cancel = context.WithCancel(s.Ctx)
 	s.Tasks.Add(task)
 	return task
 }
