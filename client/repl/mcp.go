@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 	"google.golang.org/protobuf/encoding/protojson"
 	"net/http"
 	"strings"
@@ -280,51 +280,10 @@ func registerCobraCommands(s *server.MCPServer, cmd *cobra.Command, parentPath s
 func generateCommandDoc(cmd *cobra.Command) string {
 	var doc strings.Builder
 
-	// 添加命令名称和描述
-	doc.WriteString(fmt.Sprintf("Command: %s\n", cmd.Use))
-	if cmd.Short != "" {
-		doc.WriteString(fmt.Sprintf("Description: %s\n", cmd.Short))
-	}
-	if cmd.Long != "" {
-		doc.WriteString(fmt.Sprintf("Details: %s\n", cmd.Long))
-	}
-
-	// 添加使用示例
-	if cmd.Example != "" {
-		doc.WriteString("\nExamples:\n")
-		doc.WriteString(cmd.Example)
-	}
-
-	// 添加标志参数
-	if cmd.NonInheritedFlags().HasFlags() {
-		doc.WriteString("\nFlags:\n")
-		cmd.NonInheritedFlags().VisitAll(func(flag *pflag.Flag) {
-			doc.WriteString(fmt.Sprintf("  --%s", flag.Name))
-			if flag.Shorthand != "" {
-				doc.WriteString(fmt.Sprintf(", -%s", flag.Shorthand))
-			}
-			if flag.Value.Type() != "bool" {
-				doc.WriteString(fmt.Sprintf(" <%s>", flag.Value.Type()))
-			}
-			doc.WriteString(fmt.Sprintf("\n    %s\n", flag.Usage))
-			if flag.DefValue != "" {
-				doc.WriteString(fmt.Sprintf("    Default: %s\n", flag.DefValue))
-			}
-		})
-	}
-
-	// 添加子命令
-	if len(cmd.Commands()) > 0 {
-		doc.WriteString("\nSubcommands:\n")
-		for _, subCmd := range cmd.Commands() {
-			if !subCmd.Hidden {
-				doc.WriteString(fmt.Sprintf("  %s: %s\n", subCmd.Use, subCmd.Short))
-			}
-		}
-	}
-	result := doc.String() + "\n" + "请输入完整命令：{\"cmdline\": \"命令+必要参数\"}"
-
-	return result
+	help.GenMarkdownCustom(cmd, &doc, func(s string) string {
+		return s
+	})
+	return doc.String()
 }
 
 // Start 启动MCP HTTP和gRPC服务器
