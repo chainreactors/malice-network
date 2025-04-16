@@ -14,15 +14,13 @@
 ;;; Attention: 运行规则!
 ;;1.初次启动时必须运行(IoM)函数
 ;;2.所有tool，都要运行传入参数
-;;3.未使用use tool进入implant模式，无法使用带有(implant)的标识的tool
-;;4.所有带有(implant)的标识tool在必要参数中，需要带上，--wait
-;;5.use tool不需要带上--wait
+;;3.所有带有(implant)的标识tool在必要参数中，需要带上，--wait
+;;4.use tool不需要带上--wait
 
 ;;; Attention: 如果tool的描述中带有(implant)的标识需要这样判断!
 ;;1.是否在前置操作中使用了use tool
-;;2.如果没有则需要先通过resource的session资源来获取session
-;;3.若有session存活，则使用use tool连接session（存活不意味着已连接）,进入implant模式
-;;4.进入implant模式后，如果需要切换session，在必要参数中带上--use sessionID
-;;5.所有带有(implant)的标识tool在必要参数中，需要带上，--wait
+;;2.如果没有则需要先通过resource的session资源来获取session,在必要参数中带上--use sessionID,进入implant模式
+;;3.如果需要切换session，在必要参数中带上--use sessionID
+;;4.所有带有(implant)的标识tool在必要参数中，需要带上，--wait
 
 

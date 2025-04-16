@@ -115,7 +115,8 @@ func RunCommand(con *Console, cmdline interface{}) (string, error) {
 		args = c
 	}
 	start := time.Now()
-	err = con.App.Execute(con.Context(), con.App.ActiveMenu(), args, false)
+
+	err = con.App.Execute(con.Context(), con.App.Menu(consts.ImplantMenu), args, false)
 	if err != nil {
 		return "", err
 	}
