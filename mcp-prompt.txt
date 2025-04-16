@@ -1,3 +1,8 @@
+(defun IoM()
+ "Malice-network"
+ (list("基本描述"."Malice-network 是一个功能丰富、灵活性高的C2框架，提供了进行数据处理与交互服务的server、正反向连接的listener以及方便用户操作的client，模块化设计和插件兼容性方便用户在红队测试、后渗透阶段自定义和扩展工具功能，以适应不同的攻击场景和目标环境。官方wiki：https://chainreactors.github.io/wiki/IoM。"
+  )))
+
 (defun 传入参数()
  "在使用malice-server的mcp server时，所有的tool使用执行命令时，你需要传入{
  'cmdline': tool名+必要参数
@@ -6,8 +11,18 @@
    'cmdline': tool名+必要参数
  })
 
-;;, Attention: 如果tool的描述中带有(implant)的标识需要这样判断!
+;;; Attention: 运行规则!
+;;1.初次启动时必须运行(IoM)函数
+;;2.所有tool，都要运行传入参数
+;;3.未使用use tool进入implant模式，无法使用带有(implant)的标识的tool
+;;4.所有带有(implant)的标识tool在必要参数中，需要带上，--wait
+;;5.use tool不需要带上--wait
+
+;;; Attention: 如果tool的描述中带有(implant)的标识需要这样判断!
 ;;1.是否在前置操作中使用了use tool
-;;2.如果没有则需要先通过resource的session资源来获取session，之后使用use tool来连接session
-;;3.得到回传带有 [sessionid.taskID] run task的回传时，需要使用wait工具和taskID来获取后续的task结果回传。
+;;2.如果没有则需要先通过resource的session资源来获取session
+;;3.若有session存活，则使用use tool连接session（存活不意味着已连接）,进入implant模式
+;;4.进入implant模式后，如果需要切换session，在必要参数中带上--use sessionID
+;;5.所有带有(implant)的标识tool在必要参数中，需要带上，--wait
+
 

@@ -57,13 +57,17 @@ func makeRunners(implantCmd *cobra.Command, con *repl.Console) (pre, post func(c
 	// so we can have access to active sessions/beacons, and other stuff needed.
 	pre = func(cmd *cobra.Command, args []string) error {
 		// Set the active target.
-		err := implantCmd.Parent().PersistentPreRunE(implantCmd, args)
-		if err != nil {
-			return err
+		if implantCmd.Parent() != nil {
+			err := implantCmd.Parent().PersistentPreRunE(implantCmd, args)
+			if err != nil {
+				return err
+			}
 		}
 		sid, _ := cmd.Flags().GetString("use")
-		if sid == "" {
+		if sid == "" && con.ActiveTarget.Session == nil {
 			return fmt.Errorf("no implant to run command on")
+		} else if sid == "" && con.ActiveTarget.Session != nil {
+			sid = con.ActiveTarget.Session.SessionId
 		}
 
 		var session *core.Session
@@ -92,8 +96,10 @@ func makeRunners(implantCmd *cobra.Command, con *repl.Console) (pre, post func(c
 				con.Log.Console(tui.RendStructDefault(sess.LastTask))
 			}
 		}
-
-		return implantCmd.Parent().PersistentPostRunE(implantCmd, args)
+		if implantCmd.Parent() != nil {
+			return implantCmd.Parent().PersistentPostRunE(implantCmd, args)
+		}
+		return nil
 	}
 
 	return pre, post
@@ -166,6 +172,14 @@ func BindImplantCommands(con *repl.Console) console.Commands {
 			},
 			//GroupID: consts.ImplantMenu,
 		}
+		common.Bind(implant.Use, true, implant, func(f *pflag.FlagSet) {
+			f.String("use", "", "set session context")
+			f.Bool("wait", false, "wait task finished")
+		})
+		cobra.MarkFlagRequired(implant.Flags(), "use")
+		implant.PersistentPreRunE, implant.PersistentPostRunE = makeRunners(implant, con)
+		makeCompleters(implant, con)
+
 		BindBuiltinCommands(con, implant)
 
 		// Load Aliases

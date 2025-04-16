@@ -12,7 +12,6 @@ import (
 	"github.com/chainreactors/malice-network/client/command/file"
 	"github.com/chainreactors/malice-network/client/command/filesystem"
 	"github.com/chainreactors/malice-network/client/command/generic"
-	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/command/listener"
 	"github.com/chainreactors/malice-network/client/command/mal"
 	"github.com/chainreactors/malice-network/client/command/modules"
@@ -34,17 +33,17 @@ func GenImplantHelp(con *repl.Console) {
 	if err != nil {
 		panic(err)
 	}
-	help.GenGroupHelp(implantMd, con, consts.ImplantGroup,
+	repl.GenGroupHelp(implantMd, con, consts.ImplantGroup,
 		tasks.Commands,
 		modules.Commands,
 		explorer.Commands,
 		addon.Commands,
 	)
 
-	help.GenGroupHelp(implantMd, con, consts.ExecuteGroup,
+	repl.GenGroupHelp(implantMd, con, consts.ExecuteGroup,
 		exec.Commands)
 
-	help.GenGroupHelp(implantMd, con, consts.SysGroup,
+	repl.GenGroupHelp(implantMd, con, consts.SysGroup,
 		sys.Commands,
 		service.Commands,
 		reg.Commands,
@@ -52,7 +51,7 @@ func GenImplantHelp(con *repl.Console) {
 		privilege.Commands,
 	)
 
-	help.GenGroupHelp(implantMd, con, consts.FileGroup,
+	repl.GenGroupHelp(implantMd, con, consts.FileGroup,
 		file.Commands,
 		filesystem.Commands,
 		pipe.Commands)
@@ -63,10 +62,10 @@ func GenClientHelp(con *repl.Console) {
 	if err != nil {
 		panic(err)
 	}
-	help.GenGroupHelp(clientMd, con, consts.GenericGroup,
+	repl.GenGroupHelp(clientMd, con, consts.GenericGroup,
 		generic.Commands)
 
-	help.GenGroupHelp(clientMd, con, consts.ManageGroup,
+	repl.GenGroupHelp(clientMd, con, consts.ManageGroup,
 		sessions.Commands,
 		alias.Commands,
 		extension.Commands,
@@ -74,11 +73,11 @@ func GenClientHelp(con *repl.Console) {
 		mal.Commands,
 	)
 
-	help.GenGroupHelp(clientMd, con, consts.ListenerGroup,
+	repl.GenGroupHelp(clientMd, con, consts.ListenerGroup,
 		listener.Commands,
 	)
 
-	help.GenGroupHelp(clientMd, con, consts.GeneratorGroup,
+	repl.GenGroupHelp(clientMd, con, consts.GeneratorGroup,
 		build.Commands)
 
 }

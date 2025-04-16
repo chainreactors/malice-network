@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
@@ -280,7 +279,7 @@ func registerCobraCommands(s *server.MCPServer, cmd *cobra.Command, parentPath s
 func generateCommandDoc(cmd *cobra.Command) string {
 	var doc strings.Builder
 
-	help.GenMarkdownCustom(cmd, &doc, func(s string) string {
+	GenMarkdownCustom(cmd, &doc, func(s string) string {
 		return s
 	})
 	return doc.String()
