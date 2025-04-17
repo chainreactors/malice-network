@@ -233,7 +233,7 @@ func registerCobraCommands(s *server.MCPServer, cmd *cobra.Command, parentPath s
 						}
 						response, err = RunCommand(CMCP.con, cmdLine)
 						if err != nil {
-							//logs.Log.Errorf("Error executing command: %v", err)
+							logs.Log.Errorf("Error executing command: %v", err)
 						}
 						done <- true
 					}()
