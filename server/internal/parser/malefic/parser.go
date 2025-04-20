@@ -43,6 +43,10 @@ func (parser *MaleficParser) PeekHeader(conn *peek.Conn) (uint32, uint32, error)
 	}
 	sessionId := header[MsgSessionStart:MsgSessionEnd]
 	length := binary.LittleEndian.Uint32(header[MsgSessionEnd:])
+	if length > uint32(config.Uint(consts.ConfigMaxPacketLength))+consts.KB*16 {
+		return 0, 0, fmt.Errorf("%w,expect: %d, recv: %d", errs.ErrPacketTooLarge, config.Int(consts.ConfigMaxPacketLength), length)
+	}
+
 	return binary.LittleEndian.Uint32(sessionId), length + 1, nil
 }
 
