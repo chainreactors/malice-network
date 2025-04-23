@@ -56,7 +56,6 @@ require (
 	al.essio.dev/pkg/shellescape v1.5.1 // indirect
 	dario.cat/mergo v1.0.0 // indirect
 	filippo.io/edwards25519 v1.1.0 // indirect
-	github.com/Binject/debug v0.0.0-20230508195519-26db73212a7a // indirect
 	github.com/Microsoft/go-winio v0.5.1 // indirect
 	github.com/alecthomas/chroma/v2 v2.14.0 // indirect
 	github.com/atotto/clipboard v0.1.4 // indirect
@@ -153,6 +152,7 @@ require (
 )
 
 replace (
+	github.com/chainreactors/rem => github.com/chainreactors/rem-community v0.2.2
 	github.com/reeflective/console => ./external/console
 	github.com/reeflective/readline => ./external/readline
 	github.com/wabzsy/gonut => ./external/gonut
