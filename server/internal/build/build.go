@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/docker/docker/api/types"
 	"github.com/wabzsy/gonut"
 	"io"
@@ -18,6 +17,7 @@ import (
 
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/encoders"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/server/internal/configs"
@@ -31,7 +31,7 @@ import (
 var (
 	//NameSpace                   = "ghcr.io/chainreactors"
 	//Tag                         = "nightly-2023-09-18-latest"
-	DefaultImage                = "ghcr.io/chainreactors/malefic-builder:v0.0.4"
+	DefaultImage                = GetDefaultImage()
 	ContainerSourceCodePath     = "/root/src"
 	ContainerCargoRegistryCache = "/root/cargo/registry"
 	ContainerCargoGitCache      = "/root/cargo/git"
@@ -57,6 +57,9 @@ var (
 var dockerClient *client.Client
 var once sync.Once
 
+func GetDefaultImage() string {
+	return "ghcr.io/chainreactors/malefic-builder:" + consts.Ver
+}
 func GetDockerClient() (*client.Client, error) {
 	var err error
 	once.Do(func() {
