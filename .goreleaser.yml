@@ -55,7 +55,7 @@ builds:
     ignore:
       - goos: windows
         goarch: arm64
-    ldflags: "-s -w -X github.com/chainreactors/malice-network/server/rpc.ver={{.Env.VERSION}} -X github.com/chainreactors/malice-network/server/rpc.commit={{.Env.COMMIT}} -X github.com/chainreactors/malice-network/server/rpc.buildstamp={{.Timestamp}}"
+    ldflags: "-s -w -X github.com/chainreactors/malice-network/helper/consts.Ver={{.Env.VERSION}} -X github.com/chainreactors/malice-network/helper/consts.Commit={{.Env.COMMIT}} -X github.com/chainreactors/malice-network/helper/consts.Buildstamp={{.Timestamp}}"
     asmflags:
       - all=-trimpath={{.Env.GOPATH}}
     gcflags:
