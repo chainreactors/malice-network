@@ -89,7 +89,7 @@ func PackArgs(data []string) ([]string, error) {
 	var err error
 	for _, arg := range data {
 		if len(arg) < 1 {
-			return nil, fmt.Errorf("'%' have not enough arguments", args)
+			return nil, fmt.Errorf("'%v' have not enough arguments", args)
 		}
 		format := arg[0]
 		packedArg := ""
