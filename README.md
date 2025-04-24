@@ -6,6 +6,7 @@ blog posts:
 - [v0.0.2 the Real Beginning](https://chainreactors.github.io/wiki/blog/2024/09/23/IoM_v0.0.2/)
 - [v0.0.3 RedTeam Infra&C2 framework](https://chainreactors.github.io/wiki/blog/2024/11/20/IoM_v0.0.3/)
 - [v0.0.4 Bootstrapping](https://chainreactors.github.io/wiki/blog/2025/01/02/IoM_v0.0.4/)
+- [v0.1.0 代替CobaltStrike的最后四块碎片](https://chainreactors.github.io/wiki/blog/2025/04/14/IoM_v0.1.0/)
 
 ## wiki
 
@@ -42,8 +43,3 @@ https://chainreactors.github.io/wiki/IoM/roadmap/
 <summary>armory</summary>
 <img src="https://github.com/chainreactors/wiki/blob/master/docs/IoM/assets/armory.gif"/>
 
-## Dependency
-
-## Thanks
-
-- [sliver](https://github.com/BishopFox/sliver) 从中参考并复用了大量的代码
