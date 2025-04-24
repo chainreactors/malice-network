@@ -138,6 +138,11 @@ func Execute() {
 
 	if opt.Listeners.Enable {
 		logs.Log.Importantf("[listener] listener config enabled, Starting listeners")
+		if opt.IP != "" {
+			logs.Log.Infof("manually specified IP: %s will override %s config: %s", opt.IP, opt.Config, opt.Server.IP)
+			opt.Listeners.IP = opt.IP
+			config.Set("listener.ip", opt.IP)
+		}
 		err := StartListener(opt.Listeners)
 		if err != nil {
 			logs.Log.Errorf(err.Error())
