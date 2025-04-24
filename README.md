@@ -22,6 +22,38 @@ https://chainreactors.github.io/wiki/IoM/roadmap/
 
 ## Showcases
 
+### GUI
+<summary>session</summary>
+<img src="https://github.com/chainreactors/wiki/blob/master/docs/IoM/assets/session_gui.jpg"/>
+
+<summary>pipeline</summary>
+<img src="https://github.com/chainreactors/wiki/blob/master/docs/IoM/assets/pipeline_gui.png"/>
+
+<summary>website</summary>
+<img src="https://github.com/chainreactors/wiki/blob/master/docs/IoM/assets/website_gui.png"/>
+
+<summary>artifact</summary>
+<img src="https://github.com/chainreactors/wiki/blob/master/docs/IoM/assets/artifact_gui.png"/>
+
+<summary>third party</summary>
+<img src="https://github.com/chainreactors/wiki/blob/master/docs/IoM/assets/third_party_gui.png"/>
+
+<summary>use session</summary>
+<img src="https://github.com/chainreactors/wiki/blob/master/docs/IoM/assets/use_session_gui.png"/>
+
+<summary>task</summary>
+<img src="https://github.com/chainreactors/wiki/blob/master/docs/IoM/assets/task_gui.png"/>
+
+<summary>netstat</summary>
+<img src="https://github.com/chainreactors/wiki/blob/master/docs/IoM/assets/netstat_gui.png"/>
+
+<summary>services</summary>
+<img src="https://github.com/chainreactors/wiki/blob/master/docs/IoM/assets/services_gui.png"/>
+
+------
+
+### TUI
+
 <summary>console</summary>
 <img src="https://github.com/chainreactors/wiki/blob/master/docs/IoM/assets/completion.gif"/>
 
