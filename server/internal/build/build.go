@@ -51,7 +51,8 @@ var (
 	CargoGitCacheVolume      = fmt.Sprintf("%s:%s", filepath.ToSlash(gitPath), ContainerCargoGitCache)
 	BinPathVolume            = fmt.Sprintf("%s:%s", filepath.ToSlash(binPath), ContainerBinPath)
 	//Volumes                  = []string{SourceCodeVolume, CargoRegistryCacheVolume, CargoGitCacheVolume, BinPathVolume}
-	Volumes = []string{SourceCodeVolume}
+	Volumes  = []string{SourceCodeVolume, BinPathVolume}
+	PATH_ENV = ContainerBinPath + ":/root/cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/osxcross/bin:/usr/bin/mingw-w64"
 )
 
 var dockerClient *client.Client
@@ -75,12 +76,16 @@ func BuildBeacon(cli *client.Client, req *clientpb.Generate) error {
 	timeout := 20 * time.Minute
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
+
 	buildBeaconCommand := fmt.Sprintf(
 		"malefic-mutant generate beacon && malefic-mutant build malefic -t %s",
 		req.Target,
 	)
 	containerName := "malefic_" + cryptography.RandomString(8)
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
+		Env: []string{
+			"PATH=" + PATH_ENV,
+		},
 		Image: DefaultImage,
 		Cmd:   []string{"sh", "-c", buildBeaconCommand},
 		//"cargo run -p malefic-mutant stage0 professional x86_64 source && cargo build --release -p malefic-pulse"},
@@ -130,6 +135,9 @@ func BuildBind(cli *client.Client, req *clientpb.Generate) error {
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
 		Image: DefaultImage,
 		Cmd:   []string{"sh", "-c", BuildBindCommand},
+		Env: []string{
+			"PATH=" + PATH_ENV,
+		},
 	}, &container.HostConfig{
 		AutoRemove: true,
 		Binds:      Volumes,
@@ -181,6 +189,9 @@ func BuildPrelude(cli *client.Client, req *clientpb.Generate) error {
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
 		Image: DefaultImage,
 		Cmd:   []string{"sh", "-c", BuildPreludeCommand},
+		Env: []string{
+			"PATH=" + PATH_ENV,
+		},
 	}, &container.HostConfig{
 		AutoRemove: true,
 		Binds:      Volumes,
@@ -229,6 +240,9 @@ func BuildPulse(cli *client.Client, req *clientpb.Generate) error {
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
 		Image: DefaultImage,
 		Cmd:   []string{"sh", "-c", BuildBindCommand},
+		Env: []string{
+			"PATH=" + PATH_ENV,
+		},
 	}, &container.HostConfig{
 		AutoRemove: true,
 		Binds:      Volumes,
@@ -278,6 +292,9 @@ func BuildModules(cli *client.Client, req *clientpb.Generate) error {
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
 		Image: DefaultImage,
 		Cmd:   []string{"sh", "-c", buildModulesCommand},
+		Env: []string{
+			"PATH=" + PATH_ENV,
+		},
 	}, &container.HostConfig{
 		AutoRemove: true,
 		Binds:      Volumes,
