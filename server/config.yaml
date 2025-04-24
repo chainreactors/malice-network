@@ -57,6 +57,7 @@ listeners:
       parser: pulse
       auto_build:
         target:
+          - x86_64-unknown-linux-musl
           - x86_64-pc-windows-gnu
         beacon_pipeline: tcp_malefic
       enable: true
@@ -88,7 +89,9 @@ listeners:
         type: aes
         key: maliceofinternal
       auto_build:
-        target: ["windows/amd64"]
+        target:
+          - x86_64-unknown-linux-musl
+          - x86_64-pc-windows-gnu
       error_page: ""
     - name: http-pulse
       enable: true
@@ -100,12 +103,13 @@ listeners:
         type: xor
         key: maliceofinternal
       auto_build:
-        target: [ "windows/amd64" ]
+        target:
+          - x86_64-unknown-linux-musl
+          - x86_64-pc-windows-gnu
         beacon_pipeline: http-malefic
       error_page: ""
   bind:
-    -
-      name: bind_pipeline
+    - name: bind_pipeline
       enable: true
       encryption:
         enable: true
