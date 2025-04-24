@@ -295,89 +295,119 @@ func (lns *listener) handlerStart(job *clientpb.Job) error {
 }
 
 func (lns *listener) autoBuild(pipeline *clientpb.Pipeline) error {
+	// 检查pipeline目标是否为空
 	if len(pipeline.Target) == 0 {
-		return fmt.Errorf("pipeline %s target is empty, auto build canceled", pipeline.Name)
+		logs.Log.Debugf("pipeline %s target is empty, auto build canceled", pipeline.Name)
+		return nil
 	}
-	var buildType string
-	var beaconPipeline string
-	var pulsePipeline string
-	var input map[string]string
 
+	// 检查构建环境是否可用
 	_, workflowErr := lns.Rpc.WorkflowStatus(lns.Context(), &clientpb.GithubWorkflowRequest{})
 	_, dockerErr := lns.Rpc.DockerStatus(lns.Context(), &clientpb.Empty{})
 	if workflowErr != nil && dockerErr != nil {
-		return fmt.Errorf("workflow and docker not worked: %s, %s", workflowErr.Error(), dockerErr.Error())
+		logs.Log.Debugf("workflow and docker not worked: %s, %s", workflowErr.Error(), dockerErr.Error())
+		return nil
 	}
 
+	// 遍历所有目标进行构建
 	for _, target := range pipeline.Target {
-		if pipeline.Parser == consts.CommandBuildPulse {
-			if !strings.Contains(target, "windows") {
-				logs.Log.Warnf("pulse build target must be windows, %s is not supported", target)
-				continue
-			}
-			buildType = consts.CommandBuildPulse
-			beaconPipeline = pipeline.BeaconPipeline
-			pulsePipeline = pipeline.Name
-			input = map[string]string{
-				"package": consts.CommandBuildPulse,
-				"targets": target,
-			}
-		} else {
-			buildType = consts.CommandBuildBeacon
-			beaconPipeline = pipeline.Name
-			input = map[string]string{
-				"package": consts.CommandBuildBeacon,
-				"targets": target,
-			}
-		}
-		targetMap, ok := consts.GetBuildTarget(target)
-		if !ok {
-			fmt.Printf("Error getting build target for %s\n", target)
+		// 准备构建参数
+		artifact, input, err := lns.prepareBuildParams(pipeline, target)
+		if err != nil {
+			logs.Log.Warnf(err.Error())
 			continue
 		}
-		_, err := lns.Rpc.FindArtifact(lns.Context(), &clientpb.Artifact{
-			Pipeline: pipeline.Name,
-			Target:   target,
-			Type:     buildType,
-			Platform: targetMap.OS,
-			Arch:     targetMap.Arch,
-		})
-		if !errors.Is(err, errs.ErrNotFoundArtifact) && err != nil {
+
+		// 检查构建产物是否已存在
+		if _, err := lns.Rpc.FindArtifact(lns.Context(), artifact); err == nil {
+			continue // 产物已存在,跳过构建
+		} else if !errors.Is(err, errs.ErrNotFoundArtifact) {
 			logs.Log.Errorf("Error finding artifact for %s: %v\n", target, err)
 			continue
-		} else if err == nil {
-			continue
 		}
+
+		// 创建构建配置文件
 		profileName := codenames.GetCodename()
-		_, err = lns.Rpc.NewProfile(lns.Context(), &clientpb.Profile{
-			Name:            profileName,
-			PipelineId:      beaconPipeline,
-			PulsePipelineId: pulsePipeline,
-		})
+		if pipeline.Parser == consts.ImplantPulse {
+			_, err = lns.Rpc.NewProfile(lns.Context(), &clientpb.Profile{
+				Name:            profileName,
+				PipelineId:      pipeline.BeaconPipeline,
+				PulsePipelineId: pipeline.Name,
+			})
+		} else if pipeline.Parser == consts.ImplantMalefic {
+			_, err = lns.Rpc.NewProfile(lns.Context(), &clientpb.Profile{
+				Name:       profileName,
+				PipelineId: pipeline.Name,
+			})
+		}
 		if err != nil {
 			return err
 		}
-		if workflowErr == nil {
-			_, err = lns.Rpc.TriggerWorkflowDispatch(lns.Context(), &clientpb.GithubWorkflowRequest{
-				Inputs:  input,
-				Profile: profileName,
-			})
-			if err != nil {
-				return err
-			}
-		} else if dockerErr == nil {
-			_, err = lns.Rpc.Build(lns.Context(), &clientpb.Generate{
-				Target:      target,
-				ProfileName: profileName,
-				Type:        buildType,
-				Srdi:        true,
-			})
-			if err != nil {
-				return err
-			}
+
+		// 执行构建
+		if err := lns.executeBuild(workflowErr == nil, profileName, artifact, input); err != nil {
+			return err
 		}
 	}
+
 	return nil
+}
+
+// 准备构建参数
+func (lns *listener) prepareBuildParams(pipeline *clientpb.Pipeline, target string) (*clientpb.Artifact, map[string]string, error) {
+	targetMap, ok := consts.GetBuildTarget(target)
+	if !ok {
+		return nil, nil, fmt.Errorf("invalid build target: %s", target)
+	}
+
+	artifact := &clientpb.Artifact{
+		Target:   target,
+		Platform: targetMap.OS,
+		Arch:     targetMap.Arch,
+	}
+
+	var input map[string]string
+
+	// Pulse构建特殊处理
+	if pipeline.Parser == consts.CommandBuildPulse {
+		if !strings.Contains(target, "windows") {
+			return nil, nil, fmt.Errorf("pulse build target must be windows, %s is not supported", target)
+		}
+		artifact.Type = consts.CommandBuildPulse
+		artifact.Pipeline = pipeline.Name
+		input = map[string]string{
+			"package": consts.CommandBuildPulse,
+			"targets": target,
+		}
+	} else {
+		artifact.Type = consts.CommandBuildBeacon
+		artifact.Pipeline = pipeline.Name
+		input = map[string]string{
+			"package": consts.CommandBuildBeacon,
+			"targets": target,
+		}
+	}
+
+	return artifact, input, nil
+}
+
+// 执行构建
+func (lns *listener) executeBuild(useWorkflow bool, profileName string, artifact *clientpb.Artifact, input map[string]string) error {
+	if useWorkflow {
+		_, err := lns.Rpc.TriggerWorkflowDispatch(lns.Context(), &clientpb.GithubWorkflowRequest{
+			Inputs:  input,
+			Profile: profileName,
+		})
+		return err
+	}
+
+	_, err := lns.Rpc.Build(lns.Context(), &clientpb.Generate{
+		Target:      artifact.Target,
+		ProfileName: profileName,
+		Type:        artifact.Type,
+		Srdi:        true,
+	})
+	return err
 }
 
 func (lns *listener) syncPipeline(pipeline *clientpb.Job) error {
