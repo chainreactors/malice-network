@@ -196,8 +196,8 @@ check_and_install_docker(){
     # pull images for compilation
     docker_pull_image(){
         log_task_status in_progress "正在拉取用于Malefic编译的Docker镜像..."
-        SOURCE_IMAGE=${SOURCE_IMAGE:="chainreactors/malefic-builder:v0.0.4-with-dependencies"}
-        FINAL_IMAGE=${FINAL_IMAGE:="ghcr.io/chainreactors/malefic-builder:v0.0.4"}
+        SOURCE_IMAGE=${SOURCE_IMAGE:="chainreactors/malefic-builder:v0.1.0"}
+        FINAL_IMAGE=${FINAL_IMAGE:="ghcr.io/chainreactors/malefic-builder:v0.1.0"}
         docker pull $SOURCE_IMAGE
         docker tag $SOURCE_IMAGE $FINAL_IMAGE
         if [ "$SOURCE_IMAGE" != "$FINAL_IMAGE" ]; then
@@ -210,8 +210,8 @@ check_and_install_docker(){
 
 # install malice-network's artifacts
 install_malice_network() {
-    local PROXY_PREFIX="https://ghgo.xyz/"
-    local MALICE_NETWORK=${MALICE_NETWORK:="v0.0.4"}
+    local PROXY_PREFIX="https://ghfast.top/"
+    local MALICE_NETWORK=${MALICE_NETWORK:="v0.1.0"}
     local md="${IoM_ROOT_DIR}/malice-network"
     local MALICE_NETWORK_RELEASES_URL=${MALICE_NETWORK_RELEASES_URL:="${PROXY_PREFIX}https://github.com/chainreactors/malice-network/releases/download/$MALICE_NETWORK"}
     local FILES=(
@@ -246,8 +246,8 @@ install_malice_network() {
 }
 # install malefic's artifacts、sourcecode
 install_malefic(){
-    local PROXY_PREFIX="https://ghgo.xyz/"
-    local MALEFIC_VERSION=${MALEFIC_VERSION:="v0.0.4"}
+    local PROXY_PREFIX="https://ghfast.top/"
+    local MALEFIC_VERSION=${MALEFIC_VERSION:="v0.1.0"}
     local MALEFIC_ROOT_DIR="$IoM_ROOT_DIR/malefic"
     
     install_source_code(){
