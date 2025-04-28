@@ -530,6 +530,10 @@ func (s *sessions) Get(sessionID string) (*Session, error) {
 }
 
 func (s *sessions) Add(session *Session) *Session {
+	if session == nil {
+		logs.Log.Errorf("session is nil")
+		return nil
+	}
 	s.active.Store(session.ID, session)
 	//EventBroker.Publish(Event{
 	//	EventType: consts.SessionOpenedEvent,
