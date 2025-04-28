@@ -194,7 +194,11 @@ type Session struct {
 }
 
 func (s *Session) Abstract() string {
-	return fmt.Sprintf("%s(%s) %s-%s %s", s.Name, s.ID, s.Os.Name, s.Os.Arch, s.Os.Username)
+	if s.Os == nil {
+		return fmt.Sprintf("%s(%s)", s.Name, s.ID)
+	} else {
+		return fmt.Sprintf("%s(%s) %s-%s %s", s.Name, s.ID, s.Os.Name, s.Os.Arch, s.Os.Username)
+	}
 }
 
 func (s *Session) RpcLogger() *logs.Logger {
