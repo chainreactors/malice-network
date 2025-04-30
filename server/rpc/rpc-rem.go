@@ -168,9 +168,7 @@ func (rpc *Server) RemDial(ctx context.Context, req *implantpb.Request) (*client
 		}
 
 		if remOpt, ok := pipe.GetRem().Agents[spite.GetResponse().Output]; ok {
-			pivot := output.NewPivotingWithRem(remOpt)
-			pivot.Pipeline = pipe.Name
-			pivot.Listener = pipe.ListenerId
+			pivot := output.NewPivotingWithRem(remOpt, pipe)
 			event.Op = "pivot_" + pivot.Mod
 			event.Message = pivot.Abstract()
 			lns, err := core.Listeners.Get(pipe.ListenerId)
@@ -216,9 +214,7 @@ func (rpc *Server) RemAgentCtrl(ctx context.Context, req *clientpb.REMAgent) (*c
 	status := lns.WaitCtrl(i)
 	if status.Status == consts.CtrlStatusSuccess {
 		agent := status.Job.GetRemAgent()
-		pivot := output.NewPivotingWithRem(agent)
-		pivot.Pipeline = pipe.Name
-		pivot.Listener = pipe.ListenerId
+		pivot := output.NewPivotingWithRem(agent, pipe)
 		_, err = db.SaveContext(&clientpb.Context{
 			Listener: lns.ToProtobuf(),
 			Pipeline: pipe,

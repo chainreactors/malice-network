@@ -157,7 +157,7 @@ func (s *ServerStatus) EventHandler() {
 	}
 	s.Update()
 	s.EventStatus = true
-	Log.Debugf("starting event loop\n")
+	Log.Info("starting event loop\n")
 	defer func() {
 		Log.Warnf("event stream broken\n")
 		s.EventStatus = false

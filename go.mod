@@ -21,7 +21,7 @@ require (
 	github.com/gookit/config/v2 v2.2.5
 	github.com/jessevdk/go-flags v1.6.1
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
-	github.com/klauspost/compress v1.17.0
+	github.com/klauspost/compress v1.17.8
 	github.com/mattn/go-tty v0.0.7
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/muesli/termenv v0.15.3-0.20240618155329-98d742f6907a
@@ -67,6 +67,7 @@ require (
 	github.com/chainreactors/files v0.0.0-20240716182835-7884ee1e77f0 // indirect
 	github.com/chainreactors/fingers v0.0.0-20240702104653-a66e34aa41df // indirect
 	github.com/chainreactors/go-metrics v0.0.0-20220926021830-24787b7a10f8 // indirect
+	github.com/chainreactors/proxyclient v1.0.2 // indirect
 	github.com/charmbracelet/bubbles v0.18.0 // indirect
 	github.com/charmbracelet/harmonica v0.2.0 // indirect
 	github.com/charmbracelet/x/ansi v0.1.4 // indirect
@@ -152,7 +153,8 @@ require (
 )
 
 replace (
-	github.com/chainreactors/rem => github.com/chainreactors/rem-community v0.2.2
+	github.com/chainreactors/proxyclient => github.com/chainreactors/proxyclient v1.0.3
+	github.com/chainreactors/rem => github.com/chainreactors/rem-community v0.2.3
 	github.com/reeflective/console => ./external/console
 	github.com/reeflective/readline => ./external/readline
 	github.com/wabzsy/gonut => ./external/gonut

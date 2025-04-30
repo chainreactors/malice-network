@@ -16,7 +16,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	remCmd := &cobra.Command{
 		Use:   consts.CommandRemDial + " [pipeline] [args]",
 		Short: "Run rem on the implant",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.MinimumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return RemDialCmd(cmd, con)
 		},
@@ -24,6 +24,8 @@ func Commands(con *repl.Console) []*cobra.Command {
 			"depend": consts.ModuleRem,
 		},
 	}
+
+	common.BindArgCompletions(remCmd, nil, common.RemPipelineCompleter(con))
 
 	forwardCmd := &cobra.Command{
 		Use:   consts.CommandPortForward + " [pipeline]",
