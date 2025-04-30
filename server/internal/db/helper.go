@@ -694,6 +694,7 @@ func GetProfile(name string) (*types.ProfileConfig, error) {
 		}
 		if profileModel.Pipeline != nil {
 			profile.Basic.Targets = []string{profileModel.Pipeline.Address()}
+			profile.Basic.Protocol = profileModel.Pipeline.Type
 		}
 	}
 	if profile.Pulse != nil {
