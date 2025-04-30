@@ -81,13 +81,14 @@ func RegisterAssemblyFunc(con *repl.Console) {
 	con.AddCommandFuncHelper(
 		consts.ModuleExecuteAssembly,
 		consts.ModuleExecuteAssembly,
-		consts.ModuleExecuteAssembly+`(active(),"sharp.exe",{}, true, new_bypass_all())`,
+		consts.ModuleExecuteAssembly+`(active(),"sharp.exe",{}, true, new_bypass_all(), new_sacrifice(1234,false,true,true,""))`,
 		[]string{
 			"sessions",
 			"path",
 			"args",
 			"output",
 			"param, bypass amsi,wldp,etw",
+			"sac, sacrifice process",
 		},
 		[]string{"task"})
 

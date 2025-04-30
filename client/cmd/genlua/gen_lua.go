@@ -31,6 +31,8 @@ func main() {
 	command.RegisterClientFunc(con)
 	command.RegisterImplantFunc(con)
 	vm := plugin.NewLuaVM()
+	plug := &plugin.LuaPlugin{DefaultPlugin: &plugin.DefaultPlugin{MalManiFest: &plugin.MalManiFest{}}}
+	plug.RegisterLuaBuiltin(vm)
 	mals.GenerateLuaDefinitionFile(vm, intermediate.BuiltinPackage, plugin.ProtoPackage, intermediate.InternalFunctions.Package(intermediate.BuiltinPackage))
 	mals.GenerateLuaDefinitionFile(vm, intermediate.RpcPackage, plugin.ProtoPackage, intermediate.InternalFunctions.Package(intermediate.RpcPackage))
 	mals.GenerateLuaDefinitionFile(vm, intermediate.BeaconPackage, plugin.ProtoPackage, intermediate.InternalFunctions.Package(intermediate.BeaconPackage))

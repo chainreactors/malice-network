@@ -279,11 +279,11 @@ func (plug *LuaPlugin) RegisterLuaBuiltin(vm *lua.LState) error {
 	}, nil)
 
 	plug.registerLuaFunction(vm, "find_resource", func(sess *core.Session, base string, ext string) (string, error) {
-		return intermediate.GetResourceFile(plug.Name, fmt.Sprintf("%s.%s.%s", base, consts.FormatArch(sess.Os.Arch), ext))
+		return intermediate.GetResourceFile(plug.Name, fmt.Sprintf("%s_%s_%s", base, consts.FormatArch(sess.Os.Arch), ext))
 	}, nil)
 
 	plug.registerLuaFunction(vm, "find_global_resource", func(sess *core.Session, base string, ext string) (string, error) {
-		return intermediate.GetGlobalResourceFile(fmt.Sprintf("%s.%s.%s", base, consts.FormatArch(sess.Os.Arch), ext))
+		return intermediate.GetGlobalResourceFile(fmt.Sprintf("%s_%s_%s", base, consts.FormatArch(sess.Os.Arch), ext))
 	}, nil)
 
 	// 读取资源文件内容
@@ -494,6 +494,11 @@ func (plug *LuaPlugin) registerLuaFunction(vm *lua.LState, name string, fn inter
 	wrappedFunc.Name = name
 	wrappedFunc.NoCache = true
 	wrappedFunc.Helper = helper
+
+	if intermediate.InternalFunctions[name] == nil {
+		intermediate.InternalFunctions[name] = &intermediate.InternalFunc{MalFunction: wrappedFunc}
+	}
+
 	vm.SetGlobal(name, vm.NewFunction(mals.WrapFuncForLua(wrappedFunc)))
 }
 
