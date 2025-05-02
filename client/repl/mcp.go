@@ -21,7 +21,6 @@ type MCPServer struct {
 	cmds   map[string]*cobra.Command
 }
 
-// 全局状态存储（需加锁保护）
 var (
 	clientStates = make(map[string]int) // key: clientID, value: call count
 	mu           sync.Mutex
@@ -57,7 +56,6 @@ func NewMCPServer(con *Console, cmds map[string]*cobra.Command) *MCPServer {
 		mu.Lock()
 		defer mu.Unlock()
 
-		// 首次访问返回帮助文档
 		if clientStates[clientID] == 0 {
 			clientStates[clientID] = 1
 			return mcp.NewGetPromptResult(
