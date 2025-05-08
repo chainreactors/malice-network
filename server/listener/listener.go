@@ -4,12 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 	"os"
 	"path/filepath"
 	"strings"
-
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/metadata"
+	"time"
 
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/codenames"
@@ -35,9 +35,10 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 	if err != nil {
 		return err
 	}
-	conn, err := grpc.Dial(listenerCfg.Address(), options...)
+	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+	conn, err := grpc.DialContext(ctx, listenerCfg.Address(), options...)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to connect to server: %v", err)
 	}
 
 	lns := &listener{

@@ -1,9 +1,9 @@
 server:
+  enable: true
   grpc_port: 5004
   grpc_host: 0.0.0.0
   ip: 127.0.0.1
   audit: 1  # 0 close , 1 basic , 2 detail
-  enable: true
   config:
     packet_length: 10485760 # 10M: 1024*1024*10
     certificate:
@@ -34,6 +34,7 @@ listeners:
       auto_build:
         target:
           - x86_64-unknown-linux-musl
+          - x86_64-pc-windows-gnu
       tls:
         enable: false
         name: default
@@ -55,11 +56,11 @@ listeners:
       port: 5002
       host: 0.0.0.0
       parser: pulse
-      auto_build:
-        target:
-          - x86_64-unknown-linux-musl
-          - x86_64-pc-windows-gnu
-        beacon_pipeline: tcp_malefic
+#      auto_build:
+#        target:
+#          - x86_64-unknown-linux-musl
+#          - x86_64-pc-windows-gnu
+#        beacon_pipeline: tcp_malefic
       enable: true
       encryption:
         enable: true
@@ -102,11 +103,11 @@ listeners:
         enable: true
         type: xor
         key: maliceofinternal
-      auto_build:
-        target:
-          - x86_64-unknown-linux-musl
-          - x86_64-pc-windows-gnu
-        beacon_pipeline: http-malefic
+#      auto_build:
+#        target:
+#          - x86_64-unknown-linux-musl
+#          - x86_64-pc-windows-gnu
+#        beacon_pipeline: http-malefic
       error_page: ""
   bind:
     - name: bind_pipeline
