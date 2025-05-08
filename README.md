@@ -10,7 +10,7 @@ blog posts:
 
 ## Introduce
 
-IoM-gui 是一个复杂而强大的基础设施, 包含了大量组件。 
+IoM 是一个复杂而强大的基础设施, 包含了大量组件。 
 
 introduce: https://chainreactors.github.io/wiki/IoM/index/
 
