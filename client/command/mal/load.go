@@ -53,7 +53,7 @@ func LoadMalWithManifest(con *repl.Console, rootCmd *cobra.Command, manifest *pl
 	if err != nil {
 		return nil, err
 	}
-	profile.AddMal(manifest.Name)
+	profile.Add(manifest.Name)
 	var cmdNames []string
 	var cmds []*cobra.Command
 	for _, cmd := range plug.Commands() {

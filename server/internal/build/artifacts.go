@@ -85,7 +85,7 @@ func PushArtifact(owner, repo, token, buildName string, isRemove bool) (*models.
 // getArtifactDownloadUrl retrieves the artifact download URL from the GitHub API response
 func getArtifactDownloadUrl(owner, repo, token, buildName string) (string, int64, error) {
 	// Get the artifact list
-	artifactUrl, workflowID, err := getArtifact(owner, repo, token, buildName)
+	artifactUrl, workflowID, err := getArtifactUrl(owner, repo, token, buildName)
 	if err != nil && !errors.Is(err, errs.ErrWorkflowFailed) {
 		return "", 0, fmt.Errorf("failed to get artifact URL: %v", err)
 	} else if errors.Is(err, errs.ErrWorkflowFailed) {
@@ -99,7 +99,7 @@ func getArtifactDownloadUrl(owner, repo, token, buildName string) (string, int64
 	return artifactDownloadUrl, workflowID, nil
 }
 
-func getArtifact(owner, repo, token, buildName string) (string, int64, error) {
+func getArtifactUrl(owner, repo, token, buildName string) (string, int64, error) {
 	workflows, err := listRepositoryWorkflows(owner, repo, token)
 	if err != nil {
 		return "", 0, err
@@ -109,6 +109,19 @@ func getArtifact(owner, repo, token, buildName string) (string, int64, error) {
 		return "", 0, err
 	}
 	return artifactUrl, workflowID, nil
+}
+
+func getArtifact(owner, repo, token, buildName string) (Workflow, error) {
+	workflows, err := listRepositoryWorkflows(owner, repo, token)
+	if err != nil {
+		return Workflow{}, err
+	}
+	for _, wf := range workflows {
+		if wf.Name == buildName {
+			return wf, nil
+		}
+	}
+	return Workflow{}, fmt.Errorf("no artifact found")
 }
 
 // listRepositoryWorkflows fetches the workflows for a given repository
@@ -227,4 +240,12 @@ func DeleteSuccessWorkflow(owner, repo, token string, workflowID int64) error {
 		return fmt.Errorf("failed to delete workflow. Status code: %d", resp.StatusCode)
 	}
 	return nil
+}
+
+func GetActionStatus(owner, repo, token, artifactName string) (string, string, error) {
+	wf, err := getArtifact(owner, repo, token, artifactName)
+	if err != nil {
+		return "", "", err
+	}
+	return wf.Status, wf.Conclusion, nil
 }

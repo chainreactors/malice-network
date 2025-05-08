@@ -6,6 +6,7 @@ import (
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 func Commands(con *repl.Console) []*cobra.Command {
@@ -28,6 +29,9 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return MalInstallCmd(cmd, con)
 		},
 	}
+	common.BindFlag(installCmd, common.MalHttpFlagset, func(f *pflag.FlagSet) {
+		f.String("version", "latest", "mal version to install")
+	})
 
 	common.BindArgCompletions(installCmd,
 		nil,

@@ -101,3 +101,15 @@ func (rpc *Server) GetArtifactsByProfile(ctx context.Context, req *clientpb.Prof
 	}
 	return builders, nil
 }
+
+func (rpc *Server) GetActionProgress(ctx context.Context, req *clientpb.GithubWorkflowRequest) (*clientpb.Artifact, error) {
+	status, conclusion, err := build.GetActionStatus(req.Owner, req.Repo, req.Token, req.BuildName)
+	if err != nil {
+		return nil, err
+	}
+	builder, err := db.GetArtifactById(req.ArtifactId)
+	result := builder.ToArtifact(make([]byte, 0))
+	result.Status = status
+	result.Conclusion = conclusion
+	return result, nil
+}

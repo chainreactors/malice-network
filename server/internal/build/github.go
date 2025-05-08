@@ -59,6 +59,25 @@ type Artifact struct {
 	} `json:"workflow_run"`
 }
 
+type Step struct {
+	Name       string `json:"name"`
+	Status     string `json:"status"`
+	Conclusion string `json:"conclusion"`
+}
+
+type Job struct {
+	ID         int64  `json:"id"`
+	Name       string `json:"name"`
+	Status     string `json:"status"`
+	Conclusion string `json:"conclusion"`
+	Steps      []Step `json:"steps"`
+}
+
+type JobsResponse struct {
+	TotalCount int   `json:"total_count"`
+	Jobs       []Job `json:"jobs"`
+}
+
 // ArtifactsResponse is the response structure for listing artifacts
 type ArtifactsResponse struct {
 	TotalCount int        `json:"total_count"`

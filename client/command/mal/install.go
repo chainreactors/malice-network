@@ -11,16 +11,36 @@ import (
 	"github.com/spf13/cobra"
 	"os"
 	"path/filepath"
+	"strings"
 )
+
+var repoUrl = "https://github.com/chainreactors/mal-community"
 
 // ExtensionsInstallCmd - Install an extension
 func MalInstallCmd(cmd *cobra.Command, con *repl.Console) error {
 	localPath := cmd.Flags().Arg(0)
+	malHttpConfig := parseMalHTTPConfig(cmd)
+	version, _ := cmd.Flags().GetString("version")
 	_, err := os.Stat(localPath)
+	filename := filepath.Base(localPath)
+
+	// 去除双重扩展名，.tar.gz
+	name := strings.TrimSuffix(filename, filepath.Ext(filename)) // 去除 .gz，结果是 common.tar
+	name = strings.TrimSuffix(name, filepath.Ext(name))
 	if os.IsNotExist(err) {
+		// If the file does not exist, try to download it
+		InstallMal(repoUrl, name, version, os.Stdout, malHttpConfig, con)
 		return errors.New("file does not exist")
 	}
 	InstallFromDir(localPath, true, con)
+	mal, err := LoadMal(con, con.ImplantMenu(), filepath.Join(assets.GetMalsDir(), name, m.ManifestFileName))
+	if err != nil {
+		return err
+	}
+	for _, cmd := range mal.CMDs {
+		con.ImplantMenu().AddCommand(cmd)
+		con.Log.Debugf("add command: %s", cmd.Name())
+	}
 	return nil
 }
 
