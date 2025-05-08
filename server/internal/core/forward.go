@@ -5,8 +5,10 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
+	"github.com/chainreactors/malice-network/helper/types"
 	"strconv"
 	"time"
+	"unsafe"
 
 	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
 	"google.golang.org/grpc/metadata"
@@ -121,6 +123,17 @@ func (f *Forward) Handler() {
 			_, err := f.ListenerRpc.Checkin(f.Context(msg.SessionID), &implantpb.Ping{})
 			if err != nil {
 				logs.Log.Debug(err)
+				spite, _ := types.BuildSpite(
+					&implantpb.Spite{
+						Name: types.MsgInit.String(),
+					},
+					&implantpb.Init{Data: (*[4]byte)(unsafe.Pointer(&msg.RawID))[:]})
+				err = Connections.Push(msg.SessionID, &clientpb.SpiteRequest{
+					Spite: spite,
+				})
+				if err != nil {
+					logs.Log.Debug(err)
+				}
 			}
 			switch spite.Body.(type) {
 			case *implantpb.Spite_Register:

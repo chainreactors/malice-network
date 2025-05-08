@@ -152,6 +152,15 @@ func (c *connections) Get(sessionID string) *Connection {
 	return nil
 }
 
+func (c *connections) Push(sid string, msg *clientpb.SpiteRequest) error {
+	connect := Connections.Get(sid)
+	if connect == nil {
+		return fmt.Errorf("connection %s not found", sid)
+	}
+	connect.C <- msg
+	return nil
+}
+
 //func (c *connections) GetFromRawID(rawID string) *Connection {
 //	if val, ok := c.connections.Load(hash.Md5Hash([]byte(rawID))); ok {
 //		return val.(*Connection)

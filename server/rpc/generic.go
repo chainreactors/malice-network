@@ -336,3 +336,17 @@ func getContextNonce(ctx context.Context) (string, string) {
 	}
 	return contextType, nonce
 }
+
+func Handler(ctx context.Context, rpc *Server, req proto.Message, expect types.MsgName, callbacks ...func(spite *implantpb.Spite)) (*clientpb.Task, error) {
+	greq, err := newGenericRequest(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	ch, err := rpc.GenericHandler(ctx, greq)
+	if err != nil {
+		return nil, err
+	}
+
+	go greq.HandlerResponse(ch, expect, callbacks...)
+	return greq.Task.ToProtobuf(), nil
+}

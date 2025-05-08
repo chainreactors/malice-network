@@ -99,7 +99,9 @@ func (rpc *Server) Info(ctx context.Context, req *implantpb.Request) (*clientpb.
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgSysInfo)
+	go greq.HandlerResponse(ch, types.MsgSysInfo, func(spite *implantpb.Spite) {
+		greq.Session.UpdateSysInfo(spite.GetSysinfo())
+	})
 	return greq.Task.ToProtobuf(), nil
 }
 
