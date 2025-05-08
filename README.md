@@ -8,13 +8,21 @@ blog posts:
 - [v0.0.4 Bootstrapping](https://chainreactors.github.io/wiki/blog/2025/01/02/IoM_v0.0.4/)
 - [v0.1.0 代替CobaltStrike的最后四块碎片](https://chainreactors.github.io/wiki/blog/2025/04/14/IoM_v0.1.0/)
 
-## wiki
+## Introduce
 
-see: https://chainreactors.github.io/wiki/IoM/
+IoM-gui 是一个复杂而强大的基础设施, 包含了大量组件。 
 
-implant: https://github.com/chainreactors/malefic
+introduce: https://chainreactors.github.io/wiki/IoM/index/
 
-protocol: https://github.com/chainreactors/proto
+基本使用: https://chainreactors.github.io/wiki/IoM/quickstart/
+
+GUI 安装: https://chainreactors.github.io/wiki/IoM/manual/manual/GUI/
+
+插件编写 quickstart: https://chainreactors.github.io/wiki/IoM/manual/mal/quickstart/
+
+implant 仓库: https://github.com/chainreactors/malefic
+
+implant 基本介绍: https://chainreactors.github.io/wiki/IoM/manual/implant/
 
 ## Roadmap
 
