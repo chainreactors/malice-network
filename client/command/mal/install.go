@@ -27,10 +27,22 @@ func MalInstallCmd(cmd *cobra.Command, con *repl.Console) error {
 	name := strings.TrimSuffix(filename, filepath.Ext(filename)) // 去除 .gz，结果是 common.tar
 	name = strings.TrimSuffix(name, filepath.Ext(name))
 	if os.IsNotExist(err) {
-		// If the file does not exist, try to download it
+		malsJson, err := m.ParserMalYaml(m.DefaultMalRepoURL, assets.GetConfigDir(), malHttpConfig)
+		if err != nil {
+			return err
+		}
+		if version == "latest" {
+			for _, mal := range malsJson.Mals {
+				if mal.Name == name {
+					version = mal.Version
+					break
+				}
+			}
+		}
 		InstallMal(repoUrl, name, version, os.Stdout, malHttpConfig, con)
+	} else {
+		InstallFromDir(localPath, true, con)
 	}
-	InstallFromDir(localPath, true, con)
 	mal, err := LoadMal(con, con.ImplantMenu(), filepath.Join(assets.GetMalsDir(), name, m.ManifestFileName))
 	if err != nil {
 		return err

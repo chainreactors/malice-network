@@ -6,7 +6,7 @@ require (
 	filippo.io/age v1.1.1
 	github.com/carapace-sh/carapace v1.7.1
 	github.com/chainreactors/logs v0.0.0-20250312104344-9f30fa69d3c9
-	github.com/chainreactors/mals v0.0.0-20250312123103-4c3242132d76
+	github.com/chainreactors/mals v0.0.0-20250508145621-0314ec3ee14a
 	github.com/chainreactors/parsers v0.0.0-20250225073555-ab576124d61f
 	github.com/chainreactors/rem v0.2.3
 	github.com/chainreactors/tui v0.0.0-20250506110141-315eaec3205e
@@ -71,9 +71,7 @@ require (
 	github.com/charmbracelet/bubbles v0.18.0 // indirect
 	github.com/charmbracelet/harmonica v0.2.0 // indirect
 	github.com/charmbracelet/x/ansi v0.8.0 // indirect
-	github.com/charmbracelet/x/input v0.1.0 // indirect
 	github.com/charmbracelet/x/term v0.2.1 // indirect
-	github.com/charmbracelet/x/windows v0.1.0 // indirect
 	github.com/cjoudrey/gluahttp v0.0.0-20201111170219-25003d9adfa9 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dlclark/regexp2 v1.11.0 // indirect

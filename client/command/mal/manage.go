@@ -47,7 +47,7 @@ func parseMalHTTPConfig(cmd *cobra.Command) m.MalHTTPConfig {
 func MalCmd(cmd *cobra.Command, con *repl.Console) error {
 	malHttpConfig := parseMalHTTPConfig(cmd)
 	//malIndex, _ := DefaultMalIndexParser(malHttpConfig)
-	malsJson, err := m.ParserMalYaml(m.DefaultMalRepoURL, filepath.Join(assets.GetConfigDir(), m.MalIndexFileName), malHttpConfig)
+	malsJson, err := m.ParserMalYaml(m.DefaultMalRepoURL, assets.GetConfigDir(), malHttpConfig)
 	if err != nil {
 		return err
 	}
