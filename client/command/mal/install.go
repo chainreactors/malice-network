@@ -1,7 +1,6 @@
 package mal
 
 import (
-	"errors"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/core/plugin"
 	"github.com/chainreactors/malice-network/client/repl"
@@ -30,7 +29,6 @@ func MalInstallCmd(cmd *cobra.Command, con *repl.Console) error {
 	if os.IsNotExist(err) {
 		// If the file does not exist, try to download it
 		InstallMal(repoUrl, name, version, os.Stdout, malHttpConfig, con)
-		return errors.New("file does not exist")
 	}
 	InstallFromDir(localPath, true, con)
 	mal, err := LoadMal(con, con.ImplantMenu(), filepath.Join(assets.GetMalsDir(), name, m.ManifestFileName))

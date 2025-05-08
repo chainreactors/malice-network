@@ -87,10 +87,6 @@ func ListMalManifest(con *repl.Console) {
 		table.NewColumn("Type", "Type", 10),
 		table.NewColumn("Version", "Version", 7),
 		table.NewColumn("Author", "Author", 4),
-		//{Title: "Name", Width: 10},
-		//{Title: "Type", Width: 10},
-		//{Title: "Version", Width: 7},
-		//{Title: "Author", Width: 4},
 	}, true)
 	for _, m := range loadedMals {
 		plug := m.Plugin.Manifest()
@@ -102,13 +98,6 @@ func ListMalManifest(con *repl.Console) {
 				"Author":  plug.Author,
 			},
 		)
-		//Row{
-		//
-		//	plug.Name,
-		//	plug.Type,
-		//	plug.Version,
-		//	plug.Author,
-		//}
 		rows = append(rows, row)
 	}
 	tableModel.SetRows(rows)
