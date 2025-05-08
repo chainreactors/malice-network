@@ -83,10 +83,14 @@ func ListMalManifest(con *repl.Console) {
 	}
 	rows := []table.Row{}
 	tableModel := tui.NewTable([]table.Column{
-		table.NewColumn("Name", "Name", 10),
-		table.NewColumn("Type", "Type", 10),
+		table.NewColumn("Name", "Name", 20),
+		table.NewColumn("Type", "Type", 8),
 		table.NewColumn("Version", "Version", 7),
-		table.NewColumn("Author", "Author", 4),
+		table.NewColumn("Author", "Author", 10),
+		//{Title: "Name", Width: 10},
+		//{Title: "Type", Width: 10},
+		//{Title: "Version", Width: 7},
+		//{Title: "Author", Width: 4},
 	}, true)
 	for _, m := range loadedMals {
 		plug := m.Plugin.Manifest()
