@@ -13,7 +13,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	sessCmd := &cobra.Command{
 		Use: consts.CommandSession,
 		Annotations: map[string]string{
-			"isStatic": "false",
+			"resource": "true",
 		},
 		Short: "List and Choice sessions",
 		Long: `Display a table of active sessions on the server, 

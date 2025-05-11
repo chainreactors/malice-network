@@ -15,7 +15,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Short: "Automatically download and install extensions/aliases",
 		Long:  "See Docs at https://sliver.sh/docs?name=Armory",
 		Annotations: map[string]string{
-			"isStatic": "false",
+			"thirdParty": "true",
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			ArmoryCmd(cmd, con)
@@ -74,7 +74,7 @@ armory install rubeus
 		Long:  "See Docs at https://sliver.sh/docs?name=Armory",
 		Args:  cobra.ExactArgs(1),
 		Annotations: map[string]string{
-			"isStatic": "false",
+			"thirdParty": "true",
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			ArmorySearchCmd(cmd, con)

@@ -16,8 +16,12 @@ func Commands(con *repl.Console) []*cobra.Command {
 	taskCmd := &cobra.Command{
 		Use:   consts.CommandTasks,
 		Short: "List tasks",
+		Long:  "List tasks",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return GetTasksCmd(cmd, con)
+		},
+		Annotations: map[string]string{
+			"resource": "true",
 		},
 	}
 

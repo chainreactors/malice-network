@@ -16,8 +16,8 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return regExplorerCmd(cmd, con)
 		},
 		Annotations: map[string]string{
-			"depend":   consts.ModuleRegListKey,
-			"isStatic": "false",
+			"depend":     consts.ModuleRegListKey,
+			"thirdParty": "true",
 		},
 	}
 
@@ -25,7 +25,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Use:   consts.CommandExplore,
 		Short: "file explorer",
 		Annotations: map[string]string{
-			"isStatic": "false",
+			"thirdParty": "true",
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			fileExplorerCmd(cmd, con)

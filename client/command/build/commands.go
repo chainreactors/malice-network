@@ -316,7 +316,7 @@ build log builder_name --limit 70
 
 This command fetches metadata about artifacts, such as their names, IDs, and associated build configurations. The artifacts are displayed in a table format for easy navigation.`,
 		Annotations: map[string]string{
-			"isStatic": "false",
+			"resource": "true",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ListArtifactCmd(cmd, con)

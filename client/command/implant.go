@@ -56,6 +56,9 @@ func ImplantCmd(con *repl.Console) *cobra.Command {
 func makeRunners(implantCmd *cobra.Command, con *repl.Console) (pre, post func(cmd *cobra.Command, args []string) error) {
 	// so we can have access to active sessions/beacons, and other stuff needed.
 	pre = func(cmd *cobra.Command, args []string) error {
+		if cmd.Annotations["resource"] == "true" {
+			return nil
+		}
 		// Set the active target.
 		if implantCmd.Parent() != nil {
 			err := implantCmd.Parent().PersistentPreRunE(implantCmd, args)

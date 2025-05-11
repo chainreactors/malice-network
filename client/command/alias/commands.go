@@ -88,7 +88,7 @@ Each command will have the --process flag defined, which allows you to specify t
 		Short: "List all aliases",
 		Long:  "See Docs at https://sliver.sh/docs?name=Aliases%20and%20Extensions",
 		Annotations: map[string]string{
-			"isStatic": "false",
+			"thirdParty": "true",
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			AliasesCmd(cmd, con)

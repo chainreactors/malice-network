@@ -14,7 +14,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Use:   consts.CommandMal,
 		Short: "mal commands",
 		Annotations: map[string]string{
-			"isStatic": "false",
+			"thirdParty": "true",
 		},
 		//Long:  help.GetHelpFor(consts.CommandExtension),
 		RunE: func(cmd *cobra.Command, args []string) error {

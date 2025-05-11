@@ -58,6 +58,7 @@ type Console struct {
 	Log     *core.Logger
 	App     *console.Console
 	Profile *assets.Profile
+	MCP     *MCPServer
 	CMDs    map[string]*cobra.Command
 	Helpers map[string]*cobra.Command
 }
