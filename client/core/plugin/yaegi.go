@@ -58,3 +58,7 @@ func (plug *GoMalPlugin) Run() error {
 	}
 	return nil
 }
+
+func (plug *GoMalPlugin) Destroy() error {
+	return nil
+}

@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 
@@ -12,6 +13,8 @@ import (
 	"github.com/chainreactors/malice-network/helper/utils/handler"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 )
+
+var ErrLuaVMDead = fmt.Errorf("lua vm is dead")
 
 func (s *ServerStatus) AddDoneCallback(task *clientpb.Task, callback TaskCallback) {
 	s.doneCallbacks.Store(fmt.Sprintf("%s_%d", task.SessionId, task.TaskId), callback)
@@ -170,10 +173,14 @@ func (s *ServerStatus) EventHandler() {
 		for condition, fns := range s.EventHook {
 			if condition.Match(event) {
 				go func() {
-					for _, fn := range fns {
+					for i, fn := range fns {
 						_, err := fn(event)
 						if err != nil {
-							Log.Errorf("error running event hook: %s", err)
+							if errors.Is(err, ErrLuaVMDead) {
+								s.EventHook[condition] = append(fns[:i], fns[i+1:]...)
+							} else {
+								Log.Errorf("error running event hook: %s", err)
+							}
 						}
 					}
 				}()

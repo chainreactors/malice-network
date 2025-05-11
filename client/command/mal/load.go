@@ -22,6 +22,15 @@ type LoadedMal struct {
 
 func MalLoadCmd(ctx *cobra.Command, con *repl.Console) error {
 	dirPath := ctx.Flags().Arg(0)
+
+	if plug := loadedMals[dirPath]; plug != nil {
+		con.Log.Warnf("mal %s already loaded, reloading\n", dirPath)
+		err := plug.Plugin.Destroy()
+		if err != nil {
+			con.Log.Warnf("Failed to destroy plugin: %s\n", err)
+		}
+	}
+
 	mal, err := LoadMal(con, con.ImplantMenu(), filepath.Join(assets.GetMalsDir(), dirPath, m.ManifestFileName))
 	if err != nil {
 		return err

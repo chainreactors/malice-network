@@ -129,6 +129,12 @@ func (p *LuaVMPool) ReleaseVM(wrapper *LuaVMWrapper) {
 	wrapper.Unlock()
 }
 
+func (p *LuaVMPool) Destroy() {
+	for _, wrapper := range p.vms {
+		wrapper.Close()
+	}
+}
+
 const (
 	LuaInternal = iota
 	LuaFlag
@@ -169,6 +175,13 @@ func (plug *LuaPlugin) Run() error {
 	err = plug.registerLuaOnHooks()
 	if err != nil {
 		return err
+	}
+	return nil
+}
+
+func (plug *LuaPlugin) Destroy() error {
+	if plug.vmPool != nil {
+		plug.vmPool.Destroy()
 	}
 	return nil
 }
@@ -473,7 +486,9 @@ func (plug *LuaPlugin) registerLuaOnHook(name string, condition intermediate.Eve
 
 	if fn := vm.GetGlobal("on_" + name); fn != lua.LNil {
 		plug.Events[condition] = func(event *clientpb.Event) (bool, error) {
-
+			if vm.IsClosed() {
+				return false, core.ErrLuaVMDead
+			}
 			fn := vm.GetGlobal("on_" + name)
 			vm.Push(fn)
 			vm.Push(mals.ConvertGoValueToLua(vm.LState, event))

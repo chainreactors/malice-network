@@ -30,6 +30,7 @@ type Plugin interface {
 	Run() error
 	Manifest() *MalManiFest
 	Commands() Commands
+	Destroy() error
 	GetEvents() map[intermediate.EventCondition]intermediate.OnEventFunc
 }
 

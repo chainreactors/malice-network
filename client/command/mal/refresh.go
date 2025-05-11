@@ -15,6 +15,13 @@ func RefreshMalCmd(cmd *cobra.Command, con *repl.Console) error {
 		}
 	}
 
+	for _, plug := range loadedMals {
+		err := plug.Plugin.Destroy()
+		if err != nil {
+			con.Log.Warnf("Failed to destroy plugin: %s\n", err)
+		}
+	}
+
 	for _, malName := range plugin.GetPluginManifest() {
 		_, err := LoadMalWithManifest(con, implantCmd, malName)
 		if err != nil {
