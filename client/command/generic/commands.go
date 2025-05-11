@@ -137,6 +137,22 @@ func Log(con *repl.Console, sess *core.Session, msg string, notify bool) (bool, 
 }
 
 func Register(con *repl.Console) {
+	con.RegisterServerFunc("console", func(con *repl.Console) *repl.Console {
+		return con
+	}, nil)
+
+	con.RegisterServerFunc("sessions", func(con *repl.Console) map[string]*core.Session {
+		return con.Sessions
+	}, nil)
+
+	con.RegisterServerFunc("listeners", func(con *repl.Console) map[string]*clientpb.Listener {
+		return con.Listeners
+	}, nil)
+
+	con.RegisterServerFunc("pipelines", func(con *repl.Console) map[string]*clientpb.Pipeline {
+		return con.Pipelines
+	}, nil)
+
 	con.RegisterServerFunc("run", repl.RunCommand, nil)
 
 	con.RegisterServerFunc("async_run", func(con *repl.Console, cmdline interface{}) (bool, error) {
