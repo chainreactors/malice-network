@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/third/rem"
@@ -14,7 +15,7 @@ import (
 
 func ListRemCmd(cmd *cobra.Command, con *repl.Console) error {
 	listenerID := cmd.Flags().Arg(0)
-	pipes, err := con.Rpc.ListRems(con.Context(), &clientpb.Listener{
+	pipes, err := con.Rpc.ListPipelines(con.Context(), &clientpb.Listener{
 		Id: listenerID,
 	})
 	if err != nil {
@@ -26,7 +27,7 @@ func ListRemCmd(cmd *cobra.Command, con *repl.Console) error {
 	}
 	var rems []*clientpb.REM
 	for _, pipe := range pipes.Pipelines {
-		if pipe.Enable {
+		if pipe.Enable && pipe.Type == consts.RemPipeline {
 			rems = append(rems, pipe.GetRem())
 		}
 	}
