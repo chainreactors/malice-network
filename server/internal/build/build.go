@@ -232,9 +232,20 @@ func BuildPulse(cli *client.Client, req *clientpb.Generate) error {
 	timeout := 20 * time.Minute
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
+	target, ok := consts.GetBuildTarget(req.Target)
+	var pulseOs string
+	if target.OS == consts.Windows {
+		pulseOs = "win"
+	} else {
+		pulseOs = target.OS
+	}
+	if !ok {
+		return fmt.Errorf("invalid target: %s", req.Target)
+	}
+
 	BuildBindCommand := fmt.Sprintf(
-		"malefic-mutant generate pulse &&malefic-mutant build pulse -t %s",
-		req.Target,
+		"malefic-mutant generate pulse %s %s &&malefic-mutant build pulse -t %s",
+		target.Arch, pulseOs, req.Target,
 	)
 	containerName := "malefic_" + cryptography.RandomString(8)
 	resp, err := cli.ContainerCreate(ctx, &container.Config{

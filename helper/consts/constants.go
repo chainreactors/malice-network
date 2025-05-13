@@ -91,3 +91,12 @@ const (
 	TaskPath       = "task"
 	CachePath      = "cache"
 )
+
+const (
+	BuildStatusQueued     = "queued"
+	BuildStatusInProgress = "in_progress"
+	BuildStatusRequested  = "requested"
+	BuildStatusWaiting    = "waiting"
+	BuildStatusPending    = "pending"
+	BuildStatusCompleted  = "completed"
+)

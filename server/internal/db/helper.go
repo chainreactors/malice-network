@@ -766,6 +766,7 @@ func SaveArtifactFromGenerate(req *clientpb.Generate) (*models.Builder, error) {
 		Modules:     strings.Join(req.Modules, ""),
 		Arch:        target.Arch,
 		Os:          target.OS,
+		Status:      consts.BuildStatusInProgress,
 	}
 
 	paramsJson, err := json.Marshal(req.Params)
@@ -800,6 +801,7 @@ func SaveArtifactFromID(req *clientpb.Generate, ID uint32, resource string) (*mo
 		Modules:     req.Feature,
 		Arch:        target.Arch,
 		Os:          target.OS,
+		Status:      consts.BuildStatusInProgress,
 	}
 
 	paramsJson, err := json.Marshal(req.Params)
@@ -818,7 +820,7 @@ func SaveArtifactFromID(req *clientpb.Generate, ID uint32, resource string) (*mo
 
 func UpdateBuilderPath(builder *models.Builder) error {
 	return Session().Model(builder).
-		Select("path").
+		Select("path", "status").
 		Updates(builder).
 		Error
 }

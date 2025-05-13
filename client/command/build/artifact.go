@@ -51,6 +51,7 @@ func PrintArtifacts(builders *clientpb.Builders, con *repl.Console) error {
 		"Modules":  8,
 		"Time":     20,
 		"Profile":  20,
+		"Status":   10,
 	}
 
 	for _, builder := range builders.Builders {
@@ -74,6 +75,7 @@ func PrintArtifacts(builders *clientpb.Builders, con *repl.Console) error {
 				"Profile":  builder.ProfileName,
 				"Pipeline": builder.Pipeline,
 				"Time":     formattedTime,
+				"Status":   builder.Status,
 			})
 
 		rowEntries = append(rowEntries, row)

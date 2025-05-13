@@ -230,6 +230,11 @@ func (bqm *BuildQueueManager) finalizeBuild(req *clientpb.Generate, builder *mod
 	_, artifactPath, err := MoveBuildOutput(req.Target, req.Type)
 	if err != nil {
 		logs.Log.Errorf("move build output error: %v", err)
+		builder.Status = consts.BuildStatusCompleted
+		err = db.UpdateBuilderPath(builder)
+		if err != nil {
+			logs.Log.Errorf("update builder path and status error: %v", err)
+		}
 		return nil, err
 	}
 
@@ -239,6 +244,7 @@ func (bqm *BuildQueueManager) finalizeBuild(req *clientpb.Generate, builder *mod
 	}
 
 	builder.Path = absArtifactPath
+	builder.Status = consts.BuildStatusCompleted
 	err = db.UpdateBuilderPath(builder)
 	if err != nil {
 		return nil, err
