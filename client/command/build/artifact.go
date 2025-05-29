@@ -91,6 +91,7 @@ func PrintArtifacts(builders *clientpb.Builders, con *repl.Console) error {
 		table.NewColumn("Modules", "Modules", defaultLengths["Modules"]),
 		table.NewColumn("Time", "Time", defaultLengths["Time"]),
 		table.NewColumn("Profile", "Profile", defaultLengths["Profile"]),
+		table.NewColumn("Status", "Status", defaultLengths["Status"]),
 	}, false)
 
 	newTable := tui.NewModel(tableModel, nil, false, false)

@@ -29,7 +29,6 @@ type Builder struct {
 	Os            string
 	Arch          string
 	Log           string
-	Status        string
 }
 
 func (b *Builder) BeforeCreate(tx *gorm.DB) (err error) {
@@ -60,7 +59,6 @@ func (b *Builder) ToArtifact(bin []byte) *clientpb.Artifact {
 		Profile:  b.ProfileName,
 		Pipeline: pipeline,
 		Time:     b.CreatedAt.Unix(),
-		Status:   b.Status,
 	}
 }
 
@@ -85,7 +83,6 @@ func (b *Builder) ToProtobuf() *clientpb.Builder {
 		Pipeline:    pipeline,
 		Time:        b.CreatedAt.Unix(),
 		Resource:    b.Source,
-		Status:      b.Status,
 	}
 }
 

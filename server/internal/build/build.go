@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"github.com/chainreactors/malice-network/helper/errs"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/docker/docker/api/types"
 	"github.com/wabzsy/gonut"
 	"io"
@@ -96,7 +98,6 @@ func BuildBeacon(cli *client.Client, req *clientpb.Generate) error {
 	if err != nil {
 		return err
 	}
-
 	if err := cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
 		logs.Log.Errorf("Error starting container: %v", err)
 	}
@@ -396,12 +397,28 @@ func OBJCOPYPulse(builder *models.Builder, platform, arch string) ([]byte, error
 }
 
 func SRDIArtifact(builder *models.Builder, platform, arch string) ([]byte, error) {
+	if !strings.Contains(builder.Target, consts.Windows) {
+		builder.IsSRDI = false
+		err := db.UpdateBuilderSrdi(builder)
+		if err != nil {
+			return nil, err
+		}
+		return []byte{}, errs.ErrPlartFormNotSupport
+	}
 	absBuildOutputPath, err := filepath.Abs(configs.BuildOutputPath)
 	if err != nil {
 		return nil, err
 	}
 	dstPath := filepath.Join(absBuildOutputPath, encoders.UUID())
-	bin, err := gonut.DonutShellcodeFromFile(builder.Path, arch, "")
+	exePath := builder.Path
+	if !strings.HasSuffix(exePath, ".exe") {
+		exePath = builder.Path + ".exe"
+		err = fileutils.CopyFile(builder.Path, exePath)
+		if err != nil {
+			return nil, fmt.Errorf("copy to .exe failed: %w", err)
+		}
+	}
+	bin, err := gonut.DonutShellcodeFromFile(exePath, arch, "")
 	if err != nil {
 		return nil, err
 	}
@@ -411,6 +428,10 @@ func SRDIArtifact(builder *models.Builder, platform, arch string) ([]byte, error
 	}
 	builder.ShellcodePath = dstPath
 	err = db.UpdateBuilderSrdi(builder)
+	if err != nil {
+		return nil, err
+	}
+	err = fileutils.RemoveFile(exePath)
 	if err != nil {
 		return nil, err
 	}
@@ -470,4 +491,19 @@ func sendContainerCtrlMsg(isEnd bool, containerName string, req *clientpb.Genera
 			Important: true,
 		})
 	}
+}
+
+func GetDockerStatus(cli *client.Client, containerName string) (string, error) {
+	ctx := context.Background()
+	containers, err := cli.ContainerList(ctx, types.ContainerListOptions{All: true})
+	if err != nil {
+		return "", fmt.Errorf("failed to list containers: %v", err)
+	}
+
+	for _, container := range containers {
+		if container.Names[0] == "/"+containerName {
+			return container.State, nil
+		}
+	}
+	return "", fmt.Errorf("container %s not found", containerName)
 }

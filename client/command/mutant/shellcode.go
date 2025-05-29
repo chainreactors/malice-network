@@ -14,18 +14,18 @@ import (
 
 func SRDICmd(cmd *cobra.Command, con *repl.Console) error {
 	path, target, id, params := common.ParseSRDIFlags(cmd)
-	var fileName string
 	var err error
 
 	resp, err := MaleficSRDI(con, path, id, target, params)
 	if err != nil {
 		return err
 	}
-	err = os.WriteFile(filepath.Join(assets.TempDirName, resp.Name), resp.Bin, 0644)
+	srdiPath := filepath.Join(assets.GetTempDir(), resp.Name)
+	err = os.WriteFile(srdiPath, resp.Bin, 0644)
 	if err != nil {
 		return err
 	}
-	con.Log.Infof("Save mutant file to %s", filepath.Join(assets.TempDirName, fileName))
+	con.Log.Infof("Save mutant file to %s\n", filepath.Join(assets.GetTempDir(), resp.Name))
 	return nil
 }
 

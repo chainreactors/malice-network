@@ -3,11 +3,6 @@ package build
 import (
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
-	"strings"
-	"sync"
-
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/codenames"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -17,6 +12,10 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"github.com/docker/docker/client"
+	"os"
+	"path/filepath"
+	"strings"
+	"sync"
 )
 
 func init() {
@@ -36,6 +35,9 @@ type BuildQueueManager struct {
 	taskQueue   chan BuildTask // Channel holding tasks in the queue
 	workerCount int            // Number of worker goroutines
 	wg          sync.WaitGroup // WaitGroup to wait for all workers to finish
+
+	runningMu sync.Mutex
+	running   map[string]string
 }
 
 // GlobalBuildQueueManager is the global build queue manager instance
@@ -48,6 +50,7 @@ func NewBuildQueueManager(workerCount int) *BuildQueueManager {
 		GlobalBuildQueueManager = &BuildQueueManager{
 			taskQueue:   make(chan BuildTask, 100), // Buffer size of 100 tasks
 			workerCount: workerCount,
+			running:     make(map[string]string),
 		}
 		GlobalBuildQueueManager.Start()
 	})
@@ -68,17 +71,47 @@ func (bqm *BuildQueueManager) Stop() {
 	bqm.wg.Wait()        // Wait for all workers to finish
 }
 
+func (bqm *BuildQueueManager) markWaiting(name string) {
+	bqm.runningMu.Lock()
+	defer bqm.runningMu.Unlock()
+	bqm.running[name] = consts.BuildStatusWaiting
+}
+
+func (bqm *BuildQueueManager) markRunning(name string) {
+	bqm.runningMu.Lock()
+	defer bqm.runningMu.Unlock()
+	bqm.running[name] = consts.BuildStatusRunning
+}
+
+func (bqm *BuildQueueManager) unmarkRunning(name string) {
+	bqm.runningMu.Lock()
+	defer bqm.runningMu.Unlock()
+	delete(bqm.running, name)
+}
+
+func (bqm *BuildQueueManager) IsRunning(name string) string {
+	bqm.runningMu.Lock()
+	defer bqm.runningMu.Unlock()
+	if status, exists := bqm.running[name]; exists {
+		return status
+	}
+	// If the name is not found in the running map, return an empty string
+	return ""
+}
+
 // worker processes the tasks from the queue
 func (bqm *BuildQueueManager) worker(id int) {
 	defer bqm.wg.Done()               // Ensure to mark the worker as done when finished
 	for task := range bqm.taskQueue { // Continuously fetch tasks from the queue
 		// Execute the build task and send the result or error back
+		bqm.markRunning(task.builder.Name)
 		result, err := bqm.executeBuild(task.req, task.builder)
 		if err != nil {
 			task.err <- err // Send error if build fails
 		} else {
 			task.result <- result // Send the result if build succeeds
 		}
+		bqm.unmarkRunning(task.builder.Name)
 	}
 }
 
@@ -230,7 +263,6 @@ func (bqm *BuildQueueManager) finalizeBuild(req *clientpb.Generate, builder *mod
 	_, artifactPath, err := MoveBuildOutput(req.Target, req.Type)
 	if err != nil {
 		logs.Log.Errorf("move build output error: %v", err)
-		builder.Status = consts.BuildStatusCompleted
 		err = db.UpdateBuilderPath(builder)
 		if err != nil {
 			logs.Log.Errorf("update builder path and status error: %v", err)
@@ -244,7 +276,6 @@ func (bqm *BuildQueueManager) finalizeBuild(req *clientpb.Generate, builder *mod
 	}
 
 	builder.Path = absArtifactPath
-	builder.Status = consts.BuildStatusCompleted
 	err = db.UpdateBuilderPath(builder)
 	if err != nil {
 		return nil, err
@@ -288,7 +319,8 @@ func (bqm *BuildQueueManager) AddTask(req *clientpb.Generate, builder *models.Bu
 		err:     errChan,
 		builder: builder,
 	}
-	bqm.taskQueue <- task // Add the task to the queue
+	GlobalBuildQueueManager.markWaiting(builder.Name) // Mark the task as waiting
+	bqm.taskQueue <- task                             // Add the task to the queue
 
 	// Wait for either a result or an error
 	select {

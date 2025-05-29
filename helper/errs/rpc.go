@@ -35,4 +35,6 @@ var (
 
 	ErrNotFoundGithubConfig = status.Error(codes.NotFound, "Github config not found")
 	ErrNotFoundNotifyConfig = status.Error(codes.NotFound, "Notify config not found")
+
+	ErrPlartFormNotSupport = status.Error(codes.Unimplemented, "Platform not support")
 )

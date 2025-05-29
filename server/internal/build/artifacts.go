@@ -57,7 +57,6 @@ func PushArtifact(owner, repo, token, buildName string, isRemove bool) (*models.
 		return builder, err
 	}
 	builder.IsSRDI = true
-	builder.Status = consts.BuildStatusCompleted
 	err = db.UpdateBuilderPath(builder)
 	if err != nil {
 		return builder, err

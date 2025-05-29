@@ -766,7 +766,6 @@ func SaveArtifactFromGenerate(req *clientpb.Generate) (*models.Builder, error) {
 		Modules:     strings.Join(req.Modules, ""),
 		Arch:        target.Arch,
 		Os:          target.OS,
-		Status:      consts.BuildStatusInProgress,
 	}
 
 	paramsJson, err := json.Marshal(req.Params)
@@ -801,7 +800,6 @@ func SaveArtifactFromID(req *clientpb.Generate, ID uint32, resource string) (*mo
 		Modules:     req.Feature,
 		Arch:        target.Arch,
 		Os:          target.OS,
-		Status:      consts.BuildStatusInProgress,
 	}
 
 	paramsJson, err := json.Marshal(req.Params)
@@ -820,7 +818,7 @@ func SaveArtifactFromID(req *clientpb.Generate, ID uint32, resource string) (*mo
 
 func UpdateBuilderPath(builder *models.Builder) error {
 	return Session().Model(builder).
-		Select("path", "status").
+		Select("path").
 		Updates(builder).
 		Error
 }
@@ -872,6 +870,27 @@ func GetBuilders() (*clientpb.Builders, error) {
 		pbBuilders.Builders = append(pbBuilders.GetBuilders(), builder.ToProtobuf())
 	}
 	return pbBuilders, nil
+}
+
+func CheckOutBuildFile(builderName string) string {
+	var builder models.Builder
+	result := Session().Where("name = ?", builderName).First(&builder)
+	if result.Error != nil {
+		logs.Log.Errorf("Error finding builder %s: %v", builderName, result.Error)
+		return consts.BuildStatusDBError
+	}
+
+	if builder.IsSRDI && builder.ShellcodePath == "" && builder.Path != "" {
+		return consts.BuildStatusSRDIError
+	} else if builder.ShellcodePath == "" && builder.Path == "" {
+		return consts.BuildStatusFailure
+	} else {
+		if _, err := os.Stat(builder.Path); os.IsNotExist(err) {
+			return consts.BuildStatusFailure
+		} else {
+			return consts.BuildStatusCompleted
+		}
+	}
 }
 
 // FindArtifact

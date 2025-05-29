@@ -34,7 +34,7 @@ func BeaconCmd(cmd *cobra.Command, con *repl.Console) error {
 			Srdi:        true,
 		})
 		if err != nil {
-			con.Log.Errorf("Build beacon failed: %v", err)
+			con.Log.Errorf("Build beacon failed: %v\n", err)
 			return
 		}
 	}()
@@ -62,7 +62,7 @@ func BindCmd(cmd *cobra.Command, con *repl.Console) error {
 			Srdi:        true,
 		})
 		if err != nil {
-			con.Log.Errorf("Build bind failed: %v", err)
+			con.Log.Errorf("Build bind failed: %v\n", err)
 			return
 		}
 	}()
@@ -112,7 +112,7 @@ func ModulesCmd(cmd *cobra.Command, con *repl.Console) error {
 	go func() {
 		_, err := BuildModules(con, name, address, buildTarget, modules, srdi)
 		if err != nil {
-			con.Log.Errorf("Build modules failed: %v", err)
+			con.Log.Errorf("Build modules failed: %v\n", err)
 			return
 		}
 	}()
@@ -138,7 +138,7 @@ func PulseCmd(cmd *cobra.Command, con *repl.Console) error {
 			ArtifactId:  artifactId,
 		})
 		if err != nil {
-			con.Log.Errorf("Build loader failed: %v", err)
+			con.Log.Errorf("Build loader failed: %v\n", err)
 			return
 		}
 	}()
@@ -160,7 +160,7 @@ func BuildLogCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 	if len(builder.Log) == 0 {
-		con.Log.Infof("No log for %s", id)
+		con.Log.Infof("No log for %s\n", id)
 		return nil
 	}
 	con.Log.Console(string(builder.Log))

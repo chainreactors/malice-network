@@ -93,10 +93,12 @@ const (
 )
 
 const (
-	BuildStatusQueued     = "queued"
-	BuildStatusInProgress = "in_progress"
-	BuildStatusRequested  = "requested"
-	BuildStatusWaiting    = "waiting"
-	BuildStatusPending    = "pending"
-	BuildStatusCompleted  = "completed"
+	BuildStatusRunning      = "running"
+	BuildStatusWaiting      = "waiting"
+	BuildStatusError        = "error"
+	BuildStatusFailure      = "failure"
+	BuildStatusNetworkError = "network_error"
+	BuildStatusCompleted    = "completed"
+	BuildStatusDBError      = "db_error"
+	BuildStatusSRDIError    = "srdi_error"
 )
