@@ -96,7 +96,6 @@ func (rpc *Server) Sleep(ctx context.Context, req *implantpb.Timer) (*clientpb.T
 	if session, err := getSession(ctx); err == nil {
 		session.Jitter = req.Jitter
 		session.Interval = req.Interval
-		core.Sessions.Add(session)
 		err := db.UpdateSessionTimer(session.ID, req.Interval, req.Jitter)
 		if err != nil {
 			return nil, err

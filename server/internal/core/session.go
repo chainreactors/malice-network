@@ -426,10 +426,6 @@ func (s *Session) AllTask() []*Task {
 	return s.Tasks.All()
 }
 
-func (s *Session) UpdateLastCheckin() {
-	s.LastCheckin = time.Now().Unix()
-}
-
 // Request
 func (s *Session) Request(msg *clientpb.SpiteRequest, stream grpc.ServerStream) error {
 	err := stream.SendMsg(msg)
