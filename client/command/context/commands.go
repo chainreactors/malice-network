@@ -78,9 +78,9 @@ func Commands(con *repl.Console) []*cobra.Command {
 		keyloggerCmd,
 	)
 	syncCmd := &cobra.Command{
-		Use:   consts.CommandSync + " [file_id]",
-		Short: "Sync file",
-		Long:  "sync download file in server",
+		Use:   consts.CommandSync + " [context_id]",
+		Short: "Sync context",
+		Long:  "sync context from server",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return SyncCmd(cmd, con)
