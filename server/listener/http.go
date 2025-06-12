@@ -27,7 +27,7 @@ import (
 )
 
 func NewHttpPipeline(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeline) (*HTTPPipeline, error) {
-	http := pipeline.Body.(*clientpb.Pipeline_Http).Http
+	http := pipeline.GetHttp()
 
 	// 解析额外参数
 	var params types.PipelineParams

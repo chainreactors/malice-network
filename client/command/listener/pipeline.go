@@ -52,6 +52,13 @@ func ListPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 			newRow["Encryption"] = "raw"
 		}
 		switch body := pipeline.Body.(type) {
+		case *clientpb.Pipeline_Http:
+			newRow["Name"] = pipeline.Name
+			newRow["Type"] = consts.HTTPPipeline
+			newRow["ListenerID"] = pipeline.ListenerId
+			newRow["Address"] = pipeline.Ip + ":" + strconv.Itoa(int(body.Http.Port))
+			newRow["Parser"] = pipeline.Parser
+			row = table.NewRow(newRow)
 		case *clientpb.Pipeline_Tcp:
 			newRow["Name"] = pipeline.Name
 			newRow["Type"] = consts.TCPPipeline
@@ -59,7 +66,7 @@ func ListPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 			newRow["Address"] = pipeline.Ip + ":" + strconv.Itoa(int(body.Tcp.Port))
 			newRow["Parser"] = pipeline.Parser
 			row = table.NewRow(newRow)
-		case *clientpb.Pipeline_Bind:
+		default:
 			newRow["Name"] = pipeline.Name
 			newRow["Type"] = consts.BindPipeline
 			newRow["ListenerID"] = pipeline.ListenerId
