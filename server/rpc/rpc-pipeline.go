@@ -77,8 +77,8 @@ func (rpc *Server) StartPipeline(ctx context.Context, req *clientpb.CtrlPipeline
 	}
 	job := &core.Job{
 		ID:       core.NextJobID(),
-		Pipeline: req.Pipeline,
-		Name:     req.Pipeline.Name,
+		Pipeline: pipelineDB.ToProtobuf(),
+		Name:     req.Name,
 	}
 	core.Jobs.Add(job)
 	lns.PushCtrl(&clientpb.JobCtrl{
