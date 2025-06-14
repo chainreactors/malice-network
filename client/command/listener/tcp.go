@@ -1,6 +1,7 @@
 package listener
 
 import (
+	"fmt"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -15,6 +16,9 @@ func NewTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 	name := cmd.Flags().Arg(0)
 	if port == 0 {
 		port = cryptography.RandomInRange(10240, 65535)
+	}
+	if name == "" {
+		name = fmt.Sprintf("tcp_%s_%d", listenerID, port)
 	}
 
 	tls, err := common.ParseTLSFlags(cmd)

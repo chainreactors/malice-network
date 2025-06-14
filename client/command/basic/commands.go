@@ -105,7 +105,18 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return SessionInfoCmd(cmd, con)
 		},
 	}
-	return []*cobra.Command{sleepCmd, suicideCmd, getCmd, waitCmd, pollingCmd, initCmd, recoverCmd, infoCommand}
+
+	switchCmd := &cobra.Command{
+		Use:   consts.ModuleSwitch,
+		Short: "switch session",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return SwitchCmd(cmd, con)
+		},
+	}
+
+	common.BindArgCompletions(switchCmd, nil, common.AllPipelineCompleter(con))
+
+	return []*cobra.Command{sleepCmd, suicideCmd, getCmd, waitCmd, pollingCmd, initCmd, recoverCmd, infoCommand, switchCmd}
 }
 
 func Register(con *repl.Console) {

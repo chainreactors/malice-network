@@ -31,7 +31,7 @@ const (
 	ModuleSleep      = "sleep"
 	ModuleSuicide    = "suicide"
 	ModuleInit       = "init"
-	ModuleLogin      = "login"
+	ModuleSwitch     = "switch"
 	ModuleCancelTask = "cancel_task"
 	ModuleQueryTask  = "query_task"
 	ModuleListTask   = "list_task"

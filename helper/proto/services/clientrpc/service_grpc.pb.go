@@ -57,6 +57,7 @@ const (
 	MaliceRPC_ListTasks_FullMethodName             = "/clientrpc.MaliceRPC/ListTasks"
 	MaliceRPC_QueryTask_FullMethodName             = "/clientrpc.MaliceRPC/QueryTask"
 	MaliceRPC_CancelTask_FullMethodName            = "/clientrpc.MaliceRPC/CancelTask"
+	MaliceRPC_Switch_FullMethodName                = "/clientrpc.MaliceRPC/Switch"
 	MaliceRPC_Polling_FullMethodName               = "/clientrpc.MaliceRPC/Polling"
 	MaliceRPC_Upload_FullMethodName                = "/clientrpc.MaliceRPC/Upload"
 	MaliceRPC_Download_FullMethodName              = "/clientrpc.MaliceRPC/Download"
@@ -195,6 +196,7 @@ type MaliceRPCClient interface {
 	ListTasks(ctx context.Context, in *implantpb.Request, opts ...grpc.CallOption) (*clientpb.Task, error)
 	QueryTask(ctx context.Context, in *implantpb.TaskCtrl, opts ...grpc.CallOption) (*clientpb.Task, error)
 	CancelTask(ctx context.Context, in *implantpb.TaskCtrl, opts ...grpc.CallOption) (*clientpb.Task, error)
+	Switch(ctx context.Context, in *implantpb.Switch, opts ...grpc.CallOption) (*clientpb.Task, error)
 	// implant::bind
 	Polling(ctx context.Context, in *clientpb.Polling, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	// implant::file
@@ -646,6 +648,15 @@ func (c *maliceRPCClient) QueryTask(ctx context.Context, in *implantpb.TaskCtrl,
 func (c *maliceRPCClient) CancelTask(ctx context.Context, in *implantpb.TaskCtrl, opts ...grpc.CallOption) (*clientpb.Task, error) {
 	out := new(clientpb.Task)
 	err := c.cc.Invoke(ctx, MaliceRPC_CancelTask_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *maliceRPCClient) Switch(ctx context.Context, in *implantpb.Switch, opts ...grpc.CallOption) (*clientpb.Task, error) {
+	out := new(clientpb.Task)
+	err := c.cc.Invoke(ctx, MaliceRPC_Switch_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1524,6 +1535,7 @@ type MaliceRPCServer interface {
 	ListTasks(context.Context, *implantpb.Request) (*clientpb.Task, error)
 	QueryTask(context.Context, *implantpb.TaskCtrl) (*clientpb.Task, error)
 	CancelTask(context.Context, *implantpb.TaskCtrl) (*clientpb.Task, error)
+	Switch(context.Context, *implantpb.Switch) (*clientpb.Task, error)
 	// implant::bind
 	Polling(context.Context, *clientpb.Polling) (*clientpb.Empty, error)
 	// implant::file
@@ -1744,6 +1756,9 @@ func (UnimplementedMaliceRPCServer) QueryTask(context.Context, *implantpb.TaskCt
 }
 func (UnimplementedMaliceRPCServer) CancelTask(context.Context, *implantpb.TaskCtrl) (*clientpb.Task, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CancelTask not implemented")
+}
+func (UnimplementedMaliceRPCServer) Switch(context.Context, *implantpb.Switch) (*clientpb.Task, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Switch not implemented")
 }
 func (UnimplementedMaliceRPCServer) Polling(context.Context, *clientpb.Polling) (*clientpb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Polling not implemented")
@@ -2663,6 +2678,24 @@ func _MaliceRPC_CancelTask_Handler(srv interface{}, ctx context.Context, dec fun
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(MaliceRPCServer).CancelTask(ctx, req.(*implantpb.TaskCtrl))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MaliceRPC_Switch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(implantpb.Switch)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MaliceRPCServer).Switch(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MaliceRPC_Switch_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MaliceRPCServer).Switch(ctx, req.(*implantpb.Switch))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4465,6 +4498,10 @@ var MaliceRPC_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CancelTask",
 			Handler:    _MaliceRPC_CancelTask_Handler,
+		},
+		{
+			MethodName: "Switch",
+			Handler:    _MaliceRPC_Switch_Handler,
 		},
 		{
 			MethodName: "Polling",

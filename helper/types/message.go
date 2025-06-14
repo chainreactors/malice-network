@@ -10,12 +10,12 @@ type MsgName string
 const (
 	// internal
 
-	MsgInit  MsgName = consts.ModuleInit
-	MsgPing  MsgName = consts.ModulePing
-	MsgSleep MsgName = consts.ModuleSleep
-	MsgLogin MsgName = consts.ModuleLogin
-	MsgTask  MsgName = "task"
-	MsgTasks MsgName = "tasks"
+	MsgInit   MsgName = consts.ModuleInit
+	MsgPing   MsgName = consts.ModulePing
+	MsgSleep  MsgName = consts.ModuleSleep
+	MsgSwitch MsgName = consts.ModuleSwitch
+	MsgTask   MsgName = "task"
+	MsgTasks  MsgName = "tasks"
 	// basic message
 	MsgResponse MsgName = "response"
 	MsgBlock    MsgName = "block"

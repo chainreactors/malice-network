@@ -101,9 +101,9 @@ func BuildSpite(spite *implantpb.Spite, msg proto.Message) (*implantpb.Spite, er
 	case *implantpb.PipeRequest:
 		spite.Name = msg.Type
 		spite.Body = &implantpb.Spite_PipeRequest{PipeRequest: msg.Pipe}
-	case *implantpb.Login:
-		spite.Name = MsgLogin.String()
-		spite.Body = &implantpb.Spite_LoginRequest{LoginRequest: msg}
+	case *implantpb.Switch:
+		spite.Name = MsgSwitch.String()
+		spite.Body = &implantpb.Spite_Switch{Switch: msg}
 	default:
 		return spite, ErrUnknownSpite
 	}

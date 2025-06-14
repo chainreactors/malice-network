@@ -2,7 +2,7 @@ package listener
 
 import (
 	"encoding/json"
-
+	"fmt"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -14,10 +14,13 @@ import (
 
 func NewHttpPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 	listenerID, host, port := common.ParsePipelineFlags(cmd)
-	target, beaconPipeline := common.ParseArtifactFlags(cmd)
-	name := cmd.Flags().Arg(0)
 	if port == 0 {
 		port = cryptography.RandomInRange(10240, 65535)
+	}
+	target, beaconPipeline := common.ParseArtifactFlags(cmd)
+	name := cmd.Flags().Arg(0)
+	if name == "" {
+		name = fmt.Sprintf("http_%s_%d", listenerID, port)
 	}
 
 	// 解析TLS和加密配置
