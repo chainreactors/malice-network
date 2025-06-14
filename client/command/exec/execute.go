@@ -12,28 +12,78 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func ExecuteCmd(cmd *cobra.Command, con *repl.Console) error {
+func RunCmd(cmd *cobra.Command, con *repl.Console) error {
 	session := con.GetInteractive()
-	//token := ctx.Flags.Bool("token")
-	quiet, _ := cmd.Flags().GetBool("quiet")
 	cmdStr := shellquote.Join(cmd.Flags().Args()...)
-	task, err := Execute(con.Rpc, session, cmdStr, !quiet)
+	task, err := Execute(con.Rpc, session, cmdStr, false, true)
 	if err != nil {
 		return err
 	}
-	con.GetInteractive().Console(task, "exec: "+cmdStr)
+	con.GetInteractive().Console(task, "run: "+cmdStr)
 	return nil
 }
 
-func Execute(rpc clientrpc.MaliceRPCClient, sess *core.Session, cmd string, output bool) (*clientpb.Task, error) {
+func ExecuteCmd(cmd *cobra.Command, con *repl.Console) error {
+	session := con.GetInteractive()
+	cmdStr := shellquote.Join(cmd.Flags().Args()...)
+	task, err := Execute(con.Rpc, session, cmdStr, false, false)
+	if err != nil {
+		return err
+	}
+	con.GetInteractive().Console(task, "execute: "+cmdStr)
+	return nil
+}
+
+func Execute(rpc clientrpc.MaliceRPCClient, sess *core.Session, cmd string, realtime, output bool) (*clientpb.Task, error) {
 	cmdStrList, err := shellquote.Split(cmd)
 	if err != nil {
 		return nil, err
 	}
 	task, err := rpc.Execute(sess.Context(), &implantpb.ExecRequest{
-		Path:   cmdStrList[0],
-		Args:   cmdStrList[1:],
-		Output: output,
+		Path:     cmdStrList[0],
+		Args:     cmdStrList[1:],
+		Output:   output,
+		Realtime: realtime,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return task, nil
+}
+
+func ShellCmd(cmd *cobra.Command, con *repl.Console) error {
+	session := con.GetInteractive()
+	//token := ctx.Flags.Bool("token")
+	quiet, _ := cmd.Flags().GetBool("quiet")
+	cmdStr := shellquote.Join(cmd.Flags().Args()...)
+	task, err := Shell(con.Rpc, session, cmdStr, !quiet)
+	if err != nil {
+		return err
+	}
+	con.GetInteractive().Console(task, "shell: "+cmdStr)
+	con.AddDoneCallback(task, func(resp *clientpb.TaskContext) {
+		response, err := output.ParseExecResponse(resp)
+		if err != nil {
+			return
+		}
+		session.Log.Console(response.(string))
+	})
+	return nil
+}
+
+func Shell(rpc clientrpc.MaliceRPCClient, sess *core.Session, cmd string, output bool) (*clientpb.Task, error) {
+	var binpath string
+	if sess.Os.Name == "windows" {
+		binpath = `C:\Windows\System32\cmd.exe`
+	} else {
+		binpath = "/bin/sh"
+	}
+
+	task, err := rpc.Execute(sess.Context(), &implantpb.ExecRequest{
+		Path:     binpath,
+		Args:     []string{"/c", cmd},
+		Output:   output,
+		Realtime: true,
 	})
 	if err != nil {
 		return nil, err
@@ -43,7 +93,7 @@ func Execute(rpc clientrpc.MaliceRPCClient, sess *core.Session, cmd string, outp
 
 func RegisterExecuteFunc(con *repl.Console) {
 	con.RegisterImplantFunc(
-		consts.ModuleExecution,
+		consts.ModuleExecute,
 		Execute,
 		"",
 		nil,
@@ -51,15 +101,64 @@ func RegisterExecuteFunc(con *repl.Console) {
 		nil,
 	)
 	con.AddCommandFuncHelper(
-		consts.ModuleExecution,
-		consts.ModuleExecution,
-		consts.ModuleExecution+"(active(),`whoami`,true)",
+		consts.ModuleExecute,
+		consts.ModuleExecute,
+		consts.ModuleExecute+"(active(),`whoami`,true)",
 		[]string{
 			"sessions",
 			"cmd",
+			"realtime",
 			"output",
 		},
 		[]string{"task"},
 	)
 
+	con.RegisterAggressiveFunc(
+		consts.ModuleAliasRun,
+		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, cmd string) (*clientpb.Task, error) {
+			return Execute(con.Rpc, sess, cmd, false, true)
+		},
+		output.ParseExecResponse,
+		nil,
+	)
+
+	con.RegisterAggressiveFunc(
+		consts.ModuleAliasExecute,
+		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, cmd string) (*clientpb.Task, error) {
+			return Execute(con.Rpc, sess, cmd, false, false)
+		},
+		output.ParseExecResponse,
+		nil,
+	)
+
+	con.RegisterImplantFunc(
+		consts.ModuleAliasShell,
+		Shell,
+		"bshell",
+		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, cmd string) (*clientpb.Task, error) {
+			return Shell(rpc, sess, cmd, true)
+		},
+		output.ParseExecResponse,
+		nil,
+	)
+
+	con.AddCommandFuncHelper(
+		consts.ModuleAliasShell,
+		consts.ModuleAliasShell,
+		consts.ModuleAliasShell+`(active(),"whoami",true)`,
+		[]string{
+			"sessions",
+			"cmd",
+			"output",
+		}, []string{"task"})
+
+	con.AddCommandFuncHelper(
+		"bshell",
+		"bshell",
+		`bshell(active(),"whoami",true)`,
+		[]string{
+			"sessions",
+			"cmd",
+		},
+		[]string{"task"})
 }

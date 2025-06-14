@@ -16,26 +16,28 @@ import (
 
 var ErrLuaVMDead = fmt.Errorf("lua vm is dead")
 
+func wrapToTaskContext(event *clientpb.Event) *clientpb.TaskContext {
+	return &clientpb.TaskContext{
+		Task:    event.Task,
+		Session: event.Session,
+		Spite:   event.Spite,
+	}
+}
+
 func (s *ServerStatus) AddDoneCallback(task *clientpb.Task, callback TaskCallback) {
-	s.doneCallbacks.Store(fmt.Sprintf("%s_%d", task.SessionId, task.TaskId), callback)
+	s.doneCallbacks.Store(fmt.Sprintf("%s-%d", task.SessionId, task.TaskId), callback)
 }
 
 func (s *ServerStatus) AddCallback(task *clientpb.Task, callback TaskCallback) {
-	s.finishCallbacks.Store(fmt.Sprintf("%s_%d", task.SessionId, task.TaskId), callback)
+	s.finishCallbacks.Store(fmt.Sprintf("%s-%d", task.SessionId, task.TaskId), callback)
 }
 
 func (s *ServerStatus) triggerTaskDone(event *clientpb.Event) {
 	task := event.GetTask()
-	var sess *Session
-	var ok bool
-	var err error
-	sess, ok = s.GetLocalSession(event.Task.SessionId)
-	if !ok {
-		sess, err = s.UpdateSession(event.Task.SessionId)
-		if err != nil {
-			Log.Errorf("session not found: %s\n", event.Task.SessionId)
-			return
-		}
+	sess, err := s.GetOrUpdateSession(event.Task.SessionId)
+	if err != nil {
+		Log.Errorf("session not found: %s\n", event.Task.SessionId)
+		return
 	}
 
 	log := s.ObserverLog(event.Task.SessionId)
@@ -44,29 +46,20 @@ func (s *ServerStatus) triggerTaskDone(event *clientpb.Event) {
 		log.Errorf(logs.RedBold(err.Error()) + "\n")
 		return
 	}
-	HandlerTask(sess, &clientpb.TaskContext{
-		Task:    event.Task,
-		Session: event.Session,
-		Spite:   event.Spite,
-	}, event.Message, event.Callee, false)
+	taskContext := wrapToTaskContext(event)
+	HandlerTask(sess, taskContext, event.Message, event.Callee, false)
 
-	if callback, ok := s.finishCallbacks.Load(fmt.Sprintf("%s_%d", task.SessionId, task.TaskId)); ok {
-		callback.(TaskCallback)(event.Spite)
+	if callback, ok := s.doneCallbacks.Load(fmt.Sprintf("%s-%d", task.SessionId, task.TaskId)); ok {
+		callback.(TaskCallback)(taskContext)
 	}
 }
 
 func (s *ServerStatus) triggerTaskFinish(event *clientpb.Event) {
 	task := event.GetTask()
-	var sess *Session
-	var ok bool
-	var err error
-	sess, ok = s.GetLocalSession(event.Task.SessionId)
-	if !ok {
-		sess, err = s.UpdateSession(event.Task.SessionId)
-		if err != nil {
-			Log.Errorf("session not found: %s\n", event.Task.SessionId)
-			return
-		}
+	sess, err := s.GetOrUpdateSession(event.Task.SessionId)
+	if err != nil {
+		Log.Errorf("session not found: %s\n", event.Task.SessionId)
+		return
 	}
 
 	log := s.ObserverLog(event.Task.SessionId)
@@ -75,16 +68,12 @@ func (s *ServerStatus) triggerTaskFinish(event *clientpb.Event) {
 		log.Errorf(logs.RedBold(err.Error()) + "\n")
 		return
 	}
+	taskContext := wrapToTaskContext(event)
+	HandlerTask(sess, taskContext, event.Message, event.Callee, true)
 
-	HandlerTask(sess, &clientpb.TaskContext{
-		Task:    event.Task,
-		Session: event.Session,
-		Spite:   event.Spite,
-	}, event.Message, event.Callee, true)
-
-	callbackId := fmt.Sprintf("%s_%d", task.SessionId, task.TaskId)
+	callbackId := fmt.Sprintf("%s-%d", task.SessionId, task.TaskId)
 	if callback, ok := s.finishCallbacks.Load(callbackId); ok {
-		callback.(TaskCallback)(event.Spite)
+		callback.(TaskCallback)(taskContext)
 		s.finishCallbacks.Delete(callbackId)
 		s.doneCallbacks.Delete(callbackId)
 	}

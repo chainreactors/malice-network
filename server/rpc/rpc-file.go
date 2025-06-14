@@ -16,7 +16,6 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/parser"
 	"github.com/gookit/config/v2"
-	"gorm.io/gorm/utils"
 	"os"
 	"path/filepath"
 )
@@ -54,8 +53,6 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 			}
 			core.PushContextEvent(consts.ContextUpload, ictx)
 		})
-		taskID := greq.Task.SessionId + "-" + utils.ToString(greq.Task.Id)
-		err = db.UpdateTaskCur(greq.Task.Cur+1, taskID)
 		if err != nil {
 			return nil, err
 		}
@@ -108,8 +105,6 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 				}
 				if resp.GetAck().Success {
 					greq.Task.Done(resp, "")
-					taskID := greq.Task.SessionId + "-" + utils.ToString(greq.Task.Id)
-					err = db.UpdateTaskCur(blockId, taskID)
 					if err != nil {
 						logs.Log.Errorf("cannot update task %d , %s in db", greq.Task.Id, err.Error())
 						return
@@ -169,19 +164,20 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 			logs.Log.Errorf("Failed to write task log: %v", err)
 			return
 		}
+		greq.Task.Total = int(resp.GetDownloadResponse().Size)/config.Int(consts.ConfigMaxPacketLength) + 1
 
+		// temp file
 		downloadAbs := resp.GetDownloadResponse()
 		fileName := filepath.Join(configs.TempPath, downloadAbs.Checksum)
 		moveName := filepath.Join(configs.ContextPath, greq.Session.ID, consts.DownloadPath, downloadAbs.Checksum)
-		greq.Session.AddMessage(resp, 0)
-		greq.Task.Total = int(resp.GetDownloadResponse().Size)/config.Int(consts.ConfigMaxPacketLength) + 1
-		size := resp.GetDownloadResponse().Size
 		downloadFile, err := os.OpenFile(fileName, os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
 			logs.Log.Errorf("cannot create file %s, %s", fileName, err.Error())
 			return
 		}
 		defer downloadFile.Close()
+
+		// return ack
 		ack, _ := types.BuildSpite(&implantpb.Spite{
 			Timeout: uint64(consts.MinTimeout.Seconds()),
 			TaskId:  greq.Task.Id,
@@ -189,9 +185,9 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 			Success: true,
 			End:     false,
 		})
-
 		ack.Name = types.MsgDownload.String()
 		in <- ack
+
 		for resp := range out {
 			err := handler.AssertStatusAndSpite(resp, types.MsgBlock)
 			if err != nil {
@@ -204,7 +200,6 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 				logs.Log.Errorf(err.Error())
 				return
 			}
-			err = db.UpdateTaskCur(int(block.BlockId+1), greq.Task.TaskID())
 			if err != nil {
 				logs.Log.Errorf("cannot update task %d , %s in db", greq.Task.Id, err.Error())
 				return
@@ -229,7 +224,7 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 						TargetPath: req.Path,
 						FilePath:   moveName,
 						Abstract:   fmt.Sprintf("download -%s -%s ", req.Name, req.Path),
-						Size:       int64(size),
+						Size:       int64(resp.GetDownloadResponse().Size),
 					},
 				}
 				ictx, err := db.SaveContext(&clientpb.Context{

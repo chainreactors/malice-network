@@ -6,6 +6,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
+	"github.com/chainreactors/malice-network/server/internal/db"
 	"sync"
 	"time"
 )
@@ -133,6 +134,7 @@ func (t *Task) Publish(op string, spite *implantpb.Spite, msg string) {
 }
 func (t *Task) Done(spite *implantpb.Spite, msg string) {
 	t.Cur++
+	db.UpdateTaskCur(t.TaskID(), t.Cur)
 	t.Publish(consts.CtrlTaskCallback, spite, msg)
 }
 

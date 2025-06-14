@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/tui"
 	tea "github.com/charmbracelet/bubbletea"
@@ -29,8 +30,8 @@ func fileExplorerCmd(cmd *cobra.Command, con *repl.Console) {
 		return
 	}
 	fileChan := make(chan []*implantpb.FileInfo, 1)
-	con.AddCallback(task, func(msg *implantpb.Spite) {
-		resp := msg.GetLsResponse()
+	con.AddCallback(task, func(msg *clientpb.TaskContext) {
+		resp := msg.Spite.GetLsResponse()
 		fileChan <- resp.GetFiles()
 	})
 	select {
@@ -158,8 +159,8 @@ func fileEnterFunc(m *tui.TreeModel, con *repl.Console) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	fileChan := make(chan []*implantpb.FileInfo, 1)
-	con.AddCallback(task, func(msg *implantpb.Spite) {
-		resp := msg.GetLsResponse()
+	con.AddCallback(task, func(msg *clientpb.TaskContext) {
+		resp := msg.Spite.GetLsResponse()
 		fileChan <- resp.GetFiles()
 	})
 	select {
@@ -217,8 +218,8 @@ func freshFunc(m *tui.TreeModel, con *repl.Console) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	fileChan := make(chan []*implantpb.FileInfo, 1)
-	con.AddCallback(task, func(msg *implantpb.Spite) {
-		resp := msg.GetLsResponse()
+	con.AddCallback(task, func(msg *clientpb.TaskContext) {
+		resp := msg.Spite.GetLsResponse()
 		fileChan <- resp.GetFiles()
 	})
 	select {

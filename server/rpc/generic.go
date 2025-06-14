@@ -96,13 +96,33 @@ func (r *GenericRequest) SetCallback(callback func()) {
 	r.Task.Callback = callback
 }
 
+func (r *GenericRequest) HandlerSpite(spite *implantpb.Spite) error {
+	r.Session.AddMessage(spite, r.Task.Cur)
+	r.Task.Done(spite, "")
+	err := db.UpdateTask(r.Task.ToProtobuf())
+	if err != nil {
+		return err
+	}
+	err = r.Session.TaskLog(r.Task, spite)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (r *GenericRequest) HandlerResponse(ch chan *implantpb.Spite, typ types.MsgName, callbacks ...func(spite *implantpb.Spite)) {
 	resp := <-ch
-	r.Session.AddMessage(resp, r.Task.Cur)
+
 	err := handler.AssertStatusAndSpite(resp, typ)
 	if err != nil {
 		logs.Log.Debug(err)
 		r.Task.Panic(buildErrorEvent(r.Task, err))
+		return
+	}
+
+	err = r.HandlerSpite(resp)
+	if err != nil {
+		logs.Log.Errorf("handler spite error, %s", err.Error())
 		return
 	}
 	if callbacks != nil {
@@ -112,17 +132,7 @@ func (r *GenericRequest) HandlerResponse(ch chan *implantpb.Spite, typ types.Msg
 			}
 		})
 	}
-	r.Task.Done(resp, "")
 	r.Task.Finish(resp, "")
-	err = db.UpdateTask(r.Task.ToProtobuf())
-	if err != nil {
-		logs.Log.Errorf("update task cur failed %s", err)
-		return
-	}
-	err = r.Session.TaskLog(r.Task, resp)
-	if err != nil {
-		logs.Log.Errorf("Failed to log task: %v", err)
-	}
 	return
 }
 

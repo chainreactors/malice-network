@@ -30,7 +30,7 @@ const (
 	MsgUpload         MsgName = consts.ModuleUpload
 	MsgDownload       MsgName = consts.ModuleDownload
 	MsgCurl           MsgName = consts.ModuleCurl
-	MsgExec           MsgName = consts.ModuleExecution
+	MsgExec           MsgName = consts.ModuleExecute
 	MsgListModule     MsgName = consts.ModuleListModule
 	MsgLoadModule     MsgName = consts.ModuleLoadModule
 	MsgListAddon      MsgName = consts.ModuleListAddon

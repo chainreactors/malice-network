@@ -50,7 +50,7 @@ func LoadAddonCmd(cmd *cobra.Command, con *repl.Console) {
 	}
 
 	session.Console(task, fmt.Sprintf("Load addon %s", name))
-	con.AddCallback(task, func(msg *implantpb.Spite) {
+	con.AddCallback(task, func(_ *clientpb.TaskContext) {
 		RefreshAddonCommand(session.Addons, con)
 	})
 }

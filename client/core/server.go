@@ -5,7 +5,6 @@ import (
 	"errors"
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
 	"github.com/chainreactors/malice-network/helper/utils/mtls"
@@ -13,7 +12,7 @@ import (
 	"sync"
 )
 
-type TaskCallback func(resp *implantpb.Spite)
+type TaskCallback func(resp *clientpb.TaskContext)
 
 func InitServerStatus(conn *grpc.ClientConn, config *mtls.ClientConfig) (*ServerStatus, error) {
 	var err error
@@ -164,6 +163,14 @@ func (s *ServerStatus) GetLocalSession(sid string) (*Session, bool) {
 		return sess, true
 	} else {
 		return nil, false
+	}
+}
+
+func (s *ServerStatus) GetOrUpdateSession(sid string) (*Session, error) {
+	if sess, ok := s.Sessions[sid]; ok {
+		return sess, nil
+	} else {
+		return s.UpdateSession(sid)
 	}
 }
 

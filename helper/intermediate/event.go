@@ -28,7 +28,7 @@ func (cond *EventCondition) Match(e *clientpb.Event) bool {
 	if cond.MessageType != "" && cond.MessageType != e.Task.Type {
 		return false
 	}
-	if cond.TaskId != "" && e.Task != nil && cond.TaskId != fmt.Sprintf("%s_%d", e.Task.SessionId, e.Task.TaskId) {
+	if cond.TaskId != "" && e.Task != nil && cond.TaskId != fmt.Sprintf("%s-%d", e.Task.SessionId, e.Task.TaskId) {
 		return false
 	}
 	if cond.SessionId != "" && e.Session != nil && cond.SessionId != e.Session.SessionId {

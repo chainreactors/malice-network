@@ -66,7 +66,7 @@ func ListPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 			newRow["Address"] = pipeline.Ip + ":" + strconv.Itoa(int(body.Tcp.Port))
 			newRow["Parser"] = pipeline.Parser
 			row = table.NewRow(newRow)
-		default:
+		case *clientpb.Pipeline_Rem, *clientpb.Pipeline_Bind:
 			newRow["Name"] = pipeline.Name
 			newRow["Type"] = consts.BindPipeline
 			newRow["ListenerID"] = pipeline.ListenerId

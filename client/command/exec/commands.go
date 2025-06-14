@@ -10,35 +10,80 @@ import (
 )
 
 func Commands(con *repl.Console) []*cobra.Command {
-	execCmd := &cobra.Command{
-		Use:   consts.ModuleExecution + " [cmdline]",
+	runCmd := &cobra.Command{
+		Use:   consts.ModuleAliasRun + " [cmdline]",
+		Short: "run commands",
+		Long:  `Exec local executable file, return output`,
+		Args:  cobra.MinimumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return RunCmd(cmd, con)
+		},
+		Annotations: map[string]string{
+			"depend": consts.ModuleExecute,
+		},
+		Example: `Execute the executable file without any '-' arguments.
+~~~
+run whoami
+~~~
+run the executable file with '-' arguments, you need add "--" before the arguments
+~~~
+run gogo.exe -- -i 127.0.0.1 -p http
+~~~
+`,
+	}
+	common.BindArgCompletions(runCmd, nil,
+		carapace.ActionValues().Usage("command to execute"),
+		carapace.ActionValues().Usage("arguments to the command"),
+	)
+
+	executeCmd := &cobra.Command{
+		Use:   consts.ModuleAliasExecute + " [cmdline]",
 		Short: "Execute commands",
-		Long:  `Exec implant local executable file`,
+		Long:  `Exec local executable file, without output`,
 		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ExecuteCmd(cmd, con)
 		},
 		Annotations: map[string]string{
-			"depend": consts.ModuleExecution,
+			"depend": consts.ModuleExecute,
 		},
 		Example: `Execute the executable file without any '-' arguments.
 ~~~
-exec whoami
+execute whoami
 ~~~
-Execute the executable file with '-' arguments, you need add "--" before the arguments
+execute the executable file with '-' arguments, you need add "--" before the arguments
 ~~~
-exec gogo.exe -- -i 127.0.0.1 -p http
+execute gogo.exe -- -i 127.0.0.1 -p http
 ~~~
 `,
 	}
-	common.BindArgCompletions(execCmd, nil,
+	common.BindArgCompletions(executeCmd, nil,
 		carapace.ActionValues().Usage("command to execute"),
+	)
+
+	shellCmd := &cobra.Command{
+		Use:     consts.ModuleAliasShell + " [cmdline]",
+		Short:   "Execute cmd",
+		Long:    `equal: exec cmd /c "[cmdline]"`,
+		Args:    cobra.MinimumNArgs(1),
+		Aliases: []string{"exec"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return ShellCmd(cmd, con)
+		},
+		Annotations: map[string]string{
+			"depend": consts.ModuleExecute,
+		},
+	}
+
+	common.BindArgCompletions(shellCmd, nil,
+		carapace.ActionValues().Usage("cmd to execute"),
 		carapace.ActionValues().Usage("arguments to the command"),
 	)
 
-	common.BindFlag(execCmd, func(f *pflag.FlagSet) {
+	common.BindFlag(shellCmd, func(f *pflag.FlagSet) {
 		f.BoolP("quiet", "q", false, "disable output")
 	})
+
 	execLocalCmd := &cobra.Command{
 		Use:   consts.ModuleExecuteLocal + " [local_exe]",
 		Short: "Execute local PE on sacrifice process",
@@ -89,29 +134,6 @@ inline_local whoami
 		f.BoolP("quiet", "q", false, "disable output")
 	})
 
-	shellCmd := &cobra.Command{
-		Use:   consts.ModuleAliasShell + " [cmdline]",
-		Short: "Execute cmd",
-		Long:  `equal: exec cmd /c "[cmdline]"`,
-		Args:  cobra.MinimumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return ShellCmd(cmd, con)
-		},
-		Annotations: map[string]string{
-			"depend": consts.ModuleExecution,
-			"os":     "windows",
-		},
-	}
-
-	common.BindArgCompletions(shellCmd, nil,
-		carapace.ActionValues().Usage("cmd to execute"),
-		carapace.ActionValues().Usage("arguments to the command"),
-	)
-
-	common.BindFlag(shellCmd, func(f *pflag.FlagSet) {
-		f.BoolP("quiet", "q", false, "disable output")
-	})
-
 	powershellCmd := &cobra.Command{
 		Use:   consts.ModuleAliasPowershell + " [cmdline]",
 		Short: "Execute cmd with powershell",
@@ -121,7 +143,7 @@ inline_local whoami
 			return PowershellCmd(cmd, con)
 		},
 		Annotations: map[string]string{
-			"depend": consts.ModuleExecution,
+			"depend": consts.ModuleExecute,
 			"os":     "windows",
 		},
 		Example: `execute powershell command:
@@ -463,7 +485,8 @@ powerpick -s powerview.ps1 -- Get-NetUser
 	})
 
 	return []*cobra.Command{
-		execCmd,
+		runCmd,
+		executeCmd,
 		execLocalCmd,
 		inlineLocalCmd,
 		shellCmd,
@@ -486,7 +509,6 @@ func Register(con *repl.Console) {
 	RegisterExecuteFunc(con)
 	RegisterExecuteLocalFunc(con)
 	RegisterPowershellFunc(con)
-	RegisterShellFunc(con)
 	RegisterAssemblyFunc(con)
 	RegisterShellcodeFunc(con)
 	RegisterDLLFunc(con)

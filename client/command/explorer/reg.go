@@ -5,6 +5,7 @@ import (
 	"github.com/chainreactors/malice-network/client/command/reg"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/tui"
@@ -32,8 +33,8 @@ func regExplorerCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 	regChan := make(chan *implantpb.Response, 1)
-	con.AddCallback(task, func(msg *implantpb.Spite) {
-		regChan <- msg.GetResponse()
+	con.AddCallback(task, func(msg *clientpb.TaskContext) {
+		regChan <- msg.Spite.GetResponse()
 	})
 	select {
 	case resp := <-regChan:
@@ -111,11 +112,11 @@ func regEnterFuc(m *tui.TreeModel, con *repl.Console) (tea.Model, tea.Cmd) {
 	}
 	regKeyChan := make(chan *implantpb.Response, 1)
 	regValueChan := make(chan *implantpb.Response, 1)
-	con.AddCallback(keyTask, func(msg *implantpb.Spite) {
-		regKeyChan <- msg.GetResponse()
+	con.AddCallback(keyTask, func(msg *clientpb.TaskContext) {
+		regKeyChan <- msg.Spite.GetResponse()
 	})
-	con.AddCallback(valueTask, func(msg *implantpb.Spite) {
-		regValueChan <- msg.GetResponse()
+	con.AddCallback(valueTask, func(msg *clientpb.TaskContext) {
+		regValueChan <- msg.Spite.GetResponse()
 	})
 	select {
 	case keyResp := <-regKeyChan:

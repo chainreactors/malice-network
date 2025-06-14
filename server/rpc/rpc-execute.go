@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/chainreactors/malice-network/helper/utils/handler"
 	"math"
 	"strings"
 
@@ -102,13 +103,42 @@ func (rpc *Server) Execute(ctx context.Context, req *implantpb.ExecRequest) (*cl
 	if err != nil {
 		return nil, err
 	}
-	ch, err := rpc.GenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
+	if !req.Realtime {
+		ch, err := rpc.GenericHandler(ctx, greq)
+		if err != nil {
+			return nil, err
+		}
+
+		go greq.HandlerResponse(ch, types.MsgExec)
+	} else {
+		_, out, err := rpc.StreamGenericHandler(ctx, greq)
+		if err != nil {
+			return nil, err
+		}
+
+		go func() {
+			for {
+				resp := <-out
+				exec := resp.GetExecResponse()
+				err := handler.AssertSpite(resp, types.MsgExec)
+				if err != nil {
+					greq.Task.Panic(buildErrorEvent(greq.Task, err))
+					return
+				}
+				err = greq.HandlerSpite(resp)
+				if err != nil {
+					return
+				}
+				if exec.End {
+					greq.Task.Finish(resp, "")
+					break
+				}
+			}
+		}()
 	}
 
-	go greq.HandlerResponse(ch, types.MsgExec)
 	return greq.Task.ToProtobuf(), nil
+
 }
 
 func (rpc *Server) ExecuteAssembly(ctx context.Context, req *implantpb.ExecuteBinary) (*clientpb.Task, error) {

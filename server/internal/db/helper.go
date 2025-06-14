@@ -501,7 +501,7 @@ func UpdateTask(task *clientpb.Task) error {
 	return taskModel.UpdateCur(Session(), int(task.Total))
 }
 
-func UpdateTaskCur(cur int, taskID string) error {
+func UpdateTaskCur(taskID string, cur int) error {
 	taskModel := &models.Task{
 		ID: taskID,
 	}

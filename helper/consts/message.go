@@ -7,8 +7,8 @@ var (
 		ModuleAliasInlineShellcode: ModuleExecuteShellcode,
 		ModuleAliasInlineExe:       ModuleExecuteExe,
 		ModuleAliasInlineDll:       ModuleExecuteDll,
-		ModuleAliasShell:           ModuleExecution,
-		ModuleAliasPowershell:      ModuleExecution,
+		ModuleAliasShell:           ModuleExecute,
+		ModuleAliasPowershell:      ModuleExecute,
 	}
 	ExecuteModules = []string{
 		ModuleExecuteBof, ModuleExecuteDll, ModuleExecuteShellcode,
@@ -39,7 +39,9 @@ const (
 	//execute
 	ModuleAliasShell           = "shell"
 	ModuleAliasPowershell      = "powershell"
-	ModuleExecution            = "exec"
+	ModuleExecute              = "exec"
+	ModuleAliasRun             = "run"
+	ModuleAliasExecute         = "execute"
 	ModuleExecuteLocal         = "execute_local"
 	ModuleInlineLocal          = "inline_local"
 	ModuleExecuteAssembly      = "execute_assembly"

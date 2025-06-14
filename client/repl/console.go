@@ -186,6 +186,14 @@ func (c *Console) RegisterImplantFunc(name string, fn interface{},
 	}
 }
 
+func (c *Console) RegisterAggressiveFunc(name string, fn interface{}, internalCallback ImplantFuncCallback, callback intermediate.ImplantCallback) {
+	if callback == nil {
+		callback = WrapClientCallback(internalCallback)
+	}
+
+	intermediate.RegisterInternalFunc(intermediate.BuiltinPackage, name, WrapImplantFunc(c, fn, internalCallback), callback)
+}
+
 func (c *Console) RegisterBuiltinFunc(pkg, name string, fn interface{}, callback ImplantFuncCallback) error {
 	var implantCallback intermediate.ImplantCallback
 	if callback == nil {
