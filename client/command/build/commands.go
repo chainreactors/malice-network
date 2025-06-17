@@ -63,13 +63,13 @@ profile load /path/to/config.yaml --name my_profile --pipeline pipeline_name --p
 	loadProfileCmd.MarkFlagRequired("pipeline")
 	loadProfileCmd.MarkFlagRequired("name")
 	common.BindFlagCompletions(loadProfileCmd, func(comp carapace.ActionMap) {
-		comp["name"] = carapace.ActionValues("profile name")
+		comp["name"] = carapace.ActionValues().Usage("profilename")
 		//comp["target"] = common.BuildTargetCompleter(con)
 		comp["pipeline"] = common.AllPipelineCompleter(con)
 		comp["pulse-pipeline"] = common.AllPipelineCompleter(con)
-		//comp["proxy"] = carapace.ActionValues("").Usage("")
+		comp["proxy"] = carapace.ActionValues().Usage("proxy, socks5 or http")
 		//comp["obfuscate"] = carapace.ActionValues("true", "false")
-		comp["modules"] = carapace.ActionValues("e.g.: execute_exe,execute_dll")
+		comp["modules"] = carapace.ActionValues().Usage("e.g.: execute_exe,execute_dll")
 		comp["ca"] = carapace.ActionValues("true", "false")
 
 		comp["interval"] = carapace.ActionValues("5")
@@ -93,8 +93,9 @@ profile new --name my_profile --pipeline default_tcp
 	newProfileCmd.MarkFlagRequired("pipeline")
 	newProfileCmd.MarkFlagRequired("name")
 	common.BindFlagCompletions(newProfileCmd, func(comp carapace.ActionMap) {
-		comp["name"] = carapace.ActionValues("profile name")
+		comp["name"] = carapace.ActionValues().Usage("profile name")
 		comp["pipeline"] = common.AllPipelineCompleter(con)
+		comp["proxy"] = carapace.ActionValues().Usage("")
 		comp["pulse-pipeline"] = common.AllPipelineCompleter(con)
 	})
 

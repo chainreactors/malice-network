@@ -19,11 +19,6 @@ type Profile struct {
 	// build type
 	Type string
 
-	// shellcode prelude beacon bind
-	Stager string
-
-	Obfuscate string // not impl, obf llvm plug ,
-
 	Modules string // default modules, comma split, e.g. "execute_exe,execute_dll"
 	CA      string // ca file , ca file content
 	Raw     []byte

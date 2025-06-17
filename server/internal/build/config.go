@@ -7,6 +7,8 @@ import (
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db"
+	"gopkg.in/yaml.v3"
+	"os"
 	"path/filepath"
 	"strings"
 )
@@ -21,15 +23,31 @@ var (
 	pulse          = "malefic-pulse"
 )
 
-func GenerateProfile(req *clientpb.Generate) (string, error) {
+// GenerateProfile - Generate profile
+// first recover profile from database
+// then use Generate overwrite profile
+func GenerateProfile(req *clientpb.Generate) ([]byte, error) {
 	var err error
 	profile, err := db.GetProfile(req.ProfileName)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	path := filepath.Join(configs.SourceCodePath, generateConfig)
 
-	return db.UpdateGeneratorConfig(req, path, profile)
+	err = db.UpdateGeneratorConfig(req, path, profile)
+	if err != nil {
+		return nil, err
+	}
+	data, err := yaml.Marshal(profile)
+	if err != nil {
+		return nil, err
+	}
+
+	err = os.WriteFile(path, data, 0644)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
 }
 
 func MoveBuildOutput(target, buildType string) (string, string, error) {

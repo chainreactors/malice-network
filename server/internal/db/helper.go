@@ -23,7 +23,6 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"github.com/gofrs/uuid"
-	"gopkg.in/yaml.v3"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"gorm.io/gorm/utils"
@@ -657,6 +656,7 @@ func NewProfile(profile *clientpb.Profile) error {
 	return Session().Create(model).Error
 }
 
+// recover profile from database
 func GetProfile(name string) (*types.ProfileConfig, error) {
 	var profileModel *models.Profile
 
@@ -688,9 +688,13 @@ func GetProfile(name string) (*types.ProfileConfig, error) {
 		if profileModel.Modules != "" {
 			profile.Implant.Modules = strings.Split(profileModel.Modules, ",")
 		}
-		if profileModel.Params != nil {
+		if params := profileModel.Params; params != nil {
 			profile.Basic.Interval = profileModel.Params.Interval
 			profile.Basic.Jitter = profileModel.Params.Jitter
+
+			if params.Proxy != "" {
+				profile.Basic.Proxy = params.Proxy
+			}
 		}
 		if profileModel.Pipeline != nil {
 			profile.Basic.Targets = []string{profileModel.Pipeline.Address()}
@@ -706,8 +710,8 @@ func GetProfile(name string) (*types.ProfileConfig, error) {
 	return profile, nil
 }
 
-func GetProfiles() ([]models.Profile, error) {
-	var profiles []models.Profile
+func GetProfiles() ([]*models.Profile, error) {
+	var profiles []*models.Profile
 	result := Session().Find(&profiles)
 	return profiles, result.Error
 }
@@ -797,7 +801,7 @@ func SaveArtifactFromID(req *clientpb.Generate, ID uint32, resource string) (*mo
 		Source:      resource,
 		IsSRDI:      req.Srdi,
 		CA:          req.Ca,
-		Modules:     req.Feature,
+		Modules:     strings.Join(req.Modules, ","),
 		Arch:        target.Arch,
 		Os:          target.OS,
 	}
@@ -986,7 +990,7 @@ func DeleteArtifactByName(artifactName string) error {
 }
 
 // UpdateGeneratorConfig - Update the generator config
-func UpdateGeneratorConfig(req *clientpb.Generate, path string, config *types.ProfileConfig) (string, error) {
+func UpdateGeneratorConfig(req *clientpb.Generate, path string, config *types.ProfileConfig) error {
 	if config.Basic != nil {
 		if req.Name != "" {
 			config.Basic.Name = req.Name
@@ -998,7 +1002,7 @@ func UpdateGeneratorConfig(req *clientpb.Generate, path string, config *types.Pr
 		if req.Params != "" {
 			err := json.Unmarshal([]byte(req.Params), &params)
 			if err != nil {
-				return "", err
+				return err
 			}
 			if params.Interval != -1 {
 				config.Basic.Interval = params.Interval
@@ -1006,6 +1010,10 @@ func UpdateGeneratorConfig(req *clientpb.Generate, path string, config *types.Pr
 
 			if params.Jitter != -1 {
 				config.Basic.Jitter = params.Jitter
+			}
+
+			if params.Proxy != "" {
+				config.Basic.Proxy = params.Proxy
 			}
 		}
 		if req.Ca != "" {
@@ -1028,11 +1036,7 @@ func UpdateGeneratorConfig(req *clientpb.Generate, path string, config *types.Pr
 	if req.Type == consts.CommandBuildBind {
 		config.Implant.Mod = consts.CommandBuildBind
 	}
-	newData, err := yaml.Marshal(config)
-	if err != nil {
-		return "", err
-	}
-	return string(newData), os.WriteFile(path, newData, 0644)
+	return nil
 }
 
 func UpdateBuilderLog(name string, logEntry string) {

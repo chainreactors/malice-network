@@ -11,7 +11,7 @@ import (
 )
 
 func NewTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
-	listenerID, host, port := common.ParsePipelineFlags(cmd)
+	listenerID, proxy, host, port := common.ParsePipelineFlags(cmd)
 	target, beaconPipeline := common.ParseArtifactFlags(cmd)
 	name := cmd.Flags().Arg(0)
 	if port == 0 {
@@ -40,9 +40,10 @@ func NewTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 		Enable:         false,
 		Body: &clientpb.Pipeline_Tcp{
 			Tcp: &clientpb.TCPPipeline{
-				Name: name,
-				Host: host,
-				Port: port,
+				Name:  name,
+				Host:  host,
+				Port:  port,
+				Proxy: proxy,
 			},
 		},
 	})

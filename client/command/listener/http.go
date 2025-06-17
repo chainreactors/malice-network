@@ -13,7 +13,7 @@ import (
 )
 
 func NewHttpPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
-	listenerID, host, port := common.ParsePipelineFlags(cmd)
+	listenerID, proxy, host, port := common.ParsePipelineFlags(cmd)
 	if port == 0 {
 		port = cryptography.RandomInRange(10240, 65535)
 	}
@@ -75,6 +75,7 @@ func NewHttpPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 				Host:   host,
 				Port:   port,
 				Params: string(paramsJson),
+				Proxy:  proxy,
 			},
 		},
 	})

@@ -6,6 +6,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
+	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -130,11 +131,12 @@ func PipelineFlagSet(f *pflag.FlagSet) {
 	SetFlagSetGroup(f, "pipeline")
 }
 
-func ParsePipelineFlags(cmd *cobra.Command) (string, string, uint32) {
+func ParsePipelineFlags(cmd *cobra.Command) (string, string, string, uint32) {
 	listenerID, _ := cmd.Flags().GetString("listener")
 	host, _ := cmd.Flags().GetString("host")
 	portUint, _ := cmd.Flags().GetUint32("port")
-	return listenerID, host, portUint
+	proxy, _ := cmd.Flags().GetString("proxy")
+	return listenerID, proxy, host, portUint
 }
 
 func ParseTLSFlags(cmd *cobra.Command) (*clientpb.TLS, error) {
@@ -195,22 +197,28 @@ func GenerateFlagSet(f *pflag.FlagSet) {
 	f.String("ca", "", "custom ca file")
 	f.Int("interval", -1, "interval /second")
 	f.Float64("jitter", -1, "jitter")
+	f.String("proxy", "", "Overwrite proxy")
 	f.StringSliceP("modules", "m", []string{}, "Set modules e.g.: execute_exe,execute_dll")
 	f.Bool("srdi", true, "enable srdi")
 	SetFlagSetGroup(f, "generate")
 }
 
-func ParseGenerateFlags(cmd *cobra.Command) (string, string, string, []string, string, int, float64, bool) {
+func ParseGenerateFlags(cmd *cobra.Command) (string, string, string, string, string, bool, *types.ProfileParams) {
 	name, _ := cmd.Flags().GetString("profile")
 	address, _ := cmd.Flags().GetString("address")
 	buildTarget, _ := cmd.Flags().GetString("target")
 	//buildType, _ := cmd.Flags().GetString("type")
-	modules, _ := cmd.Flags().GetStringSlice("modules")
+	proxy, _ := cmd.Flags().GetString("proxy")
+	modules, _ := cmd.Flags().GetString("modules")
 	ca, _ := cmd.Flags().GetString("ca")
 	interval, _ := cmd.Flags().GetInt("interval")
 	jitter, _ := cmd.Flags().GetFloat64("jitter")
 	enableSRDI, _ := cmd.Flags().GetBool("srdi")
-	return name, address, buildTarget, modules, ca, interval, jitter, enableSRDI
+	return name, address, buildTarget, modules, ca, enableSRDI, &types.ProfileParams{
+		Interval: interval,
+		Jitter:   jitter,
+		Proxy:    proxy,
+	}
 }
 
 func ProfileSet(f *pflag.FlagSet) {
@@ -219,7 +227,6 @@ func ProfileSet(f *pflag.FlagSet) {
 	f.StringP("pipeline", "p", "", "Overwrite profile basic pipeline_id")
 	f.String("pulse-pipeline", "", "Overwrite profile pulse pipeline_id")
 	//f.String("type", "", "Set build type")
-	//f.String("proxy", "", "Overwrite proxy")
 	//f.String("obfuscate", "", "Set obfuscate")
 	//f.StringSlice("modules", []string{}, "Overwrite modules e.g.: execute_exe,execute_dll")
 	//f.String("ca", "", "Overwrite ca")

@@ -61,6 +61,12 @@ type ProfileConfig struct {
 type ProfileParams struct {
 	Interval int     `json:"interval"`
 	Jitter   float64 `json:"jitter"`
+	// shellcode prelude beacon bind
+	Stager string `json:"stager"`
+
+	Obfuscation string `json:"obfuscation"` // not impl, obf llvm plug ,
+
+	Proxy string `json:"proxy"`
 }
 
 func (p *ProfileParams) String() string {

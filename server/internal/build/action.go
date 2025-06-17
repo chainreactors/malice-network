@@ -20,21 +20,21 @@ import (
 
 // TriggerWorkflowDispatch is a reusable function to trigger a GitHub Actions workflow dispatch event
 func TriggerWorkflowDispatch(owner, repo, workflowID, token string, inputs map[string]string, isRemove bool, req *clientpb.Generate) (*clientpb.Builder, error) {
-	var newProfile string
 	config, err := GenerateProfile(req)
 	if err != nil {
 		return nil, err
 	}
-	profile, err := types.LoadProfile([]byte(config))
+	profile, err := types.LoadProfile(config)
 	if err != nil {
 		return nil, err
 	}
 
-	base64Encoded := encode.Base64Encode([]byte(config))
+	base64Encoded := encode.Base64Encode(config)
 
 	escapedOwner := url.QueryEscape(owner)
 	escapedRepo := url.QueryEscape(repo)
 	escapedToken := url.QueryEscape(token)
+	var newProfile []byte
 
 	if inputs["package"] == consts.CommandBuildPulse {
 		var artifactID uint32
@@ -91,8 +91,8 @@ func TriggerWorkflowDispatch(owner, repo, workflowID, token string, inputs map[s
 			}
 		}
 	}
-	if newProfile != "" {
-		base64Encoded = encode.Base64Encode([]byte(newProfile))
+	if newProfile != nil {
+		base64Encoded = encode.Base64Encode(newProfile)
 	}
 	inputs["malefic_config_yaml"] = base64Encoded
 	if len(req.Modules) == 0 {

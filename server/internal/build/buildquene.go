@@ -8,7 +8,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"github.com/docker/docker/client"
@@ -129,15 +128,9 @@ func (bqm *BuildQueueManager) executeBuild(req *clientpb.Generate, builder *mode
 
 	// Prepare build request
 	req.Name = builder.Name
-	profileByte, err := GenerateProfile(req)
+	_, err := GenerateProfile(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create config: %v", err)
-	}
-
-	// Set feature if empty
-	if req.Feature == "" {
-		profile, _ := types.LoadProfile([]byte(profileByte))
-		req.Feature = strings.Join(profile.Implant.Modules, ",")
 	}
 
 	// Get Docker client

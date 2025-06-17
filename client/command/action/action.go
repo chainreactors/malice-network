@@ -8,7 +8,6 @@ import (
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/spf13/cobra"
 	"os"
 	"strings"
@@ -45,20 +44,17 @@ func RunBeaconWorkFlowCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	name, address, buildTarget, modules, ca, interval, jitter, _ := common.ParseGenerateFlags(cmd)
+	name, address, buildTarget, modules, ca, _, params := common.ParseGenerateFlags(cmd)
 	if buildTarget == "" {
 		return errors.New("require build target")
 	}
-	params := &types.ProfileParams{
-		Interval: interval,
-		Jitter:   jitter,
-	}
+
 	inputs := map[string]string{
 		"package": consts.CommandBuildBeacon,
 		"targets": buildTarget,
 	}
 	if len(modules) > 0 {
-		inputs["malefic_modules_features"] = strings.Join(modules, ",")
+		inputs["malefic_modules_features"] = modules
 	}
 	req := &clientpb.GithubWorkflowRequest{
 		Owner:      owner,
@@ -85,20 +81,16 @@ func RunBindWorkFlowCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	name, address, buildTarget, modules, ca, interval, jitter, _ := common.ParseGenerateFlags(cmd)
+	name, address, buildTarget, modules, ca, _, params := common.ParseGenerateFlags(cmd)
 	if buildTarget == "" {
 		return errors.New("require build target")
-	}
-	params := &types.ProfileParams{
-		Interval: interval,
-		Jitter:   jitter,
 	}
 	inputs := map[string]string{
 		"package": consts.CommandBuildBind,
 		"targets": buildTarget,
 	}
 	if len(modules) > 0 {
-		inputs["malefic_modules_features"] = strings.Join(modules, ",")
+		inputs["malefic_modules_features"] = modules
 	}
 	req := &clientpb.GithubWorkflowRequest{
 		Owner:      owner,
@@ -124,20 +116,16 @@ func RunPreludeWorkFlowCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	name, address, buildTarget, modules, ca, interval, jitter, _ := common.ParseGenerateFlags(cmd)
+	name, address, buildTarget, modules, ca, _, params := common.ParseGenerateFlags(cmd)
 	if buildTarget == "" {
 		return errors.New("require build target")
-	}
-	params := &types.ProfileParams{
-		Interval: interval,
-		Jitter:   jitter,
 	}
 	inputs := map[string]string{
 		"package": consts.CommandBuildPrelude,
 		"targets": buildTarget,
 	}
 	if len(modules) > 0 {
-		inputs["malefic_modules_features"] = strings.Join(modules, ",")
+		inputs["malefic_modules_features"] = modules
 	}
 	autorunPath, _ := cmd.Flags().GetString("autorun")
 	if autorunPath == "" {
@@ -174,14 +162,11 @@ func RunModulesWorkFlowCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	name, address, buildTarget, modules, ca, interval, jitter, _ := common.ParseGenerateFlags(cmd)
+	name, address, buildTarget, modules, ca, _, params := common.ParseGenerateFlags(cmd)
 	if buildTarget == "" {
 		return errors.New("require build target")
 	}
-	params := &types.ProfileParams{
-		Interval: interval,
-		Jitter:   jitter,
-	}
+
 	inputs := map[string]string{
 		"package": consts.CommandBuildModules,
 		"targets": buildTarget,
@@ -189,7 +174,7 @@ func RunModulesWorkFlowCmd(cmd *cobra.Command, con *repl.Console) error {
 	if len(modules) == 0 {
 		inputs["malefic_modules_features"] = "full"
 	} else if len(modules) > 0 {
-		inputs["malefic_modules_features"] = strings.Join(modules, ",")
+		inputs["malefic_modules_features"] = modules
 	}
 	req := &clientpb.GithubWorkflowRequest{
 		Owner:      owner,
@@ -216,22 +201,16 @@ func RunPulseWorkFlowCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	name, address, buildTarget, modules, ca, interval, jitter, _ := common.ParseGenerateFlags(cmd)
+	name, address, buildTarget, _, _, _, _ := common.ParseGenerateFlags(cmd)
 	if !strings.Contains(buildTarget, "windows") {
 		con.Log.Warn("pulse only support windows target\n")
 		return nil
 	}
 	artifactID, _ := cmd.Flags().GetUint32("artifact-id")
-	params := &types.ProfileParams{
-		Interval: interval,
-		Jitter:   jitter,
-	}
+
 	inputs := map[string]string{
 		"package": consts.CommandBuildPulse,
 		"targets": buildTarget,
-	}
-	if len(modules) > 0 {
-		inputs["malefic_modules_features"] = strings.Join(modules, ",")
 	}
 
 	req := &clientpb.GithubWorkflowRequest{
@@ -242,8 +221,6 @@ func RunPulseWorkFlowCmd(cmd *cobra.Command, con *repl.Console) error {
 		Inputs:     inputs,
 		Profile:    name,
 		Address:    address,
-		Ca:         ca,
-		Params:     params.String(),
 		ArtifactId: artifactID,
 		IsRemove:   remove,
 	}

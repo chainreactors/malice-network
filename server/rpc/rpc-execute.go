@@ -111,6 +111,7 @@ func (rpc *Server) Execute(ctx context.Context, req *implantpb.ExecRequest) (*cl
 
 		go greq.HandlerResponse(ch, types.MsgExec)
 	} else {
+		greq.Count = -1
 		_, out, err := rpc.StreamGenericHandler(ctx, greq)
 		if err != nil {
 			return nil, err

@@ -38,7 +38,7 @@ func ListRemCmd(cmd *cobra.Command, con *repl.Console) error {
 
 func NewRemCmd(cmd *cobra.Command, con *repl.Console) error {
 	name := cmd.Flags().Arg(0)
-	listenerID, _, _ := common.ParsePipelineFlags(cmd)
+	listenerID, _, _, _ := common.ParsePipelineFlags(cmd)
 	console, _ := cmd.Flags().GetString("console")
 
 	parse, err := rem.ParseConsole(console)

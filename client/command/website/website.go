@@ -16,7 +16,7 @@ import (
 func NewWebsiteCmd(cmd *cobra.Command, con *repl.Console) error {
 	name := cmd.Flags().Arg(0)
 	root, _ := cmd.Flags().GetString("root")
-	listenerID, host, port := common.ParsePipelineFlags(cmd)
+	listenerID, _, host, port := common.ParsePipelineFlags(cmd)
 	if port == 0 {
 		port = cryptography.RandomInRange(10240, 65535)
 	}

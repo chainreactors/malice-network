@@ -15,10 +15,6 @@ func (rpc *Server) Build(ctx context.Context, req *clientpb.Generate) (*clientpb
 	if req.Name == "" {
 		req.Name = codenames.GetCodename()
 	}
-	_, err := db.GetProfile(req.ProfileName)
-	if err != nil {
-		return nil, err
-	}
 	builder, err := db.SaveArtifactFromGenerate(req)
 	if err != nil {
 		logs.Log.Errorf("save build db error: %v", err)
