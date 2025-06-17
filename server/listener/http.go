@@ -6,8 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/server/internal/parser/pulse"
 	"io"
 	"net"
 	"net/http"
@@ -18,12 +16,14 @@ import (
 	"github.com/chainreactors/malice-network/helper/encoders"
 	"github.com/chainreactors/malice-network/helper/encoders/hash"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/helper/utils/peek"
 	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/parser"
+	"github.com/chainreactors/malice-network/server/internal/parser/pulse"
 )
 
 func NewHttpPipeline(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeline) (*HTTPPipeline, error) {
@@ -291,7 +291,7 @@ func (h *httpReadWriter) Write(p []byte) (n int, err error) {
 	if len(h.bodySuffix) > 0 {
 		buf.Write(h.bodySuffix)
 	}
-	//h.writer.Header().Set("Content-Length", strconv.Itoa(buf.Len()))
+	h.writer.Header().Set("Content-Length", strconv.Itoa(buf.Len()))
 	if _, err := h.writer.Write(buf.Bytes()); err != nil {
 		return n, err
 	}
