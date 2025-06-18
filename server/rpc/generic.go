@@ -6,6 +6,7 @@ import (
 	"net"
 	"runtime"
 	"strconv"
+	"time"
 
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -291,14 +292,14 @@ func getRemoteIp(ctx context.Context) string {
 func getTimestamp(ctx context.Context) int64 {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
-		return 0
+		return time.Now().Unix()
 	}
 	if timestamp := md.Get("timestamp"); len(timestamp) > 0 {
 		if ts, err := strconv.ParseInt(timestamp[0], 10, 64); err == nil {
 			return ts
 		}
 	}
-	return 0
+	return time.Now().Unix()
 }
 
 func getPipelineID(ctx context.Context) (string, error) {

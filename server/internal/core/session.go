@@ -4,15 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/errs"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/types"
-	"github.com/chainreactors/malice-network/server/internal/configs"
-	"github.com/chainreactors/malice-network/server/internal/db"
-	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"github.com/gookit/config/v2"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
@@ -23,6 +14,17 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/errs"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
+	"github.com/chainreactors/malice-network/helper/types"
+	"github.com/chainreactors/malice-network/helper/utils"
+	"github.com/chainreactors/malice-network/server/internal/configs"
+	"github.com/chainreactors/malice-network/server/internal/db"
+	"github.com/chainreactors/malice-network/server/internal/db/models"
 )
 
 var (
@@ -47,7 +49,7 @@ func NewSessions() *sessions {
 			if !session.isAlived() {
 				sessModel.IsAlive = false
 				session.Publish(consts.CtrlSessionLeave, fmt.Sprintf("session %s from %s at %s has leaved ", session.ID, session.Target, session.PipelineID), true, true)
-				newSessions.Remove(session.ID)
+				//newSessions.Remove(session.ID)
 			}
 			err := db.Session().Save(sessModel).Error
 			if err != nil {
@@ -279,7 +281,7 @@ func (s *Session) isAlived() bool {
 	if s.Type == consts.BindPipeline {
 		return true
 	} else {
-		return time.Now().Unix()-s.LastCheckin <= (1+int64(s.Interval))*5
+		return time.Now().Unix()-s.LastCheckin <= utils.Max((1+int64(s.Interval))*10, int64(time.Second*60))
 	}
 }
 
