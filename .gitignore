@@ -3,6 +3,8 @@ bin/
 dist/
 .malice/
 go.sum
+client/intl/professional/
+client/intl/custom/
 *.exe
 *.bin
 *.so

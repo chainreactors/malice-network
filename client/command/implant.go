@@ -2,6 +2,7 @@ package command
 
 import (
 	"fmt"
+
 	"github.com/carapace-sh/carapace"
 	"github.com/reeflective/console"
 	"github.com/spf13/cobra"
@@ -206,6 +207,14 @@ func BindImplantCommands(con *repl.Console) console.Commands {
 			if err != nil {
 				con.Log.Errorf("Failed to load mal %s: %s\n", malName.Name, err)
 				continue
+			}
+		}
+
+		// 加载嵌入式mal插件命令
+		if con.IntlManager != nil {
+			loadedCount := con.IntlManager.RegisterCommandsTo(implant)
+			if loadedCount > 0 {
+				con.Log.Infof("Successfully registered %d embedded mal commands", loadedCount)
 			}
 		}
 

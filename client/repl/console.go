@@ -4,9 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"path/filepath"
+	"strings"
+	"time"
+
 	"github.com/carapace-sh/carapace/pkg/x"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/malice-network/client/intl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/mals"
@@ -15,10 +21,6 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
 	"google.golang.org/grpc/metadata"
-	"io"
-	"path/filepath"
-	"strings"
-	"time"
 )
 
 var (
@@ -38,10 +40,11 @@ func NewConsole() (*Console, error) {
 	con := &Console{
 		//ActiveTarget: &core.ActiveTarget{},
 		//Settings:     settings,
-		Log:     core.Log,
-		Plugins: NewPlugins(),
-		CMDs:    make(map[string]*cobra.Command),
-		Helpers: make(map[string]*cobra.Command),
+		Log:         core.Log,
+		Plugins:     NewPlugins(),
+		CMDs:        make(map[string]*cobra.Command),
+		Helpers:     make(map[string]*cobra.Command),
+		IntlManager: intl.NewEmbedPluginManager(),
 	}
 	con.NewConsole()
 	_, err := assets.LoadProfile()
@@ -55,11 +58,12 @@ type Console struct {
 	//*core.ActiveTarget
 	*core.ServerStatus
 	*Plugins
-	Log     *core.Logger
-	App     *console.Console
-	Profile *assets.Profile
-	CMDs    map[string]*cobra.Command
-	Helpers map[string]*cobra.Command
+	Log         *core.Logger
+	App         *console.Console
+	Profile     *assets.Profile
+	CMDs        map[string]*cobra.Command
+	Helpers     map[string]*cobra.Command
+	IntlManager *intl.EmbedManager
 }
 
 func (c *Console) NewConsole() {

@@ -1,0 +1,8 @@
+name: community
+type: lua
+author: chainreactors Team
+version: 1.0.0
+entry: main.lua
+lib: false
+depend_modules: []
+depend_armory: [] 

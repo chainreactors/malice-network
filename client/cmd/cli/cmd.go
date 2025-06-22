@@ -2,13 +2,14 @@ package cli
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/gookit/config/v2"
 	"github.com/gookit/config/v2/yaml"
-	"os"
 )
 
 func init() {
@@ -26,6 +27,7 @@ func Start() error {
 	if err != nil {
 		return err
 	}
+
 	cmd, err := rootCmd(con)
 	if err != nil {
 		return err
