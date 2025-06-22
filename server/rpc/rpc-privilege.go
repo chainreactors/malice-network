@@ -47,7 +47,7 @@ func (rpc *Server) GetSystem(ctx context.Context, req *implantpb.Request) (*clie
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgEmpty)
+	go greq.HandlerResponse(ch, types.MsgResponse)
 
 	return greq.Task.ToProtobuf(), nil
 }

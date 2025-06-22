@@ -224,7 +224,7 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 						TargetPath: req.Path,
 						FilePath:   moveName,
 						Abstract:   fmt.Sprintf("download -%s -%s ", req.Name, req.Path),
-						Size:       int64(resp.GetDownloadResponse().Size),
+						Size:       int64(downloadAbs.Size),
 					},
 				}
 				ictx, err := db.SaveContext(&clientpb.Context{
@@ -238,7 +238,7 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 				}
 				err = fileutils.MoveFile(fileName, moveName)
 				if err != nil {
-					return
+					logs.Error(err)
 				}
 				core.PushContextEvent(consts.ContextUpload, ictx)
 				greq.Task.Finish(resp, "sync id "+checksum)

@@ -100,8 +100,9 @@ func FormatKVResponse(ctx *clientpb.TaskContext) (string, error) {
 	}
 	var rowEntries []table.Row
 	var row table.Row
+
 	tableModel := tui.NewTable([]table.Column{
-		table.NewColumn("Key", "Key", 20),
+		table.NewColumn("Key", "Key", 30),
 		table.NewColumn("Value", "Value", 70),
 		//{Title: "Key", Width: 20},
 		//{Title: "Value", Width: 70},
