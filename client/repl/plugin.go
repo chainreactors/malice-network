@@ -2,65 +2,61 @@ package repl
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/core/plugin"
-	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/utils/handler"
 	"github.com/chainreactors/mals"
 	"github.com/chainreactors/tui"
-	"github.com/spf13/cobra"
 	"reflect"
 )
 
-var (
-	ErrorAlreadyScriptName = errors.New("already exist script name")
-)
+//var (
+//	ErrorAlreadyScriptName = errors.New("already exist script name")
+//)
 
-func NewPlugins() *Plugins {
-	plugins := &Plugins{
-		Plugins: make(map[string]*plugin.Plugin),
-	}
-	return plugins
-}
-
-type Plugins struct {
-	Plugins map[string]*plugin.Plugin
-}
-
-func (plugins *Plugins) LoadPlugin(manifest *plugin.MalManiFest, con *Console, rootCmd *cobra.Command) (plugin.Plugin, error) {
-	if _, ok := plugins.Plugins[manifest.Name]; ok {
-		return nil, ErrorAlreadyScriptName
-	}
-
-	var plug plugin.Plugin
-	var err error
-	switch manifest.Type {
-	case plugin.LuaScript:
-		plug, err = plugin.NewLuaMalPlugin(manifest)
-	case plugin.GoPlugin:
-		plug, err = plugin.NewGoMalPlugin(manifest)
-	default:
-		return nil, fmt.Errorf("not found valid script type: %s", manifest.Type)
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	err = plug.Run()
-	if err != nil {
-		return nil, err
-	}
-	for _, cmd := range plug.Commands() {
-		cmd.Command.GroupID = consts.MalGroup
-		rootCmd.AddCommand(cmd.Command)
-	}
-	return plug, nil
-}
+//func NewPlugins() *Plugins {
+//	plugins := &Plugins{
+//		Plugins: make(map[string]*plugin.Plugin),
+//	}
+//	return plugins
+//}
+//
+//type Plugins struct {
+//	Plugins map[string]*plugin.Plugin
+//}
+//
+//func (plugins *Plugins) LoadPlugin(manifest *plugin.MalManiFest, con *Console, rootCmd *cobra.Command) (plugin.Plugin, error) {
+//	if _, ok := plugins.Plugins[manifest.Name]; ok {
+//		return nil, ErrorAlreadyScriptName
+//	}
+//
+//	var plug plugin.Plugin
+//	var err error
+//	switch manifest.Type {
+//	case plugin.LuaScript:
+//		plug, err = plugin.NewLuaMalPlugin(manifest)
+//	//case plugin.GoPlugin:
+//	//	plug, err = plugin.NewGoMalPlugin(manifest)
+//	default:
+//		return nil, fmt.Errorf("not found valid script type: %s", manifest.Type)
+//	}
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	err = plug.Run()
+//	if err != nil {
+//		return nil, err
+//	}
+//	for _, cmd := range plug.Commands() {
+//		cmd.Command.GroupID = consts.MalGroup
+//		rootCmd.AddCommand(cmd.Command)
+//	}
+//	return plug, nil
+//}
 
 type implantFunc func(rpc clientrpc.MaliceRPCClient, sess *core.Session, params ...interface{}) (*clientpb.Task, error)
 

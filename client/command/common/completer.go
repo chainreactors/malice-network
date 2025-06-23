@@ -2,11 +2,12 @@ package common
 
 import (
 	"fmt"
-	"github.com/chainreactors/malice-network/helper/utils/output"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/chainreactors/malice-network/helper/utils/output"
 
 	"github.com/carapace-sh/carapace"
 	"github.com/chainreactors/malice-network/client/assets"
@@ -139,6 +140,8 @@ func SessionTaskCompleter(con *repl.Console) carapace.Action {
 func ResourceCompleter(con *repl.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
+
+		// 添加文件系统中的资源
 		err := filepath.WalkDir(assets.GetConfigDir(), func(path string, d os.DirEntry, err error) error {
 			if err != nil {
 				return err

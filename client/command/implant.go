@@ -2,6 +2,7 @@ package command
 
 import (
 	"fmt"
+	"github.com/chainreactors/malice-network/client/core/plugin"
 
 	"github.com/carapace-sh/carapace"
 	"github.com/reeflective/console"
@@ -19,7 +20,6 @@ import (
 	"github.com/chainreactors/malice-network/client/command/file"
 	"github.com/chainreactors/malice-network/client/command/filesystem"
 	"github.com/chainreactors/malice-network/client/command/help"
-	"github.com/chainreactors/malice-network/client/command/mal"
 	"github.com/chainreactors/malice-network/client/command/modules"
 	"github.com/chainreactors/malice-network/client/command/pipe"
 	"github.com/chainreactors/malice-network/client/command/pivot"
@@ -31,7 +31,6 @@ import (
 	"github.com/chainreactors/malice-network/client/command/taskschd"
 	"github.com/chainreactors/malice-network/client/command/third"
 	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/core/plugin"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/tui"
@@ -201,20 +200,23 @@ func BindImplantCommands(con *repl.Console) console.Commands {
 			return implant
 		}
 
-		plugin.GlobalPlugins = plugin.LoadGlobalLuaPlugin()
-		for _, malName := range plugin.GetPluginManifest() {
-			_, err := mal.LoadMalWithManifest(con, implant, malName)
-			if err != nil {
-				con.Log.Errorf("Failed to load mal %s: %s\n", malName.Name, err)
-				continue
+		con.MalManager = plugin.GetGlobalMalManager()
+		for _, plug := range con.MalManager.GetAllEmbeddedPlugins() {
+			for _, cmd := range plug.Commands() {
+				implant.AddCommand(cmd.Command)
 			}
 		}
 
-		// 加载嵌入式mal插件命令
-		if con.IntlManager != nil {
-			loadedCount := con.IntlManager.RegisterCommandsTo(implant)
-			if loadedCount > 0 {
-				con.Log.Infof("Successfully registered %d embedded mal commands", loadedCount)
+		for _, manifest := range con.MalManager.GetPluginManifests() {
+			plug, err := con.MalManager.LoadExternalMal(manifest)
+			if err != nil {
+				con.Log.Errorf("Failed to load external mal %s: %s\n", manifest.Name, err)
+				continue
+			}
+
+			for _, cmd := range plug.Commands() {
+				cmd.Command.GroupID = consts.MalGroup
+				implant.AddCommand(cmd.Command)
 			}
 		}
 

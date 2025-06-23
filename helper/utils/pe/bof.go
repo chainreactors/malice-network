@@ -8,6 +8,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/chainreactors/malice-network/helper/intl"
 )
 
 type BOFArgsBuffer struct {
@@ -179,21 +181,36 @@ func UnpackURL(data string) ([]byte, error) {
 	}
 }
 
+func UnpackEmbed(data string) ([]byte, error) {
+	// 处理embed://path格式
+	embedPath := "embed:" + data
+	return intl.ReadEmbedResource(embedPath)
+}
+
 func Unpack(data string) ([]byte, error) {
+	// 首先尝试直接作为文件路径读取
 	content, err := UnPackFile(data)
 	if err == nil {
 		return content, nil
 	}
+
+	// 如果直接读取失败，解析数据类型
 	unpacked := strings.SplitN(data, ":", 2)
+	if len(unpacked) < 2 {
+		return nil, fmt.Errorf("invalid data format: %s", data)
+	}
+
 	switch unpacked[0] {
 	case "file":
 		return UnPackFile(unpacked[1])
+	case "embed":
+		return UnpackEmbed(unpacked[1])
 	case "bin":
 		return UnPackBinary(unpacked[1])
 	case "url":
 		return UnpackURL(unpacked[1])
 	default:
-		return nil, fmt.Errorf("Unknown data type %s", unpacked[0])
+		return nil, fmt.Errorf("unknown data type %s", unpacked[0])
 	}
 }
 

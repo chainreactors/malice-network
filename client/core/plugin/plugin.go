@@ -2,17 +2,19 @@ package plugin
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
+
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"gopkg.in/yaml.v3"
-	"os"
-	"path/filepath"
 )
 
 const (
 	LuaScript = "lua"
 	GoPlugin  = "go"
+	EmbedType = "embed"
 )
 
 type MalManiFest struct {

@@ -1,6 +1,8 @@
 package mal
 
 import (
+	"path/filepath"
+
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/core/plugin"
@@ -9,7 +11,6 @@ import (
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
-	"path/filepath"
 )
 
 var loadedMals = make(map[string]*LoadedMal)
@@ -51,24 +52,30 @@ func LoadMal(con *repl.Console, rootCmd *cobra.Command, filename string) (*Loade
 }
 
 func LoadMalWithManifest(con *repl.Console, rootCmd *cobra.Command, manifest *plugin.MalManiFest) (*LoadedMal, error) {
-	plug, err := con.Plugins.LoadPlugin(manifest, con, rootCmd)
+	malManager := plugin.GetGlobalMalManager()
+	plug, err := malManager.LoadExternalMal(manifest)
 	if err != nil {
 		return nil, err
 	}
+
 	for event, fn := range plug.GetEvents() {
 		con.AddEventHook(event, fn)
 	}
+
 	profile, err := assets.GetProfile()
 	if err != nil {
 		return nil, err
 	}
 	profile.AddMal(manifest.Name)
+
 	var cmdNames []string
 	var cmds []*cobra.Command
 	for _, cmd := range plug.Commands() {
 		cmdNames = append(cmdNames, cmd.Command.Name())
 		cmds = append(cmds, cmd.Command)
+		rootCmd.AddCommand(cmd.Command)
 	}
+
 	mal := &LoadedMal{
 		Manifest: manifest,
 		CMDs:     cmds,
@@ -96,10 +103,6 @@ func ListMalManifest(con *repl.Console) {
 		table.NewColumn("Type", "Type", 8),
 		table.NewColumn("Version", "Version", 7),
 		table.NewColumn("Author", "Author", 10),
-		//{Title: "Name", Width: 10},
-		//{Title: "Type", Width: 10},
-		//{Title: "Version", Width: 7},
-		//{Title: "Author", Width: 4},
 	}, true)
 	for _, m := range loadedMals {
 		plug := m.Plugin.Manifest()

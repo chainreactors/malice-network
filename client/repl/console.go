@@ -12,7 +12,7 @@ import (
 	"github.com/carapace-sh/carapace/pkg/x"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/intl"
+	"github.com/chainreactors/malice-network/client/core/plugin"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/mals"
@@ -34,17 +34,16 @@ type BindCmds func(console *Console) console.Commands
 // Start - Console entrypoint
 func NewConsole() (*Console, error) {
 	//assets.Setup(false, false)
+
 	tui.Reset()
 	//settings, _ := assets.LoadSettings()
 	//assets.SetInputrc()
 	con := &Console{
 		//ActiveTarget: &core.ActiveTarget{},
 		//Settings:     settings,
-		Log:         core.Log,
-		Plugins:     NewPlugins(),
-		CMDs:        make(map[string]*cobra.Command),
-		Helpers:     make(map[string]*cobra.Command),
-		IntlManager: intl.NewEmbedPluginManager(),
+		Log:     core.Log,
+		CMDs:    make(map[string]*cobra.Command),
+		Helpers: make(map[string]*cobra.Command),
 	}
 	con.NewConsole()
 	_, err := assets.LoadProfile()
@@ -57,13 +56,12 @@ func NewConsole() (*Console, error) {
 type Console struct {
 	//*core.ActiveTarget
 	*core.ServerStatus
-	*Plugins
-	Log         *core.Logger
-	App         *console.Console
-	Profile     *assets.Profile
-	CMDs        map[string]*cobra.Command
-	Helpers     map[string]*cobra.Command
-	IntlManager *intl.EmbedManager
+	Log        *core.Logger
+	App        *console.Console
+	Profile    *assets.Profile
+	CMDs       map[string]*cobra.Command
+	Helpers    map[string]*cobra.Command
+	MalManager *plugin.MalManager
 }
 
 func (c *Console) NewConsole() {
@@ -93,9 +91,9 @@ func (c *Console) Start(bindCmds ...BindCmds) error {
 			time.Sleep(10 * time.Millisecond)
 		}
 	}()
+
 	intermediate.RegisterBuiltin(c.Rpc)
-	//c.App.Menu(consts.ClientMenu).SetCommands(bindCmds[0](c))
-	//c.App.Menu(consts.ImplantMenu).SetCommands(bindCmds[1](c))
+
 	c.App.Menu(consts.ClientMenu).Command = bindCmds[0](c)()
 	c.App.Menu(consts.ImplantMenu).Command = bindCmds[1](c)()
 	if c.GetInteractive() == nil {

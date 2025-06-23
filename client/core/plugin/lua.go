@@ -2,20 +2,16 @@ package plugin
 
 import (
 	"fmt"
+	"github.com/kballard/go-shellquote"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
+	lua "github.com/yuin/gopher-lua"
+	"golang.org/x/exp/slices"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
-	"sync"
-	"time"
-
-	"github.com/kballard/go-shellquote"
-	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
-	lua "github.com/yuin/gopher-lua"
-	"github.com/yuin/gopher-lua/parse"
-	"golang.org/x/exp/slices"
 
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
@@ -33,107 +29,8 @@ var (
 	ReservedCMD     = "cmd"
 	ReservedWords   = []string{ReservedCMDLINE, ReservedARGS, ReservedCMD}
 
-	ProtoPackage  = []string{"implantpb", "clientpb", "modulepb"}
-	GlobalPlugins []*DefaultPlugin
+	ProtoPackage = []string{"implantpb", "clientpb", "modulepb"}
 )
-
-type LuaVMWrapper struct {
-	*lua.LState
-	initialized  bool
-	lastUsedTime time.Time
-	lock         sync.Mutex
-}
-
-func NewLuaVMWrapper() *LuaVMWrapper {
-	return &LuaVMWrapper{
-		LState:      NewLuaVM(),
-		initialized: false,
-	}
-}
-
-func (w *LuaVMWrapper) Lock() {
-	w.lock.Lock()
-	w.lastUsedTime = time.Now()
-}
-
-func (w *LuaVMWrapper) Unlock() {
-	w.lastUsedTime = time.Now()
-	w.lock.Unlock()
-}
-
-type LuaVMPool struct {
-	vms        []*LuaVMWrapper
-	maxSize    int
-	lock       sync.Mutex
-	proto      *lua.FunctionProto
-	initScript string
-	plugName   string
-}
-
-func NewLuaVMPool(maxSize int, initScript string, plugName string) (*LuaVMPool, error) {
-	pool := &LuaVMPool{
-		maxSize:    maxSize,
-		vms:        make([]*LuaVMWrapper, 0, maxSize),
-		initScript: initScript,
-		plugName:   plugName,
-	}
-
-	// 预编译脚本
-	reader := strings.NewReader(initScript)
-	chunk, err := parse.Parse(reader, "script")
-	if err != nil {
-		return nil, fmt.Errorf("parse script error: %v", err)
-	}
-	proto, err := lua.Compile(chunk, "script")
-	if err != nil {
-		return nil, fmt.Errorf("compile script error: %v", err)
-	}
-	pool.proto = proto
-
-	return pool, nil
-}
-
-func (p *LuaVMPool) AcquireVM() (*LuaVMWrapper, error) {
-	p.lock.Lock()
-	defer p.lock.Unlock()
-
-	for _, wrapper := range p.vms {
-		if wrapper.lock.TryLock() {
-			return wrapper, nil
-		}
-	}
-
-	if len(p.vms) < p.maxSize {
-		wrapper := NewLuaVMWrapper()
-		wrapper.Lock()
-		p.vms = append(p.vms, wrapper)
-		return wrapper, nil
-	}
-
-	logs.Log.Warnf("VM pool is full, waiting for available VM...")
-	p.lock.Unlock()
-
-	for {
-		p.lock.Lock()
-		for _, wrapper := range p.vms {
-			if wrapper.lock.TryLock() {
-				return wrapper, nil
-			}
-		}
-		p.lock.Unlock()
-		time.Sleep(100 * time.Millisecond)
-	}
-}
-
-func (p *LuaVMPool) ReleaseVM(wrapper *LuaVMWrapper) {
-	wrapper.Unlock()
-}
-
-func (p *LuaVMPool) Destroy() {
-	for _, wrapper := range p.vms {
-		wrapper.Close()
-	}
-}
 
 const (
 	LuaInternal = iota
@@ -149,6 +46,7 @@ type LuaParam struct {
 
 type LuaPlugin struct {
 	*DefaultPlugin
+	vmFns    map[string]lua.LGFunction
 	vmPool   *LuaVMPool
 	onHookVM *LuaVMWrapper
 }
@@ -161,6 +59,7 @@ func NewLuaMalPlugin(manifest *MalManiFest) (*LuaPlugin, error) {
 
 	mal := &LuaPlugin{
 		DefaultPlugin: plug,
+		vmFns:         make(map[string]lua.LGFunction),
 	}
 
 	return mal, nil
@@ -172,6 +71,7 @@ func (plug *LuaPlugin) Run() error {
 	if err != nil {
 		return err
 	}
+	plug.registerLuaFunction()
 	err = plug.registerLuaOnHooks()
 	if err != nil {
 		return err
@@ -282,55 +182,68 @@ func (plug *LuaPlugin) RegisterLuaBuiltin(vm *lua.LState) error {
 	luaPath := lua.LuaPathDefault + ";" + filepath.Join(plugDir, "?.lua")
 	vm.SetField(packageMod, "path", lua.LString(luaPath))
 
-	// 读取resource文件
-	plug.registerLuaFunction(vm, "script_resource", func(filename string) (string, error) {
-		return intermediate.GetResourceFile(plug.Name, filename)
+	for name, fn := range plug.vmFns {
+		vm.SetGlobal(name, vm.NewFunction(fn))
+	}
+	return nil
+}
+
+func (plug *LuaPlugin) registerLuaFunction() {
+	// 读取resource文件路径（文件系统版本）
+	plug.registerFunction("script_resource", func(filename string) (string, error) {
+		resourceFile := filepath.Join(assets.GetMalsDir(), plug.Name, "resources", filename)
+		return resourceFile, nil
 	}, nil)
 
-	plug.registerLuaFunction(vm, "global_resource", func(filename string) (string, error) {
-		return intermediate.GetGlobalResourceFile(filename)
+	plug.registerFunction("global_resource", func(filename string) (string, error) {
+		resourceFile := filepath.Join(assets.GetResourceDir(), filename)
+		return resourceFile, nil
 	}, nil)
 
-	plug.registerLuaFunction(vm, "find_resource", func(sess *core.Session, base string, ext string) (string, error) {
-		return intermediate.GetResourceFile(plug.Name, fmt.Sprintf("%s_%s_%s", base, consts.FormatArch(sess.Os.Arch), ext))
+	plug.registerFunction("find_resource", func(sess *core.Session, base string, ext string) (string, error) {
+		filename := fmt.Sprintf("%s_%s_%s", base, consts.FormatArch(sess.Os.Arch), ext)
+		resourceFile := filepath.Join(assets.GetMalsDir(), plug.Name, "resources", filename)
+		return resourceFile, nil
 	}, nil)
 
-	plug.registerLuaFunction(vm, "find_global_resource", func(sess *core.Session, base string, ext string) (string, error) {
-		return intermediate.GetGlobalResourceFile(fmt.Sprintf("%s_%s_%s", base, consts.FormatArch(sess.Os.Arch), ext))
+	plug.registerFunction("find_global_resource", func(sess *core.Session, base string, ext string) (string, error) {
+		filename := fmt.Sprintf("%s_%s_%s", base, consts.FormatArch(sess.Os.Arch), ext)
+		resourceFile := filepath.Join(assets.GetResourceDir(), filename)
+		return resourceFile, nil
 	}, nil)
 
-	// 读取资源文件内容
-	plug.registerLuaFunction(vm, "read_resource", func(filename string) (string, error) {
-		resourcePath, _ := intermediate.GetResourceFile(plug.Name, filename)
+	// 读取资源文件内容（文件系统版本，会被EmbedPlugin覆盖）
+	plug.registerFunction("read_resource", func(filename string) (string, error) {
+		resourcePath := filepath.Join(assets.GetMalsDir(), plug.Name, "resources", filename)
 		content, err := os.ReadFile(resourcePath)
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("resource file not found: %s", filename)
 		}
 		return string(content), nil
 	}, nil)
 
-	plug.registerLuaFunction(vm, "read_global_resource", func(filename string) (string, error) {
-		resourcePath, _ := intermediate.GetGlobalResourceFile(filename)
+	plug.registerFunction("read_global_resource", func(filename string) (string, error) {
+		resourcePath := filepath.Join(assets.GetResourceDir(), filename)
 		content, err := os.ReadFile(resourcePath)
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("global resource file not found: %s", filename)
 		}
 		return string(content), nil
 	}, nil)
 
-	plug.registerLuaFunction(vm, "help", func(name string, long string) (bool, error) {
+	plug.registerFunction("help", func(name string, long string) (bool, error) {
 		cmd := plug.CMDs.Find(name)
 		cmd.Long = long
 		return true, nil
 	}, &mals.Helper{Group: intermediate.ClientGroup})
 
-	plug.registerLuaFunction(vm, "example", func(name string, example string) (bool, error) {
+	plug.registerFunction("example", func(name string, example string) (bool, error) {
 		cmd := plug.CMDs.Find(name)
 		cmd.Example = example
 		return true, nil
 	}, &mals.Helper{Group: intermediate.ClientGroup})
 
-	plug.registerLuaFunction(vm, "opsec", func(name string, opsec int) (bool, error) {
+	plug.registerFunction("opsec", func(name string, opsec int) (bool, error) {
 		cmd := plug.CMDs.Find(name)
 		if cmd.Command == nil {
 			return false, fmt.Errorf("command %s not found", name)
@@ -345,7 +258,7 @@ func (plug *LuaPlugin) RegisterLuaBuiltin(vm *lua.LState) error {
 		return true, nil
 	}, &mals.Helper{Group: intermediate.ClientGroup})
 
-	plug.registerLuaFunction(vm, "command", func(name string, fn *lua.LFunction, short string, ttp string) (*cobra.Command, error) {
+	plug.registerFunction("command", func(name string, fn *lua.LFunction, short string, ttp string) (*cobra.Command, error) {
 		cmd := plug.CMDs.Find(name)
 
 		var params []*LuaParam
@@ -379,7 +292,7 @@ func (plug *LuaPlugin) RegisterLuaBuiltin(vm *lua.LState) error {
 				go func() {
 					wrapper, err := plug.Acquire()
 					if err != nil {
-						logs.Log.Errorf("Failed to acquire VM: %v", err)
+						logs.Log.Errorf("Failed to acquire VM: %v\n", err)
 						return
 					}
 					defer plug.Release(wrapper)
@@ -390,19 +303,19 @@ func (plug *LuaPlugin) RegisterLuaBuiltin(vm *lua.LState) error {
 						case LuaFlag:
 							val, err := cmd.Flags().GetString(p.Name)
 							if err != nil {
-								logs.Log.Errorf("error getting flag %s: %s", p.Name, err.Error())
+								logs.Log.Errorf("error getting flag %s: %s\n", p.Name, err.Error())
 								return
 							}
 							wrapper.Push(lua.LString(val))
 						case LuaArg:
 							i, err := strconv.Atoi(p.Name)
 							if err != nil {
-								logs.Log.Errorf("error converting arg %s to int: %s", p.Name, err.Error())
+								logs.Log.Errorf("error converting arg %s to int: %s\n", p.Name, err.Error())
 								return
 							}
 							val := cmd.Flags().Arg(i)
 							if val == "" {
-								logs.Log.Warnf("arg %d is empty", i)
+								logs.Log.Warnf("arg %d is empty\n", i)
 							}
 							wrapper.Push(lua.LString(val))
 						case LuaReverse:
@@ -478,7 +391,6 @@ func (plug *LuaPlugin) RegisterLuaBuiltin(vm *lua.LState) error {
 		return malCmd, nil
 	}, &mals.Helper{Group: intermediate.ClientGroup})
 
-	return nil
 }
 
 func (plug *LuaPlugin) registerLuaOnHook(name string, condition intermediate.EventCondition) {
@@ -503,7 +415,7 @@ func (plug *LuaPlugin) registerLuaOnHook(name string, condition intermediate.Eve
 	}
 }
 
-func (plug *LuaPlugin) registerLuaFunction(vm *lua.LState, name string, fn interface{}, helper *mals.Helper) {
+func (plug *LuaPlugin) registerFunction(name string, fn interface{}, helper *mals.Helper) {
 	wrappedFunc := mals.WrapInternalFunc(fn)
 	wrappedFunc.Package = intermediate.BuiltinPackage
 	wrappedFunc.Name = name
@@ -514,23 +426,5 @@ func (plug *LuaPlugin) registerLuaFunction(vm *lua.LState, name string, fn inter
 		intermediate.InternalFunctions[name] = &intermediate.InternalFunc{MalFunction: wrappedFunc}
 	}
 
-	vm.SetGlobal(name, vm.NewFunction(mals.WrapFuncForLua(wrappedFunc)))
-}
-
-func NewLuaVM() *lua.LState {
-	vm := mals.NewLuaVM()
-	mals.RegisterProtobufMessagesFromPackage(vm, "implantpb")
-	mals.RegisterProtobufMessagesFromPackage(vm, "clientpb")
-	mals.RegisterProtobufMessagesFromPackage(vm, "modulepb")
-	vm.PreloadModule(intermediate.BeaconPackage, mals.PackageLoader(intermediate.InternalFunctions.Package(intermediate.BeaconPackage)))
-	vm.PreloadModule(intermediate.RpcPackage, mals.PackageLoader(intermediate.InternalFunctions.Package(intermediate.RpcPackage)))
-	for _, global := range GlobalPlugins {
-		vm.PreloadModule(global.Name, mals.GlobalLoader(global.Name, global.Path, global.Content))
-	}
-
-	// 注册所有内置函数
-	for name, fun := range intermediate.InternalFunctions.Package(intermediate.BuiltinPackage) {
-		vm.SetGlobal(name, vm.NewFunction(mals.WrapFuncForLua(fun)))
-	}
-	return vm
+	plug.vmFns[name] = mals.WrapFuncForLua(wrappedFunc)
 }
