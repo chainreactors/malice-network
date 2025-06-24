@@ -18,10 +18,25 @@ import (
 // MalLevel 表示mal插件的级别
 type MalLevel int
 
+func (l MalLevel) String() string {
+	switch l {
+	case CommunityLevel:
+		return "community"
+	case ProfessionalLevel:
+		return "professional"
+	default:
+		return "unknown"
+	}
+}
+
 const (
 	CommunityLevel MalLevel = iota
 	ProfessionalLevel
 	CustomLevel
+)
+
+var (
+	levelOrder = []MalLevel{CommunityLevel, ProfessionalLevel, CustomLevel}
 )
 
 // EmbedPlugin 嵌入式Lua插件，直接实现Plugin接口
@@ -32,16 +47,6 @@ type EmbedPlugin struct {
 	FS       embed.FS
 	RootPath string // 在embed.FS中的根路径，如"community"、"professional"等
 }
-
-// 这些类型定义保留这里是为了向后兼容
-var (
-	levelOrder = []MalLevel{CommunityLevel, ProfessionalLevel, CustomLevel}
-	levelNames = map[MalLevel]string{
-		CommunityLevel:    "community",
-		ProfessionalLevel: "professional",
-		CustomLevel:       "custom",
-	}
-)
 
 // NewEmbedPlugin 创建嵌入式插件
 func NewEmbedPlugin(malPath, malName string, level MalLevel) (*EmbedPlugin, error) {

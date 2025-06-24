@@ -82,7 +82,6 @@ func printMals(maljson m.MalsYaml, malHttpConfig m.MalHTTPConfig, con *repl.Cons
 			})
 		rowEntries = append(rowEntries, row)
 	}
-	newTable := tui.NewModel(tableModel, nil, false, false)
 
 	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)
@@ -94,9 +93,9 @@ func printMals(maljson m.MalsYaml, malHttpConfig m.MalHTTPConfig, con *repl.Cons
 		}
 		InstallMal(selectRow.Data["Repo_url"].(string),
 			selectRow.Data["Name"].(string),
-			selectRow.Data["Version"].(string), newTable.Buffer, malHttpConfig, con)
+			selectRow.Data["Version"].(string), tableModel.Buffer, malHttpConfig, con)
 	})
-	err := newTable.Run()
+	err := tableModel.Run()
 	if err != nil {
 		return err
 	}

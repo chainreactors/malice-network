@@ -1,6 +1,10 @@
 package mal
 
 import (
+	"os"
+	"path/filepath"
+	"strings"
+
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/core/plugin"
 	"github.com/chainreactors/malice-network/client/repl"
@@ -8,9 +12,6 @@ import (
 	"github.com/chainreactors/mals/m"
 	"github.com/chainreactors/tui"
 	"github.com/spf13/cobra"
-	"os"
-	"path/filepath"
-	"strings"
 )
 
 var repoUrl = "https://github.com/chainreactors/mal-community"
@@ -43,14 +44,24 @@ func MalInstallCmd(cmd *cobra.Command, con *repl.Console) error {
 	} else {
 		InstallFromDir(localPath, true, con)
 	}
-	mal, err := LoadMal(con, con.ImplantMenu(), filepath.Join(assets.GetMalsDir(), name, m.ManifestFileName))
+
+	// 使用统一的MalManager加载插件
+	err = LoadMalWithManifest(con, con.ImplantMenu(), &plugin.MalManiFest{Name: name})
 	if err != nil {
-		return err
+		// 如果直接加载失败，尝试从manifest文件加载
+		manifestPath := filepath.Join(assets.GetMalsDir(), name, m.ManifestFileName)
+		manifest, manifestErr := plugin.LoadMalManiFest(manifestPath)
+		if manifestErr != nil {
+			return manifestErr
+		}
+
+		err = LoadMalWithManifest(con, con.ImplantMenu(), manifest)
+		if err != nil {
+			return err
+		}
 	}
-	for _, cmd := range mal.CMDs {
-		con.ImplantMenu().AddCommand(cmd)
-		con.Log.Debugf("add command: %s", cmd.Name())
-	}
+
+	con.Log.Importantf("Successfully installed and loaded mal: %s\n", name)
 	return nil
 }
 
@@ -75,13 +86,12 @@ func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *repl.Conso
 		if promptToOverwrite {
 			con.Log.Infof("Mal '%s' already exists\n", manifest.Name)
 			confirmModel := tui.NewConfirm("Overwrite current install?")
-			newConfirm := tui.NewModel(confirmModel, nil, false, true)
-			err = newConfirm.Run()
+			err = confirmModel.Run()
 			if err != nil {
 				con.Log.Errorf("Error running confirm model: %s\n", err)
 				return
 			}
-			if !confirmModel.Confirmed {
+			if !confirmModel.GetConfirmed() {
 				return
 			}
 		}

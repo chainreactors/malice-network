@@ -2,11 +2,18 @@ package plugin
 
 import (
 	"fmt"
+	"path/filepath"
 	"sync"
 
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/helper/intl"
-	"github.com/spf13/cobra"
+	"github.com/chainreactors/mals/m"
+)
+
+var (
+	globalMalManager *MalManager
+	managerOnce      sync.Once
 )
 
 // MalManager 统一的mal插件管理器，分别管理嵌入式和外部插件
@@ -18,11 +25,6 @@ type MalManager struct {
 	loadedCommands  Commands                // 所有已加载的嵌入式命令
 	initialized     bool                    // 是否已初始化
 }
-
-var (
-	globalMalManager *MalManager
-	managerOnce      sync.Once
-)
 
 // GetGlobalMalManager 获取全局mal管理器（单例）
 func GetGlobalMalManager() *MalManager {
@@ -49,8 +51,7 @@ func (mm *MalManager) initialize() {
 	}
 
 	mm.loadEmbeddedMals()
-	mm.globalPlugins = LoadGlobalLuaPlugin()
-	mm.processEmbeddedCommands()
+	mm.loadExternalMals()
 
 	mm.initialized = true
 	logs.Log.Infof("MalManager initialized with %d embedded and %d external plugins, %d global plugins\n",
@@ -60,15 +61,8 @@ func (mm *MalManager) initialize() {
 // loadEmbeddedMals 直接加载嵌入式mal插件
 func (mm *MalManager) loadEmbeddedMals() {
 	// 按优先级顺序加载每个级别的mal包
-	levelOrder := []MalLevel{CommunityLevel, ProfessionalLevel, CustomLevel}
-	levelNames := map[MalLevel]string{
-		CommunityLevel:    "community",
-		ProfessionalLevel: "professional",
-		CustomLevel:       "custom",
-	}
-
 	for _, level := range levelOrder {
-		levelName := levelNames[level]
+		levelName := level.String()
 
 		// 检查mal.yaml是否存在
 		manifestPath := levelName + "/mal.yaml"
@@ -93,15 +87,9 @@ func (mm *MalManager) loadEmbeddedMals() {
 		mm.embeddedPlugins[levelName] = embedPlugin
 		logs.Log.Infof("Loaded embedded plugin: %s (level: %d)\n", levelName, level)
 	}
-}
-
-// processEmbeddedCommands 处理嵌入式命令优先级和覆盖
-func (mm *MalManager) processEmbeddedCommands() {
-	// 按优先级顺序加载嵌入式命令：community -> professional -> custom
-	levelOrder := []string{"community", "professional", "custom"}
 
 	for _, levelName := range levelOrder {
-		if plugin, exists := mm.embeddedPlugins[levelName]; exists {
+		if plugin, exists := mm.embeddedPlugins[levelName.String()]; exists {
 			// 添加插件的命令到Commands中，后加载的会覆盖先加载的
 			for _, cmd := range plugin.Commands() {
 				cmdName := cmd.Command.Name()
@@ -113,11 +101,20 @@ func (mm *MalManager) processEmbeddedCommands() {
 	}
 }
 
+func (mm *MalManager) loadExternalMals() {
+	mm.globalPlugins = LoadGlobalLuaPlugin()
+
+	for _, manifest := range GetPluginManifest() {
+		_, err := mm.LoadExternalMal(manifest)
+		if err != nil {
+			logs.Log.Errorf("Failed to load external mal %s: %v\n", manifest.Name, err)
+			continue
+		}
+	}
+}
+
 // LoadExternalMal 加载单个外部mal插件
 func (mm *MalManager) LoadExternalMal(manifest *MalManiFest) (Plugin, error) {
-	mm.mu.Lock()
-	defer mm.mu.Unlock()
-
 	// 检查是否已加载
 	if _, exists := mm.externalPlugins[manifest.Name]; exists {
 		return nil, fmt.Errorf("external mal %s already loaded\n", manifest.Name)
@@ -210,43 +207,6 @@ func (mm *MalManager) GetAllExternalPlugins() map[string]Plugin {
 	return result
 }
 
-// RegisterEmbeddedCommandsTo 注册嵌入式命令到指定的cobra命令
-func (mm *MalManager) RegisterEmbeddedCommandsTo(rootCmd *cobra.Command) int {
-	mm.mu.RLock()
-	defer mm.mu.RUnlock()
-
-	if !mm.initialized {
-		logs.Log.Warn("MalManager not initialized\n")
-		return 0
-	}
-
-	count := 0
-	for cmdName, cmd := range mm.loadedCommands {
-		rootCmd.AddCommand(cmd.Command)
-		logs.Log.Debugf("Registered embedded command: %s\n", cmdName)
-		count++
-	}
-
-	return count
-}
-
-// RegisterExternalCommandsTo 注册外部命令到指定的cobra命令
-func (mm *MalManager) RegisterExternalCommandsTo(rootCmd *cobra.Command) int {
-	mm.mu.RLock()
-	defer mm.mu.RUnlock()
-
-	count := 0
-	for pluginName, plugin := range mm.externalPlugins {
-		for _, cmd := range plugin.Commands() {
-			rootCmd.AddCommand(cmd.Command)
-			logs.Log.Debugf("Registered external command '%s' from %s\n", cmd.Command.Name(), pluginName)
-			count++
-		}
-	}
-
-	return count
-}
-
 // GetPluginManifests 获取所有外部插件清单
 func (mm *MalManager) GetPluginManifests() []*MalManiFest {
 	return GetPluginManifest()
@@ -264,12 +224,39 @@ func (mm *MalManager) ReloadExternalMal(malName string) error {
 
 	logs.Log.Debugf("Reloading external plugin: %s\n", malName)
 
-	// TODO: 实现外部插件的重新加载逻辑
-	// 1. 卸载当前插件
-	// 2. 重新读取manifest
-	// 3. 重新加载插件
+	if err := plugin.Destroy(); err != nil {
+		logs.Log.Warnf("Failed to destroy plugin %s during reload: %v\n", malName, err)
+	}
 
-	_ = plugin // 避免未使用变量警告
+	delete(mm.externalPlugins, malName)
+
+	manifestPath := filepath.Join(assets.GetMalsDir(), malName, m.ManifestFileName)
+	manifest, err := LoadMalManiFest(manifestPath)
+	if err != nil {
+		return fmt.Errorf("failed to reload manifest for %s: %v", malName, err)
+	}
+
+	var newPlugin Plugin
+	switch manifest.Type {
+	case LuaScript:
+		newPlugin, err = NewLuaMalPlugin(manifest)
+	default:
+		return fmt.Errorf("not found valid script type: %s\n", manifest.Type)
+	}
+
+	if err != nil {
+		return fmt.Errorf("failed to create new plugin %s: %v", malName, err)
+	}
+
+	err = newPlugin.Run()
+	if err != nil {
+		return fmt.Errorf("failed to run new plugin %s: %v", malName, err)
+	}
+
+	// 重新添加到映射中
+	mm.externalPlugins[malName] = newPlugin
+	logs.Log.Infof("Successfully reloaded external plugin: %s\n", malName)
+
 	return nil
 }
 
@@ -291,20 +278,6 @@ func (mm *MalManager) GetLoadedMals() []string {
 	}
 
 	return plugins
-}
-
-// GetCommandCount 获取已加载的命令数量
-func (mm *MalManager) GetCommandCount() int {
-	mm.mu.RLock()
-	defer mm.mu.RUnlock()
-
-	embeddedCount := len(mm.loadedCommands)
-	externalCount := 0
-	for _, plugin := range mm.externalPlugins {
-		externalCount += len(plugin.Commands())
-	}
-
-	return embeddedCount + externalCount
 }
 
 // GetGlobalPlugins 获取所有全局插件
@@ -329,4 +302,26 @@ func (mm *MalManager) GetGlobalPlugin(name string) (*DefaultPlugin, bool) {
 		}
 	}
 	return nil, false
+}
+
+// RemoveExternalMal 移除指定的外部mal插件
+func (mm *MalManager) RemoveExternalMal(malName string) error {
+	mm.mu.Lock()
+	defer mm.mu.Unlock()
+
+	plugin, exists := mm.externalPlugins[malName]
+	if !exists {
+		return fmt.Errorf("external plugin %s not found\n", malName)
+	}
+
+	// 销毁插件
+	if err := plugin.Destroy(); err != nil {
+		logs.Log.Warnf("Failed to destroy plugin %s: %v\n", malName, err)
+	}
+
+	// 从映射中删除
+	delete(mm.externalPlugins, malName)
+	logs.Log.Infof("Removed external plugin: %s\n", malName)
+
+	return nil
 }

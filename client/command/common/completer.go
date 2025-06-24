@@ -414,3 +414,47 @@ func ServiceErrorControlCompleter() carapace.Action {
 		"Critical", "Critical error control",
 	).Tag("service error control")
 }
+
+func MalCompleter(con *repl.Console) carapace.Action {
+	callback := func(c carapace.Context) carapace.Action {
+		results := make([]string, 0)
+
+		if con.MalManager == nil {
+			return carapace.ActionValuesDescribed(results...).Tag("mal plugins")
+		}
+
+		// 添加外部插件
+		for name, plugin := range con.MalManager.GetAllExternalPlugins() {
+			manifest := plugin.Manifest()
+			results = append(results, name, fmt.Sprintf("external mal: %s v%s", manifest.Name, manifest.Version))
+		}
+
+		// 添加嵌入式插件（只读）
+		for name, plugin := range con.MalManager.GetAllEmbeddedPlugins() {
+			manifest := plugin.Manifest()
+			results = append(results, name, fmt.Sprintf("embedded mal: %s v%s (read-only)", manifest.Name, manifest.Version))
+		}
+
+		return carapace.ActionValuesDescribed(results...).Tag("mal plugins")
+	}
+	return carapace.ActionCallback(callback)
+}
+
+func ExternalMalCompleter(con *repl.Console) carapace.Action {
+	callback := func(c carapace.Context) carapace.Action {
+		results := make([]string, 0)
+
+		if con.MalManager == nil {
+			return carapace.ActionValuesDescribed(results...).Tag("external mal plugins")
+		}
+
+		// 只添加外部插件
+		for name, plugin := range con.MalManager.GetAllExternalPlugins() {
+			manifest := plugin.Manifest()
+			results = append(results, name, fmt.Sprintf("external mal: %s v%s", manifest.Name, manifest.Version))
+		}
+
+		return carapace.ActionValuesDescribed(results...).Tag("external mal plugins")
+	}
+	return carapace.ActionCallback(callback)
+}

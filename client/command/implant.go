@@ -2,8 +2,6 @@ package command
 
 import (
 	"fmt"
-	"github.com/chainreactors/malice-network/client/core/plugin"
-
 	"github.com/carapace-sh/carapace"
 	"github.com/reeflective/console"
 	"github.com/spf13/cobra"
@@ -31,6 +29,7 @@ import (
 	"github.com/chainreactors/malice-network/client/command/taskschd"
 	"github.com/chainreactors/malice-network/client/command/third"
 	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/malice-network/client/core/plugin"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/tui"
@@ -200,20 +199,21 @@ func BindImplantCommands(con *repl.Console) console.Commands {
 			return implant
 		}
 
-		con.MalManager = plugin.GetGlobalMalManager()
+		// 获取全局MalManager（已在Console.Start中初始化）
+		if con.MalManager == nil {
+			con.MalManager = plugin.GetGlobalMalManager()
+		}
+
+		// 注册嵌入式插件命令
 		for _, plug := range con.MalManager.GetAllEmbeddedPlugins() {
 			for _, cmd := range plug.Commands() {
+				cmd.Command.GroupID = consts.MalGroup
 				implant.AddCommand(cmd.Command)
 			}
 		}
 
-		for _, manifest := range con.MalManager.GetPluginManifests() {
-			plug, err := con.MalManager.LoadExternalMal(manifest)
-			if err != nil {
-				con.Log.Errorf("Failed to load external mal %s: %s\n", manifest.Name, err)
-				continue
-			}
-
+		// 注册外部插件命令
+		for _, plug := range con.MalManager.GetAllExternalPlugins() {
 			for _, cmd := range plug.Commands() {
 				cmd.Command.GroupID = consts.MalGroup
 				implant.AddCommand(cmd.Command)

@@ -101,9 +101,12 @@ func ChmodR(path string, filePerm, dirPerm os.FileMode) error {
 	})
 }
 
-func ForceRemoveAll(rootPath string) {
-	ChmodR(rootPath, 0600, 0700)
-	os.RemoveAll(rootPath)
+func ForceRemoveAll(rootPath string) error {
+	err := ChmodR(rootPath, 0600, 0700)
+	if err != nil {
+		return err
+	}
+	return os.RemoveAll(rootPath)
 }
 
 func MoveFile(sourcePath, destPath string) error {

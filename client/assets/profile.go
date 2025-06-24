@@ -1,14 +1,15 @@
 package assets
 
 import (
+	"os"
+	"path/filepath"
+
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/utils/configutil"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/gookit/config/v2"
 	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v3"
-	"os"
-	"path/filepath"
 )
 
 var (
@@ -171,6 +172,15 @@ func (profile *Profile) AddMal(manifestName string) bool {
 	return false
 }
 
+func (profile *Profile) RemoveMal(manifestName string) bool {
+	index := slices.Index(profile.Mals, manifestName)
+	if index != -1 {
+		profile.Mals = slices.Delete(profile.Mals, index, index+1)
+		return true
+	}
+	return false
+}
+
 func (profile *Profile) AddAlias(alias string) bool {
 	if !slices.Contains(profile.Aliases, alias) {
 		profile.Aliases = append(profile.Aliases, alias)
@@ -179,9 +189,27 @@ func (profile *Profile) AddAlias(alias string) bool {
 	return false
 }
 
+func (profile *Profile) RemoveAlias(alias string) bool {
+	index := slices.Index(profile.Aliases, alias)
+	if index != -1 {
+		profile.Aliases = slices.Delete(profile.Aliases, index, index+1)
+		return true
+	}
+	return false
+}
+
 func (profile *Profile) AddExtension(extension string) bool {
 	if !slices.Contains(profile.Extensions, extension) {
 		profile.Extensions = append(profile.Extensions, extension)
+		return true
+	}
+	return false
+}
+
+func (profile *Profile) RemoveExtension(extension string) bool {
+	index := slices.Index(profile.Extensions, extension)
+	if index != -1 {
+		profile.Extensions = slices.Delete(profile.Extensions, index, index+1)
 		return true
 	}
 	return false
