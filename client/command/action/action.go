@@ -54,7 +54,7 @@ func RunBeaconWorkFlowCmd(cmd *cobra.Command, con *repl.Console) error {
 		"targets": buildTarget,
 	}
 	if len(modules) > 0 {
-		inputs["malefic_modules_features"] = modules
+		inputs["malefic_modules_features"] = strings.Join(modules, ",")
 	}
 	req := &clientpb.GithubWorkflowRequest{
 		Owner:      owner,
@@ -90,7 +90,7 @@ func RunBindWorkFlowCmd(cmd *cobra.Command, con *repl.Console) error {
 		"targets": buildTarget,
 	}
 	if len(modules) > 0 {
-		inputs["malefic_modules_features"] = modules
+		inputs["malefic_modules_features"] = strings.Join(modules, ",")
 	}
 	req := &clientpb.GithubWorkflowRequest{
 		Owner:      owner,
@@ -125,7 +125,7 @@ func RunPreludeWorkFlowCmd(cmd *cobra.Command, con *repl.Console) error {
 		"targets": buildTarget,
 	}
 	if len(modules) > 0 {
-		inputs["malefic_modules_features"] = modules
+		inputs["malefic_modules_features"] = strings.Join(modules, ",")
 	}
 	autorunPath, _ := cmd.Flags().GetString("autorun")
 	if autorunPath == "" {
@@ -174,7 +174,7 @@ func RunModulesWorkFlowCmd(cmd *cobra.Command, con *repl.Console) error {
 	if len(modules) == 0 {
 		inputs["malefic_modules_features"] = "full"
 	} else if len(modules) > 0 {
-		inputs["malefic_modules_features"] = modules
+		inputs["malefic_modules_features"] = strings.Join(modules, ",")
 	}
 	req := &clientpb.GithubWorkflowRequest{
 		Owner:      owner,

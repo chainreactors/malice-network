@@ -10,35 +10,35 @@ import (
 	"io"
 	insecureRand "math/rand"
 	"os"
-	"path"
+	"path/filepath"
 	"time"
 )
 
 var (
 	ServerConfigFileName        = "config.yaml"
-	ServerRootPath              = path.Join(GetWorkDir(), ".malice")
+	ServerRootPath              = filepath.Join(GetWorkDir(), ".malice")
 	CurrentServerConfigFilename = "config.yaml"
-	ContextPath                 = path.Join(ServerRootPath, "context")
-	LogPath                     = path.Join(ServerRootPath, "log")
-	CertsPath                   = path.Join(ServerRootPath, "certs")
-	ListenerPath                = path.Join(ServerRootPath, "listener")
-	TempPath                    = path.Join(ServerRootPath, "temp")
-	PluginPath                  = path.Join(ServerRootPath, "plugins")
-	AuditPath                   = path.Join(ServerRootPath, "audit")
+	ContextPath                 = filepath.Join(ServerRootPath, "context")
+	LogPath                     = filepath.Join(ServerRootPath, "log")
+	CertsPath                   = filepath.Join(ServerRootPath, "certs")
+	ListenerPath                = filepath.Join(ServerRootPath, "listener")
+	TempPath                    = filepath.Join(ServerRootPath, "temp")
+	PluginPath                  = filepath.Join(ServerRootPath, "plugins")
+	AuditPath                   = filepath.Join(ServerRootPath, "audit")
 	ErrNoConfig                 = errors.New("no config found")
-	WebsitePath                 = path.Join(ServerRootPath, "web")
+	WebsitePath                 = filepath.Join(ServerRootPath, "web")
 	// variables for implant build
-	BuildPath       = path.Join(GetWorkDir(), "..", "malefic", "build")
-	BinPath         = path.Join(ServerRootPath, "bin")
-	SourceCodePath  = path.Join(BuildPath, "src")
-	TargetPath      = path.Join(SourceCodePath, "target")
-	CargoCachePath  = path.Join(BuildPath, "cache")
-	BuildOutputPath = path.Join(BuildPath, "output")
+	BuildPath       = filepath.Join(GetWorkDir(), "..", "malefic", "build")
+	BinPath         = filepath.Join(ServerRootPath, "bin")
+	SourceCodePath  = filepath.Join(BuildPath, "src")
+	TargetPath      = filepath.Join(SourceCodePath, "target")
+	CargoCachePath  = filepath.Join(BuildPath, "cache")
+	BuildOutputPath = filepath.Join(BuildPath, "output")
 )
 
 func NewFileLog(filename string) *logs.Logger {
 	logger := logs.NewLogger(logs.InfoLevel)
-	logger.SetFile(path.Join(LogPath, fmt.Sprintf("%s.log", filename)))
+	logger.SetFile(filepath.Join(LogPath, fmt.Sprintf("%s.log", filename)))
 	logger.SetOutput(io.Discard)
 	logger.Init()
 	return logger
@@ -46,7 +46,7 @@ func NewFileLog(filename string) *logs.Logger {
 
 func NewDebugLog(filename string) *logs.Logger {
 	logger := logs.NewLogger(logs.DebugLevel)
-	logger.SetFile(path.Join(LogPath, fmt.Sprintf("%s.log", filename)))
+	logger.SetFile(filepath.Join(LogPath, fmt.Sprintf("%s.log", filename)))
 	logger.Init()
 	return logger
 }

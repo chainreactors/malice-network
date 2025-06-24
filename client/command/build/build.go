@@ -23,7 +23,7 @@ func BeaconCmd(cmd *cobra.Command, con *repl.Console) error {
 			Address:     address,
 			Type:        consts.CommandBuildBeacon,
 			Target:      buildTarget,
-			Modules:     strings.Split(modules, ","),
+			Modules:     modules,
 			Ca:          ca,
 			Params:      params.String(),
 			Srdi:        true,
@@ -47,7 +47,7 @@ func BindCmd(cmd *cobra.Command, con *repl.Console) error {
 			Address:     address,
 			Type:        consts.CommandBuildBind,
 			Target:      buildTarget,
-			Modules:     strings.Split(modules, ","),
+			Modules:     modules,
 			Ca:          ca,
 			Params:      params.String(),
 			Srdi:        true,
@@ -79,7 +79,7 @@ func PreludeCmd(cmd *cobra.Command, con *repl.Console) error {
 			Address:     address,
 			Type:        consts.CommandBuildPrelude,
 			Target:      buildTarget,
-			Modules:     strings.Split(modules, ","),
+			Modules:     modules,
 			Ca:          ca,
 			Srdi:        true,
 			Bin:         file,
@@ -96,9 +96,6 @@ func ModulesCmd(cmd *cobra.Command, con *repl.Console) error {
 	name, address, buildTarget, modules, _, srdi, _ := common.ParseGenerateFlags(cmd)
 	if buildTarget == "" {
 		return errors.New("require build target")
-	}
-	if len(modules) == 0 {
-		modules = "full"
 	}
 	go func() {
 		_, err := BuildModules(con, name, address, buildTarget, modules, srdi)
@@ -158,13 +155,13 @@ func BuildLogCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func BuildModules(con *repl.Console, name, address, buildTarget string, modules string, srdi bool) (bool, error) {
+func BuildModules(con *repl.Console, name, address, buildTarget string, modules []string, srdi bool) (bool, error) {
 	_, err := con.Rpc.Build(con.Context(), &clientpb.Generate{
 		ProfileName: name,
 		Address:     address,
 		Target:      buildTarget,
 		Type:        consts.CommandBuildModules,
-		Modules:     strings.Split(modules, ","),
+		Modules:     modules,
 		Srdi:        srdi,
 	})
 	if err != nil {
