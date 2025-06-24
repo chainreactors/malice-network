@@ -62,8 +62,7 @@ func PrintAliases(con *repl.Console) {
 	}
 	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)
-	newTable := tui.NewModel(tableModel, nil, false, false)
-	err := newTable.Run()
+	err := tableModel.Run()
 	if err != nil {
 		return
 	}

@@ -28,8 +28,7 @@ func LoginCmd(cmd *cobra.Command, con *repl.Console) error {
 	// Create a model for the interactive list
 	m := tui.NewSelect(files)
 	m.Title = "Select User: "
-	newLogin := tui.NewModel(m, nil, false, false)
-	err = newLogin.Run()
+	err = m.Run()
 	if err != nil {
 		con.Log.Errorf("Error running interactive list: %s", err)
 		return err

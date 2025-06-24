@@ -259,8 +259,7 @@ func displayAvailableUpdates(updateKeys []UpdateIdentifier,
 	}
 	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)
-	newTable := tui.NewModel(tableModel, nil, false, false)
-	err := newTable.Run()
+	err := tableModel.Run()
 	if err != nil {
 		return
 	}
@@ -277,8 +276,7 @@ func getUpdatesFromUser(updateKeys []UpdateIdentifier) (chosenUpdates []UpdateId
 	inputModel.SetHandler(func() {
 		updateResponse = inputModel.TextInput.Value()
 	})
-	newInput := tui.NewModel(inputModel, nil, false, true)
-	err := newInput.Run()
+	err := inputModel.Run()
 	if err != nil {
 		core.Log.Errorf("failed to get user input: %s", err)
 		return

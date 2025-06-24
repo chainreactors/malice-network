@@ -66,8 +66,7 @@ func regExplorerCmd(cmd *cobra.Command, con *repl.Console) error {
 			return regEnterFuc(m, con)
 		})
 		regModel = regModel.SetKeyBinding("backspace", regBackFunc)
-		newReg := tui.NewModel(regModel, nil, false, false)
-		err = newReg.Run()
+		err = regModel.Run()
 		if err != nil {
 			con.Log.Errorf("Error running explorer: %v", err)
 			return err

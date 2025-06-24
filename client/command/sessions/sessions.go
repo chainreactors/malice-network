@@ -89,15 +89,13 @@ func PrintSessions(sessions map[string]*core.Session, con *repl.Console, isAll b
 		table.NewColumn("Last Msg", "Last Msg", maxLengths["Last Msg"]),
 		table.NewColumn("Health", "Health", maxLengths["Health"]),
 	}, false)
-
-	newTable := tui.NewModel(tableModel, nil, false, false)
 	var err error
 	tableModel.SetRows(rowEntries)
 	tableModel.SetMultiline()
 	tableModel.SetHandle(func() {
-		SessionLogin(tableModel, newTable.Buffer, con)()
+		SessionLogin(tableModel, tableModel.Buffer, con)()
 	})
-	err = newTable.Run()
+	err = tableModel.Run()
 	if err != nil {
 		return
 	}

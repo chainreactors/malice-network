@@ -104,17 +104,18 @@ func InstallFromFile(aliasGzFilePath string, aliasName string, promptToOverwrite
 		if promptToOverwrite {
 			con.Log.Infof("Alias '%s' already exists\n", manifest.CommandName)
 			confirmModel := tui.NewConfirm("Overwrite current install?")
-			newConfirm := tui.NewModel(confirmModel, nil, false, true)
-			err := newConfirm.Run()
+			confirmModel.SetHandle(func() {
+				fileutils.ForceRemoveAll(installPath)
+			})
+			err := confirmModel.Run()
 			if err != nil {
 				con.Log.Errorf("Failed to run confirm model: %s\n", err)
 				return nil
 			}
-			if !confirmModel.Confirmed {
+			if !confirmModel.GetConfirmed() {
 				return nil
 			}
 		}
-		fileutils.ForceRemoveAll(installPath)
 	}
 
 	con.Log.Infof("Installing alias '%s' (%s) ... \n", manifest.Name, manifest.Version)

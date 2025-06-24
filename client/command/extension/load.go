@@ -139,13 +139,12 @@ func ExtensionLoadCmd(cmd *cobra.Command, con *repl.Console) {
 		if repl.CmdExist(con.ImplantMenu(), extCmd.CommandName) {
 			con.Log.Errorf("%s command already exists\n", extCmd.CommandName)
 			confirmModel := tui.NewConfirm(fmt.Sprintf("%s command already exists. Overwrite?", extCmd.CommandName))
-			newConfirm := tui.NewModel(confirmModel, nil, false, true)
-			err = newConfirm.Run()
+			err = confirmModel.Run()
 			if err != nil {
 				con.Log.Errorf("Error running confirm model: %s\n", err)
 				return
 			}
-			if !confirmModel.Confirmed {
+			if !confirmModel.GetConfirmed() {
 				return
 			}
 		}

@@ -50,17 +50,18 @@ func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *repl.Conso
 		if promptToOverwrite {
 			con.Log.Infof("Extension '%s' already exists", manifest.Name)
 			confirmModel := tui.NewConfirm("Overwrite current install?")
-			newConfirm := tui.NewModel(confirmModel, nil, false, true)
-			err = newConfirm.Run()
+			confirmModel.SetHandle(func() {
+				fileutils.ForceRemoveAll(installPath)
+			})
+			err = confirmModel.Run()
 			if err != nil {
 				con.Log.Errorf("Error running confirm model: %s", err)
 				return
 			}
-			if !confirmModel.Confirmed {
+			if !confirmModel.GetConfirmed() {
 				return
 			}
 		}
-		fileutils.ForceRemoveAll(installPath)
 	}
 
 	con.Log.Infof("Installing extension '%s' (%s) ... ", manifest.Name, manifest.Version)

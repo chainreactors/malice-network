@@ -96,13 +96,12 @@ func ArmoryInstallCmd(cmd *cobra.Command, con *repl.Console) {
 		confirmModel := tui.NewConfirm(fmt.Sprintf("Install %d alias%s and %d extension%s?",
 			aliasCount, pluralAliases, extCount, pluralExtensions,
 		))
-		newconfirm := tui.NewModel(confirmModel, nil, false, true)
-		err := newconfirm.Run()
+		err := confirmModel.Run()
 		if err != nil {
 			con.Log.Errorf("Error running confirm model: %s\n", err)
 			return
 		}
-		if !confirmModel.Confirmed {
+		if !confirmModel.GetConfirmed() {
 			return
 		}
 		promptToOverwrite = false
@@ -331,8 +330,7 @@ func getPackageIDFromUser(name string, options map[string]string) string {
 	options[doNotInstallOption] = doNotInstallPackageName
 	selectModel := tui.NewSelect(optionKeys)
 	selectModel.Title = fmt.Sprintf("More than one package contains the command %s. Please choose an option from the list below:", name)
-	newSelect := tui.NewModel(selectModel, nil, false, false)
-	err := newSelect.Run()
+	err := selectModel.Run()
 	if err != nil {
 		core.Log.Errorf("Failed to run select model: %s\n", err)
 		return ""

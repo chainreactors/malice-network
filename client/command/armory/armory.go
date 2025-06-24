@@ -432,11 +432,10 @@ func PrintArmoryPackages(aliases []*alias.AliasManifest, exts []*extension.Exten
 
 		rowEntries = append(rowEntries, row)
 	}
-	newTable := tui.NewModel(tableModel, nil, false, false)
 	tableModel.SetRows(rowEntries)
 	tableModel.SetMultiline()
-	tableModel.SetHandle(DownloadArmoryCallback(tableModel, newTable.Buffer, con, clientConfig))
-	err := newTable.Run()
+	tableModel.SetHandle(DownloadArmoryCallback(tableModel, tableModel.Buffer, con, clientConfig))
+	err := tableModel.Run()
 	if err != nil {
 		con.Log.Errorf("Failed to run table model: %s\n", err)
 		return
@@ -518,8 +517,7 @@ func PrintArmoryBundles(bundles []*ArmoryBundle, con *repl.Console) {
 	}
 	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)
-	newTable := tui.NewModel(tableModel, nil, false, false)
-	err := newTable.Run()
+	err := tableModel.Run()
 	if err != nil {
 		return
 	}

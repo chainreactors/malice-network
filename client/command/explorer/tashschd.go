@@ -61,8 +61,7 @@ func taskschdExplorerCmd(cmd *cobra.Command, con *repl.Console) error {
 			return taskEnterFunc(m, con)
 		})
 		taskschdModel = taskschdModel.SetKeyBinding("backspace", taskBackFunc)
-		newTaskschd := tui.NewModel(taskschdModel, nil, false, false)
-		err = newTaskschd.Run()
+		taskschdModel.Run()
 		if err != nil {
 			return err
 		}

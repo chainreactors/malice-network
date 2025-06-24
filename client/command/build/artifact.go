@@ -93,13 +93,10 @@ func PrintArtifacts(builders *clientpb.Builders, con *repl.Console) error {
 		table.NewColumn("Profile", "Profile", defaultLengths["Profile"]),
 		table.NewColumn("Status", "Status", defaultLengths["Status"]),
 	}, false)
-
-	newTable := tui.NewModel(tableModel, nil, false, false)
-
 	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)
 	tableModel.SetHandle(func() {})
-	err := newTable.Run()
+	err := tableModel.Run()
 	if err != nil {
 		return err
 	}
