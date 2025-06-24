@@ -34,8 +34,8 @@ func (j *jobs) Add(job *Job) {
 }
 
 // Remove - Remove a job
-func (j *jobs) Remove(job *Job) {
-	_, _ = j.LoadAndDelete(job.ID)
+func (j *jobs) Remove(id string) {
+	_, _ = j.LoadAndDelete(id)
 	//if ok {
 	//	EventBroker.Publish(Event{
 	//		Job:       job,

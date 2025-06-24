@@ -37,7 +37,6 @@ func (rpc *Server) SyncPipeline(ctx context.Context, req *clientpb.Pipeline) (*c
 	}
 
 	job := core.Jobs.AddPipeline(req)
-
 	core.EventBroker.Publish(core.Event{
 		EventType: consts.EventJob,
 		Op:        consts.CtrlPipelineSync,
@@ -80,7 +79,7 @@ func (rpc *Server) StartPipeline(ctx context.Context, req *clientpb.CtrlPipeline
 		Pipeline: pipelineDB.ToProtobuf(),
 		Name:     req.Name,
 	}
-	core.Jobs.Add(job)
+
 	lns.PushCtrl(&clientpb.JobCtrl{
 		Ctrl: consts.CtrlPipelineStart,
 		Job:  job.ToProtobuf()})
@@ -97,7 +96,7 @@ func (rpc *Server) StopPipeline(ctx context.Context, req *clientpb.CtrlPipeline)
 	if err != nil {
 		return nil, err
 	}
-	lns, err := core.Listeners.Get(req.ListenerId)
+	lns, err := core.Listeners.Get(job.Pipeline.ListenerId)
 	if err != nil {
 		return nil, err
 	}
@@ -116,10 +115,10 @@ func (rpc *Server) StopPipeline(ctx context.Context, req *clientpb.CtrlPipeline)
 func (rpc *Server) DeletePipeline(ctx context.Context, req *clientpb.CtrlPipeline) (*clientpb.Empty, error) {
 	pipelineDB, err := db.FindPipeline(req.Name)
 	if err != nil {
-		return &clientpb.Empty{}, err
+		return nil, err
 	}
 	pipeline := pipelineDB.ToProtobuf()
-	lns, err := core.Listeners.Get(req.ListenerId)
+	lns, err := core.Listeners.Get(pipelineDB.ListenerId)
 	if err != nil {
 		return nil, err
 	}

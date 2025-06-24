@@ -71,7 +71,6 @@ func (rpc *Server) StartRem(ctx context.Context, req *clientpb.CtrlPipeline) (*c
 		Pipeline: rem,
 		Name:     rem.Name,
 	}
-	core.Jobs.Add(job)
 	lns.PushCtrl(&clientpb.JobCtrl{
 		Ctrl: consts.CtrlRemStart,
 		Job:  job.ToProtobuf(),
