@@ -10,6 +10,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"strings"
 )
 
 func ExecuteFlagSet(f *pflag.FlagSet) {
@@ -198,27 +199,29 @@ func GenerateFlagSet(f *pflag.FlagSet) {
 	f.Int("interval", -1, "interval /second")
 	f.Float64("jitter", -1, "jitter")
 	f.String("proxy", "", "Overwrite proxy")
-	f.StringSliceP("modules", "m", []string{}, "Set modules e.g.: execute_exe,execute_dll")
+	f.StringP("modules", "m", "full", "Set modules e.g.: execute_exe,execute_dll")
 	f.Bool("srdi", true, "enable srdi")
 	SetFlagSetGroup(f, "generate")
 }
 
-func ParseGenerateFlags(cmd *cobra.Command) (string, string, string, string, string, bool, *types.ProfileParams) {
+func ParseGenerateFlags(cmd *cobra.Command) (string, string, string, []string, string, bool, *types.ProfileParams) {
 	name, _ := cmd.Flags().GetString("profile")
 	address, _ := cmd.Flags().GetString("address")
 	buildTarget, _ := cmd.Flags().GetString("target")
 	//buildType, _ := cmd.Flags().GetString("type")
 	proxy, _ := cmd.Flags().GetString("proxy")
-	modules, _ := cmd.Flags().GetString("modules")
+	modulesFlags, _ := cmd.Flags().GetString("modules")
+	modules := strings.Split(modulesFlags, ",")
 	ca, _ := cmd.Flags().GetString("ca")
 	interval, _ := cmd.Flags().GetInt("interval")
 	jitter, _ := cmd.Flags().GetFloat64("jitter")
 	enableSRDI, _ := cmd.Flags().GetBool("srdi")
-	return name, address, buildTarget, modules, ca, enableSRDI, &types.ProfileParams{
+	profileParams := &types.ProfileParams{
 		Interval: interval,
 		Jitter:   jitter,
 		Proxy:    proxy,
 	}
+	return name, address, buildTarget, modules, ca, enableSRDI, profileParams
 }
 
 func ProfileSet(f *pflag.FlagSet) {
