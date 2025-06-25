@@ -116,8 +116,8 @@ func (d *DockerBuilder) ExecuteBuild() error {
 		Image: DefaultImage,
 		Cmd:   []string{"bash", "-c", buildCommand},
 	}, &container.HostConfig{
-		//AutoRemove: true,
-		Binds: Volumes,
+		AutoRemove: true,
+		Binds:      Volumes,
 	}, nil, nil, d.containerName)
 	if err != nil {
 		logs.Log.Errorf("docker start failed %s", err)
