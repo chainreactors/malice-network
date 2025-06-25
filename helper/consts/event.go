@@ -49,14 +49,14 @@ const (
 	CtrlPivotConnect            = "pivot_connect"
 	CtrlPivotPortForward        = "pivot_portfw"
 	CtrlPivotReversePortForward = "pivot_rportfw"
-	CtrlContextScreenShot       = "context_" + ContextScreenShot
-	CtrlContextCred             = "context_" + ContextCredential
-	CtrlContextKeyLogger        = "context_" + ContextKeyLogger
-	CtrlContextDownload         = "context_" + ContextDownload
-	CtrlContextPort             = "context_" + ContextPort
-	CtrlContextFileCreate       = "context_file_create"
-	CtrlContextFileWrite        = "context_file_write"
-	CtrlContextFileClose        = "context_file_end"
+	CtrlContextScreenShot       = ContextScreenShot
+	CtrlContextCred             = ContextCredential
+	CtrlContextKeyLogger        = ContextKeyLogger
+	CtrlContextDownload         = ContextDownload
+	CtrlContextPort             = ContextPort
+	CtrlContextFileCreate       = "file_create"
+	CtrlContextFileWrite        = "file_write"
+	CtrlContextFileClose        = "file_end"
 )
 
 const (

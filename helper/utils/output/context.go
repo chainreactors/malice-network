@@ -136,7 +136,7 @@ func (s *ScreenShotContext) Marshal() []byte {
 }
 
 func (s *ScreenShotContext) String() string {
-	return fmt.Sprintf("Screenshot: %s (Size: %.2f KB)", s.Name, float64(s.Size)/1024)
+	return fmt.Sprintf("%s (Size: %.2f KB)", s.Name, float64(s.Size)/1024)
 }
 
 type KeyLoggerContext struct {

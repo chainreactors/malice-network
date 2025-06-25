@@ -36,20 +36,21 @@ func PrintSessions(sessions map[string]*core.Session, con *repl.Console, isAll b
 	maxLengths := map[string]int{
 		"ID":             8,
 		"Group":          14,
-		"Pipeline":       16,
+		"Pipeline":       14,
 		"Remote Address": 22,
-		"Username":       16,
+		"UserName":       18,
 		"System":         16,
 		"Sleep":          9,
 		"Last Msg":       8,
 		"Health":         7,
 	}
+	plus_flag := false
 	for _, session := range sessions {
 		updateMaxLength(maxLengths, "ID", len(session.SessionId[:8]))
 		updateMaxLength(maxLengths, "Group", len(fmt.Sprintf("%s/%s", session.GroupName, session.Note)))
 		updateMaxLength(maxLengths, "Pipeline", len(session.PipelineId))
 		//updateMaxLength(&maxLengths, "Remote Address", len(session.Target))
-		updateMaxLength(maxLengths, "Username", len(fmt.Sprintf("%s/%s", session.Os.Hostname, session.Os.Username)))
+		updateMaxLength(maxLengths, "UserName", len(fmt.Sprintf("%s/%s", session.Os.Hostname, session.Os.Username)))
 		updateMaxLength(maxLengths, "System", len(fmt.Sprintf("%s/%s", session.Os.Name, session.Os.Arch)))
 		//updateMaxLength(&maxLengths, "Sleep", len(fmt.Sprintf("%d %.2f", session.Timer.Interval, session.Timer.Jitter)))
 		//updateMaxLength(&maxLengths, "Last Message", len(strconv.FormatUint(uint64(session.Timediff), 10)+"s"))
@@ -63,13 +64,24 @@ func PrintSessions(sessions map[string]*core.Session, con *repl.Console, isAll b
 		} else {
 			SessionHealth = tui.GreenFg.Render("ALIVE")
 		}
+		var computer string
+		if session.IsPrivilege {
+			computer = fmt.Sprintf("%s/%s *", session.Os.Hostname, session.Os.Username)
+			if !plus_flag {
+				maxLengths["UserName"] += 2
+				plus_flag = true
+			}
+		} else {
+			computer = fmt.Sprintf("%s/%s", session.Os.Hostname, session.Os.Username)
+		}
+
 		row = table.NewRow(
 			table.RowData{
 				"ID":            session.SessionId[:8],
 				"Group":         fmt.Sprintf("%s/%s", session.GroupName, session.Note),
 				"Pipeline":      session.PipelineId,
 				"RemoteAddress": session.Target,
-				"Username":      fmt.Sprintf("%s/%s", session.Os.Hostname, session.Os.Username),
+				"UserName":      computer,
 				"System":        fmt.Sprintf("%s/%s", session.Os.Name, session.Os.Arch),
 				"Sleep":         fmt.Sprintf("%d  %.2f", session.Timer.Interval, session.Timer.Jitter),
 				"Last Msg":      strconv.FormatUint(uint64(session.Timediff), 10) + "s",
@@ -83,7 +95,7 @@ func PrintSessions(sessions map[string]*core.Session, con *repl.Console, isAll b
 		table.NewColumn("Group", "Group", maxLengths["Group"]),
 		table.NewColumn("Pipeline", "Pipeline", maxLengths["Pipeline"]),
 		table.NewColumn("RemoteAddress", "RemoteAddress", maxLengths["Remote Address"]),
-		table.NewColumn("Username", "Username", maxLengths["Username"]),
+		table.NewColumn("UserName", "UserName", maxLengths["UserName"]),
 		table.NewColumn("System", "System", maxLengths["System"]),
 		table.NewColumn("Sleep", "Sleep", maxLengths["Sleep"]),
 		table.NewColumn("Last Msg", "Last Msg", maxLengths["Last Msg"]),
