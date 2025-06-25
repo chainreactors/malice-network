@@ -56,17 +56,18 @@ func RunBeaconWorkFlowCmd(cmd *cobra.Command, con *repl.Console) error {
 	if len(modules) > 0 {
 		inputs["malefic_modules_features"] = strings.Join(modules, ",")
 	}
-	req := &clientpb.GithubWorkflowRequest{
-		Owner:      owner,
-		Repo:       repo,
-		Token:      token,
-		WorkflowId: file,
-		Inputs:     inputs,
-		Profile:    name,
-		Address:    address,
-		Ca:         ca,
-		Params:     params.String(),
-		IsRemove:   remove,
+	req := &clientpb.BuildConfig{
+		Owner:       owner,
+		Repo:        repo,
+		Token:       token,
+		WorkflowId:  file,
+		Inputs:      inputs,
+		ProfileName: name,
+		MaleficHost: address,
+		Ca:          ca,
+		Params:      params.String(),
+		IsRemove:    remove,
+		Resource:    consts.ArtifactFromAction,
 	}
 	resp, err := RunWorkFlow(con, req)
 	if err != nil {
@@ -92,17 +93,18 @@ func RunBindWorkFlowCmd(cmd *cobra.Command, con *repl.Console) error {
 	if len(modules) > 0 {
 		inputs["malefic_modules_features"] = strings.Join(modules, ",")
 	}
-	req := &clientpb.GithubWorkflowRequest{
-		Owner:      owner,
-		Repo:       repo,
-		Token:      token,
-		WorkflowId: file,
-		Inputs:     inputs,
-		Profile:    name,
-		Address:    address,
-		Ca:         ca,
-		Params:     params.String(),
-		IsRemove:   remove,
+	req := &clientpb.BuildConfig{
+		Owner:       owner,
+		Repo:        repo,
+		Token:       token,
+		WorkflowId:  file,
+		Inputs:      inputs,
+		ProfileName: name,
+		MaleficHost: address,
+		Ca:          ca,
+		Params:      params.String(),
+		IsRemove:    remove,
+		Resource:    consts.ArtifactFromAction,
 	}
 	resp, err := RunWorkFlow(con, req)
 	if err != nil {
@@ -138,17 +140,18 @@ func RunPreludeWorkFlowCmd(cmd *cobra.Command, con *repl.Console) error {
 	base64Encoded := base64.StdEncoding.EncodeToString(fileData)
 	inputs["autorun_yaml "] = base64Encoded
 
-	req := &clientpb.GithubWorkflowRequest{
-		Owner:      owner,
-		Repo:       repo,
-		Token:      token,
-		WorkflowId: file,
-		Inputs:     inputs,
-		Profile:    name,
-		Address:    address,
-		Ca:         ca,
-		Params:     params.String(),
-		IsRemove:   remove,
+	req := &clientpb.BuildConfig{
+		Owner:       owner,
+		Repo:        repo,
+		Token:       token,
+		WorkflowId:  file,
+		Inputs:      inputs,
+		ProfileName: name,
+		MaleficHost: address,
+		Ca:          ca,
+		Params:      params.String(),
+		IsRemove:    remove,
+		Resource:    consts.ArtifactFromAction,
 	}
 	resp, err := RunWorkFlow(con, req)
 	if err != nil {
@@ -176,17 +179,18 @@ func RunModulesWorkFlowCmd(cmd *cobra.Command, con *repl.Console) error {
 	} else if len(modules) > 0 {
 		inputs["malefic_modules_features"] = strings.Join(modules, ",")
 	}
-	req := &clientpb.GithubWorkflowRequest{
-		Owner:      owner,
-		Repo:       repo,
-		Token:      token,
-		WorkflowId: file,
-		Inputs:     inputs,
-		Profile:    name,
-		Address:    address,
-		Ca:         ca,
-		Params:     params.String(),
-		IsRemove:   remove,
+	req := &clientpb.BuildConfig{
+		Owner:       owner,
+		Repo:        repo,
+		Token:       token,
+		WorkflowId:  file,
+		Inputs:      inputs,
+		ProfileName: name,
+		MaleficHost: address,
+		Ca:          ca,
+		Params:      params.String(),
+		IsRemove:    remove,
+		Resource:    consts.ArtifactFromAction,
 	}
 	resp, err := RunWorkFlow(con, req)
 	if err != nil {
@@ -213,16 +217,17 @@ func RunPulseWorkFlowCmd(cmd *cobra.Command, con *repl.Console) error {
 		"targets": buildTarget,
 	}
 
-	req := &clientpb.GithubWorkflowRequest{
-		Owner:      owner,
-		Repo:       repo,
-		Token:      token,
-		WorkflowId: file,
-		Inputs:     inputs,
-		Profile:    name,
-		Address:    address,
-		ArtifactId: artifactID,
-		IsRemove:   remove,
+	req := &clientpb.BuildConfig{
+		Owner:       owner,
+		Repo:        repo,
+		Token:       token,
+		WorkflowId:  file,
+		Inputs:      inputs,
+		ProfileName: name,
+		MaleficHost: address,
+		ArtifactId:  artifactID,
+		IsRemove:    remove,
+		Resource:    consts.ArtifactFromAction,
 	}
 	resp, err := RunWorkFlow(con, req)
 	if err != nil {
@@ -232,8 +237,8 @@ func RunPulseWorkFlowCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func RunWorkFlow(con *repl.Console, req *clientpb.GithubWorkflowRequest) (*clientpb.Builder, error) {
-	builder, err := con.Rpc.TriggerWorkflowDispatch(con.Context(), req)
+func RunWorkFlow(con *repl.Console, req *clientpb.BuildConfig) (*clientpb.Builder, error) {
+	builder, err := con.Rpc.Build(con.Context(), req)
 	if err != nil {
 		return builder, err
 	}

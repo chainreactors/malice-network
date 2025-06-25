@@ -70,11 +70,12 @@ func handleModuleBuild(con *repl.Console, builderResource, target, profile strin
 func buildWithDocker(con *repl.Console, target, profile string, modules []string) error {
 	var modulePath string
 	go func() {
-		builder, err := con.Rpc.BuildModules(con.Context(), &clientpb.Generate{
+		builder, err := con.Rpc.Build(con.Context(), &clientpb.BuildConfig{
 			Target:      target,
 			Modules:     modules,
 			ProfileName: profile,
 			Type:        consts.CommandBuildModules,
+			Resource:    consts.ArtifactFromDocker,
 		})
 		if err != nil {
 			con.Log.Errorf("Build modules failed: %v", err)
@@ -127,13 +128,14 @@ func buildWithAction(con *repl.Console, target, profile string, modules []string
 	}
 
 	go func() {
-		builder, err := action.RunWorkFlow(con, &clientpb.GithubWorkflowRequest{
-			Inputs:     inputs,
-			Owner:      setting.GithubOwner,
-			Repo:       setting.GithubRepo,
-			Token:      setting.GithubToken,
-			WorkflowId: workflowID,
-			Profile:    profile,
+		builder, err := action.RunWorkFlow(con, &clientpb.BuildConfig{
+			Inputs:      inputs,
+			Owner:       setting.GithubOwner,
+			Repo:        setting.GithubRepo,
+			Token:       setting.GithubToken,
+			WorkflowId:  workflowID,
+			ProfileName: profile,
+			Resource:    consts.ArtifactFromDocker,
 		})
 		if err != nil {
 			con.Log.Errorf("Run workflow failed: %v", err)

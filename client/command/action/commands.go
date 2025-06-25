@@ -170,11 +170,12 @@ func Register(con *repl.Console) {
 		return
 	}
 	con.RegisterServerFunc(consts.CommandAction+"_"+consts.CommandActionRun, func(con *repl.Console, msg string) (*clientpb.Builder, error) {
-		return RunWorkFlow(con, &clientpb.GithubWorkflowRequest{
+		return RunWorkFlow(con, &clientpb.BuildConfig{
 			Owner:      settings.GithubOwner,
 			Repo:       settings.GithubRepo,
 			Token:      settings.GithubToken,
 			WorkflowId: settings.GithubWorkflowFile,
+			Resource:   consts.ArtifactFromAction,
 		})
 	}, nil)
 }

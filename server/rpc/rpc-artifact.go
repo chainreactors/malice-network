@@ -6,7 +6,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/server/internal/build"
-	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"os"
 )
@@ -66,25 +65,6 @@ func (rpc *Server) GetArtifact(ctx context.Context, req *clientpb.Artifact) (*cl
 
 func (rpc *Server) ListBuilder(ctx context.Context, req *clientpb.Empty) (*clientpb.Builders, error) {
 	builders, err := db.GetBuilders()
-	config := configs.GetGithubConfig()
-	for _, builder := range builders.Builders {
-		status := ""
-		if builder.Resource == consts.ArtifactFromAction {
-			status, _, err = build.GetActionStatus(config.Owner, config.Repo, config.Token, builder.Name)
-			if err != nil {
-				status = consts.BuildStatusNetworkError
-			}
-			builder.Status = status
-		} else {
-			status = build.GlobalBuildQueueManager.IsRunning(builder.Name)
-			if status != "" {
-				builder.Status = status
-			} else {
-				status = db.CheckOutBuildFile(builder.Name)
-			}
-		}
-		builder.Status = status
-	}
 	if err != nil {
 		return nil, err
 	}
@@ -120,16 +100,4 @@ func (rpc *Server) GetArtifactsByProfile(ctx context.Context, req *clientpb.Prof
 		return nil, err
 	}
 	return builders, nil
-}
-
-func (rpc *Server) GetActionProgress(ctx context.Context, req *clientpb.GithubWorkflowRequest) (*clientpb.Artifact, error) {
-	status, conclusion, err := build.GetActionStatus(req.Owner, req.Repo, req.Token, req.BuildName)
-	if err != nil {
-		return nil, err
-	}
-	builder, err := db.GetArtifactById(req.ArtifactId)
-	result := builder.ToArtifact(make([]byte, 0))
-	result.Status = status
-	result.Conclusion = conclusion
-	return result, nil
 }

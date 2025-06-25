@@ -1,0 +1,40 @@
+package build
+
+import (
+	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+)
+
+// Builder
+type Builder interface {
+	GenerateConfig() (*clientpb.Builder, error)
+
+	ExecuteBuild() error
+
+	CollectArtifact()
+}
+
+func NewBuilder(req *clientpb.BuildConfig) Builder {
+	switch req.Resource {
+	case consts.ArtifactFromAction:
+		return NewActionBuilder(req)
+	case consts.ArtifactFromDocker:
+		return NewDockerBuilder(req)
+	case consts.ArtifactFromSaas:
+		return NewSaasBuilder(req)
+	default:
+		return nil
+	}
+}
+
+type BuilderState struct {
+	ID     uint32 // builder.ID
+	Status string // 状态
+}
+
+const maxDockerBuildConcurrency = 2
+
+var (
+	// 用信号量控制最大并发数
+	dockerBuildSemaphore = make(chan struct{}, maxDockerBuildConcurrency)
+)

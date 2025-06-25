@@ -18,15 +18,16 @@ func BeaconCmd(cmd *cobra.Command, con *repl.Console) error {
 		return errors.New("require build target")
 	}
 	go func() {
-		_, err := con.Rpc.Build(con.Context(), &clientpb.Generate{
+		_, err := con.Rpc.Build(con.Context(), &clientpb.BuildConfig{
 			ProfileName: name,
-			Address:     address,
+			MaleficHost: address,
 			Type:        consts.CommandBuildBeacon,
 			Target:      buildTarget,
 			Modules:     modules,
 			Ca:          ca,
 			Params:      params.String(),
 			Srdi:        true,
+			Resource:    consts.ArtifactFromDocker,
 		})
 		if err != nil {
 			con.Log.Errorf("Build beacon failed: %v\n", err)
@@ -42,15 +43,16 @@ func BindCmd(cmd *cobra.Command, con *repl.Console) error {
 		return errors.New("require build target")
 	}
 	go func() {
-		_, err := con.Rpc.Build(con.Context(), &clientpb.Generate{
+		_, err := con.Rpc.Build(con.Context(), &clientpb.BuildConfig{
 			ProfileName: name,
-			Address:     address,
+			MaleficHost: address,
 			Type:        consts.CommandBuildBind,
 			Target:      buildTarget,
 			Modules:     modules,
 			Ca:          ca,
 			Params:      params.String(),
 			Srdi:        true,
+			Resource:    consts.ArtifactFromDocker,
 		})
 		if err != nil {
 			con.Log.Errorf("Build bind failed: %v\n", err)
@@ -74,15 +76,16 @@ func PreludeCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 	go func() {
-		_, err := con.Rpc.Build(con.Context(), &clientpb.Generate{
+		_, err := con.Rpc.Build(con.Context(), &clientpb.BuildConfig{
 			ProfileName: name,
-			Address:     address,
+			MaleficHost: address,
 			Type:        consts.CommandBuildPrelude,
 			Target:      buildTarget,
 			Modules:     modules,
 			Ca:          ca,
 			Srdi:        true,
 			Bin:         file,
+			Resource:    consts.ArtifactFromDocker,
 		})
 		if err != nil {
 			con.Log.Errorf("Build prelude failed: %v\n", err)
@@ -117,13 +120,14 @@ func PulseCmd(cmd *cobra.Command, con *repl.Console) error {
 		return nil
 	}
 	go func() {
-		_, err := con.Rpc.Build(con.Context(), &clientpb.Generate{
+		_, err := con.Rpc.Build(con.Context(), &clientpb.BuildConfig{
 			ProfileName: profile,
-			Address:     address,
+			MaleficHost: address,
 			Target:      buildTarget,
 			Type:        consts.CommandBuildPulse,
 			Srdi:        true,
 			ArtifactId:  artifactId,
+			Resource:    consts.ArtifactFromDocker,
 		})
 		if err != nil {
 			con.Log.Errorf("Build loader failed: %v\n", err)
@@ -156,13 +160,14 @@ func BuildLogCmd(cmd *cobra.Command, con *repl.Console) error {
 }
 
 func BuildModules(con *repl.Console, name, address, buildTarget string, modules []string, srdi bool) (bool, error) {
-	_, err := con.Rpc.Build(con.Context(), &clientpb.Generate{
+	_, err := con.Rpc.Build(con.Context(), &clientpb.BuildConfig{
 		ProfileName: name,
-		Address:     address,
+		MaleficHost: address,
 		Target:      buildTarget,
 		Type:        consts.CommandBuildModules,
 		Modules:     modules,
 		Srdi:        srdi,
+		Resource:    consts.ArtifactFromDocker,
 	})
 	if err != nil {
 		return false, err

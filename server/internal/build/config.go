@@ -4,6 +4,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/encoders"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db"
@@ -26,7 +27,7 @@ var (
 // GenerateProfile - Generate profile
 // first recover profile from database
 // then use Generate overwrite profile
-func GenerateProfile(req *clientpb.Generate) ([]byte, error) {
+func GenerateProfile(req *clientpb.BuildConfig) ([]byte, error) {
 	var err error
 	profile, err := db.GetProfile(req.ProfileName)
 	if err != nil {
@@ -48,6 +49,20 @@ func GenerateProfile(req *clientpb.Generate) ([]byte, error) {
 		return nil, err
 	}
 	return data, nil
+}
+
+func WirteProfile(config *types.ProfileConfig) error {
+	data, err := yaml.Marshal(config)
+	if err != nil {
+		return err
+	}
+	path := filepath.Join(configs.SourceCodePath, generateConfig)
+
+	err = os.WriteFile(path, data, 0644)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func MoveBuildOutput(target, buildType string) (string, string, error) {

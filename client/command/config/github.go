@@ -39,7 +39,7 @@ func UpdateGithubConfigCmd(cmd *cobra.Command, con *repl.Console) error {
 }
 
 func UpdateGithubConfig(con *repl.Console, owner, repo, token, workflow string) (*clientpb.Empty, error) {
-	return con.Rpc.UpdateGithubConfig(con.Context(), &clientpb.GithubWorkflowRequest{
+	return con.Rpc.UpdateGithubConfig(con.Context(), &clientpb.GithubWorkflowConfig{
 		Owner:      owner,
 		Repo:       repo,
 		Token:      token,

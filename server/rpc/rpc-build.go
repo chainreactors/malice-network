@@ -3,33 +3,84 @@ package rpc
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/codenames"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/server/internal/build"
+	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db"
-	"os"
+	"google.golang.org/protobuf/proto"
 )
 
-func (rpc *Server) Build(ctx context.Context, req *clientpb.Generate) (*clientpb.Builder, error) {
-	if req.Name == "" {
-		req.Name = codenames.GetCodename()
+func (rpc *Server) Build(ctx context.Context, req *clientpb.BuildConfig) (*clientpb.Builder, error) {
+	if req.Type == consts.CommandBuildPulse || req.Inputs["package"] == consts.CommandBuildPulse {
+		var artifactID uint32
+		if req.ArtifactId != 0 {
+			artifactID = req.ArtifactId
+		} else {
+			profile, _ := db.GetProfile(req.ProfileName)
+			yamlID := profile.Pulse.Extras["flags"].(map[string]interface{})["artifact_id"].(int)
+			if uint32(yamlID) != 0 {
+				artifactID = uint32(yamlID)
+			} else {
+				artifactID = 0
+			}
+		}
+		_, err := db.GetArtifactById(artifactID)
+		if err != nil && !errors.Is(err, db.ErrRecordNotFound) {
+			return nil, err
+		}
+		if errors.Is(err, db.ErrRecordNotFound) {
+			beaconReq := proto.Clone(req).(*clientpb.BuildConfig)
+			beaconReq.Srdi = true
+			if req.Resource == consts.ArtifactFromAction {
+				beaconReq.Inputs["package"] = consts.CommandBuildBeacon
+				if beaconReq.Inputs["targets"] == consts.TargetX86Windows {
+					beaconReq.Inputs["targets"] = consts.TargetX86WindowsGnu
+				} else {
+					beaconReq.Inputs["targets"] = consts.TargetX64WindowsGnu
+				}
+			} else {
+				beaconReq.Type = consts.CommandBuildBeacon
+				if beaconReq.Target == consts.TargetX86Windows {
+					beaconReq.Target = consts.TargetX86WindowsGnu
+				} else {
+					beaconReq.Target = consts.TargetX64WindowsGnu
+				}
+			}
+			beaconBuilder := build.NewBuilder(beaconReq)
+			artifact, err := beaconBuilder.GenerateConfig()
+			if err != nil {
+				return nil, err
+			}
+			req.ArtifactId = artifact.Id
+			go func() {
+				executeErr := beaconBuilder.ExecuteBuild()
+				if executeErr == nil {
+					beaconBuilder.CollectArtifact()
+				} else {
+					logs.Log.Errorf("build %v failed %v", artifact.Name, executeErr)
+				}
+			}()
+		}
 	}
-	builder, err := db.SaveArtifactFromGenerate(req)
+
+	builder := build.NewBuilder(req)
+	artifact, err := builder.GenerateConfig()
 	if err != nil {
-		logs.Log.Errorf("save build db error: %v", err)
 		return nil, err
 	}
 	go func() {
-		_, err = build.GlobalBuildQueueManager.AddTask(req, builder)
-		if err != nil {
-			logs.Log.Errorf("Failed to enqueue build request: %v", err)
-			return
+		executeErr := builder.ExecuteBuild()
+		if executeErr == nil {
+			builder.CollectArtifact()
+		} else {
+			logs.Log.Errorf("build %v failed %v", artifact.Name, executeErr)
 		}
 	}()
-	logs.Log.Infof("Build request processed successfully for target: %s", req.Target)
 
-	return builder.ToProtobuf(), nil
+	return artifact, nil
 }
 
 func (rpc *Server) BuildLog(ctx context.Context, req *clientpb.Builder) (*clientpb.Builder, error) {
@@ -41,45 +92,30 @@ func (rpc *Server) BuildLog(ctx context.Context, req *clientpb.Builder) (*client
 	return req, nil
 }
 
-func (rpc *Server) BuildModules(ctx context.Context, req *clientpb.Generate) (*clientpb.Artifact, error) {
-	builder, err := db.GetBuilderByModules(req.Target, req.Modules)
-	if err != nil && !errors.Is(err, db.ErrRecordNotFound) {
-		return nil, err
-	} else if errors.Is(err, db.ErrRecordNotFound) {
-		if req.Name == "" {
-			req.Name = codenames.GetCodename()
-		}
-		logs.Log.Infof("start to build %s ...", req.Target)
-		builder, err = db.SaveArtifactFromGenerate(req)
-		if err != nil {
-			logs.Log.Errorf("create module in db error: %v", err)
-			return nil, err
-		}
-		go func() {
-			_, err = build.GlobalBuildQueueManager.AddTask(req, builder)
-			if err != nil {
-				logs.Log.Errorf("Failed to enqueue build request: %v", err)
-				return
-			}
-		}()
-		logs.Log.Infof("Build request processed successfully for target: %s", req.Target)
-		builder.Name = build.GetFilePath(builder.Name, builder.Target, builder.Type, builder.IsSRDI)
-		return builder.ToArtifact([]byte{}), nil
-	}
-	bin, err := os.ReadFile(builder.Path)
-	if err != nil {
-		return nil, err
-	}
-	builder.Name = build.GetFilePath(builder.Name, builder.Target, builder.Type, builder.IsSRDI)
-	return builder.ToArtifact(bin), nil
-}
-
 func (rpc *Server) DockerStatus(ctx context.Context, req *clientpb.Empty) (*clientpb.Empty, error) {
 	cli, err := build.GetDockerClient()
 	if err != nil {
 		return nil, err
 	}
 	_, err = cli.Ping(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &clientpb.Empty{}, nil
+}
+
+func (rpc *Server) WorkflowStatus(ctx context.Context, req *clientpb.BuildConfig) (*clientpb.Empty, error) {
+	if req.Owner == "" || req.Repo == "" || req.Token == "" {
+		config := configs.GetGithubConfig()
+		if config == nil {
+			return nil, fmt.Errorf("please set github config use flag or server config")
+		}
+		req.Owner = config.Owner
+		req.Repo = config.Repo
+		req.Token = config.Token
+		req.WorkflowId = config.Workflow
+	}
+	err := build.GetWorkflowStatus(req.Owner, req.Repo, req.WorkflowId, req.Token)
 	if err != nil {
 		return nil, err
 	}

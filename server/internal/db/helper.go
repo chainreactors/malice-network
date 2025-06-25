@@ -13,7 +13,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/utils/output"
 
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/codenames"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/encoders"
 	"github.com/chainreactors/malice-network/helper/errs"
@@ -728,43 +727,17 @@ func UpdateProfileRaw(profileName string, raw []byte) error {
 	return Session().Model(&models.Profile{}).Where("name = ?", profileName).Update("raw", raw).Error
 }
 
-func SaveBuilderFromAction(inputs map[string]string, req *clientpb.Generate) (*models.Builder, error) {
-	target, ok := consts.GetBuildTarget(inputs["targets"])
-	if !ok {
-		return nil, errs.ErrInvalidateTarget
-	}
-	builder := models.Builder{
-		Name:        codenames.GetCodename(),
-		ProfileName: req.ProfileName,
-		Target:      target.Name,
-		Type:        inputs["package"],
-		Source:      consts.ArtifactFromAction,
-		Arch:        target.Arch,
-		IsSRDI:      req.Srdi,
-		Modules:     strings.Join(req.Modules, ","),
-		Os:          target.OS,
-		CA:          req.Ca,
-	}
-
-	if err := Session().Create(&builder).Error; err != nil {
-		return nil, err
-	}
-
-	return &builder, nil
-}
-
-func SaveArtifactFromGenerate(req *clientpb.Generate) (*models.Builder, error) {
+func SaveArtifactFromConfig(req *clientpb.BuildConfig) (*models.Builder, error) {
 	target, ok := consts.GetBuildTarget(req.Target)
 	if !ok {
 		return nil, errs.ErrInvalidateTarget
 	}
 	builder := models.Builder{
-		Name:        req.Name,
+		Name:        req.BuildName,
 		ProfileName: req.ProfileName,
 		Target:      req.Target,
 		Type:        req.Type,
-		Stager:      req.Stager,
-		Source:      consts.ArtifactFromDocker,
+		Source:      req.Resource,
 		CA:          req.Ca,
 		IsSRDI:      req.Srdi,
 		Modules:     strings.Join(req.Modules, ","),
@@ -780,24 +753,22 @@ func SaveArtifactFromGenerate(req *clientpb.Generate) (*models.Builder, error) {
 
 	if err := Session().Create(&builder).Error; err != nil {
 		return nil, err
-
 	}
 
 	return &builder, nil
 }
 
-func SaveArtifactFromID(req *clientpb.Generate, ID uint32, resource string) (*models.Builder, error) {
+func SaveArtifactFromID(req *clientpb.BuildConfig, ID uint32, resource string) (*models.Builder, error) {
 	target, ok := consts.GetBuildTarget(req.Target)
 	if !ok {
 		return nil, errs.ErrInvalidateTarget
 	}
 	builder := models.Builder{
 		ID:          ID,
-		Name:        req.Name,
+		Name:        req.BuildName,
 		ProfileName: req.ProfileName,
 		Target:      req.Target,
 		Type:        req.Type,
-		Stager:      req.Stager,
 		Source:      resource,
 		IsSRDI:      req.Srdi,
 		CA:          req.Ca,
@@ -990,13 +961,13 @@ func DeleteArtifactByName(artifactName string) error {
 }
 
 // UpdateGeneratorConfig - Update the generator config
-func UpdateGeneratorConfig(req *clientpb.Generate, path string, config *types.ProfileConfig) error {
+func UpdateGeneratorConfig(req *clientpb.BuildConfig, path string, config *types.ProfileConfig) error {
 	if config.Basic != nil {
-		if req.Name != "" {
-			config.Basic.Name = req.Name
+		if req.BuildName != "" {
+			config.Basic.Name = req.BuildName
 		}
-		if req.Address != "" {
-			config.Basic.Targets = []string{req.Address}
+		if req.MaleficHost != "" {
+			config.Basic.Targets = []string{req.MaleficHost}
 		}
 		var params *types.ProfileParams
 		if req.Params != "" {
@@ -1025,8 +996,8 @@ func UpdateGeneratorConfig(req *clientpb.Generate, path string, config *types.Pr
 		}
 
 	} else if config.Pulse != nil {
-		if req.Address != "" {
-			config.Pulse.Target = req.Address
+		if req.MaleficHost != "" {
+			config.Pulse.Target = req.MaleficHost
 		}
 	}
 	if req.ArtifactId != 0 && config.Pulse.Extras["flags"].(map[string]interface{})["artifact_id"].(int) == 0 {
@@ -1064,6 +1035,17 @@ func GetBuilderLogs(builderID uint32, limit int) (string, error) {
 	result := strings.Join(split, "\n")
 
 	return result, nil
+}
+
+func UpdateBuilderStatus(builderID uint32, status string) {
+	err := Session().Model(&models.Builder{}).
+		Where("id = ?", builderID).
+		Update("status", status).
+		Error
+	if err != nil {
+		logs.Log.Errorf("Error updating log for Builder id %d: %v", builderID, err)
+	}
+	return
 }
 
 func GetBuilderByModules(target string, modules []string) (*models.Builder, error) {
@@ -1177,4 +1159,72 @@ func SaveContext(ctx *clientpb.Context) (*models.Context, error) {
 
 func DeleteContext(contextID string) error {
 	return Session().Where("id = ?", contextID).Delete(&models.Context{}).Error
+}
+
+// ================= License 增删改查 =================
+
+// CreateLicense 新增License
+func CreateLicense(license *models.License) error {
+	return Session().Create(license).Error
+}
+
+// GetLicenseByID 根据ID查找License
+func GetLicenseByID(id uuid.UUID) (*models.License, error) {
+	var license models.License
+	err := Session().Where("id = ?", id).First(&license).Error
+	if err != nil {
+		return nil, err
+	}
+	return &license, nil
+}
+
+// UpdateLicense 更新License
+func UpdateLicense(license *models.License) error {
+	return Session().Save(license).Error
+}
+
+// DeleteLicenseByID 删除License
+func DeleteLicenseByID(id uuid.UUID) error {
+	return Session().Where("id = ?", id).Delete(&models.License{}).Error
+}
+
+// ListLicenses 查询所有License
+func ListLicenses() ([]*models.License, error) {
+	var licenses []*models.License
+	err := Session().Find(&licenses).Error
+	return licenses, err
+}
+
+// ================= History 增查 =================
+
+// CreateHistory 新增History
+func CreateHistory(history *models.History) error {
+	return Session().Create(history).Error
+}
+
+// GetHistoryByID 根据ID查找History
+func GetHistoryByID(id uint) (*models.History, error) {
+	var history models.History
+	err := Session().Preload("License").Preload("Build").Where("id = ?", id).First(&history).Error
+	if err != nil {
+		return nil, err
+	}
+	return &history, nil
+}
+
+// ListHistories 查询所有History
+func ListHistories() ([]*models.History, error) {
+	var histories []*models.History
+	err := Session().Preload("License").Preload("Build").Find(&histories).Error
+	return histories, err
+}
+
+// 通过 BuildName 和 LicenseID 查找对应的 History
+func GetHistoryByBuildNameAndLicenseID(buildName string, licenseID uuid.UUID) (*models.History, error) {
+	var history models.History
+	err := Session().Preload("License").Preload("Build").Where("build_name = ? AND license_id = ?", buildName, licenseID).First(&history).Error
+	if err != nil {
+		return nil, err
+	}
+	return &history, nil
 }
