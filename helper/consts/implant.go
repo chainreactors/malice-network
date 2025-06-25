@@ -11,6 +11,7 @@ const (
 	ArtifactFromAction = "action"
 	ArtifactFromDocker = "docker"
 	ArtifactFromUpload = "upload"
+	ArtifactFromSaas   = "saas"
 )
 
 type Arch uint32

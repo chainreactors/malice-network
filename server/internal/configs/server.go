@@ -61,6 +61,7 @@ type ServerConfig struct {
 	MiscConfig   *MiscConfig   `config:"config"`
 	NotifyConfig *NotifyConfig `config:"notify"`
 	GithubConfig *GithubConfig `config:"github"`
+	SassConfig   *SaasConfig   `config:"saas"`
 }
 
 func (c *ServerConfig) Address() string {
@@ -152,4 +153,10 @@ type GithubConfig struct {
 	Owner    string `config:"owner" default:""`
 	Token    string `config:"token" default:""`
 	Workflow string `config:"workflow" default:"generate.yml"`
+}
+
+type SaasConfig struct {
+	Host  string `config:"host" default:""`
+	Port  uint16 `config:"port" default:""`
+	Token string `config:"token" default:""`
 }

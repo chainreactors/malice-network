@@ -24,6 +24,7 @@ type Options struct {
 	Debug       bool                 `long:"debug" description:"Debug mode" config:"debug"`
 	UserCmd     root.UserCommand     `command:"user" description:"User commands" `
 	ListenerCmd root.ListenerCommand `command:"listener" description:"Listener commands" `
+	License     root.LicenseCmd      `command:"license" description:"License management"`
 
 	// configs
 	Server    *configs.ServerConfig   `config:"server" `

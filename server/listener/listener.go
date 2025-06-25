@@ -302,14 +302,6 @@ func (lns *listener) autoBuild(pipeline *clientpb.Pipeline) error {
 		return nil
 	}
 
-	// 检查构建环境是否可用
-	_, workflowErr := lns.Rpc.WorkflowStatus(lns.Context(), &clientpb.GithubWorkflowRequest{})
-	_, dockerErr := lns.Rpc.DockerStatus(lns.Context(), &clientpb.Empty{})
-	if workflowErr != nil && dockerErr != nil {
-		logs.Log.Debugf("workflow and docker not worked: %s, %s", workflowErr.Error(), dockerErr.Error())
-		return nil
-	}
-
 	// 遍历所有目标进行构建
 	for _, target := range pipeline.Target {
 		// 准备构建参数
@@ -346,7 +338,7 @@ func (lns *listener) autoBuild(pipeline *clientpb.Pipeline) error {
 		}
 
 		// 执行构建
-		if err := lns.executeBuild(workflowErr == nil, profileName, artifact, input); err != nil {
+		if err := lns.executeBuild(profileName, artifact, input); err != nil {
 			return err
 		}
 	}
@@ -393,20 +385,26 @@ func (lns *listener) prepareBuildParams(pipeline *clientpb.Pipeline, target stri
 }
 
 // 执行构建
-func (lns *listener) executeBuild(useWorkflow bool, profileName string, artifact *clientpb.Artifact, input map[string]string) error {
-	if useWorkflow {
-		_, err := lns.Rpc.TriggerWorkflowDispatch(lns.Context(), &clientpb.GithubWorkflowRequest{
-			Inputs:  input,
-			Profile: profileName,
-		})
-		return err
+func (lns *listener) executeBuild(profileName string, artifact *clientpb.Artifact, input map[string]string) error {
+	var buildResource string
+	_, err := lns.Rpc.DockerStatus(lns.Context(), &clientpb.Empty{})
+	if err == nil {
+		buildResource = consts.ArtifactFromDocker
+	} else {
+		_, err = lns.Rpc.WorkflowStatus(lns.Context(), &clientpb.BuildConfig{})
+		if err == nil {
+			buildResource = consts.ArtifactFromAction
+		} else {
+			buildResource = consts.ArtifactFromSaas
+		}
 	}
-
-	_, err := lns.Rpc.Build(lns.Context(), &clientpb.Generate{
+	_, err = lns.Rpc.Build(lns.Context(), &clientpb.BuildConfig{
 		Target:      artifact.Target,
 		ProfileName: profileName,
 		Type:        artifact.Type,
 		Srdi:        true,
+		Resource:    buildResource,
+		Inputs:      input,
 	})
 	return err
 }

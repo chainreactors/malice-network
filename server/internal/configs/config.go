@@ -68,6 +68,17 @@ func GetNotifyConfig() *NotifyConfig {
 	return n
 }
 
+func GetSaasConfig() *SaasConfig {
+	s := &SaasConfig{}
+	err := config.MapStruct("server.saas", s)
+	if err != nil {
+		logs.Log.Errorf("Failed to map saas config %s", err)
+		return nil
+	}
+	return s
+
+}
+
 func GetListenerConfig() *ListenerConfig {
 	l := &ListenerConfig{}
 	err := config.MapStruct("listeners", l)
