@@ -46,9 +46,10 @@ type LuaParam struct {
 
 type LuaPlugin struct {
 	*DefaultPlugin
-	vmFns    map[string]lua.LGFunction
-	vmPool   *LuaVMPool
-	onHookVM *LuaVMWrapper
+	vmFns      map[string]lua.LGFunction
+	setContext func(vm *lua.LState) error
+	vmPool     *LuaVMPool
+	onHookVM   *LuaVMWrapper
 }
 
 func NewLuaMalPlugin(manifest *MalManiFest) (*LuaPlugin, error) {
@@ -109,7 +110,7 @@ func (plug *LuaPlugin) Release(wrapper *LuaVMWrapper) {
 }
 
 func (plug *LuaPlugin) initVM(vm *lua.LState) error {
-	err := plug.RegisterLuaBuiltin(vm)
+	err := plug.InitLuaContext(vm)
 	if err != nil {
 		return err
 	}
@@ -171,7 +172,7 @@ func (plug *LuaPlugin) registerLuaOnHooks() error {
 	return nil
 }
 
-func (plug *LuaPlugin) RegisterLuaBuiltin(vm *lua.LState) error {
+func (plug *LuaPlugin) InitLuaContext(vm *lua.LState) error {
 	plugDir := filepath.Join(assets.GetMalsDir(), plug.Name)
 	vm.SetGlobal("plugin_dir", lua.LString(plugDir))
 	vm.SetGlobal("plugin_resource_dir", lua.LString(filepath.Join(plugDir, "resources")))
@@ -182,6 +183,12 @@ func (plug *LuaPlugin) RegisterLuaBuiltin(vm *lua.LState) error {
 	luaPath := lua.LuaPathDefault + ";" + filepath.Join(plugDir, "?.lua")
 	vm.SetField(packageMod, "path", lua.LString(luaPath))
 
+	if plug.setContext != nil {
+		err := plug.setContext(vm)
+		if err != nil {
+			return err
+		}
+	}
 	for name, fn := range plug.vmFns {
 		vm.SetGlobal(name, vm.NewFunction(fn))
 	}

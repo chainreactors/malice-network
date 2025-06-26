@@ -3,12 +3,13 @@ package plugin
 import (
 	"embed"
 	"fmt"
-	lua "github.com/yuin/gopher-lua"
-	"gopkg.in/yaml.v3"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
+
+	lua "github.com/yuin/gopher-lua"
+	"gopkg.in/yaml.v3"
 
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/helper/intermediate"
@@ -110,6 +111,9 @@ func (plug *EmbedPlugin) Run() error {
 		return err
 	}
 	plug.registerLuaFunction()
+	plug.setContext = func(vm *lua.LState) error {
+		return plug.addEmbedLoader(vm)
+	}
 	plug.registerEmbedResourceFunctions()
 	err = plug.registerLuaOnHooks()
 	if err != nil {
@@ -310,4 +314,63 @@ func (plug *EmbedPlugin) registerEmbedResourceFunctions() {
 		}
 		return string(content), nil
 	}, nil)
+}
+
+// addEmbedLoader 添加embed fs的require loader
+func (plug *EmbedPlugin) addEmbedLoader(vm *lua.LState) error {
+	// 获取package.loaders表
+	loaders, ok := vm.GetField(vm.Get(lua.RegistryIndex), "_LOADERS").(*lua.LTable)
+	if !ok {
+		return fmt.Errorf("package.loaders must be a table")
+	}
+
+	// 创建embed loader函数
+	embedLoader := vm.NewFunction(func(L *lua.LState) int {
+		name := L.CheckString(1)
+
+		// 将模块名转换为路径 (将点替换为斜杠)
+		luaPath := strings.Replace(name, ".", "/", -1) + ".lua"
+
+		// 先尝试从当前插件的embed.FS中查找
+		if content, exists := plug.GetFileContent(luaPath); exists {
+			// 编译lua脚本
+			fn, err := L.LoadString(string(content))
+			if err != nil {
+				L.Push(lua.LString(fmt.Sprintf("error loading embedded module '%s': %s", name, err.Error())))
+				return 1
+			}
+			L.Push(fn)
+			return 1
+		}
+
+		//// 尝试从全局管理器的其他embed插件中查找
+		//if globalManager := GetGlobalMalManager(); globalManager != nil {
+		//	// 按优先级顺序查找：custom -> professional -> community
+		//	levelOrder := []string{"custom", "professional", "community"}
+		//
+		//	for _, levelName := range levelOrder {
+		//		if embedPlugin, exists := globalManager.GetEmbedPlugin(levelName); exists {
+		//			if content, fileExists := embedPlugin.GetFileContent(luaPath); fileExists {
+		//				// 编译lua脚本
+		//				fn, err := L.LoadString(string(content))
+		//				if err != nil {
+		//					L.Push(lua.LString(fmt.Sprintf("error loading embedded module '%s' from %s: %s", name, levelName, err.Error())))
+		//					return 1
+		//				}
+		//				L.Push(fn)
+		//				return 1
+		//			}
+		//		}
+		//	}
+		//}
+
+		// 没有找到模块
+		L.Push(lua.LString(fmt.Sprintf("no embedded module '%s'", name)))
+		return 1
+	})
+
+	loadersLen := loaders.Len()
+	loaders.RawSetInt(loadersLen+1, embedLoader)
+
+	return nil
 }
