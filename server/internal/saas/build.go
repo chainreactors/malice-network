@@ -19,7 +19,6 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// POST /api/build
 func BuildHandler(c *gin.Context) {
 	fmt.Println("收到构建请求")
 	var req clientpb.BuildConfig
@@ -29,28 +28,55 @@ func BuildHandler(c *gin.Context) {
 		return
 	}
 
+	token := c.GetHeader("token")
+	var targetLicense *models.License
+	if token != "" {
+		licenses, err := db.ListLicenses()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get licenses"})
+			return
+		}
+		for _, l := range licenses {
+			if l.Token == token {
+				targetLicense = l
+				break
+			}
+		}
+		if targetLicense == nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+			return
+		}
+		if time.Now().After(targetLicense.ExpireAt) {
+			c.JSON(http.StatusForbidden, gin.H{"error": "license expired"})
+			return
+		}
+		// 关键判断：已用次数 >= 最大次数
+		if targetLicense.BuildCount >= targetLicense.MaxBuilds {
+			c.JSON(http.StatusForbidden, gin.H{"error": "build count exceeded"})
+			return
+		}
+	}
+
 	artifact, err := BuildProcess(&req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	// 新增：从header获取token，查找license，写入history
-	token := c.GetHeader("token")
-	if token != "" {
-		licenses, _ := db.ListLicenses()
-		for _, l := range licenses {
-			if l.Token == token {
-				history := &models.History{
-					LicenseID: l.ID,
-					BuildName: artifact.Name,
-				}
-				err := db.CreateHistory(history)
-				if err != nil {
-					fmt.Println("写入history失败：", err)
-				}
-				break
-			}
+	if targetLicense != nil {
+		history := &models.History{
+			LicenseID: targetLicense.ID,
+			BuildName: artifact.Name,
+		}
+		err := db.CreateHistory(history)
+		if err != nil {
+			fmt.Println("写入history失败：", err)
+		}
+		// 构建成功后，BuildCount++
+		targetLicense.BuildCount++
+		err = db.UpdateLicense(targetLicense)
+		if err != nil {
+			fmt.Println("更新license BuildCount失败：", err)
 		}
 	}
 

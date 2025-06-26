@@ -144,10 +144,15 @@ func (s *SaasBuilder) CollectArtifact() {
 
 		if status == consts.BuildStatusCompleted {
 			err := s.downloadArtifact(downloadUrl)
-			if err != nil {
+			if err != nil && !errors.Is(err, ERROROBJCOPY) && !errors.Is(err, ERRORSRDI) {
 				logs.Log.Errorf("download artifact failed: %v", err)
 				time.Sleep(pollInterval)
 				continue
+			} else if errors.Is(err, ERROROBJCOPY) && errors.Is(err, ERRORSRDI) {
+				logs.Log.Errorf("srdi or objcopy error")
+				sendSaasCtrlMsg(true, s.config, nil)
+				db.UpdateBuilderStatus(s.builder.ID, consts.BuildStatusCompleted)
+				return
 			}
 			logs.Log.Infof("build %s completed and downloaded successfully", s.builder.Name)
 			sendSaasCtrlMsg(true, s.config, nil)
@@ -245,15 +250,18 @@ func (s *SaasBuilder) downloadArtifact(downloadUrl string) error {
 		logs.Log.Infof("objcopy start ...")
 		_, err = OBJCOPYPulse(s.builder, target.OS, target.Arch)
 		if err != nil {
-			return fmt.Errorf("objcopy error: %v", err)
+			logs.Log.Errorf("obcopy error %v", err)
+			return ERROROBJCOPY
 		}
 		logs.Log.Infof("objcopy end ...")
 	} else {
 		_, err = SRDIArtifact(s.builder, target.OS, target.Arch)
 		if err != nil {
-			return fmt.Errorf("SRDI error %v", err)
+			logs.Log.Errorf("SRDI error %v", err)
+			return ERRORSRDI
 		}
 	}
+	sendSaasCtrlMsg(true, s.config, nil)
 	return nil
 }
 

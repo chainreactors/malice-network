@@ -74,9 +74,11 @@ func (rpc *Server) StartPipeline(ctx context.Context, req *clientpb.CtrlPipeline
 	if err != nil {
 		return nil, err
 	}
+	pipelineProto := pipelineDB.ToProtobuf()
+	pipelineProto.Target = req.Target
 	job := &core.Job{
 		ID:       core.NextJobID(),
-		Pipeline: pipelineDB.ToProtobuf(),
+		Pipeline: pipelineProto,
 		Name:     req.Name,
 	}
 

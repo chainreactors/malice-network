@@ -1,8 +1,14 @@
 package build
 
 import (
+	"errors"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+)
+
+var (
+	ERRORSRDI    = errors.New("srdi error")
+	ERROROBJCOPY = errors.New("objcopy error")
 )
 
 // Builder

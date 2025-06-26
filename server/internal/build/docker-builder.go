@@ -195,12 +195,16 @@ func (d *DockerBuilder) CollectArtifact() {
 			_, err = OBJCOPYPulse(d.builder, target.OS, target.Arch)
 			if err != nil {
 				sendContainerCtrlMsg(true, d.containerName, d.config, fmt.Errorf("objcopy error: %v", err))
+				logs.Log.Errorf("objcopy error  %v", err)
+				db.UpdateBuilderStatus(d.builder.ID, consts.BuildStatusCompleted)
 			}
 			logs.Log.Infof("objcopy end ...")
 		} else {
 			_, err = SRDIArtifact(d.builder, target.OS, target.Arch)
 			if err != nil {
 				sendContainerCtrlMsg(true, d.containerName, d.config, fmt.Errorf("SRDI error %v", err))
+				logs.Log.Errorf("srid error  %v", err)
+				db.UpdateBuilderStatus(d.builder.ID, consts.BuildStatusCompleted)
 				return
 			}
 		}
