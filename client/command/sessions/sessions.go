@@ -8,9 +8,31 @@ import (
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
 	"io"
-	"strconv"
+	"sort"
 	"strings"
+	"time"
 )
+
+// formatTimeDiff formats time difference in seconds to human readable format
+// If >= 1 hour, shows in hours (e.g., "1h", "2h")
+// If < 1 hour, shows in seconds (e.g., "30s", "120s")
+// Color is applied based on session health status
+func formatTimeDiff(seconds uint64, isAlive bool) string {
+	var timeStr string
+	if seconds >= 3600 { // >= 1 hour
+		hours := seconds / 3600
+		timeStr = fmt.Sprintf("%dh", hours)
+	} else {
+		timeStr = fmt.Sprintf("%ds", seconds)
+	}
+
+	// Apply color based on session health
+	if isAlive {
+		return tui.GreenFg.Render(timeStr)
+	} else {
+		return tui.RedFg.Render(timeStr)
+	}
+}
 
 func SessionsCmd(cmd *cobra.Command, con *repl.Console) error {
 	isAll, err := cmd.Flags().GetBool("all")
@@ -35,57 +57,68 @@ func PrintSessions(sessions map[string]*core.Session, con *repl.Console, isAll b
 	var row table.Row
 	maxLengths := map[string]int{
 		"ID":             8,
-		"Group":          14,
+		"Group":          10,
 		"Pipeline":       14,
-		"Remote Address": 22,
-		"UserName":       18,
+		"Remote Address": 18,
+		"UserName":       12,
 		"System":         16,
 		"Sleep":          9,
-		"Last Msg":       8,
-		"Health":         7,
+		"Last":           5,
+		"CreatedAt":      16,
 	}
-	plus_flag := false
+
+	// Convert map to slice for sorting
+	var sessionList []*core.Session
 	for _, session := range sessions {
+		sessionList = append(sessionList, session)
+	}
+
+	// Sort by CreatedAt timestamp (descending - newest first)
+	sort.Slice(sessionList, func(i, j int) bool {
+		return sessionList[i].CreatedAt < sessionList[j].CreatedAt
+	})
+
+	plus_flag := false
+	for _, session := range sessionList {
 		updateMaxLength(maxLengths, "ID", len(session.SessionId[:8]))
 		updateMaxLength(maxLengths, "Group", len(fmt.Sprintf("%s/%s", session.GroupName, session.Note)))
 		updateMaxLength(maxLengths, "Pipeline", len(session.PipelineId))
-		//updateMaxLength(&maxLengths, "Remote Address", len(session.Target))
+		updateMaxLength(maxLengths, "Remote Address", len(session.Target))
 		updateMaxLength(maxLengths, "UserName", len(fmt.Sprintf("%s/%s", session.Os.Hostname, session.Os.Username)))
 		updateMaxLength(maxLengths, "System", len(fmt.Sprintf("%s/%s", session.Os.Name, session.Os.Arch)))
 		//updateMaxLength(&maxLengths, "Sleep", len(fmt.Sprintf("%d %.2f", session.Timer.Interval, session.Timer.Jitter)))
 		//updateMaxLength(&maxLengths, "Last Message", len(strconv.FormatUint(uint64(session.Timediff), 10)+"s"))
-		//updateMaxLength(&maxLengths, "Health", len(pterm.FgGreen.Sprint("[ALIVE]"))) // Assuming ALIVE is longer than DEAD
-		var SessionHealth string
 		if !session.IsAlive {
 			if !isAll {
 				continue
 			}
-			SessionHealth = tui.RedFg.Render("DEAD")
-		} else {
-			SessionHealth = tui.GreenFg.Render("ALIVE")
 		}
 		var computer string
 		if session.IsPrivilege {
 			computer = fmt.Sprintf("%s/%s *", session.Os.Hostname, session.Os.Username)
-			if !plus_flag {
-				maxLengths["UserName"] += 2
+			if !plus_flag && len(computer) > maxLengths["UserName"] {
+				maxLengths["UserName"] += len(computer) - maxLengths["UserName"]
 				plus_flag = true
 			}
 		} else {
 			computer = fmt.Sprintf("%s/%s", session.Os.Hostname, session.Os.Username)
 		}
+		println(session.CreatedAt)
+		// Format creation time
+		createdTime := time.Unix(session.CreatedAt, 0)
+		createdDisplay := createdTime.Format("2006-01-02 15:04")
 
 		row = table.NewRow(
 			table.RowData{
-				"ID":            session.SessionId[:8],
-				"Group":         fmt.Sprintf("%s/%s", session.GroupName, session.Note),
-				"Pipeline":      session.PipelineId,
-				"RemoteAddress": session.Target,
-				"UserName":      computer,
-				"System":        fmt.Sprintf("%s/%s", session.Os.Name, session.Os.Arch),
-				"Sleep":         fmt.Sprintf("%d  %.2f", session.Timer.Interval, session.Timer.Jitter),
-				"Last Msg":      strconv.FormatUint(uint64(session.Timediff), 10) + "s",
-				"Health":        SessionHealth,
+				"ID":             session.SessionId[:8],
+				"Group":          fmt.Sprintf("%s/%s", session.GroupName, session.Note),
+				"Pipeline":       session.PipelineId,
+				"Remote Address": session.Target,
+				"UserName":       computer,
+				"System":         fmt.Sprintf("%s/%s", session.Os.Name, session.Os.Arch),
+				"Sleep":          fmt.Sprintf("%d/%.2f", session.Timer.Interval, session.Timer.Jitter),
+				"Last":           formatTimeDiff(uint64(session.Timediff), session.IsAlive),
+				"CreatedAt":      createdDisplay,
 			})
 		rowEntries = append(rowEntries, row)
 	}
@@ -94,12 +127,12 @@ func PrintSessions(sessions map[string]*core.Session, con *repl.Console, isAll b
 		table.NewColumn("ID", "ID", maxLengths["ID"]),
 		table.NewColumn("Group", "Group", maxLengths["Group"]),
 		table.NewColumn("Pipeline", "Pipeline", maxLengths["Pipeline"]),
-		table.NewColumn("RemoteAddress", "RemoteAddress", maxLengths["Remote Address"]),
+		table.NewColumn("Remote Address", "Remote Address", maxLengths["Remote Address"]),
 		table.NewColumn("UserName", "UserName", maxLengths["UserName"]),
 		table.NewColumn("System", "System", maxLengths["System"]),
 		table.NewColumn("Sleep", "Sleep", maxLengths["Sleep"]),
-		table.NewColumn("Last Msg", "Last Msg", maxLengths["Last Msg"]),
-		table.NewColumn("Health", "Health", maxLengths["Health"]),
+		table.NewColumn("Last", "Last", maxLengths["Last"]),
+		table.NewColumn("CreatedAt", "CreatedAt", maxLengths["CreatedAt"]),
 	}, false)
 	var err error
 	tableModel.SetRows(rowEntries)

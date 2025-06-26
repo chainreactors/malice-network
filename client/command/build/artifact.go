@@ -9,6 +9,7 @@ import (
 
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
@@ -43,20 +44,22 @@ func PrintArtifacts(builders *clientpb.Builders, con *repl.Console) error {
 
 	defaultLengths := map[string]int{
 		"ID":       6,
+		"Name":     20,
 		"Pipeline": 16,
 		"Target":   22,
 		"Type":     8,
 		"Stager":   10,
-		"Source":   8,
-		"Modules":  8,
-		"Time":     20,
-		"Profile":  20,
-		"Status":   10,
+		"Source":   7,
+		//"Modules":   8,
+		"CreatedAt": 20,
+		"Profile":   18,
+		"Status":    10,
 	}
 
 	for _, builder := range builders.Builders {
-		formattedTime := time.Unix(builder.Time, 0).Format("2006-01-02 15:04:05")
+		formattedTime := time.Unix(builder.CreatedAt, 0).Format("2006-01-02 15:04:05")
 		updateMaxLength(&defaultLengths, "ID", len(strconv.Itoa(int(builder.Id))))
+		updateMaxLength(&defaultLengths, "Name", len(builder.Name))
 		updateMaxLength(&defaultLengths, "Target", len(builder.Target))
 		// updateMaxLength(&defaultLengths, "Type", len(builder.Type))
 		// updateMaxLength(&defaultLengths, "Source", len(builder.Resource))
@@ -64,18 +67,31 @@ func PrintArtifacts(builders *clientpb.Builders, con *repl.Console) error {
 		updateMaxLength(&defaultLengths, "Profile", len(builder.ProfileName))
 		updateMaxLength(&defaultLengths, "Pipeline", len(builder.Pipeline))
 		// updateMaxLength(&defaultLengths, "Time", len(formattedTime))
+		pipelineDisplay := builder.Pipeline
+		if len(pipelineDisplay) > 16 {
+			pipelineDisplay = pipelineDisplay[:13] + "..."
+		}
+		nameDisplay := builder.Name
+		if len(nameDisplay) > 20 {
+			nameDisplay = nameDisplay[:17] + "..."
+		}
+		profileDisplay := builder.ProfileName
+		if len(profileDisplay) > 18 {
+			profileDisplay = profileDisplay[:15] + "..."
+		}
 		row = table.NewRow(
 			table.RowData{
 				"ID":     builder.Id,
-				"Target": builder.Target,
+				"Name":   nameDisplay,
 				"Type":   builder.Type,
+				"Target": builder.Target,
 				"Source": builder.Resource,
 				//"Stager":   builder.Stage,
-				"Modules":  builder.Modules,
-				"Profile":  builder.ProfileName,
-				"Pipeline": builder.Pipeline,
-				"Time":     formattedTime,
-				"Status":   builder.Status,
+				//"Modules":   builder.Modules,
+				"Profile":   profileDisplay,
+				"Pipeline":  pipelineDisplay,
+				"CreatedAt": formattedTime,
+				"Status":    builder.Status,
 			})
 
 		rowEntries = append(rowEntries, row)
@@ -83,15 +99,16 @@ func PrintArtifacts(builders *clientpb.Builders, con *repl.Console) error {
 
 	tableModel := tui.NewTable([]table.Column{
 		table.NewColumn("ID", "ID", defaultLengths["ID"]),
+		table.NewColumn("Name", "Name", defaultLengths["Name"]),
+		table.NewColumn("Type", "Type", defaultLengths["Type"]),
 		table.NewColumn("Pipeline", "Pipeline", defaultLengths["Pipeline"]),
 		table.NewColumn("Target", "Target", defaultLengths["Target"]),
-		table.NewColumn("Type", "Type", defaultLengths["Type"]),
 		table.NewColumn("Source", "Source", defaultLengths["Source"]),
 		//table.NewColumn("Stager", "Stager", 10),
-		table.NewColumn("Modules", "Modules", defaultLengths["Modules"]),
-		table.NewColumn("Time", "Time", defaultLengths["Time"]),
+		//table.NewColumn("Modules", "Modules", defaultLengths["Modules"]),
 		table.NewColumn("Profile", "Profile", defaultLengths["Profile"]),
 		table.NewColumn("Status", "Status", defaultLengths["Status"]),
+		table.NewColumn("CreatedAt", "CreatedAt", defaultLengths["CreatedAt"]),
 	}, false)
 	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)
@@ -107,6 +124,14 @@ func PrintArtifacts(builders *clientpb.Builders, con *repl.Console) error {
 		con.Log.Error("No row selected\n")
 		return nil
 	}
+
+	// Check if build status is completed before downloading
+	status := selectRow.Data["Status"].(string)
+	if status != consts.BuildStatusCompleted {
+		con.Log.Errorf("Cannot download artifact: '%s' is not completed\n", selectRow.Data["Name"].(string))
+		return nil
+	}
+
 	builder, err := DownloadArtifact(con, selectRow.Data["ID"].(uint32), false)
 	if err != nil {
 		return err

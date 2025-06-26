@@ -46,7 +46,7 @@ func FindAliveSessions() ([]*models.Session, error) {
         WHERE last_checkin < strftime('%s', 'now') - (
             CAST(COALESCE(
                 JSON_EXTRACT(data, '$.interval'),
-                '30'  -- 默认值，如果 interval 不存在
+                '30'  -- default value if interval doesn't exist
             ) AS INTEGER) * 2
         )
         AND is_removed = false
@@ -64,7 +64,7 @@ func FindAliveSessions() ([]*models.Session, error) {
         WHERE last_checkin > strftime('%s', 'now') - (
             CAST(COALESCE(
                 JSON_EXTRACT(data, '$.interval'),
-                '30'  -- 默认值，如果 interval 不存在
+                '30'  -- default value if interval doesn't exist
             ) AS INTEGER) * 2
         ) 
         AND is_removed = false
@@ -627,11 +627,39 @@ func RemoveContent(id string) error {
 	return err
 }
 
+// validateProfileName validates the profile name
+func validateProfileName(name string) error {
+	if name == "" {
+		return fmt.Errorf("profile name cannot be empty")
+	}
+	if len(name) > 100 {
+		return fmt.Errorf("profile name too long (max 100 characters)")
+	}
+	return nil
+}
+
 // generator
 func NewProfile(profile *clientpb.Profile) error {
+	// Validate input
+	if err := validateProfileName(profile.Name); err != nil {
+		return err
+	}
+
 	if profile.Content == nil {
 		profile.Content = types.DefaultProfile
 	}
+
+	// Check if profile name already exists
+	var existingProfile models.Profile
+	result := Session().Where("name = ?", profile.Name).First(&existingProfile)
+	if result.Error == nil {
+		// Found existing profile with same name, return friendly error message
+		return fmt.Errorf("profile '%s' already exists, please use a different name", profile.Name)
+	} else if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		// If it's not "record not found" error, it's another database error
+		return result.Error
+	}
+
 	model := &models.Profile{
 		Name: profile.Name,
 		Type: profile.Type,
@@ -655,7 +683,7 @@ func NewProfile(profile *clientpb.Profile) error {
 	return Session().Create(model).Error
 }
 
-// recover profile from database
+// GetProfile recovers profile from database
 func GetProfile(name string) (*types.ProfileConfig, error) {
 	var profileModel *models.Profile
 
@@ -711,14 +739,24 @@ func GetProfile(name string) (*types.ProfileConfig, error) {
 
 func GetProfiles() ([]*models.Profile, error) {
 	var profiles []*models.Profile
-	result := Session().Find(&profiles)
+	result := Session().Preload("Pipeline").Preload("PulsePipeline").Order("created_at ASC").Find(&profiles)
 	return profiles, result.Error
 }
 
 func DeleteProfileByName(profileName string) error {
+	// Check if profile exists first
+	var existingProfile models.Profile
+	result := Session().Where("name = ?", profileName).First(&existingProfile)
+	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		return fmt.Errorf("profile '%s' not found", profileName)
+	} else if result.Error != nil {
+		return result.Error
+	}
+
+	// Execute deletion
 	err := Session().Where("name = ?", profileName).Delete(&models.Profile{}).Error
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to delete profile '%s': %v", profileName, err)
 	}
 	return nil
 }

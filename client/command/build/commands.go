@@ -108,7 +108,7 @@ profile new --name my_profile --pipeline default_tcp
 		},
 		Example: `
 ~~~
-profile delete --name profile_name
+profile delete profile_name
 ~~~
 `,
 	}

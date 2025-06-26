@@ -8,6 +8,7 @@ import (
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
 	"os"
+	"time"
 )
 
 func ProfileShowCmd(cmd *cobra.Command, con *repl.Console) error {
@@ -16,32 +17,46 @@ func ProfileShowCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 	if len(resp.Profiles) == 0 {
-		con.Log.Info("No profiles")
+		con.Log.Info("No profiles found")
 		return nil
 	}
-	var rowEntries []table.Row
-	var row table.Row
+
 	tableModel := tui.NewTable([]table.Column{
 		table.NewColumn("Name", "Name", 20),
-		table.NewColumn("Target", "Target", 15),
-		table.NewColumn("Type", "Type", 15),
+		table.NewColumn("Type", "Type", 10),
+		table.NewColumn("Pipeline", "Pipeline", 16),
+		table.NewColumn("Pulse Pipeline", "Pulse Pipeline", 16),
+		table.NewColumn("Modules", "Modules", 8),
 		table.NewColumn("Obfuscate", "Obfuscate", 10),
-		table.NewColumn("Basic Pipeline", "Basic Pipeline", 15),
-		table.NewColumn("Pulse Pipeline", "Pulse Pipeline", 15),
+		table.NewColumn("CreatedAt", "CreatedAt", 16),
 	}, true)
 
+	var rowEntries []table.Row
 	for _, p := range resp.Profiles {
-		row = table.NewRow(
-			table.RowData{
-				"Name":           p.Name,
-				"Target":         p.Target,
-				"Type":           p.Type,
-				"Obfuscate":      p.Obfuscate,
-				"Pipeline":       p.PipelineId,
-				"Pulse Pipeline": p.PulsePipelineId,
-			})
+		modulesDisplay := p.Modules
+		// Truncate long module lists for better display
+		if len(modulesDisplay) > 20 {
+			modulesDisplay = modulesDisplay[:17] + "..."
+		}
+		// Format creation time
+		createdDisplay := "-"
+		if p.CreatedAt > 0 {
+			createdTime := time.Unix(p.CreatedAt, 0)
+			createdDisplay = createdTime.Format("2006-01-02 15:04")
+		}
+
+		row := table.NewRow(table.RowData{
+			"Name":           p.Name,
+			"Type":           p.Type,
+			"Pipeline":       p.PipelineId,
+			"Pulse Pipeline": p.PulsePipelineId,
+			"Modules":        modulesDisplay,
+			"Obfuscate":      p.Obfuscate,
+			"CreatedAt":      createdDisplay,
+		})
 		rowEntries = append(rowEntries, row)
 	}
+
 	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)
 	con.Log.Console(tableModel.View())

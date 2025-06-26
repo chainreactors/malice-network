@@ -320,7 +320,7 @@ func (lns *listener) autoBuild(pipeline *clientpb.Pipeline) error {
 		}
 
 		// 创建构建配置文件
-		profileName := codenames.GetCodename()
+		profileName := codenames.GetCodenameWithMaxLength(16)
 		if pipeline.Parser == consts.ImplantPulse {
 			_, err = lns.Rpc.NewProfile(lns.Context(), &clientpb.Profile{
 				Name:            profileName,

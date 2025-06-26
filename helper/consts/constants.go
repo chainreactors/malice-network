@@ -97,8 +97,8 @@ const (
 	BuildStatusWaiting      = "waiting"
 	BuildStatusError        = "error"
 	BuildStatusFailure      = "failure"
-	BuildStatusNetworkError = "network_error"
+	BuildStatusNetworkError = "networkerr"
 	BuildStatusCompleted    = "completed"
-	BuildStatusDBError      = "db_error"
-	BuildStatusSRDIError    = "srdi_error"
+	BuildStatusDBError      = "db_err"
+	BuildStatusSRDIError    = "srdi_err"
 )

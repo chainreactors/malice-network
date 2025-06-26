@@ -48,19 +48,19 @@ func (b *Builder) ToArtifact(bin []byte) *clientpb.Artifact {
 		pipeline = b.Profile.PipelineID
 	}
 	return &clientpb.Artifact{
-		Id:       b.ID,
-		Bin:      bin,
-		Name:     b.Name,
-		Target:   b.Target,
-		Type:     b.Type,
-		Stage:    b.Stager,
-		Platform: b.Os,
-		Arch:     b.Arch,
-		IsSrdi:   b.IsSRDI,
-		Profile:  b.ProfileName,
-		Pipeline: pipeline,
-		Time:     b.CreatedAt.Unix(),
-		Status:   b.Status,
+		Id:        b.ID,
+		Bin:       bin,
+		Name:      b.Name,
+		Target:    b.Target,
+		Type:      b.Type,
+		Stage:     b.Stager,
+		Platform:  b.Os,
+		Arch:      b.Arch,
+		IsSrdi:    b.IsSRDI,
+		Profile:   b.ProfileName,
+		Pipeline:  pipeline,
+		CreatedAt: b.CreatedAt.Unix(),
+		Status:    b.Status,
 	}
 }
 
@@ -83,7 +83,7 @@ func (b *Builder) ToProtobuf() *clientpb.Builder {
 		IsSrdi:      b.IsSRDI,
 		ProfileName: b.ProfileName,
 		Pipeline:    pipeline,
-		Time:        b.CreatedAt.Unix(),
+		CreatedAt:   b.CreatedAt.Unix(),
 		Resource:    b.Source,
 		Status:      b.Status,
 	}

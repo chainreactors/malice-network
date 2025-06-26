@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
@@ -30,6 +31,7 @@ func (rpc *Server) GetSessions(ctx context.Context, req *clientpb.SessionRequest
 			Sessions: make([]*clientpb.Session, 0),
 		}
 		for _, session := range core.Sessions.All() {
+			fmt.Printf("created at %d\n", session.CreatedAt.Unix())
 			sessions.Sessions = append(sessions.Sessions, session.ToProtobuf())
 		}
 	}

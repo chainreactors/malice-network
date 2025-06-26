@@ -66,6 +66,7 @@ func NewSessions() *sessions {
 }
 
 func RegisterSession(req *clientpb.RegisterSession) (*Session, error) {
+	current_time := time.Now().Unix()
 	var err error
 	contextDir := filepath.Join(configs.ContextPath, req.SessionId)
 	err = os.MkdirAll(contextDir, os.ModePerm)
@@ -92,6 +93,7 @@ func RegisterSession(req *clientpb.RegisterSession) (*Session, error) {
 		ListenerID:     req.ListenerId,
 		Target:         req.Target,
 		Tasks:          NewTasks(),
+		CreatedAt:      time.Unix(current_time, 0),
 		SessionContext: types.NewSessionContext(req),
 		Taskseq:        1,
 		Cache:          cache,
@@ -133,6 +135,7 @@ func RecoverSession(sess *models.Session) (*Session, error) {
 		Target:         sess.Target,
 		Initialized:    sess.Initialized,
 		LastCheckin:    sess.LastCheckin,
+		CreatedAt:      sess.CreatedAt,
 		Tasks:          NewTasks(),
 		SessionContext: sess.Data,
 		Taskseq:        1,
@@ -183,6 +186,7 @@ type Session struct {
 	Target      string
 	Initialized bool
 	LastCheckin int64
+	CreatedAt   time.Time
 	Tasks       *Tasks // task manager
 	*types.SessionContext
 
@@ -306,6 +310,7 @@ func (s *Session) ToProtobuf() *clientpb.Session {
 		Locate:      s.SessionContext.Locale,
 		Proxy:       s.SessionContext.ProxyURL,
 		Timer:       &implantpb.Timer{Interval: s.Interval, Jitter: s.Jitter},
+		CreatedAt:   s.CreatedAt.Unix(),
 		Tasks:       s.Tasks.ToProtobuf(),
 		Modules:     s.Modules,
 		Addons:      s.Addons,

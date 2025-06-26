@@ -83,6 +83,7 @@ func (p *Profile) ToProtobuf() *clientpb.Profile {
 		PulsePipelineId: p.PulsePipelineID,
 		Content:         p.Raw,
 		Params:          p.ParamsData,
+		CreatedAt:       p.CreatedAt.Unix(),
 	}
 }
 
