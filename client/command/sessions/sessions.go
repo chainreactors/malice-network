@@ -103,7 +103,6 @@ func PrintSessions(sessions map[string]*core.Session, con *repl.Console, isAll b
 		} else {
 			computer = fmt.Sprintf("%s/%s", session.Os.Hostname, session.Os.Username)
 		}
-		println(session.CreatedAt)
 		// Format creation time
 		createdTime := time.Unix(session.CreatedAt, 0)
 		createdDisplay := createdTime.Format("2006-01-02 15:04")
