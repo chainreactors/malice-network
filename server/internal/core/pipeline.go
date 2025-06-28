@@ -6,6 +6,7 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/stream"
 	"io"
+	"net"
 )
 
 type Pipeline interface {
@@ -42,6 +43,7 @@ func FromProtobuf(pipeline *clientpb.Pipeline) *PipelineConfig {
 		Tls: &configs.CertConfig{
 			Cert:   pipeline.GetTls().Cert,
 			Key:    pipeline.GetTls().Key,
+			CA:     pipeline.GetTls().Ca,
 			Enable: pipeline.GetTls().Enable,
 		},
 		Encryption: &configs.EncryptionConfig{
@@ -64,7 +66,12 @@ func (p *PipelineConfig) WrapConn(conn io.ReadWriteCloser) (*peek.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	conn = cryptostream.NewCryptoRWC(conn, cry)
+
+	if _, ok := conn.(net.Conn); ok {
+		conn = cryptostream.NewCryptoConn(conn.(net.Conn), cry)
+	} else {
+		conn = cryptostream.NewCryptoRWC(conn, cry)
+	}
 	return peek.WrapPeekConn(conn), nil
 }
 

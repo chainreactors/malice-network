@@ -8,7 +8,7 @@ require (
 	github.com/chainreactors/logs v0.0.0-20250312104344-9f30fa69d3c9
 	github.com/chainreactors/mals v0.0.0-20250508145621-0314ec3ee14a
 	github.com/chainreactors/parsers v0.0.0-20250225073555-ab576124d61f
-	github.com/chainreactors/rem v0.2.3
+	github.com/chainreactors/rem v0.2.4
 	github.com/chainreactors/tui v0.0.0-20250624091826-2898a6b17022
 	github.com/chainreactors/utils v0.0.0-20241209140746-65867d2f78b2
 	github.com/charmbracelet/bubbletea v1.3.4
@@ -172,7 +172,7 @@ require (
 
 replace (
 	github.com/chainreactors/proxyclient => github.com/chainreactors/proxyclient v1.0.3
-	github.com/chainreactors/rem => github.com/chainreactors/rem-community v0.2.3
+	github.com/chainreactors/rem => github.com/chainreactors/rem-community v0.2.4
 	github.com/reeflective/console => ./external/console
 	github.com/reeflective/readline => ./external/readline
 	github.com/wabzsy/gonut => ./external/gonut
