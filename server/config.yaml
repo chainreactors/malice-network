@@ -18,6 +18,10 @@ server:
     workflow: generate.yml
     owner:
     token:
+  saas:
+    host: build.chainreactors.red
+    port: 17373
+    token:
 
 listeners:
   name: listener
@@ -33,7 +37,7 @@ listeners:
       enable: true
       auto_build:
         target:
-          - x86_64-unknown-linux-musl
+#          - x86_64-unknown-linux-musl
           - x86_64-pc-windows-gnu
       tls:
         enable: false
@@ -45,9 +49,6 @@ listeners:
         OU: "Persistent Housework, Limited"
         ST: "State of Texas"
         validity: "365"
-        cert_file: ""
-        key_file: ""
-        ca_file: ""
       encryption:
         enable: true
         type: aes
@@ -64,7 +65,7 @@ listeners:
       enable: true
       encryption:
         enable: true
-        type: xor
+        type: raw
         key: maliceofinternal
   http:
     - name: http-malefic
@@ -73,7 +74,7 @@ listeners:
       port: 8080
       parser: malefic
       tls:
-        enable: false
+        enable: true
         name: default
         CN: "test"
         O: "Sharp Depth"
@@ -82,16 +83,13 @@ listeners:
         OU: "Persistent Housework, Limited"
         ST: "State of Texas"
         validity: "365"
-        cert_file: ""
-        key_file: ""
-        ca_file: ""
       encryption:
         enable: true
         type: aes
         key: maliceofinternal
       auto_build:
         target:
-          - x86_64-unknown-linux-musl
+#          - x86_64-unknown-linux-musl
           - x86_64-pc-windows-gnu
       error_page: ""
     - name: http-pulse

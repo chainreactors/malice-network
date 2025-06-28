@@ -20,7 +20,7 @@ func (rpc *Server) Build(ctx context.Context, req *clientpb.BuildConfig) (*clien
 			artifactID = req.ArtifactId
 		} else {
 			profile, _ := db.GetProfile(req.ProfileName)
-			yamlID := profile.Pulse.Extras["flags"].(map[string]interface{})["artifact_id"].(int)
+			yamlID := profile.Pulse.Flags.ArtifactID
 			if uint32(yamlID) != 0 {
 				artifactID = uint32(yamlID)
 			} else {

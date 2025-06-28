@@ -17,8 +17,8 @@ func (rpc *Server) RegisterPipeline(ctx context.Context, req *clientpb.Pipeline)
 	}
 	req.Ip = lns.IP
 	pipelineModel := models.FromPipelinePb(req)
-	if pipelineModel.Tls.Enable && pipelineModel.Tls.Cert == "" && pipelineModel.Tls.Key == "" {
-		pipelineModel.Tls.Cert, pipelineModel.Tls.Key, err = certutils.GenerateTlsCert(pipelineModel.Name, pipelineModel.ListenerId)
+	if pipelineModel.Tls.Enable && pipelineModel.Tls.Cert != nil {
+		pipelineModel.Tls, err = certutils.GenerateTLS(pipelineModel.Name, pipelineModel.ListenerId)
 		if err != nil {
 			return nil, err
 		}

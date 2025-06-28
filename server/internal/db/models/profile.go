@@ -20,8 +20,8 @@ type Profile struct {
 	Type string
 
 	Modules string // default modules, comma split, e.g. "execute_exe,execute_dll"
-	CA      string // ca file , ca file content
-	Raw     []byte
+
+	Raw []byte
 	// params
 	Params     *types.ProfileParams `gorm:"-"`             // 使用 interface{} 使其更灵活
 	ParamsData string               `gorm:"column:params"` // 改用更简洁的数据库字段名
@@ -78,7 +78,6 @@ func (p *Profile) ToProtobuf() *clientpb.Profile {
 		Name:            p.Name,
 		Type:            p.Type,
 		Modules:         p.Modules,
-		Ca:              p.CA,
 		PipelineId:      p.PipelineID,
 		PulsePipelineId: p.PulsePipelineID,
 		Content:         p.Raw,

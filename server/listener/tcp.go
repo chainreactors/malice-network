@@ -71,7 +71,7 @@ func (pipeline *TCPPipeline) ToProtobuf() *clientpb.Pipeline {
 				Host:       pipeline.Host,
 			},
 		},
-		Tls:        pipeline.Tls.ToProtobuf(),
+		Tls:        pipeline.Cert.ToProtobuf(),
 		Encryption: pipeline.Encryption.ToProtobuf(),
 	}
 	return p
@@ -122,7 +122,7 @@ func (pipeline *TCPPipeline) Start() error {
 		return err
 	}
 	logs.Log.Infof("[pipeline] starting TCP pipeline on %s:%d, parser: %s, cryptor: %s, tls: %t",
-		pipeline.Host, pipeline.Port, pipeline.Parser, pipeline.Encryption.Type, pipeline.Tls.Enable)
+		pipeline.Host, pipeline.Port, pipeline.Parser, pipeline.Encryption.Type, pipeline.Cert.Enable)
 	pipeline.Enable = true
 	return nil
 }
@@ -132,8 +132,8 @@ func (pipeline *TCPPipeline) handler() (net.Listener, error) {
 	if err != nil {
 		return nil, err
 	}
-	if pipeline.Tls != nil && pipeline.Tls.Enable {
-		ln, err = certutils.WrapWithTls(ln, pipeline.Tls)
+	if pipeline.Cert != nil && pipeline.Cert.Enable {
+		ln, err = certutils.WrapWithTls(ln, pipeline.Cert)
 		if err != nil {
 			return nil, err
 		}

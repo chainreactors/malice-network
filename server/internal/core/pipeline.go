@@ -2,6 +2,7 @@ package core
 
 import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/helper/utils/peek"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/stream"
@@ -40,11 +41,9 @@ func FromProtobuf(pipeline *clientpb.Pipeline) *PipelineConfig {
 	return &PipelineConfig{
 		ListenerID: pipeline.ListenerId,
 		Parser:     pipeline.Parser,
-		Tls: &configs.CertConfig{
-			Cert:   pipeline.GetTls().Cert,
-			Key:    pipeline.GetTls().Key,
-			CA:     pipeline.GetTls().Ca,
-			Enable: pipeline.GetTls().Enable,
+		Cert: &configs.CertConfig{
+			CertConfig: types.FromCert(pipeline.GetTls().Cert),
+			Enable:     pipeline.GetTls().Enable,
 		},
 		Encryption: &configs.EncryptionConfig{
 			Enable: pipeline.GetEncryption().Enable,
@@ -57,7 +56,7 @@ func FromProtobuf(pipeline *clientpb.Pipeline) *PipelineConfig {
 type PipelineConfig struct {
 	ListenerID string
 	Parser     string
-	Tls        *configs.CertConfig
+	Cert       *configs.CertConfig
 	Encryption *configs.EncryptionConfig
 }
 

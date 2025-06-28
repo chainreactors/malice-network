@@ -104,7 +104,7 @@ func BuildProcess(req *clientpb.BuildConfig) (*clientpb.Builder, error) {
 		if req.ArtifactId != 0 {
 			artifactID = req.ArtifactId
 		} else {
-			yamlID := profile.Pulse.Extras["flags"].(map[string]interface{})["artifact_id"].(int)
+			yamlID := profile.Pulse.Flags.ArtifactID
 			if uint32(yamlID) != 0 {
 				artifactID = uint32(yamlID)
 			} else {

@@ -217,16 +217,21 @@ func (content *WebContent) ToProtobuf() (*clientpb.WebContent, error) {
 }
 
 type CertConfig struct {
-	Cert   string `yaml:"cert"`
-	CA     string `yaml:"ca"`
-	Key    string `yaml:"key"`
-	Enable bool   `yaml:"enable"`
+	*types.CertConfig
+	Enable bool `yaml:"enable"`
 }
 
 func (t *CertConfig) ToProtobuf() *clientpb.TLS {
+	if t.CertConfig == nil {
+		return &clientpb.TLS{
+			Enable: false,
+		}
+	}
 	return &clientpb.TLS{
-		Cert:   t.Cert,
-		Key:    t.Key,
+		Cert: &clientpb.Cert{
+			Cert: t.Cert,
+			Key:  t.Key,
+		},
 		Enable: t.Enable,
 	}
 }
@@ -251,12 +256,10 @@ func (t *TlsConfig) ReadCert() (*CertConfig, error) {
 		return &CertConfig{Enable: false}, nil
 	}
 	var err error
-	if t.CertFile == "" || t.KeyFile == "" || t.CAFile == "" {
+	if t.CertFile == "" || t.KeyFile == "" {
 		return &CertConfig{
-			Cert:   "",
-			Key:    "",
-			CA:     "",
-			Enable: t.Enable,
+			CertConfig: &types.CertConfig{},
+			Enable:     t.Enable,
 		}, nil
 	}
 	cert, err := os.ReadFile(t.CertFile)
@@ -267,14 +270,11 @@ func (t *TlsConfig) ReadCert() (*CertConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	ca, err := os.ReadFile(t.CAFile)
-	if err != nil {
-		return nil, err
-	}
 	return &CertConfig{
-		Cert:   string(cert),
-		Key:    string(key),
-		CA:     string(ca),
+		CertConfig: &types.CertConfig{
+			Cert: string(cert),
+			Key:  string(key),
+		},
 		Enable: t.Enable,
 	}, nil
 }

@@ -59,8 +59,8 @@ func (w *Website) ID() string {
 func (w *Website) Start() error {
 	mux := http.NewServeMux()
 	mux.HandleFunc(w.rootPath, w.websiteContentHandler)
-	if w.Tls != nil && w.Tls.Enable {
-		tlsConfig, err := certutils.WrapToTlsConfig(w.Tls)
+	if w.Cert != nil && w.Cert.Enable {
+		tlsConfig, err := certutils.WrapToTlsConfig(w.Cert)
 		if err != nil {
 			return err
 		}
@@ -116,7 +116,7 @@ func (w *Website) ToProtobuf() *clientpb.Pipeline {
 				Root:       w.rootPath,
 			},
 		},
-		Tls: w.Tls.ToProtobuf(),
+		Tls: w.Cert.ToProtobuf(),
 	}
 	return p
 }

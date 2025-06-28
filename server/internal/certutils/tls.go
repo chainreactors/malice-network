@@ -2,9 +2,9 @@ package certutils
 
 import (
 	"crypto/tls"
+	"github.com/chainreactors/malice-network/helper/types"
 	"net"
 
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 )
 
@@ -29,7 +29,7 @@ func WrapToTlsConfig(config *configs.CertConfig) (*tls.Config, error) {
 	return TlsConfig(pair), nil
 }
 
-func GetTlsConfig(tlsConfig *clientpb.TLS) (*tls.Config, error) {
+func GetTlsConfig(tlsConfig *types.CertConfig) (*tls.Config, error) {
 	cert, err := tls.X509KeyPair([]byte(tlsConfig.Cert), []byte(tlsConfig.Key))
 	if err != nil {
 		return nil, err

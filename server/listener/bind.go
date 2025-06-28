@@ -49,7 +49,7 @@ func (pipeline *BindPipeline) ToProtobuf() *clientpb.Pipeline {
 				ListenerId: pipeline.ListenerID,
 			},
 		},
-		Tls:        pipeline.Tls.ToProtobuf(),
+		Tls:        pipeline.Cert.ToProtobuf(),
 		Encryption: pipeline.Encryption.ToProtobuf(),
 	}
 }

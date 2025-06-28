@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/certs"
+	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/mtls"
 	"github.com/chainreactors/malice-network/server/internal/configs"
@@ -215,22 +216,32 @@ func GenerateListenerCert(host, name string, port int) (*mtls.ClientConfig, erro
 	}, nil
 }
 
-func GenerateTlsCert(name, listenerID string) (string, string, error) {
-	cert, key, err := db.FindPipelineCert(name, listenerID)
+func GenerateTLS(name, listenerID string) (*types.TlsConfig, error) {
+	tlsConfig, err := db.FindPipelineCert(name, listenerID)
 	if err != nil && !errors.Is(err, db.ErrRecordNotFound) {
-		return "", "", err
+		return nil, err
 	}
-	if cert != "" && key != "" {
-		return cert, key, nil
+	if !tlsConfig.Empty() {
+		return tlsConfig, nil
 	}
 	caCertByte, caKeyByte, err := certs.GenerateCACert(name)
 	if err != nil {
-		return "", "", err
+		return nil, err
 	}
 	caCert, caKey, err := ParseCertificateAuthority(caCertByte, caKeyByte)
 	if err != nil {
-		return "", "", err
+		return nil, err
 	}
 	certByte, keyByte, err := certs.GenerateChildCert(name, true, caCert, caKey)
-	return string(certByte), string(keyByte), nil
+	return &types.TlsConfig{
+		Cert: &types.CertConfig{
+			Cert: string(certByte),
+			Key:  string(keyByte),
+		},
+		CA: &types.CertConfig{
+			Cert: string(caCertByte),
+			Key:  string(caKeyByte),
+		},
+		Enable: true,
+	}, err
 }

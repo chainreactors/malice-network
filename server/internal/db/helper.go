@@ -295,8 +295,8 @@ func DeletePipeline(name string) error {
 	return result.Error
 }
 
-func ListPipelines(listenerID string) ([]models.Pipeline, error) {
-	var pipelines []models.Pipeline
+func ListPipelines(listenerID string) ([]*models.Pipeline, error) {
+	var pipelines []*models.Pipeline
 	var err error
 	if listenerID == "" {
 		err = Session().Where(" type != ?", consts.WebsitePipeline).Find(&pipelines).Error
@@ -355,17 +355,17 @@ func DisablePipeline(pid string) error {
 	return result.Error
 }
 
-func FindPipelineCert(pipelineName, listenerID string) (string, string, error) {
-	var pipeline models.Pipeline
+func FindPipelineCert(pipelineName, listenerID string) (*types.TlsConfig, error) {
+	var pipeline *models.Pipeline
 	result := Session().Where("name = ? AND listener_id = ?", pipelineName, listenerID).First(&pipeline)
 	if result.Error != nil {
-		return "", "", result.Error
+		return nil, result.Error
 	}
-	return pipeline.Tls.Cert, pipeline.Tls.Key, nil
+	return pipeline.Tls, nil
 }
 
-func ListListeners() ([]models.Operator, error) {
-	var listeners []models.Operator
+func ListListeners() ([]*models.Operator, error) {
+	var listeners []*models.Operator
 	err := Session().Find(&listeners).Where("type = ?", mtls.Listener).Error
 	return listeners, err
 }
@@ -665,7 +665,6 @@ func NewProfile(profile *clientpb.Profile) error {
 		Type: profile.Type,
 		//Obfuscate:  profile.Obfuscate,
 		Modules:         profile.Modules,
-		CA:              profile.Ca,
 		ParamsData:      profile.Params,
 		PulsePipelineID: profile.PulsePipelineId,
 		PipelineID:      profile.PipelineId,
@@ -706,9 +705,6 @@ func GetProfile(name string) (*types.ProfileConfig, error) {
 		return nil, err
 	}
 	if profile.Basic != nil {
-		if profileModel.CA != "" {
-			profile.Basic.CA = profileModel.CA
-		}
 		if profileModel.Name != "" {
 			profile.Basic.Name = profileModel.Name
 		}
@@ -1025,9 +1021,6 @@ func UpdateGeneratorConfig(req *clientpb.BuildConfig, path string, config *types
 				config.Basic.Proxy = params.Proxy
 			}
 		}
-		if req.Ca != "" {
-			config.Basic.CA = req.Ca
-		}
 
 		if len(req.Modules) > 0 {
 			config.Implant.Modules = req.Modules
@@ -1038,8 +1031,8 @@ func UpdateGeneratorConfig(req *clientpb.BuildConfig, path string, config *types
 			config.Pulse.Target = req.MaleficHost
 		}
 	}
-	if req.ArtifactId != 0 && config.Pulse.Extras["flags"].(map[string]interface{})["artifact_id"].(int) == 0 {
-		config.Pulse.Extras["flags"].(map[string]interface{})["artifact_id"] = req.ArtifactId
+	if req.ArtifactId != 0 && config.Pulse.Flags.ArtifactID == 0 {
+		config.Pulse.Flags.ArtifactID = req.ArtifactId
 	}
 
 	if req.Type == consts.CommandBuildBind {

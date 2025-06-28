@@ -42,11 +42,15 @@ type TLSProfile struct {
 }
 
 type PulseProfile struct {
-	Target     string                 `yaml:"target"`
-	Encryption string                 `yaml:"encryption"`
-	Key        string                 `yaml:"key"`
-	Protocol   string                 `yaml:"protocol"`
-	Extras     map[string]interface{} `yaml:",inline"`
+	Target     string `yaml:"target"`
+	Encryption string `yaml:"encryption"`
+	Key        string `yaml:"key"`
+	Protocol   string `yaml:"protocol"`
+	Flags      struct {
+		ArtifactID uint32                 `yaml:"artifact_id" config:"artifact_id" default:"0"`
+		Extras     map[string]interface{} `yaml:",inline"`
+	}
+	Extras map[string]interface{} `yaml:",inline"`
 }
 
 type ImplantProfile struct {
