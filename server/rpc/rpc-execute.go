@@ -187,27 +187,25 @@ func (rpc *Server) ExecuteBof(ctx context.Context, req *implantpb.ExecuteBinary)
 			logs.Log.Error(err)
 			return
 		}
+
+		// handler context bof callback
 		var results strings.Builder
 		for _, bofResp := range bofResps.(output.BOFResponses) {
 			switch bofResp.CallbackType {
-			case output.CALLBACK_OUTPUT, output.CALLBACK_OUTPUT_OEM, output.CALLBACK_OUTPUT_UTF8:
-				continue
-			case output.CALLBACK_ERROR:
-				continue
-			case output.CALLBACK_SCREENSHOT:
+			case output.CallbackScreenshot:
 				if bofResp.Length <= 4 {
 					results.WriteString("Null screenshot data\n")
 					continue
 				}
 				err = core.HandleScreenshot(bofResp.Data, greq.Task)
-			case output.CALLBACK_FILE:
+			case output.CallbackFile:
 				err = core.HandleFileOperations("open", bofResp.Data, greq.Task)
-			case output.CALLBACK_FILE_WRITE:
+			case output.CallbackFileWrite:
 				err = core.HandleFileOperations("write", bofResp.Data, greq.Task)
-			case output.CALLBACK_FILE_CLOSE:
+			case output.CallbackFileClose:
 				err = core.HandleFileOperations("close", bofResp.Data, greq.Task)
 			default:
-				logs.Log.Errorf("Unimplemented callback type : %d", bofResp.CallbackType)
+				continue
 			}
 		}
 	})

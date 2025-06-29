@@ -11,14 +11,15 @@ import (
 )
 
 const (
-	CALLBACK_OUTPUT      = 0
-	CALLBACK_FILE        = 0x02
-	CALLBACK_FILE_WRITE  = 0x08
-	CALLBACK_FILE_CLOSE  = 0x09
-	CALLBACK_SCREENSHOT  = 0x03
-	CALLBACK_ERROR       = 0x0d
-	CALLBACK_OUTPUT_OEM  = 0x1e
-	CALLBACK_OUTPUT_UTF8 = 0x20
+	CallbackOutput      = 0
+	CallbackFile        = 0x02
+	CallbackFileWrite   = 0x08
+	CallbackFileClose   = 0x09
+	CallbackScreenshot  = 0x03
+	CallbackError       = 0x0d
+	CallbackOutputOem   = 0x1e
+	CallbackOutputUtf8  = 0x20
+	CallbackSystemError = 0x4d
 )
 
 type BOFResponse struct {
@@ -34,18 +35,20 @@ func (bofResps BOFResponses) String() string {
 	var results strings.Builder
 	for _, resp := range bofResps {
 		switch resp.CallbackType {
-		case CALLBACK_OUTPUT, CALLBACK_OUTPUT_OEM, CALLBACK_OUTPUT_UTF8:
+		case CallbackOutput, CallbackOutputOem, CallbackOutputUtf8:
 			results.WriteString(string(resp.Data))
-		case CALLBACK_ERROR:
-			results.WriteString(fmt.Sprintf("Error occurred: %s", string(resp.Data)))
-		case CALLBACK_SCREENSHOT:
+		case CallbackError:
+			results.WriteString(fmt.Sprintf("[!] Error occurred: %s", string(resp.Data)))
+		case CallbackScreenshot:
 			results.WriteString(fmt.Sprintf("Screenshot data received (size: %d)\n", len(resp.Data)-4))
-		case CALLBACK_FILE:
+		case CallbackFile:
 			results.WriteString(fmt.Sprintf("[>] File operation started: %s\n", string(resp.Data[8:])))
-		case CALLBACK_FILE_WRITE:
+		case CallbackFileWrite:
 			results.WriteString(fmt.Sprintf("[+] File data received (size: %d) ...\n", len(resp.Data)-4))
-		case CALLBACK_FILE_CLOSE:
+		case CallbackFileClose:
 			results.WriteString("[✓] File operation completed\n")
+		case CallbackSystemError:
+			results.WriteString(fmt.Sprintf("[!] System error occurred: %s\n", string(resp.Data)))
 		default:
 			results.WriteString(fmt.Sprintf("Callback type %d: %s\n", resp.CallbackType, string(resp.Data)))
 		}
