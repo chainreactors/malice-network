@@ -38,11 +38,11 @@ func GetCredentialsCmd(cmd *cobra.Command, con *repl.Console) error {
 
 	tableModel := tui.NewTable([]table.Column{
 		table.NewColumn("ID", "ID", 36),
-		table.NewColumn("Session", "Session", 16),
-		table.NewColumn("Task", "Task", 8),
-		table.NewColumn("Type", "Type", 12),
-		table.NewColumn("Username", "Username", 20),
-		table.NewColumn("Password", "Password", 20),
+		table.NewColumn("Session", "Session", 8),
+		table.NewColumn("Task", "Task", 4),
+		table.NewColumn("Type", "Type", 4),
+		table.NewColumn("Username", "Username", 10),
+		table.NewColumn("Password", "Password", 32),
 	}, true)
 
 	tableModel.SetRows(rowEntries)

@@ -129,7 +129,7 @@ func Register(con *repl.Console) {
 				switch typ {
 				case consts.ContextPort, output.GOGOPortType:
 					ctx, err = output.ToContext[*output.PortContext](c)
-				case "zombie", consts.ContextCredential:
+				case "zombie", "mimikatz", consts.ContextCredential:
 					ctx, err = output.ToContext[*output.CredentialContext](c)
 				}
 				if err != nil {

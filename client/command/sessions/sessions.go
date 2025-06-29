@@ -57,7 +57,7 @@ func PrintSessions(sessions map[string]*core.Session, con *repl.Console, isAll b
 	var row table.Row
 	maxLengths := map[string]int{
 		"ID":             8,
-		"Group":          10,
+		"Group/Note":     10,
 		"Pipeline":       14,
 		"Remote Address": 18,
 		"UserName":       12,
@@ -81,7 +81,7 @@ func PrintSessions(sessions map[string]*core.Session, con *repl.Console, isAll b
 	plus_flag := false
 	for _, session := range sessionList {
 		updateMaxLength(maxLengths, "ID", len(session.SessionId[:8]))
-		updateMaxLength(maxLengths, "Group", len(fmt.Sprintf("%s/%s", session.GroupName, session.Note)))
+		updateMaxLength(maxLengths, "Group/Note", len(fmt.Sprintf("%s/%s", session.GroupName, session.Note)))
 		updateMaxLength(maxLengths, "Pipeline", len(session.PipelineId))
 		updateMaxLength(maxLengths, "Remote Address", len(session.Target))
 		updateMaxLength(maxLengths, "UserName", len(fmt.Sprintf("%s/%s", session.Os.Hostname, session.Os.Username)))
@@ -110,7 +110,7 @@ func PrintSessions(sessions map[string]*core.Session, con *repl.Console, isAll b
 		row = table.NewRow(
 			table.RowData{
 				"ID":             session.SessionId[:8],
-				"Group":          fmt.Sprintf("%s/%s", session.GroupName, session.Note),
+				"Group/Note":     fmt.Sprintf("%s/%s", session.GroupName, session.Note),
 				"Pipeline":       session.PipelineId,
 				"Remote Address": session.Target,
 				"UserName":       computer,
@@ -124,7 +124,7 @@ func PrintSessions(sessions map[string]*core.Session, con *repl.Console, isAll b
 
 	tableModel := tui.NewTable([]table.Column{
 		table.NewColumn("ID", "ID", maxLengths["ID"]),
-		table.NewColumn("Group", "Group", maxLengths["Group"]),
+		table.NewColumn("Group/Note", "Group/Note", maxLengths["Group/Note"]),
 		table.NewColumn("Pipeline", "Pipeline", maxLengths["Pipeline"]),
 		table.NewColumn("Remote Address", "Remote Address", maxLengths["Remote Address"]),
 		table.NewColumn("UserName", "UserName", maxLengths["UserName"]),

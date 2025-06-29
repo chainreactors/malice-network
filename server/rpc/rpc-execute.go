@@ -67,6 +67,17 @@ func ContextCallback(task *core.Task, ctx context.Context) func(*implantpb.Spite
 			for _, c := range cs {
 				ctxs = append(ctxs, c)
 			}
+		case "mimikatz":
+			cs, err := output.ParseMimikatz(content)
+			//fmt.Println(string(content))
+			//fmt.Printf("cs: %v", cs)
+			if err != nil {
+				logs.Log.Error(err)
+				return
+			}
+			for _, c := range cs {
+				ctxs = append(ctxs, c)
+			}
 		}
 
 		for _, c := range ctxs {
@@ -225,7 +236,8 @@ func (rpc *Server) ExecuteEXE(ctx context.Context, req *implantpb.ExecuteBinary)
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgBinaryResponse)
+	go greq.HandlerResponse(ch, types.MsgBinaryResponse, ContextCallback(greq.Task, ctx))
+
 	return greq.Task.ToProtobuf(), nil
 }
 

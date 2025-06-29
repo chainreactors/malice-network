@@ -89,7 +89,7 @@ func ParseBOFResponse(ctx *clientpb.TaskContext) (interface{}, error) {
 		if err == io.EOF {
 			break
 		} else if err != nil {
-			return nil, fmt.Errorf("failed to read StrData: %v", err)
+			return nil, fmt.Errorf("failed to read StrData: err = %v", err)
 		}
 
 		bofResp.Data = strData
