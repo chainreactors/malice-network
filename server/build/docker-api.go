@@ -57,7 +57,7 @@ var dockerClient *client.Client
 var once sync.Once
 
 func GetDefaultImage() string {
-	return "ghcr.io/chainreactors/malefic-Builder:" + consts.Ver
+	return "ghcr.io/chainreactors/malefic-builder:" + consts.Ver
 }
 func GetDockerClient() (*client.Client, error) {
 	var err error
