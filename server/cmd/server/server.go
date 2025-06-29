@@ -68,21 +68,21 @@ func Execute() {
 		}
 		logs.Log.Warnf("config file not found, created default config %s", opt.Config)
 	}
-	config.WithHookFunc(func(event string, c *config.Config) {
+	config.WithOptions(config.WithHookFunc(func(event string, c *config.Config) {
 		if strings.HasPrefix(event, "set.") {
-			open, err := os.Open(opt.Config)
+			open, err := os.OpenFile(opt.Config, os.O_WRONLY|os.O_TRUNC, 0644)
 			if err != nil {
 				logs.Log.Errorf("cannot open config , %s ", err.Error())
 				return
 			}
-
+			defer open.Close()
 			_, err = config.DumpTo(open, config.Yaml)
 			if err != nil {
 				logs.Log.Errorf("cannot dump config , %s ", err.Error())
 				return
 			}
 		}
-	})
+	}))
 	// load config
 	err = configutil.LoadConfig(opt.Config, &opt)
 	if err != nil {
