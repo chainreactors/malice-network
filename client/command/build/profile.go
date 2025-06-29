@@ -23,11 +23,8 @@ func ProfileShowCmd(cmd *cobra.Command, con *repl.Console) error {
 
 	tableModel := tui.NewTable([]table.Column{
 		table.NewColumn("Name", "Name", 20),
-		table.NewColumn("Type", "Type", 10),
 		table.NewColumn("Pipeline", "Pipeline", 16),
 		table.NewColumn("Pulse Pipeline", "Pulse Pipeline", 16),
-		table.NewColumn("Modules", "Modules", 8),
-		table.NewColumn("Obfuscate", "Obfuscate", 10),
 		table.NewColumn("CreatedAt", "CreatedAt", 16),
 	}, true)
 
@@ -47,11 +44,8 @@ func ProfileShowCmd(cmd *cobra.Command, con *repl.Console) error {
 
 		row := table.NewRow(table.RowData{
 			"Name":           p.Name,
-			"Type":           p.Type,
 			"Pipeline":       p.PipelineId,
 			"Pulse Pipeline": p.PulsePipelineId,
-			"Modules":        modulesDisplay,
-			"Obfuscate":      p.Obfuscate,
 			"CreatedAt":      createdDisplay,
 		})
 		rowEntries = append(rowEntries, row)
