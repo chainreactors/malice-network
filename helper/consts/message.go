@@ -226,6 +226,7 @@ const (
 	CommandActionDisable    = "disable"
 	CommandActionList       = "list"
 	CommandSaas             = "saas"
+	CommandLicense          = "license"
 	CommandLicenseNew       = "new"
 	CommandLicenseDelete    = "delete"
 	CommandLicenseUpdate    = "update"

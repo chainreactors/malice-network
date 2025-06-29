@@ -14,7 +14,7 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
-	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/wabzsy/gonut"
 	"io"
@@ -57,7 +57,7 @@ var dockerClient *client.Client
 var once sync.Once
 
 func GetDefaultImage() string {
-	return "ghcr.io/chainreactors/malefic-builder:" + consts.Ver
+	return "ghcr.io/chainreactors/malefic-Builder:" + consts.Ver
 }
 func GetDockerClient() (*client.Client, error) {
 	var err error
@@ -164,7 +164,7 @@ func SRDIArtifact(builder *models.Builder, platform, arch string) ([]byte, error
 }
 
 func catchLogs(cli *client.Client, containerID, name string) error {
-	logOptions := types.ContainerLogsOptions{
+	logOptions := container.LogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
 		Follow:     true,
@@ -231,7 +231,7 @@ func sendContainerCtrlMsg(isEnd bool, containerName string, req *clientpb.BuildC
 
 func GetDockerStatus(cli *client.Client, containerName string) (string, error) {
 	ctx := context.Background()
-	containers, err := cli.ContainerList(ctx, types.ContainerListOptions{All: true})
+	containers, err := cli.ContainerList(ctx, container.ListOptions{All: true})
 	if err != nil {
 		return "", fmt.Errorf("failed to list containers: %v", err)
 	}

@@ -3,12 +3,15 @@ package server
 import (
 	"errors"
 	"fmt"
+	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/proto/client/rootpb"
 	"github.com/chainreactors/malice-network/helper/utils/mtls"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/root"
 	"github.com/jessevdk/go-flags"
+	"gopkg.in/yaml.v3"
+	"os"
 )
 
 var (
@@ -112,6 +115,29 @@ func (opt *Options) InitListener() error {
 		Args: []string{"listener"},
 	})
 	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// Save 保存配置到文件
+func (opt *Options) Save() error {
+	// 创建一个只包含需要保存的配置的结构体
+	configToSave := struct {
+		Server    *configs.ServerConfig   `yaml:"server"`
+		Listeners *configs.ListenerConfig `yaml:"listeners"`
+	}{
+		Server:    opt.Server,
+		Listeners: opt.Listeners,
+	}
+
+	data, err := yaml.Marshal(configToSave)
+	if err != nil {
+		return err
+	}
+	err = os.WriteFile(opt.Config, data, 0600)
+	if err != nil {
+		logs.Log.Errorf("Failed to write config %s", err)
 		return err
 	}
 	return nil

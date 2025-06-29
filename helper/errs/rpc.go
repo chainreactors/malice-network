@@ -37,4 +37,9 @@ var (
 	ErrNotFoundNotifyConfig = status.Error(codes.NotFound, "Notify config not found")
 
 	ErrPlartFormNotSupport = status.Error(codes.Unimplemented, "Platform not support")
+	ErrOBJCOPYFailed       = status.Error(codes.Unavailable, "OBJCOPY FAILED")
+	ErrSrdiFailed          = status.Error(codes.Unavailable, "srdi FAILED")
+
+	ErrSaasUnable           = status.Error(codes.Unavailable, "saas server has a error")
+	ErrLicenseTokenNotFound = status.Error(codes.NotFound, "License token not found")
 )

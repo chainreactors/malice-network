@@ -156,7 +156,8 @@ type GithubConfig struct {
 }
 
 type SaasConfig struct {
-	Host  string `config:"host" default:""`
-	Port  uint16 `config:"port" default:""`
-	Token string `config:"token" default:""`
+	Enable bool   `config:"enable" default:"true"`
+	Host   string `config:"host" default:""`
+	Port   uint16 `config:"port" default:""`
+	Token  string `config:"token" default:""`
 }

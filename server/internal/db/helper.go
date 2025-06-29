@@ -826,6 +826,9 @@ func SaveArtifactFromID(req *clientpb.BuildConfig, ID uint32, resource string) (
 }
 
 func UpdateBuilderPath(builder *models.Builder) error {
+	if Session() == nil {
+		return nil
+	}
 	return Session().Model(builder).
 		Select("path").
 		Updates(builder).
@@ -833,6 +836,9 @@ func UpdateBuilderPath(builder *models.Builder) error {
 }
 
 func UpdateBuilderSrdi(builder *models.Builder) error {
+	if Session() == nil {
+		return nil
+	}
 	return Session().Model(builder).
 		Select("is_srdi", "shellcode_path").
 		Updates(builder).
@@ -969,6 +975,15 @@ func GetArtifactById(id uint32) (*models.Builder, error) {
 	return &builder, nil
 }
 
+func GetArtifactWithSaas() ([]*models.Builder, error) {
+	var artifacts []*models.Builder
+	result := Session().Where("source = ?", consts.ArtifactFromSaas).Find(&artifacts)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return artifacts, nil
+}
+
 func DeleteArtifactByName(artifactName string) error {
 	model := &models.Builder{}
 	err := Session().Where("name = ?", artifactName).First(&model).Error
@@ -1042,6 +1057,9 @@ func UpdateGeneratorConfig(req *clientpb.BuildConfig, path string, config *types
 }
 
 func UpdateBuilderLog(name string, logEntry string) {
+	if Session() == nil {
+		return
+	}
 	err := Session().Model(&models.Builder{}).
 		Where("name = ?", name).
 		Update("log", gorm.Expr("ifnull(log, '') || ?", logEntry)).
@@ -1069,6 +1087,9 @@ func GetBuilderLogs(builderID uint32, limit int) (string, error) {
 }
 
 func UpdateBuilderStatus(builderID uint32, status string) {
+	if Session() == nil {
+		return
+	}
 	err := Session().Model(&models.Builder{}).
 		Where("id = ?", builderID).
 		Update("status", status).
@@ -1190,72 +1211,4 @@ func SaveContext(ctx *clientpb.Context) (*models.Context, error) {
 
 func DeleteContext(contextID string) error {
 	return Session().Where("id = ?", contextID).Delete(&models.Context{}).Error
-}
-
-// ================= License 增删改查 =================
-
-// CreateLicense 新增License
-func CreateLicense(license *models.License) error {
-	return Session().Create(license).Error
-}
-
-// GetLicenseByID 根据ID查找License
-func GetLicenseByID(id uuid.UUID) (*models.License, error) {
-	var license models.License
-	err := Session().Where("id = ?", id).First(&license).Error
-	if err != nil {
-		return nil, err
-	}
-	return &license, nil
-}
-
-// UpdateLicense 更新License
-func UpdateLicense(license *models.License) error {
-	return Session().Save(license).Error
-}
-
-// DeleteLicenseByID 删除License
-func DeleteLicenseByID(id uuid.UUID) error {
-	return Session().Where("id = ?", id).Delete(&models.License{}).Error
-}
-
-// ListLicenses 查询所有License
-func ListLicenses() ([]*models.License, error) {
-	var licenses []*models.License
-	err := Session().Find(&licenses).Error
-	return licenses, err
-}
-
-// ================= History 增查 =================
-
-// CreateHistory 新增History
-func CreateHistory(history *models.History) error {
-	return Session().Create(history).Error
-}
-
-// GetHistoryByID 根据ID查找History
-func GetHistoryByID(id uint) (*models.History, error) {
-	var history models.History
-	err := Session().Preload("License").Preload("Build").Where("id = ?", id).First(&history).Error
-	if err != nil {
-		return nil, err
-	}
-	return &history, nil
-}
-
-// ListHistories 查询所有History
-func ListHistories() ([]*models.History, error) {
-	var histories []*models.History
-	err := Session().Preload("License").Preload("Build").Find(&histories).Error
-	return histories, err
-}
-
-// 通过 BuildName 和 LicenseID 查找对应的 History
-func GetHistoryByBuildNameAndLicenseID(buildName string, licenseID uuid.UUID) (*models.History, error) {
-	var history models.History
-	err := Session().Preload("License").Preload("Build").Where("build_name = ? AND license_id = ?", buildName, licenseID).First(&history).Error
-	if err != nil {
-		return nil, err
-	}
-	return &history, nil
 }

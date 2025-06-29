@@ -88,7 +88,7 @@ func (a *ActionBuilder) ExecuteBuild() error {
 	return nil
 }
 
-func (a *ActionBuilder) CollectArtifact() {
+func (a *ActionBuilder) CollectArtifact() (string, string) {
 	go downloadArtifactWhenReady(a.config.Owner, a.config.Repo, a.config.Token, a.config.IsRemove, a.builder)
-	return
+	return a.builder.Path, ""
 }

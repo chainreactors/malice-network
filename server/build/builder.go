@@ -17,7 +17,7 @@ type Builder interface {
 
 	ExecuteBuild() error
 
-	CollectArtifact()
+	CollectArtifact() (string, string)
 }
 
 func NewBuilder(req *clientpb.BuildConfig) Builder {
@@ -34,7 +34,7 @@ func NewBuilder(req *clientpb.BuildConfig) Builder {
 }
 
 type BuilderState struct {
-	ID     uint32 // builder.ID
+	ID     uint32 // Builder.ID
 	Status string // 状态
 }
 

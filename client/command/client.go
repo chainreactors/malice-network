@@ -1,6 +1,7 @@
 package command
 
 import (
+	"github.com/chainreactors/malice-network/client/command/license"
 	"github.com/chainreactors/malice-network/client/command/saas"
 	"github.com/reeflective/console"
 	"github.com/spf13/cobra"
@@ -49,6 +50,7 @@ func BindCommonCommands(bind BindFunc) {
 		action.Commands,
 		mutant.Commands,
 		saas.Commands,
+		license.Commands,
 	)
 }
 

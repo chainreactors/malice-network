@@ -115,3 +115,12 @@ func UpdateNotifyConfig(n *NotifyConfig) error {
 	}
 	return nil
 }
+
+func UpdateSaasConfig(n *SaasConfig) error {
+	err := config.Set("server.saas", n)
+	if err != nil {
+		logs.Log.Errorf("Failed to update saas config %s", err)
+		return err
+	}
+	return nil
+}

@@ -11,7 +11,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"os"
 	"path/filepath"
@@ -74,22 +73,22 @@ func (d *DockerBuilder) ExecuteBuild() error {
 	switch d.config.Type {
 	case consts.CommandBuildBeacon:
 		buildCommand = fmt.Sprintf(
-			"malefic-mutant generate beacon;malefic-mutant build malefic -t %s",
+			"malefic-mutant generate -s beacon;malefic-mutant build malefic -t %s",
 			d.config.Target,
 		)
 	case consts.CommandBuildBind:
 		buildCommand = fmt.Sprintf(
-			"malefic-mutant generate bind && malefic-mutant build malefic -t %s",
+			"malefic-mutant generate -s bind && malefic-mutant build malefic -t %s",
 			d.config.Target,
 		)
 	case consts.CommandBuildModules:
 		buildCommand = fmt.Sprintf(
-			"malefic-mutant generate modules && malefic-mutant build modules -t %s",
+			"malefic-mutant generate -s modules && malefic-mutant build modules -t %s",
 			d.config.Target,
 		)
 	case consts.CommandBuildPrelude:
 		buildCommand = fmt.Sprintf(
-			"malefic-mutant generate prelude && malefic-mutant build prelude -t %s",
+			"malefic-mutant generate -s prelude && malefic-mutant build prelude -t %s",
 			d.config.Target,
 		)
 	case consts.CommandBuildPulse:
@@ -104,7 +103,7 @@ func (d *DockerBuilder) ExecuteBuild() error {
 			pulseOs = target.OS
 		}
 		buildCommand = fmt.Sprintf(
-			"malefic-mutant generate pulse %s %s &&malefic-mutant build pulse -t %s",
+			"malefic-mutant generate -s pulse %s %s &&malefic-mutant build pulse -t %s",
 			target.Arch, pulseOs, d.config.Target,
 		)
 	}
@@ -124,7 +123,7 @@ func (d *DockerBuilder) ExecuteBuild() error {
 		return err
 	}
 	d.containerID = resp.ID
-	if err := cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
+	if err := cli.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
 		logs.Log.Errorf("Error starting container: %v", err)
 		db.UpdateBuilderStatus(d.builder.ID, consts.BuildStatusFailure)
 	}
@@ -153,42 +152,42 @@ func (d *DockerBuilder) ExecuteBuild() error {
 	return nil
 }
 
-func (d *DockerBuilder) CollectArtifact() {
+func (d *DockerBuilder) CollectArtifact() (string, string) {
 	_, artifactPath, err := MoveBuildOutput(d.config.Target, d.config.Type)
 	if err != nil {
 		logs.Log.Errorf("move build output error: %v", err)
 		sendContainerCtrlMsg(true, d.containerName, d.config, fmt.Errorf("db err %v", err))
 		db.UpdateBuilderStatus(d.builder.ID, consts.BuildStatusFailure)
-		return
+		return "", consts.BuildStatusFailure
 	}
 	err = db.UpdateBuilderPath(d.builder)
 	if err != nil {
 		sendContainerCtrlMsg(true, d.containerName, d.config, fmt.Errorf("db err %v", err))
-		logs.Log.Errorf("update builder path and status error: %v", err)
+		logs.Log.Errorf("update Builder path and status error: %v", err)
 	}
 	absArtifactPath, err := filepath.Abs(artifactPath)
 	if err != nil {
 		sendContainerCtrlMsg(true, d.containerName, d.config, fmt.Errorf("artifactPath err %v", err))
-		return
+		return "", consts.BuildStatusFailure
 	}
 
 	d.builder.Path = absArtifactPath
 	err = db.UpdateBuilderPath(d.builder)
 	if err != nil {
 		sendContainerCtrlMsg(true, d.containerName, d.config, fmt.Errorf("db err %v", err))
-		return
+		return "", consts.BuildStatusFailure
 	}
 
 	_, err = os.ReadFile(absArtifactPath)
 	if err != nil {
 		sendContainerCtrlMsg(true, d.containerName, d.config, fmt.Errorf("read artifactFile err %v", err))
-		return
+		return "", consts.BuildStatusFailure
 	}
 	if d.builder.IsSRDI {
 		target, ok := consts.GetBuildTarget(d.config.Target)
 		if !ok {
 			sendContainerCtrlMsg(true, d.containerName, d.config, errs.ErrInvalidateTarget)
-			return
+			return "", consts.BuildStatusFailure
 		}
 		if d.builder.Type == consts.CommandBuildPulse {
 			logs.Log.Infof("objcopy start ...")
@@ -205,11 +204,11 @@ func (d *DockerBuilder) CollectArtifact() {
 				sendContainerCtrlMsg(true, d.containerName, d.config, fmt.Errorf("SRDI error %v", err))
 				logs.Log.Errorf("srid error  %v", err)
 				db.UpdateBuilderStatus(d.builder.ID, consts.BuildStatusCompleted)
-				return
+				return "", consts.BuildStatusCompleted
 			}
 		}
 	}
 	db.UpdateBuilderStatus(d.builder.ID, consts.BuildStatusCompleted)
 	sendContainerCtrlMsg(true, d.containerName, d.config, nil)
-	return
+	return d.builder.Path, consts.BuildStatusCompleted
 }

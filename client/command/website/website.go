@@ -42,8 +42,10 @@ func NewWebsite(con *repl.Console, websiteName, root, host string, port uint32, 
 	}
 	tls := &clientpb.TLS{
 		Enable: useTls,
-		Cert:   cert,
-		Key:    key,
+		Cert: &clientpb.Cert{
+			Cert: cert,
+			Key:  key,
+		},
 	}
 	if root == "" {
 		root = "/"

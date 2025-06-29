@@ -157,8 +157,10 @@ func ParseTLSFlags(cmd *cobra.Command) (*clientpb.TLS, error) {
 	}
 	return &clientpb.TLS{
 		Enable: true,
-		Cert:   cert,
-		Key:    key,
+		Cert: &clientpb.Cert{
+			Cert: cert,
+			Key:  key,
+		},
 	}, nil
 }
 

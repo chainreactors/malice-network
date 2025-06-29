@@ -102,3 +102,9 @@ const (
 	BuildStatusDBError      = "db_err"
 	BuildStatusSRDIError    = "srdi_err"
 )
+
+const (
+	LicenseCommunity = "community"
+	LicensePro       = "professional"
+	LicenseAdmin     = "admin"
+)
