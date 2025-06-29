@@ -61,7 +61,7 @@ func (s *SaasBuilder) GenerateConfig() (*clientpb.Builder, error) {
 func (s *SaasBuilder) ExecuteBuild() error {
 	profileByte, err := GenerateProfile(s.config)
 	if err != nil {
-		sendSaasCtrlMsg(true, s.config, err, "")
+		sendSaasCtrlMsg(true, s.builder, err, "")
 		return err
 	}
 	base64Encoded := encode.Base64Encode(profileByte)
@@ -69,13 +69,13 @@ func (s *SaasBuilder) ExecuteBuild() error {
 	s.config.Inputs["malefic_config_yaml"] = base64Encoded
 	data, err := protojson.Marshal(s.config)
 	if err != nil {
-		sendSaasCtrlMsg(true, s.config, fmt.Errorf("marshal build config failed: %w", err), "")
+		sendSaasCtrlMsg(true, s.builder, fmt.Errorf("marshal build config failed: %w", err), "")
 		return fmt.Errorf("marshal build config failed: %w", err)
 	}
 	client := &http.Client{Timeout: 60 * time.Second}
 	req, err := http.NewRequest("POST", s.executeUrl, bytes.NewReader(data))
 	if err != nil {
-		sendSaasCtrlMsg(true, s.config, fmt.Errorf("create build request failed: %w", err), "")
+		sendSaasCtrlMsg(true, s.builder, fmt.Errorf("create build request failed: %w", err), "")
 		return fmt.Errorf("create build request failed: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
@@ -85,25 +85,25 @@ func (s *SaasBuilder) ExecuteBuild() error {
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		sendSaasCtrlMsg(true, s.config, fmt.Errorf("post to build service failed: %w", err), "")
+		sendSaasCtrlMsg(true, s.builder, fmt.Errorf("post to build service failed: %w", err), "")
 		return fmt.Errorf("post to build service failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		sendSaasCtrlMsg(true, s.config, fmt.Errorf("read build service response failed: %w", err), "")
+		sendSaasCtrlMsg(true, s.builder, fmt.Errorf("read build service response failed: %w", err), "")
 		return fmt.Errorf("read build service response failed: %w", err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		sendSaasCtrlMsg(true, s.config, errors.New(string(body)), "")
+		sendSaasCtrlMsg(true, s.builder, errors.New(string(body)), "")
 		return errors.New(string(body))
 	}
 
 	var builder clientpb.Builder
 	if err := json.Unmarshal(body, &builder); err != nil {
-		sendSaasCtrlMsg(true, s.config, fmt.Errorf("unmarshal build service response failed: %w", err), "")
+		sendSaasCtrlMsg(true, s.builder, fmt.Errorf("unmarshal build service response failed: %w", err), "")
 		return fmt.Errorf("unmarshal build service response failed: %w", err)
 	}
 
@@ -131,7 +131,7 @@ func (s *SaasBuilder) getToken() string {
 	return saasConfig.Token
 }
 
-func sendSaasCtrlMsg(isEnd bool, req *clientpb.BuildConfig, err error, status string) {
+func sendSaasCtrlMsg(isEnd bool, req *models.Builder, err error, status string) {
 	if core.EventBroker == nil {
 		return
 	}
@@ -139,7 +139,7 @@ func sendSaasCtrlMsg(isEnd bool, req *clientpb.BuildConfig, err error, status st
 		core.EventBroker.Publish(core.Event{
 			EventType: consts.EventBuild,
 			IsNotify:  false,
-			Message:   fmt.Sprintf("%s type(%s) by saas has a err %v. ", req.BuildName, req.Type, err),
+			Message:   fmt.Sprintf("%s type(%s) by saas has a err %v. ", req.Name, req.Type, err),
 			Important: true,
 		})
 	}
@@ -147,14 +147,14 @@ func sendSaasCtrlMsg(isEnd bool, req *clientpb.BuildConfig, err error, status st
 		core.EventBroker.Publish(core.Event{
 			EventType: consts.EventBuild,
 			IsNotify:  false,
-			Message:   fmt.Sprintf("%s type(%s) by saas has %s.", req.BuildName, req.Type, status),
+			Message:   fmt.Sprintf("%s type(%s) by saas has %s.", req.Name, req.Type, status),
 			Important: true,
 		})
 	} else {
 		core.EventBroker.Publish(core.Event{
 			EventType: consts.EventBuild,
 			IsNotify:  false,
-			Message:   fmt.Sprintf("%s type(%s) by saas has started )...", req.BuildName, req.Type),
+			Message:   fmt.Sprintf("%s type(%s) by saas has started )...", req.Name, req.Type),
 			Important: true,
 		})
 	}
@@ -189,7 +189,6 @@ func CheckBuildStatusExternal(statusUrl string, token string) (string, error) {
 		return "", fmt.Errorf("status check failed with code: %d", resp.StatusCode)
 	}
 
-	// 添加调试日志
 	logs.Log.Debugf("Status response body: %s", string(body))
 
 	var result struct {
@@ -297,6 +296,7 @@ func CheckAndDownloadArtifact(statusUrl string, downloadUrl string, token string
 			if builder != nil {
 				db.UpdateBuilderStatus(builder.ID, consts.BuildStatusFailure)
 			}
+			sendSaasCtrlMsg(true, builder, fmt.Errorf("build polling timeout"), "")
 			return "", consts.BuildStatusFailure, fmt.Errorf("build polling timeout")
 		}
 
@@ -312,6 +312,7 @@ func CheckAndDownloadArtifact(statusUrl string, downloadUrl string, token string
 			if builder != nil {
 				db.UpdateBuilderStatus(builder.ID, consts.BuildStatusFailure)
 			}
+			sendSaasCtrlMsg(true, builder, nil, consts.BuildStatusFailure)
 			return "", consts.BuildStatusFailure, nil
 		}
 
@@ -327,6 +328,7 @@ func CheckAndDownloadArtifact(statusUrl string, downloadUrl string, token string
 				if builder != nil {
 					db.UpdateBuilderStatus(builder.ID, consts.BuildStatusCompleted)
 				}
+				sendSaasCtrlMsg(true, builder, nil, consts.BuildStatusCompleted)
 				return builder.Path, consts.BuildStatusCompleted, nil
 			}
 
@@ -334,9 +336,9 @@ func CheckAndDownloadArtifact(statusUrl string, downloadUrl string, token string
 			if builder != nil {
 				db.UpdateBuilderStatus(builder.ID, consts.BuildStatusCompleted)
 			}
+			sendSaasCtrlMsg(true, builder, nil, consts.BuildStatusCompleted)
 			return builder.Path, consts.BuildStatusCompleted, nil
 		}
-
 		logs.Log.Debugf("build status: %s, continue polling...", status)
 		time.Sleep(pollInterval)
 	}

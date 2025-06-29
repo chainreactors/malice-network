@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/codenames"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
@@ -320,7 +319,7 @@ func (lns *listener) autoBuild(pipeline *clientpb.Pipeline) error {
 		}
 
 		// 创建构建配置文件
-		profileName := codenames.GetCodenameWithMaxLength(16)
+		profileName := pipeline.Name
 		if pipeline.Parser == consts.ImplantPulse {
 			_, err = lns.Rpc.NewProfile(lns.Context(), &clientpb.Profile{
 				Name:            profileName,
