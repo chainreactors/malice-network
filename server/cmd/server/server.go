@@ -27,6 +27,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 )
@@ -67,7 +68,21 @@ func Execute() {
 		}
 		logs.Log.Warnf("config file not found, created default config %s", opt.Config)
 	}
+	config.WithHookFunc(func(event string, c *config.Config) {
+		if strings.HasPrefix(event, "set.") {
+			open, err := os.Open(opt.Config)
+			if err != nil {
+				logs.Log.Errorf("cannot open config , %s ", err.Error())
+				return
+			}
 
+			_, err = config.DumpTo(open, config.Yaml)
+			if err != nil {
+				logs.Log.Errorf("cannot dump config , %s ", err.Error())
+				return
+			}
+		}
+	})
 	// load config
 	err = configutil.LoadConfig(opt.Config, &opt)
 	if err != nil {
@@ -183,7 +198,6 @@ func Execute() {
 	err = ReDownloadSaasArtifact()
 	if err != nil {
 		logs.Log.Errorf("recover download saas artifact error %v", err)
-		return
 	}
 	select {}
 }
@@ -320,11 +334,6 @@ func RegisterLicense(opt Options) error {
 				fmt.Printf("注册成功，返回的token: %s\n", returnedToken)
 				saasConfig.Token = returnedToken
 				err = configs.UpdateSaasConfig(saasConfig)
-				if err != nil {
-					return err
-				}
-				opt.Server.SassConfig = saasConfig
-				err = opt.Save()
 				if err != nil {
 					return err
 				}

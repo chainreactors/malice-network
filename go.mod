@@ -16,7 +16,6 @@ require (
 	github.com/charmbracelet/lipgloss v1.0.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/evertras/bubble-table v0.17.1
-	github.com/gin-gonic/gin v1.10.1
 	github.com/gofrs/uuid v4.4.0+incompatible
 	github.com/golang/snappy v1.0.0
 	github.com/gookit/config/v2 v2.2.5
@@ -170,6 +169,7 @@ require (
 	go.opentelemetry.io/otel/metric v1.32.0 // indirect
 	go.opentelemetry.io/otel/trace v1.32.0 // indirect
 	golang.org/x/arch v0.8.0 // indirect
+	golang.org/x/net v0.27.0 // indirect
 	golang.org/x/sys v0.30.0 // indirect
 	golang.org/x/term v0.29.0 // indirect
 	golang.org/x/time v0.9.0 // indirect

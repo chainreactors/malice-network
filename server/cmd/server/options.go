@@ -122,7 +122,7 @@ func (opt *Options) InitListener() error {
 
 // Save 保存配置到文件
 func (opt *Options) Save() error {
-	// 创建一个只包含需要保存的配置的结构体
+
 	configToSave := struct {
 		Server    *configs.ServerConfig   `yaml:"server"`
 		Listeners *configs.ListenerConfig `yaml:"listeners"`

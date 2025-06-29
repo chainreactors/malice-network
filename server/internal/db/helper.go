@@ -785,6 +785,9 @@ func SaveArtifactFromConfig(req *clientpb.BuildConfig) (*models.Builder, error) 
 	}
 	builder.ParamsJson = string(paramsJson)
 
+	if Session() == nil {
+		return &builder, nil
+	}
 	if err := Session().Create(&builder).Error; err != nil {
 		return nil, err
 	}
