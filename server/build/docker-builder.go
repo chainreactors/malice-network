@@ -11,6 +11,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
+	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"os"
 	"path/filepath"
@@ -123,7 +124,7 @@ func (d *DockerBuilder) ExecuteBuild() error {
 		return err
 	}
 	d.containerID = resp.ID
-	if err := cli.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
+	if err := cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
 		logs.Log.Errorf("Error starting container: %v", err)
 		db.UpdateBuilderStatus(d.builder.ID, consts.BuildStatusFailure)
 	}
