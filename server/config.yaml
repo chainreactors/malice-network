@@ -20,6 +20,8 @@ server:
     token:
   saas:
     host: build.chainreactors.red
+    enable: true
+    host: 121.4.210.3
     port: 17373
     token:
 
