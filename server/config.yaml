@@ -19,7 +19,6 @@ server:
     owner:
     token:
   saas:
-    host: build.chainreactors.red
     enable: true
     host: 121.4.210.3
     port: 17373
@@ -39,7 +38,7 @@ listeners:
       enable: true
       auto_build:
         target:
-#          - x86_64-unknown-linux-musl
+          #          - x86_64-unknown-linux-musl
           - x86_64-pc-windows-gnu
       tls:
         enable: false
@@ -55,20 +54,26 @@ listeners:
         enable: true
         type: aes
         key: maliceofinternal
+
     - name: tcp_pulse
       port: 5002
       host: 0.0.0.0
       parser: pulse
-#      auto_build:
-#        target:
-#          - x86_64-unknown-linux-musl
-#          - x86_64-pc-windows-gnu
-#        beacon_pipeline: tcp_malefic
+      #      auto_build:
+      #        target:
+      #          - x86_64-unknown-linux-musl
+      #          - x86_64-pc-windows-gnu
+      #        beacon_pipeline: tcp_malefic
       enable: true
       encryption:
         enable: true
         type: raw
         key: maliceofinternal
+      auto_build:
+        beacon_pipeline: tcp_malefic
+        target:
+          #          - x86_64-unknown-linux-musl
+          - x86_64-pc-windows-gnu
   http:
     - name: http-malefic
       enable: true
@@ -91,7 +96,7 @@ listeners:
         key: maliceofinternal
       auto_build:
         target:
-#          - x86_64-unknown-linux-musl
+          #          - x86_64-unknown-linux-musl
           - x86_64-pc-windows-gnu
       error_page: ""
     - name: http-pulse
@@ -103,12 +108,17 @@ listeners:
         enable: true
         type: xor
         key: maliceofinternal
-#      auto_build:
-#        target:
-#          - x86_64-unknown-linux-musl
-#          - x86_64-pc-windows-gnu
-#        beacon_pipeline: http-malefic
+      #      auto_build:
+      #        target:
+      #          - x86_64-unknown-linux-musl
+      #          - x86_64-pc-windows-gnu
+      #        beacon_pipeline: http-malefic
       error_page: ""
+      auto_build:
+        beacon_pipeline: http-malefic
+        target:
+          #          - x86_64-unknown-linux-musl
+          - x86_64-pc-windows-gnu
   bind:
     - name: bind_pipeline
       enable: true
