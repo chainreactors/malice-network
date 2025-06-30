@@ -1,23 +1,19 @@
 package modules
 
 import (
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/client/command/action"
+	"github.com/chainreactors/malice-network/client/command/build"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
-	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 )
 
@@ -102,40 +98,14 @@ func buildWithAction(con *repl.Console, target, profile string, modules []string
 	if len(modules) == 0 {
 		modules = []string{"full"}
 	}
-	var workflowID string
-	setting, err := assets.GetSetting()
-	if err != nil {
-		return err
-	}
-	if setting.GithubWorkflowFile == "" {
-		workflowID = "generate.yaml"
-	} else {
-		workflowID = setting.GithubWorkflowFile
-	}
-	configByte := types.DefaultProfile
-	buildConfig, err := types.LoadProfile(configByte)
-	if err != nil {
-		return err
-	}
-	buildConfig.Implant.Modules = modules
-	configByte, _ = yaml.Marshal(buildConfig)
-
-	inputs := map[string]string{
-		"malefic_config_yaml":      base64.StdEncoding.EncodeToString(configByte),
-		"package":                  consts.CommandBuildModules,
-		"targets":                  "x86_64-pc-windows-msvc",
-		"malefic_modules_features": strings.Join(modules, ","),
-	}
-
 	go func() {
-		builder, err := action.RunWorkFlow(con, &clientpb.BuildConfig{
-			Inputs:      inputs,
-			Owner:       setting.GithubOwner,
-			Repo:        setting.GithubRepo,
-			Token:       setting.GithubToken,
-			WorkflowId:  workflowID,
+		builder, err := build.RunSaas(con, &clientpb.BuildConfig{
+			Target:      "x86_64-pc-windows-msvc",
+			Type:        consts.CommandBuildModules,
+			Modules:     modules,
+			Srdi:        false,
 			ProfileName: profile,
-			Resource:    consts.ArtifactFromDocker,
+			Resource:    consts.ArtifactFromSaas,
 		})
 		if err != nil {
 			con.Log.Errorf("Run workflow failed: %v", err)

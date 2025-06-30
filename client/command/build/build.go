@@ -1,7 +1,9 @@
 package build
 
 import (
+	"encoding/base64"
 	"errors"
+	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -12,58 +14,183 @@ import (
 	"strings"
 )
 
+func checkGithubArg(cmd *cobra.Command, isList bool) (string, string, string, string, bool, error) {
+	owner, repo, token, file, remove := common.ParseGithubFlags(cmd)
+	setting, err := assets.GetSetting()
+	if err != nil {
+		return "", "", "", "", false, err
+	}
+	if owner == "" {
+		owner = setting.GithubOwner
+	}
+	if repo == "" {
+		repo = setting.GithubRepo
+	}
+	if token == "" {
+		token = setting.GithubToken
+	}
+	if !isList {
+		if file == "" {
+			file = setting.GithubWorkflowFile
+		}
+		if file == "" {
+			file = "generate.yaml"
+		}
+	}
+	return owner, repo, token, file, remove, nil
+}
+
+func checkResource(cmd *cobra.Command, resource string, con *repl.Console) (string, error) {
+	if resource != "" {
+		if resource != consts.ArtifactFromAction && resource != consts.ArtifactFromDocker && resource != consts.ArtifactFromSaas {
+			return resource, errors.New("build resource is violate")
+		}
+	} else {
+		_, err := con.Rpc.DockerStatus(con.Context(), &clientpb.Empty{})
+		if err == nil {
+			resource = consts.ArtifactFromDocker
+			return resource, nil
+		}
+		owner, repo, token, file, _, err := checkGithubArg(cmd, false)
+		if err != nil {
+			resource = consts.ArtifactFromSaas
+			return resource, nil
+		}
+		_, err = con.Rpc.WorkflowStatus(con.Context(), &clientpb.BuildConfig{
+			Owner:      owner,
+			Repo:       repo,
+			Token:      token,
+			WorkflowId: file,
+		})
+		if err == nil {
+			resource = consts.ArtifactFromAction
+			return resource, nil
+		}
+		resource = consts.ArtifactFromSaas
+	}
+	return resource, nil
+}
+
 func BeaconCmd(cmd *cobra.Command, con *repl.Console) error {
-	name, address, buildTarget, modules, ca, _, params := common.ParseGenerateFlags(cmd)
+	name, address, buildTarget, modules, ca, _, params, resource := common.ParseGenerateFlags(cmd)
 	if buildTarget == "" {
 		return errors.New("require build target")
 	}
+	finalResource, err := checkResource(cmd, resource, con)
+	if err != nil {
+		return err
+	}
+	owner, repo, token, file, remove, err := checkGithubArg(cmd, false)
+	if err != nil {
+		return err
+	}
 	go func() {
-		_, err := con.Rpc.Build(con.Context(), &clientpb.BuildConfig{
-			ProfileName: name,
-			MaleficHost: address,
-			Type:        consts.CommandBuildBeacon,
-			Target:      buildTarget,
-			Modules:     modules,
-			Ca:          ca,
-			Params:      params.String(),
-			Srdi:        true,
-			Resource:    consts.ArtifactFromDocker,
-		})
+		var buildConfig *clientpb.BuildConfig
+		if finalResource == consts.ArtifactFromAction {
+			inputs := map[string]string{
+				"package": consts.CommandBuildBeacon,
+				"targets": buildTarget,
+			}
+			if len(modules) > 0 {
+				inputs["malefic_modules_features"] = strings.Join(modules, ",")
+			}
+			buildConfig = &clientpb.BuildConfig{
+				Owner:       owner,
+				Repo:        repo,
+				Token:       token,
+				WorkflowId:  file,
+				Inputs:      inputs,
+				ProfileName: name,
+				MaleficHost: address,
+				Ca:          ca,
+				Params:      params.String(),
+				IsRemove:    remove,
+				Resource:    finalResource,
+			}
+		} else {
+			buildConfig = &clientpb.BuildConfig{
+				ProfileName: name,
+				MaleficHost: address,
+				Type:        consts.CommandBuildBeacon,
+				Target:      buildTarget,
+				Modules:     modules,
+				Ca:          ca,
+				Params:      params.String(),
+				Srdi:        true,
+				Resource:    finalResource,
+			}
+		}
+		artifact, err := con.Rpc.Build(con.Context(), buildConfig)
 		if err != nil {
 			con.Log.Errorf("Build beacon failed: %v\n", err)
 			return
 		}
+		con.Log.Infof("Build %v type %v target %v by %v start\n", artifact.Name, artifact.Type, artifact.Target, artifact.Resource)
 	}()
 	return nil
 }
 
 func BindCmd(cmd *cobra.Command, con *repl.Console) error {
-	name, address, buildTarget, modules, ca, _, params := common.ParseGenerateFlags(cmd)
+	name, address, buildTarget, modules, ca, _, params, resource := common.ParseGenerateFlags(cmd)
 	if buildTarget == "" {
 		return errors.New("require build target")
 	}
+	finalResource, err := checkResource(cmd, resource, con)
+	if err != nil {
+		return err
+	}
+	owner, repo, token, file, remove, err := checkGithubArg(cmd, false)
+	if err != nil {
+		return err
+	}
 	go func() {
-		_, err := con.Rpc.Build(con.Context(), &clientpb.BuildConfig{
-			ProfileName: name,
-			MaleficHost: address,
-			Type:        consts.CommandBuildBind,
-			Target:      buildTarget,
-			Modules:     modules,
-			Ca:          ca,
-			Params:      params.String(),
-			Srdi:        true,
-			Resource:    consts.ArtifactFromDocker,
-		})
+		var buildConfig *clientpb.BuildConfig
+		if finalResource == consts.ArtifactFromAction {
+			inputs := map[string]string{
+				"package": consts.CommandBuildBind,
+				"targets": buildTarget,
+			}
+			if len(modules) > 0 {
+				inputs["malefic_modules_features"] = strings.Join(modules, ",")
+			}
+			buildConfig = &clientpb.BuildConfig{
+				Owner:       owner,
+				Repo:        repo,
+				Token:       token,
+				WorkflowId:  file,
+				Inputs:      inputs,
+				ProfileName: name,
+				MaleficHost: address,
+				Ca:          ca,
+				Params:      params.String(),
+				IsRemove:    remove,
+				Resource:    finalResource,
+			}
+		} else {
+			buildConfig = &clientpb.BuildConfig{
+				ProfileName: name,
+				MaleficHost: address,
+				Type:        consts.CommandBuildBind,
+				Target:      buildTarget,
+				Modules:     modules,
+				Ca:          ca,
+				Params:      params.String(),
+				Srdi:        true,
+				Resource:    finalResource,
+			}
+		}
+		artifact, err := con.Rpc.Build(con.Context(), buildConfig)
 		if err != nil {
 			con.Log.Errorf("Build bind failed: %v\n", err)
 			return
 		}
+		con.Log.Infof("Build %v type %v target %v by %v start\n", artifact.Name, artifact.Type, artifact.Target, artifact.Resource)
 	}()
 	return nil
 }
 
 func PreludeCmd(cmd *cobra.Command, con *repl.Console) error {
-	name, address, buildTarget, modules, ca, _, _ := common.ParseGenerateFlags(cmd)
+	name, address, buildTarget, modules, ca, _, params, resource := common.ParseGenerateFlags(cmd)
 	if buildTarget == "" {
 		return errors.New("require build target")
 	}
@@ -75,64 +202,179 @@ func PreludeCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
+	finalResource, err := checkResource(cmd, resource, con)
+	if err != nil {
+		return err
+	}
+	owner, repo, token, fileID, remove, err := checkGithubArg(cmd, false)
+	if err != nil {
+		return err
+	}
 	go func() {
-		_, err := con.Rpc.Build(con.Context(), &clientpb.BuildConfig{
-			ProfileName: name,
-			MaleficHost: address,
-			Type:        consts.CommandBuildPrelude,
-			Target:      buildTarget,
-			Modules:     modules,
-			Ca:          ca,
-			Srdi:        true,
-			Bin:         file,
-			Resource:    consts.ArtifactFromDocker,
-		})
+		var buildConfig *clientpb.BuildConfig
+		if finalResource == consts.ArtifactFromAction {
+			base64Encoded := base64.StdEncoding.EncodeToString(file)
+			inputs := map[string]string{
+				"package": consts.CommandBuildPrelude,
+				"targets": buildTarget,
+			}
+			inputs["autorun_yaml "] = base64Encoded
+			if len(modules) > 0 {
+				inputs["malefic_modules_features"] = strings.Join(modules, ",")
+			}
+			buildConfig = &clientpb.BuildConfig{
+				Owner:       owner,
+				Repo:        repo,
+				Token:       token,
+				WorkflowId:  fileID,
+				Inputs:      inputs,
+				ProfileName: name,
+				MaleficHost: address,
+				Ca:          ca,
+				Params:      params.String(),
+				IsRemove:    remove,
+				Resource:    finalResource,
+			}
+		} else {
+			buildConfig = &clientpb.BuildConfig{
+				ProfileName: name,
+				MaleficHost: address,
+				Type:        consts.CommandBuildPrelude,
+				Target:      buildTarget,
+				Modules:     modules,
+				Ca:          ca,
+				Params:      params.String(),
+				Srdi:        true,
+				Bin:         file,
+				Resource:    finalResource,
+			}
+		}
+		artifact, err := con.Rpc.Build(con.Context(), buildConfig)
 		if err != nil {
 			con.Log.Errorf("Build prelude failed: %v\n", err)
 			return
 		}
+		con.Log.Infof("Build %v type %v target %v by %v start\n", artifact.Name, artifact.Type, artifact.Target, artifact.Resource)
 	}()
 	return nil
 }
 
 func ModulesCmd(cmd *cobra.Command, con *repl.Console) error {
-	name, address, buildTarget, modules, _, srdi, _ := common.ParseGenerateFlags(cmd)
+	name, address, buildTarget, modules, ca, srdi, params, resource := common.ParseGenerateFlags(cmd)
 	if buildTarget == "" {
 		return errors.New("require build target")
 	}
+	finalResource, err := checkResource(cmd, resource, con)
+	if err != nil {
+		return err
+	}
+	owner, repo, token, file, remove, err := checkGithubArg(cmd, false)
+	if err != nil {
+		return err
+	}
 	go func() {
-		_, err := BuildModules(con, name, address, buildTarget, modules, srdi)
+		var buildConfig *clientpb.BuildConfig
+		if finalResource == consts.ArtifactFromAction {
+			inputs := map[string]string{
+				"package": consts.CommandBuildModules,
+				"targets": buildTarget,
+			}
+			if len(modules) == 0 {
+				inputs["malefic_modules_features"] = "full"
+			} else if len(modules) > 0 {
+				inputs["malefic_modules_features"] = strings.Join(modules, ",")
+			}
+			buildConfig = &clientpb.BuildConfig{
+				Owner:       owner,
+				Repo:        repo,
+				Token:       token,
+				WorkflowId:  file,
+				Inputs:      inputs,
+				ProfileName: name,
+				MaleficHost: address,
+				Ca:          ca,
+				Params:      params.String(),
+				IsRemove:    remove,
+				Resource:    finalResource,
+			}
+		} else {
+			buildConfig = &clientpb.BuildConfig{
+				ProfileName: name,
+				MaleficHost: address,
+				Target:      buildTarget,
+				Type:        consts.CommandBuildModules,
+				Modules:     modules,
+				Srdi:        srdi,
+				Resource:    finalResource,
+			}
+		}
+		artifact, err := con.Rpc.Build(con.Context(), buildConfig)
 		if err != nil {
-			con.Log.Errorf("Build modules failed: %v\n", err)
+			con.Log.Errorf("Build prelude failed: %v\n", err)
 			return
 		}
+		con.Log.Infof("Build %v type %v target %v by %v start\n", artifact.Name, artifact.Type, artifact.Target, artifact.Resource)
 	}()
 	return nil
 }
 
 func PulseCmd(cmd *cobra.Command, con *repl.Console) error {
-	profile, _ := cmd.Flags().GetString("profile")
-	address, _ := cmd.Flags().GetString("address")
-	buildTarget, _ := cmd.Flags().GetString("target")
-	artifactId, _ := cmd.Flags().GetUint32("artifact-id")
+	name, address, buildTarget, modules, _, _, _, resource := common.ParseGenerateFlags(cmd)
+	if buildTarget == "" {
+		return errors.New("require build target")
+	}
 	if !strings.Contains(buildTarget, "windows") {
 		con.Log.Warn("pulse only support windows target\n")
 		return nil
 	}
+	artifactId, _ := cmd.Flags().GetUint32("artifact-id")
+	owner, repo, token, file, remove, err := checkGithubArg(cmd, false)
+	if err != nil {
+		return err
+	}
+	finalResource, err := checkResource(cmd, resource, con)
+	if err != nil {
+		return err
+	}
 	go func() {
-		_, err := con.Rpc.Build(con.Context(), &clientpb.BuildConfig{
-			ProfileName: profile,
-			MaleficHost: address,
-			Target:      buildTarget,
-			Type:        consts.CommandBuildPulse,
-			Srdi:        true,
-			ArtifactId:  artifactId,
-			Resource:    consts.ArtifactFromDocker,
-		})
+		var buildConfig *clientpb.BuildConfig
+		if finalResource == consts.ArtifactFromAction {
+			inputs := map[string]string{
+				"package": consts.CommandBuildPulse,
+				"targets": buildTarget,
+			}
+			if len(modules) > 0 {
+				inputs["malefic_modules_features"] = strings.Join(modules, ",")
+			}
+			buildConfig = &clientpb.BuildConfig{
+				Owner:       owner,
+				Repo:        repo,
+				Token:       token,
+				WorkflowId:  file,
+				Inputs:      inputs,
+				ProfileName: name,
+				MaleficHost: address,
+				ArtifactId:  artifactId,
+				IsRemove:    remove,
+				Resource:    finalResource,
+			}
+		} else {
+			buildConfig = &clientpb.BuildConfig{
+				ProfileName: name,
+				MaleficHost: address,
+				Target:      buildTarget,
+				Type:        consts.CommandBuildPulse,
+				Srdi:        true,
+				ArtifactId:  artifactId,
+				Resource:    finalResource,
+			}
+		}
+		artifact, err := con.Rpc.Build(con.Context(), buildConfig)
 		if err != nil {
 			con.Log.Errorf("Build loader failed: %v\n", err)
 			return
 		}
+		con.Log.Infof("Build %v type %v target %v by %v start\n", artifact.Name, artifact.Type, artifact.Target, artifact.Resource)
 	}()
 	return nil
 }
@@ -159,18 +401,10 @@ func BuildLogCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func BuildModules(con *repl.Console, name, address, buildTarget string, modules []string, srdi bool) (bool, error) {
-	_, err := con.Rpc.Build(con.Context(), &clientpb.BuildConfig{
-		ProfileName: name,
-		MaleficHost: address,
-		Target:      buildTarget,
-		Type:        consts.CommandBuildModules,
-		Modules:     modules,
-		Srdi:        srdi,
-		Resource:    consts.ArtifactFromDocker,
-	})
+func RunSaas(con *repl.Console, req *clientpb.BuildConfig) (*clientpb.Builder, error) {
+	builder, err := con.Rpc.Build(con.Context(), req)
 	if err != nil {
-		return false, err
+		return builder, err
 	}
-	return true, nil
+	return builder, nil
 }

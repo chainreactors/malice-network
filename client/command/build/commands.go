@@ -148,6 +148,7 @@ build beacon --target x86_64-pc-windows-msvc --profile beacon_profile --srdi
 	common.BindFlagCompletions(beaconCmd, func(comp carapace.ActionMap) {
 		comp["profile"] = common.ProfileCompleter(con)
 		comp["target"] = common.BuildTargetCompleter(con)
+		comp["resource"] = common.BuildResourceCompleter(con)
 	})
 
 	bindCmd := &cobra.Command{
@@ -177,6 +178,7 @@ build bind --target x86_64-pc-windows-msvc --profile bind_profile --srdi
 	common.BindFlagCompletions(bindCmd, func(comp carapace.ActionMap) {
 		comp["profile"] = common.ProfileCompleter(con)
 		comp["target"] = common.BuildTargetCompleter(con)
+		comp["resource"] = common.BuildResourceCompleter(con)
 	})
 
 	preludeCmd := &cobra.Command{
@@ -210,6 +212,7 @@ build bind --target x86_64-pc-windows-msvc --profile bind_profile --srdi
 		comp["profile"] = common.ProfileCompleter(con)
 		comp["target"] = common.BuildTargetCompleter(con)
 		comp["autorun"] = carapace.ActionFiles().Usage("autorun.yaml path")
+		comp["resource"] = common.BuildResourceCompleter(con)
 	})
 	common.BindArgCompletions(preludeCmd, nil, common.ProfileCompleter(con))
 
@@ -240,6 +243,7 @@ build modules --target x86_64-pc-windows-msvc --profile module_profile --srdi
 	common.BindFlagCompletions(modulesCmd, func(comp carapace.ActionMap) {
 		comp["profile"] = common.ProfileCompleter(con)
 		comp["target"] = common.BuildTargetCompleter(con)
+		comp["resource"] = common.BuildResourceCompleter(con)
 	})
 
 	modulesCmd.MarkFlagRequired("target")
@@ -269,11 +273,7 @@ build pulse --target x86_64-pc-windows-msvc --profile pulse_profile --artifact-i
 ~~~
 `,
 	}
-	common.BindFlag(pulseCmd, func(f *pflag.FlagSet) {
-		f.String("profile", "", "profile name")
-		f.StringP("address", "a", "", "implant address")
-		f.String("srdi", "", "enable srdi")
-		f.String("target", "", "build target")
+	common.BindFlag(pulseCmd, common.GenerateFlagSet, func(f *pflag.FlagSet) {
 		f.Uint32("artifact-id", 0, "load remote shellcode build-id")
 	})
 	pulseCmd.MarkFlagRequired("target")
@@ -281,6 +281,7 @@ build pulse --target x86_64-pc-windows-msvc --profile pulse_profile --artifact-i
 	common.BindFlagCompletions(pulseCmd, func(comp carapace.ActionMap) {
 		comp["profile"] = common.ProfileCompleter(con)
 		comp["target"] = common.BuildTargetCompleter(con)
+		comp["resource"] = common.BuildResourceCompleter(con)
 	})
 
 	logCmd := &cobra.Command{

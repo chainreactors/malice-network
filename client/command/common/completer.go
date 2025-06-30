@@ -215,6 +215,17 @@ func BuildTypeCompleter(con *repl.Console) carapace.Action {
 	return carapace.ActionCallback(callback)
 }
 
+func BuildResourceCompleter(con *repl.Console) carapace.Action {
+	callback := func(c carapace.Context) carapace.Action {
+		results := make([]string, 0)
+		for _, s := range consts.BuildResource {
+			results = append(results, s, fmt.Sprintf("build resource"))
+		}
+		return carapace.ActionValuesDescribed(results...).Tag("build")
+	}
+	return carapace.ActionCallback(callback)
+}
+
 func ProfileCompleter(con *repl.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)

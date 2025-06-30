@@ -203,10 +203,11 @@ func GenerateFlagSet(f *pflag.FlagSet) {
 	f.String("proxy", "", "Overwrite proxy")
 	f.StringP("modules", "m", "full", "Set modules e.g.: execute_exe,execute_dll")
 	f.Bool("srdi", true, "enable srdi")
+	f.String("resource", "", "build resource")
 	SetFlagSetGroup(f, "generate")
 }
 
-func ParseGenerateFlags(cmd *cobra.Command) (string, string, string, []string, string, bool, *types.ProfileParams) {
+func ParseGenerateFlags(cmd *cobra.Command) (string, string, string, []string, string, bool, *types.ProfileParams, string) {
 	name, _ := cmd.Flags().GetString("profile")
 	address, _ := cmd.Flags().GetString("address")
 	buildTarget, _ := cmd.Flags().GetString("target")
@@ -223,7 +224,8 @@ func ParseGenerateFlags(cmd *cobra.Command) (string, string, string, []string, s
 		Jitter:   jitter,
 		Proxy:    proxy,
 	}
-	return name, address, buildTarget, modules, ca, enableSRDI, profileParams
+	resource, _ := cmd.Flags().GetString("resource")
+	return name, address, buildTarget, modules, ca, enableSRDI, profileParams, resource
 }
 
 func ProfileSet(f *pflag.FlagSet) {

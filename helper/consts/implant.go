@@ -127,6 +127,12 @@ var BuildType = []string{
 	"modules",
 }
 
+var BuildResource = []string{
+	ArtifactFromDocker,
+	ArtifactFromAction,
+	ArtifactFromSaas,
+}
+
 var Modules = []string{
 	"nano",
 	"full",
