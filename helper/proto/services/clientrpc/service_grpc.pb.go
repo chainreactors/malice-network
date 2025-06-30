@@ -104,6 +104,7 @@ const (
 	MaliceRPC_WmiExecute_FullMethodName            = "/clientrpc.MaliceRPC/WmiExecute"
 	MaliceRPC_Runas_FullMethodName                 = "/clientrpc.MaliceRPC/Runas"
 	MaliceRPC_Privs_FullMethodName                 = "/clientrpc.MaliceRPC/Privs"
+	MaliceRPC_Rev2Self_FullMethodName              = "/clientrpc.MaliceRPC/Rev2Self"
 	MaliceRPC_GetSystem_FullMethodName             = "/clientrpc.MaliceRPC/GetSystem"
 	MaliceRPC_PipeUpload_FullMethodName            = "/clientrpc.MaliceRPC/PipeUpload"
 	MaliceRPC_PipeRead_FullMethodName              = "/clientrpc.MaliceRPC/PipeRead"
@@ -251,6 +252,7 @@ type MaliceRPCClient interface {
 	// implant::sys:token
 	Runas(ctx context.Context, in *implantpb.RunAsRequest, opts ...grpc.CallOption) (*clientpb.Task, error)
 	Privs(ctx context.Context, in *implantpb.Request, opts ...grpc.CallOption) (*clientpb.Task, error)
+	Rev2Self(ctx context.Context, in *implantpb.Request, opts ...grpc.CallOption) (*clientpb.Task, error)
 	GetSystem(ctx context.Context, in *implantpb.Request, opts ...grpc.CallOption) (*clientpb.Task, error)
 	// implant::sys::pipe
 	PipeUpload(ctx context.Context, in *implantpb.PipeRequest, opts ...grpc.CallOption) (*clientpb.Task, error)
@@ -1076,6 +1078,15 @@ func (c *maliceRPCClient) Privs(ctx context.Context, in *implantpb.Request, opts
 	return out, nil
 }
 
+func (c *maliceRPCClient) Rev2Self(ctx context.Context, in *implantpb.Request, opts ...grpc.CallOption) (*clientpb.Task, error) {
+	out := new(clientpb.Task)
+	err := c.cc.Invoke(ctx, MaliceRPC_Rev2Self_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *maliceRPCClient) GetSystem(ctx context.Context, in *implantpb.Request, opts ...grpc.CallOption) (*clientpb.Task, error) {
 	out := new(clientpb.Task)
 	err := c.cc.Invoke(ctx, MaliceRPC_GetSystem_FullMethodName, in, out, opts...)
@@ -1581,6 +1592,7 @@ type MaliceRPCServer interface {
 	// implant::sys:token
 	Runas(context.Context, *implantpb.RunAsRequest) (*clientpb.Task, error)
 	Privs(context.Context, *implantpb.Request) (*clientpb.Task, error)
+	Rev2Self(context.Context, *implantpb.Request) (*clientpb.Task, error)
 	GetSystem(context.Context, *implantpb.Request) (*clientpb.Task, error)
 	// implant::sys::pipe
 	PipeUpload(context.Context, *implantpb.PipeRequest) (*clientpb.Task, error)
@@ -1887,6 +1899,9 @@ func (UnimplementedMaliceRPCServer) Runas(context.Context, *implantpb.RunAsReque
 }
 func (UnimplementedMaliceRPCServer) Privs(context.Context, *implantpb.Request) (*clientpb.Task, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Privs not implemented")
+}
+func (UnimplementedMaliceRPCServer) Rev2Self(context.Context, *implantpb.Request) (*clientpb.Task, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Rev2Self not implemented")
 }
 func (UnimplementedMaliceRPCServer) GetSystem(context.Context, *implantpb.Request) (*clientpb.Task, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSystem not implemented")
@@ -3515,6 +3530,24 @@ func _MaliceRPC_Privs_Handler(srv interface{}, ctx context.Context, dec func(int
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MaliceRPC_Rev2Self_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(implantpb.Request)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MaliceRPCServer).Rev2Self(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MaliceRPC_Rev2Self_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MaliceRPCServer).Rev2Self(ctx, req.(*implantpb.Request))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _MaliceRPC_GetSystem_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(implantpb.Request)
 	if err := dec(in); err != nil {
@@ -4655,6 +4688,10 @@ var MaliceRPC_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Privs",
 			Handler:    _MaliceRPC_Privs_Handler,
+		},
+		{
+			MethodName: "Rev2Self",
+			Handler:    _MaliceRPC_Rev2Self_Handler,
 		},
 		{
 			MethodName: "GetSystem",

@@ -2,6 +2,7 @@ package privilege
 
 import (
 	"fmt"
+
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -17,13 +18,14 @@ func RunasCmd(cmd *cobra.Command, con *repl.Console) error {
 	username, _ := cmd.Flags().GetString("username")
 	domain, _ := cmd.Flags().GetString("domain")
 	password, _ := cmd.Flags().GetString("password")
-	program, _ := cmd.Flags().GetString("program")
+	program, _ := cmd.Flags().GetString("path")
 	args, _ := cmd.Flags().GetString("args")
-	show, _ := cmd.Flags().GetInt32("show")
+	useProfile, _ := cmd.Flags().GetBool("use-profile")
+	useEnv, _ := cmd.Flags().GetBool("use-env")
 	netonly, _ := cmd.Flags().GetBool("netonly")
 
 	session := con.GetInteractive()
-	task, err := Runas(con.Rpc, session, username, domain, password, program, args, show, netonly)
+	task, err := Runas(con.Rpc, session, username, domain, password, program, args, useProfile, useEnv, netonly)
 	if err != nil {
 		return err
 	}
@@ -32,15 +34,16 @@ func RunasCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func Runas(rpc clientrpc.MaliceRPCClient, session *core.Session, username, domain, password, program, args string, show int32, netonly bool) (*clientpb.Task, error) {
+func Runas(rpc clientrpc.MaliceRPCClient, session *core.Session, username, domain, password, program, args string, useProfile, useEnv, netonly bool) (*clientpb.Task, error) {
 	request := &implantpb.RunAsRequest{
-		Username: username,
-		Domain:   domain,
-		Password: password,
-		Program:  program,
-		Args:     args,
-		Show:     show,
-		Netonly:  netonly,
+		Username:   username,
+		Domain:     domain,
+		Password:   password,
+		Program:    program,
+		Args:       args,
+		UseEnv:     useEnv,
+		UseProfile: useProfile,
+		Netonly:    netonly,
 	}
 	return rpc.Runas(session.Context(), request)
 }
@@ -51,7 +54,7 @@ func RegisterRunasFunc(con *repl.Console) {
 		Runas,
 		"",
 		nil,
-		output.ParseStatus,
+		output.ParseExecResponse,
 		nil,
 	)
 	//session *core.Session, username, domain, password, program, args string, show int32, netonly bool

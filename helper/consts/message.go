@@ -126,6 +126,7 @@ const (
 	ModuleRunas     = "runas"
 	ModulePrivs     = "privs"
 	ModuleGetSystem = "getsystem"
+	ModuleRev2Self  = "rev2self"
 
 	// 3rd
 	ModuleRem     = "rem"
