@@ -20,9 +20,6 @@ server:
     token:
   saas:
     enable: true
-    host: 121.4.210.3
-    port: 17373
-    token:
     url: http://121.4.210.3:17173
 
 listeners:
