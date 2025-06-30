@@ -168,7 +168,7 @@ func Execute() {
 		if opt.IP != "" {
 			logs.Log.Infof("manually specified IP: %s will override %s config: %s", opt.IP, opt.Config, opt.Server.IP)
 			opt.Listeners.IP = opt.IP
-			config.Set("listener.ip", opt.IP)
+			config.Set("listeners.ip", opt.IP)
 		}
 		err := StartListener(opt.Listeners)
 		if err != nil {
