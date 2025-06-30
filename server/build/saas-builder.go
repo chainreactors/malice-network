@@ -99,7 +99,6 @@ func (s *SaasBuilder) ExecuteBuild() error {
 	if err = json.Unmarshal(body, &builder); err != nil {
 		return fmt.Errorf("failed to unmarshal build service response: %s", err)
 	}
-	logs.Log.Infof("create build %s(%s %s by %s) success", builder.Name, builder.Type, builder.Target, builder.Source)
 	return nil
 }
 
