@@ -59,8 +59,8 @@ func handleModuleBuild(con *repl.Console, target, profile string, modules []stri
 	if err != nil {
 		return err
 	}
-	source, err := build.CheckResource(setting.GithubOwner, setting.GithubRepo, setting.GithubToken, setting.GithubWorkflowFile,
-		"", con)
+	github := setting.Github
+	source, err := build.CheckResource(con, "", github.ToProtobuf())
 	if err != nil {
 		return err
 	}
@@ -69,12 +69,9 @@ func handleModuleBuild(con *repl.Console, target, profile string, modules []stri
 		if len(modules) == 0 {
 			modules = []string{"full"}
 		}
-		var workflowID string
 
-		if setting.GithubWorkflowFile == "" {
-			workflowID = "generate.yaml"
-		} else {
-			workflowID = setting.GithubWorkflowFile
+		if github.Workflow == "" {
+			github.Workflow = "generate.yaml"
 		}
 		configByte := types.DefaultProfile
 		buildProfile, err := types.LoadProfile(configByte)
@@ -91,12 +88,9 @@ func handleModuleBuild(con *repl.Console, target, profile string, modules []stri
 		}
 		buildConfig = &clientpb.BuildConfig{
 			Inputs:      inputs,
-			Owner:       setting.GithubOwner,
-			Repo:        setting.GithubRepo,
-			Token:       setting.GithubToken,
-			WorkflowId:  workflowID,
 			ProfileName: profile,
 			Source:      source,
+			Github:      github.ToProtobuf(),
 		}
 	} else {
 		buildConfig = &clientpb.BuildConfig{

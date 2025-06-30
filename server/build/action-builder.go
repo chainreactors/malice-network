@@ -29,15 +29,16 @@ func NewActionBuilder(req *clientpb.BuildConfig) *ActionBuilder {
 }
 
 func (a *ActionBuilder) GenerateConfig() (*clientpb.Builder, error) {
-	if a.config.Owner == "" || a.config.Repo == "" || a.config.Token == "" {
+	githubConfig := a.config.Github
+	if githubConfig.Owner == "" || githubConfig.Repo == "" || githubConfig.Token == "" {
 		config := configs.GetGithubConfig()
 		if config == nil {
 			return nil, fmt.Errorf("please set github config use flag or server config")
 		}
-		a.config.Owner = config.Owner
-		a.config.Repo = config.Repo
-		a.config.Token = config.Token
-		a.config.WorkflowId = config.Workflow
+		githubConfig.Owner = config.Owner
+		githubConfig.Repo = config.Repo
+		githubConfig.Token = config.Token
+		githubConfig.WorkflowId = config.Workflow
 	}
 	var builder *models.Builder
 	var err error
@@ -80,7 +81,7 @@ func (a *ActionBuilder) ExecuteBuild() error {
 	}
 	db.UpdateBuilderStatus(a.builder.ID, consts.BuildStatusRunning)
 
-	err := runWorkFlow(a.config.Owner, a.config.Repo, a.config.WorkflowId, a.config.Token, a.config.Inputs)
+	err := runWorkFlow(a.config.Github.Owner, a.config.Github.Repo, a.config.Github.WorkflowId, a.config.Github.Token, a.config.Inputs)
 	if err != nil {
 		db.UpdateBuilderStatus(a.builder.ID, consts.BuildStatusFailure)
 		return err
@@ -89,6 +90,6 @@ func (a *ActionBuilder) ExecuteBuild() error {
 }
 
 func (a *ActionBuilder) CollectArtifact() (string, string) {
-	go downloadArtifactWhenReady(a.config.Owner, a.config.Repo, a.config.Token, a.config.IsRemove, a.builder)
+	go downloadArtifactWhenReady(a.config.Github.Owner, a.config.Github.Repo, a.config.Github.Token, a.config.Github.IsRemove, a.builder)
 	return a.builder.Path, ""
 }

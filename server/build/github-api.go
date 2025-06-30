@@ -9,6 +9,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/encoders"
 	"github.com/chainreactors/malice-network/helper/errs"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
@@ -119,9 +120,9 @@ func sendRequest(url string, payload []byte, token string, reqType string) (*htt
 	return resp, nil
 }
 
-func GetWorkflowStatus(owner, repo, workflowID, token string) error {
-	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/actions/workflows/%s", owner, repo, workflowID)
-	resp, err := sendRequest(url, []byte{}, token, "GET")
+func GetWorkflowStatus(config *clientpb.GithubWorkflowConfig) error {
+	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/actions/workflows/%s", config.Owner, config.Repo, config.WorkflowId)
+	resp, err := sendRequest(url, []byte{}, config.Token, "GET")
 	if err != nil {
 		return fmt.Errorf("failed to send request to workflow URL: %v", err)
 	}

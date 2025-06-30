@@ -390,7 +390,7 @@ func (lns *listener) executeBuild(profileName string, artifact *clientpb.Artifac
 	if err == nil {
 		buildResource = consts.ArtifactFromDocker
 	} else {
-		_, err = lns.Rpc.WorkflowStatus(lns.Context(), &clientpb.BuildConfig{})
+		_, err = lns.Rpc.WorkflowStatus(lns.Context(), &clientpb.GithubWorkflowConfig{})
 		if err == nil {
 			buildResource = consts.ArtifactFromAction
 		} else {

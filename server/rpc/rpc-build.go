@@ -104,18 +104,15 @@ func (rpc *Server) DockerStatus(ctx context.Context, req *clientpb.Empty) (*clie
 	return &clientpb.Empty{}, nil
 }
 
-func (rpc *Server) WorkflowStatus(ctx context.Context, req *clientpb.BuildConfig) (*clientpb.Empty, error) {
+func (rpc *Server) WorkflowStatus(ctx context.Context, req *clientpb.GithubWorkflowConfig) (*clientpb.Empty, error) {
 	if req.Owner == "" || req.Repo == "" || req.Token == "" {
 		config := configs.GetGithubConfig()
 		if config == nil {
 			return nil, fmt.Errorf("please set github config use flag or server config")
 		}
-		req.Owner = config.Owner
-		req.Repo = config.Repo
-		req.Token = config.Token
-		req.WorkflowId = config.Workflow
+		req = config.ToProtobuf()
 	}
-	err := build.GetWorkflowStatus(req.Owner, req.Repo, req.WorkflowId, req.Token)
+	err := build.GetWorkflowStatus(req)
 	if err != nil {
 		return nil, err
 	}

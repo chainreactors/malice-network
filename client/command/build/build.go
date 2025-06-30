@@ -3,20 +3,21 @@ package build
 import (
 	"encoding/base64"
 	"errors"
+	"os"
+	"strconv"
+	"strings"
+
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/spf13/cobra"
-	"os"
-	"strconv"
-	"strings"
 )
 
-func CheckResource(owner, repo, token, file, source string, con *repl.Console) (string, error) {
+func CheckResource(con *repl.Console, source string, config *clientpb.GithubWorkflowConfig) (string, error) {
 	if source != "" {
 		if source != consts.ArtifactFromAction && source != consts.ArtifactFromDocker && source != consts.ArtifactFromSaas {
-			return source, errors.New("build resource is violate")
+			return source, errors.New("build source invalid")
 		}
 	} else {
 		_, err := con.Rpc.DockerStatus(con.Context(), &clientpb.Empty{})
@@ -24,16 +25,7 @@ func CheckResource(owner, repo, token, file, source string, con *repl.Console) (
 			source = consts.ArtifactFromDocker
 			return source, nil
 		}
-		if err != nil {
-			source = consts.ArtifactFromSaas
-			return source, nil
-		}
-		_, err = con.Rpc.WorkflowStatus(con.Context(), &clientpb.BuildConfig{
-			Owner:      owner,
-			Repo:       repo,
-			Token:      token,
-			WorkflowId: file,
-		})
+		_, err = con.Rpc.WorkflowStatus(con.Context(), config)
 		if err == nil {
 			source = consts.ArtifactFromAction
 			return source, nil
@@ -43,87 +35,86 @@ func CheckResource(owner, repo, token, file, source string, con *repl.Console) (
 	return source, nil
 }
 
-func setActionBuildConfig(owner, repo, token, file string, remove bool, inputs map[string]string, buildConfig *clientpb.BuildConfig) *clientpb.BuildConfig {
-	buildConfig.Owner = owner
-	buildConfig.Repo = repo
-	buildConfig.Token = token
-	buildConfig.WorkflowId = file
-	buildConfig.Inputs = inputs
-	buildConfig.IsRemove = remove
-	return buildConfig
+// parseBasicConfig 解析基础配置（可复用部分）
+func parseBasicConfig(cmd *cobra.Command, con *repl.Console) (*clientpb.BuildConfig, string, error) {
+	buildConfig := common.ParseGenerateFlags(cmd)
+	if buildConfig.Target == "" {
+		return nil, "", errors.New("require build target")
+	}
+
+	buildConfig.Github = common.ParseGithubFlags(cmd)
+
+	finalSource, err := CheckResource(con, buildConfig.Source, buildConfig.Github)
+	if err != nil {
+		return nil, "", err
+	}
+	return buildConfig, finalSource, nil
+}
+
+// prepareBuildConfig 准备标准构建配置
+func prepareBuildConfig(cmd *cobra.Command, con *repl.Console, buildType string) (*clientpb.BuildConfig, error) {
+	buildConfig, finalSource, err := parseBasicConfig(cmd, con)
+	if err != nil {
+		return nil, err
+	}
+
+	buildConfig.Source = finalSource
+	buildConfig.Type = buildType
+
+	// 如果是Action类型，设置通用的inputs
+	if finalSource == consts.ArtifactFromAction {
+		inputs := map[string]string{
+			"package": buildType,
+			"targets": buildConfig.Target,
+		}
+		if len(buildConfig.Modules) > 0 {
+			inputs["malefic_modules_features"] = strings.Join(buildConfig.Modules, ",")
+		}
+		buildConfig.Inputs = inputs
+	}
+
+	return buildConfig, nil
+}
+
+// executeBuild 执行构建逻辑
+func executeBuild(con *repl.Console, buildConfig *clientpb.BuildConfig) {
+	go func() {
+		artifact, err := con.Rpc.Build(con.Context(), buildConfig)
+		if err != nil {
+			con.Log.Errorf("Build %s failed: %v\n", buildConfig.Type, err)
+			return
+		}
+		con.Log.Infof("Build started: %s (type: %s, target: %s, source: %s)\n",
+			artifact.Name, artifact.Type, artifact.Target, artifact.Source)
+	}()
 }
 
 func BeaconCmd(cmd *cobra.Command, con *repl.Console) error {
-	buildConfig := common.ParseGenerateFlags(cmd)
-	if buildConfig.Target == "" {
-		return errors.New("require build target")
-	}
-	owner, repo, token, file, remove := common.ParseGithubFlags(cmd)
-	finalResource, err := CheckResource(owner, repo, token, file, buildConfig.Source, con)
+	buildConfig, err := prepareBuildConfig(cmd, con, consts.CommandBuildBeacon)
 	if err != nil {
 		return err
 	}
-	go func() {
-		if finalResource == consts.ArtifactFromAction {
-			inputs := map[string]string{
-				"package": consts.CommandBuildBeacon,
-				"targets": buildConfig.Target,
-			}
-			if len(buildConfig.Modules) > 0 {
-				inputs["malefic_modules_features"] = strings.Join(buildConfig.Modules, ",")
-			}
-			buildConfig = setActionBuildConfig(owner, repo, token, file, remove, inputs, buildConfig)
-		}
-		buildConfig.Source = finalResource
-		buildConfig.Type = consts.CommandBuildBeacon
-		artifact, err := con.Rpc.Build(con.Context(), buildConfig)
-		if err != nil {
-			con.Log.Errorf("Build beacon failed: %v\n", err)
-			return
-		}
-		con.Log.Infof("Build %v type %v target %v by %v start\n", artifact.Name, artifact.Type, artifact.Target, artifact.Source)
-	}()
+
+	executeBuild(con, buildConfig)
 	return nil
 }
 
 func BindCmd(cmd *cobra.Command, con *repl.Console) error {
-	buildConfig := common.ParseGenerateFlags(cmd)
-	if buildConfig.Target == "" {
-		return errors.New("require build target")
-	}
-	owner, repo, token, file, remove := common.ParseGithubFlags(cmd)
-	finalResource, err := CheckResource(owner, repo, token, file, buildConfig.Source, con)
+	buildConfig, err := prepareBuildConfig(cmd, con, consts.CommandBuildBind)
 	if err != nil {
 		return err
 	}
-	go func() {
-		if finalResource == consts.ArtifactFromAction {
-			inputs := map[string]string{
-				"package": consts.CommandBuildBind,
-				"targets": buildConfig.Target,
-			}
-			if len(buildConfig.Modules) > 0 {
-				inputs["malefic_modules_features"] = strings.Join(buildConfig.Modules, ",")
-			}
-			buildConfig = setActionBuildConfig(owner, repo, token, file, remove, inputs, buildConfig)
-		}
-		buildConfig.Source = finalResource
-		buildConfig.Type = consts.CommandBuildBind
-		artifact, err := con.Rpc.Build(con.Context(), buildConfig)
-		if err != nil {
-			con.Log.Errorf("Build bind failed: %v\n", err)
-			return
-		}
-		con.Log.Infof("Build %v type %v target %v by %v start\n", artifact.Name, artifact.Type, artifact.Target, artifact.Source)
-	}()
+
+	executeBuild(con, buildConfig)
 	return nil
 }
 
 func PreludeCmd(cmd *cobra.Command, con *repl.Console) error {
-	buildConfig := common.ParseGenerateFlags(cmd)
-	if buildConfig.Target == "" {
-		return errors.New("require build target")
+	buildConfig, err := prepareBuildConfig(cmd, con, consts.CommandBuildPrelude)
+	if err != nil {
+		return err
 	}
+
 	autorunPath, _ := cmd.Flags().GetString("autorun")
 	if autorunPath == "" {
 		return errors.New("require autorun.yaml path")
@@ -132,107 +123,58 @@ func PreludeCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	owner, repo, token, fileID, remove := common.ParseGithubFlags(cmd)
-	finalResource, err := CheckResource(owner, repo, token, fileID, buildConfig.Source, con)
-	if err != nil {
-		return err
+
+	// PreludeCmd需要额外的autorun_yaml参数
+	if buildConfig.Source == consts.ArtifactFromAction {
+		base64Encoded := base64.StdEncoding.EncodeToString(file)
+		buildConfig.Inputs["autorun_yaml "] = base64Encoded
 	}
-	go func() {
-		if finalResource == consts.ArtifactFromAction {
-			base64Encoded := base64.StdEncoding.EncodeToString(file)
-			inputs := map[string]string{
-				"package": consts.CommandBuildPrelude,
-				"targets": buildConfig.Target,
-			}
-			inputs["autorun_yaml "] = base64Encoded
-			if len(buildConfig.Modules) > 0 {
-				inputs["malefic_modules_features"] = strings.Join(buildConfig.Modules, ",")
-			}
-			buildConfig = setActionBuildConfig(owner, repo, token, fileID, remove, inputs, buildConfig)
-		}
-		buildConfig.Source = finalResource
-		buildConfig.Type = consts.CommandBuildPrelude
-		artifact, err := con.Rpc.Build(con.Context(), buildConfig)
-		if err != nil {
-			con.Log.Errorf("Build prelude failed: %v\n", err)
-			return
-		}
-		con.Log.Infof("Build %v type %v target %v by %v start\n", artifact.Name, artifact.Type, artifact.Target, artifact.Source)
-	}()
+
+	executeBuild(con, buildConfig)
 	return nil
 }
 
 func ModulesCmd(cmd *cobra.Command, con *repl.Console) error {
-	buildConfig := common.ParseGenerateFlags(cmd)
-	if buildConfig.Target == "" {
-		return errors.New("require build target")
-	}
-	owner, repo, token, file, remove := common.ParseGithubFlags(cmd)
-	finalResource, err := CheckResource(owner, repo, token, file, buildConfig.Source, con)
+	buildConfig, finalSource, err := parseBasicConfig(cmd, con)
 	if err != nil {
 		return err
 	}
-	go func() {
-		if finalResource == consts.ArtifactFromAction {
-			inputs := map[string]string{
-				"package": consts.CommandBuildModules,
-				"targets": buildConfig.Target,
-			}
-			if len(buildConfig.Modules) == 0 {
-				inputs["malefic_modules_features"] = "full"
-			} else if len(buildConfig.Modules) > 0 {
-				inputs["malefic_modules_features"] = strings.Join(buildConfig.Modules, ",")
-			}
-			buildConfig = setActionBuildConfig(owner, repo, token, file, remove, inputs, buildConfig)
+
+	buildConfig.Source = finalSource
+	buildConfig.Type = consts.CommandBuildModules
+
+	if finalSource == consts.ArtifactFromAction {
+		inputs := map[string]string{
+			"package": consts.CommandBuildModules,
+			"targets": buildConfig.Target,
 		}
-		buildConfig.Source = finalResource
-		buildConfig.Type = consts.CommandBuildModules
-		artifact, err := con.Rpc.Build(con.Context(), buildConfig)
-		if err != nil {
-			con.Log.Errorf("Build prelude failed: %v\n", err)
-			return
+		if len(buildConfig.Modules) == 0 {
+			inputs["malefic_modules_features"] = "full"
+		} else {
+			inputs["malefic_modules_features"] = strings.Join(buildConfig.Modules, ",")
 		}
-		con.Log.Infof("Build %v type %v target %v by %v start\n", artifact.Name, artifact.Type, artifact.Target, artifact.Source)
-	}()
+		buildConfig.Inputs = inputs
+	}
+
+	executeBuild(con, buildConfig)
 	return nil
 }
 
 func PulseCmd(cmd *cobra.Command, con *repl.Console) error {
-	buildConfig := common.ParseGenerateFlags(cmd)
-	if buildConfig.Target == "" {
-		return errors.New("require build target")
-	}
-	if !strings.Contains(buildConfig.Target, "windows") {
-		con.Log.Warn("pulse only support windows target\n")
-		return nil
-	}
-	artifactId, _ := cmd.Flags().GetUint32("artifact-id")
-	owner, repo, token, file, remove := common.ParseGithubFlags(cmd)
-	finalResource, err := CheckResource(owner, repo, token, file, buildConfig.Source, con)
+	buildConfig, err := prepareBuildConfig(cmd, con, consts.CommandBuildPulse)
 	if err != nil {
 		return err
 	}
-	go func() {
-		if finalResource == consts.ArtifactFromAction {
-			inputs := map[string]string{
-				"package": consts.CommandBuildPulse,
-				"targets": buildConfig.Target,
-			}
-			if len(buildConfig.Modules) > 0 {
-				inputs["malefic_modules_features"] = strings.Join(buildConfig.Modules, ",")
-			}
-			buildConfig = setActionBuildConfig(owner, repo, token, file, remove, inputs, buildConfig)
-		}
-		buildConfig.Source = finalResource
-		buildConfig.Type = consts.CommandBuildPulse
-		buildConfig.ArtifactId = artifactId
-		artifact, err := con.Rpc.Build(con.Context(), buildConfig)
-		if err != nil {
-			con.Log.Errorf("Build loader failed: %v\n", err)
-			return
-		}
-		con.Log.Infof("Build %v type %v target %v by %v start\n", artifact.Name, artifact.Type, artifact.Target, artifact.Source)
-	}()
+
+	if !strings.Contains(buildConfig.Target, "windows") {
+		con.Log.Warn("Pulse only supports Windows targets\n")
+		return nil
+	}
+
+	artifactId, _ := cmd.Flags().GetUint32("artifact-id")
+	buildConfig.ArtifactId = artifactId
+
+	executeBuild(con, buildConfig)
 	return nil
 }
 
@@ -251,7 +193,7 @@ func BuildLogCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 	if len(builder.Log) == 0 {
-		con.Log.Infof("No log for %s\n", id)
+		con.Log.Infof("No logs found for build ID %s\n", id)
 		return nil
 	}
 	con.Log.Console(string(builder.Log))

@@ -29,20 +29,11 @@ func GetGithubConfigCmd(cmd *cobra.Command, con *repl.Console) error {
 }
 
 func UpdateGithubConfigCmd(cmd *cobra.Command, con *repl.Console) error {
-	owner, repo, token, workflow, _ := common.ParseGithubFlags(cmd)
-	_, err := UpdateGithubConfig(con, owner, repo, token, workflow)
+	githubConfig := common.ParseGithubFlags(cmd)
+	_, err := con.Rpc.UpdateGithubConfig(con.Context(), githubConfig)
 	if err != nil {
 		return err
 	}
 	con.Log.Console("Update github config success\n")
 	return nil
-}
-
-func UpdateGithubConfig(con *repl.Console, owner, repo, token, workflow string) (*clientpb.Empty, error) {
-	return con.Rpc.UpdateGithubConfig(con.Context(), &clientpb.GithubWorkflowConfig{
-		Owner:      owner,
-		Repo:       repo,
-		Token:      token,
-		WorkflowId: workflow,
-	})
 }

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/utils/configutil"
 	"gopkg.in/yaml.v3"
 	"io"
@@ -153,6 +154,15 @@ type GithubConfig struct {
 	Owner    string `config:"owner" default:""`
 	Token    string `config:"token" default:""`
 	Workflow string `config:"workflow" default:"generate.yml"`
+}
+
+func (g *GithubConfig) ToProtobuf() *clientpb.GithubWorkflowConfig {
+	return &clientpb.GithubWorkflowConfig{
+		Owner:      g.Owner,
+		Repo:       g.Repo,
+		Token:      g.Token,
+		WorkflowId: g.Workflow,
+	}
 }
 
 type SaasConfig struct {

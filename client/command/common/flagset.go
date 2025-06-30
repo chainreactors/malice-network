@@ -324,30 +324,27 @@ func GithubFlagSet(f *pflag.FlagSet) {
 	SetFlagSetGroup(f, "github")
 }
 
-func ParseGithubFlags(cmd *cobra.Command) (string, string, string, string, bool) {
+func ParseGithubFlags(cmd *cobra.Command) *clientpb.GithubWorkflowConfig {
 	owner, _ := cmd.Flags().GetString("owner")
 	repo, _ := cmd.Flags().GetString("repo")
 	token, _ := cmd.Flags().GetString("token")
 	file, _ := cmd.Flags().GetString("workflowFile")
 	remove, _ := cmd.Flags().GetBool("remove")
-	setting, err := assets.GetSetting()
-	if err != nil {
-		logs.Log.Errorf("get github setting error %v", err)
-		return "", "", "", "", false
+
+	githubConfig := &clientpb.GithubWorkflowConfig{
+		Owner:      owner,
+		Repo:       repo,
+		Token:      token,
+		WorkflowId: file,
+		IsRemove:   remove,
 	}
-	if owner == "" {
-		owner = setting.GithubOwner
+	if githubConfig.Owner == "" || githubConfig.Repo == "" || githubConfig.Token == "" {
+		setting, err := assets.GetSetting()
+		if err != nil {
+			logs.Log.Errorf("get github setting error %v", err)
+			return setting.Github.ToProtobuf()
+		}
 	}
-	if repo == "" {
-		repo = setting.GithubRepo
-	}
-	if token == "" {
-		token = setting.GithubToken
-	}
-	if file == "" && setting.GithubWorkflowFile != "" {
-		file = setting.GithubWorkflowFile
-	} else if file == "" && setting.GithubWorkflowFile == "" {
-		file = "generate.yaml"
-	}
-	return owner, repo, token, file, remove
+
+	return githubConfig
 }
