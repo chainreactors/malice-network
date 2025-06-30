@@ -178,7 +178,7 @@ func CheckBuildStatusExternal(statusUrl string, token string) (string, error) {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("status check failed with code: %d", resp.StatusCode)
+		return "", fmt.Errorf("%d", resp.StatusCode)
 	}
 
 	logs.Log.Debugf("Status response body: %s", string(body))
