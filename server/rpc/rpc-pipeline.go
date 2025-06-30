@@ -41,10 +41,9 @@ func (rpc *Server) RegisterPipeline(ctx context.Context, req *clientpb.Pipeline)
 			PipelineId: req.BeaconPipeline,
 		}
 	}
-
 	err = db.NewProfile(profileReq)
 	if err != nil {
-		logs.Log.Errorf("profile %s new failed", req.Name)
+		logs.Log.Errorf("new profile %s failed %v", req.Name, err)
 	}
 	return &clientpb.Empty{}, nil
 }

@@ -182,10 +182,12 @@ func downloadArtifactWhenReady(owner, repo, token string, isRemove bool, builder
 				}
 			}
 			db.UpdateBuilderStatus(builder.ID, consts.BuildStatusCompleted)
+			SendBuildMsg(builder, consts.BuildStatusCompleted, "")
 			break
 		} else if errors.Is(err, errs.ErrWorkflowFailed) {
 			logs.Log.Errorf("Download artifact failed due to workflow failure: %s", err)
 			db.UpdateBuilderStatus(builder.ID, consts.BuildStatusFailure)
+			SendBuildMsg(builder, consts.BuildStatusFailure, "")
 			break
 		} else {
 			logs.Log.Debugf("Download artifact failed: %s", err)
@@ -338,19 +340,7 @@ func PushArtifact(owner, repo, token, buildName string, isRemove bool) (*models.
 		if err := DeleteSuccessWorkflow(owner, repo, token, workflowID); err != nil {
 			return nil, err
 		}
-		core.EventBroker.Publish(core.Event{
-			EventType: consts.EventBuild,
-			IsNotify:  false,
-			Message:   fmt.Sprintf("workflow %s %s %s has deleted", builder.Name, builder.Type, builder.Target),
-			Important: true,
-		})
 	}
-	core.EventBroker.Publish(core.Event{
-		EventType: consts.EventBuild,
-		IsNotify:  false,
-		Message:   fmt.Sprintf("action %s %s %s has finished", builder.Name, builder.Type, builder.Target),
-		Important: true,
-	})
 	return builder, nil
 }
 

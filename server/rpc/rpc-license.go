@@ -50,7 +50,7 @@ type LicenseResponse struct {
 func getLicenseFromSaas(saasConfig *configs.SaasConfig) (*clientpb.LicenseInfo, error) {
 	// 构建API URL - 这里需要根据实际的API路径调整
 	// 假设API路径是 /api/license/info 或者使用token查询
-	licenseUrl := fmt.Sprintf("http://%v:%v/api/license/info", saasConfig.Host, saasConfig.Port)
+	licenseUrl := fmt.Sprintf("%s/api/license/info", saasConfig.Url)
 
 	// 创建HTTP请求
 	req, err := http.NewRequest("GET", licenseUrl, nil)

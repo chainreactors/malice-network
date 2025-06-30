@@ -320,21 +320,6 @@ func (lns *listener) autoBuild(pipeline *clientpb.Pipeline) error {
 
 		// 创建构建配置文件
 		profileName := pipeline.Name + "_default"
-		if pipeline.Parser == consts.ImplantPulse {
-			_, err = lns.Rpc.NewProfile(lns.Context(), &clientpb.Profile{
-				Name:            profileName,
-				PipelineId:      pipeline.BeaconPipeline,
-				PulsePipelineId: pipeline.Name,
-			})
-		} else if pipeline.Parser == consts.ImplantMalefic {
-			_, err = lns.Rpc.NewProfile(lns.Context(), &clientpb.Profile{
-				Name:       profileName,
-				PipelineId: pipeline.Name,
-			})
-		}
-		if err != nil {
-			return err
-		}
 
 		// 执行构建
 		if err := lns.executeBuild(profileName, artifact, input); err != nil {

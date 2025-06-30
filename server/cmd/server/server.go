@@ -248,8 +248,8 @@ func ReDownloadSaasArtifact() error {
 		for _, artifact := range artifacts {
 			if artifact.Status != consts.BuildStatusCompleted && artifact.Status != consts.BuildStatusFailure {
 				go func() {
-					statusUrl := fmt.Sprintf("http://%v:%v/api/build/status/%v", saasConfig.Host, saasConfig.Port, artifact.Name)
-					downloadUrl := fmt.Sprintf("http://%v:%v/api/build/download/%v", saasConfig.Host, saasConfig.Port, artifact.Name)
+					statusUrl := fmt.Sprintf("%s/api/build/status/%s", saasConfig.Url, artifact.Name)
+					downloadUrl := fmt.Sprintf("%s/api/build/download/%s", saasConfig.Url, artifact.Name)
 					_, _, err = build.CheckAndDownloadArtifact(statusUrl, downloadUrl, saasConfig.Token, artifact, 0, 0)
 					if err != nil {
 						return
@@ -276,7 +276,7 @@ func StartListener(opt *configs.ListenerConfig) error {
 func RegisterLicense(opt Options) error {
 	saasConfig := configs.GetSaasConfig()
 	if saasConfig.Token == "" && saasConfig.Enable {
-		licenseUrl := fmt.Sprintf("http://%v:%v/api/license/", saasConfig.Host, saasConfig.Port)
+		licenseUrl := fmt.Sprintf("%s/api/license/", saasConfig.Url)
 
 		// 获取机器码作为用户名
 		machineID := utils.GetMachineID()

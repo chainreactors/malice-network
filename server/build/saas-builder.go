@@ -48,20 +48,19 @@ func (s *SaasBuilder) GenerateConfig() (*clientpb.Builder, error) {
 		builder, err = db.SaveArtifactFromConfig(s.config)
 	}
 	if err != nil {
-		logs.Log.Errorf("save build db error: %v", err)
+		logs.Log.Errorf("failed to save build %s: %s", builder.Name, err)
 		return nil, err
 	}
 	s.builder = builder
 	db.UpdateBuilderStatus(s.builder.ID, consts.BuildStatusWaiting)
 	saasConfig := configs.GetSaasConfig()
-	s.executeUrl = fmt.Sprintf("http://%v:%v/api/build", saasConfig.Host, saasConfig.Port)
+	s.executeUrl = fmt.Sprintf("%s/api/build", saasConfig.Url)
 	return builder.ToProtobuf(), nil
 }
 
 func (s *SaasBuilder) ExecuteBuild() error {
 	profileByte, err := GenerateProfile(s.config)
 	if err != nil {
-		sendSaasCtrlMsg(true, s.builder, err, "")
 		return err
 	}
 	base64Encoded := encode.Base64Encode(profileByte)
@@ -69,14 +68,12 @@ func (s *SaasBuilder) ExecuteBuild() error {
 	s.config.Inputs["malefic_config_yaml"] = base64Encoded
 	data, err := protojson.Marshal(s.config)
 	if err != nil {
-		sendSaasCtrlMsg(true, s.builder, fmt.Errorf("marshal build config failed: %w", err), "")
-		return fmt.Errorf("marshal build config failed: %w", err)
+		return fmt.Errorf("failed to marshal config %s: %s", s.config.ProfileName, err)
 	}
 	client := &http.Client{Timeout: 60 * time.Second}
 	req, err := http.NewRequest("POST", s.executeUrl, bytes.NewReader(data))
 	if err != nil {
-		sendSaasCtrlMsg(true, s.builder, fmt.Errorf("create build request failed: %w", err), "")
-		return fmt.Errorf("create build request failed: %w", err)
+		return fmt.Errorf("failed to create build request: %s", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	token := s.getToken()
@@ -85,44 +82,39 @@ func (s *SaasBuilder) ExecuteBuild() error {
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		sendSaasCtrlMsg(true, s.builder, fmt.Errorf("post to build service failed: %w", err), "")
-		return fmt.Errorf("post to build service failed: %w", err)
+		return fmt.Errorf("failed to post saas service failed: %s", err)
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		sendSaasCtrlMsg(true, s.builder, fmt.Errorf("read build service response failed: %w", err), "")
-		return fmt.Errorf("read build service response failed: %w", err)
+		return fmt.Errorf("failed to read build service response: %s", err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		sendSaasCtrlMsg(true, s.builder, errors.New(string(body)), "")
 		return errors.New(string(body))
 	}
 
 	var builder clientpb.Builder
-	if err := json.Unmarshal(body, &builder); err != nil {
-		sendSaasCtrlMsg(true, s.builder, fmt.Errorf("unmarshal build service response failed: %w", err), "")
-		return fmt.Errorf("unmarshal build service response failed: %w", err)
+	if err = json.Unmarshal(body, &builder); err != nil {
+		return fmt.Errorf("failed to unmarshal build service response: %s", err)
 	}
-
-	logs.Log.Infof("saas build create success，builder: %v", builder.Name)
+	logs.Log.Infof("create build %s(%s %s by %s) success", builder.Name, builder.Type, builder.Target, builder.Source)
 	return nil
 }
 
 func (s *SaasBuilder) CollectArtifact() (string, string) {
 	saasConfig := configs.GetSaasConfig()
-	statusUrl := fmt.Sprintf("http://%v:%v/api/build/status/%v", saasConfig.Host, saasConfig.Port, s.builder.Name)
-	downloadUrl := fmt.Sprintf("http://%v:%v/api/build/download/%v", saasConfig.Host, saasConfig.Port, s.builder.Name)
+	statusUrl := fmt.Sprintf("%s/api/build/status/%s", saasConfig.Url, s.builder.Name)
+	downloadUrl := fmt.Sprintf("%s/api/build/download/%s", saasConfig.Url, s.builder.Name)
 
 	// 使用外部函数进行状态检查和下载
 	path, status, err := CheckAndDownloadArtifact(statusUrl, downloadUrl, s.getToken(), s.builder, 30*time.Second, 30*time.Minute)
 	if err != nil {
-		logs.Log.Errorf("collect artifact failed: %v", err)
+		logs.Log.Errorf("failed to collect artifact %s: %s", s.builder.Name, err)
 		return "", consts.BuildStatusFailure
 	}
-
+	SendBuildMsg(s.builder, consts.BuildStatusCompleted, "")
 	return path, status
 }
 
@@ -296,7 +288,6 @@ func CheckAndDownloadArtifact(statusUrl string, downloadUrl string, token string
 			if builder != nil {
 				db.UpdateBuilderStatus(builder.ID, consts.BuildStatusFailure)
 			}
-			sendSaasCtrlMsg(true, builder, fmt.Errorf("build polling timeout"), "")
 			return "", consts.BuildStatusFailure, fmt.Errorf("build polling timeout")
 		}
 
@@ -308,27 +299,25 @@ func CheckAndDownloadArtifact(statusUrl string, downloadUrl string, token string
 		}
 
 		if status == consts.BuildStatusFailure {
-			logs.Log.Errorf("build failed")
 			if builder != nil {
 				db.UpdateBuilderStatus(builder.ID, consts.BuildStatusFailure)
 			}
-			sendSaasCtrlMsg(true, builder, nil, consts.BuildStatusFailure)
-			return "", consts.BuildStatusFailure, nil
+			SendBuildMsg(builder, consts.BuildStatusFailure, "")
+			return "", consts.BuildStatusFailure, fmt.Errorf("failed to build %s by saas", builder.Name)
 		}
 
 		if status == consts.BuildStatusCompleted {
 			downloadErr := DownloadArtifactWithBuilder(downloadUrl, token, builder)
 
 			if downloadErr != nil && !errors.Is(downloadErr, ERROROBJCOPY) && !errors.Is(downloadErr, ERRORSRDI) {
-				logs.Log.Errorf("download artifact failed: %v", downloadErr)
+				logs.Log.Errorf("download artifact failed: %s", downloadErr)
 				time.Sleep(pollInterval)
 				continue
 			} else if errors.Is(downloadErr, ERROROBJCOPY) || errors.Is(downloadErr, ERRORSRDI) {
-				logs.Log.Errorf("srdi or objcopy error")
+				logs.Log.Errorf("srdi or objcopy error: %s", downloadErr)
 				if builder != nil {
 					db.UpdateBuilderStatus(builder.ID, consts.BuildStatusCompleted)
 				}
-				sendSaasCtrlMsg(true, builder, nil, consts.BuildStatusCompleted)
 				return builder.Path, consts.BuildStatusCompleted, nil
 			}
 
@@ -336,10 +325,8 @@ func CheckAndDownloadArtifact(statusUrl string, downloadUrl string, token string
 			if builder != nil {
 				db.UpdateBuilderStatus(builder.ID, consts.BuildStatusCompleted)
 			}
-			sendSaasCtrlMsg(true, builder, nil, consts.BuildStatusCompleted)
 			return builder.Path, consts.BuildStatusCompleted, nil
 		}
-		logs.Log.Debugf("build status: %s, continue polling...", status)
 		time.Sleep(pollInterval)
 	}
 }

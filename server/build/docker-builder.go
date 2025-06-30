@@ -44,7 +44,7 @@ func (d *DockerBuilder) GenerateConfig() (*clientpb.Builder, error) {
 		builder, err = db.SaveArtifactFromConfig(d.config)
 	}
 	if err != nil {
-		logs.Log.Errorf("save build db error: %v", err)
+		logs.Log.Errorf("failed to save build %s: %s", builder.Name, err)
 		return nil, err
 	}
 	d.builder = builder
@@ -61,13 +61,11 @@ func (d *DockerBuilder) ExecuteBuild() error {
 	if d.config.Inputs == nil {
 		_, err := GenerateProfile(d.config)
 		if err != nil {
-			logs.Log.Errorf("failed to create config: %v", err)
-			return fmt.Errorf("failed to create config: %v", err)
+			return fmt.Errorf("failed to create config: %s", err)
 		}
 	}
 	cli, err := GetDockerClient()
 	if err != nil {
-		logs.Log.Errorf("docker client failed %s", err)
 		return err
 	}
 	var buildCommand string
@@ -120,16 +118,14 @@ func (d *DockerBuilder) ExecuteBuild() error {
 		Binds:      Volumes,
 	}, nil, nil, d.containerName)
 	if err != nil {
-		logs.Log.Errorf("docker start failed %s", err)
 		return err
 	}
 	d.containerID = resp.ID
 	if err := cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
-		logs.Log.Errorf("Error starting container: %v", err)
 		db.UpdateBuilderStatus(d.builder.ID, consts.BuildStatusFailure)
+		SendBuildMsg(d.builder, consts.BuildStatusFailure, "")
 	}
 	db.UpdateBuilderStatus(d.builder.ID, consts.BuildStatusRunning)
-	sendContainerCtrlMsg(false, d.containerName, d.config, nil)
 	logs.Log.Infof("Container %s started successfully.", resp.ID)
 
 	err = catchLogs(cli, resp.ID, d.config.BuildName)
@@ -145,6 +141,7 @@ func (d *DockerBuilder) ExecuteBuild() error {
 				return nil
 			}
 			db.UpdateBuilderStatus(d.builder.ID, consts.BuildStatusFailure)
+			SendBuildMsg(d.builder, consts.BuildStatusFailure, "")
 			return err
 		}
 	case <-statusCh:
@@ -156,60 +153,59 @@ func (d *DockerBuilder) ExecuteBuild() error {
 func (d *DockerBuilder) CollectArtifact() (string, string) {
 	_, artifactPath, err := MoveBuildOutput(d.config.Target, d.config.Type)
 	if err != nil {
-		logs.Log.Errorf("move build output error: %v", err)
-		sendContainerCtrlMsg(true, d.containerName, d.config, fmt.Errorf("db err %v", err))
+		logs.Log.Errorf("failed to move builder %s output: %s", d.builder.Name, err)
 		db.UpdateBuilderStatus(d.builder.ID, consts.BuildStatusFailure)
 		return "", consts.BuildStatusFailure
 	}
 	err = db.UpdateBuilderPath(d.builder)
 	if err != nil {
-		sendContainerCtrlMsg(true, d.containerName, d.config, fmt.Errorf("db err %v", err))
-		logs.Log.Errorf("update Builder path and status error: %v", err)
+		logs.Log.Errorf("failed to update Builder %s path: %s", d.builder.Name, err)
 	}
 	absArtifactPath, err := filepath.Abs(artifactPath)
 	if err != nil {
-		sendContainerCtrlMsg(true, d.containerName, d.config, fmt.Errorf("artifactPath err %v", err))
+		logs.Log.Errorf("failed to find artifactPath: %s", err)
+		SendBuildMsg(d.builder, consts.BuildStatusFailure, "")
 		return "", consts.BuildStatusFailure
 	}
 
 	d.builder.Path = absArtifactPath
 	err = db.UpdateBuilderPath(d.builder)
 	if err != nil {
-		sendContainerCtrlMsg(true, d.containerName, d.config, fmt.Errorf("db err %v", err))
+		SendBuildMsg(d.builder, consts.BuildStatusFailure, "")
+		logs.Log.Errorf("failed to update %s path: %s", d.builder.Name, err)
 		return "", consts.BuildStatusFailure
 	}
 
 	_, err = os.ReadFile(absArtifactPath)
 	if err != nil {
-		sendContainerCtrlMsg(true, d.containerName, d.config, fmt.Errorf("read artifactFile err %v", err))
+		SendBuildMsg(d.builder, consts.BuildStatusFailure, "")
+		logs.Log.Errorf("failed to read artifact file: %s", err)
 		return "", consts.BuildStatusFailure
 	}
 	if d.builder.IsSRDI {
 		target, ok := consts.GetBuildTarget(d.config.Target)
 		if !ok {
-			sendContainerCtrlMsg(true, d.containerName, d.config, errs.ErrInvalidateTarget)
+			logs.Log.Errorf("builder %s(%s %s): %s", d.builder.Name, d.builder.Type, d.builder.Target, errs.ErrInvalidateTarget)
 			return "", consts.BuildStatusFailure
 		}
 		if d.builder.Type == consts.CommandBuildPulse {
 			logs.Log.Infof("objcopy start ...")
 			_, err = OBJCOPYPulse(d.builder, target.OS, target.Arch)
 			if err != nil {
-				sendContainerCtrlMsg(true, d.containerName, d.config, fmt.Errorf("objcopy error: %v", err))
-				logs.Log.Errorf("objcopy error  %v", err)
+				logs.Log.Errorf("failed to objcopy: %s", err)
 				db.UpdateBuilderStatus(d.builder.ID, consts.BuildStatusCompleted)
 			}
 			logs.Log.Infof("objcopy end ...")
 		} else {
 			_, err = SRDIArtifact(d.builder, target.OS, target.Arch)
 			if err != nil {
-				sendContainerCtrlMsg(true, d.containerName, d.config, fmt.Errorf("SRDI error %v", err))
-				logs.Log.Errorf("srid error  %v", err)
+				logs.Log.Errorf("failed to srid: %s", err)
 				db.UpdateBuilderStatus(d.builder.ID, consts.BuildStatusCompleted)
 				return "", consts.BuildStatusCompleted
 			}
 		}
 	}
 	db.UpdateBuilderStatus(d.builder.ID, consts.BuildStatusCompleted)
-	sendContainerCtrlMsg(true, d.containerName, d.config, nil)
+	SendBuildMsg(d.builder, consts.BuildStatusCompleted, "")
 	return d.builder.Path, consts.BuildStatusCompleted
 }

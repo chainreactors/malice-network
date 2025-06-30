@@ -2,8 +2,11 @@ package build
 
 import (
 	"errors"
+	"fmt"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/server/internal/core"
+	"github.com/chainreactors/malice-network/server/internal/db/models"
 )
 
 var (
@@ -44,3 +47,31 @@ var (
 	// 用信号量控制最大并发数
 	dockerBuildSemaphore = make(chan struct{}, maxDockerBuildConcurrency)
 )
+
+func SendBuildMsg(builder *models.Builder, status string, msg string) {
+	if core.EventBroker == nil {
+		return
+	}
+	if status == consts.BuildStatusCompleted {
+		msg = fmt.Sprintf("Builder completed %s (type: %s, target: %s, source: %s)", builder.Name, builder.Type, builder.Target, builder.Source)
+	} else if status == consts.BuildStatusFailure {
+		msg = fmt.Sprintf("Builder failed %s (type: %s, target: %s, source: %s)", builder.Name, builder.Type, builder.Target, builder.Source)
+	} else {
+		return
+	}
+	core.EventBroker.Publish(core.Event{
+		EventType: consts.EventBuild,
+		IsNotify:  false,
+		Message:   msg,
+		Important: true,
+	})
+}
+
+func SendFailedMsg(builder *clientpb.Builder) {
+	core.EventBroker.Publish(core.Event{
+		EventType: consts.EventBuild,
+		IsNotify:  false,
+		Message:   fmt.Sprintf("Builder failed %s (type: %s, target: %s, source: %s)", builder.Name, builder.Type, builder.Target, builder.Source),
+		Important: true,
+	})
+}

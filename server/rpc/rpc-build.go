@@ -60,7 +60,8 @@ func (rpc *Server) Build(ctx context.Context, req *clientpb.BuildConfig) (*clien
 				if executeErr == nil {
 					beaconBuilder.CollectArtifact()
 				} else {
-					logs.Log.Errorf("build %v failed %v", artifact.Name, executeErr)
+					logs.Log.Errorf("failed to build %s: %s", artifact.Name, executeErr)
+					build.SendFailedMsg(artifact)
 				}
 			}()
 		}
@@ -76,7 +77,7 @@ func (rpc *Server) Build(ctx context.Context, req *clientpb.BuildConfig) (*clien
 		if executeErr == nil {
 			builder.CollectArtifact()
 		} else {
-			logs.Log.Errorf("build %v failed %v", artifact.Name, executeErr)
+			logs.Log.Errorf("failed to build %s: %s", artifact.Name, executeErr)
 		}
 	}()
 

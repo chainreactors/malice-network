@@ -167,7 +167,6 @@ func (g *GithubConfig) ToProtobuf() *clientpb.GithubWorkflowConfig {
 
 type SaasConfig struct {
 	Enable bool   `config:"enable" default:"true"`
-	Host   string `config:"host" default:""`
-	Port   uint16 `config:"port" default:""`
+	Url    string `config:"url" default:""`
 	Token  string `config:"token" default:""`
 }

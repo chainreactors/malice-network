@@ -30,15 +30,17 @@ func NewActionBuilder(req *clientpb.BuildConfig) *ActionBuilder {
 
 func (a *ActionBuilder) GenerateConfig() (*clientpb.Builder, error) {
 	githubConfig := a.config.Github
-	if githubConfig.Owner == "" || githubConfig.Repo == "" || githubConfig.Token == "" {
-		config := configs.GetGithubConfig()
-		if config == nil {
-			return nil, fmt.Errorf("please set github config use flag or server config")
+	if githubConfig != nil {
+		if githubConfig.Owner == "" || githubConfig.Repo == "" || githubConfig.Token == "" {
+			config := configs.GetGithubConfig()
+			if config == nil {
+				return nil, fmt.Errorf("please set github config use flag or server config")
+			}
+			githubConfig.Owner = config.Owner
+			githubConfig.Repo = config.Repo
+			githubConfig.Token = config.Token
+			githubConfig.WorkflowId = config.Workflow
 		}
-		githubConfig.Owner = config.Owner
-		githubConfig.Repo = config.Repo
-		githubConfig.Token = config.Token
-		githubConfig.WorkflowId = config.Workflow
 	}
 	var builder *models.Builder
 	var err error
@@ -51,7 +53,7 @@ func (a *ActionBuilder) GenerateConfig() (*clientpb.Builder, error) {
 		builder, err = db.SaveArtifactFromConfig(a.config)
 	}
 	if err != nil {
-		logs.Log.Errorf("save build db error: %v", err)
+		logs.Log.Errorf("failed to save build%s: %s", builder.Name, err)
 		return nil, err
 	}
 	a.builder = builder
