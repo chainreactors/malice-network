@@ -70,7 +70,6 @@ profile load /path/to/config.yaml --name my_profile --pipeline pipeline_name --p
 		comp["proxy"] = carapace.ActionValues().Usage("proxy, socks5 or http")
 		//comp["obfuscate"] = carapace.ActionValues("true", "false")
 		comp["modules"] = carapace.ActionValues().Usage("e.g.: execute_exe,execute_dll")
-		comp["ca"] = carapace.ActionValues("true", "false")
 
 		comp["interval"] = carapace.ActionValues("5")
 		comp["jitter"] = carapace.ActionValues("0.2")

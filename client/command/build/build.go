@@ -72,7 +72,7 @@ func checkResource(cmd *cobra.Command, resource string, con *repl.Console) (stri
 }
 
 func BeaconCmd(cmd *cobra.Command, con *repl.Console) error {
-	name, address, buildTarget, modules, ca, _, params, resource := common.ParseGenerateFlags(cmd)
+	name, address, buildTarget, modules, _, params, resource := common.ParseGenerateFlags(cmd)
 	if buildTarget == "" {
 		return errors.New("require build target")
 	}
@@ -102,7 +102,6 @@ func BeaconCmd(cmd *cobra.Command, con *repl.Console) error {
 				Inputs:      inputs,
 				ProfileName: name,
 				MaleficHost: address,
-				Ca:          ca,
 				Params:      params.String(),
 				IsRemove:    remove,
 				Resource:    finalResource,
@@ -114,7 +113,6 @@ func BeaconCmd(cmd *cobra.Command, con *repl.Console) error {
 				Type:        consts.CommandBuildBeacon,
 				Target:      buildTarget,
 				Modules:     modules,
-				Ca:          ca,
 				Params:      params.String(),
 				Srdi:        true,
 				Resource:    finalResource,
@@ -131,7 +129,7 @@ func BeaconCmd(cmd *cobra.Command, con *repl.Console) error {
 }
 
 func BindCmd(cmd *cobra.Command, con *repl.Console) error {
-	name, address, buildTarget, modules, ca, _, params, resource := common.ParseGenerateFlags(cmd)
+	name, address, buildTarget, modules, _, params, resource := common.ParseGenerateFlags(cmd)
 	if buildTarget == "" {
 		return errors.New("require build target")
 	}
@@ -161,7 +159,6 @@ func BindCmd(cmd *cobra.Command, con *repl.Console) error {
 				Inputs:      inputs,
 				ProfileName: name,
 				MaleficHost: address,
-				Ca:          ca,
 				Params:      params.String(),
 				IsRemove:    remove,
 				Resource:    finalResource,
@@ -173,7 +170,6 @@ func BindCmd(cmd *cobra.Command, con *repl.Console) error {
 				Type:        consts.CommandBuildBind,
 				Target:      buildTarget,
 				Modules:     modules,
-				Ca:          ca,
 				Params:      params.String(),
 				Srdi:        true,
 				Resource:    finalResource,
@@ -190,7 +186,7 @@ func BindCmd(cmd *cobra.Command, con *repl.Console) error {
 }
 
 func PreludeCmd(cmd *cobra.Command, con *repl.Console) error {
-	name, address, buildTarget, modules, ca, _, params, resource := common.ParseGenerateFlags(cmd)
+	name, address, buildTarget, modules, _, params, resource := common.ParseGenerateFlags(cmd)
 	if buildTarget == "" {
 		return errors.New("require build target")
 	}
@@ -230,7 +226,6 @@ func PreludeCmd(cmd *cobra.Command, con *repl.Console) error {
 				Inputs:      inputs,
 				ProfileName: name,
 				MaleficHost: address,
-				Ca:          ca,
 				Params:      params.String(),
 				IsRemove:    remove,
 				Resource:    finalResource,
@@ -242,7 +237,6 @@ func PreludeCmd(cmd *cobra.Command, con *repl.Console) error {
 				Type:        consts.CommandBuildPrelude,
 				Target:      buildTarget,
 				Modules:     modules,
-				Ca:          ca,
 				Params:      params.String(),
 				Srdi:        true,
 				Bin:         file,
@@ -260,7 +254,7 @@ func PreludeCmd(cmd *cobra.Command, con *repl.Console) error {
 }
 
 func ModulesCmd(cmd *cobra.Command, con *repl.Console) error {
-	name, address, buildTarget, modules, ca, srdi, params, resource := common.ParseGenerateFlags(cmd)
+	name, address, buildTarget, modules, srdi, params, resource := common.ParseGenerateFlags(cmd)
 	if buildTarget == "" {
 		return errors.New("require build target")
 	}
@@ -292,7 +286,6 @@ func ModulesCmd(cmd *cobra.Command, con *repl.Console) error {
 				Inputs:      inputs,
 				ProfileName: name,
 				MaleficHost: address,
-				Ca:          ca,
 				Params:      params.String(),
 				IsRemove:    remove,
 				Resource:    finalResource,
@@ -319,7 +312,7 @@ func ModulesCmd(cmd *cobra.Command, con *repl.Console) error {
 }
 
 func PulseCmd(cmd *cobra.Command, con *repl.Console) error {
-	name, address, buildTarget, modules, _, _, _, resource := common.ParseGenerateFlags(cmd)
+	name, address, buildTarget, modules, _, _, resource := common.ParseGenerateFlags(cmd)
 	if buildTarget == "" {
 		return errors.New("require build target")
 	}
