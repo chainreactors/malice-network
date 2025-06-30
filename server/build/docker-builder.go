@@ -36,7 +36,7 @@ func (d *DockerBuilder) GenerateConfig() (*clientpb.Builder, error) {
 	var builder *models.Builder
 	var err error
 	if d.config.ArtifactId != 0 && d.config.Type == consts.CommandBuildBeacon {
-		builder, err = db.SaveArtifactFromID(d.config, d.config.ArtifactId, d.config.Resource)
+		builder, err = db.SaveArtifactFromID(d.config, d.config.ArtifactId, d.config.Source)
 	} else {
 		if d.config.BuildName == "" {
 			d.config.BuildName = codenames.GetCodename()

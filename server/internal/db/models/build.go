@@ -84,7 +84,7 @@ func (b *Builder) ToProtobuf() *clientpb.Builder {
 		ProfileName: b.ProfileName,
 		Pipeline:    pipeline,
 		CreatedAt:   b.CreatedAt.Unix(),
-		Resource:    b.Source,
+		Source:      b.Source,
 		Status:      b.Status,
 	}
 }

@@ -85,7 +85,7 @@ func PrintArtifacts(builders *clientpb.Builders, con *repl.Console) error {
 				"Name":   nameDisplay,
 				"Type":   builder.Type,
 				"Target": builder.Target,
-				"Source": builder.Resource,
+				"Source": builder.Source,
 				//"Stager":   builder.Stage,
 				//"Modules":   builder.Modules,
 				"Profile":   profileDisplay,

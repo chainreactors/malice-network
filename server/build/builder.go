@@ -21,7 +21,7 @@ type Builder interface {
 }
 
 func NewBuilder(req *clientpb.BuildConfig) Builder {
-	switch req.Resource {
+	switch req.Source {
 	case consts.ArtifactFromAction:
 		return NewActionBuilder(req)
 	case consts.ArtifactFromDocker:

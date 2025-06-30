@@ -771,7 +771,7 @@ func SaveArtifactFromConfig(req *clientpb.BuildConfig) (*models.Builder, error) 
 		ProfileName: req.ProfileName,
 		Target:      req.Target,
 		Type:        req.Type,
-		Source:      req.Resource,
+		Source:      req.Source,
 		CA:          req.Ca,
 		IsSRDI:      req.Srdi,
 		Modules:     strings.Join(req.Modules, ","),

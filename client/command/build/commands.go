@@ -141,7 +141,7 @@ build beacon --target x86_64-pc-windows-msvc --profile beacon_profile --srdi
 
 ~~~`,
 	}
-	common.BindFlag(beaconCmd, common.GenerateFlagSet)
+	common.BindFlag(beaconCmd, common.GenerateFlagSet, common.GithubFlagSet)
 	beaconCmd.MarkFlagRequired("target")
 	beaconCmd.MarkFlagRequired("profile")
 	common.BindFlagCompletions(beaconCmd, func(comp carapace.ActionMap) {
@@ -171,7 +171,7 @@ build bind --target x86_64-pc-windows-msvc --profile bind_profile --srdi
 ~~~`,
 	}
 
-	common.BindFlag(bindCmd, common.GenerateFlagSet)
+	common.BindFlag(bindCmd, common.GenerateFlagSet, common.GithubFlagSet)
 	bindCmd.MarkFlagRequired("target")
 	bindCmd.MarkFlagRequired("profile")
 	common.BindFlagCompletions(bindCmd, func(comp carapace.ActionMap) {
@@ -201,7 +201,7 @@ build bind --target x86_64-pc-windows-msvc --profile bind_profile --srdi
 	~~~`,
 	}
 
-	common.BindFlag(preludeCmd, common.GenerateFlagSet, func(f *pflag.FlagSet) {
+	common.BindFlag(preludeCmd, common.GenerateFlagSet, common.GithubFlagSet, func(f *pflag.FlagSet) {
 		f.String("autorun", "", "set autorun.yaml")
 	})
 	preludeCmd.MarkFlagRequired("target")
@@ -237,7 +237,7 @@ build modules --target x86_64-pc-windows-msvc --profile module_profile --modules
 build modules --target x86_64-pc-windows-msvc --profile module_profile --srdi
 ~~~`,
 	}
-	common.BindFlag(modulesCmd, common.GenerateFlagSet)
+	common.BindFlag(modulesCmd, common.GenerateFlagSet, common.GithubFlagSet)
 
 	common.BindFlagCompletions(modulesCmd, func(comp carapace.ActionMap) {
 		comp["profile"] = common.ProfileCompleter(con)
@@ -272,7 +272,7 @@ build pulse --target x86_64-pc-windows-msvc --profile pulse_profile --artifact-i
 ~~~
 `,
 	}
-	common.BindFlag(pulseCmd, common.GenerateFlagSet, func(f *pflag.FlagSet) {
+	common.BindFlag(pulseCmd, common.GenerateFlagSet, common.GithubFlagSet, func(f *pflag.FlagSet) {
 		f.Uint32("artifact-id", 0, "load remote shellcode build-id")
 	})
 	pulseCmd.MarkFlagRequired("target")

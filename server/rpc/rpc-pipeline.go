@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/server/internal/certutils"
@@ -26,6 +27,24 @@ func (rpc *Server) RegisterPipeline(ctx context.Context, req *clientpb.Pipeline)
 	_, err = db.SavePipeline(pipelineModel)
 	if err != nil {
 		return nil, err
+	}
+	var profileReq *clientpb.Profile
+	if req.Parser == consts.ImplantPulse {
+		profileReq = &clientpb.Profile{
+			Name:            req.Name + "_default",
+			PipelineId:      req.BeaconPipeline,
+			PulsePipelineId: req.Name,
+		}
+	} else {
+		profileReq = &clientpb.Profile{
+			Name:       req.Name + "_default",
+			PipelineId: req.BeaconPipeline,
+		}
+	}
+
+	err = db.NewProfile(profileReq)
+	if err != nil {
+		logs.Log.Errorf("profile %s new failed", req.Name)
 	}
 	return &clientpb.Empty{}, nil
 }

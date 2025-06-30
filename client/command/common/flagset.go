@@ -1,6 +1,8 @@
 package common
 
 import (
+	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/intermediate"
@@ -197,7 +199,7 @@ func GenerateFlagSet(f *pflag.FlagSet) {
 	f.String("profile", "", "profile name")
 	f.StringP("address", "a", "", "implant address")
 	f.String("target", "", "build target, specify the target arch and platform, such as  **x86_64-pc-windows-msvc**.")
-	//f.String("ca", "", "custom ca file")
+	f.String("ca", "", "custom ca file")
 	f.Int("interval", -1, "interval /second")
 	f.Float64("jitter", -1, "jitter")
 	f.String("proxy", "", "Overwrite proxy")
@@ -207,7 +209,7 @@ func GenerateFlagSet(f *pflag.FlagSet) {
 	SetFlagSetGroup(f, "generate")
 }
 
-func ParseGenerateFlags(cmd *cobra.Command) (string, string, string, []string, bool, *types.ProfileParams, string) {
+func ParseGenerateFlags(cmd *cobra.Command) *clientpb.BuildConfig {
 	name, _ := cmd.Flags().GetString("profile")
 	address, _ := cmd.Flags().GetString("address")
 	buildTarget, _ := cmd.Flags().GetString("target")
@@ -215,7 +217,7 @@ func ParseGenerateFlags(cmd *cobra.Command) (string, string, string, []string, b
 	proxy, _ := cmd.Flags().GetString("proxy")
 	modulesFlags, _ := cmd.Flags().GetString("modules")
 	modules := strings.Split(modulesFlags, ",")
-	//ca, _ := cmd.Flags().GetString("ca")
+	ca, _ := cmd.Flags().GetString("ca")
 	interval, _ := cmd.Flags().GetInt("interval")
 	jitter, _ := cmd.Flags().GetFloat64("jitter")
 	enableSRDI, _ := cmd.Flags().GetBool("srdi")
@@ -224,8 +226,19 @@ func ParseGenerateFlags(cmd *cobra.Command) (string, string, string, []string, b
 		Jitter:   jitter,
 		Proxy:    proxy,
 	}
-	resource, _ := cmd.Flags().GetString("resource")
-	return name, address, buildTarget, modules, enableSRDI, profileParams, resource
+	source, _ := cmd.Flags().GetString("resource")
+	buildConfig := &clientpb.BuildConfig{
+		ProfileName: name,
+		MaleficHost: address,
+		Target:      buildTarget,
+		Modules:     modules,
+		Proxy:       proxy,
+		Ca:          ca,
+		Params:      profileParams.String(),
+		Srdi:        enableSRDI,
+		Source:      source,
+	}
+	return buildConfig
 }
 
 func ProfileSet(f *pflag.FlagSet) {
@@ -317,5 +330,24 @@ func ParseGithubFlags(cmd *cobra.Command) (string, string, string, string, bool)
 	token, _ := cmd.Flags().GetString("token")
 	file, _ := cmd.Flags().GetString("workflowFile")
 	remove, _ := cmd.Flags().GetBool("remove")
+	setting, err := assets.GetSetting()
+	if err != nil {
+		logs.Log.Errorf("get github setting error %v", err)
+		return "", "", "", "", false
+	}
+	if owner == "" {
+		owner = setting.GithubOwner
+	}
+	if repo == "" {
+		repo = setting.GithubRepo
+	}
+	if token == "" {
+		token = setting.GithubToken
+	}
+	if file == "" && setting.GithubWorkflowFile != "" {
+		file = setting.GithubWorkflowFile
+	} else if file == "" && setting.GithubWorkflowFile == "" {
+		file = "generate.yaml"
+	}
 	return owner, repo, token, file, remove
 }

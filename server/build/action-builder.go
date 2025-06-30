@@ -42,7 +42,7 @@ func (a *ActionBuilder) GenerateConfig() (*clientpb.Builder, error) {
 	var builder *models.Builder
 	var err error
 	if a.config.ArtifactId != 0 && a.config.Type == consts.CommandBuildBeacon {
-		builder, err = db.SaveArtifactFromID(a.config, a.config.ArtifactId, a.config.Resource)
+		builder, err = db.SaveArtifactFromID(a.config, a.config.ArtifactId, a.config.Source)
 	} else {
 		if a.config.BuildName == "" {
 			a.config.BuildName = codenames.GetCodename()

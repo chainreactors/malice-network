@@ -34,7 +34,7 @@ func (rpc *Server) Build(ctx context.Context, req *clientpb.BuildConfig) (*clien
 		if errors.Is(err, db.ErrRecordNotFound) {
 			beaconReq := proto.Clone(req).(*clientpb.BuildConfig)
 			beaconReq.Srdi = true
-			if req.Resource == consts.ArtifactFromAction {
+			if req.Source == consts.ArtifactFromAction {
 				beaconReq.Inputs["package"] = consts.CommandBuildBeacon
 				if beaconReq.Inputs["targets"] == consts.TargetX86Windows {
 					beaconReq.Inputs["targets"] = consts.TargetX86WindowsGnu

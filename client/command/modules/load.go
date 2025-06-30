@@ -1,6 +1,7 @@
 package modules
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"github.com/chainreactors/malice-network/client/assets"
@@ -11,9 +12,12 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
+	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -21,12 +25,11 @@ func LoadModuleCmd(cmd *cobra.Command, con *repl.Console) error {
 	bundle, _ := cmd.Flags().GetString("bundle")
 	path, _ := cmd.Flags().GetString("path")
 	modules, _ := cmd.Flags().GetStringSlice("modules")
-	builderResource, _ := cmd.Flags().GetString("build")
 	target, _ := cmd.Flags().GetString("target")
 	profile, _ := cmd.Flags().GetString("profile")
 
 	// Validate required flags
-	if builderResource != "" && (target == "" || profile == "") {
+	if target == "" || profile == "" {
 		return errors.New("require build module target and profile")
 	}
 	if path == "" && len(modules) == 0 {
@@ -34,7 +37,7 @@ func LoadModuleCmd(cmd *cobra.Command, con *repl.Console) error {
 	}
 
 	if len(modules) > 0 && path == "" {
-		return handleModuleBuild(con, builderResource, target, profile, modules)
+		return handleModuleBuild(con, target, profile, modules)
 	}
 
 	// Default bundle handling
@@ -51,28 +54,67 @@ func LoadModuleCmd(cmd *cobra.Command, con *repl.Console) error {
 }
 
 // handleModuleBuild handles module build based on the builder resource (docker/action)
-func handleModuleBuild(con *repl.Console, builderResource, target, profile string, modules []string) error {
-	switch builderResource {
-	case "docker":
-		return buildWithDocker(con, target, profile, modules)
-	case "action":
-		return buildWithAction(con, target, profile, modules)
-	default:
-		return errors.New("unknown builder resource")
+func handleModuleBuild(con *repl.Console, target, profile string, modules []string) error {
+	setting, err := assets.GetSetting()
+	if err != nil {
+		return err
 	}
-}
+	source, err := build.CheckResource(setting.GithubOwner, setting.GithubRepo, setting.GithubToken, setting.GithubWorkflowFile,
+		"", con)
+	if err != nil {
+		return err
+	}
+	var buildConfig *clientpb.BuildConfig
+	if source == consts.ArtifactFromAction {
+		if len(modules) == 0 {
+			modules = []string{"full"}
+		}
+		var workflowID string
 
-// buildWithDocker handles module build via Docker
-func buildWithDocker(con *repl.Console, target, profile string, modules []string) error {
-	var modulePath string
-	go func() {
-		builder, err := con.Rpc.Build(con.Context(), &clientpb.BuildConfig{
+		if setting.GithubWorkflowFile == "" {
+			workflowID = "generate.yaml"
+		} else {
+			workflowID = setting.GithubWorkflowFile
+		}
+		configByte := types.DefaultProfile
+		buildProfile, err := types.LoadProfile(configByte)
+		if err != nil {
+			return err
+		}
+		buildProfile.Implant.Modules = modules
+		configByte, _ = yaml.Marshal(buildProfile)
+		inputs := map[string]string{
+			"malefic_config_yaml":      base64.StdEncoding.EncodeToString(configByte),
+			"package":                  consts.CommandBuildModules,
+			"targets":                  "x86_64-pc-windows-msvc",
+			"malefic_modules_features": strings.Join(modules, ","),
+		}
+		buildConfig = &clientpb.BuildConfig{
+			Inputs:      inputs,
+			Owner:       setting.GithubOwner,
+			Repo:        setting.GithubRepo,
+			Token:       setting.GithubToken,
+			WorkflowId:  workflowID,
+			ProfileName: profile,
+			Source:      source,
+		}
+	} else {
+		buildConfig = &clientpb.BuildConfig{
 			Target:      target,
 			Modules:     modules,
 			ProfileName: profile,
 			Type:        consts.CommandBuildModules,
-			Resource:    consts.ArtifactFromDocker,
-		})
+			Source:      source,
+		}
+	}
+	return buildModule(con, buildConfig)
+}
+
+// buildWithDocker handles module build via Docker
+func buildModule(con *repl.Console, buildConfig *clientpb.BuildConfig) error {
+	var modulePath string
+	go func() {
+		builder, err := con.Rpc.Build(con.Context(), buildConfig)
 		if err != nil {
 			con.Log.Errorf("Build modules failed: %v", err)
 			return
@@ -88,41 +130,7 @@ func buildWithDocker(con *repl.Console, target, profile string, modules []string
 			con.Log.Errorf("Load modules failed: %v\n", err)
 			return
 		}
-		con.GetInteractive().Console(task, fmt.Sprintf("load %s %s", modules, modulePath))
-	}()
-	return nil
-}
-
-// buildWithAction handles module build via Action (GitHub workflow)
-func buildWithAction(con *repl.Console, target, profile string, modules []string) error {
-	if len(modules) == 0 {
-		modules = []string{"full"}
-	}
-	go func() {
-		builder, err := build.RunSaas(con, &clientpb.BuildConfig{
-			Target:      "x86_64-pc-windows-msvc",
-			Type:        consts.CommandBuildModules,
-			Modules:     modules,
-			Srdi:        false,
-			ProfileName: profile,
-			Resource:    consts.ArtifactFromSaas,
-		})
-		if err != nil {
-			con.Log.Errorf("Run workflow failed: %v", err)
-			return
-		}
-		modulePath, err := handleModuleDownload(con, builder.Id, builder.Name, builder.Bin)
-		if err != nil {
-			con.Log.Errorf("Write modules failed: %v\n", err)
-			return
-		}
-
-		task, err := LoadModule(con.Rpc, con.GetInteractive(), builder.Name, modulePath)
-		if err != nil {
-			con.Log.Errorf("Load modules failed: %v\n", err)
-			return
-		}
-		con.GetInteractive().Console(task, fmt.Sprintf("load %s %s\n", modules, modulePath))
+		con.GetInteractive().Console(task, fmt.Sprintf("load %s %s", buildConfig.Modules, modulePath))
 	}()
 	return nil
 }

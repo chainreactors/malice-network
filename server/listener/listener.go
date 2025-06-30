@@ -402,7 +402,7 @@ func (lns *listener) executeBuild(profileName string, artifact *clientpb.Artifac
 		ProfileName: profileName,
 		Type:        artifact.Type,
 		Srdi:        true,
-		Resource:    buildResource,
+		Source:      buildResource,
 		Inputs:      input,
 	})
 	return err
