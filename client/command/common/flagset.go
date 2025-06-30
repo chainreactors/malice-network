@@ -199,13 +199,13 @@ func GenerateFlagSet(f *pflag.FlagSet) {
 	f.String("profile", "", "profile name")
 	f.StringP("address", "a", "", "implant address")
 	f.String("target", "", "build target, specify the target arch and platform, such as  **x86_64-pc-windows-msvc**.")
-	f.String("ca", "", "custom ca file")
+	//f.String("ca", "", "custom ca file")
 	f.Int("interval", -1, "interval /second")
 	f.Float64("jitter", -1, "jitter")
 	f.String("proxy", "", "Overwrite proxy")
 	f.StringP("modules", "m", "full", "Set modules e.g.: execute_exe,execute_dll")
 	f.Bool("srdi", true, "enable srdi")
-	f.String("resource", "", "build resource")
+	f.String("source", "", "build source, docker|action|saas")
 	SetFlagSetGroup(f, "generate")
 }
 
@@ -217,7 +217,7 @@ func ParseGenerateFlags(cmd *cobra.Command) *clientpb.BuildConfig {
 	proxy, _ := cmd.Flags().GetString("proxy")
 	modulesFlags, _ := cmd.Flags().GetString("modules")
 	modules := strings.Split(modulesFlags, ",")
-	ca, _ := cmd.Flags().GetString("ca")
+	//ca, _ := cmd.Flags().GetString("ca")
 	interval, _ := cmd.Flags().GetInt("interval")
 	jitter, _ := cmd.Flags().GetFloat64("jitter")
 	enableSRDI, _ := cmd.Flags().GetBool("srdi")
@@ -226,14 +226,13 @@ func ParseGenerateFlags(cmd *cobra.Command) *clientpb.BuildConfig {
 		Jitter:   jitter,
 		Proxy:    proxy,
 	}
-	source, _ := cmd.Flags().GetString("resource")
+	source, _ := cmd.Flags().GetString("source")
 	buildConfig := &clientpb.BuildConfig{
 		ProfileName: name,
 		MaleficHost: address,
 		Target:      buildTarget,
 		Modules:     modules,
 		Proxy:       proxy,
-		Ca:          ca,
 		Params:      profileParams.String(),
 		Srdi:        enableSRDI,
 		Source:      source,
