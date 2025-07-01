@@ -79,7 +79,7 @@ listeners:
       port: 8080
       parser: malefic
       tls:
-        enable: true
+        enable: false
         name: default
         CN: "test"
         O: "Sharp Depth"

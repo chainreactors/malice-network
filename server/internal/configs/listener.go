@@ -224,7 +224,7 @@ type CertConfig struct {
 func (t *CertConfig) ToProtobuf() *clientpb.TLS {
 	if t.CertConfig == nil {
 		return &clientpb.TLS{
-			Enable: false,
+			Enable: t.Enable,
 		}
 	}
 	return &clientpb.TLS{
@@ -258,8 +258,8 @@ func (t *TlsConfig) ReadCert() (*CertConfig, error) {
 	var err error
 	if t.CertFile == "" || t.KeyFile == "" {
 		return &CertConfig{
-			CertConfig: &types.CertConfig{},
-			Enable:     t.Enable,
+			//CertConfig: &types.CertConfig{},
+			Enable: t.Enable,
 		}, nil
 	}
 	cert, err := os.ReadFile(t.CertFile)
