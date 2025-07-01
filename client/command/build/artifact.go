@@ -145,6 +145,10 @@ func PrintArtifacts(builders *clientpb.Builders, con *repl.Console) error {
 	return nil
 }
 
+func printArtifact(artifact *clientpb.Artifact) {
+
+}
+
 func DownloadArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
 	id := cmd.Flags().Arg(0)
 	artifactID, err := strconv.ParseUint(id, 10, 32)

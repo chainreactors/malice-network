@@ -1,8 +1,10 @@
 package models
 
 import (
+	"encoding/json"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/types"
 	"gorm.io/gorm"
 	"sort"
 	"strings"
@@ -14,13 +16,12 @@ type Builder struct {
 	Name        string `gorm:"unique"`
 	ProfileName string `gorm:"index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:ProfileName;references:Name"`
 
-	CreatedAt  time.Time `gorm:"->;<-:create;"`
-	Target     string    // build target, like win64, win32, linux64
-	Type       string    // build type, pe, dll, shellcode
-	Stager     string    // shellcode prelude beacon bind
-	Modules    string    // default modules, comma split, e.g. "execute_exe,execute_dll"
-	Source     string    // resource file
-	ParamsJson string
+	CreatedAt time.Time `gorm:"->;<-:create;"`
+	Target    string    // build target, like win64, win32, linux64
+	Type      string    // build type, pe, dll, shellcode
+	Stager    string    // shellcode prelude beacon bind
+	Modules   string    // default modules, comma split, e.g. "execute_exe,execute_dll"
+	Source    string    // resource file
 	//CA            string // ca file , ca file content
 	Path          string
 	IsSRDI        bool
@@ -30,8 +31,35 @@ type Builder struct {
 	Arch          string
 	Log           string
 	Status        string
+	ParamsData    string
+	Params        *types.ProfileParams `gorm:"-"`
+	ProfileByte   []byte
+}
 
-	ProfileByte []byte
+func (b *Builder) AfterFind(tx *gorm.DB) (err error) {
+	if b.ParamsData == "" {
+		return nil
+	}
+
+	// 如果知道具体类型，可以直接反序列化
+	var params types.ProfileParams
+	if err := json.Unmarshal([]byte(b.ParamsData), &params); err != nil {
+		return err
+	}
+	b.Params = &params
+	return nil
+}
+
+// BeforeSave GORM 钩子 - 保存前将 Params 序列化
+func (b *Builder) BeforeSave(tx *gorm.DB) error {
+	if b.Params != nil {
+		data, err := json.Marshal(b.Params)
+		if err != nil {
+			return err
+		}
+		b.ParamsData = string(data)
+	}
+	return nil
 }
 
 func (b *Builder) BeforeCreate(tx *gorm.DB) (err error) {
@@ -64,7 +92,7 @@ func (b *Builder) ToArtifact(bin []byte) *clientpb.Artifact {
 		CreatedAt:    b.CreatedAt.Unix(),
 		Status:       b.Status,
 		ProfileBytes: b.ProfileByte,
-		ParamsBytes:  []byte(b.ParamsJson),
+		ParamsBytes:  []byte(b.ParamsData),
 	}
 }
 
@@ -91,13 +119,6 @@ func (b *Builder) ToProtobuf() *clientpb.Builder {
 		Source:       b.Source,
 		Status:       b.Status,
 		ProfileBytes: b.ProfileByte,
-		ParamsBytes:  []byte(b.ParamsJson),
+		ParamsBytes:  []byte(b.ParamsData),
 	}
-}
-
-func (b *Builder) FromProtobuf(pb *clientpb.BuildConfig) {
-	b.Name = pb.BuildName
-	b.Target = pb.Target
-	b.Type = pb.Type
-	b.Modules = strings.Join(pb.Modules, ",")
 }
