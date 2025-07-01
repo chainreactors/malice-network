@@ -31,21 +31,22 @@ type Builder struct {
 	Arch          string
 	Log           string
 	Status        string
-	ParamsData    []byte
+	ParamsData    string
 	Params        *types.ProfileParams `gorm:"-"`
 	ProfileByte   []byte
 }
 
 func (b *Builder) AfterFind(tx *gorm.DB) (err error) {
-	if b.ParamsData == nil {
+	if b.ParamsData == "" {
 		return nil
 	}
 
-	var params *types.ProfileParams
+	// 如果知道具体类型，可以直接反序列化
+	var params types.ProfileParams
 	if err := json.Unmarshal([]byte(b.ParamsData), &params); err != nil {
 		return err
 	}
-	b.Params = params
+	b.Params = &params
 	return nil
 }
 
@@ -56,7 +57,7 @@ func (b *Builder) BeforeSave(tx *gorm.DB) error {
 		if err != nil {
 			return err
 		}
-		b.ParamsData = data
+		b.ParamsData = string(data)
 	}
 	return nil
 }

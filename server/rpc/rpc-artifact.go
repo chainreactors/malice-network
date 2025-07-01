@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+	"errors"
 	"github.com/chainreactors/malice-network/helper/codenames"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
@@ -48,8 +49,10 @@ func (rpc *Server) UploadArtifact(ctx context.Context, req *clientpb.Artifact) (
 // for listener
 func (rpc *Server) GetArtifact(ctx context.Context, req *clientpb.Artifact) (*clientpb.Artifact, error) {
 	builder, err := db.GetArtifactById(req.Id)
-	if err != nil {
+	if err != nil && !errors.Is(err, db.ErrRecordNotFound) {
 		return nil, err
+	} else if err != nil && errors.Is(err, db.ErrRecordNotFound) {
+
 	}
 	var data []byte
 	if builder.ShellcodePath == "" {

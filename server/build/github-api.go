@@ -170,7 +170,7 @@ func runWorkFlow(owner, repo, workflowID, token string, inputs map[string]string
 }
 
 // downloadArtifactWhenReady waits for the artifact to be ready and downloads it
-func downloadArtifactWhenReady(owner, repo, token string, isRemove bool, builder *models.Builder) {
+func downloadArtifactWhenReady(owner, repo, token string, isRemove bool, artifactID uint32, builder *models.Builder) {
 	for {
 		newBuilder, err := PushArtifact(owner, repo, token, builder.Name, isRemove)
 		if err == nil {
@@ -182,6 +182,14 @@ func downloadArtifactWhenReady(owner, repo, token string, isRemove bool, builder
 				}
 			}
 			db.UpdateBuilderStatus(builder.ID, consts.BuildStatusCompleted)
+			if builder.Type == consts.CommandBuildBeacon {
+				if artifactID != 0 {
+					err = db.UpdatePulseRelink(artifactID, builder.ID)
+					if err != nil {
+						logs.Log.Errorf("failed to update pulse relink: %s", err)
+					}
+				}
+			}
 			SendBuildMsg(builder, consts.BuildStatusCompleted, "")
 			break
 		} else if errors.Is(err, errs.ErrWorkflowFailed) {
@@ -193,7 +201,6 @@ func downloadArtifactWhenReady(owner, repo, token string, isRemove bool, builder
 			logs.Log.Debugf("Download artifact failed: %s", err)
 		}
 		time.Sleep(30 * time.Second)
-
 	}
 }
 

@@ -836,8 +836,13 @@ func SaveArtifactFromConfig(req *clientpb.BuildConfig, profileByte []byte) (*mod
 		Arch:        target.Arch,
 		Os:          target.OS,
 		ProfileByte: profileByte,
-		ParamsData:  []byte(req.Params),
+		ParamsData:  req.Params,
 	}
+	//paramsJson, err := json.Marshal(req.Params)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//builder.ParamsData = paramsJson
 
 	if Session() == nil {
 		return &builder, nil
@@ -866,10 +871,12 @@ func SaveArtifactFromID(req *clientpb.BuildConfig, ID uint32, resource string, p
 		Arch:        target.Arch,
 		Os:          target.OS,
 		ProfileByte: profileByte,
-		ParamsData:  []byte(req.Params),
+		ParamsData:  req.Params,
 	}
+
 	if err := Session().Create(&builder).Error; err != nil {
 		return nil, err
+
 	}
 
 	return &builder, nil
@@ -892,6 +899,18 @@ func UpdateBuilderSrdi(builder *models.Builder) error {
 	return Session().Model(builder).
 		Select("is_srdi", "shellcode_path").
 		Updates(builder).
+		Error
+}
+
+func UpdatePulseRelink(pusleID, beanconID uint32) error {
+	pulse, err := GetArtifactById(pusleID)
+	if err != nil {
+		return err
+	}
+	pulse.Params.RelinkBeaconID = beanconID
+	return Session().Model(pulse).
+		Select("ParamsData").
+		Updates(pulse).
 		Error
 }
 
@@ -1032,6 +1051,28 @@ func GetArtifactWithSaas() ([]*models.Builder, error) {
 		return nil, result.Error
 	}
 	return artifacts, nil
+}
+
+// GetBeaconBuilderByRelinkID 查找 type=beacon 且 RelinkBeaconID=指定id 的 builder
+func GetBeaconBuilderByRelinkID(relinkID uint32) ([]*models.Builder, error) {
+	var builders []*models.Builder
+	err := Session().Where("type = ?", "beacon").Find(&builders).Error
+	if err != nil {
+		return nil, err
+	}
+
+	var result []*models.Builder
+	for _, b := range builders {
+		var params types.ProfileParams
+		if b.ParamsData != "" {
+			if err := json.Unmarshal([]byte(b.ParamsData), &params); err == nil {
+				if params.RelinkBeaconID == relinkID {
+					result = append(result, b)
+				}
+			}
+		}
+	}
+	return result, nil
 }
 
 func DeleteArtifactByName(artifactName string) error {

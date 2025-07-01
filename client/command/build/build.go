@@ -61,18 +61,6 @@ func prepareBuildConfig(cmd *cobra.Command, con *repl.Console, buildType string)
 	buildConfig.Source = finalSource
 	buildConfig.Type = buildType
 
-	// 如果是Action类型，设置通用的inputs
-	if finalSource == consts.ArtifactFromAction {
-		inputs := map[string]string{
-			"package": buildType,
-			"targets": buildConfig.Target,
-		}
-		if len(buildConfig.Modules) > 0 {
-			inputs["malefic_modules_features"] = strings.Join(buildConfig.Modules, ",")
-		}
-		buildConfig.Inputs = inputs
-	}
-
 	return buildConfig, nil
 }
 
@@ -94,7 +82,6 @@ func BeaconCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-
 	executeBuild(con, buildConfig)
 	return nil
 }
@@ -170,9 +157,6 @@ func PulseCmd(cmd *cobra.Command, con *repl.Console) error {
 		con.Log.Warn("Pulse only supports Windows targets\n")
 		return nil
 	}
-
-	artifactId, _ := cmd.Flags().GetUint32("artifact-id")
-	buildConfig.ArtifactId = artifactId
 
 	executeBuild(con, buildConfig)
 	return nil

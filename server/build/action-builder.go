@@ -11,6 +11,7 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"github.com/chainreactors/utils/encode"
+	"strings"
 )
 
 type ActionBuilder struct {
@@ -21,8 +22,15 @@ type ActionBuilder struct {
 }
 
 func NewActionBuilder(req *clientpb.BuildConfig) *ActionBuilder {
-	req.Target = req.Inputs["targets"]
-	req.Type = req.Inputs["package"]
+	inputs := map[string]string{
+		"package": req.Type,
+		"targets": req.Target,
+	}
+	if len(req.Modules) > 0 {
+		inputs["malefic_modules_features"] = strings.Join(req.Modules, ",")
+	}
+	req.Inputs = inputs
+
 	return &ActionBuilder{
 		config: req,
 	}
@@ -93,6 +101,6 @@ func (a *ActionBuilder) ExecuteBuild() error {
 }
 
 func (a *ActionBuilder) CollectArtifact() (string, string) {
-	go downloadArtifactWhenReady(a.config.Github.Owner, a.config.Github.Repo, a.config.Github.Token, a.config.Github.IsRemove, a.builder)
+	go downloadArtifactWhenReady(a.config.Github.Owner, a.config.Github.Repo, a.config.Github.Token, a.config.Github.IsRemove, a.config.ArtifactId, a.builder)
 	return a.builder.Path, ""
 }

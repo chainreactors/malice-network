@@ -208,5 +208,13 @@ func (d *DockerBuilder) CollectArtifact() (string, string) {
 	}
 	db.UpdateBuilderStatus(d.builder.ID, consts.BuildStatusCompleted)
 	SendBuildMsg(d.builder, consts.BuildStatusCompleted, "")
+	if d.config.Type == consts.CommandBuildBeacon {
+		if d.config.ArtifactId != 0 {
+			err = db.UpdatePulseRelink(d.config.ArtifactId, d.builder.ID)
+			if err != nil {
+				logs.Log.Errorf("failed to update pulse relink: %s", err)
+			}
+		}
+	}
 	return d.builder.Path, consts.BuildStatusCompleted
 }

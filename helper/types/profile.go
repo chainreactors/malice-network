@@ -74,7 +74,9 @@ type ProfileParams struct {
 	// shellcode prelude beacon bind
 	Obfuscation string `json:"obfuscation"` // not impl, obf llvm plug ,
 
-	Proxy string `json:"proxy"`
+	Proxy          string `json:"proxy"`
+	OriginBeaconID uint32 `json:"origin_beacon_id"`
+	RelinkBeaconID uint32 `json:"relink_beacon_id"`
 }
 
 func (p *ProfileParams) String() string {

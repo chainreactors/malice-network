@@ -141,7 +141,9 @@ build beacon --target x86_64-pc-windows-msvc --profile beacon_profile --srdi
 
 ~~~`,
 	}
-	common.BindFlag(beaconCmd, common.GenerateFlagSet, common.GithubFlagSet)
+	common.BindFlag(beaconCmd, common.GenerateFlagSet, common.GithubFlagSet, func(f *pflag.FlagSet) {
+		f.Uint32("pulse", 0, "backlink pulse id")
+	})
 	beaconCmd.MarkFlagRequired("target")
 	beaconCmd.MarkFlagRequired("profile")
 	common.BindFlagCompletions(beaconCmd, func(comp carapace.ActionMap) {

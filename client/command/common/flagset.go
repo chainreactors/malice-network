@@ -221,11 +221,6 @@ func ParseGenerateFlags(cmd *cobra.Command) *clientpb.BuildConfig {
 	interval, _ := cmd.Flags().GetInt("interval")
 	jitter, _ := cmd.Flags().GetFloat64("jitter")
 	enableSRDI, _ := cmd.Flags().GetBool("srdi")
-	profileParams := &types.ProfileParams{
-		Interval: interval,
-		Jitter:   jitter,
-		Proxy:    proxy,
-	}
 	source, _ := cmd.Flags().GetString("source")
 	buildConfig := &clientpb.BuildConfig{
 		ProfileName: name,
@@ -233,10 +228,29 @@ func ParseGenerateFlags(cmd *cobra.Command) *clientpb.BuildConfig {
 		Target:      buildTarget,
 		Modules:     modules,
 		Proxy:       proxy,
-		Params:      profileParams.String(),
 		Srdi:        enableSRDI,
 		Source:      source,
 	}
+	artifactID, err := cmd.Flags().GetUint32("artifact-id")
+	if err != nil {
+	}
+	pulse, err := cmd.Flags().GetUint32("pulse")
+	if err != nil {
+	}
+	profileParams := &types.ProfileParams{
+		Interval: interval,
+		Jitter:   jitter,
+		Proxy:    proxy,
+	}
+	if artifactID != 0 {
+		profileParams.OriginBeaconID = artifactID
+		buildConfig.ArtifactId = artifactID
+	}
+	if pulse != 0 {
+		buildConfig.ArtifactId = pulse
+		profileParams.RelinkBeaconID = pulse
+	}
+	buildConfig.Params = profileParams.String()
 	return buildConfig
 }
 

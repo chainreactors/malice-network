@@ -1,10 +1,13 @@
 package build
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 )
@@ -24,6 +27,23 @@ type Builder interface {
 }
 
 func NewBuilder(req *clientpb.BuildConfig) Builder {
+	if req.Type == consts.CommandBuildPulse {
+		if req.Params == "" {
+			params := &types.ProfileParams{
+				OriginBeaconID: req.ArtifactId,
+			}
+			req.Params = params.String()
+		} else {
+			var newParams *types.ProfileParams
+			err := json.Unmarshal([]byte(req.Params), &newParams)
+			if err != nil {
+				logs.Log.Infof("failed to add artifact id: %s", err)
+				return nil
+			}
+			newParams.OriginBeaconID = req.ArtifactId
+			req.Params = newParams.String()
+		}
+	}
 	switch req.Source {
 	case consts.ArtifactFromAction:
 		return NewActionBuilder(req)

@@ -113,6 +113,14 @@ func (s *SaasBuilder) CollectArtifact() (string, string) {
 		logs.Log.Errorf("failed to collect artifact %s: %s", s.builder.Name, err)
 		return "", consts.BuildStatusFailure
 	}
+	if s.config.Type == consts.CommandBuildBeacon {
+		if s.config.ArtifactId != 0 {
+			err = db.UpdatePulseRelink(s.config.ArtifactId, s.builder.ID)
+			if err != nil {
+				logs.Log.Errorf("failed to update pulse relink: %s", err)
+			}
+		}
+	}
 	SendBuildMsg(s.builder, consts.BuildStatusCompleted, "")
 	return path, status
 }
