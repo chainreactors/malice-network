@@ -14,14 +14,14 @@ type Builder struct {
 	Name        string `gorm:"unique"`
 	ProfileName string `gorm:"index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:ProfileName;references:Name"`
 
-	CreatedAt     time.Time `gorm:"->;<-:create;"`
-	Target        string    // build target, like win64, win32, linux64
-	Type          string    // build type, pe, dll, shellcode
-	Stager        string    // shellcode prelude beacon bind
-	Modules       string    // default modules, comma split, e.g. "execute_exe,execute_dll"
-	Source        string    // resource file
-	ParamsJson    string
-	CA            string // ca file , ca file content
+	CreatedAt  time.Time `gorm:"->;<-:create;"`
+	Target     string    // build target, like win64, win32, linux64
+	Type       string    // build type, pe, dll, shellcode
+	Stager     string    // shellcode prelude beacon bind
+	Modules    string    // default modules, comma split, e.g. "execute_exe,execute_dll"
+	Source     string    // resource file
+	ParamsJson string
+	//CA            string // ca file , ca file content
 	Path          string
 	IsSRDI        bool
 	ShellcodePath string

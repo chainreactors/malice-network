@@ -772,18 +772,13 @@ func SaveArtifactFromConfig(req *clientpb.BuildConfig) (*models.Builder, error) 
 		Target:      req.Target,
 		Type:        req.Type,
 		Source:      req.Source,
-		CA:          req.Ca,
-		IsSRDI:      req.Srdi,
-		Modules:     strings.Join(req.Modules, ","),
-		Arch:        target.Arch,
-		Os:          target.OS,
+		//CA:          req.Ca,
+		IsSRDI:     req.Srdi,
+		Modules:    strings.Join(req.Modules, ","),
+		Arch:       target.Arch,
+		Os:         target.OS,
+		ParamsJson: req.Params,
 	}
-
-	paramsJson, err := json.Marshal(req.Params)
-	if err != nil {
-		return nil, err
-	}
-	builder.ParamsJson = string(paramsJson)
 
 	if Session() == nil {
 		return &builder, nil
@@ -808,10 +803,10 @@ func SaveArtifactFromID(req *clientpb.BuildConfig, ID uint32, resource string) (
 		Type:        req.Type,
 		Source:      resource,
 		IsSRDI:      req.Srdi,
-		CA:          req.Ca,
-		Modules:     strings.Join(req.Modules, ","),
-		Arch:        target.Arch,
-		Os:          target.OS,
+		//CA:          req.Ca,
+		Modules: strings.Join(req.Modules, ","),
+		Arch:    target.Arch,
+		Os:      target.OS,
 	}
 
 	paramsJson, err := json.Marshal(req.Params)
