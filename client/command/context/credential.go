@@ -1,6 +1,7 @@
 package context
 
 import (
+	"fmt"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
@@ -18,12 +19,26 @@ func GetCredentialsCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
+	// Map for deduplication: key = "type:username:password", value = first occurrence context
+	seen := make(map[string]*clientpb.Context)
 	var rowEntries []table.Row
+
 	for _, ctx := range credentials {
 		cred, err := output.ToContext[*output.CredentialContext](ctx)
 		if err != nil {
 			return err
 		}
+
+		// Create deduplication key
+		dedupKey := fmt.Sprintf("%s:%s:%s", cred.CredentialType, cred.Params["username"], cred.Params["password"])
+
+		// Check if we've already seen this combination
+		if _, exists := seen[dedupKey]; exists {
+			continue // Skip duplicate
+		}
+
+		// Mark as seen
+		seen[dedupKey] = ctx
 
 		row := table.NewRow(table.RowData{
 			"ID":       ctx.Id,
@@ -40,7 +55,7 @@ func GetCredentialsCmd(cmd *cobra.Command, con *repl.Console) error {
 		table.NewColumn("ID", "ID", 36),
 		table.NewColumn("Session", "Session", 8),
 		table.NewColumn("Task", "Task", 4),
-		table.NewColumn("Type", "Type", 4),
+		table.NewColumn("Type", "Type", 10),
 		table.NewColumn("Username", "Username", 10),
 		table.NewColumn("Password", "Password", 32),
 	}, true)
