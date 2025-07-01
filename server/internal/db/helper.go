@@ -7,10 +7,7 @@ import (
 	"mime"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
-
-	"github.com/chainreactors/malice-network/helper/utils/output"
 
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -19,6 +16,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/helper/utils/mtls"
+	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"github.com/gofrs/uuid"
@@ -986,6 +984,8 @@ func FindArtifact(target *clientpb.Artifact) (*clientpb.Artifact, error) {
 		result = Session().Where("id = ?", target.Id).First(&builder)
 	} else if target.Name != "" {
 		result = Session().Where("name = ?", target.Name).First(&builder)
+	} else if target.Profile != "" {
+		result = Session().Where("profile_name = ?", target.Profile).First(&builder)
 	} else {
 		var builders []*models.Builder
 		result = Session().Where("os = ? AND arch = ? AND type = ?", target.Platform, target.Arch, target.Type).
@@ -1026,9 +1026,19 @@ func FindArtifact(target *clientpb.Artifact) (*clientpb.Artifact, error) {
 	return builder.ToArtifact(content), nil
 }
 
+func GetArtifact(req *clientpb.Artifact) (*models.Builder, error) {
+	if req.Id != 0 {
+		return GetArtifactById(req.Id)
+	} else if req.Name != "" {
+		return GetArtifactByName(req.Name)
+	} else {
+		return nil, errs.ErrNotFoundArtifact
+	}
+}
+
 func GetArtifactByName(name string) (*models.Builder, error) {
 	var builder models.Builder
-	result := Session().Where("name = ?", name).First(&builder)
+	result := Session().Preload("Profile").Where("name = ?", name).First(&builder)
 	if result.Error != nil {
 		return nil, result.Error
 	}
@@ -1037,7 +1047,7 @@ func GetArtifactByName(name string) (*models.Builder, error) {
 
 func GetArtifactById(id uint32) (*models.Builder, error) {
 	var builder models.Builder
-	result := Session().Where("id = ?", id).First(&builder)
+	result := Session().Preload("Profile").Where("id = ?", id).First(&builder)
 	if result.Error != nil {
 		return nil, result.Error
 	}
@@ -1189,32 +1199,6 @@ func UpdateBuilderStatus(builderID uint32, status string) {
 		logs.Log.Errorf("Error updating log for Builder id %d: %v", builderID, err)
 	}
 	return
-}
-
-func GetBuilderByModules(target string, modules []string) (*models.Builder, error) {
-	sort.Strings(modules)
-	modulesStr := strings.Join(modules, ",")
-	var builder models.Builder
-	result := Session().Where("target = ? AND modules = ?", target, modulesStr).First(&builder)
-	if result.Error != nil {
-		return nil, result.Error
-	}
-	return &builder, nil
-}
-
-func GetBuilderByProfileName(profileName string) (*clientpb.Builders, error) {
-	var builders []models.Builder
-	result := Session().Where("profile_name = ?", profileName).Find(&builders)
-	if result.Error != nil {
-		return nil, result.Error
-	}
-	var pbBuilders = &clientpb.Builders{
-		Builders: make([]*clientpb.Builder, 0),
-	}
-	for _, builder := range builders {
-		pbBuilders.Builders = append(pbBuilders.GetBuilders(), builder.ToProtobuf())
-	}
-	return pbBuilders, nil
 }
 
 // ContextQuery 用于构建Context查询的结构体

@@ -206,6 +206,7 @@ const (
 	CommandBuildLog         = "log"
 	CommandArtifact         = "artifact"
 	CommandArtifactList     = "list"
+	CommandArtifactShow     = "show"
 	CommandArtifactDownload = "download"
 	CommandArtifactUpload   = "upload"
 	CommandArtifactDelete   = "delete  "

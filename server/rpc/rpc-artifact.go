@@ -2,7 +2,6 @@ package rpc
 
 import (
 	"context"
-	"errors"
 	"github.com/chainreactors/malice-network/helper/codenames"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
@@ -13,7 +12,7 @@ import (
 
 func (rpc *Server) DownloadArtifact(ctx context.Context, req *clientpb.Artifact) (*clientpb.Artifact, error) {
 	var path string
-	builder, err := db.GetArtifactById(req.Id)
+	builder, err := db.GetArtifactByName(req.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -22,10 +21,7 @@ func (rpc *Server) DownloadArtifact(ctx context.Context, req *clientpb.Artifact)
 	} else {
 		path = builder.Path
 	}
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
+	data, _ := os.ReadFile(path)
 	builder.Name = build.GetFilePath(builder.Name, builder.Target, builder.Type, req.IsSrdi)
 	result := builder.ToArtifact(data)
 	return result, nil
@@ -48,11 +44,9 @@ func (rpc *Server) UploadArtifact(ctx context.Context, req *clientpb.Artifact) (
 
 // for listener
 func (rpc *Server) GetArtifact(ctx context.Context, req *clientpb.Artifact) (*clientpb.Artifact, error) {
-	builder, err := db.GetArtifactById(req.Id)
-	if err != nil && !errors.Is(err, db.ErrRecordNotFound) {
+	builder, err := db.GetArtifact(req)
+	if err != nil {
 		return nil, err
-	} else if err != nil && errors.Is(err, db.ErrRecordNotFound) {
-
 	}
 	var data []byte
 	if builder.ShellcodePath == "" {
@@ -75,32 +69,25 @@ func (rpc *Server) ListBuilder(ctx context.Context, req *clientpb.Empty) (*clien
 }
 
 func (rpc *Server) FindArtifact(ctx context.Context, req *clientpb.Artifact) (*clientpb.Artifact, error) {
-	artifact, err := db.FindArtifact(req)
+	arti, err := db.FindArtifact(req)
 	if err != nil {
+		return nil, err
 	}
-	if req.IsSrdi && len(artifact.Bin) == 0 {
-		builder, err := db.GetArtifactById(artifact.Id)
+	if req.IsSrdi && len(arti.Bin) == 0 {
+		builder, err := db.GetArtifactById(arti.Id)
 		if err != nil {
 			return nil, err
 		}
-		bin, err := build.SRDIArtifact(builder, artifact.Platform, artifact.Arch)
+		bin, err := build.SRDIArtifact(builder, arti.Platform, arti.Arch)
 		if err != nil {
 			return nil, err
 		}
-		artifact.Bin = bin
-		return artifact, err
+		arti.Bin = bin
+		return arti, err
 	}
 	return db.FindArtifact(req)
 }
 
 func (rpc *Server) DeleteArtifact(ctx context.Context, req *clientpb.Artifact) (*clientpb.Empty, error) {
 	return &clientpb.Empty{}, db.DeleteArtifactByName(req.Name)
-}
-
-func (rpc *Server) GetArtifactsByProfile(ctx context.Context, req *clientpb.Profile) (*clientpb.Builders, error) {
-	builders, err := db.GetBuilderByProfileName(req.Name)
-	if err != nil {
-		return nil, err
-	}
-	return builders, nil
 }

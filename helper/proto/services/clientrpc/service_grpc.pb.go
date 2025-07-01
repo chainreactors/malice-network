@@ -22,134 +22,133 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	MaliceRPC_LoginClient_FullMethodName           = "/clientrpc.MaliceRPC/LoginClient"
-	MaliceRPC_GetBasic_FullMethodName              = "/clientrpc.MaliceRPC/GetBasic"
-	MaliceRPC_GetClients_FullMethodName            = "/clientrpc.MaliceRPC/GetClients"
-	MaliceRPC_GetSessions_FullMethodName           = "/clientrpc.MaliceRPC/GetSessions"
-	MaliceRPC_GetSession_FullMethodName            = "/clientrpc.MaliceRPC/GetSession"
-	MaliceRPC_GetSessionHistory_FullMethodName     = "/clientrpc.MaliceRPC/GetSessionHistory"
-	MaliceRPC_SessionManage_FullMethodName         = "/clientrpc.MaliceRPC/SessionManage"
-	MaliceRPC_GetListeners_FullMethodName          = "/clientrpc.MaliceRPC/GetListeners"
-	MaliceRPC_GetJobs_FullMethodName               = "/clientrpc.MaliceRPC/GetJobs"
-	MaliceRPC_GetTasks_FullMethodName              = "/clientrpc.MaliceRPC/GetTasks"
-	MaliceRPC_GetTaskContent_FullMethodName        = "/clientrpc.MaliceRPC/GetTaskContent"
-	MaliceRPC_GetContextFiles_FullMethodName       = "/clientrpc.MaliceRPC/GetContextFiles"
-	MaliceRPC_WaitTaskContent_FullMethodName       = "/clientrpc.MaliceRPC/WaitTaskContent"
-	MaliceRPC_WaitTaskFinish_FullMethodName        = "/clientrpc.MaliceRPC/WaitTaskFinish"
-	MaliceRPC_GetAllTaskContent_FullMethodName     = "/clientrpc.MaliceRPC/GetAllTaskContent"
-	MaliceRPC_GetFiles_FullMethodName              = "/clientrpc.MaliceRPC/GetFiles"
-	MaliceRPC_Events_FullMethodName                = "/clientrpc.MaliceRPC/Events"
-	MaliceRPC_Broadcast_FullMethodName             = "/clientrpc.MaliceRPC/Broadcast"
-	MaliceRPC_Notify_FullMethodName                = "/clientrpc.MaliceRPC/Notify"
-	MaliceRPC_GetEvent_FullMethodName              = "/clientrpc.MaliceRPC/GetEvent"
-	MaliceRPC_SessionEvent_FullMethodName          = "/clientrpc.MaliceRPC/SessionEvent"
-	MaliceRPC_OnHook_FullMethodName                = "/clientrpc.MaliceRPC/OnHook"
-	MaliceRPC_Ping_FullMethodName                  = "/clientrpc.MaliceRPC/Ping"
-	MaliceRPC_Sleep_FullMethodName                 = "/clientrpc.MaliceRPC/Sleep"
-	MaliceRPC_Suicide_FullMethodName               = "/clientrpc.MaliceRPC/Suicide"
-	MaliceRPC_ListModule_FullMethodName            = "/clientrpc.MaliceRPC/ListModule"
-	MaliceRPC_LoadModule_FullMethodName            = "/clientrpc.MaliceRPC/LoadModule"
-	MaliceRPC_RefreshModule_FullMethodName         = "/clientrpc.MaliceRPC/RefreshModule"
-	MaliceRPC_ListAddon_FullMethodName             = "/clientrpc.MaliceRPC/ListAddon"
-	MaliceRPC_LoadAddon_FullMethodName             = "/clientrpc.MaliceRPC/LoadAddon"
-	MaliceRPC_ExecuteAddon_FullMethodName          = "/clientrpc.MaliceRPC/ExecuteAddon"
-	MaliceRPC_Clear_FullMethodName                 = "/clientrpc.MaliceRPC/Clear"
-	MaliceRPC_ListTasks_FullMethodName             = "/clientrpc.MaliceRPC/ListTasks"
-	MaliceRPC_QueryTask_FullMethodName             = "/clientrpc.MaliceRPC/QueryTask"
-	MaliceRPC_CancelTask_FullMethodName            = "/clientrpc.MaliceRPC/CancelTask"
-	MaliceRPC_Switch_FullMethodName                = "/clientrpc.MaliceRPC/Switch"
-	MaliceRPC_Polling_FullMethodName               = "/clientrpc.MaliceRPC/Polling"
-	MaliceRPC_Upload_FullMethodName                = "/clientrpc.MaliceRPC/Upload"
-	MaliceRPC_Download_FullMethodName              = "/clientrpc.MaliceRPC/Download"
-	MaliceRPC_Sync_FullMethodName                  = "/clientrpc.MaliceRPC/Sync"
-	MaliceRPC_Pwd_FullMethodName                   = "/clientrpc.MaliceRPC/Pwd"
-	MaliceRPC_Ls_FullMethodName                    = "/clientrpc.MaliceRPC/Ls"
-	MaliceRPC_Cd_FullMethodName                    = "/clientrpc.MaliceRPC/Cd"
-	MaliceRPC_Rm_FullMethodName                    = "/clientrpc.MaliceRPC/Rm"
-	MaliceRPC_Mv_FullMethodName                    = "/clientrpc.MaliceRPC/Mv"
-	MaliceRPC_Cp_FullMethodName                    = "/clientrpc.MaliceRPC/Cp"
-	MaliceRPC_Cat_FullMethodName                   = "/clientrpc.MaliceRPC/Cat"
-	MaliceRPC_Mkdir_FullMethodName                 = "/clientrpc.MaliceRPC/Mkdir"
-	MaliceRPC_Chmod_FullMethodName                 = "/clientrpc.MaliceRPC/Chmod"
-	MaliceRPC_Chown_FullMethodName                 = "/clientrpc.MaliceRPC/Chown"
-	MaliceRPC_Kill_FullMethodName                  = "/clientrpc.MaliceRPC/Kill"
-	MaliceRPC_Ps_FullMethodName                    = "/clientrpc.MaliceRPC/Ps"
-	MaliceRPC_Netstat_FullMethodName               = "/clientrpc.MaliceRPC/Netstat"
-	MaliceRPC_Curl_FullMethodName                  = "/clientrpc.MaliceRPC/Curl"
-	MaliceRPC_Env_FullMethodName                   = "/clientrpc.MaliceRPC/Env"
-	MaliceRPC_SetEnv_FullMethodName                = "/clientrpc.MaliceRPC/SetEnv"
-	MaliceRPC_UnsetEnv_FullMethodName              = "/clientrpc.MaliceRPC/UnsetEnv"
-	MaliceRPC_Whoami_FullMethodName                = "/clientrpc.MaliceRPC/Whoami"
-	MaliceRPC_Info_FullMethodName                  = "/clientrpc.MaliceRPC/Info"
-	MaliceRPC_Bypass_FullMethodName                = "/clientrpc.MaliceRPC/Bypass"
-	MaliceRPC_RegQuery_FullMethodName              = "/clientrpc.MaliceRPC/RegQuery"
-	MaliceRPC_RegAdd_FullMethodName                = "/clientrpc.MaliceRPC/RegAdd"
-	MaliceRPC_RegDelete_FullMethodName             = "/clientrpc.MaliceRPC/RegDelete"
-	MaliceRPC_RegListKey_FullMethodName            = "/clientrpc.MaliceRPC/RegListKey"
-	MaliceRPC_RegListValue_FullMethodName          = "/clientrpc.MaliceRPC/RegListValue"
-	MaliceRPC_ServiceList_FullMethodName           = "/clientrpc.MaliceRPC/ServiceList"
-	MaliceRPC_ServiceCreate_FullMethodName         = "/clientrpc.MaliceRPC/ServiceCreate"
-	MaliceRPC_ServiceStart_FullMethodName          = "/clientrpc.MaliceRPC/ServiceStart"
-	MaliceRPC_ServiceStop_FullMethodName           = "/clientrpc.MaliceRPC/ServiceStop"
-	MaliceRPC_ServiceQuery_FullMethodName          = "/clientrpc.MaliceRPC/ServiceQuery"
-	MaliceRPC_ServiceDelete_FullMethodName         = "/clientrpc.MaliceRPC/ServiceDelete"
-	MaliceRPC_TaskSchdList_FullMethodName          = "/clientrpc.MaliceRPC/TaskSchdList"
-	MaliceRPC_TaskSchdCreate_FullMethodName        = "/clientrpc.MaliceRPC/TaskSchdCreate"
-	MaliceRPC_TaskSchdStart_FullMethodName         = "/clientrpc.MaliceRPC/TaskSchdStart"
-	MaliceRPC_TaskSchdStop_FullMethodName          = "/clientrpc.MaliceRPC/TaskSchdStop"
-	MaliceRPC_TaskSchdDelete_FullMethodName        = "/clientrpc.MaliceRPC/TaskSchdDelete"
-	MaliceRPC_TaskSchdQuery_FullMethodName         = "/clientrpc.MaliceRPC/TaskSchdQuery"
-	MaliceRPC_TaskSchdRun_FullMethodName           = "/clientrpc.MaliceRPC/TaskSchdRun"
-	MaliceRPC_WmiQuery_FullMethodName              = "/clientrpc.MaliceRPC/WmiQuery"
-	MaliceRPC_WmiExecute_FullMethodName            = "/clientrpc.MaliceRPC/WmiExecute"
-	MaliceRPC_Runas_FullMethodName                 = "/clientrpc.MaliceRPC/Runas"
-	MaliceRPC_Privs_FullMethodName                 = "/clientrpc.MaliceRPC/Privs"
-	MaliceRPC_Rev2Self_FullMethodName              = "/clientrpc.MaliceRPC/Rev2Self"
-	MaliceRPC_GetSystem_FullMethodName             = "/clientrpc.MaliceRPC/GetSystem"
-	MaliceRPC_PipeUpload_FullMethodName            = "/clientrpc.MaliceRPC/PipeUpload"
-	MaliceRPC_PipeRead_FullMethodName              = "/clientrpc.MaliceRPC/PipeRead"
-	MaliceRPC_PipeClose_FullMethodName             = "/clientrpc.MaliceRPC/PipeClose"
-	MaliceRPC_Execute_FullMethodName               = "/clientrpc.MaliceRPC/Execute"
-	MaliceRPC_ExecuteSpawn_FullMethodName          = "/clientrpc.MaliceRPC/ExecuteSpawn"
-	MaliceRPC_ExecuteAssembly_FullMethodName       = "/clientrpc.MaliceRPC/ExecuteAssembly"
-	MaliceRPC_ExecutePowerpick_FullMethodName      = "/clientrpc.MaliceRPC/ExecutePowerpick"
-	MaliceRPC_ExecuteEXE_FullMethodName            = "/clientrpc.MaliceRPC/ExecuteEXE"
-	MaliceRPC_ExecuteDLL_FullMethodName            = "/clientrpc.MaliceRPC/ExecuteDLL"
-	MaliceRPC_ExecuteArmory_FullMethodName         = "/clientrpc.MaliceRPC/ExecuteArmory"
-	MaliceRPC_ExecuteShellcode_FullMethodName      = "/clientrpc.MaliceRPC/ExecuteShellcode"
-	MaliceRPC_ExecuteBof_FullMethodName            = "/clientrpc.MaliceRPC/ExecuteBof"
-	MaliceRPC_ExecuteLocal_FullMethodName          = "/clientrpc.MaliceRPC/ExecuteLocal"
-	MaliceRPC_InlineLocal_FullMethodName           = "/clientrpc.MaliceRPC/InlineLocal"
-	MaliceRPC_RemDial_FullMethodName               = "/clientrpc.MaliceRPC/RemDial"
-	MaliceRPC_LoadRem_FullMethodName               = "/clientrpc.MaliceRPC/LoadRem"
-	MaliceRPC_EXE2Shellcode_FullMethodName         = "/clientrpc.MaliceRPC/EXE2Shellcode"
-	MaliceRPC_DLL2Shellcode_FullMethodName         = "/clientrpc.MaliceRPC/DLL2Shellcode"
-	MaliceRPC_ShellcodeEncode_FullMethodName       = "/clientrpc.MaliceRPC/ShellcodeEncode"
-	MaliceRPC_ListJobs_FullMethodName              = "/clientrpc.MaliceRPC/ListJobs"
-	MaliceRPC_GetProfiles_FullMethodName           = "/clientrpc.MaliceRPC/GetProfiles"
-	MaliceRPC_DeleteProfile_FullMethodName         = "/clientrpc.MaliceRPC/DeleteProfile"
-	MaliceRPC_UpdateProfile_FullMethodName         = "/clientrpc.MaliceRPC/UpdateProfile"
-	MaliceRPC_BuildLog_FullMethodName              = "/clientrpc.MaliceRPC/BuildLog"
-	MaliceRPC_ListBuilder_FullMethodName           = "/clientrpc.MaliceRPC/ListBuilder"
-	MaliceRPC_GetArtifactsByProfile_FullMethodName = "/clientrpc.MaliceRPC/GetArtifactsByProfile"
-	MaliceRPC_DownloadArtifact_FullMethodName      = "/clientrpc.MaliceRPC/DownloadArtifact"
-	MaliceRPC_UploadArtifact_FullMethodName        = "/clientrpc.MaliceRPC/UploadArtifact"
-	MaliceRPC_DeleteArtifact_FullMethodName        = "/clientrpc.MaliceRPC/DeleteArtifact"
-	MaliceRPC_MaleficSRDI_FullMethodName           = "/clientrpc.MaliceRPC/MaleficSRDI"
-	MaliceRPC_GetLicenseInfo_FullMethodName        = "/clientrpc.MaliceRPC/GetLicenseInfo"
-	MaliceRPC_UpdateGithubConfig_FullMethodName    = "/clientrpc.MaliceRPC/UpdateGithubConfig"
-	MaliceRPC_GetGithubConfig_FullMethodName       = "/clientrpc.MaliceRPC/GetGithubConfig"
-	MaliceRPC_UpdateNotifyConfig_FullMethodName    = "/clientrpc.MaliceRPC/UpdateNotifyConfig"
-	MaliceRPC_GetNotifyConfig_FullMethodName       = "/clientrpc.MaliceRPC/GetNotifyConfig"
-	MaliceRPC_RefreshConfig_FullMethodName         = "/clientrpc.MaliceRPC/RefreshConfig"
-	MaliceRPC_GetContexts_FullMethodName           = "/clientrpc.MaliceRPC/GetContexts"
-	MaliceRPC_AddContext_FullMethodName            = "/clientrpc.MaliceRPC/AddContext"
-	MaliceRPC_AddScreenShot_FullMethodName         = "/clientrpc.MaliceRPC/AddScreenShot"
-	MaliceRPC_AddCredential_FullMethodName         = "/clientrpc.MaliceRPC/AddCredential"
-	MaliceRPC_AddKeylogger_FullMethodName          = "/clientrpc.MaliceRPC/AddKeylogger"
-	MaliceRPC_AddPort_FullMethodName               = "/clientrpc.MaliceRPC/AddPort"
-	MaliceRPC_AddUpload_FullMethodName             = "/clientrpc.MaliceRPC/AddUpload"
-	MaliceRPC_AddDownload_FullMethodName           = "/clientrpc.MaliceRPC/AddDownload"
+	MaliceRPC_LoginClient_FullMethodName        = "/clientrpc.MaliceRPC/LoginClient"
+	MaliceRPC_GetBasic_FullMethodName           = "/clientrpc.MaliceRPC/GetBasic"
+	MaliceRPC_GetClients_FullMethodName         = "/clientrpc.MaliceRPC/GetClients"
+	MaliceRPC_GetSessions_FullMethodName        = "/clientrpc.MaliceRPC/GetSessions"
+	MaliceRPC_GetSession_FullMethodName         = "/clientrpc.MaliceRPC/GetSession"
+	MaliceRPC_GetSessionHistory_FullMethodName  = "/clientrpc.MaliceRPC/GetSessionHistory"
+	MaliceRPC_SessionManage_FullMethodName      = "/clientrpc.MaliceRPC/SessionManage"
+	MaliceRPC_GetListeners_FullMethodName       = "/clientrpc.MaliceRPC/GetListeners"
+	MaliceRPC_GetJobs_FullMethodName            = "/clientrpc.MaliceRPC/GetJobs"
+	MaliceRPC_GetTasks_FullMethodName           = "/clientrpc.MaliceRPC/GetTasks"
+	MaliceRPC_GetTaskContent_FullMethodName     = "/clientrpc.MaliceRPC/GetTaskContent"
+	MaliceRPC_GetContextFiles_FullMethodName    = "/clientrpc.MaliceRPC/GetContextFiles"
+	MaliceRPC_WaitTaskContent_FullMethodName    = "/clientrpc.MaliceRPC/WaitTaskContent"
+	MaliceRPC_WaitTaskFinish_FullMethodName     = "/clientrpc.MaliceRPC/WaitTaskFinish"
+	MaliceRPC_GetAllTaskContent_FullMethodName  = "/clientrpc.MaliceRPC/GetAllTaskContent"
+	MaliceRPC_GetFiles_FullMethodName           = "/clientrpc.MaliceRPC/GetFiles"
+	MaliceRPC_Events_FullMethodName             = "/clientrpc.MaliceRPC/Events"
+	MaliceRPC_Broadcast_FullMethodName          = "/clientrpc.MaliceRPC/Broadcast"
+	MaliceRPC_Notify_FullMethodName             = "/clientrpc.MaliceRPC/Notify"
+	MaliceRPC_GetEvent_FullMethodName           = "/clientrpc.MaliceRPC/GetEvent"
+	MaliceRPC_SessionEvent_FullMethodName       = "/clientrpc.MaliceRPC/SessionEvent"
+	MaliceRPC_OnHook_FullMethodName             = "/clientrpc.MaliceRPC/OnHook"
+	MaliceRPC_Ping_FullMethodName               = "/clientrpc.MaliceRPC/Ping"
+	MaliceRPC_Sleep_FullMethodName              = "/clientrpc.MaliceRPC/Sleep"
+	MaliceRPC_Suicide_FullMethodName            = "/clientrpc.MaliceRPC/Suicide"
+	MaliceRPC_ListModule_FullMethodName         = "/clientrpc.MaliceRPC/ListModule"
+	MaliceRPC_LoadModule_FullMethodName         = "/clientrpc.MaliceRPC/LoadModule"
+	MaliceRPC_RefreshModule_FullMethodName      = "/clientrpc.MaliceRPC/RefreshModule"
+	MaliceRPC_ListAddon_FullMethodName          = "/clientrpc.MaliceRPC/ListAddon"
+	MaliceRPC_LoadAddon_FullMethodName          = "/clientrpc.MaliceRPC/LoadAddon"
+	MaliceRPC_ExecuteAddon_FullMethodName       = "/clientrpc.MaliceRPC/ExecuteAddon"
+	MaliceRPC_Clear_FullMethodName              = "/clientrpc.MaliceRPC/Clear"
+	MaliceRPC_ListTasks_FullMethodName          = "/clientrpc.MaliceRPC/ListTasks"
+	MaliceRPC_QueryTask_FullMethodName          = "/clientrpc.MaliceRPC/QueryTask"
+	MaliceRPC_CancelTask_FullMethodName         = "/clientrpc.MaliceRPC/CancelTask"
+	MaliceRPC_Switch_FullMethodName             = "/clientrpc.MaliceRPC/Switch"
+	MaliceRPC_Polling_FullMethodName            = "/clientrpc.MaliceRPC/Polling"
+	MaliceRPC_Upload_FullMethodName             = "/clientrpc.MaliceRPC/Upload"
+	MaliceRPC_Download_FullMethodName           = "/clientrpc.MaliceRPC/Download"
+	MaliceRPC_Sync_FullMethodName               = "/clientrpc.MaliceRPC/Sync"
+	MaliceRPC_Pwd_FullMethodName                = "/clientrpc.MaliceRPC/Pwd"
+	MaliceRPC_Ls_FullMethodName                 = "/clientrpc.MaliceRPC/Ls"
+	MaliceRPC_Cd_FullMethodName                 = "/clientrpc.MaliceRPC/Cd"
+	MaliceRPC_Rm_FullMethodName                 = "/clientrpc.MaliceRPC/Rm"
+	MaliceRPC_Mv_FullMethodName                 = "/clientrpc.MaliceRPC/Mv"
+	MaliceRPC_Cp_FullMethodName                 = "/clientrpc.MaliceRPC/Cp"
+	MaliceRPC_Cat_FullMethodName                = "/clientrpc.MaliceRPC/Cat"
+	MaliceRPC_Mkdir_FullMethodName              = "/clientrpc.MaliceRPC/Mkdir"
+	MaliceRPC_Chmod_FullMethodName              = "/clientrpc.MaliceRPC/Chmod"
+	MaliceRPC_Chown_FullMethodName              = "/clientrpc.MaliceRPC/Chown"
+	MaliceRPC_Kill_FullMethodName               = "/clientrpc.MaliceRPC/Kill"
+	MaliceRPC_Ps_FullMethodName                 = "/clientrpc.MaliceRPC/Ps"
+	MaliceRPC_Netstat_FullMethodName            = "/clientrpc.MaliceRPC/Netstat"
+	MaliceRPC_Curl_FullMethodName               = "/clientrpc.MaliceRPC/Curl"
+	MaliceRPC_Env_FullMethodName                = "/clientrpc.MaliceRPC/Env"
+	MaliceRPC_SetEnv_FullMethodName             = "/clientrpc.MaliceRPC/SetEnv"
+	MaliceRPC_UnsetEnv_FullMethodName           = "/clientrpc.MaliceRPC/UnsetEnv"
+	MaliceRPC_Whoami_FullMethodName             = "/clientrpc.MaliceRPC/Whoami"
+	MaliceRPC_Info_FullMethodName               = "/clientrpc.MaliceRPC/Info"
+	MaliceRPC_Bypass_FullMethodName             = "/clientrpc.MaliceRPC/Bypass"
+	MaliceRPC_RegQuery_FullMethodName           = "/clientrpc.MaliceRPC/RegQuery"
+	MaliceRPC_RegAdd_FullMethodName             = "/clientrpc.MaliceRPC/RegAdd"
+	MaliceRPC_RegDelete_FullMethodName          = "/clientrpc.MaliceRPC/RegDelete"
+	MaliceRPC_RegListKey_FullMethodName         = "/clientrpc.MaliceRPC/RegListKey"
+	MaliceRPC_RegListValue_FullMethodName       = "/clientrpc.MaliceRPC/RegListValue"
+	MaliceRPC_ServiceList_FullMethodName        = "/clientrpc.MaliceRPC/ServiceList"
+	MaliceRPC_ServiceCreate_FullMethodName      = "/clientrpc.MaliceRPC/ServiceCreate"
+	MaliceRPC_ServiceStart_FullMethodName       = "/clientrpc.MaliceRPC/ServiceStart"
+	MaliceRPC_ServiceStop_FullMethodName        = "/clientrpc.MaliceRPC/ServiceStop"
+	MaliceRPC_ServiceQuery_FullMethodName       = "/clientrpc.MaliceRPC/ServiceQuery"
+	MaliceRPC_ServiceDelete_FullMethodName      = "/clientrpc.MaliceRPC/ServiceDelete"
+	MaliceRPC_TaskSchdList_FullMethodName       = "/clientrpc.MaliceRPC/TaskSchdList"
+	MaliceRPC_TaskSchdCreate_FullMethodName     = "/clientrpc.MaliceRPC/TaskSchdCreate"
+	MaliceRPC_TaskSchdStart_FullMethodName      = "/clientrpc.MaliceRPC/TaskSchdStart"
+	MaliceRPC_TaskSchdStop_FullMethodName       = "/clientrpc.MaliceRPC/TaskSchdStop"
+	MaliceRPC_TaskSchdDelete_FullMethodName     = "/clientrpc.MaliceRPC/TaskSchdDelete"
+	MaliceRPC_TaskSchdQuery_FullMethodName      = "/clientrpc.MaliceRPC/TaskSchdQuery"
+	MaliceRPC_TaskSchdRun_FullMethodName        = "/clientrpc.MaliceRPC/TaskSchdRun"
+	MaliceRPC_WmiQuery_FullMethodName           = "/clientrpc.MaliceRPC/WmiQuery"
+	MaliceRPC_WmiExecute_FullMethodName         = "/clientrpc.MaliceRPC/WmiExecute"
+	MaliceRPC_Runas_FullMethodName              = "/clientrpc.MaliceRPC/Runas"
+	MaliceRPC_Privs_FullMethodName              = "/clientrpc.MaliceRPC/Privs"
+	MaliceRPC_Rev2Self_FullMethodName           = "/clientrpc.MaliceRPC/Rev2Self"
+	MaliceRPC_GetSystem_FullMethodName          = "/clientrpc.MaliceRPC/GetSystem"
+	MaliceRPC_PipeUpload_FullMethodName         = "/clientrpc.MaliceRPC/PipeUpload"
+	MaliceRPC_PipeRead_FullMethodName           = "/clientrpc.MaliceRPC/PipeRead"
+	MaliceRPC_PipeClose_FullMethodName          = "/clientrpc.MaliceRPC/PipeClose"
+	MaliceRPC_Execute_FullMethodName            = "/clientrpc.MaliceRPC/Execute"
+	MaliceRPC_ExecuteSpawn_FullMethodName       = "/clientrpc.MaliceRPC/ExecuteSpawn"
+	MaliceRPC_ExecuteAssembly_FullMethodName    = "/clientrpc.MaliceRPC/ExecuteAssembly"
+	MaliceRPC_ExecutePowerpick_FullMethodName   = "/clientrpc.MaliceRPC/ExecutePowerpick"
+	MaliceRPC_ExecuteEXE_FullMethodName         = "/clientrpc.MaliceRPC/ExecuteEXE"
+	MaliceRPC_ExecuteDLL_FullMethodName         = "/clientrpc.MaliceRPC/ExecuteDLL"
+	MaliceRPC_ExecuteArmory_FullMethodName      = "/clientrpc.MaliceRPC/ExecuteArmory"
+	MaliceRPC_ExecuteShellcode_FullMethodName   = "/clientrpc.MaliceRPC/ExecuteShellcode"
+	MaliceRPC_ExecuteBof_FullMethodName         = "/clientrpc.MaliceRPC/ExecuteBof"
+	MaliceRPC_ExecuteLocal_FullMethodName       = "/clientrpc.MaliceRPC/ExecuteLocal"
+	MaliceRPC_InlineLocal_FullMethodName        = "/clientrpc.MaliceRPC/InlineLocal"
+	MaliceRPC_RemDial_FullMethodName            = "/clientrpc.MaliceRPC/RemDial"
+	MaliceRPC_LoadRem_FullMethodName            = "/clientrpc.MaliceRPC/LoadRem"
+	MaliceRPC_EXE2Shellcode_FullMethodName      = "/clientrpc.MaliceRPC/EXE2Shellcode"
+	MaliceRPC_DLL2Shellcode_FullMethodName      = "/clientrpc.MaliceRPC/DLL2Shellcode"
+	MaliceRPC_ShellcodeEncode_FullMethodName    = "/clientrpc.MaliceRPC/ShellcodeEncode"
+	MaliceRPC_ListJobs_FullMethodName           = "/clientrpc.MaliceRPC/ListJobs"
+	MaliceRPC_GetProfiles_FullMethodName        = "/clientrpc.MaliceRPC/GetProfiles"
+	MaliceRPC_DeleteProfile_FullMethodName      = "/clientrpc.MaliceRPC/DeleteProfile"
+	MaliceRPC_UpdateProfile_FullMethodName      = "/clientrpc.MaliceRPC/UpdateProfile"
+	MaliceRPC_BuildLog_FullMethodName           = "/clientrpc.MaliceRPC/BuildLog"
+	MaliceRPC_ListBuilder_FullMethodName        = "/clientrpc.MaliceRPC/ListBuilder"
+	MaliceRPC_DownloadArtifact_FullMethodName   = "/clientrpc.MaliceRPC/DownloadArtifact"
+	MaliceRPC_UploadArtifact_FullMethodName     = "/clientrpc.MaliceRPC/UploadArtifact"
+	MaliceRPC_DeleteArtifact_FullMethodName     = "/clientrpc.MaliceRPC/DeleteArtifact"
+	MaliceRPC_MaleficSRDI_FullMethodName        = "/clientrpc.MaliceRPC/MaleficSRDI"
+	MaliceRPC_GetLicenseInfo_FullMethodName     = "/clientrpc.MaliceRPC/GetLicenseInfo"
+	MaliceRPC_UpdateGithubConfig_FullMethodName = "/clientrpc.MaliceRPC/UpdateGithubConfig"
+	MaliceRPC_GetGithubConfig_FullMethodName    = "/clientrpc.MaliceRPC/GetGithubConfig"
+	MaliceRPC_UpdateNotifyConfig_FullMethodName = "/clientrpc.MaliceRPC/UpdateNotifyConfig"
+	MaliceRPC_GetNotifyConfig_FullMethodName    = "/clientrpc.MaliceRPC/GetNotifyConfig"
+	MaliceRPC_RefreshConfig_FullMethodName      = "/clientrpc.MaliceRPC/RefreshConfig"
+	MaliceRPC_GetContexts_FullMethodName        = "/clientrpc.MaliceRPC/GetContexts"
+	MaliceRPC_AddContext_FullMethodName         = "/clientrpc.MaliceRPC/AddContext"
+	MaliceRPC_AddScreenShot_FullMethodName      = "/clientrpc.MaliceRPC/AddScreenShot"
+	MaliceRPC_AddCredential_FullMethodName      = "/clientrpc.MaliceRPC/AddCredential"
+	MaliceRPC_AddKeylogger_FullMethodName       = "/clientrpc.MaliceRPC/AddKeylogger"
+	MaliceRPC_AddPort_FullMethodName            = "/clientrpc.MaliceRPC/AddPort"
+	MaliceRPC_AddUpload_FullMethodName          = "/clientrpc.MaliceRPC/AddUpload"
+	MaliceRPC_AddDownload_FullMethodName        = "/clientrpc.MaliceRPC/AddDownload"
 )
 
 // MaliceRPCClient is the client API for MaliceRPC service.
@@ -285,7 +284,6 @@ type MaliceRPCClient interface {
 	UpdateProfile(ctx context.Context, in *clientpb.Profile, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	BuildLog(ctx context.Context, in *clientpb.Builder, opts ...grpc.CallOption) (*clientpb.Builder, error)
 	ListBuilder(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Builders, error)
-	GetArtifactsByProfile(ctx context.Context, in *clientpb.Profile, opts ...grpc.CallOption) (*clientpb.Builders, error)
 	DownloadArtifact(ctx context.Context, in *clientpb.Artifact, opts ...grpc.CallOption) (*clientpb.Artifact, error)
 	UploadArtifact(ctx context.Context, in *clientpb.Artifact, opts ...grpc.CallOption) (*clientpb.Builder, error)
 	DeleteArtifact(ctx context.Context, in *clientpb.Artifact, opts ...grpc.CallOption) (*clientpb.Empty, error)
@@ -1321,15 +1319,6 @@ func (c *maliceRPCClient) ListBuilder(ctx context.Context, in *clientpb.Empty, o
 	return out, nil
 }
 
-func (c *maliceRPCClient) GetArtifactsByProfile(ctx context.Context, in *clientpb.Profile, opts ...grpc.CallOption) (*clientpb.Builders, error) {
-	out := new(clientpb.Builders)
-	err := c.cc.Invoke(ctx, MaliceRPC_GetArtifactsByProfile_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *maliceRPCClient) DownloadArtifact(ctx context.Context, in *clientpb.Artifact, opts ...grpc.CallOption) (*clientpb.Artifact, error) {
 	out := new(clientpb.Artifact)
 	err := c.cc.Invoke(ctx, MaliceRPC_DownloadArtifact_FullMethodName, in, out, opts...)
@@ -1625,7 +1614,6 @@ type MaliceRPCServer interface {
 	UpdateProfile(context.Context, *clientpb.Profile) (*clientpb.Empty, error)
 	BuildLog(context.Context, *clientpb.Builder) (*clientpb.Builder, error)
 	ListBuilder(context.Context, *clientpb.Empty) (*clientpb.Builders, error)
-	GetArtifactsByProfile(context.Context, *clientpb.Profile) (*clientpb.Builders, error)
 	DownloadArtifact(context.Context, *clientpb.Artifact) (*clientpb.Artifact, error)
 	UploadArtifact(context.Context, *clientpb.Artifact) (*clientpb.Builder, error)
 	DeleteArtifact(context.Context, *clientpb.Artifact) (*clientpb.Empty, error)
@@ -1980,9 +1968,6 @@ func (UnimplementedMaliceRPCServer) BuildLog(context.Context, *clientpb.Builder)
 }
 func (UnimplementedMaliceRPCServer) ListBuilder(context.Context, *clientpb.Empty) (*clientpb.Builders, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListBuilder not implemented")
-}
-func (UnimplementedMaliceRPCServer) GetArtifactsByProfile(context.Context, *clientpb.Profile) (*clientpb.Builders, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetArtifactsByProfile not implemented")
 }
 func (UnimplementedMaliceRPCServer) DownloadArtifact(context.Context, *clientpb.Artifact) (*clientpb.Artifact, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DownloadArtifact not implemented")
@@ -4016,24 +4001,6 @@ func _MaliceRPC_ListBuilder_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
-func _MaliceRPC_GetArtifactsByProfile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(clientpb.Profile)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(MaliceRPCServer).GetArtifactsByProfile(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: MaliceRPC_GetArtifactsByProfile_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MaliceRPCServer).GetArtifactsByProfile(ctx, req.(*clientpb.Profile))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _MaliceRPC_DownloadArtifact_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(clientpb.Artifact)
 	if err := dec(in); err != nil {
@@ -4796,10 +4763,6 @@ var MaliceRPC_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListBuilder",
 			Handler:    _MaliceRPC_ListBuilder_Handler,
-		},
-		{
-			MethodName: "GetArtifactsByProfile",
-			Handler:    _MaliceRPC_GetArtifactsByProfile_Handler,
 		},
 		{
 			MethodName: "DownloadArtifact",

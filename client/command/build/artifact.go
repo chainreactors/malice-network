@@ -132,7 +132,7 @@ func PrintArtifacts(builders *clientpb.Builders, con *repl.Console) error {
 		return nil
 	}
 
-	builder, err := DownloadArtifact(con, selectRow.Data["ID"].(uint32), false)
+	builder, err := DownloadArtifact(con, selectRow.Data["Name"].(string), false)
 	if err != nil {
 		return err
 	}
@@ -142,6 +142,25 @@ func PrintArtifacts(builders *clientpb.Builders, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+func ArtifactShowCmd(cmd *cobra.Command, con *repl.Console) error {
+	name := cmd.Flags().Arg(0)
+	artifact, err := con.Rpc.DownloadArtifact(con.Context(), &clientpb.Artifact{
+		Name: name,
+	})
+	if err != nil {
+		return err
+	}
+	printArtifact(artifact)
+
+	showProfile, _ := cmd.Flags().GetBool("profile")
+	if showProfile {
+		con.Log.Console("full profile:\n\n")
+		con.Log.Console(string(artifact.ProfileBytes))
+	}
+
 	return nil
 }
 
@@ -160,15 +179,11 @@ func printArtifact(artifact *clientpb.Artifact) {
 }
 
 func DownloadArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
-	id := cmd.Flags().Arg(0)
-	artifactID, err := strconv.ParseUint(id, 10, 32)
-	if err != nil {
-		return err
-	}
+	name := cmd.Flags().Arg(0)
 	output, _ := cmd.Flags().GetString("output")
 	srdi, _ := cmd.Flags().GetBool("srdi")
 	go func() {
-		builder, err := DownloadArtifact(con, uint32(artifactID), srdi)
+		builder, err := DownloadArtifact(con, name, srdi)
 		if err != nil {
 			con.Log.Errorf("download artifact failed: %s", err)
 			return
@@ -188,9 +203,9 @@ func DownloadArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func DownloadArtifact(con *repl.Console, ID uint32, srdi bool) (*clientpb.Artifact, error) {
+func DownloadArtifact(con *repl.Console, name string, srdi bool) (*clientpb.Artifact, error) {
 	artifact, err := con.Rpc.DownloadArtifact(con.Context(), &clientpb.Artifact{
-		Id:     ID,
+		Name:   name,
 		IsSrdi: srdi,
 	})
 	if err != nil {

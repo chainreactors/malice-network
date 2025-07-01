@@ -328,6 +328,23 @@ artifact list
 // Navigate the artifact table and press enter to download a specific artifact
 ~~~`,
 	}
+	showArtifactCmd := &cobra.Command{
+		Use:   consts.CommandArtifactShow,
+		Short: "show artifact info and profile",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return ArtifactShowCmd(cmd, con)
+		},
+		Example: `~~~
+artifact show artifact_name
+
+artifact show artifact_name --profile
+~~~`,
+	}
+
+	common.BindFlag(showArtifactCmd, func(f *pflag.FlagSet) {
+		f.Bool("profile", false, "show profile")
+	})
+	common.BindArgCompletions(showArtifactCmd, nil, common.ArtifactCompleter(con))
 
 	downloadCmd := &cobra.Command{
 		Use:   consts.CommandArtifactDownload,
@@ -402,7 +419,7 @@ artifact delete --name artifact_name
 	common.BindArgCompletions(deleteCommand, nil,
 		common.ArtifactCompleter(con))
 
-	artifactCmd.AddCommand(listArtifactCmd, downloadCmd, uploadCmd, deleteCommand)
+	artifactCmd.AddCommand(listArtifactCmd, showArtifactCmd, downloadCmd, uploadCmd, deleteCommand)
 
 	return []*cobra.Command{profileCmd, buildCmd, artifactCmd}
 }

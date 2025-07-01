@@ -4,16 +4,14 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
-
-	"github.com/chainreactors/malice-network/helper/utils/output"
 
 	"github.com/carapace-sh/carapace"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/spf13/cobra"
 )
 
@@ -251,7 +249,7 @@ func ArtifactCompleter(con *repl.Console) carapace.Action {
 			return carapace.Action{}
 		}
 		for _, s := range builders.Builders {
-			results = append(results, strconv.Itoa(int(s.Id)), fmt.Sprintf("builder %s, type %s, target %s", s.Name, s.Type, s.Target))
+			results = append(results, s.Name, fmt.Sprintf("id: %d, type %s, target %s", s.Id, s.Type, s.Target))
 		}
 		return carapace.ActionValuesDescribed(results...).Tag("builder")
 	}
