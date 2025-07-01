@@ -72,22 +72,22 @@ func (d *DockerBuilder) ExecuteBuild() error {
 	switch d.config.Type {
 	case consts.CommandBuildBeacon:
 		buildCommand = fmt.Sprintf(
-			"malefic-mutant generate -s beacon;malefic-mutant build malefic -t %s",
+			"malefic-mutant generate beacon;malefic-mutant build malefic -t %s",
 			d.config.Target,
 		)
 	case consts.CommandBuildBind:
 		buildCommand = fmt.Sprintf(
-			"malefic-mutant generate -s bind && malefic-mutant build malefic -t %s",
+			"malefic-mutant generate bind && malefic-mutant build malefic -t %s",
 			d.config.Target,
 		)
 	case consts.CommandBuildModules:
 		buildCommand = fmt.Sprintf(
-			"malefic-mutant generate -s modules && malefic-mutant build modules -t %s",
+			"malefic-mutant generate modules && malefic-mutant build modules -t %s",
 			d.config.Target,
 		)
 	case consts.CommandBuildPrelude:
 		buildCommand = fmt.Sprintf(
-			"malefic-mutant generate -s prelude && malefic-mutant build prelude -t %s",
+			"malefic-mutant generate prelude && malefic-mutant build prelude -t %s",
 			d.config.Target,
 		)
 	case consts.CommandBuildPulse:
@@ -102,7 +102,7 @@ func (d *DockerBuilder) ExecuteBuild() error {
 			pulseOs = target.OS
 		}
 		buildCommand = fmt.Sprintf(
-			"malefic-mutant generate -s pulse %s %s &&malefic-mutant build pulse -t %s",
+			"malefic-mutant generate pulse %s %s &&malefic-mutant build pulse -t %s",
 			target.Arch, pulseOs, d.config.Target,
 		)
 	}
