@@ -38,7 +38,7 @@ func (rpc *Server) RegisterPipeline(ctx context.Context, req *clientpb.Pipeline)
 	} else {
 		profileReq = &clientpb.Profile{
 			Name:       req.Name + "_default",
-			PipelineId: req.BeaconPipeline,
+			PipelineId: req.Name,
 		}
 	}
 	err = db.NewProfile(profileReq)

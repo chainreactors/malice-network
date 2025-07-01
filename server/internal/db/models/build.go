@@ -30,6 +30,8 @@ type Builder struct {
 	Arch          string
 	Log           string
 	Status        string
+
+	ProfileByte []byte
 }
 
 func (b *Builder) BeforeCreate(tx *gorm.DB) (err error) {
@@ -48,19 +50,21 @@ func (b *Builder) ToArtifact(bin []byte) *clientpb.Artifact {
 		pipeline = b.Profile.PipelineID
 	}
 	return &clientpb.Artifact{
-		Id:        b.ID,
-		Bin:       bin,
-		Name:      b.Name,
-		Target:    b.Target,
-		Type:      b.Type,
-		Stage:     b.Stager,
-		Platform:  b.Os,
-		Arch:      b.Arch,
-		IsSrdi:    b.IsSRDI,
-		Profile:   b.ProfileName,
-		Pipeline:  pipeline,
-		CreatedAt: b.CreatedAt.Unix(),
-		Status:    b.Status,
+		Id:           b.ID,
+		Bin:          bin,
+		Name:         b.Name,
+		Target:       b.Target,
+		Type:         b.Type,
+		Stage:        b.Stager,
+		Platform:     b.Os,
+		Arch:         b.Arch,
+		IsSrdi:       b.IsSRDI,
+		Profile:      b.ProfileName,
+		Pipeline:     pipeline,
+		CreatedAt:    b.CreatedAt.Unix(),
+		Status:       b.Status,
+		ProfileBytes: b.ProfileByte,
+		ParamsBytes:  []byte(b.ParamsJson),
 	}
 }
 
@@ -72,20 +76,22 @@ func (b *Builder) ToProtobuf() *clientpb.Builder {
 		pipeline = b.Profile.PipelineID
 	}
 	return &clientpb.Builder{
-		Id:          b.ID,
-		Name:        b.Name,
-		Target:      b.Target,
-		Type:        b.Type,
-		Stage:       b.Stager,
-		Platform:    b.Os,
-		Arch:        b.Arch,
-		Modules:     b.Modules,
-		IsSrdi:      b.IsSRDI,
-		ProfileName: b.ProfileName,
-		Pipeline:    pipeline,
-		CreatedAt:   b.CreatedAt.Unix(),
-		Source:      b.Source,
-		Status:      b.Status,
+		Id:           b.ID,
+		Name:         b.Name,
+		Target:       b.Target,
+		Type:         b.Type,
+		Stage:        b.Stager,
+		Platform:     b.Os,
+		Arch:         b.Arch,
+		Modules:      b.Modules,
+		IsSrdi:       b.IsSRDI,
+		ProfileName:  b.ProfileName,
+		Pipeline:     pipeline,
+		CreatedAt:    b.CreatedAt.Unix(),
+		Source:       b.Source,
+		Status:       b.Status,
+		ProfileBytes: b.ProfileByte,
+		ParamsBytes:  []byte(b.ParamsJson),
 	}
 }
 

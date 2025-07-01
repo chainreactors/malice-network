@@ -2,7 +2,6 @@ package rpc
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -22,16 +21,20 @@ func (rpc *Server) Build(ctx context.Context, req *clientpb.BuildConfig) (*clien
 			profile, _ := db.GetProfile(req.ProfileName)
 			yamlID := profile.Pulse.Flags.ArtifactID
 			if uint32(yamlID) != 0 {
-				artifactID = uint32(yamlID)
+				artifactID = yamlID
 			} else {
 				artifactID = 0
 			}
 		}
-		_, err := db.GetArtifactById(artifactID)
-		if err != nil && !errors.Is(err, db.ErrRecordNotFound) {
+
+		builders, err := db.FindBeaconArtifact(artifactID, req.ProfileName)
+		if err != nil {
 			return nil, err
 		}
-		if errors.Is(err, db.ErrRecordNotFound) {
+		if len(builders) > 0 {
+			artifactID = builders[0].ID
+			req.ArtifactId = artifactID
+		} else {
 			beaconReq := proto.Clone(req).(*clientpb.BuildConfig)
 			beaconReq.Srdi = true
 			if req.Source == consts.ArtifactFromAction {

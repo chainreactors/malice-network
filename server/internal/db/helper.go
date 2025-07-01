@@ -727,6 +727,7 @@ func GetProfile(name string) (*types.ProfileConfig, error) {
 	if profile.Pulse != nil {
 		if profileModel.PulsePipeline != nil {
 			profile.Pulse.Target = profileModel.PulsePipeline.Address()
+			profile.Pulse.Protocol = profileModel.PulsePipeline.Type
 		}
 	}
 
@@ -737,6 +738,64 @@ func GetProfiles() ([]*models.Profile, error) {
 	var profiles []*models.Profile
 	result := Session().Preload("Pipeline").Preload("PulsePipeline").Order("created_at ASC").Find(&profiles)
 	return profiles, result.Error
+}
+
+func FindBeaconArtifact(artifactID uint32, profileName string) ([]*models.Builder, error) {
+	var builders []*models.Builder
+	artifact, err := GetArtifactById(artifactID)
+	if err != nil && !errors.Is(err, ErrRecordNotFound) {
+		return builders, err
+	} else if err == nil {
+		builders = append(builders, artifact)
+		return builders, nil
+	}
+	if errors.Is(err, ErrRecordNotFound) {
+		var profileModel *models.Profile
+		result := Session().Preload("Pipeline").Preload("PulsePipeline").Where("name = ?", profileName).First(&profileModel)
+		if result.Error != nil {
+			return builders, result.Error
+		}
+		builders, err = FindBuildersByPipelineID(profileModel.PipelineID)
+		if err != nil {
+			return builders, err
+		}
+		return builders, nil
+	}
+	return builders, nil
+}
+
+// FindBuildersByPipelineID
+func FindBuildersByPipelineID(pipelineID string) ([]*models.Builder, error) {
+	var profiles []models.Profile
+	err := Session().Where("pipeline_id = ?", pipelineID).Find(&profiles).Error
+	if err != nil {
+		return nil, err
+	}
+	if len(profiles) == 0 {
+		return []*models.Builder{}, nil
+	}
+
+	var profileNames []string
+	for _, p := range profiles {
+		profileNames = append(profileNames, p.Name)
+	}
+
+	var builders []*models.Builder
+	err = Session().Where("profile_name IN ?", profileNames).Preload("Profile").Find(&builders).Error
+	if err != nil {
+		return nil, err
+	}
+
+	var validBuilders []*models.Builder
+	for _, b := range builders {
+		if b.Path != "" {
+			if _, err := os.Stat(b.Path); err == nil {
+				validBuilders = append(validBuilders, b)
+			}
+		}
+	}
+
+	return validBuilders, nil
 }
 
 func DeleteProfileByName(profileName string) error {
@@ -761,7 +820,7 @@ func UpdateProfileRaw(profileName string, raw []byte) error {
 	return Session().Model(&models.Profile{}).Where("name = ?", profileName).Update("raw", raw).Error
 }
 
-func SaveArtifactFromConfig(req *clientpb.BuildConfig) (*models.Builder, error) {
+func SaveArtifactFromConfig(req *clientpb.BuildConfig, profileByte []byte) (*models.Builder, error) {
 	target, ok := consts.GetBuildTarget(req.Target)
 	if !ok {
 		return nil, errs.ErrInvalidateTarget
@@ -772,13 +831,17 @@ func SaveArtifactFromConfig(req *clientpb.BuildConfig) (*models.Builder, error) 
 		Target:      req.Target,
 		Type:        req.Type,
 		Source:      req.Source,
-		//CA:          req.Ca,
-		IsSRDI:     req.Srdi,
-		Modules:    strings.Join(req.Modules, ","),
-		Arch:       target.Arch,
-		Os:         target.OS,
-		ParamsJson: req.Params,
+		IsSRDI:      req.Srdi,
+		Modules:     strings.Join(req.Modules, ","),
+		Arch:        target.Arch,
+		Os:          target.OS,
+		ProfileByte: profileByte,
 	}
+	paramsJson, err := json.Marshal(req.Params)
+	if err != nil {
+		return nil, err
+	}
+	builder.ParamsJson = string(paramsJson)
 
 	if Session() == nil {
 		return &builder, nil
@@ -790,7 +853,7 @@ func SaveArtifactFromConfig(req *clientpb.BuildConfig) (*models.Builder, error) 
 	return &builder, nil
 }
 
-func SaveArtifactFromID(req *clientpb.BuildConfig, ID uint32, resource string) (*models.Builder, error) {
+func SaveArtifactFromID(req *clientpb.BuildConfig, ID uint32, resource string, profileByte []byte) (*models.Builder, error) {
 	target, ok := consts.GetBuildTarget(req.Target)
 	if !ok {
 		return nil, errs.ErrInvalidateTarget
@@ -803,10 +866,10 @@ func SaveArtifactFromID(req *clientpb.BuildConfig, ID uint32, resource string) (
 		Type:        req.Type,
 		Source:      resource,
 		IsSRDI:      req.Srdi,
-		//CA:          req.Ca,
-		Modules: strings.Join(req.Modules, ","),
-		Arch:    target.Arch,
-		Os:      target.OS,
+		Modules:     strings.Join(req.Modules, ","),
+		Arch:        target.Arch,
+		Os:          target.OS,
+		ProfileByte: profileByte,
 	}
 
 	paramsJson, err := json.Marshal(req.Params)

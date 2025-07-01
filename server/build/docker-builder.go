@@ -35,13 +35,20 @@ func NewDockerBuilder(req *clientpb.BuildConfig) *DockerBuilder {
 func (d *DockerBuilder) GenerateConfig() (*clientpb.Builder, error) {
 	var builder *models.Builder
 	var err error
+	var profileByte []byte
+	if d.config.Inputs == nil {
+		profileByte, err = GenerateProfile(d.config)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create config: %s", err)
+		}
+	}
 	if d.config.ArtifactId != 0 && d.config.Type == consts.CommandBuildBeacon {
-		builder, err = db.SaveArtifactFromID(d.config, d.config.ArtifactId, d.config.Source)
+		builder, err = db.SaveArtifactFromID(d.config, d.config.ArtifactId, d.config.Source, profileByte)
 	} else {
 		if d.config.BuildName == "" {
 			d.config.BuildName = codenames.GetCodename()
 		}
-		builder, err = db.SaveArtifactFromConfig(d.config)
+		builder, err = db.SaveArtifactFromConfig(d.config, profileByte)
 	}
 	if err != nil {
 		logs.Log.Errorf("failed to save build %s: %s", builder.Name, err)
@@ -58,12 +65,6 @@ func (d *DockerBuilder) ExecuteBuild() error {
 	timeout := 20 * time.Minute
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	if d.config.Inputs == nil {
-		_, err := GenerateProfile(d.config)
-		if err != nil {
-			return fmt.Errorf("failed to create config: %s", err)
-		}
-	}
 	cli, err := GetDockerClient()
 	if err != nil {
 		return err

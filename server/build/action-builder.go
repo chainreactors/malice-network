@@ -42,15 +42,20 @@ func (a *ActionBuilder) GenerateConfig() (*clientpb.Builder, error) {
 			githubConfig.WorkflowId = config.Workflow
 		}
 	}
+
 	var builder *models.Builder
 	var err error
+	profileByte, err := GenerateProfile(a.config)
+	if err != nil {
+		return builder.ToProtobuf(), err
+	}
 	if a.config.ArtifactId != 0 && a.config.Type == consts.CommandBuildBeacon {
-		builder, err = db.SaveArtifactFromID(a.config, a.config.ArtifactId, a.config.Source)
+		builder, err = db.SaveArtifactFromID(a.config, a.config.ArtifactId, a.config.Source, profileByte)
 	} else {
 		if a.config.BuildName == "" {
 			a.config.BuildName = codenames.GetCodename()
 		}
-		builder, err = db.SaveArtifactFromConfig(a.config)
+		builder, err = db.SaveArtifactFromConfig(a.config, profileByte)
 	}
 	if err != nil {
 		logs.Log.Errorf("failed to save build%s: %s", builder.Name, err)
@@ -59,10 +64,6 @@ func (a *ActionBuilder) GenerateConfig() (*clientpb.Builder, error) {
 	a.builder = builder
 	a.config.Inputs["remark"] = a.builder.Name
 	a.config.ArtifactId = a.builder.ID
-	profileByte, err := GenerateProfile(a.config)
-	if err != nil {
-		return builder.ToProtobuf(), err
-	}
 	a.config.Inputs["remark"] = a.builder.Name
 	base64Encoded := encode.Base64Encode(profileByte)
 	a.config.Inputs["malefic_config_yaml"] = base64Encoded

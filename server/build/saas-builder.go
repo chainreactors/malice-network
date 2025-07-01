@@ -39,13 +39,20 @@ func NewSaasBuilder(req *clientpb.BuildConfig) *SaasBuilder {
 func (s *SaasBuilder) GenerateConfig() (*clientpb.Builder, error) {
 	var builder *models.Builder
 	var err error
+	profileByte, err := GenerateProfile(s.config)
+	if err != nil {
+		return nil, err
+	}
+	base64Encoded := encode.Base64Encode(profileByte)
+	s.config.Inputs = make(map[string]string)
+	s.config.Inputs["malefic_config_yaml"] = base64Encoded
 	if s.config.ArtifactId != 0 && s.config.Type == consts.CommandBuildBeacon {
-		builder, err = db.SaveArtifactFromID(s.config, s.config.ArtifactId, s.config.Source)
+		builder, err = db.SaveArtifactFromID(s.config, s.config.ArtifactId, s.config.Source, profileByte)
 	} else {
 		if s.config.BuildName == "" {
 			s.config.BuildName = codenames.GetCodename()
 		}
-		builder, err = db.SaveArtifactFromConfig(s.config)
+		builder, err = db.SaveArtifactFromConfig(s.config, profileByte)
 	}
 	if err != nil {
 		logs.Log.Errorf("failed to save build %s: %s", builder.Name, err)
@@ -59,13 +66,6 @@ func (s *SaasBuilder) GenerateConfig() (*clientpb.Builder, error) {
 }
 
 func (s *SaasBuilder) ExecuteBuild() error {
-	profileByte, err := GenerateProfile(s.config)
-	if err != nil {
-		return err
-	}
-	base64Encoded := encode.Base64Encode(profileByte)
-	s.config.Inputs = make(map[string]string)
-	s.config.Inputs["malefic_config_yaml"] = base64Encoded
 	data, err := protojson.Marshal(s.config)
 	if err != nil {
 		return fmt.Errorf("failed to marshal config %s: %s", s.config.ProfileName, err)
