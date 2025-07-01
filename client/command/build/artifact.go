@@ -146,7 +146,17 @@ func PrintArtifacts(builders *clientpb.Builders, con *repl.Console) error {
 }
 
 func printArtifact(artifact *clientpb.Artifact) {
-
+	art := map[string]interface{}{
+		"ID":       artifact.Id,
+		"Name":     artifact.Name,
+		"Type":     artifact.Type,
+		"Stage":    artifact.Stage,
+		"Target":   artifact.Target,
+		"Profile":  artifact.Profile,
+		"Pipeline": artifact.Pipeline,
+		"IsSRDI":   artifact.IsSrdi,
+	}
+	tui.RenderKV(art)
 }
 
 func DownloadArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
@@ -163,6 +173,8 @@ func DownloadArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
 			con.Log.Errorf("download artifact failed: %s", err)
 			return
 		}
+
+		printArtifact(builder)
 		if output == "" {
 			output = filepath.Join(assets.GetTempDir(), builder.Name)
 		}

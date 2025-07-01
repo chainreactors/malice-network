@@ -836,12 +836,8 @@ func SaveArtifactFromConfig(req *clientpb.BuildConfig, profileByte []byte) (*mod
 		Arch:        target.Arch,
 		Os:          target.OS,
 		ProfileByte: profileByte,
+		ParamsData:  []byte(req.Params),
 	}
-	paramsJson, err := json.Marshal(req.Params)
-	if err != nil {
-		return nil, err
-	}
-	builder.ParamsData = string(paramsJson)
 
 	if Session() == nil {
 		return &builder, nil
@@ -870,17 +866,10 @@ func SaveArtifactFromID(req *clientpb.BuildConfig, ID uint32, resource string, p
 		Arch:        target.Arch,
 		Os:          target.OS,
 		ProfileByte: profileByte,
+		ParamsData:  []byte(req.Params),
 	}
-
-	paramsJson, err := json.Marshal(req.Params)
-	if err != nil {
-		return nil, err
-	}
-	builder.ParamsData = string(paramsJson)
-
 	if err := Session().Create(&builder).Error; err != nil {
 		return nil, err
-
 	}
 
 	return &builder, nil
@@ -934,8 +923,8 @@ func SaveArtifact(name, artifactType, platform, arch, stage, source string) (*mo
 }
 
 func GetBuilders() (*clientpb.Builders, error) {
-	var builders []models.Builder
-	result := Session().Preload("Profile").Find(&builders)
+	var builders []*models.Builder
+	result := Session().Find(&builders)
 	if result.Error != nil {
 		return nil, result.Error
 	}
