@@ -762,37 +762,20 @@ func FindBeaconArtifact(artifactID uint32, profileName string) ([]*models.Builde
 	return builders, nil
 }
 
-// FindBuildersByPipelineID
+// FindBuildersByPipelineID 遍历所有 builder，找到 profile.pipelineID = pipelineID 的 builder
 func FindBuildersByPipelineID(pipelineID string) ([]*models.Builder, error) {
-	var profiles []models.Profile
-	err := Session().Where("pipeline_id = ?", pipelineID).Find(&profiles).Error
-	if err != nil {
-		return nil, err
-	}
-	if len(profiles) == 0 {
-		return []*models.Builder{}, nil
-	}
-
-	var profileNames []string
-	for _, p := range profiles {
-		profileNames = append(profileNames, p.Name)
-	}
-
 	var builders []*models.Builder
-	err = Session().Where("profile_name IN ?", profileNames).Preload("Profile").Find(&builders).Error
+	err := Session().Preload("Profile").Find(&builders).Error
 	if err != nil {
 		return nil, err
 	}
 
 	var validBuilders []*models.Builder
 	for _, b := range builders {
-		if b.Path != "" {
-			if _, err := os.Stat(b.Path); err == nil {
-				validBuilders = append(validBuilders, b)
-			}
+		if b.Profile.PipelineID == pipelineID {
+			validBuilders = append(validBuilders, b)
 		}
 	}
-
 	return validBuilders, nil
 }
 
