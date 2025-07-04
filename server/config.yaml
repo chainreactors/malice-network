@@ -21,6 +21,7 @@ server:
   saas:
     enable: true
     url: http://121.4.210.3:17373
+    token:
 
 listeners:
   name: listener

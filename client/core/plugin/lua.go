@@ -208,13 +208,13 @@ func (plug *LuaPlugin) registerLuaFunction() {
 	}, nil)
 
 	plug.registerFunction("find_resource", func(sess *core.Session, base string, ext string) (string, error) {
-		filename := fmt.Sprintf("%s_%s_%s", base, consts.FormatArch(sess.Os.Arch), ext)
+		filename := fmt.Sprintf("%s.%s.%s", base, consts.FormatArch(sess.Os.Arch), ext)
 		resourceFile := filepath.Join(assets.GetMalsDir(), plug.Name, "resources", filename)
 		return resourceFile, nil
 	}, nil)
 
 	plug.registerFunction("find_global_resource", func(sess *core.Session, base string, ext string) (string, error) {
-		filename := fmt.Sprintf("%s_%s_%s", base, consts.FormatArch(sess.Os.Arch), ext)
+		filename := fmt.Sprintf("%s.%s.%s", base, consts.FormatArch(sess.Os.Arch), ext)
 		resourceFile := filepath.Join(assets.GetResourceDir(), filename)
 		return resourceFile, nil
 	}, nil)

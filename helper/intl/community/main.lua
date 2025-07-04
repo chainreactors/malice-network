@@ -1,5 +1,7 @@
 -- Community Tools Plugin
 -- This plugin provides various BOF (Beacon Object File) tools for penetration testing
+require("rem")
+
 local time = require("time")
 
 function bof_pack(format, ...)

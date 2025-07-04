@@ -3,15 +3,15 @@ package plugin
 import (
 	"embed"
 	"fmt"
+	lua "github.com/yuin/gopher-lua"
+	"gopkg.in/yaml.v3"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 
-	lua "github.com/yuin/gopher-lua"
-	"gopkg.in/yaml.v3"
-
 	"github.com/chainreactors/malice-network/client/assets"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/malice-network/helper/intl"
 )
@@ -154,7 +154,6 @@ func (plug *EmbedPlugin) GetLevel() MalLevel {
 func (plug *EmbedPlugin) registerEmbedResourceFunctions() {
 	// 重写script_resource函数 - 返回资源文件路径
 	plug.registerFunction("script_resource", func(filename string) (string, error) {
-		// 先尝试从嵌入式资源查找
 		resourcePath := "resources/" + filename
 		if _, exists := plug.GetFileContent(resourcePath); exists {
 			return fmt.Sprintf("embed://%s/%s", plug.Name, resourcePath), nil
@@ -169,7 +168,6 @@ func (plug *EmbedPlugin) registerEmbedResourceFunctions() {
 	plug.registerFunction("global_resource", func(filename string) (string, error) {
 		// 从全局管理器查找
 		if globalManager := GetGlobalMalManager(); globalManager != nil {
-			// 按优先级顺序查找：custom -> professional -> community
 			reverseLevelOrder := []string{"custom", "professional", "community"}
 
 			for _, levelName := range reverseLevelOrder {
@@ -182,37 +180,29 @@ func (plug *EmbedPlugin) registerEmbedResourceFunctions() {
 			}
 		}
 
-		// 回退到文件系统
 		resourceFile := filepath.Join(assets.GetResourceDir(), filename)
 		return resourceFile, nil
 	}, nil)
 
 	// 重写find_resource函数 - 查找架构特定的资源文件
-	plug.registerFunction("find_resource", func(sess interface{}, base string, ext string) (string, error) {
+	plug.registerFunction("find_resource", func(sess *core.Session, base string, ext string) (string, error) {
 		// 这里简化处理，直接使用默认架构
-		arch := "x64" // 可以根据需要从session中获取实际架构
-		filename := fmt.Sprintf("%s_%s.%s", base, arch, ext)
+		filename := fmt.Sprintf("%s.%s.%s", base, sess.Os.Arch, ext)
 
-		// 先尝试从嵌入式资源查找
 		resourcePath := "resources/" + filename
 		if _, exists := plug.GetFileContent(resourcePath); exists {
 			return fmt.Sprintf("embed://%s/%s", plug.Name, resourcePath), nil
 		}
 
-		// 回退到文件系统
 		resourceFile := filepath.Join(assets.GetMalsDir(), plug.Name, "resources", filename)
 		return resourceFile, nil
 	}, nil)
 
 	// 重写find_global_resource函数 - 查找全局架构特定的资源文件
-	plug.registerFunction("find_global_resource", func(sess interface{}, base string, ext string) (string, error) {
-		// 这里简化处理，直接使用默认架构
-		arch := "x64" // 可以根据需要从session中获取实际架构
-		filename := fmt.Sprintf("%s_%s.%s", base, arch, ext)
+	plug.registerFunction("find_global_resource", func(sess *core.Session, base string, ext string) (string, error) {
+		filename := fmt.Sprintf("%s.%s.%s", base, sess.Os.Arch, ext)
 
-		// 从全局管理器查找
 		if globalManager := GetGlobalMalManager(); globalManager != nil {
-			// 按优先级顺序查找：custom -> professional -> community
 			reverseLevelOrder := []string{"custom", "professional", "community"}
 
 			for _, levelName := range reverseLevelOrder {
