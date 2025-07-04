@@ -254,6 +254,11 @@ const (
 	CommandPortForwardLocal        = "portfwd_local"
 
 	CommandScreenShot = "screenshot"
+
+	CommandCert       = "cert"
+	CommandCertAdd    = "add"
+	CommandCertDelete = "delete"
+	CommandCertUpdate = "update"
 )
 
 const (

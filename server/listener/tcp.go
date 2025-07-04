@@ -31,6 +31,7 @@ func NewTcpPipeline(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeli
 		Target:         pipeline.Target,
 		BeaconPipeline: pipeline.BeaconPipeline,
 		PipelineConfig: core.FromProtobuf(pipeline),
+		CertName:       pipeline.CertName,
 	}
 	var err error
 	pp.parser, err = parser.NewParser(pp.Parser)
@@ -50,6 +51,7 @@ type TCPPipeline struct {
 	Enable         bool
 	Target         []string
 	BeaconPipeline string
+	CertName       string
 	parser         *parser.MessageParser
 	*core.PipelineConfig
 }
@@ -63,6 +65,7 @@ func (pipeline *TCPPipeline) ToProtobuf() *clientpb.Pipeline {
 		Parser:         pipeline.Parser,
 		Target:         pipeline.Target,
 		BeaconPipeline: pipeline.BeaconPipeline,
+		CertName:       pipeline.CertName,
 		Body: &clientpb.Pipeline_Tcp{
 			Tcp: &clientpb.TCPPipeline{
 				Name:       pipeline.Name,

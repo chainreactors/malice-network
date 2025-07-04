@@ -21,15 +21,17 @@ func NewBindPipeline(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipel
 		rpc:            rpc,
 		Name:           pipeline.Name,
 		Enable:         true,
+		CertName:       pipeline.CertName,
 		PipelineConfig: core.FromProtobuf(pipeline),
 	}
 	return pp, nil
 }
 
 type BindPipeline struct {
-	rpc    listenerrpc.ListenerRPCClient
-	Name   string
-	Enable bool
+	rpc      listenerrpc.ListenerRPCClient
+	Name     string
+	Enable   bool
+	CertName string
 	*core.PipelineConfig
 }
 
@@ -43,6 +45,7 @@ func (pipeline *BindPipeline) ToProtobuf() *clientpb.Pipeline {
 		Enable:     pipeline.Enable,
 		Type:       consts.BindPipeline,
 		ListenerId: pipeline.ListenerID,
+		CertName:   pipeline.CertName,
 		Body: &clientpb.Pipeline_Bind{
 			Bind: &clientpb.BindPipeline{
 				Name:       pipeline.Name,

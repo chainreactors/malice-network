@@ -24,7 +24,7 @@ func NewHttpPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 	}
 
 	// 解析TLS和加密配置
-	tls, err := common.ParseTLSFlags(cmd)
+	tls, certName, err := common.ParseTLSFlags(cmd)
 	if err != nil {
 		return err
 	}
@@ -68,6 +68,7 @@ func NewHttpPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 		Target:         target,
 		Parser:         parser,
 		BeaconPipeline: beaconPipeline,
+		CertName:       certName,
 		Enable:         false,
 		Body: &clientpb.Pipeline_Http{
 			Http: &clientpb.HTTPPipeline{

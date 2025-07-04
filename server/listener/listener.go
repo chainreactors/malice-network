@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"os"
@@ -124,6 +125,9 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 		if err != nil {
 			return err
 		}
+		if err != nil {
+			return err
+		}
 
 		web := &clientpb.Website{
 			Root: newWebsite.RootPath,
@@ -177,7 +181,12 @@ func (lns *listener) RegisterAndStart(pipeline *clientpb.Pipeline) error {
 	if !pipeline.Enable {
 		return nil
 	}
-	_, err := lns.Rpc.RegisterPipeline(lns.Context(), pipeline)
+	tls, err := certutils.GetAutoCertTls(pipeline.GetTls())
+	if err != nil {
+		return err
+	}
+	pipeline.Tls = tls
+	_, err = lns.Rpc.RegisterPipeline(lns.Context(), pipeline)
 	if err != nil {
 		return err
 	}

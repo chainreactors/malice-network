@@ -10,11 +10,16 @@ import (
 
 // Operator - Colletions of content to serve from HTTP(S)
 type Operator struct {
-	ID        uuid.UUID `gorm:"primaryKey;->;<-:create;type:uuid;"`
-	CreatedAt time.Time `gorm:"->;<-:create;"`
-	Name      string    `gorm:"uniqueIndex"`
-	Remote    string    `gorm:"type:string;"`
-	Type      string    `gorm:"type:string;"`
+	ID               uuid.UUID `gorm:"primaryKey;->;<-:create;type:uuid;"`
+	CreatedAt        time.Time `gorm:"->;<-:create;"`
+	Name             string    `gorm:"uniqueIndex"`
+	Remote           string    `gorm:"type:string;"`
+	Type             string    `gorm:"type:string;"`
+	CAType           int
+	KeyType          string
+	CaCertificatePEM string
+	CertificatePEM   string
+	PrivateKeyPEM    string
 }
 
 // BeforeCreate - GORM hook

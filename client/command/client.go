@@ -1,6 +1,7 @@
 package command
 
 import (
+	"github.com/chainreactors/malice-network/client/command/cert"
 	"github.com/chainreactors/malice-network/client/command/license"
 	"github.com/reeflective/console"
 	"github.com/spf13/cobra"
@@ -36,6 +37,7 @@ func BindCommonCommands(bind BindFunc) {
 		mal.Commands,
 		config.Commands,
 		context.Commands,
+		cert.Commands,
 	)
 
 	bind(consts.ListenerGroup,
@@ -45,7 +47,7 @@ func BindCommonCommands(bind BindFunc) {
 
 	bind(consts.GeneratorGroup,
 		build.Commands,
-		mutant.Commands,
+		//mutant.Commands,
 		license.Commands,
 	)
 }

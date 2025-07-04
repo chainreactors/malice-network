@@ -25,6 +25,7 @@ type Website struct {
 	rootPath string
 	Name     string
 	Enable   bool
+	CertName string
 	*core.PipelineConfig
 	Content map[string]*clientpb.WebContent
 }
@@ -36,6 +37,7 @@ func StartWebsite(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeline
 		port:           int(websitePp.Port),
 		rootPath:       websitePp.Root,
 		rpc:            rpc,
+		CertName:       pipeline.CertName,
 		PipelineConfig: core.FromProtobuf(pipeline),
 		Content:        make(map[string]*clientpb.WebContent),
 	}
@@ -108,6 +110,7 @@ func (w *Website) ToProtobuf() *clientpb.Pipeline {
 		Enable:     w.Enable,
 		ListenerId: w.ListenerID,
 		Type:       consts.WebsitePipeline,
+		CertName:   w.CertName,
 		Body: &clientpb.Pipeline_Web{
 			Web: &clientpb.Website{
 				Name:       w.Name,

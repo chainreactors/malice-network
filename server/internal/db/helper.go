@@ -37,6 +37,13 @@ func HasOperator(typ string) (bool, error) {
 	return true, nil
 }
 
+func RemoveOperator(name string) error {
+	err := Session().Where(&models.Operator{
+		Name: name,
+	}).Delete(&models.Operator{}).Error
+	return err
+}
+
 func FindAliveSessions() ([]*models.Session, error) {
 	updateResult := Session().Exec(`
         UPDATE sessions
@@ -162,13 +169,8 @@ func UpdateSessionTimer(sessionID string, interval uint64, jitter float64) error
 	return result.Error
 }
 
-func CreateOperator(name string, typ string, remoteAddr string) error {
-	operator := &models.Operator{
-		Name:   name,
-		Type:   typ,
-		Remote: remoteAddr,
-	}
-	err := Session().Save(&operator).Error
+func CreateOperator(client *models.Operator) error {
+	err := Session().Save(client).Error
 	return err
 
 }
@@ -368,22 +370,6 @@ func ListListeners() ([]*models.Operator, error) {
 	return listeners, err
 }
 
-// AddCertificate add a certificate to the database
-func AddCertificate(caType int, keyType string, commonName string, cert []byte, key []byte) error {
-	certModel := &models.Certificate{
-		CommonName:     commonName,
-		CAType:         caType,
-		KeyType:        keyType,
-		CertificatePEM: string(cert),
-		PrivateKeyPEM:  string(key),
-	}
-	err := Session().Save(certModel).Error
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 // DeleteAllCertificates
 func DeleteAllCertificates() error {
 	result := Session().Exec("DELETE FROM certificates")
@@ -392,8 +378,8 @@ func DeleteAllCertificates() error {
 
 // DeleteCertificate
 func DeleteCertificate(name string) error {
-	var cert models.Certificate
-	result := Session().Where("common_name = ?", name).First(&cert)
+	var cert *models.Certificate
+	result := Session().Where("name = ?", name).First(&cert)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil
@@ -407,15 +393,40 @@ func DeleteCertificate(name string) error {
 	return nil
 }
 
-func isDuplicateCommonNameAndCAType(commonName string, caType int) bool {
+func FindCertificate(name string) (*models.Certificate, error) {
+	var cert *models.Certificate
+	result := Session().Where("name = ?", name).First(&cert)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return cert, nil
+}
+
+func GetAllCertificates() ([]*models.Certificate, error) {
+	var certificates []*models.Certificate
+	err := Session().Find(&certificates).Error
+	return certificates, err
+}
+
+func UpdateCert(name, cert, key string) error {
+	return Session().Model(&models.Certificate{}).
+		Where("name = ?", name).
+		Select("cert_pem", "key_pem").
+		Updates(models.Certificate{
+			CertPEM: cert,
+			KeyPEM:  key,
+		}).Error
+}
+
+func isDuplicateCommonNameAndCAType(name string) bool {
 	var count int64
-	Session().Model(&models.Certificate{}).Where("common_name = ? AND ca_type = ?", commonName, caType).Count(&count)
+	Session().Model(&models.Certificate{}).Where("name = ?", name).Count(&count)
 	return count > 0
 }
 
 func SaveCertificate(certificate *models.Certificate) error {
-	if isDuplicateCommonNameAndCAType(certificate.CommonName, certificate.CAType) {
-		return errors.New("duplicate CommonName and CAType")
+	if isDuplicateCommonNameAndCAType(certificate.Name) {
+		return errors.New("duplicate CommonName")
 	}
 	if err := Session().Create(certificate).Error; err != nil {
 		return err
@@ -720,6 +731,7 @@ func GetProfile(name string) (*types.ProfileConfig, error) {
 		if profileModel.Pipeline != nil {
 			profile.Basic.Targets = []string{profileModel.Pipeline.Address()}
 			profile.Basic.Protocol = profileModel.Pipeline.Type
+			profile.Basic.TLS.Enable = profileModel.Pipeline.Tls.Enable
 		}
 	}
 	if profile.Pulse != nil {

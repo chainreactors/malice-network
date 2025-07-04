@@ -2,7 +2,11 @@ package certutils
 
 import (
 	"crypto/tls"
+	"github.com/chainreactors/malice-network/helper/certs"
+	"github.com/chainreactors/malice-network/helper/codenames"
 	"github.com/chainreactors/malice-network/helper/types"
+	"github.com/chainreactors/malice-network/server/internal/db"
+	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"net"
 
 	"github.com/chainreactors/malice-network/server/internal/configs"
@@ -50,4 +54,47 @@ func TlsConfig(cert tls.Certificate) *tls.Config {
 			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
 		},
 	}
+}
+
+func SaveTlsCert(tls *types.TlsConfig, piplineName, listenerID string) (*types.TlsConfig, string, error) {
+	var certModel *models.Certificate
+	var err error
+	name := codenames.GetCodename()
+	if tls.Cert == nil && !tls.AutoCert {
+		tls, err = GenerateSelfTLS(piplineName, listenerID)
+		if err != nil {
+			return tls, "", err
+		}
+		certModel = &models.Certificate{
+			Name:      name,
+			Type:      certs.SelfSigned,
+			CACertPEM: tls.CA.Cert,
+			CAKeyPEM:  tls.CA.Key,
+			CertPEM:   tls.Cert.Cert,
+			KeyPEM:    tls.Cert.Key,
+		}
+	} else if tls.Cert != nil && !tls.AutoCert {
+		certModel = &models.Certificate{
+			Name:      name,
+			Type:      certs.Imported,
+			CertPEM:   tls.Cert.Cert,
+			KeyPEM:    tls.Cert.Key,
+			CACertPEM: tls.CA.Cert,
+		}
+	} else if tls.Cert != nil && tls.AutoCert {
+		certModel = &models.Certificate{
+			Name:    tls.Domain,
+			Type:    certs.AutoCert,
+			CertPEM: tls.Cert.Cert,
+			KeyPEM:  tls.Cert.Key,
+			Domain:  tls.Domain,
+			//CACertPEM: pipelineModel.Tls.CA.Cert,
+		}
+		name = tls.Domain
+	}
+	err = db.SaveCertificate(certModel)
+	if err != nil {
+		return tls, name, err
+	}
+	return tls, name, nil
 }

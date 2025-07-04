@@ -59,9 +59,10 @@ tcp --listener tcp_default --tls --cert_path /path/to/cert --key_path /path/to/k
 		comp["listener"] = common.ListenerIDCompleter(con)
 		comp["host"] = carapace.ActionValues().Usage("tcp host")
 		comp["port"] = carapace.ActionValues().Usage("tcp port")
-		comp["cert_path"] = carapace.ActionFiles().Usage("path to the cert file")
-		comp["key_path"] = carapace.ActionFiles().Usage("path to the key file")
+		comp["cert"] = carapace.ActionFiles().Usage("path to the cert file")
+		comp["key"] = carapace.ActionFiles().Usage("path to the key file")
 		comp["tls"] = carapace.ActionValues().Usage("enable tls")
+		comp["cert-name"] = common.CertNameCompleter(con)
 	})
 	tcpCmd.MarkFlagRequired("listener")
 
@@ -98,11 +99,12 @@ http --listener http_default --tls --cert_path /path/to/cert --key_path /path/to
 		comp["listener"] = common.ListenerIDCompleter(con)
 		comp["host"] = carapace.ActionValues().Usage("http host")
 		comp["port"] = carapace.ActionValues().Usage("http port")
-		comp["cert_path"] = carapace.ActionFiles().Usage("path to the cert file")
-		comp["key_path"] = carapace.ActionFiles().Usage("path to the key file")
+		comp["cert"] = carapace.ActionFiles().Usage("path to the cert file")
+		comp["key"] = carapace.ActionFiles().Usage("path to the key file")
 		comp["tls"] = carapace.ActionValues().Usage("enable tls")
 		comp["error-page"] = carapace.ActionFiles().Usage("path to error page file")
 		comp["headers"] = carapace.ActionValues().Usage("http headers (key=value)")
+		comp["cert-name"] = common.CertNameCompleter(con)
 		//comp["body-prefix"] = carapace.ActionValues().Usage("prefix for response body")
 		//comp["body-suffix"] = carapace.ActionValues().Usage("suffix for response body")
 	})
@@ -154,6 +156,12 @@ tcp start tcp_test
 	common.BindArgCompletions(startPipelineCmd, nil,
 		carapace.ActionValues().Usage("tcp pipeline name"),
 		common.ListenerIDCompleter(con))
+	common.BindFlag(startPipelineCmd, func(f *pflag.FlagSet) {
+		f.String("cert-name", "", "certificate name")
+	})
+	common.BindFlagCompletions(startPipelineCmd, func(comp carapace.ActionMap) {
+		comp["cert-name"] = common.CertNameCompleter(con)
+	})
 
 	stopPipelineCmd := &cobra.Command{
 		Use:   consts.CommandPipelineStop,

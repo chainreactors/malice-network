@@ -4,9 +4,10 @@ import "github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 
 func FromTls(tls *clientpb.TLS) *TlsConfig {
 	return &TlsConfig{
-		Cert:   FromCert(tls.Cert),
-		CA:     FromCert(tls.Ca),
-		Enable: tls.Enable,
+		Cert:     FromCert(tls.Cert),
+		CA:       FromCert(tls.Ca),
+		Enable:   tls.Enable,
+		AutoCert: tls.AutoCert,
 	}
 }
 
@@ -47,9 +48,11 @@ func (cert *CertConfig) ToProtobuf() *clientpb.Cert {
 }
 
 type TlsConfig struct {
-	Enable bool        `json:"enable"`
-	Cert   *CertConfig `json:"cert"`
-	CA     *CertConfig `json:"ca"`
+	AutoCert bool        `json:"auto_cert"`
+	Enable   bool        `json:"enable"`
+	Cert     *CertConfig `json:"cert"`
+	CA       *CertConfig `json:"ca"`
+	Domain   string      `json:"domain"`
 }
 
 func (tls *TlsConfig) Empty() bool {

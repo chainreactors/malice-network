@@ -467,3 +467,22 @@ func ExternalMalCompleter(con *repl.Console) carapace.Action {
 	}
 	return carapace.ActionCallback(callback)
 }
+
+func CertNameCompleter(con *repl.Console) carapace.Action {
+	callback := func(c carapace.Context) carapace.Action {
+		results := make([]string, 0)
+		certs, err := con.Rpc.GetAllCertificates(con.Context(), &clientpb.Empty{})
+		if err != nil {
+			con.Log.Errorf("Error get certs: %v\n", err)
+			return carapace.Action{}
+		}
+		if len(certs.Certs) < 0 {
+			return carapace.Action{}
+		}
+		for _, c := range certs.Certs {
+			results = append(results, c.Name, fmt.Sprintf("cert %s, type %s", c.Name, c.Type))
+		}
+		return carapace.ActionValuesDescribed(results...).Tag("certs")
+	}
+	return carapace.ActionCallback(callback)
+}

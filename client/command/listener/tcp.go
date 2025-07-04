@@ -21,7 +21,7 @@ func NewTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 		name = fmt.Sprintf("tcp_%s_%d", listenerID, port)
 	}
 
-	tls, err := common.ParseTLSFlags(cmd)
+	tls, certName, err := common.ParseTLSFlags(cmd)
 	if err != nil {
 		return err
 	}
@@ -37,6 +37,7 @@ func NewTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 		Target:         target,
 		Parser:         parser,
 		BeaconPipeline: beaconPipeline,
+		CertName:       certName,
 		Enable:         false,
 		Body: &clientpb.Pipeline_Tcp{
 			Tcp: &clientpb.TCPPipeline{

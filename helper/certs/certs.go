@@ -17,6 +17,30 @@ import (
 	"time"
 )
 
+const (
+	OperatorCA = iota + 1
+	ListenerCA
+	ImplantCA
+	RootCA
+)
+
+const (
+	// RSAKey - Namespace for RSA keys
+	RSAKey            = "rsa"
+	RootName          = "Root"
+	ListenerNamespace = "listener" // Listener servers
+	RootCert          = "root_ca.pem"
+	RootKey           = "root_key.pem"
+	ServerCert        = "server_crt.pem"
+	ServerKey         = "server_key.pem"
+)
+
+const (
+	AutoCert   = "auto_cert"
+	SelfSigned = "self_signed"
+	Imported   = "imported"
+)
+
 // SaveToPEMFile save to PEM file
 func SaveToPEMFile(filename string, pemData []byte) error {
 	file, err := os.Create(filename)

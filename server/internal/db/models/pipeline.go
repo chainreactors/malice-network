@@ -24,6 +24,7 @@ type Pipeline struct {
 	Type                  string    `gorm:"type:string;"`
 	Enable                bool      `gorm:"type:boolean;"`
 	ParamsData            string    `gorm:"column:params"`
+	CertName              string    `gorm:"type:string;"`
 	*types.PipelineParams `gorm:"-"`
 }
 
@@ -40,6 +41,7 @@ func (pipeline *Pipeline) ToProtobuf() *clientpb.Pipeline {
 			Parser:     pipeline.Parser,
 			Ip:         pipeline.IP,
 			Type:       consts.TCPPipeline,
+			CertName:   pipeline.CertName,
 			Body: &clientpb.Pipeline_Tcp{
 				Tcp: &clientpb.TCPPipeline{
 					Name:       pipeline.Name,
@@ -59,6 +61,7 @@ func (pipeline *Pipeline) ToProtobuf() *clientpb.Pipeline {
 			Parser:     pipeline.Parser,
 			Ip:         pipeline.IP,
 			Type:       consts.HTTPPipeline,
+			CertName:   pipeline.CertName,
 			Body: &clientpb.Pipeline_Http{
 				Http: &clientpb.HTTPPipeline{
 					Name:       pipeline.Name,
@@ -77,6 +80,7 @@ func (pipeline *Pipeline) ToProtobuf() *clientpb.Pipeline {
 			Enable:     pipeline.Enable,
 			Parser:     pipeline.Parser,
 			Ip:         pipeline.IP,
+			CertName:   pipeline.CertName,
 			Type:       consts.BindPipeline,
 			Body: &clientpb.Pipeline_Bind{
 				Bind: &clientpb.BindPipeline{
@@ -94,6 +98,7 @@ func (pipeline *Pipeline) ToProtobuf() *clientpb.Pipeline {
 			Ip:         pipeline.IP,
 			Enable:     pipeline.Enable,
 			Parser:     pipeline.Parser,
+			CertName:   pipeline.CertName,
 			Type:       consts.WebsitePipeline,
 			Body: &clientpb.Pipeline_Web{
 				Web: &clientpb.Website{
@@ -114,6 +119,7 @@ func (pipeline *Pipeline) ToProtobuf() *clientpb.Pipeline {
 			Enable:     pipeline.Enable,
 			Type:       consts.RemPipeline,
 			Ip:         pipeline.IP,
+			CertName:   pipeline.CertName,
 			Body: &clientpb.Pipeline_Rem{
 				Rem: &clientpb.REM{
 					Name:      pipeline.Name,
@@ -181,6 +187,7 @@ func FromPipelinePb(pipeline *clientpb.Pipeline) *Pipeline {
 			IP:         pipeline.Ip,
 			Port:       body.Tcp.Port,
 			Type:       consts.TCPPipeline,
+			CertName:   pipeline.CertName,
 			PipelineParams: &types.PipelineParams{
 				Parser:     pipeline.Parser,
 				Tls:        types.FromTls(pipeline.Tls),
@@ -196,6 +203,7 @@ func FromPipelinePb(pipeline *clientpb.Pipeline) *Pipeline {
 			IP:         pipeline.Ip,
 			Port:       body.Http.Port,
 			Type:       consts.HTTPPipeline,
+			CertName:   pipeline.CertName,
 			PipelineParams: &types.PipelineParams{
 				Parser:     pipeline.Parser,
 				Tls:        types.FromTls(pipeline.Tls),
@@ -209,6 +217,7 @@ func FromPipelinePb(pipeline *clientpb.Pipeline) *Pipeline {
 			Enable:     pipeline.Enable,
 			IP:         pipeline.Ip,
 			Type:       consts.BindPipeline,
+			CertName:   pipeline.CertName,
 			PipelineParams: &types.PipelineParams{
 				Parser:     pipeline.Parser,
 				Tls:        types.FromTls(pipeline.Tls),
@@ -224,6 +233,7 @@ func FromPipelinePb(pipeline *clientpb.Pipeline) *Pipeline {
 			Host:       body.Rem.Host,
 			Port:       body.Rem.Port,
 			IP:         pipeline.Ip,
+			CertName:   pipeline.CertName,
 			PipelineParams: &types.PipelineParams{
 				Link:      body.Rem.Link,
 				Subscribe: body.Rem.Subscribe,
@@ -237,6 +247,7 @@ func FromPipelinePb(pipeline *clientpb.Pipeline) *Pipeline {
 			Enable:     pipeline.Enable,
 			IP:         pipeline.Ip,
 			Port:       body.Web.Port,
+			CertName:   pipeline.CertName,
 			Type:       consts.WebsitePipeline,
 			PipelineParams: &types.PipelineParams{
 				WebPath: body.Web.Root,

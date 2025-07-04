@@ -6,6 +6,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/certs"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"io/ioutil"
 	"os"
@@ -42,7 +43,7 @@ func ParseCertificateAuthority(certPEM, keyPEM []byte) (*x509.Certificate, *rsa.
 
 // GetCertificateAuthority - Get the current CA certificate
 func GetCertificateAuthority() (*x509.Certificate, *rsa.PrivateKey, error) {
-	certPEM, keyPEM, err := GetCertificateAuthorityPEM(path.Join(configs.GetCertDir(), rootCert), path.Join(configs.GetCertDir(), rootKey))
+	certPEM, keyPEM, err := GetCertificateAuthorityPEM(path.Join(configs.GetCertDir(), certs.RootCert), path.Join(configs.GetCertDir(), certs.RootKey))
 	if err != nil {
 		return nil, nil, err
 	}

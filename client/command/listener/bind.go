@@ -16,7 +16,7 @@ func NewBindPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 	}
 	name := cmd.Flags().Arg(0)
 
-	tls, err := common.ParseTLSFlags(cmd)
+	tls, certName, err := common.ParseTLSFlags(cmd)
 	if err != nil {
 		return err
 	}
@@ -29,6 +29,7 @@ func NewBindPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 		Tls:        tls,
 		Name:       name,
 		ListenerId: listenerID,
+		CertName:   certName,
 		Enable:     false,
 		Parser:     parser,
 		Body: &clientpb.Pipeline_Bind{

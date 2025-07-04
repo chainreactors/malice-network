@@ -5,7 +5,6 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
-	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/certs"
 	"github.com/chainreactors/malice-network/helper/types"
@@ -13,61 +12,11 @@ import (
 	"github.com/chainreactors/malice-network/helper/utils/mtls"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db"
-	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"os"
 	"path"
 )
 
-const (
-	OperatorCA = iota + 1
-	ListenerCA
-	ImplantCA
-	RootCA
-)
-
-const (
-	// RSAKey - Namespace for RSA keys
-	RSAKey            = "rsa"
-	RootName          = "Root"
-	ListenerNamespace = "listener" // Listener servers
-	rootCert          = "root_ca.pem"
-	rootKey           = "root_key.pem"
-	serverCert        = "server_crt.pem"
-	serverKey         = "server_key.pem"
-)
-
 var certsLog = logs.Log
-
-// RemoveCertificate - Remove a certificate from the cert store
-func RemoveCertificate(caType int, keyType string, commonName string) error {
-	var err error
-	if keyType != RSAKey {
-		return fmt.Errorf("invalid key type '%s'", keyType)
-	}
-	dbSession := db.Session()
-	if caType == ListenerCA {
-		err = dbSession.Where(&models.Operator{
-			Name: commonName,
-			Type: mtls.Listener,
-		}).Delete(&models.Operator{}).Error
-		commonName = "listener." + commonName
-	} else {
-		err = dbSession.Where(&models.Operator{
-			Name: commonName,
-			Type: mtls.Client,
-		}).Delete(&models.Operator{}).Error
-	}
-	err = dbSession.Where(&models.Certificate{
-		CAType:     caType,
-		KeyType:    keyType,
-		CommonName: commonName,
-	}).Delete(&models.Certificate{}).Error
-	if err != nil {
-		return err
-	}
-
-	return err
-}
 
 // --------------------------------
 //  Generic Certificate Functions
@@ -103,12 +52,12 @@ func GetOperatorServerMTLSConfig(host string) *tls.Config {
 }
 
 func GenerateRootCert() error {
-	rootCertPath := path.Join(configs.CertsPath, rootCert)
-	rootKeyPath := path.Join(configs.CertsPath, rootKey)
+	rootCertPath := path.Join(configs.CertsPath, certs.RootCert)
+	rootKeyPath := path.Join(configs.CertsPath, certs.RootKey)
 	if fileutils.Exist(rootCertPath) && fileutils.Exist(rootKeyPath) {
 		return nil
 	}
-	cert, key, err := certs.GenerateCACert(RootName)
+	cert, key, err := certs.GenerateCACert(certs.RootName)
 	if err != nil {
 		return err
 	}
@@ -120,7 +69,6 @@ func GenerateRootCert() error {
 	if err != nil {
 		return err
 	}
-	err = db.AddCertificate(RootCA, RSAKey, RootName, cert, key)
 	if err != nil {
 		return err
 	}
@@ -128,8 +76,8 @@ func GenerateRootCert() error {
 }
 
 func GenerateServerCert(name string) ([]byte, []byte, error) {
-	certPath := path.Join(configs.CertsPath, serverCert)
-	certKeyPath := path.Join(configs.CertsPath, serverKey)
+	certPath := path.Join(configs.CertsPath, certs.ServerCert)
+	certKeyPath := path.Join(configs.CertsPath, certs.ServerKey)
 	if fileutils.Exist(certPath) && fileutils.Exist(certKeyPath) {
 		certBytes, err := os.ReadFile(certPath)
 		if err != nil {
@@ -157,11 +105,6 @@ func GenerateServerCert(name string) ([]byte, []byte, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	err = db.AddCertificate(OperatorCA, RSAKey, name, cert, key)
-	if err != nil {
-		return nil, nil, err
-	}
-	//err = db.CreateOperator(name)
 	return cert, key, nil
 }
 
@@ -172,10 +115,6 @@ func GenerateClientCert(host, name string, port int) (*mtls.ClientConfig, error)
 		return nil, err
 	}
 	cert, key, err := certs.GenerateChildCert(name, true, ca, caKey)
-	if err != nil {
-		return nil, err
-	}
-	err = db.AddCertificate(OperatorCA, RSAKey, name, cert, key)
 	if err != nil {
 		return nil, err
 	}
@@ -201,10 +140,6 @@ func GenerateListenerCert(host, name string, port int) (*mtls.ClientConfig, erro
 	if err != nil {
 		return nil, err
 	}
-	err = db.AddCertificate(ListenerCA, RSAKey, name, cert, key)
-	if err != nil {
-		return nil, err
-	}
 	return &mtls.ClientConfig{
 		Operator:      name,
 		Host:          host,
@@ -216,7 +151,7 @@ func GenerateListenerCert(host, name string, port int) (*mtls.ClientConfig, erro
 	}, nil
 }
 
-func GenerateTLS(name, listenerID string) (*types.TlsConfig, error) {
+func GenerateSelfTLS(name, listenerID string) (*types.TlsConfig, error) {
 	tlsConfig, err := db.FindPipelineCert(name, listenerID)
 	if err != nil && !errors.Is(err, db.ErrRecordNotFound) {
 		return nil, err
@@ -224,6 +159,7 @@ func GenerateTLS(name, listenerID string) (*types.TlsConfig, error) {
 	if !tlsConfig.Empty() {
 		return tlsConfig, nil
 	}
+
 	caCertByte, caKeyByte, err := certs.GenerateCACert(name)
 	if err != nil {
 		return nil, err
@@ -233,6 +169,9 @@ func GenerateTLS(name, listenerID string) (*types.TlsConfig, error) {
 		return nil, err
 	}
 	certByte, keyByte, err := certs.GenerateChildCert(name, true, caCert, caKey)
+	if err != nil {
+		return nil, err
+	}
 	return &types.TlsConfig{
 		Cert: &types.CertConfig{
 			Cert: string(certByte),
@@ -243,5 +182,5 @@ func GenerateTLS(name, listenerID string) (*types.TlsConfig, error) {
 			Key:  string(caKeyByte),
 		},
 		Enable: true,
-	}, err
+	}, nil
 }

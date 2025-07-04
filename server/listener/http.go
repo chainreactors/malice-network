@@ -46,6 +46,7 @@ func NewHttpPipeline(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipel
 		BeaconPipeline: pipeline.BeaconPipeline,
 		PipelineConfig: core.FromProtobuf(pipeline),
 		Headers:        params.Headers,
+		CertName:       pipeline.CertName,
 		ErrorPage:      []byte(params.ErrorPage),
 		BodyPrefix:     []byte(params.BodyPrefix),
 		BodySuffix:     []byte(params.BodySuffix),
@@ -68,6 +69,7 @@ type HTTPPipeline struct {
 	Enable         bool
 	Target         []string
 	BeaconPipeline string
+	CertName       string
 	parser         *parser.MessageParser
 	*core.PipelineConfig
 	Headers    map[string][]string
@@ -85,6 +87,7 @@ func (pipeline *HTTPPipeline) ToProtobuf() *clientpb.Pipeline {
 		Parser:         pipeline.Parser,
 		Target:         pipeline.Target,
 		BeaconPipeline: pipeline.BeaconPipeline,
+		CertName:       pipeline.CertName,
 		Body: &clientpb.Pipeline_Http{
 			Http: &clientpb.HTTPPipeline{
 				Name:       pipeline.Name,
