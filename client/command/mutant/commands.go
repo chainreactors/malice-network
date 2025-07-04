@@ -14,37 +14,6 @@ import (
 )
 
 func Commands(con *repl.Console) []*cobra.Command {
-	srdiCmd := &cobra.Command{
-		Use:   consts.CommandSRDI,
-		Short: "use srdi to generate shellcode",
-		Long: `Generate an SRDI (Shellcode Reflective DLL Injection) artifact to minimize PE (Portable Executable) signatures.
-
-SRDI technology reduces the PE characteristics of a DLL, enabling more effective injection and evasion during execution. The following options are supported:
-`,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return SRDICmd(cmd, con)
-		},
-		Example: `~~~
-// Convert a DLL to SRDI format with build target
-srdi --path /path/to/target --target x86_64-pc-windows-msvc
-
-// Specify an entry function for the DLL during SRDI conversion
-srdi --path /path/to/target --target x86_64-pc-windows-msvc
-
-// Include user-defined data with the generated shellcode
-srdi --path /path/to/target.dll ---target x86_64-pc-windows-msvc --user_data_path /path/to/user_data --function_name DllMain
-
-// Convert a specific artifact to SRDI format using its ID
-srdi --id artifact_id --target x86_64-pc-windows-msvc
-~~~`,
-	}
-	common.BindFlag(srdiCmd, common.SRDIFlagSet)
-	common.BindFlagCompletions(srdiCmd, func(comp carapace.ActionMap) {
-		comp["target"] = common.BuildTargetCompleter(con)
-		comp["path"] = carapace.ActionFiles().Usage("file path")
-		comp["id"] = common.ArtifactCompleter(con)
-	})
-
 	donutCmd := &cobra.Command{
 		Use:   consts.CommandDonut,
 		Short: "donut cmd",
@@ -141,15 +110,10 @@ srdi --id artifact_id --target x86_64-pc-windows-msvc
 	common.BindFlagCompletions(donutCmd, func(comp carapace.ActionMap) {
 		comp["input"] = carapace.ActionFiles().Usage("file path")
 	})
-	return []*cobra.Command{srdiCmd, donutCmd}
+	return []*cobra.Command{donutCmd}
 }
 
 func Register(con *repl.Console) {
-	con.RegisterServerFunc("malefic_srdi", MaleficSRDI, &mals.Helper{
-		Group: intermediate.ArtifactGroup,
-		Short: "malefic srdi",
-	})
-
 	intermediate.RegisterFunction("exe2shellcode",
 		func(exe []byte, arch string, cmdline string) (string, error) {
 			bin, err := gonut.DonutShellcodeFromPE("1.exe", exe, arch, cmdline, false, true)
