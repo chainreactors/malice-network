@@ -129,7 +129,7 @@ const (
 	ModuleRev2Self  = "rev2self"
 
 	// 3rd
-	ModuleRem     = "rem"
+	ModuleRem     = "rem_dial"
 	ModuleLoadRem = "load_rem"
 )
 
