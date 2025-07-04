@@ -66,7 +66,7 @@ func RemoveMal(name string, con *repl.Console) error {
 		con.Log.Warnf("Failed to get profile: %s\n", err)
 	} else {
 		if profile.RemoveMal(name) {
-			err = assets.SaveProfile(profile)
+			err = assets.UpdateProfileConfig(profile)
 			if err != nil {
 				con.Log.Warnf("Failed to save profile: %s\n", err)
 			}

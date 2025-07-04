@@ -195,7 +195,7 @@ func RegisterAlias(aliasManifest *AliasManifest, cmd *cobra.Command, con *repl.C
 		return err
 	}
 	profile.AddAlias(aliasManifest.CommandName)
-	err = assets.SaveProfile(profile)
+	err = assets.UpdateProfileConfig(profile)
 	if err != nil {
 		return err
 	}

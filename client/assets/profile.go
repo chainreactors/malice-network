@@ -3,13 +3,13 @@ package assets
 import (
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/utils/configutil"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/gookit/config/v2"
 	"golang.org/x/exp/slices"
-	"gopkg.in/yaml.v3"
 )
 
 var (
@@ -17,16 +17,17 @@ var (
 )
 
 var HookFn = func(event string, c *config.Config) {
-	p := &Profile{}
-	if event == config.OnSetValue {
-		err := c.MapStruct("", p)
+	if strings.HasPrefix(event, "set.") {
+		rootDir, _ := filepath.Abs(GetRootAppDir())
+		open, err := os.OpenFile(filepath.Join(rootDir, maliceProfile), os.O_WRONLY|os.O_TRUNC, 0644)
 		if err != nil {
-			logs.Log.Errorf(err.Error())
+			logs.Log.Errorf("cannot open config , %s ", err.Error())
 			return
 		}
-		err = SaveProfile(p)
+		defer open.Close()
+		_, err = config.DumpTo(open, config.Yaml)
 		if err != nil {
-			logs.Log.Errorf(err.Error())
+			logs.Log.Errorf("cannot dump config , %s ", err.Error())
 			return
 		}
 	}
@@ -151,19 +152,6 @@ func GetSetting() (*Settings, error) {
 	return s, nil
 }
 
-func SaveProfile(profile *Profile) error {
-	path, err := findFile(maliceProfile)
-	data, err := yaml.Marshal(profile)
-	if err != nil {
-		return err
-	}
-	err = os.WriteFile(path, data, 0644)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 func (profile *Profile) AddMal(manifestName string) bool {
 	if !slices.Contains(profile.Mals, manifestName) {
 		profile.Mals = append(profile.Mals, manifestName)
@@ -213,4 +201,22 @@ func (profile *Profile) RemoveExtension(extension string) bool {
 		return true
 	}
 	return false
+}
+
+func UpdateProfileConfig(p *Profile) error {
+	err := config.Set("", p)
+	if err != nil {
+		logs.Log.Errorf("Failed to update profile config %s", err)
+		return err
+	}
+	return nil
+}
+
+func UpdateSettingConfig(s *Settings) error {
+	err := config.Set("settings", s)
+	if err != nil {
+		logs.Log.Errorf("Failed to update setting config %s", err)
+		return err
+	}
+	return nil
 }
