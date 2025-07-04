@@ -226,14 +226,18 @@ func (t *CertConfig) ToProtobuf() *clientpb.TLS {
 			Enable: t.Enable,
 		}
 	}
+	var ca *clientpb.Cert
+	if t.Ca != nil {
+		ca = &clientpb.Cert{
+			Cert: t.Ca.Cert,
+		}
+	}
 	return &clientpb.TLS{
 		Cert: &clientpb.Cert{
 			Cert: t.Cert,
 			Key:  t.Key,
 		},
-		Ca: &clientpb.Cert{
-			Cert: t.Ca.Cert,
-		},
+		Ca:     ca,
 		Enable: t.Enable,
 	}
 }
