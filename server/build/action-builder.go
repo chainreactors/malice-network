@@ -55,7 +55,7 @@ func (a *ActionBuilder) GenerateConfig() (*clientpb.Artifact, error) {
 	var err error
 	profileByte, err := GenerateProfile(a.config)
 	if err != nil {
-		return builder.ToArtifact([]byte{}), err
+		return nil, err
 	}
 	if a.config.ArtifactId != 0 && a.config.Type == consts.CommandBuildBeacon {
 		builder, err = db.SaveArtifactFromID(a.config, a.config.ArtifactId, a.config.Source, profileByte)
@@ -77,7 +77,7 @@ func (a *ActionBuilder) GenerateConfig() (*clientpb.Artifact, error) {
 	a.config.Inputs["malefic_config_yaml"] = base64Encoded
 	profile, err := types.LoadProfile(profileByte)
 	if err != nil {
-		return builder.ToArtifact([]byte{}), err
+		return nil, err
 	}
 
 	a.profile = profile
