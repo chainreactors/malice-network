@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/chainreactors/malice-network/helper/codenames"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/server/build"
 	"github.com/chainreactors/malice-network/server/internal/db"
@@ -11,80 +12,81 @@ import (
 )
 
 func (rpc *Server) DownloadArtifact(ctx context.Context, req *clientpb.Artifact) (*clientpb.Artifact, error) {
-	var path string
-	builder, err := db.GetArtifactByName(req.Name)
-	if err != nil {
-		return nil, err
-	}
-	if builder.IsSRDI && req.IsSrdi {
-		path = builder.ShellcodePath
-	} else {
-		path = builder.Path
-	}
-	data, _ := os.ReadFile(path)
-	builder.Name = build.GetFilePath(builder.Name, builder.Target, builder.Type, req.IsSrdi)
-	result := builder.ToArtifact(data)
-	return result, nil
-}
-
-func (rpc *Server) UploadArtifact(ctx context.Context, req *clientpb.Artifact) (*clientpb.Builder, error) {
-	if req.Name == "" {
-		req.Name = codenames.GetCodename()
-	}
-	builder, err := db.SaveArtifact(req.Name, req.Type, req.Platform, req.Arch, req.Stage, consts.ArtifactFromUpload)
-	if err != nil {
-		return nil, err
-	}
-	err = os.WriteFile(builder.Path, req.Bin, 0644)
-	if err != nil {
-		return nil, err
-	}
-	return builder.ToProtobuf(), nil
-}
-
-// for listener
-func (rpc *Server) GetArtifact(ctx context.Context, req *clientpb.Artifact) (*clientpb.Artifact, error) {
-	builder, err := db.GetArtifact(req)
+	artifact, err := db.GetArtifactByName(req.Name)
 	if err != nil {
 		return nil, err
 	}
 	var data []byte
-	if builder.ShellcodePath == "" {
-		data, err = build.SRDIArtifact(builder, builder.Os, builder.Arch)
-	} else {
-		data, err = os.ReadFile(builder.ShellcodePath)
+	switch req.Format {
+	case "srdi", "shellcode", "raw", "bin":
+		target, ok := consts.GetBuildTarget(artifact.Target)
+		if !ok {
+			return nil, errs.ErrInvalidateTarget
+		}
+		if artifact.Type == consts.CommandBuildPulse {
+			data, err = build.OBJCOPYPulse(artifact, target.OS, target.Arch)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			if target.OS != consts.Windows {
+				return nil, errs.ErrInvalidateTarget
+			}
+			data, err = build.SRDIArtifact(artifact, target.OS, target.Arch)
+			if err != nil {
+				return nil, err
+			}
+		}
+	default:
+		data, err = os.ReadFile(artifact.Path)
+		if err != nil {
+			return nil, err
+		}
+		artifact.Name = build.GetFilePath(artifact.Name, artifact.Target, artifact.Type, req.Format)
 	}
-	if err != nil {
-		return nil, err
-	}
-	return builder.ToArtifact(data), nil
+
+	result := artifact.ToArtifact(data)
+	return result, nil
 }
 
-func (rpc *Server) ListBuilder(ctx context.Context, req *clientpb.Empty) (*clientpb.Builders, error) {
-	builders, err := db.GetBuilders()
+func (rpc *Server) UploadArtifact(ctx context.Context, req *clientpb.Artifact) (*clientpb.Artifact, error) {
+	if req.Name == "" {
+		req.Name = codenames.GetCodename()
+	}
+	artifact, err := db.SaveArtifact(req.Name, req.Type, req.Platform, req.Arch, req.Stage, consts.ArtifactFromUpload)
 	if err != nil {
 		return nil, err
 	}
-	return builders, nil
+	err = os.WriteFile(artifact.Path, req.Bin, 0644)
+	if err != nil {
+		return nil, err
+	}
+	return artifact.ToArtifact([]byte{}), nil
+}
+
+// for listener
+func (rpc *Server) GetArtifact(ctx context.Context, req *clientpb.Artifact) (*clientpb.Artifact, error) {
+	artifact, err := db.GetArtifact(req)
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := os.ReadFile(artifact.Path)
+	if err != nil {
+		return nil, err
+	}
+	return artifact.ToArtifact(data), nil
+}
+
+func (rpc *Server) ListArtifact(ctx context.Context, req *clientpb.Empty) (*clientpb.Artifacts, error) {
+	artifacts, err := db.GetArtifacts()
+	if err != nil {
+		return nil, err
+	}
+	return artifacts, nil
 }
 
 func (rpc *Server) FindArtifact(ctx context.Context, req *clientpb.Artifact) (*clientpb.Artifact, error) {
-	arti, err := db.FindArtifact(req)
-	if err != nil {
-		return nil, err
-	}
-	if req.IsSrdi && len(arti.Bin) == 0 {
-		builder, err := db.GetArtifactById(arti.Id)
-		if err != nil {
-			return nil, err
-		}
-		bin, err := build.SRDIArtifact(builder, arti.Platform, arti.Arch)
-		if err != nil {
-			return nil, err
-		}
-		arti.Bin = bin
-		return arti, err
-	}
 	return db.FindArtifact(req)
 }
 

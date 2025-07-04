@@ -19,7 +19,7 @@ var (
 
 // Builder
 type Builder interface {
-	GenerateConfig() (*clientpb.Builder, error)
+	GenerateConfig() (*clientpb.Artifact, error)
 
 	ExecuteBuild() error
 
@@ -57,7 +57,7 @@ func NewBuilder(req *clientpb.BuildConfig) Builder {
 }
 
 type BuilderState struct {
-	ID     uint32 // Builder.ID
+	ID     uint32 // Artifact.ID
 	Status string // 状态
 }
 
@@ -68,14 +68,14 @@ var (
 	dockerBuildSemaphore = make(chan struct{}, maxDockerBuildConcurrency)
 )
 
-func SendBuildMsg(builder *models.Builder, status string, msg string) {
+func SendBuildMsg(builder *models.Artifact, status string, msg string) {
 	if core.EventBroker == nil {
 		return
 	}
 	if status == consts.BuildStatusCompleted {
-		msg = fmt.Sprintf("Builder completed %s (type: %s, target: %s, source: %s)", builder.Name, builder.Type, builder.Target, builder.Source)
+		msg = fmt.Sprintf("Artifact completed %s (type: %s, target: %s, source: %s)", builder.Name, builder.Type, builder.Target, builder.Source)
 	} else if status == consts.BuildStatusFailure {
-		msg = fmt.Sprintf("Builder failed %s (type: %s, target: %s, source: %s)", builder.Name, builder.Type, builder.Target, builder.Source)
+		msg = fmt.Sprintf("Artifact failed %s (type: %s, target: %s, source: %s)", builder.Name, builder.Type, builder.Target, builder.Source)
 	} else {
 		return
 	}
@@ -87,11 +87,11 @@ func SendBuildMsg(builder *models.Builder, status string, msg string) {
 	})
 }
 
-func SendFailedMsg(builder *clientpb.Builder) {
+func SendFailedMsg(builder *clientpb.Artifact) {
 	core.EventBroker.Publish(core.Event{
 		EventType: consts.EventBuild,
 		IsNotify:  false,
-		Message:   fmt.Sprintf("Builder failed %s (type: %s, target: %s, source: %s)", builder.Name, builder.Type, builder.Target, builder.Source),
+		Message:   fmt.Sprintf("Artifact failed %s (type: %s, target: %s, source: %s)", builder.Name, builder.Type, builder.Target, builder.Source),
 		Important: true,
 	})
 }

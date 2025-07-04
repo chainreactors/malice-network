@@ -362,13 +362,13 @@ artifact show artifact_name --profile
 // Download a artifact to specific path
 	artifact download artifact_name -o /path/to/output
 
-// Download a shellcode artifact by enabling the 'srdi' flag
-	artifact download artifact_name -s
+// Download an artifact in a specific format (e.g.raw, bin, golang source, C source, etc.)
+  	artifact download artifact_name --format raw
 `,
 	}
 	common.BindFlag(downloadCmd, func(f *pflag.FlagSet) {
 		f.StringP("output", "o", "", "output path")
-		f.BoolP("srdi", "s", false, "Set to true to download shellcode.")
+		f.String("format", "", "payload output format (e.g., bin, raw, powershell, curl, vb, c, golang, or remote loaders)")
 	})
 	common.BindArgCompletions(downloadCmd, nil, common.ArtifactCompleter(con))
 
@@ -446,10 +446,6 @@ func Register(con *repl.Console) {
 	con.RegisterServerFunc("get_artifact",
 		func(con *repl.Console, sess *core.Session, format string) (*clientpb.Artifact, error) {
 			artifact := &clientpb.Artifact{Name: sess.Name}
-			switch format {
-			case "bin", "raw", "shellcode":
-				artifact.IsSrdi = true
-			}
 			artifact, err := con.Rpc.FindArtifact(sess.Context(), artifact)
 			if err != nil {
 				return nil, err

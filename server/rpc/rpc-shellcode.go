@@ -58,10 +58,10 @@ func (rpc *Server) ShellcodeEncode(ctx context.Context, req *clientpb.ShellcodeE
 	}
 }
 
-func (rpc *Server) MaleficSRDI(ctx context.Context, req *clientpb.Builder) (*clientpb.Artifact, error) {
+func (rpc *Server) MaleficSRDI(ctx context.Context, req *clientpb.Artifact) (*clientpb.Artifact, error) {
 	var filePath, realName string
 	var err error
-	var artifact *models.Builder
+	var artifact *models.Artifact
 	var bin []byte
 	target, ok := consts.GetBuildTarget(req.Target)
 	if !ok {

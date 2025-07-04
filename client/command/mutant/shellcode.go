@@ -41,13 +41,12 @@ func MaleficSRDI(con *repl.Console, path string, id uint32, target string, param
 			return nil, err
 		}
 	}
-	return con.Rpc.MaleficSRDI(con.Context(), &clientpb.Builder{
+	return con.Rpc.MaleficSRDI(con.Context(), &clientpb.Artifact{
 		Id:           id,
 		Bin:          bin,
 		Type:         consts.CommandBuildShellCode,
 		Name:         filepath.Base(path),
 		Target:       target,
-		IsSrdi:       true,
 		FunctionName: params["function_name"],
 		UserDataPath: params["userdata_path"],
 	})

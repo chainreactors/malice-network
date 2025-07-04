@@ -2,12 +2,14 @@ package rpc
 
 import (
 	"context"
+	"github.com/chainreactors/malice-network/helper/certs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/client/rootpb"
 	"github.com/chainreactors/malice-network/helper/utils/mtls"
 	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db"
+	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"gopkg.in/yaml.v3"
 )
 
@@ -20,7 +22,17 @@ func (rpc *Server) AddClient(ctx context.Context, req *rootpb.Operator) (*rootpb
 			Error:  err.Error(),
 		}, err
 	}
-	err = db.CreateOperator(req.Args[0], mtls.Client, getRemoteAddr(ctx))
+	client := &models.Operator{
+		Name:             req.Args[0],
+		Type:             mtls.Client,
+		Remote:           getRemoteAddr(ctx),
+		CAType:           certs.OperatorCA,
+		KeyType:          certs.RSAKey,
+		CaCertificatePEM: clientConf.CACertificate,
+		CertificatePEM:   clientConf.Certificate,
+		PrivateKeyPEM:    clientConf.PrivateKey,
+	}
+	err = db.CreateOperator(client)
 	if err != nil {
 		return nil, err
 	}
@@ -38,7 +50,7 @@ func (rpc *Server) AddClient(ctx context.Context, req *rootpb.Operator) (*rootpb
 }
 
 func (rpc *Server) RemoveClient(ctx context.Context, req *rootpb.Operator) (*rootpb.Response, error) {
-	err := certutils.RemoveCertificate(certutils.OperatorCA, certutils.RSAKey, req.Args[0])
+	err := db.RemoveOperator(req.Args[0])
 	if err != nil {
 		return &rootpb.Response{
 			Status: 1,
@@ -77,7 +89,17 @@ func (rpc *Server) AddListener(ctx context.Context, req *rootpb.Operator) (*root
 			Error:  err.Error(),
 		}, err
 	}
-	err = db.CreateOperator(req.Args[0], mtls.Listener, getRemoteAddr(ctx))
+	listener := &models.Operator{
+		Name:             req.Args[0],
+		Type:             mtls.Listener,
+		Remote:           getRemoteAddr(ctx),
+		CAType:           certs.ListenerCA,
+		KeyType:          certs.RSAKey,
+		CaCertificatePEM: clientConf.CACertificate,
+		CertificatePEM:   clientConf.Certificate,
+		PrivateKeyPEM:    clientConf.PrivateKey,
+	}
+	err = db.CreateOperator(listener)
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +117,7 @@ func (rpc *Server) AddListener(ctx context.Context, req *rootpb.Operator) (*root
 }
 
 func (rpc *Server) RemoveListener(ctx context.Context, req *rootpb.Operator) (*rootpb.Response, error) {
-	err := certutils.RemoveCertificate(certutils.ListenerCA, certutils.RSAKey, req.Args[0])
+	err := db.RemoveOperator(req.Args[0])
 	if err != nil {
 		return &rootpb.Response{
 			Status: 1,

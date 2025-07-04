@@ -12,7 +12,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func (rpc *Server) Build(ctx context.Context, req *clientpb.BuildConfig) (*clientpb.Builder, error) {
+func (rpc *Server) Build(ctx context.Context, req *clientpb.BuildConfig) (*clientpb.Artifact, error) {
 	if req.Type == consts.CommandBuildPulse || req.Inputs["package"] == consts.CommandBuildPulse {
 		var artifactID uint32
 		if req.ArtifactId != 0 {
@@ -26,7 +26,6 @@ func (rpc *Server) Build(ctx context.Context, req *clientpb.BuildConfig) (*clien
 				artifactID = 0
 			}
 		}
-
 		builders, err := db.FindBeaconArtifact(artifactID, req.ProfileName)
 		if err != nil {
 			return nil, err
@@ -87,8 +86,8 @@ func (rpc *Server) Build(ctx context.Context, req *clientpb.BuildConfig) (*clien
 	return artifact, nil
 }
 
-func (rpc *Server) BuildLog(ctx context.Context, req *clientpb.Builder) (*clientpb.Builder, error) {
-	resultLog, err := db.GetBuilderLogs(req.Id, int(req.Num))
+func (rpc *Server) BuildLog(ctx context.Context, req *clientpb.Artifact) (*clientpb.Artifact, error) {
+	resultLog, err := db.GetBuilderLogs(req.Id, int(req.LogNum))
 	if err != nil {
 		return nil, err
 	}

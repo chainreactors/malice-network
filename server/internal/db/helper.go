@@ -750,8 +750,8 @@ func GetProfiles() ([]*models.Profile, error) {
 	return profiles, result.Error
 }
 
-func FindBeaconArtifact(artifactID uint32, profileName string) ([]*models.Builder, error) {
-	var builders []*models.Builder
+func FindBeaconArtifact(artifactID uint32, profileName string) ([]*models.Artifact, error) {
+	var builders []*models.Artifact
 	artifact, err := GetArtifactById(artifactID)
 	if err != nil && !errors.Is(err, ErrRecordNotFound) {
 		return builders, err
@@ -775,14 +775,14 @@ func FindBeaconArtifact(artifactID uint32, profileName string) ([]*models.Builde
 }
 
 // FindBuildersByPipelineID 遍历所有 builder，找到 profile.pipelineID = pipelineID 的 builder
-func FindBuildersByPipelineID(pipelineID string) ([]*models.Builder, error) {
-	var builders []*models.Builder
+func FindBuildersByPipelineID(pipelineID string) ([]*models.Artifact, error) {
+	var builders []*models.Artifact
 	err := Session().Preload("Profile").Find(&builders).Error
 	if err != nil {
 		return nil, err
 	}
 
-	var validBuilders []*models.Builder
+	var validBuilders []*models.Artifact
 	for _, b := range builders {
 		if b.Profile.PipelineID == pipelineID {
 			validBuilders = append(validBuilders, b)
@@ -813,18 +813,17 @@ func UpdateProfileRaw(profileName string, raw []byte) error {
 	return Session().Model(&models.Profile{}).Where("name = ?", profileName).Update("raw", raw).Error
 }
 
-func SaveArtifactFromConfig(req *clientpb.BuildConfig, profileByte []byte) (*models.Builder, error) {
+func SaveArtifactFromConfig(req *clientpb.BuildConfig, profileByte []byte) (*models.Artifact, error) {
 	target, ok := consts.GetBuildTarget(req.Target)
 	if !ok {
 		return nil, errs.ErrInvalidateTarget
 	}
-	builder := models.Builder{
+	builder := models.Artifact{
 		Name:        req.BuildName,
 		ProfileName: req.ProfileName,
 		Target:      req.Target,
 		Type:        req.Type,
 		Source:      req.Source,
-		IsSRDI:      req.Srdi,
 		Modules:     strings.Join(req.Modules, ","),
 		Arch:        target.Arch,
 		Os:          target.OS,
@@ -847,19 +846,18 @@ func SaveArtifactFromConfig(req *clientpb.BuildConfig, profileByte []byte) (*mod
 	return &builder, nil
 }
 
-func SaveArtifactFromID(req *clientpb.BuildConfig, ID uint32, resource string, profileByte []byte) (*models.Builder, error) {
+func SaveArtifactFromID(req *clientpb.BuildConfig, ID uint32, resource string, profileByte []byte) (*models.Artifact, error) {
 	target, ok := consts.GetBuildTarget(req.Target)
 	if !ok {
 		return nil, errs.ErrInvalidateTarget
 	}
-	builder := models.Builder{
+	builder := models.Artifact{
 		ID:          ID,
 		Name:        req.BuildName,
 		ProfileName: req.ProfileName,
 		Target:      req.Target,
 		Type:        req.Type,
 		Source:      resource,
-		IsSRDI:      req.Srdi,
 		Modules:     strings.Join(req.Modules, ","),
 		Arch:        target.Arch,
 		Os:          target.OS,
@@ -875,7 +873,7 @@ func SaveArtifactFromID(req *clientpb.BuildConfig, ID uint32, resource string, p
 	return &builder, nil
 }
 
-func UpdateBuilderPath(builder *models.Builder) error {
+func UpdateBuilderPath(builder *models.Artifact) error {
 	if Session() == nil {
 		return nil
 	}
@@ -885,7 +883,7 @@ func UpdateBuilderPath(builder *models.Builder) error {
 		Error
 }
 
-func UpdateBuilderSrdi(builder *models.Builder) error {
+func UpdateBuilderSrdi(builder *models.Artifact) error {
 	if Session() == nil {
 		return nil
 	}
@@ -901,19 +899,35 @@ func UpdatePulseRelink(pusleID, beanconID uint32) error {
 		return err
 	}
 	pulse.Params.RelinkBeaconID = beanconID
-	return Session().Model(pulse).
+	err = Session().Model(pulse).
 		Select("ParamsData").
 		Updates(pulse).
 		Error
+	if err != nil {
+		return err
+	}
+	originBeacon, err := GetArtifactById(pulse.Params.OriginBeaconID)
+	if err != nil {
+		return err
+	}
+	originBeacon.Params.RelinkBeaconID = beanconID
+	err = Session().Model(originBeacon).
+		Select("ParamsData").
+		Updates(originBeacon).
+		Error
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func SaveArtifact(name, artifactType, platform, arch, stage, source string) (*models.Builder, error) {
+func SaveArtifact(name, artifactType, platform, arch, stage, source string) (*models.Artifact, error) {
 	absBuildOutputPath, err := filepath.Abs(configs.BuildOutputPath)
 	if err != nil {
 		return nil, err
 	}
 
-	builder := &models.Builder{
+	artifact := &models.Artifact{
 		Name:   name,
 		Os:     platform,
 		Arch:   arch,
@@ -921,79 +935,54 @@ func SaveArtifact(name, artifactType, platform, arch, stage, source string) (*mo
 		Type:   artifactType,
 		Source: source,
 	}
-	if artifactType == consts.CommandBuildShellCode {
-		builder.IsSRDI = true
-		builder.ShellcodePath = filepath.Join(absBuildOutputPath, encoders.UUID())
-	} else {
-		builder.Path = filepath.Join(absBuildOutputPath, encoders.UUID())
-	}
 
-	if err := Session().Create(builder).Error; err != nil {
+	artifact.Path = filepath.Join(absBuildOutputPath, encoders.UUID())
+
+	if err := Session().Create(artifact).Error; err != nil {
 		return nil, err
 	}
-	return builder, nil
+	return artifact, nil
 }
 
-func GetBuilders() (*clientpb.Builders, error) {
-	var builders []*models.Builder
+func GetArtifacts() (*clientpb.Artifacts, error) {
+	var builders []*models.Artifact
 	result := Session().Find(&builders)
 	if result.Error != nil {
 		return nil, result.Error
 	}
-	var pbBuilders = &clientpb.Builders{
-		Builders: make([]*clientpb.Builder, 0),
+	var pbBuilders = &clientpb.Artifacts{
+		Artifacts: make([]*clientpb.Artifact, 0),
 	}
-	for _, builder := range builders {
-		pbBuilders.Builders = append(pbBuilders.GetBuilders(), builder.ToProtobuf())
+	for _, artifact := range builders {
+		pbBuilders.Artifacts = append(pbBuilders.GetArtifacts(), artifact.ToArtifact([]byte{}))
 	}
 	return pbBuilders, nil
 }
 
-func CheckOutBuildFile(builderName string) string {
-	var builder models.Builder
-	result := Session().Where("name = ?", builderName).First(&builder)
-	if result.Error != nil {
-		logs.Log.Errorf("Error finding builder %s: %v", builderName, result.Error)
-		return consts.BuildStatusDBError
-	}
-
-	if builder.IsSRDI && builder.ShellcodePath == "" && builder.Path != "" {
-		return consts.BuildStatusSRDIError
-	} else if builder.ShellcodePath == "" && builder.Path == "" {
-		return consts.BuildStatusFailure
-	} else {
-		if _, err := os.Stat(builder.Path); os.IsNotExist(err) {
-			return consts.BuildStatusFailure
-		} else {
-			return consts.BuildStatusCompleted
-		}
-	}
-}
-
 // FindArtifact
 func FindArtifact(target *clientpb.Artifact) (*clientpb.Artifact, error) {
-	var builder *models.Builder
+	var artifact *models.Artifact
 	var result *gorm.DB
 	// 根据 ID 或名称查找构建器
 	if target.Id != 0 {
-		result = Session().Where("id = ?", target.Id).First(&builder)
+		result = Session().Where("id = ?", target.Id).First(&artifact)
 	} else if target.Name != "" {
-		result = Session().Where("name = ?", target.Name).First(&builder)
+		result = Session().Where("name = ?", target.Name).First(&artifact)
 	} else if target.Profile != "" {
-		result = Session().Where("profile_name = ?", target.Profile).First(&builder)
+		result = Session().Where("profile_name = ?", target.Profile).First(&artifact)
 	} else {
-		var builders []*models.Builder
+		var builders []*models.Artifact
 		result = Session().Where("os = ? AND arch = ? AND type = ?", target.Platform, target.Arch, target.Type).
 			Preload("Profile.Pipeline").
 			Preload("Profile.PulsePipeline").
 			Find(&builders)
 		for _, v := range builders {
 			if v.Type == consts.ImplantPulse && v.Profile.PulsePipelineID == target.Pipeline {
-				builder = v
+				artifact = v
 				break
 			}
 			if v.Profile.PipelineID == target.Pipeline {
-				builder = v
+				artifact = v
 				break
 			}
 		}
@@ -1001,27 +990,36 @@ func FindArtifact(target *clientpb.Artifact) (*clientpb.Artifact, error) {
 	if result.Error != nil {
 		return nil, fmt.Errorf("error finding artifact: %v, target: %+v", result.Error, target)
 	}
-	if builder == nil {
+	if artifact == nil {
 		return nil, errs.ErrNotFoundArtifact
 	}
-
-	var content []byte
-	var err error
-	if target.IsSrdi {
-		if builder.ShellcodePath != "" {
-			content, err = os.ReadFile(builder.ShellcodePath)
-		}
-	} else {
-		content, err = os.ReadFile(builder.Path)
-	}
+	_, err := os.Stat(artifact.Path)
+	var path string
+	var name string
 	if err != nil {
-		return nil, fmt.Errorf("error reading file for builder: %s, error: %v", builder.Name, err)
+		if artifact.Params.RelinkBeaconID == 0 {
+			return nil, fmt.Errorf("the original beacon is lost and there is no relink beacon")
+		}
+		var relinkArtifact *models.Artifact
+		result = Session().Where("id = ?", artifact.Params.RelinkBeaconID).First(&relinkArtifact)
+		if result.Error != nil {
+			return nil, fmt.Errorf("error finding relink artifact: %v", result.Error)
+		}
+		path = relinkArtifact.Path
+		name = relinkArtifact.Name
+	} else {
+		path = artifact.Path
+		name = artifact.Name
+	}
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("error reading file for artifact: %s, error: %v", name, err)
 	}
 
-	return builder.ToArtifact(content), nil
+	return artifact.ToArtifact(content), nil
 }
 
-func GetArtifact(req *clientpb.Artifact) (*models.Builder, error) {
+func GetArtifact(req *clientpb.Artifact) (*models.Artifact, error) {
 	if req.Id != 0 {
 		return GetArtifactById(req.Id)
 	} else if req.Name != "" {
@@ -1031,26 +1029,26 @@ func GetArtifact(req *clientpb.Artifact) (*models.Builder, error) {
 	}
 }
 
-func GetArtifactByName(name string) (*models.Builder, error) {
-	var builder models.Builder
-	result := Session().Preload("Profile").Where("name = ?", name).First(&builder)
+func GetArtifactByName(name string) (*models.Artifact, error) {
+	var artifact models.Artifact
+	result := Session().Preload("Profile").Where("name = ?", name).First(&artifact)
 	if result.Error != nil {
 		return nil, result.Error
 	}
-	return &builder, nil
+	return &artifact, nil
 }
 
-func GetArtifactById(id uint32) (*models.Builder, error) {
-	var builder models.Builder
-	result := Session().Preload("Profile").Where("id = ?", id).First(&builder)
+func GetArtifactById(id uint32) (*models.Artifact, error) {
+	var artifact models.Artifact
+	result := Session().Preload("Profile").Where("id = ?", id).First(&artifact)
 	if result.Error != nil {
 		return nil, result.Error
 	}
-	return &builder, nil
+	return &artifact, nil
 }
 
-func GetArtifactWithSaas() ([]*models.Builder, error) {
-	var artifacts []*models.Builder
+func GetArtifactWithSaas() ([]*models.Artifact, error) {
+	var artifacts []*models.Artifact
 	result := Session().Where("source = ?", consts.ArtifactFromSaas).Find(&artifacts)
 	if result.Error != nil {
 		return nil, result.Error
@@ -1059,15 +1057,15 @@ func GetArtifactWithSaas() ([]*models.Builder, error) {
 }
 
 // GetBeaconBuilderByRelinkID 查找 type=beacon 且 RelinkBeaconID=指定id 的 builder
-func GetBeaconBuilderByRelinkID(relinkID uint32) ([]*models.Builder, error) {
-	var builders []*models.Builder
-	err := Session().Where("type = ?", "beacon").Find(&builders).Error
+func GetBeaconBuilderByRelinkID(relinkID uint32) ([]*models.Artifact, error) {
+	var artifacts []*models.Artifact
+	err := Session().Where("type = ?", "beacon").Find(&artifacts).Error
 	if err != nil {
 		return nil, err
 	}
 
-	var result []*models.Builder
-	for _, b := range builders {
+	var result []*models.Artifact
+	for _, b := range artifacts {
 		var params types.ProfileParams
 		if b.ParamsData != "" {
 			if err := json.Unmarshal([]byte(b.ParamsData), &params); err == nil {
@@ -1081,19 +1079,13 @@ func GetBeaconBuilderByRelinkID(relinkID uint32) ([]*models.Builder, error) {
 }
 
 func DeleteArtifactByName(artifactName string) error {
-	model := &models.Builder{}
+	model := &models.Artifact{}
 	err := Session().Where("name = ?", artifactName).First(&model).Error
 	if err != nil {
 		return err
 	}
 	if model.Path != "" {
 		err = os.Remove(model.Path)
-		if err != nil {
-			return err
-		}
-	}
-	if model.ShellcodePath != "" {
-		err = os.Remove(model.ShellcodePath)
 		if err != nil {
 			return err
 		}
@@ -1156,18 +1148,18 @@ func UpdateBuilderLog(name string, logEntry string) {
 	if Session() == nil {
 		return
 	}
-	err := Session().Model(&models.Builder{}).
+	err := Session().Model(&models.Artifact{}).
 		Where("name = ?", name).
 		Update("log", gorm.Expr("ifnull(log, '') || ?", logEntry)).
 		Error
 
 	if err != nil {
-		logs.Log.Errorf("Error updating log for Builder name %s: %v", name, err)
+		logs.Log.Errorf("Error updating log for Artifact name %s: %v", name, err)
 	}
 }
 
 func GetBuilderLogs(builderID uint32, limit int) (string, error) {
-	var builder models.Builder
+	var builder models.Artifact
 	if err := Session().Where("id = ?", builderID).First(&builder).Error; err != nil {
 		return "", err
 	}
@@ -1186,12 +1178,12 @@ func UpdateBuilderStatus(builderID uint32, status string) {
 	if Session() == nil {
 		return
 	}
-	err := Session().Model(&models.Builder{}).
+	err := Session().Model(&models.Artifact{}).
 		Where("id = ?", builderID).
 		Update("status", status).
 		Error
 	if err != nil {
-		logs.Log.Errorf("Error updating log for Builder id %d: %v", builderID, err)
+		logs.Log.Errorf("Error updating log for Artifact id %d: %v", builderID, err)
 	}
 	return
 }

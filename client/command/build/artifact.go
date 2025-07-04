@@ -23,22 +23,22 @@ func updateMaxLength(maxLengths *map[string]int, key string, newLength int) {
 }
 
 func ListArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
-	builders, err := con.Rpc.ListBuilder(con.Context(), &clientpb.Empty{})
+	artifacts, err := con.Rpc.ListArtifact(con.Context(), &clientpb.Empty{})
 	if err != nil {
 		return err
 	}
-	if len(builders.Builders) > 0 {
-		err = PrintArtifacts(builders, con)
+	if len(artifacts.Artifacts) > 0 {
+		err = PrintArtifacts(artifacts, con)
 		if err != nil {
 			return err
 		}
 	} else {
-		con.Log.Info("No builders available\n")
+		con.Log.Info("No artifacts available\n")
 	}
 	return nil
 }
 
-func PrintArtifacts(builders *clientpb.Builders, con *repl.Console) error {
+func PrintArtifacts(artifacts *clientpb.Artifacts, con *repl.Console) error {
 	var rowEntries []table.Row
 	var row table.Row
 
@@ -56,42 +56,42 @@ func PrintArtifacts(builders *clientpb.Builders, con *repl.Console) error {
 		"Status":    10,
 	}
 
-	for _, builder := range builders.Builders {
-		formattedTime := time.Unix(builder.CreatedAt, 0).Format("2006-01-02 15:04:05")
-		updateMaxLength(&defaultLengths, "ID", len(strconv.Itoa(int(builder.Id))))
-		updateMaxLength(&defaultLengths, "Name", len(builder.Name))
-		updateMaxLength(&defaultLengths, "Target", len(builder.Target))
-		// updateMaxLength(&defaultLengths, "Type", len(builder.Type))
-		// updateMaxLength(&defaultLengths, "Source", len(builder.Resource))
-		updateMaxLength(&defaultLengths, "Modules", len(builder.Modules))
-		updateMaxLength(&defaultLengths, "Profile", len(builder.ProfileName))
-		updateMaxLength(&defaultLengths, "Pipeline", len(builder.Pipeline))
+	for _, artifact := range artifacts.Artifacts {
+		formattedTime := time.Unix(artifact.CreatedAt, 0).Format("2006-01-02 15:04:05")
+		updateMaxLength(&defaultLengths, "ID", len(strconv.Itoa(int(artifact.Id))))
+		updateMaxLength(&defaultLengths, "Name", len(artifact.Name))
+		updateMaxLength(&defaultLengths, "Target", len(artifact.Target))
+		updateMaxLength(&defaultLengths, "Type", len(artifact.Type))
+		updateMaxLength(&defaultLengths, "Source", len(artifact.Source))
+		//updateMaxLength(&defaultLengths, "Modules", len(artifact.))
+		updateMaxLength(&defaultLengths, "Profile", len(artifact.Profile))
+		updateMaxLength(&defaultLengths, "Pipeline", len(artifact.Pipeline))
 		// updateMaxLength(&defaultLengths, "Time", len(formattedTime))
-		pipelineDisplay := builder.Pipeline
+		pipelineDisplay := artifact.Pipeline
 		if len(pipelineDisplay) > 16 {
 			pipelineDisplay = pipelineDisplay[:13] + "..."
 		}
-		nameDisplay := builder.Name
+		nameDisplay := artifact.Name
 		if len(nameDisplay) > 20 {
 			nameDisplay = nameDisplay[:17] + "..."
 		}
-		profileDisplay := builder.ProfileName
+		profileDisplay := artifact.Profile
 		if len(profileDisplay) > 18 {
 			profileDisplay = profileDisplay[:15] + "..."
 		}
 		row = table.NewRow(
 			table.RowData{
-				"ID":     builder.Id,
+				"ID":     artifact.Id,
 				"Name":   nameDisplay,
-				"Type":   builder.Type,
-				"Target": builder.Target,
-				"Source": builder.Source,
+				"Type":   artifact.Type,
+				"Target": artifact.Target,
+				"Source": artifact.Source,
 				//"Stager":   builder.Stage,
 				//"Modules":   builder.Modules,
 				"Profile":   profileDisplay,
 				"Pipeline":  pipelineDisplay,
 				"CreatedAt": formattedTime,
-				"Status":    builder.Status,
+				"Status":    artifact.Status,
 			})
 
 		rowEntries = append(rowEntries, row)
@@ -132,13 +132,13 @@ func PrintArtifacts(builders *clientpb.Builders, con *repl.Console) error {
 		return nil
 	}
 
-	builder, err := DownloadArtifact(con, selectRow.Data["Name"].(string), false)
+	artifact, err := DownloadArtifact(con, selectRow.Data["Name"].(string), "")
 	if err != nil {
 		return err
 	}
-	con.Log.Infof("download artifact %s\n", filepath.Join(assets.GetTempDir(), builder.Name))
-	output := filepath.Join(assets.GetTempDir(), builder.Name)
-	err = os.WriteFile(output, builder.Bin, 0644)
+	con.Log.Infof("download artifact %s\n", filepath.Join(assets.GetTempDir(), artifact.Name))
+	output := filepath.Join(assets.GetTempDir(), artifact.Name)
+	err = os.WriteFile(output, artifact.Bin, 0644)
 	if err != nil {
 		return err
 	}
@@ -173,7 +173,6 @@ func printArtifact(artifact *clientpb.Artifact) {
 		"Target":   artifact.Target,
 		"Profile":  artifact.Profile,
 		"Pipeline": artifact.Pipeline,
-		"IsSRDI":   artifact.IsSrdi,
 	}
 	tui.RenderKV(art)
 }
@@ -181,32 +180,32 @@ func printArtifact(artifact *clientpb.Artifact) {
 func DownloadArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
 	name := cmd.Flags().Arg(0)
 	output, _ := cmd.Flags().GetString("output")
-	srdi, _ := cmd.Flags().GetBool("srdi")
+	format, _ := cmd.Flags().GetString("format")
 	go func() {
-		builder, err := DownloadArtifact(con, name, srdi)
+		artifact, err := DownloadArtifact(con, name, format)
 		if err != nil {
 			con.Log.Errorf("download artifact failed: %s", err)
 			return
 		}
 
-		printArtifact(builder)
+		printArtifact(artifact)
 		if output == "" {
-			output = filepath.Join(assets.GetTempDir(), builder.Name)
+			output = filepath.Join(assets.GetTempDir(), artifact.Name)
 		}
-		err = os.WriteFile(output, builder.Bin, 0644)
+		err = os.WriteFile(output, artifact.Bin, 0644)
 		if err != nil {
 			con.Log.Errorf("open file failed: %s", err)
 			return
 		}
-		con.Log.Infof("download artifact %s, save to %s\n", builder.Name, output)
+		con.Log.Infof("download artifact %s, save to %s\n", artifact.Name, output)
 	}()
 	return nil
 }
 
-func DownloadArtifact(con *repl.Console, name string, srdi bool) (*clientpb.Artifact, error) {
+func DownloadArtifact(con *repl.Console, name string, format string) (*clientpb.Artifact, error) {
 	artifact, err := con.Rpc.DownloadArtifact(con.Context(), &clientpb.Artifact{
 		Name:   name,
-		IsSrdi: srdi,
+		Format: format,
 	})
 	if err != nil {
 		return artifact, err
@@ -225,11 +224,11 @@ func UploadArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
 	if name == "" {
 		name = filepath.Base(path)
 	}
-	builder, err := UploadArtifact(con, path, name, artifactType, stage)
+	artifact, err := UploadArtifact(con, path, name, artifactType, stage)
 	if err != nil {
 		return err
 	}
-	con.Log.Infof("upload artifact %s success, id:%d\n", builder.Name, builder.Id)
+	con.Log.Infof("upload artifact %s success, id:%d\n", artifact.Name, artifact.Id)
 	return nil
 }
 
@@ -244,7 +243,7 @@ func DeleteArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func UploadArtifact(con *repl.Console, path string, name, artifactType, stage string) (*clientpb.Builder, error) {
+func UploadArtifact(con *repl.Console, path string, name, artifactType, stage string) (*clientpb.Artifact, error) {
 	bin, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -258,17 +257,12 @@ func UploadArtifact(con *repl.Console, path string, name, artifactType, stage st
 }
 
 func SearchArtifact(con *repl.Console, pipeline, typ, format, os, arch string) (*clientpb.Artifact, error) {
-	var isSRDI bool
-	switch format {
-	case "srdi", "shellcode", "raw", "bin":
-		isSRDI = true
-	}
 	artifactResp, err := con.Rpc.FindArtifact(con.Context(), &clientpb.Artifact{
 		Arch:     arch,
 		Platform: os,
 		Type:     typ,
 		Pipeline: pipeline,
-		IsSrdi:   isSRDI,
+		Format:   format,
 	})
 	return artifactResp, err
 }

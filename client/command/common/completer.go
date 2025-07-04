@@ -243,15 +243,15 @@ func ProfileCompleter(con *repl.Console) carapace.Action {
 func ArtifactCompleter(con *repl.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
-		builders, err := con.Rpc.ListBuilder(con.Context(), &clientpb.Empty{})
+		artifacts, err := con.Rpc.ListArtifact(con.Context(), &clientpb.Empty{})
 		if err != nil {
 			con.Log.Errorf("Error get builder: %v\n", err)
 			return carapace.Action{}
 		}
-		for _, s := range builders.Builders {
+		for _, s := range artifacts.Artifacts {
 			results = append(results, s.Name, fmt.Sprintf("id: %d, type %s, target %s", s.Id, s.Type, s.Target))
 		}
-		return carapace.ActionValuesDescribed(results...).Tag("builder")
+		return carapace.ActionValuesDescribed(results...).Tag("artifact")
 	}
 	return carapace.ActionCallback(callback)
 }
@@ -259,15 +259,15 @@ func ArtifactCompleter(con *repl.Console) carapace.Action {
 func ArtifactNameCompleter(con *repl.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
-		builders, err := con.Rpc.ListBuilder(con.Context(), &clientpb.Empty{})
+		artifacts, err := con.Rpc.ListArtifact(con.Context(), &clientpb.Empty{})
 		if err != nil {
 			con.Log.Errorf("Error get builder: %v\n", err)
 			return carapace.Action{}
 		}
-		for _, s := range builders.Builders {
-			results = append(results, s.Name, fmt.Sprintf("builder %s, type %s, target %s", s.Name, s.Type, s.Target))
+		for _, s := range artifacts.Artifacts {
+			results = append(results, s.Name, fmt.Sprintf("artifact %s, type %s, target %s", s.Name, s.Type, s.Target))
 		}
-		return carapace.ActionValuesDescribed(results...).Tag("builder")
+		return carapace.ActionValuesDescribed(results...).Tag("artifact")
 	}
 	return carapace.ActionCallback(callback)
 }

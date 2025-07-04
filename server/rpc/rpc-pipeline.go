@@ -2,9 +2,11 @@ package rpc
 
 import (
 	"context"
+	"errors"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
@@ -17,16 +19,38 @@ func (rpc *Server) RegisterPipeline(ctx context.Context, req *clientpb.Pipeline)
 		return nil, err
 	}
 	req.Ip = lns.IP
-	pipelineModel := models.FromPipelinePb(req)
-	if pipelineModel.Tls.Enable && pipelineModel.Tls.Cert == nil {
-		pipelineModel.Tls, err = certutils.GenerateTLS(pipelineModel.Name, pipelineModel.ListenerId)
+	var pipelineModel *models.Pipeline
+	pipelineModel, err = db.FindPipeline(req.Name)
+	if err != nil && !errors.Is(err, db.ErrRecordNotFound) {
+		return nil, err
+	} else if err != nil && errors.Is(err, db.ErrRecordNotFound) {
+		pipelineModel = models.FromPipelinePb(req)
+		if req.CertName == "" && pipelineModel.Tls.Enable {
+			tls, certName, err := certutils.SaveTlsCert(pipelineModel.Tls, pipelineModel.Name, pipelineModel.ListenerId)
+			if err != nil {
+				return nil, err
+			}
+			pipelineModel.Tls = tls
+			pipelineModel.CertName = certName
+		} else if pipelineModel.Tls.Enable {
+			certModel, err := db.FindCertificate(req.CertName)
+			if err != nil {
+				return nil, err
+			}
+			pipelineModel.Tls = &types.TlsConfig{
+				Cert: &types.CertConfig{
+					Cert: certModel.CertPEM,
+					Key:  certModel.KeyPEM,
+				},
+				Domain: certModel.Domain,
+				Enable: req.Enable,
+			}
+			pipelineModel.CertName = req.CertName
+		}
+		_, err = db.SavePipeline(pipelineModel)
 		if err != nil {
 			return nil, err
 		}
-	}
-	_, err = db.SavePipeline(pipelineModel)
-	if err != nil {
-		return nil, err
 	}
 	var profileReq *clientpb.Profile
 	if req.Parser == consts.ImplantPulse {
@@ -49,11 +73,16 @@ func (rpc *Server) RegisterPipeline(ctx context.Context, req *clientpb.Pipeline)
 }
 
 func (rpc *Server) SyncPipeline(ctx context.Context, req *clientpb.Pipeline) (*clientpb.Empty, error) {
+	if req.Tls != nil && req.Tls.Domain != "" {
+		err := db.UpdateCert(req.Tls.Domain, req.Tls.Cert.Cert, req.Tls.Cert.Key)
+		if err != nil {
+			return nil, err
+		}
+	}
 	_, err := db.SavePipeline(models.FromPipelinePb(req))
 	if err != nil {
 		return nil, err
 	}
-
 	job := core.Jobs.AddPipeline(req)
 	core.EventBroker.Publish(core.Event{
 		EventType: consts.EventJob,
@@ -87,7 +116,16 @@ func (rpc *Server) StartPipeline(ctx context.Context, req *clientpb.CtrlPipeline
 	if err != nil {
 		return nil, err
 	}
-
+	if req.CertName != "" {
+		tls, err := db.FindCertificate(req.CertName)
+		if err != nil {
+			return nil, err
+		}
+		pipelineDB.Tls.Cert.Cert = tls.CertPEM
+		pipelineDB.Tls.Cert.Key = tls.KeyPEM
+		pipelineDB.Tls.CA.Cert = tls.CACertPEM
+		pipelineDB.Tls.CA.Key = tls.CAKeyPEM
+	}
 	lns, err := core.Listeners.Get(pipelineDB.ListenerId)
 	if err != nil {
 		return nil, err

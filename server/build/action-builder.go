@@ -16,7 +16,7 @@ import (
 
 type ActionBuilder struct {
 	config     *clientpb.BuildConfig
-	builder    *models.Builder
+	builder    *models.Artifact
 	workflowID string
 	profile    *types.ProfileConfig
 }
@@ -36,7 +36,7 @@ func NewActionBuilder(req *clientpb.BuildConfig) *ActionBuilder {
 	}
 }
 
-func (a *ActionBuilder) GenerateConfig() (*clientpb.Builder, error) {
+func (a *ActionBuilder) GenerateConfig() (*clientpb.Artifact, error) {
 	githubConfig := a.config.Github
 	if githubConfig != nil {
 		if githubConfig.Owner == "" || githubConfig.Repo == "" || githubConfig.Token == "" {
@@ -51,11 +51,11 @@ func (a *ActionBuilder) GenerateConfig() (*clientpb.Builder, error) {
 		}
 	}
 
-	var builder *models.Builder
+	var builder *models.Artifact
 	var err error
 	profileByte, err := GenerateProfile(a.config)
 	if err != nil {
-		return builder.ToProtobuf(), err
+		return builder.ToArtifact([]byte{}), err
 	}
 	if a.config.ArtifactId != 0 && a.config.Type == consts.CommandBuildBeacon {
 		builder, err = db.SaveArtifactFromID(a.config, a.config.ArtifactId, a.config.Source, profileByte)
@@ -77,13 +77,13 @@ func (a *ActionBuilder) GenerateConfig() (*clientpb.Builder, error) {
 	a.config.Inputs["malefic_config_yaml"] = base64Encoded
 	profile, err := types.LoadProfile(profileByte)
 	if err != nil {
-		return builder.ToProtobuf(), err
+		return builder.ToArtifact([]byte{}), err
 	}
 
 	a.profile = profile
 	db.UpdateBuilderStatus(a.builder.ID, consts.BuildStatusWaiting)
 
-	return builder.ToProtobuf(), nil
+	return builder.ToArtifact([]byte{}), nil
 }
 
 func (a *ActionBuilder) ExecuteBuild() error {

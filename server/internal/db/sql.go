@@ -23,7 +23,7 @@ func NewDBClient() *gorm.DB {
 	}
 	_ = dbClient.AutoMigrate(
 		&models.Profile{},
-		&models.Builder{},
+		&models.Artifact{},
 		&models.Session{},
 		&models.Pipeline{},
 		&models.Task{},

@@ -170,17 +170,11 @@ func runWorkFlow(owner, repo, workflowID, token string, inputs map[string]string
 }
 
 // downloadArtifactWhenReady waits for the artifact to be ready and downloads it
-func downloadArtifactWhenReady(owner, repo, token string, isRemove bool, artifactID uint32, builder *models.Builder) {
+func downloadArtifactWhenReady(owner, repo, token string, isRemove bool, artifactID uint32, builder *models.Artifact) {
 	for {
-		newBuilder, err := PushArtifact(owner, repo, token, builder.Name, isRemove)
+		_, err := PushArtifact(owner, repo, token, builder.Name, isRemove)
 		if err == nil {
 			logs.Log.Info("Artifact downloaded successfully!")
-			if builder.IsSRDI {
-				_, err = SRDIArtifact(newBuilder, newBuilder.Os, newBuilder.Arch)
-				if err != nil {
-					logs.Log.Errorf("action to srdi failed")
-				}
-			}
 			db.UpdateBuilderStatus(builder.ID, consts.BuildStatusCompleted)
 			if builder.Type == consts.CommandBuildBeacon {
 				if artifactID != 0 {
@@ -309,7 +303,7 @@ func DeleteSuccessWorkflow(owner, repo, token string, workflowID int64) error {
 }
 
 // 主流程
-func PushArtifact(owner, repo, token, buildName string, isRemove bool) (*models.Builder, error) {
+func PushArtifact(owner, repo, token, buildName string, isRemove bool) (*models.Artifact, error) {
 	builder, err := db.GetArtifactByName(buildName)
 	if err != nil {
 		return nil, err
@@ -339,7 +333,6 @@ func PushArtifact(owner, repo, token, buildName string, isRemove bool) (*models.
 	if err != nil {
 		return nil, err
 	}
-	builder.IsSRDI = true
 	if err := db.UpdateBuilderPath(builder); err != nil {
 		return nil, err
 	}

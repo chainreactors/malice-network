@@ -40,14 +40,7 @@ listeners:
           - x86_64-pc-windows-gnu
       tls:
         enable: false
-        name: default
-        CN: "test"
-        O: "Sharp Depth"
-        C: "US"
-        L: "Houston"
-        OU: "Persistent Housework, Limited"
-        ST: "State of Texas"
-        validity: "365"
+        auto_cert: false
       encryption:
         enable: true
         type: aes
@@ -80,14 +73,7 @@ listeners:
       parser: malefic
       tls:
         enable: false
-        name: default
-        CN: "test"
-        O: "Sharp Depth"
-        C: "US"
-        L: "Houston"
-        OU: "Persistent Housework, Limited"
-        ST: "State of Texas"
-        validity: "365"
+        auto_cert: false
       encryption:
         enable: true
         type: aes

@@ -169,9 +169,9 @@ func BuildLogCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 	num, _ := cmd.Flags().GetInt("limit")
-	builder, err := con.Rpc.BuildLog(con.Context(), &clientpb.Builder{
-		Id:  uint32(buildID),
-		Num: uint32(num),
+	builder, err := con.Rpc.BuildLog(con.Context(), &clientpb.Artifact{
+		Id:     uint32(buildID),
+		LogNum: uint32(num),
 	})
 	if err != nil {
 		return err

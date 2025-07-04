@@ -6,20 +6,14 @@ import (
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/encoders"
-	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
-	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
-	"github.com/wabzsy/gonut"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -57,7 +51,7 @@ var dockerClient *client.Client
 var once sync.Once
 
 func GetDefaultImage() string {
-	return "ghcr.io/chainreactors/malefic-builder:" + consts.Ver
+	return "ghcr.io/chainreactors/malefic-artifact:" + consts.Ver
 }
 func GetDockerClient() (*client.Client, error) {
 	var err error
@@ -77,90 +71,6 @@ func SaveArtifact(dst string, bin []byte) error {
 		return err
 	}
 	return nil
-}
-
-func NewMaleficSRDIArtifact(name, typ, src, platform, arch, stage, funcName, dataPath string) (*models.Builder, []byte, error) {
-	builder, err := db.SaveArtifact(name, typ, platform, arch, stage, consts.CommandArtifactUpload)
-	if err != nil {
-		return nil, nil, err
-	}
-	bin, err := gonut.DonutShellcodeFromFile(builder.Path, arch, "")
-	if err != nil {
-		return nil, nil, err
-	}
-	err = os.WriteFile(builder.ShellcodePath, bin, 0644)
-	if err != nil {
-		return nil, nil, err
-	}
-	return builder, bin, nil
-}
-
-// for pulse
-func OBJCOPYPulse(builder *models.Builder, platform, arch string) ([]byte, error) {
-	absBuildOutputPath, err := filepath.Abs(configs.BuildOutputPath)
-	if err != nil {
-		return nil, err
-	}
-	dstPath := filepath.Join(absBuildOutputPath, encoders.UUID())
-	cmd := exec.Command("objcopy", "-O", "binary", builder.Path, dstPath)
-	cmd.Dir = sourcePath
-	output, err := cmd.CombinedOutput()
-	logs.Log.Debugf("Objcopy output: %s", output)
-	if err != nil {
-		return nil, err
-	}
-	bin, err := os.ReadFile(dstPath)
-	if err != nil {
-		return nil, err
-	}
-	builder.ShellcodePath = dstPath
-	err = db.UpdateBuilderSrdi(builder)
-	if err != nil {
-		return nil, err
-	}
-	return bin, nil
-}
-
-func SRDIArtifact(builder *models.Builder, platform, arch string) ([]byte, error) {
-	if !strings.Contains(builder.Target, consts.Windows) {
-		builder.IsSRDI = false
-		err := db.UpdateBuilderSrdi(builder)
-		if err != nil {
-			return nil, err
-		}
-		return []byte{}, errs.ErrPlartFormNotSupport
-	}
-	absBuildOutputPath, err := filepath.Abs(configs.BuildOutputPath)
-	if err != nil {
-		return nil, err
-	}
-	dstPath := filepath.Join(absBuildOutputPath, encoders.UUID())
-	exePath := builder.Path
-	if !strings.HasSuffix(exePath, ".exe") {
-		exePath = builder.Path + ".exe"
-		err = fileutils.CopyFile(builder.Path, exePath)
-		if err != nil {
-			return nil, fmt.Errorf("copy to .exe failed: %w", err)
-		}
-	}
-	bin, err := gonut.DonutShellcodeFromFile(exePath, arch, "")
-	if err != nil {
-		return nil, err
-	}
-	err = os.WriteFile(dstPath, bin, 0644)
-	if err != nil {
-		return nil, err
-	}
-	builder.ShellcodePath = dstPath
-	err = db.UpdateBuilderSrdi(builder)
-	if err != nil {
-		return nil, err
-	}
-	err = fileutils.RemoveFile(exePath)
-	if err != nil {
-		return nil, err
-	}
-	return bin, nil
 }
 
 func catchLogs(cli *client.Client, containerID, name string) error {

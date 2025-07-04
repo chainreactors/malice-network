@@ -9,7 +9,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/codenames"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/encoders"
-	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
@@ -25,7 +24,7 @@ import (
 
 type SaasBuilder struct {
 	config      *clientpb.BuildConfig
-	builder     *models.Builder
+	builder     *models.Artifact
 	executeUrl  string
 	downloadUrl string
 }
@@ -36,8 +35,8 @@ func NewSaasBuilder(req *clientpb.BuildConfig) *SaasBuilder {
 	}
 }
 
-func (s *SaasBuilder) GenerateConfig() (*clientpb.Builder, error) {
-	var builder *models.Builder
+func (s *SaasBuilder) GenerateConfig() (*clientpb.Artifact, error) {
+	var builder *models.Artifact
 	var err error
 	profileByte, err := GenerateProfile(s.config)
 	if err != nil {
@@ -62,7 +61,7 @@ func (s *SaasBuilder) GenerateConfig() (*clientpb.Builder, error) {
 	db.UpdateBuilderStatus(s.builder.ID, consts.BuildStatusWaiting)
 	saasConfig := configs.GetSaasConfig()
 	s.executeUrl = fmt.Sprintf("%s/api/build", saasConfig.Url)
-	return builder.ToProtobuf(), nil
+	return builder.ToArtifact([]byte{}), nil
 }
 
 func (s *SaasBuilder) ExecuteBuild() error {
@@ -95,7 +94,7 @@ func (s *SaasBuilder) ExecuteBuild() error {
 		return errors.New(string(body))
 	}
 
-	var builder clientpb.Builder
+	var builder clientpb.Artifact
 	if err = json.Unmarshal(body, &builder); err != nil {
 		return fmt.Errorf("failed to unmarshal build service response: %s", err)
 	}
@@ -130,7 +129,7 @@ func (s *SaasBuilder) getToken() string {
 	return saasConfig.Token
 }
 
-func sendSaasCtrlMsg(isEnd bool, req *models.Builder, err error, status string) {
+func sendSaasCtrlMsg(isEnd bool, req *models.Artifact, err error, status string) {
 	if core.EventBroker == nil {
 		return
 	}
@@ -211,7 +210,7 @@ func CheckBuildStatusExternal(statusUrl string, token string) (string, error) {
 }
 
 // DownloadArtifactWithBuilder 外部调用的构建产物下载函数（带Builder信息）
-func DownloadArtifactWithBuilder(downloadUrl string, token string, builder *models.Builder) error {
+func DownloadArtifactWithBuilder(downloadUrl string, token string, builder *models.Artifact) error {
 	if token == "" {
 		return fmt.Errorf("no token available for download")
 	}
@@ -249,35 +248,11 @@ func DownloadArtifactWithBuilder(downloadUrl string, token string, builder *mode
 	if err != nil {
 		return err
 	}
-
-	target, ok := consts.GetBuildTarget(builder.Target)
-	if !ok {
-		logs.Log.Errorf("invalid target")
-		db.UpdateBuilderStatus(builder.ID, consts.BuildStatusFailure)
-		return errs.ErrInvalidateTarget
-	}
-
-	if builder.Type == consts.CommandBuildPulse {
-		logs.Log.Infof("objcopy start ...")
-		_, err = OBJCOPYPulse(builder, target.OS, target.Arch)
-		if err != nil {
-			logs.Log.Errorf("obcopy error %v", err)
-			return errs.ErrOBJCOPYFailed
-		}
-		logs.Log.Infof("objcopy end ...")
-	} else {
-		_, err = SRDIArtifact(builder, target.OS, target.Arch)
-		if err != nil {
-			logs.Log.Errorf("SRDI error %v", err)
-			return errs.ErrSrdiFailed
-		}
-	}
-
 	return nil
 }
 
 // CheckAndDownloadArtifact 外部调用的检查状态并下载产物的组合函数
-func CheckAndDownloadArtifact(statusUrl string, downloadUrl string, token string, builder *models.Builder,
+func CheckAndDownloadArtifact(statusUrl string, downloadUrl string, token string, builder *models.Artifact,
 	pollInterval time.Duration, maxPollTime time.Duration) (string, string, error) {
 
 	if pollInterval == 0 {
@@ -316,18 +291,11 @@ func CheckAndDownloadArtifact(statusUrl string, downloadUrl string, token string
 		if status == consts.BuildStatusCompleted {
 			downloadErr := DownloadArtifactWithBuilder(downloadUrl, token, builder)
 
-			if downloadErr != nil && !errors.Is(downloadErr, ERROROBJCOPY) && !errors.Is(downloadErr, ERRORSRDI) {
+			if downloadErr != nil {
 				logs.Log.Errorf("download artifact failed: %s", downloadErr)
 				time.Sleep(pollInterval)
 				continue
-			} else if errors.Is(downloadErr, ERROROBJCOPY) || errors.Is(downloadErr, ERRORSRDI) {
-				logs.Log.Errorf("srdi or objcopy error: %s", downloadErr)
-				if builder != nil {
-					db.UpdateBuilderStatus(builder.ID, consts.BuildStatusCompleted)
-				}
-				return builder.Path, consts.BuildStatusCompleted, nil
 			}
-
 			logs.Log.Infof("build completed and downloaded successfully")
 			if builder != nil {
 				db.UpdateBuilderStatus(builder.ID, consts.BuildStatusCompleted)
