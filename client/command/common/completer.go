@@ -12,6 +12,7 @@ import (
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/utils/formatutils"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/spf13/cobra"
 )
@@ -255,6 +256,20 @@ func ArtifactCompleter(con *repl.Console) carapace.Action {
 		return carapace.ActionValuesDescribed(results...).Tag("artifact")
 	}
 	return carapace.ActionCallback(callback)
+}
+
+func ArtifactFormatCompleter() carapace.Action {
+	// Get supported formats from formatter
+	formatter := formatutils.NewFormatter()
+	formatsWithDesc := formatter.GetFormatsWithDescriptions()
+
+	// Convert to slice for carapace
+	descriptions := make([]string, 0, len(formatsWithDesc)*2)
+	for formatName, desc := range formatsWithDesc {
+		descriptions = append(descriptions, formatName, desc)
+	}
+
+	return carapace.ActionValuesDescribed(descriptions...).Tag("artifact format")
 }
 
 func ArtifactNameCompleter(con *repl.Console) carapace.Action {

@@ -3,17 +3,9 @@ package rpc
 import (
 	"context"
 	"fmt"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/encoders"
-	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/server/build"
-	"github.com/chainreactors/malice-network/server/internal/configs"
-	"github.com/chainreactors/malice-network/server/internal/db"
-	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"github.com/chainreactors/malice-network/server/internal/generate"
 	"github.com/wabzsy/gonut"
-	"path/filepath"
 )
 
 func (rpc *Server) EXE2Shellcode(ctx context.Context, req *clientpb.EXE2Shellcode) (*clientpb.Bin, error) {
@@ -56,37 +48,4 @@ func (rpc *Server) ShellcodeEncode(ctx context.Context, req *clientpb.ShellcodeE
 	} else {
 		return nil, fmt.Errorf("unknown type")
 	}
-}
-
-func (rpc *Server) MaleficSRDI(ctx context.Context, req *clientpb.Artifact) (*clientpb.Artifact, error) {
-	var filePath, realName string
-	var err error
-	var artifact *models.Artifact
-	var bin []byte
-	target, ok := consts.GetBuildTarget(req.Target)
-	if !ok {
-		return nil, errs.ErrInvalidateTarget
-	}
-	if req.Id != 0 {
-		builder, err := db.GetArtifactById(req.Id)
-		if err != nil {
-			return nil, err
-		}
-		bin, err = build.SRDIArtifact(builder, target.OS, target.Arch)
-		artifact = builder
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		dst := encoders.UUID()
-		filePath = filepath.Join(configs.TempPath, dst)
-		realName = req.Name
-		err = build.SaveArtifact(dst, req.Bin)
-		artifact, bin, err = build.NewMaleficSRDIArtifact(realName, req.Type, filePath, target.OS, target.Arch, req.Stage, req.FunctionName, req.UserDataPath)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return artifact.ToArtifact(bin), nil
 }

@@ -37,7 +37,7 @@ build:
     subobf: false # Instruction Substitution Obfuscation
     fco: false # Function CallSite  Obfuscation
     constenc: false # Constant Encryption Obfuscation
-
+  refresh_remap-path-prefix: true # Force refresh remap-path-prefix configuration even if it already exists
 pulse:
   flags:
     start: 0x41

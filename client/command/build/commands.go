@@ -368,9 +368,12 @@ artifact show artifact_name --profile
 	}
 	common.BindFlag(downloadCmd, func(f *pflag.FlagSet) {
 		f.StringP("output", "o", "", "output path")
-		f.String("format", "", "payload output format (e.g., bin, raw, powershell, curl, vb, c, golang, or remote loaders)")
+		f.StringP("format", "f", "", "the format of the artifact")
 	})
 	common.BindArgCompletions(downloadCmd, nil, common.ArtifactCompleter(con))
+	common.BindFlagCompletions(downloadCmd, func(comp carapace.ActionMap) {
+		comp["format"] = common.ArtifactFormatCompleter()
+	})
 
 	uploadCmd := &cobra.Command{
 		Use:   consts.CommandArtifactUpload,

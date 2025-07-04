@@ -5,12 +5,14 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/utils/formatutils"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
@@ -181,23 +183,42 @@ func DownloadArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
 	name := cmd.Flags().Arg(0)
 	output, _ := cmd.Flags().GetString("output")
 	format, _ := cmd.Flags().GetString("format")
+
 	go func() {
 		artifact, err := DownloadArtifact(con, name, format)
 		if err != nil {
-			con.Log.Errorf("download artifact failed: %s", err)
+			con.Log.Errorf("Download artifact failed: %s", err)
 			return
+		}
+		printArtifact(artifact)
+		var fileExt string
+		if format != "" && format != "executable" {
+			formatter := formatutils.NewFormatter()
+			if formatter.IsSupported(format) {
+				fileExt = formatter.GetFormatExtension(format)
+			} else {
+				fileExt = ".txt"
+			}
+		} else if artifact.Type == consts.CommandBuildModules {
+			fileExt = ".dll"
+		} else {
+			if strings.Contains(artifact.Target, "windows") {
+				fileExt = ".exe"
+			} else {
+				fileExt = ""
+			}
 		}
 
-		printArtifact(artifact)
 		if output == "" {
-			output = filepath.Join(assets.GetTempDir(), artifact.Name)
+			output = filepath.Join(assets.GetTempDir(), artifact.Name+fileExt)
 		}
+
 		err = os.WriteFile(output, artifact.Bin, 0644)
 		if err != nil {
-			con.Log.Errorf("open file failed: %s", err)
+			con.Log.Errorf("Write file failed: %s", err)
 			return
 		}
-		con.Log.Infof("download artifact %s, save to %s\n", artifact.Name, output)
+		con.Log.Infof("Download artifact %s, save to %s\n", artifact.Name, output)
 	}()
 	return nil
 }
