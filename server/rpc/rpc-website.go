@@ -125,7 +125,7 @@ func (rpc *Server) RegisterWebsite(ctx context.Context, req *clientpb.Pipeline) 
 	req.Ip = lns.IP
 	pipelineModel := models.FromPipelinePb(req)
 	if pipelineModel.Tls.Enable && pipelineModel.Tls != nil && !pipelineModel.Tls.AutoCert {
-		pipelineModel.Tls, err = certutils.GenerateSelfTLS(req.Name, req.ListenerId)
+		pipelineModel.Tls, err = certutils.GenerateSelfTLS(req.Name, req.ListenerId, nil)
 		if err != nil {
 			return nil, err
 		}

@@ -2,6 +2,7 @@ package common
 
 import (
 	"fmt"
+	"github.com/chainreactors/logs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -366,6 +367,25 @@ func RemPipelineCompleter(con *repl.Console) carapace.Action {
 			}
 		}
 		return carapace.ActionValuesDescribed(results...).Tag("rem pipeline name")
+	}
+	return carapace.ActionCallback(callback)
+}
+
+func HttpPipelineCompleter(con *repl.Console) carapace.Action {
+	callback := func(c carapace.Context) carapace.Action {
+		results := make([]string, 0)
+		err := con.UpdatePipeline()
+		if err != nil {
+			logs.Log.Errorf("failed to get pipelines: %s", err)
+			return carapace.Action{}
+		}
+		for _, pipeline := range con.Pipelines {
+			if http := pipeline.GetHttp(); http != nil {
+				results = append(results, pipeline.Name,
+					fmt.Sprintf(" host: %s:%d", http.Host, http.Port))
+			}
+		}
+		return carapace.ActionValuesDescribed(results...).Tag("http pipeline name")
 	}
 	return carapace.ActionCallback(callback)
 }

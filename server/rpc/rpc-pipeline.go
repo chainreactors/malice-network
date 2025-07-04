@@ -73,17 +73,23 @@ func (rpc *Server) RegisterPipeline(ctx context.Context, req *clientpb.Pipeline)
 }
 
 func (rpc *Server) SyncPipeline(ctx context.Context, req *clientpb.Pipeline) (*clientpb.Empty, error) {
-	if req.Tls != nil && req.Tls.Domain != "" {
-		err := db.UpdateCert(req.Tls.Domain, req.Tls.Cert.Cert, req.Tls.Cert.Key)
-		if err != nil {
-			return nil, err
-		}
-	}
 	_, err := db.SavePipeline(models.FromPipelinePb(req))
 	if err != nil {
 		return nil, err
 	}
 	job := core.Jobs.AddPipeline(req)
+	if req.Tls != nil && req.Tls.Domain != "" {
+		err := db.UpdateCert(req.Tls.Domain, req.Tls.Cert.Cert, req.Tls.Cert.Key)
+		if err != nil {
+			return nil, err
+		}
+		core.EventBroker.Publish(core.Event{
+			EventType: consts.EventJob,
+			Op:        consts.CtrlAutoCert,
+			Important: true,
+			Job:       job.ToProtobuf(),
+		})
+	}
 	core.EventBroker.Publish(core.Event{
 		EventType: consts.EventJob,
 		Op:        consts.CtrlPipelineSync,

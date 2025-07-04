@@ -4,13 +4,15 @@ import (
 	"context"
 	"github.com/chainreactors/malice-network/helper/certs"
 	"github.com/chainreactors/malice-network/helper/codenames"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/server/internal/certutils"
+	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 )
 
-func (rpc *Server) AddCertificate(ctx context.Context, req *clientpb.TLS) (*clientpb.Empty, error) {
+func (rpc *Server) GenerateSelfCertificate(ctx context.Context, req *clientpb.TLS) (*clientpb.Cert, error) {
 	var certModel *models.Certificate
 	if req.Cert != nil {
 		certModel = &models.Certificate{
@@ -18,10 +20,10 @@ func (rpc *Server) AddCertificate(ctx context.Context, req *clientpb.TLS) (*clie
 			Type:    certs.Imported,
 			CertPEM: req.Cert.Cert,
 			KeyPEM:  req.Cert.Key,
-			//CACertPEM: req.Ca.Cert
 		}
 	} else if !req.AutoCert {
-		tls, err := certutils.GenerateSelfTLS("", "")
+		subject := certutils.CertificateSubjectToPkixName(req.CertSubject)
+		tls, err := certutils.GenerateSelfTLS("", "", subject)
 		if err != nil {
 			return nil, err
 		}
@@ -50,7 +52,7 @@ func (rpc *Server) AddCertificate(ctx context.Context, req *clientpb.TLS) (*clie
 	if err != nil {
 		return nil, err
 	}
-	return nil, nil
+	return certModel.ToProtobuf(), nil
 }
 
 func (rpc *Server) DeleteCertificate(ctx context.Context, req *clientpb.Cert) (*clientpb.Empty, error) {
@@ -79,4 +81,25 @@ func (rpc *Server) UpdateCertificate(ctx context.Context, req *clientpb.Cert) (*
 		return nil, err
 	}
 	return nil, nil
+}
+
+func (rpc *Server) GenerateAcmeCert(ctx context.Context, req *clientpb.TLS) (*clientpb.Empty, error) {
+	pipelineDB, err := db.FindPipeline(req.PipelineName)
+	if err != nil {
+		return nil, err
+	}
+	lns, err := core.Listeners.Get(pipelineDB.ListenerId)
+	if err != nil {
+		return nil, err
+	}
+	pipelineProto := pipelineDB.ToProtobuf()
+	job := &core.Job{
+		ID:       core.NextJobID(),
+		Pipeline: pipelineProto,
+		Name:     req.PipelineName,
+	}
+	lns.PushCtrl(&clientpb.JobCtrl{
+		Ctrl: consts.CtrlAutoCert,
+		Job:  job.ToProtobuf()})
+	return &clientpb.Empty{}, nil
 }

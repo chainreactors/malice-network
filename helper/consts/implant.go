@@ -214,3 +214,13 @@ func MapArch(arch string) uint32 {
 		return 0
 	}
 }
+
+func GetBuildTargetNameByArchOS(arch, os string) (string, bool) {
+	arch = FormatArch(arch)
+	for name, target := range BuildTargetMap {
+		if target.Arch == arch && target.OS == os {
+			return name, true
+		}
+	}
+	return "", false
+}

@@ -69,6 +69,10 @@ func (event *Event) format() string {
 			return fmt.Sprintf("[%s] %s: bind %s on %s %s", event.EventType, event.Op,
 				pipeline.Name, pipeline.ListenerId, pipeline.Ip)
 		case *clientpb.Pipeline_Http:
+			if event.Op == consts.CtrlAutoCert {
+				return fmt.Sprintf("[%s] %s: cert %s create success", event.EventType, event.Op,
+					pipeline.Tls.Domain)
+			}
 			return fmt.Sprintf("[%s] %s: http %s on %s %s:%d", event.EventType, event.Op,
 				pipeline.Name, pipeline.ListenerId, pipeline.Ip, pipeline.GetHttp().Port)
 		case *clientpb.Pipeline_Rem:

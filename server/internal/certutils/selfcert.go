@@ -3,10 +3,12 @@ package certutils
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/pem"
 	"errors"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/certs"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/mtls"
@@ -57,7 +59,7 @@ func GenerateRootCert() error {
 	if fileutils.Exist(rootCertPath) && fileutils.Exist(rootKeyPath) {
 		return nil
 	}
-	cert, key, err := certs.GenerateCACert(certs.RootName)
+	cert, key, err := certs.GenerateCACert(certs.RootName, nil)
 	if err != nil {
 		return err
 	}
@@ -151,7 +153,7 @@ func GenerateListenerCert(host, name string, port int) (*mtls.ClientConfig, erro
 	}, nil
 }
 
-func GenerateSelfTLS(name, listenerID string) (*types.TlsConfig, error) {
+func GenerateSelfTLS(name, listenerID string, subject *pkix.Name) (*types.TlsConfig, error) {
 	tlsConfig, err := db.FindPipelineCert(name, listenerID)
 	if err != nil && !errors.Is(err, db.ErrRecordNotFound) {
 		return nil, err
@@ -160,7 +162,7 @@ func GenerateSelfTLS(name, listenerID string) (*types.TlsConfig, error) {
 		return tlsConfig, nil
 	}
 
-	caCertByte, caKeyByte, err := certs.GenerateCACert(name)
+	caCertByte, caKeyByte, err := certs.GenerateCACert(name, subject)
 	if err != nil {
 		return nil, err
 	}
@@ -183,4 +185,44 @@ func GenerateSelfTLS(name, listenerID string) (*types.TlsConfig, error) {
 		},
 		Enable: true,
 	}, nil
+}
+
+func CertificateSubjectToPkixName(subject *clientpb.CertificateSubject) *pkix.Name {
+	if subject == nil {
+		return nil
+	}
+
+	var organizations []string
+	if subject.O != "" {
+		organizations = append(organizations, subject.O)
+	}
+
+	var organizationalUnits []string
+	if subject.Ou != "" {
+		organizationalUnits = append(organizationalUnits, subject.Ou)
+	}
+
+	var countries []string
+	if subject.C != "" {
+		countries = append(countries, subject.C)
+	}
+
+	var provinces []string
+	if subject.St != "" {
+		provinces = append(provinces, subject.St)
+	}
+
+	var localities []string
+	if subject.L != "" {
+		localities = append(localities, subject.L)
+	}
+
+	return &pkix.Name{
+		CommonName:         subject.Cn,
+		Organization:       organizations,
+		OrganizationalUnit: organizationalUnits,
+		Country:            countries,
+		Province:           provinces,
+		Locality:           localities,
+	}
 }

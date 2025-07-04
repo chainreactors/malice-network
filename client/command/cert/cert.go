@@ -13,19 +13,6 @@ import (
 	"time"
 )
 
-func AddCmd(cmd *cobra.Command, con *repl.Console) error {
-	tls, _, err := common.ParseTLSFlags(cmd)
-	if err != nil {
-		return err
-	}
-	_, err = con.Rpc.AddCertificate(con.Context(), tls)
-	if err != nil {
-		return err
-	}
-	con.Log.Infof("cert add success\n")
-	return nil
-}
-
 func DeleteCmd(cmd *cobra.Command, con *repl.Console) error {
 	_, certName, err := common.ParseTLSFlags(cmd)
 	if err != nil {

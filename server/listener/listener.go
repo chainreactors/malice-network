@@ -263,6 +263,9 @@ func (lns *listener) Handler() {
 			handlerErr = lns.handlerRemAgentLog(msg.Job)
 		case consts.CtrlRemAgentStop:
 			handlerErr = lns.handlerRemAgentStop(msg.Job)
+		case consts.CtrlAutoCert:
+			handlerErr = lns.handlerAutoCert(msg.Job)
+
 		}
 
 		status := &clientpb.JobStatus{
@@ -313,7 +316,7 @@ func (lns *listener) autoBuild(pipeline *clientpb.Pipeline) error {
 	// 遍历所有目标进行构建
 	for _, target := range pipeline.Target {
 		// 准备构建参数
-		artifact, input, err := lns.prepareBuildParams(pipeline, target)
+		artifact, err := lns.prepareBuildParams(pipeline, target)
 		if err != nil {
 			logs.Log.Warnf(err.Error())
 			continue
@@ -331,7 +334,7 @@ func (lns *listener) autoBuild(pipeline *clientpb.Pipeline) error {
 		profileName := pipeline.Name + "_default"
 
 		// 执行构建
-		if err := lns.executeBuild(profileName, artifact, input); err != nil {
+		if err := lns.executeBuild(profileName, artifact); err != nil {
 			return err
 		}
 	}
@@ -340,10 +343,10 @@ func (lns *listener) autoBuild(pipeline *clientpb.Pipeline) error {
 }
 
 // 准备构建参数
-func (lns *listener) prepareBuildParams(pipeline *clientpb.Pipeline, target string) (*clientpb.Artifact, map[string]string, error) {
+func (lns *listener) prepareBuildParams(pipeline *clientpb.Pipeline, target string) (*clientpb.Artifact, error) {
 	targetMap, ok := consts.GetBuildTarget(target)
 	if !ok {
-		return nil, nil, fmt.Errorf("invalid build target: %s", target)
+		return nil, fmt.Errorf("invalid build target: %s", target)
 	}
 
 	artifact := &clientpb.Artifact{
@@ -352,33 +355,23 @@ func (lns *listener) prepareBuildParams(pipeline *clientpb.Pipeline, target stri
 		Arch:     targetMap.Arch,
 	}
 
-	var input map[string]string
-
 	// Pulse构建特殊处理
 	if pipeline.Parser == consts.CommandBuildPulse {
 		if !strings.Contains(target, "windows") {
-			return nil, nil, fmt.Errorf("pulse build target must be windows, %s is not supported", target)
+			return nil, fmt.Errorf("pulse build target must be windows, %s is not supported", target)
 		}
 		artifact.Type = consts.CommandBuildPulse
 		artifact.Pipeline = pipeline.Name
-		input = map[string]string{
-			"package": consts.CommandBuildPulse,
-			"targets": target,
-		}
 	} else {
 		artifact.Type = consts.CommandBuildBeacon
 		artifact.Pipeline = pipeline.Name
-		input = map[string]string{
-			"package": consts.CommandBuildBeacon,
-			"targets": target,
-		}
 	}
 
-	return artifact, input, nil
+	return artifact, nil
 }
 
 // 执行构建
-func (lns *listener) executeBuild(profileName string, artifact *clientpb.Artifact, input map[string]string) error {
+func (lns *listener) executeBuild(profileName string, artifact *clientpb.Artifact) error {
 	var buildResource string
 	_, err := lns.Rpc.DockerStatus(lns.Context(), &clientpb.Empty{})
 	if err == nil {
@@ -395,9 +388,7 @@ func (lns *listener) executeBuild(profileName string, artifact *clientpb.Artifac
 		Target:      artifact.Target,
 		ProfileName: profileName,
 		Type:        artifact.Type,
-		Srdi:        true,
 		Source:      buildResource,
-		Inputs:      input,
 	})
 	return err
 }
@@ -548,5 +539,19 @@ func (lns *listener) handleStartRem(job *clientpb.Job) error {
 
 	lns.pipelines.Add(rem)
 	job.Name = rem.ID()
+	return nil
+}
+
+func (lns *listener) handlerAutoCert(job *clientpb.Job) error {
+	pipeline := job.GetPipeline()
+	tls, err := certutils.GetAutoCertTls(pipeline.GetTls())
+	if err != nil {
+		return err
+	}
+	pipeline.Tls = tls
+	_, err = lns.Rpc.SyncPipeline(lns.Context(), pipeline)
+	if err != nil {
+		return err
+	}
 	return nil
 }

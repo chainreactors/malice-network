@@ -61,7 +61,7 @@ func SaveTlsCert(tls *types.TlsConfig, piplineName, listenerID string) (*types.T
 	var err error
 	name := codenames.GetCodename()
 	if tls.Cert == nil && !tls.AutoCert {
-		tls, err = GenerateSelfTLS(piplineName, listenerID)
+		tls, err = GenerateSelfTLS(piplineName, listenerID, nil)
 		if err != nil {
 			return tls, "", err
 		}

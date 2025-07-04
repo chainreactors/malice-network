@@ -6,6 +6,7 @@ import (
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 func Commands(con *repl.Console) []*cobra.Command {
@@ -17,20 +18,58 @@ func Commands(con *repl.Console) []*cobra.Command {
 		},
 	}
 
-	addCmd := &cobra.Command{
-		Use:   consts.CommandCertAdd,
-		Short: "add a new cert",
+	generateCmd := &cobra.Command{
+		Use:   consts.CommandCertGenerate,
+		Short: "generate a new cert",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return AddCmd(cmd, con)
+			return cmd.Help()
 		},
 	}
 
-	common.BindFlag(addCmd, common.TlsCertFlagSet)
-	common.BindFlagCompletions(addCmd, func(comp carapace.ActionMap) {
+	importCmd := &cobra.Command{
+		Use:   consts.CommandCertImport,
+		Short: "import a new cert",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return ImportCmd(cmd, con)
+		},
+	}
+
+	common.BindFlag(importCmd, common.ImportSet)
+	common.BindFlagCompletions(importCmd, func(comp carapace.ActionMap) {
 		comp["cert"] = carapace.ActionFiles().Usage("path to the cert file")
 		comp["key"] = carapace.ActionFiles().Usage("path to the key file")
-		comp["cert-name"] = common.CertNameCompleter(con)
+		comp["ca-cert"] = carapace.ActionFiles().Usage("path to the ca cert file")
 	})
+
+	selfSignCmd := &cobra.Command{
+		Use:   consts.CommandCertSelfSigned,
+		Short: "generate a self signed cert",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return SelfSignedCmd(cmd, con)
+		},
+	}
+	common.BindFlag(selfSignCmd, common.SelfSignedFlagSet)
+
+	acmeCmd := &cobra.Command{
+		Use:   consts.CommandCertSelfSigned,
+		Short: "generate a acme cert",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return AcmeCmd(cmd, con)
+		},
+	}
+	common.BindFlag(acmeCmd, func(f *pflag.FlagSet) {
+		f.String("domain", "", "acme domain")
+		f.String("pipeline", "", "pipeline name")
+	})
+
+	acmeCmd.MarkFlagRequired("domain")
+	acmeCmd.MarkFlagRequired("pipeline")
+
+	common.BindFlagCompletions(acmeCmd, func(comp carapace.ActionMap) {
+		comp["pipeline"] = common.HttpPipelineCompleter(con)
+	})
+
+	generateCmd.AddCommand(importCmd, selfSignCmd, acmeCmd)
 
 	delCmd := &cobra.Command{
 		Use:   consts.CommandCertDelete,
@@ -59,7 +98,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		comp["cert-name"] = common.CertNameCompleter(con)
 	})
 
-	certCmd.AddCommand(addCmd, delCmd, updateCmd)
+	certCmd.AddCommand(generateCmd, delCmd, updateCmd)
 	return []*cobra.Command{
 		certCmd,
 	}

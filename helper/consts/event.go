@@ -57,6 +57,7 @@ const (
 	CtrlContextFileCreate       = "file_create"
 	CtrlContextFileWrite        = "file_write"
 	CtrlContextFileClose        = "file_end"
+	CtrlAutoCert                = "auto_cert"
 )
 
 const (

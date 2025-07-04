@@ -105,6 +105,23 @@ func ParseCLRFlags(cmd *cobra.Command) map[string]string {
 	return params
 }
 
+func ImportSet(f *pflag.FlagSet) {
+	f.String("cert", "", "tls cert path")
+	f.String("key", "", "tls key path")
+	f.String("ca-cert", "", "tls ca cert path")
+}
+
+func SelfSignedFlagSet(f *pflag.FlagSet) {
+	f.String("CN", "", "Certificate Common Name (CN)")
+	f.String("O", "", "Certificate Organization (O)")
+	f.String("C", "", "Certificate Country (C)")
+	f.String("L", "", "Certificate Locality/City (L)")
+	f.String("OU", "", "Certificate Organizational Unit (OU)")
+	f.String("ST", "", "Certificate State/Province (ST)")
+	f.String("validity", "365", "Certificate validity period in days")
+	SetFlagSetGroup(f, "cert")
+}
+
 func TlsCertFlagSet(f *pflag.FlagSet) {
 	f.String("cert", "", "tls cert path")
 	f.String("key", "", "tls key path")
@@ -146,8 +163,8 @@ func ParsePipelineFlags(cmd *cobra.Command) (string, string, string, uint32) {
 }
 
 func ParseTLSFlags(cmd *cobra.Command) (*clientpb.TLS, string, error) {
-	certPath, _ := cmd.Flags().GetString("cert_path")
-	keyPath, _ := cmd.Flags().GetString("key_path")
+	certPath, _ := cmd.Flags().GetString("cert")
+	keyPath, _ := cmd.Flags().GetString("key")
 	autoCert, _ := cmd.Flags().GetBool("auto_cert")
 	domain, _ := cmd.Flags().GetString("domain")
 	if autoCert && domain == "" {
@@ -172,7 +189,7 @@ func ParseTLSFlags(cmd *cobra.Command) (*clientpb.TLS, string, error) {
 			Cert: cert,
 			Key:  key,
 		},
-		AutoCert: true,
+		AutoCert: autoCert,
 		Domain:   domain,
 	}, certificateName, nil
 }
@@ -343,4 +360,56 @@ func ParseGithubFlags(cmd *cobra.Command) *clientpb.GithubWorkflowConfig {
 	}
 
 	return githubConfig
+}
+
+// ParseSelfSignFlags parses the self-signed certificate related flags from the command and returns a CertificateSubject proto message.
+func ParseSelfSignFlags(cmd *cobra.Command) *clientpb.CertificateSubject {
+	cn, _ := cmd.Flags().GetString("CN")
+	o, _ := cmd.Flags().GetString("O")
+	c, _ := cmd.Flags().GetString("C")
+	l, _ := cmd.Flags().GetString("L")
+	ou, _ := cmd.Flags().GetString("OU")
+	st, _ := cmd.Flags().GetString("ST")
+	validity, _ := cmd.Flags().GetString("validity")
+	return &clientpb.CertificateSubject{
+		Cn:       cn,
+		O:        o,
+		C:        c,
+		L:        l,
+		Ou:       ou,
+		St:       st,
+		Validity: validity,
+	}
+}
+
+func ParseImportCertFlags(cmd *cobra.Command) (*clientpb.TLS, error) {
+	certPath, _ := cmd.Flags().GetString("cert")
+	keyPath, _ := cmd.Flags().GetString("key")
+	caPath, _ := cmd.Flags().GetString("ca-cert")
+
+	var err error
+	var cert, key, ca string
+	if certPath != "" && keyPath != "" && caPath != "" {
+		cert, err = cryptography.ProcessPEM(certPath)
+		if err != nil {
+			return nil, err
+		}
+		key, err = cryptography.ProcessPEM(keyPath)
+		if err != nil {
+			return nil, err
+		}
+		ca, err = cryptography.ProcessPEM(caPath)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return &clientpb.TLS{
+		Cert: &clientpb.Cert{
+			Cert: cert,
+			Key:  key,
+		},
+		Ca: &clientpb.Cert{
+			Cert: ca,
+		},
+	}, nil
 }

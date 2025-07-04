@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/binary"
 	"encoding/pem"
 	"fmt"
@@ -106,8 +107,10 @@ func RsaKeySize() int {
 	return rsaKeySizes[randomInt(len(rsaKeySizes))]
 }
 
-func GenerateCACert(commonName string) ([]byte, []byte, error) {
-	subject := RandomSubject(commonName)
+func GenerateCACert(commonName string, subject *pkix.Name) ([]byte, []byte, error) {
+	if subject == nil {
+		subject = RandomSubject(commonName)
+	}
 	privateKey, _ := rsa.GenerateKey(rand.Reader, RsaKeySize())
 	notBefore := time.Now()
 	days := randomInt(365) * -1
