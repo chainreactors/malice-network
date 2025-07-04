@@ -134,7 +134,6 @@ const (
 	MaliceRPC_DownloadArtifact_FullMethodName   = "/clientrpc.MaliceRPC/DownloadArtifact"
 	MaliceRPC_UploadArtifact_FullMethodName     = "/clientrpc.MaliceRPC/UploadArtifact"
 	MaliceRPC_DeleteArtifact_FullMethodName     = "/clientrpc.MaliceRPC/DeleteArtifact"
-	MaliceRPC_MaleficSRDI_FullMethodName        = "/clientrpc.MaliceRPC/MaleficSRDI"
 	MaliceRPC_GetLicenseInfo_FullMethodName     = "/clientrpc.MaliceRPC/GetLicenseInfo"
 	MaliceRPC_UpdateGithubConfig_FullMethodName = "/clientrpc.MaliceRPC/UpdateGithubConfig"
 	MaliceRPC_GetGithubConfig_FullMethodName    = "/clientrpc.MaliceRPC/GetGithubConfig"
@@ -291,7 +290,6 @@ type MaliceRPCClient interface {
 	DownloadArtifact(ctx context.Context, in *clientpb.Artifact, opts ...grpc.CallOption) (*clientpb.Artifact, error)
 	UploadArtifact(ctx context.Context, in *clientpb.Artifact, opts ...grpc.CallOption) (*clientpb.Artifact, error)
 	DeleteArtifact(ctx context.Context, in *clientpb.Artifact, opts ...grpc.CallOption) (*clientpb.Empty, error)
-	MaleficSRDI(ctx context.Context, in *clientpb.Artifact, opts ...grpc.CallOption) (*clientpb.Artifact, error)
 	// License
 	GetLicenseInfo(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.LicenseInfo, error)
 	// config
@@ -1355,15 +1353,6 @@ func (c *maliceRPCClient) DeleteArtifact(ctx context.Context, in *clientpb.Artif
 	return out, nil
 }
 
-func (c *maliceRPCClient) MaleficSRDI(ctx context.Context, in *clientpb.Artifact, opts ...grpc.CallOption) (*clientpb.Artifact, error) {
-	out := new(clientpb.Artifact)
-	err := c.cc.Invoke(ctx, MaliceRPC_MaleficSRDI_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *maliceRPCClient) GetLicenseInfo(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.LicenseInfo, error) {
 	out := new(clientpb.LicenseInfo)
 	err := c.cc.Invoke(ctx, MaliceRPC_GetLicenseInfo_FullMethodName, in, out, opts...)
@@ -1662,7 +1651,6 @@ type MaliceRPCServer interface {
 	DownloadArtifact(context.Context, *clientpb.Artifact) (*clientpb.Artifact, error)
 	UploadArtifact(context.Context, *clientpb.Artifact) (*clientpb.Artifact, error)
 	DeleteArtifact(context.Context, *clientpb.Artifact) (*clientpb.Empty, error)
-	MaleficSRDI(context.Context, *clientpb.Artifact) (*clientpb.Artifact, error)
 	// License
 	GetLicenseInfo(context.Context, *clientpb.Empty) (*clientpb.LicenseInfo, error)
 	// config
@@ -2027,9 +2015,6 @@ func (UnimplementedMaliceRPCServer) UploadArtifact(context.Context, *clientpb.Ar
 }
 func (UnimplementedMaliceRPCServer) DeleteArtifact(context.Context, *clientpb.Artifact) (*clientpb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteArtifact not implemented")
-}
-func (UnimplementedMaliceRPCServer) MaleficSRDI(context.Context, *clientpb.Artifact) (*clientpb.Artifact, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method MaleficSRDI not implemented")
 }
 func (UnimplementedMaliceRPCServer) GetLicenseInfo(context.Context, *clientpb.Empty) (*clientpb.LicenseInfo, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetLicenseInfo not implemented")
@@ -4117,24 +4102,6 @@ func _MaliceRPC_DeleteArtifact_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
-func _MaliceRPC_MaleficSRDI_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(clientpb.Artifact)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(MaliceRPCServer).MaleficSRDI(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: MaliceRPC_MaleficSRDI_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MaliceRPCServer).MaleficSRDI(ctx, req.(*clientpb.Artifact))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _MaliceRPC_GetLicenseInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(clientpb.Empty)
 	if err := dec(in); err != nil {
@@ -4909,10 +4876,6 @@ var MaliceRPC_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteArtifact",
 			Handler:    _MaliceRPC_DeleteArtifact_Handler,
-		},
-		{
-			MethodName: "MaleficSRDI",
-			Handler:    _MaliceRPC_MaleficSRDI_Handler,
 		},
 		{
 			MethodName: "GetLicenseInfo",

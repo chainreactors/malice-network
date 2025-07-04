@@ -946,7 +946,7 @@ func SaveArtifact(name, artifactType, platform, arch, stage, source string) (*mo
 
 func GetArtifacts() (*clientpb.Artifacts, error) {
 	var builders []*models.Artifact
-	result := Session().Find(&builders)
+	result := Session().Preload("Profile").Find(&builders)
 	if result.Error != nil {
 		return nil, result.Error
 	}

@@ -90,5 +90,6 @@ func (a *Artifact) ToArtifact(bin []byte) *clientpb.Artifact {
 		Status:       a.Status,
 		ProfileBytes: a.ProfileByte,
 		ParamsBytes:  []byte(a.ParamsData),
+		Source:       a.Source,
 	}
 }
