@@ -255,10 +255,13 @@ const (
 
 	CommandScreenShot = "screenshot"
 
-	CommandCert       = "cert"
-	CommandCertAdd    = "add"
-	CommandCertDelete = "delete"
-	CommandCertUpdate = "update"
+	CommandCert           = "cert"
+	CommandCertGenerate   = "generate"
+	CommandCertDelete     = "delete"
+	CommandCertUpdate     = "update"
+	CommandCertImport     = "import"
+	CommandCertSelfSigned = "self_signed"
+	CommandCertAcme       = "acme"
 )
 
 const (

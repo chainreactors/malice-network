@@ -28,13 +28,23 @@ var (
 // first recover profile from database
 // then use Generate overwrite profile
 func GenerateProfile(req *clientpb.BuildConfig) ([]byte, error) {
+	var profile *types.ProfileConfig
 	var err error
-	profile, err := db.GetProfile(req.ProfileName)
-	if err != nil {
-		return nil, err
+	if req.Type == consts.CommandBuildModules && req.ProfileName == "" {
+		profile, err = types.LoadProfile(types.DefaultProfile)
+		if err != nil {
+			return nil, err
+		}
+		if len(req.Modules) > 0 {
+			profile.Implant.Modules = req.Modules
+		}
+	} else {
+		profile, err = db.GetProfile(req.ProfileName)
+		if err != nil {
+			return nil, err
+		}
 	}
 	path := filepath.Join(configs.SourceCodePath, generateConfig)
-
 	err = db.UpdateGeneratorConfig(req, path, profile)
 	if err != nil {
 		return nil, err

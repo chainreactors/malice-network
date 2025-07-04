@@ -13,7 +13,7 @@ import (
 )
 
 func (rpc *Server) Build(ctx context.Context, req *clientpb.BuildConfig) (*clientpb.Artifact, error) {
-	if req.Type == consts.CommandBuildPulse || req.Inputs["package"] == consts.CommandBuildPulse {
+	if req.Type == consts.CommandBuildPulse {
 		var artifactID uint32
 		if req.ArtifactId != 0 {
 			artifactID = req.ArtifactId
@@ -35,7 +35,6 @@ func (rpc *Server) Build(ctx context.Context, req *clientpb.BuildConfig) (*clien
 			req.ArtifactId = artifactID
 		} else {
 			beaconReq := proto.Clone(req).(*clientpb.BuildConfig)
-			beaconReq.Srdi = true
 			if req.Source == consts.ArtifactFromAction {
 				beaconReq.Inputs["package"] = consts.CommandBuildBeacon
 				if beaconReq.Inputs["targets"] == consts.TargetX86Windows {

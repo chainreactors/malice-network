@@ -1,7 +1,6 @@
 package modules
 
 import (
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"github.com/chainreactors/malice-network/client/assets"
@@ -9,15 +8,13 @@ import (
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
-	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 )
 
@@ -25,19 +22,13 @@ func LoadModuleCmd(cmd *cobra.Command, con *repl.Console) error {
 	bundle, _ := cmd.Flags().GetString("bundle")
 	path, _ := cmd.Flags().GetString("path")
 	modules, _ := cmd.Flags().GetStringSlice("modules")
-	target, _ := cmd.Flags().GetString("target")
-	profile, _ := cmd.Flags().GetString("profile")
 
-	// Validate required flags
-	if target == "" || profile == "" {
-		return errors.New("require build module target and profile")
-	}
 	if path == "" && len(modules) == 0 {
 		return errors.New("path or modules is required")
 	}
 
 	if len(modules) > 0 && path == "" {
-		return handleModuleBuild(con, target, profile, modules)
+		return handleModuleBuild(con, modules)
 	}
 
 	// Default bundle handling
@@ -54,7 +45,7 @@ func LoadModuleCmd(cmd *cobra.Command, con *repl.Console) error {
 }
 
 // handleModuleBuild handles module build based on the builder resource (docker/action)
-func handleModuleBuild(con *repl.Console, target, profile string, modules []string) error {
+func handleModuleBuild(con *repl.Console, modules []string) error {
 	setting, err := assets.GetSetting()
 	if err != nil {
 		return err
@@ -64,42 +55,16 @@ func handleModuleBuild(con *repl.Console, target, profile string, modules []stri
 	if err != nil {
 		return err
 	}
-	var buildConfig *clientpb.BuildConfig
-	if source == consts.ArtifactFromAction {
-		if len(modules) == 0 {
-			modules = []string{"full"}
-		}
-
-		if github.Workflow == "" {
-			github.Workflow = "generate.yaml"
-		}
-		configByte := types.DefaultProfile
-		buildProfile, err := types.LoadProfile(configByte)
-		if err != nil {
-			return err
-		}
-		buildProfile.Implant.Modules = modules
-		configByte, _ = yaml.Marshal(buildProfile)
-		inputs := map[string]string{
-			"malefic_config_yaml":      base64.StdEncoding.EncodeToString(configByte),
-			"package":                  consts.CommandBuildModules,
-			"targets":                  "x86_64-pc-windows-msvc",
-			"malefic_modules_features": strings.Join(modules, ","),
-		}
-		buildConfig = &clientpb.BuildConfig{
-			Inputs:      inputs,
-			ProfileName: profile,
-			Source:      source,
-			Github:      github.ToProtobuf(),
-		}
-	} else {
-		buildConfig = &clientpb.BuildConfig{
-			Target:      target,
-			Modules:     modules,
-			ProfileName: profile,
-			Type:        consts.CommandBuildModules,
-			Source:      source,
-		}
+	target, ok := consts.GetBuildTargetNameByArchOS(con.GetInteractive().Session.Os.Arch, con.Session.Os.Name)
+	if !ok {
+		return errs.ErrInvalidateTarget
+	}
+	buildConfig := &clientpb.BuildConfig{
+		Target:      target,
+		Modules:     modules,
+		ProfileName: "",
+		Type:        consts.CommandBuildModules,
+		Source:      source,
 	}
 	return buildModule(con, buildConfig)
 }
