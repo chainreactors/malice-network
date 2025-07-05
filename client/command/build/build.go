@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/chainreactors/malice-network/client/command/common"
@@ -150,21 +149,17 @@ func PulseCmd(cmd *cobra.Command, con *repl.Console) error {
 }
 
 func BuildLogCmd(cmd *cobra.Command, con *repl.Console) error {
-	id := cmd.Flags().Arg(0)
-	buildID, err := strconv.ParseUint(id, 10, 32)
-	if err != nil {
-		return err
-	}
+	name := cmd.Flags().Arg(0)
 	num, _ := cmd.Flags().GetInt("limit")
 	builder, err := con.Rpc.BuildLog(con.Context(), &clientpb.Artifact{
-		Id:     uint32(buildID),
+		Name:   name,
 		LogNum: uint32(num),
 	})
 	if err != nil {
 		return err
 	}
 	if len(builder.Log) == 0 {
-		con.Log.Infof("No logs found for build ID %s\n", id)
+		con.Log.Infof("No logs found for build name %s\n", name)
 		return nil
 	}
 	con.Log.Console(string(builder.Log))

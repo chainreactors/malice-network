@@ -54,7 +54,7 @@ func (rpc *Server) Build(ctx context.Context, req *clientpb.BuildConfig) (*clien
 }
 
 func (rpc *Server) BuildLog(ctx context.Context, req *clientpb.Artifact) (*clientpb.Artifact, error) {
-	resultLog, err := db.GetBuilderLogs(req.Id, int(req.LogNum))
+	resultLog, err := db.GetBuilderLogs(req.Name, int(req.LogNum))
 	if err != nil {
 		return nil, err
 	}
