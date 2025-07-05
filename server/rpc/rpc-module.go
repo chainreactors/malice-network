@@ -5,7 +5,17 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/types"
+	"github.com/chainreactors/malice-network/server/internal/core"
 )
+
+func handlerModule(sess *core.Session) func(spite *implantpb.Spite) {
+	return func(spite *implantpb.Spite) {
+		if modules := spite.GetModules(); modules != nil {
+			sess.Modules = modules.Modules
+		}
+		sess.PushUpdate("")
+	}
+}
 
 func (rpc *Server) ListModule(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
 	greq, err := newGenericRequest(ctx, req)
@@ -17,12 +27,7 @@ func (rpc *Server) ListModule(ctx context.Context, req *implantpb.Request) (*cli
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgListModule, func(spite *implantpb.Spite) {
-		if modules := spite.GetModules(); modules != nil {
-			sess, _ := getSession(ctx)
-			sess.Modules = modules.Modules
-		}
-	})
+	go greq.HandlerResponse(ch, types.MsgListModule, handlerModule(greq.Session))
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -36,7 +41,7 @@ func (rpc *Server) LoadModule(ctx context.Context, req *implantpb.LoadModule) (*
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgEmpty)
+	go greq.HandlerResponse(ch, types.MsgListModule, handlerModule(greq.Session))
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -50,7 +55,7 @@ func (rpc *Server) RefreshModule(ctx context.Context, req *implantpb.Request) (*
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgEmpty)
+	go greq.HandlerResponse(ch, types.MsgListModule, handlerModule(greq.Session))
 	return greq.Task.ToProtobuf(), nil
 }
 

@@ -48,7 +48,7 @@ func NewSessions() *sessions {
 			sessModel := session.ToModel()
 			if !session.isAlived() {
 				sessModel.IsAlive = false
-				session.Publish(consts.CtrlSessionLeave, fmt.Sprintf("session %s from %s at %s has leaved ", session.ID, session.Target, session.PipelineID), true, true)
+				session.Publish(consts.CtrlSessionDead, fmt.Sprintf("session %s from %s at %s has leaved ", session.ID, session.Target, session.PipelineID), true, true)
 				//newSessions.Remove(session.ID)
 			}
 			err := db.Session().Save(sessModel).Error
@@ -362,6 +362,15 @@ func (s *Session) ToModel() *models.Session {
 	}
 }
 
+func (s *Session) PushUpdate(msg string) {
+	EventBroker.Publish(Event{
+		EventType: consts.EventSession,
+		Op:        consts.CtrlSessionUpdate,
+		Session:   s.ToProtobufLite(),
+		Message:   msg,
+	})
+}
+
 func (s *Session) Update(req *clientpb.RegisterSession) {
 	s.Name = req.RegisterData.Name
 	s.PipelineID = req.PipelineId
@@ -406,20 +415,12 @@ func (s *Session) Publish(Op string, msg string, notify bool, important bool) {
 	})
 }
 
-func (s *Session) nextTaskId() uint32 {
-	s.Taskseq++
-	return s.Taskseq
-}
-
-func (s *Session) SetLastTaskId(id uint32) {
-	s.Taskseq = id
-}
-
 func (s *Session) NewTask(name string, total int) *Task {
+	s.Taskseq++
 	task := &Task{
 		Type:      name,
 		Total:     total,
-		Id:        s.nextTaskId(),
+		Id:        s.Taskseq,
 		SessionId: s.ID,
 		Session:   s,
 		DoneCh:    make(chan bool),
@@ -427,10 +428,6 @@ func (s *Session) NewTask(name string, total int) *Task {
 	task.Ctx, task.Cancel = context.WithCancel(s.Ctx)
 	s.Tasks.Add(task)
 	return task
-}
-
-func (s *Session) AllTask() []*Task {
-	return s.Tasks.All()
 }
 
 // Request

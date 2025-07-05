@@ -29,6 +29,7 @@ func InitServerStatus(conn *grpc.ClientConn, config *mtls.ClientConfig) (*Server
 		finishCallbacks: &sync.Map{},
 		doneCallbacks:   &sync.Map{},
 		EventHook:       make(map[intermediate.EventCondition][]intermediate.OnEventFunc),
+		EventCallback:   make(map[string]func(*clientpb.Event)),
 	}
 	client, err := s.Rpc.LoginClient(context.Background(), &clientpb.LoginReq{
 		Name: config.Operator,
@@ -79,6 +80,7 @@ type ServerStatus struct {
 	doneCallbacks   *sync.Map
 	EventStatus     bool
 	EventHook       map[intermediate.EventCondition][]intermediate.OnEventFunc
+	EventCallback   map[string]func(*clientpb.Event)
 }
 
 func (s *ServerStatus) Update() error {

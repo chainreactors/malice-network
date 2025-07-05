@@ -175,10 +175,13 @@ func (s *ServerStatus) EventHandler() {
 				}()
 			}
 		}
+
+		if fn, ok := s.EventCallback[event.Op]; ok {
+			fn(event)
+		}
 		go func() {
 			s.handlerEvent(event)
 		}()
-
 	}
 }
 
@@ -245,6 +248,8 @@ func (s *ServerStatus) handlerSession(event *clientpb.Event) {
 	case consts.CtrlSessionRegister:
 		s.AddSession(event.Session)
 		Log.Important(event.Formatted + "\n")
+	case consts.CtrlSessionUpdate:
+		s.AddSession(event.Session)
 	case consts.CtrlSessionTask:
 		Log.Info(event.Formatted + "\n")
 	case consts.CtrlSessionError:
@@ -253,7 +258,7 @@ func (s *ServerStatus) handlerSession(event *clientpb.Event) {
 	case consts.CtrlSessionLog:
 		log := s.ObserverLog(sid)
 		log.Error(event.Formatted + "\n")
-	case consts.CtrlSessionLeave:
+	case consts.CtrlSessionDead:
 		Log.Important(event.Formatted + "\n")
 	case consts.CtrlSessionReborn:
 		s.AddSession(event.Session)

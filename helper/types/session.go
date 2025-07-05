@@ -2,7 +2,6 @@ package types
 
 import (
 	"encoding/json"
-
 	"github.com/mitchellh/mapstructure"
 
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"

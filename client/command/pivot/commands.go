@@ -21,7 +21,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return RemDialCmd(cmd, con)
 		},
 		Annotations: map[string]string{
-			"depend": consts.ModuleRem,
+			"depend": consts.ModuleRemDial,
 		},
 	}
 
@@ -36,7 +36,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return ForwardCmd(cmd, con)
 		},
 		Annotations: map[string]string{
-			"depend": consts.ModuleRem,
+			"depend": consts.ModuleRemDial,
 		},
 		Example: `Forward local port to remote target:
 ~~~
@@ -57,7 +57,7 @@ forward pipeline1 --port 8080 --target 192.168.1.1:80
 			return ReverseCmd(cmd, con)
 		},
 		Annotations: map[string]string{
-			"depend": consts.ModuleRem,
+			"depend": consts.ModuleRemDial,
 		},
 		Example: `Create reverse port forward:
 ~~~
@@ -76,7 +76,7 @@ reverse pipeline1 --port 12345
 			return ProxyCmd(cmd, con)
 		},
 		Annotations: map[string]string{
-			"depend": consts.ModuleRem,
+			"depend": consts.ModuleRemDial,
 		},
 		Example: `Create a proxy server:
 ~~~
@@ -95,7 +95,7 @@ proxy pipeline1 --port 8080
 			return ReversePortForwardCmd(cmd, con)
 		},
 		Annotations: map[string]string{
-			"depend": consts.ModuleRem,
+			"depend": consts.ModuleRemDial,
 		},
 		Example: `Create remote port forward:
 ~~~
@@ -117,7 +117,7 @@ rportforward pipeline1 --port 8080 --remote 192.168.1.1:80
 			return RPortForwardLocalCmd(cmd, con)
 		},
 		Annotations: map[string]string{
-			"depend": consts.ModuleRem,
+			"depend": consts.ModuleRemDial,
 		},
 	}
 
@@ -139,7 +139,7 @@ rportforward pipeline1 --port 8080 --remote 192.168.1.1:80
 			return PortForwardLocalCmd(cmd, con)
 		},
 		Annotations: map[string]string{
-			"depend": consts.ModuleRem,
+			"depend": consts.ModuleRemDial,
 		},
 	}
 	common.BindArgCompletions(portforwardLocalCmd, nil,
@@ -163,7 +163,7 @@ rportforward pipeline1 --port 8080 --remote 192.168.1.1:80
 func Register(con *repl.Console) {
 	// Register all command functions
 	con.RegisterImplantFunc(
-		consts.ModuleRem,
+		consts.ModuleRemDial,
 		RemDial,
 		"",
 		nil,
@@ -177,9 +177,9 @@ func Register(con *repl.Console) {
 		nil,
 	)
 	con.AddCommandFuncHelper(
-		consts.ModuleRem,
-		consts.ModuleRem,
-		consts.ModuleRem+`(active(),"pipeline1",{"-p","1080"})`,
+		consts.ModuleRemDial,
+		consts.ModuleRemDial,
+		consts.ModuleRemDial+`(active(),"pipeline1",{"-p","1080"})`,
 		[]string{
 			"session: special session",
 			"pipeline: pipeline name",

@@ -4,12 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/carapace-sh/carapace/pkg/x"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/reeflective/console"
+	"github.com/spf13/cobra"
+	"golang.org/x/exp/slices"
+	"google.golang.org/grpc/metadata"
 	"io"
 	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/carapace-sh/carapace/pkg/x"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/core/plugin"
@@ -17,10 +22,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/mals"
 	"github.com/chainreactors/tui"
-	"github.com/reeflective/console"
-	"github.com/spf13/cobra"
-	"golang.org/x/exp/slices"
-	"google.golang.org/grpc/metadata"
 )
 
 var (
@@ -137,9 +138,7 @@ func (c *Console) ImplantMenu() *cobra.Command {
 	return c.App.Menu(consts.ImplantMenu).Command
 }
 
-func (c *Console) SwitchImplant(sess *core.Session) {
-	c.ActiveTarget.Set(sess)
-	c.App.SwitchMenu(consts.ImplantMenu)
+func (c *Console) refreshCmd(sess *core.Session) int {
 	var count int
 	for _, cmd := range c.CMDs {
 		if cmd.Annotations["menu"] != consts.ImplantMenu {
@@ -164,6 +163,18 @@ func (c *Console) SwitchImplant(sess *core.Session) {
 		}
 		if cmd.Hidden == false {
 			count++
+		}
+	}
+	return count
+}
+
+func (c *Console) SwitchImplant(sess *core.Session) {
+	c.ActiveTarget.Set(sess)
+	c.App.SwitchMenu(consts.ImplantMenu)
+	count := c.refreshCmd(sess)
+	c.EventCallback[consts.CtrlSessionUpdate] = func(event *clientpb.Event) {
+		if event.Session.SessionId == sess.SessionId {
+			c.refreshCmd(sess)
 		}
 	}
 	c.Log.Importantf("os: %s, arch: %s, process: %d %s, pipeline: %s\n", sess.Os.Name, sess.Os.Arch, sess.Process.Ppid, sess.Process.Name, sess.PipelineId)

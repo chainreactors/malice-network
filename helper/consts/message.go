@@ -129,8 +129,8 @@ const (
 	ModuleRev2Self  = "rev2self"
 
 	// 3rd
-	ModuleRem     = "rem_dial"
-	ModuleLoadRem = "load_rem"
+	ModuleRemDial = "rem_dial"
+	ModuleRem     = "rem"
 )
 
 func SubCommandName(module string) string {

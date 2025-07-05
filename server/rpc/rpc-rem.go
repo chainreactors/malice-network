@@ -279,19 +279,6 @@ func (rpc *Server) RemAgentStop(ctx context.Context, req *clientpb.REMAgent) (*c
 	return &clientpb.Empty{}, nil
 }
 
-func (rpc *Server) LoadRem(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
-	greq, err := newGenericRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	ch, err := rpc.GenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
-	}
-	go greq.HandlerResponse(ch, types.MsgResponse)
-	return greq.Task.ToProtobuf(), nil
-}
-
 func (rpc *Server) HealthCheckRem(ctx context.Context, req *clientpb.Pipeline) (*clientpb.Empty, error) {
 	_, err := db.SavePipeline(models.FromPipelinePb(req))
 	if err != nil {
