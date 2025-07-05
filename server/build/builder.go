@@ -10,7 +10,6 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
-	"google.golang.org/protobuf/proto"
 )
 
 var (
@@ -20,84 +19,43 @@ var (
 
 // Builder
 type Builder interface {
-	GenerateConfig() (*clientpb.Artifact, error)
+	Generate() (*clientpb.Artifact, error)
 
-	ExecuteBuild() error
+	Execute() error
 
-	CollectArtifact() (string, string)
-
-	GetBeaconID() uint32
-
-	SetBeaconID(id uint32) error
+	Collect() (string, string)
 }
 
-func NewBuilder(req *clientpb.BuildConfig) (Builder, Builder, error) {
-	var pulseBuilder Builder
+func NewBuilder(req *clientpb.BuildConfig) (Builder, error) {
+	if req.Type == consts.CommandBuildPulse {
+		if req.ArtifactId == 0 {
+			profile, _ := db.GetProfile(req.ProfileName)
+			req.ArtifactId = profile.Pulse.Flags.ArtifactID
+		}
+
+		if req.Params != "" {
+			var newParams *types.ProfileParams
+			err := json.Unmarshal([]byte(req.Params), &newParams)
+			if err != nil {
+				return nil, err
+			}
+			newParams.OriginBeaconID = req.ArtifactId
+			req.Params = newParams.String()
+		}
+	}
+	var builder Builder
 	switch req.Source {
 	case consts.ArtifactFromAction:
-		pulseBuilder = NewActionBuilder(req)
+		builder = NewActionBuilder(req)
 	case consts.ArtifactFromDocker:
-		pulseBuilder = NewDockerBuilder(req)
+		builder = NewDockerBuilder(req)
 	case consts.ArtifactFromSaas:
-		pulseBuilder = NewSaasBuilder(req)
+		builder = NewSaasBuilder(req)
 	default:
-		return nil, nil, errors.New("failed to create builder")
+		return nil, errors.New("failed to create builder")
 	}
-	if req.Type == consts.CommandBuildPulse {
-		var beaconBuilder Builder
-		var artifactID uint32
-		if req.ArtifactId != 0 {
-			artifactID = req.ArtifactId
-		} else {
-			profile, _ := db.GetProfile(req.ProfileName)
-			yamlID := profile.Pulse.Flags.ArtifactID
-			if uint32(yamlID) != 0 {
-				artifactID = yamlID
-			} else {
-				artifactID = 0
-			}
-		}
-		builders, err := db.FindBeaconArtifact(artifactID, req.ProfileName)
-		if err != nil {
-			return nil, nil, err
-		}
-		if len(builders) > 0 {
-			artifactID = builders[0].ID
-			req.ArtifactId = artifactID
-			if req.Params == "" {
-				params := &types.ProfileParams{
-					OriginBeaconID: artifactID,
-				}
-				req.Params = params.String()
-			} else {
-				var newParams *types.ProfileParams
-				err = json.Unmarshal([]byte(req.Params), &newParams)
-				if err != nil {
-					return nil, nil, err
-				}
-				newParams.OriginBeaconID = req.ArtifactId
-				req.Params = newParams.String()
-			}
-		} else {
-			beaconReq := proto.Clone(req).(*clientpb.BuildConfig)
-			beaconReq.Type = consts.CommandBuildBeacon
-			if beaconReq.Target == consts.TargetX86Windows {
-				beaconReq.Target = consts.TargetX86WindowsGnu
-			} else {
-				beaconReq.Target = consts.TargetX64WindowsGnu
-			}
-			switch beaconReq.Source {
-			case consts.ArtifactFromAction:
-				beaconBuilder = NewActionBuilder(beaconReq)
-			case consts.ArtifactFromDocker:
-				beaconBuilder = NewDockerBuilder(beaconReq)
-			case consts.ArtifactFromSaas:
-				beaconBuilder = NewSaasBuilder(beaconReq)
-			}
-			return beaconBuilder, pulseBuilder, nil
-		}
-	}
-	return nil, pulseBuilder, nil
+
+	return builder, nil
 }
 
 type BuilderState struct {

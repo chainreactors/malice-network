@@ -2,7 +2,6 @@ package build
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/codenames"
@@ -10,7 +9,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	configType "github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"github.com/docker/docker/api/types"
@@ -34,7 +32,7 @@ func NewDockerBuilder(req *clientpb.BuildConfig) *DockerBuilder {
 	}
 }
 
-func (d *DockerBuilder) GenerateConfig() (*clientpb.Artifact, error) {
+func (d *DockerBuilder) Generate() (*clientpb.Artifact, error) {
 	var builder *models.Artifact
 	var err error
 	var profileByte []byte
@@ -61,7 +59,7 @@ func (d *DockerBuilder) GenerateConfig() (*clientpb.Artifact, error) {
 	return builder.ToArtifact([]byte{}), nil
 }
 
-func (d *DockerBuilder) ExecuteBuild() error {
+func (d *DockerBuilder) Execute() error {
 	dockerBuildSemaphore <- struct{}{}
 	defer func() { <-dockerBuildSemaphore }()
 	timeout := 20 * time.Minute
@@ -153,7 +151,7 @@ func (d *DockerBuilder) ExecuteBuild() error {
 	return nil
 }
 
-func (d *DockerBuilder) CollectArtifact() (string, string) {
+func (d *DockerBuilder) Collect() (string, string) {
 	_, artifactPath, err := MoveBuildOutput(d.config.Target, d.config.Type)
 	if err != nil {
 		logs.Log.Errorf("failed to move artifact %s output: %s", d.artifact.Name, err)
@@ -195,25 +193,25 @@ func (d *DockerBuilder) CollectArtifact() (string, string) {
 	return d.artifact.Path, consts.BuildStatusCompleted
 }
 
-func (d *DockerBuilder) GetBeaconID() uint32 {
-	return d.config.ArtifactId
-}
-
-func (d *DockerBuilder) SetBeaconID(id uint32) error {
-	d.config.ArtifactId = id
-	if d.config.Params == "" {
-		params := &configType.ProfileParams{
-			OriginBeaconID: id,
-		}
-		d.config.Params = params.String()
-	} else {
-		var newParams *configType.ProfileParams
-		err := json.Unmarshal([]byte(d.config.Params), &newParams)
-		if err != nil {
-			return err
-		}
-		newParams.OriginBeaconID = d.config.ArtifactId
-		d.config.Params = newParams.String()
-	}
-	return nil
-}
+//func (d *DockerBuilder) GetBeaconID() uint32 {
+//	return d.config.ArtifactId
+//}
+//
+//func (d *DockerBuilder) SetBeaconID(id uint32) error {
+//	d.config.ArtifactId = id
+//	if d.config.Params == "" {
+//		params := &configType.ProfileParams{
+//			OriginBeaconID: id,
+//		}
+//		d.config.Params = params.String()
+//	} else {
+//		var newParams *configType.ProfileParams
+//		err := json.Unmarshal([]byte(d.config.Params), &newParams)
+//		if err != nil {
+//			return err
+//		}
+//		newParams.OriginBeaconID = d.config.ArtifactId
+//		d.config.Params = newParams.String()
+//	}
+//	return nil
+//}

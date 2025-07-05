@@ -730,6 +730,8 @@ func GetProfile(name string) (*types.ProfileConfig, error) {
 		}
 		if profileModel.Pipeline != nil {
 			profile.Basic.Targets = []string{profileModel.Pipeline.Address()}
+			profile.Basic.Encryption = profileModel.Pipeline.Encryption.Choice().Type
+			profile.Basic.Key = profileModel.Pipeline.Encryption.Choice().Key
 			profile.Basic.Protocol = profileModel.Pipeline.Type
 			profile.Basic.TLS.Enable = profileModel.Pipeline.Tls.Enable
 		}
@@ -748,30 +750,6 @@ func GetProfiles() ([]*models.Profile, error) {
 	var profiles []*models.Profile
 	result := Session().Preload("Pipeline").Preload("PulsePipeline").Order("created_at ASC").Find(&profiles)
 	return profiles, result.Error
-}
-
-func FindBeaconArtifact(artifactID uint32, profileName string) ([]*models.Artifact, error) {
-	var builders []*models.Artifact
-	artifact, err := GetArtifactById(artifactID)
-	if err != nil && !errors.Is(err, ErrRecordNotFound) {
-		return builders, err
-	} else if err == nil {
-		builders = append(builders, artifact)
-		return builders, nil
-	}
-	if errors.Is(err, ErrRecordNotFound) {
-		var profileModel *models.Profile
-		result := Session().Preload("Pipeline").Preload("PulsePipeline").Where("name = ?", profileName).First(&profileModel)
-		if result.Error != nil {
-			return builders, result.Error
-		}
-		builders, err = FindBuildersByPipelineID(profileModel.PipelineID)
-		if err != nil {
-			return builders, err
-		}
-		return builders, nil
-	}
-	return builders, nil
 }
 
 // FindBuildersByPipelineID 遍历所有 builder，找到 profile.pipelineID = pipelineID 的 builder
@@ -946,7 +924,7 @@ func SaveArtifact(name, artifactType, platform, arch, stage, source string) (*mo
 
 func GetArtifacts() (*clientpb.Artifacts, error) {
 	var builders []*models.Artifact
-	result := Session().Preload("Profile").Find(&builders)
+	result := Session().Preload("Profile").Preload("Profile.Pipeline").Preload("Profile.PulsePipeline").Find(&builders)
 	if result.Error != nil {
 		return nil, result.Error
 	}

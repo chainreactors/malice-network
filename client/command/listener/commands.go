@@ -53,7 +53,7 @@ tcp --name tcp_test --listener tcp_default --host 192.168.0.43 --port 5003
 tcp --listener tcp_default --tls --cert_path /path/to/cert --key_path /path/to/key
 ~~~`,
 	}
-	common.BindFlag(tcpCmd, common.TlsCertFlagSet, common.PipelineFlagSet, common.EncryptionFlagSet, common.ArtifactFlagSet)
+	common.BindFlag(tcpCmd, common.TlsCertFlagSet, common.PipelineFlagSet, common.EncryptionFlagSet)
 
 	common.BindFlagCompletions(tcpCmd, func(comp carapace.ActionMap) {
 		comp["listener"] = common.ListenerIDCompleter(con)
@@ -88,7 +88,7 @@ http --listener http_default --tls --cert_path /path/to/cert --key_path /path/to
 	}
 
 	// 绑定基本标志
-	common.BindFlag(httpCmd, common.TlsCertFlagSet, common.PipelineFlagSet, common.EncryptionFlagSet, common.ArtifactFlagSet, func(f *pflag.FlagSet) {
+	common.BindFlag(httpCmd, common.TlsCertFlagSet, common.PipelineFlagSet, common.EncryptionFlagSet, func(f *pflag.FlagSet) {
 		httpCmd.Flags().StringToString("headers", nil, "HTTP response headers (key=value)")
 		httpCmd.Flags().String("error-page", "", "Path to custom error page file")
 		//httpCmd.Flags().String("body-prefix", "", "Prefix to add to response body")

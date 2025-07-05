@@ -13,7 +13,6 @@ import (
 
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
 	"github.com/chainreactors/malice-network/helper/utils/mtls"
@@ -81,8 +80,6 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 			return err
 		}
 	}
-
-	lns.autoBuild(cfg)
 
 	for _, bindPipeline := range cfg.BindPipelineConfig {
 		pipeline, err := bindPipeline.ToProtobuf(lns.Name)
@@ -197,6 +194,8 @@ func (lns *listener) RegisterAndStart(pipeline *clientpb.Pipeline) error {
 	if err != nil {
 		return err
 	}
+
+	lns.autoBuild(lns.cfg.AutoBuildConfig, pipeline)
 	return nil
 }
 
@@ -298,49 +297,44 @@ func (lns *listener) handlerStart(job *clientpb.Job) error {
 	return nil
 }
 
-func (lns *listener) autoBuild(cfg *configs.ListenerConfig) {
-	if cfg.AutoBuildConfig == nil || !cfg.AutoBuildConfig.Enable || len(cfg.AutoBuildConfig.Target) == 0 || len(cfg.AutoBuildConfig.Pipeline) == 0 {
+func (lns *listener) autoBuild(autoBuild *configs.AutoBuildConfig, pipeline *clientpb.Pipeline) {
+	if autoBuild == nil || !autoBuild.Enable || len(autoBuild.Target) == 0 || len(autoBuild.Pipeline) == 0 {
 		logs.Log.Debugf("not set auto_build/target/pipeline, skip auto build")
+		return
 	}
 
-	for _, target := range cfg.AutoBuildConfig.Target {
-		for _, pipe := range cfg.AutoBuildConfig.Pipeline {
-			var p core.Pipeline
-			var ok bool
-			if p, ok = lns.pipelines[pipe]; !ok {
-				logs.Log.Warnf("pipeline %s not found, skip auto build", pipe)
-				continue
-			}
-			pipeline := p.ToProtobuf()
-			targetMap, ok := consts.GetBuildTarget(target)
-			if !ok {
-				logs.Log.Warnf("invalid build target: %s, skip auto build", target)
-				continue
-			}
+	if !(pipeline.Type == consts.TCPPipeline || pipeline.Type == consts.HTTPPipeline) {
+		logs.Log.Debugf("%s pieline not support auto build", pipeline.Type)
+		return
+	}
 
-			if cfg.AutoBuildConfig.BuildPulse {
-				if err := lns.executeBuild(pipeline.Name+"_default", &clientpb.Artifact{
-					Target:   target,
-					Platform: targetMap.OS,
-					Arch:     targetMap.Arch,
-					Type:     consts.CommandBuildPulse,
-					Pipeline: pipeline.Name,
-				}); err != nil {
-					logs.Log.Warnf("Error building %s: %v\n", target, err)
-					continue
-				}
-			}
+	for _, target := range autoBuild.Target {
+		targetMap, ok := consts.GetBuildTarget(target)
+		if !ok {
+			logs.Log.Warnf("invalid build target: %s, skip auto build", target)
+			continue
+		}
 
+		if autoBuild.BuildPulse {
 			if err := lns.executeBuild(pipeline.Name+"_default", &clientpb.Artifact{
 				Target:   target,
 				Platform: targetMap.OS,
 				Arch:     targetMap.Arch,
-				Type:     consts.CommandBuildBeacon,
+				Type:     consts.CommandBuildPulse,
 				Pipeline: pipeline.Name,
 			}); err != nil {
 				logs.Log.Warnf("Error building %s: %v\n", target, err)
-				continue
 			}
+		}
+
+		if err := lns.executeBuild(pipeline.Name+"_default", &clientpb.Artifact{
+			Target:   target,
+			Platform: targetMap.OS,
+			Arch:     targetMap.Arch,
+			Type:     consts.CommandBuildBeacon,
+			Pipeline: pipeline.Name,
+		}); err != nil {
+			logs.Log.Warnf("Error building %s: %v\n", target, err)
 		}
 	}
 }
@@ -348,8 +342,10 @@ func (lns *listener) autoBuild(cfg *configs.ListenerConfig) {
 // 执行构建
 func (lns *listener) executeBuild(profileName string, artifact *clientpb.Artifact) error {
 	_, err := lns.Rpc.FindArtifact(lns.Context(), artifact)
-	if !errors.Is(err, errs.ErrNotFoundArtifact) {
-		return err
+	if err == nil {
+		return nil
+	} else {
+		err = nil
 	}
 	var buildResource string
 	_, err = lns.Rpc.DockerStatus(lns.Context(), &clientpb.Empty{})

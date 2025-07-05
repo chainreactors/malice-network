@@ -1,6 +1,7 @@
 package listener
 
 import (
+	"fmt"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
@@ -46,8 +47,8 @@ func ListPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 		} else if pipeline.Tls != nil {
 			newRow["TLS"] = tui.RedFg.Render(strconv.FormatBool(pipeline.Tls.Enable))
 		}
-		if pipeline.Encryption != nil && pipeline.Encryption.Enable {
-			newRow["Encryption"] = pipeline.Encryption.Type
+		if pipeline.Encryption != nil {
+			newRow["Encryption"] = fmt.Sprintf("%v", pipeline.Encryption)
 		} else if pipeline.Encryption != nil {
 			newRow["Encryption"] = "raw"
 		}

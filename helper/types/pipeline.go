@@ -2,6 +2,7 @@ package types
 
 import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"math/rand"
 )
 
 func FromTls(tls *clientpb.TLS) *TlsConfig {
@@ -28,9 +29,8 @@ func FromEncryption(encryption *clientpb.Encryption) *EncryptionConfig {
 		return nil
 	}
 	return &EncryptionConfig{
-		Enable: encryption.Enable,
-		Type:   encryption.Type,
-		Key:    encryption.Key,
+		Type: encryption.Type,
+		Key:  encryption.Key,
 	}
 }
 
@@ -85,34 +85,33 @@ func (e EncryptionsConfig) ToProtobuf() []*clientpb.Encryption {
 	return encryptions
 }
 
+func (e EncryptionsConfig) Choice() *EncryptionConfig {
+	return e[rand.Intn(len(e))]
+}
+
 func FromEncryptions(es []*clientpb.Encryption) EncryptionsConfig {
 	var encryptions EncryptionsConfig
 	for _, e := range es {
 		encryptions = append(encryptions, &EncryptionConfig{
-			Enable: e.Enable,
-			Type:   e.Type,
-			Key:    e.Key,
+			Type: e.Type,
+			Key:  e.Key,
 		})
 	}
 	return encryptions
 }
 
 type EncryptionConfig struct {
-	Enable bool   `json:"enable" config:"enable"`
-	Type   string `json:"type" config:"type"`
-	Key    string `json:"key" config:"key"`
+	Type string `json:"type" config:"type"`
+	Key  string `json:"key" config:"key"`
 }
 
 func (encryption *EncryptionConfig) ToProtobuf() *clientpb.Encryption {
 	if encryption == nil {
-		return &clientpb.Encryption{
-			Enable: false,
-		}
+		return &clientpb.Encryption{}
 	}
 	return &clientpb.Encryption{
-		Enable: encryption.Enable,
-		Type:   encryption.Type,
-		Key:    encryption.Key,
+		Type: encryption.Type,
+		Key:  encryption.Key,
 	}
 }
 

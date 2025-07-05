@@ -3,7 +3,6 @@ package common
 import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/intermediate"
@@ -132,19 +131,6 @@ func TlsCertFlagSet(f *pflag.FlagSet) {
 	SetFlagSetGroup(f, "tls")
 }
 
-func ArtifactFlagSet(f *pflag.FlagSet) {
-	f.StringSlice("target", []string{}, "build target")
-	f.String("beacon-pipeline", "", "beacon pipeline id")
-
-	SetFlagSetGroup(f, "artifact")
-}
-
-func ParseArtifactFlags(cmd *cobra.Command) ([]string, string) {
-	target, _ := cmd.Flags().GetStringSlice("target")
-	beaconPipeline, _ := cmd.Flags().GetString("beacon-pipeline")
-	return target, beaconPipeline
-}
-
 func PipelineFlagSet(f *pflag.FlagSet) {
 	f.StringP("listener", "l", "", "listener id")
 	f.String("host", "0.0.0.0", "pipeline host, the default value is **0.0.0.0**")
@@ -198,29 +184,17 @@ func EncryptionFlagSet(f *pflag.FlagSet) {
 	f.String("parser", "default", "pipeline parser")
 	f.String("encryption-type", "", "encryption type")
 	f.String("encryption-key", "", "encryption key")
-	f.Bool("encryption-enable", false, "whether to enable encryption")
 	SetFlagSetGroup(f, "encryption")
 }
 
-func ParseEncryptionFlags(cmd *cobra.Command) (string, *clientpb.Encryption) {
+func ParseEncryptionFlags(cmd *cobra.Command) (string, []*clientpb.Encryption) {
 	encryptionType, _ := cmd.Flags().GetString("encryption-type")
 	encryptionKey, _ := cmd.Flags().GetString("encryption-key")
-	enable, _ := cmd.Flags().GetBool("encryption-enable")
 	parser, _ := cmd.Flags().GetString("parser")
-	if !enable {
-		if parser == "malefic" {
-			encryptionKey = "maliceofinternal"
-			encryptionType = consts.CryptorAES
-		} else {
-			encryptionKey = "maliceofinternal"
-			encryptionType = consts.CryptorXOR
-		}
-	}
-	return parser, &clientpb.Encryption{
-		Enable: enable,
-		Type:   encryptionType,
-		Key:    encryptionKey,
-	}
+	return parser, []*clientpb.Encryption{&clientpb.Encryption{
+		Type: encryptionType,
+		Key:  encryptionKey,
+	}}
 }
 
 func GenerateFlagSet(f *pflag.FlagSet) {

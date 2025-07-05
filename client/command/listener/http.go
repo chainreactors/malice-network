@@ -17,7 +17,6 @@ func NewHttpPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 	if port == 0 {
 		port = cryptography.RandomInRange(10240, 65535)
 	}
-	target, beaconPipeline := common.ParseArtifactFlags(cmd)
 	name := cmd.Flags().Arg(0)
 	if name == "" {
 		name = fmt.Sprintf("http_%s_%d", listenerID, port)
@@ -61,15 +60,13 @@ func NewHttpPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 
 	// 注册pipeline
 	_, err = con.Rpc.RegisterPipeline(con.Context(), &clientpb.Pipeline{
-		Encryption:     encryption,
-		Tls:            tls,
-		Name:           name,
-		ListenerId:     listenerID,
-		Target:         target,
-		Parser:         parser,
-		BeaconPipeline: beaconPipeline,
-		CertName:       certName,
-		Enable:         false,
+		Encryption: encryption,
+		Tls:        tls,
+		Name:       name,
+		ListenerId: listenerID,
+		Parser:     parser,
+		CertName:   certName,
+		Enable:     false,
 		Body: &clientpb.Pipeline_Http{
 			Http: &clientpb.HTTPPipeline{
 				Name:   name,
@@ -86,10 +83,8 @@ func NewHttpPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 
 	con.Log.Importantf("HTTP Pipeline %s registered\n", name)
 	_, err = con.Rpc.StartPipeline(con.Context(), &clientpb.CtrlPipeline{
-		Name:           name,
-		ListenerId:     listenerID,
-		Target:         target,
-		BeaconPipeline: beaconPipeline,
+		Name:       name,
+		ListenerId: listenerID,
 	})
 	if err != nil {
 		return err

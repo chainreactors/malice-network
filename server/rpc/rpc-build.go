@@ -11,45 +11,23 @@ import (
 )
 
 func (rpc *Server) Build(ctx context.Context, req *clientpb.BuildConfig) (*clientpb.Artifact, error) {
-
-	beaconBuilder, builder, err := build.NewBuilder(req)
+	builder, err := build.NewBuilder(req)
 	if err != nil {
 		return nil, err
 	}
-	if beaconBuilder != nil {
-		beaconArtifact, err := beaconBuilder.GenerateConfig()
-		if err != nil {
-			return nil, err
-		}
-		go func() {
-			executeErr := beaconBuilder.ExecuteBuild()
-			if executeErr == nil {
-				beaconBuilder.CollectArtifact()
-			} else {
-				logs.Log.Errorf("failed to build %s: %s", beaconArtifact.Name, executeErr)
-				build.SendFailedMsg(beaconArtifact)
-			}
-		}()
-		if builder.GetBeaconID() != 0 {
-			err = builder.SetBeaconID(beaconArtifact.Id)
-			if err != nil {
-				return nil, err
-			}
-		}
-	}
-	artifact, err := builder.GenerateConfig()
+	artifact, err := builder.Generate()
 	if err != nil {
 		return nil, err
 	}
 	go func() {
-		executeErr := builder.ExecuteBuild()
+		executeErr := builder.Execute()
 		if executeErr == nil {
-			builder.CollectArtifact()
+			builder.Collect()
 		} else {
 			logs.Log.Errorf("failed to build %s: %s", artifact.Name, executeErr)
+			build.SendFailedMsg(artifact)
 		}
 	}()
-
 	return artifact, nil
 }
 

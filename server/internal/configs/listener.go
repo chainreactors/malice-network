@@ -56,6 +56,7 @@ func (tcp *TcpPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, erro
 		ListenerId: lisId,
 		Enable:     tcp.Enable,
 		Parser:     tcp.Parser,
+		Type:       consts.TCPPipeline,
 		Body: &clientpb.Pipeline_Tcp{
 			Tcp: &clientpb.TCPPipeline{
 				Host: tcp.Host,
@@ -139,6 +140,7 @@ func (http *HttpPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, er
 		ListenerId: lisId,
 		Enable:     http.Enable,
 		Parser:     http.Parser,
+		Type:       consts.HTTPPipeline,
 		Body: &clientpb.Pipeline_Http{
 			Http: &clientpb.HTTPPipeline{
 				Host:   http.Host,
@@ -281,21 +283,13 @@ func (t *TlsConfig) ReadCert() (*CertConfig, error) {
 func NewCrypto(es []*clientpb.Encryption) ([]cryptostream.Cryptor, error) {
 	var cryptos []cryptostream.Cryptor
 	for _, e := range es {
-		if !e.Enable {
-			c, err := cryptostream.NewCryptor(consts.CryptorRAW, nil, nil)
-			if err != nil {
-				return nil, err
-			}
-			cryptos = append(cryptos, c)
-		} else {
-			iv := slices.Clone([]byte(e.Key))
-			slices.Reverse(iv)
-			c, err := cryptostream.NewCryptor(e.Type, []byte(e.Key), cryptostream.PKCS7Pad(iv, 16))
-			if err != nil {
-				return nil, err
-			}
-			cryptos = append(cryptos, c)
+		iv := slices.Clone([]byte(e.Key))
+		slices.Reverse(iv)
+		c, err := cryptostream.NewCryptor(e.Type, []byte(e.Key), cryptostream.PKCS7Pad(iv, 16))
+		if err != nil {
+			return nil, err
 		}
+		cryptos = append(cryptos, c)
 	}
 
 	return cryptos, nil

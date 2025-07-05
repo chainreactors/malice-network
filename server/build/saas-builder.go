@@ -10,7 +10,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/encoders"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
@@ -36,7 +35,7 @@ func NewSaasBuilder(req *clientpb.BuildConfig) *SaasBuilder {
 	}
 }
 
-func (s *SaasBuilder) GenerateConfig() (*clientpb.Artifact, error) {
+func (s *SaasBuilder) Generate() (*clientpb.Artifact, error) {
 	var builder *models.Artifact
 	var err error
 	profileByte, err := GenerateProfile(s.config)
@@ -65,7 +64,7 @@ func (s *SaasBuilder) GenerateConfig() (*clientpb.Artifact, error) {
 	return builder.ToArtifact([]byte{}), nil
 }
 
-func (s *SaasBuilder) ExecuteBuild() error {
+func (s *SaasBuilder) Execute() error {
 	data, err := protojson.Marshal(s.config)
 	if err != nil {
 		return fmt.Errorf("failed to marshal config %s: %s", s.config.ProfileName, err)
@@ -102,7 +101,7 @@ func (s *SaasBuilder) ExecuteBuild() error {
 	return nil
 }
 
-func (s *SaasBuilder) CollectArtifact() (string, string) {
+func (s *SaasBuilder) Collect() (string, string) {
 	saasConfig := configs.GetSaasConfig()
 	statusUrl := fmt.Sprintf("%s/api/build/status/%s", saasConfig.Url, s.builder.Name)
 	downloadUrl := fmt.Sprintf("%s/api/build/download/%s", saasConfig.Url, s.builder.Name)
@@ -307,25 +306,25 @@ func CheckAndDownloadArtifact(statusUrl string, downloadUrl string, token string
 	}
 }
 
-func (s *SaasBuilder) GetBeaconID() uint32 {
-	return s.config.ArtifactId
-}
-
-func (s *SaasBuilder) SetBeaconID(id uint32) error {
-	s.config.ArtifactId = id
-	if s.config.Params == "" {
-		params := &types.ProfileParams{
-			OriginBeaconID: id,
-		}
-		s.config.Params = params.String()
-	} else {
-		var newParams *types.ProfileParams
-		err := json.Unmarshal([]byte(s.config.Params), &newParams)
-		if err != nil {
-			return err
-		}
-		newParams.OriginBeaconID = s.config.ArtifactId
-		s.config.Params = newParams.String()
-	}
-	return nil
-}
+//func (s *SaasBuilder) GetBeaconID() uint32 {
+//	return s.config.ArtifactId
+//}
+//
+//func (s *SaasBuilder) SetBeaconID(id uint32) error {
+//	s.config.ArtifactId = id
+//	if s.config.Params == "" {
+//		params := &types.ProfileParams{
+//			OriginBeaconID: id,
+//		}
+//		s.config.Params = params.String()
+//	} else {
+//		var newParams *types.ProfileParams
+//		err := json.Unmarshal([]byte(s.config.Params), &newParams)
+//		if err != nil {
+//			return err
+//		}
+//		newParams.OriginBeaconID = s.config.ArtifactId
+//		s.config.Params = newParams.String()
+//	}
+//	return nil
+//}

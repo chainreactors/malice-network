@@ -1,7 +1,6 @@
 package build
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/codenames"
@@ -37,7 +36,7 @@ func NewActionBuilder(req *clientpb.BuildConfig) *ActionBuilder {
 	}
 }
 
-func (a *ActionBuilder) GenerateConfig() (*clientpb.Artifact, error) {
+func (a *ActionBuilder) Generate() (*clientpb.Artifact, error) {
 	githubConfig := a.config.Github
 	if githubConfig != nil {
 		if githubConfig.Owner == "" || githubConfig.Repo == "" || githubConfig.Token == "" {
@@ -87,7 +86,7 @@ func (a *ActionBuilder) GenerateConfig() (*clientpb.Artifact, error) {
 	return builder.ToArtifact([]byte{}), nil
 }
 
-func (a *ActionBuilder) ExecuteBuild() error {
+func (a *ActionBuilder) Execute() error {
 	if len(a.config.Modules) == 0 {
 		a.config.Modules = a.profile.Implant.Modules
 	}
@@ -101,30 +100,30 @@ func (a *ActionBuilder) ExecuteBuild() error {
 	return nil
 }
 
-func (a *ActionBuilder) CollectArtifact() (string, string) {
+func (a *ActionBuilder) Collect() (string, string) {
 	go downloadArtifactWhenReady(a.config.Github.Owner, a.config.Github.Repo, a.config.Github.Token, a.config.Github.IsRemove, a.config.ArtifactId, a.builder)
 	return a.builder.Path, ""
 }
 
-func (a *ActionBuilder) GetBeaconID() uint32 {
-	return a.config.ArtifactId
-}
-
-func (a *ActionBuilder) SetBeaconID(id uint32) error {
-	a.config.ArtifactId = id
-	if a.config.Params == "" {
-		params := &types.ProfileParams{
-			OriginBeaconID: id,
-		}
-		a.config.Params = params.String()
-	} else {
-		var newParams *types.ProfileParams
-		err := json.Unmarshal([]byte(a.config.Params), &newParams)
-		if err != nil {
-			return err
-		}
-		newParams.OriginBeaconID = a.config.ArtifactId
-		a.config.Params = newParams.String()
-	}
-	return nil
-}
+//func (a *ActionBuilder) GetBeaconID() uint32 {
+//	return a.config.ArtifactId
+//}
+//
+//func (a *ActionBuilder) SetBeaconID(id uint32) error {
+//	a.config.ArtifactId = id
+//	if a.config.Params == "" {
+//		params := &types.ProfileParams{
+//			OriginBeaconID: id,
+//		}
+//		a.config.Params = params.String()
+//	} else {
+//		var newParams *types.ProfileParams
+//		err := json.Unmarshal([]byte(a.config.Params), &newParams)
+//		if err != nil {
+//			return err
+//		}
+//		newParams.OriginBeaconID = a.config.ArtifactId
+//		a.config.Params = newParams.String()
+//	}
+//	return nil
+//}
