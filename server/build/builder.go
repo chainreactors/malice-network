@@ -1,10 +1,12 @@
 package build
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
@@ -62,6 +64,20 @@ func NewBuilder(req *clientpb.BuildConfig) (Builder, Builder, error) {
 		if len(builders) > 0 {
 			artifactID = builders[0].ID
 			req.ArtifactId = artifactID
+			if req.Params == "" {
+				params := &types.ProfileParams{
+					OriginBeaconID: artifactID,
+				}
+				req.Params = params.String()
+			} else {
+				var newParams *types.ProfileParams
+				err = json.Unmarshal([]byte(req.Params), &newParams)
+				if err != nil {
+					return nil, nil, err
+				}
+				newParams.OriginBeaconID = req.ArtifactId
+				req.Params = newParams.String()
+			}
 		} else {
 			beaconReq := proto.Clone(req).(*clientpb.BuildConfig)
 			beaconReq.Type = consts.CommandBuildBeacon

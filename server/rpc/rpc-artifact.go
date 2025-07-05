@@ -125,7 +125,7 @@ func (rpc *Server) GetArtifact(ctx context.Context, req *clientpb.Artifact) (*cl
 		return nil, err
 	}
 
-	data, err := os.ReadFile(artifact.Path)
+	data, err := gonut.DonutShellcodeFromFile(artifact.Path, artifact.Arch, "")
 	if err != nil {
 		return nil, err
 	}

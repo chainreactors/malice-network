@@ -204,11 +204,43 @@ func (profile *Profile) RemoveExtension(extension string) bool {
 }
 
 func UpdateProfileConfig(p *Profile) error {
-	err := config.Set("", p)
+	// 分别设置每个字段，避免使用空字符串作为key
+	err := config.Set("resources", p.ResourceDir)
 	if err != nil {
-		logs.Log.Errorf("Failed to update profile config %s", err)
+		logs.Log.Errorf("Failed to update resources config %s", err)
 		return err
 	}
+
+	err = config.Set("tmp", p.TempDir)
+	if err != nil {
+		logs.Log.Errorf("Failed to update tmp config %s", err)
+		return err
+	}
+
+	err = config.Set("aliases", p.Aliases)
+	if err != nil {
+		logs.Log.Errorf("Failed to update aliases config %s", err)
+		return err
+	}
+
+	err = config.Set("extensions", p.Extensions)
+	if err != nil {
+		logs.Log.Errorf("Failed to update extensions config %s", err)
+		return err
+	}
+
+	err = config.Set("mals", p.Mals)
+	if err != nil {
+		logs.Log.Errorf("Failed to update mals config %s", err)
+		return err
+	}
+
+	err = config.Set("settings", p.Settings)
+	if err != nil {
+		logs.Log.Errorf("Failed to update settings config %s", err)
+		return err
+	}
+
 	return nil
 }
 

@@ -997,7 +997,7 @@ func FindArtifact(target *clientpb.Artifact) (*clientpb.Artifact, error) {
 	var path string
 	var name string
 	if err != nil {
-		if artifact.Params.RelinkBeaconID == 0 {
+		if artifact.Params == nil || artifact.Params.RelinkBeaconID == 0 {
 			return nil, fmt.Errorf("the original beacon is lost and there is no relink beacon")
 		}
 		var relinkArtifact *models.Artifact
