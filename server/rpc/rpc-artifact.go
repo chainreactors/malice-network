@@ -37,7 +37,8 @@ func ObjcopyPulse(builder *models.Artifact, platform, arch string) ([]byte, erro
 	}()
 
 	// Prepare objcopy command to extract .text section as binary
-	objcopyCommand := []string{"objcopy", "--only-section=.text", "-O", "binary", builder.Path, dstPath}
+	//objcopyCommand := []string{"objcopy", "--only-section=.text", "-O", "binary", builder.Path, dstPath}
+	objcopyCommand := []string{"objcopy", "-O", "binary", builder.Path, dstPath}
 	logs.Log.Debugf("Executing objcopy command: %v", objcopyCommand)
 
 	// Execute objcopy command with proper working directory
