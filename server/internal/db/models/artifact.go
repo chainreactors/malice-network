@@ -81,7 +81,6 @@ func (a *Artifact) ToArtifact(bin []byte) *clientpb.Artifact {
 		Name:         a.Name,
 		Target:       a.Target,
 		Type:         a.Type,
-		Stage:        a.Stager,
 		Platform:     a.Os,
 		Arch:         a.Arch,
 		Profile:      a.ProfileName,

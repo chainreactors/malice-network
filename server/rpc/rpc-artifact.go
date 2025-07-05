@@ -125,7 +125,13 @@ func (rpc *Server) GetArtifact(ctx context.Context, req *clientpb.Artifact) (*cl
 	if err != nil {
 		return nil, err
 	}
-	data, err := gonut.DonutShellcodeFromFile(artifactModel.Path, artifactModel.Arch, "")
+	_, err = os.Stat(artifact.Path)
+	if err != nil {
+		if artifact.Params != nil && artifact.Type == consts.CommandBuildBeacon && artifact.Params.RelinkBeaconID != 0 {
+			artifact, err = db.GetArtifact(&clientpb.Artifact{Id: artifact.Params.RelinkBeaconID})
+		}
+	}
+	data, err := gonut.DonutShellcodeFromFile(artifact.Path, artifact.Arch, "")
 	if err != nil {
 		return nil, err
 	}
