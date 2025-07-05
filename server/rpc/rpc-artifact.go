@@ -120,18 +120,17 @@ func (rpc *Server) UploadArtifact(ctx context.Context, req *clientpb.Artifact) (
 
 // for listener
 func (rpc *Server) GetArtifact(ctx context.Context, req *clientpb.Artifact) (*clientpb.Artifact, error) {
-	//var err error
 	artifactModel, err := db.GetArtifact(req)
 	if err != nil {
 		return nil, err
 	}
-	_, err = os.Stat(artifact.Path)
+	_, err = os.Stat(artifactModel.Path)
 	if err != nil {
-		if artifact.Params != nil && artifact.Type == consts.CommandBuildBeacon && artifact.Params.RelinkBeaconID != 0 {
-			artifact, err = db.GetArtifact(&clientpb.Artifact{Id: artifact.Params.RelinkBeaconID})
+		if artifactModel.Params != nil && artifactModel.Type == consts.CommandBuildBeacon && artifactModel.Params.RelinkBeaconID != 0 {
+			artifactModel, err = db.GetArtifact(&clientpb.Artifact{Id: artifactModel.Params.RelinkBeaconID})
 		}
 	}
-	data, err := gonut.DonutShellcodeFromFile(artifact.Path, artifact.Arch, "")
+	data, err := gonut.DonutShellcodeFromFile(artifactModel.Path, artifactModel.Arch, "")
 	if err != nil {
 		return nil, err
 	}
