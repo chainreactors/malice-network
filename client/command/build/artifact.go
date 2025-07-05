@@ -46,11 +46,10 @@ func PrintArtifacts(artifacts *clientpb.Artifacts, con *repl.Console) error {
 
 	defaultLengths := map[string]int{
 		"ID":       6,
-		"Name":     20,
+		"Name":     30,
 		"Pipeline": 16,
 		"Target":   22,
 		"Type":     8,
-		"Stager":   10,
 		"Source":   7,
 		//"Modules":   8,
 		"CreatedAt": 20,
@@ -73,10 +72,10 @@ func PrintArtifacts(artifacts *clientpb.Artifacts, con *repl.Console) error {
 		if len(pipelineDisplay) > 16 {
 			pipelineDisplay = pipelineDisplay[:13] + "..."
 		}
-		nameDisplay := artifact.Name
-		if len(nameDisplay) > 20 {
-			nameDisplay = nameDisplay[:17] + "..."
-		}
+		//nameDisplay := artifact.Name
+		//if len(nameDisplay) > 20 {
+		//	nameDisplay = nameDisplay[:17] + "..."
+		//}
 		profileDisplay := artifact.Profile
 		if len(profileDisplay) > 18 {
 			profileDisplay = profileDisplay[:15] + "..."
@@ -84,7 +83,7 @@ func PrintArtifacts(artifacts *clientpb.Artifacts, con *repl.Console) error {
 		row = table.NewRow(
 			table.RowData{
 				"ID":     artifact.Id,
-				"Name":   nameDisplay,
+				"Name":   artifact.Name,
 				"Type":   artifact.Type,
 				"Target": artifact.Target,
 				"Source": artifact.Source,

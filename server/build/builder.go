@@ -105,7 +105,7 @@ type BuilderState struct {
 	Status string // 状态
 }
 
-const maxDockerBuildConcurrency = 2
+const maxDockerBuildConcurrency = 1
 
 var (
 	// 用信号量控制最大并发数
