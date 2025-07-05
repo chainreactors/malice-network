@@ -56,7 +56,6 @@ func (rpc *Server) RegisterPipeline(ctx context.Context, req *clientpb.Pipeline)
 	if req.Parser == consts.ImplantPulse {
 		profileReq = &clientpb.Profile{
 			Name:            req.Name + "_default",
-			PipelineId:      req.BeaconPipeline,
 			PulsePipelineId: req.Name,
 		}
 	} else {
@@ -137,7 +136,6 @@ func (rpc *Server) StartPipeline(ctx context.Context, req *clientpb.CtrlPipeline
 		return nil, err
 	}
 	pipelineProto := pipelineDB.ToProtobuf()
-	pipelineProto.Target = req.Target
 	job := &core.Job{
 		ID:       core.NextJobID(),
 		Pipeline: pipelineProto,

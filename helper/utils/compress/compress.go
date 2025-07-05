@@ -1,4 +1,4 @@
-package cryptostream
+package compress
 
 import "github.com/golang/snappy"
 

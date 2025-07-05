@@ -1,6 +1,8 @@
 package types
 
-import "github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+import (
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+)
 
 func FromTls(tls *clientpb.TLS) *TlsConfig {
 	return &TlsConfig{
@@ -33,8 +35,9 @@ func FromEncryption(encryption *clientpb.Encryption) *EncryptionConfig {
 }
 
 type CertConfig struct {
-	Cert string `json:"cert" yaml:"cert"`
-	Key  string `json:"key" yaml:"key"`
+	Enable bool   `json:"enable" yaml:"enable" config:"enable"`
+	Cert   string `json:"cert" yaml:"cert" config:"cert"`
+	Key    string `json:"key" yaml:"key" config:"key"`
 }
 
 func (cert *CertConfig) ToProtobuf() *clientpb.Cert {
@@ -72,10 +75,32 @@ func (tls *TlsConfig) ToProtobuf() *clientpb.TLS {
 	}
 }
 
+type EncryptionsConfig []*EncryptionConfig
+
+func (e EncryptionsConfig) ToProtobuf() []*clientpb.Encryption {
+	var encryptions []*clientpb.Encryption
+	for _, e := range e {
+		encryptions = append(encryptions, e.ToProtobuf())
+	}
+	return encryptions
+}
+
+func FromEncryptions(es []*clientpb.Encryption) EncryptionsConfig {
+	var encryptions EncryptionsConfig
+	for _, e := range es {
+		encryptions = append(encryptions, &EncryptionConfig{
+			Enable: e.Enable,
+			Type:   e.Type,
+			Key:    e.Key,
+		})
+	}
+	return encryptions
+}
+
 type EncryptionConfig struct {
-	Enable bool   `json:"enable"`
-	Type   string `json:"type"`
-	Key    string `json:"key"`
+	Enable bool   `json:"enable" config:"enable"`
+	Type   string `json:"type" config:"type"`
+	Key    string `json:"key" config:"key"`
 }
 
 func (encryption *EncryptionConfig) ToProtobuf() *clientpb.Encryption {
@@ -98,7 +123,7 @@ type PipelineParams struct {
 	Console    string                        `json:"console,omitempty"`
 	Subscribe  string                        `json:"subscribe,omitempty"`
 	Agents     map[string]*clientpb.REMAgent `json:"agents,omitempty"`
-	Encryption *EncryptionConfig             `json:"encryption,omitempty"`
+	Encryption EncryptionsConfig             `json:"encryption,omitempty"`
 	Tls        *TlsConfig                    `json:"tls,omitempty"`
 	// HTTP pipeline specific params
 	Headers    map[string][]string `json:"headers,omitempty"`

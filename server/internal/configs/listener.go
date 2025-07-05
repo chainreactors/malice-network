@@ -25,22 +25,24 @@ type ListenerConfig struct {
 	HttpPipelines      []*HttpPipelineConfig `config:"http"`
 	Websites           []*WebsiteConfig      `config:"website"`
 	REMs               []*REMConfig          `config:"rem"`
+	AutoBuildConfig    *AutoBuildConfig      `config:"auto_build"`
 }
 
 type TcpPipelineConfig struct {
-	Enable           bool              `config:"enable" default:"true"`
-	Name             string            `config:"name" default:"tcp"`
-	Host             string            `config:"host" default:"0.0.0.0"`
-	Port             uint16            `config:"port" default:"5001"`
-	Parser           string            `config:"parser" default:"malefic"`
-	AutoBuildConfig  *AutoBuildConfig  `config:"auto_build"`
-	TlsConfig        *TlsConfig        `config:"tls"`
-	EncryptionConfig *EncryptionConfig `config:"encryption"`
+	Enable           bool                    `config:"enable" default:"true"`
+	Name             string                  `config:"name" default:"tcp"`
+	Host             string                  `config:"host" default:"0.0.0.0"`
+	Port             uint16                  `config:"port" default:"5001"`
+	Parser           string                  `config:"parser" default:"malefic"`
+	TlsConfig        *TlsConfig              `config:"tls"`
+	EncryptionConfig types.EncryptionsConfig `config:"encryption"`
 }
 
 type AutoBuildConfig struct {
-	Target         []string `config:"target" default:""`
-	BeaconPipeline string   `config:"beacon_pipeline" default:""`
+	Enable     bool     `config:"enable" default:"false"`
+	BuildPulse bool     `config:"build_pulse" default:"false"`
+	Target     []string `config:"target" default:""`
+	Pipeline   []string `config:"pipeline" default:""`
 }
 
 func (tcp *TcpPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, error) {
@@ -48,16 +50,12 @@ func (tcp *TcpPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, erro
 	if err != nil {
 		return nil, err
 	}
-	if tcp.AutoBuildConfig == nil {
-		tcp.AutoBuildConfig = &AutoBuildConfig{}
-	}
+
 	return &clientpb.Pipeline{
-		Name:           tcp.Name,
-		ListenerId:     lisId,
-		Enable:         tcp.Enable,
-		Parser:         tcp.Parser,
-		Target:         tcp.AutoBuildConfig.Target,
-		BeaconPipeline: tcp.AutoBuildConfig.BeaconPipeline,
+		Name:       tcp.Name,
+		ListenerId: lisId,
+		Enable:     tcp.Enable,
+		Parser:     tcp.Parser,
 		Body: &clientpb.Pipeline_Tcp{
 			Tcp: &clientpb.TCPPipeline{
 				Host: tcp.Host,
@@ -70,10 +68,10 @@ func (tcp *TcpPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, erro
 }
 
 type BindPipelineConfig struct {
-	Enable           bool              `config:"enable" default:"true"`
-	Name             string            `config:"name" default:"bind"`
-	TlsConfig        *TlsConfig        `config:"tls"`
-	EncryptionConfig *EncryptionConfig `config:"encryption"`
+	Enable           bool                    `config:"enable" default:"true"`
+	Name             string                  `config:"name" default:"bind"`
+	TlsConfig        *TlsConfig              `config:"tls"`
+	EncryptionConfig types.EncryptionsConfig `config:"encryption"`
 }
 
 func (pipeline *BindPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, error) {
@@ -95,27 +93,23 @@ func (pipeline *BindPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline
 }
 
 type HttpPipelineConfig struct {
-	Enable           bool                `config:"enable" default:"true"`
-	Name             string              `config:"name" default:"http"`
-	Host             string              `config:"host" default:"0.0.0.0"`
-	Port             uint16              `config:"port" default:"8080"`
-	Parser           string              `config:"parser" default:"malefic"`
-	AutoBuildConfig  *AutoBuildConfig    `config:"auto_build"`
-	TlsConfig        *TlsConfig          `config:"tls"`
-	EncryptionConfig *EncryptionConfig   `config:"encryption"`
-	Headers          map[string][]string `config:"headers"`
-	ErrorPage        string              `config:"error_page"`
-	BodyPrefix       string              `config:"body_prefix"`
-	BodySuffix       string              `config:"body_suffix"`
+	Enable           bool                    `config:"enable" default:"true"`
+	Name             string                  `config:"name" default:"http"`
+	Host             string                  `config:"host" default:"0.0.0.0"`
+	Port             uint16                  `config:"port" default:"8080"`
+	Parser           string                  `config:"parser" default:"malefic"`
+	TlsConfig        *TlsConfig              `config:"tls"`
+	EncryptionConfig types.EncryptionsConfig `config:"encryption"`
+	Headers          map[string][]string     `config:"headers"`
+	ErrorPage        string                  `config:"error_page"`
+	BodyPrefix       string                  `config:"body_prefix"`
+	BodySuffix       string                  `config:"body_suffix"`
 }
 
 func (http *HttpPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, error) {
 	tls, err := http.TlsConfig.ReadCert()
 	if err != nil {
 		return nil, err
-	}
-	if http.AutoBuildConfig == nil {
-		http.AutoBuildConfig = &AutoBuildConfig{}
 	}
 
 	// 如果指定了错误页面，读取文件内容
@@ -141,12 +135,10 @@ func (http *HttpPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, er
 	}
 
 	return &clientpb.Pipeline{
-		Name:           http.Name,
-		ListenerId:     lisId,
-		Enable:         http.Enable,
-		Parser:         http.Parser,
-		Target:         http.AutoBuildConfig.Target,
-		BeaconPipeline: http.AutoBuildConfig.BeaconPipeline,
+		Name:       http.Name,
+		ListenerId: lisId,
+		Enable:     http.Enable,
+		Parser:     http.Parser,
 		Body: &clientpb.Pipeline_Http{
 			Http: &clientpb.HTTPPipeline{
 				Host:   http.Host,
@@ -286,32 +278,27 @@ func (t *TlsConfig) ReadCert() (*CertConfig, error) {
 	}, nil
 }
 
-type EncryptionConfig struct {
-	Enable bool   `config:"enable"`
-	Type   string `config:"type"`
-	Key    string `config:"key"`
-}
-
-func NewCrypto(e *clientpb.Encryption) (cryptostream.Cryptor, error) {
-	if !e.Enable {
-		return cryptostream.NewCryptor(consts.CryptorRAW, nil, nil)
-	}
-	iv := slices.Clone([]byte(e.Key))
-	slices.Reverse(iv)
-	return cryptostream.NewCryptor(e.Type, []byte(e.Key), cryptostream.PKCS7Pad(iv, 16))
-}
-
-func (e *EncryptionConfig) ToProtobuf() *clientpb.Encryption {
-	if e == nil {
-		return &clientpb.Encryption{
-			Enable: false,
+func NewCrypto(es []*clientpb.Encryption) ([]cryptostream.Cryptor, error) {
+	var cryptos []cryptostream.Cryptor
+	for _, e := range es {
+		if !e.Enable {
+			c, err := cryptostream.NewCryptor(consts.CryptorRAW, nil, nil)
+			if err != nil {
+				return nil, err
+			}
+			cryptos = append(cryptos, c)
+		} else {
+			iv := slices.Clone([]byte(e.Key))
+			slices.Reverse(iv)
+			c, err := cryptostream.NewCryptor(e.Type, []byte(e.Key), cryptostream.PKCS7Pad(iv, 16))
+			if err != nil {
+				return nil, err
+			}
+			cryptos = append(cryptos, c)
 		}
 	}
-	return &clientpb.Encryption{
-		Type:   e.Type,
-		Key:    e.Key,
-		Enable: e.Enable,
-	}
+
+	return cryptos, nil
 }
 
 // JoinStringSlice Helper function to join string slices

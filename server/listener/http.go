@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/chainreactors/malice-network/server/internal/stream"
 	"io"
 	"net"
 	"net/http"
@@ -19,10 +20,8 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
 	"github.com/chainreactors/malice-network/helper/types"
-	"github.com/chainreactors/malice-network/helper/utils/peek"
 	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/core"
-	"github.com/chainreactors/malice-network/server/internal/parser"
 	"github.com/chainreactors/malice-network/server/internal/parser/pulse"
 )
 
@@ -42,19 +41,12 @@ func NewHttpPipeline(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipel
 		Name:           pipeline.Name,
 		Port:           uint16(http.Port),
 		Host:           http.Host,
-		Target:         pipeline.Target,
-		BeaconPipeline: pipeline.BeaconPipeline,
-		PipelineConfig: core.FromProtobuf(pipeline),
+		PipelineConfig: core.FromPipeline(pipeline),
 		Headers:        params.Headers,
 		CertName:       pipeline.CertName,
 		ErrorPage:      []byte(params.ErrorPage),
 		BodyPrefix:     []byte(params.BodyPrefix),
 		BodySuffix:     []byte(params.BodySuffix),
-	}
-	var err error
-	pp.parser, err = parser.NewParser(pp.Parser)
-	if err != nil {
-		return nil, err
 	}
 
 	return pp, nil
@@ -70,7 +62,6 @@ type HTTPPipeline struct {
 	Target         []string
 	BeaconPipeline string
 	CertName       string
-	parser         *parser.MessageParser
 	*core.PipelineConfig
 	Headers    map[string][]string
 	ErrorPage  []byte
@@ -80,14 +71,12 @@ type HTTPPipeline struct {
 
 func (pipeline *HTTPPipeline) ToProtobuf() *clientpb.Pipeline {
 	p := &clientpb.Pipeline{
-		Name:           pipeline.Name,
-		Enable:         pipeline.Enable,
-		Type:           consts.HTTPPipeline,
-		ListenerId:     pipeline.ListenerID,
-		Parser:         pipeline.Parser,
-		Target:         pipeline.Target,
-		BeaconPipeline: pipeline.BeaconPipeline,
-		CertName:       pipeline.CertName,
+		Name:       pipeline.Name,
+		Enable:     pipeline.Enable,
+		Type:       consts.HTTPPipeline,
+		ListenerId: pipeline.ListenerID,
+		Parser:     pipeline.Parser,
+		CertName:   pipeline.CertName,
 		Body: &clientpb.Pipeline_Http{
 			Http: &clientpb.HTTPPipeline{
 				Name:       pipeline.Name,
@@ -167,21 +156,22 @@ func (pipeline *HTTPPipeline) Start() error {
 		}()
 	}
 
-	logs.Log.Infof("[pipeline] starting HTTP pipeline on %s:%d, parser: %s, cryptor: %s, tls: %t",
-		pipeline.Host, pipeline.Port, pipeline.Parser, pipeline.Encryption.Type, pipeline.Cert.Enable)
+	logs.Log.Infof("[pipeline] starting HTTP pipeline on %s:%d, parser: %s, tls: %t",
+		pipeline.Host, pipeline.Port, pipeline.Parser, pipeline.Cert.Enable)
 	pipeline.Enable = true
 	return nil
 }
 
-func (pipeline *HTTPPipeline) handlePulse(resp http.ResponseWriter, req *http.Request, conn *peek.Conn) {
-	magic, artifactId, err := pipeline.parser.ReadHeader(conn)
+func (pipeline *HTTPPipeline) handlePulse(resp http.ResponseWriter, req *http.Request, conn *cryptostream.Conn) {
+	p := conn.Parser
+	magic, artifactId, err := p.ReadHeader(conn)
 	if err != nil {
 		logs.Log.Errorf(err.Error())
 		return
 	}
 
 	builder, err := pipeline.rpc.GetArtifact(context.Background(), &clientpb.Artifact{
-		Id: uint32(artifactId),
+		Id: artifactId,
 	})
 	if err != nil {
 		logs.Log.Errorf("not found artifact %d ,%s ", artifactId, err.Error())
@@ -192,7 +182,7 @@ func (pipeline *HTTPPipeline) handlePulse(resp http.ResponseWriter, req *http.Re
 	resp.Header().Set("Content-Length", fmt.Sprintf("%d", len(builder.Bin)+pulse.HeaderLength+1))
 	logs.Log.Infof("send artifact %d %s", builder.Id, builder.Name)
 
-	err = pipeline.parser.WritePacket(conn, types.BuildOneSpites(&implantpb.Spite{
+	err = p.WritePacket(conn, types.BuildOneSpites(&implantpb.Spite{
 		Name: consts.ModuleInit,
 		Body: &implantpb.Spite_Init{
 			Init: &implantpb.Init{Data: builder.Bin},
@@ -204,7 +194,7 @@ func (pipeline *HTTPPipeline) handlePulse(resp http.ResponseWriter, req *http.Re
 	}
 }
 
-func (pipeline *HTTPPipeline) handleMalefic(w http.ResponseWriter, r *http.Request, conn *peek.Conn) {
+func (pipeline *HTTPPipeline) handleMalefic(w http.ResponseWriter, r *http.Request, conn *cryptostream.Conn) {
 	ctx, _ := context.WithCancel(r.Context())
 	connect, err := pipeline.getConnection(conn)
 	if err != nil {
@@ -241,6 +231,8 @@ func (pipeline *HTTPPipeline) handler(w http.ResponseWriter, r *http.Request) {
 		pipeline.writeError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
+
+	logs.Log.Debugf("[pipeline.%s] accept from %s", pipeline.Name, r.RemoteAddr)
 	switch pipeline.Parser {
 	case consts.ImplantMalefic:
 		pipeline.handleMalefic(w, r, conn)
@@ -251,9 +243,9 @@ func (pipeline *HTTPPipeline) handler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (pipeline *HTTPPipeline) getConnection(conn *peek.Conn) (*core.Connection, error) {
-	p := pipeline.parser
-	sid, _, err := p.PeekHeader(conn)
+func (pipeline *HTTPPipeline) getConnection(conn *cryptostream.Conn) (*core.Connection, error) {
+	p := conn.Parser
+	sid, err := cryptostream.PeekSid(conn)
 	if err != nil {
 		return nil, err
 	}
@@ -302,7 +294,7 @@ func (h *httpReadWriter) Write(p []byte) (n int, err error) {
 }
 
 func (h *httpReadWriter) Close() error {
-	return h.Close()
+	return nil
 }
 
 func (h *httpReadWriter) RemoteAddr() net.Addr {

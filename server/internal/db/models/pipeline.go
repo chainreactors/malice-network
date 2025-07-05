@@ -191,7 +191,7 @@ func FromPipelinePb(pipeline *clientpb.Pipeline) *Pipeline {
 			PipelineParams: &types.PipelineParams{
 				Parser:     pipeline.Parser,
 				Tls:        types.FromTls(pipeline.Tls),
-				Encryption: types.FromEncryption(pipeline.Encryption),
+				Encryption: types.FromEncryptions(pipeline.Encryption),
 			},
 		}
 	case *clientpb.Pipeline_Http:
@@ -207,7 +207,7 @@ func FromPipelinePb(pipeline *clientpb.Pipeline) *Pipeline {
 			PipelineParams: &types.PipelineParams{
 				Parser:     pipeline.Parser,
 				Tls:        types.FromTls(pipeline.Tls),
-				Encryption: types.FromEncryption(pipeline.Encryption),
+				Encryption: types.FromEncryptions(pipeline.Encryption),
 			},
 		}
 	case *clientpb.Pipeline_Bind:
@@ -221,7 +221,7 @@ func FromPipelinePb(pipeline *clientpb.Pipeline) *Pipeline {
 			PipelineParams: &types.PipelineParams{
 				Parser:     pipeline.Parser,
 				Tls:        types.FromTls(pipeline.Tls),
-				Encryption: types.FromEncryption(pipeline.Encryption),
+				Encryption: types.FromEncryptions(pipeline.Encryption),
 			},
 		}
 	case *clientpb.Pipeline_Rem:

@@ -1,4 +1,4 @@
-package cryptostream
+package compress
 
 import (
 	"fmt"

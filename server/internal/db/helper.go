@@ -679,15 +679,15 @@ func NewProfile(profile *clientpb.Profile) error {
 		PipelineID:      profile.PipelineId,
 		Raw:             profile.Content,
 	}
-	if profile.PulsePipelineId != "" {
-		pulsePipeline, err := FindPipeline(profile.PulsePipelineId)
-		if err != nil {
-			return err
-		}
-		if strings.ToUpper(pulsePipeline.Encryption.Type) != consts.CryptorXOR {
-			return errs.ErrInvalidEncType
-		}
-	}
+	//if profile.PulsePipelineId != "" {
+	//	pulsePipeline, err := FindPipeline(profile.PulsePipelineId)
+	//	if err != nil {
+	//		return err
+	//	}
+	//	if strings.ToUpper(pulsePipeline.Encryption.Type) != consts.CryptorXOR {
+	//		return errs.ErrInvalidEncType
+	//	}
+	//}
 	return Session().Create(model).Error
 }
 

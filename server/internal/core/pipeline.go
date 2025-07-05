@@ -3,11 +3,9 @@ package core
 import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/types"
-	"github.com/chainreactors/malice-network/helper/utils/peek"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/stream"
 	"io"
-	"net"
 )
 
 type Pipeline interface {
@@ -37,7 +35,7 @@ func (ps Pipelines) ToProtobuf() *clientpb.Pipelines {
 	return pls
 }
 
-func FromProtobuf(pipeline *clientpb.Pipeline) *PipelineConfig {
+func FromPipeline(pipeline *clientpb.Pipeline) *PipelineConfig {
 	return &PipelineConfig{
 		ListenerID: pipeline.ListenerId,
 		Parser:     pipeline.Parser,
@@ -45,11 +43,7 @@ func FromProtobuf(pipeline *clientpb.Pipeline) *PipelineConfig {
 			CertConfig: types.FromCert(pipeline.GetTls().Cert),
 			Enable:     pipeline.GetTls().Enable,
 		},
-		Encryption: &configs.EncryptionConfig{
-			Enable: pipeline.GetEncryption().Enable,
-			Type:   pipeline.GetEncryption().Type,
-			Key:    pipeline.GetEncryption().Key,
-		},
+		Encryption: types.FromEncryptions(pipeline.GetEncryption()),
 	}
 }
 
@@ -57,21 +51,15 @@ type PipelineConfig struct {
 	ListenerID string
 	Parser     string
 	Cert       *configs.CertConfig
-	Encryption *configs.EncryptionConfig
+	Encryption types.EncryptionsConfig
 }
 
-func (p *PipelineConfig) WrapConn(conn io.ReadWriteCloser) (*peek.Conn, error) {
-	cry, err := configs.NewCrypto(p.Encryption.ToProtobuf())
+func (p *PipelineConfig) WrapConn(conn io.ReadWriteCloser) (*cryptostream.Conn, error) {
+	crys, err := configs.NewCrypto(p.Encryption.ToProtobuf())
 	if err != nil {
 		return nil, err
 	}
-
-	if _, ok := conn.(net.Conn); ok {
-		conn = cryptostream.NewCryptoConn(conn.(net.Conn), cry)
-	} else {
-		conn = cryptostream.NewCryptoRWC(conn, cry)
-	}
-	return peek.WrapPeekConn(conn), nil
+	return cryptostream.WrapPeekConn(conn, crys, p.Parser)
 }
 
 //

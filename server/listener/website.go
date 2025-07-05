@@ -3,8 +3,6 @@ package listener
 import (
 	"errors"
 	"fmt"
-	"github.com/chainreactors/malice-network/helper/utils/fileutils"
-	"github.com/chainreactors/malice-network/server/internal/configs"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -14,7 +12,9 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/server/internal/certutils"
+	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 )
 
@@ -38,7 +38,7 @@ func StartWebsite(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeline
 		rootPath:       websitePp.Root,
 		rpc:            rpc,
 		CertName:       pipeline.CertName,
-		PipelineConfig: core.FromProtobuf(pipeline),
+		PipelineConfig: core.FromPipeline(pipeline),
 		Content:        make(map[string]*clientpb.WebContent),
 	}
 	for _, c := range content {

@@ -7,23 +7,25 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/utils/peek"
-	"github.com/chainreactors/malice-network/server/internal/stream"
+	"github.com/chainreactors/malice-network/helper/utils/compress"
 	"github.com/gookit/config/v2"
 	"google.golang.org/protobuf/proto"
+	"io"
 )
 
 const (
-	MsgStart        = 0
-	MsgSessionStart = 1
-	MsgSessionEnd   = 5
-	HeaderLength    = 9
+	MsgStart              = 0
+	MsgSessionStart       = 1
+	MsgSessionEnd         = 5
+	HeaderLength          = 9
+	DefaultStartDelimiter = 0xd1
+	DefaultEndDelimiter   = 0xd2
 )
 
 func NewMaleficParser() *MaleficParser {
 	return &MaleficParser{
-		StartDelimiter: 0xd1,
-		EndDelimiter:   0xd2,
+		StartDelimiter: DefaultStartDelimiter,
+		EndDelimiter:   DefaultEndDelimiter,
 	}
 }
 
@@ -32,35 +34,41 @@ type MaleficParser struct {
 	EndDelimiter   byte
 }
 
-func (parser *MaleficParser) PeekHeader(conn *peek.Conn) (uint32, uint32, error) {
-	header, err := conn.Peek(HeaderLength)
+func ParseSid(data []byte) uint32 {
+	sessionId := data[MsgSessionStart:MsgSessionEnd]
+	return binary.LittleEndian.Uint32(sessionId)
+}
+
+func (parser *MaleficParser) readHeader(conn io.ReadWriteCloser) (uint32, uint32, error) {
+	header := make([]byte, HeaderLength)
+	n, err := io.ReadFull(conn, header)
 	if err != nil {
 		return 0, 0, err
+	}
+	if n != HeaderLength {
+		return 0, 0, fmt.Errorf("read header error, expect %d, real %d", HeaderLength, n)
 	}
 
 	if header[MsgStart] != parser.StartDelimiter {
 		return 0, 0, errs.ErrInvalidStart
 	}
-	sessionId := header[MsgSessionStart:MsgSessionEnd]
+	sessionId := ParseSid(header)
 	length := binary.LittleEndian.Uint32(header[MsgSessionEnd:])
 	if length > uint32(config.Uint(consts.ConfigMaxPacketLength))+consts.KB*16 {
 		return 0, 0, fmt.Errorf("%w,expect: %d, recv: %d", errs.ErrPacketTooLarge, config.Int(consts.ConfigMaxPacketLength), length)
 	}
 
-	return binary.LittleEndian.Uint32(sessionId), length + 1, nil
+	return sessionId, length + 1, nil
 }
 
-func (parser *MaleficParser) ReadHeader(conn *peek.Conn) (uint32, uint32, error) {
-	sid, length, err := parser.PeekHeader(conn)
+func (parser *MaleficParser) ReadHeader(conn io.ReadWriteCloser) (uint32, uint32, error) {
+	sid, length, err := parser.readHeader(conn)
 	if err != nil {
 		return 0, 0, err
 	}
 	//logs.Log.Debugf("%v read packet from %s , %d bytes", sid, conn.RemoteAddr(), length)
 	if length > uint32(config.Uint(consts.ConfigMaxPacketLength))+consts.KB*16 {
 		return 0, 0, fmt.Errorf("%w,expect: %d, recv: %d", errs.ErrPacketTooLarge, config.Int(consts.ConfigMaxPacketLength), length)
-	}
-	if _, err := conn.Reader.Discard(HeaderLength); err != nil {
-		return 0, 0, err
 	}
 	return sid, length, nil
 }
@@ -71,7 +79,7 @@ func (parser *MaleficParser) Parse(buf []byte) (*implantpb.Spites, error) {
 		return nil, errs.ErrInvalidEnd
 	}
 	buf = buf[:length]
-	buf, err := cryptostream.Decompress(buf)
+	buf, err := compress.Decompress(buf)
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +98,7 @@ func (parser *MaleficParser) Marshal(spites *implantpb.Spites, sid uint32) ([]by
 	if err != nil {
 		return nil, err
 	}
-	data, err = cryptostream.Compress(data)
+	data, err = compress.Compress(data)
 	if err != nil {
 		return nil, err
 	}

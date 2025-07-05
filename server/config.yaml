@@ -28,46 +28,34 @@ listeners:
   auth: listener.auth
   enable: true
   ip: 127.0.0.1
+  auto_build:
+    enable: true
+    build_pulse: true
+    target:
+      - x86_64-pc-windows-gnu
+    pipeline:
+      - tcp
+      - http
   tcp:
-    - name: tcp_malefic
+    - name: tcp
+      enable: true
       port: 5001
       host: 0.0.0.0
       protocol: tcp
-      parser: malefic
-      enable: true
-      auto_build:
-        target:
-          #          - x86_64-unknown-linux-musl
-          - x86_64-pc-windows-gnu
+      parser: auto
       tls:
         enable: false
         auto_cert: false
       encryption:
-        enable: true
-        type: aes
-        key: maliceofinternal
+        - enable: true
+          type: aes
+          key: maliceofinternal
+        - enable: true
+          type: xor
+          key: maliceofinternal
 
-    - name: tcp_pulse
-      port: 5002
-      host: 0.0.0.0
-      parser: pulse
-      #      auto_build:
-      #        target:
-      #          - x86_64-unknown-linux-musl
-      #          - x86_64-pc-windows-gnu
-      #        beacon_pipeline: tcp_malefic
-      enable: true
-      encryption:
-        enable: true
-        type: xor
-        key: maliceofinternal
-      auto_build:
-        beacon_pipeline: tcp_malefic
-        target:
-          #          - x86_64-unknown-linux-musl
-          - x86_64-pc-windows-gnu
   http:
-    - name: http-malefic
+    - name: http
       enable: true
       host: 0.0.0.0
       port: 8080
@@ -76,34 +64,13 @@ listeners:
         enable: false
         auto_cert: false
       encryption:
-        enable: true
-        type: aes
-        key: maliceofinternal
-      auto_build:
-        target:
-          #          - x86_64-unknown-linux-musl
-          - x86_64-pc-windows-gnu
+        - enable: true
+          type: aes
+          key: maliceofinternal
+        - enable: true
+          type: xor
+          key: maliceofinternal
       error_page: ""
-    - name: http-pulse
-      enable: true
-      host: 0.0.0.0
-      port: 8081
-      parser: pulse
-      encryption:
-        enable: true
-        type: xor
-        key: maliceofinternal
-      #      auto_build:
-      #        target:
-      #          - x86_64-unknown-linux-musl
-      #          - x86_64-pc-windows-gnu
-      #        beacon_pipeline: http-malefic
-      error_page: ""
-      auto_build:
-        beacon_pipeline: http-malefic
-        target:
-          #          - x86_64-unknown-linux-musl
-          - x86_64-pc-windows-gnu
   bind:
     - name: bind_pipeline
       enable: true

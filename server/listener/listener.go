@@ -9,7 +9,6 @@ import (
 	"google.golang.org/grpc/metadata"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/chainreactors/logs"
@@ -83,6 +82,8 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 		}
 	}
 
+	lns.autoBuild(cfg)
+
 	for _, bindPipeline := range cfg.BindPipelineConfig {
 		pipeline, err := bindPipeline.ToProtobuf(lns.Name)
 		if err != nil {
@@ -122,9 +123,6 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 			continue
 		}
 		tls, err := newWebsite.TlsConfig.ReadCert()
-		if err != nil {
-			return err
-		}
 		if err != nil {
 			return err
 		}
@@ -192,11 +190,9 @@ func (lns *listener) RegisterAndStart(pipeline *clientpb.Pipeline) error {
 	}
 
 	_, err = lns.Rpc.StartPipeline(lns.Context(), &clientpb.CtrlPipeline{
-		Name:           pipeline.Name,
-		ListenerId:     lns.ID(),
-		BeaconPipeline: pipeline.BeaconPipeline,
-		Target:         pipeline.Target,
-		Pipeline:       pipeline,
+		Name:       pipeline.Name,
+		ListenerId: lns.ID(),
+		Pipeline:   pipeline,
 	})
 	if err != nil {
 		return err
@@ -299,81 +295,64 @@ func (lns *listener) handlerStart(job *clientpb.Job) error {
 		return err
 	}
 	job.Name = pipeline.ID()
-	err = lns.autoBuild(job.GetPipeline())
-	if err != nil {
-		logs.Log.Warn(err)
-	}
 	return nil
 }
 
-func (lns *listener) autoBuild(pipeline *clientpb.Pipeline) error {
-	// 检查pipeline目标是否为空
-	if len(pipeline.Target) == 0 {
-		logs.Log.Debugf("pipeline %s target is empty, auto build canceled", pipeline.Name)
-		return nil
+func (lns *listener) autoBuild(cfg *configs.ListenerConfig) {
+	if cfg.AutoBuildConfig == nil || !cfg.AutoBuildConfig.Enable || len(cfg.AutoBuildConfig.Target) == 0 || len(cfg.AutoBuildConfig.Pipeline) == 0 {
+		logs.Log.Debugf("not set auto_build/target/pipeline, skip auto build")
 	}
 
-	// 遍历所有目标进行构建
-	for _, target := range pipeline.Target {
-		// 准备构建参数
-		artifact, err := lns.prepareBuildParams(pipeline, target)
-		if err != nil {
-			logs.Log.Warnf(err.Error())
-			continue
+	for _, target := range cfg.AutoBuildConfig.Target {
+		for _, pipe := range cfg.AutoBuildConfig.Pipeline {
+			var p core.Pipeline
+			var ok bool
+			if p, ok = lns.pipelines[pipe]; !ok {
+				logs.Log.Warnf("pipeline %s not found, skip auto build", pipe)
+				continue
+			}
+			pipeline := p.ToProtobuf()
+			targetMap, ok := consts.GetBuildTarget(target)
+			if !ok {
+				logs.Log.Warnf("invalid build target: %s, skip auto build", target)
+				continue
+			}
+
+			if cfg.AutoBuildConfig.BuildPulse {
+				if err := lns.executeBuild(pipeline.Name+"_default", &clientpb.Artifact{
+					Target:   target,
+					Platform: targetMap.OS,
+					Arch:     targetMap.Arch,
+					Type:     consts.CommandBuildPulse,
+					Pipeline: pipeline.Name,
+				}); err != nil {
+					logs.Log.Warnf("Error building %s: %v\n", target, err)
+					continue
+				}
+			}
+
+			if err := lns.executeBuild(pipeline.Name+"_default", &clientpb.Artifact{
+				Target:   target,
+				Platform: targetMap.OS,
+				Arch:     targetMap.Arch,
+				Type:     consts.CommandBuildBeacon,
+				Pipeline: pipeline.Name,
+			}); err != nil {
+				logs.Log.Warnf("Error building %s: %v\n", target, err)
+				continue
+			}
 		}
-
-		// 检查构建产物是否已存在
-		if _, err := lns.Rpc.FindArtifact(lns.Context(), artifact); err == nil {
-			continue // 产物已存在,跳过构建
-		} else if !errors.Is(err, errs.ErrNotFoundArtifact) {
-			logs.Log.Errorf("Error finding artifact for %s: %v\n", target, err)
-			continue
-		}
-
-		// 创建构建配置文件
-		profileName := pipeline.Name + "_default"
-
-		// 执行构建
-		if err := lns.executeBuild(profileName, artifact); err != nil {
-			return err
-		}
 	}
-
-	return nil
-}
-
-// 准备构建参数
-func (lns *listener) prepareBuildParams(pipeline *clientpb.Pipeline, target string) (*clientpb.Artifact, error) {
-	targetMap, ok := consts.GetBuildTarget(target)
-	if !ok {
-		return nil, fmt.Errorf("invalid build target: %s", target)
-	}
-
-	artifact := &clientpb.Artifact{
-		Target:   target,
-		Platform: targetMap.OS,
-		Arch:     targetMap.Arch,
-	}
-
-	// Pulse构建特殊处理
-	if pipeline.Parser == consts.CommandBuildPulse {
-		if !strings.Contains(target, "windows") {
-			return nil, fmt.Errorf("pulse build target must be windows, %s is not supported", target)
-		}
-		artifact.Type = consts.CommandBuildPulse
-		artifact.Pipeline = pipeline.Name
-	} else {
-		artifact.Type = consts.CommandBuildBeacon
-		artifact.Pipeline = pipeline.Name
-	}
-
-	return artifact, nil
 }
 
 // 执行构建
 func (lns *listener) executeBuild(profileName string, artifact *clientpb.Artifact) error {
+	_, err := lns.Rpc.FindArtifact(lns.Context(), artifact)
+	if !errors.Is(err, errs.ErrNotFoundArtifact) {
+		return err
+	}
 	var buildResource string
-	_, err := lns.Rpc.DockerStatus(lns.Context(), &clientpb.Empty{})
+	_, err = lns.Rpc.DockerStatus(lns.Context(), &clientpb.Empty{})
 	if err == nil {
 		buildResource = consts.ArtifactFromDocker
 	} else {

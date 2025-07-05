@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"net"
+
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/encoders"
@@ -12,12 +15,10 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
 	"github.com/chainreactors/malice-network/helper/types"
-	"github.com/chainreactors/malice-network/helper/utils/peek"
 	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/parser"
-	"io"
-	"net"
+	"github.com/chainreactors/malice-network/server/internal/stream"
 )
 
 func NewTcpPipeline(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeline) (*TCPPipeline, error) {
@@ -28,15 +29,8 @@ func NewTcpPipeline(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeli
 		Name:           pipeline.Name,
 		Port:           uint16(tcp.Port),
 		Host:           tcp.Host,
-		Target:         pipeline.Target,
-		BeaconPipeline: pipeline.BeaconPipeline,
-		PipelineConfig: core.FromProtobuf(pipeline),
+		PipelineConfig: core.FromPipeline(pipeline),
 		CertName:       pipeline.CertName,
-	}
-	var err error
-	pp.parser, err = parser.NewParser(pp.Parser)
-	if err != nil {
-		return nil, err
 	}
 
 	return pp, nil
@@ -58,14 +52,12 @@ type TCPPipeline struct {
 
 func (pipeline *TCPPipeline) ToProtobuf() *clientpb.Pipeline {
 	p := &clientpb.Pipeline{
-		Name:           pipeline.Name,
-		Enable:         pipeline.Enable,
-		Type:           consts.TCPPipeline,
-		ListenerId:     pipeline.ListenerID,
-		Parser:         pipeline.Parser,
-		Target:         pipeline.Target,
-		BeaconPipeline: pipeline.BeaconPipeline,
-		CertName:       pipeline.CertName,
+		Name:       pipeline.Name,
+		Enable:     pipeline.Enable,
+		Type:       consts.TCPPipeline,
+		ListenerId: pipeline.ListenerID,
+		Parser:     pipeline.Parser,
+		CertName:   pipeline.CertName,
 		Body: &clientpb.Pipeline_Tcp{
 			Tcp: &clientpb.TCPPipeline{
 				Name:       pipeline.Name,
@@ -124,8 +116,8 @@ func (pipeline *TCPPipeline) Start() error {
 	if err != nil {
 		return err
 	}
-	logs.Log.Infof("[pipeline] starting TCP pipeline on %s:%d, parser: %s, cryptor: %s, tls: %t",
-		pipeline.Host, pipeline.Port, pipeline.Parser, pipeline.Encryption.Type, pipeline.Cert.Enable)
+	logs.Log.Infof("[pipeline] starting TCP pipeline on %s:%d, parser: %s, tls: %t",
+		pipeline.Host, pipeline.Port, pipeline.Parser, pipeline.Cert.Enable)
 	pipeline.Enable = true
 	return nil
 }
@@ -141,6 +133,7 @@ func (pipeline *TCPPipeline) handler() (net.Listener, error) {
 			return nil, err
 		}
 	}
+
 	go func() {
 		defer logs.Log.Errorf("tcp pipeline exit!!!")
 		for {
@@ -154,27 +147,29 @@ func (pipeline *TCPPipeline) handler() (net.Listener, error) {
 					continue
 				}
 			}
-			logs.Log.Debugf("[pipeline.%s] accept from %s", pipeline.Name, conn.RemoteAddr())
-			switch pipeline.Parser {
-			case consts.ImplantMalefic:
-				go pipeline.handleBeacon(conn)
-			case consts.ImplantPulse:
-				go pipeline.handlePulse(conn)
-			}
 
+			go func() {
+				peekConn, err := pipeline.WrapConn(conn)
+				if err != nil {
+					logs.Log.Errorf("wrap conn error: %v", err)
+					return
+				}
+
+				logs.Log.Debugf("[pipeline.%s] accept from %s", pipeline.Name, conn.RemoteAddr())
+				switch peekConn.Parser.Implant {
+				case consts.ImplantMalefic:
+					pipeline.handleBeacon(peekConn)
+				case consts.ImplantPulse:
+					pipeline.handlePulse(peekConn)
+				}
+			}()
 		}
 	}()
 	return ln, nil
 }
 
-func (pipeline *TCPPipeline) handlePulse(conn net.Conn) {
-	peekConn, err := pipeline.WrapConn(conn)
-	if err != nil {
-		logs.Log.Debugf("wrap conn error: %s %v", conn.RemoteAddr(), err)
-		return
-	}
-	p := pipeline.parser
-	magic, artifactId, err := p.ReadHeader(peekConn)
+func (pipeline *TCPPipeline) handlePulse(conn *cryptostream.Conn) {
+	magic, artifactId, err := conn.Parser.ReadHeader(conn)
 	if err != nil {
 		logs.Log.Errorf(err.Error())
 		return
@@ -188,7 +183,7 @@ func (pipeline *TCPPipeline) handlePulse(conn net.Conn) {
 	} else {
 		logs.Log.Infof("send artifact %d %s", builder.Id, builder.Name)
 	}
-	err = p.WritePacket(peekConn, types.BuildOneSpites(&implantpb.Spite{
+	err = conn.Parser.WritePacket(conn, types.BuildOneSpites(&implantpb.Spite{
 		Name: consts.ModuleInit,
 		Body: &implantpb.Spite_Init{
 			Init: &implantpb.Init{Data: builder.Bin},
@@ -200,14 +195,9 @@ func (pipeline *TCPPipeline) handlePulse(conn net.Conn) {
 	}
 }
 
-func (pipeline *TCPPipeline) handleBeacon(conn net.Conn) {
+func (pipeline *TCPPipeline) handleBeacon(conn *cryptostream.Conn) {
 	defer conn.Close()
-	peekConn, err := pipeline.WrapConn(conn)
-	if err != nil {
-		logs.Log.Debugf("wrap conn error: %s %v", conn.RemoteAddr(), err)
-		return
-	}
-	connect, err := pipeline.getConnection(peekConn)
+	connect, err := pipeline.getConnection(conn)
 	if err != nil {
 		logs.Log.Debugf("peek read header error: %s %v", conn.RemoteAddr(), err)
 		return
@@ -216,7 +206,7 @@ func (pipeline *TCPPipeline) handleBeacon(conn net.Conn) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	for {
-		err = connect.Handler(ctx, peekConn)
+		err = connect.Handler(ctx, conn)
 		if err != nil {
 			if !errors.Is(err, io.EOF) {
 				logs.Log.Debugf("handler error: %s", err.Error())
@@ -226,9 +216,8 @@ func (pipeline *TCPPipeline) handleBeacon(conn net.Conn) {
 	}
 }
 
-func (pipeline *TCPPipeline) getConnection(conn *peek.Conn) (*core.Connection, error) {
-	p := pipeline.parser
-	sid, _, err := p.PeekHeader(conn)
+func (pipeline *TCPPipeline) getConnection(conn *cryptostream.Conn) (*core.Connection, error) {
+	sid, err := cryptostream.PeekSid(conn)
 	if err != nil {
 		return nil, err
 	}
@@ -236,7 +225,7 @@ func (pipeline *TCPPipeline) getConnection(conn *peek.Conn) (*core.Connection, e
 	if newC := core.Connections.Get(hash.Md5Hash(encoders.Uint32ToBytes(sid))); newC != nil {
 		return newC, nil
 	} else {
-		newC := core.NewConnection(p, sid, pipeline.ID())
+		newC := core.NewConnection(conn.Parser, sid, pipeline.ID())
 		core.Connections.Add(newC)
 		return newC, nil
 	}

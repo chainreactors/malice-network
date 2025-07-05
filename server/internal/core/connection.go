@@ -9,8 +9,8 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/types"
-	"github.com/chainreactors/malice-network/helper/utils/peek"
 	"github.com/chainreactors/malice-network/server/internal/parser"
+	"github.com/chainreactors/malice-network/server/internal/stream"
 	"sync"
 	"time"
 )
@@ -70,7 +70,7 @@ type Connection struct {
 	cache       *parser.SpitesCache
 }
 
-func (c *Connection) Send(ctx context.Context, conn *peek.Conn) {
+func (c *Connection) Send(ctx context.Context, conn *cryptostream.Conn) {
 	select {
 	case <-time.After(1000 * time.Millisecond):
 		return
@@ -87,9 +87,9 @@ func (c *Connection) Send(ctx context.Context, conn *peek.Conn) {
 	}
 }
 
-func (c *Connection) buildResponse(conn *peek.Conn, length uint32) error {
+func (c *Connection) buildResponse(conn *cryptostream.Conn, length uint32) error {
 	var msg *implantpb.Spites
-	if length > 2 {
+	if length >= 2 {
 		var err error
 		msg, err = c.Parser.ReadMessage(conn, length)
 		if err != nil {
@@ -111,7 +111,7 @@ func (c *Connection) buildResponse(conn *peek.Conn, length uint32) error {
 	return nil
 }
 
-func (c *Connection) Handler(ctx context.Context, conn *peek.Conn) error {
+func (c *Connection) Handler(ctx context.Context, conn *cryptostream.Conn) error {
 	var err error
 	_, length, err := c.Parser.ReadHeader(conn)
 	if err != nil {
@@ -122,7 +122,7 @@ func (c *Connection) Handler(ctx context.Context, conn *peek.Conn) error {
 	return c.buildResponse(conn, length)
 }
 
-func (c *Connection) HandlerSimplex(ctx context.Context, conn *peek.Conn) error {
+func (c *Connection) HandlerSimplex(ctx context.Context, conn *cryptostream.Conn) error {
 	var err error
 	_, length, err := c.Parser.ReadHeader(conn)
 	if err != nil {
