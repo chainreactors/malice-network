@@ -19,6 +19,7 @@ require (
 	github.com/gofrs/uuid v4.4.0+incompatible
 	github.com/golang/snappy v1.0.0
 	github.com/gookit/config/v2 v2.2.5
+	github.com/h2non/filetype v1.1.3
 	github.com/jessevdk/go-flags v1.6.1
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 	github.com/klauspost/compress v1.17.8
@@ -120,7 +121,7 @@ require (
 	github.com/opencontainers/image-spec v1.1.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/reeflective/readline v1.1.2 // indirect
+	github.com/reeflective/readline v1.1.3 // indirect
 	github.com/riobard/go-bloom v0.0.0-20200614022211-cdc8013cb5b3 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect

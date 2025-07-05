@@ -4,8 +4,11 @@ import (
 	"bytes"
 	crand "crypto/rand"
 	"encoding/binary"
+	"fmt"
+	"github.com/h2non/filetype"
 	"io"
 	"math/rand"
+	"os"
 	"reflect"
 	"time"
 	"unsafe"
@@ -65,4 +68,25 @@ func UnsafeStructToBytes(ptr any) []byte {
 			Cap:  int(v.Elem().Type().Size()),
 		},
 	))
+}
+
+func GetExtension(filepath string) (string, error) {
+
+	file, err := os.Open(filepath)
+	if err != nil {
+		return "", fmt.Errorf("failed to open file %s: %w", filepath, err)
+	}
+	defer file.Close()
+
+	buf := make([]byte, 261)
+	_, err = file.Read(buf)
+	if err != nil {
+		return "", fmt.Errorf("read file error: %w", err)
+	}
+
+	kind, err := filetype.Match(buf)
+	if err != nil {
+		return "", fmt.Errorf("unknown file type %s", err)
+	}
+	return "." + kind.Extension, nil
 }

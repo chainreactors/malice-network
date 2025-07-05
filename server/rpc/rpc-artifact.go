@@ -120,16 +120,16 @@ func (rpc *Server) UploadArtifact(ctx context.Context, req *clientpb.Artifact) (
 
 // for listener
 func (rpc *Server) GetArtifact(ctx context.Context, req *clientpb.Artifact) (*clientpb.Artifact, error) {
-	artifact, err := db.GetArtifact(req)
+	//var err error
+	artifactModel, err := db.GetArtifact(req)
 	if err != nil {
 		return nil, err
 	}
-
-	data, err := gonut.DonutShellcodeFromFile(artifact.Path, artifact.Arch, "")
+	data, err := gonut.DonutShellcodeFromFile(artifactModel.Path, artifactModel.Arch, "")
 	if err != nil {
 		return nil, err
 	}
-	return artifact.ToArtifact(data), nil
+	return artifactModel.ToArtifact(data), nil
 }
 
 func (rpc *Server) ListArtifact(ctx context.Context, req *clientpb.Empty) (*clientpb.Artifacts, error) {

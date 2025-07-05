@@ -2,10 +2,10 @@ package build
 
 import (
 	"errors"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/chainreactors/malice-network/client/assets"
@@ -138,8 +138,9 @@ func PrintArtifacts(artifacts *clientpb.Artifacts, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	con.Log.Infof("download artifact %s\n", filepath.Join(assets.GetTempDir(), artifact.Name))
-	output := filepath.Join(assets.GetTempDir(), artifact.Name)
+	fileExt, _ := fileutils.GetExtensionByBytes(artifact.Bin)
+	con.Log.Infof("download artifact %s\n", filepath.Join(assets.GetTempDir(), artifact.Name+fileExt))
+	output := filepath.Join(assets.GetTempDir(), artifact.Name+fileExt)
 	err = os.WriteFile(output, artifact.Bin, 0644)
 	if err != nil {
 		return err
@@ -197,16 +198,10 @@ func DownloadArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
 			if formatter.IsSupported(format) {
 				fileExt = formatter.GetFormatExtension(format)
 			} else {
-				fileExt = ".txt"
-			}
-		} else if artifact.Type == consts.CommandBuildModules {
-			fileExt = ".dll"
-		} else {
-			if strings.Contains(artifact.Target, "windows") {
-				fileExt = ".exe"
-			} else {
 				fileExt = ""
 			}
+		} else {
+			fileExt, _ = fileutils.GetExtensionByBytes(artifact.Bin)
 		}
 
 		if output == "" {

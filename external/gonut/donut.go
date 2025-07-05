@@ -12,7 +12,17 @@ func DonutShellcodeFromFile(filePath string, arch string, params string) (data [
 	if err != nil {
 		return
 	}
-	return DonutShellcodeFromPE(filepath.Base(filePath), pe, arch, params, false, true)
+	ext, err := GetExtension(filePath)
+	if err != nil {
+		return
+	}
+
+	baseName := filepath.Base(filePath)
+	if filepath.Ext(baseName) == "" && ext != "" {
+		baseName = baseName + ext
+	}
+
+	return DonutShellcodeFromPE(baseName, pe, arch, params, false, true)
 }
 
 // DonutShellcodeFromPE 从给定的 PE 数据生成 Donut shellcode

@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"github.com/h2non/filetype"
 	"io"
 	"os"
 	"path/filepath"
@@ -160,4 +161,28 @@ func MoveDirectory(sourceDir, destDir string) error {
 		}
 		return nil
 	})
+}
+
+func GetExtensionByPath(filepath string) (string, error) {
+
+	file, err := os.Open(filepath)
+	if err != nil {
+		return "", fmt.Errorf("failed to open file %s: %w", filepath, err)
+	}
+	defer file.Close()
+
+	buf := make([]byte, 261)
+	_, err = file.Read(buf)
+	if err != nil {
+		return "", fmt.Errorf("read file error: %w", err)
+	}
+
+	return GetExtensionByBytes(buf)
+}
+func GetExtensionByBytes(data []byte) (string, error) {
+	kind, err := filetype.Match(data)
+	if err != nil {
+		return "", fmt.Errorf("unknown file type %s", err)
+	}
+	return "." + kind.Extension, nil
 }
