@@ -13,65 +13,32 @@ import (
 )
 
 func (rpc *Server) Build(ctx context.Context, req *clientpb.BuildConfig) (*clientpb.Artifact, error) {
-	if req.Type == consts.CommandBuildPulse {
-		var artifactID uint32
-		if req.ArtifactId != 0 {
-			artifactID = req.ArtifactId
-		} else {
-			profile, _ := db.GetProfile(req.ProfileName)
-			yamlID := profile.Pulse.Flags.ArtifactID
-			if uint32(yamlID) != 0 {
-				artifactID = yamlID
-			} else {
-				artifactID = 0
-			}
-		}
-		builders, err := db.FindBeaconArtifact(artifactID, req.ProfileName)
+
+	beaconBuilder, builder, err := build.NewBuilder(req)
+	if err != nil {
+		return nil, err
+	}
+	if beaconBuilder != nil {
+		beaconArtifact, err := beaconBuilder.GenerateConfig()
 		if err != nil {
 			return nil, err
 		}
-		if len(builders) > 0 {
-			artifactID = builders[0].ID
-			req.ArtifactId = artifactID
-		} else {
-			beaconReq := proto.Clone(req).(*clientpb.BuildConfig)
-			if req.Source == consts.ArtifactFromAction {
-				if beaconReq.Inputs == nil {
-					beaconReq.Inputs = make(map[string]string)
-				}
-				beaconReq.Inputs["package"] = consts.CommandBuildBeacon
-				if beaconReq.Inputs["targets"] == consts.TargetX86Windows {
-					beaconReq.Inputs["targets"] = consts.TargetX86WindowsGnu
-				} else {
-					beaconReq.Inputs["targets"] = consts.TargetX64WindowsGnu
-				}
+		go func() {
+			executeErr := beaconBuilder.ExecuteBuild()
+			if executeErr == nil {
+				beaconBuilder.CollectArtifact()
 			} else {
-				beaconReq.Type = consts.CommandBuildBeacon
-				if beaconReq.Target == consts.TargetX86Windows {
-					beaconReq.Target = consts.TargetX86WindowsGnu
-				} else {
-					beaconReq.Target = consts.TargetX64WindowsGnu
-				}
+				logs.Log.Errorf("failed to build %s: %s", beaconArtifact.Name, executeErr)
+				build.SendFailedMsg(beaconArtifact)
 			}
-			beaconBuilder := build.NewBuilder(beaconReq)
-			artifact, err := beaconBuilder.GenerateConfig()
+		}()
+		if builder.GetBeaconID() != 0 {
+			err = builder.SetBeaconID(beaconArtifact.Id)
 			if err != nil {
 				return nil, err
 			}
-			req.ArtifactId = artifact.Id
-			go func() {
-				executeErr := beaconBuilder.ExecuteBuild()
-				if executeErr == nil {
-					beaconBuilder.CollectArtifact()
-				} else {
-					logs.Log.Errorf("failed to build %s: %s", artifact.Name, executeErr)
-					build.SendFailedMsg(artifact)
-				}
-			}()
 		}
 	}
-
-	builder := build.NewBuilder(req)
 	artifact, err := builder.GenerateConfig()
 	if err != nil {
 		return nil, err

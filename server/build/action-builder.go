@@ -1,6 +1,7 @@
 package build
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/codenames"
@@ -103,4 +104,27 @@ func (a *ActionBuilder) ExecuteBuild() error {
 func (a *ActionBuilder) CollectArtifact() (string, string) {
 	go downloadArtifactWhenReady(a.config.Github.Owner, a.config.Github.Repo, a.config.Github.Token, a.config.Github.IsRemove, a.config.ArtifactId, a.builder)
 	return a.builder.Path, ""
+}
+
+func (a *ActionBuilder) GetBeaconID() uint32 {
+	return a.config.ArtifactId
+}
+
+func (a *ActionBuilder) SetBeaconID(id uint32) error {
+	a.config.ArtifactId = id
+	if a.config.Params == "" {
+		params := &types.ProfileParams{
+			OriginBeaconID: id,
+		}
+		a.config.Params = params.String()
+	} else {
+		var newParams *types.ProfileParams
+		err := json.Unmarshal([]byte(a.config.Params), &newParams)
+		if err != nil {
+			return err
+		}
+		newParams.OriginBeaconID = a.config.ArtifactId
+		a.config.Params = newParams.String()
+	}
+	return nil
 }

@@ -2,6 +2,7 @@ package build
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/codenames"
@@ -9,6 +10,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	configType "github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"github.com/docker/docker/api/types"
@@ -191,4 +193,27 @@ func (d *DockerBuilder) CollectArtifact() (string, string) {
 		}
 	}
 	return d.artifact.Path, consts.BuildStatusCompleted
+}
+
+func (d *DockerBuilder) GetBeaconID() uint32 {
+	return d.config.ArtifactId
+}
+
+func (d *DockerBuilder) SetBeaconID(id uint32) error {
+	d.config.ArtifactId = id
+	if d.config.Params == "" {
+		params := &configType.ProfileParams{
+			OriginBeaconID: id,
+		}
+		d.config.Params = params.String()
+	} else {
+		var newParams *configType.ProfileParams
+		err := json.Unmarshal([]byte(d.config.Params), &newParams)
+		if err != nil {
+			return err
+		}
+		newParams.OriginBeaconID = d.config.ArtifactId
+		d.config.Params = newParams.String()
+	}
+	return nil
 }

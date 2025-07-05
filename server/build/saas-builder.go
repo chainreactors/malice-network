@@ -10,6 +10,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/encoders"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
@@ -304,4 +305,27 @@ func CheckAndDownloadArtifact(statusUrl string, downloadUrl string, token string
 		}
 		time.Sleep(pollInterval)
 	}
+}
+
+func (s *SaasBuilder) GetBeaconID() uint32 {
+	return s.config.ArtifactId
+}
+
+func (s *SaasBuilder) SetBeaconID(id uint32) error {
+	s.config.ArtifactId = id
+	if s.config.Params == "" {
+		params := &types.ProfileParams{
+			OriginBeaconID: id,
+		}
+		s.config.Params = params.String()
+	} else {
+		var newParams *types.ProfileParams
+		err := json.Unmarshal([]byte(s.config.Params), &newParams)
+		if err != nil {
+			return err
+		}
+		newParams.OriginBeaconID = s.config.ArtifactId
+		s.config.Params = newParams.String()
+	}
+	return nil
 }

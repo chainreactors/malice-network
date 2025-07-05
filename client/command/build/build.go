@@ -130,19 +130,6 @@ func ModulesCmd(cmd *cobra.Command, con *repl.Console) error {
 	buildConfig.Source = finalSource
 	buildConfig.Type = consts.CommandBuildModules
 
-	if finalSource == consts.ArtifactFromAction {
-		inputs := map[string]string{
-			"package": consts.CommandBuildModules,
-			"targets": buildConfig.Target,
-		}
-		if len(buildConfig.Modules) == 0 {
-			inputs["malefic_modules_features"] = "full"
-		} else {
-			inputs["malefic_modules_features"] = strings.Join(buildConfig.Modules, ",")
-		}
-		buildConfig.Inputs = inputs
-	}
-
 	executeBuild(con, buildConfig)
 	return nil
 }

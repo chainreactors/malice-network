@@ -663,7 +663,7 @@ func NewProfile(profile *clientpb.Profile) error {
 	result := Session().Where("name = ?", profile.Name).First(&existingProfile)
 	if result.Error == nil {
 		// Found existing profile with same name, return friendly error message
-		return fmt.Errorf("profile '%s' already exists, please use a different name", profile.Name)
+		return nil
 	} else if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		// If it's not "record not found" error, it's another database error
 		return result.Error
