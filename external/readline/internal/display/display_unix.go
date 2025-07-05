@@ -4,17 +4,13 @@
 package display
 
 import (
-	"os"
-	"os/signal"
-	"syscall"
+	"github.com/reeflective/readline/internal/core"
 )
 
 // WatchResize redisplays the interface on terminal resize events.
 func WatchResize(eng *Engine) chan<- bool {
+	resizeChannel := core.GetTerminalResize(eng.keys)
 	done := make(chan bool, 1)
-
-	resizeChannel := make(chan os.Signal, 1)
-	signal.Notify(resizeChannel, syscall.SIGWINCH)
 
 	go func() {
 		for {

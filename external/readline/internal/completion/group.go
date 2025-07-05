@@ -127,7 +127,6 @@ func (g *group) initCompletionsGrid(comps RawValues) {
 	if pairLength > g.termWidth {
 		pairLength = g.termWidth
 	}
-
 	maxColumns := g.termWidth / pairLength
 	if g.list || maxColumns < 0 {
 		maxColumns = 1
@@ -144,9 +143,9 @@ func (g *group) initCompletionAliased(domains []Candidate) {
 	g.aliased = true
 
 	// Filter out all duplicates: group aliased completions together.
-	grid, descriptions := g.createDescribedRows(domains)
+	grid, _ := g.createDescribedRows(domains)
 	g.calculateMaxColumnWidths(grid)
-	g.wrapExcessAliases(grid, descriptions)
+	g.wrapExcessAliases(grid)
 
 	g.maxY = len(g.rows)
 	g.maxX = len(g.columnsWidth)
@@ -172,8 +171,6 @@ func (g *group) createDescribedRows(values []Candidate) ([][]Candidate, []string
 	// Sorting helps with easier grids.
 	for _, description := range uniqueDescriptions {
 		row := descriptionMap[description]
-		// slices.Sort(row)
-		// slices.Reverse(row)
 		rows = append(rows, row)
 	}
 
@@ -181,7 +178,7 @@ func (g *group) createDescribedRows(values []Candidate) ([][]Candidate, []string
 }
 
 // Wraps all rows for which there are too many aliases to be displayed on a single one.
-func (g *group) wrapExcessAliases(grid [][]Candidate, descriptions []string) {
+func (g *group) wrapExcessAliases(grid [][]Candidate) {
 	breakeven := 0
 	maxColumns := len(g.columnsWidth)
 
@@ -356,11 +353,9 @@ func (g *group) trimDisplay(comp Candidate, pad, col int) (candidate, padded str
 	// Get the allowed length for this column.
 	// The display can never be longer than terminal width.
 	maxDisplayWidth := g.columnsWidth[col] + 1
-
 	if maxDisplayWidth > g.termWidth {
 		maxDisplayWidth = g.termWidth
 	}
-
 	val = sanitizer.Replace(val)
 
 	if comp.displayLen > maxDisplayWidth {
