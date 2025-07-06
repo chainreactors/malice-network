@@ -61,7 +61,7 @@ func isCertValid(certPath string) bool {
 	return cert.NotAfter.After(time.Now())
 }
 
-func GetAutoCertTls(config *clientpb.TLS) (*types.TlsConfig, error) {
+func GetAcmeTls(config *clientpb.TLS) (*types.TlsConfig, error) {
 	config.Domain = filepath.Base(config.Domain)
 	certPath := filepath.Join(GetACMEDir(), config.Domain)
 	keyPath := filepath.Join(GetACMEDir(), config.Domain+".key")
@@ -78,9 +78,9 @@ func GetAutoCertTls(config *clientpb.TLS) (*types.TlsConfig, error) {
 				Cert: string(certPEM),
 				Key:  string(keyPEM),
 			},
-			Domain:   config.Domain,
-			AutoCert: config.AutoCert,
-			Enable:   config.Enable,
+			Domain: config.Domain,
+			Acme:   config.Acme,
+			Enable: config.Enable,
 		}, nil
 	}
 
@@ -123,8 +123,8 @@ func GetAutoCertTls(config *clientpb.TLS) (*types.TlsConfig, error) {
 			Cert: string(certPEMBytes),
 			Key:  string(keyPEMBytes),
 		},
-		Domain:   config.Domain,
-		AutoCert: config.AutoCert,
-		Enable:   config.Enable,
+		Domain: config.Domain,
+		Acme:   config.Acme,
+		Enable: config.Enable,
 	}, nil
 }

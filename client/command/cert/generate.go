@@ -9,14 +9,13 @@ import (
 
 func SelfSignedCmd(cmd *cobra.Command, con *repl.Console) error {
 	certSubject := common.ParseSelfSignFlags(cmd)
-	cert, err := con.Rpc.GenerateSelfCertificate(con.Context(), &clientpb.TLS{
+	_, err := con.Rpc.GenerateSelfCertificate(con.Context(), &clientpb.TLS{
 		CertSubject: certSubject,
-		AutoCert:    false,
+		Acme:        false,
 	})
 	if err != nil {
 		return err
 	}
-	con.Log.Infof("cert %s %s add success\n", cert.Name, cert.Type)
 	return nil
 }
 
@@ -25,11 +24,10 @@ func ImportCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	cert, err := con.Rpc.GenerateSelfCertificate(con.Context(), tls)
+	_, err = con.Rpc.GenerateSelfCertificate(con.Context(), tls)
 	if err != nil {
 		return err
 	}
-	con.Log.Infof("cert %s %s add success\n", cert.Name, cert.Type)
 	return nil
 }
 
@@ -38,7 +36,7 @@ func AcmeCmd(cmd *cobra.Command, con *repl.Console) error {
 	domain, _ := cmd.Flags().GetString("domain")
 	_, err := con.Rpc.GenerateAcmeCert(con.Context(), &clientpb.TLS{
 		Domain:       domain,
-		AutoCert:     true,
+		Acme:         true,
 		PipelineName: pipelineID,
 	})
 	if err != nil {

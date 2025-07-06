@@ -213,6 +213,8 @@ func (s *ServerStatus) handlerEvent(event *clientpb.Event) {
 		Log.Important(event.Formatted + "\n")
 	case consts.EventContext:
 		Log.Important(event.Formatted + "\n")
+	case consts.EventCert:
+		Log.Important(event.Formatted + "\n")
 	}
 }
 

@@ -2,9 +2,12 @@ package rpc
 
 import (
 	"context"
+	"fmt"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/certs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
@@ -50,12 +53,29 @@ func (rpc *Server) SyncPipeline(ctx context.Context, req *clientpb.Pipeline) (*c
 		if err != nil {
 			return nil, err
 		}
-		core.EventBroker.Publish(core.Event{
-			EventType: consts.EventJob,
-			Op:        consts.CtrlAutoCert,
-			Important: true,
-			Job:       job.ToProtobuf(),
-		})
+		subject, err := certs.ExtractCertificateSubject(req.Tls.Cert.Cert)
+		if err != nil {
+			return nil, err
+		}
+		if subject != nil {
+			ouStr := ""
+			if len(subject.OrganizationalUnit) > 0 {
+				ouStr = subject.OrganizationalUnit[0]
+			}
+			stStr := ""
+			if len(subject.Province) > 0 {
+				stStr = subject.Province[0]
+			}
+			msg := fmt.Sprintf("cert %s (type: %s) generate sucess, CN: %s, O: %s, C: %s, L: %s, OU: %s, ST: %s",
+				req.Tls.Domain, certs.Acme, subject.CommonName, subject.Organization[0], subject.Country[0], subject.Locality[0],
+				ouStr, stStr)
+			core.EventBroker.Publish(core.Event{
+				EventType: consts.EventCert,
+				IsNotify:  false,
+				Message:   msg,
+				Important: true,
+			})
+		}
 	}
 	core.EventBroker.Publish(core.Event{
 		EventType: consts.EventJob,
@@ -94,10 +114,20 @@ func (rpc *Server) StartPipeline(ctx context.Context, req *clientpb.CtrlPipeline
 		if err != nil {
 			return nil, err
 		}
-		pipelineDB.Tls.Cert.Cert = tls.CertPEM
-		pipelineDB.Tls.Cert.Key = tls.KeyPEM
-		pipelineDB.Tls.CA.Cert = tls.CACertPEM
-		pipelineDB.Tls.CA.Key = tls.CAKeyPEM
+		pipelineDB.Tls.Cert = &types.CertConfig{
+			Cert: tls.CertPEM,
+			Key:  tls.KeyPEM,
+		}
+		pipelineDB.Tls.CA = &types.CertConfig{
+			Cert: tls.CACertPEM,
+			Key:  tls.CAKeyPEM,
+		}
+		pipelineDB.Tls.Enable = true
+		pipelineDB.CertName = req.CertName
+		_, err = db.SavePipeline(pipelineDB)
+		if err != nil {
+			return nil, err
+		}
 	}
 	lns, err := core.Listeners.Get(pipelineDB.ListenerId)
 	if err != nil {

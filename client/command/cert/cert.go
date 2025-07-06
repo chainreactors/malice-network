@@ -73,19 +73,29 @@ func printCerts(certs *clientpb.Certs, con *repl.Console) {
 	tableModel := tui.NewTable([]table.Column{
 		table.NewColumn("Name", "Name", 20),
 		table.NewColumn("Type", "Type", 10),
+		table.NewColumn("Organization", "Organization", 20),
+		table.NewColumn("Country", "Country", 20),
+		table.NewColumn("Locality", "Locality", 20),
+		table.NewColumn("OrganizationalUnit", "OrganizationalUnit", 30),
+		table.NewColumn("StreetAddress", "StreetAddress", 20),
 		table.NewColumn("Expire", "Expire", 25),
 	}, true)
 
 	for _, cert := range certs.Certs {
-		_, notAfter, err := getCertExpireTime(cert.Cert)
+		_, notAfter, err := getCertExpireTime(cert.Cert.Cert)
 		expireStr := ""
 		if err == nil {
 			expireStr = notAfter.Format("2006-01-02 15:04:05")
 		}
 		row := table.NewRow(table.RowData{
-			"Name":   cert.Name,
-			"Type":   cert.Type,
-			"Expire": expireStr,
+			"Name":               cert.Cert.Name,
+			"Type":               cert.Cert.Type,
+			"Organization":       cert.CertSubject.O,
+			"Country":            cert.CertSubject.C,
+			"Locality":           cert.CertSubject.L,
+			"OrganizationalUnit": cert.CertSubject.Ou,
+			"StreetAddress":      cert.CertSubject.St,
+			"Expire":             expireStr,
 		})
 		rowEntries = append(rowEntries, row)
 	}

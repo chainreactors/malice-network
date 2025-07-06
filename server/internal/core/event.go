@@ -40,6 +40,8 @@ func (event *Event) format() string {
 		return fmt.Sprintf("[%s] %s: %s %s", event.EventType, event.Op, event.Message, event.Err)
 	case consts.EventBuild:
 		return fmt.Sprintf("[%s] %s", event.EventType, event.Message)
+	case consts.EventCert:
+		return fmt.Sprintf("[%s] %s", event.EventType, event.Message)
 	case consts.EventPivot:
 		return fmt.Sprintf("[%s] %s: %s", event.EventType, event.Op, event.Message)
 	case consts.EventContext:
@@ -69,7 +71,7 @@ func (event *Event) format() string {
 			return fmt.Sprintf("[%s] %s: bind %s on %s %s", event.EventType, event.Op,
 				pipeline.Name, pipeline.ListenerId, pipeline.Ip)
 		case *clientpb.Pipeline_Http:
-			if event.Op == consts.CtrlAutoCert {
+			if event.Op == consts.CtrlAcme {
 				return fmt.Sprintf("[%s] %s: cert %s create success", event.EventType, event.Op,
 					pipeline.Tls.Domain)
 			}

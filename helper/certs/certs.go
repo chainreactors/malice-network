@@ -37,13 +37,13 @@ const (
 )
 
 const (
-	AutoCert   = "auto_cert"
+	Acme       = "acme"
 	SelfSigned = "self_signed"
 	Imported   = "imported"
 )
 
 var CertTypes = []string{
-	AutoCert, SelfSigned, Imported,
+	Acme, SelfSigned, Imported,
 }
 
 // SaveToPEMFile save to PEM file

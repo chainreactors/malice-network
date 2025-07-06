@@ -51,7 +51,7 @@ func (tcp *TcpPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, erro
 		return nil, err
 	}
 	tlsPb := tls.ToProtobuf()
-	tlsPb.AutoCert = tcp.TlsConfig.AutoCert
+	tlsPb.Acme = tcp.TlsConfig.Acme
 	tlsPb.Domain = tcp.TlsConfig.Domain
 	return &clientpb.Pipeline{
 		Name:       tcp.Name,
@@ -243,7 +243,7 @@ type TlsConfig struct {
 	CertFile string `config:"cert_file"`
 	KeyFile  string `config:"key_file"`
 	CAFile   string `config:"ca_file"`
-	AutoCert bool   `config:"auto_cert"`
+	Acme     bool   `config:"acme"`
 	Domain   string `config:"domain"`
 }
 

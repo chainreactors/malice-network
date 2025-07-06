@@ -7,10 +7,10 @@ import (
 
 func FromTls(tls *clientpb.TLS) *TlsConfig {
 	return &TlsConfig{
-		Cert:     FromCert(tls.Cert),
-		CA:       FromCert(tls.Ca),
-		Enable:   tls.Enable,
-		AutoCert: tls.AutoCert,
+		Cert:   FromCert(tls.Cert),
+		CA:     FromCert(tls.Ca),
+		Enable: tls.Enable,
+		Acme:   tls.Acme,
 	}
 }
 
@@ -51,11 +51,11 @@ func (cert *CertConfig) ToProtobuf() *clientpb.Cert {
 }
 
 type TlsConfig struct {
-	AutoCert bool        `json:"auto_cert"`
-	Enable   bool        `json:"enable"`
-	Cert     *CertConfig `json:"cert"`
-	CA       *CertConfig `json:"ca"`
-	Domain   string      `json:"domain"`
+	Acme   bool        `json:"acme"`
+	Enable bool        `json:"enable"`
+	Cert   *CertConfig `json:"cert"`
+	CA     *CertConfig `json:"ca"`
+	Domain string      `json:"domain"`
 }
 
 func (tls *TlsConfig) Empty() bool {
@@ -69,11 +69,11 @@ func (tls *TlsConfig) ToProtobuf() *clientpb.TLS {
 		}
 	}
 	return &clientpb.TLS{
-		Enable:   tls.Enable,
-		Cert:     tls.Cert.ToProtobuf(),
-		Ca:       tls.CA.ToProtobuf(),
-		Domain:   tls.Domain,
-		AutoCert: tls.AutoCert,
+		Enable: tls.Enable,
+		Cert:   tls.Cert.ToProtobuf(),
+		Ca:     tls.CA.ToProtobuf(),
+		Domain: tls.Domain,
+		Acme:   tls.Acme,
 	}
 }
 

@@ -1,7 +1,9 @@
 package certs
 
 import (
+	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/pem"
 	"fmt"
 	insecureRand "math/rand"
 	"strings"
@@ -320,4 +322,52 @@ func randomOrganization() []string {
 	}
 
 	return []string{orgName}
+}
+
+// ExtractCertificateSubject - 从证书PEM中提取subject信息
+func ExtractCertificateSubject(certPEM string) (*pkix.Name, error) {
+	if certPEM == "" {
+		return nil, nil
+	}
+
+	block, _ := pem.Decode([]byte(certPEM))
+	if block == nil {
+		return nil, fmt.Errorf("failed to parse certificate PEM")
+	}
+
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse certificate: %v", err)
+	}
+
+	subject := &pkix.Name{
+		CommonName: cert.Subject.CommonName,
+	}
+
+	// 提取组织信息
+	if len(cert.Subject.Organization) > 0 {
+		subject.Organization = cert.Subject.Organization
+	}
+
+	// 提取国家信息
+	if len(cert.Subject.Country) > 0 {
+		subject.Country = cert.Subject.Country
+	}
+
+	// 提取地区信息
+	if len(cert.Subject.Locality) > 0 {
+		subject.Locality = cert.Subject.Locality
+	}
+
+	// 提取组织单位信息
+	if len(cert.Subject.OrganizationalUnit) > 0 {
+		subject.OrganizationalUnit = cert.Subject.OrganizationalUnit
+	}
+
+	// 提取省份信息
+	if len(cert.Subject.StreetAddress) > 0 {
+		subject.StreetAddress = cert.Subject.StreetAddress
+	}
+
+	return subject, nil
 }

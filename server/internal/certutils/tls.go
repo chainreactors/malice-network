@@ -60,7 +60,7 @@ func SaveTlsCert(tls *types.TlsConfig, piplineName, listenerID string) (*types.T
 	var certModel *models.Certificate
 	var err error
 	name := codenames.GetCodename()
-	if tls.Cert == nil && !tls.AutoCert {
+	if tls.Cert == nil && !tls.Acme {
 		tls, err = GenerateSelfTLS(piplineName, nil)
 		if err != nil {
 			return tls, "", err
@@ -73,7 +73,7 @@ func SaveTlsCert(tls *types.TlsConfig, piplineName, listenerID string) (*types.T
 			CertPEM:   tls.Cert.Cert,
 			KeyPEM:    tls.Cert.Key,
 		}
-	} else if tls.Cert != nil && !tls.AutoCert {
+	} else if tls.Cert != nil && !tls.Acme {
 		certModel = &models.Certificate{
 			Name:      name,
 			Type:      certs.Imported,
@@ -81,10 +81,10 @@ func SaveTlsCert(tls *types.TlsConfig, piplineName, listenerID string) (*types.T
 			KeyPEM:    tls.Cert.Key,
 			CACertPEM: tls.CA.Cert,
 		}
-	} else if tls.Cert != nil && tls.AutoCert {
+	} else if tls.Cert != nil && tls.Acme {
 		certModel = &models.Certificate{
 			Name:    tls.Domain,
-			Type:    certs.AutoCert,
+			Type:    certs.Acme,
 			CertPEM: tls.Cert.Cert,
 			KeyPEM:  tls.Cert.Key,
 			Domain:  tls.Domain,

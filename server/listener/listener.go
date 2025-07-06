@@ -179,10 +179,10 @@ func (lns *listener) RegisterAndStart(pipeline *clientpb.Pipeline) error {
 	}
 	var tls *types.TlsConfig
 	var err error
-	if pipeline.Tls.Enable && pipeline.Tls.AutoCert {
-		tls, err = certutils.GetAutoCertTls(pipeline.GetTls())
+	if pipeline.Tls.Enable && pipeline.Tls.Acme {
+		tls, err = certutils.GetAcmeTls(pipeline.GetTls())
 		pipeline.Tls = tls.ToProtobuf()
-	} else if pipeline.Tls.Enable && !pipeline.Tls.AutoCert && pipeline.Tls.Cert == nil {
+	} else if pipeline.Tls.Enable && !pipeline.Tls.Acme && pipeline.Tls.Cert == nil {
 		tls, err = certutils.GenerateSelfTLS(pipeline.Name, nil)
 		pipeline.Tls = tls.ToProtobuf()
 	}
@@ -266,8 +266,8 @@ func (lns *listener) Handler() {
 			handlerErr = lns.handlerRemAgentLog(msg.Job)
 		case consts.CtrlRemAgentStop:
 			handlerErr = lns.handlerRemAgentStop(msg.Job)
-		case consts.CtrlAutoCert:
-			handlerErr = lns.handlerAutoCert(msg.Job)
+		case consts.CtrlAcme:
+			handlerErr = lns.handlerAcme(msg.Job)
 
 		}
 
@@ -525,9 +525,9 @@ func (lns *listener) handleStartRem(job *clientpb.Job) error {
 	return nil
 }
 
-func (lns *listener) handlerAutoCert(job *clientpb.Job) error {
+func (lns *listener) handlerAcme(job *clientpb.Job) error {
 	pipeline := job.GetPipeline()
-	tls, err := certutils.GetAutoCertTls(pipeline.GetTls())
+	tls, err := certutils.GetAcmeTls(pipeline.GetTls())
 	if err != nil {
 		return err
 	}
