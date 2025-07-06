@@ -61,12 +61,6 @@ func (a *Artifact) BeforeCreate(tx *gorm.DB) (err error) {
 }
 
 func (a *Artifact) ToProtobuf(bin []byte) *clientpb.Artifact {
-	var pipeline string
-	if a.Profile.PulsePipelineID != "" {
-		pipeline = a.Profile.PulsePipelineID
-	} else {
-		pipeline = a.Profile.PipelineID
-	}
 	return &clientpb.Artifact{
 		Id:           a.ID,
 		Bin:          bin,
@@ -76,7 +70,7 @@ func (a *Artifact) ToProtobuf(bin []byte) *clientpb.Artifact {
 		Platform:     a.Os,
 		Arch:         a.Arch,
 		Profile:      a.ProfileName,
-		Pipeline:     pipeline,
+		Pipeline:     a.Profile.PipelineID,
 		CreatedAt:    a.CreatedAt.Unix(),
 		Status:       a.Status,
 		ProfileBytes: a.ProfileByte,

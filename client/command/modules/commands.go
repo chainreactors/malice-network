@@ -7,6 +7,7 @@ import (
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
@@ -206,11 +207,7 @@ func Register(con *repl.Console) {
 		clearAll,
 		"",
 		nil,
-		func(ctx *clientpb.TaskContext) (interface{}, error) {
-			resp := ctx.Spite.GetModules()
-			con.RefreshCmd(con.AddSession(ctx.Session))
-			return resp.Modules, nil
-		},
+		output.ParseStatus,
 		nil)
 
 	con.AddCommandFuncHelper(

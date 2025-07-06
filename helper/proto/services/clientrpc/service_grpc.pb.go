@@ -143,6 +143,7 @@ const (
 	MaliceRPC_UpdateCertificate_FullMethodName       = "/clientrpc.MaliceRPC/UpdateCertificate"
 	MaliceRPC_GetAllCertificates_FullMethodName      = "/clientrpc.MaliceRPC/GetAllCertificates"
 	MaliceRPC_GenerateAcmeCert_FullMethodName        = "/clientrpc.MaliceRPC/GenerateAcmeCert"
+	MaliceRPC_DownloadCertificate_FullMethodName     = "/clientrpc.MaliceRPC/DownloadCertificate"
 	MaliceRPC_GetContexts_FullMethodName             = "/clientrpc.MaliceRPC/GetContexts"
 	MaliceRPC_AddContext_FullMethodName              = "/clientrpc.MaliceRPC/AddContext"
 	MaliceRPC_AddScreenShot_FullMethodName           = "/clientrpc.MaliceRPC/AddScreenShot"
@@ -301,6 +302,7 @@ type MaliceRPCClient interface {
 	UpdateCertificate(ctx context.Context, in *clientpb.Cert, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	GetAllCertificates(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Certs, error)
 	GenerateAcmeCert(ctx context.Context, in *clientpb.TLS, opts ...grpc.CallOption) (*clientpb.Empty, error)
+	DownloadCertificate(ctx context.Context, in *clientpb.Cert, opts ...grpc.CallOption) (*clientpb.TLS, error)
 	// context
 	GetContexts(ctx context.Context, in *clientpb.Context, opts ...grpc.CallOption) (*clientpb.Contexts, error)
 	AddContext(ctx context.Context, in *clientpb.Context, opts ...grpc.CallOption) (*clientpb.Empty, error)
@@ -1432,6 +1434,15 @@ func (c *maliceRPCClient) GenerateAcmeCert(ctx context.Context, in *clientpb.TLS
 	return out, nil
 }
 
+func (c *maliceRPCClient) DownloadCertificate(ctx context.Context, in *clientpb.Cert, opts ...grpc.CallOption) (*clientpb.TLS, error) {
+	out := new(clientpb.TLS)
+	err := c.cc.Invoke(ctx, MaliceRPC_DownloadCertificate_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *maliceRPCClient) GetContexts(ctx context.Context, in *clientpb.Context, opts ...grpc.CallOption) (*clientpb.Contexts, error) {
 	out := new(clientpb.Contexts)
 	err := c.cc.Invoke(ctx, MaliceRPC_GetContexts_FullMethodName, in, out, opts...)
@@ -1652,6 +1663,7 @@ type MaliceRPCServer interface {
 	UpdateCertificate(context.Context, *clientpb.Cert) (*clientpb.Empty, error)
 	GetAllCertificates(context.Context, *clientpb.Empty) (*clientpb.Certs, error)
 	GenerateAcmeCert(context.Context, *clientpb.TLS) (*clientpb.Empty, error)
+	DownloadCertificate(context.Context, *clientpb.Cert) (*clientpb.TLS, error)
 	// context
 	GetContexts(context.Context, *clientpb.Context) (*clientpb.Contexts, error)
 	AddContext(context.Context, *clientpb.Context) (*clientpb.Empty, error)
@@ -2030,6 +2042,9 @@ func (UnimplementedMaliceRPCServer) GetAllCertificates(context.Context, *clientp
 }
 func (UnimplementedMaliceRPCServer) GenerateAcmeCert(context.Context, *clientpb.TLS) (*clientpb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GenerateAcmeCert not implemented")
+}
+func (UnimplementedMaliceRPCServer) DownloadCertificate(context.Context, *clientpb.Cert) (*clientpb.TLS, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DownloadCertificate not implemented")
 }
 func (UnimplementedMaliceRPCServer) GetContexts(context.Context, *clientpb.Context) (*clientpb.Contexts, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetContexts not implemented")
@@ -4249,6 +4264,24 @@ func _MaliceRPC_GenerateAcmeCert_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MaliceRPC_DownloadCertificate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(clientpb.Cert)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MaliceRPCServer).DownloadCertificate(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MaliceRPC_DownloadCertificate_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MaliceRPCServer).DownloadCertificate(ctx, req.(*clientpb.Cert))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _MaliceRPC_GetContexts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(clientpb.Context)
 	if err := dec(in); err != nil {
@@ -4879,6 +4912,10 @@ var MaliceRPC_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GenerateAcmeCert",
 			Handler:    _MaliceRPC_GenerateAcmeCert_Handler,
+		},
+		{
+			MethodName: "DownloadCertificate",
+			Handler:    _MaliceRPC_DownloadCertificate_Handler,
 		},
 		{
 			MethodName: "GetContexts",

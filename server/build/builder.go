@@ -29,7 +29,10 @@ type Builder interface {
 func NewBuilder(req *clientpb.BuildConfig) (Builder, error) {
 	if req.Type == consts.CommandBuildPulse {
 		if req.ArtifactId == 0 {
-			profile, _ := db.GetProfile(req.ProfileName)
+			profile, err := db.GetProfile(req.ProfileName)
+			if err != nil {
+				return nil, err
+			}
 			req.ArtifactId = profile.Pulse.Flags.ArtifactID
 		}
 

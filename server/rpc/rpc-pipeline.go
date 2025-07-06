@@ -24,16 +24,9 @@ func (rpc *Server) RegisterPipeline(ctx context.Context, req *clientpb.Pipeline)
 		return nil, err
 	}
 	var profileReq *clientpb.Profile
-	if req.Parser == consts.ImplantPulse {
-		profileReq = &clientpb.Profile{
-			Name:            req.Name + "_default",
-			PulsePipelineId: req.Name,
-		}
-	} else {
-		profileReq = &clientpb.Profile{
-			Name:       req.Name + "_default",
-			PipelineId: req.Name,
-		}
+	profileReq = &clientpb.Profile{
+		Name:       req.Name + "_default",
+		PipelineId: req.Name,
 	}
 	err = db.NewProfile(profileReq)
 	if err != nil {

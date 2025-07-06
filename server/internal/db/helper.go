@@ -674,10 +674,9 @@ func NewProfile(profile *clientpb.Profile) error {
 	model := &models.Profile{
 		Name: profile.Name,
 		//Obfuscate:  profile.Obfuscate,
-		ParamsData:      profile.Params,
-		PulsePipelineID: profile.PulsePipelineId,
-		PipelineID:      profile.PipelineId,
-		Raw:             profile.Content,
+		ParamsData: profile.Params,
+		PipelineID: profile.PipelineId,
+		Raw:        profile.Content,
 	}
 	//if profile.PulsePipelineId != "" {
 	//	pulsePipeline, err := FindPipeline(profile.PulsePipelineId)
@@ -695,16 +694,16 @@ func NewProfile(profile *clientpb.Profile) error {
 func GetProfile(name string) (*types.ProfileConfig, error) {
 	var profileModel *models.Profile
 
-	result := Session().Preload("Pipeline").Preload("PulsePipeline").Where("name = ?", name).First(&profileModel)
+	result := Session().Preload("Pipeline").Where("name = ?", name).First(&profileModel)
 	if result.Error != nil {
 		return nil, result.Error
 	}
 	if profileModel.PipelineID != "" && profileModel.Pipeline == nil {
 		return nil, errs.ErrNotFoundPipeline
 	}
-	if profileModel.PulsePipelineID != "" && profileModel.PulsePipeline == nil {
-		return nil, errs.ErrNotFoundPipeline
-	}
+	//if profileModel.PulsePipelineID != "" && profileModel.PulsePipeline == nil {
+	//	return nil, errs.ErrNotFoundPipeline
+	//}
 	err := profileModel.DeserializeImplantConfig()
 	if err != nil {
 		return nil, err
@@ -733,11 +732,9 @@ func GetProfile(name string) (*types.ProfileConfig, error) {
 			profile.Basic.TLS.Enable = profileModel.Pipeline.Tls.Enable
 		}
 	}
-	if profile.Pulse != nil {
-		if profileModel.PulsePipeline != nil {
-			profile.Pulse.Target = profileModel.PulsePipeline.Address()
-			profile.Pulse.Protocol = profileModel.PulsePipeline.Type
-		}
+	if profile.Pulse != nil && profileModel.Pipeline != nil {
+		profile.Pulse.Target = profileModel.Pipeline.Address()
+		profile.Pulse.Protocol = profileModel.Pipeline.Type
 	}
 
 	return profile, nil
@@ -745,7 +742,7 @@ func GetProfile(name string) (*types.ProfileConfig, error) {
 
 func GetProfiles() ([]*models.Profile, error) {
 	var profiles []*models.Profile
-	result := Session().Preload("Pipeline").Preload("PulsePipeline").Order("created_at ASC").Find(&profiles)
+	result := Session().Preload("Pipeline").Order("created_at ASC").Find(&profiles)
 	return profiles, result.Error
 }
 
@@ -913,7 +910,7 @@ func SaveArtifact(name, artifactType, platform, arch, source string) (*models.Ar
 
 func GetArtifacts() (*clientpb.Artifacts, error) {
 	var builders []*models.Artifact
-	result := Session().Preload("Profile").Preload("Profile.Pipeline").Preload("Profile.PulsePipeline").Find(&builders)
+	result := Session().Preload("Profile").Preload("Profile.Pipeline").Find(&builders)
 	if result.Error != nil {
 		return nil, result.Error
 	}
@@ -941,10 +938,9 @@ func FindArtifact(target *clientpb.Artifact) (*clientpb.Artifact, error) {
 		var builders []*models.Artifact
 		result = Session().Where("os = ? AND arch = ? AND type = ?", target.Platform, target.Arch, target.Type).
 			Preload("Profile.Pipeline").
-			Preload("Profile.PulsePipeline").
 			Find(&builders)
 		for _, v := range builders {
-			if v.Type == consts.ImplantPulse && v.Profile.PulsePipelineID == target.Pipeline {
+			if v.Type == consts.ImplantPulse && v.Profile.PipelineID == target.Pipeline {
 				artifact = v
 				break
 			}

@@ -56,7 +56,7 @@ profile load /path/to/config.yaml --name my_profile --modules base,sys_full --pi
 profile load /path/to/config.yaml --name my_profile --interval 10 --jitter 0.3 --pipeline pipeline_name
 
 // Create a profile for pulse
-profile load /path/to/config.yaml --name my_profile --pipeline pipeline_name --pulse-pipeline pulse_pipeline_name
+profile load /path/to/config.yaml --name my_profile --pipeline pipeline_name
 ~~~`,
 	}
 	common.BindFlag(loadProfileCmd, common.ProfileSet)
@@ -66,13 +66,13 @@ profile load /path/to/config.yaml --name my_profile --pipeline pipeline_name --p
 		comp["name"] = carapace.ActionValues().Usage("profilename")
 		//comp["target"] = common.BuildTargetCompleter(con)
 		comp["pipeline"] = common.AllPipelineCompleter(con)
-		comp["pulse-pipeline"] = common.AllPipelineCompleter(con)
-		comp["proxy"] = carapace.ActionValues().Usage("proxy, socks5 or http")
+		//comp["pulse-pipeline"] = common.AllPipelineCompleter(con)
+		//comp["proxy"] = carapace.ActionValues().Usage("proxy, socks5 or http")
 		//comp["obfuscate"] = carapace.ActionValues("true", "false")
-		comp["modules"] = carapace.ActionValues().Usage("e.g.: execute_exe,execute_dll")
+		//comp["modules"] = carapace.ActionValues().Usage("e.g.: execute_exe,execute_dll")
 
-		comp["interval"] = carapace.ActionValues("5")
-		comp["jitter"] = carapace.ActionValues("0.2")
+		//comp["interval"] = carapace.ActionValues("5")
+		//comp["jitter"] = carapace.ActionValues("0.2")
 	})
 	common.BindArgCompletions(loadProfileCmd, nil, carapace.ActionFiles().Usage("profile path"))
 
@@ -95,7 +95,6 @@ profile new --name my_profile --pipeline default_tcp
 		comp["name"] = carapace.ActionValues().Usage("profile name")
 		comp["pipeline"] = common.AllPipelineCompleter(con)
 		comp["proxy"] = carapace.ActionValues().Usage("")
-		comp["pulse-pipeline"] = common.AllPipelineCompleter(con)
 	})
 
 	deleteProfileCmd := &cobra.Command{

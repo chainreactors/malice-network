@@ -251,7 +251,6 @@ func ProfileSet(f *pflag.FlagSet) {
 	f.StringP("name", "n", "", "Overwrite profile name")
 	//f.String("target", "", "Overwrite build target")
 	f.StringP("pipeline", "p", "", "Overwrite profile basic pipeline_id")
-	f.String("pulse-pipeline", "", "Overwrite profile pulse pipeline_id")
 	//f.String("type", "", "Set build type")
 	//f.String("obfuscate", "", "Set obfuscate")
 	//f.StringSlice("modules", []string{}, "Overwrite modules e.g.: execute_exe,execute_dll")
@@ -260,11 +259,10 @@ func ProfileSet(f *pflag.FlagSet) {
 	//f.Float32("jitter", 0.2, "Overwrite jitter")
 }
 
-func ParseProfileFlags(cmd *cobra.Command) (string, string, string) {
+func ParseProfileFlags(cmd *cobra.Command) (string, string) {
 	profileName, _ := cmd.Flags().GetString("name")
 	//buildTarget, _ := cmd.Flags().GetString("target")
 	basicPipelineId, _ := cmd.Flags().GetString("pipeline")
-	pulsePipelineId, _ := cmd.Flags().GetString("pulse-pipeline")
 
 	//buildType, _ := cmd.Flags().GetString("type")
 	//proxy, _ := cmd.Flags().GetString("proxy")
@@ -275,7 +273,7 @@ func ParseProfileFlags(cmd *cobra.Command) (string, string, string) {
 	//interval, _ := cmd.Flags().GetInt("interval")
 	//jitter, _ := cmd.Flags().GetFloat64("jitter")
 
-	return profileName, basicPipelineId, pulsePipelineId
+	return profileName, basicPipelineId
 }
 
 func MalHttpFlagset(f *pflag.FlagSet) {

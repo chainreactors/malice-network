@@ -38,10 +38,9 @@ func ProfileShowCmd(cmd *cobra.Command, con *repl.Console) error {
 		}
 
 		row := table.NewRow(table.RowData{
-			"Name":           p.Name,
-			"Pipeline":       p.PipelineId,
-			"Pulse Pipeline": p.PulsePipelineId,
-			"CreatedAt":      createdDisplay,
+			"Name":      p.Name,
+			"Pipeline":  p.PipelineId,
+			"CreatedAt": createdDisplay,
 		})
 		rowEntries = append(rowEntries, row)
 	}
@@ -53,7 +52,7 @@ func ProfileShowCmd(cmd *cobra.Command, con *repl.Console) error {
 }
 
 func ProfileLoadCmd(cmd *cobra.Command, con *repl.Console) error {
-	profileName, basicPipeline, pulsePipeline := common.ParseProfileFlags(cmd)
+	profileName, basicPipeline := common.ParseProfileFlags(cmd)
 
 	profilePath := cmd.Flags().Arg(0)
 	content, err := os.ReadFile(profilePath)
@@ -62,10 +61,9 @@ func ProfileLoadCmd(cmd *cobra.Command, con *repl.Console) error {
 	}
 
 	profile := &clientpb.Profile{
-		Name:            profileName,
-		PipelineId:      basicPipeline,
-		PulsePipelineId: pulsePipeline,
-		Content:         content,
+		Name:       profileName,
+		PipelineId: basicPipeline,
+		Content:    content,
 	}
 	_, err = con.Rpc.NewProfile(con.Context(), profile)
 	if err != nil {
@@ -76,11 +74,10 @@ func ProfileLoadCmd(cmd *cobra.Command, con *repl.Console) error {
 }
 
 func ProfileNewCmd(cmd *cobra.Command, con *repl.Console) error {
-	profileName, basicPipeline, pulsePipeline := common.ParseProfileFlags(cmd)
+	profileName, basicPipeline := common.ParseProfileFlags(cmd)
 	profile := &clientpb.Profile{
-		Name:            profileName,
-		PipelineId:      basicPipeline,
-		PulsePipelineId: pulsePipeline,
+		Name:       profileName,
+		PipelineId: basicPipeline,
 	}
 	_, err := con.Rpc.NewProfile(con.Context(), profile)
 	if err != nil {

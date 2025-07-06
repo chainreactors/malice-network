@@ -22,14 +22,14 @@ type Profile struct {
 	ParamsData string               `gorm:"column:params"` // 改用更简洁的数据库字段名
 
 	// BasicPipeline 和 PulsePipeline
-	PipelineID      string `gorm:"type:string;index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
-	PulsePipelineID string `gorm:"type:string;index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
+	PipelineID string `gorm:"type:string;index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
+	//PulsePipelineID string `gorm:"type:string;index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
 
 	implantConfig string // raw implant config
 
 	// BasicPipeline 和 PulsePipeline
-	Pipeline      *Pipeline `gorm:"foreignKey:PipelineID;references:Name;"`
-	PulsePipeline *Pipeline `gorm:"foreignKey:PulsePipelineID;references:Name;"`
+	Pipeline *Pipeline `gorm:"foreignKey:PipelineID;references:Name;"`
+	//PulsePipeline *Pipeline `gorm:"foreignKey:PulsePipelineID;references:Name;"`
 
 	CreatedAt time.Time `gorm:"->;<-:create;"`
 }
@@ -70,12 +70,11 @@ func (p *Profile) DeserializeImplantConfig() error {
 
 func (p *Profile) ToProtobuf() *clientpb.Profile {
 	return &clientpb.Profile{
-		Name:            p.Name,
-		PipelineId:      p.PipelineID,
-		PulsePipelineId: p.PulsePipelineID,
-		Content:         p.Raw,
-		Params:          p.ParamsData,
-		CreatedAt:       p.CreatedAt.Unix(),
+		Name:       p.Name,
+		PipelineId: p.PipelineID,
+		Content:    p.Raw,
+		Params:     p.ParamsData,
+		CreatedAt:  p.CreatedAt.Unix(),
 	}
 }
 
