@@ -28,6 +28,8 @@ func CheckResource(con *repl.Console, source string, github *clientpb.GithubWork
 	if source != "" {
 		if source != consts.ArtifactFromAction && source != consts.ArtifactFromDocker && source != consts.ArtifactFromSaas {
 			return source, errors.New("build source invalid")
+		} else {
+			return source, nil
 		}
 	}
 
