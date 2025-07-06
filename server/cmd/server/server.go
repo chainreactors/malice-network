@@ -144,7 +144,10 @@ func Execute() {
 			logs.Log.Errorf("cannot start grpc , %s ", err.Error())
 			return
 		}
-
+		err = ReDownloadSaasArtifact()
+		if err != nil {
+			logs.Log.Errorf("recover download saas artifact error %v", err)
+		}
 		err = opt.InitUser()
 		if err != nil {
 			logs.Log.Errorf(err.Error())
@@ -189,10 +192,6 @@ func Execute() {
 		cancel()
 		os.Exit(0)
 	}()
-	err = ReDownloadSaasArtifact()
-	if err != nil {
-		logs.Log.Errorf("recover download saas artifact error %v", err)
-	}
 	select {}
 }
 

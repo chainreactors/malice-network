@@ -11,7 +11,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/encoders"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/server/internal/configs"
-	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"github.com/chainreactors/utils/encode"
@@ -132,35 +131,6 @@ func (s *SaasBuilder) getToken() string {
 	return saasConfig.Token
 }
 
-func sendSaasCtrlMsg(isEnd bool, req *models.Artifact, err error, status string) {
-	if core.EventBroker == nil {
-		return
-	}
-	if err != nil {
-		core.EventBroker.Publish(core.Event{
-			EventType: consts.EventBuild,
-			IsNotify:  false,
-			Message:   fmt.Sprintf("%s type(%s) by saas has a err %v. ", req.Name, req.Type, err),
-			Important: true,
-		})
-	}
-	if isEnd {
-		core.EventBroker.Publish(core.Event{
-			EventType: consts.EventBuild,
-			IsNotify:  false,
-			Message:   fmt.Sprintf("%s type(%s) by saas has %s.", req.Name, req.Type, status),
-			Important: true,
-		})
-	} else {
-		core.EventBroker.Publish(core.Event{
-			EventType: consts.EventBuild,
-			IsNotify:  false,
-			Message:   fmt.Sprintf("%s type(%s) by saas has started )...", req.Name, req.Type),
-			Important: true,
-		})
-	}
-}
-
 // 外部可调用的函数
 
 // CheckBuildStatusExternal 外部调用的构建状态检查函数
@@ -187,7 +157,20 @@ func CheckBuildStatusExternal(statusUrl string, token string) (string, error) {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("%d", resp.StatusCode)
+		switch resp.StatusCode {
+		case http.StatusBadRequest:
+			return "", fmt.Errorf("bad request (400): %s", string(body))
+		case http.StatusUnauthorized:
+			return "", fmt.Errorf("unauthorized (401): invalid token")
+		case http.StatusForbidden:
+			return "", fmt.Errorf("forbidden (403): license expired or no permission")
+		//case http.StatusNotFound:
+		//	return "", fmt.Errorf("not found (404): build not found")
+		case http.StatusInternalServerError:
+			return "", fmt.Errorf("internal server error (500): database query failed - %s", string(body))
+		default:
+			return "", fmt.Errorf("unexpected status code %d: %s", resp.StatusCode, string(body))
+		}
 	}
 
 	logs.Log.Debugf("Status response body: %s", string(body))
@@ -199,7 +182,6 @@ func CheckBuildStatusExternal(statusUrl string, token string) (string, error) {
 		ID      uint32 `json:"id"`
 	}
 	if err := json.Unmarshal(body, &result); err != nil {
-		// 如果解析失败，尝试旧的格式
 		var oldResult struct {
 			Status string `json:"status"`
 		}
