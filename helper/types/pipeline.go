@@ -11,6 +11,7 @@ func FromTls(tls *clientpb.TLS) *TlsConfig {
 		CA:     FromCert(tls.Ca),
 		Enable: tls.Enable,
 		Acme:   tls.Acme,
+		Domain: tls.Domain,
 	}
 }
 

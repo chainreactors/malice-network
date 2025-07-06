@@ -237,6 +237,7 @@ func (t *CertConfig) ToProtobuf() *clientpb.TLS {
 		},
 		Ca:     ca,
 		Enable: t.Enable,
+		Acme:   t.Enable,
 	}
 }
 
