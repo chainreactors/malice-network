@@ -196,6 +196,7 @@ const (
 	CommandPipelineStart    = "start"
 	CommandPipelineStop     = "stop"
 	CommandPipelineDelete   = "delete"
+	CommandPipelineRestart  = "restart"
 	CommandBuild            = "build"
 	CommandBuildPrelude     = "prelude"
 	CommandBuildBeacon      = "beacon"

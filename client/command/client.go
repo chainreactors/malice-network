@@ -2,6 +2,7 @@ package command
 
 import (
 	"github.com/chainreactors/malice-network/client/command/cert"
+	"github.com/chainreactors/malice-network/client/command/pipeline"
 	"github.com/reeflective/console"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -42,6 +43,7 @@ func BindCommonCommands(bind BindFunc) {
 	bind(consts.ListenerGroup,
 		listener.Commands,
 		website.Commands,
+		pipeline.Commands,
 	)
 
 	bind(consts.GeneratorGroup,

@@ -164,32 +164,16 @@ func ResourceCompleter(con *repl.Console) carapace.Action {
 	return carapace.ActionCallback(callback)
 }
 
-func JobsCompleter(con *repl.Console, cmd *cobra.Command, use string) carapace.Action {
+func PipelineCompleter(con *repl.Console, use string) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
-		listenerID := cmd.Flags().Arg(0)
-		var lis *clientpb.Listener
-		for _, listener := range con.Listeners {
-			if listener.Id == listenerID {
-				lis = listener
-				break
+		for name, pipe := range con.Pipelines {
+			if use == "" || pipe.Type == use {
+				results = append(results, name, fmt.Sprintf("pipeline %s, type %s, listener %s", name, pipe.Type, pipe.ListenerId))
 			}
 		}
-		for _, pipeline := range lis.GetPipelines().Pipelines {
-			switch pipeline.Body.(type) {
-			case *clientpb.Pipeline_Tcp:
-				if use == consts.CommandPipelineTcp {
-					results = append(results, pipeline.Name,
-						fmt.Sprintf("tcp job %s:%v", pipeline.GetTcp().Host, pipeline.GetTcp().Port))
-				}
-			case *clientpb.Pipeline_Web:
-				if use == consts.CommandWebsite {
-					results = append(results, pipeline.Name,
-						fmt.Sprintf("web job %v, path %s", pipeline.GetWeb().Port, pipeline.GetWeb().Root))
-				}
-			}
-		}
-		return carapace.ActionValuesDescribed(results...).Tag("session jobs")
+
+		return carapace.ActionValuesDescribed(results...).Tag("pipeline")
 	}
 	return carapace.ActionCallback(callback)
 }

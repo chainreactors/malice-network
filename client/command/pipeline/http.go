@@ -1,4 +1,4 @@
-package listener
+package pipeline
 
 import (
 	"encoding/json"
