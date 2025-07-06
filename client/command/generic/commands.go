@@ -112,7 +112,19 @@ pivot
 		f.BoolP("all", "a", false, "list all pivot agents")
 	})
 
-	return []*cobra.Command{loginCmd, versionCmd, exitCmd, broadcastCmd, cmdCmd, pivotCmd}
+	licenseInfoCmd := &cobra.Command{
+		Use:   consts.CommandLicense,
+		Short: "show server license info",
+		Long:  "show server license info",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return GetLicenseCmd(cmd, con)
+		},
+		Example: `~~~
+license
+~~~`,
+	}
+
+	return []*cobra.Command{loginCmd, versionCmd, exitCmd, broadcastCmd, cmdCmd, pivotCmd, licenseInfoCmd}
 }
 
 func Log(con *repl.Console, sess *core.Session, msg string, notify bool) (bool, error) {

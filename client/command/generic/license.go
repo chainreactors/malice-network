@@ -1,4 +1,4 @@
-package license
+package generic
 
 import (
 	"fmt"

@@ -42,11 +42,11 @@ execute_addon、clear ...
 ~~~
 then you can load module
 ~~~
-load_module <module_file.dll>
+load_module --path <module_file.dll>
 ~~~
 you can see more modules loaded by list_module
 ~~~
-execute_addon、clear 、ps、powerpic...
+execute_addon,clear,ps,powershell...
 ~~~
 `}
 
@@ -54,15 +54,10 @@ execute_addon、clear 、ps、powerpic...
 		f.String("path", "", "module path")
 		f.StringSlice("modules", []string{}, "modules list,eg: basic,extend")
 		f.StringP("bundle", "b", "", "bundle name")
-		f.String("build", "", "build resource,eg: docker/action")
-		f.String("target", "", "module target")
-		f.String("profile", "", "build profile")
 	})
 	common.BindFlagCompletions(loadModuleCmd, func(comp carapace.ActionMap) {
 		comp["path"] = carapace.ActionFiles()
 		comp["modules"] = common.ModulesCompleter()
-		comp["target"] = common.BuildTargetCompleter(con)
-		comp["profile"] = common.ProfileCompleter(con)
 	})
 	common.BindArgCompletions(loadModuleCmd, nil,
 		carapace.ActionFiles().Usage("path to the module file"))

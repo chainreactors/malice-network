@@ -256,7 +256,6 @@ const (
 	CommandScreenShot = "screenshot"
 
 	CommandCert           = "cert"
-	CommandCertGenerate   = "generate"
 	CommandCertDelete     = "delete"
 	CommandCertUpdate     = "update"
 	CommandCertImport     = "import"

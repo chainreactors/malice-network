@@ -50,8 +50,7 @@ func handleModuleBuild(con *repl.Console, modules []string) error {
 	if err != nil {
 		return err
 	}
-	github := setting.Github
-	source, err := build.CheckResource(con, "", github.ToProtobuf())
+	source, err := build.CheckResource(con, "", setting.Github.ToProtobuf())
 	if err != nil {
 		return err
 	}
@@ -60,11 +59,10 @@ func handleModuleBuild(con *repl.Console, modules []string) error {
 		return errs.ErrInvalidateTarget
 	}
 	buildConfig := &clientpb.BuildConfig{
-		Target:      target,
-		Modules:     modules,
-		ProfileName: "",
-		Type:        consts.CommandBuildModules,
-		Source:      source,
+		Target:  target,
+		Modules: modules,
+		Type:    consts.CommandBuildModules,
+		Source:  source,
 	}
 	return buildModule(con, buildConfig)
 }
