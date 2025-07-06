@@ -41,7 +41,10 @@ func (rpc *Server) LoadModule(ctx context.Context, req *implantpb.LoadModule) (*
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgListModule, handlerModule(greq.Session))
+	go greq.HandlerResponse(ch, types.MsgListModule, func(spite *implantpb.Spite) {
+		greq.Session.Modules = append(greq.Session.Modules, spite.GetModules().Modules...)
+		greq.Session.PushUpdate("")
+	})
 	return greq.Task.ToProtobuf(), nil
 }
 

@@ -109,11 +109,13 @@ func (s *ServerStatus) Update() error {
 	return nil
 }
 
-func (s *ServerStatus) AddSession(sess *clientpb.Session) {
+func (s *ServerStatus) AddSession(sess *clientpb.Session) *Session {
 	if origin, ok := s.Sessions[sess.SessionId]; ok {
 		origin.Session = sess
+		return origin
 	} else {
 		s.Sessions[sess.SessionId] = NewSession(sess, s)
+		return s.Sessions[sess.SessionId]
 	}
 }
 

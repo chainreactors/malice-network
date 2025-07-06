@@ -1,20 +1,17 @@
 package modules
 
 import (
-	"fmt"
 	"github.com/carapace-sh/carapace"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"golang.org/x/exp/slices"
-	"strings"
 )
 
 func Commands(con *repl.Console) []*cobra.Command {
@@ -96,11 +93,8 @@ func Register(con *repl.Console) {
 		nil,
 		func(ctx *clientpb.TaskContext) (interface{}, error) {
 			resp := ctx.Spite.GetModules()
-			var modules []string
-			for module := range resp.GetModules() {
-				modules = append(modules, fmt.Sprintf("%s", module))
-			}
-			return strings.Join(modules, ","), nil
+			con.RefreshCmd(con.AddSession(ctx.Session))
+			return resp.Modules, nil
 		},
 		func(content *clientpb.TaskContext) (string, error) {
 			modules := content.Spite.GetModules()
@@ -132,7 +126,12 @@ func Register(con *repl.Console) {
 		LoadModule,
 		"",
 		nil,
-		output.ParseStatus,
+		func(ctx *clientpb.TaskContext) (interface{}, error) {
+			resp := ctx.Spite.GetModules()
+			ctx.Session.Modules = append(ctx.Session.Modules, resp.Modules...)
+			con.RefreshCmd(con.AddSession(ctx.Session))
+			return resp.Modules, nil
+		},
 		nil)
 
 	con.AddCommandFuncHelper(
@@ -151,7 +150,11 @@ func Register(con *repl.Console) {
 		refreshModule,
 		"",
 		nil,
-		output.ParseStatus,
+		func(ctx *clientpb.TaskContext) (interface{}, error) {
+			resp := ctx.Spite.GetModules()
+			con.RefreshCmd(con.AddSession(ctx.Session))
+			return resp.Modules, nil
+		},
 		nil)
 
 	con.AddCommandFuncHelper(
@@ -169,7 +172,11 @@ func Register(con *repl.Console) {
 		clearAll,
 		"",
 		nil,
-		output.ParseStatus,
+		func(ctx *clientpb.TaskContext) (interface{}, error) {
+			resp := ctx.Spite.GetModules()
+			con.RefreshCmd(con.AddSession(ctx.Session))
+			return resp.Modules, nil
+		},
 		nil)
 
 	con.AddCommandFuncHelper(

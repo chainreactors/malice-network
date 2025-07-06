@@ -5,8 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/carapace-sh/carapace/pkg/x"
-	"github.com/chainreactors/malice-network/client/plugin"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/reeflective/console"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
@@ -18,6 +16,7 @@ import (
 
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/malice-network/client/plugin"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/mals"
@@ -138,7 +137,7 @@ func (c *Console) ImplantMenu() *cobra.Command {
 	return c.App.Menu(consts.ImplantMenu).Command
 }
 
-func (c *Console) refreshCmd(sess *core.Session) int {
+func (c *Console) RefreshCmd(sess *core.Session) int {
 	var count int
 	for _, cmd := range c.CMDs {
 		if cmd.Annotations["menu"] != consts.ImplantMenu {
@@ -171,12 +170,7 @@ func (c *Console) refreshCmd(sess *core.Session) int {
 func (c *Console) SwitchImplant(sess *core.Session) {
 	c.ActiveTarget.Set(sess)
 	c.App.SwitchMenu(consts.ImplantMenu)
-	count := c.refreshCmd(sess)
-	c.EventCallback[consts.CtrlSessionUpdate] = func(event *clientpb.Event) {
-		if event.Session.SessionId == sess.SessionId {
-			c.refreshCmd(sess)
-		}
-	}
+	count := c.RefreshCmd(sess)
 	c.Log.Importantf("os: %s, arch: %s, process: %d %s, pipeline: %s\n", sess.Os.Name, sess.Os.Arch, sess.Process.Ppid, sess.Process.Name, sess.PipelineId)
 	c.Log.Importantf("%d modules, %d available cmds, %d addons\n", len(sess.Modules), count, len(sess.Addons))
 	c.Log.Infof("Active session %s (%s), group: %s\n", sess.Note, sess.SessionId, sess.GroupName)

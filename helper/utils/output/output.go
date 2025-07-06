@@ -48,7 +48,12 @@ func NewBinaryData(module string, path string, data string, output bool, timeout
 }
 
 func ParseStatus(ctx *clientpb.TaskContext) (interface{}, error) {
-	return intermediate.ParseStatus(ctx.Spite)
+	ok, err := intermediate.ParseStatus(ctx.Spite)
+	if err != nil {
+		return nil, err
+	}
+
+	return fmt.Sprintf("task: %d %t", ctx.Task.TaskId, ok), nil
 }
 
 func ParseResponse(ctx *clientpb.TaskContext) (interface{}, error) {

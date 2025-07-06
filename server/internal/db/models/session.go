@@ -97,7 +97,6 @@ func (s *Session) ToProtobuf() *clientpb.Session {
 		Process:       s.Data.Process,
 		Timer:         &implantpb.Timer{Interval: s.Data.Interval, Jitter: s.Data.Jitter},
 		Modules:       s.Data.Modules,
-		Timediff:      time.Now().Unix() - s.LastCheckin,
 		CreatedAt:     s.CreatedAt.Unix(),
 		Addons:        s.Data.Addons,
 		Name:          s.ProfileName,

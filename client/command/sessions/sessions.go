@@ -14,19 +14,18 @@ import (
 )
 
 // formatTimeDiff formats time difference in seconds to human readable format
-// If >= 1 hour, shows in hours (e.g., "1h", "2h")
-// If < 1 hour, shows in seconds (e.g., "30s", "120s")
-// Color is applied based on session health status
-func formatTimeDiff(seconds uint64, isAlive bool) string {
+func formatTimeDiff(timestamp int64, isAlive bool) string {
+	now := time.Now().Unix()
+	diff := now - timestamp
+
 	var timeStr string
-	if seconds >= 3600 { // >= 1 hour
-		hours := seconds / 3600
-		timeStr = fmt.Sprintf("%dh", hours)
+	if diff > 0 {
+		duration := time.Duration(diff) * time.Second
+		timeStr = duration.String()
 	} else {
-		timeStr = fmt.Sprintf("%ds", seconds)
+		timeStr = "now"
 	}
 
-	// Apply color based on session health
 	if isAlive {
 		return tui.GreenFg.Render(timeStr)
 	} else {
@@ -60,7 +59,7 @@ func PrintSessions(sessions map[string]*core.Session, con *repl.Console, isAll b
 		"Group/Note":     10,
 		"Pipeline":       14,
 		"Remote Address": 18,
-		"UserName":       12,
+		"UserName":       20,
 		"System":         16,
 		"Sleep":          9,
 		"Last":           5,
@@ -78,34 +77,16 @@ func PrintSessions(sessions map[string]*core.Session, con *repl.Console, isAll b
 		return sessionList[i].CreatedAt < sessionList[j].CreatedAt
 	})
 
-	plus_flag := false
 	for _, session := range sessionList {
-		updateMaxLength(maxLengths, "ID", len(session.SessionId[:8]))
-		updateMaxLength(maxLengths, "Group/Note", len(fmt.Sprintf("%s/%s", session.GroupName, session.Note)))
-		updateMaxLength(maxLengths, "Pipeline", len(session.PipelineId))
-		updateMaxLength(maxLengths, "Remote Address", len(session.Target))
-		updateMaxLength(maxLengths, "UserName", len(fmt.Sprintf("%s/%s", session.Os.Hostname, session.Os.Username)))
-		updateMaxLength(maxLengths, "System", len(fmt.Sprintf("%s/%s", session.Os.Name, session.Os.Arch)))
-		//updateMaxLength(&maxLengths, "Sleep", len(fmt.Sprintf("%d %.2f", session.Timer.Interval, session.Timer.Jitter)))
-		//updateMaxLength(&maxLengths, "Last Message", len(strconv.FormatUint(uint64(session.Timediff), 10)+"s"))
-		if !session.IsAlive {
-			if !isAll {
-				continue
-			}
+		if !session.IsAlive && !isAll {
+			continue
 		}
 		var computer string
 		if session.IsPrivilege {
 			computer = fmt.Sprintf("%s/%s *", session.Os.Hostname, session.Os.Username)
-			if !plus_flag && len(computer) > maxLengths["UserName"] {
-				maxLengths["UserName"] += len(computer) - maxLengths["UserName"]
-				plus_flag = true
-			}
 		} else {
 			computer = fmt.Sprintf("%s/%s", session.Os.Hostname, session.Os.Username)
 		}
-		// Format creation time
-		createdTime := time.Unix(session.CreatedAt, 0)
-		createdDisplay := createdTime.Format("2006-01-02 15:04")
 
 		row = table.NewRow(
 			table.RowData{
@@ -115,9 +96,9 @@ func PrintSessions(sessions map[string]*core.Session, con *repl.Console, isAll b
 				"Remote Address": session.Target,
 				"UserName":       computer,
 				"System":         fmt.Sprintf("%s/%s", session.Os.Name, session.Os.Arch),
-				"Sleep":          fmt.Sprintf("%d/%.2f", session.Timer.Interval, session.Timer.Jitter),
-				"Last":           formatTimeDiff(uint64(session.Timediff), session.IsAlive),
-				"CreatedAt":      createdDisplay,
+				"Sleep":          fmt.Sprintf("%d/%.1f%%", session.Timer.Interval, session.Timer.Jitter*100),
+				"Last":           formatTimeDiff(session.LastCheckin, session.IsAlive),
+				"CreatedAt":      time.Unix(session.CreatedAt, 0).Format("2006-01-02 15:04"),
 			})
 		rowEntries = append(rowEntries, row)
 	}
@@ -133,25 +114,18 @@ func PrintSessions(sessions map[string]*core.Session, con *repl.Console, isAll b
 		table.NewColumn("Last", "Last", maxLengths["Last"]),
 		table.NewColumn("CreatedAt", "CreatedAt", maxLengths["CreatedAt"]),
 	}, false)
-	var err error
 	tableModel.SetRows(rowEntries)
 	tableModel.SetMultiline()
 	tableModel.SetHandle(func() {
 		SessionLogin(tableModel, tableModel.Buffer, con)()
 	})
-	err = tableModel.Run()
+	err := tableModel.Run()
 	if err != nil {
 		return
 	}
 	tui.Reset()
 	if con.ActiveTarget.Session != nil {
 		con.Session.GetHistory()
-	}
-}
-
-func updateMaxLength(maxLengths map[string]int, key string, newLength int) {
-	if (maxLengths)[key] < newLength {
-		(maxLengths)[key] = newLength
 	}
 }
 
