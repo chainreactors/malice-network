@@ -994,19 +994,21 @@ func SaveTls(name string, tls *types.TlsConfig) (*models.Certificate, error) {
 	certificate, err := FindCertificate(name)
 	if err != nil && !errors.Is(err, ErrRecordNotFound) {
 		return nil, err
-	}
-	if err == nil {
-		if certificate.Type == certs.Imported || certificate.Type == certs.Acme {
-			certificate.CertPEM = tls.Cert.Cert
-			certificate.KeyPEM = tls.Cert.Key
-			if tls.CA != nil {
-				certificate.CACertPEM = tls.CA.Cert
-				certificate.CAKeyPEM = tls.CA.Key
+	} else {
+		if err == nil {
+			if certificate.Type == certs.Imported || certificate.Type == certs.Acme {
+				certificate.CertPEM = tls.Cert.Cert
+				certificate.KeyPEM = tls.Cert.Key
+				if tls.CA != nil {
+					certificate.CACertPEM = tls.CA.Cert
+					certificate.CAKeyPEM = tls.CA.Key
+				}
+				err = Session().Save(&certificate).Error
 			}
-			err = Session().Save(&certificate).Error
+			return certificate, err
 		}
-		return certificate, err
 	}
+
 	if tls.CA != nil && tls.CA.Key != "" {
 		certModel = &models.Certificate{
 			Type:      certs.SelfSigned,
@@ -1045,21 +1047,20 @@ func SavePipelineByRegister(req *clientpb.Pipeline) error {
 	pipelineModel, err := FindPipeline(req.Name)
 	if err != nil && !errors.Is(err, ErrRecordNotFound) {
 		return err
+	} else if errors.Is(err, ErrRecordNotFound) {
+		pipelineModel = models.FromPipelinePb(req)
 	}
-	reqPipelineModel := models.FromPipelinePb(req)
-	if errors.Is(err, ErrRecordNotFound) {
-		reqPipelineModel.ID = pipelineModel.ID
-	}
+
 	if req.CertName != "" {
-		reqPipelineModel.CertName = req.CertName
+		pipelineModel.CertName = req.CertName
 	} else if req.Tls.Enable {
 		certModel, err := SaveTls(pipelineModel.CertName, types.FromTls(req.Tls))
 		if err != nil {
 			return err
 		}
-		reqPipelineModel.CertName = certModel.Name
+		pipelineModel.CertName = certModel.Name
 	}
-	_, err = SavePipeline(reqPipelineModel)
+	_, err = SavePipeline(pipelineModel)
 	if err != nil {
 		return err
 	}
@@ -1171,7 +1172,6 @@ func UpdateGeneratorConfig(req *clientpb.BuildConfig, path string, config *types
 			if params.Modules != "" {
 				config.Implant.Modules = strings.Split(params.Modules, ",")
 			}
-
 		}
 	}
 	if req.ArtifactId != 0 && config.Pulse.Flags.ArtifactID == 0 {
