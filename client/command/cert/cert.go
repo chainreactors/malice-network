@@ -4,13 +4,23 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
+	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/helper/certs"
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
+	"os"
+	"path/filepath"
 	"time"
+)
+
+var (
+	certFile = "cert.pem"
+	keyFile  = "key.pem"
+	caFile   = "ca-cert.pem"
 )
 
 func DeleteCmd(cmd *cobra.Command, con *repl.Console) error {
@@ -55,6 +65,44 @@ func UpdateCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
+func DownloadCmd(cmd *cobra.Command, con *repl.Console) error {
+	certName := cmd.Flags().Arg(0)
+	output, _ := cmd.Flags().GetString("output")
+	cert, err := con.Rpc.DownloadCertificate(con.Context(), &clientpb.Cert{
+		Name: certName,
+	})
+	if err != nil {
+		return nil
+	}
+	printCert(cert)
+	var path string
+	if output != "" {
+		path = filepath.Join(assets.TempDirName, output)
+	} else {
+		path = filepath.Join(assets.TempDirName, certName)
+	}
+	err = os.MkdirAll(path, 0700)
+	if err != nil {
+		return err
+	}
+	err = certs.SaveToPEMFile(filepath.Join(path, certFile), []byte(cert.Cert.Cert))
+	if err != nil {
+		return err
+	}
+	err = certs.SaveToPEMFile(filepath.Join(path, keyFile), []byte(cert.Cert.Key))
+	if err != nil {
+		return err
+	}
+	if cert.Ca.Cert != "" {
+		err = certs.SaveToPEMFile(filepath.Join(path, caFile), []byte(cert.Ca.Cert))
+		if err != nil {
+			return err
+		}
+	}
+	con.Log.Infof("cert save in %s", path)
+	return nil
+}
+
 func GetCertCmd(cmd *cobra.Command, con *repl.Console) error {
 	certs, err := con.Rpc.GetAllCertificates(con.Context(), &clientpb.Empty{})
 	if err != nil {
@@ -66,6 +114,26 @@ func GetCertCmd(cmd *cobra.Command, con *repl.Console) error {
 		con.Log.Infof("no cert\n")
 	}
 	return nil
+}
+
+func printCert(cert *clientpb.TLS) {
+	_, notAfter, err := getCertExpireTime(cert.Cert.Cert)
+	expireStr := ""
+	if err == nil {
+		expireStr = notAfter.Format("2006-01-02 15:04:05")
+	}
+	certMap := map[string]interface{}{
+		"Name":               cert.Cert.Name,
+		"Type":               cert.Cert.Type,
+		"Organization":       cert.CertSubject.O,
+		"Country":            cert.CertSubject.C,
+		"Locality":           cert.CertSubject.L,
+		"OrganizationalUnit": cert.CertSubject.Ou,
+		"StreetAddress":      cert.CertSubject.St,
+		"Expire":             expireStr,
+	}
+
+	tui.RenderKV(certMap)
 }
 
 func printCerts(certs *clientpb.Certs, con *repl.Console) {

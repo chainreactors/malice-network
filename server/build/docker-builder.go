@@ -26,6 +26,7 @@ type DockerBuilder struct {
 	artifact      *models.Artifact
 	containerName string
 	containerID   string
+	enable3rd     bool
 }
 
 func NewDockerBuilder(req *clientpb.BuildConfig) *DockerBuilder {
@@ -84,23 +85,27 @@ func (d *DockerBuilder) Execute() error {
 			d.config.Target,
 		)
 	case consts.CommandBuildModules:
-		var profileParams *selfType.ProfileParams
+		var profileParams selfType.ProfileParams
 		err = json.Unmarshal(d.config.ParamsBytes, &profileParams)
 		if err != nil {
 			return err
 		}
 		if profileParams.Enable3RD {
 			buildCommand = fmt.Sprintf(
-				"malefic-mutant generate modules && malefic-mutant build 3rd -m %s -t %s",
+				"malefic-mutant generate modules %s && malefic-mutant build 3rd -m %s -t %s",
+				profileParams.Modules,
 				profileParams.Modules,
 				d.config.Target,
 			)
+			d.enable3rd = true
 		} else {
 			buildCommand = fmt.Sprintf(
-				"malefic-mutant generate modules && malefic-mutant build modules -m %s -t %s",
+				"malefic-mutant generate modules %s && malefic-mutant build modules -m %s -t %s",
+				profileParams.Modules,
 				profileParams.Modules,
 				d.config.Target,
 			)
+			d.enable3rd = false
 		}
 	case consts.CommandBuildPrelude:
 		buildCommand = fmt.Sprintf(
@@ -168,7 +173,7 @@ func (d *DockerBuilder) Execute() error {
 }
 
 func (d *DockerBuilder) Collect() (string, string) {
-	_, artifactPath, err := MoveBuildOutput(d.config.Target, d.config.Type)
+	_, artifactPath, err := MoveBuildOutput(d.config.Target, d.config.Type, d.enable3rd)
 	if err != nil {
 		logs.Log.Errorf("failed to move artifact %s output: %s", d.artifact.Name, err)
 		db.UpdateBuilderStatus(d.artifact.ID, consts.BuildStatusFailure)

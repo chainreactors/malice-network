@@ -143,7 +143,7 @@ func ModulesCmd(cmd *cobra.Command, con *repl.Console) error {
 	} else if !isSelfModule && !is3rdModule {
 		return errors.New("must specify either --module or --3rd. One of them is required")
 	}
-	var profileParams *types.ProfileParams
+	var profileParams types.ProfileParams
 	err = json.Unmarshal(buildConfig.ParamsBytes, &profileParams)
 	if err != nil {
 		return err

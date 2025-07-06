@@ -1150,7 +1150,7 @@ func UpdateGeneratorConfig(req *clientpb.BuildConfig, path string, config *types
 		if req.BuildName != "" {
 			config.Basic.Name = req.BuildName
 		}
-		var params *types.ProfileParams
+		var params types.ProfileParams
 		if len(req.ParamsBytes) > 0 {
 			err := json.Unmarshal(req.ParamsBytes, &params)
 			if err != nil {

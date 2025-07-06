@@ -50,7 +50,7 @@ func (a *ActionBuilder) Generate() (*clientpb.Artifact, error) {
 	}
 	var builder *models.Artifact
 	var err error
-	var profileParams *types.ProfileParams
+	var profileParams types.ProfileParams
 	err = json.Unmarshal(a.config.ParamsBytes, &profileParams)
 	if err != nil {
 		return nil, err

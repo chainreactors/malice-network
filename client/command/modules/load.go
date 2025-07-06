@@ -25,37 +25,19 @@ func LoadModuleCmd(cmd *cobra.Command, con *repl.Console) error {
 	path, _ := cmd.Flags().GetString("path")
 	artifactName, _ := cmd.Flags().GetString("artifact")
 	modules, _ := cmd.Flags().GetString("modules")
-	thirdModules, _ := cmd.Flags().GetString("3rd")
 	if artifactName != "" {
-		artifact, err := con.Rpc.DownloadArtifact(con.Context(), &clientpb.Artifact{
-			Name: artifactName,
-		})
+		err := loadExistArtifact(con, artifactName, modules)
 		if err != nil {
 			return err
 		}
-		modulePath := filepath.Join(assets.GetTempDir(), artifact.Name)
-		err = os.WriteFile(modulePath, artifact.Bin, 0666)
-		if err != nil {
-			return err
-		}
-		task, err := LoadModule(con.Rpc, con.GetInteractive(), artifact.Name, modulePath)
-		if err != nil {
-			return err
-		}
-		con.GetInteractive().Console(task, fmt.Sprintf("load %s %s", modules, modulePath))
+	} else if modules != "" {
+		go func() {
+			err := handleModuleBuild(con, strings.Split(modules, ","), false)
+			if err != nil {
+				logs.Log.Errorf("Error loading modules: %s\n", err)
+			}
+		}()
 		return nil
-	} else if modules != "" || thirdModules != "" {
-		if modules != "" && thirdModules != "" {
-			return errors.New("--module and --3rd options are mutually exclusive. please specify only one of them")
-		} else {
-			go func() {
-				err := handleModuleBuild(con, strings.Split(modules, ","), strings.Split(thirdModules, ","))
-				if err != nil {
-					logs.Log.Errorf("Error loading modules: %s\n", err)
-				}
-			}()
-			return nil
-		}
 	} else if path != "" {
 		// Default bundle handling
 		if bundle == "" {
@@ -69,12 +51,13 @@ func LoadModuleCmd(cmd *cobra.Command, con *repl.Console) error {
 		session.Console(task, fmt.Sprintf("load %s %s", bundle, path))
 		return nil
 	} else {
-		return errors.New("must specify either --path, --modules or --3rd_modules. One of them is required")
+		return errors.New("must specify either --path or --modules. One of them is required")
 	}
+	return nil
 }
 
 // handleModuleBuild handles module build based on the builder resource (docker/action)
-func handleModuleBuild(con *repl.Console, modules, thirdModules []string) error {
+func handleModuleBuild(con *repl.Console, modules []string, enable3rd bool) error {
 	source, err := build.CheckResource(con, "", nil)
 	if err != nil {
 		return err
@@ -88,15 +71,12 @@ func handleModuleBuild(con *repl.Console, modules, thirdModules []string) error 
 		params = &types.ProfileParams{
 			Modules: strings.Join(modules, ","),
 		}
-	} else if len(thirdModules) != 0 {
-		params = &types.ProfileParams{
-			Enable3RD: true,
-			Modules:   strings.Join(modules, ","),
-		}
 	} else {
-		return errors.New("must specify either --modules or --3rd_modules. One of them is required")
+		return errors.New("must provide a module list")
 	}
-
+	if enable3rd {
+		params.Enable3RD = true
+	}
 	artifact, err := con.Rpc.SyncBuild(con.Context(), &clientpb.BuildConfig{
 		Target:      target,
 		ParamsBytes: []byte(params.String()),
@@ -133,4 +113,24 @@ func LoadModule(rpc clientrpc.MaliceRPCClient, session *core.Session, bundle str
 		return nil, err
 	}
 	return task, nil
+}
+
+func loadExistArtifact(con *repl.Console, artifactName, modules string) error {
+	artifact, err := con.Rpc.DownloadArtifact(con.Context(), &clientpb.Artifact{
+		Name: artifactName,
+	})
+	if err != nil {
+		return err
+	}
+	modulePath := filepath.Join(assets.GetTempDir(), artifact.Name)
+	err = os.WriteFile(modulePath, artifact.Bin, 0666)
+	if err != nil {
+		return err
+	}
+	task, err := LoadModule(con.Rpc, con.GetInteractive(), artifact.Name, modulePath)
+	if err != nil {
+		return err
+	}
+	con.GetInteractive().Console(task, fmt.Sprintf("load %s %s", modules, modulePath))
+	return nil
 }

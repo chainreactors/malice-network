@@ -66,7 +66,7 @@ func (rpc *Server) SyncPipeline(ctx context.Context, req *clientpb.Pipeline) (*c
 			if len(subject.Province) > 0 {
 				stStr = subject.Province[0]
 			}
-			msg := fmt.Sprintf("cert %s (type: %s) generate sucess, CN: %s, O: %s, C: %s, L: %s, OU: %s, ST: %s",
+			msg := fmt.Sprintf("cert %s (type: %s) generate success, CN: %s, O: %s, C: %s, L: %s, OU: %s, ST: %s",
 				req.Tls.Domain, certs.Acme, subject.CommonName, subject.Organization[0], subject.Country[0], subject.Locality[0],
 				ouStr, stStr)
 			core.EventBroker.Publish(core.Event{

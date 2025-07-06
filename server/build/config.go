@@ -20,7 +20,8 @@ var (
 	release        = "release"
 	releaseLto     = "release-lto"
 	malefic        = "malefic"
-	modules        = "modules"
+	modules        = "malefic_modules"
+	modules3rd     = "malefic_3rd"
 	prelude        = "malefic-prelude"
 	pulse          = "malefic-pulse"
 )
@@ -36,7 +37,7 @@ func GenerateProfile(req *clientpb.BuildConfig) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		var profileParams *types.ProfileParams
+		var profileParams types.ProfileParams
 		err = json.Unmarshal(req.ParamsBytes, &profileParams)
 		if err != nil {
 			return nil, err
@@ -81,13 +82,17 @@ func WirteProfile(config *types.ProfileConfig) error {
 	return nil
 }
 
-func MoveBuildOutput(target, buildType string) (string, string, error) {
+func MoveBuildOutput(target, buildType string, enable3RD bool) (string, string, error) {
 	var sourcePath string
 	name := encoders.UUID()
 	switch {
 	case strings.Contains(target, "windows"):
 		if buildType == consts.CommandBuildModules {
-			sourcePath = filepath.Join(configs.TargetPath, target, release, modules+consts.DllFile)
+			if enable3RD {
+				sourcePath = filepath.Join(configs.TargetPath, target, release, modules3rd+consts.DllFile)
+			} else {
+				sourcePath = filepath.Join(configs.TargetPath, target, release, modules+consts.DllFile)
+			}
 		} else if buildType == consts.CommandBuildPrelude {
 			sourcePath = filepath.Join(configs.TargetPath, target, release, prelude+consts.PEFile)
 		} else if buildType == consts.CommandBuildPulse {

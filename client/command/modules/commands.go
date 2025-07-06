@@ -25,6 +25,37 @@ func Commands(con *repl.Console) []*cobra.Command {
 		},
 	}
 
+	load3rdModuleCmd := &cobra.Command{
+		Use:   consts.ModeleLoad3rdModule + " [module_file]",
+		Short: "Load 3rd party module",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return Load3rdModuleCmd(cmd, con)
+		},
+		Example: `load module from 3rd party modules
+before loading, you can list the current modules: 
+~~~
+rem, curl ...
+~~~
+then you can load module
+~~~
+load_module --path <module_3rd.dll>
+~~~
+`}
+
+	common.BindFlag(load3rdModuleCmd, func(f *pflag.FlagSet) {
+		f.String("path", "", "module path")
+		f.String("modules", "", "modules list,eg: basic,extend")
+		f.StringP("bundle", "", "", "bundle name")
+		f.String("artifact", "", "exist module artifact")
+	})
+	common.BindFlagCompletions(load3rdModuleCmd, func(comp carapace.ActionMap) {
+		comp["path"] = carapace.ActionFiles()
+		comp["modules"] = common.ModulesCompleter()
+		comp["artifact"] = common.ModuleArtifactsCompleter(con)
+	})
+	common.BindArgCompletions(load3rdModuleCmd, nil,
+		carapace.ActionFiles().Usage("path to the module file"))
+
 	loadModuleCmd := &cobra.Command{
 		Use:   consts.ModuleLoadModule + " [module_file]",
 		Short: "Load module",
@@ -51,7 +82,6 @@ execute_addon,clear,ps,powershell...
 		f.String("path", "", "module path")
 		f.String("modules", "", "modules list,eg: basic,extend")
 		f.StringP("bundle", "", "", "bundle name")
-		f.String("3rd", "", "build 3rd-party modules")
 		f.String("artifact", "", "exist module artifact")
 	})
 	common.BindFlagCompletions(loadModuleCmd, func(comp carapace.ActionMap) {
@@ -83,6 +113,7 @@ execute_addon,clear,ps,powershell...
 	return []*cobra.Command{
 		listModuleCmd,
 		loadModuleCmd,
+		load3rdModuleCmd,
 		refreshModuleCmd,
 		clearCmd,
 	}

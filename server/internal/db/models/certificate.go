@@ -49,6 +49,10 @@ func (c *Certificate) ToProtobuf() *clientpb.TLS {
 			Cert: c.CertPEM,
 			Key:  c.KeyPEM,
 		},
+		Ca: &clientpb.Cert{
+			Cert: c.CACertPEM,
+			Key:  c.CAKeyPEM,
+		},
 		CertSubject: &clientpb.CertificateSubject{
 			Cn: subject.CommonName,
 			O:  subject.Organization[0],

@@ -47,6 +47,8 @@ func (s *SaasBuilder) Generate() (*clientpb.Artifact, error) {
 	base64Encoded := encode.Base64Encode(profileByte)
 	s.config.Inputs = make(map[string]string)
 	s.config.Inputs["malefic_config_yaml"] = base64Encoded
+	paramsBase64Encoded := encode.Base64Encode(s.config.ParamsBytes)
+	s.config.Inputs["build_params"] = paramsBase64Encoded
 	if s.config.ArtifactId != 0 && s.config.Type == consts.CommandBuildBeacon {
 		builder, err = db.SaveArtifactFromID(s.config, s.config.ArtifactId, s.config.Source, profileByte)
 	} else {

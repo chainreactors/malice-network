@@ -255,7 +255,7 @@ func ModuleArtifactsCompleter(con *repl.Console) carapace.Action {
 		}
 		for _, a := range artifacts.Artifacts {
 			if a.Type == consts.CommandBuildModules {
-				var params *types.ProfileParams
+				var params types.ProfileParams
 				err = json.Unmarshal(a.ParamsBytes, &params)
 				if err != nil {
 					return carapace.Action{}

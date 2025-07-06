@@ -34,7 +34,7 @@ func NewBuilder(req *clientpb.BuildConfig) (Builder, error) {
 		}
 
 		if len(req.ParamsBytes) > 0 {
-			var newParams *types.ProfileParams
+			var newParams types.ProfileParams
 			err := json.Unmarshal(req.ParamsBytes, &newParams)
 			if err != nil {
 				return nil, err

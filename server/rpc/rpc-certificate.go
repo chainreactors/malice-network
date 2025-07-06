@@ -55,7 +55,7 @@ func (rpc *Server) GenerateSelfCertificate(ctx context.Context, req *clientpb.TL
 		if len(subject.Province) > 0 {
 			stStr = subject.Province[0]
 		}
-		msg := fmt.Sprintf("cert %s (type: %s) generate sucess, CN: %s, O: %s, C: %s, L: %s, OU: %s, ST: %s",
+		msg := fmt.Sprintf("cert %s (type: %s) generate success, CN: %s, O: %s, C: %s, L: %s, OU: %s, ST: %s",
 			certModel.Name, certModel.Type, subject.CommonName, subject.Organization[0], subject.Country[0], subject.Locality[0],
 			ouStr, stStr)
 		core.EventBroker.Publish(core.Event{
@@ -115,4 +115,12 @@ func (rpc *Server) GenerateAcmeCert(ctx context.Context, req *clientpb.TLS) (*cl
 		Ctrl: consts.CtrlAcme,
 		Job:  job.ToProtobuf()})
 	return &clientpb.Empty{}, nil
+}
+
+func (rpc *Server) DownloadCertificate(ctx context.Context, req *clientpb.Cert) (*clientpb.TLS, error) {
+	certificate, err := db.FindCertificate(req.Name)
+	if err != nil {
+		return nil, err
+	}
+	return certificate.ToProtobuf(), nil
 }

@@ -82,6 +82,7 @@ const (
 	// module
 	ModuleListModule    = "list_module"
 	ModuleLoadModule    = "load_module"
+	ModeleLoad3rdModule = "load_3rd_module"
 	ModuleRefreshModule = "refresh_module"
 
 	// addon
@@ -260,6 +261,7 @@ const (
 	CommandCert           = "cert"
 	CommandCertDelete     = "delete"
 	CommandCertUpdate     = "update"
+	CommandCertDownload   = "download"
 	CommandCertImport     = "import"
 	CommandCertSelfSigned = "self_signed"
 	CommandCertAcme       = "acme"

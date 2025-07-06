@@ -122,6 +122,27 @@ cert update cert-name --cert cert_path --key key_path --type imported
 		comp["type"] = common.CertTypeCompleter()
 	})
 
+	downloadCmd := &cobra.Command{
+		Use:   consts.CommandCertDownload,
+		Short: "download a cert",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return DownloadCmd(cmd, con)
+		},
+		Example: `~~~
+// download a cert
+cert download cert-name -o cert_path 
+~~~`,
+	}
+
+	common.BindArgCompletions(updateCmd, nil,
+		common.CertNameCompleter(con),
+	)
+
+	common.BindFlag(downloadCmd, func(f *pflag.FlagSet) {
+		f.StringP("output", "o", "", "cert save path")
+	})
+
 	certCmd.AddCommand(importCmd, selfSignCmd, acmeCmd, delCmd, updateCmd)
 	return []*cobra.Command{
 		certCmd,
