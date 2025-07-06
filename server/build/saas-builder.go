@@ -36,6 +36,10 @@ func NewSaasBuilder(req *clientpb.BuildConfig) *SaasBuilder {
 }
 
 func (s *SaasBuilder) Generate() (*clientpb.Artifact, error) {
+	saasConfig := configs.GetSaasConfig()
+	if !saasConfig.Enable {
+		return nil, errors.New("saas is unable in server config")
+	}
 	var builder *models.Artifact
 	var err error
 	profileByte, err := GenerateProfile(s.config)
@@ -59,7 +63,6 @@ func (s *SaasBuilder) Generate() (*clientpb.Artifact, error) {
 	}
 	s.builder = builder
 	db.UpdateBuilderStatus(s.builder.ID, consts.BuildStatusWaiting)
-	saasConfig := configs.GetSaasConfig()
 	s.executeUrl = fmt.Sprintf("%s/api/build", saasConfig.Url)
 	return builder.ToArtifact([]byte{}), nil
 }
