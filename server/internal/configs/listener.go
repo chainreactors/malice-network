@@ -114,7 +114,9 @@ func (http *HttpPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, er
 	if err != nil {
 		return nil, err
 	}
-
+	tlsPb := tls.ToProtobuf()
+	tlsPb.Acme = http.TlsConfig.Acme
+	tlsPb.Domain = http.TlsConfig.Domain
 	// 如果指定了错误页面，读取文件内容
 	var errorPageContent string
 	if http.ErrorPage != "" {
@@ -150,7 +152,7 @@ func (http *HttpPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, er
 				Params: string(paramsJson),
 			},
 		},
-		Tls:        tls.ToProtobuf(),
+		Tls:        tlsPb,
 		Encryption: http.EncryptionConfig.ToProtobuf(),
 	}, nil
 }
