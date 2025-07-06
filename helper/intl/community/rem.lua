@@ -4,17 +4,10 @@ end
 
 
 function load_rem()
-    local rpc = require("rpc")
-    local session = active()
-    local task = rpc.LoadRem(active():Context(), ProtobufMessage.New("modulepb.Request", {
-        Name = "load_rem",
-        Bin = read_resource(rem_path(session.Os.Arch, "dll")),
-    }))
-    wait(task)
+    return load_module(active(), "rem", script_resource(rem_path(session.Os.Arch, "dll")))
 end
 
 local rem_load_cmd = command("rem_community:load", load_rem, "load rem with rem.dll", "")
-bind_args_completer(rem_load_cmd, { rem_completer() })
 
 function build_rem_cmdline(pipe, mod, remote_url, local_url)
     local link = rem_link(pipe)
@@ -32,7 +25,7 @@ function build_rem_cmdline(pipe, mod, remote_url, local_url)
 end
 
 function run_socks5(arg_0, flag_port, flag_user, flag_pass)
-    return rem(active(), arg_0,
+    return rem_dial(active(), arg_0,
         build_rem_cmdline(arg_0, "reverse", "socks5://" .. flag_user .. ":" .. flag_pass .. "@0.0.0.0:" .. flag_port, ""))
 end
 
@@ -40,7 +33,7 @@ local rem_socks_cmd = command("rem_community:socks5", run_socks5, "serving socks
 bind_args_completer(rem_socks_cmd, { rem_completer() })
 
 function run_rem_connect(arg_0)
-    rem(active(), arg_0, { "-c", rem_link(arg_0), "-n" })
+    rem_dial(active(), arg_0, { "-c", rem_link(arg_0), "-n" })
 end
 
 local rem_connect_cmd = command("rem_community:connect", run_rem_connect, "connect to rem", "")
@@ -74,7 +67,7 @@ bind_flags_completer(rem_run_cmd, { pipe = rem_completer() })
 
 function restart_rem_agent(arg_0, arg_1)
     local session = active()
-    local rem_path = rem_path(session.Os.Arch, "exe")
+    local path = rem_path(session.Os.Arch, "exe")
     local agent
     for k, v in pairs(pivots()) do
         if v.RemAgentId == arg_1 then
@@ -86,7 +79,7 @@ function restart_rem_agent(arg_0, arg_1)
     table.insert(args, "-c")
     table.insert(args, rem_link(arg_0))
 
-    return execute_exe(session, script_resource(rem_path), args, true, 600, arch, "", new_sac())
+    return execute_exe(session, script_resource(path), args, true, 600, arch, "", new_sac())
 end
 
 function get_rem_log(arg_0, arg_1)
