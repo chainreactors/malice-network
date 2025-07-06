@@ -3,6 +3,7 @@ package common
 import (
 	"fmt"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/certs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -518,6 +519,17 @@ func CertNameCompleter(con *repl.Console) carapace.Action {
 			results = append(results, c.Name, fmt.Sprintf("cert %s, type %s", c.Name, c.Type))
 		}
 		return carapace.ActionValuesDescribed(results...).Tag("certs")
+	}
+	return carapace.ActionCallback(callback)
+}
+
+func CertTypeCompleter() carapace.Action {
+	callback := func(c carapace.Context) carapace.Action {
+		results := make([]string, 0)
+		for _, c := range certs.CertTypes {
+			results = append(results, c)
+		}
+		return carapace.ActionValuesDescribed(results...).Tag("cert type")
 	}
 	return carapace.ActionCallback(callback)
 }

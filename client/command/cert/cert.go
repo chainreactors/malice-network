@@ -4,8 +4,8 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
-	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
@@ -14,11 +14,8 @@ import (
 )
 
 func DeleteCmd(cmd *cobra.Command, con *repl.Console) error {
-	_, certName, err := common.ParseTLSFlags(cmd)
-	if err != nil {
-		return err
-	}
-	_, err = con.Rpc.DeleteCertificate(con.Context(), &clientpb.Cert{
+	certName := cmd.Flags().Arg(0)
+	_, err := con.Rpc.DeleteCertificate(con.Context(), &clientpb.Cert{
 		Name: certName,
 	})
 	if err != nil {
@@ -29,16 +26,27 @@ func DeleteCmd(cmd *cobra.Command, con *repl.Console) error {
 }
 
 func UpdateCmd(cmd *cobra.Command, con *repl.Console) error {
-	tls, certName, err := common.ParseTLSFlags(cmd)
-	if err != nil {
-		return err
-	}
+	certName := cmd.Flags().Arg(0)
+	certPath, _ := cmd.Flags().GetString("cert")
+	keyPath, _ := cmd.Flags().GetString("key")
 	certType, _ := cmd.Flags().GetString("type")
+	var cert, key string
+	var err error
+	if certPath != "" && keyPath != "" {
+		cert, err = cryptography.ProcessPEM(certPath)
+		if err != nil {
+			return err
+		}
+		key, err = cryptography.ProcessPEM(keyPath)
+		if err != nil {
+			return err
+		}
+	}
 	_, err = con.Rpc.DeleteCertificate(con.Context(), &clientpb.Cert{
 		Name: certName,
 		Type: certType,
-		Cert: tls.Cert.Cert,
-		Key:  tls.Cert.Key,
+		Cert: cert,
+		Key:  key,
 	})
 	if err != nil {
 		return err

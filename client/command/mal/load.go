@@ -59,7 +59,7 @@ func MalLoadCmd(ctx *cobra.Command, con *repl.Console) error {
 		return err
 	}
 	profile.AddMal(manifest.Name)
-	err = assets.UpdateProfileConfig(profile)
+	err = assets.UpdateMals(profile)
 	if err != nil {
 		return err
 	}
@@ -99,7 +99,7 @@ func LoadMalWithManifest(con *repl.Console, rootCmd *cobra.Command, manifest *pl
 	for _, cmd := range plug.Commands() {
 		rootCmd.AddCommand(cmd.Command)
 	}
-	err = assets.UpdateProfileConfig(profile)
+	err = assets.UpdateMals(profile)
 	if err != nil {
 		return err
 	}

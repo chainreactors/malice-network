@@ -42,6 +42,10 @@ const (
 	Imported   = "imported"
 )
 
+var CertTypes = []string{
+	AutoCert, SelfSigned, Imported,
+}
+
 // SaveToPEMFile save to PEM file
 func SaveToPEMFile(filename string, pemData []byte) error {
 	file, err := os.Create(filename)

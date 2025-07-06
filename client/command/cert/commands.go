@@ -16,14 +16,9 @@ func Commands(con *repl.Console) []*cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return GetCmd(cmd, con)
 		},
-	}
-
-	generateCmd := &cobra.Command{
-		Use:   consts.CommandCertGenerate,
-		Short: "generate a new cert",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return cmd.Help()
-		},
+		Example: `~~~
+cert
+~~~`,
 	}
 
 	importCmd := &cobra.Command{
@@ -32,6 +27,10 @@ func Commands(con *repl.Console) []*cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ImportCmd(cmd, con)
 		},
+		Example: `~~~
+// generate a imported cert to server
+cert import --cert cert_file_path --key key_file_path --ca-cert ca_cert_path
+~~~`,
 	}
 
 	common.BindFlag(importCmd, common.ImportSet)
@@ -43,19 +42,30 @@ func Commands(con *repl.Console) []*cobra.Command {
 
 	selfSignCmd := &cobra.Command{
 		Use:   consts.CommandCertSelfSigned,
-		Short: "generate a self signed cert",
+		Short: "generate a self-signed cert",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return SelfSignedCmd(cmd, con)
 		},
+		Example: `~~~
+// generate a self-signed cert without using certificate information
+cert selfSign
+
+// generate a self-signed cert using certificate information
+cert selfSign --CN commonName --O "Example Organization" --C US --L "San Francisco" --OU "IT Department" --ST California --validity 365
+~~~`,
 	}
 	common.BindFlag(selfSignCmd, common.SelfSignedFlagSet)
 
 	acmeCmd := &cobra.Command{
-		Use:   consts.CommandCertSelfSigned,
+		Use:   consts.CommandCertAcme,
 		Short: "generate a acme cert",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return AcmeCmd(cmd, con)
 		},
+		Example: `~~~
+// generate a acme cert
+cert acme --domain *.example.com --pipeline http
+~~~`,
 	}
 	common.BindFlag(acmeCmd, func(f *pflag.FlagSet) {
 		f.String("domain", "", "acme domain")
@@ -69,36 +79,50 @@ func Commands(con *repl.Console) []*cobra.Command {
 		comp["pipeline"] = common.HttpPipelineCompleter(con)
 	})
 
-	generateCmd.AddCommand(importCmd, selfSignCmd, acmeCmd)
-
 	delCmd := &cobra.Command{
-		Use:   consts.CommandCertDelete,
-		Short: "del a cert",
+		Use:  consts.CommandCertDelete,
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return DeleteCmd(cmd, con)
 		},
+		Example: `~~~
+// delete a cert
+cert delete cert-name
+~~~`,
 	}
-
-	common.BindFlag(delCmd, common.TlsCertFlagSet)
-	delCmd.MarkFlagRequired("cert-name")
+	common.BindArgCompletions(delCmd, nil,
+		common.CertNameCompleter(con),
+	)
 
 	updateCmd := &cobra.Command{
 		Use:   consts.CommandCertUpdate,
 		Short: "update a cert",
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return UpdateCmd(cmd, con)
 		},
+		Example: `~~~
+// update a cert
+cert update cert-name --cert cert_path --key key_path --type imported
+~~~`,
 	}
 
-	common.BindFlag(updateCmd, common.TlsCertFlagSet)
-	updateCmd.MarkFlagRequired("cert-name")
+	common.BindFlag(updateCmd, func(f *pflag.FlagSet) {
+		f.String("cert", "", "tls cert path")
+		f.String("key", "", "tls key path")
+		f.String("type", "", "cert type")
+	})
+
+	common.BindArgCompletions(updateCmd, nil,
+		common.CertNameCompleter(con),
+	)
 	common.BindFlagCompletions(updateCmd, func(comp carapace.ActionMap) {
 		comp["cert"] = carapace.ActionFiles().Usage("path to the cert file")
 		comp["key"] = carapace.ActionFiles().Usage("path to the key file")
-		comp["cert-name"] = common.CertNameCompleter(con)
+		comp["type"] = common.CertTypeCompleter()
 	})
 
-	certCmd.AddCommand(generateCmd, delCmd, updateCmd)
+	certCmd.AddCommand(importCmd, selfSignCmd, acmeCmd, delCmd, updateCmd)
 	return []*cobra.Command{
 		certCmd,
 	}

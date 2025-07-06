@@ -280,7 +280,7 @@ func ExtensionRegisterCommand(extCmd *ExtCommand, cmd *cobra.Command, con *repl.
 	}
 	profile.AddExtension(extCmd.CommandName)
 	cmd.AddCommand(extensionCmd)
-	err = assets.UpdateProfileConfig(profile)
+	err = assets.UpdateExtensions(profile)
 	if err != nil {
 		con.Log.Errorf("Error saving profile: %s\n", err)
 		return
