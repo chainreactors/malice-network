@@ -107,7 +107,7 @@ func (rpc *Server) UploadArtifact(ctx context.Context, req *clientpb.Artifact) (
 	if req.Name == "" {
 		req.Name = codenames.GetCodename()
 	}
-	artifact, err := db.SaveArtifact(req.Name, req.Type, req.Platform, req.Arch, req.Stage, consts.ArtifactFromUpload)
+	artifact, err := db.SaveArtifact(req.Name, req.Type, req.Platform, req.Arch, consts.ArtifactFromUpload)
 	if err != nil {
 		return nil, err
 	}

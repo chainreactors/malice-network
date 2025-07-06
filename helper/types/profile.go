@@ -77,6 +77,9 @@ type ProfileParams struct {
 	Proxy          string `json:"proxy"`
 	OriginBeaconID uint32 `json:"origin_beacon_id"`
 	RelinkBeaconID uint32 `json:"relink_beacon_id"`
+
+	Module3rd bool   `json:"module_3rd"`
+	Modules   string `json:"modules"`
 }
 
 func (p *ProfileParams) String() string {
@@ -85,4 +88,13 @@ func (p *ProfileParams) String() string {
 		return ""
 	}
 	return string(content)
+}
+
+func Unmarsal(params string) (*ProfileParams, error) {
+	var p *ProfileParams
+	err := json.Unmarshal([]byte(params), &p)
+	if err != nil {
+		return p, err
+	}
+	return p, nil
 }

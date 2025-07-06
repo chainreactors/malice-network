@@ -1,9 +1,11 @@
 package common
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/certs"
+	"github.com/chainreactors/malice-network/helper/types"
 	"os"
 	"path/filepath"
 	"strings"
@@ -237,6 +239,29 @@ func ArtifactCompleter(con *repl.Console) carapace.Action {
 		}
 		for _, s := range artifacts.Artifacts {
 			results = append(results, s.Name, fmt.Sprintf("id: %d, type %s, target %s", s.Id, s.Type, s.Target))
+		}
+		return carapace.ActionValuesDescribed(results...).Tag("artifact")
+	}
+	return carapace.ActionCallback(callback)
+}
+
+func ModuleArtifactsCompleter(con *repl.Console) carapace.Action {
+	callback := func(c carapace.Context) carapace.Action {
+		results := make([]string, 0)
+		artifacts, err := con.Rpc.ListArtifact(con.Context(), &clientpb.Empty{})
+		if err != nil {
+			con.Log.Errorf("Error get builder: %v\n", err)
+			return carapace.Action{}
+		}
+		for _, a := range artifacts.Artifacts {
+			if a.Type == consts.CommandBuildModules {
+				var params *types.ProfileParams
+				err = json.Unmarshal(a.ParamsBytes, &params)
+				if err != nil {
+					return carapace.Action{}
+				}
+				results = append(results, a.Name, fmt.Sprintf("target %s, module%s", a.Target, params.Modules))
+			}
 		}
 		return carapace.ActionValuesDescribed(results...).Tag("artifact")
 	}
@@ -500,7 +525,7 @@ func CertNameCompleter(con *repl.Console) carapace.Action {
 			return carapace.Action{}
 		}
 		for _, c := range certs.Certs {
-			results = append(results, c.Name, fmt.Sprintf("cert %s, type %s", c.Name, c.Type))
+			results = append(results, c.Cert.Name, fmt.Sprintf("cert %s, type %s", c.Cert.Name, c.Cert.Type))
 		}
 		return carapace.ActionValuesDescribed(results...).Tag("certs")
 	}

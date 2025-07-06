@@ -1,6 +1,7 @@
 package build
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/codenames"
@@ -11,7 +12,6 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"github.com/chainreactors/utils/encode"
-	"strings"
 )
 
 type ActionBuilder struct {
@@ -26,9 +26,7 @@ func NewActionBuilder(req *clientpb.BuildConfig) *ActionBuilder {
 		"package": req.Type,
 		"targets": req.Target,
 	}
-	if len(req.Modules) > 0 {
-		inputs["malefic_modules_features"] = strings.Join(req.Modules, ",")
-	}
+
 	req.Inputs = inputs
 
 	return &ActionBuilder{
@@ -50,9 +48,20 @@ func (a *ActionBuilder) Generate() (*clientpb.Artifact, error) {
 			githubConfig.WorkflowId = config.Workflow
 		}
 	}
-
 	var builder *models.Artifact
 	var err error
+	var profileParams *types.ProfileParams
+	err = json.Unmarshal(a.config.ParamsBytes, &profileParams)
+	if err != nil {
+		return nil, err
+	}
+	if profileParams.Modules != "" {
+		a.config.Inputs["malefic_modules_features"] = profileParams.Modules
+
+	}
+	if profileParams.Module3rd {
+		a.config.Inputs["package"] = "3rd"
+	}
 	profileByte, err := GenerateProfile(a.config)
 	if err != nil {
 		return nil, err
@@ -87,9 +96,6 @@ func (a *ActionBuilder) Generate() (*clientpb.Artifact, error) {
 }
 
 func (a *ActionBuilder) Execute() error {
-	if len(a.config.Modules) == 0 {
-		a.config.Modules = a.profile.Implant.Modules
-	}
 	db.UpdateBuilderStatus(a.builder.ID, consts.BuildStatusRunning)
 
 	err := runWorkFlow(a.config.Github.Owner, a.config.Github.Repo, a.config.Github.WorkflowId, a.config.Github.Token, a.config.Inputs)

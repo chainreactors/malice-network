@@ -2,6 +2,7 @@ package build
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/codenames"
@@ -9,6 +10,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	selfType "github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"github.com/docker/docker/api/types"
@@ -82,10 +84,24 @@ func (d *DockerBuilder) Execute() error {
 			d.config.Target,
 		)
 	case consts.CommandBuildModules:
-		buildCommand = fmt.Sprintf(
-			"malefic-mutant generate modules && malefic-mutant build modules -t %s",
-			d.config.Target,
-		)
+		var profileParams *selfType.ProfileParams
+		err = json.Unmarshal(d.config.ParamsBytes, &profileParams)
+		if err != nil {
+			return err
+		}
+		if profileParams.Module3rd {
+			buildCommand = fmt.Sprintf(
+				"malefic-mutant generate modules && malefic-mutant build 3rd -m %s -t %s",
+				profileParams.Modules,
+				d.config.Target,
+			)
+		} else {
+			buildCommand = fmt.Sprintf(
+				"malefic-mutant generate modules && malefic-mutant build modules -m %s -t %s",
+				profileParams.Modules,
+				d.config.Target,
+			)
+		}
 	case consts.CommandBuildPrelude:
 		buildCommand = fmt.Sprintf(
 			"malefic-mutant generate prelude && malefic-mutant build prelude -t %s",
@@ -103,7 +119,7 @@ func (d *DockerBuilder) Execute() error {
 			pulseOs = target.OS
 		}
 		buildCommand = fmt.Sprintf(
-			"malefic-mutant generate pulse %s %s &&malefic-mutant build pulse -t %s",
+			"malefic-mutant generate pulse -a %s -p %s &&malefic-mutant build pulse -t %s",
 			target.Arch, pulseOs, d.config.Target,
 		)
 	}

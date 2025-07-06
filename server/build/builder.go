@@ -33,14 +33,14 @@ func NewBuilder(req *clientpb.BuildConfig) (Builder, error) {
 			req.ArtifactId = profile.Pulse.Flags.ArtifactID
 		}
 
-		if req.Params != "" {
+		if len(req.ParamsBytes) > 0 {
 			var newParams *types.ProfileParams
-			err := json.Unmarshal([]byte(req.Params), &newParams)
+			err := json.Unmarshal(req.ParamsBytes, &newParams)
 			if err != nil {
 				return nil, err
 			}
 			newParams.OriginBeaconID = req.ArtifactId
-			req.Params = newParams.String()
+			req.ParamsBytes = []byte(newParams.String())
 		}
 	}
 	var builder Builder

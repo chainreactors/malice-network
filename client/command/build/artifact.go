@@ -87,7 +87,6 @@ func PrintArtifacts(artifacts *clientpb.Artifacts, con *repl.Console) error {
 				"Type":   artifact.Type,
 				"Target": artifact.Target,
 				"Source": artifact.Source,
-				//"Stager":   builder.Stage,
 				//"Modules":   builder.Modules,
 				"Profile":   profileDisplay,
 				"Pipeline":  pipelineDisplay,
@@ -171,7 +170,6 @@ func printArtifact(artifact *clientpb.Artifact) {
 		"ID":       artifact.Id,
 		"Name":     artifact.Name,
 		"Type":     artifact.Type,
-		"Stage":    artifact.Stage,
 		"Target":   artifact.Target,
 		"Profile":  artifact.Profile,
 		"Pipeline": artifact.Pipeline,
@@ -234,12 +232,11 @@ func DownloadArtifact(con *repl.Console, name string, format string) (*clientpb.
 func UploadArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
 	path := cmd.Flags().Arg(0)
 	artifactType, _ := cmd.Flags().GetString("type")
-	stage, _ := cmd.Flags().GetString("stage")
 	name, _ := cmd.Flags().GetString("name")
 	if name == "" {
 		name = filepath.Base(path)
 	}
-	artifact, err := UploadArtifact(con, path, name, artifactType, stage)
+	artifact, err := UploadArtifact(con, path, name, artifactType)
 	if err != nil {
 		return err
 	}
@@ -258,16 +255,15 @@ func DeleteArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func UploadArtifact(con *repl.Console, path string, name, artifactType, stage string) (*clientpb.Artifact, error) {
+func UploadArtifact(con *repl.Console, path string, name, artifactType string) (*clientpb.Artifact, error) {
 	bin, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
 	return con.Rpc.UploadArtifact(con.Context(), &clientpb.Artifact{
-		Name:  name,
-		Bin:   bin,
-		Type:  artifactType,
-		Stage: stage,
+		Name: name,
+		Bin:  bin,
+		Type: artifactType,
 	})
 }
 

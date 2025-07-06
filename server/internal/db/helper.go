@@ -673,9 +673,7 @@ func NewProfile(profile *clientpb.Profile) error {
 
 	model := &models.Profile{
 		Name: profile.Name,
-		Type: profile.Type,
 		//Obfuscate:  profile.Obfuscate,
-		Modules:         profile.Modules,
 		ParamsData:      profile.Params,
 		PulsePipelineID: profile.PulsePipelineId,
 		PipelineID:      profile.PipelineId,
@@ -718,9 +716,6 @@ func GetProfile(name string) (*types.ProfileConfig, error) {
 	if profile.Basic != nil {
 		if profileModel.Name != "" {
 			profile.Basic.Name = profileModel.Name
-		}
-		if profileModel.Modules != "" {
-			profile.Implant.Modules = strings.Split(profileModel.Modules, ",")
 		}
 		if params := profileModel.Params; params != nil {
 			profile.Basic.Interval = profileModel.Params.Interval
@@ -804,17 +799,11 @@ func SaveArtifactFromConfig(req *clientpb.BuildConfig, profileByte []byte) (*mod
 		Target:      req.Target,
 		Type:        req.Type,
 		Source:      req.Source,
-		Modules:     strings.Join(req.Modules, ","),
 		Arch:        target.Arch,
 		Os:          target.OS,
 		ProfileByte: profileByte,
-		ParamsData:  req.Params,
+		ParamsData:  string(req.ParamsBytes),
 	}
-	//paramsJson, err := json.Marshal(req.Params)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//builder.ParamsData = paramsJson
 
 	if Session() == nil {
 		return &builder, nil
@@ -838,11 +827,10 @@ func SaveArtifactFromID(req *clientpb.BuildConfig, ID uint32, resource string, p
 		Target:      req.Target,
 		Type:        req.Type,
 		Source:      resource,
-		Modules:     strings.Join(req.Modules, ","),
 		Arch:        target.Arch,
 		Os:          target.OS,
 		ProfileByte: profileByte,
-		ParamsData:  req.Params,
+		ParamsData:  string(req.ParamsBytes),
 	}
 
 	if err := Session().Create(&builder).Error; err != nil {
@@ -901,7 +889,7 @@ func UpdatePulseRelink(pusleID, beanconID uint32) error {
 	return nil
 }
 
-func SaveArtifact(name, artifactType, platform, arch, stage, source string) (*models.Artifact, error) {
+func SaveArtifact(name, artifactType, platform, arch, source string) (*models.Artifact, error) {
 	absBuildOutputPath, err := filepath.Abs(configs.BuildOutputPath)
 	if err != nil {
 		return nil, err
@@ -911,7 +899,6 @@ func SaveArtifact(name, artifactType, platform, arch, stage, source string) (*mo
 		Name:   name,
 		Os:     platform,
 		Arch:   arch,
-		Stager: stage,
 		Type:   artifactType,
 		Source: source,
 	}
@@ -976,6 +963,7 @@ func FindArtifact(target *clientpb.Artifact) (*clientpb.Artifact, error) {
 	_, err := os.Stat(artifact.Path)
 	var path string
 	var name string
+	var status string
 	if err != nil {
 		if artifact.Params == nil || artifact.Params.RelinkBeaconID == 0 {
 			return nil, fmt.Errorf("the original beacon is lost and there is no relink beacon")
@@ -987,12 +975,14 @@ func FindArtifact(target *clientpb.Artifact) (*clientpb.Artifact, error) {
 		}
 		path = relinkArtifact.Path
 		name = relinkArtifact.Name
+		status = relinkArtifact.Status
 	} else {
 		path = artifact.Path
 		name = artifact.Name
+		status = artifact.Status
 	}
 	content, err := os.ReadFile(path)
-	if err != nil {
+	if err != nil && status == consts.BuildStatusFailure {
 		return nil, fmt.Errorf("error reading file for artifact: %s, error: %v", name, err)
 	}
 
@@ -1006,7 +996,7 @@ func SaveFromTls(name string, tls *types.TlsConfig) (*models.Certificate, error)
 		return nil, err
 	}
 	if err == nil {
-		if certificate.Type == certs.Imported || certificate.Type == certs.AutoCert {
+		if certificate.Type == certs.Imported || certificate.Type == certs.Acme {
 			certificate.CertPEM = tls.Cert.Cert
 			certificate.KeyPEM = tls.Cert.Key
 			if tls.CA != nil {
@@ -1025,24 +1015,24 @@ func SaveFromTls(name string, tls *types.TlsConfig) (*models.Certificate, error)
 			CertPEM:   tls.Cert.Cert,
 			KeyPEM:    tls.Cert.Key,
 		}
-	} else if tls.Cert != nil && !tls.AutoCert {
+	} else if tls.Cert != nil && !tls.Acme {
 		certModel = &models.Certificate{
 			Type:      certs.Imported,
 			CertPEM:   tls.Cert.Cert,
 			KeyPEM:    tls.Cert.Key,
 			CACertPEM: tls.CA.Cert,
 		}
-	} else if tls.Cert != nil && tls.AutoCert {
+	} else if tls.Cert != nil && tls.Acme {
 		certModel = &models.Certificate{
 			Name:    tls.Domain,
-			Type:    certs.AutoCert,
+			Type:    certs.Acme,
 			CertPEM: tls.Cert.Cert,
 			KeyPEM:  tls.Cert.Key,
 			Domain:  tls.Domain,
 		}
 	}
 	if tls.Enable && errors.Is(err, ErrRecordNotFound) {
-		if !tls.AutoCert {
+		if !tls.Acme {
 			certModel.Name = codenames.GetCodename()
 		}
 		err = Session().Create(&certModel).Error
@@ -1160,12 +1150,9 @@ func UpdateGeneratorConfig(req *clientpb.BuildConfig, path string, config *types
 		if req.BuildName != "" {
 			config.Basic.Name = req.BuildName
 		}
-		if req.MaleficHost != "" {
-			config.Basic.Targets = []string{req.MaleficHost}
-		}
 		var params *types.ProfileParams
-		if req.Params != "" {
-			err := json.Unmarshal([]byte(req.Params), &params)
+		if len(req.ParamsBytes) > 0 {
+			err := json.Unmarshal(req.ParamsBytes, &params)
 			if err != nil {
 				return err
 			}
@@ -1180,15 +1167,11 @@ func UpdateGeneratorConfig(req *clientpb.BuildConfig, path string, config *types
 			if params.Proxy != "" {
 				config.Basic.Proxy = params.Proxy
 			}
-		}
 
-		if len(req.Modules) > 0 {
-			config.Implant.Modules = req.Modules
-		}
+			if params.Modules != "" {
+				config.Implant.Modules = strings.Split(params.Modules, ",")
+			}
 
-	} else if config.Pulse != nil {
-		if req.MaleficHost != "" {
-			config.Pulse.Target = req.MaleficHost
 		}
 	}
 	if req.ArtifactId != 0 && config.Pulse.Flags.ArtifactID == 0 {

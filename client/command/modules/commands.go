@@ -51,10 +51,14 @@ execute_addon,clear,ps,powershell...
 		f.String("path", "", "module path")
 		f.StringSlice("modules", []string{}, "modules list,eg: basic,extend")
 		f.StringP("bundle", "b", "", "bundle name")
+		f.Bool("module", false, "build modules")
+		f.Bool("3rd", false, "build 3rd-party modules")
+		f.String("artifact", "false", "exist module artifact")
 	})
 	common.BindFlagCompletions(loadModuleCmd, func(comp carapace.ActionMap) {
 		comp["path"] = carapace.ActionFiles()
 		comp["modules"] = common.ModulesCompleter()
+		comp["artifact"] = common.ModuleArtifactsCompleter(con)
 	})
 	common.BindArgCompletions(loadModuleCmd, nil,
 		carapace.ActionFiles().Usage("path to the module file"))

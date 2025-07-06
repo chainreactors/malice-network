@@ -142,7 +142,7 @@ build beacon --target x86_64-pc-windows-msvc --profile beacon_profile --srdi
 ~~~`,
 	}
 	common.BindFlag(beaconCmd, common.GenerateFlagSet, common.GithubFlagSet, func(f *pflag.FlagSet) {
-		f.Uint32("pulse", 0, "backlink pulse id")
+		f.Uint32("relink", 0, "backlink pulse id")
 	})
 	beaconCmd.MarkFlagRequired("target")
 	beaconCmd.MarkFlagRequired("profile")
@@ -239,7 +239,11 @@ build modules --target x86_64-pc-windows-msvc --profile module_profile --modules
 build modules --target x86_64-pc-windows-msvc --profile module_profile --srdi
 ~~~`,
 	}
-	common.BindFlag(modulesCmd, common.GenerateFlagSet, common.GithubFlagSet)
+
+	common.BindFlag(modulesCmd, common.GenerateFlagSet, common.GithubFlagSet, func(f *pflag.FlagSet) {
+		f.Bool("module", false, "build modules")
+		f.Bool("3rd", false, "build 3rd-party modules")
+	})
 
 	common.BindFlagCompletions(modulesCmd, func(comp carapace.ActionMap) {
 		comp["profile"] = common.ProfileCompleter(con)
@@ -398,7 +402,6 @@ artifact upload /path/to/artifact --type DLL
 	}
 	common.BindArgCompletions(uploadCmd, nil, carapace.ActionFiles().Usage("custom artifact"))
 	common.BindFlag(uploadCmd, func(f *pflag.FlagSet) {
-		f.StringP("stage", "s", "", "Set stage")
 		f.StringP("type", "t", "", "Set type")
 		f.StringP("name", "n", "", "alias name")
 	})

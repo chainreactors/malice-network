@@ -2,12 +2,9 @@ package models
 
 import (
 	"encoding/json"
-	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/types"
 	"gorm.io/gorm"
-	"sort"
-	"strings"
 	"time"
 )
 
@@ -19,8 +16,6 @@ type Artifact struct {
 	CreatedAt time.Time `gorm:"->;<-:create;"`
 	Target    string    // build target, like win64, win32, linux64
 	Type      string    // build type, pe, dll, shellcode
-	Stager    string    // shellcode prelude beacon bind
-	Modules   string    // default modules, comma split, e.g. "execute_exe,execute_dll"
 	Source    string    // resource file
 	//CA            string // ca file , ca file content
 	Path        string
@@ -62,15 +57,12 @@ func (a *Artifact) BeforeSave(tx *gorm.DB) error {
 
 func (a *Artifact) BeforeCreate(tx *gorm.DB) (err error) {
 	a.CreatedAt = time.Now()
-	moduleList := strings.Split(a.Modules, ",")
-	sort.Strings(moduleList)
-	a.Modules = strings.Join(moduleList, ",")
 	return nil
 }
 
 func (a *Artifact) ToArtifact(bin []byte) *clientpb.Artifact {
 	var pipeline string
-	if a.Type == consts.CommandBuildPulse {
+	if a.Profile.PulsePipelineID != "" {
 		pipeline = a.Profile.PulsePipelineID
 	} else {
 		pipeline = a.Profile.PipelineID

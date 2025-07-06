@@ -1,6 +1,7 @@
 package build
 
 import (
+	"encoding/json"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/encoders"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
@@ -35,8 +36,13 @@ func GenerateProfile(req *clientpb.BuildConfig) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		if len(req.Modules) > 0 {
-			profile.Implant.Modules = req.Modules
+		var profileParams *types.ProfileParams
+		err = json.Unmarshal(req.ParamsBytes, &profileParams)
+		if err != nil {
+			return nil, err
+		}
+		if profileParams.Modules != "" {
+			profile.Implant.Modules = strings.Split(profileParams.Modules, ",")
 		}
 	} else {
 		profile, err = db.GetProfile(req.ProfileName)

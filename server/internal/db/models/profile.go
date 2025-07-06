@@ -16,11 +16,6 @@ type Profile struct {
 	// build
 	Name string `gorm:"unique"` // Ensuring Name is unique
 
-	// build type
-	Type string
-
-	Modules string // default modules, comma split, e.g. "execute_exe,execute_dll"
-
 	Raw []byte
 	// params
 	Params     *types.ProfileParams `gorm:"-"`             // 使用 interface{} 使其更灵活
@@ -76,8 +71,6 @@ func (p *Profile) DeserializeImplantConfig() error {
 func (p *Profile) ToProtobuf() *clientpb.Profile {
 	return &clientpb.Profile{
 		Name:            p.Name,
-		Type:            p.Type,
-		Modules:         p.Modules,
 		PipelineId:      p.PipelineID,
 		PulsePipelineId: p.PulsePipelineID,
 		Content:         p.Raw,

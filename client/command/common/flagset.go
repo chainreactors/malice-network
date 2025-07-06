@@ -126,7 +126,7 @@ func TlsCertFlagSet(f *pflag.FlagSet) {
 	f.String("key", "", "tls key path")
 	f.BoolP("tls", "t", false, "enable tls")
 	f.String("cert-name", "", "certificate name")
-	f.Bool("auto-cert", false, "auto cert by let's encrypt")
+	f.Bool("acme", false, "auto cert by let's encrypt")
 	f.String("domain", "", "auto cert domain")
 	SetFlagSetGroup(f, "tls")
 }
@@ -151,9 +151,9 @@ func ParsePipelineFlags(cmd *cobra.Command) (string, string, string, uint32) {
 func ParseTLSFlags(cmd *cobra.Command) (*clientpb.TLS, string, error) {
 	certPath, _ := cmd.Flags().GetString("cert")
 	keyPath, _ := cmd.Flags().GetString("key")
-	autoCert, _ := cmd.Flags().GetBool("auto_cert")
+	acme, _ := cmd.Flags().GetBool("acme")
 	domain, _ := cmd.Flags().GetString("domain")
-	if autoCert && domain == "" {
+	if acme && domain == "" {
 		return nil, "", errs.ErrNullDomain
 	}
 	var err error
@@ -175,8 +175,8 @@ func ParseTLSFlags(cmd *cobra.Command) (*clientpb.TLS, string, error) {
 			Cert: cert,
 			Key:  key,
 		},
-		AutoCert: autoCert,
-		Domain:   domain,
+		Acme:   acme,
+		Domain: domain,
 	}, certificateName, nil
 }
 
@@ -212,7 +212,6 @@ func GenerateFlagSet(f *pflag.FlagSet) {
 
 func ParseGenerateFlags(cmd *cobra.Command) *clientpb.BuildConfig {
 	name, _ := cmd.Flags().GetString("profile")
-	address, _ := cmd.Flags().GetString("address")
 	buildTarget, _ := cmd.Flags().GetString("target")
 	//buildType, _ := cmd.Flags().GetString("type")
 	proxy, _ := cmd.Flags().GetString("proxy")
@@ -224,22 +223,17 @@ func ParseGenerateFlags(cmd *cobra.Command) *clientpb.BuildConfig {
 	source, _ := cmd.Flags().GetString("source")
 	buildConfig := &clientpb.BuildConfig{
 		ProfileName: name,
-		MaleficHost: address,
 		Target:      buildTarget,
-		Modules:     modules,
 		Proxy:       proxy,
 		Source:      source,
 	}
-	artifactID, err := cmd.Flags().GetUint32("artifact-id")
-	if err != nil {
-	}
-	pulse, err := cmd.Flags().GetUint32("pulse")
-	if err != nil {
-	}
+	artifactID, _ := cmd.Flags().GetUint32("artifact-id")
+	pulse, _ := cmd.Flags().GetUint32("relink")
 	profileParams := &types.ProfileParams{
 		Interval: interval,
 		Jitter:   jitter,
 		Proxy:    proxy,
+		Modules:  strings.Join(modules, ","),
 	}
 	if artifactID != 0 {
 		profileParams.OriginBeaconID = artifactID
@@ -249,7 +243,7 @@ func ParseGenerateFlags(cmd *cobra.Command) *clientpb.BuildConfig {
 		buildConfig.ArtifactId = pulse
 		profileParams.RelinkBeaconID = pulse
 	}
-	buildConfig.Params = profileParams.String()
+	buildConfig.ParamsBytes = []byte(profileParams.String())
 	return buildConfig
 }
 

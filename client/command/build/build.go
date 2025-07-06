@@ -2,7 +2,9 @@ package build
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"errors"
+	"github.com/chainreactors/malice-network/helper/types"
 	"os"
 	"strings"
 
@@ -126,6 +128,23 @@ func ModulesCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
+	isSelfModule, _ := cmd.Flags().GetBool("module")
+	is3rdModule, _ := cmd.Flags().GetBool("3rd")
+	if isSelfModule && is3rdModule {
+		return errors.New("--module and --3rd options are mutually exclusive. please specify only one of them")
+	} else if !isSelfModule && !is3rdModule {
+		return errors.New("must specify either --module or --3rd. One of them is required")
+	}
+	var profileParams *types.ProfileParams
+	err = json.Unmarshal(buildConfig.ParamsBytes, &profileParams)
+	if err != nil {
+		return err
+	}
+	if isSelfModule {
+		profileParams.Module3rd = false
+	} else {
+		profileParams.Module3rd = true
+	}
 	buildConfig.Source = finalSource
 	buildConfig.Type = consts.CommandBuildModules
 
