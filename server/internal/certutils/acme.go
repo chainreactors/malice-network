@@ -38,7 +38,7 @@ func GetACMEDir() string {
 
 // GetACMEManager - Get an ACME cert/tls config with the certs
 func GetACMEManager(domain string) *autocert.Manager {
-	acmeDir := GetACMEDir()
+	acmeDir := filepath.Join(GetACMEDir(), domain)
 	return &autocert.Manager{
 		Cache:  autocert.DirCache(acmeDir),
 		Prompt: autocert.AcceptTOS,
