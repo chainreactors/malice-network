@@ -66,14 +66,24 @@ func ParseResponse(ctx *clientpb.TaskContext) (interface{}, error) {
 
 func ParseExecResponse(ctx *clientpb.TaskContext) (interface{}, error) {
 	resp := ctx.Spite.GetExecResponse()
-	if resp.Stdout != nil || resp.Stderr != nil {
-		var prefix string = ""
-		if ctx.Task.Cur == 1 {
-			prefix = "\n"
-		}
-		return fmt.Sprintf("%spid: %d ,task: %d cur: %d \n%s\n%s", prefix, resp.Pid, ctx.Task.TaskId, ctx.Task.Cur, encoders.AutoDecode(resp.Stdout), tui.RedFg.Render(encoders.AutoDecode(resp.Stderr))), nil
+	var s strings.Builder
+	if resp.End == true {
+		s.WriteString(fmt.Sprintf("pid: %d ,task: %d command done\n", resp.Pid, ctx.Task.TaskId))
 	}
-	return nil, fmt.Errorf("no response")
+	if resp.Stdout != nil || resp.Stderr != nil {
+		if resp.Stdout != nil {
+			s.WriteString(encoders.AutoDecode(resp.Stdout) + "\n")
+		}
+		if resp.Stderr != nil {
+			s.WriteString(encoders.AutoDecode(resp.Stderr))
+		}
+		return strings.TrimSpace(s.String()), nil
+	}
+	if resp.End {
+		return "", nil
+	} else {
+		return nil, fmt.Errorf("no response")
+	}
 }
 
 func ParseArrayResponse(ctx *clientpb.TaskContext) (interface{}, error) {

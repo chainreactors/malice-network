@@ -12,3 +12,11 @@ func (pipe *Pipeline) Address() string {
 		return ""
 	}
 }
+
+func (task *Task) Progress() string {
+	if task.Total == -1 {
+		return fmt.Sprintf("%d/∞", task.Cur)
+	} else {
+		return fmt.Sprintf("%d/%d", task.Cur, task.Total)
+	}
+}

@@ -73,7 +73,7 @@ func WrapClientCallback(callback ImplantFuncCallback) intermediate.ImplantCallba
 		case string:
 			output := res.(string)
 			if output == "" {
-				return "not output", nil
+				return "no output", nil
 			} else {
 				return output, nil
 			}

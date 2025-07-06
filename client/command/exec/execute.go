@@ -1,15 +1,18 @@
 package exec
 
 import (
+	"fmt"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
+	"strings"
 )
 
 func RunCmd(cmd *cobra.Command, con *repl.Console) error {
@@ -61,13 +64,6 @@ func ShellCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 	con.GetInteractive().Console(task, "shell: "+cmdStr)
-	con.AddDoneCallback(task, func(resp *clientpb.TaskContext) {
-		response, err := output.ParseExecResponse(resp)
-		if err != nil {
-			return
-		}
-		session.Log.Console(response.(string))
-	})
 	return nil
 }
 
@@ -100,6 +96,23 @@ func RegisterExecuteFunc(con *repl.Console) {
 		output.ParseExecResponse,
 		nil,
 	)
+	intermediate.RegisterInternalDoneCallback(consts.ModuleExecute, func(ctx *clientpb.TaskContext) (string, error) {
+		resp := ctx.Spite.GetExecResponse()
+		if resp.End {
+			return "", nil
+		}
+		var s strings.Builder
+		if ctx.Task.Cur == 1 {
+			s.WriteString(fmt.Sprintf("pid: %d ,task: %d \n", resp.Pid, ctx.Task.TaskId))
+		}
+		out, err := output.ParseExecResponse(ctx)
+		if err != nil {
+			return "", err
+		}
+		s.WriteString(out.(string))
+		return strings.TrimSpace(s.String()), nil
+	})
+
 	con.AddCommandFuncHelper(
 		consts.ModuleExecute,
 		consts.ModuleExecute,

@@ -12,6 +12,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/utils/handler"
 	"github.com/chainreactors/malice-network/helper/utils/output"
+	"github.com/chainreactors/tui"
 )
 
 var ErrLuaVMDead = fmt.Errorf("lua vm is dead")
@@ -80,6 +81,8 @@ func (s *ServerStatus) triggerTaskFinish(event *clientpb.Event) {
 }
 
 func HandlerTask(sess *Session, ctx *clientpb.TaskContext, message []byte, callee string, isFinish bool) {
+	sess.Locker.Lock()
+	defer sess.Locker.Unlock()
 	log := sess.Log
 	var callback intermediate.ImplantCallback
 	fn, ok := intermediate.InternalFunctions[ctx.Task.Type]
@@ -90,7 +93,7 @@ func HandlerTask(sess *Session, ctx *clientpb.TaskContext, message []byte, calle
 			log.Importantf("parse status error: %s\n", err)
 			return
 		}
-		log.Importantf("task %d %t", ctx.Task.TaskId, status)
+		log.Importantf("task %d %t\n", ctx.Task.TaskId, status)
 		return
 	}
 	var prompt string
@@ -110,9 +113,9 @@ func HandlerTask(sess *Session, ctx *clientpb.TaskContext, message []byte, calle
 		callback = fn.DoneCallback
 	}
 
-	s := logs.GreenBold(fmt.Sprintf("[%s.%d] %s (%d/%d),%s\n",
+	s := logs.GreenBold(fmt.Sprintf("[%s.%d] %s (%s),%s\n",
 		ctx.Task.SessionId, ctx.Task.TaskId, prompt,
-		ctx.Task.Cur, ctx.Task.Total,
+		ctx.Task.Progress(),
 		message))
 	log.Importantf(s)
 	if callee != consts.CalleeCMD {
@@ -129,8 +132,9 @@ func HandlerTask(sess *Session, ctx *clientpb.TaskContext, message []byte, calle
 	}
 
 	if err != nil {
-		log.Warnf(logs.YellowBold(err.Error()))
-	} else {
+		log.Errorf(logs.RedBold(err.Error()))
+	} else if resp != "" {
+		tui.Down(1)
 		log.Console(resp + "\n")
 	}
 }

@@ -70,7 +70,8 @@ func RegisterRunasFunc(con *repl.Console) {
 			"password",
 			"program",
 			"args",
-			"show",
+			"use profile",
+			"use env",
 			"netonly",
 		},
 		[]string{"task"})
