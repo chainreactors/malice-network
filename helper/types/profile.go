@@ -71,14 +71,13 @@ type ProfileConfig struct {
 type ProfileParams struct {
 	Interval int     `json:"interval"`
 	Jitter   float64 `json:"jitter"`
-	// shellcode prelude beacon bind
-	Obfuscation string `json:"obfuscation"` // not impl, obf llvm plug ,
+	//Obfuscation string `json:"obfuscation"` // not impl, obf llvm plug ,
 
 	Proxy          string `json:"proxy"`
 	OriginBeaconID uint32 `json:"origin_beacon_id"`
 	RelinkBeaconID uint32 `json:"relink_beacon_id"`
 
-	Module3rd bool   `json:"module_3rd"`
+	Enable3RD bool   `json:"enable_3_rd"`
 	Modules   string `json:"modules"`
 }
 

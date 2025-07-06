@@ -89,7 +89,7 @@ func (d *DockerBuilder) Execute() error {
 		if err != nil {
 			return err
 		}
-		if profileParams.Module3rd {
+		if profileParams.Enable3RD {
 			buildCommand = fmt.Sprintf(
 				"malefic-mutant generate modules && malefic-mutant build 3rd -m %s -t %s",
 				profileParams.Modules,

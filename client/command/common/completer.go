@@ -222,7 +222,7 @@ func ProfileCompleter(con *repl.Console) carapace.Action {
 			return carapace.Action{}
 		}
 		for _, s := range profiles.Profiles {
-			results = append(results, s.Name, fmt.Sprintf("profile %s, type %s, target %s", s.Name, s.Type, s.Target))
+			results = append(results, s.Name, fmt.Sprintf("profile %s, target %s", s.Name, s.Target))
 		}
 		return carapace.ActionValuesDescribed(results...).Tag("profile")
 	}

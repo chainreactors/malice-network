@@ -65,12 +65,7 @@ func RemoveMal(name string, con *repl.Console) error {
 	if err != nil {
 		con.Log.Warnf("Failed to get profile: %s\n", err)
 	} else {
-		if profile.RemoveMal(name) {
-			err = assets.UpdateMals(profile)
-			if err != nil {
-				con.Log.Warnf("Failed to save profile: %s\n", err)
-			}
-		}
+		profile.RemoveMal(name)
 	}
 
 	malPath := filepath.Join(assets.GetMalsDir(), name)

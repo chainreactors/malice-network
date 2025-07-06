@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/helper/types"
 	"os"
 	"strings"
@@ -15,25 +16,32 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func CheckResource(con *repl.Console, source string, config *clientpb.GithubWorkflowConfig) (string, error) {
+func CheckResource(con *repl.Console, source string, github *clientpb.GithubWorkflowConfig) (string, error) {
+	if github == nil {
+		config, err := assets.GetSetting()
+		if err != nil {
+			return "", err
+		}
+		github = config.Github.ToProtobuf()
+	}
+
 	if source != "" {
 		if source != consts.ArtifactFromAction && source != consts.ArtifactFromDocker && source != consts.ArtifactFromSaas {
 			return source, errors.New("build source invalid")
 		}
-	} else {
-		_, err := con.Rpc.DockerStatus(con.Context(), &clientpb.Empty{})
-		if err == nil {
-			source = consts.ArtifactFromDocker
-			return source, nil
-		}
-		_, err = con.Rpc.WorkflowStatus(con.Context(), config)
-		if err == nil {
-			source = consts.ArtifactFromAction
-			return source, nil
-		}
-		source = consts.ArtifactFromSaas
 	}
-	return source, nil
+
+	_, err := con.Rpc.DockerStatus(con.Context(), &clientpb.Empty{})
+	if err == nil {
+		source = consts.ArtifactFromDocker
+		return source, nil
+	}
+	_, err = con.Rpc.WorkflowStatus(con.Context(), github)
+	if err == nil {
+		source = consts.ArtifactFromAction
+		return source, nil
+	}
+	return consts.ArtifactFromSaas, nil
 }
 
 // parseBasicConfig 解析基础配置（可复用部分）
@@ -141,9 +149,9 @@ func ModulesCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 	if isSelfModule {
-		profileParams.Module3rd = false
+		profileParams.Enable3RD = false
 	} else {
-		profileParams.Module3rd = true
+		profileParams.Enable3RD = true
 	}
 	buildConfig.Source = finalSource
 	buildConfig.Type = consts.CommandBuildModules

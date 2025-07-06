@@ -59,7 +59,7 @@ func (a *ActionBuilder) Generate() (*clientpb.Artifact, error) {
 		a.config.Inputs["malefic_modules_features"] = profileParams.Modules
 
 	}
-	if profileParams.Module3rd {
+	if profileParams.Enable3RD {
 		a.config.Inputs["package"] = "3rd"
 	}
 	profileByte, err := GenerateProfile(a.config)

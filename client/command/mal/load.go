@@ -59,11 +59,6 @@ func MalLoadCmd(ctx *cobra.Command, con *repl.Console) error {
 		return err
 	}
 	profile.AddMal(manifest.Name)
-	err = assets.UpdateMals(profile)
-	if err != nil {
-		return err
-	}
-
 	con.Log.Importantf("load mal: %s successfully\n", manifest.Name)
 	return nil
 }
@@ -98,10 +93,6 @@ func LoadMalWithManifest(con *repl.Console, rootCmd *cobra.Command, manifest *pl
 	// 注册命令
 	for _, cmd := range plug.Commands() {
 		rootCmd.AddCommand(cmd.Command)
-	}
-	err = assets.UpdateMals(profile)
-	if err != nil {
-		return err
 	}
 	con.Log.Importantf("load mal: %s successfully\n", manifest.Name)
 	return nil

@@ -3,6 +3,7 @@ package modules
 import (
 	"errors"
 	"fmt"
+	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/build"
 	"github.com/chainreactors/malice-network/client/core"
@@ -17,14 +18,14 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 )
 
 func LoadModuleCmd(cmd *cobra.Command, con *repl.Console) error {
 	bundle, _ := cmd.Flags().GetString("bundle")
 	path, _ := cmd.Flags().GetString("path")
-	modules, _ := cmd.Flags().GetStringSlice("modules")
 	artifactName, _ := cmd.Flags().GetString("artifact")
+	modules, _ := cmd.Flags().GetString("modules")
+	thirdModules, _ := cmd.Flags().GetString("3rd")
 	if artifactName != "" {
 		artifact, err := con.Rpc.DownloadArtifact(con.Context(), &clientpb.Artifact{
 			Name: artifactName,
@@ -43,42 +44,38 @@ func LoadModuleCmd(cmd *cobra.Command, con *repl.Console) error {
 		}
 		con.GetInteractive().Console(task, fmt.Sprintf("load %s %s", modules, modulePath))
 		return nil
-	}
-	if path == "" && len(modules) == 0 {
-		return errors.New("path or modules is required")
-	}
-
-	if len(modules) > 0 && path == "" {
-		isSelfModule, _ := cmd.Flags().GetBool("module")
-		is3rdModule, _ := cmd.Flags().GetBool("3rd")
-		if isSelfModule && is3rdModule {
+	} else if modules != "" || thirdModules != "" {
+		if modules != "" && thirdModules != "" {
 			return errors.New("--module and --3rd options are mutually exclusive. please specify only one of them")
-		} else if !isSelfModule && !is3rdModule {
-			return errors.New("must specify either --module or --3rd. One of them is required")
+		} else {
+			go func() {
+				err := handleModuleBuild(con, strings.Split(modules, ","), strings.Split(thirdModules, ","))
+				if err != nil {
+					logs.Log.Errorf("Error loading modules: %s\n", err)
+				}
+			}()
+			return nil
 		}
-		return handleModuleBuild(con, modules, isSelfModule, is3rdModule)
+	} else if path != "" {
+		// Default bundle handling
+		if bundle == "" {
+			bundle = filepath.Base(path)
+		}
+		session := con.GetInteractive()
+		task, err := LoadModule(con.Rpc, session, bundle, path)
+		if err != nil {
+			return err
+		}
+		session.Console(task, fmt.Sprintf("load %s %s", bundle, path))
+		return nil
+	} else {
+		return errors.New("must specify either --path, --modules or --3rd_modules. One of them is required")
 	}
-
-	// Default bundle handling
-	if bundle == "" {
-		bundle = filepath.Base(path)
-	}
-	session := con.GetInteractive()
-	task, err := LoadModule(con.Rpc, session, bundle, path)
-	if err != nil {
-		return err
-	}
-	session.Console(task, fmt.Sprintf("load %s %s", bundle, path))
-	return nil
 }
 
 // handleModuleBuild handles module build based on the builder resource (docker/action)
-func handleModuleBuild(con *repl.Console, modules []string, isModule, is3rdMdule bool) error {
-	setting, err := assets.GetSetting()
-	if err != nil {
-		return err
-	}
-	source, err := build.CheckResource(con, "", setting.Github.ToProtobuf())
+func handleModuleBuild(con *repl.Console, modules, thirdModules []string) error {
+	source, err := build.CheckResource(con, "", nil)
 	if err != nil {
 		return err
 	}
@@ -86,74 +83,40 @@ func handleModuleBuild(con *repl.Console, modules []string, isModule, is3rdMdule
 	if !ok {
 		return errs.ErrInvalidateTarget
 	}
-	params := &types.ProfileParams{
-		Modules: strings.Join(modules, ","),
-	}
-	if isModule {
-		params.Module3rd = false
+	var params *types.ProfileParams
+	if len(modules) != 0 {
+		params = &types.ProfileParams{
+			Modules: strings.Join(modules, ","),
+		}
+	} else if len(thirdModules) != 0 {
+		params = &types.ProfileParams{
+			Enable3RD: true,
+			Modules:   strings.Join(modules, ","),
+		}
 	} else {
-		params.Module3rd = true
+		return errors.New("must specify either --modules or --3rd_modules. One of them is required")
 	}
-	buildConfig := &clientpb.BuildConfig{
+
+	artifact, err := con.Rpc.SyncBuild(con.Context(), &clientpb.BuildConfig{
 		Target:      target,
 		ParamsBytes: []byte(params.String()),
 		Type:        consts.CommandBuildModules,
 		Source:      source,
+	})
+	if err != nil {
+		return err
 	}
-	return buildModule(con, buildConfig, strings.Join(modules, ","))
-}
 
-// buildWithDocker handles module build via Docker
-func buildModule(con *repl.Console, buildConfig *clientpb.BuildConfig, modules string) error {
-	var modulePath string
-	go func() {
-		artifact, err := con.Rpc.Build(con.Context(), buildConfig)
-		if err != nil {
-			con.Log.Errorf("Build modules failed: %v", err)
-			return
-		}
-		modulePath, err = handleModuleDownload(con, artifact.Name, artifact.Bin)
-		if err != nil {
-			con.Log.Errorf("Write modules failed: %v\n", err)
-			return
-		}
-
-		task, err := LoadModule(con.Rpc, con.GetInteractive(), artifact.Name, modulePath)
-		if err != nil {
-			con.Log.Errorf("Load modules failed: %v\n", err)
-			return
-		}
-		con.GetInteractive().Console(task, fmt.Sprintf("load %s %s", modules, modulePath))
-	}()
+	sess := con.GetInteractive()
+	task, err := con.Rpc.LoadModule(sess.Context(), &implantpb.LoadModule{
+		Bundle: artifact.Name,
+		Bin:    artifact.Bin,
+	})
+	if err != nil {
+		return err
+	}
+	sess.Console(task, fmt.Sprintf("load module from artifact %s", artifact.Name))
 	return nil
-}
-
-// handleModuleDownload handles module download and saves to disk
-func handleModuleDownload(con *repl.Console, moduleName string, moduleBin []byte) (string, error) {
-	var modulePath string
-	if len(moduleBin) > 0 {
-		modulePath = filepath.Join(assets.GetTempDir(), moduleName)
-		err := os.WriteFile(modulePath, moduleBin, 0666)
-		if err != nil {
-			return "", err
-		}
-	} else {
-		for {
-			time.Sleep(30 * time.Second)
-			artifact, err := con.Rpc.DownloadArtifact(con.Context(), &clientpb.Artifact{
-				Name: moduleName,
-			})
-			if err == nil {
-				modulePath = filepath.Join(assets.GetTempDir(), artifact.Name)
-				err = os.WriteFile(modulePath, artifact.Bin, 0666)
-				if err != nil {
-					return "", err
-				}
-				break
-			}
-		}
-	}
-	return modulePath, nil
 }
 
 func LoadModule(rpc clientrpc.MaliceRPCClient, session *core.Session, bundle string, path string) (*clientpb.Task, error) {

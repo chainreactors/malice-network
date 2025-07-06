@@ -31,6 +31,24 @@ func (rpc *Server) Build(ctx context.Context, req *clientpb.BuildConfig) (*clien
 	return artifact, nil
 }
 
+func (rpc *Server) SyncBuild(ctx context.Context, req *clientpb.BuildConfig) (*clientpb.Artifact, error) {
+	builder, err := build.NewBuilder(req)
+	if err != nil {
+		return nil, err
+	}
+	artifact, err := builder.Generate()
+	if err != nil {
+		return nil, err
+	}
+	err = builder.Execute()
+	if err == nil {
+		builder.Collect()
+	} else {
+		return nil, err
+	}
+	return db.FindArtifact(artifact)
+}
+
 func (rpc *Server) BuildLog(ctx context.Context, req *clientpb.Artifact) (*clientpb.Artifact, error) {
 	resultLog, err := db.GetBuilderLogs(req.Name, int(req.LogNum))
 	if err != nil {

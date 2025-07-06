@@ -224,9 +224,12 @@ func (s *ServerStatus) handleJob(event *clientpb.Event) {
 		return
 	}
 	pipeline := event.GetJob().GetPipeline()
-	if event.Op == consts.CtrlPipelineSync {
+	switch event.Op {
+	case consts.CtrlPipelineSync:
 		s.Pipelines[pipeline.Name] = pipeline
-	} else {
+	case consts.CtrlPipelineStop:
+		delete(s.Pipelines, pipeline.Name)
+	default:
 		Log.Important(event.Formatted + "\n")
 	}
 }

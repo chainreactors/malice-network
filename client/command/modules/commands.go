@@ -35,7 +35,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Example: `load module from malefic-modules
 before loading, you can list the current modules: 
 ~~~
-execute_addon、clear ...
+execute_addon,exec ...
 ~~~
 then you can load module
 ~~~
@@ -49,11 +49,10 @@ execute_addon,clear,ps,powershell...
 
 	common.BindFlag(loadModuleCmd, func(f *pflag.FlagSet) {
 		f.String("path", "", "module path")
-		f.StringSlice("modules", []string{}, "modules list,eg: basic,extend")
-		f.StringP("bundle", "b", "", "bundle name")
-		f.Bool("module", false, "build modules")
-		f.Bool("3rd", false, "build 3rd-party modules")
-		f.String("artifact", "false", "exist module artifact")
+		f.String("modules", "", "modules list,eg: basic,extend")
+		f.StringP("bundle", "", "", "bundle name")
+		f.String("3rd", "", "build 3rd-party modules")
+		f.String("artifact", "", "exist module artifact")
 	})
 	common.BindFlagCompletions(loadModuleCmd, func(comp carapace.ActionMap) {
 		comp["path"] = carapace.ActionFiles()

@@ -155,6 +155,7 @@ func GetSetting() (*Settings, error) {
 func (profile *Profile) AddMal(manifestName string) bool {
 	if !slices.Contains(profile.Mals, manifestName) {
 		profile.Mals = append(profile.Mals, manifestName)
+		config.Set("mals", profile.Mals)
 		return true
 	}
 	return false
@@ -164,6 +165,7 @@ func (profile *Profile) RemoveMal(manifestName string) bool {
 	index := slices.Index(profile.Mals, manifestName)
 	if index != -1 {
 		profile.Mals = slices.Delete(profile.Mals, index, index+1)
+		config.Set("mals", profile.Mals)
 		return true
 	}
 	return false
@@ -172,6 +174,7 @@ func (profile *Profile) RemoveMal(manifestName string) bool {
 func (profile *Profile) AddAlias(alias string) bool {
 	if !slices.Contains(profile.Aliases, alias) {
 		profile.Aliases = append(profile.Aliases, alias)
+		config.Set("aliases", profile.Aliases)
 		return true
 	}
 	return false
@@ -181,6 +184,7 @@ func (profile *Profile) RemoveAlias(alias string) bool {
 	index := slices.Index(profile.Aliases, alias)
 	if index != -1 {
 		profile.Aliases = slices.Delete(profile.Aliases, index, index+1)
+		config.Set("aliases", profile.Aliases)
 		return true
 	}
 	return false
@@ -189,6 +193,7 @@ func (profile *Profile) RemoveAlias(alias string) bool {
 func (profile *Profile) AddExtension(extension string) bool {
 	if !slices.Contains(profile.Extensions, extension) {
 		profile.Extensions = append(profile.Extensions, extension)
+		config.Set("extensions", profile.Extensions)
 		return true
 	}
 	return false
@@ -198,40 +203,8 @@ func (profile *Profile) RemoveExtension(extension string) bool {
 	index := slices.Index(profile.Extensions, extension)
 	if index != -1 {
 		profile.Extensions = slices.Delete(profile.Extensions, index, index+1)
+		config.Set("extensions", profile.Extensions)
 		return true
 	}
 	return false
-}
-
-func UpdateAlias(p *Profile) error {
-	err := config.Set("aliases", p.Aliases)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func UpdateExtensions(p *Profile) error {
-	err := config.Set("extensions", p.Extensions)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func UpdateMals(p *Profile) error {
-	err := config.Set("mals", p.Mals)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func UpdateSettingConfig(s *Settings) error {
-	err := config.Set("settings", s)
-	if err != nil {
-		logs.Log.Errorf("Failed to update setting config %s", err)
-		return err
-	}
-	return nil
 }

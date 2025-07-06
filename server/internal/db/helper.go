@@ -989,7 +989,7 @@ func FindArtifact(target *clientpb.Artifact) (*clientpb.Artifact, error) {
 	return artifact.ToProtobuf(content), nil
 }
 
-func SaveFromTls(name string, tls *types.TlsConfig) (*models.Certificate, error) {
+func SaveTls(name string, tls *types.TlsConfig) (*models.Certificate, error) {
 	var certModel *models.Certificate
 	certificate, err := FindCertificate(name)
 	if err != nil && !errors.Is(err, ErrRecordNotFound) {
@@ -1053,7 +1053,7 @@ func SavePipelineByRegister(req *clientpb.Pipeline) error {
 	if req.CertName != "" {
 		reqPipelineModel.CertName = req.CertName
 	} else if req.Tls.Enable {
-		certModel, err := SaveFromTls(pipelineModel.CertName, types.FromTls(req.Tls))
+		certModel, err := SaveTls(pipelineModel.CertName, types.FromTls(req.Tls))
 		if err != nil {
 			return err
 		}

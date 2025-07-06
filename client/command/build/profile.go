@@ -30,11 +30,6 @@ func ProfileShowCmd(cmd *cobra.Command, con *repl.Console) error {
 
 	var rowEntries []table.Row
 	for _, p := range resp.Profiles {
-		modulesDisplay := p.Modules
-		// Truncate long module lists for better display
-		if len(modulesDisplay) > 20 {
-			modulesDisplay = modulesDisplay[:17] + "..."
-		}
 		// Format creation time
 		createdDisplay := "-"
 		if p.CreatedAt > 0 {
