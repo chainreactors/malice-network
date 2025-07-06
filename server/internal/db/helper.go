@@ -1164,8 +1164,11 @@ func UpdateGeneratorConfig(req *clientpb.BuildConfig, path string, config *types
 			if params.Proxy != "" {
 				config.Basic.Proxy = params.Proxy
 			}
-
-			if params.Modules != "" {
+			if params.Enable3RD {
+				config.Implant.Extras["3rd_modules"] = strings.Split(params.Modules, ",")
+				config.Implant.Extras["enable_3rd"] = true
+				config.Implant.Modules = []string{}
+			} else {
 				config.Implant.Modules = strings.Split(params.Modules, ",")
 			}
 		}

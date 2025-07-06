@@ -69,7 +69,17 @@ func prepareBuildConfig(cmd *cobra.Command, con *repl.Console, buildType string)
 
 	buildConfig.Source = finalSource
 	buildConfig.Type = buildType
-
+	if buildType != consts.CommandBuildModules {
+		var params types.ProfileParams
+		err = json.Unmarshal(buildConfig.ParamsBytes, &params)
+		if err != nil {
+			return nil, err
+		}
+		if params.Modules == "" {
+			params.Modules = "full"
+			buildConfig.ParamsBytes = []byte(params.String())
+		}
+	}
 	return buildConfig, nil
 }
 
@@ -135,24 +145,25 @@ func ModulesCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-
-	isSelfModule, _ := cmd.Flags().GetBool("module")
-	is3rdModule, _ := cmd.Flags().GetBool("3rd")
-	if isSelfModule && is3rdModule {
+	modules, _ := cmd.Flags().GetString("modules")
+	thirdModules, _ := cmd.Flags().GetString("3rd")
+	if modules == "" && thirdModules == "" {
 		return errors.New("--module and --3rd options are mutually exclusive. please specify only one of them")
-	} else if !isSelfModule && !is3rdModule {
-		return errors.New("must specify either --module or --3rd. One of them is required")
 	}
 	var profileParams types.ProfileParams
 	err = json.Unmarshal(buildConfig.ParamsBytes, &profileParams)
 	if err != nil {
 		return err
 	}
-	if isSelfModule {
-		profileParams.Enable3RD = false
-	} else {
+	if modules != "" {
+		profileParams.Modules = modules
+	} else if thirdModules != "" {
 		profileParams.Enable3RD = true
+		profileParams.Modules = thirdModules
+	} else {
+		return errors.New("must specify either --modules or --3rd_modules. One of them is required")
 	}
+	buildConfig.ParamsBytes = []byte(profileParams.String())
 	buildConfig.Source = finalSource
 	buildConfig.Type = consts.CommandBuildModules
 

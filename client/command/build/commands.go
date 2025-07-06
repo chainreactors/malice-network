@@ -240,8 +240,7 @@ build modules --target x86_64-pc-windows-msvc --profile module_profile --srdi
 	}
 
 	common.BindFlag(modulesCmd, common.GenerateFlagSet, common.GithubFlagSet, func(f *pflag.FlagSet) {
-		f.Bool("module", false, "build modules")
-		f.Bool("3rd", false, "build 3rd-party modules")
+		f.String("3rd", "", "build 3rd-party modules")
 	})
 
 	common.BindFlagCompletions(modulesCmd, func(comp carapace.ActionMap) {

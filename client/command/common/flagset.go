@@ -205,7 +205,7 @@ func GenerateFlagSet(f *pflag.FlagSet) {
 	f.Int("interval", -1, "interval /second")
 	f.Float64("jitter", -1, "jitter")
 	f.String("proxy", "", "Overwrite proxy")
-	f.StringP("modules", "m", "full", "Set modules e.g.: execute_exe,execute_dll")
+	f.StringP("modules", "m", "", "Set modules e.g.: execute_exe,execute_dll")
 	f.String("source", "", "build source, docker|action|saas")
 	SetFlagSetGroup(f, "generate")
 }
