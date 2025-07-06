@@ -4,7 +4,7 @@ import (
 	"fmt"
 	_ "github.com/chainreactors/malice-network/client/cmd/cli"
 	"github.com/chainreactors/malice-network/client/command"
-	"github.com/chainreactors/malice-network/client/core/plugin"
+	"github.com/chainreactors/malice-network/client/plugin"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"

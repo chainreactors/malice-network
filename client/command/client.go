@@ -2,7 +2,6 @@ package command
 
 import (
 	"github.com/chainreactors/malice-network/client/command/cert"
-	"github.com/chainreactors/malice-network/client/command/license"
 	"github.com/reeflective/console"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -47,8 +46,7 @@ func BindCommonCommands(bind BindFunc) {
 
 	bind(consts.GeneratorGroup,
 		build.Commands,
-		//mutant.Commands,
-		license.Commands,
+		mutant.Commands,
 	)
 }
 

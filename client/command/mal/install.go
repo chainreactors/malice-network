@@ -1,12 +1,12 @@
 package mal
 
 import (
+	"github.com/chainreactors/malice-network/client/plugin"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/client/core/plugin"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/mals/m"

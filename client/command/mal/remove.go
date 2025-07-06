@@ -3,12 +3,12 @@ package mal
 import (
 	"errors"
 	"fmt"
+	"github.com/chainreactors/malice-network/client/plugin"
 	"github.com/chainreactors/tui"
 	"os"
 	"path/filepath"
 
 	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/client/core/plugin"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/spf13/cobra"

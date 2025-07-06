@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/carapace-sh/carapace/pkg/x"
+	"github.com/chainreactors/malice-network/client/plugin"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/reeflective/console"
 	"github.com/spf13/cobra"
@@ -17,7 +18,6 @@ import (
 
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/core/plugin"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/mals"

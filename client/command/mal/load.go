@@ -1,11 +1,11 @@
 package mal
 
 import (
+	plugin2 "github.com/chainreactors/malice-network/client/plugin"
 	"path/filepath"
 
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/client/core/plugin"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/mals/m"
 	"github.com/chainreactors/tui"
@@ -15,15 +15,15 @@ import (
 
 func MalLoadCmd(ctx *cobra.Command, con *repl.Console) error {
 	dirPath := ctx.Flags().Arg(0)
-	malManager := plugin.GetGlobalMalManager()
+	malManager := plugin2.GetGlobalMalManager()
 
 	manifestPath := filepath.Join(assets.GetMalsDir(), dirPath, m.ManifestFileName)
-	manifest, err := plugin.LoadMalManiFest(manifestPath)
+	manifest, err := plugin2.LoadMalManiFest(manifestPath)
 	if err != nil {
 		return err
 	}
 
-	var plug plugin.Plugin
+	var plug plugin2.Plugin
 
 	// 检查是否已加载
 	if _, exists := malManager.GetExternalPlugin(manifest.Name); exists {
@@ -69,15 +69,15 @@ func MalLoadCmd(ctx *cobra.Command, con *repl.Console) error {
 }
 
 func LoadMal(con *repl.Console, rootCmd *cobra.Command, filename string) error {
-	manifest, err := plugin.LoadMalManiFest(filename)
+	manifest, err := plugin2.LoadMalManiFest(filename)
 	if err != nil {
 		return err
 	}
 	return LoadMalWithManifest(con, rootCmd, manifest)
 }
 
-func LoadMalWithManifest(con *repl.Console, rootCmd *cobra.Command, manifest *plugin.MalManiFest) error {
-	malManager := plugin.GetGlobalMalManager()
+func LoadMalWithManifest(con *repl.Console, rootCmd *cobra.Command, manifest *plugin2.MalManiFest) error {
+	malManager := plugin2.GetGlobalMalManager()
 	plug, err := malManager.LoadExternalMal(manifest)
 	if err != nil {
 		return err
@@ -108,7 +108,7 @@ func LoadMalWithManifest(con *repl.Console, rootCmd *cobra.Command, manifest *pl
 }
 
 func ListMalManifest(con *repl.Console) {
-	malManager := plugin.GetGlobalMalManager()
+	malManager := plugin2.GetGlobalMalManager()
 
 	// 获取所有外部插件
 	externalPlugins := malManager.GetAllExternalPlugins()

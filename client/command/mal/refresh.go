@@ -1,7 +1,7 @@
 package mal
 
 import (
-	"github.com/chainreactors/malice-network/client/core/plugin"
+	"github.com/chainreactors/malice-network/client/plugin"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/spf13/cobra"
