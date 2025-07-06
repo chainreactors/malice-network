@@ -5,7 +5,6 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
-	"errors"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/certs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
@@ -13,7 +12,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/mtls"
 	"github.com/chainreactors/malice-network/server/internal/configs"
-	"github.com/chainreactors/malice-network/server/internal/db"
 	"os"
 	"path"
 )
@@ -153,15 +151,7 @@ func GenerateListenerCert(host, name string, port int) (*mtls.ClientConfig, erro
 	}, nil
 }
 
-func GenerateSelfTLS(name, listenerID string, subject *pkix.Name) (*types.TlsConfig, error) {
-	tlsConfig, err := db.FindPipelineCert(name, listenerID)
-	if err != nil && !errors.Is(err, db.ErrRecordNotFound) {
-		return nil, err
-	}
-	if !tlsConfig.Empty() {
-		return tlsConfig, nil
-	}
-
+func GenerateSelfTLS(name string, subject *pkix.Name) (*types.TlsConfig, error) {
 	caCertByte, caKeyByte, err := certs.GenerateCACert(name, subject)
 	if err != nil {
 		return nil, err

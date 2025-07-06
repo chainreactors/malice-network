@@ -5,7 +5,6 @@ import (
 	"errors"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
@@ -123,14 +122,7 @@ func (rpc *Server) RegisterWebsite(ctx context.Context, req *clientpb.Pipeline) 
 		return nil, err
 	}
 	req.Ip = lns.IP
-	pipelineModel := models.FromPipelinePb(req)
-	if pipelineModel.Tls.Enable && pipelineModel.Tls != nil && !pipelineModel.Tls.AutoCert {
-		pipelineModel.Tls, err = certutils.GenerateSelfTLS(req.Name, req.ListenerId, nil)
-		if err != nil {
-			return nil, err
-		}
-	}
-	_, err = db.SavePipeline(pipelineModel)
+	err = db.SavePipelineByRegister(req)
 	if err != nil {
 		return nil, err
 	}

@@ -7,6 +7,7 @@ import (
 	"encoding/pem"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"golang.org/x/crypto/acme/autocert"
 	"net/http"
@@ -60,61 +61,70 @@ func isCertValid(certPath string) bool {
 	return cert.NotAfter.After(time.Now())
 }
 
-func GetAutoCertTls(config *clientpb.TLS) (*clientpb.TLS, error) {
-	if config.AutoCert {
-		config.Domain = filepath.Base(config.Domain)
-		certPath := filepath.Join(GetACMEDir(), config.Domain)
-		keyPath := filepath.Join(GetACMEDir(), config.Domain+".key")
+func GetAutoCertTls(config *clientpb.TLS) (*types.TlsConfig, error) {
+	config.Domain = filepath.Base(config.Domain)
+	certPath := filepath.Join(GetACMEDir(), config.Domain)
+	keyPath := filepath.Join(GetACMEDir(), config.Domain+".key")
 
-		if fileutils.Exist(certPath) && fileutils.Exist(keyPath) && isCertValid(certPath) {
-			certPEM, _ := os.ReadFile(certPath)
-			keyPEM, _ := os.ReadFile(keyPath)
-			config.Cert = &clientpb.Cert{
+	if fileutils.Exist(certPath) && fileutils.Exist(keyPath) && isCertValid(certPath) {
+		certPEM, _ := os.ReadFile(certPath)
+		keyPEM, _ := os.ReadFile(keyPath)
+		config.Cert = &clientpb.Cert{
+			Cert: string(certPEM),
+			Key:  string(keyPEM),
+		}
+		return &types.TlsConfig{
+			Cert: &types.CertConfig{
 				Cert: string(certPEM),
 				Key:  string(keyPEM),
-			}
-			return config, nil
+			},
+			Domain:   config.Domain,
+			AutoCert: config.AutoCert,
+			Enable:   config.Enable,
+		}, nil
+	}
+
+	logs.Log.Infof("Attempting to fetch let's encrypt certificate for '%s' ...", config.Domain)
+	acmeManager := GetACMEManager(config.Domain)
+	acmeHTTPServer := &http.Server{Addr: ":80", Handler: acmeManager.HTTPHandler(nil)}
+
+	_, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go func() {
+		if err := acmeHTTPServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			logs.Log.Warnf("ACME HTTP server error: %v", err)
 		}
+	}()
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer shutdownCancel()
+	if err := acmeHTTPServer.Shutdown(shutdownCtx); err != nil {
+		logs.Log.Warnf("Failed to shutdown acmeHTTPServer: %v", err)
+	}
+	hello := &tls.ClientHelloInfo{ServerName: config.Domain}
+	tlsCert, err := acmeManager.GetCertificate(hello)
+	if err != nil {
+		return nil, err
+	}
 
-		logs.Log.Infof("Attempting to fetch let's encrypt certificate for '%s' ...", config.Domain)
-		acmeManager := GetACMEManager(config.Domain)
-		acmeHTTPServer := &http.Server{Addr: ":80", Handler: acmeManager.HTTPHandler(nil)}
+	var certPEMBytes []byte
+	for _, cert := range tlsCert.Certificate {
+		certPEMBytes = append(certPEMBytes, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert})...)
+	}
 
-		_, cancel := context.WithCancel(context.Background())
-		defer cancel()
+	keyBytes, err := x509.MarshalPKCS8PrivateKey(tlsCert.PrivateKey)
+	if err != nil {
+		return nil, err
+	}
+	keyPEMBytes := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: keyBytes})
 
-		go func() {
-			if err := acmeHTTPServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-				logs.Log.Warnf("ACME HTTP server error: %v", err)
-			}
-		}()
-		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer shutdownCancel()
-		if err := acmeHTTPServer.Shutdown(shutdownCtx); err != nil {
-			logs.Log.Warnf("Failed to shutdown acmeHTTPServer: %v", err)
-		}
-		hello := &tls.ClientHelloInfo{ServerName: config.Domain}
-		tlsCert, err := acmeManager.GetCertificate(hello)
-		if err != nil {
-			return nil, err
-		}
-
-		var certPEMBytes []byte
-		for _, cert := range tlsCert.Certificate {
-			certPEMBytes = append(certPEMBytes, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert})...)
-		}
-
-		keyBytes, err := x509.MarshalPKCS8PrivateKey(tlsCert.PrivateKey)
-		if err != nil {
-			return nil, err
-		}
-		keyPEMBytes := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: keyBytes})
-
-		config.Cert = &clientpb.Cert{
+	return &types.TlsConfig{
+		Cert: &types.CertConfig{
 			Cert: string(certPEMBytes),
 			Key:  string(keyPEMBytes),
-		}
-		return config, nil
-	}
-	return config, nil
+		},
+		Domain:   config.Domain,
+		AutoCert: config.AutoCert,
+		Enable:   config.Enable,
+	}, nil
 }

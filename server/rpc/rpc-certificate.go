@@ -23,7 +23,7 @@ func (rpc *Server) GenerateSelfCertificate(ctx context.Context, req *clientpb.TL
 		}
 	} else if !req.AutoCert {
 		subject := certutils.CertificateSubjectToPkixName(req.CertSubject)
-		tls, err := certutils.GenerateSelfTLS("", "", subject)
+		tls, err := certutils.GenerateSelfTLS("", subject)
 		if err != nil {
 			return nil, err
 		}
@@ -34,18 +34,6 @@ func (rpc *Server) GenerateSelfCertificate(ctx context.Context, req *clientpb.TL
 			KeyPEM:    tls.Cert.Key,
 			CACertPEM: tls.CA.Cert,
 			CAKeyPEM:  tls.CA.Key,
-		}
-	} else {
-		tls, err := certutils.GetAutoCertTls(req)
-		if err != nil {
-			return nil, err
-		}
-		certModel = &models.Certificate{
-			Name:    req.Domain,
-			Type:    certs.AutoCert,
-			CertPEM: tls.Cert.Cert,
-			KeyPEM:  tls.Cert.Key,
-			//CACertPEM: tls.Ca.Cert,
 		}
 	}
 	err := db.SaveCertificate(certModel)

@@ -50,7 +50,9 @@ func (tcp *TcpPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, erro
 	if err != nil {
 		return nil, err
 	}
-
+	tlsPb := tls.ToProtobuf()
+	tlsPb.AutoCert = tcp.TlsConfig.AutoCert
+	tlsPb.Domain = tcp.TlsConfig.Domain
 	return &clientpb.Pipeline{
 		Name:       tcp.Name,
 		ListenerId: lisId,
@@ -63,7 +65,7 @@ func (tcp *TcpPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, erro
 				Port: uint32(tcp.Port),
 			},
 		},
-		Tls:        tls.ToProtobuf(),
+		Tls:        tlsPb,
 		Encryption: tcp.EncryptionConfig.ToProtobuf(),
 	}, nil
 }

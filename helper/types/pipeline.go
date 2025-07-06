@@ -69,9 +69,11 @@ func (tls *TlsConfig) ToProtobuf() *clientpb.TLS {
 		}
 	}
 	return &clientpb.TLS{
-		Enable: tls.Enable,
-		Cert:   tls.Cert.ToProtobuf(),
-		Ca:     tls.CA.ToProtobuf(),
+		Enable:   tls.Enable,
+		Cert:     tls.Cert.ToProtobuf(),
+		Ca:       tls.CA.ToProtobuf(),
+		Domain:   tls.Domain,
+		AutoCert: tls.AutoCert,
 	}
 }
 

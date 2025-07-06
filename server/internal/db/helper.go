@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/chainreactors/malice-network/helper/certs"
+	"github.com/chainreactors/malice-network/helper/codenames"
 	"mime"
 	"os"
 	"path/filepath"
@@ -995,6 +997,83 @@ func FindArtifact(target *clientpb.Artifact) (*clientpb.Artifact, error) {
 	}
 
 	return artifact.ToArtifact(content), nil
+}
+
+func SaveFromTls(name string, tls *types.TlsConfig) (*models.Certificate, error) {
+	var certModel *models.Certificate
+	certificate, err := FindCertificate(name)
+	if err != nil && !errors.Is(err, ErrRecordNotFound) {
+		return nil, err
+	}
+	if err == nil {
+		if certificate.Type == certs.Imported || certificate.Type == certs.AutoCert {
+			certificate.CertPEM = tls.Cert.Cert
+			certificate.KeyPEM = tls.Cert.Key
+			if tls.CA != nil {
+				certificate.CACertPEM = tls.CA.Cert
+				certificate.CAKeyPEM = tls.CA.Key
+			}
+			err = Session().Save(&certificate).Error
+		}
+		return certificate, err
+	}
+	if tls.CA != nil && tls.CA.Key != "" {
+		certModel = &models.Certificate{
+			Type:      certs.SelfSigned,
+			CACertPEM: tls.CA.Cert,
+			CAKeyPEM:  tls.CA.Key,
+			CertPEM:   tls.Cert.Cert,
+			KeyPEM:    tls.Cert.Key,
+		}
+	} else if tls.Cert != nil && !tls.AutoCert {
+		certModel = &models.Certificate{
+			Type:      certs.Imported,
+			CertPEM:   tls.Cert.Cert,
+			KeyPEM:    tls.Cert.Key,
+			CACertPEM: tls.CA.Cert,
+		}
+	} else if tls.Cert != nil && tls.AutoCert {
+		certModel = &models.Certificate{
+			Name:    tls.Domain,
+			Type:    certs.AutoCert,
+			CertPEM: tls.Cert.Cert,
+			KeyPEM:  tls.Cert.Key,
+			Domain:  tls.Domain,
+		}
+	}
+	if tls.Enable && errors.Is(err, ErrRecordNotFound) {
+		if !tls.AutoCert {
+			certModel.Name = codenames.GetCodename()
+		}
+		err = Session().Create(&certModel).Error
+		return certModel, err
+	}
+	return certModel, nil
+}
+
+func SavePipelineByRegister(req *clientpb.Pipeline) error {
+	pipelineModel, err := FindPipeline(req.Name)
+	if err != nil && !errors.Is(err, ErrRecordNotFound) {
+		return err
+	}
+	reqPipelineModel := models.FromPipelinePb(req)
+	if errors.Is(err, ErrRecordNotFound) {
+		reqPipelineModel.ID = pipelineModel.ID
+	}
+	if req.CertName != "" {
+		reqPipelineModel.CertName = req.CertName
+	} else if req.Tls.Enable {
+		certModel, err := SaveFromTls(pipelineModel.CertName, types.FromTls(req.Tls))
+		if err != nil {
+			return err
+		}
+		reqPipelineModel.CertName = certModel.Name
+	}
+	_, err = SavePipeline(reqPipelineModel)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func GetArtifact(req *clientpb.Artifact) (*models.Artifact, error) {

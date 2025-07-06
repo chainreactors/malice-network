@@ -1,14 +1,11 @@
 package server
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/codenames"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/utils"
 	"github.com/chainreactors/malice-network/helper/utils/configutil"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/mtls"
@@ -23,13 +20,10 @@ import (
 	"github.com/gookit/config/v2"
 	"github.com/gookit/config/v2/yaml"
 	"github.com/jessevdk/go-flags"
-	"io"
-	"net/http"
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
-	"time"
 )
 
 func init() {
@@ -106,7 +100,7 @@ func Execute() {
 		logs.Log.Errorf(err.Error())
 		return
 	}
-	err = RegisterLicense(opt)
+	err = configs.RegisterLicense()
 	if err != nil {
 		logs.Log.Errorf("register community license error %v", err)
 		return
@@ -240,21 +234,23 @@ func RecoverAliveSession() error {
 
 func ReDownloadSaasArtifact() error {
 	saasConfig := configs.GetSaasConfig()
-	artifacts, err := db.GetArtifactWithSaas()
-	if err != nil {
-		return err
-	}
-	if len(artifacts) > 0 {
-		for _, artifact := range artifacts {
-			if artifact.Status != consts.BuildStatusCompleted && artifact.Status != consts.BuildStatusFailure {
-				go func() {
-					statusUrl := fmt.Sprintf("%s/api/build/status/%s", saasConfig.Url, artifact.Name)
-					downloadUrl := fmt.Sprintf("%s/api/build/download/%s", saasConfig.Url, artifact.Name)
-					_, _, err = build.CheckAndDownloadArtifact(statusUrl, downloadUrl, saasConfig.Token, artifact, 0, 0)
-					if err != nil {
-						return
-					}
-				}()
+	if saasConfig.Token != "" && saasConfig.Enable {
+		artifacts, err := db.GetArtifactWithSaas()
+		if err != nil {
+			return err
+		}
+		if len(artifacts) > 0 {
+			for _, artifact := range artifacts {
+				if artifact.Status != consts.BuildStatusCompleted && artifact.Status != consts.BuildStatusFailure {
+					go func() {
+						statusUrl := fmt.Sprintf("%s/api/build/status/%s", saasConfig.Url, artifact.Name)
+						downloadUrl := fmt.Sprintf("%s/api/build/download/%s", saasConfig.Url, artifact.Name)
+						_, _, err = build.CheckAndDownloadArtifact(statusUrl, downloadUrl, saasConfig.Token, artifact, 0, 0)
+						if err != nil {
+							return
+						}
+					}()
+				}
 			}
 		}
 	}
@@ -269,77 +265,6 @@ func StartListener(opt *configs.ListenerConfig) error {
 		if err != nil {
 			return err
 		}
-	}
-	return nil
-}
-
-func RegisterLicense(opt Options) error {
-	saasConfig := configs.GetSaasConfig()
-	if saasConfig.Token == "" && saasConfig.Enable {
-		licenseUrl := fmt.Sprintf("%s/api/license/", saasConfig.Url)
-
-		// 获取机器码作为用户名
-		machineID := utils.GetMachineID()
-		username := fmt.Sprintf("machine_%s", machineID)
-
-		licenseData := map[string]interface{}{
-			"username":    username,                // 使用机器码作为用户名
-			"email":       "community@example.com", // 默认邮箱
-			"type":        "community",             // 默认为community类型
-			"max_builds":  0,                       // community类型无限制
-			"build_count": 0,
-		}
-
-		jsonData, err := json.Marshal(licenseData)
-		if err != nil {
-			return fmt.Errorf("failed to marshal license data: %v", err)
-		}
-
-		req, err := http.NewRequest("POST", licenseUrl, bytes.NewBuffer(jsonData))
-		if err != nil {
-			return fmt.Errorf("failed to create HTTP request: %v", err)
-		}
-
-		req.Header.Set("Content-Type", "application/json")
-
-		client := &http.Client{
-			Timeout: 30 * time.Second,
-		}
-		resp, err := client.Do(req)
-		if err != nil {
-			return fmt.Errorf("failed to send HTTP request: %v", err)
-		}
-		defer resp.Body.Close()
-
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return fmt.Errorf("failed to read response body: %v", err)
-		}
-
-		if resp.StatusCode != http.StatusOK {
-			return fmt.Errorf("HTTP request failed with status %d: %s", resp.StatusCode, string(body))
-		}
-
-		var response map[string]interface{}
-		if err := json.Unmarshal(body, &response); err != nil {
-			return fmt.Errorf("failed to parse response: %v", err)
-		}
-
-		if success, ok := response["success"].(bool); !ok || !success {
-			return fmt.Errorf("license registration failed: %v", response)
-		}
-
-		if licenseData, ok := response["license"].(map[string]interface{}); ok {
-			if returnedToken, ok := licenseData["Token"].(string); ok {
-				fmt.Printf("注册成功，返回的token: %s\n", returnedToken)
-				saasConfig.Token = returnedToken
-				err = configs.UpdateSaasConfig(saasConfig)
-				if err != nil {
-					return err
-				}
-			}
-		}
-
 	}
 	return nil
 }

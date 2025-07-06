@@ -28,7 +28,6 @@ var (
 	ContainerCargoRegistryCache = "/root/cargo/registry"
 	ContainerCargoGitCache      = "/root/cargo/git"
 	ContainerBinPath            = "/root/bin"
-	LocalMutantPath             = filepath.Join(configs.BinPath, "malefic-mutant")
 	command                     = "build"
 	funcNameOption              = "--function-name"
 	userDataPathOption          = "--userdata-path"
