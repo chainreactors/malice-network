@@ -25,6 +25,15 @@ func Commands(con *repl.Console) []*cobra.Command {
 		f.BoolP("all", "a", false, "show all tasks")
 	})
 
+	fetchTaskCmd := &cobra.Command{
+		Use:   consts.CommandTaskFetch,
+		Short: "Fetch the details of a task",
+		Args:  cobra.MinimumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return TaskFetchCmd(cmd, con)
+		},
+	}
+
 	fileCmd := &cobra.Command{
 		Use:   consts.CommandFiles,
 		Short: "List all downloaded files.",
@@ -71,7 +80,7 @@ query_task <task_id>
 `}
 
 	common.BindArgCompletions(queryTaskCmd, nil, common.SessionTaskCompleter(con))
-	return []*cobra.Command{taskCmd, fileCmd, cancelTaskCmd, listTaskCmd, queryTaskCmd}
+	return []*cobra.Command{taskCmd, fetchTaskCmd, fileCmd, cancelTaskCmd, listTaskCmd, queryTaskCmd}
 }
 
 func Register(con *repl.Console) {

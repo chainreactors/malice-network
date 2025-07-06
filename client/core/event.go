@@ -129,7 +129,7 @@ func HandlerTask(sess *Session, ctx *clientpb.TaskContext, message []byte, calle
 	}
 
 	if err != nil {
-		log.Errorf(logs.RedBold(err.Error()))
+		log.Warnf(logs.YellowBold(err.Error()))
 	} else {
 		log.Console(resp + "\n")
 	}

@@ -150,6 +150,7 @@ const (
 	CommandPolling          = "polling"
 	CommandNewBindSession   = "newbind"
 	CommandTasks            = "tasks"
+	CommandTaskFetch        = "fetch_task"
 	CommandFiles            = "files"
 	CommandExplore          = "explorer"
 	CommandSession          = "session"

@@ -1,7 +1,9 @@
 package tasks
 
 import (
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
@@ -64,20 +66,59 @@ func printTasks(tasks []*clientpb.Task, con *repl.Console, isAll bool) {
 	con.Log.Console(tableModel.View())
 }
 
-//	func TasksCmd(ctx *grumble.Context, con *console.Console) {
-//		err := con.UpdateTasks(con.GetInteractive())
-//		if err != nil {
-//			console.Log.Errorf("Error updating tasks: %v", err)
-//			return
-//		}
-//		sid := con.GetInteractive().SessionId
-//		Tasks, err := con.Rpc.GetTaskFiles(con.ActiveTarget.Context(), con.GetInteractive())
-//		if err != nil {
-//			con.SessionLog(sid).Errorf("Error getting tasks: %v", err)
-//		}
-//		if 0 < len(Tasks.Tasks) {
-//			PrintTasks(Tasks.Tasks, con)
-//		} else {
-//			console.Log.Info("No sessions")
-//		}
+// fetchTaskByIDs 根据逗号分隔的任务ID字符串获取任务详情
+func fetchTaskByID(idStr string, con *repl.Console) (*clientpb.TaskContexts, error) {
+
+	taskId, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		con.Log.Errorf("Invalid task ID '%s': %v", idStr, err)
+	}
+	task := &clientpb.Task{
+		SessionId: con.GetInteractive().SessionId,
+		TaskId:    uint32(taskId),
+		Need:      -1,
+	}
+	tasksContext, err := con.Rpc.GetAllTaskContent(con.Context(), task)
+
+	return tasksContext, err
+}
+
+func TaskFetchCmd(cmd *cobra.Command, con *repl.Console) error {
+	// 检查是否使用 --ids 参数
+	taskId := cmd.Flags().Arg(0)
+	tasksContext, err := fetchTaskByID(taskId, con)
+	if err != nil {
+		return err
+	}
+	taskContexts := make([]*clientpb.TaskContext, 0)
+	for _, spite := range tasksContext.Spites {
+		eachTask := &clientpb.TaskContext{
+			Task:    tasksContext.Task,
+			Session: tasksContext.Session,
+			Spite:   spite,
+		}
+		taskContexts = append(taskContexts, eachTask)
+	}
+	for _, context := range taskContexts {
+		core.HandlerTask(con.GetInteractive(), context, []byte{}, consts.CalleeCMD, true)
+	}
+	return nil
+}
+
+//func TasksCmd(ctx *grumble.Context, con *console.Console) {
+//	err := con.UpdateTasks(con.GetInteractive())
+//	if err != nil {
+//		console.Log.Errorf("Error updating tasks: %v", err)
+//		return
 //	}
+//	sid := con.GetInteractive().SessionId
+//	Tasks, err := con.Rpc.GetTaskFiles(con.ActiveTarget.Context(), con.GetInteractive())
+//	if err != nil {
+//		con.SessionLog(sid).Errorf("Error getting tasks: %v", err)
+//	}
+//	if 0 < len(Tasks.Tasks) {
+//		PrintTasks(Tasks.Tasks, con)
+//	} else {
+//		console.Log.Info("No sessions")
+//	}
+//}
