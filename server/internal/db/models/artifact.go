@@ -60,7 +60,7 @@ func (a *Artifact) BeforeCreate(tx *gorm.DB) (err error) {
 	return nil
 }
 
-func (a *Artifact) ToArtifact(bin []byte) *clientpb.Artifact {
+func (a *Artifact) ToProtobuf(bin []byte) *clientpb.Artifact {
 	var pipeline string
 	if a.Profile.PulsePipelineID != "" {
 		pipeline = a.Profile.PulsePipelineID

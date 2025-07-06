@@ -1,8 +1,6 @@
 package command
 
 import (
-	"github.com/chainreactors/malice-network/client/command/cert"
-	"github.com/chainreactors/malice-network/client/command/pipeline"
 	"github.com/reeflective/console"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -10,6 +8,7 @@ import (
 	"github.com/chainreactors/malice-network/client/command/alias"
 	"github.com/chainreactors/malice-network/client/command/armory"
 	"github.com/chainreactors/malice-network/client/command/build"
+	"github.com/chainreactors/malice-network/client/command/cert"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/config"
 	"github.com/chainreactors/malice-network/client/command/context"
@@ -19,6 +18,7 @@ import (
 	"github.com/chainreactors/malice-network/client/command/listener"
 	"github.com/chainreactors/malice-network/client/command/mal"
 	"github.com/chainreactors/malice-network/client/command/mutant"
+	"github.com/chainreactors/malice-network/client/command/pipeline"
 	"github.com/chainreactors/malice-network/client/command/sessions"
 	"github.com/chainreactors/malice-network/client/command/website"
 	"github.com/chainreactors/malice-network/client/repl"

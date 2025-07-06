@@ -92,7 +92,7 @@ func (a *ActionBuilder) Generate() (*clientpb.Artifact, error) {
 	a.profile = profile
 	db.UpdateBuilderStatus(a.builder.ID, consts.BuildStatusWaiting)
 
-	return builder.ToArtifact([]byte{}), nil
+	return builder.ToProtobuf([]byte{}), nil
 }
 
 func (a *ActionBuilder) Execute() error {

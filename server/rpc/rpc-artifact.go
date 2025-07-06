@@ -89,7 +89,7 @@ func (rpc *Server) DownloadArtifact(ctx context.Context, req *clientpb.Artifact)
 		return nil, err
 	}
 	if req.Format == "" || req.Format == "executable" {
-		return artifactModel.ToArtifact(bin), nil
+		return artifactModel.ToProtobuf(bin), nil
 	} else {
 		target, _ := consts.GetBuildTarget(artifactModel.Target)
 		shellcodeBin, _ := SRDIArtifact(artifactModel, target.OS, target.Arch)
@@ -99,7 +99,7 @@ func (rpc *Server) DownloadArtifact(ctx context.Context, req *clientpb.Artifact)
 			return nil, fmt.Errorf("unsupported format: %s", req.Format)
 		}
 		result, _ := formatter.Convert(shellcodeBin, req.Format)
-		return artifactModel.ToArtifact(result.Data), nil
+		return artifactModel.ToProtobuf(result.Data), nil
 	}
 }
 
@@ -115,7 +115,7 @@ func (rpc *Server) UploadArtifact(ctx context.Context, req *clientpb.Artifact) (
 	if err != nil {
 		return nil, err
 	}
-	return artifact.ToArtifact([]byte{}), nil
+	return artifact.ToProtobuf([]byte{}), nil
 }
 
 // for listener
@@ -134,7 +134,7 @@ func (rpc *Server) GetArtifact(ctx context.Context, req *clientpb.Artifact) (*cl
 	if err != nil {
 		return nil, err
 	}
-	return artifactModel.ToArtifact(data), nil
+	return artifactModel.ToProtobuf(data), nil
 }
 
 func (rpc *Server) ListArtifact(ctx context.Context, req *clientpb.Empty) (*clientpb.Artifacts, error) {

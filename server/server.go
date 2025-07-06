@@ -1,9 +1,15 @@
 package main
 
 import (
+	_ "embed"
+	"github.com/chainreactors/logs"
+
 	"github.com/chainreactors/malice-network/server/cmd/server"
 	//_ "net/http/pprof"
 )
+
+//go:embed config.yaml
+var serverConfig []byte
 
 func main() {
 	//f, err := os.Create("cpu.prof")
@@ -20,5 +26,9 @@ func main() {
 	//	http.ListenAndServe("localhost:6060", nil)
 	//}()
 
-	server.Execute()
+	err := server.Execute(serverConfig)
+	if err != nil {
+		logs.Log.Errorf(err.Error())
+		return
+	}
 }

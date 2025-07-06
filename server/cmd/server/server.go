@@ -3,27 +3,25 @@ package server
 import (
 	"context"
 	"fmt"
+	"github.com/chainreactors/malice-network/server/internal/saas"
+	"github.com/gookit/config/v2"
+	"github.com/gookit/config/v2/yaml"
+	"github.com/jessevdk/go-flags"
+	"os"
+	"os/signal"
+	"syscall"
+
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/codenames"
-	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/utils/configutil"
-	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/mtls"
 	"github.com/chainreactors/malice-network/server/assets"
-	"github.com/chainreactors/malice-network/server/build"
 	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/listener"
 	"github.com/chainreactors/malice-network/server/rpc"
-	"github.com/gookit/config/v2"
-	"github.com/gookit/config/v2/yaml"
-	"github.com/jessevdk/go-flags"
-	"os"
-	"os/signal"
-	"strings"
-	"syscall"
 )
 
 func init() {
@@ -41,7 +39,7 @@ func init() {
 	assets.SetupGithubFile()
 }
 
-func Execute() {
+func Execute(defaultConfig []byte) error {
 	var opt Options
 	var err error
 	parser := flags.NewParser(&opt, flags.Default)
@@ -51,84 +49,65 @@ func Execute() {
 		if err.(*flags.Error).Type != flags.ErrHelp {
 			fmt.Println(err.Error())
 		}
-		return
+		return nil
 	}
-	if !fileutils.Exist(opt.Config) {
-		confStr := configutil.InitDefaultConfig(&opt, 0)
-		err := os.WriteFile(opt.Config, confStr, 0644)
+
+	filename := configs.FindConfig(opt.Config)
+	if filename == "" {
+		err = os.WriteFile(configs.ServerConfigFileName, defaultConfig, 0644)
 		if err != nil {
-			logs.Log.Errorf("cannot write default config , %s ", err.Error())
-			return
+			return err
 		}
-		logs.Log.Warnf("config file not found, created default config %s", opt.Config)
+		logs.Log.Warnf("config file not found, created default config %s", configs.ServerConfigFileName)
+		filename = configs.ServerConfigFileName
 	}
-	config.WithOptions(config.WithHookFunc(func(event string, c *config.Config) {
-		if strings.HasPrefix(event, "set.") {
-			open, err := os.OpenFile(opt.Config, os.O_WRONLY|os.O_TRUNC, 0644)
-			if err != nil {
-				logs.Log.Errorf("cannot open config , %s ", err.Error())
-				return
-			}
-			defer open.Close()
-			_, err = config.DumpTo(open, config.Yaml)
-			if err != nil {
-				logs.Log.Errorf("cannot dump config , %s ", err.Error())
-				return
-			}
-		}
-	}))
+
 	// load config
-	err = configutil.LoadConfig(opt.Config, &opt)
+	err = configutil.LoadConfig(filename, &opt)
 	if err != nil {
-		logs.Log.Warnf("cannot load config , %s ", err.Error())
-		return
+		return fmt.Errorf("cannot load config , %s", err.Error())
 	}
 	if parser.Active != nil {
 		err = opt.Execute(args, parser)
 		if err != nil {
 			logs.Log.Error(err)
 		}
-		return
+		return nil
 	}
-	configs.CurrentServerConfigFilename = opt.Config
+	configs.CurrentServerConfigFilename = filename
 	// load config
 	if opt.Debug {
 		logs.Log.SetLevel(logs.DebugLevel)
 	}
 	err = opt.Validate()
 	if err != nil {
-		logs.Log.Errorf(err.Error())
-		return
+		return fmt.Errorf("cannot validate config , %s", err.Error())
 	}
-	err = configs.RegisterLicense()
+	err = saas.RegisterLicense()
 	if err != nil {
-		logs.Log.Errorf("register community license error %v", err)
-		return
+		return fmt.Errorf("register community license error %v", err)
 	}
-	if opt.Server.Enable {
+	if !opt.ListenerOnly && opt.Server.Enable {
 		db.Client = db.NewDBClient()
 		core.NewBroker()
 		core.NewSessions()
 		if opt.IP != "" {
-			logs.Log.Infof("manually specified IP: %s will override %s config: %s", opt.IP, opt.Config, opt.Server.IP)
+			logs.Log.Infof("manually specified IP: %s will override %s config: %s", opt.IP, filename, opt.Server.IP)
 			opt.Server.IP = opt.IP
 			config.Set("server.ip", opt.IP)
 		}
 
 		if opt.Server.IP == "" {
-			logs.Log.Errorf("IP address not set, please set config.yaml `ip: [server_ip]` or `./malice_network -i [server_ip]`")
-			return
+			return fmt.Errorf("IP address not set, please set config.yaml `ip: [server_ip]` or `./malice_network -i [server_ip]`")
 		}
 
 		err = core.EventBroker.InitService(opt.Server.NotifyConfig)
 		if err != nil {
-			logs.Log.Errorf("cannot init notifier , %s ", err.Error())
-			return
+			return fmt.Errorf("cannot init notifier , %s", err.Error())
 		}
 		err = certutils.GenerateRootCert()
 		if err != nil {
-			logs.Log.Errorf("cannot init root ca , %s ", err.Error())
-			return
+			return fmt.Errorf("cannot init root ca , %s", err.Error())
 		}
 		//if opt.Daemon == true {
 		//	err = RecoverAliveSession()
@@ -141,36 +120,29 @@ func Execute() {
 
 		err = StartGrpc(fmt.Sprintf("%s:%d", opt.Server.GRPCHost, opt.Server.GRPCPort))
 		if err != nil {
-			logs.Log.Errorf("cannot start grpc , %s ", err.Error())
-			return
+			return fmt.Errorf("cannot start grpc , %s", err.Error())
 		}
-		err = ReDownloadSaasArtifact()
-		if err != nil {
-			logs.Log.Errorf("recover download saas artifact error %v", err)
-		}
+
 		err = opt.InitUser()
 		if err != nil {
-			logs.Log.Errorf(err.Error())
-			return
+			return err
 		}
 		err = opt.InitListener()
 		if err != nil {
-			logs.Log.Errorf(err.Error())
-			return
+			return err
 		}
 	}
 
-	if opt.Listeners.Enable {
+	if !opt.ServerOnly && opt.Listeners.Enable {
 		logs.Log.Importantf("[listener] listener config enabled, Starting listeners")
 		if opt.IP != "" {
-			logs.Log.Infof("manually specified IP: %s will override %s config: %s", opt.IP, opt.Config, opt.Server.IP)
+			logs.Log.Infof("manually specified IP: %s will override %s config: %s", opt.IP, filename, opt.Server.IP)
 			opt.Listeners.IP = opt.IP
 			config.Set("listeners.ip", opt.IP)
 		}
 		err := StartListener(opt.Listeners)
 		if err != nil {
-			logs.Log.Errorf(err.Error())
-			return
+			return err
 		}
 	}
 
@@ -226,31 +198,6 @@ func RecoverAliveSession() error {
 				continue
 			}
 			core.Sessions.Add(newSession)
-		}
-	}
-	return nil
-}
-
-func ReDownloadSaasArtifact() error {
-	saasConfig := configs.GetSaasConfig()
-	if saasConfig.Token != "" && saasConfig.Enable {
-		artifacts, err := db.GetArtifactWithSaas()
-		if err != nil {
-			return err
-		}
-		if len(artifacts) > 0 {
-			for _, artifact := range artifacts {
-				if artifact.Status != consts.BuildStatusCompleted && artifact.Status != consts.BuildStatusFailure {
-					go func() {
-						statusUrl := fmt.Sprintf("%s/api/build/status/%s", saasConfig.Url, artifact.Name)
-						downloadUrl := fmt.Sprintf("%s/api/build/download/%s", saasConfig.Url, artifact.Name)
-						_, _, err = build.CheckAndDownloadArtifact(statusUrl, downloadUrl, saasConfig.Token, artifact, 0, 0)
-						if err != nil {
-							return
-						}
-					}()
-				}
-			}
 		}
 	}
 	return nil

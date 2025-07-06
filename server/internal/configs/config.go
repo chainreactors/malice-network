@@ -1,9 +1,12 @@
 package configs
 
 import (
+	"github.com/chainreactors/files"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/gookit/config/v2"
 	"os"
+	"path/filepath"
 )
 
 func InitConfig() error {
@@ -24,6 +27,19 @@ func InitConfig() error {
 	os.MkdirAll(BuildOutputPath, perm)
 	os.MkdirAll(SourceCodePath, perm)
 	return nil
+}
+
+func FindConfig(filename string) string {
+	if filename == "" {
+		filename = ServerConfigFileName
+	}
+	if fileutils.Exist(filename) {
+		return filename
+	} else if path := filepath.Join(files.GetExcPath(), filename); fileutils.Exist(path) {
+		return path
+	} else {
+		return ""
+	}
 }
 
 func GetCertDir() string {

@@ -921,7 +921,7 @@ func GetArtifacts() (*clientpb.Artifacts, error) {
 		Artifacts: make([]*clientpb.Artifact, 0),
 	}
 	for _, artifact := range builders {
-		pbBuilders.Artifacts = append(pbBuilders.GetArtifacts(), artifact.ToArtifact([]byte{}))
+		pbBuilders.Artifacts = append(pbBuilders.GetArtifacts(), artifact.ToProtobuf([]byte{}))
 	}
 	return pbBuilders, nil
 }
@@ -986,7 +986,7 @@ func FindArtifact(target *clientpb.Artifact) (*clientpb.Artifact, error) {
 		return nil, fmt.Errorf("error reading file for artifact: %s, error: %v", name, err)
 	}
 
-	return artifact.ToArtifact(content), nil
+	return artifact.ToProtobuf(content), nil
 }
 
 func SaveFromTls(name string, tls *types.TlsConfig) (*models.Certificate, error) {

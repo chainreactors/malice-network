@@ -58,7 +58,7 @@ func (d *DockerBuilder) Generate() (*clientpb.Artifact, error) {
 	}
 	d.artifact = builder
 	db.UpdateBuilderStatus(d.artifact.ID, consts.BuildStatusWaiting)
-	return builder.ToArtifact([]byte{}), nil
+	return builder.ToProtobuf([]byte{}), nil
 }
 
 func (d *DockerBuilder) Execute() error {
