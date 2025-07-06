@@ -52,15 +52,15 @@ func (rpc *Server) DeleteCertificate(ctx context.Context, req *clientpb.Cert) (*
 }
 
 func (rpc *Server) GetAllCertificates(ctx context.Context, req *clientpb.Empty) (*clientpb.Certs, error) {
-	var results *clientpb.Certs
+	certs := &clientpb.Certs{}
 	certModels, err := db.GetAllCertificates()
 	if err != nil {
 		return nil, err
 	}
 	for _, cert := range certModels {
-		results.Certs = append(results.Certs, cert.ToProtobuf())
+		certs.Certs = append(certs.Certs, cert.ToProtobuf())
 	}
-	return results, nil
+	return certs, nil
 }
 
 func (rpc *Server) UpdateCertificate(ctx context.Context, req *clientpb.Cert) (*clientpb.Empty, error) {

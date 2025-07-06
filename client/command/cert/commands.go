@@ -14,7 +14,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Use:   consts.CommandCert,
 		Short: "Cert list",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return GetCmd(cmd, con)
+			return GetCertCmd(cmd, con)
 		},
 		Example: `~~~
 cert

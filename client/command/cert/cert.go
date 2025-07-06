@@ -55,7 +55,7 @@ func UpdateCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func GetCmd(cmd *cobra.Command, con *repl.Console) error {
+func GetCertCmd(cmd *cobra.Command, con *repl.Console) error {
 	certs, err := con.Rpc.GetAllCertificates(con.Context(), &clientpb.Empty{})
 	if err != nil {
 		return nil
