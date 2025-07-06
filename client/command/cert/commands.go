@@ -135,7 +135,7 @@ cert download cert-name -o cert_path
 ~~~`,
 	}
 
-	common.BindArgCompletions(updateCmd, nil,
+	common.BindArgCompletions(downloadCmd, nil,
 		common.CertNameCompleter(con),
 	)
 
@@ -143,7 +143,7 @@ cert download cert-name -o cert_path
 		f.StringP("output", "o", "", "cert save path")
 	})
 
-	certCmd.AddCommand(importCmd, selfSignCmd, acmeCmd, delCmd, updateCmd)
+	certCmd.AddCommand(importCmd, selfSignCmd, acmeCmd, delCmd, updateCmd, downloadCmd)
 	return []*cobra.Command{
 		certCmd,
 	}

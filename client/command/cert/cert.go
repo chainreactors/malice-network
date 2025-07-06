@@ -77,9 +77,9 @@ func DownloadCmd(cmd *cobra.Command, con *repl.Console) error {
 	printCert(cert)
 	var path string
 	if output != "" {
-		path = filepath.Join(assets.TempDirName, output)
+		path = filepath.Join(assets.GetTempDir(), output)
 	} else {
-		path = filepath.Join(assets.TempDirName, certName)
+		path = filepath.Join(assets.GetTempDir(), certName)
 	}
 	err = os.MkdirAll(path, 0700)
 	if err != nil {
@@ -99,7 +99,7 @@ func DownloadCmd(cmd *cobra.Command, con *repl.Console) error {
 			return err
 		}
 	}
-	con.Log.Infof("cert save in %s", path)
+	con.Log.Infof("cert save in %s\n", path)
 	return nil
 }
 

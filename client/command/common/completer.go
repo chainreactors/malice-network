@@ -260,7 +260,7 @@ func ModuleArtifactsCompleter(con *repl.Console) carapace.Action {
 				if err != nil {
 					return carapace.Action{}
 				}
-				results = append(results, a.Name, fmt.Sprintf("target %s, module%s", a.Target, params.Modules))
+				results = append(results, a.Name, fmt.Sprintf("target %s, module %s", a.Target, params.Modules))
 			}
 		}
 		return carapace.ActionValuesDescribed(results...).Tag("artifact")
@@ -516,15 +516,15 @@ func ExternalMalCompleter(con *repl.Console) carapace.Action {
 func CertNameCompleter(con *repl.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
-		certs, err := con.Rpc.GetAllCertificates(con.Context(), &clientpb.Empty{})
+		certificates, err := con.Rpc.GetAllCertificates(con.Context(), &clientpb.Empty{})
 		if err != nil {
 			con.Log.Errorf("Error get certs: %v\n", err)
 			return carapace.Action{}
 		}
-		if len(certs.Certs) < 0 {
+		if len(certificates.Certs) < 0 {
 			return carapace.Action{}
 		}
-		for _, c := range certs.Certs {
+		for _, c := range certificates.Certs {
 			results = append(results, c.Cert.Name, fmt.Sprintf("cert %s, type %s", c.Cert.Name, c.Cert.Type))
 		}
 		return carapace.ActionValuesDescribed(results...).Tag("certs")
