@@ -45,6 +45,7 @@ func StartWebsite(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeline
 		CertName:       pipeline.CertName,
 		PipelineConfig: core.FromPipeline(pipeline),
 		Content:        make(map[string]*clientpb.WebContent),
+		Artifact:       make(map[string]*clientpb.WebContent),
 	}
 	for _, c := range content {
 		err := web.AddContent(c)
