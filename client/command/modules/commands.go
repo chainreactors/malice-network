@@ -21,7 +21,6 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Short: "List modules",
 		// Long:  help.FormatLongHelp(consts.ModuleListModule),
 		RunE: func(cmd *cobra.Command, args []string) error {
-
 			return ListModulesCmd(cmd, con)
 		},
 	}
@@ -113,10 +112,14 @@ func Register(con *repl.Console) {
 				table.NewColumn("Help", "Help", 30),
 			}, true)
 			for _, module := range modules.GetModules() {
+				var short string
+				if cmd := con.CMDs[module]; cmd != nil {
+					short = cmd.Short
+				}
 				row = table.NewRow(
 					table.RowData{
 						"Module": module,
-						"Help":   "",
+						"Help":   short,
 					})
 				rowEntries = append(rowEntries, row)
 			}
