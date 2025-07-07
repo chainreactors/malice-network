@@ -96,6 +96,7 @@ func getLicenseFromSaas(saasConfig *configs.SaasConfig) (*clientpb.LicenseInfo, 
 
 	// 转换为protobuf格式
 	licenseInfo := &clientpb.LicenseInfo{
+		UserName:   response.License.Username,
 		Type:       response.License.Type,
 		ExpireAt:   response.License.ExpireAt,
 		BuildCount: response.License.BuildCount,

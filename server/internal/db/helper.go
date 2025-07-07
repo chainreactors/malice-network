@@ -956,30 +956,9 @@ func FindArtifact(target *clientpb.Artifact) (*clientpb.Artifact, error) {
 	if artifact == nil {
 		return nil, errs.ErrNotFoundArtifact
 	}
-	_, err := os.Stat(artifact.Path)
-	var path string
-	var name string
-	var status string
-	if err != nil {
-		if artifact.Params == nil || artifact.Params.RelinkBeaconID == 0 {
-			return nil, fmt.Errorf("the original beacon is lost and there is no relink beacon")
-		}
-		var relinkArtifact *models.Artifact
-		result = Session().Where("id = ?", artifact.Params.RelinkBeaconID).First(&relinkArtifact)
-		if result.Error != nil {
-			return nil, fmt.Errorf("error finding relink artifact: %v", result.Error)
-		}
-		path = relinkArtifact.Path
-		name = relinkArtifact.Name
-		status = relinkArtifact.Status
-	} else {
-		path = artifact.Path
-		name = artifact.Name
-		status = artifact.Status
-	}
-	content, err := os.ReadFile(path)
-	if err != nil && status == consts.BuildStatusFailure {
-		return nil, fmt.Errorf("error reading file for artifact: %s, error: %v", name, err)
+	content, err := os.ReadFile(artifact.Path)
+	if err != nil && artifact.Status == consts.BuildStatusFailure {
+		return nil, fmt.Errorf("error reading file for artifact: %s, error: %v", artifact.Name, err)
 	}
 
 	return artifact.ToProtobuf(content), nil
@@ -1055,6 +1034,21 @@ func SavePipelineByRegister(req *clientpb.Pipeline) error {
 			return err
 		}
 		pipelineModel.CertName = certModel.Name
+		pipelineModel.Tls = &types.TlsConfig{
+			Cert: &types.CertConfig{
+				Cert: certModel.CertPEM,
+				Key:  certModel.KeyPEM,
+			},
+			CA: &types.CertConfig{
+				Cert: certModel.CACertPEM,
+				Key:  certModel.CAKeyPEM,
+			},
+			Enable: true,
+			Domain: certModel.Domain,
+		}
+	} else {
+		pipelineModel.Tls.Enable = req.Tls.Enable
+		pipelineModel.Tls.Acme = req.Tls.Acme
 	}
 	_, err = SavePipeline(pipelineModel)
 	if err != nil {
