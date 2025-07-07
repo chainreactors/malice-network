@@ -1,8 +1,12 @@
 package listener
 
 import (
+	"bytes"
+	"context"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	cryptostream "github.com/chainreactors/malice-network/server/internal/stream"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -27,7 +31,8 @@ type Website struct {
 	Enable   bool
 	CertName string
 	*core.PipelineConfig
-	Content map[string]*clientpb.WebContent
+	Content  map[string]*clientpb.WebContent
+	Artifact map[string]*clientpb.WebContent
 }
 
 func StartWebsite(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeline, content map[string]*clientpb.WebContent) (*Website, error) {
@@ -126,6 +131,31 @@ func (w *Website) ToProtobuf() *clientpb.Pipeline {
 
 func (w *Website) websiteContentHandler(resp http.ResponseWriter, req *http.Request) {
 	contentPath := strings.TrimPrefix(req.URL.Path, w.rootPath)
+	artifactContent, ok := w.Content[strings.Trim(contentPath, "/")]
+	if !ok {
+		logs.Log.Debugf("%s Failed to get content in artifactContent ", req.URL)
+	} else {
+		key, iv := configs.GenerateKeyAndIVFromString()
+		encryptor, _ := cryptostream.NewAesCtrEncryptor(key, iv)
+		encrypted, err := hex.DecodeString(artifactContent.Path)
+		logs.Log.Errorf("")
+		decReader := bytes.NewReader(encrypted)
+		decWriter := &bytes.Buffer{}
+
+		err = encryptor.Decrypt(decReader, decWriter)
+		artifactName := decWriter.Bytes()
+		artifact, err := w.rpc.FindArtifact(context.Background(), &clientpb.Artifact{
+			Name: string(artifactName),
+		})
+		if err != nil {
+			return
+		}
+		if len(artifact.Bin) > 0 {
+			resp.Write(artifact.Bin)
+		}
+		return
+	}
+
 	content, ok := w.Content[strings.Trim(contentPath, "/")]
 	if !ok {
 		logs.Log.Debugf("%s Failed to get content ", req.URL)
@@ -154,6 +184,15 @@ func (w *Website) AddContent(content *clientpb.WebContent) error {
 		Path:        content.Path,
 		File:        contentPath,
 		ContentType: content.ContentType,
+	}
+	return nil
+}
+
+func (w *Website) AddArtifactContent(content *clientpb.WebContent) error {
+	contentPath := filepath.Join(configs.WebsitePath, content.WebsiteId, content.Id)
+	w.Content[strings.Trim(content.Path, "/")] = &clientpb.WebContent{
+		Path: content.Path,
+		File: contentPath,
 	}
 	return nil
 }

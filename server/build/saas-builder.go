@@ -124,6 +124,10 @@ func (s *SaasBuilder) Collect() (string, string) {
 			}
 		}
 	}
+	err = SendAddContent(s.builder.Name)
+	if err != nil {
+		logs.Log.Errorf("failed to add artifact path to website: %s", err)
+	}
 	SendBuildMsg(s.builder, consts.BuildStatusCompleted, "")
 	return path, status
 }

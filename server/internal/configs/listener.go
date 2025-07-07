@@ -14,6 +14,10 @@ import (
 
 var ListenerConfigFileName = "listener.yaml"
 
+var (
+	AES_KEY = "maliceofinternal"
+)
+
 type ListenerConfig struct {
 	Enable bool   `config:"enable" default:"true"`
 	Name   string `config:"name" default:"listener"`
@@ -50,9 +54,6 @@ func (tcp *TcpPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, erro
 	if err != nil {
 		return nil, err
 	}
-	tlsPb := tls.ToProtobuf()
-	tlsPb.Acme = tcp.TlsConfig.Acme
-	tlsPb.Domain = tcp.TlsConfig.Domain
 	return &clientpb.Pipeline{
 		Name:       tcp.Name,
 		ListenerId: lisId,
@@ -65,7 +66,7 @@ func (tcp *TcpPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, erro
 				Port: uint32(tcp.Port),
 			},
 		},
-		Tls:        tlsPb,
+		Tls:        tls.ToProtobuf(),
 		Encryption: tcp.EncryptionConfig.ToProtobuf(),
 	}, nil
 }
@@ -237,7 +238,6 @@ func (t *CertConfig) ToProtobuf() *clientpb.TLS {
 		},
 		Ca:     ca,
 		Enable: t.Enable,
-		Acme:   t.Enable,
 	}
 }
 
@@ -306,4 +306,21 @@ func JoinStringSlice(slice []string) string {
 		return slice[0] // Just return the first element for simplicity
 	}
 	return ""
+}
+
+func GenerateKeyAndIVFromString() ([32]byte, [16]byte) {
+	var key [32]byte
+	var iv [16]byte
+
+	seedBytes := []byte(AES_KEY)
+
+	for i := 0; i < 32; i++ {
+		key[i] = seedBytes[i%len(seedBytes)]
+	}
+
+	for i := 0; i < 16; i++ {
+		iv[i] = seedBytes[(i+1)%len(seedBytes)]
+	}
+
+	return key, iv
 }

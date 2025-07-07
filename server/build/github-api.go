@@ -185,6 +185,10 @@ func downloadArtifactWhenReady(owner, repo, token string, isRemove bool, artifac
 				}
 			}
 			SendBuildMsg(builder, consts.BuildStatusCompleted, "")
+			err = SendAddContent(builder.Name)
+			if err != nil {
+				logs.Log.Errorf("failed to add artifact path to website: %s", err)
+			}
 			break
 		} else if errors.Is(err, errs.ErrWorkflowFailed) {
 			logs.Log.Errorf("Download artifact failed due to workflow failure: %s", err)

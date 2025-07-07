@@ -38,6 +38,7 @@ const (
 	CtrlWebContentAdd           = "web_content_add"
 	CtrlWebContentUpdate        = "web_content_update"
 	CtrlWebContentRemove        = "web_content_remove"
+	CtrlWebContentAddArtifact   = "web_content_add_artifact"
 	CtrlRemStart                = "rem_start"
 	CtrlRemStop                 = "rem_stop"
 	CtrlRemAgentCtrl            = "rem_agent_ctrl"

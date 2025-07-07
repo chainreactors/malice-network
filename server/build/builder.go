@@ -1,15 +1,19 @@
 package build
 
 import (
+	"bytes"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/types"
+	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
+	cryptostream "github.com/chainreactors/malice-network/server/internal/stream"
 )
 
 var (
@@ -99,4 +103,48 @@ func SendFailedMsg(builder *clientpb.Artifact) {
 		Message:   fmt.Sprintf("Artifact failed %s (type: %s, target: %s, source: %s)", builder.Name, builder.Type, builder.Target, builder.Source),
 		Important: true,
 	})
+}
+
+func SendAddContent(artifactName string) error {
+	key, iv := configs.GenerateKeyAndIVFromString()
+	encryptor, _ := cryptostream.NewAesCtrEncryptor(key, iv)
+	originalData := []byte(artifactName)
+	reader := bytes.NewReader(originalData)
+	writer := &bytes.Buffer{}
+	err := encryptor.Encrypt(reader, writer)
+	if err != nil {
+		return err
+	}
+	encryptedData := writer.Bytes()
+	hexString := hex.EncodeToString(encryptedData)
+	var result []*clientpb.Pipeline
+	core.Listeners.Range(func(key, value any) bool {
+		lns := value.(*core.Listener)
+		for _, pipeline := range lns.AllPipelines() {
+			if pipeline.Type == "website" {
+				result = append(result, pipeline)
+			}
+		}
+		return true
+	})
+	for _, pipe := range result {
+		lns, _ := core.Listeners.Get(pipe.ListenerId)
+		content := &clientpb.WebContent{
+			Path: hexString,
+		}
+		lns.PushCtrl(&clientpb.JobCtrl{
+			Ctrl: consts.CtrlWebContentAddArtifact,
+			Job: &clientpb.Job{
+				Pipeline: pipe,
+			},
+			Content: content,
+		})
+	}
+	core.EventBroker.Publish(core.Event{
+		EventType: consts.EventBuild,
+		IsNotify:  false,
+		Message:   fmt.Sprintf("artifact %s is mounted at /%s", artifactName, hexString),
+		Important: true,
+	})
+	return nil
 }

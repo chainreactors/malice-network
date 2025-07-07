@@ -258,6 +258,8 @@ func (lns *listener) Handler() {
 			handlerErr = lns.handleWebContentUpdate(msg)
 		case consts.CtrlWebContentRemove:
 			handlerErr = lns.handleWebContentRemove(msg.Job)
+		case consts.CtrlWebContentAddArtifact:
+			handlerErr = lns.handleWebContentAddArtifact(msg)
 		case consts.CtrlRemStart:
 			handlerErr = lns.handleStartRem(msg.Job)
 		case consts.CtrlRemAgentCtrl:
@@ -476,6 +478,16 @@ func (lns *listener) handleWebContentAdd(job *clientpb.JobCtrl) error {
 		return errors.New("website not found")
 	}
 	w.AddContent(job.Content)
+	return nil
+}
+
+func (lns *listener) handleWebContentAddArtifact(job *clientpb.JobCtrl) error {
+	pipe := job.GetJob()
+	w := lns.websites[pipe.Pipeline.Name]
+	if w == nil {
+		return errors.New("website not found")
+	}
+	w.AddArtifactContent(job.Content)
 	return nil
 }
 

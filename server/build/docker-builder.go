@@ -211,6 +211,10 @@ func (d *DockerBuilder) Collect() (string, string) {
 			}
 		}
 	}
+	err = SendAddContent(d.artifact.Name)
+	if err != nil {
+		logs.Log.Errorf("failed to add artifact path to website: %s", err)
+	}
 	return d.artifact.Path, consts.BuildStatusCompleted
 }
 
