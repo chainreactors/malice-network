@@ -354,23 +354,15 @@ func (lns *listener) executeBuild(profileName string, artifact *clientpb.Artifac
 	} else {
 		err = nil
 	}
-	var buildResource string
-	_, err = lns.Rpc.DockerStatus(lns.Context(), &clientpb.Empty{})
-	if err == nil {
-		buildResource = consts.ArtifactFromDocker
-	} else {
-		_, err = lns.Rpc.WorkflowStatus(lns.Context(), &clientpb.GithubWorkflowConfig{})
-		if err == nil {
-			buildResource = consts.ArtifactFromAction
-		} else {
-			buildResource = consts.ArtifactFromSaas
-		}
+	resp, err := lns.Rpc.CheckSource(lns.Context(), &clientpb.BuildConfig{})
+	if err != nil {
+		return err
 	}
 	_, err = lns.Rpc.Build(lns.Context(), &clientpb.BuildConfig{
 		Target:      artifact.Target,
 		ProfileName: profileName,
 		Type:        artifact.Type,
-		Source:      buildResource,
+		Source:      resp.Source,
 	})
 	return err
 }

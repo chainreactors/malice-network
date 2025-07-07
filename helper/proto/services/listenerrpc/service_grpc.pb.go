@@ -57,8 +57,7 @@ const (
 	ListenerRPC_Build_FullMethodName                = "/listenerrpc.ListenerRPC/Build"
 	ListenerRPC_SyncBuild_FullMethodName            = "/listenerrpc.ListenerRPC/SyncBuild"
 	ListenerRPC_BuildLog_FullMethodName             = "/listenerrpc.ListenerRPC/BuildLog"
-	ListenerRPC_DockerStatus_FullMethodName         = "/listenerrpc.ListenerRPC/DockerStatus"
-	ListenerRPC_WorkflowStatus_FullMethodName       = "/listenerrpc.ListenerRPC/WorkflowStatus"
+	ListenerRPC_CheckSource_FullMethodName          = "/listenerrpc.ListenerRPC/CheckSource"
 	ListenerRPC_GenerateSelfCert_FullMethodName     = "/listenerrpc.ListenerRPC/GenerateSelfCert"
 	ListenerRPC_GenerateAcmeCert_FullMethodName     = "/listenerrpc.ListenerRPC/GenerateAcmeCert"
 	ListenerRPC_SaveAcmeCert_FullMethodName         = "/listenerrpc.ListenerRPC/SaveAcmeCert"
@@ -110,8 +109,7 @@ type ListenerRPCClient interface {
 	Build(ctx context.Context, in *clientpb.BuildConfig, opts ...grpc.CallOption) (*clientpb.Artifact, error)
 	SyncBuild(ctx context.Context, in *clientpb.BuildConfig, opts ...grpc.CallOption) (*clientpb.Artifact, error)
 	BuildLog(ctx context.Context, in *clientpb.Artifact, opts ...grpc.CallOption) (*clientpb.Artifact, error)
-	DockerStatus(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Empty, error)
-	WorkflowStatus(ctx context.Context, in *clientpb.GithubWorkflowConfig, opts ...grpc.CallOption) (*clientpb.Empty, error)
+	CheckSource(ctx context.Context, in *clientpb.BuildConfig, opts ...grpc.CallOption) (*clientpb.BuildConfig, error)
 	// cert
 	GenerateSelfCert(ctx context.Context, in *clientpb.Pipeline, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	GenerateAcmeCert(ctx context.Context, in *clientpb.Pipeline, opts ...grpc.CallOption) (*clientpb.Empty, error)
@@ -495,18 +493,9 @@ func (c *listenerRPCClient) BuildLog(ctx context.Context, in *clientpb.Artifact,
 	return out, nil
 }
 
-func (c *listenerRPCClient) DockerStatus(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Empty, error) {
-	out := new(clientpb.Empty)
-	err := c.cc.Invoke(ctx, ListenerRPC_DockerStatus_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *listenerRPCClient) WorkflowStatus(ctx context.Context, in *clientpb.GithubWorkflowConfig, opts ...grpc.CallOption) (*clientpb.Empty, error) {
-	out := new(clientpb.Empty)
-	err := c.cc.Invoke(ctx, ListenerRPC_WorkflowStatus_FullMethodName, in, out, opts...)
+func (c *listenerRPCClient) CheckSource(ctx context.Context, in *clientpb.BuildConfig, opts ...grpc.CallOption) (*clientpb.BuildConfig, error) {
+	out := new(clientpb.BuildConfig)
+	err := c.cc.Invoke(ctx, ListenerRPC_CheckSource_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -594,8 +583,7 @@ type ListenerRPCServer interface {
 	Build(context.Context, *clientpb.BuildConfig) (*clientpb.Artifact, error)
 	SyncBuild(context.Context, *clientpb.BuildConfig) (*clientpb.Artifact, error)
 	BuildLog(context.Context, *clientpb.Artifact) (*clientpb.Artifact, error)
-	DockerStatus(context.Context, *clientpb.Empty) (*clientpb.Empty, error)
-	WorkflowStatus(context.Context, *clientpb.GithubWorkflowConfig) (*clientpb.Empty, error)
+	CheckSource(context.Context, *clientpb.BuildConfig) (*clientpb.BuildConfig, error)
 	// cert
 	GenerateSelfCert(context.Context, *clientpb.Pipeline) (*clientpb.Empty, error)
 	GenerateAcmeCert(context.Context, *clientpb.Pipeline) (*clientpb.Empty, error)
@@ -716,11 +704,8 @@ func (UnimplementedListenerRPCServer) SyncBuild(context.Context, *clientpb.Build
 func (UnimplementedListenerRPCServer) BuildLog(context.Context, *clientpb.Artifact) (*clientpb.Artifact, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method BuildLog not implemented")
 }
-func (UnimplementedListenerRPCServer) DockerStatus(context.Context, *clientpb.Empty) (*clientpb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DockerStatus not implemented")
-}
-func (UnimplementedListenerRPCServer) WorkflowStatus(context.Context, *clientpb.GithubWorkflowConfig) (*clientpb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method WorkflowStatus not implemented")
+func (UnimplementedListenerRPCServer) CheckSource(context.Context, *clientpb.BuildConfig) (*clientpb.BuildConfig, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CheckSource not implemented")
 }
 func (UnimplementedListenerRPCServer) GenerateSelfCert(context.Context, *clientpb.Pipeline) (*clientpb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GenerateSelfCert not implemented")
@@ -1411,38 +1396,20 @@ func _ListenerRPC_BuildLog_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ListenerRPC_DockerStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(clientpb.Empty)
+func _ListenerRPC_CheckSource_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(clientpb.BuildConfig)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ListenerRPCServer).DockerStatus(ctx, in)
+		return srv.(ListenerRPCServer).CheckSource(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ListenerRPC_DockerStatus_FullMethodName,
+		FullMethod: ListenerRPC_CheckSource_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ListenerRPCServer).DockerStatus(ctx, req.(*clientpb.Empty))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _ListenerRPC_WorkflowStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(clientpb.GithubWorkflowConfig)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ListenerRPCServer).WorkflowStatus(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ListenerRPC_WorkflowStatus_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ListenerRPCServer).WorkflowStatus(ctx, req.(*clientpb.GithubWorkflowConfig))
+		return srv.(ListenerRPCServer).CheckSource(ctx, req.(*clientpb.BuildConfig))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1663,12 +1630,8 @@ var ListenerRPC_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _ListenerRPC_BuildLog_Handler,
 		},
 		{
-			MethodName: "DockerStatus",
-			Handler:    _ListenerRPC_DockerStatus_Handler,
-		},
-		{
-			MethodName: "WorkflowStatus",
-			Handler:    _ListenerRPC_WorkflowStatus_Handler,
+			MethodName: "CheckSource",
+			Handler:    _ListenerRPC_CheckSource_Handler,
 		},
 		{
 			MethodName: "GenerateSelfCert",

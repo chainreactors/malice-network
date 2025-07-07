@@ -32,18 +32,11 @@ func CheckResource(con *repl.Console, source string, github *clientpb.GithubWork
 			return source, nil
 		}
 	}
-
-	_, err := con.Rpc.DockerStatus(con.Context(), &clientpb.Empty{})
-	if err == nil {
-		source = consts.ArtifactFromDocker
-		return source, nil
+	resp, err := con.Rpc.CheckSource(con.Context(), &clientpb.BuildConfig{Github: github})
+	if err != nil {
+		return "", err
 	}
-	_, err = con.Rpc.WorkflowStatus(con.Context(), github)
-	if err == nil {
-		source = consts.ArtifactFromAction
-		return source, nil
-	}
-	return consts.ArtifactFromSaas, nil
+	return resp.Source, nil
 }
 
 // parseBasicConfig 解析基础配置（可复用部分）

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/server/build"
 	"github.com/chainreactors/malice-network/server/internal/configs"
@@ -67,29 +68,28 @@ func (rpc *Server) BuildLog(ctx context.Context, req *clientpb.Artifact) (*clien
 	return req, nil
 }
 
-func (rpc *Server) DockerStatus(ctx context.Context, req *clientpb.Empty) (*clientpb.Empty, error) {
-	cli, err := build.GetDockerClient()
-	if err != nil {
-		return nil, err
-	}
-	_, err = cli.Ping(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return &clientpb.Empty{}, nil
-}
-
-func (rpc *Server) WorkflowStatus(ctx context.Context, req *clientpb.GithubWorkflowConfig) (*clientpb.Empty, error) {
-	if req.Owner == "" || req.Repo == "" || req.Token == "" {
-		config := configs.GetGithubConfig()
-		if config == nil {
-			return nil, fmt.Errorf("please set github config use flag or server config")
+func (rpc *Server) CheckSource(ctx context.Context, req *clientpb.BuildConfig) (*clientpb.BuildConfig, error) {
+	if cli, err := build.GetDockerClient(); err == nil {
+		if _, err := cli.Ping(ctx); err == nil {
+			req.Source = consts.ArtifactFromDocker
+			return req, nil
 		}
-		req = config.ToProtobuf()
 	}
-	err := build.GetWorkflowStatus(req)
-	if err != nil {
-		return nil, err
+	if req.Github == nil {
+		if config := configs.GetGithubConfig(); config != nil {
+			req.Github = config.ToProtobuf()
+		} else {
+			return nil, fmt.Errorf("github config not found")
+		}
 	}
-	return &clientpb.Empty{}, nil
+	if err := build.GetWorkflowStatus(req.Github); err == nil {
+		req.Source = consts.ArtifactFromAction
+		return req, nil
+	}
+	if saasConfig := configs.GetSaasConfig(); saasConfig != nil && saasConfig.Enable && saasConfig.Url != "" {
+		req.Source = consts.ArtifactFromSaas
+		return req, nil
+	}
+
+	return nil, errs.ErrSouceUnable
 }
