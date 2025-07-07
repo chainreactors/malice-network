@@ -58,8 +58,9 @@ func (asm *ACMEServerManager) Start() error {
 
 	// Create unified ACME manager
 	acmeDir := GetACMEDir()
+	cacheDir := filepath.Join(acmeDir, "cache")
 	asm.manager = &autocert.Manager{
-		Cache:  autocert.DirCache(acmeDir),
+		Cache:  autocert.DirCache(cacheDir),
 		Prompt: autocert.AcceptTOS,
 		// Initially don't set HostPolicy, update dynamically later via UpdateHostPolicy
 	}
@@ -217,8 +218,16 @@ func isCertValid(certPath string) bool {
 
 func GetAcmeTls(config *clientpb.TLS) (*types.TlsConfig, error) {
 	config.Domain = filepath.Base(config.Domain)
-	certPath := filepath.Join(GetACMEDir(), config.Domain+".crt")
-	keyPath := filepath.Join(GetACMEDir(), config.Domain+".key")
+	// mkdir domain dir
+	domainDir := filepath.Join(GetACMEDir(), config.Domain)
+	if _, err := os.Stat(domainDir); os.IsNotExist(err) {
+		err = os.MkdirAll(domainDir, 0700)
+		if err != nil {
+			logs.Log.Errorf("Failed to create domain dir: %v", err)
+		}
+	}
+	certPath := filepath.Join(domainDir, config.Domain+".crt")
+	keyPath := filepath.Join(domainDir, config.Domain+".key")
 
 	if fileutils.Exist(certPath) && fileutils.Exist(keyPath) && isCertValid(certPath) {
 		certPEM, _ := os.ReadFile(certPath)
