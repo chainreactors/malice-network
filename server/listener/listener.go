@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/chainreactors/malice-network/helper/types"
-	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"os"
@@ -17,6 +15,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
 	"github.com/chainreactors/malice-network/helper/utils/mtls"
+	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 )
@@ -177,19 +176,8 @@ func (lns *listener) RegisterAndStart(pipeline *clientpb.Pipeline) error {
 	if !pipeline.Enable {
 		return nil
 	}
-	var tls *types.TlsConfig
-	var err error
-	if pipeline.Tls.Enable && pipeline.Tls.Acme {
-		tls, err = certutils.GetAcmeTls(pipeline.GetTls())
-		pipeline.Tls = tls.ToProtobuf()
-	} else if pipeline.Tls.Enable && !pipeline.Tls.Acme && pipeline.Tls.Cert == nil {
-		tls, err = certutils.GenerateSelfTLS(pipeline.Name, nil)
-		pipeline.Tls = tls.ToProtobuf()
-	}
-	if err != nil {
-		return err
-	}
-	_, err = lns.Rpc.RegisterPipeline(lns.Context(), pipeline)
+
+	_, err := lns.Rpc.RegisterPipeline(lns.Context(), pipeline)
 	if err != nil {
 		return err
 	}

@@ -52,8 +52,8 @@ func (cert *CertConfig) ToProtobuf() *clientpb.Cert {
 }
 
 type TlsConfig struct {
-	Acme   bool        `json:"acme"`
 	Enable bool        `json:"enable"`
+	Acme   bool        `json:"acme"`
 	Cert   *CertConfig `json:"cert"`
 	CA     *CertConfig `json:"ca"`
 	Domain string      `json:"domain"`

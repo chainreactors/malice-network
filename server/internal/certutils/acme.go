@@ -232,15 +232,13 @@ func GetAcmeTls(config *clientpb.TLS) (*types.TlsConfig, error) {
 	if fileutils.Exist(certPath) && fileutils.Exist(keyPath) && isCertValid(certPath) {
 		certPEM, _ := os.ReadFile(certPath)
 		keyPEM, _ := os.ReadFile(keyPath)
-		config.Cert = &clientpb.Cert{
+		cert := &types.CertConfig{
 			Cert: string(certPEM),
 			Key:  string(keyPEM),
 		}
+		config.Cert = cert.ToProtobuf()
 		return &types.TlsConfig{
-			Cert: &types.CertConfig{
-				Cert: string(certPEM),
-				Key:  string(keyPEM),
-			},
+			Cert:   cert,
 			Domain: config.Domain,
 			Acme:   config.Acme,
 			Enable: config.Enable,

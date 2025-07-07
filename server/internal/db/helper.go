@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/chainreactors/malice-network/helper/certs"
 	"github.com/chainreactors/malice-network/helper/codenames"
+	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"mime"
 	"os"
 	"path/filepath"
@@ -969,22 +970,22 @@ func SaveTls(name string, tls *types.TlsConfig) (*models.Certificate, error) {
 	certificate, err := FindCertificate(name)
 	if err != nil && !errors.Is(err, ErrRecordNotFound) {
 		return nil, err
-	} else {
-		if err == nil {
-			if certificate.Type == certs.Imported || certificate.Type == certs.Acme {
-				certificate.CertPEM = tls.Cert.Cert
-				certificate.KeyPEM = tls.Cert.Key
-				if tls.CA != nil {
-					certificate.CACertPEM = tls.CA.Cert
-					certificate.CAKeyPEM = tls.CA.Key
-				}
-				err = Session().Save(&certificate).Error
+	}
+	if err == nil {
+		if certificate.Type == certs.Imported || certificate.Type == certs.Acme {
+			certificate.CertPEM = tls.Cert.Cert
+			certificate.KeyPEM = tls.Cert.Key
+			if tls.CA != nil {
+				certificate.CACertPEM = tls.CA.Cert
+				certificate.CAKeyPEM = tls.CA.Key
 			}
-			return certificate, err
+			err = Session().Save(&certificate).Error
 		}
+		return certificate, err
 	}
 
 	if tls.CA != nil && tls.CA.Key != "" {
+		certutils.GenerateSelfTLS("", nil)
 		certModel = &models.Certificate{
 			Type:      certs.SelfSigned,
 			CACertPEM: tls.CA.Cert,
@@ -992,20 +993,22 @@ func SaveTls(name string, tls *types.TlsConfig) (*models.Certificate, error) {
 			CertPEM:   tls.Cert.Cert,
 			KeyPEM:    tls.Cert.Key,
 		}
-	} else if tls.Cert != nil && !tls.Acme {
-		certModel = &models.Certificate{
-			Type:      certs.Imported,
-			CertPEM:   tls.Cert.Cert,
-			KeyPEM:    tls.Cert.Key,
-			CACertPEM: tls.CA.Cert,
-		}
-	} else if tls.Cert != nil && tls.Acme {
-		certModel = &models.Certificate{
-			Name:    tls.Domain,
-			Type:    certs.Acme,
-			CertPEM: tls.Cert.Cert,
-			KeyPEM:  tls.Cert.Key,
-			Domain:  tls.Domain,
+	} else if tls.Cert != nil {
+		if tls.Acme {
+			certModel = &models.Certificate{
+				Name:    tls.Domain,
+				Type:    certs.Acme,
+				CertPEM: tls.Cert.Cert,
+				KeyPEM:  tls.Cert.Key,
+				Domain:  tls.Domain,
+			}
+		} else {
+			certModel = &models.Certificate{
+				Type:      certs.Imported,
+				CertPEM:   tls.Cert.Cert,
+				KeyPEM:    tls.Cert.Key,
+				CACertPEM: tls.CA.Cert,
+			}
 		}
 	}
 	if tls.Enable && errors.Is(err, ErrRecordNotFound) {
@@ -1034,18 +1037,7 @@ func SavePipelineByRegister(req *clientpb.Pipeline) error {
 			return err
 		}
 		pipelineModel.CertName = certModel.Name
-		pipelineModel.Tls = &types.TlsConfig{
-			Cert: &types.CertConfig{
-				Cert: certModel.CertPEM,
-				Key:  certModel.KeyPEM,
-			},
-			CA: &types.CertConfig{
-				Cert: certModel.CACertPEM,
-				Key:  certModel.CAKeyPEM,
-			},
-			Enable: true,
-			Domain: certModel.Domain,
-		}
+		pipelineModel.Tls = types.FromTls(certModel.ToProtobuf())
 	} else {
 		pipelineModel.Tls.Enable = req.Tls.Enable
 		pipelineModel.Tls.Acme = req.Tls.Acme

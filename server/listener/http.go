@@ -85,7 +85,7 @@ func (pipeline *HTTPPipeline) ToProtobuf() *clientpb.Pipeline {
 				Host:       pipeline.Host,
 			},
 		},
-		Tls:        pipeline.Cert.ToProtobuf(),
+		Tls:        pipeline.TLSConfig.ToProtobuf(),
 		Encryption: pipeline.Encryption.ToProtobuf(),
 	}
 	return p
@@ -137,8 +137,8 @@ func (pipeline *HTTPPipeline) Start() error {
 		Handler: mux,
 	}
 
-	if pipeline.Cert != nil && pipeline.Cert.Enable {
-		tlsConfig, err := certutils.GetTlsConfig(pipeline.Cert.CertConfig)
+	if pipeline.TLSConfig != nil && pipeline.TLSConfig.Enable {
+		tlsConfig, err := certutils.GetTlsConfig(pipeline.TLSConfig.Cert)
 		if err != nil {
 			return err
 		}
@@ -157,7 +157,7 @@ func (pipeline *HTTPPipeline) Start() error {
 	}
 
 	logs.Log.Infof("[pipeline] starting HTTP pipeline on %s:%d, parser: %s, tls: %t",
-		pipeline.Host, pipeline.Port, pipeline.Parser, pipeline.Cert.Enable)
+		pipeline.Host, pipeline.Port, pipeline.Parser, pipeline.TLSConfig.Enable)
 	pipeline.Enable = true
 	return nil
 }

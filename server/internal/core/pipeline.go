@@ -39,10 +39,7 @@ func FromPipeline(pipeline *clientpb.Pipeline) *PipelineConfig {
 	return &PipelineConfig{
 		ListenerID: pipeline.ListenerId,
 		Parser:     pipeline.Parser,
-		Cert: &configs.CertConfig{
-			CertConfig: types.FromCert(pipeline.GetTls().Cert),
-			Enable:     pipeline.GetTls().Enable,
-		},
+		TLSConfig:  types.FromTls(pipeline.Tls),
 		Encryption: types.FromEncryptions(pipeline.GetEncryption()),
 	}
 }
@@ -50,7 +47,7 @@ func FromPipeline(pipeline *clientpb.Pipeline) *PipelineConfig {
 type PipelineConfig struct {
 	ListenerID string
 	Parser     string
-	Cert       *configs.CertConfig
+	TLSConfig  *types.TlsConfig
 	Encryption types.EncryptionsConfig
 }
 
@@ -66,7 +63,7 @@ func (p *PipelineConfig) WrapConn(conn io.ReadWriteCloser) (*cryptostream.Conn, 
 //func (p *PipelineConfig) ToFile() *clientpb.Pipeline {
 //	return &clientpb.Pipeline{
 //		Tls: &clientpb.TLS{
-//			Cert:   p.TlsConfig.Cert,
+//			TLSConfig:   p.TlsConfig.TLSConfig,
 //			Key:    p.TlsConfig.Key,
 //			Enable: p.TlsConfig.Enable,
 //		},
