@@ -107,8 +107,19 @@ func (a *ActionBuilder) Execute() error {
 }
 
 func (a *ActionBuilder) Collect() (string, string) {
-	go downloadArtifactWhenReady(a.config.Github.Owner, a.config.Github.Repo, a.config.Github.Token, a.config.Github.IsRemove, a.config.ArtifactId, a.builder)
-	return a.builder.Path, ""
+	path, err := downloadArtifactWhenReady(
+		a.config.Github.Owner,
+		a.config.Github.Repo,
+		a.config.Github.Token,
+		a.config.Github.IsRemove,
+		a.config.ArtifactId,
+		a.builder,
+	)
+	if err == nil {
+		return path, consts.BuildStatusCompleted
+	} else {
+		return "", consts.BuildStatusFailure
+	}
 }
 
 //func (a *ActionBuilder) GetBeaconID() uint32 {

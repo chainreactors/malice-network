@@ -41,7 +41,10 @@ func (c *Certificate) ToProtobuf() *clientpb.TLS {
 	if err != nil {
 		return nil
 	}
-
+	var domain string
+	if c.Type == certs.Acme {
+		domain = c.Name
+	}
 	return &clientpb.TLS{
 		Cert: &clientpb.Cert{
 			Name: c.Name,
@@ -61,5 +64,6 @@ func (c *Certificate) ToProtobuf() *clientpb.TLS {
 			Ou: subject.OrganizationalUnit[0],
 			St: subject.StreetAddress[0],
 		},
+		Domain: domain,
 	}
 }

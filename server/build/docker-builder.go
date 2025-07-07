@@ -144,7 +144,6 @@ func (d *DockerBuilder) Execute() error {
 	d.containerID = resp.ID
 	if err := cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
 		db.UpdateBuilderStatus(d.artifact.ID, consts.BuildStatusFailure)
-		SendBuildMsg(d.artifact, consts.BuildStatusFailure, "")
 	}
 	db.UpdateBuilderStatus(d.artifact.ID, consts.BuildStatusRunning)
 	logs.Log.Infof("Container %s started successfully.", resp.ID)
@@ -162,7 +161,6 @@ func (d *DockerBuilder) Execute() error {
 				return nil
 			}
 			db.UpdateBuilderStatus(d.artifact.ID, consts.BuildStatusFailure)
-			SendBuildMsg(d.artifact, consts.BuildStatusFailure, "")
 			return err
 		}
 	case <-statusCh:
@@ -175,33 +173,28 @@ func (d *DockerBuilder) Collect() (string, string) {
 	_, artifactPath, err := MoveBuildOutput(d.config.Target, d.config.Type, d.enable3rd)
 	if err != nil {
 		logs.Log.Errorf("failed to move artifact %s output: %s", d.artifact.Name, err)
-		db.UpdateBuilderStatus(d.artifact.ID, consts.BuildStatusFailure)
 		return "", consts.BuildStatusFailure
 	}
 
 	absArtifactPath, err := filepath.Abs(artifactPath)
 	if err != nil {
 		logs.Log.Errorf("failed to find artifactPath: %s", err)
-		SendBuildMsg(d.artifact, consts.BuildStatusFailure, "")
 		return "", consts.BuildStatusFailure
 	}
 
 	d.artifact.Path = absArtifactPath
 	err = db.UpdateBuilderPath(d.artifact)
 	if err != nil {
-		SendBuildMsg(d.artifact, consts.BuildStatusFailure, "")
-		logs.Log.Errorf("failed to update %s path: %s", d.artifact.Name, err)
+		logs.Log.Errorf("failed to update artifactPath: %s", err)
 		return "", consts.BuildStatusFailure
 	}
 
 	_, err = os.ReadFile(absArtifactPath)
 	if err != nil {
-		SendBuildMsg(d.artifact, consts.BuildStatusFailure, "")
 		logs.Log.Errorf("failed to read artifact file: %s", err)
 		return "", consts.BuildStatusFailure
 	}
 	db.UpdateBuilderStatus(d.artifact.ID, consts.BuildStatusCompleted)
-	SendBuildMsg(d.artifact, consts.BuildStatusCompleted, "")
 	if d.config.Type == consts.CommandBuildBeacon {
 		if d.config.ArtifactId != 0 {
 			err = db.UpdatePulseRelink(d.config.ArtifactId, d.artifact.ID)
@@ -209,10 +202,6 @@ func (d *DockerBuilder) Collect() (string, string) {
 				logs.Log.Errorf("failed to update pulse relink: %s", err)
 			}
 		}
-	}
-	err = SendAddContent(d.artifact.Name)
-	if err != nil {
-		logs.Log.Errorf("failed to add artifact path to website: %s", err)
 	}
 	return d.artifact.Path, consts.BuildStatusCompleted
 }

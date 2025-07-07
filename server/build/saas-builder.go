@@ -113,7 +113,6 @@ func (s *SaasBuilder) Collect() (string, string) {
 	path, status, err := saas.CheckAndDownloadArtifact(statusUrl, downloadUrl, s.getToken(), s.builder, 30*time.Second, 30*time.Minute)
 	if err != nil {
 		logs.Log.Errorf("failed to collect artifact %s: %s", s.builder.Name, err)
-		SendFailedMsg(s.builder.ToProtobuf(nil))
 		return "", consts.BuildStatusFailure
 	}
 	if s.config.Type == consts.CommandBuildBeacon {
@@ -124,11 +123,6 @@ func (s *SaasBuilder) Collect() (string, string) {
 			}
 		}
 	}
-	err = SendAddContent(s.builder.Name)
-	if err != nil {
-		logs.Log.Errorf("failed to add artifact path to website: %s", err)
-	}
-	SendBuildMsg(s.builder, consts.BuildStatusCompleted, "")
 	return path, status
 }
 

@@ -371,3 +371,22 @@ func ExtractCertificateSubject(certPEM string) (*pkix.Name, error) {
 
 	return subject, nil
 }
+
+func FormatSubject(name, certType, certPEM string) (string, error) {
+	subject, err := ExtractCertificateSubject(certPEM)
+	if err != nil {
+		return "", nil
+	}
+	ouStr := ""
+	if len(subject.OrganizationalUnit) > 0 {
+		ouStr = subject.OrganizationalUnit[0]
+	}
+	stStr := ""
+	if len(subject.Province) > 0 {
+		stStr = subject.Province[0]
+	}
+	msg := fmt.Sprintf("cert %s (type: %s) generate success, CN: %s, O: %s, C: %s, L: %s, OU: %s, ST: %s",
+		name, certType, subject.CommonName, subject.Organization[0], subject.Country[0], subject.Locality[0],
+		ouStr, stStr)
+	return msg, nil
+}

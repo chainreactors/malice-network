@@ -59,6 +59,9 @@ const (
 	ListenerRPC_BuildLog_FullMethodName             = "/listenerrpc.ListenerRPC/BuildLog"
 	ListenerRPC_DockerStatus_FullMethodName         = "/listenerrpc.ListenerRPC/DockerStatus"
 	ListenerRPC_WorkflowStatus_FullMethodName       = "/listenerrpc.ListenerRPC/WorkflowStatus"
+	ListenerRPC_GenerateSelfCert_FullMethodName     = "/listenerrpc.ListenerRPC/GenerateSelfCert"
+	ListenerRPC_GenerateAcmeCert_FullMethodName     = "/listenerrpc.ListenerRPC/GenerateAcmeCert"
+	ListenerRPC_SaveAcmeCert_FullMethodName         = "/listenerrpc.ListenerRPC/SaveAcmeCert"
 	ListenerRPC_GetArtifact_FullMethodName          = "/listenerrpc.ListenerRPC/GetArtifact"
 )
 
@@ -109,6 +112,10 @@ type ListenerRPCClient interface {
 	BuildLog(ctx context.Context, in *clientpb.Artifact, opts ...grpc.CallOption) (*clientpb.Artifact, error)
 	DockerStatus(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	WorkflowStatus(ctx context.Context, in *clientpb.GithubWorkflowConfig, opts ...grpc.CallOption) (*clientpb.Empty, error)
+	// cert
+	GenerateSelfCert(ctx context.Context, in *clientpb.Pipeline, opts ...grpc.CallOption) (*clientpb.Empty, error)
+	GenerateAcmeCert(ctx context.Context, in *clientpb.Pipeline, opts ...grpc.CallOption) (*clientpb.Empty, error)
+	SaveAcmeCert(ctx context.Context, in *clientpb.Pipeline, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	GetArtifact(ctx context.Context, in *clientpb.Artifact, opts ...grpc.CallOption) (*clientpb.Artifact, error)
 }
 
@@ -506,6 +513,33 @@ func (c *listenerRPCClient) WorkflowStatus(ctx context.Context, in *clientpb.Git
 	return out, nil
 }
 
+func (c *listenerRPCClient) GenerateSelfCert(ctx context.Context, in *clientpb.Pipeline, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+	out := new(clientpb.Empty)
+	err := c.cc.Invoke(ctx, ListenerRPC_GenerateSelfCert_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *listenerRPCClient) GenerateAcmeCert(ctx context.Context, in *clientpb.Pipeline, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+	out := new(clientpb.Empty)
+	err := c.cc.Invoke(ctx, ListenerRPC_GenerateAcmeCert_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *listenerRPCClient) SaveAcmeCert(ctx context.Context, in *clientpb.Pipeline, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+	out := new(clientpb.Empty)
+	err := c.cc.Invoke(ctx, ListenerRPC_SaveAcmeCert_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *listenerRPCClient) GetArtifact(ctx context.Context, in *clientpb.Artifact, opts ...grpc.CallOption) (*clientpb.Artifact, error) {
 	out := new(clientpb.Artifact)
 	err := c.cc.Invoke(ctx, ListenerRPC_GetArtifact_FullMethodName, in, out, opts...)
@@ -562,6 +596,10 @@ type ListenerRPCServer interface {
 	BuildLog(context.Context, *clientpb.Artifact) (*clientpb.Artifact, error)
 	DockerStatus(context.Context, *clientpb.Empty) (*clientpb.Empty, error)
 	WorkflowStatus(context.Context, *clientpb.GithubWorkflowConfig) (*clientpb.Empty, error)
+	// cert
+	GenerateSelfCert(context.Context, *clientpb.Pipeline) (*clientpb.Empty, error)
+	GenerateAcmeCert(context.Context, *clientpb.Pipeline) (*clientpb.Empty, error)
+	SaveAcmeCert(context.Context, *clientpb.Pipeline) (*clientpb.Empty, error)
 	GetArtifact(context.Context, *clientpb.Artifact) (*clientpb.Artifact, error)
 	mustEmbedUnimplementedListenerRPCServer()
 }
@@ -683,6 +721,15 @@ func (UnimplementedListenerRPCServer) DockerStatus(context.Context, *clientpb.Em
 }
 func (UnimplementedListenerRPCServer) WorkflowStatus(context.Context, *clientpb.GithubWorkflowConfig) (*clientpb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method WorkflowStatus not implemented")
+}
+func (UnimplementedListenerRPCServer) GenerateSelfCert(context.Context, *clientpb.Pipeline) (*clientpb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GenerateSelfCert not implemented")
+}
+func (UnimplementedListenerRPCServer) GenerateAcmeCert(context.Context, *clientpb.Pipeline) (*clientpb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GenerateAcmeCert not implemented")
+}
+func (UnimplementedListenerRPCServer) SaveAcmeCert(context.Context, *clientpb.Pipeline) (*clientpb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SaveAcmeCert not implemented")
 }
 func (UnimplementedListenerRPCServer) GetArtifact(context.Context, *clientpb.Artifact) (*clientpb.Artifact, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetArtifact not implemented")
@@ -1400,6 +1447,60 @@ func _ListenerRPC_WorkflowStatus_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ListenerRPC_GenerateSelfCert_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(clientpb.Pipeline)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ListenerRPCServer).GenerateSelfCert(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ListenerRPC_GenerateSelfCert_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ListenerRPCServer).GenerateSelfCert(ctx, req.(*clientpb.Pipeline))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ListenerRPC_GenerateAcmeCert_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(clientpb.Pipeline)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ListenerRPCServer).GenerateAcmeCert(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ListenerRPC_GenerateAcmeCert_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ListenerRPCServer).GenerateAcmeCert(ctx, req.(*clientpb.Pipeline))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ListenerRPC_SaveAcmeCert_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(clientpb.Pipeline)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ListenerRPCServer).SaveAcmeCert(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ListenerRPC_SaveAcmeCert_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ListenerRPCServer).SaveAcmeCert(ctx, req.(*clientpb.Pipeline))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ListenerRPC_GetArtifact_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(clientpb.Artifact)
 	if err := dec(in); err != nil {
@@ -1568,6 +1669,18 @@ var ListenerRPC_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "WorkflowStatus",
 			Handler:    _ListenerRPC_WorkflowStatus_Handler,
+		},
+		{
+			MethodName: "GenerateSelfCert",
+			Handler:    _ListenerRPC_GenerateSelfCert_Handler,
+		},
+		{
+			MethodName: "GenerateAcmeCert",
+			Handler:    _ListenerRPC_GenerateAcmeCert_Handler,
+		},
+		{
+			MethodName: "SaveAcmeCert",
+			Handler:    _ListenerRPC_SaveAcmeCert_Handler,
 		},
 		{
 			MethodName: "GetArtifact",

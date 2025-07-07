@@ -50,9 +50,6 @@ func (tcp *TcpPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, erro
 	if err != nil {
 		return nil, err
 	}
-	tlsPb := tls.ToProtobuf()
-	tlsPb.Acme = tcp.TlsConfig.Acme
-	tlsPb.Domain = tcp.TlsConfig.Domain
 	return &clientpb.Pipeline{
 		Name:       tcp.Name,
 		ListenerId: lisId,
@@ -65,7 +62,7 @@ func (tcp *TcpPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, erro
 				Port: uint32(tcp.Port),
 			},
 		},
-		Tls:        tlsPb,
+		Tls:        tls.ToProtobuf(),
 		Encryption: tcp.EncryptionConfig.ToProtobuf(),
 	}, nil
 }
@@ -114,9 +111,6 @@ func (http *HttpPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, er
 	if err != nil {
 		return nil, err
 	}
-	tlsPb := tls.ToProtobuf()
-	tlsPb.Acme = http.TlsConfig.Acme
-	tlsPb.Domain = http.TlsConfig.Domain
 	// 如果指定了错误页面，读取文件内容
 	var errorPageContent string
 	if http.ErrorPage != "" {
@@ -152,7 +146,7 @@ func (http *HttpPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, er
 				Params: string(paramsJson),
 			},
 		},
-		Tls:        tlsPb,
+		Tls:        tls.ToProtobuf(),
 		Encryption: http.EncryptionConfig.ToProtobuf(),
 	}, nil
 }
@@ -250,9 +244,9 @@ type TlsConfig struct {
 	Domain   string `config:"domain"`
 }
 
-func (t *TlsConfig) ReadCert() (*CertConfig, error) {
+func (t *TlsConfig) ReadCert() (*types.TlsConfig, error) {
 	if t == nil {
-		return &CertConfig{
+		return &types.TlsConfig{
 			Enable: false,
 		}, nil
 	}
@@ -269,19 +263,23 @@ func (t *TlsConfig) ReadCert() (*CertConfig, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &CertConfig{
-			CertConfig: &types.CertConfig{
+		return &types.TlsConfig{
+			Cert: &types.CertConfig{
 				Cert: string(cert),
 				Key:  string(key),
 			},
-			Ca: &types.CertConfig{
+			CA: &types.CertConfig{
 				Cert: string(caCert),
 			},
 			Enable: t.Enable,
+			Acme:   t.Acme,
+			Domain: t.Domain,
 		}, nil
 	}
-	return &CertConfig{
+	return &types.TlsConfig{
 		Enable: t.Enable,
+		Acme:   t.Acme,
+		Domain: t.Domain,
 	}, nil
 }
 
@@ -306,4 +304,19 @@ func JoinStringSlice(slice []string) string {
 		return slice[0] // Just return the first element for simplicity
 	}
 	return ""
+}
+
+func GenerateKeyAndIVFromString(seed string) ([32]byte, [16]byte) {
+	var key [32]byte
+	var iv [16]byte
+
+	seedBytes := []byte(seed)
+	for i := 0; i < 32; i++ {
+		key[i] = seedBytes[i%len(seedBytes)]
+	}
+
+	for i := 0; i < 16; i++ {
+		iv[i] = seedBytes[(i+1)%len(seedBytes)]
+	}
+	return key, iv
 }

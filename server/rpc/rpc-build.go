@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/server/build"
 	"github.com/chainreactors/malice-network/server/internal/configs"
@@ -19,15 +20,23 @@ func (rpc *Server) Build(ctx context.Context, req *clientpb.BuildConfig) (*clien
 	if err != nil {
 		return nil, err
 	}
+
 	go func() {
-		executeErr := builder.Execute()
-		if executeErr == nil {
-			builder.Collect()
-		} else {
-			logs.Log.Errorf("failed to build %s: %s", artifact.Name, executeErr)
-			build.SendFailedMsg(artifact)
+		if execErr := builder.Execute(); execErr != nil {
+			logs.Log.Errorf("failed to build %s: %s", artifact.Name, execErr)
+			build.SendBuildMsg(artifact, consts.BuildStatusFailure, "")
+			return
 		}
+
+		_, status := builder.Collect()
+		if status == consts.BuildStatusCompleted {
+			if amtErr := build.AmountArtifact(artifact.Name); amtErr != nil {
+				logs.Log.Errorf("failed to add artifact path to website: %s", amtErr)
+			}
+		}
+		build.SendBuildMsg(artifact, status, "")
 	}()
+
 	return artifact, nil
 }
 

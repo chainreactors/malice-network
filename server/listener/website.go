@@ -65,8 +65,9 @@ func (w *Website) ID() string {
 
 func (w *Website) Start() error {
 	mux := http.NewServeMux()
+	mux.HandleFunc(certutils.ACMERootPath, w.acmeChallengeHandler)
 	mux.HandleFunc(w.rootPath, w.websiteContentHandler)
-	if w.TLSConfig != nil && w.TLSConfig.Enable {
+	if w.TLSConfig != nil && w.TLSConfig.Enable && w.TLSConfig.Cert != nil {
 		tlsConfig, err := certutils.GetTlsConfig(w.TLSConfig.Cert)
 		if err != nil {
 			return err
@@ -131,14 +132,14 @@ func (w *Website) ToProtobuf() *clientpb.Pipeline {
 
 func (w *Website) websiteContentHandler(resp http.ResponseWriter, req *http.Request) {
 	contentPath := strings.TrimPrefix(req.URL.Path, w.rootPath)
-	artifactContent, ok := w.Content[strings.Trim(contentPath, "/")]
+	artifactContent, ok := w.Artifact[strings.Trim(contentPath, "/")]
 	if !ok {
 		logs.Log.Debugf("%s Failed to get content in artifactContent ", req.URL)
 	} else {
-		key, iv := configs.GenerateKeyAndIVFromString()
+		key, iv := configs.GenerateKeyAndIVFromString("maliceofinternal")
 		encryptor, _ := cryptostream.NewAesCtrEncryptor(key, iv)
 		encrypted, err := hex.DecodeString(artifactContent.Path)
-		logs.Log.Errorf("")
+		logs.Log.Errorf("failed to hex: %s", err)
 		decReader := bytes.NewReader(encrypted)
 		decWriter := &bytes.Buffer{}
 
@@ -148,6 +149,7 @@ func (w *Website) websiteContentHandler(resp http.ResponseWriter, req *http.Requ
 			Name: string(artifactName),
 		})
 		if err != nil {
+			logs.Log.Errorf("failed to find artifact: %s", err)
 			return
 		}
 		if len(artifact.Bin) > 0 {
@@ -188,10 +190,31 @@ func (w *Website) AddContent(content *clientpb.WebContent) error {
 	return nil
 }
 
+// acmeChallengeHandler
+func (w *Website) acmeChallengeHandler(resp http.ResponseWriter, req *http.Request) {
+	if certutils.GetACMEManager() == nil {
+		http.Error(resp, "ACME not enabled", http.StatusNotFound)
+		return
+	}
+	certutils.GetACMEManager().GetManager().HTTPHandler(nil)
+}
+
 func (w *Website) AddArtifactContent(content *clientpb.WebContent) error {
+	key, iv := configs.GenerateKeyAndIVFromString("maliceofinternal")
+	encryptor, _ := cryptostream.NewAesCtrEncryptor(key, iv)
+	originalData := []byte(content.Path)
+	reader := bytes.NewReader(originalData)
+	writer := &bytes.Buffer{}
+	err := encryptor.Encrypt(reader, writer)
+	if err != nil {
+		return err
+	}
+	encryptedData := writer.Bytes()
+	hexString := hex.EncodeToString(encryptedData)
+
 	contentPath := filepath.Join(configs.WebsitePath, content.WebsiteId, content.Id)
-	w.Content[strings.Trim(content.Path, "/")] = &clientpb.WebContent{
-		Path: content.Path,
+	w.Artifact[strings.Trim(hexString, "/")] = &clientpb.WebContent{
+		Path: hexString,
 		File: contentPath,
 	}
 	return nil

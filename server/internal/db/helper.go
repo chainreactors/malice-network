@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/chainreactors/malice-network/helper/certs"
 	"github.com/chainreactors/malice-network/helper/codenames"
-	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"mime"
 	"os"
 	"path/filepath"
@@ -269,7 +268,32 @@ func FindPipeline(name string) (*models.Pipeline, error) {
 	if result.Error != nil {
 		return pipeline, result.Error
 	}
+	if pipeline.CertName != "" {
+		certificate, err := FindCertificate(pipeline.CertName)
+		if err != nil && !errors.Is(err, ErrRecordNotFound) {
+			logs.Log.Errorf("failed to find cert %s", err)
+		}
+		if certificate != nil {
+			pipeline.Tls = types.FromTls(certificate.ToProtobuf())
+		}
+	}
 	return pipeline, nil
+}
+
+func UpdatePipelineCert(certName string, pipeline *models.Pipeline) error {
+	if certName != "" {
+		var cert models.Certificate
+		err := Session().Where("name = ?", certName).First(&cert).Error
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return fmt.Errorf("certificate '%s' not found", certName)
+			}
+			return err
+		}
+	}
+
+	err := Session().Model(pipeline).Select("cert_name").Update("cert_name", certName).Error
+	return err
 }
 
 func SavePipeline(pipeline *models.Pipeline) (*models.Pipeline, error) {
@@ -286,6 +310,7 @@ func SavePipeline(pipeline *models.Pipeline) (*models.Pipeline, error) {
 		return nil, result.Error
 	}
 	pipeline.ID = newPipeline.ID
+	pipeline.CertName = newPipeline.CertName
 	if pipeline.IP == "" {
 		pipeline.IP = newPipeline.IP
 	}
@@ -358,13 +383,20 @@ func DisablePipeline(pid string) error {
 	return result.Error
 }
 
-func FindPipelineCert(pipelineName, listenerID string) (*types.TlsConfig, error) {
+func FindPipelineCert(pipelineName, listenerID string) (*models.Certificate, error) {
 	var pipeline *models.Pipeline
 	result := Session().Where("name = ? AND listener_id = ?", pipelineName, listenerID).First(&pipeline)
 	if result.Error != nil {
 		return nil, result.Error
 	}
-	return pipeline.Tls, nil
+	if pipeline.CertName != "" {
+		certificate, err := FindCertificate(pipeline.CertName)
+		if err != nil {
+			return nil, err
+		}
+		return certificate, nil
+	}
+	return nil, nil
 }
 
 func ListListeners() ([]*models.Operator, error) {
@@ -436,6 +468,43 @@ func SaveCertificate(certificate *models.Certificate) error {
 	}
 
 	return nil
+}
+
+func SaveCertFromTLS(tls *clientpb.TLS, pipeline string) (*models.Certificate, error) {
+	certModel := &models.Certificate{
+		CertPEM: tls.Cert.Cert,
+		KeyPEM:  tls.Cert.Key,
+	}
+	if tls.Acme {
+		certModel.Name = tls.Domain
+		certModel.Domain = tls.Domain
+		certModel.Type = certs.Acme
+	} else if tls.Ca.Key != "" {
+		certModel.Name = codenames.GetCodename()
+		certModel.Type = certs.SelfSigned
+		certModel.CACertPEM = tls.Ca.Cert
+		certModel.CAKeyPEM = tls.Ca.Key
+	} else {
+		certModel.Name = codenames.GetCodename()
+		certModel.Type = certs.Imported
+		certModel.CACertPEM = tls.Ca.Cert
+	}
+	err := SaveCertificate(certModel)
+	if err != nil {
+		return certModel, err
+	}
+	if pipeline != "" {
+		findPipeline, err := FindPipeline(pipeline)
+		if err != nil {
+			return nil, err
+		}
+		err = UpdatePipelineCert(certModel.Name, findPipeline)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return certModel, nil
 }
 
 //func AddFile(typ string, taskpb *clientpb.Task, td *types.FileDescriptor) error {
@@ -924,6 +993,24 @@ func GetArtifacts() (*clientpb.Artifacts, error) {
 	return pbBuilders, nil
 }
 
+func GetValidArtifacts() ([]*models.Artifact, error) {
+	var artifacts []*models.Artifact
+	result := Session().Preload("Profile").Preload("Profile.Pipeline").Find(&artifacts)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	var validArtifacts []*models.Artifact
+	for _, artifact := range artifacts {
+		if artifact.Path != "" {
+			if _, err := os.Stat(artifact.Path); err == nil {
+				validArtifacts = append(validArtifacts, artifact)
+			}
+		}
+	}
+	return validArtifacts, nil
+}
+
 // FindArtifact
 func FindArtifact(target *clientpb.Artifact) (*clientpb.Artifact, error) {
 	var artifact *models.Artifact
@@ -963,90 +1050,6 @@ func FindArtifact(target *clientpb.Artifact) (*clientpb.Artifact, error) {
 	}
 
 	return artifact.ToProtobuf(content), nil
-}
-
-func SaveTls(name string, tls *types.TlsConfig) (*models.Certificate, error) {
-	var certModel *models.Certificate
-	certificate, err := FindCertificate(name)
-	if err != nil && !errors.Is(err, ErrRecordNotFound) {
-		return nil, err
-	}
-	if err == nil {
-		if certificate.Type == certs.Imported || certificate.Type == certs.Acme {
-			certificate.CertPEM = tls.Cert.Cert
-			certificate.KeyPEM = tls.Cert.Key
-			if tls.CA != nil {
-				certificate.CACertPEM = tls.CA.Cert
-				certificate.CAKeyPEM = tls.CA.Key
-			}
-			err = Session().Save(&certificate).Error
-		}
-		return certificate, err
-	}
-
-	if tls.CA != nil && tls.CA.Key != "" {
-		certutils.GenerateSelfTLS("", nil)
-		certModel = &models.Certificate{
-			Type:      certs.SelfSigned,
-			CACertPEM: tls.CA.Cert,
-			CAKeyPEM:  tls.CA.Key,
-			CertPEM:   tls.Cert.Cert,
-			KeyPEM:    tls.Cert.Key,
-		}
-	} else if tls.Cert != nil {
-		if tls.Acme {
-			certModel = &models.Certificate{
-				Name:    tls.Domain,
-				Type:    certs.Acme,
-				CertPEM: tls.Cert.Cert,
-				KeyPEM:  tls.Cert.Key,
-				Domain:  tls.Domain,
-			}
-		} else {
-			certModel = &models.Certificate{
-				Type:      certs.Imported,
-				CertPEM:   tls.Cert.Cert,
-				KeyPEM:    tls.Cert.Key,
-				CACertPEM: tls.CA.Cert,
-			}
-		}
-	}
-	if tls.Enable && errors.Is(err, ErrRecordNotFound) {
-		if !tls.Acme {
-			certModel.Name = codenames.GetCodename()
-		}
-		err = Session().Create(&certModel).Error
-		return certModel, err
-	}
-	return certModel, nil
-}
-
-func SavePipelineByRegister(req *clientpb.Pipeline) error {
-	pipelineModel, err := FindPipeline(req.Name)
-	if err != nil && !errors.Is(err, ErrRecordNotFound) {
-		return err
-	} else if errors.Is(err, ErrRecordNotFound) {
-		pipelineModel = models.FromPipelinePb(req)
-	}
-
-	if req.CertName != "" {
-		pipelineModel.CertName = req.CertName
-	} else if req.Tls.Enable {
-		certModel, err := SaveTls(pipelineModel.CertName, types.FromTls(req.Tls))
-		if err != nil {
-			return err
-		}
-		pipelineModel.CertName = certModel.Name
-		pipelineModel.Tls = types.FromTls(certModel.ToProtobuf())
-	} else {
-		pipelineModel.Tls.Enable = req.Tls.Enable
-		pipelineModel.Tls.Acme = req.Tls.Acme
-	}
-	_, err = SavePipeline(pipelineModel)
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func GetArtifact(req *clientpb.Artifact) (*models.Artifact, error) {

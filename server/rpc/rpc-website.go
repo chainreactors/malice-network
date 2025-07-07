@@ -122,10 +122,8 @@ func (rpc *Server) RegisterWebsite(ctx context.Context, req *clientpb.Pipeline) 
 		return nil, err
 	}
 	req.Ip = lns.IP
-	err = db.SavePipelineByRegister(req)
-	if err != nil {
-		return nil, err
-	}
+	pipelineModel := models.FromPipelinePb(req)
+	_, err = db.SavePipeline(pipelineModel)
 	_ = os.Mkdir(filepath.Join(configs.WebsitePath, req.Name), os.ModePerm)
 	for _, content := range req.GetWeb().Contents {
 		content.WebsiteId = req.Name

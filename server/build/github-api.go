@@ -170,7 +170,7 @@ func runWorkFlow(owner, repo, workflowID, token string, inputs map[string]string
 }
 
 // downloadArtifactWhenReady waits for the artifact to be ready and downloads it
-func downloadArtifactWhenReady(owner, repo, token string, isRemove bool, artifactID uint32, builder *models.Artifact) {
+func downloadArtifactWhenReady(owner, repo, token string, isRemove bool, artifactID uint32, builder *models.Artifact) (string, error) {
 	for {
 		_, err := PushArtifact(owner, repo, token, builder.Name, isRemove)
 		if err == nil {
@@ -184,17 +184,11 @@ func downloadArtifactWhenReady(owner, repo, token string, isRemove bool, artifac
 					}
 				}
 			}
-			SendBuildMsg(builder, consts.BuildStatusCompleted, "")
-			err = SendAddContent(builder.Name)
-			if err != nil {
-				logs.Log.Errorf("failed to add artifact path to website: %s", err)
-			}
-			break
+			return builder.Path, nil
 		} else if errors.Is(err, errs.ErrWorkflowFailed) {
 			logs.Log.Errorf("Download artifact failed due to workflow failure: %s", err)
 			db.UpdateBuilderStatus(builder.ID, consts.BuildStatusFailure)
-			SendBuildMsg(builder, consts.BuildStatusFailure, "")
-			break
+			return "", errs.ErrWorkflowFailed
 		} else {
 			logs.Log.Debugf("Download artifact failed: %s", err)
 		}

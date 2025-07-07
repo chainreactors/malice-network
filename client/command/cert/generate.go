@@ -9,9 +9,11 @@ import (
 
 func SelfSignedCmd(cmd *cobra.Command, con *repl.Console) error {
 	certSubject := common.ParseSelfSignFlags(cmd)
-	_, err := con.Rpc.GenerateSelfCertificate(con.Context(), &clientpb.TLS{
-		CertSubject: certSubject,
-		Acme:        false,
+	_, err := con.Rpc.GenerateSelfCert(con.Context(), &clientpb.Pipeline{
+		Tls: &clientpb.TLS{
+			CertSubject: certSubject,
+			Acme:        false,
+		},
 	})
 	if err != nil {
 		return err
@@ -24,7 +26,9 @@ func ImportCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	_, err = con.Rpc.GenerateSelfCertificate(con.Context(), tls)
+	_, err = con.Rpc.GenerateSelfCert(con.Context(), &clientpb.Pipeline{
+		Tls: tls,
+	})
 	if err != nil {
 		return err
 	}
@@ -34,10 +38,12 @@ func ImportCmd(cmd *cobra.Command, con *repl.Console) error {
 func AcmeCmd(cmd *cobra.Command, con *repl.Console) error {
 	pipelineID, _ := cmd.Flags().GetString("pipeline")
 	domain, _ := cmd.Flags().GetString("domain")
-	_, err := con.Rpc.GenerateAcmeCert(con.Context(), &clientpb.TLS{
-		Domain:       domain,
-		Acme:         true,
-		PipelineName: pipelineID,
+	_, err := con.Rpc.GenerateAcmeCert(con.Context(), &clientpb.Pipeline{
+		Name: pipelineID,
+		Tls: &clientpb.TLS{
+			Domain: domain,
+			Acme:   true,
+		},
 	})
 	if err != nil {
 		return err

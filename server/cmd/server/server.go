@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"github.com/chainreactors/malice-network/server/build"
 	"github.com/chainreactors/malice-network/server/internal/saas"
 	"github.com/gookit/config/v2"
 	"github.com/gookit/config/v2/yaml"
@@ -144,6 +145,10 @@ func Execute(defaultConfig []byte) error {
 		if err != nil {
 			return err
 		}
+		err = RecoverAmount()
+		if err != nil {
+			return err
+		}
 	}
 
 	_, cancel := context.WithCancel(context.Background())
@@ -201,6 +206,21 @@ func RecoverAliveSession() error {
 		}
 	}
 	return nil
+}
+
+func RecoverAmount() error {
+	artifacts, err := db.GetValidArtifacts()
+	if err != nil {
+		return nil
+	}
+	for _, artifact := range artifacts {
+		err = build.AmountArtifact(artifact.Name)
+		if err != nil {
+			logs.Log.Errorf("faild to amount artifact: %s", artifact.Name)
+			continue
+		}
+	}
+	return err
 }
 
 func StartListener(opt *configs.ListenerConfig) error {

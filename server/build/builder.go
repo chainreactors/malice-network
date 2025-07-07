@@ -1,19 +1,14 @@
 package build
 
 import (
-	"bytes"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/types"
-	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
-	"github.com/chainreactors/malice-network/server/internal/db/models"
-	cryptostream "github.com/chainreactors/malice-network/server/internal/stream"
 )
 
 var (
@@ -77,7 +72,7 @@ var (
 	dockerBuildSemaphore = make(chan struct{}, maxDockerBuildConcurrency)
 )
 
-func SendBuildMsg(builder *models.Artifact, status string, msg string) {
+func SendBuildMsg(builder *clientpb.Artifact, status string, msg string) {
 	if core.EventBroker == nil {
 		return
 	}
@@ -96,27 +91,7 @@ func SendBuildMsg(builder *models.Artifact, status string, msg string) {
 	})
 }
 
-func SendFailedMsg(builder *clientpb.Artifact) {
-	core.EventBroker.Publish(core.Event{
-		EventType: consts.EventBuild,
-		IsNotify:  false,
-		Message:   fmt.Sprintf("Artifact failed %s (type: %s, target: %s, source: %s)", builder.Name, builder.Type, builder.Target, builder.Source),
-		Important: true,
-	})
-}
-
-func SendAddContent(artifactName string) error {
-	key, iv := configs.GenerateKeyAndIVFromString()
-	encryptor, _ := cryptostream.NewAesCtrEncryptor(key, iv)
-	originalData := []byte(artifactName)
-	reader := bytes.NewReader(originalData)
-	writer := &bytes.Buffer{}
-	err := encryptor.Encrypt(reader, writer)
-	if err != nil {
-		return err
-	}
-	encryptedData := writer.Bytes()
-	hexString := hex.EncodeToString(encryptedData)
+func AmountArtifact(artifactName string) error {
 	var result []*clientpb.Pipeline
 	core.Listeners.Range(func(key, value any) bool {
 		lns := value.(*core.Listener)
@@ -130,7 +105,7 @@ func SendAddContent(artifactName string) error {
 	for _, pipe := range result {
 		lns, _ := core.Listeners.Get(pipe.ListenerId)
 		content := &clientpb.WebContent{
-			Path: hexString,
+			Path: artifactName,
 		}
 		lns.PushCtrl(&clientpb.JobCtrl{
 			Ctrl: consts.CtrlWebContentAddArtifact,
@@ -140,11 +115,5 @@ func SendAddContent(artifactName string) error {
 			Content: content,
 		})
 	}
-	core.EventBroker.Publish(core.Event{
-		EventType: consts.EventBuild,
-		IsNotify:  false,
-		Message:   fmt.Sprintf("artifact %s is mounted at /%s", artifactName, hexString),
-		Important: true,
-	})
 	return nil
 }

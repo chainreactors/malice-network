@@ -8,7 +8,6 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/certs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/mtls"
 	"github.com/chainreactors/malice-network/server/internal/configs"
@@ -151,7 +150,8 @@ func GenerateListenerCert(host, name string, port int) (*mtls.ClientConfig, erro
 	}, nil
 }
 
-func GenerateSelfTLS(name string, subject *pkix.Name) (*types.TlsConfig, error) {
+func GenerateSelfTLS(name string, certsSubject *clientpb.CertificateSubject) (*clientpb.TLS, error) {
+	subject := CertificateSubjectToPkixName(certsSubject)
 	caCertByte, caKeyByte, err := certs.GenerateCACert(name, subject)
 	if err != nil {
 		return nil, err
@@ -164,16 +164,17 @@ func GenerateSelfTLS(name string, subject *pkix.Name) (*types.TlsConfig, error) 
 	if err != nil {
 		return nil, err
 	}
-	return &types.TlsConfig{
-		Cert: &types.CertConfig{
+	return &clientpb.TLS{
+		Cert: &clientpb.Cert{
 			Cert: string(certByte),
 			Key:  string(keyByte),
 		},
-		CA: &types.CertConfig{
+		Ca: &clientpb.Cert{
 			Cert: string(caCertByte),
 			Key:  string(caKeyByte),
 		},
 		Enable: true,
+		Acme:   false,
 	}, nil
 }
 

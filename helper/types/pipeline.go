@@ -6,6 +6,11 @@ import (
 )
 
 func FromTls(tls *clientpb.TLS) *TlsConfig {
+	if tls == nil {
+		return &TlsConfig{
+			Enable: false,
+		}
+	}
 	return &TlsConfig{
 		Cert:   FromCert(tls.Cert),
 		CA:     FromCert(tls.Ca),

@@ -182,6 +182,15 @@ func (lns *listener) RegisterAndStart(pipeline *clientpb.Pipeline) error {
 		return err
 	}
 
+	if pipeline.Tls.Enable && !pipeline.Tls.Acme {
+		_, err = lns.Rpc.GenerateSelfCert(lns.Context(), pipeline)
+	} else if pipeline.Tls.Enable && pipeline.Tls.Acme {
+		_, err = lns.Rpc.GenerateAcmeCert(lns.Context(), pipeline)
+	}
+	if err != nil {
+		return err
+	}
+
 	_, err = lns.Rpc.StartPipeline(lns.Context(), &clientpb.CtrlPipeline{
 		Name:       pipeline.Name,
 		ListenerId: lns.ID(),
@@ -247,7 +256,7 @@ func (lns *listener) Handler() {
 		case consts.CtrlWebContentRemove:
 			handlerErr = lns.handleWebContentRemove(msg.Job)
 		case consts.CtrlWebContentAddArtifact:
-			handlerErr = lns.handleWebContentAddArtifact(msg)
+			handlerErr = lns.handleAmountArtifact(msg)
 		case consts.CtrlRemStart:
 			handlerErr = lns.handleStartRem(msg.Job)
 		case consts.CtrlRemAgentCtrl:
@@ -469,7 +478,7 @@ func (lns *listener) handleWebContentAdd(job *clientpb.JobCtrl) error {
 	return nil
 }
 
-func (lns *listener) handleWebContentAddArtifact(job *clientpb.JobCtrl) error {
+func (lns *listener) handleAmountArtifact(job *clientpb.JobCtrl) error {
 	pipe := job.GetJob()
 	w := lns.websites[pipe.Pipeline.Name]
 	if w == nil {
@@ -527,14 +536,61 @@ func (lns *listener) handleStartRem(job *clientpb.Job) error {
 
 func (lns *listener) handlerAcme(job *clientpb.Job) error {
 	pipeline := job.GetPipeline()
-	tls, err := certutils.GetAcmeTls(pipeline.GetTls())
-	if err != nil {
-		return err
+	var has80 bool
+	var website *Website
+	var websiteName string
+
+	for _, w := range lns.websites {
+		if w.port == 80 && w.Enable {
+			has80 = true
+			break
+		}
 	}
-	pipeline.Tls = tls.ToProtobuf()
-	_, err = lns.Rpc.SyncPipeline(lns.Context(), pipeline)
-	if err != nil {
-		return err
+
+	if !has80 {
+		websiteName = pipeline.Tls.Domain + "_acme"
+		web := &clientpb.Pipeline{
+			Name:       websiteName,
+			ListenerId: pipeline.ListenerId,
+			Enable:     false,
+			Ip:         lns.IP,
+			Body: &clientpb.Pipeline_Web{
+				Web: &clientpb.Website{
+					Name:     websiteName,
+					Root:     "/",
+					Port:     80,
+					Contents: make(map[string]*clientpb.WebContent),
+				},
+			},
+			Tls: pipeline.Tls,
+		}
+		var err error
+		website, err = StartWebsite(lns.Rpc, web, make(map[string]*clientpb.WebContent))
+		if err != nil {
+			return err
+		}
+		lns.websites[websiteName] = website
 	}
+
+	certutils.GetACMEManager().RegisterDomain(pipeline.Tls.Domain)
+	go func() {
+		//defer func() {
+		//	if website != nil {
+		//		website.Close()
+		//		delete(lns.websites, websiteName)
+		//	}
+		//}()
+
+		tls, err := certutils.GetAcmeTls(pipeline.GetTls())
+		if err != nil {
+			return
+		}
+		pipeline.Tls = tls
+		_, err = lns.Rpc.SaveAcmeCert(lns.Context(), pipeline)
+		if err != nil {
+			return
+		}
+	}()
+
 	return nil
 }
