@@ -31,7 +31,6 @@ func (cs Commands) Find(name string) *Command {
 
 	// 如果还有后续子命令，递归处理剩余的部分
 	if len(subs) > 1 {
-		// 递归查找或创建剩余的子命令
 		return cmd.Subs.Find(strings.Join(subs[1:], CMDSeq))
 	}
 
@@ -47,40 +46,42 @@ func (cs Commands) SetCommand(name string, cmd *cobra.Command) {
 		return
 	}
 
-	// 遍历每一级，查找或创建各级命令
+	var currentCommands Commands = cs
 	var parentCmd *Command
-	for i := 0; i < len(subs)-1; i++ {
-		currentName := strings.Join(subs[:i+1], CMDSeq)
-		if parentCmd == nil {
-			// 查找或创建第一级命令
-			parentCmd = cs.Find(currentName)
+
+	for i := 0; i < len(subs); i++ {
+		subName := subs[i]
+
+		// 查找或创建当前级别的命令
+		currentCmd := currentCommands.Find(subName)
+
+		// 如果是最后一级，设置传入的 cobra.Command
+		if i == len(subs)-1 {
+			currentCmd.Command = cmd
 		} else {
-			// 查找或创建后续的子命令
-			parentCmd = parentCmd.Subs.Find(subs[i])
+			// 如果不是最后一级，确保有 cobra.Command 用于添加子命令
+			if currentCmd.Command == nil {
+				currentCmd.Command = &cobra.Command{Use: currentCmd.Name}
+			}
 		}
 
-		if parentCmd.Command == nil {
-			parentCmd.Command = &cobra.Command{Use: parentCmd.Name}
+		// 如果有父命令，将当前命令添加为父命令的子命令
+		if parentCmd != nil && parentCmd.Command != nil {
+			// 检查是否已经添加过，避免重复添加
+			found := false
+			for _, existingCmd := range parentCmd.Command.Commands() {
+				if existingCmd.Use == currentCmd.Name {
+					found = true
+					break
+				}
+			}
+			if !found {
+				parentCmd.Command.AddCommand(currentCmd.Command)
+			}
 		}
-	}
 
-	// 处理最后一级命令
-	finalCmdName := subs[len(subs)-1]
-	finalCmd := parentCmd.Subs.Find(finalCmdName)
-	if finalCmd == nil {
-		finalCmd = &Command{
-			Name:    finalCmdName,
-			Command: cmd, // 最后一级命令使用传入的 cmd
-			Subs:    make(Commands),
-		}
-		parentCmd.Subs[finalCmdName] = finalCmd
-	} else {
-		finalCmd.Command = cmd
-	}
-
-	// 将最后一级命令添加为父级命令的子命令
-	if parentCmd != nil && parentCmd.Command != nil {
-		parentCmd.Command.AddCommand(cmd)
+		parentCmd = currentCmd
+		currentCommands = currentCmd.Subs
 	}
 }
 
