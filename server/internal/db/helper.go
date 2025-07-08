@@ -280,20 +280,23 @@ func FindPipeline(name string) (*models.Pipeline, error) {
 	return pipeline, nil
 }
 
-func UpdatePipelineCert(certName string, pipeline *models.Pipeline) error {
+func UpdatePipelineCert(certName string, pipeline *models.Pipeline) (*models.Pipeline, error) {
+	var cert models.Certificate
 	if certName != "" {
-		var cert models.Certificate
 		err := Session().Where("name = ?", certName).First(&cert).Error
 		if err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return fmt.Errorf("certificate '%s' not found", certName)
-			}
-			return err
+			return nil, err
 		}
 	}
 
 	err := Session().Model(pipeline).Select("cert_name").Update("cert_name", certName).Error
-	return err
+	if err != nil {
+		return nil, err
+	}
+	pipeline.Tls.Cert.Cert = cert.CertPEM
+	pipeline.Tls.Cert.Key = cert.KeyPEM
+	pipeline.Tls.Enable = true
+	return pipeline, err
 }
 
 func SavePipeline(pipeline *models.Pipeline) (*models.Pipeline, error) {
@@ -498,7 +501,7 @@ func SaveCertFromTLS(tls *clientpb.TLS, pipeline string) (*models.Certificate, e
 		if err != nil {
 			return nil, err
 		}
-		err = UpdatePipelineCert(certModel.Name, findPipeline)
+		_, err = UpdatePipelineCert(certModel.Name, findPipeline)
 		if err != nil {
 			return nil, err
 		}

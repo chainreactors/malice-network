@@ -241,8 +241,8 @@ type TlsConfig struct {
 	CertFile string `config:"cert_file"`
 	KeyFile  string `config:"key_file"`
 	CAFile   string `config:"ca_file"`
-	Acme     bool   `config:"acme"`
-	Domain   string `config:"domain"`
+	//Acme     bool   `config:"acme"`
+	//Domain   string `config:"domain"`
 	Name     string `config:"name"`
 	CN       string `config:"CN"`
 	O        string `config:"O"`
@@ -295,14 +295,14 @@ func (t *TlsConfig) ReadCert() (*types.TlsConfig, error) {
 				Cert: string(caCert),
 			},
 			Enable: t.Enable,
-			Acme:   t.Acme,
-			Domain: t.Domain,
+			//Acme:   t.Acme,
+			//Domain: t.Domain,
 		}, nil
 	}
 	return &types.TlsConfig{
-		Enable:  t.Enable,
-		Acme:    t.Acme,
-		Domain:  t.Domain,
+		Enable: t.Enable,
+		//Acme:    t.Acme,
+		//Domain:  t.Domain,
 		Subject: t.ToPkix(),
 	}, nil
 }

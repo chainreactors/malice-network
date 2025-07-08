@@ -131,7 +131,10 @@ func GetAcmeTls(config *clientpb.TLS) (*clientpb.TLS, error) {
 
 	logs.Log.Infof("Attempting to fetch let's encrypt certificate for '%s' ...", config.Domain)
 
-	hello := &tls.ClientHelloInfo{ServerName: config.Domain}
+	hello := &tls.ClientHelloInfo{
+		ServerName: config.Domain,
+		//SupportedProtos: []string{acme.ALPNProto},
+	}
 	tlsCert, err := acmeMgr.manager.GetCertificate(hello)
 	if err != nil {
 		logs.Log.Errorf("Failed to get certificate for domain '%s': %v", config.Domain, err)

@@ -46,7 +46,6 @@ listeners:
       parser: auto
       tls:
         enable: false
-        acme: false
       encryption:
         - enable: true
           type: aes
@@ -63,7 +62,6 @@ listeners:
       parser: malefic
       tls:
         enable: false
-        acme: false
       encryption:
         - enable: true
           type: aes

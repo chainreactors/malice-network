@@ -137,7 +137,7 @@ func (pipeline *HTTPPipeline) Start() error {
 		Handler: mux,
 	}
 
-	if pipeline.TLSConfig != nil && pipeline.TLSConfig.Enable {
+	if pipeline.TLSConfig != nil && pipeline.TLSConfig.Enable && pipeline.TLSConfig.Cert != nil {
 		tlsConfig, err := certutils.GetTlsConfig(pipeline.TLSConfig.Cert)
 		if err != nil {
 			return err

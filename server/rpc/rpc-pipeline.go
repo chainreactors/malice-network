@@ -71,17 +71,17 @@ func (rpc *Server) StartPipeline(ctx context.Context, req *clientpb.CtrlPipeline
 	if err != nil {
 		return nil, err
 	}
-	pipelineDB.Tls.Enable = req.Pipeline.Tls.Enable
 	if req.CertName != "" {
 		_, err := db.FindCertificate(req.CertName)
 		if err != nil {
 			return nil, err
 		}
-		pipelineDB.CertName = req.CertName
-		_, err = db.SavePipeline(pipelineDB)
+		pipelineDB, err = db.UpdatePipelineCert(req.CertName, pipelineDB)
 		if err != nil {
 			return nil, err
 		}
+	} else {
+		pipelineDB.Tls.Enable = req.Pipeline.Tls.Enable
 	}
 	lns, err := core.Listeners.Get(pipelineDB.ListenerId)
 	if err != nil {
