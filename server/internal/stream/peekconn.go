@@ -67,7 +67,8 @@ func WrapPeekConn(conn io.ReadWriteCloser, cryptos []Cryptor, parserName string)
 	var c Cryptor
 	var p *parser.MessageParser
 	for _, c = range cryptos {
-		de, err := Decrypt(c, bs)
+		var de []byte
+		de, err = Decrypt(c, bs)
 		if err != nil {
 			continue
 		}
@@ -79,9 +80,13 @@ func WrapPeekConn(conn io.ReadWriteCloser, cryptos []Cryptor, parserName string)
 		if err != nil {
 			continue
 		} else {
+			err = nil
 			bs = de
 			break
 		}
+	}
+	if err != nil {
+		return nil, err
 	}
 
 	if _, ok := conn.(net.Conn); ok {
@@ -89,6 +94,7 @@ func WrapPeekConn(conn io.ReadWriteCloser, cryptos []Cryptor, parserName string)
 	} else {
 		conn = NewCryptoRWC(conn, c)
 	}
+
 	return &Conn{
 		ReadWriteCloser: conn,
 		Parser:          p,
