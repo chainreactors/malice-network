@@ -205,7 +205,7 @@ func (opt *Options) PrepareServer() error {
 	db.Client = db.NewDBClient()
 	err := saas.RegisterLicense()
 	if err != nil {
-		return fmt.Errorf("register community license error %v", err)
+		logs.Log.Warnf("register community license error %v", err)
 	}
 	core.NewBroker()
 	core.NewSessions()

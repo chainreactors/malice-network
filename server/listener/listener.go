@@ -111,7 +111,6 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 			ListenerId: lns.ID(),
 		})
 
-		lns.autoBuild(lns.cfg.AutoBuildConfig, pipeline)
 		if err != nil {
 			return err
 		}
@@ -337,7 +336,7 @@ func (lns *listener) autoBuild(autoBuild *configs.AutoBuildConfig, pipeline *cli
 				Type:     consts.CommandBuildPulse,
 				Pipeline: pipeline.Name,
 			}); err != nil {
-				logs.Log.Warnf("Error building %s: %v\n", target, err)
+				logs.Log.Warnf("Error building %s: %v", target, err)
 			}
 		}
 
@@ -348,22 +347,23 @@ func (lns *listener) autoBuild(autoBuild *configs.AutoBuildConfig, pipeline *cli
 			Type:     consts.CommandBuildBeacon,
 			Pipeline: pipeline.Name,
 		}); err != nil {
-			logs.Log.Warnf("Error building %s: %v\n", target, err)
+			logs.Log.Warnf("Error building %s: %v", target, err)
 		}
 	}
 }
 
 // 执行构建
 func (lns *listener) executeBuild(profileName string, artifact *clientpb.Artifact) error {
-	_, err := lns.Rpc.FindArtifact(lns.Context(), artifact)
+
+	resp, err := lns.Rpc.CheckSource(lns.Context(), &clientpb.BuildConfig{})
+	if err != nil {
+		return err
+	}
+	_, err = lns.Rpc.FindArtifact(lns.Context(), artifact)
 	if err == nil {
 		return nil
 	} else {
 		err = nil
-	}
-	resp, err := lns.Rpc.CheckSource(lns.Context(), &clientpb.BuildConfig{})
-	if err != nil {
-		return err
 	}
 	_, err = lns.Rpc.Build(lns.Context(), &clientpb.BuildConfig{
 		Target:      artifact.Target,

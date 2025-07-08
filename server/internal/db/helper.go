@@ -281,7 +281,7 @@ func FindPipeline(name string) (*models.Pipeline, error) {
 }
 
 func UpdatePipelineCert(certName string, pipeline *models.Pipeline) (*models.Pipeline, error) {
-	var cert models.Certificate
+	var cert *models.Certificate
 	if certName != "" {
 		err := Session().Where("name = ?", certName).First(&cert).Error
 		if err != nil {
@@ -293,9 +293,7 @@ func UpdatePipelineCert(certName string, pipeline *models.Pipeline) (*models.Pip
 	if err != nil {
 		return nil, err
 	}
-	pipeline.Tls.Cert.Cert = cert.CertPEM
-	pipeline.Tls.Cert.Key = cert.KeyPEM
-	pipeline.Tls.Enable = true
+	pipeline.Tls = types.FromTls(cert.ToProtobuf())
 	return pipeline, err
 }
 

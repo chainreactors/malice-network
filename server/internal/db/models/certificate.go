@@ -53,6 +53,7 @@ func (c *Certificate) ToProtobuf() *clientpb.TLS {
 		domain = c.Name
 	}
 	return &clientpb.TLS{
+		Enable: true,
 		Cert: &clientpb.Cert{
 			Name: c.Name,
 			Type: c.Type,

@@ -112,6 +112,9 @@ func (e EncryptionsConfig) ToProtobuf() []*clientpb.Encryption {
 }
 
 func (e EncryptionsConfig) Choice() *EncryptionConfig {
+	if len(e) == 0 {
+		return nil
+	}
 	return e[rand.Intn(len(e))]
 }
 
