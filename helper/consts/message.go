@@ -77,7 +77,7 @@ const (
 	ModuleSysInfo = "sysinfo"
 	ModuleNetstat = "netstat"
 	ModuleBypass  = "bypass"
-	ModuleCurl    = "curl"
+	ModuleRequest = "request"
 
 	// module
 	ModuleListModule    = "list_module"

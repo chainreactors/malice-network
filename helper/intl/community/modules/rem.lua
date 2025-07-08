@@ -29,7 +29,7 @@ local rem_load_cmd = command("rem_community:load", load_rem, "load rem with rem.
 
 function run_socks5(arg_0, flag_port, flag_user, flag_pass)
     return rem_dial(active(), arg_0,
-        build_rem_cmdline(arg_0, "reverse", "socks5://" .. flag_user .. ":" .. flag_pass .. "@0.0.0.0:" .. flag_port, ""))
+            build_rem_cmdline(arg_0, "reverse", "socks5://" .. flag_user .. ":" .. flag_pass .. "@0.0.0.0:" .. flag_port, ""))
 end
 
 local rem_socks_cmd = command("rem_community:socks5", run_socks5, "serving socks5 with rem", "T1090")

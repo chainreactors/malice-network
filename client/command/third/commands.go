@@ -11,7 +11,7 @@ import (
 
 func Commands(con *repl.Console) []*cobra.Command {
 	curlCmd := &cobra.Command{
-		Use:   consts.ModuleCurl + " [url]",
+		Use:   consts.ModuleRequest + " [url]",
 		Short: "Send HTTP request",
 		Long:  "Send HTTP request to specified URL",
 		Args:  cobra.ExactArgs(1),
@@ -19,14 +19,14 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return CurlCmd(cmd, con)
 		},
 		Annotations: map[string]string{
-			"depend": consts.ModuleCurl,
+			"depend": consts.ModuleRequest,
 		},
 		Example: `~~~
-curl http://example.com
+request http://example.com
 
-curl -X POST -d "data" http://example.com
+request -X POST -d "data" http://example.com
 
-curl -H "Host: example.com" -H "User-Agent: custom" http://example.com
+request -H "Host: example.com" -H "User-Agent: custom" http://example.com
 ~~~`,
 	}
 

@@ -29,7 +29,7 @@ const (
 	MsgSysInfo        MsgName = consts.ModuleSysInfo
 	MsgUpload         MsgName = consts.ModuleUpload
 	MsgDownload       MsgName = consts.ModuleDownload
-	MsgCurl           MsgName = consts.ModuleCurl
+	MsgCurl           MsgName = consts.ModuleRequest
 	MsgExec           MsgName = consts.ModuleExecute
 	MsgListModule     MsgName = consts.ModuleListModule
 	MsgLoadModule     MsgName = consts.ModuleLoadModule
