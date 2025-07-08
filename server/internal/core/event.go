@@ -14,6 +14,8 @@ import (
 	"github.com/nikoksr/notify/service/lark"
 	"github.com/nikoksr/notify/service/telegram"
 	"net/url"
+	"path"
+	"strings"
 	"sync"
 )
 
@@ -84,34 +86,33 @@ func (event *Event) format() string {
 			return fmt.Sprintf("[%s] %s: rem %s on %s %s:%d", event.EventType, event.Op,
 				pipeline.Name, pipeline.ListenerId, pipeline.Ip, pipeline.GetRem().Port)
 		case *clientpb.Pipeline_Web:
-			if event.Op == consts.CtrlWebContentAddArtifact {
-				//return fmt.Sprintf("[%s] %s: web %s on %s %d, routePath is https://%s:%d%s", event.EventType, event.Op,
-				//	pipeline.ListenerId, pipeline.Name, pipeline.GetWeb().Port,
-				//	pipeline.Ip, pipeline.GetWeb().Port, pipeline.GetWeb().Root)
-			}
-			//if event.Op == consts.CtrlWebContentAdd {
-			//	var root = "/"
-			//	if pipeline.GetWeb().Root != "/" {
-			//		root = pipeline.GetWeb().Root
-			//	}
-			//	var result string
-			//	for _, content := range pipeline.GetWeb().Contents {
-			//		result += fmt.Sprintf("[%s] %s: web %s on %s %d, routePath is http://%s:%d%s%s\n",
-			//			event.EventType, event.Op, pipeline.ListenerId, pipeline.Name, pipeline.GetWeb().Port,
-			//			pipeline.Ip, pipeline.GetWeb().Port, root, content.Path)
-			//	}
-			//	return strings.TrimSuffix(result, "\n")
-			//}
+			scheme := "http"
 			if pipeline.Tls.Enable {
-				return fmt.Sprintf("[%s] %s: web %s on %s %d, routePath is https://%s:%d%s", event.EventType, event.Op,
-					pipeline.ListenerId, pipeline.Name, pipeline.GetWeb().Port,
-					pipeline.Ip, pipeline.GetWeb().Port, pipeline.GetWeb().Root)
-			} else {
-				return fmt.Sprintf("[%s] %s: web %s on %s %d, routePath is http://%s:%d%s", event.EventType, event.Op,
-					pipeline.ListenerId, pipeline.Name, pipeline.GetWeb().Port,
-					pipeline.Ip, pipeline.GetWeb().Port, pipeline.GetWeb().Root)
+				scheme = "https"
 			}
+			web := pipeline.GetWeb()
+			// baseURL 只到 host:port
+			baseURL := fmt.Sprintf("%s://%s:%d", scheme, pipeline.Ip, web.Port)
 
+			if event.Op == consts.CtrlWebContentAddArtifact {
+				routePath := path.Join(web.Root, event.Job.Contents[pipeline.ListenerId].Path)
+				return fmt.Sprintf("[%s] %s: artifact amount at %s/%s", event.EventType, event.Op,
+					baseURL, routePath)
+			} else if event.Op == consts.CtrlWebContentAdd {
+				var result string
+				for _, content := range web.Contents {
+					routePath := path.Join(web.Root, content.Path)
+					result += fmt.Sprintf("[%s] %s: content add success, routePath is %s/%s\n",
+						event.EventType, event.Op, baseURL, routePath)
+				}
+				return strings.TrimSuffix(result, "\n")
+			}
+			routePath := web.Root
+			if !strings.HasPrefix(routePath, "/") {
+				routePath = "/" + routePath
+			}
+			return fmt.Sprintf("[%s] %s: web %s on %s %d, routePath is %s%s", event.EventType, event.Op,
+				pipeline.ListenerId, pipeline.Name, web.Port, baseURL, routePath)
 		}
 	}
 	return event.Message

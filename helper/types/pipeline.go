@@ -1,7 +1,9 @@
 package types
 
 import (
+	"crypto/x509/pkix"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/utils"
 	"math/rand"
 )
 
@@ -57,15 +59,30 @@ func (cert *CertConfig) ToProtobuf() *clientpb.Cert {
 }
 
 type TlsConfig struct {
-	Enable bool        `json:"enable"`
-	Acme   bool        `json:"acme"`
-	Cert   *CertConfig `json:"cert"`
-	CA     *CertConfig `json:"ca"`
-	Domain string      `json:"domain"`
+	Enable  bool        `json:"enable"`
+	Acme    bool        `json:"acme"`
+	Cert    *CertConfig `json:"cert"`
+	CA      *CertConfig `json:"ca"`
+	Domain  string      `json:"domain"`
+	Subject *pkix.Name  `json:"subject"`
 }
 
 func (tls *TlsConfig) Empty() bool {
 	return tls == nil || tls.Cert == nil
+}
+
+func (tls *TlsConfig) ToSubjectProtobuf() *clientpb.CertificateSubject {
+	if tls.Subject == nil {
+		return nil
+	}
+	return &clientpb.CertificateSubject{
+		Cn: tls.Subject.CommonName,
+		O:  utils.FirstOrEmpty(tls.Subject.Organization),
+		C:  utils.FirstOrEmpty(tls.Subject.Country),
+		L:  utils.FirstOrEmpty(tls.Subject.Locality),
+		Ou: utils.FirstOrEmpty(tls.Subject.OrganizationalUnit),
+		St: utils.FirstOrEmpty(tls.Subject.Province),
+	}
 }
 
 func (tls *TlsConfig) ToProtobuf() *clientpb.TLS {
@@ -75,11 +92,12 @@ func (tls *TlsConfig) ToProtobuf() *clientpb.TLS {
 		}
 	}
 	return &clientpb.TLS{
-		Enable: tls.Enable,
-		Cert:   tls.Cert.ToProtobuf(),
-		Ca:     tls.CA.ToProtobuf(),
-		Domain: tls.Domain,
-		Acme:   tls.Acme,
+		Enable:      tls.Enable,
+		Cert:        tls.Cert.ToProtobuf(),
+		Ca:          tls.CA.ToProtobuf(),
+		Domain:      tls.Domain,
+		Acme:        tls.Acme,
+		CertSubject: tls.ToSubjectProtobuf(),
 	}
 }
 

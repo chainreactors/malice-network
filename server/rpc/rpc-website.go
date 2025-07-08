@@ -189,7 +189,12 @@ func (rpc *Server) StartWebsite(ctx context.Context, req *clientpb.CtrlPipeline)
 				Path: hexEncrypt,
 			},
 		})
-		logs.Log.Infof("artifact %s amounts at /%s", artifact.Name, hexEncrypt)
+		if webpb.Tls.Enable {
+			logs.Log.Infof("artifact %s amounts at https://%s:%d%s%s", artifact.Name, listener.IP, webpb.GetWeb().Port, webpb.GetWeb().Root, hexEncrypt)
+		} else {
+			logs.Log.Infof("artifact %s amounts at http://%s:%d%s%s", artifact.Name, listener.IP, webpb.GetWeb().Port, webpb.GetWeb().Root, hexEncrypt)
+
+		}
 	}
 	return &clientpb.Empty{}, nil
 }

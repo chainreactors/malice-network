@@ -121,11 +121,5 @@ func AmountArtifact(artifactName string) error {
 			Content: content,
 		})
 	}
-	core.EventBroker.Publish(core.Event{
-		EventType: consts.EventBuild,
-		IsNotify:  false,
-		Message:   fmt.Sprintf("artifact %s amounts at /%s", artifactName, hexEncrypt),
-		Important: true,
-	})
 	return nil
 }

@@ -284,6 +284,11 @@ func (lns *listener) Handler() {
 			status.Status = consts.CtrlStatusSuccess
 			logs.Log.Importantf("[listener.%s] job ctrl %d %s %s success", lns.ID(), msg.Id, msg.Job.Name, msg.Ctrl)
 		}
+		if msg.Ctrl == consts.CtrlWebContentAddArtifact {
+			status.Job.Contents = map[string]*clientpb.WebContent{
+				status.Job.Pipeline.ListenerId: msg.Content,
+			}
+		}
 		if err := stream.Send(status); err != nil {
 			logs.Log.Errorf(err.Error())
 			return

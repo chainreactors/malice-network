@@ -44,3 +44,10 @@ func GetMachineID() string {
 	// 返回前16个字符作为机器码
 	return fmt.Sprintf("%x", hash)[:16]
 }
+
+func FirstOrEmpty(arr []string) string {
+	if len(arr) > 0 {
+		return arr[0]
+	}
+	return ""
+}

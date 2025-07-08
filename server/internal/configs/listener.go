@@ -1,6 +1,7 @@
 package configs
 
 import (
+	"crypto/x509/pkix"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -242,6 +243,28 @@ type TlsConfig struct {
 	CAFile   string `config:"ca_file"`
 	Acme     bool   `config:"acme"`
 	Domain   string `config:"domain"`
+	Name     string `config:"name"`
+	CN       string `config:"CN"`
+	O        string `config:"O"`
+	C        string `config:"C"`
+	L        string `config:"L"`
+	OU       string `config:"OU"`
+	ST       string `config:"ST"`
+	Validity string `config:"validity"`
+}
+
+func (t *TlsConfig) ToPkix() *pkix.Name {
+	if t.Name == "" && t.CN == "" && t.O == "" && t.C == "" && t.L == "" && t.OU == "" && t.ST == "" {
+		return nil
+	}
+	return &pkix.Name{
+		CommonName:         t.Name,
+		Organization:       []string{t.O},
+		Country:            []string{t.C},
+		Locality:           []string{t.L},
+		OrganizationalUnit: []string{t.OU},
+		Province:           []string{t.ST},
+	}
 }
 
 func (t *TlsConfig) ReadCert() (*types.TlsConfig, error) {
@@ -277,9 +300,10 @@ func (t *TlsConfig) ReadCert() (*types.TlsConfig, error) {
 		}, nil
 	}
 	return &types.TlsConfig{
-		Enable: t.Enable,
-		Acme:   t.Acme,
-		Domain: t.Domain,
+		Enable:  t.Enable,
+		Acme:    t.Acme,
+		Domain:  t.Domain,
+		Subject: t.ToPkix(),
 	}, nil
 }
 
