@@ -98,7 +98,7 @@ func NewRemServer(conURL string, ip string) (*RemConsole, error) {
 
 	if len(remRunner.ConsoleURLs) > 0 {
 		remRunner.URLs.ConsoleURL = remRunner.ConsoleURLs[0]
-
+		remRunner.URLs.ConsoleURL.SetHostname("0.0.0.0")
 	}
 	remRunner.Subscribe = fmt.Sprintf("http://0.0.0.0:%d", cryptography.RandomInRange(20000, 65500))
 	console, err := remrunner.NewConsole(remRunner, remRunner.URLs)

@@ -16,8 +16,14 @@ import (
 
 func NewRem(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeline) (*REM, error) {
 	remConfig := pipeline.GetRem()
+	var conURL string
+	if remConfig.Link != "" {
+		conURL = remConfig.Link
+	} else {
+		conURL = remConfig.Console
+	}
 
-	console, err := rem.NewRemServer(remConfig.Console, pipeline.Ip)
+	console, err := rem.NewRemServer(conURL, pipeline.Ip)
 	if err != nil {
 		return nil, err
 	}
@@ -28,7 +34,6 @@ func NewRem(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeline) (*RE
 		Name:       pipeline.Name,
 		ListenerID: pipeline.ListenerId,
 	}
-
 	return pp, nil
 }
 

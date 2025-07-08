@@ -155,7 +155,7 @@ func (http *HttpPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, er
 type REMConfig struct {
 	Enable  bool   `config:"enable" default:"false"`
 	Name    string `config:"name" default:"default-rem"`
-	Console string `config:"console" default:"tcp://0.0.0.0"`
+	Console string `config:"console" default:""`
 }
 
 func (r *REMConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, error) {

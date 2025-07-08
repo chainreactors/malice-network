@@ -21,10 +21,18 @@ func (rpc *Server) RegisterRem(ctx context.Context, req *clientpb.Pipeline) (*cl
 		return nil, err
 	}
 	req.Ip = lns.IP
-	_, err = db.SavePipeline(models.FromPipelinePb(req))
-	if err != nil {
-		return nil, err
+
+	remDB, err := db.FindPipeline(req.Name)
+	if remDB == nil {
+		if req.GetRem().Console == "" {
+			req.GetRem().Console = "tcp://127.0.0.1:12345"
+		}
+		_, err = db.SavePipeline(models.FromPipelinePb(req))
+		if err != nil {
+			return nil, err
+		}
 	}
+
 	return &clientpb.Empty{}, nil
 }
 

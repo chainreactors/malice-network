@@ -206,5 +206,5 @@ rem delete rem_test
 
 	remCmd.AddCommand(listremCmd, newRemCmd, startRemCmd, stopRemCmd, deleteRemCmd)
 
-	return []*cobra.Command{tcpCmd, httpCmd, bindCmd}
+	return []*cobra.Command{tcpCmd, httpCmd, bindCmd, remCmd}
 }
