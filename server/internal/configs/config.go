@@ -24,8 +24,6 @@ func InitConfig() error {
 	os.MkdirAll(BinPath, perm)
 	os.MkdirAll(WebsitePath, perm)
 	os.MkdirAll(ListenerPath, perm)
-	os.MkdirAll(BuildOutputPath, perm)
-	os.MkdirAll(SourceCodePath, perm)
 	return nil
 }
 

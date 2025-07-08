@@ -127,7 +127,7 @@ var BuildType = []string{
 	"modules",
 }
 
-var BuildResource = []string{
+var BuildSource = []string{
 	ArtifactFromDocker,
 	ArtifactFromAction,
 	ArtifactFromSaas,

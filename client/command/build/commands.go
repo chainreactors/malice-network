@@ -135,20 +135,27 @@ build beacon --target x86_64-unknown-linux-musl --profile beacon_profile
 // Build a beacon using additional modules
 build beacon --target x86_64-pc-windows-msvc --profile beacon_profile --modules full
 
-// Build a beacon using SRDI technology
-build beacon --target x86_64-pc-windows-msvc --profile beacon_profile --srdi
+// Build a beacon with rem
+build beacon --rem --target x86_64-pc-windows-msvc --profile beacon_profile
 
+// Build a beacon by saas
+build beacon --target x86_64-pc-windows-msvc --profile beacon_profile --source saas
 ~~~`,
 	}
 	common.BindFlag(beaconCmd, common.GenerateFlagSet, common.GithubFlagSet, func(f *pflag.FlagSet) {
-		f.Uint32("relink", 0, "backlink pulse id")
+		f.Bool("rem", false, "use rem")
+		f.Int("interval", -1, "interval /second")
+		f.Float64("jitter", -1, "jitter")
+		f.String("proxy", "", "Overwrite proxy")
+		f.StringP("modules", "m", "", "Set modules e.g.: execute_exe,execute_dll")
+		f.Uint32("relink", 0, "relink pulse id")
 	})
 	beaconCmd.MarkFlagRequired("target")
 	beaconCmd.MarkFlagRequired("profile")
 	common.BindFlagCompletions(beaconCmd, func(comp carapace.ActionMap) {
 		comp["profile"] = common.ProfileCompleter(con)
 		comp["target"] = common.BuildTargetCompleter(con)
-		comp["resource"] = common.BuildResourceCompleter(con)
+		comp["source"] = common.BuildResourceCompleter(con)
 	})
 
 	bindCmd := &cobra.Command{
@@ -166,19 +173,24 @@ build bind --target x86_64-pc-windows-msvc --profile bind_profile
 // Build a bind payload with additional modules
 build bind --target x86_64-unknown-linux-musl --profile bind_profile --modules base,sys_full
 
-// Build a bind payload with SRDI technology
-build bind --target x86_64-pc-windows-msvc --profile bind_profile --srdi
-
+// Build a bind payload by saas 
+build bind --target x86_64-unknown-linux-musl --profile bind_profile --source saas
 ~~~`,
 	}
 
-	common.BindFlag(bindCmd, common.GenerateFlagSet, common.GithubFlagSet)
+	common.BindFlag(bindCmd, common.GenerateFlagSet, common.GithubFlagSet, func(f *pflag.FlagSet) {
+		f.Int("interval", -1, "interval /second")
+		f.Float64("jitter", -1, "jitter")
+		f.String("proxy", "", "Overwrite proxy")
+		f.StringP("modules", "m", "", "Set modules e.g.: execute_exe,execute_dll")
+	})
 	bindCmd.MarkFlagRequired("target")
 	bindCmd.MarkFlagRequired("profile")
 	common.BindFlagCompletions(bindCmd, func(comp carapace.ActionMap) {
+
 		comp["profile"] = common.ProfileCompleter(con)
 		comp["target"] = common.BuildTargetCompleter(con)
-		comp["resource"] = common.BuildResourceCompleter(con)
+		comp["source"] = common.BuildResourceCompleter(con)
 	})
 
 	preludeCmd := &cobra.Command{
@@ -191,19 +203,23 @@ build bind --target x86_64-pc-windows-msvc --profile bind_profile --srdi
 			return PreludeCmd(cmd, con)
 		},
 		Example: `~~~
-	// Build a prelude payload
-	build prelude --target x86_64-unknown-linux-musl --profile prelude_profile --autorun /path/to/autorun.yaml
+// Build a prelude payload
+build prelude --target x86_64-unknown-linux-musl --profile prelude_profile --autorun /path/to/autorun.yaml
 	
-	// Build a prelude payload with additional modules
-	build prelude --target x86_64-pc-windows-msvc --profile prelude_profile --autorun /path/to/autorun.yaml --modules base,sys_full
+// Build a prelude payload with additional modules
+build prelude --target x86_64-pc-windows-msvc --profile prelude_profile --autorun /path/to/autorun.yaml --modules base,sys_full
 	
-	// Build a prelude payload with SRDI technology
-	build prelude --target x86_64-pc-windows-msvc --profile prelude_profile --autorun /path/to/autorun.yaml --srdi
-	~~~`,
+// Build a prelude payload by saas
+build prelude --target x86_64-pc-windows-msvc --profile prelude_profile --autorun /path/to/autorun.yaml --source saas
+~~~`,
 	}
 
 	common.BindFlag(preludeCmd, common.GenerateFlagSet, common.GithubFlagSet, func(f *pflag.FlagSet) {
 		f.String("autorun", "", "set autorun.yaml")
+		f.Int("interval", -1, "interval /second")
+		f.Float64("jitter", -1, "jitter")
+		f.String("proxy", "", "Overwrite proxy")
+		f.StringP("modules", "m", "", "Set modules e.g.: execute_exe,execute_dll")
 	})
 	preludeCmd.MarkFlagRequired("target")
 	preludeCmd.MarkFlagRequired("profile")
@@ -212,7 +228,7 @@ build bind --target x86_64-pc-windows-msvc --profile bind_profile --srdi
 		comp["profile"] = common.ProfileCompleter(con)
 		comp["target"] = common.BuildTargetCompleter(con)
 		comp["autorun"] = carapace.ActionFiles().Usage("autorun.yaml path")
-		comp["resource"] = common.BuildResourceCompleter(con)
+		comp["source"] = common.BuildResourceCompleter(con)
 	})
 	common.BindArgCompletions(preludeCmd, nil, common.ProfileCompleter(con))
 
@@ -234,19 +250,23 @@ build modules --target x86_64-unknown-linux-musl --profile module_profile --modu
 // Compile specific modules into DLLs
 build modules --target x86_64-pc-windows-msvc --profile module_profile --modules base,execute_dll
 
-// Compile modules with srdi
-build modules --target x86_64-pc-windows-msvc --profile module_profile --srdi
+// Compile third party module
+build modules --3rd rem --target x86_64-pc-windows-msvc --profile module_profile
+
+// Compile module by saas
+build modules --target x86_64-pc-windows-msvc --profile module_profile --source saas
 ~~~`,
 	}
 
 	common.BindFlag(modulesCmd, common.GenerateFlagSet, common.GithubFlagSet, func(f *pflag.FlagSet) {
 		f.String("3rd", "", "build 3rd-party modules")
+		f.StringP("modules", "m", "", "Set modules e.g.: execute_exe,execute_dll")
 	})
 
 	common.BindFlagCompletions(modulesCmd, func(comp carapace.ActionMap) {
 		comp["profile"] = common.ProfileCompleter(con)
 		comp["target"] = common.BuildTargetCompleter(con)
-		comp["resource"] = common.BuildResourceCompleter(con)
+		comp["source"] = common.BuildResourceCompleter(con)
 	})
 
 	modulesCmd.MarkFlagRequired("target")
@@ -265,12 +285,6 @@ build modules --target x86_64-pc-windows-msvc --profile module_profile --srdi
 // Build a pulse payload
 build pulse --target x86_64-unknown-linux-musl --profile pulse_profile
 
-// Build a pulse payload with additional modules
-build pulse --target x86_64-pc-windows-msvc --profile pulse_profile --modules base,sys_full
-	
-// Build a pulse payload with SRDI technology
-build pulse --target x86_64-pc-windows-msvc --profile pulse_profile --srdi
-
 // Build a pulse payload by specifying artifact
 build pulse --target x86_64-pc-windows-msvc --profile pulse_profile --artifact-id 1
 ~~~
@@ -284,7 +298,7 @@ build pulse --target x86_64-pc-windows-msvc --profile pulse_profile --artifact-i
 	common.BindFlagCompletions(pulseCmd, func(comp carapace.ActionMap) {
 		comp["profile"] = common.ProfileCompleter(con)
 		comp["target"] = common.BuildTargetCompleter(con)
-		comp["resource"] = common.BuildResourceCompleter(con)
+		comp["source"] = common.BuildResourceCompleter(con)
 	})
 
 	logCmd := &cobra.Command{
@@ -297,7 +311,7 @@ build pulse --target x86_64-pc-windows-msvc --profile pulse_profile --artifact-i
 		},
 		Example: `
 ~~~
-build log builder_name --limit 70
+build log artifact_name --limit 70
 ~~~
 `,
 	}

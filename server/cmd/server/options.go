@@ -8,7 +8,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/rootpb"
 	"github.com/chainreactors/malice-network/helper/utils/configutil"
 	"github.com/chainreactors/malice-network/helper/utils/mtls"
-	"github.com/chainreactors/malice-network/server/build"
 	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
@@ -265,10 +264,6 @@ func (opt *Options) PrepareListener() error {
 	if err != nil {
 		return err
 	}
-	err = RecoverArtifact()
-	if err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -327,21 +322,6 @@ func RecoverAliveSession() error {
 		}
 	}
 	return nil
-}
-
-func RecoverArtifact() error {
-	artifacts, err := db.GetValidArtifacts()
-	if err != nil {
-		return nil
-	}
-	for _, artifact := range artifacts {
-		err = build.AmountArtifact(artifact.Name)
-		if err != nil {
-			logs.Log.Errorf("faild to amount artifact: %s", artifact.Name)
-			continue
-		}
-	}
-	return err
 }
 
 func StartListener(opt *configs.ListenerConfig) error {

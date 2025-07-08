@@ -36,6 +36,13 @@ func (c *Certificate) BeforeCreate(tx *gorm.DB) (err error) {
 	return nil
 }
 
+func firstOrEmpty(arr []string) string {
+	if len(arr) > 0 {
+		return arr[0]
+	}
+	return ""
+}
+
 func (c *Certificate) ToProtobuf() *clientpb.TLS {
 	subject, err := certs.ExtractCertificateSubject(c.CertPEM)
 	if err != nil {
@@ -58,11 +65,11 @@ func (c *Certificate) ToProtobuf() *clientpb.TLS {
 		},
 		CertSubject: &clientpb.CertificateSubject{
 			Cn: subject.CommonName,
-			O:  subject.Organization[0],
-			C:  subject.Country[0],
-			L:  subject.Locality[0],
-			Ou: subject.OrganizationalUnit[0],
-			St: subject.StreetAddress[0],
+			O:  firstOrEmpty(subject.Organization),
+			C:  firstOrEmpty(subject.Country),
+			L:  firstOrEmpty(subject.Locality),
+			Ou: firstOrEmpty(subject.OrganizationalUnit),
+			St: firstOrEmpty(subject.StreetAddress),
 		},
 		Domain: domain,
 	}

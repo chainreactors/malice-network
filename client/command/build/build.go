@@ -61,20 +61,44 @@ func prepareBuildConfig(cmd *cobra.Command, con *repl.Console, buildType string)
 	if err != nil {
 		return nil, err
 	}
-
 	buildConfig.Source = finalSource
 	buildConfig.Type = buildType
+
+	proxy, _ := cmd.Flags().GetString("proxy")
+	modulesFlags, _ := cmd.Flags().GetString("modules")
+	modules := strings.Split(modulesFlags, ",")
+	interval, _ := cmd.Flags().GetInt("interval")
+	jitter, _ := cmd.Flags().GetFloat64("jitter")
+	artifactID, _ := cmd.Flags().GetUint32("artifact-id")
+	pulse, _ := cmd.Flags().GetUint32("relink")
+	rem, _ := cmd.Flags().GetBool("rem")
+	profileParams := &types.ProfileParams{
+		Interval: interval,
+		Jitter:   jitter,
+		Proxy:    proxy,
+		Modules:  strings.Join(modules, ","),
+	}
+	if rem {
+		profileParams.Enable3RD = true
+		profileParams.Modules = "rem"
+	}
+	if artifactID != 0 {
+		profileParams.OriginBeaconID = artifactID
+		buildConfig.ArtifactId = artifactID
+	}
+	if pulse != 0 {
+		buildConfig.ArtifactId = pulse
+		profileParams.RelinkBeaconID = pulse
+	}
 	if buildType != consts.CommandBuildModules {
-		var params types.ProfileParams
-		err = json.Unmarshal(buildConfig.ParamsBytes, &params)
 		if err != nil {
 			return nil, err
 		}
-		if params.Modules == "" {
-			params.Modules = "full"
-			buildConfig.ParamsBytes = []byte(params.String())
+		if profileParams.Modules == "" {
+			profileParams.Modules = "full"
 		}
 	}
+	buildConfig.ParamsBytes = []byte(profileParams.String())
 	return buildConfig, nil
 }
 
@@ -136,7 +160,7 @@ func PreludeCmd(cmd *cobra.Command, con *repl.Console) error {
 }
 
 func ModulesCmd(cmd *cobra.Command, con *repl.Console) error {
-	buildConfig, finalSource, err := parseBasicConfig(cmd, con)
+	buildConfig, err := prepareBuildConfig(cmd, con, consts.CommandBuildModules)
 	if err != nil {
 		return err
 	}
@@ -150,17 +174,13 @@ func ModulesCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	if modules != "" {
-		profileParams.Modules = modules
-	} else if thirdModules != "" {
+	if thirdModules != "" {
 		profileParams.Enable3RD = true
 		profileParams.Modules = thirdModules
 	} else {
 		return errors.New("must specify either --modules or --3rd_modules. One of them is required")
 	}
 	buildConfig.ParamsBytes = []byte(profileParams.String())
-	buildConfig.Source = finalSource
-	buildConfig.Type = consts.CommandBuildModules
 
 	executeBuild(con, buildConfig)
 	return nil

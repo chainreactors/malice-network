@@ -205,8 +205,8 @@ func BuildTypeCompleter(con *repl.Console) carapace.Action {
 func BuildResourceCompleter(con *repl.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)
-		for _, s := range consts.BuildResource {
-			results = append(results, s, fmt.Sprintf("build resource"))
+		for _, s := range consts.BuildSource {
+			results = append(results, s, fmt.Sprintf("build source"))
 		}
 		return carapace.ActionValuesDescribed(results...).Tag("build")
 	}

@@ -8,11 +8,9 @@ import (
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"strings"
 )
 
 func ExecuteFlagSet(f *pflag.FlagSet) {
@@ -199,51 +197,21 @@ func ParseEncryptionFlags(cmd *cobra.Command) (string, []*clientpb.Encryption) {
 
 func GenerateFlagSet(f *pflag.FlagSet) {
 	f.String("profile", "", "profile name")
-	f.StringP("address", "a", "", "implant address")
 	f.String("target", "", "build target, specify the target arch and platform, such as  **x86_64-pc-windows-msvc**.")
-	//f.String("ca", "", "custom ca file")
-	f.Int("interval", -1, "interval /second")
-	f.Float64("jitter", -1, "jitter")
-	f.String("proxy", "", "Overwrite proxy")
-	f.StringP("modules", "m", "", "Set modules e.g.: execute_exe,execute_dll")
-	f.String("source", "", "build source, docker|action|saas")
+	f.String("source", "", "build source, docker, action, saas")
 	SetFlagSetGroup(f, "generate")
 }
 
 func ParseGenerateFlags(cmd *cobra.Command) *clientpb.BuildConfig {
 	name, _ := cmd.Flags().GetString("profile")
 	buildTarget, _ := cmd.Flags().GetString("target")
-	//buildType, _ := cmd.Flags().GetString("type")
-	proxy, _ := cmd.Flags().GetString("proxy")
-	modulesFlags, _ := cmd.Flags().GetString("modules")
-	modules := strings.Split(modulesFlags, ",")
-	//ca, _ := cmd.Flags().GetString("ca")
-	interval, _ := cmd.Flags().GetInt("interval")
-	jitter, _ := cmd.Flags().GetFloat64("jitter")
 	source, _ := cmd.Flags().GetString("source")
 	buildConfig := &clientpb.BuildConfig{
 		ProfileName: name,
 		Target:      buildTarget,
-		Proxy:       proxy,
 		Source:      source,
 	}
-	artifactID, _ := cmd.Flags().GetUint32("artifact-id")
-	pulse, _ := cmd.Flags().GetUint32("relink")
-	profileParams := &types.ProfileParams{
-		Interval: interval,
-		Jitter:   jitter,
-		Proxy:    proxy,
-		Modules:  strings.Join(modules, ","),
-	}
-	if artifactID != 0 {
-		profileParams.OriginBeaconID = artifactID
-		buildConfig.ArtifactId = artifactID
-	}
-	if pulse != 0 {
-		buildConfig.ArtifactId = pulse
-		profileParams.RelinkBeaconID = pulse
-	}
-	buildConfig.ParamsBytes = []byte(profileParams.String())
+
 	return buildConfig
 }
 
