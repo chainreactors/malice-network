@@ -384,7 +384,7 @@ artifact show artifact_name --profile
 	}
 	common.BindFlag(downloadCmd, func(f *pflag.FlagSet) {
 		f.StringP("output", "o", "", "output path")
-		f.StringP("format", "f", "", "the format of the artifact")
+		f.StringP("format", "f", "executable", "the format of the artifact")
 	})
 	common.BindArgCompletions(downloadCmd, nil, common.ArtifactCompleter(con))
 	common.BindFlagCompletions(downloadCmd, func(comp carapace.ActionMap) {

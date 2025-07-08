@@ -2,6 +2,9 @@ package build
 
 import (
 	"errors"
+	"fmt"
+	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"os"
 	"path/filepath"
@@ -177,40 +180,98 @@ func printArtifact(artifact *clientpb.Artifact) {
 	tui.RenderKV(art)
 }
 
+// Some optimization is needed.
 func DownloadArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
 	name := cmd.Flags().Arg(0)
 	output, _ := cmd.Flags().GetString("output")
 	format, _ := cmd.Flags().GetString("format")
-
+	artifact, err := DownloadArtifact(con, name, format)
+	if err != nil {
+		con.Log.Errorf("Download artifact failed: %s", err)
+		return err
+	}
+	printArtifact(artifact)
 	go func() {
-		artifact, err := DownloadArtifact(con, name, format)
-		if err != nil {
-			con.Log.Errorf("Download artifact failed: %s", err)
-			return
-		}
-		printArtifact(artifact)
-		var fileExt string
-		if format != "" && format != "executable" {
-			formatter := formatutils.NewFormatter()
-			if formatter.IsSupported(format) {
-				fileExt = formatter.GetFormatExtension(format)
-			} else {
-				fileExt = ""
+		formatter := formatutils.NewFormatter()
+		if formatter.IsSupportedRemote(format) {
+			encryptArtifactName, err := cryptography.EncryptWithGlobalKey([]byte(artifact.Name))
+			if err != nil {
+				logs.Log.Errorf("encrypt failed: %s\n", err)
+				return
 			}
+			hexEncryptArtifactName := cryptography.BytesToHex(encryptArtifactName)
+			encryptFormat, err := cryptography.EncryptWithGlobalKey([]byte(format))
+			if err != nil {
+				logs.Log.Errorf("encrypt failed: %s\n", err)
+				return
+			}
+			hexEncryptFormat := cryptography.BytesToHex(encryptFormat)
+			err = con.UpdatePipeline()
+			if err != nil {
+				logs.Log.Errorf("failed to get pipelines: %s\n", err)
+				return
+			}
+			var oneListener *clientpb.Listener
+			for _, listener := range con.Listeners {
+				if listener.Active {
+					oneListener = listener
+					break
+				}
+			}
+			if oneListener == nil {
+				logs.Log.Errorf("No listener Available\n")
+				return
+			}
+			err = con.UpdateListener()
+			if err != nil {
+				logs.Log.Errorf("failed to get pipelines: %s\n", err)
+				return
+			}
+			var oneWebsite *clientpb.Website
+			var tlsEnable bool
+			for _, pipeline := range con.Pipelines {
+				if http := pipeline.GetWeb(); http != nil {
+					oneWebsite = http
+					tlsEnable = pipeline.Tls.Enable
+					break
+				}
+			}
+			if oneWebsite == nil {
+				logs.Log.Errorf("No website Available\n")
+				return
+			}
+			scheme := "http"
+			if tlsEnable {
+				scheme = "https"
+			}
+			url := fmt.Sprintf("%s://%s:%d%s/%s/%s", scheme, oneListener.Ip, oneWebsite.Port, oneWebsite.Root, hexEncryptArtifactName, hexEncryptFormat)
+			usage := formatter.SupportedFormats[format].Usage(url)
+			con.Log.Infof("you can use this payload to run:\n--------\n%s\n--------\n", usage)
 		} else {
-			fileExt, _ = fileutils.GetExtensionByBytes(artifact.Bin)
+			var fileExt string
+			if format != "" && format != "executable" {
+				if formatter.IsSupported(format) {
+					fileExt = formatter.GetFormatExtension(format)
+				} else {
+					fileExt = ""
+				}
+			} else {
+				fileExt, _ = fileutils.GetExtensionByBytes(artifact.Bin)
+			}
+			if artifact.Type == consts.CommandBuildModules {
+				fileExt = ".dll"
+			}
+			if output == "" {
+				output = filepath.Join(assets.GetTempDir(), artifact.Name+fileExt)
+			}
+			err = os.WriteFile(output, artifact.Bin, 0644)
+			if err != nil {
+				con.Log.Errorf("Write file failed: %s", err)
+				return
+			}
+			con.Log.Infof("Download artifact %s, save to %s\n", artifact.Name, output)
 		}
 
-		if output == "" {
-			output = filepath.Join(assets.GetTempDir(), artifact.Name+fileExt)
-		}
-
-		err = os.WriteFile(output, artifact.Bin, 0644)
-		if err != nil {
-			con.Log.Errorf("Write file failed: %s", err)
-			return
-		}
-		con.Log.Infof("Download artifact %s, save to %s\n", artifact.Name, output)
 	}()
 	return nil
 }

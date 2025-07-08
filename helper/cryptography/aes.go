@@ -10,6 +10,9 @@ import (
 var AESKey string
 
 func InitAES(aesKey string) {
+	if aesKey == "" {
+		aesKey = "maliceofinternal"
+	}
 	AESKey = aesKey
 }
 

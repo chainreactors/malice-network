@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"github.com/chainreactors/malice-network/helper/cryptography"
 	"os"
 
 	"github.com/chainreactors/logs"
@@ -27,7 +28,7 @@ func Start() error {
 	if err != nil {
 		return err
 	}
-
+	cryptography.InitAES("")
 	cmd, err := rootCmd(con)
 	if err != nil {
 		return err

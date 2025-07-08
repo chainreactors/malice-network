@@ -4,20 +4,21 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/cryptography"
+	"github.com/chainreactors/malice-network/helper/encoders"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
+	"github.com/chainreactors/malice-network/helper/utils/formatutils"
+	"github.com/chainreactors/malice-network/server/internal/certutils"
+	"github.com/chainreactors/malice-network/server/internal/configs"
+	"github.com/chainreactors/malice-network/server/internal/core"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
-
-	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
-	"github.com/chainreactors/malice-network/helper/utils/fileutils"
-	"github.com/chainreactors/malice-network/server/internal/certutils"
-	"github.com/chainreactors/malice-network/server/internal/configs"
-	"github.com/chainreactors/malice-network/server/internal/core"
 )
 
 type Website struct {
@@ -131,7 +132,14 @@ func (w *Website) ToProtobuf() *clientpb.Pipeline {
 
 func (w *Website) websiteContentHandler(resp http.ResponseWriter, req *http.Request) {
 	contentPath := strings.TrimPrefix(req.URL.Path, w.rootPath)
-	artifactContent, ok := w.Artifact[strings.Trim(contentPath, "/")]
+	parts := strings.SplitN(contentPath, "/", 2)
+	var artifactName string
+	var formatted string
+	artifactName = parts[0]
+	if len(parts) == 2 {
+		formatted = parts[1]
+	}
+	artifactContent, ok := w.Artifact[artifactName]
 	if !ok {
 		logs.Log.Debugf("%s failed to get content in artifactContent ", req.URL)
 	} else {
@@ -148,12 +156,54 @@ func (w *Website) websiteContentHandler(resp http.ResponseWriter, req *http.Requ
 		artifact, err := w.rpc.FindArtifact(context.Background(), &clientpb.Artifact{
 			Name: string(decrypt),
 		})
+
 		if err != nil {
 			logs.Log.Errorf("failed to find artifact: %s", err)
 			return
 		}
-		if len(artifact.Bin) > 0 {
+		if formatted == "" {
 			resp.Write(artifact.Bin)
+			return
+		}
+		encryptedFormatted, err := cryptography.HexToBytes(formatted)
+		if err != nil {
+			logs.Log.Errorf("failed to hex: %s", err)
+			return
+		}
+		decryptFormatted, err := cryptography.DecryptWithGlobalKey(encryptedFormatted)
+		if err != nil {
+			logs.Log.Errorf("failed to decrypt: %s", err)
+			return
+		}
+		// create a tempfile for shellcode
+		filename := filepath.Join(configs.BuildOutputPath, encoders.UUID())
+		if err := os.WriteFile(filename, artifact.Bin, 0644); err != nil {
+			logs.Log.Errorf("failed to write file: %s", err)
+			return
+		}
+		var usePulse bool = false
+		if artifact.Type == consts.CommandBuildPulse {
+			usePulse = true
+		}
+		shellcode, err := formatutils.SRDIArtifact(filename, artifact.Platform, artifact.Arch, usePulse)
+		if err != nil {
+			logs.Log.Errorf("failed to convert to shellcode: %s", err)
+			return
+		}
+		// delete tempfile
+		if err := os.Remove(filename); err != nil {
+			logs.Log.Errorf("failed to remove file: %s", err)
+			return
+		}
+		// convert artifact to format
+		formatter := formatutils.NewFormatter()
+		result, err := formatter.Convert(shellcode, string(decryptFormatted))
+		if err != nil {
+			logs.Log.Errorf("failed to convert: %s", err)
+			return
+		}
+		if len(result.Data) > 0 {
+			resp.Write(result.Data)
 		}
 		return
 	}
