@@ -62,7 +62,7 @@ func PrintSessions(sessions map[string]*core.Session, con *repl.Console, isAll b
 		"UserName":       20,
 		"System":         16,
 		"Sleep":          9,
-		"Last":           6,
+		"Last":           8,
 		"CreatedAt":      16,
 	}
 
