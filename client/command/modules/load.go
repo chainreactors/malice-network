@@ -14,6 +14,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/types"
+	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"github.com/spf13/cobra"
 	"os"
 	"path/filepath"
@@ -120,7 +121,7 @@ func handleModuleBuild(con *repl.Console, modules, thirdModules []string) error 
 }
 
 func LoadModule(rpc clientrpc.MaliceRPCClient, session *core.Session, bundle string, path string) (*clientpb.Task, error) {
-	data, err := os.ReadFile(path)
+	data, err := pe.Unpack(path)
 	if err != nil {
 		return nil, err
 	}

@@ -26,7 +26,7 @@ func main() {
 	//	http.ListenAndServe("localhost:6060", nil)
 	//}()
 
-	err := server.Execute(serverConfig)
+	err := server.Start(serverConfig)
 	if err != nil {
 		logs.Log.Errorf(err.Error())
 		return

@@ -5,13 +5,24 @@ import (
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/proto/client/rootpb"
+	"github.com/chainreactors/malice-network/helper/utils/configutil"
 	"github.com/chainreactors/malice-network/helper/utils/mtls"
+	"github.com/chainreactors/malice-network/server/build"
+	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
+	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
+	"github.com/chainreactors/malice-network/server/internal/saas"
+	"github.com/chainreactors/malice-network/server/listener"
 	"github.com/chainreactors/malice-network/server/root"
+	"github.com/chainreactors/malice-network/server/rpc"
+	"github.com/gookit/config/v2"
 	"github.com/jessevdk/go-flags"
 	"gopkg.in/yaml.v3"
 	"os"
+	"os/signal"
+	"strings"
+	"syscall"
 )
 
 var (
@@ -141,6 +152,204 @@ func (opt *Options) Save() error {
 	if err != nil {
 		logs.Log.Errorf("Failed to write config %s", err)
 		return err
+	}
+	return nil
+}
+
+func (opt *Options) PrepareConfig(defaultConfig []byte) error {
+	filename := configs.FindConfig(opt.Config)
+	if filename == "" {
+		err := os.WriteFile(configs.ServerConfigFileName, defaultConfig, 0644)
+		if err != nil {
+			return err
+		}
+		logs.Log.Warnf("config file not found, created default config %s", configs.ServerConfigFileName)
+		filename = configs.ServerConfigFileName
+	}
+
+	config.WithOptions(config.WithHookFunc(func(event string, c *config.Config) {
+		if strings.HasPrefix(event, "set.") {
+			open, err := os.OpenFile(filename, os.O_WRONLY|os.O_TRUNC, 0644)
+			if err != nil {
+				logs.Log.Errorf("cannot open config , %s ", err.Error())
+				return
+			}
+			defer open.Close()
+			_, err = config.DumpTo(open, config.Yaml)
+			if err != nil {
+				logs.Log.Errorf("cannot dump config , %s ", err.Error())
+				return
+			}
+		}
+	}))
+
+	// load config
+	err := configutil.LoadConfig(filename, opt)
+	if err != nil {
+		return fmt.Errorf("cannot load config , %s", err.Error())
+	}
+
+	configs.CurrentServerConfigFilename = filename
+	// load config
+	if opt.Debug {
+		logs.Log.SetLevel(logs.DebugLevel)
+	}
+	err = opt.Validate()
+	if err != nil {
+		return fmt.Errorf("cannot validate config , %s", err.Error())
+	}
+	return nil
+}
+
+func (opt *Options) PrepareServer() error {
+	db.Client = db.NewDBClient()
+	err := saas.RegisterLicense()
+	if err != nil {
+		return fmt.Errorf("register community license error %v", err)
+	}
+	core.NewBroker()
+	core.NewSessions()
+	if opt.IP != "" {
+		logs.Log.Infof("manually specified IP: %s will override config: %s", opt.IP, opt.Server.IP)
+		opt.Server.IP = opt.IP
+		config.Set("server.ip", opt.IP)
+	}
+
+	if opt.Server.IP == "" {
+		return fmt.Errorf("IP address not set, please set config.yaml `ip: [server_ip]` or `./malice_network -i [server_ip]`")
+	}
+
+	err = core.EventBroker.InitService(opt.Server.NotifyConfig)
+	if err != nil {
+		return fmt.Errorf("cannot init notifier , %s", err.Error())
+	}
+	err = certutils.GenerateRootCert()
+	if err != nil {
+		return fmt.Errorf("cannot init root ca , %s", err.Error())
+	}
+	//if opt.Daemon == true {
+	//	err = RecoverAliveSession()
+	//	if err != nil {
+	//		logs.Log.Errorf("cannot start alive session , %s ", err.Error())
+	//		return
+	//	}
+	//	rpc.DaemonStart(opt.Server, opt.Listeners)
+	//}
+
+	err = StartGrpc(fmt.Sprintf("%s:%d", opt.Server.GRPCHost, opt.Server.GRPCPort))
+	if err != nil {
+		return fmt.Errorf("cannot start grpc , %s", err.Error())
+	}
+
+	err = opt.InitUser()
+	if err != nil {
+		return err
+	}
+	err = opt.InitListener()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (opt *Options) PrepareListener() error {
+	logs.Log.Importantf("[listener] listener config enabled, Starting listeners")
+	if opt.IP != "" {
+		logs.Log.Infof("manually specified IP: %s will override config: %s", opt.IP, opt.Server.IP)
+		opt.Listeners.IP = opt.IP
+		config.Set("listeners.ip", opt.IP)
+	}
+	err := StartListener(opt.Listeners)
+	if err != nil {
+		return err
+	}
+	err = RecoverArtifact()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (opt *Options) Handler() error {
+	c := make(chan os.Signal, 2)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+
+	<-c
+	logs.Log.Importantf("exit signal, save stat and exit")
+
+	signal.Stop(c)
+
+	for _, session := range core.Sessions.All() {
+		err := session.Save()
+		if err != nil {
+			return err
+		}
+	}
+	//pprof.StopCPUProfile()
+	core.GlobalTicker.RemoveAll()
+	os.Exit(0)
+	return nil
+}
+
+// Start - Starts the server console
+func StartGrpc(address string) error {
+	// start alive session
+	err := RecoverAliveSession()
+	if err != nil {
+		return err
+	}
+
+	_, _, err = rpc.StartClientListener(address)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func RecoverAliveSession() error {
+	// start alive session
+	sessions, err := db.FindAliveSessions()
+	if err != nil {
+		return err
+	}
+
+	if len(sessions) > 0 {
+		logs.Log.Debugf("recover %d sessions", len(sessions))
+		for _, session := range sessions {
+			newSession, err := core.RecoverSession(session)
+			if err != nil {
+				logs.Log.Errorf("cannot recover session %s , %s ", session.SessionID, err.Error())
+				continue
+			}
+			core.Sessions.Add(newSession)
+		}
+	}
+	return nil
+}
+
+func RecoverArtifact() error {
+	artifacts, err := db.GetValidArtifacts()
+	if err != nil {
+		return nil
+	}
+	for _, artifact := range artifacts {
+		err = build.AmountArtifact(artifact.Name)
+		if err != nil {
+			logs.Log.Errorf("faild to amount artifact: %s", artifact.Name)
+			continue
+		}
+	}
+	return err
+}
+
+func StartListener(opt *configs.ListenerConfig) error {
+	if listenerConf, err := mtls.ReadConfig(opt.Auth); err != nil {
+		return err
+	} else {
+		err = listener.NewListener(listenerConf, opt)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }

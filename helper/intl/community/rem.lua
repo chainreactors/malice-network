@@ -3,12 +3,6 @@ local function rem_path(arch, ext)
 end
 
 
-function load_rem()
-    return load_module(active(), "rem", script_resource(rem_path(session.Os.Arch, "dll")))
-end
-
-local rem_load_cmd = command("rem_community:load", load_rem, "load rem with rem.dll", "")
-
 function build_rem_cmdline(pipe, mod, remote_url, local_url)
     local link = rem_link(pipe)
     local args = { "-c", link, "-m", mod }
@@ -23,6 +17,15 @@ function build_rem_cmdline(pipe, mod, remote_url, local_url)
     end
     return args
 end
+
+function load_rem()
+    arch = barch(active())
+    return load_module(active(), "rem", script_resource(rem_path(arch, "dll")))
+end
+
+local rem_load_cmd = command("rem_community:load", load_rem, "load rem with rem.dll", "")
+
+
 
 function run_socks5(arg_0, flag_port, flag_user, flag_pass)
     return rem_dial(active(), arg_0,
@@ -53,12 +56,11 @@ bind_args_completer(rem_fork, { rem_completer(), rem_agent_completer() })
 
 
 function run_rem(flag_pipe, args)
-    local session = active()
-    local arch = session.Os.Arch
-    local path = rem_path(arch, "exe")
+    session = active()
+    arch = barch(active())
     table.insert(args, "-c")
     table.insert(args, rem_link(flag_pipe))
-    return execute_exe(session, script_resource(rem_path), args, true, 600, arch, "", new_sac())
+    return execute_exe(session, script_resource(rem_path(arch, "exe")), args, true, 600, arch, "", new_sac())
 end
 
 local rem_run_cmd = command("rem_community:run", run_rem, "run rem", "")

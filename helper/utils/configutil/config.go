@@ -3,30 +3,12 @@ package configutil
 import (
 	"bytes"
 	"fmt"
-	"github.com/chainreactors/logs"
 	"github.com/gookit/config/v2"
-	"os"
 	"reflect"
 	"strings"
 )
 
 func LoadConfig(filename string, v interface{}) error {
-	config.WithOptions(config.WithHookFunc(func(event string, c *config.Config) {
-		if strings.HasPrefix(event, "set.") {
-			open, err := os.OpenFile(filename, os.O_WRONLY|os.O_TRUNC, 0644)
-			if err != nil {
-				logs.Log.Errorf("cannot open config , %s ", err.Error())
-				return
-			}
-			defer open.Close()
-			_, err = config.DumpTo(open, config.Yaml)
-			if err != nil {
-				logs.Log.Errorf("cannot dump config , %s ", err.Error())
-				return
-			}
-		}
-	}))
-
 	err := config.LoadFiles(filename)
 	if err != nil {
 		return err
