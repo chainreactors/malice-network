@@ -82,7 +82,6 @@ const (
 	// module
 	ModuleListModule    = "list_module"
 	ModuleLoadModule    = "load_module"
-	ModeleLoad3rdModule = "load_3rd_module"
 	ModuleRefreshModule = "refresh_module"
 
 	// addon

@@ -23,6 +23,16 @@ func Register(con *repl.Console) {
 		return true, nil
 	}, &mals.Helper{Group: intermediate.ClientGroup})
 
+	con.RegisterServerFunc("values_completer", func(con *repl.Console, values []string) (carapace.Action, error) {
+		callback := func(c carapace.Context) carapace.Action {
+			results := make([]string, 0)
+			for _, v := range values {
+				results = append(results, v, "")
+			}
+			return carapace.ActionValuesDescribed(results...).Tag("")
+		}
+		return carapace.ActionCallback(callback), nil
+	}, &mals.Helper{Group: intermediate.ClientGroup})
 	con.RegisterServerFunc("session_completer", intermediate.WrapFunctionReturn(SessionIDCompleter), &mals.Helper{Group: intermediate.ClientGroup})
 	con.RegisterServerFunc("listener_completer", intermediate.WrapFunctionReturn(ListenerIDCompleter), &mals.Helper{Group: intermediate.ClientGroup})
 	con.RegisterServerFunc("listener_with_pipeline_completer", intermediate.WrapFunctionReturn(ListenerPipelineNameCompleter), &mals.Helper{Group: intermediate.ClientGroup})

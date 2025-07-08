@@ -1,5 +1,5 @@
 local function rem_path(arch, ext)
-    return "rem/rem_community" .. "." .. arch .. "." .. ext
+    return "module/rem_community" .. "." .. arch .. "." .. ext
 end
 
 
@@ -20,7 +20,7 @@ end
 
 function load_rem()
     arch = barch(active())
-    return load_module(active(), "rem", script_resource(rem_path(arch, "dll")))
+    return load_module(active(), "rem", script_resource("modules/rem".. "." .. arch .. ".dll"))
 end
 
 local rem_load_cmd = command("rem_community:load", load_rem, "load rem with rem.dll", "")
