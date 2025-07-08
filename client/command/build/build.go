@@ -91,9 +91,6 @@ func prepareBuildConfig(cmd *cobra.Command, con *repl.Console, buildType string)
 		profileParams.RelinkBeaconID = pulse
 	}
 	if buildType != consts.CommandBuildModules {
-		if err != nil {
-			return nil, err
-		}
 		if profileParams.Modules == "" {
 			profileParams.Modules = "full"
 		}

@@ -33,6 +33,15 @@ func (rpc *Server) RegisterRem(ctx context.Context, req *clientpb.Pipeline) (*cl
 		}
 	}
 
+	profileReq := &clientpb.Profile{
+		Name:       req.Name + "_default",
+		PipelineId: req.Name,
+	}
+	err = db.NewProfile(profileReq)
+	if err != nil {
+		logs.Log.Errorf("new profile %s failed %v", req.Name, err)
+	}
+
 	return &clientpb.Empty{}, nil
 }
 

@@ -110,6 +110,8 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 			Name:       pipeline.Name,
 			ListenerId: lns.ID(),
 		})
+
+		lns.autoBuild(lns.cfg.AutoBuildConfig, pipeline)
 		if err != nil {
 			return err
 		}
@@ -315,7 +317,7 @@ func (lns *listener) autoBuild(autoBuild *configs.AutoBuildConfig, pipeline *cli
 		return
 	}
 
-	if !(pipeline.Type == consts.TCPPipeline || pipeline.Type == consts.HTTPPipeline) {
+	if !(pipeline.Type == consts.TCPPipeline || pipeline.Type == consts.HTTPPipeline || pipeline.Type == consts.RemPipeline) {
 		logs.Log.Debugf("%s pieline not support auto build", pipeline.Type)
 		return
 	}

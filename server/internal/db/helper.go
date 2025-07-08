@@ -803,6 +803,12 @@ func GetProfile(name string) (*types.ProfileConfig, error) {
 			profile.Basic.Key = profileModel.Pipeline.Encryption.Choice().Key
 			profile.Basic.Protocol = profileModel.Pipeline.Type
 			profile.Basic.TLS.Enable = profileModel.Pipeline.Tls.Enable
+			if profileModel.Pipeline.Type == consts.RemPipeline {
+				profile.Basic.Protocol = consts.RemPipeline
+				profile.Basic.REM = &types.REMProfile{
+					Link: profileModel.Pipeline.PipelineParams.Link,
+				}
+			}
 		}
 	}
 	if profile.Pulse != nil && profileModel.Pipeline != nil {
@@ -1134,11 +1140,12 @@ func DeleteArtifactByName(artifactName string) error {
 }
 
 // UpdateGeneratorConfig - Update the generator config
-func UpdateGeneratorConfig(req *clientpb.BuildConfig, path string, config *types.ProfileConfig) error {
+func UpdateGeneratorConfig(req *clientpb.BuildConfig, config *types.ProfileConfig) error {
 	if config.Basic != nil {
 		if req.BuildName != "" {
 			config.Basic.Name = req.BuildName
 		}
+
 		var params types.ProfileParams
 		if len(req.ParamsBytes) > 0 {
 			err := json.Unmarshal(req.ParamsBytes, &params)

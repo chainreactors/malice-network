@@ -1,7 +1,6 @@
 package build
 
 import (
-	"encoding/json"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/encoders"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
@@ -32,13 +31,12 @@ var (
 func GenerateProfile(req *clientpb.BuildConfig) ([]byte, error) {
 	var profile *types.ProfileConfig
 	var err error
-	if req.Type == consts.CommandBuildModules && req.ProfileName == "" {
+	if req.Type == consts.CommandBuildModules {
 		profile, err = types.LoadProfile(types.DefaultProfile)
 		if err != nil {
 			return nil, err
 		}
-		var profileParams types.ProfileParams
-		err = json.Unmarshal(req.ParamsBytes, &profileParams)
+		profileParams, err := types.UnmarshalProfileParams(req.ParamsBytes)
 		if err != nil {
 			return nil, err
 		}
@@ -52,7 +50,7 @@ func GenerateProfile(req *clientpb.BuildConfig) ([]byte, error) {
 		}
 	}
 	path := filepath.Join(configs.SourceCodePath, generateConfig)
-	err = db.UpdateGeneratorConfig(req, path, profile)
+	err = db.UpdateGeneratorConfig(req, profile)
 	if err != nil {
 		return nil, err
 	}

@@ -31,7 +31,12 @@ type BasicProfile struct {
 	Jitter     float64                `yaml:"jitter" config:"jitter" default:"0.2"`
 	Encryption string                 `yaml:"encryption" config:"encryption" default:"aes"`
 	Key        string                 `yaml:"key" config:"key" default:"maliceofinternal"`
+	REM        *REMProfile            `yaml:"rem" config:"rem"`
 	Extras     map[string]interface{} `yaml:",inline"`
+}
+
+type REMProfile struct {
+	Link string `yaml:"link" config:"link" default:""`
 }
 
 type TLSProfile struct {
@@ -89,9 +94,9 @@ func (p *ProfileParams) String() string {
 	return string(content)
 }
 
-func Unmarsal(params string) (*ProfileParams, error) {
+func UnmarshalProfileParams(params []byte) (*ProfileParams, error) {
 	var p *ProfileParams
-	err := json.Unmarshal([]byte(params), &p)
+	err := json.Unmarshal(params, &p)
 	if err != nil {
 		return p, err
 	}

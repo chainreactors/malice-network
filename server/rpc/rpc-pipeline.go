@@ -21,8 +21,7 @@ func (rpc *Server) RegisterPipeline(ctx context.Context, req *clientpb.Pipeline)
 	if err != nil {
 		return nil, err
 	}
-	var profileReq *clientpb.Profile
-	profileReq = &clientpb.Profile{
+	profileReq := &clientpb.Profile{
 		Name:       req.Name + "_default",
 		PipelineId: req.Name,
 	}

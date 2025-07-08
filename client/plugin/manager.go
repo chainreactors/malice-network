@@ -96,7 +96,6 @@ func (mm *MalManager) loadEmbeddedMals() {
 				mm.loadedCommands.SetCommand(cmdName, cmd.Command)
 				logs.Log.Debugf("Added/Updated embedded command '%s' from %s\n", cmdName, levelName)
 			}
-
 		}
 	}
 }
