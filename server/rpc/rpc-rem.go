@@ -22,8 +22,8 @@ func (rpc *Server) RegisterRem(ctx context.Context, req *clientpb.Pipeline) (*cl
 	}
 	req.Ip = lns.IP
 
-	remDB, err := db.FindPipeline(req.Name)
-	if remDB == nil {
+	_, err = db.FindPipeline(req.Name)
+	if err != nil {
 		if req.GetRem().Console == "" {
 			req.GetRem().Console = "tcp://127.0.0.1:12345"
 		}
