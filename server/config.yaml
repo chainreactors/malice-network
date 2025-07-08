@@ -87,4 +87,4 @@ listeners:
     -
       name: rem_default
       enable: true
-      console: tcp://0.0.0.0:12345
+      console:
