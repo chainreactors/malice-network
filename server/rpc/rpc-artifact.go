@@ -67,7 +67,7 @@ func ObjcopyPulse(builder *models.Artifact, platform, arch string) ([]byte, erro
 
 func SRDIArtifact(artifactModel *models.Artifact, platform, arch string) ([]byte, error) {
 	if !strings.Contains(artifactModel.Target, consts.Windows) {
-		return []byte{}, errs.ErrPlartFormNotSupport
+		return []byte{}, errs.ErrPlatFormNotSupport
 	}
 	switch artifactModel.Type {
 	case consts.CommandBuildPulse:

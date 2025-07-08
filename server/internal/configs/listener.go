@@ -305,18 +305,3 @@ func JoinStringSlice(slice []string) string {
 	}
 	return ""
 }
-
-func GenerateKeyAndIVFromString(seed string) ([32]byte, [16]byte) {
-	var key [32]byte
-	var iv [16]byte
-
-	seedBytes := []byte(seed)
-	for i := 0; i < 32; i++ {
-		key[i] = seedBytes[i%len(seedBytes)]
-	}
-
-	for i := 0; i < 16; i++ {
-		iv[i] = seedBytes[(i+1)%len(seedBytes)]
-	}
-	return key, iv
-}

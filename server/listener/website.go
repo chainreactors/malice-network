@@ -1,12 +1,10 @@
 package listener
 
 import (
-	"bytes"
 	"context"
-	"encoding/hex"
 	"errors"
 	"fmt"
-	cryptostream "github.com/chainreactors/malice-network/server/internal/stream"
+	"github.com/chainreactors/malice-network/helper/cryptography"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -135,19 +133,20 @@ func (w *Website) websiteContentHandler(resp http.ResponseWriter, req *http.Requ
 	contentPath := strings.TrimPrefix(req.URL.Path, w.rootPath)
 	artifactContent, ok := w.Artifact[strings.Trim(contentPath, "/")]
 	if !ok {
-		logs.Log.Debugf("%s Failed to get content in artifactContent ", req.URL)
+		logs.Log.Debugf("%s failed to get content in artifactContent ", req.URL)
 	} else {
-		key, iv := configs.GenerateKeyAndIVFromString("maliceofinternal")
-		encryptor, _ := cryptostream.NewAesCtrEncryptor(key, iv)
-		encrypted, err := hex.DecodeString(artifactContent.Path)
-		logs.Log.Errorf("failed to hex: %s", err)
-		decReader := bytes.NewReader(encrypted)
-		decWriter := &bytes.Buffer{}
-
-		err = encryptor.Decrypt(decReader, decWriter)
-		artifactName := decWriter.Bytes()
+		encrypted, err := cryptography.HexToBytes(artifactContent.Path)
+		if err != nil {
+			logs.Log.Errorf("failed to hex: %s", err)
+			return
+		}
+		decrypt, err := cryptography.DecryptWithGlobalKey(encrypted)
+		if err != nil {
+			logs.Log.Errorf("failed to decrypt: %s", err)
+			return
+		}
 		artifact, err := w.rpc.FindArtifact(context.Background(), &clientpb.Artifact{
-			Name: string(artifactName),
+			Name: string(decrypt),
 		})
 		if err != nil {
 			logs.Log.Errorf("failed to find artifact: %s", err)
@@ -161,7 +160,7 @@ func (w *Website) websiteContentHandler(resp http.ResponseWriter, req *http.Requ
 
 	content, ok := w.Content[strings.Trim(contentPath, "/")]
 	if !ok {
-		logs.Log.Debugf("%s Failed to get content ", req.URL)
+		logs.Log.Debugf("%s failed to get content ", req.URL)
 		return
 	}
 
@@ -201,21 +200,9 @@ func (w *Website) acmeChallengeHandler(resp http.ResponseWriter, req *http.Reque
 }
 
 func (w *Website) AddArtifactContent(content *clientpb.WebContent) error {
-	key, iv := configs.GenerateKeyAndIVFromString("maliceofinternal")
-	encryptor, _ := cryptostream.NewAesCtrEncryptor(key, iv)
-	originalData := []byte(content.Path)
-	reader := bytes.NewReader(originalData)
-	writer := &bytes.Buffer{}
-	err := encryptor.Encrypt(reader, writer)
-	if err != nil {
-		return err
-	}
-	encryptedData := writer.Bytes()
-	hexString := hex.EncodeToString(encryptedData)
-
 	contentPath := filepath.Join(configs.WebsitePath, content.WebsiteId, content.Id)
-	w.Artifact[strings.Trim(hexString, "/")] = &clientpb.WebContent{
-		Path: hexString,
+	w.Artifact[strings.Trim(content.Path, "/")] = &clientpb.WebContent{
+		Path: content.Path,
 		File: contentPath,
 	}
 	return nil

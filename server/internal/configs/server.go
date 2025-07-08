@@ -53,16 +53,17 @@ func NewDebugLog(filename string) *logs.Logger {
 }
 
 type ServerConfig struct {
-	Enable       bool          `config:"enable" default:"true"`
-	GRPCPort     uint16        `config:"grpc_port" default:"5004"`
-	GRPCHost     string        `config:"grpc_host" default:"0.0.0.0"`
-	IP           string        `config:"ip" default:""`
-	DaemonConfig bool          `config:"daemon" default:"false"`
-	LogConfig    *LogConfig    `config:"log"`
-	MiscConfig   *MiscConfig   `config:"config"`
-	NotifyConfig *NotifyConfig `config:"notify"`
-	GithubConfig *GithubConfig `config:"github"`
-	SassConfig   *SaasConfig   `config:"saas"`
+	Enable        bool          `config:"enable" default:"true"`
+	GRPCPort      uint16        `config:"grpc_port" default:"5004"`
+	GRPCHost      string        `config:"grpc_host" default:"0.0.0.0"`
+	IP            string        `config:"ip" default:""`
+	DaemonConfig  bool          `config:"daemon" default:"false"`
+	EncryptionKey string        `config:"encryption_key" default:"maliceofinternal"`
+	LogConfig     *LogConfig    `config:"log"`
+	MiscConfig    *MiscConfig   `config:"config"`
+	NotifyConfig  *NotifyConfig `config:"notify"`
+	GithubConfig  *GithubConfig `config:"github"`
+	SassConfig    *SaasConfig   `config:"saas"`
 }
 
 func (c *ServerConfig) Address() string {

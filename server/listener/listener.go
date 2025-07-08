@@ -476,7 +476,10 @@ func (lns *listener) handleAmountArtifact(job *clientpb.JobCtrl) error {
 	if w == nil {
 		return errors.New("website not found")
 	}
-	w.AddArtifactContent(job.Content)
+	err := w.AddArtifactContent(job.Content)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 

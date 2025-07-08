@@ -2,7 +2,6 @@ package rpc
 
 import (
 	"context"
-	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/errs"
@@ -79,7 +78,7 @@ func (rpc *Server) CheckSource(ctx context.Context, req *clientpb.BuildConfig) (
 		if config := configs.GetGithubConfig(); config != nil {
 			req.Github = config.ToProtobuf()
 		} else {
-			return nil, fmt.Errorf("github config not found")
+			req.Github = &clientpb.GithubWorkflowConfig{}
 		}
 	}
 	if err := build.GetWorkflowStatus(req.Github); err == nil {

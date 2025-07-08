@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/proto/client/rootpb"
 	"github.com/chainreactors/malice-network/helper/utils/configutil"
 	"github.com/chainreactors/malice-network/helper/utils/mtls"
@@ -227,6 +228,7 @@ func (opt *Options) PrepareServer() error {
 	if err != nil {
 		return fmt.Errorf("cannot init root ca , %s", err.Error())
 	}
+	cryptography.InitAES(opt.Server.EncryptionKey)
 	//if opt.Daemon == true {
 	//	err = RecoverAliveSession()
 	//	if err != nil {

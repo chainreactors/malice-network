@@ -4,6 +4,7 @@ server:
   grpc_host: 0.0.0.0
   ip: 127.0.0.1
   audit: 1  # 0 close , 1 basic , 2 detail
+  encryption_key: maliceofinternal
   config:
     packet_length: 10485760 # 10M: 1024*1024*10
     certificate:

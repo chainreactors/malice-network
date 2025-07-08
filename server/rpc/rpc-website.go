@@ -3,7 +3,9 @@ package rpc
 import (
 	"context"
 	"errors"
+	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
@@ -166,6 +168,29 @@ func (rpc *Server) StartWebsite(ctx context.Context, req *clientpb.CtrlPipeline)
 		return nil, err
 	}
 
+	artifacts, err := db.GetValidArtifacts()
+	if err != nil {
+		logs.Log.Errorf("failed to find artifact: %s", err)
+		return &clientpb.Empty{}, nil
+	}
+	for _, artifact := range artifacts {
+		encrypt, err := cryptography.EncryptWithGlobalKey([]byte(artifact.Name))
+		if err != nil {
+			logs.Log.Errorf("failed to encrypt: %s", err)
+			return &clientpb.Empty{}, nil
+		}
+		hexEncrypt := cryptography.BytesToHex(encrypt)
+		listener.PushCtrl(&clientpb.JobCtrl{
+			Ctrl: consts.CtrlWebContentAddArtifact,
+			Job: &clientpb.Job{
+				Pipeline: webpb,
+			},
+			Content: &clientpb.WebContent{
+				Path: hexEncrypt,
+			},
+		})
+		logs.Log.Infof("artifact %s amounts at /%s", artifact.Name, hexEncrypt)
+	}
 	return &clientpb.Empty{}, nil
 }
 

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/server/internal/core"
@@ -93,6 +94,11 @@ func SendBuildMsg(builder *clientpb.Artifact, status string, msg string) {
 
 func AmountArtifact(artifactName string) error {
 	var result []*clientpb.Pipeline
+	encrypt, err := cryptography.EncryptWithGlobalKey([]byte(artifactName))
+	if err != nil {
+		return err
+	}
+	hexEncrypt := cryptography.BytesToHex(encrypt)
 	core.Listeners.Range(func(key, value any) bool {
 		lns := value.(*core.Listener)
 		for _, pipeline := range lns.AllPipelines() {
@@ -105,7 +111,7 @@ func AmountArtifact(artifactName string) error {
 	for _, pipe := range result {
 		lns, _ := core.Listeners.Get(pipe.ListenerId)
 		content := &clientpb.WebContent{
-			Path: artifactName,
+			Path: hexEncrypt,
 		}
 		lns.PushCtrl(&clientpb.JobCtrl{
 			Ctrl: consts.CtrlWebContentAddArtifact,
@@ -115,5 +121,11 @@ func AmountArtifact(artifactName string) error {
 			Content: content,
 		})
 	}
+	core.EventBroker.Publish(core.Event{
+		EventType: consts.EventBuild,
+		IsNotify:  false,
+		Message:   fmt.Sprintf("artifact %s amounts at /%s", artifactName, hexEncrypt),
+		Important: true,
+	})
 	return nil
 }

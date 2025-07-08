@@ -35,10 +35,10 @@ var (
 
 	ErrNotFoundGithubConfig = status.Error(codes.NotFound, "Github config not found")
 	ErrNotFoundNotifyConfig = status.Error(codes.NotFound, "Notify config not found")
-
-	ErrPlartFormNotSupport = status.Error(codes.Unimplemented, "Platform not support")
-	ErrOBJCOPYFailed       = status.Error(codes.Unavailable, "OBJCOPY FAILED")
-	ErrSrdiFailed          = status.Error(codes.Unavailable, "srdi FAILED")
+	ErrNotFoundEncryption   = status.Error(codes.NotFound, "Encryption key not found")
+	ErrPlatFormNotSupport   = status.Error(codes.Unimplemented, "Platform not support")
+	ErrOBJCOPYFailed        = status.Error(codes.Unavailable, "OBJCOPY FAILED")
+	ErrSrdiFailed           = status.Error(codes.Unavailable, "srdi FAILED")
 
 	ErrSouceUnable          = status.Error(codes.Unavailable, "no build source available")
 	ErrSaasUnable           = status.Error(codes.Unavailable, "saas server has a error")
