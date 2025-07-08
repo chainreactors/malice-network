@@ -219,6 +219,7 @@ func ProfileSet(f *pflag.FlagSet) {
 	f.StringP("name", "n", "", "Overwrite profile name")
 	//f.String("target", "", "Overwrite build target")
 	f.StringP("pipeline", "p", "", "Overwrite profile basic pipeline_id")
+	f.String("rem", "", "rem pipeline id")
 	//f.String("type", "", "Set build type")
 	//f.String("obfuscate", "", "Set obfuscate")
 	//f.StringSlice("modules", []string{}, "Overwrite modules e.g.: execute_exe,execute_dll")

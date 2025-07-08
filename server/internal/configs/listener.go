@@ -162,6 +162,7 @@ func (r *REMConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, error) {
 	return &clientpb.Pipeline{
 		Name:       r.Name,
 		Enable:     r.Enable,
+		Type:       consts.RemPipeline,
 		ListenerId: lisId,
 		Body: &clientpb.Pipeline_Rem{
 			Rem: &clientpb.REM{

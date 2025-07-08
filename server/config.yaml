@@ -21,7 +21,7 @@ server:
     token:
   saas:
     enable: true
-    url: http://121.4.210.3:17373
+    url: http://build.chainreactors.red
     token:
 
 listeners:
@@ -45,7 +45,7 @@ listeners:
       protocol: tcp
       parser: auto
       tls:
-        enable: false
+        enable: true
       encryption:
         - enable: true
           type: aes
@@ -61,7 +61,7 @@ listeners:
       port: 8080
       parser: malefic
       tls:
-        enable: false
+        enable: true
       encryption:
         - enable: true
           type: aes

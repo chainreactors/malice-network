@@ -81,9 +81,9 @@ type ProfileParams struct {
 	Proxy          string `json:"proxy"`
 	OriginBeaconID uint32 `json:"origin_beacon_id"`
 	RelinkBeaconID uint32 `json:"relink_beacon_id"`
-
-	Enable3RD bool   `json:"enable_3_rd"`
-	Modules   string `json:"modules"`
+	REMPipeline    string `json:"rem"`
+	Enable3RD      bool   `json:"enable_3_rd"`
+	Modules        string `json:"modules"`
 }
 
 func (p *ProfileParams) String() string {

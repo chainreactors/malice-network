@@ -66,6 +66,7 @@ profile load /path/to/config.yaml --name my_profile --pipeline pipeline_name
 		comp["name"] = carapace.ActionValues().Usage("profilename")
 		//comp["target"] = common.BuildTargetCompleter(con)
 		comp["pipeline"] = common.AllPipelineCompleter(con)
+		comp["rem"] = common.RemPipelineCompleter(con)
 		//comp["pulse-pipeline"] = common.AllPipelineCompleter(con)
 		//comp["proxy"] = carapace.ActionValues().Usage("proxy, socks5 or http")
 		//comp["obfuscate"] = carapace.ActionValues("true", "false")
@@ -94,7 +95,7 @@ profile new --name my_profile --pipeline default_tcp
 	common.BindFlagCompletions(newProfileCmd, func(comp carapace.ActionMap) {
 		comp["name"] = carapace.ActionValues().Usage("profile name")
 		comp["pipeline"] = common.AllPipelineCompleter(con)
-		comp["proxy"] = carapace.ActionValues().Usage("")
+		comp["rem"] = common.RemPipelineCompleter(con)
 	})
 
 	deleteProfileCmd := &cobra.Command{

@@ -4,7 +4,7 @@ basic:
     - "127.0.0.1:5001"
   protocol: "tcp"
   tls:
-    enable: false                    # 启用TLS
+    enable: true                    # 启用TLS
     version: "auto"                 # TLS版本: "auto", "1.2", "1.3"
     sni: "localhost"                # 服务器名称指示（SNI）
     skip_verification: true

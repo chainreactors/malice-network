@@ -745,8 +745,7 @@ func NewProfile(profile *clientpb.Profile) error {
 	}
 
 	model := &models.Profile{
-		Name: profile.Name,
-		//Obfuscate:  profile.Obfuscate,
+		Name:       profile.Name,
 		ParamsData: profile.Params,
 		PipelineID: profile.PipelineId,
 		Raw:        profile.Content,
@@ -785,31 +784,31 @@ func GetProfile(name string) (*types.ProfileConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	if profile.Basic != nil {
-		if profileModel.Name != "" {
-			profile.Basic.Name = profileModel.Name
-		}
-		if params := profileModel.Params; params != nil {
-			profile.Basic.Interval = profileModel.Params.Interval
-			profile.Basic.Jitter = profileModel.Params.Jitter
+	if profileModel.Name != "" {
+		profile.Basic.Name = profileModel.Name
+	}
 
-			if params.Proxy != "" {
-				profile.Basic.Proxy = params.Proxy
+	if profileModel.Pipeline != nil {
+		profile.Basic.Targets = []string{profileModel.Pipeline.Address()}
+		profile.Basic.Encryption = profileModel.Pipeline.Encryption.Choice().Type
+		profile.Basic.Key = profileModel.Pipeline.Encryption.Choice().Key
+		profile.Basic.Protocol = profileModel.Pipeline.Type
+		profile.Basic.TLS.Enable = profileModel.Pipeline.Tls.Enable
+	}
+	if params := profileModel.Params; params != nil {
+		profile.Basic.Interval = profileModel.Params.Interval
+		profile.Basic.Jitter = profileModel.Params.Jitter
+		if params.REMPipeline != "" {
+			profile.Basic.Protocol = consts.RemPipeline
+			pipeline, err := FindPipeline(params.REMPipeline)
+			if err != nil {
+				return nil, err
+			}
+			profile.Basic.REM = &types.REMProfile{
+				Link: pipeline.PipelineParams.Link,
 			}
 		}
-		if profileModel.Pipeline != nil {
-			profile.Basic.Targets = []string{profileModel.Pipeline.Address()}
-			profile.Basic.Encryption = profileModel.Pipeline.Encryption.Choice().Type
-			profile.Basic.Key = profileModel.Pipeline.Encryption.Choice().Key
-			profile.Basic.Protocol = profileModel.Pipeline.Type
-			profile.Basic.TLS.Enable = profileModel.Pipeline.Tls.Enable
-			if profileModel.Pipeline.Type == consts.RemPipeline {
-				profile.Basic.Protocol = consts.RemPipeline
-				profile.Basic.REM = &types.REMProfile{
-					Link: profileModel.Pipeline.PipelineParams.Link,
-				}
-			}
-		}
+
 	}
 	if profile.Pulse != nil && profileModel.Pipeline != nil {
 		profile.Pulse.Target = profileModel.Pipeline.Address()
@@ -1146,12 +1145,11 @@ func UpdateGeneratorConfig(req *clientpb.BuildConfig, config *types.ProfileConfi
 			config.Basic.Name = req.BuildName
 		}
 
-		var params types.ProfileParams
+		params, err := types.UnmarshalProfileParams(req.ParamsBytes)
+		if err != nil {
+			return err
+		}
 		if len(req.ParamsBytes) > 0 {
-			err := json.Unmarshal(req.ParamsBytes, &params)
-			if err != nil {
-				return err
-			}
 			if params.Interval != -1 {
 				config.Basic.Interval = params.Interval
 			}
@@ -1159,10 +1157,10 @@ func UpdateGeneratorConfig(req *clientpb.BuildConfig, config *types.ProfileConfi
 			if params.Jitter != -1 {
 				config.Basic.Jitter = params.Jitter
 			}
-
 			if params.Proxy != "" {
 				config.Basic.Proxy = params.Proxy
 			}
+
 			if params.Enable3RD {
 				config.Implant.Extras["3rd_modules"] = strings.Split(params.Modules, ",")
 				config.Implant.Extras["enable_3rd"] = true
