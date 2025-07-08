@@ -2,20 +2,19 @@ package build
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/codenames"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/utils/httputils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"github.com/chainreactors/malice-network/server/internal/saas"
 	"github.com/chainreactors/utils/encode"
 	"google.golang.org/protobuf/encoding/protojson"
-	"io"
 	"net/http"
 	"time"
 )
@@ -72,49 +71,26 @@ func (s *SaasBuilder) Execute() error {
 	if err != nil {
 		return fmt.Errorf("failed to marshal config %s: %s", s.config.ProfileName, err)
 	}
-	client := &http.Client{Timeout: 60 * time.Second}
-	req, err := http.NewRequest("POST", s.executeUrl, bytes.NewReader(data))
+	headers := saas.SaasHeaders(s.getToken())
+	var respObj clientpb.Artifact
+	err = httputils.DoJSONRequest("POST", s.executeUrl, bytes.NewReader(data), headers, http.StatusOK, &respObj)
 	if err != nil {
-		return fmt.Errorf("failed to create build request: %s", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	token := s.getToken()
-	if token != "" {
-		req.Header.Set("token", token)
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return fmt.Errorf("failed to post saas service failed: %s", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("failed to read build service response: %s", err)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return errors.New(string(body))
-	}
-
-	var builder clientpb.Artifact
-	if err = json.Unmarshal(body, &builder); err != nil {
-		return fmt.Errorf("failed to unmarshal build service response: %s", err)
+		db.UpdateBuilderStatus(s.builder.ID, consts.BuildStatusFailure)
+		return fmt.Errorf("failed to post saas service: %w", err)
 	}
 	return nil
 }
 
 func (s *SaasBuilder) Collect() (string, string) {
-	saasConfig := configs.GetSaasConfig()
-	statusUrl := fmt.Sprintf("%s/api/build/status/%s", saasConfig.Url, s.builder.Name)
-	downloadUrl := fmt.Sprintf("%s/api/build/download/%s", saasConfig.Url, s.builder.Name)
+	statusUrl := fmt.Sprintf("/api/build/status/%s", s.builder.Name)
+	downloadUrl := fmt.Sprintf("/api/build/download/%s", s.builder.Name)
 
-	// 使用外部函数进行状态检查和下载
 	path, status, err := saas.CheckAndDownloadArtifact(statusUrl, downloadUrl, s.getToken(), s.builder, 30*time.Second, 30*time.Minute)
 	if err != nil {
 		logs.Log.Errorf("failed to collect artifact %s: %s", s.builder.Name, err)
 		return "", consts.BuildStatusFailure
 	}
+	db.UpdateBuilderStatus(s.builder.ID, status)
 	if s.config.Type == consts.CommandBuildBeacon {
 		if s.config.ArtifactId != 0 {
 			err = db.UpdatePulseRelink(s.config.ArtifactId, s.builder.ID)
@@ -130,28 +106,3 @@ func (s *SaasBuilder) getToken() string {
 	saasConfig := configs.GetSaasConfig()
 	return saasConfig.Token
 }
-
-// 外部可调用的函数
-
-//func (s *SaasBuilder) GetBeaconID() uint32 {
-//	return s.config.ArtifactId
-//}
-//
-//func (s *SaasBuilder) SetBeaconID(id uint32) error {
-//	s.config.ArtifactId = id
-//	if s.config.Params == "" {
-//		params := &types.ProfileParams{
-//			OriginBeaconID: id,
-//		}
-//		s.config.Params = params.String()
-//	} else {
-//		var newParams *types.ProfileParams
-//		err := json.Unmarshal([]byte(s.config.Params), &newParams)
-//		if err != nil {
-//			return err
-//		}
-//		newParams.OriginBeaconID = s.config.ArtifactId
-//		s.config.Params = newParams.String()
-//	}
-//	return nil
-//}

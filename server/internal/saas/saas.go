@@ -1,233 +1,233 @@
 package saas
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/encoders"
 	"github.com/chainreactors/malice-network/helper/utils"
+	"github.com/chainreactors/malice-network/helper/utils/httputils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"io"
-	"net/http"
 	"os"
+	"strings"
 	"time"
 )
 
-func ReDownloadSaasArtifact() error {
-	saasConfig := configs.GetSaasConfig()
-	if saasConfig.Token != "" && saasConfig.Enable {
-		artifacts, err := db.GetArtifactWithSaas()
+// ================= 工具类型和常量 =================
+
+type DownloadResult struct {
+	Path   string
+	Status string
+	Err    error
+}
+
+var ErrPollingTimeout = &PollingTimeoutError{}
+
+type PollingTimeoutError struct{}
+
+func (e *PollingTimeoutError) Error() string {
+	return "polling timeout"
+}
+
+// ================= 工具函数 =================
+
+// 统一SaaS请求头
+func SaasHeaders(token string) map[string]string {
+	return map[string]string{
+		"token": token,
+	}
+}
+
+// pollUntil会每隔interval调用fn，直到fn返回true或超时timeout
+func pollUntil(fn func() (bool, error), interval, timeout time.Duration) error {
+	start := time.Now()
+	for {
+		ok, err := fn()
 		if err != nil {
 			return err
 		}
-		if len(artifacts) > 0 {
-			for _, artifact := range artifacts {
-				if artifact.Status != consts.BuildStatusCompleted && artifact.Status != consts.BuildStatusFailure {
-					go func() {
-						statusUrl := fmt.Sprintf("%s/api/build/status/%s", saasConfig.Url, artifact.Name)
-						downloadUrl := fmt.Sprintf("%s/api/build/download/%s", saasConfig.Url, artifact.Name)
-						_, _, err = CheckAndDownloadArtifact(statusUrl, downloadUrl, saasConfig.Token, artifact, 30*time.Second, 30*time.Minute)
-						if err != nil {
-							return
-						}
-					}()
-				}
-			}
+		if ok {
+			return nil
 		}
-	}
-	return nil
-}
-
-// CheckAndDownloadArtifact 外部调用的检查状态并下载产物的组合函数
-func CheckAndDownloadArtifact(statusUrl string, downloadUrl string, token string, builder *models.Artifact,
-	pollInterval time.Duration, maxPollTime time.Duration) (string, string, error) {
-
-	startTime := time.Now()
-
-	for {
-		if time.Since(startTime) > maxPollTime {
-			logs.Log.Errorf("build polling timeout")
-			if builder != nil {
-				db.UpdateBuilderStatus(builder.ID, consts.BuildStatusFailure)
-			}
-			return "", consts.BuildStatusFailure, fmt.Errorf("build polling timeout")
+		if time.Since(start) > timeout {
+			return ErrPollingTimeout
 		}
-
-		status, err := CheckBuildStatusExternal(statusUrl, token)
-		if err != nil {
-			logs.Log.Errorf("check build status failed: %v", err)
-			time.Sleep(pollInterval)
-			continue
-		}
-
-		if status == consts.BuildStatusFailure {
-			if builder != nil {
-				db.UpdateBuilderStatus(builder.ID, consts.BuildStatusFailure)
-			}
-			return "", consts.BuildStatusFailure, fmt.Errorf("failed to build %s by saas", builder.Name)
-		}
-
-		if status == consts.BuildStatusCompleted {
-			downloadErr := DownloadArtifactWithBuilder(downloadUrl, token, builder)
-
-			if downloadErr != nil {
-				logs.Log.Errorf("download artifact failed: %s", downloadErr)
-				time.Sleep(pollInterval)
-				continue
-			}
-			logs.Log.Infof("build completed and downloaded successfully")
-			if builder != nil {
-				db.UpdateBuilderStatus(builder.ID, consts.BuildStatusCompleted)
-			}
-			return builder.Path, consts.BuildStatusCompleted, nil
-		}
-		time.Sleep(pollInterval)
+		time.Sleep(interval)
 	}
 }
 
-// CheckBuildStatusExternal 外部调用的构建状态检查函数
-func CheckBuildStatusExternal(statusUrl string, token string) (string, error) {
-	if token == "" {
+// ================= SaasClient结构体及方法 =================
+
+type SaasClient struct {
+	Token   string
+	BaseURL string
+}
+
+func NewSaasClient() *SaasClient {
+	saasConfig := configs.GetSaasConfig()
+	return &SaasClient{
+		Token:   saasConfig.Token,
+		BaseURL: saasConfig.Url,
+	}
+}
+
+// 查询构建状态
+func (c *SaasClient) CheckBuildStatus(statusPath string) (string, error) {
+	if c.Token == "" {
 		return "", fmt.Errorf("no token available for status check")
 	}
-
-	client := &http.Client{Timeout: 10 * time.Second}
-	req, err := http.NewRequest("GET", statusUrl, nil)
-	if err != nil {
-		return "", err
-	}
-	req.Header.Set("token", token)
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		switch resp.StatusCode {
-		case http.StatusBadRequest:
-			return "", fmt.Errorf("bad request (400): %s", string(body))
-		case http.StatusUnauthorized:
-			return "", fmt.Errorf("unauthorized (401): invalid token")
-		case http.StatusForbidden:
-			return "", fmt.Errorf("forbidden (403): license expired or no permission")
-		//case http.StatusNotFound:
-		//	return "", fmt.Errorf("not found (404): build not found")
-		case http.StatusInternalServerError:
-			return "", fmt.Errorf("internal server error (500): database query failed - %s", string(body))
-		default:
-			return "", fmt.Errorf("unexpected status code %d: %s", resp.StatusCode, string(body))
-		}
-	}
-
-	logs.Log.Debugf("Status response body: %s", string(body))
-
+	headers := SaasHeaders(c.Token)
+	url := strings.TrimRight(c.BaseURL, "/") + statusPath
 	var result struct {
 		Success bool   `json:"success"`
 		Status  string `json:"status"`
 		Name    string `json:"name"`
-		ID      uint32 `json:"id"`
+		ID      string `json:"id"`
 	}
-	if err := json.Unmarshal(body, &result); err != nil {
-		var oldResult struct {
-			Status string `json:"status"`
-		}
-		if err := json.Unmarshal(body, &oldResult); err != nil {
-			return "", fmt.Errorf("failed to parse status response: %v, body: %s", err, string(body))
-		}
-		return oldResult.Status, nil
+	err := httputils.DoJSONRequest("GET", url, nil, headers, 200, &result)
+	if err != nil {
+		return "", err
 	}
-
 	return result.Status, nil
 }
 
-// DownloadArtifactWithBuilder 外部调用的构建产物下载函数（带Builder信息）
-func DownloadArtifactWithBuilder(downloadUrl string, token string, builder *models.Artifact) error {
-	if token == "" {
+// 下载构建产物
+func (c *SaasClient) DownloadArtifact(downloadPath string, builder *models.Artifact) error {
+	if c.Token == "" {
 		return fmt.Errorf("no token available for download")
 	}
-
-	client := &http.Client{Timeout: 60 * time.Second}
-	req, err := http.NewRequest("GET", downloadUrl, nil)
-	if err != nil {
-		return err
-	}
-	req.Header.Set("token", token)
-	resp, err := client.Do(req)
+	headers := SaasHeaders(c.Token)
+	url := strings.TrimRight(c.BaseURL, "/") + downloadPath
+	resp, err := httputils.DoRequest("GET", url, nil, headers)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode != 200 {
 		return fmt.Errorf("download failed with code: %d", resp.StatusCode)
 	}
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-
 	outputPath := fmt.Sprintf("%s/%s", configs.BuildOutputPath, encoders.UUID())
-	err = os.WriteFile(outputPath, body, 0644)
+	file, err := os.Create(outputPath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	_, err = io.Copy(file, resp.Body)
 	if err != nil {
 		return err
 	}
 
-	// 更新Builder的路径
 	builder.Path = outputPath
-	err = db.UpdateBuilderPath(builder)
+	return db.UpdateBuilderPath(builder)
+}
+
+// 轮询并下载产物
+func (c *SaasClient) CheckAndDownloadArtifact(statusPath, downloadPath string, builder *models.Artifact, pollInterval, maxPollTime time.Duration) DownloadResult {
+	var status string
+	pollErr := pollUntil(func() (bool, error) {
+		var err error
+		status, err = c.CheckBuildStatus(statusPath)
+		if err != nil {
+			logs.Log.Errorf("check build status failed: %v", err)
+			return false, nil // 继续轮询
+		}
+		if status == consts.BuildStatusFailure {
+			return false, fmt.Errorf("failed to build %s by saas", builder.Name)
+		}
+		return status == consts.BuildStatusCompleted, nil
+	}, pollInterval, maxPollTime)
+	if pollErr != nil {
+		return DownloadResult{"", consts.BuildStatusFailure, pollErr}
+	}
+	if err := c.DownloadArtifact(downloadPath, builder); err != nil {
+		logs.Log.Errorf("download artifact failed: %s", err)
+		return DownloadResult{"", consts.BuildStatusFailure, err}
+	}
+	return DownloadResult{builder.Path, consts.BuildStatusCompleted, nil}
+}
+
+// ================= 对外暴露的主流程函数 =================
+
+// 重新下发SaaS构建任务
+func ReDownloadSaasArtifact() error {
+	client := NewSaasClient()
+	if client.Token == "" || client.BaseURL == "" {
+		return nil
+	}
+	artifacts, err := db.GetArtifactWithSaas()
 	if err != nil {
 		return err
+	}
+	if len(artifacts) == 0 {
+		return nil
+	}
+	for _, artifact := range artifacts {
+		if artifact.Status == consts.BuildStatusCompleted || artifact.Status == consts.BuildStatusFailure {
+			continue
+		}
+		go func(art *models.Artifact) {
+			statusPath := "/api/build/status/" + art.Name
+			downloadPath := "/api/build/download/" + art.Name
+			result := client.CheckAndDownloadArtifact(statusPath, downloadPath, art, 30*time.Second, 30*time.Minute)
+			if result.Err != nil {
+				logs.Log.Errorf("ReDownloadSaasArtifact: artifact %s failed: %v", art.Name, result.Err)
+			}
+			if result.Status == consts.BuildStatusCompleted {
+				db.UpdateBuilderStatus(art.ID, result.Status)
+			}
+		}(artifact)
 	}
 	return nil
 }
 
+// 注册License
 func RegisterLicense() error {
+	// 1. 获取SaaS配置
 	saasConfig := configs.GetSaasConfig()
 	if saasConfig == nil {
 		return fmt.Errorf("failed to get SaaS config")
 	}
-
-	if saasConfig.Token != "" || !saasConfig.Enable {
+	// 2. 已有token或未启用SaaS则无需注册
+	if saasConfig.Token != "" {
+		return ReDownloadSaasArtifact()
+	}
+	if !saasConfig.Enable {
 		return nil
 	}
-
+	// 3. 构建注册数据
 	licenseData, err := buildLicenseData()
 	if err != nil {
 		return fmt.Errorf("failed to build license data: %v", err)
 	}
-
+	// 4. 注册license，获取token
 	token, err := sendLicenseRegistration(saasConfig.Url, licenseData)
 	if err != nil {
 		return fmt.Errorf("failed to register license: %v", err)
 	}
-
+	// 5. 保存token到配置
 	saasConfig.Token = token
 	if err := configs.UpdateSaasConfig(saasConfig); err != nil {
 		return fmt.Errorf("failed to update SaaS config: %v", err)
 	}
-
+	// 6. 打印注册成功日志
 	logs.Log.Infof("register saas success: %s", token)
+	// 7. 重新下发SaaS构建任务
 	return ReDownloadSaasArtifact()
 }
 
-// buildLicenseData
+// ================= 辅助/内部函数 =================
+
 func buildLicenseData() (*configs.LicenseRegistrationData, error) {
 	machineID := utils.GetMachineID()
 	if machineID == "" {
 		return nil, fmt.Errorf("failed to get machine ID")
 	}
-
 	return &configs.LicenseRegistrationData{
 		Username:   fmt.Sprintf("machine_%s", machineID),
 		Email:      "community@example.com",
@@ -237,45 +237,26 @@ func buildLicenseData() (*configs.LicenseRegistrationData, error) {
 	}, nil
 }
 
-// sendLicenseRegistration
 func sendLicenseRegistration(baseURL string, licenseData *configs.LicenseRegistrationData) (string, error) {
-	licenseURL := fmt.Sprintf("%s/api/license/", baseURL)
-
-	jsonData, err := json.Marshal(licenseData)
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal license data: %v", err)
-	}
-	req, err := http.NewRequest("POST", licenseURL, bytes.NewBuffer(jsonData))
-	if err != nil {
-		return "", fmt.Errorf("failed to create HTTP request: %v", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := http.DefaultClient.Do(req)
+	headers := map[string]string{}
+	var response configs.LicenseResponse
+	err := httputils.DoPOST(baseURL+"/api/license/", licenseData, headers, 200, &response)
 	if err != nil {
 		return "", fmt.Errorf("failed to send HTTP request: %v", err)
 	}
-	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("failed to read response body: %v", err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("HTTP request failed with status %d: %s", resp.StatusCode, string(body))
-	}
-
-	var response configs.LicenseResponse
-	if err := json.Unmarshal(body, &response); err != nil {
-		return "", fmt.Errorf("failed to parse response: %v", err)
-	}
-
 	if !response.Success {
-		return "", fmt.Errorf("license registration failed: %s", string(body))
+		return "", fmt.Errorf("license registration failed: %+v", response)
 	}
-
 	if response.License.Token == "" {
 		return "", fmt.Errorf("no token returned in response")
 	}
-
 	return response.License.Token, nil
+}
+
+// 对外导出：兼容外部包调用
+func CheckAndDownloadArtifact(statusPath, downloadPath, token string, builder *models.Artifact, pollInterval, maxPollTime time.Duration) (string, string, error) {
+	client := NewSaasClient()
+	client.Token = token
+	result := client.CheckAndDownloadArtifact(statusPath, downloadPath, builder, pollInterval, maxPollTime)
+	return result.Path, result.Status, result.Err
 }

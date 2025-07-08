@@ -177,8 +177,6 @@ func ModulesCmd(cmd *cobra.Command, con *repl.Console) error {
 	if thirdModules != "" {
 		profileParams.Enable3RD = true
 		profileParams.Modules = thirdModules
-	} else {
-		return errors.New("must specify either --modules or --3rd_modules. One of them is required")
 	}
 	buildConfig.ParamsBytes = []byte(profileParams.String())
 

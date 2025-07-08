@@ -84,6 +84,11 @@ func (event *Event) format() string {
 			return fmt.Sprintf("[%s] %s: rem %s on %s %s:%d", event.EventType, event.Op,
 				pipeline.Name, pipeline.ListenerId, pipeline.Ip, pipeline.GetRem().Port)
 		case *clientpb.Pipeline_Web:
+			if event.Op == consts.CtrlWebContentAddArtifact {
+				//return fmt.Sprintf("[%s] %s: web %s on %s %d, routePath is https://%s:%d%s", event.EventType, event.Op,
+				//	pipeline.ListenerId, pipeline.Name, pipeline.GetWeb().Port,
+				//	pipeline.Ip, pipeline.GetWeb().Port, pipeline.GetWeb().Root)
+			}
 			//if event.Op == consts.CtrlWebContentAdd {
 			//	var root = "/"
 			//	if pipeline.GetWeb().Root != "/" {

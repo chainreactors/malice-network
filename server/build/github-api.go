@@ -11,6 +11,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
+	"github.com/chainreactors/malice-network/helper/utils/httputils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
@@ -21,11 +22,6 @@ import (
 	"path/filepath"
 	"time"
 )
-
-// Define common HTTP client and API version
-var httpClient = &http.Client{
-	Timeout: 60 * time.Second,
-}
 
 var apiVersion = "2022-11-28"
 
@@ -97,74 +93,48 @@ type ArtifactsResponse struct {
 	Artifacts  []Artifact `json:"artifacts"`
 }
 
-// sendRequest sends request with JSON body and returns the response
-func sendRequest(url string, payload []byte, token string, reqType string) (*http.Response, error) {
-	var req *http.Request
-	var err error
-	if len(payload) > 0 {
-		req, err = http.NewRequest(reqType, url, bytes.NewBuffer(payload))
-	} else {
-		req, err = http.NewRequest(reqType, url, nil)
+// 统一GitHub API请求头
+func githubHeaders(token string) map[string]string {
+	return map[string]string{
+		"Accept":               "application/vnd.github+json",
+		"Authorization":        "Bearer " + token,
+		"X-GitHub-Api-Version": apiVersion,
 	}
-	if err != nil {
-		return nil, fmt.Errorf("failed to create POST request: %v", err)
-	}
-	req.Header.Set("Accept", "application/vnd.github+json")
-	req.Header.Set("Authorization", "Bearer "+token)
-	req.Header.Set("X-GitHub-Api-Version", apiVersion)
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to send request: %v", err)
-	}
-	return resp, nil
 }
 
 func GetWorkflowStatus(config *clientpb.GithubWorkflowConfig) error {
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/actions/workflows/%s", config.Owner, config.Repo, config.WorkflowId)
-	resp, err := sendRequest(url, []byte{}, config.Token, "GET")
-	if err != nil {
-		return fmt.Errorf("failed to send request to workflow URL: %v", err)
-	}
-	defer resp.Body.Close()
-
-	// Check for successful response
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to get workflow details, status code: %d", resp.StatusCode)
-	}
-
+	headers := githubHeaders(config.Token)
 	var workflow Workflow
-	if err := json.NewDecoder(resp.Body).Decode(&workflow); err != nil {
-		return fmt.Errorf("failed to parse workflow details: %v", err)
+	err := httputils.DoGET(url, headers, &workflow)
+	if err != nil {
+		return fmt.Errorf("failed to get workflow details: %v", err)
 	}
 	if workflow.State != "active" {
 		return errs.ErrorDockerNotActive
 	}
-
 	return nil
 }
 
 func runWorkFlow(owner, repo, workflowID, token string, inputs map[string]string) error {
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/actions/workflows/%s/dispatches", owner, repo, workflowID)
+	headers := githubHeaders(token)
 	payload := WorkflowDispatchPayload{
 		Ref:    "master",
 		Inputs: inputs,
 	}
-	body, err := json.Marshal(payload)
+	payloadByte, err := json.Marshal(payload)
 	if err != nil {
-		return fmt.Errorf("failed to serialize payload for Build: %v", err)
+		return fmt.Errorf("failed to marshal payload: %s", err)
 	}
-	resp, err := sendRequest(url, body, token, "POST")
+	resp, err := httputils.DoRequest("POST", url, bytes.NewBuffer(payloadByte), headers)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
-
-	// Check the response
 	if resp.StatusCode != http.StatusNoContent {
 		return fmt.Errorf("failed to trigger Build workflow. Status code: %d", resp.StatusCode)
 	}
-
 	logs.Log.Info("Build workflow triggered successfully!")
 	return nil
 }
@@ -201,19 +171,13 @@ var notifiedWorkflows = make(map[string]bool)
 // 获取仓库所有workflow运行
 func listRepositoryWorkflows(owner, repo, token string) ([]Workflow, error) {
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/actions/runs", owner, repo)
-	resp, err := sendRequest(url, nil, token, "GET")
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to list workflows, status: %d", resp.StatusCode)
-	}
+	headers := githubHeaders(token)
 	var result struct {
 		TotalCount int        `json:"total_count"`
 		Workflows  []Workflow `json:"workflow_runs"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	err := httputils.DoGET(url, headers, &result)
+	if err != nil {
 		return nil, err
 	}
 	return result.Workflows, nil
@@ -254,17 +218,13 @@ func getArtifactDownloadURL(owner, repo, token, buildName string) (string, int64
 		}
 		return "", 0, fmt.Errorf("workflow %s not completed or not successful", buildName)
 	}
-	// 获取artifact列表
-	resp, err := sendRequest(wf.ArtifactsURL, nil, token, "GET")
-	if err != nil {
-		return "", 0, err
-	}
-	defer resp.Body.Close()
+	headers := githubHeaders(token)
 	var artifactsResp struct {
 		TotalCount int        `json:"total_count"`
 		Artifacts  []Artifact `json:"artifacts"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&artifactsResp); err != nil {
+	err = httputils.DoGET(wf.ArtifactsURL, headers, &artifactsResp)
+	if err != nil {
 		return "", 0, err
 	}
 	if len(artifactsResp.Artifacts) == 0 {
@@ -275,7 +235,8 @@ func getArtifactDownloadURL(owner, repo, token, buildName string) (string, int64
 
 // 下载artifact文件
 func downloadArtifactFile(url, token string) ([]byte, error) {
-	resp, err := sendRequest(url, nil, token, "GET")
+	headers := githubHeaders(token)
+	resp, err := httputils.DoRequest("GET", url, nil, headers)
 	if err != nil {
 		return nil, err
 	}
@@ -289,7 +250,8 @@ func downloadArtifactFile(url, token string) ([]byte, error) {
 // 删除成功workflow
 func DeleteSuccessWorkflow(owner, repo, token string, workflowID int64) error {
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/actions/runs/%d", owner, repo, workflowID)
-	resp, err := sendRequest(url, nil, token, "DELETE")
+	headers := githubHeaders(token)
+	resp, err := httputils.DoRequest("DELETE", url, nil, headers)
 	if err != nil {
 		return err
 	}
@@ -353,4 +315,10 @@ func GetActionStatus(owner, repo, token, artifactName string) (string, string, e
 		return "", "", err
 	}
 	return wf.Status, wf.Conclusion, nil
+}
+
+// 辅助函数
+func mustJSON(v interface{}) []byte {
+	b, _ := json.Marshal(v)
+	return b
 }
