@@ -11,7 +11,7 @@ import (
 )
 
 func (rpc *Server) GenerateSelfCert(ctx context.Context, req *clientpb.Pipeline) (*clientpb.Empty, error) {
-	if req.Name != "" {
+	if req.Name != "" && req.Tls.Cert == nil {
 		certModel, err := db.FindPipelineCert(req.Name, req.ListenerId)
 		if err != nil {
 			return nil, err

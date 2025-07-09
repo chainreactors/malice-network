@@ -269,43 +269,44 @@ func (t *TlsConfig) ToPkix() *pkix.Name {
 }
 
 func (t *TlsConfig) ReadCert() (*types.TlsConfig, error) {
+	// 处理nil情况
 	if t == nil {
-		return &types.TlsConfig{
-			Enable: false,
-		}, nil
+		return &types.TlsConfig{Enable: false}, nil
 	}
-	if t.CertFile != "" && t.KeyFile != "" && t.CAFile != "" {
-		cert, err := os.ReadFile(t.CertFile)
-		if err != nil {
-			return nil, err
-		}
-		key, err := os.ReadFile(t.KeyFile)
-		if err != nil {
-			return nil, err
-		}
+	// 创建基础TLS配置
+	tls := &types.TlsConfig{
+		Enable:  t.Enable,
+		Subject: t.ToPkix(),
+	}
+	// 如果没有证书文件，直接返回基础配置
+	if t.CertFile == "" || t.KeyFile == "" {
+		return tls, nil
+	}
+	// 读取证书文件
+	cert, err := os.ReadFile(t.CertFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read cert file: %s", err)
+	}
+	key, err := os.ReadFile(t.KeyFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read key file: %s", err)
+	}
+	// 设置证书配置
+	tls.Cert = &types.CertConfig{
+		Cert: string(cert),
+		Key:  string(key),
+	}
+	// 读取CA证书（如果存在）
+	if t.CAFile != "" {
 		caCert, err := os.ReadFile(t.CAFile)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to read CA file: %s", err)
 		}
-		return &types.TlsConfig{
-			Cert: &types.CertConfig{
-				Cert: string(cert),
-				Key:  string(key),
-			},
-			CA: &types.CertConfig{
-				Cert: string(caCert),
-			},
-			Enable: t.Enable,
-			//Acme:   t.Acme,
-			//Domain: t.Domain,
-		}, nil
+		tls.CA = &types.CertConfig{
+			Cert: string(caCert),
+		}
 	}
-	return &types.TlsConfig{
-		Enable: t.Enable,
-		//Acme:    t.Acme,
-		//Domain:  t.Domain,
-		Subject: t.ToPkix(),
-	}, nil
+	return tls, nil
 }
 
 func NewCrypto(es []*clientpb.Encryption) ([]cryptostream.Cryptor, error) {
