@@ -2,7 +2,6 @@ package configs
 
 import (
 	"crypto/x509/pkix"
-	"encoding/json"
 	"fmt"
 	"os"
 
@@ -123,15 +122,11 @@ func (http *HttpPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, er
 	}
 
 	// 序列化额外参数
-	params := types.PipelineParams{
+	params := &types.PipelineParams{
 		Headers:    http.Headers,
 		ErrorPage:  errorPageContent,
 		BodyPrefix: http.BodyPrefix,
 		BodySuffix: http.BodySuffix,
-	}
-	paramsJson, err := json.Marshal(params)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal pipeline params: %v", err)
 	}
 
 	return &clientpb.Pipeline{
@@ -144,7 +139,7 @@ func (http *HttpPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, er
 			Http: &clientpb.HTTPPipeline{
 				Host:   http.Host,
 				Port:   uint32(http.Port),
-				Params: string(paramsJson),
+				Params: params.String(),
 			},
 		},
 		Tls:        tls.ToProtobuf(),

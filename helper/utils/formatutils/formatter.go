@@ -475,11 +475,23 @@ func CurlRemoteUsage(url string) string {
 	return fmt.Sprintf(template, url)
 }
 
-func Encode(name, format string) string {
-	encryptArtifactName, _ := cryptography.EncryptWithGlobalKey([]byte(name))
-	hexEncryptArtifactName := cryptography.BytesToHex(encryptArtifactName)
+func Encode(s string) string {
+	encryptArtifactName, _ := cryptography.EncryptWithGlobalKey([]byte(s))
+	return cryptography.BytesToHex(encryptArtifactName)
+}
 
-	encryptFormat, _ := cryptography.EncryptWithGlobalKey([]byte(format))
-	hexEncryptFormat := cryptography.BytesToHex(encryptFormat)
-	return hexEncryptArtifactName + "/" + hexEncryptFormat
+func EncodeFormat(name, format string) string {
+	return Encode(name) + "/" + Encode(format)
+}
+
+func Decode(encode string) (string, error) {
+	encrypted, err := cryptography.HexToBytes(encode)
+	if err != nil {
+		return "", err
+	}
+	decrypt, err := cryptography.DecryptWithGlobalKey(encrypted)
+	if err != nil {
+		return "", err
+	}
+	return string(decrypt), nil
 }

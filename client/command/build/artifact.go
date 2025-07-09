@@ -2,9 +2,9 @@ package build
 
 import (
 	"errors"
-	"fmt"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
 	"time"
@@ -199,8 +199,7 @@ func DownloadArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
 				}
 			}
 
-			url := fmt.Sprintf("%s/%s", pipe.URL(), formatutils.Encode(artifact.Name, format))
-			usage := formatutils.SupportedFormats[format].Usage(url)
+			usage := formatutils.SupportedFormats[format].Usage(path.Join(pipe.URL(), formatutils.EncodeFormat(artifact.Name, format)))
 			con.Log.Infof("you can use this payload to run:\n--------\n%s\n--------\n", usage)
 		} else {
 			var fileExt string

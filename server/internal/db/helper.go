@@ -925,16 +925,6 @@ func UpdateBuilderPath(builder *models.Artifact) error {
 		Error
 }
 
-func UpdateBuilderSrdi(builder *models.Artifact) error {
-	if Session() == nil {
-		return nil
-	}
-	return Session().Model(builder).
-		Select("is_srdi", "shellcode_path").
-		Updates(builder).
-		Error
-}
-
 func UpdatePulseRelink(pusleID, beanconID uint32) error {
 	pulse, err := GetArtifactById(pusleID)
 	if err != nil {

@@ -2,6 +2,7 @@ package types
 
 import (
 	"crypto/x509/pkix"
+	"encoding/json"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/utils"
 	"math/rand"
@@ -158,4 +159,24 @@ type PipelineParams struct {
 	ErrorPage  string              `json:"error_page,omitempty" gorm:"-"`
 	BodyPrefix string              `json:"body_prefix,omitempty"`
 	BodySuffix string              `json:"body_suffix,omitempty"`
+}
+
+func (params *PipelineParams) String() string {
+	content, err := json.Marshal(params)
+	if err != nil {
+		return ""
+	}
+	return string(content)
+}
+
+func UnmarshalPipelineParams(params string) (*PipelineParams, error) {
+	if len(params) == 0 {
+		return &PipelineParams{}, nil
+	}
+	var p *PipelineParams
+	err := json.Unmarshal([]byte(params), &p)
+	if err != nil {
+		return p, err
+	}
+	return p, nil
 }

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/chainreactors/malice-network/helper/utils"
+	"github.com/chainreactors/malice-network/helper/utils/formatutils"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"os"
@@ -286,11 +287,6 @@ func (lns *listener) Handler() {
 			status.Status = consts.CtrlStatusSuccess
 			logs.Log.Importantf("[listener.%s] job ctrl %d %s %s success", lns.ID(), msg.Id, msg.Job.Name, msg.Ctrl)
 		}
-		if msg.Ctrl == consts.CtrlWebContentAddArtifact {
-			status.Job.Contents = map[string]*clientpb.WebContent{
-				status.Job.Pipeline.ListenerId: msg.Content,
-			}
-		}
 		if err := stream.Send(status); err != nil {
 			logs.Log.Errorf(err.Error())
 			return
@@ -489,9 +485,18 @@ func (lns *listener) handleAmountArtifact(job *clientpb.JobCtrl) error {
 	if w == nil {
 		return errors.New("website not found")
 	}
-	err := w.AddArtifactContent(job.Content)
-	if err != nil {
-		return err
+
+	en := formatutils.Encode(job.Content.Path)
+
+	w.Artifact[en] = &clientpb.WebContent{
+		Path: job.Content.Path,
+	}
+
+	job.Job.Contents = map[string]*clientpb.WebContent{
+		job.Content.Path: &clientpb.WebContent{
+			Id:   job.Content.Path,
+			Path: en,
+		},
 	}
 	return nil
 }

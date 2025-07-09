@@ -1,7 +1,6 @@
 package pipeline
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/repl"
@@ -52,12 +51,6 @@ func NewHttpPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 		BodySuffix: bodySuffix,
 	}
 
-	// 序列化参数
-	paramsJson, err := json.Marshal(params)
-	if err != nil {
-		return err
-	}
-
 	// 注册pipeline
 	_, err = con.Rpc.RegisterPipeline(con.Context(), &clientpb.Pipeline{
 		Encryption: encryption,
@@ -72,7 +65,7 @@ func NewHttpPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 				Name:   name,
 				Host:   host,
 				Port:   port,
-				Params: string(paramsJson),
+				Params: params.String(),
 				Proxy:  proxy,
 			},
 		},

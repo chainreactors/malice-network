@@ -5,13 +5,14 @@ import (
 	"errors"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/utils/formatutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"os"
+	"path"
 	"path/filepath"
 )
 
@@ -174,27 +175,16 @@ func (rpc *Server) StartWebsite(ctx context.Context, req *clientpb.CtrlPipeline)
 		return &clientpb.Empty{}, nil
 	}
 	for _, artifact := range artifacts {
-		encrypt, err := cryptography.EncryptWithGlobalKey([]byte(artifact.Name))
-		if err != nil {
-			logs.Log.Errorf("failed to encrypt: %s", err)
-			return &clientpb.Empty{}, nil
-		}
-		hexEncrypt := cryptography.BytesToHex(encrypt)
 		listener.PushCtrl(&clientpb.JobCtrl{
 			Ctrl: consts.CtrlWebContentAddArtifact,
 			Job: &clientpb.Job{
 				Pipeline: webpb,
 			},
 			Content: &clientpb.WebContent{
-				Path: hexEncrypt,
+				Path: artifact.Name,
 			},
 		})
-		if webpb.Tls.Enable {
-			logs.Log.Infof("artifact %s amounts at https://%s:%d%s%s", artifact.Name, listener.IP, webpb.GetWeb().Port, webpb.GetWeb().Root, hexEncrypt)
-		} else {
-			logs.Log.Infof("artifact %s amounts at http://%s:%d%s%s", artifact.Name, listener.IP, webpb.GetWeb().Port, webpb.GetWeb().Root, hexEncrypt)
-
-		}
+		logs.Log.Infof("artifact %s amounts at %s", artifact.Name, path.Join(webpb.URL(), formatutils.Encode(artifact.Name)))
 	}
 	return &clientpb.Empty{}, nil
 }

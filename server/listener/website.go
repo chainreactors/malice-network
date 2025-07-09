@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/chainreactors/malice-network/helper/utils/formatutils"
 	"net"
 	"net/http"
 	"os"
@@ -11,7 +12,6 @@ import (
 
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
@@ -155,17 +155,13 @@ func (w *Website) websiteContentHandler(resp http.ResponseWriter, req *http.Requ
 	}
 	_, ok := w.Artifact[artifactName]
 	if ok {
-		name, err := decodePath(artifactName)
+		name, err := formatutils.Decode(artifactName)
 		if err != nil {
 			logs.Log.Errorf("failed to decode: %s", err)
 			return
 		}
 
-		format, err := decodePath(formatted)
-		if err != nil {
-			logs.Log.Errorf("failed to decode: %s", err)
-			return
-		}
+		format, _ := formatutils.Decode(formatted)
 
 		artifact, err := w.rpc.FindArtifact(context.Background(), &clientpb.Artifact{
 			Name:   name,
@@ -221,25 +217,4 @@ func (w *Website) acmeChallengeHandler(resp http.ResponseWriter, req *http.Reque
 		return
 	}
 	certutils.GetACMEManager().GetManager().HTTPHandler(nil)
-}
-
-func (w *Website) AddArtifactContent(content *clientpb.WebContent) error {
-	contentPath := filepath.Join(configs.WebsitePath, content.WebsiteId, content.Id)
-	w.Artifact[strings.Trim(content.Path, "/")] = &clientpb.WebContent{
-		Path: content.Path,
-		File: contentPath,
-	}
-	return nil
-}
-
-func decodePath(input string) (string, error) {
-	encrypted, err := cryptography.HexToBytes(input)
-	if err != nil {
-		return "", err
-	}
-	decrypt, err := cryptography.DecryptWithGlobalKey(encrypted)
-	if err != nil {
-		return "", err
-	}
-	return string(decrypt), nil
 }

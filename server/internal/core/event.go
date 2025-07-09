@@ -14,7 +14,6 @@ import (
 	"github.com/nikoksr/notify/service/lark"
 	"github.com/nikoksr/notify/service/telegram"
 	"net/url"
-	"path"
 	"strings"
 	"sync"
 )
@@ -89,30 +88,22 @@ func (event *Event) format() string {
 			baseURL := pipeline.URL()
 			web := pipeline.GetWeb()
 			if event.Op == consts.CtrlWebContentAddArtifact {
-				routePath := path.Join(web.Root, event.Job.Contents[pipeline.ListenerId].Path)
-				if strings.HasPrefix(routePath, "/") {
-					routePath = routePath[1:]
+				if cont := event.Job.FirstContent(); cont != nil {
+					return fmt.Sprintf("[%s] %s: artifact %s amount at %s", event.EventType, event.Op,
+						cont.Id, baseURL+cont.Path)
 				}
-				return fmt.Sprintf("[%s] %s: artifact amount at %s/%s", event.EventType, event.Op,
-					baseURL, routePath)
+
 			} else if event.Op == consts.CtrlWebContentAdd {
 				var result string
 				for _, content := range web.Contents {
-					routePath := path.Join(web.Root, content.Path)
-					if strings.HasPrefix(routePath, "/") {
-						routePath = routePath[1:]
-					}
-					result += fmt.Sprintf("[%s] %s: content add success, routePath is %s/%s\n",
-						event.EventType, event.Op, baseURL, routePath)
+					result += fmt.Sprintf("[%s] %s: content add success, path: %s\n",
+						event.EventType, event.Op, baseURL+content.Path)
 				}
 				return strings.TrimSuffix(result, "\n")
 			}
-			routePath := web.Root
-			if !strings.HasPrefix(routePath, "/") {
-				routePath = "/" + routePath
-			}
-			return fmt.Sprintf("[%s] %s: web %s on %s %d, routePath is %s%s", event.EventType, event.Op,
-				pipeline.ListenerId, pipeline.Name, web.Port, baseURL, routePath)
+
+			return fmt.Sprintf("[%s] %s: web %s on %s %d, path: %s", event.EventType, event.Op,
+				pipeline.ListenerId, pipeline.Name, web.Port, baseURL)
 		}
 	}
 	return event.Message

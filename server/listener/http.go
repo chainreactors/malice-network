@@ -3,7 +3,6 @@ package listener
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -28,12 +27,9 @@ import (
 func NewHttpPipeline(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeline) (*HTTPPipeline, error) {
 	http := pipeline.GetHttp()
 
-	// 解析额外参数
-	var params types.PipelineParams
-	if http.Params != "" {
-		if err := json.Unmarshal([]byte(http.Params), &params); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal pipeline params: %v", err)
-		}
+	params, err := types.UnmarshalPipelineParams(http.Params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal pipeline params: %v", err)
 	}
 
 	pp := &HTTPPipeline{
