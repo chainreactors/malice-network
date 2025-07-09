@@ -239,14 +239,14 @@ type TlsConfig struct {
 	CAFile   string `config:"ca_file"`
 	//Acme     bool   `config:"acme"`
 	//Domain   string `config:"domain"`
-	Name     string `config:"name"`
-	CN       string `config:"CN"`
-	O        string `config:"O"`
-	C        string `config:"C"`
-	L        string `config:"L"`
-	OU       string `config:"OU"`
-	ST       string `config:"ST"`
-	Validity string `config:"validity"`
+	//Name     string `config:"name"`
+	CN string `config:"CN"`
+	O  string `config:"O"`
+	C  string `config:"C"`
+	L  string `config:"L"`
+	OU string `config:"OU"`
+	ST string `config:"ST"`
+	//Validity string `config:"validity"`
 }
 
 func (t *TlsConfig) ToPkix() *pkix.Name {

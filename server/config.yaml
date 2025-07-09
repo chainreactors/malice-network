@@ -19,6 +19,7 @@ server:
     workflow: generate.yml
     owner:
     token:
+    workflow: generate.yaml
   saas:
     enable: true
     url: https://build.chainreactors.red

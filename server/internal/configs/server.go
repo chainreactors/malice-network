@@ -154,7 +154,7 @@ type GithubConfig struct {
 	Repo     string `config:"repo" default:"malefic"`
 	Owner    string `config:"owner" default:""`
 	Token    string `config:"token" default:""`
-	Workflow string `config:"workflow" default:"generate.yml"`
+	Workflow string `config:"workflow" default:"generate.yaml"`
 }
 
 func (g *GithubConfig) ToProtobuf() *clientpb.GithubWorkflowConfig {
