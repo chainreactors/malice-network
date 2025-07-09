@@ -1060,12 +1060,17 @@ func FindArtifact(target *clientpb.Artifact) (*clientpb.Artifact, error) {
 }
 
 func FindArtifactFromPipeline(pipelineName string) (*models.Artifact, error) {
-	var artifact *models.Artifact
-	result := Session().Where("pipeline_name = ? && type = ?", pipelineName, consts.CommandBuildBeacon).First(&artifact)
+	var artifacts []*models.Artifact
+	result := Session().Preload("Profile").Where(" type = ?", consts.CommandBuildBeacon).Find(&artifacts)
 	if result.Error != nil {
 		return nil, result.Error
 	}
-	return artifact, nil
+	for _, artifact := range artifacts {
+		if artifact.Profile.PipelineID == pipelineName {
+			return artifact, nil
+		}
+	}
+	return nil, ErrRecordNotFound
 }
 
 func GetArtifact(req *clientpb.Artifact) (*models.Artifact, error) {
