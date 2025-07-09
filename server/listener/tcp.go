@@ -2,6 +2,7 @@ package listener
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
@@ -127,45 +128,64 @@ func (pipeline *TCPPipeline) handler() (net.Listener, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// 如果启用了 TLS，使用 cmux 实现 TLS 和非 TLS 的端口复用
 	if pipeline.TLSConfig != nil && pipeline.TLSConfig.Enable {
-		ln, err = certutils.WrapWithTls(ln, pipeline.TLSConfig.Cert)
+		return pipeline.handleWithCmux(ln)
+	}
+
+	// 非 TLS 模式，使用原有逻辑
+	go pipeline.startAcceptLoop(ln, "tcp pipeline")
+	return ln, nil
+}
+
+// handleWithCmux 使用 cmux 实现 TLS 和非 TLS 的端口复用
+func (pipeline *TCPPipeline) handleWithCmux(ln net.Listener) (net.Listener, error) {
+	var tlsConfig *tls.Config
+	if pipeline.TLSConfig.Cert != nil {
+		var err error
+		tlsConfig, err = certutils.GetTlsConfig(pipeline.TLSConfig.Cert)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	go func() {
-		defer logs.Log.Errorf("tcp pipeline exit!!!")
-		for {
-			conn, err := ln.Accept()
-			if err != nil {
-				logs.Log.Errorf("Accept failed: %v", err)
-				if !pipeline.Enable {
-					logs.Log.Importantf("%s already disable, break accept", ln.Addr().String())
-					return
-				} else {
-					continue
-				}
+	return StartCmuxTCPListener(ln, tlsConfig, pipeline.HandleConnection)
+}
+
+// startAcceptLoop 启动连接接受循环 (用于非 cmux 模式)
+func (pipeline *TCPPipeline) startAcceptLoop(ln net.Listener, logPrefix string) {
+	defer logs.Log.Errorf("%s exit!!!", logPrefix)
+	for {
+		conn, err := ln.Accept()
+		if err != nil {
+			logs.Log.Errorf("Accept failed: %v", err)
+			if !pipeline.Enable {
+				logs.Log.Importantf("%s already disable, break accept", ln.Addr().String())
+				return
+			} else {
+				continue
 			}
-
-			go func() {
-				peekConn, err := pipeline.WrapConn(conn)
-				if err != nil {
-					logs.Log.Errorf("wrap conn error: %v", err)
-					return
-				}
-
-				logs.Log.Debugf("[pipeline.%s] accept from %s", pipeline.Name, conn.RemoteAddr())
-				switch peekConn.Parser.Implant {
-				case consts.ImplantMalefic:
-					pipeline.handleBeacon(peekConn)
-				case consts.ImplantPulse:
-					pipeline.handlePulse(peekConn)
-				}
-			}()
 		}
-	}()
-	return ln, nil
+		go pipeline.HandleConnection(conn)
+	}
+}
+
+// HandleConnection 处理单个连接
+func (pipeline *TCPPipeline) HandleConnection(conn net.Conn) {
+	peekConn, err := pipeline.WrapConn(conn)
+	if err != nil {
+		logs.Log.Errorf("wrap conn error: %v", err)
+		return
+	}
+
+	logs.Log.Debugf("[pipeline.%s] accept from %s", pipeline.Name, conn.RemoteAddr())
+	switch peekConn.Parser.Implant {
+	case consts.ImplantMalefic:
+		pipeline.handleBeacon(peekConn)
+	case consts.ImplantPulse:
+		pipeline.handlePulse(peekConn)
+	}
 }
 
 func (pipeline *TCPPipeline) handlePulse(conn *cryptostream.Conn) {

@@ -4,6 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
+	"net/http"
+	"os"
+	"path/filepath"
+
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/cryptography"
@@ -15,15 +20,12 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
-	"net/http"
-	"os"
-	"path/filepath"
 	"strings"
 )
 
 type Website struct {
 	port     int
-	server   *http.Server
+	server   net.Listener
 	rpc      listenerrpc.ListenerRPCClient
 	rootPath string
 	Name     string
@@ -67,26 +69,21 @@ func (w *Website) Start() error {
 	mux := http.NewServeMux()
 	mux.HandleFunc(certutils.ACMERootPath, w.acmeChallengeHandler)
 	mux.HandleFunc(w.rootPath, w.websiteContentHandler)
+
+	ln, err := net.Listen("tcp", fmt.Sprintf(":%d", w.port))
+	if err != nil {
+		return err
+	}
+	// 如果启用了 TLS，使用 cmux 实现 TLS 和非 TLS 的端口复用
 	if w.TLSConfig != nil && w.TLSConfig.Enable && w.TLSConfig.Cert != nil {
-		tlsConfig, err := certutils.GetTlsConfig(w.TLSConfig.Cert)
+		err := w.startWithCmux(ln, mux)
 		if err != nil {
 			return err
 		}
-		w.server = &http.Server{Addr: fmt.Sprintf("0.0.0.0:%d", w.port),
-			TLSConfig: tlsConfig,
-			Handler:   mux,
-		}
-		go func() {
-			if err = w.server.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
-				logs.Log.Errorf("HTTP Server failed to start: %v", err)
-			}
-		}()
 	} else {
-		w.server = &http.Server{Addr: fmt.Sprintf("0.0.0.0:%d", w.port),
-			Handler: mux,
-		}
+		server := NewHTTPServer(mux)
 		go func() {
-			if err := w.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			if err := server.Serve(ln); err != nil && err != http.ErrServerClosed {
 				logs.Log.Errorf("HTTP Server failed to start: %v", err)
 			}
 		}()
@@ -96,10 +93,29 @@ func (w *Website) Start() error {
 	return nil
 }
 
+// startWithCmux 使用 cmux 实现 Website TLS 和非 TLS 的端口复用
+func (w *Website) startWithCmux(ln net.Listener, mux *http.ServeMux) error {
+	// 获取 TLS 配置
+	tlsConfig, err := certutils.GetTlsConfig(w.TLSConfig.Cert)
+	if err != nil {
+		return err
+	}
+
+	_, err = StartCmuxHTTPListener(ln, tlsConfig, mux)
+	if err != nil {
+		return err
+	}
+
+	// 保存服务器引用用于关闭
+	w.server = ln
+
+	return nil
+}
+
 func (w *Website) Close() error {
 	if w.server != nil {
 		logs.Log.Importantf("Stopping server")
-		err := w.server.Shutdown(nil)
+		err := w.server.Close()
 		if err != nil {
 			return err
 		}

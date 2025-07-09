@@ -5,6 +5,7 @@ go 1.20
 require (
 	filippo.io/age v1.1.1
 	github.com/carapace-sh/carapace v1.7.1
+	github.com/chainreactors/files v0.0.0-20240716182835-7884ee1e77f0
 	github.com/chainreactors/logs v0.0.0-20250312104344-9f30fa69d3c9
 	github.com/chainreactors/mals v0.0.0-20250508145621-0314ec3ee14a
 	github.com/chainreactors/parsers v0.0.0-20250225073555-ab576124d61f
@@ -66,7 +67,6 @@ require (
 	github.com/blinkbean/dingtalk v1.1.3 // indirect
 	github.com/carapace-sh/carapace-shlex v1.0.1 // indirect
 	github.com/cbroglie/mustache v1.4.0 // indirect
-	github.com/chainreactors/files v0.0.0-20240716182835-7884ee1e77f0 // indirect
 	github.com/chainreactors/fingers v0.0.0-20240702104653-a66e34aa41df // indirect
 	github.com/chainreactors/go-metrics v0.0.0-20220926021830-24787b7a10f8 // indirect
 	github.com/chainreactors/proxyclient v1.0.2 // indirect
@@ -129,6 +129,7 @@ require (
 	github.com/sahilm/fuzzy v0.1.1-0.20230530133925-c48e322e2a8f // indirect
 	github.com/secDre4mer/pkcs7 v0.0.0-20240322103146-665324a4461d // indirect
 	github.com/shadowsocks/go-shadowsocks2 v0.1.5 // indirect
+	github.com/soheilhy/cmux v0.1.5 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/stretchr/testify v1.10.0 // indirect
 	github.com/technoweenie/multipartstreamer v1.0.1 // indirect

@@ -53,7 +53,7 @@ func NewHttpPipeline(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipel
 }
 
 type HTTPPipeline struct {
-	srv            *http.Server
+	srv            net.Listener
 	rpc            listenerrpc.ListenerRPCClient
 	Name           string
 	Port           uint16
@@ -129,28 +129,25 @@ func (pipeline *HTTPPipeline) Start() error {
 		}
 	}()
 
+	ln, err := net.Listen("tcp", fmt.Sprintf("%s:%d", pipeline.Host, pipeline.Port))
+	if err != nil {
+		return err
+	}
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", pipeline.handler)
 
-	pipeline.srv = &http.Server{
-		Addr:    fmt.Sprintf("%s:%d", pipeline.Host, pipeline.Port),
-		Handler: mux,
-	}
-
 	if pipeline.TLSConfig != nil && pipeline.TLSConfig.Enable && pipeline.TLSConfig.Cert != nil {
-		tlsConfig, err := certutils.GetTlsConfig(pipeline.TLSConfig.Cert)
+		err := pipeline.startWithCmux(ln, mux)
 		if err != nil {
 			return err
 		}
-		pipeline.srv.TLSConfig = tlsConfig
-		go func() {
-			if err := pipeline.srv.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
-				logs.Log.Errorf("HTTPS server error: %v", err)
-			}
-		}()
 	} else {
+		// 非 TLS 模式，使用原有逻辑
+		pipeline.srv = ln
+		server := NewHTTPServer(mux)
 		go func() {
-			if err := pipeline.srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			if err := server.Serve(ln); err != nil && err != http.ErrServerClosed {
 				logs.Log.Errorf("HTTP server error: %v", err)
 			}
 		}()
@@ -159,6 +156,25 @@ func (pipeline *HTTPPipeline) Start() error {
 	logs.Log.Infof("[pipeline] starting HTTP pipeline on %s:%d, parser: %s, tls: %t",
 		pipeline.Host, pipeline.Port, pipeline.Parser, pipeline.TLSConfig.Enable)
 	pipeline.Enable = true
+	return nil
+}
+
+// startWithCmux 使用 cmux 实现 HTTP TLS 和非 TLS 的端口复用
+func (pipeline *HTTPPipeline) startWithCmux(ln net.Listener, mux *http.ServeMux) error {
+	// 获取 TLS 配置
+	tlsConfig, err := certutils.GetTlsConfig(pipeline.TLSConfig.Cert)
+	if err != nil {
+		return err
+	}
+
+	_, err = StartCmuxHTTPListener(ln, tlsConfig, mux)
+	if err != nil {
+		return err
+	}
+
+	// 保存服务器引用用于关闭
+	pipeline.srv = ln
+
 	return nil
 }
 
