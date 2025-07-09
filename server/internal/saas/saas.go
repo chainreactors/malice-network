@@ -179,7 +179,7 @@ func ReDownloadSaasArtifact() error {
 			if result.Err != nil {
 				logs.Log.Errorf("ReDownloadSaasArtifact: artifact %s failed: %v", art.Name, result.Err)
 			}
-			if result.Status == consts.BuildStatusCompleted {
+			if result.Status == consts.BuildStatusCompleted || result.Status == consts.BuildStatusFailure {
 				db.UpdateBuilderStatus(art.ID, result.Status)
 			}
 		}(artifact)

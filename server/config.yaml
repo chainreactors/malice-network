@@ -21,7 +21,7 @@ server:
     token:
   saas:
     enable: true
-    url: http://build.chainreactors.red
+    url: https://build.chainreactors.red
     token:
 
 listeners:
