@@ -90,7 +90,6 @@ func NewEmbedPlugin(malPath, malName string, level MalLevel) (*EmbedPlugin, erro
 	// 创建LuaPlugin
 	luaPlugin := &LuaPlugin{
 		DefaultPlugin: defaultPlugin,
-		vmFns:         make(map[string]lua.LGFunction),
 	}
 
 	// 创建嵌入式插件
@@ -110,7 +109,7 @@ func (plug *EmbedPlugin) Run() error {
 	if err != nil {
 		return err
 	}
-	plug.registerLuaFunction()
+	plug.RegisterLuaFunction()
 	plug.setContext = func(vm *lua.LState) error {
 		return plug.addEmbedLoader(vm)
 	}

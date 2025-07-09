@@ -12,8 +12,11 @@ import (
 )
 
 var (
-	globalMalManager *MalManager
-	managerOnce      sync.Once
+	globalMalManager *MalManager = &MalManager{
+		embeddedPlugins: make(map[string]*EmbedPlugin),
+		externalPlugins: make(map[string]Plugin),
+		globalPlugins:   make([]*DefaultPlugin, 0),
+		loadedCommands:  make(Commands)}
 )
 
 // MalManager 统一的mal插件管理器，分别管理嵌入式和外部插件
@@ -28,16 +31,9 @@ type MalManager struct {
 
 // GetGlobalMalManager 获取全局mal管理器（单例）
 func GetGlobalMalManager() *MalManager {
-	managerOnce.Do(func() {
-		globalMalManager = &MalManager{
-			embeddedPlugins: make(map[string]*EmbedPlugin),
-			externalPlugins: make(map[string]Plugin),
-			globalPlugins:   make([]*DefaultPlugin, 0),
-			loadedCommands:  make(Commands),
-		}
-		// 初始化时加载所有插件
+	if !globalMalManager.initialized {
 		globalMalManager.initialize()
-	})
+	}
 	return globalMalManager
 }
 

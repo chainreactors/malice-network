@@ -3,7 +3,6 @@ package mal
 import (
 	"errors"
 	"fmt"
-	"github.com/chainreactors/malice-network/client/plugin"
 	"github.com/chainreactors/tui"
 	"os"
 	"path/filepath"
@@ -39,13 +38,11 @@ func RemoveMal(name string, con *repl.Console) error {
 		return errors.New("mal name is required")
 	}
 
-	malManager := plugin.GetGlobalMalManager()
-
-	if _, exists := malManager.GetEmbedPlugin(name); exists {
+	if _, exists := con.MalManager.GetEmbedPlugin(name); exists {
 		return errors.New("cannot remove embedded mal")
 	}
 
-	plug, exists := malManager.GetExternalPlugin(name)
+	plug, exists := con.MalManager.GetExternalPlugin(name)
 	if !exists {
 		return errors.New("mal not found")
 	}
@@ -55,7 +52,7 @@ func RemoveMal(name string, con *repl.Console) error {
 		implantMenu.RemoveCommand(cmd.Command)
 	}
 
-	err := malManager.RemoveExternalMal(name)
+	err := con.MalManager.RemoveExternalMal(name)
 	if err != nil {
 		return err
 	}

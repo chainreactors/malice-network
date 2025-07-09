@@ -33,6 +33,8 @@ func main() {
 	vm := plugin.NewLuaVM()
 	plug := &plugin.LuaPlugin{DefaultPlugin: &plugin.DefaultPlugin{MalManiFest: &plugin.MalManiFest{}}}
 	plug.InitLuaContext(vm)
+	plug.RegisterLuaFunction()
+
 	mals.GenerateLuaDefinitionFile(vm, intermediate.BuiltinPackage, plugin.ProtoPackage, intermediate.InternalFunctions.Package(intermediate.BuiltinPackage))
 	mals.GenerateLuaDefinitionFile(vm, intermediate.RpcPackage, plugin.ProtoPackage, intermediate.InternalFunctions.Package(intermediate.RpcPackage))
 	mals.GenerateLuaDefinitionFile(vm, intermediate.BeaconPackage, plugin.ProtoPackage, intermediate.InternalFunctions.Package(intermediate.BeaconPackage))

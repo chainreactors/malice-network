@@ -60,7 +60,6 @@ func NewLuaMalPlugin(manifest *MalManiFest) (*LuaPlugin, error) {
 
 	mal := &LuaPlugin{
 		DefaultPlugin: plug,
-		vmFns:         make(map[string]lua.LGFunction),
 	}
 
 	return mal, nil
@@ -72,7 +71,7 @@ func (plug *LuaPlugin) Run() error {
 	if err != nil {
 		return err
 	}
-	plug.registerLuaFunction()
+	plug.RegisterLuaFunction()
 	err = plug.registerLuaOnHooks()
 	if err != nil {
 		return err
@@ -195,7 +194,8 @@ func (plug *LuaPlugin) InitLuaContext(vm *lua.LState) error {
 	return nil
 }
 
-func (plug *LuaPlugin) registerLuaFunction() {
+func (plug *LuaPlugin) RegisterLuaFunction() {
+	plug.vmFns = make(map[string]lua.LGFunction)
 	// 读取resource文件路径（文件系统版本）
 	plug.registerFunction("script_resource", func(filename string) (string, error) {
 		resourceFile := filepath.Join(assets.GetMalsDir(), plug.Name, "resources", filename)
@@ -294,6 +294,7 @@ func (plug *LuaPlugin) registerLuaFunction() {
 			Short: short,
 			Annotations: map[string]string{
 				"ttp": ttp,
+				"mal": plug.Name,
 			},
 			Run: func(cmd *cobra.Command, args []string) {
 				go func() {

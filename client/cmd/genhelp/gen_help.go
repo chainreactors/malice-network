@@ -4,10 +4,15 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/chainreactors/malice-network/client/assets"
+	"github.com/chainreactors/malice-network/client/command"
 	"github.com/chainreactors/malice-network/client/command/addon"
 	"github.com/chainreactors/malice-network/client/command/alias"
 	"github.com/chainreactors/malice-network/client/command/armory"
+	"github.com/chainreactors/malice-network/client/command/basic"
 	"github.com/chainreactors/malice-network/client/command/build"
+	"github.com/chainreactors/malice-network/client/command/cert"
+	configCmd "github.com/chainreactors/malice-network/client/command/config"
+	"github.com/chainreactors/malice-network/client/command/context"
 	"github.com/chainreactors/malice-network/client/command/exec"
 	"github.com/chainreactors/malice-network/client/command/explorer"
 	"github.com/chainreactors/malice-network/client/command/extension"
@@ -17,7 +22,10 @@ import (
 	"github.com/chainreactors/malice-network/client/command/listener"
 	"github.com/chainreactors/malice-network/client/command/mal"
 	"github.com/chainreactors/malice-network/client/command/modules"
+	"github.com/chainreactors/malice-network/client/command/mutant"
 	"github.com/chainreactors/malice-network/client/command/pipe"
+	"github.com/chainreactors/malice-network/client/command/pipeline"
+	"github.com/chainreactors/malice-network/client/command/pivot"
 	"github.com/chainreactors/malice-network/client/command/privilege"
 	"github.com/chainreactors/malice-network/client/command/reg"
 	"github.com/chainreactors/malice-network/client/command/service"
@@ -25,8 +33,13 @@ import (
 	"github.com/chainreactors/malice-network/client/command/sys"
 	"github.com/chainreactors/malice-network/client/command/tasks"
 	"github.com/chainreactors/malice-network/client/command/taskschd"
+	"github.com/chainreactors/malice-network/client/command/third"
+	"github.com/chainreactors/malice-network/client/command/website"
+	"github.com/chainreactors/malice-network/client/plugin"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/intermediate"
+	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/gookit/config/v2"
 	"github.com/gookit/config/v2/yaml"
 	"github.com/spf13/cobra"
@@ -185,6 +198,7 @@ func GenImplantHelp(con *repl.Console) {
 		panic(err)
 	}
 	GenGroupHelp(implantMd, con, consts.ImplantGroup,
+		basic.Commands,
 		tasks.Commands,
 		modules.Commands,
 		explorer.Commands,
@@ -200,12 +214,17 @@ func GenImplantHelp(con *repl.Console) {
 		reg.Commands,
 		taskschd.Commands,
 		privilege.Commands,
+		third.Commands,
 	)
 
 	GenGroupHelp(implantMd, con, consts.FileGroup,
 		file.Commands,
 		filesystem.Commands,
 		pipe.Commands)
+
+	GenGroupHelp(implantMd, con, consts.PivotGroup,
+		pivot.Commands,
+	)
 }
 
 func GenClientHelp(con *repl.Console) {
@@ -222,15 +241,47 @@ func GenClientHelp(con *repl.Console) {
 		extension.Commands,
 		armory.Commands,
 		mal.Commands,
+		configCmd.Commands,
+		context.Commands,
+		cert.Commands,
 	)
 
 	GenGroupHelp(clientMd, con, consts.ListenerGroup,
 		listener.Commands,
+		website.Commands,
+		pipeline.Commands,
 	)
 
 	GenGroupHelp(clientMd, con, consts.GeneratorGroup,
-		build.Commands)
+		build.Commands,
+		mutant.Commands)
 
+}
+
+func GenMalHelper(con *repl.Console, name string) {
+	clientMd, err := os.Create(name + ".md")
+	if err != nil {
+		panic(err)
+	}
+
+	rpc := clientrpc.NewMaliceRPCClient(nil)
+	intermediate.RegisterBuiltin(rpc)
+	command.RegisterClientFunc(con)
+	command.RegisterImplantFunc(con)
+	clientMd.Write([]byte(fmt.Sprintf("## %s\n", name)))
+	for _, p := range plugin.GetGlobalMalManager().GetAllEmbeddedPlugins() {
+		var cmds []*cobra.Command
+		for _, cc := range p.CMDs {
+			cmds = append(cmds, cc.Command)
+		}
+		sort.Sort(byName(cmds))
+		for _, c := range cmds {
+			c.SetHelpCommand(nil)
+			_ = GenMarkdownTreeCustom(c, clientMd, func(s string) string {
+				return "#" + strings.ReplaceAll(s, " ", "-")
+			})
+		}
+	}
 }
 
 func main() {
@@ -242,4 +293,5 @@ func main() {
 
 	GenClientHelp(con)
 	GenImplantHelp(con)
+	GenMalHelper(con, "community")
 }

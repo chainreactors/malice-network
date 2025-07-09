@@ -1,7 +1,7 @@
 package mal
 
 import (
-	plugin2 "github.com/chainreactors/malice-network/client/plugin"
+	"github.com/chainreactors/malice-network/client/plugin"
 	"path/filepath"
 
 	"github.com/chainreactors/logs"
@@ -15,28 +15,26 @@ import (
 
 func MalLoadCmd(ctx *cobra.Command, con *repl.Console) error {
 	dirPath := ctx.Flags().Arg(0)
-	malManager := plugin2.GetGlobalMalManager()
-
 	manifestPath := filepath.Join(assets.GetMalsDir(), dirPath, m.ManifestFileName)
-	manifest, err := plugin2.LoadMalManiFest(manifestPath)
+	manifest, err := plugin.LoadMalManiFest(manifestPath)
 	if err != nil {
 		return err
 	}
 
-	var plug plugin2.Plugin
+	var plug plugin.Plugin
 
 	// 检查是否已加载
-	if _, exists := malManager.GetExternalPlugin(manifest.Name); exists {
+	if _, exists := con.MalManager.GetExternalPlugin(manifest.Name); exists {
 		con.Log.Warnf("mal %s already loaded, reloading\n", manifest.Name)
-		err := malManager.ReloadExternalMal(manifest.Name)
+		err := con.MalManager.ReloadExternalMal(manifest.Name)
 		if err != nil {
 			return err
 		}
 		// 重新获取插件
-		plug, _ = malManager.GetExternalPlugin(manifest.Name)
+		plug, _ = con.MalManager.GetExternalPlugin(manifest.Name)
 	} else {
 		// 首次加载
-		plug, err = malManager.LoadExternalMal(manifest)
+		plug, err = con.MalManager.LoadExternalMal(manifest)
 		if err != nil {
 			return err
 		}
@@ -64,16 +62,15 @@ func MalLoadCmd(ctx *cobra.Command, con *repl.Console) error {
 }
 
 func LoadMal(con *repl.Console, rootCmd *cobra.Command, filename string) error {
-	manifest, err := plugin2.LoadMalManiFest(filename)
+	manifest, err := plugin.LoadMalManiFest(filename)
 	if err != nil {
 		return err
 	}
 	return LoadMalWithManifest(con, rootCmd, manifest)
 }
 
-func LoadMalWithManifest(con *repl.Console, rootCmd *cobra.Command, manifest *plugin2.MalManiFest) error {
-	malManager := plugin2.GetGlobalMalManager()
-	plug, err := malManager.LoadExternalMal(manifest)
+func LoadMalWithManifest(con *repl.Console, rootCmd *cobra.Command, manifest *plugin.MalManiFest) error {
+	plug, err := con.MalManager.LoadExternalMal(manifest)
 	if err != nil {
 		return err
 	}
@@ -99,11 +96,9 @@ func LoadMalWithManifest(con *repl.Console, rootCmd *cobra.Command, manifest *pl
 }
 
 func ListMalManifest(con *repl.Console) {
-	malManager := plugin2.GetGlobalMalManager()
-
 	// 获取所有外部插件
-	externalPlugins := malManager.GetAllExternalPlugins()
-	embeddedPlugins := malManager.GetAllEmbeddedPlugins()
+	externalPlugins := con.MalManager.GetAllExternalPlugins()
+	embeddedPlugins := con.MalManager.GetAllEmbeddedPlugins()
 
 	if len(externalPlugins) == 0 && len(embeddedPlugins) == 0 {
 		con.Log.Infof("No mal loaded")
