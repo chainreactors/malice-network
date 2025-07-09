@@ -3,8 +3,6 @@ package build
 import (
 	"errors"
 	"fmt"
-	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"os"
 	"path/filepath"
@@ -192,72 +190,26 @@ func DownloadArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
 	}
 	printArtifact(artifact)
 	go func() {
-		formatter := formatutils.NewFormatter()
-		if formatter.IsSupportedRemote(format) {
-			encryptArtifactName, err := cryptography.EncryptWithGlobalKey([]byte(artifact.Name))
-			if err != nil {
-				logs.Log.Errorf("encrypt failed: %s\n", err)
-				return
-			}
-			hexEncryptArtifactName := cryptography.BytesToHex(encryptArtifactName)
-			encryptFormat, err := cryptography.EncryptWithGlobalKey([]byte(format))
-			if err != nil {
-				logs.Log.Errorf("encrypt failed: %s\n", err)
-				return
-			}
-			hexEncryptFormat := cryptography.BytesToHex(encryptFormat)
-			err = con.UpdatePipeline()
-			if err != nil {
-				logs.Log.Errorf("failed to get pipelines: %s\n", err)
-				return
-			}
-			var oneListener *clientpb.Listener
-			for _, listener := range con.Listeners {
-				if listener.Active {
-					oneListener = listener
-					break
-				}
-			}
-			if oneListener == nil {
-				logs.Log.Errorf("No listener Available\n")
-				return
-			}
-			err = con.UpdateListener()
-			if err != nil {
-				logs.Log.Errorf("failed to get pipelines: %s\n", err)
-				return
-			}
-			var oneWebsite *clientpb.Website
-			var tlsEnable bool
+		if f, ok := formatutils.SupportedFormats[format]; ok && f.SupportRemote {
+			var pipe *clientpb.Pipeline
 			for _, pipeline := range con.Pipelines {
-				if http := pipeline.GetWeb(); http != nil {
-					oneWebsite = http
-					tlsEnable = pipeline.Tls.Enable
+				if pipeline.Type == consts.WebsitePipeline {
+					pipe = pipeline
 					break
 				}
 			}
-			if oneWebsite == nil {
-				logs.Log.Errorf("No website Available\n")
-				return
-			}
-			scheme := "http"
-			if tlsEnable {
-				scheme = "https"
-			}
-			url := fmt.Sprintf("%s://%s:%d%s/%s/%s", scheme, oneListener.Ip, oneWebsite.Port, oneWebsite.Root, hexEncryptArtifactName, hexEncryptFormat)
-			usage := formatter.SupportedFormats[format].Usage(url)
+
+			url := fmt.Sprintf("%s/%s", pipe.URL(), formatutils.Encode(artifact.Name, format))
+			usage := formatutils.SupportedFormats[format].Usage(url)
 			con.Log.Infof("you can use this payload to run:\n--------\n%s\n--------\n", usage)
 		} else {
 			var fileExt string
-			if format != "" && format != "executable" {
-				if formatter.IsSupported(format) {
-					fileExt = formatter.GetFormatExtension(format)
-				} else {
-					fileExt = ""
-				}
+			if f, ok := formatutils.SupportedFormats[format]; ok {
+				fileExt = f.Extension
 			} else {
 				fileExt, _ = fileutils.GetExtensionByBytes(artifact.Bin)
 			}
+
 			if artifact.Type == consts.CommandBuildModules {
 				fileExt = ".dll"
 			}

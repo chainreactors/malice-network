@@ -270,8 +270,7 @@ func ModuleArtifactsCompleter(con *repl.Console) carapace.Action {
 
 func ArtifactFormatCompleter() carapace.Action {
 	// Get supported formats from formatter
-	formatter := formatutils.NewFormatter()
-	formatsWithDesc := formatter.GetFormatsWithDescriptions()
+	formatsWithDesc := formatutils.GetFormatsWithDescriptions()
 
 	// Convert to slice for carapace
 	descriptions := make([]string, 0, len(formatsWithDesc)*2)

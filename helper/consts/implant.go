@@ -14,6 +14,31 @@ const (
 	ArtifactFromSaas   = "saas"
 )
 
+// Format constants for artifact conversion
+const (
+	FormatExecutable       = "executable"
+	FormatRaw              = "raw"
+	FormatC                = "c"
+	FormatCSharp           = "csharp"
+	FormatJava             = "java"
+	FormatGolang           = "golang"
+	FormatPython           = "python"
+	FormatPerl             = "perl"
+	FormatRuby             = "ruby"
+	FormatBash             = "bash"
+	FormatPowerShell       = "powershell"
+	FormatHexOneLine       = "hex-oneline"
+	FormatHexMultiLine     = "hex-multiline"
+	FormatNum              = "num"
+	FormatDword            = "dword"
+	FormatJavaScriptBE     = "js_be"
+	FormatJavaScriptLE     = "js_le"
+	FormatVBScript         = "vbscript"
+	FormatVBApplication    = "vbapplication"
+	FormatPowerShellRemote = "powershell-remote"
+	FormatCurlRemote       = "curl-remote"
+)
+
 type Arch uint32
 
 const (

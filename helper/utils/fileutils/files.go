@@ -179,6 +179,7 @@ func GetExtensionByPath(filepath string) (string, error) {
 
 	return GetExtensionByBytes(buf)
 }
+
 func GetExtensionByBytes(data []byte) (string, error) {
 	kind, err := filetype.Match(data)
 	if err != nil {

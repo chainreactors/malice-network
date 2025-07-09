@@ -12,11 +12,9 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/cryptography"
-	"github.com/chainreactors/malice-network/helper/encoders"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
-	"github.com/chainreactors/malice-network/helper/utils/formatutils"
 	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
@@ -155,89 +153,49 @@ func (w *Website) websiteContentHandler(resp http.ResponseWriter, req *http.Requ
 	if len(parts) == 2 {
 		formatted = parts[1]
 	}
-	artifactContent, ok := w.Artifact[artifactName]
-	if !ok {
-		logs.Log.Debugf("%s failed to get content in artifactContent ", req.URL)
-	} else {
-		encrypted, err := cryptography.HexToBytes(artifactContent.Path)
+	_, ok := w.Artifact[artifactName]
+	if ok {
+		name, err := decodePath(artifactName)
 		if err != nil {
-			logs.Log.Errorf("failed to hex: %s", err)
+			logs.Log.Errorf("failed to decode: %s", err)
 			return
 		}
-		decrypt, err := cryptography.DecryptWithGlobalKey(encrypted)
+
+		format, err := decodePath(formatted)
 		if err != nil {
-			logs.Log.Errorf("failed to decrypt: %s", err)
+			logs.Log.Errorf("failed to decode: %s", err)
 			return
 		}
+
 		artifact, err := w.rpc.FindArtifact(context.Background(), &clientpb.Artifact{
-			Name: string(decrypt),
+			Name:   name,
+			Format: format,
 		})
 
 		if err != nil {
 			logs.Log.Errorf("failed to find artifact: %s", err)
 			return
 		}
-		if formatted == "" {
+
+		if len(artifact.Bin) > 0 {
 			resp.Write(artifact.Bin)
+		}
+	} else {
+		content, ok := w.Content[strings.Trim(contentPath, "/")]
+		if !ok {
+			logs.Log.Debugf("%s failed to get content ", req.URL)
 			return
 		}
-		encryptedFormatted, err := cryptography.HexToBytes(formatted)
-		if err != nil {
-			logs.Log.Errorf("failed to hex: %s", err)
-			return
-		}
-		decryptFormatted, err := cryptography.DecryptWithGlobalKey(encryptedFormatted)
-		if err != nil {
-			logs.Log.Errorf("failed to decrypt: %s", err)
-			return
-		}
-		// create a tempfile for shellcode
-		filename := filepath.Join(configs.BuildOutputPath, encoders.UUID())
-		if err := os.WriteFile(filename, artifact.Bin, 0644); err != nil {
-			logs.Log.Errorf("failed to write file: %s", err)
-			return
-		}
-		var usePulse bool = false
-		if artifact.Type == consts.CommandBuildPulse {
-			usePulse = true
-		}
-		shellcode, err := formatutils.SRDIArtifact(filename, artifact.Platform, artifact.Arch, usePulse)
-		if err != nil {
-			logs.Log.Errorf("failed to convert to shellcode: %s", err)
-			return
-		}
-		// delete tempfile
-		if err := os.Remove(filename); err != nil {
-			logs.Log.Errorf("failed to remove file: %s", err)
-			return
-		}
-		// convert artifact to format
-		formatter := formatutils.NewFormatter()
-		result, err := formatter.Convert(shellcode, string(decryptFormatted))
-		if err != nil {
-			logs.Log.Errorf("failed to convert: %s", err)
-			return
-		}
-		if len(result.Data) > 0 {
-			resp.Write(result.Data)
-		}
-		return
-	}
 
-	content, ok := w.Content[strings.Trim(contentPath, "/")]
-	if !ok {
-		logs.Log.Debugf("%s failed to get content ", req.URL)
-		return
-	}
+		resp.Header().Add("Content-Type", content.ContentType)
+		resp.Header().Add("Cache-Control", "no-store, no-cache, must-revalidate")
+		data, err := os.ReadFile(content.File)
+		if err != nil {
+			return
+		}
 
-	resp.Header().Add("Content-Type", content.ContentType)
-	resp.Header().Add("Cache-Control", "no-store, no-cache, must-revalidate")
-	data, err := os.ReadFile(content.File)
-	if err != nil {
-		return
+		resp.Write(data)
 	}
-
-	resp.Write(data)
 }
 
 func (w *Website) AddContent(content *clientpb.WebContent) error {
@@ -272,4 +230,16 @@ func (w *Website) AddArtifactContent(content *clientpb.WebContent) error {
 		File: contentPath,
 	}
 	return nil
+}
+
+func decodePath(input string) (string, error) {
+	encrypted, err := cryptography.HexToBytes(input)
+	if err != nil {
+		return "", err
+	}
+	decrypt, err := cryptography.DecryptWithGlobalKey(encrypted)
+	if err != nil {
+		return "", err
+	}
+	return string(decrypt), nil
 }

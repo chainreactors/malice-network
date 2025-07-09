@@ -5,6 +5,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/types"
 	"gorm.io/gorm"
+	"os"
 	"time"
 )
 
@@ -77,4 +78,28 @@ func (a *Artifact) ToProtobuf(bin []byte) *clientpb.Artifact {
 		ParamsBytes:  []byte(a.ParamsData),
 		Source:       a.Source,
 	}
+}
+
+func (a *Artifact) ToArtifact() (*clientpb.Artifact, error) {
+	bin, err := os.ReadFile(a.Path)
+	if err != nil {
+		return nil, err
+	}
+
+	return &clientpb.Artifact{
+		Id:           a.ID,
+		Bin:          bin,
+		Name:         a.Name,
+		Target:       a.Target,
+		Type:         a.Type,
+		Platform:     a.Os,
+		Arch:         a.Arch,
+		Profile:      a.ProfileName,
+		Pipeline:     a.Profile.PipelineID,
+		CreatedAt:    a.CreatedAt.Unix(),
+		Status:       a.Status,
+		ProfileBytes: a.ProfileByte,
+		ParamsBytes:  []byte(a.ParamsData),
+		Source:       a.Source,
+	}, nil
 }

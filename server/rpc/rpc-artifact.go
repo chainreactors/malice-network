@@ -84,23 +84,13 @@ func (rpc *Server) DownloadArtifact(ctx context.Context, req *clientpb.Artifact)
 	if err != nil {
 		return nil, err
 	}
-	bin, err := os.ReadFile(artifactModel.Path)
+
+	artifact, err := artifactModel.ToArtifact()
 	if err != nil {
 		return nil, err
 	}
-	if req.Format == "" || req.Format == "executable" {
-		return artifactModel.ToProtobuf(bin), nil
-	} else {
-		target, _ := consts.GetBuildTarget(artifactModel.Target)
-		shellcodeBin, _ := SRDIArtifact(artifactModel, target.OS, target.Arch)
-		formatter := formatutils.NewFormatter()
 
-		if !formatter.IsSupported(req.Format) {
-			return nil, fmt.Errorf("unsupported format: %s", req.Format)
-		}
-		result, _ := formatter.Convert(shellcodeBin, req.Format)
-		return artifactModel.ToProtobuf(result.Data), nil
-	}
+	return formatutils.ConvertArtifact(artifact, req.Format)
 }
 
 func (rpc *Server) UploadArtifact(ctx context.Context, req *clientpb.Artifact) (*clientpb.Artifact, error) {
@@ -120,21 +110,30 @@ func (rpc *Server) UploadArtifact(ctx context.Context, req *clientpb.Artifact) (
 
 // for listener
 func (rpc *Server) GetArtifact(ctx context.Context, req *clientpb.Artifact) (*clientpb.Artifact, error) {
-	artifactModel, err := db.GetArtifact(req)
+	var artifactModel *models.Artifact
+	var err error
+	if req.Id == 0 {
+		artifactModel, err = db.FindArtifactFromPipeline(req.Pipeline)
+	} else {
+		artifactModel, err = db.GetArtifactById(req.Id)
+	}
 	if err != nil {
 		return nil, err
 	}
-	_, err = os.Stat(artifactModel.Path)
-	if err != nil {
-		if artifactModel.Params != nil && artifactModel.Type == consts.CommandBuildBeacon && artifactModel.Params.RelinkBeaconID != 0 {
-			artifactModel, err = db.GetArtifact(&clientpb.Artifact{Id: artifactModel.Params.RelinkBeaconID})
+
+	if artifactModel.Params != nil && artifactModel.Params.RelinkBeaconID != 0 {
+		artifactModel, err = db.GetArtifactById(artifactModel.Params.RelinkBeaconID)
+		if err != nil {
+			return nil, err
 		}
 	}
-	data, err := gonut.DonutShellcodeFromFile(artifactModel.Path, artifactModel.Arch, "")
+
+	artifact, err := artifactModel.ToArtifact()
 	if err != nil {
 		return nil, err
 	}
-	return artifactModel.ToProtobuf(data), nil
+
+	return formatutils.ConvertArtifact(artifact, req.Format)
 }
 
 func (rpc *Server) ListArtifact(ctx context.Context, req *clientpb.Empty) (*clientpb.Artifacts, error) {
@@ -146,7 +145,12 @@ func (rpc *Server) ListArtifact(ctx context.Context, req *clientpb.Empty) (*clie
 }
 
 func (rpc *Server) FindArtifact(ctx context.Context, req *clientpb.Artifact) (*clientpb.Artifact, error) {
-	return db.FindArtifact(req)
+	artifact, err := db.FindArtifact(req)
+	if err != nil {
+		return nil, err
+	}
+
+	return formatutils.ConvertArtifact(artifact, req.Format)
 }
 
 func (rpc *Server) DeleteArtifact(ctx context.Context, req *clientpb.Artifact) (*clientpb.Empty, error) {

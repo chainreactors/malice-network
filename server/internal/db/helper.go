@@ -1059,6 +1059,15 @@ func FindArtifact(target *clientpb.Artifact) (*clientpb.Artifact, error) {
 	return artifact.ToProtobuf(content), nil
 }
 
+func FindArtifactFromPipeline(pipelineName string) (*models.Artifact, error) {
+	var artifact *models.Artifact
+	result := Session().Where("pipeline_name = ? && type = ?", pipelineName, consts.CommandBuildBeacon).First(&artifact)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return artifact, nil
+}
+
 func GetArtifact(req *clientpb.Artifact) (*models.Artifact, error) {
 	if req.Id != 0 {
 		return GetArtifactById(req.Id)

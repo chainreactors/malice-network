@@ -150,7 +150,7 @@ func printCerts(certs *clientpb.Certs, con *repl.Console) {
 	var rowEntries []table.Row
 	tableModel := tui.NewTable([]table.Column{
 		table.NewColumn("Name", "Name", 20),
-		table.NewColumn("Type", "Type", 10),
+		table.NewColumn("Type", "Type", 11),
 		table.NewColumn("Organization", "Organization", 20),
 		table.NewColumn("Country", "Country", 20),
 		table.NewColumn("Locality", "Locality", 20),

@@ -38,16 +38,15 @@ func NewTcpPipeline(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeli
 }
 
 type TCPPipeline struct {
-	ln             net.Listener
-	rpc            listenerrpc.ListenerRPCClient
-	Name           string
-	Port           uint16
-	Host           string
-	Enable         bool
-	Target         []string
-	BeaconPipeline string
-	CertName       string
-	parser         *parser.MessageParser
+	ln       net.Listener
+	rpc      listenerrpc.ListenerRPCClient
+	Name     string
+	Port     uint16
+	Host     string
+	Enable   bool
+	Target   []string
+	CertName string
+	parser   *parser.MessageParser
 	*core.PipelineConfig
 }
 
@@ -195,7 +194,9 @@ func (pipeline *TCPPipeline) handlePulse(conn *cryptostream.Conn) {
 		return
 	}
 	builder, err := pipeline.rpc.GetArtifact(context.Background(), &clientpb.Artifact{
-		Id: artifactId,
+		Id:       artifactId,
+		Pipeline: pipeline.Name,
+		Format:   consts.FormatRaw,
 	})
 	if err != nil {
 		logs.Log.Errorf("not found artifact %d ,%s ", artifactId, err.Error())
