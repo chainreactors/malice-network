@@ -32,7 +32,7 @@ type DockerBuilder struct {
 
 func NewDockerBuilder(req *clientpb.BuildConfig) *DockerBuilder {
 	os.MkdirAll(configs.BuildOutputPath, 0700)
-	os.MkdirAll(configs.BuildOutputPath, 0700)
+	os.MkdirAll(configs.SourceCodePath, 0700)
 	return &DockerBuilder{
 		config: req,
 	}

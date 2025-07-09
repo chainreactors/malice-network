@@ -963,7 +963,7 @@ func UpdatePulseRelink(pusleID, beanconID uint32) error {
 }
 
 func SaveArtifact(name, artifactType, platform, arch, source string) (*models.Artifact, error) {
-	absBuildOutputPath, err := filepath.Abs(configs.BuildOutputPath)
+	absBuildOutputPath, err := filepath.Abs(configs.TempPath)
 	if err != nil {
 		return nil, err
 	}

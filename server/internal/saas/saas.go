@@ -112,7 +112,7 @@ func (c *SaasClient) DownloadArtifact(downloadPath string, builder *models.Artif
 		return fmt.Errorf("download failed with code: %d", resp.StatusCode)
 	}
 
-	outputPath := fmt.Sprintf("%s/%s", configs.BuildOutputPath, encoders.UUID())
+	outputPath := fmt.Sprintf("%s/%s", configs.TempPath, encoders.UUID())
 	file, err := os.Create(outputPath)
 	if err != nil {
 		return err

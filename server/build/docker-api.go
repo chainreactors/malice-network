@@ -64,7 +64,7 @@ func GetDockerClient() (*client.Client, error) {
 }
 
 func SaveArtifact(dst string, bin []byte) error {
-	filename := filepath.Join(configs.BuildOutputPath, dst)
+	filename := filepath.Join(configs.TempPath, dst)
 	err := os.WriteFile(filename, bin, 0644)
 	if err != nil {
 		return err

@@ -107,7 +107,7 @@ func MoveBuildOutput(target, buildType string, enable3RD bool) (string, string, 
 			sourcePath = filepath.Join(configs.TargetPath, target, release, malefic)
 		}
 	}
-	dstPath := filepath.Join(configs.BuildOutputPath, name)
+	dstPath := filepath.Join(configs.TempPath, name)
 	err := fileutils.MoveFile(sourcePath, dstPath)
 	if err != nil {
 		return "", "", err

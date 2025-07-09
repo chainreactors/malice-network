@@ -21,9 +21,9 @@ import (
 
 // ObjcopyPulse extracts shellcode from compiled artifact using objcopy
 func ObjcopyPulse(builder *models.Artifact, platform, arch string) ([]byte, error) {
-	absBuildOutputPath, err := filepath.Abs(configs.BuildOutputPath)
+	absBuildOutputPath, err := filepath.Abs(configs.TempPath)
 	if err != nil {
-		return nil, fmt.Errorf("cannot resolve absolute path for build output directory '%s': %w", configs.BuildOutputPath, err)
+		return nil, fmt.Errorf("cannot resolve absolute path for build output directory '%s': %w", configs.TempPath, err)
 	}
 
 	// Create temporary file with unique name for objcopy output

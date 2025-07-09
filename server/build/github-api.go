@@ -285,7 +285,7 @@ func PushArtifact(owner, repo, token, buildName string, isRemove bool) (*models.
 	if err != nil {
 		return nil, err
 	}
-	filename := filepath.Join(configs.BuildOutputPath, encoders.UUID())
+	filename := filepath.Join(configs.TempPath, encoders.UUID())
 	if err := os.WriteFile(filename, content, 0644); err != nil {
 		return nil, err
 	}
