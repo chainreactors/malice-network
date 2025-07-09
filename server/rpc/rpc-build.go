@@ -78,14 +78,14 @@ func (rpc *Server) CheckSource(ctx context.Context, req *clientpb.BuildConfig) (
 		if config := configs.GetGithubConfig(); config != nil {
 			req.Github = config.ToProtobuf()
 		} else {
-			req.Github = &clientpb.GithubWorkflowConfig{}
+			req.Github = nil
 		}
 	}
 	if err := build.GetWorkflowStatus(req.Github); err == nil {
 		req.Source = consts.ArtifactFromAction
 		return req, nil
 	}
-	if saasConfig := configs.GetSaasConfig(); saasConfig != nil && saasConfig.Enable && saasConfig.Url != "" {
+	if saasConfig := configs.GetSaasConfig(); saasConfig != nil && saasConfig.Enable && saasConfig.Url != "" && saasConfig.Token != "" {
 		req.Source = consts.ArtifactFromSaas
 		return req, nil
 	}

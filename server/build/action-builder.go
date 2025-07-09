@@ -35,17 +35,16 @@ func NewActionBuilder(req *clientpb.BuildConfig) *ActionBuilder {
 }
 
 func (a *ActionBuilder) Generate() (*clientpb.Artifact, error) {
-	githubConfig := a.config.Github
-	if githubConfig != nil {
-		if githubConfig.Owner == "" || githubConfig.Repo == "" || githubConfig.Token == "" {
-			config := configs.GetGithubConfig()
-			if config == nil {
-				return nil, fmt.Errorf("please set github config use flag or server config")
-			}
-			githubConfig.Owner = config.Owner
-			githubConfig.Repo = config.Repo
-			githubConfig.Token = config.Token
-			githubConfig.WorkflowId = config.Workflow
+	if a.config.Github == nil || a.config.Github.Owner == "" || a.config.Github.Repo == "" || a.config.Github.Token == "" {
+		config := configs.GetGithubConfig()
+		if config == nil {
+			return nil, fmt.Errorf("please set github config use flag or server config")
+		}
+		a.config.Github = &clientpb.GithubWorkflowConfig{
+			Owner:      config.Owner,
+			Repo:       config.Repo,
+			Token:      config.Token,
+			WorkflowId: config.Workflow,
 		}
 	}
 	var builder *models.Artifact

@@ -194,6 +194,8 @@ build bind --target x86_64-unknown-linux-musl --profile bind_profile --source sa
 		comp["source"] = common.BuildResourceCompleter(con)
 	})
 
+	bindCmd.Hidden = true
+
 	preludeCmd := &cobra.Command{
 		Use:   consts.CommandBuildPrelude,
 		Short: "Build a prelude payload",
@@ -214,6 +216,8 @@ build prelude --target x86_64-pc-windows-msvc --profile prelude_profile --autoru
 build prelude --target x86_64-pc-windows-msvc --profile prelude_profile --autorun /path/to/autorun.yaml --source saas
 ~~~`,
 	}
+
+	preludeCmd.Hidden = true
 
 	common.BindFlag(preludeCmd, common.GenerateFlagSet, common.GithubFlagSet, func(f *pflag.FlagSet) {
 		f.String("autorun", "", "set autorun.yaml")
@@ -251,7 +255,7 @@ build modules --target x86_64-unknown-linux-musl --profile module_profile --modu
 // Compile specific modules into DLLs
 build modules --target x86_64-pc-windows-msvc --profile module_profile --modules base,execute_dll
 
-// Compile third party module
+// Compile third party module(curl, rem)
 build modules --3rd rem --target x86_64-pc-windows-msvc --profile module_profile
 
 // Compile module by saas

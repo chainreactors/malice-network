@@ -149,7 +149,7 @@ func PreludeCmd(cmd *cobra.Command, con *repl.Console) error {
 	// PreludeCmd需要额外的autorun_yaml参数
 	if buildConfig.Source == consts.ArtifactFromAction {
 		base64Encoded := base64.StdEncoding.EncodeToString(file)
-		buildConfig.Inputs["autorun_yaml "] = base64Encoded
+		buildConfig.Inputs = map[string]string{"autorun_yaml": base64Encoded}
 	}
 
 	executeBuild(con, buildConfig)

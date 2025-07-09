@@ -1143,11 +1143,11 @@ func UpdateGeneratorConfig(req *clientpb.BuildConfig, config *types.ProfileConfi
 			config.Basic.Name = req.BuildName
 		}
 
-		params, err := types.UnmarshalProfileParams(req.ParamsBytes)
-		if err != nil {
-			return err
-		}
 		if len(req.ParamsBytes) > 0 {
+			params, err := types.UnmarshalProfileParams(req.ParamsBytes)
+			if err != nil {
+				return err
+			}
 			if params.Interval != -1 {
 				config.Basic.Interval = params.Interval
 			}

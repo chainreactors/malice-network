@@ -29,7 +29,7 @@ type GithubSetting struct {
 }
 
 func (github *GithubSetting) ToProtobuf() *clientpb.GithubWorkflowConfig {
-	if github == nil {
+	if github == nil || github.Token == "" || github.Owner == "" || github.Repo == "" || github.Workflow == "" {
 		return nil
 	}
 	return &clientpb.GithubWorkflowConfig{

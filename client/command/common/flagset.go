@@ -1,8 +1,6 @@
 package common
 
 import (
-	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/intermediate"
@@ -287,11 +285,7 @@ func ParseGithubFlags(cmd *cobra.Command) *clientpb.GithubWorkflowConfig {
 		IsRemove:   remove,
 	}
 	if githubConfig.Owner == "" || githubConfig.Repo == "" || githubConfig.Token == "" {
-		setting, err := assets.GetSetting()
-		if err != nil {
-			logs.Log.Errorf("get github setting error %v", err)
-			return setting.Github.ToProtobuf()
-		}
+		return nil
 	}
 
 	return githubConfig
