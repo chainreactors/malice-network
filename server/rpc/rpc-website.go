@@ -144,7 +144,18 @@ func (rpc *Server) StartWebsite(ctx context.Context, req *clientpb.CtrlPipeline)
 	if err != nil {
 		return nil, err
 	}
-
+	if req.CertName != "" {
+		_, err := db.FindCertificate(req.CertName)
+		if err != nil {
+			return nil, err
+		}
+		webpipe, err = db.UpdatePipelineCert(req.CertName, webpipe)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		webpipe.Tls.Enable = req.Pipeline.Tls.Enable
+	}
 	listener, err := core.Listeners.Get(webpipe.ListenerId)
 	if err != nil {
 		return nil, err

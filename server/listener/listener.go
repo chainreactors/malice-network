@@ -153,9 +153,19 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 			return err
 		}
 
+		if pipe.Tls.Enable && !pipe.Tls.Acme {
+			_, err = lns.Rpc.GenerateSelfCert(lns.Context(), pipe)
+		} else if pipe.Tls.Enable && pipe.Tls.Acme {
+			_, err = lns.Rpc.GenerateAcmeCert(lns.Context(), pipe)
+		}
+		if err != nil {
+			return err
+		}
+
 		_, err = lns.Rpc.StartWebsite(lns.Context(), &clientpb.CtrlPipeline{
 			Name:       newWebsite.WebsiteName,
 			ListenerId: lns.Name,
+			Pipeline:   pipe,
 		})
 		if err != nil {
 			return err

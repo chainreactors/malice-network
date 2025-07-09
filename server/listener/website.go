@@ -80,6 +80,7 @@ func (w *Website) Start() error {
 		}
 	} else {
 		server := NewHTTPServer(mux)
+		w.server = ln
 		go func() {
 			if err := server.Serve(ln); err != nil && err != http.ErrServerClosed {
 				logs.Log.Errorf("HTTP Server failed to start: %v", err)

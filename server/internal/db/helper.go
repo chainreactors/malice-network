@@ -606,6 +606,15 @@ func FindWebsiteByName(name string) (*models.Pipeline, error) {
 	if err := Session().Where("name = ? AND type = 'website'", name).First(&website).Error; err != nil {
 		return nil, err
 	}
+	if website.CertName != "" {
+		certificate, err := FindCertificate(website.CertName)
+		if err != nil && !errors.Is(err, ErrRecordNotFound) {
+			logs.Log.Errorf("failed to find cert %s", err)
+		}
+		if certificate != nil {
+			website.Tls = types.FromTls(certificate.ToProtobuf())
+		}
+	}
 	return website, nil
 }
 

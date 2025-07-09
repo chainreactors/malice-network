@@ -20,33 +20,16 @@ func NewWebsiteCmd(cmd *cobra.Command, con *repl.Console) error {
 	if port == 0 {
 		port = cryptography.RandomInRange(10240, 65535)
 	}
-	useTls, _ := cmd.Flags().GetBool("tls")
-	certPath, _ := cmd.Flags().GetString("cert_path")
-	keyPath, _ := cmd.Flags().GetString("key_path")
-	return NewWebsite(con, name, root, host, port, useTls, certPath, keyPath, listenerID)
+	tls, certName, err := common.ParseTLSFlags(cmd)
+	if err != nil {
+		return err
+	}
+	return NewWebsite(con, name, root, host, port, listenerID, certName, tls)
 }
 
 // NewWebsite
-func NewWebsite(con *repl.Console, websiteName, root, host string, port uint32, useTls bool, certPath, keyPath, listenerId string) error {
-	var cert, key string
+func NewWebsite(con *repl.Console, websiteName, root, host string, port uint32, listenerId, certName string, tls *clientpb.TLS) error {
 	var err error
-	if certPath != "" && keyPath != "" {
-		cert, err = cryptography.ProcessPEM(certPath)
-		if err != nil {
-			return err
-		}
-		key, err = cryptography.ProcessPEM(keyPath)
-		if err != nil {
-			return err
-		}
-	}
-	tls := &clientpb.TLS{
-		Enable: useTls,
-		Cert: &clientpb.Cert{
-			Cert: cert,
-			Key:  key,
-		},
-	}
 	if root == "" {
 		root = "/"
 	}
@@ -56,6 +39,7 @@ func NewWebsite(con *repl.Console, websiteName, root, host string, port uint32, 
 		ListenerId: listenerId,
 		Enable:     false,
 		Tls:        tls,
+		CertName:   certName,
 		Ip:         host, // this has not taken effect yet
 		Body: &clientpb.Pipeline_Web{
 			Web: &clientpb.Website{
@@ -74,6 +58,7 @@ func NewWebsite(con *repl.Console, websiteName, root, host string, port uint32, 
 	_, err = con.Rpc.StartWebsite(con.Context(), &clientpb.CtrlPipeline{
 		Name:       websiteName,
 		ListenerId: listenerId,
+		Pipeline:   req,
 	})
 	if err != nil {
 		return err
@@ -85,13 +70,23 @@ func NewWebsite(con *repl.Console, websiteName, root, host string, port uint32, 
 // StartWebsitePipelineCmd
 func StartWebsitePipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 	websiteName := cmd.Flags().Arg(0)
-	return StartWebsite(con, websiteName)
+	certName, _ := cmd.Flags().GetString("cert-name")
+	return StartWebsite(con, websiteName, certName)
 }
 
-func StartWebsite(con *repl.Console, websiteName string) error {
+func StartWebsite(con *repl.Console, websiteName, certName string) error {
+	if _, ok := con.Pipelines[websiteName]; ok {
+		_, err := con.Rpc.StopWebsite(con.Context(), &clientpb.CtrlPipeline{
+			Name: websiteName,
+		})
+		if err != nil {
+			return err
+		}
+	}
 	_, err := con.Rpc.StartWebsite(con.Context(), &clientpb.CtrlPipeline{
 		Name:       websiteName,
 		ListenerId: "",
+		CertName:   certName,
 	})
 	if err != nil {
 		return err
