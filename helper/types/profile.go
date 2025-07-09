@@ -78,6 +78,7 @@ type ProfileParams struct {
 	Jitter   float64 `json:"jitter"`
 	//Obfuscation string `json:"obfuscation"` // not impl, obf llvm plug ,
 
+	Address        string `json:"address"`
 	Proxy          string `json:"proxy"`
 	OriginBeaconID uint32 `json:"origin_beacon_id"`
 	RelinkBeaconID uint32 `json:"relink_beacon_id"`

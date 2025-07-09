@@ -144,12 +144,13 @@ build beacon --target x86_64-pc-windows-msvc --profile beacon_profile --source s
 ~~~`,
 	}
 	common.BindFlag(beaconCmd, common.GenerateFlagSet, common.GithubFlagSet, func(f *pflag.FlagSet) {
-		f.Bool("rem", false, "use rem")
+		f.Bool("rem", false, "static link to rem")
 		f.Int("interval", -1, "interval /second")
 		f.Float64("jitter", -1, "jitter")
 		f.String("proxy", "", "Overwrite proxy")
 		f.StringP("modules", "m", "", "Set modules e.g.: execute_exe,execute_dll")
 		f.Uint32("relink", 0, "relink pulse id")
+		f.String("address", "", "implant address target")
 	})
 	beaconCmd.MarkFlagRequired("target")
 	beaconCmd.MarkFlagRequired("profile")
@@ -297,6 +298,7 @@ build pulse --target x86_64-pc-windows-msvc --profile pulse_profile --artifact-i
 	}
 	common.BindFlag(pulseCmd, common.GenerateFlagSet, common.GithubFlagSet, func(f *pflag.FlagSet) {
 		f.Uint32("artifact-id", 0, "load remote shellcode build-id")
+		f.String("address", "", "implant address target")
 	})
 	pulseCmd.MarkFlagRequired("target")
 	pulseCmd.MarkFlagRequired("profile")

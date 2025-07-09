@@ -66,12 +66,12 @@ func (rpc *Server) GetAllCertificates(ctx context.Context, req *clientpb.Empty) 
 	return certs, nil
 }
 
-func (rpc *Server) UpdateCertificate(ctx context.Context, req *clientpb.Cert) (*clientpb.Empty, error) {
-	err := db.UpdateCert(req.Name, req.Cert, req.Key)
+func (rpc *Server) UpdateCertificate(ctx context.Context, req *clientpb.TLS) (*clientpb.Empty, error) {
+	err := db.UpdateCert(req.Cert.Name, req.Cert.Cert, req.Cert.Key, req.Ca.Cert)
 	if err != nil {
 		return nil, err
 	}
-	return nil, nil
+	return &clientpb.Empty{}, nil
 }
 
 func (rpc *Server) GenerateAcmeCert(ctx context.Context, req *clientpb.Pipeline) (*clientpb.Empty, error) {

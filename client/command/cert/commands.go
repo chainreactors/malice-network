@@ -107,9 +107,7 @@ cert update cert-name --cert cert_path --key key_path --type imported
 ~~~`,
 	}
 
-	common.BindFlag(updateCmd, func(f *pflag.FlagSet) {
-		f.String("cert", "", "tls cert path")
-		f.String("key", "", "tls key path")
+	common.BindFlag(updateCmd, common.ImportSet, func(f *pflag.FlagSet) {
 		f.String("type", "", "cert type")
 	})
 
@@ -120,6 +118,7 @@ cert update cert-name --cert cert_path --key key_path --type imported
 		comp["cert"] = carapace.ActionFiles().Usage("path to the cert file")
 		comp["key"] = carapace.ActionFiles().Usage("path to the key file")
 		comp["type"] = common.CertTypeCompleter()
+		comp["ca-cert"] = carapace.ActionFiles().Usage("path to the ca cert file")
 	})
 
 	downloadCmd := &cobra.Command{

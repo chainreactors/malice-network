@@ -1,7 +1,7 @@
 package consts
 
 var (
-	Ver        = "v0.1.0"
+	Ver        = "latest"
 	Commit     = ""
 	Buildstamp = ""
 )

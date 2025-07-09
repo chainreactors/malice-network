@@ -10,6 +10,7 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
+	"github.com/chainreactors/tui"
 	"io"
 	"os"
 	"strings"
@@ -194,12 +195,16 @@ func RegisterLicense() error {
 		return fmt.Errorf("failed to get SaaS config")
 	}
 	// 2. 已有token或未启用SaaS则无需注册
+	if !saasConfig.Enable {
+		return nil
+	} else {
+		SecurityAuthAlert()
+	}
+
 	if saasConfig.Token != "" {
 		return ReDownloadSaasArtifact()
 	}
-	if !saasConfig.Enable {
-		return nil
-	}
+
 	// 3. 构建注册数据
 	licenseData, err := buildLicenseData()
 	if err != nil {
@@ -259,4 +264,9 @@ func CheckAndDownloadArtifact(statusPath, downloadPath, token string, builder *m
 	client.Token = token
 	result := client.CheckAndDownloadArtifact(statusPath, downloadPath, builder, pollInterval, maxPollTime)
 	return result.Path, result.Status, result.Err
+}
+
+func SecurityAuthAlert() {
+	logs.Log.Info(tui.RedFg.Render("使用SaaS服务即视为您已阅读并同意我们的用户协议。详细协议内容请访问：https://wiki.chainreactors.red/IoM/#4"))
+	logs.Log.Info(tui.RedFg.Render("By using the SaaS service, you are deemed to have read and agreed to our User Agreement. For detailed agreement content, please visit:, please visit: https://wiki.chainreactors.red/IoM/#4"))
 }

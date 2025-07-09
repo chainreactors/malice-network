@@ -40,9 +40,10 @@ func UpdateCmd(cmd *cobra.Command, con *repl.Console) error {
 	certPath, _ := cmd.Flags().GetString("cert")
 	keyPath, _ := cmd.Flags().GetString("key")
 	certType, _ := cmd.Flags().GetString("type")
-	var cert, key string
+	caPath, _ := cmd.Flags().GetString("ca-cert")
+	var cert, key, ca string
 	var err error
-	if certPath != "" && keyPath != "" {
+	if certPath != "" && keyPath != "" && caPath != "" {
 		cert, err = cryptography.ProcessPEM(certPath)
 		if err != nil {
 			return err
@@ -51,12 +52,21 @@ func UpdateCmd(cmd *cobra.Command, con *repl.Console) error {
 		if err != nil {
 			return err
 		}
+		ca, err = cryptography.ProcessPEM(caPath)
+		if err != nil {
+			return err
+		}
 	}
-	_, err = con.Rpc.DeleteCertificate(con.Context(), &clientpb.Cert{
-		Name: certName,
-		Type: certType,
-		Cert: cert,
-		Key:  key,
+	_, err = con.Rpc.UpdateCertificate(con.Context(), &clientpb.TLS{
+		Ca: &clientpb.Cert{
+			Cert: ca,
+		},
+		Cert: &clientpb.Cert{
+			Name: certName,
+			Cert: cert,
+			Key:  key,
+			Type: certType,
+		},
 	})
 	if err != nil {
 		return err

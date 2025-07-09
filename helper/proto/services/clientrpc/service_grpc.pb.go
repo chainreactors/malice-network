@@ -296,7 +296,7 @@ type MaliceRPCClient interface {
 	RefreshConfig(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	// certs
 	DeleteCertificate(ctx context.Context, in *clientpb.Cert, opts ...grpc.CallOption) (*clientpb.Empty, error)
-	UpdateCertificate(ctx context.Context, in *clientpb.Cert, opts ...grpc.CallOption) (*clientpb.Empty, error)
+	UpdateCertificate(ctx context.Context, in *clientpb.TLS, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	GetAllCertificates(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Certs, error)
 	DownloadCertificate(ctx context.Context, in *clientpb.Cert, opts ...grpc.CallOption) (*clientpb.TLS, error)
 	// context
@@ -1394,7 +1394,7 @@ func (c *maliceRPCClient) DeleteCertificate(ctx context.Context, in *clientpb.Ce
 	return out, nil
 }
 
-func (c *maliceRPCClient) UpdateCertificate(ctx context.Context, in *clientpb.Cert, opts ...grpc.CallOption) (*clientpb.Empty, error) {
+func (c *maliceRPCClient) UpdateCertificate(ctx context.Context, in *clientpb.TLS, opts ...grpc.CallOption) (*clientpb.Empty, error) {
 	out := new(clientpb.Empty)
 	err := c.cc.Invoke(ctx, MaliceRPC_UpdateCertificate_FullMethodName, in, out, opts...)
 	if err != nil {
@@ -1637,7 +1637,7 @@ type MaliceRPCServer interface {
 	RefreshConfig(context.Context, *clientpb.Empty) (*clientpb.Empty, error)
 	// certs
 	DeleteCertificate(context.Context, *clientpb.Cert) (*clientpb.Empty, error)
-	UpdateCertificate(context.Context, *clientpb.Cert) (*clientpb.Empty, error)
+	UpdateCertificate(context.Context, *clientpb.TLS) (*clientpb.Empty, error)
 	GetAllCertificates(context.Context, *clientpb.Empty) (*clientpb.Certs, error)
 	DownloadCertificate(context.Context, *clientpb.Cert) (*clientpb.TLS, error)
 	// context
@@ -2007,7 +2007,7 @@ func (UnimplementedMaliceRPCServer) RefreshConfig(context.Context, *clientpb.Emp
 func (UnimplementedMaliceRPCServer) DeleteCertificate(context.Context, *clientpb.Cert) (*clientpb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteCertificate not implemented")
 }
-func (UnimplementedMaliceRPCServer) UpdateCertificate(context.Context, *clientpb.Cert) (*clientpb.Empty, error) {
+func (UnimplementedMaliceRPCServer) UpdateCertificate(context.Context, *clientpb.TLS) (*clientpb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateCertificate not implemented")
 }
 func (UnimplementedMaliceRPCServer) GetAllCertificates(context.Context, *clientpb.Empty) (*clientpb.Certs, error) {
@@ -4163,7 +4163,7 @@ func _MaliceRPC_DeleteCertificate_Handler(srv interface{}, ctx context.Context, 
 }
 
 func _MaliceRPC_UpdateCertificate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(clientpb.Cert)
+	in := new(clientpb.TLS)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -4175,7 +4175,7 @@ func _MaliceRPC_UpdateCertificate_Handler(srv interface{}, ctx context.Context, 
 		FullMethod: MaliceRPC_UpdateCertificate_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MaliceRPCServer).UpdateCertificate(ctx, req.(*clientpb.Cert))
+		return srv.(MaliceRPCServer).UpdateCertificate(ctx, req.(*clientpb.TLS))
 	}
 	return interceptor(ctx, in, info, handler)
 }

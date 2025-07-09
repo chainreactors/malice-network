@@ -255,11 +255,11 @@ type TlsConfig struct {
 }
 
 func (t *TlsConfig) ToPkix() *pkix.Name {
-	if t.Name == "" && t.CN == "" && t.O == "" && t.C == "" && t.L == "" && t.OU == "" && t.ST == "" {
+	if t.CN == "" && t.O == "" && t.C == "" && t.L == "" && t.OU == "" && t.ST == "" {
 		return nil
 	}
 	return &pkix.Name{
-		CommonName:         t.Name,
+		CommonName:         t.CN,
 		Organization:       []string{t.O},
 		Country:            []string{t.C},
 		Locality:           []string{t.L},

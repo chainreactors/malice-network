@@ -444,13 +444,14 @@ func GetAllCertificates() ([]*models.Certificate, error) {
 	return certificates, err
 }
 
-func UpdateCert(name, cert, key string) error {
+func UpdateCert(name, cert, key, ca string) error {
 	return Session().Model(&models.Certificate{}).
 		Where("name = ?", name).
-		Select("cert_pem", "key_pem").
+		Select("cert_pem", "key_pem", "ca_cert_pem").
 		Updates(models.Certificate{
-			CertPEM: cert,
-			KeyPEM:  key,
+			CertPEM:   cert,
+			KeyPEM:    key,
+			CACertPEM: ca,
 		}).Error
 }
 
@@ -1165,6 +1166,9 @@ func UpdateGeneratorConfig(req *clientpb.BuildConfig, config *types.ProfileConfi
 				config.Implant.Modules = []string{}
 			} else {
 				config.Implant.Modules = strings.Split(params.Modules, ",")
+			}
+			if params.Address != "" {
+				config.Basic.Targets = []string{params.Address}
 			}
 		}
 	}

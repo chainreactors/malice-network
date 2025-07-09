@@ -72,6 +72,7 @@ func prepareBuildConfig(cmd *cobra.Command, con *repl.Console, buildType string)
 	artifactID, _ := cmd.Flags().GetUint32("artifact-id")
 	pulse, _ := cmd.Flags().GetUint32("relink")
 	rem, _ := cmd.Flags().GetBool("rem")
+	address, _ := cmd.Flags().GetString("address")
 	profileParams := &types.ProfileParams{
 		Interval: interval,
 		Jitter:   jitter,
@@ -94,6 +95,9 @@ func prepareBuildConfig(cmd *cobra.Command, con *repl.Console, buildType string)
 		if profileParams.Modules == "" {
 			profileParams.Modules = "full"
 		}
+	}
+	if address != "" {
+		profileParams.Address = address
 	}
 	buildConfig.ParamsBytes = []byte(profileParams.String())
 	return buildConfig, nil

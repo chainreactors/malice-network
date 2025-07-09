@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/chainreactors/malice-network/helper/utils"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"os"
@@ -313,6 +314,11 @@ func (lns *listener) handlerStart(job *clientpb.Job) error {
 func (lns *listener) autoBuild(autoBuild *configs.AutoBuildConfig, pipeline *clientpb.Pipeline) {
 	if autoBuild == nil || !autoBuild.Enable || len(autoBuild.Target) == 0 || len(autoBuild.Pipeline) == 0 {
 		logs.Log.Debugf("not set auto_build/target/pipeline, skip auto build")
+		return
+	}
+
+	if !utils.StringInSlice(pipeline.Name, autoBuild.Pipeline) {
+		logs.Log.Debugf("%s pieline not auto build list", pipeline.Name)
 		return
 	}
 
