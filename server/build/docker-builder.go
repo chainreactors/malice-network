@@ -57,7 +57,7 @@ func (d *DockerBuilder) Generate() (*clientpb.Artifact, error) {
 		builder, err = db.SaveArtifactFromConfig(d.config, profileByte)
 	}
 	if err != nil {
-		logs.Log.Errorf("failed to save build %s: %s", builder.Name, err)
+		logs.Log.Errorf("failed to create %s", err)
 		return nil, err
 	}
 	d.artifact = builder

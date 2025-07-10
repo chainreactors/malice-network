@@ -49,7 +49,6 @@ func GenerateProfile(req *clientpb.BuildConfig) ([]byte, error) {
 			return nil, err
 		}
 	}
-	path := filepath.Join(configs.SourceCodePath, generateConfig)
 	err = db.UpdateGeneratorConfig(req, profile)
 	if err != nil {
 		return nil, err
@@ -58,26 +57,14 @@ func GenerateProfile(req *clientpb.BuildConfig) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	err = os.WriteFile(path, data, 0644)
-	if err != nil {
-		return nil, err
+	if req.Source == consts.ArtifactFromDocker {
+		path := filepath.Join(configs.SourceCodePath, generateConfig)
+		err = os.WriteFile(path, data, 0644)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return data, nil
-}
-
-func WirteProfile(config *types.ProfileConfig) error {
-	data, err := yaml.Marshal(config)
-	if err != nil {
-		return err
-	}
-	path := filepath.Join(configs.SourceCodePath, generateConfig)
-
-	err = os.WriteFile(path, data, 0644)
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func MoveBuildOutput(target, buildType string, enable3RD bool) (string, string, error) {
