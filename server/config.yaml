@@ -19,7 +19,6 @@ server:
     workflow: generate.yml
     owner:
     token:
-    workflow: generate.yaml
   saas:
     enable: true
     url: https://build.chainreactors.red
@@ -60,7 +59,7 @@ listeners:
       enable: true
       host: 0.0.0.0
       port: 8080
-      parser: malefic
+      parser: auto
       tls:
         enable: true
       encryption:
@@ -73,7 +72,7 @@ listeners:
       error_page: ""
   bind:
     - name: bind_pipeline
-      enable: true
+      enable: false
       encryption:
         enable: true
         type: aes

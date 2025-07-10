@@ -246,7 +246,7 @@ func (pipeline *HTTPPipeline) handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	logs.Log.Debugf("[pipeline.%s] accept from %s", pipeline.Name, r.RemoteAddr)
-	switch pipeline.Parser {
+	switch conn.Parser.Implant {
 	case consts.ImplantMalefic:
 		pipeline.handleMalefic(w, r, conn)
 	case consts.ImplantPulse:
