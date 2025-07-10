@@ -97,8 +97,8 @@ implants:
 
   # for professional
   anti: # 反沙箱反调试反编译反取证相关
-    sandbox: true
-    vm: true            # enable anti vm
+    sandbox: false
+    vm: false            # enable anti vm
     # debug: true         # enable anti debug
     # disasm: true        # enable anti disasm
     # emulator: true      # enable anti emulator
