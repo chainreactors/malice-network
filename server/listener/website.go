@@ -198,6 +198,7 @@ func (w *Website) websiteContentHandler(resp http.ResponseWriter, req *http.Requ
 func (w *Website) AddContent(content *clientpb.WebContent) error {
 	contentPath := filepath.Join(configs.WebsitePath, content.WebsiteId, content.Id)
 	if !fileutils.Exist(contentPath) {
+		os.MkdirAll(filepath.Join(configs.WebsitePath, content.WebsiteId), 0644)
 		err := os.WriteFile(contentPath, content.Content, 0644)
 		if err != nil {
 			return err

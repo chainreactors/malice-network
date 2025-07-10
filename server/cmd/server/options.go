@@ -33,8 +33,8 @@ var (
 type Options struct {
 	Config       string               `short:"c" long:"config" default:"config.yaml" description:"Path to config file"`
 	IP           string               `short:"i" long:"ip" description:"external ip address, -i 123.123.123.123"`
-	ServerOnly   bool                 `long:"server-only" description:"Run server only"`
-	ListenerOnly bool                 `long:"listener-only" description:"Run listener only"`
+	ServerOnly   bool                 `config:"server-only" long:"server-only" description:"Run server only"`
+	ListenerOnly bool                 `config:"listener-only" long:"listener-only" description:"Run listener only"`
 	Daemon       bool                 `long:"daemon" description:"Run as a daemon"`
 	Opsec        bool                 `long:"opsec" description:"Path to opsec file"`
 	Debug        bool                 `long:"debug" description:"Debug mode" config:"debug"`
