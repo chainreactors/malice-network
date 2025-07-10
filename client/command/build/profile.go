@@ -24,7 +24,6 @@ func ProfileShowCmd(cmd *cobra.Command, con *repl.Console) error {
 	tableModel := tui.NewTable([]table.Column{
 		table.NewColumn("Name", "Name", 20),
 		table.NewColumn("Pipeline", "Pipeline", 16),
-		table.NewColumn("Pulse Pipeline", "Pulse Pipeline", 16),
 		table.NewColumn("CreatedAt", "CreatedAt", 16),
 	}, true)
 

@@ -1182,6 +1182,11 @@ func UpdateGeneratorConfig(req *clientpb.BuildConfig, config *types.ProfileConfi
 			}
 			if params.Address != "" {
 				config.Basic.Targets = []string{params.Address}
+				config.Basic.TLS.SNI = params.Address
+				config.Basic.Extras["http"].(map[string]interface{})["host"] = params.Address
+				config.Pulse.Target = params.Address
+				config.Pulse.Extras["http"].(map[string]interface{})["host"] = params.Address
+
 			}
 		}
 	}
