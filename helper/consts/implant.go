@@ -37,6 +37,7 @@ const (
 	FormatVBApplication    = "vbapplication"
 	FormatPowerShellRemote = "powershell-remote"
 	FormatCurlRemote       = "curl-remote"
+	FormatWgetRemote       = "wget-remote"
 )
 
 type Arch uint32

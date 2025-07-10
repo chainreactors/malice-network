@@ -199,7 +199,7 @@ func DownloadArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
 			}
 
 			usage := formatutils.SupportedFormats[format].Usage(pipe.URL() + formatutils.EncodeFormat(artifact.Name, format))
-			con.Log.Infof("you can use this payload to run:\n--------\n%s\n--------\n", usage)
+			con.Log.Infof("you can use this payload :\n--------\n%s\n--------\n", usage)
 		} else {
 			var fileExt string
 			if f, ok := formatutils.SupportedFormats[format]; ok {
