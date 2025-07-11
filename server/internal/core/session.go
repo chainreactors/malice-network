@@ -98,6 +98,7 @@ func RegisterSession(req *clientpb.RegisterSession) (*Session, error) {
 		Type:           req.Type,
 		Name:           req.RegisterData.Name,
 		Group:          "default",
+		Note:           req.RegisterData.Name,
 		ID:             req.SessionId,
 		RawID:          req.RawId,
 		PipelineID:     req.PipelineId,
