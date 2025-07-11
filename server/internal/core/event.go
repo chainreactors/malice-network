@@ -8,6 +8,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/server/internal/configs"
+	"github.com/chainreactors/tui"
 	"github.com/nikoksr/notify"
 	"github.com/nikoksr/notify/service/dingding"
 	"github.com/nikoksr/notify/service/http"
@@ -66,27 +67,26 @@ func (event *Event) format() string {
 		pipeline := event.Job.GetPipeline()
 		switch pipeline.Body.(type) {
 		case *clientpb.Pipeline_Tcp:
-			return fmt.Sprintf("[%s] %s: tcp %s on %s %s:%d", event.EventType, event.Op,
-				pipeline.Name, pipeline.ListenerId, pipeline.Ip, pipeline.GetTcp().Port)
+			return fmt.Sprintf("[%s] %s: tcp \n%s", event.EventType, event.Op,
+				tui.NewOrderedKVTable(pipeline.KVMap()).View())
 		case *clientpb.Pipeline_Bind:
-			return fmt.Sprintf("[%s] %s: bind %s on %s %s", event.EventType, event.Op,
-				pipeline.Name, pipeline.ListenerId, pipeline.Ip)
+			return fmt.Sprintf("[%s] %s: bind \n%s", event.EventType, event.Op,
+				tui.NewOrderedKVTable(pipeline.KVMap()).View())
 		case *clientpb.Pipeline_Http:
 			if event.Op == consts.CtrlAcme {
 				return fmt.Sprintf("[%s] %s: cert %s create success", event.EventType, event.Op,
 					pipeline.Tls.Domain)
 			}
-			return fmt.Sprintf("[%s] %s: http %s on %s %s:%d", event.EventType, event.Op,
-				pipeline.Name, pipeline.ListenerId, pipeline.Ip, pipeline.GetHttp().Port)
+			return fmt.Sprintf("[%s] %s: http \n%s", event.EventType, event.Op,
+				tui.NewOrderedKVTable(pipeline.KVMap()).View())
 		case *clientpb.Pipeline_Rem:
 			if event.Op == consts.CtrlRemAgentLog {
 				return ""
 			}
-			return fmt.Sprintf("[%s] %s: rem %s on %s %s:%d", event.EventType, event.Op,
-				pipeline.Name, pipeline.ListenerId, pipeline.Ip, pipeline.GetRem().Port)
+			return fmt.Sprintf("[%s] %s: rem \n%s", event.EventType, event.Op,
+				tui.NewOrderedKVTable(pipeline.KVMap()).View())
 		case *clientpb.Pipeline_Web:
 			baseURL := pipeline.URL()
-			web := pipeline.GetWeb()
 			if event.Op == consts.CtrlWebContentAddArtifact {
 				if cont := event.Job.FirstContent(); cont != nil {
 					return fmt.Sprintf("[%s] %s: artifact %s amount at %s", event.EventType, event.Op,
@@ -95,15 +95,15 @@ func (event *Event) format() string {
 
 			} else if event.Op == consts.CtrlWebContentAdd {
 				var result string
-				for _, content := range web.Contents {
+				if cont := event.Job.FirstContent(); cont != nil {
 					result += fmt.Sprintf("[%s] %s: content add success, path: %s\n",
-						event.EventType, event.Op, baseURL+content.Path)
+						event.EventType, event.Op, baseURL+cont.Path)
 				}
 				return strings.TrimSuffix(result, "\n")
 			}
 
-			return fmt.Sprintf("[%s] %s: web %s on %s %d, path: %s", event.EventType, event.Op,
-				pipeline.ListenerId, pipeline.Name, web.Port, baseURL)
+			return fmt.Sprintf("[%s] %s: web \n%s", event.EventType, event.Op,
+				tui.NewOrderedKVTable(pipeline.KVMap()).View())
 		}
 	}
 	return event.Message

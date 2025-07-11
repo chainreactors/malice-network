@@ -39,6 +39,24 @@ var (
 	ErrImplantSendTimeout = errors.New("implant timeout")
 )
 
+func createSessionDirs(sessionID string) (string, error) {
+	contextDir := filepath.Join(configs.ContextPath, sessionID)
+	cacheDir := filepath.Join(contextDir, consts.CachePath)
+	downloadDir := filepath.Join(contextDir, consts.DownloadPath)
+	keyLoggerDir := filepath.Join(contextDir, consts.KeyLoggerPath)
+	screenShotDir := filepath.Join(contextDir, consts.ScreenShotPath)
+	taskDir := filepath.Join(contextDir, consts.TaskPath)
+
+	dirs := []string{cacheDir, downloadDir, keyLoggerDir, screenShotDir, taskDir}
+	for _, dir := range dirs {
+		if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+			logs.Log.Errorf("cannot create directory %s, %s", dir, err.Error())
+		}
+	}
+
+	return cacheDir, nil
+}
+
 func NewSessions() *sessions {
 	newSessions := &sessions{
 		active: &sync.Map{},
@@ -67,16 +85,9 @@ func NewSessions() *sessions {
 
 func RegisterSession(req *clientpb.RegisterSession) (*Session, error) {
 	current_time := time.Now().Unix()
-	var err error
-	contextDir := filepath.Join(configs.ContextPath, req.SessionId)
-	err = os.MkdirAll(contextDir, os.ModePerm)
+	cacheDir, err := createSessionDirs(req.SessionId)
 	if err != nil {
-		logs.Log.Errorf("cannot create log directory %s, %s", contextDir, err.Error())
-	}
-	cacheDir := filepath.Join(contextDir, consts.CachePath)
-	err = os.MkdirAll(cacheDir, os.ModePerm)
-	if err != nil {
-		logs.Log.Errorf("cannot create cache directory %s, %s", cacheDir, err.Error())
+		return nil, err
 	}
 	cache := NewCache(filepath.Join(cacheDir, CacheName))
 	err = cache.Save()
@@ -100,16 +111,6 @@ func RegisterSession(req *clientpb.RegisterSession) (*Session, error) {
 		responses:      &sync.Map{},
 	}
 	sess.Ctx, sess.Cancel = context.WithCancel(context.Background())
-	downloadDir := filepath.Join(contextDir, consts.DownloadPath)
-	keyLoggerDir := filepath.Join(contextDir, consts.KeyLoggerPath)
-	screenShotDir := filepath.Join(contextDir, consts.ScreenShotPath)
-	taskDir := filepath.Join(contextDir, consts.TaskPath)
-	for _, dir := range []string{downloadDir, keyLoggerDir, screenShotDir, taskDir} {
-		err = os.MkdirAll(dir, os.ModePerm)
-		if err != nil {
-			logs.Log.Errorf("cannot create log directory %s, %s", dir, err.Error())
-		}
-	}
 	if req.RegisterData.Sysinfo != nil {
 		sess.UpdateSysInfo(req.RegisterData.Sysinfo)
 	}

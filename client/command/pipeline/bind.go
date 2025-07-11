@@ -24,7 +24,7 @@ func NewBindPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 	if parser == "default" {
 		parser = consts.ImplantMalefic
 	}
-	_, err = con.Rpc.RegisterPipeline(con.Context(), &clientpb.Pipeline{
+	pipeline := &clientpb.Pipeline{
 		Encryption: encryption,
 		Tls:        tls,
 		Name:       name,
@@ -37,7 +37,8 @@ func NewBindPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 				Name: name,
 			},
 		},
-	})
+	}
+	_, err = con.Rpc.RegisterPipeline(con.Context(), pipeline)
 	if err != nil {
 		return err
 	}
@@ -46,6 +47,7 @@ func NewBindPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 	_, err = con.Rpc.StartPipeline(con.Context(), &clientpb.CtrlPipeline{
 		Name:       name,
 		ListenerId: listenerID,
+		Pipeline:   pipeline,
 	})
 	if err != nil {
 		return err

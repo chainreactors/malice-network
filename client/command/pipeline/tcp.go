@@ -28,7 +28,7 @@ func NewTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 	if parser == "default" {
 		parser = consts.ImplantMalefic
 	}
-	_, err = con.Rpc.RegisterPipeline(con.Context(), &clientpb.Pipeline{
+	pipeline := &clientpb.Pipeline{
 		Encryption: encryption,
 		Tls:        tls,
 		Name:       name,
@@ -44,7 +44,8 @@ func NewTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 				Proxy: proxy,
 			},
 		},
-	})
+	}
+	_, err = con.Rpc.RegisterPipeline(con.Context(), pipeline)
 	if err != nil {
 		return err
 	}
@@ -53,6 +54,7 @@ func NewTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 	_, err = con.Rpc.StartPipeline(con.Context(), &clientpb.CtrlPipeline{
 		Name:       name,
 		ListenerId: listenerID,
+		Pipeline:   pipeline,
 	})
 	if err != nil {
 		return err

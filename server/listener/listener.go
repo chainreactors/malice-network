@@ -486,6 +486,12 @@ func (lns *listener) handleWebContentAdd(job *clientpb.JobCtrl) error {
 		return errors.New("website not found")
 	}
 	w.AddContent(job.Content)
+	job.Job.Contents = map[string]*clientpb.WebContent{
+		job.Content.Path: &clientpb.WebContent{
+			Id:   job.Content.Path,
+			Path: job.Content.Path,
+		},
+	}
 	return nil
 }
 

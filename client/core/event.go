@@ -233,6 +233,7 @@ func (s *ServerStatus) handleJob(event *clientpb.Event) {
 		s.Pipelines[pipeline.Name] = pipeline
 	case consts.CtrlPipelineStop:
 		delete(s.Pipelines, pipeline.Name)
+		Log.Important(event.Formatted + "\n")
 	default:
 		Log.Important(event.Formatted + "\n")
 	}
