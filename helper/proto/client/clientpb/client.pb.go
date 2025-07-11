@@ -5537,6 +5537,10 @@ type Notify struct {
 	LarkWebhookUrl   string `protobuf:"bytes,8,opt,name=lark_webhook_url,json=larkWebhookUrl,proto3" json:"lark_webhook_url,omitempty"`
 	ServerchanEnable bool   `protobuf:"varint,9,opt,name=serverchan_enable,json=serverchanEnable,proto3" json:"serverchan_enable,omitempty"`
 	ServerchanUrl    string `protobuf:"bytes,10,opt,name=serverchan_url,json=serverchanUrl,proto3" json:"serverchan_url,omitempty"`
+	PushplusEnable   bool   `protobuf:"varint,11,opt,name=pushplus_enable,json=pushplusEnable,proto3" json:"pushplus_enable,omitempty"`
+	PushplusToken    string `protobuf:"bytes,12,opt,name=pushplus_token,json=pushplusToken,proto3" json:"pushplus_token,omitempty"`
+	PushplusTopic    string `protobuf:"bytes,13,opt,name=pushplus_topic,json=pushplusTopic,proto3" json:"pushplus_topic,omitempty"`
+	PushplusChannel  string `protobuf:"bytes,14,opt,name=pushplus_channel,json=pushplusChannel,proto3" json:"pushplus_channel,omitempty"`
 }
 
 func (x *Notify) Reset() {
@@ -5639,6 +5643,34 @@ func (x *Notify) GetServerchanUrl() string {
 		return x.ServerchanUrl
 	}
 	return ""
+}
+
+func (x *Notify) GetPushplusEnable() bool {
+	if x != nil {
+		return x.PushplusEnable
+	}
+	return false
+}
+
+func (x *Notify) GetPushplusToken() string {
+	if x != nil {
+		return x.PushplusToken
+	}
+	return ""
+}
+
+func (x *Notify) GetPushplusTopic() string {
+	if x != nil {
+		return x.PushplusTopic
+	}
+	return ""
+}
+
+func (x *Notify) GetPushplusChannel() string {
+	if x != nil {
+		return x.PushplusChannel
+	}
+	return "wechat"
 }
 
 type Context struct {

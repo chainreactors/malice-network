@@ -64,7 +64,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		},
 	}
 
-	common.BindFlag(notifyUpdateCmd, TelegramSet, DingTalkSet, LarkSet, ServerChanSet)
+	common.BindFlag(notifyUpdateCmd, TelegramSet, DingTalkSet, LarkSet, ServerChanSet, PushPlusSet)
 
 	notifyCmd.AddCommand(notifyUpdateCmd)
 
@@ -109,11 +109,19 @@ func ServerChanSet(f *pflag.FlagSet) {
 	f.String("serverchan-url", "", "serverchan url")
 }
 
+func PushPlusSet(f *pflag.FlagSet) {
+	f.Bool("pushplus-enable", false, "enable pushplus")
+	f.String("pushplus-token", "", "pushplus token")
+	f.String("pushplus-topic", "", "pushplus topic")
+	f.String("pushplus-channel", "wechat", "pushplus channel")
+}
+
 func ParseNotifyFlags(cmd *cobra.Command) *clientpb.Notify {
 	telegramEnable, _ := cmd.Flags().GetBool("telegram-enable")
 	dingTalkEnable, _ := cmd.Flags().GetBool("dingtalk-enable")
 	larkEnable, _ := cmd.Flags().GetBool("lark-enable")
 	serverChanEnable, _ := cmd.Flags().GetBool("serverchan-enable")
+	pushPlusEnable, _ := cmd.Flags().GetBool("pushplus-enable")
 
 	telegramToken, _ := cmd.Flags().GetString("telegram-token")
 	telegramChatID, _ := cmd.Flags().GetInt64("telegram-chat-id")
@@ -121,6 +129,9 @@ func ParseNotifyFlags(cmd *cobra.Command) *clientpb.Notify {
 	dingTalkToken, _ := cmd.Flags().GetString("dingtalk-token")
 	larkWebhookURL, _ := cmd.Flags().GetString("lark-webhook-url")
 	serverChanURL, _ := cmd.Flags().GetString("serverchan-url")
+	pushPlusToken, _ := cmd.Flags().GetString("pushplus-token")
+	pushPlusTopic, _ := cmd.Flags().GetString("pushplus-topic")
+	pushPlusChannel, _ := cmd.Flags().GetString("pushplus-channel")
 
 	notifyConfig := &clientpb.Notify{
 		TelegramEnable: telegramEnable,
@@ -136,6 +147,11 @@ func ParseNotifyFlags(cmd *cobra.Command) *clientpb.Notify {
 
 		ServerchanEnable: serverChanEnable,
 		ServerchanUrl:    serverChanURL,
+
+		PushplusEnable:  pushPlusEnable,
+		PushplusToken:   pushPlusToken,
+		PushplusTopic:   pushPlusTopic,
+		PushplusChannel: pushPlusChannel,
 	}
 
 	return notifyConfig
