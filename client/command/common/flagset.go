@@ -2,7 +2,6 @@ package common
 
 import (
 	"github.com/chainreactors/malice-network/helper/cryptography"
-	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
@@ -122,8 +121,8 @@ func TlsCertFlagSet(f *pflag.FlagSet) {
 	f.String("key", "", "tls key path")
 	f.BoolP("tls", "t", false, "enable tls")
 	f.String("cert-name", "", "certificate name")
-	f.Bool("acme", false, "auto cert by let's encrypt")
-	f.String("domain", "", "auto cert domain")
+	//f.Bool("acme", false, "auto cert by let's encrypt")
+	//f.String("domain", "", "auto cert domain")
 	SetFlagSetGroup(f, "tls")
 }
 
@@ -147,11 +146,12 @@ func ParsePipelineFlags(cmd *cobra.Command) (string, string, string, uint32) {
 func ParseTLSFlags(cmd *cobra.Command) (*clientpb.TLS, string, error) {
 	certPath, _ := cmd.Flags().GetString("cert")
 	keyPath, _ := cmd.Flags().GetString("key")
-	acme, _ := cmd.Flags().GetBool("acme")
+	//acme, _ := cmd.Flags().GetBool("acme")
 	domain, _ := cmd.Flags().GetString("domain")
-	if acme && domain == "" {
-		return nil, "", errs.ErrNullDomain
-	}
+	//if acme && domain == "" {
+	//	return nil, "", errs.ErrNullDomain
+	//}
+	tls, _ := cmd.Flags().GetBool("tls")
 	var err error
 	var cert, key string
 	if certPath != "" && keyPath != "" {
@@ -166,12 +166,12 @@ func ParseTLSFlags(cmd *cobra.Command) (*clientpb.TLS, string, error) {
 	}
 	certificateName, _ := cmd.Flags().GetString("cert-name")
 	return &clientpb.TLS{
-		Enable: true,
+		Enable: tls,
 		Cert: &clientpb.Cert{
 			Cert: cert,
 			Key:  key,
 		},
-		Acme:   acme,
+		//Acme:   acme,
 		Domain: domain,
 	}, certificateName, nil
 }

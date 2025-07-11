@@ -91,11 +91,11 @@ func prepareBuildConfig(cmd *cobra.Command, con *repl.Console, buildType string)
 		buildConfig.ArtifactId = pulse
 		profileParams.RelinkBeaconID = pulse
 	}
-	if buildType != consts.CommandBuildModules {
-		if profileParams.Modules == "" {
-			profileParams.Modules = "full"
-		}
-	}
+	//if buildType != consts.CommandBuildModules {
+	//	if profileParams.Modules == "" {
+	//		profileParams.Modules = "full"
+	//	}
+	//}
 	if address != "" {
 		profileParams.Address = address
 	}
