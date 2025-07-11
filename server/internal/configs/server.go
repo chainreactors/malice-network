@@ -126,6 +126,7 @@ type NotifyConfig struct {
 	DingTalk   *DingTalkConfig   `config:"dingtalk"`
 	Lark       *LarkConfig       `config:"lark"`
 	ServerChan *ServerChanConfig `config:"serverchan"`
+	PushPlus   *PushPlusConfig   `config:"pushplus"`
 }
 
 type TelegramConfig struct {
@@ -148,6 +149,13 @@ type LarkConfig struct {
 type ServerChanConfig struct {
 	Enable bool   `config:"enable" default:"false"`
 	URL    string `config:"url"`
+}
+
+type PushPlusConfig struct {
+	Enable  bool   `config:"enable" default:"false"`
+	Token   string `config:"token"`
+	Topic   string `config:"topic"`
+	Channel string `config:"channel"`
 }
 
 type GithubConfig struct {
