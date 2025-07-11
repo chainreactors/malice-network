@@ -58,7 +58,7 @@ func ShellCmd(cmd *cobra.Command, con *repl.Console) error {
 	session := con.GetInteractive()
 	//token := ctx.Flags.Bool("token")
 	quiet, _ := cmd.Flags().GetBool("quiet")
-	cmdStr := shellquote.Join(cmd.Flags().Args()...)
+	cmdStr := strings.Join(cmd.Flags().Args(), " ")
 	task, err := Shell(con.Rpc, session, cmdStr, !quiet)
 	if err != nil {
 		return err
