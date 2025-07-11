@@ -1177,7 +1177,7 @@ func UpdateGeneratorConfig(req *clientpb.BuildConfig, config *types.ProfileConfi
 				config.Implant.Extras["3rd_modules"] = strings.Split(params.Modules, ",")
 				config.Implant.Extras["enable_3rd"] = true
 				config.Implant.Modules = []string{}
-			} else {
+			} else if params.Modules != "" {
 				config.Implant.Modules = strings.Split(params.Modules, ",")
 			}
 			if params.Address != "" {

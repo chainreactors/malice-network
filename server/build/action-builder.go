@@ -74,7 +74,7 @@ func (a *ActionBuilder) Generate() (*clientpb.Artifact, error) {
 		builder, err = db.SaveArtifactFromConfig(a.config, profileByte)
 	}
 	if err != nil {
-		logs.Log.Errorf("failed to save build%s: %s", builder.Name, err)
+		logs.Log.Errorf("failed to save build: %s", err)
 		return nil, err
 	}
 	a.builder = builder

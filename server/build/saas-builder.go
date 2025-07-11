@@ -57,7 +57,7 @@ func (s *SaasBuilder) Generate() (*clientpb.Artifact, error) {
 		builder, err = db.SaveArtifactFromConfig(s.config, profileByte)
 	}
 	if err != nil {
-		logs.Log.Errorf("failed to save build %s: %s", builder.Name, err)
+		logs.Log.Errorf("failed to save build: %s", err)
 		return nil, err
 	}
 	s.builder = builder
