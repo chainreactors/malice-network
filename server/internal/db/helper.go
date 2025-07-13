@@ -336,12 +336,12 @@ func ListPipelines(listenerID string) ([]*models.Pipeline, error) {
 }
 
 func DeleteWebsite(name string) error {
-	website := models.WebsiteContent{}
-	result := Session().Where("pipeline_id = ?", name).First(&website)
+	website := models.Pipeline{}
+	result := Session().Where("name = ?", name).First(&website)
 	if result.Error != nil {
 		return result.Error
 	}
-	err := os.Remove(filepath.Join(configs.WebsitePath, website.ID.String()))
+	err := os.Remove(filepath.Join(configs.WebsitePath, website.Name))
 	if err != nil {
 		return err
 	}
