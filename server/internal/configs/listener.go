@@ -19,7 +19,7 @@ type ListenerConfig struct {
 	Name   string `config:"name" default:"listener"`
 	Auth   string `config:"auth" default:"listener.auth"`
 	//Server             string                `config:"server" default:"127.0.0.1"`
-	IP                 string                `config:"ip" default:"127.0.0.1"`
+	IP                 string                `config:"ip"`
 	TcpPipelines       []*TcpPipelineConfig  `config:"tcp" `
 	BindPipelineConfig []*BindPipelineConfig `config:"bind"`
 	HttpPipelines      []*HttpPipelineConfig `config:"http"`

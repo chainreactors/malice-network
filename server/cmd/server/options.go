@@ -257,8 +257,10 @@ func (opt *Options) PrepareListener() error {
 	logs.Log.Importantf("[listener] listener config enabled, Starting listeners")
 	if opt.IP != "" {
 		logs.Log.Infof("manually specified IP: %s will override config: %s", opt.IP, opt.Server.IP)
-		opt.Listeners.IP = opt.IP
-		config.Set("listeners.ip", opt.IP)
+		if !(opt.Server.Enable && opt.Listeners.Enable) {
+			opt.Listeners.IP = opt.IP
+			config.Set("listeners.ip", opt.IP)
+		}
 	}
 	err := StartListener(opt.Listeners)
 	if err != nil {
