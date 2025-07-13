@@ -156,3 +156,14 @@ func (rpc *Server) FindArtifact(ctx context.Context, req *clientpb.Artifact) (*c
 func (rpc *Server) DeleteArtifact(ctx context.Context, req *clientpb.Artifact) (*clientpb.Empty, error) {
 	return &clientpb.Empty{}, db.DeleteArtifactByName(req.Name)
 }
+
+func (rpc *Server) GetArtifactProfile(ctx context.Context, req *clientpb.Artifact) (*clientpb.Artifact, error) {
+	artifactModel, err := db.GetArtifactByName(req.Name)
+	if err != nil {
+		return nil, err
+	}
+
+	artifact := artifactModel.ToProtobuf(make([]byte, 0))
+
+	return artifact, nil
+}
