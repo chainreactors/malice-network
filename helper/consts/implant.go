@@ -126,7 +126,6 @@ const (
 
 const (
 	ELF           = ".elf"
-	PE            = ".pe"
 	DLL           = ".dll"
 	PEFile        = ".exe"
 	ShellcodeFile = ".bin"

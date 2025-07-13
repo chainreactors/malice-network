@@ -3,6 +3,9 @@ package formatutils
 import (
 	"fmt"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/encoders"
+	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"github.com/wabzsy/gonut"
 	"os"
 	"os/exec"
@@ -52,10 +55,22 @@ func ObjcopyPulse(path, platform, arch string) ([]byte, error) {
 	return bin, nil
 }
 
-func SRDIArtifact(path, platform, arch string, useobjcopy bool) ([]byte, error) {
+func SRDIArtifact(bin []byte, platform, arch string, useobjcopy bool) ([]byte, error) {
 	if useobjcopy {
-		return ObjcopyPulse(path, platform, arch)
+		filename := filepath.Join(encoders.UUID())
+		if err := os.WriteFile(filename, bin, 0644); err != nil {
+			return nil, err
+		}
+		defer os.Remove(filename)
+		return ObjcopyPulse(filename, platform, arch)
 	} else {
-		return gonut.DonutShellcodeFromFile(path, arch, "")
+		switch pe.CheckPEType(bin) {
+		case consts.DLLFile:
+			return gonut.DonutShellcodeFromPE("bin"+consts.DLL, bin, arch, "", false, true)
+		case consts.EXEFile:
+			return gonut.DonutShellcodeFromPE("bin"+consts.PEFile, bin, arch, "", false, true)
+		default:
+			return nil, fmt.Errorf("unsupported file type")
+		}
 	}
 }

@@ -71,7 +71,6 @@ func UnsafeStructToBytes(ptr any) []byte {
 }
 
 func GetExtension(filepath string) (string, error) {
-
 	file, err := os.Open(filepath)
 	if err != nil {
 		return "", fmt.Errorf("failed to open file %s: %w", filepath, err)
