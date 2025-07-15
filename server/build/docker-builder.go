@@ -42,6 +42,9 @@ func (d *DockerBuilder) Generate() (*clientpb.Artifact, error) {
 	var builder *models.Artifact
 	var err error
 	var profileByte []byte
+	if d.config.BuildName == "" {
+		d.config.BuildName = codenames.GetCodename()
+	}
 	if d.config.Inputs == nil {
 		profileByte, err = GenerateProfile(d.config)
 		if err != nil {
@@ -51,9 +54,6 @@ func (d *DockerBuilder) Generate() (*clientpb.Artifact, error) {
 	if d.config.ArtifactId != 0 && d.config.Type == consts.CommandBuildBeacon {
 		builder, err = db.SaveArtifactFromID(d.config, d.config.ArtifactId, d.config.Source, profileByte)
 	} else {
-		if d.config.BuildName == "" {
-			d.config.BuildName = codenames.GetCodename()
-		}
 		builder, err = db.SaveArtifactFromConfig(d.config, profileByte)
 	}
 	if err != nil {

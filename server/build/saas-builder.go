@@ -39,6 +39,9 @@ func (s *SaasBuilder) Generate() (*clientpb.Artifact, error) {
 	}
 	var builder *models.Artifact
 	var err error
+	if s.config.BuildName == "" {
+		s.config.BuildName = codenames.GetCodename()
+	}
 	profileByte, err := GenerateProfile(s.config)
 	if err != nil {
 		return nil, err
@@ -51,9 +54,6 @@ func (s *SaasBuilder) Generate() (*clientpb.Artifact, error) {
 	if s.config.ArtifactId != 0 && s.config.Type == consts.CommandBuildBeacon {
 		builder, err = db.SaveArtifactFromID(s.config, s.config.ArtifactId, s.config.Source, profileByte)
 	} else {
-		if s.config.BuildName == "" {
-			s.config.BuildName = codenames.GetCodename()
-		}
 		builder, err = db.SaveArtifactFromConfig(s.config, profileByte)
 	}
 	if err != nil {

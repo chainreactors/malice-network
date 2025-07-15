@@ -116,6 +116,14 @@ func (c *Console) Context() context.Context {
 	)
 }
 
+func (c *Console) SyncBuildContext() context.Context {
+	ctx, _ := context.WithTimeout(context.Background(), consts.SyncBuildTimeout)
+
+	return metadata.NewOutgoingContext(ctx, metadata.Pairs(
+		"client_id", fmt.Sprintf("%s_%d", c.Client.Name, c.Client.ID)),
+	)
+}
+
 func (c *Console) GetPrompt() string {
 	session := c.ActiveTarget.Get()
 	if session != nil {

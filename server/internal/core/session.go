@@ -114,6 +114,8 @@ func RegisterSession(req *clientpb.RegisterSession) (*Session, error) {
 	sess.Ctx, sess.Cancel = context.WithCancel(context.Background())
 	if req.RegisterData.Sysinfo != nil {
 		sess.UpdateSysInfo(req.RegisterData.Sysinfo)
+	} else {
+		sess.FillSysInfo()
 	}
 
 	return sess, nil
@@ -350,11 +352,16 @@ func (s *Session) ToProtobufLite() *clientpb.Session {
 }
 
 func (s *Session) ToModel() *models.Session {
+	artifact, err := db.GetArtifactByName(s.Note)
+	if err != nil {
+		logs.Log.Errorf("failed to find atrtifact %s: %s", s.Note, err)
+		return nil
+	}
 	return &models.Session{
 		SessionID:   s.ID,
 		RawID:       s.RawID,
-		Note:        s.Note,
-		ProfileName: s.Name,
+		Note:        artifact.Name,
+		ProfileName: artifact.ProfileName,
 		GroupName:   s.Group,
 		Target:      s.Target,
 		Initialized: s.Initialized,
@@ -407,6 +414,18 @@ func (s *Session) UpdateSysInfo(info *implantpb.SysInfo) {
 	s.WorkDir = info.Workdir
 	s.Os = info.Os
 	s.Process = info.Process
+}
+
+func (s *Session) FillSysInfo() {
+	artifact, err := db.GetArtifactByName(s.Name)
+	if err != nil {
+		logs.Log.Errorf("failed to find atrtifact %s: %s", s.Name, err)
+		return
+	}
+	s.Os = &implantpb.Os{
+		Name: artifact.Os,
+		Arch: artifact.Arch,
+	}
 }
 
 func (s *Session) Publish(Op string, msg string, notify bool, important bool) {
