@@ -352,13 +352,7 @@ func (s *Session) ToProtobufLite() *clientpb.Session {
 }
 
 func (s *Session) ToModel() *models.Session {
-	artifact, err := db.GetArtifactByName(s.Note)
-	if err != nil {
-		logs.Log.Errorf("failed to find atrtifact %s: %s", s.Note, err)
-	} else {
-		s.Name = artifact.Name
-	}
-	return &models.Session{
+	sessModel := &models.Session{
 		SessionID:   s.ID,
 		RawID:       s.RawID,
 		Note:        s.Note,
@@ -373,6 +367,11 @@ func (s *Session) ToModel() *models.Session {
 		LastCheckin: s.LastCheckin,
 		DataString:  s.Marshal(),
 	}
+	artifact, err := db.GetArtifactByName(s.Note)
+	if err == nil {
+		sessModel.ProfileName = artifact.Name
+	}
+	return sessModel
 }
 
 func (s *Session) PushUpdate(msg string) {
