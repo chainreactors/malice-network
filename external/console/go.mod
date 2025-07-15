@@ -1,8 +1,5 @@
 module github.com/reeflective/console
 
-go 1.23.6
-
-toolchain go1.24.4
 
 require (
 	github.com/carapace-sh/carapace v1.7.1
