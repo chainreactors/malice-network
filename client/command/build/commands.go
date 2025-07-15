@@ -120,6 +120,9 @@ profile delete profile_name
 		Use:   consts.CommandBuild,
 		Short: "build",
 	}
+
+	buildCmd.PersistentFlags().Bool("auto-download", false, "auto download artifact")
+
 	// build beacon --format/-f exe,dll,shellcode -i 1.1.1 -m load_pe
 	beaconCmd := &cobra.Command{
 		Use:   consts.CommandBuildBeacon,
@@ -450,6 +453,13 @@ artifact delete --name artifact_name
 }
 
 func Register(con *repl.Console) {
+	con.EventCallback[consts.CtrlArtifactDownload] = func(event *clientpb.Event) {
+		err := WriteOriginArtifact(con, event.Job.Name)
+		if err != nil {
+			con.Log.Errorf("write artifact %s error: %s", event.Job.Name, err)
+			return
+		}
+	}
 	con.RegisterServerFunc("search_artifact",
 		SearchArtifact,
 		&mals.Helper{

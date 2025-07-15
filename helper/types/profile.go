@@ -85,6 +85,7 @@ type ProfileParams struct {
 	REMPipeline    string `json:"rem"`
 	Enable3RD      bool   `json:"enable_3_rd"`
 	Modules        string `json:"modules"`
+	AutoDownload   bool   `json:"auto_download"`
 }
 
 func (p *ProfileParams) String() string {

@@ -24,7 +24,7 @@ func (rpc *Server) Build(ctx context.Context, req *clientpb.BuildConfig) (*clien
 	go func() {
 		if execErr := builder.Execute(); execErr != nil {
 			logs.Log.Errorf("failed to build %s: %s", artifact.Name, execErr)
-			build.SendBuildMsg(artifact, consts.BuildStatusFailure, "")
+			build.SendBuildMsg(artifact, consts.BuildStatusFailure, make([]byte, 0))
 			return
 		}
 
@@ -34,7 +34,7 @@ func (rpc *Server) Build(ctx context.Context, req *clientpb.BuildConfig) (*clien
 				logs.Log.Errorf("failed to add artifact path to website: %s", amtErr)
 			}
 		}
-		build.SendBuildMsg(artifact, status, "")
+		build.SendBuildMsg(artifact, status, req.ParamsBytes)
 	}()
 
 	return artifact, nil

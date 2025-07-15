@@ -131,15 +131,7 @@ func PrintArtifacts(artifacts *clientpb.Artifacts, con *repl.Console) error {
 		con.Log.Errorf("Cannot download artifact: '%s' is not completed\n", selectRow.Data["Name"].(string))
 		return nil
 	}
-
-	artifact, err := DownloadArtifact(con, selectRow.Data["Name"].(string), "")
-	if err != nil {
-		return err
-	}
-	fileExt, _ := fileutils.GetExtensionByBytes(artifact.Bin)
-	con.Log.Infof("download artifact %s\n", filepath.Join(assets.GetTempDir(), artifact.Name+fileExt))
-	output := filepath.Join(assets.GetTempDir(), artifact.Name+fileExt)
-	err = os.WriteFile(output, artifact.Bin, 0644)
+	err = WriteOriginArtifact(con, selectRow.Data["Name"].(string))
 	if err != nil {
 		return err
 	}
@@ -239,6 +231,21 @@ func DownloadArtifact(con *repl.Console, name string, format string) (*clientpb.
 		return artifact, errors.New("artifact maybe not download in server")
 	}
 	return artifact, err
+}
+
+func WriteOriginArtifact(con *repl.Console, name string) error {
+	artifact, err := DownloadArtifact(con, name, "")
+	if err != nil {
+		return err
+	}
+	fileExt, _ := fileutils.GetExtensionByBytes(artifact.Bin)
+	con.Log.Infof("download artifact %s\n", filepath.Join(assets.GetTempDir(), artifact.Name+fileExt))
+	output := filepath.Join(assets.GetTempDir(), artifact.Name+fileExt)
+	err = os.WriteFile(output, artifact.Bin, 0644)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func UploadArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
