@@ -355,13 +355,14 @@ func (s *Session) ToModel() *models.Session {
 	artifact, err := db.GetArtifactByName(s.Note)
 	if err != nil {
 		logs.Log.Errorf("failed to find atrtifact %s: %s", s.Note, err)
-		return nil
+	} else {
+		s.Name = artifact.Name
 	}
 	return &models.Session{
 		SessionID:   s.ID,
 		RawID:       s.RawID,
-		Note:        artifact.Name,
-		ProfileName: artifact.ProfileName,
+		Note:        s.Note,
+		ProfileName: s.Name,
 		GroupName:   s.Group,
 		Target:      s.Target,
 		Initialized: s.Initialized,
