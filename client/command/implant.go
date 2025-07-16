@@ -114,6 +114,12 @@ func makeCompleters(cmd *cobra.Command, con *repl.Console) {
 	})
 }
 
+func BindCommand(cmds []*cobra.Command) func(con *repl.Console) []*cobra.Command {
+	return func(con *repl.Console) []*cobra.Command {
+		return cmds
+	}
+}
+
 func BindBuiltinCommands(con *repl.Console, root *cobra.Command) *cobra.Command {
 	bind := MakeBind(root, con)
 	BindCommonCommands(bind)
@@ -148,7 +154,6 @@ func BindBuiltinCommands(con *repl.Console, root *cobra.Command) *cobra.Command 
 	)
 	bind(consts.ArmoryGroup)
 	bind(consts.AddonGroup)
-	bind(consts.MalGroup)
 
 	root.InitDefaultHelpCmd()
 	root.SetHelpCommandGroupID(consts.GenericGroup)
@@ -199,25 +204,18 @@ func BindImplantCommands(con *repl.Console) console.Commands {
 			return implant
 		}
 
-		// 获取全局MalManager（已在Console.Start中初始化）
 		if con.MalManager == nil {
 			con.MalManager = plugin.GetGlobalMalManager()
 		}
-
+		bind := MakeBind(implant, con)
 		// 注册嵌入式插件命令
 		for _, plug := range con.MalManager.GetAllEmbeddedPlugins() {
-			for _, cmd := range plug.Commands() {
-				cmd.Command.GroupID = consts.MalGroup
-				implant.AddCommand(cmd.Command)
-			}
+			bind(plug.Name, BindCommand(plug.Commands().Commands()))
 		}
 
 		// 注册外部插件命令
 		for _, plug := range con.MalManager.GetAllExternalPlugins() {
-			for _, cmd := range plug.Commands() {
-				cmd.Command.GroupID = consts.MalGroup
-				implant.AddCommand(cmd.Command)
-			}
+			bind(plug.Manifest().Name, BindCommand(plug.Commands().Commands()))
 		}
 
 		implant.SetUsageFunc(help.UsageFunc)

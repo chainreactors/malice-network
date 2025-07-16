@@ -3,6 +3,7 @@ package plugin
 import (
 	"embed"
 	"fmt"
+	"github.com/chainreactors/logs"
 	lua "github.com/yuin/gopher-lua"
 	"gopkg.in/yaml.v3"
 	"io/fs"
@@ -118,6 +119,7 @@ func (plug *EmbedPlugin) Run() error {
 	if err != nil {
 		return err
 	}
+	logs.Log.Infof("Loaded embedded plugin: %s, register %d commands \n", plug.Name, len(plug.CMDs))
 	return nil
 }
 
