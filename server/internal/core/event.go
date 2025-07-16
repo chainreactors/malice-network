@@ -300,7 +300,7 @@ func (broker *eventBroker) InitService(config *configs.NotifyConfig) error {
 	}
 	broker.notifier.enable = true
 	if config.Telegram != nil && config.Telegram.Enable {
-		tg, err := telegram.New(strconv.FormatInt(config.Telegram.ChatID, 10) + ":" + config.Telegram.APIKey)
+		tg, err := telegram.New(config.Telegram.APIKey)
 		if err != nil {
 			return err
 		}
