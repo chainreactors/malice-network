@@ -77,7 +77,7 @@ func Shell(rpc clientrpc.MaliceRPCClient, sess *core.Session, cmd string, output
 
 	task, err := rpc.Execute(sess.Context(), &implantpb.ExecRequest{
 		Path:     binpath,
-		Args:     []string{"/c", cmd},
+		Args:     []string{"-c", cmd},
 		Output:   output,
 		Realtime: true,
 	})

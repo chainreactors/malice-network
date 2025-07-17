@@ -1018,7 +1018,7 @@ func GetValidArtifacts() ([]*models.Artifact, error) {
 }
 
 // FindArtifact
-func FindArtifact(target *clientpb.Artifact) (*clientpb.Artifact, error) {
+func FindArtifact(target *clientpb.Artifact, bin bool) (*clientpb.Artifact, error) {
 	var artifact *models.Artifact
 	var result *gorm.DB
 	// 根据 ID 或名称查找构建器
@@ -1050,12 +1050,16 @@ func FindArtifact(target *clientpb.Artifact) (*clientpb.Artifact, error) {
 	if artifact == nil {
 		return nil, errs.ErrNotFoundArtifact
 	}
-	content, err := os.ReadFile(artifact.Path)
-	if err != nil && artifact.Status == consts.BuildStatusFailure {
-		return nil, fmt.Errorf("error reading file for artifact: %s, error: %v", artifact.Name, err)
+	if bin {
+		content, err := os.ReadFile(artifact.Path)
+		if err != nil && artifact.Status == consts.BuildStatusFailure {
+			return nil, fmt.Errorf("error reading file for artifact: %s, error: %v", artifact.Name, err)
+		}
+		return artifact.ToProtobuf(content), nil
+	} else {
+		return artifact.ToProtobuf([]byte{}), nil
 	}
 
-	return artifact.ToProtobuf(content), nil
 }
 
 func FindArtifactFromPipeline(pipelineName string) (*models.Artifact, error) {
