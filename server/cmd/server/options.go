@@ -206,6 +206,7 @@ func (opt *Options) PrepareServer() error {
 	err := saas.RegisterLicense()
 	if err != nil {
 		logs.Log.Warnf("register community license error %v", err)
+		config.Set("server.saas.enable", false)
 	}
 	core.NewBroker()
 	core.NewSessions()
@@ -229,12 +230,8 @@ func (opt *Options) PrepareServer() error {
 	}
 	cryptography.InitAES(opt.Server.EncryptionKey)
 	//if opt.Daemon == true {
-	//	err = RecoverAliveSession()
-	//	if err != nil {
-	//		logs.Log.Errorf("cannot start alive session , %s ", err.Error())
-	//		return
-	//	}
-	//	rpc.DaemonStart(opt.Server, opt.Listeners)
+	//
+	//	DaemonStart(opt.Server, opt.Listeners)
 	//}
 
 	err = StartGrpc(fmt.Sprintf("%s:%d", opt.Server.GRPCHost, opt.Server.GRPCPort))
@@ -257,12 +254,10 @@ func (opt *Options) PrepareListener() error {
 	logs.Log.Importantf("[listener] listener config enabled, Starting listeners")
 	if opt.IP != "" {
 		logs.Log.Infof("manually specified IP: %s will override config: %s", opt.IP, opt.Server.IP)
-		if !(opt.Server.Enable && opt.Listeners.Enable) {
-			opt.Listeners.IP = opt.IP
-			config.Set("listeners.ip", opt.IP)
-		}
+		opt.Listeners.IP = opt.IP
+		config.Set("listeners.ip", opt.IP)
 	}
-	err := StartListener(opt.Listeners)
+	err := StartListener(opt.Listeners, opt.Server.Enable)
 	if err != nil {
 		return err
 	}
@@ -326,14 +321,37 @@ func RecoverAliveSession() error {
 	return nil
 }
 
-func StartListener(opt *configs.ListenerConfig) error {
+func StartListener(opt *configs.ListenerConfig, serverEnable bool) error {
 	if listenerConf, err := mtls.ReadConfig(opt.Auth); err != nil {
 		return err
 	} else {
-		err = listener.NewListener(listenerConf, opt)
+		err = listener.NewListener(listenerConf, opt, serverEnable)
 		if err != nil {
 			return err
 		}
 	}
 	return nil
 }
+
+//func DaemonStart(server *configs.ServerConfig, cfg *configs.ListenerConfig) {
+//	_, ln, err := rpc.StartClientListener(fmt.Sprintf("%s:%d", server.GRPCHost, server.GRPCPort))
+//	if err != nil {
+//		logs.Log.Errorf("cannot start gRPC server, %s", err.Error())
+//		return
+//	}
+//	err = StartListener(cfg)
+//	if err != nil {
+//		logs.Log.Errorf("cannot start listeners , %s ", err.Error())
+//		return
+//	}
+//	done := make(chan bool)
+//	signals := make(chan os.Signal, 1)
+//	signal.Notify(signals, syscall.SIGTERM)
+//	go func() {
+//		<-signals
+//		logs.Log.Infof("Received SIGTERM, exiting ...")
+//		ln.Close()
+//		done <- true
+//	}()
+//	<-done
+//}

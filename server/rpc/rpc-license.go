@@ -15,6 +15,9 @@ import (
 func (rpc *Server) GetLicenseInfo(ctx context.Context, req *clientpb.Empty) (*clientpb.LicenseInfo, error) {
 	saasConfig := configs.GetSaasConfig()
 
+	if !saasConfig.Enable {
+		return nil, errs.ErrSaasUnable
+	}
 	if saasConfig.Token == "" {
 		return nil, errs.ErrLicenseTokenNotFound
 	}

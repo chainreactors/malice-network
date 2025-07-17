@@ -225,6 +225,9 @@ func (s *Session) RpcLogger() *logs.Logger {
 				}
 				if auditLevel == 2 {
 					s.rpcLog.SetLevel(logs.DebugLevel)
+					s.rpcLog.PrefixFunc = func() string {
+						return ""
+					}
 				}
 			}
 		}

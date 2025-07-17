@@ -5,6 +5,7 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/encoders"
+	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/utils"
 	"github.com/chainreactors/malice-network/helper/utils/httputils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
@@ -69,6 +70,9 @@ type SaasClient struct {
 
 func NewSaasClient() *SaasClient {
 	saasConfig := configs.GetSaasConfig()
+	if !saasConfig.Enable {
+		return &SaasClient{}
+	}
 	return &SaasClient{
 		Token:   saasConfig.Token,
 		BaseURL: saasConfig.Url,
@@ -159,7 +163,7 @@ func (c *SaasClient) CheckAndDownloadArtifact(statusPath, downloadPath string, b
 func ReDownloadSaasArtifact() error {
 	client := NewSaasClient()
 	if client.Token == "" || client.BaseURL == "" {
-		return nil
+		return errs.ErrSaasUnable
 	}
 	artifacts, err := db.GetArtifactWithSaas()
 	if err != nil {
@@ -261,6 +265,9 @@ func sendLicenseRegistration(baseURL string, licenseData *configs.LicenseRegistr
 // 对外导出：兼容外部包调用
 func CheckAndDownloadArtifact(statusPath, downloadPath, token string, builder *models.Artifact, pollInterval, maxPollTime time.Duration) (string, string, error) {
 	client := NewSaasClient()
+	if client.Token == "" || client.BaseURL == "" {
+		return "", "", errs.ErrSaasUnable
+	}
 	client.Token = token
 	result := client.CheckAndDownloadArtifact(statusPath, downloadPath, builder, pollInterval, maxPollTime)
 	return result.Path, result.Status, result.Err
