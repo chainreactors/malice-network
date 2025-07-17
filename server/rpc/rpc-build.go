@@ -55,7 +55,7 @@ func (rpc *Server) SyncBuild(ctx context.Context, req *clientpb.BuildConfig) (*c
 	} else {
 		return nil, err
 	}
-	return db.FindArtifact(artifact)
+	return db.FindArtifact(artifact, true)
 }
 
 func (rpc *Server) BuildLog(ctx context.Context, req *clientpb.Artifact) (*clientpb.Artifact, error) {
