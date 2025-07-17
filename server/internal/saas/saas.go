@@ -6,6 +6,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/encoders"
 	"github.com/chainreactors/malice-network/helper/errs"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/utils"
 	"github.com/chainreactors/malice-network/helper/utils/httputils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
@@ -157,6 +158,54 @@ func (c *SaasClient) CheckAndDownloadArtifact(statusPath, downloadPath string, b
 	return DownloadResult{builder.Path, consts.BuildStatusCompleted, nil}
 }
 
+// LicenseResponse SaaS API响应结构
+// 该结构体比 configs.LicenseResponse 更完整，适用于 License 查询
+// 如有需要可迁移到 configs 包
+// 这里只在 saas.go 内部使用
+type LicenseResponse struct {
+	Success bool `json:"success"`
+	License struct {
+		ID              string `json:"id"`
+		Username        string `json:"username"`
+		Email           string `json:"email"`
+		Token           string `json:"token"`
+		Type            string `json:"type"`
+		ExpireAt        string `json:"expire_at"`
+		BuildCount      int64  `json:"build_count"`
+		MaxBuilds       int64  `json:"max_builds"`
+		CreatedAt       string `json:"created_at"`
+		UpdatedAt       string `json:"updated_at"`
+		IsExpired       bool   `json:"is_expired"`
+		CanBuild        bool   `json:"can_build"`
+		RemainingBuilds int64  `json:"remaining_builds"`
+	} `json:"license"`
+}
+
+// 获取 License 信息，返回 protobuf LicenseInfo
+func (c *SaasClient) GetLicenseInfo() (*clientpb.LicenseInfo, string, error) {
+	if c.Token == "" || c.BaseURL == "" {
+		return nil, "", fmt.Errorf("invalid SaaS config")
+	}
+	licenseUrl := fmt.Sprintf("%s/api/license/info", c.BaseURL)
+	headers := SaasHeaders(c.Token)
+	headers["username"] = fmt.Sprintf("machine_%s", utils.GetMachineID())
+	var response LicenseResponse
+	err := httputils.DoJSONRequest("GET", licenseUrl, nil, headers, 200, &response)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to send HTTP request: %v", err)
+	}
+	if !response.Success {
+		return nil, "", fmt.Errorf("API request failed: %+v", response)
+	}
+	return &clientpb.LicenseInfo{
+		UserName:   response.License.Username,
+		Type:       response.License.Type,
+		ExpireAt:   response.License.ExpireAt,
+		BuildCount: response.License.BuildCount,
+		MaxBuilds:  response.License.MaxBuilds,
+	}, response.License.Token, nil
+}
+
 // ================= 对外暴露的主流程函数 =================
 
 // 重新下发SaaS构建任务
@@ -206,6 +255,15 @@ func RegisterLicense() error {
 	}
 
 	if saasConfig.Token != "" {
+		client := NewSaasClient()
+		_, token, err := client.GetLicenseInfo()
+		if err != nil {
+			return err
+		}
+		saasConfig.Token = token
+		if err := configs.UpdateSaasConfig(saasConfig); err != nil {
+			return fmt.Errorf("failed to update SaaS config: %v", err)
+		}
 		return ReDownloadSaasArtifact()
 	}
 
@@ -214,6 +272,7 @@ func RegisterLicense() error {
 	if err != nil {
 		return fmt.Errorf("failed to build license data: %v", err)
 	}
+
 	// 4. 注册license，获取token
 	token, err := sendLicenseRegistration(saasConfig.Url, licenseData)
 	if err != nil {
