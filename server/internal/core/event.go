@@ -15,6 +15,7 @@ import (
 	"github.com/nikoksr/notify/service/lark"
 	"github.com/nikoksr/notify/service/telegram"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 )
@@ -332,6 +333,25 @@ func (broker *eventBroker) InitService(config *configs.NotifyConfig) error {
 			},
 		})
 		broker.notifier.notify.UseServices(sc)
+	}
+	if config.PushPlus != nil && config.PushPlus.Enable {
+		pp := http.New()
+		pp.AddReceivers(&http.Webhook{
+			URL:         fmt.Sprintf("https://www.pushplus.plus/send"),
+			Method:      "POST",
+			ContentType: "application/json",
+			BuildPayload: func(subject, message string) (payload any) {
+				return map[string]string{
+					"title":    subject,
+					"content":  message,
+					"token":    config.PushPlus.Token,
+					"topic":    config.PushPlus.Topic,
+					"channel":  config.PushPlus.Channel,
+					"template": "markdown",
+				}
+			},
+		})
+		broker.notifier.notify.UseServices(pp)
 	}
 	return nil
 }
