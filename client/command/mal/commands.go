@@ -72,5 +72,20 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return RefreshMalCmd(cmd, con)
 		},
 	})
+
+	updateCmd := &cobra.Command{
+		Use:   consts.CommandMalUpdate,
+		Short: "Update a mal or all mals",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return UpdateMalCmd(cmd, con)
+		},
+	}
+
+	common.BindFlag(updateCmd, common.MalHttpFlagset, func(f *pflag.FlagSet) {
+		f.BoolP("all", "a", false, "update all mal")
+	})
+
+	cmd.AddCommand(updateCmd)
 	return []*cobra.Command{cmd}
 }
