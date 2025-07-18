@@ -590,8 +590,9 @@ func UpdateTaskCur(taskID string, cur int) error {
 }
 
 func UpdateDownloadTotal(task *clientpb.Task, total int) error {
+func UpdateDownloadTotal(taskID uint32, sessionID string, total int) error {
 	taskModel := &models.Task{
-		ID: task.SessionId + "-" + utils.ToString(task.TaskId),
+		ID: sessionID + "-" + utils.ToString(taskID),
 	}
 	return taskModel.UpdateTotal(Session(), total)
 }

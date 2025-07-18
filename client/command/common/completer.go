@@ -512,6 +512,28 @@ func ExternalMalCompleter(con *repl.Console) carapace.Action {
 	return carapace.ActionCallback(callback)
 }
 
+func ExternalMalFileCompleter(con *repl.Console) carapace.Action {
+	callback := func(c carapace.Context) carapace.Action {
+		results := make([]string, 0)
+
+		entries, err := os.ReadDir(assets.GetMalsDir())
+		if err != nil {
+			con.Log.Errorf("Error reading dir: %v\n", err)
+			return carapace.Action{}
+		}
+		for _, entry := range entries {
+			if entry.IsDir() {
+				malYamlPath := filepath.Join(assets.GetMalsDir(), entry.Name(), "mal.yaml")
+				if _, err := os.Stat(malYamlPath); err == nil {
+					results = append(results, entry.Name(), "external mal plugin")
+				}
+			}
+		}
+		return carapace.ActionValuesDescribed(results...).Tag("external mal plugins")
+	}
+	return carapace.ActionCallback(callback)
+}
+
 func CertNameCompleter(con *repl.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)

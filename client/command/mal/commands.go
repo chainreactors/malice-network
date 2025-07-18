@@ -39,14 +39,18 @@ func Commands(con *repl.Console) []*cobra.Command {
 
 	cmd.AddCommand(installCmd)
 
-	cmd.AddCommand(&cobra.Command{
+	loadCmd := &cobra.Command{
 		Use:   consts.CommandMalLoad + " [mal]",
 		Short: "Load a mal manifest",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return MalLoadCmd(cmd, con)
 		},
-	})
+	}
+
+	common.BindArgCompletions(loadCmd, nil, common.ExternalMalFileCompleter(con))
+
+	cmd.AddCommand(loadCmd)
 
 	cmd.AddCommand(&cobra.Command{
 		Use:   consts.CommandMalList,
