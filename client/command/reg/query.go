@@ -24,7 +24,7 @@ func RegQueryCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	session.Console(task, fmt.Sprintf("query registry key: %s\\%s\\%s", hive, path, key))
+	session.Console(cmd, task, fmt.Sprintf("query registry key: %s\\%s\\%s", hive, path, key))
 	return nil
 }
 

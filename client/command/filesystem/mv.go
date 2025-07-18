@@ -20,7 +20,7 @@ func MvCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	session.Console(task, "mv "+sourcePath+" "+targetPath)
+	session.Console(cmd, task, "mv "+sourcePath+" "+targetPath)
 	return nil
 }
 

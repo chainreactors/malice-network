@@ -26,7 +26,7 @@ func PowershellCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	con.GetInteractive().Console(task, "powershell: "+cmdStr)
+	con.GetInteractive().Console(cmd, task, "powershell: "+cmdStr)
 	return nil
 }
 
@@ -50,7 +50,7 @@ func ExecutePowershellCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	con.GetInteractive().Console(task, fmt.Sprintf("%s, args: %v", script, cmdline))
+	session.Console(cmd, task, fmt.Sprintf("%s, args: %v", script, cmdline))
 	return nil
 }
 

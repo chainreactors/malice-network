@@ -28,7 +28,7 @@ func SleepCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	session.Console(task, fmt.Sprintf("change sleep %d %f", interval, jitter))
+	session.Console(cmd, task, fmt.Sprintf("change sleep %d %f", interval, jitter))
 	return nil
 }
 

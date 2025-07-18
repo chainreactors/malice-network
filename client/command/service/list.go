@@ -22,7 +22,7 @@ func ServiceListCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	session.Console(task, "service list")
+	session.Console(cmd, task, "service list")
 	return nil
 }
 

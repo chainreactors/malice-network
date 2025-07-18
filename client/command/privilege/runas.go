@@ -30,7 +30,7 @@ func RunasCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	session.Console(task, fmt.Sprintf("runas user: %s on domain: %s", username, domain))
+	session.Console(cmd, task, fmt.Sprintf("runas user: %s on domain: %s", username, domain))
 	return nil
 }
 

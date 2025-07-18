@@ -546,6 +546,136 @@ func (x *Int) GetLimit() int32 {
 	return 0
 }
 
+type Audit struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Context  *TaskContext     `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	Command  string           `protobuf:"bytes,2,opt,name=command,proto3" json:"command,omitempty"`
+	Request  *implantpb.Spite `protobuf:"bytes,3,opt,name=request,proto3" json:"request,omitempty"`
+	Created  string           `protobuf:"bytes,4,opt,name=Created,proto3" json:"Created,omitempty"`
+	Finished string           `protobuf:"bytes,5,opt,name=Finished,proto3" json:"Finished,omitempty"`
+	Lasted   string           `protobuf:"bytes,6,opt,name=Lasted,proto3" json:"Lasted,omitempty"`
+}
+
+func (x *Audit) Reset() {
+	*x = Audit{}
+	mi := &file_client_clientpb_client_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Audit) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Audit) ProtoMessage() {}
+
+func (x *Audit) ProtoReflect() protoreflect.Message {
+	mi := &file_client_clientpb_client_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Audit.ProtoReflect.Descriptor instead.
+func (*Audit) Descriptor() ([]byte, []int) {
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *Audit) GetContext() *TaskContext {
+	if x != nil {
+		return x.Context
+	}
+	return nil
+}
+
+func (x *Audit) GetCommand() string {
+	if x != nil {
+		return x.Command
+	}
+	return ""
+}
+
+func (x *Audit) GetRequest() *implantpb.Spite {
+	if x != nil {
+		return x.Request
+	}
+	return nil
+}
+
+func (x *Audit) GetCreated() string {
+	if x != nil {
+		return x.Created
+	}
+	return ""
+}
+
+func (x *Audit) GetFinished() string {
+	if x != nil {
+		return x.Finished
+	}
+	return ""
+}
+
+func (x *Audit) GetLasted() string {
+	if x != nil {
+		return x.Lasted
+	}
+	return ""
+}
+
+type Audits struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Audit []*Audit `protobuf:"bytes,1,rep,name=audit,proto3" json:"audit,omitempty"`
+}
+
+func (x *Audits) Reset() {
+	*x = Audits{}
+	mi := &file_client_clientpb_client_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Audits) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Audits) ProtoMessage() {}
+
+func (x *Audits) ProtoReflect() protoreflect.Message {
+	mi := &file_client_clientpb_client_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Audits.ProtoReflect.Descriptor instead.
+func (*Audits) Descriptor() ([]byte, []int) {
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *Audits) GetAudit() []*Audit {
+	if x != nil {
+		return x.Audit
+	}
+	return nil
+}
+
 type BasicUpdateSession struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -558,7 +688,7 @@ type BasicUpdateSession struct {
 
 func (x *BasicUpdateSession) Reset() {
 	*x = BasicUpdateSession{}
-	mi := &file_client_clientpb_client_proto_msgTypes[6]
+	mi := &file_client_clientpb_client_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -570,7 +700,7 @@ func (x *BasicUpdateSession) String() string {
 func (*BasicUpdateSession) ProtoMessage() {}
 
 func (x *BasicUpdateSession) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[6]
+	mi := &file_client_clientpb_client_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -583,7 +713,7 @@ func (x *BasicUpdateSession) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BasicUpdateSession.ProtoReflect.Descriptor instead.
 func (*BasicUpdateSession) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{6}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *BasicUpdateSession) GetSessionId() string {
@@ -617,7 +747,7 @@ type Sessions struct {
 
 func (x *Sessions) Reset() {
 	*x = Sessions{}
-	mi := &file_client_clientpb_client_proto_msgTypes[7]
+	mi := &file_client_clientpb_client_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -629,7 +759,7 @@ func (x *Sessions) String() string {
 func (*Sessions) ProtoMessage() {}
 
 func (x *Sessions) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[7]
+	mi := &file_client_clientpb_client_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -642,7 +772,7 @@ func (x *Sessions) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Sessions.ProtoReflect.Descriptor instead.
 func (*Sessions) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{7}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *Sessions) GetSessions() []*Session {
@@ -662,7 +792,7 @@ type SpiteCache struct {
 
 func (x *SpiteCache) Reset() {
 	*x = SpiteCache{}
-	mi := &file_client_clientpb_client_proto_msgTypes[8]
+	mi := &file_client_clientpb_client_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -674,7 +804,7 @@ func (x *SpiteCache) String() string {
 func (*SpiteCache) ProtoMessage() {}
 
 func (x *SpiteCache) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[8]
+	mi := &file_client_clientpb_client_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -687,7 +817,7 @@ func (x *SpiteCache) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SpiteCache.ProtoReflect.Descriptor instead.
 func (*SpiteCache) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{8}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *SpiteCache) GetItems() []*SpiteCacheItem {
@@ -710,7 +840,7 @@ type SpiteCacheItem struct {
 
 func (x *SpiteCacheItem) Reset() {
 	*x = SpiteCacheItem{}
-	mi := &file_client_clientpb_client_proto_msgTypes[9]
+	mi := &file_client_clientpb_client_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -722,7 +852,7 @@ func (x *SpiteCacheItem) String() string {
 func (*SpiteCacheItem) ProtoMessage() {}
 
 func (x *SpiteCacheItem) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[9]
+	mi := &file_client_clientpb_client_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -735,7 +865,7 @@ func (x *SpiteCacheItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SpiteCacheItem.ProtoReflect.Descriptor instead.
 func (*SpiteCacheItem) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{9}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *SpiteCacheItem) GetIndex() int32 {
@@ -784,7 +914,7 @@ type Job struct {
 
 func (x *Job) Reset() {
 	*x = Job{}
-	mi := &file_client_clientpb_client_proto_msgTypes[10]
+	mi := &file_client_clientpb_client_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -796,7 +926,7 @@ func (x *Job) String() string {
 func (*Job) ProtoMessage() {}
 
 func (x *Job) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[10]
+	mi := &file_client_clientpb_client_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -809,7 +939,7 @@ func (x *Job) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Job.ProtoReflect.Descriptor instead.
 func (*Job) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{10}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *Job) GetId() uint32 {
@@ -887,7 +1017,7 @@ type Jobs struct {
 
 func (x *Jobs) Reset() {
 	*x = Jobs{}
-	mi := &file_client_clientpb_client_proto_msgTypes[11]
+	mi := &file_client_clientpb_client_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -899,7 +1029,7 @@ func (x *Jobs) String() string {
 func (*Jobs) ProtoMessage() {}
 
 func (x *Jobs) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[11]
+	mi := &file_client_clientpb_client_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -912,7 +1042,7 @@ func (x *Jobs) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Jobs.ProtoReflect.Descriptor instead.
 func (*Jobs) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{11}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *Jobs) GetJob() []*Job {
@@ -935,7 +1065,7 @@ type JobCtrl struct {
 
 func (x *JobCtrl) Reset() {
 	*x = JobCtrl{}
-	mi := &file_client_clientpb_client_proto_msgTypes[12]
+	mi := &file_client_clientpb_client_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -947,7 +1077,7 @@ func (x *JobCtrl) String() string {
 func (*JobCtrl) ProtoMessage() {}
 
 func (x *JobCtrl) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[12]
+	mi := &file_client_clientpb_client_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -960,7 +1090,7 @@ func (x *JobCtrl) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use JobCtrl.ProtoReflect.Descriptor instead.
 func (*JobCtrl) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{12}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *JobCtrl) GetId() uint32 {
@@ -1006,7 +1136,7 @@ type JobStatus struct {
 
 func (x *JobStatus) Reset() {
 	*x = JobStatus{}
-	mi := &file_client_clientpb_client_proto_msgTypes[13]
+	mi := &file_client_clientpb_client_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1018,7 +1148,7 @@ func (x *JobStatus) String() string {
 func (*JobStatus) ProtoMessage() {}
 
 func (x *JobStatus) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[13]
+	mi := &file_client_clientpb_client_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1031,7 +1161,7 @@ func (x *JobStatus) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use JobStatus.ProtoReflect.Descriptor instead.
 func (*JobStatus) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{13}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *JobStatus) GetListenerId() string {
@@ -1089,7 +1219,7 @@ type Listener struct {
 
 func (x *Listener) Reset() {
 	*x = Listener{}
-	mi := &file_client_clientpb_client_proto_msgTypes[14]
+	mi := &file_client_clientpb_client_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1101,7 +1231,7 @@ func (x *Listener) String() string {
 func (*Listener) ProtoMessage() {}
 
 func (x *Listener) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[14]
+	mi := &file_client_clientpb_client_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1114,7 +1244,7 @@ func (x *Listener) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Listener.ProtoReflect.Descriptor instead.
 func (*Listener) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{14}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *Listener) GetId() string {
@@ -1155,7 +1285,7 @@ type Listeners struct {
 
 func (x *Listeners) Reset() {
 	*x = Listeners{}
-	mi := &file_client_clientpb_client_proto_msgTypes[15]
+	mi := &file_client_clientpb_client_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1167,7 +1297,7 @@ func (x *Listeners) String() string {
 func (*Listeners) ProtoMessage() {}
 
 func (x *Listeners) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[15]
+	mi := &file_client_clientpb_client_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1180,7 +1310,7 @@ func (x *Listeners) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Listeners.ProtoReflect.Descriptor instead.
 func (*Listeners) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{15}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *Listeners) GetListeners() []*Listener {
@@ -1203,7 +1333,7 @@ type Client struct {
 
 func (x *Client) Reset() {
 	*x = Client{}
-	mi := &file_client_clientpb_client_proto_msgTypes[16]
+	mi := &file_client_clientpb_client_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1215,7 +1345,7 @@ func (x *Client) String() string {
 func (*Client) ProtoMessage() {}
 
 func (x *Client) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[16]
+	mi := &file_client_clientpb_client_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1228,7 +1358,7 @@ func (x *Client) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Client.ProtoReflect.Descriptor instead.
 func (*Client) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{16}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *Client) GetID() uint32 {
@@ -1269,7 +1399,7 @@ type Clients struct {
 
 func (x *Clients) Reset() {
 	*x = Clients{}
-	mi := &file_client_clientpb_client_proto_msgTypes[17]
+	mi := &file_client_clientpb_client_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1281,7 +1411,7 @@ func (x *Clients) String() string {
 func (*Clients) ProtoMessage() {}
 
 func (x *Clients) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[17]
+	mi := &file_client_clientpb_client_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1294,7 +1424,7 @@ func (x *Clients) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Clients.ProtoReflect.Descriptor instead.
 func (*Clients) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{17}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *Clients) GetClients() []*Client {
@@ -1324,7 +1454,7 @@ type Event struct {
 
 func (x *Event) Reset() {
 	*x = Event{}
-	mi := &file_client_clientpb_client_proto_msgTypes[18]
+	mi := &file_client_clientpb_client_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1336,7 +1466,7 @@ func (x *Event) String() string {
 func (*Event) ProtoMessage() {}
 
 func (x *Event) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[18]
+	mi := &file_client_clientpb_client_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1349,7 +1479,7 @@ func (x *Event) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Event.ProtoReflect.Descriptor instead.
 func (*Event) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{18}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *Event) GetType() string {
@@ -1439,7 +1569,7 @@ type Events struct {
 
 func (x *Events) Reset() {
 	*x = Events{}
-	mi := &file_client_clientpb_client_proto_msgTypes[19]
+	mi := &file_client_clientpb_client_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1451,7 +1581,7 @@ func (x *Events) String() string {
 func (*Events) ProtoMessage() {}
 
 func (x *Events) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[19]
+	mi := &file_client_clientpb_client_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1464,7 +1594,7 @@ func (x *Events) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Events.ProtoReflect.Descriptor instead.
 func (*Events) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{19}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *Events) GetEvents() []*Event {
@@ -1491,7 +1621,7 @@ type On struct {
 
 func (x *On) Reset() {
 	*x = On{}
-	mi := &file_client_clientpb_client_proto_msgTypes[20]
+	mi := &file_client_clientpb_client_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1503,7 +1633,7 @@ func (x *On) String() string {
 func (*On) ProtoMessage() {}
 
 func (x *On) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[20]
+	mi := &file_client_clientpb_client_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1516,7 +1646,7 @@ func (x *On) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use On.ProtoReflect.Descriptor instead.
 func (*On) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{20}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *On) GetId() int32 {
@@ -1587,7 +1717,7 @@ type LoginReq struct {
 
 func (x *LoginReq) Reset() {
 	*x = LoginReq{}
-	mi := &file_client_clientpb_client_proto_msgTypes[21]
+	mi := &file_client_clientpb_client_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1599,7 +1729,7 @@ func (x *LoginReq) String() string {
 func (*LoginReq) ProtoMessage() {}
 
 func (x *LoginReq) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[21]
+	mi := &file_client_clientpb_client_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1612,7 +1742,7 @@ func (x *LoginReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LoginReq.ProtoReflect.Descriptor instead.
 func (*LoginReq) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{21}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *LoginReq) GetHost() string {
@@ -1647,7 +1777,7 @@ type Sync struct {
 
 func (x *Sync) Reset() {
 	*x = Sync{}
-	mi := &file_client_clientpb_client_proto_msgTypes[22]
+	mi := &file_client_clientpb_client_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1659,7 +1789,7 @@ func (x *Sync) String() string {
 func (*Sync) ProtoMessage() {}
 
 func (x *Sync) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[22]
+	mi := &file_client_clientpb_client_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1672,7 +1802,7 @@ func (x *Sync) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Sync.ProtoReflect.Descriptor instead.
 func (*Sync) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{22}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *Sync) GetContextId() string {
@@ -1700,7 +1830,7 @@ type SyncResp struct {
 
 func (x *SyncResp) Reset() {
 	*x = SyncResp{}
-	mi := &file_client_clientpb_client_proto_msgTypes[23]
+	mi := &file_client_clientpb_client_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1712,7 +1842,7 @@ func (x *SyncResp) String() string {
 func (*SyncResp) ProtoMessage() {}
 
 func (x *SyncResp) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[23]
+	mi := &file_client_clientpb_client_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1725,7 +1855,7 @@ func (x *SyncResp) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SyncResp.ProtoReflect.Descriptor instead.
 func (*SyncResp) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{23}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *SyncResp) GetName() string {
@@ -1754,7 +1884,7 @@ type TaskContext struct {
 
 func (x *TaskContext) Reset() {
 	*x = TaskContext{}
-	mi := &file_client_clientpb_client_proto_msgTypes[24]
+	mi := &file_client_clientpb_client_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1766,7 +1896,7 @@ func (x *TaskContext) String() string {
 func (*TaskContext) ProtoMessage() {}
 
 func (x *TaskContext) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[24]
+	mi := &file_client_clientpb_client_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1779,7 +1909,7 @@ func (x *TaskContext) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TaskContext.ProtoReflect.Descriptor instead.
 func (*TaskContext) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{24}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *TaskContext) GetTask() *Task {
@@ -1815,7 +1945,7 @@ type TaskContexts struct {
 
 func (x *TaskContexts) Reset() {
 	*x = TaskContexts{}
-	mi := &file_client_clientpb_client_proto_msgTypes[25]
+	mi := &file_client_clientpb_client_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1827,7 +1957,7 @@ func (x *TaskContexts) String() string {
 func (*TaskContexts) ProtoMessage() {}
 
 func (x *TaskContexts) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[25]
+	mi := &file_client_clientpb_client_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1840,7 +1970,7 @@ func (x *TaskContexts) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TaskContexts.ProtoReflect.Descriptor instead.
 func (*TaskContexts) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{25}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *TaskContexts) GetTask() *Task {
@@ -1874,7 +2004,7 @@ type TasksContext struct {
 
 func (x *TasksContext) Reset() {
 	*x = TasksContext{}
-	mi := &file_client_clientpb_client_proto_msgTypes[26]
+	mi := &file_client_clientpb_client_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1886,7 +2016,7 @@ func (x *TasksContext) String() string {
 func (*TasksContext) ProtoMessage() {}
 
 func (x *TasksContext) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[26]
+	mi := &file_client_clientpb_client_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1899,7 +2029,7 @@ func (x *TasksContext) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TasksContext.ProtoReflect.Descriptor instead.
 func (*TasksContext) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{26}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *TasksContext) GetContexts() []*TaskContext {
@@ -1930,7 +2060,7 @@ type Task struct {
 
 func (x *Task) Reset() {
 	*x = Task{}
-	mi := &file_client_clientpb_client_proto_msgTypes[27]
+	mi := &file_client_clientpb_client_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1942,7 +2072,7 @@ func (x *Task) String() string {
 func (*Task) ProtoMessage() {}
 
 func (x *Task) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[27]
+	mi := &file_client_clientpb_client_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1955,7 +2085,7 @@ func (x *Task) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Task.ProtoReflect.Descriptor instead.
 func (*Task) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{27}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *Task) GetTaskId() uint32 {
@@ -2052,7 +2182,7 @@ type Tasks struct {
 
 func (x *Tasks) Reset() {
 	*x = Tasks{}
-	mi := &file_client_clientpb_client_proto_msgTypes[28]
+	mi := &file_client_clientpb_client_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2064,7 +2194,7 @@ func (x *Tasks) String() string {
 func (*Tasks) ProtoMessage() {}
 
 func (x *Tasks) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[28]
+	mi := &file_client_clientpb_client_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2077,7 +2207,7 @@ func (x *Tasks) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Tasks.ProtoReflect.Descriptor instead.
 func (*Tasks) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{28}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *Tasks) GetTasks() []*Task {
@@ -2097,7 +2227,7 @@ type TaskDescs struct {
 
 func (x *TaskDescs) Reset() {
 	*x = TaskDescs{}
-	mi := &file_client_clientpb_client_proto_msgTypes[29]
+	mi := &file_client_clientpb_client_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2109,7 +2239,7 @@ func (x *TaskDescs) String() string {
 func (*TaskDescs) ProtoMessage() {}
 
 func (x *TaskDescs) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[29]
+	mi := &file_client_clientpb_client_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2122,7 +2252,7 @@ func (x *TaskDescs) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TaskDescs.ProtoReflect.Descriptor instead.
 func (*TaskDescs) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{29}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *TaskDescs) GetTasks() []*TaskDesc {
@@ -2148,7 +2278,7 @@ type File struct {
 
 func (x *File) Reset() {
 	*x = File{}
-	mi := &file_client_clientpb_client_proto_msgTypes[30]
+	mi := &file_client_clientpb_client_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2160,7 +2290,7 @@ func (x *File) String() string {
 func (*File) ProtoMessage() {}
 
 func (x *File) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[30]
+	mi := &file_client_clientpb_client_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2173,7 +2303,7 @@ func (x *File) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use File.ProtoReflect.Descriptor instead.
 func (*File) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{30}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *File) GetTaskId() uint32 {
@@ -2235,7 +2365,7 @@ type Files struct {
 
 func (x *Files) Reset() {
 	*x = Files{}
-	mi := &file_client_clientpb_client_proto_msgTypes[31]
+	mi := &file_client_clientpb_client_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2247,7 +2377,7 @@ func (x *Files) String() string {
 func (*Files) ProtoMessage() {}
 
 func (x *Files) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[31]
+	mi := &file_client_clientpb_client_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2260,7 +2390,7 @@ func (x *Files) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Files.ProtoReflect.Descriptor instead.
 func (*Files) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{31}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *Files) GetFiles() []*File {
@@ -2285,7 +2415,7 @@ type TaskDesc struct {
 
 func (x *TaskDesc) Reset() {
 	*x = TaskDesc{}
-	mi := &file_client_clientpb_client_proto_msgTypes[32]
+	mi := &file_client_clientpb_client_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2297,7 +2427,7 @@ func (x *TaskDesc) String() string {
 func (*TaskDesc) ProtoMessage() {}
 
 func (x *TaskDesc) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[32]
+	mi := &file_client_clientpb_client_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2310,7 +2440,7 @@ func (x *TaskDesc) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TaskDesc.ProtoReflect.Descriptor instead.
 func (*TaskDesc) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{32}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *TaskDesc) GetTaskId() uint32 {
@@ -2365,7 +2495,7 @@ type Plugins struct {
 
 func (x *Plugins) Reset() {
 	*x = Plugins{}
-	mi := &file_client_clientpb_client_proto_msgTypes[33]
+	mi := &file_client_clientpb_client_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2377,7 +2507,7 @@ func (x *Plugins) String() string {
 func (*Plugins) ProtoMessage() {}
 
 func (x *Plugins) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[33]
+	mi := &file_client_clientpb_client_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2390,7 +2520,7 @@ func (x *Plugins) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Plugins.ProtoReflect.Descriptor instead.
 func (*Plugins) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{33}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *Plugins) GetPlugins() []*Plugin {
@@ -2411,7 +2541,7 @@ type Plugin struct {
 
 func (x *Plugin) Reset() {
 	*x = Plugin{}
-	mi := &file_client_clientpb_client_proto_msgTypes[34]
+	mi := &file_client_clientpb_client_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2423,7 +2553,7 @@ func (x *Plugin) String() string {
 func (*Plugin) ProtoMessage() {}
 
 func (x *Plugin) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[34]
+	mi := &file_client_clientpb_client_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2436,7 +2566,7 @@ func (x *Plugin) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Plugin.ProtoReflect.Descriptor instead.
 func (*Plugin) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{34}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *Plugin) GetName() string {
@@ -2466,7 +2596,7 @@ type EXE2Shellcode struct {
 
 func (x *EXE2Shellcode) Reset() {
 	*x = EXE2Shellcode{}
-	mi := &file_client_clientpb_client_proto_msgTypes[35]
+	mi := &file_client_clientpb_client_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2478,7 +2608,7 @@ func (x *EXE2Shellcode) String() string {
 func (*EXE2Shellcode) ProtoMessage() {}
 
 func (x *EXE2Shellcode) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[35]
+	mi := &file_client_clientpb_client_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2491,7 +2621,7 @@ func (x *EXE2Shellcode) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EXE2Shellcode.ProtoReflect.Descriptor instead.
 func (*EXE2Shellcode) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{35}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *EXE2Shellcode) GetBin() []byte {
@@ -2536,7 +2666,7 @@ type DLL2Shellcode struct {
 
 func (x *DLL2Shellcode) Reset() {
 	*x = DLL2Shellcode{}
-	mi := &file_client_clientpb_client_proto_msgTypes[36]
+	mi := &file_client_clientpb_client_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2548,7 +2678,7 @@ func (x *DLL2Shellcode) String() string {
 func (*DLL2Shellcode) ProtoMessage() {}
 
 func (x *DLL2Shellcode) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[36]
+	mi := &file_client_clientpb_client_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2561,7 +2691,7 @@ func (x *DLL2Shellcode) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DLL2Shellcode.ProtoReflect.Descriptor instead.
 func (*DLL2Shellcode) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{36}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *DLL2Shellcode) GetBin() []byte {
@@ -2612,7 +2742,7 @@ type ShellcodeEncode struct {
 
 func (x *ShellcodeEncode) Reset() {
 	*x = ShellcodeEncode{}
-	mi := &file_client_clientpb_client_proto_msgTypes[37]
+	mi := &file_client_clientpb_client_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2624,7 +2754,7 @@ func (x *ShellcodeEncode) String() string {
 func (*ShellcodeEncode) ProtoMessage() {}
 
 func (x *ShellcodeEncode) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[37]
+	mi := &file_client_clientpb_client_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2637,7 +2767,7 @@ func (x *ShellcodeEncode) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ShellcodeEncode.ProtoReflect.Descriptor instead.
 func (*ShellcodeEncode) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{37}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *ShellcodeEncode) GetShellcode() []byte {
@@ -2678,7 +2808,7 @@ type Bin struct {
 
 func (x *Bin) Reset() {
 	*x = Bin{}
-	mi := &file_client_clientpb_client_proto_msgTypes[38]
+	mi := &file_client_clientpb_client_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2690,7 +2820,7 @@ func (x *Bin) String() string {
 func (*Bin) ProtoMessage() {}
 
 func (x *Bin) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[38]
+	mi := &file_client_clientpb_client_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2703,7 +2833,7 @@ func (x *Bin) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Bin.ProtoReflect.Descriptor instead.
 func (*Bin) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{38}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *Bin) GetBin() []byte {
@@ -2740,7 +2870,7 @@ type Artifact struct {
 
 func (x *Artifact) Reset() {
 	*x = Artifact{}
-	mi := &file_client_clientpb_client_proto_msgTypes[39]
+	mi := &file_client_clientpb_client_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2752,7 +2882,7 @@ func (x *Artifact) String() string {
 func (*Artifact) ProtoMessage() {}
 
 func (x *Artifact) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[39]
+	mi := &file_client_clientpb_client_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2765,7 +2895,7 @@ func (x *Artifact) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Artifact.ProtoReflect.Descriptor instead.
 func (*Artifact) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{39}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *Artifact) GetId() uint32 {
@@ -2904,7 +3034,7 @@ type Artifacts struct {
 
 func (x *Artifacts) Reset() {
 	*x = Artifacts{}
-	mi := &file_client_clientpb_client_proto_msgTypes[40]
+	mi := &file_client_clientpb_client_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2916,7 +3046,7 @@ func (x *Artifacts) String() string {
 func (*Artifacts) ProtoMessage() {}
 
 func (x *Artifacts) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[40]
+	mi := &file_client_clientpb_client_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2929,7 +3059,7 @@ func (x *Artifacts) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Artifacts.ProtoReflect.Descriptor instead.
 func (*Artifacts) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{40}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *Artifacts) GetArtifacts() []*Artifact {
@@ -2955,7 +3085,7 @@ type Profile struct {
 
 func (x *Profile) Reset() {
 	*x = Profile{}
-	mi := &file_client_clientpb_client_proto_msgTypes[41]
+	mi := &file_client_clientpb_client_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2967,7 +3097,7 @@ func (x *Profile) String() string {
 func (*Profile) ProtoMessage() {}
 
 func (x *Profile) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[41]
+	mi := &file_client_clientpb_client_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2980,7 +3110,7 @@ func (x *Profile) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Profile.ProtoReflect.Descriptor instead.
 func (*Profile) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{41}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *Profile) GetName() string {
@@ -3042,7 +3172,7 @@ type Profiles struct {
 
 func (x *Profiles) Reset() {
 	*x = Profiles{}
-	mi := &file_client_clientpb_client_proto_msgTypes[42]
+	mi := &file_client_clientpb_client_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3054,7 +3184,7 @@ func (x *Profiles) String() string {
 func (*Profiles) ProtoMessage() {}
 
 func (x *Profiles) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[42]
+	mi := &file_client_clientpb_client_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3067,7 +3197,7 @@ func (x *Profiles) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Profiles.ProtoReflect.Descriptor instead.
 func (*Profiles) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{42}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{44}
 }
 
 func (x *Profiles) GetProfiles() []*Profile {
@@ -3093,7 +3223,7 @@ type RegisterSession struct {
 
 func (x *RegisterSession) Reset() {
 	*x = RegisterSession{}
-	mi := &file_client_clientpb_client_proto_msgTypes[43]
+	mi := &file_client_clientpb_client_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3105,7 +3235,7 @@ func (x *RegisterSession) String() string {
 func (*RegisterSession) ProtoMessage() {}
 
 func (x *RegisterSession) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[43]
+	mi := &file_client_clientpb_client_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3118,7 +3248,7 @@ func (x *RegisterSession) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegisterSession.ProtoReflect.Descriptor instead.
 func (*RegisterSession) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{43}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *RegisterSession) GetSessionId() string {
@@ -3184,7 +3314,7 @@ type RegisterListener struct {
 
 func (x *RegisterListener) Reset() {
 	*x = RegisterListener{}
-	mi := &file_client_clientpb_client_proto_msgTypes[44]
+	mi := &file_client_clientpb_client_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3196,7 +3326,7 @@ func (x *RegisterListener) String() string {
 func (*RegisterListener) ProtoMessage() {}
 
 func (x *RegisterListener) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[44]
+	mi := &file_client_clientpb_client_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3209,7 +3339,7 @@ func (x *RegisterListener) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegisterListener.ProtoReflect.Descriptor instead.
 func (*RegisterListener) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{44}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *RegisterListener) GetId() string {
@@ -3260,7 +3390,7 @@ type SpiteRequest struct {
 
 func (x *SpiteRequest) Reset() {
 	*x = SpiteRequest{}
-	mi := &file_client_clientpb_client_proto_msgTypes[45]
+	mi := &file_client_clientpb_client_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3272,7 +3402,7 @@ func (x *SpiteRequest) String() string {
 func (*SpiteRequest) ProtoMessage() {}
 
 func (x *SpiteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[45]
+	mi := &file_client_clientpb_client_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3285,7 +3415,7 @@ func (x *SpiteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SpiteRequest.ProtoReflect.Descriptor instead.
 func (*SpiteRequest) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{45}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *SpiteRequest) GetListenerId() string {
@@ -3329,7 +3459,7 @@ type SpiteResponse struct {
 
 func (x *SpiteResponse) Reset() {
 	*x = SpiteResponse{}
-	mi := &file_client_clientpb_client_proto_msgTypes[46]
+	mi := &file_client_clientpb_client_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3341,7 +3471,7 @@ func (x *SpiteResponse) String() string {
 func (*SpiteResponse) ProtoMessage() {}
 
 func (x *SpiteResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[46]
+	mi := &file_client_clientpb_client_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3354,7 +3484,7 @@ func (x *SpiteResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SpiteResponse.ProtoReflect.Descriptor instead.
 func (*SpiteResponse) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{46}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{48}
 }
 
 func (x *SpiteResponse) GetListenerId() string {
@@ -3395,7 +3525,7 @@ type Pipelines struct {
 
 func (x *Pipelines) Reset() {
 	*x = Pipelines{}
-	mi := &file_client_clientpb_client_proto_msgTypes[47]
+	mi := &file_client_clientpb_client_proto_msgTypes[49]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3407,7 +3537,7 @@ func (x *Pipelines) String() string {
 func (*Pipelines) ProtoMessage() {}
 
 func (x *Pipelines) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[47]
+	mi := &file_client_clientpb_client_proto_msgTypes[49]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3420,7 +3550,7 @@ func (x *Pipelines) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Pipelines.ProtoReflect.Descriptor instead.
 func (*Pipelines) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{47}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{49}
 }
 
 func (x *Pipelines) GetPipelines() []*Pipeline {
@@ -3456,7 +3586,7 @@ type Pipeline struct {
 
 func (x *Pipeline) Reset() {
 	*x = Pipeline{}
-	mi := &file_client_clientpb_client_proto_msgTypes[48]
+	mi := &file_client_clientpb_client_proto_msgTypes[50]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3468,7 +3598,7 @@ func (x *Pipeline) String() string {
 func (*Pipeline) ProtoMessage() {}
 
 func (x *Pipeline) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[48]
+	mi := &file_client_clientpb_client_proto_msgTypes[50]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3481,7 +3611,7 @@ func (x *Pipeline) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Pipeline.ProtoReflect.Descriptor instead.
 func (*Pipeline) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{48}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{50}
 }
 
 func (x *Pipeline) GetName() string {
@@ -3636,7 +3766,7 @@ type CtrlPipeline struct {
 
 func (x *CtrlPipeline) Reset() {
 	*x = CtrlPipeline{}
-	mi := &file_client_clientpb_client_proto_msgTypes[49]
+	mi := &file_client_clientpb_client_proto_msgTypes[51]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3648,7 +3778,7 @@ func (x *CtrlPipeline) String() string {
 func (*CtrlPipeline) ProtoMessage() {}
 
 func (x *CtrlPipeline) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[49]
+	mi := &file_client_clientpb_client_proto_msgTypes[51]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3661,7 +3791,7 @@ func (x *CtrlPipeline) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CtrlPipeline.ProtoReflect.Descriptor instead.
 func (*CtrlPipeline) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{49}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{51}
 }
 
 func (x *CtrlPipeline) GetListenerId() string {
@@ -3707,7 +3837,7 @@ type TLS struct {
 
 func (x *TLS) Reset() {
 	*x = TLS{}
-	mi := &file_client_clientpb_client_proto_msgTypes[50]
+	mi := &file_client_clientpb_client_proto_msgTypes[52]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3719,7 +3849,7 @@ func (x *TLS) String() string {
 func (*TLS) ProtoMessage() {}
 
 func (x *TLS) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[50]
+	mi := &file_client_clientpb_client_proto_msgTypes[52]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3732,7 +3862,7 @@ func (x *TLS) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TLS.ProtoReflect.Descriptor instead.
 func (*TLS) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{50}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{52}
 }
 
 func (x *TLS) GetCert() *Cert {
@@ -3787,7 +3917,7 @@ type Certs struct {
 
 func (x *Certs) Reset() {
 	*x = Certs{}
-	mi := &file_client_clientpb_client_proto_msgTypes[51]
+	mi := &file_client_clientpb_client_proto_msgTypes[53]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3799,7 +3929,7 @@ func (x *Certs) String() string {
 func (*Certs) ProtoMessage() {}
 
 func (x *Certs) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[51]
+	mi := &file_client_clientpb_client_proto_msgTypes[53]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3812,7 +3942,7 @@ func (x *Certs) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Certs.ProtoReflect.Descriptor instead.
 func (*Certs) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{51}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{53}
 }
 
 func (x *Certs) GetCerts() []*TLS {
@@ -3835,7 +3965,7 @@ type Cert struct {
 
 func (x *Cert) Reset() {
 	*x = Cert{}
-	mi := &file_client_clientpb_client_proto_msgTypes[52]
+	mi := &file_client_clientpb_client_proto_msgTypes[54]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3847,7 +3977,7 @@ func (x *Cert) String() string {
 func (*Cert) ProtoMessage() {}
 
 func (x *Cert) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[52]
+	mi := &file_client_clientpb_client_proto_msgTypes[54]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3860,7 +3990,7 @@ func (x *Cert) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Cert.ProtoReflect.Descriptor instead.
 func (*Cert) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{52}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{54}
 }
 
 func (x *Cert) GetCert() string {
@@ -3907,7 +4037,7 @@ type CertificateSubject struct {
 
 func (x *CertificateSubject) Reset() {
 	*x = CertificateSubject{}
-	mi := &file_client_clientpb_client_proto_msgTypes[53]
+	mi := &file_client_clientpb_client_proto_msgTypes[55]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3919,7 +4049,7 @@ func (x *CertificateSubject) String() string {
 func (*CertificateSubject) ProtoMessage() {}
 
 func (x *CertificateSubject) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[53]
+	mi := &file_client_clientpb_client_proto_msgTypes[55]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3932,7 +4062,7 @@ func (x *CertificateSubject) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CertificateSubject.ProtoReflect.Descriptor instead.
 func (*CertificateSubject) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{53}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{55}
 }
 
 func (x *CertificateSubject) GetCn() string {
@@ -3995,7 +4125,7 @@ type Encryption struct {
 
 func (x *Encryption) Reset() {
 	*x = Encryption{}
-	mi := &file_client_clientpb_client_proto_msgTypes[54]
+	mi := &file_client_clientpb_client_proto_msgTypes[56]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4007,7 +4137,7 @@ func (x *Encryption) String() string {
 func (*Encryption) ProtoMessage() {}
 
 func (x *Encryption) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[54]
+	mi := &file_client_clientpb_client_proto_msgTypes[56]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4020,7 +4150,7 @@ func (x *Encryption) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Encryption.ProtoReflect.Descriptor instead.
 func (*Encryption) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{54}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{56}
 }
 
 func (x *Encryption) GetType() string {
@@ -4048,7 +4178,7 @@ type BindPipeline struct {
 
 func (x *BindPipeline) Reset() {
 	*x = BindPipeline{}
-	mi := &file_client_clientpb_client_proto_msgTypes[55]
+	mi := &file_client_clientpb_client_proto_msgTypes[57]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4060,7 +4190,7 @@ func (x *BindPipeline) String() string {
 func (*BindPipeline) ProtoMessage() {}
 
 func (x *BindPipeline) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[55]
+	mi := &file_client_clientpb_client_proto_msgTypes[57]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4073,7 +4203,7 @@ func (x *BindPipeline) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BindPipeline.ProtoReflect.Descriptor instead.
 func (*BindPipeline) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{55}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{57}
 }
 
 func (x *BindPipeline) GetName() string {
@@ -4107,7 +4237,7 @@ type REM struct {
 
 func (x *REM) Reset() {
 	*x = REM{}
-	mi := &file_client_clientpb_client_proto_msgTypes[56]
+	mi := &file_client_clientpb_client_proto_msgTypes[58]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4119,7 +4249,7 @@ func (x *REM) String() string {
 func (*REM) ProtoMessage() {}
 
 func (x *REM) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[56]
+	mi := &file_client_clientpb_client_proto_msgTypes[58]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4132,7 +4262,7 @@ func (x *REM) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use REM.ProtoReflect.Descriptor instead.
 func (*REM) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{56}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{58}
 }
 
 func (x *REM) GetName() string {
@@ -4201,7 +4331,7 @@ type REMAgents struct {
 
 func (x *REMAgents) Reset() {
 	*x = REMAgents{}
-	mi := &file_client_clientpb_client_proto_msgTypes[57]
+	mi := &file_client_clientpb_client_proto_msgTypes[59]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4213,7 +4343,7 @@ func (x *REMAgents) String() string {
 func (*REMAgents) ProtoMessage() {}
 
 func (x *REMAgents) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[57]
+	mi := &file_client_clientpb_client_proto_msgTypes[59]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4226,7 +4356,7 @@ func (x *REMAgents) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use REMAgents.ProtoReflect.Descriptor instead.
 func (*REMAgents) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{57}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{59}
 }
 
 func (x *REMAgents) GetAgents() []*REMAgent {
@@ -4252,7 +4382,7 @@ type REMAgent struct {
 
 func (x *REMAgent) Reset() {
 	*x = REMAgent{}
-	mi := &file_client_clientpb_client_proto_msgTypes[58]
+	mi := &file_client_clientpb_client_proto_msgTypes[60]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4264,7 +4394,7 @@ func (x *REMAgent) String() string {
 func (*REMAgent) ProtoMessage() {}
 
 func (x *REMAgent) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[58]
+	mi := &file_client_clientpb_client_proto_msgTypes[60]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4277,7 +4407,7 @@ func (x *REMAgent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use REMAgent.ProtoReflect.Descriptor instead.
 func (*REMAgent) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{58}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{60}
 }
 
 func (x *REMAgent) GetPipelineId() string {
@@ -4341,7 +4471,7 @@ type RemLog struct {
 
 func (x *RemLog) Reset() {
 	*x = RemLog{}
-	mi := &file_client_clientpb_client_proto_msgTypes[59]
+	mi := &file_client_clientpb_client_proto_msgTypes[61]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4353,7 +4483,7 @@ func (x *RemLog) String() string {
 func (*RemLog) ProtoMessage() {}
 
 func (x *RemLog) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[59]
+	mi := &file_client_clientpb_client_proto_msgTypes[61]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4366,7 +4496,7 @@ func (x *RemLog) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemLog.ProtoReflect.Descriptor instead.
 func (*RemLog) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{59}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{61}
 }
 
 func (x *RemLog) GetPipelineId() string {
@@ -4404,7 +4534,7 @@ type TCPPipeline struct {
 
 func (x *TCPPipeline) Reset() {
 	*x = TCPPipeline{}
-	mi := &file_client_clientpb_client_proto_msgTypes[60]
+	mi := &file_client_clientpb_client_proto_msgTypes[62]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4416,7 +4546,7 @@ func (x *TCPPipeline) String() string {
 func (*TCPPipeline) ProtoMessage() {}
 
 func (x *TCPPipeline) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[60]
+	mi := &file_client_clientpb_client_proto_msgTypes[62]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4429,7 +4559,7 @@ func (x *TCPPipeline) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TCPPipeline.ProtoReflect.Descriptor instead.
 func (*TCPPipeline) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{60}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{62}
 }
 
 func (x *TCPPipeline) GetName() string {
@@ -4482,7 +4612,7 @@ type HTTPPipeline struct {
 
 func (x *HTTPPipeline) Reset() {
 	*x = HTTPPipeline{}
-	mi := &file_client_clientpb_client_proto_msgTypes[61]
+	mi := &file_client_clientpb_client_proto_msgTypes[63]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4494,7 +4624,7 @@ func (x *HTTPPipeline) String() string {
 func (*HTTPPipeline) ProtoMessage() {}
 
 func (x *HTTPPipeline) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[61]
+	mi := &file_client_clientpb_client_proto_msgTypes[63]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4507,7 +4637,7 @@ func (x *HTTPPipeline) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HTTPPipeline.ProtoReflect.Descriptor instead.
 func (*HTTPPipeline) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{61}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{63}
 }
 
 func (x *HTTPPipeline) GetName() string {
@@ -4571,7 +4701,7 @@ type WebContent struct {
 
 func (x *WebContent) Reset() {
 	*x = WebContent{}
-	mi := &file_client_clientpb_client_proto_msgTypes[62]
+	mi := &file_client_clientpb_client_proto_msgTypes[64]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4583,7 +4713,7 @@ func (x *WebContent) String() string {
 func (*WebContent) ProtoMessage() {}
 
 func (x *WebContent) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[62]
+	mi := &file_client_clientpb_client_proto_msgTypes[64]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4596,7 +4726,7 @@ func (x *WebContent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WebContent.ProtoReflect.Descriptor instead.
 func (*WebContent) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{62}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{64}
 }
 
 func (x *WebContent) GetId() string {
@@ -4683,7 +4813,7 @@ type Website struct {
 
 func (x *Website) Reset() {
 	*x = Website{}
-	mi := &file_client_clientpb_client_proto_msgTypes[63]
+	mi := &file_client_clientpb_client_proto_msgTypes[65]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4695,7 +4825,7 @@ func (x *Website) String() string {
 func (*Website) ProtoMessage() {}
 
 func (x *Website) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[63]
+	mi := &file_client_clientpb_client_proto_msgTypes[65]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4708,7 +4838,7 @@ func (x *Website) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Website.ProtoReflect.Descriptor instead.
 func (*Website) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{63}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{65}
 }
 
 func (x *Website) GetName() string {
@@ -4756,7 +4886,7 @@ type Websites struct {
 
 func (x *Websites) Reset() {
 	*x = Websites{}
-	mi := &file_client_clientpb_client_proto_msgTypes[64]
+	mi := &file_client_clientpb_client_proto_msgTypes[66]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4768,7 +4898,7 @@ func (x *Websites) String() string {
 func (*Websites) ProtoMessage() {}
 
 func (x *Websites) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[64]
+	mi := &file_client_clientpb_client_proto_msgTypes[66]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4781,7 +4911,7 @@ func (x *Websites) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Websites.ProtoReflect.Descriptor instead.
 func (*Websites) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{64}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{66}
 }
 
 func (x *Websites) GetWebsites() []*Website {
@@ -4801,7 +4931,7 @@ type WebContents struct {
 
 func (x *WebContents) Reset() {
 	*x = WebContents{}
-	mi := &file_client_clientpb_client_proto_msgTypes[65]
+	mi := &file_client_clientpb_client_proto_msgTypes[67]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4813,7 +4943,7 @@ func (x *WebContents) String() string {
 func (*WebContents) ProtoMessage() {}
 
 func (x *WebContents) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[65]
+	mi := &file_client_clientpb_client_proto_msgTypes[67]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4826,7 +4956,7 @@ func (x *WebContents) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WebContents.ProtoReflect.Descriptor instead.
 func (*WebContents) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{65}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{67}
 }
 
 func (x *WebContents) GetContents() []*WebContent {
@@ -4850,7 +4980,7 @@ type Polling struct {
 
 func (x *Polling) Reset() {
 	*x = Polling{}
-	mi := &file_client_clientpb_client_proto_msgTypes[66]
+	mi := &file_client_clientpb_client_proto_msgTypes[68]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4862,7 +4992,7 @@ func (x *Polling) String() string {
 func (*Polling) ProtoMessage() {}
 
 func (x *Polling) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[66]
+	mi := &file_client_clientpb_client_proto_msgTypes[68]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4875,7 +5005,7 @@ func (x *Polling) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Polling.ProtoReflect.Descriptor instead.
 func (*Polling) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{66}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{68}
 }
 
 func (x *Polling) GetId() string {
@@ -4935,7 +5065,7 @@ type BuildConfig struct {
 
 func (x *BuildConfig) Reset() {
 	*x = BuildConfig{}
-	mi := &file_client_clientpb_client_proto_msgTypes[67]
+	mi := &file_client_clientpb_client_proto_msgTypes[69]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4947,7 +5077,7 @@ func (x *BuildConfig) String() string {
 func (*BuildConfig) ProtoMessage() {}
 
 func (x *BuildConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[67]
+	mi := &file_client_clientpb_client_proto_msgTypes[69]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4960,7 +5090,7 @@ func (x *BuildConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BuildConfig.ProtoReflect.Descriptor instead.
 func (*BuildConfig) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{67}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{69}
 }
 
 func (x *BuildConfig) GetBuildName() string {
@@ -5068,7 +5198,7 @@ type GithubWorkflowConfig struct {
 
 func (x *GithubWorkflowConfig) Reset() {
 	*x = GithubWorkflowConfig{}
-	mi := &file_client_clientpb_client_proto_msgTypes[68]
+	mi := &file_client_clientpb_client_proto_msgTypes[70]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5080,7 +5210,7 @@ func (x *GithubWorkflowConfig) String() string {
 func (*GithubWorkflowConfig) ProtoMessage() {}
 
 func (x *GithubWorkflowConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[68]
+	mi := &file_client_clientpb_client_proto_msgTypes[70]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5093,7 +5223,7 @@ func (x *GithubWorkflowConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GithubWorkflowConfig.ProtoReflect.Descriptor instead.
 func (*GithubWorkflowConfig) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{68}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{70}
 }
 
 func (x *GithubWorkflowConfig) GetOwner() string {
@@ -5141,7 +5271,7 @@ type GithubWorkflows struct {
 
 func (x *GithubWorkflows) Reset() {
 	*x = GithubWorkflows{}
-	mi := &file_client_clientpb_client_proto_msgTypes[69]
+	mi := &file_client_clientpb_client_proto_msgTypes[71]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5153,7 +5283,7 @@ func (x *GithubWorkflows) String() string {
 func (*GithubWorkflows) ProtoMessage() {}
 
 func (x *GithubWorkflows) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[69]
+	mi := &file_client_clientpb_client_proto_msgTypes[71]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5166,7 +5296,7 @@ func (x *GithubWorkflows) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GithubWorkflows.ProtoReflect.Descriptor instead.
 func (*GithubWorkflows) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{69}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{71}
 }
 
 func (x *GithubWorkflows) GetWorkflows() []*GithubWorkflow {
@@ -5195,7 +5325,7 @@ type GithubWorkflow struct {
 
 func (x *GithubWorkflow) Reset() {
 	*x = GithubWorkflow{}
-	mi := &file_client_clientpb_client_proto_msgTypes[70]
+	mi := &file_client_clientpb_client_proto_msgTypes[72]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5207,7 +5337,7 @@ func (x *GithubWorkflow) String() string {
 func (*GithubWorkflow) ProtoMessage() {}
 
 func (x *GithubWorkflow) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[70]
+	mi := &file_client_clientpb_client_proto_msgTypes[72]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5220,7 +5350,7 @@ func (x *GithubWorkflow) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GithubWorkflow.ProtoReflect.Descriptor instead.
 func (*GithubWorkflow) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{70}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{72}
 }
 
 func (x *GithubWorkflow) GetId() int64 {
@@ -5307,7 +5437,7 @@ type LicenseInfo struct {
 
 func (x *LicenseInfo) Reset() {
 	*x = LicenseInfo{}
-	mi := &file_client_clientpb_client_proto_msgTypes[71]
+	mi := &file_client_clientpb_client_proto_msgTypes[73]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5319,7 +5449,7 @@ func (x *LicenseInfo) String() string {
 func (*LicenseInfo) ProtoMessage() {}
 
 func (x *LicenseInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[71]
+	mi := &file_client_clientpb_client_proto_msgTypes[73]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5332,7 +5462,7 @@ func (x *LicenseInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LicenseInfo.ProtoReflect.Descriptor instead.
 func (*LicenseInfo) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{71}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{73}
 }
 
 func (x *LicenseInfo) GetUserName() string {
@@ -5389,7 +5519,7 @@ type Notify struct {
 
 func (x *Notify) Reset() {
 	*x = Notify{}
-	mi := &file_client_clientpb_client_proto_msgTypes[72]
+	mi := &file_client_clientpb_client_proto_msgTypes[74]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5401,7 +5531,7 @@ func (x *Notify) String() string {
 func (*Notify) ProtoMessage() {}
 
 func (x *Notify) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[72]
+	mi := &file_client_clientpb_client_proto_msgTypes[74]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5414,7 +5544,7 @@ func (x *Notify) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Notify.ProtoReflect.Descriptor instead.
 func (*Notify) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{72}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{74}
 }
 
 func (x *Notify) GetTelegramEnable() bool {
@@ -5505,7 +5635,7 @@ type Context struct {
 
 func (x *Context) Reset() {
 	*x = Context{}
-	mi := &file_client_clientpb_client_proto_msgTypes[73]
+	mi := &file_client_clientpb_client_proto_msgTypes[75]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5517,7 +5647,7 @@ func (x *Context) String() string {
 func (*Context) ProtoMessage() {}
 
 func (x *Context) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[73]
+	mi := &file_client_clientpb_client_proto_msgTypes[75]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5530,7 +5660,7 @@ func (x *Context) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Context.ProtoReflect.Descriptor instead.
 func (*Context) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{73}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{75}
 }
 
 func (x *Context) GetId() string {
@@ -5606,7 +5736,7 @@ type Contexts struct {
 
 func (x *Contexts) Reset() {
 	*x = Contexts{}
-	mi := &file_client_clientpb_client_proto_msgTypes[74]
+	mi := &file_client_clientpb_client_proto_msgTypes[76]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5618,7 +5748,7 @@ func (x *Contexts) String() string {
 func (*Contexts) ProtoMessage() {}
 
 func (x *Contexts) ProtoReflect() protoreflect.Message {
-	mi := &file_client_clientpb_client_proto_msgTypes[74]
+	mi := &file_client_clientpb_client_proto_msgTypes[76]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5631,7 +5761,7 @@ func (x *Contexts) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Contexts.ProtoReflect.Descriptor instead.
 func (*Contexts) Descriptor() ([]byte, []int) {
-	return file_client_clientpb_client_proto_rawDescGZIP(), []int{74}
+	return file_client_clientpb_client_proto_rawDescGZIP(), []int{76}
 }
 
 func (x *Contexts) GetContexts() []*Context {
@@ -5731,6 +5861,22 @@ var file_client_clientpb_client_proto_rawDesc = []byte{
 	0x6e, 0x49, 0x64, 0x12, 0x10, 0x0a, 0x03, 0x61, 0x6c, 0x6c, 0x18, 0x02, 0x20, 0x01, 0x28, 0x08,
 	0x52, 0x03, 0x61, 0x6c, 0x6c, 0x22, 0x1b, 0x0a, 0x03, 0x49, 0x6e, 0x74, 0x12, 0x14, 0x0a, 0x05,
 	0x6c, 0x69, 0x6d, 0x69, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x05, 0x52, 0x05, 0x6c, 0x69, 0x6d,
+	0x69, 0x74, 0x22, 0xcc, 0x01, 0x0a, 0x05, 0x41, 0x75, 0x64, 0x69, 0x74, 0x12, 0x2f, 0x0a, 0x07,
+	0x63, 0x6f, 0x6e, 0x74, 0x65, 0x78, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x15, 0x2e,
+	0x63, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x70, 0x62, 0x2e, 0x54, 0x61, 0x73, 0x6b, 0x43, 0x6f, 0x6e,
+	0x74, 0x65, 0x78, 0x74, 0x52, 0x07, 0x63, 0x6f, 0x6e, 0x74, 0x65, 0x78, 0x74, 0x12, 0x18, 0x0a,
+	0x07, 0x63, 0x6f, 0x6d, 0x6d, 0x61, 0x6e, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07,
+	0x63, 0x6f, 0x6d, 0x6d, 0x61, 0x6e, 0x64, 0x12, 0x2a, 0x0a, 0x07, 0x72, 0x65, 0x71, 0x75, 0x65,
+	0x73, 0x74, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x10, 0x2e, 0x69, 0x6d, 0x70, 0x6c, 0x61,
+	0x6e, 0x74, 0x70, 0x62, 0x2e, 0x53, 0x70, 0x69, 0x74, 0x65, 0x52, 0x07, 0x72, 0x65, 0x71, 0x75,
+	0x65, 0x73, 0x74, 0x12, 0x18, 0x0a, 0x07, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x64, 0x18, 0x04,
+	0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x64, 0x12, 0x1a, 0x0a,
+	0x08, 0x46, 0x69, 0x6e, 0x69, 0x73, 0x68, 0x65, 0x64, 0x18, 0x05, 0x20, 0x01, 0x28, 0x09, 0x52,
+	0x08, 0x46, 0x69, 0x6e, 0x69, 0x73, 0x68, 0x65, 0x64, 0x12, 0x16, 0x0a, 0x06, 0x4c, 0x61, 0x73,
+	0x74, 0x65, 0x64, 0x18, 0x06, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x4c, 0x61, 0x73, 0x74, 0x65,
+	0x64, 0x22, 0x2f, 0x0a, 0x06, 0x41, 0x75, 0x64, 0x69, 0x74, 0x73, 0x12, 0x25, 0x0a, 0x05, 0x61,
+	0x75, 0x64, 0x69, 0x74, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x0f, 0x2e, 0x63, 0x6c, 0x69,
+	0x65, 0x6e, 0x74, 0x70, 0x62, 0x2e, 0x41, 0x75, 0x64, 0x69, 0x74, 0x52, 0x05, 0x61, 0x75, 0x64,
 	0x69, 0x74, 0x22, 0x55, 0x0a, 0x12, 0x42, 0x61, 0x73, 0x69, 0x63, 0x55, 0x70, 0x64, 0x61, 0x74,
 	0x65, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x12, 0x1d, 0x0a, 0x0a, 0x73, 0x65, 0x73, 0x73,
 	0x69, 0x6f, 0x6e, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x73, 0x65,
@@ -6385,7 +6531,7 @@ func file_client_clientpb_client_proto_rawDescGZIP() []byte {
 	return file_client_clientpb_client_proto_rawDescData
 }
 
-var file_client_clientpb_client_proto_msgTypes = make([]protoimpl.MessageInfo, 81)
+var file_client_clientpb_client_proto_msgTypes = make([]protoimpl.MessageInfo, 83)
 var file_client_clientpb_client_proto_goTypes = []any{
 	(*Empty)(nil),                // 0: clientpb.Empty
 	(*Basic)(nil),                // 1: clientpb.Basic
@@ -6393,169 +6539,174 @@ var file_client_clientpb_client_proto_goTypes = []any{
 	(*SessionRequest)(nil),       // 3: clientpb.SessionRequest
 	(*TaskRequest)(nil),          // 4: clientpb.TaskRequest
 	(*Int)(nil),                  // 5: clientpb.Int
-	(*BasicUpdateSession)(nil),   // 6: clientpb.BasicUpdateSession
-	(*Sessions)(nil),             // 7: clientpb.Sessions
-	(*SpiteCache)(nil),           // 8: clientpb.SpiteCache
-	(*SpiteCacheItem)(nil),       // 9: clientpb.SpiteCacheItem
-	(*Job)(nil),                  // 10: clientpb.Job
-	(*Jobs)(nil),                 // 11: clientpb.Jobs
-	(*JobCtrl)(nil),              // 12: clientpb.JobCtrl
-	(*JobStatus)(nil),            // 13: clientpb.JobStatus
-	(*Listener)(nil),             // 14: clientpb.Listener
-	(*Listeners)(nil),            // 15: clientpb.Listeners
-	(*Client)(nil),               // 16: clientpb.Client
-	(*Clients)(nil),              // 17: clientpb.Clients
-	(*Event)(nil),                // 18: clientpb.Event
-	(*Events)(nil),               // 19: clientpb.Events
-	(*On)(nil),                   // 20: clientpb.On
-	(*LoginReq)(nil),             // 21: clientpb.LoginReq
-	(*Sync)(nil),                 // 22: clientpb.Sync
-	(*SyncResp)(nil),             // 23: clientpb.SyncResp
-	(*TaskContext)(nil),          // 24: clientpb.TaskContext
-	(*TaskContexts)(nil),         // 25: clientpb.TaskContexts
-	(*TasksContext)(nil),         // 26: clientpb.TasksContext
-	(*Task)(nil),                 // 27: clientpb.Task
-	(*Tasks)(nil),                // 28: clientpb.Tasks
-	(*TaskDescs)(nil),            // 29: clientpb.TaskDescs
-	(*File)(nil),                 // 30: clientpb.File
-	(*Files)(nil),                // 31: clientpb.Files
-	(*TaskDesc)(nil),             // 32: clientpb.TaskDesc
-	(*Plugins)(nil),              // 33: clientpb.Plugins
-	(*Plugin)(nil),               // 34: clientpb.Plugin
-	(*EXE2Shellcode)(nil),        // 35: clientpb.EXE2Shellcode
-	(*DLL2Shellcode)(nil),        // 36: clientpb.DLL2Shellcode
-	(*ShellcodeEncode)(nil),      // 37: clientpb.ShellcodeEncode
-	(*Bin)(nil),                  // 38: clientpb.Bin
-	(*Artifact)(nil),             // 39: clientpb.Artifact
-	(*Artifacts)(nil),            // 40: clientpb.Artifacts
-	(*Profile)(nil),              // 41: clientpb.Profile
-	(*Profiles)(nil),             // 42: clientpb.Profiles
-	(*RegisterSession)(nil),      // 43: clientpb.RegisterSession
-	(*RegisterListener)(nil),     // 44: clientpb.RegisterListener
-	(*SpiteRequest)(nil),         // 45: clientpb.SpiteRequest
-	(*SpiteResponse)(nil),        // 46: clientpb.SpiteResponse
-	(*Pipelines)(nil),            // 47: clientpb.Pipelines
-	(*Pipeline)(nil),             // 48: clientpb.Pipeline
-	(*CtrlPipeline)(nil),         // 49: clientpb.CtrlPipeline
-	(*TLS)(nil),                  // 50: clientpb.TLS
-	(*Certs)(nil),                // 51: clientpb.Certs
-	(*Cert)(nil),                 // 52: clientpb.Cert
-	(*CertificateSubject)(nil),   // 53: clientpb.CertificateSubject
-	(*Encryption)(nil),           // 54: clientpb.Encryption
-	(*BindPipeline)(nil),         // 55: clientpb.BindPipeline
-	(*REM)(nil),                  // 56: clientpb.REM
-	(*REMAgents)(nil),            // 57: clientpb.REMAgents
-	(*REMAgent)(nil),             // 58: clientpb.REMAgent
-	(*RemLog)(nil),               // 59: clientpb.RemLog
-	(*TCPPipeline)(nil),          // 60: clientpb.TCPPipeline
-	(*HTTPPipeline)(nil),         // 61: clientpb.HTTPPipeline
-	(*WebContent)(nil),           // 62: clientpb.WebContent
-	(*Website)(nil),              // 63: clientpb.Website
-	(*Websites)(nil),             // 64: clientpb.Websites
-	(*WebContents)(nil),          // 65: clientpb.WebContents
-	(*Polling)(nil),              // 66: clientpb.Polling
-	(*BuildConfig)(nil),          // 67: clientpb.BuildConfig
-	(*GithubWorkflowConfig)(nil), // 68: clientpb.GithubWorkflowConfig
-	(*GithubWorkflows)(nil),      // 69: clientpb.GithubWorkflows
-	(*GithubWorkflow)(nil),       // 70: clientpb.GithubWorkflow
-	(*LicenseInfo)(nil),          // 71: clientpb.LicenseInfo
-	(*Notify)(nil),               // 72: clientpb.Notify
-	(*Context)(nil),              // 73: clientpb.Context
-	(*Contexts)(nil),             // 74: clientpb.Contexts
-	nil,                          // 75: clientpb.Session.ArgueEntry
-	nil,                          // 76: clientpb.Session.LootEntry
-	nil,                          // 77: clientpb.Job.ContentsEntry
-	nil,                          // 78: clientpb.REM.AgentsEntry
-	nil,                          // 79: clientpb.Website.ContentsEntry
-	nil,                          // 80: clientpb.BuildConfig.InputsEntry
-	(*implantpb.Os)(nil),         // 81: modulepb.Os
-	(*implantpb.Process)(nil),    // 82: modulepb.Process
-	(*implantpb.Timer)(nil),      // 83: modulepb.Timer
-	(*implantpb.Addon)(nil),      // 84: modulepb.Addon
-	(*implantpb.Spite)(nil),      // 85: implantpb.Spite
-	(*implantpb.Register)(nil),   // 86: modulepb.Register
+	(*Audit)(nil),                // 6: clientpb.Audit
+	(*Audits)(nil),               // 7: clientpb.Audits
+	(*BasicUpdateSession)(nil),   // 8: clientpb.BasicUpdateSession
+	(*Sessions)(nil),             // 9: clientpb.Sessions
+	(*SpiteCache)(nil),           // 10: clientpb.SpiteCache
+	(*SpiteCacheItem)(nil),       // 11: clientpb.SpiteCacheItem
+	(*Job)(nil),                  // 12: clientpb.Job
+	(*Jobs)(nil),                 // 13: clientpb.Jobs
+	(*JobCtrl)(nil),              // 14: clientpb.JobCtrl
+	(*JobStatus)(nil),            // 15: clientpb.JobStatus
+	(*Listener)(nil),             // 16: clientpb.Listener
+	(*Listeners)(nil),            // 17: clientpb.Listeners
+	(*Client)(nil),               // 18: clientpb.Client
+	(*Clients)(nil),              // 19: clientpb.Clients
+	(*Event)(nil),                // 20: clientpb.Event
+	(*Events)(nil),               // 21: clientpb.Events
+	(*On)(nil),                   // 22: clientpb.On
+	(*LoginReq)(nil),             // 23: clientpb.LoginReq
+	(*Sync)(nil),                 // 24: clientpb.Sync
+	(*SyncResp)(nil),             // 25: clientpb.SyncResp
+	(*TaskContext)(nil),          // 26: clientpb.TaskContext
+	(*TaskContexts)(nil),         // 27: clientpb.TaskContexts
+	(*TasksContext)(nil),         // 28: clientpb.TasksContext
+	(*Task)(nil),                 // 29: clientpb.Task
+	(*Tasks)(nil),                // 30: clientpb.Tasks
+	(*TaskDescs)(nil),            // 31: clientpb.TaskDescs
+	(*File)(nil),                 // 32: clientpb.File
+	(*Files)(nil),                // 33: clientpb.Files
+	(*TaskDesc)(nil),             // 34: clientpb.TaskDesc
+	(*Plugins)(nil),              // 35: clientpb.Plugins
+	(*Plugin)(nil),               // 36: clientpb.Plugin
+	(*EXE2Shellcode)(nil),        // 37: clientpb.EXE2Shellcode
+	(*DLL2Shellcode)(nil),        // 38: clientpb.DLL2Shellcode
+	(*ShellcodeEncode)(nil),      // 39: clientpb.ShellcodeEncode
+	(*Bin)(nil),                  // 40: clientpb.Bin
+	(*Artifact)(nil),             // 41: clientpb.Artifact
+	(*Artifacts)(nil),            // 42: clientpb.Artifacts
+	(*Profile)(nil),              // 43: clientpb.Profile
+	(*Profiles)(nil),             // 44: clientpb.Profiles
+	(*RegisterSession)(nil),      // 45: clientpb.RegisterSession
+	(*RegisterListener)(nil),     // 46: clientpb.RegisterListener
+	(*SpiteRequest)(nil),         // 47: clientpb.SpiteRequest
+	(*SpiteResponse)(nil),        // 48: clientpb.SpiteResponse
+	(*Pipelines)(nil),            // 49: clientpb.Pipelines
+	(*Pipeline)(nil),             // 50: clientpb.Pipeline
+	(*CtrlPipeline)(nil),         // 51: clientpb.CtrlPipeline
+	(*TLS)(nil),                  // 52: clientpb.TLS
+	(*Certs)(nil),                // 53: clientpb.Certs
+	(*Cert)(nil),                 // 54: clientpb.Cert
+	(*CertificateSubject)(nil),   // 55: clientpb.CertificateSubject
+	(*Encryption)(nil),           // 56: clientpb.Encryption
+	(*BindPipeline)(nil),         // 57: clientpb.BindPipeline
+	(*REM)(nil),                  // 58: clientpb.REM
+	(*REMAgents)(nil),            // 59: clientpb.REMAgents
+	(*REMAgent)(nil),             // 60: clientpb.REMAgent
+	(*RemLog)(nil),               // 61: clientpb.RemLog
+	(*TCPPipeline)(nil),          // 62: clientpb.TCPPipeline
+	(*HTTPPipeline)(nil),         // 63: clientpb.HTTPPipeline
+	(*WebContent)(nil),           // 64: clientpb.WebContent
+	(*Website)(nil),              // 65: clientpb.Website
+	(*Websites)(nil),             // 66: clientpb.Websites
+	(*WebContents)(nil),          // 67: clientpb.WebContents
+	(*Polling)(nil),              // 68: clientpb.Polling
+	(*BuildConfig)(nil),          // 69: clientpb.BuildConfig
+	(*GithubWorkflowConfig)(nil), // 70: clientpb.GithubWorkflowConfig
+	(*GithubWorkflows)(nil),      // 71: clientpb.GithubWorkflows
+	(*GithubWorkflow)(nil),       // 72: clientpb.GithubWorkflow
+	(*LicenseInfo)(nil),          // 73: clientpb.LicenseInfo
+	(*Notify)(nil),               // 74: clientpb.Notify
+	(*Context)(nil),              // 75: clientpb.Context
+	(*Contexts)(nil),             // 76: clientpb.Contexts
+	nil,                          // 77: clientpb.Session.ArgueEntry
+	nil,                          // 78: clientpb.Session.LootEntry
+	nil,                          // 79: clientpb.Job.ContentsEntry
+	nil,                          // 80: clientpb.REM.AgentsEntry
+	nil,                          // 81: clientpb.Website.ContentsEntry
+	nil,                          // 82: clientpb.BuildConfig.InputsEntry
+	(*implantpb.Os)(nil),         // 83: modulepb.Os
+	(*implantpb.Process)(nil),    // 84: modulepb.Process
+	(*implantpb.Timer)(nil),      // 85: modulepb.Timer
+	(*implantpb.Addon)(nil),      // 86: modulepb.Addon
+	(*implantpb.Spite)(nil),      // 87: implantpb.Spite
+	(*implantpb.Register)(nil),   // 88: modulepb.Register
 }
 var file_client_clientpb_client_proto_depIdxs = []int32{
-	28, // 0: clientpb.Session.tasks:type_name -> clientpb.Tasks
-	81, // 1: clientpb.Session.os:type_name -> modulepb.Os
-	82, // 2: clientpb.Session.process:type_name -> modulepb.Process
-	83, // 3: clientpb.Session.timer:type_name -> modulepb.Timer
-	84, // 4: clientpb.Session.addons:type_name -> modulepb.Addon
-	75, // 5: clientpb.Session.argue:type_name -> clientpb.Session.ArgueEntry
-	76, // 6: clientpb.Session.loot:type_name -> clientpb.Session.LootEntry
-	2,  // 7: clientpb.Sessions.sessions:type_name -> clientpb.Session
-	9,  // 8: clientpb.SpiteCache.items:type_name -> clientpb.SpiteCacheItem
-	85, // 9: clientpb.SpiteCacheItem.spite:type_name -> implantpb.Spite
-	48, // 10: clientpb.Job.pipeline:type_name -> clientpb.Pipeline
-	77, // 11: clientpb.Job.contents:type_name -> clientpb.Job.ContentsEntry
-	58, // 12: clientpb.Job.rem_agent:type_name -> clientpb.REMAgent
-	59, // 13: clientpb.Job.rem_log:type_name -> clientpb.RemLog
-	10, // 14: clientpb.Jobs.job:type_name -> clientpb.Job
-	10, // 15: clientpb.JobCtrl.job:type_name -> clientpb.Job
-	62, // 16: clientpb.JobCtrl.content:type_name -> clientpb.WebContent
-	10, // 17: clientpb.JobStatus.job:type_name -> clientpb.Job
-	47, // 18: clientpb.Listener.pipelines:type_name -> clientpb.Pipelines
-	14, // 19: clientpb.Listeners.listeners:type_name -> clientpb.Listener
-	16, // 20: clientpb.Clients.clients:type_name -> clientpb.Client
-	2,  // 21: clientpb.Event.session:type_name -> clientpb.Session
-	10, // 22: clientpb.Event.job:type_name -> clientpb.Job
-	16, // 23: clientpb.Event.client:type_name -> clientpb.Client
-	27, // 24: clientpb.Event.task:type_name -> clientpb.Task
-	85, // 25: clientpb.Event.spite:type_name -> implantpb.Spite
-	18, // 26: clientpb.Events.events:type_name -> clientpb.Event
-	27, // 27: clientpb.TaskContext.task:type_name -> clientpb.Task
-	2,  // 28: clientpb.TaskContext.session:type_name -> clientpb.Session
-	85, // 29: clientpb.TaskContext.spite:type_name -> implantpb.Spite
-	27, // 30: clientpb.TaskContexts.task:type_name -> clientpb.Task
-	2,  // 31: clientpb.TaskContexts.session:type_name -> clientpb.Session
-	85, // 32: clientpb.TaskContexts.spites:type_name -> implantpb.Spite
-	24, // 33: clientpb.TasksContext.contexts:type_name -> clientpb.TaskContext
-	27, // 34: clientpb.Tasks.tasks:type_name -> clientpb.Task
-	32, // 35: clientpb.TaskDescs.tasks:type_name -> clientpb.TaskDesc
-	30, // 36: clientpb.Files.files:type_name -> clientpb.File
-	34, // 37: clientpb.Plugins.plugins:type_name -> clientpb.Plugin
-	39, // 38: clientpb.Artifacts.artifacts:type_name -> clientpb.Artifact
-	41, // 39: clientpb.Profiles.profiles:type_name -> clientpb.Profile
-	86, // 40: clientpb.RegisterSession.register_data:type_name -> modulepb.Register
-	47, // 41: clientpb.RegisterListener.pipelines:type_name -> clientpb.Pipelines
-	2,  // 42: clientpb.SpiteRequest.session:type_name -> clientpb.Session
-	27, // 43: clientpb.SpiteRequest.task:type_name -> clientpb.Task
-	85, // 44: clientpb.SpiteRequest.spite:type_name -> implantpb.Spite
-	85, // 45: clientpb.SpiteResponse.spite:type_name -> implantpb.Spite
-	48, // 46: clientpb.Pipelines.pipelines:type_name -> clientpb.Pipeline
-	50, // 47: clientpb.Pipeline.tls:type_name -> clientpb.TLS
-	54, // 48: clientpb.Pipeline.encryption:type_name -> clientpb.Encryption
-	60, // 49: clientpb.Pipeline.tcp:type_name -> clientpb.TCPPipeline
-	55, // 50: clientpb.Pipeline.bind:type_name -> clientpb.BindPipeline
-	56, // 51: clientpb.Pipeline.rem:type_name -> clientpb.REM
-	63, // 52: clientpb.Pipeline.web:type_name -> clientpb.Website
-	61, // 53: clientpb.Pipeline.http:type_name -> clientpb.HTTPPipeline
-	48, // 54: clientpb.CtrlPipeline.pipeline:type_name -> clientpb.Pipeline
-	52, // 55: clientpb.TLS.cert:type_name -> clientpb.Cert
-	52, // 56: clientpb.TLS.ca:type_name -> clientpb.Cert
-	53, // 57: clientpb.TLS.cert_subject:type_name -> clientpb.CertificateSubject
-	50, // 58: clientpb.Certs.certs:type_name -> clientpb.TLS
-	78, // 59: clientpb.REM.agents:type_name -> clientpb.REM.AgentsEntry
-	58, // 60: clientpb.REMAgents.agents:type_name -> clientpb.REMAgent
-	79, // 61: clientpb.Website.contents:type_name -> clientpb.Website.ContentsEntry
-	63, // 62: clientpb.Websites.websites:type_name -> clientpb.Website
-	62, // 63: clientpb.WebContents.contents:type_name -> clientpb.WebContent
-	80, // 64: clientpb.BuildConfig.inputs:type_name -> clientpb.BuildConfig.InputsEntry
-	68, // 65: clientpb.BuildConfig.github:type_name -> clientpb.GithubWorkflowConfig
-	70, // 66: clientpb.GithubWorkflows.workflows:type_name -> clientpb.GithubWorkflow
-	2,  // 67: clientpb.Context.session:type_name -> clientpb.Session
-	27, // 68: clientpb.Context.task:type_name -> clientpb.Task
-	48, // 69: clientpb.Context.pipeline:type_name -> clientpb.Pipeline
-	14, // 70: clientpb.Context.listener:type_name -> clientpb.Listener
-	73, // 71: clientpb.Contexts.contexts:type_name -> clientpb.Context
-	62, // 72: clientpb.Job.ContentsEntry.value:type_name -> clientpb.WebContent
-	58, // 73: clientpb.REM.AgentsEntry.value:type_name -> clientpb.REMAgent
-	62, // 74: clientpb.Website.ContentsEntry.value:type_name -> clientpb.WebContent
-	75, // [75:75] is the sub-list for method output_type
-	75, // [75:75] is the sub-list for method input_type
-	75, // [75:75] is the sub-list for extension type_name
-	75, // [75:75] is the sub-list for extension extendee
-	0,  // [0:75] is the sub-list for field type_name
+	30, // 0: clientpb.Session.tasks:type_name -> clientpb.Tasks
+	83, // 1: clientpb.Session.os:type_name -> modulepb.Os
+	84, // 2: clientpb.Session.process:type_name -> modulepb.Process
+	85, // 3: clientpb.Session.timer:type_name -> modulepb.Timer
+	86, // 4: clientpb.Session.addons:type_name -> modulepb.Addon
+	77, // 5: clientpb.Session.argue:type_name -> clientpb.Session.ArgueEntry
+	78, // 6: clientpb.Session.loot:type_name -> clientpb.Session.LootEntry
+	26, // 7: clientpb.Audit.context:type_name -> clientpb.TaskContext
+	87, // 8: clientpb.Audit.request:type_name -> implantpb.Spite
+	6,  // 9: clientpb.Audits.audit:type_name -> clientpb.Audit
+	2,  // 10: clientpb.Sessions.sessions:type_name -> clientpb.Session
+	11, // 11: clientpb.SpiteCache.items:type_name -> clientpb.SpiteCacheItem
+	87, // 12: clientpb.SpiteCacheItem.spite:type_name -> implantpb.Spite
+	50, // 13: clientpb.Job.pipeline:type_name -> clientpb.Pipeline
+	79, // 14: clientpb.Job.contents:type_name -> clientpb.Job.ContentsEntry
+	60, // 15: clientpb.Job.rem_agent:type_name -> clientpb.REMAgent
+	61, // 16: clientpb.Job.rem_log:type_name -> clientpb.RemLog
+	12, // 17: clientpb.Jobs.job:type_name -> clientpb.Job
+	12, // 18: clientpb.JobCtrl.job:type_name -> clientpb.Job
+	64, // 19: clientpb.JobCtrl.content:type_name -> clientpb.WebContent
+	12, // 20: clientpb.JobStatus.job:type_name -> clientpb.Job
+	49, // 21: clientpb.Listener.pipelines:type_name -> clientpb.Pipelines
+	16, // 22: clientpb.Listeners.listeners:type_name -> clientpb.Listener
+	18, // 23: clientpb.Clients.clients:type_name -> clientpb.Client
+	2,  // 24: clientpb.Event.session:type_name -> clientpb.Session
+	12, // 25: clientpb.Event.job:type_name -> clientpb.Job
+	18, // 26: clientpb.Event.client:type_name -> clientpb.Client
+	29, // 27: clientpb.Event.task:type_name -> clientpb.Task
+	87, // 28: clientpb.Event.spite:type_name -> implantpb.Spite
+	20, // 29: clientpb.Events.events:type_name -> clientpb.Event
+	29, // 30: clientpb.TaskContext.task:type_name -> clientpb.Task
+	2,  // 31: clientpb.TaskContext.session:type_name -> clientpb.Session
+	87, // 32: clientpb.TaskContext.spite:type_name -> implantpb.Spite
+	29, // 33: clientpb.TaskContexts.task:type_name -> clientpb.Task
+	2,  // 34: clientpb.TaskContexts.session:type_name -> clientpb.Session
+	87, // 35: clientpb.TaskContexts.spites:type_name -> implantpb.Spite
+	26, // 36: clientpb.TasksContext.contexts:type_name -> clientpb.TaskContext
+	29, // 37: clientpb.Tasks.tasks:type_name -> clientpb.Task
+	34, // 38: clientpb.TaskDescs.tasks:type_name -> clientpb.TaskDesc
+	32, // 39: clientpb.Files.files:type_name -> clientpb.File
+	36, // 40: clientpb.Plugins.plugins:type_name -> clientpb.Plugin
+	41, // 41: clientpb.Artifacts.artifacts:type_name -> clientpb.Artifact
+	43, // 42: clientpb.Profiles.profiles:type_name -> clientpb.Profile
+	88, // 43: clientpb.RegisterSession.register_data:type_name -> modulepb.Register
+	49, // 44: clientpb.RegisterListener.pipelines:type_name -> clientpb.Pipelines
+	2,  // 45: clientpb.SpiteRequest.session:type_name -> clientpb.Session
+	29, // 46: clientpb.SpiteRequest.task:type_name -> clientpb.Task
+	87, // 47: clientpb.SpiteRequest.spite:type_name -> implantpb.Spite
+	87, // 48: clientpb.SpiteResponse.spite:type_name -> implantpb.Spite
+	50, // 49: clientpb.Pipelines.pipelines:type_name -> clientpb.Pipeline
+	52, // 50: clientpb.Pipeline.tls:type_name -> clientpb.TLS
+	56, // 51: clientpb.Pipeline.encryption:type_name -> clientpb.Encryption
+	62, // 52: clientpb.Pipeline.tcp:type_name -> clientpb.TCPPipeline
+	57, // 53: clientpb.Pipeline.bind:type_name -> clientpb.BindPipeline
+	58, // 54: clientpb.Pipeline.rem:type_name -> clientpb.REM
+	65, // 55: clientpb.Pipeline.web:type_name -> clientpb.Website
+	63, // 56: clientpb.Pipeline.http:type_name -> clientpb.HTTPPipeline
+	50, // 57: clientpb.CtrlPipeline.pipeline:type_name -> clientpb.Pipeline
+	54, // 58: clientpb.TLS.cert:type_name -> clientpb.Cert
+	54, // 59: clientpb.TLS.ca:type_name -> clientpb.Cert
+	55, // 60: clientpb.TLS.cert_subject:type_name -> clientpb.CertificateSubject
+	52, // 61: clientpb.Certs.certs:type_name -> clientpb.TLS
+	80, // 62: clientpb.REM.agents:type_name -> clientpb.REM.AgentsEntry
+	60, // 63: clientpb.REMAgents.agents:type_name -> clientpb.REMAgent
+	81, // 64: clientpb.Website.contents:type_name -> clientpb.Website.ContentsEntry
+	65, // 65: clientpb.Websites.websites:type_name -> clientpb.Website
+	64, // 66: clientpb.WebContents.contents:type_name -> clientpb.WebContent
+	82, // 67: clientpb.BuildConfig.inputs:type_name -> clientpb.BuildConfig.InputsEntry
+	70, // 68: clientpb.BuildConfig.github:type_name -> clientpb.GithubWorkflowConfig
+	72, // 69: clientpb.GithubWorkflows.workflows:type_name -> clientpb.GithubWorkflow
+	2,  // 70: clientpb.Context.session:type_name -> clientpb.Session
+	29, // 71: clientpb.Context.task:type_name -> clientpb.Task
+	50, // 72: clientpb.Context.pipeline:type_name -> clientpb.Pipeline
+	16, // 73: clientpb.Context.listener:type_name -> clientpb.Listener
+	75, // 74: clientpb.Contexts.contexts:type_name -> clientpb.Context
+	64, // 75: clientpb.Job.ContentsEntry.value:type_name -> clientpb.WebContent
+	60, // 76: clientpb.REM.AgentsEntry.value:type_name -> clientpb.REMAgent
+	64, // 77: clientpb.Website.ContentsEntry.value:type_name -> clientpb.WebContent
+	78, // [78:78] is the sub-list for method output_type
+	78, // [78:78] is the sub-list for method input_type
+	78, // [78:78] is the sub-list for extension type_name
+	78, // [78:78] is the sub-list for extension extendee
+	0,  // [0:78] is the sub-list for field type_name
 }
 
 func init() { file_client_clientpb_client_proto_init() }
@@ -6563,11 +6714,11 @@ func file_client_clientpb_client_proto_init() {
 	if File_client_clientpb_client_proto != nil {
 		return
 	}
-	file_client_clientpb_client_proto_msgTypes[10].OneofWrappers = []any{
+	file_client_clientpb_client_proto_msgTypes[12].OneofWrappers = []any{
 		(*Job_RemAgent)(nil),
 		(*Job_RemLog)(nil),
 	}
-	file_client_clientpb_client_proto_msgTypes[48].OneofWrappers = []any{
+	file_client_clientpb_client_proto_msgTypes[50].OneofWrappers = []any{
 		(*Pipeline_Tcp)(nil),
 		(*Pipeline_Bind)(nil),
 		(*Pipeline_Rem)(nil),
@@ -6580,7 +6731,7 @@ func file_client_clientpb_client_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_client_clientpb_client_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   81,
+			NumMessages:   83,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

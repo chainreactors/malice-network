@@ -19,6 +19,8 @@ type Task struct {
 	Total       int
 	Description string
 	ClientName  string
+	FinishTime  time.Time
+	LastTime    time.Time
 }
 
 func (t *Task) BeforeCreate(tx *gorm.DB) (err error) {
@@ -30,11 +32,20 @@ func (t *Task) BeforeCreate(tx *gorm.DB) (err error) {
 }
 
 func (t *Task) UpdateCur(db *gorm.DB, newCur int) error {
-	return db.Model(t).Update("cur", newCur).Error
+	t.LastTime = time.Now()
+	return db.Model(t).Updates(map[string]interface{}{
+		"cur":       newCur,
+		"last_time": t.LastTime,
+	}).Error
 }
 
 func (t *Task) UpdateTotal(db *gorm.DB, newTotal int) error {
 	return db.Model(t).Update("total", newTotal).Error
+}
+
+func (t *Task) UpdateFinish(db *gorm.DB) error {
+	t.FinishTime = time.Now()
+	return db.Save(t).Error
 }
 
 func (t *Task) ToProtobuf() *clientpb.Task {

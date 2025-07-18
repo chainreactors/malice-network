@@ -24,7 +24,7 @@ func CancelTaskCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	con.GetInteractive().Console(task, fmt.Sprintf("cancel task %d", id))
+	con.GetInteractive().Console(cmd, task, fmt.Sprintf("cancel task %d", id))
 	return nil
 }
 

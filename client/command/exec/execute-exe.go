@@ -24,7 +24,7 @@ func ExecuteExeCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	con.GetInteractive().Console(task, path)
+	con.GetInteractive().Console(cmd, task, path)
 	return nil
 }
 
@@ -56,7 +56,7 @@ func InlineExeCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	session.Console(task, path)
+	session.Console(cmd, task, path)
 	return nil
 }
 

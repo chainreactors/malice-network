@@ -34,7 +34,7 @@ func RegAddCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	session.Console(task, fmt.Sprintf("add or modify registry key: %s\\%s\\%s", hive, path, valueName))
+	session.Console(cmd, task, fmt.Sprintf("add or modify registry key: %s\\%s\\%s", hive, path, valueName))
 	return nil
 }
 

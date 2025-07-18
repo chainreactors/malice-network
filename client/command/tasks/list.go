@@ -17,7 +17,7 @@ func ListTaskCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	con.GetInteractive().Console(task, fmt.Sprintf("list_task"))
+	con.GetInteractive().Console(cmd, task, fmt.Sprintf("list_task"))
 	return nil
 }
 

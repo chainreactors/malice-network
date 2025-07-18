@@ -34,7 +34,8 @@ func ExecuteAddonCmd(cmd *cobra.Command, con *repl.Console) {
 		sac = common.ParseSacrificeFlags(cmd)
 	}
 
-	_, err := ExecuteAddon(con.Rpc, session, cmd.Name(), args, !quiet, timeout, arch, process, sac)
+	task, err := ExecuteAddon(con.Rpc, session, cmd.Name(), args, !quiet, timeout, arch, process, sac)
+	session.Console(cmd, task, "")
 	if err != nil {
 		con.Log.Errorf("%s\n", err)
 		return

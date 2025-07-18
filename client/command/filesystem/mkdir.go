@@ -18,7 +18,7 @@ func MkdirCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	session.Console(task, "mkdir "+path)
+	session.Console(cmd, task, "mkdir "+path)
 	return nil
 }
 

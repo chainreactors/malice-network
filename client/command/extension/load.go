@@ -269,7 +269,7 @@ func ExtensionRegisterCommand(extCmd *ExtCommand, cmd *cobra.Command, con *repl.
 	loadedExtensions[extCmd.CommandName] = &loadedExt{
 		Manifest: extCmd,
 		Command:  cmd,
-		Func: repl.WrapImplantFunc(con, func(rpc clientrpc.MaliceRPCClient, sess *core.Session, args []string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
+		Func: repl.WrapImplantFunc(cmd, con, func(rpc clientrpc.MaliceRPCClient, sess *core.Session, args []string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 			return ExecuteExtension(rpc, sess, extensionCmd.Name(), args)
 		}, output.ParseBinaryResponse),
 	}
@@ -351,7 +351,7 @@ func runExtensionCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf("Error executing extension: %s\n", err.Error())
 		return
 	}
-	session.Console(task, "execute extension: "+cmd.Name())
+	session.Console(cmd, task, "execute extension: "+cmd.Name())
 }
 
 func ExecuteExtension(rpc clientrpc.MaliceRPCClient, sess *core.Session, extName string, args []string) (*clientpb.Task, error) {

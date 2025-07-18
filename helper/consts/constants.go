@@ -91,6 +91,7 @@ const (
 	ScreenShotPath = "screenshot"
 	TaskPath       = "task"
 	CachePath      = "cache"
+	RequestPath    = "request"
 )
 
 const (

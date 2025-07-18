@@ -28,7 +28,7 @@ func ServiceCreateCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	session.Console(task, fmt.Sprintf("create service: %s %s", name, executablePath))
+	session.Console(cmd, task, fmt.Sprintf("create service: %s %s", name, executablePath))
 	return nil
 }
 

@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Session Task Audit - Enhanced View</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            background: #0d1117;
+            color: #c9d1d9;
+            line-height: 1.6;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 30px;
+            background: linear-gradient(135deg, #21262d 0%, #30363d 100%);
+            border-radius: 12px;
+            border: 1px solid #30363d;
+        }
+
+        .header h1 {
+            color: #58a6ff;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .header p {
+            color: #8b949e;
+            font-size: 1.1em;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #161b22;
+            border-radius: 8px;
+            border: 1px solid #30363d;
+        }
+
+        .search-box {
+            flex: 1;
+            max-width: 400px;
+            margin-right: 20px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 12px 16px;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            color: #c9d1d9;
+            font-size: 14px;
+            font-family: inherit;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: #58a6ff;
+            box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.1);
+        }
+
+        .stats {
+            display: flex;
+            gap: 20px;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 10px 15px;
+            background: #21262d;
+            border-radius: 6px;
+            border: 1px solid #30363d;
+        }
+
+        .stat-number {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #58a6ff;
+        }
+
+        .stat-label {
+            font-size: 0.8em;
+            color: #8b949e;
+            margin-top: 2px;
+        }
+
+        .audit-container {
+            display: grid;
+            gap: 20px;
+        }
+
+        .audit-card {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .audit-card:hover {
+            border-color: #58a6ff;
+            box-shadow: 0 4px 12px rgba(88, 166, 255, 0.1);
+        }
+
+        .audit-header {
+            background: #21262d;
+            padding: 15px 20px;
+            border-bottom: 1px solid #30363d;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .audit-title {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #58a6ff;
+        }
+
+        .audit-meta {
+            font-size: 0.9em;
+            color: #8b949e;
+        }
+
+        .audit-controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        .toggle-btn {
+            background: #238636;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85em;
+            font-family: inherit;
+            transition: background 0.3s ease;
+        }
+
+        .toggle-btn:hover {
+            background: #2ea043;
+        }
+
+        .toggle-btn.expanded {
+            background: #da3633;
+        }
+
+        .toggle-btn.expanded:hover {
+            background: #f85149;
+        }
+
+        .copy-btn {
+            background: #21262d;
+            color: #c9d1d9;
+            border: 1px solid #30363d;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85em;
+            font-family: inherit;
+            transition: all 0.3s ease;
+        }
+
+        .copy-btn:hover {
+            background: #30363d;
+            border-color: #58a6ff;
+        }
+
+        .audit-content {
+            display: none;
+        }
+
+        .audit-content.expanded {
+            display: block;
+        }
+
+        .content-tabs {
+            display: flex;
+            background: #0d1117;
+            border-bottom: 1px solid #30363d;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 12px 20px;
+            background: #161b22;
+            color: #8b949e;
+            border: none;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.9em;
+            transition: all 0.3s ease;
+            border-right: 1px solid #30363d;
+        }
+
+        .tab-btn:last-child {
+            border-right: none;
+        }
+
+        .tab-btn.active {
+            background: #0d1117;
+            color: #58a6ff;
+            border-bottom: 2px solid #58a6ff;
+        }
+
+        .tab-btn:hover:not(.active) {
+            background: #21262d;
+            color: #c9d1d9;
+        }
+
+        .tab-content {
+            padding: 20px;
+            background: #0d1117;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            overflow-x: auto;
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .task-result-content {
+            background: #0c0c0c;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 15px;
+            white-space: pre-wrap;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            color: #e6edf3;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .json-content {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        /* JSON语法高亮 - GitHub Dark主题 */
+        .json-key {
+            color: #79c0ff;
+        }
+
+        .json-string {
+            color: #a5d6ff;
+        }
+
+        .json-number {
+            color: #79c0ff;
+        }
+
+        .json-boolean {
+            color: #ff7b72;
+        }
+
+        .json-null {
+            color: #ff7b72;
+        }
+
+        .json-punctuation {
+            color: #c9d1d9;
+        }
+
+        .omitted {
+            color: #ff7b72;
+            font-style: italic;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding: 20px;
+            color: #8b949e;
+            font-size: 0.9em;
+            border-top: 1px solid #30363d;
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 60px 20px;
+            color: #8b949e;
+            font-size: 1.1em;
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .controls {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .search-box {
+                max-width: none;
+                margin-right: 0;
+            }
+
+            .stats {
+                justify-content: center;
+            }
+
+            .audit-header {
+                flex-direction: column;
+                gap: 10px;
+                align-items: flex-start;
+            }
+
+            .content-tabs {
+                flex-direction: column;
+            }
+
+            .tab-btn {
+                border-right: none;
+                border-bottom: 1px solid #30363d;
+            }
+        }
+
+        /* 滚动条样式 */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #161b22;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #30363d;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #484f58;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>📋 Session Task Audit</h1>
+        <p>Enhanced View with TaskResult - Session: {{if .Entries}}{{(index .Entries 0).Audit.Context.Session.SessionId}}{{end}}</p>
+    </div>
+
+    <div class="controls">
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="🔍 Search tasks by ID, command, or content...">
+        </div>
+        <div class="stats">
+            <div class="stat-item">
+                <div class="stat-number">{{len .Entries}}</div>
+                <div class="stat-label">Total Tasks</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number" id="visibleCount">{{len .Entries}}</div>
+                <div class="stat-label">Visible</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="audit-container" id="auditContainer">
+        {{range $index, $entry := .Entries}}
+        <div class="audit-card" data-task-id="{{$entry.Audit.Context.Task.TaskId}}" data-command="{{$entry.Audit.Command}}">
+            <div class="audit-header">
+                <div>
+                    <div class="audit-title">Task #{{$entry.Audit.Context.Task.TaskId}}</div>
+                    <div class="audit-meta">{{$entry.Audit.Command}} | {{$entry.Audit.Created}}</div>
+                </div>
+                <div class="audit-controls">
+                    <button class="toggle-btn" onclick="toggleAudit(this, {{$index}})">📋 Show Details</button>
+                    <button class="copy-btn" onclick="copyAudit({{$index}})">📄 Copy</button>
+                </div>
+            </div>
+            <div class="audit-content" id="audit-{{$index}}">
+                <div class="content-tabs">
+                    <button class="tab-btn active" onclick="switchTab({{$index}}, 'taskresult')">🖥️ Task Result</button>
+                    <button class="tab-btn" onclick="switchTab({{$index}}, 'response')">📤 Response JSON</button>
+                    <button class="tab-btn" onclick="switchTab({{$index}}, 'request')">📥 Request JSON</button>
+                    <button class="tab-btn" onclick="switchTab({{$index}}, 'info')">ℹ️ Task Info</button>
+                </div>
+
+                <div class="tab-content active" id="taskresult-{{$index}}">
+                    <div class="task-result-content">{{$entry.TaskResult}}</div>
+                </div>
+
+                <div class="tab-content" id="response-{{$index}}">
+                    <div class="json-content">{{$entry.Audit.Context.Spite | formatjson}}</div>
+                </div>
+
+                <div class="tab-content" id="request-{{$index}}">
+                    {{if $entry.RequestOmitted}}
+                    <div class="omitted">Request too large to display (&gt;100KB)</div>
+                    {{else}}
+                    <div class="json-content">{{$entry.Audit.Request | formatjson}}</div>
+                    {{end}}
+                </div>
+
+                <div class="tab-content" id="info-{{$index}}">
+                    <div class="json-content">{
+                        "sessionId": "{{$entry.Audit.Context.Session.SessionId}}",
+                        "taskId": {{$entry.Audit.Context.Task.TaskId}},
+                        "command": "{{js $entry.Audit.Command}}",
+                        "created": "{{$entry.Audit.Created}}",
+                        "finished": "{{$entry.Audit.Finished}}",
+                        "lasted": "{{$entry.Audit.Lasted}}",
+                        "taskType": "{{$entry.Audit.Context.Task.Type}}",
+                        "taskStatus": {{$entry.Audit.Context.Task.Status}},
+                        "total": {{$entry.Audit.Context.Task.Total}},
+                        "cur": {{$entry.Audit.Context.Task.Cur}}
+                        }</div>
+                </div>
+            </div>
+        </div>
+        {{end}}
+    </div>
+
+    <div class="no-results" id="noResults">
+        <p>🔍 No tasks found matching your search criteria</p>
+    </div>
+
+    <div class="footer">
+        <p>Generated on {{.GeneratedTime}} | Total: {{len .Entries}} tasks | Audit System v3.0</p>
+    </div>
+</div>
+
+<script>
+    // JSON语法高亮函数
+    function syntaxHighlight(json) {
+        json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+            var cls = 'json-number';
+            if (/^"/.test(match)) {
+                if (/:$/.test(match)) {
+                    cls = 'json-key';
+                } else {
+                    cls = 'json-string';
+                }
+            } else if (/true|false/.test(match)) {
+                cls = 'json-boolean';
+            } else if (/null/.test(match)) {
+                cls = 'json-null';
+            }
+            return '<span class="' + cls + '">' + match + '</span>';
+        });
+    }
+
+    // 切换审计详情显示
+    function toggleAudit(button, index) {
+        const auditContent = document.getElementById('audit-' + index);
+        const isExpanded = auditContent.classList.contains('expanded');
+
+        if (isExpanded) {
+            auditContent.classList.remove('expanded');
+            button.textContent = '📋 Show Details';
+            button.classList.remove('expanded');
+        } else {
+            auditContent.classList.add('expanded');
+            button.textContent = '❌ Hide Details';
+            button.classList.add('expanded');
+        }
+    }
+
+    // 切换标签页
+    function switchTab(index, tabName) {
+        // 隐藏所有标签内容
+        const tabContents = document.querySelectorAll(`#audit-${index} .tab-content`);
+        const tabButtons = document.querySelectorAll(`#audit-${index} .tab-btn`);
+
+        tabContents.forEach(content => content.classList.remove('active'));
+        tabButtons.forEach(btn => btn.classList.remove('active'));
+
+        // 显示选中的标签
+        document.getElementById(`${tabName}-${index}`).classList.add('active');
+        event.target.classList.add('active');
+    }
+
+    // 复制内容到剪贴板
+    function copyAudit(index) {
+        const auditContent = document.getElementById('audit-' + index);
+        const text = auditContent.textContent;
+
+        navigator.clipboard.writeText(text).then(function() {
+            const copyBtn = auditContent.parentElement.querySelector('.copy-btn');
+            const originalText = copyBtn.textContent;
+            copyBtn.textContent = '✅ Copied!';
+            copyBtn.style.background = '#238636';
+
+            setTimeout(function() {
+                copyBtn.textContent = originalText;
+                copyBtn.style.background = '#21262d';
+            }, 2000);
+        });
+    }
+
+    // 搜索功能
+    function setupSearch() {
+        const searchInput = document.getElementById('searchInput');
+        const auditCards = document.querySelectorAll('.audit-card');
+        const noResults = document.getElementById('noResults');
+        const visibleCount = document.getElementById('visibleCount');
+
+        searchInput.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            let visibleCards = 0;
+
+            auditCards.forEach(function(card) {
+                const taskId = card.dataset.taskId.toLowerCase();
+                const command = card.dataset.command.toLowerCase();
+                const auditContent = card.querySelector('.audit-content').textContent.toLowerCase();
+
+                const isVisible = taskId.includes(searchTerm) ||
+                    command.includes(searchTerm) ||
+                    auditContent.includes(searchTerm);
+
+                if (isVisible) {
+                    card.style.display = 'block';
+                    visibleCards++;
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+
+            visibleCount.textContent = visibleCards;
+            noResults.style.display = visibleCards === 0 ? 'block' : 'none';
+        });
+    }
+
+    // 页面加载完成后初始化
+    document.addEventListener('DOMContentLoaded', function() {
+        // 应用JSON语法高亮
+        const jsonContents = document.querySelectorAll('.json-content');
+        jsonContents.forEach(function(content) {
+            const highlighted = syntaxHighlight(content.innerHTML);
+            content.innerHTML = highlighted;
+        });
+
+        // 设置搜索功能
+        setupSearch();
+
+        // 键盘快捷键
+        document.addEventListener('keydown', function(e) {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+                e.preventDefault();
+                document.getElementById('searchInput').focus();
+            }
+        });
+    });
+</script>
+</body>
+</html>

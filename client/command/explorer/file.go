@@ -29,6 +29,7 @@ func fileExplorerCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf("load directory error: %v\n", err)
 		return
 	}
+	session.Console(cmd, task, "")
 	fileChan := make(chan []*implantpb.FileInfo, 1)
 	con.AddCallback(task, func(msg *clientpb.TaskContext) {
 		resp := msg.Spite.GetLsResponse()
@@ -90,7 +91,7 @@ func fileExplorerCmd(cmd *cobra.Command, con *repl.Console) {
 		})
 		// Register custom action for 'enter' key
 		fileModel = fileModel.SetKeyBinding("enter", func(m *tui.TreeModel) (tea.Model, tea.Cmd) {
-			return fileEnterFunc(m, con)
+			return fileEnterFunc(cmd, m, con)
 		})
 		fileModel = fileModel.SetKeyBinding("backspace", backFunc)
 		fileModel = fileModel.SetKeyBinding("r", func(m *tui.TreeModel) (tea.Model, tea.Cmd) {
@@ -137,7 +138,7 @@ func padRight(str string, length int) string {
 	return fmt.Sprintf("%-*s", length, str)
 }
 
-func fileEnterFunc(m *tui.TreeModel, con *repl.Console) (tea.Model, tea.Cmd) {
+func fileEnterFunc(cmd *cobra.Command, m *tui.TreeModel, con *repl.Console) (tea.Model, tea.Cmd) {
 	selectedNode := m.Tree.Children[m.Cursor]
 	session := con.GetInteractive()
 	if len(selectedNode.Children) > 0 {
@@ -154,6 +155,7 @@ func fileEnterFunc(m *tui.TreeModel, con *repl.Console) (tea.Model, tea.Cmd) {
 		Name:  consts.ModuleLs,
 		Input: filepath.Join(m.Root.Name, path, selectedNode.Name),
 	})
+	session.Console(cmd, task, "")
 	if err != nil {
 		con.Log.Errorf("load directory error: %v\n", err)
 		return m, nil

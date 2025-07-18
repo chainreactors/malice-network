@@ -22,7 +22,7 @@ func RunCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	con.GetInteractive().Console(task, "run: "+cmdStr)
+	session.Console(cmd, task, "run: "+cmdStr)
 	return nil
 }
 
@@ -33,7 +33,7 @@ func ExecuteCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	con.GetInteractive().Console(task, "execute: "+cmdStr)
+	session.Console(cmd, task, "execute: "+cmdStr)
 	return nil
 }
 
@@ -63,7 +63,7 @@ func ShellCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	con.GetInteractive().Console(task, "shell: "+cmdStr)
+	session.Console(cmd, task, "shell: "+cmdStr)
 	return nil
 }
 

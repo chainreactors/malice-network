@@ -25,7 +25,7 @@ func ExecuteLocalCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	con.GetInteractive().Console(task, strings.Join(args, " "))
+	con.GetInteractive().Console(cmd, task, strings.Join(args, " "))
 	return nil
 }
 
@@ -60,7 +60,7 @@ func InlineLocalCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	con.GetInteractive().Console(task, strings.Join(args, " "))
+	con.GetInteractive().Console(cmd, task, strings.Join(args, " "))
 	return nil
 }
 

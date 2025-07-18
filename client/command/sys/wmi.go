@@ -24,7 +24,7 @@ func WmiQueryCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	session.Console(task, fmt.Sprintf("perform WMI query in namespace: %s", namespace))
+	session.Console(cmd, task, fmt.Sprintf("perform WMI query in namespace: %s", namespace))
 	return nil
 }
 
@@ -52,7 +52,7 @@ func WmiExecuteCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	session.Console(task, fmt.Sprintf("execute WMI method %s on class %s in namespace %s", methodName, className, namespace))
+	session.Console(cmd, task, fmt.Sprintf("execute WMI method %s on class %s in namespace %s", methodName, className, namespace))
 	return nil
 }
 

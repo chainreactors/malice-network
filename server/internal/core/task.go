@@ -143,6 +143,7 @@ func (t *Task) Finish(spite *implantpb.Spite, msg string) {
 	if t.Callback != nil {
 		t.Callback()
 	}
+	db.UpdateTaskFinish(t.TaskID())
 	t.Close()
 }
 

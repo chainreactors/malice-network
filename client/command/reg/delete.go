@@ -24,7 +24,7 @@ func RegDeleteCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	session.Console(task, fmt.Sprintf("delete registry key: %s\\%s\\%s", hive, path, key))
+	session.Console(cmd, task, fmt.Sprintf("delete registry key: %s\\%s\\%s", hive, path, key))
 	return nil
 }
 

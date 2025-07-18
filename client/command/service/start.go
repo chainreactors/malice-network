@@ -22,7 +22,7 @@ func ServiceStartCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	session.Console(task, fmt.Sprintf("start service: %s", name))
+	session.Console(cmd, task, fmt.Sprintf("start service: %s", name))
 	return nil
 }
 

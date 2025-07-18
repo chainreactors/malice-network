@@ -20,7 +20,7 @@ func CpCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	session.Console(task, "cp "+originPath+" "+targetPath)
+	session.Console(cmd, task, "cp "+originPath+" "+targetPath)
 	return nil
 }
 

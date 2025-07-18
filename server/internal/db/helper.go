@@ -526,6 +526,15 @@ func SaveCertFromTLS(tls *clientpb.TLS, pipeline string) (*models.Certificate, e
 //	return nil
 //}
 
+func GetTask(taskID string) (*models.Task, error) {
+	var task *models.Task
+	err := Session().Where("id = ?", taskID).First(&task).Error
+	if err != nil {
+		return nil, err
+	}
+	return task, nil
+}
+
 func GetTaskPB(taskID string) (*clientpb.Task, error) {
 	var task models.Task
 	err := Session().Where("id = ?", taskID).First(&task).Error
@@ -589,7 +598,14 @@ func UpdateTaskCur(taskID string, cur int) error {
 	return taskModel.UpdateCur(Session(), cur)
 }
 
-func UpdateDownloadTotal(task *clientpb.Task, total int) error {
+func UpdateTaskFinish(taskID string) error {
+	var taskModel models.Task
+	if err := Session().First(&taskModel, "id = ?", taskID).Error; err != nil {
+		return err
+	}
+	return taskModel.UpdateFinish(Session())
+}
+
 func UpdateDownloadTotal(taskID uint32, sessionID string, total int) error {
 	taskModel := &models.Task{
 		ID: sessionID + "-" + utils.ToString(taskID),

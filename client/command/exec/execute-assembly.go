@@ -21,7 +21,7 @@ func ExecuteAssemblyCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	con.GetInteractive().Console(task, path)
+	session.Console(cmd, task, path)
 	return nil
 }
 
@@ -46,7 +46,7 @@ func InlineAssemblyCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	con.GetInteractive().Console(task, path)
+	session.Console(cmd, task, path)
 	return nil
 }
 

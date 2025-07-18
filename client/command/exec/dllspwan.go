@@ -29,7 +29,7 @@ func ExecuteDLLSpawnCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	session.Console(task, path)
+	session.Console(cmd, task, path)
 	return nil
 }
 

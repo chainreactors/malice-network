@@ -18,7 +18,7 @@ func RmCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	session.Console(task, "rm "+fileName)
+	session.Console(cmd, task, "rm "+fileName)
 	return nil
 }
 

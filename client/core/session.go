@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/chainreactors/malice-network/helper/command"
+	"github.com/spf13/cobra"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 	"google.golang.org/grpc/metadata"
@@ -102,8 +104,11 @@ func (s *Session) Context() context.Context {
 	return metadata.NewOutgoingContext(s.ctx, metadata.Pairs(ss...))
 }
 
-func (s *Session) Console(task *clientpb.Task, msg string) {
+func (s *Session) Console(cmd *cobra.Command, task *clientpb.Task, msg string) {
 	s.LastTask = task
+	if cmd != nil {
+		msg = command.GetRawInput(cmd.Context())
+	}
 	_, err := s.Server.Rpc.SessionEvent(s.Context(), &clientpb.Event{
 		Type:    consts.EventSession,
 		Op:      consts.CtrlSessionTask,

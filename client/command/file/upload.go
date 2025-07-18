@@ -25,7 +25,7 @@ func UploadCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	con.GetInteractive().Console(task, fmt.Sprintf("Upload %s", path))
+	con.GetInteractive().Console(cmd, task, fmt.Sprintf("Upload %s", path))
 	return nil
 }
 

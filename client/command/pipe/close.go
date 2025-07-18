@@ -22,7 +22,7 @@ func PipeCloseCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	session.Console(task, fmt.Sprintf("closed named pipe: %s", named_pipe))
+	session.Console(cmd, task, fmt.Sprintf("closed named pipe: %s", named_pipe))
 	return nil
 }
 

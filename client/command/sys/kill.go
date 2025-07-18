@@ -19,7 +19,7 @@ func KillCmd(cmd *cobra.Command, con *repl.Console) error {
 
 		return err
 	}
-	session.Console(task, "kill "+pid)
+	session.Console(cmd, task, "kill "+pid)
 	return nil
 }
 

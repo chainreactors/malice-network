@@ -31,6 +31,7 @@ const (
 	MaliceRPC_SessionManage_FullMethodName       = "/clientrpc.MaliceRPC/SessionManage"
 	MaliceRPC_GetListeners_FullMethodName        = "/clientrpc.MaliceRPC/GetListeners"
 	MaliceRPC_GetJobs_FullMethodName             = "/clientrpc.MaliceRPC/GetJobs"
+	MaliceRPC_GetAudit_FullMethodName            = "/clientrpc.MaliceRPC/GetAudit"
 	MaliceRPC_GetTasks_FullMethodName            = "/clientrpc.MaliceRPC/GetTasks"
 	MaliceRPC_GetTaskContent_FullMethodName      = "/clientrpc.MaliceRPC/GetTaskContent"
 	MaliceRPC_GetContextFiles_FullMethodName     = "/clientrpc.MaliceRPC/GetContextFiles"
@@ -167,6 +168,7 @@ type MaliceRPCClient interface {
 	SessionManage(ctx context.Context, in *clientpb.BasicUpdateSession, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	GetListeners(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Listeners, error)
 	GetJobs(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Jobs, error)
+	GetAudit(ctx context.Context, in *clientpb.SessionRequest, opts ...grpc.CallOption) (*clientpb.Audits, error)
 	// task
 	GetTasks(ctx context.Context, in *clientpb.TaskRequest, opts ...grpc.CallOption) (*clientpb.Tasks, error)
 	GetTaskContent(ctx context.Context, in *clientpb.Task, opts ...grpc.CallOption) (*clientpb.TaskContext, error)
@@ -395,6 +397,15 @@ func (c *maliceRPCClient) GetListeners(ctx context.Context, in *clientpb.Empty, 
 func (c *maliceRPCClient) GetJobs(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Jobs, error) {
 	out := new(clientpb.Jobs)
 	err := c.cc.Invoke(ctx, MaliceRPC_GetJobs_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *maliceRPCClient) GetAudit(ctx context.Context, in *clientpb.SessionRequest, opts ...grpc.CallOption) (*clientpb.Audits, error) {
+	out := new(clientpb.Audits)
+	err := c.cc.Invoke(ctx, MaliceRPC_GetAudit_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1518,6 +1529,7 @@ type MaliceRPCServer interface {
 	SessionManage(context.Context, *clientpb.BasicUpdateSession) (*clientpb.Empty, error)
 	GetListeners(context.Context, *clientpb.Empty) (*clientpb.Listeners, error)
 	GetJobs(context.Context, *clientpb.Empty) (*clientpb.Jobs, error)
+	GetAudit(context.Context, *clientpb.SessionRequest) (*clientpb.Audits, error)
 	// task
 	GetTasks(context.Context, *clientpb.TaskRequest) (*clientpb.Tasks, error)
 	GetTaskContent(context.Context, *clientpb.Task) (*clientpb.TaskContext, error)
@@ -1694,6 +1706,9 @@ func (UnimplementedMaliceRPCServer) GetListeners(context.Context, *clientpb.Empt
 }
 func (UnimplementedMaliceRPCServer) GetJobs(context.Context, *clientpb.Empty) (*clientpb.Jobs, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetJobs not implemented")
+}
+func (UnimplementedMaliceRPCServer) GetAudit(context.Context, *clientpb.SessionRequest) (*clientpb.Audits, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetAudit not implemented")
 }
 func (UnimplementedMaliceRPCServer) GetTasks(context.Context, *clientpb.TaskRequest) (*clientpb.Tasks, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetTasks not implemented")
@@ -2226,6 +2241,24 @@ func _MaliceRPC_GetJobs_Handler(srv interface{}, ctx context.Context, dec func(i
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(MaliceRPCServer).GetJobs(ctx, req.(*clientpb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MaliceRPC_GetAudit_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(clientpb.SessionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MaliceRPCServer).GetAudit(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MaliceRPC_GetAudit_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MaliceRPCServer).GetAudit(ctx, req.(*clientpb.SessionRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4435,6 +4468,10 @@ var MaliceRPC_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetJobs",
 			Handler:    _MaliceRPC_GetJobs_Handler,
+		},
+		{
+			MethodName: "GetAudit",
+			Handler:    _MaliceRPC_GetAudit_Handler,
 		},
 		{
 			MethodName: "GetTasks",

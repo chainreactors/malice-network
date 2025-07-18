@@ -3,7 +3,10 @@ package rpc
 import (
 	"context"
 	"errors"
+	"github.com/chainreactors/malice-network/server/internal/configs"
 	"net"
+	"os"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"time"
@@ -74,6 +77,15 @@ func (r *GenericRequest) InitSpite(ctx context.Context) (*implantpb.Spite, error
 	clientName := getClientName(ctx)
 	r.Task.CallBy = clientName
 	err = db.AddTask(r.Task.ToProtobuf())
+	if err != nil {
+		return nil, err
+	}
+
+	spiteBytes, err := proto.Marshal(spite)
+	if err != nil {
+		return nil, err
+	}
+	err = os.WriteFile(filepath.Join(configs.ContextPath, r.Task.SessionId, consts.RequestPath, strconv.Itoa(int(r.Task.Id))), spiteBytes, 0644)
 	if err != nil {
 		return nil, err
 	}
