@@ -243,7 +243,7 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 				if err != nil {
 					logs.Error(err)
 				}
-				core.PushContextEvent(consts.ContextUpload, ictx)
+				core.PushContextEvent(consts.ContextDownload, ictx)
 				greq.Task.Finish(resp, "sync id "+checksum)
 			}
 		}
