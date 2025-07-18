@@ -88,6 +88,12 @@ func CalculateSHA256Checksum(filePath string) (string, error) {
 	return checksum, nil
 }
 
+func CalculateSHA256Byte(data []byte) string {
+	hash := sha256.Sum256(data)
+	hashStr := hex.EncodeToString(hash[:])
+	return hashStr
+}
+
 // ChmodR - Recursively chmod
 func ChmodR(path string, filePerm, dirPerm os.FileMode) error {
 	return filepath.Walk(path, func(name string, info os.FileInfo, err error) error {
