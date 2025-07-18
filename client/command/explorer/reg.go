@@ -36,6 +36,7 @@ func regExplorerCmd(cmd *cobra.Command, con *repl.Console) error {
 	con.AddCallback(task, func(msg *clientpb.TaskContext) {
 		regChan <- msg.Spite.GetResponse()
 	})
+	session.Console(cmd, task, "")
 	select {
 	case resp := <-regChan:
 		if len(resp.GetArray()) == 0 {
@@ -63,7 +64,7 @@ func regExplorerCmd(cmd *cobra.Command, con *repl.Console) error {
 			return fmt.Sprintf("Current Path: %s%s\n", root.Name, regModel.Selected)
 		})
 		regModel = regModel.SetKeyBinding("enter", func(m *tui.TreeModel) (tea.Model, tea.Cmd) {
-			return regEnterFuc(m, con)
+			return regEnterFuc(cmd, m, con)
 		})
 		regModel = regModel.SetKeyBinding("backspace", regBackFunc)
 		err = regModel.Run()
@@ -76,7 +77,7 @@ func regExplorerCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func regEnterFuc(m *tui.TreeModel, con *repl.Console) (tea.Model, tea.Cmd) {
+func regEnterFuc(cmd *cobra.Command, m *tui.TreeModel, con *repl.Console) (tea.Model, tea.Cmd) {
 	selectedNode := m.Tree.Children[m.Cursor]
 	if len(selectedNode.Children) > 0 {
 		m.Selected = append(m.Selected, selectedNode.Name)
@@ -94,6 +95,7 @@ func regEnterFuc(m *tui.TreeModel, con *repl.Console) (tea.Model, tea.Cmd) {
 			Path: newPath,
 		},
 	})
+	session.Console(cmd, keyTask, "")
 	if err != nil {
 		con.Log.Errorf("Error listing keys: %v", err)
 		return m, nil

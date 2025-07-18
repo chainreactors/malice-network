@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/carapace-sh/carapace/pkg/x"
+	"github.com/chainreactors/malice-network/helper/command"
 	"github.com/reeflective/console"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
@@ -101,6 +102,19 @@ func (c *Console) Start(bindCmds ...BindCmds) error {
 	} else {
 		c.SwitchImplant(c.GetInteractive())
 	}
+	c.App.PreCmdRunLineHooks = append(c.App.PreCmdRunLineHooks, func(args []string) ([]string, error) {
+		menu := c.App.ActiveMenu()
+		if menu != nil && menu.Name() == consts.ImplantMenu {
+			rawInput := strings.Join(args, " ")
+			rootCmd := menu.Command
+			targetCmd, _, _ := rootCmd.Find(args)
+			if targetCmd != nil {
+				ctx := command.WithRawInput(context.Background(), rawInput)
+				targetCmd.SetContext(ctx)
+			}
+		}
+		return args, nil
+	})
 	err := c.App.Start()
 	if err != nil {
 		return err
@@ -193,11 +207,11 @@ func (c *Console) RegisterImplantFunc(name string, fn interface{},
 	}
 
 	if fn != nil {
-		intermediate.RegisterInternalFunc(intermediate.BuiltinPackage, name, WrapImplantFunc(c, fn, internalCallback), callback)
+		intermediate.RegisterInternalFunc(intermediate.BuiltinPackage, name, WrapImplantFunc(nil, c, fn, internalCallback), callback)
 	}
 
 	if bfn != nil {
-		intermediate.RegisterInternalFunc(intermediate.BeaconPackage, bname, WrapImplantFunc(c, bfn, internalCallback), callback)
+		intermediate.RegisterInternalFunc(intermediate.BeaconPackage, bname, WrapImplantFunc(nil, c, bfn, internalCallback), callback)
 	}
 }
 
@@ -206,7 +220,7 @@ func (c *Console) RegisterAggressiveFunc(name string, fn interface{}, internalCa
 		callback = WrapClientCallback(internalCallback)
 	}
 
-	intermediate.RegisterInternalFunc(intermediate.BuiltinPackage, name, WrapImplantFunc(c, fn, internalCallback), callback)
+	intermediate.RegisterInternalFunc(intermediate.BuiltinPackage, name, WrapImplantFunc(nil, c, fn, internalCallback), callback)
 }
 
 func (c *Console) RegisterBuiltinFunc(pkg, name string, fn interface{}, callback ImplantFuncCallback) error {
@@ -215,7 +229,7 @@ func (c *Console) RegisterBuiltinFunc(pkg, name string, fn interface{}, callback
 		implantCallback = WrapClientCallback(callback)
 	}
 
-	return intermediate.RegisterInternalFunc(pkg, name, WrapImplantFunc(c, fn, callback), implantCallback)
+	return intermediate.RegisterInternalFunc(pkg, name, WrapImplantFunc(nil, c, fn, callback), implantCallback)
 }
 
 func (c *Console) RegisterServerFunc(name string, fn interface{}, helper *mals.Helper) error {

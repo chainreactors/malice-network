@@ -22,7 +22,7 @@ func PipeReadCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	session.Console(task, fmt.Sprintf("read data from named pipe: %s", named_pipe))
+	session.Console(cmd, task, fmt.Sprintf("read data from named pipe: %s", named_pipe))
 	return nil
 }
 

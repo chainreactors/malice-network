@@ -29,6 +29,6 @@ func ProxyCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	sess.Console(task, fmt.Sprintf("pivoting socks5 on %s:%s", con.Pipelines[pid].Ip, port))
+	sess.Console(cmd, task, fmt.Sprintf("pivoting socks5 on %s:%s", con.Pipelines[pid].Ip, port))
 	return nil
 }

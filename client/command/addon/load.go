@@ -49,7 +49,7 @@ func LoadAddonCmd(cmd *cobra.Command, con *repl.Console) {
 		return
 	}
 
-	session.Console(task, fmt.Sprintf("Load addon %s", name))
+	session.Console(cmd, task, fmt.Sprintf("Load addon %s", name))
 	con.AddCallback(task, func(_ *clientpb.TaskContext) {
 		RefreshAddonCommand(session.Addons, con)
 	})
@@ -82,7 +82,7 @@ func RegisterAddonCmd(addon *implantpb.Addon, con *repl.Console) (*loadedAddon, 
 	common.BindFlag(addonCmd, common.ExecuteFlagSet, common.SacrificeFlagSet)
 	return &loadedAddon{
 		Command: addonCmd,
-		Func: repl.WrapImplantFunc(con, func(rpc clientrpc.MaliceRPCClient, sess *core.Session, args string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
+		Func: repl.WrapImplantFunc(addonCmd, con, func(rpc clientrpc.MaliceRPCClient, sess *core.Session, args string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 			cmdline, err := shellquote.Split(args)
 			if err != nil {
 				return nil, err

@@ -18,7 +18,7 @@ func EnvCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	session.Console(task, "env")
+	session.Console(cmd, task, "env")
 	return nil
 }
 
@@ -44,7 +44,7 @@ func SetEnvCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	session.Console(task, "setenv "+envName+" "+value)
+	session.Console(cmd, task, "setenv "+envName+" "+value)
 	return nil
 }
 
@@ -69,7 +69,7 @@ func UnsetEnvCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	session.Console(task, "unsetenv "+envName)
+	session.Console(cmd, task, "unsetenv "+envName)
 	return nil
 }
 

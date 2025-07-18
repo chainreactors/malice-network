@@ -21,7 +21,7 @@ func PsCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	session.Console(task, "ps")
+	session.Console(cmd, task, "ps")
 	return nil
 }
 

@@ -20,7 +20,7 @@ func BypassCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	session.Console(task, fmt.Sprintf("bypass_amsi %t, bypass_etw %t", bypass_amsi, bypass_etw))
+	session.Console(cmd, task, fmt.Sprintf("bypass_amsi %t, bypass_etw %t", bypass_amsi, bypass_etw))
 	return nil
 }
 

@@ -22,7 +22,7 @@ func ServiceDeleteCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	session.Console(task, fmt.Sprintf("delete service: %s", name))
+	session.Console(cmd, task, fmt.Sprintf("delete service: %s", name))
 	return nil
 }
 

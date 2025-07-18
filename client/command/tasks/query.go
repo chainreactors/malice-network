@@ -24,7 +24,7 @@ func QueryTaskCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	con.GetInteractive().Console(task, fmt.Sprintf("query task %d", id))
+	con.GetInteractive().Console(cmd, task, fmt.Sprintf("query task %d", id))
 	return nil
 }
 

@@ -76,6 +76,22 @@ func SessionIDCompleter(con *repl.Console) carapace.Action {
 	return carapace.ActionCallback(callback)
 }
 
+func AllSessionIDCompleter(con *repl.Console) carapace.Action {
+	callback := func(c carapace.Context) carapace.Action {
+		con.UpdateSessions(true)
+		results := make([]string, 0)
+		for _, s := range con.Sessions {
+			if s.Note != "" {
+				results = append(results, s.SessionId, fmt.Sprintf("SessionAlias, %s，%s", s.Note, s.Target))
+			} else {
+				results = append(results, s.SessionId, fmt.Sprintf("SessionID, %s", s.Target))
+			}
+		}
+		return carapace.ActionValuesDescribed(results...).Tag("session id")
+	}
+	return carapace.ActionCallback(callback)
+}
+
 func ListenerIDCompleter(con *repl.Console) carapace.Action {
 	callback := func(c carapace.Context) carapace.Action {
 		results := make([]string, 0)

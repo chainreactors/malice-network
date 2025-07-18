@@ -16,7 +16,7 @@ func ListModulesCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	session.Console(task, "list modules")
+	session.Console(cmd, task, "list modules")
 	return nil
 }
 

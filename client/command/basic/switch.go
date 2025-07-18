@@ -29,7 +29,7 @@ func SwitchCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	session.Console(task, fmt.Sprintf("switch to %v", urls))
+	session.Console(cmd, task, fmt.Sprintf("switch to %v", urls))
 	return nil
 }
 

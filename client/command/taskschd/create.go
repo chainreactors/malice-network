@@ -27,7 +27,7 @@ func TaskSchdCreateCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	session.Console(task, fmt.Sprintf("create scheduled task: %s", name))
+	session.Console(cmd, task, fmt.Sprintf("create scheduled task: %s", name))
 	return nil
 }
 

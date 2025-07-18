@@ -17,7 +17,7 @@ func SuicideCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	session.Console(task, fmt.Sprintf("%s suicide", session.SessionId))
+	session.Console(cmd, task, fmt.Sprintf("%s suicide", session.SessionId))
 	return nil
 }
 

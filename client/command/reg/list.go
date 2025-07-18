@@ -24,7 +24,7 @@ func RegListKeyCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	session.Console(task, fmt.Sprintf("list registry keys under: %s\\%s", hive, path))
+	session.Console(cmd, task, fmt.Sprintf("list registry keys under: %s\\%s", hive, path))
 	return nil
 }
 
@@ -89,7 +89,7 @@ func RegListValueCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	session.Console(task, fmt.Sprintf("list registry values under: %s\\%s", hive, path))
+	session.Console(cmd, task, fmt.Sprintf("list registry values under: %s\\%s", hive, path))
 	return nil
 }
 

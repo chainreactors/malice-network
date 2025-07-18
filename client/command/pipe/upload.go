@@ -25,7 +25,7 @@ func PipeUploadCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	con.GetInteractive().Console(task, fmt.Sprintf("Uploaded file %s to pipe %s", path, pipe))
+	con.GetInteractive().Console(cmd, task, fmt.Sprintf("Uploaded file %s to pipe %s", path, pipe))
 	return nil
 }
 

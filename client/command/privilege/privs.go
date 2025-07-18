@@ -19,7 +19,7 @@ func PrivsCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	session.Console(task, "list available privileges")
+	session.Console(cmd, task, "list available privileges")
 	return nil
 }
 

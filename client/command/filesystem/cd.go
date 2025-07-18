@@ -17,7 +17,7 @@ func CdCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	con.GetInteractive().Console(task, "cd "+path)
+	con.GetInteractive().Console(cmd, task, "cd "+path)
 	return nil
 }
 

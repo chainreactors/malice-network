@@ -21,7 +21,7 @@ func ExecuteBofCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	con.GetInteractive().Console(task, path)
+	con.GetInteractive().Console(cmd, task, path)
 	return nil
 }
 

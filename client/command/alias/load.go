@@ -184,7 +184,7 @@ func RegisterAlias(aliasManifest *AliasManifest, cmd *cobra.Command, con *repl.C
 	loadedAliases[aliasManifest.CommandName] = &loadedAlias{
 		Manifest: aliasManifest,
 		Command:  addAliasCmd,
-		Func: repl.WrapImplantFunc(con, func(rpc clientrpc.MaliceRPCClient, sess *core.Session, args string,
+		Func: repl.WrapImplantFunc(addAliasCmd, con, func(rpc clientrpc.MaliceRPCClient, sess *core.Session, args string,
 			param map[string]string,
 			sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 			return ExecuteAlias(rpc, sess, aliasManifest.CommandName, args, param, sac)
@@ -273,7 +273,7 @@ func runAliasCommand(cmd *cobra.Command, con *repl.Console) {
 			con.Log.Errorf("Execute error: %v\n", err)
 			return
 		}
-		session.Console(task, fmt.Sprintf("%s alias: %s", aliasModule(aliasManifest), cmd.Name()))
+		session.Console(cmd, task, fmt.Sprintf("%s alias: %s", aliasModule(aliasManifest), cmd.Name()))
 	}
 
 }

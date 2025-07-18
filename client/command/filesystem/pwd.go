@@ -17,7 +17,7 @@ func PwdCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	session.Console(task, "pwd")
+	session.Console(cmd, task, "pwd")
 	return nil
 }
 
