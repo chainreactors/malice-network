@@ -79,10 +79,8 @@ check_and_install_docker(){
         default_mirrors=(
             "https://mirror.ccs.tencentyun.com" # 腾讯云
             "https://dockerhub.azk8s.cn"        # Azure 中国
-            "https://docker.fxxk.dedyn.io"
             "https://docker.1ms.run"
-            "https://dockerpull.org"
-            "https://dockerhub.timeweb.cloud" 
+            "https://docker.xuanyuan.me"
         )
 
         # 提示用户输入自定义镜像地址
@@ -196,8 +194,8 @@ check_and_install_docker(){
     # pull images for compilation
     docker_pull_image(){
         log_task_status in_progress "正在拉取用于Malefic编译的Docker镜像..."
-        SOURCE_IMAGE=${SOURCE_IMAGE:="chainreactors/malefic-builder:v0.1.0"}
-        FINAL_IMAGE=${FINAL_IMAGE:="ghcr.io/chainreactors/malefic-builder:v0.1.0"}
+        SOURCE_IMAGE=${SOURCE_IMAGE:="chainreactors/malefic-builder:v0.1.1"}
+        FINAL_IMAGE=${FINAL_IMAGE:="ghcr.io/chainreactors/malefic-builder:v0.1.1"}
         docker pull $SOURCE_IMAGE
         docker tag $SOURCE_IMAGE $FINAL_IMAGE
         if [ "$SOURCE_IMAGE" != "$FINAL_IMAGE" ]; then
@@ -211,7 +209,7 @@ check_and_install_docker(){
 # install malice-network's artifacts
 install_malice_network() {
     local PROXY_PREFIX="https://ghfast.top/"
-    local MALICE_NETWORK=${MALICE_NETWORK:="v0.1.0"}
+    local MALICE_NETWORK=${MALICE_NETWORK:="v0.1.1"}
     local md="${IoM_ROOT_DIR}/malice-network"
     local MALICE_NETWORK_RELEASES_URL=${MALICE_NETWORK_RELEASES_URL:="${PROXY_PREFIX}https://github.com/chainreactors/malice-network/releases/download/$MALICE_NETWORK"}
     local FILES=(
@@ -230,8 +228,6 @@ install_malice_network() {
     for file in "${FILES[@]}"; do
         download_file "$MALICE_NETWORK_RELEASES_URL/$file" "$file"
     done
-    download_file "${PROXY_PREFIX}https://raw.githubusercontent.com/chainreactors/malice-network/$MALICE_NETWORK/server/config.yaml" "config.yaml"
-
     log_task_status "completed" "All components downloaded successfully."
 
     # --- Verify Checksums ---
@@ -247,7 +243,7 @@ install_malice_network() {
 # install malefic's artifacts、sourcecode
 install_malefic(){
     local PROXY_PREFIX="https://ghfast.top/"
-    local MALEFIC_VERSION=${MALEFIC_VERSION:="v0.1.0"}
+    local MALEFIC_VERSION=${MALEFIC_VERSION:="v0.1.1"}
     local MALEFIC_ROOT_DIR="$IoM_ROOT_DIR/malefic"
     
     install_source_code(){
