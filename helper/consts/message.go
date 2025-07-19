@@ -186,6 +186,7 @@ const (
 	CommandMalInstall       = "install"
 	CommandMalRemove        = "remove"
 	CommandMalRefresh       = "refresh"
+	CommandMalUpdate        = "update"
 	CommandPipelineTcp      = "tcp"
 	CommandPipelineBind     = "bind"
 	CommandWebsite          = "website"
