@@ -196,16 +196,16 @@ var BuildTargetMap = map[string]*BuildTarget{
 		Arch: ArchMap["x86"].String(),
 		OS:   Linux,
 	},
-	//TargetX64Windows: {
-	//	Name: TargetX64Windows,
-	//	Arch: ArchMap["x64"].String(),
-	//	OS:   Windows,
-	//},
-	//TargetX86Windows: {
-	//	Name: TargetX86Windows,
-	//	Arch: ArchMap["x86"].String(),
-	//	OS:   Windows,
-	//},
+	TargetX64Windows: {
+		Name: TargetX64Windows,
+		Arch: ArchMap["x64"].String(),
+		OS:   Windows,
+	},
+	TargetX86Windows: {
+		Name: TargetX86Windows,
+		Arch: ArchMap["x86"].String(),
+		OS:   Windows,
+	},
 	TargetX86WindowsGnu: {
 		Name: TargetX86WindowsGnu,
 		Arch: ArchMap["x86"].String(),
