@@ -135,7 +135,7 @@ func (d *DockerBuilder) Execute() error {
 		Env: []string{
 			//"PATH=" + PATH_ENV,
 		},
-		Image: DefaultImage,
+		Image: GetImage(d.config.Target),
 		Cmd:   []string{"bash", "-c", buildCommand},
 	}, &container.HostConfig{
 		AutoRemove: true,
