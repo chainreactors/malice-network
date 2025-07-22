@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
@@ -125,7 +126,7 @@ func renderAuditHTML(entries []*clientpb.Audit) ([]byte, error) {
 				logs.Log.Errorf("failed to parse task: %s", err)
 				audit.TaskResult = fmt.Sprintf("Error parsing task: %s", err.Error())
 			} else {
-				audit.TaskResult = resp
+				audit.TaskResult = core.RemoveANSI(resp)
 			}
 		} else {
 			audit.TaskResult = "No task result available"
@@ -137,6 +138,33 @@ func renderAuditHTML(entries []*clientpb.Audit) ([]byte, error) {
 		"formatjson": func(v interface{}) string {
 			b, _ := json.MarshalIndent(v, "", "  ")
 			return string(b)
+		},
+		"formatTaskInfo": func(audit *clientpb.Audit) string {
+			// 手动构建JSON字符串以保持字段顺序
+			jsonStr := fmt.Sprintf(`{
+  "sessionId": "%s",
+  "taskId": %d,
+  "command": "%s",
+  "created": "%s",
+  "finished": "%s",
+  "lasted": "%s",
+  "taskType": "%s",
+  "taskStatus": %d,
+  "total": %d,
+  "cur": %d
+}`,
+				audit.Context.Session.SessionId,
+				audit.Context.Task.TaskId,
+				template.JSEscapeString(audit.Command),
+				audit.Created,
+				audit.Finished,
+				audit.Lasted,
+				audit.Context.Task.Type,
+				audit.Context.Task.Status,
+				audit.Context.Task.Total,
+				audit.Context.Task.Cur,
+			)
+			return jsonStr
 		},
 		"len": func(v interface{}) int {
 			switch val := v.(type) {

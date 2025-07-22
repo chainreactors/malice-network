@@ -422,18 +422,7 @@
                 </div>
 
                 <div class="tab-content" id="info-{{$index}}">
-                    <div class="json-content">{
-                        "sessionId": "{{$entry.Audit.Context.Session.SessionId}}",
-                        "taskId": {{$entry.Audit.Context.Task.TaskId}},
-                        "command": "{{js $entry.Audit.Command}}",
-                        "created": "{{$entry.Audit.Created}}",
-                        "finished": "{{$entry.Audit.Finished}}",
-                        "lasted": "{{$entry.Audit.Lasted}}",
-                        "taskType": "{{$entry.Audit.Context.Task.Type}}",
-                        "taskStatus": {{$entry.Audit.Context.Task.Status}},
-                        "total": {{$entry.Audit.Context.Task.Total}},
-                        "cur": {{$entry.Audit.Context.Task.Cur}}
-                        }</div>
+                    <div class="json-content">{{formatTaskInfo $entry.Audit}}</div>
                 </div>
             </div>
         </div>

@@ -39,6 +39,7 @@ require (
 	github.com/tetratelabs/wazero v1.5.0
 	github.com/traefik/yaegi v0.14.3
 	github.com/wabzsy/gonut v1.0.0
+	github.com/xeipuuv/gojsonschema v1.2.0
 	github.com/yuin/gopher-lua v1.1.1
 	golang.org/x/text v0.22.0
 	gopkg.in/yaml.v3 v3.0.1
@@ -139,6 +140,8 @@ require (
 	github.com/tjfoc/gmsm v1.4.1 // indirect
 	github.com/twmb/murmur3 v1.1.8 // indirect
 	github.com/wabzsy/compression v0.0.0-20230725232933-73109bacf457 // indirect
+	github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f // indirect
+	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	github.com/yuin/gluamapper v0.0.0-20150323120927-d836955830e7 // indirect
 	github.com/yuin/goldmark v1.7.4 // indirect
