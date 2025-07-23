@@ -1,7 +1,6 @@
 package taskschd
 
 import (
-	"fmt"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -22,7 +21,7 @@ func TaskSchdRunCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	session.Console(cmd, task, fmt.Sprintf("run scheduled task: %s", name))
+	session.Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 

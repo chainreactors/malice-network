@@ -10,7 +10,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/utils/handler"
 	"github.com/chainreactors/mals"
 	"github.com/chainreactors/tui"
-	"github.com/spf13/cobra"
 	"reflect"
 )
 
@@ -136,7 +135,7 @@ func wrapImplantFunc(fun interface{}) implantFunc {
 	}
 }
 
-func WrapImplantFunc(cmd *cobra.Command, con *Console, fun interface{}, callback ImplantFuncCallback) *mals.MalFunction {
+func WrapImplantFunc(con *Console, fun interface{}, callback ImplantFuncCallback) *mals.MalFunction {
 	wrappedFunc := wrapImplantFunc(fun)
 
 	interFunc := mals.GetInternalFuncSignature(fun)
@@ -160,11 +159,11 @@ func WrapImplantFunc(cmd *cobra.Command, con *Console, fun interface{}, callback
 			return nil, err
 		}
 
-		out := fmt.Sprintf("args %v", args)
+		out := string(*con.App.Shell().Line())
 		if len(out) > 512 {
-			sess.Console(cmd, task, "args too long")
+			sess.Console(task, "args too long")
 		} else {
-			sess.Console(cmd, task, out)
+			sess.Console(task, out)
 		}
 		content, err := con.Rpc.WaitTaskFinish(context.Background(), task)
 		if err != nil {

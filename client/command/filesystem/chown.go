@@ -21,7 +21,7 @@ func ChownCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	session.Console(cmd, task, "chown "+path+" "+uid)
+	session.Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 

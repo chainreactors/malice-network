@@ -19,7 +19,7 @@ func GetSystemCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	session.Console(cmd, task, "attempt to elevate privileges")
+	session.Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 

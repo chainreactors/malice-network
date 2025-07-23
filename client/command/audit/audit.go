@@ -140,7 +140,6 @@ func renderAuditHTML(entries []*clientpb.Audit) ([]byte, error) {
 			return string(b)
 		},
 		"formatTaskInfo": func(audit *clientpb.Audit) string {
-			// 手动构建JSON字符串以保持字段顺序
 			jsonStr := fmt.Sprintf(`{
   "sessionId": "%s",
   "taskId": %d,

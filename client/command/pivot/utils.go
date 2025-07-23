@@ -16,7 +16,7 @@ func RemDialCmd(cmd *cobra.Command, con *repl.Console) error {
 	pid := cmd.Flags().Arg(0)
 	args := cmd.Flags().Args()[1:]
 	task, err := RemDial(con.Rpc, con.GetInteractive(), pid, args)
-	con.GetInteractive().Console(cmd, task, "")
+	con.GetInteractive().Console(task, string(*con.App.Shell().Line()))
 	if err != nil {
 		return err
 	}

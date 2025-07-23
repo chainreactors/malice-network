@@ -1,7 +1,6 @@
 package service
 
 import (
-	"fmt"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -28,7 +27,7 @@ func ServiceCreateCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	session.Console(cmd, task, fmt.Sprintf("create service: %s %s", name, executablePath))
+	session.Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 

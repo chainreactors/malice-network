@@ -1,7 +1,6 @@
 package sys
 
 import (
-	"fmt"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -24,7 +23,7 @@ func WmiQueryCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	session.Console(cmd, task, fmt.Sprintf("perform WMI query in namespace: %s", namespace))
+	session.Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 
@@ -52,7 +51,7 @@ func WmiExecuteCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	session.Console(cmd, task, fmt.Sprintf("execute WMI method %s on class %s in namespace %s", methodName, className, namespace))
+	session.Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 

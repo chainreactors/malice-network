@@ -35,7 +35,7 @@ func ExecuteAddonCmd(cmd *cobra.Command, con *repl.Console) {
 	}
 
 	task, err := ExecuteAddon(con.Rpc, session, cmd.Name(), args, !quiet, timeout, arch, process, sac)
-	session.Console(cmd, task, "")
+	session.Console(task, string(*con.App.Shell().Line()))
 	if err != nil {
 		con.Log.Errorf("%s\n", err)
 		return

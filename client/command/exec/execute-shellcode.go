@@ -27,7 +27,7 @@ func ExecuteShellcodeCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	session.Console(cmd, task, path)
+	session.Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 
@@ -65,7 +65,7 @@ func InlineShellcodeCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	session.Console(cmd, task, path)
+	session.Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 

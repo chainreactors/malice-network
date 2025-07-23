@@ -18,7 +18,7 @@ func InfoCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	session.Console(cmd, task, "sysinfo")
+	session.Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 

@@ -29,7 +29,7 @@ func fileExplorerCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf("load directory error: %v\n", err)
 		return
 	}
-	session.Console(cmd, task, "")
+	session.Console(task, string(*con.App.Shell().Line()))
 	fileChan := make(chan []*implantpb.FileInfo, 1)
 	con.AddCallback(task, func(msg *clientpb.TaskContext) {
 		resp := msg.Spite.GetLsResponse()
@@ -155,7 +155,7 @@ func fileEnterFunc(cmd *cobra.Command, m *tui.TreeModel, con *repl.Console) (tea
 		Name:  consts.ModuleLs,
 		Input: filepath.Join(m.Root.Name, path, selectedNode.Name),
 	})
-	session.Console(cmd, task, "")
+	session.Console(task, string(*con.App.Shell().Line()))
 	if err != nil {
 		con.Log.Errorf("load directory error: %v\n", err)
 		return m, nil

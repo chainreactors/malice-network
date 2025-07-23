@@ -1,7 +1,6 @@
 package pipe
 
 import (
-	"fmt"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -22,7 +21,7 @@ func PipeReadCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	session.Console(cmd, task, fmt.Sprintf("read data from named pipe: %s", named_pipe))
+	session.Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 

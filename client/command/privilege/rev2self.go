@@ -19,7 +19,7 @@ func Rev2selfCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	session.Console(cmd, task, "reverting to original token")
+	session.Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 

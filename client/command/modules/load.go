@@ -2,7 +2,6 @@ package modules
 
 import (
 	"errors"
-	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/build"
@@ -43,7 +42,7 @@ func LoadModuleCmd(cmd *cobra.Command, con *repl.Console) error {
 		if err != nil {
 			return err
 		}
-		con.GetInteractive().Console(cmd, task, fmt.Sprintf("load %s %s", modules, modulePath))
+		con.GetInteractive().Console(task, string(*con.App.Shell().Line()))
 		return nil
 	} else if modules != "" || thirdModules != "" {
 		if modules != "" && thirdModules != "" {
@@ -67,7 +66,7 @@ func LoadModuleCmd(cmd *cobra.Command, con *repl.Console) error {
 		if err != nil {
 			return err
 		}
-		session.Console(cmd, task, fmt.Sprintf("load %s %s", bundle, path))
+		session.Console(task, string(*con.App.Shell().Line()))
 		return nil
 	} else {
 		return errors.New("must specify either --path, --modules or --3rd_modules. One of them is required")
@@ -115,7 +114,7 @@ func handleModuleBuild(cmd *cobra.Command, con *repl.Console, modules, thirdModu
 	if err != nil {
 		return err
 	}
-	sess.Console(cmd, task, fmt.Sprintf("load module from artifact %s", artifact.Name))
+	sess.Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 

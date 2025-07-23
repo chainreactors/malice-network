@@ -20,7 +20,7 @@ func ServiceQueryCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	session.Console(cmd, task, fmt.Sprintf("query service: %s", name))
+	session.Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 

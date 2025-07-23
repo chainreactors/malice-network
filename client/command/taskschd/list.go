@@ -22,7 +22,7 @@ func TaskSchdListCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	session.Console(cmd, task, "list all scheduled tasks")
+	session.Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 

@@ -1,8 +1,6 @@
 package privilege
 
 import (
-	"fmt"
-
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -30,7 +28,7 @@ func RunasCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	session.Console(cmd, task, fmt.Sprintf("runas user: %s on domain: %s", username, domain))
+	session.Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 

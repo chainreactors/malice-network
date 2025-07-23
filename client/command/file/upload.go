@@ -1,7 +1,6 @@
 package file
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -25,7 +24,7 @@ func UploadCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	con.GetInteractive().Console(cmd, task, fmt.Sprintf("Upload %s", path))
+	con.GetInteractive().Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 

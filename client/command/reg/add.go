@@ -2,7 +2,6 @@ package reg
 
 import (
 	"encoding/hex"
-	"fmt"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"strconv"
 	"strings"
@@ -34,7 +33,7 @@ func RegAddCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	session.Console(cmd, task, fmt.Sprintf("add or modify registry key: %s\\%s\\%s", hive, path, valueName))
+	session.Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 

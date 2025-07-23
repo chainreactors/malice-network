@@ -12,7 +12,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
-	"strings"
 )
 
 // ExecuteLocalCmd - Execute local PE on sacrifice process
@@ -25,7 +24,7 @@ func ExecuteLocalCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	con.GetInteractive().Console(cmd, task, strings.Join(args, " "))
+	con.GetInteractive().Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 
@@ -60,7 +59,7 @@ func InlineLocalCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	con.GetInteractive().Console(cmd, task, strings.Join(args, " "))
+	con.GetInteractive().Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 

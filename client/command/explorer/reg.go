@@ -36,7 +36,7 @@ func regExplorerCmd(cmd *cobra.Command, con *repl.Console) error {
 	con.AddCallback(task, func(msg *clientpb.TaskContext) {
 		regChan <- msg.Spite.GetResponse()
 	})
-	session.Console(cmd, task, "")
+	session.Console(task, string(*con.App.Shell().Line()))
 	select {
 	case resp := <-regChan:
 		if len(resp.GetArray()) == 0 {
@@ -95,7 +95,7 @@ func regEnterFuc(cmd *cobra.Command, m *tui.TreeModel, con *repl.Console) (tea.M
 			Path: newPath,
 		},
 	})
-	session.Console(cmd, keyTask, "")
+	session.Console(keyTask, string(*con.App.Shell().Line()))
 	if err != nil {
 		con.Log.Errorf("Error listing keys: %v", err)
 		return m, nil

@@ -1,7 +1,6 @@
 package basic
 
 import (
-	"fmt"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
@@ -29,7 +28,7 @@ func SwitchCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	session.Console(cmd, task, fmt.Sprintf("switch to %v", urls))
+	session.Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 
