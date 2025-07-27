@@ -11,6 +11,8 @@ func (pipe *Pipeline) Address() string {
 		return fmt.Sprintf("%s:%d", pipe.Ip, body.Http.Port)
 	case *Pipeline_Tcp:
 		return fmt.Sprintf("%s:%d", pipe.Ip, body.Tcp.Port)
+	case *Pipeline_Rem:
+		return fmt.Sprintf("%s:%d", pipe.Ip, body.Rem.Port)
 	default:
 		return ""
 	}
@@ -48,4 +50,42 @@ func (pipe *Job) FirstContent() *WebContent {
 		return content
 	}
 	return nil
+}
+
+func (pipe *Pipeline) KVMap() (map[string]interface{}, []string) {
+	pipelineMap := map[string]interface{}{
+		"Name":        pipe.Name,
+		"Type":        pipe.Type,
+		"Listener ID": pipe.ListenerId,
+	}
+
+	var orderedKeys []string
+	orderedKeys = append(orderedKeys, "Name", "Type", "Listener ID")
+
+	switch pipe.Body.(type) {
+	case *Pipeline_Tcp:
+		pipelineMap["Address"] = pipe.Address()
+		pipelineMap["TLS"] = pipe.Tls.Enable
+		pipelineMap["Cert"] = pipe.CertName
+		orderedKeys = append(orderedKeys, "Address", "TLS", "Cert")
+	case *Pipeline_Http:
+		pipelineMap["Address"] = pipe.Address()
+		pipelineMap["TLS"] = pipe.Tls.Enable
+		pipelineMap["Cert"] = pipe.CertName
+		orderedKeys = append(orderedKeys, "Address", "TLS", "Cert")
+	case *Pipeline_Bind:
+		pipelineMap["Ip"] = pipe.Ip
+		orderedKeys = append(orderedKeys, "Ip")
+	case *Pipeline_Rem:
+		pipelineMap["Address"] = pipe.Address()
+		orderedKeys = append(orderedKeys, "Address")
+	case *Pipeline_Web:
+		pipelineMap["Port"] = pipe.GetWeb().Port
+		pipelineMap["URL"] = pipe.URL()
+		pipelineMap["TLS"] = pipe.Tls.Enable
+		pipelineMap["Cert"] = pipe.CertName
+		orderedKeys = append(orderedKeys, "Port", "URL", "TLS", "Cert")
+	}
+
+	return pipelineMap, orderedKeys
 }

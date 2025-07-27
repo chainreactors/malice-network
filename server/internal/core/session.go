@@ -39,6 +39,24 @@ var (
 	ErrImplantSendTimeout = errors.New("implant timeout")
 )
 
+func createSessionDirs(sessionID string) (string, error) {
+	contextDir := filepath.Join(configs.ContextPath, sessionID)
+	cacheDir := filepath.Join(contextDir, consts.CachePath)
+	downloadDir := filepath.Join(contextDir, consts.DownloadPath)
+	keyLoggerDir := filepath.Join(contextDir, consts.KeyLoggerPath)
+	screenShotDir := filepath.Join(contextDir, consts.ScreenShotPath)
+	taskDir := filepath.Join(contextDir, consts.TaskPath)
+
+	dirs := []string{cacheDir, downloadDir, keyLoggerDir, screenShotDir, taskDir}
+	for _, dir := range dirs {
+		if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+			logs.Log.Errorf("cannot create directory %s, %s", dir, err.Error())
+		}
+	}
+
+	return cacheDir, nil
+}
+
 func NewSessions() *sessions {
 	newSessions := &sessions{
 		active: &sync.Map{},
@@ -67,16 +85,9 @@ func NewSessions() *sessions {
 
 func RegisterSession(req *clientpb.RegisterSession) (*Session, error) {
 	current_time := time.Now().Unix()
-	var err error
-	contextDir := filepath.Join(configs.ContextPath, req.SessionId)
-	err = os.MkdirAll(contextDir, os.ModePerm)
+	cacheDir, err := createSessionDirs(req.SessionId)
 	if err != nil {
-		logs.Log.Errorf("cannot create log directory %s, %s", contextDir, err.Error())
-	}
-	cacheDir := filepath.Join(contextDir, consts.CachePath)
-	err = os.MkdirAll(cacheDir, os.ModePerm)
-	if err != nil {
-		logs.Log.Errorf("cannot create cache directory %s, %s", cacheDir, err.Error())
+		return nil, err
 	}
 	cache := NewCache(filepath.Join(cacheDir, CacheName))
 	err = cache.Save()
@@ -87,6 +98,7 @@ func RegisterSession(req *clientpb.RegisterSession) (*Session, error) {
 		Type:           req.Type,
 		Name:           req.RegisterData.Name,
 		Group:          "default",
+		Note:           req.RegisterData.Name,
 		ID:             req.SessionId,
 		RawID:          req.RawId,
 		PipelineID:     req.PipelineId,
@@ -100,18 +112,10 @@ func RegisterSession(req *clientpb.RegisterSession) (*Session, error) {
 		responses:      &sync.Map{},
 	}
 	sess.Ctx, sess.Cancel = context.WithCancel(context.Background())
-	downloadDir := filepath.Join(contextDir, consts.DownloadPath)
-	keyLoggerDir := filepath.Join(contextDir, consts.KeyLoggerPath)
-	screenShotDir := filepath.Join(contextDir, consts.ScreenShotPath)
-	taskDir := filepath.Join(contextDir, consts.TaskPath)
-	for _, dir := range []string{downloadDir, keyLoggerDir, screenShotDir, taskDir} {
-		err = os.MkdirAll(dir, os.ModePerm)
-		if err != nil {
-			logs.Log.Errorf("cannot create log directory %s, %s", dir, err.Error())
-		}
-	}
 	if req.RegisterData.Sysinfo != nil {
 		sess.UpdateSysInfo(req.RegisterData.Sysinfo)
+	} else {
+		sess.FillSysInfo()
 	}
 
 	return sess, nil
@@ -221,6 +225,9 @@ func (s *Session) RpcLogger() *logs.Logger {
 				}
 				if auditLevel == 2 {
 					s.rpcLog.SetLevel(logs.DebugLevel)
+					s.rpcLog.PrefixFunc = func() string {
+						return ""
+					}
 				}
 			}
 		}
@@ -348,7 +355,7 @@ func (s *Session) ToProtobufLite() *clientpb.Session {
 }
 
 func (s *Session) ToModel() *models.Session {
-	return &models.Session{
+	sessModel := &models.Session{
 		SessionID:   s.ID,
 		RawID:       s.RawID,
 		Note:        s.Note,
@@ -363,6 +370,11 @@ func (s *Session) ToModel() *models.Session {
 		LastCheckin: s.LastCheckin,
 		DataString:  s.Marshal(),
 	}
+	artifact, err := db.GetArtifactByName(s.Note)
+	if err == nil {
+		sessModel.ProfileName = artifact.Name
+	}
+	return sessModel
 }
 
 func (s *Session) PushUpdate(msg string) {
@@ -405,6 +417,18 @@ func (s *Session) UpdateSysInfo(info *implantpb.SysInfo) {
 	s.WorkDir = info.Workdir
 	s.Os = info.Os
 	s.Process = info.Process
+}
+
+func (s *Session) FillSysInfo() {
+	artifact, err := db.GetArtifactByName(s.Name)
+	if err != nil {
+		logs.Log.Errorf("failed to find atrtifact %s: %s", s.Name, err)
+		return
+	}
+	s.Os = &implantpb.Os{
+		Name: artifact.Os,
+		Arch: artifact.Arch,
+	}
 }
 
 func (s *Session) Publish(Op string, msg string, notify bool, important bool) {

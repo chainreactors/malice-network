@@ -165,7 +165,10 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 			return
 		}
 		greq.Task.Total = int(resp.GetDownloadResponse().Size)/config.Int(consts.ConfigMaxPacketLength) + 1
-
+		err = db.UpdateDownloadTotal(greq.Task.Id, greq.Task.SessionId, greq.Task.Total)
+		if err != nil {
+			logs.Log.Errorf("Failed to update download total: %v", err)
+		}
 		// temp file
 		downloadAbs := resp.GetDownloadResponse()
 		fileName := filepath.Join(configs.TempPath, downloadAbs.Checksum)
@@ -240,7 +243,7 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 				if err != nil {
 					logs.Error(err)
 				}
-				core.PushContextEvent(consts.ContextUpload, ictx)
+				core.PushContextEvent(consts.ContextDownload, ictx)
 				greq.Task.Finish(resp, "sync id "+checksum)
 			}
 		}

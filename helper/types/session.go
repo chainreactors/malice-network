@@ -11,6 +11,8 @@ import (
 func NewSessionContext(req *clientpb.RegisterSession) *SessionContext {
 	return &SessionContext{
 		SessionInfo: &SessionInfo{
+			Os:       &implantpb.Os{},
+			Process:  &implantpb.Process{},
 			ProxyURL: req.RegisterData.Proxy,
 			Interval: req.RegisterData.Timer.Interval,
 			Jitter:   req.RegisterData.Timer.Jitter,

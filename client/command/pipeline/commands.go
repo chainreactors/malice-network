@@ -134,6 +134,7 @@ rem
 		Use:   consts.CommandRemNew + " [name]",
 		Short: "Register a new REM and start it",
 		Long:  "Register a new REM with the specified listener.",
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return NewRemCmd(cmd, con)
 		},
@@ -142,7 +143,7 @@ rem
 rem new --listener listener_id
 
 // Register a REM with a custom name and console URL
-rem new --name rem_test --listener listener_id -c tcp://127.0.0.1:19966
+rem new rem_test --listener listener_id -c tcp://127.0.0.1:19966
 ~~~`,
 	}
 

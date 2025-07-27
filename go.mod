@@ -7,10 +7,10 @@ require (
 	github.com/carapace-sh/carapace v1.7.1
 	github.com/chainreactors/files v0.0.0-20240716182835-7884ee1e77f0
 	github.com/chainreactors/logs v0.0.0-20250312104344-9f30fa69d3c9
-	github.com/chainreactors/mals v0.0.0-20250508145621-0314ec3ee14a
+	github.com/chainreactors/mals v0.0.0-20250717185731-227f71a931fa
 	github.com/chainreactors/parsers v0.0.0-20250225073555-ab576124d61f
 	github.com/chainreactors/rem v0.2.4
-	github.com/chainreactors/tui v0.0.0-20250702071926-c6935862d62e
+	github.com/chainreactors/tui v0.0.0-20250711183500-b60ffbbdeb3f
 	github.com/chainreactors/utils v0.0.0-20241209140746-65867d2f78b2
 	github.com/charmbracelet/bubbletea v1.3.4
 	github.com/charmbracelet/glamour v0.8.0

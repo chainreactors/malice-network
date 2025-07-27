@@ -59,6 +59,7 @@ const (
 	CtrlContextFileWrite        = "file_write"
 	CtrlContextFileClose        = "file_end"
 	CtrlAcme                    = "acme"
+	CtrlArtifactDownload        = "artifact_download"
 )
 
 const (

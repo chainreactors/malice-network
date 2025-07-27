@@ -80,7 +80,7 @@ func ParseExecResponse(ctx *clientpb.TaskContext) (interface{}, error) {
 		return strings.TrimSpace(s.String()), nil
 	}
 	if resp.End {
-		return "", nil
+		return fmt.Sprintf("task %d end", ctx.Task.TaskId), nil
 	} else {
 		return nil, fmt.Errorf("no response")
 	}

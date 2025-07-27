@@ -61,6 +61,9 @@ func (a *ActionBuilder) Generate() (*clientpb.Artifact, error) {
 	if profileParams.Enable3RD {
 		a.config.Inputs["package"] = "3rd"
 	}
+	if a.config.BuildName == "" {
+		a.config.BuildName = codenames.GetCodename()
+	}
 	profileByte, err := GenerateProfile(a.config)
 	if err != nil {
 		return nil, err
@@ -68,13 +71,10 @@ func (a *ActionBuilder) Generate() (*clientpb.Artifact, error) {
 	if a.config.ArtifactId != 0 && a.config.Type == consts.CommandBuildBeacon {
 		builder, err = db.SaveArtifactFromID(a.config, a.config.ArtifactId, a.config.Source, profileByte)
 	} else {
-		if a.config.BuildName == "" {
-			a.config.BuildName = codenames.GetCodename()
-		}
 		builder, err = db.SaveArtifactFromConfig(a.config, profileByte)
 	}
 	if err != nil {
-		logs.Log.Errorf("failed to save build%s: %s", builder.Name, err)
+		logs.Log.Errorf("failed to save build: %s", err)
 		return nil, err
 	}
 	a.builder = builder

@@ -73,11 +73,13 @@ func prepareBuildConfig(cmd *cobra.Command, con *repl.Console, buildType string)
 	pulse, _ := cmd.Flags().GetUint32("relink")
 	rem, _ := cmd.Flags().GetBool("rem")
 	address, _ := cmd.Flags().GetString("address")
+	autoDownload, _ := cmd.Flags().GetBool("auto-download")
 	profileParams := &types.ProfileParams{
-		Interval: interval,
-		Jitter:   jitter,
-		Proxy:    proxy,
-		Modules:  strings.Join(modules, ","),
+		Interval:     interval,
+		Jitter:       jitter,
+		Proxy:        proxy,
+		Modules:      strings.Join(modules, ","),
+		AutoDownload: autoDownload,
 	}
 	if rem {
 		profileParams.Enable3RD = true
@@ -91,11 +93,11 @@ func prepareBuildConfig(cmd *cobra.Command, con *repl.Console, buildType string)
 		buildConfig.ArtifactId = pulse
 		profileParams.RelinkBeaconID = pulse
 	}
-	if buildType != consts.CommandBuildModules {
-		if profileParams.Modules == "" {
-			profileParams.Modules = "full"
-		}
-	}
+	//if buildType != consts.CommandBuildModules {
+	//	if profileParams.Modules == "" {
+	//		profileParams.Modules = "full"
+	//	}
+	//}
 	if address != "" {
 		profileParams.Address = address
 	}

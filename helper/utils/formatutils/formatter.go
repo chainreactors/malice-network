@@ -7,8 +7,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/encoders"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"os"
-	"path/filepath"
 	"strings"
 )
 
@@ -156,17 +154,12 @@ func ConvertArtifact(artifact *clientpb.Artifact, format string) (*clientpb.Arti
 		artifact.Format = format
 		return artifact, nil
 	}
-	filename := filepath.Join(encoders.UUID())
-	if err := os.WriteFile(filename, artifact.Bin, 0644); err != nil {
-		return nil, err
-	}
-	shellcode, err := SRDIArtifact(filename, artifact.Platform, artifact.Arch, artifact.Type == consts.CommandBuildPulse)
+
+	shellcode, err := SRDIArtifact(artifact.Bin, artifact.Platform, artifact.Arch, artifact.Type == consts.CommandBuildPulse)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert: %s", err)
 	}
-	if err := os.Remove(filename); err != nil {
-		return nil, fmt.Errorf("failed to remove file: %s", err)
-	}
+
 	convert, err := Convert(shellcode, format)
 	if err != nil {
 		return nil, err

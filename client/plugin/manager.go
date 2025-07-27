@@ -81,7 +81,6 @@ func (mm *MalManager) loadEmbeddedMals() {
 		}
 
 		mm.embeddedPlugins[levelName] = embedPlugin
-		logs.Log.Infof("Loaded embedded plugin: %s (level: %d)\n", levelName, level)
 	}
 
 	for _, levelName := range levelOrder {
@@ -137,7 +136,6 @@ func (mm *MalManager) LoadExternalMal(manifest *MalManiFest) (Plugin, error) {
 	}
 
 	mm.externalPlugins[manifest.Name] = plugin
-	logs.Log.Infof("Loaded external plugin: %s\n", manifest.Name)
 
 	return plugin, nil
 }

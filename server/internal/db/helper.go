@@ -336,12 +336,12 @@ func ListPipelines(listenerID string) ([]*models.Pipeline, error) {
 }
 
 func DeleteWebsite(name string) error {
-	website := models.WebsiteContent{}
-	result := Session().Where("pipeline_id = ?", name).First(&website)
+	website := models.Pipeline{}
+	result := Session().Where("name = ?", name).First(&website)
 	if result.Error != nil {
 		return result.Error
 	}
-	err := os.Remove(filepath.Join(configs.WebsitePath, website.ID.String()))
+	err := os.Remove(filepath.Join(configs.WebsitePath, website.Name))
 	if err != nil {
 		return err
 	}
@@ -589,9 +589,9 @@ func UpdateTaskCur(taskID string, cur int) error {
 	return taskModel.UpdateCur(Session(), cur)
 }
 
-func UpdateDownloadTotal(task *clientpb.Task, total int) error {
+func UpdateDownloadTotal(taskID uint32, sessionID string, total int) error {
 	taskModel := &models.Task{
-		ID: task.SessionId + "-" + utils.ToString(task.TaskId),
+		ID: sessionID + "-" + utils.ToString(taskID),
 	}
 	return taskModel.UpdateTotal(Session(), total)
 }
@@ -1018,19 +1018,19 @@ func GetValidArtifacts() ([]*models.Artifact, error) {
 }
 
 // FindArtifact
-func FindArtifact(target *clientpb.Artifact) (*clientpb.Artifact, error) {
+func FindArtifact(target *clientpb.Artifact, bin bool) (*clientpb.Artifact, error) {
 	var artifact *models.Artifact
 	var result *gorm.DB
 	// 根据 ID 或名称查找构建器
 	if target.Id != 0 {
-		result = Session().Where("id = ?", target.Id).First(&artifact)
+		result = Session().Where("id = ? AND status = ?", target.Id, consts.BuildStatusCompleted).Last(&artifact)
 	} else if target.Name != "" {
-		result = Session().Where("name = ?", target.Name).First(&artifact)
+		result = Session().Where("name = ? AND status = ?", target.Name, consts.BuildStatusCompleted).Last(&artifact)
 	} else if target.Profile != "" {
-		result = Session().Where("profile_name = ?", target.Profile).First(&artifact)
+		result = Session().Where("profile_name = ? AND status = ?", target.Profile, consts.BuildStatusCompleted).Last(&artifact)
 	} else {
 		var builders []*models.Artifact
-		result = Session().Where("os = ? AND arch = ? AND type = ?", target.Platform, target.Arch, target.Type).
+		result = Session().Where("os = ? AND arch = ? AND type = ? AND status = ?", target.Platform, target.Arch, target.Type, consts.BuildStatusCompleted).
 			Preload("Profile.Pipeline").
 			Find(&builders)
 		for _, v := range builders {
@@ -1050,12 +1050,16 @@ func FindArtifact(target *clientpb.Artifact) (*clientpb.Artifact, error) {
 	if artifact == nil {
 		return nil, errs.ErrNotFoundArtifact
 	}
-	content, err := os.ReadFile(artifact.Path)
-	if err != nil && artifact.Status == consts.BuildStatusFailure {
-		return nil, fmt.Errorf("error reading file for artifact: %s, error: %v", artifact.Name, err)
+	if bin {
+		content, err := os.ReadFile(artifact.Path)
+		if err != nil && artifact.Status == consts.BuildStatusFailure {
+			return nil, fmt.Errorf("error reading file for artifact: %s, error: %v", artifact.Name, err)
+		}
+		return artifact.ToProtobuf(content), nil
+	} else {
+		return artifact.ToProtobuf([]byte{}), nil
 	}
 
-	return artifact.ToProtobuf(content), nil
 }
 
 func FindArtifactFromPipeline(pipelineName string) (*models.Artifact, error) {
@@ -1177,7 +1181,7 @@ func UpdateGeneratorConfig(req *clientpb.BuildConfig, config *types.ProfileConfi
 				config.Implant.Extras["3rd_modules"] = strings.Split(params.Modules, ",")
 				config.Implant.Extras["enable_3rd"] = true
 				config.Implant.Modules = []string{}
-			} else {
+			} else if params.Modules != "" {
 				config.Implant.Modules = strings.Split(params.Modules, ",")
 			}
 			if params.Address != "" {

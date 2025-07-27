@@ -114,6 +114,7 @@ func PrintSessions(sessions map[string]*core.Session, con *repl.Console, isAll b
 		table.NewColumn("Last", "Last", maxLengths["Last"]),
 		table.NewColumn("CreatedAt", "CreatedAt", maxLengths["CreatedAt"]),
 	}, false)
+	tableModel.SetAscSort("Last")
 	tableModel.SetRows(rowEntries)
 	tableModel.SetMultiline()
 	tableModel.SetHandle(func() {

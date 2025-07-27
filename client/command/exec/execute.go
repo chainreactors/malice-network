@@ -58,7 +58,7 @@ func ShellCmd(cmd *cobra.Command, con *repl.Console) error {
 	session := con.GetInteractive()
 	//token := ctx.Flags.Bool("token")
 	quiet, _ := cmd.Flags().GetBool("quiet")
-	cmdStr := shellquote.Join(cmd.Flags().Args()...)
+	cmdStr := strings.Join(cmd.Flags().Args(), " ")
 	task, err := Shell(con.Rpc, session, cmdStr, !quiet)
 	if err != nil {
 		return err
@@ -77,7 +77,7 @@ func Shell(rpc clientrpc.MaliceRPCClient, sess *core.Session, cmd string, output
 
 	task, err := rpc.Execute(sess.Context(), &implantpb.ExecRequest{
 		Path:     binpath,
-		Args:     []string{"/c", cmd},
+		Args:     []string{"-c", cmd},
 		Output:   output,
 		Realtime: true,
 	})

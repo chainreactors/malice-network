@@ -97,8 +97,7 @@ func handleModuleBuild(con *repl.Console, modules, thirdModules []string) error 
 	} else {
 		return errors.New("must specify either --modules or --3rd. One of them is required")
 	}
-
-	artifact, err := con.Rpc.SyncBuild(con.Context(), &clientpb.BuildConfig{
+	artifact, err := con.Rpc.SyncBuild(con.SyncBuildContext(), &clientpb.BuildConfig{
 		Target:      target,
 		ParamsBytes: []byte(params.String()),
 		Type:        consts.CommandBuildModules,

@@ -145,7 +145,7 @@ func (rpc *Server) ListArtifact(ctx context.Context, req *clientpb.Empty) (*clie
 }
 
 func (rpc *Server) FindArtifact(ctx context.Context, req *clientpb.Artifact) (*clientpb.Artifact, error) {
-	artifact, err := db.FindArtifact(req)
+	artifact, err := db.FindArtifact(req, req.Format != "null")
 	if err != nil {
 		return nil, err
 	}

@@ -14,7 +14,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var repoUrl = "https://github.com/chainreactors/mal-community"
+var RepoUrl = "https://github.com/chainreactors/mal-community"
+var MalLatest = "latest"
 
 // ExtensionsInstallCmd - Install an extension
 func MalInstallCmd(cmd *cobra.Command, con *repl.Console) error {
@@ -40,7 +41,7 @@ func MalInstallCmd(cmd *cobra.Command, con *repl.Console) error {
 				}
 			}
 		}
-		InstallMal(repoUrl, name, version, os.Stdout, malHttpConfig, con)
+		InstallMal(RepoUrl, name, version, os.Stdout, malHttpConfig, con)
 	} else {
 		InstallFromDir(localPath, true, con)
 	}
@@ -65,34 +66,40 @@ func MalInstallCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *repl.Console) {
+func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *repl.Console) bool {
 	var manifestData []byte
 	var err error
 
 	manifestData, err = fileutils.ReadFileFromTarGz(extLocalPath, m.ManifestFileName)
 	if err != nil {
-		con.Log.Errorf("Error reading %s: %s\n", m.ManifestFileName, err)
-		return
+		con.Log.Errorf("Error reading %s from tar.gz: %s\n", m.ManifestFileName, err)
+		return false
 	}
-
 	manifest, err := plugin.ParseMalManifest(manifestData)
 	if err != nil {
 		con.Log.Errorf("Error parsing %s: %s\n", m.ManifestFileName, err)
-		return
+		return false
 	}
 
 	installPath := filepath.Join(assets.GetMalsDir(), filepath.Base(manifest.Name))
 	if _, err := os.Stat(installPath); !os.IsNotExist(err) {
+		oldManifestPath := filepath.Join(installPath, m.ManifestFileName)
+		oldHash, oldErr := fileutils.CalculateSHA256Checksum(oldManifestPath)
+		newHashStr := fileutils.CalculateSHA256Byte(manifestData)
+		if oldErr == nil && oldHash == newHashStr {
+			con.Log.Infof("Mal '%s' is latest version.\n", manifest.Name)
+			return false
+		}
 		if promptToOverwrite {
 			con.Log.Infof("Mal '%s' already exists\n", manifest.Name)
 			confirmModel := tui.NewConfirm("Overwrite current install?")
 			err = confirmModel.Run()
 			if err != nil {
 				con.Log.Errorf("Error running confirm model: %s\n", err)
-				return
+				return false
 			}
 			if !confirmModel.GetConfirmed() {
-				return
+				return false
 			}
 		}
 		fileutils.ForceRemoveAll(installPath)
@@ -102,19 +109,20 @@ func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *repl.Conso
 	err = os.MkdirAll(installPath, 0700)
 	if err != nil {
 		con.Log.Errorf("\nError creating mal directory: %s\n", err)
-		return
+		return false
 	}
 	err = fileutils.ExtractTarGz(extLocalPath, installPath)
 	if err != nil {
 		con.Log.Errorf("\nFailed to extract tar.gz to %s: %s\n", installPath, err)
 		fileutils.ForceRemoveAll(installPath)
-		return
+		return false
 	}
 	if manifest.Lib {
 		err := fileutils.MoveFile(filepath.Join(installPath, "resources"), assets.GetResourceDir())
 		if err != nil {
 			con.Log.Errorf("\nFailed to move resources to %s: %s\n", assets.GetResourceDir(), err)
-			return
+			return false
 		}
 	}
+	return true
 }

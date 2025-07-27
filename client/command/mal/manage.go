@@ -103,7 +103,7 @@ func printMals(maljson m.MalsYaml, malHttpConfig m.MalHTTPConfig, con *repl.Cons
 	return nil
 }
 
-func InstallMal(repoUrl, name, version string, writer io.Writer, malHttpConfig m.MalHTTPConfig, con *repl.Console) func() {
+func InstallMal(repoUrl, name, version string, writer io.Writer, malHttpConfig m.MalHTTPConfig, con *repl.Console) (updated bool) {
 	logs.Log.Infof("Installing mal: %s", name)
 	err := m.GithubMalPackageParser(
 		repoUrl,
@@ -112,12 +112,10 @@ func InstallMal(repoUrl, name, version string, writer io.Writer, malHttpConfig m
 		assets.GetMalsDir(),
 		malHttpConfig)
 	if err != nil {
-		return func() {
-			con.Log.FErrorf(writer, "Error installing mal: %s\n", err)
-		}
+		con.Log.FErrorf(writer, "Error installing mal: %s\n", err)
+		return false
 	}
 	tarGzPath := filepath.Join(assets.GetMalsDir(), name+".tar.gz")
-	InstallFromDir(tarGzPath, true, con)
-	return func() {
-	}
+	updated = InstallFromDir(tarGzPath, true, con)
+	return updated
 }

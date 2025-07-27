@@ -3,6 +3,10 @@ function load_prebuild(arg_0)
     local session = active()
     local arch = barch(session)
 
+    if not arch or arch == "" then
+        arch = "x64"
+    end
+
     return load_module(session, "arg_0", script_resource("modules/"  .. arg_0 .. "." .. arch .. ".dll"))
 end
 

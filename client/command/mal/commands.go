@@ -39,14 +39,18 @@ func Commands(con *repl.Console) []*cobra.Command {
 
 	cmd.AddCommand(installCmd)
 
-	cmd.AddCommand(&cobra.Command{
+	loadCmd := &cobra.Command{
 		Use:   consts.CommandMalLoad + " [mal]",
 		Short: "Load a mal manifest",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return MalLoadCmd(cmd, con)
 		},
-	})
+	}
+
+	common.BindArgCompletions(loadCmd, nil, common.ExternalMalFileCompleter(con))
+
+	cmd.AddCommand(loadCmd)
 
 	cmd.AddCommand(&cobra.Command{
 		Use:   consts.CommandMalList,
@@ -72,5 +76,20 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return RefreshMalCmd(cmd, con)
 		},
 	})
+
+	updateCmd := &cobra.Command{
+		Use:   consts.CommandMalUpdate,
+		Short: "Update a mal or all mals",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return UpdateMalCmd(cmd, con)
+		},
+	}
+
+	common.BindFlag(updateCmd, common.MalHttpFlagset, func(f *pflag.FlagSet) {
+		f.BoolP("all", "a", false, "update all mal")
+	})
+
+	cmd.AddCommand(updateCmd)
 	return []*cobra.Command{cmd}
 }

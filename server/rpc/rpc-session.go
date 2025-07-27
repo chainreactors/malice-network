@@ -2,7 +2,6 @@ package rpc
 
 import (
 	"context"
-	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
@@ -202,105 +201,4 @@ func (rpc *Server) Ping(ctx context.Context, req *implantpb.Ping) (*clientpb.Tas
 
 	go greq.HandlerResponse(ch, types.MsgPing)
 	return greq.Task.ToProtobuf(), nil
-}
-
-// GetTasksByIDs - 根据任务ID数组获取任务详情
-func (rpc *Server) GetTasksByIDs(ctx context.Context, req *clientpb.Tasks) (*clientpb.TasksContext, error) {
-	// 获取会话ID
-	sid, err := getSessionID(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get session ID: %w", err)
-	}
-
-	// 验证任务数组
-	if len(req.Tasks) == 0 {
-		return nil, fmt.Errorf("tasks array is empty")
-	}
-
-	// 提取任务ID并验证
-	var taskIds []uint32
-	for _, task := range req.Tasks {
-		if task.TaskId <= 0 {
-			return nil, fmt.Errorf("invalid task ID: %d", task.TaskId)
-		}
-		taskIds = append(taskIds, task.TaskId)
-	}
-
-	taskDir := filepath.Join(configs.ContextPath, sid, consts.TaskPath)
-	if _, err := os.Stat(taskDir); os.IsNotExist(err) {
-		return nil, fmt.Errorf("task directory not found for session %s", sid)
-	}
-
-	files, err := os.ReadDir(taskDir)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read task directory: %w", err)
-	}
-
-	taskIDToFile := make(map[int]string)
-	re := regexp.MustCompile(`^(\d+)_(\d+)$`)
-
-	for _, file := range files {
-		if file.IsDir() {
-			continue
-		}
-
-		matches := re.FindStringSubmatch(file.Name())
-		if len(matches) != 3 {
-			continue
-		}
-
-		taskID, err := strconv.Atoi(matches[1])
-		if err != nil {
-			continue
-		}
-
-		taskIDToFile[taskID] = filepath.Join(taskDir, file.Name())
-	}
-
-	contexts := &clientpb.TasksContext{
-		Contexts: make([]*clientpb.TaskContext, 0),
-	}
-
-	session, err := db.FindSession(sid)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get session from database: %w", err)
-	}
-
-	for _, taskId := range taskIds {
-		taskFilePath, exists := taskIDToFile[int(taskId)]
-		if !exists {
-			logs.Log.Warnf("Task file not found for task ID %d in session %s", taskId, sid)
-			continue
-		}
-
-		content, err := os.ReadFile(taskFilePath)
-		if err != nil {
-			logs.Log.Errorf("Failed to read task file %s: %v", taskFilePath, err)
-			continue
-		}
-
-		spite := &implantpb.Spite{}
-		err = proto.Unmarshal(content, spite)
-		if err != nil {
-			logs.Log.Errorf("Failed to unmarshal task data for task ID %d: %v", taskId, err)
-			continue
-		}
-
-		taskIDStr := sid + "-" + strconv.Itoa(int(taskId))
-		task, err := db.GetTaskPB(taskIDStr)
-		if err != nil {
-			logs.Log.Errorf("Failed to get task %s from database: %v", taskIDStr, err)
-			continue
-		}
-
-		taskContext := &clientpb.TaskContext{
-			Task:    task,
-			Session: session.ToProtobuf(),
-			Spite:   spite,
-		}
-
-		contexts.Contexts = append(contexts.Contexts, taskContext)
-	}
-
-	return contexts, nil
 }

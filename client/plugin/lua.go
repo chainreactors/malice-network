@@ -76,6 +76,8 @@ func (plug *LuaPlugin) Run() error {
 	if err != nil {
 		return err
 	}
+	logs.Log.Infof("Loaded %s plugin: %s, register %d commands\n", plug.Type, plug.Name, len(plug.Commands()))
+
 	return nil
 }
 

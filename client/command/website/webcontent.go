@@ -22,11 +22,11 @@ func AddWebContentCmd(cmd *cobra.Command, con *repl.Console) error {
 		webPath = "/" + filepath.Base(filePath)
 	}
 
-	c, err := AddWebContent(con, filePath, webPath, websiteName, contentType)
+	_, err := AddWebContent(con, filePath, webPath, websiteName, contentType)
 	if err != nil {
 		return err
 	}
-	con.Log.Importantf("Content added to website %s: %s -> %s\n", websiteName, filePath, c.Url)
+	//con.Log.Importantf("Content added to website %s: %s -> %s\n", websiteName, filePath, c.Url)
 	return nil
 }
 

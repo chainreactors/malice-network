@@ -120,6 +120,9 @@ profile delete profile_name
 		Use:   consts.CommandBuild,
 		Short: "build",
 	}
+
+	buildCmd.PersistentFlags().Bool("auto-download", false, "auto download artifact")
+
 	// build beacon --format/-f exe,dll,shellcode -i 1.1.1 -m load_pe
 	beaconCmd := &cobra.Command{
 		Use:   consts.CommandBuildBeacon,
@@ -131,16 +134,16 @@ profile delete profile_name
 		},
 		Example: `~~~
 // Build a beacon
-build beacon --target x86_64-unknown-linux-musl --profile beacon_profile
+build beacon --target x86_64-pc-windows-gnu --profile tcp_default
 
 // Build a beacon using additional modules
-build beacon --target x86_64-pc-windows-msvc --profile beacon_profile --modules full
+build beacon --target x86_64-pc-windows-gnu --profile tcp_default --modules full
 
 // Build a beacon with rem
-build beacon --rem --target x86_64-pc-windows-msvc --profile beacon_profile
+build beacon --rem --target x86_64-pc-windows-gnu --profile tcp_default
 
 // Build a beacon by saas
-build beacon --target x86_64-pc-windows-msvc --profile beacon_profile --source saas
+build beacon --target x86_64-pc-windows-gnu --profile tcp_default --source saas
 ~~~`,
 	}
 	common.BindFlag(beaconCmd, common.GenerateFlagSet, common.GithubFlagSet, func(f *pflag.FlagSet) {
@@ -170,13 +173,13 @@ build beacon --target x86_64-pc-windows-msvc --profile beacon_profile --source s
 		},
 		Example: `~~~
 // Build a bind payload
-build bind --target x86_64-pc-windows-msvc --profile bind_profile
+build bind --target x86_64-pc-windows-gnu --profile tcp_default
 
 // Build a bind payload with additional modules
-build bind --target x86_64-unknown-linux-musl --profile bind_profile --modules base,sys_full
+build bind --target x86_64-pc-windows-gnu --profile tcp_default --modules base,sys_full
 
 // Build a bind payload by saas 
-build bind --target x86_64-unknown-linux-musl --profile bind_profile --source saas
+build bind --target x86_64-pc-windows-gnu --profile tcp_default --source saas
 ~~~`,
 	}
 
@@ -208,13 +211,13 @@ build bind --target x86_64-unknown-linux-musl --profile bind_profile --source sa
 		},
 		Example: `~~~
 // Build a prelude payload
-build prelude --target x86_64-unknown-linux-musl --profile prelude_profile --autorun /path/to/autorun.yaml
+build prelude --target x86_64-pc-windows-gnu --profile tcp_default --autorun /path/to/autorun.yaml
 	
 // Build a prelude payload with additional modules
-build prelude --target x86_64-pc-windows-msvc --profile prelude_profile --autorun /path/to/autorun.yaml --modules base,sys_full
+build prelude --target x86_64-pc-windows-gnu --profile tcp_default --autorun /path/to/autorun.yaml --modules base,sys_full
 	
 // Build a prelude payload by saas
-build prelude --target x86_64-pc-windows-msvc --profile prelude_profile --autorun /path/to/autorun.yaml --source saas
+build prelude --target x86_64-pc-windows-gnu --profile tcp_default --autorun /path/to/autorun.yaml --source saas
 ~~~`,
 	}
 
@@ -248,19 +251,19 @@ build prelude --target x86_64-pc-windows-msvc --profile prelude_profile --autoru
 		},
 		Example: `~~~
 // Compile all modules for the Windows platform
-build modules --target x86_64-unknown-linux-musl --profile module_profile
+build modules --target x86_64-pc-windows-gnu --profile tcp_default
 
 // Compile a predefined feature set of modules (nano)
-build modules --target x86_64-unknown-linux-musl --profile module_profile --modules nano
+build modules --target x86_64-pc-windows-gnu --profile tcp_default --modules nano
 
 // Compile specific modules into DLLs
-build modules --target x86_64-pc-windows-msvc --profile module_profile --modules base,execute_dll
+build modules --target x86_64-pc-windows-gnu --profile tcp_default --modules base,execute_dll
 
 // Compile third party module(curl, rem)
-build modules --3rd rem --target x86_64-pc-windows-msvc --profile module_profile
+build modules --3rd rem --target x86_64-pc-windows-gnu --profile tcp_default
 
 // Compile module by saas
-build modules --target x86_64-pc-windows-msvc --profile module_profile --source saas
+build modules --target x86_64-pc-windows-gnu --profile tcp_default --source saas
 ~~~`,
 	}
 
@@ -289,10 +292,10 @@ build modules --target x86_64-pc-windows-msvc --profile module_profile --source 
 		Example: `
 ~~~
 // Build a pulse payload
-build pulse --target x86_64-unknown-linux-musl --profile pulse_profile
+build pulse --target x86_64-pc-windows-gnu --profile tcp_default
 
 // Build a pulse payload by specifying artifact
-build pulse --target x86_64-pc-windows-msvc --profile pulse_profile --artifact-id 1
+build pulse --target x86_64-pc-windows-gnu --profile tcp_default --artifact-id 1
 ~~~
 `,
 	}
@@ -450,6 +453,13 @@ artifact delete --name artifact_name
 }
 
 func Register(con *repl.Console) {
+	con.EventCallback[consts.CtrlArtifactDownload] = func(event *clientpb.Event) {
+		err := WriteOriginArtifact(con, event.Job.Name)
+		if err != nil {
+			con.Log.Errorf("write artifact %s error: %s", event.Job.Name, err)
+			return
+		}
+	}
 	con.RegisterServerFunc("search_artifact",
 		SearchArtifact,
 		&mals.Helper{
@@ -537,7 +547,7 @@ func Register(con *repl.Console) {
 
 	con.RegisterServerFunc("self_stager",
 		func(con *repl.Console, sess *core.Session) (string, error) {
-			artifact, err := SearchArtifact(con, sess.PipelineId, "pulse", "shellcode", sess.Os.Name, sess.Os.Arch)
+			artifact, err := SearchArtifact(con, sess.PipelineId, "pulse", "raw", sess.Os.Name, sess.Os.Arch)
 			if err != nil {
 				return "", err
 			}

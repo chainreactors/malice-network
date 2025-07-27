@@ -26,7 +26,7 @@ var (
 	Listener *listener
 )
 
-func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) error {
+func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig, serverEnable bool) error {
 	options, err := mtls.GetGrpcOptions([]byte(clientConf.CACertificate), []byte(clientConf.Certificate), []byte(clientConf.PrivateKey), clientConf.Type)
 	if err != nil {
 		return err
@@ -36,7 +36,11 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 		return err
 	}
 	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
-	conn, err := grpc.DialContext(ctx, listenerCfg.Address(), options...)
+	var address = listenerCfg.Address()
+	if serverEnable && cfg.Enable {
+		address = fmt.Sprintf("%s:%d", "127.0.0.1", listenerCfg.Port)
+	}
+	conn, err := grpc.DialContext(ctx, address, options...)
 	if err != nil {
 		return fmt.Errorf("failed to connect to server: %v", err)
 	}
@@ -486,6 +490,12 @@ func (lns *listener) handleWebContentAdd(job *clientpb.JobCtrl) error {
 		return errors.New("website not found")
 	}
 	w.AddContent(job.Content)
+	job.Job.Contents = map[string]*clientpb.WebContent{
+		job.Content.Path: &clientpb.WebContent{
+			Id:   job.Content.Path,
+			Path: job.Content.Path,
+		},
+	}
 	return nil
 }
 

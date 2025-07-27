@@ -90,18 +90,15 @@ func TaskFetchCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	taskContexts := make([]*clientpb.TaskContext, 0)
 	for _, spite := range tasksContext.Spites {
 		eachTask := &clientpb.TaskContext{
 			Task:    tasksContext.Task,
 			Session: tasksContext.Session,
 			Spite:   spite,
 		}
-		taskContexts = append(taskContexts, eachTask)
+		core.HandlerTask(con.GetInteractive(), eachTask, nil, consts.CalleeCMD, true)
 	}
-	for _, context := range taskContexts {
-		core.HandlerTask(con.GetInteractive(), context, []byte{}, consts.CalleeCMD, true)
-	}
+
 	return nil
 }
 

@@ -9,6 +9,14 @@ const CMDSeq = ":"
 
 type Commands map[string]*Command
 
+func (cs Commands) Commands() []*cobra.Command {
+	var cmds []*cobra.Command
+	for _, cmd := range cs {
+		cmds = append(cmds, cmd.Command)
+	}
+	return cmds
+}
+
 func (cs Commands) Find(name string) *Command {
 	subs := strings.Split(name, CMDSeq)
 	if len(subs) == 0 {
