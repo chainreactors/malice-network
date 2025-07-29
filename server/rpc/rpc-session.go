@@ -39,8 +39,8 @@ func (rpc *Server) GetSessions(ctx context.Context, req *clientpb.SessionRequest
 
 func (rpc *Server) GetSession(ctx context.Context, req *clientpb.SessionRequest) (*clientpb.Session, error) {
 	session, err := core.Sessions.Get(req.SessionId)
-	if err != nil {
-		return nil, err
+	if err == nil {
+		return session.ToProtobuf(), nil
 	}
 	dbSess, err := db.FindSession(req.SessionId)
 	if err != nil {

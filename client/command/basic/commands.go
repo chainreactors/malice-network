@@ -109,8 +109,10 @@ func Commands(con *repl.Console) []*cobra.Command {
 	}
 
 	switchCmd := &cobra.Command{
-		Use:   consts.ModuleSwitch,
+		Use:   consts.ModuleSwitch + " [pipeline name]",
 		Short: "switch session",
+		Args:  cobra.ExactArgs(1),
+		Long:  "Switch session to other pipeline connection",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return SwitchCmd(cmd, con)
 		},
