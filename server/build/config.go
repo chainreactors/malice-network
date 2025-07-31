@@ -1,8 +1,11 @@
 package build
 
 import (
+	"encoding/base64"
+	"fmt"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/encoders"
+	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
@@ -16,6 +19,7 @@ import (
 
 var (
 	generateConfig = "config.yaml"
+	autoRunYaml    = "autorun.yaml"
 	release        = "release"
 	releaseLto     = "release-lto"
 	malefic        = "malefic"

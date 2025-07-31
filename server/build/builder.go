@@ -84,16 +84,17 @@ func SendBuildMsg(artifact *clientpb.Artifact, status string, params []byte) {
 	}
 	if status == consts.BuildStatusCompleted {
 		event.Message = fmt.Sprintf("Artifact completed %s (type: %s, target: %s, source: %s)", artifact.Name, artifact.Type, artifact.Target, artifact.Source)
-		profileParams, err := types.UnmarshalProfileParams(params)
-		if err != nil {
-			logs.Log.Errorf("failed to unmarshal profile params: %v", err)
-			return
+		if len(params) > 0 {
+			profileParams, err := types.UnmarshalProfileParams(params)
+			if err != nil {
+				logs.Log.Errorf("failed to unmarshal profile params: %v", err)
+				return
+			}
+			if profileParams.AutoDownload {
+				event.Op = consts.CtrlArtifactDownload
+				event.Job = &clientpb.Job{Name: artifact.Name}
+			}
 		}
-		if profileParams.AutoDownload {
-			event.Op = consts.CtrlArtifactDownload
-			event.Job = &clientpb.Job{Name: artifact.Name}
-		}
-
 	} else if status == consts.BuildStatusFailure {
 		event.Message = fmt.Sprintf("Artifact failed %s (type: %s, target: %s, source: %s)", artifact.Name, artifact.Type, artifact.Target, artifact.Source)
 	} else {

@@ -27,13 +27,15 @@ var (
 	ContainerCargoRegistryCache = "/root/cargo/registry"
 	ContainerCargoGitCache      = "/root/cargo/git"
 	ContainerBinPath            = "/root/bin"
+	ContainerResourcePath       = "/root/src/resource" // 新增：容器内的资源路径
+	ContainerAutoRunPath        = "/root/src/autorun.yaml"
 	command                     = "build"
 	funcNameOption              = "--function-name"
 	userDataPathOption          = "--userdata-path"
 
-	autorunPath              = filepath.Join(configs.SourceCodePath, "autorun.yaml")
 	sourcePath, _            = filepath.Abs(configs.SourceCodePath)
 	binPath, _               = filepath.Abs(configs.BinPath)
+	resourcePath, _          = filepath.Abs(configs.ResourcePath)
 	registryPath, _          = filepath.Abs(filepath.Join(configs.CargoCachePath, "registry"))
 	gitPath, _               = filepath.Abs(filepath.Join(configs.CargoCachePath, "git"))
 	SourceCodeVolume         = fmt.Sprintf("%s:%s", filepath.ToSlash(sourcePath), ContainerSourceCodePath)

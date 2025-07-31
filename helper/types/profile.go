@@ -3,12 +3,12 @@ package types
 import (
 	_ "embed"
 	"encoding/json"
+	"fmt"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"gopkg.in/yaml.v3"
+	"path/filepath"
 )
-
-//go:embed profile.yaml
-var DefaultProfile []byte
 
 func LoadProfile(content []byte) (*ProfileConfig, error) {
 	if content == nil {
@@ -70,23 +70,38 @@ type PulseProfile struct {
 	Extras map[string]interface{} `yaml:",inline"`
 }
 
+type PackItem struct {
+	Src string `yaml:"src" config:"src"`
+	Dst string `yaml:"dst" config:"dst"`
+}
+
 type ImplantProfile struct {
 	Mod          string                 `yaml:"mod" config:"mod" default:""`
 	RegisterInfo bool                   `yaml:"register_info" config:"register_info" default:"false"`
 	HotLoad      bool                   `yaml:"hot_load" config:"hot_load" default:"false"`
 	Modules      []string               `yaml:"modules" config:"modules" default:"[]"`
-	Extras       map[string]interface{} `yaml:",inline"`
+	Pack         []PackItem             `yaml:"pack" config:"pack"`
+	AutoRun      string                 `yaml:"autorun" config:"autorun"`
 	Enable3rd    bool                   `yaml:"enable_3rd" config:"enable_3rd"`
 	ThirdModules []string               `yaml:"3rd_modules" config:"3rd_modules"`
 	Extras       map[string]interface{} `yaml:",inline"`
 }
 
+type MetadataProfile struct {
+	Icon   string                 `yaml:"icon" config:"icon" default:""`
+	Extras map[string]interface{} `yaml:",inline"`
+}
+
+type BuildProfile struct {
+	Metadata *MetadataProfile       `yaml:"metadata" config:"metadata"`
+	Extras   map[string]interface{} `yaml:",inline"`
 }
 
 type ProfileConfig struct {
 	Basic   *BasicProfile          `yaml:"basic" config:"basic"`
 	Pulse   *PulseProfile          `yaml:"pulse" config:"pulse"`
 	Implant *ImplantProfile        `yaml:"implants" config:"implants"`
+	Build   *BuildProfile          `yaml:"build" config:"build"`
 	Extras  map[string]interface{} `yaml:",inline"`
 }
 
@@ -103,6 +118,8 @@ type ProfileParams struct {
 	Enable3RD      bool   `json:"enable_3_rd"`
 	Modules        string `json:"modules"`
 	AutoDownload   bool   `json:"auto_download"`
+
+	AutoRunFile string `json:"auto_run_file"`
 }
 
 func (p *ProfileParams) String() string {
@@ -120,4 +137,28 @@ func UnmarshalProfileParams(params []byte) (*ProfileParams, error) {
 		return p, err
 	}
 	return p, nil
+}
+
+// ValidateProfileFiles 验证 profile 中引用的文件是否存在于指定目录中
+func (p *ProfileConfig) ValidateProfileFiles(baseDir string) error {
+
+	if p.Build != nil && p.Build.Metadata != nil && p.Build.Metadata.Icon != "" {
+		iconPath := filepath.Join(baseDir, p.Build.Metadata.Icon)
+		if !fileutils.Exist(iconPath) {
+			return fmt.Errorf("icon file not found: %s", p.Build.Metadata.Icon)
+		}
+	}
+
+	if p.Implant != nil && len(p.Implant.Pack) > 0 {
+		for i, packItem := range p.Implant.Pack {
+			if packItem.Src != "" {
+				srcPath := filepath.Join(baseDir, packItem.Src)
+				if !fileutils.Exist(srcPath) {
+					return fmt.Errorf("pack source file not found: %s (pack item %d)", packItem.Src, i)
+				}
+			}
+		}
+	}
+
+	return nil
 }

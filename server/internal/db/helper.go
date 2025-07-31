@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"github.com/chainreactors/malice-network/helper/certs"
 	"github.com/chainreactors/malice-network/helper/codenames"
+	"github.com/chainreactors/malice-network/helper/encoders"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/formatutils"
 	"mime"
 	"os"
@@ -14,7 +16,6 @@ import (
 
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/encoders"
 	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/types"
@@ -770,7 +771,39 @@ func NewProfile(profile *clientpb.Profile) error {
 	}
 
 	if profile.Content == nil {
-		profile.Content = types.DefaultProfile
+		profile.Content = consts.DefaultProfile
+	}
+
+	contentType := fileutils.DetectContentType(profile.Content)
+	switch contentType {
+	case "zip":
+		profilePath := filepath.Join(configs.ProfilePath, profile.Name)
+		os.MkdirAll(profilePath, 0700)
+		err := fileutils.DecompressBase64ToFiles(string(profile.Content), profilePath)
+		if err != nil {
+			return fmt.Errorf("failed to decompress zip content: %w", err)
+		}
+
+		configPath := filepath.Join(profilePath, "config.yaml")
+		if !fileutils.Exist(configPath) {
+			return fmt.Errorf("config.yaml not found in zip content")
+		}
+
+		yamlContent, err := os.ReadFile(configPath)
+		if err != nil {
+			return fmt.Errorf("failed to read config.yaml: %w", err)
+		}
+
+		config, err := types.LoadProfile(yamlContent)
+		if err != nil {
+			return fmt.Errorf("failed to parse yaml config: %w", err)
+		}
+
+		if err := config.ValidateProfileFiles(profilePath); err != nil {
+			return fmt.Errorf("profile validation failed: %w", err)
+		}
+
+		profile.Content = yamlContent
 	}
 
 	// Check if profile name already exists
@@ -1182,56 +1215,6 @@ func DeleteArtifactByName(artifactName string) error {
 	err = Session().Delete(model).Error
 	if err != nil {
 		return err
-	}
-	return nil
-}
-
-// UpdateGeneratorConfig - Update the generator config
-func UpdateGeneratorConfig(req *clientpb.BuildConfig, config *types.ProfileConfig) error {
-	if config.Basic != nil {
-		if req.BuildName != "" {
-			config.Basic.Name = req.BuildName
-		}
-
-		if len(req.ParamsBytes) > 0 {
-			params, err := types.UnmarshalProfileParams(req.ParamsBytes)
-			if err != nil {
-				return err
-			}
-			if params.Interval != -1 {
-				config.Basic.Interval = params.Interval
-			}
-
-			if params.Jitter != -1 {
-				config.Basic.Jitter = params.Jitter
-			}
-			if params.Proxy != "" {
-				config.Basic.Proxy = params.Proxy
-			}
-
-			if params.Enable3RD {
-				config.Implant.Extras["3rd_modules"] = strings.Split(params.Modules, ",")
-				config.Implant.Extras["enable_3rd"] = true
-				config.Implant.Modules = []string{}
-			} else if params.Modules != "" {
-				config.Implant.Modules = strings.Split(params.Modules, ",")
-			}
-			if params.Address != "" {
-				config.Basic.Targets = []string{params.Address}
-				config.Basic.TLS.SNI = params.Address
-				config.Basic.Extras["http"].(map[string]interface{})["host"] = params.Address
-				config.Pulse.Target = params.Address
-				config.Pulse.Extras["http"].(map[string]interface{})["host"] = params.Address
-
-			}
-		}
-	}
-	if req.ArtifactId != 0 && config.Pulse.Flags.ArtifactID == 0 {
-		config.Pulse.Flags.ArtifactID = req.ArtifactId
-	}
-
-	if req.Type == consts.CommandBuildBind {
-		config.Implant.Mod = consts.CommandBuildBind
 	}
 	return nil
 }
