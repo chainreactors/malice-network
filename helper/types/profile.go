@@ -3,6 +3,7 @@ package types
 import (
 	_ "embed"
 	"encoding/json"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"gopkg.in/yaml.v3"
 )
 
@@ -11,7 +12,7 @@ var DefaultProfile []byte
 
 func LoadProfile(content []byte) (*ProfileConfig, error) {
 	if content == nil {
-		content = DefaultProfile
+		content = consts.DefaultProfile
 	}
 	profile := &ProfileConfig{}
 	err := yaml.Unmarshal(content, profile)
@@ -32,6 +33,7 @@ type BasicProfile struct {
 	Encryption string                 `yaml:"encryption" config:"encryption" default:"aes"`
 	Key        string                 `yaml:"key" config:"key" default:"maliceofinternal"`
 	REM        *REMProfile            `yaml:"rem" config:"rem"`
+	Http       *HttpProfile           `yaml:"http" config:"http"`
 	Extras     map[string]interface{} `yaml:",inline"`
 }
 
@@ -46,6 +48,15 @@ type TLSProfile struct {
 	Extras  map[string]interface{} `yaml:",inline"`
 }
 
+type HttpProfile struct {
+	Method  string                 `yaml:"method" config:"method" default:"POST"`
+	Path    string                 `yaml:"path" config:"path" default:"/jquery.js"`
+	Host    string                 `yaml:"host" config:"host" default:"127.0.0.1"`
+	Version string                 `yaml:"version" config:"version" default:"1.1"`
+	Headers map[string]string      `yaml:"headers" config:"headers"`
+	Extras  map[string]interface{} `yaml:",inline"`
+}
+
 type PulseProfile struct {
 	Target     string `yaml:"target"`
 	Encryption string `yaml:"encryption"`
@@ -55,6 +66,7 @@ type PulseProfile struct {
 		ArtifactID uint32                 `yaml:"artifact_id" config:"artifact_id" default:"0"`
 		Extras     map[string]interface{} `yaml:",inline"`
 	}
+	Http   *HttpProfile           `yaml:"http" config:"http"`
 	Extras map[string]interface{} `yaml:",inline"`
 }
 
@@ -64,6 +76,11 @@ type ImplantProfile struct {
 	HotLoad      bool                   `yaml:"hot_load" config:"hot_load" default:"false"`
 	Modules      []string               `yaml:"modules" config:"modules" default:"[]"`
 	Extras       map[string]interface{} `yaml:",inline"`
+	Enable3rd    bool                   `yaml:"enable_3rd" config:"enable_3rd"`
+	ThirdModules []string               `yaml:"3rd_modules" config:"3rd_modules"`
+	Extras       map[string]interface{} `yaml:",inline"`
+}
+
 }
 
 type ProfileConfig struct {

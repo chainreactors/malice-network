@@ -2,12 +2,12 @@ package plugin
 
 import (
 	"fmt"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"path/filepath"
 	"sync"
 
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/helper/intl"
 	"github.com/chainreactors/mals/m"
 )
 
@@ -62,7 +62,7 @@ func (mm *MalManager) loadEmbeddedMals() {
 
 		// 检查mal.yaml是否存在
 		manifestPath := levelName + "/mal.yaml"
-		if _, err := intl.UnifiedFS.ReadFile(manifestPath); err != nil {
+		if _, err := consts.UnifiedFS.ReadFile(manifestPath); err != nil {
 			logs.Log.Debugf("No mal.yaml found for level %s, skipping\n", levelName)
 			continue
 		}

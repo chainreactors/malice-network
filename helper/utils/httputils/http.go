@@ -11,7 +11,7 @@ import (
 )
 
 var HttpClient = &http.Client{
-	Timeout: 60 * time.Second,
+	Timeout: 180 * time.Second,
 }
 
 func DoRequest(method, url string, body io.Reader, headers map[string]string) (*http.Response, error) {

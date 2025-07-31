@@ -14,6 +14,11 @@ var (
 )
 
 func SetupGithubFile() error {
+	mutant, err := assetsFs.ReadFile("windows/malefic-mutant.exe")
+	if err != nil {
+		logs.Log.Errorf("malefic-mutant.exe asset not found")
+		return err
+	}
 
 	sgn, err := assetsFs.ReadFile("windows/sgn.exe")
 	if err != nil {
@@ -23,6 +28,12 @@ func SetupGithubFile() error {
 	dll, err := assetsFs.ReadFile("windows/keystone.dll")
 	if err != nil {
 		logs.Log.Errorf("keystone.dll asset not found")
+	}
+
+	err = os.WriteFile(filepath.Join(configs.BinPath, "malefic-mutant.exe"), mutant, 0700)
+	logs.Log.Infof("write mutant.exe success")
+	if err != nil {
+		logs.Log.Errorf("Failed to write malefic-mutant data to: %s by %s", configs.BinPath, err)
 	}
 
 	err = os.WriteFile(filepath.Join(configs.BinPath, "sgn.exe"), sgn, 0700)

@@ -770,7 +770,6 @@ local function run_mimikatz(args, cmd)
     if needs_exit then
         table.insert(args, "exit")
     end
-
     local mimikatz_path = "common/mimikatz/mimikatz." .. arch .. ".exe"
     return execute_exe(session, script_resource(mimikatz_path), args, true, 600, arch, "", new_sac())
 end

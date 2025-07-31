@@ -6,17 +6,14 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/codenames"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/utils/formatutils"
+	"github.com/chainreactors/malice-network/server/build"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
-	"github.com/wabzsy/gonut"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 )
 
 // ObjcopyPulse extracts shellcode from compiled artifact using objcopy
@@ -65,20 +62,6 @@ func ObjcopyPulse(builder *models.Artifact, platform, arch string) ([]byte, erro
 	return bin, nil
 }
 
-func SRDIArtifact(artifactModel *models.Artifact, platform, arch string) ([]byte, error) {
-	if !strings.Contains(artifactModel.Target, consts.Windows) {
-		return []byte{}, errs.ErrPlatFormNotSupport
-	}
-	switch artifactModel.Type {
-	case consts.CommandBuildPulse:
-		return ObjcopyPulse(artifactModel, platform, arch)
-	case consts.CommandBuildBeacon:
-		return gonut.DonutShellcodeFromFile(artifactModel.Path, arch, "")
-	default:
-		return []byte{}, fmt.Errorf("unsupported artifact type: %s", artifactModel.Type)
-	}
-}
-
 func (rpc *Server) DownloadArtifact(ctx context.Context, req *clientpb.Artifact) (*clientpb.Artifact, error) {
 	artifactModel, err := db.GetArtifactByName(req.Name)
 	if err != nil {
@@ -90,7 +73,7 @@ func (rpc *Server) DownloadArtifact(ctx context.Context, req *clientpb.Artifact)
 		return nil, err
 	}
 
-	return formatutils.ConvertArtifact(artifact, req.Format)
+	return build.ConvertArtifact(artifact, req.Format, req.Rdi)
 }
 
 func (rpc *Server) UploadArtifact(ctx context.Context, req *clientpb.Artifact) (*clientpb.Artifact, error) {
@@ -133,7 +116,7 @@ func (rpc *Server) GetArtifact(ctx context.Context, req *clientpb.Artifact) (*cl
 		return nil, err
 	}
 
-	return formatutils.ConvertArtifact(artifact, req.Format)
+	return build.ConvertArtifact(artifact, req.Format, "")
 }
 
 func (rpc *Server) ListArtifact(ctx context.Context, req *clientpb.Empty) (*clientpb.Artifacts, error) {
@@ -150,7 +133,7 @@ func (rpc *Server) FindArtifact(ctx context.Context, req *clientpb.Artifact) (*c
 		return nil, err
 	}
 
-	return formatutils.ConvertArtifact(artifact, req.Format)
+	return build.ConvertArtifact(artifact, req.Format, "")
 }
 
 func (rpc *Server) DeleteArtifact(ctx context.Context, req *clientpb.Artifact) (*clientpb.Empty, error) {

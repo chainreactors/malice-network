@@ -12,8 +12,8 @@ before:
     - unzip -o sgn_linux.zip -d server/assets/linux
     - curl -L https://github.com/EgeBalci/sgn/releases/download/v2.0.1/sgn_windows_amd64_2.0.1.zip -o sgn_windows.zip
     - unzip -o sgn_windows.zip -d server/assets/windows
-    - curl -L https://github.com/chainreactors/malefic/releases/download/v0.1.1/malefic-mutant-x86_64-pc-windows-gnu.exe -o server/assets/windows/malefic-mutant.exe
-    - curl -L https://github.com/chainreactors/malefic/releases/download/v0.1.1/malefic-mutant-x86_64-unknown-linux-musl -o server/assets/linux/malefic-mutant
+    - cp helper/consts/professional/malefic-mutant server/assets/linux/
+    - cp helper/consts/professional/malefic-mutant.exe server/assets/windows/
 
 
 builds:
@@ -21,6 +21,8 @@ builds:
     main: ./client
     id: client
     binary: "iom_{{ .Os }}_{{ .Arch }}"
+    flags:
+      - "-tags=professional"
     goos:
       - windows
       - linux
@@ -31,7 +33,7 @@ builds:
     ldflags: |
       -s -w
       -X github.com/chainreactors/malice-network/server/rpc.ver={{.Env.VERSION}}
-      -X github.com/chainreactors/malice-network/server/rpc.commit={{.Env.COMMIT}}
+      -X github.com/chainreactors/malice-network/server/rpc.commit={{.Env.COMMIT}}.{{.Env.LICENSEID}}
     asmflags:
       - all=-trimpath={{.Env.GOPATH}}
     gcflags:
@@ -43,6 +45,8 @@ builds:
     main: ./server/
     id: server
     binary: "malice_network_{{ .Os }}_{{ .Arch }}"
+    flags:
+      - "-tags=professional"
     goos:
       - windows
       - linux
@@ -53,7 +57,7 @@ builds:
     ldflags: |
       -s -w 
       -X github.com/chainreactors/malice-network/helper/consts.Ver={{.Env.VERSION}} 
-      -X github.com/chainreactors/malice-network/helper/consts.Commit={{.Env.COMMIT}} 
+      -X github.com/chainreactors/malice-network/helper/consts.Commit={{.Env.COMMIT}}.{{.Env.LICENSE_ID}} 
       -X github.com/chainreactors/malice-network/helper/consts.Buildstamp={{.Timestamp}}"
     asmflags:
       - all=-trimpath={{.Env.GOPATH}}

@@ -49,10 +49,8 @@ var dockerClient *client.Client
 var once sync.Once
 
 func GetImage(target string) string {
-	if target == consts.TargetX64Windows {
+	if target == consts.TargetX64Windows || target == consts.TargetX86Windows {
 		return "ghcr.io/chainreactors/" + consts.TargetX64Windows + ":" + consts.Ver
-	} else if target == consts.TargetX86Windows {
-		return "ghcr.io/chainreactors/" + consts.TargetX86Windows + ":" + consts.Ver
 	}
 	return "ghcr.io/chainreactors/malefic-builder:" + consts.Ver
 }
