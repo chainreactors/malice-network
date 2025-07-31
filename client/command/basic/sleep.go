@@ -1,7 +1,6 @@
 package basic
 
 import (
-	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
@@ -28,7 +27,7 @@ func SleepCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	session.Console(task, fmt.Sprintf("change sleep %d %f", interval, jitter))
+	session.Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 

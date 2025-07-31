@@ -31,8 +31,7 @@ func CurlCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-
-	session.Console(task, "curl "+url)
+	session.Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 

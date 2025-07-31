@@ -16,7 +16,7 @@ func RefreshModuleCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	con.GetInteractive().Console(task, "refresh module")
+	con.GetInteractive().Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 

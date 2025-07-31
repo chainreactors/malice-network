@@ -158,6 +158,7 @@ const (
 	CommandSessionGroup     = "group"
 	CommandObverse          = "obverse"
 	CommandHistory          = "history"
+	CommandAudit            = "audit"
 	CommandRemoveSession    = "remove"
 	CommandUse              = "use"
 	CommandBackground       = "background"

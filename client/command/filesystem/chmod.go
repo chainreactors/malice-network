@@ -19,7 +19,7 @@ func ChmodCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	con.GetInteractive().Console(task, "chmod "+path+" "+mode)
+	con.GetInteractive().Console(task, string(*con.App.Shell().Line()))
 	return err
 }
 

@@ -1,7 +1,6 @@
 package tasks
 
 import (
-	"fmt"
 	"strconv"
 
 	"github.com/chainreactors/malice-network/client/core"
@@ -24,7 +23,7 @@ func QueryTaskCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	con.GetInteractive().Console(task, fmt.Sprintf("query task %d", id))
+	con.GetInteractive().Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 

@@ -351,7 +351,7 @@ func runExtensionCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf("Error executing extension: %s\n", err.Error())
 		return
 	}
-	session.Console(task, "execute extension: "+cmd.Name())
+	session.Console(task, string(*con.App.Shell().Line()))
 }
 
 func ExecuteExtension(rpc clientrpc.MaliceRPCClient, sess *core.Session, extName string, args []string) (*clientpb.Task, error) {

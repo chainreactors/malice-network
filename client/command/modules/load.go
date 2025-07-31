@@ -2,7 +2,6 @@ package modules
 
 import (
 	"errors"
-	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/build"
@@ -43,14 +42,14 @@ func LoadModuleCmd(cmd *cobra.Command, con *repl.Console) error {
 		if err != nil {
 			return err
 		}
-		con.GetInteractive().Console(task, fmt.Sprintf("load %s %s", modules, modulePath))
+		con.GetInteractive().Console(task, string(*con.App.Shell().Line()))
 		return nil
 	} else if modules != "" || thirdModules != "" {
 		if modules != "" && thirdModules != "" {
 			return errors.New("--module and --3rd options are mutually exclusive. please specify only one of them")
 		} else {
 			go func() {
-				err := handleModuleBuild(con, strings.Split(modules, ","), strings.Split(thirdModules, ","))
+				err := handleModuleBuild(cmd, con, strings.Split(modules, ","), strings.Split(thirdModules, ","))
 				if err != nil {
 					logs.Log.Errorf("Error loading modules: %s\n", err)
 				}
@@ -67,7 +66,7 @@ func LoadModuleCmd(cmd *cobra.Command, con *repl.Console) error {
 		if err != nil {
 			return err
 		}
-		session.Console(task, fmt.Sprintf("load %s %s", bundle, path))
+		session.Console(task, string(*con.App.Shell().Line()))
 		return nil
 	} else {
 		return errors.New("must specify either --path, --modules or --3rd_modules. One of them is required")
@@ -75,7 +74,7 @@ func LoadModuleCmd(cmd *cobra.Command, con *repl.Console) error {
 }
 
 // handleModuleBuild handles module build based on the builder resource (docker/action)
-func handleModuleBuild(con *repl.Console, modules, thirdModules []string) error {
+func handleModuleBuild(cmd *cobra.Command, con *repl.Console, modules, thirdModules []string) error {
 	source, err := build.CheckResource(con, "", nil)
 	if err != nil {
 		return err
@@ -115,7 +114,7 @@ func handleModuleBuild(con *repl.Console, modules, thirdModules []string) error 
 	if err != nil {
 		return err
 	}
-	sess.Console(task, fmt.Sprintf("load module from artifact %s", artifact.Name))
+	sess.Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 

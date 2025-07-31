@@ -13,6 +13,9 @@ import (
 	"time"
 )
 
+//go:embed audit.html
+var AuditHtml []byte
+
 var (
 	MaliceDirName    = ".config/malice"
 	ConfigDirName    = "configs"

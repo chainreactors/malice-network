@@ -1,6 +1,7 @@
 package command
 
 import (
+	"github.com/chainreactors/malice-network/client/command/audit"
 	"github.com/reeflective/console"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -38,6 +39,7 @@ func BindCommonCommands(bind BindFunc) {
 		config.Commands,
 		context.Commands,
 		cert.Commands,
+		audit.Commands,
 	)
 
 	bind(consts.ListenerGroup,

@@ -48,11 +48,13 @@ func LoadAddonCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf("%s\n", err)
 		return
 	}
+
+	session.Console(task, string(*con.App.Shell().Line()))
+
 	con.AddCallback(task, func(_ *clientpb.TaskContext) {
 		RefreshAddonCommand(session.Addons, con)
 	})
 
-	session.Console(task, fmt.Sprintf("Load addon %s", name))
 }
 
 func LoadAddon(rpc clientrpc.MaliceRPCClient, sess *core.Session, name, path, depend string) (*clientpb.Task, error) {

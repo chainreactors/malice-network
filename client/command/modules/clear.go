@@ -16,7 +16,7 @@ func ClearCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	con.GetInteractive().Console(task, "clear all custom modules and exts")
+	con.GetInteractive().Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 

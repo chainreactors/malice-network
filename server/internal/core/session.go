@@ -46,8 +46,9 @@ func createSessionDirs(sessionID string) (string, error) {
 	keyLoggerDir := filepath.Join(contextDir, consts.KeyLoggerPath)
 	screenShotDir := filepath.Join(contextDir, consts.ScreenShotPath)
 	taskDir := filepath.Join(contextDir, consts.TaskPath)
+	requestDir := filepath.Join(contextDir, consts.RequestPath)
 
-	dirs := []string{cacheDir, downloadDir, keyLoggerDir, screenShotDir, taskDir}
+	dirs := []string{cacheDir, downloadDir, keyLoggerDir, screenShotDir, taskDir, requestDir}
 	for _, dir := range dirs {
 		if err := os.MkdirAll(dir, os.ModePerm); err != nil {
 			logs.Log.Errorf("cannot create directory %s, %s", dir, err.Error())

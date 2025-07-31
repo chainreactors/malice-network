@@ -273,7 +273,7 @@ func runAliasCommand(cmd *cobra.Command, con *repl.Console) {
 			con.Log.Errorf("Execute error: %v\n", err)
 			return
 		}
-		session.Console(task, fmt.Sprintf("%s alias: %s", aliasModule(aliasManifest), cmd.Name()))
+		session.Console(task, string(*con.App.Shell().Line()))
 	}
 
 }
