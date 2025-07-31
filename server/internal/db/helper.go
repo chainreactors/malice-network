@@ -4,20 +4,20 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/chainreactors/malice-network/helper/certs"
-	"github.com/chainreactors/malice-network/helper/codenames"
-	"github.com/chainreactors/malice-network/helper/utils/formatutils"
 	"mime"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/certs"
+	"github.com/chainreactors/malice-network/helper/codenames"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/encoders"
 	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/types"
+	"github.com/chainreactors/malice-network/helper/utils/formatutils"
 	"github.com/chainreactors/malice-network/helper/utils/mtls"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/malice-network/server/internal/configs"
@@ -751,22 +751,11 @@ func RemoveContent(id string) error {
 	return err
 }
 
-// validateProfileName validates the profile name
-func validateProfileName(name string) error {
-	if name == "" {
-		return fmt.Errorf("profile name cannot be empty")
-	}
-	if len(name) > 100 {
-		return fmt.Errorf("profile name too long (max 100 characters)")
-	}
-	return nil
-}
-
 // generator
 func NewProfile(profile *clientpb.Profile) error {
 	// Validate input
-	if err := validateProfileName(profile.Name); err != nil {
-		return err
+	if profile.Name == "" {
+		return fmt.Errorf("profile name cannot be empty")
 	}
 
 	if profile.Content == nil {

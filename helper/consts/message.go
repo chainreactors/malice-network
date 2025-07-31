@@ -36,6 +36,10 @@ const (
 	ModuleQueryTask  = "query_task"
 	ModuleListTask   = "list_task"
 
+	// cryptographic key exchange
+	ModuleKeyExchange     = "key_exchange"
+	ModuleKeyExchangeResp = "key_exchange_response"
+
 	//execute
 	ModuleAliasShell           = "shell"
 	ModuleAliasPowershell      = "powershell"

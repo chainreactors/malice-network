@@ -2,29 +2,65 @@ package listener
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/chainreactors/malice-network/helper/utils"
-	"github.com/chainreactors/malice-network/helper/utils/formatutils"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/metadata"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
+	"github.com/chainreactors/malice-network/helper/utils"
+	"github.com/chainreactors/malice-network/helper/utils/formatutils"
 	"github.com/chainreactors/malice-network/helper/utils/mtls"
 	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 )
 
 var (
 	Listener *listener
+	// ListenerSessions 在 listener 层维护的 Sessions map (rawID -> Session)
+	ListenerSessions = &listenerSessions{
+		sessions: &sync.Map{},
+	}
 )
+
+// listenerSessions 管理 listener 端的 session 信息
+type listenerSessions struct {
+	sessions *sync.Map // map[uint32]*clientpb.Session
+}
+
+// Add 添加或更新 session
+func (ls *listenerSessions) Add(session *clientpb.Session) {
+	if session != nil {
+		ls.sessions.Store(session.RawId, session)
+		logs.Log.Debugf("[listener] added/updated session %d with KeyPair: %v",
+			session.RawId, session.KeyPair != nil)
+	}
+}
+
+// Get 获取 session
+func (ls *listenerSessions) Get(rawID uint32) *clientpb.Session {
+	if val, ok := ls.sessions.Load(rawID); ok {
+		return val.(*clientpb.Session)
+	}
+	return nil
+}
+
+// Remove 移除 session
+func (ls *listenerSessions) Remove(rawID uint32) {
+	ls.sessions.Delete(rawID)
+	logs.Log.Debugf("[listener] removed session %d", rawID)
+}
 
 func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig, serverEnable bool) error {
 	options, err := mtls.GetGrpcOptions([]byte(clientConf.CACertificate), []byte(clientConf.Certificate), []byte(clientConf.PrivateKey), clientConf.Type)
@@ -194,7 +230,16 @@ func (lns *listener) RegisterAndStart(pipeline *clientpb.Pipeline) error {
 		return nil
 	}
 
-	_, err := lns.Rpc.RegisterPipeline(lns.Context(), pipeline)
+	var err error
+	// 如果启用了安全模式，生成密钥对
+	if pipeline.Secure != nil && pipeline.Secure.Enable {
+		err = lns.generateSecureKeyPair(pipeline)
+		if err != nil {
+			return err
+		}
+	}
+
+	_, err = lns.Rpc.RegisterPipeline(lns.Context(), pipeline)
 	if err != nil {
 		return err
 	}
@@ -250,6 +295,11 @@ func (lns *listener) Handler() {
 		if err != nil {
 			logs.Log.Errorf(err.Error())
 			continue
+		}
+
+		// 维护 listener 端的 Sessions map
+		if msg.Session != nil {
+			ListenerSessions.Add(msg.Session)
 		}
 
 		var handlerErr error
@@ -624,6 +674,70 @@ func (lns *listener) handlerAcme(job *clientpb.Job) error {
 			return
 		}
 	}()
+
+	return nil
+}
+
+// generateSecureKeyPair 为pipeline生成安全密钥对
+// 生成两对密钥：server密钥对和implant密钥对，然后进行交换分发
+func (lns *listener) generateSecureKeyPair(pipeline *clientpb.Pipeline) error {
+	// 检查是否已经有密钥对
+	if pipeline.Secure != nil &&
+		pipeline.Secure.ServerKeypair != nil &&
+		pipeline.Secure.ImplantKeypair != nil &&
+		pipeline.Secure.ServerKeypair.PrivateKey != "" &&
+		pipeline.Secure.ImplantKeypair.PublicKey != "" {
+		logs.Log.Infof("[secure] pipeline %s already has keypair, skipping generation", pipeline.Name)
+		return nil
+	}
+
+	logs.Log.Infof("[secure] generating two keypairs for pipeline %s", pipeline.Name)
+
+	// 生成Server密钥对
+	serverKeyPair, err := cryptography.RandomAgeKeyPair()
+	if err != nil {
+		return fmt.Errorf("failed to generate server keypair: %v", err)
+	}
+
+	// 生成Implant密钥对
+	implantKeyPair, err := cryptography.RandomAgeKeyPair()
+	if err != nil {
+		return fmt.Errorf("failed to generate implant keypair: %v", err)
+	}
+
+	// 生成密钥ID（使用server公钥的SHA256前8字节）
+	hash := sha256.Sum256([]byte(serverKeyPair.Public))
+	keyID := hex.EncodeToString(hash[:8])
+
+	now := time.Now().Unix()
+
+	// 确保SecureConfig存在
+	if pipeline.Secure == nil {
+		pipeline.Secure = &clientpb.SecureConfig{
+			Enable: true,
+		}
+	}
+
+	// 创建Server密钥对
+	pipeline.Secure.ServerKeypair = &clientpb.KeyPair{
+		PublicKey:  serverKeyPair.Public,
+		PrivateKey: serverKeyPair.Private, // Pipeline保存server私钥，用于解密implant发来的数据
+		KeyId:      keyID,
+		CreatedAt:  now,
+		ExpiresAt:  0, // 永不过期
+	}
+
+	// 创建Implant密钥对
+	pipeline.Secure.ImplantKeypair = &clientpb.KeyPair{
+		PublicKey:  implantKeyPair.Public, // Pipeline保存implant公钥，用于加密发给implant的数据
+		PrivateKey: implantKeyPair.Private,
+		KeyId:      keyID,
+		CreatedAt:  now,
+		ExpiresAt:  0, // 永不过期
+	}
+
+	logs.Log.Infof("[secure] generated keypairs for pipeline %s with ID: %s", pipeline.Name, keyID)
+	logs.Log.Infof("[secure] pipeline stores: server_private_key + implant_public_key")
 
 	return nil
 }

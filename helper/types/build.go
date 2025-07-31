@@ -2,6 +2,7 @@ package types
 
 import (
 	"errors"
+
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"google.golang.org/protobuf/proto"
@@ -104,6 +105,12 @@ func BuildSpite(spite *implantpb.Spite, msg proto.Message) (*implantpb.Spite, er
 	case *implantpb.Switch:
 		spite.Name = MsgSwitch.String()
 		spite.Body = &implantpb.Spite_Switch{Switch: msg}
+	case *implantpb.KeyExchangeRequest:
+		spite.Name = consts.ModuleKeyExchange
+		spite.Body = &implantpb.Spite_KeyExchangeRequest{KeyExchangeRequest: msg}
+	case *implantpb.KeyExchangeResponse:
+		spite.Name = consts.ModuleKeyExchangeResp
+		spite.Body = &implantpb.Spite_KeyExchangeResponse{KeyExchangeResponse: msg}
 	default:
 		return spite, ErrUnknownSpite
 	}

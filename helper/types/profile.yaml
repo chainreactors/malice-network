@@ -18,6 +18,10 @@ basic:
   jitter: 0.2
   encryption: aes
   key: maliceofinternal
+  secure:
+    enabled: true
+    private_key: ""  # implant private key
+    public_key: ""  # server public key
   rem:
     link:
   http:

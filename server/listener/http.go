@@ -21,7 +21,7 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/parser/pulse"
-	"github.com/chainreactors/malice-network/server/internal/stream"
+	cryptostream "github.com/chainreactors/malice-network/server/internal/stream"
 )
 
 func NewHttpPipeline(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeline) (*HTTPPipeline, error) {
@@ -266,7 +266,13 @@ func (pipeline *HTTPPipeline) getConnection(conn *cryptostream.Conn) (*core.Conn
 	if newC := core.Connections.Get(hash.Md5Hash(encoders.Uint32ToBytes(sid))); newC != nil {
 		return newC, nil
 	} else {
-		newC := core.NewConnection(p, sid, pipeline.ID())
+		// 获取 KeyPair（可能为 nil）
+		var keyPair *clientpb.KeyPair
+		if session := ListenerSessions.Get(sid); session != nil {
+			keyPair = session.KeyPair
+		}
+
+		newC := core.NewConnection(p, sid, pipeline.ID(), keyPair)
 		core.Connections.Add(newC)
 		return newC, nil
 	}

@@ -4,9 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/gookit/config/v2"
-	"google.golang.org/grpc"
-	"google.golang.org/protobuf/proto"
 	"os"
 	"path"
 	"path/filepath"
@@ -14,6 +11,10 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/gookit/config/v2"
+	"google.golang.org/grpc"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -95,6 +96,7 @@ func RegisterSession(req *clientpb.RegisterSession) (*Session, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	sess := &Session{
 		Type:           req.Type,
 		Name:           req.RegisterData.Name,
@@ -112,6 +114,16 @@ func RegisterSession(req *clientpb.RegisterSession) (*Session, error) {
 		Cache:          cache,
 		responses:      &sync.Map{},
 	}
+
+	// 处理implant传递的公钥并初始化密钥对
+	err = sess.initializeKeyPair(req)
+	if err != nil {
+		logs.Log.Errorf("[secure] failed to initialize keypair: %v", err)
+		// 即使密钥初始化失败，session仍然可以继续工作（非安全模式）
+	}
+
+	// 初始化 SecureManager（用于密钥管理业务逻辑）
+	sess.SyncSecureManager()
 	sess.Ctx, sess.Cancel = context.WithCancel(context.Background())
 	if req.RegisterData.Sysinfo != nil {
 		sess.UpdateSysInfo(req.RegisterData.Sysinfo)
@@ -128,6 +140,16 @@ func RecoverSession(sess *models.Session) (*Session, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// 安全地处理SessionContext
+	var sessionContext *types.SessionContext
+	if sess.DataString != "" {
+		sessionContext, _ = types.RecoverSessionContext(sess.DataString)
+	}
+	if sessionContext == nil {
+		sessionContext = &types.SessionContext{}
+	}
+
 	s := &Session{
 		Type:           sess.Type,
 		Name:           sess.ProfileName,
@@ -142,10 +164,24 @@ func RecoverSession(sess *models.Session) (*Session, error) {
 		LastCheckin:    sess.LastCheckin,
 		CreatedAt:      sess.CreatedAt,
 		Tasks:          NewTasks(),
-		SessionContext: sess.Data,
+		SessionContext: sessionContext,
 		Taskseq:        1,
 		Cache:          cache,
 		responses:      &sync.Map{},
+	}
+
+	// 从数据库恢复密钥对信息
+	if sess.PublicKey != "" && sess.PrivateKey != "" {
+		s.SessionContext.KeyPair = &clientpb.KeyPair{
+			PublicKey:  sess.PublicKey,
+			PrivateKey: sess.PrivateKey,
+			KeyId:      sess.KeyID,
+			CreatedAt:  sess.KeyCreatedAt,
+			ExpiresAt:  sess.KeyExpiresAt,
+		}
+
+		// 初始化 SecureManager（用于密钥管理业务逻辑）
+		s.SyncSecureManager()
 	}
 	s.Ctx, s.Cancel = context.WithCancel(context.Background())
 	tasks, tid, err := db.FindTaskAndMaxTasksID(s.ID)
@@ -194,6 +230,9 @@ type Session struct {
 	CreatedAt   time.Time
 	Tasks       *Tasks // task manager
 	*types.SessionContext
+
+	// Age 密码学安全管理器（运行时，负责密钥交换和轮换）
+	SecureManager *SecureSpiteManager
 
 	*Cache
 	Taskseq   uint32
@@ -301,6 +340,12 @@ func (s *Session) isAlived() bool {
 }
 
 func (s *Session) ToProtobuf() *clientpb.Session {
+	// 获取密钥对信息
+	var keyPair *clientpb.KeyPair
+	if s.SessionContext != nil {
+		keyPair = s.SessionContext.GetKeyPair()
+	}
+
 	return &clientpb.Session{
 		Type:        s.Type,
 		SessionId:   s.ID,
@@ -325,6 +370,7 @@ func (s *Session) ToProtobuf() *clientpb.Session {
 		Tasks:       s.Tasks.ToProtobuf(),
 		Modules:     s.Modules,
 		Addons:      s.Addons,
+		KeyPair:     keyPair, // 添加密钥对
 		Data:        s.Marshal(),
 	}
 }
@@ -539,6 +585,24 @@ func (s *Session) DeleteResp(taskId uint32) {
 	s.responses.Delete(taskId)
 }
 
+// SyncSecureManager 同步SecureManager和KeyPair之间的密钥信息
+func (s *Session) SyncSecureManager() {
+	if s.SessionContext.KeyPair != nil {
+		if s.SecureManager == nil {
+			s.SecureManager = NewSecureSpiteManager(s.SessionContext.KeyPair)
+		} else {
+			// 如果SecureManager已存在，更新其KeyPair引用
+			s.SecureManager.UpdateKeyPair(s.SessionContext.KeyPair)
+		}
+	}
+}
+
+// UpdateKeyPair 更新KeyPair并同步到SecureManager
+func (s *Session) UpdateKeyPair(keyPair *clientpb.KeyPair) {
+	s.SessionContext.KeyPair = keyPair
+	s.SyncSecureManager()
+}
+
 type sessions struct {
 	active *sync.Map // map[uint32]*Session
 }
@@ -599,4 +663,60 @@ func (s *sessions) Remove(sessionID string) {
 	//	EventType: consts.SessionClosedEvent,
 	//	Session:   parentSession,
 	//})
+}
+
+// initializeKeyPair 处理implant传递的公钥并初始化密钥对
+func (s *Session) initializeKeyPair(req *clientpb.RegisterSession) error {
+	// 检查implant是否传递了secure信息和公钥
+	if req.RegisterData.Secure == nil || req.RegisterData.Secure.PublicKey == "" {
+		logs.Log.Debugf("[secure] implant %s did not provide secure info or public key, secure mode disabled", s.ID)
+		return nil
+	}
+
+	logs.Log.Infof("[secure] processing implant secure info for session %s", s.ID)
+
+	// 从pipeline获取keypair信息
+	pipeline, err := s.getPipelineConfig(req.PipelineId, req.ListenerId)
+	if err != nil {
+		return fmt.Errorf("failed to get pipeline config: %v", err)
+	}
+
+	if pipeline == nil || pipeline.Secure == nil || !pipeline.Secure.Enable {
+		logs.Log.Warnf("[secure] pipeline secure mode not enabled for session %s", s.ID)
+		return nil
+	}
+
+	// 创建KeyPair对象
+	keyPair := &clientpb.KeyPair{
+		PublicKey:  pipeline.Secure.ImplantKeypair.PublicKey,
+		PrivateKey: pipeline.Secure.ServerKeypair.PrivateKey,
+	}
+
+	s.SessionContext.KeyPair = keyPair
+	logs.Log.Infof("[secure] initialized session %s with pipeline keypair %s and implant public key", s.ID, keyPair.KeyId)
+
+	// 初始化SecureManager
+	s.SyncSecureManager()
+
+	return nil
+}
+
+// getPipelineConfig 从数据库获取pipeline配置
+func (s *Session) getPipelineConfig(pipelineId, listenerId string) (*clientpb.Pipeline, error) {
+	// 从数据库查找pipeline (pipelineId就是pipeline的name)
+	pipelineModel, err := db.FindPipeline(pipelineId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find pipeline: %v", err)
+	}
+	if pipelineModel == nil {
+		return nil, fmt.Errorf("pipeline not found")
+	}
+
+	// 验证pipeline是否属于指定的listener
+	if pipelineModel.ListenerId != listenerId {
+		return nil, fmt.Errorf("pipeline does not belong to listener %s", listenerId)
+	}
+
+	// 转换为protobuf格式
+	return pipelineModel.ToProtobuf(), nil
 }

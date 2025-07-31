@@ -1,11 +1,12 @@
 package core
 
 import (
+	"io"
+
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/server/internal/configs"
-	"github.com/chainreactors/malice-network/server/internal/stream"
-	"io"
+	cryptostream "github.com/chainreactors/malice-network/server/internal/stream"
 )
 
 type Pipeline interface {
@@ -37,18 +38,20 @@ func (ps Pipelines) ToProtobuf() *clientpb.Pipelines {
 
 func FromPipeline(pipeline *clientpb.Pipeline) *PipelineConfig {
 	return &PipelineConfig{
-		ListenerID: pipeline.ListenerId,
-		Parser:     pipeline.Parser,
-		TLSConfig:  types.FromTls(pipeline.Tls),
-		Encryption: types.FromEncryptions(pipeline.GetEncryption()),
+		ListenerID:   pipeline.ListenerId,
+		Parser:       pipeline.Parser,
+		TLSConfig:    types.FromTls(pipeline.Tls),
+		Encryption:   types.FromEncryptions(pipeline.GetEncryption()),
+		SecureConfig: configs.FromSecureConfig(pipeline.Secure),
 	}
 }
 
 type PipelineConfig struct {
-	ListenerID string
-	Parser     string
-	TLSConfig  *types.TlsConfig
-	Encryption types.EncryptionsConfig
+	ListenerID   string
+	Parser       string
+	TLSConfig    *types.TlsConfig
+	Encryption   types.EncryptionsConfig
+	SecureConfig *configs.SecureConfig
 }
 
 func (p *PipelineConfig) WrapConn(conn io.ReadWriteCloser) (*cryptostream.Conn, error) {

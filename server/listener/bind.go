@@ -2,6 +2,8 @@ package listener
 
 import (
 	"context"
+	"net"
+
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/encoders"
@@ -12,8 +14,7 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/parser"
 	"github.com/chainreactors/malice-network/server/internal/parser/malefic"
-	"github.com/chainreactors/malice-network/server/internal/stream"
-	"net"
+	cryptostream "github.com/chainreactors/malice-network/server/internal/stream"
 )
 
 func NewBindPipeline(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeline) (*BindPipeline, error) {
@@ -54,6 +55,7 @@ func (pipeline *BindPipeline) ToProtobuf() *clientpb.Pipeline {
 		},
 		Tls:        pipeline.TLSConfig.ToProtobuf(),
 		Encryption: pipeline.Encryption.ToProtobuf(),
+		Secure:     pipeline.SecureConfig.ToProtobuf(),
 	}
 }
 
@@ -130,7 +132,14 @@ func (pipeline *BindPipeline) initConnection(conn *cryptostream.Conn, req *clien
 		PacketParser: &malefic.MaleficParser{},
 	}
 	go p.WritePacket(conn, types.BuildOneSpites(req.Spite), req.Session.RawId)
-	connect := core.NewConnection(p, req.Session.RawId, pipeline.ID())
+
+	// 获取 KeyPair（可能为 nil）
+	var keyPair *clientpb.KeyPair
+	if session := ListenerSessions.Get(req.Session.RawId); session != nil {
+		keyPair = session.KeyPair
+	}
+
+	connect := core.NewConnection(p, req.Session.RawId, pipeline.ID(), keyPair)
 	core.Connections.Add(connect)
 	return connect, nil
 }
@@ -143,7 +152,13 @@ func (pipeline *BindPipeline) getConnection(conn *cryptostream.Conn, sid uint32)
 	if newC := core.Connections.Get(hash.Md5Hash(encoders.Uint32ToBytes(sid))); newC != nil {
 		return newC, nil
 	} else {
-		newC := core.NewConnection(p, sid, pipeline.ID())
+		// 获取 KeyPair（可能为 nil）
+		var keyPair *clientpb.KeyPair
+		if session := ListenerSessions.Get(sid); session != nil {
+			keyPair = session.KeyPair
+		}
+
+		newC := core.NewConnection(p, sid, pipeline.ID(), keyPair)
 		core.Connections.Add(newC)
 		return newC, nil
 	}

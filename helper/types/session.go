@@ -17,6 +17,7 @@ func NewSessionContext(req *clientpb.RegisterSession) *SessionContext {
 			Interval: req.RegisterData.Timer.Interval,
 			Jitter:   req.RegisterData.Timer.Jitter,
 		},
+		KeyPair: nil, // 密钥对在后续初始化时设置
 		Modules: req.RegisterData.Module,
 		Addons:  req.RegisterData.Addons,
 		Argue:   map[string]string{},
@@ -35,6 +36,7 @@ func RecoverSessionContext(content string) (*SessionContext, error) {
 
 type SessionContext struct {
 	*SessionInfo `json:",inline"`
+	KeyPair      *clientpb.KeyPair      `json:"key_pair,omitempty"` // Age 密钥对
 	Modules      []string               `json:"modules"`
 	Addons       []*implantpb.Addon     `json:"addons"`
 	Argue        map[string]string      `json:"argue"` // 参数欺骗
@@ -75,4 +77,19 @@ type SessionInfo struct {
 	WorkDir     string             `json:"workdir"`
 	ProxyURL    string             `json:"proxy"`
 	Locale      string             `json:"locale"`
+}
+
+// IsSecureEnabled 检查是否启用了安全模式
+func (ctx *SessionContext) IsSecureEnabled() bool {
+	return ctx.KeyPair != nil && ctx.KeyPair.PublicKey != "" && ctx.KeyPair.PrivateKey != ""
+}
+
+// GetKeyPair 返回当前的密钥对信息（用于传输到 listener）
+func (ctx *SessionContext) GetKeyPair() *clientpb.KeyPair {
+	return ctx.KeyPair
+}
+
+// SetKeyPair 设置密钥对信息（从数据库恢复或新生成时）
+func (ctx *SessionContext) SetKeyPair(keyPair *clientpb.KeyPair) {
+	ctx.KeyPair = keyPair
 }

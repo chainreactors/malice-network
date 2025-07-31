@@ -204,3 +204,61 @@ func (rpc *Server) Polling(ctx context.Context, req *clientpb.Polling) (*clientp
 	}()
 	return &clientpb.Empty{}, err
 }
+
+// KeyExchange - Handle cryptographic key exchange
+func (rpc *Server) KeyExchange(ctx context.Context, req *implantpb.KeyExchangeRequest) (*clientpb.Task, error) {
+	session, err := getSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// 处理密钥交换请求
+	if session.SecureManager != nil && session.SecureManager.IsEnabled() {
+		// 构建密钥交换响应
+		resp, err := session.SecureManager.BuildKeyExchangeResponse(req)
+		if err != nil {
+			logs.Log.Errorf("failed to build key exchange response: %v", err)
+			return nil, err
+		}
+
+		// 发送密钥交换响应
+		greq, err := newGenericRequest(ctx, resp)
+		if err != nil {
+			return nil, err
+		}
+
+		ch, err := rpc.GenericHandler(ctx, greq)
+		if err != nil {
+			return nil, err
+		}
+
+		go greq.HandlerResponse(ch, types.MsgKeyExchangeResp)
+
+		logs.Log.Infof("key exchange initiated for session %s", session.ID)
+		return greq.Task.ToProtobuf(), nil
+	}
+
+	logs.Log.Warnf("key exchange requested but secure mode not enabled for session %s", session.ID)
+	return nil, fmt.Errorf("secure mode not enabled")
+}
+
+// KeyExchangeResponse - Handle key exchange response (for key rotation)
+func (rpc *Server) KeyExchangeResponse(ctx context.Context, resp *implantpb.KeyExchangeResponse) (*clientpb.Task, error) {
+	session, err := getSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// 处理密钥轮换响应
+	if session.SecureManager != nil && session.SecureManager.IsEnabled() {
+		err := session.SecureManager.ProcessKeyRotationResponse(resp)
+		if err != nil {
+			logs.Log.Errorf("failed to process key rotation response: %v", err)
+			return nil, err
+		}
+
+		logs.Log.Infof("Key rotation response processed for session %s", session.ID)
+	}
+
+	return &clientpb.Task{}, nil
+}

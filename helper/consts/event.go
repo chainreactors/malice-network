@@ -100,4 +100,5 @@ const (
 	EventPivot     = "pivot"
 	EventContext   = "context"
 	EventCert      = "cert"
+	EventSecure    = "secure"
 )

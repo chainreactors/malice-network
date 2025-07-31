@@ -3,6 +3,9 @@ package core
 import (
 	"context"
 	"fmt"
+	"sync"
+	"time"
+
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/encoders"
 	"github.com/chainreactors/malice-network/helper/encoders/hash"
@@ -10,9 +13,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/server/internal/parser"
-	"github.com/chainreactors/malice-network/server/internal/stream"
-	"sync"
-	"time"
+	cryptostream "github.com/chainreactors/malice-network/server/internal/stream"
 )
 
 var (
@@ -21,7 +22,9 @@ var (
 	}
 )
 
-func NewConnection(p *parser.MessageParser, sid uint32, pipelineID string) *Connection {
+func NewConnection(p *parser.MessageParser, sid uint32, pipelineID string, keyPair *clientpb.KeyPair) *Connection {
+	logs.Log.Debugf("[connection] creating connection %d with KeyPair: %v", sid, keyPair != nil)
+
 	conn := &Connection{
 		PipelineID:  pipelineID,
 		RawID:       sid,
@@ -32,6 +35,7 @@ func NewConnection(p *parser.MessageParser, sid uint32, pipelineID string) *Conn
 		Alive:       true,
 		cache:       parser.NewSpitesBuf(),
 		Parser:      p,
+		keyPair:     keyPair,
 	}
 
 	go func() {
@@ -68,6 +72,9 @@ type Connection struct {
 	Alive       bool
 	Parser      *parser.MessageParser
 	cache       *parser.SpitesCache
+
+	// Age 密钥对（来自 ListenerSessions）
+	keyPair *clientpb.KeyPair
 }
 
 func (c *Connection) Send(ctx context.Context, conn *cryptostream.Conn) {
@@ -77,7 +84,17 @@ func (c *Connection) Send(ctx context.Context, conn *cryptostream.Conn) {
 	case <-ctx.Done():
 		return
 	case msg := <-c.Sender:
-		err := c.Parser.WritePacket(conn, msg, c.RawID)
+		var err error
+
+		// 检查是否启用安全模式（有密钥对）
+		if c.keyPair != nil {
+			// 使用安全写入（基于 Age 密钥对）
+			err = c.Parser.SecureWritePacket(conn, msg, c.RawID, c.keyPair)
+		} else {
+			// 使用普通写入
+			err = c.Parser.WritePacket(conn, msg, c.RawID)
+		}
+
 		if err != nil {
 			// retry
 			logs.Log.Debugf("Error write packet, %s", err.Error())
@@ -91,7 +108,16 @@ func (c *Connection) buildResponse(conn *cryptostream.Conn, length uint32) error
 	var msg *implantpb.Spites
 	if length >= 2 {
 		var err error
-		msg, err = c.Parser.ReadMessage(conn, length)
+
+		// 检查是否启用安全模式（有密钥对）
+		if c.keyPair != nil {
+			// 使用安全读取（基于 Age 密钥对）
+			_, msg, err = c.Parser.SecureReadPacket(conn, c.keyPair)
+		} else {
+			// 使用普通读取
+			msg, err = c.Parser.ReadMessage(conn, length)
+		}
+
 		if err != nil {
 			return fmt.Errorf("error reading message:%s %w", conn.RemoteAddr(), err)
 		}

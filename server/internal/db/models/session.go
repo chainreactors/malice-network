@@ -27,8 +27,16 @@ type Session struct {
 	IsRemoved   bool                  `gorm:"default:false"`
 	Data        *types.SessionContext `gorm:"-"`
 	DataString  string                `gorm:"column:data"`
-	ProfileName string                `gorm:"index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:ProfileName;references:Name"`
-	Profile     Profile               `gorm:"foreignKey:ProfileName;references:Name;"`
+
+	// Age 密钥对字段
+	PublicKey    string `gorm:"type:text"`             // Age 公钥
+	PrivateKey   string `gorm:"type:text"`             // Age 私钥
+	KeyID        string `gorm:"type:varchar(64)"`      // 密钥标识符
+	KeyCreatedAt int64  `gorm:"column:key_created_at"` // 密钥创建时间戳
+	KeyExpiresAt int64  `gorm:"column:key_expires_at"` // 密钥过期时间戳
+
+	ProfileName string  `gorm:"index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:ProfileName;references:Name"`
+	Profile     Profile `gorm:"foreignKey:ProfileName;references:Name;"`
 }
 
 func (s *Session) BeforeCreate(tx *gorm.DB) (err error) {
@@ -76,6 +84,18 @@ func (s *Session) ToProtobuf() *clientpb.Session {
 		}
 	}
 
+	// 构建密钥对
+	var keyPair *clientpb.KeyPair
+	if s.PublicKey != "" && s.PrivateKey != "" {
+		keyPair = &clientpb.KeyPair{
+			PublicKey:  s.PublicKey,
+			PrivateKey: s.PrivateKey,
+			KeyId:      s.KeyID,
+			CreatedAt:  s.KeyCreatedAt,
+			ExpiresAt:  s.KeyExpiresAt,
+		}
+	}
+
 	return &clientpb.Session{
 		Type:          s.Type,
 		SessionId:     s.SessionID,
@@ -100,6 +120,7 @@ func (s *Session) ToProtobuf() *clientpb.Session {
 		CreatedAt:     s.CreatedAt.Unix(),
 		Addons:        s.Data.Addons,
 		Name:          s.ProfileName,
+		KeyPair:       keyPair, // 添加密钥对
 		Data:          dataString,
 	}
 }

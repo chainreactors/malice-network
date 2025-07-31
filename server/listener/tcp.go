@@ -19,7 +19,7 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/parser"
-	"github.com/chainreactors/malice-network/server/internal/stream"
+	cryptostream "github.com/chainreactors/malice-network/server/internal/stream"
 )
 
 func NewTcpPipeline(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeline) (*TCPPipeline, error) {
@@ -68,6 +68,7 @@ func (pipeline *TCPPipeline) ToProtobuf() *clientpb.Pipeline {
 		},
 		Tls:        pipeline.TLSConfig.ToProtobuf(),
 		Encryption: pipeline.Encryption.ToProtobuf(),
+		Secure:     pipeline.SecureConfig.ToProtobuf(),
 	}
 	return p
 }
@@ -246,7 +247,13 @@ func (pipeline *TCPPipeline) getConnection(conn *cryptostream.Conn) (*core.Conne
 	if newC := core.Connections.Get(hash.Md5Hash(encoders.Uint32ToBytes(sid))); newC != nil {
 		return newC, nil
 	} else {
-		newC := core.NewConnection(conn.Parser, sid, pipeline.ID())
+		// 获取 KeyPair（可能为 nil）
+		var keyPair *clientpb.KeyPair
+		if session := ListenerSessions.Get(sid); session != nil {
+			keyPair = session.KeyPair
+		}
+
+		newC := core.NewConnection(conn.Parser, sid, pipeline.ID(), keyPair)
 		core.Connections.Add(newC)
 		return newC, nil
 	}

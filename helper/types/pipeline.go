@@ -145,6 +145,70 @@ func (encryption *EncryptionConfig) ToProtobuf() *clientpb.Encryption {
 	}
 }
 
+type KeyPair struct {
+	PublicKey  string `json:"public_key,omitempty"`
+	PrivateKey string `json:"private_key,omitempty"`
+	KeyID      string `json:"key_id,omitempty"`
+	CreatedAt  int64  `json:"created_at,omitempty"`
+	ExpiresAt  int64  `json:"expires_at,omitempty"`
+}
+
+type SecureConfig struct {
+	Enable         bool     `json:"enable" config:"enable"`
+	ServerKeyPair  *KeyPair `json:"server_keypair,omitempty"`  // server密钥对
+	ImplantKeyPair *KeyPair `json:"implant_keypair,omitempty"` // implant密钥对
+}
+
+func (kp *KeyPair) ToProtobuf() *clientpb.KeyPair {
+	if kp == nil {
+		return &clientpb.KeyPair{}
+	}
+	return &clientpb.KeyPair{
+		PublicKey:  kp.PublicKey,
+		PrivateKey: kp.PrivateKey,
+		KeyId:      kp.KeyID,
+		CreatedAt:  kp.CreatedAt,
+		ExpiresAt:  kp.ExpiresAt,
+	}
+}
+
+func KeyPairFromProtobuf(pb *clientpb.KeyPair) *KeyPair {
+	if pb == nil {
+		return &KeyPair{}
+	}
+	return &KeyPair{
+		PublicKey:  pb.PublicKey,
+		PrivateKey: pb.PrivateKey,
+		KeyID:      pb.KeyId,
+		CreatedAt:  pb.CreatedAt,
+		ExpiresAt:  pb.ExpiresAt,
+	}
+}
+
+func (secure *SecureConfig) ToProtobuf() *clientpb.SecureConfig {
+	if secure == nil {
+		return &clientpb.SecureConfig{}
+	}
+	return &clientpb.SecureConfig{
+		Enable:         secure.Enable,
+		ServerKeypair:  secure.ServerKeyPair.ToProtobuf(),
+		ImplantKeypair: secure.ImplantKeyPair.ToProtobuf(),
+	}
+}
+
+func FromSecure(secure *clientpb.SecureConfig) *SecureConfig {
+	if secure == nil {
+		return &SecureConfig{
+			Enable: false,
+		}
+	}
+	return &SecureConfig{
+		Enable:         secure.Enable,
+		ServerKeyPair:  KeyPairFromProtobuf(secure.ServerKeypair),
+		ImplantKeyPair: KeyPairFromProtobuf(secure.ImplantKeypair),
+	}
+}
+
 type PipelineParams struct {
 	Parser     string                        `json:"parser,omitempty"`
 	WebPath    string                        `json:"path,omitempty"`
@@ -154,6 +218,7 @@ type PipelineParams struct {
 	Agents     map[string]*clientpb.REMAgent `json:"agents,omitempty"`
 	Encryption EncryptionsConfig             `json:"encryption,omitempty"`
 	Tls        *TlsConfig                    `json:"tls,omitempty"`
+	Secure     *SecureConfig                 `json:"secure,omitempty"`
 	// HTTP pipeline specific params
 	Headers    map[string][]string `json:"headers,omitempty"`
 	ErrorPage  string              `json:"error_page,omitempty" gorm:"-"`
