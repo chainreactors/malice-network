@@ -186,17 +186,10 @@ func (rpc *Server) StartWebsite(ctx context.Context, req *clientpb.CtrlPipeline)
 		return &clientpb.Empty{}, nil
 	}
 	for _, artifact := range artifacts {
-		en := formatutils.Encode(artifact.Name)
-		content := &clientpb.WebContent{
-			WebsiteId: webpb.Name,
-			Path:      en,
-			Type:      consts.ArtifactWebcontent,
-		}
-		_, err := db.AddContent(content)
+		content, err := db.AddAmountWebContent(artifact.Name, webpb.Name)
 		if err != nil {
 			return nil, err
 		}
-		content.Path = artifact.Name
 		listener.PushCtrl(&clientpb.JobCtrl{
 			Ctrl: consts.CtrlWebContentAddArtifact,
 			Job: &clientpb.Job{

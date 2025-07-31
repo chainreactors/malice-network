@@ -8,7 +8,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/types"
-	"github.com/chainreactors/malice-network/helper/utils/formatutils"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 )
@@ -115,17 +114,10 @@ func AmountArtifact(artifactName string) error {
 		return true
 	})
 	for _, pipe := range result {
-		en := formatutils.Encode(artifactName)
-		content := &clientpb.WebContent{
-			WebsiteId: pipe.Name,
-			Path:      en,
-			Type:      consts.ArtifactWebcontent,
-		}
-		_, err := db.AddContent(content)
+		content, err := db.AddAmountWebContent(artifactName, pipe.Name)
 		if err != nil {
 			return err
 		}
-		content.Path = artifactName
 		lns, _ := core.Listeners.Get(pipe.ListenerId)
 		lns.PushCtrl(&clientpb.JobCtrl{
 			Ctrl: consts.CtrlWebContentAddArtifact,

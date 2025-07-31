@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/chainreactors/malice-network/helper/certs"
 	"github.com/chainreactors/malice-network/helper/codenames"
+	"github.com/chainreactors/malice-network/helper/utils/formatutils"
 	"mime"
 	"os"
 	"path/filepath"
@@ -727,6 +728,20 @@ func AddContent(content *clientpb.WebContent) (*models.WebsiteContent, error) {
 
 	content.Id = webModel.ID.String()
 	return webModel, nil
+}
+
+func AddAmountWebContent(artifactName, pipelineName string) (*clientpb.WebContent, error) {
+	content := &clientpb.WebContent{
+		WebsiteId: pipelineName,
+		Path:      formatutils.Encode(artifactName),
+		Type:      consts.ArtifactWebcontent,
+	}
+	_, err := AddContent(content)
+	if err != nil {
+		return nil, err
+	}
+	content.Path = artifactName
+	return content, nil
 }
 
 // RemoveContent - Remove content by ID
