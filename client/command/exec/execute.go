@@ -69,15 +69,18 @@ func ShellCmd(cmd *cobra.Command, con *repl.Console) error {
 
 func Shell(rpc clientrpc.MaliceRPCClient, sess *core.Session, cmd string, output bool) (*clientpb.Task, error) {
 	var binpath string
+	var args []string
 	if sess.Os.Name == "windows" {
 		binpath = `C:\Windows\System32\cmd.exe`
+		args = []string{"/c", cmd}
 	} else {
 		binpath = "/bin/sh"
+		args = []string{"-c", cmd}
 	}
 
 	task, err := rpc.Execute(sess.Context(), &implantpb.ExecRequest{
 		Path:     binpath,
-		Args:     []string{"-c", cmd},
+		Args:     args,
 		Output:   output,
 		Realtime: true,
 	})

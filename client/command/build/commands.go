@@ -547,7 +547,7 @@ func Register(con *repl.Console) {
 
 	con.RegisterServerFunc("self_stager",
 		func(con *repl.Console, sess *core.Session) (string, error) {
-			artifact, err := SearchArtifact(con, sess.PipelineId, "pulse", "shellcode", sess.Os.Name, sess.Os.Arch)
+			artifact, err := SearchArtifact(con, sess.PipelineId, "pulse", "raw", sess.Os.Name, sess.Os.Arch)
 			if err != nil {
 				return "", err
 			}

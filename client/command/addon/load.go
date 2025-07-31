@@ -50,9 +50,11 @@ func LoadAddonCmd(cmd *cobra.Command, con *repl.Console) {
 	}
 
 	session.Console(task, string(*con.App.Shell().Line()))
+
 	con.AddCallback(task, func(_ *clientpb.TaskContext) {
 		RefreshAddonCommand(session.Addons, con)
 	})
+
 }
 
 func LoadAddon(rpc clientrpc.MaliceRPCClient, sess *core.Session, name, path, depend string) (*clientpb.Task, error) {
@@ -99,7 +101,6 @@ func RefreshAddonCommand(addons []*implantpb.Addon, con *repl.Console) error {
 			implantCmd.RemoveCommand(c)
 		}
 	}
-
 	for _, addon := range addons {
 		loaded, err := RegisterAddonCmd(addon, con)
 		if err != nil {

@@ -167,7 +167,7 @@ func (g *GithubConfig) ToProtobuf() *clientpb.GithubWorkflowConfig {
 }
 
 type SaasConfig struct {
-	Enable bool   `config:"enable" default:"true"`
+	Enable bool   `config:"enable"`
 	Url    string `config:"url" default:""`
 	Token  string `config:"token" default:""`
 }

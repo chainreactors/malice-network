@@ -7,3 +7,7 @@ const (
 	WebsitePipeline = "website"
 	RemPipeline     = "rem"
 )
+
+const (
+	ArtifactWebcontent = "artifact"
+)

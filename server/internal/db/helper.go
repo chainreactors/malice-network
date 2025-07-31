@@ -1040,14 +1040,14 @@ func FindArtifact(target *clientpb.Artifact, bin bool) (*clientpb.Artifact, erro
 	var result *gorm.DB
 	// 根据 ID 或名称查找构建器
 	if target.Id != 0 {
-		result = Session().Where("id = ?", target.Id).First(&artifact)
+		result = Session().Where("id = ? AND status = ?", target.Id, consts.BuildStatusCompleted).Last(&artifact)
 	} else if target.Name != "" {
-		result = Session().Where("name = ?", target.Name).First(&artifact)
+		result = Session().Where("name = ? AND status = ?", target.Name, consts.BuildStatusCompleted).Last(&artifact)
 	} else if target.Profile != "" {
-		result = Session().Where("profile_name = ?", target.Profile).First(&artifact)
+		result = Session().Where("profile_name = ? AND status = ?", target.Profile, consts.BuildStatusCompleted).Last(&artifact)
 	} else {
 		var builders []*models.Artifact
-		result = Session().Where("os = ? AND arch = ? AND type = ?", target.Platform, target.Arch, target.Type).
+		result = Session().Where("os = ? AND arch = ? AND type = ? AND status = ?", target.Platform, target.Arch, target.Type, consts.BuildStatusCompleted).
 			Preload("Profile.Pipeline").
 			Find(&builders)
 		for _, v := range builders {
