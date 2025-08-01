@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"filippo.io/age"
+	"fmt"
 	"github.com/chainreactors/malice-network/helper/cryptography/minisign"
 	"github.com/chainreactors/malice-network/helper/encoders"
 	"golang.org/x/crypto/chacha20poly1305"
@@ -120,24 +121,30 @@ func AgeEncrypt(recipientPublicKey string, plaintext []byte) ([]byte, error) {
 	if err := stream.Close(); err != nil {
 		return nil, err
 	}
-	return bytes.TrimPrefix(buf.Bytes(), agePrefix), nil
+	return buf.Bytes(), nil
 }
 
 // AgeDecrypt - Decrypt using Curve 25519 + ChaCha20Poly1305
+// 支持解密包含 grease recipients 的 Age 加密数据（兼容 Rust 版本）
 func AgeDecrypt(recipientPrivateKey string, ciphertext []byte) ([]byte, error) {
 	identity, err := age.ParseX25519Identity(recipientPrivateKey)
 	if err != nil {
 		return nil, err
 	}
-	buf := bytes.NewBuffer(append(agePrefix, ciphertext...))
+
+	// 直接使用 ciphertext，Age 库会自动处理 grease recipients
+	buf := bytes.NewBuffer(ciphertext)
 	stream, err := age.Decrypt(buf, identity)
 	if err != nil {
-		return nil, err
+		// 如果解密失败，尝试添加调试信息
+		return nil, fmt.Errorf("age decrypt failed (ciphertext size: %d bytes): %w", len(ciphertext), err)
 	}
+
 	plaintext, err := io.ReadAll(stream)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to read decrypted stream: %w", err)
 	}
+
 	return plaintext, nil
 }
 

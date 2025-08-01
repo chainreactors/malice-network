@@ -9,15 +9,15 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/certs"
 	"github.com/chainreactors/malice-network/helper/codenames"
+	"github.com/chainreactors/malice-network/helper/utils/formatutils"
+	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/encoders"
 	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/types"
-	"github.com/chainreactors/malice-network/helper/utils/formatutils"
 	"github.com/chainreactors/malice-network/helper/utils/mtls"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/malice-network/server/internal/configs"
@@ -779,15 +779,7 @@ func NewProfile(profile *clientpb.Profile) error {
 		PipelineID: profile.PipelineId,
 		Raw:        profile.Content,
 	}
-	//if profile.PulsePipelineId != "" {
-	//	pulsePipeline, err := FindPipeline(profile.PulsePipelineId)
-	//	if err != nil {
-	//		return err
-	//	}
-	//	if strings.ToUpper(pulsePipeline.Encryption.Type) != consts.CryptorXOR {
-	//		return errs.ErrInvalidEncType
-	//	}
-	//}
+
 	return Session().Create(model).Error
 }
 
@@ -823,6 +815,18 @@ func GetProfile(name string) (*types.ProfileConfig, error) {
 		profile.Basic.Key = profileModel.Pipeline.Encryption.Choice().Key
 		profile.Basic.Protocol = profileModel.Pipeline.Type
 		profile.Basic.TLS.Enable = profileModel.Pipeline.Tls.Enable
+
+		if profileModel.Pipeline.Secure != nil && profileModel.Pipeline.Secure.Enable {
+			// Profile中需要保存implant编译时需要的密钥：
+			// - server公钥：implant用来加密发给server的数据
+			// - implant私钥：implant用来解密server发来的数据
+
+			profile.Basic.Secure = &types.SecureProfile{
+				Enable:            true,
+				ServerPublicKey:   profileModel.Pipeline.Secure.ServerPublicKey,
+				ImplantPrivateKey: profileModel.Pipeline.Secure.ImplantPrivateKey,
+			}
+		}
 	}
 	if params := profileModel.Params; params != nil {
 		profile.Basic.Interval = profileModel.Params.Interval

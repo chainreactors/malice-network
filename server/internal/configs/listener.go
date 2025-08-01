@@ -36,7 +36,7 @@ type TcpPipelineConfig struct {
 	Parser           string                  `config:"parser" default:"malefic"`
 	TlsConfig        *TlsConfig              `config:"tls"`
 	EncryptionConfig types.EncryptionsConfig `config:"encryption"`
-	SecureConfig     *SecureConfig           `config:"secure"` // Age 密码学安全配置
+	SecureConfig     *types.SecureConfig     `config:"secure"` // Age 密码学安全配置
 }
 
 type AutoBuildConfig struct {
@@ -44,33 +44,6 @@ type AutoBuildConfig struct {
 	BuildPulse bool     `config:"build_pulse" default:"false"`
 	Target     []string `config:"target" default:""`
 	Pipeline   []string `config:"pipeline" default:""`
-}
-
-type SecureConfig struct {
-	Enable            bool   `config:"enable" default:"false"`
-	ServerPublicKey   string `config:"server_public_key"`   // Age 服务端公钥
-	ServerPrivateKey  string `config:"server_private_key"`  // Age 服务端私钥
-	ImplantPublicKey  string `config:"implant_public_key"`  // Age Implant公钥
-	ImplantPrivateKey string `config:"implant_private_key"` // Age Implant私钥
-}
-
-func (s *SecureConfig) ToProtobuf() *clientpb.SecureConfig {
-	if s == nil {
-		return &clientpb.SecureConfig{
-			Enable: false,
-		}
-	}
-	return &clientpb.SecureConfig{
-		Enable: s.Enable,
-		ServerKeypair: &clientpb.KeyPair{
-			PublicKey:  s.ServerPublicKey,
-			PrivateKey: s.ServerPrivateKey,
-		},
-		ImplantKeypair: &clientpb.KeyPair{
-			PublicKey:  s.ImplantPublicKey,
-			PrivateKey: s.ImplantPrivateKey,
-		},
-	}
 }
 
 func (tcp *TcpPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, error) {
@@ -129,7 +102,7 @@ type HttpPipelineConfig struct {
 	Parser           string                  `config:"parser" default:"malefic"`
 	TlsConfig        *TlsConfig              `config:"tls"`
 	EncryptionConfig types.EncryptionsConfig `config:"encryption"`
-	SecureConfig     *SecureConfig           `config:"secure"` // Age 密码学安全配置
+	SecureConfig     *types.SecureConfig     `config:"secure"` // Age 密码学安全配置
 	Headers          map[string][]string     `config:"headers"`
 	ErrorPage        string                  `config:"error_page"`
 	BodyPrefix       string                  `config:"body_prefix"`
@@ -356,18 +329,4 @@ func JoinStringSlice(slice []string) string {
 		return slice[0] // Just return the first element for simplicity
 	}
 	return ""
-}
-
-// FromSecureConfig 从 protobuf 转换为配置
-func FromSecureConfig(pb *clientpb.SecureConfig) *SecureConfig {
-	if pb == nil || pb.Enable == false {
-		return &SecureConfig{Enable: false}
-	}
-	return &SecureConfig{
-		Enable:            pb.Enable,
-		ServerPublicKey:   pb.ServerKeypair.PublicKey,
-		ServerPrivateKey:  pb.ServerKeypair.PrivateKey,
-		ImplantPublicKey:  pb.ImplantKeypair.PublicKey,
-		ImplantPrivateKey: pb.ImplantKeypair.PrivateKey,
-	}
 }

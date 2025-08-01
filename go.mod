@@ -3,7 +3,7 @@ module github.com/chainreactors/malice-network
 go 1.20
 
 require (
-	filippo.io/age v1.1.1
+	filippo.io/age v1.2.1
 	github.com/carapace-sh/carapace v1.7.1
 	github.com/chainreactors/files v0.0.0-20240716182835-7884ee1e77f0
 	github.com/chainreactors/logs v0.0.0-20250312104344-9f30fa69d3c9
@@ -126,7 +126,6 @@ require (
 	github.com/reeflective/readline v1.1.3 // indirect
 	github.com/riobard/go-bloom v0.0.0-20200614022211-cdc8013cb5b3 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
-	github.com/rogpeppe/go-internal v1.12.0 // indirect
 	github.com/saferwall/pe v1.5.6 // indirect
 	github.com/sahilm/fuzzy v0.1.1-0.20230530133925-c48e322e2a8f // indirect
 	github.com/secDre4mer/pkcs7 v0.0.0-20240322103146-665324a4461d // indirect

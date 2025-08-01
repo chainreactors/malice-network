@@ -266,10 +266,11 @@ func (pipeline *HTTPPipeline) getConnection(conn *cryptostream.Conn) (*core.Conn
 	if newC := core.Connections.Get(hash.Md5Hash(encoders.Uint32ToBytes(sid))); newC != nil {
 		return newC, nil
 	} else {
-		// 获取 KeyPair（可能为 nil）
 		var keyPair *clientpb.KeyPair
 		if session := ListenerSessions.Get(sid); session != nil {
 			keyPair = session.KeyPair
+		} else {
+			keyPair = pipeline.SecureConfig.ExchangeKeyPair()
 		}
 
 		newC := core.NewConnection(p, sid, pipeline.ID(), keyPair)

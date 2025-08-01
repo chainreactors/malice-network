@@ -4,8 +4,11 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/errs"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/utils/compress"
 	"github.com/gookit/config/v2"
@@ -32,6 +35,12 @@ func NewMaleficParser() *MaleficParser {
 type MaleficParser struct {
 	StartDelimiter byte
 	EndDelimiter   byte
+	keyPair        *clientpb.KeyPair // Age 密钥对，用于加解密
+}
+
+// WithSecure 设置 Age 密钥对用于加解密，返回新的 parser 实例
+func (parser *MaleficParser) WithSecure(keyPair *clientpb.KeyPair) {
+	parser.keyPair = keyPair
 }
 
 func ParseSid(data []byte) uint32 {
@@ -79,10 +88,22 @@ func (parser *MaleficParser) Parse(buf []byte) (*implantpb.Spites, error) {
 		return nil, errs.ErrInvalidEnd
 	}
 	buf = buf[:length]
+
+	if parser.keyPair != nil && parser.keyPair.PrivateKey != "" {
+		decryptedBuf, decErr := cryptography.AgeDecrypt(parser.keyPair.PrivateKey, buf)
+		if decErr != nil {
+			// 兼容没有开启secure的session
+			logs.Log.Debugf("failed to decrypt with age keyPair %s, trying plaintext: %v", parser.keyPair.KeyId, decErr)
+		} else {
+			buf = decryptedBuf
+		}
+	}
+
 	buf, err := compress.Decompress(buf)
 	if err != nil {
 		return nil, err
 	}
+
 	spites := &implantpb.Spites{}
 	err = proto.Unmarshal(buf, spites)
 	if err != nil {
@@ -98,10 +119,24 @@ func (parser *MaleficParser) Marshal(spites *implantpb.Spites, sid uint32) ([]by
 	if err != nil {
 		return nil, err
 	}
+
 	data, err = compress.Compress(data)
 	if err != nil {
 		return nil, err
 	}
+
+	if parser.keyPair != nil && parser.keyPair.PublicKey != "" && parser.keyPair.PrivateKey != "" {
+		encryptedData, encErr := cryptography.AgeEncrypt(parser.keyPair.PublicKey, data)
+		if encErr != nil {
+			logs.Log.Debugf("failed to encrypt with age keyPair %s: %v", parser.keyPair.KeyId, encErr)
+			// 加密失败时使用明文（兼容性）
+		} else {
+			data = encryptedData
+			logs.Log.Debugf("encrypted data with age keyPair %s, %d bytes", parser.keyPair.KeyId, len(data))
+		}
+	}
+
+	// 4. 构建最终的数据包
 	buf.WriteByte(parser.StartDelimiter)
 	err = binary.Write(&buf, binary.LittleEndian, sid)
 	if err != nil {

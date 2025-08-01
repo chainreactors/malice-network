@@ -3,7 +3,6 @@ package parser
 import (
 	"errors"
 	"fmt"
-	"github.com/chainreactors/malice-network/helper/cryptography"
 	"io"
 	"net"
 
@@ -55,6 +54,18 @@ type MessageParser struct {
 	PacketParser
 }
 
+// WithSecure 为 MessageParser 添加安全支持
+func (mp *MessageParser) WithSecure(keyPair *clientpb.KeyPair) {
+	switch mp.Implant {
+	case consts.ImplantMalefic:
+		if maleficParser, ok := mp.PacketParser.(*malefic.MaleficParser); ok {
+			maleficParser.WithSecure(keyPair)
+		}
+	default:
+
+	}
+}
+
 func (parser *MessageParser) ReadMessage(conn io.ReadWriteCloser, length uint32) (*implantpb.Spites, error) {
 	buf := make([]byte, length)
 	_, err := io.ReadFull(conn, buf)
@@ -100,74 +111,4 @@ func (parser *MessageParser) WritePacket(conn net.Conn, msg *implantpb.Spites, s
 	}
 
 	return nil
-}
-
-// SecureWritePacket - 使用密钥对对整个Spites进行Age加密后写入
-func (parser *MessageParser) SecureWritePacket(conn net.Conn, msg *implantpb.Spites, sid uint32, keyPair *clientpb.KeyPair) error {
-	// 1. 将Spites序列化为protobuf字节
-	bs, err := parser.Marshal(msg, sid)
-	if err != nil {
-		return err
-	}
-
-	// 2. 如果有密钥对，使用Age加密序列化后的字节
-	if keyPair != nil && keyPair.PublicKey != "" && keyPair.PrivateKey != "" {
-		encryptedBs, encErr := cryptography.AgeEncrypt(keyPair.PublicKey, bs)
-		if encErr != nil {
-			logs.Log.Errorf("failed to encrypt with age keyPair %s: %v", keyPair.KeyId, encErr)
-			// 加密失败时发送明文（兼容性）
-		} else {
-			bs = encryptedBs
-			logs.Log.Debugf("encrypted Spites protobuf data with age keyPair %s, %d bytes", keyPair.KeyId, len(bs))
-		}
-	}
-
-	// 3. 写入数据
-	n, err := conn.Write(bs)
-	if err != nil {
-		return err
-	}
-	if n != len(bs) {
-		return fmt.Errorf("send error, expect send %d, real send %d", len(bs), n)
-	}
-
-	if len(bs) <= 1000 {
-		logs.Log.Debugf("write packet to %s , %d bytes", conn.RemoteAddr(), len(bs))
-	} else {
-		logs.Log.Debugf("write packet to %s , %d bytes", conn.RemoteAddr(), len(bs))
-	}
-
-	return nil
-}
-
-// SecureReadPacket - 读取Age加密的数据并解密为Spites
-func (parser *MessageParser) SecureReadPacket(conn io.ReadWriteCloser, keyPair *clientpb.KeyPair) (uint32, *implantpb.Spites, error) {
-	// 1. 读取header获取sessionId和数据长度
-	sessionId, length, err := parser.ReadHeader(conn)
-	if err != nil {
-		return 0, nil, err
-	}
-
-	// 2. 读取加密的数据
-	buf := make([]byte, length)
-	_, err = io.ReadFull(conn, buf)
-	if err != nil {
-		return 0, nil, err
-	}
-
-	// 3. 如果有密钥对，使用Age解密数据
-	if keyPair != nil && keyPair.PublicKey != "" && keyPair.PrivateKey != "" {
-		decryptedBuf, decErr := cryptography.AgeDecrypt(keyPair.PrivateKey, buf)
-		if decErr != nil {
-			// 解密失败，尝试明文解析（兼容性）
-			logs.Log.Debugf("failed to decrypt with age keyPair %s, trying plaintext: %v", keyPair.KeyId, decErr)
-		} else {
-			buf = decryptedBuf
-			logs.Log.Debugf("decrypted Spites protobuf data with age keyPair %s, %d bytes", keyPair.KeyId, len(buf))
-		}
-	}
-
-	// 4. 反序列化为Spites
-	msg, err := parser.Parse(buf)
-	return sessionId, msg, err
 }

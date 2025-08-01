@@ -7,6 +7,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/encoders"
 	"github.com/chainreactors/malice-network/helper/encoders/hash"
 	"github.com/chainreactors/malice-network/helper/errs"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/helper/utils/handler"
@@ -34,6 +35,11 @@ type PulseParser struct {
 	StartDelimiter byte
 	EndDelimiter   byte
 	Magic          uint32
+}
+
+// WithSecure pulse parser 目前不支持安全模式，返回自身
+func (parser *PulseParser) WithSecure(keyPair *clientpb.KeyPair) {
+
 }
 
 func (parser *PulseParser) readHeader(conn io.ReadWriteCloser) (uint32, uint32, error) {

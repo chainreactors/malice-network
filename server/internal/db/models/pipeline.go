@@ -14,18 +14,17 @@ import (
 
 // Pipeline
 type Pipeline struct {
-	ID         uuid.UUID `gorm:"primaryKey;->;<-:create;type:uuid;"`
-	CreatedAt  time.Time `gorm:"->;<-:create;"`
-	ListenerId string    `gorm:"type:string;"`
-	Name       string    `gorm:"unique,type:string"`
-	IP         string    `gorm:"type:string;default:''"`
-	Host       string    `config:"host"`
-	Port       uint32    `config:"port"`
-	Type       string    `gorm:"type:string;"`
-	Enable     bool      `gorm:"type:boolean;"`
-	ParamsData string    `gorm:"column:params"`
-	CertName   string    `gorm:"type:string;"`
-
+	ID                    uuid.UUID `gorm:"primaryKey;->;<-:create;type:uuid;"`
+	CreatedAt             time.Time `gorm:"->;<-:create;"`
+	ListenerId            string    `gorm:"type:string;"`
+	Name                  string    `gorm:"unique,type:string"`
+	IP                    string    `gorm:"type:string;default:''"`
+	Host                  string    `config:"host"`
+	Port                  uint32    `config:"port"`
+	Type                  string    `gorm:"type:string;"`
+	Enable                bool      `gorm:"type:boolean;"`
+	ParamsData            string    `gorm:"column:params"`
+	CertName              string    `gorm:"type:string;"`
 	*types.PipelineParams `gorm:"-"`
 }
 
@@ -93,7 +92,6 @@ func (pipeline *Pipeline) ToProtobuf() *clientpb.Pipeline {
 			},
 			Tls:        pipeline.Tls.ToProtobuf(),
 			Encryption: pipeline.Encryption.ToProtobuf(),
-			Secure:     pipeline.Secure.ToProtobuf(),
 		}
 	case consts.WebsitePipeline:
 		return &clientpb.Pipeline{
@@ -115,7 +113,6 @@ func (pipeline *Pipeline) ToProtobuf() *clientpb.Pipeline {
 			},
 			Tls:        pipeline.Tls.ToProtobuf(),
 			Encryption: pipeline.Encryption.ToProtobuf(),
-			Secure:     pipeline.Secure.ToProtobuf(),
 		}
 	case consts.RemPipeline:
 		return &clientpb.Pipeline{
@@ -137,7 +134,6 @@ func (pipeline *Pipeline) ToProtobuf() *clientpb.Pipeline {
 			},
 			Tls:        pipeline.Tls.ToProtobuf(),
 			Encryption: pipeline.Encryption.ToProtobuf(),
-			Secure:     pipeline.Secure.ToProtobuf(),
 		}
 	default:
 		return nil
@@ -230,7 +226,6 @@ func FromPipelinePb(pipeline *clientpb.Pipeline) *Pipeline {
 				Parser:     pipeline.Parser,
 				Tls:        types.FromTls(pipeline.Tls),
 				Encryption: types.FromEncryptions(pipeline.Encryption),
-				Secure:     types.FromSecure(pipeline.Secure),
 			},
 		}
 	case *clientpb.Pipeline_Rem:

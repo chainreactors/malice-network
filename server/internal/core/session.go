@@ -170,16 +170,8 @@ func RecoverSession(sess *models.Session) (*Session, error) {
 		responses:      &sync.Map{},
 	}
 
-	// 从数据库恢复密钥对信息
-	if sess.PublicKey != "" && sess.PrivateKey != "" {
-		s.SessionContext.KeyPair = &clientpb.KeyPair{
-			PublicKey:  sess.PublicKey,
-			PrivateKey: sess.PrivateKey,
-			KeyId:      sess.KeyID,
-			CreatedAt:  sess.KeyCreatedAt,
-			ExpiresAt:  sess.KeyExpiresAt,
-		}
-
+	// 如果SessionContext中有密钥对信息，则初始化SecureManager
+	if s.SessionContext.IsSecureEnabled() {
 		// 初始化 SecureManager（用于密钥管理业务逻辑）
 		s.SyncSecureManager()
 	}

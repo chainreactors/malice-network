@@ -46,6 +46,8 @@ listeners:
       parser: auto
       tls:
         enable: true
+      secure:
+        enable: false
       encryption:
         - enable: true
           type: aes
@@ -53,7 +55,6 @@ listeners:
         - enable: true
           type: xor
           key: maliceofinternal
-
   http:
     - name: http
       enable: true
@@ -62,6 +63,8 @@ listeners:
       parser: auto
       tls:
         enable: true
+      secure:
+        enable: false
       encryption:
         - enable: true
           type: aes

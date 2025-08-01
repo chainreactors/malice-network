@@ -3,9 +3,10 @@ package types
 import (
 	"crypto/x509/pkix"
 	"encoding/json"
+	"math/rand"
+
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/utils"
-	"math/rand"
 )
 
 func FromTls(tls *clientpb.TLS) *TlsConfig {
@@ -145,68 +146,80 @@ func (encryption *EncryptionConfig) ToProtobuf() *clientpb.Encryption {
 	}
 }
 
-type KeyPair struct {
-	PublicKey  string `json:"public_key,omitempty"`
-	PrivateKey string `json:"private_key,omitempty"`
-	KeyID      string `json:"key_id,omitempty"`
-	CreatedAt  int64  `json:"created_at,omitempty"`
-	ExpiresAt  int64  `json:"expires_at,omitempty"`
-}
-
 type SecureConfig struct {
-	Enable         bool     `json:"enable" config:"enable"`
-	ServerKeyPair  *KeyPair `json:"server_keypair,omitempty"`  // server密钥对
-	ImplantKeyPair *KeyPair `json:"implant_keypair,omitempty"` // implant密钥对
+	Enable            bool   `json:"enable" config:"enable" default:"false"`
+	ServerPublicKey   string `json:"server_public_key" config:"server_public_key"`     // Age 服务端公钥
+	ServerPrivateKey  string `json:"server_private_key" config:"server_private_key"`   // Age 服务端私钥
+	ImplantPublicKey  string `json:"implant_public_key" config:"implant_public_key"`   // Age Implant公钥
+	ImplantPrivateKey string `json:"implant_private_key" config:"implant_private_key"` // Age Implant私钥
 }
 
-func (kp *KeyPair) ToProtobuf() *clientpb.KeyPair {
-	if kp == nil {
+// ServerKeypair 返回服务端密钥对的 protobuf 结构
+func (secure *SecureConfig) ServerKeypair() *clientpb.KeyPair {
+	if secure == nil {
 		return &clientpb.KeyPair{}
 	}
 	return &clientpb.KeyPair{
-		PublicKey:  kp.PublicKey,
-		PrivateKey: kp.PrivateKey,
-		KeyId:      kp.KeyID,
-		CreatedAt:  kp.CreatedAt,
-		ExpiresAt:  kp.ExpiresAt,
+		PublicKey:  secure.ServerPublicKey,
+		PrivateKey: secure.ServerPrivateKey,
 	}
 }
 
-func KeyPairFromProtobuf(pb *clientpb.KeyPair) *KeyPair {
-	if pb == nil {
-		return &KeyPair{}
+// ImplantKeypair 返回 Implant 密钥对的 protobuf 结构
+func (secure *SecureConfig) ImplantKeypair() *clientpb.KeyPair {
+	if secure == nil {
+		return &clientpb.KeyPair{}
 	}
-	return &KeyPair{
-		PublicKey:  pb.PublicKey,
-		PrivateKey: pb.PrivateKey,
-		KeyID:      pb.KeyId,
-		CreatedAt:  pb.CreatedAt,
-		ExpiresAt:  pb.ExpiresAt,
+	return &clientpb.KeyPair{
+		PublicKey:  secure.ImplantPublicKey,
+		PrivateKey: secure.ImplantPrivateKey,
 	}
 }
 
+// ExchangeKeyPair 返回用于密钥交换的密钥对（implant公钥 + server私钥）
+func (secure *SecureConfig) ExchangeKeyPair() *clientpb.KeyPair {
+	if secure == nil {
+		return &clientpb.KeyPair{}
+	}
+	return &clientpb.KeyPair{
+		PublicKey:  secure.ImplantPublicKey,
+		PrivateKey: secure.ServerPrivateKey,
+	}
+}
+
+// ToProtobuf 转换为 protobuf 结构
 func (secure *SecureConfig) ToProtobuf() *clientpb.SecureConfig {
 	if secure == nil {
-		return &clientpb.SecureConfig{}
+		return &clientpb.SecureConfig{
+			Enable: false,
+		}
 	}
 	return &clientpb.SecureConfig{
 		Enable:         secure.Enable,
-		ServerKeypair:  secure.ServerKeyPair.ToProtobuf(),
-		ImplantKeypair: secure.ImplantKeyPair.ToProtobuf(),
+		ServerKeypair:  secure.ServerKeypair(),
+		ImplantKeypair: secure.ImplantKeypair(),
 	}
 }
 
+// FromSecure 从 protobuf 转换为 SecureConfig
 func FromSecure(secure *clientpb.SecureConfig) *SecureConfig {
 	if secure == nil {
 		return &SecureConfig{
 			Enable: false,
 		}
 	}
-	return &SecureConfig{
-		Enable:         secure.Enable,
-		ServerKeyPair:  KeyPairFromProtobuf(secure.ServerKeypair),
-		ImplantKeyPair: KeyPairFromProtobuf(secure.ImplantKeypair),
+	config := &SecureConfig{
+		Enable: secure.Enable,
 	}
+	if secure.ServerKeypair != nil {
+		config.ServerPublicKey = secure.ServerKeypair.PublicKey
+		config.ServerPrivateKey = secure.ServerKeypair.PrivateKey
+	}
+	if secure.ImplantKeypair != nil {
+		config.ImplantPublicKey = secure.ImplantKeypair.PublicKey
+		config.ImplantPrivateKey = secure.ImplantKeypair.PrivateKey
+	}
+	return config
 }
 
 type PipelineParams struct {

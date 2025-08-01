@@ -42,7 +42,7 @@ func FromPipeline(pipeline *clientpb.Pipeline) *PipelineConfig {
 		Parser:       pipeline.Parser,
 		TLSConfig:    types.FromTls(pipeline.Tls),
 		Encryption:   types.FromEncryptions(pipeline.GetEncryption()),
-		SecureConfig: configs.FromSecureConfig(pipeline.Secure),
+		SecureConfig: types.FromSecure(pipeline.Secure),
 	}
 }
 
@@ -51,7 +51,7 @@ type PipelineConfig struct {
 	Parser       string
 	TLSConfig    *types.TlsConfig
 	Encryption   types.EncryptionsConfig
-	SecureConfig *configs.SecureConfig
+	SecureConfig *types.SecureConfig
 }
 
 func (p *PipelineConfig) WrapConn(conn io.ReadWriteCloser) (*cryptostream.Conn, error) {
