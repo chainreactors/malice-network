@@ -115,15 +115,12 @@ func RegisterSession(req *clientpb.RegisterSession) (*Session, error) {
 		responses:      &sync.Map{},
 	}
 
-	// 处理implant传递的公钥并初始化密钥对
-	err = sess.initializeKeyPair(req)
+	// 从pipeline获取预分发的密钥对
+	err = sess.initializeSecureManager(req)
 	if err != nil {
-		logs.Log.Errorf("[secure] failed to initialize keypair: %v", err)
-		// 即使密钥初始化失败，session仍然可以继续工作（非安全模式）
+		logs.Log.Errorf("[secure] failed to initialize pipeline keypair: %v", err)
 	}
 
-	// 初始化 SecureManager（用于密钥管理业务逻辑）
-	sess.SyncSecureManager()
 	sess.Ctx, sess.Cancel = context.WithCancel(context.Background())
 	if req.RegisterData.Sysinfo != nil {
 		sess.UpdateSysInfo(req.RegisterData.Sysinfo)
@@ -170,11 +167,12 @@ func RecoverSession(sess *models.Session) (*Session, error) {
 		responses:      &sync.Map{},
 	}
 
-	// 如果SessionContext中有密钥对信息，则初始化SecureManager
-	if s.SessionContext.IsSecureEnabled() {
-		// 初始化 SecureManager（用于密钥管理业务逻辑）
-		s.SyncSecureManager()
-	}
+	// 无论如何都初始化 SecureManager，使用SessionContext中的KeyPair
+	s.initializeSecureManager(&clientpb.RegisterSession{
+		PipelineId:   sess.PipelineID,
+		RegisterData: &implantpb.Register{Secure: s.Secure},
+	})
+
 	s.Ctx, s.Cancel = context.WithCancel(context.Background())
 	tasks, tid, err := db.FindTaskAndMaxTasksID(s.ID)
 	if err != nil {
@@ -224,7 +222,7 @@ type Session struct {
 	*types.SessionContext
 
 	// Age 密码学安全管理器（运行时，负责密钥交换和轮换）
-	SecureManager *SecureSpiteManager
+	SecureManager *SecureManager
 
 	*Cache
 	Taskseq   uint32
@@ -332,12 +330,6 @@ func (s *Session) isAlived() bool {
 }
 
 func (s *Session) ToProtobuf() *clientpb.Session {
-	// 获取密钥对信息
-	var keyPair *clientpb.KeyPair
-	if s.SessionContext != nil {
-		keyPair = s.SessionContext.GetKeyPair()
-	}
-
 	return &clientpb.Session{
 		Type:        s.Type,
 		SessionId:   s.ID,
@@ -362,7 +354,7 @@ func (s *Session) ToProtobuf() *clientpb.Session {
 		Tasks:       s.Tasks.ToProtobuf(),
 		Modules:     s.Modules,
 		Addons:      s.Addons,
-		KeyPair:     keyPair, // 添加密钥对
+		KeyPair:     s.KeyPair, // 添加密钥对
 		Data:        s.Marshal(),
 	}
 }
@@ -389,6 +381,7 @@ func (s *Session) ToProtobufLite() *clientpb.Session {
 		Timer:       &implantpb.Timer{Interval: s.Interval, Jitter: s.Jitter},
 		Modules:     s.Modules,
 		Addons:      s.Addons,
+		KeyPair:     s.KeyPair,
 		Data:        s.Marshal(),
 	}
 }
@@ -426,6 +419,7 @@ func (s *Session) PushUpdate(msg string) {
 }
 
 func (s *Session) Update(req *clientpb.RegisterSession) {
+	oldInterval := s.Interval
 	s.Name = req.RegisterData.Name
 	s.PipelineID = req.PipelineId
 	s.ListenerID = req.ListenerId
@@ -433,6 +427,12 @@ func (s *Session) Update(req *clientpb.RegisterSession) {
 	s.Interval = req.RegisterData.Timer.Interval
 	s.Jitter = req.RegisterData.Timer.Jitter
 	s.SessionContext.Update(req)
+
+	// 如果interval发生变化，更新密钥轮换间隔
+	if s.SecureManager != nil && s.Interval != oldInterval && s.Interval > 0 {
+		interval := time.Duration(s.Interval) * time.Second
+		s.SecureManager.SetRotationInterval(interval)
+	}
 
 	if req.RegisterData.Sysinfo != nil {
 		if !s.Initialized {
@@ -498,11 +498,7 @@ func (s *Session) NewTask(name string, total int) *Task {
 
 // Request
 func (s *Session) Request(msg *clientpb.SpiteRequest, stream grpc.ServerStream) error {
-	err := stream.SendMsg(msg)
-	if err != nil {
-		return err
-	}
-	return nil
+	return stream.SendMsg(msg)
 }
 
 func (s *Session) RequestAndWait(msg *clientpb.SpiteRequest, stream grpc.ServerStream, timeout time.Duration) (*implantpb.Spite, error) {
@@ -577,22 +573,13 @@ func (s *Session) DeleteResp(taskId uint32) {
 	s.responses.Delete(taskId)
 }
 
-// SyncSecureManager 同步SecureManager和KeyPair之间的密钥信息
-func (s *Session) SyncSecureManager() {
-	if s.SessionContext.KeyPair != nil {
-		if s.SecureManager == nil {
-			s.SecureManager = NewSecureSpiteManager(s.SessionContext.KeyPair)
-		} else {
-			// 如果SecureManager已存在，更新其KeyPair引用
-			s.SecureManager.UpdateKeyPair(s.SessionContext.KeyPair)
-		}
-	}
-}
-
 // UpdateKeyPair 更新KeyPair并同步到SecureManager
 func (s *Session) UpdateKeyPair(keyPair *clientpb.KeyPair) {
 	s.SessionContext.KeyPair = keyPair
-	s.SyncSecureManager()
+	// 更新SecureManager中的KeyPair引用
+	if s.SecureManager != nil {
+		s.SecureManager.UpdateKeyPair(keyPair)
+	}
 }
 
 type sessions struct {
@@ -657,58 +644,32 @@ func (s *sessions) Remove(sessionID string) {
 	//})
 }
 
-// initializeKeyPair 处理implant传递的公钥并初始化密钥对
-func (s *Session) initializeKeyPair(req *clientpb.RegisterSession) error {
-	// 检查implant是否传递了secure信息和公钥
-	if req.RegisterData.Secure == nil || req.RegisterData.Secure.PublicKey == "" {
-		logs.Log.Debugf("[secure] implant %s did not provide secure info or public key, secure mode disabled", s.ID)
-		return nil
-	}
-
-	logs.Log.Infof("[secure] processing implant secure info for session %s", s.ID)
-
-	// 从pipeline获取keypair信息
-	pipeline, err := s.getPipelineConfig(req.PipelineId, req.ListenerId)
-	if err != nil {
-		return fmt.Errorf("failed to get pipeline config: %v", err)
+// initializePipelineKeyPair 从pipeline获取预分发的密钥对
+func (s *Session) initializeSecureManager(req *clientpb.RegisterSession) error {
+	pipeline, ok := Listeners.Find(req.PipelineId)
+	if !ok {
+		return fmt.Errorf("failed to get pipeline")
 	}
 
 	if pipeline == nil || pipeline.Secure == nil || !pipeline.Secure.Enable {
-		logs.Log.Warnf("[secure] pipeline secure mode not enabled for session %s", s.ID)
+		logs.Log.Debugf("[secure] pipeline secure mode not enabled for session %s", s.ID)
 		return nil
 	}
 
-	// 创建KeyPair对象
+	if req.RegisterData.Secure != nil && req.RegisterData.Secure.Enable {
+		logs.Log.Debugf("[secure] session secure mode enabled for session %s", s.ID)
+		return nil
+	}
+
+	// 使用pipeline中预分发的密钥对（implant公钥 + server私钥）
 	keyPair := &clientpb.KeyPair{
 		PublicKey:  pipeline.Secure.ImplantKeypair.PublicKey,
 		PrivateKey: pipeline.Secure.ServerKeypair.PrivateKey,
 	}
 
 	s.SessionContext.KeyPair = keyPair
-	logs.Log.Infof("[secure] initialized session %s with pipeline keypair %s and implant public key", s.ID, keyPair.KeyId)
+	logs.Log.Infof("[secure] initialized session %s", s.ID)
 
-	// 初始化SecureManager
-	s.SyncSecureManager()
-
+	s.SecureManager = NewSecureSpiteManager(s)
 	return nil
-}
-
-// getPipelineConfig 从数据库获取pipeline配置
-func (s *Session) getPipelineConfig(pipelineId, listenerId string) (*clientpb.Pipeline, error) {
-	// 从数据库查找pipeline (pipelineId就是pipeline的name)
-	pipelineModel, err := db.FindPipeline(pipelineId)
-	if err != nil {
-		return nil, fmt.Errorf("failed to find pipeline: %v", err)
-	}
-	if pipelineModel == nil {
-		return nil, fmt.Errorf("pipeline not found")
-	}
-
-	// 验证pipeline是否属于指定的listener
-	if pipelineModel.ListenerId != listenerId {
-		return nil, fmt.Errorf("pipeline does not belong to listener %s", listenerId)
-	}
-
-	// 转换为protobuf格式
-	return pipelineModel.ToProtobuf(), nil
 }

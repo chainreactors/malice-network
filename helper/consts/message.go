@@ -26,19 +26,18 @@ var (
 // client module and command
 const (
 	// internal
-	ModulePing       = "ping"
-	ModuleClear      = "clear"
-	ModuleSleep      = "sleep"
-	ModuleSuicide    = "suicide"
-	ModuleInit       = "init"
-	ModuleSwitch     = "switch"
-	ModuleCancelTask = "cancel_task"
-	ModuleQueryTask  = "query_task"
-	ModuleListTask   = "list_task"
-
+	ModulePing        = "ping"
+	ModuleClear       = "clear"
+	ModuleSleep       = "sleep"
+	ModuleSuicide     = "suicide"
+	ModuleInit        = "init"
+	ModuleSwitch      = "switch"
+	ModuleCancelTask  = "cancel_task"
+	ModuleQueryTask   = "query_task"
+	ModuleListTask    = "list_task"
+	ModuleKeyExchange = "key_exchange"
+	ModuleKeyAck      = "key_ack"
 	// cryptographic key exchange
-	ModuleKeyExchange     = "key_exchange"
-	ModuleKeyExchangeResp = "key_exchange_response"
 
 	//execute
 	ModuleAliasShell           = "shell"

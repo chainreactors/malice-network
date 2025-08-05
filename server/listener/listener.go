@@ -2,8 +2,6 @@ package listener
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
@@ -232,12 +230,12 @@ func (lns *listener) RegisterAndStart(pipeline *clientpb.Pipeline) error {
 
 	var err error
 	// 如果启用了安全模式，生成密钥对
-	if pipeline.Secure != nil && pipeline.Secure.Enable {
-		err = lns.generateSecureKeyPair(pipeline)
-		if err != nil {
-			return err
-		}
-	}
+	//if pipeline.Secure != nil && pipeline.Secure.Enable {
+	//	err = lns.generateSecureKeyPair(pipeline)
+	//	if err != nil {
+	//		return err
+	//	}
+	//}
 
 	_, err = lns.Rpc.RegisterPipeline(lns.Context(), pipeline)
 	if err != nil {
@@ -297,11 +295,6 @@ func (lns *listener) Handler() {
 			continue
 		}
 
-		// 维护 listener 端的 Sessions map
-		if msg.Session != nil {
-			ListenerSessions.Add(msg.Session)
-		}
-
 		var handlerErr error
 		switch msg.Ctrl {
 		case consts.CtrlPipelineStart:
@@ -334,7 +327,9 @@ func (lns *listener) Handler() {
 			handlerErr = lns.handlerRemAgentStop(msg.Job)
 		case consts.CtrlAcme:
 			handlerErr = lns.handlerAcme(msg.Job)
-
+		case consts.CtrlListenerSyncSession:
+			ListenerSessions.Add(msg.Session)
+			continue
 		}
 
 		status := &clientpb.JobStatus{
@@ -705,12 +700,6 @@ func (lns *listener) generateSecureKeyPair(pipeline *clientpb.Pipeline) error {
 		return fmt.Errorf("failed to generate implant keypair: %v", err)
 	}
 
-	// 生成密钥ID（使用server公钥的SHA256前8字节）
-	hash := sha256.Sum256([]byte(serverKeyPair.Public))
-	keyID := hex.EncodeToString(hash[:8])
-
-	now := time.Now().Unix()
-
 	// 确保SecureConfig存在
 	if pipeline.Secure == nil {
 		pipeline.Secure = &clientpb.SecureConfig{
@@ -722,21 +711,15 @@ func (lns *listener) generateSecureKeyPair(pipeline *clientpb.Pipeline) error {
 	pipeline.Secure.ServerKeypair = &clientpb.KeyPair{
 		PublicKey:  serverKeyPair.Public,
 		PrivateKey: serverKeyPair.Private, // Pipeline保存server私钥，用于解密implant发来的数据
-		KeyId:      keyID,
-		CreatedAt:  now,
-		ExpiresAt:  0, // 永不过期
 	}
 
 	// 创建Implant密钥对
 	pipeline.Secure.ImplantKeypair = &clientpb.KeyPair{
 		PublicKey:  implantKeyPair.Public, // Pipeline保存implant公钥，用于加密发给implant的数据
 		PrivateKey: implantKeyPair.Private,
-		KeyId:      keyID,
-		CreatedAt:  now,
-		ExpiresAt:  0, // 永不过期
 	}
 
-	logs.Log.Infof("[secure] generated keypairs for pipeline %s with ID: %s", pipeline.Name, keyID)
+	logs.Log.Infof("[secure] generated keypairs for pipeline %s", pipeline.Name)
 	logs.Log.Infof("[secure] pipeline stores: server_private_key + implant_public_key")
 
 	return nil

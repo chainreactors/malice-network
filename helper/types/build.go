@@ -24,7 +24,7 @@ func BuildPingSpites() *implantpb.Spites {
 	return BuildOneSpites(BuildPingSpite())
 }
 
-// BuildSpite build spite request
+// BuildSpite build spite request, msg: Spite body
 func BuildSpite(spite *implantpb.Spite, msg proto.Message) (*implantpb.Spite, error) {
 	switch msg := msg.(type) {
 	case *implantpb.Request:
@@ -106,11 +106,8 @@ func BuildSpite(spite *implantpb.Spite, msg proto.Message) (*implantpb.Spite, er
 		spite.Name = MsgSwitch.String()
 		spite.Body = &implantpb.Spite_Switch{Switch: msg}
 	case *implantpb.KeyExchangeRequest:
-		spite.Name = consts.ModuleKeyExchange
+		spite.Name = MsgKeyExchange.String()
 		spite.Body = &implantpb.Spite_KeyExchangeRequest{KeyExchangeRequest: msg}
-	case *implantpb.KeyExchangeResponse:
-		spite.Name = consts.ModuleKeyExchangeResp
-		spite.Body = &implantpb.Spite_KeyExchangeResponse{KeyExchangeResponse: msg}
 	default:
 		return spite, ErrUnknownSpite
 	}

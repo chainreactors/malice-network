@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 	"fmt"
+	"github.com/chainreactors/malice-network/helper/cryptography"
 	"time"
 
 	"github.com/chainreactors/logs"
@@ -29,16 +30,23 @@ func (rpc *Server) Register(ctx context.Context, req *clientpb.RegisterSession) 
 			return nil, err
 		} else {
 			sess.Publish(consts.CtrlSessionRegister, fmt.Sprintf("new session %s from %s start at %s", sess.Abstract(), sess.Target, sess.PipelineID), true, true)
-			logs.Log.Importantf("recover session %s from %s", sess.ID, sess.PipelineID)
+			logs.Log.Importantf("new session %s from %s", sess.ID, sess.PipelineID)
 		}
 		core.Sessions.Add(sess)
+
 	} else {
 		logs.Log.Infof("session %s re-register", sess.ID)
 		sess.Update(req)
 		//sess.Publish(consts.CtrlSessionReborn, fmt.Sprintf("%s from %s reborn at %s", sess.Abstract(), sess.Target, sess.PipelineID), true, true)
 		core.Sessions.Add(sess)
 	}
-
+	// 如果启用了安全模式，自动触发密钥交换
+	if sess.SecureManager != nil {
+		err := rpc.triggerKeyExchange(ctx, sess)
+		if err != nil {
+			return nil, err
+		}
+	}
 	return &clientpb.Empty{}, nil
 }
 
@@ -77,6 +85,16 @@ func (rpc *Server) Checkin(ctx context.Context, req *implantpb.Ping) (*clientpb.
 	}
 	sess.LastCheckin = getTimestamp(ctx)
 	sess.Publish(consts.CtrlSessionCheckin, "", false, false)
+
+	// 增加密钥轮换计数器并检查是否需要轮换
+	if sess.SecureManager != nil && sess.SecureManager.ShouldRotateKey() {
+		err = rpc.triggerKeyExchange(ctx, sess)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		sess.SecureManager.IncrementCounter()
+	}
 
 	return &clientpb.Empty{}, nil
 }
@@ -205,60 +223,24 @@ func (rpc *Server) Polling(ctx context.Context, req *clientpb.Polling) (*clientp
 	return &clientpb.Empty{}, err
 }
 
-// KeyExchange - Handle cryptographic key exchange
-func (rpc *Server) KeyExchange(ctx context.Context, req *implantpb.KeyExchangeRequest) (*clientpb.Task, error) {
-	session, err := getSession(ctx)
+// triggerKeyExchange 自动触发密钥交换流程
+func (rpc *Server) triggerKeyExchange(ctx context.Context, sess *core.Session) error {
+	// 构建密钥交换请求
+	keyPair, err := cryptography.RandomAgeKeyPair()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	// 处理密钥交换请求
-	if session.SecureManager != nil && session.SecureManager.IsEnabled() {
-		// 构建密钥交换响应
-		resp, err := session.SecureManager.BuildKeyExchangeResponse(req)
-		if err != nil {
-			logs.Log.Errorf("failed to build key exchange response: %v", err)
-			return nil, err
-		}
-
-		// 发送密钥交换响应
-		greq, err := newGenericRequest(ctx, resp)
-		if err != nil {
-			return nil, err
-		}
-
-		ch, err := rpc.GenericHandler(ctx, greq)
-		if err != nil {
-			return nil, err
-		}
-
-		go greq.HandlerResponse(ch, types.MsgKeyExchangeResp)
-
-		logs.Log.Infof("key exchange initiated for session %s", session.ID)
-		return greq.Task.ToProtobuf(), nil
+	// 创建请求
+	req := &implantpb.KeyExchangeRequest{
+		PublicKey: keyPair.Public,
+		Timestamp: uint64(time.Now().Unix()),
+		Nonce:     cryptography.RandomString(16),
 	}
 
-	logs.Log.Warnf("key exchange requested but secure mode not enabled for session %s", session.ID)
-	return nil, fmt.Errorf("secure mode not enabled")
-}
-
-// KeyExchangeResponse - Handle key exchange response (for key rotation)
-func (rpc *Server) KeyExchangeResponse(ctx context.Context, resp *implantpb.KeyExchangeResponse) (*clientpb.Task, error) {
-	session, err := getSession(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	// 处理密钥轮换响应
-	if session.SecureManager != nil && session.SecureManager.IsEnabled() {
-		err := session.SecureManager.ProcessKeyRotationResponse(resp)
-		if err != nil {
-			logs.Log.Errorf("failed to process key rotation response: %v", err)
-			return nil, err
-		}
-
-		logs.Log.Infof("Key rotation response processed for session %s", session.ID)
-	}
-
-	return &clientpb.Task{}, nil
+	_, err = rpc.GenericInternal(ctx, req, consts.ModuleKeyAck, func(spite *implantpb.Spite) {
+		sess.SecureManager.UpdatePublicKey(spite.GetKeyExchangeResponse().PublicKey)
+	})
+	sess.SecureManager.UpdatePrivateKey(keyPair.Private)
+	return err
 }

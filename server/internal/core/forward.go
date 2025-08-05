@@ -2,18 +2,18 @@ package core
 
 import (
 	"context"
-	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/types"
 	"strconv"
+	"sync"
 	"time"
 	"unsafe"
 
+	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
+	"github.com/chainreactors/malice-network/helper/types"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/proto"
-	"sync"
 )
 
 var (
@@ -150,7 +150,7 @@ func (f *Forward) Handler() {
 					continue
 				}
 			case *implantpb.Spite_Ping:
-
+				continue
 			default:
 				if size := proto.Size(spite); size <= 1000 {
 					logs.Log.Debugf("[listener.%s] receive spite %s, %v", msg.SessionID, spite.Name, spite)

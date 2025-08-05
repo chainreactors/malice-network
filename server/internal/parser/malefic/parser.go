@@ -93,7 +93,7 @@ func (parser *MaleficParser) Parse(buf []byte) (*implantpb.Spites, error) {
 		decryptedBuf, decErr := cryptography.AgeDecrypt(parser.keyPair.PrivateKey, buf)
 		if decErr != nil {
 			// 兼容没有开启secure的session
-			logs.Log.Debugf("failed to decrypt with age keyPair %s, trying plaintext: %v", parser.keyPair.KeyId, decErr)
+			logs.Log.Debugf("trying plaintext: %v", decErr)
 		} else {
 			buf = decryptedBuf
 		}
@@ -128,11 +128,11 @@ func (parser *MaleficParser) Marshal(spites *implantpb.Spites, sid uint32) ([]by
 	if parser.keyPair != nil && parser.keyPair.PublicKey != "" && parser.keyPair.PrivateKey != "" {
 		encryptedData, encErr := cryptography.AgeEncrypt(parser.keyPair.PublicKey, data)
 		if encErr != nil {
-			logs.Log.Debugf("failed to encrypt with age keyPair %s: %v", parser.keyPair.KeyId, encErr)
+			logs.Log.Debugf("%v", encErr)
 			// 加密失败时使用明文（兼容性）
 		} else {
 			data = encryptedData
-			logs.Log.Debugf("encrypted data with age keyPair %s, %d bytes", parser.keyPair.KeyId, len(data))
+			logs.Log.Debugf("%d bytes", len(data))
 		}
 	}
 

@@ -243,17 +243,19 @@ func (pipeline *TCPPipeline) getConnection(conn *cryptostream.Conn) (*core.Conne
 	if err != nil {
 		return nil, err
 	}
+	var keyPair *clientpb.KeyPair
+	if session := ListenerSessions.Get(sid); session != nil {
+		keyPair = session.KeyPair
+	} else {
+		keyPair = pipeline.SecureConfig.ExchangeKeyPair()
+	}
 
 	if newC := core.Connections.Get(hash.Md5Hash(encoders.Uint32ToBytes(sid))); newC != nil {
+		if keyPair != nil {
+			newC.Parser.WithSecure(keyPair)
+		}
 		return newC, nil
 	} else {
-		var keyPair *clientpb.KeyPair
-		if session := ListenerSessions.Get(sid); session != nil {
-			keyPair = session.KeyPair
-		} else {
-			keyPair = pipeline.SecureConfig.ExchangeKeyPair()
-		}
-
 		newC := core.NewConnection(conn.Parser, sid, pipeline.ID(), keyPair)
 		core.Connections.Add(newC)
 		return newC, nil

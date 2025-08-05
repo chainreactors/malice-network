@@ -27,7 +27,7 @@ func NewConnection(p *parser.MessageParser, sid uint32, pipelineID string, keyPa
 
 	// 如果有密钥对，创建安全的 parser
 	if keyPair != nil {
-		logs.Log.Debugf("[connection] enabled secure mode for connection %d with keyPair %s", sid, keyPair.KeyId)
+		logs.Log.Debugf("[connection] enabled secure mode for connection %d", sid)
 		p.WithSecure(keyPair)
 	}
 

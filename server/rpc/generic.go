@@ -173,6 +173,20 @@ func buildErrorEvent(task *core.Task, err error) core.Event {
 	}
 }
 
+func (rpc *Server) GenericInternal(ctx context.Context, req proto.Message, expect types.MsgName, callbacks ...func(spite *implantpb.Spite)) (*clientpb.Task, error) {
+	greq, err := newGenericRequest(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	ch, err := rpc.GenericHandler(ctx, greq)
+	if err != nil {
+		return nil, err
+	}
+
+	go greq.HandlerResponse(ch, expect, callbacks...)
+	return greq.Task.ToProtobuf(), nil
+}
+
 func (rpc *Server) GenericHandler(ctx context.Context, req *GenericRequest) (chan *implantpb.Spite, error) {
 	spite, err := req.InitSpite(ctx)
 	if err != nil {

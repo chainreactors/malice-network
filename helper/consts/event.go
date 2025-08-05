@@ -60,6 +60,7 @@ const (
 	CtrlContextFileClose        = "file_end"
 	CtrlAcme                    = "acme"
 	CtrlArtifactDownload        = "artifact_download"
+	CtrlListenerSyncSession     = "sync_session"
 )
 
 const (
