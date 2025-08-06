@@ -28,9 +28,12 @@ func NewTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 	if parser == "default" {
 		parser = consts.ImplantMalefic
 	}
+	secure := common.ParseSecureFlags(cmd)
+
 	pipeline := &clientpb.Pipeline{
 		Encryption: encryption,
 		Tls:        tls,
+		Secure:     secure,
 		Name:       name,
 		ListenerId: listenerID,
 		Parser:     parser,

@@ -188,13 +188,13 @@ func (secure *SecureConfig) ExchangeKeyPair() *clientpb.KeyPair {
 }
 
 // ToProtobuf 转换为 protobuf 结构
-func (secure *SecureConfig) ToProtobuf() *clientpb.SecureConfig {
+func (secure *SecureConfig) ToProtobuf() *clientpb.Secure {
 	if secure == nil {
-		return &clientpb.SecureConfig{
+		return &clientpb.Secure{
 			Enable: false,
 		}
 	}
-	return &clientpb.SecureConfig{
+	return &clientpb.Secure{
 		Enable:         secure.Enable,
 		ServerKeypair:  secure.ServerKeypair(),
 		ImplantKeypair: secure.ImplantKeypair(),
@@ -202,7 +202,7 @@ func (secure *SecureConfig) ToProtobuf() *clientpb.SecureConfig {
 }
 
 // FromSecure 从 protobuf 转换为 SecureConfig
-func FromSecure(secure *clientpb.SecureConfig) *SecureConfig {
+func FromSecure(secure *clientpb.Secure) *SecureConfig {
 	if secure == nil {
 		return &SecureConfig{
 			Enable: false,
