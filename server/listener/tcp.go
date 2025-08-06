@@ -10,8 +10,6 @@ import (
 
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/encoders"
-	"github.com/chainreactors/malice-network/helper/encoders/hash"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
@@ -219,7 +217,7 @@ func (pipeline *TCPPipeline) handlePulse(conn *cryptostream.Conn) {
 
 func (pipeline *TCPPipeline) handleBeacon(conn *cryptostream.Conn) {
 	defer conn.Close()
-	connect, err := pipeline.getConnection(conn)
+	connect, err := core.GetConnection(conn, pipeline.ID(), pipeline.SecureConfig)
 	if err != nil {
 		logs.Log.Debugf("peek read header error: %s %v", conn.RemoteAddr(), err)
 		return
@@ -235,29 +233,5 @@ func (pipeline *TCPPipeline) handleBeacon(conn *cryptostream.Conn) {
 			}
 			return
 		}
-	}
-}
-
-func (pipeline *TCPPipeline) getConnection(conn *cryptostream.Conn) (*core.Connection, error) {
-	sid, err := cryptostream.PeekSid(conn)
-	if err != nil {
-		return nil, err
-	}
-	var keyPair *clientpb.KeyPair
-	if session := ListenerSessions.Get(sid); session != nil {
-		keyPair = session.KeyPair
-	} else {
-		keyPair = pipeline.SecureConfig.ExchangeKeyPair()
-	}
-
-	if newC := core.Connections.Get(hash.Md5Hash(encoders.Uint32ToBytes(sid))); newC != nil {
-		if keyPair != nil {
-			newC.Parser.WithSecure(keyPair)
-		}
-		return newC, nil
-	} else {
-		newC := core.NewConnection(conn.Parser, sid, pipeline.ID(), keyPair)
-		core.Connections.Add(newC)
-		return newC, nil
 	}
 }

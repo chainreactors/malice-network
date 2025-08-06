@@ -12,8 +12,6 @@ import (
 
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/encoders"
-	"github.com/chainreactors/malice-network/helper/encoders/hash"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
@@ -209,7 +207,7 @@ func (pipeline *HTTPPipeline) handlePulse(resp http.ResponseWriter, req *http.Re
 
 func (pipeline *HTTPPipeline) handleMalefic(w http.ResponseWriter, r *http.Request, conn *cryptostream.Conn) {
 	ctx, _ := context.WithCancel(r.Context())
-	connect, err := pipeline.getConnection(conn)
+	connect, err := core.GetConnection(conn, pipeline.ID(), pipeline.SecureConfig)
 	if err != nil {
 		pipeline.writeError(w, http.StatusBadRequest, "Invalid request")
 		return
@@ -253,29 +251,6 @@ func (pipeline *HTTPPipeline) handler(w http.ResponseWriter, r *http.Request) {
 		pipeline.handlePulse(w, r, conn)
 	default:
 		pipeline.writeError(w, http.StatusInternalServerError, "Internal server error")
-	}
-}
-
-func (pipeline *HTTPPipeline) getConnection(conn *cryptostream.Conn) (*core.Connection, error) {
-	p := conn.Parser
-	sid, err := cryptostream.PeekSid(conn)
-	if err != nil {
-		return nil, err
-	}
-
-	if newC := core.Connections.Get(hash.Md5Hash(encoders.Uint32ToBytes(sid))); newC != nil {
-		return newC, nil
-	} else {
-		var keyPair *clientpb.KeyPair
-		if session := ListenerSessions.Get(sid); session != nil {
-			keyPair = session.KeyPair
-		} else {
-			keyPair = pipeline.SecureConfig.ExchangeKeyPair()
-		}
-
-		newC := core.NewConnection(p, sid, pipeline.ID(), keyPair)
-		core.Connections.Add(newC)
-		return newC, nil
 	}
 }
 

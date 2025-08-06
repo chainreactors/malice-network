@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sync"
 	"time"
 
 	"github.com/chainreactors/logs"
@@ -27,38 +26,8 @@ import (
 var (
 	Listener *listener
 	// ListenerSessions 在 listener 层维护的 Sessions map (rawID -> Session)
-	ListenerSessions = &listenerSessions{
-		sessions: &sync.Map{},
-	}
+
 )
-
-// listenerSessions 管理 listener 端的 session 信息
-type listenerSessions struct {
-	sessions *sync.Map // map[uint32]*clientpb.Session
-}
-
-// Add 添加或更新 session
-func (ls *listenerSessions) Add(session *clientpb.Session) {
-	if session != nil {
-		ls.sessions.Store(session.RawId, session)
-		logs.Log.Debugf("[listener] added/updated session %d with KeyPair: %v",
-			session.RawId, session.KeyPair != nil)
-	}
-}
-
-// Get 获取 session
-func (ls *listenerSessions) Get(rawID uint32) *clientpb.Session {
-	if val, ok := ls.sessions.Load(rawID); ok {
-		return val.(*clientpb.Session)
-	}
-	return nil
-}
-
-// Remove 移除 session
-func (ls *listenerSessions) Remove(rawID uint32) {
-	ls.sessions.Delete(rawID)
-	logs.Log.Debugf("[listener] removed session %d", rawID)
-}
 
 func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig, serverEnable bool) error {
 	options, err := mtls.GetGrpcOptions([]byte(clientConf.CACertificate), []byte(clientConf.Certificate), []byte(clientConf.PrivateKey), clientConf.Type)
@@ -328,7 +297,7 @@ func (lns *listener) Handler() {
 		case consts.CtrlAcme:
 			handlerErr = lns.handlerAcme(msg.Job)
 		case consts.CtrlListenerSyncSession:
-			ListenerSessions.Add(msg.Session)
+			core.ListenerSessions.Add(msg.Session)
 			continue
 		}
 
@@ -702,7 +671,7 @@ func (lns *listener) generateSecureKeyPair(pipeline *clientpb.Pipeline) error {
 
 	// 确保SecureConfig存在
 	if pipeline.Secure == nil {
-		pipeline.Secure = &clientpb.SecureConfig{
+		pipeline.Secure = &clientpb.Secure{
 			Enable: true,
 		}
 	}

@@ -20,7 +20,81 @@ var (
 	Connections = &connections{
 		connections: &sync.Map{},
 	}
+	ListenerSessions = &listenerSessions{
+		sessions: &sync.Map{},
+	}
 )
+
+// listenerSessions 管理 listener 端的 session 信息
+type listenerSessions struct {
+	sessions *sync.Map // map[uint32]*clientpb.Session
+}
+
+// Add 添加或更新 session
+func (ls *listenerSessions) Add(session *clientpb.Session) {
+	if session != nil {
+		ls.sessions.Store(session.RawId, session)
+		logs.Log.Debugf("[listener] added/updated session %d with KeyPair: %v",
+			session.RawId, session.KeyPair != nil)
+	}
+}
+
+// Get 获取 session
+func (ls *listenerSessions) Get(rawID uint32) *clientpb.Session {
+	if val, ok := ls.sessions.Load(rawID); ok {
+		return val.(*clientpb.Session)
+	}
+	return nil
+}
+
+// GetConnection 统一的连接获取/创建函数 (适用于 TCP 和 HTTP pipeline)
+// 从 cryptostream.Conn 中提取 SID 并获取/创建连接
+func GetConnection(conn *cryptostream.Conn, pipelineID string, secureConfig *types.SecureConfig) (*Connection, error) {
+	sid, err := cryptostream.PeekSid(conn)
+	if err != nil {
+		return nil, err
+	}
+
+	sessionID := hash.Md5Hash(encoders.Uint32ToBytes(sid))
+
+	// 尝试从现有连接池获取连接
+	if existingConn := Connections.Get(sessionID); existingConn != nil {
+		// 获取 KeyPair 并更新现有连接的安全配置
+		keyPair := GetKeyPairForSession(sid, secureConfig)
+		if keyPair != nil {
+			existingConn.Parser.WithSecure(keyPair)
+		}
+		return existingConn, nil
+	}
+
+	// 创建新连接
+	keyPair := GetKeyPairForSession(sid, secureConfig)
+	newConn := NewConnection(conn.Parser, sid, pipelineID, keyPair)
+	Connections.Add(newConn)
+	return newConn, nil
+}
+
+// GetKeyPairForSession 获取会话的密钥对
+// 优先从 ListenerSessions 获取，如果没有则从 secureConfig 获取交换密钥对
+func GetKeyPairForSession(sid uint32, secureConfig *types.SecureConfig) *clientpb.KeyPair {
+	// 优先从 session 中获取 KeyPair
+	if session := ListenerSessions.Get(sid); session != nil {
+		return session.KeyPair
+	}
+
+	// 如果没有 session，且有 secureConfig，则使用交换密钥对
+	if secureConfig != nil {
+		return secureConfig.ExchangeKeyPair()
+	}
+
+	return nil
+}
+
+// Remove 移除 session
+func (ls *listenerSessions) Remove(rawID uint32) {
+	ls.sessions.Delete(rawID)
+	logs.Log.Debugf("[listener] removed session %d", rawID)
+}
 
 func NewConnection(p *parser.MessageParser, sid uint32, pipelineID string, keyPair *clientpb.KeyPair) *Connection {
 	logs.Log.Debugf("[connection] creating connection %d with KeyPair: %v", sid, keyPair != nil)

@@ -87,13 +87,15 @@ func (rpc *Server) Checkin(ctx context.Context, req *implantpb.Ping) (*clientpb.
 	sess.Publish(consts.CtrlSessionCheckin, "", false, false)
 
 	// 增加密钥轮换计数器并检查是否需要轮换
-	if sess.SecureManager != nil && sess.SecureManager.ShouldRotateKey() {
-		err = rpc.triggerKeyExchange(ctx, sess)
-		if err != nil {
-			return nil, err
+	if sess.SecureManager != nil {
+		if sess.SecureManager.ShouldRotateKey() {
+			err = rpc.triggerKeyExchange(ctx, sess)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			sess.SecureManager.IncrementCounter()
 		}
-	} else {
-		sess.SecureManager.IncrementCounter()
 	}
 
 	return &clientpb.Empty{}, nil
