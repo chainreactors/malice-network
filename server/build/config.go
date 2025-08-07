@@ -41,9 +41,6 @@ func GenerateProfile(req *clientpb.BuildConfig) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		if err != nil {
-			return nil, err
-		}
 		profileParams, err := types.UnmarshalProfileParams(req.ParamsBytes)
 		if err != nil {
 			return nil, err
@@ -224,9 +221,8 @@ func extractAutorunYamlBase64(zipData []byte) (string, error) {
 	var result string
 	err := fileutils.WithTempDir("autorun_temp_*", func(tempDir string) error {
 		autorunYamlPath := filepath.Join(tempDir, autoRunYaml)
-		extractor := fileutils.NewZipExtractor(zipData)
 
-		if err := extractor.ExtractWithFilter(tempDir, func(filename string) bool {
+		if err := fileutils.ExtractZipWithFilter(zipData, tempDir, func(filename string) bool {
 			return filename == autoRunYaml
 		}); err != nil {
 			return fmt.Errorf("failed to extract autorun.yaml from zip: %w", err)
@@ -323,8 +319,7 @@ func createCombinedZip(zipData []byte, profilePath string) (string, error) {
 	var result string
 	err := fileutils.WithTempDir("combined_zip_*", func(tempDir string) error {
 		// Extract all files from autorun.zip except autorun.yaml
-		extractor := fileutils.NewZipExtractor(zipData)
-		if err := extractor.ExtractWithFilter(tempDir, func(filename string) bool {
+		if err := fileutils.ExtractZipWithFilter(zipData, tempDir, func(filename string) bool {
 			return filename != autoRunYaml // Exclude autorun.yaml
 		}); err != nil {
 			return fmt.Errorf("failed to extract files from autorun.zip: %w", err)

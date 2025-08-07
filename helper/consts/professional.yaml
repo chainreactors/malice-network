@@ -13,6 +13,10 @@ basic:
   #      client_cert: "client.crt"     # 客户端证书文件路径
   #      client_key: "client.key"      # 客户端私钥文件路径
   #      server_ca: ""                 # 用于验证服务端的CA证书路径（可选）
+  secure:
+    enable: false
+    private_key:   # implant private key
+    public_key:    # server public key
   proxy: ""
   interval: 5
   jitter: 0.2
@@ -130,14 +134,4 @@ implants:
     # allocter_ex: "VirtualAllocEx", "NtAllocateVirtualMemory",
     #              "VirtualAllocExNuma", "NtMapViewOfSection"
     crossprocess: "NtAllocateVirtualMemory"
-  sleep_mask: true
-  stack_spool: true
-  sacrifice_process: true
-  fork_and_run: false
-  hook_exit: true
   thread_stack_spoofer: true
-  pe_signature_modify:
-    feature: true
-    modify:
-      magic: "\x00\x00"
-      signature: "\x00\x00"

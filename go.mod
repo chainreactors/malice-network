@@ -16,7 +16,7 @@ require (
 	github.com/charmbracelet/glamour v0.8.0
 	github.com/charmbracelet/lipgloss v1.0.0
 	github.com/dustin/go-humanize v1.0.1
-	github.com/evertras/bubble-table v0.17.1
+	github.com/evertras/bubble-table v0.17.2
 	github.com/gofrs/uuid v4.4.0+incompatible
 	github.com/golang/snappy v1.0.0
 	github.com/gookit/config/v2 v2.2.5
