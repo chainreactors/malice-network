@@ -23,7 +23,7 @@ type Builder interface {
 
 	Execute() error
 
-	Collect() (string, string)
+	Collect() (string, string, error)
 }
 
 func NewBuilder(req *clientpb.BuildConfig) (Builder, error) {
@@ -73,7 +73,7 @@ var (
 	dockerBuildSemaphore = make(chan struct{}, maxDockerBuildConcurrency)
 )
 
-func SendBuildMsg(artifact *clientpb.Artifact, status string, params []byte) {
+func SendBuildMsg(artifact *clientpb.Artifact, status string, params []byte, err error) {
 	if core.EventBroker == nil {
 		return
 	}
@@ -95,7 +95,7 @@ func SendBuildMsg(artifact *clientpb.Artifact, status string, params []byte) {
 		}
 
 	} else if status == consts.BuildStatusFailure {
-		event.Message = fmt.Sprintf("Artifact failed %s (type: %s, target: %s, source: %s)", artifact.Name, artifact.Type, artifact.Target, artifact.Source)
+		event.Message = fmt.Sprintf("Artifact failed %s (type: %s, target: %s, source: %s): %v", artifact.Name, artifact.Type, artifact.Target, artifact.Source, err)
 	} else {
 		return
 	}

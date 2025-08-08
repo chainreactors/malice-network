@@ -172,30 +172,30 @@ func (d *DockerBuilder) Execute() error {
 	return nil
 }
 
-func (d *DockerBuilder) Collect() (string, string) {
+func (d *DockerBuilder) Collect() (string, string, error) {
 	_, artifactPath, err := MoveBuildOutput(d.config.Target, d.config.Type, d.enable3rd)
 	if err != nil {
 		logs.Log.Errorf("failed to move artifact %s output: %s", d.artifact.Name, err)
-		return "", consts.BuildStatusFailure
+		return "", consts.BuildStatusFailure, err
 	}
 
 	absArtifactPath, err := filepath.Abs(artifactPath)
 	if err != nil {
 		logs.Log.Errorf("failed to find artifactPath: %s", err)
-		return "", consts.BuildStatusFailure
+		return "", consts.BuildStatusFailure, err
 	}
 
 	d.artifact.Path = absArtifactPath
 	err = db.UpdateBuilderPath(d.artifact)
 	if err != nil {
 		logs.Log.Errorf("failed to update artifactPath: %s", err)
-		return "", consts.BuildStatusFailure
+		return "", consts.BuildStatusFailure, err
 	}
 
 	_, err = os.ReadFile(absArtifactPath)
 	if err != nil {
 		logs.Log.Errorf("failed to read artifact file: %s", err)
-		return "", consts.BuildStatusFailure
+		return "", consts.BuildStatusFailure, err
 	}
 	db.UpdateBuilderStatus(d.artifact.ID, consts.BuildStatusCompleted)
 	if d.config.Type == consts.CommandBuildBeacon {
@@ -206,7 +206,7 @@ func (d *DockerBuilder) Collect() (string, string) {
 			}
 		}
 	}
-	return d.artifact.Path, consts.BuildStatusCompleted
+	return d.artifact.Path, consts.BuildStatusCompleted, nil
 }
 
 func GetContainerID(d *DockerBuilder) string {

@@ -81,7 +81,7 @@ func (s *SaasBuilder) Execute() error {
 	return nil
 }
 
-func (s *SaasBuilder) Collect() (string, string) {
+func (s *SaasBuilder) Collect() (string, string, error) {
 	statusUrl := fmt.Sprintf("/api/build/status/%s", s.builder.Name)
 	downloadUrl := fmt.Sprintf("/api/build/download/%s", s.builder.Name)
 
@@ -89,7 +89,7 @@ func (s *SaasBuilder) Collect() (string, string) {
 	if err != nil {
 		logs.Log.Errorf("failed to collect artifact %s: %s", s.builder.Name, err)
 		db.UpdateBuilderStatus(s.builder.ID, consts.BuildStatusFailure)
-		return "", consts.BuildStatusFailure
+		return "", consts.BuildStatusFailure, err
 	}
 	db.UpdateBuilderStatus(s.builder.ID, status)
 	if s.config.Type == consts.CommandBuildBeacon {
@@ -100,7 +100,7 @@ func (s *SaasBuilder) Collect() (string, string) {
 			}
 		}
 	}
-	return path, status
+	return path, status, nil
 }
 
 func (s *SaasBuilder) getToken() string {
