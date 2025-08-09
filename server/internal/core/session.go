@@ -71,7 +71,7 @@ func NewSessions() *sessions {
 				session.Publish(consts.CtrlSessionDead, fmt.Sprintf("session %s from %s at %s has leaved ", session.ID, session.Target, session.PipelineID), true, true)
 				//newSessions.Remove(session.ID)
 			}
-			err := db.Session().Save(sessModel).Error
+			err := session.Save()
 			if err != nil {
 				logs.Log.Errorf("update session %s info failed in db, %s", session.ID, err.Error())
 			}
@@ -168,10 +168,13 @@ func RecoverSession(sess *models.Session) (*Session, error) {
 	}
 
 	// 无论如何都初始化 SecureManager，使用SessionContext中的KeyPair
-	s.initializeSecureManager(&clientpb.RegisterSession{
+	err = s.initializeSecureManager(&clientpb.RegisterSession{
 		PipelineId:   sess.PipelineID,
 		RegisterData: &implantpb.Register{Secure: s.Secure},
 	})
+	if err != nil {
+		return nil, err
+	}
 
 	s.Ctx, s.Cancel = context.WithCancel(context.Background())
 	tasks, tid, err := db.FindTaskAndMaxTasksID(s.ID)
@@ -386,6 +389,10 @@ func (s *Session) ToProtobufLite() *clientpb.Session {
 	}
 }
 
+func (s *Session) Save() error {
+	return db.Session().Save(s.ToModel()).Error
+}
+
 func (s *Session) ToModel() *models.Session {
 	sessModel := &models.Session{
 		SessionID:   s.ID,
@@ -441,7 +448,7 @@ func (s *Session) Update(req *clientpb.RegisterSession) {
 		s.UpdateSysInfo(req.RegisterData.Sysinfo)
 	}
 
-	err := db.Session().Save(s.ToModel()).Error
+	err := s.Save()
 	if err != nil {
 		logs.Log.Errorf("update session %s info failed in db, %s", s.ID, err.Error())
 	}
@@ -656,20 +663,45 @@ func (s *Session) initializeSecureManager(req *clientpb.RegisterSession) error {
 		return nil
 	}
 
-	if req.RegisterData.Secure != nil && req.RegisterData.Secure.Enable {
+	if req.RegisterData.Secure == nil || !req.RegisterData.Secure.Enable {
 		logs.Log.Debugf("[secure] session secure mode enabled for session %s", s.ID)
 		return nil
 	}
 
-	// 使用pipeline中预分发的密钥对（implant公钥 + server私钥）
-	keyPair := &clientpb.KeyPair{
-		PublicKey:  pipeline.Secure.ImplantKeypair.PublicKey,
-		PrivateKey: pipeline.Secure.ServerKeypair.PrivateKey,
+	if s.KeyPair == nil {
+		s.KeyPair = &clientpb.KeyPair{
+			PublicKey:  pipeline.Secure.ImplantKeypair.PublicKey,
+			PrivateKey: pipeline.Secure.ServerKeypair.PrivateKey,
+		}
 	}
 
-	s.SessionContext.KeyPair = keyPair
+	s.PushCtrl()
 	logs.Log.Infof("[secure] initialized session %s", s.ID)
 
 	s.SecureManager = NewSecureSpiteManager(s)
 	return nil
+}
+
+func (s *Session) UpdatePublicKey(key string) {
+	s.KeyPair.PublicKey = key
+	s.SecureManager.UpdateKeyPair(s.KeyPair)
+	s.PushCtrl()
+}
+
+func (s *Session) UpdatePrivateKey(key string) {
+	s.KeyPair.PrivateKey = key
+	s.SecureManager.UpdateKeyPair(s.KeyPair)
+	s.PushCtrl()
+}
+
+func (s *Session) PushCtrl() {
+	lns, err := Listeners.Get(s.ListenerID)
+	if err != nil {
+		return
+	}
+	s.Save()
+	lns.PushCtrl(&clientpb.JobCtrl{
+		Ctrl:    consts.CtrlListenerSyncSession,
+		Session: s.ToProtobufLite(),
+	})
 }

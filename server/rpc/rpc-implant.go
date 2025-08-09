@@ -116,7 +116,7 @@ func (rpc *Server) Sleep(ctx context.Context, req *implantpb.Timer) (*clientpb.T
 	if session, err := getSession(ctx); err == nil {
 		session.Jitter = req.Jitter
 		session.Interval = req.Interval
-		err := db.UpdateSessionTimer(session.ID, req.Interval, req.Jitter)
+		err := session.Save()
 		if err != nil {
 			return nil, err
 		}
@@ -239,10 +239,10 @@ func (rpc *Server) triggerKeyExchange(ctx context.Context, sess *core.Session) e
 		Timestamp: uint64(time.Now().Unix()),
 		Nonce:     cryptography.RandomString(16),
 	}
-
-	_, err = rpc.GenericInternal(ctx, req, consts.ModuleKeyAck, func(spite *implantpb.Spite) {
-		sess.SecureManager.UpdatePublicKey(spite.GetKeyExchangeResponse().PublicKey)
+	sess.SecureManager.ResetCounters()
+	_, err = rpc.GenericInternal(ctx, req, consts.ModuleKeyExchange, func(spite *implantpb.Spite) {
+		sess.UpdatePublicKey(spite.GetKeyExchangeResponse().PublicKey)
 	})
-	sess.SecureManager.UpdatePrivateKey(keyPair.Private)
+	sess.UpdatePrivateKey(keyPair.Private)
 	return err
 }

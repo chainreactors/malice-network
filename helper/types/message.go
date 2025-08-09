@@ -18,7 +18,7 @@ const (
 	MsgTasks  MsgName = "tasks"
 
 	// cryptographic key exchange
-	MsgKeyExchangeResponse MsgName = consts.ModuleKeyAck
+	MsgKeyExchangeResponse MsgName = consts.ModuleKeyExchange
 	// basic message
 	MsgResponse MsgName = "response"
 	MsgBlock    MsgName = "block"

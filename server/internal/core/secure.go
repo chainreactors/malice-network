@@ -1,7 +1,6 @@
 package core
 
 import (
-	"github.com/chainreactors/malice-network/helper/consts"
 	"time"
 
 	"github.com/chainreactors/logs"
@@ -38,32 +37,6 @@ func NewSecureSpiteManager(sess *Session) *SecureManager {
 // UpdateKeyPair 更新KeyPair引用
 func (s *SecureManager) UpdateKeyPair(keyPair *clientpb.KeyPair) {
 	s.keyPair = keyPair
-}
-
-func (s *SecureManager) UpdatePublicKey(key string) {
-	s.keyPair.PublicKey = key
-	s.PushCtrl()
-}
-
-func (s *SecureManager) UpdatePrivateKey(key string) {
-	s.keyPair.PrivateKey = key
-	s.PushCtrl()
-}
-
-func (s *SecureManager) PushCtrl() {
-	sess, err := Sessions.Get(s.sessionID)
-	if err != nil {
-		return
-	}
-	sess.KeyPair = s.keyPair
-	lns, err := Listeners.Get(sess.ListenerID)
-	if err != nil {
-		return
-	}
-	lns.PushCtrl(&clientpb.JobCtrl{
-		Ctrl:    consts.CtrlListenerSyncSession,
-		Session: sess.ToProtobufLite(),
-	})
 }
 
 // ShouldRotateKey 检查是否需要轮换密钥

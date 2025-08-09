@@ -69,8 +69,8 @@ func (rpc *Server) SessionManage(ctx context.Context, req *clientpb.BasicUpdateS
 		if err != nil {
 			return nil, err
 		}
-		session.Name = req.Arg
-		err = db.UpdateSession(req.SessionId, req.Arg, "")
+		session.Note = req.Arg
+		err = session.Save()
 		if err != nil {
 			return nil, err
 		}
@@ -80,7 +80,7 @@ func (rpc *Server) SessionManage(ctx context.Context, req *clientpb.BasicUpdateS
 			return nil, err
 		}
 		session.Group = req.Arg
-		err = db.UpdateSession(req.SessionId, "", req.Arg)
+		err = session.Save()
 		if err != nil {
 			return nil, err
 		}

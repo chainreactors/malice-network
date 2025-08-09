@@ -9,15 +9,15 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/certs"
 	"github.com/chainreactors/malice-network/helper/codenames"
-	"github.com/chainreactors/malice-network/helper/utils/formatutils"
-	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/encoders"
 	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/types"
+	"github.com/chainreactors/malice-network/helper/utils/formatutils"
 	"github.com/chainreactors/malice-network/helper/utils/mtls"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/malice-network/server/internal/configs"
@@ -140,44 +140,11 @@ func RemoveSession(sessionID string) error {
 	return result.Error
 }
 
-func UpdateSession(sessionID, note, group string) error {
-	var session models.Session
-	result := Session().Where("session_id = ?", sessionID).First(&session)
-	if result.Error != nil {
-		return result.Error
-	}
-	if group != "" {
-		session.GroupName = group
-	}
-	if note != "" {
-		session.Note = note
-	}
-	result = Session().Save(&session)
-	return result.Error
-}
-
-func UpdateSessionTimer(sessionID string, interval uint64, jitter float64) error {
-	var session *models.Session
-	result := Session().Where("session_id = ?", sessionID).First(&session)
-	if result.Error != nil {
-		return result.Error
-	}
-	if interval != 0 {
-		session.Data.Interval = interval
-	}
-	if jitter != 0 {
-		session.Data.Jitter = jitter
-	}
-	result = Session().Save(&session)
-	return result.Error
-}
-
 func CreateOperator(client *models.Operator) error {
 	err := Session().Save(client).Error
 	return err
 
 }
-
 func ListClients() ([]*models.Operator, error) {
 	var operators []*models.Operator
 	err := Session().Find(&operators).Where("type = ?", mtls.Client).Error

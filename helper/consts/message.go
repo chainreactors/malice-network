@@ -36,7 +36,6 @@ const (
 	ModuleQueryTask   = "query_task"
 	ModuleListTask    = "list_task"
 	ModuleKeyExchange = "key_exchange"
-	ModuleKeyAck      = "key_ack"
 	// cryptographic key exchange
 
 	//execute

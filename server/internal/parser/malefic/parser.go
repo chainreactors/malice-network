@@ -101,7 +101,7 @@ func (parser *MaleficParser) Parse(buf []byte) (*implantpb.Spites, error) {
 
 	buf, err := compress.Decompress(buf)
 	if err != nil {
-		return nil, err
+		logs.Log.Debugf("trying plaintext: %v", err)
 	}
 
 	spites := &implantpb.Spites{}
