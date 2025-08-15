@@ -18,7 +18,7 @@ func (rpc *Server) GetLicenseInfo(ctx context.Context, req *clientpb.Empty) (*cl
 		return nil, errs.ErrLicenseTokenNotFound
 	}
 
-	client := saas.NewSaasClient()
+	client := saas.GetSaasClient()
 	info, _, err := client.GetLicenseInfo()
 	if err != nil {
 		return nil, errs.ErrSaasUnable

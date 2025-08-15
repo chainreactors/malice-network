@@ -28,10 +28,12 @@ var (
 	AuditPath                   = filepath.Join(ServerRootPath, "audit")
 	ErrNoConfig                 = errors.New("no config found")
 	WebsitePath                 = filepath.Join(ServerRootPath, "web")
+	ProfilePath                 = filepath.Join(ServerRootPath, "profile")
 	// variables for implant build
 	BuildPath       = filepath.Join(GetWorkDir(), "..", "malefic", "build")
 	BinPath         = filepath.Join(ServerRootPath, "bin")
 	SourceCodePath  = filepath.Join(BuildPath, "src")
+	ResourcePath    = filepath.Join(SourceCodePath, "resources")
 	TargetPath      = filepath.Join(SourceCodePath, "target")
 	CargoCachePath  = filepath.Join(BuildPath, "cache")
 	BuildOutputPath = filepath.Join(BuildPath, "output")

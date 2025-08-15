@@ -8,6 +8,12 @@ const (
 )
 
 const (
+	RDIMutant  = "mutant"
+	RDIObjcopy = "objcopy"
+	RDIDonut   = "donut"
+)
+
+const (
 	ArtifactFromAction = "action"
 	ArtifactFromDocker = "docker"
 	ArtifactFromUpload = "upload"

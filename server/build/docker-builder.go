@@ -8,9 +8,11 @@ import (
 	"github.com/chainreactors/malice-network/helper/codenames"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/cryptography"
+	"github.com/chainreactors/malice-network/helper/encoders"
 	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	selfType "github.com/chainreactors/malice-network/helper/types"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
@@ -28,11 +30,15 @@ type DockerBuilder struct {
 	containerName string
 	containerID   string
 	enable3rd     bool
+	licenseID     string
+	srcPath       string
+	volumes       []string
 }
 
 func NewDockerBuilder(req *clientpb.BuildConfig) *DockerBuilder {
 	os.MkdirAll(configs.BuildOutputPath, 0700)
 	os.MkdirAll(configs.SourceCodePath, 0700)
+	os.MkdirAll(configs.ResourcePath, 0700)
 	return &DockerBuilder{
 		config: req,
 	}
@@ -62,6 +68,26 @@ func (d *DockerBuilder) Generate() (*clientpb.Artifact, error) {
 	}
 	d.artifact = builder
 	db.UpdateBuilderStatus(d.artifact.ID, consts.BuildStatusWaiting)
+	d.srcPath = filepath.Join(configs.TempPath, encoders.UUID())
+	// for saas
+	profilePath := filepath.Join(configs.ProfilePath, d.config.ProfileName)
+	if d.licenseID != "" {
+		profilePath = ""
+		d.srcPath = filepath.Join(configs.TempPath, d.licenseID)
+	}
+	d.volumes = Volumes
+	resourceVolume := fmt.Sprintf("%s:%s", d.srcPath, ContainerResourcePath)
+	d.volumes = append(d.volumes, resourceVolume)
+
+	os.MkdirAll(d.srcPath, 0700)
+	err = fileutils.CopyDirectoryExcept(configs.ResourcePath, d.srcPath, []string{})
+	if err != nil {
+		return nil, err
+	}
+	err = ProcessAutorunWithProfile(d.config.ParamsBytes, profilePath, d.srcPath)
+	if err != nil {
+		return nil, err
+	}
 	return builder.ToProtobuf([]byte{}), nil
 }
 
@@ -139,7 +165,7 @@ func (d *DockerBuilder) Execute() error {
 		Cmd:   []string{"bash", "-c", buildCommand},
 	}, &container.HostConfig{
 		AutoRemove: true,
-		Binds:      Volumes,
+		Binds:      d.volumes,
 	}, nil, nil, d.containerName)
 	if err != nil {
 		return err
@@ -178,7 +204,7 @@ func (d *DockerBuilder) Collect() (string, string, error) {
 		logs.Log.Errorf("failed to move artifact %s output: %s", d.artifact.Name, err)
 		return "", consts.BuildStatusFailure, err
 	}
-
+	defer fileutils.ForceRemoveAll(d.srcPath)
 	absArtifactPath, err := filepath.Abs(artifactPath)
 	if err != nil {
 		logs.Log.Errorf("failed to find artifactPath: %s", err)
@@ -211,4 +237,8 @@ func (d *DockerBuilder) Collect() (string, string, error) {
 
 func GetContainerID(d *DockerBuilder) string {
 	return d.containerID
+}
+
+func SetLicenseID(d *DockerBuilder, licenseID string) {
+	d.licenseID = licenseID
 }

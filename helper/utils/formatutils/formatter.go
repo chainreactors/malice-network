@@ -6,7 +6,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/encoders"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"strings"
 )
 
@@ -139,35 +138,6 @@ func (formatter Formatter) Convert(data []byte, format string) (*FormatResult, e
 
 func Convert(data []byte, format string) (*FormatResult, error) {
 	return SupportedFormats.Convert(data, format)
-}
-
-func ConvertArtifact(artifact *clientpb.Artifact, format string) (*clientpb.Artifact, error) {
-	if format == "" || format == consts.FormatExecutable {
-		return artifact, nil
-	}
-	if artifact.Platform != consts.Windows {
-		convert, err := Convert(artifact.Bin, format)
-		if err != nil {
-			return nil, err
-		}
-		artifact.Bin = convert.Data
-		artifact.Format = format
-		return artifact, nil
-	}
-
-	shellcode, err := SRDIArtifact(artifact.Bin, artifact.Platform, artifact.Arch, artifact.Type == consts.CommandBuildPulse)
-	if err != nil {
-		return nil, fmt.Errorf("failed to convert: %s", err)
-	}
-
-	convert, err := Convert(shellcode, format)
-	if err != nil {
-		return nil, err
-	}
-
-	artifact.Bin = convert.Data
-	artifact.Format = format
-	return artifact, nil
 }
 
 // Helper functions for format conversion

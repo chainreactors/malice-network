@@ -16,6 +16,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -65,19 +66,38 @@ func pollUntil(fn func() (bool, error), interval, timeout time.Duration) error {
 // ================= SaasClient结构体及方法 =================
 
 type SaasClient struct {
-	Token   string
-	BaseURL string
+	Token       string
+	BaseURL     string
+	LicenseType string
 }
 
-func NewSaasClient() *SaasClient {
-	saasConfig := configs.GetSaasConfig()
-	if !saasConfig.Enable {
-		return &SaasClient{}
-	}
-	return &SaasClient{
-		Token:   saasConfig.Token,
-		BaseURL: saasConfig.Url,
-	}
+var (
+	globalSaasClient *SaasClient
+	saasOnce         sync.Once
+)
+
+func GetSaasClient() *SaasClient {
+	saasOnce.Do(func() {
+		saasConfig := configs.GetSaasConfig()
+		if !saasConfig.Enable {
+			globalSaasClient = &SaasClient{}
+		} else {
+			globalSaasClient = &SaasClient{
+				Token:   saasConfig.Token,
+				BaseURL: saasConfig.Url,
+			}
+		}
+	})
+	return globalSaasClient
+}
+
+func (c *SaasClient) SetLicenseType(typ string) {
+	c.LicenseType = typ
+}
+
+// 获取 LicenseType
+func (c *SaasClient) GetLicenseType() string {
+	return c.LicenseType
 }
 
 // 查询构建状态
@@ -159,9 +179,6 @@ func (c *SaasClient) CheckAndDownloadArtifact(statusPath, downloadPath string, b
 }
 
 // LicenseResponse SaaS API响应结构
-// 该结构体比 configs.LicenseResponse 更完整，适用于 License 查询
-// 如有需要可迁移到 configs 包
-// 这里只在 saas.go 内部使用
 type LicenseResponse struct {
 	Success bool `json:"success"`
 	License struct {
@@ -197,6 +214,7 @@ func (c *SaasClient) GetLicenseInfo() (*clientpb.LicenseInfo, string, error) {
 	if !response.Success {
 		return nil, "", fmt.Errorf("API request failed: %+v", response)
 	}
+	c.SetLicenseType(response.License.Type)
 	return &clientpb.LicenseInfo{
 		UserName:   response.License.Username,
 		Type:       response.License.Type,
@@ -210,7 +228,7 @@ func (c *SaasClient) GetLicenseInfo() (*clientpb.LicenseInfo, string, error) {
 
 // 重新下发SaaS构建任务
 func ReDownloadSaasArtifact() error {
-	client := NewSaasClient()
+	client := GetSaasClient()
 	if client.Token == "" || client.BaseURL == "" {
 		return errs.ErrSaasUnable
 	}
@@ -255,7 +273,7 @@ func RegisterLicense() error {
 	}
 
 	if saasConfig.Token != "" {
-		client := NewSaasClient()
+		client := GetSaasClient()
 		_, token, err := client.GetLicenseInfo()
 		if err != nil {
 			return err
@@ -323,7 +341,7 @@ func sendLicenseRegistration(baseURL string, licenseData *configs.LicenseRegistr
 
 // 对外导出：兼容外部包调用
 func CheckAndDownloadArtifact(statusPath, downloadPath, token string, builder *models.Artifact, pollInterval, maxPollTime time.Duration) (string, string, error) {
-	client := NewSaasClient()
+	client := GetSaasClient()
 	if client.Token == "" || client.BaseURL == "" {
 		return "", "", errs.ErrSaasUnable
 	}
@@ -334,5 +352,5 @@ func CheckAndDownloadArtifact(statusPath, downloadPath, token string, builder *m
 
 func SecurityAuthAlert() {
 	logs.Log.Info(tui.RedFg.Render("使用SaaS服务即视为您已阅读并同意我们的用户协议。详细协议内容请访问：https://wiki.chainreactors.red/IoM/#4"))
-	logs.Log.Info(tui.RedFg.Render("By using the SaaS service, you are deemed to have read and agreed to our User Agreement. For detailed agreement content, please visit:, please visit: https://wiki.chainreactors.red/IoM/#4"))
+	logs.Log.Info(tui.RedFg.Render("By using the SaaS service, you are deemed to have read and agreed to our User Agreement. For detailed agreement content, please visit: https://wiki.chainreactors.red/IoM/#4"))
 }

@@ -49,8 +49,18 @@ func (s *SaasBuilder) Generate() (*clientpb.Artifact, error) {
 	base64Encoded := encode.Base64Encode(profileByte)
 	s.config.Inputs = make(map[string]string)
 	s.config.Inputs["malefic_config_yaml"] = base64Encoded
+
+	// Process autorun.zip if source is provided
+	autorunYamlBase64, paramsString, err := ProcessAutorunZipToBase64(s.config.ParamsBytes, s.config.ProfileName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to process autorun.zip: %w", err)
+	} else if autorunYamlBase64 != "" {
+		s.config.Inputs["autorun_yaml"] = autorunYamlBase64
+	}
+	s.config.ParamsBytes = []byte(paramsString)
 	paramsBase64Encoded := encode.Base64Encode(s.config.ParamsBytes)
 	s.config.Inputs["build_params"] = paramsBase64Encoded
+
 	if s.config.ArtifactId != 0 && s.config.Type == consts.CommandBuildBeacon {
 		builder, err = db.SaveArtifactFromID(s.config, s.config.ArtifactId, s.config.Source, profileByte)
 	} else {

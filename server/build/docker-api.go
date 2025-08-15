@@ -27,13 +27,15 @@ var (
 	ContainerCargoRegistryCache = "/root/cargo/registry"
 	ContainerCargoGitCache      = "/root/cargo/git"
 	ContainerBinPath            = "/root/bin"
+	ContainerResourcePath       = "/root/src/resource" // 新增：容器内的资源路径
+	ContainerAutoRunPath        = "/root/src/autorun.yaml"
 	command                     = "build"
 	funcNameOption              = "--function-name"
 	userDataPathOption          = "--userdata-path"
 
-	autorunPath              = filepath.Join(configs.SourceCodePath, "autorun.yaml")
 	sourcePath, _            = filepath.Abs(configs.SourceCodePath)
 	binPath, _               = filepath.Abs(configs.BinPath)
+	resourcePath, _          = filepath.Abs(configs.ResourcePath)
 	registryPath, _          = filepath.Abs(filepath.Join(configs.CargoCachePath, "registry"))
 	gitPath, _               = filepath.Abs(filepath.Join(configs.CargoCachePath, "git"))
 	SourceCodeVolume         = fmt.Sprintf("%s:%s", filepath.ToSlash(sourcePath), ContainerSourceCodePath)
@@ -49,10 +51,8 @@ var dockerClient *client.Client
 var once sync.Once
 
 func GetImage(target string) string {
-	if target == consts.TargetX64Windows {
+	if target == consts.TargetX64Windows || target == consts.TargetX86Windows {
 		return "ghcr.io/chainreactors/" + consts.TargetX64Windows + ":" + consts.Ver
-	} else if target == consts.TargetX86Windows {
-		return "ghcr.io/chainreactors/" + consts.TargetX86Windows + ":" + consts.Ver
 	}
 	return "ghcr.io/chainreactors/malefic-builder:" + consts.Ver
 }

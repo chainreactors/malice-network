@@ -3,13 +3,12 @@ package pe
 import (
 	"encoding/base64"
 	"fmt"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"io"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
-
-	"github.com/chainreactors/malice-network/helper/intl"
 )
 
 type BOFArgsBuffer struct {
@@ -184,7 +183,7 @@ func UnpackURL(data string) ([]byte, error) {
 func UnpackEmbed(data string) ([]byte, error) {
 	// 处理embed://path格式
 	embedPath := "embed:" + data
-	return intl.ReadEmbedResource(embedPath)
+	return consts.ReadEmbedResource(embedPath)
 }
 
 func Unpack(data string) ([]byte, error) {

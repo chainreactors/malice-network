@@ -49,14 +49,8 @@ The **profile load** command requires a valid configuration file path (e.g., **c
 // Create a new profile using network configuration in pipeline
 profile load /path/to/config.yaml --name my_profile --pipeline pipeline_name
 
-// Create a profile with specific modules
-profile load /path/to/config.yaml --name my_profile --modules base,sys_full --pipeline pipeline_name
-
-// Create a profile with custom interval and jitter
-profile load /path/to/config.yaml --name my_profile --interval 10 --jitter 0.3 --pipeline pipeline_name
-
-// Create a profile for pulse
-profile load /path/to/config.yaml --name my_profile --pipeline pipeline_name
+// Create a new profile with external file
+profile load /path/to/profile.zip --name my_profile --pipeline pipeline_name
 ~~~`,
 	}
 	common.BindFlag(loadProfileCmd, common.ProfileSet)
@@ -154,6 +148,7 @@ build beacon --target x86_64-pc-windows-gnu --profile tcp_default --source saas
 		f.StringP("modules", "m", "", "Set modules e.g.: execute_exe,execute_dll")
 		f.Uint32("relink", 0, "relink pulse id")
 		f.String("address", "", "implant address target")
+		f.String("autorun", "", "set autorun zip")
 	})
 	beaconCmd.MarkFlagRequired("target")
 	beaconCmd.MarkFlagRequired("profile")
@@ -161,6 +156,7 @@ build beacon --target x86_64-pc-windows-gnu --profile tcp_default --source saas
 		comp["profile"] = common.ProfileCompleter(con)
 		comp["target"] = common.BuildTargetCompleter(con)
 		comp["source"] = common.BuildResourceCompleter(con)
+		comp["autorun"] = carapace.ActionFiles().Usage("autorun zip path")
 	})
 
 	bindCmd := &cobra.Command{
@@ -221,10 +217,8 @@ build prelude --target x86_64-pc-windows-gnu --profile tcp_default --autorun /pa
 ~~~`,
 	}
 
-	preludeCmd.Hidden = true
-
 	common.BindFlag(preludeCmd, common.GenerateFlagSet, common.GithubFlagSet, func(f *pflag.FlagSet) {
-		f.String("autorun", "", "set autorun.yaml")
+		f.String("autorun", "", "set autorun zip")
 		f.Int("interval", -1, "interval /second")
 		f.Float64("jitter", -1, "jitter")
 		f.String("proxy", "", "Overwrite proxy")
@@ -236,7 +230,7 @@ build prelude --target x86_64-pc-windows-gnu --profile tcp_default --autorun /pa
 	common.BindFlagCompletions(preludeCmd, func(comp carapace.ActionMap) {
 		comp["profile"] = common.ProfileCompleter(con)
 		comp["target"] = common.BuildTargetCompleter(con)
-		comp["autorun"] = carapace.ActionFiles().Usage("autorun.yaml path")
+		comp["autorun"] = carapace.ActionFiles().Usage("autorun zip path")
 		comp["source"] = common.BuildResourceCompleter(con)
 	})
 	common.BindArgCompletions(preludeCmd, nil, common.ProfileCompleter(con))
@@ -395,6 +389,7 @@ artifact show artifact_name --profile
 	common.BindFlag(downloadCmd, func(f *pflag.FlagSet) {
 		f.StringP("output", "o", "", "output path")
 		f.StringP("format", "f", "executable", "the format of the artifact")
+		f.String("RDI", "", "RDI type")
 	})
 	common.BindArgCompletions(downloadCmd, nil, common.ArtifactCompleter(con))
 	common.BindFlagCompletions(downloadCmd, func(comp carapace.ActionMap) {
