@@ -178,40 +178,38 @@ func UnzipOneWithBytes(content []byte) ([]byte, error) {
 	return io.ReadAll(file)
 }
 
-// CompressFilesToBase64 将多个文件压缩成zip并转换为base64字符串
-func CompressFilesToBase64(filePaths []string) (string, error) {
+// CompressFilesZip 将多个文件压缩成zip
+func CompressFilesZip(filePaths []string) ([]byte, error) {
 	if len(filePaths) == 0 {
-		return "", nil
+		return nil, nil
 	}
 	var buf bytes.Buffer
 	zipWriter := zip.NewWriter(&buf)
 	for _, filePath := range filePaths {
 		if !Exist(filePath) {
-			return "", fmt.Errorf("file not found: %s", filePath)
+			return nil, fmt.Errorf("file not found: %s", filePath)
 		}
 		file, err := os.Open(filePath)
 		if err != nil {
-			return "", fmt.Errorf("failed to open file %s: %w", filePath, err)
+			return nil, fmt.Errorf("failed to open file %s: %w", filePath, err)
 		}
 		defer file.Close()
 
 		zipEntry, err := zipWriter.Create(filepath.Base(filePath))
 		if err != nil {
-			return "", fmt.Errorf("failed to create zip entry for %s: %w", filePath, err)
+			return nil, fmt.Errorf("failed to create zip entry for %s: %w", filePath, err)
 		}
 
 		_, err = io.Copy(zipEntry, file)
 		if err != nil {
-			return "", fmt.Errorf("failed to copy file %s to zip: %w", filePath, err)
+			return nil, fmt.Errorf("failed to copy file %s to zip: %w", filePath, err)
 		}
 	}
 	err := zipWriter.Close()
 	if err != nil {
-		return "", fmt.Errorf("failed to close zip writer: %w", err)
+		return nil, fmt.Errorf("failed to close zip writer: %w", err)
 	}
-	zipData := buf.Bytes()
-	base64Data := base64.StdEncoding.EncodeToString(zipData)
-	return base64Data, nil
+	return buf.Bytes(), nil
 }
 
 // DecompressBase64ToFiles 将base64字符串解压并提取文件到指定目录

@@ -254,11 +254,11 @@ func processProfileOnlyCase(profilePath string, params *types.ProfileParams) (st
 		return "", "", errs.ErrNoAutoRunFile
 	}
 
-	zipBase64, err := fileutils.CompressFilesToBase64(filePaths)
+	zipData, err := fileutils.CompressFilesZip(filePaths)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to create zip from profilePath: %w", err)
 	}
-
+	zipBase64 := fileutils.EncodeBase64OrRaw(zipData)
 	params.AutoRunFile = zipBase64
 	return "", params.String(), nil
 }
@@ -338,10 +338,11 @@ func createCombinedZip(zipData []byte, profilePath string) (string, error) {
 			return fmt.Errorf("failed to collect file paths: %w", err)
 		}
 
-		zipBase64, err := fileutils.CompressFilesToBase64(filePaths)
+		zip, err := fileutils.CompressFilesZip(filePaths)
 		if err != nil {
 			return fmt.Errorf("failed to create zip: %w", err)
 		}
+		zipBase64 := fileutils.EncodeBase64OrRaw(zip)
 
 		result = zipBase64
 		return nil

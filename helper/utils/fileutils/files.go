@@ -285,3 +285,8 @@ func DecodeBase64OrRaw(data string) ([]byte, error) {
 	}
 	return []byte(data), nil
 }
+
+// EncodeBase64OrRaw encodes the given data to base64 string, falls back to raw bytes if encoding fails
+func EncodeBase64OrRaw(data []byte) string {
+	return base64.StdEncoding.EncodeToString(data)
+}
