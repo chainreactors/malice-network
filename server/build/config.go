@@ -177,7 +177,7 @@ func UpdateGeneratorConfig(req *clientpb.BuildConfig, config *types.ProfileConfi
 
 // ProcessAutorunZip processes autorun.zip file, extracting only files from the resource directory to the target root directory
 func ProcessAutorunZip(zipData []byte, targetPath string) error {
-	return fileutils.DecompressZipSubdirToRoot(zipData, "resource", targetPath)
+	return fileutils.DecompressZipSubdirToRoot(zipData, "resources", targetPath)
 }
 
 // CopyProfileFilesExceptConfig copies all files from the profile directory except config.yaml to the target path
