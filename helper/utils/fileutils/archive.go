@@ -220,7 +220,7 @@ func DecompressBase64ToFiles(base64Data, outputDir string) error {
 
 	zipData, err := base64.StdEncoding.DecodeString(base64Data)
 	if err != nil {
-		return fmt.Errorf("failed to decode base64: %w", err)
+		return ExtractZip([]byte(base64Data), outputDir)
 	}
 
 	return ExtractZip(zipData, outputDir)

@@ -929,6 +929,10 @@ func DeleteProfileByName(profileName string) error {
 	if err != nil {
 		return fmt.Errorf("failed to delete profile '%s': %v", profileName, err)
 	}
+	err = fileutils.ForceRemoveAll(filepath.Join(configs.ProfilePath, profileName))
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
