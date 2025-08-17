@@ -11,11 +11,11 @@ import (
 func NewSessionContext(req *clientpb.RegisterSession) *SessionContext {
 	return &SessionContext{
 		SessionInfo: &SessionInfo{
-			Os:       &implantpb.Os{},
-			Process:  &implantpb.Process{},
-			ProxyURL: req.RegisterData.Proxy,
-			Interval: req.RegisterData.Timer.Interval,
-			Jitter:   req.RegisterData.Timer.Jitter,
+			Os:         &implantpb.Os{},
+			Process:    &implantpb.Process{},
+			ProxyURL:   req.RegisterData.Proxy,
+			Expression: req.RegisterData.Timer.Expression,
+			Jitter:     req.RegisterData.Timer.Jitter,
 		},
 		Modules: req.RegisterData.Module,
 		Addons:  req.RegisterData.Addons,
@@ -68,7 +68,7 @@ func (ctx *SessionContext) GetAny(id string) (interface{}, bool) {
 type SessionInfo struct {
 	Os          *implantpb.Os      `json:"os"`
 	Process     *implantpb.Process `json:"process"`
-	Interval    uint64             `json:"interval"`
+	Expression  string             `json:"expression"`
 	Jitter      float64            `json:"jitter"`
 	IsPrivilege bool               `json:"is_privilege"`
 	Filepath    string             `json:"filepath"`

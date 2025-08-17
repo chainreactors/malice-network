@@ -323,7 +323,7 @@ func (plug *LuaPlugin) RegisterLuaFunction() {
 								logs.Log.Errorf("error converting arg %s to int: %s\n", p.Name, err.Error())
 								return
 							}
-							val := cmd.Flags().Arg(i)
+							val := cmd.Flags().Arg(i - 1)
 							if val == "" {
 								logs.Log.Warnf("arg %d is empty\n", i)
 							}

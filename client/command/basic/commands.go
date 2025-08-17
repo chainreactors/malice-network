@@ -18,7 +18,7 @@ import (
 
 func Commands(con *repl.Console) []*cobra.Command {
 	sleepCmd := &cobra.Command{
-		Use:   consts.ModuleSleep + " [interval/second]",
+		Use:   consts.ModuleSleep + " [expression]",
 		Short: "change implant sleep config",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -127,8 +127,8 @@ func Register(con *repl.Console) {
 	con.RegisterImplantFunc(consts.ModuleSleep,
 		Sleep,
 		"bsleep",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, interval uint64) (*clientpb.Task, error) {
-			return Sleep(rpc, sess, interval, sess.Timer.Jitter)
+		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, expression string, jitter uint64) (*clientpb.Task, error) {
+			return Sleep(rpc, sess, expression, sess.Timer.Jitter)
 		},
 		output.ParseStatus,
 		nil,
