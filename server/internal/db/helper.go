@@ -157,15 +157,13 @@ func UpdateSession(sessionID, note, group string) error {
 	return result.Error
 }
 
-func UpdateSessionTimer(sessionID string, interval uint64, jitter float64) error {
+func UpdateSessionTimer(sessionID string, expression string, jitter float64) error {
 	var session *models.Session
 	result := Session().Where("session_id = ?", sessionID).First(&session)
 	if result.Error != nil {
 		return result.Error
 	}
-	if interval != 0 {
-		session.Data.Interval = interval
-	}
+	session.Data.Expression = expression
 	if jitter != 0 {
 		session.Data.Jitter = jitter
 	}
