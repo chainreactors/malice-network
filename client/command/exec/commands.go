@@ -129,9 +129,9 @@ inline_local whoami
 ~~~`,
 	}
 
-	common.BindFlag(execLocalCmd, common.SacrificeFlagSet, func(f *pflag.FlagSet) {
+	common.BindFlag(inlineLocalCmd, common.SacrificeFlagSet, func(f *pflag.FlagSet) {
 		f.StringP("process", "n", "", "custom process path")
-		f.BoolP("quiet", "q", false, "disable output")
+		f.BoolP("output", "o", false, "disable output")
 	})
 
 	powershellCmd := &cobra.Command{
