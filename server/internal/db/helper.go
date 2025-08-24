@@ -12,6 +12,7 @@ import (
 	"mime"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/chainreactors/logs"
@@ -226,7 +227,7 @@ func GetDownloadFiles(sid string) ([]*clientpb.File, error) {
 	if sid == "" {
 		result = Session().Where("type = ?", consts.ContextDownload).Find(&files)
 	} else {
-		result = Session().Where("session_id = ?", sid).Where("type = ?", consts.ContextDownload).Find(&files)
+		result = Session().Where("session_id = ?", sid).Preload("Session").Where("type = ?", consts.ContextDownload).Find(&files)
 	}
 	if result.Error != nil {
 		return nil, result.Error
@@ -237,12 +238,15 @@ func GetDownloadFiles(sid string) ([]*clientpb.File, error) {
 		if err != nil {
 			return nil, err
 		}
+		parts := strings.Split(file.TaskID, "-")
+		taskID := parts[len(parts)-1]
+		taskIDUint, err := strconv.ParseUint(taskID, 10, 32)
 		res = append(res, &clientpb.File{
 			Name:      download.Name,
 			Local:     download.FilePath,
 			Checksum:  download.Checksum,
 			Remote:    download.TargetPath,
-			TaskId:    file.Task.Seq,
+			TaskId:    uint32(taskIDUint),
 			SessionId: file.SessionID,
 		})
 	}
