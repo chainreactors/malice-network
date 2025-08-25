@@ -322,7 +322,11 @@ func SyncCompleter(con *repl.Console) carapace.Action {
 			return carapace.Action{}
 		}
 		for _, f := range ctxs.Contexts {
-			results = append(results, f.Id, fmt.Sprintf("%s %s", f.Type, f.Session.SessionId))
+			content, _ := output.NewDownloadContext(f.Value)
+			if err != nil {
+				continue
+			}
+			results = append(results, f.Id, fmt.Sprintf("%s %s", f.Type, content.Name))
 		}
 		return carapace.ActionValuesDescribed(results...).Tag("sync")
 	}
