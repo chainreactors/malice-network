@@ -42,6 +42,7 @@ func ExecLocal(rpc clientrpc.MaliceRPCClient, sess *core.Session,
 		Output:      output,
 		Sacrifice:   sac,
 		Type:        consts.ModuleExecuteLocal,
+		Delay:       2000,
 	}
 
 	task, err := rpc.ExecuteLocal(sess.Context(), binary)
@@ -73,6 +74,7 @@ func InlineLocal(rpc clientrpc.MaliceRPCClient, sess *core.Session,
 		ProcessName: process,
 		Output:      output,
 		Type:        consts.ModuleInlineLocal,
+		Delay:       2000,
 	}
 
 	task, err := rpc.InlineLocal(sess.Context(), binary)

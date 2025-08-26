@@ -42,6 +42,7 @@ func NewBinary(module string, path string, args []string, out bool, timeout uint
 		Timeout:     timeout,
 		Arch:        consts.MapArch(arch),
 		ProcessName: process,
+		Delay:       2000,
 		Sacrifice:   sac,
 	}, nil
 }
@@ -62,6 +63,7 @@ func NewBinaryData(module string, path string, data string, out bool, timeout ui
 		Timeout:     timeout,
 		Arch:        consts.MapArch(arch),
 		ProcessName: process,
+		Delay:       2000,
 		Sacrifice:   sac,
 	}, nil
 }
@@ -81,6 +83,7 @@ func NewExecutable(module string, path string, args []string, arch string, sac *
 		Timeout:     math.MaxUint32,
 		Arch:        consts.MapArch(arch),
 		ProcessName: process,
+		Delay:       2000,
 		Sacrifice:   sac,
 	}, nil
 }
