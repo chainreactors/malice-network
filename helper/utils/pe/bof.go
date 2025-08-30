@@ -3,7 +3,7 @@ package pe
 import (
 	"encoding/base64"
 	"fmt"
-	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/intl"
 	"io"
 	"net/http"
 	"os"
@@ -183,7 +183,7 @@ func UnpackURL(data string) ([]byte, error) {
 func UnpackEmbed(data string) ([]byte, error) {
 	// 处理embed://path格式
 	embedPath := "embed:" + data
-	return consts.ReadEmbedResource(embedPath)
+	return intl.ReadEmbedResource(embedPath)
 }
 
 func Unpack(data string) ([]byte, error) {
