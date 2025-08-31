@@ -1,25 +1,27 @@
 package command
 
 import (
-	"github.com/chainreactors/malice-network/client/command/context"
-	"github.com/chainreactors/malice-network/client/command/website"
+	"github.com/chainreactors/malice-network/client/command/audit"
 	"github.com/reeflective/console"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
-	"github.com/chainreactors/malice-network/client/command/action"
 	"github.com/chainreactors/malice-network/client/command/alias"
 	"github.com/chainreactors/malice-network/client/command/armory"
 	"github.com/chainreactors/malice-network/client/command/build"
+	"github.com/chainreactors/malice-network/client/command/cert"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/config"
+	"github.com/chainreactors/malice-network/client/command/context"
 	"github.com/chainreactors/malice-network/client/command/extension"
 	"github.com/chainreactors/malice-network/client/command/generic"
 	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/command/listener"
 	"github.com/chainreactors/malice-network/client/command/mal"
 	"github.com/chainreactors/malice-network/client/command/mutant"
+	"github.com/chainreactors/malice-network/client/command/pipeline"
 	"github.com/chainreactors/malice-network/client/command/sessions"
+	"github.com/chainreactors/malice-network/client/command/website"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 )
@@ -36,16 +38,18 @@ func BindCommonCommands(bind BindFunc) {
 		mal.Commands,
 		config.Commands,
 		context.Commands,
+		cert.Commands,
+		audit.Commands,
 	)
 
 	bind(consts.ListenerGroup,
 		listener.Commands,
 		website.Commands,
+		pipeline.Commands,
 	)
 
 	bind(consts.GeneratorGroup,
 		build.Commands,
-		action.Commands,
 		mutant.Commands,
 	)
 }
@@ -105,7 +109,6 @@ func BindClientsCommands(con *repl.Console) console.Commands {
 func RegisterClientFunc(con *repl.Console) {
 	generic.Register(con)
 	build.Register(con)
-	action.Register(con)
 	mutant.Register(con)
 	context.Register(con)
 	common.Register(con)

@@ -8,12 +8,14 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/server/internal/configs"
+	"github.com/chainreactors/tui"
 	"github.com/nikoksr/notify"
 	"github.com/nikoksr/notify/service/dingding"
 	"github.com/nikoksr/notify/service/http"
 	"github.com/nikoksr/notify/service/lark"
 	"github.com/nikoksr/notify/service/telegram"
 	"net/url"
+	"strings"
 	"sync"
 )
 
@@ -40,6 +42,8 @@ func (event *Event) format() string {
 		return fmt.Sprintf("[%s] %s: %s %s", event.EventType, event.Op, event.Message, event.Err)
 	case consts.EventBuild:
 		return fmt.Sprintf("[%s] %s", event.EventType, event.Message)
+	case consts.EventCert:
+		return fmt.Sprintf("[%s] %s", event.EventType, event.Message)
 	case consts.EventPivot:
 		return fmt.Sprintf("[%s] %s: %s", event.EventType, event.Op, event.Message)
 	case consts.EventContext:
@@ -63,44 +67,43 @@ func (event *Event) format() string {
 		pipeline := event.Job.GetPipeline()
 		switch pipeline.Body.(type) {
 		case *clientpb.Pipeline_Tcp:
-			return fmt.Sprintf("[%s] %s: tcp %s on %s %s:%d", event.EventType, event.Op,
-				pipeline.Name, pipeline.ListenerId, pipeline.Ip, pipeline.GetTcp().Port)
+			return fmt.Sprintf("[%s] %s: tcp \n%s", event.EventType, event.Op,
+				tui.NewOrderedKVTable(pipeline.KVMap()).View())
 		case *clientpb.Pipeline_Bind:
-			return fmt.Sprintf("[%s] %s: bind %s on %s %s", event.EventType, event.Op,
-				pipeline.Name, pipeline.ListenerId, pipeline.Ip)
+			return fmt.Sprintf("[%s] %s: bind \n%s", event.EventType, event.Op,
+				tui.NewOrderedKVTable(pipeline.KVMap()).View())
 		case *clientpb.Pipeline_Http:
-			return fmt.Sprintf("[%s] %s: http %s on %s %s:%d", event.EventType, event.Op,
-				pipeline.Name, pipeline.ListenerId, pipeline.Ip, pipeline.GetHttp().Port)
+			if event.Op == consts.CtrlAcme {
+				return fmt.Sprintf("[%s] %s: cert %s create success", event.EventType, event.Op,
+					pipeline.Tls.Domain)
+			}
+			return fmt.Sprintf("[%s] %s: http \n%s", event.EventType, event.Op,
+				tui.NewOrderedKVTable(pipeline.KVMap()).View())
 		case *clientpb.Pipeline_Rem:
 			if event.Op == consts.CtrlRemAgentLog {
 				return ""
 			}
-			return fmt.Sprintf("[%s] %s: rem %s on %s %s:%d", event.EventType, event.Op,
-				pipeline.Name, pipeline.ListenerId, pipeline.Ip, pipeline.GetRem().Port)
+			return fmt.Sprintf("[%s] %s: rem \n%s", event.EventType, event.Op,
+				tui.NewOrderedKVTable(pipeline.KVMap()).View())
 		case *clientpb.Pipeline_Web:
-			//if event.Op == consts.CtrlWebContentAdd {
-			//	var root = "/"
-			//	if pipeline.GetWeb().Root != "/" {
-			//		root = pipeline.GetWeb().Root
-			//	}
-			//	var result string
-			//	for _, content := range pipeline.GetWeb().Contents {
-			//		result += fmt.Sprintf("[%s] %s: web %s on %s %d, routePath is http://%s:%d%s%s\n",
-			//			event.EventType, event.Op, pipeline.ListenerId, pipeline.Name, pipeline.GetWeb().Port,
-			//			pipeline.Ip, pipeline.GetWeb().Port, root, content.Path)
-			//	}
-			//	return strings.TrimSuffix(result, "\n")
-			//}
-			if pipeline.Tls.Enable {
-				return fmt.Sprintf("[%s] %s: web %s on %s %d, routePath is https://%s:%d%s", event.EventType, event.Op,
-					pipeline.ListenerId, pipeline.Name, pipeline.GetWeb().Port,
-					pipeline.Ip, pipeline.GetWeb().Port, pipeline.GetWeb().Root)
-			} else {
-				return fmt.Sprintf("[%s] %s: web %s on %s %d, routePath is http://%s:%d%s", event.EventType, event.Op,
-					pipeline.ListenerId, pipeline.Name, pipeline.GetWeb().Port,
-					pipeline.Ip, pipeline.GetWeb().Port, pipeline.GetWeb().Root)
+			baseURL := pipeline.URL()
+			if event.Op == consts.CtrlWebContentAddArtifact {
+				if cont := event.Job.FirstContent(); cont != nil {
+					return fmt.Sprintf("[%s] %s: artifact %s amount at %s", event.EventType, event.Op,
+						cont.Id, baseURL+cont.Path)
+				}
+
+			} else if event.Op == consts.CtrlWebContentAdd {
+				var result string
+				if cont := event.Job.FirstContent(); cont != nil {
+					result += fmt.Sprintf("[%s] %s: content add success, path: %s\n",
+						event.EventType, event.Op, baseURL+cont.Path)
+				}
+				return strings.TrimSuffix(result, "\n")
 			}
 
+			return fmt.Sprintf("[%s] %s: web \n%s", event.EventType, event.Op,
+				tui.NewOrderedKVTable(pipeline.KVMap()).View())
 		}
 	}
 	return event.Message
@@ -329,6 +332,25 @@ func (broker *eventBroker) InitService(config *configs.NotifyConfig) error {
 			},
 		})
 		broker.notifier.notify.UseServices(sc)
+	}
+	if config.PushPlus != nil && config.PushPlus.Enable {
+		pp := http.New()
+		pp.AddReceivers(&http.Webhook{
+			URL:         fmt.Sprintf("https://www.pushplus.plus/send"),
+			Method:      "POST",
+			ContentType: "application/json",
+			BuildPayload: func(subject, message string) (payload any) {
+				return map[string]string{
+					"title":    subject,
+					"content":  message,
+					"token":    config.PushPlus.Token,
+					"topic":    config.PushPlus.Topic,
+					"channel":  config.PushPlus.Channel,
+					"template": "markdown",
+				}
+			},
+		})
+		broker.notifier.notify.UseServices(pp)
 	}
 	return nil
 }

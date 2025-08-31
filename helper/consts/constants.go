@@ -13,6 +13,7 @@ const (
 	// ServerMaxMessageSize - Server-side max GRPC message size
 	ServerMaxMessageSize = 2 * GB
 	DefaultTimeout       = 10 * time.Second // second
+	SyncBuildTimeout     = 300 * time.Second
 )
 
 // UI
@@ -90,4 +91,22 @@ const (
 	ScreenShotPath = "screenshot"
 	TaskPath       = "task"
 	CachePath      = "cache"
+	RequestPath    = "request"
+)
+
+const (
+	BuildStatusRunning      = "running"
+	BuildStatusWaiting      = "waiting"
+	BuildStatusError        = "error"
+	BuildStatusFailure      = "failure"
+	BuildStatusNetworkError = "networkerr"
+	BuildStatusCompleted    = "completed"
+	BuildStatusDBError      = "db_err"
+	BuildStatusSRDIError    = "srdi_err"
+)
+
+const (
+	LicenseCommunity = "community"
+	LicensePro       = "professional"
+	LicenseAdmin     = "admin"
 )

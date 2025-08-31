@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	rem "github.com/chainreactors/rem/protocol/core"
 )
 
 func NewPivoting(content []byte) (*PivotingContext, error) {
@@ -16,10 +17,12 @@ func NewPivoting(content []byte) (*PivotingContext, error) {
 	return pivoting, nil
 }
 
-func NewPivotingWithRem(agent *clientpb.REMAgent) *PivotingContext {
+func NewPivotingWithRem(agent *clientpb.REMAgent, pipe *clientpb.Pipeline) *PivotingContext {
 	return &PivotingContext{
 		Enable:     true,
-		Pipeline:   agent.PipelineId,
+		Pipeline:   pipe.Name,
+		ListenerIP: pipe.Ip,
+		Listener:   pipe.ListenerId,
 		RemAgentID: agent.Id,
 		Mod:        agent.Mod,
 		RemoteURL:  agent.Remote,
@@ -30,6 +33,7 @@ func NewPivotingWithRem(agent *clientpb.REMAgent) *PivotingContext {
 type PivotingContext struct {
 	Enable     bool   `json:"enable"`
 	Listener   string `json:"listener_id"`
+	ListenerIP string `json:"listener_ip"`
 	Pipeline   string `json:"pipeline_id"`
 	RemAgentID string `json:"id"`
 	LocalURL   string `json:"local"`
@@ -62,7 +66,9 @@ func (p *PivotingContext) Marshal() []byte {
 
 func (p *PivotingContext) Abstract() string {
 	if p.Mod == "reverse" {
-		return fmt.Sprintf("%s serving %s", p.RemAgentID, p.RemoteURL)
+		u, _ := rem.NewURL(p.RemoteURL)
+		u.SetHostname(p.ListenerIP)
+		return fmt.Sprintf("%s serving %s", p.RemAgentID, u.String())
 	} else if p.Mod == "proxy" {
 		return fmt.Sprintf("%s serving %s", p.RemAgentID, p.LocalURL)
 	} else if p.Mod == "connect" {

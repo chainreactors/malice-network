@@ -17,7 +17,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/mals"
 )
 
 func Commands(con *repl.Console) []*cobra.Command {
@@ -112,7 +111,19 @@ pivot
 		f.BoolP("all", "a", false, "list all pivot agents")
 	})
 
-	return []*cobra.Command{loginCmd, versionCmd, exitCmd, broadcastCmd, cmdCmd, pivotCmd}
+	licenseInfoCmd := &cobra.Command{
+		Use:   consts.CommandLicense,
+		Short: "show server license info",
+		Long:  "show server license info",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return GetLicenseCmd(cmd, con)
+		},
+		Example: `~~~
+license
+~~~`,
+	}
+
+	return []*cobra.Command{loginCmd, versionCmd, exitCmd, broadcastCmd, cmdCmd, pivotCmd, licenseInfoCmd}
 }
 
 func Log(con *repl.Console, sess *core.Session, msg string, notify bool) (bool, error) {
@@ -137,6 +148,22 @@ func Log(con *repl.Console, sess *core.Session, msg string, notify bool) (bool, 
 }
 
 func Register(con *repl.Console) {
+	con.RegisterServerFunc("console", func(con *repl.Console) *repl.Console {
+		return con
+	}, nil)
+
+	con.RegisterServerFunc("sessions", func(con *repl.Console) map[string]*core.Session {
+		return con.Sessions
+	}, nil)
+
+	con.RegisterServerFunc("listeners", func(con *repl.Console) map[string]*clientpb.Listener {
+		return con.Listeners
+	}, nil)
+
+	con.RegisterServerFunc("pipelines", func(con *repl.Console) map[string]*clientpb.Pipeline {
+		return con.Pipelines
+	}, nil)
+
 	con.RegisterServerFunc("run", repl.RunCommand, nil)
 
 	con.RegisterServerFunc("async_run", func(con *repl.Console, cmdline interface{}) (bool, error) {
@@ -189,53 +216,4 @@ func Register(con *repl.Console) {
 		return Log(con, sess, msg, false)
 	}, nil)
 
-	con.RegisterServerFunc("barch", func(con *repl.Console, sess *core.Session) (string, error) {
-		return sess.Os.Arch, nil
-	}, nil)
-
-	con.RegisterServerFunc("active", func(con *repl.Console) (*core.Session, error) {
-		return con.GetInteractive().Clone(consts.CalleeMal), nil
-	}, &mals.Helper{
-		Short:   "get current session",
-		Output:  []string{"sess"},
-		Example: "active()",
-	})
-
-	con.RegisterServerFunc("is64", func(con *repl.Console, sess *core.Session) (bool, error) {
-		return sess.Os.Arch == "x64", nil
-	}, nil)
-
-	con.RegisterServerFunc("isactive", func(con *repl.Console, sess *core.Session) (bool, error) {
-		return sess.IsAlive, nil
-	}, nil)
-
-	con.RegisterServerFunc("isadmin", func(con *repl.Console, sess *core.Session) (bool, error) {
-		return sess.IsPrivilege, nil
-	}, nil)
-
-	con.RegisterServerFunc("isbeacon", func(con *repl.Console, sess *core.Session) (bool, error) {
-		return sess.Type == consts.CommandBuildBeacon, nil
-	}, nil)
-
-	con.RegisterServerFunc("bdata", func(con *repl.Console, sess *core.Session) (map[string]interface{}, error) {
-		if sess == nil {
-			return nil, errors.New("session is nil")
-		}
-		return sess.Data.Any, nil
-	}, &mals.Helper{
-		Short:   "get session custom data",
-		Output:  []string{"map[string]interface{}"},
-		Example: "bdata(active())",
-	})
-	con.RegisterServerFunc("data", func(con *repl.Console, sess *core.Session) (map[string]interface{}, error) {
-		if sess == nil {
-			return nil, errors.New("session is nil")
-		}
-
-		return sess.Data.Data(), nil
-	}, &mals.Helper{
-		Short:   "get session data",
-		Output:  []string{"map[string]interface{}"},
-		Example: "data(active())",
-	})
 }

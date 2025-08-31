@@ -4,16 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/errs"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/types"
-	"github.com/chainreactors/malice-network/server/internal/configs"
-	"github.com/chainreactors/malice-network/server/internal/db"
-	"github.com/chainreactors/malice-network/server/internal/db/models"
+	"github.com/chainreactors/malice-network/helper/utils"
 	"github.com/gookit/config/v2"
+	"github.com/gorhill/cronexpr"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
 	"os"
@@ -23,6 +16,16 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/errs"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
+	"github.com/chainreactors/malice-network/helper/types"
+	"github.com/chainreactors/malice-network/server/internal/configs"
+	"github.com/chainreactors/malice-network/server/internal/db"
+	"github.com/chainreactors/malice-network/server/internal/db/models"
 )
 
 var (
@@ -37,6 +40,25 @@ var (
 	ErrImplantSendTimeout = errors.New("implant timeout")
 )
 
+func createSessionDirs(sessionID string) (string, error) {
+	contextDir := filepath.Join(configs.ContextPath, sessionID)
+	cacheDir := filepath.Join(contextDir, consts.CachePath)
+	downloadDir := filepath.Join(contextDir, consts.DownloadPath)
+	keyLoggerDir := filepath.Join(contextDir, consts.KeyLoggerPath)
+	screenShotDir := filepath.Join(contextDir, consts.ScreenShotPath)
+	taskDir := filepath.Join(contextDir, consts.TaskPath)
+	requestDir := filepath.Join(contextDir, consts.RequestPath)
+
+	dirs := []string{cacheDir, downloadDir, keyLoggerDir, screenShotDir, taskDir, requestDir}
+	for _, dir := range dirs {
+		if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+			logs.Log.Errorf("cannot create directory %s, %s", dir, err.Error())
+		}
+	}
+
+	return cacheDir, nil
+}
+
 func NewSessions() *sessions {
 	newSessions := &sessions{
 		active: &sync.Map{},
@@ -46,8 +68,8 @@ func NewSessions() *sessions {
 			sessModel := session.ToModel()
 			if !session.isAlived() {
 				sessModel.IsAlive = false
-				session.Publish(consts.CtrlSessionLeave, fmt.Sprintf("session %s from %s at %s has leaved ", session.ID, session.Target, session.PipelineID), true, true)
-				newSessions.Remove(session.ID)
+				session.Publish(consts.CtrlSessionDead, fmt.Sprintf("session %s from %s at %s has leaved ", session.ID, session.Target, session.PipelineID), true, true)
+				//newSessions.Remove(session.ID)
 			}
 			err := db.Session().Save(sessModel).Error
 			if err != nil {
@@ -64,16 +86,10 @@ func NewSessions() *sessions {
 }
 
 func RegisterSession(req *clientpb.RegisterSession) (*Session, error) {
-	var err error
-	contextDir := filepath.Join(configs.ContextPath, req.SessionId)
-	err = os.MkdirAll(contextDir, os.ModePerm)
+	current_time := time.Now().Unix()
+	cacheDir, err := createSessionDirs(req.SessionId)
 	if err != nil {
-		logs.Log.Errorf("cannot create log directory %s, %s", contextDir, err.Error())
-	}
-	cacheDir := filepath.Join(contextDir, consts.CachePath)
-	err = os.MkdirAll(cacheDir, os.ModePerm)
-	if err != nil {
-		logs.Log.Errorf("cannot create cache directory %s, %s", cacheDir, err.Error())
+		return nil, err
 	}
 	cache := NewCache(filepath.Join(cacheDir, CacheName))
 	err = cache.Save()
@@ -84,30 +100,24 @@ func RegisterSession(req *clientpb.RegisterSession) (*Session, error) {
 		Type:           req.Type,
 		Name:           req.RegisterData.Name,
 		Group:          "default",
+		Note:           req.RegisterData.Name,
 		ID:             req.SessionId,
 		RawID:          req.RawId,
 		PipelineID:     req.PipelineId,
 		ListenerID:     req.ListenerId,
 		Target:         req.Target,
 		Tasks:          NewTasks(),
+		CreatedAt:      time.Unix(current_time, 0),
 		SessionContext: types.NewSessionContext(req),
 		Taskseq:        1,
 		Cache:          cache,
 		responses:      &sync.Map{},
 	}
 	sess.Ctx, sess.Cancel = context.WithCancel(context.Background())
-	downloadDir := filepath.Join(contextDir, consts.DownloadPath)
-	keyLoggerDir := filepath.Join(contextDir, consts.KeyLoggerPath)
-	screenShotDir := filepath.Join(contextDir, consts.ScreenShotPath)
-	taskDir := filepath.Join(contextDir, consts.TaskPath)
-	for _, dir := range []string{downloadDir, keyLoggerDir, screenShotDir, taskDir} {
-		err = os.MkdirAll(dir, os.ModePerm)
-		if err != nil {
-			logs.Log.Errorf("cannot create log directory %s, %s", dir, err.Error())
-		}
-	}
 	if req.RegisterData.Sysinfo != nil {
 		sess.UpdateSysInfo(req.RegisterData.Sysinfo)
+	} else {
+		sess.FillSysInfo()
 	}
 
 	return sess, nil
@@ -131,6 +141,7 @@ func RecoverSession(sess *models.Session) (*Session, error) {
 		Target:         sess.Target,
 		Initialized:    sess.Initialized,
 		LastCheckin:    sess.LastCheckin,
+		CreatedAt:      sess.CreatedAt,
 		Tasks:          NewTasks(),
 		SessionContext: sess.Data,
 		Taskseq:        1,
@@ -181,6 +192,7 @@ type Session struct {
 	Target      string
 	Initialized bool
 	LastCheckin int64
+	CreatedAt   time.Time
 	Tasks       *Tasks // task manager
 	*types.SessionContext
 
@@ -194,7 +206,14 @@ type Session struct {
 }
 
 func (s *Session) Abstract() string {
-	return fmt.Sprintf("%s(%s) %s-%s %s", s.Name, s.ID, s.Os.Name, s.Os.Arch, s.Os.Username)
+	if s.Os == nil {
+		return fmt.Sprintf("%s(%s)", s.Name, s.ID)
+	} else {
+		if s.IsPrivilege {
+			return fmt.Sprintf("%s(%s) %s/%s %s *", s.Name, s.ID, s.Os.Name, s.Os.Arch, s.Os.Username)
+		}
+		return fmt.Sprintf("%s(%s) %s/%s %s", s.Name, s.ID, s.Os.Name, s.Os.Arch, s.Os.Username)
+	}
 }
 
 func (s *Session) RpcLogger() *logs.Logger {
@@ -208,6 +227,9 @@ func (s *Session) RpcLogger() *logs.Logger {
 				}
 				if auditLevel == 2 {
 					s.rpcLog.SetLevel(logs.DebugLevel)
+					s.rpcLog.PrefixFunc = func() string {
+						return ""
+					}
 				}
 			}
 		}
@@ -275,7 +297,14 @@ func (s *Session) isAlived() bool {
 	if s.Type == consts.BindPipeline {
 		return true
 	} else {
-		return time.Now().Unix()-s.LastCheckin <= (1+int64(s.Interval))*5
+		parsedExpr, err := cronexpr.Parse(s.Expression)
+		if err != nil {
+			panic(err)
+		}
+		nextTime := parsedExpr.Next(time.Now())
+		remainingSeconds := int64(nextTime.Sub(time.Now()).Seconds())
+		remainingSeconds = int64(float64(remainingSeconds) * (1 + s.Jitter))
+		return time.Now().Unix()-s.LastCheckin <= utils.Max(remainingSeconds+30, int64(time.Second*60))
 	}
 }
 
@@ -299,7 +328,8 @@ func (s *Session) ToProtobuf() *clientpb.Session {
 		Workdir:     s.SessionContext.WorkDir,
 		Locate:      s.SessionContext.Locale,
 		Proxy:       s.SessionContext.ProxyURL,
-		Timer:       &implantpb.Timer{Interval: s.Interval, Jitter: s.Jitter},
+		Timer:       &implantpb.Timer{Expression: s.Expression, Jitter: s.Jitter},
+		CreatedAt:   s.CreatedAt.Unix(),
 		Tasks:       s.Tasks.ToProtobuf(),
 		Modules:     s.Modules,
 		Addons:      s.Addons,
@@ -326,7 +356,7 @@ func (s *Session) ToProtobufLite() *clientpb.Session {
 		Workdir:     s.SessionContext.WorkDir,
 		Locate:      s.SessionContext.Locale,
 		Proxy:       s.SessionContext.ProxyURL,
-		Timer:       &implantpb.Timer{Interval: s.Interval, Jitter: s.Jitter},
+		Timer:       &implantpb.Timer{Expression: s.Expression, Jitter: s.Jitter},
 		Modules:     s.Modules,
 		Addons:      s.Addons,
 		Data:        s.Marshal(),
@@ -334,7 +364,7 @@ func (s *Session) ToProtobufLite() *clientpb.Session {
 }
 
 func (s *Session) ToModel() *models.Session {
-	return &models.Session{
+	sessModel := &models.Session{
 		SessionID:   s.ID,
 		RawID:       s.RawID,
 		Note:        s.Note,
@@ -349,6 +379,20 @@ func (s *Session) ToModel() *models.Session {
 		LastCheckin: s.LastCheckin,
 		DataString:  s.Marshal(),
 	}
+	artifact, err := db.GetArtifactByName(s.Note)
+	if err == nil {
+		sessModel.ProfileName = artifact.Name
+	}
+	return sessModel
+}
+
+func (s *Session) PushUpdate(msg string) {
+	EventBroker.Publish(Event{
+		EventType: consts.EventSession,
+		Op:        consts.CtrlSessionUpdate,
+		Session:   s.ToProtobufLite(),
+		Message:   msg,
+	})
 }
 
 func (s *Session) Update(req *clientpb.RegisterSession) {
@@ -356,7 +400,7 @@ func (s *Session) Update(req *clientpb.RegisterSession) {
 	s.PipelineID = req.PipelineId
 	s.ListenerID = req.ListenerId
 	s.ProxyURL = req.RegisterData.Proxy
-	s.Interval = req.RegisterData.Timer.Interval
+	s.Expression = req.RegisterData.Timer.Expression
 	s.Jitter = req.RegisterData.Timer.Jitter
 	s.SessionContext.Update(req)
 
@@ -384,6 +428,18 @@ func (s *Session) UpdateSysInfo(info *implantpb.SysInfo) {
 	s.Process = info.Process
 }
 
+func (s *Session) FillSysInfo() {
+	artifact, err := db.GetArtifactByName(s.Name)
+	if err != nil {
+		logs.Log.Errorf("failed to find atrtifact %s: %s", s.Name, err)
+		return
+	}
+	s.Os = &implantpb.Os{
+		Name: artifact.Os,
+		Arch: artifact.Arch,
+	}
+}
+
 func (s *Session) Publish(Op string, msg string, notify bool, important bool) {
 	EventBroker.Publish(Event{
 		EventType: consts.EventSession,
@@ -395,20 +451,12 @@ func (s *Session) Publish(Op string, msg string, notify bool, important bool) {
 	})
 }
 
-func (s *Session) nextTaskId() uint32 {
-	s.Taskseq++
-	return s.Taskseq
-}
-
-func (s *Session) SetLastTaskId(id uint32) {
-	s.Taskseq = id
-}
-
 func (s *Session) NewTask(name string, total int) *Task {
+	s.Taskseq++
 	task := &Task{
 		Type:      name,
 		Total:     total,
-		Id:        s.nextTaskId(),
+		Id:        s.Taskseq,
 		SessionId: s.ID,
 		Session:   s,
 		DoneCh:    make(chan bool),
@@ -416,14 +464,6 @@ func (s *Session) NewTask(name string, total int) *Task {
 	task.Ctx, task.Cancel = context.WithCancel(s.Ctx)
 	s.Tasks.Add(task)
 	return task
-}
-
-func (s *Session) AllTask() []*Task {
-	return s.Tasks.All()
-}
-
-func (s *Session) UpdateLastCheckin() {
-	s.LastCheckin = time.Now().Unix()
 }
 
 // Request
@@ -530,6 +570,10 @@ func (s *sessions) Get(sessionID string) (*Session, error) {
 }
 
 func (s *sessions) Add(session *Session) *Session {
+	if session == nil {
+		logs.Log.Errorf("session is nil")
+		return nil
+	}
 	s.active.Store(session.ID, session)
 	//EventBroker.Publish(Event{
 	//	EventType: consts.SessionOpenedEvent,

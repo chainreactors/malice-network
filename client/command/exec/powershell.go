@@ -2,7 +2,6 @@ package exec
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
@@ -26,7 +25,7 @@ func PowershellCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	con.GetInteractive().Console(task, "powershell: "+cmdStr)
+	con.GetInteractive().Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 
@@ -50,7 +49,7 @@ func ExecutePowershellCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	con.GetInteractive().Console(task, fmt.Sprintf("%s, args: %v", script, cmdline))
+	session.Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 
@@ -70,6 +69,7 @@ func PowerPick(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, p
 		Type:   consts.ModulePowerpick,
 		Param:  param,
 		Output: true,
+		Delay:  2000,
 	}
 	task, err := rpc.ExecutePowerpick(sess.Context(), binary)
 	if err != nil {

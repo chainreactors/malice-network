@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/chainreactors/malice-network/helper/utils/handler"
 	"math"
 	"strings"
 
@@ -66,6 +67,17 @@ func ContextCallback(task *core.Task, ctx context.Context) func(*implantpb.Spite
 			for _, c := range cs {
 				ctxs = append(ctxs, c)
 			}
+		case "mimikatz":
+			cs, err := output.ParseMimikatz(content)
+			//fmt.Println(string(content))
+			//fmt.Printf("cs: %v", cs)
+			if err != nil {
+				logs.Log.Error(err)
+				return
+			}
+			for _, c := range cs {
+				ctxs = append(ctxs, c)
+			}
 		}
 
 		for _, c := range ctxs {
@@ -102,13 +114,43 @@ func (rpc *Server) Execute(ctx context.Context, req *implantpb.ExecRequest) (*cl
 	if err != nil {
 		return nil, err
 	}
-	ch, err := rpc.GenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
+	if !req.Realtime {
+		ch, err := rpc.GenericHandler(ctx, greq)
+		if err != nil {
+			return nil, err
+		}
+
+		go greq.HandlerResponse(ch, types.MsgExec)
+	} else {
+		greq.Count = -1
+		_, out, err := rpc.StreamGenericHandler(ctx, greq)
+		if err != nil {
+			return nil, err
+		}
+
+		go func() {
+			for {
+				resp := <-out
+				exec := resp.GetExecResponse()
+				err := handler.AssertSpite(resp, types.MsgExec)
+				if err != nil {
+					greq.Task.Panic(buildErrorEvent(greq.Task, err))
+					return
+				}
+				err = greq.HandlerSpite(resp)
+				if err != nil {
+					return
+				}
+				if exec.End {
+					greq.Task.Finish(resp, "")
+					break
+				}
+			}
+		}()
 	}
 
-	go greq.HandlerResponse(ch, types.MsgExec)
 	return greq.Task.ToProtobuf(), nil
+
 }
 
 func (rpc *Server) ExecuteAssembly(ctx context.Context, req *implantpb.ExecuteBinary) (*clientpb.Task, error) {
@@ -156,27 +198,25 @@ func (rpc *Server) ExecuteBof(ctx context.Context, req *implantpb.ExecuteBinary)
 			logs.Log.Error(err)
 			return
 		}
+
+		// handler context bof callback
 		var results strings.Builder
 		for _, bofResp := range bofResps.(output.BOFResponses) {
 			switch bofResp.CallbackType {
-			case output.CALLBACK_OUTPUT, output.CALLBACK_OUTPUT_OEM, output.CALLBACK_OUTPUT_UTF8:
-				continue
-			case output.CALLBACK_ERROR:
-				continue
-			case output.CALLBACK_SCREENSHOT:
+			case output.CallbackScreenshot:
 				if bofResp.Length <= 4 {
 					results.WriteString("Null screenshot data\n")
 					continue
 				}
 				err = core.HandleScreenshot(bofResp.Data, greq.Task)
-			case output.CALLBACK_FILE:
+			case output.CallbackFile:
 				err = core.HandleFileOperations("open", bofResp.Data, greq.Task)
-			case output.CALLBACK_FILE_WRITE:
+			case output.CallbackFileWrite:
 				err = core.HandleFileOperations("write", bofResp.Data, greq.Task)
-			case output.CALLBACK_FILE_CLOSE:
+			case output.CallbackFileClose:
 				err = core.HandleFileOperations("close", bofResp.Data, greq.Task)
 			default:
-				logs.Log.Errorf("Unimplemented callback type : %d", bofResp.CallbackType)
+				continue
 			}
 		}
 	})
@@ -196,7 +236,8 @@ func (rpc *Server) ExecuteEXE(ctx context.Context, req *implantpb.ExecuteBinary)
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgBinaryResponse)
+	go greq.HandlerResponse(ch, types.MsgBinaryResponse, ContextCallback(greq.Task, ctx))
+
 	return greq.Task.ToProtobuf(), nil
 }
 

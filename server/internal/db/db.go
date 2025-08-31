@@ -13,6 +13,9 @@ var (
 
 // Session - Database session
 func Session() *gorm.DB {
+	if Client == nil {
+		return nil
+	}
 	return Client.Session(&gorm.Session{
 		FullSaveAssociations: true,
 		PrepareStmt:          true,

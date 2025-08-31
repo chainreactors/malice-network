@@ -4,20 +4,20 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
-	"strings"
-
+	"github.com/chainreactors/malice-network/helper/utils"
+	"github.com/chainreactors/malice-network/helper/utils/formatutils"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
+	"os"
+	"path/filepath"
+	"time"
 
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/codenames"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
 	"github.com/chainreactors/malice-network/helper/utils/mtls"
+	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 )
@@ -26,7 +26,7 @@ var (
 	Listener *listener
 )
 
-func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) error {
+func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig, serverEnable bool) error {
 	options, err := mtls.GetGrpcOptions([]byte(clientConf.CACertificate), []byte(clientConf.Certificate), []byte(clientConf.PrivateKey), clientConf.Type)
 	if err != nil {
 		return err
@@ -35,9 +35,14 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 	if err != nil {
 		return err
 	}
-	conn, err := grpc.Dial(listenerCfg.Address(), options...)
+	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+	var address = listenerCfg.Address()
+	if serverEnable && cfg.Enable {
+		address = fmt.Sprintf("%s:%d", "127.0.0.1", listenerCfg.Port)
+	}
+	conn, err := grpc.DialContext(ctx, address, options...)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to connect to server: %v", err)
 	}
 
 	lns := &listener{
@@ -111,6 +116,7 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 			Name:       pipeline.Name,
 			ListenerId: lns.ID(),
 		})
+
 		if err != nil {
 			return err
 		}
@@ -151,9 +157,19 @@ func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig) err
 			return err
 		}
 
+		if pipe.Tls.Enable && !pipe.Tls.Acme {
+			_, err = lns.Rpc.GenerateSelfCert(lns.Context(), pipe)
+		} else if pipe.Tls.Enable && pipe.Tls.Acme {
+			_, err = lns.Rpc.GenerateAcmeCert(lns.Context(), pipe)
+		}
+		if err != nil {
+			return err
+		}
+
 		_, err = lns.Rpc.StartWebsite(lns.Context(), &clientpb.CtrlPipeline{
 			Name:       newWebsite.WebsiteName,
 			ListenerId: lns.Name,
+			Pipeline:   pipe,
 		})
 		if err != nil {
 			return err
@@ -177,21 +193,31 @@ func (lns *listener) RegisterAndStart(pipeline *clientpb.Pipeline) error {
 	if !pipeline.Enable {
 		return nil
 	}
+
 	_, err := lns.Rpc.RegisterPipeline(lns.Context(), pipeline)
 	if err != nil {
 		return err
 	}
 
+	if pipeline.Tls.Enable && !pipeline.Tls.Acme {
+		_, err = lns.Rpc.GenerateSelfCert(lns.Context(), pipeline)
+	} else if pipeline.Tls.Enable && pipeline.Tls.Acme {
+		_, err = lns.Rpc.GenerateAcmeCert(lns.Context(), pipeline)
+	}
+	if err != nil {
+		return err
+	}
+
 	_, err = lns.Rpc.StartPipeline(lns.Context(), &clientpb.CtrlPipeline{
-		Name:           pipeline.Name,
-		ListenerId:     lns.ID(),
-		BeaconPipeline: pipeline.BeaconPipeline,
-		Target:         pipeline.Target,
-		Pipeline:       pipeline,
+		Name:       pipeline.Name,
+		ListenerId: lns.ID(),
+		Pipeline:   pipeline,
 	})
 	if err != nil {
 		return err
 	}
+
+	lns.autoBuild(lns.cfg.AutoBuildConfig, pipeline)
 	return nil
 }
 
@@ -246,6 +272,8 @@ func (lns *listener) Handler() {
 			handlerErr = lns.handleWebContentUpdate(msg)
 		case consts.CtrlWebContentRemove:
 			handlerErr = lns.handleWebContentRemove(msg.Job)
+		case consts.CtrlWebContentAddArtifact:
+			handlerErr = lns.handleAmountArtifact(msg)
 		case consts.CtrlRemStart:
 			handlerErr = lns.handleStartRem(msg.Job)
 		case consts.CtrlRemAgentCtrl:
@@ -254,6 +282,9 @@ func (lns *listener) Handler() {
 			handlerErr = lns.handlerRemAgentLog(msg.Job)
 		case consts.CtrlRemAgentStop:
 			handlerErr = lns.handlerRemAgentStop(msg.Job)
+		case consts.CtrlAcme:
+			handlerErr = lns.handlerAcme(msg.Job)
+
 		}
 
 		status := &clientpb.JobStatus{
@@ -287,97 +318,76 @@ func (lns *listener) handlerStart(job *clientpb.Job) error {
 		return err
 	}
 	job.Name = pipeline.ID()
-	err = lns.autoBuild(job.GetPipeline())
-	if err != nil {
-		logs.Log.Warn(err)
-	}
 	return nil
 }
 
-func (lns *listener) autoBuild(pipeline *clientpb.Pipeline) error {
-	if len(pipeline.Target) == 0 {
-		return fmt.Errorf("pipeline %s target is empty, auto build canceled", pipeline.Name)
-	}
-	var buildType string
-	var beaconPipeline string
-	var pulsePipeline string
-	var input map[string]string
-
-	_, workflowErr := lns.Rpc.WorkflowStatus(lns.Context(), &clientpb.GithubWorkflowRequest{})
-	_, dockerErr := lns.Rpc.DockerStatus(lns.Context(), &clientpb.Empty{})
-	if workflowErr != nil && dockerErr != nil {
-		return fmt.Errorf("workflow and docker not worked: %s, %s", workflowErr.Error(), dockerErr.Error())
+func (lns *listener) autoBuild(autoBuild *configs.AutoBuildConfig, pipeline *clientpb.Pipeline) {
+	if autoBuild == nil || !autoBuild.Enable || len(autoBuild.Target) == 0 || len(autoBuild.Pipeline) == 0 {
+		logs.Log.Debugf("not set auto_build/target/pipeline, skip auto build")
+		return
 	}
 
-	for _, target := range pipeline.Target {
-		if pipeline.Parser == consts.CommandBuildPulse {
-			if !strings.Contains(target, "windows") {
-				logs.Log.Warnf("pulse build target must be windows, %s is not supported", target)
-				continue
-			}
-			buildType = consts.CommandBuildPulse
-			beaconPipeline = pipeline.BeaconPipeline
-			pulsePipeline = pipeline.Name
-			input = map[string]string{
-				"package": consts.CommandBuildPulse,
-				"targets": target,
-			}
-		} else {
-			buildType = consts.CommandBuildBeacon
-			beaconPipeline = pipeline.Name
-			input = map[string]string{
-				"package": consts.CommandBuildBeacon,
-				"targets": target,
-			}
-		}
+	if !utils.StringInSlice(pipeline.Name, autoBuild.Pipeline) {
+		logs.Log.Debugf("%s pieline not auto build list", pipeline.Name)
+		return
+	}
+
+	if !(pipeline.Type == consts.TCPPipeline || pipeline.Type == consts.HTTPPipeline || pipeline.Type == consts.RemPipeline) {
+		logs.Log.Debugf("%s pieline not support auto build", pipeline.Type)
+		return
+	}
+
+	for _, target := range autoBuild.Target {
 		targetMap, ok := consts.GetBuildTarget(target)
 		if !ok {
-			fmt.Printf("Error getting build target for %s\n", target)
+			logs.Log.Warnf("invalid build target: %s, skip auto build", target)
 			continue
 		}
-		_, err := lns.Rpc.FindArtifact(lns.Context(), &clientpb.Artifact{
-			Pipeline: pipeline.Name,
+
+		if autoBuild.BuildPulse {
+			if err := lns.executeBuild(pipeline.Name+"_default", &clientpb.Artifact{
+				Target:   target,
+				Platform: targetMap.OS,
+				Arch:     targetMap.Arch,
+				Type:     consts.CommandBuildPulse,
+				Pipeline: pipeline.Name,
+			}); err != nil {
+				logs.Log.Warnf("Error building %s: %v", target, err)
+			}
+		}
+
+		if err := lns.executeBuild(pipeline.Name+"_default", &clientpb.Artifact{
 			Target:   target,
-			Type:     buildType,
 			Platform: targetMap.OS,
 			Arch:     targetMap.Arch,
-		})
-		if !errors.Is(err, errs.ErrNotFoundArtifact) && err != nil {
-			logs.Log.Errorf("Error finding artifact for %s: %v\n", target, err)
-			continue
-		} else if err == nil {
-			continue
-		}
-		profileName := codenames.GetCodename()
-		_, err = lns.Rpc.NewProfile(lns.Context(), &clientpb.Profile{
-			Name:            profileName,
-			PipelineId:      beaconPipeline,
-			PulsePipelineId: pulsePipeline,
-		})
-		if err != nil {
-			return err
-		}
-		if workflowErr == nil {
-			_, err = lns.Rpc.TriggerWorkflowDispatch(lns.Context(), &clientpb.GithubWorkflowRequest{
-				Inputs:  input,
-				Profile: profileName,
-			})
-			if err != nil {
-				return err
-			}
-		} else if dockerErr == nil {
-			_, err = lns.Rpc.Build(lns.Context(), &clientpb.Generate{
-				Target:      target,
-				ProfileName: profileName,
-				Type:        buildType,
-				Srdi:        true,
-			})
-			if err != nil {
-				return err
-			}
+			Type:     consts.CommandBuildBeacon,
+			Pipeline: pipeline.Name,
+		}); err != nil {
+			logs.Log.Warnf("Error building %s: %v", target, err)
 		}
 	}
-	return nil
+}
+
+// 执行构建
+func (lns *listener) executeBuild(profileName string, artifact *clientpb.Artifact) error {
+
+	resp, err := lns.Rpc.CheckSource(lns.Context(), &clientpb.BuildConfig{})
+	if err != nil {
+		return err
+	}
+	_, err = lns.Rpc.FindArtifact(lns.Context(), artifact)
+	if err == nil {
+		return nil
+	} else {
+		err = nil
+	}
+	_, err = lns.Rpc.Build(lns.Context(), &clientpb.BuildConfig{
+		Target:      artifact.Target,
+		ProfileName: profileName,
+		Type:        artifact.Type,
+		Source:      resp.Source,
+	})
+	return err
 }
 
 func (lns *listener) syncPipeline(pipeline *clientpb.Job) error {
@@ -480,6 +490,34 @@ func (lns *listener) handleWebContentAdd(job *clientpb.JobCtrl) error {
 		return errors.New("website not found")
 	}
 	w.AddContent(job.Content)
+	job.Job.Contents = map[string]*clientpb.WebContent{
+		job.Content.Path: &clientpb.WebContent{
+			Id:   job.Content.Path,
+			Path: job.Content.Path,
+		},
+	}
+	return nil
+}
+
+func (lns *listener) handleAmountArtifact(job *clientpb.JobCtrl) error {
+	pipe := job.GetJob()
+	w := lns.websites[pipe.Pipeline.Name]
+	if w == nil {
+		return errors.New("website not found")
+	}
+
+	en := formatutils.Encode(job.Content.Path)
+
+	w.Artifact[en] = &clientpb.WebContent{
+		Path: job.Content.Path,
+	}
+
+	job.Job.Contents = map[string]*clientpb.WebContent{
+		job.Content.Path: &clientpb.WebContent{
+			Id:   job.Content.Path,
+			Path: en,
+		},
+	}
 	return nil
 }
 
@@ -526,5 +564,66 @@ func (lns *listener) handleStartRem(job *clientpb.Job) error {
 
 	lns.pipelines.Add(rem)
 	job.Name = rem.ID()
+	return nil
+}
+
+func (lns *listener) handlerAcme(job *clientpb.Job) error {
+	pipeline := job.GetPipeline()
+	var has80 bool
+	var website *Website
+	var websiteName string
+
+	for _, w := range lns.websites {
+		if w.port == 80 && w.Enable {
+			has80 = true
+			break
+		}
+	}
+
+	if !has80 {
+		websiteName = pipeline.Tls.Domain + "_acme"
+		web := &clientpb.Pipeline{
+			Name:       websiteName,
+			ListenerId: pipeline.ListenerId,
+			Enable:     false,
+			Ip:         lns.IP,
+			Body: &clientpb.Pipeline_Web{
+				Web: &clientpb.Website{
+					Name:     websiteName,
+					Root:     "/",
+					Port:     80,
+					Contents: make(map[string]*clientpb.WebContent),
+				},
+			},
+			Tls: pipeline.Tls,
+		}
+		var err error
+		website, err = StartWebsite(lns.Rpc, web, make(map[string]*clientpb.WebContent))
+		if err != nil {
+			return err
+		}
+		lns.websites[websiteName] = website
+	}
+
+	certutils.GetACMEManager().RegisterDomain(pipeline.Tls.Domain)
+	go func() {
+		//defer func() {
+		//	if website != nil {
+		//		website.Close()
+		//		delete(lns.websites, websiteName)
+		//	}
+		//}()
+
+		tls, err := certutils.GetAcmeTls(pipeline.GetTls())
+		if err != nil {
+			return
+		}
+		pipeline.Tls = tls
+		_, err = lns.Rpc.SaveAcmeCert(lns.Context(), pipeline)
+		if err != nil {
+			return
+		}
+	}()
+
 	return nil
 }

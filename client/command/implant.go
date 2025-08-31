@@ -3,6 +3,7 @@ package command
 import (
 	"fmt"
 	"github.com/carapace-sh/carapace"
+	"github.com/chainreactors/malice-network/client/plugin"
 	"github.com/reeflective/console"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -18,7 +19,6 @@ import (
 	"github.com/chainreactors/malice-network/client/command/file"
 	"github.com/chainreactors/malice-network/client/command/filesystem"
 	"github.com/chainreactors/malice-network/client/command/help"
-	"github.com/chainreactors/malice-network/client/command/mal"
 	"github.com/chainreactors/malice-network/client/command/modules"
 	"github.com/chainreactors/malice-network/client/command/pipe"
 	"github.com/chainreactors/malice-network/client/command/pivot"
@@ -30,7 +30,6 @@ import (
 	"github.com/chainreactors/malice-network/client/command/taskschd"
 	"github.com/chainreactors/malice-network/client/command/third"
 	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/core/plugin"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/tui"
@@ -128,6 +127,12 @@ func makeCompleters(cmd *cobra.Command, con *repl.Console) {
 	})
 }
 
+func BindCommand(cmds []*cobra.Command) func(con *repl.Console) []*cobra.Command {
+	return func(con *repl.Console) []*cobra.Command {
+		return cmds
+	}
+}
+
 func BindBuiltinCommands(con *repl.Console, root *cobra.Command) *cobra.Command {
 	bind := MakeBind(root, con)
 	BindCommonCommands(bind)
@@ -162,7 +167,6 @@ func BindBuiltinCommands(con *repl.Console, root *cobra.Command) *cobra.Command 
 	)
 	bind(consts.ArmoryGroup)
 	bind(consts.AddonGroup)
-	bind(consts.MalGroup)
 
 	root.InitDefaultHelpCmd()
 	root.SetHelpCommandGroupID(consts.GenericGroup)
@@ -221,13 +225,18 @@ func BindImplantCommands(con *repl.Console) console.Commands {
 			return implant
 		}
 
-		plugin.GlobalPlugins = plugin.LoadGlobalLuaPlugin()
-		for _, malName := range plugin.GetPluginManifest() {
-			_, err := mal.LoadMalWithManifest(con, implant, malName)
-			if err != nil {
-				con.Log.Errorf("Failed to load mal %s: %s\n", malName.Name, err)
-				continue
-			}
+		if con.MalManager == nil {
+			con.MalManager = plugin.GetGlobalMalManager()
+		}
+		bind := MakeBind(implant, con)
+		// 注册嵌入式插件命令
+		for _, plug := range con.MalManager.GetAllEmbeddedPlugins() {
+			bind(plug.Name, BindCommand(plug.Commands().Commands()))
+		}
+
+		// 注册外部插件命令
+		for _, plug := range con.MalManager.GetAllExternalPlugins() {
+			bind(plug.Manifest().Name, BindCommand(plug.Commands().Commands()))
 		}
 
 		implant.SetUsageFunc(help.UsageFunc)

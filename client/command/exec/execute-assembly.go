@@ -5,6 +5,7 @@ import (
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
@@ -16,19 +17,20 @@ import (
 func ExecuteAssemblyCmd(cmd *cobra.Command, con *repl.Console) error {
 	session := con.GetInteractive()
 	path, args, output, _ := common.ParseBinaryFlags(cmd)
-	task, err := ExecuteAssembly(con.Rpc, session, path, args, output, common.ParseSacrificeFlags(cmd))
+	task, err := ExecuteAssembly(con.Rpc, session, path, args, output, common.ParseCLRFlags(cmd), common.ParseSacrificeFlags(cmd))
 	if err != nil {
 		return err
 	}
-	con.GetInteractive().Console(task, path)
+	session.Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 
-func ExecuteAssembly(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, args []string, out bool, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
+func ExecuteAssembly(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, args []string, out bool, param map[string]string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 	binary, err := output.NewExecutable(consts.ModuleExecuteAssembly, path, args, sess.Os.Arch, out, sac)
 	if err != nil {
 		return nil, err
 	}
+	binary.Param = param
 	task, err := rpc.ExecuteAssembly(sess.Context(), binary)
 	if err != nil {
 		return nil, err
@@ -44,7 +46,7 @@ func InlineAssemblyCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	con.GetInteractive().Console(task, path)
+	session.Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 
@@ -71,7 +73,7 @@ func RegisterAssemblyFunc(con *repl.Console) {
 			if err != nil {
 				return nil, err
 			}
-			return ExecuteAssembly(rpc, sess, path, cmdline, true, output.NewSacrifice(0, false, true, true, ""))
+			return ExecuteAssembly(rpc, sess, path, cmdline, true, intermediate.NewBypassAll(), output.NewSacrifice(0, false, true, true, ""))
 		},
 		output.ParseBinaryResponse,
 		nil)
@@ -79,13 +81,14 @@ func RegisterAssemblyFunc(con *repl.Console) {
 	con.AddCommandFuncHelper(
 		consts.ModuleExecuteAssembly,
 		consts.ModuleExecuteAssembly,
-		consts.ModuleExecuteAssembly+`(active(),"sharp.exe",{}, true, new_bypass_all())`,
+		consts.ModuleExecuteAssembly+`(active(),"sharp.exe",{}, true, new_bypass_all(), new_sacrifice(1234,false,true,true,""))`,
 		[]string{
 			"sessions",
 			"path",
 			"args",
 			"output",
 			"param, bypass amsi,wldp,etw",
+			"sac, sacrifice process",
 		},
 		[]string{"task"})
 

@@ -2,17 +2,17 @@ package gonut
 
 import (
 	"os"
-	"path/filepath"
 	"strings"
 )
 
 // DonutShellcodeFromFile 从给定的 PE 文件生成 Donut shellcode
 func DonutShellcodeFromFile(filePath string, arch string, params string) (data []byte, err error) {
-	pe, err := os.ReadFile(filePath)
+	bin, err := os.ReadFile(filePath)
 	if err != nil {
 		return
 	}
-	return DonutShellcodeFromPE(filepath.Base(filePath), pe, arch, params, false, true)
+
+	return DonutShellcodeFromPE(filePath, bin, arch, params, false, true)
 }
 
 // DonutShellcodeFromPE 从给定的 PE 数据生成 Donut shellcode

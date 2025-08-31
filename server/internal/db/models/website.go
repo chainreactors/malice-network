@@ -60,9 +60,9 @@ func (wc *WebsiteContent) ToProtobuf(read bool) *clientpb.WebContent {
 
 func (wc *WebsiteContent) URL() string {
 	if wc.Pipeline.Tls != nil {
-		return fmt.Sprintf("https://%s:%d%s%s", wc.Pipeline.IP, wc.Pipeline.Port, wc.Pipeline.WebPath, wc.Path)
+		return fmt.Sprintf("http://%s:%d%s%s", wc.Pipeline.IP, wc.Pipeline.Port, wc.Pipeline.WebPath, wc.Path)
 	}
-	return fmt.Sprintf("http://%s:%d%s%s", wc.Pipeline.IP, wc.Pipeline.Port, wc.Pipeline.WebPath, wc.Path)
+	return fmt.Sprintf("https://%s:%d%s%s", wc.Pipeline.IP, wc.Pipeline.Port, wc.Pipeline.WebPath, wc.Path)
 }
 
 func FromWebContentPb(content *clientpb.WebContent) *WebsiteContent {

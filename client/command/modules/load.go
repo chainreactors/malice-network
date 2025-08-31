@@ -1,190 +1,125 @@
 package modules
 
 import (
-	"encoding/base64"
 	"errors"
-	"fmt"
+	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/client/command/action"
+	"github.com/chainreactors/malice-network/client/command/build"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/types"
+	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 )
 
 func LoadModuleCmd(cmd *cobra.Command, con *repl.Console) error {
 	bundle, _ := cmd.Flags().GetString("bundle")
 	path, _ := cmd.Flags().GetString("path")
-	modules, _ := cmd.Flags().GetStringSlice("modules")
-	builderResource, _ := cmd.Flags().GetString("build")
-	target, _ := cmd.Flags().GetString("target")
-	profile, _ := cmd.Flags().GetString("profile")
-
-	// Validate required flags
-	if builderResource != "" && (target == "" || profile == "") {
-		return errors.New("require build module target and profile")
+	artifactName, _ := cmd.Flags().GetString("artifact")
+	modules, _ := cmd.Flags().GetString("modules")
+	thirdModules, _ := cmd.Flags().GetString("3rd")
+	if artifactName != "" {
+		artifact, err := con.Rpc.DownloadArtifact(con.Context(), &clientpb.Artifact{
+			Name: artifactName,
+		})
+		if err != nil {
+			return err
+		}
+		modulePath := filepath.Join(assets.GetTempDir(), artifact.Name)
+		err = os.WriteFile(modulePath, artifact.Bin, 0666)
+		if err != nil {
+			return err
+		}
+		task, err := LoadModule(con.Rpc, con.GetInteractive(), artifact.Name, modulePath)
+		if err != nil {
+			return err
+		}
+		con.GetInteractive().Console(task, string(*con.App.Shell().Line()))
+		return nil
+	} else if modules != "" || thirdModules != "" {
+		if modules != "" && thirdModules != "" {
+			return errors.New("--module and --3rd options are mutually exclusive. please specify only one of them")
+		} else {
+			go func() {
+				err := handleModuleBuild(cmd, con, strings.Split(modules, ","), strings.Split(thirdModules, ","))
+				if err != nil {
+					logs.Log.Errorf("Error loading modules: %s\n", err)
+				}
+			}()
+			return nil
+		}
+	} else if path != "" {
+		// Default bundle handling
+		if bundle == "" {
+			bundle = filepath.Base(path)
+		}
+		session := con.GetInteractive()
+		task, err := LoadModule(con.Rpc, session, bundle, path)
+		if err != nil {
+			return err
+		}
+		session.Console(task, string(*con.App.Shell().Line()))
+		return nil
+	} else {
+		return errors.New("must specify either --path, --modules or --3rd_modules. One of them is required")
 	}
-	if path == "" && len(modules) == 0 {
-		return errors.New("path or modules is required")
-	}
-
-	if len(modules) > 0 && path == "" {
-		return handleModuleBuild(con, builderResource, target, profile, modules)
-	}
-
-	// Default bundle handling
-	if bundle == "" {
-		bundle = filepath.Base(path)
-	}
-	session := con.GetInteractive()
-	task, err := LoadModule(con.Rpc, session, bundle, path)
-	if err != nil {
-		return err
-	}
-	session.Console(task, fmt.Sprintf("load %s %s", bundle, path))
-	return nil
 }
 
 // handleModuleBuild handles module build based on the builder resource (docker/action)
-func handleModuleBuild(con *repl.Console, builderResource, target, profile string, modules []string) error {
-	switch builderResource {
-	case "docker":
-		return buildWithDocker(con, target, profile, modules)
-	case "action":
-		return buildWithAction(con, target, profile, modules)
-	default:
-		return errors.New("unknown builder resource")
-	}
-}
-
-// buildWithDocker handles module build via Docker
-func buildWithDocker(con *repl.Console, target, profile string, modules []string) error {
-	var modulePath string
-	go func() {
-		builder, err := con.Rpc.BuildModules(con.Context(), &clientpb.Generate{
-			Target:      target,
-			Modules:     modules,
-			ProfileName: profile,
-			Type:        consts.CommandBuildModules,
-		})
-		if err != nil {
-			con.Log.Errorf("Build modules failed: %v", err)
-			return
-		}
-		modulePath, err = handleModuleDownload(con, builder.Id, builder.Name, builder.Bin)
-		if err != nil {
-			con.Log.Errorf("Write modules failed: %v\n", err)
-			return
-		}
-
-		task, err := LoadModule(con.Rpc, con.GetInteractive(), builder.Name, modulePath)
-		if err != nil {
-			con.Log.Errorf("Load modules failed: %v\n", err)
-			return
-		}
-		con.GetInteractive().Console(task, fmt.Sprintf("load %s %s", modules, modulePath))
-	}()
-	return nil
-}
-
-// buildWithAction handles module build via Action (GitHub workflow)
-func buildWithAction(con *repl.Console, target, profile string, modules []string) error {
-	if len(modules) == 0 {
-		modules = []string{"full"}
-	}
-	var workflowID string
-	setting, err := assets.GetSetting()
+func handleModuleBuild(cmd *cobra.Command, con *repl.Console, modules, thirdModules []string) error {
+	source, err := build.CheckResource(con, "", nil)
 	if err != nil {
 		return err
 	}
-	if setting.GithubWorkflowFile == "" {
-		workflowID = "generate.yaml"
-	} else {
-		workflowID = setting.GithubWorkflowFile
+	target, ok := consts.GetBuildTargetNameByArchOS(con.GetInteractive().Session.Os.Arch, con.Session.Os.Name)
+	if !ok {
+		return errs.ErrInvalidateTarget
 	}
-	configByte := types.DefaultProfile
-	buildConfig, err := types.LoadProfile(configByte)
+	var params *types.ProfileParams
+	if len(modules) != 0 {
+		params = &types.ProfileParams{
+			Modules: strings.Join(modules, ","),
+		}
+	} else if len(thirdModules) != 0 {
+		params = &types.ProfileParams{
+			Enable3RD: true,
+			Modules:   strings.Join(modules, ","),
+		}
+	} else {
+		return errors.New("must specify either --modules or --3rd. One of them is required")
+	}
+	artifact, err := con.Rpc.SyncBuild(con.SyncBuildContext(), &clientpb.BuildConfig{
+		Target:      target,
+		ParamsBytes: []byte(params.String()),
+		Type:        consts.CommandBuildModules,
+		Source:      source,
+	})
 	if err != nil {
 		return err
 	}
-	buildConfig.Implant.Modules = modules
-	configByte, _ = yaml.Marshal(buildConfig)
 
-	inputs := map[string]string{
-		"malefic_config_yaml":      base64.StdEncoding.EncodeToString(configByte),
-		"package":                  consts.CommandBuildModules,
-		"targets":                  "x86_64-pc-windows-msvc",
-		"malefic_modules_features": strings.Join(modules, ","),
+	sess := con.GetInteractive()
+	task, err := con.Rpc.LoadModule(sess.Context(), &implantpb.LoadModule{
+		Bundle: artifact.Name,
+		Bin:    artifact.Bin,
+	})
+	if err != nil {
+		return err
 	}
-
-	go func() {
-		builder, err := action.RunWorkFlow(con, &clientpb.GithubWorkflowRequest{
-			Inputs:     inputs,
-			Owner:      setting.GithubOwner,
-			Repo:       setting.GithubRepo,
-			Token:      setting.GithubToken,
-			WorkflowId: workflowID,
-			Profile:    profile,
-		})
-		if err != nil {
-			con.Log.Errorf("Run workflow failed: %v", err)
-			return
-		}
-		modulePath, err := handleModuleDownload(con, builder.Id, builder.Name, builder.Bin)
-		if err != nil {
-			con.Log.Errorf("Write modules failed: %v\n", err)
-			return
-		}
-
-		task, err := LoadModule(con.Rpc, con.GetInteractive(), builder.Name, modulePath)
-		if err != nil {
-			con.Log.Errorf("Load modules failed: %v\n", err)
-			return
-		}
-		con.GetInteractive().Console(task, fmt.Sprintf("load %s %s\n", modules, modulePath))
-	}()
+	sess.Console(task, string(*con.App.Shell().Line()))
 	return nil
-}
-
-// handleModuleDownload handles module download and saves to disk
-func handleModuleDownload(con *repl.Console, moduleID uint32, moduleName string, moduleBin []byte) (string, error) {
-	var modulePath string
-	if len(moduleBin) > 0 {
-		modulePath = filepath.Join(assets.GetTempDir(), moduleName)
-		err := os.WriteFile(modulePath, moduleBin, 0666)
-		if err != nil {
-			return "", err
-		}
-	} else {
-		for {
-			time.Sleep(30 * time.Second)
-			builder, err := con.Rpc.DownloadArtifact(con.Context(), &clientpb.Artifact{
-				Id: moduleID,
-			})
-			if err == nil {
-				modulePath = filepath.Join(assets.GetTempDir(), builder.Name)
-				err = os.WriteFile(modulePath, builder.Bin, 0666)
-				if err != nil {
-					return "", err
-				}
-				break
-			}
-		}
-	}
-	return modulePath, nil
 }
 
 func LoadModule(rpc clientrpc.MaliceRPCClient, session *core.Session, bundle string, path string) (*clientpb.Task, error) {
-	data, err := os.ReadFile(path)
+	data, err := pe.Unpack(path)
 	if err != nil {
 		return nil, err
 	}

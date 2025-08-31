@@ -47,8 +47,8 @@ setup_environment(){
       fi
       log_task_status completed "Using base directory: $IoM_ROOT_DIR"
   }
-    set_base_dir
-    set_server_ip
+  set_base_dir
+  set_server_ip
 }
 
 # check and install docker
@@ -106,8 +106,8 @@ check_and_install_docker(){
     # pull images for compilation
     docker_pull_image(){
         log_task_status in_progress "Pulling the Docker image for Malefic compilation..."
-        SOURCE_IMAGE=${SOURCE_IMAGE:="chainreactors/malefic-builder:v0.0.4-with-dependencies"}
-        FINAL_IMAGE=${FINAL_IMAGE:="ghcr.io/chainreactors/malefic-builder:v0.0.4"}
+        SOURCE_IMAGE=${SOURCE_IMAGE:="ghcr.io/chainreactors/malefic-builder:v0.1.1"}
+        FINAL_IMAGE=${FINAL_IMAGE:="ghcr.io/chainreactors/malefic-builder:v0.1.1"}
         docker pull $SOURCE_IMAGE
         docker tag $SOURCE_IMAGE $FINAL_IMAGE
         if [ "$SOURCE_IMAGE" != "$FINAL_IMAGE" ]; then
@@ -120,7 +120,7 @@ check_and_install_docker(){
 
 # install malice-network's artifacts
 install_malice_network() {
-    local MALICE_NETWORK=${MALICE_NETWORK:="v0.0.4"}
+    local MALICE_NETWORK=${MALICE_NETWORK:="v0.1.1"}
     local md="${IoM_ROOT_DIR}/malice-network"
     local MALICE_NETWORK_RELEASES_URL=${MALICE_NETWORK_RELEASES_URL:="https://github.com/chainreactors/malice-network/releases/download/$MALICE_NETWORK"}
     local FILES=(
@@ -139,13 +139,12 @@ install_malice_network() {
     for file in "${FILES[@]}"; do
         download_file "$MALICE_NETWORK_RELEASES_URL/$file" "$file"
     done
-    download_file "https://raw.githubusercontent.com/chainreactors/malice-network/$MALICE_NETWORK/server/config.yaml" "config.yaml"
 
     log_task_status "completed" "All components downloaded successfully."
 
     # --- Verify Checksums ---
     log_task_status "in_progress" "Verifying the downloaded files..."
-    grep -E "linux_amd64" "malice_checksums.txt" | sha256sum -c - 2>/dev/null 
+    grep -E "linux_amd64" "malice_checksums.txt" | sha256sum -c - 2>/dev/null
     rm -f "malice_checksums.txt"
     log_task_status "completed" 'Files verified successfully.'
     # --- Make downloaded files executable ---
@@ -155,7 +154,7 @@ install_malice_network() {
 }
 # install malefic's artifacts、sourcecode
 install_malefic(){
-    local MALEFIC_VERSION=${MALEFIC_VERSION:="v0.0.4"}
+    local MALEFIC_VERSION=${MALEFIC_VERSION:="v0.1.1"}
     local MALEFIC_ROOT_DIR="$IoM_ROOT_DIR/malefic"
     
     install_source_code(){

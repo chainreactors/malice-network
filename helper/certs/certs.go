@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/binary"
 	"encoding/pem"
 	"fmt"
@@ -16,6 +17,34 @@ import (
 	"os"
 	"time"
 )
+
+const (
+	OperatorCA = iota + 1
+	ListenerCA
+	ImplantCA
+	RootCA
+)
+
+const (
+	// RSAKey - Namespace for RSA keys
+	RSAKey            = "rsa"
+	RootName          = "Root"
+	ListenerNamespace = "listener" // Listener servers
+	RootCert          = "root_ca.pem"
+	RootKey           = "root_key.pem"
+	ServerCert        = "server_crt.pem"
+	ServerKey         = "server_key.pem"
+)
+
+const (
+	Acme       = "acme"
+	SelfSigned = "self_signed"
+	Imported   = "imported"
+)
+
+var CertTypes = []string{
+	Acme, SelfSigned, Imported,
+}
 
 // SaveToPEMFile save to PEM file
 func SaveToPEMFile(filename string, pemData []byte) error {
@@ -82,8 +111,10 @@ func RsaKeySize() int {
 	return rsaKeySizes[randomInt(len(rsaKeySizes))]
 }
 
-func GenerateCACert(commonName string) ([]byte, []byte, error) {
-	subject := RandomSubject(commonName)
+func GenerateCACert(commonName string, subject *pkix.Name) ([]byte, []byte, error) {
+	if subject == nil {
+		subject = RandomSubject(commonName)
+	}
 	privateKey, _ := rsa.GenerateKey(rand.Reader, RsaKeySize())
 	notBefore := time.Now()
 	days := randomInt(365) * -1

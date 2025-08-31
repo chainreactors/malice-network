@@ -18,7 +18,7 @@ func DownloadCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	con.GetInteractive().Console(task, "Downloaded file "+path)
+	con.GetInteractive().Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 

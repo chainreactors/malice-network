@@ -14,10 +14,11 @@ import (
 
 func GetCmd(cmd *cobra.Command, con *repl.Console) error {
 	session := con.GetInteractive()
-	_, err := Get(con, session)
+	task, err := Get(con, session)
 	if err != nil {
 		return err
 	}
+	session.Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 

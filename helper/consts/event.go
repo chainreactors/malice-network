@@ -27,17 +27,18 @@ const (
 	CtrlJobStart                = "job_start"
 	CtrlJobStop                 = "job_stop"
 	CtrlSessionRegister         = "session_register"
+	CtrlSessionUpdate           = "session_update"
 	CtrlSessionDead             = "session_dead"
 	CtrlSessionInit             = "session_init"
 	CtrlSessionReborn           = "session_reborn"
 	CtrlSessionLog              = "session_log"
 	CtrlSessionTask             = "session_task"
 	CtrlSessionError            = "session_error"
-	CtrlSessionLeave            = "session_leave"
 	CtrlSessionCheckin          = "session_checkin"
 	CtrlWebContentAdd           = "web_content_add"
 	CtrlWebContentUpdate        = "web_content_update"
 	CtrlWebContentRemove        = "web_content_remove"
+	CtrlWebContentAddArtifact   = "web_content_add_artifact"
 	CtrlRemStart                = "rem_start"
 	CtrlRemStop                 = "rem_stop"
 	CtrlRemAgentCtrl            = "rem_agent_ctrl"
@@ -49,14 +50,16 @@ const (
 	CtrlPivotConnect            = "pivot_connect"
 	CtrlPivotPortForward        = "pivot_portfw"
 	CtrlPivotReversePortForward = "pivot_rportfw"
-	CtrlContextScreenShot       = "context_" + ContextScreenShot
-	CtrlContextCred             = "context_" + ContextCredential
-	CtrlContextKeyLogger        = "context_" + ContextKeyLogger
-	CtrlContextDownload         = "context_" + ContextDownload
-	CtrlContextPort             = "context_" + ContextPort
-	CtrlContextFileCreate       = "context_file_create"
-	CtrlContextFileWrite        = "context_file_write"
-	CtrlContextFileClose        = "context_file_end"
+	CtrlContextScreenShot       = ContextScreenShot
+	CtrlContextCred             = ContextCredential
+	CtrlContextKeyLogger        = ContextKeyLogger
+	CtrlContextDownload         = ContextDownload
+	CtrlContextPort             = ContextPort
+	CtrlContextFileCreate       = "file_create"
+	CtrlContextFileWrite        = "file_write"
+	CtrlContextFileClose        = "file_end"
+	CtrlAcme                    = "acme"
+	CtrlArtifactDownload        = "artifact_download"
 )
 
 const (
@@ -96,4 +99,5 @@ const (
 	EventBuild     = "build"
 	EventPivot     = "pivot"
 	EventContext   = "context"
+	EventCert      = "cert"
 )

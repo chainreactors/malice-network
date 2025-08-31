@@ -1,7 +1,6 @@
 package tasks
 
 import (
-	"fmt"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -23,8 +22,7 @@ func CancelTaskCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-
-	con.GetInteractive().Console(task, fmt.Sprintf("cancel task %d", id))
+	con.GetInteractive().Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 

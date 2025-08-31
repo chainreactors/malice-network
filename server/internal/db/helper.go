@@ -4,26 +4,27 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/chainreactors/malice-network/helper/certs"
+	"github.com/chainreactors/malice-network/helper/codenames"
+	"github.com/chainreactors/malice-network/helper/encoders"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
+	"github.com/chainreactors/malice-network/helper/utils/formatutils"
 	"mime"
 	"os"
 	"path/filepath"
-	"sort"
+	"strconv"
 	"strings"
 
-	"github.com/chainreactors/malice-network/helper/utils/output"
-
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/codenames"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/encoders"
 	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/helper/utils/mtls"
+	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"github.com/gofrs/uuid"
-	"gopkg.in/yaml.v3"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"gorm.io/gorm/utils"
@@ -41,6 +42,13 @@ func HasOperator(typ string) (bool, error) {
 	return true, nil
 }
 
+func RemoveOperator(name string) error {
+	err := Session().Where(&models.Operator{
+		Name: name,
+	}).Delete(&models.Operator{}).Error
+	return err
+}
+
 func FindAliveSessions() ([]*models.Session, error) {
 	updateResult := Session().Exec(`
         UPDATE sessions
@@ -48,7 +56,7 @@ func FindAliveSessions() ([]*models.Session, error) {
         WHERE last_checkin < strftime('%s', 'now') - (
             CAST(COALESCE(
                 JSON_EXTRACT(data, '$.interval'),
-                '30'  -- 默认值，如果 interval 不存在
+                '30'  -- default value if interval doesn't exist
             ) AS INTEGER) * 2
         )
         AND is_removed = false
@@ -66,7 +74,7 @@ func FindAliveSessions() ([]*models.Session, error) {
         WHERE last_checkin > strftime('%s', 'now') - (
             CAST(COALESCE(
                 JSON_EXTRACT(data, '$.interval'),
-                '30'  -- 默认值，如果 interval 不存在
+                '30'  -- default value if interval doesn't exist
             ) AS INTEGER) * 2
         ) 
         AND is_removed = false
@@ -150,15 +158,13 @@ func UpdateSession(sessionID, note, group string) error {
 	return result.Error
 }
 
-func UpdateSessionTimer(sessionID string, interval uint64, jitter float64) error {
+func UpdateSessionTimer(sessionID string, expression string, jitter float64) error {
 	var session *models.Session
 	result := Session().Where("session_id = ?", sessionID).First(&session)
 	if result.Error != nil {
 		return result.Error
 	}
-	if interval != 0 {
-		session.Data.Interval = interval
-	}
+	session.Data.Expression = expression
 	if jitter != 0 {
 		session.Data.Jitter = jitter
 	}
@@ -166,13 +172,8 @@ func UpdateSessionTimer(sessionID string, interval uint64, jitter float64) error
 	return result.Error
 }
 
-func CreateOperator(name string, typ string, remoteAddr string) error {
-	operator := &models.Operator{
-		Name:   name,
-		Type:   typ,
-		Remote: remoteAddr,
-	}
-	err := Session().Save(&operator).Error
+func CreateOperator(client *models.Operator) error {
+	err := Session().Save(client).Error
 	return err
 
 }
@@ -226,7 +227,7 @@ func GetDownloadFiles(sid string) ([]*clientpb.File, error) {
 	if sid == "" {
 		result = Session().Where("type = ?", consts.ContextDownload).Find(&files)
 	} else {
-		result = Session().Where("session_id = ?", sid).Where("type = ?", consts.ContextDownload).Find(&files)
+		result = Session().Where("session_id = ?", sid).Preload("Session").Where("type = ?", consts.ContextDownload).Find(&files)
 	}
 	if result.Error != nil {
 		return nil, result.Error
@@ -237,12 +238,15 @@ func GetDownloadFiles(sid string) ([]*clientpb.File, error) {
 		if err != nil {
 			return nil, err
 		}
+		parts := strings.Split(file.TaskID, "-")
+		taskID := parts[len(parts)-1]
+		taskIDUint, err := strconv.ParseUint(taskID, 10, 32)
 		res = append(res, &clientpb.File{
 			Name:      download.Name,
 			Local:     download.FilePath,
 			Checksum:  download.Checksum,
 			Remote:    download.TargetPath,
-			TaskId:    file.Task.Seq,
+			TaskId:    uint32(taskIDUint),
 			SessionId: file.SessionID,
 		})
 	}
@@ -268,7 +272,33 @@ func FindPipeline(name string) (*models.Pipeline, error) {
 	if result.Error != nil {
 		return pipeline, result.Error
 	}
+	if pipeline.CertName != "" {
+		certificate, err := FindCertificate(pipeline.CertName)
+		if err != nil && !errors.Is(err, ErrRecordNotFound) {
+			logs.Log.Errorf("failed to find cert %s", err)
+		}
+		if certificate != nil {
+			pipeline.Tls = types.FromTls(certificate.ToProtobuf())
+		}
+	}
 	return pipeline, nil
+}
+
+func UpdatePipelineCert(certName string, pipeline *models.Pipeline) (*models.Pipeline, error) {
+	var cert *models.Certificate
+	if certName != "" {
+		err := Session().Where("name = ?", certName).First(&cert).Error
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	err := Session().Model(pipeline).Select("cert_name").Update("cert_name", certName).Error
+	if err != nil {
+		return nil, err
+	}
+	pipeline.Tls = types.FromTls(cert.ToProtobuf())
+	return pipeline, err
 }
 
 func SavePipeline(pipeline *models.Pipeline) (*models.Pipeline, error) {
@@ -285,6 +315,7 @@ func SavePipeline(pipeline *models.Pipeline) (*models.Pipeline, error) {
 		return nil, result.Error
 	}
 	pipeline.ID = newPipeline.ID
+	pipeline.CertName = newPipeline.CertName
 	if pipeline.IP == "" {
 		pipeline.IP = newPipeline.IP
 	}
@@ -297,8 +328,8 @@ func DeletePipeline(name string) error {
 	return result.Error
 }
 
-func ListPipelines(listenerID string) ([]models.Pipeline, error) {
-	var pipelines []models.Pipeline
+func ListPipelines(listenerID string) ([]*models.Pipeline, error) {
+	var pipelines []*models.Pipeline
 	var err error
 	if listenerID == "" {
 		err = Session().Where(" type != ?", consts.WebsitePipeline).Find(&pipelines).Error
@@ -309,12 +340,12 @@ func ListPipelines(listenerID string) ([]models.Pipeline, error) {
 }
 
 func DeleteWebsite(name string) error {
-	website := models.WebsiteContent{}
-	result := Session().Where("pipeline_id = ?", name).First(&website)
+	website := models.Pipeline{}
+	result := Session().Where("name = ?", name).First(&website)
 	if result.Error != nil {
 		return result.Error
 	}
-	err := os.Remove(filepath.Join(configs.WebsitePath, website.ID.String()))
+	err := os.Remove(filepath.Join(configs.WebsitePath, website.Name))
 	if err != nil {
 		return err
 	}
@@ -357,35 +388,26 @@ func DisablePipeline(pid string) error {
 	return result.Error
 }
 
-func FindPipelineCert(pipelineName, listenerID string) (string, string, error) {
-	var pipeline models.Pipeline
+func FindPipelineCert(pipelineName, listenerID string) (*models.Certificate, error) {
+	var pipeline *models.Pipeline
 	result := Session().Where("name = ? AND listener_id = ?", pipelineName, listenerID).First(&pipeline)
 	if result.Error != nil {
-		return "", "", result.Error
+		return nil, result.Error
 	}
-	return pipeline.Tls.Cert, pipeline.Tls.Key, nil
+	if pipeline.CertName != "" {
+		certificate, err := FindCertificate(pipeline.CertName)
+		if err != nil {
+			return nil, err
+		}
+		return certificate, nil
+	}
+	return nil, nil
 }
 
-func ListListeners() ([]models.Operator, error) {
-	var listeners []models.Operator
+func ListListeners() ([]*models.Operator, error) {
+	var listeners []*models.Operator
 	err := Session().Find(&listeners).Where("type = ?", mtls.Listener).Error
 	return listeners, err
-}
-
-// AddCertificate add a certificate to the database
-func AddCertificate(caType int, keyType string, commonName string, cert []byte, key []byte) error {
-	certModel := &models.Certificate{
-		CommonName:     commonName,
-		CAType:         caType,
-		KeyType:        keyType,
-		CertificatePEM: string(cert),
-		PrivateKeyPEM:  string(key),
-	}
-	err := Session().Save(certModel).Error
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 // DeleteAllCertificates
@@ -396,8 +418,8 @@ func DeleteAllCertificates() error {
 
 // DeleteCertificate
 func DeleteCertificate(name string) error {
-	var cert models.Certificate
-	result := Session().Where("common_name = ?", name).First(&cert)
+	var cert *models.Certificate
+	result := Session().Where("name = ?", name).First(&cert)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil
@@ -411,21 +433,86 @@ func DeleteCertificate(name string) error {
 	return nil
 }
 
-func isDuplicateCommonNameAndCAType(commonName string, caType int) bool {
+func FindCertificate(name string) (*models.Certificate, error) {
+	var cert *models.Certificate
+	result := Session().Where("name = ?", name).First(&cert)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return cert, nil
+}
+
+func GetAllCertificates() ([]*models.Certificate, error) {
+	var certificates []*models.Certificate
+	err := Session().Find(&certificates).Error
+	return certificates, err
+}
+
+func UpdateCert(name, cert, key, ca string) error {
+	return Session().Model(&models.Certificate{}).
+		Where("name = ?", name).
+		Select("cert_pem", "key_pem", "ca_cert_pem").
+		Updates(models.Certificate{
+			CertPEM:   cert,
+			KeyPEM:    key,
+			CACertPEM: ca,
+		}).Error
+}
+
+func isDuplicateCommonNameAndCAType(name string) bool {
 	var count int64
-	Session().Model(&models.Certificate{}).Where("common_name = ? AND ca_type = ?", commonName, caType).Count(&count)
+	Session().Model(&models.Certificate{}).Where("name = ?", name).Count(&count)
 	return count > 0
 }
 
 func SaveCertificate(certificate *models.Certificate) error {
-	if isDuplicateCommonNameAndCAType(certificate.CommonName, certificate.CAType) {
-		return errors.New("duplicate CommonName and CAType")
+	if isDuplicateCommonNameAndCAType(certificate.Name) {
+		return errors.New("duplicate CommonName")
 	}
 	if err := Session().Create(certificate).Error; err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func SaveCertFromTLS(tls *clientpb.TLS, pipeline string) (*models.Certificate, error) {
+	certModel := &models.Certificate{
+		CertPEM: tls.Cert.Cert,
+		KeyPEM:  tls.Cert.Key,
+	}
+	if tls.Acme {
+		certModel.Name = tls.Domain
+		certModel.Domain = tls.Domain
+		certModel.Type = certs.Acme
+	} else if tls.Ca != nil && tls.Ca.Key != "" {
+		certModel.Name = codenames.GetCodename()
+		certModel.Type = certs.SelfSigned
+		certModel.CACertPEM = tls.Ca.Cert
+		certModel.CAKeyPEM = tls.Ca.Key
+	} else {
+		certModel.Name = codenames.GetCodename()
+		certModel.Type = certs.Imported
+		if tls.Ca != nil {
+			certModel.CACertPEM = tls.Ca.Cert
+		}
+	}
+	err := SaveCertificate(certModel)
+	if err != nil {
+		return certModel, err
+	}
+	if pipeline != "" {
+		findPipeline, err := FindPipeline(pipeline)
+		if err != nil {
+			return nil, err
+		}
+		_, err = UpdatePipelineCert(certModel.Name, findPipeline)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return certModel, nil
 }
 
 //func AddFile(typ string, taskpb *clientpb.Task, td *types.FileDescriptor) error {
@@ -444,6 +531,15 @@ func SaveCertificate(certificate *models.Certificate) error {
 //	Session().Create(fileModel)
 //	return nil
 //}
+
+func GetTask(taskID string) (*models.Task, error) {
+	var task *models.Task
+	err := Session().Where("id = ?", taskID).First(&task).Error
+	if err != nil {
+		return nil, err
+	}
+	return task, nil
+}
 
 func GetTaskPB(taskID string) (*clientpb.Task, error) {
 	var task models.Task
@@ -501,16 +597,24 @@ func UpdateTask(task *clientpb.Task) error {
 	return taskModel.UpdateCur(Session(), int(task.Total))
 }
 
-func UpdateTaskCur(cur int, taskID string) error {
+func UpdateTaskCur(taskID string, cur int) error {
 	taskModel := &models.Task{
 		ID: taskID,
 	}
 	return taskModel.UpdateCur(Session(), cur)
 }
 
-func UpdateDownloadTotal(task *clientpb.Task, total int) error {
+func UpdateTaskFinish(taskID string) error {
+	var taskModel models.Task
+	if err := Session().First(&taskModel, "id = ?", taskID).Error; err != nil {
+		return err
+	}
+	return taskModel.UpdateFinish(Session())
+}
+
+func UpdateDownloadTotal(taskID uint32, sessionID string, total int) error {
 	taskModel := &models.Task{
-		ID: task.SessionId + "-" + utils.ToString(task.TaskId),
+		ID: sessionID + "-" + utils.ToString(taskID),
 	}
 	return taskModel.UpdateTotal(Session(), total)
 }
@@ -524,6 +628,15 @@ func FindWebsiteByName(name string) (*models.Pipeline, error) {
 	var website *models.Pipeline
 	if err := Session().Where("name = ? AND type = 'website'", name).First(&website).Error; err != nil {
 		return nil, err
+	}
+	if website.CertName != "" {
+		certificate, err := FindCertificate(website.CertName)
+		if err != nil && !errors.Is(err, ErrRecordNotFound) {
+			logs.Log.Errorf("failed to find cert %s", err)
+		}
+		if certificate != nil {
+			website.Tls = types.FromTls(certificate.ToProtobuf())
+		}
 	}
 	return website, nil
 }
@@ -622,6 +735,20 @@ func AddContent(content *clientpb.WebContent) (*models.WebsiteContent, error) {
 	return webModel, nil
 }
 
+func AddAmountWebContent(artifactName, pipelineName string) (*clientpb.WebContent, error) {
+	content := &clientpb.WebContent{
+		WebsiteId: pipelineName,
+		Path:      formatutils.Encode(artifactName),
+		Type:      consts.ArtifactWebcontent,
+	}
+	_, err := AddContent(content)
+	if err != nil {
+		return nil, err
+	}
+	content.Path = artifactName
+	return content, nil
+}
+
 // RemoveContent - Remove content by ID
 func RemoveContent(id string) error {
 	uuid, _ := uuid.FromString(id)
@@ -629,47 +756,103 @@ func RemoveContent(id string) error {
 	return err
 }
 
+// validateProfileName validates the profile name
+func validateProfileName(name string) error {
+	if name == "" {
+		return fmt.Errorf("profile name cannot be empty")
+	}
+	if len(name) > 100 {
+		return fmt.Errorf("profile name too long (max 100 characters)")
+	}
+	return nil
+}
+
 // generator
 func NewProfile(profile *clientpb.Profile) error {
+	// Validate input
+	if err := validateProfileName(profile.Name); err != nil {
+		return err
+	}
+
 	if profile.Content == nil {
-		profile.Content = types.DefaultProfile
+		profile.Content = consts.DefaultProfile
 	}
-	model := &models.Profile{
-		Name: profile.Name,
-		Type: profile.Type,
-		//Obfuscate:  profile.Obfuscate,
-		Modules:         profile.Modules,
-		CA:              profile.Ca,
-		ParamsData:      profile.Params,
-		PulsePipelineID: profile.PulsePipelineId,
-		PipelineID:      profile.PipelineId,
-		Raw:             profile.Content,
-	}
-	if profile.PulsePipelineId != "" {
-		pulsePipeline, err := FindPipeline(profile.PulsePipelineId)
+
+	contentType := fileutils.DetectContentType(profile.Content)
+	switch contentType {
+	case "zip":
+		profilePath := filepath.Join(configs.ProfilePath, profile.Name)
+		os.MkdirAll(profilePath, 0700)
+		err := fileutils.DecompressBase64ToFiles(string(profile.Content), profilePath)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to decompress zip content: %w", err)
 		}
-		if strings.ToUpper(pulsePipeline.Encryption.Type) != consts.CryptorXOR {
-			return errs.ErrInvalidEncType
+
+		configPath := filepath.Join(profilePath, "config.yaml")
+		if !fileutils.Exist(configPath) {
+			return fmt.Errorf("config.yaml not found in zip content")
 		}
+
+		yamlContent, err := os.ReadFile(configPath)
+		if err != nil {
+			return fmt.Errorf("failed to read config.yaml: %w", err)
+		}
+
+		config, err := types.LoadProfile(yamlContent)
+		if err != nil {
+			return fmt.Errorf("failed to parse yaml config: %w", err)
+		}
+
+		if err := config.ValidateProfileFiles(profilePath); err != nil {
+			return fmt.Errorf("profile validation failed: %w", err)
+		}
+
+		profile.Content = yamlContent
 	}
+
+	// Check if profile name already exists
+	var existingProfile models.Profile
+	result := Session().Where("name = ?", profile.Name).First(&existingProfile)
+	if result.Error == nil {
+		// Found existing profile with same name, return friendly error message
+		return nil
+	} else if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		// If it's not "record not found" error, it's another database error
+		return result.Error
+	}
+
+	model := &models.Profile{
+		Name:       profile.Name,
+		ParamsData: profile.Params,
+		PipelineID: profile.PipelineId,
+		Raw:        profile.Content,
+	}
+	//if profile.PulsePipelineId != "" {
+	//	pulsePipeline, err := FindPipeline(profile.PulsePipelineId)
+	//	if err != nil {
+	//		return err
+	//	}
+	//	if strings.ToUpper(pulsePipeline.Encryption.Type) != consts.CryptorXOR {
+	//		return errs.ErrInvalidEncType
+	//	}
+	//}
 	return Session().Create(model).Error
 }
 
+// GetProfile recovers profile from database
 func GetProfile(name string) (*types.ProfileConfig, error) {
 	var profileModel *models.Profile
 
-	result := Session().Preload("Pipeline").Preload("PulsePipeline").Where("name = ?", name).First(&profileModel)
+	result := Session().Preload("Pipeline").Where("name = ?", name).First(&profileModel)
 	if result.Error != nil {
 		return nil, result.Error
 	}
 	if profileModel.PipelineID != "" && profileModel.Pipeline == nil {
 		return nil, errs.ErrNotFoundPipeline
 	}
-	if profileModel.PulsePipelineID != "" && profileModel.PulsePipeline == nil {
-		return nil, errs.ErrNotFoundPipeline
-	}
+	//if profileModel.PulsePipelineID != "" && profileModel.PulsePipeline == nil {
+	//	return nil, errs.ErrNotFoundPipeline
+	//}
 	err := profileModel.DeserializeImplantConfig()
 	if err != nil {
 		return nil, err
@@ -678,41 +861,79 @@ func GetProfile(name string) (*types.ProfileConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	if profile.Basic != nil {
-		if profileModel.CA != "" {
-			profile.Basic.CA = profileModel.CA
-		}
-		if profileModel.Name != "" {
-			profile.Basic.Name = profileModel.Name
-		}
-		if profileModel.Modules != "" {
-			profile.Implant.Modules = strings.Split(profileModel.Modules, ",")
-		}
-		if profileModel.Params != nil {
-			profile.Basic.Interval = profileModel.Params.Interval
-			profile.Basic.Jitter = profileModel.Params.Jitter
-		}
-		if profileModel.Pipeline != nil {
-			profile.Basic.Targets = []string{profileModel.Pipeline.Address()}
-		}
+	if profileModel.Name != "" {
+		profile.Basic.Name = profileModel.Name
 	}
-	if profile.Pulse != nil {
-		if profileModel.PulsePipeline != nil {
-			profile.Pulse.Target = profileModel.PulsePipeline.Address()
+
+	if profileModel.Pipeline != nil {
+		profile.Basic.Targets = []string{profileModel.Pipeline.Address()}
+		profile.Basic.Encryption = profileModel.Pipeline.Encryption.Choice().Type
+		profile.Basic.Key = profileModel.Pipeline.Encryption.Choice().Key
+		profile.Basic.Protocol = profileModel.Pipeline.Type
+		profile.Basic.TLS.Enable = profileModel.Pipeline.Tls.Enable
+	}
+	if params := profileModel.Params; params != nil {
+		profile.Basic.Interval = profileModel.Params.Interval
+		profile.Basic.Jitter = profileModel.Params.Jitter
+		if params.REMPipeline != "" {
+			profile.Basic.Protocol = consts.RemPipeline
+			pipeline, err := FindPipeline(params.REMPipeline)
+			if err != nil {
+				return nil, err
+			}
+			profile.Basic.REM = &types.REMProfile{
+				Link: pipeline.PipelineParams.Link,
+			}
 		}
+
+	}
+	if profile.Pulse != nil && profileModel.Pipeline != nil {
+		profile.Pulse.Target = profileModel.Pipeline.Address()
+		profile.Pulse.Protocol = profileModel.Pipeline.Type
 	}
 
 	return profile, nil
 }
 
-func GetProfiles() ([]models.Profile, error) {
-	var profiles []models.Profile
-	result := Session().Find(&profiles)
+func GetProfiles() ([]*models.Profile, error) {
+	var profiles []*models.Profile
+	result := Session().Preload("Pipeline").Order("created_at ASC").Find(&profiles)
 	return profiles, result.Error
 }
 
+// FindBuildersByPipelineID 遍历所有 builder，找到 profile.pipelineID = pipelineID 的 builder
+func FindBuildersByPipelineID(pipelineID string) ([]*models.Artifact, error) {
+	var builders []*models.Artifact
+	err := Session().Preload("Profile").Find(&builders).Error
+	if err != nil {
+		return nil, err
+	}
+
+	var validBuilders []*models.Artifact
+	for _, b := range builders {
+		if b.Profile.PipelineID == pipelineID {
+			validBuilders = append(validBuilders, b)
+		}
+	}
+	return validBuilders, nil
+}
+
 func DeleteProfileByName(profileName string) error {
+	// Check if profile exists first
+	var existingProfile models.Profile
+	result := Session().Where("name = ?", profileName).First(&existingProfile)
+	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		return fmt.Errorf("profile '%s' not found", profileName)
+	} else if result.Error != nil {
+		return result.Error
+	}
+
+	// Execute deletion
 	err := Session().Where("name = ?", profileName).Delete(&models.Profile{}).Error
+	if err != nil {
+		return fmt.Errorf("failed to delete profile '%s': %v", profileName, err)
+	}
+	err = fileutils.ForceRemoveAll(filepath.Join(configs.ProfilePath, profileName))
 	if err != nil {
 		return err
 	}
@@ -723,89 +944,50 @@ func UpdateProfileRaw(profileName string, raw []byte) error {
 	return Session().Model(&models.Profile{}).Where("name = ?", profileName).Update("raw", raw).Error
 }
 
-func SaveBuilderFromAction(inputs map[string]string, req *clientpb.Generate) (*models.Builder, error) {
-	target, ok := consts.GetBuildTarget(inputs["targets"])
-	if !ok {
-		return nil, errs.ErrInvalidateTarget
-	}
-	builder := models.Builder{
-		Name:        codenames.GetCodename(),
-		ProfileName: req.ProfileName,
-		Target:      target.Name,
-		Type:        inputs["package"],
-		Source:      consts.ArtifactFromAction,
-		Arch:        target.Arch,
-		IsSRDI:      req.Srdi,
-		Modules:     strings.Join(req.Modules, ","),
-		Os:          target.OS,
-		CA:          req.Ca,
-	}
-
-	if err := Session().Create(&builder).Error; err != nil {
-		return nil, err
-	}
-
-	return &builder, nil
-}
-
-func SaveArtifactFromGenerate(req *clientpb.Generate) (*models.Builder, error) {
+func SaveArtifactFromConfig(req *clientpb.BuildConfig, profileByte []byte) (*models.Artifact, error) {
 	target, ok := consts.GetBuildTarget(req.Target)
 	if !ok {
 		return nil, errs.ErrInvalidateTarget
 	}
-	builder := models.Builder{
-		Name:        req.Name,
+	builder := models.Artifact{
+		Name:        req.BuildName,
 		ProfileName: req.ProfileName,
 		Target:      req.Target,
 		Type:        req.Type,
-		Stager:      req.Stager,
-		Source:      consts.ArtifactFromDocker,
-		CA:          req.Ca,
-		IsSRDI:      req.Srdi,
-		Modules:     strings.Join(req.Modules, ""),
+		Source:      req.Source,
 		Arch:        target.Arch,
 		Os:          target.OS,
+		ProfileByte: profileByte,
+		ParamsData:  string(req.ParamsBytes),
 	}
 
-	paramsJson, err := json.Marshal(req.Params)
-	if err != nil {
-		return nil, err
+	if Session() == nil {
+		return &builder, nil
 	}
-	builder.ParamsJson = string(paramsJson)
-
 	if err := Session().Create(&builder).Error; err != nil {
 		return nil, err
-
 	}
 
 	return &builder, nil
 }
 
-func SaveArtifactFromID(req *clientpb.Generate, ID uint32, resource string) (*models.Builder, error) {
+func SaveArtifactFromID(req *clientpb.BuildConfig, ID uint32, resource string, profileByte []byte) (*models.Artifact, error) {
 	target, ok := consts.GetBuildTarget(req.Target)
 	if !ok {
 		return nil, errs.ErrInvalidateTarget
 	}
-	builder := models.Builder{
+	builder := models.Artifact{
 		ID:          ID,
-		Name:        req.Name,
+		Name:        req.BuildName,
 		ProfileName: req.ProfileName,
 		Target:      req.Target,
 		Type:        req.Type,
-		Stager:      req.Stager,
 		Source:      resource,
-		IsSRDI:      req.Srdi,
-		CA:          req.Ca,
-		Modules:     req.Feature,
 		Arch:        target.Arch,
 		Os:          target.OS,
+		ProfileByte: profileByte,
+		ParamsData:  string(req.ParamsBytes),
 	}
-
-	paramsJson, err := json.Marshal(req.Params)
-	if err != nil {
-		return nil, err
-	}
-	builder.ParamsJson = string(paramsJson)
 
 	if err := Session().Create(&builder).Error; err != nil {
 		return nil, err
@@ -815,84 +997,122 @@ func SaveArtifactFromID(req *clientpb.Generate, ID uint32, resource string) (*mo
 	return &builder, nil
 }
 
-func UpdateBuilderPath(builder *models.Builder) error {
+func UpdateBuilderPath(builder *models.Artifact) error {
+	if Session() == nil {
+		return nil
+	}
 	return Session().Model(builder).
 		Select("path").
 		Updates(builder).
 		Error
 }
 
-func UpdateBuilderSrdi(builder *models.Builder) error {
-	return Session().Model(builder).
-		Select("is_srdi", "shellcode_path").
-		Updates(builder).
+func UpdatePulseRelink(pusleID, beanconID uint32) error {
+	pulse, err := GetArtifactById(pusleID)
+	if err != nil {
+		return err
+	}
+	pulse.Params.RelinkBeaconID = beanconID
+	err = Session().Model(pulse).
+		Select("ParamsData").
+		Updates(pulse).
 		Error
+	if err != nil {
+		return err
+	}
+	originBeacon, err := GetArtifactById(pulse.Params.OriginBeaconID)
+	if err != nil {
+		return err
+	}
+	originBeacon.Params.RelinkBeaconID = beanconID
+	err = Session().Model(originBeacon).
+		Select("ParamsData").
+		Updates(originBeacon).
+		Error
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func SaveArtifact(name, artifactType, platform, arch, stage, source string) (*models.Builder, error) {
-	absBuildOutputPath, err := filepath.Abs(configs.BuildOutputPath)
+func SaveArtifact(name, artifactType, platform, arch, source string) (*models.Artifact, error) {
+	absBuildOutputPath, err := filepath.Abs(configs.TempPath)
 	if err != nil {
 		return nil, err
 	}
 
-	builder := models.Builder{
+	artifact := &models.Artifact{
 		Name:   name,
 		Os:     platform,
 		Arch:   arch,
-		Stager: stage,
 		Type:   artifactType,
 		Source: source,
 	}
-	if artifactType == consts.CommandBuildShellCode {
-		builder.IsSRDI = true
-		builder.ShellcodePath = filepath.Join(absBuildOutputPath, encoders.UUID())
-	} else {
-		builder.Path = filepath.Join(absBuildOutputPath, encoders.UUID())
-	}
 
-	if err := Session().Create(&builder).Error; err != nil {
+	artifact.Path = filepath.Join(absBuildOutputPath, encoders.UUID())
+
+	if err := Session().Create(artifact).Error; err != nil {
 		return nil, err
 	}
-	return &builder, nil
+	return artifact, nil
 }
 
-func GetBuilders() (*clientpb.Builders, error) {
-	var builders []models.Builder
-	result := Session().Preload("Profile").Find(&builders)
+func GetArtifacts() (*clientpb.Artifacts, error) {
+	var builders []*models.Artifact
+	result := Session().Preload("Profile").Preload("Profile.Pipeline").Find(&builders)
 	if result.Error != nil {
 		return nil, result.Error
 	}
-	var pbBuilders = &clientpb.Builders{
-		Builders: make([]*clientpb.Builder, 0),
+	var pbBuilders = &clientpb.Artifacts{
+		Artifacts: make([]*clientpb.Artifact, 0),
 	}
-	for _, builder := range builders {
-		pbBuilders.Builders = append(pbBuilders.GetBuilders(), builder.ToProtobuf())
+	for _, artifact := range builders {
+		pbBuilders.Artifacts = append(pbBuilders.GetArtifacts(), artifact.ToProtobuf([]byte{}))
 	}
 	return pbBuilders, nil
 }
 
+func GetValidArtifacts() ([]*models.Artifact, error) {
+	var artifacts []*models.Artifact
+	result := Session().Preload("Profile").Preload("Profile.Pipeline").Find(&artifacts)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	var validArtifacts []*models.Artifact
+	for _, artifact := range artifacts {
+		if artifact.Path != "" {
+			if _, err := os.Stat(artifact.Path); err == nil {
+				validArtifacts = append(validArtifacts, artifact)
+			}
+		}
+	}
+	return validArtifacts, nil
+}
+
 // FindArtifact
-func FindArtifact(target *clientpb.Artifact) (*clientpb.Artifact, error) {
-	var builder *models.Builder
+func FindArtifact(target *clientpb.Artifact, bin bool) (*clientpb.Artifact, error) {
+	var artifact *models.Artifact
 	var result *gorm.DB
 	// 根据 ID 或名称查找构建器
 	if target.Id != 0 {
-		result = Session().Where("id = ?", target.Id).First(&builder)
+		result = Session().Where("id = ? AND status = ?", target.Id, consts.BuildStatusCompleted).Last(&artifact)
 	} else if target.Name != "" {
-		result = Session().Where("name = ?", target.Name).First(&builder)
+		result = Session().Where("name = ? AND status = ?", target.Name, consts.BuildStatusCompleted).Last(&artifact)
+	} else if target.Profile != "" {
+		result = Session().Where("profile_name = ? AND status = ?", target.Profile, consts.BuildStatusCompleted).Last(&artifact)
 	} else {
-		var builders []*models.Builder
-		result = Session().Where("os = ? AND arch = ? AND type = ?", target.Platform, target.Arch, target.Type).
+		var builders []*models.Artifact
+		result = Session().Where("os = ? AND arch = ? AND type = ? AND status = ?", target.Platform, target.Arch, target.Type, consts.BuildStatusCompleted).
 			Preload("Profile.Pipeline").
-			Preload("Profile.PulsePipeline").
 			Find(&builders)
 		for _, v := range builders {
-			if v.Type == consts.ImplantPulse && v.Profile.PulsePipelineID == target.Pipeline {
-				builder = v
+			if v.Type == consts.ImplantPulse && v.Profile.PipelineID == target.Pipeline {
+				artifact = v
 				break
 			}
 			if v.Profile.PipelineID == target.Pipeline {
-				builder = v
+				artifact = v
 				break
 			}
 		}
@@ -900,58 +1120,102 @@ func FindArtifact(target *clientpb.Artifact) (*clientpb.Artifact, error) {
 	if result.Error != nil {
 		return nil, fmt.Errorf("error finding artifact: %v, target: %+v", result.Error, target)
 	}
-	if builder == nil {
+	if artifact == nil {
 		return nil, errs.ErrNotFoundArtifact
 	}
-
-	var content []byte
-	var err error
-	if target.IsSrdi {
-		if builder.ShellcodePath != "" {
-			content, err = os.ReadFile(builder.ShellcodePath)
+	if bin {
+		content, err := os.ReadFile(artifact.Path)
+		if err != nil && artifact.Status == consts.BuildStatusFailure {
+			return nil, fmt.Errorf("error reading file for artifact: %s, error: %v", artifact.Name, err)
 		}
+		return artifact.ToProtobuf(content), nil
 	} else {
-		content, err = os.ReadFile(builder.Path)
+		return artifact.ToProtobuf([]byte{}), nil
 	}
+
+}
+
+func FindArtifactFromPipeline(pipelineName string) (*models.Artifact, error) {
+	var artifacts []*models.Artifact
+	result := Session().Preload("Profile").Where(" type = ?", consts.CommandBuildBeacon).Find(&artifacts)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	for _, artifact := range artifacts {
+		if artifact.Profile.PipelineID == pipelineName {
+			return artifact, nil
+		}
+	}
+	return nil, ErrRecordNotFound
+}
+
+func GetArtifact(req *clientpb.Artifact) (*models.Artifact, error) {
+	if req.Id != 0 {
+		return GetArtifactById(req.Id)
+	} else if req.Name != "" {
+		return GetArtifactByName(req.Name)
+	} else {
+		return nil, errs.ErrNotFoundArtifact
+	}
+}
+
+func GetArtifactByName(name string) (*models.Artifact, error) {
+	var artifact models.Artifact
+	result := Session().Preload("Profile").Where("name = ?", name).First(&artifact)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return &artifact, nil
+}
+
+func GetArtifactById(id uint32) (*models.Artifact, error) {
+	var artifact models.Artifact
+	result := Session().Preload("Profile").Where("id = ?", id).First(&artifact)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return &artifact, nil
+}
+
+func GetArtifactWithSaas() ([]*models.Artifact, error) {
+	var artifacts []*models.Artifact
+	result := Session().Where("source = ?", consts.ArtifactFromSaas).Find(&artifacts)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return artifacts, nil
+}
+
+// GetBeaconBuilderByRelinkID 查找 type=beacon 且 RelinkBeaconID=指定id 的 builder
+func GetBeaconBuilderByRelinkID(relinkID uint32) ([]*models.Artifact, error) {
+	var artifacts []*models.Artifact
+	err := Session().Where("type = ?", "beacon").Find(&artifacts).Error
 	if err != nil {
-		return nil, fmt.Errorf("error reading file for builder: %s, error: %v", builder.Name, err)
+		return nil, err
 	}
 
-	return builder.ToArtifact(content), nil
-}
-
-func GetArtifactByName(name string) (*models.Builder, error) {
-	var builder models.Builder
-	result := Session().Where("name = ?", name).First(&builder)
-	if result.Error != nil {
-		return nil, result.Error
+	var result []*models.Artifact
+	for _, b := range artifacts {
+		var params types.ProfileParams
+		if b.ParamsData != "" {
+			if err := json.Unmarshal([]byte(b.ParamsData), &params); err == nil {
+				if params.RelinkBeaconID == relinkID {
+					result = append(result, b)
+				}
+			}
+		}
 	}
-	return &builder, nil
-}
-
-func GetArtifactById(id uint32) (*models.Builder, error) {
-	var builder models.Builder
-	result := Session().Where("id = ?", id).First(&builder)
-	if result.Error != nil {
-		return nil, result.Error
-	}
-	return &builder, nil
+	return result, nil
 }
 
 func DeleteArtifactByName(artifactName string) error {
-	model := &models.Builder{}
+	model := &models.Artifact{}
 	err := Session().Where("name = ?", artifactName).First(&model).Error
 	if err != nil {
 		return err
 	}
 	if model.Path != "" {
 		err = os.Remove(model.Path)
-		if err != nil {
-			return err
-		}
-	}
-	if model.ShellcodePath != "" {
-		err = os.Remove(model.ShellcodePath)
 		if err != nil {
 			return err
 		}
@@ -963,70 +1227,23 @@ func DeleteArtifactByName(artifactName string) error {
 	return nil
 }
 
-// UpdateGeneratorConfig - Update the generator config
-func UpdateGeneratorConfig(req *clientpb.Generate, path string, config *types.ProfileConfig) (string, error) {
-	if config.Basic != nil {
-		if req.Name != "" {
-			config.Basic.Name = req.Name
-		}
-		if req.Address != "" {
-			config.Basic.Targets = []string{req.Address}
-		}
-		var params *types.ProfileParams
-		if req.Params != "" {
-			err := json.Unmarshal([]byte(req.Params), &params)
-			if err != nil {
-				return "", err
-			}
-			if params.Interval != -1 {
-				config.Basic.Interval = params.Interval
-			}
-
-			if params.Jitter != -1 {
-				config.Basic.Jitter = params.Jitter
-			}
-		}
-		if req.Ca != "" {
-			config.Basic.CA = req.Ca
-		}
-
-		if len(req.Modules) > 0 {
-			config.Implant.Modules = req.Modules
-		}
-
-	} else if config.Pulse != nil {
-		if req.Address != "" {
-			config.Pulse.Target = req.Address
-		}
-	}
-	if req.ArtifactId != 0 && config.Pulse.Extras["flags"].(map[string]interface{})["artifact_id"].(int) == 0 {
-		config.Pulse.Extras["flags"].(map[string]interface{})["artifact_id"] = req.ArtifactId
-	}
-
-	if req.Type == consts.CommandBuildBind {
-		config.Implant.Mod = consts.CommandBuildBind
-	}
-	newData, err := yaml.Marshal(config)
-	if err != nil {
-		return "", err
-	}
-	return string(newData), os.WriteFile(path, newData, 0644)
-}
-
 func UpdateBuilderLog(name string, logEntry string) {
-	err := Session().Model(&models.Builder{}).
+	if Session() == nil {
+		return
+	}
+	err := Session().Model(&models.Artifact{}).
 		Where("name = ?", name).
 		Update("log", gorm.Expr("ifnull(log, '') || ?", logEntry)).
 		Error
 
 	if err != nil {
-		logs.Log.Errorf("Error updating log for Builder name %s: %v", name, err)
+		logs.Log.Errorf("Error updating log for Artifact name %s: %v", name, err)
 	}
 }
 
-func GetBuilderLogs(builderID uint32, limit int) (string, error) {
-	var builder models.Builder
-	if err := Session().Where("id = ?", builderID).First(&builder).Error; err != nil {
+func GetBuilderLogs(builderName string, limit int) (string, error) {
+	var builder models.Artifact
+	if err := Session().Where("name = ?", builderName).First(&builder).Error; err != nil {
 		return "", err
 	}
 
@@ -1040,30 +1257,18 @@ func GetBuilderLogs(builderID uint32, limit int) (string, error) {
 	return result, nil
 }
 
-func GetBuilderByModules(target string, modules []string) (*models.Builder, error) {
-	sort.Strings(modules)
-	modulesStr := strings.Join(modules, ",")
-	var builder models.Builder
-	result := Session().Where("target = ? AND modules = ?", target, modulesStr).First(&builder)
-	if result.Error != nil {
-		return nil, result.Error
+func UpdateBuilderStatus(builderID uint32, status string) {
+	if Session() == nil {
+		return
 	}
-	return &builder, nil
-}
-
-func GetBuilderByProfileName(profileName string) (*clientpb.Builders, error) {
-	var builders []models.Builder
-	result := Session().Where("profile_name = ?", profileName).Find(&builders)
-	if result.Error != nil {
-		return nil, result.Error
+	err := Session().Model(&models.Artifact{}).
+		Where("id = ?", builderID).
+		Update("status", status).
+		Error
+	if err != nil {
+		logs.Log.Errorf("Error updating log for Artifact id %d: %v", builderID, err)
 	}
-	var pbBuilders = &clientpb.Builders{
-		Builders: make([]*clientpb.Builder, 0),
-	}
-	for _, builder := range builders {
-		pbBuilders.Builders = append(pbBuilders.GetBuilders(), builder.ToProtobuf())
-	}
-	return pbBuilders, nil
+	return
 }
 
 // ContextQuery 用于构建Context查询的结构体

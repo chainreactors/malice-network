@@ -5,12 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/carapace-sh/carapace/pkg/x"
-	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/intermediate"
-	"github.com/chainreactors/mals"
-	"github.com/chainreactors/tui"
 	"github.com/reeflective/console"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
@@ -19,6 +13,14 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/chainreactors/malice-network/client/assets"
+	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/malice-network/client/plugin"
+	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/intermediate"
+	"github.com/chainreactors/mals"
+	"github.com/chainreactors/tui"
 )
 
 var (
@@ -32,6 +34,7 @@ type BindCmds func(console *Console) console.Commands
 // Start - Console entrypoint
 func NewConsole() (*Console, error) {
 	//assets.Setup(false, false)
+
 	tui.Reset()
 	//settings, _ := assets.LoadSettings()
 	//assets.SetInputrc()
@@ -39,7 +42,6 @@ func NewConsole() (*Console, error) {
 		//ActiveTarget: &core.ActiveTarget{},
 		//Settings:     settings,
 		Log:     core.Log,
-		Plugins: NewPlugins(),
 		CMDs:    make(map[string]*cobra.Command),
 		Helpers: make(map[string]*cobra.Command),
 	}
@@ -54,13 +56,13 @@ func NewConsole() (*Console, error) {
 type Console struct {
 	//*core.ActiveTarget
 	*core.ServerStatus
-	*Plugins
-	Log     *core.Logger
-	App     *console.Console
-	Profile *assets.Profile
-	MCP     *MCPServer
-	CMDs    map[string]*cobra.Command
-	Helpers map[string]*cobra.Command
+	Log        *core.Logger
+	App        *console.Console
+	Profile    *assets.Profile
+	CMDs       map[string]*cobra.Command
+  MCP     *MCPServer
+	Helpers    map[string]*cobra.Command
+	MalManager *plugin.MalManager
 }
 
 func (c *Console) NewConsole() {
@@ -90,9 +92,9 @@ func (c *Console) Start(bindCmds ...BindCmds) error {
 			time.Sleep(10 * time.Millisecond)
 		}
 	}()
+
 	intermediate.RegisterBuiltin(c.Rpc)
-	//c.App.Menu(consts.ClientMenu).SetCommands(bindCmds[0](c))
-	//c.App.Menu(consts.ImplantMenu).SetCommands(bindCmds[1](c))
+
 	c.App.Menu(consts.ClientMenu).Command = bindCmds[0](c)()
 	c.App.Menu(consts.ImplantMenu).Command = bindCmds[1](c)()
 	if c.GetInteractive() == nil {
@@ -109,6 +111,14 @@ func (c *Console) Start(bindCmds ...BindCmds) error {
 
 func (c *Console) Context() context.Context {
 	ctx, _ := context.WithTimeout(context.Background(), consts.DefaultTimeout)
+
+	return metadata.NewOutgoingContext(ctx, metadata.Pairs(
+		"client_id", fmt.Sprintf("%s_%d", c.Client.Name, c.Client.ID)),
+	)
+}
+
+func (c *Console) SyncBuildContext() context.Context {
+	ctx, _ := context.WithTimeout(context.Background(), consts.SyncBuildTimeout)
 
 	return metadata.NewOutgoingContext(ctx, metadata.Pairs(
 		"client_id", fmt.Sprintf("%s_%d", c.Client.Name, c.Client.ID)),
@@ -136,9 +146,7 @@ func (c *Console) ImplantMenu() *cobra.Command {
 	return c.App.Menu(consts.ImplantMenu).Command
 }
 
-func (c *Console) SwitchImplant(sess *core.Session) {
-	c.ActiveTarget.Set(sess)
-	c.App.SwitchMenu(consts.ImplantMenu)
+func (c *Console) RefreshCmd(sess *core.Session) int {
 	var count int
 	for _, cmd := range c.CMDs {
 		if cmd.Annotations["menu"] != consts.ImplantMenu {
@@ -165,6 +173,13 @@ func (c *Console) SwitchImplant(sess *core.Session) {
 			count++
 		}
 	}
+	return count
+}
+
+func (c *Console) SwitchImplant(sess *core.Session) {
+	c.ActiveTarget.Set(sess)
+	c.App.SwitchMenu(consts.ImplantMenu)
+	count := c.RefreshCmd(sess)
 	c.Log.Importantf("os: %s, arch: %s, process: %d %s, pipeline: %s\n", sess.Os.Name, sess.Os.Arch, sess.Process.Ppid, sess.Process.Name, sess.PipelineId)
 	c.Log.Importantf("%d modules, %d available cmds, %d addons\n", len(sess.Modules), count, len(sess.Addons))
 	c.Log.Infof("Active session %s (%s), group: %s\n", sess.Note, sess.SessionId, sess.GroupName)
@@ -185,6 +200,14 @@ func (c *Console) RegisterImplantFunc(name string, fn interface{},
 	if bfn != nil {
 		intermediate.RegisterInternalFunc(intermediate.BeaconPackage, bname, WrapImplantFunc(c, bfn, internalCallback), callback)
 	}
+}
+
+func (c *Console) RegisterAggressiveFunc(name string, fn interface{}, internalCallback ImplantFuncCallback, callback intermediate.ImplantCallback) {
+	if callback == nil {
+		callback = WrapClientCallback(internalCallback)
+	}
+
+	intermediate.RegisterInternalFunc(intermediate.BuiltinPackage, name, WrapImplantFunc(c, fn, internalCallback), callback)
 }
 
 func (c *Console) RegisterBuiltinFunc(pkg, name string, fn interface{}, callback ImplantFuncCallback) error {

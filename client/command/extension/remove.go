@@ -20,13 +20,12 @@ func ExtensionsRemoveCmd(cmd *cobra.Command, con *repl.Console) {
 		return
 	}
 	confirmModel := tui.NewConfirm(fmt.Sprintf("Remove '%s' extension?", name))
-	newConfirm := tui.NewModel(confirmModel, nil, false, true)
-	err := newConfirm.Run()
+	err := confirmModel.Run()
 	if err != nil {
 		con.Log.Errorf("Error running confirm model: %s", err)
 		return
 	}
-	if !confirmModel.Confirmed {
+	if !confirmModel.GetConfirmed() {
 		return
 	}
 	err = RemoveExtensionByCommandName(name, con)

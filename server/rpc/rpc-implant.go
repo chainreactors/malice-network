@@ -3,14 +3,14 @@ package rpc
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/types"
-	"time"
-
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 )
@@ -95,9 +95,8 @@ func (rpc *Server) Sleep(ctx context.Context, req *implantpb.Timer) (*clientpb.T
 	go greq.HandlerResponse(ch, types.MsgEmpty)
 	if session, err := getSession(ctx); err == nil {
 		session.Jitter = req.Jitter
-		session.Interval = req.Interval
-		core.Sessions.Add(session)
-		err := db.UpdateSessionTimer(session.ID, req.Interval, req.Jitter)
+		session.Expression = req.Expression
+		err := db.UpdateSessionTimer(session.ID, req.Expression, req.Jitter)
 		if err != nil {
 			return nil, err
 		}
@@ -108,6 +107,20 @@ func (rpc *Server) Sleep(ctx context.Context, req *implantpb.Timer) (*clientpb.T
 }
 
 func (rpc *Server) Suicide(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
+	greq, err := newGenericRequest(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	ch, err := rpc.GenericHandler(ctx, greq)
+	if err != nil {
+		return nil, err
+	}
+
+	go greq.HandlerResponse(ch, types.MsgEmpty)
+	return greq.Task.ToProtobuf(), nil
+}
+
+func (rpc *Server) Switch(ctx context.Context, req *implantpb.Switch) (*clientpb.Task, error) {
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err

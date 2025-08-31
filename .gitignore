@@ -3,6 +3,7 @@ bin/
 dist/
 .malice/
 go.sum
-*.exe
+helper/intl/professional/
+helper/intl/custom/
 *.bin
 *.so

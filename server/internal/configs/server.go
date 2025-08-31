@@ -5,40 +5,43 @@ import (
 	"errors"
 	"fmt"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/utils/configutil"
 	"gopkg.in/yaml.v3"
 	"io"
 	insecureRand "math/rand"
 	"os"
-	"path"
+	"path/filepath"
 	"time"
 )
 
 var (
 	ServerConfigFileName        = "config.yaml"
-	ServerRootPath              = path.Join(GetWorkDir(), ".malice")
+	ServerRootPath              = filepath.Join(GetWorkDir(), ".malice")
 	CurrentServerConfigFilename = "config.yaml"
-	ContextPath                 = path.Join(ServerRootPath, "context")
-	LogPath                     = path.Join(ServerRootPath, "log")
-	CertsPath                   = path.Join(ServerRootPath, "certs")
-	ListenerPath                = path.Join(ServerRootPath, "listener")
-	TempPath                    = path.Join(ServerRootPath, "temp")
-	PluginPath                  = path.Join(ServerRootPath, "plugins")
-	AuditPath                   = path.Join(ServerRootPath, "audit")
+	ContextPath                 = filepath.Join(ServerRootPath, "context")
+	LogPath                     = filepath.Join(ServerRootPath, "log")
+	CertsPath                   = filepath.Join(ServerRootPath, "certs")
+	ListenerPath                = filepath.Join(ServerRootPath, "listener")
+	TempPath                    = filepath.Join(ServerRootPath, "temp")
+	PluginPath                  = filepath.Join(ServerRootPath, "plugins")
+	AuditPath                   = filepath.Join(ServerRootPath, "audit")
 	ErrNoConfig                 = errors.New("no config found")
-	WebsitePath                 = path.Join(ServerRootPath, "web")
+	WebsitePath                 = filepath.Join(ServerRootPath, "web")
+	ProfilePath                 = filepath.Join(ServerRootPath, "profile")
 	// variables for implant build
-	BuildPath       = path.Join(GetWorkDir(), "..", "malefic", "build")
-	BinPath         = path.Join(ServerRootPath, "bin")
-	SourceCodePath  = path.Join(BuildPath, "src")
-	TargetPath      = path.Join(SourceCodePath, "target")
-	CargoCachePath  = path.Join(BuildPath, "cache")
-	BuildOutputPath = path.Join(BuildPath, "output")
+	BuildPath       = filepath.Join(GetWorkDir(), "..", "malefic", "build")
+	BinPath         = filepath.Join(ServerRootPath, "bin")
+	SourceCodePath  = filepath.Join(BuildPath, "src")
+	ResourcePath    = filepath.Join(SourceCodePath, "resources")
+	TargetPath      = filepath.Join(SourceCodePath, "target")
+	CargoCachePath  = filepath.Join(BuildPath, "cache")
+	BuildOutputPath = filepath.Join(BuildPath, "output")
 )
 
 func NewFileLog(filename string) *logs.Logger {
 	logger := logs.NewLogger(logs.InfoLevel)
-	logger.SetFile(path.Join(LogPath, fmt.Sprintf("%s.log", filename)))
+	logger.SetFile(filepath.Join(LogPath, fmt.Sprintf("%s.log", filename)))
 	logger.SetOutput(io.Discard)
 	logger.Init()
 	return logger
@@ -46,21 +49,23 @@ func NewFileLog(filename string) *logs.Logger {
 
 func NewDebugLog(filename string) *logs.Logger {
 	logger := logs.NewLogger(logs.DebugLevel)
-	logger.SetFile(path.Join(LogPath, fmt.Sprintf("%s.log", filename)))
+	logger.SetFile(filepath.Join(LogPath, fmt.Sprintf("%s.log", filename)))
 	logger.Init()
 	return logger
 }
 
 type ServerConfig struct {
-	Enable       bool          `config:"enable" default:"true"`
-	GRPCPort     uint16        `config:"grpc_port" default:"5004"`
-	GRPCHost     string        `config:"grpc_host" default:"0.0.0.0"`
-	IP           string        `config:"ip" default:""`
-	DaemonConfig bool          `config:"daemon" default:"false"`
-	LogConfig    *LogConfig    `config:"log"`
-	MiscConfig   *MiscConfig   `config:"config"`
-	NotifyConfig *NotifyConfig `config:"notify"`
-	GithubConfig *GithubConfig `config:"github"`
+	Enable        bool          `config:"enable" default:"true"`
+	GRPCPort      uint16        `config:"grpc_port" default:"5004"`
+	GRPCHost      string        `config:"grpc_host" default:"0.0.0.0"`
+	IP            string        `config:"ip" default:""`
+	DaemonConfig  bool          `config:"daemon" default:"false"`
+	EncryptionKey string        `config:"encryption_key" default:"maliceofinternal"`
+	LogConfig     *LogConfig    `config:"log"`
+	MiscConfig    *MiscConfig   `config:"config"`
+	NotifyConfig  *NotifyConfig `config:"notify"`
+	GithubConfig  *GithubConfig `config:"github"`
+	SassConfig    *SaasConfig   `config:"saas"`
 }
 
 func (c *ServerConfig) Address() string {
@@ -123,6 +128,7 @@ type NotifyConfig struct {
 	DingTalk   *DingTalkConfig   `config:"dingtalk"`
 	Lark       *LarkConfig       `config:"lark"`
 	ServerChan *ServerChanConfig `config:"serverchan"`
+	PushPlus   *PushPlusConfig   `config:"pushplus"`
 }
 
 type TelegramConfig struct {
@@ -147,9 +153,31 @@ type ServerChanConfig struct {
 	URL    string `config:"url"`
 }
 
+type PushPlusConfig struct {
+	Enable  bool   `config:"enable" default:"false"`
+	Token   string `config:"token"`
+	Topic   string `config:"topic"`
+	Channel string `config:"channel"`
+}
+
 type GithubConfig struct {
 	Repo     string `config:"repo" default:"malefic"`
 	Owner    string `config:"owner" default:""`
 	Token    string `config:"token" default:""`
-	Workflow string `config:"workflow" default:"generate.yml"`
+	Workflow string `config:"workflow" default:"generate.yaml"`
+}
+
+func (g *GithubConfig) ToProtobuf() *clientpb.GithubWorkflowConfig {
+	return &clientpb.GithubWorkflowConfig{
+		Owner:      g.Owner,
+		Repo:       g.Repo,
+		Token:      g.Token,
+		WorkflowId: g.Workflow,
+	}
+}
+
+type SaasConfig struct {
+	Enable bool   `config:"enable"`
+	Url    string `config:"url" default:""`
+	Token  string `config:"token" default:""`
 }

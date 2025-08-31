@@ -2,38 +2,64 @@ package rpc
 
 import (
 	"context"
-	"errors"
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/codenames"
+	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/server/internal/build"
+	"github.com/chainreactors/malice-network/server/build"
+	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db"
-	"os"
 )
 
-func (rpc *Server) Build(ctx context.Context, req *clientpb.Generate) (*clientpb.Builder, error) {
-	if req.Name == "" {
-		req.Name = codenames.GetCodename()
-	}
-	builder, err := db.SaveArtifactFromGenerate(req)
+func (rpc *Server) Build(ctx context.Context, req *clientpb.BuildConfig) (*clientpb.Artifact, error) {
+	builder, err := build.NewBuilder(req)
 	if err != nil {
-		logs.Log.Errorf("save build db error: %v", err)
 		return nil, err
 	}
+	artifact, err := builder.Generate()
+	if err != nil {
+		return nil, err
+	}
+
 	go func() {
-		_, err = build.GlobalBuildQueueManager.AddTask(req, builder)
-		if err != nil {
-			logs.Log.Errorf("Failed to enqueue build request: %v", err)
+		if execErr := builder.Execute(); execErr != nil {
+			logs.Log.Errorf("failed to build %s: %s", artifact.Name, execErr)
+			build.SendBuildMsg(artifact, consts.BuildStatusFailure, make([]byte, 0), execErr)
 			return
 		}
-	}()
-	logs.Log.Infof("Build request processed successfully for target: %s", req.Target)
 
-	return builder.ToProtobuf(), nil
+		_, status, err := builder.Collect()
+		if status == consts.BuildStatusCompleted {
+			if amtErr := build.AmountArtifact(artifact.Name); amtErr != nil {
+				logs.Log.Errorf("failed to add artifact path to website: %s", amtErr)
+			}
+		}
+		build.SendBuildMsg(artifact, status, req.ParamsBytes, err)
+	}()
+
+	return artifact, nil
 }
 
-func (rpc *Server) BuildLog(ctx context.Context, req *clientpb.Builder) (*clientpb.Builder, error) {
-	resultLog, err := db.GetBuilderLogs(req.Id, int(req.Num))
+func (rpc *Server) SyncBuild(ctx context.Context, req *clientpb.BuildConfig) (*clientpb.Artifact, error) {
+	builder, err := build.NewBuilder(req)
+	if err != nil {
+		return nil, err
+	}
+	artifact, err := builder.Generate()
+	if err != nil {
+		return nil, err
+	}
+	err = builder.Execute()
+	if err == nil {
+		builder.Collect()
+	} else {
+		return nil, err
+	}
+	return db.FindArtifact(artifact, true)
+}
+
+func (rpc *Server) BuildLog(ctx context.Context, req *clientpb.Artifact) (*clientpb.Artifact, error) {
+	resultLog, err := db.GetBuilderLogs(req.Name, int(req.LogNum))
 	if err != nil {
 		return nil, err
 	}
@@ -41,47 +67,28 @@ func (rpc *Server) BuildLog(ctx context.Context, req *clientpb.Builder) (*client
 	return req, nil
 }
 
-func (rpc *Server) BuildModules(ctx context.Context, req *clientpb.Generate) (*clientpb.Artifact, error) {
-	builder, err := db.GetBuilderByModules(req.Target, req.Modules)
-	if err != nil && !errors.Is(err, db.ErrRecordNotFound) {
-		return nil, err
-	} else if errors.Is(err, db.ErrRecordNotFound) {
-		if req.Name == "" {
-			req.Name = codenames.GetCodename()
+func (rpc *Server) CheckSource(ctx context.Context, req *clientpb.BuildConfig) (*clientpb.BuildConfig, error) {
+	if cli, err := build.GetDockerClient(); err == nil {
+		if _, err := cli.Ping(ctx); err == nil {
+			req.Source = consts.ArtifactFromDocker
+			return req, nil
 		}
-		logs.Log.Infof("start to build %s ...", req.Target)
-		builder, err = db.SaveArtifactFromGenerate(req)
-		if err != nil {
-			logs.Log.Errorf("create module in db error: %v", err)
-			return nil, err
+	}
+	if req.Github == nil {
+		if config := configs.GetGithubConfig(); config != nil {
+			req.Github = config.ToProtobuf()
+		} else {
+			req.Github = nil
 		}
-		go func() {
-			_, err = build.GlobalBuildQueueManager.AddTask(req, builder)
-			if err != nil {
-				logs.Log.Errorf("Failed to enqueue build request: %v", err)
-				return
-			}
-		}()
-		logs.Log.Infof("Build request processed successfully for target: %s", req.Target)
-		builder.Name = build.GetFilePath(builder.Name, builder.Target, builder.Type, builder.IsSRDI)
-		return builder.ToArtifact([]byte{}), nil
 	}
-	bin, err := os.ReadFile(builder.Path)
-	if err != nil {
-		return nil, err
+	if err := build.GetWorkflowStatus(req.Github); err == nil {
+		req.Source = consts.ArtifactFromAction
+		return req, nil
 	}
-	builder.Name = build.GetFilePath(builder.Name, builder.Target, builder.Type, builder.IsSRDI)
-	return builder.ToArtifact(bin), nil
-}
+	if saasConfig := configs.GetSaasConfig(); saasConfig != nil && saasConfig.Enable && saasConfig.Url != "" && saasConfig.Token != "" {
+		req.Source = consts.ArtifactFromSaas
+		return req, nil
+	}
 
-func (rpc *Server) DockerStatus(ctx context.Context, req *clientpb.Empty) (*clientpb.Empty, error) {
-	cli, err := build.GetDockerClient()
-	if err != nil {
-		return nil, err
-	}
-	_, err = cli.Ping(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return &clientpb.Empty{}, nil
+	return nil, errs.ErrSouceUnable
 }

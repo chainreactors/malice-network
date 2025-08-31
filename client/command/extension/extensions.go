@@ -59,8 +59,7 @@ func PrintExtensions(con *repl.Console) {
 	}
 	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)
-	newTable := tui.NewModel(tableModel, nil, false, false)
-	err := newTable.Run()
+	err := tableModel.Run()
 	if err != nil {
 		con.Log.Errorf("Error running table: %s", err)
 		return

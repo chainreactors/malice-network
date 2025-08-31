@@ -47,7 +47,7 @@ func parseMalHTTPConfig(cmd *cobra.Command) m.MalHTTPConfig {
 func MalCmd(cmd *cobra.Command, con *repl.Console) error {
 	malHttpConfig := parseMalHTTPConfig(cmd)
 	//malIndex, _ := DefaultMalIndexParser(malHttpConfig)
-	malsJson, err := m.ParserMalYaml(m.DefaultMalRepoURL, filepath.Join(assets.GetConfigDir(), m.MalIndexFileName), malHttpConfig)
+	malsJson, err := m.ParserMalYaml(m.DefaultMalRepoURL, assets.GetConfigDir(), malHttpConfig)
 	if err != nil {
 		return err
 	}
@@ -86,7 +86,8 @@ func printMals(maljson m.MalsYaml, malHttpConfig m.MalHTTPConfig, con *repl.Cons
 			})
 		rowEntries = append(rowEntries, row)
 	}
-	newTable := tui.NewModel(tableModel, nil, false, false)
+
+	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)
 	if isStatic {
 		con.Log.Infof(newTable.View())
@@ -94,9 +95,16 @@ func printMals(maljson m.MalsYaml, malHttpConfig m.MalHTTPConfig, con *repl.Cons
 	}
 	tableModel.SetMultiline()
 	tableModel.SetHandle(func() {
-		InstallMal(tableModel, newTable.Buffer, malHttpConfig, con)
+		selectRow := tableModel.GetHighlightedRow()
+		if selectRow.Data == nil {
+			logs.Log.Infof("No row selected")
+			return
+		}
+		InstallMal(selectRow.Data["Repo_url"].(string),
+			selectRow.Data["Name"].(string),
+			selectRow.Data["Version"].(string), tableModel.Buffer, malHttpConfig, con)
 	})
-	err := newTable.Run()
+	err := tableModel.Run()
 	if err != nil {
 		return err
 	}
@@ -104,28 +112,19 @@ func printMals(maljson m.MalsYaml, malHttpConfig m.MalHTTPConfig, con *repl.Cons
 	return nil
 }
 
-func InstallMal(tableModel *tui.TableModel, writer io.Writer, malHttpConfig m.MalHTTPConfig, con *repl.Console) func() {
-	selectRow := tableModel.GetHighlightedRow()
-	if selectRow.Data == nil {
-		return func() {
-			con.Log.FErrorf(writer, "No row selected\n")
-			return
-		}
-	}
-	logs.Log.Infof("Installing mal: %s", selectRow.Data["Name"].(string))
+func InstallMal(repoUrl, name, version string, writer io.Writer, malHttpConfig m.MalHTTPConfig, con *repl.Console) (updated bool) {
+	logs.Log.Infof("Installing mal: %s", name)
 	err := m.GithubMalPackageParser(
-		selectRow.Data["Repo_url"].(string),
-		selectRow.Data["Name"].(string),
-		selectRow.Data["Version"].(string),
+		repoUrl,
+		name,
+		version,
 		assets.GetMalsDir(),
 		malHttpConfig)
 	if err != nil {
-		return func() {
-			con.Log.FErrorf(writer, "Error installing mal: %s\n", err)
-		}
+		con.Log.FErrorf(writer, "Error installing mal: %s\n", err)
+		return false
 	}
-	tarGzPath := filepath.Join(assets.GetMalsDir(), selectRow.Data["Name"].(string)+".tar.gz")
-	InstallFromDir(tarGzPath, true, con)
-	return func() {
-	}
+	tarGzPath := filepath.Join(assets.GetMalsDir(), name+".tar.gz")
+	updated = InstallFromDir(tarGzPath, true, con)
+	return updated
 }

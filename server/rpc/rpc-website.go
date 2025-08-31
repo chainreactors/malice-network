@@ -3,14 +3,16 @@ package rpc
 import (
 	"context"
 	"errors"
+	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/server/internal/certutils"
+	"github.com/chainreactors/malice-network/helper/utils/formatutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"os"
+	"path"
 	"path/filepath"
 )
 
@@ -124,16 +126,7 @@ func (rpc *Server) RegisterWebsite(ctx context.Context, req *clientpb.Pipeline) 
 	}
 	req.Ip = lns.IP
 	pipelineModel := models.FromPipelinePb(req)
-	if pipelineModel.Tls.Enable && pipelineModel.Tls.Cert == "" && pipelineModel.Tls.Key == "" {
-		pipelineModel.Tls.Cert, pipelineModel.Tls.Key, err = certutils.GenerateTlsCert(req.Name, req.ListenerId)
-		if err != nil {
-			return nil, err
-		}
-	}
 	_, err = db.SavePipeline(pipelineModel)
-	if err != nil {
-		return nil, err
-	}
 	_ = os.Mkdir(filepath.Join(configs.WebsitePath, req.Name), os.ModePerm)
 	for _, content := range req.GetWeb().Contents {
 		content.WebsiteId = req.Name
@@ -151,7 +144,18 @@ func (rpc *Server) StartWebsite(ctx context.Context, req *clientpb.CtrlPipeline)
 	if err != nil {
 		return nil, err
 	}
-
+	if req.CertName != "" {
+		_, err := db.FindCertificate(req.CertName)
+		if err != nil {
+			return nil, err
+		}
+		webpipe, err = db.UpdatePipelineCert(req.CertName, webpipe)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		webpipe.Tls.Enable = req.Pipeline.Tls.Enable
+	}
 	listener, err := core.Listeners.Get(webpipe.ListenerId)
 	if err != nil {
 		return nil, err
@@ -176,6 +180,25 @@ func (rpc *Server) StartWebsite(ctx context.Context, req *clientpb.CtrlPipeline)
 		return nil, err
 	}
 
+	artifacts, err := db.GetValidArtifacts()
+	if err != nil {
+		logs.Log.Errorf("failed to find artifact: %s", err)
+		return &clientpb.Empty{}, nil
+	}
+	for _, artifact := range artifacts {
+		content, err := db.AddAmountWebContent(artifact.Name, webpb.Name)
+		if err != nil {
+			return nil, err
+		}
+		listener.PushCtrl(&clientpb.JobCtrl{
+			Ctrl: consts.CtrlWebContentAddArtifact,
+			Job: &clientpb.Job{
+				Pipeline: webpb,
+			},
+			Content: content,
+		})
+		logs.Log.Infof("artifact %s amounts at %s", artifact.Name, path.Join(webpb.URL(), formatutils.Encode(artifact.Name)))
+	}
 	return &clientpb.Empty{}, nil
 }
 

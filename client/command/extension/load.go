@@ -139,13 +139,12 @@ func ExtensionLoadCmd(cmd *cobra.Command, con *repl.Console) {
 		if repl.CmdExist(con.ImplantMenu(), extCmd.CommandName) {
 			con.Log.Errorf("%s command already exists\n", extCmd.CommandName)
 			confirmModel := tui.NewConfirm(fmt.Sprintf("%s command already exists. Overwrite?", extCmd.CommandName))
-			newConfirm := tui.NewModel(confirmModel, nil, false, true)
-			err = newConfirm.Run()
+			err = confirmModel.Run()
 			if err != nil {
 				con.Log.Errorf("Error running confirm model: %s\n", err)
 				return
 			}
-			if !confirmModel.Confirmed {
+			if !confirmModel.GetConfirmed() {
 				return
 			}
 		}
@@ -281,11 +280,6 @@ func ExtensionRegisterCommand(extCmd *ExtCommand, cmd *cobra.Command, con *repl.
 	}
 	profile.AddExtension(extCmd.CommandName)
 	cmd.AddCommand(extensionCmd)
-	err = assets.SaveProfile(profile)
-	if err != nil {
-		con.Log.Errorf("Error saving profile: %s\n", err)
-		return
-	}
 }
 
 //func loadExtension(goos string, goarch string, extcmd *ExtCommand, con *console.Console) error {
@@ -357,7 +351,7 @@ func runExtensionCmd(cmd *cobra.Command, con *repl.Console) {
 		con.Log.Errorf("Error executing extension: %s\n", err.Error())
 		return
 	}
-	session.Console(task, "execute extension: "+cmd.Name())
+	session.Console(task, string(*con.App.Shell().Line()))
 }
 
 func ExecuteExtension(rpc clientrpc.MaliceRPCClient, sess *core.Session, extName string, args []string) (*clientpb.Task, error) {
@@ -400,6 +394,7 @@ func ExecuteExtension(rpc clientrpc.MaliceRPCClient, sess *core.Session, extName
 			Args:       extensionArgs,
 			Type:       ext.Manifest.DependsOn,
 			Output:     true,
+			Delay:      2000,
 		})
 	} else {
 		// Regular DLL
@@ -416,6 +411,7 @@ func ExecuteExtension(rpc clientrpc.MaliceRPCClient, sess *core.Session, extName
 			Type:       consts.ModuleExecuteDll,
 			Output:     true,
 			Sacrifice:  nil,
+			Delay:      2000,
 		})
 	}
 

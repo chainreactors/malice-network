@@ -1,9 +1,12 @@
 package configs
 
 import (
+	"github.com/chainreactors/files"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/gookit/config/v2"
 	"os"
+	"path/filepath"
 )
 
 func InitConfig() error {
@@ -21,9 +24,20 @@ func InitConfig() error {
 	os.MkdirAll(BinPath, perm)
 	os.MkdirAll(WebsitePath, perm)
 	os.MkdirAll(ListenerPath, perm)
-	os.MkdirAll(BuildOutputPath, perm)
-	os.MkdirAll(SourceCodePath, perm)
 	return nil
+}
+
+func FindConfig(filename string) string {
+	if filename == "" {
+		filename = ServerConfigFileName
+	}
+	if fileutils.Exist(filename) {
+		return filename
+	} else if path := filepath.Join(files.GetExcPath(), filename); fileutils.Exist(path) {
+		return path
+	} else {
+		return ""
+	}
 }
 
 func GetCertDir() string {
@@ -68,6 +82,17 @@ func GetNotifyConfig() *NotifyConfig {
 	return n
 }
 
+func GetSaasConfig() *SaasConfig {
+	s := &SaasConfig{}
+	err := config.MapStruct("server.saas", s)
+	if err != nil {
+		logs.Log.Errorf("Failed to map saas config %s", err)
+		return nil
+	}
+	return s
+
+}
+
 func GetListenerConfig() *ListenerConfig {
 	l := &ListenerConfig{}
 	err := config.MapStruct("listeners", l)
@@ -100,6 +125,15 @@ func UpdateNotifyConfig(n *NotifyConfig) error {
 	err := config.Set("server.notify", n)
 	if err != nil {
 		logs.Log.Errorf("Failed to update notify config %s", err)
+		return err
+	}
+	return nil
+}
+
+func UpdateSaasConfig(n *SaasConfig) error {
+	err := config.Set("server.saas", n)
+	if err != nil {
+		logs.Log.Errorf("Failed to update saas config %s", err)
 		return err
 	}
 	return nil

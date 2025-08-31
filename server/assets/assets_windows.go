@@ -20,12 +20,6 @@ func SetupGithubFile() error {
 		return err
 	}
 
-	//linuxMutant, err := assetsFs.ReadFile("windows/malefic-mutant")
-	//if err != nil {
-	//	logs.Log.Errorf("malefic-mutant asset not found")
-	//	return err
-	//}
-
 	sgn, err := assetsFs.ReadFile("windows/sgn.exe")
 	if err != nil {
 		logs.Log.Errorf("sgn asset not found")
@@ -37,15 +31,10 @@ func SetupGithubFile() error {
 	}
 
 	err = os.WriteFile(filepath.Join(configs.BinPath, "malefic-mutant.exe"), mutant, 0700)
+	logs.Log.Infof("write mutant.exe success")
 	if err != nil {
 		logs.Log.Errorf("Failed to write malefic-mutant data to: %s by %s", configs.BinPath, err)
 	}
-
-	//err = os.WriteFile(filepath.Join(configs.BinPath, "malefic-mutant"), linuxMutant, 0600)
-	//if err != nil {
-	//	logs.Log.Errorf("Failed to write malefic-mutant data to: %s by %s", configs.BinPath, err)
-	//	return err
-	//}
 
 	err = os.WriteFile(filepath.Join(configs.BinPath, "sgn.exe"), sgn, 0700)
 	if err != nil {

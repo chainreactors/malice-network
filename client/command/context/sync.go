@@ -19,7 +19,7 @@ func SyncCmd(cmd *cobra.Command, con *repl.Console) error {
 			ContextId: tid,
 		})
 		if err != nil {
-			con.Log.Errorf("sync file error: %v\n", err)
+			con.Log.Errorf("sync context error: %v\n", err)
 			return
 		}
 
@@ -38,16 +38,16 @@ func SyncCmd(cmd *cobra.Command, con *repl.Console) error {
 			switch t := c.(type) {
 			case *output.ScreenShotContext:
 				filename = t.Name
-				content = t.Content
+				content = ctx.Content
 			case *output.DownloadContext:
 				filename = t.Name
-				content = t.Content
+				content = ctx.Content
 			case *output.KeyLoggerContext:
 				filename = t.Name
-				content = t.Content
+				content = ctx.Content
 			case *output.UploadContext:
 				filename = t.Name
-				content = t.Content
+				content = ctx.Content
 			}
 
 			savePath := filepath.Join(assets.GetTempDir(), fmt.Sprintf("%s_%s", ctx.Id, filename))

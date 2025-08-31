@@ -3,9 +3,13 @@ package rpc
 import (
 	"context"
 	"errors"
+	"github.com/chainreactors/malice-network/server/internal/configs"
 	"net"
+	"os"
+	"path/filepath"
 	"runtime"
 	"strconv"
+	"time"
 
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -20,12 +24,6 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
 	"google.golang.org/protobuf/proto"
-)
-
-var (
-	ver        = "0.1.0-dev"
-	commit     = ""
-	buildstamp = ""
 )
 
 func newGenericRequest(ctx context.Context, msg proto.Message, opts ...int) (*GenericRequest, error) {
@@ -82,6 +80,15 @@ func (r *GenericRequest) InitSpite(ctx context.Context) (*implantpb.Spite, error
 	if err != nil {
 		return nil, err
 	}
+
+	spiteBytes, err := proto.Marshal(spite)
+	if err != nil {
+		return nil, err
+	}
+	err = os.WriteFile(filepath.Join(configs.ContextPath, r.Task.SessionId, consts.RequestPath, strconv.Itoa(int(r.Task.Id))), spiteBytes, 0644)
+	if err != nil {
+		return nil, err
+	}
 	return spite, nil
 }
 
@@ -102,13 +109,33 @@ func (r *GenericRequest) SetCallback(callback func()) {
 	r.Task.Callback = callback
 }
 
+func (r *GenericRequest) HandlerSpite(spite *implantpb.Spite) error {
+	r.Session.AddMessage(spite, r.Task.Cur)
+	r.Task.Done(spite, "")
+	err := db.UpdateTask(r.Task.ToProtobuf())
+	if err != nil {
+		return err
+	}
+	err = r.Session.TaskLog(r.Task, spite)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (r *GenericRequest) HandlerResponse(ch chan *implantpb.Spite, typ types.MsgName, callbacks ...func(spite *implantpb.Spite)) {
 	resp := <-ch
-	r.Session.AddMessage(resp, r.Task.Cur)
+
 	err := handler.AssertStatusAndSpite(resp, typ)
 	if err != nil {
 		logs.Log.Debug(err)
 		r.Task.Panic(buildErrorEvent(r.Task, err))
+		return
+	}
+
+	err = r.HandlerSpite(resp)
+	if err != nil {
+		logs.Log.Errorf("handler spite error, %s", err.Error())
 		return
 	}
 	if callbacks != nil {
@@ -118,17 +145,7 @@ func (r *GenericRequest) HandlerResponse(ch chan *implantpb.Spite, typ types.Msg
 			}
 		})
 	}
-	r.Task.Done(resp, "")
 	r.Task.Finish(resp, "")
-	err = db.UpdateTask(r.Task.ToProtobuf())
-	if err != nil {
-		logs.Log.Errorf("update task cur failed %s", err)
-		return
-	}
-	err = r.Session.TaskLog(r.Task, resp)
-	if err != nil {
-		logs.Log.Errorf("Failed to log task: %v", err)
-	}
 	return
 }
 
@@ -198,10 +215,10 @@ func (rpc *Server) StreamGenericHandler(ctx context.Context, req *GenericRequest
 }
 
 func (rpc *Server) GetBasic(ctx context.Context, _ *clientpb.Empty) (*clientpb.Basic, error) {
-	timestamp, _ := strconv.ParseInt(buildstamp, 10, 64)
+	timestamp, _ := strconv.ParseInt(consts.Buildstamp, 10, 64)
 	return &clientpb.Basic{
-		Version:    ver,
-		Commit:     commit,
+		Version:    consts.Ver,
+		Commit:     consts.Commit,
 		CompiledAt: timestamp,
 		Os:         runtime.GOOS,
 		Arch:       runtime.GOARCH,
@@ -287,14 +304,14 @@ func getRemoteIp(ctx context.Context) string {
 func getTimestamp(ctx context.Context) int64 {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
-		return 0
+		return time.Now().Unix()
 	}
 	if timestamp := md.Get("timestamp"); len(timestamp) > 0 {
 		if ts, err := strconv.ParseInt(timestamp[0], 10, 64); err == nil {
 			return ts
 		}
 	}
-	return 0
+	return time.Now().Unix()
 }
 
 func getPipelineID(ctx context.Context) (string, error) {
@@ -341,4 +358,18 @@ func getContextNonce(ctx context.Context) (string, string) {
 		contextType = t[0]
 	}
 	return contextType, nonce
+}
+
+func Handler(ctx context.Context, rpc *Server, req proto.Message, expect types.MsgName, callbacks ...func(spite *implantpb.Spite)) (*clientpb.Task, error) {
+	greq, err := newGenericRequest(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	ch, err := rpc.GenericHandler(ctx, greq)
+	if err != nil {
+		return nil, err
+	}
+
+	go greq.HandlerResponse(ch, expect, callbacks...)
+	return greq.Task.ToProtobuf(), nil
 }

@@ -67,11 +67,8 @@ func PrintPivots(pivots []*output.PivotingContext, con *repl.Console, all bool) 
 		table.NewColumn("Mod", "Mod", 10),
 	}, true)
 
-	newTable := tui.NewModel(tableModel, nil, false, false)
+	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)
-	err := newTable.Run()
-	if err != nil {
-		con.Log.Errorf("Error running table: %v", err)
-	}
-	tui.Reset()
+	con.Log.Console(tableModel.View())
+	//tui.Reset()
 }

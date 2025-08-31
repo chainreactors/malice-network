@@ -1,7 +1,6 @@
 package pivot
 
 import (
-	"fmt"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/third/rem"
@@ -29,7 +28,7 @@ func ReverseCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	sess.Console(task, fmt.Sprintf("pivoting socks5 on %s:%s", con.Pipelines[pid].Ip, port))
+	sess.Console(task, string(*con.App.Shell().Line()))
 
 	return nil
 }

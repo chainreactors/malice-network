@@ -65,15 +65,10 @@ func PrintAliases(con *repl.Console, isStatic bool) {
 			})
 		rowEntries = append(rowEntries, row)
 	}
-	newTable := tui.NewModel(tableModel, nil, false, false)
-	tableModel.SetRows(rowEntries)
-	if isStatic {
-		con.Log.Infof(newTable.View())
-		return
-	}
-	tableModel.SetMultiline()
 
-	err := newTable.Run()
+	tableModel.SetMultiline()
+	tableModel.SetRows(rowEntries)
+	err := tableModel.Run()
 	if err != nil {
 		return
 	}

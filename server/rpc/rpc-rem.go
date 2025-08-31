@@ -21,10 +21,18 @@ func (rpc *Server) RegisterRem(ctx context.Context, req *clientpb.Pipeline) (*cl
 		return nil, err
 	}
 	req.Ip = lns.IP
-	_, err = db.SavePipeline(models.FromPipelinePb(req))
+
+	_, err = db.FindPipeline(req.Name)
 	if err != nil {
-		return nil, err
+		if req.GetRem().Console == "" {
+			req.GetRem().Console = "tcp://127.0.0.1:12345"
+		}
+		_, err = db.SavePipeline(models.FromPipelinePb(req))
+		if err != nil {
+			return nil, err
+		}
 	}
+
 	return &clientpb.Empty{}, nil
 }
 
@@ -71,7 +79,6 @@ func (rpc *Server) StartRem(ctx context.Context, req *clientpb.CtrlPipeline) (*c
 		Pipeline: rem,
 		Name:     rem.Name,
 	}
-	core.Jobs.Add(job)
 	lns.PushCtrl(&clientpb.JobCtrl{
 		Ctrl: consts.CtrlRemStart,
 		Job:  job.ToProtobuf(),
@@ -168,9 +175,7 @@ func (rpc *Server) RemDial(ctx context.Context, req *implantpb.Request) (*client
 		}
 
 		if remOpt, ok := pipe.GetRem().Agents[spite.GetResponse().Output]; ok {
-			pivot := output.NewPivotingWithRem(remOpt)
-			pivot.Pipeline = pipe.Name
-			pivot.Listener = pipe.ListenerId
+			pivot := output.NewPivotingWithRem(remOpt, pipe)
 			event.Op = "pivot_" + pivot.Mod
 			event.Message = pivot.Abstract()
 			lns, err := core.Listeners.Get(pipe.ListenerId)
@@ -216,9 +221,7 @@ func (rpc *Server) RemAgentCtrl(ctx context.Context, req *clientpb.REMAgent) (*c
 	status := lns.WaitCtrl(i)
 	if status.Status == consts.CtrlStatusSuccess {
 		agent := status.Job.GetRemAgent()
-		pivot := output.NewPivotingWithRem(agent)
-		pivot.Pipeline = pipe.Name
-		pivot.Listener = pipe.ListenerId
+		pivot := output.NewPivotingWithRem(agent, pipe)
 		_, err = db.SaveContext(&clientpb.Context{
 			Listener: lns.ToProtobuf(),
 			Pipeline: pipe,
@@ -282,19 +285,6 @@ func (rpc *Server) RemAgentStop(ctx context.Context, req *clientpb.REMAgent) (*c
 		},
 	})
 	return &clientpb.Empty{}, nil
-}
-
-func (rpc *Server) LoadRem(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
-	greq, err := newGenericRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	ch, err := rpc.GenericHandler(ctx, greq)
-	if err != nil {
-		return nil, err
-	}
-	go greq.HandlerResponse(ch, types.MsgResponse)
-	return greq.Task.ToProtobuf(), nil
 }
 
 func (rpc *Server) HealthCheckRem(ctx context.Context, req *clientpb.Pipeline) (*clientpb.Empty, error) {

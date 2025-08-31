@@ -3,26 +3,29 @@ package pulse
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"github.com/chainreactors/malice-network/helper/encoders"
 	"github.com/chainreactors/malice-network/helper/encoders/hash"
 	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/helper/utils/handler"
-	"github.com/chainreactors/malice-network/helper/utils/peek"
+	"io"
 )
 
 const (
-	MsgStart      = 0
-	MsgMagicStart = 1
-	MsgMagicEnd   = 5
-	HeaderLength  = 9
+	MsgStart              = 0
+	MsgMagicStart         = 1
+	MsgMagicEnd           = 5
+	HeaderLength          = 9
+	DefaultStartDelimiter = 0x41
+	DefaultEndDelimiter   = 0x42
 )
 
 func NewPulseParser() *PulseParser {
 	return &PulseParser{
-		StartDelimiter: 0x41,
-		EndDelimiter:   0x42,
+		StartDelimiter: DefaultStartDelimiter,
+		EndDelimiter:   DefaultEndDelimiter,
 		Magic:          hash.DJB2Hash("beautiful"),
 	}
 }
@@ -33,10 +36,14 @@ type PulseParser struct {
 	Magic          uint32
 }
 
-func (parser *PulseParser) PeekHeader(conn *peek.Conn) (uint32, uint32, error) {
-	header, err := conn.Peek(HeaderLength)
+func (parser *PulseParser) readHeader(conn io.ReadWriteCloser) (uint32, uint32, error) {
+	header := make([]byte, HeaderLength)
+	n, err := io.ReadFull(conn, header)
 	if err != nil {
 		return 0, 0, err
+	}
+	if n != HeaderLength {
+		return 0, 0, fmt.Errorf("read header error, expect %d, real %d", HeaderLength, n)
 	}
 
 	if header[MsgStart] != parser.StartDelimiter {
@@ -47,16 +54,13 @@ func (parser *PulseParser) PeekHeader(conn *peek.Conn) (uint32, uint32, error) {
 	return magic, artifact, nil
 }
 
-func (parser *PulseParser) ReadHeader(conn *peek.Conn) (uint32, uint32, error) {
-	magic, artifact, err := parser.PeekHeader(conn)
+func (parser *PulseParser) ReadHeader(conn io.ReadWriteCloser) (uint32, uint32, error) {
+	magic, artifact, err := parser.readHeader(conn)
 	if err != nil {
 		return 0, 0, err
 	}
 	if magic != parser.Magic {
 		return 0, 0, errs.ErrInvalidMagic
-	}
-	if _, err := conn.Reader.Discard(HeaderLength); err != nil {
-		return 0, 0, err
 	}
 	end := make([]byte, 1)
 	n, err := conn.Read(end)

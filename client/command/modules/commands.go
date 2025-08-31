@@ -1,7 +1,6 @@
 package modules
 
 import (
-	"fmt"
 	"github.com/carapace-sh/carapace"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
@@ -14,7 +13,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"golang.org/x/exp/slices"
-	"strings"
 )
 
 func Commands(con *repl.Console) []*cobra.Command {
@@ -23,7 +21,6 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Short: "List modules",
 		// Long:  help.FormatLongHelp(consts.ModuleListModule),
 		RunE: func(cmd *cobra.Command, args []string) error {
-
 			return ListModulesCmd(cmd, con)
 		},
 	}
@@ -38,31 +35,29 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Example: `load module from malefic-modules
 before loading, you can list the current modules: 
 ~~~
-execute_addon、clear ...
+execute_addon,exec ...
 ~~~
 then you can load module
 ~~~
-load_module <module_file.dll>
+load_module --path <module_file.dll>
 ~~~
 you can see more modules loaded by list_module
 ~~~
-execute_addon、clear 、ps、powerpic...
+execute_addon,clear,ps,powershell...
 ~~~
 `}
 
 	common.BindFlag(loadModuleCmd, func(f *pflag.FlagSet) {
 		f.String("path", "", "module path")
-		f.StringSlice("modules", []string{}, "modules list,eg: basic,extend")
-		f.StringP("bundle", "b", "", "bundle name")
-		f.String("build", "", "build resource,eg: docker/action")
-		f.String("target", "", "module target")
-		f.String("profile", "", "build profile")
+		f.String("modules", "", "modules list,eg: basic,extend")
+		f.StringP("bundle", "", "", "bundle name")
+		f.String("3rd", "", "build 3rd-party modules")
+		f.String("artifact", "", "exist module artifact")
 	})
 	common.BindFlagCompletions(loadModuleCmd, func(comp carapace.ActionMap) {
 		comp["path"] = carapace.ActionFiles()
 		comp["modules"] = common.ModulesCompleter()
-		comp["target"] = common.BuildTargetCompleter(con)
-		comp["profile"] = common.ProfileCompleter(con)
+		comp["artifact"] = common.ModuleArtifactsCompleter(con)
 	})
 	common.BindArgCompletions(loadModuleCmd, nil,
 		carapace.ActionFiles().Usage("path to the module file"))
@@ -101,11 +96,8 @@ func Register(con *repl.Console) {
 		nil,
 		func(ctx *clientpb.TaskContext) (interface{}, error) {
 			resp := ctx.Spite.GetModules()
-			var modules []string
-			for module := range resp.GetModules() {
-				modules = append(modules, fmt.Sprintf("%s", module))
-			}
-			return strings.Join(modules, ","), nil
+			con.RefreshCmd(con.AddSession(ctx.Session))
+			return resp.Modules, nil
 		},
 		func(content *clientpb.TaskContext) (string, error) {
 			modules := content.Spite.GetModules()
@@ -120,10 +112,14 @@ func Register(con *repl.Console) {
 				table.NewColumn("Help", "Help", 30),
 			}, true)
 			for _, module := range modules.GetModules() {
+				var short string
+				if cmd := con.CMDs[module]; cmd != nil {
+					short = cmd.Short
+				}
 				row = table.NewRow(
 					table.RowData{
 						"Module": module,
-						"Help":   "",
+						"Help":   short,
 					})
 				rowEntries = append(rowEntries, row)
 			}
@@ -137,7 +133,12 @@ func Register(con *repl.Console) {
 		LoadModule,
 		"",
 		nil,
-		output.ParseStatus,
+		func(ctx *clientpb.TaskContext) (interface{}, error) {
+			resp := ctx.Spite.GetModules()
+			ctx.Session.Modules = append(ctx.Session.Modules, resp.Modules...)
+			con.RefreshCmd(con.AddSession(ctx.Session))
+			return resp.Modules, nil
+		},
 		nil)
 
 	con.AddCommandFuncHelper(
@@ -156,7 +157,11 @@ func Register(con *repl.Console) {
 		refreshModule,
 		"",
 		nil,
-		output.ParseStatus,
+		func(ctx *clientpb.TaskContext) (interface{}, error) {
+			resp := ctx.Spite.GetModules()
+			con.RefreshCmd(con.AddSession(ctx.Session))
+			return resp.Modules, nil
+		},
 		nil)
 
 	con.AddCommandFuncHelper(

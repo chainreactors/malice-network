@@ -49,31 +49,25 @@ The **profile load** command requires a valid configuration file path (e.g., **c
 // Create a new profile using network configuration in pipeline
 profile load /path/to/config.yaml --name my_profile --pipeline pipeline_name
 
-// Create a profile with specific modules
-profile load /path/to/config.yaml --name my_profile --modules base,sys_full --pipeline pipeline_name
-
-// Create a profile with custom interval and jitter
-profile load /path/to/config.yaml --name my_profile --interval 10 --jitter 0.3 --pipeline pipeline_name
-
-// Create a profile for pulse
-profile load /path/to/config.yaml --name my_profile --pipeline pipeline_name --pulse-pipeline pulse_pipeline_name
+// Create a new profile with external file
+profile load /path/to/profile.zip --name my_profile --pipeline pipeline_name
 ~~~`,
 	}
 	common.BindFlag(loadProfileCmd, common.ProfileSet)
 	loadProfileCmd.MarkFlagRequired("pipeline")
 	loadProfileCmd.MarkFlagRequired("name")
 	common.BindFlagCompletions(loadProfileCmd, func(comp carapace.ActionMap) {
-		comp["name"] = carapace.ActionValues("profile name")
+		comp["name"] = carapace.ActionValues().Usage("profilename")
 		//comp["target"] = common.BuildTargetCompleter(con)
 		comp["pipeline"] = common.AllPipelineCompleter(con)
-		comp["pulse-pipeline"] = common.AllPipelineCompleter(con)
-		//comp["proxy"] = carapace.ActionValues("").Usage("")
+		comp["rem"] = common.RemPipelineCompleter(con)
+		//comp["pulse-pipeline"] = common.AllPipelineCompleter(con)
+		//comp["proxy"] = carapace.ActionValues().Usage("proxy, socks5 or http")
 		//comp["obfuscate"] = carapace.ActionValues("true", "false")
-		comp["modules"] = carapace.ActionValues("e.g.: execute_exe,execute_dll")
-		comp["ca"] = carapace.ActionValues("true", "false")
+		//comp["modules"] = carapace.ActionValues().Usage("e.g.: execute_exe,execute_dll")
 
-		comp["interval"] = carapace.ActionValues("5")
-		comp["jitter"] = carapace.ActionValues("0.2")
+		//comp["interval"] = carapace.ActionValues("5")
+		//comp["jitter"] = carapace.ActionValues("0.2")
 	})
 	common.BindArgCompletions(loadProfileCmd, nil, carapace.ActionFiles().Usage("profile path"))
 
@@ -93,9 +87,9 @@ profile new --name my_profile --pipeline default_tcp
 	newProfileCmd.MarkFlagRequired("pipeline")
 	newProfileCmd.MarkFlagRequired("name")
 	common.BindFlagCompletions(newProfileCmd, func(comp carapace.ActionMap) {
-		comp["name"] = carapace.ActionValues("profile name")
+		comp["name"] = carapace.ActionValues().Usage("profile name")
 		comp["pipeline"] = common.AllPipelineCompleter(con)
-		comp["pulse-pipeline"] = common.AllPipelineCompleter(con)
+		comp["rem"] = common.RemPipelineCompleter(con)
 	})
 
 	deleteProfileCmd := &cobra.Command{
@@ -107,7 +101,7 @@ profile new --name my_profile --pipeline default_tcp
 		},
 		Example: `
 ~~~
-profile delete --name profile_name
+profile delete profile_name
 ~~~
 `,
 	}
@@ -120,6 +114,9 @@ profile delete --name profile_name
 		Use:   consts.CommandBuild,
 		Short: "build",
 	}
+
+	buildCmd.PersistentFlags().Bool("auto-download", false, "auto download artifact")
+
 	// build beacon --format/-f exe,dll,shellcode -i 1.1.1 -m load_pe
 	beaconCmd := &cobra.Command{
 		Use:   consts.CommandBuildBeacon,
@@ -131,22 +128,35 @@ profile delete --name profile_name
 		},
 		Example: `~~~
 // Build a beacon
-build beacon --target x86_64-unknown-linux-musl --profile beacon_profile
+build beacon --target x86_64-pc-windows-gnu --profile tcp_default
 
 // Build a beacon using additional modules
-build beacon --target x86_64-pc-windows-msvc --profile beacon_profile --modules full
+build beacon --target x86_64-pc-windows-gnu --profile tcp_default --modules full
 
-// Build a beacon using SRDI technology
-build beacon --target x86_64-pc-windows-msvc --profile beacon_profile --srdi
+// Build a beacon with rem
+build beacon --rem --target x86_64-pc-windows-gnu --profile tcp_default
 
+// Build a beacon by saas
+build beacon --target x86_64-pc-windows-gnu --profile tcp_default --source saas
 ~~~`,
 	}
-	common.BindFlag(beaconCmd, common.GenerateFlagSet)
+	common.BindFlag(beaconCmd, common.GenerateFlagSet, common.GithubFlagSet, func(f *pflag.FlagSet) {
+		f.Bool("rem", false, "static link to rem")
+		f.Int("interval", -1, "interval /second")
+		f.Float64("jitter", -1, "jitter")
+		f.String("proxy", "", "Overwrite proxy")
+		f.StringP("modules", "m", "", "Set modules e.g.: execute_exe,execute_dll")
+		f.Uint32("relink", 0, "relink pulse id")
+		f.String("address", "", "implant address target")
+		f.String("autorun", "", "set autorun zip")
+	})
 	beaconCmd.MarkFlagRequired("target")
 	beaconCmd.MarkFlagRequired("profile")
 	common.BindFlagCompletions(beaconCmd, func(comp carapace.ActionMap) {
 		comp["profile"] = common.ProfileCompleter(con)
 		comp["target"] = common.BuildTargetCompleter(con)
+		comp["source"] = common.BuildResourceCompleter(con)
+		comp["autorun"] = carapace.ActionFiles().Usage("autorun zip path")
 	})
 
 	bindCmd := &cobra.Command{
@@ -159,24 +169,32 @@ build beacon --target x86_64-pc-windows-msvc --profile beacon_profile --srdi
 		},
 		Example: `~~~
 // Build a bind payload
-build bind --target x86_64-pc-windows-msvc --profile bind_profile
+build bind --target x86_64-pc-windows-gnu --profile tcp_default
 
 // Build a bind payload with additional modules
-build bind --target x86_64-unknown-linux-musl --profile bind_profile --modules base,sys_full
+build bind --target x86_64-pc-windows-gnu --profile tcp_default --modules base,sys_full
 
-// Build a bind payload with SRDI technology
-build bind --target x86_64-pc-windows-msvc --profile bind_profile --srdi
-
+// Build a bind payload by saas 
+build bind --target x86_64-pc-windows-gnu --profile tcp_default --source saas
 ~~~`,
 	}
 
-	common.BindFlag(bindCmd, common.GenerateFlagSet)
+	common.BindFlag(bindCmd, common.GenerateFlagSet, common.GithubFlagSet, func(f *pflag.FlagSet) {
+		f.Int("interval", -1, "interval /second")
+		f.Float64("jitter", -1, "jitter")
+		f.String("proxy", "", "Overwrite proxy")
+		f.StringP("modules", "m", "", "Set modules e.g.: execute_exe,execute_dll")
+	})
 	bindCmd.MarkFlagRequired("target")
 	bindCmd.MarkFlagRequired("profile")
 	common.BindFlagCompletions(bindCmd, func(comp carapace.ActionMap) {
+
 		comp["profile"] = common.ProfileCompleter(con)
 		comp["target"] = common.BuildTargetCompleter(con)
+		comp["source"] = common.BuildResourceCompleter(con)
 	})
+
+	bindCmd.Hidden = true
 
 	preludeCmd := &cobra.Command{
 		Use:   consts.CommandBuildPrelude,
@@ -188,19 +206,23 @@ build bind --target x86_64-pc-windows-msvc --profile bind_profile --srdi
 			return PreludeCmd(cmd, con)
 		},
 		Example: `~~~
-	// Build a prelude payload
-	build prelude --target x86_64-unknown-linux-musl --profile prelude_profile --autorun /path/to/autorun.yaml
+// Build a prelude payload
+build prelude --target x86_64-pc-windows-gnu --profile tcp_default --autorun /path/to/autorun.yaml
 	
-	// Build a prelude payload with additional modules
-	build prelude --target x86_64-pc-windows-msvc --profile prelude_profile --autorun /path/to/autorun.yaml --modules base,sys_full
+// Build a prelude payload with additional modules
+build prelude --target x86_64-pc-windows-gnu --profile tcp_default --autorun /path/to/autorun.yaml --modules base,sys_full
 	
-	// Build a prelude payload with SRDI technology
-	build prelude --target x86_64-pc-windows-msvc --profile prelude_profile --autorun /path/to/autorun.yaml --srdi
-	~~~`,
+// Build a prelude payload by saas
+build prelude --target x86_64-pc-windows-gnu --profile tcp_default --autorun /path/to/autorun.yaml --source saas
+~~~`,
 	}
 
-	common.BindFlag(preludeCmd, common.GenerateFlagSet, func(f *pflag.FlagSet) {
-		f.String("autorun", "", "set autorun.yaml")
+	common.BindFlag(preludeCmd, common.GenerateFlagSet, common.GithubFlagSet, func(f *pflag.FlagSet) {
+		f.String("autorun", "", "set autorun zip")
+		f.Int("interval", -1, "interval /second")
+		f.Float64("jitter", -1, "jitter")
+		f.String("proxy", "", "Overwrite proxy")
+		f.StringP("modules", "m", "", "Set modules e.g.: execute_exe,execute_dll")
 	})
 	preludeCmd.MarkFlagRequired("target")
 	preludeCmd.MarkFlagRequired("profile")
@@ -208,7 +230,8 @@ build bind --target x86_64-pc-windows-msvc --profile bind_profile --srdi
 	common.BindFlagCompletions(preludeCmd, func(comp carapace.ActionMap) {
 		comp["profile"] = common.ProfileCompleter(con)
 		comp["target"] = common.BuildTargetCompleter(con)
-		comp["autorun"] = carapace.ActionFiles().Usage("autorun.yaml path")
+		comp["autorun"] = carapace.ActionFiles().Usage("autorun zip path")
+		comp["source"] = common.BuildResourceCompleter(con)
 	})
 	common.BindArgCompletions(preludeCmd, nil, common.ProfileCompleter(con))
 
@@ -222,23 +245,31 @@ build bind --target x86_64-pc-windows-msvc --profile bind_profile --srdi
 		},
 		Example: `~~~
 // Compile all modules for the Windows platform
-build modules --target x86_64-unknown-linux-musl --profile module_profile
+build modules --target x86_64-pc-windows-gnu --profile tcp_default
 
 // Compile a predefined feature set of modules (nano)
-build modules --target x86_64-unknown-linux-musl --profile module_profile --modules nano
+build modules --target x86_64-pc-windows-gnu --profile tcp_default --modules nano
 
 // Compile specific modules into DLLs
-build modules --target x86_64-pc-windows-msvc --profile module_profile --modules base,execute_dll
+build modules --target x86_64-pc-windows-gnu --profile tcp_default --modules base,execute_dll
 
-// Compile modules with srdi
-build modules --target x86_64-pc-windows-msvc --profile module_profile --srdi
+// Compile third party module(curl, rem)
+build modules --3rd rem --target x86_64-pc-windows-gnu --profile tcp_default
+
+// Compile module by saas
+build modules --target x86_64-pc-windows-gnu --profile tcp_default --source saas
 ~~~`,
 	}
-	common.BindFlag(modulesCmd, common.GenerateFlagSet)
+
+	common.BindFlag(modulesCmd, common.GenerateFlagSet, common.GithubFlagSet, func(f *pflag.FlagSet) {
+		f.String("3rd", "", "build 3rd-party modules")
+		f.StringP("modules", "m", "", "Set modules e.g.: execute_exe,execute_dll")
+	})
 
 	common.BindFlagCompletions(modulesCmd, func(comp carapace.ActionMap) {
 		comp["profile"] = common.ProfileCompleter(con)
 		comp["target"] = common.BuildTargetCompleter(con)
+		comp["source"] = common.BuildResourceCompleter(con)
 	})
 
 	modulesCmd.MarkFlagRequired("target")
@@ -255,31 +286,23 @@ build modules --target x86_64-pc-windows-msvc --profile module_profile --srdi
 		Example: `
 ~~~
 // Build a pulse payload
-build pulse --target x86_64-unknown-linux-musl --profile pulse_profile
-
-// Build a pulse payload with additional modules
-build pulse --target x86_64-pc-windows-msvc --profile pulse_profile --modules base,sys_full
-	
-// Build a pulse payload with SRDI technology
-build pulse --target x86_64-pc-windows-msvc --profile pulse_profile --srdi
+build pulse --target x86_64-pc-windows-gnu --profile tcp_default
 
 // Build a pulse payload by specifying artifact
-build pulse --target x86_64-pc-windows-msvc --profile pulse_profile --artifact-id 1
+build pulse --target x86_64-pc-windows-gnu --profile tcp_default --artifact-id 1
 ~~~
 `,
 	}
-	common.BindFlag(pulseCmd, func(f *pflag.FlagSet) {
-		f.String("profile", "", "profile name")
-		f.StringP("address", "a", "", "implant address")
-		f.String("srdi", "", "enable srdi")
-		f.String("target", "", "build target")
+	common.BindFlag(pulseCmd, common.GenerateFlagSet, common.GithubFlagSet, func(f *pflag.FlagSet) {
 		f.Uint32("artifact-id", 0, "load remote shellcode build-id")
+		f.String("address", "", "implant address target")
 	})
 	pulseCmd.MarkFlagRequired("target")
 	pulseCmd.MarkFlagRequired("profile")
 	common.BindFlagCompletions(pulseCmd, func(comp carapace.ActionMap) {
 		comp["profile"] = common.ProfileCompleter(con)
 		comp["target"] = common.BuildTargetCompleter(con)
+		comp["source"] = common.BuildResourceCompleter(con)
 	})
 
 	logCmd := &cobra.Command{
@@ -292,7 +315,7 @@ build pulse --target x86_64-pc-windows-msvc --profile pulse_profile --artifact-i
 		},
 		Example: `
 ~~~
-build log builder_name --limit 70
+build log artifact_name --limit 70
 ~~~
 `,
 	}
@@ -328,6 +351,23 @@ artifact list
 // Navigate the artifact table and press enter to download a specific artifact
 ~~~`,
 	}
+	showArtifactCmd := &cobra.Command{
+		Use:   consts.CommandArtifactShow,
+		Short: "show artifact info and profile",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return ArtifactShowCmd(cmd, con)
+		},
+		Example: `~~~
+artifact show artifact_name
+
+artifact show artifact_name --profile
+~~~`,
+	}
+
+	common.BindFlag(showArtifactCmd, func(f *pflag.FlagSet) {
+		f.Bool("profile", false, "show profile")
+	})
+	common.BindArgCompletions(showArtifactCmd, nil, common.ArtifactCompleter(con))
 
 	common.BindFlag(listArtifactCmd, func(f *pflag.FlagSet) {
 		f.Bool("static", false, "show all artifact in static table")
@@ -349,15 +389,19 @@ artifact list
 // Download a artifact to specific path
 	artifact download artifact_name -o /path/to/output
 
-// Download a shellcode artifact by enabling the 'srdi' flag
-	artifact download artifact_name -s
+// Download an artifact in a specific format (e.g.raw, bin, golang source, C source, etc.)
+  	artifact download artifact_name --format raw
 `,
 	}
 	common.BindFlag(downloadCmd, func(f *pflag.FlagSet) {
 		f.StringP("output", "o", "", "output path")
-		f.BoolP("srdi", "s", false, "Set to true to download shellcode.")
+		f.StringP("format", "f", "executable", "the format of the artifact")
+		f.String("RDI", "", "RDI type")
 	})
 	common.BindArgCompletions(downloadCmd, nil, common.ArtifactCompleter(con))
+	common.BindFlagCompletions(downloadCmd, func(comp carapace.ActionMap) {
+		comp["format"] = common.ArtifactFormatCompleter()
+	})
 
 	uploadCmd := &cobra.Command{
 		Use:   consts.CommandArtifactUpload,
@@ -382,7 +426,6 @@ artifact upload /path/to/artifact --type DLL
 	}
 	common.BindArgCompletions(uploadCmd, nil, carapace.ActionFiles().Usage("custom artifact"))
 	common.BindFlag(uploadCmd, func(f *pflag.FlagSet) {
-		f.StringP("stage", "s", "", "Set stage")
 		f.StringP("type", "t", "", "Set type")
 		f.StringP("name", "n", "", "alias name")
 	})
@@ -406,12 +449,19 @@ artifact delete --name artifact_name
 	common.BindArgCompletions(deleteCommand, nil,
 		common.ArtifactCompleter(con))
 
-	artifactCmd.AddCommand(listArtifactCmd, downloadCmd, uploadCmd, deleteCommand)
+	artifactCmd.AddCommand(listArtifactCmd, showArtifactCmd, downloadCmd, uploadCmd, deleteCommand)
 
 	return []*cobra.Command{profileCmd, buildCmd, artifactCmd}
 }
 
 func Register(con *repl.Console) {
+	con.EventCallback[consts.CtrlArtifactDownload] = func(event *clientpb.Event) {
+		err := WriteOriginArtifact(con, event.Job.Name)
+		if err != nil {
+			con.Log.Errorf("write artifact %s error: %s", event.Job.Name, err)
+			return
+		}
+	}
 	con.RegisterServerFunc("search_artifact",
 		SearchArtifact,
 		&mals.Helper{
@@ -433,10 +483,6 @@ func Register(con *repl.Console) {
 	con.RegisterServerFunc("get_artifact",
 		func(con *repl.Console, sess *core.Session, format string) (*clientpb.Artifact, error) {
 			artifact := &clientpb.Artifact{Name: sess.Name}
-			switch format {
-			case "bin", "raw", "shellcode":
-				artifact.IsSrdi = true
-			}
 			artifact, err := con.Rpc.FindArtifact(sess.Context(), artifact)
 			if err != nil {
 				return nil, err
@@ -503,7 +549,7 @@ func Register(con *repl.Console) {
 
 	con.RegisterServerFunc("self_stager",
 		func(con *repl.Console, sess *core.Session) (string, error) {
-			artifact, err := SearchArtifact(con, sess.PipelineId, "pulse", "shellcode", sess.Os.Name, sess.Os.Arch)
+			artifact, err := SearchArtifact(con, sess.PipelineId, "pulse", "raw", sess.Os.Name, sess.Os.Arch)
 			if err != nil {
 				return "", err
 			}

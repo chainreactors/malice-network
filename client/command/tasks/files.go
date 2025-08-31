@@ -11,7 +11,7 @@ import (
 func ListFiles(cmd *cobra.Command, con *repl.Console) error {
 	//resp, err := con.Rpc.GetTaskFiles(con.ActiveTarget.Context(),
 	//	&clientpb.Session{SessionId: con.GetInteractive().SessionId})
-	resp, err := con.Rpc.GetContextFiles(
+	resp, err := con.Rpc.GetFiles(
 		con.ActiveTarget.Context(),
 		&clientpb.Session{
 			SessionId: con.GetInteractive().SessionId,
@@ -54,7 +54,7 @@ func printFiles(files *clientpb.Files, con *repl.Console) {
 				"Type":       file.Op,
 				"LocalName":  file.Local,
 				"RemotePath": file.Remote,
-				"Checksum":   file.Checksum,
+				//"Checksum":   file.Checksum,
 			})
 		rowEntries = append(rowEntries, row)
 	}
@@ -64,7 +64,7 @@ func printFiles(files *clientpb.Files, con *repl.Console) {
 		table.NewColumn("Type", "Type", maxLengths["Type"]),
 		table.NewColumn("LocalName", "LocalName", maxLengths["LocalName"]),
 		table.NewColumn("RemotePath", "RemotePath", maxLengths["RemotePath"]),
-		table.NewColumn("Checksum", "Checksum", maxLengths["Checksum"]),
+		//table.NewColumn("Checksum", "Checksum", maxLengths["Checksum"]),
 	}, true)
 	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)

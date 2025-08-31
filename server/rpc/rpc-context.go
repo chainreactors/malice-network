@@ -23,7 +23,7 @@ func (rpc *Server) GetContexts(ctx context.Context, req *clientpb.Context) (*cli
 		query.BySession(req.Session.SessionId)
 	}
 	if req.Task != nil {
-		query.ByTask(fmt.Sprintf("%s_%d", req.Task.SessionId, req.Task.TaskId))
+		query.ByTask(fmt.Sprintf("%s-%d", req.Task.SessionId, req.Task.TaskId))
 	}
 	if req.Pipeline != nil {
 		query.ByPipeline(req.Pipeline.Name)

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/chainreactors/logs"
 	"gopkg.in/yaml.v3"
-	"io/ioutil"
+	"io"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -61,7 +61,7 @@ func ReadConfig(confFilePath string) (*ClientConfig, error) {
 		return nil, err
 	}
 	defer confFile.Close()
-	data, err := ioutil.ReadAll(confFile)
+	data, err := io.ReadAll(confFile)
 	if err != nil {
 		return nil, err
 	}

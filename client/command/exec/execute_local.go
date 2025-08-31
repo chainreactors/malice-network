@@ -12,7 +12,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
-	"strings"
 )
 
 // ExecuteLocalCmd - Execute local PE on sacrifice process
@@ -25,7 +24,7 @@ func ExecuteLocalCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	con.GetInteractive().Console(task, strings.Join(args, " "))
+	con.GetInteractive().Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 
@@ -43,6 +42,7 @@ func ExecLocal(rpc clientrpc.MaliceRPCClient, sess *core.Session,
 		Output:      output,
 		Sacrifice:   sac,
 		Type:        consts.ModuleExecuteLocal,
+		Delay:       2000,
 	}
 
 	task, err := rpc.ExecuteLocal(sess.Context(), binary)
@@ -60,7 +60,7 @@ func InlineLocalCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	con.GetInteractive().Console(task, strings.Join(args, " "))
+	con.GetInteractive().Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 
@@ -74,6 +74,7 @@ func InlineLocal(rpc clientrpc.MaliceRPCClient, sess *core.Session,
 		ProcessName: process,
 		Output:      output,
 		Type:        consts.ModuleInlineLocal,
+		Delay:       2000,
 	}
 
 	task, err := rpc.InlineLocal(sess.Context(), binary)

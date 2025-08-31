@@ -9,6 +9,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
@@ -32,6 +33,7 @@ func NewSession(sess *clientpb.Session, server *ServerStatus) *Session {
 		Data:     data,
 		Callee:   consts.CalleeCMD,
 		Log:      NewLogger(filepath.Join(assets.GetLogDir(), fmt.Sprintf("%s.log", sess.SessionId))),
+		Locker:   &sync.Mutex{},
 	}
 }
 
@@ -44,6 +46,7 @@ type Session struct {
 	Callee   string // cmd/mal/sdk
 	LastTask *clientpb.Task
 	Log      *Logger
+	Locker   *sync.Mutex
 }
 
 func (s *Session) Clone(callee string) *Session {
@@ -54,6 +57,7 @@ func (s *Session) Clone(callee string) *Session {
 		Callee:   callee,
 		ctx:      s.ctx,
 		ctxValue: s.ctxValue,
+		Locker:   &sync.Mutex{},
 	}
 }
 
@@ -81,6 +85,7 @@ func (s *Session) WithValue(kv ...string) (*Session, error) {
 		Callee:   s.Callee,
 		ctx:      s.ctx,
 		ctxValue: ctxValue,
+		Locker:   &sync.Mutex{},
 	}, nil
 }
 

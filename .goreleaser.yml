@@ -12,8 +12,9 @@ before:
     - unzip -o sgn_linux.zip -d server/assets/linux
     - curl -L https://github.com/EgeBalci/sgn/releases/download/v2.0.1/sgn_windows_amd64_2.0.1.zip -o sgn_windows.zip
     - unzip -o sgn_windows.zip -d server/assets/windows
-    - curl -L https://github.com/chainreactors/malefic/releases/download/v0.0.4/malefic-mutant-x86_64-pc-windows-gnu.exe -o server/assets/windows/malefic-mutant.exe
-    - curl -L https://github.com/chainreactors/malefic/releases/download/v0.0.4/malefic-mutant-x86_64-unknown-linux-musl -o server/assets/linux/malefic-mutant
+    - curl -L https://github.com/chainreactors/malefic/releases/download/v0.1.1/malefic-mutant-x86_64-pc-windows-gnu.exe -o server/assets/windows/malefic-mutant.exe
+    - curl -L https://github.com/chainreactors/malefic/releases/download/v0.1.1/malefic-mutant-x86_64-unknown-linux-musl -o server/assets/linux/malefic-mutant
+
 
 builds:
   -
@@ -27,9 +28,6 @@ builds:
     goarch:
       - amd64
       - arm64
-    ignore:
-      - goos: windows
-        goarch: arm64
     ldflags: |
       -s -w
       -X github.com/chainreactors/malice-network/server/rpc.ver={{.Env.VERSION}}
@@ -52,10 +50,11 @@ builds:
     goarch:
       - amd64
       - arm64
-    ignore:
-      - goos: windows
-        goarch: arm64
-    ldflags: "-s -w -X github.com/chainreactors/malice-network/server/rpc.ver={{.Env.VERSION}} -X github.com/chainreactors/malice-network/server/rpc.commit={{.Env.COMMIT}} -X github.com/chainreactors/malice-network/server/rpc.buildstamp={{.Timestamp}}"
+    ldflags: |
+      -s -w 
+      -X github.com/chainreactors/malice-network/helper/consts.Ver={{.Env.VERSION}} 
+      -X github.com/chainreactors/malice-network/helper/consts.Commit={{.Env.COMMIT}} 
+      -X github.com/chainreactors/malice-network/helper/consts.Buildstamp={{.Timestamp}}"
     asmflags:
       - all=-trimpath={{.Env.GOPATH}}
     gcflags:

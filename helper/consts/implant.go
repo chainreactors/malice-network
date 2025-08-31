@@ -8,9 +8,42 @@ const (
 )
 
 const (
+	RDIMutant  = "mutant"
+	RDIObjcopy = "objcopy"
+	RDIDonut   = "donut"
+)
+
+const (
 	ArtifactFromAction = "action"
 	ArtifactFromDocker = "docker"
 	ArtifactFromUpload = "upload"
+	ArtifactFromSaas   = "saas"
+)
+
+// Format constants for artifact conversion
+const (
+	FormatExecutable       = "executable"
+	FormatRaw              = "raw"
+	FormatC                = "c"
+	FormatCSharp           = "csharp"
+	FormatJava             = "java"
+	FormatGolang           = "golang"
+	FormatPython           = "python"
+	FormatPerl             = "perl"
+	FormatRuby             = "ruby"
+	FormatBash             = "bash"
+	FormatPowerShell       = "powershell"
+	FormatHexOneLine       = "hex-oneline"
+	FormatHexMultiLine     = "hex-multiline"
+	FormatNum              = "num"
+	FormatDword            = "dword"
+	FormatJavaScriptBE     = "js_be"
+	FormatJavaScriptLE     = "js_le"
+	FormatVBScript         = "vbscript"
+	FormatVBApplication    = "vbapplication"
+	FormatPowerShellRemote = "powershell-remote"
+	FormatCurlRemote       = "curl-remote"
+	FormatWgetRemote       = "wget-remote"
 )
 
 type Arch uint32
@@ -99,7 +132,6 @@ const (
 
 const (
 	ELF           = ".elf"
-	PE            = ".pe"
 	DLL           = ".dll"
 	PEFile        = ".exe"
 	ShellcodeFile = ".bin"
@@ -124,6 +156,12 @@ var BuildType = []string{
 	"pulse",
 	"prelude",
 	"modules",
+}
+
+var BuildSource = []string{
+	ArtifactFromDocker,
+	ArtifactFromAction,
+	ArtifactFromSaas,
 }
 
 var Modules = []string{
@@ -164,16 +202,16 @@ var BuildTargetMap = map[string]*BuildTarget{
 		Arch: ArchMap["x86"].String(),
 		OS:   Linux,
 	},
-	//TargetX64Windows: {
-	//	Name: TargetX64Windows,
-	//	Arch: ArchMap["x64"].String(),
-	//	OS:   Windows,
-	//},
-	//TargetX86Windows: {
-	//	Name: TargetX86Windows,
-	//	Arch: ArchMap["x86"].String(),
-	//	OS:   Windows,
-	//},
+	TargetX64Windows: {
+		Name: TargetX64Windows,
+		Arch: ArchMap["x64"].String(),
+		OS:   Windows,
+	},
+	TargetX86Windows: {
+		Name: TargetX86Windows,
+		Arch: ArchMap["x86"].String(),
+		OS:   Windows,
+	},
 	TargetX86WindowsGnu: {
 		Name: TargetX86WindowsGnu,
 		Arch: ArchMap["x86"].String(),
@@ -206,4 +244,14 @@ func MapArch(arch string) uint32 {
 	} else {
 		return 0
 	}
+}
+
+func GetBuildTargetNameByArchOS(arch, os string) (string, bool) {
+	arch = FormatArch(arch)
+	for name, target := range BuildTargetMap {
+		if target.Arch == arch && target.OS == os {
+			return name, true
+		}
+	}
+	return "", false
 }

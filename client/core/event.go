@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 
@@ -11,28 +12,33 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/utils/handler"
 	"github.com/chainreactors/malice-network/helper/utils/output"
+	"github.com/chainreactors/tui"
 )
 
+var ErrLuaVMDead = fmt.Errorf("lua vm is dead")
+
+func wrapToTaskContext(event *clientpb.Event) *clientpb.TaskContext {
+	return &clientpb.TaskContext{
+		Task:    event.Task,
+		Session: event.Session,
+		Spite:   event.Spite,
+	}
+}
+
 func (s *ServerStatus) AddDoneCallback(task *clientpb.Task, callback TaskCallback) {
-	s.doneCallbacks.Store(fmt.Sprintf("%s_%d", task.SessionId, task.TaskId), callback)
+	s.doneCallbacks.Store(fmt.Sprintf("%s-%d", task.SessionId, task.TaskId), callback)
 }
 
 func (s *ServerStatus) AddCallback(task *clientpb.Task, callback TaskCallback) {
-	s.finishCallbacks.Store(fmt.Sprintf("%s_%d", task.SessionId, task.TaskId), callback)
+	s.finishCallbacks.Store(fmt.Sprintf("%s-%d", task.SessionId, task.TaskId), callback)
 }
 
 func (s *ServerStatus) triggerTaskDone(event *clientpb.Event) {
 	task := event.GetTask()
-	var sess *Session
-	var ok bool
-	var err error
-	sess, ok = s.GetLocalSession(event.Task.SessionId)
-	if !ok {
-		sess, err = s.UpdateSession(event.Task.SessionId)
-		if err != nil {
-			Log.Errorf("session not found: %s\n", event.Task.SessionId)
-			return
-		}
+	sess, err := s.GetOrUpdateSession(event.Task.SessionId)
+	if err != nil {
+		Log.Errorf("session not found: %s\n", event.Task.SessionId)
+		return
 	}
 
 	log := s.ObserverLog(event.Task.SessionId)
@@ -41,29 +47,20 @@ func (s *ServerStatus) triggerTaskDone(event *clientpb.Event) {
 		log.Errorf(logs.RedBold(err.Error()) + "\n")
 		return
 	}
-	HandlerTask(sess, &clientpb.TaskContext{
-		Task:    event.Task,
-		Session: event.Session,
-		Spite:   event.Spite,
-	}, event.Message, event.Callee, false)
+	taskContext := wrapToTaskContext(event)
+	HandlerTask(sess, taskContext, event.Message, event.Callee, false)
 
-	if callback, ok := s.finishCallbacks.Load(fmt.Sprintf("%s_%d", task.SessionId, task.TaskId)); ok {
-		callback.(TaskCallback)(event.Spite)
+	if callback, ok := s.doneCallbacks.Load(fmt.Sprintf("%s-%d", task.SessionId, task.TaskId)); ok {
+		callback.(TaskCallback)(taskContext)
 	}
 }
 
 func (s *ServerStatus) triggerTaskFinish(event *clientpb.Event) {
 	task := event.GetTask()
-	var sess *Session
-	var ok bool
-	var err error
-	sess, ok = s.GetLocalSession(event.Task.SessionId)
-	if !ok {
-		sess, err = s.UpdateSession(event.Task.SessionId)
-		if err != nil {
-			Log.Errorf("session not found: %s\n", event.Task.SessionId)
-			return
-		}
+	sess, err := s.GetOrUpdateSession(event.Task.SessionId)
+	if err != nil {
+		Log.Errorf("session not found: %s\n", event.Task.SessionId)
+		return
 	}
 
 	log := s.ObserverLog(event.Task.SessionId)
@@ -72,22 +69,20 @@ func (s *ServerStatus) triggerTaskFinish(event *clientpb.Event) {
 		log.Errorf(logs.RedBold(err.Error()) + "\n")
 		return
 	}
+	taskContext := wrapToTaskContext(event)
+	HandlerTask(sess, taskContext, event.Message, event.Callee, true)
 
-	HandlerTask(sess, &clientpb.TaskContext{
-		Task:    event.Task,
-		Session: event.Session,
-		Spite:   event.Spite,
-	}, event.Message, event.Callee, true)
-
-	callbackId := fmt.Sprintf("%s_%d", task.SessionId, task.TaskId)
+	callbackId := fmt.Sprintf("%s-%d", task.SessionId, task.TaskId)
 	if callback, ok := s.finishCallbacks.Load(callbackId); ok {
-		callback.(TaskCallback)(event.Spite)
+		callback.(TaskCallback)(taskContext)
 		s.finishCallbacks.Delete(callbackId)
 		s.doneCallbacks.Delete(callbackId)
 	}
 }
 
 func HandlerTask(sess *Session, ctx *clientpb.TaskContext, message []byte, callee string, isFinish bool) {
+	sess.Locker.Lock()
+	defer sess.Locker.Unlock()
 	log := sess.Log
 	var callback intermediate.ImplantCallback
 	fn, ok := intermediate.InternalFunctions[ctx.Task.Type]
@@ -98,7 +93,7 @@ func HandlerTask(sess *Session, ctx *clientpb.TaskContext, message []byte, calle
 			log.Importantf("parse status error: %s\n", err)
 			return
 		}
-		log.Importantf("task %d %t", ctx.Task.TaskId, status)
+		log.Importantf("task %d %t\n", ctx.Task.TaskId, status)
 		return
 	}
 	var prompt string
@@ -118,9 +113,9 @@ func HandlerTask(sess *Session, ctx *clientpb.TaskContext, message []byte, calle
 		callback = fn.DoneCallback
 	}
 
-	s := logs.GreenBold(fmt.Sprintf("[%s.%d] %s (%d/%d),%s\n",
+	s := logs.GreenBold(fmt.Sprintf("[%s.%d] %s (%s),%s\n",
 		ctx.Task.SessionId, ctx.Task.TaskId, prompt,
-		ctx.Task.Cur, ctx.Task.Total,
+		ctx.Task.Progress(),
 		message))
 	log.Importantf(s)
 	if callee != consts.CalleeCMD {
@@ -138,7 +133,8 @@ func HandlerTask(sess *Session, ctx *clientpb.TaskContext, message []byte, calle
 
 	if err != nil {
 		log.Errorf(logs.RedBold(err.Error()))
-	} else {
+	} else if resp != "" {
+		tui.Down(1)
 		log.Console(resp + "\n")
 	}
 }
@@ -157,7 +153,7 @@ func (s *ServerStatus) EventHandler() {
 	}
 	s.Update()
 	s.EventStatus = true
-	Log.Debugf("starting event loop\n")
+	Log.Info("starting event loop\n")
 	defer func() {
 		Log.Warnf("event stream broken\n")
 		s.EventStatus = false
@@ -170,19 +166,26 @@ func (s *ServerStatus) EventHandler() {
 		for condition, fns := range s.EventHook {
 			if condition.Match(event) {
 				go func() {
-					for _, fn := range fns {
+					for i, fn := range fns {
 						_, err := fn(event)
 						if err != nil {
-							Log.Errorf("error running event hook: %s", err)
+							if errors.Is(err, ErrLuaVMDead) {
+								s.EventHook[condition] = append(fns[:i], fns[i+1:]...)
+							} else {
+								Log.Errorf("error running event hook: %s", err)
+							}
 						}
 					}
 				}()
 			}
 		}
+
+		if fn, ok := s.EventCallback[event.Op]; ok {
+			fn(event)
+		}
 		go func() {
 			s.handlerEvent(event)
 		}()
-
 	}
 }
 
@@ -214,6 +217,8 @@ func (s *ServerStatus) handlerEvent(event *clientpb.Event) {
 		Log.Important(event.Formatted + "\n")
 	case consts.EventContext:
 		Log.Important(event.Formatted + "\n")
+	case consts.EventCert:
+		Log.Important(event.Formatted + "\n")
 	}
 }
 
@@ -223,9 +228,13 @@ func (s *ServerStatus) handleJob(event *clientpb.Event) {
 		return
 	}
 	pipeline := event.GetJob().GetPipeline()
-	if event.Op == consts.CtrlPipelineSync {
+	switch event.Op {
+	case consts.CtrlPipelineSync:
 		s.Pipelines[pipeline.Name] = pipeline
-	} else {
+	case consts.CtrlPipelineStop:
+		delete(s.Pipelines, pipeline.Name)
+		Log.Important(event.Formatted + "\n")
+	default:
 		Log.Important(event.Formatted + "\n")
 	}
 }
@@ -249,6 +258,8 @@ func (s *ServerStatus) handlerSession(event *clientpb.Event) {
 	case consts.CtrlSessionRegister:
 		s.AddSession(event.Session)
 		Log.Important(event.Formatted + "\n")
+	case consts.CtrlSessionUpdate:
+		s.AddSession(event.Session)
 	case consts.CtrlSessionTask:
 		Log.Info(event.Formatted + "\n")
 	case consts.CtrlSessionError:
@@ -257,7 +268,7 @@ func (s *ServerStatus) handlerSession(event *clientpb.Event) {
 	case consts.CtrlSessionLog:
 		log := s.ObserverLog(sid)
 		log.Error(event.Formatted + "\n")
-	case consts.CtrlSessionLeave:
+	case consts.CtrlSessionDead:
 		Log.Important(event.Formatted + "\n")
 	case consts.CtrlSessionReborn:
 		s.AddSession(event.Session)

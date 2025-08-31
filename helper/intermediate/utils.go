@@ -3,29 +3,20 @@ package intermediate
 import (
 	"context"
 	"fmt"
-	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"math"
 	"os"
 	"path/filepath"
 
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/client/assets"
+
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
+	"github.com/chainreactors/malice-network/helper/utils/pe"
+
 	"github.com/chainreactors/malice-network/helper/utils/handler"
 )
-
-func GetResourceFile(pluginName, filename string) (string, error) {
-	resourceFile := filepath.Join(assets.GetMalsDir(), pluginName, "resources", filename)
-	return resourceFile, nil
-}
-
-func GetGlobalResourceFile(filename string) (string, error) {
-	resourceFile := filepath.Join(assets.GetResourceDir(), filename)
-	return resourceFile, nil
-}
 
 func NewSacrificeProcessMessage(ppid uint32, hidden, block_dll, bypassETW bool, argue string) (*implantpb.SacrificeProcess, error) {
 	return &implantpb.SacrificeProcess{
@@ -51,6 +42,7 @@ func NewBinary(module string, path string, args []string, out bool, timeout uint
 		Timeout:     timeout,
 		Arch:        consts.MapArch(arch),
 		ProcessName: process,
+		Delay:       2000,
 		Sacrifice:   sac,
 	}, nil
 }
@@ -71,6 +63,7 @@ func NewBinaryData(module string, path string, data string, out bool, timeout ui
 		Timeout:     timeout,
 		Arch:        consts.MapArch(arch),
 		ProcessName: process,
+		Delay:       2000,
 		Sacrifice:   sac,
 	}, nil
 }
@@ -90,8 +83,17 @@ func NewExecutable(module string, path string, args []string, arch string, sac *
 		Timeout:     math.MaxUint32,
 		Arch:        consts.MapArch(arch),
 		ProcessName: process,
+		Delay:       2000,
 		Sacrifice:   sac,
 	}, nil
+}
+
+func NewBypassAll() map[string]string {
+	return map[string]string{
+		"bypass_amsi": "",
+		"bypass_etw":  "",
+		"bypass_wldp": "",
+	}
 }
 
 func WaitResult(rpc clientrpc.MaliceRPCClient, task *clientpb.Task) (*clientpb.TaskContext, error) {

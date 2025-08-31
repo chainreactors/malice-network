@@ -45,6 +45,7 @@ func (l *Listener) AddPipeline(pipeline *clientpb.Pipeline) {
 }
 
 func (l *Listener) RemovePipeline(pipeline *clientpb.Pipeline) {
+	Jobs.Remove(pipeline.Name)
 	delete(l.Pipelines, pipeline.Name)
 }
 

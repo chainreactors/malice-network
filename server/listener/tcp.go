@@ -2,8 +2,12 @@ package listener
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
+	"io"
+	"net"
+
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/encoders"
@@ -12,12 +16,10 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
 	"github.com/chainreactors/malice-network/helper/types"
-	"github.com/chainreactors/malice-network/helper/utils/peek"
 	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/parser"
-	"io"
-	"net"
+	"github.com/chainreactors/malice-network/server/internal/stream"
 )
 
 func NewTcpPipeline(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeline) (*TCPPipeline, error) {
@@ -28,41 +30,34 @@ func NewTcpPipeline(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeli
 		Name:           pipeline.Name,
 		Port:           uint16(tcp.Port),
 		Host:           tcp.Host,
-		Target:         pipeline.Target,
-		BeaconPipeline: pipeline.BeaconPipeline,
-		PipelineConfig: core.FromProtobuf(pipeline),
-	}
-	var err error
-	pp.parser, err = parser.NewParser(pp.Parser)
-	if err != nil {
-		return nil, err
+		PipelineConfig: core.FromPipeline(pipeline),
+		CertName:       pipeline.CertName,
 	}
 
 	return pp, nil
 }
 
 type TCPPipeline struct {
-	ln             net.Listener
-	rpc            listenerrpc.ListenerRPCClient
-	Name           string
-	Port           uint16
-	Host           string
-	Enable         bool
-	Target         []string
-	BeaconPipeline string
-	parser         *parser.MessageParser
+	ln       net.Listener
+	rpc      listenerrpc.ListenerRPCClient
+	Name     string
+	Port     uint16
+	Host     string
+	Enable   bool
+	Target   []string
+	CertName string
+	parser   *parser.MessageParser
 	*core.PipelineConfig
 }
 
 func (pipeline *TCPPipeline) ToProtobuf() *clientpb.Pipeline {
 	p := &clientpb.Pipeline{
-		Name:           pipeline.Name,
-		Enable:         pipeline.Enable,
-		Type:           consts.TCPPipeline,
-		ListenerId:     pipeline.ListenerID,
-		Parser:         pipeline.Parser,
-		Target:         pipeline.Target,
-		BeaconPipeline: pipeline.BeaconPipeline,
+		Name:       pipeline.Name,
+		Enable:     pipeline.Enable,
+		Type:       consts.TCPPipeline,
+		ListenerId: pipeline.ListenerID,
+		Parser:     pipeline.Parser,
+		CertName:   pipeline.CertName,
 		Body: &clientpb.Pipeline_Tcp{
 			Tcp: &clientpb.TCPPipeline{
 				Name:       pipeline.Name,
@@ -71,7 +66,7 @@ func (pipeline *TCPPipeline) ToProtobuf() *clientpb.Pipeline {
 				Host:       pipeline.Host,
 			},
 		},
-		Tls:        pipeline.Tls.ToProtobuf(),
+		Tls:        pipeline.TLSConfig.ToProtobuf(),
 		Encryption: pipeline.Encryption.ToProtobuf(),
 	}
 	return p
@@ -121,8 +116,8 @@ func (pipeline *TCPPipeline) Start() error {
 	if err != nil {
 		return err
 	}
-	logs.Log.Infof("[pipeline] starting TCP pipeline on %s:%d, parser: %s, cryptor: %s, tls: %t",
-		pipeline.Host, pipeline.Port, pipeline.Parser, pipeline.Encryption.Type, pipeline.Tls.Enable)
+	logs.Log.Infof("[pipeline] starting TCP pipeline on %s:%d, parser: %s, tls: %t",
+		pipeline.Host, pipeline.Port, pipeline.Parser, pipeline.TLSConfig.Enable)
 	pipeline.Enable = true
 	return nil
 }
@@ -132,52 +127,76 @@ func (pipeline *TCPPipeline) handler() (net.Listener, error) {
 	if err != nil {
 		return nil, err
 	}
-	if pipeline.Tls != nil && pipeline.Tls.Enable {
-		ln, err = certutils.WrapWithTls(ln, pipeline.Tls)
+
+	// 如果启用了 TLS，使用 cmux 实现 TLS 和非 TLS 的端口复用
+	if pipeline.TLSConfig != nil && pipeline.TLSConfig.Enable {
+		return pipeline.handleWithCmux(ln)
+	}
+
+	// 非 TLS 模式，使用原有逻辑
+	go pipeline.startAcceptLoop(ln, "tcp pipeline")
+	return ln, nil
+}
+
+// handleWithCmux 使用 cmux 实现 TLS 和非 TLS 的端口复用
+func (pipeline *TCPPipeline) handleWithCmux(ln net.Listener) (net.Listener, error) {
+	var tlsConfig *tls.Config
+	if pipeline.TLSConfig.Cert != nil {
+		var err error
+		tlsConfig, err = certutils.GetTlsConfig(pipeline.TLSConfig.Cert)
 		if err != nil {
 			return nil, err
 		}
 	}
-	go func() {
-		defer logs.Log.Errorf("tcp pipeline exit!!!")
-		for {
-			conn, err := ln.Accept()
-			if err != nil {
-				logs.Log.Errorf("Accept failed: %v", err)
-				if !pipeline.Enable {
-					logs.Log.Importantf("%s already disable, break accept", ln.Addr().String())
-					return
-				} else {
-					continue
-				}
-			}
-			logs.Log.Debugf("[pipeline.%s] accept from %s", pipeline.Name, conn.RemoteAddr())
-			switch pipeline.Parser {
-			case consts.ImplantMalefic:
-				go pipeline.handleBeacon(conn)
-			case consts.ImplantPulse:
-				go pipeline.handlePulse(conn)
-			}
 
-		}
-	}()
-	return ln, nil
+	return StartCmuxTCPListener(ln, tlsConfig, pipeline.HandleConnection)
 }
 
-func (pipeline *TCPPipeline) handlePulse(conn net.Conn) {
+// startAcceptLoop 启动连接接受循环 (用于非 cmux 模式)
+func (pipeline *TCPPipeline) startAcceptLoop(ln net.Listener, logPrefix string) {
+	defer logs.Log.Errorf("%s exit!!!", logPrefix)
+	for {
+		conn, err := ln.Accept()
+		if err != nil {
+			logs.Log.Errorf("Accept failed: %v", err)
+			if !pipeline.Enable {
+				logs.Log.Importantf("%s already disable, break accept", ln.Addr().String())
+				return
+			} else {
+				continue
+			}
+		}
+		go pipeline.HandleConnection(conn)
+	}
+}
+
+// HandleConnection 处理单个连接
+func (pipeline *TCPPipeline) HandleConnection(conn net.Conn) {
 	peekConn, err := pipeline.WrapConn(conn)
 	if err != nil {
-		logs.Log.Debugf("wrap conn error: %s %v", conn.RemoteAddr(), err)
+		logs.Log.Errorf("wrap conn error: %v", err)
 		return
 	}
-	p := pipeline.parser
-	magic, artifactId, err := p.ReadHeader(peekConn)
+
+	logs.Log.Debugf("[pipeline.%s] accept from %s", pipeline.Name, conn.RemoteAddr())
+	switch peekConn.Parser.Implant {
+	case consts.ImplantMalefic:
+		pipeline.handleBeacon(peekConn)
+	case consts.ImplantPulse:
+		pipeline.handlePulse(peekConn)
+	}
+}
+
+func (pipeline *TCPPipeline) handlePulse(conn *cryptostream.Conn) {
+	magic, artifactId, err := conn.Parser.ReadHeader(conn)
 	if err != nil {
 		logs.Log.Errorf(err.Error())
 		return
 	}
 	builder, err := pipeline.rpc.GetArtifact(context.Background(), &clientpb.Artifact{
-		Id: uint32(artifactId),
+		Id:       artifactId,
+		Pipeline: pipeline.Name,
+		Format:   consts.FormatRaw,
 	})
 	if err != nil {
 		logs.Log.Errorf("not found artifact %d ,%s ", artifactId, err.Error())
@@ -185,7 +204,7 @@ func (pipeline *TCPPipeline) handlePulse(conn net.Conn) {
 	} else {
 		logs.Log.Infof("send artifact %d %s", builder.Id, builder.Name)
 	}
-	err = p.WritePacket(peekConn, types.BuildOneSpites(&implantpb.Spite{
+	err = conn.Parser.WritePacket(conn, types.BuildOneSpites(&implantpb.Spite{
 		Name: consts.ModuleInit,
 		Body: &implantpb.Spite_Init{
 			Init: &implantpb.Init{Data: builder.Bin},
@@ -197,14 +216,9 @@ func (pipeline *TCPPipeline) handlePulse(conn net.Conn) {
 	}
 }
 
-func (pipeline *TCPPipeline) handleBeacon(conn net.Conn) {
+func (pipeline *TCPPipeline) handleBeacon(conn *cryptostream.Conn) {
 	defer conn.Close()
-	peekConn, err := pipeline.WrapConn(conn)
-	if err != nil {
-		logs.Log.Debugf("wrap conn error: %s %v", conn.RemoteAddr(), err)
-		return
-	}
-	connect, err := pipeline.getConnection(peekConn)
+	connect, err := pipeline.getConnection(conn)
 	if err != nil {
 		logs.Log.Debugf("peek read header error: %s %v", conn.RemoteAddr(), err)
 		return
@@ -213,7 +227,7 @@ func (pipeline *TCPPipeline) handleBeacon(conn net.Conn) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	for {
-		err = connect.Handler(ctx, peekConn)
+		err = connect.Handler(ctx, conn)
 		if err != nil {
 			if !errors.Is(err, io.EOF) {
 				logs.Log.Debugf("handler error: %s", err.Error())
@@ -223,9 +237,8 @@ func (pipeline *TCPPipeline) handleBeacon(conn net.Conn) {
 	}
 }
 
-func (pipeline *TCPPipeline) getConnection(conn *peek.Conn) (*core.Connection, error) {
-	p := pipeline.parser
-	sid, _, err := p.PeekHeader(conn)
+func (pipeline *TCPPipeline) getConnection(conn *cryptostream.Conn) (*core.Connection, error) {
+	sid, err := cryptostream.PeekSid(conn)
 	if err != nil {
 		return nil, err
 	}
@@ -233,7 +246,7 @@ func (pipeline *TCPPipeline) getConnection(conn *peek.Conn) (*core.Connection, e
 	if newC := core.Connections.Get(hash.Md5Hash(encoders.Uint32ToBytes(sid))); newC != nil {
 		return newC, nil
 	} else {
-		newC := core.NewConnection(p, sid, pipeline.ID())
+		newC := core.NewConnection(conn.Parser, sid, pipeline.ID())
 		core.Connections.Add(newC)
 		return newC, nil
 	}

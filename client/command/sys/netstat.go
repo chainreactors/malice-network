@@ -19,7 +19,7 @@ func NetstatCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	con.GetInteractive().Console(task, "netstat")
+	con.GetInteractive().Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 

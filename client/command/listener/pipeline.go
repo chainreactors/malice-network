@@ -1,6 +1,7 @@
 package listener
 
 import (
+	"fmt"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
@@ -46,12 +47,19 @@ func ListPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 		} else if pipeline.Tls != nil {
 			newRow["TLS"] = tui.RedFg.Render(strconv.FormatBool(pipeline.Tls.Enable))
 		}
-		if pipeline.Encryption != nil && pipeline.Encryption.Enable {
-			newRow["Encryption"] = pipeline.Encryption.Type
+		if pipeline.Encryption != nil {
+			newRow["Encryption"] = fmt.Sprintf("%v", pipeline.Encryption)
 		} else if pipeline.Encryption != nil {
 			newRow["Encryption"] = "raw"
 		}
 		switch body := pipeline.Body.(type) {
+		case *clientpb.Pipeline_Http:
+			newRow["Name"] = pipeline.Name
+			newRow["Type"] = consts.HTTPPipeline
+			newRow["ListenerID"] = pipeline.ListenerId
+			newRow["Address"] = pipeline.Ip + ":" + strconv.Itoa(int(body.Http.Port))
+			newRow["Parser"] = pipeline.Parser
+			row = table.NewRow(newRow)
 		case *clientpb.Pipeline_Tcp:
 			newRow["Name"] = pipeline.Name
 			newRow["Type"] = consts.TCPPipeline
@@ -59,7 +67,7 @@ func ListPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 			newRow["Address"] = pipeline.Ip + ":" + strconv.Itoa(int(body.Tcp.Port))
 			newRow["Parser"] = pipeline.Parser
 			row = table.NewRow(newRow)
-		case *clientpb.Pipeline_Bind:
+		case *clientpb.Pipeline_Rem, *clientpb.Pipeline_Bind:
 			newRow["Name"] = pipeline.Name
 			newRow["Type"] = consts.BindPipeline
 			newRow["ListenerID"] = pipeline.ListenerId
@@ -76,8 +84,19 @@ func ListPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 
 func StartPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 	name := cmd.Flags().Arg(0)
+
+	if _, ok := con.Pipelines[name]; ok {
+		_, err := con.Rpc.StopPipeline(con.Context(), &clientpb.CtrlPipeline{
+			Name: name,
+		})
+		if err != nil {
+			return err
+		}
+	}
+	certName, _ := cmd.Flags().GetString("cert-name")
 	_, err := con.Rpc.StartPipeline(con.Context(), &clientpb.CtrlPipeline{
-		Name: name,
+		Name:     name,
+		CertName: certName,
 	})
 	if err != nil {
 		return err

@@ -1,14 +1,15 @@
 package assets
 
 import (
+	"os"
+	"path/filepath"
+	"strings"
+
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/utils/configutil"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/gookit/config/v2"
 	"golang.org/x/exp/slices"
-	"gopkg.in/yaml.v3"
-	"os"
-	"path/filepath"
 )
 
 var (
@@ -16,16 +17,17 @@ var (
 )
 
 var HookFn = func(event string, c *config.Config) {
-	p := &Profile{}
-	if event == config.OnSetValue {
-		err := c.MapStruct("", p)
+	if strings.HasPrefix(event, "set.") {
+		rootDir, _ := filepath.Abs(GetRootAppDir())
+		open, err := os.OpenFile(filepath.Join(rootDir, maliceProfile), os.O_WRONLY|os.O_TRUNC, 0644)
 		if err != nil {
-			logs.Log.Errorf(err.Error())
+			logs.Log.Errorf("cannot open config , %s ", err.Error())
 			return
 		}
-		err = SaveProfile(p)
+		defer open.Close()
+		_, err = config.DumpTo(open, config.Yaml)
 		if err != nil {
-			logs.Log.Errorf(err.Error())
+			logs.Log.Errorf("cannot dump config , %s ", err.Error())
 			return
 		}
 	}
@@ -150,22 +152,20 @@ func GetSetting() (*Settings, error) {
 	return s, nil
 }
 
-func SaveProfile(profile *Profile) error {
-	path, err := findFile(maliceProfile)
-	data, err := yaml.Marshal(profile)
-	if err != nil {
-		return err
-	}
-	err = os.WriteFile(path, data, 0644)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 func (profile *Profile) AddMal(manifestName string) bool {
 	if !slices.Contains(profile.Mals, manifestName) {
 		profile.Mals = append(profile.Mals, manifestName)
+		config.Set("mals", profile.Mals)
+		return true
+	}
+	return false
+}
+
+func (profile *Profile) RemoveMal(manifestName string) bool {
+	index := slices.Index(profile.Mals, manifestName)
+	if index != -1 {
+		profile.Mals = slices.Delete(profile.Mals, index, index+1)
+		config.Set("mals", profile.Mals)
 		return true
 	}
 	return false
@@ -174,6 +174,17 @@ func (profile *Profile) AddMal(manifestName string) bool {
 func (profile *Profile) AddAlias(alias string) bool {
 	if !slices.Contains(profile.Aliases, alias) {
 		profile.Aliases = append(profile.Aliases, alias)
+		config.Set("aliases", profile.Aliases)
+		return true
+	}
+	return false
+}
+
+func (profile *Profile) RemoveAlias(alias string) bool {
+	index := slices.Index(profile.Aliases, alias)
+	if index != -1 {
+		profile.Aliases = slices.Delete(profile.Aliases, index, index+1)
+		config.Set("aliases", profile.Aliases)
 		return true
 	}
 	return false
@@ -182,6 +193,17 @@ func (profile *Profile) AddAlias(alias string) bool {
 func (profile *Profile) AddExtension(extension string) bool {
 	if !slices.Contains(profile.Extensions, extension) {
 		profile.Extensions = append(profile.Extensions, extension)
+		config.Set("extensions", profile.Extensions)
+		return true
+	}
+	return false
+}
+
+func (profile *Profile) RemoveExtension(extension string) bool {
+	index := slices.Index(profile.Extensions, extension)
+	if index != -1 {
+		profile.Extensions = slices.Delete(profile.Extensions, index, index+1)
+		config.Set("extensions", profile.Extensions)
 		return true
 	}
 	return false

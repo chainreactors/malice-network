@@ -46,6 +46,7 @@ website web_test --listener tcp_default --root /webtest --tls --cert /path/to/ce
 		comp["cert"] = carapace.ActionFiles().Usage("path to the cert file")
 		comp["key"] = carapace.ActionFiles().Usage("path to the key file")
 		comp["tls"] = carapace.ActionValues().Usage("enable tls")
+		comp["cert-name"] = common.CertNameCompleter(con)
 	})
 
 	common.BindArgCompletions(websiteCmd, nil, carapace.ActionValues().Usage("website name"))
@@ -76,15 +77,16 @@ website start web_test
 ~~~`,
 	}
 
+	common.BindArgCompletions(websiteStartCmd, nil, common.WebsiteCompleter(con))
 	common.BindFlag(websiteStartCmd, func(f *pflag.FlagSet) {
+		f.String("cert-name", "", "certificate name")
 	})
 
 	common.BindFlagCompletions(websiteStartCmd, func(comp carapace.ActionMap) {
 		comp["listener"] = common.ListenerIDCompleter(con)
-	})
+		comp["cert-name"] = common.CertNameCompleter(con)
 
-	common.BindArgCompletions(websiteStartCmd, nil,
-		carapace.ActionValues().Usage("website name"))
+	})
 
 	websiteStopCmd := &cobra.Command{
 		Use:   consts.CommandPipelineStop + " [name]",
@@ -109,7 +111,7 @@ website stop web_test --listener tcp_default
 	})
 
 	common.BindArgCompletions(websiteStopCmd, nil,
-		carapace.ActionValues().Usage("website name"))
+		common.WebsiteCompleter(con))
 
 	websiteAddContentCmd := &cobra.Command{
 		Use:   "add [file_path]",

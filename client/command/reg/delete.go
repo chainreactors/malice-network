@@ -1,7 +1,6 @@
 package reg
 
 import (
-	"fmt"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -24,7 +23,7 @@ func RegDeleteCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	session.Console(task, fmt.Sprintf("delete registry key: %s\\%s\\%s", hive, path, key))
+	session.Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 

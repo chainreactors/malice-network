@@ -2,10 +2,16 @@ package main
 
 import (
 	"fmt"
+	"github.com/chainreactors/malice-network/client/assets"
+	"github.com/chainreactors/malice-network/client/command"
 	"github.com/chainreactors/malice-network/client/command/addon"
 	"github.com/chainreactors/malice-network/client/command/alias"
 	"github.com/chainreactors/malice-network/client/command/armory"
+	"github.com/chainreactors/malice-network/client/command/basic"
 	"github.com/chainreactors/malice-network/client/command/build"
+	"github.com/chainreactors/malice-network/client/command/cert"
+	configCmd "github.com/chainreactors/malice-network/client/command/config"
+	"github.com/chainreactors/malice-network/client/command/context"
 	"github.com/chainreactors/malice-network/client/command/exec"
 	"github.com/chainreactors/malice-network/client/command/explorer"
 	"github.com/chainreactors/malice-network/client/command/extension"
@@ -15,7 +21,10 @@ import (
 	"github.com/chainreactors/malice-network/client/command/listener"
 	"github.com/chainreactors/malice-network/client/command/mal"
 	"github.com/chainreactors/malice-network/client/command/modules"
+	"github.com/chainreactors/malice-network/client/command/mutant"
 	"github.com/chainreactors/malice-network/client/command/pipe"
+	"github.com/chainreactors/malice-network/client/command/pipeline"
+	"github.com/chainreactors/malice-network/client/command/pivot"
 	"github.com/chainreactors/malice-network/client/command/privilege"
 	"github.com/chainreactors/malice-network/client/command/reg"
 	"github.com/chainreactors/malice-network/client/command/service"
@@ -23,38 +32,198 @@ import (
 	"github.com/chainreactors/malice-network/client/command/sys"
 	"github.com/chainreactors/malice-network/client/command/tasks"
 	"github.com/chainreactors/malice-network/client/command/taskschd"
+	"github.com/chainreactors/malice-network/client/command/third"
+	"github.com/chainreactors/malice-network/client/command/website"
+	"github.com/chainreactors/malice-network/client/plugin"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/intermediate"
+	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
+	"github.com/gookit/config/v2"
+	"github.com/gookit/config/v2/yaml"
+	"github.com/spf13/cobra"
+	"io"
 	"os"
 )
+
+
+func init() {
+	config.WithOptions(func(opt *config.Options) {
+		opt.DecoderConfig.TagName = "config"
+		opt.ParseDefault = true
+	}, config.WithHookFunc(assets.HookFn))
+	config.AddDriver(yaml.Driver)
+}
+
+type byName []*cobra.Command
+
+func (s byName) Len() int           { return len(s) }
+func (s byName) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+func (s byName) Less(i, j int) bool { return s[i].Name() < s[j].Name() }
+
+func hasSeeAlso(cmd *cobra.Command) bool {
+	if cmd.HasParent() {
+		return true
+	}
+	for _, c := range cmd.Commands() {
+		if !c.IsAvailableCommand() || c.IsAdditionalHelpTopicCommand() {
+			continue
+		}
+		return true
+	}
+	return false
+}
+
+func printOptions(buf *bytes.Buffer, cmd *cobra.Command, name string) error {
+	flags := cmd.NonInheritedFlags()
+	flags.SetOutput(buf)
+	if flags.HasAvailableFlags() {
+		buf.WriteString("**Options**\n\n```\n")
+		flags.PrintDefaults()
+		buf.WriteString("```\n\n")
+	}
+
+	parentFlags := cmd.InheritedFlags()
+	parentFlags.SetOutput(buf)
+	if parentFlags.HasAvailableFlags() {
+		buf.WriteString("**Options inherited from parent commands**\n\n```\n")
+		parentFlags.PrintDefaults()
+		buf.WriteString("```\n\n")
+	}
+	return nil
+}
+
+func GenMarkdownCustom(cmd *cobra.Command, w io.Writer, linkHandler func(string) string) error {
+	//cmd.InitDefaultHelpCmd()
+	//cmd.InitDefaultHelpFlag()
+
+	buf := new(bytes.Buffer)
+	name := cmd.CommandPath()
+	if cmd.HasParent() {
+		buf.WriteString("#### " + name + "\n\n")
+	} else {
+		buf.WriteString("### " + name + "\n\n")
+	}
+	buf.WriteString(cmd.Short + "\n\n")
+	if len(cmd.Long) > 0 {
+		buf.WriteString("**Description**\n\n")
+		buf.WriteString(cmd.Long + "\n\n")
+	}
+
+	if cmd.Runnable() {
+		buf.WriteString(fmt.Sprintf("```\n%s\n```\n\n", cmd.UseLine()))
+	}
+
+	if len(cmd.Example) > 0 {
+		buf.WriteString("**Examples**\n\n")
+		buf.WriteString(cmd.Example + "\n\n")
+	}
+
+	if err := printOptions(buf, cmd, name); err != nil {
+		return err
+	}
+	if hasSeeAlso(cmd) {
+		buf.WriteString("**SEE ALSO**\n\n")
+		if cmd.HasParent() {
+			parent := cmd.Parent()
+			pname := parent.CommandPath()
+			link := strings.ReplaceAll(pname, " ", "-")
+			buf.WriteString(fmt.Sprintf("* [%s](%s)\t - %s\n", pname, linkHandler(link), parent.Short))
+			cmd.VisitParents(func(c *cobra.Command) {
+				if c.DisableAutoGenTag {
+					cmd.DisableAutoGenTag = c.DisableAutoGenTag
+				}
+			})
+		}
+
+		children := cmd.Commands()
+		sort.Sort(byName(children))
+
+		for _, child := range children {
+			if !child.IsAvailableCommand() || child.IsAdditionalHelpTopicCommand() {
+				continue
+			}
+			cname := name + " " + child.Name()
+			buf.WriteString(fmt.Sprintf("* [%s](%s)\t - %s\n", cname, linkHandler(cname), child.Short))
+		}
+		buf.WriteString("\n")
+	}
+	_, err := buf.WriteTo(w)
+	if cmd.HasSubCommands() {
+		for _, sub := range cmd.Commands() {
+			if !sub.IsAvailableCommand() || sub.IsAdditionalHelpTopicCommand() {
+				continue
+			}
+			GenMarkdownCustom(sub, w, linkHandler)
+		}
+	}
+	return err
+}
+
+func GenMarkdownTreeCustom(cmd *cobra.Command, writer io.Writer, linkHandler func(string) string) error {
+	//for _, c := range cmd.Commands() {
+	//	if !c.IsAvailableCommand() || c.IsAdditionalHelpTopicCommand() {
+	//		continue
+	//	}
+	//	if err := GenMarkdownTreeCustom(c, writer, linkHandler); err != nil {
+	//		return err
+	//	}
+	//}
+
+	if err := GenMarkdownCustom(cmd, writer, linkHandler); err != nil {
+		return err
+	}
+	return nil
+}
+
+func GenGroupHelp(writer io.Writer, con *repl.Console, groupId string, binds ...func(con *repl.Console) []*cobra.Command) {
+	writer.Write([]byte(fmt.Sprintf("## %s\n", groupId)))
+	for _, b := range binds {
+		cmds := b(con)
+		sort.Sort(byName(cmds))
+		for _, c := range cmds {
+			c.SetHelpCommand(nil)
+			_ = GenMarkdownTreeCustom(c, writer, func(s string) string {
+				return "#" + strings.ReplaceAll(s, " ", "-")
+			})
+		}
+	}
+}
 
 func GenImplantHelp(con *repl.Console) {
 	implantMd, err := os.Create("implant_template.md")
 	if err != nil {
 		panic(err)
 	}
-	repl.GenGroupHelp(implantMd, con, consts.ImplantGroup,
+
+	GenGroupHelp(implantMd, con, consts.ImplantGroup,
+		basic.Commands,
 		tasks.Commands,
 		modules.Commands,
 		explorer.Commands,
 		addon.Commands,
 	)
 
-	repl.GenGroupHelp(implantMd, con, consts.ExecuteGroup,
+	GenGroupHelp(implantMd, con, consts.ExecuteGroup,
 		exec.Commands)
 
-	repl.GenGroupHelp(implantMd, con, consts.SysGroup,
+	GenGroupHelp(implantMd, con, consts.SysGroup,
 		sys.Commands,
 		service.Commands,
 		reg.Commands,
 		taskschd.Commands,
 		privilege.Commands,
+		third.Commands,
 	)
 
-	repl.GenGroupHelp(implantMd, con, consts.FileGroup,
+	GenGroupHelp(implantMd, con, consts.FileGroup,
 		file.Commands,
 		filesystem.Commands,
 		pipe.Commands)
+
+	GenGroupHelp(implantMd, con, consts.PivotGroup,
+		pivot.Commands,
+	)
 }
 
 func GenClientHelp(con *repl.Console) {
@@ -62,24 +231,56 @@ func GenClientHelp(con *repl.Console) {
 	if err != nil {
 		panic(err)
 	}
-	repl.GenGroupHelp(clientMd, con, consts.GenericGroup,
+	GenGroupHelp(clientMd, con, consts.GenericGroup,
 		generic.Commands)
 
-	repl.GenGroupHelp(clientMd, con, consts.ManageGroup,
+	GenGroupHelp(clientMd, con, consts.ManageGroup,
 		sessions.Commands,
 		alias.Commands,
 		extension.Commands,
 		armory.Commands,
 		mal.Commands,
+		configCmd.Commands,
+		context.Commands,
+		cert.Commands,
 	)
 
-	repl.GenGroupHelp(clientMd, con, consts.ListenerGroup,
+	GenGroupHelp(clientMd, con, consts.ListenerGroup,
 		listener.Commands,
+		website.Commands,
+		pipeline.Commands,
 	)
 
-	repl.GenGroupHelp(clientMd, con, consts.GeneratorGroup,
-		build.Commands)
+	GenGroupHelp(clientMd, con, consts.GeneratorGroup,
+		build.Commands,
+		mutant.Commands)
 
+}
+
+func GenMalHelper(con *repl.Console, name string) {
+	clientMd, err := os.Create(name + ".md")
+	if err != nil {
+		panic(err)
+	}
+
+	rpc := clientrpc.NewMaliceRPCClient(nil)
+	intermediate.RegisterBuiltin(rpc)
+	command.RegisterClientFunc(con)
+	command.RegisterImplantFunc(con)
+	clientMd.Write([]byte(fmt.Sprintf("## %s\n", name)))
+	for _, p := range plugin.GetGlobalMalManager().GetAllEmbeddedPlugins() {
+		var cmds []*cobra.Command
+		for _, cc := range p.CMDs {
+			cmds = append(cmds, cc.Command)
+		}
+		sort.Sort(byName(cmds))
+		for _, c := range cmds {
+			c.SetHelpCommand(nil)
+			_ = GenMarkdownTreeCustom(c, clientMd, func(s string) string {
+				return "#" + strings.ReplaceAll(s, " ", "-")
+			})
+		}
+	}
 }
 
 func main() {
@@ -91,4 +292,5 @@ func main() {
 
 	GenClientHelp(con)
 	GenImplantHelp(con)
+	GenMalHelper(con, "community")
 }

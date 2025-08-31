@@ -12,7 +12,7 @@ import (
 	"strings"
 	"unsafe"
 
-	"github.com/Binject/debug/pe"
+	"github.com/saferwall/pe"
 	"github.com/wabzsy/compression"
 )
 
@@ -115,58 +115,73 @@ func (o *Gonut) ReadFileInfo() error {
 
 	o.FileInfo.Data = o.Config.InputBin
 
-	// file is EXE or DLL?
 	if o.FileInfo.Type == DONUT_MODULE_EXE || o.FileInfo.Type == DONUT_MODULE_DLL {
-		// Use Binject's debug/pe instead of donut's valid_dos_hdr/valid_nt_hdr/etc.
-		// https://github.com/Binject/debug/tree/master/pe
-
-		o.FileInfo.PeFile, err = pe.NewFile(bytes.NewReader(o.FileInfo.Data))
+		// 使用saferwall/pe解析PE文件
+		peFile, err := pe.NewBytes(o.FileInfo.Data, &pe.Options{})
 		if err != nil {
 			return err
 		}
+		err = peFile.Parse()
+		if err != nil {
+			return err
+		}
+		o.FileInfo.PeFile = peFile
 
-		// set the CPU architecture for file
-		if o.FileInfo.PeFile.Machine == pe.IMAGE_FILE_MACHINE_I386 {
+		if o.IsUPX() {
+			return fmt.Errorf("not support upx packed pe! please upx -d path")
+		}
+		// 设置CPU架构
+		switch peFile.NtHeader.FileHeader.Machine {
+		case pe.ImageFileMachineI386: // IMAGE_FILE_MACHINE_I386
 			o.DPRINT("Detected architectures are: x86")
 			o.FileInfo.Arch = DONUT_ARCH_X86
-		} else if o.FileInfo.PeFile.Machine == pe.IMAGE_FILE_MACHINE_AMD64 {
+		case pe.ImageFileMachineAMD64: // IMAGE_FILE_MACHINE_AMD64
 			o.DPRINT("Detected architectures are: x64")
 			o.FileInfo.Arch = DONUT_ARCH_X64
-		} else {
-			return fmt.Errorf("unsupported PE file architecture: 0x%x", o.FileInfo.PeFile.Machine)
+		default:
+			return fmt.Errorf("unsupported PE file architecture: 0x%x", peFile.NtHeader.FileHeader.Machine)
 		}
 
-		// TODO: isDLL? dll = nt->FileHeader.Characteristics & IMAGE_FILE_DLL;
+		// 检查是否为.NET程序
+		if peFile.NtHeader.OptionalHeader != nil {
+			if oh64, ok := peFile.NtHeader.OptionalHeader.(pe.ImageOptionalHeader64); ok {
+				if oh64.DataDirectory[14].VirtualAddress > 0 { // IMAGE_DIRECTORY_ENTRY_COM_DESCRIPTOR = 14
+					o.DPRINT("COM Directory found indicates .NET assembly.")
 
-		// if COM directory present
-		if o.FileInfo.PeFile.IsManaged() {
-			o.DPRINT("COM Directory found indicates .NET assembly.")
+					if o.FileInfo.Type == DONUT_MODULE_EXE {
+						o.FileInfo.Type = DONUT_MODULE_NET_EXE
+					} else {
+						o.FileInfo.Type = DONUT_MODULE_NET_DLL
+					}
 
-			// TODO: if it has an export address table, we assume it's a .NET mixed assembly.
-			//  curently unsupported by the PE loader.
-			// if exports, err := peFile.Exports(); err == nil {
-			// 	o.DPRINT("Exports: %+v", exports)
-			// }
+					o.FileInfo.Ver = "v4.0.30319"
+					if ver := o.FileInfo.PeFile.CLR.MetadataHeader.Version; ver != "" {
+						o.FileInfo.Ver = ver
+						o.DPRINT("Runtime version: %s", o.FileInfo.Ver)
+					}
+				}
+			} else if oh32, ok := peFile.NtHeader.OptionalHeader.(pe.ImageOptionalHeader32); ok {
+				if oh32.DataDirectory[14].VirtualAddress > 0 { // IMAGE_DIRECTORY_ENTRY_COM_DESCRIPTOR = 14
+					o.DPRINT("COM Directory found indicates .NET assembly.")
 
-			// set type to EXE or DLL assembly
-			// TODO: fi.type = (dll) ? DONUT_MODULE_NET_DLL : DONUT_MODULE_NET_EXE;
-			if o.FileInfo.Type == DONUT_MODULE_EXE {
-				o.FileInfo.Type = DONUT_MODULE_NET_EXE
-			} else {
-				o.FileInfo.Type = DONUT_MODULE_NET_DLL
-			}
+					// 设置类型为EXE或DLL程序集
+					if o.FileInfo.Type == DONUT_MODULE_EXE {
+						o.FileInfo.Type = DONUT_MODULE_NET_EXE
+					} else {
+						o.FileInfo.Type = DONUT_MODULE_NET_DLL
+					}
 
-			o.FileInfo.Ver = "v4.0.30319"
-
-			// try read the runtime version from meta header
-			if o.FileInfo.PeFile.NetCLRVersion() != "" {
-				o.FileInfo.Ver = o.FileInfo.PeFile.NetCLRVersion()
-				o.DPRINT("Runtime version: %s", o.FileInfo.Ver)
+					o.FileInfo.Ver = "v4.0.30319"
+					if ver := o.FileInfo.PeFile.CLR.MetadataHeader.Version; ver != "" {
+						o.FileInfo.Ver = ver
+						o.DPRINT("Runtime version: %s", o.FileInfo.Ver)
+					}
+				}
 			}
 		}
 	}
 
-	// assign type to configuration
+	// 分配类型到配置
 	o.Config.ModuleType = o.FileInfo.Type
 
 	return nil
@@ -854,26 +869,74 @@ func (o *Gonut) ValidateLoaderConfig() error {
 // Validates if a DLL exports a function.
 // donut/donut.c
 // static int is_dll_export(const char *function) { ... }
-// Use Binject's debug/pe instead of donut's is_dll_export
-// https://github.com/Binject/debug/tree/master/pe
 func (o *Gonut) IsDllExport(method string) error {
-	exports, err := o.FileInfo.PeFile.Exports()
-	if err != nil {
-		return err
+	if o.FileInfo.PeFile.Export.Functions == nil {
+		return fmt.Errorf("DLL has no export table")
 	}
 
-	o.DPRINT("Number of exported functions: %d", len(exports))
+	functions := o.FileInfo.PeFile.Export.Functions
+	if len(functions) == 0 {
+		return fmt.Errorf("DLL has no exported functions")
+	}
+
+	o.DPRINT("Number of exported functions: %d", len(functions))
+
 	// scan array for symbol
-	for _, v := range exports {
-		o.DPRINT("0x%08x: %s", v.VirtualAddress, v.Name)
+	for _, exp := range functions {
+		o.DPRINT("0x%08x: %s", exp.FunctionRVA, exp.Name)
 		// if match found, exit
-		if v.Name == method {
-			o.DPRINT("Found API: %s", v.Name)
+		if exp.Name == method {
+			o.DPRINT("Found API: %s", exp.Name)
 			return nil
 		}
 	}
 
 	return fmt.Errorf("unable to locate function '%s' in DLL", o.Config.Method)
+}
+
+func (o *Gonut) IsUPX() bool {
+	if o.FileInfo.PeFile == nil {
+		return false
+	}
+
+	// 检查节名是否包含UPX特征
+	for _, section := range o.FileInfo.PeFile.Sections {
+		sectionName := strings.TrimRight(string(section.Header.Name[:]), "\x00")
+		if strings.HasPrefix(sectionName, "UPX") {
+			o.DPRINT("Found UPX section: %s", sectionName)
+			return true
+		}
+	}
+
+	//// 2. 检查导入表中是否包含UPX特征
+	//if o.FileInfo.PeFile.Imports != nil {
+	//	for _, imp := range o.FileInfo.PeFile.Imports {
+	//		dllName := strings.ToLower(imp.Name)
+	//		if strings.Contains(dllName, "upx") {
+	//			o.DPRINT("Found UPX import: %s", dllName)
+	//			return true
+	//		}
+	//	}
+	//}
+	//
+	//// 3. 检查其他UPX特征
+	//// UPX加壳后通常只有很少的节,且大多压缩在一个节中
+	//if len(o.FileInfo.PeFile.Sections) <= 3 {
+	//	for _, section := range o.FileInfo.PeFile.Sections {
+	//		// UPX压缩节通常具有读/写/执行权限
+	//		if section.Header.Characteristics&0xE0000000 == 0xE0000000 {
+	//			// UPX压缩节通常比较大
+	//			if section.Header.SizeOfRawData > 0x10000 {
+	//				o.DPRINT("Found potential UPX packed section: %s (size: %x)",
+	//					strings.TrimRight(string(section.Header.Name[:]), "\x00"),
+	//					section.Header.SizeOfRawData)
+	//				return true
+	//			}
+	//		}
+	//	}
+	//}
+
+	return false
 }
 
 func (o *Gonut) DPRINT(format string, v ...any) {

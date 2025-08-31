@@ -5,10 +5,7 @@ package core
 
 import (
 	"errors"
-	"github.com/reeflective/readline/internal/term"
 	"io"
-	"os"
-	"time"
 	"unsafe"
 
 	"github.com/reeflective/readline/inputrc"
@@ -55,30 +52,6 @@ const (
 
 func init() {
 	Stdin = newRawReader()
-}
-
-// GetTerminalResize sends booleans over a channel to notify resize events on Windows.
-// Th	is functions uses the keys reader because on Windows, resize events are sent through
-// stdin, not with syscalls like unix's syscall.SIGWINCH.
-func GetTerminalResize(keys *Keys) <-chan bool {
-	keys.resize = make(chan bool, 1)
-	prevWidth, prevHeight, _ := term.GetSize(int(os.Stdout.Fd()))
-	go func() {
-		for {
-			width, height, err := term.GetSize(int(os.Stdout.Fd()))
-			if err != nil {
-				break
-			}
-
-			if width != prevWidth || height != prevHeight {
-				prevWidth, prevHeight = width, height
-				//fmt.Println("windows resize")
-				keys.resize <- true
-			}
-			time.Sleep(500 * time.Millisecond)
-		}
-	}()
-	return keys.resize
 }
 
 // readInputFiltered on Windows needs to check for terminal resize events.

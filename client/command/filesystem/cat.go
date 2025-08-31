@@ -18,7 +18,7 @@ func CatCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	session.Console(task, "cat "+fileName)
+	session.Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 

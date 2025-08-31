@@ -3,6 +3,7 @@ package pe
 import (
 	"encoding/base64"
 	"fmt"
+	"github.com/chainreactors/malice-network/helper/intl"
 	"io"
 	"net/http"
 	"os"
@@ -89,7 +90,7 @@ func PackArgs(data []string) ([]string, error) {
 	var err error
 	for _, arg := range data {
 		if len(arg) < 1 {
-			return nil, fmt.Errorf("'%' have not enough arguments", args)
+			return nil, fmt.Errorf("'%v' have not enough arguments", args)
 		}
 		format := arg[0]
 		packedArg := ""
@@ -179,21 +180,36 @@ func UnpackURL(data string) ([]byte, error) {
 	}
 }
 
+func UnpackEmbed(data string) ([]byte, error) {
+	// 处理embed://path格式
+	embedPath := "embed:" + data
+	return intl.ReadEmbedResource(embedPath)
+}
+
 func Unpack(data string) ([]byte, error) {
+	// 首先尝试直接作为文件路径读取
 	content, err := UnPackFile(data)
 	if err == nil {
 		return content, nil
 	}
+
+	// 如果直接读取失败，解析数据类型
 	unpacked := strings.SplitN(data, ":", 2)
+	if len(unpacked) < 2 {
+		return nil, fmt.Errorf("invalid data format: %s", data)
+	}
+
 	switch unpacked[0] {
 	case "file":
 		return UnPackFile(unpacked[1])
+	case "embed":
+		return UnpackEmbed(unpacked[1])
 	case "bin":
 		return UnPackBinary(unpacked[1])
 	case "url":
 		return UnpackURL(unpacked[1])
 	default:
-		return nil, fmt.Errorf("Unknown data type %s", unpacked[0])
+		return nil, fmt.Errorf("unknown data type %s", unpacked[0])
 	}
 }
 

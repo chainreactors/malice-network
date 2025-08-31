@@ -195,10 +195,6 @@ func RegisterAlias(aliasManifest *AliasManifest, cmd *cobra.Command, con *repl.C
 		return err
 	}
 	profile.AddAlias(aliasManifest.CommandName)
-	err = assets.SaveProfile(profile)
-	if err != nil {
-		return err
-	}
 	cmd.AddCommand(addAliasCmd)
 
 	return nil
@@ -277,7 +273,7 @@ func runAliasCommand(cmd *cobra.Command, con *repl.Console) {
 			con.Log.Errorf("Execute error: %v\n", err)
 			return
 		}
-		session.Console(task, fmt.Sprintf("%s alias: %s", aliasModule(aliasManifest), cmd.Name()))
+		session.Console(task, string(*con.App.Shell().Line()))
 	}
 
 }
@@ -311,6 +307,7 @@ func ExecuteAlias(rpc clientrpc.MaliceRPCClient, sess *core.Session, aliasName s
 			Args:   arg,
 			Param:  param,
 			Output: true,
+			Delay:  2000,
 		}
 
 		task, err = rpc.ExecuteAssembly(sess.Context(), binary)

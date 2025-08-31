@@ -4,6 +4,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"github.com/chainreactors/malice-network/helper/certs"
 	"github.com/chainreactors/malice-network/helper/proto/client/rootpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/utils/mtls"
@@ -22,7 +23,7 @@ func NewRootClient(addr string) (*RootClient, error) {
 		Bytes: x509.MarshalPKCS1PrivateKey(key),
 	}
 	privateKeyPEM := pem.EncodeToMemory(keyPEM)
-	options, err := mtls.GetGrpcOptions(caCert, caCert, privateKeyPEM, certutils.RootName)
+	options, err := mtls.GetGrpcOptions(caCert, caCert, privateKeyPEM, certs.RootName)
 	if err != nil {
 		return nil, err
 	}

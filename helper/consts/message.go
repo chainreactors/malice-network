@@ -7,8 +7,8 @@ var (
 		ModuleAliasInlineShellcode: ModuleExecuteShellcode,
 		ModuleAliasInlineExe:       ModuleExecuteExe,
 		ModuleAliasInlineDll:       ModuleExecuteDll,
-		ModuleAliasShell:           ModuleExecution,
-		ModuleAliasPowershell:      ModuleExecution,
+		ModuleAliasShell:           ModuleExecute,
+		ModuleAliasPowershell:      ModuleExecute,
 	}
 	ExecuteModules = []string{
 		ModuleExecuteBof, ModuleExecuteDll, ModuleExecuteShellcode,
@@ -31,7 +31,7 @@ const (
 	ModuleSleep      = "sleep"
 	ModuleSuicide    = "suicide"
 	ModuleInit       = "init"
-	ModuleLogin      = "login"
+	ModuleSwitch     = "switch"
 	ModuleCancelTask = "cancel_task"
 	ModuleQueryTask  = "query_task"
 	ModuleListTask   = "list_task"
@@ -39,7 +39,9 @@ const (
 	//execute
 	ModuleAliasShell           = "shell"
 	ModuleAliasPowershell      = "powershell"
-	ModuleExecution            = "exec"
+	ModuleExecute              = "exec"
+	ModuleAliasRun             = "run"
+	ModuleAliasExecute         = "execute"
 	ModuleExecuteLocal         = "execute_local"
 	ModuleInlineLocal          = "inline_local"
 	ModuleExecuteAssembly      = "execute_assembly"
@@ -75,7 +77,7 @@ const (
 	ModuleSysInfo = "sysinfo"
 	ModuleNetstat = "netstat"
 	ModuleBypass  = "bypass"
-	ModuleCurl    = "curl"
+	ModuleRequest = "request"
 
 	// module
 	ModuleListModule    = "list_module"
@@ -124,10 +126,11 @@ const (
 	ModuleRunas     = "runas"
 	ModulePrivs     = "privs"
 	ModuleGetSystem = "getsystem"
+	ModuleRev2Self  = "rev2self"
 
 	// 3rd
+	ModuleRemDial = "rem_dial"
 	ModuleRem     = "rem"
-	ModuleLoadRem = "load_rem"
 )
 
 func SubCommandName(module string) string {
@@ -147,6 +150,7 @@ const (
 	CommandPolling          = "polling"
 	CommandNewBindSession   = "newbind"
 	CommandTasks            = "tasks"
+	CommandTaskFetch        = "fetch_task"
 	CommandFiles            = "files"
 	CommandExplore          = "explorer"
 	CommandSession          = "session"
@@ -154,6 +158,7 @@ const (
 	CommandSessionGroup     = "group"
 	CommandObverse          = "obverse"
 	CommandHistory          = "history"
+	CommandAudit            = "audit"
 	CommandRemoveSession    = "remove"
 	CommandUse              = "use"
 	CommandBackground       = "background"
@@ -182,6 +187,7 @@ const (
 	CommandMalInstall       = "install"
 	CommandMalRemove        = "remove"
 	CommandMalRefresh       = "refresh"
+	CommandMalUpdate        = "update"
 	CommandPipelineTcp      = "tcp"
 	CommandPipelineBind     = "bind"
 	CommandWebsite          = "website"
@@ -193,6 +199,7 @@ const (
 	CommandPipelineStart    = "start"
 	CommandPipelineStop     = "stop"
 	CommandPipelineDelete   = "delete"
+	CommandPipelineRestart  = "restart"
 	CommandBuild            = "build"
 	CommandBuildPrelude     = "prelude"
 	CommandBuildBeacon      = "beacon"
@@ -203,6 +210,7 @@ const (
 	CommandBuildLog         = "log"
 	CommandArtifact         = "artifact"
 	CommandArtifactList     = "list"
+	CommandArtifactShow     = "show"
 	CommandArtifactDownload = "download"
 	CommandArtifactUpload   = "upload"
 	CommandArtifactDelete   = "delete  "
@@ -223,6 +231,11 @@ const (
 	CommandActionEnable     = "enable"
 	CommandActionDisable    = "disable"
 	CommandActionList       = "list"
+	CommandSaas             = "saas"
+	CommandLicense          = "license"
+	CommandLicenseNew       = "new"
+	CommandLicenseDelete    = "delete"
+	CommandLicenseUpdate    = "update"
 
 	CommandConfig       = "config"
 	CommandRefresh      = "refresh"
@@ -245,6 +258,14 @@ const (
 	CommandPortForwardLocal        = "portfwd_local"
 
 	CommandScreenShot = "screenshot"
+
+	CommandCert           = "cert"
+	CommandCertDelete     = "delete"
+	CommandCertUpdate     = "update"
+	CommandCertDownload   = "download"
+	CommandCertImport     = "import"
+	CommandCertSelfSigned = "self_signed"
+	CommandCertAcme       = "acme"
 )
 
 const (

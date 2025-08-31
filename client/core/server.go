@@ -5,7 +5,6 @@ import (
 	"errors"
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
 	"github.com/chainreactors/malice-network/helper/utils/mtls"
@@ -13,7 +12,7 @@ import (
 	"sync"
 )
 
-type TaskCallback func(resp *implantpb.Spite)
+type TaskCallback func(resp *clientpb.TaskContext)
 
 func InitServerStatus(conn *grpc.ClientConn, config *mtls.ClientConfig) (*ServerStatus, error) {
 	var err error
@@ -30,6 +29,7 @@ func InitServerStatus(conn *grpc.ClientConn, config *mtls.ClientConfig) (*Server
 		finishCallbacks: &sync.Map{},
 		doneCallbacks:   &sync.Map{},
 		EventHook:       make(map[intermediate.EventCondition][]intermediate.OnEventFunc),
+		EventCallback:   make(map[string]func(*clientpb.Event)),
 	}
 	client, err := s.Rpc.LoginClient(context.Background(), &clientpb.LoginReq{
 		Name: config.Operator,
@@ -80,6 +80,7 @@ type ServerStatus struct {
 	doneCallbacks   *sync.Map
 	EventStatus     bool
 	EventHook       map[intermediate.EventCondition][]intermediate.OnEventFunc
+	EventCallback   map[string]func(*clientpb.Event)
 }
 
 func (s *ServerStatus) Update() error {
@@ -108,11 +109,13 @@ func (s *ServerStatus) Update() error {
 	return nil
 }
 
-func (s *ServerStatus) AddSession(sess *clientpb.Session) {
+func (s *ServerStatus) AddSession(sess *clientpb.Session) *Session {
 	if origin, ok := s.Sessions[sess.SessionId]; ok {
 		origin.Session = sess
+		return origin
 	} else {
 		s.Sessions[sess.SessionId] = NewSession(sess, s)
+		return s.Sessions[sess.SessionId]
 	}
 }
 
@@ -164,6 +167,14 @@ func (s *ServerStatus) GetLocalSession(sid string) (*Session, bool) {
 		return sess, true
 	} else {
 		return nil, false
+	}
+}
+
+func (s *ServerStatus) GetOrUpdateSession(sid string) (*Session, error) {
+	if sess, ok := s.Sessions[sid]; ok {
+		return sess, nil
+	} else {
+		return s.UpdateSession(sid)
 	}
 }
 

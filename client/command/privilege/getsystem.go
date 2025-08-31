@@ -19,15 +19,14 @@ func GetSystemCmd(cmd *cobra.Command, con *repl.Console) error {
 		return err
 	}
 
-	session.Console(task, "attempt to elevate privileges")
+	session.Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 
 func GetSystem(rpc clientrpc.MaliceRPCClient, session *core.Session) (*clientpb.Task, error) {
-	request := &implantpb.Request{
+	return rpc.GetSystem(session.Context(), &implantpb.Request{
 		Name: consts.ModuleGetSystem,
-	}
-	return rpc.GetSystem(session.Context(), request)
+	})
 }
 
 func RegisterGetSystemFunc(con *repl.Console) {
@@ -36,7 +35,7 @@ func RegisterGetSystemFunc(con *repl.Console) {
 		GetSystem,
 		"",
 		nil,
-		output.ParseStatus,
+		output.ParseResponse,
 		nil,
 	)
 	con.AddCommandFuncHelper(

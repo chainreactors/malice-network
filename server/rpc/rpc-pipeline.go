@@ -2,9 +2,9 @@ package rpc
 
 import (
 	"context"
+	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
@@ -17,15 +17,17 @@ func (rpc *Server) RegisterPipeline(ctx context.Context, req *clientpb.Pipeline)
 	}
 	req.Ip = lns.IP
 	pipelineModel := models.FromPipelinePb(req)
-	if pipelineModel.Tls.Enable && pipelineModel.Tls.Cert == "" && pipelineModel.Tls.Key == "" {
-		pipelineModel.Tls.Cert, pipelineModel.Tls.Key, err = certutils.GenerateTlsCert(pipelineModel.Name, pipelineModel.ListenerId)
-		if err != nil {
-			return nil, err
-		}
-	}
 	_, err = db.SavePipeline(pipelineModel)
 	if err != nil {
 		return nil, err
+	}
+	profileReq := &clientpb.Profile{
+		Name:       req.Name + "_default",
+		PipelineId: req.Name,
+	}
+	err = db.NewProfile(profileReq)
+	if err != nil {
+		logs.Log.Errorf("new profile %s failed %v", req.Name, err)
 	}
 	return &clientpb.Empty{}, nil
 }
@@ -35,9 +37,7 @@ func (rpc *Server) SyncPipeline(ctx context.Context, req *clientpb.Pipeline) (*c
 	if err != nil {
 		return nil, err
 	}
-
 	job := core.Jobs.AddPipeline(req)
-
 	core.EventBroker.Publish(core.Event{
 		EventType: consts.EventJob,
 		Op:        consts.CtrlPipelineSync,
@@ -70,17 +70,29 @@ func (rpc *Server) StartPipeline(ctx context.Context, req *clientpb.CtrlPipeline
 	if err != nil {
 		return nil, err
 	}
-
+	if req.CertName != "" {
+		_, err := db.FindCertificate(req.CertName)
+		if err != nil {
+			return nil, err
+		}
+		pipelineDB, err = db.UpdatePipelineCert(req.CertName, pipelineDB)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		pipelineDB.Tls.Enable = req.Pipeline.Tls.Enable
+	}
 	lns, err := core.Listeners.Get(pipelineDB.ListenerId)
 	if err != nil {
 		return nil, err
 	}
+	pipelineProto := pipelineDB.ToProtobuf()
 	job := &core.Job{
 		ID:       core.NextJobID(),
-		Pipeline: req.Pipeline,
-		Name:     req.Pipeline.Name,
+		Pipeline: pipelineProto,
+		Name:     req.Name,
 	}
-	core.Jobs.Add(job)
+
 	lns.PushCtrl(&clientpb.JobCtrl{
 		Ctrl: consts.CtrlPipelineStart,
 		Job:  job.ToProtobuf()})
@@ -97,7 +109,7 @@ func (rpc *Server) StopPipeline(ctx context.Context, req *clientpb.CtrlPipeline)
 	if err != nil {
 		return nil, err
 	}
-	lns, err := core.Listeners.Get(req.ListenerId)
+	lns, err := core.Listeners.Get(job.Pipeline.ListenerId)
 	if err != nil {
 		return nil, err
 	}
@@ -116,10 +128,10 @@ func (rpc *Server) StopPipeline(ctx context.Context, req *clientpb.CtrlPipeline)
 func (rpc *Server) DeletePipeline(ctx context.Context, req *clientpb.CtrlPipeline) (*clientpb.Empty, error) {
 	pipelineDB, err := db.FindPipeline(req.Name)
 	if err != nil {
-		return &clientpb.Empty{}, err
+		return nil, err
 	}
 	pipeline := pipelineDB.ToProtobuf()
-	lns, err := core.Listeners.Get(req.ListenerId)
+	lns, err := core.Listeners.Get(pipelineDB.ListenerId)
 	if err != nil {
 		return nil, err
 	}

@@ -9,10 +9,10 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
 	"github.com/chainreactors/malice-network/helper/types"
-	"github.com/chainreactors/malice-network/helper/utils/peek"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/parser"
 	"github.com/chainreactors/malice-network/server/internal/parser/malefic"
+	"github.com/chainreactors/malice-network/server/internal/stream"
 	"net"
 )
 
@@ -21,15 +21,17 @@ func NewBindPipeline(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipel
 		rpc:            rpc,
 		Name:           pipeline.Name,
 		Enable:         true,
-		PipelineConfig: core.FromProtobuf(pipeline),
+		CertName:       pipeline.CertName,
+		PipelineConfig: core.FromPipeline(pipeline),
 	}
 	return pp, nil
 }
 
 type BindPipeline struct {
-	rpc    listenerrpc.ListenerRPCClient
-	Name   string
-	Enable bool
+	rpc      listenerrpc.ListenerRPCClient
+	Name     string
+	Enable   bool
+	CertName string
 	*core.PipelineConfig
 }
 
@@ -43,13 +45,14 @@ func (pipeline *BindPipeline) ToProtobuf() *clientpb.Pipeline {
 		Enable:     pipeline.Enable,
 		Type:       consts.BindPipeline,
 		ListenerId: pipeline.ListenerID,
+		CertName:   pipeline.CertName,
 		Body: &clientpb.Pipeline_Bind{
 			Bind: &clientpb.BindPipeline{
 				Name:       pipeline.Name,
 				ListenerId: pipeline.ListenerID,
 			},
 		},
-		Tls:        pipeline.Tls.ToProtobuf(),
+		Tls:        pipeline.TLSConfig.ToProtobuf(),
 		Encryption: pipeline.Encryption.ToProtobuf(),
 	}
 }
@@ -121,7 +124,7 @@ func (pipeline *BindPipeline) handlerReq(req *clientpb.SpiteRequest) error {
 	return nil
 }
 
-func (pipeline *BindPipeline) initConnection(conn *peek.Conn, req *clientpb.SpiteRequest) (*core.Connection, error) {
+func (pipeline *BindPipeline) initConnection(conn *cryptostream.Conn, req *clientpb.SpiteRequest) (*core.Connection, error) {
 	p := &parser.MessageParser{
 		Implant:      consts.ImplantMalefic,
 		PacketParser: &malefic.MaleficParser{},
@@ -132,7 +135,7 @@ func (pipeline *BindPipeline) initConnection(conn *peek.Conn, req *clientpb.Spit
 	return connect, nil
 }
 
-func (pipeline *BindPipeline) getConnection(conn *peek.Conn, sid uint32) (*core.Connection, error) {
+func (pipeline *BindPipeline) getConnection(conn *cryptostream.Conn, sid uint32) (*core.Connection, error) {
 	p, err := parser.NewParser(pipeline.Parser)
 	if err != nil {
 		return nil, err

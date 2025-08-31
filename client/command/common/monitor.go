@@ -24,12 +24,11 @@ func OpsecConfirm(cmd *cobra.Command) error {
 	}
 	if opsec < threshold {
 		newConfirm := tui.NewConfirm(fmt.Sprintf("This command opsec value %d is too low, command will not execute. Are you sure you want to continue?", opsec))
-		newModel := tui.NewModel(newConfirm, nil, false, true)
-		err = newModel.Run()
+		err = newConfirm.Run()
 		if err != nil {
 			return err
 		}
-		if !newConfirm.Confirmed {
+		if !newConfirm.GetConfirmed() {
 			return errors.New("operation cancelled by user")
 		}
 	}

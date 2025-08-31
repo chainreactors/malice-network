@@ -1,7 +1,6 @@
 package basic
 
 import (
-	"fmt"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -17,7 +16,7 @@ func SuicideCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	session.Console(task, fmt.Sprintf("%s suicide", session.SessionId))
+	session.Console(task, string(*con.App.Shell().Line()))
 	return nil
 }
 

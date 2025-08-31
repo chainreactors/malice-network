@@ -15,7 +15,8 @@ import (
 func RemDialCmd(cmd *cobra.Command, con *repl.Console) error {
 	pid := cmd.Flags().Arg(0)
 	args := cmd.Flags().Args()[1:]
-	_, err := RemDial(con.Rpc, con.GetInteractive(), pid, args)
+	task, err := RemDial(con.Rpc, con.GetInteractive(), pid, args)
+	con.GetInteractive().Console(task, string(*con.App.Shell().Line()))
 	if err != nil {
 		return err
 	}
@@ -48,7 +49,7 @@ func FormatRemCmdLine(con *repl.Console, pipe, mod string, remote, local *url.UR
 
 func RemDial(rpc clientrpc.MaliceRPCClient, session *core.Session, pid string, args []string) (*clientpb.Task, error) {
 	task, err := rpc.RemDial(session.Context(), &implantpb.Request{
-		Name: consts.ModuleRem,
+		Name: consts.ModuleRemDial,
 		Args: args,
 		Params: map[string]string{
 			"pipeline_id": pid,

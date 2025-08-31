@@ -12,7 +12,8 @@ import (
 
 func AddonListCmd(cmd *cobra.Command, con *repl.Console) {
 	session := con.GetInteractive()
-	_, err := ListAddon(con.Rpc, session)
+	task, err := ListAddon(con.Rpc, session)
+	session.Console(task, string(*con.App.Shell().Line()))
 	if err != nil {
 		con.Log.Errorf("%s\n", err)
 		return

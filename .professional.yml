@@ -1,0 +1,97 @@
+project_name: malice
+version: 2
+
+git:
+  ignore_tags:
+    - nightly
+
+before:
+  hooks:
+    - go mod tidy
+    - curl -L https://github.com/EgeBalci/sgn/releases/download/v2.0.1/sgn_linux_amd64_2.0.1.zip -o sgn_linux.zip
+    - unzip -o sgn_linux.zip -d server/assets/linux
+    - curl -L https://github.com/EgeBalci/sgn/releases/download/v2.0.1/sgn_windows_amd64_2.0.1.zip -o sgn_windows.zip
+    - unzip -o sgn_windows.zip -d server/assets/windows
+    - cp helper/consts/professional/malefic-mutant server/assets/linux/
+    - cp helper/consts/professional/malefic-mutant.exe server/assets/windows/
+
+
+builds:
+  -
+    main: ./client
+    id: client
+    binary: "iom_{{ .Os }}_{{ .Arch }}"
+    flags:
+      - "-tags=professional"
+    goos:
+      - windows
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags: |
+      -s -w
+      -X github.com/chainreactors/malice-network/server/rpc.ver={{.Env.VERSION}}
+      -X github.com/chainreactors/malice-network/server/rpc.commit={{.Env.COMMIT}}.{{.Env.LICENSEID}}
+    asmflags:
+      - all=-trimpath={{.Env.GOPATH}}
+    gcflags:
+      - all=-trimpath={{.Env.GOPATH}}
+    no_unique_dist_dir: true
+    env:
+      - CGO_ENABLED=0
+  -
+    main: ./server/
+    id: server
+    binary: "malice_network_{{ .Os }}_{{ .Arch }}"
+    flags:
+      - "-tags=professional"
+    goos:
+      - windows
+      - linux
+#      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags: |
+      -s -w 
+      -X github.com/chainreactors/malice-network/helper/consts.Ver={{.Env.VERSION}} 
+      -X github.com/chainreactors/malice-network/helper/consts.Commit={{.Env.COMMIT}}.{{.Env.LICENSE_ID}} 
+      -X github.com/chainreactors/malice-network/helper/consts.Buildstamp={{.Timestamp}}"
+    asmflags:
+      - all=-trimpath={{.Env.GOPATH}}
+    gcflags:
+      - all=-trimpath={{.Env.GOPATH}}
+    no_unique_dist_dir: true
+    env:
+      - CGO_ENABLED=0
+upx:
+  -
+    enabled: true
+    goos: [linux, windows]
+    goarch:
+      - amd64
+      - "386"
+
+archives:
+  -
+    name_template: "{{ .Binary }}"
+    format: binary
+
+checksum:
+  name_template: "{{ .ProjectName }}_checksums.txt"
+
+changelog:
+  sort: desc
+  filters:
+    exclude:
+      - '^MERGE'
+      - "{{ .Tag }}"
+      - "^docs"
+release:
+  github:
+    owner: chainreactors
+    name: malice-network
+  draft: true
+

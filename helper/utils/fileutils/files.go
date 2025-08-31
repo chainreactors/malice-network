@@ -5,10 +5,12 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"github.com/h2non/filetype"
 	"io"
 	"os"
 	"path/filepath"
 
+	"encoding/base64"
 	"github.com/klauspost/compress/flate"
 )
 
@@ -87,6 +89,12 @@ func CalculateSHA256Checksum(filePath string) (string, error) {
 	return checksum, nil
 }
 
+func CalculateSHA256Byte(data []byte) string {
+	hash := sha256.Sum256(data)
+	hashStr := hex.EncodeToString(hash[:])
+	return hashStr
+}
+
 // ChmodR - Recursively chmod
 func ChmodR(path string, filePerm, dirPerm os.FileMode) error {
 	return filepath.Walk(path, func(name string, info os.FileInfo, err error) error {
@@ -101,9 +109,12 @@ func ChmodR(path string, filePerm, dirPerm os.FileMode) error {
 	})
 }
 
-func ForceRemoveAll(rootPath string) {
-	ChmodR(rootPath, 0600, 0700)
-	os.RemoveAll(rootPath)
+func ForceRemoveAll(rootPath string) error {
+	err := ChmodR(rootPath, 0600, 0700)
+	if err != nil {
+		return err
+	}
+	return os.RemoveAll(rootPath)
 }
 
 func MoveFile(sourcePath, destPath string) error {
@@ -157,4 +168,125 @@ func MoveDirectory(sourceDir, destDir string) error {
 		}
 		return nil
 	})
+}
+
+func GetExtensionByPath(filepath string) (string, error) {
+
+	file, err := os.Open(filepath)
+	if err != nil {
+		return "", fmt.Errorf("failed to open file %s: %w", filepath, err)
+	}
+	defer file.Close()
+
+	buf := make([]byte, 261)
+	_, err = file.Read(buf)
+	if err != nil {
+		return "", fmt.Errorf("read file error: %w", err)
+	}
+
+	return GetExtensionByBytes(buf)
+}
+
+func GetExtensionByBytes(data []byte) (string, error) {
+	kind, err := filetype.Match(data)
+	if err != nil {
+		return "", fmt.Errorf("unknown file type %s", err)
+	}
+	return "." + kind.Extension, nil
+}
+
+// CopyDirectoryExcept copies all files and directories from sourceDir to targetDir except the excluded files.
+func CopyDirectoryExcept(sourceDir, targetDir string, excludeFiles []string) error {
+	excludeSet := make(map[string]struct{})
+	for _, f := range excludeFiles {
+		excludeSet[f] = struct{}{}
+	}
+
+	return filepath.Walk(sourceDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		relPath, err := filepath.Rel(sourceDir, path)
+		if err != nil {
+			return err
+		}
+		if relPath == "." {
+			return nil
+		}
+		if _, skip := excludeSet[info.Name()]; skip {
+			if info.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		targetPath := filepath.Join(targetDir, relPath)
+		if info.IsDir() {
+			return os.MkdirAll(targetPath, info.Mode())
+		}
+		return CopyFile(path, targetPath)
+	})
+}
+
+// DetectContentType
+func DetectContentType(data []byte) string {
+	if len(data) == 0 {
+		return "unknown"
+	}
+
+	// 使用 filetype.Match 检测文件类型
+	kind, err := filetype.Match(data)
+	if err != nil {
+		return "unknown"
+	}
+	if kind.MIME.Type == "application/zip" || kind.Extension == "zip" {
+		return "zip"
+	}
+	if kind.MIME.Type == "text/plain" || kind.Extension == "yml" || kind.Extension == "yaml" {
+		return "yaml"
+	}
+
+	return "unknown"
+}
+
+// WithTempDir executes a function with a temporary directory, automatically cleaning up
+func WithTempDir(prefix string, fn func(tempDir string) error) error {
+	tempDir, err := os.MkdirTemp("", prefix)
+	if err != nil {
+		return fmt.Errorf("failed to create temp directory: %w", err)
+	}
+	defer os.RemoveAll(tempDir)
+	return fn(tempDir)
+}
+
+// CollectFilePaths collects all file paths from the given directory recursively
+func CollectFilePaths(rootPath string) ([]string, error) {
+	var filePaths []string
+	err := filepath.Walk(rootPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() && path != rootPath {
+			filePaths = append(filePaths, path)
+		}
+		return nil
+	})
+	return filePaths, err
+}
+
+// DecodeBase64OrRaw attempts to decode base64 string, falls back to raw bytes if decoding fails
+func DecodeBase64OrRaw(data string) ([]byte, error) {
+	if data == "" {
+		return nil, nil
+	}
+
+	decoded, err := base64.StdEncoding.DecodeString(data)
+	if err == nil {
+		return decoded, nil
+	}
+	return []byte(data), nil
+}
+
+// EncodeBase64OrRaw encodes the given data to base64 string, falls back to raw bytes if encoding fails
+func EncodeBase64OrRaw(data []byte) string {
+	return base64.StdEncoding.EncodeToString(data)
 }
