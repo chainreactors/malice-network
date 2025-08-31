@@ -61,23 +61,15 @@ func pollUntil(fn func() (bool, error), interval, timeout time.Duration) error {
 	}
 }
 
-// ================= 统一的 License 数据结构 =================
 
-// LicenseData 统一的 License 数据结构，用于注册和响应
 type LicenseData struct {
-	ID              string `json:"id,omitempty"`
-	Username        string `json:"username"`
-	Email           string `json:"email,omitempty"`
-	Token           string `json:"token,omitempty"`
-	Type            string `json:"type"`
-	ExpireAt        string `json:"expire_at,omitempty"`
-	BuildCount      int64  `json:"build_count,omitempty"`
-	MaxBuilds       int64  `json:"max_builds,omitempty"`
-	CreatedAt       string `json:"created_at,omitempty"`
-	UpdatedAt       string `json:"updated_at,omitempty"`
-	IsExpired       bool   `json:"is_expired,omitempty"`
-	CanBuild        bool   `json:"can_build,omitempty"`
-	RemainingBuilds int64  `json:"remaining_builds,omitempty"`
+	Username   string `json:"username"`
+	Email      string `json:"email,omitempty"`
+	Token      string `json:"token,omitempty"`
+	Type       string `json:"type"`
+	ExpireAt   string `json:"expire_at,omitempty"`
+	BuildCount int64  `json:"build_count,omitempty"`
+	MaxBuilds  int64  `json:"max_builds,omitempty"`
 }
 
 // LicenseResponse SaaS API 统一响应结构
