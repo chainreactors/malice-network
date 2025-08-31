@@ -61,7 +61,6 @@ func pollUntil(fn func() (bool, error), interval, timeout time.Duration) error {
 	}
 }
 
-
 type LicenseData struct {
 	Username   string `json:"username"`
 	Email      string `json:"email,omitempty"`
@@ -254,7 +253,7 @@ func (c *SaasClient) RegisterLicense() (string, error) {
 
 	url := fmt.Sprintf("%s/api/license/", c.BaseURL)
 	var response LicenseResponse
-	err := httputils.DoPOST(url, licenseData, nil, 200, &response)
+	err := httputils.DoPOST(url, licenseData, make(map[string]string), 200, &response)
 	if err != nil {
 		return "", fmt.Errorf("failed to send HTTP request: %v", err)
 	}
