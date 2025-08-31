@@ -2,14 +2,13 @@ package intl
 
 import (
 	"fmt"
-	"github.com/chainreactors/malice-network/helper/consts"
 	"io/fs"
 	"strings"
 )
 
 // GetFileContent 获取嵌入式文件内容
 func GetFileContent(filename string) ([]byte, error) {
-	content, err := consts.UnifiedFS.ReadFile(filename)
+	content, err := UnifiedFS.ReadFile(filename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read embedded file %s: %w", filename, err)
 	}
@@ -18,13 +17,13 @@ func GetFileContent(filename string) ([]byte, error) {
 
 // FileExists 检查嵌入式文件是否存在
 func FileExists(filename string) bool {
-	_, err := consts.UnifiedFS.Open(filename)
+	_, err := UnifiedFS.Open(filename)
 	return err == nil
 }
 
 // ReadDir 读取嵌入式目录内容
 func ReadDir(dirname string) ([]fs.DirEntry, error) {
-	return consts.UnifiedFS.ReadDir(dirname)
+	return UnifiedFS.ReadDir(dirname)
 }
 
 // FindResource 查找嵌入式资源文件，支持架构特定查找
