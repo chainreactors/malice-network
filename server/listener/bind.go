@@ -2,6 +2,8 @@ package listener
 
 import (
 	"context"
+	"net"
+
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/encoders"
@@ -12,8 +14,7 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/parser"
 	"github.com/chainreactors/malice-network/server/internal/parser/malefic"
-	"github.com/chainreactors/malice-network/server/internal/stream"
-	"net"
+	cryptostream "github.com/chainreactors/malice-network/server/internal/stream"
 )
 
 func NewBindPipeline(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeline) (*BindPipeline, error) {
@@ -54,6 +55,7 @@ func (pipeline *BindPipeline) ToProtobuf() *clientpb.Pipeline {
 		},
 		Tls:        pipeline.TLSConfig.ToProtobuf(),
 		Encryption: pipeline.Encryption.ToProtobuf(),
+		Secure:     pipeline.SecureConfig.ToProtobuf(),
 	}
 }
 
@@ -110,7 +112,7 @@ func (pipeline *BindPipeline) handlerReq(req *clientpb.SpiteRequest) error {
 			return err
 		}
 	} else {
-		connect, err = pipeline.getConnection(peekConn, req.Session.RawId)
+		connect, err = pipeline.getConnection(req.Session.RawId)
 		if err != nil {
 			return err
 		}
@@ -130,21 +132,34 @@ func (pipeline *BindPipeline) initConnection(conn *cryptostream.Conn, req *clien
 		PacketParser: &malefic.MaleficParser{},
 	}
 	go p.WritePacket(conn, types.BuildOneSpites(req.Spite), req.Session.RawId)
-	connect := core.NewConnection(p, req.Session.RawId, pipeline.ID())
+
+	keyPair := core.GetKeyPairForSession(req.Session.RawId, pipeline.SecureConfig)
+
+	connect := core.NewConnection(p, req.Session.RawId, pipeline.ID(), keyPair)
 	core.Connections.Add(connect)
 	return connect, nil
 }
 
-func (pipeline *BindPipeline) getConnection(conn *cryptostream.Conn, sid uint32) (*core.Connection, error) {
+// getConnection Bind pipeline 特殊的连接获取实现
+// Bind pipeline 不使用 SecureConfig 交换密钥对，只从 session 获取
+func (pipeline *BindPipeline) getConnection(sid uint32) (*core.Connection, error) {
+	sessionID := hash.Md5Hash(encoders.Uint32ToBytes(sid))
+
+	// 尝试从现有连接池获取连接
+	if existingConn := core.Connections.Get(sessionID); existingConn != nil {
+		return existingConn, nil
+	}
+
+	// 创建新的 parser
 	p, err := parser.NewParser(pipeline.Parser)
 	if err != nil {
 		return nil, err
 	}
-	if newC := core.Connections.Get(hash.Md5Hash(encoders.Uint32ToBytes(sid))); newC != nil {
-		return newC, nil
-	} else {
-		newC := core.NewConnection(p, sid, pipeline.ID())
-		core.Connections.Add(newC)
-		return newC, nil
-	}
+
+	keyPair := core.GetKeyPairForSession(sid, pipeline.SecureConfig)
+
+	// 创建新连接
+	newConn := core.NewConnection(p, sid, pipeline.ID(), keyPair)
+	core.Connections.Add(newConn)
+	return newConn, nil
 }

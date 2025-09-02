@@ -9,6 +9,7 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/errs"
+	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/server/internal/parser/malefic"
 	"github.com/chainreactors/malice-network/server/internal/parser/pulse"
@@ -51,6 +52,18 @@ func NewParser(name string) (*MessageParser, error) {
 type MessageParser struct {
 	Implant string
 	PacketParser
+}
+
+// WithSecure 为 MessageParser 添加安全支持
+func (mp *MessageParser) WithSecure(keyPair *clientpb.KeyPair) {
+	switch mp.Implant {
+	case consts.ImplantMalefic:
+		if maleficParser, ok := mp.PacketParser.(*malefic.MaleficParser); ok {
+			maleficParser.WithSecure(keyPair)
+		}
+	default:
+
+	}
 }
 
 func (parser *MessageParser) ReadMessage(conn io.ReadWriteCloser, length uint32) (*implantpb.Spites, error) {

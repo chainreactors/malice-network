@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/chainreactors/malice-network/helper/utils"
 	"github.com/gookit/config/v2"
 	"github.com/gorhill/cronexpr"
 	"google.golang.org/grpc"
@@ -23,6 +22,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/types"
+	"github.com/chainreactors/malice-network/helper/utils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
@@ -71,7 +71,7 @@ func NewSessions() *sessions {
 				session.Publish(consts.CtrlSessionDead, fmt.Sprintf("session %s from %s at %s has leaved ", session.ID, session.Target, session.PipelineID), true, true)
 				//newSessions.Remove(session.ID)
 			}
-			err := db.Session().Save(sessModel).Error
+			err := session.Save()
 			if err != nil {
 				logs.Log.Errorf("update session %s info failed in db, %s", session.ID, err.Error())
 			}
@@ -113,6 +113,13 @@ func RegisterSession(req *clientpb.RegisterSession) (*Session, error) {
 		Cache:          cache,
 		responses:      &sync.Map{},
 	}
+
+	// 从pipeline获取预分发的密钥对
+	err = sess.initializeSecureManager(req)
+	if err != nil {
+		logs.Log.Errorf("[secure] failed to initialize pipeline keypair: %v", err)
+	}
+
 	sess.Ctx, sess.Cancel = context.WithCancel(context.Background())
 	if req.RegisterData.Sysinfo != nil {
 		sess.UpdateSysInfo(req.RegisterData.Sysinfo)
@@ -129,6 +136,16 @@ func RecoverSession(sess *models.Session) (*Session, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// 安全地处理SessionContext
+	var sessionContext *types.SessionContext
+	if sess.DataString != "" {
+		sessionContext, _ = types.RecoverSessionContext(sess.DataString)
+	}
+	if sessionContext == nil {
+		sessionContext = &types.SessionContext{}
+	}
+
 	s := &Session{
 		Type:           sess.Type,
 		Name:           sess.ProfileName,
@@ -143,11 +160,21 @@ func RecoverSession(sess *models.Session) (*Session, error) {
 		LastCheckin:    sess.LastCheckin,
 		CreatedAt:      sess.CreatedAt,
 		Tasks:          NewTasks(),
-		SessionContext: sess.Data,
+		SessionContext: sessionContext,
 		Taskseq:        1,
 		Cache:          cache,
 		responses:      &sync.Map{},
 	}
+
+	// 无论如何都初始化 SecureManager，使用SessionContext中的KeyPair
+	err = s.initializeSecureManager(&clientpb.RegisterSession{
+		PipelineId:   sess.PipelineID,
+		RegisterData: &implantpb.Register{Secure: s.Secure},
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	s.Ctx, s.Cancel = context.WithCancel(context.Background())
 	tasks, tid, err := db.FindTaskAndMaxTasksID(s.ID)
 	if err != nil {
@@ -195,6 +222,9 @@ type Session struct {
 	CreatedAt   time.Time
 	Tasks       *Tasks // task manager
 	*types.SessionContext
+
+	// Age 密码学安全管理器（运行时，负责密钥交换和轮换）
+	SecureManager *SecureManager
 
 	*Cache
 	Taskseq   uint32
@@ -333,6 +363,7 @@ func (s *Session) ToProtobuf() *clientpb.Session {
 		Tasks:       s.Tasks.ToProtobuf(),
 		Modules:     s.Modules,
 		Addons:      s.Addons,
+		KeyPair:     s.KeyPair, // 添加密钥对
 		Data:        s.Marshal(),
 	}
 }
@@ -359,8 +390,13 @@ func (s *Session) ToProtobufLite() *clientpb.Session {
 		Timer:       &implantpb.Timer{Expression: s.Expression, Jitter: s.Jitter},
 		Modules:     s.Modules,
 		Addons:      s.Addons,
+		KeyPair:     s.KeyPair,
 		Data:        s.Marshal(),
 	}
+}
+
+func (s *Session) Save() error {
+	return db.Session().Save(s.ToModel()).Error
 }
 
 func (s *Session) ToModel() *models.Session {
@@ -404,6 +440,8 @@ func (s *Session) Update(req *clientpb.RegisterSession) {
 	s.Jitter = req.RegisterData.Timer.Jitter
 	s.SessionContext.Update(req)
 
+	// SecureManager现在使用固定的100次交互计数，不需要更新间隔
+
 	if req.RegisterData.Sysinfo != nil {
 		if !s.Initialized {
 			s.Publish(consts.CtrlSessionInit, fmt.Sprintf("session %s init", s.ID), true, true)
@@ -411,7 +449,7 @@ func (s *Session) Update(req *clientpb.RegisterSession) {
 		s.UpdateSysInfo(req.RegisterData.Sysinfo)
 	}
 
-	err := db.Session().Save(s.ToModel()).Error
+	err := s.Save()
 	if err != nil {
 		logs.Log.Errorf("update session %s info failed in db, %s", s.ID, err.Error())
 	}
@@ -468,11 +506,7 @@ func (s *Session) NewTask(name string, total int) *Task {
 
 // Request
 func (s *Session) Request(msg *clientpb.SpiteRequest, stream grpc.ServerStream) error {
-	err := stream.SendMsg(msg)
-	if err != nil {
-		return err
-	}
-	return nil
+	return stream.SendMsg(msg)
 }
 
 func (s *Session) RequestAndWait(msg *clientpb.SpiteRequest, stream grpc.ServerStream, timeout time.Duration) (*implantpb.Spite, error) {
@@ -547,6 +581,15 @@ func (s *Session) DeleteResp(taskId uint32) {
 	s.responses.Delete(taskId)
 }
 
+// UpdateKeyPair 更新KeyPair并同步到SecureManager
+func (s *Session) UpdateKeyPair(keyPair *clientpb.KeyPair) {
+	s.SessionContext.KeyPair = keyPair
+	// 更新SecureManager中的KeyPair引用
+	if s.SecureManager != nil {
+		s.SecureManager.UpdateKeyPair(keyPair)
+	}
+}
+
 type sessions struct {
 	active *sync.Map // map[uint32]*Session
 }
@@ -607,4 +650,59 @@ func (s *sessions) Remove(sessionID string) {
 	//	EventType: consts.SessionClosedEvent,
 	//	Session:   parentSession,
 	//})
+}
+
+// initializePipelineKeyPair 从pipeline获取预分发的密钥对
+func (s *Session) initializeSecureManager(req *clientpb.RegisterSession) error {
+	pipeline, ok := Listeners.Find(req.PipelineId)
+	if !ok {
+		return fmt.Errorf("failed to get pipeline")
+	}
+
+	if pipeline == nil || pipeline.Secure == nil || !pipeline.Secure.Enable {
+		logs.Log.Debugf("[secure] pipeline secure mode not enabled for session %s", s.ID)
+		return nil
+	}
+
+	if req.RegisterData.Secure == nil || !req.RegisterData.Secure.Enable {
+		logs.Log.Debugf("[secure] session secure mode enabled for session %s", s.ID)
+		return nil
+	}
+
+	if s.KeyPair == nil {
+		s.KeyPair = &clientpb.KeyPair{
+			PublicKey:  pipeline.Secure.ImplantKeypair.PublicKey,
+			PrivateKey: pipeline.Secure.ServerKeypair.PrivateKey,
+		}
+	}
+
+	s.PushCtrl()
+	logs.Log.Infof("[secure] initialized session %s", s.ID)
+
+	s.SecureManager = NewSecureSpiteManager(s)
+	return nil
+}
+
+func (s *Session) UpdatePublicKey(key string) {
+	s.KeyPair.PublicKey = key
+	s.SecureManager.UpdateKeyPair(s.KeyPair)
+	s.PushCtrl()
+}
+
+func (s *Session) UpdatePrivateKey(key string) {
+	s.KeyPair.PrivateKey = key
+	s.SecureManager.UpdateKeyPair(s.KeyPair)
+	s.PushCtrl()
+}
+
+func (s *Session) PushCtrl() {
+	lns, err := Listeners.Get(s.ListenerID)
+	if err != nil {
+		return
+	}
+	s.Save()
+	lns.PushCtrl(&clientpb.JobCtrl{
+		Ctrl:    consts.CtrlListenerSyncSession,
+		Session: s.ToProtobufLite(),
+	})
 }

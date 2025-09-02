@@ -36,6 +36,7 @@ type TcpPipelineConfig struct {
 	Parser           string                  `config:"parser" default:"malefic"`
 	TlsConfig        *TlsConfig              `config:"tls"`
 	EncryptionConfig types.EncryptionsConfig `config:"encryption"`
+	SecureConfig     *types.SecureConfig     `config:"secure"` // Age 密码学安全配置
 }
 
 type AutoBuildConfig struct {
@@ -64,6 +65,7 @@ func (tcp *TcpPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, erro
 		},
 		Tls:        tls.ToProtobuf(),
 		Encryption: tcp.EncryptionConfig.ToProtobuf(),
+		Secure:     tcp.SecureConfig.ToProtobuf(),
 	}, nil
 }
 
@@ -100,6 +102,7 @@ type HttpPipelineConfig struct {
 	Parser           string                  `config:"parser" default:"malefic"`
 	TlsConfig        *TlsConfig              `config:"tls"`
 	EncryptionConfig types.EncryptionsConfig `config:"encryption"`
+	SecureConfig     *types.SecureConfig     `config:"secure"` // Age 密码学安全配置
 	Headers          map[string][]string     `config:"headers"`
 	ErrorPage        string                  `config:"error_page"`
 	BodyPrefix       string                  `config:"body_prefix"`
@@ -144,6 +147,7 @@ func (http *HttpPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, er
 		},
 		Tls:        tls.ToProtobuf(),
 		Encryption: http.EncryptionConfig.ToProtobuf(),
+		Secure:     http.SecureConfig.ToProtobuf(),
 	}, nil
 }
 

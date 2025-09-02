@@ -52,6 +52,7 @@ func (pipeline *Pipeline) ToProtobuf() *clientpb.Pipeline {
 			},
 			Tls:        pipeline.Tls.ToProtobuf(),
 			Encryption: pipeline.Encryption.ToProtobuf(),
+			Secure:     pipeline.Secure.ToProtobuf(),
 		}
 	case consts.HTTPPipeline:
 		return &clientpb.Pipeline{
@@ -72,6 +73,7 @@ func (pipeline *Pipeline) ToProtobuf() *clientpb.Pipeline {
 			},
 			Tls:        pipeline.Tls.ToProtobuf(),
 			Encryption: pipeline.Encryption.ToProtobuf(),
+			Secure:     pipeline.Secure.ToProtobuf(),
 		}
 	case consts.BindPipeline:
 		return &clientpb.Pipeline{
@@ -192,6 +194,7 @@ func FromPipelinePb(pipeline *clientpb.Pipeline) *Pipeline {
 				Parser:     pipeline.Parser,
 				Tls:        types.FromTls(pipeline.Tls),
 				Encryption: types.FromEncryptions(pipeline.Encryption),
+				Secure:     types.FromSecure(pipeline.Secure),
 			},
 		}
 	case *clientpb.Pipeline_Http:
@@ -208,6 +211,7 @@ func FromPipelinePb(pipeline *clientpb.Pipeline) *Pipeline {
 				Parser:     pipeline.Parser,
 				Tls:        types.FromTls(pipeline.Tls),
 				Encryption: types.FromEncryptions(pipeline.Encryption),
+				Secure:     types.FromSecure(pipeline.Secure),
 			},
 		}
 	case *clientpb.Pipeline_Bind:

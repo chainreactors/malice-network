@@ -132,7 +132,6 @@ func PipelineFlagSet(f *pflag.FlagSet) {
 	f.String("host", "0.0.0.0", "pipeline host, the default value is **0.0.0.0**")
 	f.Uint32P("port", "p", 0, "pipeline port, random port is selected from the range **10000-15000** ")
 	f.String("ip", "ip", "external ip")
-
 	SetFlagSetGroup(f, "pipeline")
 }
 
@@ -142,6 +141,18 @@ func ParsePipelineFlags(cmd *cobra.Command) (string, string, string, uint32) {
 	portUint, _ := cmd.Flags().GetUint32("port")
 	proxy, _ := cmd.Flags().GetString("proxy")
 	return listenerID, proxy, host, portUint
+}
+
+func SecureFlagSet(f *pflag.FlagSet) {
+	f.Bool("secure", false, "enable secure mode")
+	SetFlagSetGroup(f, "secure")
+}
+
+func ParseSecureFlags(cmd *cobra.Command) *clientpb.Secure {
+	secure, _ := cmd.Flags().GetBool("secure")
+	return &clientpb.Secure{
+		Enable: secure,
+	}
 }
 
 func ParseTLSFlags(cmd *cobra.Command) (*clientpb.TLS, string, error) {

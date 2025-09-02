@@ -4,11 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/chainreactors/malice-network/helper/certs"
-	"github.com/chainreactors/malice-network/helper/codenames"
-	"github.com/chainreactors/malice-network/helper/encoders"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
-	"github.com/chainreactors/malice-network/helper/utils/formatutils"
 	"mime"
 	"os"
 	"path/filepath"
@@ -16,10 +12,14 @@ import (
 	"strings"
 
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/certs"
+	"github.com/chainreactors/malice-network/helper/codenames"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/encoders"
 	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/types"
+	"github.com/chainreactors/malice-network/helper/utils/formatutils"
 	"github.com/chainreactors/malice-network/helper/utils/mtls"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/malice-network/server/internal/configs"
@@ -827,15 +827,7 @@ func NewProfile(profile *clientpb.Profile) error {
 		PipelineID: profile.PipelineId,
 		Raw:        profile.Content,
 	}
-	//if profile.PulsePipelineId != "" {
-	//	pulsePipeline, err := FindPipeline(profile.PulsePipelineId)
-	//	if err != nil {
-	//		return err
-	//	}
-	//	if strings.ToUpper(pulsePipeline.Encryption.Type) != consts.CryptorXOR {
-	//		return errs.ErrInvalidEncType
-	//	}
-	//}
+
 	return Session().Create(model).Error
 }
 
@@ -871,6 +863,18 @@ func GetProfile(name string) (*types.ProfileConfig, error) {
 		profile.Basic.Key = profileModel.Pipeline.Encryption.Choice().Key
 		profile.Basic.Protocol = profileModel.Pipeline.Type
 		profile.Basic.TLS.Enable = profileModel.Pipeline.Tls.Enable
+
+		if profileModel.Pipeline.Secure != nil && profileModel.Pipeline.Secure.Enable {
+			// Profile中需要保存implant编译时需要的密钥：
+			// - server公钥：implant用来加密发给server的数据
+			// - implant私钥：implant用来解密server发来的数据
+
+			profile.Basic.Secure = &types.SecureProfile{
+				Enable:            true,
+				ServerPublicKey:   profileModel.Pipeline.Secure.ServerPublicKey,
+				ImplantPrivateKey: profileModel.Pipeline.Secure.ImplantPrivateKey,
+			}
+		}
 	}
 	if params := profileModel.Params; params != nil {
 		profile.Basic.Interval = profileModel.Params.Interval
@@ -1223,6 +1227,56 @@ func DeleteArtifactByName(artifactName string) error {
 	err = Session().Delete(model).Error
 	if err != nil {
 		return err
+	}
+	return nil
+}
+
+// UpdateGeneratorConfig - Update the generator config
+func UpdateGeneratorConfig(req *clientpb.BuildConfig, config *types.ProfileConfig) error {
+	if config.Basic != nil {
+		if req.BuildName != "" {
+			config.Basic.Name = req.BuildName
+		}
+
+		if len(req.ParamsBytes) > 0 {
+			params, err := types.UnmarshalProfileParams(req.ParamsBytes)
+			if err != nil {
+				return err
+			}
+			if params.Interval != -1 {
+				config.Basic.Interval = params.Interval
+			}
+
+			if params.Jitter != -1 {
+				config.Basic.Jitter = params.Jitter
+			}
+			if params.Proxy != "" {
+				config.Basic.Proxy = params.Proxy
+			}
+
+			if params.Enable3RD {
+				config.Implant.Extras["3rd_modules"] = strings.Split(params.Modules, ",")
+				config.Implant.Extras["enable_3rd"] = true
+				config.Implant.Modules = []string{}
+			} else if params.Modules != "" {
+				config.Implant.Modules = strings.Split(params.Modules, ",")
+			}
+			if params.Address != "" {
+				config.Basic.Targets = []string{params.Address}
+				config.Basic.TLS.SNI = params.Address
+				config.Basic.Extras["http"].(map[string]interface{})["host"] = params.Address
+				config.Pulse.Target = params.Address
+				config.Pulse.Extras["http"].(map[string]interface{})["host"] = params.Address
+
+			}
+		}
+	}
+	if req.ArtifactId != 0 && config.Pulse.Flags.ArtifactID == 0 {
+		config.Pulse.Flags.ArtifactID = req.ArtifactId
+	}
+
+	if req.Type == consts.CommandBuildBind {
+		config.Implant.Mod = consts.CommandBuildBind
 	}
 	return nil
 }

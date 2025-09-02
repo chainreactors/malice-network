@@ -1,90 +1,91 @@
-server:
+listeners:
+  auth: listener.auth
+  auto_build:
+    build_pulse: true
+    enable: true
+    pipeline:
+    - tcp
+    - http
+    target:
+    - x86_64-pc-windows-gnu
+  bind:
+  - enable: false
+    encryption:
+      enable: true
+      key: maliceofinternal
+      type: aes
+    name: bind_pipeline
   enable: true
-  grpc_port: 5004
-  grpc_host: 0.0.0.0
+  http:
+  - enable: true
+    encryption:
+    - enable: true
+      key: maliceofinternal
+      type: aes
+    - enable: true
+      key: maliceofinternal
+      type: xor
+    error_page: ""
+    host: 0.0.0.0
+    name: http
+    parser: auto
+    port: 8080
+    secure:
+      enable: false
+    tls:
+      enable: true
   ip: 127.0.0.1
-  audit: 1  # 0 close , 1 basic , 2 detail
-  encryption_key: maliceofinternal
+  name: listener
+  rem:
+  - console: null
+    enable: true
+    name: rem_default
+  tcp:
+  - enable: true
+    encryption:
+    - enable: true
+      key: maliceofinternal
+      type: aes
+    - enable: true
+      key: maliceofinternal
+      type: xor
+    host: 0.0.0.0
+    name: tcp
+    parser: auto
+    port: 5001
+    protocol: tcp
+    secure:
+      enable: false
+    tls:
+      enable: true
+  website:
+  - enable: true
+    name: default-website
+    port: 80
+    root: /
+server:
+  audit: 1
   config:
-    packet_length: 10485760 # 10M: 1024*1024*10
-    certificate:
-    certificate_key:
+    certificate: null
+    certificate_key: null
+    packet_length: 10485760
+  enable: true
+  encryption_key: maliceofinternal
+  github:
+    owner: null
+    repo: malefic
+    token: null
+    workflow: generate.yml
+  grpc_host: 0.0.0.0
+  grpc_port: 5004
+  ip: 127.0.0.1
   notify:
     enable: false
     lark:
       enable: false
-      webhook_url:
-  github:
-    repo: malefic
-    workflow: generate.yml
-    owner:
-    token:
+      webhook_url: null
   saas:
-    enable: true
+    enable: false
+    token: null
     url: https://build.chainreactors.red
-    token:
 
-listeners:
-  name: listener
-  auth: listener.auth
-  enable: true
-  ip: 127.0.0.1
-  auto_build:
-    enable: true
-    build_pulse: true
-    target:
-      - x86_64-pc-windows-gnu
-    pipeline:
-      - tcp
-      - http
-  tcp:
-    - name: tcp
-      enable: true
-      port: 5001
-      host: 0.0.0.0
-      protocol: tcp
-      parser: auto
-      tls:
-        enable: true
-      encryption:
-        - enable: true
-          type: aes
-          key: maliceofinternal
-        - enable: true
-          type: xor
-          key: maliceofinternal
-
-  http:
-    - name: http
-      enable: true
-      host: 0.0.0.0
-      port: 8080
-      parser: auto
-      tls:
-        enable: true
-      encryption:
-        - enable: true
-          type: aes
-          key: maliceofinternal
-        - enable: true
-          type: xor
-          key: maliceofinternal
-      error_page: ""
-  bind:
-    - name: bind_pipeline
-      enable: false
-      encryption:
-        enable: true
-        type: aes
-        key: maliceofinternal
-  website:
-    - name: default-website
-      port: 80
-      root: "/"
-      enable: true
-
-  rem:
-    -
-      name: rem_default
-      enable: true
-      console:

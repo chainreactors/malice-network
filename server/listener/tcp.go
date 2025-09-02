@@ -10,8 +10,6 @@ import (
 
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/encoders"
-	"github.com/chainreactors/malice-network/helper/encoders/hash"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
@@ -19,7 +17,7 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/parser"
-	"github.com/chainreactors/malice-network/server/internal/stream"
+	cryptostream "github.com/chainreactors/malice-network/server/internal/stream"
 )
 
 func NewTcpPipeline(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeline) (*TCPPipeline, error) {
@@ -68,6 +66,7 @@ func (pipeline *TCPPipeline) ToProtobuf() *clientpb.Pipeline {
 		},
 		Tls:        pipeline.TLSConfig.ToProtobuf(),
 		Encryption: pipeline.Encryption.ToProtobuf(),
+		Secure:     pipeline.SecureConfig.ToProtobuf(),
 	}
 	return p
 }
@@ -218,7 +217,7 @@ func (pipeline *TCPPipeline) handlePulse(conn *cryptostream.Conn) {
 
 func (pipeline *TCPPipeline) handleBeacon(conn *cryptostream.Conn) {
 	defer conn.Close()
-	connect, err := pipeline.getConnection(conn)
+	connect, err := core.GetConnection(conn, pipeline.ID(), pipeline.SecureConfig)
 	if err != nil {
 		logs.Log.Debugf("peek read header error: %s %v", conn.RemoteAddr(), err)
 		return
@@ -234,20 +233,5 @@ func (pipeline *TCPPipeline) handleBeacon(conn *cryptostream.Conn) {
 			}
 			return
 		}
-	}
-}
-
-func (pipeline *TCPPipeline) getConnection(conn *cryptostream.Conn) (*core.Connection, error) {
-	sid, err := cryptostream.PeekSid(conn)
-	if err != nil {
-		return nil, err
-	}
-
-	if newC := core.Connections.Get(hash.Md5Hash(encoders.Uint32ToBytes(sid))); newC != nil {
-		return newC, nil
-	} else {
-		newC := core.NewConnection(conn.Parser, sid, pipeline.ID())
-		core.Connections.Add(newC)
-		return newC, nil
 	}
 }

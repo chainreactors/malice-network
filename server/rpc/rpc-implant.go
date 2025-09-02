@@ -3,16 +3,16 @@ package rpc
 import (
 	"context"
 	"fmt"
-	"time"
-
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
+	"time"
 )
 
 func (rpc *Server) Register(ctx context.Context, req *clientpb.RegisterSession) (*clientpb.Empty, error) {
@@ -29,7 +29,7 @@ func (rpc *Server) Register(ctx context.Context, req *clientpb.RegisterSession) 
 			return nil, err
 		} else {
 			sess.Publish(consts.CtrlSessionRegister, fmt.Sprintf("new session %s from %s start at %s", sess.Abstract(), sess.Target, sess.PipelineID), true, true)
-			logs.Log.Importantf("recover session %s from %s", sess.ID, sess.PipelineID)
+			logs.Log.Importantf("new session %s from %s", sess.ID, sess.PipelineID)
 		}
 		core.Sessions.Add(sess)
 	} else {
@@ -38,7 +38,13 @@ func (rpc *Server) Register(ctx context.Context, req *clientpb.RegisterSession) 
 		//sess.Publish(consts.CtrlSessionReborn, fmt.Sprintf("%s from %s reborn at %s", sess.Abstract(), sess.Target, sess.PipelineID), true, true)
 		core.Sessions.Add(sess)
 	}
-
+	// 如果启用了安全模式，自动触发密钥交换
+	if sess.SecureManager != nil {
+		err := rpc.triggerKeyExchange(ctx, sess)
+		if err != nil {
+			return nil, err
+		}
+	}
 	return &clientpb.Empty{}, nil
 }
 
@@ -78,6 +84,18 @@ func (rpc *Server) Checkin(ctx context.Context, req *implantpb.Ping) (*clientpb.
 	sess.LastCheckin = getTimestamp(ctx)
 	sess.Publish(consts.CtrlSessionCheckin, "", false, false)
 
+	// 增加密钥轮换计数器并检查是否需要轮换
+	if sess.SecureManager != nil {
+		if sess.SecureManager.ShouldRotateKey() {
+			err = rpc.triggerKeyExchange(ctx, sess)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			sess.SecureManager.IncrementCounter()
+		}
+	}
+
 	return &clientpb.Empty{}, nil
 }
 
@@ -96,7 +114,7 @@ func (rpc *Server) Sleep(ctx context.Context, req *implantpb.Timer) (*clientpb.T
 	if session, err := getSession(ctx); err == nil {
 		session.Jitter = req.Jitter
 		session.Expression = req.Expression
-		err := db.UpdateSessionTimer(session.ID, req.Expression, req.Jitter)
+		err := session.Save()
 		if err != nil {
 			return nil, err
 		}
@@ -203,4 +221,26 @@ func (rpc *Server) Polling(ctx context.Context, req *clientpb.Polling) (*clientp
 		}
 	}()
 	return &clientpb.Empty{}, err
+}
+
+// triggerKeyExchange 自动触发密钥交换流程
+func (rpc *Server) triggerKeyExchange(ctx context.Context, sess *core.Session) error {
+	// 构建密钥交换请求
+	keyPair, err := cryptography.RandomAgeKeyPair()
+	if err != nil {
+		return err
+	}
+
+	// 创建请求
+	req := &implantpb.KeyExchangeRequest{
+		PublicKey: keyPair.Public,
+		Timestamp: uint64(time.Now().Unix()),
+		Nonce:     cryptography.RandomString(16),
+	}
+	sess.SecureManager.ResetCounters()
+	_, err = rpc.GenericInternal(ctx, req, consts.ModuleKeyExchange, func(spite *implantpb.Spite) {
+		sess.UpdatePublicKey(spite.GetKeyExchangeResponse().PublicKey)
+	})
+	sess.UpdatePrivateKey(keyPair.Private)
+	return err
 }

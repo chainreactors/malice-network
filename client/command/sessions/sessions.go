@@ -38,23 +38,19 @@ func SessionsCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	isStatic, err := cmd.Flags().GetBool("static")
-	if err != nil {
-		return err
-	}
 	err = con.UpdateSessions(isAll)
 	if err != nil {
 		return err
 	}
 	if 0 < len(con.Sessions) {
-		PrintSessions(con.Sessions, con, isAll, isStatic)
+		PrintSessions(con.Sessions, con, isAll)
 	} else {
 		con.Log.Info("No sessions\n")
 	}
 	return nil
 }
 
-func PrintSessions(sessions map[string]*core.Session, con *repl.Console, isAll, isStastic bool) {
+func PrintSessions(sessions map[string]*core.Session, con *repl.Console, isAll bool) {
 	//var colorIndex = 1
 	var rowEntries []table.Row
 	var row table.Row
@@ -120,10 +116,6 @@ func PrintSessions(sessions map[string]*core.Session, con *repl.Console, isAll, 
 	}, false)
 	tableModel.SetAscSort("Last")
 	tableModel.SetRows(rowEntries)
-	if isStastic {
-		con.Log.Infof(newTable.View())
-		return
-	}
 	tableModel.SetMultiline()
 	tableModel.SetHandle(func() {
 		SessionLogin(tableModel, tableModel.Buffer, con)()

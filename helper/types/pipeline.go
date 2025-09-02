@@ -3,9 +3,10 @@ package types
 import (
 	"crypto/x509/pkix"
 	"encoding/json"
+	"math/rand"
+
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/utils"
-	"math/rand"
 )
 
 func FromTls(tls *clientpb.TLS) *TlsConfig {
@@ -145,6 +146,82 @@ func (encryption *EncryptionConfig) ToProtobuf() *clientpb.Encryption {
 	}
 }
 
+type SecureConfig struct {
+	Enable            bool   `json:"enable" config:"enable" default:"false"`
+	ServerPublicKey   string `json:"server_public_key" config:"server_public_key"`     // Age 服务端公钥
+	ServerPrivateKey  string `json:"server_private_key" config:"server_private_key"`   // Age 服务端私钥
+	ImplantPublicKey  string `json:"implant_public_key" config:"implant_public_key"`   // Age Implant公钥
+	ImplantPrivateKey string `json:"implant_private_key" config:"implant_private_key"` // Age Implant私钥
+}
+
+// ServerKeypair 返回服务端密钥对的 protobuf 结构
+func (secure *SecureConfig) ServerKeypair() *clientpb.KeyPair {
+	if secure == nil {
+		return &clientpb.KeyPair{}
+	}
+	return &clientpb.KeyPair{
+		PublicKey:  secure.ServerPublicKey,
+		PrivateKey: secure.ServerPrivateKey,
+	}
+}
+
+// ImplantKeypair 返回 Implant 密钥对的 protobuf 结构
+func (secure *SecureConfig) ImplantKeypair() *clientpb.KeyPair {
+	if secure == nil {
+		return &clientpb.KeyPair{}
+	}
+	return &clientpb.KeyPair{
+		PublicKey:  secure.ImplantPublicKey,
+		PrivateKey: secure.ImplantPrivateKey,
+	}
+}
+
+// ExchangeKeyPair 返回用于密钥交换的密钥对（implant公钥 + server私钥）
+func (secure *SecureConfig) ExchangeKeyPair() *clientpb.KeyPair {
+	if secure == nil {
+		return &clientpb.KeyPair{}
+	}
+	return &clientpb.KeyPair{
+		PublicKey:  secure.ImplantPublicKey,
+		PrivateKey: secure.ServerPrivateKey,
+	}
+}
+
+// ToProtobuf 转换为 protobuf 结构
+func (secure *SecureConfig) ToProtobuf() *clientpb.Secure {
+	if secure == nil {
+		return &clientpb.Secure{
+			Enable: false,
+		}
+	}
+	return &clientpb.Secure{
+		Enable:         secure.Enable,
+		ServerKeypair:  secure.ServerKeypair(),
+		ImplantKeypair: secure.ImplantKeypair(),
+	}
+}
+
+// FromSecure 从 protobuf 转换为 SecureConfig
+func FromSecure(secure *clientpb.Secure) *SecureConfig {
+	if secure == nil {
+		return &SecureConfig{
+			Enable: false,
+		}
+	}
+	config := &SecureConfig{
+		Enable: secure.Enable,
+	}
+	if secure.ServerKeypair != nil {
+		config.ServerPublicKey = secure.ServerKeypair.PublicKey
+		config.ServerPrivateKey = secure.ServerKeypair.PrivateKey
+	}
+	if secure.ImplantKeypair != nil {
+		config.ImplantPublicKey = secure.ImplantKeypair.PublicKey
+		config.ImplantPrivateKey = secure.ImplantKeypair.PrivateKey
+	}
+	return config
+}
+
 type PipelineParams struct {
 	Parser     string                        `json:"parser,omitempty"`
 	WebPath    string                        `json:"path,omitempty"`
@@ -154,6 +231,7 @@ type PipelineParams struct {
 	Agents     map[string]*clientpb.REMAgent `json:"agents,omitempty"`
 	Encryption EncryptionsConfig             `json:"encryption,omitempty"`
 	Tls        *TlsConfig                    `json:"tls,omitempty"`
+	Secure     *SecureConfig                 `json:"secure,omitempty"`
 	// HTTP pipeline specific params
 	Headers    map[string][]string `json:"headers,omitempty"`
 	ErrorPage  string              `json:"error_page,omitempty" gorm:"-"`

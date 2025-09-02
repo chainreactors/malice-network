@@ -274,7 +274,7 @@ func (opt *Options) Handler() error {
 	signal.Stop(c)
 
 	for _, session := range core.Sessions.All() {
-		err := session.Save()
+		err := session.Cache.Save()
 		if err != nil {
 			return err
 		}

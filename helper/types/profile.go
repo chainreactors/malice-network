@@ -1,9 +1,9 @@
 package types
 
 import (
-	_ "embed"
 	"encoding/json"
 	"fmt"
+
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"gopkg.in/yaml.v3"
@@ -33,8 +33,15 @@ type BasicProfile struct {
 	Encryption string                 `yaml:"encryption" config:"encryption" default:"aes"`
 	Key        string                 `yaml:"key" config:"key" default:"maliceofinternal"`
 	REM        *REMProfile            `yaml:"rem" config:"rem"`
+	Secure     *SecureProfile         `yaml:"secure" config:"secure"`
 	Http       *HttpProfile           `yaml:"http" config:"http"`
 	Extras     map[string]interface{} `yaml:",inline"`
+}
+
+type SecureProfile struct {
+	Enable            bool   `yaml:"enable" config:"enable" default:"false"`
+	ServerPublicKey   string `yaml:"public_key" config:"public_key" default:""`
+	ImplantPrivateKey string `yaml:"private_key" config:"private_key" default:""`
 }
 
 type REMProfile struct {

@@ -2,11 +2,12 @@ package db
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"gorm.io/gorm/logger"
-	"time"
 
 	"gorm.io/gorm"
 )

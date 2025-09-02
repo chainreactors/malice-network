@@ -16,6 +16,9 @@ const (
 	MsgSwitch MsgName = consts.ModuleSwitch
 	MsgTask   MsgName = "task"
 	MsgTasks  MsgName = "tasks"
+
+	// cryptographic key exchange
+	MsgKeyExchangeResponse MsgName = consts.ModuleKeyExchange
 	// basic message
 	MsgResponse MsgName = "response"
 	MsgBlock    MsgName = "block"
@@ -52,10 +55,10 @@ const (
 	MsgTaskSchdResponse  MsgName = consts.ModuleTaskSchdQuery
 	MsgWmiQuery          MsgName = consts.ModuleWmiQuery
 	MsgWmiExecute        MsgName = consts.ModuleWmiExec
-
-	MsgPty           MsgName = consts.ModulePty
-	MsgShellRequest  MsgName = consts.ModuleShellRequest
-	MsgShellResponse MsgName = consts.ModuleShellResponse
+	MsgKeyExchange       MsgName = consts.ModuleKeyExchange
+	MsgPty               MsgName = consts.ModulePty
+	MsgShellRequest      MsgName = consts.ModuleShellRequest
+	MsgShellResponse     MsgName = consts.ModuleShellResponse
 )
 
 func (r MsgName) String() string {
@@ -125,7 +128,10 @@ func MessageType(message *implantpb.Spite) MsgName {
 		return MsgTaskSchdsResponse
 	case *implantpb.Spite_ShellResponse:
 		return MsgShellResponse
-
+	case *implantpb.Spite_KeyExchangeResponse:
+		return MsgKeyExchangeResponse
+	case *implantpb.Spite_KeyExchangeRequest:
+		return MsgKeyExchange
 	default:
 		return MsgUnknown
 	}

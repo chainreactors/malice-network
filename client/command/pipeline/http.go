@@ -31,6 +31,8 @@ func NewHttpPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 		parser = consts.ImplantMalefic
 	}
 
+	secure := common.ParseSecureFlags(cmd)
+
 	// 解析HTTP特定的参数
 	headers, _ := cmd.Flags().GetStringToString("headers")
 	errorPage, _ := cmd.Flags().GetString("error-page")
@@ -53,6 +55,7 @@ func NewHttpPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 	pipeline := &clientpb.Pipeline{
 		Encryption: encryption,
 		Tls:        tls,
+		Secure:     secure,
 		Name:       name,
 		ListenerId: listenerID,
 		Parser:     parser,
