@@ -110,8 +110,14 @@ func PrintArtifacts(artifacts *clientpb.Artifacts, con *repl.Console) error {
 		table.NewColumn("Status", "Status", defaultLengths["Status"]),
 		table.NewColumn("CreatedAt", "CreatedAt", defaultLengths["CreatedAt"]),
 	}, false)
+  
 	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)
+	if isStatic {
+		con.Log.Infof(newTable.View())
+		return nil
+	}
+	tableModel.SetMultiline()
 	tableModel.SetHandle(func() {})
 	err := tableModel.Run()
 	if err != nil {

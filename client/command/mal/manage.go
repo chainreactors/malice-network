@@ -51,8 +51,12 @@ func MalCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
+	isStatic, err := cmd.Flags().GetBool("static")
+	if err != nil {
+		return err
+	}
 	if len(malsJson.Mals) > 0 {
-		err = printMals(malsJson, malHttpConfig, con)
+		err = printMals(malsJson, malHttpConfig, con, isStatic)
 		if err != nil {
 			return err
 		}
@@ -62,7 +66,7 @@ func MalCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func printMals(maljson m.MalsYaml, malHttpConfig m.MalHTTPConfig, con *repl.Console) error {
+func printMals(maljson m.MalsYaml, malHttpConfig m.MalHTTPConfig, con *repl.Console, isStatic bool) error {
 	var rowEntries []table.Row
 	var row table.Row
 
@@ -85,6 +89,11 @@ func printMals(maljson m.MalsYaml, malHttpConfig m.MalHTTPConfig, con *repl.Cons
 
 	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)
+	if isStatic {
+		con.Log.Infof(newTable.View())
+		return nil
+	}
+	tableModel.SetMultiline()
 	tableModel.SetHandle(func() {
 		selectRow := tableModel.GetHighlightedRow()
 		if selectRow.Data == nil {

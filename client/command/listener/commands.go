@@ -17,6 +17,9 @@ func Commands(con *repl.Console) []*cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ListenerCmd(cmd, con)
 		},
+		Annotations: map[string]string{
+			"resource": "true",
+		},
 		Example: `~~~
 listener
 ~~~`,
@@ -28,6 +31,9 @@ listener
 		Long:  "Use a table to list jobs on the server",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ListJobsCmd(cmd, con)
+		},
+		Annotations: map[string]string{
+			"resource": "true",
 		},
 		Example: `~~~
 job
