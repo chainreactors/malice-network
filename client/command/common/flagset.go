@@ -15,6 +15,7 @@ func ExecuteFlagSet(f *pflag.FlagSet) {
 	f.BoolP("quiet", "q", false, "disable output")
 	f.Uint32P("timeout", "t", 60, "timeout, in seconds")
 	f.String("arch", "", "architecture x64,x86")
+	f.Uint32("delay", 1, "delay before execution in milliseconds")
 
 	SetFlagSetGroup(f, "execute")
 }

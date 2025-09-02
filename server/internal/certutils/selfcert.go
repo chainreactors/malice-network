@@ -11,7 +11,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/mtls"
 	"github.com/chainreactors/malice-network/server/internal/configs"
-	"os"
 	"path"
 )
 
@@ -77,17 +76,6 @@ func GenerateRootCert() error {
 func GenerateServerCert(name string) ([]byte, []byte, error) {
 	certPath := path.Join(configs.CertsPath, certs.ServerCert)
 	certKeyPath := path.Join(configs.CertsPath, certs.ServerKey)
-	if fileutils.Exist(certPath) && fileutils.Exist(certKeyPath) {
-		certBytes, err := os.ReadFile(certPath)
-		if err != nil {
-			return nil, nil, err
-		}
-		keyBytes, err := os.ReadFile(certKeyPath)
-		if err != nil {
-			return nil, nil, err
-		}
-		return certBytes, keyBytes, nil
-	}
 	ca, caKey, err := GetCertificateAuthority()
 	if err != nil {
 		return nil, nil, err

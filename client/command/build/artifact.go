@@ -110,8 +110,14 @@ func PrintArtifacts(artifacts *clientpb.Artifacts, con *repl.Console) error {
 		table.NewColumn("Status", "Status", defaultLengths["Status"]),
 		table.NewColumn("CreatedAt", "CreatedAt", defaultLengths["CreatedAt"]),
 	}, false)
+  
 	tableModel.SetMultiline()
 	tableModel.SetRows(rowEntries)
+	if isStatic {
+		con.Log.Infof(newTable.View())
+		return nil
+	}
+	tableModel.SetMultiline()
 	tableModel.SetHandle(func() {})
 	err := tableModel.Run()
 	if err != nil {
@@ -165,8 +171,9 @@ func printArtifact(artifact *clientpb.Artifact) {
 		"Target":   artifact.Target,
 		"Profile":  artifact.Profile,
 		"Pipeline": artifact.Pipeline,
+		"Size":     fileutils.Bytes(uint64(len(artifact.Bin))),
 	}
-	orderedKeys := []string{"ID", "Name", "Type", "Target", "Profile", "Pipeline"}
+	orderedKeys := []string{"ID", "Name", "Type", "Target", "Profile", "Pipeline", "Size"}
 	tui.RenderKV(art, orderedKeys)
 }
 
@@ -175,7 +182,8 @@ func DownloadArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
 	name := cmd.Flags().Arg(0)
 	output, _ := cmd.Flags().GetString("output")
 	format, _ := cmd.Flags().GetString("format")
-	artifact, err := DownloadArtifact(con, name, format)
+	rdi, _ := cmd.Flags().GetString("RDI")
+	artifact, err := DownloadArtifact(con, name, format, rdi)
 	if err != nil {
 		con.Log.Errorf("Download artifact failed: %s", err)
 		return err
@@ -219,10 +227,11 @@ func DownloadArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func DownloadArtifact(con *repl.Console, name string, format string) (*clientpb.Artifact, error) {
+func DownloadArtifact(con *repl.Console, name string, format string, rdi string) (*clientpb.Artifact, error) {
 	artifact, err := con.Rpc.DownloadArtifact(con.Context(), &clientpb.Artifact{
 		Name:   name,
 		Format: format,
+		Rdi:    rdi,
 	})
 	if err != nil {
 		return artifact, err
@@ -234,7 +243,7 @@ func DownloadArtifact(con *repl.Console, name string, format string) (*clientpb.
 }
 
 func WriteOriginArtifact(con *repl.Console, name string) error {
-	artifact, err := DownloadArtifact(con, name, "")
+	artifact, err := DownloadArtifact(con, name, "", "")
 	if err != nil {
 		return err
 	}

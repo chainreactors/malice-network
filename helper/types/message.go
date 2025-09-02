@@ -38,7 +38,6 @@ const (
 	MsgLoadModule     MsgName = consts.ModuleLoadModule
 	MsgListAddon      MsgName = consts.ModuleListAddon
 	MsgLoadAddon      MsgName = consts.ModuleLoadAddon
-	MsgKeyExchange    MsgName = consts.ModuleKeyExchange
 	MsgBinaryResponse MsgName = "assembly_response"
 	MsgExecuteAddon   MsgName = consts.ModuleExecuteAddon
 	MsgExecuteLocal   MsgName = consts.ModuleExecuteLocal
@@ -56,6 +55,10 @@ const (
 	MsgTaskSchdResponse  MsgName = consts.ModuleTaskSchdQuery
 	MsgWmiQuery          MsgName = consts.ModuleWmiQuery
 	MsgWmiExecute        MsgName = consts.ModuleWmiExec
+
+	MsgPty           MsgName = consts.ModulePty
+	MsgShellRequest  MsgName = consts.ModuleShellRequest
+	MsgShellResponse MsgName = consts.ModuleShellResponse
 )
 
 func (r MsgName) String() string {
@@ -123,6 +126,8 @@ func MessageType(message *implantpb.Spite) MsgName {
 		return MsgTaskSchdResponse
 	case *implantpb.Spite_SchedulesResponse:
 		return MsgTaskSchdsResponse
+	case *implantpb.Spite_ShellResponse:
+		return MsgShellResponse
 	case *implantpb.Spite_KeyExchangeResponse:
 		return MsgKeyExchangeResponse
 	case *implantpb.Spite_KeyExchangeRequest:

@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"mime"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/chainreactors/logs"
@@ -140,11 +142,42 @@ func RemoveSession(sessionID string) error {
 	return result.Error
 }
 
+func UpdateSession(sessionID, note, group string) error {
+	var session models.Session
+	result := Session().Where("session_id = ?", sessionID).First(&session)
+	if result.Error != nil {
+		return result.Error
+	}
+	if group != "" {
+		session.GroupName = group
+	}
+	if note != "" {
+		session.Note = note
+	}
+	result = Session().Save(&session)
+	return result.Error
+}
+
+func UpdateSessionTimer(sessionID string, expression string, jitter float64) error {
+	var session *models.Session
+	result := Session().Where("session_id = ?", sessionID).First(&session)
+	if result.Error != nil {
+		return result.Error
+	}
+	session.Data.Expression = expression
+	if jitter != 0 {
+		session.Data.Jitter = jitter
+	}
+	result = Session().Save(&session)
+	return result.Error
+}
+
 func CreateOperator(client *models.Operator) error {
 	err := Session().Save(client).Error
 	return err
 
 }
+
 func ListClients() ([]*models.Operator, error) {
 	var operators []*models.Operator
 	err := Session().Find(&operators).Where("type = ?", mtls.Client).Error
@@ -194,7 +227,7 @@ func GetDownloadFiles(sid string) ([]*clientpb.File, error) {
 	if sid == "" {
 		result = Session().Where("type = ?", consts.ContextDownload).Find(&files)
 	} else {
-		result = Session().Where("session_id = ?", sid).Where("type = ?", consts.ContextDownload).Find(&files)
+		result = Session().Where("session_id = ?", sid).Preload("Session").Where("type = ?", consts.ContextDownload).Find(&files)
 	}
 	if result.Error != nil {
 		return nil, result.Error
@@ -205,12 +238,15 @@ func GetDownloadFiles(sid string) ([]*clientpb.File, error) {
 		if err != nil {
 			return nil, err
 		}
+		parts := strings.Split(file.TaskID, "-")
+		taskID := parts[len(parts)-1]
+		taskIDUint, err := strconv.ParseUint(taskID, 10, 32)
 		res = append(res, &clientpb.File{
 			Name:      download.Name,
 			Local:     download.FilePath,
 			Checksum:  download.Checksum,
 			Remote:    download.TargetPath,
-			TaskId:    file.Task.Seq,
+			TaskId:    uint32(taskIDUint),
 			SessionId: file.SessionID,
 		})
 	}
@@ -449,7 +485,7 @@ func SaveCertFromTLS(tls *clientpb.TLS, pipeline string) (*models.Certificate, e
 		certModel.Name = tls.Domain
 		certModel.Domain = tls.Domain
 		certModel.Type = certs.Acme
-	} else if tls.Ca.Key != "" {
+	} else if tls.Ca != nil && tls.Ca.Key != "" {
 		certModel.Name = codenames.GetCodename()
 		certModel.Type = certs.SelfSigned
 		certModel.CACertPEM = tls.Ca.Cert
@@ -457,7 +493,9 @@ func SaveCertFromTLS(tls *clientpb.TLS, pipeline string) (*models.Certificate, e
 	} else {
 		certModel.Name = codenames.GetCodename()
 		certModel.Type = certs.Imported
-		certModel.CACertPEM = tls.Ca.Cert
+		if tls.Ca != nil {
+			certModel.CACertPEM = tls.Ca.Cert
+		}
 	}
 	err := SaveCertificate(certModel)
 	if err != nil {
@@ -718,15 +756,58 @@ func RemoveContent(id string) error {
 	return err
 }
 
+// validateProfileName validates the profile name
+func validateProfileName(name string) error {
+	if name == "" {
+		return fmt.Errorf("profile name cannot be empty")
+	}
+	if len(name) > 100 {
+		return fmt.Errorf("profile name too long (max 100 characters)")
+	}
+	return nil
+}
+
 // generator
 func NewProfile(profile *clientpb.Profile) error {
 	// Validate input
-	if profile.Name == "" {
-		return fmt.Errorf("profile name cannot be empty")
+	if err := validateProfileName(profile.Name); err != nil {
+		return err
 	}
 
 	if profile.Content == nil {
-		profile.Content = types.DefaultProfile
+		profile.Content = consts.DefaultProfile
+	}
+
+	contentType := fileutils.DetectContentType(profile.Content)
+	switch contentType {
+	case "zip":
+		profilePath := filepath.Join(configs.ProfilePath, profile.Name)
+		os.MkdirAll(profilePath, 0700)
+		err := fileutils.DecompressBase64ToFiles(string(profile.Content), profilePath)
+		if err != nil {
+			return fmt.Errorf("failed to decompress zip content: %w", err)
+		}
+
+		configPath := filepath.Join(profilePath, "config.yaml")
+		if !fileutils.Exist(configPath) {
+			return fmt.Errorf("config.yaml not found in zip content")
+		}
+
+		yamlContent, err := os.ReadFile(configPath)
+		if err != nil {
+			return fmt.Errorf("failed to read config.yaml: %w", err)
+		}
+
+		config, err := types.LoadProfile(yamlContent)
+		if err != nil {
+			return fmt.Errorf("failed to parse yaml config: %w", err)
+		}
+
+		if err := config.ValidateProfileFiles(profilePath); err != nil {
+			return fmt.Errorf("profile validation failed: %w", err)
+		}
+
+		profile.Content = yamlContent
 	}
 
 	// Check if profile name already exists
@@ -855,6 +936,10 @@ func DeleteProfileByName(profileName string) error {
 	err := Session().Where("name = ?", profileName).Delete(&models.Profile{}).Error
 	if err != nil {
 		return fmt.Errorf("failed to delete profile '%s': %v", profileName, err)
+	}
+	err = fileutils.ForceRemoveAll(filepath.Join(configs.ProfilePath, profileName))
+	if err != nil {
+		return err
 	}
 	return nil
 }

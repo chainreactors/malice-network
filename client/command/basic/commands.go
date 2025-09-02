@@ -1,6 +1,7 @@
 package basic
 
 import (
+	"github.com/carapace-sh/carapace"
 	"errors"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
@@ -18,7 +19,7 @@ import (
 
 func Commands(con *repl.Console) []*cobra.Command {
 	sleepCmd := &cobra.Command{
-		Use:   consts.ModuleSleep + " [interval/second]",
+		Use:   consts.ModuleSleep + " [expression]",
 		Short: "change implant sleep config",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -50,7 +51,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	}
 
 	waitCmd := &cobra.Command{
-		Use:   consts.CommandWait + " [task_id1] [task_id2]",
+		Use:   consts.CommandWait,
 		Short: "wait for task to finish",
 		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -59,10 +60,14 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Annotations: map[string]string{
 			"implant": consts.ImplantMaleficBind,
 		},
+		Example: `Wait task content.
+~~~
+wait 59
+~~~
+`,
 	}
-	common.BindFlag(waitCmd, func(f *pflag.FlagSet) {
-		f.Int("interval", 1, "interval")
-	})
+	common.BindArgCompletions(waitCmd, nil, carapace.ActionValues().Usage("task ID"))
+
 	taskComp := common.SessionTaskCompleter(con)
 	common.BindArgCompletions(waitCmd, &taskComp)
 
@@ -127,8 +132,8 @@ func Register(con *repl.Console) {
 	con.RegisterImplantFunc(consts.ModuleSleep,
 		Sleep,
 		"bsleep",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, interval uint64) (*clientpb.Task, error) {
-			return Sleep(rpc, sess, interval, sess.Timer.Jitter)
+		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, expression string, jitter uint64) (*clientpb.Task, error) {
+			return Sleep(rpc, sess, expression, sess.Timer.Jitter)
 		},
 		output.ParseStatus,
 		nil,

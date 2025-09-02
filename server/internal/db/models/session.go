@@ -96,7 +96,7 @@ func (s *Session) ToProtobuf() *clientpb.Session {
 		Proxy:         s.Data.ProxyURL,
 		Os:            s.Data.Os,
 		Process:       s.Data.Process,
-		Timer:         &implantpb.Timer{Interval: s.Data.Interval, Jitter: s.Data.Jitter},
+		Timer:         &implantpb.Timer{Expression: s.Data.Expression, Jitter: s.Data.Jitter},
 		Modules:       s.Data.Modules,
 		CreatedAt:     s.CreatedAt.Unix(),
 		Addons:        s.Data.Addons,
@@ -107,14 +107,14 @@ func (s *Session) ToProtobuf() *clientpb.Session {
 }
 
 type Timer struct {
-	Interval uint64  `json:"interval"`
-	Jitter   float64 `json:"jitter"`
+	Expression string  `json:"expression"`
+	Jitter     float64 `json:"jitter"`
 }
 
 func (t *Timer) toProtobuf() *implantpb.Timer {
 	return &implantpb.Timer{
-		Interval: t.Interval,
-		Jitter:   t.Jitter,
+		Expression: t.Expression,
+		Jitter:     t.Jitter,
 	}
 }
 
@@ -123,8 +123,8 @@ func FromTimePb(timer *implantpb.Timer) *Timer {
 		return &Timer{}
 	}
 	return &Timer{
-		Interval: timer.Interval,
-		Jitter:   timer.Jitter,
+		Expression: timer.Expression,
+		Jitter:     timer.Jitter,
 	}
 }
 

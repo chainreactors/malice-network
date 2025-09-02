@@ -4,6 +4,7 @@ import (
 	"embed"
 	"fmt"
 	"github.com/chainreactors/logs"
+	"github.com/chainreactors/malice-network/helper/intl"
 	lua "github.com/yuin/gopher-lua"
 	"gopkg.in/yaml.v3"
 	"io/fs"
@@ -14,7 +15,6 @@ import (
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/intermediate"
-	"github.com/chainreactors/malice-network/helper/intl"
 )
 
 // MalLevel 表示mal插件的级别

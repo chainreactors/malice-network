@@ -60,6 +60,7 @@ type Console struct {
 	App        *console.Console
 	Profile    *assets.Profile
 	CMDs       map[string]*cobra.Command
+  MCP     *MCPServer
 	Helpers    map[string]*cobra.Command
 	MalManager *plugin.MalManager
 }

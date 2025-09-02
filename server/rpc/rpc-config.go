@@ -52,6 +52,9 @@ func (rpc *Server) GetNotifyConfig(ctx context.Context, req *clientpb.Empty) (*c
 	if notifyConfig.ServerChan == nil {
 		notifyConfig.ServerChan = &configs.ServerChanConfig{}
 	}
+	if notifyConfig.PushPlus == nil {
+		notifyConfig.PushPlus = &configs.PushPlusConfig{}
+	}
 	return &clientpb.Notify{
 		TelegramEnable:   notifyConfig.Telegram.Enable,
 		TelegramApiKey:   notifyConfig.Telegram.APIKey,
@@ -63,12 +66,16 @@ func (rpc *Server) GetNotifyConfig(ctx context.Context, req *clientpb.Empty) (*c
 		LarkWebhookUrl:   notifyConfig.Lark.WebHookUrl,
 		ServerchanEnable: notifyConfig.ServerChan.Enable,
 		ServerchanUrl:    notifyConfig.ServerChan.URL,
+		PushplusEnable:   notifyConfig.PushPlus.Enable,
+		PushplusToken:    notifyConfig.PushPlus.Token,
+		PushplusTopic:    notifyConfig.PushPlus.Topic,
+		PushplusChannel:  notifyConfig.PushPlus.Channel,
 	}, nil
 }
 
 func (rpc *Server) UpdateNotifyConfig(ctx context.Context, req *clientpb.Notify) (*clientpb.Empty, error) {
 	notifyConfig := &configs.NotifyConfig{
-		Enable: req.TelegramEnable || req.DingtalkEnable || req.LarkEnable || req.ServerchanEnable,
+		Enable: req.TelegramEnable || req.DingtalkEnable || req.LarkEnable || req.ServerchanEnable || req.PushplusEnable,
 		Telegram: &configs.TelegramConfig{
 			Enable: req.TelegramEnable,
 			APIKey: req.TelegramApiKey,
@@ -86,6 +93,12 @@ func (rpc *Server) UpdateNotifyConfig(ctx context.Context, req *clientpb.Notify)
 		ServerChan: &configs.ServerChanConfig{
 			Enable: req.ServerchanEnable,
 			URL:    req.ServerchanUrl,
+		},
+		PushPlus: &configs.PushPlusConfig{
+			Enable:  req.PushplusEnable,
+			Token:   req.PushplusToken,
+			Topic:   req.PushplusTopic,
+			Channel: req.PushplusChannel,
 		},
 	}
 	err := configs.UpdateNotifyConfig(notifyConfig)

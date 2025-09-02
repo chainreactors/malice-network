@@ -16,6 +16,9 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Use:   "context",
 		Short: "Context management",
 		Long:  "Manage different types of contexts (download, upload, credential, etc)",
+		Annotations: map[string]string{
+			"resource": "true",
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ListContexts(cmd, con)
 		},

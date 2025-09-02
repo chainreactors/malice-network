@@ -1,14 +1,10 @@
 package intl
 
 import (
-	"embed"
 	"fmt"
 	"io/fs"
 	"strings"
 )
-
-//go:embed community/* professional/* custom/*
-var UnifiedFS embed.FS
 
 // GetFileContent 获取嵌入式文件内容
 func GetFileContent(filename string) ([]byte, error) {

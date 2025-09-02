@@ -16,13 +16,17 @@ func Commands(con *repl.Console) []*cobra.Command {
 			return regExplorerCmd(cmd, con)
 		},
 		Annotations: map[string]string{
-			"depend": consts.ModuleRegListKey,
+			"depend":     consts.ModuleRegListKey,
+			"thirdParty": "true",
 		},
 	}
 
 	fileCmd := &cobra.Command{
 		Use:   consts.CommandExplore,
 		Short: "file explorer",
+		Annotations: map[string]string{
+			"thirdParty": "true",
+		},
 		Run: func(cmd *cobra.Command, args []string) {
 			fileExplorerCmd(cmd, con)
 			return

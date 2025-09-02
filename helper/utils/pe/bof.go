@@ -3,13 +3,12 @@ package pe
 import (
 	"encoding/base64"
 	"fmt"
+	"github.com/chainreactors/malice-network/helper/intl"
 	"io"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
-
-	"github.com/chainreactors/malice-network/helper/intl"
 )
 
 type BOFArgsBuffer struct {

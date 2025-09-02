@@ -73,30 +73,6 @@ func StartClientListener(address string) (*grpc.Server, net.Listener, error) {
 	return grpcServer, ln, nil
 }
 
-//
-//func DaemonStart(server *configs.ServerConfig, cfg *configs.ListenerConfig) {
-//	_, ln, err := StartClientListener(server.GRPCPort)
-//	if err != nil {
-//		logs.Log.Errorf("cannot start gRPC server, %s", err.Error())
-//		return
-//	}
-//	err = listener.NewListener(server, cfg)
-//	if err != nil {
-//		logs.Log.Errorf("cannot start listeners , %s ", err.Error())
-//		return
-//	}
-//	done := make(chan bool)
-//	signals := make(chan os.Signal, 1)
-//	signal.Notify(signals, syscall.SIGTERM)
-//	go func() {
-//		<-signals
-//		logs.Log.Infof("Received SIGTERM, exiting ...")
-//		ln.Close()
-//		done <- true
-//	}()
-//	<-done
-//}
-
 type Server struct {
 	// Magical methods to break backwards compatibility
 	// Here be dragons: https://github.com/grpc/grpc-go/issues/3794

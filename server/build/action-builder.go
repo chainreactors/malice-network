@@ -105,7 +105,7 @@ func (a *ActionBuilder) Execute() error {
 	return nil
 }
 
-func (a *ActionBuilder) Collect() (string, string) {
+func (a *ActionBuilder) Collect() (string, string, error) {
 	path, err := downloadArtifactWhenReady(
 		a.config.Github.Owner,
 		a.config.Github.Repo,
@@ -115,9 +115,9 @@ func (a *ActionBuilder) Collect() (string, string) {
 		a.builder,
 	)
 	if err == nil {
-		return path, consts.BuildStatusCompleted
+		return path, consts.BuildStatusCompleted, nil
 	} else {
-		return "", consts.BuildStatusFailure
+		return "", consts.BuildStatusFailure, err
 	}
 }
 

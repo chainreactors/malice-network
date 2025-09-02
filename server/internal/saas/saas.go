@@ -16,10 +16,9 @@ import (
 	"io"
 	"os"
 	"strings"
+	"sync"
 	"time"
 )
-
-// ================= 工具类型和常量 =================
 
 type DownloadResult struct {
 	Path   string
@@ -62,22 +61,81 @@ func pollUntil(fn func() (bool, error), interval, timeout time.Duration) error {
 	}
 }
 
-// ================= SaasClient结构体及方法 =================
-
-type SaasClient struct {
-	Token   string
-	BaseURL string
+type LicenseData struct {
+	Username   string `json:"username"`
+	Email      string `json:"email,omitempty"`
+	Token      string `json:"token,omitempty"`
+	Type       string `json:"type"`
+	ExpireAt   string `json:"expire_at,omitempty"`
+	BuildCount int64  `json:"build_count,omitempty"`
+	MaxBuilds  int64  `json:"max_builds,omitempty"`
 }
 
-func NewSaasClient() *SaasClient {
-	saasConfig := configs.GetSaasConfig()
-	if !saasConfig.Enable {
-		return &SaasClient{}
+// LicenseResponse SaaS API 统一响应结构
+type LicenseResponse struct {
+	Success bool        `json:"success"`
+	License LicenseData `json:"license"`
+}
+
+// 转换为 protobuf LicenseInfo
+func (l *LicenseData) ToLicenseInfo() *clientpb.LicenseInfo {
+	return &clientpb.LicenseInfo{
+		UserName:   l.Username,
+		Type:       l.Type,
+		ExpireAt:   l.ExpireAt,
+		BuildCount: l.BuildCount,
+		MaxBuilds:  l.MaxBuilds,
 	}
-	return &SaasClient{
-		Token:   saasConfig.Token,
-		BaseURL: saasConfig.Url,
+}
+
+// 创建默认的社区版 License 数据
+func NewCommunityLicense() *LicenseData {
+	machineID := utils.GetMachineID()
+	if machineID == "" {
+		return nil
 	}
+	return &LicenseData{
+		Username:   fmt.Sprintf("machine_%s", machineID),
+		Email:      "community@example.com",
+		Type:       "community",
+		MaxBuilds:  0,
+		BuildCount: 0,
+	}
+}
+
+type SaasClient struct {
+	Token       string
+	BaseURL     string
+	LicenseType string
+}
+
+var (
+	globalSaasClient *SaasClient
+	saasOnce         sync.Once
+)
+
+func GetSaasClient() *SaasClient {
+	saasOnce.Do(func() {
+		saasConfig := configs.GetSaasConfig()
+		if !saasConfig.Enable {
+			globalSaasClient = &SaasClient{}
+		} else {
+			globalSaasClient = &SaasClient{
+				Token:   saasConfig.Token,
+				BaseURL: saasConfig.Url,
+			}
+		}
+	})
+	return globalSaasClient
+}
+
+func (c *SaasClient) SetLicenseType(typ string) {
+	c.LicenseType = typ
+}
+
+// 获取 LicenseType
+func (c *SaasClient) GetLicenseType() string {
+	return c.LicenseType
 }
 
 // 查询构建状态
@@ -158,59 +216,64 @@ func (c *SaasClient) CheckAndDownloadArtifact(statusPath, downloadPath string, b
 	return DownloadResult{builder.Path, consts.BuildStatusCompleted, nil}
 }
 
-// LicenseResponse SaaS API响应结构
-// 该结构体比 configs.LicenseResponse 更完整，适用于 License 查询
-// 如有需要可迁移到 configs 包
-// 这里只在 saas.go 内部使用
-type LicenseResponse struct {
-	Success bool `json:"success"`
-	License struct {
-		ID              string `json:"id"`
-		Username        string `json:"username"`
-		Email           string `json:"email"`
-		Token           string `json:"token"`
-		Type            string `json:"type"`
-		ExpireAt        string `json:"expire_at"`
-		BuildCount      int64  `json:"build_count"`
-		MaxBuilds       int64  `json:"max_builds"`
-		CreatedAt       string `json:"created_at"`
-		UpdatedAt       string `json:"updated_at"`
-		IsExpired       bool   `json:"is_expired"`
-		CanBuild        bool   `json:"can_build"`
-		RemainingBuilds int64  `json:"remaining_builds"`
-	} `json:"license"`
-}
-
-// 获取 License 信息，返回 protobuf LicenseInfo
+// 获取 License 信息
 func (c *SaasClient) GetLicenseInfo() (*clientpb.LicenseInfo, string, error) {
 	if c.Token == "" || c.BaseURL == "" {
 		return nil, "", fmt.Errorf("invalid SaaS config")
 	}
+
 	licenseUrl := fmt.Sprintf("%s/api/license/info", c.BaseURL)
 	headers := SaasHeaders(c.Token)
 	headers["username"] = fmt.Sprintf("machine_%s", utils.GetMachineID())
+
 	var response LicenseResponse
 	err := httputils.DoJSONRequest("GET", licenseUrl, nil, headers, 200, &response)
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to send HTTP request: %v", err)
 	}
+
 	if !response.Success {
 		return nil, "", fmt.Errorf("API request failed: %+v", response)
 	}
-	return &clientpb.LicenseInfo{
-		UserName:   response.License.Username,
-		Type:       response.License.Type,
-		ExpireAt:   response.License.ExpireAt,
-		BuildCount: response.License.BuildCount,
-		MaxBuilds:  response.License.MaxBuilds,
-	}, response.License.Token, nil
+
+	c.SetLicenseType(response.License.Type)
+	return response.License.ToLicenseInfo(), response.License.Token, nil
+}
+
+// 注册 License
+func (c *SaasClient) RegisterLicense() (string, error) {
+	if c.BaseURL == "" {
+		return "", fmt.Errorf("invalid SaaS config")
+	}
+
+	licenseData := NewCommunityLicense()
+	if licenseData == nil {
+		return "", fmt.Errorf("failed to create license data")
+	}
+
+	url := fmt.Sprintf("%s/api/license/", c.BaseURL)
+	var response LicenseResponse
+	err := httputils.DoPOST(url, licenseData, make(map[string]string), 200, &response)
+	if err != nil {
+		return "", fmt.Errorf("failed to send HTTP request: %v", err)
+	}
+
+	if !response.Success {
+		return "", fmt.Errorf("license registration failed: %+v", response)
+	}
+
+	if response.License.Token == "" {
+		return "", fmt.Errorf("no token returned in response")
+	}
+
+	return response.License.Token, nil
 }
 
 // ================= 对外暴露的主流程函数 =================
 
 // 重新下发SaaS构建任务
 func ReDownloadSaasArtifact() error {
-	client := NewSaasClient()
+	client := GetSaasClient()
 	if client.Token == "" || client.BaseURL == "" {
 		return errs.ErrSaasUnable
 	}
@@ -247,15 +310,17 @@ func RegisterLicense() error {
 	if saasConfig == nil {
 		return fmt.Errorf("failed to get SaaS config")
 	}
-	// 2. 已有token或未启用SaaS则无需注册
+
+	// 2. 未启用SaaS则无需注册
 	if !saasConfig.Enable {
 		return nil
-	} else {
-		SecurityAuthAlert()
 	}
 
+	SecurityAuthAlert()
+
+	// 3. 已有token则验证并更新
 	if saasConfig.Token != "" {
-		client := NewSaasClient()
+		client := GetSaasClient()
 		_, token, err := client.GetLicenseInfo()
 		if err != nil {
 			return err
@@ -267,63 +332,29 @@ func RegisterLicense() error {
 		return ReDownloadSaasArtifact()
 	}
 
-	// 3. 构建注册数据
-	licenseData, err := buildLicenseData()
-	if err != nil {
-		return fmt.Errorf("failed to build license data: %v", err)
-	}
-
-	// 4. 注册license，获取token
-	token, err := sendLicenseRegistration(saasConfig.Url, licenseData)
+	// 4. 注册新license
+	client := GetSaasClient()
+	token, err := client.RegisterLicense()
 	if err != nil {
 		return fmt.Errorf("failed to register license: %v", err)
 	}
+
 	// 5. 保存token到配置
 	saasConfig.Token = token
 	if err := configs.UpdateSaasConfig(saasConfig); err != nil {
 		return fmt.Errorf("failed to update SaaS config: %v", err)
 	}
+
 	// 6. 打印注册成功日志
 	logs.Log.Infof("register saas success: %s", token)
+
 	// 7. 重新下发SaaS构建任务
 	return ReDownloadSaasArtifact()
 }
 
-// ================= 辅助/内部函数 =================
-
-func buildLicenseData() (*configs.LicenseRegistrationData, error) {
-	machineID := utils.GetMachineID()
-	if machineID == "" {
-		return nil, fmt.Errorf("failed to get machine ID")
-	}
-	return &configs.LicenseRegistrationData{
-		Username:   fmt.Sprintf("machine_%s", machineID),
-		Email:      "community@example.com",
-		Type:       "community",
-		MaxBuilds:  0,
-		BuildCount: 0,
-	}, nil
-}
-
-func sendLicenseRegistration(baseURL string, licenseData *configs.LicenseRegistrationData) (string, error) {
-	headers := map[string]string{}
-	var response configs.LicenseResponse
-	err := httputils.DoPOST(baseURL+"/api/license/", licenseData, headers, 200, &response)
-	if err != nil {
-		return "", fmt.Errorf("failed to send HTTP request: %v", err)
-	}
-	if !response.Success {
-		return "", fmt.Errorf("license registration failed: %+v", response)
-	}
-	if response.License.Token == "" {
-		return "", fmt.Errorf("no token returned in response")
-	}
-	return response.License.Token, nil
-}
-
 // 对外导出：兼容外部包调用
 func CheckAndDownloadArtifact(statusPath, downloadPath, token string, builder *models.Artifact, pollInterval, maxPollTime time.Duration) (string, string, error) {
-	client := NewSaasClient()
+	client := GetSaasClient()
 	if client.Token == "" || client.BaseURL == "" {
 		return "", "", errs.ErrSaasUnable
 	}
@@ -334,5 +365,5 @@ func CheckAndDownloadArtifact(statusPath, downloadPath, token string, builder *m
 
 func SecurityAuthAlert() {
 	logs.Log.Info(tui.RedFg.Render("使用SaaS服务即视为您已阅读并同意我们的用户协议。详细协议内容请访问：https://wiki.chainreactors.red/IoM/#4"))
-	logs.Log.Info(tui.RedFg.Render("By using the SaaS service, you are deemed to have read and agreed to our User Agreement. For detailed agreement content, please visit:, please visit: https://wiki.chainreactors.red/IoM/#4"))
+	logs.Log.Info(tui.RedFg.Render("By using the SaaS service, you are deemed to have read and agreed to our User Agreement. For detailed agreement content, please visit: https://wiki.chainreactors.red/IoM/#4"))
 }

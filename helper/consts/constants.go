@@ -45,6 +45,7 @@ const (
 	ArmoryGroup = "armory"
 	AddonGroup  = "addon"
 	MalGroup    = "mal"
+	ThirdGroup  = "3rd"
 )
 
 const (

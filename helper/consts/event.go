@@ -6,6 +6,7 @@ const (
 	CalleeSDK      = "sdk"
 	CalleeGui      = "gui"
 	CalleeExplorer = "explorer"
+	CalleePty      = "pty"
 )
 
 const (

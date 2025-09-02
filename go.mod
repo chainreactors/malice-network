@@ -10,23 +10,24 @@ require (
 	github.com/chainreactors/mals v0.0.0-20250717185731-227f71a931fa
 	github.com/chainreactors/parsers v0.0.0-20250225073555-ab576124d61f
 	github.com/chainreactors/rem v0.2.4
-	github.com/chainreactors/tui v0.0.0-20250711183500-b60ffbbdeb3f
+	github.com/chainreactors/tui v0.0.0-20250825071101-9e61744e554f
 	github.com/chainreactors/utils v0.0.0-20241209140746-65867d2f78b2
 	github.com/charmbracelet/bubbletea v1.3.4
 	github.com/charmbracelet/glamour v0.8.0
 	github.com/charmbracelet/lipgloss v1.0.0
 	github.com/dustin/go-humanize v1.0.1
-	github.com/evertras/bubble-table v0.17.1
+	github.com/evertras/bubble-table v0.17.2
 	github.com/gofrs/uuid v4.4.0+incompatible
 	github.com/golang/snappy v1.0.0
 	github.com/gookit/config/v2 v2.2.5
 	github.com/h2non/filetype v1.1.3
 	github.com/jessevdk/go-flags v1.6.1
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
+	github.com/mark3labs/mcp-go v0.25.0
 	github.com/klauspost/compress v1.17.8
 	github.com/mattn/go-tty v0.0.7
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/muesli/termenv v0.15.3-0.20240618155329-98d742f6907a
+	github.com/muesli/termenv v0.16.0
 	github.com/ncruces/go-sqlite3 v0.9.0
 	github.com/nikoksr/notify v0.41.0
 	github.com/reeflective/console v0.0.0-00010101000000-000000000000
@@ -72,7 +73,7 @@ require (
 	github.com/chainreactors/fingers v0.0.0-20240702104653-a66e34aa41df // indirect
 	github.com/chainreactors/go-metrics v0.0.0-20220926021830-24787b7a10f8 // indirect
 	github.com/chainreactors/proxyclient v1.0.2 // indirect
-	github.com/charmbracelet/bubbles v0.18.0 // indirect
+	github.com/charmbracelet/bubbles v0.20.0 // indirect
 	github.com/charmbracelet/harmonica v0.2.0 // indirect
 	github.com/charmbracelet/x/ansi v0.8.0 // indirect
 	github.com/charmbracelet/x/term v0.2.1 // indirect
@@ -96,8 +97,10 @@ require (
 	github.com/goccy/go-yaml v1.12.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
+	github.com/google/uuid v1.6.0 // indirect
 	github.com/gookit/color v1.5.4 // indirect
 	github.com/gookit/goutil v0.6.15 // indirect
+	github.com/gorhill/cronexpr v0.0.0-20180427100037-88b0669f7d75 // indirect
 	github.com/gorilla/css v1.0.1 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
@@ -127,9 +130,10 @@ require (
 	github.com/riobard/go-bloom v0.0.0-20200614022211-cdc8013cb5b3 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/saferwall/pe v1.5.6 // indirect
-	github.com/sahilm/fuzzy v0.1.1-0.20230530133925-c48e322e2a8f // indirect
+	github.com/sahilm/fuzzy v0.1.1 // indirect
 	github.com/secDre4mer/pkcs7 v0.0.0-20240322103146-665324a4461d // indirect
 	github.com/shadowsocks/go-shadowsocks2 v0.1.5 // indirect
+	github.com/spf13/cast v1.7.1 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/stretchr/testify v1.10.0 // indirect
 	github.com/technoweenie/multipartstreamer v1.0.1 // indirect
@@ -142,6 +146,7 @@ require (
 	github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
+	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
 	github.com/yuin/gluamapper v0.0.0-20150323120927-d836955830e7 // indirect
 	github.com/yuin/goldmark v1.7.4 // indirect
 	github.com/yuin/goldmark-emoji v1.0.3 // indirect

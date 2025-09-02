@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command"
@@ -45,9 +44,8 @@ import (
 	"github.com/spf13/cobra"
 	"io"
 	"os"
-	"sort"
-	"strings"
 )
+
 
 func init() {
 	config.WithOptions(func(opt *config.Options) {
@@ -197,6 +195,7 @@ func GenImplantHelp(con *repl.Console) {
 	if err != nil {
 		panic(err)
 	}
+
 	GenGroupHelp(implantMd, con, consts.ImplantGroup,
 		basic.Commands,
 		tasks.Commands,

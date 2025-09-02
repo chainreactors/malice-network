@@ -1,28 +1,34 @@
 package basic
 
 import (
-	"github.com/chainreactors/logs"
+	"fmt"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
+	"github.com/gorhill/cronexpr"
 	"github.com/spf13/cobra"
 	"strconv"
 )
 
 func SleepCmd(cmd *cobra.Command, con *repl.Console) error {
-	interval, err := strconv.Atoi(cmd.Flags().Arg(0))
+	expression := cmd.Flags().Arg(0)
 	session := con.GetInteractive()
 	jitter, _ := cmd.Flags().GetFloat64("jitter")
 	if jitter == 0 {
 		jitter = session.Timer.Jitter
 	}
-	if interval < 1 {
-		logs.Log.Warnf("minimum sleep interval is 1 second, auto set 1")
-		interval = 1
+
+	if _, err := strconv.Atoi(expression); err == nil {
+		expression = fmt.Sprintf("*/%s * * * * * *", expression)
 	}
-	task, err := Sleep(con.Rpc, session, uint64(interval), jitter)
+	_, err := cronexpr.Parse(expression)
+	if err != nil {
+		return fmt.Errorf("invalid cron expression: %s\n", expression)
+	}
+
+	task, err := Sleep(con.Rpc, session, expression, jitter)
 	if err != nil {
 		return err
 	}
@@ -31,9 +37,9 @@ func SleepCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func Sleep(rpc clientrpc.MaliceRPCClient, session *core.Session, interval uint64, jitter float64) (*clientpb.Task, error) {
+func Sleep(rpc clientrpc.MaliceRPCClient, session *core.Session, expression string, jitter float64) (*clientpb.Task, error) {
 	return rpc.Sleep(session.Context(), &implantpb.Timer{
-		Interval: interval,
-		Jitter:   jitter,
+		Expression: expression,
+		Jitter:     jitter,
 	})
 }

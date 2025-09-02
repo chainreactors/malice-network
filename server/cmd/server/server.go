@@ -64,7 +64,6 @@ func Start(defaultConfig []byte) error {
 			return fmt.Errorf("cannot prepare listener, %s", err.Error())
 		}
 	}
-
 	go opt.Handler()
 	select {}
 }

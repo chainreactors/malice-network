@@ -28,10 +28,12 @@ var (
 	AuditPath                   = filepath.Join(ServerRootPath, "audit")
 	ErrNoConfig                 = errors.New("no config found")
 	WebsitePath                 = filepath.Join(ServerRootPath, "web")
+	ProfilePath                 = filepath.Join(ServerRootPath, "profile")
 	// variables for implant build
 	BuildPath       = filepath.Join(GetWorkDir(), "..", "malefic", "build")
 	BinPath         = filepath.Join(ServerRootPath, "bin")
 	SourceCodePath  = filepath.Join(BuildPath, "src")
+	ResourcePath    = filepath.Join(SourceCodePath, "resources")
 	TargetPath      = filepath.Join(SourceCodePath, "target")
 	CargoCachePath  = filepath.Join(BuildPath, "cache")
 	BuildOutputPath = filepath.Join(BuildPath, "output")
@@ -126,6 +128,7 @@ type NotifyConfig struct {
 	DingTalk   *DingTalkConfig   `config:"dingtalk"`
 	Lark       *LarkConfig       `config:"lark"`
 	ServerChan *ServerChanConfig `config:"serverchan"`
+	PushPlus   *PushPlusConfig   `config:"pushplus"`
 }
 
 type TelegramConfig struct {
@@ -148,6 +151,13 @@ type LarkConfig struct {
 type ServerChanConfig struct {
 	Enable bool   `config:"enable" default:"false"`
 	URL    string `config:"url"`
+}
+
+type PushPlusConfig struct {
+	Enable  bool   `config:"enable" default:"false"`
+	Token   string `config:"token"`
+	Topic   string `config:"topic"`
+	Channel string `config:"channel"`
 }
 
 type GithubConfig struct {

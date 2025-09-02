@@ -4,6 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/chainreactors/malice-network/helper/utils"
+	"github.com/gookit/config/v2"
+	"github.com/gorhill/cronexpr"
+	"google.golang.org/grpc"
+	"google.golang.org/protobuf/proto"
 	"os"
 	"path"
 	"path/filepath"
@@ -11,10 +16,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/gookit/config/v2"
-	"google.golang.org/grpc"
-	"google.golang.org/protobuf/proto"
 
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
@@ -96,7 +97,6 @@ func RegisterSession(req *clientpb.RegisterSession) (*Session, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	sess := &Session{
 		Type:           req.Type,
 		Name:           req.RegisterData.Name,
@@ -328,7 +328,14 @@ func (s *Session) isAlived() bool {
 	if s.Type == consts.BindPipeline {
 		return true
 	} else {
-		return time.Now().Unix()-s.LastCheckin <= utils.Max((1+int64(s.Interval))*10, int64(time.Second*60))
+		parsedExpr, err := cronexpr.Parse(s.Expression)
+		if err != nil {
+			panic(err)
+		}
+		nextTime := parsedExpr.Next(time.Now())
+		remainingSeconds := int64(nextTime.Sub(time.Now()).Seconds())
+		remainingSeconds = int64(float64(remainingSeconds) * (1 + s.Jitter))
+		return time.Now().Unix()-s.LastCheckin <= utils.Max(remainingSeconds+30, int64(time.Second*60))
 	}
 }
 
@@ -352,7 +359,7 @@ func (s *Session) ToProtobuf() *clientpb.Session {
 		Workdir:     s.SessionContext.WorkDir,
 		Locate:      s.SessionContext.Locale,
 		Proxy:       s.SessionContext.ProxyURL,
-		Timer:       &implantpb.Timer{Interval: s.Interval, Jitter: s.Jitter},
+		Timer:       &implantpb.Timer{Expression: s.Expression, Jitter: s.Jitter},
 		CreatedAt:   s.CreatedAt.Unix(),
 		Tasks:       s.Tasks.ToProtobuf(),
 		Modules:     s.Modules,
@@ -381,7 +388,7 @@ func (s *Session) ToProtobufLite() *clientpb.Session {
 		Workdir:     s.SessionContext.WorkDir,
 		Locate:      s.SessionContext.Locale,
 		Proxy:       s.SessionContext.ProxyURL,
-		Timer:       &implantpb.Timer{Interval: s.Interval, Jitter: s.Jitter},
+		Timer:       &implantpb.Timer{Expression: s.Expression, Jitter: s.Jitter},
 		Modules:     s.Modules,
 		Addons:      s.Addons,
 		KeyPair:     s.KeyPair,
@@ -426,12 +433,11 @@ func (s *Session) PushUpdate(msg string) {
 }
 
 func (s *Session) Update(req *clientpb.RegisterSession) {
-	oldInterval := s.Interval
 	s.Name = req.RegisterData.Name
 	s.PipelineID = req.PipelineId
 	s.ListenerID = req.ListenerId
 	s.ProxyURL = req.RegisterData.Proxy
-	s.Interval = req.RegisterData.Timer.Interval
+	s.Expression = req.RegisterData.Timer.Expression
 	s.Jitter = req.RegisterData.Timer.Jitter
 	s.SessionContext.Update(req)
 

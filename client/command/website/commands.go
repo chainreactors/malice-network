@@ -20,6 +20,9 @@ func Commands(con *repl.Console) []*cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return NewWebsiteCmd(cmd, con)
 		},
+		Annotations: map[string]string{
+			"resource": "true",
+		},
 		Example: `~~~
 // Register a website with the default settings
 website web_test --listener tcp_default --root /webtest

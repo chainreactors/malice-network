@@ -114,7 +114,7 @@ local function run_kill_defender(args,cmd)
 end
 
 local cmd_kill_defender = command("kill_defender", run_kill_defender, "Kill or check Windows Defender <action>", "T1562.001")
-cmd_kill_defender:Flags():String("action", "", "action to perform (kill or check)")
+cmd_kill_defender:Flags():String("action", "check", "action to perform (kill or check)")
 opsec("kill_defender", 9.0)
 
 -- dump_wifi
@@ -137,7 +137,7 @@ local function run_dump_wifi(args, cmd)
     local packed_args = bof_pack("Z", profilename)
     local session = active()
     local arch = session.Os.Arch
-    local bof_file = bof_path("dump_wifi", arch)
+    local bof_file = "bof/wifi/dump_wifi/dump_wifi" .. "." .. arch .. ".o"
     return bof(session, script_resource(bof_file), packed_args, true)
 end
 
@@ -159,7 +159,7 @@ Flag format:
 local function run_enum_wifi(cmd)
     local session = active()
     local arch = session.Os.Arch
-    local bof_file = bof_path("enum_wifi", arch)
+    local bof_file = "bof/wifi/enum_wifi/enum_wifi" .. "." .. arch .. ".o"
     return bof(session, script_resource(bof_file), {}, true)
 end
 
@@ -770,7 +770,6 @@ local function run_mimikatz(args, cmd)
     if needs_exit then
         table.insert(args, "exit")
     end
-
     local mimikatz_path = "common/mimikatz/mimikatz." .. arch .. ".exe"
     return execute_exe(session, script_resource(mimikatz_path), args, true, 600, arch, "", new_sac())
 end
@@ -857,7 +856,7 @@ local function run_askcreds(cmd)
     local prompt = cmd:Flags():GetString("prompt")
     local note = cmd:Flags():GetString("note")
     local wait_time = cmd:Flags():GetInt("wait_time")
-    local packed_args = bof_pack("zzi", prompt, note, wait_time)
+    local packed_args = bof_pack("ZZi", prompt, note, wait_time)
     local arch = session.Os.Arch
     local bof_file = bof_path("askcreds", arch)
     return bof(session, script_resource(bof_file), packed_args, true)

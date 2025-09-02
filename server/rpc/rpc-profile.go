@@ -11,7 +11,6 @@ func (rpc *Server) NewProfile(ctx context.Context, req *clientpb.Profile) (*clie
 	if req.Name == "" {
 		return nil, fmt.Errorf("profile name cannot be empty")
 	}
-
 	err := db.NewProfile(req)
 	if err != nil {
 		return nil, err

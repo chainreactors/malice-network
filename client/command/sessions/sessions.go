@@ -38,19 +38,23 @@ func SessionsCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
+	isStatic, err := cmd.Flags().GetBool("static")
+	if err != nil {
+		return err
+	}
 	err = con.UpdateSessions(isAll)
 	if err != nil {
 		return err
 	}
 	if 0 < len(con.Sessions) {
-		PrintSessions(con.Sessions, con, isAll)
+		PrintSessions(con.Sessions, con, isAll, isStatic)
 	} else {
 		con.Log.Info("No sessions\n")
 	}
 	return nil
 }
 
-func PrintSessions(sessions map[string]*core.Session, con *repl.Console, isAll bool) {
+func PrintSessions(sessions map[string]*core.Session, con *repl.Console, isAll, isStastic bool) {
 	//var colorIndex = 1
 	var rowEntries []table.Row
 	var row table.Row
@@ -96,7 +100,7 @@ func PrintSessions(sessions map[string]*core.Session, con *repl.Console, isAll b
 				"Remote Address": session.Target,
 				"UserName":       computer,
 				"System":         fmt.Sprintf("%s/%s", session.Os.Name, session.Os.Arch),
-				"Sleep":          fmt.Sprintf("%d/%.1f%%", session.Timer.Interval, session.Timer.Jitter*100),
+				"Sleep":          fmt.Sprintf("%s/%.1f%%", session.Timer.Expression, session.Timer.Jitter*100),
 				"Last":           formatTimeDiff(session.LastCheckin, session.IsAlive),
 				"CreatedAt":      time.Unix(session.CreatedAt, 0).Format("2006-01-02 15:04"),
 			})
@@ -116,6 +120,10 @@ func PrintSessions(sessions map[string]*core.Session, con *repl.Console, isAll b
 	}, false)
 	tableModel.SetAscSort("Last")
 	tableModel.SetRows(rowEntries)
+	if isStastic {
+		con.Log.Infof(newTable.View())
+		return
+	}
 	tableModel.SetMultiline()
 	tableModel.SetHandle(func() {
 		SessionLogin(tableModel, tableModel.Buffer, con)()

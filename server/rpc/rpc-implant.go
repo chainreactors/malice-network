@@ -3,17 +3,16 @@ package rpc
 import (
 	"context"
 	"fmt"
-	"github.com/chainreactors/malice-network/helper/cryptography"
-	"time"
-
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
+	"time"
 )
 
 func (rpc *Server) Register(ctx context.Context, req *clientpb.RegisterSession) (*clientpb.Empty, error) {
@@ -33,7 +32,6 @@ func (rpc *Server) Register(ctx context.Context, req *clientpb.RegisterSession) 
 			logs.Log.Importantf("new session %s from %s", sess.ID, sess.PipelineID)
 		}
 		core.Sessions.Add(sess)
-
 	} else {
 		logs.Log.Infof("session %s re-register", sess.ID)
 		sess.Update(req)
@@ -115,7 +113,7 @@ func (rpc *Server) Sleep(ctx context.Context, req *implantpb.Timer) (*clientpb.T
 	go greq.HandlerResponse(ch, types.MsgEmpty)
 	if session, err := getSession(ctx); err == nil {
 		session.Jitter = req.Jitter
-		session.Interval = req.Interval
+		session.Expression = req.Expression
 		err := session.Save()
 		if err != nil {
 			return nil, err

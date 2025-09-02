@@ -13,7 +13,11 @@ basic:
   #      client_cert: "client.crt"     # 客户端证书文件路径
   #      client_key: "client.key"      # 客户端私钥文件路径
   #      server_ca: ""                 # 用于验证服务端的CA证书路径（可选）
-  proxy:
+  secure:
+    enable: false
+    private_key:   # implant private key
+    public_key:    # server public key
+  proxy: ""
   interval: 5
   jitter: 0.2
   encryption: aes
@@ -23,7 +27,7 @@ basic:
     private_key: ""  # implant private key
     public_key: ""  # server public key
   rem:
-    link:
+    link: ""
   http:
     method: "POST"
     path: "/jquery.js"
@@ -33,9 +37,11 @@ basic:
       User-Agent: "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:40.0) Gecko/20100101 Firefox/40.0"
       Content-Type: "application/octet-stream"
       #any-header: any-value
+
 build:
   zigbuild: false
   remap: false # Force refresh remap-path-prefix configuration even if it already exists
+  toolchain: "nightly-2023-09-18"
   ollvm:
     enable: false
     bcfobf: false # Bogus Control Flow Obfuscation
@@ -132,14 +138,4 @@ implants:
     # allocter_ex: "VirtualAllocEx", "NtAllocateVirtualMemory",
     #              "VirtualAllocExNuma", "NtMapViewOfSection"
     crossprocess: "NtAllocateVirtualMemory"
-  sleep_mask: true
-  stack_spool: true
-  sacrifice_process: true
-  fork_and_run: false
-  hook_exit: true
   thread_stack_spoofer: true
-  pe_signature_modify:
-    feature: true
-    modify:
-      magic: "\x00\x00"
-      signature: "\x00\x00"

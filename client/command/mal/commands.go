@@ -13,13 +13,18 @@ func Commands(con *repl.Console) []*cobra.Command {
 	cmd := &cobra.Command{
 		Use:   consts.CommandMal,
 		Short: "mal commands",
+		Annotations: map[string]string{
+			"thirdParty": "true",
+		},
 		//Long:  help.GetHelpFor(consts.CommandExtension),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return MalCmd(cmd, con)
 		},
 	}
 
-	common.BindFlag(cmd, common.MalHttpFlagset)
+	common.BindFlag(cmd, common.MalHttpFlagset, func(f *pflag.FlagSet) {
+		f.Bool("static", false, "show all mal in static table")
+	})
 
 	installCmd := &cobra.Command{
 		Use:   consts.CommandMalInstall + " [mal_file]",
