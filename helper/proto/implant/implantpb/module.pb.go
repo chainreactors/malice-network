@@ -4226,7 +4226,7 @@ type ShellRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Type      string            `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`                                                                                             // 操作类型: "start", "input", "stop"
+	Type      string            `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`                                                                                             // 操作类型: "start", "input", "resize", "stop", "list"
 	SessionId string            `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`                                                                  // 会话ID
 	Shell     string            `protobuf:"bytes,3,opt,name=shell,proto3" json:"shell,omitempty"`                                                                                           // shell类型: "/bin/bash", "cmd.exe", "powershell.exe" 等
 	Cols      uint32            `protobuf:"varint,4,opt,name=cols,proto3" json:"cols,omitempty"`                                                                                            // 终端列数
@@ -4327,13 +4327,13 @@ type ShellResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	SessionId      string            `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`              // 会话ID
-	OutputData     []byte            `protobuf:"bytes,2,opt,name=output_data,json=outputData,proto3" json:"output_data,omitempty"`           // 输出数据（二进制）
-	OutputText     string            `protobuf:"bytes,3,opt,name=output_text,json=outputText,proto3" json:"output_text,omitempty"`           // 输出数据（文本）
-	Error          string            `protobuf:"bytes,4,opt,name=error,proto3" json:"error,omitempty"`                                       // 错误信息
-	SessionActive  bool              `protobuf:"varint,5,opt,name=session_active,json=sessionActive,proto3" json:"session_active,omitempty"` // 会话是否仍然活跃
-	ActiveSessions []string          `protobuf:"bytes,6,rep,name=active_sessions,json=activeSessions,proto3" json:"active_sessions,omitempty"`
-	Metadata       map[string]string `protobuf:"bytes,7,rep,name=metadata,proto3" json:"metadata,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	SessionId      string            `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`                                                                      // 会话ID
+	OutputData     []byte            `protobuf:"bytes,2,opt,name=output_data,json=outputData,proto3" json:"output_data,omitempty"`                                                                   // 输出数据（二进制）
+	OutputText     string            `protobuf:"bytes,3,opt,name=output_text,json=outputText,proto3" json:"output_text,omitempty"`                                                                   // 输出数据（文本）
+	Error          string            `protobuf:"bytes,4,opt,name=error,proto3" json:"error,omitempty"`                                                                                               // 错误信息
+	SessionActive  bool              `protobuf:"varint,5,opt,name=session_active,json=sessionActive,proto3" json:"session_active,omitempty"`                                                         // 会话是否仍然活跃
+	ActiveSessions []string          `protobuf:"bytes,6,rep,name=active_sessions,json=activeSessions,proto3" json:"active_sessions,omitempty"`                                                       // 活跃会话列表（用于list操作）
+	Metadata       map[string]string `protobuf:"bytes,7,rep,name=metadata,proto3" json:"metadata,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"` // 元数据
 }
 
 func (x *ShellResponse) Reset() {
@@ -4411,6 +4411,146 @@ func (x *ShellResponse) GetActiveSessions() []string {
 func (x *ShellResponse) GetMetadata() map[string]string {
 	if x != nil {
 		return x.Metadata
+	}
+	return nil
+}
+
+// PTY会话信息
+type PtySession struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	SessionId string `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`  // 会话ID
+	Shell     string `protobuf:"bytes,2,opt,name=shell,proto3" json:"shell,omitempty"`                           // 使用的shell
+	Cols      uint32 `protobuf:"varint,3,opt,name=cols,proto3" json:"cols,omitempty"`                            // 当前终端列数
+	Rows      uint32 `protobuf:"varint,4,opt,name=rows,proto3" json:"rows,omitempty"`                            // 当前终端行数
+	CreatedAt int64  `protobuf:"varint,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"` // 创建时间戳
+	IsActive  bool   `protobuf:"varint,6,opt,name=is_active,json=isActive,proto3" json:"is_active,omitempty"`    // 是否活跃
+	Pid       uint32 `protobuf:"varint,7,opt,name=pid,proto3" json:"pid,omitempty"`                              // 进程ID
+}
+
+func (x *PtySession) Reset() {
+	*x = PtySession{}
+	mi := &file_implant_implantpb_module_proto_msgTypes[65]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PtySession) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PtySession) ProtoMessage() {}
+
+func (x *PtySession) ProtoReflect() protoreflect.Message {
+	mi := &file_implant_implantpb_module_proto_msgTypes[65]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PtySession.ProtoReflect.Descriptor instead.
+func (*PtySession) Descriptor() ([]byte, []int) {
+	return file_implant_implantpb_module_proto_rawDescGZIP(), []int{65}
+}
+
+func (x *PtySession) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+func (x *PtySession) GetShell() string {
+	if x != nil {
+		return x.Shell
+	}
+	return ""
+}
+
+func (x *PtySession) GetCols() uint32 {
+	if x != nil {
+		return x.Cols
+	}
+	return 0
+}
+
+func (x *PtySession) GetRows() uint32 {
+	if x != nil {
+		return x.Rows
+	}
+	return 0
+}
+
+func (x *PtySession) GetCreatedAt() int64 {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return 0
+}
+
+func (x *PtySession) GetIsActive() bool {
+	if x != nil {
+		return x.IsActive
+	}
+	return false
+}
+
+func (x *PtySession) GetPid() uint32 {
+	if x != nil {
+		return x.Pid
+	}
+	return 0
+}
+
+// PTY会话列表响应
+type PtySessionsResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Sessions []*PtySession `protobuf:"bytes,1,rep,name=sessions,proto3" json:"sessions,omitempty"`
+}
+
+func (x *PtySessionsResponse) Reset() {
+	*x = PtySessionsResponse{}
+	mi := &file_implant_implantpb_module_proto_msgTypes[66]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PtySessionsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PtySessionsResponse) ProtoMessage() {}
+
+func (x *PtySessionsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_implant_implantpb_module_proto_msgTypes[66]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PtySessionsResponse.ProtoReflect.Descriptor instead.
+func (*PtySessionsResponse) Descriptor() ([]byte, []int) {
+	return file_implant_implantpb_module_proto_rawDescGZIP(), []int{66}
+}
+
+func (x *PtySessionsResponse) GetSessions() []*PtySession {
+	if x != nil {
+		return x.Sessions
 	}
 	return nil
 }
@@ -4937,12 +5077,28 @@ var file_implant_implantpb_module_proto_rawDesc = []byte{
 	0x6e, 0x74, 0x72, 0x79, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28,
 	0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x14, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18,
 	0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x3a, 0x02, 0x38, 0x01,
-	0x42, 0x48, 0x5a, 0x46, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x63,
-	0x68, 0x61, 0x69, 0x6e, 0x72, 0x65, 0x61, 0x63, 0x74, 0x6f, 0x72, 0x73, 0x2f, 0x6d, 0x61, 0x6c,
-	0x69, 0x63, 0x65, 0x2d, 0x6e, 0x65, 0x74, 0x77, 0x6f, 0x72, 0x6b, 0x2f, 0x68, 0x65, 0x6c, 0x70,
-	0x65, 0x72, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2f, 0x69, 0x6d, 0x70, 0x6c, 0x61, 0x6e, 0x74,
-	0x2f, 0x69, 0x6d, 0x70, 0x6c, 0x61, 0x6e, 0x74, 0x70, 0x62, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74,
-	0x6f, 0x33,
+	0x22, 0xb7, 0x01, 0x0a, 0x0a, 0x50, 0x74, 0x79, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x12,
+	0x1d, 0x0a, 0x0a, 0x73, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20,
+	0x01, 0x28, 0x09, 0x52, 0x09, 0x73, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x49, 0x64, 0x12, 0x14,
+	0x0a, 0x05, 0x73, 0x68, 0x65, 0x6c, 0x6c, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x73,
+	0x68, 0x65, 0x6c, 0x6c, 0x12, 0x12, 0x0a, 0x04, 0x63, 0x6f, 0x6c, 0x73, 0x18, 0x03, 0x20, 0x01,
+	0x28, 0x0d, 0x52, 0x04, 0x63, 0x6f, 0x6c, 0x73, 0x12, 0x12, 0x0a, 0x04, 0x72, 0x6f, 0x77, 0x73,
+	0x18, 0x04, 0x20, 0x01, 0x28, 0x0d, 0x52, 0x04, 0x72, 0x6f, 0x77, 0x73, 0x12, 0x1d, 0x0a, 0x0a,
+	0x63, 0x72, 0x65, 0x61, 0x74, 0x65, 0x64, 0x5f, 0x61, 0x74, 0x18, 0x05, 0x20, 0x01, 0x28, 0x03,
+	0x52, 0x09, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65, 0x64, 0x41, 0x74, 0x12, 0x1b, 0x0a, 0x09, 0x69,
+	0x73, 0x5f, 0x61, 0x63, 0x74, 0x69, 0x76, 0x65, 0x18, 0x06, 0x20, 0x01, 0x28, 0x08, 0x52, 0x08,
+	0x69, 0x73, 0x41, 0x63, 0x74, 0x69, 0x76, 0x65, 0x12, 0x10, 0x0a, 0x03, 0x70, 0x69, 0x64, 0x18,
+	0x07, 0x20, 0x01, 0x28, 0x0d, 0x52, 0x03, 0x70, 0x69, 0x64, 0x22, 0x47, 0x0a, 0x13, 0x50, 0x74,
+	0x79, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
+	0x65, 0x12, 0x30, 0x0a, 0x08, 0x73, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x73, 0x18, 0x01, 0x20,
+	0x03, 0x28, 0x0b, 0x32, 0x14, 0x2e, 0x6d, 0x6f, 0x64, 0x75, 0x6c, 0x65, 0x70, 0x62, 0x2e, 0x50,
+	0x74, 0x79, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x52, 0x08, 0x73, 0x65, 0x73, 0x73, 0x69,
+	0x6f, 0x6e, 0x73, 0x42, 0x48, 0x5a, 0x46, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f,
+	0x6d, 0x2f, 0x63, 0x68, 0x61, 0x69, 0x6e, 0x72, 0x65, 0x61, 0x63, 0x74, 0x6f, 0x72, 0x73, 0x2f,
+	0x6d, 0x61, 0x6c, 0x69, 0x63, 0x65, 0x2d, 0x6e, 0x65, 0x74, 0x77, 0x6f, 0x72, 0x6b, 0x2f, 0x68,
+	0x65, 0x6c, 0x70, 0x65, 0x72, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2f, 0x69, 0x6d, 0x70, 0x6c,
+	0x61, 0x6e, 0x74, 0x2f, 0x69, 0x6d, 0x70, 0x6c, 0x61, 0x6e, 0x74, 0x70, 0x62, 0x62, 0x06, 0x70,
+	0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -4957,7 +5113,7 @@ func file_implant_implantpb_module_proto_rawDescGZIP() []byte {
 	return file_implant_implantpb_module_proto_rawDescData
 }
 
-var file_implant_implantpb_module_proto_msgTypes = make([]protoimpl.MessageInfo, 72)
+var file_implant_implantpb_module_proto_msgTypes = make([]protoimpl.MessageInfo, 74)
 var file_implant_implantpb_module_proto_goTypes = []any{
 	(*Ping)(nil),                  // 0: modulepb.Ping
 	(*Register)(nil),              // 1: modulepb.Register
@@ -5024,13 +5180,15 @@ var file_implant_implantpb_module_proto_goTypes = []any{
 	(*FFmpegRequest)(nil),         // 62: modulepb.FFmpegRequest
 	(*ShellRequest)(nil),          // 63: modulepb.ShellRequest
 	(*ShellResponse)(nil),         // 64: modulepb.ShellResponse
-	nil,                           // 65: modulepb.Request.ParamsEntry
-	nil,                           // 66: modulepb.Response.KvEntry
-	nil,                           // 67: modulepb.ExecuteBinary.ParamEntry
-	nil,                           // 68: modulepb.CurlRequest.HeaderEntry
-	nil,                           // 69: modulepb.WmiMethodRequest.ParamsEntry
-	nil,                           // 70: modulepb.ShellRequest.ParamsEntry
-	nil,                           // 71: modulepb.ShellResponse.MetadataEntry
+	(*PtySession)(nil),            // 65: modulepb.PtySession
+	(*PtySessionsResponse)(nil),   // 66: modulepb.PtySessionsResponse
+	nil,                           // 67: modulepb.Request.ParamsEntry
+	nil,                           // 68: modulepb.Response.KvEntry
+	nil,                           // 69: modulepb.ExecuteBinary.ParamEntry
+	nil,                           // 70: modulepb.CurlRequest.HeaderEntry
+	nil,                           // 71: modulepb.WmiMethodRequest.ParamsEntry
+	nil,                           // 72: modulepb.ShellRequest.ParamsEntry
+	nil,                           // 73: modulepb.ShellResponse.MetadataEntry
 }
 var file_implant_implantpb_module_proto_depIdxs = []int32{
 	28, // 0: modulepb.Register.addons:type_name -> modulepb.Addon
@@ -5039,17 +5197,17 @@ var file_implant_implantpb_module_proto_depIdxs = []int32{
 	2,  // 3: modulepb.Register.secure:type_name -> modulepb.Secure
 	16, // 4: modulepb.SysInfo.os:type_name -> modulepb.Os
 	17, // 5: modulepb.SysInfo.process:type_name -> modulepb.Process
-	65, // 6: modulepb.Request.params:type_name -> modulepb.Request.ParamsEntry
-	66, // 7: modulepb.Response.kv:type_name -> modulepb.Response.KvEntry
+	67, // 6: modulepb.Request.params:type_name -> modulepb.Request.ParamsEntry
+	68, // 7: modulepb.Response.kv:type_name -> modulepb.Response.KvEntry
 	12, // 8: modulepb.NetstatResponse.socks:type_name -> modulepb.SockTabEntry
 	19, // 9: modulepb.LsResponse.Files:type_name -> modulepb.FileInfo
 	17, // 10: modulepb.PsResponse.processes:type_name -> modulepb.Process
 	28, // 11: modulepb.Addons.addons:type_name -> modulepb.Addon
 	32, // 12: modulepb.ExecuteAddon.execute_binary:type_name -> modulepb.ExecuteBinary
-	67, // 13: modulepb.ExecuteBinary.param:type_name -> modulepb.ExecuteBinary.ParamEntry
+	69, // 13: modulepb.ExecuteBinary.param:type_name -> modulepb.ExecuteBinary.ParamEntry
 	20, // 14: modulepb.ExecuteBinary.sacrifice:type_name -> modulepb.SacrificeProcess
 	20, // 15: modulepb.ExecuteCommand.sacrifice:type_name -> modulepb.SacrificeProcess
-	68, // 16: modulepb.CurlRequest.header:type_name -> modulepb.CurlRequest.HeaderEntry
+	70, // 16: modulepb.CurlRequest.header:type_name -> modulepb.CurlRequest.HeaderEntry
 	11, // 17: modulepb.IfconfigResponse.net_interfaces:type_name -> modulepb.NetInterface
 	41, // 18: modulepb.RegistryRequest.registry:type_name -> modulepb.Registry
 	44, // 19: modulepb.TaskScheduleRequest.taskschd:type_name -> modulepb.TaskSchedule
@@ -5058,16 +5216,17 @@ var file_implant_implantpb_module_proto_depIdxs = []int32{
 	47, // 22: modulepb.Service.config:type_name -> modulepb.ServiceConfig
 	48, // 23: modulepb.Service.status:type_name -> modulepb.ServiceStatus
 	49, // 24: modulepb.ServicesResponse.services:type_name -> modulepb.Service
-	69, // 25: modulepb.WmiMethodRequest.params:type_name -> modulepb.WmiMethodRequest.ParamsEntry
+	71, // 25: modulepb.WmiMethodRequest.params:type_name -> modulepb.WmiMethodRequest.ParamsEntry
 	56, // 26: modulepb.PipeRequest.pipe:type_name -> modulepb.Pipe
 	60, // 27: modulepb.TaskListResponse.tasks:type_name -> modulepb.TaskInfo
-	70, // 28: modulepb.ShellRequest.params:type_name -> modulepb.ShellRequest.ParamsEntry
-	71, // 29: modulepb.ShellResponse.metadata:type_name -> modulepb.ShellResponse.MetadataEntry
-	30, // [30:30] is the sub-list for method output_type
-	30, // [30:30] is the sub-list for method input_type
-	30, // [30:30] is the sub-list for extension type_name
-	30, // [30:30] is the sub-list for extension extendee
-	0,  // [0:30] is the sub-list for field type_name
+	72, // 28: modulepb.ShellRequest.params:type_name -> modulepb.ShellRequest.ParamsEntry
+	73, // 29: modulepb.ShellResponse.metadata:type_name -> modulepb.ShellResponse.MetadataEntry
+	65, // 30: modulepb.PtySessionsResponse.sessions:type_name -> modulepb.PtySession
+	31, // [31:31] is the sub-list for method output_type
+	31, // [31:31] is the sub-list for method input_type
+	31, // [31:31] is the sub-list for extension type_name
+	31, // [31:31] is the sub-list for extension extendee
+	0,  // [0:31] is the sub-list for field type_name
 }
 
 func init() { file_implant_implantpb_module_proto_init() }
@@ -5081,7 +5240,7 @@ func file_implant_implantpb_module_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_implant_implantpb_module_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   72,
+			NumMessages:   74,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

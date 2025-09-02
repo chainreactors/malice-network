@@ -10,7 +10,7 @@ require (
 	github.com/chainreactors/mals v0.0.0-20250717185731-227f71a931fa
 	github.com/chainreactors/parsers v0.0.0-20250225073555-ab576124d61f
 	github.com/chainreactors/rem v0.2.4
-	github.com/chainreactors/tui v0.0.0-20250711183500-b60ffbbdeb3f
+	github.com/chainreactors/tui v0.0.0-20250825071101-9e61744e554f
 	github.com/chainreactors/utils v0.0.0-20241209140746-65867d2f78b2
 	github.com/charmbracelet/bubbletea v1.3.4
 	github.com/charmbracelet/glamour v0.8.0
@@ -27,7 +27,7 @@ require (
 	github.com/klauspost/compress v1.17.8
 	github.com/mattn/go-tty v0.0.7
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/muesli/termenv v0.15.3-0.20240618155329-98d742f6907a
+	github.com/muesli/termenv v0.16.0
 	github.com/ncruces/go-sqlite3 v0.9.0
 	github.com/nikoksr/notify v0.41.0
 	github.com/reeflective/console v0.0.0-00010101000000-000000000000
@@ -73,8 +73,7 @@ require (
 	github.com/chainreactors/fingers v0.0.0-20240702104653-a66e34aa41df // indirect
 	github.com/chainreactors/go-metrics v0.0.0-20220926021830-24787b7a10f8 // indirect
 	github.com/chainreactors/proxyclient v1.0.2 // indirect
-  
-	github.com/charmbracelet/bubbles v0.18.0 // indirect
+	github.com/charmbracelet/bubbles v0.20.0 // indirect
 	github.com/charmbracelet/harmonica v0.2.0 // indirect
 	github.com/charmbracelet/x/ansi v0.8.0 // indirect
 	github.com/charmbracelet/x/term v0.2.1 // indirect
@@ -132,7 +131,7 @@ require (
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect
 	github.com/saferwall/pe v1.5.6 // indirect
-	github.com/sahilm/fuzzy v0.1.1-0.20230530133925-c48e322e2a8f // indirect
+	github.com/sahilm/fuzzy v0.1.1 // indirect
 	github.com/secDre4mer/pkcs7 v0.0.0-20240322103146-665324a4461d // indirect
 	github.com/shadowsocks/go-shadowsocks2 v0.1.5 // indirect
 	github.com/spf13/cast v1.7.1 // indirect

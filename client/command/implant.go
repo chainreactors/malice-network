@@ -3,6 +3,7 @@ package command
 import (
 	"fmt"
 	"github.com/carapace-sh/carapace"
+	"github.com/chainreactors/malice-network/client/command/pty"
 	"github.com/chainreactors/malice-network/client/plugin"
 	"github.com/reeflective/console"
 	"github.com/spf13/cobra"
@@ -167,6 +168,10 @@ func BindBuiltinCommands(con *repl.Console, root *cobra.Command) *cobra.Command 
 	)
 	bind(consts.ArmoryGroup)
 	bind(consts.AddonGroup)
+
+	bind(consts.ThirdGroup,
+		pty.Commands,
+	)
 
 	root.InitDefaultHelpCmd()
 	root.SetHelpCommandGroupID(consts.GenericGroup)
