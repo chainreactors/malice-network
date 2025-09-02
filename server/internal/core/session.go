@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/chainreactors/malice-network/helper/utils"
 	"github.com/gookit/config/v2"
 	"github.com/gorhill/cronexpr"
 	"google.golang.org/grpc"
@@ -441,11 +440,7 @@ func (s *Session) Update(req *clientpb.RegisterSession) {
 	s.Jitter = req.RegisterData.Timer.Jitter
 	s.SessionContext.Update(req)
 
-	// 如果interval发生变化，更新密钥轮换间隔
-	if s.SecureManager != nil && s.Interval != oldInterval && s.Interval > 0 {
-		interval := time.Duration(s.Interval) * time.Second
-		s.SecureManager.SetRotationInterval(interval)
-	}
+	// SecureManager现在使用固定的100次交互计数，不需要更新间隔
 
 	if req.RegisterData.Sysinfo != nil {
 		if !s.Initialized {
