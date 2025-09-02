@@ -207,8 +207,8 @@ func ProcessAutorunWithProfile(paramsBytes []byte, profilePath, targetPath strin
 		}
 	}
 
-	if profilePath != "" {
-		if err := CopyProfileFilesExceptConfig(profilePath, targetPath); err != nil {
+	if _, err := os.Stat(profilePath); !os.IsNotExist(err) {
+		if err = CopyProfileFilesExceptConfig(profilePath, targetPath); err != nil {
 			return fmt.Errorf("failed to copy profile files: %w", err)
 		}
 	}

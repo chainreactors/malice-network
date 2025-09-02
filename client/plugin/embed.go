@@ -4,7 +4,7 @@ import (
 	"embed"
 	"fmt"
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/intl"
 	lua "github.com/yuin/gopher-lua"
 	"gopkg.in/yaml.v3"
 	"io/fs"
@@ -54,7 +54,7 @@ type EmbedPlugin struct {
 func NewEmbedPlugin(malPath, malName string, level MalLevel) (*EmbedPlugin, error) {
 	// 读取manifest文件
 	manifestPath := malPath + "/mal.yaml"
-	manifestData, err := consts.UnifiedFS.ReadFile(manifestPath)
+	manifestData, err := intl.UnifiedFS.ReadFile(manifestPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read manifest: %w", err)
 	}
@@ -72,7 +72,7 @@ func NewEmbedPlugin(malPath, malName string, level MalLevel) (*EmbedPlugin, erro
 	var content []byte
 	if manifest.EntryFile != "" {
 		entryPath := malPath + "/" + manifest.EntryFile
-		content, err = consts.UnifiedFS.ReadFile(entryPath)
+		content, err = intl.UnifiedFS.ReadFile(entryPath)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read entry file %s: %w", manifest.EntryFile, err)
 		}
@@ -97,7 +97,7 @@ func NewEmbedPlugin(malPath, malName string, level MalLevel) (*EmbedPlugin, erro
 	embedPlugin := &EmbedPlugin{
 		LuaPlugin: luaPlugin,
 		Level:     level,
-		FS:        consts.UnifiedFS,
+		FS:        intl.UnifiedFS,
 		RootPath:  malPath,
 	}
 

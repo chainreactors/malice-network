@@ -3,10 +3,7 @@
 
 package consts
 
-import "embed"
-
-//go:embed professional/* custom/* community/*
-var UnifiedFS embed.FS
+import _ "embed"
 
 //go:embed professional.yaml
 var DefaultProfile []byte

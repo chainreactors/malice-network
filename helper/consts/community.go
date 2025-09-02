@@ -3,14 +3,9 @@
 
 package consts
 
-import (
-	"embed"
-)
+import _ "embed"
 
 //go:embed community.yaml
 var DefaultProfile []byte
-
-//go:embed community/*
-var UnifiedFS embed.FS
 
 var DefaultRDI = RDIDonut

@@ -69,6 +69,7 @@ func PowerPick(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, p
 		Type:   consts.ModulePowerpick,
 		Param:  param,
 		Output: true,
+		Delay:  2000,
 	}
 	task, err := rpc.ExecutePowerpick(sess.Context(), binary)
 	if err != nil {

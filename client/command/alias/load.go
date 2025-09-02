@@ -307,6 +307,7 @@ func ExecuteAlias(rpc clientrpc.MaliceRPCClient, sess *core.Session, aliasName s
 			Args:   arg,
 			Param:  param,
 			Output: true,
+			Delay:  2000,
 		}
 
 		task, err = rpc.ExecuteAssembly(sess.Context(), binary)

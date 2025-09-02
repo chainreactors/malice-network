@@ -485,7 +485,7 @@ func SaveCertFromTLS(tls *clientpb.TLS, pipeline string) (*models.Certificate, e
 		certModel.Name = tls.Domain
 		certModel.Domain = tls.Domain
 		certModel.Type = certs.Acme
-	} else if tls.Ca.Key != "" {
+	} else if tls.Ca != nil && tls.Ca.Key != "" {
 		certModel.Name = codenames.GetCodename()
 		certModel.Type = certs.SelfSigned
 		certModel.CACertPEM = tls.Ca.Cert
@@ -493,7 +493,9 @@ func SaveCertFromTLS(tls *clientpb.TLS, pipeline string) (*models.Certificate, e
 	} else {
 		certModel.Name = codenames.GetCodename()
 		certModel.Type = certs.Imported
-		certModel.CACertPEM = tls.Ca.Cert
+		if tls.Ca != nil {
+			certModel.CACertPEM = tls.Ca.Cert
+		}
 	}
 	err := SaveCertificate(certModel)
 	if err != nil {

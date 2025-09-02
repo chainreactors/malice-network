@@ -57,6 +57,7 @@ func ExecuteAddon(rpc clientrpc.MaliceRPCClient, sess *core.Session, name string
 			Timeout:     timeout,
 			Arch:        consts.MapArch(arch),
 			ProcessName: process,
+			Delay:       2000,
 		},
 	})
 }

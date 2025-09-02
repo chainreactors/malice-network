@@ -394,6 +394,7 @@ func ExecuteExtension(rpc clientrpc.MaliceRPCClient, sess *core.Session, extName
 			Args:       extensionArgs,
 			Type:       ext.Manifest.DependsOn,
 			Output:     true,
+			Delay:      2000,
 		})
 	} else {
 		// Regular DLL
@@ -410,6 +411,7 @@ func ExecuteExtension(rpc clientrpc.MaliceRPCClient, sess *core.Session, extName
 			Type:       consts.ModuleExecuteDll,
 			Output:     true,
 			Sacrifice:  nil,
+			Delay:      2000,
 		})
 	}
 
