@@ -104,6 +104,10 @@ func BuildSpite(spite *implantpb.Spite, msg proto.Message) (*implantpb.Spite, er
 	case *implantpb.Switch:
 		spite.Name = MsgSwitch.String()
 		spite.Body = &implantpb.Spite_Switch{Switch: msg}
+	case *implantpb.ShellRequest:
+		spite.Name = MsgPty.String()
+		spite.Body = &implantpb.Spite_ShellRequest{ShellRequest: msg}
+
 	default:
 		return spite, ErrUnknownSpite
 	}

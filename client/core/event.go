@@ -117,12 +117,14 @@ func HandlerTask(sess *Session, ctx *clientpb.TaskContext, message []byte, calle
 		ctx.Task.SessionId, ctx.Task.TaskId, prompt,
 		ctx.Task.Progress(),
 		message))
-	log.Importantf(s)
-	if callee != consts.CalleeCMD {
-		return
+
+	if callee != consts.CalleePty {
+		log.Importantf(s)
 	}
+
 	var err error
 	var resp string
+
 	if isFinish {
 		log.FileLog(s)
 		resp, err = callback(ctx)
@@ -133,7 +135,10 @@ func HandlerTask(sess *Session, ctx *clientpb.TaskContext, message []byte, calle
 
 	if err != nil {
 		log.Errorf(logs.RedBold(err.Error()))
-	} else if resp != "" {
+		return
+	}
+
+	if resp != "" && callee == consts.CalleeCMD {
 		tui.Down(1)
 		log.Console(resp + "\n")
 	}
