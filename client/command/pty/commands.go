@@ -4,6 +4,7 @@ import (
 	"github.com/carapace-sh/carapace"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -11,7 +12,7 @@ import (
 // Commands returns PTY-related cobra commands
 func Commands(con *repl.Console) []*cobra.Command {
 	shellCmd := &cobra.Command{
-		Use:   "pty",
+		Use:   consts.ModuleClientPty,
 		Short: "Start an interactive PTY shell session",
 		Long: `Start an interactive pseudo-terminal (PTY) shell session with the implant.
 This provides a real terminal experience with:

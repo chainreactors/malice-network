@@ -134,12 +134,13 @@ const (
 	ModuleRemDial = "rem_dial"
 	ModuleRem     = "rem"
 
-	ModulePty           = "pty"
-	ModulePtyStart      = "start"
-	ModulePtyStop       = "stop"
-	ModulePtyInput      = "input"
-	ModuleShellRequest  = "shell_request"
-	ModuleShellResponse = "shell_response"
+	ModuleClientPty   = "interactive"
+	ModulePty         = "pty"
+	ModulePtyStart    = "start"
+	ModulePtyStop     = "stop"
+	ModulePtyInput    = "input"
+	ModulePtyRequest  = "pty_request"
+	ModulePtyResponse = "pty_response"
 )
 
 func SubCommandName(module string) string {

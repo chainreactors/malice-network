@@ -107,9 +107,9 @@ func BuildSpite(spite *implantpb.Spite, msg proto.Message) (*implantpb.Spite, er
 	case *implantpb.KeyExchangeRequest:
 		spite.Name = MsgKeyExchange.String()
 		spite.Body = &implantpb.Spite_KeyExchangeRequest{KeyExchangeRequest: msg}
-	case *implantpb.ShellRequest:
+	case *implantpb.PtyRequest:
 		spite.Name = MsgPty.String()
-		spite.Body = &implantpb.Spite_ShellRequest{ShellRequest: msg}
+		spite.Body = &implantpb.Spite_PtyRequest{PtyRequest: msg}
 
 	default:
 		return spite, ErrUnknownSpite

@@ -57,8 +57,8 @@ const (
 	MsgWmiExecute        MsgName = consts.ModuleWmiExec
 	MsgKeyExchange       MsgName = consts.ModuleKeyExchange
 	MsgPty               MsgName = consts.ModulePty
-	MsgShellRequest      MsgName = consts.ModuleShellRequest
-	MsgShellResponse     MsgName = consts.ModuleShellResponse
+	MsgPtyRequest        MsgName = consts.ModulePtyRequest
+	MsgPtyResponse       MsgName = consts.ModulePtyResponse
 )
 
 func (r MsgName) String() string {
@@ -126,8 +126,8 @@ func MessageType(message *implantpb.Spite) MsgName {
 		return MsgTaskSchdResponse
 	case *implantpb.Spite_SchedulesResponse:
 		return MsgTaskSchdsResponse
-	case *implantpb.Spite_ShellResponse:
-		return MsgShellResponse
+	case *implantpb.Spite_PtyResponse:
+		return MsgPtyResponse
 	case *implantpb.Spite_KeyExchangeResponse:
 		return MsgKeyExchangeResponse
 	case *implantpb.Spite_KeyExchangeRequest:

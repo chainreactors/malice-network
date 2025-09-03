@@ -36,8 +36,8 @@ func NewPTYClient(rpc clientrpc.MaliceRPCClient, sess *core.Session) *PTYClient 
 	}
 }
 
-// sendShellRequest 统一的shell请求发送方法
-func (c *PTYClient) sendShellRequest(ctx context.Context, req *implantpb.ShellRequest) error {
+// sendPtyRequest 统一的pty请求发送方法
+func (c *PTYClient) sendPtyRequest(ctx context.Context, req *implantpb.PtyRequest) error {
 	_, err := c.rpc.PtyRequest(ctx, req)
 	return err
 }
@@ -52,7 +52,7 @@ func (c *PTYClient) getNewline() string {
 
 // StartShell 启动shell会话
 func (c *PTYClient) StartShell(ctx context.Context, sessionID, shellType string, cols, rows int) error {
-	req := &implantpb.ShellRequest{
+	req := &implantpb.PtyRequest{
 		Type:      consts.ModulePtyStart,
 		SessionId: sessionID,
 		Shell:     shellType,
@@ -60,7 +60,7 @@ func (c *PTYClient) StartShell(ctx context.Context, sessionID, shellType string,
 		Rows:      uint32(rows),
 	}
 
-	if err := c.sendShellRequest(ctx, req); err != nil {
+	if err := c.sendPtyRequest(ctx, req); err != nil {
 		return fmt.Errorf("failed to start shell: %w", err)
 	}
 	return nil
@@ -68,13 +68,13 @@ func (c *PTYClient) StartShell(ctx context.Context, sessionID, shellType string,
 
 // SendInput 发送输入到shell
 func (c *PTYClient) SendInput(ctx context.Context, sessionID, input string) error {
-	req := &implantpb.ShellRequest{
+	req := &implantpb.PtyRequest{
 		Type:      consts.ModulePtyInput,
 		SessionId: sessionID,
 		InputData: []byte(input),
 	}
 
-	if err := c.sendShellRequest(ctx, req); err != nil {
+	if err := c.sendPtyRequest(ctx, req); err != nil {
 		return fmt.Errorf("failed to send input: %w", err)
 	}
 	return nil
@@ -82,14 +82,14 @@ func (c *PTYClient) SendInput(ctx context.Context, sessionID, input string) erro
 
 // ResizeShell 调整shell大小
 func (c *PTYClient) ResizeShell(ctx context.Context, sessionID string, cols, rows int) error {
-	req := &implantpb.ShellRequest{
+	req := &implantpb.PtyRequest{
 		Type:      "resize",
 		SessionId: sessionID,
 		Cols:      uint32(cols),
 		Rows:      uint32(rows),
 	}
 
-	if err := c.sendShellRequest(ctx, req); err != nil {
+	if err := c.sendPtyRequest(ctx, req); err != nil {
 		return fmt.Errorf("failed to resize shell: %w", err)
 	}
 	return nil
@@ -97,12 +97,12 @@ func (c *PTYClient) ResizeShell(ctx context.Context, sessionID string, cols, row
 
 // StopShell 停止shell会话
 func (c *PTYClient) StopShell(ctx context.Context, sessionID string) error {
-	req := &implantpb.ShellRequest{
+	req := &implantpb.PtyRequest{
 		Type:      consts.ModulePtyStop,
 		SessionId: sessionID,
 	}
 
-	if err := c.sendShellRequest(ctx, req); err != nil {
+	if err := c.sendPtyRequest(ctx, req); err != nil {
 		return fmt.Errorf("failed to stop shell: %w", err)
 	}
 	return nil
@@ -245,7 +245,7 @@ func ShellCmd(cmd *cobra.Command, con *repl.Console) error {
 		"",
 		nil,
 		func(ctx *clientpb.TaskContext) (interface{}, error) {
-			resp := ctx.Spite.GetShellResponse()
+			resp := ctx.Spite.GetPtyResponse()
 			if resp != nil {
 				// 如果在等待 Tab 补全结果，则用返回文本更新输入行，完全不进入输出区
 				if shellModel.CompletionPending() {

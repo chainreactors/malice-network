@@ -11,7 +11,7 @@ import (
 )
 
 // Shell 统一的PTY shell处理方法
-func (rpc *Server) PtyRequest(ctx context.Context, req *implantpb.ShellRequest) (*clientpb.Task, error) {
+func (rpc *Server) PtyRequest(ctx context.Context, req *implantpb.PtyRequest) (*clientpb.Task, error) {
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err
@@ -32,7 +32,7 @@ func (rpc *Server) PtyRequest(ctx context.Context, req *implantpb.ShellRequest) 
 		go func() {
 			for {
 				resp := <-out
-				err := handler.AssertSpite(resp, types.MsgShellResponse)
+				err := handler.AssertSpite(resp, types.MsgPtyResponse)
 				if err != nil {
 					greq.Task.Panic(buildErrorEvent(greq.Task, err))
 					return
@@ -60,7 +60,7 @@ func (rpc *Server) PtyRequest(ctx context.Context, req *implantpb.ShellRequest) 
 		if err != nil {
 			return nil, err
 		}
-		go greq.HandlerResponse(ch, types.MsgShellResponse)
+		go greq.HandlerResponse(ch, types.MsgPtyResponse)
 	}
 
 	return greq.Task.ToProtobuf(), nil
