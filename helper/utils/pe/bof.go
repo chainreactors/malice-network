@@ -20,7 +20,7 @@ func (b *BOFArgsBuffer) AddData(d []byte) error {
 	return nil
 }
 
-func (b *BOFArgsBuffer) AddShort(d uint16) error {
+func (b *BOFArgsBuffer) AddShort(d int16) error {
 	data, err := PackShort(d)
 	if err != nil {
 		return err
@@ -29,7 +29,7 @@ func (b *BOFArgsBuffer) AddShort(d uint16) error {
 	return nil
 }
 
-func (b *BOFArgsBuffer) AddInt(d uint32) error {
+func (b *BOFArgsBuffer) AddInt(d int) error {
 	data, err := PackInt(d)
 	if err != nil {
 		return err
@@ -118,28 +118,28 @@ func PackURL(data string) string {
 	return "url" + data
 }
 
-func PackInt(i uint32) (string, error) {
+func PackInt(i int) (string, error) {
 	return fmt.Sprintf(`int:%d`, i), nil
 }
 
 func PackIntString(s string) (string, error) {
-	i, err := strconv.ParseUint(s, 10, 32)
+	i, err := strconv.ParseInt(s, 10, 32)
 	if err != nil {
 		return "", err
 	}
-	return PackInt(uint32(i))
+	return PackInt(int(i))
 }
 
-func PackShort(i uint16) (string, error) {
+func PackShort(i int16) (string, error) {
 	return fmt.Sprintf(`short:%d`, i), nil
 }
 
 func PackShortString(s string) (string, error) {
-	i, err := strconv.ParseUint(s, 10, 16)
+	i, err := strconv.ParseInt(s, 10, 16)
 	if err != nil {
 		return "", err
 	}
-	return PackShort(uint16(i))
+	return PackShort(int16(i))
 }
 
 func PackString(s string) string {
