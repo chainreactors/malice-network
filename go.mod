@@ -79,7 +79,7 @@ require (
 	github.com/charmbracelet/x/term v0.2.1 // indirect
 	github.com/cjoudrey/gluahttp v0.0.0-20201111170219-25003d9adfa9 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/dlclark/regexp2 v1.11.0 // indirect
+	github.com/dlclark/regexp2 v1.11.5 // indirect
 	github.com/docker/go-connections v0.5.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/edsrzf/mmap-go v1.1.0 // indirect

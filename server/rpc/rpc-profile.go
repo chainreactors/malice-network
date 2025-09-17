@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 	"fmt"
+
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/server/internal/db"
 )
@@ -11,10 +12,12 @@ func (rpc *Server) NewProfile(ctx context.Context, req *clientpb.Profile) (*clie
 	if req.Name == "" {
 		return nil, fmt.Errorf("profile name cannot be empty")
 	}
+
 	err := db.NewProfile(req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create profile: %w", err)
 	}
+
 	return &clientpb.Empty{}, nil
 }
 
@@ -39,11 +42,19 @@ func (rpc *Server) DeleteProfile(ctx context.Context, req *clientpb.Profile) (*c
 
 	err := db.DeleteProfileByName(req.Name)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to delete profile: %w", err)
 	}
 	return &clientpb.Empty{}, nil
 }
 
 func (rpc *Server) UpdateProfile(ctx context.Context, req *clientpb.Profile) (*clientpb.Empty, error) {
-	return &clientpb.Empty{}, db.UpdateProfileRaw(req.Name, req.Content)
+	if req.Name == "" {
+		return nil, fmt.Errorf("profile name cannot be empty")
+	}
+
+	err := db.UpdateProfileRaw(req.Name, req.Content)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update profile: %w", err)
+	}
+	return &clientpb.Empty{}, nil
 }

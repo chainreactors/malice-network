@@ -28,11 +28,11 @@ type GithubSetting struct {
 	Workflow string `yaml:"workflow" config:"workflow" default:"generate.yaml"`
 }
 
-func (github *GithubSetting) ToProtobuf() *clientpb.GithubWorkflowConfig {
+func (github *GithubSetting) ToProtobuf() *clientpb.GithubActionBuildConfig {
 	if github == nil || github.Token == "" || github.Owner == "" || github.Repo == "" || github.Workflow == "" {
 		return nil
 	}
-	return &clientpb.GithubWorkflowConfig{
+	return &clientpb.GithubActionBuildConfig{
 		Owner:      github.Owner,
 		Repo:       github.Repo,
 		Token:      github.Token,

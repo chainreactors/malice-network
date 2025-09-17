@@ -56,12 +56,12 @@ func PrintSessions(sessions map[string]*core.Session, con *repl.Console, isAll b
 	var row table.Row
 	maxLengths := map[string]int{
 		"ID":             8,
-		"Group/Note":     10,
+		"Group/Note":     16,
 		"Pipeline":       14,
-		"Remote Address": 18,
+		"Remote Address": 22,
 		"UserName":       20,
 		"System":         16,
-		"Sleep":          9,
+		"Sleep":          24,
 		"Last":           8,
 		"CreatedAt":      16,
 	}
@@ -96,7 +96,7 @@ func PrintSessions(sessions map[string]*core.Session, con *repl.Console, isAll b
 				"Remote Address": session.Target,
 				"UserName":       computer,
 				"System":         fmt.Sprintf("%s/%s", session.Os.Name, session.Os.Arch),
-				"Sleep":          fmt.Sprintf("%s/%.1f%%", session.Timer.Expression, session.Timer.Jitter*100),
+				"Sleep":          fmt.Sprintf("%s [%.1f%%]", session.Timer.Expression, session.Timer.Jitter*100),
 				"Last":           formatTimeDiff(session.LastCheckin, session.IsAlive),
 				"CreatedAt":      time.Unix(session.CreatedAt, 0).Format("2006-01-02 15:04"),
 			})

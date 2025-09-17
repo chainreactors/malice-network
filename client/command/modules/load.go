@@ -75,7 +75,7 @@ func LoadModuleCmd(cmd *cobra.Command, con *repl.Console) error {
 
 // handleModuleBuild handles module build based on the builder resource (docker/action)
 func handleModuleBuild(cmd *cobra.Command, con *repl.Console, modules, thirdModules []string) error {
-	source, err := build.CheckResource(con, "", nil)
+	source, err := build.CheckSource(con, nil)
 	if err != nil {
 		return err
 	}
@@ -83,13 +83,13 @@ func handleModuleBuild(cmd *cobra.Command, con *repl.Console, modules, thirdModu
 	if !ok {
 		return errs.ErrInvalidateTarget
 	}
-	var params *types.ProfileParams
+	var _ *types.ProfileParams
 	if len(modules) != 0 {
-		params = &types.ProfileParams{
+		_ = &types.ProfileParams{
 			Modules: strings.Join(modules, ","),
 		}
 	} else if len(thirdModules) != 0 {
-		params = &types.ProfileParams{
+		_ = &types.ProfileParams{
 			Enable3RD: true,
 			Modules:   strings.Join(modules, ","),
 		}
@@ -97,10 +97,10 @@ func handleModuleBuild(cmd *cobra.Command, con *repl.Console, modules, thirdModu
 		return errors.New("must specify either --modules or --3rd. One of them is required")
 	}
 	artifact, err := con.Rpc.SyncBuild(con.SyncBuildContext(), &clientpb.BuildConfig{
-		Target:      target,
-		ParamsBytes: []byte(params.String()),
-		Type:        consts.CommandBuildModules,
-		Source:      source,
+		Target: target,
+		//ParamsBytes: []byte(params.String()),
+		BuildType: consts.CommandBuildModules,
+		Source:    source,
 	})
 	if err != nil {
 		return err

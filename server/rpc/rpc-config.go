@@ -9,12 +9,12 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/core"
 )
 
-func (rpc *Server) GetGithubConfig(ctx context.Context, req *clientpb.Empty) (*clientpb.GithubWorkflowConfig, error) {
+func (rpc *Server) GetGithubConfig(ctx context.Context, req *clientpb.Empty) (*clientpb.GithubActionBuildConfig, error) {
 	githubConfig := configs.GetGithubConfig()
 	if githubConfig == nil {
 		return nil, errs.ErrNotFoundGithubConfig
 	}
-	return &clientpb.GithubWorkflowConfig{
+	return &clientpb.GithubActionBuildConfig{
 		Owner:      githubConfig.Owner,
 		Repo:       githubConfig.Repo,
 		Token:      githubConfig.Token,
@@ -22,7 +22,7 @@ func (rpc *Server) GetGithubConfig(ctx context.Context, req *clientpb.Empty) (*c
 	}, nil
 }
 
-func (rpc *Server) UpdateGithubConfig(ctx context.Context, req *clientpb.GithubWorkflowConfig) (*clientpb.Empty, error) {
+func (rpc *Server) UpdateGithubConfig(ctx context.Context, req *clientpb.GithubActionBuildConfig) (*clientpb.Empty, error) {
 	err := configs.UpdateGithubConfig(&configs.GithubConfig{
 		Owner:    req.Owner,
 		Repo:     req.Repo,

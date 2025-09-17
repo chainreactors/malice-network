@@ -102,7 +102,7 @@ func githubHeaders(token string) map[string]string {
 	}
 }
 
-func GetWorkflowStatus(config *clientpb.GithubWorkflowConfig) error {
+func GetWorkflowStatus(config *clientpb.GithubActionBuildConfig) error {
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/actions/workflows/%s", config.Owner, config.Repo, config.WorkflowId)
 	headers := githubHeaders(config.Token)
 	var workflow Workflow

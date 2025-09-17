@@ -60,7 +60,7 @@ type Console struct {
 	App        *console.Console
 	Profile    *assets.Profile
 	CMDs       map[string]*cobra.Command
-  MCP     *MCPServer
+	MCP        *MCPServer
 	Helpers    map[string]*cobra.Command
 	MalManager *plugin.MalManager
 }
@@ -97,6 +97,12 @@ func (c *Console) Start(bindCmds ...BindCmds) error {
 
 	c.App.Menu(consts.ClientMenu).Command = bindCmds[0](c)()
 	c.App.Menu(consts.ImplantMenu).Command = bindCmds[1](c)()
+
+	// 所有命令注册完成后，安全地启动MCP服务器
+	if c.ServerStatus != nil {
+		c.InitMCPServer()
+	}
+
 	if c.GetInteractive() == nil {
 		c.App.SwitchMenu(consts.ClientMenu)
 	} else {

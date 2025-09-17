@@ -167,8 +167,8 @@ type GithubConfig struct {
 	Workflow string `config:"workflow" default:"generate.yaml"`
 }
 
-func (g *GithubConfig) ToProtobuf() *clientpb.GithubWorkflowConfig {
-	return &clientpb.GithubWorkflowConfig{
+func (g *GithubConfig) ToProtobuf() *clientpb.GithubActionBuildConfig {
+	return &clientpb.GithubActionBuildConfig{
 		Owner:      g.Owner,
 		Repo:       g.Repo,
 		Token:      g.Token,

@@ -1,0 +1,53 @@
+package build
+
+import (
+	"errors"
+	"fmt"
+	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/types"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
+	"strings"
+)
+
+// BeaconFlagSet 定义所有构建相关的flag
+func ModuleFlagSet(f *pflag.FlagSet) {
+	f.String("modules", "", "Override modules (comma-separated, e.g., 'full,execute_exe')")
+	f.String("3rd-modules", "", "Override 3rd party modules")
+}
+
+func ModulesCmd(cmd *cobra.Command, con *repl.Console) error {
+	var err error
+	//buildConfig, err := prepareBuildConfig(cmd, con, consts.CommandBuildModules)
+	buildConfig, err := parseBasicConfig(cmd, con)
+	buildConfig.BuildType = consts.CommandBuildModules
+	if err != nil {
+		return err
+	}
+	// config and check source
+	buildConfig, err = parseSourceConfig(cmd, con, buildConfig)
+	if err != nil {
+		return err
+	}
+	//
+	modules, _ := cmd.Flags().GetString("modules")
+	thirdModules, _ := cmd.Flags().GetString("3rd")
+	if modules == "" && thirdModules == "" {
+		return errors.New("--module and --3rd options are mutually exclusive. please specify only one of them")
+	}
+	// set profile about modules
+	mainProfile := types.ProfileConfig{}
+	mainProfile.SetDefaults()
+	if thirdModules != "" {
+		mainProfile.Implant.ThirdModules = strings.Split(thirdModules, ",")
+		mainProfile.Implant.Enable3rd = true
+	} else {
+		fmt.Println(mainProfile.Implant)
+		mainProfile.Implant.Modules = strings.Split(modules, ",")
+	}
+	buildConfig.MaleficConfig, _ = mainProfile.ToYAML()
+
+	executeBuild(con, buildConfig)
+	return nil
+}

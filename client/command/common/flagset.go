@@ -214,14 +214,11 @@ func GenerateFlagSet(f *pflag.FlagSet) {
 
 func ParseGenerateFlags(cmd *cobra.Command) *clientpb.BuildConfig {
 	name, _ := cmd.Flags().GetString("profile")
-	buildTarget, _ := cmd.Flags().GetString("target")
-	source, _ := cmd.Flags().GetString("source")
+	target, _ := cmd.Flags().GetString("target")
 	buildConfig := &clientpb.BuildConfig{
 		ProfileName: name,
-		Target:      buildTarget,
-		Source:      source,
+		Target:      target,
 	}
-
 	return buildConfig
 }
 
@@ -273,34 +270,36 @@ func ProxyFlagSet(f *pflag.FlagSet) {
 }
 
 func GithubFlagSet(f *pflag.FlagSet) {
-	f.String("owner", "", "github owner")
-	f.String("repo", "", "github repo")
-	f.String("token", "", "github token")
-	f.String("workflowFile", "", "github workflow file")
-	f.Bool("remove", false, "remove workflow")
+	f.String("github-owner", "", "github owner")
+	f.String("github-repo", "", "github repo")
+	f.String("github-token", "", "github token")
+	f.String("github-workflowFile", "", "github workflow file")
+	f.Bool("github-remove", false, "remove workflow")
 
 	SetFlagSetGroup(f, "github")
 }
 
-func ParseGithubFlags(cmd *cobra.Command) *clientpb.GithubWorkflowConfig {
-	owner, _ := cmd.Flags().GetString("owner")
-	repo, _ := cmd.Flags().GetString("repo")
-	token, _ := cmd.Flags().GetString("token")
-	file, _ := cmd.Flags().GetString("workflowFile")
-	remove, _ := cmd.Flags().GetBool("remove")
+func ParseGithubFlags(cmd *cobra.Command) *clientpb.GithubActionBuildConfig {
+	owner, _ := cmd.Flags().GetString("github-owner")
+	repo, _ := cmd.Flags().GetString("github-repo")
+	token, _ := cmd.Flags().GetString("github-token")
+	file, _ := cmd.Flags().GetString("github-workflowFile")
+	remove, _ := cmd.Flags().GetBool("github-remove")
 
-	githubConfig := &clientpb.GithubWorkflowConfig{
+	githubActionConfig := &clientpb.GithubActionBuildConfig{
 		Owner:      owner,
 		Repo:       repo,
 		Token:      token,
 		WorkflowId: file,
 		IsRemove:   remove,
 	}
-	if githubConfig.Owner == "" || githubConfig.Repo == "" || githubConfig.Token == "" {
+	if githubActionConfig.Owner == "" ||
+		githubActionConfig.Repo == "" ||
+		githubActionConfig.Token == "" {
 		return nil
 	}
 
-	return githubConfig
+	return githubActionConfig
 }
 
 // ParseSelfSignFlags parses the self-signed certificate related flags from the command and returns a CertificateSubject proto message.

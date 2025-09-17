@@ -4,12 +4,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"mime"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/certs"
@@ -858,11 +859,23 @@ func GetProfile(name string) (*types.ProfileConfig, error) {
 	}
 
 	if profileModel.Pipeline != nil {
-		profile.Basic.Targets = []string{profileModel.Pipeline.Address()}
+		// 为了向后兼容，创建一个简单的目标
+		target := types.Target{
+			Address: profileModel.Pipeline.Address(),
+		}
+
+		// 如果是 TLS 管道，设置 TLS 配置
+		if profileModel.Pipeline.Tls.Enable {
+			target.TLS = &types.TLSProfile{
+				Enable: true,
+			}
+		}
+
+		profile.Basic.Targets = []types.Target{target}
 		profile.Basic.Encryption = profileModel.Pipeline.Encryption.Choice().Type
 		profile.Basic.Key = profileModel.Pipeline.Encryption.Choice().Key
-		profile.Basic.Protocol = profileModel.Pipeline.Type
-		profile.Basic.TLS.Enable = profileModel.Pipeline.Tls.Enable
+		// profile.Basic.Protocol = profileModel.Pipeline.Type
+		// profile.Basic.TLS.Enable = profileModel.Pipeline.Tls.Enable
 
 		if profileModel.Pipeline.Secure != nil && profileModel.Pipeline.Secure.Enable {
 			// Profile中需要保存implant编译时需要的密钥：
@@ -875,19 +888,24 @@ func GetProfile(name string) (*types.ProfileConfig, error) {
 				ImplantPrivateKey: profileModel.Pipeline.Secure.ImplantPrivateKey,
 			}
 		}
+		// 注意：protocol 字段已移除，现在通过 targets 中的具体配置来确定协议
 	}
 	if params := profileModel.Params; params != nil {
-		profile.Basic.Interval = profileModel.Params.Interval
+		profile.Basic.Cron = profileModel.Params.Cron
 		profile.Basic.Jitter = profileModel.Params.Jitter
 		if params.REMPipeline != "" {
-			profile.Basic.Protocol = consts.RemPipeline
+			// 对于 REM 协议，我们需要添加到 targets 中
 			pipeline, err := FindPipeline(params.REMPipeline)
 			if err != nil {
 				return nil, err
 			}
-			profile.Basic.REM = &types.REMProfile{
-				Link: pipeline.PipelineParams.Link,
-			}
+			// 添加 REM 目标到 targets 列表
+			profile.Basic.Targets = append(profile.Basic.Targets, types.Target{
+				Address: pipeline.Address(),
+				REM: &types.REMProfile{
+					Link: pipeline.PipelineParams.Link,
+				},
+			})
 		}
 
 	}
@@ -897,6 +915,29 @@ func GetProfile(name string) (*types.ProfileConfig, error) {
 	}
 
 	return profile, nil
+}
+
+// GetProfileContent GetProfile recovers profile from database
+func GetProfileContent(profileName string) ([]byte, error) {
+	var profileModel *models.Profile
+
+	result := Session().Preload("Pipeline").Where("name = ?", profileName).First(&profileModel)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	//if profileModel.PipelineID != "" && profileModel.Pipeline == nil {
+	//	return nil, errs.ErrNotFoundPipeline
+	//}
+	//if profileModel.PulsePipelineID != "" && profileModel.PulsePipeline == nil {
+	//	return nil, errs.ErrNotFoundPipeline
+	//}
+	//err := profileModel.DeserializeImplantConfig()
+	//if err != nil {
+	//	return nil, err
+	//}
+	// profile, err := types.LoadProfile(profileModel.Raw)
+
+	return profileModel.Raw, nil
 }
 
 func GetProfiles() ([]*models.Profile, error) {
@@ -948,7 +989,7 @@ func UpdateProfileRaw(profileName string, raw []byte) error {
 	return Session().Model(&models.Profile{}).Where("name = ?", profileName).Update("raw", raw).Error
 }
 
-func SaveArtifactFromConfig(req *clientpb.BuildConfig, profileByte []byte) (*models.Artifact, error) {
+func SaveArtifactFromConfig(req *clientpb.BuildConfig) (*models.Artifact, error) {
 	target, ok := consts.GetBuildTarget(req.Target)
 	if !ok {
 		return nil, errs.ErrInvalidateTarget
@@ -957,12 +998,12 @@ func SaveArtifactFromConfig(req *clientpb.BuildConfig, profileByte []byte) (*mod
 		Name:        req.BuildName,
 		ProfileName: req.ProfileName,
 		Target:      req.Target,
-		Type:        req.Type,
+		Type:        req.BuildType,
 		Source:      req.Source,
 		Arch:        target.Arch,
 		Os:          target.OS,
-		ProfileByte: profileByte,
-		ParamsData:  string(req.ParamsBytes),
+		ProfileByte: req.MaleficConfig,
+		//ParamsData:  string(req.ParamsBytes),
 	}
 
 	if Session() == nil {
@@ -975,30 +1016,30 @@ func SaveArtifactFromConfig(req *clientpb.BuildConfig, profileByte []byte) (*mod
 	return &builder, nil
 }
 
-func SaveArtifactFromID(req *clientpb.BuildConfig, ID uint32, resource string, profileByte []byte) (*models.Artifact, error) {
+func SaveArtifactFromID(req *clientpb.BuildConfig, ID uint32) (*models.Artifact, error) {
 	target, ok := consts.GetBuildTarget(req.Target)
 	if !ok {
 		return nil, errs.ErrInvalidateTarget
 	}
-	builder := models.Artifact{
+	artifact := models.Artifact{
 		ID:          ID,
 		Name:        req.BuildName,
 		ProfileName: req.ProfileName,
 		Target:      req.Target,
-		Type:        req.Type,
-		Source:      resource,
+		Type:        req.BuildType,
+		Source:      req.Source,
 		Arch:        target.Arch,
 		Os:          target.OS,
-		ProfileByte: profileByte,
-		ParamsData:  string(req.ParamsBytes),
+		ProfileByte: req.MaleficConfig,
+		//ParamsData:  string(req.ParamsBytes),
 	}
 
-	if err := Session().Create(&builder).Error; err != nil {
+	if err := Session().Create(&artifact).Error; err != nil {
 		return nil, err
 
 	}
 
-	return &builder, nil
+	return &artifact, nil
 }
 
 func UpdateBuilderPath(builder *models.Artifact) error {
@@ -1012,30 +1053,31 @@ func UpdateBuilderPath(builder *models.Artifact) error {
 }
 
 func UpdatePulseRelink(pusleID, beanconID uint32) error {
-	pulse, err := GetArtifactById(pusleID)
-	if err != nil {
-		return err
-	}
-	pulse.Params.RelinkBeaconID = beanconID
-	err = Session().Model(pulse).
-		Select("ParamsData").
-		Updates(pulse).
-		Error
-	if err != nil {
-		return err
-	}
-	originBeacon, err := GetArtifactById(pulse.Params.OriginBeaconID)
-	if err != nil {
-		return err
-	}
-	originBeacon.Params.RelinkBeaconID = beanconID
-	err = Session().Model(originBeacon).
-		Select("ParamsData").
-		Updates(originBeacon).
-		Error
-	if err != nil {
-		return err
-	}
+	// todo
+	//pulse, err := GetArtifactById(pusleID)
+	//if err != nil {
+	//	return err
+	//}
+	//pulse.Params.RelinkBeaconID = beanconID
+	//err = Session().Model(pulse).
+	//	Select("ParamsData").
+	//	Updates(pulse).
+	//	Error
+	//if err != nil {
+	//	return err
+	//}
+	//originBeacon, err := GetArtifactById(pulse.Params.OriginBeaconID)
+	//if err != nil {
+	//	return err
+	//}
+	//originBeacon.Params.RelinkBeaconID = beanconID
+	//err = Session().Model(originBeacon).
+	//	Select("ParamsData").
+	//	Updates(originBeacon).
+	//	Error
+	//if err != nil {
+	//	return err
+	//}
 	return nil
 }
 
@@ -1227,56 +1269,6 @@ func DeleteArtifactByName(artifactName string) error {
 	err = Session().Delete(model).Error
 	if err != nil {
 		return err
-	}
-	return nil
-}
-
-// UpdateGeneratorConfig - Update the generator config
-func UpdateGeneratorConfig(req *clientpb.BuildConfig, config *types.ProfileConfig) error {
-	if config.Basic != nil {
-		if req.BuildName != "" {
-			config.Basic.Name = req.BuildName
-		}
-
-		if len(req.ParamsBytes) > 0 {
-			params, err := types.UnmarshalProfileParams(req.ParamsBytes)
-			if err != nil {
-				return err
-			}
-			if params.Interval != -1 {
-				config.Basic.Interval = params.Interval
-			}
-
-			if params.Jitter != -1 {
-				config.Basic.Jitter = params.Jitter
-			}
-			if params.Proxy != "" {
-				config.Basic.Proxy = params.Proxy
-			}
-
-			if params.Enable3RD {
-				config.Implant.Extras["3rd_modules"] = strings.Split(params.Modules, ",")
-				config.Implant.Extras["enable_3rd"] = true
-				config.Implant.Modules = []string{}
-			} else if params.Modules != "" {
-				config.Implant.Modules = strings.Split(params.Modules, ",")
-			}
-			if params.Address != "" {
-				config.Basic.Targets = []string{params.Address}
-				config.Basic.TLS.SNI = params.Address
-				config.Basic.Extras["http"].(map[string]interface{})["host"] = params.Address
-				config.Pulse.Target = params.Address
-				config.Pulse.Extras["http"].(map[string]interface{})["host"] = params.Address
-
-			}
-		}
-	}
-	if req.ArtifactId != 0 && config.Pulse.Flags.ArtifactID == 0 {
-		config.Pulse.Flags.ArtifactID = req.ArtifactId
-	}
-
-	if req.Type == consts.CommandBuildBind {
-		config.Implant.Mod = consts.CommandBuildBind
 	}
 	return nil
 }

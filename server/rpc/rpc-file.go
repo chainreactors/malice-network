@@ -138,6 +138,33 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 	}
 }
 
+func mergeChunks(tempDir, finalPath string, totalChunks int) error {
+	outputDir := filepath.Dir(finalPath)
+	if err := os.MkdirAll(outputDir, 0755); err != nil {
+		return fmt.Errorf("failed to create output directory: %w", err)
+	}
+
+	outputFile, err := os.Create(finalPath)
+	if err != nil {
+		return fmt.Errorf("failed to create output file: %w", err)
+	}
+	defer outputFile.Close()
+
+	for i := 1; i <= totalChunks; i++ {
+		chunkFile := filepath.Join(tempDir, fmt.Sprintf("%d.chunk", i))
+		chunkData, err := os.ReadFile(chunkFile)
+		if err != nil {
+			return fmt.Errorf("failed to read chunk %d: %w", i, err)
+		}
+
+		if _, err := outputFile.Write(chunkData); err != nil {
+			return fmt.Errorf("failed to write chunk %d to output: %w", i, err)
+		}
+	}
+
+	return nil
+}
+
 // Download - Download a file from implant
 func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest) (*clientpb.Task, error) {
 	req.BufferSize = uint32(config.Uint(consts.ConfigMaxPacketLength))
@@ -150,7 +177,6 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 		logs.Log.Debugf("stream generate error: %s", err)
 		return nil, err
 	}
-
 	go func() {
 		resp := <-out
 		err := handler.AssertStatusAndSpite(resp, types.MsgDownload)
@@ -164,89 +190,142 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 			logs.Log.Errorf("Failed to write task log: %v", err)
 			return
 		}
-		greq.Task.Total = int(resp.GetDownloadResponse().Size)/config.Int(consts.ConfigMaxPacketLength) + 1
-		err = db.UpdateDownloadTotal(greq.Task.Id, greq.Task.SessionId, greq.Task.Total)
-		if err != nil {
-			logs.Log.Errorf("Failed to update download total: %v", err)
-		}
-		// temp file
+		total := int(resp.GetDownloadResponse().Size)/config.Int(consts.ConfigMaxPacketLength) + 1
 		downloadAbs := resp.GetDownloadResponse()
-		fileName := filepath.Join(configs.TempPath, downloadAbs.Checksum)
-		moveName := filepath.Join(configs.ContextPath, greq.Session.ID, consts.DownloadPath, downloadAbs.Checksum)
-		downloadFile, err := os.OpenFile(fileName, os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
-			logs.Log.Errorf("cannot create file %s, %s", fileName, err.Error())
-			return
-		}
-		defer downloadFile.Close()
+		greq.Task.Total = total
 
-		// return ack
-		ack, _ := types.BuildSpite(&implantpb.Spite{
-			Timeout: uint64(consts.MinTimeout.Seconds()),
-			TaskId:  greq.Task.Id,
-		}, &implantpb.ACK{
-			Success: true,
-			End:     false,
-		})
-		ack.Name = types.MsgDownload.String()
-		in <- ack
-
-		for resp := range out {
-			err := handler.AssertStatusAndSpite(resp, types.MsgBlock)
-			if err != nil {
-				logs.Log.Errorf(err.Error())
+		finalPath := filepath.Join(configs.ContextPath, greq.Session.ID, consts.DownloadPath, downloadAbs.Checksum)
+		if _, err := os.Stat(finalPath); err == nil {
+			if actualChecksum, err := fileutils.CalculateSHA256Checksum(finalPath); err == nil && actualChecksum == downloadAbs.Checksum {
+				greq.Task.Finish(resp, "file already exists and verified")
 				return
-			}
-			block := resp.GetBlock()
-			_, err = downloadFile.Write(block.Content)
-			if err != nil {
-				logs.Log.Errorf(err.Error())
-				return
-			}
-			if err != nil {
-				logs.Log.Errorf("cannot update task %d , %s in db", greq.Task.Id, err.Error())
-				return
-			}
-			greq.Task.Done(ack, "")
-			if !block.End {
-				ack, _ := greq.NewSpite(&implantpb.ACK{Success: true})
-				ack.TaskId = greq.Task.Id
-				ack.Name = types.MsgDownload.String()
-				in <- ack
-				//greq.Session.Add(resp, int(block.BlockId+1))
 			} else {
-				checksum, _ := fileutils.CalculateSHA256Checksum(fileName)
-				if checksum != downloadAbs.Checksum {
-					greq.Task.Panic(buildErrorEvent(greq.Task, fmt.Errorf("checksum error")))
+				os.Remove(finalPath)
+			}
+		}
+		// mkdir for download chunk
+		tempDir := filepath.Join(configs.TempPath, "downloads", resp.GetDownloadResponse().Checksum)
+		var current_cur int32 = 1
+		if _, err := os.Stat(tempDir); err == nil {
+			greq.Task.Finish(resp, "file already exists")
+			for i := 1; i <= total; i++ {
+				chunkFile := filepath.Join(tempDir, fmt.Sprintf("%d.chunk", i))
+				if _, err := os.Stat(chunkFile); err != nil {
+					current_cur = int32(i)
+					break
+				}
+				if i == total {
+					// merge
+					if err := mergeChunks(tempDir, finalPath, total); err != nil {
+						greq.Task.Panic(buildErrorEvent(greq.Task, err))
+						return
+					}
 					return
 				}
-				v := &output.DownloadContext{
-					FileDescriptor: &output.FileDescriptor{
-						Name:       req.Name,
-						Checksum:   downloadAbs.Checksum,
-						TargetPath: req.Path,
-						FilePath:   moveName,
-						Abstract:   fmt.Sprintf("download -%s -%s ", req.Name, req.Path),
-						Size:       int64(downloadAbs.Size),
-					},
-				}
-				ictx, err := db.SaveContext(&clientpb.Context{
-					Task:    greq.Task.ToProtobuf(),
-					Session: greq.Session.ToProtobuf(),
-					Type:    consts.ContextDownload,
-					Value:   v.Marshal(),
-				})
-				if err != nil {
-					logs.Log.Errorf("cannot create task %d , %s in db", greq.Task.Id, err.Error())
-				}
-				err = fileutils.MoveFile(fileName, moveName)
-				if err != nil {
-					logs.Error(err)
-				}
-				core.PushContextEvent(consts.ContextDownload, ictx)
-				greq.Task.Finish(resp, "sync id "+checksum)
+			}
+
+		} else {
+			err = os.MkdirAll(tempDir, 0755)
+			if err != nil {
+				logs.Log.Errorf("cannot create temp directory %s, %s", tempDir, err.Error())
+				return
 			}
 		}
+
+		//
+		curRequest, _ := types.BuildSpite(&implantpb.Spite{
+			Timeout: uint64(consts.MinTimeout.Seconds()),
+			TaskId:  greq.Task.Id,
+		}, &implantpb.DownloadRequest{
+			Path:       req.Path,
+			Name:       req.Name,
+			Cur:        current_cur,
+			Dir:        false,
+			BufferSize: req.BufferSize,
+		})
+		in <- curRequest
+
+		for resp := range out {
+			err := handler.AssertStatusAndSpite(resp, types.MsgDownload)
+			if err != nil {
+				logs.Log.Errorf(err.Error())
+				return
+			}
+
+			downloadResp := resp.GetDownloadResponse()
+			chunkFile := filepath.Join(tempDir, fmt.Sprintf("%d.chunk", downloadResp.Cur))
+			err = os.WriteFile(chunkFile, downloadResp.Content, 0644)
+			if err != nil {
+				logs.Log.Errorf("failed to save chunk %d: %w", downloadResp.Cur, err)
+				return
+			}
+			if checksum, _ := fileutils.CalculateSHA256Checksum(chunkFile); checksum != downloadResp.Checksum {
+				os.Remove(chunkFile)
+				greq.Task.Panic(buildErrorEvent(greq.Task, fmt.Errorf("chunk %d checksum mismatch: expected %s, got %s", downloadResp.Cur, downloadResp.Checksum, checksum)))
+				return
+			}
+			greq.Task.Done(resp, fmt.Sprintf("chunk %d/%d", downloadResp.Cur, total))
+			if downloadResp.Cur == int32(total) {
+				// merge
+				if err := mergeChunks(tempDir, finalPath, total); err != nil {
+					greq.Task.Panic(buildErrorEvent(greq.Task, err))
+					return
+				}
+				break
+			}
+
+			current_cur += 1
+			curRequest, _ = types.BuildSpite(&implantpb.Spite{
+				Timeout: uint64(consts.MinTimeout.Seconds()),
+				TaskId:  greq.Task.Id,
+			}, &implantpb.DownloadRequest{
+				Path:       req.Path,
+				Name:       req.Name,
+				Cur:        current_cur,
+				Dir:        false,
+				BufferSize: req.BufferSize,
+			})
+			in <- curRequest
+		}
+
+		actualChecksum, err := fileutils.CalculateSHA256Checksum(finalPath)
+		if err != nil {
+			greq.Task.Panic(buildErrorEvent(greq.Task, fmt.Errorf("failed to calculate final file checksum: %w", err)))
+			return
+		}
+
+		if actualChecksum != downloadAbs.Checksum {
+			os.Remove(finalPath)
+			greq.Task.Panic(buildErrorEvent(greq.Task, fmt.Errorf("final file checksum mismatch: expected %s, got %s", downloadAbs.Checksum, actualChecksum)))
+			return
+		}
+		if req.Dir == true {
+			req.Name = req.Name + ".tar.gz"
+		}
+		v := &output.DownloadContext{
+			FileDescriptor: &output.FileDescriptor{
+				Name:       req.Name,
+				Checksum:   actualChecksum,
+				TargetPath: req.Path,
+				FilePath:   finalPath,
+				Abstract:   fmt.Sprintf("download -%s -%s ", req.Name, req.Path),
+				Size:       int64(downloadAbs.Size),
+			},
+		}
+
+		ictx, err := db.SaveContext(&clientpb.Context{
+			Task:    greq.Task.ToProtobuf(),
+			Session: greq.Session.ToProtobuf(),
+			Type:    consts.ContextDownload,
+			Value:   v.Marshal(),
+		})
+		if err != nil {
+			logs.Log.Errorf("cannot create task %d , %s in db", greq.Task.Id, err.Error())
+		}
+
+		core.PushContextEvent(consts.ContextDownload, ictx)
+		greq.Task.Finish(resp, "sync id "+ictx.ID.String())
 	}()
+
 	return greq.Task.ToProtobuf(), nil
 }

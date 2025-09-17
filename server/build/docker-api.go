@@ -27,8 +27,9 @@ var (
 	ContainerCargoRegistryCache = "/root/cargo/registry"
 	ContainerCargoGitCache      = "/root/cargo/git"
 	ContainerBinPath            = "/root/bin"
-	ContainerResourcePath       = "/root/src/resource" // 新增：容器内的资源路径
+	ContainerResourcePath       = "/root/src/resources" // 新增：容器内的资源路径
 	ContainerAutoRunPath        = "/root/src/autorun.yaml"
+	ContainerConfigPath         = "/root/src/config.yaml"
 	command                     = "build"
 	funcNameOption              = "--function-name"
 	userDataPathOption          = "--userdata-path"
@@ -122,7 +123,7 @@ func sendContainerCtrlMsg(isEnd bool, containerName string, req *clientpb.BuildC
 		core.EventBroker.Publish(core.Event{
 			EventType: consts.EventBuild,
 			IsNotify:  false,
-			Message:   fmt.Sprintf("%s type(%s)  container(%s) has a err %v. ", req.BuildName, req.Type, containerName, err),
+			Message:   fmt.Sprintf("%s type(%s)  container(%s) has a err %v. ", req.BuildName, req.BuildType, containerName, err),
 			Important: true,
 		})
 	}
@@ -130,14 +131,14 @@ func sendContainerCtrlMsg(isEnd bool, containerName string, req *clientpb.BuildC
 		core.EventBroker.Publish(core.Event{
 			EventType: consts.EventBuild,
 			IsNotify:  false,
-			Message:   fmt.Sprintf("%s type(%s) has completed in container(%s). run `artifact list` to get the artifact.", req.BuildName, req.Type, containerName),
+			Message:   fmt.Sprintf("%s type(%s) has completed in container(%s). run `artifact list` to get the artifact.", req.BuildName, req.BuildType, containerName),
 			Important: true,
 		})
 	} else {
 		core.EventBroker.Publish(core.Event{
 			EventType: consts.EventBuild,
 			IsNotify:  false,
-			Message:   fmt.Sprintf("%s type(%s) has started in container(%s)...", req.BuildName, req.Type, containerName),
+			Message:   fmt.Sprintf("%s type(%s) has started in container(%s)...", req.BuildName, req.BuildType, containerName),
 			Important: true,
 		})
 	}

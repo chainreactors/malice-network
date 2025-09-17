@@ -3,25 +3,22 @@ package build
 import (
 	"encoding/base64"
 	"fmt"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/encoders"
-	"github.com/chainreactors/malice-network/helper/errs"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/types"
-	"github.com/chainreactors/malice-network/helper/utils/fileutils"
-	"github.com/chainreactors/malice-network/server/internal/configs"
-	"github.com/chainreactors/malice-network/server/internal/db"
-	"gopkg.in/yaml.v3"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/malice-network/helper/encoders"
+	"github.com/chainreactors/malice-network/helper/errs"
+	"github.com/chainreactors/malice-network/helper/types"
+	"github.com/chainreactors/malice-network/helper/utils/fileutils"
+	"github.com/chainreactors/malice-network/server/internal/configs"
 )
 
 var (
 	generateConfig = "config.yaml"
 	autoRunYaml    = "autorun.yaml"
 	release        = "release"
-	releaseLto     = "release-lto"
 	malefic        = "malefic"
 	modules        = "malefic_modules"
 	modules3rd     = "malefic_3rd"
@@ -32,45 +29,45 @@ var (
 // GenerateProfile - Generate profile
 // first recover profile from database
 // then use Generate overwrite profile
-func GenerateProfile(req *clientpb.BuildConfig) ([]byte, error) {
-	var profile *types.ProfileConfig
-	var err error
-	if req.Type == consts.CommandBuildModules {
-		profileByte := consts.DefaultProfile
-		profile, err = types.LoadProfile(profileByte)
-		if err != nil {
-			return nil, err
-		}
-		profileParams, err := types.UnmarshalProfileParams(req.ParamsBytes)
-		if err != nil {
-			return nil, err
-		}
-		if profileParams.Modules != "" {
-			profile.Implant.Modules = strings.Split(profileParams.Modules, ",")
-		}
-	} else {
-		profile, err = db.GetProfile(req.ProfileName)
-		if err != nil {
-			return nil, err
-		}
-	}
-	err = UpdateGeneratorConfig(req, profile)
-	if err != nil {
-		return nil, err
-	}
-	data, err := yaml.Marshal(profile)
-	if err != nil {
-		return nil, err
-	}
-	if req.Source == consts.ArtifactFromDocker {
-		path := filepath.Join(configs.SourceCodePath, generateConfig)
-		err = os.WriteFile(path, data, 0644)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return data, nil
-}
+//func GenerateProfile(req *clientpb.BuildConfig) ([]byte, error) {
+//	var profile *types.ProfileConfig
+//	var err error
+//	if req.Type == consts.CommandBuildModules {
+//		profileByte := consts.DefaultProfile
+//		profile, err = types.LoadProfile(profileByte)
+//		if err != nil {
+//			return nil, err
+//		}
+//		profileParams, err := types.UnmarshalProfileParams(req.ParamsBytes)
+//		if err != nil {
+//			return nil, err
+//		}
+//		if profileParams.Modules != "" {
+//			profile.Implant.Modules = strings.Split(profileParams.Modules, ",")
+//		}
+//	} else {
+//		profile, err = db.GetProfile(req.ProfileName)
+//		if err != nil {
+//			return nil, err
+//		}
+//	}
+//	err = UpdateGeneratorConfig(req, profile)
+//	if err != nil {
+//		return nil, err
+//	}
+//	data, err := yaml.Marshal(profile)
+//	if err != nil {
+//		return nil, err
+//	}
+//	if req.Source == consts.ArtifactFromDocker {
+//		path := filepath.Join(configs.SourceCodePath, generateConfig)
+//		err = os.WriteFile(path, data, 0644)
+//		if err != nil {
+//			return nil, err
+//		}
+//	}
+//	return data, nil
+//}
 
 func MoveBuildOutput(target, buildType string, enable3RD bool) (string, string, error) {
 	var sourcePath string
@@ -124,56 +121,82 @@ func GetFilePath(name, target, buildType, format string) string {
 }
 
 // UpdateGeneratorConfig - Update the generator config
-func UpdateGeneratorConfig(req *clientpb.BuildConfig, config *types.ProfileConfig) error {
-	if config.Basic != nil {
-		if req.BuildName != "" {
-			config.Basic.Name = req.BuildName
-		}
-
-		if len(req.ParamsBytes) > 0 {
-			params, err := types.UnmarshalProfileParams(req.ParamsBytes)
-			if err != nil {
-				return err
-			}
-			if params.Interval != -1 {
-				config.Basic.Interval = params.Interval
-			}
-
-			if params.Jitter != -1 {
-				config.Basic.Jitter = params.Jitter
-			}
-			if params.Proxy != "" {
-				config.Basic.Proxy = params.Proxy
-			}
-
-			if params.Enable3RD {
-				config.Implant.ThirdModules = strings.Split(params.Modules, ",")
-				config.Implant.Enable3rd = true
-				config.Implant.Modules = []string{}
-			} else if params.Modules != "" {
-				config.Implant.Modules = strings.Split(params.Modules, ",")
-			}
-			if params.Address != "" {
-				config.Basic.Targets = []string{params.Address}
-				config.Basic.TLS.SNI = params.Address
-				config.Basic.Http.Host = params.Address
-				config.Pulse.Target = params.Address
-				config.Pulse.Http.Host = params.Address
-			}
-			if params.AutoRunFile != "" {
-				config.Implant.AutoRun = ContainerAutoRunPath
-			}
-		}
-	}
-	if req.ArtifactId != 0 && config.Pulse.Flags.ArtifactID == 0 {
-		config.Pulse.Flags.ArtifactID = req.ArtifactId
-	}
-
-	if req.Type == consts.CommandBuildBind {
-		config.Implant.Mod = consts.CommandBuildBind
-	}
-	return nil
-}
+//func UpdateGeneratorConfig(req *clientpb.BuildConfig, config *types.ProfileConfig) error {
+//	if config.Basic != nil {
+//		if req.BuildName != "" {
+//			config.Basic.Name = req.BuildName
+//		}
+//
+//		if len(req.ParamsBytes) > 0 {
+//			params, err := types.UnmarshalProfileParams(req.ParamsBytes)
+//			if err != nil {
+//				return err
+//			}
+//			if params.Cron != "" {
+//				config.Basic.Cron = params.Cron
+//			}
+//
+//			if params.Jitter != -1 {
+//				config.Basic.Jitter = params.Jitter
+//			}
+//			if params.Proxy != "" {
+//				if config.Basic.Proxy == nil {
+//					config.Basic.Proxy = &types.ProxyProfile{}
+//				}
+//				config.Basic.Proxy.URL = params.Proxy
+//			}
+//
+//			if params.Enable3RD {
+//				config.Implant.ThirdModules = strings.Split(params.Modules, ",")
+//				config.Implant.Enable3rd = true
+//				config.Implant.Modules = []string{}
+//			} else if params.Modules != "" {
+//				config.Implant.Modules = strings.Split(params.Modules, ",")
+//			}
+//			if params.Address != "" {
+//				target := types.Target{
+//					Address: params.Address,
+//				}
+//				// 如果有HTTP配置，设置Host
+//				if len(config.Basic.Targets) > 0 && config.Basic.Targets[0].Http != nil {
+//					target.Http = &types.HttpProfile{
+//						Method:  config.Basic.Targets[0].Http.Method,
+//						Path:    config.Basic.Targets[0].Http.Path,
+//						Version: config.Basic.Targets[0].Http.Version,
+//						Headers: config.Basic.Targets[0].Http.Headers,
+//					}
+//				}
+//				// 如果有TLS配置，设置SNI
+//				if len(config.Basic.Targets) > 0 && config.Basic.Targets[0].TLS != nil {
+//					target.TLS = &types.TLSProfile{
+//						Enable:           config.Basic.Targets[0].TLS.Enable,
+//						SNI:              params.Address,
+//						SkipVerification: config.Basic.Targets[0].TLS.SkipVerification,
+//					}
+//				}
+//				config.Basic.Targets = []types.Target{target}
+//				config.Pulse.Target = params.Address
+//				if config.Pulse.Http != nil {
+//					config.Pulse.Http.Headers = make(map[string]string)
+//					for k, v := range config.Pulse.Http.Headers {
+//						config.Pulse.Http.Headers[k] = v
+//					}
+//				}
+//			}
+//			if params.AutoRunFile != "" {
+//				config.Implant.AutoRun = ContainerAutoRunPath
+//			}
+//		}
+//	}
+//	if req.ArtifactId != 0 && config.Pulse.Flags.ArtifactID == 0 {
+//		config.Pulse.Flags.ArtifactID = req.ArtifactId
+//	}
+//
+//	if req.Type == consts.CommandBuildBind {
+//		config.Implant.Mod = consts.CommandBuildBind
+//	}
+//	return nil
+//}
 
 // ProcessAutorunZip processes autorun.zip file, extracting only files from the resource directory to the target root directory
 func ProcessAutorunZip(zipData []byte, targetPath string) error {

@@ -14,10 +14,10 @@ const (
 )
 
 const (
-	ArtifactFromAction = "action"
-	ArtifactFromDocker = "docker"
-	ArtifactFromUpload = "upload"
-	ArtifactFromSaas   = "saas"
+	ArtifactFromGithubAction = "action"
+	ArtifactFromDocker       = "docker"
+	ArtifactFromUpload       = "upload"
+	ArtifactFromSaas         = "saas"
 )
 
 // Format constants for artifact conversion
@@ -160,7 +160,7 @@ var BuildType = []string{
 
 var BuildSource = []string{
 	ArtifactFromDocker,
-	ArtifactFromAction,
+	ArtifactFromGithubAction,
 	ArtifactFromSaas,
 }
 

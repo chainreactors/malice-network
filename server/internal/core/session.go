@@ -324,6 +324,9 @@ func (s *Session) RecoverTaskIDByLog() (int, error) {
 }
 
 func (s *Session) isAlived() bool {
+	if s == nil {
+		return false
+	}
 	if s.Type == consts.BindPipeline {
 		return true
 	} else {

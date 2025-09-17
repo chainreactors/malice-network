@@ -8,12 +8,12 @@ import (
 	"github.com/chainreactors/malice-network/helper/codenames"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/helper/utils/httputils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"github.com/chainreactors/malice-network/server/internal/saas"
-	"github.com/chainreactors/utils/encode"
 	"google.golang.org/protobuf/encoding/protojson"
 	"net/http"
 	"time"
@@ -37,43 +37,47 @@ func (s *SaasBuilder) Generate() (*clientpb.Artifact, error) {
 	if !saasConfig.Enable {
 		return nil, errors.New("saas is unable in server config")
 	}
-	var builder *models.Artifact
+	var artifact *models.Artifact
 	var err error
 	if s.config.BuildName == "" {
 		s.config.BuildName = codenames.GetCodename()
 	}
-	profileByte, err := GenerateProfile(s.config)
+	//profileByte, err := GenerateProfile(s.config)
+	profileByte := s.config.MaleficConfig
+	profile, err := types.LoadProfileFromContent(profileByte)
 	if err != nil {
 		return nil, err
 	}
-	base64Encoded := encode.Base64Encode(profileByte)
-	s.config.Inputs = make(map[string]string)
-	s.config.Inputs["malefic_config_yaml"] = base64Encoded
+	preludeConfig := s.config.PreludeConfig
+	println(preludeConfig)
+	//base64Encoded := encode.Base64Encode(profileByte)
+	//s.config.Inputs = make(map[string]string)
+	//s.config.Inputs["malefic_config_yaml"] = base64Encoded
 
 	// Process autorun.zip if source is provided
-	autorunYamlBase64, paramsString, err := ProcessAutorunZipToBase64(s.config.ParamsBytes, s.config.ProfileName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to process autorun.zip: %w", err)
-	} else if autorunYamlBase64 != "" {
-		s.config.Inputs["autorun_yaml"] = autorunYamlBase64
-	}
-	s.config.ParamsBytes = []byte(paramsString)
-	paramsBase64Encoded := encode.Base64Encode(s.config.ParamsBytes)
-	s.config.Inputs["build_params"] = paramsBase64Encoded
-
-	if s.config.ArtifactId != 0 && s.config.Type == consts.CommandBuildBeacon {
-		builder, err = db.SaveArtifactFromID(s.config, s.config.ArtifactId, s.config.Source, profileByte)
+	//autorunYamlBase64, paramsString, err := ProcessAutorunZipToBase64(s.config.ParamsBytes, s.config.ProfileName)
+	//if err != nil {
+	//	return nil, fmt.Errorf("failed to process autorun.zip: %w", err)
+	//} else if autorunYamlBase64 != "" {
+	//	s.config.Inputs["autorun_yaml"] = autorunYamlBase64
+	//}
+	//s.config.ParamsBytes = []byte(paramsString)
+	//paramsBase64Encoded := encode.Base64Encode(s.config.ParamsBytes)
+	//s.config.Inputs["build_params"] = paramsBase64Encoded
+	artifactId := profile.Pulse.Flags.ArtifactID
+	if artifactId != 0 && s.config.BuildType == consts.CommandBuildBeacon {
+		artifact, err = db.SaveArtifactFromID(s.config, artifactId)
 	} else {
-		builder, err = db.SaveArtifactFromConfig(s.config, profileByte)
+		artifact, err = db.SaveArtifactFromConfig(s.config)
 	}
 	if err != nil {
 		logs.Log.Errorf("failed to save build: %s", err)
 		return nil, err
 	}
-	s.builder = builder
+	s.builder = artifact
 	db.UpdateBuilderStatus(s.builder.ID, consts.BuildStatusWaiting)
 	s.executeUrl = fmt.Sprintf("%s/api/build", saasConfig.Url)
-	return builder.ToProtobuf([]byte{}), nil
+	return artifact.ToProtobuf([]byte{}), nil
 }
 
 func (s *SaasBuilder) Execute() error {
@@ -102,14 +106,14 @@ func (s *SaasBuilder) Collect() (string, string, error) {
 		return "", consts.BuildStatusFailure, err
 	}
 	db.UpdateBuilderStatus(s.builder.ID, status)
-	if s.config.Type == consts.CommandBuildBeacon {
-		if s.config.ArtifactId != 0 {
-			err = db.UpdatePulseRelink(s.config.ArtifactId, s.builder.ID)
-			if err != nil {
-				logs.Log.Errorf("failed to update pulse relink: %s", err)
-			}
-		}
-	}
+	//if s.config.BuildName == consts.CommandBuildBeacon {
+	//	if s.config.ArtifactId != 0 {
+	//		err = db.UpdatePulseRelink(s.config.ArtifactId, s.builder.ID)
+	//		if err != nil {
+	//			logs.Log.Errorf("failed to update pulse relink: %s", err)
+	//		}
+	//	}
+	//}
 	return path, status, nil
 }
 

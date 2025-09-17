@@ -13,7 +13,8 @@ import (
 func DownloadCmd(cmd *cobra.Command, con *repl.Console) error {
 	path := cmd.Flags().Arg(0)
 	session := con.GetInteractive()
-	task, err := Download(con.Rpc, session, path)
+	is_dir, _ := cmd.Flags().GetBool("dir")
+	task, err := Download(con.Rpc, session, path, is_dir)
 	if err != nil {
 		return err
 	}
@@ -22,10 +23,11 @@ func DownloadCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func Download(rpc clientrpc.MaliceRPCClient, session *core.Session, path string) (*clientpb.Task, error) {
+func Download(rpc clientrpc.MaliceRPCClient, session *core.Session, path string, is_dir bool) (*clientpb.Task, error) {
 	task, err := rpc.Download(session.Context(), &implantpb.DownloadRequest{
 		Name: filepath.Base(path),
 		Path: path,
+		Dir:  is_dir,
 	})
 	if err != nil {
 		return nil, err

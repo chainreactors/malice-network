@@ -398,7 +398,7 @@ func (lns *listener) executeBuild(profileName string, artifact *clientpb.Artifac
 	_, err = lns.Rpc.Build(lns.Context(), &clientpb.BuildConfig{
 		Target:      artifact.Target,
 		ProfileName: profileName,
-		Type:        artifact.Type,
+		BuildType:   artifact.Type,
 		Source:      resp.Source,
 	})
 	return err

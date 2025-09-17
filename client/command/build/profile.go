@@ -1,14 +1,16 @@
 package build
 
 import (
+	"fmt"
+	"os"
+	"time"
+
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
-	"os"
-	"time"
 )
 
 func ProfileShowCmd(cmd *cobra.Command, con *repl.Console) error {
@@ -66,23 +68,26 @@ func ProfileLoadCmd(cmd *cobra.Command, con *repl.Console) error {
 	}
 	_, err = con.Rpc.NewProfile(con.Context(), profile)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create profile on server: %w", err)
 	}
-	con.Log.Infof("load implant profile %s for %s\n", profileName, basicPipeline)
+	con.Log.Infof("Successfully loaded profile '%s' for pipeline '%s'", profileName, basicPipeline)
 	return nil
 }
 
 func ProfileNewCmd(cmd *cobra.Command, con *repl.Console) error {
 	profileName, basicPipeline := common.ParseProfileFlags(cmd)
+
 	profile := &clientpb.Profile{
 		Name:       profileName,
 		PipelineId: basicPipeline,
 	}
+
 	_, err := con.Rpc.NewProfile(con.Context(), profile)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create profile on server: %w", err)
 	}
-	con.Log.Infof("create new profile %s for %s success\n", profileName, basicPipeline)
+
+	con.Log.Infof("Successfully created new profile '%s' for pipeline '%s'", profileName, basicPipeline)
 	return nil
 }
 

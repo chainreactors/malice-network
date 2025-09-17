@@ -1,9 +1,9 @@
 package build
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
+
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
@@ -27,28 +27,29 @@ type Builder interface {
 }
 
 func NewBuilder(req *clientpb.BuildConfig) (Builder, error) {
-	if req.Type == consts.CommandBuildPulse {
-		if req.ArtifactId == 0 {
-			profile, err := db.GetProfile(req.ProfileName)
-			if err != nil {
-				return nil, err
-			}
-			req.ArtifactId = profile.Pulse.Flags.ArtifactID
-		}
-
-		if len(req.ParamsBytes) > 0 {
-			var newParams types.ProfileParams
-			err := json.Unmarshal(req.ParamsBytes, &newParams)
-			if err != nil {
-				return nil, err
-			}
-			newParams.OriginBeaconID = req.ArtifactId
-			req.ParamsBytes = []byte(newParams.String())
-		}
-	}
+	//malefic_config := types.LoadProfileFromContent(req.MaleficConfig)
+	//if req.BuildType == consts.CommandBuildPulse {
+	//	if malefic_config.Pulse.Flags.ArtifactID == 0 {
+	//		profile, err := db.GetProfile(req.ProfileName)
+	//		if err != nil {
+	//			return nil, err
+	//		}
+	//		req.ArtifactId = profile.Pulse.Flags.ArtifactID
+	//	}
+	//
+	//	if len(req.ParamsBytes) > 0 {
+	//		var newParams types.ProfileParams
+	//		err := json.Unmarshal(req.ParamsBytes, &newParams)
+	//		if err != nil {
+	//			return nil, err
+	//		}
+	//		newParams.OriginBeaconID = req.ArtifactId
+	//		req.ParamsBytes = []byte(newParams.String())
+	//	}
+	//}
 	var builder Builder
 	switch req.Source {
-	case consts.ArtifactFromAction:
+	case consts.ArtifactFromGithubAction:
 		builder = NewActionBuilder(req)
 	case consts.ArtifactFromDocker:
 		builder = NewDockerBuilder(req)

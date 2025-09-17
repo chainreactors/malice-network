@@ -104,6 +104,9 @@ func BuildSpite(spite *implantpb.Spite, msg proto.Message) (*implantpb.Spite, er
 	case *implantpb.Switch:
 		spite.Name = MsgSwitch.String()
 		spite.Body = &implantpb.Spite_Switch{Switch: msg}
+	case *implantpb.FFmpegRequest:
+		spite.Name = MsgFFmpeg.String()
+		spite.Body = &implantpb.Spite_FfmpegRequest{FfmpegRequest: msg}
 	case *implantpb.KeyExchangeRequest:
 		spite.Name = MsgKeyExchange.String()
 		spite.Body = &implantpb.Spite_KeyExchangeRequest{KeyExchangeRequest: msg}

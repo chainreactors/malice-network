@@ -15,13 +15,16 @@ type Artifact struct {
 	ProfileName string `gorm:"index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:ProfileName;references:Name"`
 
 	CreatedAt time.Time `gorm:"->;<-:create;"`
+	UpdatedAt time.Time `gorm:"->;<-:update;"`
 	Target    string    // build target, like win64, win32, linux64
-	Type      string    // build type, pe, dll, shellcode
-	Source    string    // resource file
+	Type      string    // beacon、pulse、modules、prelude
+	//Type      string    // build type, pe, dll, shellcode
+	Source string // docker 、 saas 、github action、upload...
 	//CA            string // ca file , ca file content
-	Path        string
-	Profile     Profile `gorm:"foreignKey:ProfileName;references:Name;"`
-	Os          string
+	Path    string
+	Profile Profile `gorm:"foreignKey:ProfileName;references:Name;"`
+	Os      string
+	//Format      string // pe, dll, shellcode
 	Arch        string
 	Log         string
 	Status      string
@@ -40,19 +43,19 @@ func (a *Artifact) AfterFind(tx *gorm.DB) (err error) {
 	if err := json.Unmarshal([]byte(a.ParamsData), &params); err != nil {
 		return err
 	}
-	a.Params = &params
+	//a.Params = &params
 	return nil
 }
 
 // BeforeSave GORM 钩子 - 保存前将 Params 序列化
 func (a *Artifact) BeforeSave(tx *gorm.DB) error {
-	if a.Params != nil {
-		data, err := json.Marshal(a.Params)
-		if err != nil {
-			return err
-		}
-		a.ParamsData = string(data)
-	}
+	//if a.Params != nil {
+	//	data, err := json.Marshal(a.Params)
+	//	if err != nil {
+	//		return err
+	//	}
+	//	a.ParamsData = string(data)
+	//}
 	return nil
 }
 

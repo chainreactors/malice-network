@@ -33,6 +33,7 @@ const (
 	MsgUpload         MsgName = consts.ModuleUpload
 	MsgDownload       MsgName = consts.ModuleDownload
 	MsgCurl           MsgName = consts.ModuleRequest
+	MsgFFmpeg         MsgName = consts.ModuleFFmpeg
 	MsgExec           MsgName = consts.ModuleExecute
 	MsgListModule     MsgName = consts.ModuleListModule
 	MsgLoadModule     MsgName = consts.ModuleLoadModule

@@ -38,18 +38,6 @@ func Login(con *Console, config *mtls.ClientConfig) error {
 	con.ActiveTarget.Background()
 	con.App.SwitchMenu(consts.ClientMenu)
 	logs.Log.Importantf("Connected to server %s\n", config.Address())
-	go func() {
-		con.NewMCPServer(con.CMDs)
-		setting, err := assets.GetSetting()
-		if err != nil {
-			logs.Log.Errorf("Failed to get setting: %v\n", err)
-			return
-		}
-		err = con.MCP.Start("127.0.0.1", setting.McpPort)
-		if err != nil {
-			logs.Log.Errorf("Failed to start mcp server: %v\n", err)
-		}
-	}()
 	return nil
 }
 
@@ -76,6 +64,23 @@ func initState(con *Console, conn *grpc.ClientConn, config *mtls.ClientConfig) e
 		len(con.Listeners), pipelineCount, len(con.Clients), len(con.Sessions), alive)
 
 	return nil
+}
+
+// InitMCPServer 在命令注册完成后初始化MCP服务器
+// 这个函数应该在所有命令注册完成后调用，避免并发映射访问错误
+func (con *Console) InitMCPServer() {
+	go func() {
+		con.NewMCPServer(con.CMDs)
+		setting, err := assets.GetSetting()
+		if err != nil {
+			logs.Log.Errorf("Failed to get setting: %v\n", err)
+			return
+		}
+		err = con.MCP.Start("127.0.0.1", setting.McpPort)
+		if err != nil {
+			logs.Log.Errorf("Failed to start mcp server: %v\n", err)
+		}
+	}()
 }
 
 func NewConfigLogin(con *Console, yamlFile string) error {

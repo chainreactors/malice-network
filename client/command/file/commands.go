@@ -38,6 +38,10 @@ download ./file.txt
 		carapace.ActionValues().Usage("file name"),
 		carapace.ActionValues().Usage("download file source path"))
 
+	common.BindFlag(downloadCmd, func(f *pflag.FlagSet) {
+		f.BoolP("dir", "r", false, "download dir")
+	})
+
 	uploadCmd := &cobra.Command{
 		Use:   consts.ModuleUpload + " [local] [remote]",
 		Short: "Upload file",

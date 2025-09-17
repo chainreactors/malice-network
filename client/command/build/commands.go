@@ -2,6 +2,7 @@ package build
 
 import (
 	"fmt"
+
 	"github.com/carapace-sh/carapace"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
@@ -54,7 +55,7 @@ profile load /path/to/profile.zip --name my_profile --pipeline pipeline_name
 ~~~`,
 	}
 	common.BindFlag(loadProfileCmd, common.ProfileSet)
-	loadProfileCmd.MarkFlagRequired("pipeline")
+	//loadProfileCmd.MarkFlagRequired("pipeline")
 	loadProfileCmd.MarkFlagRequired("name")
 	common.BindFlagCompletions(loadProfileCmd, func(comp carapace.ActionMap) {
 		comp["name"] = carapace.ActionValues().Usage("profilename")
@@ -84,7 +85,7 @@ profile new --name my_profile --pipeline default_tcp
 `,
 	}
 	common.BindFlag(newProfileCmd, common.ProfileSet)
-	newProfileCmd.MarkFlagRequired("pipeline")
+	// newProfileCmd.MarkFlagRequired("pipeline")
 	newProfileCmd.MarkFlagRequired("name")
 	common.BindFlagCompletions(newProfileCmd, func(comp carapace.ActionMap) {
 		comp["name"] = carapace.ActionValues().Usage("profile name")
@@ -128,30 +129,24 @@ profile delete profile_name
 		},
 		Example: `~~~
 // Build a beacon
-build beacon --target x86_64-pc-windows-gnu --profile tcp_default
+build beacon --addresses "https://127.0.0.1:443" --target x86_64-pc-windows-gnu --source docker
 
-// Build a beacon using additional modules
-build beacon --target x86_64-pc-windows-gnu --profile tcp_default --modules full
+// Specify a module
+build beacon --addresses "https://127.0.0.1:443,https://10.0.0.1:443" --target x86_64-pc-windows-gnu --modules nano --source docker
 
-// Build a beacon with rem
-build beacon --rem --target x86_64-pc-windows-gnu --profile tcp_default
+// Build a beacon with a profile
+build beacon --profile tcp_default --target x86_64-pc-windows-gnu
 
 // Build a beacon by saas
-build beacon --target x86_64-pc-windows-gnu --profile tcp_default --source saas
+build beacon --profile tcp_default --target x86_64-pc-windows-gnu --source saas
+
+// Build by GithubAction
+build beacon --profile tcp_default --target x86_64-pc-windows-gnu --source saas
 ~~~`,
 	}
-	common.BindFlag(beaconCmd, common.GenerateFlagSet, common.GithubFlagSet, func(f *pflag.FlagSet) {
-		f.Bool("rem", false, "static link to rem")
-		f.Int("interval", -1, "interval /second")
-		f.Float64("jitter", -1, "jitter")
-		f.String("proxy", "", "Overwrite proxy")
-		f.StringP("modules", "m", "", "Set modules e.g.: execute_exe,execute_dll")
-		f.Uint32("relink", 0, "relink pulse id")
-		f.String("address", "", "implant address target")
-		f.String("autorun", "", "set autorun zip")
-	})
+	common.BindFlag(beaconCmd, common.GenerateFlagSet, common.GithubFlagSet, BeaconFlagSet)
 	beaconCmd.MarkFlagRequired("target")
-	beaconCmd.MarkFlagRequired("profile")
+	//beaconCmd.MarkFlagRequired("profile")
 	common.BindFlagCompletions(beaconCmd, func(comp carapace.ActionMap) {
 		comp["profile"] = common.ProfileCompleter(con)
 		comp["target"] = common.BuildTargetCompleter(con)
@@ -179,12 +174,7 @@ build bind --target x86_64-pc-windows-gnu --profile tcp_default --source saas
 ~~~`,
 	}
 
-	common.BindFlag(bindCmd, common.GenerateFlagSet, common.GithubFlagSet, func(f *pflag.FlagSet) {
-		f.Int("interval", -1, "interval /second")
-		f.Float64("jitter", -1, "jitter")
-		f.String("proxy", "", "Overwrite proxy")
-		f.StringP("modules", "m", "", "Set modules e.g.: execute_exe,execute_dll")
-	})
+	common.BindFlag(bindCmd, common.GenerateFlagSet, common.GithubFlagSet, BeaconFlagSet)
 	bindCmd.MarkFlagRequired("target")
 	bindCmd.MarkFlagRequired("profile")
 	common.BindFlagCompletions(bindCmd, func(comp carapace.ActionMap) {
@@ -217,15 +207,9 @@ build prelude --target x86_64-pc-windows-gnu --profile tcp_default --autorun /pa
 ~~~`,
 	}
 
-	common.BindFlag(preludeCmd, common.GenerateFlagSet, common.GithubFlagSet, func(f *pflag.FlagSet) {
-		f.String("autorun", "", "set autorun zip")
-		f.Int("interval", -1, "interval /second")
-		f.Float64("jitter", -1, "jitter")
-		f.String("proxy", "", "Overwrite proxy")
-		f.StringP("modules", "m", "", "Set modules e.g.: execute_exe,execute_dll")
-	})
+	common.BindFlag(preludeCmd, common.GenerateFlagSet, common.GithubFlagSet, PreludeFlagSet)
 	preludeCmd.MarkFlagRequired("target")
-	preludeCmd.MarkFlagRequired("profile")
+	//preludeCmd.MarkFlagRequired("profile")
 	preludeCmd.MarkFlagRequired("autorun")
 	common.BindFlagCompletions(preludeCmd, func(comp carapace.ActionMap) {
 		comp["profile"] = common.ProfileCompleter(con)
@@ -261,10 +245,7 @@ build modules --target x86_64-pc-windows-gnu --profile tcp_default --source saas
 ~~~`,
 	}
 
-	common.BindFlag(modulesCmd, common.GenerateFlagSet, common.GithubFlagSet, func(f *pflag.FlagSet) {
-		f.String("3rd", "", "build 3rd-party modules")
-		f.StringP("modules", "m", "", "Set modules e.g.: execute_exe,execute_dll")
-	})
+	common.BindFlag(modulesCmd, common.GenerateFlagSet, common.GithubFlagSet, ModuleFlagSet)
 
 	common.BindFlagCompletions(modulesCmd, func(comp carapace.ActionMap) {
 		comp["profile"] = common.ProfileCompleter(con)
@@ -273,7 +254,7 @@ build modules --target x86_64-pc-windows-gnu --profile tcp_default --source saas
 	})
 
 	modulesCmd.MarkFlagRequired("target")
-	modulesCmd.MarkFlagRequired("profile")
+	//modulesCmd.MarkFlagRequired("profile")
 
 	pulseCmd := &cobra.Command{
 		Use:   consts.CommandBuildPulse,
@@ -293,12 +274,10 @@ build pulse --target x86_64-pc-windows-gnu --profile tcp_default --artifact-id 1
 ~~~
 `,
 	}
-	common.BindFlag(pulseCmd, common.GenerateFlagSet, common.GithubFlagSet, func(f *pflag.FlagSet) {
-		f.Uint32("artifact-id", 0, "load remote shellcode build-id")
-		f.String("address", "", "implant address target")
-	})
+	common.BindFlag(pulseCmd, common.GenerateFlagSet, common.GithubFlagSet, PulseFlagSet)
 	pulseCmd.MarkFlagRequired("target")
-	pulseCmd.MarkFlagRequired("profile")
+	pulseCmd.MarkFlagRequired("address")
+	//pulseCmd.MarkFlagRequired("profile")
 	common.BindFlagCompletions(pulseCmd, func(comp carapace.ActionMap) {
 		comp["profile"] = common.ProfileCompleter(con)
 		comp["target"] = common.BuildTargetCompleter(con)
@@ -428,6 +407,7 @@ artifact upload /path/to/artifact --type DLL
 	common.BindFlag(uploadCmd, func(f *pflag.FlagSet) {
 		f.StringP("type", "t", "", "Set type")
 		f.StringP("name", "n", "", "alias name")
+		f.StringP("target", "", "", "rust target")
 	})
 
 	deleteCommand := &cobra.Command{

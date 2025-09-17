@@ -141,6 +141,7 @@ const (
 	ModulePtyInput    = "input"
 	ModulePtyRequest  = "pty_request"
 	ModulePtyResponse = "pty_response"
+	ModuleFFmpeg      = "ffmpeg"
 )
 
 func SubCommandName(module string) string {
@@ -216,6 +217,7 @@ const (
 	CommandBuildBind        = "bind"
 	CommandBuildShellCode   = "shellcode"
 	CommandBuildModules     = "modules"
+	CommandBuild3rdModules  = "3rd"
 	CommandBuildPulse       = "pulse"
 	CommandBuildLog         = "log"
 	CommandArtifact         = "artifact"

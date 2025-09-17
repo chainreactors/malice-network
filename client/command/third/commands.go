@@ -45,4 +45,5 @@ request -H "Host: example.com" -H "User-Agent: custom" http://example.com
 
 func Register(con *repl.Console) {
 	RegisterCurlFunc(con)
+	RegisterFFmpegCmdFunc(con)
 }

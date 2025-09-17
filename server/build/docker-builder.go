@@ -2,7 +2,6 @@ package build
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/codenames"
@@ -10,6 +9,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/encoders"
 	"github.com/chainreactors/malice-network/helper/errs"
+	profile2 "github.com/chainreactors/malice-network/helper/profile"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	selfType "github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
@@ -45,50 +45,79 @@ func NewDockerBuilder(req *clientpb.BuildConfig) *DockerBuilder {
 }
 
 func (d *DockerBuilder) Generate() (*clientpb.Artifact, error) {
-	var builder *models.Artifact
+	// init config
+	// generate config.yaml
+	var artifact *models.Artifact
 	var err error
 	var profileByte []byte
+	var profile *selfType.ProfileConfig
 	if d.config.BuildName == "" {
 		d.config.BuildName = codenames.GetCodename()
 	}
-	if d.config.Inputs == nil {
-		profileByte, err = GenerateProfile(d.config)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create config: %s", err)
-		}
+	// get profile
+	if d.config.ProfileName != "" {
+		profileByte, err = db.GetProfileContent(d.config.ProfileName)
+		d.config.MaleficConfig = profileByte
 	}
-	if d.config.ArtifactId != 0 && d.config.Type == consts.CommandBuildBeacon {
-		builder, err = db.SaveArtifactFromID(d.config, d.config.ArtifactId, d.config.Source, profileByte)
+	profile, err = selfType.LoadProfile(d.config.MaleficConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get config: %s", err)
+	}
+	logs.Log.Debugf("profile: %v", profile)
+
+	// init artifact status
+	artifactId := d.config.ArtifactId
+	// save artifact and update status
+	if artifactId != 0 && d.config.BuildType == consts.CommandBuildBeacon {
+		artifact, err = db.SaveArtifactFromID(d.config, artifactId)
 	} else {
-		builder, err = db.SaveArtifactFromConfig(d.config, profileByte)
+		artifact, err = db.SaveArtifactFromConfig(d.config)
 	}
 	if err != nil {
 		logs.Log.Errorf("failed to create %s", err)
 		return nil, err
 	}
-	d.artifact = builder
+	d.artifact = artifact
 	db.UpdateBuilderStatus(d.artifact.ID, consts.BuildStatusWaiting)
+
+	//
 	d.srcPath = filepath.Join(configs.TempPath, encoders.UUID())
+	os.MkdirAll(d.srcPath, 0700)
 	// for saas
-	profilePath := filepath.Join(configs.ProfilePath, d.config.ProfileName)
+	//profilePath := filepath.Join(configs.ProfilePath, d.config.ProfileName)
 	if d.licenseID != "" {
-		profilePath = ""
+		//profilePath = ""
 		d.srcPath = filepath.Join(configs.TempPath, d.licenseID)
 	}
+	// writeBuildConfigTo src tmpDir
+	err = profile2.WriteBuildConfigToPath(d.config, d.srcPath)
+	if err != nil {
+		return nil, err
+	}
+	// set volume - 精确挂载特定文件和目录
 	d.volumes = Volumes
-	resourceVolume := fmt.Sprintf("%s:%s", d.srcPath, ContainerResourcePath)
-	d.volumes = append(d.volumes, resourceVolume)
 
-	os.MkdirAll(d.srcPath, 0700)
-	err = fileutils.CopyDirectoryExcept(configs.ResourcePath, d.srcPath, []string{})
-	if err != nil {
-		return nil, err
+	// 挂载 config.yaml（如果存在）
+	configPath := filepath.Join(d.srcPath, "config.yaml")
+	if fileutils.Exist(configPath) {
+		configVolume := fmt.Sprintf("%s:%s", filepath.ToSlash(configPath), ContainerConfigPath)
+		d.volumes = append(d.volumes, configVolume)
 	}
-	err = ProcessAutorunWithProfile(d.config.ParamsBytes, profilePath, d.srcPath)
-	if err != nil {
-		return nil, err
+
+	// 挂载 autorun.yaml（必须存在）
+	autorunPath := filepath.Join(d.srcPath, "autorun.yaml")
+	if fileutils.Exist(autorunPath) {
+		autoRunVolume := fmt.Sprintf("%s:%s", filepath.ToSlash(autorunPath), ContainerAutoRunPath)
+		d.volumes = append(d.volumes, autoRunVolume)
 	}
-	return builder.ToProtobuf([]byte{}), nil
+
+	// 挂载 resources 目录（如果存在）
+	resourcesPath := filepath.Join(d.srcPath, "resources")
+	if fileutils.Exist(resourcesPath) {
+		resourceVolume := fmt.Sprintf("%s:%s", filepath.ToSlash(resourcesPath), ContainerResourcePath)
+		d.volumes = append(d.volumes, resourceVolume)
+	}
+	return artifact.ToProtobuf([]byte{}), nil
 }
 
 func (d *DockerBuilder) Execute() error {
@@ -102,7 +131,11 @@ func (d *DockerBuilder) Execute() error {
 		return err
 	}
 	var buildCommand string
-	switch d.config.Type {
+	profile, err := selfType.LoadProfileFromContent(d.config.MaleficConfig)
+	if err != nil {
+		return err
+	}
+	switch d.config.BuildType {
 	case consts.CommandBuildBeacon:
 		buildCommand = fmt.Sprintf(
 			"malefic-mutant generate beacon && malefic-mutant build malefic -t %s",
@@ -114,27 +147,20 @@ func (d *DockerBuilder) Execute() error {
 			d.config.Target,
 		)
 	case consts.CommandBuildModules:
-		var profileParams selfType.ProfileParams
-		err = json.Unmarshal(d.config.ParamsBytes, &profileParams)
-		if err != nil {
-			return err
-		}
-		if profileParams.Enable3RD {
-			buildCommand = fmt.Sprintf(
-				"malefic-mutant generate modules && malefic-mutant build 3rd -m %s -t %s",
-				profileParams.Modules,
-				d.config.Target,
-			)
-			d.enable3rd = true
-		} else {
-			buildCommand = fmt.Sprintf(
-				"malefic-mutant generate modules -m %s && malefic-mutant build modules -m %s -t %s",
-				profileParams.Modules,
-				profileParams.Modules,
-				d.config.Target,
-			)
-			d.enable3rd = false
-		}
+		buildCommand = fmt.Sprintf(
+			"malefic-mutant generate modules -m %s && malefic-mutant build modules -m %s -t %s",
+			strings.Join(profile.Implant.Modules, ","),
+			strings.Join(profile.Implant.Modules, ","),
+			d.config.Target,
+		)
+		d.enable3rd = false
+	case consts.CommandBuild3rdModules:
+		buildCommand = fmt.Sprintf(
+			"malefic-mutant generate modules && malefic-mutant build 3rd -m %s -t %s",
+			strings.Join(profile.Implant.ThirdModules, ","),
+			d.config.Target,
+		)
+		d.enable3rd = true
 	case consts.CommandBuildPrelude:
 		buildCommand = fmt.Sprintf(
 			"malefic-mutant generate prelude autorun.yaml && malefic-mutant build prelude -t %s",
@@ -199,7 +225,7 @@ func (d *DockerBuilder) Execute() error {
 }
 
 func (d *DockerBuilder) Collect() (string, string, error) {
-	_, artifactPath, err := MoveBuildOutput(d.config.Target, d.config.Type, d.enable3rd)
+	_, artifactPath, err := MoveBuildOutput(d.config.Target, d.config.BuildType, d.enable3rd)
 	if err != nil {
 		logs.Log.Errorf("failed to move artifact %s output: %s", d.artifact.Name, err)
 		return "", consts.BuildStatusFailure, err
@@ -224,14 +250,14 @@ func (d *DockerBuilder) Collect() (string, string, error) {
 		return "", consts.BuildStatusFailure, err
 	}
 	db.UpdateBuilderStatus(d.artifact.ID, consts.BuildStatusCompleted)
-	if d.config.Type == consts.CommandBuildBeacon {
-		if d.config.ArtifactId != 0 {
-			err = db.UpdatePulseRelink(d.config.ArtifactId, d.artifact.ID)
-			if err != nil {
-				logs.Log.Errorf("failed to update pulse relink: %s", err)
-			}
-		}
-	}
+	//if d.config.BuildType == consts.CommandBuildBeacon {
+	//	if d.config.ArtifactId != 0 {
+	//		err = db.UpdatePulseRelink(d.config.ArtifactId, d.artifact.ID)
+	//		if err != nil {
+	//			logs.Log.Errorf("failed to update pulse relink: %s", err)
+	//		}
+	//	}
+	//}
 	return d.artifact.Path, consts.BuildStatusCompleted, nil
 }
 
