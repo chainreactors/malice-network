@@ -128,48 +128,6 @@ func (c *PTYClient) SetPromptCallback(callback func(string, string)) {
 	c.promptCallback = callback
 }
 
-// monitorShellOutput 监听 shell 任务的输出
-func (c *PTYClient) monitorShellOutput(ctx context.Context, task *clientpb.Task, sessionID string) {
-	// 注册任务回调事件处理器
-	if c.sess.Server != nil {
-		// 创建唯一的事件回调键
-		callbackKey := fmt.Sprintf("shell_task_%d", task.TaskId)
-
-		// 注册事件回调
-		c.sess.Server.EventCallback[callbackKey] = func(event *clientpb.Event) {
-			if event.Type == consts.EventTask && event.Task != nil && event.Task.TaskId == task.TaskId {
-				switch event.Op {
-				case consts.CtrlTaskCallback:
-					// 处理实时输出
-					if c.outputCallback != nil && len(event.Message) > 0 {
-						c.outputCallback(sessionID, string(event.Message))
-					}
-				case consts.CtrlTaskFinish:
-					// 任务完成
-					if c.disconnectCallback != nil {
-						c.disconnectCallback(sessionID)
-					}
-					// 清理事件回调
-					delete(c.sess.Server.EventCallback, callbackKey)
-				case consts.CtrlTaskError:
-					// 任务错误
-					if c.errorCallback != nil {
-						c.errorCallback(sessionID, event.Err)
-					}
-				}
-			}
-		}
-
-		// 启动一个 goroutine 在上下文取消时清理事件回调
-		go func() {
-			<-ctx.Done()
-			delete(c.sess.Server.EventCallback, callbackKey)
-		}()
-	}
-}
-
-// Cobra 命令处理函数
-
 // ShellCmd 处理交互式 shell 命令
 func ShellCmd(cmd *cobra.Command, con *repl.Console) error {
 	session := con.GetInteractive().Clone(consts.CalleePty)
