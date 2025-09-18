@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"github.com/carapace-sh/carapace"
 	"github.com/chainreactors/malice-network/client/command/pty"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/plugin"
+	"github.com/chainreactors/tui"
 	"github.com/reeflective/console"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -30,10 +32,8 @@ import (
 	"github.com/chainreactors/malice-network/client/command/tasks"
 	"github.com/chainreactors/malice-network/client/command/taskschd"
 	"github.com/chainreactors/malice-network/client/command/third"
-	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/tui"
 )
 
 func ImplantCmd(con *repl.Console) *cobra.Command {
@@ -88,20 +88,15 @@ func makeRunners(implantCmd *cobra.Command, con *repl.Console) (pre, post func(c
 	post = func(cmd *cobra.Command, args []string) error {
 		sess := con.GetInteractive()
 		wait, _ := cmd.Flags().GetBool("wait")
-		if !wait {
-			return nil
-		}
-		if sess.LastTask != nil {
-			if wait {
-				RegisterImplantFunc(con)
-				context, err := con.WaitTaskFinish(sess.Context(), sess.LastTask)
-				if err != nil {
-					return err
-				}
-				core.HandlerTask(sess, context, nil, consts.CalleeCMD, true)
-			} else {
-				con.Log.Console(tui.RendStructDefault(sess.LastTask))
+		if wait && sess.LastTask != nil {
+			RegisterImplantFunc(con)
+			context, err := con.WaitTaskFinish(sess.Context(), sess.LastTask)
+			if err != nil {
+				return err
 			}
+			core.HandlerTask(sess, context, nil, consts.CalleeCMD, true)
+		} else if !wait && sess.LastTask != nil {
+			con.Log.Console(tui.RendStructDefault(sess.LastTask))
 		}
 		if implantCmd.Parent() != nil {
 			return implantCmd.Parent().PersistentPostRunE(implantCmd, args)
