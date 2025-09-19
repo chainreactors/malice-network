@@ -155,7 +155,6 @@ func prepareBuildConfig(cmd *cobra.Command, con *repl.Console, buildType string)
 	//		buildConfig.ArtifactId = profileParams.RelinkBeaconID
 	//	}
 	//}
-
 	//buildConfig.ParamsBytes = []byte(profileParams.String())
 	buildConfig.MaleficConfig, _ = profile.ToYAML()
 	//println(string(buildConfig.Bin))
@@ -310,25 +309,30 @@ func parseBuildFlags(cmd *cobra.Command) (*types.ProfileConfig, error) {
 		} else {
 			return nil, errors.New("invalid target address: " + address)
 		}
-
+		//fmt.Println(newProfile.Basic)
+		//fmt.Println(newProfile.Basic.Targets)
+		//fmt.Println(target)
 		newProfile.Basic.Targets = append(newProfile.Basic.Targets, target)
 	}
-	// rem link
 	rem_link, _ := cmd.Flags().GetString("rem-link")
-	remAddresses := strings.Split(rem_link, ",")
-	for _, rem_address := range remAddresses {
-		target := types.Target{}
-		splitAddr := strings.Split(rem_address, "|")
-		addr, remAddr := splitAddr[0], splitAddr[1]
-		if !strings.Contains(addr, ":") {
-			addr = addr + ":5001"
+	if cmd.Flags().Changed("rem-link") {
+		remAddresses := strings.Split(rem_link, ",")
+		for _, rem_address := range remAddresses {
+			target := types.Target{}
+			splitAddr := strings.Split(rem_address, "|")
+			addr, remAddr := splitAddr[0], splitAddr[1]
+			addr = strings.TrimPrefix(addr, "tcp://")
+			if !strings.Contains(addr, ":") {
+				addr = addr + ":5001"
+			}
+			target.Address = addr
+			target.REM = &types.REMProfile{
+				Link: remAddr,
+			}
+			newProfile.Basic.Targets = append(newProfile.Basic.Targets, target)
 		}
-		target.Address = addr
-		target.REM = &types.REMProfile{
-			Link: remAddr,
-		}
-		newProfile.Basic.Targets = append(newProfile.Basic.Targets, target)
 	}
+
 	// modules - only override if explicitly provided
 	if cmd.Flags().Changed("modules") {
 		modules, _ := cmd.Flags().GetString("modules")
@@ -344,7 +348,8 @@ func parseBuildFlags(cmd *cobra.Command) (*types.ProfileConfig, error) {
 			newProfile.Implant.Enable3rd = true
 		}
 	}
-	if rem_link != "" {
+	if cmd.Flags().Changed("rem-link") {
+		newProfile.Implant.Enable3rd = true
 		newProfile.Implant.ThirdModules = append(newProfile.Implant.ThirdModules, "rem")
 	}
 

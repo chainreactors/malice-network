@@ -93,6 +93,7 @@ func Register(con *repl.Console) {
 		[]string{
 			"session: special session",
 			"path: file path",
+			"id_dir: download_dir",
 		},
 		[]string{"task"})
 

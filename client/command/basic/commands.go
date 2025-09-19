@@ -1,8 +1,8 @@
 package basic
 
 import (
-	"github.com/carapace-sh/carapace"
 	"errors"
+	"github.com/carapace-sh/carapace"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
@@ -133,6 +133,7 @@ func Register(con *repl.Console) {
 		Sleep,
 		"bsleep",
 		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, expression string, jitter uint64) (*clientpb.Task, error) {
+
 			return Sleep(rpc, sess, expression, sess.Timer.Jitter)
 		},
 		output.ParseStatus,
@@ -143,17 +144,18 @@ func Register(con *repl.Console) {
 		`sleep(active(), 10, 0.5)`,
 		[]string{
 			"sess:special session",
-			"interval:time interval, in seconds",
+			"cron:cron expression",
 			"jitter:jitter, percentage of interval",
 		}, []string{"task"})
 
 	con.AddCommandFuncHelper(
 		"bsleep",
 		"bsleep",
-		`sleep(active(), 10)`,
+		`bsleep(active(), 10, 0.5)`,
 		[]string{
 			"sess:special session",
 			"interval:time interval, in seconds",
+			"jitter:jitter, percentage of interval",
 		}, []string{"task"})
 
 	con.RegisterImplantFunc(consts.ModuleSuicide,

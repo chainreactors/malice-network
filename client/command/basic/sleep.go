@@ -20,14 +20,6 @@ func SleepCmd(cmd *cobra.Command, con *repl.Console) error {
 		jitter = session.Timer.Jitter
 	}
 
-	if _, err := strconv.Atoi(expression); err == nil {
-		expression = fmt.Sprintf("*/%s * * * * * *", expression)
-	}
-	_, err := cronexpr.Parse(expression)
-	if err != nil {
-		return fmt.Errorf("invalid cron expression: %s\n", expression)
-	}
-
 	task, err := Sleep(con.Rpc, session, expression, jitter)
 	if err != nil {
 		return err
@@ -38,6 +30,13 @@ func SleepCmd(cmd *cobra.Command, con *repl.Console) error {
 }
 
 func Sleep(rpc clientrpc.MaliceRPCClient, session *core.Session, expression string, jitter float64) (*clientpb.Task, error) {
+	if _, err := strconv.Atoi(expression); err == nil {
+		expression = fmt.Sprintf("*/%s * * * * * *", expression)
+	}
+	_, err := cronexpr.Parse(expression)
+	if err != nil {
+		return nil, fmt.Errorf("Invalid cron expression: %s\n", expression)
+	}
 	return rpc.Sleep(session.Context(), &implantpb.Timer{
 		Expression: expression,
 		Jitter:     jitter,

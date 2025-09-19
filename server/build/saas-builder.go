@@ -8,7 +8,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/codenames"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/helper/utils/httputils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db"
@@ -43,13 +42,21 @@ func (s *SaasBuilder) Generate() (*clientpb.Artifact, error) {
 		s.config.BuildName = codenames.GetCodename()
 	}
 	//profileByte, err := GenerateProfile(s.config)
-	profileByte := s.config.MaleficConfig
-	profile, err := types.LoadProfileFromContent(profileByte)
-	if err != nil {
-		return nil, err
+	var profileByte []byte
+
+	// get profile
+	if s.config.ProfileName != "" {
+		profileByte, err = db.GetProfileContent(s.config.ProfileName)
+		s.config.MaleficConfig = profileByte
+	} else {
+		profileByte = s.config.MaleficConfig
 	}
-	preludeConfig := s.config.PreludeConfig
-	println(preludeConfig)
+	//profile, err := types.LoadProfileFromContent(profileByte)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//preludeConfig := s.config.PreludeConfig
+	//println(preludeConfig)
 	//base64Encoded := encode.Base64Encode(profileByte)
 	//s.config.Inputs = make(map[string]string)
 	//s.config.Inputs["malefic_config_yaml"] = base64Encoded
@@ -64,7 +71,7 @@ func (s *SaasBuilder) Generate() (*clientpb.Artifact, error) {
 	//s.config.ParamsBytes = []byte(paramsString)
 	//paramsBase64Encoded := encode.Base64Encode(s.config.ParamsBytes)
 	//s.config.Inputs["build_params"] = paramsBase64Encoded
-	artifactId := profile.Pulse.Flags.ArtifactID
+	artifactId := s.config.ArtifactId
 	if artifactId != 0 && s.config.BuildType == consts.CommandBuildBeacon {
 		artifact, err = db.SaveArtifactFromID(s.config, artifactId)
 	} else {
@@ -81,6 +88,7 @@ func (s *SaasBuilder) Generate() (*clientpb.Artifact, error) {
 }
 
 func (s *SaasBuilder) Execute() error {
+	s.config.ProfileName = ""
 	data, err := protojson.Marshal(s.config)
 	if err != nil {
 		return fmt.Errorf("failed to marshal config %s: %s", s.config.ProfileName, err)
