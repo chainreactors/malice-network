@@ -80,7 +80,7 @@ func GenerateServerCert(name string) ([]byte, []byte, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	cert, key, err := certs.GenerateChildCert(name, false, ca, caKey)
+	cert, key, err := certs.GenerateChildCert(name, false, ca, caKey, certs.RootNamespace)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -101,7 +101,7 @@ func GenerateClientCert(host, name string, port int) (*mtls.ClientConfig, error)
 	if err != nil {
 		return nil, err
 	}
-	cert, key, err := certs.GenerateChildCert(name, true, ca, caKey)
+	cert, key, err := certs.GenerateChildCert(name, true, ca, caKey, certs.ClientNamespace)
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +123,7 @@ func GenerateListenerCert(host, name string, port int) (*mtls.ClientConfig, erro
 	if err != nil {
 		return nil, err
 	}
-	cert, key, err = certs.GenerateChildCert(host, true, ca, caKey)
+	cert, key, err = certs.GenerateChildCert(host, true, ca, caKey, certs.ListenerNamespace)
 	if err != nil {
 		return nil, err
 	}
@@ -148,7 +148,7 @@ func GenerateSelfTLS(name string, certsSubject *clientpb.CertificateSubject) (*c
 	if err != nil {
 		return nil, err
 	}
-	certByte, keyByte, err := certs.GenerateChildCert(name, true, caCert, caKey)
+	certByte, keyByte, err := certs.GenerateChildCert(name, true, caCert, caKey, certs.ListenerNamespace)
 	if err != nil {
 		return nil, err
 	}

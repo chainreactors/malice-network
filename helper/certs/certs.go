@@ -27,13 +27,16 @@ const (
 
 const (
 	// RSAKey - Namespace for RSA keys
-	RSAKey            = "rsa"
-	RootName          = "Root"
+	RSAKey     = "rsa"
+	RootName   = "Root"
+	RootCert   = "root_ca.pem"
+	RootKey    = "root_key.pem"
+	ServerCert = "server_crt.pem"
+	ServerKey  = "server_key.pem"
+
+	RootNamespace     = "root"
 	ListenerNamespace = "listener" // Listener servers
-	RootCert          = "root_ca.pem"
-	RootKey           = "root_key.pem"
-	ServerCert        = "server_crt.pem"
-	ServerKey         = "server_key.pem"
+	ClientNamespace   = "client"
 )
 
 const (
@@ -134,6 +137,9 @@ func GenerateCACert(commonName string, subject *pkix.Name) ([]byte, []byte, erro
 		BasicConstraintsValid: true,
 		IsCA:                  true,
 	}
+	// 添加 UPN 到 EmailAddresses 字段
+	upn := fmt.Sprintf("%s@chainreactors.local", RootNamespace)
+	template.EmailAddresses = append(template.EmailAddresses, upn)
 
 	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, publicKey(privateKey), privateKey)
 	if err != nil {
@@ -149,7 +155,7 @@ func GenerateCACert(commonName string, subject *pkix.Name) ([]byte, []byte, erro
 	return certOut.Bytes(), keyOut.Bytes(), nil
 }
 
-func GenerateChildCert(commonName string, isClient bool, caCert *x509.Certificate, caKey *rsa.PrivateKey) ([]byte, []byte, error) {
+func GenerateChildCert(commonName string, isClient bool, caCert *x509.Certificate, caKey *rsa.PrivateKey, userType string) ([]byte, []byte, error) {
 	var template x509.Certificate
 	privateKey, _ := rsa.GenerateKey(rand.Reader, RsaKeySize())
 	subject := RandomSubject(commonName)
@@ -170,6 +176,12 @@ func GenerateChildCert(commonName string, isClient bool, caCert *x509.Certificat
 			ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}, // 确保包含 ClientAuth
 			BasicConstraintsValid: true,                                           // 对于证书通常需要为 true
 			IsCA:                  false,                                          // 确保不是 CA 证书
+		}
+
+		// 添加 UPN 到 EmailAddresses 字段
+		if userType != "" {
+			upn := fmt.Sprintf("%s@chainreactors.local", userType)
+			template.EmailAddresses = append(template.EmailAddresses, upn)
 		}
 	} else {
 		template = x509.Certificate{
