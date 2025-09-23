@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/certs"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/peer"
@@ -145,42 +144,19 @@ func validateUPNPermissions(upn, method string, log *logs.Logger) error {
 	}
 
 	log.Debugf("[auth] validating permissions for user: %s, domain: %s, method: %s", username, domain, method)
-
-	// Only allow specific usernames
-	allowedUsers := []string{certs.RootNamespace, certs.ListenerNamespace, certs.ClientNamespace}
-	userAllowed := false
-	for _, allowedUser := range allowedUsers {
-		if strings.EqualFold(username, allowedUser) {
-			userAllowed = true
-			break
+	
+	// Check username and method matching
+	switch strings.ToLower(username) {
+	case "root", "client":
+		return nil
+	case "listener":
+		if strings.HasPrefix(method, "/listenerrpc.") {
+			return nil
 		}
-	}
-
-	if !userAllowed {
+		return errors.New("listener user can only access listenerrpc methods")
+	default:
 		return errors.New("invalid username - only root, client, listener allowed")
 	}
-
-	return nil
-	// Check username and method matching
-	//switch strings.ToLower(username) {
-	//case "root":
-	//	// Root user can access all methods
-	//	return nil
-	//case "client":
-	//	// Client user can only access /clientrpc.* methods
-	//	if strings.HasPrefix(method, "/clientrpc.") {
-	//		return nil
-	//	}
-	//	return errors.New("client user can only access clientrpc methods")
-	//case "listener":
-	//	// Listener user can only access /listenerrpc.* methods
-	//	if strings.HasPrefix(method, "/listenerrpc.") {
-	//		return nil
-	//	}
-	//	return errors.New("listener user can only access listenerrpc methods")
-	//default:
-	//	return errors.New("invalid username - only root, client, listener allowed")
-	//}
 }
 
 // isRootOperation checks if the method is a root operation requiring localhost access
