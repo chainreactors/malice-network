@@ -346,7 +346,7 @@ func DeleteWebsite(name string) error {
 	if result.Error != nil {
 		return result.Error
 	}
-	err := os.Remove(filepath.Join(configs.WebsitePath, website.Name))
+	err := os.RemoveAll(filepath.Join(configs.WebsitePath, website.Name))
 	if err != nil {
 		return err
 	}
