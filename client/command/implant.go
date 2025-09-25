@@ -88,15 +88,23 @@ func makeRunners(implantCmd *cobra.Command, con *repl.Console) (pre, post func(c
 	post = func(cmd *cobra.Command, args []string) error {
 		sess := con.GetInteractive()
 		wait, _ := cmd.Flags().GetBool("wait")
-		if wait && sess.LastTask != nil {
-			RegisterImplantFunc(con)
-			context, err := con.WaitTaskFinish(sess.Context(), sess.LastTask)
-			if err != nil {
-				return err
+		if !wait {
+			if implantCmd.Parent() != nil {
+				return implantCmd.Parent().PersistentPostRunE(implantCmd, args)
 			}
-			core.HandlerTask(sess, context, nil, consts.CalleeCMD, true)
-		} else if !wait && sess.LastTask != nil {
-			con.Log.Console(tui.RendStructDefault(sess.LastTask))
+			return nil
+		}
+		if sess.LastTask != nil {
+			if wait {
+				RegisterImplantFunc(con)
+				context, err := con.WaitTaskFinish(sess.Context(), sess.LastTask)
+				if err != nil {
+					return err
+				}
+				core.HandlerTask(sess, context, nil, consts.CalleeCMD, true)
+			} else {
+				con.Log.Console(tui.RendStructDefault(sess.LastTask))
+			}
 		}
 		if implantCmd.Parent() != nil {
 			return implantCmd.Parent().PersistentPostRunE(implantCmd, args)
