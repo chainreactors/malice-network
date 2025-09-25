@@ -70,12 +70,13 @@ func initState(con *Console, conn *grpc.ClientConn, config *mtls.ClientConfig) e
 // 这个函数应该在所有命令注册完成后调用，避免并发映射访问错误
 func (con *Console) InitMCPServer() {
 	go func() {
-		con.NewMCPServer(con.CMDs)
 		setting, err := assets.GetSetting()
 		if err != nil {
 			logs.Log.Errorf("Failed to get setting: %v\n", err)
 			return
 		}
+		
+		con.NewMCPServer(con.CMDs)
 		err = con.MCP.Start("127.0.0.1", setting.McpPort)
 		if err != nil {
 			logs.Log.Errorf("Failed to start mcp server: %v\n", err)

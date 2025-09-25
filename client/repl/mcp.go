@@ -8,8 +8,10 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/spf13/cobra"
+	"net"
 	"net/http"
 	"strings"
+	"time"
 )
 
 // MCPServer 包装了MCP服务器实例
@@ -213,16 +215,70 @@ func generateCommandDoc(cmd *cobra.Command) string {
 	return doc.String()
 }
 
+func isPortAvailable(host string,
+	port int) bool {
+	address := fmt.Sprintf("%s:%d", host, port)
+	listener, err := net.Listen("tcp", address)
+	if err != nil {
+		return false
+	}
+	listener.Close()
+	return true
+}
+
+func findAvailablePort(host string,
+	startPort int) int {
+	for port := startPort; port < startPort+20; port++ {
+		if isPortAvailable(host, port) {
+			return port
+		}
+	}
+	return startPort
+}
+
+func IsMCPRunning(host string, port int) bool {
+	url := fmt.Sprintf("http://%s:%d/health", host, port)
+
+	client := &http.Client{
+		Timeout: 2 * time.Second,
+	}
+
+	resp, err := client.Get(url)
+	if err != nil {
+		return false
+	}
+	defer resp.Body.Close()
+
+	return resp.StatusCode == http.StatusOK
+}
+
 // Start 启动MCP HTTP和gRPC服务器
 func (m *MCPServer) Start(host string, port int) error {
+	port = findAvailablePort(host, port)
+	if IsMCPRunning(host, port) {
+		return nil
+	}
 	// 创建HTTP处理器
-	sse := server.NewSSEServer(m.server, server.WithBaseURL("http://"+host+":"+fmt.Sprintf("%d", port)+"/mcp"),
+	sse := server.NewSSEServer(m.server,
+		server.WithBaseURL(fmt.Sprintf("http://%s:%d/mcp", host, port)),
 		server.WithHTTPServer(m.srv))
+
+	mux := http.NewServeMux()
+
+	// 注册MCP服务到/mcp路径
+	mux.Handle("/mcp", sse)
+	mux.Handle("/mcp/", sse) // 处理/mcp/*的所有子路径
+	mux.HandleFunc("/health", func(w http.ResponseWriter,
+		r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status":"ok","service":"mcp"}`))
+	})
 
 	// 启动HTTP服务器
 	go func() {
 		m.srv.Addr = fmt.Sprintf("%s:%d", host, port)
-		m.srv.Handler = sse
+		m.srv.Handler = mux
 		err := m.srv.ListenAndServe()
 		if err != nil {
 			logs.Log.Errorf("Failed to start MCP server: %v\n", err)

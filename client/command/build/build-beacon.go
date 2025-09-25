@@ -105,7 +105,7 @@ func prepareBuildConfig(cmd *cobra.Command, con *repl.Console, buildType string)
 	var err error
 	profileName, _ := cmd.Flags().GetString("profile")
 	target, _ := cmd.Flags().GetString("target")
-	artifact_id, _ := cmd.Flags().GetUint32("artifact_id")
+	artifactId, _ := cmd.Flags().GetUint32("artifact_id")
 
 	if target == "" {
 		return nil, errors.New("require build target")
@@ -114,14 +114,32 @@ func prepareBuildConfig(cmd *cobra.Command, con *repl.Console, buildType string)
 		ProfileName: profileName,
 		Target:      target,
 		BuildType:   consts.CommandBuildBeacon,
-		ArtifactId:  artifact_id,
+		ArtifactId:  artifactId,
 	}
 	buildConfig, err = parseSourceConfig(cmd, con, buildConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse build config: %w", err)
 	}
 	//
-	profile, err := parseBuildFlags(cmd)
+	var profile *types.ProfileConfig
+	if profileName != "" {
+		profilePB, err := con.Rpc.GetProfileByName(con.Context(), &clientpb.Profile{Name: profileName})
+		if err != nil {
+			return nil, fmt.Errorf("failed to get profile: %w", err)
+		}
+		profile, err = types.LoadProfile(profilePB.Content)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load profile: %w", err)
+		}
+	} else {
+		profile, err = types.LoadProfile(consts.DefaultProfile)
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to load profile: %w", err)
+	}
+	//
+	profile, err = parseBuildFlags(cmd, profile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse build flags: %w", err)
 	}
@@ -143,43 +161,42 @@ func prepareBuildConfig(cmd *cobra.Command, con *repl.Console, buildType string)
 }
 
 // parseBuildFlags 解析所有构建相关的flag参数
-func parseBuildFlags(cmd *cobra.Command) (*types.ProfileConfig, error) {
+func parseBuildFlags(cmd *cobra.Command, profile *types.ProfileConfig) (*types.ProfileConfig, error) {
 
-	newProfile, _ := types.LoadProfile(consts.DefaultProfile)
 	//newProfile.SetDefaults()
 	// Basic profile flags - only override if explicitly provided
 	if cmd.Flags().Changed("cron") {
 		cron, _ := cmd.Flags().GetString("cron")
-		newProfile.Basic.Cron = cron
+		profile.Basic.Cron = cron
 	}
 
 	if cmd.Flags().Changed("jitter") {
 		jitter, _ := cmd.Flags().GetFloat64("jitter")
-		newProfile.Basic.Jitter = jitter
+		profile.Basic.Jitter = jitter
 	}
 
 	if cmd.Flags().Changed("init-retry") {
 		initRetry, _ := cmd.Flags().GetInt("init-retry")
-		newProfile.Basic.InitRetry = initRetry
+		profile.Basic.InitRetry = initRetry
 	}
 
 	if cmd.Flags().Changed("server-retry") {
 		serverRetry, _ := cmd.Flags().GetInt("server-retry")
-		newProfile.Basic.ServerRetry = serverRetry
+		profile.Basic.ServerRetry = serverRetry
 	}
 
 	if cmd.Flags().Changed("global-retry") {
 		globalRetry, _ := cmd.Flags().GetInt("global-retry")
-		newProfile.Basic.GlobalRetry = globalRetry
+		profile.Basic.GlobalRetry = globalRetry
 	}
 
 	if cmd.Flags().Changed("encryption") {
 		encryption, _ := cmd.Flags().GetString("encryption")
-		newProfile.Basic.Encryption = encryption
+		profile.Basic.Encryption = encryption
 	}
 	if cmd.Flags().Changed("key") {
 		key, _ := cmd.Flags().GetString("key")
-		newProfile.Basic.Key = key
+		profile.Basic.Key = key
 	}
 
 	// secure
@@ -187,7 +204,7 @@ func parseBuildFlags(cmd *cobra.Command) (*types.ProfileConfig, error) {
 	securePrivateKey, _ := cmd.Flags().GetString("secure-private-key")
 	securePublicKey, _ := cmd.Flags().GetString("secure-public-key")
 	if securePrivateKey != "" && securePublicKey != "" {
-		newProfile.Basic.Secure = &types.SecureProfile{
+		profile.Basic.Secure = &types.SecureProfile{
 			Enable:            secureEnable,
 			ImplantPrivateKey: securePrivateKey,
 			ServerPublicKey:   securePublicKey,
@@ -197,7 +214,7 @@ func parseBuildFlags(cmd *cobra.Command) (*types.ProfileConfig, error) {
 	if cmd.Flags().Changed("proxy-url") || cmd.Flags().Changed("proxy-use-env") {
 		proxy, _ := cmd.Flags().GetString("proxy-url")
 		use_env_proxy, _ := cmd.Flags().GetBool("proxy-use-env")
-		newProfile.Basic.Proxy = &types.ProxyProfile{
+		profile.Basic.Proxy = &types.ProxyProfile{
 			UseEnvProxy: use_env_proxy,
 			URL:         proxy,
 		}
@@ -210,23 +227,23 @@ func parseBuildFlags(cmd *cobra.Command) (*types.ProfileConfig, error) {
 	guardrailServerNames, _ := cmd.Flags().GetString("guardrail-server-names")
 	guardrailDomains, _ := cmd.Flags().GetString("guardrail-domains")
 	if guardrailIPAddresses != "" {
-		newProfile.Basic.Guardrail.IPAddresses = strings.Split(guardrailIPAddresses, ",")
+		profile.Basic.Guardrail.IPAddresses = strings.Split(guardrailIPAddresses, ",")
 	}
 	if guardrailUsernames != "" {
-		newProfile.Basic.Guardrail.Usernames = strings.Split(guardrailUsernames, ",")
+		profile.Basic.Guardrail.Usernames = strings.Split(guardrailUsernames, ",")
 	}
 	if guardrailServerNames != "" {
-		newProfile.Basic.Guardrail.ServerNames = strings.Split(guardrailServerNames, ",")
+		profile.Basic.Guardrail.ServerNames = strings.Split(guardrailServerNames, ",")
 	}
 	if guardrailDomains != "" {
-		newProfile.Basic.Guardrail.Domains = strings.Split(guardrailDomains, ",")
+		profile.Basic.Guardrail.Domains = strings.Split(guardrailDomains, ",")
 	}
 	if guardrailIPAddresses != "" ||
 		guardrailUsernames != "" ||
 		guardrailServerNames != "" ||
 		guardrailDomains != "" {
-		newProfile.Basic.Guardrail.Enable = true
-		newProfile.Basic.Guardrail.RequireAll = true
+		profile.Basic.Guardrail.Enable = true
+		profile.Basic.Guardrail.RequireAll = true
 	}
 
 	// targets
@@ -246,13 +263,10 @@ func parseBuildFlags(cmd *cobra.Command) (*types.ProfileConfig, error) {
 			target.REM = &types.REMProfile{
 				Link: remAddress,
 			}
-			newProfile.Basic.Targets = append(newProfile.Basic.Targets, target)
+			profile.Basic.Targets = append(profile.Basic.Targets, target)
 		}
-	} else {
+	} else if cmd.Flags().Changed("addresses") {
 		for _, address := range addresses {
-			if !cmd.Flags().Changed("addresses") {
-				break
-			}
 			target := types.Target{}
 			//
 			if strings.HasPrefix(address, "http://") {
@@ -315,7 +329,7 @@ func parseBuildFlags(cmd *cobra.Command) (*types.ProfileConfig, error) {
 			} else {
 				return nil, errors.New("invalid target address: " + address)
 			}
-			newProfile.Basic.Targets = append(newProfile.Basic.Targets, target)
+			profile.Basic.Targets = append(profile.Basic.Targets, target)
 		}
 	}
 
@@ -323,26 +337,26 @@ func parseBuildFlags(cmd *cobra.Command) (*types.ProfileConfig, error) {
 	if cmd.Flags().Changed("modules") {
 		modules, _ := cmd.Flags().GetString("modules")
 		if modules != "" {
-			newProfile.Implant.Modules = strings.Split(modules, ",")
+			profile.Implant.Modules = strings.Split(modules, ",")
 		}
 	}
 
 	if cmd.Flags().Changed("3rd") {
 		thirdModules, _ := cmd.Flags().GetString("3rd")
 		if thirdModules != "" {
-			newProfile.Implant.ThirdModules = strings.Split(thirdModules, ",")
-			newProfile.Implant.Enable3rd = true
+			profile.Implant.ThirdModules = strings.Split(thirdModules, ",")
+			profile.Implant.Enable3rd = true
 		}
 	}
 
 	if cmd.Flags().Changed("rem") {
-		newProfile.Implant.Enable3rd = true
-		newProfile.Implant.ThirdModules = append(newProfile.Implant.ThirdModules, "rem")
+		profile.Implant.Enable3rd = true
+		profile.Implant.ThirdModules = append(profile.Implant.ThirdModules, "rem")
 	}
 
 	ollvm, _ := cmd.Flags().GetBool("ollvm")
 	if ollvm {
-		newProfile.Build.OLLVM = &types.OLLVMProfile{
+		profile.Build.OLLVM = &types.OLLVMProfile{
 			Enable:   true,
 			BCFObf:   true,
 			SplitObf: true,
@@ -355,16 +369,16 @@ func parseBuildFlags(cmd *cobra.Command) (*types.ProfileConfig, error) {
 	// autorun configuration
 	autorunFile, _ := cmd.Flags().GetString("autorun-file")
 	if autorunFile != "" {
-		newProfile.Implant.AutoRun = autorunFile
+		profile.Implant.AutoRun = autorunFile
 	}
 
 	// anti configuration
 	antiSandbox, _ := cmd.Flags().GetBool("anti-sandbox")
-	if antiSandbox {
-		newProfile.Implant.Anti = &types.AntiProfile{
+	if cmd.Flags().Changed("anti-sandbox") {
+		profile.Implant.Anti = &types.AntiProfile{
 			Sandbox: antiSandbox,
 		}
 	}
 
-	return newProfile, nil
+	return profile, nil
 }

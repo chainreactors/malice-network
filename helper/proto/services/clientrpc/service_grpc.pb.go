@@ -33,7 +33,6 @@ const (
 	MaliceRPC_GetJobs_FullMethodName             = "/clientrpc.MaliceRPC/GetJobs"
 	MaliceRPC_GetAudit_FullMethodName            = "/clientrpc.MaliceRPC/GetAudit"
 	MaliceRPC_GetTasks_FullMethodName            = "/clientrpc.MaliceRPC/GetTasks"
-	MaliceRPC_GetTasksByIDs_FullMethodName       = "/clientrpc.MaliceRPC/GetTasksByIDs"
 	MaliceRPC_GetTaskContent_FullMethodName      = "/clientrpc.MaliceRPC/GetTaskContent"
 	MaliceRPC_GetContextFiles_FullMethodName     = "/clientrpc.MaliceRPC/GetContextFiles"
 	MaliceRPC_WaitTaskContent_FullMethodName     = "/clientrpc.MaliceRPC/WaitTaskContent"
@@ -131,6 +130,7 @@ const (
 	MaliceRPC_ShellcodeEncode_FullMethodName     = "/clientrpc.MaliceRPC/ShellcodeEncode"
 	MaliceRPC_ListJobs_FullMethodName            = "/clientrpc.MaliceRPC/ListJobs"
 	MaliceRPC_GetProfiles_FullMethodName         = "/clientrpc.MaliceRPC/GetProfiles"
+	MaliceRPC_GetProfileByName_FullMethodName    = "/clientrpc.MaliceRPC/GetProfileByName"
 	MaliceRPC_DeleteProfile_FullMethodName       = "/clientrpc.MaliceRPC/DeleteProfile"
 	MaliceRPC_UpdateProfile_FullMethodName       = "/clientrpc.MaliceRPC/UpdateProfile"
 	MaliceRPC_ListArtifact_FullMethodName        = "/clientrpc.MaliceRPC/ListArtifact"
@@ -176,7 +176,6 @@ type MaliceRPCClient interface {
 	GetAudit(ctx context.Context, in *clientpb.SessionRequest, opts ...grpc.CallOption) (*clientpb.Audits, error)
 	// task
 	GetTasks(ctx context.Context, in *clientpb.TaskRequest, opts ...grpc.CallOption) (*clientpb.Tasks, error)
-	GetTasksByIDs(ctx context.Context, in *clientpb.Tasks, opts ...grpc.CallOption) (*clientpb.TaskContext, error)
 	GetTaskContent(ctx context.Context, in *clientpb.Task, opts ...grpc.CallOption) (*clientpb.TaskContext, error)
 	GetContextFiles(ctx context.Context, in *clientpb.Session, opts ...grpc.CallOption) (*clientpb.Files, error)
 	WaitTaskContent(ctx context.Context, in *clientpb.Task, opts ...grpc.CallOption) (*clientpb.TaskContext, error)
@@ -292,6 +291,7 @@ type MaliceRPCClient interface {
 	ListJobs(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Pipelines, error)
 	// generator
 	GetProfiles(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Profiles, error)
+	GetProfileByName(ctx context.Context, in *clientpb.Profile, opts ...grpc.CallOption) (*clientpb.Profile, error)
 	DeleteProfile(ctx context.Context, in *clientpb.Profile, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	UpdateProfile(ctx context.Context, in *clientpb.Profile, opts ...grpc.CallOption) (*clientpb.Empty, error)
 	ListArtifact(ctx context.Context, in *clientpb.Empty, opts ...grpc.CallOption) (*clientpb.Artifacts, error)
@@ -426,15 +426,6 @@ func (c *maliceRPCClient) GetAudit(ctx context.Context, in *clientpb.SessionRequ
 func (c *maliceRPCClient) GetTasks(ctx context.Context, in *clientpb.TaskRequest, opts ...grpc.CallOption) (*clientpb.Tasks, error) {
 	out := new(clientpb.Tasks)
 	err := c.cc.Invoke(ctx, MaliceRPC_GetTasks_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *maliceRPCClient) GetTasksByIDs(ctx context.Context, in *clientpb.Tasks, opts ...grpc.CallOption) (*clientpb.TaskContext, error) {
-	out := new(clientpb.TaskContext)
-	err := c.cc.Invoke(ctx, MaliceRPC_GetTasksByIDs_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1337,6 +1328,15 @@ func (c *maliceRPCClient) GetProfiles(ctx context.Context, in *clientpb.Empty, o
 	return out, nil
 }
 
+func (c *maliceRPCClient) GetProfileByName(ctx context.Context, in *clientpb.Profile, opts ...grpc.CallOption) (*clientpb.Profile, error) {
+	out := new(clientpb.Profile)
+	err := c.cc.Invoke(ctx, MaliceRPC_GetProfileByName_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *maliceRPCClient) DeleteProfile(ctx context.Context, in *clientpb.Profile, opts ...grpc.CallOption) (*clientpb.Empty, error) {
 	out := new(clientpb.Empty)
 	err := c.cc.Invoke(ctx, MaliceRPC_DeleteProfile_FullMethodName, in, out, opts...)
@@ -1588,7 +1588,6 @@ type MaliceRPCServer interface {
 	GetAudit(context.Context, *clientpb.SessionRequest) (*clientpb.Audits, error)
 	// task
 	GetTasks(context.Context, *clientpb.TaskRequest) (*clientpb.Tasks, error)
-	GetTasksByIDs(context.Context, *clientpb.Tasks) (*clientpb.TaskContext, error)
 	GetTaskContent(context.Context, *clientpb.Task) (*clientpb.TaskContext, error)
 	GetContextFiles(context.Context, *clientpb.Session) (*clientpb.Files, error)
 	WaitTaskContent(context.Context, *clientpb.Task) (*clientpb.TaskContext, error)
@@ -1704,6 +1703,7 @@ type MaliceRPCServer interface {
 	ListJobs(context.Context, *clientpb.Empty) (*clientpb.Pipelines, error)
 	// generator
 	GetProfiles(context.Context, *clientpb.Empty) (*clientpb.Profiles, error)
+	GetProfileByName(context.Context, *clientpb.Profile) (*clientpb.Profile, error)
 	DeleteProfile(context.Context, *clientpb.Profile) (*clientpb.Empty, error)
 	UpdateProfile(context.Context, *clientpb.Profile) (*clientpb.Empty, error)
 	ListArtifact(context.Context, *clientpb.Empty) (*clientpb.Artifacts, error)
@@ -1774,9 +1774,6 @@ func (UnimplementedMaliceRPCServer) GetAudit(context.Context, *clientpb.SessionR
 }
 func (UnimplementedMaliceRPCServer) GetTasks(context.Context, *clientpb.TaskRequest) (*clientpb.Tasks, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetTasks not implemented")
-}
-func (UnimplementedMaliceRPCServer) GetTasksByIDs(context.Context, *clientpb.Tasks) (*clientpb.TaskContext, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetTasksByIDs not implemented")
 }
 func (UnimplementedMaliceRPCServer) GetTaskContent(context.Context, *clientpb.Task) (*clientpb.TaskContext, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetTaskContent not implemented")
@@ -2069,6 +2066,9 @@ func (UnimplementedMaliceRPCServer) ListJobs(context.Context, *clientpb.Empty) (
 func (UnimplementedMaliceRPCServer) GetProfiles(context.Context, *clientpb.Empty) (*clientpb.Profiles, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetProfiles not implemented")
 }
+func (UnimplementedMaliceRPCServer) GetProfileByName(context.Context, *clientpb.Profile) (*clientpb.Profile, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetProfileByName not implemented")
+}
 func (UnimplementedMaliceRPCServer) DeleteProfile(context.Context, *clientpb.Profile) (*clientpb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteProfile not implemented")
 }
@@ -2354,24 +2354,6 @@ func _MaliceRPC_GetTasks_Handler(srv interface{}, ctx context.Context, dec func(
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(MaliceRPCServer).GetTasks(ctx, req.(*clientpb.TaskRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _MaliceRPC_GetTasksByIDs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(clientpb.Tasks)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(MaliceRPCServer).GetTasksByIDs(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: MaliceRPC_GetTasksByIDs_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MaliceRPCServer).GetTasksByIDs(ctx, req.(*clientpb.Tasks))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4125,6 +4107,24 @@ func _MaliceRPC_GetProfiles_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MaliceRPC_GetProfileByName_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(clientpb.Profile)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MaliceRPCServer).GetProfileByName(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MaliceRPC_GetProfileByName_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MaliceRPCServer).GetProfileByName(ctx, req.(*clientpb.Profile))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _MaliceRPC_DeleteProfile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(clientpb.Profile)
 	if err := dec(in); err != nil {
@@ -4645,10 +4645,6 @@ var MaliceRPC_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _MaliceRPC_GetTasks_Handler,
 		},
 		{
-			MethodName: "GetTasksByIDs",
-			Handler:    _MaliceRPC_GetTasksByIDs_Handler,
-		},
-		{
 			MethodName: "GetTaskContent",
 			Handler:    _MaliceRPC_GetTaskContent_Handler,
 		},
@@ -5031,6 +5027,10 @@ var MaliceRPC_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetProfiles",
 			Handler:    _MaliceRPC_GetProfiles_Handler,
+		},
+		{
+			MethodName: "GetProfileByName",
+			Handler:    _MaliceRPC_GetProfileByName_Handler,
 		},
 		{
 			MethodName: "DeleteProfile",

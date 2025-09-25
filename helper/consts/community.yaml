@@ -31,7 +31,7 @@ basic:
     server_names: []   #  ["*server*", "workstation*"]
     domains: []        #  ["dc*", "*.local"]
 
-  targets:
+  targets: []
 
 build:
   zigbuild: false

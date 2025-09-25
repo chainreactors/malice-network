@@ -794,7 +794,7 @@ func NewProfile(profile *clientpb.Profile) error {
 		}
 
 		params, _ := types.UnmarshalProfileParams([]byte(profile.Params))
-		if params.REMPipeline != "" {
+		if params != nil && params.REMPipeline != "" {
 			remPipelineModel, err := FindPipeline(params.REMPipeline)
 			if err != nil {
 				return fmt.Errorf("pipline not found, err: %s", err)
@@ -973,6 +973,12 @@ func GetProfiles() ([]*models.Profile, error) {
 	var profiles []*models.Profile
 	result := Session().Preload("Pipeline").Order("created_at ASC").Find(&profiles)
 	return profiles, result.Error
+}
+
+func GetProfileByName(profileName string) (*models.Profile, error) {
+	var profile *models.Profile
+	result := Session().Preload("Pipeline").Where("name = ?", profileName).Order("created_at ASC").First(&profile)
+	return profile, result.Error
 }
 
 // FindBuildersByPipelineID 遍历所有 builder，找到 profile.pipelineID = pipelineID 的 builder

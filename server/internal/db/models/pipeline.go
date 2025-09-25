@@ -374,6 +374,8 @@ func (pipeline *Pipeline) DefaultRemProfile(backend *Pipeline) types.ProfileConf
 	target.Address = backendPB.Ip + ":" + strconv.Itoa(int(backendPB.GetTcp().Port))
 	target.REM = &types.REMProfile{}
 	target.REM.Link = pipelineProtobuf.GetRem().Link
+	pipelineProfile.Implant.Enable3rd = true
+	pipelineProfile.Implant.ThirdModules = []string{"rem"}
 	// beacon
 	pipelineProfile.Basic.Targets = append(pipelineProfile.Basic.Targets, target)
 	pipelineProfile.Pulse.Target = backendPB.Ip + ":" + strconv.Itoa(int(backendPB.GetTcp().Port))

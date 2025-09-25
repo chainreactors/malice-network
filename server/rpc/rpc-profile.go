@@ -35,6 +35,14 @@ func (rpc *Server) GetProfiles(ctx context.Context, req *clientpb.Empty) (*clien
 	return &profiles, nil
 }
 
+func (rpc *Server) GetProfileByName(ctx context.Context, req *clientpb.Profile) (*clientpb.Profile, error) {
+	profileModel, err := db.GetProfileByName(req.Name)
+	if err != nil {
+		return nil, err
+	}
+	return profileModel.ToProtobuf(), nil
+}
+
 func (rpc *Server) DeleteProfile(ctx context.Context, req *clientpb.Profile) (*clientpb.Empty, error) {
 	if req.Name == "" {
 		return nil, fmt.Errorf("profile name cannot be empty")

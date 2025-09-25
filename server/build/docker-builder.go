@@ -55,7 +55,7 @@ func (d *DockerBuilder) Generate() (*clientpb.Artifact, error) {
 		d.config.BuildName = codenames.GetCodename()
 	}
 	// get profile
-	if d.config.ProfileName != "" {
+	if d.config.ProfileName != "" && d.config.MaleficConfig == nil {
 		profileByte, err = db.GetProfileContent(d.config.ProfileName)
 		d.config.MaleficConfig = profileByte
 	}

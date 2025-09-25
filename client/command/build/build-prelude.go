@@ -19,7 +19,6 @@ func PreludeCmd(cmd *cobra.Command, con *repl.Console) error {
 	//if err != nil {
 	//	return err
 	//}
-
 	autorunZipPath, _ := cmd.Flags().GetString("autorun")
 	if autorunZipPath == "" {
 		return errors.New("require autorun.zip path")
