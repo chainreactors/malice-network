@@ -775,16 +775,56 @@ func NewProfile(profile *clientpb.Profile) error {
 		return err
 	}
 
-	if profile.Content == nil {
-		profile.Content = consts.DefaultProfile
+	// Check if profile name already exists
+	var existingProfile models.Profile
+	result := Session().Where("name = ?", profile.Name).First(&existingProfile)
+	if result.Error == nil {
+		// Found existing profile with same name, return friendly error message
+		return nil
+	} else if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		// If it's not "record not found" error, it's another database error
+		return result.Error
 	}
 
+	// for pipeline
+	if profile.Content == nil && profile.PipelineId != "" {
+		pipelineModel, err := FindPipeline(profile.PipelineId)
+		if err != nil {
+			return fmt.Errorf("pipline not found, err: %s", err)
+		}
+
+		params, _ := types.UnmarshalProfileParams([]byte(profile.Params))
+		if params.REMPipeline != "" {
+			remPipelineModel, err := FindPipeline(params.REMPipeline)
+			if err != nil {
+				return fmt.Errorf("pipline not found, err: %s", err)
+			}
+			profileConfig := remPipelineModel.DefaultRemProfile(pipelineModel)
+			profile.Content, err = profileConfig.ToYAML()
+			if err != nil {
+				return err
+			}
+		} else {
+			profileConfig, err := pipelineModel.ToProfile(nil)
+			if err != nil {
+				return err
+			}
+			profile.Content, err = profileConfig.ToYAML()
+			if err != nil {
+				return err
+			}
+		}
+
+	}
+	// if not for pipeline
 	contentType := fileutils.DetectContentType(profile.Content)
-	switch contentType {
-	case "zip":
+	if contentType == "zip" {
 		profilePath := filepath.Join(configs.ProfilePath, profile.Name)
-		os.MkdirAll(profilePath, 0700)
-		err := fileutils.DecompressBase64ToFiles(string(profile.Content), profilePath)
+		err := os.MkdirAll(profilePath, 0700)
+		if err != nil {
+			return err
+		}
+		err = fileutils.DecompressBase64ToFiles(string(profile.Content), profilePath)
 		if err != nil {
 			return fmt.Errorf("failed to decompress zip content: %w", err)
 		}
@@ -809,17 +849,6 @@ func NewProfile(profile *clientpb.Profile) error {
 		}
 
 		profile.Content = yamlContent
-	}
-
-	// Check if profile name already exists
-	var existingProfile models.Profile
-	result := Session().Where("name = ?", profile.Name).First(&existingProfile)
-	if result.Error == nil {
-		// Found existing profile with same name, return friendly error message
-		return nil
-	} else if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-		// If it's not "record not found" error, it's another database error
-		return result.Error
 	}
 
 	model := &models.Profile{

@@ -28,15 +28,16 @@ func ListPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 	tableModel := tui.NewTable([]table.Column{
 		table.NewColumn("Name", "Name", 20),
 		table.NewColumn("Enable", "Enable", 7),
-		table.NewColumn("Type", "Type", 10),
-		table.NewColumn("ListenerID", "ListenerID", 15),
-		table.NewColumn("Address", "Address", 20),
-		table.NewColumn("Parser", "Parser", 10),
+		table.NewColumn("Type", "Type", 6),
+		table.NewColumn("ListenerID", "ListenerID", 11),
+		table.NewColumn("Address", "Address", 32),
+		table.NewColumn("Parser", "Parser", 7),
 		table.NewColumn("Encryption", "Encryption", 10),
-		table.NewColumn("TLS", "TLS", 10),
+		table.NewColumn("TLS", "TLS", 6),
 	}, true)
 	for _, pipeline := range pipelines.GetPipelines() {
 		newRow := table.RowData{}
+		var schema string
 		if pipeline.Enable {
 			newRow["Enable"] = tui.GreenFg.Render(strconv.FormatBool(pipeline.Enable))
 		} else {
@@ -57,14 +58,24 @@ func ListPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 			newRow["Name"] = pipeline.Name
 			newRow["Type"] = consts.HTTPPipeline
 			newRow["ListenerID"] = pipeline.ListenerId
-			newRow["Address"] = pipeline.Ip + ":" + strconv.Itoa(int(body.Http.Port))
+			if pipeline.Tls != nil && pipeline.Tls.Enable {
+				schema = "https://"
+			} else {
+				schema = "http://"
+			}
+			newRow["Address"] = schema + pipeline.Ip + ":" + strconv.Itoa(int(body.Http.Port))
 			newRow["Parser"] = pipeline.Parser
 			row = table.NewRow(newRow)
 		case *clientpb.Pipeline_Tcp:
 			newRow["Name"] = pipeline.Name
 			newRow["Type"] = consts.TCPPipeline
 			newRow["ListenerID"] = pipeline.ListenerId
-			newRow["Address"] = pipeline.Ip + ":" + strconv.Itoa(int(body.Tcp.Port))
+			if pipeline.Tls != nil && pipeline.Tls.Enable {
+				schema = "tcp+tls://"
+			} else {
+				schema = "tcp://"
+			}
+			newRow["Address"] = schema + pipeline.Ip + ":" + strconv.Itoa(int(body.Tcp.Port))
 			newRow["Parser"] = pipeline.Parser
 			row = table.NewRow(newRow)
 		case *clientpb.Pipeline_Rem, *clientpb.Pipeline_Bind:

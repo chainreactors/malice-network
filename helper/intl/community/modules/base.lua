@@ -1,5 +1,5 @@
 
-function load_prebuild(arg_0)
+function load_prebuild(arg_1)
     local session = active()
     local arch = barch(session)
 
@@ -7,7 +7,7 @@ function load_prebuild(arg_0)
         arch = "x64"
     end
 
-    return load_module(session, "arg_0", script_resource("modules/"  .. arg_0 .. "." .. arch .. ".dll"))
+    return load_module(session, "arg_1", script_resource("modules/"  .. arg_1 .. "." .. arch .. ".dll"))
 end
 
 local load_prebuild_cmd = command("load_prebuild", load_prebuild, "load full|fs|execute|sys|rem precompiled modules", "")

@@ -29,6 +29,10 @@ func PulseCmd(cmd *cobra.Command, con *repl.Console) error {
 	}
 	source, _ := cmd.Flags().GetString("source")
 	buildConfig.Source = source
+	buildConfig, err = parseSourceConfig(cmd, con, buildConfig)
+	if err != nil {
+		return fmt.Errorf("failed to parse build config: %w", err)
+	}
 	buildConfig.BuildType = consts.CommandBuildPulse
 	if err != nil {
 		return err

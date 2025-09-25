@@ -3,13 +3,14 @@ package models
 import (
 	"encoding/json"
 	"fmt"
-	"time"
-
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/types"
+	"github.com/corpix/uarand"
 	"github.com/gofrs/uuid"
 	"gorm.io/gorm"
+	"strconv"
+	"time"
 )
 
 // Pipeline
@@ -142,6 +143,26 @@ func (pipeline *Pipeline) ToProtobuf() *clientpb.Pipeline {
 func (pipeline *Pipeline) Address() string {
 	return fmt.Sprintf("%s:%d", pipeline.IP, pipeline.Port)
 }
+func (pipeline *Pipeline) GetUrl() string {
+	var schema string
+	switch pipeline.Type {
+	case consts.HTTPPipeline:
+		if pipeline.Tls != nil && pipeline.Tls.Enable {
+			schema = "https://"
+		} else {
+			schema = "http://"
+		}
+	case consts.TCPPipeline:
+		if pipeline.Tls != nil && pipeline.Tls.Enable {
+			schema = "tcp+tls://"
+		} else {
+			schema = "tcp://"
+		}
+	default:
+		schema = ""
+	}
+	return fmt.Sprintf("%s%s:%d", schema, pipeline.IP, pipeline.Port)
+}
 
 // BeforeCreate - GORM hook
 func (pipeline *Pipeline) BeforeCreate(tx *gorm.DB) (err error) {
@@ -262,4 +283,111 @@ func FromPipelinePb(pipeline *clientpb.Pipeline) *Pipeline {
 	default:
 		return nil
 	}
+}
+
+func (pipeline *Pipeline) ToProfile(backend *Pipeline) (types.ProfileConfig, error) {
+	switch pipeline.Type {
+	case consts.TCPPipeline:
+		return pipeline.DefaultTCPProfile(), nil
+	case consts.HTTPPipeline:
+		return pipeline.DefaultHTTPProfile(), nil
+	case consts.RemPipeline:
+		return pipeline.DefaultRemProfile(backend), nil
+	default:
+		return types.ProfileConfig{}, fmt.Errorf("'%s' pipeline is not support.", pipeline.Type)
+	}
+}
+
+func (pipeline *Pipeline) DefaultTCPProfile() types.ProfileConfig {
+	pipelineProtobuf := pipeline.ToProtobuf()
+	pipelineProfile := types.ProfileConfig{}
+	pipelineProfile.SetDefaults()
+	target := types.Target{}
+	target.Address = pipelineProtobuf.Ip + ":" + strconv.Itoa(int(pipelineProtobuf.GetTcp().Port))
+	target.TCP = &types.TCPProfile{}
+	// beacon
+	pipelineProfile.Basic.Targets = append(pipelineProfile.Basic.Targets, target)
+	// pulse
+	pipelineProfile.Pulse.Target = pipelineProtobuf.Ip + ":" + strconv.Itoa(int(pipelineProtobuf.GetTcp().Port))
+	pipelineProfile.Pulse.Protocol = consts.TCPPipeline
+	// enc
+	for _, encryption := range pipelineProtobuf.Encryption {
+		// todo dynamic type key
+		if encryption.Type == consts.CryptorAES {
+			pipelineProfile.Basic.Encryption = consts.CryptorAES
+			pipelineProfile.Basic.Key = encryption.Key
+		} else if encryption.Type == consts.CryptorXOR {
+			pipelineProfile.Pulse.Encryption = consts.CryptorXOR
+			pipelineProfile.Pulse.Key = encryption.Key
+		}
+	}
+	return pipelineProfile
+}
+
+func (pipeline *Pipeline) DefaultHTTPProfile() types.ProfileConfig {
+	pipelineProtobuf := pipeline.ToProtobuf()
+	pipelineProfile := types.ProfileConfig{}
+	pipelineProfile.SetDefaults()
+	target := types.Target{}
+	target.Address = pipelineProtobuf.Ip + ":" + strconv.Itoa(int(pipelineProtobuf.GetHttp().Port))
+	target.Http = &types.HttpProfile{
+		Method:  "POST",
+		Path:    "/",
+		Version: "1.1",
+		Headers: map[string]string{
+			"User-Agent":   uarand.GetRandom(),
+			"Content-Type": "application/octet-stream",
+		},
+	}
+	if pipelineProtobuf.Tls != nil && pipelineProtobuf.Tls.Enable {
+		target.TLS = &types.TLSProfile{
+			Enable:           true,
+			SNI:              pipelineProtobuf.Ip,
+			SkipVerification: true,
+		}
+	}
+	// beacon
+	pipelineProfile.Basic.Targets = append(pipelineProfile.Basic.Targets, target)
+	pipelineProfile.Pulse.Target = pipelineProtobuf.Ip + ":" + strconv.Itoa(int(pipelineProtobuf.GetHttp().Port))
+	pipelineProfile.Pulse.Protocol = consts.HTTPPipeline
+	// enc
+	for _, encryption := range pipelineProtobuf.Encryption {
+		// todo dynamic type key
+		if encryption.Type == consts.CryptorAES {
+			pipelineProfile.Basic.Encryption = consts.CryptorAES
+			pipelineProfile.Basic.Key = encryption.Key
+		} else if encryption.Type == consts.CryptorXOR {
+			pipelineProfile.Pulse.Encryption = consts.CryptorXOR
+			pipelineProfile.Pulse.Key = encryption.Key
+		}
+	}
+	return pipelineProfile
+}
+
+func (pipeline *Pipeline) DefaultRemProfile(backend *Pipeline) types.ProfileConfig {
+	pipelineProtobuf := pipeline.ToProtobuf()
+	pipelineProfile := types.ProfileConfig{}
+	pipelineProfile.SetDefaults()
+	target := types.Target{}
+	backendPB := backend.ToProtobuf()
+
+	target.Address = backendPB.Ip + ":" + strconv.Itoa(int(backendPB.GetTcp().Port))
+	target.REM = &types.REMProfile{}
+	target.REM.Link = pipelineProtobuf.GetRem().Link
+	// beacon
+	pipelineProfile.Basic.Targets = append(pipelineProfile.Basic.Targets, target)
+	pipelineProfile.Pulse.Target = backendPB.Ip + ":" + strconv.Itoa(int(backendPB.GetTcp().Port))
+	pipelineProfile.Pulse.Protocol = backendPB.Type
+	// enc
+	for _, encryption := range backendPB.Encryption {
+		// todo dynamic type key
+		if encryption.Type == consts.CryptorAES {
+			pipelineProfile.Basic.Encryption = consts.CryptorAES
+			pipelineProfile.Basic.Key = encryption.Key
+		} else if encryption.Type == consts.CryptorXOR {
+			pipelineProfile.Pulse.Encryption = consts.CryptorXOR
+			pipelineProfile.Pulse.Key = encryption.Key
+		}
+	}
+	return pipelineProfile
 }

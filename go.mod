@@ -15,6 +15,7 @@ require (
 	github.com/charmbracelet/bubbletea v1.3.4
 	github.com/charmbracelet/glamour v0.8.0
 	github.com/charmbracelet/lipgloss v1.0.0
+	github.com/corpix/uarand v0.2.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/evertras/bubble-table v0.17.2
 	github.com/gofrs/uuid v4.4.0+incompatible

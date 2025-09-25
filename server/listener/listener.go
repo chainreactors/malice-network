@@ -26,7 +26,6 @@ import (
 var (
 	Listener *listener
 	// ListenerSessions 在 listener 层维护的 Sessions map (rawID -> Session)
-
 )
 
 func NewListener(clientConf *mtls.ClientConfig, cfg *configs.ListenerConfig, serverEnable bool) error {

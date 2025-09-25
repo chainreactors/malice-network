@@ -2,7 +2,7 @@ package build
 
 import (
 	"errors"
-	"fmt"
+	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/types"
@@ -14,7 +14,8 @@ import (
 // BeaconFlagSet 定义所有构建相关的flag
 func ModuleFlagSet(f *pflag.FlagSet) {
 	f.String("modules", "", "Override modules (comma-separated, e.g., 'full,execute_exe')")
-	f.String("3rd-modules", "", "Override 3rd party modules")
+	f.String("3rd", "", "Override 3rd party modules")
+	common.SetFlagSetGroup(f, "module")
 }
 
 func ModulesCmd(cmd *cobra.Command, con *repl.Console) error {
@@ -43,7 +44,6 @@ func ModulesCmd(cmd *cobra.Command, con *repl.Console) error {
 		mainProfile.Implant.ThirdModules = strings.Split(thirdModules, ",")
 		mainProfile.Implant.Enable3rd = true
 	} else {
-		fmt.Println(mainProfile.Implant)
 		mainProfile.Implant.Modules = strings.Split(modules, ",")
 	}
 	buildConfig.MaleficConfig, _ = mainProfile.ToYAML()

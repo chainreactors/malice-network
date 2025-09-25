@@ -19,8 +19,30 @@ func CheckSource(ctx context.Context, req *clientpb.BuildConfig) (*clientpb.Buil
 	case consts.ArtifactFromSaas:
 		return checkSaasSource(req)
 	default:
-		return nil, fmt.Errorf("unsupported build source: %s", req.Source)
+		return AutoCheckSource(ctx, req)
 	}
+}
+
+func AutoCheckSource(ctx context.Context, req *clientpb.BuildConfig) (*clientpb.BuildConfig, error) {
+	buildConfig, err := checkDockerSource(ctx, req)
+	if err == nil {
+		buildConfig.Source = consts.ArtifactFromDocker
+		return buildConfig, err
+	}
+
+	buildConfig, err = checkSaasSource(req)
+	if err == nil {
+		buildConfig.Source = consts.ArtifactFromSaas
+		return buildConfig, err
+	}
+
+	buildConfig, err = checkGithubActionSource(req)
+	if err == nil {
+		buildConfig.Source = consts.ArtifactFromGithubAction
+		return buildConfig, err
+	}
+
+	return nil, fmt.Errorf("no available source")
 }
 
 func checkGithubActionSource(req *clientpb.BuildConfig) (*clientpb.BuildConfig, error) {

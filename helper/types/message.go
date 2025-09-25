@@ -44,6 +44,7 @@ const (
 	MsgExecuteLocal   MsgName = consts.ModuleExecuteLocal
 	//MsgExecuteSpawn     MsgName = "execute_spawn"
 	MsgLs          MsgName = consts.ModuleLs
+	MsgEnumDrivers         = consts.ModuleEnumDrivers
 	MsgNetstat     MsgName = consts.ModuleNetstat
 	MsgPs          MsgName = consts.ModulePs
 	MsgKill        MsgName = consts.ModuleKill
@@ -113,6 +114,8 @@ func MessageType(message *implantpb.Spite) MsgName {
 		return MsgPs
 	case *implantpb.Spite_LsResponse:
 		return MsgLs
+	case *implantpb.Spite_EnumDriversResponse:
+		return MsgEnumDrivers
 	case *implantpb.Spite_Addons:
 		return MsgListAddon
 	case *implantpb.Spite_BypassRequest:

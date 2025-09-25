@@ -11,14 +11,13 @@ import (
 
 func CheckSource(con *repl.Console, buildConfig *clientpb.BuildConfig) (string, error) {
 	source := buildConfig.Source
-	if source == "" {
-		return "", errors.New("source is required")
-	}
 	if source != consts.ArtifactFromGithubAction &&
 		source != consts.ArtifactFromDocker &&
-		source != consts.ArtifactFromSaas {
+		source != consts.ArtifactFromSaas &&
+		source != "" {
 		return source, errors.New("source '" + source + "' is invalid")
 	}
+
 	resp, err := con.Rpc.CheckSource(con.Context(), buildConfig)
 	if err != nil {
 		return "", err
@@ -48,10 +47,11 @@ func parseSourceConfig(cmd *cobra.Command, con *repl.Console, buildConfig *clien
 			GithubAction: actionConfig,
 		}
 	}
-	_, err := CheckSource(con, buildConfig)
+	source, err := CheckSource(con, buildConfig)
 	if err != nil {
 		return nil, err
 	}
+	buildConfig.Source = source
 	return buildConfig, nil
 }
 

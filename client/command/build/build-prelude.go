@@ -20,11 +20,11 @@ func PreludeCmd(cmd *cobra.Command, con *repl.Console) error {
 	//	return err
 	//}
 
-	autorunyamlPath, _ := cmd.Flags().GetString("autorun")
-	if autorunyamlPath == "" {
-		return errors.New("require autorun.yaml path")
+	autorunZipPath, _ := cmd.Flags().GetString("autorun")
+	if autorunZipPath == "" {
+		return errors.New("require autorun.zip path")
 	}
-	zipData, err := os.ReadFile(autorunyamlPath)
+	zipData, err := os.ReadFile(autorunZipPath)
 	if err != nil {
 		return err
 	}

@@ -80,7 +80,11 @@ profile load /path/to/profile.zip --name my_profile --pipeline pipeline_name
 		},
 		Example: `
 ~~~
-profile new --name my_profile --pipeline default_tcp
+// create a default profile for <tcp/http pipeline>
+profile new --name tcp_profile_demo --pipeline tcp_default
+
+// create a default profile for rem
+profile new --name rem_profile_demo --pipeline tcp_default --rem rem_default
 ~~~
 `,
 	}
@@ -134,6 +138,9 @@ build beacon --addresses "https://127.0.0.1:443" --target x86_64-pc-windows-gnu 
 // Specify a module
 build beacon --addresses "https://127.0.0.1:443,https://10.0.0.1:443" --target x86_64-pc-windows-gnu --modules nano --source docker
 
+// Build a beacon with custom rem
+build beacon --addresses "tcp://127.0.0.1:5001" --rem "tcp://nonenonenonenone:@127.0.0.1:12345?wrapper=qu7tnG..." --target x86_64-pc-windows-gnu --source action
+
 // Build a beacon with a profile
 build beacon --profile tcp_default --target x86_64-pc-windows-gnu
 
@@ -141,10 +148,19 @@ build beacon --profile tcp_default --target x86_64-pc-windows-gnu
 build beacon --profile tcp_default --target x86_64-pc-windows-gnu --source saas
 
 // Build by GithubAction
-build beacon --profile tcp_default --target x86_64-pc-windows-gnu --source saas
+build beacon --profile tcp_default --target x86_64-pc-windows-gnu --source action
 ~~~`,
 	}
-	common.BindFlag(beaconCmd, common.GenerateFlagSet, common.GithubFlagSet, BeaconFlagSet)
+	common.BindFlag(beaconCmd,
+		common.GenerateFlagSet,
+		common.GithubFlagSet,
+		BeaconFlagSet,
+		ProxyFlagSet,
+		ModuleFlagSet,
+		AntiFlagSet,
+		GuardrailFlagSet,
+		OllvmFlagSet,
+	)
 	beaconCmd.MarkFlagRequired("target")
 	//beaconCmd.MarkFlagRequired("profile")
 	common.BindFlagCompletions(beaconCmd, func(comp carapace.ActionMap) {
@@ -197,13 +213,13 @@ build bind --target x86_64-pc-windows-gnu --profile tcp_default --source saas
 		},
 		Example: `~~~
 // Build a prelude payload
-build prelude --target x86_64-pc-windows-gnu --profile tcp_default --autorun /path/to/autorun.yaml
+build prelude --target x86_64-pc-windows-gnu --profile tcp_default --autorun /path/to/autorun.zip
 	
-// Build a prelude payload with additional modules
-build prelude --target x86_64-pc-windows-gnu --profile tcp_default --autorun /path/to/autorun.yaml --modules base,sys_full
+// Build a prelude payload by docker
+build prelude --target x86_64-pc-windows-gnu --profile tcp_default --autorun /path/to/autorun.zip --source docker
 	
 // Build a prelude payload by saas
-build prelude --target x86_64-pc-windows-gnu --profile tcp_default --autorun /path/to/autorun.yaml --source saas
+build prelude --target x86_64-pc-windows-gnu --profile tcp_default --autorun /path/to/autorun.zip --source saas
 ~~~`,
 	}
 

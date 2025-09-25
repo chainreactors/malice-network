@@ -61,6 +61,7 @@ const (
 	ModuleDownload             = "download"
 	ModulePwd                  = "pwd"
 	ModuleLs                   = "ls"
+	ModuleEnumDrivers          = "enum_drivers"
 	ModuleCd                   = "cd"
 	ModuleMv                   = "mv"
 	ModuleMkdir                = "mkdir"

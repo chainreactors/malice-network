@@ -75,6 +75,7 @@ const (
 	MaliceRPC_Mkdir_FullMethodName               = "/clientrpc.MaliceRPC/Mkdir"
 	MaliceRPC_Chmod_FullMethodName               = "/clientrpc.MaliceRPC/Chmod"
 	MaliceRPC_Chown_FullMethodName               = "/clientrpc.MaliceRPC/Chown"
+	MaliceRPC_EnumDrivers_FullMethodName         = "/clientrpc.MaliceRPC/EnumDrivers"
 	MaliceRPC_Kill_FullMethodName                = "/clientrpc.MaliceRPC/Kill"
 	MaliceRPC_Ps_FullMethodName                  = "/clientrpc.MaliceRPC/Ps"
 	MaliceRPC_Netstat_FullMethodName             = "/clientrpc.MaliceRPC/Netstat"
@@ -223,6 +224,7 @@ type MaliceRPCClient interface {
 	Mkdir(ctx context.Context, in *implantpb.Request, opts ...grpc.CallOption) (*clientpb.Task, error)
 	Chmod(ctx context.Context, in *implantpb.Request, opts ...grpc.CallOption) (*clientpb.Task, error)
 	Chown(ctx context.Context, in *implantpb.ChownRequest, opts ...grpc.CallOption) (*clientpb.Task, error)
+	EnumDrivers(ctx context.Context, in *implantpb.Request, opts ...grpc.CallOption) (*clientpb.Task, error)
 	// implant::sys
 	Kill(ctx context.Context, in *implantpb.Request, opts ...grpc.CallOption) (*clientpb.Task, error)
 	Ps(ctx context.Context, in *implantpb.Request, opts ...grpc.CallOption) (*clientpb.Task, error)
@@ -825,6 +827,15 @@ func (c *maliceRPCClient) Chmod(ctx context.Context, in *implantpb.Request, opts
 func (c *maliceRPCClient) Chown(ctx context.Context, in *implantpb.ChownRequest, opts ...grpc.CallOption) (*clientpb.Task, error) {
 	out := new(clientpb.Task)
 	err := c.cc.Invoke(ctx, MaliceRPC_Chown_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *maliceRPCClient) EnumDrivers(ctx context.Context, in *implantpb.Request, opts ...grpc.CallOption) (*clientpb.Task, error) {
+	out := new(clientpb.Task)
+	err := c.cc.Invoke(ctx, MaliceRPC_EnumDrivers_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1625,6 +1636,7 @@ type MaliceRPCServer interface {
 	Mkdir(context.Context, *implantpb.Request) (*clientpb.Task, error)
 	Chmod(context.Context, *implantpb.Request) (*clientpb.Task, error)
 	Chown(context.Context, *implantpb.ChownRequest) (*clientpb.Task, error)
+	EnumDrivers(context.Context, *implantpb.Request) (*clientpb.Task, error)
 	// implant::sys
 	Kill(context.Context, *implantpb.Request) (*clientpb.Task, error)
 	Ps(context.Context, *implantpb.Request) (*clientpb.Task, error)
@@ -1888,6 +1900,9 @@ func (UnimplementedMaliceRPCServer) Chmod(context.Context, *implantpb.Request) (
 }
 func (UnimplementedMaliceRPCServer) Chown(context.Context, *implantpb.ChownRequest) (*clientpb.Task, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Chown not implemented")
+}
+func (UnimplementedMaliceRPCServer) EnumDrivers(context.Context, *implantpb.Request) (*clientpb.Task, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method EnumDrivers not implemented")
 }
 func (UnimplementedMaliceRPCServer) Kill(context.Context, *implantpb.Request) (*clientpb.Task, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Kill not implemented")
@@ -3098,6 +3113,24 @@ func _MaliceRPC_Chown_Handler(srv interface{}, ctx context.Context, dec func(int
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(MaliceRPCServer).Chown(ctx, req.(*implantpb.ChownRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MaliceRPC_EnumDrivers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(implantpb.Request)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MaliceRPCServer).EnumDrivers(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MaliceRPC_EnumDrivers_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MaliceRPCServer).EnumDrivers(ctx, req.(*implantpb.Request))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4774,6 +4807,10 @@ var MaliceRPC_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Chown",
 			Handler:    _MaliceRPC_Chown_Handler,
+		},
+		{
+			MethodName: "EnumDrivers",
+			Handler:    _MaliceRPC_EnumDrivers_Handler,
 		},
 		{
 			MethodName: "Kill",

@@ -2,6 +2,7 @@ package build
 
 import (
 	"fmt"
+	"github.com/chainreactors/malice-network/helper/types"
 	"os"
 	"time"
 
@@ -76,11 +77,16 @@ func ProfileLoadCmd(cmd *cobra.Command, con *repl.Console) error {
 
 func ProfileNewCmd(cmd *cobra.Command, con *repl.Console) error {
 	profileName, basicPipeline := common.ParseProfileFlags(cmd)
-
 	profile := &clientpb.Profile{
 		Name:       profileName,
 		PipelineId: basicPipeline,
 	}
+	var params types.ProfileParams
+	if cmd.Flags().Changed("rem") {
+		rem, _ := cmd.Flags().GetString("rem")
+		params.REMPipeline = rem
+	}
+	profile.Params = params.String()
 
 	_, err := con.Rpc.NewProfile(con.Context(), profile)
 	if err != nil {

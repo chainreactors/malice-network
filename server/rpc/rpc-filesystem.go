@@ -153,3 +153,17 @@ func (rpc *Server) Chown(ctx context.Context, req *implantpb.ChownRequest) (*cli
 	go greq.HandlerResponse(ch, types.MsgResponse)
 	return greq.Task.ToProtobuf(), nil
 }
+
+func (rpc *Server) EnumDrivers(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
+	greq, err := newGenericRequest(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	ch, err := rpc.GenericHandler(ctx, greq)
+	if err != nil {
+		return nil, err
+	}
+
+	go greq.HandlerResponse(ch, types.MsgEnumDrivers)
+	return greq.Task.ToProtobuf(), nil
+}
