@@ -816,6 +816,9 @@ func NewProfile(profile *clientpb.Profile) error {
 		}
 
 	}
+	if profile.Content == nil {
+		profile.Content = consts.DefaultProfile
+	}
 	// if not for pipeline
 	contentType := fileutils.DetectContentType(profile.Content)
 	if contentType == "zip" {
