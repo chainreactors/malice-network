@@ -112,6 +112,7 @@ const (
 	MaliceRPC_PipeUpload_FullMethodName          = "/clientrpc.MaliceRPC/PipeUpload"
 	MaliceRPC_PipeRead_FullMethodName            = "/clientrpc.MaliceRPC/PipeRead"
 	MaliceRPC_PipeClose_FullMethodName           = "/clientrpc.MaliceRPC/PipeClose"
+	MaliceRPC_PipeServer_FullMethodName          = "/clientrpc.MaliceRPC/PipeServer"
 	MaliceRPC_Execute_FullMethodName             = "/clientrpc.MaliceRPC/Execute"
 	MaliceRPC_ExecuteSpawn_FullMethodName        = "/clientrpc.MaliceRPC/ExecuteSpawn"
 	MaliceRPC_ExecuteAssembly_FullMethodName     = "/clientrpc.MaliceRPC/ExecuteAssembly"
@@ -268,6 +269,7 @@ type MaliceRPCClient interface {
 	PipeUpload(ctx context.Context, in *implantpb.PipeRequest, opts ...grpc.CallOption) (*clientpb.Task, error)
 	PipeRead(ctx context.Context, in *implantpb.PipeRequest, opts ...grpc.CallOption) (*clientpb.Task, error)
 	PipeClose(ctx context.Context, in *implantpb.PipeRequest, opts ...grpc.CallOption) (*clientpb.Task, error)
+	PipeServer(ctx context.Context, in *implantpb.PipeRequest, opts ...grpc.CallOption) (*clientpb.Task, error)
 	// implant:execute
 	Execute(ctx context.Context, in *implantpb.ExecRequest, opts ...grpc.CallOption) (*clientpb.Task, error)
 	ExecuteSpawn(ctx context.Context, in *implantpb.ExecuteBinary, opts ...grpc.CallOption) (*clientpb.Task, error)
@@ -1166,6 +1168,15 @@ func (c *maliceRPCClient) PipeClose(ctx context.Context, in *implantpb.PipeReque
 	return out, nil
 }
 
+func (c *maliceRPCClient) PipeServer(ctx context.Context, in *implantpb.PipeRequest, opts ...grpc.CallOption) (*clientpb.Task, error) {
+	out := new(clientpb.Task)
+	err := c.cc.Invoke(ctx, MaliceRPC_PipeServer_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *maliceRPCClient) Execute(ctx context.Context, in *implantpb.ExecRequest, opts ...grpc.CallOption) (*clientpb.Task, error) {
 	out := new(clientpb.Task)
 	err := c.cc.Invoke(ctx, MaliceRPC_Execute_FullMethodName, in, out, opts...)
@@ -1680,6 +1691,7 @@ type MaliceRPCServer interface {
 	PipeUpload(context.Context, *implantpb.PipeRequest) (*clientpb.Task, error)
 	PipeRead(context.Context, *implantpb.PipeRequest) (*clientpb.Task, error)
 	PipeClose(context.Context, *implantpb.PipeRequest) (*clientpb.Task, error)
+	PipeServer(context.Context, *implantpb.PipeRequest) (*clientpb.Task, error)
 	// implant:execute
 	Execute(context.Context, *implantpb.ExecRequest) (*clientpb.Task, error)
 	ExecuteSpawn(context.Context, *implantpb.ExecuteBinary) (*clientpb.Task, error)
@@ -2011,6 +2023,9 @@ func (UnimplementedMaliceRPCServer) PipeRead(context.Context, *implantpb.PipeReq
 }
 func (UnimplementedMaliceRPCServer) PipeClose(context.Context, *implantpb.PipeRequest) (*clientpb.Task, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method PipeClose not implemented")
+}
+func (UnimplementedMaliceRPCServer) PipeServer(context.Context, *implantpb.PipeRequest) (*clientpb.Task, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method PipeServer not implemented")
 }
 func (UnimplementedMaliceRPCServer) Execute(context.Context, *implantpb.ExecRequest) (*clientpb.Task, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Execute not implemented")
@@ -3783,6 +3798,24 @@ func _MaliceRPC_PipeClose_Handler(srv interface{}, ctx context.Context, dec func
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MaliceRPC_PipeServer_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(implantpb.PipeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MaliceRPCServer).PipeServer(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MaliceRPC_PipeServer_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MaliceRPCServer).PipeServer(ctx, req.(*implantpb.PipeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _MaliceRPC_Execute_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(implantpb.ExecRequest)
 	if err := dec(in); err != nil {
@@ -4955,6 +4988,10 @@ var MaliceRPC_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "PipeClose",
 			Handler:    _MaliceRPC_PipeClose_Handler,
+		},
+		{
+			MethodName: "PipeServer",
+			Handler:    _MaliceRPC_PipeServer_Handler,
 		},
 		{
 			MethodName: "Execute",

@@ -80,8 +80,34 @@ func Commands(con *repl.Console) []*cobra.Command {
 		carapace.ActionValues().Usage("pipe name"),
 	)
 
+	pipeServerCmd := &cobra.Command{
+		Use:   consts.SubCommandName(consts.ModulePipeServer) + " [action] [pipe_name]",
+		Short: "Manage pipe server operations",
+		Long:  "Start, stop, or list pipe servers for receiving data from clients.",
+		Args:  cobra.RangeArgs(1, 2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return PipeServerCmd(cmd, con)
+		},
+		Annotations: map[string]string{
+			"depend": consts.ModulePipeServer,
+			"ttp":    "T1090",
+		},
+		Example: `Pipe server operations:
+  ~~~
+  pipe server start \\.\pipe\mypipe       # Start a pipe server
+  pipe server stop \\.\pipe\mypipe       # Stop a pipe server
+  pipe server list               # List all running pipe servers
+  pipe server status \\.\pipe\mypipe      # Check server status and cache size
+  pipe server clear \\.\pipe\mypipe       # Clear cached data for a pipe
+  ~~~`,
+	}
+	common.BindArgCompletions(pipeServerCmd, nil,
+		carapace.ActionValues("start", "stop", "list", "clear", "status").Usage("action"),
+		carapace.ActionValues().Usage("pipe name (required for start/stop/clear/status)"),
+	)
+
 	// Add subcommands to the main pipe command
-	pipeCmd.AddCommand(pipeUploadCmd, pipeReadCmd)
+	pipeCmd.AddCommand(pipeUploadCmd, pipeReadCmd, pipeServerCmd)
 	// , pipeCloseCmd
 
 	return []*cobra.Command{pipeCmd}
@@ -92,4 +118,5 @@ func Register(con *repl.Console) {
 	RegisterPipeUploadFunc(con)
 	RegisterPipeReadFunc(con)
 	RegisterPipeCloseFunc(con)
+	RegisterPipeServerFunc(con)
 }

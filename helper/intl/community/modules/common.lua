@@ -983,3 +983,4 @@ end
 local cmd_execute_cross_session = command("execute_cross_session", run_execute_cross_session, "Execute a binary on disk within the context of another logged-on user's session", "T1003")
 cmd_execute_cross_session:Flags():Int("session_id", 0, "the session ID of the user in which context the specified binary needs to be executed.")
 cmd_execute_cross_session:Flags():String("binary_path", "", "path to the binary that you like to execute")
+

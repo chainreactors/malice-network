@@ -124,6 +124,7 @@ const (
 	ModulePipeUpload = "pipe_upload"
 	ModulePipeClose  = "pipe_close"
 	ModulePipeRead   = "pipe_read"
+	ModulePipeServer = "pipe_server"
 
 	// privilege
 	ModuleRunas     = "runas"

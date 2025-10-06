@@ -35,6 +35,19 @@ func (rpc *Server) PipeRead(ctx context.Context, req *implantpb.PipeRequest) (*c
 	if err != nil {
 		return nil, err
 	}
+	go greq.HandlerResponse(ch, types.MsgResponse, ContextCallback(greq.Task, ctx))
+	return greq.Task.ToProtobuf(), nil
+}
+
+func (rpc *Server) PipeServer(ctx context.Context, req *implantpb.PipeRequest) (*clientpb.Task, error) {
+	greq, err := newGenericRequest(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	ch, err := rpc.GenericHandler(ctx, greq)
+	if err != nil {
+		return nil, err
+	}
 
 	go greq.HandlerResponse(ch, types.MsgResponse)
 	return greq.Task.ToProtobuf(), nil

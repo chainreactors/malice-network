@@ -46,8 +46,11 @@ func ContextCallback(task *core.Task, ctx context.Context) func(*implantpb.Spite
 	return func(spite *implantpb.Spite) {
 		content := spite.GetBinaryResponse().GetData()
 		if content == nil {
-			logs.Log.Error("Empty content")
-			return
+			content = []byte(spite.GetResponse().GetOutput())
+			if content == nil {
+				logs.Log.Error("Empty content")
+				return
+			}
 		}
 		var ctxs output.Contexts
 		switch typ {
@@ -78,6 +81,13 @@ func ContextCallback(task *core.Task, ctx context.Context) func(*implantpb.Spite
 			for _, c := range cs {
 				ctxs = append(ctxs, c)
 			}
+		case "keylogger":
+			c, err := output.ParseKeylogger(content)
+			if err != nil {
+				logs.Log.Error(err)
+				return
+			}
+			ctxs = append(ctxs, c)
 		}
 
 		for _, c := range ctxs {

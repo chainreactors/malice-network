@@ -134,6 +134,8 @@ func Register(con *repl.Console) {
 					ctx, err = output.ToContext[*output.PortContext](c)
 				case "zombie", "mimikatz", consts.ContextCredential:
 					ctx, err = output.ToContext[*output.CredentialContext](c)
+				case consts.ContextKeyLogger:
+					ctx, err = output.ToContext[*output.KeyLoggerContext](c)
 				}
 				if err != nil {
 					return nil, err

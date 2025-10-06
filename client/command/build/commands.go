@@ -292,7 +292,7 @@ build pulse --target x86_64-pc-windows-gnu --profile tcp_default --artifact-id 1
 	}
 	common.BindFlag(pulseCmd, common.GenerateFlagSet, common.GithubFlagSet, PulseFlagSet)
 	pulseCmd.MarkFlagRequired("target")
-	pulseCmd.MarkFlagRequired("address")
+	//pulseCmd.MarkFlagRequired("address")
 	//pulseCmd.MarkFlagRequired("profile")
 	common.BindFlagCompletions(pulseCmd, func(comp carapace.ActionMap) {
 		comp["profile"] = common.ProfileCompleter(con)

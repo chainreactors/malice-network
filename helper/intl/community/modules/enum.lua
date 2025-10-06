@@ -110,3 +110,22 @@ local function run_arp()
 end
 local cmd_enum_arp = command("enum:arp", run_arp, "Enum ARP table", "T1016")
 opsec("enum:arp", 9.0)
+
+-- enum software
+local function run_enum_software()
+    local session = active()
+    local arch = session.Os.Arch
+    local bof_file = bof_path("enum_software", arch)
+    return bof(session, script_resource(bof_file), {}, true)
+end
+local cmd_enum_software = command("enum:software", run_enum_software, "Enum software", "T1016")
+opsec("enum:software", 9.0)
+
+local function run_check_av(cmd)
+    local session = active()
+    local arch = session.Os.Arch
+    local bof_file = bof_path("enum_av", arch)
+    return bof(session, script_resource(bof_file), {}, true)
+end
+local cmd_check_av = command("enum:av", run_check_av, "Dump a process memory", "T1003")
+opsec("enum:av", 9.0)

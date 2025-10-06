@@ -65,7 +65,7 @@ func (s *Session) Value(key string) (string, error) {
 	if value, ok := s.ctxValue[key]; ok {
 		return value, nil
 	}
-	return "", fmt.Errorf("key not found")
+	return "", fmt.Errorf("key '%s' not found", key)
 }
 
 func (s *Session) WithValue(kv ...string) (*Session, error) {

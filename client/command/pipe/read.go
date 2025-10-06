@@ -39,9 +39,9 @@ func RegisterPipeReadFunc(con *repl.Console) {
 	con.RegisterImplantFunc(
 		consts.ModulePipeRead,
 		PipeRead,
-		"",
-		nil,
-		output.ParseStatus,
+		"bpipe_read",
+		PipeRead,
+		output.ParseResponse,
 		nil,
 	)
 	con.AddCommandFuncHelper(
