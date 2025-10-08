@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
 )
 
 // GetCursorPos returns the current cursor position in the terminal.
@@ -103,4 +105,28 @@ func (k *Keys) readInputFiltered() (keys []byte, err error) {
 	}
 
 	return keys, nil
+}
+
+// GetTerminalResize for Unix systems using SIGWINCH signal
+func GetTerminalResize(keys *Keys) <-chan bool {
+	resizeChan := make(chan bool, 1)
+
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGWINCH)
+
+	go func() {
+		for {
+			<-sigChan
+			isWaiting := keys.waiting
+
+			if !isWaiting {
+				select {
+				case resizeChan <- true:
+				default:
+				}
+			}
+		}
+	}()
+
+	return resizeChan
 }
