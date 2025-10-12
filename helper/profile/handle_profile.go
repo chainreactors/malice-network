@@ -4,11 +4,12 @@ import (
 	"archive/zip"
 	"bytes"
 	"fmt"
-	"github.com/chainreactors/malice-network/helper/consts"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/chainreactors/malice-network/helper/consts"
 
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 )
@@ -46,17 +47,17 @@ func ProcessAutorunZipFromBytes(zipData []byte) (*clientpb.BuildConfig, error) {
 		}
 
 		switch {
-		case f.Name == "autorun.yaml":
+		case f.Name == "prelude.yaml":
 			autorunContent = content
-		case f.Name == "config.yaml":
+		case f.Name == "implant.yaml":
 			configContent = content
 		case strings.HasPrefix(f.Name, "resources/") && !f.FileInfo().IsDir():
 			filename := strings.TrimPrefix(f.Name, "resources/")
-			if filename == "autorun.yaml" {
+			if filename == "prelude.yaml" {
 				autorunContent = content
 			} else if filename != "" {
 				entry := &clientpb.ResourceEntry{
-					Filename: filepath.Base(filename),
+					Filename: filename,
 					Content:  content,
 				}
 				resourceFiles = append(resourceFiles, entry)
@@ -66,7 +67,7 @@ func ProcessAutorunZipFromBytes(zipData []byte) (*clientpb.BuildConfig, error) {
 
 	// 3.
 	if autorunContent == nil {
-		return nil, fmt.Errorf("autorun.yaml is required in zip file")
+		return nil, fmt.Errorf("prelude.yaml is required in zip file")
 	}
 
 	buildConfig := &clientpb.BuildConfig{
@@ -83,19 +84,19 @@ func ProcessAutorunZipFromBytes(zipData []byte) (*clientpb.BuildConfig, error) {
 
 // WriteBuildConfigToPath
 func WriteBuildConfigToPath(buildConfig *clientpb.BuildConfig, srcPath string) error {
-	// 1. autorun.yaml (PreludeConfig)
+	// 1. prelude.yaml (PreludeConfig)
 	if buildConfig.PreludeConfig != nil {
-		autorunPath := filepath.Join(srcPath, "autorun.yaml")
+		autorunPath := filepath.Join(srcPath, "prelude.yaml")
 		if err := os.WriteFile(autorunPath, buildConfig.PreludeConfig, 0644); err != nil {
-			return fmt.Errorf("failed to write autorun.yaml: %w", err)
+			return fmt.Errorf("failed to write prelude.yaml: %w", err)
 		}
 	}
 
-	// 2. config.yaml (MaleficConfig)
+	// 2. implant.yaml (MaleficConfig)
 	if buildConfig.MaleficConfig != nil {
-		configPath := filepath.Join(srcPath, "config.yaml")
+		configPath := filepath.Join(srcPath, "implant.yaml")
 		if err := os.WriteFile(configPath, buildConfig.MaleficConfig, 0644); err != nil {
-			return fmt.Errorf("failed to write config.yaml: %w", err)
+			return fmt.Errorf("failed to write implant.yaml: %w", err)
 		}
 	}
 

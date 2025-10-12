@@ -832,14 +832,14 @@ func NewProfile(profile *clientpb.Profile) error {
 			return fmt.Errorf("failed to decompress zip content: %w", err)
 		}
 
-		configPath := filepath.Join(profilePath, "config.yaml")
+		configPath := filepath.Join(profilePath, "implant.yaml")
 		if !fileutils.Exist(configPath) {
-			return fmt.Errorf("config.yaml not found in zip content")
+			return fmt.Errorf("implant.yaml not found in zip content")
 		}
 
 		yamlContent, err := os.ReadFile(configPath)
 		if err != nil {
-			return fmt.Errorf("failed to read config.yaml: %w", err)
+			return fmt.Errorf("failed to read implant.yaml: %w", err)
 		}
 
 		config, err := types.LoadProfile(yamlContent)

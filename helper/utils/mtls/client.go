@@ -134,7 +134,7 @@ func GetListeners() ([]string, error) {
 		if !info.IsDir() {
 			baseName := filepath.Base(path)
 			if strings.HasSuffix(baseName, ".yaml") {
-				if !strings.HasPrefix(baseName, "config.yaml") {
+				if !strings.HasPrefix(baseName, "implant.yaml") {
 					fileName := strings.TrimSuffix(baseName, filepath.Ext(baseName))
 					files = append(files, fileName)
 				}

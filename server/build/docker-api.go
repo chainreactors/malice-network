@@ -28,8 +28,8 @@ var (
 	ContainerCargoGitCache      = "/root/cargo/git"
 	ContainerBinPath            = "/root/bin"
 	ContainerResourcePath       = "/root/src/resources" // 新增：容器内的资源路径
-	ContainerAutoRunPath        = "/root/src/autorun.yaml"
-	ContainerConfigPath         = "/root/src/config.yaml"
+	ContainerAutoRunPath        = "/root/src/prelude.yaml"
+	ContainerConfigPath         = "/root/src/implant.yaml"
 	command                     = "build"
 	funcNameOption              = "--function-name"
 	userDataPathOption          = "--userdata-path"

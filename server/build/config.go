@@ -16,8 +16,8 @@ import (
 )
 
 var (
-	generateConfig = "config.yaml"
-	autoRunYaml    = "autorun.yaml"
+	generateConfig = "implant.yaml"
+	autoRunYaml    = "prelude.yaml"
 	release        = "release"
 	malefic        = "malefic"
 	modules        = "malefic_modules"
@@ -203,9 +203,9 @@ func ProcessAutorunZip(zipData []byte, targetPath string) error {
 	return fileutils.DecompressZipSubdirToRoot(zipData, "resources", targetPath)
 }
 
-// CopyProfileFilesExceptConfig copies all files from the profile directory except config.yaml to the target path
+// CopyProfileFilesExceptConfig copies all files from the profile directory except implant.yaml to the target path
 func CopyProfileFilesExceptConfig(profilePath, targetPath string) error {
-	return fileutils.CopyDirectoryExcept(profilePath, targetPath, []string{"config.yaml"})
+	return fileutils.CopyDirectoryExcept(profilePath, targetPath, []string{"implant.yaml"})
 }
 
 // ProcessAutorunWithProfile processes autorun.zip and copies profile files
@@ -239,25 +239,25 @@ func ProcessAutorunWithProfile(paramsBytes []byte, profilePath, targetPath strin
 	return nil
 }
 
-// extractAutorunYamlBase64 从 zipData 中提取 autorun.yaml 并返回 base64 内容
-func extractAutorunYamlBase64(zipData []byte) (string, error) {
+// extractPreludeYamlBase64 从 zipData 中提取 prelude.yaml 并返回 base64 内容
+func extractPreludeYamlBase64(zipData []byte) (string, error) {
 	var result string
-	err := fileutils.WithTempDir("autorun_temp_*", func(tempDir string) error {
-		autorunYamlPath := filepath.Join(tempDir, autoRunYaml)
+	err := fileutils.WithTempDir("prelude_temp_*", func(tempDir string) error {
+		preludeYamlPath := filepath.Join(tempDir, autoRunYaml)
 
 		if err := fileutils.ExtractZipWithFilter(zipData, tempDir, func(filename string) bool {
 			return filename == autoRunYaml
 		}); err != nil {
-			return fmt.Errorf("failed to extract autorun.yaml from zip: %w", err)
+			return fmt.Errorf("failed to extract prelude.yaml from zip: %w", err)
 		}
 
-		if !fileutils.Exist(autorunYamlPath) {
-			return fmt.Errorf("autorun.yaml not found in zip content")
+		if !fileutils.Exist(preludeYamlPath) {
+			return fmt.Errorf("prelude.yaml not found in zip content")
 		}
 
-		content, err := os.ReadFile(autorunYamlPath)
+		content, err := os.ReadFile(preludeYamlPath)
 		if err != nil {
-			return fmt.Errorf("failed to read autorun.yaml: %w", err)
+			return fmt.Errorf("failed to read prelude.yaml: %w", err)
 		}
 
 		result = base64.StdEncoding.EncodeToString(content)
@@ -286,9 +286,9 @@ func processProfileOnlyCase(profilePath string, params *types.ProfileParams) (st
 	return "", params.String(), nil
 }
 
-// processAutorunWithOptionalProfile handles the case where autorun file exists
-func processAutorunWithOptionalProfile(zipData []byte, profilePath string, profileExists bool, params *types.ProfileParams) (string, string, error) {
-	autorunYamlBase64, err := extractAutorunYamlBase64(zipData)
+// processPreludeWithOptionalProfile handles the case where prelude file exists
+func processPreludeWithOptionalProfile(zipData []byte, profilePath string, profileExists bool, params *types.ProfileParams) (string, string, error) {
+	preludeYamlBase64, err := extractPreludeYamlBase64(zipData)
 	if err != nil {
 		return "", "", err
 	}
@@ -301,7 +301,7 @@ func processAutorunWithOptionalProfile(zipData []byte, profilePath string, profi
 		params.AutoRunFile = newZipBase64
 	}
 
-	return autorunYamlBase64, params.String(), nil
+	return preludeYamlBase64, params.String(), nil
 }
 
 func ProcessAutorunZipToBase64(paramsByte []byte, profileName string) (string, string, error) {
@@ -325,9 +325,9 @@ func ProcessAutorunZipToBase64(paramsByte []byte, profileName string) (string, s
 	case !autoRunFileEmpty:
 		zipData, err := base64.StdEncoding.DecodeString(params.AutoRunFile)
 		if err != nil {
-			return "", "", fmt.Errorf("failed to decode autorun.zip base64: %w", err)
+			return "", "", fmt.Errorf("failed to decode prelude.zip base64: %w", err)
 		}
-		return processAutorunWithOptionalProfile(zipData, profilePath, profileExists, params)
+		return processPreludeWithOptionalProfile(zipData, profilePath, profileExists, params)
 
 	case autoRunFileEmpty && !profileExists:
 		return "", params.String(), nil
@@ -337,20 +337,20 @@ func ProcessAutorunZipToBase64(paramsByte []byte, profileName string) (string, s
 	}
 }
 
-// createCombinedZip creates a new zip containing files from autorun.zip and profile directory
+// createCombinedZip creates a new zip containing files from prelude.zip and profile directory
 func createCombinedZip(zipData []byte, profilePath string) (string, error) {
 	var result string
 	err := fileutils.WithTempDir("combined_zip_*", func(tempDir string) error {
-		// Extract all files from autorun.zip except autorun.yaml
+		// Extract all files from prelude.zip except prelude.yaml
 		if err := fileutils.ExtractZipWithFilter(zipData, tempDir, func(filename string) bool {
-			return filename != autoRunYaml // Exclude autorun.yaml
+			return filename != autoRunYaml // Exclude prelude.yaml
 		}); err != nil {
-			return fmt.Errorf("failed to extract files from autorun.zip: %w", err)
+			return fmt.Errorf("failed to extract files from prelude.zip: %w", err)
 		}
 
-		// Copy profile files except config.yaml
+		// Copy profile files except implant.yaml
 		if profilePath != "" {
-			if err := fileutils.CopyDirectoryExcept(profilePath, tempDir, []string{"config.yaml"}); err != nil {
+			if err := fileutils.CopyDirectoryExcept(profilePath, tempDir, []string{"implant.yaml"}); err != nil {
 				return fmt.Errorf("failed to copy profile files: %w", err)
 			}
 		}

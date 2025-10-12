@@ -97,15 +97,15 @@ func (d *DockerBuilder) Generate() (*clientpb.Artifact, error) {
 	// set volume - 精确挂载特定文件和目录
 	d.volumes = Volumes
 
-	// 挂载 config.yaml（如果存在）
-	configPath := filepath.Join(d.srcPath, "config.yaml")
+	// 挂载 implant.yaml（如果存在）
+	configPath := filepath.Join(d.srcPath, "implant.yaml")
 	if fileutils.Exist(configPath) {
 		configVolume := fmt.Sprintf("%s:%s", filepath.ToSlash(configPath), ContainerConfigPath)
 		d.volumes = append(d.volumes, configVolume)
 	}
 
-	// 挂载 autorun.yaml（必须存在）
-	autorunPath := filepath.Join(d.srcPath, "autorun.yaml")
+	// 挂载 prelude.yaml（必须存在）
+	autorunPath := filepath.Join(d.srcPath, "prelude.yaml")
 	if fileutils.Exist(autorunPath) {
 		autoRunVolume := fmt.Sprintf("%s:%s", filepath.ToSlash(autorunPath), ContainerAutoRunPath)
 		d.volumes = append(d.volumes, autoRunVolume)
@@ -163,7 +163,7 @@ func (d *DockerBuilder) Execute() error {
 		d.enable3rd = true
 	case consts.CommandBuildPrelude:
 		buildCommand = fmt.Sprintf(
-			"malefic-mutant generate prelude autorun.yaml && malefic-mutant build prelude -t %s",
+			"malefic-mutant generate prelude prelude.yaml && malefic-mutant build prelude -t %s",
 			d.config.Target,
 		)
 	case consts.CommandBuildPulse:
