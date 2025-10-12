@@ -15,7 +15,7 @@ import (
 func SyncCmd(cmd *cobra.Command, con *repl.Console) error {
 	tid := cmd.Flags().Arg(0)
 	go func() {
-		ctx, err := con.Rpc.Sync(con.ActiveTarget.Context(), &clientpb.Sync{
+		ctx, err := con.Rpc.Sync(con.Context(), &clientpb.Sync{
 			ContextId: tid,
 		})
 		if err != nil {
