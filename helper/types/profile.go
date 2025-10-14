@@ -163,7 +163,7 @@ type ImplantProfile struct {
 	Modules            []string               `yaml:"modules" json:"modules"`
 	Enable3rd          bool                   `yaml:"enable_3rd" json:"enable_3rd"`
 	ThirdModules       []string               `yaml:"3rd_modules" json:"3rd_modules"`
-	AutoRun            string                 `yaml:"autorun" json:"autorun"`
+	Prelude            string                 `yaml:"prelude" json:"prelude"`
 	Pack               []PackItem             `yaml:"pack" json:"pack"`
 	Flags              *ImplantFlags          `yaml:"flags" json:"flags"`
 	Anti               *AntiProfile           `yaml:"anti" json:"anti"`
@@ -427,8 +427,8 @@ func (p *ProfileConfig) mergeImplantProfile(other *ImplantProfile) {
 	if other.Mod != "" {
 		p.Implant.Mod = other.Mod
 	}
-	if other.AutoRun != "" {
-		p.Implant.AutoRun = other.AutoRun
+	if other.Prelude != "" {
+		p.Implant.Prelude = other.Prelude
 	}
 	if len(other.Modules) > 0 {
 		p.Implant.Modules = other.Modules

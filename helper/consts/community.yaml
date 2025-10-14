@@ -88,7 +88,7 @@ implants:
   3rd_modules:            # 3rd module when malefic compile
         - curl
 
-  autorun: ""             # autorun config filename
+  prelude: ""             # autorun config filename
   pack:                   # pack
   flags:
     start: 0x41

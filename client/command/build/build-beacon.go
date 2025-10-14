@@ -78,8 +78,8 @@ func BeaconFlagSet(f *pflag.FlagSet) {
 	f.String("addresses", "", "Target addresses (comma-separated)")
 	//f.String("rem-link", "", "REM link configuration")
 
-	// AutoRun flags
-	f.String("autorun-file", "", "AutoRun configuration file path")
+	// Prelude flags
+	f.String("autorun-file", "", "Prelude configuration file path")
 
 	// Legacy flags for backward compatibility
 	//f.String("proxy", "", "Legacy proxy override (use --proxy-url instead)")
@@ -369,7 +369,7 @@ func parseBuildFlags(cmd *cobra.Command, profile *types.ProfileConfig) (*types.P
 	// autorun configuration
 	autorunFile, _ := cmd.Flags().GetString("autorun-file")
 	if autorunFile != "" {
-		profile.Implant.AutoRun = autorunFile
+		profile.Implant.Prelude = autorunFile
 	}
 
 	// anti configuration

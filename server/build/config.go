@@ -184,7 +184,7 @@ func GetFilePath(name, target, buildType, format string) string {
 //				}
 //			}
 //			if params.AutoRunFile != "" {
-//				config.Implant.AutoRun = ContainerAutoRunPath
+//				config.Implant.Prelude = ContainerAutoRunPath
 //			}
 //		}
 //	}
