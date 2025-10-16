@@ -3,12 +3,13 @@ package pe
 import (
 	"encoding/base64"
 	"fmt"
-	"github.com/chainreactors/malice-network/helper/intl"
 	"io"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/chainreactors/malice-network/helper/intl"
 )
 
 type BOFArgsBuffer struct {
@@ -193,6 +194,10 @@ func Unpack(data string) ([]byte, error) {
 		return content, nil
 	}
 
+	if looksLikeWindowsDrive(data) {
+		return nil, fmt.Errorf("file not found: %s", data)
+	}
+
 	// 如果直接读取失败，解析数据类型
 	unpacked := strings.SplitN(data, ":", 2)
 	if len(unpacked) < 2 {
@@ -211,6 +216,13 @@ func Unpack(data string) ([]byte, error) {
 	default:
 		return nil, fmt.Errorf("unknown data type %s", unpacked[0])
 	}
+}
+
+func looksLikeWindowsDrive(s string) bool {
+	return len(s) > 2 &&
+		((s[0] >= 'A' && s[0] <= 'Z') || (s[0] >= 'a' && s[0] <= 'z')) &&
+		s[1] == ':' &&
+		(s[2] == '\\' || s[2] == '/')
 }
 
 const (
