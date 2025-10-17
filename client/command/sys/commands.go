@@ -2,6 +2,7 @@ package sys
 
 import (
 	"fmt"
+
 	"github.com/carapace-sh/carapace"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/repl"
@@ -193,7 +194,9 @@ wmi_execute --namespace <namespace> --class_name <classname> --method_name <meth
   ~~~
 Execute a WMI method to create a new process:
 ~~~
-wmi_execute --namespace root\\cimv2 --class_name Win32_Process --method_name Create --params CommandLine="notepad.exe"
+wmi_execute --namespace root\cimv2 --class_name Win32_Process --method_name Create --params CommandLine=notepad.exe
+
+wmi_execute --namespace root\cimv2 --class_name Win32_Process --method_name Create --params "CommandLine=cmd /c calc"
 ~~~`,
 	}
 
