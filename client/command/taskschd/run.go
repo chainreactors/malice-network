@@ -16,7 +16,8 @@ func TaskSchdRunCmd(cmd *cobra.Command, con *repl.Console) error {
 	name := cmd.Flags().Arg(0)
 
 	session := con.GetInteractive()
-	task, err := TaskSchdRun(con.Rpc, session, name)
+	taskFolder, _ := cmd.Flags().GetString("task_folder")
+	task, err := TaskSchdRun(con.Rpc, session, name, taskFolder)
 	if err != nil {
 		return err
 	}
@@ -25,11 +26,12 @@ func TaskSchdRunCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func TaskSchdRun(rpc clientrpc.MaliceRPCClient, session *core.Session, name string) (*clientpb.Task, error) {
+func TaskSchdRun(rpc clientrpc.MaliceRPCClient, session *core.Session, name, taskFolder string) (*clientpb.Task, error) {
 	request := &implantpb.TaskScheduleRequest{
 		Type: consts.ModuleTaskSchdRun,
 		Taskschd: &implantpb.TaskSchedule{
 			Name: name,
+			Path: taskFolder,
 		},
 	}
 	return rpc.TaskSchdRun(session.Context(), request)
@@ -52,6 +54,7 @@ func RegisterTaskSchdRunFunc(con *repl.Console) {
 		[]string{
 			"session: special session",
 			"name: name of the scheduled task",
+			"task_folder: task folder",
 		},
 		[]string{"task"})
 }

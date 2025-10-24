@@ -16,7 +16,8 @@ func TaskSchdQueryCmd(cmd *cobra.Command, con *repl.Console) error {
 	name := cmd.Flags().Arg(0)
 
 	session := con.GetInteractive()
-	task, err := TaskSchdQuery(con.Rpc, session, name)
+	taskFolder, _ := cmd.Flags().GetString("task_folder")
+	task, err := TaskSchdQuery(con.Rpc, session, name, taskFolder)
 	if err != nil {
 		return err
 	}
@@ -25,11 +26,12 @@ func TaskSchdQueryCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func TaskSchdQuery(rpc clientrpc.MaliceRPCClient, session *core.Session, name string) (*clientpb.Task, error) {
+func TaskSchdQuery(rpc clientrpc.MaliceRPCClient, session *core.Session, name, taskFolder string) (*clientpb.Task, error) {
 	request := &implantpb.TaskScheduleRequest{
 		Type: consts.ModuleTaskSchdQuery,
 		Taskschd: &implantpb.TaskSchedule{
 			Name: name,
+			Path: taskFolder,
 		},
 	}
 	return rpc.TaskSchdQuery(session.Context(), request)

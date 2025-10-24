@@ -16,7 +16,8 @@ func TaskSchdStopCmd(cmd *cobra.Command, con *repl.Console) error {
 	name := cmd.Flags().Arg(0)
 
 	session := con.GetInteractive()
-	task, err := TaskSchdStop(con.Rpc, session, name)
+	taskFolder, _ := cmd.Flags().GetString("task_folder")
+	task, err := TaskSchdStop(con.Rpc, session, name, taskFolder)
 	if err != nil {
 		return err
 	}
@@ -25,11 +26,12 @@ func TaskSchdStopCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func TaskSchdStop(rpc clientrpc.MaliceRPCClient, session *core.Session, name string) (*clientpb.Task, error) {
+func TaskSchdStop(rpc clientrpc.MaliceRPCClient, session *core.Session, name, taskFolder string) (*clientpb.Task, error) {
 	request := &implantpb.TaskScheduleRequest{
 		Type: consts.ModuleTaskSchdStop,
 		Taskschd: &implantpb.TaskSchedule{
 			Name: name,
+			Path: taskFolder,
 		},
 	}
 	return rpc.TaskSchdStop(session.Context(), request)
@@ -51,6 +53,7 @@ func RegisterTaskSchdStopFunc(con *repl.Console) {
 		[]string{
 			"session: special session",
 			"name: name of the scheduled task",
+			"task_folder: task folder",
 		},
 		[]string{"task"})
 }

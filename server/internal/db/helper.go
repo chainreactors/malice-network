@@ -303,6 +303,9 @@ func UpdatePipelineCert(certName string, pipeline *models.Pipeline) (*models.Pip
 }
 
 func SavePipeline(pipeline *models.Pipeline) (*models.Pipeline, error) {
+	if pipeline == nil {
+		return nil, errors.New("pipeline cannot be nil")
+	}
 	newPipeline := &models.Pipeline{}
 	result := Session().Where("name = ? AND listener_id  = ?", pipeline.Name, pipeline.ListenerId).First(&newPipeline)
 	if result.Error != nil {

@@ -46,7 +46,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		},
 		Example: `Query a registry key:
   ~~~
-  reg query HKEY_LOCAL_MACHINE\\SOFTWARE\\Example TestKey
+  reg query HKEY_LOCAL_MACHINE\SOFTWARE\Example TestKey
   ~~~`,
 	}
 
@@ -64,9 +64,9 @@ func Commands(con *repl.Console) []*cobra.Command {
 		},
 		Example: `Add or modify a registry key:
   ~~~
-  reg add HKEY_LOCAL_MACHINE\\SOFTWARE\\Example -v TestValue -t REG_DWORD -d 1
-  reg add HKEY_LOCAL_MACHINE\\SOFTWARE\\Example -v TestString -t REG_SZ -d "Hello World"
-  reg add HKEY_LOCAL_MACHINE\\SOFTWARE\\Example -v TestBinary -t REG_BINARY -d 01020304
+  reg add HKEY_LOCAL_MACHINE\SOFTWARE\Example -v TestValue -t REG_DWORD -d 1
+  reg add HKEY_LOCAL_MACHINE\SOFTWARE\Example -v TestString -t REG_SZ -d "Hello World"
+  reg add HKEY_LOCAL_MACHINE\SOFTWARE\Example -v TestBinary -t REG_BINARY -d 01020304
   ~~~`,
 	}
 	common.BindFlag(regAddCmd, func(f *pflag.FlagSet) {
@@ -107,7 +107,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		},
 		Example: `List subkeys in a registry path:
   ~~~
-  reg list_key HKEY_LOCAL_MACHINE\\SOFTWARE\\Example
+  reg list_key HKEY_LOCAL_MACHINE\SOFTWARE\Example
   ~~~`,
 	}
 
@@ -125,7 +125,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		},
 		Example: `List values in a registry path:
   ~~~
-  reg list_value HKEY_LOCAL_MACHINE\\SOFTWARE\\Example
+  reg list_value HKEY_LOCAL_MACHINE\SOFTWARE\Example
   ~~~`,
 	}
 

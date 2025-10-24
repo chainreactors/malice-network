@@ -50,7 +50,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		},
 		Example: `Create a scheduled task:
   ~~~
-  taskschd create --name ExampleTask --path /path/to/executable --trigger_type 1 --start_boundary "2023-10-10T09:00:00"
+  taskschd create --name ExampleTask --path /path/to/executable --trigger_type AtLogon --start_boundary "2023-10-10T09:00:00"
   ~~~`,
 	}
 	common.BindFlag(taskSchdCreateCmd, func(f *pflag.FlagSet) {
@@ -58,6 +58,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		f.String("path", "", "Path to the executable for the scheduled task (required)")
 		f.String("trigger_type", "", "Trigger type for the task (e.g. Daily,Weekly,monthly)")
 		f.String("start_boundary", "", "Start boundary for the scheduled task (e.g., 2023-10-10T09:00:00)")
+		f.String("task_folder", "\\", "Task Folder for the scheduled task")
 	})
 
 	common.BindFlagCompletions(taskSchdCreateCmd, func(comp carapace.ActionMap) {
@@ -81,6 +82,9 @@ func Commands(con *repl.Console) []*cobra.Command {
   taskschd start ExampleTask
   ~~~`,
 	}
+	common.BindFlag(taskSchdStartCmd, func(f *pflag.FlagSet) {
+		f.String("task_folder", "\\", "Task Folder for the scheduled task")
+	})
 
 	taskSchdStopCmd := &cobra.Command{
 		Use:   consts.SubCommandName(consts.ModuleTaskSchdStop) + " [name]",
@@ -99,6 +103,9 @@ func Commands(con *repl.Console) []*cobra.Command {
   taskschd stop ExampleTask
   ~~~`,
 	}
+	common.BindFlag(taskSchdStopCmd, func(f *pflag.FlagSet) {
+		f.String("task_folder", "\\", "Task Folder for the scheduled task")
+	})
 
 	taskSchdDeleteCmd := &cobra.Command{
 		Use:   consts.SubCommandName(consts.ModuleTaskSchdDelete) + " [name]",
@@ -117,6 +124,9 @@ func Commands(con *repl.Console) []*cobra.Command {
   taskschd delete ExampleTask
   ~~~`,
 	}
+	common.BindFlag(taskSchdDeleteCmd, func(f *pflag.FlagSet) {
+		f.String("task_folder", "\\", "Task Folder for the scheduled task")
+	})
 
 	taskSchdQueryCmd := &cobra.Command{
 		Use:   consts.SubCommandName(consts.ModuleTaskSchdQuery) + " [name]",
@@ -135,6 +145,9 @@ func Commands(con *repl.Console) []*cobra.Command {
   taskschd query ExampleTask
   ~~~`,
 	}
+	common.BindFlag(taskSchdQueryCmd, func(f *pflag.FlagSet) {
+		f.String("task_folder", "\\", "Task Folder for the scheduled task")
+	})
 
 	taskSchdRunCmd := &cobra.Command{
 		Use:   consts.SubCommandName(consts.ModuleTaskSchdRun) + " [name]",
@@ -153,6 +166,9 @@ func Commands(con *repl.Console) []*cobra.Command {
   taskschd run ExampleTask
   ~~~`,
 	}
+	common.BindFlag(taskSchdRunCmd, func(f *pflag.FlagSet) {
+		f.String("task_folder", "\\", "Task Folder for the scheduled task")
+	})
 	taskschdCmd.AddCommand(taskSchdListCmd, taskSchdCreateCmd, taskSchdStartCmd, taskSchdStopCmd, taskSchdDeleteCmd, taskSchdQueryCmd, taskSchdRunCmd)
 
 	return []*cobra.Command{taskschdCmd}

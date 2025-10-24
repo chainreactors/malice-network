@@ -19,9 +19,9 @@ func TaskSchdCreateCmd(cmd *cobra.Command, con *repl.Console) error {
 	path, _ := cmd.Flags().GetString("path")
 	triggerType, _ := cmd.Flags().GetString("trigger_type")
 	startBoundary, _ := cmd.Flags().GetString("start_boundary")
-
+	taskFolder, _ := cmd.Flags().GetString("task_folder")
 	session := con.GetInteractive()
-	task, err := TaskSchdCreate(con.Rpc, session, name, path, triggerType, startBoundary)
+	task, err := TaskSchdCreate(con.Rpc, session, name, path, taskFolder, triggerType, startBoundary)
 	if err != nil {
 		return err
 	}
@@ -30,11 +30,11 @@ func TaskSchdCreateCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func TaskSchdCreate(rpc clientrpc.MaliceRPCClient, session *core.Session, name, path, triggerType, startBoundary string) (*clientpb.Task, error) {
+func TaskSchdCreate(rpc clientrpc.MaliceRPCClient, session *core.Session, name, path, taskFolder, triggerType, startBoundary string) (*clientpb.Task, error) {
 	request := &implantpb.TaskScheduleRequest{
 		Type: consts.ModuleTaskSchdCreate,
 		Taskschd: &implantpb.TaskSchedule{
-			Path:           "\\",
+			Path:           taskFolder,
 			Name:           name,
 			ExecutablePath: path,
 			//TriggerType:    triggerType,
@@ -75,6 +75,7 @@ func RegisterTaskSchdCreateFunc(con *repl.Console) {
 			"sess: special session",
 			"name: name of the scheduled task",
 			"path: path to the executable for the scheduled task",
+			"task_folder: task folder for the scheduled task",
 			"triggerType: trigger type for the task",
 			"startBoundary: start boundary for the scheduled task",
 		},
