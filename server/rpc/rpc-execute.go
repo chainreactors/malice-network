@@ -82,12 +82,11 @@ func ContextCallback(task *core.Task, ctx context.Context) func(*implantpb.Spite
 				ctxs = append(ctxs, c)
 			}
 		case "keylogger":
-			c, err := output.ParseKeylogger(content)
+			err := core.HandleKeylogger(content, task)
 			if err != nil {
 				logs.Log.Error(err)
 				return
 			}
-			ctxs = append(ctxs, c)
 		}
 
 		for _, c := range ctxs {

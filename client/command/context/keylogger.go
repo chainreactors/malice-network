@@ -63,7 +63,7 @@ func AddKeylogger(con *repl.Console, sess *core.Session, task *clientpb.Task, da
 		Session: sess.Session,
 		Task:    task,
 		Type:    consts.ContextKeyLogger,
-		Value:   output.MarshalContext(&output.KeyLoggerContext{Content: data}),
+		Value:   data,
 	})
 	if err != nil {
 		return false, err
