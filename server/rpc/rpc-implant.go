@@ -24,13 +24,12 @@ func (rpc *Server) Register(ctx context.Context, req *clientpb.RegisterSession) 
 			return nil, err
 		}
 		sess.LastCheckin = getTimestamp(ctx)
-		d := db.Session().Create(sess.ToModel())
-		if d.Error != nil {
+		err = db.CreateOrRecoverSession(sess.ToModel())
+		if err != nil {
 			return nil, err
-		} else {
-			sess.Publish(consts.CtrlSessionRegister, fmt.Sprintf("new session %s from %s start at %s", sess.Abstract(), sess.Target, sess.PipelineID), true, true)
-			logs.Log.Importantf("new session %s from %s", sess.ID, sess.PipelineID)
 		}
+		sess.Publish(consts.CtrlSessionRegister, fmt.Sprintf("new session %s from %s start at %s", sess.Abstract(), sess.Target, sess.PipelineID), true, true)
+		logs.Log.Importantf("new session %s from %s", sess.ID, sess.PipelineID)
 		core.Sessions.Add(sess)
 	} else {
 		logs.Log.Infof("session %s re-register", sess.ID)

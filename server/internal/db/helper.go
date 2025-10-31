@@ -103,6 +103,27 @@ func FindSession(sessionID string) (*models.Session, error) {
 	return session, nil
 }
 
+// CreateOrRecoverSession creates a new session or recovers a soft-deleted one
+// If a soft-deleted session with the same ID exists, it will be deleted and recreated
+func CreateOrRecoverSession(session *models.Session) error {
+	// Check if there's an existing session (including soft-deleted ones)
+	var existingSession models.Session
+	result := Session().Unscoped().Where("session_id = ?", session.SessionID).First(&existingSession)
+
+	if result.Error == nil {
+		// Session exists (might be soft-deleted), delete it first
+		if err := Session().Unscoped().Delete(&existingSession).Error; err != nil {
+			return err
+		}
+	} else if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		// If it's not "record not found" error, return the error
+		return result.Error
+	}
+
+	// Now create the new session
+	return Session().Create(session).Error
+}
+
 func FindAllSessions() (*clientpb.Sessions, error) {
 	var sessions []*models.Session
 	result := Session().Order("group_name").Find(&sessions)

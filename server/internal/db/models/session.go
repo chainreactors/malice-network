@@ -33,10 +33,13 @@ type Session struct {
 }
 
 func (s *Session) BeforeCreate(tx *gorm.DB) (err error) {
+	// Note: The CreateOrRecoverSession helper function handles checking for
+	// existing sessions (including soft-deleted ones) before creation,
+	// so this check is primarily a safety net for direct Create() calls
 	var existingSession Session
-	result := tx.Where("session_id = ?", s.SessionID).First(&existingSession)
+	result := tx.Unscoped().Where("session_id = ?", s.SessionID).First(&existingSession)
 	if result.Error == nil {
-		return errors.New("exists")
+		return errors.New("session exists - use CreateOrRecoverSession helper instead")
 	}
 	s.CreatedAt = time.Now()
 	return nil
