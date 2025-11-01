@@ -19,12 +19,12 @@ import (
 
 func (rpc *Server) GetSessions(ctx context.Context, req *clientpb.SessionRequest) (*clientpb.Sessions, error) {
 	var sessions *clientpb.Sessions
-	var err error
 	if req.All {
-		sessions, err = db.FindAllSessions()
+		modelSessions, err := db.ListSessions()
 		if err != nil {
 			return nil, err
 		}
+		sessions = modelSessions.ToProtobuf()
 	} else {
 		sessions = &clientpb.Sessions{
 			Sessions: make([]*clientpb.Session, 0),
@@ -169,10 +169,11 @@ func (rpc *Server) GetSessionHistory(ctx context.Context, req *clientpb.Int) (*c
 				}
 
 				taskIDStr := sid + "-" + strconv.Itoa(taskID)
-				task, err := db.GetTaskPB(taskIDStr)
+				modelTask, err := db.GetTask(taskIDStr)
 				if err != nil {
 					return nil, err
 				}
+				task := modelTask.ToProtobuf()
 				session, err := db.FindSession(sid)
 				if err != nil {
 					return nil, err

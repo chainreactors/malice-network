@@ -283,11 +283,12 @@ func (s *Session) TaskLog(task *Task, spite *implantpb.Spite) error {
 }
 
 func (s *Session) Recover() error {
-	tasks, err := db.GetAllTask()
+	modelTasks, err := db.ListTasks()
 	if err != nil {
 		return err
 	}
-	for _, task := range tasks.Tasks {
+	pbTasks := modelTasks.ToProtobuf()
+	for _, task := range pbTasks.Tasks {
 		if task.Cur < task.Total {
 			ch := make(chan *implantpb.Spite, 16)
 			s.responses.Store(task, ch)
@@ -399,7 +400,7 @@ func (s *Session) ToProtobufLite() *clientpb.Session {
 }
 
 func (s *Session) Save() error {
-	return db.Session().Save(s.ToModel()).Error
+	return db.SaveSessionModel(s.ToModel())
 }
 
 func (s *Session) ToModel() *models.Session {

@@ -120,11 +120,11 @@ func (rpc *Server) GetArtifact(ctx context.Context, req *clientpb.Artifact) (*cl
 }
 
 func (rpc *Server) ListArtifact(ctx context.Context, req *clientpb.Empty) (*clientpb.Artifacts, error) {
-	artifacts, err := db.GetArtifacts()
+	modelArtifacts, err := db.ListArtifacts()
 	if err != nil {
 		return nil, err
 	}
-	return artifacts, nil
+	return modelArtifacts.ToProtobuf(), nil
 }
 
 func (rpc *Server) FindArtifact(ctx context.Context, req *clientpb.Artifact) (*clientpb.Artifact, error) {

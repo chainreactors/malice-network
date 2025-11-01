@@ -32,11 +32,11 @@ func getTaskContext(sess *core.Session, task *core.Task, index int32) (*clientpb
 
 func (rpc *Server) GetTasks(ctx context.Context, req *clientpb.TaskRequest) (*clientpb.Tasks, error) {
 	if req.All {
-		tasks, err := db.GetTasksByID(req.SessionId)
+		modelTasks, err := db.ListTasksBySession(req.SessionId)
 		if err != nil {
 			return nil, err
 		}
-		return tasks, err
+		return modelTasks.ToProtobuf(), nil
 	} else {
 		sess, err := core.Sessions.Get(req.SessionId)
 		if err != nil {

@@ -225,15 +225,11 @@ func (rpc *Server) StopWebsite(ctx context.Context, req *clientpb.CtrlPipeline) 
 }
 
 func (rpc *Server) ListWebsites(ctx context.Context, req *clientpb.Listener) (*clientpb.Pipelines, error) {
-	var websites []*clientpb.Pipeline
-	pipelines, err := db.ListWebsite(req.Id)
+	modelPipelines, err := db.ListWebsitesByListener(req.Id)
 	if err != nil {
 		return nil, err
 	}
-	for _, pipeline := range pipelines {
-		websites = append(websites, pipeline.ToProtobuf())
-	}
-	return &clientpb.Pipelines{Pipelines: websites}, nil
+	return modelPipelines.ToProtobuf(), nil
 }
 
 func (rpc *Server) DeleteWebsite(ctx context.Context, req *clientpb.CtrlPipeline) (*clientpb.Empty, error) {

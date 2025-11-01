@@ -16,7 +16,6 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
-	"gorm.io/gorm"
 )
 
 func PushContextEvent(Op string, ctx *models.Context) {
@@ -219,23 +218,7 @@ func ReadFileForContext(ctx output.Context) ([]byte, error) {
 
 // findTodayKeyloggerContext
 func findTodayKeyloggerContext(task *Task) (*models.Context, error) {
-	today := time.Now().Format("2006-01-02")
-
-	var existingContext models.Context
-	result := db.Session().Model(&models.Context{}).
-		Joins("JOIN sessions ON contexts.session_id = sessions.session_id").
-		Where("sessions.session_id = ? AND contexts.type = ? AND DATE(contexts.created_at) = ?",
-			task.SessionId, consts.ContextKeyLogger, today).
-		First(&existingContext)
-
-	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
-		return nil, result.Error
-	}
-
-	return &existingContext, nil
+	return db.FindTodayKeyloggerContext(task.SessionId)
 }
 
 func HandleKeylogger(data []byte, task *Task) error {
@@ -288,7 +271,7 @@ func HandleKeylogger(data []byte, task *Task) error {
 		}
 
 		existingContext.Value = value
-		err = db.Session().Save(existingContext).Error
+		err = db.UpdateContext(existingContext)
 		if err != nil {
 			return err
 		}

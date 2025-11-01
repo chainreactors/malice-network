@@ -1,1467 +1,452 @@
 package db
 
 import (
-	"encoding/json"
-	"errors"
-	"fmt"
-	"mime"
-	"os"
-	"path/filepath"
-	"strconv"
-	"strings"
-
-	"github.com/chainreactors/malice-network/helper/utils/fileutils"
-
-	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/certs"
-	"github.com/chainreactors/malice-network/helper/codenames"
 	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/encoders"
-	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/types"
-	"github.com/chainreactors/malice-network/helper/utils/formatutils"
-	"github.com/chainreactors/malice-network/helper/utils/mtls"
-	"github.com/chainreactors/malice-network/helper/utils/output"
-	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
-	"github.com/gofrs/uuid"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
-	"gorm.io/gorm/utils"
 )
 
-func HasOperator(typ string) (bool, error) {
-	var count int64
-	err := Session().Model(&models.Operator{}).Where("type = ?", typ).Count(&count).Error
-	if err != nil {
-		return false, err
-	}
-	if count == 0 {
-		return false, nil
-	}
-	return true, nil
-}
+// ============================================
+// Plural Type Definitions
+// ============================================
 
-func RemoveOperator(name string) error {
-	err := Session().Where(&models.Operator{
-		Name: name,
-	}).Delete(&models.Operator{}).Error
-	return err
-}
+// Sessions is a slice of Session models
+type Sessions []*models.Session
 
-func FindAliveSessions() ([]*models.Session, error) {
-	updateResult := Session().Exec(`
-        UPDATE sessions
-        SET is_alive = false
-        WHERE last_checkin < strftime('%s', 'now') - (
-            CAST(COALESCE(
-                JSON_EXTRACT(data, '$.interval'),
-                '30'  -- default value if interval doesn't exist
-            ) AS INTEGER) * 2
-        )
-        AND is_removed = false
-    `)
-
-	if updateResult.Error != nil {
-		logs.Log.Infof("Failed to update inactive sessions: %v", updateResult.Error)
-		return nil, updateResult.Error
-	}
-
-	var activeSessions []*models.Session
-	result := Session().Raw(`
-        SELECT * 
-        FROM sessions 
-        WHERE last_checkin > strftime('%s', 'now') - (
-            CAST(COALESCE(
-                JSON_EXTRACT(data, '$.interval'),
-                '30'  -- default value if interval doesn't exist
-            ) AS INTEGER) * 2
-        ) 
-        AND is_removed = false
-    `).Scan(&activeSessions)
-
-	if result.Error != nil {
-		return nil, result.Error
-	}
-
-	return activeSessions, nil
-}
-
-func FindSession(sessionID string) (*models.Session, error) {
-	var session *models.Session
-	result := Session().Where("session_id = ?", sessionID).First(&session)
-	if result.Error != nil {
-		return nil, result.Error
-	}
-	if session.IsRemoved {
-		return nil, nil
-	}
-	//if session.Last.Before(time.Now().Add(-time.Second * time.Duration(session.Time.Interval*2))) {
-	//	return nil, errors.New("session is dead")
-	//}
-	return session, nil
-}
-
-// CreateOrRecoverSession creates a new session or recovers a soft-deleted one
-// If a soft-deleted session with the same ID exists, it will be deleted and recreated
-func CreateOrRecoverSession(session *models.Session) error {
-	// Check if there's an existing session (including soft-deleted ones)
-	var existingSession models.Session
-	result := Session().Unscoped().Where("session_id = ?", session.SessionID).First(&existingSession)
-
-	if result.Error == nil {
-		// Session exists (might be soft-deleted), delete it first
-		if err := Session().Unscoped().Delete(&existingSession).Error; err != nil {
-			return err
-		}
-	} else if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-		// If it's not "record not found" error, return the error
-		return result.Error
-	}
-
-	// Now create the new session
-	return Session().Create(session).Error
-}
-
-func FindAllSessions() (*clientpb.Sessions, error) {
-	var sessions []*models.Session
-	result := Session().Order("group_name").Find(&sessions)
-	if result.Error != nil {
-		return nil, result.Error
-	}
-	var pbSessions []*clientpb.Session
-	for _, session := range sessions {
-		if session.IsRemoved {
-			continue
-		}
-		pbSessions = append(pbSessions, session.ToProtobuf())
-	}
-	return &clientpb.Sessions{Sessions: pbSessions}, nil
-}
-
-func FindTaskAndMaxTasksID(sessionID string) ([]*models.Task, uint32, error) {
-	var tasks []*models.Task
-
-	err := Session().Where("session_id = ?", sessionID).Find(&tasks).Error
-	if err != nil {
-		return tasks, 0, err
-	}
-
-	var max uint32
-	for _, task := range tasks {
-		if task.Seq > max {
-			max = task.Seq
+// ToProtobuf converts Sessions to protobuf
+func (s Sessions) ToProtobuf() *clientpb.Sessions {
+	pbSessions := &clientpb.Sessions{Sessions: make([]*clientpb.Session, 0, len(s))}
+	for _, session := range s {
+		if session != nil {
+			pbSessions.Sessions = append(pbSessions.Sessions, session.ToProtobuf())
 		}
 	}
-
-	return tasks, max, nil
+	return pbSessions
 }
 
-// Basic Session OP
-func RemoveSession(sessionID string) error {
-	result := Session().Model(&models.Session{}).Where("session_id = ?", sessionID).Update("is_removed", true)
-	return result.Error
-}
+// Tasks is a slice of Task models
+type Tasks []*models.Task
 
-func UpdateSession(sessionID, note, group string) error {
-	var session models.Session
-	result := Session().Where("session_id = ?", sessionID).First(&session)
-	if result.Error != nil {
-		return result.Error
-	}
-	if group != "" {
-		session.GroupName = group
-	}
-	if note != "" {
-		session.Note = note
-	}
-	result = Session().Save(&session)
-	return result.Error
-}
-
-func UpdateSessionTimer(sessionID string, expression string, jitter float64) error {
-	var session *models.Session
-	result := Session().Where("session_id = ?", sessionID).First(&session)
-	if result.Error != nil {
-		return result.Error
-	}
-	session.Data.Expression = expression
-	if jitter != 0 {
-		session.Data.Jitter = jitter
-	}
-	result = Session().Save(&session)
-	return result.Error
-}
-
-func CreateOperator(client *models.Operator) error {
-	err := Session().Save(client).Error
-	return err
-
-}
-
-func ListClients() ([]*models.Operator, error) {
-	var operators []*models.Operator
-	err := Session().Find(&operators).Where("type = ?", mtls.Client).Error
-	if err != nil {
-		return nil, err
-	}
-
-	return operators, nil
-}
-
-func FindContext(taskID string) (*models.Context, error) {
-	var task *models.Context
-	if err := Session().Where("id = ?", taskID).First(&task).Error; err != nil {
-		return nil, err
-	}
-
-	return task, nil
-}
-
-func GetContextFilesBySessionID(sessionID string, fileTypes []string) ([]*models.Context, error) {
-	var files []*models.Context
-	query := Session().Model(&models.Context{}).Where("session_id = ?", sessionID)
-
-	if len(fileTypes) > 0 {
-		query = query.Where("type IN (?)", fileTypes)
-	}
-
-	result := query.Find(&files)
-	if result.Error != nil {
-		return nil, result.Error
-	}
-	return files, nil
-}
-
-func GetContextByTask(taskID string) (*models.Context, error) {
-	var task *models.Context
-	result := Session().Model(&models.Context{}).Where("task_id = ?", taskID).First(&task)
-	if result.Error != nil {
-		return task, result.Error
-	}
-	return task, nil
-}
-
-func GetDownloadFiles(sid string) ([]*clientpb.File, error) {
-	var files []*models.Context
-	var result *gorm.DB
-	if sid == "" {
-		result = Session().Where("type = ?", consts.ContextDownload).Find(&files)
-	} else {
-		result = Session().Where("session_id = ?", sid).Preload("Session").Where("type = ?", consts.ContextDownload).Find(&files)
-	}
-	if result.Error != nil {
-		return nil, result.Error
-	}
-	var res []*clientpb.File
-	for _, file := range files {
-		download, err := output.AsContext[*output.DownloadContext](file.Context)
-		if err != nil {
-			return nil, err
-		}
-		parts := strings.Split(file.TaskID, "-")
-		taskID := parts[len(parts)-1]
-		taskIDUint, err := strconv.ParseUint(taskID, 10, 32)
-		res = append(res, &clientpb.File{
-			Name:      download.Name,
-			Local:     download.FilePath,
-			Checksum:  download.Checksum,
-			Remote:    download.TargetPath,
-			TaskId:    uint32(taskIDUint),
-			SessionId: file.SessionID,
-		})
-	}
-
-	return res, nil
-}
-
-//func FindFilesWithNonOneCurTotal(session models.Session) ([]models.File, error) {
-//	var files []models.File
-//	result := Session().Where("session_id = ?", session.SessionID).Where("cur != total").Find(&files)
-//	if result.Error != nil {
-//		return files, result.Error
-//	}
-//	if len(files) == 0 {
-//		return files, gorm.ErrRecordNotFound
-//	}
-//	return files, nil
-//}
-
-func FindPipeline(name string) (*models.Pipeline, error) {
-	var pipeline *models.Pipeline
-	result := Session().Where("name = ?", name).First(&pipeline)
-	if result.Error != nil {
-		return pipeline, result.Error
-	}
-	if pipeline.CertName != "" {
-		certificate, err := FindCertificate(pipeline.CertName)
-		if err != nil && !errors.Is(err, ErrRecordNotFound) {
-			logs.Log.Errorf("failed to find cert %s", err)
-		}
-		if certificate != nil {
-			pipeline.Tls = types.FromTls(certificate.ToProtobuf())
+// ToProtobuf converts Tasks to protobuf
+func (t Tasks) ToProtobuf() *clientpb.Tasks {
+	pbTasks := &clientpb.Tasks{Tasks: make([]*clientpb.Task, 0, len(t))}
+	for _, task := range t {
+		if task != nil {
+			pbTasks.Tasks = append(pbTasks.Tasks, task.ToProtobuf())
 		}
 	}
-	return pipeline, nil
+	return pbTasks
 }
 
-func UpdatePipelineCert(certName string, pipeline *models.Pipeline) (*models.Pipeline, error) {
-	var cert *models.Certificate
-	if certName != "" {
-		err := Session().Where("name = ?", certName).First(&cert).Error
-		if err != nil {
-			return nil, err
+// Artifacts is a slice of Artifact models
+type Artifacts []*models.Artifact
+
+// ToProtobuf converts Artifacts to protobuf (without binary content)
+func (a Artifacts) ToProtobuf() *clientpb.Artifacts {
+	pbArtifacts := &clientpb.Artifacts{Artifacts: make([]*clientpb.Artifact, 0, len(a))}
+	for _, artifact := range a {
+		if artifact != nil {
+			pbArtifacts.Artifacts = append(pbArtifacts.Artifacts, artifact.ToProtobuf([]byte{}))
 		}
 	}
-
-	err := Session().Model(pipeline).Select("cert_name").Update("cert_name", certName).Error
-	if err != nil {
-		return nil, err
-	}
-	pipeline.Tls = types.FromTls(cert.ToProtobuf())
-	return pipeline, err
+	return pbArtifacts
 }
 
-func SavePipeline(pipeline *models.Pipeline) (*models.Pipeline, error) {
-	if pipeline == nil {
-		return nil, errors.New("pipeline cannot be nil")
-	}
-	newPipeline := &models.Pipeline{}
-	result := Session().Where("name = ? AND listener_id  = ?", pipeline.Name, pipeline.ListenerId).First(&newPipeline)
-	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			err := Session().Create(&pipeline).Error
-			if err != nil {
-				return nil, err
-			}
-			return pipeline, nil
-		}
-		return nil, result.Error
-	}
-	pipeline.ID = newPipeline.ID
-	pipeline.CertName = newPipeline.CertName
-	if pipeline.IP == "" {
-		pipeline.IP = newPipeline.IP
-	}
-	err := Session().Save(&pipeline).Error
-	return pipeline, err
-}
+// Pipelines is a slice of Pipeline models
+type Pipelines []*models.Pipeline
 
-func DeletePipeline(name string) error {
-	result := Session().Where("name = ?", name).Delete(&models.Pipeline{})
-	return result.Error
-}
-
-func ListPipelines(listenerID string) ([]*models.Pipeline, error) {
-	var pipelines []*models.Pipeline
-	var err error
-	if listenerID == "" {
-		err = Session().Where(" type != ?", consts.WebsitePipeline).Find(&pipelines).Error
-	} else {
-		err = Session().Where("listener_id = ? AND type != ?", listenerID, consts.WebsitePipeline).Find(&pipelines).Error
-	}
-	return pipelines, err
-}
-
-func DeleteWebsite(name string) error {
-	website := models.Pipeline{}
-	result := Session().Where("name = ?", name).First(&website)
-	if result.Error != nil {
-		return result.Error
-	}
-	err := os.RemoveAll(filepath.Join(configs.WebsitePath, website.Name))
-	if err != nil {
-		return err
-	}
-	result = Session().Delete(&website)
-	if result.Error != nil {
-		return result.Error
-	}
-	return nil
-}
-
-func ListWebsite(listenerID string) ([]*models.Pipeline, error) {
-	var pipelines []*models.Pipeline
-	//err := Session().Where("listener_id = ? AND type = ?", listenerID, consts.WebsitePipeline).Find(&pipelines).Error
-	var err error
-	if listenerID == "" {
-		err = Session().Where(" type = ?", consts.WebsitePipeline).Find(&pipelines).Error
-	} else {
-		err = Session().Where("listener_id = ? AND type = ?", listenerID, consts.WebsitePipeline).Find(&pipelines).Error
-	}
-	return pipelines, err
-}
-
-func EnablePipeline(pid string) error {
-	pipeline, err := FindPipeline(pid)
-	if err != nil {
-		return err
-	}
-	pipeline.Enable = true
-	result := Session().Save(&pipeline)
-	return result.Error
-}
-
-func DisablePipeline(pid string) error {
-	pipeline, err := FindPipeline(pid)
-	if err != nil {
-		return err
-	}
-	pipeline.Enable = false
-	result := Session().Save(&pipeline)
-	return result.Error
-}
-
-func FindPipelineCert(pipelineName, listenerID string) (*models.Certificate, error) {
-	var pipeline *models.Pipeline
-	result := Session().Where("name = ? AND listener_id = ?", pipelineName, listenerID).First(&pipeline)
-	if result.Error != nil {
-		return nil, result.Error
-	}
-	if pipeline.CertName != "" {
-		certificate, err := FindCertificate(pipeline.CertName)
-		if err != nil {
-			return nil, err
-		}
-		return certificate, nil
-	}
-	return nil, nil
-}
-
-func ListListeners() ([]*models.Operator, error) {
-	var listeners []*models.Operator
-	err := Session().Find(&listeners).Where("type = ?", mtls.Listener).Error
-	return listeners, err
-}
-
-// DeleteAllCertificates
-func DeleteAllCertificates() error {
-	result := Session().Exec("DELETE FROM certificates")
-	return result.Error
-}
-
-// DeleteCertificate
-func DeleteCertificate(name string) error {
-	var cert *models.Certificate
-	result := Session().Where("name = ?", name).First(&cert)
-	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil
-		}
-		return result.Error
-	}
-	result = Session().Delete(&cert)
-	if result.Error != nil {
-		return result.Error
-	}
-	return nil
-}
-
-func FindCertificate(name string) (*models.Certificate, error) {
-	var cert *models.Certificate
-	result := Session().Where("name = ?", name).First(&cert)
-	if result.Error != nil {
-		return nil, result.Error
-	}
-	return cert, nil
-}
-
-func GetAllCertificates() ([]*models.Certificate, error) {
-	var certificates []*models.Certificate
-	err := Session().Find(&certificates).Error
-	return certificates, err
-}
-
-func UpdateCert(name, cert, key, ca string) error {
-	return Session().Model(&models.Certificate{}).
-		Where("name = ?", name).
-		Select("cert_pem", "key_pem", "ca_cert_pem").
-		Updates(models.Certificate{
-			CertPEM:   cert,
-			KeyPEM:    key,
-			CACertPEM: ca,
-		}).Error
-}
-
-func isDuplicateCommonNameAndCAType(name string) bool {
-	var count int64
-	Session().Model(&models.Certificate{}).Where("name = ?", name).Count(&count)
-	return count > 0
-}
-
-func SaveCertificate(certificate *models.Certificate) error {
-	if isDuplicateCommonNameAndCAType(certificate.Name) {
-		return errors.New("duplicate CommonName")
-	}
-	if err := Session().Create(certificate).Error; err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func SaveCertFromTLS(tls *clientpb.TLS, pipeline string) (*models.Certificate, error) {
-	certModel := &models.Certificate{
-		CertPEM: tls.Cert.Cert,
-		KeyPEM:  tls.Cert.Key,
-	}
-	if tls.Acme {
-		certModel.Name = tls.Domain
-		certModel.Domain = tls.Domain
-		certModel.Type = certs.Acme
-	} else if tls.Ca != nil && tls.Ca.Key != "" {
-		certModel.Name = codenames.GetCodename()
-		certModel.Type = certs.SelfSigned
-		certModel.CACertPEM = tls.Ca.Cert
-		certModel.CAKeyPEM = tls.Ca.Key
-	} else {
-		certModel.Name = codenames.GetCodename()
-		certModel.Type = certs.Imported
-		if tls.Ca != nil {
-			certModel.CACertPEM = tls.Ca.Cert
+// ToProtobuf converts Pipelines to protobuf
+func (p Pipelines) ToProtobuf() *clientpb.Pipelines {
+	pbPipelines := &clientpb.Pipelines{Pipelines: make([]*clientpb.Pipeline, 0, len(p))}
+	for _, pipeline := range p {
+		if pipeline != nil {
+			pbPipelines.Pipelines = append(pbPipelines.Pipelines, pipeline.ToProtobuf())
 		}
 	}
-	err := SaveCertificate(certModel)
-	if err != nil {
-		return certModel, err
-	}
-	if pipeline != "" {
-		findPipeline, err := FindPipeline(pipeline)
-		if err != nil {
-			return nil, err
-		}
-		_, err = UpdatePipelineCert(certModel.Name, findPipeline)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return certModel, nil
+	return pbPipelines
 }
 
-//func AddFile(typ string, taskpb *clientpb.Task, td *types.FileDescriptor) error {
-//	tdString, err := td.Marshal()
-//	if err != nil {
-//		return err
-//	}
-//	fileModel := &models.File{
-//		ID:          taskpb.SessionId + "-" + utils.ToString(taskpb.TaskId),
-//		Type:        typ,
-//		SessionID:   taskpb.SessionId,
-//		Cur:         int(taskpb.Total),
-//		Total:       int(taskpb.Total),
-//		Description: tdString,
-//	}
-//	Session().Create(fileModel)
-//	return nil
-//}
+// Profiles is a slice of Profile models
+type Profiles []*models.Profile
 
-func GetTask(taskID string) (*models.Task, error) {
-	var task *models.Task
-	err := Session().Where("id = ?", taskID).First(&task).Error
-	if err != nil {
-		return nil, err
-	}
-	return task, nil
-}
-
-func GetTaskPB(taskID string) (*clientpb.Task, error) {
-	var task models.Task
-	err := Session().Where("id = ?", taskID).First(&task).Error
-	if err != nil {
-		return nil, err
-	}
-	taskProto := task.ToProtobuf()
-	return taskProto, nil
-}
-
-func GetAllTask() (*clientpb.Tasks, error) {
-	var tasks []models.Task
-	err := Session().Find(&tasks).Error
-	if err != nil {
-		return nil, err
-	}
-	pbTasks := &clientpb.Tasks{}
-	for _, task := range tasks {
-		pbTasks.Tasks = append(pbTasks.Tasks, task.ToProtobuf())
-	}
-	return pbTasks, nil
-}
-
-func GetTasksByID(sessionID string) (*clientpb.Tasks, error) {
-	var tasks []models.Task
-	err := Session().Where("session_id = ?", sessionID).Find(&tasks).Error
-	if err != nil {
-		return nil, err
-	}
-	pbTasks := &clientpb.Tasks{}
-	for _, task := range tasks {
-		pbTasks.Tasks = append(pbTasks.Tasks, task.ToProtobuf())
-	}
-	return pbTasks, nil
-}
-
-func AddTask(task *clientpb.Task) error {
-	taskModel := &models.Task{
-		ID:         task.SessionId + "-" + utils.ToString(task.TaskId),
-		Seq:        task.TaskId,
-		Type:       task.Type,
-		SessionID:  task.SessionId,
-		Cur:        int(task.Cur),
-		Total:      int(task.Total),
-		ClientName: task.Callby,
-	}
-	return Session().Create(taskModel).Error
-}
-
-func UpdateTask(task *clientpb.Task) error {
-	taskModel := &models.Task{
-		ID: task.SessionId + "-" + utils.ToString(task.TaskId),
-	}
-	return taskModel.UpdateCur(Session(), int(task.Total))
-}
-
-func UpdateTaskCur(taskID string, cur int) error {
-	taskModel := &models.Task{
-		ID: taskID,
-	}
-	return taskModel.UpdateCur(Session(), cur)
-}
-
-func UpdateTaskFinish(taskID string) error {
-	var taskModel models.Task
-	if err := Session().First(&taskModel, "id = ?", taskID).Error; err != nil {
-		return err
-	}
-	return taskModel.UpdateFinish(Session())
-}
-
-func UpdateDownloadTotal(taskID uint32, sessionID string, total int) error {
-	taskModel := &models.Task{
-		ID: sessionID + "-" + utils.ToString(taskID),
-	}
-	return taskModel.UpdateTotal(Session(), total)
-}
-
-func UpdateTaskDescription(taskID, Description string) error {
-	return Session().Model(&models.Task{}).Where("id = ?", taskID).Update("description", Description).Error
-}
-
-// FindWebsiteByName - Get website by name
-func FindWebsiteByName(name string) (*models.Pipeline, error) {
-	var website *models.Pipeline
-	if err := Session().Where("name = ? AND type = 'website'", name).First(&website).Error; err != nil {
-		return nil, err
-	}
-	if website.CertName != "" {
-		certificate, err := FindCertificate(website.CertName)
-		if err != nil && !errors.Is(err, ErrRecordNotFound) {
-			logs.Log.Errorf("failed to find cert %s", err)
-		}
-		if certificate != nil {
-			website.Tls = types.FromTls(certificate.ToProtobuf())
+// ToProtobuf converts Profiles to protobuf
+func (p Profiles) ToProtobuf() *clientpb.Profiles {
+	pbProfiles := &clientpb.Profiles{Profiles: make([]*clientpb.Profile, 0, len(p))}
+	for _, profile := range p {
+		if profile != nil {
+			pbProfiles.Profiles = append(pbProfiles.Profiles, profile.ToProtobuf())
 		}
 	}
-	return website, nil
+	return pbProfiles
 }
 
-// WebContent by ID and path
-func FindWebContent(id string) (*models.WebsiteContent, error) {
-	uuidFromString, err := uuid.FromString(id)
-	if err != nil {
-		return nil, err
-	}
-	contents := &models.WebsiteContent{}
-	err = Session().Where(&models.WebsiteContent{
-		ID: uuidFromString,
-	}).First(&contents).Error
-	if err != nil {
-		return nil, err
-	}
-	return contents, err
-}
+// Operators is a slice of Operator models
+type Operators []*models.Operator
 
-func FindWebContentsByWebsite(website string) ([]*models.WebsiteContent, error) {
-	var contents []*models.WebsiteContent
-	var err error
-	if website == "" {
-		err = Session().Preload("Pipeline").Find(&contents).Error
-	} else {
-		err = Session().Where(&models.WebsiteContent{
-			PipelineID: website,
-		}).Preload("Pipeline").Find(&contents).Error
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	return contents, err
-}
-
-// AddWebsite - Return website, create if it does not exist
-//func AddWebsite(webSiteName string) (*clientpb.WebContent, error) {
-//	pbWebSite, err := FindWebsiteByName(webSiteName)
-//	if errors.Is(err, gorm.ErrRecordNotFound) {
-//		err = Session().Create(&models.WebsiteContent{
-//			File: webSiteName,
-//		}).Error
-//		if err != nil {
-//			return nil, err
-//		}
-//		pbWebSite, err = FindWebsiteByName(webSiteName)
-//		if err != nil {
-//			return nil, err
-//		}
-//	}
-//	return pbWebSite, nil
-//}
-
-// AddContent - Add content to website
-func AddContent(content *clientpb.WebContent) (*models.WebsiteContent, error) {
-	switch content.Type {
-	case "", "raw", "default":
-		content.Type = "raw"
-		content.ContentType = mime.TypeByExtension(filepath.Ext(content.Path))
-	default:
-		content.ContentType = mime.TypeByExtension(filepath.Ext(content.Path))
-	}
-
-	var existingContent *models.WebsiteContent
-	webModel := models.FromWebContentPb(content)
-	err := Session().Preload("Pipeline").Where("pipeline_id = ? AND path = ?", content.WebsiteId, content.Path).First(&existingContent).Error
-	if err == nil {
-		webModel.ID = existingContent.ID
-		err = Session().Save(&webModel).Error
-		if err != nil {
-			return nil, err
-		}
-		webModel = existingContent
-	} else if errors.Is(err, gorm.ErrRecordNotFound) {
-		err = Session().Create(&webModel).Error
-		if err != nil {
-			return nil, err
-		}
-		if webModel.Pipeline == nil {
-			err := Session().Model(webModel).Association("Pipeline").Find(&webModel.Pipeline)
-			if err != nil {
-				return nil, err
-			}
+// ToProtobuf converts Operators to protobuf
+func (o Operators) ToProtobuf() *clientpb.Clients {
+	pbClients := &clientpb.Clients{Clients: make([]*clientpb.Client, 0, len(o))}
+	for _, operator := range o {
+		if operator != nil {
+			pbClients.Clients = append(pbClients.Clients, operator.ToProtobuf())
 		}
 	}
-	if content.Type == "raw" {
-		err = os.WriteFile(filepath.Join(configs.WebsitePath, content.WebsiteId, webModel.ID.String()), content.Content, os.ModePerm)
-		if err != nil {
-			return nil, err
+	return pbClients
+}
+
+// Contexts is a slice of Context models
+type Contexts []*models.Context
+
+// ToProtobuf converts Contexts to protobuf
+func (c Contexts) ToProtobuf() *clientpb.Contexts {
+	pbContexts := &clientpb.Contexts{Contexts: make([]*clientpb.Context, 0, len(c))}
+	for _, context := range c {
+		if context != nil {
+			pbContexts.Contexts = append(pbContexts.Contexts, context.ToProtobuf())
 		}
 	}
-
-	content.Id = webModel.ID.String()
-	return webModel, nil
+	return pbContexts
 }
 
-func AddAmountWebContent(artifactName, pipelineName string) (*clientpb.WebContent, error) {
-	content := &clientpb.WebContent{
-		WebsiteId: pipelineName,
-		Path:      formatutils.Encode(artifactName),
-		Type:      consts.ArtifactWebcontent,
-	}
-	_, err := AddContent(content)
-	if err != nil {
-		return nil, err
-	}
-	content.Path = artifactName
-	return content, nil
-}
+// Certificates is a slice of Certificate models
+type Certificates []*models.Certificate
 
-// RemoveContent - Remove content by ID
-func RemoveContent(id string) error {
-	uuid, _ := uuid.FromString(id)
-	err := Session().Delete(&models.WebsiteContent{}, uuid).Error
-	return err
-}
-
-// validateProfileName validates the profile name
-func validateProfileName(name string) error {
-	if name == "" {
-		return fmt.Errorf("profile name cannot be empty")
-	}
-	if len(name) > 100 {
-		return fmt.Errorf("profile name too long (max 100 characters)")
-	}
-	return nil
-}
-
-// generator
-func NewProfile(profile *clientpb.Profile) error {
-	// Validate input
-	if err := validateProfileName(profile.Name); err != nil {
-		return err
-	}
-
-	// Check if profile name already exists
-	var existingProfile models.Profile
-	result := Session().Where("name = ?", profile.Name).First(&existingProfile)
-	if result.Error == nil {
-		// Found existing profile with same name, return friendly error message
-		return nil
-	} else if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-		// If it's not "record not found" error, it's another database error
-		return result.Error
-	}
-
-	// for pipeline
-	if profile.Content == nil && profile.PipelineId != "" {
-		pipelineModel, err := FindPipeline(profile.PipelineId)
-		if err != nil {
-			return fmt.Errorf("pipline not found, err: %s", err)
-		}
-
-		params, _ := types.UnmarshalProfileParams([]byte(profile.Params))
-		if params != nil && params.REMPipeline != "" {
-			remPipelineModel, err := FindPipeline(params.REMPipeline)
-			if err != nil {
-				return fmt.Errorf("pipline not found, err: %s", err)
-			}
-			profileConfig := remPipelineModel.DefaultRemProfile(pipelineModel)
-			profile.Content, err = profileConfig.ToYAML()
-			if err != nil {
-				return err
-			}
-		} else {
-			profileConfig, err := pipelineModel.ToProfile(nil)
-			if err != nil {
-				return err
-			}
-			profile.Content, err = profileConfig.ToYAML()
-			if err != nil {
-				return err
-			}
-		}
-
-	}
-	if profile.Content == nil {
-		profile.Content = consts.DefaultProfile
-	}
-	// if not for pipeline
-	contentType := fileutils.DetectContentType(profile.Content)
-	if contentType == "zip" {
-		profilePath := filepath.Join(configs.ProfilePath, profile.Name)
-		err := os.MkdirAll(profilePath, 0700)
-		if err != nil {
-			return err
-		}
-		err = fileutils.DecompressBase64ToFiles(string(profile.Content), profilePath)
-		if err != nil {
-			return fmt.Errorf("failed to decompress zip content: %w", err)
-		}
-
-		configPath := filepath.Join(profilePath, "implant.yaml")
-		if !fileutils.Exist(configPath) {
-			return fmt.Errorf("implant.yaml not found in zip content")
-		}
-
-		yamlContent, err := os.ReadFile(configPath)
-		if err != nil {
-			return fmt.Errorf("failed to read implant.yaml: %w", err)
-		}
-
-		config, err := types.LoadProfile(yamlContent)
-		if err != nil {
-			return fmt.Errorf("failed to parse yaml config: %w", err)
-		}
-
-		if err := config.ValidateProfileFiles(profilePath); err != nil {
-			return fmt.Errorf("profile validation failed: %w", err)
-		}
-
-		profile.Content = yamlContent
-	}
-
-	model := &models.Profile{
-		Name:       profile.Name,
-		ParamsData: profile.Params,
-		PipelineID: profile.PipelineId,
-		Raw:        profile.Content,
-	}
-
-	return Session().Create(model).Error
-}
-
-// GetProfile recovers profile from database
-func GetProfile(name string) (*types.ProfileConfig, error) {
-	var profileModel *models.Profile
-
-	result := Session().Preload("Pipeline").Where("name = ?", name).First(&profileModel)
-	if result.Error != nil {
-		return nil, result.Error
-	}
-	if profileModel.PipelineID != "" && profileModel.Pipeline == nil {
-		return nil, errs.ErrNotFoundPipeline
-	}
-	//if profileModel.PulsePipelineID != "" && profileModel.PulsePipeline == nil {
-	//	return nil, errs.ErrNotFoundPipeline
-	//}
-	err := profileModel.DeserializeImplantConfig()
-	if err != nil {
-		return nil, err
-	}
-	profile, err := types.LoadProfile(profileModel.Raw)
-	if err != nil {
-		return nil, err
-	}
-	if profileModel.Name != "" {
-		profile.Basic.Name = profileModel.Name
-	}
-
-	if profileModel.Pipeline != nil {
-		// 为了向后兼容，创建一个简单的目标
-		target := types.Target{
-			Address: profileModel.Pipeline.Address(),
-		}
-
-		// 如果是 TLS 管道，设置 TLS 配置
-		if profileModel.Pipeline.Tls.Enable {
-			target.TLS = &types.TLSProfile{
-				Enable: true,
-			}
-		}
-
-		profile.Basic.Targets = []types.Target{target}
-		profile.Basic.Encryption = profileModel.Pipeline.Encryption.Choice().Type
-		profile.Basic.Key = profileModel.Pipeline.Encryption.Choice().Key
-		// profile.Basic.Protocol = profileModel.Pipeline.Type
-		// profile.Basic.TLS.Enable = profileModel.Pipeline.Tls.Enable
-
-		if profileModel.Pipeline.Secure != nil && profileModel.Pipeline.Secure.Enable {
-			// Profile中需要保存implant编译时需要的密钥：
-			// - server公钥：implant用来加密发给server的数据
-			// - implant私钥：implant用来解密server发来的数据
-
-			profile.Basic.Secure = &types.SecureProfile{
-				Enable:            true,
-				ServerPublicKey:   profileModel.Pipeline.Secure.ServerPublicKey,
-				ImplantPrivateKey: profileModel.Pipeline.Secure.ImplantPrivateKey,
-			}
-		}
-		// 注意：protocol 字段已移除，现在通过 targets 中的具体配置来确定协议
-	}
-	if params := profileModel.Params; params != nil {
-		profile.Basic.Cron = profileModel.Params.Cron
-		profile.Basic.Jitter = profileModel.Params.Jitter
-		if params.REMPipeline != "" {
-			// 对于 REM 协议，我们需要添加到 targets 中
-			pipeline, err := FindPipeline(params.REMPipeline)
-			if err != nil {
-				return nil, err
-			}
-			// 添加 REM 目标到 targets 列表
-			profile.Basic.Targets = append(profile.Basic.Targets, types.Target{
-				Address: pipeline.Address(),
-				REM: &types.REMProfile{
-					Link: pipeline.PipelineParams.Link,
-				},
-			})
-		}
-
-	}
-	if profile.Pulse != nil && profileModel.Pipeline != nil {
-		profile.Pulse.Target = profileModel.Pipeline.Address()
-		profile.Pulse.Protocol = profileModel.Pipeline.Type
-	}
-
-	return profile, nil
-}
-
-// GetProfileContent GetProfile recovers profile from database
-func GetProfileContent(profileName string) ([]byte, error) {
-	var profileModel *models.Profile
-
-	result := Session().Preload("Pipeline").Where("name = ?", profileName).First(&profileModel)
-	if result.Error != nil {
-		return nil, result.Error
-	}
-	//if profileModel.PipelineID != "" && profileModel.Pipeline == nil {
-	//	return nil, errs.ErrNotFoundPipeline
-	//}
-	//if profileModel.PulsePipelineID != "" && profileModel.PulsePipeline == nil {
-	//	return nil, errs.ErrNotFoundPipeline
-	//}
-	//err := profileModel.DeserializeImplantConfig()
-	//if err != nil {
-	//	return nil, err
-	//}
-	// profile, err := types.LoadProfile(profileModel.Raw)
-
-	return profileModel.Raw, nil
-}
-
-func GetProfiles() ([]*models.Profile, error) {
-	var profiles []*models.Profile
-	result := Session().Preload("Pipeline").Order("created_at ASC").Find(&profiles)
-	return profiles, result.Error
-}
-
-func GetProfileByName(profileName string) (*models.Profile, error) {
-	var profile *models.Profile
-	result := Session().Preload("Pipeline").Where("name = ?", profileName).Order("created_at ASC").First(&profile)
-	return profile, result.Error
-}
-
-// FindBuildersByPipelineID 遍历所有 builder，找到 profile.pipelineID = pipelineID 的 builder
-func FindBuildersByPipelineID(pipelineID string) ([]*models.Artifact, error) {
-	var builders []*models.Artifact
-	err := Session().Preload("Profile").Find(&builders).Error
-	if err != nil {
-		return nil, err
-	}
-
-	var validBuilders []*models.Artifact
-	for _, b := range builders {
-		if b.Profile.PipelineID == pipelineID {
-			validBuilders = append(validBuilders, b)
+// ToProtobuf converts Certificates to protobuf TLS slice
+func (c Certificates) ToProtobuf() []*clientpb.TLS {
+	tlsList := make([]*clientpb.TLS, 0, len(c))
+	for _, cert := range c {
+		if cert != nil {
+			tlsList = append(tlsList, cert.ToProtobuf())
 		}
 	}
-	return validBuilders, nil
+	return tlsList
 }
 
-func DeleteProfileByName(profileName string) error {
-	// Check if profile exists first
-	var existingProfile models.Profile
-	result := Session().Where("name = ?", profileName).First(&existingProfile)
-	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-		return fmt.Errorf("profile '%s' not found", profileName)
-	} else if result.Error != nil {
-		return result.Error
-	}
+// ============================================
+// Generic CRUD Operations
+// ============================================
 
-	// Execute deletion
-	err := Session().Where("name = ?", profileName).Delete(&models.Profile{}).Error
-	if err != nil {
-		return fmt.Errorf("failed to delete profile '%s': %v", profileName, err)
-	}
-	err = fileutils.ForceRemoveAll(filepath.Join(configs.ProfilePath, profileName))
-	if err != nil {
-		return err
-	}
-	return nil
+// Save creates or updates a model (generic save operation)
+func Save(model interface{}) error {
+	return Session().Save(model).Error
 }
 
-func UpdateProfileRaw(profileName string, raw []byte) error {
-	return Session().Model(&models.Profile{}).Where("name = ?", profileName).Update("raw", raw).Error
+// Update updates a model (only updates non-zero fields)
+func Update(model interface{}) error {
+	return Session().Updates(model).Error
 }
 
-func SaveArtifactFromConfig(req *clientpb.BuildConfig) (*models.Artifact, error) {
-	target, ok := consts.GetBuildTarget(req.Target)
-	if !ok {
-		return nil, errs.ErrInvalidateTarget
-	}
-	builder := models.Artifact{
-		Name:        req.BuildName,
-		ProfileName: req.ProfileName,
-		Target:      req.Target,
-		Type:        req.BuildType,
-		Source:      req.Source,
-		Arch:        target.Arch,
-		Os:          target.OS,
-		ProfileByte: req.MaleficConfig,
-		//ParamsData:  string(req.ParamsBytes),
-	}
-
-	if Session() == nil {
-		return &builder, nil
-	}
-	if err := Session().Create(&builder).Error; err != nil {
-		return nil, err
-	}
-
-	return &builder, nil
+// UpdateFields updates specific fields of a model
+func UpdateFields(model interface{}, fields map[string]interface{}) error {
+	return Session().Model(model).Updates(fields).Error
 }
 
-func SaveArtifactFromID(req *clientpb.BuildConfig, ID uint32) (*models.Artifact, error) {
-	target, ok := consts.GetBuildTarget(req.Target)
-	if !ok {
-		return nil, errs.ErrInvalidateTarget
-	}
-	artifact := models.Artifact{
-		ID:          ID,
-		Name:        req.BuildName,
-		ProfileName: req.ProfileName,
-		Target:      req.Target,
-		Type:        req.BuildType,
-		Source:      req.Source,
-		Arch:        target.Arch,
-		Os:          target.OS,
-		ProfileByte: req.MaleficConfig,
-		//ParamsData:  string(req.ParamsBytes),
-	}
-
-	if err := Session().Create(&artifact).Error; err != nil {
-		return nil, err
-
-	}
-
-	return &artifact, nil
+// Delete soft-deletes a model
+func Delete(model interface{}) error {
+	return Session().Delete(model).Error
 }
 
-func UpdateBuilderPath(builder *models.Artifact) error {
-	if Session() == nil {
-		return nil
-	}
-	return Session().Model(builder).
-		Select("path").
-		Updates(builder).
-		Error
-}
+// ============================================
+// SessionQuery Builder
+// ============================================
 
-func UpdatePulseRelink(pusleID, beanconID uint32) error {
-	// todo
-	//pulse, err := GetArtifactById(pusleID)
-	//if err != nil {
-	//	return err
-	//}
-	//pulse.Params.RelinkBeaconID = beanconID
-	//err = Session().Model(pulse).
-	//	Select("ParamsData").
-	//	Updates(pulse).
-	//	Error
-	//if err != nil {
-	//	return err
-	//}
-	//originBeacon, err := GetArtifactById(pulse.Params.OriginBeaconID)
-	//if err != nil {
-	//	return err
-	//}
-	//originBeacon.Params.RelinkBeaconID = beanconID
-	//err = Session().Model(originBeacon).
-	//	Select("ParamsData").
-	//	Updates(originBeacon).
-	//	Error
-	//if err != nil {
-	//	return err
-	//}
-	return nil
-}
-
-func SaveArtifact(name, artifactType, platform, arch, source string) (*models.Artifact, error) {
-	absBuildOutputPath, err := filepath.Abs(configs.TempPath)
-	if err != nil {
-		return nil, err
-	}
-
-	artifact := &models.Artifact{
-		Name:   name,
-		Os:     platform,
-		Arch:   arch,
-		Type:   artifactType,
-		Source: source,
-	}
-
-	artifact.Path = filepath.Join(absBuildOutputPath, encoders.UUID())
-
-	if err := Session().Create(artifact).Error; err != nil {
-		return nil, err
-	}
-	return artifact, nil
-}
-
-func GetArtifacts() (*clientpb.Artifacts, error) {
-	var builders []*models.Artifact
-	result := Session().Preload("Profile").Preload("Profile.Pipeline").Find(&builders)
-	if result.Error != nil {
-		return nil, result.Error
-	}
-	var pbBuilders = &clientpb.Artifacts{
-		Artifacts: make([]*clientpb.Artifact, 0),
-	}
-	for _, artifact := range builders {
-		pbBuilders.Artifacts = append(pbBuilders.GetArtifacts(), artifact.ToProtobuf([]byte{}))
-	}
-	return pbBuilders, nil
-}
-
-func GetValidArtifacts() ([]*models.Artifact, error) {
-	var artifacts []*models.Artifact
-	result := Session().Preload("Profile").Preload("Profile.Pipeline").Find(&artifacts)
-	if result.Error != nil {
-		return nil, result.Error
-	}
-
-	var validArtifacts []*models.Artifact
-	for _, artifact := range artifacts {
-		if artifact.Path != "" {
-			if _, err := os.Stat(artifact.Path); err == nil {
-				validArtifacts = append(validArtifacts, artifact)
-			}
-		}
-	}
-	return validArtifacts, nil
-}
-
-// FindArtifact
-func FindArtifact(target *clientpb.Artifact, bin bool) (*clientpb.Artifact, error) {
-	var artifact *models.Artifact
-	var result *gorm.DB
-	// 根据 ID 或名称查找构建器
-	if target.Id != 0 {
-		result = Session().Where("id = ? AND status = ?", target.Id, consts.BuildStatusCompleted).Last(&artifact)
-	} else if target.Name != "" {
-		result = Session().Where("name = ? AND status = ?", target.Name, consts.BuildStatusCompleted).Last(&artifact)
-	} else if target.Profile != "" {
-		result = Session().Where("profile_name = ? AND status = ?", target.Profile, consts.BuildStatusCompleted).Last(&artifact)
-	} else {
-		var builders []*models.Artifact
-		result = Session().Where("os = ? AND arch = ? AND type = ? AND status = ?", target.Platform, target.Arch, target.Type, consts.BuildStatusCompleted).
-			Preload("Profile.Pipeline").
-			Find(&builders)
-		for _, v := range builders {
-			if v.Type == consts.ImplantPulse && v.Profile.PipelineID == target.Pipeline {
-				artifact = v
-				break
-			}
-			if v.Profile.PipelineID == target.Pipeline {
-				artifact = v
-				break
-			}
-		}
-	}
-	if result.Error != nil {
-		return nil, fmt.Errorf("error finding artifact: %v, target: %+v", result.Error, target)
-	}
-	if artifact == nil {
-		return nil, errs.ErrNotFoundArtifact
-	}
-	if bin {
-		content, err := os.ReadFile(artifact.Path)
-		if err != nil && artifact.Status == consts.BuildStatusFailure {
-			return nil, fmt.Errorf("error reading file for artifact: %s, error: %v", artifact.Name, err)
-		}
-		return artifact.ToProtobuf(content), nil
-	} else {
-		return artifact.ToProtobuf([]byte{}), nil
-	}
-
-}
-
-func FindArtifactFromPipeline(pipelineName string) (*models.Artifact, error) {
-	var artifacts []*models.Artifact
-	result := Session().Preload("Profile").Where(" type = ?", consts.CommandBuildBeacon).Find(&artifacts)
-	if result.Error != nil {
-		return nil, result.Error
-	}
-	for _, artifact := range artifacts {
-		if artifact.Profile.PipelineID == pipelineName {
-			return artifact, nil
-		}
-	}
-	return nil, ErrRecordNotFound
-}
-
-func GetArtifact(req *clientpb.Artifact) (*models.Artifact, error) {
-	if req.Id != 0 {
-		return GetArtifactById(req.Id)
-	} else if req.Name != "" {
-		return GetArtifactByName(req.Name)
-	} else {
-		return nil, errs.ErrNotFoundArtifact
-	}
-}
-
-func GetArtifactByName(name string) (*models.Artifact, error) {
-	var artifact models.Artifact
-	result := Session().Preload("Profile").Where("name = ?", name).First(&artifact)
-	if result.Error != nil {
-		return nil, result.Error
-	}
-	return &artifact, nil
-}
-
-func GetArtifactById(id uint32) (*models.Artifact, error) {
-	var artifact models.Artifact
-	result := Session().Preload("Profile").Where("id = ?", id).First(&artifact)
-	if result.Error != nil {
-		return nil, result.Error
-	}
-	return &artifact, nil
-}
-
-func GetArtifactWithSaas() ([]*models.Artifact, error) {
-	var artifacts []*models.Artifact
-	result := Session().Where("source = ?", consts.ArtifactFromSaas).Find(&artifacts)
-	if result.Error != nil {
-		return nil, result.Error
-	}
-	return artifacts, nil
-}
-
-// GetBeaconBuilderByRelinkID 查找 type=beacon 且 RelinkBeaconID=指定id 的 builder
-func GetBeaconBuilderByRelinkID(relinkID uint32) ([]*models.Artifact, error) {
-	var artifacts []*models.Artifact
-	err := Session().Where("type = ?", "beacon").Find(&artifacts).Error
-	if err != nil {
-		return nil, err
-	}
-
-	var result []*models.Artifact
-	for _, b := range artifacts {
-		var params types.ProfileParams
-		if b.ParamsData != "" {
-			if err := json.Unmarshal([]byte(b.ParamsData), &params); err == nil {
-				if params.RelinkBeaconID == relinkID {
-					result = append(result, b)
-				}
-			}
-		}
-	}
-	return result, nil
-}
-
-func DeleteArtifactByName(artifactName string) error {
-	model := &models.Artifact{}
-	err := Session().Where("name = ?", artifactName).First(&model).Error
-	if err != nil {
-		return err
-	}
-	if model.Path != "" {
-		err = os.Remove(model.Path)
-		if err != nil {
-			return err
-		}
-	}
-	err = Session().Delete(model).Error
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func UpdateBuilderLog(name string, logEntry string) {
-	if Session() == nil {
-		return
-	}
-	err := Session().Model(&models.Artifact{}).
-		Where("name = ?", name).
-		Update("log", gorm.Expr("ifnull(log, '') || ?", logEntry)).
-		Error
-
-	if err != nil {
-		logs.Log.Errorf("Error updating log for Artifact name %s: %v", name, err)
-	}
-}
-
-func GetBuilderLogs(builderName string, limit int) (string, error) {
-	var builder models.Artifact
-	if err := Session().Where("name = ?", builderName).First(&builder).Error; err != nil {
-		return "", err
-	}
-
-	split := strings.Split(builder.Log, "\n")
-
-	if limit > 0 && len(split) > limit {
-		split = split[len(split)-limit:]
-	}
-	result := strings.Join(split, "\n")
-
-	return result, nil
-}
-
-func UpdateBuilderStatus(builderID uint32, status string) {
-	if Session() == nil {
-		return
-	}
-	err := Session().Model(&models.Artifact{}).
-		Where("id = ?", builderID).
-		Update("status", status).
-		Error
-	if err != nil {
-		logs.Log.Errorf("Error updating log for Artifact id %d: %v", builderID, err)
-	}
-	return
-}
-
-// ContextQuery 用于构建Context查询的结构体
-type ContextQuery struct {
+type SessionQuery struct {
 	db *gorm.DB
 }
 
-// NewContextQuery 创建新的Context查询构建器
-func NewContextQuery() *ContextQuery {
-	return &ContextQuery{
-		db: Session().
-			Preload("Session").
-			Preload("Pipeline").
-			Preload("Task"),
+// NewSessionQuery creates a new session query builder
+func NewSessionQuery() *SessionQuery {
+	return &SessionQuery{
+		db: Session(),
 	}
 }
 
-// ByType 按类型查询
-func (q *ContextQuery) ByType(typ string) *ContextQuery {
+// WhereID filters by session ID
+func (q *SessionQuery) WhereID(id string) *SessionQuery {
+	q.db = q.db.Where("session_id = ?", id)
+	return q
+}
+
+// WhereAlive filters by alive status
+func (q *SessionQuery) WhereAlive(alive bool) *SessionQuery {
+	q.db = q.db.Where("is_alive = ?", alive)
+	return q
+}
+
+// WhereGroup filters by group name
+func (q *SessionQuery) WhereGroup(group string) *SessionQuery {
+	q.db = q.db.Where("group_name = ?", group)
+	return q
+}
+
+// WhereRemoved filters by removed status
+func (q *SessionQuery) WhereRemoved(removed bool) *SessionQuery {
+	q.db = q.db.Where("is_removed = ?", removed)
+	return q
+}
+
+// WhereType filters by session type
+func (q *SessionQuery) WhereType(typ string) *SessionQuery {
 	q.db = q.db.Where("type = ?", typ)
 	return q
 }
 
-// BySession 按会话ID查询
-func (q *ContextQuery) BySession(sessionID string) *ContextQuery {
+// OrderBy orders results by field
+func (q *SessionQuery) OrderBy(field string) *SessionQuery {
+	q.db = q.db.Order(field)
+	return q
+}
+
+// Limit limits the number of results
+func (q *SessionQuery) Limit(limit int) *SessionQuery {
+	q.db = q.db.Limit(limit)
+	return q
+}
+
+// Offset sets the offset for results
+func (q *SessionQuery) Offset(offset int) *SessionQuery {
+	q.db = q.db.Offset(offset)
+	return q
+}
+
+// Find executes the query and returns multiple sessions
+func (q *SessionQuery) Find() (Sessions, error) {
+	var sessions Sessions
+	err := q.db.Find(&sessions).Error
+	return sessions, err
+}
+
+// First executes the query and returns the first session
+func (q *SessionQuery) First() (*models.Session, error) {
+	var session models.Session
+	err := q.db.First(&session).Error
+	if err != nil {
+		return nil, err
+	}
+	return &session, nil
+}
+
+// Count counts the number of matching sessions
+func (q *SessionQuery) Count() (int64, error) {
+	var count int64
+	err := q.db.Model(&models.Session{}).Count(&count).Error
+	return count, err
+}
+
+// ============================================
+// TaskQuery Builder
+// ============================================
+
+type TaskQuery struct {
+	db *gorm.DB
+}
+
+// NewTaskQuery creates a new task query builder
+func NewTaskQuery() *TaskQuery {
+	return &TaskQuery{
+		db: Session(),
+	}
+}
+
+// WhereID filters by task ID
+func (q *TaskQuery) WhereID(id string) *TaskQuery {
+	q.db = q.db.Where("id = ?", id)
+	return q
+}
+
+// WhereSessionID filters by session ID
+func (q *TaskQuery) WhereSessionID(sessionID string) *TaskQuery {
 	q.db = q.db.Where("session_id = ?", sessionID)
 	return q
 }
 
-// ByTask 按任务ID查询
-func (q *ContextQuery) ByTask(taskID string) *ContextQuery {
-	q.db = q.db.Where("task_id = ?", taskID)
+// WhereType filters by task type
+func (q *TaskQuery) WhereType(taskType string) *TaskQuery {
+	q.db = q.db.Where("type = ?", taskType)
 	return q
 }
 
-// ByPipeline 按Pipeline ID查询
-func (q *ContextQuery) ByPipeline(pipelineID string) *ContextQuery {
-	q.db = q.db.Where("pipeline_id = ?", pipelineID)
+// WhereFinished filters by finished status
+func (q *TaskQuery) WhereFinished(finished bool) *TaskQuery {
+	q.db = q.db.Where("finished = ?", finished)
 	return q
 }
 
-// ByNonce 按Nonce查询
-func (q *ContextQuery) ByNonce(nonce string) *ContextQuery {
-	q.db = q.db.Where("nonce = ?", nonce)
+// OrderBySeq orders by sequence number
+func (q *TaskQuery) OrderBySeq() *TaskQuery {
+	q.db = q.db.Order("seq ASC")
 	return q
 }
 
-// Find 执行查询并返回结果
-func (q *ContextQuery) Find() ([]*models.Context, error) {
-	var contexts []*models.Context
-	err := q.db.Find(&contexts).Error
-	return contexts, err
+// OrderBy orders by specified field
+func (q *TaskQuery) OrderBy(field string) *TaskQuery {
+	q.db = q.db.Order(field)
+	return q
 }
 
-// First 查询单个结果
-func (q *ContextQuery) First() (*models.Context, error) {
-	var context models.Context
-	err := q.db.First(&context).Error
+// Limit limits the number of results
+func (q *TaskQuery) Limit(limit int) *TaskQuery {
+	q.db = q.db.Limit(limit)
+	return q
+}
+
+// Find executes the query and returns multiple tasks
+func (q *TaskQuery) Find() (Tasks, error) {
+	var tasks Tasks
+	err := q.db.Find(&tasks).Error
+	return tasks, err
+}
+
+// First executes the query and returns the first task
+func (q *TaskQuery) First() (*models.Task, error) {
+	var task models.Task
+	err := q.db.First(&task).Error
 	if err != nil {
 		return nil, err
 	}
-	return &context, nil
+	return &task, nil
 }
 
-func SaveContext(ctx *clientpb.Context) (*models.Context, error) {
-	contextDB, err := models.FromContextProtobuf(ctx)
+// Count counts the number of matching tasks
+func (q *TaskQuery) Count() (int64, error) {
+	var count int64
+	err := q.db.Model(&models.Task{}).Count(&count).Error
+	return count, err
+}
+
+// ============================================
+// PipelineQuery Builder
+// ============================================
+
+type PipelineQuery struct {
+	db *gorm.DB
+}
+
+// NewPipelineQuery creates a new pipeline query builder
+func NewPipelineQuery() *PipelineQuery {
+	return &PipelineQuery{
+		db: Session(),
+	}
+}
+
+// WhereName filters by pipeline name
+func (q *PipelineQuery) WhereName(name string) *PipelineQuery {
+	q.db = q.db.Where("name = ?", name)
+	return q
+}
+
+// WhereListenerID filters by listener ID
+func (q *PipelineQuery) WhereListenerID(listenerID string) *PipelineQuery {
+	q.db = q.db.Where("listener_id = ?", listenerID)
+	return q
+}
+
+// WhereEnabled filters by enabled status
+func (q *PipelineQuery) WhereEnabled(enabled bool) *PipelineQuery {
+	q.db = q.db.Where("enable = ?", enabled)
+	return q
+}
+
+// WhereType filters by pipeline type
+func (q *PipelineQuery) WhereType(typ string) *PipelineQuery {
+	q.db = q.db.Where("type = ?", typ)
+	return q
+}
+
+// WhereNotType filters by NOT pipeline type
+func (q *PipelineQuery) WhereNotType(typ string) *PipelineQuery {
+	q.db = q.db.Where("type != ?", typ)
+	return q
+}
+
+// Preload preloads associations
+func (q *PipelineQuery) Preload(relation string) *PipelineQuery {
+	q.db = q.db.Preload(relation)
+	return q
+}
+
+// OrderBy orders by specified field
+func (q *PipelineQuery) OrderBy(field string) *PipelineQuery {
+	q.db = q.db.Order(field)
+	return q
+}
+
+// Find executes the query and returns multiple pipelines
+func (q *PipelineQuery) Find() (Pipelines, error) {
+	var pipelines Pipelines
+	err := q.db.Find(&pipelines).Error
+	return pipelines, err
+}
+
+// First executes the query and returns the first pipeline
+func (q *PipelineQuery) First() (*models.Pipeline, error) {
+	var pipeline models.Pipeline
+	err := q.db.First(&pipeline).Error
 	if err != nil {
 		return nil, err
 	}
-
-	if ctx.Id != "" {
-		id, err := uuid.FromString(ctx.Id)
-		if err != nil {
-			return nil, err
-		}
-		contextDB.ID = id
-	}
-
-	return contextDB, Session().Session(&gorm.Session{
-		FullSaveAssociations: false,
-	}).Clauses(clause.OnConflict{
-		UpdateAll: true,
-	}).Create(contextDB).Error
+	return &pipeline, nil
 }
 
-func DeleteContext(contextID string) error {
-	return Session().Where("id = ?", contextID).Delete(&models.Context{}).Error
+// Count counts the number of matching pipelines
+func (q *PipelineQuery) Count() (int64, error) {
+	var count int64
+	err := q.db.Model(&models.Pipeline{}).Count(&count).Error
+	return count, err
+}
+
+// ============================================
+// Improved List Functions (returns models)
+// ============================================
+
+// ListSessions returns all sessions (non-removed)
+func ListSessions() (Sessions, error) {
+	return NewSessionQuery().
+		WhereRemoved(false).
+		OrderBy("group_name").
+		Find()
+}
+
+// ListAliveSessions returns all alive sessions
+func ListAliveSessions() (Sessions, error) {
+	return FindAliveSessions()
+}
+
+// ListTasks returns all tasks
+func ListTasks() (Tasks, error) {
+	return NewTaskQuery().Find()
+}
+
+// ListTasksBySession returns tasks for a specific session
+func ListTasksBySession(sessionID string) (Tasks, error) {
+	return NewTaskQuery().
+		WhereSessionID(sessionID).
+		OrderBySeq().
+		Find()
+}
+
+// ListArtifacts returns all artifacts
+func ListArtifacts() (Artifacts, error) {
+	var artifacts Artifacts
+	result := Session().Preload("Profile").Preload("Profile.Pipeline").Find(&artifacts)
+	return artifacts, result.Error
+}
+
+// ListPipelinesByListener returns pipelines for a listener (non-website)
+func ListPipelinesByListener(listenerID string) (Pipelines, error) {
+	query := NewPipelineQuery().WhereNotType(consts.WebsitePipeline)
+	if listenerID != "" {
+		query = query.WhereListenerID(listenerID)
+	}
+	return query.Find()
+}
+
+// ListWebsitesByListener returns website pipelines for a listener
+func ListWebsitesByListener(listenerID string) (Pipelines, error) {
+	query := NewPipelineQuery().WhereType(consts.WebsitePipeline)
+	if listenerID != "" {
+		query = query.WhereListenerID(listenerID)
+	}
+	return query.Find()
 }
