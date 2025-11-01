@@ -2,12 +2,18 @@ package rpc
 
 import (
 	"context"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/types"
+	"github.com/chainreactors/malice-network/helper/utils/handler"
 )
 
 func (rpc *Server) Kill(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
+	err := handler.AssertRequestName(req, consts.ModuleKill)
+	if err != nil {
+		return nil, err
+	}
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err
@@ -23,6 +29,10 @@ func (rpc *Server) Kill(ctx context.Context, req *implantpb.Request) (*clientpb.
 }
 
 func (rpc *Server) Ps(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
+	err := handler.AssertRequestName(req, consts.ModulePs)
+	if err != nil {
+		return nil, err
+	}
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err
@@ -37,6 +47,10 @@ func (rpc *Server) Ps(ctx context.Context, req *implantpb.Request) (*clientpb.Ta
 }
 
 func (rpc *Server) Env(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
+	err := handler.AssertRequestName(req, consts.ModuleEnv)
+	if err != nil {
+		return nil, err
+	}
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err
@@ -51,6 +65,10 @@ func (rpc *Server) Env(ctx context.Context, req *implantpb.Request) (*clientpb.T
 }
 
 func (rpc *Server) SetEnv(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
+	err := handler.AssertRequestName(req, consts.ModuleSetEnv)
+	if err != nil {
+		return nil, err
+	}
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err
@@ -65,6 +83,10 @@ func (rpc *Server) SetEnv(ctx context.Context, req *implantpb.Request) (*clientp
 }
 
 func (rpc *Server) UnsetEnv(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
+	err := handler.AssertRequestName(req, consts.ModuleUnsetEnv)
+	if err != nil {
+		return nil, err
+	}
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err
@@ -79,6 +101,10 @@ func (rpc *Server) UnsetEnv(ctx context.Context, req *implantpb.Request) (*clien
 }
 
 func (rpc *Server) Whoami(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
+	err := handler.AssertRequestName(req, consts.ModuleWhoami)
+	if err != nil {
+		return nil, err
+	}
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err

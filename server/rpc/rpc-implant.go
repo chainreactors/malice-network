@@ -10,6 +10,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/types"
+	"github.com/chainreactors/malice-network/helper/utils/handler"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"time"
@@ -124,6 +125,10 @@ func (rpc *Server) Sleep(ctx context.Context, req *implantpb.Timer) (*clientpb.T
 }
 
 func (rpc *Server) Suicide(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
+	err := handler.AssertRequestName(req, consts.ModuleSuicide)
+	if err != nil {
+		return nil, err
+	}
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err
@@ -152,6 +157,10 @@ func (rpc *Server) Switch(ctx context.Context, req *implantpb.Switch) (*clientpb
 }
 
 func (rpc *Server) InitBindSession(ctx context.Context, req *implantpb.Request) (*clientpb.Empty, error) {
+	err := handler.AssertRequestName(req, consts.ModuleInit)
+	if err != nil {
+		return nil, err
+	}
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err

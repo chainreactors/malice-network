@@ -2,9 +2,11 @@ package rpc
 
 import (
 	"context"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/types"
+	"github.com/chainreactors/malice-network/helper/utils/handler"
 	"github.com/chainreactors/malice-network/server/internal/core"
 )
 
@@ -18,6 +20,10 @@ func handlerModule(sess *core.Session) func(spite *implantpb.Spite) {
 }
 
 func (rpc *Server) ListModule(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
+	err := handler.AssertRequestName(req, consts.ModuleListModule)
+	if err != nil {
+		return nil, err
+	}
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err
@@ -49,6 +55,10 @@ func (rpc *Server) LoadModule(ctx context.Context, req *implantpb.LoadModule) (*
 }
 
 func (rpc *Server) RefreshModule(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
+	err := handler.AssertRequestName(req, consts.ModuleRefreshModule)
+	if err != nil {
+		return nil, err
+	}
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err
@@ -63,6 +73,10 @@ func (rpc *Server) RefreshModule(ctx context.Context, req *implantpb.Request) (*
 }
 
 func (rpc *Server) Clear(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
+	err := handler.AssertRequestName(req, consts.ModuleClear)
+	if err != nil {
+		return nil, err
+	}
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err

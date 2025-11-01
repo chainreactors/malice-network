@@ -3,12 +3,18 @@ package rpc
 import (
 	"context"
 	"errors"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/types"
+	"github.com/chainreactors/malice-network/helper/utils/handler"
 )
 
 func (rpc *Server) ListAddon(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
+	err := handler.AssertRequestName(req, consts.ModuleListAddon)
+	if err != nil {
+		return nil, err
+	}
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err

@@ -29,6 +29,10 @@ func (rpc *Server) Pwd(ctx context.Context, req *implantpb.Request) (*clientpb.T
 }
 
 func (rpc *Server) Ls(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
+	err := handler.AssertRequestName(req, consts.ModuleLs)
+	if err != nil {
+		return nil, err
+	}
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err
@@ -43,6 +47,10 @@ func (rpc *Server) Ls(ctx context.Context, req *implantpb.Request) (*clientpb.Ta
 }
 
 func (rpc *Server) Cd(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
+	err := handler.AssertRequestName(req, consts.ModuleCd)
+	if err != nil {
+		return nil, err
+	}
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err
@@ -57,6 +65,10 @@ func (rpc *Server) Cd(ctx context.Context, req *implantpb.Request) (*clientpb.Ta
 }
 
 func (rpc *Server) Mkdir(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
+	err := handler.AssertRequestName(req, consts.ModuleMkdir)
+	if err != nil {
+		return nil, err
+	}
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err
@@ -71,6 +83,10 @@ func (rpc *Server) Mkdir(ctx context.Context, req *implantpb.Request) (*clientpb
 }
 
 func (rpc *Server) Rm(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
+	err := handler.AssertRequestName(req, consts.ModuleRm)
+	if err != nil {
+		return nil, err
+	}
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err
@@ -85,6 +101,10 @@ func (rpc *Server) Rm(ctx context.Context, req *implantpb.Request) (*clientpb.Ta
 }
 
 func (rpc *Server) Cat(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
+	err := handler.AssertRequestName(req, consts.ModuleCat)
+	if err != nil {
+		return nil, err
+	}
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err
@@ -99,6 +119,10 @@ func (rpc *Server) Cat(ctx context.Context, req *implantpb.Request) (*clientpb.T
 }
 
 func (rpc *Server) Mv(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
+	err := handler.AssertRequestName(req, consts.ModuleMv)
+	if err != nil {
+		return nil, err
+	}
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err
@@ -113,6 +137,10 @@ func (rpc *Server) Mv(ctx context.Context, req *implantpb.Request) (*clientpb.Ta
 }
 
 func (rpc *Server) Cp(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
+	err := handler.AssertRequestName(req, consts.ModuleCp)
+	if err != nil {
+		return nil, err
+	}
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err
@@ -127,6 +155,10 @@ func (rpc *Server) Cp(ctx context.Context, req *implantpb.Request) (*clientpb.Ta
 }
 
 func (rpc *Server) Chmod(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
+	err := handler.AssertRequestName(req, consts.ModuleChmod)
+	if err != nil {
+		return nil, err
+	}
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err
@@ -155,6 +187,10 @@ func (rpc *Server) Chown(ctx context.Context, req *implantpb.ChownRequest) (*cli
 }
 
 func (rpc *Server) EnumDrivers(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
+	err := handler.AssertRequestName(req, consts.ModuleEnumDrivers)
+	if err != nil {
+		return nil, err
+	}
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err

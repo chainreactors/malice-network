@@ -2,9 +2,11 @@ package rpc
 
 import (
 	"context"
+	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/types"
+	"github.com/chainreactors/malice-network/helper/utils/handler"
 )
 
 func (rpc *Server) Runas(ctx context.Context, req *implantpb.RunAsRequest) (*clientpb.Task, error) {
@@ -23,6 +25,10 @@ func (rpc *Server) Runas(ctx context.Context, req *implantpb.RunAsRequest) (*cli
 }
 
 func (rpc *Server) Rev2Self(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
+	err := handler.AssertRequestName(req, consts.ModuleRev2Self)
+	if err != nil {
+		return nil, err
+	}
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err
@@ -38,6 +44,10 @@ func (rpc *Server) Rev2Self(ctx context.Context, req *implantpb.Request) (*clien
 }
 
 func (rpc *Server) Privs(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
+	err := handler.AssertRequestName(req, consts.ModulePrivs)
+	if err != nil {
+		return nil, err
+	}
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err
@@ -53,6 +63,10 @@ func (rpc *Server) Privs(ctx context.Context, req *implantpb.Request) (*clientpb
 }
 
 func (rpc *Server) GetSystem(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
+	err := handler.AssertRequestName(req, consts.ModuleGetSystem)
+	if err != nil {
+		return nil, err
+	}
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err
