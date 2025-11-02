@@ -2,6 +2,10 @@ package build
 
 import (
 	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/encoders"
@@ -10,9 +14,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/wabzsy/gonut"
-	"os"
-	"os/exec"
-	"path/filepath"
 )
 
 // ObjcopyPulse extracts shellcode from compiled artifact using objcopy
@@ -74,7 +75,7 @@ func MutantSrdi(path string) ([]byte, error) {
 		}
 	}()
 
-	mutantExePath := filepath.Join(configs.BinPath, "malefic-mutant.exe")
+	mutantExePath := filepath.Join(configs.BinPath, "malefic-mutant")
 	mutantExeAbsPath, err := filepath.Abs(mutantExePath)
 	if err != nil {
 		return nil, fmt.Errorf("cannot resolve absolute path for malefic-mutant.exe: %w", err)
