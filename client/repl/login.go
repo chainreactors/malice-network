@@ -2,6 +2,10 @@ package repl
 
 import (
 	"context"
+	"fmt"
+	"net"
+	"strconv"
+
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/core"
@@ -66,22 +70,56 @@ func initState(con *Console, conn *grpc.ClientConn, config *mtls.ClientConfig) e
 	return nil
 }
 
-// InitMCPServer 在命令注册完成后初始化MCP服务器
-// 这个函数应该在所有命令注册完成后调用，避免并发映射访问错误
+// InitMCPServer 在命令注册完成后初始化 MCP 服务器
+// 该函数应该在所有命令注册完成后调用，避免并发映射访问错误
+// MCP 服务器在后台 goroutine 中启动，不会阻塞主流程
 func (con *Console) InitMCPServer() {
 	go func() {
+		// 加载配置
 		setting, err := assets.GetSetting()
 		if err != nil {
 			logs.Log.Errorf("Failed to get setting: %v\n", err)
 			return
 		}
-		
-		con.NewMCPServer(con.CMDs)
-		err = con.MCP.Start("127.0.0.1", setting.McpPort)
-		if err != nil {
-			logs.Log.Errorf("Failed to start mcp server: %v\n", err)
+
+		// 检查 MCP 是否启用
+		if !setting.McpEnable {
+			logs.Log.Debug("MCP server is disabled in settings")
+			return
 		}
+
+		// 解析地址
+		host, port, err := parseAddr(setting.McpAddr)
+		if err != nil {
+			logs.Log.Errorf("Failed to parse MCP address: %v\n", err)
+			return
+		}
+
+		// 创建并启动 MCP 服务器
+		con.NewMCPServer()
+		if err = con.MCP.Start(host, port); err != nil {
+			logs.Log.Errorf("Failed to start MCP server: %v\n", err)
+			return
+		}
+
+		logs.Log.Importantf("MCP server started at http://%s:%d/mcp\n", host, port)
 	}()
+}
+
+// parseAddr 解析 host:port 格式的地址字符串
+// 返回主机名、端口号和可能的错误
+func parseAddr(addr string) (string, int, error) {
+	host, portStr, err := net.SplitHostPort(addr)
+	if err != nil {
+		return "", 0, fmt.Errorf("invalid address format: %w", err)
+	}
+
+	port, err := strconv.Atoi(portStr)
+	if err != nil {
+		return "", 0, fmt.Errorf("invalid port number: %w", err)
+	}
+
+	return host, port, nil
 }
 
 func NewConfigLogin(con *Console, yamlFile string) error {

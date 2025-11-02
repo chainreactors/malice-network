@@ -15,7 +15,8 @@ import (
 type Settings struct {
 	MaxServerLogSize int            `yaml:"max_server_log_size" config:"max_server_log_size" default:"10"`
 	OpsecThreshold   float64        `yaml:"opsec_threshold" config:"opsec_threshold" default:"6.0"`
-	McpPort          int            `yaml:"mcp_port" config:"mcp_port" default:"5005"`
+	McpEnable        bool           `yaml:"mcp_enable" config:"mcp_enable" default:"false"`
+	McpAddr          string         `yaml:"mcp_addr" config:"mcp_addr" default:"127.0.0.1:5005"`
 	Github           *GithubSetting `yaml:"github" config:"github"`
 
 	//VtApiKey           string `yaml:"vt_api_key" config:"vt_api_key" default:""`

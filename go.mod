@@ -160,7 +160,7 @@ require (
 
 replace (
 	github.com/chainreactors/proxyclient => github.com/chainreactors/proxyclient v1.0.3
-	github.com/chainreactors/rem => github.com/chainreactors/rem-community v0.2.4
+	//github.com/chainreactors/rem => github.com/chainreactors/rem-community v0.2.4
 	github.com/mark3labs/mcp-go => ./external/mcp-go
 	github.com/reeflective/console => ./external/console
 	github.com/reeflective/readline => ./external/readline

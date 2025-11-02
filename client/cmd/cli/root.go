@@ -19,6 +19,10 @@ func rootCmd(con *repl.Console) (*cobra.Command, error) {
 		},
 	}
 	cmd.TraverseChildren = true
+
+	// 添加 --mcp flag
+	cmd.PersistentFlags().String("mcp", "", "enable MCP server with address (e.g., 127.0.0.1:5005)")
+
 	bind := command.MakeBind(cmd, con)
 	command.BindCommonCommands(bind)
 	cmd.PersistentPreRunE, cmd.PersistentPostRunE = command.ConsoleRunnerCmd(con, cmd)

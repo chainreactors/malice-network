@@ -3,15 +3,30 @@ package generic
 import (
 	"errors"
 	"fmt"
+
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/tui"
+	"github.com/gookit/config/v2"
 	"github.com/spf13/cobra"
 )
 
 func LoginCmd(cmd *cobra.Command, con *repl.Console) error {
 	var err error
+
+	// 处理 --mcp flag
+	mcpAddr, _ := cmd.Flags().GetString("mcp")
+	if mcpAddr != "" {
+		con.Log.Infof("Enabling MCP server at %s", mcpAddr)
+		err := enableMCPFromFlag(mcpAddr)
+		if err != nil {
+			con.Log.Errorf("Failed to enable MCP: %s", err)
+		} else {
+			con.Log.Importantf("MCP enabled, will start at %s after login", mcpAddr)
+		}
+	}
+
 	if filename := cmd.Flags().Arg(0); filename != "" {
 		return Login(con, filename)
 	} else if filename, _ := cmd.Flags().GetString("auth"); filename != "" {
@@ -41,6 +56,14 @@ func LoginCmd(cmd *cobra.Command, con *repl.Console) error {
 	} else {
 		return errors.New("no user selected")
 	}
+}
+
+// enableMCPFromFlag 从命令行 flag 启用 MCP
+func enableMCPFromFlag(addr string) error {
+	// 使用 config.Set 来设置配置，会自动触发保存
+	config.Set("settings.mcp_enable", true)
+	config.Set("settings.mcp_addr", addr)
+	return nil
 }
 
 func Login(con *repl.Console, authFile string) error {
