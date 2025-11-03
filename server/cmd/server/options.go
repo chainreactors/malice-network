@@ -257,7 +257,8 @@ func (opt *Options) PrepareListener() error {
 		opt.Listeners.IP = opt.IP
 		config.Set("listeners.ip", opt.IP)
 	}
-	err := StartListener(opt.Listeners, opt.Server.Enable)
+	serverEnabled := opt.Server.Enable && !opt.ListenerOnly // only treat server as local when it's actually running
+	err := StartListener(opt.Listeners, serverEnabled)
 	if err != nil {
 		return err
 	}
