@@ -300,7 +300,7 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 			return
 		}
 		if req.Dir == true {
-			req.Name = req.Name + ".tar.gz"
+			req.Name = req.Name + ".tar"
 		}
 		v := &output.DownloadContext{
 			FileDescriptor: &output.FileDescriptor{
