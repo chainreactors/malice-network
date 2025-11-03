@@ -5,6 +5,7 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
@@ -70,6 +71,9 @@ func (rpc *Server) StartPipeline(ctx context.Context, req *clientpb.CtrlPipeline
 	if err != nil {
 		return nil, err
 	}
+	if pipelineDB.PipelineParams == nil {
+		pipelineDB.PipelineParams = &types.PipelineParams{}
+	}
 	if req.CertName != "" {
 		_, err := db.FindCertificate(req.CertName)
 		if err != nil {
@@ -79,8 +83,8 @@ func (rpc *Server) StartPipeline(ctx context.Context, req *clientpb.CtrlPipeline
 		if err != nil {
 			return nil, err
 		}
-	} else {
-		pipelineDB.Tls.Enable = req.Pipeline.Tls.Enable
+	} else if req.Pipeline != nil && req.Pipeline.Tls != nil {
+		pipelineDB.PipelineParams.Tls = types.FromTls(req.Pipeline.Tls)
 	}
 	lns, err := core.Listeners.Get(pipelineDB.ListenerId)
 	if err != nil {
