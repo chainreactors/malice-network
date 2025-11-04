@@ -1,3 +1,6 @@
 [submodule "proto"]
 	path = proto
 	url = https://github.com/chainreactors/proto/
+[submodule "IoM-go"]
+	path = IoM-go
+	url = https://github.com/chainreactors/IoM-go
