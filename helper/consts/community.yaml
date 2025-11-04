@@ -89,7 +89,7 @@ implants:
         - curl
 
   prelude: ""             # autorun config filename
-  pack:                   # pack
+  pack: []                   # pack
   flags:
     start: 0x41
     end: 0x42

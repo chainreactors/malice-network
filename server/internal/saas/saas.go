@@ -2,6 +2,12 @@ package saas
 
 import (
 	"fmt"
+	"io"
+	"os"
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/encoders"
@@ -12,12 +18,6 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
-	"github.com/chainreactors/tui"
-	"io"
-	"os"
-	"strings"
-	"sync"
-	"time"
 )
 
 type DownloadResult struct {
@@ -223,8 +223,7 @@ func (c *SaasClient) GetLicenseInfo() (*clientpb.LicenseInfo, string, error) {
 	}
 
 	licenseUrl := fmt.Sprintf("%s/api/license/info", c.BaseURL)
-	headers := SaasHeaders(c.Token)
-	headers["username"] = fmt.Sprintf("machine_%s", utils.GetMachineID())
+	headers := SaasHeaders(c.Token) // 只发送token
 
 	var response LicenseResponse
 	err := httputils.DoJSONRequest("GET", licenseUrl, nil, headers, 200, &response)
@@ -246,14 +245,20 @@ func (c *SaasClient) RegisterLicense() (string, error) {
 		return "", fmt.Errorf("invalid SaaS config")
 	}
 
-	licenseData := NewCommunityLicense()
-	if licenseData == nil {
-		return "", fmt.Errorf("failed to create license data")
+	machineID := utils.GetMachineID()
+	if machineID == "" {
+		return "", fmt.Errorf("failed to get machine ID")
 	}
 
-	url := fmt.Sprintf("%s/api/license/", c.BaseURL)
+	username := fmt.Sprintf("machine_%s", machineID)
+
+	url := fmt.Sprintf("%s/api/license/register", c.BaseURL)
+	payload := map[string]string{
+		"username": username,
+	}
+
 	var response LicenseResponse
-	err := httputils.DoPOST(url, licenseData, make(map[string]string), 200, &response)
+	err := httputils.DoPOST(url, payload, map[string]string{}, 200, &response)
 	if err != nil {
 		return "", fmt.Errorf("failed to send HTTP request: %v", err)
 	}
@@ -266,6 +271,7 @@ func (c *SaasClient) RegisterLicense() (string, error) {
 		return "", fmt.Errorf("no token returned in response")
 	}
 
+	logs.Log.Infof("Successfully registered with token: %s", response.License.Token)
 	return response.License.Token, nil
 }
 
@@ -364,6 +370,6 @@ func CheckAndDownloadArtifact(statusPath, downloadPath, token string, builder *m
 }
 
 func SecurityAuthAlert() {
-	logs.Log.Info(tui.RedFg.Render("使用SaaS服务即视为您已阅读并同意我们的用户协议。详细协议内容请访问：https://wiki.chainreactors.red/IoM/#4"))
-	logs.Log.Info(tui.RedFg.Render("By using the SaaS service, you are deemed to have read and agreed to our User Agreement. For detailed agreement content, please visit: https://wiki.chainreactors.red/IoM/#4"))
+	logs.Log.Info(tui.RedFg.Render("使用本SaaS服务即表示您已阅读并同意《用户协议》。详情请访问：https://wiki.chainreactors.red/IoM/#4"))
+	logs.Log.Info(tui.RedFg.Render("By using this SaaS service, you acknowledge that you have read and agreed to our User Agreement. For details, please visit: https://wiki.chainreactors.red/IoM/#4"))
 }
