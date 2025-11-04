@@ -1,7 +1,7 @@
 package parser
 
 import (
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 )
 
 func NewSpitesBuf() *SpitesCache {

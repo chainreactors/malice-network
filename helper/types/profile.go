@@ -4,10 +4,10 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"github.com/chainreactors/IoM-go/consts"
 	"os"
 	"path/filepath"
 
-	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"gopkg.in/yaml.v3"
 )

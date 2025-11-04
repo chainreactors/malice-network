@@ -5,11 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	consts "github.com/chainreactors/IoM-go/consts"
+	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/types"
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/encoders"
-	"github.com/chainreactors/malice-network/helper/errs"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/httputils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
@@ -111,7 +111,7 @@ func GetWorkflowStatus(config *clientpb.GithubActionBuildConfig) error {
 		return fmt.Errorf("failed to get workflow details: %v", err)
 	}
 	if workflow.State != "active" {
-		return errs.ErrorDockerNotActive
+		return types.ErrorDockerNotActive
 	}
 	return nil
 }
@@ -155,10 +155,10 @@ func downloadArtifactWhenReady(owner, repo, token string, isRemove bool, artifac
 				}
 			}
 			return builder.Path, nil
-		} else if errors.Is(err, errs.ErrWorkflowFailed) {
+		} else if errors.Is(err, types.ErrWorkflowFailed) {
 			logs.Log.Errorf("Download artifact failed due to workflow failure: %s", err)
 			db.UpdateBuilderStatus(builder.ID, consts.BuildStatusFailure)
-			return "", errs.ErrWorkflowFailed
+			return "", types.ErrWorkflowFailed
 		} else {
 			logs.Log.Debugf("Download artifact failed: %s", err)
 		}
@@ -205,7 +205,7 @@ func getArtifactDownloadURL(owner, repo, token, buildName string) (string, int64
 	}
 	if wf.Status != "completed" || wf.Conclusion != "success" {
 		if wf.Conclusion == "failure" {
-			return "", 0, errs.ErrWorkflowFailed
+			return "", 0, types.ErrWorkflowFailed
 		}
 		if !notifiedWorkflows[buildName] {
 			core.EventBroker.Publish(core.Event{

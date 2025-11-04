@@ -2,13 +2,13 @@ package addon
 
 import (
 	"fmt"
+	"github.com/chainreactors/IoM-go/consts"
+	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
+	"github.com/chainreactors/IoM-go/session"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"github.com/chainreactors/mals"
@@ -57,7 +57,7 @@ func LoadAddonCmd(cmd *cobra.Command, con *repl.Console) {
 
 }
 
-func LoadAddon(rpc clientrpc.MaliceRPCClient, sess *core.Session, name, path, depend string) (*clientpb.Task, error) {
+func LoadAddon(rpc clientrpc.MaliceRPCClient, sess *session.Session, name, path, depend string) (*clientpb.Task, error) {
 
 	content, err := os.ReadFile(path)
 	if err != nil {
@@ -84,7 +84,7 @@ func RegisterAddonCmd(addon *implantpb.Addon, con *repl.Console) (*loadedAddon, 
 	common.BindFlag(addonCmd, common.ExecuteFlagSet, common.SacrificeFlagSet)
 	return &loadedAddon{
 		Command: addonCmd,
-		Func: repl.WrapImplantFunc(con, func(rpc clientrpc.MaliceRPCClient, sess *core.Session, args string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
+		Func: repl.WrapImplantFunc(con, func(rpc clientrpc.MaliceRPCClient, sess *session.Session, args string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 			cmdline, err := shellquote.Split(args)
 			if err != nil {
 				return nil, err

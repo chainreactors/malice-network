@@ -3,11 +3,11 @@ package server
 import (
 	"errors"
 	"fmt"
+	"github.com/chainreactors/IoM-go/mtls"
+	"github.com/chainreactors/IoM-go/proto/client/rootpb"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/cryptography"
-	"github.com/chainreactors/malice-network/helper/proto/client/rootpb"
 	"github.com/chainreactors/malice-network/helper/utils/configutil"
-	"github.com/chainreactors/malice-network/helper/utils/mtls"
 	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"

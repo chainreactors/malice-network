@@ -3,15 +3,15 @@ package pty
 import (
 	"context"
 	"fmt"
+	consts "github.com/chainreactors/IoM-go/consts"
+	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/session"
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"time"
 
-	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/tui"
 	"github.com/spf13/cobra"
 )
@@ -19,7 +19,7 @@ import (
 // PTYClient 用于与服务器通信
 type PTYClient struct {
 	rpc  clientrpc.MaliceRPCClient
-	sess *core.Session
+	sess *session.Session
 
 	// 回调函数
 	outputCallback     func(string, string)
@@ -29,7 +29,7 @@ type PTYClient struct {
 }
 
 // NewPTYClient 创建一个新的 PTY 客户端
-func NewPTYClient(rpc clientrpc.MaliceRPCClient, sess *core.Session) *PTYClient {
+func NewPTYClient(rpc clientrpc.MaliceRPCClient, sess *session.Session) *PTYClient {
 	return &PTYClient{
 		rpc:  rpc,
 		sess: sess,
@@ -257,7 +257,7 @@ func ShellCmd(cmd *cobra.Command, con *repl.Console) error {
 
 // 辅助函数
 // getDefaultShellType 根据操作系统获取默认shell类型
-func getDefaultShellType(session *core.Session, shellType string) string {
+func getDefaultShellType(session *session.Session, shellType string) string {
 	if shellType == "" {
 		if session.Os.Name == "windows" {
 			return "cmd"

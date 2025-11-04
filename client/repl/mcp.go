@@ -3,11 +3,11 @@ package repl
 import (
 	"context"
 	"fmt"
+	consts "github.com/chainreactors/IoM-go/consts"
 	"net/http"
 	"strings"
 
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/spf13/cobra"

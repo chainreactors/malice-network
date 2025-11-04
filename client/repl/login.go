@@ -1,36 +1,20 @@
 package repl
 
 import (
-	"context"
 	"fmt"
 	"net"
 	"strconv"
 
+	"github.com/chainreactors/IoM-go/consts"
+	mtls "github.com/chainreactors/IoM-go/mtls"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/utils/mtls"
 	"google.golang.org/grpc"
 )
 
-func Connect(con *Console, config *mtls.ClientConfig) (*grpc.ClientConn, error) {
-	options, err := mtls.GetGrpcOptions([]byte(config.CACertificate), []byte(config.Certificate), []byte(config.PrivateKey), config.Type)
-	if err != nil {
-		return nil, err
-	}
-
-	ctx, _ := context.WithTimeout(context.Background(), consts.DefaultTimeout)
-	conn, err := grpc.DialContext(ctx, config.Address(), options...)
-	if err != nil {
-		return nil, err
-	}
-
-	return conn, nil
-}
-
 func Login(con *Console, config *mtls.ClientConfig) error {
-	conn, err := Connect(con, config)
+	conn, err := mtls.Connect(config)
 	if err != nil {
 		logs.Log.Errorf("Failed to connect to server %s: %v\n", config.Address(), err)
 		return err
@@ -47,7 +31,7 @@ func Login(con *Console, config *mtls.ClientConfig) error {
 
 func initState(con *Console, conn *grpc.ClientConn, config *mtls.ClientConfig) error {
 	var err error
-	con.ServerStatus, err = core.InitServerStatus(conn, config)
+	con.Server, err = core.NewServer(conn, config)
 	if err != nil {
 		logs.Log.Errorf("init server failed : %v\n", err)
 		return err

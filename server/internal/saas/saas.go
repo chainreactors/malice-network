@@ -8,11 +8,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/chainreactors/IoM-go/consts"
+	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/types"
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/encoders"
-	"github.com/chainreactors/malice-network/helper/errs"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/utils"
 	"github.com/chainreactors/malice-network/helper/utils/httputils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
@@ -281,7 +281,7 @@ func (c *SaasClient) RegisterLicense() (string, error) {
 func ReDownloadSaasArtifact() error {
 	client := GetSaasClient()
 	if client.Token == "" || client.BaseURL == "" {
-		return errs.ErrSaasUnable
+		return types.ErrSaasUnable
 	}
 	artifacts, err := db.GetArtifactWithSaas()
 	if err != nil {
@@ -362,7 +362,7 @@ func RegisterLicense() error {
 func CheckAndDownloadArtifact(statusPath, downloadPath, token string, builder *models.Artifact, pollInterval, maxPollTime time.Duration) (string, string, error) {
 	client := GetSaasClient()
 	if client.Token == "" || client.BaseURL == "" {
-		return "", "", errs.ErrSaasUnable
+		return "", "", types.ErrSaasUnable
 	}
 	client.Token = token
 	result := client.CheckAndDownloadArtifact(statusPath, downloadPath, builder, pollInterval, maxPollTime)

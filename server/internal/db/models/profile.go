@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/gofrs/uuid"
 	"gorm.io/gorm"

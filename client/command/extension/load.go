@@ -7,14 +7,14 @@ import (
 	"errors"
 	"fmt"
 	"github.com/carapace-sh/carapace"
+	consts "github.com/chainreactors/IoM-go/consts"
+	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
+	"github.com/chainreactors/IoM-go/session"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/help"
-	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/malice-network/helper/utils/pe"
@@ -178,7 +178,7 @@ func ParseExtensionManifest(data []byte) (*ExtensionManifest, error) {
 	err := json.Unmarshal(data, &extManifest)
 	if err != nil || len(extManifest.ExtCommand) == 0 {
 		if err != nil {
-			core.Log.Errorf("extension load error: %s\n", err)
+			session.Log.Errorf("extension load error: %s\n", err)
 		}
 		oldmanifest := &ExtensionManifest_{}
 		err = json.Unmarshal(data, &oldmanifest)
@@ -269,7 +269,7 @@ func ExtensionRegisterCommand(extCmd *ExtCommand, cmd *cobra.Command, con *repl.
 	loadedExtensions[extCmd.CommandName] = &loadedExt{
 		Manifest: extCmd,
 		Command:  cmd,
-		Func: repl.WrapImplantFunc(con, func(rpc clientrpc.MaliceRPCClient, sess *core.Session, args []string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
+		Func: repl.WrapImplantFunc(con, func(rpc clientrpc.MaliceRPCClient, sess *session.Session, args []string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 			return ExecuteExtension(rpc, sess, extensionCmd.Name(), args)
 		}, output.ParseBinaryResponse),
 	}
@@ -354,7 +354,7 @@ func runExtensionCmd(cmd *cobra.Command, con *repl.Console) {
 	session.Console(task, string(*con.App.Shell().Line()))
 }
 
-func ExecuteExtension(rpc clientrpc.MaliceRPCClient, sess *core.Session, extName string, args []string) (*clientpb.Task, error) {
+func ExecuteExtension(rpc clientrpc.MaliceRPCClient, sess *session.Session, extName string, args []string) (*clientpb.Task, error) {
 	ext, ok := loadedExtensions[extName]
 	if !ok {
 		return nil, fmt.Errorf("no extension command found for `%s` command", extName)

@@ -1,8 +1,8 @@
 package core
 
 import (
-	"github.com/chainreactors/malice-network/helper/errs"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/types"
 	"sync"
 )
 
@@ -47,14 +47,14 @@ func (j *jobs) Remove(id string) {
 // Get - Get a Job
 func (j *jobs) Get(jobName string) (*Job, error) {
 	if jobName == "" {
-		return nil, errs.ErrNotFoundPipeline
+		return nil, types.ErrNotFoundPipeline
 	}
 	for _, job := range j.All() {
 		if job.Name == jobName {
 			return job, nil
 		}
 	}
-	return nil, errs.ErrNotFoundPipeline
+	return nil, types.ErrNotFoundPipeline
 }
 
 func (j *jobs) All() []*Job {

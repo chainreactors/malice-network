@@ -2,8 +2,8 @@ package core
 
 import (
 	"errors"
-	"github.com/chainreactors/malice-network/helper/errs"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/types"
 	"sync"
 	"time"
 )
@@ -110,13 +110,13 @@ func (l *listeners) Find(pid string) (*clientpb.Pipeline, bool) {
 // Get - Get a Job
 func (l *listeners) Get(name string) (*Listener, error) {
 	if name == "" {
-		return nil, errs.ErrNotFoundListener
+		return nil, types.ErrNotFoundListener
 	}
 	val, ok := l.Load(name)
 	if ok {
 		return val.(*Listener), nil
 	}
-	return nil, errs.ErrNotFoundListener
+	return nil, types.ErrNotFoundListener
 }
 
 func (l *listeners) PushCtrl(ctrl string, pipeline *clientpb.Pipeline) {

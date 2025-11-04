@@ -3,245 +3,303 @@ package core
 import (
 	"context"
 	"errors"
+	"fmt"
+	"github.com/chainreactors/IoM-go/types"
+	"io"
+
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/mtls"
+	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/session"
+	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/intermediate"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
-	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
-	"github.com/chainreactors/malice-network/helper/utils/mtls"
+	"github.com/chainreactors/malice-network/helper/utils/output"
+	"github.com/chainreactors/tui"
 	"google.golang.org/grpc"
-	"sync"
 )
 
-type TaskCallback func(resp *clientpb.TaskContext)
+var ErrLuaVMDead = fmt.Errorf("lua vm is dead")
 
-func InitServerStatus(conn *grpc.ClientConn, config *mtls.ClientConfig) (*ServerStatus, error) {
-	var err error
-	s := &ServerStatus{
-		Rpc: &Rpc{
-			MaliceRPCClient:   clientrpc.NewMaliceRPCClient(conn),
-			ListenerRPCClient: listenerrpc.NewListenerRPCClient(conn),
-		},
-		ActiveTarget:    &ActiveTarget{},
-		Listeners:       make(map[string]*clientpb.Listener),
-		Pipelines:       make(map[string]*clientpb.Pipeline),
-		Sessions:        make(map[string]*Session),
-		Observers:       make(map[string]*Session),
-		finishCallbacks: &sync.Map{},
-		doneCallbacks:   &sync.Map{},
-		EventHook:       make(map[intermediate.EventCondition][]intermediate.OnEventFunc),
-		EventCallback:   make(map[string]func(*clientpb.Event)),
+func wrapToTaskContext(event *clientpb.Event) *clientpb.TaskContext {
+	return &clientpb.TaskContext{
+		Task:    event.Task,
+		Session: event.Session,
+		Spite:   event.Spite,
 	}
-	client, err := s.Rpc.LoginClient(context.Background(), &clientpb.LoginReq{
-		Name: config.Operator,
-		Host: config.Host,
-		Port: uint32(config.Port),
-	})
+}
+
+type Server struct {
+	*session.ServerStatus
+}
+
+// NewServer wraps session.ServerStatus into core.ServerStatus
+func NewServer(conn *grpc.ClientConn, config *mtls.ClientConfig) (*Server, error) {
+	s, err := session.InitServerStatus(conn, config)
 	if err != nil {
 		return nil, err
 	}
-	s.Client = client
-	s.Info, err = s.Rpc.GetBasic(context.Background(), &clientpb.Empty{})
-	if err != nil {
-		return nil, err
-	}
-
-	err = s.Update()
-	if err != nil {
-		return nil, err
-	}
-
 	events, err := s.GetEvent(context.Background(), &clientpb.Int{})
 	if err != nil {
 		return nil, err
 	}
 	for _, event := range events.GetEvents() {
-		s.handlerEvent(event)
+		s.HandlerEvent(event)
 	}
-	return s, nil
+	return &Server{ServerStatus: s}, nil
 }
 
-type Rpc struct {
-	clientrpc.MaliceRPCClient
-	listenerrpc.ListenerRPCClient
+func (s *Server) AddDoneCallback(task *clientpb.Task, callback session.TaskCallback) {
+	s.DoneCallbacks.Store(fmt.Sprintf("%s-%d", task.SessionId, task.TaskId), callback)
 }
 
-type ServerStatus struct {
-	*Rpc
-	Info   *clientpb.Basic
-	Client *clientpb.Client
-	*ActiveTarget
-	Clients         []*clientpb.Client
-	Listeners       map[string]*clientpb.Listener
-	Pipelines       map[string]*clientpb.Pipeline
-	Sessions        map[string]*Session
-	Observers       map[string]*Session
-	sessions        []*clientpb.Session
-	finishCallbacks *sync.Map
-	doneCallbacks   *sync.Map
-	EventStatus     bool
-	EventHook       map[intermediate.EventCondition][]intermediate.OnEventFunc
-	EventCallback   map[string]func(*clientpb.Event)
+func (s *Server) AddCallback(task *clientpb.Task, callback session.TaskCallback) {
+	s.FinishCallbacks.Store(fmt.Sprintf("%s-%d", task.SessionId, task.TaskId), callback)
 }
 
-func (s *ServerStatus) Update() error {
-	clients, err := s.Rpc.GetClients(context.Background(), &clientpb.Empty{})
+func (s *Server) triggerTaskDone(event *clientpb.Event) {
+	task := event.GetTask()
+	sess, err := s.GetOrUpdateSession(event.Task.SessionId)
 	if err != nil {
-		return err
-	}
-	for _, client := range clients.GetClients() {
-		s.Clients = append(s.Clients, client)
+		session.Log.Errorf("session not found: %s\n", event.Task.SessionId)
+		return
 	}
 
-	err = s.UpdateListener()
+	log := s.ObserverLog(event.Task.SessionId)
+	err = types.HandleMaleficError(event.Spite)
 	if err != nil {
-		return err
+		log.Errorf(logs.RedBold(err.Error()) + "\n")
+		return
 	}
+	taskContext := wrapToTaskContext(event)
+	HandlerTask(sess, taskContext, event.Message, event.Callee, false)
 
-	err = s.UpdatePipeline()
-	if err != nil {
-		return err
+	if callback, ok := s.DoneCallbacks.Load(fmt.Sprintf("%s-%d", task.SessionId, task.TaskId)); ok {
+		callback.(session.TaskCallback)(taskContext)
 	}
-
-	err = s.UpdateSessions(false)
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
-func (s *ServerStatus) AddSession(sess *clientpb.Session) *Session {
-	if origin, ok := s.Sessions[sess.SessionId]; ok {
-		origin.Session = sess
-		return origin
+func (s *Server) triggerTaskFinish(event *clientpb.Event) {
+	task := event.GetTask()
+	sess, err := s.GetOrUpdateSession(event.Task.SessionId)
+	if err != nil {
+		session.Log.Errorf("session not found: %s\n", event.Task.SessionId)
+		return
+	}
+
+	log := s.ObserverLog(event.Task.SessionId)
+	err = types.HandleMaleficError(event.Spite)
+	if err != nil {
+		log.Errorf(logs.RedBold(err.Error()) + "\n")
+		return
+	}
+	taskContext := wrapToTaskContext(event)
+	HandlerTask(sess, taskContext, event.Message, event.Callee, true)
+
+	callbackId := fmt.Sprintf("%s-%d", task.SessionId, task.TaskId)
+	if callback, ok := s.FinishCallbacks.Load(callbackId); ok {
+		callback.(session.TaskCallback)(taskContext)
+		s.FinishCallbacks.Delete(callbackId)
+		s.DoneCallbacks.Delete(callbackId)
+	}
+}
+
+func HandlerTask(sess *session.Session, ctx *clientpb.TaskContext, message []byte, callee string, isFinish bool) {
+	sess.Locker.Lock()
+	defer sess.Locker.Unlock()
+	log := sess.Log
+	var callback intermediate.ImplantCallback
+	fn, ok := intermediate.InternalFunctions[ctx.Task.Type]
+	if !ok {
+		log.Debugf("function %s not found\n", ctx.Task.Type)
+		status, err := output.ParseStatus(ctx)
+		if err != nil {
+			log.Importantf("parse status error: %s\n", err)
+			return
+		}
+		log.Importantf("task %d %t\n", ctx.Task.TaskId, status)
+		return
+	}
+	var prompt string
+	if isFinish {
+		prompt = "task finish"
+		if fn.FinishCallback == nil {
+			log.Consolef("%s not impl output impl\n", ctx.Task.Type)
+			return
+		}
+		callback = fn.FinishCallback
 	} else {
-		s.Sessions[sess.SessionId] = NewSession(sess, s)
-		return s.Sessions[sess.SessionId]
+		prompt = "task done"
+		if fn.DoneCallback == nil {
+			log.Debugf("%s not impl output impl\n", ctx.Task.Type)
+			return
+		}
+		callback = fn.DoneCallback
 	}
-}
 
-func (s *ServerStatus) UpdateSessions(all bool) error {
-	var sessions *clientpb.Sessions
+	s := logs.GreenBold(fmt.Sprintf("[%s.%d] %s (%s),%s\n",
+		ctx.Task.SessionId, ctx.Task.TaskId, prompt,
+		ctx.Task.Progress(),
+		message))
+
+	if callee != consts.CalleePty {
+		log.Importantf(s)
+	}
+
 	var err error
-	if s == nil {
-		return errors.New("You need login first")
-	}
-	sessions, err = s.Rpc.GetSessions(context.Background(), &clientpb.SessionRequest{
-		All: all,
-	})
-	if err != nil {
-		return err
-	}
-	s.sessions = sessions.Sessions
-	newSessions := make(map[string]*Session)
+	var resp string
 
-	for _, session := range sessions.GetSessions() {
-		if rawSess, ok := s.Sessions[session.SessionId]; ok {
-			rawSess.Session = session
-			newSessions[session.SessionId] = rawSess
-		} else {
-			newSessions[session.SessionId] = NewSession(session, s)
+	if isFinish {
+		log.FileLog(s)
+		resp, err = callback(ctx)
+		log.FileLog(resp + "\n")
+	} else {
+		resp, err = callback(ctx)
+	}
+
+	if err != nil {
+		log.Errorf(logs.RedBold(err.Error()))
+		return
+	}
+
+	if resp != "" && callee == consts.CalleeCMD {
+		tui.Down(1)
+		log.Console(resp + "\n")
+	}
+}
+
+func (s *Server) AddEventHook(event session.EventCondition, callback session.OnEventFunc) {
+	if _, ok := s.EventHook[event]; !ok {
+		s.EventHook[event] = []session.OnEventFunc{}
+	}
+	s.EventHook[event] = append(s.EventHook[event], callback)
+}
+
+func (s *Server) EventHandler() {
+	eventStream, err := s.Rpc.Events(context.Background(), &clientpb.Empty{})
+	if err != nil {
+		return
+	}
+	s.Update()
+	s.EventStatus = true
+	session.Log.Info("starting event loop\n")
+	defer func() {
+		session.Log.Warnf("event stream broken\n")
+		s.EventStatus = false
+	}()
+	for {
+		event, err := eventStream.Recv()
+		if err == io.EOF || event == nil {
+			return
 		}
-	}
-
-	s.Sessions = newSessions
-	return nil
-}
-
-func (s *ServerStatus) UpdateSession(sid string) (*Session, error) {
-	session, err := s.Rpc.GetSession(context.Background(), &clientpb.SessionRequest{SessionId: sid})
-	if err != nil {
-		return nil, err
-	}
-	if rawSess, ok := s.Sessions[session.SessionId]; ok {
-		rawSess.Session = session
-		return rawSess, nil
-	} else {
-		newSess := NewSession(session, s)
-		s.Sessions[session.SessionId] = newSess
-		return newSess, nil
-	}
-}
-
-func (s *ServerStatus) GetLocalSession(sid string) (*Session, bool) {
-	if sess, ok := s.Sessions[sid]; ok {
-		return sess, true
-	} else {
-		return nil, false
-	}
-}
-
-func (s *ServerStatus) GetOrUpdateSession(sid string) (*Session, error) {
-	if sess, ok := s.Sessions[sid]; ok {
-		return sess, nil
-	} else {
-		return s.UpdateSession(sid)
-	}
-}
-
-func (s *ServerStatus) AlivedSessions() []*clientpb.Session {
-	var alivedSessions []*clientpb.Session
-	for _, session := range s.sessions {
-		if session.IsAlive {
-			alivedSessions = append(alivedSessions, session)
+		for condition, fns := range s.EventHook {
+			if condition.Match(event) {
+				go func() {
+					for i, fn := range fns {
+						_, err := fn(event)
+						if err != nil {
+							if errors.Is(err, ErrLuaVMDead) {
+								s.EventHook[condition] = append(fns[:i], fns[i+1:]...)
+							} else {
+								session.Log.Errorf("error running event hook: %s", err)
+							}
+						}
+					}
+				}()
+			}
 		}
+
+		if fn, ok := s.EventCallback[event.Op]; ok {
+			fn(event)
+		}
+		go func() {
+			s.HandlerEvent(event)
+		}()
 	}
-	return alivedSessions
 }
 
-func (s *ServerStatus) UpdateTasks(session *Session) error {
-	if session == nil {
-		return errors.New("session is nil")
+func (s *Server) HandlerEvent(event *clientpb.Event) {
+	switch event.Type {
+	case consts.EventClient:
+		if event.Op == consts.CtrlClientJoin {
+			session.Log.Info(event.Formatted + "\n")
+		} else if event.Op == consts.CtrlClientLeft {
+			session.Log.Info(event.Formatted + "\n")
+		}
+	case consts.EventBroadcast:
+		session.Log.Info(event.Formatted + "\n")
+	case consts.EventSession:
+		s.handlerSession(event)
+	case consts.EventNotify:
+		session.Log.Important(event.Formatted + "\n")
+	case consts.EventJob:
+		s.handleJob(event)
+	case consts.EventListener:
+		session.Log.Important(event.Formatted + "\n")
+	case consts.EventTask:
+		s.handlerTask(event)
+	case consts.EventWebsite:
+		session.Log.Important(event.Formatted + "\n")
+	case consts.EventBuild:
+		session.Log.Important(event.Formatted + "\n")
+	case consts.EventPivot:
+		session.Log.Important(event.Formatted + "\n")
+	case consts.EventContext:
+		session.Log.Important(event.Formatted + "\n")
+	case consts.EventCert:
+		session.Log.Important(event.Formatted + "\n")
 	}
-	tasks, err := s.Rpc.GetTasks(context.Background(), &clientpb.TaskRequest{
-		SessionId: session.SessionId,
-	})
-	if err != nil {
-		return err
-	}
-
-	session.Tasks = &clientpb.Tasks{Tasks: tasks.Tasks}
-	return nil
 }
 
-func (s *ServerStatus) UpdateListener() error {
-	listeners, err := s.Rpc.GetListeners(context.Background(), &clientpb.Empty{})
-	if err != nil {
-		return err
+func (s *Server) handleJob(event *clientpb.Event) {
+	if event.Err != "" {
+		session.Log.Errorf("[%s] %s: %s\n", event.Type, event.Op, event.Err)
+		return
 	}
-	for _, listener := range listeners.GetListeners() {
-		s.Listeners[listener.Id] = listener
-	}
-	return nil
-}
-
-func (s *ServerStatus) UpdatePipeline() error {
-	pipelines, err := s.Rpc.ListPipelines(context.Background(), &clientpb.Listener{})
-	if err != nil {
-		return err
-	}
-	for _, pipeline := range pipelines.GetPipelines() {
+	pipeline := event.GetJob().GetPipeline()
+	switch event.Op {
+	case consts.CtrlPipelineSync:
 		s.Pipelines[pipeline.Name] = pipeline
+	case consts.CtrlPipelineStop:
+		delete(s.Pipelines, pipeline.Name)
+		session.Log.Important(event.Formatted + "\n")
+	default:
+		session.Log.Important(event.Formatted + "\n")
 	}
-	return nil
 }
 
-func (s *ServerStatus) AddObserver(session *Session) string {
-	Log.Infof("Add observer to %s", session.SessionId)
-	s.Observers[session.SessionId] = session
-	return session.SessionId
+func (s *Server) handlerTask(event *clientpb.Event) {
+	switch event.Op {
+	case consts.CtrlTaskCallback:
+		s.triggerTaskDone(event)
+	case consts.CtrlTaskFinish:
+		s.triggerTaskFinish(event)
+	case consts.CtrlTaskCancel:
+		session.Log.Importantf("[%s.%d] task canceled\n", event.Task.SessionId, event.Task.TaskId)
+	case consts.CtrlTaskError:
+		session.Log.Errorf("[%s.%d] %s\n", event.Task.SessionId, event.Task.TaskId, event.Err)
+	}
 }
 
-func (s *ServerStatus) RemoveObserver(observerID string) {
-	delete(s.Observers, observerID)
-}
-
-func (s *ServerStatus) ObserverLog(sessionId string) *Logger {
-	if s.Session != nil && s.Session.SessionId == sessionId {
-		return s.Session.Log
+func (s *Server) handlerSession(event *clientpb.Event) {
+	sid := event.Session.SessionId
+	switch event.Op {
+	case consts.CtrlSessionRegister:
+		s.AddSession(event.Session)
+		session.Log.Important(event.Formatted + "\n")
+	case consts.CtrlSessionUpdate:
+		s.AddSession(event.Session)
+	case consts.CtrlSessionTask:
+		session.Log.Info(event.Formatted + "\n")
+	case consts.CtrlSessionError:
+		log := s.ObserverLog(sid)
+		log.Error(event.Formatted + "\n")
+	case consts.CtrlSessionLog:
+		log := s.ObserverLog(sid)
+		log.Error(event.Formatted + "\n")
+	case consts.CtrlSessionDead:
+		session.Log.Important(event.Formatted + "\n")
+	case consts.CtrlSessionReborn:
+		s.AddSession(event.Session)
+		session.Log.Important(event.Formatted + "\n")
 	}
-
-	if observer, ok := s.Observers[sessionId]; ok {
-		return observer.Log
-	}
-	return MuteLog
 }

@@ -1,13 +1,13 @@
 package basic
 
 import (
-	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/IoM-go/consts"
+	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/session"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/encoders/hash"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/spf13/cobra"
 	"time"
 )
@@ -48,7 +48,7 @@ func InitCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func Init(con *repl.Console, sess *core.Session) (bool, error) {
+func Init(con *repl.Console, sess *session.Session) (bool, error) {
 	_, err := con.Rpc.InitBindSession(sess.Context(), &implantpb.Request{
 		Name: consts.ModuleInit,
 	})
@@ -58,11 +58,11 @@ func Init(con *repl.Console, sess *core.Session) (bool, error) {
 	return true, nil
 }
 
-func Get(con *repl.Console, sess *core.Session) (*clientpb.Task, error) {
+func Get(con *repl.Console, sess *session.Session) (*clientpb.Task, error) {
 	return con.Rpc.Ping(sess.Context(), &implantpb.Ping{Nonce: int32(cryptography.RandomInRange(0, 0x0fffffff))})
 }
 
-func Polling(con *repl.Console, sess *core.Session, interval uint64, force bool, tasks []uint32) (bool, error) {
+func Polling(con *repl.Console, sess *session.Session, interval uint64, force bool, tasks []uint32) (bool, error) {
 	u32tasks := make([]uint32, len(tasks))
 	for i, task := range tasks {
 		u32tasks[i] = uint32(task)

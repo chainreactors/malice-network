@@ -3,7 +3,7 @@ package cryptostream
 import (
 	"bytes"
 	"fmt"
-	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/IoM-go/consts"
 	"io"
 	"strings"
 )

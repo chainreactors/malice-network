@@ -3,11 +3,11 @@ package models
 import (
 	"encoding/json"
 	"errors"
+	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/session"
 	"time"
 
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/types"
 	"gorm.io/gorm"
 )
 
@@ -24,9 +24,9 @@ type Session struct {
 	ListenerID  string
 	IsAlive     bool
 	LastCheckin int64
-	IsRemoved   bool                  `gorm:"default:false"`
-	Data        *types.SessionContext `gorm:"-"`
-	DataString  string                `gorm:"column:data"`
+	IsRemoved   bool                    `gorm:"default:false"`
+	Data        *session.SessionContext `gorm:"-"`
+	DataString  string                  `gorm:"column:data"`
 
 	ProfileName string  `gorm:"index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:ProfileName;references:Name"`
 	Profile     Profile `gorm:"foreignKey:ProfileName;references:Name;"`

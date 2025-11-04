@@ -3,11 +3,11 @@ package repl
 import (
 	"context"
 	"fmt"
-	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
+	"github.com/chainreactors/IoM-go/session"
+	"github.com/chainreactors/IoM-go/types"
 	"github.com/chainreactors/malice-network/helper/intermediate"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
-	"github.com/chainreactors/malice-network/helper/utils/handler"
 	"github.com/chainreactors/mals"
 	"github.com/chainreactors/tui"
 	"reflect"
@@ -58,7 +58,7 @@ import (
 //	return plug, nil
 //}
 
-type implantFunc func(rpc clientrpc.MaliceRPCClient, sess *core.Session, params ...interface{}) (*clientpb.Task, error)
+type implantFunc func(rpc clientrpc.MaliceRPCClient, sess *session.Session, params ...interface{}) (*clientpb.Task, error)
 
 // ImplantFuncCallback, function internal callback func, retrun golang struct
 type ImplantFuncCallback func(content *clientpb.TaskContext) (interface{}, error)
@@ -90,7 +90,7 @@ func WrapClientCallback(callback ImplantFuncCallback) intermediate.ImplantCallba
 }
 
 func wrapImplantFunc(fun interface{}) implantFunc {
-	return func(rpc clientrpc.MaliceRPCClient, sess *core.Session, params ...interface{}) (*clientpb.Task, error) {
+	return func(rpc clientrpc.MaliceRPCClient, sess *session.Session, params ...interface{}) (*clientpb.Task, error) {
 		funcValue := reflect.ValueOf(fun)
 		funcType := funcValue.Type()
 
@@ -142,12 +142,12 @@ func WrapImplantFunc(con *Console, fun interface{}, callback ImplantFuncCallback
 	interFunc.ArgTypes = interFunc.ArgTypes[1:]
 	interFunc.HasLuaCallback = true
 	interFunc.Func = func(args ...interface{}) (interface{}, error) {
-		var sess *core.Session
+		var sess *session.Session
 		if len(args) == 0 {
 			return nil, fmt.Errorf("implant func first args must be session")
 		} else {
 			var ok bool
-			sess, ok = args[0].(*core.Session)
+			sess, ok = args[0].(*session.Session)
 			if !ok {
 				return nil, fmt.Errorf("implant func first args must be session")
 			}
@@ -171,7 +171,7 @@ func WrapImplantFunc(con *Console, fun interface{}, callback ImplantFuncCallback
 		}
 
 		tui.Down(1)
-		err = handler.HandleMaleficError(content.Spite)
+		err = types.HandleMaleficError(content.Spite)
 		if err != nil {
 			con.Log.Errorf(err.Error() + "\n")
 			return nil, err

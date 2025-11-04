@@ -2,17 +2,17 @@ package file
 
 import (
 	"fmt"
+	"github.com/chainreactors/IoM-go/consts"
+	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/session"
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"path/filepath"
 
 	"github.com/carapace-sh/carapace"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -101,7 +101,7 @@ func Register(con *repl.Console) {
 		consts.ModuleUpload,
 		Upload,
 		"bupload",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *session.Session, path string) (*clientpb.Task, error) {
 			return Upload(rpc, sess, path, filepath.Base(path), "0644", false)
 		},
 		output.ParseStatus,
@@ -111,7 +111,7 @@ func Register(con *repl.Console) {
 		"uploadraw",
 		UploadRaw,
 		"buploadraw",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, data, target_path string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *session.Session, data, target_path string) (*clientpb.Task, error) {
 			return UploadRaw(rpc, sess, data, target_path, "0644", false)
 		},
 		output.ParseStatus,

@@ -3,14 +3,14 @@ package build
 import (
 	"context"
 	"fmt"
+	consts "github.com/chainreactors/IoM-go/consts"
+	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
+	types2 "github.com/chainreactors/IoM-go/types"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/codenames"
-	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/encoders"
-	"github.com/chainreactors/malice-network/helper/errs"
 	profile2 "github.com/chainreactors/malice-network/helper/profile"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	selfType "github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
@@ -169,7 +169,7 @@ func (d *DockerBuilder) Execute() error {
 	case consts.CommandBuildPulse:
 		target, ok := consts.GetBuildTarget(d.config.Target)
 		if !ok {
-			return errs.ErrInvalidateTarget
+			return types2.ErrInvalidateTarget
 		}
 		var pulseOs string
 		if target.OS == consts.Windows {

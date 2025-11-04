@@ -4,10 +4,12 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
+	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
+	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/types"
 	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"math/big"
 	"os"
-	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
@@ -16,15 +18,10 @@ import (
 	"github.com/chainreactors/mals"
 	"github.com/kballard/go-shellquote"
 
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/helper/encoders/hash"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
-	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
-	"github.com/chainreactors/malice-network/helper/utils/handler"
 )
 
 const (
@@ -229,7 +226,7 @@ new_bin = new_binary("module", "filename", "args", true, 100, "amd64", "process"
 
 	// 打印 assembly
 	RegisterFunction("assemblyprint", func(task *clientpb.TaskContext) (string, error) {
-		err := handler.AssertStatusAndSpite(task.GetSpite(), types.MsgBinaryResponse)
+		err := types.AssertStatusAndSpite(task.GetSpite(), types.MsgBinaryResponse)
 		if err != nil {
 			return "", err
 		}
@@ -480,17 +477,6 @@ format_path("C:\\Windows\\System32\\calc.exe")
 
 	RegisterFunction("is_full_path", func(path string) bool {
 		return fileutils.CheckFullPath(path)
-	})
-
-	RegisterFunction("get_sess_dir", func(sessid string) string {
-		session_dir := filepath.Join(assets.GetTempDir(), sessid)
-		if _, err := os.Stat(session_dir); os.IsNotExist(err) {
-			err = os.MkdirAll(session_dir, 0700)
-			if err != nil {
-				logs.Log.Errorf(err.Error())
-			}
-		}
-		return session_dir
 	})
 
 	// 0o744 0744

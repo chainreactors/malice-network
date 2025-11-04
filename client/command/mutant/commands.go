@@ -2,11 +2,11 @@ package mutant
 
 import (
 	"github.com/carapace-sh/carapace"
+	"github.com/chainreactors/IoM-go/consts"
+	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/intermediate"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/mals"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"

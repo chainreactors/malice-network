@@ -3,10 +3,10 @@ package rpc
 import (
 	"context"
 	"fmt"
+	consts "github.com/chainreactors/IoM-go/consts"
+	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
+	errs "github.com/chainreactors/IoM-go/types"
 
-	"github.com/chainreactors/malice-network/helper/consts"
-	errs "github.com/chainreactors/malice-network/helper/errs"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"

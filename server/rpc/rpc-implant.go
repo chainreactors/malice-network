@@ -3,14 +3,12 @@ package rpc
 import (
 	"context"
 	"fmt"
+	consts "github.com/chainreactors/IoM-go/consts"
+	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
+	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	types2 "github.com/chainreactors/IoM-go/types"
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/cryptography"
-	"github.com/chainreactors/malice-network/helper/errs"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/types"
-	"github.com/chainreactors/malice-network/helper/utils/handler"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"time"
@@ -110,7 +108,7 @@ func (rpc *Server) Sleep(ctx context.Context, req *implantpb.Timer) (*clientpb.T
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgEmpty)
+	go greq.HandlerResponse(ch, types2.MsgEmpty)
 	if session, err := getSession(ctx); err == nil {
 		session.Jitter = req.Jitter
 		session.Expression = req.Expression
@@ -125,7 +123,7 @@ func (rpc *Server) Sleep(ctx context.Context, req *implantpb.Timer) (*clientpb.T
 }
 
 func (rpc *Server) Suicide(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
-	err := handler.AssertRequestName(req, consts.ModuleSuicide)
+	err := types2.AssertRequestName(req, consts.ModuleSuicide)
 	if err != nil {
 		return nil, err
 	}
@@ -138,7 +136,7 @@ func (rpc *Server) Suicide(ctx context.Context, req *implantpb.Request) (*client
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgEmpty)
+	go greq.HandlerResponse(ch, types2.MsgEmpty)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -152,12 +150,12 @@ func (rpc *Server) Switch(ctx context.Context, req *implantpb.Switch) (*clientpb
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types.MsgEmpty)
+	go greq.HandlerResponse(ch, types2.MsgEmpty)
 	return greq.Task.ToProtobuf(), nil
 }
 
 func (rpc *Server) InitBindSession(ctx context.Context, req *implantpb.Request) (*clientpb.Empty, error) {
-	err := handler.AssertRequestName(req, consts.ModuleInit)
+	err := types2.AssertRequestName(req, consts.ModuleInit)
 	if err != nil {
 		return nil, err
 	}
@@ -191,7 +189,7 @@ func hasIntersection(slice1, slice2 []uint32) bool {
 func (rpc *Server) Polling(ctx context.Context, req *clientpb.Polling) (*clientpb.Empty, error) {
 	sess, err := core.Sessions.Get(req.SessionId)
 	if err != nil {
-		return nil, errs.ErrNotFoundSession
+		return nil, types2.ErrNotFoundSession
 	}
 	go func() {
 		logs.Log.Debugf("polling:%s %s, interval %d", req.Id, sess.ID, req.Interval)
@@ -220,7 +218,7 @@ func (rpc *Server) Polling(ctx context.Context, req *clientpb.Polling) (*clientp
 				}
 			}
 			err = sess.Request(
-				&clientpb.SpiteRequest{Session: sess.ToProtobufLite(), Task: nil, Spite: types.BuildPingSpite()},
+				&clientpb.SpiteRequest{Session: sess.ToProtobufLite(), Task: nil, Spite: types2.BuildPingSpite()},
 				pipelinesCh[sess.PipelineID])
 			if err != nil {
 				return

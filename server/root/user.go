@@ -3,10 +3,10 @@ package root
 import (
 	"context"
 	"fmt"
+	"github.com/chainreactors/IoM-go/mtls"
+	"github.com/chainreactors/IoM-go/proto/client/rootpb"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/proto/client/rootpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
-	"github.com/chainreactors/malice-network/helper/utils/mtls"
 	"google.golang.org/protobuf/proto"
 	"gopkg.in/yaml.v3"
 	"os"

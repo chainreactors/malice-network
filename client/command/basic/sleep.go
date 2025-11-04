@@ -2,11 +2,11 @@ package basic
 
 import (
 	"fmt"
-	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
+	"github.com/chainreactors/IoM-go/session"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/gorhill/cronexpr"
 	"github.com/spf13/cobra"
 	"strconv"
@@ -29,7 +29,7 @@ func SleepCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func Sleep(rpc clientrpc.MaliceRPCClient, session *core.Session, expression string, jitter float64) (*clientpb.Task, error) {
+func Sleep(rpc clientrpc.MaliceRPCClient, session *session.Session, expression string, jitter float64) (*clientpb.Task, error) {
 	if _, err := strconv.Atoi(expression); err == nil {
 		expression = fmt.Sprintf("*/%s * * * * * *", expression)
 	}

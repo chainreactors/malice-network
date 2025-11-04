@@ -2,16 +2,16 @@ package modules
 
 import (
 	"errors"
+	consts "github.com/chainreactors/IoM-go/consts"
+	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
+	"github.com/chainreactors/IoM-go/session"
+	types2 "github.com/chainreactors/IoM-go/types"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/build"
-	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/errs"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"github.com/spf13/cobra"
@@ -81,7 +81,7 @@ func handleModuleBuild(cmd *cobra.Command, con *repl.Console, modules, thirdModu
 	}
 	target, ok := consts.GetBuildTargetNameByArchOS(con.GetInteractive().Session.Os.Arch, con.Session.Os.Name)
 	if !ok {
-		return errs.ErrInvalidateTarget
+		return types2.ErrInvalidateTarget
 	}
 	var _ *types.ProfileParams
 	if len(modules) != 0 {
@@ -118,7 +118,7 @@ func handleModuleBuild(cmd *cobra.Command, con *repl.Console, modules, thirdModu
 	return nil
 }
 
-func LoadModule(rpc clientrpc.MaliceRPCClient, session *core.Session, bundle string, path string) (*clientpb.Task, error) {
+func LoadModule(rpc clientrpc.MaliceRPCClient, session *session.Session, bundle string, path string) (*clientpb.Task, error) {
 	data, err := pe.Unpack(path)
 	if err != nil {
 		return nil, err

@@ -2,9 +2,9 @@ package rpc
 
 import (
 	"context"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/types"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/types"
 )
 
 func (rpc *Server) RegQuery(ctx context.Context, req *implantpb.RegistryRequest) (*clientpb.Task, error) {

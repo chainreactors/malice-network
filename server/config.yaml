@@ -14,7 +14,7 @@ listeners:
       enable: true
       key: maliceofinternal
       type: aes
-    name: bind_pipeline
+    name: bind_pipelines
   enable: true
   http:
   - enable: true

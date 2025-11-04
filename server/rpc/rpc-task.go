@@ -2,12 +2,10 @@ package rpc
 
 import (
 	"context"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/errs"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/types"
-	"github.com/chainreactors/malice-network/helper/utils/handler"
+	consts "github.com/chainreactors/IoM-go/consts"
+	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
+	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/types"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 )
@@ -28,7 +26,7 @@ func getTaskContext(sess *core.Session, task *core.Task, index int32) (*clientpb
 			Spite:   msg,
 		}, nil
 	}
-	return nil, errs.ErrNotFoundTaskContent
+	return nil, types.ErrNotFoundTaskContent
 }
 
 func (rpc *Server) GetTasks(ctx context.Context, req *clientpb.TaskRequest) (*clientpb.Tasks, error) {
@@ -41,7 +39,7 @@ func (rpc *Server) GetTasks(ctx context.Context, req *clientpb.TaskRequest) (*cl
 	} else {
 		sess, err := core.Sessions.Get(req.SessionId)
 		if err != nil {
-			return nil, errs.ErrNotFoundSession
+			return nil, types.ErrNotFoundSession
 		}
 		return sess.Tasks.ToProtobuf(), nil
 	}
@@ -50,11 +48,11 @@ func (rpc *Server) GetTasks(ctx context.Context, req *clientpb.TaskRequest) (*cl
 func (rpc *Server) GetTaskContent(ctx context.Context, req *clientpb.Task) (*clientpb.TaskContext, error) {
 	sess, err := core.Sessions.Get(req.SessionId)
 	if err != nil {
-		return nil, errs.ErrNotFoundSession
+		return nil, types.ErrNotFoundSession
 	}
 	task := sess.Tasks.Get(req.TaskId)
 	if task == nil {
-		return nil, errs.ErrNotFoundTask
+		return nil, types.ErrNotFoundTask
 	}
 
 	return getTaskContext(sess, task, req.Need)
@@ -63,15 +61,15 @@ func (rpc *Server) GetTaskContent(ctx context.Context, req *clientpb.Task) (*cli
 func (rpc *Server) WaitTaskContent(ctx context.Context, req *clientpb.Task) (*clientpb.TaskContext, error) {
 	sess, err := core.Sessions.Get(req.SessionId)
 	if err != nil {
-		return nil, errs.ErrNotFoundSession
+		return nil, types.ErrNotFoundSession
 	}
 	task := sess.Tasks.Get(req.TaskId)
 	if task == nil {
-		return nil, errs.ErrNotFoundTask
+		return nil, types.ErrNotFoundTask
 	}
 
 	if int(req.Need) > task.Total {
-		return nil, errs.ErrTaskIndexExceed
+		return nil, types.ErrTaskIndexExceed
 	}
 
 	content, err := getTaskContext(sess, task, req.Need)
@@ -83,7 +81,7 @@ func (rpc *Server) WaitTaskContent(ctx context.Context, req *clientpb.Task) (*cl
 		select {
 		case _, ok := <-task.DoneCh:
 			if !ok {
-				return nil, errs.ErrNotFoundTaskContent
+				return nil, types.ErrNotFoundTaskContent
 			}
 			content, err = getTaskContext(sess, task, req.Need)
 			if err != nil {
@@ -97,11 +95,11 @@ func (rpc *Server) WaitTaskContent(ctx context.Context, req *clientpb.Task) (*cl
 func (rpc *Server) WaitTaskFinish(ctx context.Context, req *clientpb.Task) (*clientpb.TaskContext, error) {
 	sess, err := core.Sessions.Get(req.SessionId)
 	if err != nil {
-		return nil, errs.ErrNotFoundSession
+		return nil, types.ErrNotFoundSession
 	}
 	task := sess.Tasks.Get(req.TaskId)
 	if task == nil {
-		return nil, errs.ErrNotFoundTask
+		return nil, types.ErrNotFoundTask
 	}
 
 	select {
@@ -115,17 +113,17 @@ func (rpc *Server) WaitTaskFinish(ctx context.Context, req *clientpb.Task) (*cli
 			}, nil
 		}
 	}
-	return nil, errs.ErrNotFoundTaskContent
+	return nil, types.ErrNotFoundTaskContent
 }
 
 func (rpc *Server) GetAllTaskContent(ctx context.Context, req *clientpb.Task) (*clientpb.TaskContexts, error) {
 	sess, err := core.Sessions.Get(req.SessionId)
 	if err != nil {
-		return nil, errs.ErrNotFoundSession
+		return nil, types.ErrNotFoundSession
 	}
 	task := sess.Tasks.Get(req.TaskId)
 	if task == nil {
-		return nil, errs.ErrNotFoundTask
+		return nil, types.ErrNotFoundTask
 	}
 	msgs, ok := sess.GetMessages(int(task.Id))
 	if ok {
@@ -135,7 +133,7 @@ func (rpc *Server) GetAllTaskContent(ctx context.Context, req *clientpb.Task) (*
 			Spites:  msgs,
 		}, nil
 	}
-	return nil, errs.ErrNotFoundTask
+	return nil, types.ErrNotFoundTask
 }
 
 func (rpc *Server) GetFiles(ctx context.Context, req *clientpb.Session) (*clientpb.Files, error) {
@@ -155,7 +153,7 @@ func (rpc *Server) CancelTask(ctx context.Context, req *implantpb.TaskCtrl) (*cl
 	}
 	task := sess.Tasks.Get(req.TaskId)
 	if task == nil {
-		return nil, errs.ErrNotFoundTask
+		return nil, types.ErrNotFoundTask
 	}
 
 	greq, err := newGenericRequest(ctx, req)
@@ -179,7 +177,7 @@ func (rpc *Server) CancelTask(ctx context.Context, req *implantpb.TaskCtrl) (*cl
 }
 
 func (rpc *Server) ListTasks(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
-	err := handler.AssertRequestName(req, consts.ModuleListTask)
+	err := types.AssertRequestName(req, consts.ModuleListTask)
 	if err != nil {
 		return nil, err
 	}

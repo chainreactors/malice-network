@@ -2,12 +2,12 @@ package sys
 
 import (
 	"fmt"
-	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/IoM-go/consts"
+	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
+	"github.com/chainreactors/IoM-go/session"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
@@ -23,7 +23,7 @@ func NetstatCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func Netstat(rpc clientrpc.MaliceRPCClient, session *core.Session) (*clientpb.Task, error) {
+func Netstat(rpc clientrpc.MaliceRPCClient, session *session.Session) (*clientpb.Task, error) {
 	task, err := rpc.Netstat(session.Context(), &implantpb.Request{
 		Name: consts.ModuleNetstat,
 	})
@@ -38,7 +38,7 @@ func RegisterNetstatFunc(con *repl.Console) {
 		consts.ModuleNetstat,
 		Netstat,
 		"bnetstat",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *session.Session) (*clientpb.Task, error) {
 			return Netstat(rpc, sess)
 		},
 		func(ctx *clientpb.TaskContext) (interface{}, error) {

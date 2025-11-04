@@ -2,14 +2,15 @@ package context
 
 import (
 	"fmt"
+	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/spf13/cobra"
 	"os"
 	"path/filepath"
 
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 )
 
 func SyncCmd(cmd *cobra.Command, con *repl.Console) error {

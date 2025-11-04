@@ -3,13 +3,13 @@ package basic
 import (
 	"errors"
 	"github.com/carapace-sh/carapace"
+	consts "github.com/chainreactors/IoM-go/consts"
+	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
+	"github.com/chainreactors/IoM-go/session"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/intermediate"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/mals"
 	"github.com/chainreactors/rem/x/utils"
@@ -132,7 +132,7 @@ func Register(con *repl.Console) {
 	con.RegisterImplantFunc(consts.ModuleSleep,
 		Sleep,
 		"bsleep",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, expression string, jitter uint64) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *session.Session, expression string, jitter uint64) (*clientpb.Task, error) {
 
 			return Sleep(rpc, sess, expression, sess.Timer.Jitter)
 		},
@@ -178,23 +178,23 @@ func Register(con *repl.Console) {
 			"sess:special session",
 		}, []string{"task"})
 
-	intermediate.RegisterFunction("with_value", func(session *core.Session, key, val string) (*core.Session, error) {
+	intermediate.RegisterFunction("with_value", func(session *session.Session, key, val string) (*session.Session, error) {
 		return session.WithValue(key, val)
 	})
 
-	intermediate.RegisterFunction("with_values", func(session *core.Session, kv []string) (*core.Session, error) {
+	intermediate.RegisterFunction("with_values", func(session *session.Session, kv []string) (*session.Session, error) {
 		return session.WithValue(kv...)
 	})
 
-	intermediate.RegisterFunction("with_context", func(session *core.Session, typ string) (*core.Session, error) {
+	intermediate.RegisterFunction("with_context", func(session *session.Session, typ string) (*session.Session, error) {
 		return session.WithValue("nonce", utils.RandomString(8), "context", typ)
 	})
 
-	con.RegisterServerFunc("barch", func(con *repl.Console, sess *core.Session) (string, error) {
+	con.RegisterServerFunc("barch", func(con *repl.Console, sess *session.Session) (string, error) {
 		return sess.Os.Arch, nil
 	}, nil)
 
-	con.RegisterServerFunc("active", func(con *repl.Console) (*core.Session, error) {
+	con.RegisterServerFunc("active", func(con *repl.Console) (*session.Session, error) {
 		return con.GetInteractive().Clone(consts.CalleeMal), nil
 	}, &mals.Helper{
 		Short:   "get current session",
@@ -202,23 +202,23 @@ func Register(con *repl.Console) {
 		Example: "active()",
 	})
 
-	con.RegisterServerFunc("is64", func(con *repl.Console, sess *core.Session) (bool, error) {
+	con.RegisterServerFunc("is64", func(con *repl.Console, sess *session.Session) (bool, error) {
 		return sess.Os.Arch == "x64", nil
 	}, nil)
 
-	con.RegisterServerFunc("isactive", func(con *repl.Console, sess *core.Session) (bool, error) {
+	con.RegisterServerFunc("isactive", func(con *repl.Console, sess *session.Session) (bool, error) {
 		return sess.IsAlive, nil
 	}, nil)
 
-	con.RegisterServerFunc("isadmin", func(con *repl.Console, sess *core.Session) (bool, error) {
+	con.RegisterServerFunc("isadmin", func(con *repl.Console, sess *session.Session) (bool, error) {
 		return sess.IsPrivilege, nil
 	}, nil)
 
-	con.RegisterServerFunc("isbeacon", func(con *repl.Console, sess *core.Session) (bool, error) {
+	con.RegisterServerFunc("isbeacon", func(con *repl.Console, sess *session.Session) (bool, error) {
 		return sess.Type == consts.CommandBuildBeacon, nil
 	}, nil)
 
-	con.RegisterServerFunc("bdata", func(con *repl.Console, sess *core.Session) (map[string]interface{}, error) {
+	con.RegisterServerFunc("bdata", func(con *repl.Console, sess *session.Session) (map[string]interface{}, error) {
 		if sess == nil {
 			return nil, errors.New("session is nil")
 		}
@@ -228,7 +228,7 @@ func Register(con *repl.Console) {
 		Output:  []string{"map[string]interface{}"},
 		Example: "bdata(active())",
 	})
-	con.RegisterServerFunc("data", func(con *repl.Console, sess *core.Session) (map[string]interface{}, error) {
+	con.RegisterServerFunc("data", func(con *repl.Console, sess *session.Session) (map[string]interface{}, error) {
 		if sess == nil {
 			return nil, errors.New("session is nil")
 		}

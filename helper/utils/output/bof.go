@@ -4,10 +4,9 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"io"
 	"strings"
-
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 )
 
 const (

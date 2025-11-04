@@ -2,8 +2,8 @@ package rpc
 
 import (
 	"context"
-	"github.com/chainreactors/malice-network/helper/errs"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/types"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/saas"
 )
@@ -12,16 +12,16 @@ func (rpc *Server) GetLicenseInfo(ctx context.Context, req *clientpb.Empty) (*cl
 	saasConfig := configs.GetSaasConfig()
 
 	if !saasConfig.Enable {
-		return nil, errs.ErrSaasUnable
+		return nil, types.ErrSaasUnable
 	}
 	if saasConfig.Token == "" {
-		return nil, errs.ErrLicenseTokenNotFound
+		return nil, types.ErrLicenseTokenNotFound
 	}
 
 	client := saas.GetSaasClient()
 	info, _, err := client.GetLicenseInfo()
 	if err != nil {
-		return nil, errs.ErrSaasUnable
+		return nil, types.ErrSaasUnable
 	}
 	return info, nil
 }

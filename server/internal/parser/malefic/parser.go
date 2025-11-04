@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"github.com/chainreactors/IoM-go/consts"
+	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/types"
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/cryptography"
-	"github.com/chainreactors/malice-network/helper/errs"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/utils/compress"
 	"github.com/gookit/config/v2"
 	"google.golang.org/protobuf/proto"
@@ -59,12 +59,12 @@ func (parser *MaleficParser) readHeader(conn io.ReadWriteCloser) (uint32, uint32
 	}
 
 	if header[MsgStart] != parser.StartDelimiter {
-		return 0, 0, errs.ErrInvalidStart
+		return 0, 0, types.ErrInvalidStart
 	}
 	sessionId := ParseSid(header)
 	length := binary.LittleEndian.Uint32(header[MsgSessionEnd:])
 	if length > uint32(config.Uint(consts.ConfigMaxPacketLength))+consts.KB*16 {
-		return 0, 0, fmt.Errorf("%w,expect: %d, recv: %d", errs.ErrPacketTooLarge, config.Int(consts.ConfigMaxPacketLength), length)
+		return 0, 0, fmt.Errorf("%w,expect: %d, recv: %d", types.ErrPacketTooLarge, config.Int(consts.ConfigMaxPacketLength), length)
 	}
 
 	return sessionId, length + 1, nil
@@ -77,7 +77,7 @@ func (parser *MaleficParser) ReadHeader(conn io.ReadWriteCloser) (uint32, uint32
 	}
 	//logs.Log.Debugf("%v read packet from %s , %d bytes", sid, conn.RemoteAddr(), length)
 	if length > uint32(config.Uint(consts.ConfigMaxPacketLength))+consts.KB*16 {
-		return 0, 0, fmt.Errorf("%w,expect: %d, recv: %d", errs.ErrPacketTooLarge, config.Int(consts.ConfigMaxPacketLength), length)
+		return 0, 0, fmt.Errorf("%w,expect: %d, recv: %d", types.ErrPacketTooLarge, config.Int(consts.ConfigMaxPacketLength), length)
 	}
 	return sid, length, nil
 }
@@ -85,7 +85,7 @@ func (parser *MaleficParser) ReadHeader(conn io.ReadWriteCloser) (uint32, uint32
 func (parser *MaleficParser) Parse(buf []byte) (*implantpb.Spites, error) {
 	length := len(buf) - 1
 	if buf[length] != parser.EndDelimiter {
-		return nil, errs.ErrInvalidEnd
+		return nil, types.ErrInvalidEnd
 	}
 	buf = buf[:length]
 

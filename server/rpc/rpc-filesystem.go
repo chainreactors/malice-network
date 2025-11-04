@@ -2,15 +2,14 @@ package rpc
 
 import (
 	"context"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/types"
-	"github.com/chainreactors/malice-network/helper/utils/handler"
+	"github.com/chainreactors/IoM-go/consts"
+	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/types"
 )
 
 func (rpc *Server) Pwd(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
-	err := handler.AssertRequestName(req, consts.ModulePwd)
+	err := types.AssertRequestName(req, consts.ModulePwd)
 	if err != nil {
 		return nil, err
 	}
@@ -29,7 +28,7 @@ func (rpc *Server) Pwd(ctx context.Context, req *implantpb.Request) (*clientpb.T
 }
 
 func (rpc *Server) Ls(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
-	err := handler.AssertRequestName(req, consts.ModuleLs)
+	err := types.AssertRequestName(req, consts.ModuleLs)
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +46,7 @@ func (rpc *Server) Ls(ctx context.Context, req *implantpb.Request) (*clientpb.Ta
 }
 
 func (rpc *Server) Cd(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
-	err := handler.AssertRequestName(req, consts.ModuleCd)
+	err := types.AssertRequestName(req, consts.ModuleCd)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +64,7 @@ func (rpc *Server) Cd(ctx context.Context, req *implantpb.Request) (*clientpb.Ta
 }
 
 func (rpc *Server) Mkdir(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
-	err := handler.AssertRequestName(req, consts.ModuleMkdir)
+	err := types.AssertRequestName(req, consts.ModuleMkdir)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +82,7 @@ func (rpc *Server) Mkdir(ctx context.Context, req *implantpb.Request) (*clientpb
 }
 
 func (rpc *Server) Rm(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
-	err := handler.AssertRequestName(req, consts.ModuleRm)
+	err := types.AssertRequestName(req, consts.ModuleRm)
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +100,7 @@ func (rpc *Server) Rm(ctx context.Context, req *implantpb.Request) (*clientpb.Ta
 }
 
 func (rpc *Server) Cat(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
-	err := handler.AssertRequestName(req, consts.ModuleCat)
+	err := types.AssertRequestName(req, consts.ModuleCat)
 	if err != nil {
 		return nil, err
 	}
@@ -119,7 +118,7 @@ func (rpc *Server) Cat(ctx context.Context, req *implantpb.Request) (*clientpb.T
 }
 
 func (rpc *Server) Mv(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
-	err := handler.AssertRequestName(req, consts.ModuleMv)
+	err := types.AssertRequestName(req, consts.ModuleMv)
 	if err != nil {
 		return nil, err
 	}
@@ -137,7 +136,7 @@ func (rpc *Server) Mv(ctx context.Context, req *implantpb.Request) (*clientpb.Ta
 }
 
 func (rpc *Server) Cp(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
-	err := handler.AssertRequestName(req, consts.ModuleCp)
+	err := types.AssertRequestName(req, consts.ModuleCp)
 	if err != nil {
 		return nil, err
 	}
@@ -155,7 +154,7 @@ func (rpc *Server) Cp(ctx context.Context, req *implantpb.Request) (*clientpb.Ta
 }
 
 func (rpc *Server) Chmod(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
-	err := handler.AssertRequestName(req, consts.ModuleChmod)
+	err := types.AssertRequestName(req, consts.ModuleChmod)
 	if err != nil {
 		return nil, err
 	}
@@ -187,7 +186,7 @@ func (rpc *Server) Chown(ctx context.Context, req *implantpb.ChownRequest) (*cli
 }
 
 func (rpc *Server) EnumDrivers(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
-	err := handler.AssertRequestName(req, consts.ModuleEnumDrivers)
+	err := types.AssertRequestName(req, consts.ModuleEnumDrivers)
 	if err != nil {
 		return nil, err
 	}

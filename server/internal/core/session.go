@@ -4,6 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	consts "github.com/chainreactors/IoM-go/consts"
+	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
+	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/session"
+	"github.com/chainreactors/IoM-go/types"
 	"github.com/gookit/config/v2"
 	"github.com/gorhill/cronexpr"
 	"google.golang.org/grpc"
@@ -17,11 +22,6 @@ import (
 	"time"
 
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/errs"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/helper/utils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db"
@@ -108,7 +108,7 @@ func RegisterSession(req *clientpb.RegisterSession) (*Session, error) {
 		Target:         req.Target,
 		Tasks:          NewTasks(),
 		CreatedAt:      time.Unix(current_time, 0),
-		SessionContext: types.NewSessionContext(req),
+		SessionContext: session.NewSessionContext(req),
 		Taskseq:        1,
 		Cache:          cache,
 		responses:      &sync.Map{},
@@ -138,12 +138,12 @@ func RecoverSession(sess *models.Session) (*Session, error) {
 	}
 
 	// 安全地处理SessionContext
-	var sessionContext *types.SessionContext
+	var sessionContext *session.SessionContext
 	if sess.DataString != "" {
-		sessionContext, _ = types.RecoverSessionContext(sess.DataString)
+		sessionContext, _ = session.RecoverSessionContext(sess.DataString)
 	}
 	if sessionContext == nil {
-		sessionContext = &types.SessionContext{}
+		sessionContext = &session.SessionContext{}
 	}
 
 	s := &Session{
@@ -221,7 +221,7 @@ type Session struct {
 	LastCheckin int64
 	CreatedAt   time.Time
 	Tasks       *Tasks // task manager
-	*types.SessionContext
+	*session.SessionContext
 
 	// Age 密码学安全管理器（运行时，负责密钥交换和轮换）
 	SecureManager *SecureManager
@@ -613,7 +613,7 @@ func (s *sessions) Get(sessionID string) (*Session, error) {
 	if val, ok := s.active.Load(sessionID); ok {
 		return val.(*Session), nil
 	}
-	return nil, errs.ErrNotFoundSession
+	return nil, types.ErrNotFoundSession
 }
 
 func (s *sessions) Add(session *Session) *Session {

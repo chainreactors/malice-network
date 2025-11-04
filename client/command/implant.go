@@ -3,6 +3,8 @@ package command
 import (
 	"fmt"
 	"github.com/carapace-sh/carapace"
+	consts "github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/session"
 	"github.com/chainreactors/tui"
 	"github.com/reeflective/console"
 	"github.com/spf13/cobra"
@@ -33,7 +35,6 @@ import (
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/plugin"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
 )
 
 func ImplantCmd(con *repl.Console) *cobra.Command {
@@ -73,7 +74,7 @@ func makeRunners(implantCmd *cobra.Command, con *repl.Console) (pre, post func(c
 			sid = con.ActiveTarget.Session.SessionId
 		}
 
-		var session *core.Session
+		var session *session.Session
 		var ok bool
 
 		if session, ok = con.GetLocalSession(sid); !ok {

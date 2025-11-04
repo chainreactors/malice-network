@@ -4,13 +4,11 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/types"
 	"github.com/chainreactors/malice-network/helper/encoders"
 	"github.com/chainreactors/malice-network/helper/encoders/hash"
-	"github.com/chainreactors/malice-network/helper/errs"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/types"
-	"github.com/chainreactors/malice-network/helper/utils/handler"
 	"io"
 )
 
@@ -53,7 +51,7 @@ func (parser *PulseParser) readHeader(conn io.ReadWriteCloser) (uint32, uint32, 
 	}
 
 	if header[MsgStart] != parser.StartDelimiter {
-		return 0, 0, errs.ErrInvalidStart
+		return 0, 0, types.ErrInvalidStart
 	}
 	magic := encoders.BytesToUint32(header[MsgMagicStart:MsgMagicEnd])
 	artifact := binary.LittleEndian.Uint32(header[MsgMagicEnd:])
@@ -66,7 +64,7 @@ func (parser *PulseParser) ReadHeader(conn io.ReadWriteCloser) (uint32, uint32, 
 		return 0, 0, err
 	}
 	if magic != parser.Magic {
-		return 0, 0, errs.ErrInvalidMagic
+		return 0, 0, types.ErrInvalidMagic
 	}
 	end := make([]byte, 1)
 	n, err := conn.Read(end)
@@ -74,7 +72,7 @@ func (parser *PulseParser) ReadHeader(conn io.ReadWriteCloser) (uint32, uint32, 
 		return 0, 0, err
 	}
 	if n != 1 || end[0] != parser.EndDelimiter {
-		return 0, 0, errs.ErrInvalidEnd
+		return 0, 0, types.ErrInvalidEnd
 	}
 	return magic, artifact, nil
 }
@@ -86,10 +84,10 @@ func (parser *PulseParser) Parse(buf []byte) (*implantpb.Spites, error) {
 func (parser *PulseParser) Marshal(spites *implantpb.Spites, magic uint32) ([]byte, error) {
 	var buf bytes.Buffer
 	if len(spites.Spites) == 0 {
-		return nil, errs.ErrNullSpites
+		return nil, types.ErrNullSpites
 	}
 
-	err := handler.AssertSpite(spites.Spites[0], types.MsgInit)
+	err := types.AssertSpite(spites.Spites[0], types.MsgInit)
 	if err != nil {
 		return nil, err
 	}

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/parsers"
 	"strings"
 )

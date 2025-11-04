@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/session"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/intermediate"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/spf13/cobra"
 	"html/template"
 	"os"
@@ -126,7 +126,7 @@ func renderAuditHTML(entries []*clientpb.Audit) ([]byte, error) {
 				logs.Log.Errorf("failed to parse task: %s", err)
 				audit.TaskResult = fmt.Sprintf("Error parsing task: %s", err.Error())
 			} else {
-				audit.TaskResult = core.RemoveANSI(resp)
+				audit.TaskResult = session.RemoveANSI(resp)
 			}
 		} else {
 			audit.TaskResult = "No task result available"

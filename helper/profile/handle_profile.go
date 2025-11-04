@@ -4,14 +4,12 @@ import (
 	"archive/zip"
 	"bytes"
 	"fmt"
+	"github.com/chainreactors/IoM-go/consts"
+	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
-
-	"github.com/chainreactors/malice-network/helper/consts"
-
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 )
 
 // ProcessAutorunZip

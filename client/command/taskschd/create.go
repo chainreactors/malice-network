@@ -1,12 +1,12 @@
 package taskschd
 
 import (
-	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/IoM-go/consts"
+	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
+	"github.com/chainreactors/IoM-go/session"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/spf13/cobra"
 	"strings"
@@ -30,7 +30,7 @@ func TaskSchdCreateCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func TaskSchdCreate(rpc clientrpc.MaliceRPCClient, session *core.Session, name, path, taskFolder, triggerType, startBoundary string) (*clientpb.Task, error) {
+func TaskSchdCreate(rpc clientrpc.MaliceRPCClient, session *session.Session, name, path, taskFolder, triggerType, startBoundary string) (*clientpb.Task, error) {
 	request := &implantpb.TaskScheduleRequest{
 		Type: consts.ModuleTaskSchdCreate,
 		Taskschd: &implantpb.TaskSchedule{

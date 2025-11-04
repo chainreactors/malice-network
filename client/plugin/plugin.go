@@ -2,12 +2,12 @@ package plugin
 
 import (
 	"errors"
+	"github.com/chainreactors/IoM-go/session"
 	"os"
 	"path/filepath"
 
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/helper/intermediate"
 	"gopkg.in/yaml.v3"
 )
 
@@ -33,7 +33,7 @@ type Plugin interface {
 	Manifest() *MalManiFest
 	Commands() Commands
 	Destroy() error
-	GetEvents() map[intermediate.EventCondition]intermediate.OnEventFunc
+	GetEvents() map[session.EventCondition]session.OnEventFunc
 }
 
 func NewPlugin(manifest *MalManiFest) (*DefaultPlugin, error) {
@@ -49,7 +49,7 @@ func NewPlugin(manifest *MalManiFest) (*DefaultPlugin, error) {
 		Content:     content,
 		Path:        path,
 		CMDs:        make(Commands),
-		Events:      make(map[intermediate.EventCondition]intermediate.OnEventFunc),
+		Events:      make(map[session.EventCondition]session.OnEventFunc),
 	}
 
 	return plug, nil
@@ -61,7 +61,7 @@ type DefaultPlugin struct {
 	Content []byte
 	Path    string
 	CMDs    Commands
-	Events  map[intermediate.EventCondition]intermediate.OnEventFunc
+	Events  map[session.EventCondition]session.OnEventFunc
 }
 
 func (plug *DefaultPlugin) Manifest() *MalManiFest {
@@ -72,7 +72,7 @@ func (plug *DefaultPlugin) Commands() Commands {
 	return plug.CMDs
 }
 
-func (plug *DefaultPlugin) GetEvents() map[intermediate.EventCondition]intermediate.OnEventFunc {
+func (plug *DefaultPlugin) GetEvents() map[session.EventCondition]session.OnEventFunc {
 	return plug.Events
 }
 

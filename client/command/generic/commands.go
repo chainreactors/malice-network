@@ -3,6 +3,9 @@ package generic
 import (
 	"errors"
 	"fmt"
+	consts "github.com/chainreactors/IoM-go/consts"
+	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/session"
 	"github.com/kballard/go-shellquote"
 	"os"
 	"os/exec"
@@ -12,11 +15,8 @@ import (
 	"github.com/spf13/pflag"
 
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/intermediate"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 )
 
 func Commands(con *repl.Console) []*cobra.Command {
@@ -126,7 +126,7 @@ license
 	return []*cobra.Command{loginCmd, versionCmd, exitCmd, broadcastCmd, cmdCmd, pivotCmd, licenseInfoCmd}
 }
 
-func Log(con *repl.Console, sess *core.Session, msg string, notify bool) (bool, error) {
+func Log(con *repl.Console, sess *session.Session, msg string, notify bool) (bool, error) {
 	_, err := con.Rpc.SessionEvent(sess.Context(), &clientpb.Event{
 		Type:    consts.EventSession,
 		Op:      consts.CtrlSessionLog,
@@ -152,7 +152,7 @@ func Register(con *repl.Console) {
 		return con
 	}, nil)
 
-	con.RegisterServerFunc("sessions", func(con *repl.Console) map[string]*core.Session {
+	con.RegisterServerFunc("sessions", func(con *repl.Console) map[string]*session.Session {
 		return con.Sessions
 	}, nil)
 
@@ -202,17 +202,17 @@ func Register(con *repl.Console) {
 		})
 	}, nil)
 
-	con.RegisterServerFunc("callback_log", func(con *repl.Console, sess *core.Session, notify bool) intermediate.BuiltinCallback {
+	con.RegisterServerFunc("callback_log", func(con *repl.Console, sess *session.Session, notify bool) intermediate.BuiltinCallback {
 		return func(content interface{}) (interface{}, error) {
 			return Log(con, sess, fmt.Sprintf("%v", content), notify)
 		}
 	}, nil)
 
-	con.RegisterServerFunc("log", func(con *repl.Console, sess *core.Session, msg string, notify bool) (bool, error) {
+	con.RegisterServerFunc("log", func(con *repl.Console, sess *session.Session, msg string, notify bool) (bool, error) {
 		return Log(con, sess, msg, notify)
 	}, nil)
 
-	con.RegisterServerFunc("blog", func(con *repl.Console, sess *core.Session, msg string) (bool, error) {
+	con.RegisterServerFunc("blog", func(con *repl.Console, sess *session.Session, msg string) (bool, error) {
 		return Log(con, sess, msg, false)
 	}, nil)
 

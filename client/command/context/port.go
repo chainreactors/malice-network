@@ -2,10 +2,10 @@ package context
 
 import (
 	"fmt"
-	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/IoM-go/consts"
+	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/session"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
@@ -61,7 +61,7 @@ func GetPorts(con *repl.Console) ([]*clientpb.Context, error) {
 	return contexts.Contexts, nil
 }
 
-func AddPort(con *repl.Console, sess *core.Session, task *clientpb.Task, ports []*output.Port) (bool, error) {
+func AddPort(con *repl.Console, sess *session.Session, task *clientpb.Task, ports []*output.Port) (bool, error) {
 	_, err := con.Rpc.AddPort(con.Context(), &clientpb.Context{
 		Session: sess.Session,
 		Task:    task,

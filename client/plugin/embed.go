@@ -3,6 +3,7 @@ package plugin
 import (
 	"embed"
 	"fmt"
+	"github.com/chainreactors/IoM-go/session"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/intl"
 	lua "github.com/yuin/gopher-lua"
@@ -13,8 +14,6 @@ import (
 	"strings"
 
 	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/helper/intermediate"
 )
 
 // MalLevel 表示mal插件的级别
@@ -85,7 +84,7 @@ func NewEmbedPlugin(malPath, malName string, level MalLevel) (*EmbedPlugin, erro
 		Content:     content,
 		Path:        malPath, // 使用嵌入式路径
 		CMDs:        make(Commands),
-		Events:      make(map[intermediate.EventCondition]intermediate.OnEventFunc),
+		Events:      make(map[session.EventCondition]session.OnEventFunc),
 	}
 
 	// 创建LuaPlugin
@@ -186,7 +185,7 @@ func (plug *EmbedPlugin) registerEmbedResourceFunctions() {
 	}, nil)
 
 	// 重写find_resource函数 - 查找架构特定的资源文件
-	plug.registerFunction("find_resource", func(sess *core.Session, base string, ext string) (string, error) {
+	plug.registerFunction("find_resource", func(sess *session.Session, base string, ext string) (string, error) {
 		// 这里简化处理，直接使用默认架构
 		filename := fmt.Sprintf("%s.%s.%s", base, sess.Os.Arch, ext)
 
@@ -200,7 +199,7 @@ func (plug *EmbedPlugin) registerEmbedResourceFunctions() {
 	}, nil)
 
 	// 重写find_global_resource函数 - 查找全局架构特定的资源文件
-	plug.registerFunction("find_global_resource", func(sess *core.Session, base string, ext string) (string, error) {
+	plug.registerFunction("find_global_resource", func(sess *session.Session, base string, ext string) (string, error) {
 		filename := fmt.Sprintf("%s.%s.%s", base, sess.Os.Arch, ext)
 
 		if globalManager := GetGlobalMalManager(); globalManager != nil {

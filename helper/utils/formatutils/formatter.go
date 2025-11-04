@@ -3,7 +3,7 @@ package formatutils
 import (
 	"encoding/base64"
 	"fmt"
-	"github.com/chainreactors/malice-network/helper/consts"
+	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/encoders"
 	"strings"

@@ -2,9 +2,9 @@ package listener
 
 import (
 	"github.com/carapace-sh/carapace"
+	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )

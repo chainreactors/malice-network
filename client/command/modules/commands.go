@@ -2,11 +2,11 @@ package modules
 
 import (
 	"github.com/carapace-sh/carapace"
+	"github.com/chainreactors/IoM-go/consts"
+	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/session"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
@@ -191,7 +191,7 @@ func Register(con *repl.Console) {
 		},
 		[]string{"task"})
 
-	con.RegisterServerFunc("check_module", func(con *repl.Console, sess *core.Session, module string) (bool, error) {
+	con.RegisterServerFunc("check_module", func(con *repl.Console, sess *session.Session, module string) (bool, error) {
 		session, err := con.UpdateSession(sess.SessionId)
 		if err != nil {
 			return false, err

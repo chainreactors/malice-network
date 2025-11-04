@@ -3,12 +3,12 @@ package service
 import (
 	"errors"
 	"fmt"
-	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/IoM-go/consts"
+	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
+	"github.com/chainreactors/IoM-go/session"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
@@ -26,7 +26,7 @@ func ServiceListCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func ServiceList(rpc clientrpc.MaliceRPCClient, session *core.Session) (*clientpb.Task, error) {
+func ServiceList(rpc clientrpc.MaliceRPCClient, session *session.Session) (*clientpb.Task, error) {
 	return rpc.ServiceList(session.Context(), &implantpb.Request{
 		Name: consts.ModuleServiceList,
 	})

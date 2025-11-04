@@ -1,8 +1,8 @@
 package explorer
 
 import (
+	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/spf13/cobra"
 )
 

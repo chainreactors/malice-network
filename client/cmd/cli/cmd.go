@@ -2,20 +2,20 @@ package cli
 
 import (
 	"fmt"
+	"github.com/chainreactors/IoM-go/session"
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"os"
 
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/gookit/config/v2"
 	"github.com/gookit/config/v2/yaml"
 )
 
 func init() {
-	logs.Log.SetFormatter(core.DefaultLogStyle)
-	core.Log.SetFormatter(core.DefaultLogStyle)
+	logs.Log.SetFormatter(session.DefaultLogStyle)
+	session.Log.SetFormatter(session.DefaultLogStyle)
 	config.WithOptions(func(opt *config.Options) {
 		opt.DecoderConfig.TagName = "config"
 		opt.ParseDefault = true

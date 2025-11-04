@@ -1,12 +1,12 @@
 package privilege
 
 import (
-	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/IoM-go/consts"
+	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
+	"github.com/chainreactors/IoM-go/session"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/spf13/cobra"
 )
@@ -32,7 +32,7 @@ func RunasCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func Runas(rpc clientrpc.MaliceRPCClient, session *core.Session, username, domain, password, program, args string, useProfile, useEnv, netonly bool) (*clientpb.Task, error) {
+func Runas(rpc clientrpc.MaliceRPCClient, session *session.Session, username, domain, password, program, args string, useProfile, useEnv, netonly bool) (*clientpb.Task, error) {
 	request := &implantpb.RunAsRequest{
 		Username:   username,
 		Domain:     domain,

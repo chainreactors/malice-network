@@ -3,6 +3,10 @@ package rpc
 import (
 	"context"
 	"errors"
+	consts "github.com/chainreactors/IoM-go/consts"
+	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	types2 "github.com/chainreactors/IoM-go/types"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"net"
 	"os"
@@ -12,12 +16,6 @@ import (
 	"time"
 
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/errs"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/types"
-	"github.com/chainreactors/malice-network/helper/utils/handler"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"google.golang.org/grpc/credentials"
@@ -67,7 +65,7 @@ func (r *GenericRequest) InitSpite(ctx context.Context) (*implantpb.Spite, error
 		Async:   true,
 	}
 	var err error
-	spite, err = types.BuildSpite(spite, r.Message)
+	spite, err = types2.BuildSpite(spite, r.Message)
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +96,7 @@ func (r *GenericRequest) NewSpite(msg proto.Message) (*implantpb.Spite, error) {
 		Async:   true,
 	}
 	var err error
-	spite, err = types.BuildSpite(spite, msg)
+	spite, err = types2.BuildSpite(spite, msg)
 	if err != nil {
 		return nil, err
 	}
@@ -123,10 +121,10 @@ func (r *GenericRequest) HandlerSpite(spite *implantpb.Spite) error {
 	return nil
 }
 
-func (r *GenericRequest) HandlerResponse(ch chan *implantpb.Spite, typ types.MsgName, callbacks ...func(spite *implantpb.Spite)) {
+func (r *GenericRequest) HandlerResponse(ch chan *implantpb.Spite, typ types2.MsgName, callbacks ...func(spite *implantpb.Spite)) {
 	resp := <-ch
 
-	err := handler.AssertStatusAndSpite(resp, typ)
+	err := types2.AssertStatusAndSpite(resp, typ)
 	if err != nil {
 		logs.Log.Debug(err)
 		r.Task.Panic(buildErrorEvent(r.Task, err))
@@ -153,14 +151,14 @@ func buildErrorEvent(task *core.Task, err error) core.Event {
 	var eventErr string
 
 	switch {
-	case errors.Is(err, handler.ErrNilStatus):
-		eventErr = handler.ErrNilStatus.Error()
-	case errors.Is(err, handler.ErrAssertFailure):
-		eventErr = handler.ErrAssertFailure.Error()
-	case errors.Is(err, handler.ErrNilResponseBody):
-		eventErr = handler.ErrNilResponseBody.Error()
-	case errors.Is(err, errs.ErrMissingRequestField):
-		eventErr = errs.ErrMissingRequestField.Error()
+	case errors.Is(err, types2.ErrNilStatus):
+		eventErr = types2.ErrNilStatus.Error()
+	case errors.Is(err, types2.ErrAssertFailure):
+		eventErr = types2.ErrAssertFailure.Error()
+	case errors.Is(err, types2.ErrNilResponseBody):
+		eventErr = types2.ErrNilResponseBody.Error()
+	case errors.Is(err, types2.ErrMissingRequestField):
+		eventErr = types2.ErrMissingRequestField.Error()
 	default:
 		eventErr = err.Error()
 	}
@@ -173,7 +171,7 @@ func buildErrorEvent(task *core.Task, err error) core.Event {
 	}
 }
 
-func (rpc *Server) GenericInternal(ctx context.Context, req proto.Message, expect types.MsgName, callbacks ...func(spite *implantpb.Spite)) (*clientpb.Task, error) {
+func (rpc *Server) GenericInternal(ctx context.Context, req proto.Message, expect types2.MsgName, callbacks ...func(spite *implantpb.Spite)) (*clientpb.Task, error) {
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err
@@ -194,7 +192,7 @@ func (rpc *Server) GenericHandler(ctx context.Context, req *GenericRequest) (cha
 		return nil, err
 	}
 	if pipelinesCh[req.Session.PipelineID] == nil {
-		return nil, errs.ErrNotFoundPipeline
+		return nil, types2.ErrNotFoundPipeline
 	}
 	out, err := req.Session.RequestWithAsync(
 		&clientpb.SpiteRequest{Session: req.Session.ToProtobufLite(), Task: req.Task.ToProtobuf(), Spite: spite},
@@ -215,7 +213,7 @@ func (rpc *Server) StreamGenericHandler(ctx context.Context, req *GenericRequest
 		return nil, nil, err
 	}
 	if pipelinesCh[req.Session.PipelineID] == nil {
-		return nil, nil, errs.ErrNotFoundPipeline
+		return nil, nil, types2.ErrNotFoundPipeline
 	}
 	in, out, err := req.Session.RequestWithStream(
 		&clientpb.SpiteRequest{Session: req.Session.ToProtobufLite(), Task: req.Task.ToProtobuf(), Spite: spite},
@@ -242,12 +240,12 @@ func (rpc *Server) GetBasic(ctx context.Context, _ *clientpb.Empty) (*clientpb.B
 func getSessionID(ctx context.Context) (string, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
-		return "", errs.ErrNotFoundSession
+		return "", types2.ErrNotFoundSession
 	}
 	if sid := md.Get("session_id"); len(sid) > 0 {
 		return sid[0], nil
 	} else {
-		return "", errs.ErrNotFoundSession
+		return "", types2.ErrNotFoundSession
 	}
 }
 
@@ -279,12 +277,12 @@ func getSession(ctx context.Context) (*core.Session, error) {
 func getListenerID(ctx context.Context) (string, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
-		return "", errs.ErrNotFoundListener
+		return "", types2.ErrNotFoundListener
 	}
 	if sid := md.Get("listener_id"); len(sid) > 0 {
 		return sid[0], nil
 	} else {
-		return "", errs.ErrNotFoundListener
+		return "", types2.ErrNotFoundListener
 	}
 }
 
@@ -331,12 +329,12 @@ func getTimestamp(ctx context.Context) int64 {
 func getPipelineID(ctx context.Context) (string, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
-		return "", errs.ErrNotFoundPipeline
+		return "", types2.ErrNotFoundPipeline
 	}
 	if sid := md.Get("pipeline_id"); len(sid) > 0 {
 		return sid[0], nil
 	} else {
-		return "", errs.ErrNotFoundPipeline
+		return "", types2.ErrNotFoundPipeline
 	}
 }
 
@@ -374,7 +372,7 @@ func getContextNonce(ctx context.Context) (string, string) {
 	return contextType, nonce
 }
 
-func Handler(ctx context.Context, rpc *Server, req proto.Message, expect types.MsgName, callbacks ...func(spite *implantpb.Spite)) (*clientpb.Task, error) {
+func Handler(ctx context.Context, rpc *Server, req proto.Message, expect types2.MsgName, callbacks ...func(spite *implantpb.Spite)) (*clientpb.Task, error) {
 	greq, err := newGenericRequest(ctx, req)
 	if err != nil {
 		return nil, err

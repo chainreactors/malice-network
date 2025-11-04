@@ -3,13 +3,13 @@ package build
 import (
 	"encoding/base64"
 	"fmt"
+	consts "github.com/chainreactors/IoM-go/consts"
+	types2 "github.com/chainreactors/IoM-go/types"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/encoders"
-	"github.com/chainreactors/malice-network/helper/errs"
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
@@ -274,7 +274,7 @@ func processProfileOnlyCase(profilePath string, params *types.ProfileParams) (st
 	}
 
 	if len(filePaths) == 0 {
-		return "", "", errs.ErrNoAutoRunFile
+		return "", "", types2.ErrNoAutoRunFile
 	}
 
 	zipData, err := fileutils.CompressFilesZip(filePaths)

@@ -2,16 +2,16 @@ package reg
 
 import (
 	"encoding/hex"
+	"github.com/chainreactors/IoM-go/consts"
+	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/session"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"strconv"
 	"strings"
 
-	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/spf13/cobra"
 )
@@ -37,7 +37,7 @@ func RegAddCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func RegAdd(rpc clientrpc.MaliceRPCClient, session *core.Session, hive, path string, valueName, valueType, data string) (*clientpb.Task, error) {
+func RegAdd(rpc clientrpc.MaliceRPCClient, session *session.Session, hive, path string, valueName, valueType, data string) (*clientpb.Task, error) {
 	request := &implantpb.RegistryWriteRequest{
 		Hive: hive,
 		Path: fileutils.FormatWindowPath(path),

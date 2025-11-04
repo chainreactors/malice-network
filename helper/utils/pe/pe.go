@@ -3,7 +3,7 @@ package pe
 import (
 	"bytes"
 	"encoding/binary"
-	"github.com/chainreactors/malice-network/helper/consts"
+	consts "github.com/chainreactors/IoM-go/consts"
 	"path/filepath"
 )
 

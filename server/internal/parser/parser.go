@@ -3,14 +3,14 @@ package parser
 import (
 	"errors"
 	"fmt"
+	"github.com/chainreactors/IoM-go/consts"
+	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/types"
 	"io"
 	"net"
 
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/errs"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/server/internal/parser/malefic"
 	"github.com/chainreactors/malice-network/server/internal/parser/pulse"
 )
@@ -45,7 +45,7 @@ func NewParser(name string) (*MessageParser, error) {
 	case consts.ImplantPulse:
 		return &MessageParser{Implant: name, PacketParser: pulse.NewPulseParser()}, nil
 	default:
-		return nil, errs.ErrInvalidImplant
+		return nil, types.ErrInvalidImplant
 	}
 }
 

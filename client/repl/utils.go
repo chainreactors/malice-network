@@ -2,8 +2,8 @@ package repl
 
 import (
 	"fmt"
-	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/helper/consts"
+	consts "github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/session"
 	"github.com/kballard/go-shellquote"
 	"github.com/mattn/go-tty"
 	"github.com/muesli/termenv"
@@ -85,9 +85,9 @@ func NewSessionColor(prePrompt, sId string) string {
 	var sessionPrompt string
 	runes := []rune(sId)
 	if termenv.HasDarkBackground() {
-		sessionPrompt = fmt.Sprintf("%s [%s]> ", core.GroupStyle.Render(prePrompt), core.NameStyle.Render(string(runes)))
+		sessionPrompt = fmt.Sprintf("%s [%s]> ", session.GroupStyle.Render(prePrompt), session.NameStyle.Render(string(runes)))
 	} else {
-		sessionPrompt = fmt.Sprintf("%s [%s]> ", core.GroupStyle.Render(prePrompt), core.NameStyle.Render(string(runes)))
+		sessionPrompt = fmt.Sprintf("%s [%s]> ", session.GroupStyle.Render(prePrompt), session.NameStyle.Render(string(runes)))
 	}
 	return sessionPrompt
 }
@@ -120,5 +120,5 @@ func RunCommand(con *Console, cmdline interface{}) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return core.RemoveANSI(core.Stdout.Range(start, time.Now())), nil
+	return session.RemoveANSI(session.Stdout.Range(start, time.Now())), nil
 }

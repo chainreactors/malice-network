@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command"
 	"github.com/chainreactors/malice-network/client/command/addon"
@@ -36,16 +38,13 @@ import (
 	"github.com/chainreactors/malice-network/client/command/website"
 	"github.com/chainreactors/malice-network/client/plugin"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/intermediate"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/gookit/config/v2"
 	"github.com/gookit/config/v2/yaml"
 	"github.com/spf13/cobra"
 	"io"
 	"os"
 )
-
 
 func init() {
 	config.WithOptions(func(opt *config.Options) {

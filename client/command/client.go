@@ -1,6 +1,7 @@
 package command
 
 import (
+	consts "github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/malice-network/client/command/audit"
 	"github.com/reeflective/console"
 	"github.com/spf13/cobra"
@@ -23,7 +24,6 @@ import (
 	"github.com/chainreactors/malice-network/client/command/sessions"
 	"github.com/chainreactors/malice-network/client/command/website"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
 )
 
 func BindCommonCommands(bind BindFunc) {

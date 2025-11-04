@@ -3,10 +3,10 @@ package configs
 import (
 	"crypto/x509/pkix"
 	"fmt"
+	consts "github.com/chainreactors/IoM-go/consts"
+	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"os"
 
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/types"
 	cryptostream "github.com/chainreactors/malice-network/server/internal/stream"
 	"golang.org/x/exp/slices"

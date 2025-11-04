@@ -2,8 +2,8 @@ package rpc
 
 import (
 	"context"
-	"github.com/chainreactors/malice-network/helper/errs"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/types"
 	"github.com/chainreactors/malice-network/helper/utils/configutil"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
@@ -12,7 +12,7 @@ import (
 func (rpc *Server) GetGithubConfig(ctx context.Context, req *clientpb.Empty) (*clientpb.GithubActionBuildConfig, error) {
 	githubConfig := configs.GetGithubConfig()
 	if githubConfig == nil {
-		return nil, errs.ErrNotFoundGithubConfig
+		return nil, types.ErrNotFoundGithubConfig
 	}
 	return &clientpb.GithubActionBuildConfig{
 		Owner:      githubConfig.Owner,
@@ -38,7 +38,7 @@ func (rpc *Server) UpdateGithubConfig(ctx context.Context, req *clientpb.GithubA
 func (rpc *Server) GetNotifyConfig(ctx context.Context, req *clientpb.Empty) (*clientpb.Notify, error) {
 	notifyConfig := configs.GetNotifyConfig()
 	if notifyConfig == nil {
-		return nil, errs.ErrNotFoundNotifyConfig
+		return nil, types.ErrNotFoundNotifyConfig
 	}
 	if notifyConfig.Telegram == nil {
 		notifyConfig.Telegram = &configs.TelegramConfig{}

@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
-	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/helper/encoders/traffic"
 	"io/fs"
 	insecureRand "math/rand"
@@ -15,18 +14,19 @@ import (
 )
 
 var (
-	TrafficEncoderFS = PassthroughEncoderFS{}
-	PNG              = PNGEncoder{}
-	Nop              = NoEncoder{}
+	TrafficEncoderFS   = PassthroughEncoderFS{}
+	PNG                = PNGEncoder{}
+	Nop                = NoEncoder{}
+	TrafficEncodersDir = "" // Set by application during initialization
 )
 
-func init() {
-	// TODO set English dictionary
-	//SetEnglishDictionary(assets.English())
+// InitTrafficEncoders initializes the traffic encoders with the given root directory
+func InitTrafficEncoders(rootDir string) error {
+	TrafficEncodersDir = rootDir
 	TrafficEncoderFS = PassthroughEncoderFS{
-		rootDir: filepath.Join(assets.GetRootAppDir(), "traffic-encoders"),
+		rootDir: filepath.Join(rootDir, "traffic-encoders"),
 	}
-	loadTrafficEncodersFromFS(TrafficEncoderFS, func(msg string) {
+	return loadTrafficEncodersFromFS(TrafficEncoderFS, func(msg string) {
 		// TODO - log this to the server log trafficEncoderLog.Debugf("[traffic-encoder] %s", msg)
 	})
 }

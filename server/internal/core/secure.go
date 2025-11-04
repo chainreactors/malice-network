@@ -1,7 +1,7 @@
 package core
 
 import (
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 )
 
 // SecureManager 专注于密钥交换请求和响应处理

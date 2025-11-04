@@ -1,14 +1,14 @@
 package exec
 
 import (
+	"github.com/chainreactors/IoM-go/consts"
+	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
+	"github.com/chainreactors/IoM-go/session"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/intermediate"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
@@ -25,7 +25,7 @@ func ExecuteAssemblyCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func ExecuteAssembly(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, args []string, out bool, param map[string]string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
+func ExecuteAssembly(rpc clientrpc.MaliceRPCClient, sess *session.Session, path string, args []string, out bool, param map[string]string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 	binary, err := output.NewExecutable(consts.ModuleExecuteAssembly, path, args, sess.Os.Arch, out, sac)
 	if err != nil {
 		return nil, err
@@ -50,7 +50,7 @@ func InlineAssemblyCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func InlineAssembly(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, args []string, out bool, param map[string]string) (*clientpb.Task, error) {
+func InlineAssembly(rpc clientrpc.MaliceRPCClient, sess *session.Session, path string, args []string, out bool, param map[string]string) (*clientpb.Task, error) {
 	binary, err := output.NewExecutable(consts.ModuleExecuteAssembly, path, args, sess.Os.Arch, out, nil)
 	if err != nil {
 		return nil, err
@@ -68,7 +68,7 @@ func RegisterAssemblyFunc(con *repl.Console) {
 		consts.ModuleExecuteAssembly,
 		ExecuteAssembly,
 		"bexecute_assembly",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, path, args string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *session.Session, path, args string) (*clientpb.Task, error) {
 			cmdline, err := shellquote.Split(args)
 			if err != nil {
 				return nil, err

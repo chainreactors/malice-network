@@ -1,12 +1,12 @@
 package sys
 
 import (
-	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/IoM-go/consts"
+	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
+	"github.com/chainreactors/IoM-go/session"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/spf13/cobra"
 )
@@ -22,7 +22,7 @@ func WhoamiCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func Whoami(rpc clientrpc.MaliceRPCClient, session *core.Session) (*clientpb.Task, error) {
+func Whoami(rpc clientrpc.MaliceRPCClient, session *session.Session) (*clientpb.Task, error) {
 	task, err := rpc.Whoami(session.Context(), &implantpb.Request{
 		Name: consts.ModuleWhoami,
 	})
@@ -37,7 +37,7 @@ func RegisterWhoamiFunc(con *repl.Console) {
 		consts.ModuleWhoami,
 		Whoami,
 		"bwhoami",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *session.Session) (*clientpb.Task, error) {
 			return Whoami(rpc, sess)
 		},
 		output.ParseResponse,

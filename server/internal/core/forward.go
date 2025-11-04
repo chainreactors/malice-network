@@ -2,16 +2,16 @@ package core
 
 import (
 	"context"
+	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/proto/services/listenerrpc"
+	types2 "github.com/chainreactors/IoM-go/types"
 	"strconv"
 	"sync"
 	"time"
 	"unsafe"
 
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
-	"github.com/chainreactors/malice-network/helper/types"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/proto"
 )
@@ -123,9 +123,9 @@ func (f *Forward) Handler() {
 			_, err := f.ListenerRpc.Checkin(f.Context(msg.SessionID), &implantpb.Ping{})
 			if err != nil {
 				logs.Log.Debug(err)
-				spite, _ := types.BuildSpite(
+				spite, _ := types2.BuildSpite(
 					&implantpb.Spite{
-						Name: types.MsgInit.String(),
+						Name: types2.MsgInit.String(),
 					},
 					&implantpb.Init{Data: (*[4]byte)(unsafe.Pointer(&msg.RawID))[:]})
 				err = Connections.Push(msg.SessionID, &clientpb.SpiteRequest{

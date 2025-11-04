@@ -1,11 +1,11 @@
 package basic
 
 import (
-	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
+	"github.com/chainreactors/IoM-go/session"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/utils"
 	"github.com/spf13/cobra"
 )
@@ -32,6 +32,6 @@ func SwitchCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func Switch(rpc clientrpc.MaliceRPCClient, session *core.Session, urls []string) (*clientpb.Task, error) {
+func Switch(rpc clientrpc.MaliceRPCClient, session *session.Session, urls []string) (*clientpb.Task, error) {
 	return rpc.Switch(session.Context(), &implantpb.Switch{Urls: urls})
 }

@@ -1,13 +1,13 @@
 package sessions
 
 import (
-	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/IoM-go/session"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/spf13/cobra"
 )
 
 func ObserveCmd(cmd *cobra.Command, con *repl.Console) error {
-	var session *core.Session
+	var session *session.Session
 	isList, _ := cmd.Flags().GetBool("list")
 	if isList {
 		for i, ob := range con.Observers {

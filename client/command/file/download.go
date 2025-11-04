@@ -1,11 +1,11 @@
 package file
 
 import (
-	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
+	"github.com/chainreactors/IoM-go/session"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/spf13/cobra"
 	"path/filepath"
 )
@@ -23,7 +23,7 @@ func DownloadCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func Download(rpc clientrpc.MaliceRPCClient, session *core.Session, path string, is_dir bool) (*clientpb.Task, error) {
+func Download(rpc clientrpc.MaliceRPCClient, session *session.Session, path string, is_dir bool) (*clientpb.Task, error) {
 	task, err := rpc.Download(session.Context(), &implantpb.DownloadRequest{
 		Name: filepath.Base(path),
 		Path: path,

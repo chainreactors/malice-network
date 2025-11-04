@@ -2,13 +2,11 @@ package rpc
 
 import (
 	"context"
+	consts "github.com/chainreactors/IoM-go/consts"
+	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
+	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/types"
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/errs"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/types"
-	"github.com/chainreactors/malice-network/helper/utils/handler"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
@@ -95,7 +93,7 @@ func (rpc *Server) StopRem(ctx context.Context, req *clientpb.CtrlPipeline) (*cl
 	}
 	ok := core.Listeners.RemovePipeline(job.Pipeline)
 	if !ok {
-		return nil, errs.ErrNotFoundListener
+		return nil, types.ErrNotFoundListener
 	}
 	core.Listeners.PushCtrl(consts.CtrlRemStop, job.Pipeline)
 	err = db.DisablePipeline(job.Name)
@@ -113,7 +111,7 @@ func (rpc *Server) DeleteRem(ctx context.Context, req *clientpb.CtrlPipeline) (*
 	rem := remDB.ToProtobuf()
 	ok := core.Listeners.RemovePipeline(rem)
 	if !ok {
-		return nil, errs.ErrNotFoundListener
+		return nil, types.ErrNotFoundListener
 	}
 	lns, err := core.Listeners.Get(req.ListenerId)
 	if err != nil {
@@ -133,13 +131,13 @@ func (rpc *Server) DeleteRem(ctx context.Context, req *clientpb.CtrlPipeline) (*
 }
 
 func (rpc *Server) RemDial(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
-	err := handler.AssertRequestName(req, consts.ModuleRemDial)
+	err := types.AssertRequestName(req, consts.ModuleRemDial)
 	if err != nil {
 		return nil, err
 	}
 	pid := req.Params["pipeline_id"]
 	if pid == "" {
-		return nil, errs.ErrNotFoundPipeline
+		return nil, types.ErrNotFoundPipeline
 	}
 	req.Params = nil
 	greq, err := newGenericRequest(ctx, req)
@@ -207,7 +205,7 @@ func (rpc *Server) RemDial(ctx context.Context, req *implantpb.Request) (*client
 func (rpc *Server) RemAgentCtrl(ctx context.Context, req *clientpb.REMAgent) (*clientpb.Empty, error) {
 	pipe, ok := core.Listeners.Find(req.PipelineId)
 	if !ok {
-		return nil, errs.ErrNotFoundListener
+		return nil, types.ErrNotFoundListener
 	}
 	lns, err := core.Listeners.Get(pipe.ListenerId)
 	if err != nil {
@@ -249,7 +247,7 @@ func (rpc *Server) RemAgentCtrl(ctx context.Context, req *clientpb.REMAgent) (*c
 func (rpc *Server) RemAgentLog(ctx context.Context, req *clientpb.REMAgent) (*clientpb.RemLog, error) {
 	pipe, ok := core.Listeners.Find(req.PipelineId)
 	if !ok {
-		return nil, errs.ErrNotFoundListener
+		return nil, types.ErrNotFoundListener
 	}
 	lns, err := core.Listeners.Get(pipe.ListenerId)
 	if err != nil {
@@ -273,7 +271,7 @@ func (rpc *Server) RemAgentLog(ctx context.Context, req *clientpb.REMAgent) (*cl
 func (rpc *Server) RemAgentStop(ctx context.Context, req *clientpb.REMAgent) (*clientpb.Empty, error) {
 	pipe, ok := core.Listeners.Find(req.PipelineId)
 	if !ok {
-		return nil, errs.ErrNotFoundListener
+		return nil, types.ErrNotFoundListener
 	}
 	lns, err := core.Listeners.Get(pipe.ListenerId)
 	if err != nil {

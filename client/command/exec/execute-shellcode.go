@@ -2,14 +2,14 @@ package exec
 
 import (
 	"fmt"
+	"github.com/chainreactors/IoM-go/consts"
+	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
+	"github.com/chainreactors/IoM-go/session"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/malice-network/helper/utils/pe"
@@ -31,7 +31,7 @@ func ExecuteShellcodeCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func ExecShellcode(rpc clientrpc.MaliceRPCClient, sess *core.Session, shellcodePath string,
+func ExecShellcode(rpc clientrpc.MaliceRPCClient, sess *session.Session, shellcodePath string,
 	args []string, out bool, timeout uint32, arch string, process string,
 	sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 	if arch == "" {
@@ -69,7 +69,7 @@ func InlineShellcodeCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func InlineShellcode(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string, args []string,
+func InlineShellcode(rpc clientrpc.MaliceRPCClient, sess *session.Session, path string, args []string,
 	out bool, timeout uint32, arch string, process string) (*clientpb.Task, error) {
 	if arch == "" {
 		arch = sess.Os.Arch
@@ -100,7 +100,7 @@ func RegisterShellcodeFunc(con *repl.Console) {
 		consts.ModuleExecuteShellcode,
 		ExecShellcode,
 		"bshinject",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, ppid uint32, arch, path string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *session.Session, ppid uint32, arch, path string) (*clientpb.Task, error) {
 			return ExecShellcode(rpc, sess, path, nil, true, math.MaxUint32, sess.Os.Arch, "", output.NewSacrifice(ppid, false, true, true, ""))
 		},
 		output.ParseBinaryResponse,
@@ -126,7 +126,7 @@ func RegisterShellcodeFunc(con *repl.Console) {
 		consts.ModuleAliasInlineShellcode,
 		InlineShellcode,
 		"binline_shellcode",
-		func(rpc clientrpc.MaliceRPCClient, sess *core.Session, path string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *session.Session, path string) (*clientpb.Task, error) {
 			return InlineShellcode(rpc, sess, path, nil, true, math.MaxUint32, sess.Os.Arch, "")
 		},
 		output.ParseBinaryResponse,

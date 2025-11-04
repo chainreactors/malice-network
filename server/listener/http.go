@@ -5,16 +5,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	consts "github.com/chainreactors/IoM-go/consts"
+	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
+	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/proto/services/listenerrpc"
+	types2 "github.com/chainreactors/IoM-go/types"
 	"io"
 	"net"
 	"net/http"
 	"strconv"
 
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/consts"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/listenerrpc"
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/core"
@@ -193,7 +194,7 @@ func (pipeline *HTTPPipeline) handlePulse(resp http.ResponseWriter, req *http.Re
 	resp.Header().Set("Content-Length", fmt.Sprintf("%d", len(builder.Bin)+pulse.HeaderLength+1))
 	logs.Log.Infof("send artifact %d %s", builder.Id, builder.Name)
 
-	err = p.WritePacket(conn, types.BuildOneSpites(&implantpb.Spite{
+	err = p.WritePacket(conn, types2.BuildOneSpites(&implantpb.Spite{
 		Name: consts.ModuleInit,
 		Body: &implantpb.Spite_Init{
 			Init: &implantpb.Init{Data: builder.Bin},

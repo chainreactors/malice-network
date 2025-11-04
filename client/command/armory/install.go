@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/chainreactors/IoM-go/session"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/alias"
 	"github.com/chainreactors/malice-network/client/command/extension"
-	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/cryptography/minisign"
 	"github.com/chainreactors/tui"
@@ -332,7 +332,7 @@ func getPackageIDFromUser(name string, options map[string]string) string {
 	selectModel.Title = fmt.Sprintf("More than one package contains the command %s. Please choose an option from the list below:", name)
 	err := selectModel.Run()
 	if err != nil {
-		core.Log.Errorf("Failed to run select model: %s\n", err)
+		session.Log.Errorf("Failed to run select model: %s\n", err)
 		return ""
 	}
 	if selectModel.SelectedItem >= 0 && selectModel.SelectedItem < len(selectModel.Choices) {

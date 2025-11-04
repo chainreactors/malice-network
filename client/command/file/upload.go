@@ -1,15 +1,15 @@
 package file
 
 import (
+	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/IoM-go/session"
 	"os"
 	"path/filepath"
 	"strconv"
 
-	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/helper/proto/services/clientrpc"
 	"github.com/spf13/cobra"
 )
 
@@ -28,7 +28,7 @@ func UploadCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func Upload(rpc clientrpc.MaliceRPCClient, session *core.Session, path string, target string, priv string, hidden bool) (*clientpb.Task, error) {
+func Upload(rpc clientrpc.MaliceRPCClient, session *session.Session, path string, target string, priv string, hidden bool) (*clientpb.Task, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -50,7 +50,7 @@ func Upload(rpc clientrpc.MaliceRPCClient, session *core.Session, path string, t
 	return task, err
 }
 
-func UploadRaw(rpc clientrpc.MaliceRPCClient, session *core.Session, data string, target string, priv string, hidden bool) (*clientpb.Task, error) {
+func UploadRaw(rpc clientrpc.MaliceRPCClient, session *session.Session, data string, target string, priv string, hidden bool) (*clientpb.Task, error) {
 	path := "fake_path"
 	value, err := strconv.ParseUint(priv, 8, 32)
 	if err != nil {

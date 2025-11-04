@@ -4,15 +4,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	consts "github.com/chainreactors/IoM-go/consts"
+	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
+	types2 "github.com/chainreactors/IoM-go/types"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/consts"
 	"github.com/chainreactors/malice-network/helper/encoders"
-	"github.com/chainreactors/malice-network/helper/errs"
-	"github.com/chainreactors/malice-network/helper/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
@@ -140,7 +140,7 @@ func GetProfile(name string) (*types.ProfileConfig, error) {
 		return nil, result.Error
 	}
 	if profileModel.PipelineID != "" && profileModel.Pipeline == nil {
-		return nil, errs.ErrNotFoundPipeline
+		return nil, types2.ErrNotFoundPipeline
 	}
 	//if profileModel.PulsePipelineID != "" && profileModel.PulsePipeline == nil {
 	//	return nil, errs.ErrNotFoundPipeline
@@ -301,7 +301,7 @@ func UpdateProfileRaw(profileName string, raw []byte) error {
 func SaveArtifactFromConfig(req *clientpb.BuildConfig) (*models.Artifact, error) {
 	target, ok := consts.GetBuildTarget(req.Target)
 	if !ok {
-		return nil, errs.ErrInvalidateTarget
+		return nil, types2.ErrInvalidateTarget
 	}
 	builder := models.Artifact{
 		Name:        req.BuildName,
@@ -328,7 +328,7 @@ func SaveArtifactFromConfig(req *clientpb.BuildConfig) (*models.Artifact, error)
 func SaveArtifactFromID(req *clientpb.BuildConfig, ID uint32) (*models.Artifact, error) {
 	target, ok := consts.GetBuildTarget(req.Target)
 	if !ok {
-		return nil, errs.ErrInvalidateTarget
+		return nil, types2.ErrInvalidateTarget
 	}
 	artifact := models.Artifact{
 		ID:          ID,
@@ -461,7 +461,7 @@ func FindArtifact(target *clientpb.Artifact, bin bool) (*clientpb.Artifact, erro
 		return nil, fmt.Errorf("error finding artifact: %v, target: %+v", result.Error, target)
 	}
 	if artifact == nil {
-		return nil, errs.ErrNotFoundArtifact
+		return nil, types2.ErrNotFoundArtifact
 	}
 	if bin {
 		content, err := os.ReadFile(artifact.Path)
@@ -495,7 +495,7 @@ func GetArtifact(req *clientpb.Artifact) (*models.Artifact, error) {
 	} else if req.Name != "" {
 		return GetArtifactByName(req.Name)
 	} else {
-		return nil, errs.ErrNotFoundArtifact
+		return nil, types2.ErrNotFoundArtifact
 	}
 }
 
