@@ -3,11 +3,12 @@ package alias
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/chainreactors/IoM-go/client"
+	const
 	consts "github.com/chainreactors/IoM-go/consts"
 	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
-	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
-	"github.com/chainreactors/IoM-go/session"
+	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/help"
@@ -184,7 +185,7 @@ func RegisterAlias(aliasManifest *AliasManifest, cmd *cobra.Command, con *repl.C
 	loadedAliases[aliasManifest.CommandName] = &loadedAlias{
 		Manifest: aliasManifest,
 		Command:  addAliasCmd,
-		Func: repl.WrapImplantFunc(con, func(rpc clientrpc.MaliceRPCClient, sess *session.Session, args string,
+		Func: repl.WrapImplantFunc(con, func(rpc clientrpc.MaliceRPCClient, sess *client.Session, args string,
 			param map[string]string,
 			sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 			return ExecuteAlias(rpc, sess, aliasManifest.CommandName, args, param, sac)
@@ -278,7 +279,7 @@ func runAliasCommand(cmd *cobra.Command, con *repl.Console) {
 
 }
 
-func ExecuteAlias(rpc clientrpc.MaliceRPCClient, sess *session.Session, aliasName string, args string, param map[string]string,
+func ExecuteAlias(rpc clientrpc.MaliceRPCClient, sess *client.Session, aliasName string, args string, param map[string]string,
 	sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 	loadedAlias, ok := loadedAliases[aliasName]
 	if !ok {

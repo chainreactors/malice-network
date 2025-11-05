@@ -2,9 +2,9 @@ package context
 
 import (
 	"fmt"
+	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
 	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
-	"github.com/chainreactors/IoM-go/session"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 
 	"github.com/chainreactors/malice-network/client/repl"
@@ -59,7 +59,7 @@ func GetDownloads(con *repl.Console) ([]*clientpb.Context, error) {
 	return contexts.Contexts, nil
 }
 
-func AddDownload(con *repl.Console, sess *session.Session, task *clientpb.Task, fileDesc *output.FileDescriptor) (bool, error) {
+func AddDownload(con *repl.Console, sess *client.Session, task *clientpb.Task, fileDesc *output.FileDescriptor) (bool, error) {
 	_, err := con.Rpc.AddDownload(con.Context(), &clientpb.Context{
 		Session: sess.Session,
 		Task:    task,

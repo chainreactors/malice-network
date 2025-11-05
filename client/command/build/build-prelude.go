@@ -4,7 +4,7 @@ import (
 	"errors"
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/profile"
+	"github.com/chainreactors/malice-network/server/build"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"os"
@@ -27,7 +27,7 @@ func PreludeCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
-	buildConfig, err := profile.ProcessAutorunZipFromBytes(zipData)
+	buildConfig, err := build.ProcessAutorunZipFromBytes(zipData)
 	if err != nil {
 		return err
 	}

@@ -1,11 +1,11 @@
 package sys
 
 import (
+	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
 	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
-	"github.com/chainreactors/IoM-go/session"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/spf13/cobra"
@@ -23,7 +23,7 @@ func KillCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func Kill(rpc clientrpc.MaliceRPCClient, session *session.Session, pid string) (*clientpb.Task, error) {
+func Kill(rpc clientrpc.MaliceRPCClient, session *client.Session, pid string) (*clientpb.Task, error) {
 	task, err := rpc.Kill(session.Context(), &implantpb.Request{
 		Name:  consts.ModuleKill,
 		Input: pid,
@@ -39,7 +39,7 @@ func RegisterKillFunc(con *repl.Console) {
 		consts.ModuleKill,
 		Kill,
 		"bkill",
-		func(rpc clientrpc.MaliceRPCClient, sess *session.Session, pid string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *client.Session, pid string) (*clientpb.Task, error) {
 			return Kill(rpc, sess, pid)
 		},
 		output.ParseStatus,

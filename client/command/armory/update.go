@@ -2,7 +2,7 @@ package armory
 
 import (
 	"fmt"
-	"github.com/chainreactors/IoM-go/session"
+	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/alias"
 	"github.com/chainreactors/malice-network/client/command/extension"
@@ -278,7 +278,7 @@ func getUpdatesFromUser(updateKeys []UpdateIdentifier) (chosenUpdates []UpdateId
 	})
 	err := inputModel.Run()
 	if err != nil {
-		session.Log.Errorf("failed to get user input: %s", err)
+		client.Log.Errorf("failed to get user input: %s", err)
 		return
 	}
 	updateResponse = strings.ToLower(updateResponse)

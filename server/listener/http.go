@@ -9,14 +9,14 @@ import (
 	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
 	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/listenerrpc"
-	types2 "github.com/chainreactors/IoM-go/types"
+	types "github.com/chainreactors/IoM-go/types"
+	"github.com/chainreactors/malice-network/helper/implanttypes"
 	"io"
 	"net"
 	"net/http"
 	"strconv"
 
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/parser/pulse"
@@ -26,7 +26,7 @@ import (
 func NewHttpPipeline(rpc listenerrpc.ListenerRPCClient, pipeline *clientpb.Pipeline) (*HTTPPipeline, error) {
 	http := pipeline.GetHttp()
 
-	params, err := types.UnmarshalPipelineParams(http.Params)
+	params, err := implanttypes.UnmarshalPipelineParams(http.Params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal pipeline params: %v", err)
 	}
@@ -194,7 +194,7 @@ func (pipeline *HTTPPipeline) handlePulse(resp http.ResponseWriter, req *http.Re
 	resp.Header().Set("Content-Length", fmt.Sprintf("%d", len(builder.Bin)+pulse.HeaderLength+1))
 	logs.Log.Infof("send artifact %d %s", builder.Id, builder.Name)
 
-	err = p.WritePacket(conn, types2.BuildOneSpites(&implantpb.Spite{
+	err = p.WritePacket(conn, types.BuildOneSpites(&implantpb.Spite{
 		Name: consts.ModuleInit,
 		Body: &implantpb.Spite_Init{
 			Init: &implantpb.Init{Data: builder.Bin},

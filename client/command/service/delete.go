@@ -1,11 +1,11 @@
 package service
 
 import (
+	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
 	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
-	"github.com/chainreactors/IoM-go/session"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/spf13/cobra"
@@ -25,7 +25,7 @@ func ServiceDeleteCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func ServiceDelete(rpc clientrpc.MaliceRPCClient, session *session.Session, name string) (*clientpb.Task, error) {
+func ServiceDelete(rpc clientrpc.MaliceRPCClient, session *client.Session, name string) (*clientpb.Task, error) {
 	request := &implantpb.ServiceRequest{
 		Type: consts.ModuleServiceDelete,
 		Service: &implantpb.ServiceConfig{

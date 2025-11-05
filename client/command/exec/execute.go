@@ -2,11 +2,11 @@ package exec
 
 import (
 	"fmt"
+	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
 	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
-	"github.com/chainreactors/IoM-go/session"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/malice-network/helper/utils/output"
@@ -37,7 +37,7 @@ func ExecuteCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func Execute(rpc clientrpc.MaliceRPCClient, sess *session.Session, cmd string, realtime, output bool) (*clientpb.Task, error) {
+func Execute(rpc clientrpc.MaliceRPCClient, sess *client.Session, cmd string, realtime, output bool) (*clientpb.Task, error) {
 	cmdStrList, err := shellquote.Split(cmd)
 	if err != nil {
 		return nil, err
@@ -67,7 +67,7 @@ func ShellCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func Shell(rpc clientrpc.MaliceRPCClient, sess *session.Session, cmd string, output bool) (*clientpb.Task, error) {
+func Shell(rpc clientrpc.MaliceRPCClient, sess *client.Session, cmd string, output bool) (*clientpb.Task, error) {
 	var binpath string
 	var args []string
 	if sess.Os.Name == "windows" {
@@ -131,7 +131,7 @@ func RegisterExecuteFunc(con *repl.Console) {
 
 	con.RegisterAggressiveFunc(
 		consts.ModuleAliasRun,
-		func(rpc clientrpc.MaliceRPCClient, sess *session.Session, cmd string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *client.Session, cmd string) (*clientpb.Task, error) {
 			return Execute(con.Rpc, sess, cmd, false, true)
 		},
 		output.ParseExecResponse,
@@ -140,7 +140,7 @@ func RegisterExecuteFunc(con *repl.Console) {
 
 	con.RegisterAggressiveFunc(
 		consts.ModuleAliasExecute,
-		func(rpc clientrpc.MaliceRPCClient, sess *session.Session, cmd string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *client.Session, cmd string) (*clientpb.Task, error) {
 			return Execute(con.Rpc, sess, cmd, false, false)
 		},
 		output.ParseExecResponse,
@@ -151,7 +151,7 @@ func RegisterExecuteFunc(con *repl.Console) {
 		consts.ModuleAliasShell,
 		Shell,
 		"bshell",
-		func(rpc clientrpc.MaliceRPCClient, sess *session.Session, cmd string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *client.Session, cmd string) (*clientpb.Task, error) {
 			return Shell(rpc, sess, cmd, true)
 		},
 		output.ParseExecResponse,

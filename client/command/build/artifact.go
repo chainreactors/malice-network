@@ -5,6 +5,7 @@ import (
 	consts "github.com/chainreactors/IoM-go/consts"
 	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
+	"github.com/chainreactors/malice-network/helper/utils/output"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -12,7 +13,6 @@ import (
 
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/utils/formatutils"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
@@ -184,7 +184,7 @@ func DownloadArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
 	}
 	printArtifact(artifact)
 	go func() {
-		if f, ok := formatutils.SupportedFormats[format]; ok && f.SupportRemote {
+		if f, ok := output.SupportedFormats[format]; ok && f.SupportRemote {
 			var pipe *clientpb.Pipeline
 			for _, pipeline := range con.Pipelines {
 				if pipeline.Type == consts.WebsitePipeline {
@@ -193,11 +193,11 @@ func DownloadArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
 				}
 			}
 
-			usage := formatutils.SupportedFormats[format].Usage(pipe.URL() + formatutils.EncodeFormat(artifact.Name, format))
+			usage := output.SupportedFormats[format].Usage(pipe.URL() + output.EncodeFormat(artifact.Name, format))
 			con.Log.Infof("you can use this payload :\n--------\n%s\n--------\n", usage)
 		} else {
 			var fileExt string
-			if f, ok := formatutils.SupportedFormats[format]; ok {
+			if f, ok := output.SupportedFormats[format]; ok {
 				fileExt = f.Extension
 			} else {
 				fileExt, _ = fileutils.GetExtensionByBytes(artifact.Bin)

@@ -1,4 +1,4 @@
-package types
+package implanttypes
 
 import (
 	_ "embed"

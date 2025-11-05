@@ -2,7 +2,7 @@ package plugin
 
 import (
 	"errors"
-	"github.com/chainreactors/IoM-go/session"
+	"github.com/chainreactors/IoM-go/client"
 	"os"
 	"path/filepath"
 
@@ -33,7 +33,7 @@ type Plugin interface {
 	Manifest() *MalManiFest
 	Commands() Commands
 	Destroy() error
-	GetEvents() map[session.EventCondition]session.OnEventFunc
+	GetEvents() map[client.EventCondition]client.OnEventFunc
 }
 
 func NewPlugin(manifest *MalManiFest) (*DefaultPlugin, error) {
@@ -49,7 +49,7 @@ func NewPlugin(manifest *MalManiFest) (*DefaultPlugin, error) {
 		Content:     content,
 		Path:        path,
 		CMDs:        make(Commands),
-		Events:      make(map[session.EventCondition]session.OnEventFunc),
+		Events:      make(map[client.EventCondition]client.OnEventFunc),
 	}
 
 	return plug, nil
@@ -61,7 +61,7 @@ type DefaultPlugin struct {
 	Content []byte
 	Path    string
 	CMDs    Commands
-	Events  map[session.EventCondition]session.OnEventFunc
+	Events  map[client.EventCondition]client.OnEventFunc
 }
 
 func (plug *DefaultPlugin) Manifest() *MalManiFest {
@@ -72,7 +72,7 @@ func (plug *DefaultPlugin) Commands() Commands {
 	return plug.CMDs
 }
 
-func (plug *DefaultPlugin) GetEvents() map[session.EventCondition]session.OnEventFunc {
+func (plug *DefaultPlugin) GetEvents() map[client.EventCondition]client.OnEventFunc {
 	return plug.Events
 }
 

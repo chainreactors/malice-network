@@ -2,10 +2,10 @@ package models
 
 import (
 	"encoding/json"
+	"github.com/chainreactors/malice-network/helper/implanttypes"
 	"time"
 
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/gofrs/uuid"
 	"gorm.io/gorm"
 )
@@ -18,8 +18,8 @@ type Profile struct {
 
 	Raw []byte
 	// params
-	Params     *types.ProfileParams `gorm:"-"`             // 使用 interface{} 使其更灵活
-	ParamsData string               `gorm:"column:params"` // 改用更简洁的数据库字段名
+	Params     *implanttypes.ProfileParams `gorm:"-"`             // 使用 interface{} 使其更灵活
+	ParamsData string                      `gorm:"column:params"` // 改用更简洁的数据库字段名
 
 	// BasicPipeline 和 PulsePipeline
 	PipelineID string `gorm:"type:string;index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
@@ -49,7 +49,7 @@ func (p *Profile) AfterFind(tx *gorm.DB) (err error) {
 	}
 
 	// 如果知道具体类型，可以直接反序列化
-	var params types.ProfileParams
+	var params implanttypes.ProfileParams
 	if err := json.Unmarshal([]byte(p.ParamsData), &params); err != nil {
 		return err
 	}

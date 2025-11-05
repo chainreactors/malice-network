@@ -1,14 +1,14 @@
 package sessions
 
 import (
-	"github.com/chainreactors/IoM-go/session"
+	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/malice-network/client/command/addon"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/spf13/cobra"
 )
 
 func UseSessionCmd(cmd *cobra.Command, con *repl.Console) error {
-	var session *session.Session
+	var session *client.Session
 	sid := cmd.Flags().Arg(0)
 	session, err := con.GetOrUpdateSession(sid)
 	if err != nil {
@@ -18,7 +18,7 @@ func UseSessionCmd(cmd *cobra.Command, con *repl.Console) error {
 	return Use(con, session)
 }
 
-func Use(con *repl.Console, sess *session.Session) error {
+func Use(con *repl.Console, sess *client.Session) error {
 	err := addon.RefreshAddonCommand(sess.Addons, con)
 	if err != nil {
 		return err

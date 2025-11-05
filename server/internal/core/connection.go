@@ -4,7 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
-	types2 "github.com/chainreactors/IoM-go/types"
+	types "github.com/chainreactors/IoM-go/types"
+	"github.com/chainreactors/malice-network/helper/implanttypes"
 	"sync"
 	"time"
 
@@ -12,7 +13,6 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/encoders"
 	"github.com/chainreactors/malice-network/helper/encoders/hash"
-	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/server/internal/parser"
 	cryptostream "github.com/chainreactors/malice-network/server/internal/stream"
 )
@@ -50,7 +50,7 @@ func (ls *listenerSessions) Get(rawID uint32) *clientpb.Session {
 
 // GetConnection 统一的连接获取/创建函数 (适用于 TCP 和 HTTP pipeline)
 // 从 cryptostream.Conn 中提取 SID 并获取/创建连接
-func GetConnection(conn *cryptostream.Conn, pipelineID string, secureConfig *types.SecureConfig) (*Connection, error) {
+func GetConnection(conn *cryptostream.Conn, pipelineID string, secureConfig *implanttypes.SecureConfig) (*Connection, error) {
 	sid, err := cryptostream.PeekSid(conn)
 	if err != nil {
 		return nil, err
@@ -77,7 +77,7 @@ func GetConnection(conn *cryptostream.Conn, pipelineID string, secureConfig *typ
 
 // GetKeyPairForSession 获取会话的密钥对
 // 优先从 ListenerSessions 获取，如果没有则从 secureConfig 获取交换密钥对
-func GetKeyPairForSession(sid uint32, secureConfig *types.SecureConfig) *clientpb.KeyPair {
+func GetKeyPairForSession(sid uint32, secureConfig *implanttypes.SecureConfig) *clientpb.KeyPair {
 	// 优先从 session 中获取 KeyPair
 	if session := ListenerSessions.Get(sid); session != nil {
 		return session.KeyPair
@@ -182,10 +182,10 @@ func (c *Connection) buildResponse(conn *cryptostream.Conn, length uint32) error
 			return fmt.Errorf("error reading message:%s %w", conn.RemoteAddr(), err)
 		}
 		if msg.Spites == nil {
-			msg = types2.BuildPingSpites()
+			msg = types.BuildPingSpites()
 		}
 	} else {
-		msg = types2.BuildPingSpites()
+		msg = types.BuildPingSpites()
 	}
 
 	Forwarders.Send(c.PipelineID, &Message{

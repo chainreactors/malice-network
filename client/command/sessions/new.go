@@ -1,10 +1,11 @@
 package sessions
 
 import (
+	"github.com/chainreactors/IoM-go/client"
+	const
 	consts "github.com/chainreactors/IoM-go/consts"
 	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
-	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
-	"github.com/chainreactors/IoM-go/session"
+	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/encoders"
@@ -26,7 +27,7 @@ func NewBindSessionCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func NewBindSession(con *repl.Console, PipelineID string, target string, name string) (*session.Session, error) {
+func NewBindSession(con *repl.Console, PipelineID string, target string, name string) (*client.Session, error) {
 	rid := cryptography.RandomBytes(4)
 	sid := hash.Md5Hash(rid)
 	_, err := con.Rpc.Register(con.Context(), &clientpb.RegisterSession{

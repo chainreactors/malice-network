@@ -120,18 +120,18 @@ func prepareBuildConfig(cmd *cobra.Command, con *repl.Console, buildType string)
 		return nil, fmt.Errorf("failed to parse build config: %w", err)
 	}
 	//
-	var profile *types.ProfileConfig
+	var profile *implanttypes.ProfileConfig
 	if profileName != "" {
 		profilePB, err := con.Rpc.GetProfileByName(con.Context(), &clientpb.Profile{Name: profileName})
 		if err != nil {
 			return nil, fmt.Errorf("failed to get profile: %w", err)
 		}
-		profile, err = types.LoadProfile(profilePB.Content)
+		profile, err = implanttypes.LoadProfile(profilePB.Content)
 		if err != nil {
 			return nil, fmt.Errorf("failed to load profile: %w", err)
 		}
 	} else {
-		profile, err = types.LoadProfile(consts.DefaultProfile)
+		profile, err = implanttypes.LoadProfile(consts.DefaultProfile)
 	}
 
 	if err != nil {
@@ -160,7 +160,7 @@ func prepareBuildConfig(cmd *cobra.Command, con *repl.Console, buildType string)
 }
 
 // parseBuildFlags 解析所有构建相关的flag参数
-func parseBuildFlags(cmd *cobra.Command, profile *types.ProfileConfig) (*types.ProfileConfig, error) {
+func parseBuildFlags(cmd *cobra.Command, profile *implanttypes.ProfileConfig) (*implanttypes.ProfileConfig, error) {
 
 	//newProfile.SetDefaults()
 	// Basic profile flags - only override if explicitly provided
@@ -203,7 +203,7 @@ func parseBuildFlags(cmd *cobra.Command, profile *types.ProfileConfig) (*types.P
 	securePrivateKey, _ := cmd.Flags().GetString("secure-private-key")
 	securePublicKey, _ := cmd.Flags().GetString("secure-public-key")
 	if securePrivateKey != "" && securePublicKey != "" {
-		profile.Basic.Secure = &types.SecureProfile{
+		profile.Basic.Secure = &implanttypes.SecureProfile{
 			Enable:            secureEnable,
 			ImplantPrivateKey: securePrivateKey,
 			ServerPublicKey:   securePublicKey,
@@ -213,7 +213,7 @@ func parseBuildFlags(cmd *cobra.Command, profile *types.ProfileConfig) (*types.P
 	if cmd.Flags().Changed("proxy-url") || cmd.Flags().Changed("proxy-use-env") {
 		proxy, _ := cmd.Flags().GetString("proxy-url")
 		use_env_proxy, _ := cmd.Flags().GetBool("proxy-use-env")
-		profile.Basic.Proxy = &types.ProxyProfile{
+		profile.Basic.Proxy = &implanttypes.ProxyProfile{
 			UseEnvProxy: use_env_proxy,
 			URL:         proxy,
 		}
@@ -253,20 +253,20 @@ func parseBuildFlags(cmd *cobra.Command, profile *types.ProfileConfig) (*types.P
 	if cmd.Flags().Changed("rem") && strings.HasPrefix(addresses[0], "tcp://") {
 		remAddresses := strings.Split(remLink, ",")
 		for _, remAddress := range remAddresses {
-			target := types.Target{}
+			target := implanttypes.Target{}
 			addr := strings.TrimPrefix(addresses[0], "tcp://")
 			if !strings.Contains(addr, ":") {
 				addr = addr + ":5001"
 			}
 			target.Address = addr
-			target.REM = &types.REMProfile{
+			target.REM = &implanttypes.REMProfile{
 				Link: remAddress,
 			}
 			profile.Basic.Targets = append(profile.Basic.Targets, target)
 		}
 	} else if cmd.Flags().Changed("addresses") {
 		for _, address := range addresses {
-			target := types.Target{}
+			target := implanttypes.Target{}
 			//
 			if strings.HasPrefix(address, "http://") {
 				address = strings.TrimPrefix(address, "http://")
@@ -275,7 +275,7 @@ func parseBuildFlags(cmd *cobra.Command, profile *types.ProfileConfig) (*types.P
 					address = address + ":80"
 				}
 				target.Address = address
-				target.Http = &types.HttpProfile{
+				target.Http = &implanttypes.HttpProfile{
 					Method:  "POST",
 					Path:    "/",
 					Version: "1.1",
@@ -290,7 +290,7 @@ func parseBuildFlags(cmd *cobra.Command, profile *types.ProfileConfig) (*types.P
 					address = address + ":443"
 				}
 				target.Address = address
-				target.Http = &types.HttpProfile{
+				target.Http = &implanttypes.HttpProfile{
 					Method:  "POST",
 					Path:    "/",
 					Version: "1.1",
@@ -299,7 +299,7 @@ func parseBuildFlags(cmd *cobra.Command, profile *types.ProfileConfig) (*types.P
 						"Content-Type": "application/octet-stream",
 					},
 				}
-				target.TLS = &types.TLSProfile{
+				target.TLS = &implanttypes.TLSProfile{
 					Enable:           true,
 					SNI:              strings.Split(address, ":")[0],
 					SkipVerification: true,
@@ -310,15 +310,15 @@ func parseBuildFlags(cmd *cobra.Command, profile *types.ProfileConfig) (*types.P
 					address = address + ":5001"
 				}
 				target.Address = address
-				target.TCP = &types.TCPProfile{}
+				target.TCP = &implanttypes.TCPProfile{}
 			} else if strings.HasPrefix(address, "tcp+tls://") { // 走tcp的配置
 				address = strings.TrimPrefix(address, "tcp+tls://")
 				if !strings.Contains(address, ":") {
 					address = address + ":5001"
 				}
 				target.Address = address
-				target.TCP = &types.TCPProfile{}
-				target.TLS = &types.TLSProfile{
+				target.TCP = &implanttypes.TCPProfile{}
+				target.TLS = &implanttypes.TLSProfile{
 					Enable:           true,
 					SNI:              strings.Split(address, ":")[0],
 					SkipVerification: true,
@@ -355,7 +355,7 @@ func parseBuildFlags(cmd *cobra.Command, profile *types.ProfileConfig) (*types.P
 
 	ollvm, _ := cmd.Flags().GetBool("ollvm")
 	if ollvm {
-		profile.Build.OLLVM = &types.OLLVMProfile{
+		profile.Build.OLLVM = &implanttypes.OLLVMProfile{
 			Enable:   true,
 			BCFObf:   true,
 			SplitObf: true,
@@ -374,7 +374,7 @@ func parseBuildFlags(cmd *cobra.Command, profile *types.ProfileConfig) (*types.P
 	// anti configuration
 	antiSandbox, _ := cmd.Flags().GetBool("anti-sandbox")
 	if cmd.Flags().Changed("anti-sandbox") {
-		profile.Implant.Anti = &types.AntiProfile{
+		profile.Implant.Anti = &implanttypes.AntiProfile{
 			Sandbox: antiSandbox,
 		}
 	}

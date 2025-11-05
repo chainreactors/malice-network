@@ -5,7 +5,7 @@ import (
 	consts "github.com/chainreactors/IoM-go/consts"
 	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
 	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
-	types2 "github.com/chainreactors/IoM-go/types"
+	types "github.com/chainreactors/IoM-go/types"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/server/internal/parser"
 	"github.com/gookit/config/v2"
@@ -21,7 +21,7 @@ func (rpc *Server) PipeClose(ctx context.Context, req *implantpb.PipeRequest) (*
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types2.MsgEmpty)
+	go greq.HandlerResponse(ch, types.MsgEmpty)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -34,7 +34,7 @@ func (rpc *Server) PipeRead(ctx context.Context, req *implantpb.PipeRequest) (*c
 	if err != nil {
 		return nil, err
 	}
-	go greq.HandlerResponse(ch, types2.MsgResponse, ContextCallback(greq.Task, ctx))
+	go greq.HandlerResponse(ch, types.MsgResponse, ContextCallback(greq.Task, ctx))
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -48,7 +48,7 @@ func (rpc *Server) PipeServer(ctx context.Context, req *implantpb.PipeRequest) (
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types2.MsgResponse)
+	go greq.HandlerResponse(ch, types.MsgResponse)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -64,7 +64,7 @@ func (rpc *Server) PipeUpload(ctx context.Context, pipe *implantpb.PipeRequest) 
 		if err != nil {
 			return nil, err
 		}
-		go greq.HandlerResponse(ch, types2.MsgAck)
+		go greq.HandlerResponse(ch, types.MsgAck)
 		return greq.Task.ToProtobuf(), nil
 	} else {
 		greq, err := newGenericRequest(ctx, &implantpb.PipeRequest{
@@ -81,7 +81,7 @@ func (rpc *Server) PipeUpload(ctx context.Context, pipe *implantpb.PipeRequest) 
 		var blockId = 0
 		go func() {
 			stat := <-out
-			err := types2.HandleMaleficError(stat)
+			err := types.HandleMaleficError(stat)
 			if err != nil {
 				greq.Task.Panic(buildErrorEvent(greq.Task, err))
 				return
@@ -95,14 +95,14 @@ func (rpc *Server) PipeUpload(ctx context.Context, pipe *implantpb.PipeRequest) 
 				if blockId == count {
 					msg.End = true
 				}
-				spite, _ := types2.BuildSpite(&implantpb.Spite{
+				spite, _ := types.BuildSpite(&implantpb.Spite{
 					Timeout: uint64(consts.MinTimeout.Seconds()),
 					TaskId:  greq.Task.Id,
 				}, msg)
-				spite.Name = types2.MsgUpload.String()
+				spite.Name = types.MsgUpload.String()
 				in <- spite
 				resp := <-out
-				err = types2.AssertSpite(resp, types2.MsgAck)
+				err = types.AssertSpite(resp, types.MsgAck)
 				if err != nil {
 					return
 				}

@@ -48,8 +48,8 @@ func PulseCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func parsePulseBuildFlags(cmd *cobra.Command) (*types.ProfileConfig, error) {
-	newProfile, _ := types.LoadProfile(consts.DefaultProfile)
+func parsePulseBuildFlags(cmd *cobra.Command) (*implanttypes.ProfileConfig, error) {
+	newProfile, _ := implanttypes.LoadProfile(consts.DefaultProfile)
 	//println(string(consts.DefaultProfile))
 	//println(newProfile.Pulse.Http.Headers)
 	//newProfile.SetDefaults()

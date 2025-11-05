@@ -2,9 +2,9 @@ package plugin
 
 import (
 	"fmt"
+	"github.com/chainreactors/IoM-go/client"
 	consts "github.com/chainreactors/IoM-go/consts"
 	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
-	"github.com/chainreactors/IoM-go/session"
 	"github.com/chainreactors/IoM-go/types"
 	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
@@ -133,44 +133,44 @@ func (plug *LuaPlugin) registerLuaOnHooks() error {
 		return err
 	}
 	// 注册所有的钩子
-	plug.registerLuaOnHook("beacon_checkin", session.EventCondition{Type: consts.EventSession, Op: consts.CtrlSessionCheckin})
-	plug.registerLuaOnHook("beacon_initial", session.EventCondition{Type: consts.EventSession, Op: consts.CtrlSessionRegister})
-	plug.registerLuaOnHook("beacon_error", session.EventCondition{Type: consts.EventSession, Op: consts.CtrlSessionError})
-	plug.registerLuaOnHook("beacon_indicator", session.EventCondition{Type: consts.EventSession, Op: consts.CtrlSessionLog})
+	plug.registerLuaOnHook("beacon_checkin", client.EventCondition{Type: consts.EventSession, Op: consts.CtrlSessionCheckin})
+	plug.registerLuaOnHook("beacon_initial", client.EventCondition{Type: consts.EventSession, Op: consts.CtrlSessionRegister})
+	plug.registerLuaOnHook("beacon_error", client.EventCondition{Type: consts.EventSession, Op: consts.CtrlSessionError})
+	plug.registerLuaOnHook("beacon_indicator", client.EventCondition{Type: consts.EventSession, Op: consts.CtrlSessionLog})
 	//plug.registerLuaOnHook("beacon_initial_empty", intermediate.EventCondition{Type: consts.EventSession, Op: consts.CtrlSessionDNS})
 	//plug.registerLuaOnHook("beacon_input", intermediate.EventCondition{Type: consts.EventInput})
 	//plug.registerLuaOnHook("beacon_mode", intermediate.EventCondition{Type: consts.EventModeChange})
-	plug.registerLuaOnHook("beacon_output", session.EventCondition{Type: consts.EventTask})
-	plug.registerLuaOnHook("beacon_output_alt", session.EventCondition{Type: consts.EventSession, Op: consts.CtrlSessionLog})
-	plug.registerLuaOnHook("beacon_output_jobs", session.EventCondition{Type: consts.EventTask, Op: consts.CtrlTaskFinish})
-	plug.registerLuaOnHook("beacon_output_ls", session.EventCondition{Type: consts.EventTask, Op: consts.CtrlTaskFinish, MessageType: types.MsgLs.String()})
-	plug.registerLuaOnHook("beacon_output_ps", session.EventCondition{Type: consts.EventTask, Op: consts.CtrlTaskFinish, MessageType: types.MsgPs.String()})
-	plug.registerLuaOnHook("beacon_tasked", session.EventCondition{Type: consts.EventClient, Op: consts.CtrlTaskCallback})
+	plug.registerLuaOnHook("beacon_output", client.EventCondition{Type: consts.EventTask})
+	plug.registerLuaOnHook("beacon_output_alt", client.EventCondition{Type: consts.EventSession, Op: consts.CtrlSessionLog})
+	plug.registerLuaOnHook("beacon_output_jobs", client.EventCondition{Type: consts.EventTask, Op: consts.CtrlTaskFinish})
+	plug.registerLuaOnHook("beacon_output_ls", client.EventCondition{Type: consts.EventTask, Op: consts.CtrlTaskFinish, MessageType: types.MsgLs.String()})
+	plug.registerLuaOnHook("beacon_output_ps", client.EventCondition{Type: consts.EventTask, Op: consts.CtrlTaskFinish, MessageType: types.MsgPs.String()})
+	plug.registerLuaOnHook("beacon_tasked", client.EventCondition{Type: consts.EventClient, Op: consts.CtrlTaskCallback})
 
 	// 注册其他非 Beacon 特定事件
 	//plug.registerLuaOnHook("disconnect", intermediate.EventCondition{Type: consts.EventDisconnect})
-	plug.registerLuaOnHook("event_action", session.EventCondition{Type: consts.EventBroadcast})
-	plug.registerLuaOnHook("event_beacon_initial", session.EventCondition{Type: consts.EventSession, Op: consts.CtrlSessionInit})
-	plug.registerLuaOnHook("event_join", session.EventCondition{Type: consts.EventJoin, Op: consts.CtrlClientJoin})
-	plug.registerLuaOnHook("event_notify", session.EventCondition{Type: consts.EventNotify})
+	plug.registerLuaOnHook("event_action", client.EventCondition{Type: consts.EventBroadcast})
+	plug.registerLuaOnHook("event_beacon_initial", client.EventCondition{Type: consts.EventSession, Op: consts.CtrlSessionInit})
+	plug.registerLuaOnHook("event_join", client.EventCondition{Type: consts.EventJoin, Op: consts.CtrlClientJoin})
+	plug.registerLuaOnHook("event_notify", client.EventCondition{Type: consts.EventNotify})
 	//plug.registerLuaOnHook("event_nouser", intermediate.EventCondition{Type: consts.EventNotify, Op: consts.CtrlClientLeft})
 	//plug.registerLuaOnHook("event_private", intermediate.EventCondition{Type: consts.EventBroadcast, Op: consts.CtrlTaskCallback})
-	plug.registerLuaOnHook("event_public", session.EventCondition{Type: consts.EventBroadcast})
-	plug.registerLuaOnHook("event_quit", session.EventCondition{Type: consts.EventLeft, Op: consts.CtrlClientLeft})
+	plug.registerLuaOnHook("event_public", client.EventCondition{Type: consts.EventBroadcast})
+	plug.registerLuaOnHook("event_quit", client.EventCondition{Type: consts.EventLeft, Op: consts.CtrlClientLeft})
 
 	// 注册心跳事件
-	plug.registerLuaOnHook("heartbeat_1s", session.EventCondition{Type: consts.EventSession, Op: consts.CtrlHeartbeat1s})
-	plug.registerLuaOnHook("heartbeat_5s", session.EventCondition{Type: consts.EventSession, Op: consts.CtrlHeartbeat5s})
-	plug.registerLuaOnHook("heartbeat_10s", session.EventCondition{Type: consts.EventSession, Op: consts.CtrlHeartbeat10s})
-	plug.registerLuaOnHook("heartbeat_15s", session.EventCondition{Type: consts.EventSession, Op: consts.CtrlHeartbeat15s})
-	plug.registerLuaOnHook("heartbeat_30s", session.EventCondition{Type: consts.EventSession, Op: consts.CtrlHeartbeat30s})
-	plug.registerLuaOnHook("heartbeat_1m", session.EventCondition{Type: consts.EventSession, Op: consts.CtrlHeartbeat1m})
-	plug.registerLuaOnHook("heartbeat_5m", session.EventCondition{Type: consts.EventSession, Op: consts.CtrlHeartbeat5m})
-	plug.registerLuaOnHook("heartbeat_10m", session.EventCondition{Type: consts.EventSession, Op: consts.CtrlHeartbeat10m})
-	plug.registerLuaOnHook("heartbeat_15m", session.EventCondition{Type: consts.EventSession, Op: consts.CtrlHeartbeat15m})
-	plug.registerLuaOnHook("heartbeat_20m", session.EventCondition{Type: consts.EventSession, Op: consts.CtrlHeartbeat20m})
-	plug.registerLuaOnHook("heartbeat_30m", session.EventCondition{Type: consts.EventSession, Op: consts.CtrlHeartbeat30m})
-	plug.registerLuaOnHook("heartbeat_60m", session.EventCondition{Type: consts.EventSession, Op: consts.CtrlHeartbeat60m})
+	plug.registerLuaOnHook("heartbeat_1s", client.EventCondition{Type: consts.EventSession, Op: consts.CtrlHeartbeat1s})
+	plug.registerLuaOnHook("heartbeat_5s", client.EventCondition{Type: consts.EventSession, Op: consts.CtrlHeartbeat5s})
+	plug.registerLuaOnHook("heartbeat_10s", client.EventCondition{Type: consts.EventSession, Op: consts.CtrlHeartbeat10s})
+	plug.registerLuaOnHook("heartbeat_15s", client.EventCondition{Type: consts.EventSession, Op: consts.CtrlHeartbeat15s})
+	plug.registerLuaOnHook("heartbeat_30s", client.EventCondition{Type: consts.EventSession, Op: consts.CtrlHeartbeat30s})
+	plug.registerLuaOnHook("heartbeat_1m", client.EventCondition{Type: consts.EventSession, Op: consts.CtrlHeartbeat1m})
+	plug.registerLuaOnHook("heartbeat_5m", client.EventCondition{Type: consts.EventSession, Op: consts.CtrlHeartbeat5m})
+	plug.registerLuaOnHook("heartbeat_10m", client.EventCondition{Type: consts.EventSession, Op: consts.CtrlHeartbeat10m})
+	plug.registerLuaOnHook("heartbeat_15m", client.EventCondition{Type: consts.EventSession, Op: consts.CtrlHeartbeat15m})
+	plug.registerLuaOnHook("heartbeat_20m", client.EventCondition{Type: consts.EventSession, Op: consts.CtrlHeartbeat20m})
+	plug.registerLuaOnHook("heartbeat_30m", client.EventCondition{Type: consts.EventSession, Op: consts.CtrlHeartbeat30m})
+	plug.registerLuaOnHook("heartbeat_60m", client.EventCondition{Type: consts.EventSession, Op: consts.CtrlHeartbeat60m})
 	return nil
 }
 
@@ -210,13 +210,13 @@ func (plug *LuaPlugin) RegisterLuaFunction() {
 		return resourceFile, nil
 	}, nil)
 
-	plug.registerFunction("find_resource", func(sess *session.Session, base string, ext string) (string, error) {
+	plug.registerFunction("find_resource", func(sess *client.Session, base string, ext string) (string, error) {
 		filename := fmt.Sprintf("%s.%s.%s", base, consts.FormatArch(sess.Os.Arch), ext)
 		resourceFile := filepath.Join(assets.GetMalsDir(), plug.Name, "resources", filename)
 		return resourceFile, nil
 	}, nil)
 
-	plug.registerFunction("find_global_resource", func(sess *session.Session, base string, ext string) (string, error) {
+	plug.registerFunction("find_global_resource", func(sess *client.Session, base string, ext string) (string, error) {
 		filename := fmt.Sprintf("%s.%s.%s", base, consts.FormatArch(sess.Os.Arch), ext)
 		resourceFile := filepath.Join(assets.GetResourceDir(), filename)
 		return resourceFile, nil
@@ -404,7 +404,7 @@ func (plug *LuaPlugin) RegisterLuaFunction() {
 
 }
 
-func (plug *LuaPlugin) registerLuaOnHook(name string, condition session.EventCondition) {
+func (plug *LuaPlugin) registerLuaOnHook(name string, condition client.EventCondition) {
 	vm := plug.onHookVM
 
 	if fn := vm.GetGlobal("on_" + name); fn != lua.LNil {

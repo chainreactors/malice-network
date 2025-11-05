@@ -2,11 +2,11 @@ package pipe
 
 import (
 	"fmt"
+	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
 	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
-	"github.com/chainreactors/IoM-go/session"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/output"
@@ -30,7 +30,7 @@ func PipeServerCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func PipeServer(rpc clientrpc.MaliceRPCClient, session *session.Session, action string, pipeName string) (*clientpb.Task, error) {
+func PipeServer(rpc clientrpc.MaliceRPCClient, session *client.Session, action string, pipeName string) (*clientpb.Task, error) {
 	// Validate action
 	validActions := []string{"start", "stop", "list", "clear", "status"}
 	isValid := false

@@ -4,7 +4,7 @@ import (
 	"context"
 	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/listenerrpc"
-	types2 "github.com/chainreactors/IoM-go/types"
+	types "github.com/chainreactors/IoM-go/types"
 	"strconv"
 	"sync"
 	"time"
@@ -123,9 +123,9 @@ func (f *Forward) Handler() {
 			_, err := f.ListenerRpc.Checkin(f.Context(msg.SessionID), &implantpb.Ping{})
 			if err != nil {
 				logs.Log.Debug(err)
-				spite, _ := types2.BuildSpite(
+				spite, _ := types.BuildSpite(
 					&implantpb.Spite{
-						Name: types2.MsgInit.String(),
+						Name: types.MsgInit.String(),
 					},
 					&implantpb.Init{Data: (*[4]byte)(unsafe.Pointer(&msg.RawID))[:]})
 				err = Connections.Push(msg.SessionID, &clientpb.SpiteRequest{

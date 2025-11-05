@@ -1,10 +1,10 @@
 package tasks
 
 import (
+	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
 	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
-	"github.com/chainreactors/IoM-go/session"
 	"strconv"
 
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
@@ -27,7 +27,7 @@ func QueryTaskCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func QueryTask(rpc clientrpc.MaliceRPCClient, session *session.Session, taskId uint32) (*clientpb.Task, error) {
+func QueryTask(rpc clientrpc.MaliceRPCClient, session *client.Session, taskId uint32) (*clientpb.Task, error) {
 	return rpc.QueryTask(session.Context(), &implantpb.TaskCtrl{
 		TaskId: taskId,
 		Op:     consts.ModuleQueryTask,

@@ -1,4 +1,4 @@
-package profile
+package build
 
 import (
 	"archive/zip"
@@ -11,15 +11,6 @@ import (
 	"path/filepath"
 	"strings"
 )
-
-// ProcessAutorunZip
-func ProcessAutorunZip(zipPath string) (*clientpb.BuildConfig, error) {
-	zipData, err := os.ReadFile(zipPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read zip file: %w", err)
-	}
-	return ProcessAutorunZipFromBytes(zipData)
-}
 
 // ProcessAutorunZipFromBytes
 func ProcessAutorunZipFromBytes(zipData []byte) (*clientpb.BuildConfig, error) {

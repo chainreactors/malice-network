@@ -4,13 +4,13 @@ import (
 	"encoding/base64"
 	"fmt"
 	consts "github.com/chainreactors/IoM-go/consts"
-	types2 "github.com/chainreactors/IoM-go/types"
+	types "github.com/chainreactors/IoM-go/types"
+	"github.com/chainreactors/malice-network/helper/implanttypes"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/chainreactors/malice-network/helper/encoders"
-	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 )
@@ -214,7 +214,7 @@ func ProcessAutorunWithProfile(paramsBytes []byte, profilePath, targetPath strin
 		return nil
 	}
 
-	params, err := types.UnmarshalProfileParams(paramsBytes)
+	params, err := implanttypes.UnmarshalProfileParams(paramsBytes)
 	if err != nil {
 		return err
 	}
@@ -267,14 +267,14 @@ func extractPreludeYamlBase64(zipData []byte) (string, error) {
 }
 
 // processProfileOnlyCase handles the case where only profile exists (no autorun file)
-func processProfileOnlyCase(profilePath string, params *types.ProfileParams) (string, string, error) {
+func processProfileOnlyCase(profilePath string, params *implanttypes.ProfileParams) (string, string, error) {
 	filePaths, err := fileutils.CollectFilePaths(profilePath)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to walk profilePath: %w", err)
 	}
 
 	if len(filePaths) == 0 {
-		return "", "", types2.ErrNoAutoRunFile
+		return "", "", types.ErrNoAutoRunFile
 	}
 
 	zipData, err := fileutils.CompressFilesZip(filePaths)
@@ -287,7 +287,7 @@ func processProfileOnlyCase(profilePath string, params *types.ProfileParams) (st
 }
 
 // processPreludeWithOptionalProfile handles the case where prelude file exists
-func processPreludeWithOptionalProfile(zipData []byte, profilePath string, profileExists bool, params *types.ProfileParams) (string, string, error) {
+func processPreludeWithOptionalProfile(zipData []byte, profilePath string, profileExists bool, params *implanttypes.ProfileParams) (string, string, error) {
 	preludeYamlBase64, err := extractPreludeYamlBase64(zipData)
 	if err != nil {
 		return "", "", err
@@ -309,7 +309,7 @@ func ProcessAutorunZipToBase64(paramsByte []byte, profileName string) (string, s
 		return "", "", nil
 	}
 
-	params, err := types.UnmarshalProfileParams(paramsByte)
+	params, err := implanttypes.UnmarshalProfileParams(paramsByte)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to parse params: %w", err)
 	}

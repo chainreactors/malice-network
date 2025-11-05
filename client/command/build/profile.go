@@ -82,7 +82,7 @@ func ProfileNewCmd(cmd *cobra.Command, con *repl.Console) error {
 		Name:       profileName,
 		PipelineId: basicPipeline,
 	}
-	var params types.ProfileParams
+	var params implanttypes.ProfileParams
 	if cmd.Flags().Changed("rem") {
 		rem, _ := cmd.Flags().GetString("rem")
 		params.REMPipeline = rem

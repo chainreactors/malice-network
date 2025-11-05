@@ -1,9 +1,10 @@
 package third
 
 import (
+	"github.com/chainreactors/IoM-go/client"
+	clientpb "github.com/c
 	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
-	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
-	"github.com/chainreactors/IoM-go/session"
+	"github.com/chainreactors/IoM-go/client"
 	"strings"
 
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
@@ -35,7 +36,7 @@ func CurlCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func Curl(rpc clientrpc.MaliceRPCClient, sess *session.Session, url string, method string, timeout int32, body []byte, headers map[string]string) (*clientpb.Task, error) {
+func Curl(rpc clientrpc.MaliceRPCClient, sess *client.Session, url string, method string, timeout int32, body []byte, headers map[string]string) (*clientpb.Task, error) {
 	task, err := rpc.Curl(sess.Context(), &implantpb.CurlRequest{
 		Url:     url,
 		Method:  method,
@@ -54,7 +55,7 @@ func RegisterCurlFunc(con *repl.Console) {
 		"curl",
 		Curl,
 		"bcurl",
-		func(rpc clientrpc.MaliceRPCClient, sess *session.Session, url string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *client.Session, url string) (*clientpb.Task, error) {
 			return Curl(rpc, sess, url, "GET", 30, nil, nil)
 		},
 		output.ParseBinaryResponse,

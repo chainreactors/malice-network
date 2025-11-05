@@ -46,7 +46,7 @@ func NewHttpPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 	}
 
 	// 创建HTTP特定参数
-	params := &types.PipelineParams{
+	params := &implanttypes.PipelineParams{
 		Headers:    headerMap,
 		ErrorPage:  errorPage,
 		BodyPrefix: bodyPrefix,

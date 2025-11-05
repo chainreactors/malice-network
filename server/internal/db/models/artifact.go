@@ -3,7 +3,7 @@ package models
 import (
 	"encoding/json"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/types"
+	"github.com/chainreactors/malice-network/helper/implanttypes"
 	"gorm.io/gorm"
 	"os"
 	"time"
@@ -29,7 +29,7 @@ type Artifact struct {
 	Log         string
 	Status      string
 	ParamsData  string
-	Params      *types.ProfileParams `gorm:"-"`
+	Params      *implanttypes.ProfileParams `gorm:"-"`
 	ProfileByte []byte
 }
 
@@ -39,7 +39,7 @@ func (a *Artifact) AfterFind(tx *gorm.DB) (err error) {
 	}
 
 	// 如果知道具体类型，可以直接反序列化
-	var params types.ProfileParams
+	var params implanttypes.ProfileParams
 	if err := json.Unmarshal([]byte(a.ParamsData), &params); err != nil {
 		return err
 	}

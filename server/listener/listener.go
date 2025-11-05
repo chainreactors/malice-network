@@ -8,6 +8,7 @@ import (
 	mtls "github.com/chainreactors/IoM-go/mtls"
 	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/services/listenerrpc"
+	"github.com/chainreactors/malice-network/helper/utils/output"
 	"os"
 	"path/filepath"
 	"time"
@@ -15,7 +16,6 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/utils"
-	"github.com/chainreactors/malice-network/helper/utils/formatutils"
 	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
@@ -519,7 +519,7 @@ func (lns *listener) handleAmountArtifact(job *clientpb.JobCtrl) error {
 		return errors.New("website not found")
 	}
 
-	en := formatutils.Encode(job.Content.Path)
+	en := output.Encode(job.Content.Path)
 
 	w.Artifact[en] = &clientpb.WebContent{
 		Path: job.Content.Path,

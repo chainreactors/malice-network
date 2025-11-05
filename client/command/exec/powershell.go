@@ -2,11 +2,11 @@ package exec
 
 import (
 	"bytes"
+	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
 	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
-	"github.com/chainreactors/IoM-go/session"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/utils/output"
@@ -29,7 +29,7 @@ func PowershellCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func Powershell(rpc clientrpc.MaliceRPCClient, sess *session.Session, cmd string, output bool) (*clientpb.Task, error) {
+func Powershell(rpc clientrpc.MaliceRPCClient, sess *client.Session, cmd string, output bool) (*clientpb.Task, error) {
 	task, err := rpc.Execute(sess.Context(), &implantpb.ExecRequest{
 		Path:   `C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe`,
 		Args:   []string{"-ExecutionPolicy", "Bypass", "-w", "hidden", "-nop", cmd},
@@ -53,7 +53,7 @@ func ExecutePowershellCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func PowerPick(rpc clientrpc.MaliceRPCClient, sess *session.Session, path string, ps []string, param map[string]string) (*clientpb.Task, error) {
+func PowerPick(rpc clientrpc.MaliceRPCClient, sess *client.Session, path string, ps []string, param map[string]string) (*clientpb.Task, error) {
 	var psBin bytes.Buffer
 	if path != "" {
 		content, err := os.ReadFile(path)
@@ -83,7 +83,7 @@ func RegisterPowershellFunc(con *repl.Console) {
 		consts.ModulePowerpick,
 		PowerPick,
 		"bpowerpick",
-		func(rpc clientrpc.MaliceRPCClient, sess *session.Session, script string, ps string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *client.Session, script string, ps string) (*clientpb.Task, error) {
 			cmdline, err := shellquote.Split(ps)
 			if err != nil {
 				return nil, err
@@ -124,7 +124,7 @@ func RegisterPowershellFunc(con *repl.Console) {
 		consts.ModuleAliasPowershell,
 		Powershell,
 		"bpowershell",
-		func(rpc clientrpc.MaliceRPCClient, sess *session.Session, cmdline string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *client.Session, cmdline string) (*clientpb.Task, error) {
 			return Powershell(rpc, sess, cmdline, true)
 		},
 		output.ParseExecResponse,

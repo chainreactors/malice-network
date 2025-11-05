@@ -6,14 +6,14 @@ import (
 	"fmt"
 	consts "github.com/chainreactors/IoM-go/consts"
 	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
-	types2 "github.com/chainreactors/IoM-go/types"
+	types "github.com/chainreactors/IoM-go/types"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/encoders"
-	"github.com/chainreactors/malice-network/helper/types"
+	"github.com/chainreactors/malice-network/helper/implanttypes"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
@@ -60,7 +60,7 @@ func NewProfile(profile *clientpb.Profile) error {
 			return fmt.Errorf("pipline not found, err: %s", err)
 		}
 
-		params, _ := types.UnmarshalProfileParams([]byte(profile.Params))
+		params, _ := implanttypes.UnmarshalProfileParams([]byte(profile.Params))
 		if params != nil && params.REMPipeline != "" {
 			remPipelineModel, err := FindPipeline(params.REMPipeline)
 			if err != nil {
@@ -109,7 +109,7 @@ func NewProfile(profile *clientpb.Profile) error {
 			return fmt.Errorf("failed to read implant.yaml: %w", err)
 		}
 
-		config, err := types.LoadProfile(yamlContent)
+		config, err := implanttypes.LoadProfile(yamlContent)
 		if err != nil {
 			return fmt.Errorf("failed to parse yaml config: %w", err)
 		}
@@ -132,7 +132,7 @@ func NewProfile(profile *clientpb.Profile) error {
 }
 
 // GetProfile recovers profile from database
-func GetProfile(name string) (*types.ProfileConfig, error) {
+func GetProfile(name string) (*implanttypes.ProfileConfig, error) {
 	var profileModel *models.Profile
 
 	result := Session().Preload("Pipeline").Where("name = ?", name).First(&profileModel)
@@ -140,7 +140,7 @@ func GetProfile(name string) (*types.ProfileConfig, error) {
 		return nil, result.Error
 	}
 	if profileModel.PipelineID != "" && profileModel.Pipeline == nil {
-		return nil, types2.ErrNotFoundPipeline
+		return nil, types.ErrNotFoundPipeline
 	}
 	//if profileModel.PulsePipelineID != "" && profileModel.PulsePipeline == nil {
 	//	return nil, errs.ErrNotFoundPipeline
@@ -149,7 +149,7 @@ func GetProfile(name string) (*types.ProfileConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	profile, err := types.LoadProfile(profileModel.Raw)
+	profile, err := implanttypes.LoadProfile(profileModel.Raw)
 	if err != nil {
 		return nil, err
 	}
@@ -159,18 +159,18 @@ func GetProfile(name string) (*types.ProfileConfig, error) {
 
 	if profileModel.Pipeline != nil {
 		// 为了向后兼容，创建一个简单的目标
-		target := types.Target{
+		target := implanttypes.Target{
 			Address: profileModel.Pipeline.Address(),
 		}
 
 		// 如果是 TLS 管道，设置 TLS 配置
 		if profileModel.Pipeline.Tls.Enable {
-			target.TLS = &types.TLSProfile{
+			target.TLS = &implanttypes.TLSProfile{
 				Enable: true,
 			}
 		}
 
-		profile.Basic.Targets = []types.Target{target}
+		profile.Basic.Targets = []implanttypes.Target{target}
 		profile.Basic.Encryption = profileModel.Pipeline.Encryption.Choice().Type
 		profile.Basic.Key = profileModel.Pipeline.Encryption.Choice().Key
 		// profile.Basic.Protocol = profileModel.Pipeline.Type
@@ -181,7 +181,7 @@ func GetProfile(name string) (*types.ProfileConfig, error) {
 			// - server公钥：implant用来加密发给server的数据
 			// - implant私钥：implant用来解密server发来的数据
 
-			profile.Basic.Secure = &types.SecureProfile{
+			profile.Basic.Secure = &implanttypes.SecureProfile{
 				Enable:            true,
 				ServerPublicKey:   profileModel.Pipeline.Secure.ServerPublicKey,
 				ImplantPrivateKey: profileModel.Pipeline.Secure.ImplantPrivateKey,
@@ -199,9 +199,9 @@ func GetProfile(name string) (*types.ProfileConfig, error) {
 				return nil, err
 			}
 			// 添加 REM 目标到 targets 列表
-			profile.Basic.Targets = append(profile.Basic.Targets, types.Target{
+			profile.Basic.Targets = append(profile.Basic.Targets, implanttypes.Target{
 				Address: pipeline.Address(),
-				REM: &types.REMProfile{
+				REM: &implanttypes.REMProfile{
 					Link: pipeline.PipelineParams.Link,
 				},
 			})
@@ -301,7 +301,7 @@ func UpdateProfileRaw(profileName string, raw []byte) error {
 func SaveArtifactFromConfig(req *clientpb.BuildConfig) (*models.Artifact, error) {
 	target, ok := consts.GetBuildTarget(req.Target)
 	if !ok {
-		return nil, types2.ErrInvalidateTarget
+		return nil, types.ErrInvalidateTarget
 	}
 	builder := models.Artifact{
 		Name:        req.BuildName,
@@ -328,7 +328,7 @@ func SaveArtifactFromConfig(req *clientpb.BuildConfig) (*models.Artifact, error)
 func SaveArtifactFromID(req *clientpb.BuildConfig, ID uint32) (*models.Artifact, error) {
 	target, ok := consts.GetBuildTarget(req.Target)
 	if !ok {
-		return nil, types2.ErrInvalidateTarget
+		return nil, types.ErrInvalidateTarget
 	}
 	artifact := models.Artifact{
 		ID:          ID,
@@ -461,7 +461,7 @@ func FindArtifact(target *clientpb.Artifact, bin bool) (*clientpb.Artifact, erro
 		return nil, fmt.Errorf("error finding artifact: %v, target: %+v", result.Error, target)
 	}
 	if artifact == nil {
-		return nil, types2.ErrNotFoundArtifact
+		return nil, types.ErrNotFoundArtifact
 	}
 	if bin {
 		content, err := os.ReadFile(artifact.Path)
@@ -495,7 +495,7 @@ func GetArtifact(req *clientpb.Artifact) (*models.Artifact, error) {
 	} else if req.Name != "" {
 		return GetArtifactByName(req.Name)
 	} else {
-		return nil, types2.ErrNotFoundArtifact
+		return nil, types.ErrNotFoundArtifact
 	}
 }
 
@@ -536,7 +536,7 @@ func GetBeaconBuilderByRelinkID(relinkID uint32) ([]*models.Artifact, error) {
 
 	var result []*models.Artifact
 	for _, b := range artifacts {
-		var params types.ProfileParams
+		var params implanttypes.ProfileParams
 		if b.ParamsData != "" {
 			if err := json.Unmarshal([]byte(b.ParamsData), &params); err == nil {
 				if params.RelinkBeaconID == relinkID {

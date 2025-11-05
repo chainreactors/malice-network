@@ -3,8 +3,8 @@ package command
 import (
 	"fmt"
 	"github.com/carapace-sh/carapace"
-	consts "github.com/chainreactors/IoM-go/consts"
-	"github.com/chainreactors/IoM-go/session"
+	"github.com/chainreactors/IoM-go/client"
+	consts "github.com/chainreacto
 	"github.com/chainreactors/tui"
 	"github.com/reeflective/console"
 	"github.com/spf13/cobra"
@@ -74,7 +74,7 @@ func makeRunners(implantCmd *cobra.Command, con *repl.Console) (pre, post func(c
 			sid = con.ActiveTarget.Session.SessionId
 		}
 
-		var session *session.Session
+		var session *client.Session
 		var ok bool
 
 		if session, ok = con.GetLocalSession(sid); !ok {

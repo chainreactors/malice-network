@@ -2,8 +2,8 @@ package repl
 
 import (
 	"fmt"
+	"github.com/chainreactors/IoM-go/client"
 	consts "github.com/chainreactors/IoM-go/consts"
-	"github.com/chainreactors/IoM-go/session"
 	"github.com/kballard/go-shellquote"
 	"github.com/mattn/go-tty"
 	"github.com/muesli/termenv"
@@ -85,9 +85,9 @@ func NewSessionColor(prePrompt, sId string) string {
 	var sessionPrompt string
 	runes := []rune(sId)
 	if termenv.HasDarkBackground() {
-		sessionPrompt = fmt.Sprintf("%s [%s]> ", session.GroupStyle.Render(prePrompt), session.NameStyle.Render(string(runes)))
+		sessionPrompt = fmt.Sprintf("%s [%s]> ", client.GroupStyle.Render(prePrompt), client.NameStyle.Render(string(runes)))
 	} else {
-		sessionPrompt = fmt.Sprintf("%s [%s]> ", session.GroupStyle.Render(prePrompt), session.NameStyle.Render(string(runes)))
+		sessionPrompt = fmt.Sprintf("%s [%s]> ", client.GroupStyle.Render(prePrompt), client.NameStyle.Render(string(runes)))
 	}
 	return sessionPrompt
 }
@@ -120,5 +120,5 @@ func RunCommand(con *Console, cmdline interface{}) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return session.RemoveANSI(session.Stdout.Range(start, time.Now())), nil
+	return client.RemoveANSI(client.Stdout.Range(start, time.Now())), nil
 }

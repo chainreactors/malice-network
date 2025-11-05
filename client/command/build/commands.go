@@ -2,8 +2,8 @@ package build
 
 import (
 	"fmt"
+	"github.com/chainreactors/IoM-go/client"
 	consts "github.com/chainreactors/IoM-go/consts"
-	"github.com/chainreactors/IoM-go/session"
 
 	"github.com/carapace-sh/carapace"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
@@ -477,7 +477,7 @@ func Register(con *repl.Console) {
 		})
 
 	con.RegisterServerFunc("get_artifact",
-		func(con *repl.Console, sess *session.Session, format string) (*clientpb.Artifact, error) {
+		func(con *repl.Console, sess *client.Session, format string) (*clientpb.Artifact, error) {
 			artifact := &clientpb.Artifact{Name: sess.Name}
 			artifact, err := con.Rpc.FindArtifact(sess.Context(), artifact)
 			if err != nil {
@@ -522,7 +522,7 @@ func Register(con *repl.Console) {
 	)
 
 	con.RegisterServerFunc("self_artifact",
-		func(con *repl.Console, sess *session.Session) (string, error) {
+		func(con *repl.Console, sess *client.Session) (string, error) {
 			artifact := &clientpb.Artifact{
 				Name: sess.Name,
 			}
@@ -544,7 +544,7 @@ func Register(con *repl.Console) {
 		})
 
 	con.RegisterServerFunc("self_stager",
-		func(con *repl.Console, sess *session.Session) (string, error) {
+		func(con *repl.Console, sess *client.Session) (string, error) {
 			artifact, err := SearchArtifact(con, sess.PipelineId, "pulse", "raw", sess.Os.Name, sess.Os.Arch)
 			if err != nil {
 				return "", err
@@ -585,7 +585,7 @@ func Register(con *repl.Console) {
 		Example: `artifact_stager("tcp_default","raw","windows","x64")`,
 	})
 
-	con.RegisterServerFunc("self_payload", func(con *repl.Console, sess *session.Session) (string, error) {
+	con.RegisterServerFunc("self_payload", func(con *repl.Console, sess *client.Session) (string, error) {
 		artifact, err := SearchArtifact(con, sess.PipelineId, "beacon", "shellcode", sess.Os.Name, sess.Os.Arch)
 		if err != nil {
 			return "", fmt.Errorf("get artifact error: %s", err)

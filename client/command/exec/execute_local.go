@@ -1,11 +1,11 @@
 package exec
 
 import (
+	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
 	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
-	"github.com/chainreactors/IoM-go/session"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
@@ -28,7 +28,7 @@ func ExecuteLocalCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func ExecLocal(rpc clientrpc.MaliceRPCClient, sess *session.Session,
+func ExecLocal(rpc clientrpc.MaliceRPCClient, sess *client.Session,
 	args []string, output bool, process string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 	args[0] = fileutils.FormatWindowPath(args[0])
 	if process == "" {
@@ -64,7 +64,7 @@ func InlineLocalCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func InlineLocal(rpc clientrpc.MaliceRPCClient, sess *session.Session,
+func InlineLocal(rpc clientrpc.MaliceRPCClient, sess *client.Session,
 	args []string, output bool, process string) (*clientpb.Task, error) {
 	args[0] = fileutils.FormatWindowPath(args[0])
 
@@ -89,7 +89,7 @@ func RegisterExecuteLocalFunc(con *repl.Console) {
 		consts.ModuleExecuteLocal,
 		ExecLocal,
 		"bexecute",
-		func(rpc clientrpc.MaliceRPCClient, sess *session.Session, cmdline string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *client.Session, cmdline string) (*clientpb.Task, error) {
 			args, err := shellquote.Split(cmdline)
 			if err != nil {
 				return nil, err

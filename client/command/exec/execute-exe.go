@@ -2,11 +2,11 @@ package exec
 
 import (
 	"errors"
+	"github.com/chainreactors/IoM-go/client"
 	consts "github.com/chainreactors/IoM-go/consts"
 	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
-	"github.com/chainreactors/IoM-go/session"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/utils/output"
@@ -28,7 +28,7 @@ func ExecuteExeCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func ExecExe(rpc clientrpc.MaliceRPCClient, sess *session.Session, pePath string,
+func ExecExe(rpc clientrpc.MaliceRPCClient, sess *client.Session, pePath string,
 	args []string, out bool, timeout uint32, arch string,
 	process string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 	if arch == "" {
@@ -60,7 +60,7 @@ func InlineExeCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func InlineExe(rpc clientrpc.MaliceRPCClient, sess *session.Session, path string, args []string,
+func InlineExe(rpc clientrpc.MaliceRPCClient, sess *client.Session, path string, args []string,
 	out bool, timeout uint32, arch string, process string) (*clientpb.Task, error) {
 	if arch == "" {
 		arch = sess.Os.Arch
@@ -84,7 +84,7 @@ func RegisterExeFunc(con *repl.Console) {
 		consts.ModuleAliasInlineExe,
 		InlineExe,
 		"binline_exe",
-		func(rpc clientrpc.MaliceRPCClient, sess *session.Session, path string, args string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *client.Session, path string, args string) (*clientpb.Task, error) {
 			param, err := shellquote.Split(args)
 			if err != nil {
 				return nil, err
@@ -113,7 +113,7 @@ func RegisterExeFunc(con *repl.Console) {
 		consts.ModuleExecuteExe,
 		ExecExe,
 		"bexecute_exe",
-		func(rpc clientrpc.MaliceRPCClient, sess *session.Session, path string, args string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *client.Session, path string, args string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 			cmdline, err := shellquote.Split(args)
 			if err != nil {
 				return nil, err

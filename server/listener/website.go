@@ -7,7 +7,7 @@ import (
 	"github.com/chainreactors/IoM-go/consts"
 	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/services/listenerrpc"
-	"github.com/chainreactors/malice-network/helper/utils/formatutils"
+	"github.com/chainreactors/malice-network/helper/utils/output"
 	"net"
 	"net/http"
 	"os"
@@ -156,13 +156,13 @@ func (w *Website) websiteContentHandler(resp http.ResponseWriter, req *http.Requ
 	}
 	_, ok := w.Artifact[artifactName]
 	if ok {
-		name, err := formatutils.Decode(artifactName)
+		name, err := output.Decode(artifactName)
 		if err != nil {
 			logs.Log.Errorf("failed to decode: %s", err)
 			return
 		}
 
-		format, _ := formatutils.Decode(formatted)
+		format, _ := output.Decode(formatted)
 
 		artifact, err := w.rpc.FindArtifact(context.Background(), &clientpb.Artifact{
 			Name:   name,

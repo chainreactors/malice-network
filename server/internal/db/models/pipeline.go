@@ -5,7 +5,7 @@ import (
 	"fmt"
 	consts "github.com/chainreactors/IoM-go/consts"
 	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/types"
+	"github.com/chainreactors/malice-network/helper/implanttypes"
 	"github.com/corpix/uarand"
 	"github.com/gofrs/uuid"
 	"gorm.io/gorm"
@@ -15,18 +15,18 @@ import (
 
 // Pipeline
 type Pipeline struct {
-	ID                    uuid.UUID `gorm:"primaryKey;->;<-:create;type:uuid;"`
-	CreatedAt             time.Time `gorm:"->;<-:create;"`
-	ListenerId            string    `gorm:"type:string;"`
-	Name                  string    `gorm:"unique,type:string"`
-	IP                    string    `gorm:"type:string;default:''"`
-	Host                  string    `config:"host"`
-	Port                  uint32    `config:"port"`
-	Type                  string    `gorm:"type:string;"`
-	Enable                bool      `gorm:"type:boolean;"`
-	ParamsData            string    `gorm:"column:params"`
-	CertName              string    `gorm:"type:string;"`
-	*types.PipelineParams `gorm:"-"`
+	ID                           uuid.UUID `gorm:"primaryKey;->;<-:create;type:uuid;"`
+	CreatedAt                    time.Time `gorm:"->;<-:create;"`
+	ListenerId                   string    `gorm:"type:string;"`
+	Name                         string    `gorm:"unique,type:string"`
+	IP                           string    `gorm:"type:string;default:''"`
+	Host                         string    `config:"host"`
+	Port                         uint32    `config:"port"`
+	Type                         string    `gorm:"type:string;"`
+	Enable                       bool      `gorm:"type:boolean;"`
+	ParamsData                   string    `gorm:"column:params"`
+	CertName                     string    `gorm:"type:string;"`
+	*implanttypes.PipelineParams `gorm:"-"`
 }
 
 func (pipeline *Pipeline) ToProtobuf() *clientpb.Pipeline {
@@ -191,7 +191,7 @@ func (pipeline *Pipeline) AfterFind(tx *gorm.DB) error {
 	if pipeline.ParamsData == "" {
 		return nil
 	}
-	var params types.PipelineParams
+	var params implanttypes.PipelineParams
 	if err := json.Unmarshal([]byte(pipeline.ParamsData), &params); err != nil {
 		return err
 	}
@@ -211,11 +211,11 @@ func FromPipelinePb(pipeline *clientpb.Pipeline) *Pipeline {
 			Port:       body.Tcp.Port,
 			Type:       consts.TCPPipeline,
 			CertName:   pipeline.CertName,
-			PipelineParams: &types.PipelineParams{
+			PipelineParams: &implanttypes.PipelineParams{
 				Parser:     pipeline.Parser,
-				Tls:        types.FromTls(pipeline.Tls),
-				Encryption: types.FromEncryptions(pipeline.Encryption),
-				Secure:     types.FromSecure(pipeline.Secure),
+				Tls:        implanttypes.FromTls(pipeline.Tls),
+				Encryption: implanttypes.FromEncryptions(pipeline.Encryption),
+				Secure:     implanttypes.FromSecure(pipeline.Secure),
 			},
 		}
 	case *clientpb.Pipeline_Http:
@@ -228,11 +228,11 @@ func FromPipelinePb(pipeline *clientpb.Pipeline) *Pipeline {
 			Port:       body.Http.Port,
 			Type:       consts.HTTPPipeline,
 			CertName:   pipeline.CertName,
-			PipelineParams: &types.PipelineParams{
+			PipelineParams: &implanttypes.PipelineParams{
 				Parser:     pipeline.Parser,
-				Tls:        types.FromTls(pipeline.Tls),
-				Encryption: types.FromEncryptions(pipeline.Encryption),
-				Secure:     types.FromSecure(pipeline.Secure),
+				Tls:        implanttypes.FromTls(pipeline.Tls),
+				Encryption: implanttypes.FromEncryptions(pipeline.Encryption),
+				Secure:     implanttypes.FromSecure(pipeline.Secure),
 			},
 		}
 	case *clientpb.Pipeline_Bind:
@@ -243,10 +243,10 @@ func FromPipelinePb(pipeline *clientpb.Pipeline) *Pipeline {
 			IP:         pipeline.Ip,
 			Type:       consts.BindPipeline,
 			CertName:   pipeline.CertName,
-			PipelineParams: &types.PipelineParams{
+			PipelineParams: &implanttypes.PipelineParams{
 				Parser:     pipeline.Parser,
-				Tls:        types.FromTls(pipeline.Tls),
-				Encryption: types.FromEncryptions(pipeline.Encryption),
+				Tls:        implanttypes.FromTls(pipeline.Tls),
+				Encryption: implanttypes.FromEncryptions(pipeline.Encryption),
 			},
 		}
 	case *clientpb.Pipeline_Rem:
@@ -259,7 +259,7 @@ func FromPipelinePb(pipeline *clientpb.Pipeline) *Pipeline {
 			Port:       body.Rem.Port,
 			IP:         pipeline.Ip,
 			CertName:   pipeline.CertName,
-			PipelineParams: &types.PipelineParams{
+			PipelineParams: &implanttypes.PipelineParams{
 				Link:      body.Rem.Link,
 				Subscribe: body.Rem.Subscribe,
 				Console:   body.Rem.Console,
@@ -274,9 +274,9 @@ func FromPipelinePb(pipeline *clientpb.Pipeline) *Pipeline {
 			Port:       body.Web.Port,
 			CertName:   pipeline.CertName,
 			Type:       consts.WebsitePipeline,
-			PipelineParams: &types.PipelineParams{
+			PipelineParams: &implanttypes.PipelineParams{
 				WebPath: body.Web.Root,
-				Tls:     types.FromTls(pipeline.Tls),
+				Tls:     implanttypes.FromTls(pipeline.Tls),
 			},
 		}
 
@@ -285,7 +285,7 @@ func FromPipelinePb(pipeline *clientpb.Pipeline) *Pipeline {
 	}
 }
 
-func (pipeline *Pipeline) ToProfile(backend *Pipeline) (types.ProfileConfig, error) {
+func (pipeline *Pipeline) ToProfile(backend *Pipeline) (implanttypes.ProfileConfig, error) {
 	switch pipeline.Type {
 	case consts.TCPPipeline:
 		return pipeline.DefaultTCPProfile(), nil
@@ -294,17 +294,17 @@ func (pipeline *Pipeline) ToProfile(backend *Pipeline) (types.ProfileConfig, err
 	case consts.RemPipeline:
 		return pipeline.DefaultRemProfile(backend), nil
 	default:
-		return types.ProfileConfig{}, fmt.Errorf("'%s' pipeline is not support.", pipeline.Type)
+		return implanttypes.ProfileConfig{}, fmt.Errorf("'%s' pipeline is not support.", pipeline.Type)
 	}
 }
 
-func (pipeline *Pipeline) DefaultTCPProfile() types.ProfileConfig {
+func (pipeline *Pipeline) DefaultTCPProfile() implanttypes.ProfileConfig {
 	pipelineProtobuf := pipeline.ToProtobuf()
-	pipelineProfile := types.ProfileConfig{}
+	pipelineProfile := implanttypes.ProfileConfig{}
 	pipelineProfile.SetDefaults()
-	target := types.Target{}
+	target := implanttypes.Target{}
 	target.Address = pipelineProtobuf.Ip + ":" + strconv.Itoa(int(pipelineProtobuf.GetTcp().Port))
-	target.TCP = &types.TCPProfile{}
+	target.TCP = &implanttypes.TCPProfile{}
 	// beacon
 	pipelineProfile.Basic.Targets = append(pipelineProfile.Basic.Targets, target)
 	// pulse
@@ -324,13 +324,13 @@ func (pipeline *Pipeline) DefaultTCPProfile() types.ProfileConfig {
 	return pipelineProfile
 }
 
-func (pipeline *Pipeline) DefaultHTTPProfile() types.ProfileConfig {
+func (pipeline *Pipeline) DefaultHTTPProfile() implanttypes.ProfileConfig {
 	pipelineProtobuf := pipeline.ToProtobuf()
-	pipelineProfile := types.ProfileConfig{}
+	pipelineProfile := implanttypes.ProfileConfig{}
 	pipelineProfile.SetDefaults()
-	target := types.Target{}
+	target := implanttypes.Target{}
 	target.Address = pipelineProtobuf.Ip + ":" + strconv.Itoa(int(pipelineProtobuf.GetHttp().Port))
-	target.Http = &types.HttpProfile{
+	target.Http = &implanttypes.HttpProfile{
 		Method:  "POST",
 		Path:    "/",
 		Version: "1.1",
@@ -340,7 +340,7 @@ func (pipeline *Pipeline) DefaultHTTPProfile() types.ProfileConfig {
 		},
 	}
 	if pipelineProtobuf.Tls != nil && pipelineProtobuf.Tls.Enable {
-		target.TLS = &types.TLSProfile{
+		target.TLS = &implanttypes.TLSProfile{
 			Enable:           true,
 			SNI:              pipelineProtobuf.Ip,
 			SkipVerification: true,
@@ -364,15 +364,15 @@ func (pipeline *Pipeline) DefaultHTTPProfile() types.ProfileConfig {
 	return pipelineProfile
 }
 
-func (pipeline *Pipeline) DefaultRemProfile(backend *Pipeline) types.ProfileConfig {
+func (pipeline *Pipeline) DefaultRemProfile(backend *Pipeline) implanttypes.ProfileConfig {
 	pipelineProtobuf := pipeline.ToProtobuf()
-	pipelineProfile := types.ProfileConfig{}
+	pipelineProfile := implanttypes.ProfileConfig{}
 	pipelineProfile.SetDefaults()
-	target := types.Target{}
+	target := implanttypes.Target{}
 	backendPB := backend.ToProtobuf()
 
 	target.Address = backendPB.Ip + ":" + strconv.Itoa(int(backendPB.GetTcp().Port))
-	target.REM = &types.REMProfile{}
+	target.REM = &implanttypes.REMProfile{}
 	target.REM.Link = pipelineProtobuf.GetRem().Link
 	pipelineProfile.Implant.Enable3rd = true
 	pipelineProfile.Implant.ThirdModules = []string{"rem"}

@@ -1,11 +1,11 @@
 package filesystem
 
 import (
+	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
 	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
-	"github.com/chainreactors/IoM-go/session"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/spf13/cobra"
 )
@@ -24,7 +24,7 @@ func CpCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func Cp(rpc clientrpc.MaliceRPCClient, session *session.Session, originPath, targetPath string) (*clientpb.Task, error) {
+func Cp(rpc clientrpc.MaliceRPCClient, session *client.Session, originPath, targetPath string) (*clientpb.Task, error) {
 	task, err := rpc.Cp(session.Context(), &implantpb.Request{
 		Name: consts.ModuleCp,
 		Args: []string{originPath, targetPath},

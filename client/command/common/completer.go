@@ -13,10 +13,8 @@ import (
 	"strings"
 
 	"github.com/carapace-sh/carapace"
-	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/utils/formatutils"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/spf13/cobra"
 )
@@ -272,7 +270,7 @@ func ModuleArtifactsCompleter(con *repl.Console) carapace.Action {
 		}
 		for _, a := range artifacts.Artifacts {
 			if a.Type == consts.CommandBuildModules {
-				var params types.ProfileParams
+				var params implanttypes.ProfileParams
 				err = json.Unmarshal(a.ParamsBytes, &params)
 				if err != nil {
 					return carapace.Action{}
@@ -287,7 +285,7 @@ func ModuleArtifactsCompleter(con *repl.Console) carapace.Action {
 
 func ArtifactFormatCompleter() carapace.Action {
 	// Get supported formats from formatter
-	formatsWithDesc := formatutils.GetFormatsWithDescriptions()
+	formatsWithDesc := output.GetFormatsWithDescriptions()
 
 	// Convert to slice for carapace
 	descriptions := make([]string, 0, len(formatsWithDesc)*2)

@@ -2,9 +2,9 @@ package context
 
 import (
 	"fmt"
+	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
 	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
-	"github.com/chainreactors/IoM-go/session"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
@@ -73,7 +73,7 @@ func GetCredentials(con *repl.Console) ([]*clientpb.Context, error) {
 	return contexts.Contexts, nil
 }
 
-func AddCredential(con *repl.Console, sess *session.Session, task *clientpb.Task, credType string, params map[string]string) (bool, error) {
+func AddCredential(con *repl.Console, sess *client.Session, task *clientpb.Task, credType string, params map[string]string) (bool, error) {
 	_, err := con.Rpc.AddCredential(con.Context(), &clientpb.Context{
 		Session: sess.Session,
 		Task:    task,

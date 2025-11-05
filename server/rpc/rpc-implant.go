@@ -6,7 +6,7 @@ import (
 	consts "github.com/chainreactors/IoM-go/consts"
 	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
 	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
-	types2 "github.com/chainreactors/IoM-go/types"
+	types "github.com/chainreactors/IoM-go/types"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/server/internal/core"
@@ -108,7 +108,7 @@ func (rpc *Server) Sleep(ctx context.Context, req *implantpb.Timer) (*clientpb.T
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types2.MsgEmpty)
+	go greq.HandlerResponse(ch, types.MsgEmpty)
 	if session, err := getSession(ctx); err == nil {
 		session.Jitter = req.Jitter
 		session.Expression = req.Expression
@@ -123,7 +123,7 @@ func (rpc *Server) Sleep(ctx context.Context, req *implantpb.Timer) (*clientpb.T
 }
 
 func (rpc *Server) Suicide(ctx context.Context, req *implantpb.Request) (*clientpb.Task, error) {
-	err := types2.AssertRequestName(req, consts.ModuleSuicide)
+	err := types.AssertRequestName(req, consts.ModuleSuicide)
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +136,7 @@ func (rpc *Server) Suicide(ctx context.Context, req *implantpb.Request) (*client
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types2.MsgEmpty)
+	go greq.HandlerResponse(ch, types.MsgEmpty)
 	return greq.Task.ToProtobuf(), nil
 }
 
@@ -150,12 +150,12 @@ func (rpc *Server) Switch(ctx context.Context, req *implantpb.Switch) (*clientpb
 		return nil, err
 	}
 
-	go greq.HandlerResponse(ch, types2.MsgEmpty)
+	go greq.HandlerResponse(ch, types.MsgEmpty)
 	return greq.Task.ToProtobuf(), nil
 }
 
 func (rpc *Server) InitBindSession(ctx context.Context, req *implantpb.Request) (*clientpb.Empty, error) {
-	err := types2.AssertRequestName(req, consts.ModuleInit)
+	err := types.AssertRequestName(req, consts.ModuleInit)
 	if err != nil {
 		return nil, err
 	}
@@ -189,7 +189,7 @@ func hasIntersection(slice1, slice2 []uint32) bool {
 func (rpc *Server) Polling(ctx context.Context, req *clientpb.Polling) (*clientpb.Empty, error) {
 	sess, err := core.Sessions.Get(req.SessionId)
 	if err != nil {
-		return nil, types2.ErrNotFoundSession
+		return nil, types.ErrNotFoundSession
 	}
 	go func() {
 		logs.Log.Debugf("polling:%s %s, interval %d", req.Id, sess.ID, req.Interval)
@@ -218,7 +218,7 @@ func (rpc *Server) Polling(ctx context.Context, req *clientpb.Polling) (*clientp
 				}
 			}
 			err = sess.Request(
-				&clientpb.SpiteRequest{Session: sess.ToProtobufLite(), Task: nil, Spite: types2.BuildPingSpite()},
+				&clientpb.SpiteRequest{Session: sess.ToProtobufLite(), Task: nil, Spite: types.BuildPingSpite()},
 				pipelinesCh[sess.PipelineID])
 			if err != nil {
 				return

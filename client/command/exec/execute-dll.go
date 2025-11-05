@@ -2,11 +2,11 @@ package exec
 
 import (
 	"errors"
+	"github.com/chainreactors/IoM-go/client"
 	consts "github.com/chainreactors/IoM-go/consts"
 	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
-	"github.com/chainreactors/IoM-go/session"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/intermediate"
@@ -33,7 +33,7 @@ func ExecuteDLLCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func ExecDLL(rpc clientrpc.MaliceRPCClient, sess *session.Session, dllPath string, entrypoint string, args []string, binPath string, out bool, timeout uint32, arch string, process string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
+func ExecDLL(rpc clientrpc.MaliceRPCClient, sess *client.Session, dllPath string, entrypoint string, args []string, binPath string, out bool, timeout uint32, arch string, process string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 	binary, err := output.NewBinary(consts.ModuleExecuteDll, dllPath, args, out, timeout, arch, process, sac)
 	if err != nil {
 		return nil, err
@@ -75,7 +75,7 @@ func InlineDLLCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func InlineDLL(rpc clientrpc.MaliceRPCClient, sess *session.Session, path, entryPoint string, args []string,
+func InlineDLL(rpc clientrpc.MaliceRPCClient, sess *client.Session, path, entryPoint string, args []string,
 	out bool, timeout uint32, arch string, process string) (*clientpb.Task, error) {
 	if arch == "" {
 		arch = sess.Os.Arch
@@ -100,7 +100,7 @@ func RegisterDLLFunc(con *repl.Console) {
 		consts.ModuleExecuteDll,
 		ExecDLL,
 		"bdllinject",
-		func(rpc clientrpc.MaliceRPCClient, sess *session.Session, ppid uint32, path string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *client.Session, ppid uint32, path string) (*clientpb.Task, error) {
 			sac, _ := intermediate.NewSacrificeProcessMessage(ppid, false, true, true, "")
 			return ExecDLL(rpc, sess, path, "DLLMain", nil, "", true, math.MaxUint32, sess.Os.Arch, "", sac)
 		},
@@ -129,7 +129,7 @@ func RegisterDLLFunc(con *repl.Console) {
 		consts.ModuleAliasInlineDll,
 		InlineDLL,
 		"binline_dll",
-		func(rpc clientrpc.MaliceRPCClient, sess *session.Session, path, entryPoint string, args string) (*clientpb.Task, error) {
+		func(rpc clientrpc.MaliceRPCClient, sess *client.Session, path, entryPoint string, args string) (*clientpb.Task, error) {
 			param, err := shellquote.Split(args)
 			if err != nil {
 				return nil, err

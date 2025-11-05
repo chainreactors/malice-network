@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/chainreactors/IoM-go/consts"
 	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/utils/output"
 	"mime"
 	"os"
 	"path/filepath"
@@ -11,8 +12,7 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/certs"
 	"github.com/chainreactors/malice-network/helper/codenames"
-	"github.com/chainreactors/malice-network/helper/types"
-	"github.com/chainreactors/malice-network/helper/utils/formatutils"
+	"github.com/chainreactors/malice-network/helper/implanttypes"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"github.com/gofrs/uuid"
@@ -35,7 +35,7 @@ func FindPipeline(name string) (*models.Pipeline, error) {
 			logs.Log.Errorf("failed to find cert %s", err)
 		}
 		if certificate != nil {
-			pipeline.Tls = types.FromTls(certificate.ToProtobuf())
+			pipeline.Tls = implanttypes.FromTls(certificate.ToProtobuf())
 		}
 	}
 	return pipeline, nil
@@ -54,7 +54,7 @@ func UpdatePipelineCert(certName string, pipeline *models.Pipeline) (*models.Pip
 	if err != nil {
 		return nil, err
 	}
-	pipeline.Tls = types.FromTls(cert.ToProtobuf())
+	pipeline.Tls = implanttypes.FromTls(cert.ToProtobuf())
 	return pipeline, err
 }
 
@@ -264,7 +264,7 @@ func FindWebsiteByName(name string) (*models.Pipeline, error) {
 			logs.Log.Errorf("failed to find cert %s", err)
 		}
 		if certificate != nil {
-			website.Tls = types.FromTls(certificate.ToProtobuf())
+			website.Tls = implanttypes.FromTls(certificate.ToProtobuf())
 		}
 	}
 	return website, nil
@@ -349,7 +349,7 @@ func AddContent(content *clientpb.WebContent) (*models.WebsiteContent, error) {
 func AddAmountWebContent(artifactName, pipelineName string) (*clientpb.WebContent, error) {
 	content := &clientpb.WebContent{
 		WebsiteId: pipelineName,
-		Path:      formatutils.Encode(artifactName),
+		Path:      output.Encode(artifactName),
 		Type:      consts.ArtifactWebcontent,
 	}
 	_, err := AddContent(content)

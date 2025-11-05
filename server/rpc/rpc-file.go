@@ -6,7 +6,7 @@ import (
 	"github.com/chainreactors/IoM-go/consts"
 	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
 	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
-	types2 "github.com/chainreactors/IoM-go/types"
+	types "github.com/chainreactors/IoM-go/types"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/output"
@@ -31,7 +31,7 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 		if err != nil {
 			return nil, err
 		}
-		go greq.HandlerResponse(ch, types2.MsgAck, func(spite *implantpb.Spite) {
+		go greq.HandlerResponse(ch, types.MsgAck, func(spite *implantpb.Spite) {
 			v := &output.UploadContext{
 				FileDescriptor: &output.FileDescriptor{
 					Name:       req.Name,
@@ -70,7 +70,7 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 		var blockId = 0
 		go func() {
 			stat := <-out
-			err := types2.HandleMaleficError(stat)
+			err := types.HandleMaleficError(stat)
 			if err != nil {
 				greq.Task.Panic(buildErrorEvent(greq.Task, err))
 				return
@@ -84,14 +84,14 @@ func (rpc *Server) Upload(ctx context.Context, req *implantpb.UploadRequest) (*c
 				if blockId == count {
 					msg.End = true
 				}
-				spite, _ := types2.BuildSpite(&implantpb.Spite{
+				spite, _ := types.BuildSpite(&implantpb.Spite{
 					Timeout: uint64(consts.MinTimeout.Seconds()),
 					TaskId:  greq.Task.Id,
 				}, msg)
-				spite.Name = types2.MsgUpload.String()
+				spite.Name = types.MsgUpload.String()
 				in <- spite
 				resp := <-out
-				err = types2.AssertSpite(resp, types2.MsgAck)
+				err = types.AssertSpite(resp, types.MsgAck)
 				if err != nil {
 					return
 				}
@@ -178,7 +178,7 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 	}
 	go func() {
 		resp := <-out
-		err := types2.AssertStatusAndSpite(resp, types2.MsgDownload)
+		err := types.AssertStatusAndSpite(resp, types.MsgDownload)
 		if err != nil {
 			greq.Task.Panic(buildErrorEvent(greq.Task, err))
 			return
@@ -232,7 +232,7 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 		}
 
 		//
-		curRequest, _ := types2.BuildSpite(&implantpb.Spite{
+		curRequest, _ := types.BuildSpite(&implantpb.Spite{
 			Timeout: uint64(consts.MinTimeout.Seconds()),
 			TaskId:  greq.Task.Id,
 		}, &implantpb.DownloadRequest{
@@ -245,7 +245,7 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 		in <- curRequest
 
 		for resp := range out {
-			err := types2.AssertStatusAndSpite(resp, types2.MsgDownload)
+			err := types.AssertStatusAndSpite(resp, types.MsgDownload)
 			if err != nil {
 				logs.Log.Errorf(err.Error())
 				return
@@ -274,7 +274,7 @@ func (rpc *Server) Download(ctx context.Context, req *implantpb.DownloadRequest)
 			}
 
 			current_cur += 1
-			curRequest, _ = types2.BuildSpite(&implantpb.Spite{
+			curRequest, _ = types.BuildSpite(&implantpb.Spite{
 				Timeout: uint64(consts.MinTimeout.Seconds()),
 				TaskId:  greq.Task.Id,
 			}, &implantpb.DownloadRequest{

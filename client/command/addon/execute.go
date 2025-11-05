@@ -1,11 +1,12 @@
 package addon
 
 import (
+	"github.com/chainreactors/IoM-go/client"
+	const
 	consts "github.com/chainreactors/IoM-go/consts"
 	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
-	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
-	"github.com/chainreactors/IoM-go/session"
+	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/spf13/cobra"
@@ -41,7 +42,7 @@ func ExecuteAddonCmd(cmd *cobra.Command, con *repl.Console) {
 		return
 	}
 }
-func ExecuteAddon(rpc clientrpc.MaliceRPCClient, sess *session.Session, name string, args []string,
+func ExecuteAddon(rpc clientrpc.MaliceRPCClient, sess *client.Session, name string, args []string,
 	output bool, timeout uint32, arch string, process string,
 	sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 	if process == "" {

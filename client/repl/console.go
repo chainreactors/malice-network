@@ -5,8 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/carapace-sh/carapace/pkg/x"
+	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
-	"github.com/chainreactors/IoM-go/session"
+	"github.com
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/reeflective/console"
 	"github.com/spf13/cobra"
@@ -42,7 +43,7 @@ func NewConsole() (*Console, error) {
 	con := &Console{
 		//ActiveTarget: &core.ActiveTarget{},
 		//Settings:     settings,
-		Log:     session.Log,
+		Log:     client.Log,
 		CMDs:    make(map[string]*cobra.Command),
 		Helpers: make(map[string]*cobra.Command),
 	}
@@ -57,7 +58,7 @@ func NewConsole() (*Console, error) {
 type Console struct {
 	//*core.ActiveTarget
 	*core.Server
-	Log        *session.Logger
+	Log        *client.Logger
 	App        *console.Console
 	Profile    *assets.Profile
 	CMDs       map[string]*cobra.Command
@@ -153,7 +154,7 @@ func (c *Console) ImplantMenu() *cobra.Command {
 	return c.App.Menu(consts.ImplantMenu).Command
 }
 
-func (c *Console) RefreshCmd(sess *session.Session) int {
+func (c *Console) RefreshCmd(sess *client.Session) int {
 	var count int
 	for _, cmd := range c.CMDs {
 		if cmd.Annotations["menu"] != consts.ImplantMenu {
@@ -183,7 +184,7 @@ func (c *Console) RefreshCmd(sess *session.Session) int {
 	return count
 }
 
-func (c *Console) SwitchImplant(sess *session.Session) {
+func (c *Console) SwitchImplant(sess *client.Session) {
 	c.ActiveTarget.Set(sess)
 	c.App.SwitchMenu(consts.ImplantMenu)
 	count := c.RefreshCmd(sess)

@@ -5,9 +5,9 @@ import (
 	"fmt"
 	consts "github.com/chainreactors/IoM-go/consts"
 	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/implanttypes"
 	"os"
 
-	"github.com/chainreactors/malice-network/helper/types"
 	cryptostream "github.com/chainreactors/malice-network/server/internal/stream"
 	"golang.org/x/exp/slices"
 )
@@ -29,14 +29,14 @@ type ListenerConfig struct {
 }
 
 type TcpPipelineConfig struct {
-	Enable           bool                    `config:"enable" default:"true"`
-	Name             string                  `config:"name" default:"tcp"`
-	Host             string                  `config:"host" default:"0.0.0.0"`
-	Port             uint16                  `config:"port" default:"5001"`
-	Parser           string                  `config:"parser" default:"malefic"`
-	TlsConfig        *TlsConfig              `config:"tls"`
-	EncryptionConfig types.EncryptionsConfig `config:"encryption"`
-	SecureConfig     *types.SecureConfig     `config:"secure"` // Age 密码学安全配置
+	Enable           bool                           `config:"enable" default:"true"`
+	Name             string                         `config:"name" default:"tcp"`
+	Host             string                         `config:"host" default:"0.0.0.0"`
+	Port             uint16                         `config:"port" default:"5001"`
+	Parser           string                         `config:"parser" default:"malefic"`
+	TlsConfig        *TlsConfig                     `config:"tls"`
+	EncryptionConfig implanttypes.EncryptionsConfig `config:"encryption"`
+	SecureConfig     *implanttypes.SecureConfig     `config:"secure"` // Age 密码学安全配置
 }
 
 type AutoBuildConfig struct {
@@ -70,10 +70,10 @@ func (tcp *TcpPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, erro
 }
 
 type BindPipelineConfig struct {
-	Enable           bool                    `config:"enable" default:"true"`
-	Name             string                  `config:"name" default:"bind"`
-	TlsConfig        *TlsConfig              `config:"tls"`
-	EncryptionConfig types.EncryptionsConfig `config:"encryption"`
+	Enable           bool                           `config:"enable" default:"true"`
+	Name             string                         `config:"name" default:"bind"`
+	TlsConfig        *TlsConfig                     `config:"tls"`
+	EncryptionConfig implanttypes.EncryptionsConfig `config:"encryption"`
 }
 
 func (pipeline *BindPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, error) {
@@ -95,18 +95,18 @@ func (pipeline *BindPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline
 }
 
 type HttpPipelineConfig struct {
-	Enable           bool                    `config:"enable" default:"true"`
-	Name             string                  `config:"name" default:"http"`
-	Host             string                  `config:"host" default:"0.0.0.0"`
-	Port             uint16                  `config:"port" default:"8080"`
-	Parser           string                  `config:"parser" default:"malefic"`
-	TlsConfig        *TlsConfig              `config:"tls"`
-	EncryptionConfig types.EncryptionsConfig `config:"encryption"`
-	SecureConfig     *types.SecureConfig     `config:"secure"` // Age 密码学安全配置
-	Headers          map[string][]string     `config:"headers"`
-	ErrorPage        string                  `config:"error_page"`
-	BodyPrefix       string                  `config:"body_prefix"`
-	BodySuffix       string                  `config:"body_suffix"`
+	Enable           bool                           `config:"enable" default:"true"`
+	Name             string                         `config:"name" default:"http"`
+	Host             string                         `config:"host" default:"0.0.0.0"`
+	Port             uint16                         `config:"port" default:"8080"`
+	Parser           string                         `config:"parser" default:"malefic"`
+	TlsConfig        *TlsConfig                     `config:"tls"`
+	EncryptionConfig implanttypes.EncryptionsConfig `config:"encryption"`
+	SecureConfig     *implanttypes.SecureConfig     `config:"secure"` // Age 密码学安全配置
+	Headers          map[string][]string            `config:"headers"`
+	ErrorPage        string                         `config:"error_page"`
+	BodyPrefix       string                         `config:"body_prefix"`
+	BodySuffix       string                         `config:"body_suffix"`
 }
 
 func (http *HttpPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, error) {
@@ -125,7 +125,7 @@ func (http *HttpPipelineConfig) ToProtobuf(lisId string) (*clientpb.Pipeline, er
 	}
 
 	// 序列化额外参数
-	params := &types.PipelineParams{
+	params := &implanttypes.PipelineParams{
 		Headers:    http.Headers,
 		ErrorPage:  errorPageContent,
 		BodyPrefix: http.BodyPrefix,
@@ -208,8 +208,8 @@ func (content *WebContent) ToProtobuf() (*clientpb.WebContent, error) {
 }
 
 type CertConfig struct {
-	*types.CertConfig
-	Ca     *types.CertConfig
+	*implanttypes.CertConfig
+	Ca     *implanttypes.CertConfig
 	Enable bool `yaml:"enable"`
 }
 
@@ -267,13 +267,13 @@ func (t *TlsConfig) ToPkix() *pkix.Name {
 	}
 }
 
-func (t *TlsConfig) ReadCert() (*types.TlsConfig, error) {
+func (t *TlsConfig) ReadCert() (*implanttypes.TlsConfig, error) {
 	// 处理nil情况
 	if t == nil {
-		return &types.TlsConfig{Enable: false}, nil
+		return &implanttypes.TlsConfig{Enable: false}, nil
 	}
 	// 创建基础TLS配置
-	tls := &types.TlsConfig{
+	tls := &implanttypes.TlsConfig{
 		Enable:  t.Enable,
 		Subject: t.ToPkix(),
 	}
@@ -291,7 +291,7 @@ func (t *TlsConfig) ReadCert() (*types.TlsConfig, error) {
 		return nil, fmt.Errorf("failed to read key file: %s", err)
 	}
 	// 设置证书配置
-	tls.Cert = &types.CertConfig{
+	tls.Cert = &implanttypes.CertConfig{
 		Cert: string(cert),
 		Key:  string(key),
 	}
@@ -301,7 +301,7 @@ func (t *TlsConfig) ReadCert() (*types.TlsConfig, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to read CA file: %s", err)
 		}
-		tls.CA = &types.CertConfig{
+		tls.CA = &implanttypes.CertConfig{
 			Cert: string(caCert),
 		}
 	}

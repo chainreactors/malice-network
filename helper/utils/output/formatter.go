@@ -1,4 +1,4 @@
-package formatutils
+package output
 
 import (
 	"encoding/base64"

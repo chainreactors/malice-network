@@ -4,13 +4,13 @@ import (
 	"fmt"
 	consts "github.com/chainreactors/IoM-go/consts"
 	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/utils/output"
 	"os"
 	"os/exec"
 	"path/filepath"
 
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/encoders"
-	"github.com/chainreactors/malice-network/helper/utils/formatutils"
 	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/wabzsy/gonut"
@@ -140,7 +140,7 @@ func ConvertArtifact(artifact *clientpb.Artifact, format string, rdi string) (*c
 		return artifact, nil
 	}
 	if artifact.Platform != consts.Windows {
-		convert, err := formatutils.Convert(artifact.Bin, format)
+		convert, err := output.Convert(artifact.Bin, format)
 		if err != nil {
 			return nil, err
 		}
@@ -159,7 +159,7 @@ func ConvertArtifact(artifact *clientpb.Artifact, format string, rdi string) (*c
 		return nil, fmt.Errorf("failed to convert: %s", err)
 	}
 
-	convert, err := formatutils.Convert(shellcode, format)
+	convert, err := output.Convert(shellcode, format)
 	if err != nil {
 		return nil, err
 	}

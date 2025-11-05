@@ -4,7 +4,7 @@ import (
 	"io"
 
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/types"
+	"github.com/chainreactors/malice-network/helper/implanttypes"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	cryptostream "github.com/chainreactors/malice-network/server/internal/stream"
 )
@@ -40,18 +40,18 @@ func FromPipeline(pipeline *clientpb.Pipeline) *PipelineConfig {
 	return &PipelineConfig{
 		ListenerID:   pipeline.ListenerId,
 		Parser:       pipeline.Parser,
-		TLSConfig:    types.FromTls(pipeline.Tls),
-		Encryption:   types.FromEncryptions(pipeline.GetEncryption()),
-		SecureConfig: types.FromSecure(pipeline.Secure),
+		TLSConfig:    implanttypes.FromTls(pipeline.Tls),
+		Encryption:   implanttypes.FromEncryptions(pipeline.GetEncryption()),
+		SecureConfig: implanttypes.FromSecure(pipeline.Secure),
 	}
 }
 
 type PipelineConfig struct {
 	ListenerID   string
 	Parser       string
-	TLSConfig    *types.TlsConfig
-	Encryption   types.EncryptionsConfig
-	SecureConfig *types.SecureConfig
+	TLSConfig    *implanttypes.TlsConfig
+	Encryption   implanttypes.EncryptionsConfig
+	SecureConfig *implanttypes.SecureConfig
 }
 
 func (p *PipelineConfig) WrapConn(conn io.ReadWriteCloser) (*cryptostream.Conn, error) {

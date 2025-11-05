@@ -2,9 +2,9 @@ package sessions
 
 import (
 	"fmt"
+	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
 	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
-	"github.com/chainreactors/IoM-go/session"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
@@ -54,7 +54,7 @@ func SessionsCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func PrintSessions(sessions map[string]*session.Session, con *repl.Console, isAll bool) {
+func PrintSessions(sessions map[string]*client.Session, con *repl.Console, isAll bool) {
 	//var colorIndex = 1
 	var rowEntries []table.Row
 	var row table.Row
@@ -71,7 +71,7 @@ func PrintSessions(sessions map[string]*session.Session, con *repl.Console, isAl
 	}
 
 	// Convert map to slice for sorting
-	var sessionList []*session.Session
+	var sessionList []*client.Session
 	for _, session := range sessions {
 		sessionList = append(sessionList, session)
 	}
@@ -134,13 +134,13 @@ func PrintSessions(sessions map[string]*session.Session, con *repl.Console, isAl
 		sess := con.Session
 		profile, err := assets.GetProfile()
 		if err != nil {
-			session.Log.Errorf("Failed to get profile: %v", err)
+			client.Log.Errorf("Failed to get profile: %v", err)
 		} else {
 			contexts, err := con.Rpc.GetSessionHistory(sess.Context(), &clientpb.Int{
 				Limit: int32(profile.Settings.MaxServerLogSize),
 			})
 			if err != nil {
-				session.Log.Errorf("Failed to get session history: %v", err)
+				client.Log.Errorf("Failed to get session history: %v", err)
 			} else {
 				for _, context := range contexts.Contexts {
 					core.HandlerTask(sess, context, []byte{}, consts.CalleeCMD, true)

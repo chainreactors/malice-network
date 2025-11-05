@@ -3,11 +3,11 @@ package taskschd
 import (
 	"errors"
 	"fmt"
+	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
 	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
-	"github.com/chainreactors/IoM-go/session"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/tui"
 	"github.com/spf13/cobra"
@@ -26,7 +26,7 @@ func TaskSchdListCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func TaskSchdList(rpc clientrpc.MaliceRPCClient, session *session.Session) (*clientpb.Task, error) {
+func TaskSchdList(rpc clientrpc.MaliceRPCClient, session *client.Session) (*clientpb.Task, error) {
 	request := &implantpb.Request{
 		Name: consts.ModuleTaskSchdList,
 	}

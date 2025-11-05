@@ -1,11 +1,11 @@
 package privilege
 
 import (
+	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
 	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
-	"github.com/chainreactors/IoM-go/session"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/spf13/cobra"
@@ -23,7 +23,7 @@ func GetSystemCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func GetSystem(rpc clientrpc.MaliceRPCClient, session *session.Session) (*clientpb.Task, error) {
+func GetSystem(rpc clientrpc.MaliceRPCClient, session *client.Session) (*clientpb.Task, error) {
 	return rpc.GetSystem(session.Context(), &implantpb.Request{
 		Name: consts.ModuleGetSystem,
 	})

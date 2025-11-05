@@ -7,7 +7,7 @@ import (
 	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
 
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/types"
+	"github.com/chainreactors/malice-network/helper/implanttypes"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 )
@@ -86,7 +86,7 @@ func SendBuildMsg(artifact *clientpb.Artifact, status string, params []byte, err
 	if status == consts.BuildStatusCompleted {
 		event.Message = fmt.Sprintf("Artifact completed %s (type: %s, target: %s, source: %s)", artifact.Name, artifact.Type, artifact.Target, artifact.Source)
 		if len(params) > 0 {
-			profileParams, err := types.UnmarshalProfileParams(params)
+			profileParams, err := implanttypes.UnmarshalProfileParams(params)
 			if err != nil {
 				logs.Log.Errorf("failed to unmarshal profile params: %v", err)
 				return

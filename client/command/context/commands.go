@@ -1,9 +1,10 @@
 package context
 
 import (
+	"github.com/chainreactors/IoM-go/client"
+	const
 	consts "github.com/chainreactors/IoM-go/consts"
-	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
-	"github.com/chainreactors/IoM-go/session"
+	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/intermediate"
@@ -110,7 +111,7 @@ func Register(con *repl.Console) {
 	RegisterUpload(con)
 	RegisterDownload(con)
 
-	con.RegisterServerFunc("callback_context", func(con *repl.Console, sess *session.Session) (intermediate.BuiltinCallback, error) {
+	con.RegisterServerFunc("callback_context", func(con *repl.Console, sess *client.Session) (intermediate.BuiltinCallback, error) {
 		nonce, err := sess.Value("nonce")
 		if err != nil {
 			return nil, err

@@ -4,13 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/chainreactors/IoM-go/types"
 	"io"
 
+	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/mtls"
 	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
-	"github.com/chainreactors/IoM-go/session"
+	"github.com/chainreactors/IoM-go/types"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/malice-network/helper/utils/output"
@@ -29,12 +29,12 @@ func wrapToTaskContext(event *clientpb.Event) *clientpb.TaskContext {
 }
 
 type Server struct {
-	*session.ServerStatus
+	*client.ServerState
 }
 
-// NewServer wraps session.ServerStatus into core.ServerStatus
+// NewServer wraps client.ServerState into core.ServerState
 func NewServer(conn *grpc.ClientConn, config *mtls.ClientConfig) (*Server, error) {
-	s, err := session.InitServerStatus(conn, config)
+	s, err := client.NewServerStatus(conn, config)
 	if err != nil {
 		return nil, err
 	}
@@ -45,14 +45,14 @@ func NewServer(conn *grpc.ClientConn, config *mtls.ClientConfig) (*Server, error
 	for _, event := range events.GetEvents() {
 		s.HandlerEvent(event)
 	}
-	return &Server{ServerStatus: s}, nil
+	return &Server{ServerState: s}, nil
 }
 
-func (s *Server) AddDoneCallback(task *clientpb.Task, callback session.TaskCallback) {
+func (s *Server) AddDoneCallback(task *clientpb.Task, callback client.TaskCallback) {
 	s.DoneCallbacks.Store(fmt.Sprintf("%s-%d", task.SessionId, task.TaskId), callback)
 }
 
-func (s *Server) AddCallback(task *clientpb.Task, callback session.TaskCallback) {
+func (s *Server) AddCallback(task *clientpb.Task, callback client.TaskCallback) {
 	s.FinishCallbacks.Store(fmt.Sprintf("%s-%d", task.SessionId, task.TaskId), callback)
 }
 
@@ -60,7 +60,7 @@ func (s *Server) triggerTaskDone(event *clientpb.Event) {
 	task := event.GetTask()
 	sess, err := s.GetOrUpdateSession(event.Task.SessionId)
 	if err != nil {
-		session.Log.Errorf("session not found: %s\n", event.Task.SessionId)
+		client.Log.Errorf("session not found: %s\n", event.Task.SessionId)
 		return
 	}
 
@@ -74,7 +74,7 @@ func (s *Server) triggerTaskDone(event *clientpb.Event) {
 	HandlerTask(sess, taskContext, event.Message, event.Callee, false)
 
 	if callback, ok := s.DoneCallbacks.Load(fmt.Sprintf("%s-%d", task.SessionId, task.TaskId)); ok {
-		callback.(session.TaskCallback)(taskContext)
+		callback.(client.TaskCallback)(taskContext)
 	}
 }
 
@@ -82,7 +82,7 @@ func (s *Server) triggerTaskFinish(event *clientpb.Event) {
 	task := event.GetTask()
 	sess, err := s.GetOrUpdateSession(event.Task.SessionId)
 	if err != nil {
-		session.Log.Errorf("session not found: %s\n", event.Task.SessionId)
+		client.Log.Errorf("session not found: %s\n", event.Task.SessionId)
 		return
 	}
 
@@ -97,13 +97,13 @@ func (s *Server) triggerTaskFinish(event *clientpb.Event) {
 
 	callbackId := fmt.Sprintf("%s-%d", task.SessionId, task.TaskId)
 	if callback, ok := s.FinishCallbacks.Load(callbackId); ok {
-		callback.(session.TaskCallback)(taskContext)
+		callback.(client.TaskCallback)(taskContext)
 		s.FinishCallbacks.Delete(callbackId)
 		s.DoneCallbacks.Delete(callbackId)
 	}
 }
 
-func HandlerTask(sess *session.Session, ctx *clientpb.TaskContext, message []byte, callee string, isFinish bool) {
+func HandlerTask(sess *client.Session, ctx *clientpb.TaskContext, message []byte, callee string, isFinish bool) {
 	sess.Locker.Lock()
 	defer sess.Locker.Unlock()
 	log := sess.Log
@@ -167,9 +167,9 @@ func HandlerTask(sess *session.Session, ctx *clientpb.TaskContext, message []byt
 	}
 }
 
-func (s *Server) AddEventHook(event session.EventCondition, callback session.OnEventFunc) {
+func (s *Server) AddEventHook(event client.EventCondition, callback client.OnEventFunc) {
 	if _, ok := s.EventHook[event]; !ok {
-		s.EventHook[event] = []session.OnEventFunc{}
+		s.EventHook[event] = []client.OnEventFunc{}
 	}
 	s.EventHook[event] = append(s.EventHook[event], callback)
 }
@@ -181,9 +181,9 @@ func (s *Server) EventHandler() {
 	}
 	s.Update()
 	s.EventStatus = true
-	session.Log.Info("starting event loop\n")
+	client.Log.Info("starting event loop\n")
 	defer func() {
-		session.Log.Warnf("event stream broken\n")
+		client.Log.Warnf("event stream broken\n")
 		s.EventStatus = false
 	}()
 	for {
@@ -200,7 +200,7 @@ func (s *Server) EventHandler() {
 							if errors.Is(err, ErrLuaVMDead) {
 								s.EventHook[condition] = append(fns[:i], fns[i+1:]...)
 							} else {
-								session.Log.Errorf("error running event hook: %s", err)
+								client.Log.Errorf("error running event hook: %s", err)
 							}
 						}
 					}
@@ -221,38 +221,38 @@ func (s *Server) HandlerEvent(event *clientpb.Event) {
 	switch event.Type {
 	case consts.EventClient:
 		if event.Op == consts.CtrlClientJoin {
-			session.Log.Info(event.Formatted + "\n")
+			client.Log.Info(event.Formatted + "\n")
 		} else if event.Op == consts.CtrlClientLeft {
-			session.Log.Info(event.Formatted + "\n")
+			client.Log.Info(event.Formatted + "\n")
 		}
 	case consts.EventBroadcast:
-		session.Log.Info(event.Formatted + "\n")
+		client.Log.Info(event.Formatted + "\n")
 	case consts.EventSession:
 		s.handlerSession(event)
 	case consts.EventNotify:
-		session.Log.Important(event.Formatted + "\n")
+		client.Log.Important(event.Formatted + "\n")
 	case consts.EventJob:
 		s.handleJob(event)
 	case consts.EventListener:
-		session.Log.Important(event.Formatted + "\n")
+		client.Log.Important(event.Formatted + "\n")
 	case consts.EventTask:
 		s.handlerTask(event)
 	case consts.EventWebsite:
-		session.Log.Important(event.Formatted + "\n")
+		client.Log.Important(event.Formatted + "\n")
 	case consts.EventBuild:
-		session.Log.Important(event.Formatted + "\n")
+		client.Log.Important(event.Formatted + "\n")
 	case consts.EventPivot:
-		session.Log.Important(event.Formatted + "\n")
+		client.Log.Important(event.Formatted + "\n")
 	case consts.EventContext:
-		session.Log.Important(event.Formatted + "\n")
+		client.Log.Important(event.Formatted + "\n")
 	case consts.EventCert:
-		session.Log.Important(event.Formatted + "\n")
+		client.Log.Important(event.Formatted + "\n")
 	}
 }
 
 func (s *Server) handleJob(event *clientpb.Event) {
 	if event.Err != "" {
-		session.Log.Errorf("[%s] %s: %s\n", event.Type, event.Op, event.Err)
+		client.Log.Errorf("[%s] %s: %s\n", event.Type, event.Op, event.Err)
 		return
 	}
 	pipeline := event.GetJob().GetPipeline()
@@ -261,9 +261,9 @@ func (s *Server) handleJob(event *clientpb.Event) {
 		s.Pipelines[pipeline.Name] = pipeline
 	case consts.CtrlPipelineStop:
 		delete(s.Pipelines, pipeline.Name)
-		session.Log.Important(event.Formatted + "\n")
+		client.Log.Important(event.Formatted + "\n")
 	default:
-		session.Log.Important(event.Formatted + "\n")
+		client.Log.Important(event.Formatted + "\n")
 	}
 }
 
@@ -274,9 +274,9 @@ func (s *Server) handlerTask(event *clientpb.Event) {
 	case consts.CtrlTaskFinish:
 		s.triggerTaskFinish(event)
 	case consts.CtrlTaskCancel:
-		session.Log.Importantf("[%s.%d] task canceled\n", event.Task.SessionId, event.Task.TaskId)
+		client.Log.Importantf("[%s.%d] task canceled\n", event.Task.SessionId, event.Task.TaskId)
 	case consts.CtrlTaskError:
-		session.Log.Errorf("[%s.%d] %s\n", event.Task.SessionId, event.Task.TaskId, event.Err)
+		client.Log.Errorf("[%s.%d] %s\n", event.Task.SessionId, event.Task.TaskId, event.Err)
 	}
 }
 
@@ -285,11 +285,11 @@ func (s *Server) handlerSession(event *clientpb.Event) {
 	switch event.Op {
 	case consts.CtrlSessionRegister:
 		s.AddSession(event.Session)
-		session.Log.Important(event.Formatted + "\n")
+		client.Log.Important(event.Formatted + "\n")
 	case consts.CtrlSessionUpdate:
 		s.AddSession(event.Session)
 	case consts.CtrlSessionTask:
-		session.Log.Info(event.Formatted + "\n")
+		client.Log.Info(event.Formatted + "\n")
 	case consts.CtrlSessionError:
 		log := s.ObserverLog(sid)
 		log.Error(event.Formatted + "\n")
@@ -297,9 +297,9 @@ func (s *Server) handlerSession(event *clientpb.Event) {
 		log := s.ObserverLog(sid)
 		log.Error(event.Formatted + "\n")
 	case consts.CtrlSessionDead:
-		session.Log.Important(event.Formatted + "\n")
+		client.Log.Important(event.Formatted + "\n")
 	case consts.CtrlSessionReborn:
 		s.AddSession(event.Session)
-		session.Log.Important(event.Formatted + "\n")
+		client.Log.Important(event.Formatted + "\n")
 	}
 }

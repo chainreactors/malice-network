@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/chainreactors/IoM-go/client"
 	consts "github.com/chainreactors/IoM-go/consts"
 	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
 	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
-	"github.com/chainreactors/IoM-go/session"
 	"github.com/chainreactors/IoM-go/types"
 	"github.com/gookit/config/v2"
 	"github.com/gorhill/cronexpr"
@@ -108,7 +108,7 @@ func RegisterSession(req *clientpb.RegisterSession) (*Session, error) {
 		Target:         req.Target,
 		Tasks:          NewTasks(),
 		CreatedAt:      time.Unix(current_time, 0),
-		SessionContext: session.NewSessionContext(req),
+		SessionContext: client.NewSessionContext(req),
 		Taskseq:        1,
 		Cache:          cache,
 		responses:      &sync.Map{},
@@ -138,12 +138,12 @@ func RecoverSession(sess *models.Session) (*Session, error) {
 	}
 
 	// 安全地处理SessionContext
-	var sessionContext *session.SessionContext
+	var sessionContext *client.SessionContext
 	if sess.DataString != "" {
-		sessionContext, _ = session.RecoverSessionContext(sess.DataString)
+		sessionContext, _ = client.RecoverSessionContext(sess.DataString)
 	}
 	if sessionContext == nil {
-		sessionContext = &session.SessionContext{}
+		sessionContext = &client.SessionContext{}
 	}
 
 	s := &Session{
@@ -221,7 +221,7 @@ type Session struct {
 	LastCheckin int64
 	CreatedAt   time.Time
 	Tasks       *Tasks // task manager
-	*session.SessionContext
+	*client.SessionContext
 
 	// Age 密码学安全管理器（运行时，负责密钥交换和轮换）
 	SecureManager *SecureManager

@@ -2,7 +2,7 @@ package cli
 
 import (
 	"fmt"
-	"github.com/chainreactors/IoM-go/session"
+	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"os"
 
@@ -14,8 +14,8 @@ import (
 )
 
 func init() {
-	logs.Log.SetFormatter(session.DefaultLogStyle)
-	session.Log.SetFormatter(session.DefaultLogStyle)
+	logs.Log.SetFormatter(client.DefaultLogStyle)
+	client.Log.SetFormatter(client.DefaultLogStyle)
 	config.WithOptions(func(opt *config.Options) {
 		opt.DecoderConfig.TagName = "config"
 		opt.ParseDefault = true

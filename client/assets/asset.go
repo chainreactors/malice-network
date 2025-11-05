@@ -3,8 +3,8 @@ package assets
 import (
 	_ "embed"
 	"fmt"
-	"github.com/chainreactors/IoM-go/mtls"
-	"github.com/chainreactors/IoM-go/session"
+	"github.com/chainreactors/IoM-go/client"
+	"github.com/chainreactors/IoM-g
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"os"
@@ -109,7 +109,7 @@ func GetLogDir() string {
 
 // InitLogDir initializes the log directory for core.Session
 func InitLogDir() {
-	session.LogDir = GetLogDir()
+	client.LogDir = GetLogDir()
 }
 
 func GetConfigs() ([]string, error) {

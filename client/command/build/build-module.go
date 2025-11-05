@@ -38,7 +38,7 @@ func ModulesCmd(cmd *cobra.Command, con *repl.Console) error {
 		return errors.New("--module and --3rd options are mutually exclusive. please specify only one of them")
 	}
 	// set profile about modules
-	mainProfile := types.ProfileConfig{}
+	mainProfile := implanttypes.ProfileConfig{}
 	mainProfile.SetDefaults()
 	if thirdModules != "" {
 		mainProfile.Implant.ThirdModules = strings.Split(thirdModules, ",")

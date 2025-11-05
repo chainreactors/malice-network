@@ -6,7 +6,7 @@ import (
 	"github.com/chainreactors/IoM-go/consts"
 	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/helper/utils/formatutils"
+	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
@@ -197,7 +197,7 @@ func (rpc *Server) StartWebsite(ctx context.Context, req *clientpb.CtrlPipeline)
 			},
 			Content: content,
 		})
-		logs.Log.Infof("artifact %s amounts at %s", artifact.Name, path.Join(webpb.URL(), formatutils.Encode(artifact.Name)))
+		logs.Log.Infof("artifact %s amounts at %s", artifact.Name, path.Join(webpb.URL(), output.Encode(artifact.Name)))
 	}
 	return &clientpb.Empty{}, nil
 }

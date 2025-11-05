@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/chainreactors/IoM-go/consts"
 	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/helper/types"
+	"github.com/chainreactors/malice-network/helper/implanttypes"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
@@ -14,7 +14,7 @@ type ActionBuilder struct {
 	config     *clientpb.BuildConfig
 	builder    *models.Artifact
 	workflowID string
-	profile    *types.ProfileConfig
+	profile    *implanttypes.ProfileConfig
 }
 
 func NewActionBuilder(req *clientpb.BuildConfig) *ActionBuilder {

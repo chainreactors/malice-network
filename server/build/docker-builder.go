@@ -5,13 +5,12 @@ import (
 	"fmt"
 	consts "github.com/chainreactors/IoM-go/consts"
 	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
-	types2 "github.com/chainreactors/IoM-go/types"
+	errs "github.com/chainreactors/IoM-go/types"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/codenames"
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/encoders"
-	profile2 "github.com/chainreactors/malice-network/helper/profile"
-	selfType "github.com/chainreactors/malice-network/helper/types"
+	selfType "github.com/chainreactors/malice-network/helper/implanttypes"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db"
@@ -90,7 +89,7 @@ func (d *DockerBuilder) Generate() (*clientpb.Artifact, error) {
 		d.srcPath = filepath.Join(configs.TempPath, d.licenseID)
 	}
 	// writeBuildConfigTo src tmpDir
-	err = profile2.WriteBuildConfigToPath(d.config, d.srcPath)
+	err = WriteBuildConfigToPath(d.config, d.srcPath)
 	if err != nil {
 		return nil, err
 	}
@@ -169,7 +168,7 @@ func (d *DockerBuilder) Execute() error {
 	case consts.CommandBuildPulse:
 		target, ok := consts.GetBuildTarget(d.config.Target)
 		if !ok {
-			return types2.ErrInvalidateTarget
+			return errs.ErrInvalidateTarget
 		}
 		var pulseOs string
 		if target.OS == consts.Windows {

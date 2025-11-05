@@ -3,9 +3,10 @@ package generic
 import (
 	"errors"
 	"fmt"
+	"github.com/chainreactors/IoM-go/client"
+	const
 	consts "github.com/chainreactors/IoM-go/consts"
-	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
-	"github.com/chainreactors/IoM-go/session"
+	"github.com/chainreactors/IoM-go/client"
 	"github.com/kballard/go-shellquote"
 	"os"
 	"os/exec"
@@ -126,7 +127,7 @@ license
 	return []*cobra.Command{loginCmd, versionCmd, exitCmd, broadcastCmd, cmdCmd, pivotCmd, licenseInfoCmd}
 }
 
-func Log(con *repl.Console, sess *session.Session, msg string, notify bool) (bool, error) {
+func Log(con *repl.Console, sess *client.Session, msg string, notify bool) (bool, error) {
 	_, err := con.Rpc.SessionEvent(sess.Context(), &clientpb.Event{
 		Type:    consts.EventSession,
 		Op:      consts.CtrlSessionLog,
@@ -152,7 +153,7 @@ func Register(con *repl.Console) {
 		return con
 	}, nil)
 
-	con.RegisterServerFunc("sessions", func(con *repl.Console) map[string]*session.Session {
+	con.RegisterServerFunc("sessions", func(con *repl.Console) map[string]*client.Session {
 		return con.Sessions
 	}, nil)
 
@@ -202,17 +203,17 @@ func Register(con *repl.Console) {
 		})
 	}, nil)
 
-	con.RegisterServerFunc("callback_log", func(con *repl.Console, sess *session.Session, notify bool) intermediate.BuiltinCallback {
+	con.RegisterServerFunc("callback_log", func(con *repl.Console, sess *client.Session, notify bool) intermediate.BuiltinCallback {
 		return func(content interface{}) (interface{}, error) {
 			return Log(con, sess, fmt.Sprintf("%v", content), notify)
 		}
 	}, nil)
 
-	con.RegisterServerFunc("log", func(con *repl.Console, sess *session.Session, msg string, notify bool) (bool, error) {
+	con.RegisterServerFunc("log", func(con *repl.Console, sess *client.Session, msg string, notify bool) (bool, error) {
 		return Log(con, sess, msg, notify)
 	}, nil)
 
-	con.RegisterServerFunc("blog", func(con *repl.Console, sess *session.Session, msg string) (bool, error) {
+	con.RegisterServerFunc("blog", func(con *repl.Console, sess *client.Session, msg string) (bool, error) {
 		return Log(con, sess, msg, false)
 	}, nil)
 

@@ -1,11 +1,11 @@
 package pivot
 
 import (
+	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
 	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
-	"github.com/chainreactors/IoM-go/session"
 	"github.com/chainreactors/IoM-go/types"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/spf13/cobra"
@@ -47,7 +47,7 @@ func FormatRemCmdLine(con *repl.Console, pipe, mod string, remote, local *url.UR
 	return args, nil
 }
 
-func RemDial(rpc clientrpc.MaliceRPCClient, session *session.Session, pid string, args []string) (*clientpb.Task, error) {
+func RemDial(rpc clientrpc.MaliceRPCClient, session *client.Session, pid string, args []string) (*clientpb.Task, error) {
 	task, err := rpc.RemDial(session.Context(), &implantpb.Request{
 		Name: consts.ModuleRemDial,
 		Args: args,

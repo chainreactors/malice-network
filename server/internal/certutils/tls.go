@@ -2,11 +2,11 @@ package certutils
 
 import (
 	"crypto/tls"
-	"github.com/chainreactors/malice-network/helper/types"
+	"github.com/chainreactors/malice-network/helper/implanttypes"
 	"net"
 )
 
-func WrapWithTls(lsn net.Listener, cert *types.CertConfig) (net.Listener, error) {
+func WrapWithTls(lsn net.Listener, cert *implanttypes.CertConfig) (net.Listener, error) {
 	pair, err := tls.X509KeyPair([]byte(cert.Cert), []byte(cert.Key))
 	if err != nil {
 		return nil, err
@@ -15,7 +15,7 @@ func WrapWithTls(lsn net.Listener, cert *types.CertConfig) (net.Listener, error)
 	return tls.NewListener(lsn, TlsConfig(pair)), nil
 }
 
-func GetTlsConfig(config *types.CertConfig) (*tls.Config, error) {
+func GetTlsConfig(config *implanttypes.CertConfig) (*tls.Config, error) {
 	cert, err := tls.X509KeyPair([]byte(config.Cert), []byte(config.Key))
 	if err != nil {
 		return nil, err
