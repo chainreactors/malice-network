@@ -2,9 +2,8 @@ package context
 
 import (
 	"github.com/chainreactors/IoM-go/client"
-	const
 	consts "github.com/chainreactors/IoM-go/consts"
-	"github.com/chainreactors/IoM-go/client"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/intermediate"

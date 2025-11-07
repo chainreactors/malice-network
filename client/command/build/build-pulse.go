@@ -3,10 +3,10 @@ package build
 import (
 	"fmt"
 	consts "github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/malice-network/helper/implanttypes"
 	"strings"
 
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/types"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )

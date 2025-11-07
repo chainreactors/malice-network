@@ -1,9 +1,9 @@
 [submodule "proto"]
 	path = proto
 	url = https://github.com/chainreactors/proto/
-[submodule "IoM-go"]
-	path = IoM-go
-	url = https://github.com/chainreactors/IoM-go
 [submodule "helper/intl/community"]
 	path = helper/intl/community
 	url = https://github.com/chainreactors/mal-intl
+[submodule "external/IoM-go"]
+	path = external/IoM-go
+	url = https://github.com/chainreactors/IoM-go

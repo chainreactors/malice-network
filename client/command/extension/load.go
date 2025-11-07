@@ -8,11 +8,10 @@ import (
 	"fmt"
 	"github.com/carapace-sh/carapace"
 	"github.com/chainreactors/IoM-go/client"
-	const
-	consts "github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/consts"
 	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
-	"github.com/chainreactors/IoM-go/client"
+	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/help"
 	"github.com/chainreactors/malice-network/client/repl"

@@ -2,7 +2,6 @@ package sessions
 
 import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
-	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/spf13/cobra"
 )

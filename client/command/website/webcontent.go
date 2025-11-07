@@ -2,7 +2,6 @@ package website
 
 import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
-	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"github.com/chainreactors/tui"

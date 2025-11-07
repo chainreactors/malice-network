@@ -4,9 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/chainreactors/IoM-go/client"
-	const
 	consts "github.com/chainreactors/IoM-go/consts"
-	"github.com/chainreactors/IoM-go/client"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/kballard/go-shellquote"
 	"os"
 	"os/exec"

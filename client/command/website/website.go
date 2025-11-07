@@ -1,7 +1,6 @@
 package website
 
 import (
-	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"strconv"
 
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"

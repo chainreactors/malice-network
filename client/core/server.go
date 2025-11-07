@@ -38,14 +38,15 @@ func NewServer(conn *grpc.ClientConn, config *mtls.ClientConfig) (*Server, error
 	if err != nil {
 		return nil, err
 	}
-	events, err := s.GetEvent(context.Background(), &clientpb.Int{})
+	ser := &Server{ServerState: s}
+	events, err := ser.GetEvent(context.Background(), &clientpb.Int{})
 	if err != nil {
 		return nil, err
 	}
 	for _, event := range events.GetEvents() {
-		s.HandlerEvent(event)
+		ser.HandlerEvent(event)
 	}
-	return &Server{ServerState: s}, nil
+	return ser, nil
 }
 
 func (s *Server) AddDoneCallback(task *clientpb.Task, callback client.TaskCallback) {

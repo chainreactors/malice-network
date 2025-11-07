@@ -7,7 +7,6 @@ import (
 	"github.com/carapace-sh/carapace/pkg/x"
 	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
-	"github.com
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/reeflective/console"
 	"github.com/spf13/cobra"

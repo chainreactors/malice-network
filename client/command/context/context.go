@@ -2,7 +2,6 @@ package context
 
 import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
-	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"

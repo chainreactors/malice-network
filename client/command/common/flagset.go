@@ -2,7 +2,6 @@ package common
 
 import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
-	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/intermediate"

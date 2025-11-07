@@ -12,7 +12,7 @@ import (
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/build"
 	"github.com/chainreactors/malice-network/client/repl"
-	"github.com/chainreactors/malice-network/helper/types"
+	"github.com/chainreactors/malice-network/helper/implanttypes"
 	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"github.com/spf13/cobra"
 	"os"
@@ -83,13 +83,12 @@ func handleModuleBuild(cmd *cobra.Command, con *repl.Console, modules, thirdModu
 	if !ok {
 		return types.ErrInvalidateTarget
 	}
-	var _ *types.ProfileParams
 	if len(modules) != 0 {
-		_ = &types.ProfileParams{
+		_ = &implanttypes.ProfileParams{
 			Modules: strings.Join(modules, ","),
 		}
 	} else if len(thirdModules) != 0 {
-		_ = &types.ProfileParams{
+		_ = &implanttypes.ProfileParams{
 			Enable3RD: true,
 			Modules:   strings.Join(modules, ","),
 		}
