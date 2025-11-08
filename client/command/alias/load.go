@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
-	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	clientrpc "github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/client/assets"

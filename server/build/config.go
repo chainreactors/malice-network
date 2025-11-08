@@ -3,7 +3,7 @@ package build
 import (
 	"encoding/base64"
 	"fmt"
-	consts "github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/consts"
 	types "github.com/chainreactors/IoM-go/types"
 	"github.com/chainreactors/malice-network/helper/implanttypes"
 	"os"

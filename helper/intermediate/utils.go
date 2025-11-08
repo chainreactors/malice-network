@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/chainreactors/IoM-go/consts"
-	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/types"
 	"math"

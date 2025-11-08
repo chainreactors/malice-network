@@ -3,7 +3,7 @@ package build
 import (
 	"fmt"
 	"github.com/chainreactors/IoM-go/client"
-	consts "github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/consts"
 
 	"github.com/carapace-sh/carapace"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"

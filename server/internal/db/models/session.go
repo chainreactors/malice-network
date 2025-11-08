@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/chainreactors/IoM-go/client"
-	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"time"
 

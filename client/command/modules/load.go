@@ -3,8 +3,8 @@ package modules
 import (
 	"errors"
 	"github.com/chainreactors/IoM-go/client"
-	consts "github.com/chainreactors/IoM-go/consts"
-	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	types "github.com/chainreactors/IoM-go/types"

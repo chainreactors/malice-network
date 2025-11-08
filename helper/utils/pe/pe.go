@@ -3,7 +3,7 @@ package pe
 import (
 	"bytes"
 	"encoding/binary"
-	consts "github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/consts"
 	"path/filepath"
 )
 

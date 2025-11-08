@@ -3,7 +3,7 @@ package repl
 import (
 	"context"
 	"fmt"
-	consts "github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/consts"
 	"net/http"
 	"strings"
 

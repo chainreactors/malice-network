@@ -2,7 +2,7 @@ package pipeline
 
 import (
 	"github.com/carapace-sh/carapace"
-	consts "github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/spf13/cobra"

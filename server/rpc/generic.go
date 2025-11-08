@@ -3,8 +3,8 @@ package rpc
 import (
 	"context"
 	"errors"
-	consts "github.com/chainreactors/IoM-go/consts"
-	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	types "github.com/chainreactors/IoM-go/types"
 	"github.com/chainreactors/malice-network/server/internal/configs"

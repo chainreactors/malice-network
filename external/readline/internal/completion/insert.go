@@ -55,6 +55,9 @@ func (e *Engine) TrimSuffix() {
 
 	suf := (*e.line)[e.cursor.Pos()-1]
 	keys := e.keys.Caller()
+	if len(keys) == 0 {
+		return
+	}
 	key := keys[0]
 
 	// Special case when completing paths: if the comp is ended

@@ -3,8 +3,8 @@ package plugin
 import (
 	"fmt"
 	"github.com/chainreactors/IoM-go/client"
-	consts "github.com/chainreactors/IoM-go/consts"
-	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/types"
 	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"

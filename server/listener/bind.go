@@ -2,8 +2,8 @@ package listener
 
 import (
 	"context"
-	consts "github.com/chainreactors/IoM-go/consts"
-	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/services/listenerrpc"
 	"github.com/chainreactors/IoM-go/types"
 	"net"

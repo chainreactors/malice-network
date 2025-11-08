@@ -3,7 +3,7 @@ package rpc
 import (
 	"context"
 	"github.com/chainreactors/IoM-go/consts"
-	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/server/internal/core"

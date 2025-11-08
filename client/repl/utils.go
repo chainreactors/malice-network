@@ -3,7 +3,7 @@ package repl
 import (
 	"fmt"
 	"github.com/chainreactors/IoM-go/client"
-	consts "github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/consts"
 	"github.com/kballard/go-shellquote"
 	"github.com/mattn/go-tty"
 	"github.com/muesli/termenv"

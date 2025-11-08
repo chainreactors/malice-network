@@ -4,7 +4,7 @@ import (
 	"errors"
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/mtls"
-	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"strconv"
 	"strings"
 	"time"

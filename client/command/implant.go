@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/carapace-sh/carapace"
 	"github.com/chainreactors/IoM-go/client"
-	consts "github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/tui"
 	"github.com/reeflective/console"
 	"github.com/spf13/cobra"

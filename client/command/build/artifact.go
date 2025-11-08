@@ -2,8 +2,8 @@ package build
 
 import (
 	"errors"
-	consts "github.com/chainreactors/IoM-go/consts"
-	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	output2 "github.com/chainreactors/malice-network/helper/utils/output"
 	"os"

@@ -1,7 +1,7 @@
 package command
 
 import (
-	consts "github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/malice-network/client/command/audit"
 	"github.com/reeflective/console"
 	"github.com/spf13/cobra"

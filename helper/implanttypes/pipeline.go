@@ -3,7 +3,7 @@ package implanttypes
 import (
 	"crypto/x509/pkix"
 	"encoding/json"
-	clientpb "github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"math/rand"
 
 	"github.com/chainreactors/malice-network/helper/utils"
