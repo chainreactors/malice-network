@@ -6,7 +6,6 @@ import (
 	"io"
 	"os"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/chainreactors/IoM-go/consts"
@@ -110,24 +109,15 @@ type SaasClient struct {
 	LicenseType string
 }
 
-var (
-	globalSaasClient *SaasClient
-	saasOnce         sync.Once
-)
-
 func GetSaasClient() *SaasClient {
-	saasOnce.Do(func() {
-		saasConfig := configs.GetSaasConfig()
-		if !saasConfig.Enable {
-			globalSaasClient = &SaasClient{}
-		} else {
-			globalSaasClient = &SaasClient{
-				Token:   saasConfig.Token,
-				BaseURL: saasConfig.Url,
-			}
-		}
-	})
-	return globalSaasClient
+	saasConfig := configs.GetSaasConfig()
+	if !saasConfig.Enable {
+		return &SaasClient{}
+	}
+	return &SaasClient{
+		Token:   saasConfig.Token,
+		BaseURL: saasConfig.Url,
+	}
 }
 
 func (c *SaasClient) SetLicenseType(typ string) {
