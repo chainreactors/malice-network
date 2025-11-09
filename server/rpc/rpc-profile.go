@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/helper/implanttypes"
 	"github.com/chainreactors/malice-network/server/internal/db"
 )
 
@@ -59,8 +60,12 @@ func (rpc *Server) UpdateProfile(ctx context.Context, req *clientpb.Profile) (*c
 	if req.Name == "" {
 		return nil, fmt.Errorf("profile name cannot be empty")
 	}
-
-	err := db.UpdateProfileRaw(req.Name, req.Content)
+	var err error
+	_, err = implanttypes.LoadProfile(req.Content)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update profile: %w", err)
+	}
+	err = db.UpdateProfileRaw(req.Name, req.Content)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update profile: %w", err)
 	}
