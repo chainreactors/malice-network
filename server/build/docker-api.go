@@ -23,16 +23,18 @@ import (
 var (
 	//NameSpace                   = "ghcr.io/chainreactors"
 	//Tag                         = "nightly-2023-09-18-latest"
-	ContainerSourceCodePath     = "/root/src"
-	ContainerCargoRegistryCache = "/root/cargo/registry"
-	ContainerCargoGitCache      = "/root/cargo/git"
-	ContainerBinPath            = "/root/bin"
-	ContainerResourcePath       = "/root/src/resources" // 新增：容器内的资源路径
-	ContainerAutoRunPath        = "/root/src/prelude.yaml"
-	ContainerConfigPath         = "/root/src/implant.yaml"
-	command                     = "build"
-	funcNameOption              = "--function-name"
-	userDataPathOption          = "--userdata-path"
+	ContainerSourceCodePath      = "/root/src"
+	ContainerCargoRegistryCache  = "/root/cargo/registry"
+	ContainerCargoGitCache       = "/root/cargo/git"
+	ContainerBinPath             = "/root/bin"
+	ContainerBuiltinResourcePath = "/tmp/builtin/resources"
+	ContainerCustomResourcePath  = "/tmp/custom/resources"
+	ContainerResourcePath        = "/root/src/resources"
+	ContainerAutoRunPath         = "/root/src/prelude.yaml"
+	ContainerConfigPath          = "/root/src/implant.yaml"
+	command                      = "build"
+	funcNameOption               = "--function-name"
+	userDataPathOption           = "--userdata-path"
 
 	sourcePath, _            = filepath.Abs(configs.SourceCodePath)
 	binPath, _               = filepath.Abs(configs.BinPath)

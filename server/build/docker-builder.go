@@ -96,6 +96,10 @@ func (d *DockerBuilder) Generate() (*clientpb.Artifact, error) {
 	// set volume - 精确挂载特定文件和目录
 	d.volumes = Volumes
 
+	// 挂载内置 resources（镜像预留资源）
+	builtinResourceVolume := fmt.Sprintf("%s:%s", filepath.ToSlash(resourcePath), ContainerBuiltinResourcePath)
+	d.volumes = append(d.volumes, builtinResourceVolume)
+
 	// 挂载 implant.yaml（如果存在）
 	configPath := filepath.Join(d.srcPath, "implant.yaml")
 	if fileutils.Exist(configPath) {
@@ -110,11 +114,14 @@ func (d *DockerBuilder) Generate() (*clientpb.Artifact, error) {
 		d.volumes = append(d.volumes, autoRunVolume)
 	}
 
-	// 挂载 resources 目录（如果存在）
-	resourcesPath := filepath.Join(d.srcPath, "resources")
-	if fileutils.Exist(resourcesPath) {
-		resourceVolume := fmt.Sprintf("%s:%s", filepath.ToSlash(resourcesPath), ContainerResourcePath)
-		d.volumes = append(d.volumes, resourceVolume)
+	// 挂载自定义 resources 目录（如果存在且不为空）
+	customResourcesPath := filepath.Join(d.srcPath, "resources")
+	if fileutils.Exist(customResourcesPath) {
+		entries, err := os.ReadDir(customResourcesPath)
+		if err == nil && len(entries) > 0 {
+			customResourceVolume := fmt.Sprintf("%s:%s", filepath.ToSlash(customResourcesPath), ContainerCustomResourcePath)
+			d.volumes = append(d.volumes, customResourceVolume)
+		}
 	}
 	return artifact.ToProtobuf([]byte{}), nil
 }
@@ -134,20 +141,29 @@ func (d *DockerBuilder) Execute() error {
 	if err != nil {
 		return err
 	}
+
+	// 资源合并前缀命令：先合并 builtin 和 custom resources 到目标目录
+	resourceMergePrefix := "mkdir -p /root/src/resources && " +
+		"[ -d /tmp/builtin/resources ] && cp -rf /tmp/builtin/resources/. /root/src/resources/ || true && " +
+		"[ -d /tmp/custom/resources ] && cp -rf /tmp/custom/resources/. /root/src/resources/ || true && "
+
 	switch d.config.BuildType {
 	case consts.CommandBuildBeacon:
 		buildCommand = fmt.Sprintf(
-			"malefic-mutant generate beacon && malefic-mutant build malefic -t %s",
+			"%smalefic-mutant generate beacon && malefic-mutant build malefic -t %s",
+			resourceMergePrefix,
 			d.config.Target,
 		)
 	case consts.CommandBuildBind:
 		buildCommand = fmt.Sprintf(
-			"malefic-mutant generate bind && malefic-mutant build malefic -t %s",
+			"%smalefic-mutant generate bind && malefic-mutant build malefic -t %s",
+			resourceMergePrefix,
 			d.config.Target,
 		)
 	case consts.CommandBuildModules:
 		buildCommand = fmt.Sprintf(
-			"malefic-mutant generate modules -m %s && malefic-mutant build modules -m %s -t %s",
+			"%smalefic-mutant generate modules -m %s && malefic-mutant build modules -m %s -t %s",
+			resourceMergePrefix,
 			strings.Join(profile.Implant.Modules, ","),
 			strings.Join(profile.Implant.Modules, ","),
 			d.config.Target,
@@ -155,14 +171,16 @@ func (d *DockerBuilder) Execute() error {
 		d.enable3rd = false
 	case consts.CommandBuild3rdModules:
 		buildCommand = fmt.Sprintf(
-			"malefic-mutant generate modules && malefic-mutant build 3rd -m %s -t %s",
+			"%smalefic-mutant generate modules && malefic-mutant build 3rd -m %s -t %s",
+			resourceMergePrefix,
 			strings.Join(profile.Implant.ThirdModules, ","),
 			d.config.Target,
 		)
 		d.enable3rd = true
 	case consts.CommandBuildPrelude:
 		buildCommand = fmt.Sprintf(
-			"malefic-mutant generate prelude prelude.yaml && malefic-mutant build prelude -t %s",
+			"%smalefic-mutant generate prelude prelude.yaml && malefic-mutant build prelude -t %s",
+			resourceMergePrefix,
 			d.config.Target,
 		)
 	case consts.CommandBuildPulse:
@@ -177,7 +195,8 @@ func (d *DockerBuilder) Execute() error {
 			pulseOs = target.OS
 		}
 		buildCommand = fmt.Sprintf(
-			"malefic-mutant generate pulse -a %s -p %s && malefic-mutant build pulse -t %s",
+			"%smalefic-mutant generate pulse -a %s -p %s && malefic-mutant build pulse -t %s",
+			resourceMergePrefix,
 			target.Arch, pulseOs, d.config.Target,
 		)
 	}
