@@ -2,6 +2,11 @@ package rpc
 
 import (
 	"context"
+	"os"
+	"path/filepath"
+	"regexp"
+	"strconv"
+
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
@@ -11,10 +16,6 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"google.golang.org/protobuf/proto"
-	"os"
-	"path/filepath"
-	"regexp"
-	"strconv"
 )
 
 func (rpc *Server) GetSessions(ctx context.Context, req *clientpb.SessionRequest) (*clientpb.Sessions, error) {
@@ -66,23 +67,31 @@ func (rpc *Server) SessionManage(ctx context.Context, req *clientpb.BasicUpdateS
 		}
 	case "note":
 		session, err := core.Sessions.Get(req.SessionId)
-		if err != nil {
-			return nil, err
-		}
-		session.Note = req.Arg
-		err = session.Save()
-		if err != nil {
-			return nil, err
+		if err == nil {
+			session.Note = req.Arg
+			err = session.Save()
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			err = db.UpdateSession(req.SessionId, req.Arg, "")
+			if err != nil {
+				return nil, err
+			}
 		}
 	case "group":
 		session, err := core.Sessions.Get(req.SessionId)
-		if err != nil {
-			return nil, err
-		}
-		session.Group = req.Arg
-		err = session.Save()
-		if err != nil {
-			return nil, err
+		if err == nil {
+			session.Group = req.Arg
+			err = session.Save()
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			err = db.UpdateSession(req.SessionId, "", req.Arg)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
