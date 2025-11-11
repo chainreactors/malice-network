@@ -2,6 +2,9 @@ package exec
 
 import (
 	"bytes"
+	"os"
+	"strings"
+
 	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
@@ -12,8 +15,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
-	"os"
-	"strings"
 )
 
 func PowershellCmd(cmd *cobra.Command, con *repl.Console) error {
@@ -31,9 +32,10 @@ func PowershellCmd(cmd *cobra.Command, con *repl.Console) error {
 
 func Powershell(rpc clientrpc.MaliceRPCClient, sess *client.Session, cmd string, output bool) (*clientpb.Task, error) {
 	task, err := rpc.Execute(sess.Context(), &implantpb.ExecRequest{
-		Path:   `C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe`,
-		Args:   []string{"-ExecutionPolicy", "Bypass", "-w", "hidden", "-nop", cmd},
-		Output: output,
+		Path:     `C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe`,
+		Args:     []string{"-ExecutionPolicy", "Bypass", "-w", "hidden", "-nop", cmd},
+		Output:   output,
+		Realtime: true,
 	})
 	if err != nil {
 		return nil, err
