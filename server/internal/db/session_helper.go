@@ -2,12 +2,13 @@ package db
 
 import (
 	"errors"
-	"github.com/chainreactors/IoM-go/consts"
-	"github.com/chainreactors/IoM-go/mtls"
-	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/mtls"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/utils/output"
@@ -426,6 +427,9 @@ func FindContextBySessionAndTypeAndDate(sessionID, contextType, date string) (*m
 		First(&context)
 
 	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
 		return nil, result.Error
 	}
 	return &context, nil
