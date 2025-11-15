@@ -44,12 +44,13 @@ func (c *Context) AfterFind(tx *gorm.DB) (err error) {
 
 func (c *Context) ToProtobuf() *clientpb.Context {
 	return &clientpb.Context{
-		Id:       c.ID.String(),
-		Session:  c.Session.ToProtobuf(),
-		Pipeline: c.Pipeline.ToProtobuf(),
-		Task:     c.Task.ToProtobuf(),
-		Type:     c.Type,
-		Value:    c.Value,
+		Id:        c.ID.String(),
+		Session:   c.Session.ToProtobuf(),
+		Pipeline:  c.Pipeline.ToProtobuf(),
+		Task:      c.Task.ToProtobuf(),
+		Type:      c.Type,
+		Value:     c.Value,
+		CreatedAt: c.CreatedAt.Unix(),
 	}
 }
 
