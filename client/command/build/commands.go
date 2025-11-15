@@ -352,6 +352,9 @@ artifact list
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ArtifactShowCmd(cmd, con)
 		},
+		Annotations: map[string]string{
+			"static": "true",
+		},
 		Example: `~~~
 artifact show artifact_name
 
@@ -363,10 +366,6 @@ artifact show artifact_name --profile
 		f.Bool("profile", false, "show profile")
 	})
 	common.BindArgCompletions(showArtifactCmd, nil, common.ArtifactCompleter(con))
-
-	common.BindFlag(listArtifactCmd, func(f *pflag.FlagSet) {
-		f.Bool("static", false, "show all artifact in static table")
-	})
 
 	downloadCmd := &cobra.Command{
 		Use:   consts.CommandArtifactDownload,

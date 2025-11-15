@@ -22,7 +22,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/mals"
 	"github.com/chainreactors/tui"
-	lua "github.com/yuin/gopher-lua"
 )
 
 var (
@@ -270,6 +269,8 @@ func (c *Console) AddCommandFuncHelper(cmdName string, funcName string, example 
 
 // ExecuteCommandWithSession executes a command with optional session context
 // This method is used by the local gRPC server to execute commands
+// When sessionId is provided, it temporarily switches to that session context
+// RunCommand will automatically select the appropriate menu (ClientMenu or ImplantMenu)
 func (c *Console) ExecuteCommandWithSession(command string, sessionId string) (string, error) {
 	// If session_id is provided, switch to that session temporarily
 	var previousSession *client.Session
@@ -281,18 +282,25 @@ func (c *Console) ExecuteCommandWithSession(command string, sessionId string) (s
 		previousSession = c.ActiveTarget.Get()
 		c.ActiveTarget.Set(session)
 		defer func() {
+			// Restore previous session context after command execution
 			if previousSession != nil {
 				c.ActiveTarget.Set(previousSession)
+			} else {
+				// If there was no previous session, clear the active target
+				c.ActiveTarget.Set(nil)
 			}
 		}()
 	}
 
-	// Execute the command using the existing RunCommand function
+	// RunCommand will automatically select the correct menu based on ActiveTarget
+	// - If ActiveTarget is set (session exists), it uses ImplantMenu
+	// - If ActiveTarget is nil, it uses ClientMenu
 	return RunCommand(c, command)
 }
 
 // ExecuteLuaWithSession executes a Lua script with optional session context
 // This method is used by the local gRPC server to execute Lua scripts
+// When sessionId is provided, it temporarily switches to that session context
 func (c *Console) ExecuteLuaWithSession(script string, sessionId string) (string, error) {
 	// If session_id is provided, switch to that session temporarily
 	var previousSession *client.Session
@@ -304,66 +312,55 @@ func (c *Console) ExecuteLuaWithSession(script string, sessionId string) (string
 		previousSession = c.ActiveTarget.Get()
 		c.ActiveTarget.Set(session)
 		defer func() {
+			// Restore previous session context after script execution
 			if previousSession != nil {
 				c.ActiveTarget.Set(previousSession)
+			} else {
+				// If there was no previous session, clear the active target
+				c.ActiveTarget.Set(nil)
 			}
 		}()
 	}
 
-	// Execute the Lua script using the existing ExecuteLuaScript function
+	// Execute the Lua script with the current session context
 	return c.ExecuteLuaScript(script)
 }
 
 // ExecuteLuaScript executes a Lua script and returns the result
 func (c *Console) ExecuteLuaScript(script string) (string, error) {
-	// Create a new Lua VM
-	vm := plugin.NewLuaVM()
-	defer vm.Close()
-
-	// Initialize Lua context, register internal functions
-	if err := c.initLuaVMContext(vm); err != nil {
-		return "", fmt.Errorf("failed to initialize Lua context: %w", err)
+	// Get shared Lua VM Pool from MalManager
+	vmPool := c.MalManager.GetLuaVMPool()
+	if vmPool == nil {
+		return "", fmt.Errorf("Lua VM Pool not initialized")
 	}
 
+	// Acquire VM from pool
+	wrapper, err := vmPool.AcquireVM()
+	if err != nil {
+		return "", fmt.Errorf("failed to acquire VM: %w", err)
+	}
+	defer vmPool.ReleaseVM(wrapper)
+
 	// Execute script
-	if err := vm.DoString(script); err != nil {
+	if err := wrapper.DoString(script); err != nil {
 		return "", fmt.Errorf("failed to execute Lua script: %w", err)
 	}
 
 	// Collect return values
 	var results []string
-	top := vm.GetTop()
+	top := wrapper.GetTop()
 	for i := 1; i <= top; i++ {
-		val := vm.Get(i)
+		val := wrapper.Get(i)
 		goVal := mals.ConvertLuaValueToGo(val)
 		results = append(results, fmt.Sprintf("%v", goVal))
 	}
+
+	// Clean up stack
+	wrapper.Pop(top)
 
 	if len(results) == 0 {
 		return "Script executed successfully (no return value)", nil
 	}
 
 	return strings.Join(results, "\n"), nil
-}
-
-// initLuaVMContext initializes Lua VM context, registers all internal functions
-func (c *Console) initLuaVMContext(vm *lua.LState) error {
-	// Register current session
-	if c.ActiveTarget != nil && c.ActiveTarget.Get() != nil {
-		session := c.ActiveTarget.Get()
-		vm.SetGlobal("session", mals.ConvertGoValueToLua(vm, session))
-		vm.SetGlobal("session_id", lua.LString(session.SessionId))
-	}
-
-	// Register console object
-	vm.SetGlobal("console", mals.ConvertGoValueToLua(vm, c))
-
-	// Register all internal functions
-	for name, fn := range intermediate.InternalFunctions {
-		if fn.MalFunction != nil {
-			vm.SetGlobal(name, vm.NewFunction(mals.WrapFuncForLua(fn.MalFunction)))
-		}
-	}
-
-	return nil
 }

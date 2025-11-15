@@ -16,6 +16,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Long:  "See Docs at https://sliver.sh/docs?name=Armory",
 		Annotations: map[string]string{
 			"thirdParty": "true",
+			"static":     "true",
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			ArmoryCmd(cmd, con)
@@ -29,10 +30,6 @@ func Commands(con *repl.Console) []*cobra.Command {
 	})
 	common.Bind("type", false, armoryCmd, func(f *pflag.FlagSet) {
 		f.BoolP("bundle", "", false, "install bundle")
-	})
-
-	common.BindFlag(armoryCmd, func(f *pflag.FlagSet) {
-		f.Bool("static", false, "show all armory in static table")
 	})
 
 	armoryInstallCmd := &cobra.Command{
@@ -75,14 +72,12 @@ armory install rubeus
 		Args:  cobra.ExactArgs(1),
 		Annotations: map[string]string{
 			"thirdParty": "true",
+			"static":     "true",
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			ArmorySearchCmd(cmd, con)
 		},
 	}
-	common.BindFlag(armorySearchCmd, func(f *pflag.FlagSet) {
-		f.Bool("static", false, "show searched armory in static table")
-	})
 
 	common.BindArgCompletions(armorySearchCmd, nil, carapace.ActionValues().Usage("a name regular expression"))
 

@@ -110,12 +110,14 @@ func PrintProfileSettings() {
 	settingsMap := map[string]interface{}{
 		"MCP Enable":          formatBool(profile.Settings.McpEnable),
 		"MCP Address":         profile.Settings.McpAddr,
+		"LocalRPC Enable":     formatBool(profile.Settings.LocalRPCEnable),
+		"LocalRPC Address":    profile.Settings.LocalRPCAddr,
 		"Max Server Log Size": formatInt(profile.Settings.MaxServerLogSize),
 		"Opsec Threshold":     formatFloat(profile.Settings.OpsecThreshold),
 	}
 
 	// 定义显示顺序
-	orderedKeys := []string{"MCP Enable", "MCP Address", "Max Server Log Size", "Opsec Threshold"}
+	orderedKeys := []string{"MCP Enable", "MCP Address", "LocalRPC Enable", "LocalRPC Address", "Max Server Log Size", "Opsec Threshold"}
 
 	// 使用tui.RenderKV显示配置
 	tui.RenderKV(settingsMap, orderedKeys)

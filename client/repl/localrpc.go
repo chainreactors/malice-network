@@ -26,7 +26,7 @@ func NewLocalRPCServer(console *Console) *LocalRPCServer {
 
 // ExecuteCommand implements the CommandService.ExecuteCommand RPC method
 func (s *LocalRPCServer) ExecuteCommand(ctx context.Context, req *localrpc.ExecuteCommandRequest) (*localrpc.ExecuteCommandResponse, error) {
-	client.Log.Debugf("LocalRPC: ExecuteCommand called with command: %s, session_id: %s", req.Command, req.SessionId)
+	client.Log.Debugf("LocalRPC: ExecuteCommand called with command: %s, session_id: %s\n", req.Command, req.SessionId)
 
 	// Validate request
 	if req.Command == "" {
@@ -40,7 +40,7 @@ func (s *LocalRPCServer) ExecuteCommand(ctx context.Context, req *localrpc.Execu
 	// Execute the command using Console's method
 	output, err := s.console.ExecuteCommandWithSession(req.Command, req.SessionId)
 	if err != nil {
-		client.Log.Errorf("LocalRPC: Error executing command: %v", err)
+		client.Log.Errorf("LocalRPC: Error executing command: %v\n", err)
 		return &localrpc.ExecuteCommandResponse{
 			Output:  output,
 			Error:   err.Error(),
@@ -48,7 +48,7 @@ func (s *LocalRPCServer) ExecuteCommand(ctx context.Context, req *localrpc.Execu
 		}, nil
 	}
 
-	client.Log.Debugf("LocalRPC: Command executed successfully, output length: %d", len(output))
+	client.Log.Debugf("LocalRPC: Command executed successfully, output length: %d\n", len(output))
 
 	return &localrpc.ExecuteCommandResponse{
 		Output:  output,
@@ -59,7 +59,7 @@ func (s *LocalRPCServer) ExecuteCommand(ctx context.Context, req *localrpc.Execu
 
 // ExecuteLua implements the CommandService.ExecuteLua RPC method
 func (s *LocalRPCServer) ExecuteLua(ctx context.Context, req *localrpc.ExecuteLuaRequest) (*localrpc.ExecuteLuaResponse, error) {
-	client.Log.Debugf("LocalRPC: ExecuteLua called with script length: %d, session_id: %s", len(req.Script), req.SessionId)
+	client.Log.Debugf("LocalRPC: ExecuteLua called with script length: %d, session_id: %s\n", len(req.Script), req.SessionId)
 
 	// Validate request
 	if req.Script == "" {
@@ -73,7 +73,7 @@ func (s *LocalRPCServer) ExecuteLua(ctx context.Context, req *localrpc.ExecuteLu
 	// Execute the Lua script using Console's method
 	output, err := s.console.ExecuteLuaWithSession(req.Script, req.SessionId)
 	if err != nil {
-		client.Log.Errorf("LocalRPC: Error executing Lua script: %v", err)
+		client.Log.Errorf("LocalRPC: Error executing Lua script: %v\n", err)
 		return &localrpc.ExecuteLuaResponse{
 			Output:  output,
 			Error:   err.Error(),
@@ -81,7 +81,7 @@ func (s *LocalRPCServer) ExecuteLua(ctx context.Context, req *localrpc.ExecuteLu
 		}, nil
 	}
 
-	client.Log.Debugf("LocalRPC: Lua script executed successfully, output length: %d", len(output))
+	client.Log.Debugf("LocalRPC: Lua script executed successfully, output length: %d\n", len(output))
 
 	return &localrpc.ExecuteLuaResponse{
 		Output:  output,
@@ -103,11 +103,9 @@ func (c *Console) StartLocalRPC(address string) error {
 		return fmt.Errorf("server not initialized")
 	}
 
-	client.Log.Importantf("[client] starting local gRPC server on %s", address)
-
 	ln, err := net.Listen("tcp", address)
 	if err != nil {
-		client.Log.Errorf("failed to listen on %s: %v", address, err)
+		client.Log.Errorf("failed to listen on %s: %v\n", address, err)
 		return err
 	}
 
@@ -131,17 +129,16 @@ func (c *Console) StartLocalRPC(address string) error {
 		panicked := true
 		defer func() {
 			if panicked {
-				client.Log.Errorf("LocalRPC: stacktrace from panic: %s", string(debug.Stack()))
+				client.Log.Errorf("LocalRPC: stacktrace from panic: %s\n", string(debug.Stack()))
 			}
 		}()
 		if err := grpcServer.Serve(ln); err != nil {
-			client.Log.Warnf("LocalRPC: gRPC server exited with error: %v", err)
+			client.Log.Warnf("LocalRPC: gRPC server exited with error: %v\n", err)
 		} else {
 			panicked = false
 		}
 	}()
 
-	client.Log.Importantf("[client] local gRPC server started successfully on %s", address)
 	return nil
 }
 
@@ -151,7 +148,7 @@ func (c *Console) StopLocalRPC() error {
 		return nil
 	}
 
-	client.Log.Infof("Stopping local gRPC server on %s", c.LocalRPC.address)
+	client.Log.Infof("Stopping local gRPC server on %s\n", c.LocalRPC.address)
 
 	if c.LocalRPC.server != nil {
 		c.LocalRPC.server.GracefulStop()
@@ -164,7 +161,7 @@ func (c *Console) StopLocalRPC() error {
 	}
 
 	c.LocalRPC = nil
-	client.Log.Infof("Local gRPC server stopped")
+	client.Log.Infof("Local gRPC server stopped\n")
 	return nil
 }
 

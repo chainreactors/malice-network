@@ -65,6 +65,14 @@ func updateCommand(con *repl.Console, c *cobra.Command, group string) {
 		}
 	}
 
+	// 根据 "static" annotation 自动添加 --static flag
+	if c.Annotations["static"] != "" {
+		// 检查是否已经定义了 static flag
+		if c.Flags().Lookup("static") == nil {
+			c.Flags().BoolP("static", "s", false, "non-interactive mode")
+		}
+	}
+
 	con.CMDs[c.Name()] = c
 	if dep, ok := c.Annotations["depend"]; ok {
 		con.Helpers[dep] = c

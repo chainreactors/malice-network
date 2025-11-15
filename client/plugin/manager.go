@@ -26,6 +26,7 @@ type MalManager struct {
 	externalPlugins map[string]Plugin       // 外部插件
 	globalPlugins   []*DefaultPlugin        // 全局库插件（Lib: true的插件）
 	loadedCommands  Commands                // 所有已加载的嵌入式命令
+	luaVMPool       *LuaVMPool              // 共享的 Lua VM Pool，用于执行临时脚本
 	initialized     bool                    // 是否已初始化
 }
 
@@ -44,6 +45,13 @@ func (mm *MalManager) initialize() {
 
 	if mm.initialized {
 		return
+	}
+
+	// 初始化共享的 Lua VM Pool
+	var err error
+	mm.luaVMPool, err = NewLuaVMPool(5, "", "console")
+	if err != nil {
+		logs.Log.Errorf("Failed to initialize Lua VM Pool: %v\n", err)
 	}
 
 	mm.loadEmbeddedMals()
@@ -317,4 +325,11 @@ func (mm *MalManager) RemoveExternalMal(malName string) error {
 	logs.Log.Infof("Removed external plugin: %s\n", malName)
 
 	return nil
+}
+
+// GetLuaVMPool 获取共享的 Lua VM Pool
+func (mm *MalManager) GetLuaVMPool() *LuaVMPool {
+	mm.mu.RLock()
+	defer mm.mu.RUnlock()
+	return mm.luaVMPool
 }

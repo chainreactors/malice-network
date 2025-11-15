@@ -14,6 +14,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 		Use: consts.CommandSession,
 		Annotations: map[string]string{
 			"resource": "true",
+			"static":   "true",
 		},
 		Short: "List and Choice sessions",
 		Long: `Display a table of active sessions on the server, 
@@ -38,7 +39,6 @@ session -a --static
 
 	common.BindFlag(sessCmd, func(f *pflag.FlagSet) {
 		f.BoolP("all", "a", false, "show all sessions")
-		f.Bool("static", false, "show all sessions in static table")
 	})
 
 	bindSessNewCmd := &cobra.Command{

@@ -8,7 +8,6 @@ import (
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 )
 
 func Commands(con *repl.Console) []*cobra.Command {
@@ -89,16 +88,13 @@ Each command will have the --process flag defined, which allows you to specify t
 		Long:  "See Docs at https://sliver.sh/docs?name=Aliases%20and%20Extensions",
 		Annotations: map[string]string{
 			"thirdParty": "true",
+			"static":     "true",
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			AliasesCmd(cmd, con)
 			return
 		},
 	}
-
-	common.BindFlag(aliasListCmd, func(f *pflag.FlagSet) {
-		f.Bool("static", false, "show all alias in static table")
-	})
 
 	aliasLoadCmd := &cobra.Command{
 		Use:   consts.CommandAliasLoad + " [alias]",

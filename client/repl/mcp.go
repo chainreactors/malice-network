@@ -104,7 +104,7 @@ func (c *Console) registerCobraCommands(cmd *cobra.Command, parentPath string) {
 	toolName := strings.Replace(cmd.CommandPath(), "client implant ", "", 1)
 
 	// 根据注解类型注册命令
-	if cmd.Annotations["isStatic"] != "true" && cmd.Annotations["resource"] != "true" {
+	if cmd.Annotations["static"] != "true" && cmd.Annotations["resource"] != "true" {
 		c.registerTool(cmd, toolName, cmdPath)
 	} else if cmd.Annotations["resource"] == "true" {
 		c.registerResource(cmd, cmdPath, parentPath)

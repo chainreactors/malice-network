@@ -106,7 +106,7 @@ func (con *Console) InitLocalRPCServer() {
 
 		// 检查 Local RPC 是否启用
 		if !setting.LocalRPCEnable {
-			logs.Log.Debugf("Local RPC server is disabled (use --rpc <addr> to enable)")
+			logs.Log.Debugf("Local RPC server is disabled (use --rpc <addr> to enable)\n")
 			return
 		}
 
