@@ -4,6 +4,12 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"regexp"
+	"sync"
+
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/logs"
@@ -12,12 +18,7 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
-	"io"
-	"os"
-	"path/filepath"
-	"regexp"
-	"strings"
-	"sync"
+	"github.com/docker/docker/pkg/stdcopy"
 )
 
 var (
@@ -95,25 +96,44 @@ func catchLogs(cli *client.Client, containerID, name string) error {
 	}
 	defer logReader.Close()
 
-	reader := bufio.NewReader(logReader)
-	var logBuffer strings.Builder
+	stdoutPipe, stdoutWriter := io.Pipe()
+	stderrPipe, stderrWriter := io.Pipe()
 
-	for {
-		line, err := reader.ReadString('\n')
+	go func() {
+		_, err := stdcopy.StdCopy(stdoutWriter, stderrWriter, logReader)
+		stdoutWriter.Close()
+		stderrWriter.Close()
 		if err != nil && err != io.EOF {
-			logs.Log.Errorf("Error reading logs for container %s: %v", containerID, err)
-			return err
+			logs.Log.Errorf("Error demultiplexing logs for container %s: %v", containerID, err)
 		}
+	}()
 
-		if err == io.EOF {
-			break
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	go func() {
+		defer wg.Done()
+		scanner := bufio.NewScanner(stdoutPipe)
+		for scanner.Scan() {
+			line := scanner.Text() + "\n"
+			re := regexp.MustCompile(`[\x00-\x1F&&[^\n]]+`)
+			line = re.ReplaceAllString(line, "")
+			db.UpdateBuilderLog(name, line)
 		}
-		re := regexp.MustCompile(`[\x00-\x1F&&[^\n]]+`)
-		line = re.ReplaceAllString(line, "")
-		logBuffer.WriteString(line)
-		db.UpdateBuilderLog(name, line)
-	}
+	}()
 
+	go func() {
+		defer wg.Done()
+		scanner := bufio.NewScanner(stderrPipe)
+		for scanner.Scan() {
+			line := scanner.Text() + "\n"
+			re := regexp.MustCompile(`[\x00-\x1F&&[^\n]]+`)
+			line = re.ReplaceAllString(line, "")
+			db.UpdateBuilderLog(name, line)
+		}
+	}()
+
+	wg.Wait()
 	return nil
 }
 
