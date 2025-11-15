@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/certs"
@@ -11,7 +12,7 @@ import (
 )
 
 func (rpc *Server) GenerateSelfCert(ctx context.Context, req *clientpb.Pipeline) (*clientpb.Empty, error) {
-	if req.Name != "" && req.Tls.Cert == nil {
+	if req.Name != "" && req.Tls != nil && req.Tls.Cert == nil {
 		certModel, err := db.FindPipelineCert(req.Name, req.ListenerId)
 		if err != nil {
 			return nil, err
@@ -21,8 +22,12 @@ func (rpc *Server) GenerateSelfCert(ctx context.Context, req *clientpb.Pipeline)
 		}
 	}
 
-	if req.Tls.Cert == nil {
-		tls, err := certutils.GenerateSelfTLS("", req.Tls.CertSubject)
+	if req.Tls == nil || req.Tls.Cert == nil {
+		var certSubject *clientpb.CertificateSubject
+		if req.Tls != nil {
+			certSubject = req.Tls.CertSubject
+		}
+		tls, err := certutils.GenerateSelfTLS("", certSubject)
 		if err != nil {
 			return nil, err
 		}
