@@ -3,10 +3,10 @@ package repl
 import (
 	"context"
 	"fmt"
-	"github.com/chainreactors/IoM-go/consts"
 	"net/http"
 	"strings"
 
+	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/logs"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
@@ -33,8 +33,13 @@ func (c *Console) NewMCPServer() {
 	c.MCP = &MCPServer{
 		server: s,
 	}
-	c.registerCobraCommands(c.App.Menu("client").Command, "")
-	c.registerCobraCommands(c.App.Menu("implant").Command, "")
+
+	// 注释掉自动注册所有 cobra 命令的逻辑，避免工具过多导致 API 难以理解
+	// c.registerCobraCommands(c.App.Menu("client").Command, "")
+	// c.registerCobraCommands(c.App.Menu("implant").Command, "")
+
+	// 只注册核心的自定义工具
+	c.registerCustomTools()
 }
 
 // registerPrompts 注册 MCP 提示词
@@ -239,4 +244,92 @@ func (m *MCPServer) Stop() error {
 // AddTool 添加新的工具到 MCP 服务器
 func (m *MCPServer) AddTool(tool mcp.Tool, handler server.ToolHandlerFunc) {
 	m.server.AddTool(tool, handler)
+}
+
+// registerCustomTools 注册自定义 MCP 工具
+// 只暴露一个通用的命令执行工具，让 AI 像人类一样操作客户端
+func (c *Console) registerCustomTools() {
+	// 1. 通用命令执行工具 - 可以执行任何客户端命令
+	c.registerExecuteCommandTool()
+
+	// 2. 执行 Lua 脚本工具 - 用于高级自动化
+	c.registerLuaScriptTool()
+}
+
+// registerExecuteCommandTool 注册通用命令执行工具
+// 这个工具允许 AI 像人类一样执行任何客户端命令
+func (c *Console) registerExecuteCommandTool() {
+	tool := mcp.NewTool(
+		"execute_command",
+		mcp.WithDescription(`Execute any client command as if you were typing in the console.
+
+Examples:
+- "session --all --static" - List all sessions (use --static for non-interactive output)
+- "use <session_id>" - Switch to a session
+- "whoami" - Execute whoami in current session (requires active session)
+- "ls" - List files in current directory (requires active session)
+- "download /path/to/file" - Download a file (requires active session)
+
+Important: For commands that are normally interactive (like 'session'), add '--static' flag to get non-interactive output.
+
+The command will be executed in the current context (client or implant mode).
+Commands are automatically routed to client menu or implant menu based on whether there's an active session.`),
+		mcp.WithString("command", mcp.Required(), mcp.Description("The command to execute, exactly as you would type it in the console")),
+		mcp.WithString("session_id", mcp.Description("Optional session ID to set as active context before execution")),
+	)
+
+	c.MCP.server.AddTool(tool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		// 获取命令参数
+		command, ok := request.Params.Arguments["command"].(string)
+		if !ok || command == "" {
+			return mcp.NewToolResultError("command is required"), nil
+		}
+
+		// 可选的 session_id
+		sessionID, _ := request.Params.Arguments["session_id"].(string)
+
+		// 执行命令（使用统一的方法）
+		response, err := c.ExecuteCommandWithSession(command, sessionID)
+		if err != nil {
+			logs.Log.Errorf("Error executing command: %v", err)
+			return mcp.NewToolResultError(fmt.Sprintf("Error: %v", err)), nil
+		}
+
+		// 如果没有输出，返回成功消息
+		if response == "" {
+			response = "Command executed successfully (no output)"
+		}
+
+		return mcp.NewToolResultText(response), nil
+	})
+}
+
+// registerLuaScriptTool 注册 Lua 脚本执行工具
+func (c *Console) registerLuaScriptTool() {
+	tool := mcp.NewTool(
+		"execute_lua",
+		mcp.WithDescription("Execute arbitrary Lua script in the client context. This tool allows you to run Lua code with access to all internal functions and the current session context."),
+		mcp.WithString("script", mcp.Required(), mcp.Description("Lua script code to execute")),
+		mcp.WithString("session_id", mcp.Description("Optional session ID to set as active context before execution")),
+	)
+
+	c.MCP.server.AddTool(tool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		// 获取参数
+		script, ok := request.Params.Arguments["script"].(string)
+		if !ok || script == "" {
+			return mcp.NewToolResultError("script is required"), nil
+		}
+
+		// 可选的 session_id
+		sessionID, _ := request.Params.Arguments["session_id"].(string)
+
+		// 执行 Lua 脚本（使用统一的方法）
+		result, err := c.ExecuteLuaWithSession(script, sessionID)
+		if err != nil {
+			logs.Log.Errorf("Error executing Lua script: %v", err)
+			return mcp.NewToolResultError(fmt.Sprintf("Error: %v", err)), nil
+		}
+
+		return mcp.NewToolResultText(result), nil
+	})
 }

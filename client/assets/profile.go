@@ -1,6 +1,7 @@
 package assets
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -8,6 +9,7 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/utils/configutil"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
+	"github.com/chainreactors/tui"
 	"github.com/gookit/config/v2"
 	"golang.org/x/exp/slices"
 )
@@ -90,6 +92,51 @@ func LoadProfile() (*Profile, error) {
 		return profile, err
 	}
 	return profile, nil
+}
+
+// PrintProfileSettings 打印配置信息
+func PrintProfileSettings() {
+	setting, err := GetSetting()
+	if err != nil {
+		logs.Log.Errorf("Failed to get setting: %v\n", err)
+		return
+	}
+	profile := &Profile{Settings: setting}
+	if profile.Settings == nil {
+		return
+	}
+
+	// 构建配置映射
+	settingsMap := map[string]interface{}{
+		"MCP Enable":          formatBool(profile.Settings.McpEnable),
+		"MCP Address":         profile.Settings.McpAddr,
+		"Max Server Log Size": formatInt(profile.Settings.MaxServerLogSize),
+		"Opsec Threshold":     formatFloat(profile.Settings.OpsecThreshold),
+	}
+
+	// 定义显示顺序
+	orderedKeys := []string{"MCP Enable", "MCP Address", "Max Server Log Size", "Opsec Threshold"}
+
+	// 使用tui.RenderKV显示配置
+	tui.RenderKV(settingsMap, orderedKeys)
+}
+
+// formatBool 格式化布尔值
+func formatBool(b bool) string {
+	if b {
+		return "true"
+	}
+	return "false"
+}
+
+// formatInt 格式化整数
+func formatInt(i int) string {
+	return fmt.Sprintf("%d", i)
+}
+
+// formatFloat 格式化浮点数
+func formatFloat(f float64) string {
+	return fmt.Sprintf("%.1f", f)
 }
 
 func RefreshProfile() error {

@@ -17,6 +17,8 @@ type Settings struct {
 	OpsecThreshold   float64        `yaml:"opsec_threshold" config:"opsec_threshold" default:"6.0"`
 	McpEnable        bool           `yaml:"mcp_enable" config:"mcp_enable" default:"false"`
 	McpAddr          string         `yaml:"mcp_addr" config:"mcp_addr" default:"127.0.0.1:5005"`
+	LocalRPCEnable   bool           `yaml:"localrpc_enable" config:"localrpc_enable" default:"false"`
+	LocalRPCAddr     string         `yaml:"localrpc_addr" config:"localrpc_addr" default:"127.0.0.1:15004"`
 	Github           *GithubSetting `yaml:"github" config:"github"`
 
 	//VtApiKey           string `yaml:"vt_api_key" config:"vt_api_key" default:""`
@@ -56,7 +58,14 @@ func LoadSettings() (*Settings, error) {
 }
 
 func defaultSettings() *Settings {
-	return &Settings{}
+	return &Settings{
+		MaxServerLogSize: 10,
+		OpsecThreshold:   6.0,
+		McpEnable:        false, // 默认关闭 MCP
+		McpAddr:          "127.0.0.1:5005",
+		LocalRPCEnable:   false, // 默认关闭 Local RPC
+		LocalRPCAddr:     "127.0.0.1:15004",
+	}
 }
 
 // SaveSettings - Save the current settings to disk

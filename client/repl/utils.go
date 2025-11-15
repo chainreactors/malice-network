@@ -116,9 +116,52 @@ func RunCommand(con *Console, cmdline interface{}) (string, error) {
 	}
 	start := time.Now()
 
-	err = con.App.Execute(con.Context(), con.App.Menu(consts.ImplantMenu), args, false)
+	// 智能路由：如果有活动的 session，使用 ImplantMenu，否则使用 ClientMenu
+	menu := con.App.Menu(consts.ClientMenu)
+	if con.ActiveTarget != nil && con.ActiveTarget.Get() != nil {
+		menu = con.App.Menu(consts.ImplantMenu)
+	}
+
+	// 自动为带有 isStatic 注解的命令添加 --static flag
+	args = autoAddStaticFlag(menu.Command, args)
+
+	err = con.App.Execute(con.Context(), menu, args, false)
 	if err != nil {
 		return "", err
 	}
 	return client.RemoveANSI(client.Stdout.Range(start, time.Now())), nil
+}
+
+// autoAddStaticFlag 自动为定义了 --static flag 的命令添加该 flag
+// 这样可以避免交互式命令在 MCP 中超时
+func autoAddStaticFlag(rootCmd *cobra.Command, args []string) []string {
+	if len(args) == 0 {
+		return args
+	}
+
+	// 查找命令
+	cmd, _, err := rootCmd.Find(args)
+	if err != nil || cmd == nil {
+		return args
+	}
+
+	// 检查命令是否定义了 --static flag
+	staticFlag := cmd.Flags().Lookup("static")
+	if staticFlag != nil {
+		// 检查是否已经有 --static flag
+		hasStatic := false
+		for _, arg := range args {
+			if arg == "--static" {
+				hasStatic = true
+				break
+			}
+		}
+
+		// 如果没有 --static flag，自动添加
+		if !hasStatic {
+			args = append(args, "--static")
+		}
+	}
+
+	return args
 }

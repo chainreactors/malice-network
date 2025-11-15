@@ -22,6 +22,8 @@ func rootCmd(con *repl.Console) (*cobra.Command, error) {
 
 	// 添加 --mcp flag
 	cmd.PersistentFlags().String("mcp", "", "enable MCP server with address (e.g., 127.0.0.1:5005)")
+	// 添加 --rpc flag
+	cmd.PersistentFlags().String("rpc", "", "enable local gRPC server with address (e.g., 127.0.0.1:15004)")
 
 	bind := command.MakeBind(cmd, con)
 	command.BindCommonCommands(bind)

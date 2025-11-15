@@ -42,19 +42,23 @@ func SessionsCmd(cmd *cobra.Command, con *repl.Console) error {
 	if err != nil {
 		return err
 	}
+	isStatic, err := cmd.Flags().GetBool("static")
+	if err != nil {
+		return err
+	}
 	err = con.UpdateSessions(isAll)
 	if err != nil {
 		return err
 	}
 	if 0 < len(con.Sessions) {
-		PrintSessions(con.Sessions, con, isAll)
+		PrintSessions(con.Sessions, con, isAll, isStatic)
 	} else {
 		con.Log.Info("No sessions\n")
 	}
 	return nil
 }
 
-func PrintSessions(sessions map[string]*client.Session, con *repl.Console, isAll bool) {
+func PrintSessions(sessions map[string]*client.Session, con *repl.Console, isAll bool, isStatic bool) {
 	//var colorIndex = 1
 	var rowEntries []table.Row
 	var row table.Row
@@ -107,6 +111,7 @@ func PrintSessions(sessions map[string]*client.Session, con *repl.Console, isAll
 		rowEntries = append(rowEntries, row)
 	}
 
+	// 使用 tui.NewTable 的 isStatic 参数来控制是否使用静态模式
 	tableModel := tui.NewTable([]table.Column{
 		table.NewColumn("ID", "ID", maxLengths["ID"]),
 		table.NewColumn("Group/Note", "Group/Note", maxLengths["Group/Note"]),
@@ -117,7 +122,7 @@ func PrintSessions(sessions map[string]*client.Session, con *repl.Console, isAll
 		table.NewColumn("Sleep", "Sleep", maxLengths["Sleep"]),
 		table.NewColumn("Last", "Last", maxLengths["Last"]),
 		table.NewColumn("CreatedAt", "CreatedAt", maxLengths["CreatedAt"]),
-	}, false)
+	}, isStatic)
 	tableModel.SetAscSort("Last")
 	tableModel.SetRows(rowEntries)
 	tableModel.SetMultiline()

@@ -22,6 +22,7 @@ import (
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/mals"
 	"github.com/chainreactors/tui"
+	lua "github.com/yuin/gopher-lua"
 )
 
 var (
@@ -62,6 +63,7 @@ type Console struct {
 	Profile    *assets.Profile
 	CMDs       map[string]*cobra.Command
 	MCP        *MCPServer
+	LocalRPC   *LocalRPC
 	Helpers    map[string]*cobra.Command
 	MalManager *plugin.MalManager
 }
@@ -99,9 +101,10 @@ func (c *Console) Start(bindCmds ...BindCmds) error {
 	c.App.Menu(consts.ClientMenu).Command = bindCmds[0](c)()
 	c.App.Menu(consts.ImplantMenu).Command = bindCmds[1](c)()
 
-	// 所有命令注册完成后，安全地启动MCP服务器
+	// 所有命令注册完成后，安全地启动MCP服务器和Local RPC服务器
 	if c.Server != nil {
 		c.InitMCPServer()
+		c.InitLocalRPCServer()
 	}
 
 	if c.GetInteractive() == nil {
@@ -263,4 +266,104 @@ func (c *Console) AddCommandFuncHelper(cmdName string, funcName string, example 
 			Example: example,
 		})
 	}
+}
+
+// ExecuteCommandWithSession executes a command with optional session context
+// This method is used by the local gRPC server to execute commands
+func (c *Console) ExecuteCommandWithSession(command string, sessionId string) (string, error) {
+	// If session_id is provided, switch to that session temporarily
+	var previousSession *client.Session
+	if sessionId != "" {
+		session, ok := c.Sessions[sessionId]
+		if !ok || session == nil {
+			return "", fmt.Errorf("session %s not found", sessionId)
+		}
+		previousSession = c.ActiveTarget.Get()
+		c.ActiveTarget.Set(session)
+		defer func() {
+			if previousSession != nil {
+				c.ActiveTarget.Set(previousSession)
+			}
+		}()
+	}
+
+	// Execute the command using the existing RunCommand function
+	return RunCommand(c, command)
+}
+
+// ExecuteLuaWithSession executes a Lua script with optional session context
+// This method is used by the local gRPC server to execute Lua scripts
+func (c *Console) ExecuteLuaWithSession(script string, sessionId string) (string, error) {
+	// If session_id is provided, switch to that session temporarily
+	var previousSession *client.Session
+	if sessionId != "" {
+		session, ok := c.Sessions[sessionId]
+		if !ok || session == nil {
+			return "", fmt.Errorf("session %s not found", sessionId)
+		}
+		previousSession = c.ActiveTarget.Get()
+		c.ActiveTarget.Set(session)
+		defer func() {
+			if previousSession != nil {
+				c.ActiveTarget.Set(previousSession)
+			}
+		}()
+	}
+
+	// Execute the Lua script using the existing ExecuteLuaScript function
+	return c.ExecuteLuaScript(script)
+}
+
+// ExecuteLuaScript executes a Lua script and returns the result
+func (c *Console) ExecuteLuaScript(script string) (string, error) {
+	// Create a new Lua VM
+	vm := plugin.NewLuaVM()
+	defer vm.Close()
+
+	// Initialize Lua context, register internal functions
+	if err := c.initLuaVMContext(vm); err != nil {
+		return "", fmt.Errorf("failed to initialize Lua context: %w", err)
+	}
+
+	// Execute script
+	if err := vm.DoString(script); err != nil {
+		return "", fmt.Errorf("failed to execute Lua script: %w", err)
+	}
+
+	// Collect return values
+	var results []string
+	top := vm.GetTop()
+	for i := 1; i <= top; i++ {
+		val := vm.Get(i)
+		goVal := mals.ConvertLuaValueToGo(val)
+		results = append(results, fmt.Sprintf("%v", goVal))
+	}
+
+	if len(results) == 0 {
+		return "Script executed successfully (no return value)", nil
+	}
+
+	return strings.Join(results, "\n"), nil
+}
+
+// initLuaVMContext initializes Lua VM context, registers all internal functions
+func (c *Console) initLuaVMContext(vm *lua.LState) error {
+	// Register current session
+	if c.ActiveTarget != nil && c.ActiveTarget.Get() != nil {
+		session := c.ActiveTarget.Get()
+		vm.SetGlobal("session", mals.ConvertGoValueToLua(vm, session))
+		vm.SetGlobal("session_id", lua.LString(session.SessionId))
+	}
+
+	// Register console object
+	vm.SetGlobal("console", mals.ConvertGoValueToLua(vm, c))
+
+	// Register all internal functions
+	for name, fn := range intermediate.InternalFunctions {
+		if fn.MalFunction != nil {
+			vm.SetGlobal(name, vm.NewFunction(mals.WrapFuncForLua(fn.MalFunction)))
+		}
+	}
+
+	return nil
 }

@@ -27,6 +27,18 @@ func LoginCmd(cmd *cobra.Command, con *repl.Console) error {
 		}
 	}
 
+	// 处理 --rpc flag
+	rpcAddr, _ := cmd.Flags().GetString("rpc")
+	if rpcAddr != "" {
+		con.Log.Infof("Enabling local gRPC server at %s", rpcAddr)
+		err := enableLocalRPCFromFlag(rpcAddr)
+		if err != nil {
+			con.Log.Errorf("Failed to enable local RPC: %s", err)
+		} else {
+			con.Log.Importantf("Local RPC enabled, will start at %s after login", rpcAddr)
+		}
+	}
+
 	if filename := cmd.Flags().Arg(0); filename != "" {
 		return Login(con, filename)
 	} else if filename, _ := cmd.Flags().GetString("auth"); filename != "" {
@@ -66,7 +78,18 @@ func enableMCPFromFlag(addr string) error {
 	return nil
 }
 
+// enableLocalRPCFromFlag 从命令行 flag 启用 Local RPC
+func enableLocalRPCFromFlag(addr string) error {
+	// 使用 config.Set 来设置配置，会自动触发保存
+	config.Set("settings.localrpc_enable", true)
+	config.Set("settings.localrpc_addr", addr)
+	return nil
+}
+
 func Login(con *repl.Console, authFile string) error {
+	// 显示配置信息
+	assets.PrintProfileSettings()
+
 	config, err := assets.LoadConfig(authFile)
 	if err != nil {
 		return err
