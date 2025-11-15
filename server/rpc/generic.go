@@ -24,6 +24,12 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+var (
+	Ver        = "latest"
+	Commit     = ""
+	Buildstamp = ""
+)
+
 func newGenericRequest(ctx context.Context, msg proto.Message, opts ...int) (*GenericRequest, error) {
 	req := &GenericRequest{
 		Message: msg,
@@ -227,10 +233,10 @@ func (rpc *Server) StreamGenericHandler(ctx context.Context, req *GenericRequest
 }
 
 func (rpc *Server) GetBasic(ctx context.Context, _ *clientpb.Empty) (*clientpb.Basic, error) {
-	timestamp, _ := strconv.ParseInt(consts.Buildstamp, 10, 64)
+	timestamp, _ := strconv.ParseInt(Buildstamp, 10, 64)
 	return &clientpb.Basic{
-		Version:    consts.Ver,
-		Commit:     consts.Commit,
+		Version:    Ver,
+		Commit:     Commit,
 		CompiledAt: timestamp,
 		Os:         runtime.GOOS,
 		Arch:       runtime.GOARCH,

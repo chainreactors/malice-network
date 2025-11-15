@@ -24,6 +24,7 @@ import (
 var (
 	//NameSpace                   = "ghcr.io/chainreactors"
 	//Tag                         = "nightly-2023-09-18-latest"
+	Ver                         = "lasest"
 	ContainerSourceCodePath      = "/root/src"
 	ContainerCargoRegistryCache  = "/root/cargo/registry"
 	ContainerCargoGitCache       = "/root/cargo/git"
@@ -56,9 +57,9 @@ var once sync.Once
 
 func GetImage(target string) string {
 	if target == consts.TargetX64Windows || target == consts.TargetX86Windows {
-		return "ghcr.io/chainreactors/" + consts.TargetX64Windows + ":" + consts.Ver
+		return "ghcr.io/chainreactors/" + consts.TargetX64Windows + ":" + Ver
 	}
-	return "ghcr.io/chainreactors/malefic-builder:" + consts.Ver
+	return "ghcr.io/chainreactors/malefic-builder:" + Ver
 }
 
 func GetDockerClient() (*client.Client, error) {
