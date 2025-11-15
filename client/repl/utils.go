@@ -116,13 +116,7 @@ func RunCommand(con *Console, cmdline interface{}) (string, error) {
 	}
 	start := time.Now()
 
-	// 智能路由：如果有活动的 session，使用 ImplantMenu，否则使用 ClientMenu
-	menu := con.App.Menu(consts.ClientMenu)
-	if con.ActiveTarget != nil && con.ActiveTarget.Get() != nil {
-		menu = con.App.Menu(consts.ImplantMenu)
-	}
-
-	err = con.App.Execute(con.Context(), menu, args, false)
+	err = con.App.Execute(con.Context(), con.App.ActiveMenu(), args, false)
 	if err != nil {
 		return "", err
 	}

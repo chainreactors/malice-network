@@ -186,12 +186,11 @@ func (c *Console) RefreshCmd(sess *client.Session) int {
 }
 
 func (c *Console) SwitchImplant(sess *client.Session) {
+	if c.GetInteractive().SessionId == sess.SessionId {
+		return
+	}
 	c.ActiveTarget.Set(sess)
 	c.App.SwitchMenu(consts.ImplantMenu)
-	count := c.RefreshCmd(sess)
-	c.Log.Importantf("os: %s, arch: %s, process: %d %s, pipeline: %s\n", sess.Os.Name, sess.Os.Arch, sess.Process.Ppid, sess.Process.Name, sess.PipelineId)
-	c.Log.Importantf("%d modules, %d available cmds, %d addons\n", len(sess.Modules), count, len(sess.Addons))
-	c.Log.Infof("Active session %s (%s), group: %s\n", sess.Note, sess.SessionId, sess.GroupName)
 }
 
 func (c *Console) RegisterImplantFunc(name string, fn interface{},
@@ -272,29 +271,14 @@ func (c *Console) AddCommandFuncHelper(cmdName string, funcName string, example 
 // When sessionId is provided, it temporarily switches to that session context
 // RunCommand will automatically select the appropriate menu (ClientMenu or ImplantMenu)
 func (c *Console) ExecuteCommandWithSession(command string, sessionId string) (string, error) {
-	// If session_id is provided, switch to that session temporarily
-	var previousSession *client.Session
 	if sessionId != "" {
 		session, ok := c.Sessions[sessionId]
 		if !ok || session == nil {
 			return "", fmt.Errorf("session %s not found", sessionId)
 		}
-		previousSession = c.ActiveTarget.Get()
-		c.ActiveTarget.Set(session)
-		defer func() {
-			// Restore previous session context after command execution
-			if previousSession != nil {
-				c.ActiveTarget.Set(previousSession)
-			} else {
-				// If there was no previous session, clear the active target
-				c.ActiveTarget.Set(nil)
-			}
-		}()
+		c.SwitchImplant(session)
 	}
 
-	// RunCommand will automatically select the correct menu based on ActiveTarget
-	// - If ActiveTarget is set (session exists), it uses ImplantMenu
-	// - If ActiveTarget is nil, it uses ClientMenu
 	return RunCommand(c, command)
 }
 
@@ -302,24 +286,12 @@ func (c *Console) ExecuteCommandWithSession(command string, sessionId string) (s
 // This method is used by the local gRPC server to execute Lua scripts
 // When sessionId is provided, it temporarily switches to that session context
 func (c *Console) ExecuteLuaWithSession(script string, sessionId string) (string, error) {
-	// If session_id is provided, switch to that session temporarily
-	var previousSession *client.Session
 	if sessionId != "" {
 		session, ok := c.Sessions[sessionId]
 		if !ok || session == nil {
 			return "", fmt.Errorf("session %s not found", sessionId)
 		}
-		previousSession = c.ActiveTarget.Get()
-		c.ActiveTarget.Set(session)
-		defer func() {
-			// Restore previous session context after script execution
-			if previousSession != nil {
-				c.ActiveTarget.Set(previousSession)
-			} else {
-				// If there was no previous session, clear the active target
-				c.ActiveTarget.Set(nil)
-			}
-		}()
+		c.SwitchImplant(session)
 	}
 
 	// Execute the Lua script with the current session context

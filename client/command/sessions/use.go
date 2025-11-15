@@ -24,5 +24,9 @@ func Use(con *repl.Console, sess *client.Session) error {
 		return err
 	}
 	con.SwitchImplant(sess)
+	count := con.RefreshCmd(sess)
+	con.Log.Importantf("os: %s, arch: %s, process: %d %s, pipeline: %s\n", sess.Os.Name, sess.Os.Arch, sess.Process.Ppid, sess.Process.Name, sess.PipelineId)
+	con.Log.Importantf("%d modules, %d available cmds, %d addons\n", len(sess.Modules), count, len(sess.Addons))
+	con.Log.Infof("Active session %s (%s), group: %s\n", sess.Note, sess.SessionId, sess.GroupName)
 	return nil
 }
