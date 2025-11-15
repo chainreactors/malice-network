@@ -2,13 +2,14 @@ package listener
 
 import (
 	"fmt"
+	"strconv"
+
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
-	"strconv"
 )
 
 func ListPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
@@ -49,7 +50,11 @@ func ListPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 			newRow["TLS"] = tui.RedFg.Render(strconv.FormatBool(pipeline.Tls.Enable))
 		}
 		if pipeline.Encryption != nil {
-			newRow["Encryption"] = fmt.Sprintf("%v", pipeline.Encryption)
+			encryption := make([]string, 0, len(pipeline.Encryption))
+			for _, enc := range pipeline.Encryption {
+				encryption = append(encryption, fmt.Sprintf("%s/%s", enc.Type, enc.Key))
+			}
+			newRow["Encryption"] = fmt.Sprintf("%s", encryption)
 		} else if pipeline.Encryption != nil {
 			newRow["Encryption"] = "raw"
 		}

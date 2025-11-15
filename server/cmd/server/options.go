@@ -3,7 +3,14 @@ package server
 import (
 	"errors"
 	"fmt"
+	"os"
+	"os/signal"
+	"strings"
+	"syscall"
+
+	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/mtls"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/client/rootpb"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/cryptography"
@@ -19,10 +26,6 @@ import (
 	"github.com/gookit/config/v2"
 	"github.com/jessevdk/go-flags"
 	"gopkg.in/yaml.v3"
-	"os"
-	"os/signal"
-	"strings"
-	"syscall"
 )
 
 var (
@@ -322,6 +325,52 @@ func RecoverAliveSession() error {
 	return nil
 }
 
+func RecoverWebsites() error {
+	websites, err := db.FindEnabledWebsites()
+	if err != nil {
+		return err
+	}
+
+	if len(websites) == 0 {
+		return nil
+	}
+
+	logs.Log.Debugf("recover %d websites", len(websites))
+	for _, website := range websites {
+		listener, err := core.Listeners.Get(website.ListenerId)
+		if err != nil {
+			logs.Log.Errorf("cannot find listener %s for website %s: %s", website.ListenerId, website.Name, err.Error())
+			continue
+		}
+		webpb := website.ToProtobuf()
+		if webpb == nil {
+			logs.Log.Errorf("failed to convert website %s to protobuf", website.Name)
+			continue
+		}
+
+		err = rpc.MapContents(webpb)
+		if err != nil {
+			logs.Log.Errorf("failed to load contents for website %s: %s", website.Name, err.Error())
+			continue
+		}
+
+		job := &core.Job{
+			ID:       core.NextJobID(),
+			Pipeline: webpb,
+			Name:     website.Name,
+		}
+
+		listener.PushCtrl(&clientpb.JobCtrl{
+			Ctrl: consts.CtrlWebsiteStart,
+			Job:  job.ToProtobuf(),
+		})
+
+		logs.Log.Infof("recovered website %s on %s:%d", website.Name, website.IP, website.Port)
+	}
+
+	return nil
+}
+
 func StartListener(opt *configs.ListenerConfig, serverEnable bool) error {
 	if listenerConf, err := mtls.ReadConfig(opt.Auth); err != nil {
 		return err
@@ -331,6 +380,14 @@ func StartListener(opt *configs.ListenerConfig, serverEnable bool) error {
 			return err
 		}
 	}
+
+	// Recover websites from database after listener is started
+	err := RecoverWebsites()
+	if err != nil {
+		logs.Log.Errorf("failed to recover websites: %s", err.Error())
+		// Don't return error, just log it - website recovery failure shouldn't prevent listener from starting
+	}
+
 	return nil
 }
 

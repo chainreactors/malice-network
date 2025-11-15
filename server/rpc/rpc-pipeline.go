@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/logs"
@@ -49,21 +50,11 @@ func (rpc *Server) SyncPipeline(ctx context.Context, req *clientpb.Pipeline) (*c
 }
 
 func (rpc *Server) ListPipelines(ctx context.Context, req *clientpb.Listener) (*clientpb.Pipelines, error) {
-	var result []*clientpb.Pipeline
-	if req.Id != "" {
-		pipe, err := core.Listeners.Get(req.Id)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, pipe.AllPipelines()...)
-	} else {
-		core.Listeners.Range(func(key, value any) bool {
-			lns := value.(*core.Listener)
-			result = append(result, lns.AllPipelines()...)
-			return true
-		})
+	pipelines, err := db.ListPipelinesByListener(req.Id)
+	if err != nil {
+		return nil, err
 	}
-	return &clientpb.Pipelines{Pipelines: result}, nil
+	return pipelines.ToProtobuf(), nil
 }
 
 func (rpc *Server) StartPipeline(ctx context.Context, req *clientpb.CtrlPipeline) (*clientpb.Empty, error) {

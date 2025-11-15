@@ -366,3 +366,28 @@ func RemoveContent(id string) error {
 	err := Session().Delete(&models.WebsiteContent{}, uuid).Error
 	return err
 }
+
+// FindEnabledWebsites - Get all enabled websites from database
+func FindEnabledWebsites() ([]*models.Pipeline, error) {
+	var websites []*models.Pipeline
+	err := Session().Where("type = ? AND enable = ?", consts.WebsitePipeline, true).Find(&websites).Error
+	if err != nil {
+		return nil, err
+	}
+
+	// Load certificates for each website
+	for _, website := range websites {
+		if website.CertName != "" {
+			certificate, err := FindCertificate(website.CertName)
+			if err != nil && !errors.Is(err, ErrRecordNotFound) {
+				logs.Log.Errorf("failed to find cert %s for website %s: %s", website.CertName, website.Name, err)
+				continue
+			}
+			if certificate != nil {
+				website.Tls = implanttypes.FromTls(certificate.ToProtobuf())
+			}
+		}
+	}
+
+	return websites, nil
+}

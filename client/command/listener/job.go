@@ -1,12 +1,13 @@
 package listener
 
 import (
+	"strconv"
+
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
-	"strconv"
 )
 
 func ListJobsCmd(cmd *cobra.Command, con *repl.Console) error {
@@ -23,7 +24,7 @@ func ListJobsCmd(cmd *cobra.Command, con *repl.Console) error {
 	tableModel := tui.NewTable([]table.Column{
 		table.NewColumn("Name", "Name", 20),
 		table.NewColumn("Listener", "Listener", 15),
-		table.NewColumn("IP", "IP", 10),
+		table.NewColumn("IP", "IP", 16),
 		table.NewColumn("Port", "Port", 7),
 		table.NewColumn("Type", "Type", 7),
 	}, true)
