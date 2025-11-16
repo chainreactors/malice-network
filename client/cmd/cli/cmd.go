@@ -3,12 +3,12 @@ package cli
 import (
 	"fmt"
 	"github.com/chainreactors/IoM-go/client"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"os"
 
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/gookit/config/v2"
 	"github.com/gookit/config/v2/yaml"
 )
@@ -24,7 +24,7 @@ func init() {
 }
 
 func Start() error {
-	con, err := repl.NewConsole()
+	con, err := core.NewConsole()
 	if err != nil {
 		return err
 	}

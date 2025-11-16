@@ -2,10 +2,6 @@ package plugin
 
 import (
 	"fmt"
-	"github.com/chainreactors/IoM-go/client"
-	"github.com/chainreactors/IoM-go/consts"
-	"github.com/chainreactors/IoM-go/proto/client/clientpb"
-	"github.com/chainreactors/IoM-go/types"
 	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -17,9 +13,12 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/chainreactors/IoM-go/client"
+	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/IoM-go/types"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/mals"
 )
@@ -410,7 +409,7 @@ func (plug *LuaPlugin) registerLuaOnHook(name string, condition client.EventCond
 	if fn := vm.GetGlobal("on_" + name); fn != lua.LNil {
 		plug.Events[condition] = func(event *clientpb.Event) (bool, error) {
 			if vm.IsClosed() {
-				return false, core.ErrLuaVMDead
+				return false, ErrLuaVMDead
 			}
 			fn := vm.GetGlobal("on_" + name)
 			vm.Push(fn)
@@ -439,3 +438,5 @@ func (plug *LuaPlugin) registerFunction(name string, fn interface{}, helper *mal
 
 	plug.vmFns[name] = mals.WrapFuncForLua(wrappedFunc)
 }
+
+var ErrLuaVMDead = fmt.Errorf("lua vm is dead")

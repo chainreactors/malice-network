@@ -2,6 +2,7 @@ package exec
 
 import (
 	"bytes"
+	"github.com/chainreactors/malice-network/client/core"
 	"os"
 	"strings"
 
@@ -11,13 +12,12 @@ import (
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
 )
 
-func PowershellCmd(cmd *cobra.Command, con *repl.Console) error {
+func PowershellCmd(cmd *cobra.Command, con *core.Console) error {
 	session := con.GetInteractive()
 	//token := ctx.Flags.Bool("token")
 	quiet, _ := cmd.Flags().GetBool("quiet")
@@ -43,7 +43,7 @@ func Powershell(rpc clientrpc.MaliceRPCClient, sess *client.Session, cmd string,
 	return task, nil
 }
 
-func ExecutePowershellCmd(cmd *cobra.Command, con *repl.Console) error {
+func ExecutePowershellCmd(cmd *cobra.Command, con *core.Console) error {
 	script, _ := cmd.Flags().GetString("script")
 	cmdline := cmd.Flags().Args()
 	session := con.GetInteractive()
@@ -80,7 +80,7 @@ func PowerPick(rpc clientrpc.MaliceRPCClient, sess *client.Session, path string,
 	return task, nil
 }
 
-func RegisterPowershellFunc(con *repl.Console) {
+func RegisterPowershellFunc(con *core.Console) {
 	con.RegisterImplantFunc(
 		consts.ModulePowerpick,
 		PowerPick,

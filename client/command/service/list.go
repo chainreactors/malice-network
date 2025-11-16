@@ -8,14 +8,14 @@ import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
 	"strconv"
 )
 
-func ServiceListCmd(cmd *cobra.Command, con *repl.Console) error {
+func ServiceListCmd(cmd *cobra.Command, con *core.Console) error {
 	session := con.GetInteractive()
 	task, err := ServiceList(con.Rpc, session)
 	if err != nil {
@@ -32,7 +32,7 @@ func ServiceList(rpc clientrpc.MaliceRPCClient, session *client.Session) (*clien
 	})
 }
 
-func RegisterServiceListFunc(con *repl.Console) {
+func RegisterServiceListFunc(con *core.Console) {
 	con.RegisterImplantFunc(
 		consts.ModuleServiceList,
 		ServiceList,

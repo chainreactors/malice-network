@@ -1,12 +1,12 @@
 package mutant
 
 import (
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/spf13/cobra"
 	"github.com/wabzsy/gonut"
 )
 
-func DonutCmd(cmd *cobra.Command, con *repl.Console) error {
+func DonutCmd(cmd *cobra.Command, con *core.Console) error {
 	donutConfig := gonut.DefaultConfig()
 
 	// 获取标志值并进行强制类型转换

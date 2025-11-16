@@ -7,14 +7,14 @@ import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
 	"strings"
 )
 
-func NetstatCmd(cmd *cobra.Command, con *repl.Console) error {
+func NetstatCmd(cmd *cobra.Command, con *core.Console) error {
 	task, err := Netstat(con.Rpc, con.GetInteractive())
 	if err != nil {
 		return err
@@ -33,7 +33,7 @@ func Netstat(rpc clientrpc.MaliceRPCClient, session *client.Session) (*clientpb.
 	return task, err
 }
 
-func RegisterNetstatFunc(con *repl.Console) {
+func RegisterNetstatFunc(con *core.Console) {
 	con.RegisterImplantFunc(
 		consts.ModuleNetstat,
 		Netstat,

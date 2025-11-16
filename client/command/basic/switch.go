@@ -5,12 +5,12 @@ import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/utils"
 	"github.com/spf13/cobra"
 )
 
-func SwitchCmd(cmd *cobra.Command, con *repl.Console) error {
+func SwitchCmd(cmd *cobra.Command, con *core.Console) error {
 	session := con.GetInteractive()
 	input := cmd.Flags().Args()
 	var urls []string

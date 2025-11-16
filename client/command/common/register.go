@@ -2,19 +2,19 @@ package common
 
 import (
 	"github.com/carapace-sh/carapace"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/mals"
 	"github.com/spf13/cobra"
 )
 
-func Register(con *repl.Console) {
-	con.RegisterServerFunc("bind_args_completer", func(con *repl.Console, cmd *cobra.Command, actions []carapace.Action) (bool, error) {
+func Register(con *core.Console) {
+	con.RegisterServerFunc("bind_args_completer", func(con *core.Console, cmd *cobra.Command, actions []carapace.Action) (bool, error) {
 		BindArgCompletions(cmd, nil, actions...)
 		return true, nil
 	}, &mals.Helper{Group: intermediate.ClientGroup})
 
-	con.RegisterServerFunc("bind_flags_completer", func(con *repl.Console, cmd *cobra.Command, actions map[string]carapace.Action) (bool, error) {
+	con.RegisterServerFunc("bind_flags_completer", func(con *core.Console, cmd *cobra.Command, actions map[string]carapace.Action) (bool, error) {
 		BindFlagCompletions(cmd, func(comp carapace.ActionMap) {
 			for k, v := range actions {
 				comp[k] = v
@@ -23,7 +23,7 @@ func Register(con *repl.Console) {
 		return true, nil
 	}, &mals.Helper{Group: intermediate.ClientGroup})
 
-	con.RegisterServerFunc("values_completer", func(con *repl.Console, values []string) (carapace.Action, error) {
+	con.RegisterServerFunc("values_completer", func(con *core.Console, values []string) (carapace.Action, error) {
 		callback := func(c carapace.Context) carapace.Action {
 			results := make([]string, 0)
 			for _, v := range values {

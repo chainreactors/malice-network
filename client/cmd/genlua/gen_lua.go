@@ -5,15 +5,15 @@ import (
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	_ "github.com/chainreactors/malice-network/client/cmd/cli"
 	"github.com/chainreactors/malice-network/client/command"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/plugin"
-	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/mals"
 	"github.com/spf13/cobra"
 )
 
 func main() {
-	con, err := repl.NewConsole()
+	con, err := core.NewConsole()
 	if err != nil {
 		fmt.Println(err)
 		return

@@ -4,13 +4,13 @@ import (
 	"github.com/carapace-sh/carapace"
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
 
 // Commands returns PTY-related cobra commands
-func Commands(con *repl.Console) []*cobra.Command {
+func Commands(con *core.Console) []*cobra.Command {
 	shellCmd := &cobra.Command{
 		Use:   consts.ModuleClientPty,
 		Short: "Start an interactive PTY shell session",
@@ -65,7 +65,7 @@ pty --session-id my_session --shell /bin/zsh
 }
 
 // Register registers PTY-related functions with the console
-func Register(con *repl.Console) {
+func Register(con *core.Console) {
 	// 注册 PTY 相关的功能函数
 	// 可以在这里添加自动补全、帮助信息等
 }

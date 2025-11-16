@@ -6,13 +6,13 @@ import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/spf13/cobra"
 )
 
 // Rev2selfCmd reverts to the original token.
-func Rev2selfCmd(cmd *cobra.Command, con *repl.Console) error {
+func Rev2selfCmd(cmd *cobra.Command, con *core.Console) error {
 	session := con.GetInteractive()
 	task, err := Rev2self(con.Rpc, session)
 	if err != nil {
@@ -33,7 +33,7 @@ func Rev2self(rpc clientrpc.MaliceRPCClient, session *client.Session) (*clientpb
 	return task, nil
 }
 
-func RegisterRev2selfFunc(con *repl.Console) {
+func RegisterRev2selfFunc(con *core.Console) {
 	con.RegisterImplantFunc(
 		consts.ModuleRev2Self,
 		Rev2self,

@@ -5,11 +5,11 @@ import (
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/spf13/cobra"
 )
 
-func CheckSource(con *repl.Console, buildConfig *clientpb.BuildConfig) (string, error) {
+func CheckSource(con *core.Console, buildConfig *clientpb.BuildConfig) (string, error) {
 	source := buildConfig.Source
 	if source != consts.ArtifactFromGithubAction &&
 		source != consts.ArtifactFromDocker &&
@@ -26,7 +26,7 @@ func CheckSource(con *repl.Console, buildConfig *clientpb.BuildConfig) (string, 
 }
 
 // parseBasicConfig
-func parseBasicConfig(cmd *cobra.Command, con *repl.Console) (*clientpb.BuildConfig, error) {
+func parseBasicConfig(cmd *cobra.Command, con *core.Console) (*clientpb.BuildConfig, error) {
 	// init
 	buildConfig := common.ParseGenerateFlags(cmd)
 
@@ -37,7 +37,7 @@ func parseBasicConfig(cmd *cobra.Command, con *repl.Console) (*clientpb.BuildCon
 	return buildConfig, nil
 }
 
-func parseSourceConfig(cmd *cobra.Command, con *repl.Console, buildConfig *clientpb.BuildConfig) (*clientpb.BuildConfig, error) {
+func parseSourceConfig(cmd *cobra.Command, con *core.Console, buildConfig *clientpb.BuildConfig) (*clientpb.BuildConfig, error) {
 	source, _ := cmd.Flags().GetString("source")
 	buildConfig.Source = source
 	// use github action
@@ -56,7 +56,7 @@ func parseSourceConfig(cmd *cobra.Command, con *repl.Console, buildConfig *clien
 }
 
 // executeBuild 执行构建逻辑
-func executeBuild(con *repl.Console, buildConfig *clientpb.BuildConfig) {
+func executeBuild(con *core.Console, buildConfig *clientpb.BuildConfig) {
 	go func() {
 		artifact, err := con.Rpc.Build(con.Context(), buildConfig)
 		if err != nil {
@@ -68,7 +68,7 @@ func executeBuild(con *repl.Console, buildConfig *clientpb.BuildConfig) {
 	}()
 }
 
-func BindCmd(cmd *cobra.Command, con *repl.Console) error {
+func BindCmd(cmd *cobra.Command, con *core.Console) error {
 	buildConfig, err := prepareBuildConfig(cmd, con, consts.CommandBuildBind)
 	if err != nil {
 		return err
@@ -78,7 +78,7 @@ func BindCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func BuildLogCmd(cmd *cobra.Command, con *repl.Console) error {
+func BuildLogCmd(cmd *cobra.Command, con *core.Console) error {
 	name := cmd.Flags().Arg(0)
 	num, _ := cmd.Flags().GetInt("limit")
 	builder, err := con.Rpc.BuildLog(con.Context(), &clientpb.Artifact{

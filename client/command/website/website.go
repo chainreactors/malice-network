@@ -1,11 +1,11 @@
 package website
 
 import (
+	"github.com/chainreactors/malice-network/client/core"
 	"strconv"
 
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
@@ -13,7 +13,7 @@ import (
 )
 
 // NewWebsiteCmd - 创建新的网站
-func NewWebsiteCmd(cmd *cobra.Command, con *repl.Console) error {
+func NewWebsiteCmd(cmd *cobra.Command, con *core.Console) error {
 	name := cmd.Flags().Arg(0)
 	root, _ := cmd.Flags().GetString("root")
 	listenerID, _, host, port := common.ParsePipelineFlags(cmd)
@@ -28,7 +28,7 @@ func NewWebsiteCmd(cmd *cobra.Command, con *repl.Console) error {
 }
 
 // NewWebsite
-func NewWebsite(con *repl.Console, websiteName, root, host string, port uint32, listenerId, certName string, tls *clientpb.TLS) error {
+func NewWebsite(con *core.Console, websiteName, root, host string, port uint32, listenerId, certName string, tls *clientpb.TLS) error {
 	var err error
 	if root == "" {
 		root = "/"
@@ -68,13 +68,13 @@ func NewWebsite(con *repl.Console, websiteName, root, host string, port uint32, 
 }
 
 // StartWebsitePipelineCmd
-func StartWebsitePipelineCmd(cmd *cobra.Command, con *repl.Console) error {
+func StartWebsitePipelineCmd(cmd *cobra.Command, con *core.Console) error {
 	websiteName := cmd.Flags().Arg(0)
 	certName, _ := cmd.Flags().GetString("cert-name")
 	return StartWebsite(con, websiteName, certName)
 }
 
-func StartWebsite(con *repl.Console, websiteName, certName string) error {
+func StartWebsite(con *core.Console, websiteName, certName string) error {
 	if _, ok := con.Pipelines[websiteName]; ok {
 		_, err := con.Rpc.StopWebsite(con.Context(), &clientpb.CtrlPipeline{
 			Name: websiteName,
@@ -94,13 +94,13 @@ func StartWebsite(con *repl.Console, websiteName, certName string) error {
 	return nil
 }
 
-func StopWebsitePipelineCmd(cmd *cobra.Command, con *repl.Console) error {
+func StopWebsitePipelineCmd(cmd *cobra.Command, con *core.Console) error {
 	name := cmd.Flags().Arg(0)
 	return StopWebsite(con, name)
 }
 
 // StopWebsite
-func StopWebsite(con *repl.Console, name string) error {
+func StopWebsite(con *core.Console, name string) error {
 	_, err := con.Rpc.StopWebsite(con.Context(), &clientpb.CtrlPipeline{
 		Name:       name,
 		ListenerId: "",
@@ -111,7 +111,7 @@ func StopWebsite(con *repl.Console, name string) error {
 	return nil
 }
 
-func ListWebsitesCmd(cmd *cobra.Command, con *repl.Console) error {
+func ListWebsitesCmd(cmd *cobra.Command, con *core.Console) error {
 	listenerID := cmd.Flags().Arg(0)
 	websites, err := con.Rpc.ListWebsites(con.Context(), &clientpb.Listener{
 		Id: listenerID,

@@ -3,11 +3,11 @@ package sessions
 import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/spf13/cobra"
 )
 
-func noteCmd(cmd *cobra.Command, con *repl.Console) {
+func noteCmd(cmd *cobra.Command, con *core.Console) {
 	sid := cmd.Flags().Arg(1)
 	name := cmd.Flags().Arg(0)
 

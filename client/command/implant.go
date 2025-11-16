@@ -34,10 +34,9 @@ import (
 	"github.com/chainreactors/malice-network/client/command/third"
 	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/plugin"
-	"github.com/chainreactors/malice-network/client/repl"
 )
 
-func ImplantCmd(con *repl.Console) *cobra.Command {
+func ImplantCmd(con *core.Console) *cobra.Command {
 	makeCommands := BindImplantCommands(con)
 	cmd := makeCommands()
 	cmd.Use = consts.ImplantMenu
@@ -54,7 +53,7 @@ func ImplantCmd(con *repl.Console) *cobra.Command {
 	return cmd
 }
 
-func makeRunners(implantCmd *cobra.Command, con *repl.Console) (pre, post func(cmd *cobra.Command, args []string) error) {
+func makeRunners(implantCmd *cobra.Command, con *core.Console) (pre, post func(cmd *cobra.Command, args []string) error) {
 	// so we can have access to active sessions/beacons, and other stuff needed.
 	pre = func(cmd *cobra.Command, args []string) error {
 		if cmd.Annotations["resource"] == "true" {
@@ -116,7 +115,7 @@ func makeRunners(implantCmd *cobra.Command, con *repl.Console) (pre, post func(c
 	return pre, post
 }
 
-func makeCompleters(cmd *cobra.Command, con *repl.Console) {
+func makeCompleters(cmd *cobra.Command, con *core.Console) {
 	comps := carapace.Gen(cmd)
 
 	comps.PreRun(func(cmd *cobra.Command, args []string) {
@@ -132,13 +131,13 @@ func makeCompleters(cmd *cobra.Command, con *repl.Console) {
 	})
 }
 
-func BindCommand(cmds []*cobra.Command) func(con *repl.Console) []*cobra.Command {
-	return func(con *repl.Console) []*cobra.Command {
+func BindCommand(cmds []*cobra.Command) func(con *core.Console) []*cobra.Command {
+	return func(con *core.Console) []*cobra.Command {
 		return cmds
 	}
 }
 
-func BindBuiltinCommands(con *repl.Console, root *cobra.Command) *cobra.Command {
+func BindBuiltinCommands(con *core.Console, root *cobra.Command) *cobra.Command {
 	bind := MakeBind(root, con)
 	BindCommonCommands(bind)
 	bind(consts.ImplantGroup,
@@ -182,7 +181,7 @@ func BindBuiltinCommands(con *repl.Console, root *cobra.Command) *cobra.Command 
 	return root
 }
 
-func BindImplantCommands(con *repl.Console) console.Commands {
+func BindImplantCommands(con *core.Console) console.Commands {
 	implantCommands := func() *cobra.Command {
 		implant := &cobra.Command{
 			Use:   "implant",
@@ -255,7 +254,7 @@ func BindImplantCommands(con *repl.Console) console.Commands {
 	return implantCommands
 }
 
-func RegisterImplantFunc(con *repl.Console) {
+func RegisterImplantFunc(con *core.Console) {
 	tasks.Register(con)
 	basic.Register(con)
 	sys.Register(con)

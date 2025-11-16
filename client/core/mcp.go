@@ -1,8 +1,9 @@
-package repl
+package core
 
 import (
 	"context"
 	"fmt"
+	"github.com/chainreactors/malice-network/client/repl"
 	"net/http"
 	"strings"
 
@@ -17,35 +18,32 @@ import (
 type MCPServer struct {
 	server    *server.MCPServer
 	sseServer *server.SSEServer
+	console   *Console
 }
 
-// NewMCPServer 创建一个新的MCP服务器实例
-func (c *Console) NewMCPServer() {
+// NewMCP 创建一个新的MCP服务器实例
+func NewMCP(console *Console) *MCPServer {
 	s := server.NewMCPServer(
 		"Malice Network C2 Client",
 		"1.0.0",
 	)
 
-	// 注册提示词
-	c.registerPrompts(s)
-
-	// 初始化 MCP 服务器
-	c.MCP = &MCPServer{
-		server: s,
+	mcp := &MCPServer{
+		server:  s,
+		console: console,
 	}
 
-	// 注释掉自动注册所有 cobra 命令的逻辑，避免工具过多导致 API 难以理解
-	// c.registerCobraCommands(c.App.Menu("client").Command, "")
-	// c.registerCobraCommands(c.App.Menu("implant").Command, "")
+	// 注册提示词和工具
+	mcp.registerPrompts()
+	mcp.registerCustomTools()
 
-	// 只注册核心的自定义工具
-	c.registerCustomTools()
+	return mcp
 }
 
 // registerPrompts 注册 MCP 提示词
-func (c *Console) registerPrompts(s *server.MCPServer) {
+func (m *MCPServer) registerPrompts() {
 	// 问候提示词
-	s.AddPrompt(
+	m.server.AddPrompt(
 		mcp.NewPrompt("greeting", mcp.WithPromptDescription("A friendly greeting prompt")),
 		func(ctx context.Context, request mcp.GetPromptRequest) (*mcp.GetPromptResult, error) {
 			return mcp.NewGetPromptResult(
@@ -65,7 +63,7 @@ func (c *Console) registerPrompts(s *server.MCPServer) {
 	)
 
 	// C2 命令执行提示词
-	s.AddPrompt(
+	m.server.AddPrompt(
 		mcp.NewPrompt("c2_command_execution", mcp.WithPromptDescription("Command and Control assistance")),
 		func(ctx context.Context, request mcp.GetPromptRequest) (*mcp.GetPromptResult, error) {
 			return mcp.NewGetPromptResult(
@@ -208,7 +206,7 @@ func buildResourceCommandLine(cmd *cobra.Command, cmdPath, parentPath string) st
 // generateCommandDoc 生成详细的命令文档
 func generateCommandDoc(cmd *cobra.Command) string {
 	var doc strings.Builder
-	GenMarkdownCustom(cmd, &doc, func(s string) string {
+	repl.GenMarkdownCustom(cmd, &doc, func(s string) string {
 		return s
 	})
 	return doc.String()
@@ -247,18 +245,14 @@ func (m *MCPServer) AddTool(tool mcp.Tool, handler server.ToolHandlerFunc) {
 }
 
 // registerCustomTools 注册自定义 MCP 工具
-// 只暴露一个通用的命令执行工具，让 AI 像人类一样操作客户端
-func (c *Console) registerCustomTools() {
-	// 1. 通用命令执行工具 - 可以执行任何客户端命令
-	c.registerExecuteCommandTool()
-
-	// 2. 执行 Lua 脚本工具 - 用于高级自动化
-	c.registerLuaScriptTool()
+func (m *MCPServer) registerCustomTools() {
+	m.registerExecuteCommandTool()
+	m.registerLuaScriptTool()
+	m.registerGetHistoryTool()
 }
 
 // registerExecuteCommandTool 注册通用命令执行工具
-// 这个工具允许 AI 像人类一样执行任何客户端命令
-func (c *Console) registerExecuteCommandTool() {
+func (m *MCPServer) registerExecuteCommandTool() {
 	tool := mcp.NewTool(
 		"execute_command",
 		mcp.WithDescription(`Execute any client command as if you were typing in the console.
@@ -278,24 +272,20 @@ Commands are automatically routed to client menu or implant menu based on whethe
 		mcp.WithString("session_id", mcp.Description("Optional session ID to set as active context before execution")),
 	)
 
-	c.MCP.server.AddTool(tool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		// 获取命令参数
+	m.server.AddTool(tool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		command, ok := request.Params.Arguments["command"].(string)
 		if !ok || command == "" {
 			return mcp.NewToolResultError("command is required"), nil
 		}
 
-		// 可选的 session_id
 		sessionID, _ := request.Params.Arguments["session_id"].(string)
 
-		// 执行命令（使用统一的方法）
-		response, err := c.ExecuteCommandWithSession(command, sessionID)
+		response, err := executeCommand(m.console, command, sessionID, consts.CalleeMCP)
 		if err != nil {
 			logs.Log.Errorf("Error executing command: %v", err)
 			return mcp.NewToolResultError(fmt.Sprintf("Error: %v", err)), nil
 		}
 
-		// 如果没有输出，返回成功消息
 		if response == "" {
 			response = "Command executed successfully (no output)"
 		}
@@ -305,7 +295,7 @@ Commands are automatically routed to client menu or implant menu based on whethe
 }
 
 // registerLuaScriptTool 注册 Lua 脚本执行工具
-func (c *Console) registerLuaScriptTool() {
+func (m *MCPServer) registerLuaScriptTool() {
 	tool := mcp.NewTool(
 		"execute_lua",
 		mcp.WithDescription("Execute arbitrary Lua script in the client context. This tool allows you to run Lua code with access to all internal functions and the current session context."),
@@ -313,23 +303,50 @@ func (c *Console) registerLuaScriptTool() {
 		mcp.WithString("session_id", mcp.Description("Optional session ID to set as active context before execution")),
 	)
 
-	c.MCP.server.AddTool(tool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		// 获取参数
+	m.server.AddTool(tool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		script, ok := request.Params.Arguments["script"].(string)
 		if !ok || script == "" {
 			return mcp.NewToolResultError("script is required"), nil
 		}
 
-		// 可选的 session_id
 		sessionID, _ := request.Params.Arguments["session_id"].(string)
 
-		// 执行 Lua 脚本（使用统一的方法）
-		result, err := c.ExecuteLuaWithSession(script, sessionID)
+		result, err := executeLua(m.console, script, sessionID, consts.CalleeMCP)
 		if err != nil {
 			logs.Log.Errorf("Error executing Lua script: %v", err)
 			return mcp.NewToolResultError(fmt.Sprintf("Error: %v", err)), nil
 		}
 
 		return mcp.NewToolResultText(result), nil
+	})
+}
+
+// registerGetHistoryTool 注册获取历史记录工具
+func (m *MCPServer) registerGetHistoryTool() {
+	tool := mcp.NewTool(
+		"get_history",
+		mcp.WithDescription("Get rendered history data for a specific task ID. Returns the output of a previously executed task."),
+		mcp.WithNumber("task_id", mcp.Required(), mcp.Description("Task ID to retrieve history for")),
+		mcp.WithString("session_id", mcp.Required(), mcp.Description("Session ID context")),
+	)
+
+	m.server.AddTool(tool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		taskID, ok := request.Params.Arguments["task_id"].(float64)
+		if !ok {
+			return mcp.NewToolResultError("task_id is required"), nil
+		}
+
+		sessionID, ok := request.Params.Arguments["session_id"].(string)
+		if !ok || sessionID == "" {
+			return mcp.NewToolResultError("session_id is required"), nil
+		}
+
+		output, err := getHistory(m.console, uint32(taskID), sessionID)
+		if err != nil {
+			logs.Log.Errorf("Error getting history: %v", err)
+			return mcp.NewToolResultError(fmt.Sprintf("Error: %v", err)), nil
+		}
+
+		return mcp.NewToolResultText(output), nil
 	})
 }

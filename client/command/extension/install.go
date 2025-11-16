@@ -3,7 +3,7 @@ package extension
 import (
 	"fmt"
 	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/tui"
 	"github.com/spf13/cobra"
@@ -14,7 +14,7 @@ import (
 )
 
 // ExtensionsInstallCmd - Install an extension
-func ExtensionsInstallCmd(cmd *cobra.Command, con *repl.Console) {
+func ExtensionsInstallCmd(cmd *cobra.Command, con *core.Console) {
 	extLocalPath := cmd.Flags().Arg(0)
 	_, err := os.Stat(extLocalPath)
 	if os.IsNotExist(err) {
@@ -25,7 +25,7 @@ func ExtensionsInstallCmd(cmd *cobra.Command, con *repl.Console) {
 }
 
 // Install an extension from a directory
-func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *repl.Console, isGz bool) {
+func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *core.Console, isGz bool) {
 	var manifestData []byte
 	var err error
 

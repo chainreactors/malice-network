@@ -3,7 +3,7 @@ package mal
 import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/mals/m"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
@@ -44,7 +44,7 @@ func parseMalHTTPConfig(cmd *cobra.Command) m.MalHTTPConfig {
 	}
 }
 
-func MalCmd(cmd *cobra.Command, con *repl.Console) error {
+func MalCmd(cmd *cobra.Command, con *core.Console) error {
 	malHttpConfig := parseMalHTTPConfig(cmd)
 	//malIndex, _ := DefaultMalIndexParser(malHttpConfig)
 	malsJson, err := m.ParserMalYaml(m.DefaultMalRepoURL, assets.GetConfigDir(), malHttpConfig)
@@ -62,7 +62,7 @@ func MalCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func printMals(maljson m.MalsYaml, malHttpConfig m.MalHTTPConfig, con *repl.Console) error {
+func printMals(maljson m.MalsYaml, malHttpConfig m.MalHTTPConfig, con *core.Console) error {
 	var rowEntries []table.Row
 	var row table.Row
 
@@ -103,7 +103,7 @@ func printMals(maljson m.MalsYaml, malHttpConfig m.MalHTTPConfig, con *repl.Cons
 	return nil
 }
 
-func InstallMal(repoUrl, name, version string, writer io.Writer, malHttpConfig m.MalHTTPConfig, con *repl.Console) (updated bool) {
+func InstallMal(repoUrl, name, version string, writer io.Writer, malHttpConfig m.MalHTTPConfig, con *core.Console) (updated bool) {
 	logs.Log.Infof("Installing mal: %s", name)
 	err := m.GithubMalPackageParser(
 		repoUrl,

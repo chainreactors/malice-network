@@ -2,15 +2,15 @@ package generic
 
 import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/spf13/cobra"
 )
 
-func VersionCmd(cmd *cobra.Command, con *repl.Console) {
+func VersionCmd(cmd *cobra.Command, con *core.Console) {
 	printVersion(con)
 }
 
-func printVersion(con *repl.Console) {
+func printVersion(con *core.Console) {
 	basic, err := con.Rpc.GetBasic(con.Context(), &clientpb.Empty{})
 	if err != nil {
 		con.Log.Errorf("Error getting version info: %v\n", err)

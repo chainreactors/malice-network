@@ -3,7 +3,7 @@ package config
 import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/tui"
 	"github.com/spf13/cobra"
 )
@@ -15,7 +15,7 @@ var githubConfig struct {
 	Workflow string
 }
 
-func GetGithubConfigCmd(cmd *cobra.Command, con *repl.Console) error {
+func GetGithubConfigCmd(cmd *cobra.Command, con *core.Console) error {
 	resp, err := con.Rpc.GetGithubConfig(con.Context(), &clientpb.Empty{})
 	if err != nil {
 		return err
@@ -28,7 +28,7 @@ func GetGithubConfigCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func UpdateGithubConfigCmd(cmd *cobra.Command, con *repl.Console) error {
+func UpdateGithubConfigCmd(cmd *cobra.Command, con *core.Console) error {
 	githubConfig := common.ParseGithubFlags(cmd)
 	_, err := con.Rpc.UpdateGithubConfig(con.Context(), githubConfig)
 	if err != nil {

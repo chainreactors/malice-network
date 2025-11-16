@@ -2,13 +2,13 @@ package tasks
 
 import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
 )
 
-func ListFiles(cmd *cobra.Command, con *repl.Console) error {
+func ListFiles(cmd *cobra.Command, con *core.Console) error {
 	//resp, err := con.Rpc.GetTaskFiles(con.ActiveTarget.Context(),
 	//	&clientpb.Session{SessionId: con.GetInteractive().SessionId})
 	resp, err := con.Rpc.GetFiles(
@@ -28,7 +28,7 @@ func ListFiles(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func printFiles(files *clientpb.Files, con *repl.Console) {
+func printFiles(files *clientpb.Files, con *core.Console) {
 	var rowEntries []table.Row
 	var row table.Row
 	maxLengths := map[string]int{

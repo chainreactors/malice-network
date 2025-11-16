@@ -5,7 +5,7 @@ import (
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/third/rem"
 	"github.com/chainreactors/tui"
@@ -13,7 +13,7 @@ import (
 	"strconv"
 )
 
-func ListRemCmd(cmd *cobra.Command, con *repl.Console) error {
+func ListRemCmd(cmd *cobra.Command, con *core.Console) error {
 	listenerID := cmd.Flags().Arg(0)
 	pipes, err := con.Rpc.ListPipelines(con.Context(), &clientpb.Listener{
 		Id: listenerID,
@@ -36,7 +36,7 @@ func ListRemCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func NewRemCmd(cmd *cobra.Command, con *repl.Console) error {
+func NewRemCmd(cmd *cobra.Command, con *core.Console) error {
 	name := cmd.Flags().Arg(0)
 	listenerID, _, _, _ := common.ParsePipelineFlags(cmd)
 	console, _ := cmd.Flags().GetString("console")
@@ -78,7 +78,7 @@ func NewRemCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func StartRemCmd(cmd *cobra.Command, con *repl.Console) error {
+func StartRemCmd(cmd *cobra.Command, con *core.Console) error {
 	name := cmd.Flags().Arg(0)
 	_, err := con.Rpc.StartRem(con.Context(), &clientpb.CtrlPipeline{
 		Name: name,
@@ -89,7 +89,7 @@ func StartRemCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func StopRemCmd(cmd *cobra.Command, con *repl.Console) error {
+func StopRemCmd(cmd *cobra.Command, con *core.Console) error {
 	name := cmd.Flags().Arg(0)
 	_, err := con.Rpc.StopRem(con.Context(), &clientpb.CtrlPipeline{
 		Name: name,
@@ -100,7 +100,7 @@ func StopRemCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func DeleteRemCmd(cmd *cobra.Command, con *repl.Console) error {
+func DeleteRemCmd(cmd *cobra.Command, con *core.Console) error {
 	name := cmd.Flags().Arg(0)
 	_, err := con.Rpc.DeleteRem(con.Context(), &clientpb.CtrlPipeline{
 		Name: name,

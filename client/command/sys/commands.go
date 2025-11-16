@@ -3,15 +3,15 @@ package sys
 import (
 	"fmt"
 	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/malice-network/client/core"
 
 	"github.com/carapace-sh/carapace"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
 
-func Commands(con *repl.Console) []*cobra.Command {
+func Commands(con *core.Console) []*cobra.Command {
 	whoamiCmd := &cobra.Command{
 		Use:   consts.ModuleWhoami,
 		Short: "Print current user",
@@ -220,7 +220,7 @@ wmi_execute --namespace root\cimv2 --class_name Win32_Process --method_name Crea
 	}
 }
 
-func Register(con *repl.Console) {
+func Register(con *core.Console) {
 	RegisterEnvFunc(con)
 	RegisterPsFunc(con)
 	RegisterNetstatFunc(con)

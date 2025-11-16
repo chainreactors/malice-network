@@ -7,14 +7,14 @@ import (
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
 )
 
-func ExecuteAssemblyCmd(cmd *cobra.Command, con *repl.Console) error {
+func ExecuteAssemblyCmd(cmd *cobra.Command, con *core.Console) error {
 	session := con.GetInteractive()
 	path, args, output, _ := common.ParseBinaryFlags(cmd)
 	task, err := ExecuteAssembly(con.Rpc, session, path, args, output, common.ParseCLRFlags(cmd), common.ParseSacrificeFlags(cmd))
@@ -38,7 +38,7 @@ func ExecuteAssembly(rpc clientrpc.MaliceRPCClient, sess *client.Session, path s
 	return task, nil
 }
 
-func InlineAssemblyCmd(cmd *cobra.Command, con *repl.Console) error {
+func InlineAssemblyCmd(cmd *cobra.Command, con *core.Console) error {
 	session := con.GetInteractive()
 	path, args, output, _ := common.ParseBinaryFlags(cmd)
 	clrparam := common.ParseCLRFlags(cmd)
@@ -63,7 +63,7 @@ func InlineAssembly(rpc clientrpc.MaliceRPCClient, sess *client.Session, path st
 	return task, nil
 }
 
-func RegisterAssemblyFunc(con *repl.Console) {
+func RegisterAssemblyFunc(con *core.Console) {
 	con.RegisterImplantFunc(
 		consts.ModuleExecuteAssembly,
 		ExecuteAssembly,

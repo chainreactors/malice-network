@@ -5,15 +5,15 @@ import (
 	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 
-	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
 )
 
-func GetDownloadsCmd(cmd *cobra.Command, con *repl.Console) error {
+func GetDownloadsCmd(cmd *cobra.Command, con *core.Console) error {
 	downloads, err := GetDownloads(con)
 	if err != nil {
 		return err
@@ -51,7 +51,7 @@ func GetDownloadsCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func GetDownloads(con *repl.Console) ([]*clientpb.Context, error) {
+func GetDownloads(con *core.Console) ([]*clientpb.Context, error) {
 	contexts, err := GetContextsByType(con, consts.ContextDownload)
 	if err != nil {
 		return nil, err
@@ -59,7 +59,7 @@ func GetDownloads(con *repl.Console) ([]*clientpb.Context, error) {
 	return contexts.Contexts, nil
 }
 
-func AddDownload(con *repl.Console, sess *client.Session, task *clientpb.Task, fileDesc *output.FileDescriptor) (bool, error) {
+func AddDownload(con *core.Console, sess *client.Session, task *clientpb.Task, fileDesc *output.FileDescriptor) (bool, error) {
 	_, err := con.Rpc.AddDownload(con.Context(), &clientpb.Context{
 		Session: sess.Session,
 		Task:    task,
@@ -72,8 +72,8 @@ func AddDownload(con *repl.Console, sess *client.Session, task *clientpb.Task, f
 	return true, nil
 }
 
-func RegisterDownload(con *repl.Console) {
-	con.RegisterServerFunc("downloads", func(con *repl.Console) ([]*output.DownloadContext, error) {
+func RegisterDownload(con *core.Console) {
+	con.RegisterServerFunc("downloads", func(con *core.Console) ([]*output.DownloadContext, error) {
 		downloads, err := GetDownloads(con)
 		if err != nil {
 			return nil, err

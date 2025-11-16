@@ -1,4 +1,4 @@
-package repl
+package core
 
 import (
 	"fmt"
@@ -9,7 +9,6 @@ import (
 	mtls "github.com/chainreactors/IoM-go/mtls"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/client/core"
 	"google.golang.org/grpc"
 )
 
@@ -31,7 +30,7 @@ func Login(con *Console, config *mtls.ClientConfig) error {
 
 func initState(con *Console, conn *grpc.ClientConn, config *mtls.ClientConfig) error {
 	var err error
-	con.Server, err = core.NewServer(conn, config)
+	con.Server, err = NewServer(conn, config)
 	if err != nil {
 		logs.Log.Errorf("init server failed : %v\n", err)
 		return err
@@ -69,7 +68,7 @@ func (con *Console) InitMCPServer() {
 
 		// 检查 MCP 是否启用
 		if !setting.McpEnable {
-			logs.Log.Debugf("MCP server is disabled (use --mcp <addr> to enable)")
+			logs.Log.Debugf("MCP server is disabled (use --mcp <addr> to enable)\n")
 			return
 		}
 
@@ -81,7 +80,7 @@ func (con *Console) InitMCPServer() {
 		}
 
 		// 创建并启动 MCP 服务器
-		con.NewMCPServer()
+		con.MCP = NewMCP(con)
 		if err = con.MCP.Start(host, port); err != nil {
 			logs.Log.Errorf("Failed to start MCP server: %v\n", err)
 			return
@@ -111,12 +110,15 @@ func (con *Console) InitLocalRPCServer() {
 		}
 
 		// 启动 Local RPC 服务器
-		if err = con.StartLocalRPC(setting.LocalRPCAddr); err != nil {
+		con.LocalRPC, err = NewLocalRPC(con, setting.LocalRPCAddr)
+		if err != nil {
 			logs.Log.Errorf("Failed to start Local RPC server: %v\n", err)
 			return
 		}
 
-		logs.Log.Importantf("Local RPC server started at %s\n", setting.LocalRPCAddr)
+		if con.LocalRPC != nil {
+			logs.Log.Importantf("Local RPC server started at %s\n", setting.LocalRPCAddr)
+		}
 	}()
 }
 

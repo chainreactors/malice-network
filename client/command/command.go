@@ -3,7 +3,7 @@ package command
 import (
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/help"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/spf13/cobra"
 )
 
@@ -11,10 +11,10 @@ import (
 // name - The name of the flag set (can be empty).
 // cmd  - The command to which the flags should be bound.
 
-type BindFunc func(group string, cmds ...func(con *repl.Console) []*cobra.Command)
+type BindFunc func(group string, cmds ...func(con *core.Console) []*cobra.Command)
 
-func MakeBind(cmd *cobra.Command, con *repl.Console) BindFunc {
-	return func(group string, cmds ...func(con *repl.Console) []*cobra.Command) {
+func MakeBind(cmd *cobra.Command, con *core.Console) BindFunc {
+	return func(group string, cmds ...func(con *core.Console) []*cobra.Command) {
 		found := false
 
 		// Ensure the given command group is available in the menu.
@@ -49,7 +49,7 @@ func MakeBind(cmd *cobra.Command, con *repl.Console) BindFunc {
 	}
 }
 
-func updateCommand(con *repl.Console, c *cobra.Command, group string) {
+func updateCommand(con *core.Console, c *cobra.Command, group string) {
 	c.SetHelpFunc(help.HelpFunc)
 	c.SetUsageFunc(help.UsageFunc)
 	if c.Annotations == nil {

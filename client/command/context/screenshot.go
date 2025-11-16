@@ -5,15 +5,15 @@ import (
 	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 
-	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
 )
 
-func GetScreenshotsCmd(cmd *cobra.Command, con *repl.Console) error {
+func GetScreenshotsCmd(cmd *cobra.Command, con *core.Console) error {
 	screenshots, err := GetScreenshots(con)
 	if err != nil {
 		return err
@@ -50,7 +50,7 @@ func GetScreenshotsCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func GetScreenshots(con *repl.Console) ([]*clientpb.Context, error) {
+func GetScreenshots(con *core.Console) ([]*clientpb.Context, error) {
 	contexts, err := GetContextsByType(con, consts.ContextScreenShot)
 	if err != nil {
 		return nil, err
@@ -58,7 +58,7 @@ func GetScreenshots(con *repl.Console) ([]*clientpb.Context, error) {
 	return contexts.Contexts, nil
 }
 
-func AddScreenshot(con *repl.Console, sess *client.Session, task *clientpb.Task, data []byte) (bool, error) {
+func AddScreenshot(con *core.Console, sess *client.Session, task *clientpb.Task, data []byte) (bool, error) {
 	_, err := con.Rpc.AddScreenShot(con.Context(), &clientpb.Context{
 		Session: sess.Session,
 		Task:    task,
@@ -73,8 +73,8 @@ func AddScreenshot(con *repl.Console, sess *client.Session, task *clientpb.Task,
 	return true, nil
 }
 
-func RegisterScreenshot(con *repl.Console) {
-	con.RegisterServerFunc("screenshots", func(con *repl.Console) ([]*output.ScreenShotContext, error) {
+func RegisterScreenshot(con *core.Console) {
+	con.RegisterServerFunc("screenshots", func(con *core.Console) ([]*output.ScreenShotContext, error) {
 		screenshots, err := GetScreenshots(con)
 		if err != nil {
 			return nil, err

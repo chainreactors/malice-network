@@ -3,11 +3,11 @@ package cert
 import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/spf13/cobra"
 )
 
-func SelfSignedCmd(cmd *cobra.Command, con *repl.Console) error {
+func SelfSignedCmd(cmd *cobra.Command, con *core.Console) error {
 	certSubject := common.ParseSelfSignFlags(cmd)
 	_, err := con.Rpc.GenerateSelfCert(con.Context(), &clientpb.Pipeline{
 		Tls: &clientpb.TLS{
@@ -21,7 +21,7 @@ func SelfSignedCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func ImportCmd(cmd *cobra.Command, con *repl.Console) error {
+func ImportCmd(cmd *cobra.Command, con *core.Console) error {
 	tls, err := common.ParseImportCertFlags(cmd)
 	if err != nil {
 		return err
@@ -35,7 +35,7 @@ func ImportCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func AcmeCmd(cmd *cobra.Command, con *repl.Console) error {
+func AcmeCmd(cmd *cobra.Command, con *core.Console) error {
 	pipelineID, _ := cmd.Flags().GetString("pipeline")
 	domain, _ := cmd.Flags().GetString("domain")
 	_, err := con.Rpc.GenerateAcmeCert(con.Context(), &clientpb.Pipeline{

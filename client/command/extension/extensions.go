@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 
@@ -15,7 +15,7 @@ import (
 )
 
 // ExtensionsCmd - List information about installed extensions
-func ExtensionsCmd(cmd *cobra.Command, con *repl.Console) {
+func ExtensionsCmd(cmd *cobra.Command, con *core.Console) {
 	if 0 < len(getInstalledManifests()) {
 		PrintExtensions(con)
 	} else {
@@ -24,7 +24,7 @@ func ExtensionsCmd(cmd *cobra.Command, con *repl.Console) {
 }
 
 // PrintExtensions - Print a list of loaded extensions
-func PrintExtensions(con *repl.Console) {
+func PrintExtensions(con *core.Console) {
 	var rowEntries []table.Row
 
 	tableModel := tui.NewTable([]table.Column{
@@ -97,7 +97,7 @@ func getInstalledManifests() map[string]*ExtensionManifest {
 }
 
 // ExtensionsCommandNameCompleter - Completer for installed extensions command names.
-func ExtensionsCommandNameCompleter(con *repl.Console) carapace.Action {
+func ExtensionsCommandNameCompleter(con *core.Console) carapace.Action {
 	return carapace.ActionCallback(func(c carapace.Context) carapace.Action {
 		results := []string{}
 		for _, manifest := range loadedExtensions {

@@ -1,14 +1,14 @@
 package pivot
 
 import (
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/third/rem"
 	"github.com/spf13/cobra"
 	"strconv"
 )
 
-func ReverseCmd(cmd *cobra.Command, con *repl.Console) error {
+func ReverseCmd(cmd *cobra.Command, con *core.Console) error {
 	pid := cmd.Flags().Arg(0)
 	port, _ := cmd.Flags().GetString("port")
 	username, _ := cmd.Flags().GetString("username")

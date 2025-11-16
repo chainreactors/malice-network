@@ -6,13 +6,13 @@ import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/spf13/cobra"
 )
 
 // ServiceDeleteCmd deletes a specified service by name.
-func ServiceDeleteCmd(cmd *cobra.Command, con *repl.Console) error {
+func ServiceDeleteCmd(cmd *cobra.Command, con *core.Console) error {
 	name := cmd.Flags().Arg(0)
 
 	session := con.GetInteractive()
@@ -35,7 +35,7 @@ func ServiceDelete(rpc clientrpc.MaliceRPCClient, session *client.Session, name 
 	return rpc.ServiceDelete(session.Context(), request)
 }
 
-func RegisterServiceDeleteFunc(con *repl.Console) {
+func RegisterServiceDeleteFunc(con *core.Console) {
 	con.RegisterImplantFunc(
 		consts.ModuleServiceDelete,
 		ServiceDelete,

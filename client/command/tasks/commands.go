@@ -5,14 +5,14 @@ import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/tui"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
 
-func Commands(con *repl.Console) []*cobra.Command {
+func Commands(con *core.Console) []*cobra.Command {
 	taskCmd := &cobra.Command{
 		Use:   consts.CommandTasks,
 		Short: "List tasks",
@@ -87,7 +87,7 @@ query_task <task_id>
 	return []*cobra.Command{taskCmd, fetchTaskCmd, fileCmd, cancelTaskCmd, listTaskCmd, queryTaskCmd}
 }
 
-func Register(con *repl.Console) {
+func Register(con *core.Console) {
 	con.RegisterImplantFunc(
 		consts.ModuleCancelTask,
 		CancelTask,

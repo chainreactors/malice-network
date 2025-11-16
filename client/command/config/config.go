@@ -3,11 +3,11 @@ package config
 import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/spf13/cobra"
 )
 
-func RefreshCmd(cmd *cobra.Command, con *repl.Console) error {
+func RefreshCmd(cmd *cobra.Command, con *core.Console) error {
 	isClient, _ := cmd.Flags().GetBool("client")
 	if isClient {
 		err := assets.RefreshProfile()
@@ -26,6 +26,6 @@ func RefreshCmd(cmd *cobra.Command, con *repl.Console) error {
 	}
 }
 
-func Refresh(con *repl.Console) (*clientpb.Empty, error) {
+func Refresh(con *core.Console) (*clientpb.Empty, error) {
 	return con.Rpc.RefreshConfig(con.Context(), &clientpb.Empty{})
 }

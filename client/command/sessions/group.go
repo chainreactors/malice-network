@@ -2,11 +2,11 @@ package sessions
 
 import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/spf13/cobra"
 )
 
-func groupCmd(cmd *cobra.Command, con *repl.Console) error {
+func groupCmd(cmd *cobra.Command, con *core.Console) error {
 	sid := cmd.Flags().Arg(1)
 	group := cmd.Flags().Arg(0)
 

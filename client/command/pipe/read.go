@@ -6,14 +6,14 @@ import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/spf13/cobra"
 )
 
 // PipeReadCmd reads data from a named pipe.
-func PipeReadCmd(cmd *cobra.Command, con *repl.Console) error {
+func PipeReadCmd(cmd *cobra.Command, con *core.Console) error {
 	named_pipe := cmd.Flags().Arg(0)
 	session := con.GetInteractive()
 	task, err := PipeRead(con.Rpc, session, named_pipe)
@@ -35,7 +35,7 @@ func PipeRead(rpc clientrpc.MaliceRPCClient, session *client.Session, name strin
 	return rpc.PipeRead(session.Context(), request)
 }
 
-func RegisterPipeReadFunc(con *repl.Console) {
+func RegisterPipeReadFunc(con *core.Console) {
 	con.RegisterImplantFunc(
 		consts.ModulePipeRead,
 		PipeRead,

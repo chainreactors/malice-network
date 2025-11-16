@@ -1,13 +1,13 @@
 package mal
 
 import (
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/plugin"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/mals/m"
 	"github.com/chainreactors/tui"
@@ -18,7 +18,7 @@ var RepoUrl = "https://github.com/chainreactors/mal-community"
 var MalLatest = "latest"
 
 // ExtensionsInstallCmd - Install an extension
-func MalInstallCmd(cmd *cobra.Command, con *repl.Console) error {
+func MalInstallCmd(cmd *cobra.Command, con *core.Console) error {
 	localPath := cmd.Flags().Arg(0)
 	malHttpConfig := parseMalHTTPConfig(cmd)
 	version, _ := cmd.Flags().GetString("version")
@@ -66,7 +66,7 @@ func MalInstallCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *repl.Console) bool {
+func InstallFromDir(extLocalPath string, promptToOverwrite bool, con *core.Console) bool {
 	var manifestData []byte
 	var err error
 

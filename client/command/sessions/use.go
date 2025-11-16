@@ -2,12 +2,13 @@ package sessions
 
 import (
 	"github.com/chainreactors/IoM-go/client"
+	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/malice-network/client/command/addon"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/spf13/cobra"
 )
 
-func UseSessionCmd(cmd *cobra.Command, con *repl.Console) error {
+func UseSessionCmd(cmd *cobra.Command, con *core.Console) error {
 	var session *client.Session
 	sid := cmd.Flags().Arg(0)
 	session, err := con.GetOrUpdateSession(sid)
@@ -18,12 +19,12 @@ func UseSessionCmd(cmd *cobra.Command, con *repl.Console) error {
 	return Use(con, session)
 }
 
-func Use(con *repl.Console, sess *client.Session) error {
+func Use(con *core.Console, sess *client.Session) error {
 	err := addon.RefreshAddonCommand(sess.Addons, con)
 	if err != nil {
 		return err
 	}
-	con.SwitchImplant(sess)
+	con.SwitchImplant(sess, consts.CalleeCMD)
 	count := con.RefreshCmd(sess)
 	con.Log.Importantf("os: %s, arch: %s, process: %d %s, pipeline: %s\n", sess.Os.Name, sess.Os.Arch, sess.Process.Ppid, sess.Process.Name, sess.PipelineId)
 	con.Log.Importantf("%d modules, %d available cmds, %d addons\n", len(sess.Modules), count, len(sess.Addons))

@@ -6,12 +6,12 @@ import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/spf13/cobra"
 	"strconv"
 )
 
-func CancelTaskCmd(cmd *cobra.Command, con *repl.Console) error {
+func CancelTaskCmd(cmd *cobra.Command, con *core.Console) error {
 	taskId := cmd.Flags().Arg(0)
 	id, err := strconv.Atoi(taskId)
 	if err != nil {

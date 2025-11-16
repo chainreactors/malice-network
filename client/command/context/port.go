@@ -5,14 +5,14 @@ import (
 	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
 )
 
-func GetPortsCmd(cmd *cobra.Command, con *repl.Console) error {
+func GetPortsCmd(cmd *cobra.Command, con *core.Console) error {
 	ports, err := GetPorts(con)
 	if err != nil {
 		return err
@@ -53,7 +53,7 @@ func getTaskId(task *clientpb.Task) string {
 	return fmt.Sprint(task.TaskId)
 }
 
-func GetPorts(con *repl.Console) ([]*clientpb.Context, error) {
+func GetPorts(con *core.Console) ([]*clientpb.Context, error) {
 	contexts, err := GetContextsByType(con, consts.ContextPort)
 	if err != nil {
 		return nil, err
@@ -61,7 +61,7 @@ func GetPorts(con *repl.Console) ([]*clientpb.Context, error) {
 	return contexts.Contexts, nil
 }
 
-func AddPort(con *repl.Console, sess *client.Session, task *clientpb.Task, ports []*output.Port) (bool, error) {
+func AddPort(con *core.Console, sess *client.Session, task *clientpb.Task, ports []*output.Port) (bool, error) {
 	_, err := con.Rpc.AddPort(con.Context(), &clientpb.Context{
 		Session: sess.Session,
 		Task:    task,
@@ -74,8 +74,8 @@ func AddPort(con *repl.Console, sess *client.Session, task *clientpb.Task, ports
 	return true, nil
 }
 
-func RegisterPort(con *repl.Console) {
-	con.RegisterServerFunc("ports", func(con *repl.Console) ([]*output.PortContext, error) {
+func RegisterPort(con *core.Console) {
+	con.RegisterServerFunc("ports", func(con *core.Console) ([]*output.PortContext, error) {
 		ports, err := GetPorts(con)
 		if err != nil {
 			return nil, err

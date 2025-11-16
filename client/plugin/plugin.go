@@ -2,10 +2,10 @@ package plugin
 
 import (
 	"errors"
-	"github.com/chainreactors/IoM-go/client"
 	"os"
 	"path/filepath"
 
+	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
 	"gopkg.in/yaml.v3"

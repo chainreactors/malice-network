@@ -2,19 +2,19 @@ package build
 
 import (
 	"fmt"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/implanttypes"
 	"os"
 	"time"
 
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
 )
 
-func ProfileShowCmd(cmd *cobra.Command, con *repl.Console) error {
+func ProfileShowCmd(cmd *cobra.Command, con *core.Console) error {
 	resp, err := con.Rpc.GetProfiles(con.Context(), &clientpb.Empty{})
 	if err != nil {
 		return err
@@ -53,7 +53,7 @@ func ProfileShowCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func ProfileLoadCmd(cmd *cobra.Command, con *repl.Console) error {
+func ProfileLoadCmd(cmd *cobra.Command, con *core.Console) error {
 	profileName, basicPipeline := common.ParseProfileFlags(cmd)
 
 	profilePath := cmd.Flags().Arg(0)
@@ -75,7 +75,7 @@ func ProfileLoadCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func ProfileNewCmd(cmd *cobra.Command, con *repl.Console) error {
+func ProfileNewCmd(cmd *cobra.Command, con *core.Console) error {
 	profileName, basicPipeline := common.ParseProfileFlags(cmd)
 	profile := &clientpb.Profile{
 		Name:       profileName,
@@ -97,7 +97,7 @@ func ProfileNewCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func ProfileDeleteCmd(cmd *cobra.Command, con *repl.Console) error {
+func ProfileDeleteCmd(cmd *cobra.Command, con *core.Console) error {
 	name := cmd.Flags().Arg(0)
 	_, err := con.Rpc.DeleteProfile(con.Context(), &clientpb.Profile{
 		Name: name,

@@ -8,14 +8,14 @@ import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/tui"
 	"github.com/spf13/cobra"
 	"strings"
 )
 
 // TaskSchdListCmd lists all scheduled tasks.
-func TaskSchdListCmd(cmd *cobra.Command, con *repl.Console) error {
+func TaskSchdListCmd(cmd *cobra.Command, con *core.Console) error {
 	session := con.GetInteractive()
 	task, err := TaskSchdList(con.Rpc, session)
 	if err != nil {
@@ -33,7 +33,7 @@ func TaskSchdList(rpc clientrpc.MaliceRPCClient, session *client.Session) (*clie
 	return rpc.TaskSchdList(session.Context(), request)
 }
 
-func RegisterTaskSchdListFunc(con *repl.Console) {
+func RegisterTaskSchdListFunc(con *core.Console) {
 	con.RegisterImplantFunc(
 		consts.ModuleTaskSchdList,
 		TaskSchdList,

@@ -8,7 +8,7 @@ import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/mals"
@@ -17,7 +17,7 @@ import (
 	"github.com/spf13/pflag"
 )
 
-func Commands(con *repl.Console) []*cobra.Command {
+func Commands(con *core.Console) []*cobra.Command {
 	sleepCmd := &cobra.Command{
 		Use:   consts.ModuleSleep + " [expression]",
 		Short: "change implant sleep config",
@@ -128,7 +128,7 @@ wait 59
 	return []*cobra.Command{sleepCmd, suicideCmd, getCmd, waitCmd, pollingCmd, initCmd, recoverCmd, infoCommand, switchCmd}
 }
 
-func Register(con *repl.Console) {
+func Register(con *core.Console) {
 	con.RegisterImplantFunc(consts.ModuleSleep,
 		Sleep,
 		"bsleep",
@@ -190,11 +190,11 @@ func Register(con *repl.Console) {
 		return session.WithValue("nonce", utils.RandomString(8), "context", typ)
 	})
 
-	con.RegisterServerFunc("barch", func(con *repl.Console, sess *client.Session) (string, error) {
+	con.RegisterServerFunc("barch", func(con *core.Console, sess *client.Session) (string, error) {
 		return sess.Os.Arch, nil
 	}, nil)
 
-	con.RegisterServerFunc("active", func(con *repl.Console) (*client.Session, error) {
+	con.RegisterServerFunc("active", func(con *core.Console) (*client.Session, error) {
 		return con.GetInteractive().Clone(consts.CalleeMal), nil
 	}, &mals.Helper{
 		Short:   "get current session",
@@ -202,23 +202,23 @@ func Register(con *repl.Console) {
 		Example: "active()",
 	})
 
-	con.RegisterServerFunc("is64", func(con *repl.Console, sess *client.Session) (bool, error) {
+	con.RegisterServerFunc("is64", func(con *core.Console, sess *client.Session) (bool, error) {
 		return sess.Os.Arch == "x64", nil
 	}, nil)
 
-	con.RegisterServerFunc("isactive", func(con *repl.Console, sess *client.Session) (bool, error) {
+	con.RegisterServerFunc("isactive", func(con *core.Console, sess *client.Session) (bool, error) {
 		return sess.IsAlive, nil
 	}, nil)
 
-	con.RegisterServerFunc("isadmin", func(con *repl.Console, sess *client.Session) (bool, error) {
+	con.RegisterServerFunc("isadmin", func(con *core.Console, sess *client.Session) (bool, error) {
 		return sess.IsPrivilege, nil
 	}, nil)
 
-	con.RegisterServerFunc("isbeacon", func(con *repl.Console, sess *client.Session) (bool, error) {
+	con.RegisterServerFunc("isbeacon", func(con *core.Console, sess *client.Session) (bool, error) {
 		return sess.Type == consts.CommandBuildBeacon, nil
 	}, nil)
 
-	con.RegisterServerFunc("bdata", func(con *repl.Console, sess *client.Session) (map[string]interface{}, error) {
+	con.RegisterServerFunc("bdata", func(con *core.Console, sess *client.Session) (map[string]interface{}, error) {
 		if sess == nil {
 			return nil, errors.New("session is nil")
 		}
@@ -228,7 +228,7 @@ func Register(con *repl.Console) {
 		Output:  []string{"map[string]interface{}"},
 		Example: "bdata(active())",
 	})
-	con.RegisterServerFunc("data", func(con *repl.Console, sess *client.Session) (map[string]interface{}, error) {
+	con.RegisterServerFunc("data", func(con *core.Console, sess *client.Session) (map[string]interface{}, error) {
 		if sess == nil {
 			return nil, errors.New("session is nil")
 		}

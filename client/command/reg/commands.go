@@ -2,10 +2,10 @@ package reg
 
 import (
 	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/malice-network/client/core"
 	"strings"
 
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -21,7 +21,7 @@ func FormatRegPath(path string) (string, string) {
 	}
 }
 
-func Commands(con *repl.Console) []*cobra.Command {
+func Commands(con *core.Console) []*cobra.Command {
 	regCmd := &cobra.Command{
 		Use:   consts.CommandReg,
 		Short: "Perform registry operations",
@@ -135,7 +135,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	return []*cobra.Command{regCmd}
 }
 
-func Register(con *repl.Console) {
+func Register(con *core.Console) {
 	RegisterRegQueryFunc(con)
 	RegisterRegAddFunc(con)
 	RegisterRegDeleteFunc(con)

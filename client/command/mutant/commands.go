@@ -5,7 +5,7 @@ import (
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/mals"
 	"github.com/spf13/cobra"
@@ -13,7 +13,7 @@ import (
 	"github.com/wabzsy/gonut"
 )
 
-func Commands(con *repl.Console) []*cobra.Command {
+func Commands(con *core.Console) []*cobra.Command {
 	donutCmd := &cobra.Command{
 		Use:   consts.CommandDonut,
 		Short: "donut cmd",
@@ -113,7 +113,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	return []*cobra.Command{donutCmd}
 }
 
-func Register(con *repl.Console) {
+func Register(con *core.Console) {
 	intermediate.RegisterFunction("exe2shellcode",
 		func(exe []byte, arch string, cmdline string) (string, error) {
 			bin, err := gonut.DonutShellcodeFromPE("1.exe", exe, arch, cmdline, false, true)
@@ -186,7 +186,7 @@ func Register(con *repl.Console) {
 		},
 	})
 
-	con.RegisterServerFunc("srdi", func(con *repl.Console, dll []byte, entry string, arch string, param string) (string, error) {
+	con.RegisterServerFunc("srdi", func(con *core.Console, dll []byte, entry string, arch string, param string) (string, error) {
 		bin, err := con.Rpc.DLL2Shellcode(con.Context(), &clientpb.DLL2Shellcode{
 			Bin:        dll,
 			Arch:       arch,
@@ -212,7 +212,7 @@ func Register(con *repl.Console) {
 		},
 	})
 
-	con.RegisterServerFunc("sgn_encode", func(con *repl.Console, shellcode []byte, arch string, iterations int32) (string, error) {
+	con.RegisterServerFunc("sgn_encode", func(con *core.Console, shellcode []byte, arch string, iterations int32) (string, error) {
 		bin, err := con.Rpc.ShellcodeEncode(con.Context(), &clientpb.ShellcodeEncode{
 			Shellcode:  shellcode,
 			Arch:       arch,

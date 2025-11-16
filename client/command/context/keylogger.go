@@ -5,14 +5,14 @@ import (
 	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
 )
 
-func GetKeyloggersCmd(cmd *cobra.Command, con *repl.Console) error {
+func GetKeyloggersCmd(cmd *cobra.Command, con *core.Console) error {
 	keyloggers, err := GetKeyloggers(con)
 	if err != nil {
 		return err
@@ -50,7 +50,7 @@ func GetKeyloggersCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func GetKeyloggers(con *repl.Console) ([]*clientpb.Context, error) {
+func GetKeyloggers(con *core.Console) ([]*clientpb.Context, error) {
 	contexts, err := GetContextsByType(con, consts.ContextKeyLogger)
 	if err != nil {
 		return nil, err
@@ -58,7 +58,7 @@ func GetKeyloggers(con *repl.Console) ([]*clientpb.Context, error) {
 	return contexts.Contexts, nil
 }
 
-func AddKeylogger(con *repl.Console, sess *client.Session, task *clientpb.Task, data []byte) (bool, error) {
+func AddKeylogger(con *core.Console, sess *client.Session, task *clientpb.Task, data []byte) (bool, error) {
 	_, err := con.Rpc.AddKeylogger(con.Context(), &clientpb.Context{
 		Session: sess.Session,
 		Task:    task,
@@ -71,8 +71,8 @@ func AddKeylogger(con *repl.Console, sess *client.Session, task *clientpb.Task, 
 	return true, nil
 }
 
-func RegisterKeylogger(con *repl.Console) {
-	con.RegisterServerFunc("keyloggers", func(con *repl.Console) ([]*output.KeyLoggerContext, error) {
+func RegisterKeylogger(con *core.Console) {
+	con.RegisterServerFunc("keyloggers", func(con *core.Console) ([]*output.KeyLoggerContext, error) {
 		keyloggers, err := GetKeyloggers(con)
 		if err != nil {
 			return nil, err

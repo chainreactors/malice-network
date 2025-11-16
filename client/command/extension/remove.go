@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/tui"
 	"github.com/spf13/cobra"
@@ -13,7 +13,7 @@ import (
 )
 
 // ExtensionsRemoveCmd - Remove an extension
-func ExtensionsRemoveCmd(cmd *cobra.Command, con *repl.Console) {
+func ExtensionsRemoveCmd(cmd *cobra.Command, con *core.Console) {
 	name := cmd.Flags().Arg(0)
 	if name == "" {
 		con.Log.Errorf("Extension name is required\n")
@@ -38,7 +38,7 @@ func ExtensionsRemoveCmd(cmd *cobra.Command, con *repl.Console) {
 }
 
 // RemoveExtensionByCommandName - Remove an extension by command name
-func RemoveExtensionByCommandName(commandName string, con *repl.Console) error {
+func RemoveExtensionByCommandName(commandName string, con *core.Console) error {
 	if commandName == "" {
 		return errors.New("command name is required")
 	}

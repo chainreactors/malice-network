@@ -2,12 +2,12 @@ package config
 
 import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/tui"
 	"github.com/spf13/cobra"
 )
 
-func GetNotifyCmd(cmd *cobra.Command, con *repl.Console) error {
+func GetNotifyCmd(cmd *cobra.Command, con *core.Console) error {
 	notifyConfig, err := con.Rpc.GetNotifyConfig(con.Context(), &clientpb.Empty{})
 	if err != nil {
 		return err
@@ -16,7 +16,7 @@ func GetNotifyCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func UpdateNotifyCmd(cmd *cobra.Command, con *repl.Console) error {
+func UpdateNotifyCmd(cmd *cobra.Command, con *core.Console) error {
 	notify := ParseNotifyFlags(cmd)
 	_, err := UpdateNotify(con, notify)
 	if err != nil {
@@ -26,6 +26,6 @@ func UpdateNotifyCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func UpdateNotify(con *repl.Console, notify *clientpb.Notify) (*clientpb.Empty, error) {
+func UpdateNotify(con *core.Console, notify *clientpb.Notify) (*clientpb.Empty, error) {
 	return con.Rpc.UpdateNotifyConfig(con.Context(), notify)
 }

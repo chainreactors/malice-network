@@ -2,12 +2,12 @@ package plugin
 
 import (
 	"fmt"
-	"github.com/chainreactors/malice-network/helper/intl"
 	"path/filepath"
 	"sync"
 
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
+	"github.com/chainreactors/malice-network/helper/intl"
 	"github.com/chainreactors/mals/m"
 )
 

@@ -5,14 +5,14 @@ import (
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
 )
 
-func ListPivotCmd(cmd *cobra.Command, con *repl.Console) error {
+func ListPivotCmd(cmd *cobra.Command, con *core.Console) error {
 	all, _ := cmd.Flags().GetBool("all")
 	agents, err := ListPivot(con)
 	if err != nil {
@@ -28,7 +28,7 @@ func ListPivotCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func ListPivot(con *repl.Console) ([]*output.PivotingContext, error) {
+func ListPivot(con *core.Console) ([]*output.PivotingContext, error) {
 	pivots, err := con.Rpc.GetContexts(con.Context(), &clientpb.Context{
 		Type: consts.ContextPivoting,
 	})
@@ -39,7 +39,7 @@ func ListPivot(con *repl.Console) ([]*output.PivotingContext, error) {
 	return ctxs, nil
 }
 
-func PrintPivots(pivots []*output.PivotingContext, con *repl.Console, all bool) {
+func PrintPivots(pivots []*output.PivotingContext, con *core.Console, all bool) {
 	var rowEntries []table.Row
 	for _, pivot := range pivots {
 		row := table.NewRow(

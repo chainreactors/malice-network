@@ -4,18 +4,18 @@ import (
 	"fmt"
 	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/malice-network/client/core"
 
 	"github.com/carapace-sh/carapace"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/mals"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
 
-func Commands(con *repl.Console) []*cobra.Command {
+func Commands(con *core.Console) []*cobra.Command {
 	profileCmd := &cobra.Command{
 		Use:   consts.CommandProfile,
 		Short: "compile profile ",
@@ -449,7 +449,7 @@ artifact delete --name artifact_name
 	return []*cobra.Command{profileCmd, buildCmd, artifactCmd}
 }
 
-func Register(con *repl.Console) {
+func Register(con *core.Console) {
 	con.EventCallback[consts.CtrlArtifactDownload] = func(event *clientpb.Event) {
 		err := WriteOriginArtifact(con, event.Job.Name)
 		if err != nil {
@@ -476,7 +476,7 @@ func Register(con *repl.Console) {
 		})
 
 	con.RegisterServerFunc("get_artifact",
-		func(con *repl.Console, sess *client.Session, format string) (*clientpb.Artifact, error) {
+		func(con *core.Console, sess *client.Session, format string) (*clientpb.Artifact, error) {
 			artifact := &clientpb.Artifact{Name: sess.Name}
 			artifact, err := con.Rpc.FindArtifact(sess.Context(), artifact)
 			if err != nil {
@@ -521,7 +521,7 @@ func Register(con *repl.Console) {
 	)
 
 	con.RegisterServerFunc("self_artifact",
-		func(con *repl.Console, sess *client.Session) (string, error) {
+		func(con *core.Console, sess *client.Session) (string, error) {
 			artifact := &clientpb.Artifact{
 				Name: sess.Name,
 			}
@@ -543,7 +543,7 @@ func Register(con *repl.Console) {
 		})
 
 	con.RegisterServerFunc("self_stager",
-		func(con *repl.Console, sess *client.Session) (string, error) {
+		func(con *core.Console, sess *client.Session) (string, error) {
 			artifact, err := SearchArtifact(con, sess.PipelineId, "pulse", "raw", sess.Os.Name, sess.Os.Arch)
 			if err != nil {
 				return "", err
@@ -563,7 +563,7 @@ func Register(con *repl.Console) {
 		},
 	)
 
-	con.RegisterServerFunc("artifact_stager", func(con *repl.Console, pipeline, format, os, arch string) (string, error) {
+	con.RegisterServerFunc("artifact_stager", func(con *core.Console, pipeline, format, os, arch string) (string, error) {
 		artifact, err := SearchArtifact(con, pipeline, "pulse", "shellcode", os, arch)
 		if err != nil {
 			return "", err
@@ -584,7 +584,7 @@ func Register(con *repl.Console) {
 		Example: `artifact_stager("tcp_default","raw","windows","x64")`,
 	})
 
-	con.RegisterServerFunc("self_payload", func(con *repl.Console, sess *client.Session) (string, error) {
+	con.RegisterServerFunc("self_payload", func(con *core.Console, sess *client.Session) (string, error) {
 		artifact, err := SearchArtifact(con, sess.PipelineId, "beacon", "shellcode", sess.Os.Name, sess.Os.Arch)
 		if err != nil {
 			return "", fmt.Errorf("get artifact error: %s", err)
@@ -602,7 +602,7 @@ func Register(con *repl.Console) {
 		Example: `self_payload(active())`,
 	})
 
-	con.RegisterServerFunc("artifact_payload", func(con *repl.Console, pipeline, format, os, arch string) (string, error) {
+	con.RegisterServerFunc("artifact_payload", func(con *core.Console, pipeline, format, os, arch string) (string, error) {
 		artifact, err := SearchArtifact(con, pipeline, "beacon", "shellcode", os, arch)
 		if err != nil {
 			return "", err

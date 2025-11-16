@@ -11,7 +11,7 @@ import (
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/help"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/mals"
@@ -107,7 +107,7 @@ func (a *AliasManifest) getFileForTarget(cmdName string, targetOS string, target
 }
 
 // AliasesLoadCmd - Locally load a alias into the Sliver shell.
-func AliasesLoadCmd(cmd *cobra.Command, con *repl.Console) {
+func AliasesLoadCmd(cmd *cobra.Command, con *core.Console) {
 	dirPath := cmd.Flags().Arg(0)
 	alias, err := LoadAlias(dirPath, con)
 	if err != nil {
@@ -123,7 +123,7 @@ func AliasesLoadCmd(cmd *cobra.Command, con *repl.Console) {
 }
 
 // LoadAlias - Load an alias into the Malice-Network shell from a given directory
-func LoadAlias(manifestPath string, con *repl.Console) (*AliasManifest, error) {
+func LoadAlias(manifestPath string, con *core.Console) (*AliasManifest, error) {
 	// retrieve alias manifest
 	var err error
 	if !strings.HasPrefix(manifestPath, assets.GetAliasesDir()) {
@@ -155,7 +155,7 @@ func LoadAlias(manifestPath string, con *repl.Console) (*AliasManifest, error) {
 	return aliasManifest, nil
 }
 
-func RegisterAlias(aliasManifest *AliasManifest, cmd *cobra.Command, con *repl.Console) error {
+func RegisterAlias(aliasManifest *AliasManifest, cmd *cobra.Command, con *core.Console) error {
 	helpMsg := fmt.Sprintf("[%s] %s", aliasManifest.Name, aliasManifest.Help)
 	longHelpMsg := help.FormatHelpTmpl(aliasManifest.LongHelp)
 	longHelpMsg += "\n\n⚠️  If you're having issues passing arguments to the alias please read:\n"
@@ -184,7 +184,7 @@ func RegisterAlias(aliasManifest *AliasManifest, cmd *cobra.Command, con *repl.C
 	loadedAliases[aliasManifest.CommandName] = &loadedAlias{
 		Manifest: aliasManifest,
 		Command:  addAliasCmd,
-		Func: repl.WrapImplantFunc(con, func(rpc clientrpc.MaliceRPCClient, sess *client.Session, args string,
+		Func: core.WrapImplantFunc(con, func(rpc clientrpc.MaliceRPCClient, sess *client.Session, args string,
 			param map[string]string,
 			sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 			return ExecuteAlias(rpc, sess, aliasManifest.CommandName, args, param, sac)
@@ -236,7 +236,7 @@ func ParseAliasManifest(data []byte) (*AliasManifest, error) {
 	return alias, nil
 }
 
-func runAliasCommand(cmd *cobra.Command, con *repl.Console) {
+func runAliasCommand(cmd *cobra.Command, con *core.Console) {
 	session := con.GetInteractive()
 	loadedAlias, ok := loadedAliases[cmd.Name()]
 	if !ok {

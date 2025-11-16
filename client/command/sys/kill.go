@@ -6,12 +6,12 @@ import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/spf13/cobra"
 )
 
-func KillCmd(cmd *cobra.Command, con *repl.Console) error {
+func KillCmd(cmd *cobra.Command, con *core.Console) error {
 	pid := cmd.Flags().Arg(0)
 	session := con.GetInteractive()
 	task, err := Kill(con.Rpc, session, pid)
@@ -34,7 +34,7 @@ func Kill(rpc clientrpc.MaliceRPCClient, session *client.Session, pid string) (*
 	return task, err
 }
 
-func RegisterKillFunc(con *repl.Console) {
+func RegisterKillFunc(con *core.Console) {
 	con.RegisterImplantFunc(
 		consts.ModuleKill,
 		Kill,

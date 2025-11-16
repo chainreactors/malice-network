@@ -2,11 +2,11 @@ package mal
 
 import (
 	"github.com/chainreactors/IoM-go/consts"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/spf13/cobra"
 )
 
-func RefreshMalCmd(cmd *cobra.Command, con *repl.Console) error {
+func RefreshMalCmd(cmd *cobra.Command, con *core.Console) error {
 	implantCmd := con.ImplantMenu()
 
 	// 移除所有mal组的命令

@@ -5,7 +5,7 @@ import (
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/tui"
 	tea "github.com/charmbracelet/bubbletea"
 	"strconv"
@@ -13,7 +13,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func taskschdExplorerCmd(cmd *cobra.Command, con *repl.Console) error {
+func taskschdExplorerCmd(cmd *cobra.Command, con *core.Console) error {
 	session := con.GetInteractive()
 	root := tui.TreeNode{
 		Name: "Task Scheduler",
@@ -69,7 +69,7 @@ func taskschdExplorerCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func taskEnterFunc(m *tui.TreeModel, con *repl.Console) (tea.Model, tea.Cmd) {
+func taskEnterFunc(m *tui.TreeModel, con *core.Console) (tea.Model, tea.Cmd) {
 	selectedNode := m.Tree.Children[m.Cursor]
 	m.Selected = append(m.Selected, selectedNode.Name)
 	return m, nil

@@ -7,7 +7,7 @@ import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/spf13/cobra"
@@ -15,7 +15,7 @@ import (
 )
 
 // RegListKeyCmd lists the keys under a specific registry path.
-func RegListKeyCmd(cmd *cobra.Command, con *repl.Console) error {
+func RegListKeyCmd(cmd *cobra.Command, con *core.Console) error {
 	path := cmd.Flags().Arg(0)
 	hive, path := FormatRegPath(path)
 	session := con.GetInteractive()
@@ -39,7 +39,7 @@ func RegListKey(rpc clientrpc.MaliceRPCClient, session *client.Session, hive, pa
 	return rpc.RegListKey(session.Context(), request)
 }
 
-func RegisterRegListFunc(con *repl.Console) {
+func RegisterRegListFunc(con *core.Console) {
 	con.RegisterImplantFunc(
 		consts.ModuleRegListKey,
 		RegListKey,
@@ -80,7 +80,7 @@ func RegisterRegListFunc(con *repl.Console) {
 }
 
 // RegListValueCmd lists the values under a specific registry path.
-func RegListValueCmd(cmd *cobra.Command, con *repl.Console) error {
+func RegListValueCmd(cmd *cobra.Command, con *core.Console) error {
 	path := cmd.Flags().Arg(0)
 	hive, path := FormatRegPath(path)
 	session := con.GetInteractive()

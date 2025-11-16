@@ -4,12 +4,12 @@ import (
 	"github.com/carapace-sh/carapace"
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/spf13/cobra"
 )
 
 // Commands initializes and returns all pipe-related commands.
-func Commands(con *repl.Console) []*cobra.Command {
+func Commands(con *core.Console) []*cobra.Command {
 	pipeCmd := &cobra.Command{
 		Use:   consts.CommandPipe,
 		Short: "Manage named pipes",
@@ -114,7 +114,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 }
 
 // Register registers all pipe-related commands.
-func Register(con *repl.Console) {
+func Register(con *core.Console) {
 	RegisterPipeUploadFunc(con)
 	RegisterPipeReadFunc(con)
 	RegisterPipeCloseFunc(con)

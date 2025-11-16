@@ -6,14 +6,14 @@ import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/spf13/cobra"
 	"strings"
 )
 
 // ServiceCreateCmd creates a new service with the specified configuration.
-func ServiceCreateCmd(cmd *cobra.Command, con *repl.Console) error {
+func ServiceCreateCmd(cmd *cobra.Command, con *core.Console) error {
 	name, _ := cmd.Flags().GetString("name")
 	displayName, _ := cmd.Flags().GetString("display")
 	executablePath, _ := cmd.Flags().GetString("path")
@@ -76,7 +76,7 @@ func ServiceCreate(rpc clientrpc.MaliceRPCClient, session *client.Session, name,
 }
 
 // RegisterServiceCreateFunc 注册 ServiceCreateCmd 到 Console
-func RegisterServiceCreateFunc(con *repl.Console) {
+func RegisterServiceCreateFunc(con *core.Console) {
 	con.RegisterImplantFunc(
 		consts.ModuleServiceCreate,
 		ServiceCreate,

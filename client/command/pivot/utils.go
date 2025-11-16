@@ -7,12 +7,12 @@ import (
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/IoM-go/types"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/spf13/cobra"
 	"net/url"
 )
 
-func RemDialCmd(cmd *cobra.Command, con *repl.Console) error {
+func RemDialCmd(cmd *cobra.Command, con *core.Console) error {
 	pid := cmd.Flags().Arg(0)
 	args := cmd.Flags().Args()[1:]
 	task, err := RemDial(con.Rpc, con.GetInteractive(), pid, args)
@@ -23,7 +23,7 @@ func RemDialCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func GetRemLink(con *repl.Console, pipe string) (string, error) {
+func GetRemLink(con *core.Console, pipe string) (string, error) {
 	remPipe, ok := con.Pipelines[pipe]
 	if !(ok && remPipe.GetRem() != nil) {
 		return "", types.ErrNotFoundPipeline
@@ -31,7 +31,7 @@ func GetRemLink(con *repl.Console, pipe string) (string, error) {
 	return remPipe.GetRem().Link, nil
 }
 
-func FormatRemCmdLine(con *repl.Console, pipe, mod string, remote, local *url.URL) ([]string, error) {
+func FormatRemCmdLine(con *core.Console, pipe, mod string, remote, local *url.URL) ([]string, error) {
 	remLink, err := GetRemLink(con, pipe)
 	if err != nil {
 		return nil, err

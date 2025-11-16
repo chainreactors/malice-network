@@ -4,7 +4,7 @@ import (
 	"errors"
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/implanttypes"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -18,7 +18,7 @@ func ModuleFlagSet(f *pflag.FlagSet) {
 	common.SetFlagSetGroup(f, "module")
 }
 
-func ModulesCmd(cmd *cobra.Command, con *repl.Console) error {
+func ModulesCmd(cmd *cobra.Command, con *core.Console) error {
 	var err error
 	//buildConfig, err := prepareBuildConfig(cmd, con, consts.CommandBuildModules)
 	buildConfig, err := parseBasicConfig(cmd, con)

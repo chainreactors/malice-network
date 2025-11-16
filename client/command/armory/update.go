@@ -6,6 +6,7 @@ import (
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/alias"
 	"github.com/chainreactors/malice-network/client/command/extension"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
@@ -36,7 +37,7 @@ type UpdateIdentifier struct {
 }
 
 // ArmoryUpdateCmd - Update all installed extensions/aliases
-func ArmoryUpdateCmd(cmd *cobra.Command, con *repl.Console) {
+func ArmoryUpdateCmd(cmd *cobra.Command, con *core.Console) {
 	var selectedUpdates []UpdateIdentifier
 	var err error
 

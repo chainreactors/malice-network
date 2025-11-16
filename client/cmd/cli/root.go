@@ -4,11 +4,11 @@ import (
 	"github.com/carapace-sh/carapace"
 	"github.com/chainreactors/malice-network/client/command"
 	"github.com/chainreactors/malice-network/client/command/generic"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/spf13/cobra"
 )
 
-func rootCmd(con *repl.Console) (*cobra.Command, error) {
+func rootCmd(con *core.Console) (*cobra.Command, error) {
 	var cmd = &cobra.Command{
 		Use: "client",
 		RunE: func(cmd *cobra.Command, args []string) error {

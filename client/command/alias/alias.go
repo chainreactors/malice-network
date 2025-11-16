@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 
@@ -16,7 +16,7 @@ import (
 )
 
 // AliasesCmd - The alias command
-func AliasesCmd(cmd *cobra.Command, con *repl.Console) {
+func AliasesCmd(cmd *cobra.Command, con *core.Console) {
 	isStatic, err := cmd.Flags().GetBool("static")
 	if err != nil {
 		con.Log.Errorf("Error getting static flag: %v", err)
@@ -30,7 +30,7 @@ func AliasesCmd(cmd *cobra.Command, con *repl.Console) {
 }
 
 // PrintAliases - Print a list of loaded aliases
-func PrintAliases(con *repl.Console, isStatic bool) {
+func PrintAliases(con *core.Console, isStatic bool) {
 	var rowEntries []table.Row
 	var row table.Row
 	tableModel := tui.NewTable([]table.Column{

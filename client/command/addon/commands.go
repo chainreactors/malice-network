@@ -6,7 +6,7 @@ import (
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
@@ -15,7 +15,7 @@ import (
 	"strings"
 )
 
-func Commands(con *repl.Console) []*cobra.Command {
+func Commands(con *core.Console) []*cobra.Command {
 	listaddonCmd := &cobra.Command{
 		Use:   consts.ModuleListAddon + " [addon]",
 		Short: "List all addons",
@@ -87,7 +87,7 @@ execute_addon gogo -- -i 127.0.0.1 -p http
 	return []*cobra.Command{listaddonCmd, loadaddonCmd, execAddonCmd}
 }
 
-func Register(con *repl.Console) {
+func Register(con *core.Console) {
 	con.RegisterImplantFunc(consts.ModuleListAddon,
 		ListAddon,
 		"",

@@ -8,6 +8,7 @@ import (
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/client/command/common"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/malice-network/helper/utils/pe"
@@ -24,7 +25,7 @@ type loadedAddon struct {
 	Func    *mals.MalFunction
 }
 
-func LoadAddonCmd(cmd *cobra.Command, con *repl.Console) {
+func LoadAddonCmd(cmd *cobra.Command, con *core.Console) {
 	path := cmd.Flags().Arg(0)
 	module, _ := cmd.Flags().GetString("module")
 	name, _ := cmd.Flags().GetString("name")
@@ -71,7 +72,7 @@ func LoadAddon(rpc clientrpc.MaliceRPCClient, sess *client.Session, name, path, 
 	})
 }
 
-func RegisterAddonCmd(addon *implantpb.Addon, con *repl.Console) (*loadedAddon, error) {
+func RegisterAddonCmd(addon *implantpb.Addon, con *core.Console) (*loadedAddon, error) {
 	addonCmd := &cobra.Command{
 		Use:   addon.Name,
 		Short: fmt.Sprintf("%s %s", addon.Depend, addon.Name),
@@ -84,7 +85,7 @@ func RegisterAddonCmd(addon *implantpb.Addon, con *repl.Console) (*loadedAddon, 
 	common.BindFlag(addonCmd, common.ExecuteFlagSet, common.SacrificeFlagSet)
 	return &loadedAddon{
 		Command: addonCmd,
-		Func: repl.WrapImplantFunc(con, func(rpc clientrpc.MaliceRPCClient, sess *client.Session, args string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
+		Func: core.WrapImplantFunc(con, func(rpc clientrpc.MaliceRPCClient, sess *client.Session, args string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 			cmdline, err := shellquote.Split(args)
 			if err != nil {
 				return nil, err
@@ -94,7 +95,7 @@ func RegisterAddonCmd(addon *implantpb.Addon, con *repl.Console) (*loadedAddon, 
 	}, nil
 }
 
-func RefreshAddonCommand(addons []*implantpb.Addon, con *repl.Console) error {
+func RefreshAddonCommand(addons []*implantpb.Addon, con *core.Console) error {
 	implantCmd := con.ImplantMenu()
 	for _, c := range implantCmd.Commands() {
 		if c.GroupID == consts.AddonGroup {

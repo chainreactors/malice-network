@@ -1,4 +1,4 @@
-package repl
+package core
 
 import (
 	"context"

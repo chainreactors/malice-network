@@ -4,16 +4,16 @@ import (
 	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/malice-network/client/core"
 	"os"
 	"path/filepath"
 	"strconv"
 
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
-	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/spf13/cobra"
 )
 
-func UploadCmd(cmd *cobra.Command, con *repl.Console) error {
+func UploadCmd(cmd *cobra.Command, con *core.Console) error {
 	path := cmd.Flags().Arg(0)
 	target := cmd.Flags().Arg(1)
 	priv, _ := cmd.Flags().GetString("priv")

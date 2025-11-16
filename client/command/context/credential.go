@@ -5,15 +5,15 @@ import (
 	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
 
-	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/tui"
 )
 
-func GetCredentialsCmd(cmd *cobra.Command, con *repl.Console) error {
+func GetCredentialsCmd(cmd *cobra.Command, con *core.Console) error {
 	credentials, err := GetCredentials(con)
 	if err != nil {
 		return err
@@ -65,7 +65,7 @@ func GetCredentialsCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func GetCredentials(con *repl.Console) ([]*clientpb.Context, error) {
+func GetCredentials(con *core.Console) ([]*clientpb.Context, error) {
 	contexts, err := GetContextsByType(con, consts.ContextCredential)
 	if err != nil {
 		return nil, err
@@ -73,7 +73,7 @@ func GetCredentials(con *repl.Console) ([]*clientpb.Context, error) {
 	return contexts.Contexts, nil
 }
 
-func AddCredential(con *repl.Console, sess *client.Session, task *clientpb.Task, credType string, params map[string]string) (bool, error) {
+func AddCredential(con *core.Console, sess *client.Session, task *clientpb.Task, credType string, params map[string]string) (bool, error) {
 	_, err := con.Rpc.AddCredential(con.Context(), &clientpb.Context{
 		Session: sess.Session,
 		Task:    task,
@@ -86,8 +86,8 @@ func AddCredential(con *repl.Console, sess *client.Session, task *clientpb.Task,
 	return true, nil
 }
 
-func RegisterCredential(con *repl.Console) {
-	con.RegisterServerFunc("credentials", func(con *repl.Console) ([]*output.CredentialContext, error) {
+func RegisterCredential(con *core.Console) {
+	con.RegisterServerFunc("credentials", func(con *core.Console) ([]*output.CredentialContext, error) {
 		ctxs, err := GetCredentials(con)
 		if err != nil {
 			return nil, err

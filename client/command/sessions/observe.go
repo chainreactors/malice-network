@@ -2,11 +2,11 @@ package sessions
 
 import (
 	"github.com/chainreactors/IoM-go/client"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/spf13/cobra"
 )
 
-func ObserveCmd(cmd *cobra.Command, con *repl.Console) error {
+func ObserveCmd(cmd *cobra.Command, con *core.Console) error {
 	var session *client.Session
 	isList, _ := cmd.Flags().GetBool("list")
 	if isList {
@@ -33,7 +33,7 @@ func ObserveCmd(cmd *cobra.Command, con *repl.Console) error {
 		session = con.Sessions[sid]
 
 		if session == nil {
-			con.Log.Warn(repl.ErrNotFoundSession.Error())
+			con.Log.Warn(core.ErrNotFoundSession.Error())
 			return nil
 		}
 		isRemove, _ := cmd.Flags().GetBool("remove")

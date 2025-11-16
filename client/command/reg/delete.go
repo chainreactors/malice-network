@@ -6,14 +6,14 @@ import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/spf13/cobra"
 )
 
 // RegDeleteCmd deletes a registry key.
-func RegDeleteCmd(cmd *cobra.Command, con *repl.Console) error {
+func RegDeleteCmd(cmd *cobra.Command, con *core.Console) error {
 	path := cmd.Flags().Arg(0)
 	hive, path := FormatRegPath(path)
 	key := cmd.Flags().Arg(1)
@@ -39,7 +39,7 @@ func RegDelete(rpc clientrpc.MaliceRPCClient, session *client.Session, hive, pat
 	return rpc.RegDelete(session.Context(), request)
 }
 
-func RegisterRegDeleteFunc(con *repl.Console) {
+func RegisterRegDeleteFunc(con *core.Console) {
 	con.RegisterImplantFunc(
 		consts.ModuleRegDelete,
 		RegDelete,

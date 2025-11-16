@@ -6,14 +6,14 @@ import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/spf13/cobra"
 	"strings"
 )
 
 // TaskSchdCreateCmd creates a new scheduled task.
-func TaskSchdCreateCmd(cmd *cobra.Command, con *repl.Console) error {
+func TaskSchdCreateCmd(cmd *cobra.Command, con *core.Console) error {
 	// 内嵌的 Flag 解析
 	name, _ := cmd.Flags().GetString("name")
 	path, _ := cmd.Flags().GetString("path")
@@ -56,7 +56,7 @@ func TaskSchdCreate(rpc clientrpc.MaliceRPCClient, session *client.Session, name
 	return rpc.TaskSchdCreate(session.Context(), request)
 }
 
-func RegisterTaskSchdCreateFunc(con *repl.Console) {
+func RegisterTaskSchdCreateFunc(con *core.Console) {
 	con.RegisterImplantFunc(
 		consts.ModuleTaskSchdCreate,
 		TaskSchdCreate,

@@ -6,11 +6,11 @@ import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/spf13/cobra"
 )
 
-func AddonListCmd(cmd *cobra.Command, con *repl.Console) {
+func AddonListCmd(cmd *cobra.Command, con *core.Console) {
 	session := con.GetInteractive()
 	task, err := ListAddon(con.Rpc, session)
 	session.Console(task, string(*con.App.Shell().Line()))

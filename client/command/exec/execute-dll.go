@@ -8,7 +8,7 @@ import (
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/output"
@@ -19,7 +19,7 @@ import (
 	"os"
 )
 
-func ExecuteDLLCmd(cmd *cobra.Command, con *repl.Console) error {
+func ExecuteDLLCmd(cmd *cobra.Command, con *core.Console) error {
 	session := con.GetInteractive()
 	sac := common.ParseSacrificeFlags(cmd)
 	entrypoint, _ := cmd.Flags().GetString("entrypoint")
@@ -63,7 +63,7 @@ func ExecDLL(rpc clientrpc.MaliceRPCClient, sess *client.Session, dllPath string
 	return task, err
 }
 
-func InlineDLLCmd(cmd *cobra.Command, con *repl.Console) error {
+func InlineDLLCmd(cmd *cobra.Command, con *core.Console) error {
 	session := con.GetInteractive()
 	path, args, output, timeout, arch, process := common.ParseFullBinaryFlags(cmd)
 	entryPoint, _ := cmd.Flags().GetString("entrypoint")
@@ -95,7 +95,7 @@ func InlineDLL(rpc clientrpc.MaliceRPCClient, sess *client.Session, path, entryP
 	return task, err
 }
 
-func RegisterDLLFunc(con *repl.Console) {
+func RegisterDLLFunc(con *core.Console) {
 	con.RegisterImplantFunc(
 		consts.ModuleExecuteDll,
 		ExecDLL,

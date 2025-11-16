@@ -5,12 +5,12 @@ import (
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/spf13/cobra"
 )
 
-func NewTcpPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
+func NewTcpPipelineCmd(cmd *cobra.Command, con *core.Console) error {
 	listenerID, proxy, host, port := common.ParsePipelineFlags(cmd)
 	name := cmd.Flags().Arg(0)
 	if port == 0 {

@@ -5,11 +5,11 @@ import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/spf13/cobra"
 )
 
-func ChownCmd(cmd *cobra.Command, con *repl.Console) error {
+func ChownCmd(cmd *cobra.Command, con *core.Console) error {
 	uid := cmd.Flags().Arg(0)
 	path := cmd.Flags().Arg(1)
 

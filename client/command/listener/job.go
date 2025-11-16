@@ -1,16 +1,16 @@
 package listener
 
 import (
+	"github.com/chainreactors/malice-network/client/core"
 	"strconv"
 
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
 )
 
-func ListJobsCmd(cmd *cobra.Command, con *repl.Console) error {
+func ListJobsCmd(cmd *cobra.Command, con *core.Console) error {
 	Pipelines, err := con.Rpc.ListJobs(con.Context(), &clientpb.Empty{})
 	if err != nil {
 		return err

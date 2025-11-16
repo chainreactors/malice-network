@@ -7,12 +7,12 @@ import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/spf13/cobra"
 	"strings"
 )
 
-func InfoCmd(cmd *cobra.Command, con *repl.Console) error {
+func InfoCmd(cmd *cobra.Command, con *core.Console) error {
 	session := con.GetInteractive()
 	task, err := Info(con.Rpc, session)
 	if err != nil {
@@ -32,7 +32,7 @@ func Info(rpc clientrpc.MaliceRPCClient, session *client.Session) (*clientpb.Tas
 	return task, err
 }
 
-func RegisterInfoFunc(con *repl.Console) {
+func RegisterInfoFunc(con *core.Console) {
 	con.RegisterImplantFunc(
 		consts.ModuleSysInfo,
 		Info,

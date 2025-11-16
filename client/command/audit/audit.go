@@ -8,7 +8,7 @@ import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/spf13/cobra"
 	"html/template"
@@ -36,7 +36,7 @@ type AuditExport struct {
 	TaskResult string      `json:"taskResult"`
 }
 
-func AuditSessionCmd(cmd *cobra.Command, con *repl.Console) error {
+func AuditSessionCmd(cmd *cobra.Command, con *core.Console) error {
 	sessionID := cmd.Flags().Arg(0)
 	output, _ := cmd.Flags().GetString("output")
 	path, _ := cmd.Flags().GetString("file")

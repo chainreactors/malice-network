@@ -1,7 +1,7 @@
 package pivot
 
 import (
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/third/rem"
 	"github.com/spf13/cobra"
@@ -9,7 +9,7 @@ import (
 	"strconv"
 )
 
-func ForwardCmd(cmd *cobra.Command, con *repl.Console) error {
+func ForwardCmd(cmd *cobra.Command, con *core.Console) error {
 	pid := cmd.Flags().Arg(0)
 	port, _ := cmd.Flags().GetString("port")
 	if port == "" {
@@ -36,7 +36,7 @@ func ForwardCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func ReversePortForwardCmd(cmd *cobra.Command, con *repl.Console) error {
+func ReversePortForwardCmd(cmd *cobra.Command, con *core.Console) error {
 	pid := cmd.Flags().Arg(0)
 	port, _ := cmd.Flags().GetString("port")
 	if port == "" {

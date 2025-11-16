@@ -2,17 +2,17 @@ package listener
 
 import (
 	"fmt"
+	"github.com/chainreactors/malice-network/client/core"
 	"strconv"
 
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
 )
 
-func ListPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
+func ListPipelineCmd(cmd *cobra.Command, con *core.Console) error {
 	listenerID := cmd.Flags().Arg(0)
 	pipelines, err := con.Rpc.ListPipelines(con.Context(), &clientpb.Listener{
 		Id: listenerID,
@@ -98,7 +98,7 @@ func ListPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func StartPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
+func StartPipelineCmd(cmd *cobra.Command, con *core.Console) error {
 	name := cmd.Flags().Arg(0)
 
 	if _, ok := con.Pipelines[name]; ok {
@@ -120,7 +120,7 @@ func StartPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func StopPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
+func StopPipelineCmd(cmd *cobra.Command, con *core.Console) error {
 	name := cmd.Flags().Arg(0)
 	_, err := con.Rpc.StopPipeline(con.Context(), &clientpb.CtrlPipeline{
 		Name: name,
@@ -131,7 +131,7 @@ func StopPipelineCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func DeletePipelineCmd(cmd *cobra.Command, con *repl.Console) error {
+func DeletePipelineCmd(cmd *cobra.Command, con *core.Console) error {
 	name := cmd.Flags().Arg(0)
 	_, err := con.Rpc.DeletePipeline(con.Context(), &clientpb.CtrlPipeline{
 		Name: name,

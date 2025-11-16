@@ -3,6 +3,7 @@ package command
 import (
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/malice-network/client/command/audit"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/reeflective/console"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -23,7 +24,6 @@ import (
 	"github.com/chainreactors/malice-network/client/command/pipeline"
 	"github.com/chainreactors/malice-network/client/command/sessions"
 	"github.com/chainreactors/malice-network/client/command/website"
-	"github.com/chainreactors/malice-network/client/repl"
 )
 
 func BindCommonCommands(bind BindFunc) {
@@ -54,7 +54,7 @@ func BindCommonCommands(bind BindFunc) {
 	)
 }
 
-func ConsoleRunnerCmd(con *repl.Console, cmd *cobra.Command) (pre, post func(cmd *cobra.Command, args []string) error) {
+func ConsoleRunnerCmd(con *core.Console, cmd *cobra.Command) (pre, post func(cmd *cobra.Command, args []string) error) {
 	common.Bind(cmd.Use, true, cmd, func(f *pflag.FlagSet) {
 		f.String("auth", "", "auth token")
 		f.Bool("console", false, "run console")
@@ -79,7 +79,7 @@ func ConsoleRunnerCmd(con *repl.Console, cmd *cobra.Command) (pre, post func(cmd
 	return pre, post
 }
 
-func BindClientsCommands(con *repl.Console) console.Commands {
+func BindClientsCommands(con *core.Console) console.Commands {
 	clientCommands := func() *cobra.Command {
 		client := &cobra.Command{
 			Use:   "client",
@@ -106,7 +106,7 @@ func BindClientsCommands(con *repl.Console) console.Commands {
 	return clientCommands
 }
 
-func RegisterClientFunc(con *repl.Console) {
+func RegisterClientFunc(con *core.Console) {
 	generic.Register(con)
 	build.Register(con)
 	mutant.Register(con)

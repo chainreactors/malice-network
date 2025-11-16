@@ -36,8 +36,8 @@ import (
 	"github.com/chainreactors/malice-network/client/command/taskschd"
 	"github.com/chainreactors/malice-network/client/command/third"
 	"github.com/chainreactors/malice-network/client/command/website"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/plugin"
-	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/gookit/config/v2"
 	"github.com/gookit/config/v2/yaml"
@@ -175,7 +175,7 @@ func GenMarkdownTreeCustom(cmd *cobra.Command, writer io.Writer, linkHandler fun
 	return nil
 }
 
-func GenGroupHelp(writer io.Writer, con *repl.Console, groupId string, binds ...func(con *repl.Console) []*cobra.Command) {
+func GenGroupHelp(writer io.Writer, con *core.Console, groupId string, binds ...func(con *core.Console) []*cobra.Command) {
 	writer.Write([]byte(fmt.Sprintf("## %s\n", groupId)))
 	for _, b := range binds {
 		cmds := b(con)
@@ -189,7 +189,7 @@ func GenGroupHelp(writer io.Writer, con *repl.Console, groupId string, binds ...
 	}
 }
 
-func GenImplantHelp(con *repl.Console) {
+func GenImplantHelp(con *core.Console) {
 	implantMd, err := os.Create("implant_template.md")
 	if err != nil {
 		panic(err)
@@ -225,7 +225,7 @@ func GenImplantHelp(con *repl.Console) {
 	)
 }
 
-func GenClientHelp(con *repl.Console) {
+func GenClientHelp(con *core.Console) {
 	clientMd, err := os.Create("client_template.md")
 	if err != nil {
 		panic(err)
@@ -256,7 +256,7 @@ func GenClientHelp(con *repl.Console) {
 
 }
 
-func GenMalHelper(con *repl.Console, name string) {
+func GenMalHelper(con *core.Console, name string) {
 	clientMd, err := os.Create(name + ".md")
 	if err != nil {
 		panic(err)
@@ -283,7 +283,7 @@ func GenMalHelper(con *repl.Console, name string) {
 }
 
 func main() {
-	con, err := repl.NewConsole()
+	con, err := core.NewConsole()
 	if err != nil {
 		fmt.Println(err)
 		return

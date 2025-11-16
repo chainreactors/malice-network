@@ -2,13 +2,13 @@ package basic
 
 import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/spf13/cobra"
 	"strconv"
 )
 
-func WaitCmd(cmd *cobra.Command, con *repl.Console) error {
+func WaitCmd(cmd *cobra.Command, con *core.Console) error {
 	session := con.GetInteractive()
 	taskID := cmd.Flags().Arg(0)
 	uintID, err := strconv.Atoi(taskID)

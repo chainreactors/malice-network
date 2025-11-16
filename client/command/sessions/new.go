@@ -5,7 +5,7 @@ import (
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/encoders"
 	"github.com/chainreactors/malice-network/helper/encoders/hash"
@@ -13,7 +13,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewBindSessionCmd(cmd *cobra.Command, con *repl.Console) error {
+func NewBindSessionCmd(cmd *cobra.Command, con *core.Console) error {
 	name, _ := cmd.Flags().GetString("name")
 	target, _ := cmd.Flags().GetString("target")
 	pipelineID, _ := cmd.Flags().GetString("pipeline")
@@ -26,7 +26,7 @@ func NewBindSessionCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func NewBindSession(con *repl.Console, PipelineID string, target string, name string) (*client.Session, error) {
+func NewBindSession(con *core.Console, PipelineID string, target string, name string) (*client.Session, error) {
 	rid := cryptography.RandomBytes(4)
 	sid := hash.Md5Hash(rid)
 	_, err := con.Rpc.Register(con.Context(), &clientpb.RegisterSession{
@@ -55,7 +55,7 @@ func NewBindSession(con *repl.Console, PipelineID string, target string, name st
 	return sess, nil
 }
 
-func RegisterNewSessionFunc(con *repl.Console) {
+func RegisterNewSessionFunc(con *core.Console) {
 	con.RegisterServerFunc("new_bind_session", NewBindSession, &mals.Helper{
 		Short:   "new bind session",
 		Example: `new_bind_session("listener_id", "target", "name")`,

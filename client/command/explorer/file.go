@@ -5,7 +5,7 @@ import (
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/tui"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
@@ -15,7 +15,7 @@ import (
 	"time"
 )
 
-func fileExplorerCmd(cmd *cobra.Command, con *repl.Console) {
+func fileExplorerCmd(cmd *cobra.Command, con *core.Console) {
 	session := con.GetInteractive()
 	root := tui.TreeNode{
 		Name: "/",
@@ -138,7 +138,7 @@ func padRight(str string, length int) string {
 	return fmt.Sprintf("%-*s", length, str)
 }
 
-func fileEnterFunc(cmd *cobra.Command, m *tui.TreeModel, con *repl.Console) (tea.Model, tea.Cmd) {
+func fileEnterFunc(cmd *cobra.Command, m *tui.TreeModel, con *core.Console) (tea.Model, tea.Cmd) {
 	selectedNode := m.Tree.Children[m.Cursor]
 	session := con.GetInteractive()
 	if len(selectedNode.Children) > 0 {
@@ -207,7 +207,7 @@ func backFunc(m *tui.TreeModel) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func freshFunc(m *tui.TreeModel, con *repl.Console) (tea.Model, tea.Cmd) {
+func freshFunc(m *tui.TreeModel, con *core.Console) (tea.Model, tea.Cmd) {
 	selectedNode := m.Tree
 	selectedNode.Children = []*tui.TreeNode{}
 	session := con.GetInteractive()

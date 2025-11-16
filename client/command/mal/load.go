@@ -1,19 +1,19 @@
 package mal
 
 import (
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/plugin"
 	"path/filepath"
 
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/mals/m"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
 )
 
-func MalLoadCmd(ctx *cobra.Command, con *repl.Console) error {
+func MalLoadCmd(ctx *cobra.Command, con *core.Console) error {
 	dirPath := ctx.Flags().Arg(0)
 	manifestPath := filepath.Join(assets.GetMalsDir(), dirPath, m.ManifestFileName)
 	manifest, err := plugin.LoadMalManiFest(manifestPath)
@@ -61,7 +61,7 @@ func MalLoadCmd(ctx *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func LoadMal(con *repl.Console, rootCmd *cobra.Command, filename string) error {
+func LoadMal(con *core.Console, rootCmd *cobra.Command, filename string) error {
 	manifest, err := plugin.LoadMalManiFest(filename)
 	if err != nil {
 		return err
@@ -69,7 +69,7 @@ func LoadMal(con *repl.Console, rootCmd *cobra.Command, filename string) error {
 	return LoadMalWithManifest(con, rootCmd, manifest)
 }
 
-func LoadMalWithManifest(con *repl.Console, rootCmd *cobra.Command, manifest *plugin.MalManiFest) error {
+func LoadMalWithManifest(con *core.Console, rootCmd *cobra.Command, manifest *plugin.MalManiFest) error {
 	plug, err := con.MalManager.LoadExternalMal(manifest)
 	if err != nil {
 		return err
@@ -95,7 +95,7 @@ func LoadMalWithManifest(con *repl.Console, rootCmd *cobra.Command, manifest *pl
 	return nil
 }
 
-func ListMalManifest(con *repl.Console) {
+func ListMalManifest(con *core.Console) {
 	// 获取所有外部插件
 	externalPlugins := con.MalManager.GetAllExternalPlugins()
 	embeddedPlugins := con.MalManager.GetAllEmbeddedPlugins()

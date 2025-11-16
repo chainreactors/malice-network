@@ -14,6 +14,7 @@ import (
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/help"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/output"
@@ -128,7 +129,7 @@ func (e *ExtCommand) getFileForTarget(targetOS string, targetArch string) (strin
 }
 
 // ExtensionLoadCmd - Load extension command
-func ExtensionLoadCmd(cmd *cobra.Command, con *repl.Console) {
+func ExtensionLoadCmd(cmd *cobra.Command, con *core.Console) {
 	dirPath := cmd.Flags().Arg(0)
 	manifest, err := LoadExtensionManifest(filepath.Join(dirPath, ManifestFileName))
 	if err != nil {
@@ -195,7 +196,7 @@ func ParseExtensionManifest(data []byte) (*ExtensionManifest, error) {
 }
 
 // ExtensionRegisterCommand
-func ExtensionRegisterCommand(extCmd *ExtCommand, cmd *cobra.Command, con *repl.Console) {
+func ExtensionRegisterCommand(extCmd *ExtCommand, cmd *cobra.Command, con *core.Console) {
 	if errInvalidArgs := checkExtensionArgs(extCmd); errInvalidArgs != nil {
 		con.Log.Error(errInvalidArgs.Error())
 		return
@@ -269,7 +270,7 @@ func ExtensionRegisterCommand(extCmd *ExtCommand, cmd *cobra.Command, con *repl.
 	loadedExtensions[extCmd.CommandName] = &loadedExt{
 		Manifest: extCmd,
 		Command:  cmd,
-		Func: repl.WrapImplantFunc(con, func(rpc clientrpc.MaliceRPCClient, sess *client.Session, args []string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
+		Func: core.WrapImplantFunc(con, func(rpc clientrpc.MaliceRPCClient, sess *client.Session, args []string, sac *implantpb.SacrificeProcess) (*clientpb.Task, error) {
 			return ExecuteExtension(rpc, sess, extensionCmd.Name(), args)
 		}, output.ParseBinaryResponse),
 	}
@@ -342,7 +343,7 @@ func ExtensionRegisterCommand(extCmd *ExtCommand, cmd *cobra.Command, con *repl.
 //	return fmt.Errorf("missing dependency %s", depName)
 //}
 
-func runExtensionCmd(cmd *cobra.Command, con *repl.Console) {
+func runExtensionCmd(cmd *cobra.Command, con *core.Console) {
 	session := con.GetInteractive()
 	args := cmd.Flags().Args()
 

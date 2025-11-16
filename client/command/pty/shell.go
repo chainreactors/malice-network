@@ -7,11 +7,11 @@ import (
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"time"
 
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
-	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/tui"
 	"github.com/spf13/cobra"
 )
@@ -129,7 +129,7 @@ func (c *PTYClient) SetPromptCallback(callback func(string, string)) {
 }
 
 // ShellCmd 处理交互式 shell 命令
-func ShellCmd(cmd *cobra.Command, con *repl.Console) error {
+func ShellCmd(cmd *cobra.Command, con *core.Console) error {
 	session := con.GetInteractive().Clone(consts.CalleePty)
 
 	// 获取命令参数

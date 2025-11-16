@@ -6,13 +6,13 @@ import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/client/command/common"
 	"github.com/chainreactors/malice-network/client/command/generic"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
 
-func Commands(con *repl.Console) []*cobra.Command {
+func Commands(con *core.Console) []*cobra.Command {
 	remCmd := &cobra.Command{
 		Use:   consts.CommandRemDial + " [pipeline] [args]",
 		Short: "Run rem on the implant",
@@ -160,7 +160,7 @@ rportforward pipeline1 --port 8080 --remote 192.168.1.1:80
 	}
 }
 
-func Register(con *repl.Console) {
+func Register(con *core.Console) {
 	// Register all command functions
 	con.RegisterImplantFunc(
 		consts.ModuleRemDial,

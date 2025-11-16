@@ -2,6 +2,7 @@ package context
 
 import (
 	"fmt"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/spf13/cobra"
 	"os"
@@ -9,10 +10,9 @@ import (
 
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/client/repl"
 )
 
-func SyncCmd(cmd *cobra.Command, con *repl.Console) error {
+func SyncCmd(cmd *cobra.Command, con *core.Console) error {
 	tid := cmd.Flags().Arg(0)
 	go func() {
 		ctx, err := con.Rpc.Sync(con.Context(), &clientpb.Sync{

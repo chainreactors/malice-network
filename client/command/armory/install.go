@@ -8,6 +8,7 @@ import (
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/alias"
 	"github.com/chainreactors/malice-network/client/command/extension"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/cryptography/minisign"
 	"github.com/chainreactors/tui"
@@ -31,7 +32,7 @@ const (
 )
 
 // ArmoryInstallCmd - The armory install command
-func ArmoryInstallCmd(cmd *cobra.Command, con *repl.Console) {
+func ArmoryInstallCmd(cmd *cobra.Command, con *core.Console) {
 	var promptToOverwrite bool
 	name := cmd.Flags().Arg(0)
 	if name == "" {
@@ -132,7 +133,7 @@ func ArmoryInstallCmd(cmd *cobra.Command, con *repl.Console) {
 }
 
 func installBundle(bundle *ArmoryBundle, armoryPK string, forceInstallation bool, clientConfig ArmoryHTTPConfig,
-	con *repl.Console) {
+	con *core.Console) {
 	installList := []string{}
 	pendingPackages := make(map[string]string)
 
@@ -176,7 +177,7 @@ func installBundle(bundle *ArmoryBundle, armoryPK string, forceInstallation bool
 }
 
 func installPackageByName(name, armoryPK string, forceInstallation, promptToOverwrite bool,
-	clientConfig ArmoryHTTPConfig, con *repl.Console) error {
+	clientConfig ArmoryHTTPConfig, con *core.Console) error {
 	pendingPackages := make(map[string]string)
 	packageInstallList, err := buildInstallList(name, armoryPK, forceInstallation, pendingPackages)
 	if err != nil {
@@ -452,7 +453,7 @@ func buildInstallList(name, armoryPK string, forceInstallation bool, pendingPack
 }
 
 func installAliasPackage(entry *pkgCacheEntry, promptToOverwrite bool, clientConfig ArmoryHTTPConfig,
-	con *repl.Console) error {
+	con *core.Console) error {
 	if entry == nil {
 		return errors.New("package not found")
 	}
@@ -548,7 +549,7 @@ func resolveExtensionPackageDependencies(pkg *pkgCacheEntry, deps map[string]*pk
 	return nil
 }
 
-func installExtensionPackage(entry *pkgCacheEntry, promptToOverwrite bool, clientConfig ArmoryHTTPConfig, con *repl.Console) error {
+func installExtensionPackage(entry *pkgCacheEntry, promptToOverwrite bool, clientConfig ArmoryHTTPConfig, con *core.Console) error {
 	if entry == nil {
 		return errors.New("package not found")
 	}

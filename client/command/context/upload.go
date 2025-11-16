@@ -5,15 +5,15 @@ import (
 	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 
-	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
 )
 
-func GetUploadsCmd(cmd *cobra.Command, con *repl.Console) error {
+func GetUploadsCmd(cmd *cobra.Command, con *core.Console) error {
 	uploads, err := GetUploads(con)
 	if err != nil {
 		return err
@@ -51,7 +51,7 @@ func GetUploadsCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func GetUploads(con *repl.Console) ([]*clientpb.Context, error) {
+func GetUploads(con *core.Console) ([]*clientpb.Context, error) {
 	contexts, err := GetContextsByType(con, consts.ContextUpload)
 	if err != nil {
 		return nil, err
@@ -59,7 +59,7 @@ func GetUploads(con *repl.Console) ([]*clientpb.Context, error) {
 	return contexts.Contexts, nil
 }
 
-func AddUpload(con *repl.Console, sess *client.Session, task *clientpb.Task, fileDesc *output.FileDescriptor) (bool, error) {
+func AddUpload(con *core.Console, sess *client.Session, task *clientpb.Task, fileDesc *output.FileDescriptor) (bool, error) {
 	_, err := con.Rpc.AddUpload(con.Context(), &clientpb.Context{
 		Session: sess.Session,
 		Task:    task,
@@ -72,8 +72,8 @@ func AddUpload(con *repl.Console, sess *client.Session, task *clientpb.Task, fil
 	return true, nil
 }
 
-func RegisterUpload(con *repl.Console) {
-	con.RegisterServerFunc("uploads", func(con *repl.Console) ([]*output.UploadContext, error) {
+func RegisterUpload(con *core.Console) {
+	con.RegisterServerFunc("uploads", func(con *core.Console) ([]*output.UploadContext, error) {
 		uploads, err := GetUploads(con)
 		if err != nil {
 			return nil, err

@@ -5,14 +5,14 @@ import (
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/malice-network/client/core"
 	"strconv"
 
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
-	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/spf13/cobra"
 )
 
-func QueryTaskCmd(cmd *cobra.Command, con *repl.Console) error {
+func QueryTaskCmd(cmd *cobra.Command, con *core.Console) error {
 	taskId := cmd.Flags().Arg(0)
 	id, err := strconv.Atoi(taskId)
 	if err != nil {

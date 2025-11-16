@@ -21,14 +21,14 @@ package alias
 import (
 	"errors"
 	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/spf13/cobra"
 	"os"
 	"path/filepath"
 )
 
 // AliasesRemoveCmd - Locally load a alias into the Sliver shell.
-func AliasesRemoveCmd(cmd *cobra.Command, con *repl.Console) {
+func AliasesRemoveCmd(cmd *cobra.Command, con *core.Console) {
 	//name := ctx.Args
 	name := cmd.Flags().Arg(0)
 	if name == "" {
@@ -51,7 +51,7 @@ func AliasesRemoveCmd(cmd *cobra.Command, con *repl.Console) {
 }
 
 // RemoveAliasByCommandName - Remove an alias by command name
-func RemoveAliasByCommandName(commandName string, con *repl.Console) error {
+func RemoveAliasByCommandName(commandName string, con *core.Console) error {
 	if commandName == "" {
 		return errors.New("command name is required")
 	}

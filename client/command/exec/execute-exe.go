@@ -8,7 +8,7 @@ import (
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"github.com/kballard/go-shellquote"
@@ -17,7 +17,7 @@ import (
 )
 
 // ExecuteExeCmd - Execute PE on sacrifice process
-func ExecuteExeCmd(cmd *cobra.Command, con *repl.Console) error {
+func ExecuteExeCmd(cmd *cobra.Command, con *core.Console) error {
 	path, args, output, timeout, arch, process := common.ParseFullBinaryFlags(cmd)
 	sac := common.ParseSacrificeFlags(cmd)
 	task, err := ExecExe(con.Rpc, con.GetInteractive(), path, args, output, timeout, arch, process, sac)
@@ -49,7 +49,7 @@ func ExecExe(rpc clientrpc.MaliceRPCClient, sess *client.Session, pePath string,
 }
 
 // InlineExeCmd - Execute PE in current process
-func InlineExeCmd(cmd *cobra.Command, con *repl.Console) error {
+func InlineExeCmd(cmd *cobra.Command, con *core.Console) error {
 	session := con.GetInteractive()
 	path, args, output, timeout, arch, process := common.ParseFullBinaryFlags(cmd)
 	task, err := InlineExe(con.Rpc, session, path, args, output, timeout, arch, process)
@@ -79,7 +79,7 @@ func InlineExe(rpc clientrpc.MaliceRPCClient, sess *client.Session, path string,
 	return task, nil
 }
 
-func RegisterExeFunc(con *repl.Console) {
+func RegisterExeFunc(con *core.Console) {
 	con.RegisterImplantFunc(
 		consts.ModuleAliasInlineExe,
 		InlineExe,

@@ -2,14 +2,14 @@ package pivot
 
 import (
 	"github.com/chainreactors/logs"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/malice-network/helper/third/rem"
 	"github.com/spf13/cobra"
 	"strconv"
 )
 
-func RPortForwardLocalCmd(cmd *cobra.Command, con *repl.Console) error {
+func RPortForwardLocalCmd(cmd *cobra.Command, con *core.Console) error {
 	pid := cmd.Flags().Arg(0)
 	aid := cmd.Flags().Arg(1)
 	port, _ := cmd.Flags().GetString("port")
@@ -25,7 +25,7 @@ func RPortForwardLocalCmd(cmd *cobra.Command, con *repl.Console) error {
 	return LocalRemDial(remLink, aid, localURL.String(), remote)
 }
 
-func PortForwardLocalCmd(cmd *cobra.Command, con *repl.Console) error {
+func PortForwardLocalCmd(cmd *cobra.Command, con *core.Console) error {
 	pid := cmd.Flags().Arg(0)
 	aid := cmd.Flags().Arg(1)
 	port, _ := cmd.Flags().GetString("port")

@@ -3,17 +3,17 @@ package mal
 import (
 	"errors"
 	"fmt"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/tui"
 	"os"
 	"path/filepath"
 
 	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/spf13/cobra"
 )
 
-func RemoveMalCmd(cmd *cobra.Command, con *repl.Console) error {
+func RemoveMalCmd(cmd *cobra.Command, con *core.Console) error {
 	name := cmd.Flags().Arg(0)
 	if name == "" {
 		return errors.New("mal name is required")
@@ -33,7 +33,7 @@ func RemoveMalCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func RemoveMal(name string, con *repl.Console) error {
+func RemoveMal(name string, con *core.Console) error {
 	if name == "" {
 		return errors.New("mal name is required")
 	}

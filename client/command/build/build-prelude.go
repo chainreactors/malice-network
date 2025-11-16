@@ -3,7 +3,7 @@ package build
 import (
 	"errors"
 	"github.com/chainreactors/IoM-go/consts"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/server/build"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -14,7 +14,7 @@ func PreludeFlagSet(f *pflag.FlagSet) {
 	f.String("autorun", "", "auto run zip path")
 }
 
-func PreludeCmd(cmd *cobra.Command, con *repl.Console) error {
+func PreludeCmd(cmd *cobra.Command, con *core.Console) error {
 	//buildConfig, err := prepareBuildConfig(cmd, con, consts.CommandBuildPrelude)
 	//if err != nil {
 	//	return err

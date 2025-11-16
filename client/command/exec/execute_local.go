@@ -7,7 +7,7 @@ import (
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/kballard/go-shellquote"
@@ -15,7 +15,7 @@ import (
 )
 
 // ExecuteLocalCmd - Execute local PE on sacrifice process
-func ExecuteLocalCmd(cmd *cobra.Command, con *repl.Console) error {
+func ExecuteLocalCmd(cmd *cobra.Command, con *core.Console) error {
 	args := cmd.Flags().Args()
 	process, _ := cmd.Flags().GetString("process")
 	quiet, _ := cmd.Flags().GetBool("quiet")
@@ -52,7 +52,7 @@ func ExecLocal(rpc clientrpc.MaliceRPCClient, sess *client.Session,
 	return task, nil
 }
 
-func InlineLocalCmd(cmd *cobra.Command, con *repl.Console) error {
+func InlineLocalCmd(cmd *cobra.Command, con *core.Console) error {
 	args := cmd.Flags().Args()
 	process, _ := cmd.Flags().GetString("process")
 	output, _ := cmd.Flags().GetBool("output")
@@ -84,7 +84,7 @@ func InlineLocal(rpc clientrpc.MaliceRPCClient, sess *client.Session,
 	return task, nil
 }
 
-func RegisterExecuteLocalFunc(con *repl.Console) {
+func RegisterExecuteLocalFunc(con *core.Console) {
 	con.RegisterImplantFunc(
 		consts.ModuleExecuteLocal,
 		ExecLocal,

@@ -7,7 +7,7 @@ import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/malice-network/helper/utils/pe"
@@ -16,7 +16,7 @@ import (
 )
 
 // PipeUploadCmd uploads a file's content to a named pipe.
-func PipeUploadCmd(cmd *cobra.Command, con *repl.Console) error {
+func PipeUploadCmd(cmd *cobra.Command, con *core.Console) error {
 	pipe := cmd.Flags().Arg(0)
 	path := cmd.Flags().Arg(1)
 
@@ -64,7 +64,7 @@ func PipeUploadRaw(rpc clientrpc.MaliceRPCClient, session *client.Session, pipe,
 }
 
 // 注册 PipeUpload 命令
-func RegisterPipeUploadFunc(con *repl.Console) {
+func RegisterPipeUploadFunc(con *core.Console) {
 	con.RegisterImplantFunc(
 		consts.ModulePipeUpload,
 		PipeUpload,

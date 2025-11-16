@@ -11,7 +11,7 @@ import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/build"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/implanttypes"
 	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"github.com/spf13/cobra"
@@ -20,7 +20,7 @@ import (
 	"strings"
 )
 
-func LoadModuleCmd(cmd *cobra.Command, con *repl.Console) error {
+func LoadModuleCmd(cmd *cobra.Command, con *core.Console) error {
 	bundle, _ := cmd.Flags().GetString("bundle")
 	path, _ := cmd.Flags().GetString("path")
 	artifactName, _ := cmd.Flags().GetString("artifact")
@@ -74,7 +74,7 @@ func LoadModuleCmd(cmd *cobra.Command, con *repl.Console) error {
 }
 
 // handleModuleBuild handles module build based on the builder resource (docker/action)
-func handleModuleBuild(cmd *cobra.Command, con *repl.Console, modules, thirdModules []string) error {
+func handleModuleBuild(cmd *cobra.Command, con *core.Console, modules, thirdModules []string) error {
 	source, err := build.CheckSource(con, nil)
 	if err != nil {
 		return err

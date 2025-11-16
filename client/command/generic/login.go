@@ -5,14 +5,14 @@ import (
 	"fmt"
 
 	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/tui"
 	"github.com/gookit/config/v2"
 	"github.com/spf13/cobra"
 )
 
-func LoginCmd(cmd *cobra.Command, con *repl.Console) error {
+func LoginCmd(cmd *cobra.Command, con *core.Console) error {
 	var err error
 
 	// 处理 --mcp flag
@@ -86,7 +86,7 @@ func enableLocalRPCFromFlag(addr string) error {
 	return nil
 }
 
-func Login(con *repl.Console, authFile string) error {
+func Login(con *core.Console, authFile string) error {
 	// 显示配置信息
 	assets.PrintProfileSettings()
 
@@ -94,7 +94,7 @@ func Login(con *repl.Console, authFile string) error {
 	if err != nil {
 		return err
 	}
-	err = repl.Login(con, config)
+	err = core.Login(con, config)
 	if err != nil {
 		return err
 	}

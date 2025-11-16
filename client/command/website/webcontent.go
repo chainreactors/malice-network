@@ -2,7 +2,7 @@ package website
 
 import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
@@ -13,7 +13,7 @@ import (
 )
 
 // AddWebContentCmd - 添加网站内容
-func AddWebContentCmd(cmd *cobra.Command, con *repl.Console) error {
+func AddWebContentCmd(cmd *cobra.Command, con *core.Console) error {
 	filePath := cmd.Flags().Arg(0)
 	websiteName, _ := cmd.Flags().GetString("website")
 	webPath, _ := cmd.Flags().GetString("path")
@@ -30,7 +30,7 @@ func AddWebContentCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func AddWebContent(con *repl.Console, localFile, webPath, webPipe, typ string) (*clientpb.WebContent, error) {
+func AddWebContent(con *core.Console, localFile, webPath, webPipe, typ string) (*clientpb.WebContent, error) {
 	content, err := pe.Unpack(localFile)
 	if err != nil {
 		return nil, err
@@ -57,7 +57,7 @@ func AddWebContent(con *repl.Console, localFile, webPath, webPipe, typ string) (
 }
 
 // UpdateWebContentCmd - 更新网站内容
-func UpdateWebContentCmd(cmd *cobra.Command, con *repl.Console) error {
+func UpdateWebContentCmd(cmd *cobra.Command, con *core.Console) error {
 	contentId := cmd.Flags().Arg(0)
 	filePath := cmd.Flags().Arg(1)
 	websiteName, _ := cmd.Flags().GetString("website")
@@ -71,7 +71,7 @@ func UpdateWebContentCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func UpdateWebContent(con *repl.Console, contentId, localFile, webPipe, typ string) (*clientpb.WebContent, error) {
+func UpdateWebContent(con *core.Console, contentId, localFile, webPipe, typ string) (*clientpb.WebContent, error) {
 	content, err := os.ReadFile(localFile)
 	if err != nil {
 		return nil, err
@@ -92,7 +92,7 @@ func UpdateWebContent(con *repl.Console, contentId, localFile, webPipe, typ stri
 }
 
 // RemoveWebContentCmd - 删除网站内容
-func RemoveWebContentCmd(cmd *cobra.Command, con *repl.Console) error {
+func RemoveWebContentCmd(cmd *cobra.Command, con *core.Console) error {
 	contentId := cmd.Flags().Arg(0)
 
 	_, err := RemoveWebContent(con, contentId)
@@ -104,7 +104,7 @@ func RemoveWebContentCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func RemoveWebContent(con *repl.Console, contentId string) (bool, error) {
+func RemoveWebContent(con *core.Console, contentId string) (bool, error) {
 	webContent := &clientpb.WebContent{
 		Id: contentId,
 	}
@@ -118,7 +118,7 @@ func RemoveWebContent(con *repl.Console, contentId string) (bool, error) {
 }
 
 // ListWebContentCmd - 列出网站内容
-func ListWebContentCmd(cmd *cobra.Command, con *repl.Console) error {
+func ListWebContentCmd(cmd *cobra.Command, con *core.Console) error {
 	websiteName := cmd.Flags().Arg(0)
 
 	website := &clientpb.Website{

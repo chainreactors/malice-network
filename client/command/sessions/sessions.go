@@ -7,7 +7,6 @@ import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
@@ -37,7 +36,7 @@ func formatTimeDiff(timestamp int64, isAlive bool) string {
 	}
 }
 
-func SessionsCmd(cmd *cobra.Command, con *repl.Console) error {
+func SessionsCmd(cmd *cobra.Command, con *core.Console) error {
 	isAll, err := cmd.Flags().GetBool("all")
 	if err != nil {
 		return err
@@ -58,7 +57,7 @@ func SessionsCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func PrintSessions(sessions map[string]*client.Session, con *repl.Console, isAll bool, isStatic bool) {
+func PrintSessions(sessions map[string]*client.Session, con *core.Console, isAll bool, isStatic bool) {
 	//var colorIndex = 1
 	var rowEntries []table.Row
 	var row table.Row
@@ -155,7 +154,7 @@ func PrintSessions(sessions map[string]*client.Session, con *repl.Console, isAll
 	}
 }
 
-func SessionLogin(tableModel *tui.TableModel, writer io.Writer, con *repl.Console) func() {
+func SessionLogin(tableModel *tui.TableModel, writer io.Writer, con *core.Console) func() {
 	var sessionId string
 	selectRow := tableModel.GetHighlightedRow()
 	if selectRow.Data == nil {
@@ -173,7 +172,7 @@ func SessionLogin(tableModel *tui.TableModel, writer io.Writer, con *repl.Consol
 
 	if session == nil {
 		return func() {
-			con.Log.Errorf(repl.ErrNotFoundSession.Error())
+			con.Log.Errorf(core.ErrNotFoundSession.Error())
 		}
 	}
 

@@ -5,13 +5,13 @@ import (
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/spf13/cobra"
 )
 
-func Commands(con *repl.Console) []*cobra.Command {
+func Commands(con *core.Console) []*cobra.Command {
 	contextCmd := &cobra.Command{
 		Use:   "context",
 		Short: "Context management",
@@ -102,7 +102,7 @@ sync [context_id]
 	}
 }
 
-func Register(con *repl.Console) {
+func Register(con *core.Console) {
 	RegisterScreenshot(con)
 	RegisterKeylogger(con)
 	RegisterPort(con)
@@ -110,7 +110,7 @@ func Register(con *repl.Console) {
 	RegisterUpload(con)
 	RegisterDownload(con)
 
-	con.RegisterServerFunc("callback_context", func(con *repl.Console, sess *client.Session) (intermediate.BuiltinCallback, error) {
+	con.RegisterServerFunc("callback_context", func(con *core.Console, sess *client.Session) (intermediate.BuiltinCallback, error) {
 		nonce, err := sess.Value("nonce")
 		if err != nil {
 			return nil, err

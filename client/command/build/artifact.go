@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	output2 "github.com/chainreactors/malice-network/helper/utils/output"
 	"os"
@@ -12,7 +13,6 @@ import (
 	"time"
 
 	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
@@ -24,7 +24,7 @@ func updateMaxLength(maxLengths *map[string]int, key string, newLength int) {
 	}
 }
 
-func ListArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
+func ListArtifactCmd(cmd *cobra.Command, con *core.Console) error {
 	artifacts, err := con.Rpc.ListArtifact(con.Context(), &clientpb.Empty{})
 	if err != nil {
 		return err
@@ -40,7 +40,7 @@ func ListArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func PrintArtifacts(artifacts *clientpb.Artifacts, con *repl.Console) error {
+func PrintArtifacts(artifacts *clientpb.Artifacts, con *core.Console) error {
 	var rowEntries []table.Row
 	var row table.Row
 
@@ -138,7 +138,7 @@ func PrintArtifacts(artifacts *clientpb.Artifacts, con *repl.Console) error {
 	return nil
 }
 
-func ArtifactShowCmd(cmd *cobra.Command, con *repl.Console) error {
+func ArtifactShowCmd(cmd *cobra.Command, con *core.Console) error {
 	name := cmd.Flags().Arg(0)
 	artifact, err := con.Rpc.DownloadArtifact(con.Context(), &clientpb.Artifact{
 		Name: name,
@@ -172,7 +172,7 @@ func printArtifact(artifact *clientpb.Artifact) {
 }
 
 // Some optimization is needed.
-func DownloadArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
+func DownloadArtifactCmd(cmd *cobra.Command, con *core.Console) error {
 	name := cmd.Flags().Arg(0)
 	output, _ := cmd.Flags().GetString("output")
 	format, _ := cmd.Flags().GetString("format")
@@ -221,7 +221,7 @@ func DownloadArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func DownloadArtifact(con *repl.Console, name string, format string, rdi string) (*clientpb.Artifact, error) {
+func DownloadArtifact(con *core.Console, name string, format string, rdi string) (*clientpb.Artifact, error) {
 	artifact, err := con.Rpc.DownloadArtifact(con.Context(), &clientpb.Artifact{
 		Name:   name,
 		Format: format,
@@ -236,7 +236,7 @@ func DownloadArtifact(con *repl.Console, name string, format string, rdi string)
 	return artifact, err
 }
 
-func WriteOriginArtifact(con *repl.Console, name string) error {
+func WriteOriginArtifact(con *core.Console, name string) error {
 	artifact, err := DownloadArtifact(con, name, "", "")
 	if err != nil {
 		return err
@@ -251,7 +251,7 @@ func WriteOriginArtifact(con *repl.Console, name string) error {
 	return nil
 }
 
-func UploadArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
+func UploadArtifactCmd(cmd *cobra.Command, con *core.Console) error {
 	path := cmd.Flags().Arg(0)
 	artifactType, _ := cmd.Flags().GetString("type")
 	name, _ := cmd.Flags().GetString("name")
@@ -266,7 +266,7 @@ func UploadArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func DeleteArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
+func DeleteArtifactCmd(cmd *cobra.Command, con *core.Console) error {
 	name := cmd.Flags().Arg(0)
 	_, err := DeleteArtifact(con, name)
 	if err != nil {
@@ -277,7 +277,7 @@ func DeleteArtifactCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func UploadArtifact(con *repl.Console, path string, name, artifactType string) (*clientpb.Artifact, error) {
+func UploadArtifact(con *core.Console, path string, name, artifactType string) (*clientpb.Artifact, error) {
 	bin, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -289,7 +289,7 @@ func UploadArtifact(con *repl.Console, path string, name, artifactType string) (
 	})
 }
 
-func SearchArtifact(con *repl.Console, pipeline, typ, format, os, arch string) (*clientpb.Artifact, error) {
+func SearchArtifact(con *core.Console, pipeline, typ, format, os, arch string) (*clientpb.Artifact, error) {
 	artifactResp, err := con.Rpc.FindArtifact(con.Context(), &clientpb.Artifact{
 		Arch:     arch,
 		Platform: os,
@@ -300,7 +300,7 @@ func SearchArtifact(con *repl.Console, pipeline, typ, format, os, arch string) (
 	return artifactResp, err
 }
 
-func DeleteArtifact(con *repl.Console, name string) (bool, error) {
+func DeleteArtifact(con *core.Console, name string) (bool, error) {
 	_, err := con.Rpc.DeleteArtifact(con.Context(), &clientpb.Artifact{
 		Name: name,
 	})

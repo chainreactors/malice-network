@@ -7,12 +7,12 @@ import (
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
 )
 
-func ExecuteAddonCmd(cmd *cobra.Command, con *repl.Console) {
+func ExecuteAddonCmd(cmd *cobra.Command, con *core.Console) {
 	session := con.GetInteractive()
 	args := cmd.Flags().Args()
 	timeout, _ := cmd.Flags().GetUint32("timeout")

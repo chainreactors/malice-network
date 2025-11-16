@@ -6,7 +6,7 @@ import (
 	"errors"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/client/assets"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/certs"
 	"github.com/chainreactors/malice-network/helper/cryptography"
 	"github.com/chainreactors/tui"
@@ -23,7 +23,7 @@ var (
 	caFile   = "ca-cert.pem"
 )
 
-func DeleteCmd(cmd *cobra.Command, con *repl.Console) error {
+func DeleteCmd(cmd *cobra.Command, con *core.Console) error {
 	certName := cmd.Flags().Arg(0)
 	_, err := con.Rpc.DeleteCertificate(con.Context(), &clientpb.Cert{
 		Name: certName,
@@ -35,7 +35,7 @@ func DeleteCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func UpdateCmd(cmd *cobra.Command, con *repl.Console) error {
+func UpdateCmd(cmd *cobra.Command, con *core.Console) error {
 	certName := cmd.Flags().Arg(0)
 	certPath, _ := cmd.Flags().GetString("cert")
 	keyPath, _ := cmd.Flags().GetString("key")
@@ -75,7 +75,7 @@ func UpdateCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func DownloadCmd(cmd *cobra.Command, con *repl.Console) error {
+func DownloadCmd(cmd *cobra.Command, con *core.Console) error {
 	certName := cmd.Flags().Arg(0)
 	output, _ := cmd.Flags().GetString("output")
 	cert, err := con.Rpc.DownloadCertificate(con.Context(), &clientpb.Cert{
@@ -113,7 +113,7 @@ func DownloadCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func GetCertCmd(cmd *cobra.Command, con *repl.Console) error {
+func GetCertCmd(cmd *cobra.Command, con *core.Console) error {
 	certs, err := con.Rpc.GetAllCertificates(con.Context(), &clientpb.Empty{})
 	if err != nil {
 		return nil
@@ -146,7 +146,7 @@ func printCert(cert *clientpb.TLS) {
 	tui.RenderKV(certMap, orderedKeys)
 }
 
-func printCerts(certs *clientpb.Certs, con *repl.Console) {
+func printCerts(certs *clientpb.Certs, con *core.Console) {
 	var rowEntries []table.Row
 	tableModel := tui.NewTable([]table.Column{
 		table.NewColumn("Name", "Name", 20),

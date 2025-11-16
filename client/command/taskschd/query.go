@@ -7,12 +7,12 @@ import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/spf13/cobra"
 )
 
 // TaskSchdQueryCmd queries the detailed configuration of a scheduled task by name.
-func TaskSchdQueryCmd(cmd *cobra.Command, con *repl.Console) error {
+func TaskSchdQueryCmd(cmd *cobra.Command, con *core.Console) error {
 	name := cmd.Flags().Arg(0)
 
 	session := con.GetInteractive()
@@ -37,7 +37,7 @@ func TaskSchdQuery(rpc clientrpc.MaliceRPCClient, session *client.Session, name,
 	return rpc.TaskSchdQuery(session.Context(), request)
 }
 
-func RegisterTaskSchdQueryFunc(con *repl.Console) {
+func RegisterTaskSchdQueryFunc(con *core.Console) {
 	con.RegisterImplantFunc(
 		consts.ModuleTaskSchdQuery,
 		TaskSchdQuery,

@@ -7,6 +7,7 @@ import (
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/command/alias"
 	"github.com/chainreactors/malice-network/client/command/extension"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/cryptography/minisign"
 	"github.com/chainreactors/tui"
@@ -107,7 +108,7 @@ var (
 	defaultArmoryRemoved = false
 )
 
-func ArmoryCmd(cmd *cobra.Command, con *repl.Console) {
+func ArmoryCmd(cmd *cobra.Command, con *core.Console) {
 	armoriesConfig := getCurrentArmoryConfiguration()
 	if len(armoriesConfig) == 1 {
 		con.Log.Infof("Reading armory index ... \n")
@@ -343,7 +344,7 @@ func bundlesInCache() []*ArmoryBundle {
 }
 
 // AliasExtensionOrBundleCompleter - Completer for alias, extension, and bundle names
-func AliasExtensionOrBundleCompleter(prefix string, args []string, con *repl.Console) []string {
+func AliasExtensionOrBundleCompleter(prefix string, args []string, con *core.Console) []string {
 	results := []string{}
 	aliases, exts := packageManifestsInCache()
 	bundles := bundlesInCache()
@@ -368,7 +369,7 @@ func AliasExtensionOrBundleCompleter(prefix string, args []string, con *repl.Con
 }
 
 // PrintArmoryPackages - Prints the armory packages
-func PrintArmoryPackages(aliases []*alias.AliasManifest, exts []*extension.ExtensionManifest, con *repl.Console,
+func PrintArmoryPackages(aliases []*alias.AliasManifest, exts []*extension.ExtensionManifest, con *core.Console,
 	clientConfig ArmoryHTTPConfig) {
 	var rowEntries []table.Row
 	var row table.Row
@@ -442,7 +443,7 @@ func PrintArmoryPackages(aliases []*alias.AliasManifest, exts []*extension.Exten
 	}
 }
 
-func DownloadArmoryCallback(tableModel *tui.TableModel, writer io.Writer, con *repl.Console, clientConfig ArmoryHTTPConfig) func() {
+func DownloadArmoryCallback(tableModel *tui.TableModel, writer io.Writer, con *core.Console, clientConfig ArmoryHTTPConfig) func() {
 	selected := tableModel.GetHighlightedRow()
 	if selected.Data == nil {
 		return func() {
@@ -482,7 +483,7 @@ func DownloadArmoryCallback(tableModel *tui.TableModel, writer io.Writer, con *r
 }
 
 // PrintArmoryBundles - Prints the armory bundles
-func PrintArmoryBundles(bundles []*ArmoryBundle, con *repl.Console) {
+func PrintArmoryBundles(bundles []*ArmoryBundle, con *core.Console) {
 	var rowEntries []table.Row
 	var row table.Row
 

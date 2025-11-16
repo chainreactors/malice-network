@@ -3,12 +3,12 @@ package privilege
 import (
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
 
-func Commands(con *repl.Console) []*cobra.Command {
+func Commands(con *core.Console) []*cobra.Command {
 	runasCmd := &cobra.Command{
 		Use:   "runas --username [username] --domain [domain] --password [password] --program [program] --args [args] --use-profile --use-env --netonly",
 		Short: "Run a program as another user",
@@ -87,7 +87,7 @@ func Commands(con *repl.Console) []*cobra.Command {
 	return []*cobra.Command{runasCmd, privsCmd, getSystemCmd, rev2selfCmd}
 }
 
-func Register(con *repl.Console) {
+func Register(con *core.Console) {
 	RegisterPrivsFunc(con)
 	RegisterGetSystemFunc(con)
 	RegisterRunasFunc(con)

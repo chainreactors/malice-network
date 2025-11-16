@@ -6,14 +6,14 @@ import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/malice-network/client/command/reg"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/tui"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 )
 
-func regExplorerCmd(cmd *cobra.Command, con *repl.Console) error {
+func regExplorerCmd(cmd *cobra.Command, con *core.Console) error {
 	rootPath := cmd.Flags().Arg(0)
 	hive, path := reg.FormatRegPath(rootPath)
 	session := con.GetInteractive()
@@ -77,7 +77,7 @@ func regExplorerCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func regEnterFuc(cmd *cobra.Command, m *tui.TreeModel, con *repl.Console) (tea.Model, tea.Cmd) {
+func regEnterFuc(cmd *cobra.Command, m *tui.TreeModel, con *core.Console) (tea.Model, tea.Cmd) {
 	selectedNode := m.Tree.Children[m.Cursor]
 	if len(selectedNode.Children) > 0 {
 		m.Selected = append(m.Selected, selectedNode.Name)

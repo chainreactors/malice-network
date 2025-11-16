@@ -6,6 +6,7 @@ import (
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"math"
@@ -13,13 +14,12 @@ import (
 
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/pe"
 	"github.com/spf13/cobra"
 )
 
-func ExecuteDLLSpawnCmd(cmd *cobra.Command, con *repl.Console) error {
+func ExecuteDLLSpawnCmd(cmd *cobra.Command, con *core.Console) error {
 	session := con.GetInteractive()
 	sac := common.ParseSacrificeFlags(cmd)
 	entrypoint, _ := cmd.Flags().GetString("entrypoint")
@@ -63,7 +63,7 @@ func ExecuteDLLSpawn(rpc clientrpc.MaliceRPCClient, sess *client.Session, dllPat
 	return task, err
 }
 
-func RegisterDLLSpawnFunc(con *repl.Console) {
+func RegisterDLLSpawnFunc(con *core.Console) {
 
 	con.RegisterImplantFunc(
 		consts.ModuleDllSpawn,

@@ -8,7 +8,7 @@ import (
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/IoM-go/types"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
@@ -19,7 +19,7 @@ import (
 	"time"
 )
 
-func LsCmd(cmd *cobra.Command, con *repl.Console) error {
+func LsCmd(cmd *cobra.Command, con *core.Console) error {
 	path := cmd.Flags().Arg(0)
 	if path == "" {
 		path = "./"
@@ -44,7 +44,7 @@ func Ls(rpc clientrpc.MaliceRPCClient, session *client.Session, path string) (*c
 	return task, err
 }
 
-func RegisterLsFunc(con *repl.Console) {
+func RegisterLsFunc(con *core.Console) {
 	con.RegisterImplantFunc(
 		consts.ModuleLs,
 		Ls,

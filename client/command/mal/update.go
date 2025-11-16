@@ -3,14 +3,14 @@ package mal
 import (
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/assets"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/client/plugin"
-	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/mals/m"
 	"github.com/spf13/cobra"
 	"os"
 )
 
-func UpdateMalCmd(cmd *cobra.Command, con *repl.Console) error {
+func UpdateMalCmd(cmd *cobra.Command, con *core.Console) error {
 	name := cmd.Flags().Arg(0)
 	malHttpConfig := parseMalHTTPConfig(cmd)
 
@@ -34,7 +34,7 @@ func UpdateMalCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func updateMal(con *repl.Console, name string, malHttpConfig m.MalHTTPConfig) error {
+func updateMal(con *core.Console, name string, malHttpConfig m.MalHTTPConfig) error {
 	var plug plugin.Plugin
 	tag, err := m.GithubTagParser(RepoUrl, MalLatest, malHttpConfig)
 	if err != nil {

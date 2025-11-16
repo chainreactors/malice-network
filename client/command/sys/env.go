@@ -7,12 +7,12 @@ import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/spf13/cobra"
 )
 
-func EnvCmd(cmd *cobra.Command, con *repl.Console) error {
+func EnvCmd(cmd *cobra.Command, con *core.Console) error {
 	session := con.GetInteractive()
 	task, err := Env(con.Rpc, session)
 	if err != nil {
@@ -32,7 +32,7 @@ func Env(rpc clientrpc.MaliceRPCClient, session *client.Session) (*clientpb.Task
 	return task, err
 }
 
-func SetEnvCmd(cmd *cobra.Command, con *repl.Console) error {
+func SetEnvCmd(cmd *cobra.Command, con *core.Console) error {
 	envName := cmd.Flags().Arg(0)
 	value := cmd.Flags().Arg(1)
 	if envName == "" || value == "" {
@@ -59,7 +59,7 @@ func SetEnv(rpc clientrpc.MaliceRPCClient, session *client.Session, envName, val
 	return task, err
 }
 
-func UnsetEnvCmd(cmd *cobra.Command, con *repl.Console) error {
+func UnsetEnvCmd(cmd *cobra.Command, con *core.Console) error {
 	envName := cmd.Flags().Arg(0)
 	if envName == "" {
 		return fmt.Errorf("required arguments missing")
@@ -84,7 +84,7 @@ func UnSetEnv(rpc clientrpc.MaliceRPCClient, session *client.Session, envName st
 	return task, err
 }
 
-func RegisterEnvFunc(con *repl.Console) {
+func RegisterEnvFunc(con *core.Console) {
 	con.RegisterImplantFunc(
 		consts.ModuleEnv,
 		Env,

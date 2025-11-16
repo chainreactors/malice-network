@@ -6,7 +6,7 @@ import (
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
@@ -15,7 +15,7 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-func Commands(con *repl.Console) []*cobra.Command {
+func Commands(con *core.Console) []*cobra.Command {
 	listModuleCmd := &cobra.Command{
 		Use:   consts.ModuleListModule,
 		Short: "List modules",
@@ -88,7 +88,7 @@ execute_addon,clear,ps,powershell...
 	}
 }
 
-func Register(con *repl.Console) {
+func Register(con *core.Console) {
 	con.RegisterImplantFunc(
 		consts.ModuleListModule,
 		ListModules,
@@ -191,7 +191,7 @@ func Register(con *repl.Console) {
 		},
 		[]string{"task"})
 
-	con.RegisterServerFunc("check_module", func(con *repl.Console, sess *client.Session, module string) (bool, error) {
+	con.RegisterServerFunc("check_module", func(con *core.Console, sess *client.Session, module string) (bool, error) {
 		session, err := con.UpdateSession(sess.SessionId)
 		if err != nil {
 			return false, err

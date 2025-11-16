@@ -6,13 +6,13 @@ import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/spf13/cobra"
 )
 
 // TaskSchdStartCmd starts a scheduled task by name.
-func TaskSchdStartCmd(cmd *cobra.Command, con *repl.Console) error {
+func TaskSchdStartCmd(cmd *cobra.Command, con *core.Console) error {
 	name := cmd.Flags().Arg(0)
 
 	session := con.GetInteractive()
@@ -37,7 +37,7 @@ func TaskSchdStart(rpc clientrpc.MaliceRPCClient, session *client.Session, name,
 	return rpc.TaskSchdStart(session.Context(), request)
 }
 
-func RegisterTaskSchdStartFunc(con *repl.Console) {
+func RegisterTaskSchdStartFunc(con *core.Console) {
 	con.RegisterImplantFunc(
 		consts.ModuleTaskSchdStart,
 		TaskSchdStart,

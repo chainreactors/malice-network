@@ -5,12 +5,12 @@ import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/spf13/cobra"
 )
 
-func ListDeviceCmd(con *repl.Console) error {
+func ListDeviceCmd(con *core.Console) error {
 
 	session := con.GetInteractive()
 	task, err := ListDevice(con.Rpc, session)
@@ -36,7 +36,7 @@ func ListDevice(rpc clientrpc.MaliceRPCClient, sess *client.Session) (*clientpb.
 	return task, nil
 }
 
-func RecordVideoCmd(cmd *cobra.Command, con *repl.Console) error {
+func RecordVideoCmd(cmd *cobra.Command, con *core.Console) error {
 	deviceName, err := cmd.Flags().GetString("device_name")
 	outputPath, err := cmd.Flags().GetString("output")
 	duration, err := cmd.Flags().GetString("time")
@@ -93,7 +93,7 @@ func RecordScreen(rpc clientrpc.MaliceRPCClient, sess *client.Session, deviceNam
 	return task, nil
 }
 
-func RegisterFFmpegCmdFunc(con *repl.Console) {
+func RegisterFFmpegCmdFunc(con *core.Console) {
 
 	con.RegisterImplantFunc(
 		"list_devices",

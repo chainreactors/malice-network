@@ -7,7 +7,7 @@ import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/malice-network/helper/utils/pe"
@@ -15,7 +15,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func ExecuteBofCmd(cmd *cobra.Command, con *repl.Console) error {
+func ExecuteBofCmd(cmd *cobra.Command, con *core.Console) error {
 	path, args, output, _ := common.ParseBinaryFlags(cmd)
 	task, err := ExecBof(con.Rpc, con.GetInteractive(), path, args, output)
 	if err != nil {
@@ -37,7 +37,7 @@ func ExecBof(rpc clientrpc.MaliceRPCClient, sess *client.Session, bofPath string
 	return task, nil
 }
 
-func RegisterBofFunc(con *repl.Console) {
+func RegisterBofFunc(con *core.Console) {
 	con.RegisterImplantFunc(
 		consts.ModuleExecuteBof,
 		ExecBof,
@@ -76,7 +76,7 @@ func RegisterBofFunc(con *repl.Console) {
 		},
 		[]string{"task"})
 
-	con.RegisterServerFunc("callback_bof", func(con *repl.Console, sess *client.Session) (intermediate.BuiltinCallback, error) {
+	con.RegisterServerFunc("callback_bof", func(con *core.Console, sess *client.Session) (intermediate.BuiltinCallback, error) {
 		return func(content interface{}) (interface{}, error) {
 			resps, ok := content.(pe.BOFResponses)
 			if !ok {

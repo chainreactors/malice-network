@@ -4,12 +4,12 @@ import (
 	"github.com/carapace-sh/carapace"
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
 
-func Commands(con *repl.Console) []*cobra.Command {
+func Commands(con *core.Console) []*cobra.Command {
 	serviceCmd := &cobra.Command{
 		Use:   consts.CommandService,
 		Short: "Perform service operations",
@@ -146,7 +146,7 @@ Control the start type and error control by providing appropriate values.`,
 	return []*cobra.Command{serviceCmd}
 }
 
-func Register(con *repl.Console) {
+func Register(con *core.Console) {
 	RegisterServiceListFunc(con)
 	RegisterServiceCreateFunc(con)
 	RegisterServiceStartFunc(con)

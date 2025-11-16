@@ -132,16 +132,16 @@ func GenMarkdownTreeCustom(cmd *cobra.Command, writer io.Writer, linkHandler fun
 	return nil
 }
 
-func GenGroupHelp(writer io.Writer, con *Console, groupId string, binds ...func(con *Console) []*cobra.Command) {
-	writer.Write([]byte(fmt.Sprintf("## %s\n", groupId)))
-	for _, b := range binds {
-		cmds := b(con)
-		sort.Sort(byName(cmds))
-		for _, c := range cmds {
-			c.SetHelpCommand(nil)
-			_ = GenMarkdownTreeCustom(c, writer, func(s string) string {
-				return "#" + strings.ReplaceAll(s, " ", "-")
-			})
-		}
-	}
-}
+//func GenGroupHelp(writer io.Writer, con *core.Console, groupId string, binds ...func(con *core.Console) []*cobra.Command) {
+//	writer.Write([]byte(fmt.Sprintf("## %s\n", groupId)))
+//	for _, b := range binds {
+//		cmds := b(con)
+//		sort.Sort(byName(cmds))
+//		for _, c := range cmds {
+//			c.SetHelpCommand(nil)
+//			_ = GenMarkdownTreeCustom(c, writer, func(s string) string {
+//				return "#" + strings.ReplaceAll(s, " ", "-")
+//			})
+//		}
+//	}
+//}

@@ -6,14 +6,14 @@ import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/spf13/cobra"
 	"strings"
 )
 
 // WmiQueryCmd performs a WMI query.
-func WmiQueryCmd(cmd *cobra.Command, con *repl.Console) error {
+func WmiQueryCmd(cmd *cobra.Command, con *core.Console) error {
 	namespace, _ := cmd.Flags().GetString("namespace")
 	args, _ := cmd.Flags().GetStringSlice("args")
 
@@ -36,7 +36,7 @@ func WmiQuery(rpc clientrpc.MaliceRPCClient, session *client.Session, namespace 
 }
 
 // WmiExecuteCmd executes a WMI method.
-func WmiExecuteCmd(cmd *cobra.Command, con *repl.Console) error {
+func WmiExecuteCmd(cmd *cobra.Command, con *core.Console) error {
 	namespace, _ := cmd.Flags().GetString("namespace")
 	className, _ := cmd.Flags().GetString("class_name")
 	methodName, _ := cmd.Flags().GetString("method_name")
@@ -65,7 +65,7 @@ func WmiExecute(rpc clientrpc.MaliceRPCClient, session *client.Session, namespac
 	return rpc.WmiExecute(session.Context(), request)
 }
 
-func RegisterWmiFunc(con *repl.Console) {
+func RegisterWmiFunc(con *core.Console) {
 	con.RegisterImplantFunc(
 		consts.ModuleWmiQuery,
 		WmiQuery,

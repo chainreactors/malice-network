@@ -3,10 +3,10 @@ package build
 import (
 	"fmt"
 	"github.com/chainreactors/IoM-go/consts"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/implanttypes"
 	"strings"
 
-	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -18,7 +18,7 @@ func PulseFlagSet(f *pflag.FlagSet) {
 	f.Uint32("beacon_artifact_id", 0, "beacon's artifact_id")
 }
 
-func PulseCmd(cmd *cobra.Command, con *repl.Console) error {
+func PulseCmd(cmd *cobra.Command, con *core.Console) error {
 	//buildConfig, err := prepareBuildConfig(cmd, con, consts.CommandBuildPulse)
 	buildConfig, err := parseBasicConfig(cmd, con)
 	if err != nil {

@@ -3,12 +3,12 @@ package generic
 import (
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/spf13/cobra"
 	"strings"
 )
 
-func BroadcastCmd(cmd *cobra.Command, con *repl.Console) {
+func BroadcastCmd(cmd *cobra.Command, con *core.Console) {
 	msg := cmd.Flags().Args()
 	isNotify, _ := cmd.Flags().GetBool("notify")
 	var err error
@@ -35,7 +35,7 @@ func BroadcastCmd(cmd *cobra.Command, con *repl.Console) {
 	}
 }
 
-func Broadcast(con *repl.Console, event *clientpb.Event) (bool, error) {
+func Broadcast(con *core.Console, event *clientpb.Event) (bool, error) {
 	_, err := con.Rpc.Broadcast(con.Context(), event)
 	if err != nil {
 		return false, err
@@ -43,7 +43,7 @@ func Broadcast(con *repl.Console, event *clientpb.Event) (bool, error) {
 	return true, nil
 }
 
-func Notify(con *repl.Console, event *clientpb.Event) (bool, error) {
+func Notify(con *core.Console, event *clientpb.Event) (bool, error) {
 	_, err := con.Rpc.Notify(con.Context(), event)
 	if err != nil {
 		return false, err

@@ -6,13 +6,13 @@ import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/spf13/cobra"
 )
 
 // RunasCmd executes a program under another user's credentials.
-func RunasCmd(cmd *cobra.Command, con *repl.Console) error {
+func RunasCmd(cmd *cobra.Command, con *core.Console) error {
 	username, _ := cmd.Flags().GetString("username")
 	domain, _ := cmd.Flags().GetString("domain")
 	password, _ := cmd.Flags().GetString("password")
@@ -46,7 +46,7 @@ func Runas(rpc clientrpc.MaliceRPCClient, session *client.Session, username, dom
 	return rpc.Runas(session.Context(), request)
 }
 
-func RegisterRunasFunc(con *repl.Console) {
+func RegisterRunasFunc(con *core.Console) {
 	con.RegisterImplantFunc(
 		consts.ModuleRunas,
 		Runas,

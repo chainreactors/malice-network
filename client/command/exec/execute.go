@@ -7,7 +7,7 @@ import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/kballard/go-shellquote"
@@ -15,7 +15,7 @@ import (
 	"strings"
 )
 
-func RunCmd(cmd *cobra.Command, con *repl.Console) error {
+func RunCmd(cmd *cobra.Command, con *core.Console) error {
 	session := con.GetInteractive()
 	cmdStr := shellquote.Join(cmd.Flags().Args()...)
 	task, err := Execute(con.Rpc, session, cmdStr, false, true)
@@ -26,7 +26,7 @@ func RunCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func ExecuteCmd(cmd *cobra.Command, con *repl.Console) error {
+func ExecuteCmd(cmd *cobra.Command, con *core.Console) error {
 	session := con.GetInteractive()
 	cmdStr := shellquote.Join(cmd.Flags().Args()...)
 	task, err := Execute(con.Rpc, session, cmdStr, false, false)
@@ -54,7 +54,7 @@ func Execute(rpc clientrpc.MaliceRPCClient, sess *client.Session, cmd string, re
 	return task, nil
 }
 
-func ShellCmd(cmd *cobra.Command, con *repl.Console) error {
+func ShellCmd(cmd *cobra.Command, con *core.Console) error {
 	session := con.GetInteractive()
 	//token := ctx.Flags.Bool("token")
 	quiet, _ := cmd.Flags().GetBool("quiet")
@@ -90,7 +90,7 @@ func Shell(rpc clientrpc.MaliceRPCClient, sess *client.Session, cmd string, outp
 	return task, nil
 }
 
-func RegisterExecuteFunc(con *repl.Console) {
+func RegisterExecuteFunc(con *core.Console) {
 	con.RegisterImplantFunc(
 		consts.ModuleExecute,
 		Execute,

@@ -1,22 +1,21 @@
-package repl
+package core
 
 import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
-	"path/filepath"
-	"strings"
-	"time"
-
 	"github.com/carapace-sh/carapace/pkg/x"
 	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
-	"github.com/chainreactors/malice-network/client/core"
+	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/reeflective/console"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
 	"google.golang.org/grpc/metadata"
+	"io"
+	"path/filepath"
+	"strings"
+	"time"
 
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/plugin"
@@ -57,7 +56,7 @@ func NewConsole() (*Console, error) {
 
 type Console struct {
 	//*core.ActiveTarget
-	*core.Server
+	*Server
 	Log        *client.Logger
 	App        *console.Console
 	Profile    *assets.Profile
@@ -76,13 +75,13 @@ func (c *Console) NewConsole() {
 	client := iom.NewMenu(consts.ClientMenu)
 	client.Short = "client commands"
 	client.Prompt().Primary = c.GetPrompt
-	client.AddInterrupt(io.EOF, exitConsole)
+	client.AddInterrupt(io.EOF, repl.ExitConsole)
 	client.AddHistorySourceFile("history", filepath.Join(assets.GetRootAppDir(), "history"))
 
 	implant := iom.NewMenu(consts.ImplantMenu)
 	implant.Short = "Implant commands"
 	implant.Prompt().Primary = c.GetPrompt
-	implant.AddInterrupt(io.EOF, exitImplantMenu) // Ctrl-D
+	implant.AddInterrupt(io.EOF, repl.ExitImplantMenu) // Ctrl-D
 	implant.AddHistorySourceFile("history", filepath.Join(assets.GetRootAppDir(), "implant_history"))
 }
 
@@ -110,7 +109,7 @@ func (c *Console) Start(bindCmds ...BindCmds) error {
 	if c.GetInteractive() == nil {
 		c.App.SwitchMenu(consts.ClientMenu)
 	} else {
-		c.SwitchImplant(c.GetInteractive())
+		c.SwitchImplant(c.GetInteractive(), consts.CalleeCMD)
 	}
 	err := c.App.Start()
 	if err != nil {
@@ -140,7 +139,7 @@ func (c *Console) GetPrompt() string {
 	if session != nil {
 		groupName := session.GroupName
 		sessionID := session.SessionId
-		return NewSessionColor(groupName, sessionID[:8])
+		return tui.NewSessionColor(groupName, sessionID[:8])
 	} else {
 		return tui.AdaptTermColor("IOM")
 	}
@@ -186,11 +185,12 @@ func (c *Console) RefreshCmd(sess *client.Session) int {
 	return count
 }
 
-func (c *Console) SwitchImplant(sess *client.Session) {
+func (c *Console) SwitchImplant(sess *client.Session, callee string) {
 	current := c.GetInteractive()
 	if current != nil && current.SessionId == sess.SessionId {
 		return
 	}
+	sess.Callee = callee
 	c.ActiveTarget.Set(sess)
 	c.App.SwitchMenu(consts.ImplantMenu)
 }
@@ -266,76 +266,4 @@ func (c *Console) AddCommandFuncHelper(cmdName string, funcName string, example 
 			Example: example,
 		})
 	}
-}
-
-// ExecuteCommandWithSession executes a command with optional session context
-// This method is used by the local gRPC server to execute commands
-// When sessionId is provided, it temporarily switches to that session context
-// RunCommand will automatically select the appropriate menu (ClientMenu or ImplantMenu)
-func (c *Console) ExecuteCommandWithSession(command string, sessionId string) (string, error) {
-	if sessionId != "" {
-		session, ok := c.Sessions[sessionId]
-		if !ok || session == nil {
-			return "", fmt.Errorf("session %s not found", sessionId)
-		}
-		c.SwitchImplant(session)
-	}
-
-	return RunCommand(c, command)
-}
-
-// ExecuteLuaWithSession executes a Lua script with optional session context
-// This method is used by the local gRPC server to execute Lua scripts
-// When sessionId is provided, it temporarily switches to that session context
-func (c *Console) ExecuteLuaWithSession(script string, sessionId string) (string, error) {
-	if sessionId != "" {
-		session, ok := c.Sessions[sessionId]
-		if !ok || session == nil {
-			return "", fmt.Errorf("session %s not found", sessionId)
-		}
-		c.SwitchImplant(session)
-	} else if c.GetInteractive() == nil {
-		return "", fmt.Errorf("no active session, please provide session_id or use 'use' command to select a session")
-	}
-	// Execute the Lua script with the current session context
-	return c.ExecuteLuaScript(script)
-}
-
-// ExecuteLuaScript executes a Lua script and returns the result
-func (c *Console) ExecuteLuaScript(script string) (string, error) {
-	// Get shared Lua VM Pool from MalManager
-	vmPool := c.MalManager.GetLuaVMPool()
-	if vmPool == nil {
-		return "", fmt.Errorf("Lua VM Pool not initialized")
-	}
-
-	// Acquire VM from pool
-	wrapper, err := vmPool.AcquireVM()
-	if err != nil {
-		return "", fmt.Errorf("failed to acquire VM: %w", err)
-	}
-	defer vmPool.ReleaseVM(wrapper)
-
-	// Execute script
-	if err := wrapper.DoString(script); err != nil {
-		return "", fmt.Errorf("failed to execute Lua script: %w", err)
-	}
-
-	// Collect return values
-	var results []string
-	top := wrapper.GetTop()
-	for i := 1; i <= top; i++ {
-		val := wrapper.Get(i)
-		goVal := mals.ConvertLuaValueToGo(val)
-		results = append(results, fmt.Sprintf("%v", goVal))
-	}
-
-	// Clean up stack
-	wrapper.Pop(top)
-
-	if len(results) == 0 {
-		return "Script executed successfully (no return value)", nil
-	}
-
-	return strings.Join(results, "\n"), nil
 }

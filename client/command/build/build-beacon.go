@@ -6,7 +6,7 @@ import (
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/implanttypes"
 	"github.com/corpix/uarand"
 	"strings"
@@ -90,7 +90,7 @@ func BeaconFlagSet(f *pflag.FlagSet) {
 	common.SetFlagSetGroup(f, "basic")
 }
 
-func BeaconCmd(cmd *cobra.Command, con *repl.Console) error {
+func BeaconCmd(cmd *cobra.Command, con *core.Console) error {
 	buildConfig, err := prepareBuildConfig(cmd, con, consts.CommandBuildBeacon)
 	if err != nil {
 		return err
@@ -100,7 +100,7 @@ func BeaconCmd(cmd *cobra.Command, con *repl.Console) error {
 }
 
 // prepareBuildConfig 准备标准构建配置
-func prepareBuildConfig(cmd *cobra.Command, con *repl.Console, buildType string) (*clientpb.BuildConfig, error) {
+func prepareBuildConfig(cmd *cobra.Command, con *core.Console, buildType string) (*clientpb.BuildConfig, error) {
 	var err error
 	profileName, _ := cmd.Flags().GetString("profile")
 	target, _ := cmd.Flags().GetString("target")

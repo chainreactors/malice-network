@@ -6,13 +6,13 @@ import (
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/spf13/cobra"
 )
 
 // ServiceStartCmd starts an existing service by its name.
-func ServiceStartCmd(cmd *cobra.Command, con *repl.Console) error {
+func ServiceStartCmd(cmd *cobra.Command, con *core.Console) error {
 	name := cmd.Flags().Arg(0)
 
 	session := con.GetInteractive()
@@ -38,7 +38,7 @@ func ServiceStart(rpc clientrpc.MaliceRPCClient, session *client.Session, name s
 }
 
 // RegisterServiceStartFunc 注册 ServiceStartCmd 到 Console
-func RegisterServiceStartFunc(con *repl.Console) {
+func RegisterServiceStartFunc(con *core.Console) {
 	con.RegisterImplantFunc(
 		consts.ModuleServiceStart,
 		ServiceStart,

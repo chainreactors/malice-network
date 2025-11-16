@@ -4,14 +4,13 @@ import (
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/client/core"
-	"github.com/chainreactors/malice-network/client/repl"
 	"github.com/chainreactors/tui"
 	"github.com/evertras/bubble-table/table"
 	"github.com/spf13/cobra"
 	"strconv"
 )
 
-func GetTasksCmd(cmd *cobra.Command, con *repl.Console) error {
+func GetTasksCmd(cmd *cobra.Command, con *core.Console) error {
 	err := con.UpdateTasks(con.GetInteractive())
 	if err != nil {
 		return err
@@ -26,7 +25,7 @@ func GetTasksCmd(cmd *cobra.Command, con *repl.Console) error {
 	return nil
 }
 
-func printTasks(tasks []*clientpb.Task, con *repl.Console, isAll bool) {
+func printTasks(tasks []*clientpb.Task, con *core.Console, isAll bool) {
 	var rowEntries []table.Row
 	var row table.Row
 	tableModel := tui.NewTable([]table.Column{
@@ -67,7 +66,7 @@ func printTasks(tasks []*clientpb.Task, con *repl.Console, isAll bool) {
 }
 
 // fetchTaskByIDs 根据逗号分隔的任务ID字符串获取任务详情
-func fetchTaskByID(idStr string, con *repl.Console) (*clientpb.TaskContexts, error) {
+func fetchTaskByID(idStr string, con *core.Console) (*clientpb.TaskContexts, error) {
 
 	taskId, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
@@ -83,7 +82,7 @@ func fetchTaskByID(idStr string, con *repl.Console) (*clientpb.TaskContexts, err
 	return tasksContext, err
 }
 
-func TaskFetchCmd(cmd *cobra.Command, con *repl.Console) error {
+func TaskFetchCmd(cmd *cobra.Command, con *core.Console) error {
 	// 检查是否使用 --ids 参数
 	taskId := cmd.Flags().Arg(0)
 	tasksContext, err := fetchTaskByID(taskId, con)

@@ -9,7 +9,7 @@ import (
 	"github.com/chainreactors/IoM-go/proto/services/clientrpc"
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/client/command/common"
-	"github.com/chainreactors/malice-network/client/repl"
+	"github.com/chainreactors/malice-network/client/core"
 	"github.com/chainreactors/malice-network/helper/utils/fileutils"
 	"github.com/chainreactors/malice-network/helper/utils/output"
 	"github.com/chainreactors/malice-network/helper/utils/pe"
@@ -20,7 +20,7 @@ import (
 )
 
 // ExecuteShellcodeCmd - Execute shellcode in-memory
-func ExecuteShellcodeCmd(cmd *cobra.Command, con *repl.Console) error {
+func ExecuteShellcodeCmd(cmd *cobra.Command, con *core.Console) error {
 	session := con.GetInteractive()
 	path, args, output, timeout, arch, process := common.ParseFullBinaryFlags(cmd)
 	task, err := ExecShellcode(con.Rpc, session, path, args, output, timeout, arch, process, common.ParseSacrificeFlags(cmd))
@@ -58,7 +58,7 @@ func ExecShellcode(rpc clientrpc.MaliceRPCClient, sess *client.Session, shellcod
 	return task, nil
 }
 
-func InlineShellcodeCmd(cmd *cobra.Command, con *repl.Console) error {
+func InlineShellcodeCmd(cmd *cobra.Command, con *core.Console) error {
 	session := con.GetInteractive()
 	path, args, output, timeout, arch, process := common.ParseFullBinaryFlags(cmd)
 	task, err := InlineShellcode(con.Rpc, session, path, args, output, timeout, arch, process)
@@ -94,7 +94,7 @@ func InlineShellcode(rpc clientrpc.MaliceRPCClient, sess *client.Session, path s
 	return shellcodeTask, err
 }
 
-func RegisterShellcodeFunc(con *repl.Console) {
+func RegisterShellcodeFunc(con *core.Console) {
 
 	con.RegisterImplantFunc(
 		consts.ModuleExecuteShellcode,
