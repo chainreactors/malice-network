@@ -4,6 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"path/filepath"
+	"strings"
+	"time"
+
 	"github.com/carapace-sh/carapace/pkg/x"
 	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
@@ -12,10 +17,6 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
 	"google.golang.org/grpc/metadata"
-	"io"
-	"path/filepath"
-	"strings"
-	"time"
 
 	"github.com/chainreactors/malice-network/client/assets"
 	"github.com/chainreactors/malice-network/client/plugin"
@@ -186,7 +187,8 @@ func (c *Console) RefreshCmd(sess *client.Session) int {
 }
 
 func (c *Console) SwitchImplant(sess *client.Session) {
-	if c.GetInteractive().SessionId == sess.SessionId {
+	current := c.GetInteractive()
+	if current != nil && current.SessionId == sess.SessionId {
 		return
 	}
 	c.ActiveTarget.Set(sess)
@@ -292,8 +294,9 @@ func (c *Console) ExecuteLuaWithSession(script string, sessionId string) (string
 			return "", fmt.Errorf("session %s not found", sessionId)
 		}
 		c.SwitchImplant(session)
+	} else if c.GetInteractive() == nil {
+		return "", fmt.Errorf("no active session, please provide session_id or use 'use' command to select a session")
 	}
-
 	// Execute the Lua script with the current session context
 	return c.ExecuteLuaScript(script)
 }
