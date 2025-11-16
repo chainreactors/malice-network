@@ -69,20 +69,22 @@ func (t *Tasks) GetNotFinish() []*clientpb.Task {
 }
 
 type Task struct {
-	Id        uint32
-	Type      string
-	SessionId string
-	Callee    string
-	Cur       int
-	Total     int
-	Callback  func()
-	Ctx       context.Context
-	Cancel    context.CancelFunc
-	Session   *Session
-	DoneCh    chan bool
-	Closed    bool
-	Deadline  time.Time
-	CallBy    string
+	Id         uint32
+	Type       string
+	SessionId  string
+	Callee     string
+	Cur        int
+	Total      int
+	Callback   func()
+	Ctx        context.Context
+	Cancel     context.CancelFunc
+	Session    *Session
+	DoneCh     chan bool
+	Closed     bool
+	Deadline   time.Time
+	CallBy     string
+	CreatedAt  time.Time
+	FinishedAt time.Time
 }
 
 func (t *Task) TaskID() string {
@@ -91,26 +93,30 @@ func (t *Task) TaskID() string {
 
 func (t *Task) ToProtobuf() *clientpb.Task {
 	task := &clientpb.Task{
-		TaskId:    t.Id,
-		SessionId: t.SessionId,
-		Type:      t.Type,
-		Cur:       int32(t.Cur),
-		Total:     int32(t.Total),
-		Timeout:   t.Timeout(),
-		Finished:  t.Finished(),
-		Callby:    t.CallBy,
+		TaskId:     t.Id,
+		SessionId:  t.SessionId,
+		Type:       t.Type,
+		Cur:        int32(t.Cur),
+		Total:      int32(t.Total),
+		Timeout:    t.Timeout(),
+		Finished:   t.Finished(),
+		Callby:     t.CallBy,
+		CreatedAt:  t.CreatedAt.Unix(),
+		FinishedAt: t.FinishedAt.Unix(),
 	}
 	return task
 }
 
 func FromTaskProtobuf(task *clientpb.Task) *Task {
 	return &Task{
-		Id:        task.TaskId,
-		Type:      task.Type,
-		SessionId: task.SessionId,
-		Cur:       int(task.Cur),
-		Total:     int(task.Total),
-		CallBy:    task.Callby,
+		Id:         task.TaskId,
+		Type:       task.Type,
+		SessionId:  task.SessionId,
+		Cur:        int(task.Cur),
+		Total:      int(task.Total),
+		CallBy:     task.Callby,
+		CreatedAt:  time.Unix(task.CreatedAt, 0),
+		FinishedAt: time.Unix(task.FinishedAt, 0),
 	}
 }
 

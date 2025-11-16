@@ -333,7 +333,8 @@ func (s *Session) isAlived() bool {
 	} else {
 		parsedExpr, err := cronexpr.Parse(s.Expression)
 		if err != nil {
-			panic(err)
+			logs.Errorf("exp parse error %s", err)
+			return true
 		}
 		nextTime := parsedExpr.Next(time.Now())
 		remainingSeconds := int64(nextTime.Sub(time.Now()).Seconds())
@@ -415,7 +416,7 @@ func (s *Session) ToModel() *models.Session {
 		Type:        s.Type,
 		PipelineID:  s.PipelineID,
 		ListenerID:  s.ListenerID,
-		IsAlive:     true,
+		IsAlive:     s.isAlived(),
 		LastCheckin: s.LastCheckin,
 		DataString:  s.Marshal(),
 	}

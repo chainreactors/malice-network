@@ -13,9 +13,10 @@ import (
 type Context struct {
 	ID         uuid.UUID `gorm:"primaryKey;->;<-:create;type:uuid"`
 	CreatedAt  time.Time `gorm:"->;<-:create"`
-	SessionID  string    `gorm:"type:string;index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
-	PipelineID string    `gorm:"type:string;index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
-	TaskID     string    `gorm:"type:string;index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
+	UpdatedAt  time.Time
+	SessionID  string `gorm:"type:string;index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
+	PipelineID string `gorm:"type:string;index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
+	TaskID     string `gorm:"type:string;index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
 	Type       string
 	Nonce      string
 	Value      []byte
@@ -51,6 +52,7 @@ func (c *Context) ToProtobuf() *clientpb.Context {
 		Type:      c.Type,
 		Value:     c.Value,
 		CreatedAt: c.CreatedAt.Unix(),
+		UpdatedAt: c.UpdatedAt.Unix(),
 	}
 }
 

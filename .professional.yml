@@ -8,12 +8,12 @@ git:
 before:
   hooks:
     - go mod tidy
-    - curl -L https://github.com/EgeBalci/sgn/releases/download/v2.0.1/sgn_linux_amd64_2.0.1.zip -o sgn_linux.zip
-    - unzip -o sgn_linux.zip -d server/assets/linux
-    - curl -L https://github.com/EgeBalci/sgn/releases/download/v2.0.1/sgn_windows_amd64_2.0.1.zip -o sgn_windows.zip
-    - unzip -o sgn_windows.zip -d server/assets/windows
-    - cp helper/consts/professional/malefic-mutant server/assets/linux/
-    - cp helper/consts/professional/malefic-mutant.exe server/assets/windows/
+#    - curl -L https://github.com/EgeBalci/sgn/releases/download/v2.0.1/sgn_linux_amd64_2.0.1.zip -o sgn_linux.zip
+#    - unzip -o sgn_linux.zip -d server/assets/linux
+#    - curl -L https://github.com/EgeBalci/sgn/releases/download/v2.0.1/sgn_windows_amd64_2.0.1.zip -o sgn_windows.zip
+#    - unzip -o sgn_windows.zip -d server/assets/windows
+#    - cp helper/consts/professional/malefic-mutant server/assets/linux/
+#    - cp helper/consts/professional/malefic-mutant.exe server/assets/windows/
 
 
 builds:
@@ -24,7 +24,7 @@ builds:
     flags:
       - "-tags=professional"
     goos:
-      - windows
+#      - windows
       - linux
       - darwin
     goarch:
@@ -48,7 +48,7 @@ builds:
     flags:
       - "-tags=professional"
     goos:
-      - windows
+#      - windows
       - linux
 #      - darwin
     goarch:
@@ -72,7 +72,7 @@ upx:
     goos: [linux, windows]
     goarch:
       - amd64
-      - "386"
+#      - "386"
 
 archives:
   -
