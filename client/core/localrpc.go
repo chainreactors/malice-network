@@ -83,7 +83,7 @@ func (s *LocalRPCServer) GetHistory(ctx context.Context, req *localrpc.GetHistor
 
 	client.Log.Debugf("LocalRPC: History retrieved successfully\n")
 	return &localrpc.GetHistoryResponse{
-		Output:  output,
+		Output:  client.RemoveANSI(output),
 		Error:   "",
 		Success: true,
 	}, nil

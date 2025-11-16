@@ -52,7 +52,7 @@ func TestLocalRPCExecuteCommand(t *testing.T) {
 		sessionID := "08d6c05a21512a79a1dfeb9d2a8f262f" // 从上一个测试的输出中获取
 
 		req := &localrpc.ExecuteCommandRequest{
-			Command:   "whoami --wait",
+			Command:   "wifi enum --wait",
 			SessionId: sessionID,
 		}
 
@@ -68,7 +68,7 @@ func TestLocalRPCExecuteCommand(t *testing.T) {
 			t.Fatalf("Command failed: %s", resp.Error)
 		}
 
-		t.Logf("Whoami output:\n%s", resp.Output)
+		t.Logf("output:\n%s", resp.Output)
 	})
 }
 

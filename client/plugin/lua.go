@@ -299,7 +299,10 @@ func (plug *LuaPlugin) RegisterLuaFunction() {
 				"mal": plug.Name,
 			},
 			Run: func(cmd *cobra.Command, args []string) {
+				wait, _ := cmd.Flags().GetBool("wait")
+				done := make(chan struct{})
 				go func() {
+					defer close(done)
 					wrapper, err := plug.Acquire()
 					if err != nil {
 						logs.Log.Errorf("Failed to acquire VM: %v\n", err)
@@ -377,6 +380,10 @@ func (plug *LuaPlugin) RegisterLuaFunction() {
 					}
 					wrapper.Pop(resultCount)
 				}()
+				if !wait {
+					return
+				}
+				<-done
 			},
 		}
 

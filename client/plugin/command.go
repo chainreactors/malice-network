@@ -75,6 +75,8 @@ func (cs Commands) SetCommand(name string, cmd *cobra.Command) {
 
 		// 如果有父命令，将当前命令添加为父命令的子命令
 		if parentCmd != nil && parentCmd.Command != nil {
+			// 设置父子关系
+			currentCmd.Parent = parentCmd
 			// 检查是否已经添加过，避免重复添加
 			found := false
 			for _, existingCmd := range parentCmd.Command.Commands() {
