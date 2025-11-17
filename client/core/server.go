@@ -162,7 +162,7 @@ func HandlerTask(sess *client.Session, ctx *clientpb.TaskContext, message []byte
 		return
 	}
 
-	if resp != "" && (callee == consts.CalleeCMD || callee == consts.CalleeMal || callee == consts.CalleeRPC) {
+	if resp != "" && (callee == consts.CalleeCMD || callee == consts.CalleeRPC) {
 		tui.Down(1)
 		log.Console(resp + "\n")
 	}
