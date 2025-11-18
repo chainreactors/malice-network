@@ -59,21 +59,29 @@ func initState(con *Console, conn *grpc.ClientConn, config *mtls.ClientConfig) e
 // MCP 默认关闭，需要通过 --mcp 参数或配置文件中设置 mcp_enable: true 来启用
 func (con *Console) InitMCPServer() {
 	go func() {
-		// 加载配置
-		setting, err := assets.GetSetting()
-		if err != nil {
-			logs.Log.Errorf("Failed to get setting: %v\n", err)
-			return
-		}
+		var addr string
 
-		// 检查 MCP 是否启用
-		if !setting.McpEnable {
-			logs.Log.Debugf("MCP server is disabled (use --mcp <addr> to enable)\n")
-			return
+		// 优先使用命令行参数
+		if con.MCPAddr != "" {
+			addr = con.MCPAddr
+		} else {
+			// 加载配置
+			setting, err := assets.GetSetting()
+			if err != nil {
+				logs.Log.Errorf("Failed to get setting: %v\n", err)
+				return
+			}
+
+			// 检查 MCP 是否启用
+			if !setting.McpEnable {
+				logs.Log.Debugf("MCP server is disabled (use --mcp <addr> to enable)\n")
+				return
+			}
+			addr = setting.McpAddr
 		}
 
 		// 解析地址
-		host, port, err := parseAddr(setting.McpAddr)
+		host, port, err := parseAddr(addr)
 		if err != nil {
 			logs.Log.Errorf("Failed to parse MCP address: %v\n", err)
 			return
@@ -96,28 +104,37 @@ func (con *Console) InitMCPServer() {
 // Local RPC 默认关闭，需要通过 --rpc 参数或配置文件中设置 localrpc_enable: true 来启用
 func (con *Console) InitLocalRPCServer() {
 	go func() {
-		// 加载配置
-		setting, err := assets.GetSetting()
-		if err != nil {
-			logs.Log.Errorf("Failed to get setting: %v\n", err)
-			return
-		}
+		var addr string
 
-		// 检查 Local RPC 是否启用
-		if !setting.LocalRPCEnable {
-			logs.Log.Debugf("Local RPC server is disabled (use --rpc <addr> to enable)\n")
-			return
+		// 优先使用命令行参数
+		if con.RPCAddr != "" {
+			addr = con.RPCAddr
+		} else {
+			// 加载配置
+			setting, err := assets.GetSetting()
+			if err != nil {
+				logs.Log.Errorf("Failed to get setting: %v\n", err)
+				return
+			}
+
+			// 检查 Local RPC 是否启用
+			if !setting.LocalRPCEnable {
+				logs.Log.Debugf("Local RPC server is disabled (use --rpc <addr> to enable)\n")
+				return
+			}
+			addr = setting.LocalRPCAddr
 		}
 
 		// 启动 Local RPC 服务器
-		con.LocalRPC, err = NewLocalRPC(con, setting.LocalRPCAddr)
+		var err error
+		con.LocalRPC, err = NewLocalRPC(con, addr)
 		if err != nil {
 			logs.Log.Errorf("Failed to start Local RPC server: %v\n", err)
 			return
 		}
 
 		if con.LocalRPC != nil {
-			logs.Log.Importantf("Local RPC server started at %s\n", setting.LocalRPCAddr)
+			logs.Log.Importantf("Local RPC server started at %s\n", addr)
 		}
 	}()
 }

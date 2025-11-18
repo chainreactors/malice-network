@@ -65,6 +65,8 @@ type Console struct {
 	LocalRPC   *LocalRPC
 	Helpers    map[string]*cobra.Command
 	MalManager *plugin.MalManager
+	MCPAddr    string
+	RPCAddr    string
 }
 
 func (c *Console) NewConsole() {
