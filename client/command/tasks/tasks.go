@@ -89,13 +89,14 @@ func TaskFetchCmd(cmd *cobra.Command, con *core.Console) error {
 	if err != nil {
 		return err
 	}
+	sess := con.GetInteractive()
 	for _, spite := range tasksContext.Spites {
 		eachTask := &clientpb.TaskContext{
 			Task:    tasksContext.Task,
 			Session: tasksContext.Session,
 			Spite:   spite,
 		}
-		core.HandlerTask(con.GetInteractive(), eachTask, nil, consts.CalleeCMD, true)
+		core.HandlerTask(sess, sess.Log, eachTask, nil, consts.CalleeCMD, true)
 	}
 
 	return nil

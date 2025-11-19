@@ -147,7 +147,7 @@ func PrintSessions(sessions map[string]*client.Session, con *core.Console, isAll
 				client.Log.Errorf("Failed to get session history: %v", err)
 			} else {
 				for _, context := range contexts.Contexts {
-					core.HandlerTask(sess, context, []byte{}, consts.CalleeCMD, true)
+					core.HandlerTask(sess, sess.Log, context, []byte{}, consts.CalleeCMD, true)
 				}
 			}
 		}

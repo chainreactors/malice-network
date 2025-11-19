@@ -261,7 +261,6 @@
             word-wrap: break-word;
         }
 
-        /* JSON语法高亮 - GitHub Dark主题 */
         .json-key {
             color: #79c0ff;
         }
@@ -340,8 +339,7 @@
                 border-bottom: 1px solid #30363d;
             }
         }
-
-        /* 滚动条样式 */
+        
         ::-webkit-scrollbar {
             width: 8px;
             height: 8px;
@@ -439,7 +437,7 @@
 </div>
 
 <script>
-    // JSON语法高亮函数
+    
     function syntaxHighlight(json) {
         json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
@@ -459,7 +457,7 @@
         });
     }
 
-    // 切换审计详情显示
+    
     function toggleAudit(button, index) {
         const auditContent = document.getElementById('audit-' + index);
         const isExpanded = auditContent.classList.contains('expanded');
@@ -475,21 +473,21 @@
         }
     }
 
-    // 切换标签页
+    
     function switchTab(index, tabName) {
-        // 隐藏所有标签内容
+        
         const tabContents = document.querySelectorAll(`#audit-${index} .tab-content`);
         const tabButtons = document.querySelectorAll(`#audit-${index} .tab-btn`);
 
         tabContents.forEach(content => content.classList.remove('active'));
         tabButtons.forEach(btn => btn.classList.remove('active'));
 
-        // 显示选中的标签
+        
         document.getElementById(`${tabName}-${index}`).classList.add('active');
         event.target.classList.add('active');
     }
 
-    // 复制内容到剪贴板
+    
     function copyAudit(index) {
         const auditContent = document.getElementById('audit-' + index);
         const text = auditContent.textContent;
@@ -507,7 +505,7 @@
         });
     }
 
-    // 搜索功能
+    
     function setupSearch() {
         const searchInput = document.getElementById('searchInput');
         const auditCards = document.querySelectorAll('.audit-card');
@@ -540,19 +538,19 @@
         });
     }
 
-    // 页面加载完成后初始化
+    
     document.addEventListener('DOMContentLoaded', function() {
-        // 应用JSON语法高亮
+        
         const jsonContents = document.querySelectorAll('.json-content');
         jsonContents.forEach(function(content) {
             const highlighted = syntaxHighlight(content.innerHTML);
             content.innerHTML = highlighted;
         });
 
-        // 设置搜索功能
+        
         setupSearch();
 
-        // 键盘快捷键
+        
         document.addEventListener('keydown', function(e) {
             if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
                 e.preventDefault();

@@ -8,13 +8,12 @@ git:
 before:
   hooks:
     - go mod tidy
-#    - curl -L https://github.com/EgeBalci/sgn/releases/download/v2.0.1/sgn_linux_amd64_2.0.1.zip -o sgn_linux.zip
-#    - unzip -o sgn_linux.zip -d server/assets/linux
-#    - curl -L https://github.com/EgeBalci/sgn/releases/download/v2.0.1/sgn_windows_amd64_2.0.1.zip -o sgn_windows.zip
-#    - unzip -o sgn_windows.zip -d server/assets/windows
-#    - cp helper/consts/professional/malefic-mutant server/assets/linux/
-#    - cp helper/consts/professional/malefic-mutant.exe server/assets/windows/
-
+    - curl -L https://github.com/EgeBalci/sgn/releases/download/v2.0.1/sgn_linux_amd64_2.0.1.zip -o sgn_linux.zip
+    - unzip -o sgn_linux.zip -d server/assets/linux
+    - curl -L https://github.com/EgeBalci/sgn/releases/download/v2.0.1/sgn_windows_amd64_2.0.1.zip -o sgn_windows.zip
+    - unzip -o sgn_windows.zip -d server/assets/windows
+    - cp helper/consts/professional/malefic-mutant server/assets/linux/
+    - cp helper/consts/professional/malefic-mutant.exe server/assets/windows/
 
 builds:
   -
@@ -24,7 +23,7 @@ builds:
     flags:
       - "-tags=professional"
     goos:
-#      - windows
+      - windows
       - linux
       - darwin
     goarch:
@@ -33,7 +32,7 @@ builds:
     ldflags: |
       -s -w
       -X github.com/chainreactors/malice-network/server/rpc.ver={{.Env.VERSION}}
-      -X github.com/chainreactors/malice-network/server/rpc.commit={{.Env.COMMIT}}.{{.Env.LICENSEID}}
+      -X github.com/chainreactors/malice-network/server/rpc.commit={{.Env.COMMIT}}.{{.Env.LICENSE_ID}}
     asmflags:
       - all=-trimpath={{.Env.GOPATH}}
     gcflags:
@@ -48,9 +47,9 @@ builds:
     flags:
       - "-tags=professional"
     goos:
-#      - windows
+      - windows
       - linux
-#      - darwin
+      - darwin
     goarch:
       - amd64
       - arm64
@@ -72,7 +71,7 @@ upx:
     goos: [linux, windows]
     goarch:
       - amd64
-#      - "386"
+      - "386"
 
 archives:
   -

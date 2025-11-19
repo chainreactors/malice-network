@@ -2,6 +2,7 @@ package taskschd
 
 import (
 	"fmt"
+
 	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
@@ -57,6 +58,7 @@ func RegisterTaskSchdQueryFunc(con *core.Console) {
 		[]string{
 			"session: special session",
 			"name: name of the scheduled task",
+			"task_folder: task folder",
 		},
 		[]string{"task"})
 }

@@ -2,6 +2,7 @@ package pivot
 
 import (
 	"fmt"
+
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/client/command/common"
@@ -40,7 +41,7 @@ func Commands(con *core.Console) []*cobra.Command {
 		},
 		Example: `Forward local port to remote target:
 ~~~
-forward pipeline1 --port 8080 --target 192.168.1.1:80
+portfwd rem_default --port 8080 --target 192.168.1.1:80
 ~~~`,
 	}
 	common.BindArgCompletions(forwardCmd, nil, common.RemPipelineCompleter(con))
@@ -61,7 +62,7 @@ forward pipeline1 --port 8080 --target 192.168.1.1:80
 		},
 		Example: `Create reverse port forward:
 ~~~
-reverse pipeline1 --port 12345
+reverse rem_default --port 12345
 ~~~`,
 	}
 	common.BindArgCompletions(reverseCmd, nil, common.RemPipelineCompleter(con))
@@ -80,7 +81,7 @@ reverse pipeline1 --port 12345
 		},
 		Example: `Create a proxy server:
 ~~~
-proxy pipeline1 --port 8080
+proxy rem_default --port 8080
 ~~~`,
 	}
 	common.BindArgCompletions(proxyCmd, nil, common.RemPipelineCompleter(con))
@@ -99,7 +100,7 @@ proxy pipeline1 --port 8080
 		},
 		Example: `Create remote port forward:
 ~~~
-rportforward pipeline1 --port 8080 --remote 192.168.1.1:80
+rportfwd rem_default --port 8080 --remote 192.168.1.1:80
 ~~~`,
 	}
 

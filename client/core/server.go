@@ -72,7 +72,7 @@ func (s *Server) triggerTaskDone(event *clientpb.Event) {
 		return
 	}
 	taskContext := wrapToTaskContext(event)
-	HandlerTask(sess, taskContext, event.Message, event.Callee, false)
+	HandlerTask(sess, log, taskContext, event.Message, event.Callee, false)
 
 	if callback, ok := s.DoneCallbacks.Load(fmt.Sprintf("%s-%d", task.SessionId, task.TaskId)); ok {
 		callback.(client.TaskCallback)(taskContext)
@@ -94,7 +94,7 @@ func (s *Server) triggerTaskFinish(event *clientpb.Event) {
 		return
 	}
 	taskContext := wrapToTaskContext(event)
-	HandlerTask(sess, taskContext, event.Message, event.Callee, true)
+	HandlerTask(sess, log, taskContext, event.Message, event.Callee, true)
 
 	callbackId := fmt.Sprintf("%s-%d", task.SessionId, task.TaskId)
 	if callback, ok := s.FinishCallbacks.Load(callbackId); ok {
@@ -104,10 +104,9 @@ func (s *Server) triggerTaskFinish(event *clientpb.Event) {
 	}
 }
 
-func HandlerTask(sess *client.Session, ctx *clientpb.TaskContext, message []byte, callee string, isFinish bool) {
+func HandlerTask(sess *client.Session, log *client.Logger, ctx *clientpb.TaskContext, message []byte, callee string, isFinish bool) {
 	sess.Locker.Lock()
 	defer sess.Locker.Unlock()
-	log := sess.Log
 	var callback intermediate.ImplantCallback
 	fn, ok := intermediate.InternalFunctions[ctx.Task.Type]
 	if !ok {
@@ -163,8 +162,10 @@ func HandlerTask(sess *client.Session, ctx *clientpb.TaskContext, message []byte
 	}
 
 	if resp != "" && (callee == consts.CalleeCMD || callee == consts.CalleeMal || callee == consts.CalleeRPC) {
-		tui.Down(1)
-		log.Console(resp + "\n")
+		if log != client.MuteLog {
+			tui.Down(1)
+			log.Console(resp + "\n")
+		}
 	}
 }
 
@@ -275,9 +276,11 @@ func (s *Server) handlerTask(event *clientpb.Event) {
 	case consts.CtrlTaskFinish:
 		s.triggerTaskFinish(event)
 	case consts.CtrlTaskCancel:
-		client.Log.Importantf("[%s.%d] task canceled\n", event.Task.SessionId, event.Task.TaskId)
+		log := s.ObserverLog(event.Task.SessionId)
+		log.Importantf("[%s.%d] task canceled\n", event.Task.SessionId, event.Task.TaskId)
 	case consts.CtrlTaskError:
-		client.Log.Errorf("[%s.%d] %s\n", event.Task.SessionId, event.Task.TaskId, event.Err)
+		log := s.ObserverLog(event.Task.SessionId)
+		log.Errorf("[%s.%d] %s\n", event.Task.SessionId, event.Task.TaskId, event.Err)
 	}
 }
 
@@ -290,7 +293,8 @@ func (s *Server) handlerSession(event *clientpb.Event) {
 	case consts.CtrlSessionUpdate:
 		s.AddSession(event.Session)
 	case consts.CtrlSessionTask:
-		client.Log.Info(event.Formatted + "\n")
+		log := s.ObserverLog(sid)
+		log.Info(event.Formatted + "\n")
 	case consts.CtrlSessionError:
 		log := s.ObserverLog(sid)
 		log.Error(event.Formatted + "\n")

@@ -30,7 +30,7 @@ func historyCmd(cmd *cobra.Command, con *core.Console) error {
 		return err
 	}
 	for _, context := range contexts.Contexts {
-		core.HandlerTask(sess, context, []byte{}, consts.CalleeCMD, true)
+		core.HandlerTask(sess, sess.Log, context, []byte{}, consts.CalleeCMD, true)
 	}
 	return nil
 }
@@ -55,6 +55,6 @@ func GetHistoryWithTaskID(con *core.Console, taskID uint32, sessionId string) (s
 		return "", err
 	}
 
-	core.HandlerTask(session, taskCtx, []byte{}, consts.CalleeCMD, true)
+	core.HandlerTask(session, session.Log, taskCtx, []byte{}, consts.CalleeCMD, true)
 	return "task rendered", nil
 }

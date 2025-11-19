@@ -101,7 +101,7 @@ func makeRunners(implantCmd *cobra.Command, con *core.Console) (pre, post func(c
 				if err != nil {
 					return err
 				}
-				core.HandlerTask(sess, context, nil, consts.CalleeCMD, true)
+				core.HandlerTask(sess, sess.Log, context, nil, consts.CalleeCMD, true)
 			} else {
 				con.Log.Console(tui.RendStructDefault(sess.LastTask))
 			}

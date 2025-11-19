@@ -2,11 +2,12 @@ package saas
 
 import (
 	"fmt"
-	"github.com/chainreactors/tui"
 	"io"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/chainreactors/tui"
 
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
@@ -361,6 +362,6 @@ func CheckAndDownloadArtifact(statusPath, downloadPath, token string, builder *m
 }
 
 func SecurityAuthAlert() {
-	logs.Log.Info(tui.RedFg.Render("使用本SaaS服务即表示您已阅读并同意《用户协议》。详情请访问：https://wiki.chainreactors.red/IoM/#4"))
+	//logs.Log.Info(tui.RedFg.Render("使用本SaaS服务即表示您已阅读并同意《用户协议》。详情请访问：https://wiki.chainreactors.red/IoM/#4"))
 	logs.Log.Info(tui.RedFg.Render("By using this SaaS service, you acknowledge that you have read and agreed to our User Agreement. For details, please visit: https://wiki.chainreactors.red/IoM/#4"))
 }
