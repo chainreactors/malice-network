@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
@@ -34,7 +35,7 @@ func (rpc *Server) PipeRead(ctx context.Context, req *implantpb.PipeRequest) (*c
 	if err != nil {
 		return nil, err
 	}
-	go greq.HandlerResponse(ch, types.MsgResponse, ContextCallback(greq.Task, ctx))
+	go greq.HandlerResponse(ch, types.MsgBinaryResponse, ContextCallback(greq.Task, ctx))
 	return greq.Task.ToProtobuf(), nil
 }
 

@@ -72,6 +72,14 @@ func Commands(con *core.Console) []*cobra.Command {
 		},
 	}
 
+	mediaCmd := &cobra.Command{
+		Use:   "media",
+		Short: "List media contexts",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return GetMediaCmd(cmd, con)
+		},
+	}
+
 	contextCmd.AddCommand(
 		downloadCmd,
 		uploadCmd,
@@ -79,6 +87,7 @@ func Commands(con *core.Console) []*cobra.Command {
 		portCmd,
 		screenshotCmd,
 		keyloggerCmd,
+		mediaCmd,
 	)
 	syncCmd := &cobra.Command{
 		Use:   consts.CommandSync + " [context_id]",
@@ -109,6 +118,7 @@ func Register(con *core.Console) {
 	RegisterCredential(con)
 	RegisterUpload(con)
 	RegisterDownload(con)
+	RegisterMedia(con)
 
 	con.RegisterServerFunc("callback_context", func(con *core.Console, sess *client.Session) (intermediate.BuiltinCallback, error) {
 		nonce, err := sess.Value("nonce")
@@ -136,6 +146,8 @@ func Register(con *core.Console) {
 					ctx, err = output.ToContext[*output.CredentialContext](c)
 				case consts.ContextKeyLogger:
 					ctx, err = output.ToContext[*output.KeyLoggerContext](c)
+				case consts.ContextMedia:
+					ctx, err = output.ToContext[*output.MediaContext](c)
 				}
 				if err != nil {
 					return nil, err

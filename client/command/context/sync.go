@@ -32,7 +32,7 @@ func SyncCmd(cmd *cobra.Command, con *core.Console) error {
 		con.Log.Infof("Context: \n%s\n", ictx.String())
 
 		switch c := ictx.(type) {
-		case *output.ScreenShotContext, *output.DownloadContext, *output.KeyLoggerContext, *output.UploadContext:
+		case *output.ScreenShotContext, *output.DownloadContext, *output.KeyLoggerContext, *output.UploadContext, *output.MediaContext:
 			var filename string
 			var content []byte
 			switch t := c.(type) {
@@ -46,6 +46,9 @@ func SyncCmd(cmd *cobra.Command, con *core.Console) error {
 				filename = t.Name
 				content = ctx.Content
 			case *output.UploadContext:
+				filename = t.Name
+				content = ctx.Content
+			case *output.MediaContext:
 				filename = t.Name
 				content = ctx.Content
 			}

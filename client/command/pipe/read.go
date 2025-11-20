@@ -35,13 +35,20 @@ func PipeRead(rpc clientrpc.MaliceRPCClient, session *client.Session, name strin
 	return rpc.PipeRead(session.Context(), request)
 }
 
+func parsePipeReadResponse(ctx *clientpb.TaskContext) (interface{}, error) {
+	if ctx.Spite.GetBinaryResponse() != nil {
+		return ctx.Spite.GetBinaryResponse().GetData(), nil
+	}
+	return output.ParseResponse(ctx)
+}
+
 func RegisterPipeReadFunc(con *core.Console) {
 	con.RegisterImplantFunc(
 		consts.ModulePipeRead,
 		PipeRead,
 		"bpipe_read",
 		PipeRead,
-		output.ParseResponse,
+		parsePipeReadResponse,
 		nil,
 	)
 	con.AddCommandFuncHelper(

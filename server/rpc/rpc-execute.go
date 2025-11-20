@@ -4,12 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
+	"strings"
+
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	implantpb "github.com/chainreactors/IoM-go/proto/implant/implantpb"
 	"github.com/chainreactors/IoM-go/types"
-	"math"
-	"strings"
 
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/utils/output"
@@ -36,8 +37,8 @@ func handleBinary(binary *implantpb.ExecuteBinary) *implantpb.ExecuteBinary {
 }
 
 func ContextCallback(task *core.Task, ctx context.Context) func(*implantpb.Spite) {
-	typ, nonce := getContextNonce(ctx)
-	if typ == "" || nonce == "" {
+	meta := getContextMeta(ctx)
+	if meta.ContextType == "" || meta.Nonce == "" {
 		return func(spite *implantpb.Spite) {
 			return
 		}
@@ -52,7 +53,12 @@ func ContextCallback(task *core.Task, ctx context.Context) func(*implantpb.Spite
 			}
 		}
 		var ctxs output.Contexts
-		switch typ {
+		switch meta.ContextType {
+		case consts.ContextMedia:
+			if err := core.HandleMediaChunk(task, meta.Nonce, meta.Identifier, meta.FileName, meta.MediaKind, content); err != nil {
+				logs.Log.Error(err)
+			}
+			return
 		case output.GOGOPortType:
 			c, err := output.ParseGOGO(content)
 			if err != nil {
@@ -80,12 +86,13 @@ func ContextCallback(task *core.Task, ctx context.Context) func(*implantpb.Spite
 			for _, c := range cs {
 				ctxs = append(ctxs, c)
 			}
-		case "keylogger":
-			err := core.HandleKeylogger(content, task)
+		case consts.ContextKeyLogger:
+			err := core.HandleKeylogger(content, task, meta.Identifier, meta.FileName, meta.Nonce)
 			if err != nil {
 				logs.Log.Error(err)
 				return
 			}
+			return
 		}
 
 		for _, c := range ctxs {
@@ -100,7 +107,7 @@ func ContextCallback(task *core.Task, ctx context.Context) func(*implantpb.Spite
 				Session: task.Session.ToProtobufLite(),
 				Type:    c.Type(),
 				Value:   value,
-				Nonce:   nonce,
+				Nonce:   meta.Nonce,
 			})
 			if err != nil {
 				logs.Log.Error(err)

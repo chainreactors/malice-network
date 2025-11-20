@@ -93,6 +93,8 @@ func ParseContext(typ string, content []byte) (Context, error) {
 		ctx, err = NewUploadContext(content)
 	case consts.ContextPort:
 		ctx, err = NewPortContext(content)
+	case consts.ContextMedia:
+		ctx, err = NewMediaContext(content)
 
 	}
 	return ctx, err

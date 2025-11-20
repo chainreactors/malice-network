@@ -190,6 +190,18 @@ func Register(con *core.Console) {
 		return session.WithValue("nonce", utils.RandomString(8), "context", typ)
 	})
 
+	intermediate.RegisterFunction("with_context_id", func(session *client.Session, id string) (*client.Session, error) {
+		return session.WithValue("context-id", id)
+	})
+
+	intermediate.RegisterFunction("with_context_name", func(session *client.Session, name string) (*client.Session, error) {
+		return session.WithValue("context-name", name)
+	})
+
+	intermediate.RegisterFunction("with_context_kind", func(session *client.Session, kind string) (*client.Session, error) {
+		return session.WithValue("context-kind", kind)
+	})
+
 	con.RegisterServerFunc("barch", func(con *core.Console, sess *client.Session) (string, error) {
 		return sess.Os.Arch, nil
 	}, nil)

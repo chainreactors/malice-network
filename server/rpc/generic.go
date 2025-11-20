@@ -362,20 +362,33 @@ func getClientName(ctx context.Context) string {
 	return ""
 }
 
-func getContextNonce(ctx context.Context) (string, string) {
+type contextRequestMeta struct {
+	ContextType string
+	Nonce       string
+	Identifier  string
+	FileName    string
+	MediaKind   string
+}
+
+func getContextMeta(ctx context.Context) contextRequestMeta {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
-		return "", ""
+		return contextRequestMeta{}
 	}
-	var contextType string
-	var nonce string
-	if n := md.Get("nonce"); len(n) > 0 {
-		nonce = n[0]
+	return contextRequestMeta{
+		ContextType: getMetadataValue(md, "context"),
+		Nonce:       getMetadataValue(md, "nonce"),
+		Identifier:  getMetadataValue(md, "context-id"),
+		FileName:    getMetadataValue(md, "context-name"),
+		MediaKind:   getMetadataValue(md, "context-kind"),
 	}
-	if t := md.Get("context"); len(t) > 0 {
-		contextType = t[0]
+}
+
+func getMetadataValue(md metadata.MD, key string) string {
+	if values := md.Get(key); len(values) > 0 {
+		return values[0]
 	}
-	return contextType, nonce
+	return ""
 }
 
 func Handler(ctx context.Context, rpc *Server, req proto.Message, expect types.MsgName, callbacks ...func(spite *implantpb.Spite)) (*clientpb.Task, error) {
