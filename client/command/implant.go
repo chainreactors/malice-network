@@ -46,6 +46,7 @@ func ImplantCmd(con *core.Console) *cobra.Command {
 	common.Bind(cmd.Use, true, cmd, func(f *pflag.FlagSet) {
 		f.String("use", "", "set session context")
 		f.Bool("wait", false, "wait task finished")
+		f.Bool("yes", false, "skip confirmation prompts")
 	})
 	cobra.MarkFlagRequired(cmd.Flags(), "use")
 	cmd.PersistentPreRunE, cmd.PersistentPostRunE = makeRunners(cmd, con)
@@ -194,6 +195,7 @@ func BindImplantCommands(con *core.Console) console.Commands {
 		common.Bind(implant.Use, true, implant, func(f *pflag.FlagSet) {
 			f.String("use", "", "set session context")
 			f.Bool("wait", false, "wait task finished")
+			f.Bool("yes", false, "skip confirmation prompts")
 		})
 		cobra.MarkFlagRequired(implant.Flags(), "use")
 		implant.PersistentPreRunE, implant.PersistentPostRunE = makeRunners(implant, con)

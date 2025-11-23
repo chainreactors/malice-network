@@ -252,17 +252,17 @@ func (plug *LuaPlugin) RegisterLuaFunction() {
 		return true, nil
 	}, &mals.Helper{Group: intermediate.ClientGroup})
 
-	plug.registerFunction("opsec", func(name string, opsec int) (bool, error) {
+	plug.registerFunction("opsec", func(name string, opsec float64) (bool, error) {
 		cmd := plug.CMDs.Find(name)
 		if cmd.Command == nil {
 			return false, fmt.Errorf("command %s not found", name)
 		}
 		if cmd.Command.Annotations == nil {
 			cmd.Command.Annotations = map[string]string{
-				"opsec": strconv.Itoa(opsec),
+				"opsec": strconv.FormatFloat(opsec, 'f', -1, 64),
 			}
 		} else {
-			cmd.Command.Annotations["opsec"] = strconv.Itoa(opsec)
+			cmd.Command.Annotations["opsec"] = strconv.FormatFloat(opsec, 'f', -1, 64)
 		}
 		return true, nil
 	}, &mals.Helper{Group: intermediate.ClientGroup})
