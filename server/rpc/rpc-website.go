@@ -153,7 +153,7 @@ func (rpc *Server) StartWebsite(ctx context.Context, req *clientpb.CtrlPipeline)
 		if err != nil {
 			return nil, err
 		}
-	} else {
+	} else if req.Pipeline != nil && req.Pipeline.Tls != nil {
 		webpipe.Tls.Enable = req.Pipeline.Tls.Enable
 	}
 	listener, err := core.Listeners.Get(webpipe.ListenerId)

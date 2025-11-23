@@ -209,7 +209,6 @@ func (opt *Options) PrepareServer() error {
 	err := saas.RegisterLicense()
 	if err != nil {
 		logs.Log.Warnf("register community license error %v", err)
-		config.Set("server.saas.enable", false)
 	}
 	core.NewBroker()
 	core.NewSessions()
