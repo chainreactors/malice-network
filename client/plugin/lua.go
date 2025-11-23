@@ -267,6 +267,15 @@ func (plug *LuaPlugin) RegisterLuaFunction() {
 		return true, nil
 	}, &mals.Helper{Group: intermediate.ClientGroup})
 
+	// Register schema annotation functions (with ui_ prefix)
+	plug.registerFunction("ui_set", SetFlagUI, nil)
+	plug.registerFunction("ui_widget", SetFlagWidget, nil)
+	plug.registerFunction("ui_group", SetFlagGroup, nil)
+	plug.registerFunction("ui_placeholder", SetFlagPlaceholder, nil)
+	plug.registerFunction("ui_required", SetFlagRequired, nil)
+	plug.registerFunction("ui_range", SetFlagRange, nil)
+	plug.registerFunction("ui_order", SetFlagOrder, nil)
+
 	plug.registerFunction("command", func(name string, fn *lua.LFunction, short string, ttp string) (*cobra.Command, error) {
 		cmd := plug.CMDs.Find(name)
 

@@ -57,16 +57,19 @@ func NewConsole() (*Console, error) {
 type Console struct {
 	//*core.ActiveTarget
 	*Server
-	Log        *client.Logger
-	App        *console.Console
-	Profile    *assets.Profile
-	CMDs       map[string]*cobra.Command
-	MCP        *MCPServer
-	LocalRPC   *LocalRPC
-	Helpers    map[string]*cobra.Command
+	Log     *client.Logger
+	App     *console.Console
+	Profile *assets.Profile
+
+	MCPAddr  string
+	RPCAddr  string
+	MCP      *MCPServer
+	LocalRPC *LocalRPC
+
+	CMDs    map[string]*cobra.Command
+	Helpers map[string]*cobra.Command
+
 	MalManager *plugin.MalManager
-	MCPAddr    string
-	RPCAddr    string
 }
 
 func (c *Console) NewConsole() {

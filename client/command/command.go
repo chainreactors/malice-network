@@ -13,7 +13,7 @@ import (
 
 type BindFunc func(group string, cmds ...func(con *core.Console) []*cobra.Command)
 
-func MakeBind(cmd *cobra.Command, con *core.Console) BindFunc {
+func MakeBind(cmd *cobra.Command, con *core.Console, source string) BindFunc {
 	return func(group string, cmds ...func(con *core.Console) []*cobra.Command) {
 		found := false
 
@@ -42,6 +42,7 @@ func MakeBind(cmd *cobra.Command, con *core.Console) BindFunc {
 				}
 				c.GroupID = group
 				c.Annotations["menu"] = cmd.Name()
+				c.Annotations["source"] = source
 				updateCommand(con, c, group)
 				cmd.AddCommand(c)
 			}

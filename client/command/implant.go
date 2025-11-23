@@ -138,7 +138,7 @@ func BindCommand(cmds []*cobra.Command) func(con *core.Console) []*cobra.Command
 }
 
 func BindBuiltinCommands(con *core.Console, root *cobra.Command) *cobra.Command {
-	bind := MakeBind(root, con)
+	bind := MakeBind(root, con, "golang")
 	BindCommonCommands(bind)
 	bind(consts.ImplantGroup,
 		basic.Commands,
@@ -236,15 +236,17 @@ func BindImplantCommands(con *core.Console) console.Commands {
 		if con.MalManager == nil {
 			con.MalManager = plugin.GetGlobalMalManager()
 		}
-		bind := MakeBind(implant, con)
+
 		// 注册嵌入式插件命令
+		embeddedBind := MakeBind(implant, con, "mal")
 		for _, plug := range con.MalManager.GetAllEmbeddedPlugins() {
-			bind(plug.Name, BindCommand(plug.Commands().Commands()))
+			embeddedBind(plug.Name, BindCommand(plug.Commands().Commands()))
 		}
 
 		// 注册外部插件命令
+		externalBind := MakeBind(implant, con, "mal")
 		for _, plug := range con.MalManager.GetAllExternalPlugins() {
-			bind(plug.Manifest().Name, BindCommand(plug.Commands().Commands()))
+			externalBind(plug.Manifest().Name, BindCommand(plug.Commands().Commands()))
 		}
 
 		implant.SetUsageFunc(help.UsageFunc)

@@ -24,7 +24,6 @@ func Commands(con *core.Console) []*cobra.Command {
 			return
 		},
 	}
-
 	loadaddonCmd := &cobra.Command{
 		Use:   consts.ModuleLoadAddon,
 		Short: "Load an addon",

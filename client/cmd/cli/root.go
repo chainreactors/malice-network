@@ -25,7 +25,7 @@ func rootCmd(con *core.Console) (*cobra.Command, error) {
 	// 添加 --rpc flag
 	cmd.PersistentFlags().String("rpc", "", "enable local gRPC server with address (e.g., 127.0.0.1:15004)")
 
-	bind := command.MakeBind(cmd, con)
+	bind := command.MakeBind(cmd, con, "golang")
 	command.BindCommonCommands(bind)
 	cmd.PersistentPreRunE, cmd.PersistentPostRunE = command.ConsoleRunnerCmd(con, cmd)
 	cmd.AddCommand(command.ImplantCmd(con))

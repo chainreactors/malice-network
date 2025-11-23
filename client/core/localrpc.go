@@ -89,6 +89,50 @@ func (s *LocalRPCServer) GetHistory(ctx context.Context, req *localrpc.GetHistor
 	}, nil
 }
 
+// GetSchemas implements the CommandService.GetSchemas RPC method
+func (s *LocalRPCServer) GetSchemas(ctx context.Context, req *localrpc.GetSchemasRequest) (*localrpc.GetSchemasResponse, error) {
+	client.Log.Debugf("LocalRPC: GetSchemas called with group: %s\n", req.Group)
+
+	schemas, err := getSchemas(s.console, req.Group)
+	if err != nil {
+		client.Log.Errorf("LocalRPC: Error getting schemas: %v\n", err)
+		return &localrpc.GetSchemasResponse{
+			SchemasJson: "",
+			Error:       err.Error(),
+			Success:     false,
+		}, nil
+	}
+
+	client.Log.Debugf("LocalRPC: Schemas retrieved successfully\n")
+	return &localrpc.GetSchemasResponse{
+		SchemasJson: schemas,
+		Error:       "",
+		Success:     true,
+	}, nil
+}
+
+// GetGroups implements the CommandService.GetGroups RPC method
+func (s *LocalRPCServer) GetGroups(ctx context.Context, req *localrpc.GetGroupsRequest) (*localrpc.GetGroupsResponse, error) {
+	client.Log.Debugf("LocalRPC: GetGroups called\n")
+
+	groups, err := getGroups(s.console)
+	if err != nil {
+		client.Log.Errorf("LocalRPC: Error getting groups: %v\n", err)
+		return &localrpc.GetGroupsResponse{
+			Groups:  nil,
+			Error:   err.Error(),
+			Success: false,
+		}, nil
+	}
+
+	client.Log.Debugf("LocalRPC: Groups retrieved successfully, count: %d\n", len(groups))
+	return &localrpc.GetGroupsResponse{
+		Groups:  groups,
+		Error:   "",
+		Success: true,
+	}, nil
+}
+
 // LocalRPC wraps the gRPC server instance
 type LocalRPC struct {
 	server   *grpc.Server

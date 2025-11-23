@@ -1,12 +1,16 @@
 package core
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/chainreactors/IoM-go/client"
+	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
+	"github.com/chainreactors/malice-network/client/plugin"
 	"github.com/chainreactors/malice-network/helper/intermediate"
 	"github.com/chainreactors/mals"
 	"github.com/kballard/go-shellquote"
+	"github.com/spf13/cobra"
 	"strings"
 	"time"
 )
@@ -130,4 +134,73 @@ func getHistory(con *Console, taskID uint32, sessionID string) (string, error) {
 	}
 
 	return fn.FinishCallback(taskCtx)
+}
+
+// getSchemas 从指定的 cobra group 中获取 schemas 并返回 JSON 字符串
+func getSchemas(con *Console, group string) (string, error) {
+	if con == nil {
+		return "", fmt.Errorf("console not initialized")
+	}
+
+	if group == "" {
+		return "", fmt.Errorf("group is required")
+	}
+
+	// 获取 implant menu 的根命令
+	rootCmd := con.App.Menu(consts.ImplantMenu)
+	if rootCmd == nil {
+		return "", fmt.Errorf("implant menu not found")
+	}
+
+	// 收集指定 group 的所有命令
+	var commands []*cobra.Command
+	for _, cmd := range rootCmd.Commands() {
+		if cmd.GroupID == group {
+			commands = append(commands, cmd)
+		}
+	}
+
+	if len(commands) == 0 {
+		return "", fmt.Errorf("no commands found for group: %s", group)
+	}
+
+	// 使用统一 API 生成 schemas
+	schemas, err := plugin.GenerateSchemasFromCommands(commands)
+	if err != nil {
+		return "", fmt.Errorf("failed to generate schemas: %w", err)
+	}
+
+	// 返回格式: map[groupName]map[commandName]*CommandSchema
+	result := make(map[string]map[string]*plugin.CommandSchema)
+	result[group] = schemas
+
+	// 转换为 JSON 字符串
+	jsonData, err := json.MarshalIndent(result, "", "  ")
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal schemas to JSON: %w", err)
+	}
+
+	return string(jsonData), nil
+}
+
+// getGroups 获取所有 group 的基本信息（group_id -> group_title）
+func getGroups(con *Console) (map[string]string, error) {
+	if con == nil {
+		return nil, fmt.Errorf("console not initialized")
+	}
+
+	// 获取 implant menu 的根命令
+	rootCmd := con.App.Menu(consts.ImplantMenu)
+	if rootCmd == nil {
+		return nil, fmt.Errorf("implant menu not found")
+	}
+
+	// 收集所有 group 的 ID 和 Title
+	groupMap := make(map[string]string)
+
+	for _, grp := range rootCmd.Groups() {
+		groupMap[grp.ID] = grp.Title
+	}
+
+	return groupMap, nil
 }

@@ -89,7 +89,7 @@ func BindClientsCommands(con *core.Console) console.Commands {
 			},
 		}
 
-		bind := MakeBind(client, con)
+		bind := MakeBind(client, con, "golang")
 
 		BindCommonCommands(bind)
 
