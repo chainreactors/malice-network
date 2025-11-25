@@ -3,7 +3,9 @@ package core
 import (
 	"fmt"
 	"net"
+	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/chainreactors/IoM-go/consts"
 	mtls "github.com/chainreactors/IoM-go/mtls"
@@ -87,14 +89,25 @@ func (con *Console) InitMCPServer() {
 			return
 		}
 
+		// 查找可用端口
+		finalPort, err := findAvailableMCPPort(host, port)
+		if err != nil {
+			logs.Log.Errorf("Failed to find available port for MCP server: %v\n", err)
+			return
+		}
+
+		if finalPort != port {
+			logs.Log.Warnf("Port %d is occupied, using port %d instead\n", port, finalPort)
+		}
+
 		// 创建并启动 MCP 服务器
 		con.MCP = NewMCP(con)
-		if err = con.MCP.Start(host, port); err != nil {
+		if err = con.MCP.Start(host, finalPort); err != nil {
 			logs.Log.Errorf("Failed to start MCP server: %v\n", err)
 			return
 		}
 
-		logs.Log.Importantf("MCP server started at http://%s:%d/mcp\n", host, port)
+		logs.Log.Importantf("MCP server started at http://%s:%d/mcp\n", host, finalPort)
 	}()
 }
 
@@ -153,6 +166,49 @@ func parseAddr(addr string) (string, int, error) {
 	}
 
 	return host, port, nil
+}
+
+// findAvailableMCPPort 查找可用的 MCP 端口
+func findAvailableMCPPort(host string, startPort int) (int, error) {
+	const maxAttempts = 10
+
+	for i := 0; i < maxAttempts; i++ {
+		port := startPort + i
+		addr := fmt.Sprintf("%s:%d", host, port)
+
+		listener, err := net.Listen("tcp", addr)
+		if err == nil {
+			listener.Close()
+			return port, nil
+		}
+
+		if checkMCPHealth(host, port) {
+			logs.Log.Infof("MCP server already running at http://%s:%d/mcp, skipping startup\n", host, port)
+			return 0, fmt.Errorf("MCP server already running at port %d", port)
+		}
+
+		logs.Log.Debugf("Port %d is occupied but MCP service is not available, trying next port\n", port)
+	}
+
+	return 0, fmt.Errorf("failed to find available port after %d attempts", maxAttempts)
+}
+
+// checkMCPHealth 检查指定端口上的 MCP 服务是否健康
+// 通过 HTTP GET 请求检查 /mcp/sse 端点是否响应
+func checkMCPHealth(host string, port int) bool {
+	url := fmt.Sprintf("http://%s:%d/mcp/sse", host, port)
+
+	client := &http.Client{
+		Timeout: 2 * time.Second,
+	}
+
+	resp, err := client.Get(url)
+	if err != nil {
+		return false
+	}
+	defer resp.Body.Close()
+
+	return resp.StatusCode >= 200 && resp.StatusCode < 500
 }
 
 func NewConfigLogin(con *Console, yamlFile string) error {
