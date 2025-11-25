@@ -11,7 +11,7 @@ import (
 )
 
 func ExecuteFlagSet(f *pflag.FlagSet) {
-	f.StringP("process", "n", `C:\\Windows\\System32\\notepad.exe`, "custom process path")
+	f.StringP("process", "n", `C:\\Windows\\System32\\svchost.exe`, "custom process path")
 	f.BoolP("quiet", "q", false, "disable output")
 	f.Uint32P("timeout", "t", 60, "timeout, in seconds")
 	f.String("arch", "", "architecture x64,x86")
