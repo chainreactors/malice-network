@@ -3,6 +3,11 @@ package build
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	errs "github.com/chainreactors/IoM-go/types"
@@ -17,10 +22,6 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/db/models"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
-	"os"
-	"path/filepath"
-	"strings"
-	"time"
 )
 
 type DockerBuilder struct {
@@ -49,7 +50,7 @@ func (d *DockerBuilder) Generate() (*clientpb.Artifact, error) {
 	var artifact *models.Artifact
 	var err error
 	var profileByte []byte
-	var profile *selfType.ProfileConfig
+	//var profile *selfType.ProfileConfig
 	if d.config.BuildName == "" {
 		d.config.BuildName = codenames.GetCodename()
 	}
@@ -58,11 +59,10 @@ func (d *DockerBuilder) Generate() (*clientpb.Artifact, error) {
 		profileByte, err = db.GetProfileContent(d.config.ProfileName)
 		d.config.MaleficConfig = profileByte
 	}
-	profile, err = selfType.LoadProfile(d.config.MaleficConfig)
+	_, err = selfType.LoadProfile(d.config.MaleficConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get config: %s", err)
 	}
-	logs.Log.Debugf("profile: %v", profile)
 
 	// init artifact status
 	artifactId := d.config.ArtifactId

@@ -3,10 +3,11 @@ package configs
 import (
 	"crypto/x509/pkix"
 	"fmt"
+	"os"
+
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/malice-network/helper/implanttypes"
-	"os"
 
 	cryptostream "github.com/chainreactors/malice-network/server/internal/stream"
 	"golang.org/x/exp/slices"
@@ -276,6 +277,7 @@ func (t *TlsConfig) ReadCert() (*implanttypes.TlsConfig, error) {
 	tls := &implanttypes.TlsConfig{
 		Enable:  t.Enable,
 		Subject: t.ToPkix(),
+		Cert:    &implanttypes.CertConfig{},
 	}
 	// 如果没有证书文件，直接返回基础配置
 	if t.CertFile == "" || t.KeyFile == "" {

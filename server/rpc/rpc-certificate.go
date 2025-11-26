@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
@@ -9,46 +10,55 @@ import (
 	"github.com/chainreactors/malice-network/server/internal/certutils"
 	"github.com/chainreactors/malice-network/server/internal/core"
 	"github.com/chainreactors/malice-network/server/internal/db"
+	"github.com/chainreactors/malice-network/server/internal/db/models"
 )
 
 func (rpc *Server) GenerateSelfCert(ctx context.Context, req *clientpb.Pipeline) (*clientpb.Empty, error) {
-	if req.Name != "" && req.Tls != nil && req.Tls.Cert == nil {
-		certModel, err := db.FindPipelineCert(req.Name, req.ListenerId)
-		if err != nil {
-			return nil, err
-		}
-		if certModel != nil {
-			return &clientpb.Empty{}, nil
-		}
+	if req == nil {
+		return nil, fmt.Errorf("pipeline is nil")
 	}
 
-	if req.Tls == nil || req.Tls.Cert == nil {
-		var certSubject *clientpb.CertificateSubject
-		if req.Tls != nil {
-			certSubject = req.Tls.CertSubject
-		}
-		tls, err := certutils.GenerateSelfTLS("", certSubject)
+	if req.Tls == nil {
+		return nil, fmt.Errorf("pipeline %s tls config is nil", req.Name)
+	}
+
+	if !req.Tls.Enable {
+		return &clientpb.Empty{}, nil
+	}
+
+	if req.Name == "" {
+		return nil, fmt.Errorf("pipeline name is required to generate certificate")
+	}
+
+	if req.Tls.Cert != nil && req.Tls.Cert.Cert != "" {
+		certModel, err := db.SaveCertFromTLS(req.Tls, req.Name)
 		if err != nil {
 			return nil, err
 		}
-		req.Tls = tls
+		return rpc.publishCertEvent(certModel)
 	}
-	certModel, err := db.SaveCertFromTLS(req.Tls, req.Name)
+
+	certModel, err := db.FindPipelineCert(req.Name, req.ListenerId)
+	if err != nil {
+		return nil, err
+	}
+	if certModel != nil {
+		req.Tls = certModel.ToProtobuf()
+		return &clientpb.Empty{}, nil
+	}
+
+	tls, err := certutils.GenerateSelfTLS("", req.Tls.CertSubject)
+	if err != nil {
+		return nil, err
+	}
+	req.Tls = tls
+
+	certModel, err = db.SaveCertFromTLS(req.Tls, req.Name)
 	if err != nil {
 		return nil, err
 	}
 
-	msg, err := certs.FormatSubject(certModel.Name, certModel.Type, certModel.CertPEM)
-	if err != nil {
-		return nil, err
-	}
-	core.EventBroker.Publish(core.Event{
-		EventType: consts.EventCert,
-		IsNotify:  false,
-		Message:   msg,
-		Important: true,
-	})
-	return &clientpb.Empty{}, nil
+	return rpc.publishCertEvent(certModel)
 }
 
 func (rpc *Server) DeleteCertificate(ctx context.Context, req *clientpb.Cert) (*clientpb.Empty, error) {
@@ -108,6 +118,10 @@ func (rpc *Server) SaveAcmeCert(ctx context.Context, req *clientpb.Pipeline) (*c
 	if err != nil {
 		return nil, err
 	}
+	return rpc.publishCertEvent(certModel)
+}
+
+func (rpc *Server) publishCertEvent(certModel *models.Certificate) (*clientpb.Empty, error) {
 	msg, err := certs.FormatSubject(certModel.Name, certModel.Type, certModel.CertPEM)
 	if err != nil {
 		return nil, err

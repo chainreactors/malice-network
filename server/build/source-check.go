@@ -3,10 +3,13 @@ package build
 import (
 	"context"
 	"fmt"
+	"os"
+
 	"github.com/chainreactors/IoM-go/consts"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 
 	"github.com/chainreactors/malice-network/server/internal/configs"
+	"github.com/docker/docker/client"
 )
 
 // CheckSource
@@ -86,8 +89,35 @@ func checkDockerSource(ctx context.Context, req *clientpb.BuildConfig) (*clientp
 		return nil, fmt.Errorf("docker daemon not responding: %w", err)
 	}
 
+	if err := ensureDirExists(configs.SourceCodePath); err != nil {
+		return nil, fmt.Errorf("source code path unavailable: %w", err)
+	}
+
+	if req.Target != "" {
+		image := GetImage(req.Target)
+		if _, _, err := cli.ImageInspectWithRaw(ctx, image); err != nil {
+			if client.IsErrNotFound(err) {
+				return nil, fmt.Errorf("docker image %s for target %s not found", image, req.Target)
+			}
+			return nil, fmt.Errorf("failed to inspect docker image %s: %w", image, err)
+		}
+	}
+
 	req.Source = consts.ArtifactFromDocker
 	return req, nil
+}
+
+func ensureDirExists(path string) error {
+	info, err := os.Stat(path)
+	if err != nil {
+		return err
+	}
+
+	if !info.IsDir() {
+		return fmt.Errorf("%s is not a directory", path)
+	}
+
+	return nil
 }
 
 func checkSaasSource(req *clientpb.BuildConfig) (*clientpb.BuildConfig, error) {

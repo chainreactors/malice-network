@@ -4,14 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
+	"time"
+
 	"github.com/chainreactors/IoM-go/consts"
 	mtls "github.com/chainreactors/IoM-go/mtls"
 	"github.com/chainreactors/IoM-go/proto/client/clientpb"
 	"github.com/chainreactors/IoM-go/proto/services/listenerrpc"
 	"github.com/chainreactors/malice-network/helper/utils/output"
-	"os"
-	"path/filepath"
-	"time"
 
 	"github.com/chainreactors/logs"
 	"github.com/chainreactors/malice-network/helper/cryptography"
@@ -384,7 +385,9 @@ func (lns *listener) autoBuild(autoBuild *configs.AutoBuildConfig, pipeline *cli
 // 执行构建
 func (lns *listener) executeBuild(profileName string, artifact *clientpb.Artifact) error {
 
-	resp, err := lns.Rpc.CheckSource(lns.Context(), &clientpb.BuildConfig{})
+	resp, err := lns.Rpc.CheckSource(lns.Context(), &clientpb.BuildConfig{
+		Target: artifact.Target,
+	})
 	if err != nil {
 		return err
 	}

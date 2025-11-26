@@ -75,7 +75,9 @@ func (rpc *Server) StartPipeline(ctx context.Context, req *clientpb.CtrlPipeline
 			return nil, err
 		}
 	} else if req.Pipeline != nil && req.Pipeline.Tls != nil {
-		pipelineDB.PipelineParams.Tls = implanttypes.FromTls(req.Pipeline.Tls)
+		if req.Pipeline.Tls.Cert != nil && req.Pipeline.Tls.Cert.Cert != "" && req.Pipeline.Tls.Cert.Key != "" {
+			pipelineDB.PipelineParams.Tls = implanttypes.FromTls(req.Pipeline.Tls)
+		}
 	}
 	lns, err := core.Listeners.Get(pipelineDB.ListenerId)
 	if err != nil {
